@@ -93,3 +93,188 @@ Add one paragraph per module as it lands.
   key (`/`, `\`, `.`, `..`, empty) is refused, and the resolved path must
   stay under `episodes/` (the `startsWith(base + sep)` guard from
   `tools/segments/fetch-transcripts.mjs` `transcriptPath`).
+- **`manifest.mjs`, `delta.mjs`** (PKG-06): `delta.mjs` holds the export's
+  high-water mark in a state file (`readState` gives
+  `{version:1, last_export_version, high_water:{max_asset_id, max_episode_updated_at}}`,
+  defaults when the file is absent, `DeltaError CORRUPT_STATE` when it does not
+  parse). `computeHighWater(source)` streams `assets` and `episodes` once each.
+  `isChanged(episodeRow, hw)` is true when an episodes.jsonl row has a strictly
+  newer `updated_at` or an asset id above `max_asset_id`. `episodes.updated_at`
+  is ASSUMED until PKG-03 confirms it, so a null one makes that half false and
+  never throws, and the asset-id half works alone. Timestamps compare as
+  instants, not strings. `manifest.mjs` `buildManifest` lists every file of a
+  version directory with `bytes`, streamed `sha256` (`hashFile`) and `rows`,
+  plus counts, high-water mark, delta and overlap. `computeSourceCounts` gives
+  `feeds_known`, `feeds_crawled` (non-null `last_success_at`) and `inserts_30d`
+  (`updated_at`, else `source_published_at`, at or after `built_at` − 30 d).
+  `writeLatest` writes `latest.json` last. It first re-hashes every listed file
+  against the manifest (`ManifestError FILE_MISMATCH` otherwise) and writes
+  tmp + rename. Both modules write through `writeJsonAtomic` from
+  `tools/segments/sweep-transcripts.mjs`, whose CLI is guarded.
+- **`pg-row-source.mjs`** (PKG-07): `pgRowSource({ connectionString =
+  process.env.FORAYCORPUS_DATABASE_URL, clientFactory, pageSize })` has the
+  `jsonlRowSource` interface (`rows(table)`, `counts()`, `describe()`) plus
+  `close()`. On first use it opens one transaction: `BEGIN`, `SET TRANSACTION
+  READ ONLY`, `SET LOCAL statement_timeout = 300000`. `rows` pages by keyset
+  with plain `query`, `PG_PAGE_SIZE` rows a page, stopping at a short page. It
+  uses `id` for podcasts, podcast_feeds, podcast_source_records, episodes and
+  assets. It uses the tuples `(episode_id, feed_id)` for
+  episode_source_records and `(podcast_source_record_id, feed_id)` for
+  podcast_source_links, and reads feed_host_policies whole. The exported
+  frozen `SQL` map selects exactly PKG-02's column lists. Its header marks
+  podcast_source_records, podcast_source_links, feed_host_policies and
+  `episodes.updated_at` as ASSUMED until PKG-03. `counts()` gives
+  `pg_class.reltuples` estimates, not exact counts. `describe()` is
+  `pg:<host redacted>/<db>`. A connection error is rethrown as
+  `RowSourceError PG_CONNECT` with the password replaced by `***`. `pg` is
+  imported only inside the default client factory, so the tests (a fake client)
+  need no `node_modules`. Rows pass through unchanged, and pg returns int8 as a
+  string.
+- **`overlap.mjs`** (PKG-09): `computeOverlap(showRows, breadthDoc)` counts
+  how much of the breadth tier the corpus already carries. Its inputs are
+  `buildShows` rows and `data/catalog-breadth.json`'s parsed object or its
+  `shows` array. It returns `{breadth_shows, matched_by_itunes_id,
+  matched_by_feed_url_only, unmatched}`, and each breadth show counts once,
+  itunes first. `apple_collection_id` is compared with `itunes_id` as strings,
+  because pg's int8 arrives as a string. Otherwise the breadth `feed_url`,
+  normalised with `normalizeFeedUrl` from `tools/shows/identity.mjs`, is
+  compared with `feed_url_normalized`. A null or blank id or feed never
+  matches. The CLI is `node tools/foraycorpus-export/overlap.mjs --shows
+  <shows.jsonl> [--breadth data/catalog-breadth.json]` and prints the JSON.
+  PKG-08 wires `--breadth` into the exporter.
+- **`r2-client.mjs`** (PKG-11): `loadR2Credentials({ env, readFile, homedir })`
+  takes the `R2_ENV` names when key id, secret and endpoint are all set, else
+  the file named by `R2_CREDENTIALS_FILE`, else `~/.foray/r2-credentials`.
+  The file is `key = value` lines. Keys are lowercased and matched against the
+  farm's alias table (`ALIASES`), so the dashboard spelling (`Access_Key_ID`)
+  and the `R2_ACCESS_KEY_ID=` lines HUMAN-ACTIONS #138 asks for both resolve.
+  The bucket defaults to `DEFAULT_BUCKET`. A miss throws `R2Error
+  NO_CREDENTIALS` naming the sources tried and no value. The secret is
+  non-enumerable, and `toJSON()` redacts the key id. `createR2Client` builds
+  the farm's client: region `auto`, path-style, and both checksum options
+  `WHEN_REQUIRED`. It leaves the SDK's own User-Agent alone. `listPrefix` follows
+  `NextContinuationToken`. `getObject` reads the body with
+  `Body.transformToByteArray()` (64 MB cap, `TOO_LARGE`) and returns the
+  farm's `sha256` metadata as `sha256Meta`. The SDK is imported lazily, and
+  the tests inject a fake client and `S3Client` class.
+- **`show-map.mjs`** (PKG-12): `buildShowMap({ queue, catalog, breadth })`
+  maps each R2 show directory the farm wrote to a foray `show_id`. It returns
+  `{ map, collisions }`. The farm names a directory `safeKey(String(
+  podcastindex_feed_id))`, or `safeKey(slugify(title))` when the row has no
+  PodcastIndex id. `slugify` is the farm's `forayfmt.py` port: NFKD, drop
+  non-ASCII, lowercase, `[^a-z0-9]+` → `-`, trim, empty → `show`. Both
+  directories of a `data/transcription-queue.json` row map to one show. That
+  show is the `data/catalog.json` show with the same `normalizeFeedUrl` feed
+  (`catalog-feed`), else `String(apple_collection_id)` (`breadth-apple`),
+  else the title slug (`queue-title`). Every catalog `show_id` and every
+  `data/breadth-transcript-yield.json` id also maps to itself, raw and
+  `safeKey`'d (`identity`, the #831 forward contract). The first writer wins,
+  and each dropped mapping is listed in `collisions`. `resolveShowDir` returns
+  null for an unknown directory. `localDirFor(show_id)` is `safeKey(show_id)`,
+  the name `transcriptPath` writes and `transcriptArchiveLookup.ts` `showDir`
+  finds by prefix. `normalizeFeedUrl` and `safeKey` are imported, and the
+  caller parses the data files.
+- **`sync-r2.mjs`** (PKG-13): `node tools/foraycorpus-export/sync-r2.mjs
+  [--out <dir>] [--raw] [--dry-run] [--prefix <p>] [--limit <n>] [--show
+  <dir|show_id>]` mirrors `transcripts/normalized/` (and `transcripts/raw/`
+  with `--raw`) into `data-local/transcripts/`. Only keys of the form
+  `transcripts/<kind>/<dir>/<file>` are bodies. The bucket-root legacy whisper
+  JSONs, `fingerprints/` and every other key are counted `ignored` and never
+  fetched. Each R2 directory goes through `resolveShowDir` and lands under
+  `localDirFor(show_id)`. An unmapped directory keeps its R2 name and is
+  listed in `unmapped_dirs`. File names stay the R2 names, under
+  `transcriptPath`'s `startsWith(base + sep)` guard (copied, because
+  `transcriptPath` re-applies `safeKey`). For a file already on disk with the
+  listed size, a HEAD reads the farm's `sha256` metadata and an equal local
+  sha256 is `skipped_same` (equal size when there is no metadata). Otherwise
+  a GET follows. A sha256 mismatch, bad JSON or a bad shape (`show_id`/`guid`
+  strings, cues with numeric `start_sec`/`end_sec` and string `text`,
+  `transcript_source` absent, null or in `TRANSCRIPT_SOURCES` from
+  `tools/segments/merge-segments.mjs`) is quarantined and nothing is written.
+  Accepted bytes are written unchanged via tmp + rename, so `show_id` is never
+  rewritten. Nothing local is deleted. The run writes `r2-sync-state.json` in
+  the out directory, and its `bodies_expected` is the sum of the normalized
+  bodies on disk per directory after the run (the run-start guard's number).
+  `--dry-run` fetches and validates, writes nothing (no state file), and
+  prints the state it would have written. The CLI reads credentials with
+  `loadR2Credentials` and builds the map from `data/transcription-queue.json`,
+  `data/catalog.json` and `data/breadth-transcript-yield.json`.
+- **`catalog-adapter.mjs`** (PKG-31): `catalogAdapter(showRows, {
+  breadthOld, catalog, harvestedAt })` turns `buildShows` rows into
+  `data/catalog-breadth.json`-shaped rows and returns `{ shows, report }`.
+  Rows are skipped, and counted, when they have no `itunes_id`
+  (`skipped_no_apple_id`), when either rights flag is set (`skipped_rights`,
+  founder ruling 31 in `docs/roadmap/README.md`), when `language` is neither
+  `en*` nor null (`skipped_language`), or when they repeat an apple id. A row
+  carries the old file's 18 keys: the plan's 17 plus `taxonomy_node_ids`,
+  which `breadthCatalog.ts` reads. Then come the additive
+  `timed_transcript_episodes` and `audio_episodes`. The chart fields and
+  `taxonomy_node_ids` are copied from the old breadth row with the same
+  `apple_collection_id`, else null and `[]`. `in_curated` is true only when
+  `foray_show_id` is a `data/catalog.json` `show_id`, so the numeric
+  `String(itunes_id)` fallback never counts. The report adds `new_vs_old`,
+  `dropped_vs_old` and `feed_url_changed`. The CLI (`--shows <shows.jsonl>
+  [--breadth] [--catalog] [--out] [--harvested-at]`) writes the envelope
+  minified to `data-local/corpus-export/catalog-breadth-corpus.json` and
+  refuses an `--out` under `data/`.
+- **`export.mjs`** (PKG-08): the exporter CLI. `parseExportArgs(argv)` gives
+  `{ source, out, dryRun, catalogPath, breadthPath }`. `--source` is required,
+  as `pg` or `jsonl:<dir>`. `out` defaults to `data-local/corpus-export/`
+  (`EXPORT_OUT_DIR`) and `catalogPath` to `data/catalog.json`. An unknown,
+  repeated or valueless flag throws `ExportError`. `runExport(args, { now,
+  sourceFactory })` computes the high-water mark first. Then it runs
+  `buildShows`, passes its `chosenFeedByPodcast` to `buildEpisodes` (every
+  English podcast gets a file), and writes the manifest. The delta is taken
+  against the version `state.json` names. Everything is built in a hidden
+  `.partial-*` staging directory, which is renamed into place before
+  `latest.json` is written, and `state.json` is written after that. With
+  `--breadth` the manifest carries `computeOverlap`'s block, else `overlap:
+  null`. Two corpus podcasts with one show key: the later one's file falls
+  back to its `corpus_podcast_id`, with a warning on stderr.
+
+## Usage
+
+```
+node tools/foraycorpus-export/export.mjs --source jsonl:tools/foraycorpus-export/fixtures/synthetic --out "$TMP/out"
+node tools/foraycorpus-export/export.mjs --source pg --breadth data/catalog-breadth.json
+```
+
+| flag | meaning |
+|---|---|
+| `--source jsonl:<dir>` | read `<table>.jsonl` files (a fixture) |
+| `--source pg` | read foraycorpus read-only; connection string from `FORAYCORPUS_DATABASE_URL` |
+| `--out <dir>` | export root; default `data-local/corpus-export/`; a path under `data/` is refused |
+| `--catalog <file>` | the catalogue for `foray_show_id`; default `data/catalog.json` |
+| `--breadth <file>` | add the breadth overlap block (`data/catalog-breadth.json`) |
+| `--dry-run` | build in a tmp directory, print the manifest, write nothing under `--out` |
+
+The last line printed is the summary:
+`shows=<n> episodes=<n> delta_added=<n> delta_changed=<n> out=<version dir>`.
+
+One run writes:
+
+```
+<out>/<version dir>/shows.jsonl
+<out>/<version dir>/episodes/<safeKey(show key)>.jsonl
+<out>/<version dir>/manifest.json
+<out>/latest.json      {export_version, manifest_path, built_at}, written last
+<out>/state.json       {version, last_export_version, high_water}
+```
+
+**The version directory is not the export version (Windows).** `export_version`
+is the run's ISO instant, for example `2026-10-05T12:34:56.789Z`, kept exactly
+in `manifest.json`, `latest.json` and `state.json`. NTFS refuses `:` in a file
+name, so the directory is `versionDirName(export_version)`, with every `:`
+replaced by `-` (`2026-10-05T12-34-56.789Z`). The mapping is one-to-one and
+sorts in the same order, so the newest version is still the last directory by
+name. Readers follow `latest.json`'s `manifest_path`, which already names the
+directory.
+
+**Delta.** An episode is *added* when its `corpus_episode_id` is not in the
+same show's file of the previous version. It is *changed* when it was there and
+`isChanged` is true against the stored high-water mark (a newer asset id, or a
+newer `updated_at`). With no previous version every episode counts as added.
+A rerun over an unchanged corpus reports `delta_added=0 delta_changed=0` and
+writes a byte-identical `shows.jsonl`. A run that fails before `latest.json` is
+written leaves `latest.json` and `state.json` where they were, and leaves no
+version directory behind.

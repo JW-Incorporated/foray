@@ -118,7 +118,7 @@ const FLOORS = {
      deleted once V-01's Audition button replaced it for the human tests it
      existed to support. See HUMAN-ACTIONS #29 and docs/curation/
      tts-locked-screen-check.md (kept as the historical record). */
-  "player/foray-playback.test.js": 91, // 2026-09-23 merge of the audit lanes: L2 (the Foray page paints its main button from `running`, "Start over" on a finished Foray; +2) and L8 (#236: the suite runs on the frozen fixture, plus "every segment of every committed Foray in data/ resolves"; +2) both landed; 87 -> 91
+  "player/foray-playback.test.js": 92, // DAI-07b: client.js sends every Foray path (resolve, playForay + its again re-entry, attachForay) through forayResolveOptions/forayQueueOptions; 91 -> 92 // 2026-09-23 merge of the audit lanes: L2 (the Foray page paints its main button from `running`, "Start over" on a finished Foray; +2) and L8 (#236: the suite runs on the frozen fixture, plus "every segment of every committed Foray in data/ resolves"; +2) both landed; 87 -> 91
   /* 2026-09-18, founder: "the podcast I was listening to should still be in the
      now playing ribbon". The POINTER to the last ordinary episode — position is
      not stored here, `cp_pos:` has owned that since #26, and two of these tests
@@ -160,6 +160,12 @@ const FLOORS = {
      a phone that either hangs on a dead cell or plays a torn deploy. The page-
      level half is test/foray-directory.test.js, floored separately below. */
   "player/foray-directory.test.js": 30, // +1 audit finding E (2026-09-12): the cache row carries `partial` instead of dropping it; 29 -> 30
+  /* The catalogue directory's pure decisions (issue #40, narrowed 2026-09-30):
+     the pointer's shape, the six-hour TTL, cached-fresh -> bundled -> error
+     precedence, adoption (current / older / fetch, the partial-seed rule) and
+     per-file verification. Zero slack; every named mutation was run and killed.
+     The writer's half is tools/ci/catalogue-directory.test.mjs. */
+  "player/catalogue-directory.test.js": 17,
   "player/foray-sources.test.js": 24,
     /* 108 -> 109 with #264: a telemetry sink that throws must not reject a load. That
      became reachable when `player/client.js` gave this backend its first real sink —
@@ -557,6 +563,16 @@ const FLOORS = {
      and the published privacy policy and Play declaration both now rest on them.
      A deleted test here is a false statement in a store submission. */
   "test/data-deletion.test.js": 88, // audit round 3 (lane L1): app-1-2 single-flight sync and signup (x2), app-1-10 per-chunk markSynced, app-1-4 transient refresh keeps the account (x2), app-3-6 the retry after a local-incomplete run (x4); 79 -> 88 // NE-23: in native mode the deletion stops and purges the engine before the page's own purge (its private keys go, cp_engine_applied is the page's to clear), and an engine that refuses is not a clear device; 77 -> 79 // persist-6: Delete my data finds the token in the vault and empties it, a sync signs up into the vault only, and never refreshes or signs up against a vault it could not read; 68 -> 73 // audit round 2 (L5): the deletion as a transaction — refreshed token saved (persist-1 x2), in-flight sync gated and waited out (persist-8 x2), no cp_playlists/onboarding after the re-render (persist-2), shard cache cleared (persist-4), diagnostics forgotten (persist-5), device-only cost stated (persist-7); 60 -> 68 // 2026-09-22 audit: "Delete everything" is red under ui-v2 and the drawer item is not gold; 57 -> 58 // 2026-09-22 audit (theme J, R11): the foray_events queue is purged with everything else, a queue that will not clear is not called clear, a store with no queue is not a success, no status line speaks storage jargon or a count, every store the code opens sits in a deleted-or-kept ledger, and the policy says so; 51 -> 57
+  /* Offline downloads, the listener-visible half (#29, PQ-18): app.js's wiring
+     around the REAL player/download-store.js and download-bridge.js with only
+     the phone faked — no control off the shell, the original enclosure URL and
+     the build's UA, progress repainted in place, done/refused written from the
+     events, Library's section between Up Next and History, the cellular
+     switch, the files purged before the keys, eviction that spares an episode
+     in progress, and client.js's published surface. Each test is one deleted
+     line from a download that goes to the wrong URL, a device called clear
+     with files on it, or a half-heard episode deleted. */
+  "test/downloads.test.js": 10, // PQ-18 (#29): the plan's 8 + eviction wiring + client.js's window.forayDownloads pin
   "test/event-sync-mapping.test.js": 5, // PKG-17 (docs/roadmap/catalogue-personalization.md): exact wire rows for picked (contract archetype or null), saved, thumbs (no node -> null, episode_slug absent not null), session_shown -> session_built, and a local-only-only batch marked synced with no POST; the Not-sent -> null and per-chunk cases live in legal-citations and data-deletion (app-1-10)
   /** The field record's surface (#264) — see the note beside the two `player/`
       halves above. */
@@ -590,7 +606,7 @@ const FLOORS = {
      it protects is gameable in exactly one direction: a misspelled `food/bakin`
      reads as "has a child" to the root-dumping report and silently erases a
      root-only pair, so a deleted gate would make the number look better. */
-  "test/data-topic-integrity.test.js": 15, // PKG-07 (2026-10-04): +1, no engineering/energy-fusion item comes from a general show's inherited label; 14 -> 15 // PKG-01 (2026-10-04): +2, every discover item carries topics_source and an explicit key; 12 -> 14
+  "test/data-topic-integrity.test.js": 16, // #547 residue (2026-10-05): +1, only an allowlisted fusion-specific show passes engineering/energy-fusion by inheritance; 15 -> 16 // PKG-07 (2026-10-04): +1, no engineering/energy-fusion item comes from a general show's inherited label; 14 -> 15 // PKG-01 (2026-10-04): +2, every discover item carries topics_source and an explicit key; 12 -> 14
   /* The code citations in the two store-submission documents. Same argument as
      data-deletion above and the same stakes: what this suite guards is whether a
      document going to a store reviewer describes the code that shipped. It is
@@ -749,6 +765,7 @@ const FLOORS = {
      values measured on main after PKG-07. A test deleted here is a ranking
      change that can make suggestions worse with every check green. */
   "test/similar-shows-eval.test.js": 12, // #560 item 8: new -- Similar-shows eval set, mirror pin, measured floors
+  "test/vouch-eval.test.js": 14, // #560 item 8, showsWeVouchFor half: new -- the row is app.js's own, rotation floors, Family Mode and label_scope ceilings (measured, not zero)
   /* Founder reports, 2026-09-13. The "Show more episodes" control came out of
      the show page, so show-page-pagination.test.js was RE-POINTED rather than
      shrunk — same five tests, now pinning the absence of the control, the
@@ -963,7 +980,7 @@ const FLOORS = {
      others kept the file's count up, which is precisely what a floor cannot
      see. */
   "test/show-search-live.test.js": 10,
-  "test/show-search-ranking.test.js": 16, // P-08 (docs/search-parity-plan.md, 2026-09-12): the MATCH TIER is interposed above the bucket, so the popularity prior can speak across prefix and word-start — four tests (the charting word-start row wins; the bucket still breaks the tie the prior cannot; the exact/mid-word edges hold against the prior; and the real committed index puts nothing worse-banded above the show the listener meant); 12 -> 16 // P-03b (docs/search-parity-plan.md, 2026-09-12): the author bucket was BUILT, measured against the live directory over 20 host-name queries, and refused — two tests pin the refusal on the real Apple strings (`tim ferriss` promotes his audiobooks over his show; `andrew huberman` promotes three SEO-stuffed artist fields over Huberman Lab); 10 -> 12 // client audit (2026-09-12): the server twin is pinned mechanically — backend/src/catalog/searchBreadthShows.ts’s bucket table is read and compared to this file’s, so a fifth bucket cannot land on one side only; 9 -> 10
+  "test/show-search-ranking.test.js": 18, // P-09 rule half (PKG-13, docs/roadmap/shows-search.md): popularityBand reads the curated chart_rank PKG-11a/11b joined in, on the breadth scale — two tests (a ranked curated row beats an unranked one inside the curated tier and both beat breadth; over the real files history puts Hardcore History above Ancient History Fangirl and science puts Science Vs above Science for Sport, with every boundary-tier curated row above every breadth row per README Q30), and the curated `=== 0` pin re-argued as the worst curated band; 16 -> 18 // P-08 (docs/search-parity-plan.md, 2026-09-12): the MATCH TIER is interposed above the bucket, so the popularity prior can speak across prefix and word-start — four tests (the charting word-start row wins; the bucket still breaks the tie the prior cannot; the exact/mid-word edges hold against the prior; and the real committed index puts nothing worse-banded above the show the listener meant); 12 -> 16 // P-03b (docs/search-parity-plan.md, 2026-09-12): the author bucket was BUILT, measured against the live directory over 20 host-name queries, and refused — two tests pin the refusal on the real Apple strings (`tim ferriss` promotes his audiobooks over his show; `andrew huberman` promotes three SEO-stuffed artist fields over Huberman Lab); 10 -> 12 // client audit (2026-09-12): the server twin is pinned mechanically — backend/src/catalog/searchBreadthShows.ts’s bucket table is read and compared to this file’s, so a fifth bucket cannot land on one side only; 9 -> 10
   "test/show-index.test.js": 11,
   /* The search PAGE's chrome, as opposed to the search itself (founder
      reports, 2026-09-13): no catalogue subtitle, the browse furniture hides
@@ -1104,6 +1121,8 @@ const FLOORS = {
      would notice losing. */
   "test/starred-shows.test.js": 9,
   "test/supabase-rls-verbs.test.js": 7, // round-3 L6 (2026-09-25): backend-rest-4/-5, data-integrity-10 — supabase/0003's policies pinned against the PostgREST verbs app.js uses, both ways
+  "test/supabase-rls-coverage.test.js": 3, // PR #1045 review (PKG-02, S-09): every portable table has Supabase RLS (supabase/0004 for shows_catalog/show_id_map); the G1/G2 coupling text cites Q6 and names 0004; new
+  "test/supabase-content-reports.test.js": 7, // PH2-10: supabase/0005 content_reports (Guideline 1.2 reports): RLS on, insert-own + delete-own, select-own only for the filtered DELETE, user_id-only select grant, no update, note cap 280, review index, README + HUMAN-ACTIONS #116 apply step; new
   /* "Up Next" listening queue, Stage 1 of docs/listening-queue-plan.md
      (kanban card t_f4da81f5). Floored because the queue's own decay path
      (an id ageing out of the pool, or the queue emptying) is exactly the
@@ -1145,8 +1164,10 @@ const FLOORS = {
      player/queue-drag.js and queue-order.js — the handle and its hint, the
      6 px lock, commit on pointerup only, nothing on a tap or a cancel, the
      slot follows the list under autoscroll. Each test is one deleted line
-     from a gesture that reorders the wrong row or none. */
-  "test/up-next-gestures.test.js": 6, // PQ-04 (#762)
+     from a gesture that reorders the wrong row or none. Swipe to remove
+     (PQ-06) adds the 8 px lock's two refusals (a scroll, a rightward drag),
+     removal on pointerup only, the ✕'s after-step, and the ✕ kept. */
+  "test/up-next-gestures.test.js": 11, // PQ-04 (#762); 6 -> 11 // PQ-06 (#762): swipe left to remove (commit on pointerup, vertical-first and rightward refused, announcement + focus, the ✕ still works)
   "test/engine-continuation.test.js": 10, // PQ-07 (#762): Play next, drag reorder and Clear each re-send the engine's plan
   "test/bookmarks.test.js": 5, // PQ-13 (#30): the page writes the real module's row into cp_bookmarks, keeps no copy of the dedupe, lists sorted, announces, and logs no event (README Q19)
   "test/engine-developer-rows.test.js": 14, // NE-22d: the engine's four Developer rows in the drawer
@@ -1165,6 +1186,7 @@ const FLOORS = {
      noticing. Includes the MUTATION TEST the card asks for by name
      (restore leafNodes() as the seed set -> red). */
   "test/interests-roots.test.js": 8,
+  "test/personas-client.test.js": 4, // PKG-13 (#70 part 1, 2026-10-05): personas.json loads at init; applyPersonaPick lifts seed_confidence x weight over each root's subtree; an unknown id writes nothing; four/five subject thumbs-down overtake the prior; the plan's fifth test (persona_picked) waits for step 4
   /* #301's bound, over the REAL catalogue: improving a result the ranking keeps
      below the top one must never empty its query or drop a bar-clearer. One test,
      floored at one, because the alternative to a floor here is a suite that can be
@@ -1291,6 +1313,7 @@ const FLOORS = {
      `data-and-site` for the entire repo. All 10 named mutations were run and
      killed. */
   "tools/ci/crlf-guard.test.mjs": 10,
+  "tools/ci/approve-parked-runs.test.mjs": 10, // #1032 / PR #1038 review: pointer-PR run approval -- late-run race, failed list call never read as empty, approve failure, still parked, unconfirmed window
   /* The Foray directory pointer (FD-02): `data/forays-directory.json`, written
      and checked by generate-manifest.mjs. 16 pure-function tests on scratch
      trees plus 8 that run the REAL CLI as a subprocess against a synthetic LF
@@ -1315,6 +1338,13 @@ const FLOORS = {
      --check's no-committed-stamp rule (tracked file, stamped sw.js, missing
      .gitignore). The committed-file and committer-date mutations were run and
      killed; 29 -> 32. */
+  /* The catalogue directory pointer (issue #40): `data/catalogue-directory.json`,
+     stamped into built trees by generate-manifest.mjs beside the Foray pointer
+     and never committed (#701). 10 pure-function / real-repo tests plus 5 that
+     run the REAL CLI on a synthetic LF tree (--stamp shares the Foray pointer's
+     version and built_at and leaves the manifest alone; --verify and --check go
+     red by name). Zero slack; every named mutation was run and killed. */
+  "tools/ci/catalogue-directory.test.mjs": 15,
   "tools/ci/forays-directory.test.mjs": 35, // PR #795 review finding 1 (2026-09-24): the seed never outranks the live pointer (mobile-only HEAD, shallow clone, every input is a Vercel path); 32 -> 35
   /* +12 (machinery audit, 2026-09-12): the checks-missing self-heal had three
      holes — sweep-only, keyed on `pr.updatedAt` (which this workflow's own label
@@ -1657,7 +1687,7 @@ const FLOORS = {
      probe never HEAD, the eight-redirect cap, 403 = unplayable-here, usage from
      the index (no DiskSpace API, #1014). Uncompiled until PQ-21 declares the
      plugin, so these pins ARE the gate. New suite. */
-  "tools/mobile/foray-downloads.test.mjs": 15, // PQ-20 (#29)
+  "tools/mobile/foray-downloads.test.mjs": 26, // PQ-20 (#29); 15 -> 25 // PQ-22 (#29): the Android half -- name, seven @PluginMethods and three events against download-bridge.js, gradle/manifest/package agreement, DownloadManager lands in getExternalFilesDir (never setDestinationUri/getFilesDir) and the file moves to getNoBackupFilesDir, the exported ContextCompat receiver, allowCellular to metered+roaming, 403 = unplayable-here with iOS's reason strings, the 2 s poll, the fixed 5-redirect cap documented, removeAll deletes both directories; 25 -> 26 // PQ-21 (#29): mobile/package.json declares foray-downloads as a file: link and mobile/package-lock.json agrees, so npm ci and cap sync fold it in on both platforms
   "tools/mobile/foray-tts.test.mjs": 74, // audit round 3 integration: the real post-merge count, 66 -> 74 // fix/narration-1x (2026-09-24): rate 1 is each platform's normal rate — passed through, Web Speech 1, Android setSpeechRate(1.0f), iOS AVSpeechUtteranceDefaultSpeechRate; 62 -> 66 // #685 (2026-09-13): a refusal carries the numbers the phone did produce, and a native payload cannot spread its way into a success; 60 -> 62 // K-01 (2026-09-12): the probe is a SEPARATE call with no Web Speech ladder under it; 53 -> 60 // L-05 (2026-09-12): pause/resume/stop/state on all three paths; 45 -> 53
   /* The foreground service's web half (#27's Android half, on #37). Zero slack, and
      for the reason `media-session.test.js` above gives: what this suite guards is
@@ -1758,7 +1788,7 @@ const FLOORS = {
      Capacitor's placeholders on every build to 2026090603. Same rules as
      inject-app-icon: byte-level --check, refuse a half fix. Floored exact. */
   "tools/mobile/inject-splash.test.mjs": 19,
-  "tools/mobile/inject-background-audio.test.mjs": 55, // NE-38rs: +1 -- routeResumeBluetooth is a plist boolean written only when the block names it. NE-24: +4 -- the AppDelegate cold path (the import and ForayEngineColdPath.bootIfNeeded() as the first statement of didFinishLaunching, byte-identical elsewhere; idempotent, half-patched refused; exactly one didFinishLaunching, @main or @UIApplicationMain; the CLI patches beside the plist, --check quotes it, a missing AppDelegate fails with the plist untouched) // NE-17: +9 -- ForayEngineDefault / ForayEngineCapabilities from mobile/ENGINE_DEFAULT.json (committed js; absent reads js; written at the root, replaced not refused, byte-identical elsewhere; strict parse; the re-read is a real function; the CLI writes on every edit and --check prints ForayEngineDefault=js)
+  "tools/mobile/inject-background-audio.test.mjs": 59, // NE-38rs: +1 -- routeResumeBluetooth is a plist boolean written only when the block names it. NE-24: +4 -- the AppDelegate cold path (the import and ForayEngineColdPath.bootIfNeeded() as the first statement of didFinishLaunching, byte-identical elsewhere; idempotent, half-patched refused; exactly one didFinishLaunching, @main or @UIApplicationMain; the CLI patches beside the plist, --check quotes it, a missing AppDelegate fails with the plist untouched) // NE-17: +9 -- ForayEngineDefault / ForayEngineCapabilities from mobile/ENGINE_DEFAULT.json (committed js; absent reads js; written at the root, replaced not refused, byte-identical elsewhere; strict parse; the re-read is a real function; the CLI writes on every edit and --check prints ForayEngineDefault=js); 55 -> 59 // PQ-21 (#29): +4 -- the AppDelegate gains handleEventsForBackgroundURLSession forwarding to ForayDownloadsPlugin's own static entry point (exact lines, byte-identical elsewhere); idempotent, half-patched or hand-written refused; placed in the type that declares didFinishLaunching, not a later extension; the CLI writes it with the cold path and --check quotes it
   "tools/mobile/ios-ci.test.mjs": 152, // NE-36 (2026-09-25): +15, the lane seeding, the staged native pass, native-rows, and the native verdict and its report section; 137 -> 152 // founder 2026-09-23: section 3d reads taken-over-severed for a live object taken over with no tee onto WebKit's MediaSession — the state that shipped as "4a / unknown / unknown"; 136 -> 137 // +7: L-02 takeover verdict + reached needle (2026-09-10); +4: M-03 session needle (2026-09-12)
   /* The embedded-framework plist rules (2026-09-13). Release run 34739630705
      archived, exported, and was REJECTED by App Store Connect: the ONNX Runtime
@@ -2005,6 +2035,7 @@ const FLOORS = {
      merge.mjs wrote them. Runs the real script against a temp fixture; each
      test names its mutation. */
   "tools/refresh/backfill-provenance.test.mjs": 3,
+  "tools/refresh/topic-uniformity.test.mjs": 3, // #560 item 3 (2026-10-05): topic-uniformity ratchet on the REAL data -- no label_scope "general" show is uniform, and the uniform-show count (74 of 120 shows with >= 8 episodes on main) may fall but not rise; plus a fixture guard that keeps both from going vacuous; each test names its mutation; new, zero slack
   "tools/refresh/relabel.test.mjs": 4, // PKG-06 (2026-10-04): validated per-episode relabel of committed discover items (episodeTopics wrapped, topics_source stamped "episode", all-or-nothing write, --dry-run writes nothing); runs the real script against a temp fixture, each test names its mutation; new, zero slack
   /* REMOVED 2026-09-24 (issue #701): `tools/refresh/manifest-step.test.mjs`,
      floored at 9 here, and the module it tested. The nightly's deploy-manifest
@@ -2103,7 +2134,7 @@ const FLOORS = {
   "tools/shows/dedupe.test.mjs": 11, // audit round 3 (L8): +2, Unicode dedupe key; 9 -> 11
   "tools/shows/filter.test.mjs": 11,
   "tools/shows/identity.test.mjs": 2,
-  "tools/shows/import-dump.test.mjs": 8, // audit round 3 integration: the real post-merge count, 5 -> 8
+  "tools/shows/import-dump.test.mjs": 12, // #1033: +4 changed.json baseline (snapshot round-trip, download reaches buildChanged, failed download -> baseline:false, never {}); 8 -> 12 // audit round 3 integration: the real post-merge count, 5 -> 8
   "tools/shows/shard-build.test.mjs": 15, // audit round 3 (L8): +1, changed.json baseline; 14 -> 15
   "tools/shows/state.test.mjs": 6,
   /* S-04b: GitHub Release publishing + the run-then-publish orchestration
@@ -2118,7 +2149,7 @@ const FLOORS = {
      independent release-already-exists check that catches a lost
      state.json). */
   "tools/shows/publish-release.test.mjs": 28, // OPS-03 review: +2 -- a starter (half-uploaded) asset reads as missing, and a stranded draft BATCH resumes in publishShardReleases (the #969 fix at the call site); 26 -> 28 // OPS-03: draft -> chunked uploads -> publish, resume, retry, rate-limit wait, pacing, releaseState; 19 -> 26 (true count)
-  "tools/shows/run-and-publish.test.mjs": 10, // OPS-01: +3 describeExecError (FATAL lines carry code/signal/stderr/stdout); 6 -> 10 (true count: 7 existing + 3)
+  "tools/shows/run-and-publish.test.mjs": 11, // #1033: +1 the baseline snapshot ships on the pointer's release; 10 -> 11 // OPS-01: +3 describeExecError (FATAL lines carry code/signal/stderr/stdout); 6 -> 10 (true count: 7 existing + 3)
   /* Fresh-context review finding (2026-09-05): runBuild spawns
      import-dump.mjs as a real child process, and Node does NOT
      auto-inherit process.execArgv (e.g. --experimental-sqlite) into a
@@ -2135,6 +2166,15 @@ const FLOORS = {
   "tools/foraycorpus-export/row-source.test.mjs": 5, // PKG-02 (docs/roadmap/corpus.md): JSONL row source over the synthetic fixture, counts.json recount
   "tools/foraycorpus-export/catalogue.test.mjs": 4, // PKG-04 (docs/roadmap/corpus.md): shows.jsonl builder over the synthetic fixture (English filter, distinct-episode aggregates, normalised catalog join, sort)
   "tools/foraycorpus-export/episodes.test.mjs": 5, // PKG-05 (docs/roadmap/corpus.md): per-show episodes.jsonl builder (transcript preference, chapters, alternates, path-shaped key refusal, newest first)
+  "tools/foraycorpus-export/manifest.test.mjs": 5, // PKG-06 (docs/roadmap/corpus.md): manifest file list + sha256, re-hash before the atomic latest.json, isChanged / high-water null-safety, 30-day insert window
+  "tools/foraycorpus-export/pg-row-source.test.mjs": 5, // PKG-07 (docs/roadmap/corpus.md): read-only Postgres row source on a fake client (READ ONLY trio, id + tuple keyset paging, PKG-02 column lists, no password in describe/errors, unknown table)
+  "tools/foraycorpus-export/overlap.test.mjs": 3, // PKG-09 (docs/roadmap/corpus.md): breadth overlap (itunes first, feed-only via normalizeFeedUrl, null ids never match, stable keys incl. CLI)
+  "tools/foraycorpus-export/wave-candidates.test.mjs": 4, // PKG-35 (docs/roadmap/corpus.md): #279 drinks-wave candidates (fixed positives, whole-word boundary negatives, dai_prior false/null/true before timed, english null without a shows.jsonl row)
+  "tools/foraycorpus-export/r2-client.test.mjs": 6, // PKG-11 (docs/roadmap/corpus.md): R2 S3 client on a fake client (continuation-token paging, sha256 metadata, dashboard + HUMAN-ACTIONS #138 credential spellings with redacted toJSON, NO_CREDENTIALS names its sources, WHEN_REQUIRED checksum options, no tracked r2-credentials)
+  "tools/foraycorpus-export/show-map.test.mjs": 7, // PKG-12 (docs/roadmap/corpus.md): R2 show directory -> foray show_id map (catalog feed match, breadth apple id, slug dirs, the farm's four pinned slugify examples, unknown -> null, localDirFor = safeKey, first writer wins + collision report)
+  "tools/foraycorpus-export/sync-r2.test.mjs": 8, // PKG-13 (docs/roadmap/corpus.md): R2 -> data-local mirror on a fake client (mapped dir lands under safeKey(show_id) byte-identical, rerun is skipped_same via sha256 metadata, bucket-root legacy + fingerprints/ keys ignored, bad transcript_source and sha mismatch quarantined, unmapped dir kept + listed, bodies_expected = bodies on disk, --dry-run writes nothing)
+  "tools/foraycorpus-export/catalog-adapter.test.mjs": 5, // PKG-31 (docs/roadmap/corpus.md): breadth-shaped catalogue from the corpus (ruling-31 rights skip + counts, chart fields + taxonomy_node_ids from the old row else null/[], in_curated only for catalog ids, old 18 keys + 2 additive, minified CLI output that refuses data/)
+  "tools/foraycorpus-export/export.test.mjs": 5, // PKG-08 (docs/roadmap/corpus.md): export CLI end to end on the synthetic fixture (English show + episode counts, a rerun is a new version with 0/0 delta and byte-identical shows.jsonl, one appended higher asset id -> 1 changed, --dry-run leaves outRoot absent, latest.json names the newest Windows-safe version directory)
   /* The breadth prioritiser and its yield report (#114). Floored for the same
      reason politeness.test.mjs is, and the reason is not hypothetical here
      either: the first draft of `rank-breadth.mjs` had a seed hash that produced
@@ -2256,6 +2296,8 @@ const FLOORS = {
   "tools/poll/tiers.test.mjs": 9, // PKG-05 (S-10): new -- cadence tiers (seed, correction, success/failure, dead)
   "tools/poll/politeness.test.mjs": 4, // PKG-06 (S-10): new -- per-host politeness port, constants pinned to backend/src/feeds/politeness.ts
   "tools/poll/select-due.test.mjs": 6, // PKG-06 (S-10): new -- due-set selection (dead, not-due, caps, order, bad URL, budget untouched) + the G9 weekly projection
+  "tools/poll/watchlist.test.mjs": 10, // PKG-07 (S-10): new -- watchlist assembly (curated, unmapped, changed top-N, tiers, 90-day expiry, seed size) + the seed builder (exit 2 on ok:false, curated-only seed, --check)
+  "tools/poll/poll-episodes.test.mjs": 7, // PKG-08 (S-10): new -- poll-episodes dry-run CLI (no-DB exit 0 naming G1/G3, DB set refuses exit 3, env var order, summary shape + fetched 0, seed-alone on a failed change index, the 40,000 target line, absent/missing/malformed seed)
 };
 
 test("no suite is floored twice", () => {
@@ -2351,6 +2393,7 @@ const BACKEND_FLOORS = {
   "test/AnthropicSpineBuilder.test.ts": 18, // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 11 -> 18 (17 on disk before it)
   "test/archetypes.test.ts": 7,
   "test/budgetGuard.test.ts": 11, // round-3 L6 (2026-09-25): backend-rest-13: check-and-record serialised under concurrency; 6 -> 11
+  "test/buildCorpusTerms.test.ts": 4, // PKG-26 (docs/roadmap/corpus.md §3): corpus df table + per-episode top-k tf-idf terms — rare beats common, alpha ties, k cap, df drops singletons
   "test/candidateExtractor.test.ts": 8,
   "test/conditionalGet.test.ts": 9,
   "test/copyRules.test.ts": 16, // round-3 L6 (2026-09-25): backend-rest-18: Act Two / Act Three caught, statute spans left alone; 12 -> 16 // title house style (2026-09-24, qa 146): refused shapes, no false positives on names/acronyms/quoted works, houseStyleTitle never lowercases; 6 -> 12 (9 on disk before it) // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 5 -> 6. L8 (2026-09-22): Foray titles/summaries/slot titles against BANNED + INTERNAL_VOCABULARY, and its no-false-positive twin; 3 -> 5
@@ -2405,7 +2448,11 @@ const BACKEND_FLOORS = {
   "test/property/interestWeight.property.test.ts": 3,
   "test/redirect.test.ts": 6,
   "test/scoring.test.ts": 17,
-  "test/sessionBuilder.test.ts": 15, // round-3 L6 (2026-09-25): backend-rest-15/-16: the dedup log names the survivor; an unparseable date is neutral; 12 -> 15
+  "test/sessionBuilder.test.ts": 23, // #72 R17 provenance: signals name real matched taxonomy nodes, persona only when it weighted a match, recency/depth/fatigue follow the score log, stretch = wildcard + bridge, builder stamped; 15 -> 23 // round-3 L6 (2026-09-25): backend-rest-15/-16: the dedup log names the survivor; an unparseable date is neutral; 12 -> 15
+  /* #72 (R17): the REAL data/session.json parsed with SessionDocSchema — a card
+     without provenance, a stretch card without a bridge, a placeholder signal,
+     or a topic signal that is not a real taxonomy node of that episode fails CI. */
+  "test/sessionDoc.test.ts": 9,
   "test/stubEnricher.test.ts": 6,
   "test/userInterests.test.ts": 17,
   /* #703: the warm pass's feed parsing, which is what decides whether a
@@ -2660,7 +2707,8 @@ const BACKEND_FLOORS = {
   /* Stage 3b (kanban t_567b570f, docs/show-pages-plan.md §Stage 3): shared
      catalogue store CRUD (scoping by show_id, upsert-not-duplicate on
      (show_id, guid), published_at ordering, feed-state round-trip). */
-  "test/showEpisodesStore.test.ts": 9, // round-3 L6 (2026-09-25): backend-rest-9: one batched upsert in a transaction, rollback, dedup by guid; 5 -> 9
+  "test/showEpisodesStore.test.ts": 11, // PKG-02 (S-09): every statement names legacy_show_id after the 0019 rekey (batched upsert; reads, feed-state upsert); 9 -> 11 // round-3 L6 (2026-09-25): backend-rest-9: one batched upsert in a transaction, rollback, dedup by guid; 5 -> 9
+  "test/showsPostgresLive.test.ts": 3, // PKG-02 (S-09): live-Postgres acceptance; every case skips without SHOWS_DATABASE_URL||DATABASE_URL
   /* Stage 3b end to end: fetches+parses+upserts through the real parser,
      proves the chapters JSON body is never dereferenced during ingestion
      (only the pointer is stored), TTL cache-hit/expiry behavior, and the
@@ -2713,7 +2761,15 @@ const BACKEND_FLOORS = {
      loader stops zeroing a breadth row's folded `taxonomy_node_ids`. Two
      tests over a fixture catalog-breadth.json read: a row with nodes keeps
      them, a row without loads []. */
-  "test/breadthCatalog.test.ts": 20,
+  /* RAISED 20 -> 22 by shows-search PKG-13b (P-09 rule half, server mirror):
+     curated entries take their breadth twin's `chart_rank` via the
+     `apple_collection_id` join and `popularityBand` bands them on the breadth
+     scale. Two tests: the join over a fixture catalog-breadth.json (an
+     `in_curated` twin's rank reaches the curated entry, no twin stays null),
+     and ranked curated > unranked curated > breadth in the comparator. The
+     curated `chart_rank === null` pin is re-argued in place and the
+     agreement test gains "history"/"science". */
+  "test/breadthCatalog.test.ts": 22,
   /* §4.9 end to end (kanban card t_0b1729d6): finalizeForay() validates
      a candidate against the real check-forays.mjs/check-narration.mjs
      and only returns a writable record on a clean pass; stageTiming.ts

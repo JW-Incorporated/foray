@@ -1,8 +1,8 @@
 # Plan: path to ~every English-language podcast being playable in 4a
 
 > **SUPERSEDED, 2026-09-21 (`4a-shows-pipeline-plan.md`, S-deck,
-> the S-12 decision record, which lands in `docs/DECISIONS.md` with
-> shows-search PKG-04).** This plan's whole premise
+> the S-12 decision record: `docs/DECISIONS.md`, 2026-10-05 entry,
+> re-landed by shows-search PKG-04).** This plan's whole premise
 > — grow the catalogue in editorial waves toward "every English podcast" —
 > is superseded by the shows-pipeline deck's universal-list-plus-overlay
 > model: the full PodcastIndex dump (millions of shows) is now the list,

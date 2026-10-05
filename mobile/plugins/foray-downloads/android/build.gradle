@@ -1,0 +1,71 @@
+/* The `foray-downloads` Capacitor plugin's Android library module (issue #29;
+ * docs/roadmap/player-features.md PQ-22): the system DownloadManager fetches an
+ * episode's audio, and the finished file is moved into
+ * `Context.getNoBackupFilesDir()/foray-downloads/`, beside a JSON index.
+ *
+ * Same shape as `foray-vault/android/build.gradle` and `foray-tts`'s, for the
+ * same reason: `cap sync` reads `../package.json`'s `capacitor.android.src` and
+ * writes `include ':foray-downloads'` / `implementation project(':foray-downloads')`
+ * into the GENERATED project on every run, so nothing is patched into
+ * `mobile/android/` by hand. See docs/android-native-code.md. Until PQ-21
+ * declares the plugin in mobile/package.json, `cap sync` never sees this module
+ * and no CI job compiles it.
+ *
+ * TWO DEPENDENCIES. `project(':capacitor-android')` for the Plugin/PluginCall
+ * base classes, as every module here has. And `androidx.core` for ONE call,
+ * `ContextCompat.registerReceiver(..., RECEIVER_EXPORTED)`: on API 33+ a
+ * runtime receiver must say whether other apps may reach it, and
+ * ACTION_DOWNLOAD_COMPLETE is sent by the system's download provider, which is
+ * another app — so the receiver is exported, and ContextCompat picks the right
+ * overload below API 33. Capacitor's own module already ships androidx.core
+ * (as `implementation`, so it is not on this module's compile classpath without
+ * the line below); `androidxCoreVersion` is in the generated `variables.gradle`,
+ * and the fallback is only for a project that lacks it.
+ */
+
+apply plugin: 'com.android.library'
+
+android {
+    namespace = "ai.jwlabs.foura.downloads"
+    compileSdk = project.hasProperty('compileSdkVersion') ? rootProject.ext.compileSdkVersion : 36
+    defaultConfig {
+        minSdkVersion project.hasProperty('minSdkVersion') ? rootProject.ext.minSdkVersion : 24
+        targetSdkVersion project.hasProperty('targetSdkVersion') ? rootProject.ext.targetSdkVersion : 36
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    lintOptions {
+        abortOnError = false
+    }
+    compileOptions {
+        /* Matches foray-audio, foray-tts and foray-vault: capacitor-android
+           compiles at 21 and Capacitor 8 requires JDK 21
+           (docs/android-shell-build.md §1.2). */
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+        }
+    }
+}
+
+repositories {
+    google()
+    mavenCentral()
+}
+
+dependencies {
+    implementation project(':capacitor-android')
+    implementation "androidx.core:core:${project.hasProperty('androidxCoreVersion') ? rootProject.ext.androidxCoreVersion : '1.17.0'}"
+
+    /* Test-only (src/test), never in the APK. `DownloadRulesTest` is plain
+       JUnit over the pure rules class, so JUnit is the one test dependency;
+       the version is the one foray-audio, foray-tts and foray-vault use. */
+    testImplementation "junit:junit:4.13.2"
+}

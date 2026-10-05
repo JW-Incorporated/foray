@@ -101,7 +101,7 @@ import { TTS } from "./queue-state.js";
 import {
   resolveForay, indexSegments, indexSources, findForay, listableForays, allForays,
   forayElapsed, segmentAtElapsed, segmentStarts, fmtClock, fmtSpan, progressSegments,
-  foraysReferencingShow,
+  foraysReferencingShow, forayQueueOptions, forayResolveOptions,
 } from "./foray-resolve.js";
 import {
   ForayProgressStore, resumePoint, progressLabel, percentDone,
@@ -120,6 +120,9 @@ import {
   bubblePosition, bubbleContentOffset,
 } from "./strip-scrub-gesture.js";
 import { startDrag, moveDrag, endDrag, dragOffset, claimsTouch } from "./sheet-drag-dismiss.js";
+import * as queueSwipe from "./queue-swipe.js";
+import * as downloadStore from "./download-store.js";
+import { createDownloadBridge, USER_AGENT, userAgentFor } from "./download-bridge.js";
 import { createDurableStore, preferencesTier, vaultTier, deferredPrefixesFor, engineDataDeletion } from "./durable-store.js";
 import { OWNED_PREFIXES } from "./engine-contract.js";
 import { createNativeEngine } from "./native-engine.js";
@@ -825,7 +828,14 @@ function recordBuildStamp() {
        with the half that did (2026-09-23) — see `readBuildStamp`. */
     timeoutMs: BUILD_STAMP_WAIT_MS,
   })
-    .then((stamp) => { try { diag.build(stamp); } catch (_) { /* the instrument must never be the outage */ } })
+    .then((stamp) => {
+      try { diag.build(stamp); } catch (_) { /* the instrument must never be the outage */ }
+      /* The same answer names the build downloads announce themselves with
+         (PQ-18, #29): `userAgentFor` takes a string or a number only, so the
+         native build (else the version) is passed, never the object — and no
+         second round-trip to `getInfo` is made for it. */
+      try { noteDownloadsBuild(stamp); } catch (_) { /* the UA stays 4a/dev */ }
+    })
     .catch(() => {});
 }
 
@@ -992,6 +1002,43 @@ const directory = createForayDirectory({
   },
 });
 window.forayDirectory = directory;
+/* Up Next's swipe-to-remove ARITHMETIC (#762, PQ-05/PQ-06), for app.js the
+   same way as the drag rules: app.js owns the listeners on each row's text
+   block and the cp_queue write; this module only says how far left to paint
+   the row and, on release, whether it leaves (commit on pointerup, DECISIONS
+   2026-09-23 lane L2). Play next / Clear's order is already published above
+   as `window.forayQueueOrder`. */
+window.forayQueueSwipe = queueSwipe;
+/* Offline downloads (#29, PQ-16/17/18), for app.js the same way: the record's
+   rules (`download-store.js`) and the wire to the ForayDownloads plugin
+   (`download-bridge.js`). app.js owns the controls, the Library section, the
+   cellular switch and the Delete-my-data purge; it builds the bridge in
+   `init()` (null off the shell, so no control is drawn) and fills in `bridge`,
+   `recordFor` and `onMissing` below. Until it does, `recordFor` answers null
+   and `onMissing` does nothing, so a reader that arrives first (PQ-19's play
+   path) streams, which is what it would do with no download at all.
+   `userAgent` starts as `USER_AGENT` (`4a/dev`) and becomes the real build
+   once `recordBuildStamp` hears it; `platform` is that same answer's
+   "ios" | "android" | null, for `playSource`. */
+window.forayDownloads = {
+  store: downloadStore,
+  createBridge: createDownloadBridge,
+  USER_AGENT,
+  userAgentFor,
+  userAgent: USER_AGENT,
+  platform: null,
+  bridge: null,
+  recordFor: () => null,
+  onMissing: () => {},
+};
+/** The build-stamp answer → the downloads UA and platform. A stamp with no
+    native build and no version (the web, an older shell) leaves `4a/dev`. */
+function noteDownloadsBuild(stamp) {
+  const surface = window.forayDownloads;
+  if (!surface || !stamp || typeof stamp !== "object") return;
+  surface.userAgent = userAgentFor(stamp.native ?? stamp.version);
+  surface.platform = stamp.platform ?? null;
+}
 /**
  * The page's own `data` entry (FD-01): the boot-time source of each document as
  * app.js saw it, and the web's `stale-shell` pin. Same shape and the same
@@ -3473,9 +3520,7 @@ function attachForay(resolved, { discoverDoc = null } = {}) {
   setSkipButtonMode(true);
   artworkByShow = artworkUrlsByShow(discoverDoc);
   media.setActions(forayMediaSurface);
-  const report = manager.setQueueFromForay(resolved.hydrated, {
-    resolveItem: (itemId) => resolved.sources.get(itemId) ?? null,
-  });
+  const report = manager.setQueueFromForay(resolved.hydrated, forayQueueOptions(resolved, { isLocalFile: false }));
   setForayIndex(clampIndex(Number.isInteger(s?.index) ? s.index : 0, report.items.length), { pending: false });
   render();
   return current;
@@ -4879,12 +4924,15 @@ const ForayPlayer = {
   /** The three-document join, re-exported so app.js resolves the running order
       with exactly the code that builds the queue. app.js is a classic script and
       cannot import an ES module, which is the whole reason this bridge exists. */
-  resolve(foraysDoc, { id, segmentsDoc, sourcesDoc, unlocked = [], showDrafts = false } = {}) {
+  resolve(foraysDoc, { id, segmentsDoc, sourcesDoc, unlocked = [], showDrafts = false, allowAdPad } = {}) {
     const doc = findForay(foraysDoc, id, { unlocked, showDrafts });
     if (!doc) return null;
+    /* DAI-07b: `allowAdPad` has no default on purpose — an absent value is
+       left to forayResolveOptions, which answers with AD_PAD_SHIPPED. */
     return resolveForay(doc, {
       segments: indexSegments(segmentsDoc),
       sources: indexSources(sourcesDoc),
+      ...forayResolveOptions({ allowAdPad }),
     });
   },
 
@@ -5307,16 +5355,18 @@ const ForayPlayer = {
    *   we have that carries per-show artwork. Optional and thin — it covers one
    *   of the twelve shows the shipped Forays draw on — so its absence costs the
    *   lock screen the publisher's square and nothing else (#27).
+   * @param {boolean} [opts.allowAdPad] DAI-07b: forwarded through
+   *   forayQueueOptions; absent means the seek-policy switch (AD_PAD_SHIPPED).
    * @returns the build report, or null when nothing is playable.
    */
   async playForay(resolved, {
-    startIndex = 0, startElapsedSec = null, onChange = null, discoverDoc = null,
+    startIndex = 0, startElapsedSec = null, onChange = null, discoverDoc = null, allowAdPad,
   } = {}) {
     if (!resolved || !resolved.playable.length) return null;
     /* The lane first (NE-22), by re-entry rather than an await, so that on
        every path that has an element the gesture below is still spent before
        anything is awaited. */
-    const again = () => ForayPlayer.playForay(resolved, { startIndex, startElapsedSec, onChange, discoverDoc });
+    const again = () => ForayPlayer.playForay(resolved, { startIndex, startElapsedSec, onChange, discoverDoc, allowAdPad });
     if (engineMode === null) return engineModeReady.then(again);
     /* WITHOUT ITS 'foray' CAPABILITY THE ENGINE DOES NOT PLAY FORAYS (M1, and
        M2 until NE-37 advertises it). The tap runs the ordered relinquish
@@ -5354,9 +5404,10 @@ const ForayPlayer = {
     // Previous/next become segment boundaries the moment a Foray is loaded.
     media.setActions(forayMediaSurface);
 
-    const report = manager.setQueueFromForay(resolved.hydrated, {
-      resolveItem: (itemId) => resolved.sources.get(itemId) ?? null,
-    });
+    /* DAI-07b: the options come from the one helper, so the seek-policy
+       switch (AD_PAD_SHIPPED, unless the caller names allowAdPad) reaches the
+       manager — and through it the native engine — on this path too. */
+    const report = manager.setQueueFromForay(resolved.hydrated, forayQueueOptions(resolved, { isLocalFile: false, allowAdPad }));
 
     const at = Number.isFinite(startElapsedSec) && startElapsedSec > 0
       ? segmentAtElapsed(report.items, startElapsedSec)

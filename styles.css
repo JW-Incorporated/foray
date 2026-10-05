@@ -1373,6 +1373,22 @@ input[type="text"] {
 }
 .lib-more:active { color: var(--text); }
 
+/* ---------- Offline downloads (#29, PQ-18) ----------
+   The episode page's Download control sits on its own centred row under
+   `.ep-actions` (that row is already at its phone-width ceiling); the note a
+   refused download carries wraps under the button. Library's section reuses
+   the episode rows; its usage line and "Remove all" are the only new pieces.
+   Both buttons are `button.up-next`, so the 44px hit-area rule covers them. */
+.ep-download {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+  gap: 6px 12px;
+  margin: 12px 0 0;
+}
+.ep-download-btn[disabled] { opacity: 0.7; cursor: default; }
+.ep-download-note { flex: 1 1 100%; margin: 0; text-align: center; }
+.lib-downloads-usage { margin: 0 2px 8px; }
+button.downloads-remove-all { display: block; margin: 8px auto 0; }
+
 /* Save on a generated playlist's or a subject queue's page (founder,
    2026-09-25). A capsule like Follow, 44px tall by its own size. */
 .pl-save-wrap { margin: 4px 0 12px; }
@@ -1539,6 +1555,35 @@ button.reorder.drag-handle {
 .up-next-row.is-dragging button.reorder.drag-handle { cursor: grabbing; }
 .up-next-row.drop-before { border-top-color: var(--accent); }
 .up-next-row.drop-after { border-bottom-color: var(--accent); }
+/* Swipe left to remove (#762, PQ-06; app.js `bindUpNextSwipe`). The row's
+   text block keeps the vertical scroll for the browser (`pan-y`) and hands
+   horizontal travel to the swipe. While a finger carries the row it follows
+   with no easing (`.swiping`); let go short of the threshold and it springs
+   back on the row's own transform transition (stilled under Reduce Motion,
+   below). The "Remove" label waits just past the row's right edge and is
+   drawn only while a swipe is live, so it is revealed as the row slides left
+   and never widens the page otherwise (html/body clip horizontal overflow
+   too). Only `transform` moves, so nothing reflows. */
+.up-next-row { transition: transform 0.18s ease-out; }
+.up-next-row.swiping, .up-next-row.is-dragging { transition: none; }
+.up-next-row > .info { touch-action: pan-y; }
+.up-next-row .swipe-under {
+  display: none;
+  position: absolute;
+  top: 0; bottom: 0;
+  left: calc(100% + 8px);
+  width: 160px;
+  align-items: center;
+  padding-left: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+  color: var(--danger-text);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  pointer-events: none;
+}
+.up-next-row.swiping .swipe-under { display: flex; }
 
 /* ---------- in-app player (#25) ---------- */
 
@@ -4228,6 +4273,7 @@ body.drawer-open { overflow: hidden; }
   .fy-strip,
   .fy-strip-bubble, .fy-strip-bubble__viewport > *,
   .fy-seg { transition: none; }
+  .up-next-row { transition: none; }
   .fy-panel { animation: none; }
   .play-btn[data-loading="1"], .fp-play[data-loading="1"], .fp-btn[data-loading="1"], .hv2-play[data-loading="1"] { animation: none; opacity: .6; }
 }

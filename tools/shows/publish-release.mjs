@@ -10,7 +10,9 @@
 import { basename, join } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { MAX_SHARD_ASSETS_PER_RELEASE, POINTER_SCHEMA_VERSION, RELEASE_TAG_PREFIX, REPO_SLUG } from "./config.mjs";
+import {
+  MAX_SHARD_ASSETS_PER_RELEASE, NEWEST_SNAPSHOT_ASSET, POINTER_SCHEMA_VERSION, RELEASE_TAG_PREFIX, REPO_SLUG,
+} from "./config.mjs";
 
 const execFileP = promisify(execFile);
 
@@ -136,9 +138,13 @@ export async function releaseExists(tag, opts = {}) {
 }
 
 /** Lists the exact top-level (non-shard) files a release ships: manifest,
-    top, id-map, changed. Shard files are published SEPARATELY, across one
+    top, id-map, changed, and (#1033) the per-pi_id newest-item snapshot the
+    NEXT run downloads as changed.json's baseline (import-dump.mjs's
+    `loadPreviousNewest` fetches `<asset_base_url>/<NEWEST_SNAPSHOT_ASSET>`,
+    so it must live on this top-level release, the one the pointer names).
+    Shard files are published SEPARATELY, across one
     or more batch releases (`publishShardReleases` below) — this function's
-    own scope stays the 4 top-level files per Fable ruling FR-t_30a53ba2-1,
+    own scope stays the top-level files per Fable ruling FR-t_30a53ba2-1,
     which is also why `outDir`'s `shards/` directory is never walked here.
 
     WHY SHARDS ARE A SEPARATE RELEASE, NOT MORE ASSETS ON THIS ONE: GitHub
@@ -154,7 +160,7 @@ export async function releaseExists(tag, opts = {}) {
     releases (S-04c), each under its own tag and its own 1,000-asset
     budget — see that function's own header. */
 export async function listReleaseAssets(outDir) {
-  const top = ["manifest.json", "top.json", "id-map.json", "changed.json"];
+  const top = ["manifest.json", "top.json", "id-map.json", "changed.json", NEWEST_SNAPSHOT_ASSET];
   return top.map((f) => join(outDir, f));
 }
 

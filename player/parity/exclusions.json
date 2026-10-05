@@ -141,6 +141,10 @@
       "reason": "dom-only",
       "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
     },
+    "client.js sends both Foray paths through the seek-policy switch": {
+      "reason": "text-pin",
+      "why": "It pins client.js's page-side wiring (resolve, playForay and attachForay take their options from foray-resolve.js's helpers); the engine receives allowAdPad through the setQueueFromForay options and has no client.js to pin."
+    },
     "client.js spends the gesture on the element BEFORE its first await": {
       "reason": "webview-only",
       "why": "WebKit lifts an <audio> element's autoplay restriction only for a play() made inside a user gesture's task (#225), so the page must reach the element with nothing awaited first. The native engine starts AVPlayer from a bridge command with an active session; there is no gesture to spend."
