@@ -11729,7 +11729,10 @@ function bindEpisodeSeeks(scope, item) {
   });
 }
 
-function renderEpisode(id) {
+/* `t` is a timestamp link's offset in whole seconds (#30, see episodeDeepLink),
+   or null. It adds the "Play from" button and nothing else: the page never
+   starts playback on its own. */
+function renderEpisode(id, { t = null } = {}) {
   setBodyClass("view-page");
   const item = resolveEpisode(id);
   if (!item) {
@@ -11763,6 +11766,7 @@ function renderEpisode(id) {
       </div>
       ${item.artwork_url ? `<img class="ep-art" src="${esc(safeUrl(item.artwork_url))}" alt="" decoding="async" width="600" height="600">` : ""}
       ${item.hook ? `<p class="fp-s-why">${esc(item.hook)}</p>` : ""}
+      ${playFromHtml(item, t)}
       <div class="ep-actions">${item.audio_url ? playBtn(item) : notPlayableNote()}${starBtn(item.id)}${upNextBtn(item.id, item)}${item.audio_url ? `<button type="button" class="up-next playnext" data-playnext="${esc(item.id)}" aria-label="Play next">Play next</button>` : ""}</div>
       ${item.audio_url ? "" : `<p class="note">${esc(NOT_PLAYABLE_WHY)}</p>`}
       ${downloadControlHtml(item)}
@@ -18118,6 +18122,10 @@ function renderCurrentPage() {
      `safeDecode`, not `decodeURIComponent`: a lone `%` in a hash throws a
      URIError, and a malformed hash must not take the router down (its own
      header makes the same argument). */
+  /* A timestamp link (#30) first: `h` is already canonical (currentHash), so
+     this is `#/episode/<id>?t=N` — the line below would read `<id>?t=N` as
+     the id. */
+  else if ((m = episodeDeepLink(h))) renderEpisode(safeDecode(m.seg), { t: m.t });
   else if ((m = /^#\/episode\/(.+)$/.exec(h))) renderEpisode(safeDecode(m[1]));
   else if ((m = parseShowRoute(h))) renderShow(m.id, m.query);
   else if ((m = /^#\/category\/(.+)$/.exec(h))) renderCategory(safeDecode(m[1]));
@@ -18189,6 +18197,9 @@ function renderCurrentPage() {
 function route() {
   if (!state.ready) return;
   const h = currentHash();
+  /* A timestamp link's alias (or a stray spelling of its `t`) is rewritten to
+     the canonical address IN PLACE before anything records it (#30). */
+  if (location.hash !== h && episodeDeepLink(location.hash)) replaceHash(h);
   const step = noteNavigation(h);
   rememberRouteForRelaunch(h);
   /* Read BEFORE the render: renderCurrentPage() replaces #view's innerHTML,
@@ -18313,7 +18324,98 @@ function landOnPage({ navigated = false } = {}) {
    nothing (audit 2026-09-22). init() also rewrites a bare arrival to `#/` in
    place, so the address the history holds agrees with this. */
 function currentHash(hash = location.hash) {
-  return !hash || hash === "#" ? "#/" : hash;
+  if (!hash || hash === "#") return "#/";
+  /* ONE SPELLING OF A TIMESTAMP LINK, too (#30): `#/play/<id>?t=N` is the
+     alias, `#/episode/<id>?t=N` the page — see episodeDeepLink. route()
+     writes this spelling back into the address in place. */
+  const link = episodeDeepLink(hash);
+  return link ? episodeDeepLinkHash(link) : hash;
+}
+
+/* ---------- a timestamp deep link (issue #30) ----------
+
+   `#/episode/<id>?t=4050` opens that episode's page with a "Play from 1:07:30"
+   button; `#/play/<id>?t=4050`, the spelling issue #30 writes, is an alias and
+   is rewritten to the canonical one in place (replaceHash: no extra history
+   entry, so ‹ and the back gesture do not bounce off the alias).
+
+   THE PAGE, NOT THE PLAYER. A cold load never starts audio by itself: a
+   WebView refuses media that no gesture started, and the native shell reopens
+   its last route on a relaunch (cp_last_route), where a link that played on
+   arrival would replay every time the app came back. So the link lands on the
+   page and the button is the gesture. The button is an ordinary `data-ts`
+   control, handled by bindEpisodeSeeks — the one start path, with the stamp
+   as the START offset (races-1), so a tap during load begins at the stamp
+   rather than seeking after.
+
+   `t` is whole seconds (`4050`, `4050.9` floors) or a clock stamp (`1:07:30`).
+   Anything else — negative, empty, a word, a broken escape — is ignored and the
+   page renders as a plain episode page. The first `t=` wins. */
+const EPISODE_DEEPLINK_RE = /^#\/(episode|play)\/([^?]+)(?:\?(.*))?$/;
+
+/** `{ seg, t }` for a timestamp link (seg still encoded, t whole seconds or
+    null), or null — including for a plain `#/episode/<id>`, which is the
+    router's ordinary episode route. Producers encode the id, so a raw `?` is
+    always the start of the query. */
+function episodeDeepLink(hash) {
+  const m = EPISODE_DEEPLINK_RE.exec(String(hash || ""));
+  if (!m) return null;
+  const [, kind, seg, query] = m;
+  if (kind === "episode" && query === undefined) return null;
+  return { seg, t: deepLinkOffset(query) };
+}
+
+/** The `t=` of a query string as finite, non-negative whole seconds, or null. */
+function deepLinkOffset(query) {
+  if (!query) return null;
+  for (const pair of String(query).split("&")) {
+    const eq = pair.indexOf("=");
+    if (eq < 0 || pair.slice(0, eq) !== "t") continue;
+    const raw = safeDecode(pair.slice(eq + 1)).trim();
+    const secs = /^\d{1,9}(?:\.\d+)?$/.test(raw) ? Math.floor(Number(raw)) : parseTimestampSeconds(raw);
+    return Number.isSafeInteger(secs) && secs >= 0 ? secs : null;
+  }
+  return null;
+}
+
+/** The canonical address of a timestamp link: the episode route, plus `?t=N`
+    only when N is a real offset. */
+function episodeDeepLinkHash({ seg, t }) {
+  return `#/episode/${seg}${t === null || t === undefined ? "" : `?t=${t}`}`;
+}
+
+/** Is a timestamp link's target exact for this item? seekPrecision's answer
+    (player/seek-policy.js) for a FOREIGN stamp with no durations to compare —
+    a link was made against somebody else's copy: a downloaded file is exact
+    (its timeline is frozen), a static enclosure is exact, a stitched (DAI)
+    stream is approximate. app.js is a classic script and cannot import that
+    module, and client.js does not publish it; this is the same two-input rule,
+    read from the same fields. */
+function deepLinkPrecise(item) {
+  if (!item || !item.dai_suspected) return true;
+  try {
+    const rec = downloadsValue().items[item.id];
+    return !!rec && rec.status === "done";
+  } catch (_) {
+    return false;
+  }
+}
+
+/** The episode page's "Play from <stamp>" button for a timestamp link, or "".
+    Approximate targets read "~1:07:30" (issue #30: "visibly approximate"), and
+    say "about" to a screen reader, which would otherwise read the tilde. A
+    target past the episode's known end draws nothing — the same honesty guard
+    the notes' stamps keep — and the page is otherwise the plain episode page. */
+function playFromHtml(item, t) {
+  if (t === null || t === undefined || !Number.isSafeInteger(t) || t < 0) return "";
+  if (!item || !item.audio_url) return "";
+  const dur = itemDurationSec(item, { upperBound: true });
+  if (dur !== null && t > dur) return "";
+  const stamp = fmtChapterTime(t);
+  const precise = deepLinkPrecise(item);
+  const shown = precise ? stamp : `~${stamp}`;
+  const label = precise ? `Play from ${stamp}` : `Play from about ${stamp}`;
+  return `<div class="ep-play-from"><button type="button" class="up-next ep-play-from-btn${precise ? "" : " is-approximate"}" data-ts="${esc(String(t))}" aria-label="${esc(label)}">Play from ${esc(shown)}</button></div>`;
 }
 
 /* THE NATIVE SHELL REOPENS WHERE YOU LEFT (audit round 2, nav-10; founder
