@@ -309,7 +309,12 @@ lacks the field, and nothing may assume it is present until a re-harvest runs
 (~12 min full, and it also refreshes a harvest dated 2026-07-09). **This does not
 unblock P-03b by itself; it is the prerequisite.**
 
-### P-03b · The author column in the index — **HELD, folded into P-04**
+### P-03b · The author column in the index — **HELD, folded into P-04 — NOT BUILT, per P-04 DECIDED 2026-10-05**
+> **2026-10-05:** the question this card handed to P-04 ("tail, or rows?") is
+> ruled: **rows**. The `chart_rank <= 100` cut stays and no author column is
+> added (`docs/roadmap/README.md` Q30). See *P-04 · DECIDED 2026-10-05* below.
+> The text that follows is kept as the measurement the ruling rests on.
+
 **Why held, measured rather than deferred on taste.**
 1. **It fails the build, not the budget.** 512 KB raw gate, 76.1 KB of headroom,
    ~189 KB of author text. See §3's amendment. The only in-policy fix is cutting
@@ -347,7 +352,7 @@ re-harvest lands, with no second edit.
 **Done when.** A directory row explains itself; curated rows (which have no
 author) render exactly as before. Pinned in `test/show-search-fallthrough.test.js`.
 
-### P-04 · Decide what the local index is for — **M · S — needs P-02 and P-03 measured**
+### P-04 · Decide what the local index is for — **M · S — DECIDED 2026-10-05: keep the cut (see below)**
 **Ask.** Once the directory answers every query (P-02), the local index stops
 being the catalogue and becomes the *instant* tier. Re-derive its cut from that
 job: it should hold what a listener is most likely to type, which is not
@@ -356,6 +361,90 @@ top N by chart rank; the curated set plus everything a listener has played or
 starred; a smaller cut that buys the author column. **This card is a measurement
 and a decision, not a foregone change** — it may conclude the current cut is
 right.
+
+### P-04 · DECIDED 2026-10-05
+
+**The ruling.** `docs/roadmap/README.md` Q30 (*Search ranking*, shows-search):
+*"P-10: accept (option 3) unless coverage is at least 80% and `daily` would lead
+with no regressions. P-04: keep the `chart_rank ≤ 100` cut."* It is the README's
+proposed default for `docs/roadmap/shows-search.md` §1 Q5 and Q6, and the README
+says every task proceeds on the default unless a ruling overrides it;
+`docs/DECISIONS.md` has no entry on P-04 or P-10 (checked on `origin/main` @
+`2f24f6ef`). This section records it against the measurements, one question at
+a time, so nobody re-opens it without new numbers. Measurements below are on
+`origin/main` @ `2f24f6ef` unless a source is named.
+
+**1. Tail or rows? — Rows. Keep the `chart_rank <= 100` cut; no author column.**
+- *The column cannot be built today.* `data/catalog-breadth.json` contains
+  **0** occurrences of `artist_name` (`grep -c`). P-03a made the harvester keep
+  the field; the re-harvest that would backfill it (PKG-14) has not run, and
+  there is no re-harvest note under `docs/research/`.
+- *It would not fit if it could.* `data/show-index.tsv` is **447,100 bytes**
+  raw, 10,122 rows (229 curated, 9,893 breadth). The raw gate in
+  `tools/mobile/prepare-webdir.mjs` is `512 * 1024` = 524,288 bytes, so the
+  headroom is **77,188 bytes (75.4 KB)** against **~189 KB** of author text
+  (P-03b, measured 2026-09-12). Gzipped (`gzip -c`, default level) the file is
+  207,354 bytes against S-03's 400 KB budget (`tools/build-show-index.mjs`).
+  Fitting the column means cutting shows, which is the trade this ruling
+  declines.
+- *It would make ranking worse if it fit.* P-03b's 20 host-name queries: target
+  in the top 5 on **16/20** with no author bucket, **14/20** and **15/20** under
+  the two readings of the card's rule.
+- *The queries it was for are already answered.* The directory pass (P-02)
+  returned the right show for **19 of 20** of those host names, at no byte cost.
+
+Landing PKG-14 later does not re-open this. It changes only the first fact; the
+budget, the ranking result and the directory result still hold.
+
+**2. The leading-article defect — recommend an exact-tier rule, as a later card.**
+- *What it was.* `docs/search-plan.md` §1.8(d): `tim ferriss` put *The Tim
+  Ferriss Show* **third**, behind two titles that merely start with the query,
+  because the leading "The" made it a word-start match and prefix outranked
+  word-start.
+- *What P-08 already fixed.* P-08 put prefix and word-start in one
+  word-boundary tier; `docs/search-plan.md` §1.9 has `tim ferriss` going
+  **3 → 1**. That instance is closed.
+- *What is left.* `showMatchBucket` in `search-engine.js` calls a title exact
+  only when it equals the query (`t === query`), so `daily` against *The Daily*
+  is still a boundary-tier match with everything else that contains the word.
+  The probe below records **15** same-tier rows above it; §1.9 has it at **17**.
+- *Recommendation.* A later card adds an exact-tier rule that treats a title
+  equal to the query after dropping one leading article ("the", "a", "an") as
+  exact. Acceptance is the 30-query battery in `docs/search-plan.md` §1.9: the
+  intended-first count must not go down and no query may regress. The rule has to
+  change both twins together: `search-engine.js` and
+  `backend/src/catalog/searchBreadthShows.ts` (DENIED, so a `founder-approved`
+  merge), with the tier-table pin in `test/show-search-ranking.test.js`. This is
+  a lexical rule, not a popularity signal, so it is compatible with accepting
+  P-10 and does not re-open options 1 or 2.
+
+**3. P-10 — option 3, accept.** Source: PKG-12's
+`docs/research/popularity-signal-probe-2026-10-04.json` (#1002).
+- *Coverage fails the 80 % bar by a factor of about 50.* Only **147** of
+  **9,893** breadth rows have a `top.json` position: `pct_breadth` **1.49**.
+  `top.json` is 2,219 rows (219 curated, then the top 2,000 non-curated by
+  `popularityScore`), so a position exists only for the very top of the dump.
+  Curated coverage is 214/220, but curated rows already rank by `chart_rank`
+  since P-09.
+- *`daily` would not lead.* `would_lead_by_top_position` is **false** for
+  `daily` and `history`, and **true** for `money` and `american`. *The Daily*
+  itself has no position (`top_position: null`), and none of the 15 same-tier
+  rows above it has one, so the signal has nothing to compare. Both conditions
+  in the ruling fail, so option 3 applies.
+- *The data is stale as well.* The probe read the pointer at
+  `pointer_age_hours` **470.2** (release
+  `shows-index-sat-12-sep-2026-23-24-31-gmt`, published 2026-09-15). This is
+  not the reason for the decision, but it is a second reason not to build on
+  the signal.
+- *Caveat on the probe's `history` row.* The probe ran 2026-10-04 20:34 UTC,
+  before P-09's rule landed (#1044, 2026-10-05 08:22 UTC). Its `rank_today: 2`
+  for *Dan Carlin's Hardcore History* is the pre-P-09 order; #1044's own
+  measurement puts it above *Ancient History Fangirl* now. The coverage figures
+  do not depend on ranking and stand as measured.
+
+What would re-open P-10: a re-run of the probe on a fresh pointer showing
+coverage **≥ 80 %** and `daily` leading with no regression on the other pinned
+queries, which is the ruling's own condition. Nothing short of that.
 
 ### P-05 · Episodes — **M · M — REWRITTEN 2026-09-12 after measurement, then built**
 
@@ -565,7 +654,7 @@ many rows; `history` returns 4 fewer and every one of the four was a long-tail
 **Not fixed, and why — see P-09 and P-10.** Four queries still do not lead:
 `history` (2), `money` (2), `science` (3), `daily` (17).
 
-### P-09 · Curated rows carry no popularity signal, and one exists today — **M · S**
+### P-09 · Curated rows carry no popularity signal, and one exists today — **M · S — LANDED (#999, #1030, #1044)**
 **Ask.** `popularityBand` returns 0 for every curated row on the stated ground
 that "the tier term has already placed it". That is true of curated-vs-breadth
 and false of curated-vs-curated: all 220 tie, and the alphabet decides. Measured
@@ -648,6 +737,8 @@ it is the fudge this deck's §0 is about.
 
 **Done when.** A founder or a measurement picks one. Until then this is a known,
 named, 1-query-in-30 gap and not a defect anybody needs to rediscover.
+**Picked 2026-10-05: option 3, accept** (`docs/roadmap/README.md` Q30; numbers in
+*P-04 · DECIDED 2026-10-05*).
 
 ### P-07 · The listening test — **founder gate**
 **Ask.** Wyatt searches for five things he would actually search for, on the
@@ -668,7 +759,10 @@ Added 2026-09-12, after P-02 shipped and its own author reported the remaining
 gap: **P-08 is done** — it was the other half of "a listener types a show and
 finds it", because a list of fourteen with the answer seventh is not finding it.
 **P-09** next if anything: it is small, the signal is already committed, and it
-closes two of the four queries P-08 could not. **P-10 is a named gap, not a
+closes two of the four queries P-08 could not. *(Landed 2026-10-05: #999 and
+#1030 put curated `chart_rank` into `data/show-index.tsv` and
+`data/catalog-client.json`, and #1044 made `popularityBand` read it on both
+sides. `history` and `science` now put the intended show first.)* **P-10 is a named gap, not a
 card to pick up** — it needs a signal this repo does not have, and the
 cheap-looking version of it was built, measured and refused.
 
@@ -686,6 +780,11 @@ So: **re-harvest, then P-06, then P-04 with real numbers.** P-04's own text
 already says it may conclude the current cut is right; the author column is a
 cut question, and putting it there means the founder sees one trade instead of
 two half-trades in different cards.
+**Overtaken 2026-10-05.** The "re-harvest first" order no longer applies.
+`docs/roadmap/README.md` Q30 ruled P-04 without waiting for the re-harvest (keep
+the `chart_rank <= 100` cut, no author column) and accepted P-10 (option 3), so
+P-04 is no longer open; see *P-04 · DECIDED 2026-10-05* in §4. The re-harvest
+(PKG-14) is now a data refresh, not a gate on any decision in this deck.
 
 ## 6. Rules for the agents
 
