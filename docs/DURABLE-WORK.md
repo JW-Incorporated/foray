@@ -44,6 +44,22 @@ Marketing/competitive/legal research is durable but has diminishing returns; the
 froze it. Only tonight's two commissioned reviews (feature audit, architecture assessment)
 remain, then frozen again.
 
+## 7. The discover.json soft cap (A26; written 2026-10-05)
+Catalog growth (§1) has a client-side ceiling, and it was crossed before this section was
+written. `docs/architecture-assessment.md` F2.4 sets the practical soft cap at **~2,000
+discover items / ~1.5 MB**. Past it, three costs grow: the cold fetch on cellular,
+`JSON.parse` on the critical render path, and `fullPool()` snapshots on every re-deal and
+search keystroke.
+**Measured 2026-10-05:** 2,167 items, 2,552,586 bytes (2.55 MB; 572 KB gzipped). That is 8%
+over on items and 70% over on bytes. It was 2,080 items / 2.41 MB when
+`docs/product/suggested-shows-requirements.md` §6.12 first recorded it.
+**The fallback when growth must continue:** shard `discover.json` per top-level taxonomy
+branch and lazy-load the branches a listener's interests touch. Alternatively, treat the
+cap as the trigger for API-served search (architecture-assessment §3, stage 4).
+**Rule for catalog waves until then:** a wave that adds discover items states the new item
+count and byte size in its PR. Nothing in CI enforces the cap. Today it is a documented
+budget, not a gate.
+
 ## Anti-list: token work that would NOT be durable
 - Generating why-lines/session builds with the stub or by hand at scale (the real pipeline
   regenerates these; only the golden few are worth keeping).

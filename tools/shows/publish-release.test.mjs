@@ -92,7 +92,7 @@ test("releaseState: only fully uploaded assets count; a 'starter' (half-uploaded
   assert.equal(result.uploaded, 2);
 });
 
-test("listReleaseAssets: only the 4 top-level files — shards/ is never a release asset", async () => {
+test("listReleaseAssets: only the top-level files (incl. the #1033 baseline snapshot) — shards/ is never a release asset", async () => {
   // Per Fable ruling FR-t_30a53ba2-1: GitHub Releases hard-caps a single
   // release at 1,000 assets (confirmed via GitHub's own docs and a real
   // HTTP 422 against this repo), and the real build's ~1,298 shard files
@@ -103,7 +103,7 @@ test("listReleaseAssets: only the 4 top-level files — shards/ is never a relea
   const outDir = await mkdtemp(join(tmpdir(), "shows-publish-"));
   try {
     await mkdir(join(outDir, "shards"));
-    for (const f of ["manifest.json", "top.json", "id-map.json", "changed.json"]) {
+    for (const f of ["manifest.json", "top.json", "id-map.json", "changed.json", "newest-snapshot.json.gz"]) {
       await writeFile(join(outDir, f), "{}");
     }
     for (const f of ["zz.json.gz", "aa.json.gz", "__.json.gz"]) {
@@ -112,7 +112,7 @@ test("listReleaseAssets: only the 4 top-level files — shards/ is never a relea
 
     const assets = await listReleaseAssets(outDir);
     const names = assets.map((p) => basename(p));
-    assert.deepEqual(names, ["manifest.json", "top.json", "id-map.json", "changed.json"]);
+    assert.deepEqual(names, ["manifest.json", "top.json", "id-map.json", "changed.json", "newest-snapshot.json.gz"]);
   } finally {
     await rm(outDir, { recursive: true, force: true });
   }

@@ -595,7 +595,7 @@ const FLOORS = {
      it protects is gameable in exactly one direction: a misspelled `food/bakin`
      reads as "has a child" to the root-dumping report and silently erases a
      root-only pair, so a deleted gate would make the number look better. */
-  "test/data-topic-integrity.test.js": 15, // PKG-07 (2026-10-04): +1, no engineering/energy-fusion item comes from a general show's inherited label; 14 -> 15 // PKG-01 (2026-10-04): +2, every discover item carries topics_source and an explicit key; 12 -> 14
+  "test/data-topic-integrity.test.js": 16, // #547 residue (2026-10-05): +1, only an allowlisted fusion-specific show passes engineering/energy-fusion by inheritance; 15 -> 16 // PKG-07 (2026-10-04): +1, no engineering/energy-fusion item comes from a general show's inherited label; 14 -> 15 // PKG-01 (2026-10-04): +2, every discover item carries topics_source and an explicit key; 12 -> 14
   /* The code citations in the two store-submission documents. Same argument as
      data-deletion above and the same stakes: what this suite guards is whether a
      document going to a store reviewer describes the code that shipped. It is
@@ -968,7 +968,7 @@ const FLOORS = {
      others kept the file's count up, which is precisely what a floor cannot
      see. */
   "test/show-search-live.test.js": 10,
-  "test/show-search-ranking.test.js": 16, // P-08 (docs/search-parity-plan.md, 2026-09-12): the MATCH TIER is interposed above the bucket, so the popularity prior can speak across prefix and word-start — four tests (the charting word-start row wins; the bucket still breaks the tie the prior cannot; the exact/mid-word edges hold against the prior; and the real committed index puts nothing worse-banded above the show the listener meant); 12 -> 16 // P-03b (docs/search-parity-plan.md, 2026-09-12): the author bucket was BUILT, measured against the live directory over 20 host-name queries, and refused — two tests pin the refusal on the real Apple strings (`tim ferriss` promotes his audiobooks over his show; `andrew huberman` promotes three SEO-stuffed artist fields over Huberman Lab); 10 -> 12 // client audit (2026-09-12): the server twin is pinned mechanically — backend/src/catalog/searchBreadthShows.ts’s bucket table is read and compared to this file’s, so a fifth bucket cannot land on one side only; 9 -> 10
+  "test/show-search-ranking.test.js": 18, // P-09 rule half (PKG-13, docs/roadmap/shows-search.md): popularityBand reads the curated chart_rank PKG-11a/11b joined in, on the breadth scale — two tests (a ranked curated row beats an unranked one inside the curated tier and both beat breadth; over the real files history puts Hardcore History above Ancient History Fangirl and science puts Science Vs above Science for Sport, with every boundary-tier curated row above every breadth row per README Q30), and the curated `=== 0` pin re-argued as the worst curated band; 16 -> 18 // P-08 (docs/search-parity-plan.md, 2026-09-12): the MATCH TIER is interposed above the bucket, so the popularity prior can speak across prefix and word-start — four tests (the charting word-start row wins; the bucket still breaks the tie the prior cannot; the exact/mid-word edges hold against the prior; and the real committed index puts nothing worse-banded above the show the listener meant); 12 -> 16 // P-03b (docs/search-parity-plan.md, 2026-09-12): the author bucket was BUILT, measured against the live directory over 20 host-name queries, and refused — two tests pin the refusal on the real Apple strings (`tim ferriss` promotes his audiobooks over his show; `andrew huberman` promotes three SEO-stuffed artist fields over Huberman Lab); 10 -> 12 // client audit (2026-09-12): the server twin is pinned mechanically — backend/src/catalog/searchBreadthShows.ts’s bucket table is read and compared to this file’s, so a fifth bucket cannot land on one side only; 9 -> 10
   "test/show-index.test.js": 11,
   /* The search PAGE's chrome, as opposed to the search itself (founder
      reports, 2026-09-13): no catalogue subtitle, the browse furniture hides
@@ -1109,6 +1109,7 @@ const FLOORS = {
      would notice losing. */
   "test/starred-shows.test.js": 9,
   "test/supabase-rls-verbs.test.js": 7, // round-3 L6 (2026-09-25): backend-rest-4/-5, data-integrity-10 — supabase/0003's policies pinned against the PostgREST verbs app.js uses, both ways
+  "test/supabase-rls-coverage.test.js": 3, // PR #1045 review (PKG-02, S-09): every portable table has Supabase RLS (supabase/0004 for shows_catalog/show_id_map); the G1/G2 coupling text cites Q6 and names 0004; new
   /* "Up Next" listening queue, Stage 1 of docs/listening-queue-plan.md
      (kanban card t_f4da81f5). Floored because the queue's own decay path
      (an id ageing out of the pool, or the queue emptying) is exactly the
@@ -1295,6 +1296,7 @@ const FLOORS = {
      `data-and-site` for the entire repo. All 10 named mutations were run and
      killed. */
   "tools/ci/crlf-guard.test.mjs": 10,
+  "tools/ci/approve-parked-runs.test.mjs": 10, // #1032 / PR #1038 review: pointer-PR run approval -- late-run race, failed list call never read as empty, approve failure, still parked, unconfirmed window
   /* The Foray directory pointer (FD-02): `data/forays-directory.json`, written
      and checked by generate-manifest.mjs. 16 pure-function tests on scratch
      trees plus 8 that run the REAL CLI as a subprocess against a synthetic LF
@@ -2016,6 +2018,7 @@ const FLOORS = {
      merge.mjs wrote them. Runs the real script against a temp fixture; each
      test names its mutation. */
   "tools/refresh/backfill-provenance.test.mjs": 3,
+  "tools/refresh/topic-uniformity.test.mjs": 3, // #560 item 3 (2026-10-05): topic-uniformity ratchet on the REAL data -- no label_scope "general" show is uniform, and the uniform-show count (74 of 120 shows with >= 8 episodes on main) may fall but not rise; plus a fixture guard that keeps both from going vacuous; each test names its mutation; new, zero slack
   "tools/refresh/relabel.test.mjs": 4, // PKG-06 (2026-10-04): validated per-episode relabel of committed discover items (episodeTopics wrapped, topics_source stamped "episode", all-or-nothing write, --dry-run writes nothing); runs the real script against a temp fixture, each test names its mutation; new, zero slack
   /* REMOVED 2026-09-24 (issue #701): `tools/refresh/manifest-step.test.mjs`,
      floored at 9 here, and the module it tested. The nightly's deploy-manifest
@@ -2114,7 +2117,7 @@ const FLOORS = {
   "tools/shows/dedupe.test.mjs": 11, // audit round 3 (L8): +2, Unicode dedupe key; 9 -> 11
   "tools/shows/filter.test.mjs": 11,
   "tools/shows/identity.test.mjs": 2,
-  "tools/shows/import-dump.test.mjs": 8, // audit round 3 integration: the real post-merge count, 5 -> 8
+  "tools/shows/import-dump.test.mjs": 12, // #1033: +4 changed.json baseline (snapshot round-trip, download reaches buildChanged, failed download -> baseline:false, never {}); 8 -> 12 // audit round 3 integration: the real post-merge count, 5 -> 8
   "tools/shows/shard-build.test.mjs": 15, // audit round 3 (L8): +1, changed.json baseline; 14 -> 15
   "tools/shows/state.test.mjs": 6,
   /* S-04b: GitHub Release publishing + the run-then-publish orchestration
@@ -2129,7 +2132,7 @@ const FLOORS = {
      independent release-already-exists check that catches a lost
      state.json). */
   "tools/shows/publish-release.test.mjs": 28, // OPS-03 review: +2 -- a starter (half-uploaded) asset reads as missing, and a stranded draft BATCH resumes in publishShardReleases (the #969 fix at the call site); 26 -> 28 // OPS-03: draft -> chunked uploads -> publish, resume, retry, rate-limit wait, pacing, releaseState; 19 -> 26 (true count)
-  "tools/shows/run-and-publish.test.mjs": 10, // OPS-01: +3 describeExecError (FATAL lines carry code/signal/stderr/stdout); 6 -> 10 (true count: 7 existing + 3)
+  "tools/shows/run-and-publish.test.mjs": 11, // #1033: +1 the baseline snapshot ships on the pointer's release; 10 -> 11 // OPS-01: +3 describeExecError (FATAL lines carry code/signal/stderr/stdout); 6 -> 10 (true count: 7 existing + 3)
   /* Fresh-context review finding (2026-09-05): runBuild spawns
      import-dump.mjs as a real child process, and Node does NOT
      auto-inherit process.execArgv (e.g. --experimental-sqlite) into a
@@ -2146,6 +2149,9 @@ const FLOORS = {
   "tools/foraycorpus-export/row-source.test.mjs": 5, // PKG-02 (docs/roadmap/corpus.md): JSONL row source over the synthetic fixture, counts.json recount
   "tools/foraycorpus-export/catalogue.test.mjs": 4, // PKG-04 (docs/roadmap/corpus.md): shows.jsonl builder over the synthetic fixture (English filter, distinct-episode aggregates, normalised catalog join, sort)
   "tools/foraycorpus-export/episodes.test.mjs": 5, // PKG-05 (docs/roadmap/corpus.md): per-show episodes.jsonl builder (transcript preference, chapters, alternates, path-shaped key refusal, newest first)
+  "tools/foraycorpus-export/manifest.test.mjs": 5, // PKG-06 (docs/roadmap/corpus.md): manifest file list + sha256, re-hash before the atomic latest.json, isChanged / high-water null-safety, 30-day insert window
+  "tools/foraycorpus-export/pg-row-source.test.mjs": 5, // PKG-07 (docs/roadmap/corpus.md): read-only Postgres row source on a fake client (READ ONLY trio, id + tuple keyset paging, PKG-02 column lists, no password in describe/errors, unknown table)
+  "tools/foraycorpus-export/overlap.test.mjs": 3, // PKG-09 (docs/roadmap/corpus.md): breadth overlap (itunes first, feed-only via normalizeFeedUrl, null ids never match, stable keys incl. CLI)
   /* The breadth prioritiser and its yield report (#114). Floored for the same
      reason politeness.test.mjs is, and the reason is not hypothetical here
      either: the first draft of `rank-breadth.mjs` had a seed hash that produced
@@ -2671,7 +2677,8 @@ const BACKEND_FLOORS = {
   /* Stage 3b (kanban t_567b570f, docs/show-pages-plan.md §Stage 3): shared
      catalogue store CRUD (scoping by show_id, upsert-not-duplicate on
      (show_id, guid), published_at ordering, feed-state round-trip). */
-  "test/showEpisodesStore.test.ts": 9, // round-3 L6 (2026-09-25): backend-rest-9: one batched upsert in a transaction, rollback, dedup by guid; 5 -> 9
+  "test/showEpisodesStore.test.ts": 11, // PKG-02 (S-09): every statement names legacy_show_id after the 0019 rekey (batched upsert; reads, feed-state upsert); 9 -> 11 // round-3 L6 (2026-09-25): backend-rest-9: one batched upsert in a transaction, rollback, dedup by guid; 5 -> 9
+  "test/showsPostgresLive.test.ts": 3, // PKG-02 (S-09): live-Postgres acceptance; every case skips without SHOWS_DATABASE_URL||DATABASE_URL
   /* Stage 3b end to end: fetches+parses+upserts through the real parser,
      proves the chapters JSON body is never dereferenced during ingestion
      (only the pointer is stored), TTL cache-hit/expiry behavior, and the
@@ -2724,7 +2731,15 @@ const BACKEND_FLOORS = {
      loader stops zeroing a breadth row's folded `taxonomy_node_ids`. Two
      tests over a fixture catalog-breadth.json read: a row with nodes keeps
      them, a row without loads []. */
-  "test/breadthCatalog.test.ts": 20,
+  /* RAISED 20 -> 22 by shows-search PKG-13b (P-09 rule half, server mirror):
+     curated entries take their breadth twin's `chart_rank` via the
+     `apple_collection_id` join and `popularityBand` bands them on the breadth
+     scale. Two tests: the join over a fixture catalog-breadth.json (an
+     `in_curated` twin's rank reaches the curated entry, no twin stays null),
+     and ranked curated > unranked curated > breadth in the comparator. The
+     curated `chart_rank === null` pin is re-argued in place and the
+     agreement test gains "history"/"science". */
+  "test/breadthCatalog.test.ts": 22,
   /* §4.9 end to end (kanban card t_0b1729d6): finalizeForay() validates
      a candidate against the real check-forays.mjs/check-narration.mjs
      and only returns a writable record on a clean pass; stageTiming.ts

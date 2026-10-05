@@ -133,7 +133,7 @@ show_id              slug, e.g. "engines-of-our-ingenuity"; the #/show/:id key
 title                the join key against discover.json's `show`
 apple_collection_id  Apple's id; the join key against catalog-breadth.json
 feed_url             the publisher's RSS URL — read server-side only (§2.4)
-artwork_url          600x600 https, or null (53 of 220 are null — §6.12)
+artwork_url          600x600 https, or null (0 of 220 null since 2026-10-05 — §6.12)
 apple_genre          Apple's own genre string, kept raw
 episode_count        the publisher's own count at harvest time
 editorial_note       4a's one-line vouch. 220 of 220 are non-empty
@@ -1032,17 +1032,57 @@ code grows the local-hit branch or the sentence loses its condition.
 
 ### 6.12 Smaller, all NOT RECORDED
 
-- **53 of 220 curated shows have `artwork_url: null`** — whole harvest batches
-  where `tools/harvest-catalog.mjs`'s iTunes lookup found no match. Papered over
-  at render time by `app.js:showArtworkUrl`'s pool index; the backfill is the
-  root fix and has not happened.
-- **`show.tier` is an API-only field.** `app.js:renderShow` branches on
-  `show.tier === "breadth"`, but **no show in `data/catalog.json` or
-  `data/catalog-client.json` carries a `tier` field** (measured: 0 of 220). The
-  value only ever arrives on a `/api/shows/search` response. Correct behaviour,
-  undocumented contract.
-- **`data/discover.json` is over its documented soft cap.** 2,080 items against
-  `docs/architecture-assessment.md` A26's "~2,000 items / 1.5 MB", at 2.41 MB.
+- **53 of 220 curated shows had `artwork_url: null`** — **FIXED** (#560
+  item 10). Whole harvest batches where `tools/harvest-catalog.mjs`'s iTunes
+  lookup found no match. They were papered over at render time by
+  `app.js:showArtworkUrl`'s pool index. `tools/refresh/backfill-artwork.mjs`
+  filled 52 (PR #1008). The last one, *omega tau*, is filled by hand
+  (2026-10-05). Its id `350159142` returns `resultCount: 0` from the iTunes
+  lookup (recorded in #1008). `288471831`, the id #1008 named as the show's
+  new home, is a different feed: the lookup gives `omega tau science &
+  engineering podcast` with feed `http://omegataupodcast.net/omegatau-all.xml`.
+  That is the bilingual (German + English) feed, and its cover has a German
+  caption. The row's `feed_url` is the English-only feed, whose channel title
+  is `omega tau - English only` and whose `itunes:image` carries the Union
+  Jack. So that `artworkUrl600` is NOT used. The row takes the English
+  cover's mzstatic URL that all seven of omega tau's `discover.json` items
+  already carry (checked by eye against the feed's own image). The id stays
+  `350159142`. `data/session.json` still uses it twice
+  (`omegatau-312-w7x`, `omegatau-285-superconductivity`), and so do all seven
+  discover items and their `apple_episode_url`s. `288471831` is also the wrong
+  feed for this row. `api/_lib/showIdMap.ts` (the file lives there, not in
+  `api/episodes/`) maps `catalog.json`'s `apple_collection_id` to a show id
+  and does not read `artwork_url`. Since the id is unchanged, nothing changes
+  for it or for `api/episodes/search.ts`, which uses it.
+- **The `show.tier` contract** (documented 2026-10-05; this was an
+  undocumented contract before):
+  - **Committed catalogue rows carry no `tier`.** `data/catalog.json` and
+    `data/catalog-client.json` have no `tier` field (measured: 0 of 220), and
+    none should be added. **A missing `tier` means curated.** The 220 rows are
+    the curated set by construction (`search-engine.js:isBreadthShow`).
+  - **Only the exact string `"breadth"` changes behaviour.** The readers are
+    `app.js:renderShow` (`isBreadthTier`, which gives the breadth empty-state
+    copy) and `search-engine.js:isBreadthShow` (ranking). Any other value,
+    including `"curated"`, is read the same as a missing field.
+  - **Who writes it:**
+    - `backend/src/catalog/breadthCatalog.ts` writes `"curated"` or
+      `"breadth"` on rows served by `/api/shows/search`.
+    - `api/_lib/appleShowSearch.ts` writes `"breadth"` on Apple-search rows.
+    - `search-engine.js:parseShowIndex` derives it from `data/show-index.tsv`
+      column 4 (`1` means curated).
+    - `app.js:mapShardRow` derives it from a shard row's `c` flag.
+    - `app.js:rememberShardShow` and `rememberedShardShow` default a
+      remembered `pi:` show to `"breadth"`.
+  - **A new producer must use one of those two strings.** Writing `"breadth"`
+    on a curated row would hide its pool episodes behind the breadth copy.
+- **`data/discover.json` is over its documented soft cap.** Measured
+  2026-10-05: **2,167 items, 2,552,586 bytes (2.55 MB; 572 KB gzipped)**,
+  against `docs/architecture-assessment.md` A26's "~2,000 items / 1.5 MB".
+  That is 8% over on items and 70% over on bytes (2,080 items / 2.41 MB when
+  first recorded). The cap and its fallback are now written down in
+  `docs/DURABLE-WORK.md` (§7), as A26 asks. The fallback is to shard by
+  top-level branch and lazy-load, or to move to API-served search. Nothing
+  enforces the cap.
 - **`api/shows/search`'s degraded path sets no `Cache-Control`** — **FIXED**
   (`docs/search-plan.md` S-05, 2026-09-12). It sets `no-store` now, matching
   the other two endpoints, so a "the catalogue file is unreadable" answer can
