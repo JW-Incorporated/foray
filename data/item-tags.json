@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-10-05T10:21:03.328Z",
+  "built_at": "2026-10-05T11:26:40.966Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -18395,30 +18395,6 @@
       "productivity",
       "motivation"
     ],
-    "the-bourbon-road--515-revenge-of-the-maltmigos-five": [
-      "whiskey",
-      "american-single-malt",
-      "malt",
-      "distilling",
-      "tasting",
-      "craft"
-    ],
-    "the-bourbon-road--513-mizunara-madness-four-very-different": [
-      "whiskey",
-      "bourbon",
-      "oak",
-      "barrel-aging",
-      "japan",
-      "tasting"
-    ],
-    "the-bourbon-road--509-ampersand-spirits-when-a-master": [
-      "whiskey",
-      "distilling",
-      "pot-still",
-      "master-distiller",
-      "craft",
-      "copper-stills"
-    ],
     "the-bourbon-road--492-old-glory-distilling-co-clarksville": [
       "bourbon",
       "distilling",
@@ -18437,38 +18413,6 @@
       "brewing",
       "small-business"
     ],
-    "beersmith-podcast--abita-brewing-na-beer-and-hops": [
-      "beer",
-      "non-alcoholic",
-      "hops",
-      "brewing",
-      "homebrewing",
-      "craft-beer"
-    ],
-    "beersmith-podcast--mead-styles-with-gordon-strong-beersmith": [
-      "mead",
-      "honey",
-      "fermentation",
-      "homebrewing",
-      "beer-judging",
-      "styles"
-    ],
-    "beersmith-podcast--a-life-in-brewing-with-dr": [
-      "beer",
-      "brewing",
-      "brewing-science",
-      "fermentation",
-      "food-science",
-      "homebrewing"
-    ],
-    "the-bourbon-life--season-7-episode-36-owen-martin": [
-      "bourbon",
-      "whiskey",
-      "distilling",
-      "master-distiller",
-      "kentucky",
-      "barrel-aging"
-    ],
     "the-bourbon-life--season-7-episode-21-john-wadell": [
       "bourbon",
       "whiskey",
@@ -18476,22 +18420,6 @@
       "single-barrel",
       "kentucky",
       "distilling"
-    ],
-    "the-bourbon-life--the-whiskey-trip-season-4-episode": [
-      "barrels",
-      "cooperage",
-      "oak",
-      "whiskey",
-      "craftsmanship",
-      "barrel-aging"
-    ],
-    "the-bourbon-life--season-7-episode-15-kyle-lloyd": [
-      "bourbon",
-      "whiskey",
-      "maturation",
-      "barrel-aging",
-      "distilling",
-      "kentucky"
     ],
     "wine-talks-with-paul-k--orange-wine-is-not-a-fad": [
       "wine",
@@ -18502,14 +18430,6 @@
       "natural-wine",
       "winemaking"
     ],
-    "wine-talks-with-paul-k--disrupting-wine-from-artificial-intelligence-to": [
-      "wine",
-      "orange-wine",
-      "armenia",
-      "winemaking",
-      "career-change",
-      "small-business"
-    ],
     "wine-talks-with-paul-k--is-port-wine-dying-the-battle": [
       "wine",
       "port",
@@ -18518,22 +18438,6 @@
       "wine-history",
       "family-business"
     ],
-    "wine-for-normal-people--ep-618-back-to-basics-structure": [
-      "wine",
-      "wine-education",
-      "structure",
-      "alcohol",
-      "sugar",
-      "tasting"
-    ],
-    "wine-for-normal-people--ep-617-back-to-basics-structure": [
-      "wine",
-      "wine-education",
-      "structure",
-      "acidity",
-      "tannin",
-      "tasting"
-    ],
     "wine-for-normal-people--ep-607-wine-legends-the-people": [
       "wine",
       "phylloxera",
@@ -18541,30 +18445,6 @@
       "wine-history",
       "grapevines",
       "agriculture"
-    ],
-    "wine-for-normal-people--ep-602-wine-legends-mile-peynaud": [
-      "wine",
-      "oenology",
-      "bordeaux",
-      "winemaking",
-      "wine-history",
-      "food-science"
-    ],
-    "wine-educate--127-dolcetto-grape-guide-a-wset": [
-      "wine",
-      "wine-education",
-      "dolcetto",
-      "piedmont",
-      "winemaking",
-      "wset"
-    ],
-    "wine-educate--121-how-traditional-method-sparkling-wine": [
-      "wine",
-      "sparkling-wine",
-      "champagne",
-      "cava",
-      "wine-education",
-      "wset"
     ],
     "wine-educate--114-banyuls-and-collioure-france-s": [
       "wine",
@@ -18582,30 +18462,6 @@
       "tuscany",
       "wine-education"
     ],
-    "brew-strong--brew-strong-quality-lab-yeast-propagation": [
-      "yeast",
-      "fermentation",
-      "brewing",
-      "beer",
-      "microbiology",
-      "homebrewing"
-    ],
-    "brew-strong--brew-strong-yeast-plating-with-john": [
-      "yeast",
-      "microbiology",
-      "brewing",
-      "quality-control",
-      "beer",
-      "homebrewing"
-    ],
-    "brew-strong--brew-strong-mixed-fermentation-part-1": [
-      "beer",
-      "sour-beer",
-      "wild-fermentation",
-      "mixed-fermentation",
-      "brettanomyces",
-      "homebrewing"
-    ],
     "brew-strong--brew-strong-decoction-mashing-with-michael": [
       "beer",
       "mashing",
@@ -18614,14 +18470,6 @@
       "homebrewing",
       "german-beer"
     ],
-    "beer-in-front--it-s-the-water": [
-      "beer",
-      "water-chemistry",
-      "brewing",
-      "beer-styles",
-      "pilsner",
-      "chicago"
-    ],
     "beer-in-front--why-craft-malt-matters-more-than": [
       "malt",
       "malting",
@@ -18629,14 +18477,6 @@
       "craft-beer",
       "distilling",
       "small-business"
-    ],
-    "beer-in-front--lone-star-beer-how-it-became": [
-      "beer",
-      "beer-history",
-      "san-antonio",
-      "lager",
-      "breweries",
-      "food-history"
     ]
   }
 }

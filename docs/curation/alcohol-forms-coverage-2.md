@@ -950,8 +950,10 @@ against the candidate list in `wave-drinks-candidates-2026-09.md` (PKG-35). §0�
 above are unchanged. They are this section's *before*, in the same way #278's counts
 were theirs.
 
-**Measured at `main` = `4f1cec4`**, with `data/catalog.json` at 229 shows (220 before)
-and `data/discover.json` at 2,197 items (2,167 before). The four tests are §2's, which
+**Measured on `main` = `9f70441e`** (the beat reads were first taken on `4f1cec4`, eight
+commits earlier; none of those commits touch the catalogue or this subject, and every
+size figure below was re-measured on `9f70441e`), with `data/catalog.json` at 229 shows
+(220 before) and `data/discover.json` at 2,177 items (2,167 before). The four tests are §2's, which
 are #278 §1a's, quoted again here so nothing is paraphrased:
 
 1. the passage was **read** in a transcript, not inferred from a title, hook or tag;
@@ -996,22 +998,41 @@ All three columns were resolved from the live feeds on 2026-10-05: one request p
   artwork URL, genre and episode count comes from a fresh `itunes.apple.com/lookup` call
   on 2026-10-05.
 
-| Show | `show_id` | Apple id | Genre | Episodes | DAI read | `taxonomy_node_ids` | Items added | Aimed at (empty beats first) |
+| Show | `show_id` | Apple id | Genre | Episodes | DAI read | `taxonomy_node_ids` | Items merged → kept | Aimed at (empty beats first) |
 |---|---|---|---|---|---|---|---|---|
-| The Bourbon Road | `the-bourbon-road` | 1457878143 | Food | 514 | no (libsyn) | `food/drinks` | 4 | 11, 12, 13, 37, 38 |
-| BeerSmith Home and Beer Brewing Podcast | `beersmith-podcast` | 398500515 | Hobbies | 300 | no (libsyn) | `food/fermentation`, `food/drinks` | 4 | **7**, 2, 4, 23, 28, 29, 60 |
-| The Bourbon Life | `the-bourbon-life` | 1498387060 | Food | 105 | no (libsyn) | `food/drinks` | 4 | 11–14, 38 |
-| Wine Talks with Paul K. | `wine-talks-with-paul-k` | 1617481013 | Food | 528 | no (libsyn) | `food/drinks` | 3 | 18, 32, 52, 53 |
-| Wine for Normal People | `wine-for-normal-people` | 413879919 | Food | 92 | no (libsyn) | `food/drinks` | 4 | 21, 5, 17, 19 |
-| Wine Educate | `wine-educate` | 1781687341 | Food | 131 | no (libsyn) | `food/drinks` | 3 | 18, 20, 52 |
-| Wine Enthusiast Podcast | `wine-enthusiast-podcast` | 1168716155 | Food | 229 | no (riverside) | `food/drinks` | 1 | 18, 44 |
-| The Brewing Network Presents \| Brew Strong | `brew-strong` | 288838352 | Food | 361 | **DAI** (Megaphone) | `food/fermentation`, `food/drinks` | 4 | **7**, 2, 4, 5, 9, 29 |
-| Beer In Front | `beer-in-front` | 1500155339 | Crafts | 292 | **DAI** (Spreaker) | `food/drinks` | 3 | **7**, 28, 29, 60 |
+| The Bourbon Road | `the-bourbon-road` | 1457878143 | Food | 514 | no (libsyn) | `food/drinks` | 4 → 1 (492) | 11, 12, 13, 37, 38 |
+| BeerSmith Home and Beer Brewing Podcast | `beersmith-podcast` | 398500515 | Hobbies | 300 | no (libsyn) | `food/fermentation`, `food/drinks` | 4 → 1 (#348) | **7**, 2, 4, 23, 28, 29, 60 |
+| The Bourbon Life | `the-bourbon-life` | 1498387060 | Food | 105 | no (libsyn) | `food/drinks` | 4 → 1 (Wadell) | 11–14, 38 |
+| Wine Talks with Paul K. | `wine-talks-with-paul-k` | 1617481013 | Food | 528 | no (libsyn) | `food/drinks` | 3 → 2 (orange wine, port) | 18, 32, 52, 53 |
+| Wine for Normal People | `wine-for-normal-people` | 413879919 | Food | 92 | no (libsyn) | `food/drinks` | 4 → 1 (607) | 21, 5, 17, 19 |
+| Wine Educate | `wine-educate` | 1781687341 | Food | 131 | no (libsyn) | `food/drinks` | 3 → 1 (114) | 18, 20, 52 |
+| Wine Enthusiast Podcast | `wine-enthusiast-podcast` | 1168716155 | Food | 229 | no (riverside) | `food/drinks` | 1 → 1 (221) | 18, 44 |
+| The Brewing Network Presents \| Brew Strong | `brew-strong` | 288838352 | Food | 361 | **DAI** (Megaphone) | `food/fermentation`, `food/drinks` | 4 → 1 (decoction) | **7**, 2, 4, 5, 9, 29 |
+| Beer In Front | `beer-in-front` | 1500155339 | Crafts | 292 | **DAI** (Spreaker) | `food/drinks` | 3 → 1 (craft malt) | **7**, 28, 29, 60 |
 
-The 30 items were built with the shipped backfill path: `backfill-show.mjs --match`,
+The items were built with the shipped backfill path: `backfill-show.mjs --match`,
 then `resolve.mjs` (31 of 31 resolved by guid), then `merge.mjs` (30 merged), then
 `classify-dai.mjs`. The 31st episode, Wine Enthusiast 224, is sponsored by the
 Franciacorta consortium. It was deliberately left without an edit, and `merge.mjs` skips it.
+
+**Then trimmed from 30 to 10, because 30 broke the mobile bundle's 2.8 MB alarm**
+(§13g has the numbers). The trim went through the same path, not a hand edit:
+`data/discover.json` and `data/item-tags.json` were reset to `main`, `merge.mjs` was
+re-run on the same `resolved.json` with an edits file holding only the ten kept ids (an
+item with no edit is skipped, so this is exactly a 10-item merge), and `classify-dai.mjs`
+re-stamped them from its cache with no new network reads. The result is byte-identical to
+the 30-item merge minus the twenty dropped entries. Each show keeps **one** item, the one
+this section actually leans on: the §13c beat-12 tape (Bourbon Road 492), the §13c beat-18
+span (*Orange Wine Is Not a Fad*), and a §13h queue row wherever one exists (Symington's
+port episode, BeerSmith #348, WFNP 607, Wine Educate 114, Brew Strong's decoction episode,
+Beer In Front's craft-malt episode). The two shows with neither keep the item nearest
+their aimed-at beats (Bourbon Life's head blender, for 38) or their only item (Wine
+Enthusiast 221). Wine Talks keeps two because it carries both. **No verdict in §13c–§13e
+moves**: beats 7, 32, 38 and 60 were scored on episodes that were never `discover.json`
+items, and the two that were (492 and the orange-wine episode) are kept. The twenty dropped
+episodes were never on `main`, so nothing a user can reach today is removed. Their edits
+are kept outside the repository, and they can be merged in a later pass once the bundle
+has room for them (§13g says what that would take).
 The README's `--newest 25` window decided which episodes could enter `discover.json` at
 all. So several of the episodes read below are curated **shows**, but they are not
 `discover.json` **items**, exactly as `cider-chat` 424 was in §3.
@@ -1187,50 +1208,75 @@ pass does not reopen the product-mode question (`narration-architecture.md` §10
 | | before | after |
 |---|---|---|
 | this wave's picks (shows) | — | **7 of 9 non-DAI (77.8 %)** |
-| this wave's items | — | **23 of 30 non-DAI (76.7 %)** |
+| this wave's items | — | **8 of 10 non-DAI (80.0 %)** |
 | curated shows labelled `food/drinks` | 5 of 7 non-DAI (71.4 %) | **12 of 16 non-DAI (75.0 %)** |
-| `discover.json` items labelled `food/drinks` | 28 of 47 non-DAI (59.6 %) | **51 of 77 non-DAI (66.2 %)** |
+| `discover.json` items labelled `food/drinks` | 28 of 47 non-DAI (59.6 %) | **36 of 57 non-DAI (63.2 %)** |
 
 Of the five new thin spans, **three are playable today** (18, 32, 38, all libsyn) and two
 are authorable-and-unplayable (7 and 60, Spreaker).
 
 ### 13g. The bundle, and two checks re-run
 
-**Mobile slice, measured with the shipped tool after rebuilding `mobile/www/`.** The 800 KB
-figure in #279 is stale: the budget is **720 KB** (`tools/mobile/shell-invariants.test.mjs`,
-lowered 2026-09-04 when the slice dropped its JSON whitespace).
+**Measured with the shipped tool.** `prepare()` from `tools/mobile/prepare-webdir.mjs`, run
+on each tree with esbuild pinned at 0.28.2 and every file LF, which is what CI runs. Two
+limits apply, and the first version of this section checked only one of them:
 
-```
-before:  webDir ready: mobile\www  (74 files, 2.76 MB of 3.00 MB)
-           sliced: data/discover.json  643.3 KB of 720.0 KB
-after:   webDir ready: mobile\www  (74 files, 2.79 MB of 3.00 MB)
-           sliced: data/discover.json  666.3 KB of 720.0 KB
-```
+- the **720 KB `data/discover.json` slice budget** (`PROJECTED_DATA`; the 800 KB figure in
+  #279 is stale, it was lowered 2026-09-04 when the slice dropped its JSON whitespace);
+- the **2.8 MB whole-bundle alarm**, assertion A of *"REAL REPO: the sliced bundle, its
+  budgets and the headroom that is left"* in `tools/mobile/prepare-webdir.test.mjs`, which
+  fires ~200 KB before the 3 MB `MAX_BYTES` cap.
 
-Nine shows cost **23.0 KB, or 2.56 KB a show** (minified). **The headroom is 53.7 KB,
-about 21 more shows at that rate.** The whole bundle has 0.21 MB left under its 3.00 MB cap.
-The budget was not touched.
+| | bundle total | under the 2.8 MB alarm | under the 3 MB cap | discover slice (of 720 KB) |
+|---|---|---|---|---|
+| `main` `9f70441e` | 2,910,653 B (2.776 MB) | 24.8 KB | 229.6 KB | 658,701 B = 643.3 KB (76.7 KB free) |
+| this wave as first built, 30 items | 2,942,541 B (2.806 MB) | **−6.4 KB (red)** | 198.4 KB | 682,243 B = 666.3 KB (53.7 KB free) |
+| **this wave, 10 items** | **2,925,600 B (2.790 MB)** | **10.2 KB** | **215.0 KB** | **667,848 B = 652.2 KB (67.8 KB free)** |
 
-**`tagDF` (#275), re-run from the engine on `item-tags.json`, `main` (2,194 entries)
-against this branch (2,224).**
+The 30-item build passed the slice budget and failed the alarm: *"the bundle is 2.81 MB,
+leaving 198 KB of headroom under the 3 MB cap"*. It was measured on `4f1cec4`, where it fit,
+and `main` then gained feature code (#1051–#1058) that took most of the room before the
+branch was rebased. **The alarm was not raised or edited.** Its comment chain says not to
+raise it again without arguing it with the founder first, and trimming the wave (§13a) was
+available without that. The test passes on this head.
+
+What the ten-item wave costs, by file: discover slice +8.9 KB, `catalog-client.json`
++3.9 KB, `item-tags.json` +1.3 KB (copied whole), `show-index.tsv` +0.5 KB. That is
+**14.6 KB, about 1.6 KB a show**. Roughly a third of it is the show rows themselves
+(`catalog-client`, `show-index`), which no item trim can reduce.
+
+**The alarm now has 10.2 KB left, so the next thing to grow will trip it.** `main` had
+24.8 KB, and this wave spends 14.6 KB of it. At the ~4 KB a night that `item-tags.json`
+grows (the figure in the test's own comment), that is two or three nightlies. When it goes
+red, the test's comment already names the fix: if the cause is `item-tags`, build the df
+sidecar and do not raise the alarm; if the cause is feature code, the next lever is argued
+with the founder. This wave neither makes that decision nor hides it. Any further drinks
+curation, including putting back the twenty episodes cut here, needs that room first.
+
+**`tagDF` (#275), re-run from the engine on `item-tags.json`, `main` `9f70441e` (2,194
+entries) against this branch (2,204).** The vocabulary is §7's: semantic-index concepts,
+`ALIASES`, and every tag on either side (3,009 terms).
 - **No term moves because of a drinks tag.** Five expansion buckets do move, and each one is
   pure denominator dilution, the effect §7a-i describes: `documentary`, `industry`,
   `advice`, `biography` and `panel` sit at exactly 44 items. They go from 44/2,194 = 2.005 % to
-  44/2,224 = 1.978 %, crossing `TAG_DF_COMMON` downward (0.4x → full) with no change to
-  their counts. Those terms were sitting on the line, and any 30-item block would have
-  moved them.
-- Three score multipliers move across `TAG_DF_RARE`, and all three are ours: `wine`
-  13 → 24, `distilling` 17 → 24, `bourbon` 16 → 21 (1.35 → 1). Those are drinks terms
-  becoming less rare because the catalogue holds more drinks.
-- `comedy` is 228/2,224 = 10.25 %, now about 56 entries above `TAG_DF_TOO_BROAD`. That is
-  not the "seven items from the edge" §7a-ii measured, because nightlies have moved it since.
-  Re-measure rather than cite.
+  44/2,204 = 1.996 %, crossing `TAG_DF_COMMON` downward (0.4x → full) with no change to
+  their counts. Those terms were sitting on the line, and any block of five or more items
+  would have moved them.
+- Three drinks terms cross `TAG_DF_RARE` (multiplier 1.35 → 1): `wine` 13 → 18,
+  `distilling` 17 → 20, `bourbon` 16 → 18. Those are drinks terms becoming less rare
+  because the catalogue holds more drinks. (The five 44-item terms above also change
+  multiplier, 0.75 → 1, for the same denominator reason.)
+- `comedy` is 228/2,204 = 10.34 %. The tag map can grow by about 76 entries before it falls
+  back under `TAG_DF_TOO_BROAD`. That is not the "seven items from the edge" §7a-ii
+  measured, because nightlies have moved it since. Re-measure rather than cite.
 
 **Two side effects caught by existing suites, and how each was handled.**
-- `tools/test-search.mjs` failed once: Lone Star Beer reached the `grill` top five. The
-  semantic index's barbecue concept lists `texas` among its terms, and the episode was
-  tagged `texas`. That tag became `san-antonio` (both breweries were there). The same
-  tag was dropped or replaced on the cooperage and Balcones episodes. 127 of 127 pass.
+- `tools/test-search.mjs` failed once on the 30-item build: Lone Star Beer reached the
+  `grill` top five, because the semantic index's barbecue concept lists `texas` and the
+  episode was tagged `texas`. The tag was changed to `san-antonio`, and the cooperage and
+  Balcones tags were adjusted the same way. All three episodes are among the twenty cut in
+  §13a, so none of that tagging ships. The search battery passes 127 of 127 on the
+  ten-item head.
 - `test/similar-shows-eval.test.js` failed on its recall floors (#560). `whiskycast` has
   one node, so every drinks show ties with it. `similarShows` breaks ties by `show_id`,
   so `beer-in-front`, `beersmith-podcast` and `brew-strong` push `spirits-and-distilling`
