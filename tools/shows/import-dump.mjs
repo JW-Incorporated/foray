@@ -27,7 +27,7 @@ import { createReadStream, createWriteStream, existsSync } from "node:fs";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { pipeline } from "node:stream/promises";
-import { createGzip } from "node:zlib";
+import { createGzip, gunzipSync } from "node:zlib";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -37,6 +37,8 @@ import {
   MAX_SHARD_GZ_P95_BYTES, MAX_TOP_JSON_BYTES, POINTER_PATH,
   STATE_DIR, STATE_PATH, TOP_N_BY_POPULARITY,
   MAX_UNMAPPED_CURATED_FRACTION,
+  MAX_NEWEST_SNAPSHOT_BYTES, NEWEST_SNAPSHOT_ASSET, NEWEST_SNAPSHOT_FETCH_TIMEOUT_MS,
+  NEWEST_SNAPSHOT_VERSION,
 } from "./config.mjs";
 import { applyD1Filter } from "./filter.mjs";
 import { curatedKeys } from "./identity.mjs";
@@ -159,6 +161,148 @@ export function runPipeline(db, { curatedShows, previousNewest = null, now = Dat
   };
 }
 
+/* ---------------------------------------------------- baseline (#1033) -- */
+
+/** The per-pi_id `newest_item_at` snapshot this build publishes as
+    NEWEST_SNAPSHOT_ASSET, so the NEXT weekly run has a baseline to diff
+    against. Same shape `buildChanged` takes as `previousNewest` (and the
+    same one load-postgres.mjs's `fetchPreviousNewest` builds from
+    Postgres): `{ "<pi_id>": epoch seconds }`.
+
+    EVERY canonical id is listed, including a row with no newest-item date,
+    which is stored as 0. `buildChanged` reads an absent id (and a null
+    value) as "new since last release", so leaving dateless rows out would
+    report them as changed every single week; 0 keeps them unchanged until
+    they gain a real date, which then counts as an advance. Integer-like
+    object keys serialise in ascending numeric order, so the bytes are
+    deterministic for a given set of rows. */
+export function buildNewestSnapshot(canonicalRows, { exportVersion }) {
+  const newest = {};
+  for (const row of canonicalRows) {
+    const id = Number(row.id);
+    if (!Number.isSafeInteger(id) || id < 0) continue;
+    const t = Number(row.newestItemPubdate);
+    newest[String(id)] = Number.isFinite(t) && t > 0 ? t : 0;
+  }
+  return {
+    version: NEWEST_SNAPSHOT_VERSION,
+    export_version: exportVersion ?? null,
+    count: Object.keys(newest).length,
+    newest,
+  };
+}
+
+/** Reads a downloaded snapshot asset back into `previousNewest`. Returns
+    `{ ok: true, previousNewest, count, exportVersion }` or `{ ok: false,
+    reason }`; never throws.
+
+    AN EMPTY OR MALFORMED SNAPSHOT IS NO BASELINE, NEVER `{}`. `{}` is the
+    exact value audit round 3 (data-tools-14) removed: `buildChanged` diffs
+    against it and lists every show as changed, labelled as a real index
+    (shard-build.test.mjs pins the `null` half). So a snapshot with zero ids,
+    a non-numeric value, a wrong schema version, or an export_version that
+    does not match the pointer it was found through is rejected here, and
+    the caller keeps `baseline: false`. */
+export function parseNewestSnapshot(gz, { expectedExportVersion = null, maxBytes = MAX_NEWEST_SNAPSHOT_BYTES } = {}) {
+  let doc;
+  try {
+    doc = JSON.parse(gunzipSync(gz, { maxOutputLength: maxBytes }).toString("utf8"));
+  } catch (e) {
+    return { ok: false, reason: `snapshot did not gunzip and parse: ${e.message}` };
+  }
+  if (!doc || typeof doc !== "object" || doc.version !== NEWEST_SNAPSHOT_VERSION) {
+    return { ok: false, reason: `snapshot schema version ${JSON.stringify(doc?.version)} is not ${NEWEST_SNAPSHOT_VERSION}` };
+  }
+  if (expectedExportVersion != null && doc.export_version !== expectedExportVersion) {
+    return {
+      ok: false,
+      reason: `snapshot export_version ${JSON.stringify(doc.export_version)} does not match the pointer's ${JSON.stringify(expectedExportVersion)}`,
+    };
+  }
+  const newest = doc.newest;
+  if (!newest || typeof newest !== "object" || Array.isArray(newest)) {
+    return { ok: false, reason: "snapshot carries no `newest` map" };
+  }
+  let count = 0;
+  for (const key of Object.keys(newest)) {
+    const v = newest[key];
+    if (!/^\d+$/.test(key) || typeof v !== "number" || !Number.isFinite(v) || v < 0) {
+      return { ok: false, reason: `snapshot entry ${JSON.stringify(key)}: ${JSON.stringify(v)} is not a pi_id -> epoch-seconds pair` };
+    }
+    count++;
+  }
+  if (count === 0) {
+    return { ok: false, reason: "snapshot lists no ids (an empty baseline would mark every show changed)" };
+  }
+  return { ok: true, previousNewest: newest, count, exportVersion: doc.export_version };
+}
+
+/** Downloads the PREVIOUS release's snapshot through the committed pointer
+    (data/shows-index-pointer.json's `asset_base_url`; run-and-publish.mjs
+    only rewrites the pointer AFTER this build, so what is on disk here is
+    the last release's). Public release-asset URL, fetched with no token and
+    no Authorization header.
+
+    NEVER FAILS THE RUN. A missing pointer, a 404 (every release before
+    #1033 has no snapshot asset), a network error, a timeout or a bad
+    snapshot all return `{ previousNewest: null, reason }`: the build goes
+    on, changed.json says `{ baseline: false }` (consumers read that as
+    "index unavailable" and fall back to a full scan), and the reason is
+    logged. Never `{}` -- see parseNewestSnapshot. */
+export async function loadPreviousNewest({
+  pointerPath = POINTER_PATH, fetchImpl = fetch, timeoutMs = NEWEST_SNAPSHOT_FETCH_TIMEOUT_MS,
+} = {}) {
+  const none = (reason, url = null) => ({ previousNewest: null, reason, url, count: 0, exportVersion: null });
+  try {
+    let pointer;
+    try {
+      pointer = JSON.parse(await readFile(pointerPath, "utf8"));
+    } catch (e) {
+      return none(`no readable pointer at ${pointerPath} (${e.code || e.message})`);
+    }
+    const base = pointer?.asset_base_url;
+    if (typeof base !== "string" || !/^https:\/\//.test(base)) {
+      return none("the pointer has no https asset_base_url");
+    }
+    const url = `${base.replace(/\/+$/, "")}/${NEWEST_SNAPSHOT_ASSET}`;
+    let res;
+    try {
+      res = await fetchImpl(url, { redirect: "follow", signal: AbortSignal.timeout(timeoutMs) });
+    } catch (e) {
+      return none(`download failed: ${e.message}`, url);
+    }
+    if (!res.ok) {
+      const why = res.status === 404 ? " (that release predates the snapshot asset, #1033)" : "";
+      return none(`download returned HTTP ${res.status}${why}`, url);
+    }
+    let body;
+    try {
+      body = Buffer.from(await res.arrayBuffer());
+    } catch (e) {
+      return none(`reading the download failed: ${e.message}`, url);
+    }
+    const parsed = parseNewestSnapshot(body, { expectedExportVersion: pointer.export_version ?? null });
+    if (!parsed.ok) return none(parsed.reason, url);
+    return { previousNewest: parsed.previousNewest, reason: null, url, count: parsed.count, exportVersion: parsed.exportVersion };
+  } catch (e) {
+    return none(`unexpected error loading the baseline: ${e?.message ?? e}`);
+  }
+}
+
+/** `runPipeline` with the prior-release baseline wired in: what `main()`
+    runs. Split out so the tests drive the real wiring (pointer -> download
+    -> parse -> buildChanged) instead of a copy of it. */
+export async function runPipelineWithBaseline(db, { curatedShows, now, log = console.log, ...loadOpts } = {}) {
+  const baseline = await loadPreviousNewest(loadOpts);
+  if (baseline.previousNewest) {
+    log(`BASELINE: ${baseline.count} ids from ${baseline.url} (export_version ${baseline.exportVersion})`);
+  } else {
+    log(`NO_BASELINE: ${baseline.reason} -- changed.json will say { baseline: false } (index unavailable, not a failure)`);
+  }
+  const result = runPipeline(db, { curatedShows, previousNewest: baseline.previousNewest, now });
+  return { result, baseline };
+}
+
 /** gzips one shard's JSON array; returns the compressed Buffer so the
     caller can measure its size before deciding to write it (p95 budget
     enforcement happens on the measured bytes, not an estimate). */
@@ -230,6 +374,10 @@ export async function writeBuildOutput(result, { outDir = BUILD_OUT_DIR, exportV
     throw new ImportError("TOP_TOO_LARGE", `top.json ${Buffer.byteLength(topJson)}B exceeds budget ${MAX_TOP_JSON_BYTES}B`);
   }
 
+  /* #1033: the next run's changed.json baseline, published with this release. */
+  const snapshot = buildNewestSnapshot(result.canonical, { exportVersion });
+  const snapshotGz = await gzipJson(snapshot);
+
   const manifest = {
     export_version: exportVersion,
     built_at: builtAt,
@@ -268,6 +416,9 @@ export async function writeBuildOutput(result, { outDir = BUILD_OUT_DIR, exportV
        shape (multi-release layout, coarser bucketing, etc., decided
        together with whichever client ends up reading it) has the exact
        real numbers without re-running the build. */
+    /* #1033: the asset the NEXT weekly run downloads as changed.json's
+       baseline (see loadPreviousNewest). */
+    newest_snapshot: { asset: NEWEST_SNAPSHOT_ASSET, count: snapshot.count, gz_bytes: snapshotGz.length },
     shards_published: false,
     shard_inventory: shardEntries
       .map(([key, , gzBytes]) => ({ key, row_count: result.shards.get(key).length, gz_bytes: gzBytes }))
@@ -287,6 +438,7 @@ export async function writeBuildOutput(result, { outDir = BUILD_OUT_DIR, exportV
   await writeFile(join(outDir, "top.json"), topJson);
   await writeFile(join(outDir, "id-map.json"), JSON.stringify(result.idMap, null, 2));
   await writeFile(join(outDir, "changed.json"), JSON.stringify(result.changed));
+  await writeFile(join(outDir, NEWEST_SNAPSHOT_ASSET), snapshotGz);
   await writeFile(join(outDir, "manifest.json"), JSON.stringify(manifest, null, 2));
   return manifest;
 }
@@ -348,13 +500,12 @@ async function main() {
   const db = new DatabaseSync(dbPath, { readOnly: true });
   let manifest;
   try {
-    /* No prior-release per-id snapshot is persisted yet (the S-11 follow-up
-       wiring), so there is no baseline: changed.json says so
-       ({ baseline:false, changed:null }) instead of listing every show as
-       changed on every weekly release (audit round 3, data-tools-14). Pass
-       the prior release's snapshot here once one is published. */
-    const previousNewest = null;
-    const result = runPipeline(db, { curatedShows, previousNewest });
+    /* #1033: the previous release's per-id snapshot, downloaded through the
+       committed pointer, is changed.json's baseline. Any failure to get it
+       leaves `previousNewest` null, so changed.json says
+       { baseline:false, changed:null } (audit round 3, data-tools-14)
+       rather than failing the run or listing every show as changed. */
+    const { result } = await runPipelineWithBaseline(db, { curatedShows });
     console.log(`read ${result.totalRows} rows; D1 kept ${result.d1Counts.kept}; D13 canonical ${result.canonical.length}`);
     console.log(`D1 per-filter misses: ${JSON.stringify(result.d1Counts)}`);
     console.log(`D13 dedupe: ${JSON.stringify(result.d13Counts)}`);
