@@ -312,7 +312,7 @@ unblock P-03b by itself; it is the prerequisite.**
 ### P-03b · The author column in the index — **HELD, folded into P-04 — NOT BUILT, per P-04 DECIDED 2026-10-05**
 > **2026-10-05:** the question this card handed to P-04 ("tail, or rows?") is
 > ruled: **rows**. The `chart_rank <= 100` cut stays and no author column is
-> added (`docs/roadmap/README.md` Q30). See *P-04 · DECIDED 2026-10-05* below.
+> added (`docs/roadmap/README.md` Q30). See *P-04 decision — DECIDED 2026-10-05* below.
 > The text that follows is kept as the measurement the ruling rests on.
 
 **Why held, measured rather than deferred on taste.**
@@ -362,7 +362,7 @@ starred; a smaller cut that buys the author column. **This card is a measurement
 and a decision, not a foregone change** — it may conclude the current cut is
 right.
 
-### P-04 · DECIDED 2026-10-05
+### P-04 decision — DECIDED 2026-10-05
 
 **The ruling.** `docs/roadmap/README.md` Q30 (*Search ranking*, shows-search):
 *"P-10: accept (option 3) unless coverage is at least 80% and `daily` would lead
@@ -738,7 +738,7 @@ it is the fudge this deck's §0 is about.
 **Done when.** A founder or a measurement picks one. Until then this is a known,
 named, 1-query-in-30 gap and not a defect anybody needs to rediscover.
 **Picked 2026-10-05: option 3, accept** (`docs/roadmap/README.md` Q30; numbers in
-*P-04 · DECIDED 2026-10-05*).
+*P-04 decision — DECIDED 2026-10-05*).
 
 ### P-07 · The listening test — **founder gate**
 **Ask.** Wyatt searches for five things he would actually search for, on the
@@ -783,7 +783,7 @@ two half-trades in different cards.
 **Overtaken 2026-10-05.** The "re-harvest first" order no longer applies.
 `docs/roadmap/README.md` Q30 ruled P-04 without waiting for the re-harvest (keep
 the `chart_rank <= 100` cut, no author column) and accepted P-10 (option 3), so
-P-04 is no longer open; see *P-04 · DECIDED 2026-10-05* in §4. The re-harvest
+P-04 is no longer open; see *P-04 decision — DECIDED 2026-10-05* in §4. The re-harvest
 (PKG-14) is now a data refresh, not a gate on any decision in this deck.
 
 ## 6. Rules for the agents
