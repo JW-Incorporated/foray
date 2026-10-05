@@ -221,6 +221,7 @@ const BUTTONS = {
   ".pl-save": { tall: "button.pl-save", why: "a labelled capsule (\"Save to my playlists\" / \"✓ Saved\") with 16px side padding" },
   ".rate-option": { tall: ".rate-option", why: "a row of the speed sheet's full-width column" },
   ".reorder": { rule: "button.reorder" },
+  ".share-btn": { size: ["button.share-btn"] }, // #1071 SH-1: 44x44 by its own declarations
   ".show-star": { rule: "button.show-star" },
   ".star": { rule: "button.star" },
   ".up-next": { rule: "button.up-next" },
