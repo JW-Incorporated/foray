@@ -2026,9 +2026,10 @@ test("REAL REPO: the sliced bundle, its budgets and the headroom that is left", 
          not a reason to lower or raise anything.
 
          RE-MEASURED 2026-10-05 (LF, minified, as CI measures it): main
-         (51b3c42b) is 2,940,447 B; the branch is 2,862,656 B — 77,791 B
-         freed. player/kokoro-probe.js 31,459 B and kokoro-probe-passage.json
-         34,794 B (66,253 B, the figure above), plus the probe's page half:
+         (3a9dfefa) is 2,944,075 B; the branch, merged with it, is
+         2,866,284 B — 77,791 B freed. player/kokoro-probe.js 31,459 B and
+         kokoro-probe-passage.json 34,794 B (66,253 B, the figure above),
+         plus the probe's page half:
          app.js -8,393 (the Developer switch, its run/soak/arm/reset controls
          and the report painter), player/client.js -2,416 (the probe import,
          the passage loader, the boot-time kill report and the ForayPlayer
@@ -2036,8 +2037,8 @@ test("REAL REPO: the sliced bundle, its budgets and the headroom that is left", 
          styles.css -206 (the report and Play-button rules), index.html -57
          (the preload line). data/ is byte-identical (1,717,974 B on both).
 
-         WHAT IT BUYS: the bundle is 71.6 KB under 2.8 MB and 122.8 KB under
-         this 2.85 MB line (~276 KB under the 3 MB cap) — ~60 cards the size
+         WHAT IT BUYS: the bundle is 68.1 KB under 2.8 MB and 119.3 KB under
+         this 2.85 MB line (~273 KB under the 3 MB cap) — ~60 cards the size
          of PQ-12..14 at ~2 KB of code each. At main's trailing rate since
          2026-10-04 (~86 KB in 17 h, most of it catalogue data that
          assertion B speaks for) that is about a day of the same pace, so
