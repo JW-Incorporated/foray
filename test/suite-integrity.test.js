@@ -2389,6 +2389,7 @@ const BACKEND_FLOORS = {
   "test/AnthropicSpineBuilder.test.ts": 18, // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 11 -> 18 (17 on disk before it)
   "test/archetypes.test.ts": 7,
   "test/budgetGuard.test.ts": 11, // round-3 L6 (2026-09-25): backend-rest-13: check-and-record serialised under concurrency; 6 -> 11
+  "test/buildCorpusTerms.test.ts": 4, // PKG-26 (docs/roadmap/corpus.md §3): corpus df table + per-episode top-k tf-idf terms — rare beats common, alpha ties, k cap, df drops singletons
   "test/candidateExtractor.test.ts": 8,
   "test/conditionalGet.test.ts": 9,
   "test/copyRules.test.ts": 16, // round-3 L6 (2026-09-25): backend-rest-18: Act Two / Act Three caught, statute spans left alone; 12 -> 16 // title house style (2026-09-24, qa 146): refused shapes, no false positives on names/acronyms/quoted works, houseStyleTitle never lowercases; 6 -> 12 (9 on disk before it) // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 5 -> 6. L8 (2026-09-22): Foray titles/summaries/slot titles against BANNED + INTERNAL_VOCABULARY, and its no-false-positive twin; 3 -> 5
