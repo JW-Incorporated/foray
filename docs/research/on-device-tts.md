@@ -653,6 +653,7 @@ result explicitly labelled as testing the *unfixed* plugin):**
 **Worked if:** there is a written result for at least one real iPhone stating whether the test
 sentence played to completion with the screen locked, matching the reporting bar
 `HUMAN-ACTIONS.md` #11 already sets for the `<audio>` case.
+<<<<<<< Updated upstream
 
 ### 9.5 Addendum, 2026-09-03 — both prerequisites landed, and one more was found
 
@@ -822,3 +823,5 @@ returned a real catalogue; the identifier examples in the plugin README are docu
 naming convention, not a device reading. The Swift assertions added alongside the change
 have never been executed, because nothing in this repo runs `swift test` and the change was
 written on a Windows machine.
+=======
+>>>>>>> Stashed changes

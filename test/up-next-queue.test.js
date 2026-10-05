@@ -64,10 +64,34 @@ const PAGE_IDS = [
   "sh-note", "sh-results", "browse-all-link",
 ];
 
+/* `#view`, able to resolve the one descendant renderShow paints into by
+   attribute rather than by id. Added 2026-09-14 (issue #687): the show page's
+   FIRST episode paint moved inside `[data-show-episodes]`, so a stub that
+   understands nothing but `#id` sees an empty page and the Up Next assertion
+   below fails for a control that is really there. `view()` splices the
+   container's content back into the marker's place rather than appending it,
+   so document order is preserved for anything that asks about it. */
+function makeViewEl() {
+  const el = makeEl("div");
+  el.id = "view";
+  let html = "";
+  Object.defineProperty(el, "innerHTML", {
+    get() { return html; },
+    set(v) { html = v; el._episodes = null; },
+  });
+  el.querySelector = (sel) => {
+    if (!String(sel).includes("[data-show-episodes]")) return null;
+    if (!html.includes("data-show-episodes")) return null;
+    if (!el._episodes) el._episodes = makeEl("div");
+    return el._episodes;
+  };
+  return el;
+}
+
 function mount({ seed = {}, boot = false } = {}) {
   const store = new Map(Object.entries(seed).map(([k, v]) => [k, String(v)]));
   const byId = new Map(PAGE_IDS.map((id) => {
-    const el = makeEl("div");
+    const el = id === "view" ? makeViewEl() : makeEl("div");
     el.id = id;
     return [id, el];
   }));
@@ -96,7 +120,12 @@ function mount({ seed = {}, boot = false } = {}) {
       addEventListener() {}, createElement: (t) => makeEl(t),
       querySelector: (sel) => {
         const s = String(sel);
-        return s.startsWith("#") ? byId.get(s.slice(1)) ?? null : null;
+        if (!s.startsWith("#")) return null;
+        const rest = s.slice(1);
+        const space = rest.indexOf(" ");
+        if (space === -1) return byId.get(rest) ?? null;
+        const root = byId.get(rest.slice(0, space));
+        return root ? root.querySelector(rest.slice(space + 1)) : null;
       },
       querySelectorAll: () => [],
     },
@@ -119,7 +148,11 @@ function mount({ seed = {}, boot = false } = {}) {
   return {
     ctx, evalIn, store, body,
     state: evalIn("state"),
-    view: () => byId.get("view").innerHTML,
+    view: () => {
+      const el = byId.get("view");
+      const inner = el._episodes ? el._episodes.innerHTML : "";
+      return el.innerHTML.replace("<div data-show-episodes></div>", `<div data-show-episodes>${inner}</div>`);
+    },
     queueRaw: () => JSON.parse(store.get("cp_queue") || "null"),
   };
 }

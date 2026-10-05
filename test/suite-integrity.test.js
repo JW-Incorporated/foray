@@ -89,7 +89,10 @@ const FLOORS = {
      explaining why it was dead.
      21 -> 22: the bridge between the page and this record was covered by neither
      suite, and transposing its two arguments left everything green. */
-  "player/diagnostic-log.test.js": 50,
+  /* 50 -> 55 with S-01 (docs/search-plan.md, kanban t_46366383): a new
+     `search` entry kind on PlayerDiagnostics — query length only, never the
+     query text, per this suite's own §7. */
+  "player/diagnostic-log.test.js": 76, // #685 (2026-09-13): the voiceProbe line says rendered-vs-estimated and flags an impossible RTF; a synthesis-failed refusal keeps its numbers; 74 -> 76 // client audit (2026-09-12): the search row's one vocabulary + `hidden`, and the epMs/ctaMs fields; 72 -> 74 // K-01 (2026-09-12): the voiceProbe row — named fields only, null-not-zero on a refusal, and both report lines; 68 -> 72 // L-06 + M-03 (2026-09-12): the `nowplaying`, `session` and `transport` entries; 57 -> 68 // FD-01 (2026-09-10): the `data` entry's vocabulary and its line; 55 -> 57
   "player/diagnostic-record.test.js": 23,
   "player/episode-link.test.js": 6,
   /* The durable store (#40). Both of these guard against silent DATA LOSS
@@ -110,24 +113,37 @@ const FLOORS = {
      built to explain — one pins that the message is on screen BEFORE the record is
      touched (the obvious version of it could not see the order at all), and one
      that an error too hostile to read still produces both. */
-  /* 87 -> 95 with #29's wiring: eight tests for the diagnostic Foray
-     (`tts-locked-screen-check`) — that its line is long enough for a 30-second
-     lock to prove anything, that it reaches the queue as SCRIPT and not as a
-     file, that pressing play hands the committed script to the injected plugin
-     at the listener's own speed, that the audio element is left alone, that a
-     manager with no plugin wired reports a load failure rather than passing
-     silently, and that the Foray stays a draft so the public website never
-     lists it. The last of those is the only thing standing between a one-word
-     edit and a diagnostic on the home screen of the live site. */
-  "player/foray-playback.test.js": 95,
-  "player/foray-progress.test.js": 58,
-  "player/foray-queue.test.js": 37,
-  /* 54 -> 59 with #29: `withDiagnosticUnlock`, the one-id exception that lets
-     the native shell open a draft when `?foray=` cannot exist there. Five tests,
-     and the load-bearing one is that the WEBSITE's list comes back untouched —
-     the failure this guards is not "the phone cannot see it" but "everybody
-     can". */
-  "player/foray-resolve.test.js": 59,
+  /* 87 -> 95 with #29's wiring, then 95 -> 87 with D-01 (2026-09-06): the
+     diagnostic Foray (`tts-locked-screen-check`) and its eight tests were
+     deleted once V-01's Audition button replaced it for the human tests it
+     existed to support. See HUMAN-ACTIONS #29 and docs/curation/
+     tts-locked-screen-check.md (kept as the historical record). */
+  "player/foray-playback.test.js": 87,
+  "player/foray-progress.test.js": 59, // FD-05 (2026-09-10): a Foray gone from the directory reads `dropped`; 58 -> 59
+  "player/foray-queue.test.js": 38, // F-90 (2026-09-11): the jingle item asset is the interlude asset; 37 -> 38
+  /* The interlude jingle (queue-manager.js §13): the rule, the element wrapper
+     and the committed placeholder asset's measured properties. The seam CLOCK
+     it rides is floored under queue-manager.test.js. */
+  "player/interlude.test.js": 16,
+  /* 54 -> 59 with #29's `withDiagnosticUnlock`, then 59 -> 54 with D-01
+     (2026-09-06): the one-id shell-unlock exception and its five tests were
+     deleted with the diagnostic Foray once V-01 shipped an in-app Audition
+     button to replace it. */
+  /* +1 audit finding E (2026-09-12): `isGeneratedDraft`, the one home of the
+     generated-draft predicate; 62 -> 63. +6 (2026-09-12): the show IDENTIFIER
+     carried onto every tape entry (`showIdFromSourceId`, `show_id`,
+     `source_id`) so a running order can link a beat to its show page, and
+     F-103's `resolveCites`, which denormalises a narration beat's citations
+     against the same two documents rather than having them shipped twice in
+     data/forays.json; 63 -> 69. */
+  "player/foray-resolve.test.js": 69,
+  /* The Foray directory (FD-03, 2026-09-10): the mechanism that lets a phone see
+     a new Foray without a store build. Floored with zero slack because each of
+     its three rules — never block first paint, never adopt an unvalidated set,
+     never drop a cached set on a network error — is one deleted test away from
+     a phone that either hangs on a dead cell or plays a torn deploy. The page-
+     level half is test/foray-directory.test.js, floored separately below. */
+  "player/foray-directory.test.js": 30, // +1 audit finding E (2026-09-12): the cache row carries `partial` instead of dropping it; 29 -> 30
   "player/foray-sources.test.js": 24,
     /* 108 -> 109 with #264: a telemetry sink that throws must not reject a load. That
      became reachable when `player/client.js` gave this backend its first real sink —
@@ -154,7 +170,7 @@ const FLOORS = {
      the only test here constructed with `prefetch: true`, i.e. the only one that can
      see a code path nothing in production enables. That is precisely what makes it
      easy to delete as "testing a dead feature", and precisely why it is floored. */
-  "player/transport-reconcile.test.js": 27,
+  "player/transport-reconcile.test.js": 35, // #689 (2026-09-14): part 4 — the four founder reports from one car session, as episode tests rather than Foray ones; 27 -> 34
   /* The lock screen and the car (#27). Floored high on purpose: four product
      decisions live in that module — publisher credit in `artist`, previous/next
      as segments, the Foray's clock in `setPositionState`, and a seam beat that
@@ -165,7 +181,7 @@ const FLOORS = {
      actual, and the pre-push review proved what that bought: all four pins could
      be deleted and the floor stayed green — the exact failure this file exists to
      make loud. Raise it when the suite grows. */
-  "player/media-session.test.js": 131,
+  "player/media-session.test.js": 140, // client audit (2026-09-12): no raw NUL byte in player/*.js — a binary file is invisible to every search; 139 -> 140 // L-06 (2026-09-12): the Apple Podcasts parity rule + the onWrite hook; 132 -> 139 // F-89 (2026-09-11): a jingle item is credited to 4a; 131 -> 132
   /* Playback speed (#242). Floored with ZERO SLACK, like media-session and
      data-deletion above and for the same reason: what this suite guards is a set of
      PRODUCT decisions, each one edit from its opposite and none of them visible in
@@ -176,7 +192,13 @@ const FLOORS = {
      stale stored value SNAPS onto the ladder rather than resetting to 1x. Raise it
      when the suite grows. */
   "player/playback-rate.test.js": 22,
-  "player/queue-manager.test.js": 99,
+  /* The default narration voice (founder decision 2026-09-10: Samantha).
+     One pure rule read by two surfaces — `client.js` for what narration
+     speaks with, `app.js` for which row is selected — so a deleted test here
+     is a default that can silently drift back to #491's "best installed
+     voice of any name", the exact behaviour the founder overruled. */
+  "player/default-voice.test.js": 10,
+  "player/queue-manager.test.js": 132, // client audit (2026-09-12): `_resumeNarration` reads the transport — fromStart, refused, and no-answer; 129 -> 132 // L-05 (2026-09-12): pause/resume/stop for spoken narration; 115 -> 129 // +1: L-03 position-increases acceptance (2026-09-10)
   "player/queue-state.test.js": 56,
   "player/seam-gap.test.js": 16,
   /* The SegmentStrip (#128) — the element that makes a Foray legible as
@@ -188,8 +210,22 @@ const FLOORS = {
      bridge is an item rather than a gap, that no two touching capsules share a
      tone, and that both themes' palettes clear 3:1. Every test names the
      mutation that kills it. */
-  "player/segment-strip.test.js": 27,
+  "player/segment-strip.test.js": 46, // the card strip (founder report, 2026-09-12): back-to-back bridges merge into one bar, and `.fy-strip--static` clips to one line; 27 -> 49
   "player/strip-scrub-gesture.test.js": 41,
+  /* Drag the Now Playing sheet down to dismiss it (founder report,
+     2026-09-13). Same pure-state-machine shape as the scrub gesture above and
+     floored for the same reason: the numbers ARE the product decision — how
+     far a thumb must travel, what counts as a flick, and the eligibility rule
+     that keeps a scroll through a long episode description from throwing the
+     sheet away. Every test names the mutation that kills it, and each was run. */
+  "player/sheet-drag-dismiss.test.js": 15,
+  /* The other half of the same report: the sheet is WIRED, opens at the top,
+     scrolls inside itself, and is a full-height overlay whose `[hidden]`
+     attribute still hides it. A source-text suite (client.js builds DOM at
+     import and cannot be loaded under node — see its own header), floored
+     because a perfect gesture module wired to nothing passes every other test
+     in this repo. */
+  "player/now-playing-sheet.test.js": 16,
   "player/seek-policy.test.js": 33,
   /* The wire between the page and on-device speech (#29). Floored with no
      slack, because what it holds down is a connection that was ABSENT for
@@ -203,7 +239,16 @@ const FLOORS = {
      one non-obvious case is a SHELL BUILT BEFORE IT EXISTED -- the bundle holds a
      flattened build-time copy of `foray-tts.js`, so "the module loaded but has
      no such method" is a real state and not defensiveness. */
-  "player/tts-bridge.test.js": 14,
+  /* K-01's instrument (docs/bundled-voice-plan.md). The one property that makes
+     a measurement worth having: it never reports a number it did not measure.
+     Zero slack, and the reason is specific to this suite — most of its tests
+     kill a mutation of the form "a guard replaced by a default that looks like
+     a pass" (RTF 0 instead of null, an unmeasured ceiling treated as met, a
+     native answer with no `ok` read as success). A record that says "RTF 0.00,
+     locked screen fine" because nothing ran is a record that gets pasted into a
+     decision, and every one of those tests is one edit from allowing it. */
+  "player/kokoro-probe.test.js": 41, // #685 (2026-09-13): the zero-is-not-a-pass floor, the rendered-vs-estimated divisor, the three copies of the synthesis vocabulary, and CPU-is-the-whole-path; 30 -> 41 // K-01 (2026-09-12): the passage is phonemized, so "refuses before the bridge" and "reaches the bridge" are two tests; 29 -> 30
+  "player/tts-bridge.test.js": 29, // K-01 (2026-09-12): the kokoroProbe delegate — one memoised load, an older shell build, and the shared-instance pin; 25 -> 29 // L-05 (2026-09-12): the transport half of the bridge; 20 -> 25
   /* The app's name on the surfaces users read (#302), 6 -> 8 when the two
      published legal documents were added, 8 -> 21 when the shipped UI copy that
      suite had only RECORDED as a known gap was renamed and pinned -- twenty
@@ -225,6 +270,20 @@ const FLOORS = {
      report): the header must un-hide on any upward scroll, not only at the
      literal top of the page. */
   "test/collapsing-header-scroll.test.js": 6,
+  /* The onboarding sheet mounts once per VISIT, not once per persisted flag
+     (found 2026-09-13 by the Playwright drawer spec: two `#first-time-sheet`
+     nodes, duplicate ids, three-minute click timeouts behind them). Floored
+     because the browser suite only catches it when the machine is slow enough
+     to lose the race — green on a quiet box, red under load — so these
+     timing-free assertions are the reliable half of the guard. */
+  "test/onboarding-sheet-once.test.js": 6,
+  /* A new page starts at the top, and ‹ puts you back where you were
+     (founder report, 2026-09-13). Floored because BOTH halves are one-line
+     deletions away and only one of them is visible: losing the scroll-to-top
+     reproduces the reported bug, and losing the back-step restore quietly
+     ruins every deep browse instead — the failure mode that has no bug report
+     because it feels like the app forgetting rather than like a defect. */
+  "test/route-scroll-position.test.js": 11,
   /* Where `api/*` actually lives, and the CSP entry that lets the client reach
      it. Floored because this is the suite standing between the app and a
      REGRESSION THAT LOOKS LIKE NOTHING: every caller degrades a failed api
@@ -240,13 +299,22 @@ const FLOORS = {
      suite (title link + PR #357 unchanged-controls checks), so any change to
      its size is worth a second look. */
   "test/episode-row-links.test.js": 5,
+  /* The Foray running order's rows (founder report 2026-09-12): every beat
+     links to its show page, the curation-code gutter is gone, and a narration
+     beat is credited "AI Narrator" with a collapsible transcript. Floored at
+     its exact landing count because three of its tests are DEGRADE tests —
+     "an unjoinable show is plain text, never a dead link", "a narration beat
+     with no cites draws no Sources block", "no committed Foray renders a
+     curation code" — and a degrade test is the kind that looks redundant to a
+     reader who does not know what it is holding down. */
+  "test/foray-row-links.test.js": 18,
   /* Visible explicit-content ("E") badge (kanban card t_02c6bb0b):
      explicitBadge() itself, its four call sites (epRow, archivedRow,
      renderEpisode, renderShow at both episode- and show-level), and a check
      that Family Mode's pre-existing poolFiltered() filter still fires
      unchanged — the badge is additive, not a replacement for that filter. */
   "test/explicit-badge.test.js": 9,
-  "test/first-time-onboarding.test.js": 26,
+  "test/first-time-onboarding.test.js": 28, // U-09 audit fix (2026-09-10): +2 — the picks re-deal and repaint the FIRST Home, and the pre-pick deal's memory is undone
   /* Duplicate-ID guard for HUMAN-ACTIONS.md's own numbering rule (full-repo
      review finding L3, 2026-08-31). Two tests: the file has numbered items,
      and no numeric ID repeats. */
@@ -261,6 +329,31 @@ const FLOORS = {
   /** The field record's surface (#264) — see the note beside the two `player/`
       halves above. */
   "test/diagnostics-surface.test.js": 19,
+  /* The Foray directory AT THE PAGE (FD-03/04/05/01, 2026-09-10): the real app.js
+     mounted over the real directory module, resolver, resume store and field
+     record. What only this suite can see is the ORDER in init() — cache read
+     before the bundle fetches, boot choice before route(), pointer fetch after
+     route() and never awaited — and the FD-05 playback cases (a swap mid-session
+     leaves the queue and the playhead alone; a vanished Foray reads `dropped`;
+     the seam prefetch never warms an unvalidated set's audio). Zero slack. */
+  "test/foray-directory.test.js": 15, // +1 F-92 (2026-09-12): a partial seed at the live version is fetched whole once, and the switch then lists the generated draft
+  /* "Show draft Forays" (2026-09-11, Wyatt: "I can't see these forays in the
+     app"): the founder's test-track switch AT THE PAGE — the real app.js over
+     the real resolver and the real data. What only this suite can see is that
+     the switch OFF is byte-identical to an app with no switch (three renders,
+     four builds, one answer), that ON lists the generated drafts on #/forays,
+     Home and a show page and opens + plays them through the published Foray's
+     own path, that `?foray=` is untouched either way, and that the drawer
+     toggle re-renders without closing the drawer. Eight mutations named in the
+     header, each run and seen red. Zero slack: the OFF half is the visitor
+     rule's promise, and every one of these is one edit from its opposite. */
+  /* K-01's founder switch, the drawer half. Same shape as the drafts switch
+     directly below and floored for the same reason: the OFF half is a promise
+     that a listener's drawer is byte-identical to one with no switch in it, and
+     the ON half is a 90-second CPU burn behind two deliberate taps. Both are one
+     edit from their opposite. */
+  "test/voice-probe-switch.test.js": 14,
+  "test/draft-forays-switch.test.js": 10,
   /* The standing gate on topic ids in `data/*.json`. Floored because the metric
      it protects is gameable in exactly one direction: a misspelled `food/bakin`
      reads as "has a child" to the root-dumping report and silently erases a
@@ -273,14 +366,32 @@ const FLOORS = {
      red for a reason in a `.md` file — the 27 line numbers it replaced went stale
      precisely because correcting them was somebody's optional courtesy. */
   "test/legal-citations.test.js": 12,
+  /* FD-06 (docs/foray-directory-plan.md): `vercel.json`'s `headers` block. The
+     phone path lives or dies on one line of it — `Access-Control-Allow-Origin: *`
+     on `/data/` — and a missing header fails SILENTLY on a phone (the shell's
+     refresh reports `offline` and the seed keeps playing), which is why it needs
+     a pin nothing in `api/test/` provides (that suite reads `functions`, not
+     `headers`). Four tests: CORS present on every rule that serves the
+     directory, CORS scoped to `/data/`, #606's Cache-Control split intact, rule
+     order. Zero slack. */
+  "test/vercel-headers.test.js": 4,
+  /* V-01: the narration voice picker's drawer surface — reachable in the
+     drawer, the acceptance fixture's 2 installed + N greyed rows, Web
+     Speech's no-install-state case, selecting a row, Audition's exact
+     counting line, the voiceFallback notice, and close controls. Same split
+     as diagnostics-surface.test.js: `player/queue-manager.test.js` covers
+     the manager's own voice logic in isolation; this is the app.js surface
+     nothing else can see. */
+  "test/voice-settings.test.js": 11,
   /* S-08's mechanical privacy tripwire: SHOWS_SEARCH_OFF_DEVICE flag detection
      (source and env), the pinned current-sentence check, the core AND-gate
      that fails release builds only when the flag is on AND the old sentence
      is still present, and the HUMAN-ACTIONS.md G5 cross-reference. Floored at
-     5 because this is the gate S-05's shard search must ship behind — a test
-     quietly deleted here is a release build free to ship off-device search
-     while the privacy policy still swears it never happens. */
-  "test/release-gates.test.js": 5,
+     5 -> 6 with D-01 (2026-09-06): a sixth test added, scanning player/,
+     app.js and data/ for the diagnostic Foray instrument's three identifying
+     strings (HUMAN-ACTIONS.md #29) so it cannot silently come back into a
+     release build once deleted. */
+  "test/release-gates.test.js": 14, // K-06 (2026-09-12): the espeak licence gate, the model pin table, the notices file and the 150 MB app-size ceiling; 7 -> 14 // S-07/G1 (2026-09-12): +1 — the Option-B contract, that §2 states the Shows-search lookup is unconditional rather than merely dropping the old promise; 6 -> 7
   /* The shared search matcher (#218/#219). Floored because both of the things it
      pins are invisible when they break. Loosening the prefix guard buys recall
      and reintroduces a documented collision flood that only the ~170-second
@@ -329,8 +440,16 @@ const FLOORS = {
      REAL catalogue and then has the pool taken away underneath it, which is the
      only form the reproduction can take. Every test names the mutation that kills
      it — see the suite header for how the coverage divides against
-     data-deletion and app-security. */
-  "test/playlist-durability.test.js": 33,
+     data-deletion and app-security.
+
+     Raised 33 -> 38 for #558's three code defects (requirements-audit items
+     1-3): renderDrawer's missing `|| ""` guard plus playlists()'s missing
+     `created` backfill (two tests — the crash and the backfill are separate
+     failure modes), bindPlay never stamping last_played_at for an in-app
+     playlist play (two tests — the positive case and that a non-playlist
+     play never fabricates one), and searchWithRelaxation's `relaxed` signal
+     being discarded by buildPlaylist instead of disclosed on the page. */
+  "test/playlist-durability.test.js": 38,
   /* #/show/:id, Stage 1 of docs/show-pages-plan.md. Floored because the join it
      guards (show_id first, title-alias fallback for Lingthusiasm) fails
      silently in exactly the way #276's playlist decay did: a dropped fallback
@@ -347,16 +466,98 @@ const FLOORS = {
      follows the pool it was built from (rendered twice on purpose — this
      harness gives every test a fresh vm context and a browser gives a whole
      session ONE); and the implication over the real data, pool has artwork
-     => the show resolves artwork. */
-  "test/show-page.test.js": 43,
+     => the show resolves artwork.
+     2026-09-14, +1 (issue #687): two tests here CHANGED SUBJECT rather than
+     being deleted, and one was added. They used to pin that a breadth show
+     and a curated show with zero discover-pool episodes get DIFFERENT empty
+     copy — and both of those strings were the ones the founder told us to
+     stop shipping ("don't blame it on 4a"), the first of which is #687's bug.
+     The tier distinction went with them, deliberately: `tier` is a fact about
+     which ingestion path found the show, invisible and unactionable to a
+     listener. What the two tests now pin is what they were really protecting —
+     a breadth show_id RESOLVES rather than 404ing, and neither kind of show
+     claims to be empty while its fetch is in flight — and the third asserts
+     the copy itself, at the two states most likely to regress. The four
+     OUTCOME states those two used to conflate are floored separately at
+     test/show-episode-load-states.test.js. 43 -> 44. */
+  "test/show-page.test.js": 44,
+  /* Founder reports, 2026-09-13. The "Show more episodes" control came out of
+     the show page, so show-page-pagination.test.js was RE-POINTED rather than
+     shrunk — same five tests, now pinning the absence of the control, the
+     absence of a silent auto-pager in its place, and the count label the
+     founder had deleted. Its floor is deliberately unchanged: this file is the
+     one that would have noticed a quiet gutting, and a removal that keeps its
+     coverage should not need to lower anything.
+     show-page-search.test.js gained the eighth: the founder's actual bug,
+     pinned from the search side — no Show more control may sit under a set of
+     scoped search results, which is the case the pagination suite could not
+     see because none of its tests ever typed a query. */
   "test/show-page-pagination.test.js": 5,
-  "test/show-page-search.test.js": 7,
+  "test/show-page-search.test.js": 8,
+
+  /* The third founder report of 2026-09-13: the now-playing bar must be off
+     the screen while a soft keyboard is up (it used to ride up onto the top of
+     the keyboard on the first scroll). Floored on its own rather than folded
+     into a show-page suite because the mechanism is global chrome — the
+     keyboard can open on any screen with a text field — and because most of
+     what it guards is the fix's escape hatches: the two independent ways the
+     bar comes BACK, and the no-visualViewport fail-open. Those are exactly the
+     assertions a future edit is most likely to drop as redundant. */
+  "test/now-playing-keyboard.test.js": 7,
+
+  /* The bottom edge of the screen while a soft keyboard is up — three founder
+     reports from 2026-09-14, on build 2026091419, all on the search page.
+     Floored as one suite because all three are answered by state that has to
+     survive things it previously did not:
+
+       the tab bar yields to the keyboard    ("when the search bar is up, this
+                                              home ribbon should go away")
+       the pill stops re-docking every frame ("the search text box moves a
+                                              bunch and tries to stay above
+                                              the keyboard")
+       a downward scroll dismisses           ("the keyboard should naturally
+                                              collapse")
+
+     THE THREE MOST DELETABLE-LOOKING ASSERTIONS IN IT, named because a floor
+     cannot see which tests it is holding up and these are the ones a future
+     edit would call redundant:
+
+       - "setBodyClass still discards the page-scoped classes". The allowlist
+         reads like a bug ("why not just keep everything?") until you see that
+         `sh-compose` reserves room for a bar that exists on one screen.
+       - "the tab bar stays while results are being read with the field
+         blurred". This is a DELIBERATE narrowing — the predicate beside it is
+         right there and looks like it should be reused — and getting it wrong
+         traps a listener on the search page with no navigation.
+       - "resize is NOT throttled". The throttle is the fix; the exemption
+         looks like an oversight and is the thing keeping the mini-player off
+         the top of the keyboard.
+       - "styles.css parses to the end". It looks like it belongs to no
+         feature, and it belongs to all of them: this change shipped a
+         comment closer with no opener into styles.css, every brace still
+         balanced, every text-reading node suite stayed green, and Chromium
+         silently discarded the last ~800 rules of the file. A CSS syntax
+         error has no error.
+
+     The neighbouring files keep their own subjects: search-field-bottom.js
+     owns where the pill sits, now-playing-keyboard.test.js owns the keyboard
+     DETECTOR, collapsing-header-scroll.test.js owns the header. */
+  "test/keyboard-chrome-and-scroll.test.js": 16,
+
+  /* Kanban t_d5079285 (recreated — was mistakenly archived as t_623d16a7) —
+     episode page: publish date (A1.2), full episode description additive to
+     the curated hook (A1.1), chapter markers as a genuinely separate
+     mechanism from foray segments (A1.5, Joey's Q5 answer), and the show
+     page's newest-first sort with no filter controls (Joey's Q7 answer).
+     Every test names its mutation; see the suite header for the full list
+     of what each test pins. */
+  "test/episode-page-publish-date-description-chapters.test.js": 12,
 
   /* Episodes section under Shows search (S-07, kanban t_6baccaa0): six
      mutations named and killed in the file's own header — rendering,
      Apple-vs-live captioning, empty-result absence, offline skip, stale
      response drop, and in-app playability of a result. */
-  "test/episode-search.test.js": 6,
+  "test/episode-search.test.js": 18, // adversarial review (2026-09-12): the three defects the P-05 episode tier shipped with — a search paint writing the endpoint's thinner row shape back over a REAL stored episode's snapshot, a show-page save that could never dedup against its own endpoint copy, and the show index landing mid-query clearing an answered episode section; 14 -> 18 // P-05 piece 2 (docs/search-parity-plan.md, 2026-09-12): the INSTANT EPISODE TIER — the first half of the two-pass shape, over the listener's own cp_saved/cp_queue. Paints on the keystroke before any network call, matches the show name as well as the title, merges the endpoint's copy of a saved episode instead of duplicating it, never lets the Apple caption label a local row, survives a dead endpoint, answers offline, refuses state.itemIndex as a source, and clears a previous query's rows; 6 -> 14
 
 
   /* The home screen's geometry under DEVICE conditions. Floored because every
@@ -370,7 +571,7 @@ const FLOORS = {
      across these five tests were run and all six went red. A review round then
      found four MORE wrong stylesheets the first draft passed — see that file's
      header for what each of them broke and which line now stops it. */
-  "test/home-layout.test.js": 7,
+  "test/home-layout.test.js": 6, // U-11 cutover (2026-09-06, kanban t_a3f01c8a): BUG 5's flag-off #banner-slot test retired with cp_ui_v2 (renderHome always renders Home v2 now, which has no #banner-slot); 7 -> 6
 
   /* Stage 3b of docs/show-pages-plan.md — full per-show RSS ingestion
      (kanban card t_567b570f): renders the curated pool synchronously so
@@ -383,6 +584,29 @@ const FLOORS = {
      the ingestion/storage side. */
   "test/show-pages-3b-full-catalogue.test.js": 7,
 
+  /* Issue #687: the show page's episode region has four states and ONE
+     WRITER. Founder screenshot, 2026-09-14, with "Couldn't load this show's
+     episodes right now." and "Fetching this show's episodes… Check back
+     soon." on screen at the same time.
+
+     ITS OWN SUITE, not additions to show-pages-3b above, because the subject
+     is different in kind. That file is about the FETCH — does the endpoint
+     get called, does a row come back playable, does a failure degrade. This
+     one is about the CONTRADICTION that was possible between two regions
+     describing one outcome, and the reason it was possible: the body was
+     composed inline in the initial innerHTML, painted once before the fetch
+     resolved, and exactly one of three terminal outcomes ever wrote it
+     again. A suite whose subject is "these two can never disagree" reads as
+     noise inside a suite whose subject is "the endpoint works".
+
+     THE ASSERTION MOST AT RISK, named for the same reason as the suite
+     above: "a curated show keeps its real rows when the full-list fetch
+     fails". It looks like it contradicts the failure states around it. It is
+     the branch that stops a careless version of this fix from deleting
+     playable content in order to display an error about content the listener
+     cannot tell is missing. */
+  "test/show-episode-load-states.test.js": 9,
+
   /* Requirements A3.2/A3.3 — category browse + all-shows index (kanban card
      "Build: category browse — linkify taxonomy chips + all-shows index"):
      the taxonomy-chip link itself, the showsForCategory overlap join against
@@ -392,7 +616,7 @@ const FLOORS = {
      "Browse all shows" link (and that the link is gone). Every test names
      its mutation; see the suite header for the full list of what each test
      pins. */
-  "test/category-browse.test.js": 11,
+  "test/category-browse.test.js": 17, // #684 report 1 (the browse tiles return 0 results): the root/leaf mismatch that made 32 of 41 tiles empty, pinned structurally on the committed catalogue; the tile linking to #/shows/q/<label> rather than #/category/:id; the ampersand round trip through the hash; the new route and its undecodable-hash guard; and — the one that must not be dropped — that #/category/:id is NOT dead, because the show page's own chips still lead there and every id THEY can emit lands on a page with at least that show on it. 11 -> 17
 
   /* Stage 2 of docs/show-pages-plan.md — show search (kanban card
      t_1c9afc67): SearchEngine.searchShows against the real catalogue,
@@ -409,7 +633,111 @@ const FLOORS = {
      unchanged" half of the card's own acceptance line, which is exactly
      the accumulation this suite's floor exists to prevent regressing
      unnoticed. */
-  "test/show-search.test.js": 17,
+  "test/show-search.test.js": 15, // U-11 cutover (2026-09-06, kanban t_a3f01c8a): the two v1/flag-off tests ("no Playlists-search section at all"; "no browse-subjects pill row") were retired along with cp_ui_v2 — ui2On() always returns true now, so those guards are unreachable; the surviving "no matching playlist" test was kept, renamed. 17 -> 15
+  /* S-01 (docs/search-plan.md, kanban t_46366383): the WIRING of
+     app.js's renderShowSearchResults into the diagnostics record — one
+     recordSearch call per completed query, qLen only (never the query
+     text, the card's own MUTATION line), local/net hit counts, the
+     local-only/local+net/superseded path field, and that a missing or
+     throwing bridge never breaks the search itself. */
+  "test/search-probe-record.test.js": 9,
+  /* The S-deck's client half (docs/search-plan.md, cards S-02 to S-05).
+     Four suites rather than one addition to show-search.test.js, because they
+     fail independently and for different reasons — which is the same argument
+     the field-record trio at the top of this file makes:
+
+       `show-search-live.test.js`     S-02/S-03's LOAD BEHAVIOUR: a keystroke
+                                      paints locally and fires no fetch; ten
+                                      keystrokes inside 250 ms produce one
+                                      costly pass; submit skips the debounce;
+                                      clearing restores the A-Z list; the
+                                      index is fetched zero times before the
+                                      box is focused and once after, and a
+                                      504 on it is invisible to the listener.
+       `show-search-ranking.test.js`  S-04's RULE: four buckets, curated
+                                      before breadth, the popularity prior
+                                      BUCKETED (never raw — `chart_rank` is
+                                      per-genre and from one harvest), and a
+                                      determinism check over the real
+                                      catalogue in two input orders. Plus
+                                      P-03b's REFUSAL: the author is not a
+                                      ranking signal, pinned on the real
+                                      Apple strings that measured worse.
+       `show-index.test.js`           S-03's CLIENT half over the real
+                                      committed data/show-index.tsv: the sort
+                                      order the binary search depends on,
+                                      parity with a reference linear filter
+                                      on the whole 12-query probe battery,
+                                      the gzipped budget, and the id shape a
+                                      tapped result resolves through.
+       `show-search-cache.test.js`    S-05's hot-query cache: a repeat fires
+                                      zero requests, a failure is not cached,
+                                      the bound clears rather than grows, and
+                                      no query text reaches localStorage.
+
+     A single merged suite would let any one of those four be gutted while the
+     others kept the file's count up, which is precisely what a floor cannot
+     see. */
+  "test/show-search-live.test.js": 10,
+  "test/show-search-ranking.test.js": 16, // P-08 (docs/search-parity-plan.md, 2026-09-12): the MATCH TIER is interposed above the bucket, so the popularity prior can speak across prefix and word-start — four tests (the charting word-start row wins; the bucket still breaks the tie the prior cannot; the exact/mid-word edges hold against the prior; and the real committed index puts nothing worse-banded above the show the listener meant); 12 -> 16 // P-03b (docs/search-parity-plan.md, 2026-09-12): the author bucket was BUILT, measured against the live directory over 20 host-name queries, and refused — two tests pin the refusal on the real Apple strings (`tim ferriss` promotes his audiobooks over his show; `andrew huberman` promotes three SEO-stuffed artist fields over Huberman Lab); 10 -> 12 // client audit (2026-09-12): the server twin is pinned mechanically — backend/src/catalog/searchBreadthShows.ts’s bucket table is read and compared to this file’s, so a fifth bucket cannot land on one side only; 9 -> 10
+  "test/show-index.test.js": 11,
+  /* The search PAGE's chrome, as opposed to the search itself (founder
+     reports, 2026-09-13): no catalogue subtitle, the browse furniture hides
+     while the field is in use, and the search field lives inside `.page-head`
+     so the collapsing header carries it. Its own suite rather than additions
+     to show-search*.test.js because none of it touches matching, ranking or
+     the network — it is where things are rendered and when they are hidden,
+     and it would be invisible inside a file whose subject is what a query
+     returns. The scroll MECHANISM it depends on stays floored separately at
+     test/collapsing-header-scroll.test.js.
+     2026-09-13, same day: the founder moved the search field to the BOTTOM of
+     the page ("model it after most other text boxes, for example in the
+     Claude app or Apple Podcasts"), superseding his own scroll-up report. The
+     three tests that pinned the field INSIDE `.page-head` were rewritten to
+     pin the negative — not in the header, header back to one shape, no field
+     on the category page — so the count is unchanged at 15 and the file's
+     subject is unchanged with it. The positive lives next door. */
+  "test/search-page-chrome.test.js": 15,
+  /* The bottom-docked search field itself (founder, 2026-09-13). A SEPARATE
+     file rather than more tests in the one above, because its subject is the
+     bottom EDGE of the screen and not the search page's content: where
+     `#sh-compose` sits in a stacking order it shares with `.tab-bar` (55) and
+     `#foray-player` (60), how `--sh-dock` composes the room those two take,
+     and the `--kb-inset` measurement installKeyboardChrome now publishes
+     alongside `body.kb-open` so the field rides above the keyboard instead of
+     behind it. That last part is shared ground with
+     test/now-playing-keyboard.test.js, which owns the DETECTOR; this file
+     owns the measurement derived from it, and asserts the two never split.
+     Same day, +9: the founder checked Apple Podcasts on his own phone and
+     sent screenshots ("they seem to have nailed it"), which settled the shape
+     against a guess — a floating translucent pill inset from both edges with
+     content reading through it, a circular companion button that arrives with
+     the keyboard, a leading magnifier and no microphone, and Escape and that
+     button as one code path. 22 -> 31.
+     2026-09-14, +3: the founder deleted the Go button from inside the pill
+     ("since the search results are live, the 'go' button is useless"), which
+     is three separate claims and not one — the trailing slot is empty, the
+     `submit` path SURVIVED the control (it is what a phone keyboard's return
+     key fires, and how the keyboard is dismissed from inside the field), and
+     neither of the two CSS rules that styled it is left selecting nothing.
+     The middle one is the reason this is not a one-line deletion, and a floor
+     that let it be deleted would let the return key stop working with every
+     other test in this file still green. 31 -> 34. */
+  "test/search-field-bottom.test.js": 34,
+  "test/show-search-cache.test.js": 12, // client audit (2026-09-12): the EPISODE half of S-05 — its own hot-query cache, the pre-fetch token check, and the one record that now carries epMs/ctaMs; 6 -> 12
+  /* S-06 (2026-09-12): the Apple fall-through is asked for only on a genuine local miss,
+     its rows render and cache like any other breadth row, and a breadth show page survives
+     a cold open. Restored with the card after a merge took main's side on app.js. */
+  "test/show-search-fallthrough.test.js": 27, // #684 report 2: the list only ever grows DOWNWARD — a later pass appends beneath what is painted instead of re-ranking the whole list under the listener, and its additions are still ranked among themselves; plus the empty-state note naming no catalogue of ours (founder, 2026-09-13: "don't blame it on 4a"). 24 -> 27 // adversarial review (2026-09-12): a degraded/rate-limited directory answer is HTTP 200 and was cached as an answer for the session (with the fixture that could not model it, and the telemetry that hid it), the title dedup missed the subtitle divergence the committed catalogue already carries, and the show index landing mid-query replaced the painted list instead of merging into it; 19 -> 24 // P-03 (docs/search-parity-plan.md, 2026-09-12): the BYLINE — the half of "index the author" that survived measurement. A directory row renders its author, a row without one renders no byline element (the shared curated callers stay byte-identical), and the string is escaped rather than trusted; 16 -> 19 // P-02 (docs/search-parity-plan.md, 2026-09-12): the directory became a SECOND PASS instead of a last resort — the reversal itself, the `tim` case that kills every count threshold, the 3-character floor in both directions, Apple's duplicate-title collapse and its catalogue-row boundary, "a failed directory pass leaves the local list exactly as it was", the directory's own hot-query cache, and the two-language pin on the normalised-title rule; 10 -> 16 // client audit (2026-09-12): Apple's ranking survives the merge instead of being re-sorted A-Z; 7 -> 10
+  /* REACH (defect 1, 2026-09-13): can the app answer with a row the device is
+     already holding? Floored new rather than folded into show-search*.test.js
+     because it is the only suite that runs the app over the COMMITTED
+     data/show-index.tsv with no endpoint answering at all — the three suites
+     beside it each cover a correct component (the scan finds, the comparator
+     orders, the directory is asked) and none of them could see the app simply
+     not calling the scan, which is how a `chart_rank` 1 show went missing from
+     the client's answer at any position. */
+  "test/show-search-reach.test.js": 5,
   /* U-05 (docs/ui-transition-plan.md, kanban t_53381ee4, resolves issue
      #135): the Playlists results section under Shows/Episodes on the Shows
      page, plus the "Create a playlist about X" CTA. Floored new rather than
@@ -426,7 +754,7 @@ const FLOORS = {
      proofs that neither SearchEngine's exports nor its scoring output moved
      (2, mirroring show-search.test.js's own such test). Every test names its
      mutation; see the suite header for the full list of what each pins. */
-  "test/search-playlists.test.js": 18,
+  "test/search-playlists.test.js": 19, // client audit (2026-09-12): topicSearchStatus and buildPlaylist score a query once, through one extracted pass; 17 -> 19 // U-11 cutover (2026-09-06, kanban t_a3f01c8a): the v1/flag-off "no Playlists section, no pill row, no CTA" test was retired along with cp_ui_v2 — ui2On() always returns true now, so that off-state is unreachable. 18 -> 17
   /* Home information architecture (founder instruction, 2026-09-03: "the
      home page has so much clutter. Menu should have the following pages:
      Home, Shows, Playlists, Forays, Up Next."). The move matrix: each of
@@ -439,7 +767,7 @@ const FLOORS = {
      clutter one "just one more row" at a time, and a suite that can be
      deleted in an auto-merged PR guards nothing. Every test names its
      mutation; see the suite header. */
-  "test/home-information-architecture.test.js": 12,
+  "test/home-information-architecture.test.js": 10, // U-11 cutover (2026-09-06, kanban t_a3f01c8a): the v1/flag-off "foray list renders on #/forays and not on Home" + "Jump back in moved" tests were retired — Home always renders Home v2 now, which intentionally DOES show a "Jump back in" row (covered by test/home-v2.test.js); the ".home renders banner+cards4 and nothing else" test was rewritten to pin Home v2's shape instead. 12 -> 10
 
   /* U-03 (docs/ui-transition-plan.md, kanban t_6e8343b6): Home v2's four
      sections plus the greeting, behind cp_ui_v2, with the exploration floor
@@ -450,7 +778,8 @@ const FLOORS = {
      of thing that regresses silently — nobody notices a personalization
      feed slowly stopped surprising anyone. Every test names its mutation;
      see the suite header. */
-  "test/home-v2.test.js": 7,
+  "test/home-v2.test.js": 9, // F14 (2026-09-08): generated playlists are interest leaves, not card slots
+  "test/home-v2-real-data.test.js": 5, // U-03 audit fix (2026-09-10): Home v2 over the committed data/*.json at insets 0/59; the Forays-for-you floor's documented fallback with one published Foray
   /* Starred shows (follow-lite), requirement A2.4 / Joey's Q2 answer.
      Kanban card "Build: starred shows (follow-lite) + dedicated Starred
      Shows page". Floored because this is exactly the #276/show-pages
@@ -484,7 +813,7 @@ const FLOORS = {
   /* Settings drawer stays open on toggle (Joey, 2026-08-31, t_0c09d83a): the
      three toggles' click handlers, plus the two real-navigation regression
      guards. */
-  "test/drawer-settings-toggle.test.js": 6,
+  "test/drawer-settings-toggle.test.js": 12, // client audit (2026-09-12): the sixth switch (cp_interlude, disclosed since FD-06 with no control), the one `drawerToggle` shape, and the retired ui-v2 debris; 6 -> 12
   /* "Up Next" auto-advance (docs/listening-queue-plan.md §8 addendum, kanban
      card t_b9880844). Floored for the same reason as up-next-queue.test.js
      above: the auto-advance decision path (off-by-default, queue-origin
@@ -553,7 +882,7 @@ const FLOORS = {
      evidence that THIS suite pins its behaviour; with a floor 19 below the real
      count, an auto-merged `test/` change could thin it while the claim stayed
      green. Zero slack from here on, for the reason media-session has none. */
-  "test/sw-generation.test.js": 51,
+  "test/sw-generation.test.js": 52, // S-03 (2026-09-12): +1 — cachePut's untracked-path branch is load-bearing now that data/show-index.tsv uses it; 51 -> 52
   /* U-01 (docs/ui-transition-plan.md): the ui-v2 token scope. Four tests --
      the nine tokens' names+values, the "no raw hex leaks outside the block"
      mutation guard, the amber/violet consumption check, and the self-hosted
@@ -575,7 +904,7 @@ const FLOORS = {
      the route-mapping/all-routes tests above (which were updated in place,
      not counted here) because a regression that reverted just the href
      while leaving tabForHash's mapping correct would otherwise pass. */
-  "test/tab-bar.test.js": 12,
+  "test/tab-bar.test.js": 8, // U-11 cutover (2026-09-06, kanban t_a3f01c8a): cp_ui_v2 is retired — ui2On() always returns true, so the off-by-default, native-shell-default, and explicit-off-overrides-native tests (4 of them) no longer have a flag-off state to assert against; replaced with one "always renders" test. 12 -> 8
   /* U-06's Create screen (docs/ui-transition-plan.md D7+D8, kanban card
      t_bd3f749a): the Foray | Playlist toggle with Foray permanently
      disabled and honestly labelled, and Playlist mode reusing the real
@@ -619,8 +948,48 @@ const FLOORS = {
      `data-and-site` for the entire repo. All 10 named mutations were run and
      killed. */
   "tools/ci/crlf-guard.test.mjs": 10,
-  "tools/ci/pr-triage.test.mjs": 85,
+  /* The Foray directory pointer (FD-02): `data/forays-directory.json`, written
+     and checked by generate-manifest.mjs. 16 pure-function tests on scratch
+     trees plus 8 that run the REAL CLI as a subprocess against a synthetic LF
+     tree — the only way `--check` can be driven to red on the Windows autocrlf
+     checkout, where the real tree is refused by the CRLF guard first. The
+     load-bearing ones: a stale pointer and a missing pointer both turn --check
+     red by name, and --write is idempotent (a second run is byte-identical), so
+     manifest-autofix does not push a built_at-only commit to every PR. Seven
+     load-bearing mutations (named in the suite header) were run and killed;
+     the other 17 are named in their tests. */
+  /* +4 audit finding C (2026-09-12): the rollback clause — a real `git revert`
+     end to end (the restored OLD built_at, the base-branch floor, the player-side
+     `isOlderThan` verdict), byte-idempotence under every floor shape, the
+     --check message, the best-effort degrade with no git, and the stale-branch
+     case the merge-base floor must NOT restamp; 24 -> 29. */
+  "tools/ci/forays-directory.test.mjs": 29,
+  /* +12 (machinery audit, 2026-09-12): the checks-missing self-heal had three
+     holes — sweep-only, keyed on `pr.updatedAt` (which this workflow's own label
+     writes reset), and firing only when ALL required checks were missing — plus
+     the duplicate-dispatch guard, which 85% of dispatched CI runs needed.
+     85 -> 97. */
+  "tools/ci/pr-triage.test.mjs": 97,
   "tools/ci/run-suites.test.mjs": 36,
+  /* THE TYPE GATE, and the reason it is floored at all. Until 2026-09-12 no CI
+     job in this repo had ever run `tsc` or `eslint`: `backend/package.json`
+     defined `typecheck` and nothing called it, so the TypeScript backend was
+     ungated and four real TS2532 errors sat in the tree. The gate now lives in
+     one `- run:` line of `ci.yml`, which is one careless "simplify CI" edit from
+     being gone with nothing to say so. Deleting it now takes this suite with it.
+     Text assertions over workflow YAML — the same idiom as
+     tools/mobile/ios-workflow.test.mjs, and the same honest limit: it catches a
+     step being deleted, not a step that runs and does nothing. */
+  "tools/ci/ci-workflow.test.mjs": 5,
+  /* The deck-drift rule (machinery audit finding 6). Decks whose PRs edit the
+     deck in the same commit had a 0% false-claim rate; the drift is all in the
+     ones where the marker floats free of the merge, and it runs both ways — one
+     card claimed work that did not exist while three hid work that did. The
+     STRONG version ("every card is DONE-with-a-merged-PR or listed as
+     outstanding") was rejected as unwritable without false alarms; see the
+     module header. 10 fixture tests naming their mutations, plus 3 that run the
+     rules against the real docs/ tree — the last of which is the gate. */
+  "tools/ci/deck-claims.test.mjs": 13,
   // The classify fleet. `no-exclusion` is the founder's "label, never filter"
   // ruling made mechanical — of everything floored in this file it is the one
   // whose deletion would be hardest to notice and most expensive to discover,
@@ -639,6 +1008,31 @@ const FLOORS = {
      version today would delete 19,278 agent rows and leave valid JSON and a
      green CI behind it. This suite is the reason that cannot come back. */
   "tools/classify-breadth.test.mjs": 29,
+  /* S-01 (docs/search-plan.md, kanban t_46366383): the measurement machinery
+     for the search probe (median/p95, timing wrapper, "skipped not failed"
+     network contract, the report validator) -- driven by fakes and an
+     injected fetch, no real catalogue/network. See
+     test/search-probe-record.test.js for the wiring/mutation-guard half. */
+  "tools/search-probe.test.mjs": 50, // defect 1 (2026-09-13): +5 — the index battery gained REACH columns beside `scan_reached`, which reported only what a skipped scan SAVES; the rank of a named target show with the scan and without it, a null-not-fabricated rank where no target is named, the lowercase/trimmed key lookup, the validator that refuses a report carrying the latency half and not the reach half, and a pin on `daily`/The Daily so the case the audit found cannot quietly leave the list; 45 -> 50 // P-06 (docs/search-parity-plan.md §2.1, 2026-09-13): +15 — the THREE NAMED PARITY CASES (`tim ferriss`, `lex fridman`, `sam harris`) become a battery of their own, asked plain AND with `fallthrough=1` so that "one row" cannot read as a thin catalogue instead of a gate that was never asked; the target show's 1-indexed rank rides along because `tim ferriss` measured 1 -> 14 rows while The Tim Ferriss Show slid from first to third, and a count-only table calls that an unqualified win; the validator now refuses a report that dropped the section, a case, either column, or the titles; 30 -> 45 // S-03/S-08 (2026-09-12): +3 — the index battery reports the prefix and scan passes separately, and the validator refuses a report that lost either p95 or the whole section; 27 -> 30
+  /* S-03 (docs/search-plan.md): the BUILD half of the show index — the merge,
+     the in_curated dedupe, the chart_rank cut, the control-character sanitiser,
+     the four-column row shape, and the parity of the committed
+     data/show-index.tsv with what this script derives. Its sibling,
+     test/show-index.test.js, pins the same file from the CLIENT side; both are
+     needed because the sort order is a contract between two files and either
+     side can break it alone. */
+  "tools/build-show-index.test.mjs": 9,
+  /* The Windows entrypoint-guard class (machinery audit finding 3). A main-
+     module check written as ``import.meta.url === `file://${process.argv[1]}` ``
+     can never be true on Windows, so the script's CLI silently does nothing and
+     EXITS 0 — `tools/build-catalog-client.mjs --check`, the documented
+     regenerate/verify command, certified a catalogue it never looked at. Every
+     developer here is on Windows and nothing in CI runs there, so the class is
+     invisible from both ends. Floored because the scan is over every tracked
+     `.mjs`/`.js` rather than a list: the list is the thing that goes stale, and
+     this bug survived in the one file nobody thought to check while seven others
+     had already been fixed. */
+  "tools/entrypoint-guards.test.mjs": 4,
   /* 82 since #226 (PR #237) added "Foray #1 is labelled superseded". Raised in a
      follow-up rather than in that PR, which is the mistake this floor exists to
      catch: it left one test of slack, and slack is what lets the new gate be
@@ -658,7 +1052,30 @@ const FLOORS = {
      The control is the one to look at first if this ever has to be lowered: "the
      boundary fixture itself passes with zero errors" is what stops every proof
      below it from becoming a demonstration that broken data is broken. */
-  "tools/foray/check-forays.test.mjs": 110,
+  /* +1 (generation finding F-49): a Foray whose tape §4.5 tier 2 minted THIS
+     RUN resolves against the pool the candidate carries, and its seconds land
+     on the listener's clock. Before it, a generated Foray with any tier-2 tape
+     failed here on an unknown segment_id. */
+  /* +2 (generation finding F-74): #65 §2 is now a rule about ANCHORS rather than
+     about the `dai_suspected` flag alone — a played segment from a DAI-stitched
+     feed is accepted when it carries both of ADR-0007's boundary phrases and
+     refused when it carries a timestamp only. Both branches are pinned, and so is
+     the half-anchored case. */
+  /* LOWERED 130 -> 129 by Q-04: the D5 triple/IQR/mean-deviation cases (7) and
+     D3's (1) went with their rules; the pair clause gained six (reported on
+     pre-Q-01 tape, gated on a Q-01 Foray, the CLI exit, the row fields, the
+     IQR still reported, the helper) and M4's restatement three. */
+  "tools/foray/check-forays.test.mjs": 158, // K-02 (2026-09-12): the phoneme rules — inert on every legacy item, red when one lexicon override is dropped; 129 -> 140. F-103 (2026-09-12): `cites` — the shape, the two resolvability rules (in the pool, AND played by this Foray), the internal-page-record refusal, the dedup and the url rule, each with its own mutation; 140 -> 154
+  /* G-21c fixture-before-emit (F-89). Seven DECLARATIONS, not seven tests: two
+     of them sit inside a loop over `ACCEPTED_SHAPES` and expand to one test per
+     accepted value (~30 today), so the floor is the count of `test(` lines this
+     file's regex sees. Zero slack. The two loop-body declarations are the gate
+     itself — every shape the checker accepts must be carried by a committed
+     Foray, or be listed in `KNOWN_UNCOVERED` and asserted still uncovered — and
+     the source-scan test is what stops a new accepted literal reaching the
+     checker without joining the enumeration. Delete any of them and a shape can
+     again reach `data/` before a consumer has seen it in CI. */
+  "tools/foray/fixture-coverage.test.mjs": 7,
   /* The narration evidence gate (#247, and the founder's citation rulings of
      2026-08-19). Zero slack, and for a sharper reason than most suites here.
 
@@ -691,6 +1108,40 @@ const FLOORS = {
      and the request payload drifting apart, which is the failure mode that turns
      a $6 projection into a bill nobody predicted. */
   "tools/narrate/narrate.test.mjs": 61,
+  /* The benchmark harness over generation reports (roadmap G-42a). Zero slack.
+     What it guards is a class of quiet lie rather than a crash: the harness
+     turns `report.json` into the rows of `docs/curation/generation-kpis.md`,
+     which is what the roadmap's §1.2 acceptance table will be read off and what
+     G-42b will diff once D11 lands. Its failure modes are all plausible-looking
+     numbers — a `?? 0` that reports "0 seed-lost beats" for a run that never
+     measured them, a *proposed* target printed as though D0 had confirmed it, a
+     clip mean taken over the 6 clips a run minted instead of the 10 it played.
+     Thirteen of the 38 tests exist only to kill `?? 0`, and two more pin the
+     COMMITTED table against the COMMITTED baseline — the archived reports live
+     on the generation host, not in this repo, so that pair is the only thing
+     that can catch a hand-edited cell in the deck. */
+  /* RAISED 38 -> 40 by F-101: the two first-attempt units are separate
+     columns and an undeclared unit is never guessed into one; `tape_share`
+     reads the renamed report field and falls back to the old name. */
+  "tools/generation-bench/run.test.mjs": 40,
+  /* The keyless-run transport (#697). This suite is the ONLY thing in the repo
+     that can notice the relay losing a behaviour, and every one of those
+     behaviours was bought by a finding that cost a run something: I-23's
+     ~15-minute deadlock (identity is the request, not the body; `/reset` clears
+     the map and the queue together), I-10's stale answer served to a legitimate
+     re-ask, I-06's fence strip AND its count, I-19's `agent_ms` kept apart from
+     `wall_ms`, I-22's per-request `tools`, F-67's readable-before-answered
+     prompt, and P-01's concurrency. Nothing in `backend/src/` knows this
+     transport exists — that is the point of it — so nothing there would go red
+     if it regressed; a run would simply hang, or publish orchestrator latency
+     as pipeline latency. The 12 mutations named in the suite header were each
+     applied and observed to fail before it landed. */
+  "tools/generation/relay.test.mjs": 27,
+  /* #703: the corpus-warming launcher. Small on purpose — the work is in
+     backend/src/cli/warmTranscriptIndex.ts and pinned by its own suite — but a
+     launcher that spawns an entry that no longer exists fails quietly, and a
+     run then proceeds on the cold corpus this issue was filed about. */
+  "tools/generation/warm-transcript-index.test.mjs": 5,
   /* The native shell (#36). `shell-invariants` is the one to be most careful
      with: four of the five things it pins are properties of files OUTSIDE
      tools/ — the root package.json staying dependency-free, index.html's CSP,
@@ -744,8 +1195,8 @@ const FLOORS = {
 
      `shell-invariants` gained one: the same slice against TODAY'S real documents,
      independently of the fixture suite. */
-  "tools/mobile/prepare-webdir.test.mjs": 72,
-  "tools/mobile/shell-invariants.test.mjs": 50,
+  "tools/mobile/prepare-webdir.test.mjs": 83, // +1 audit finding E (2026-09-12): seedCarries is exactly the negation of the one `isGeneratedDraft`; 82 -> 83 // K-01/K-06 (2026-09-12): the probe passage ships into the shell and a model never does; 78 -> 82 // FD-04 (2026-09-10): the seed is a subset of the directory's files; the seed pointer is optional; 72 -> 74. F-92 (2026-09-12): the seed leaves generated drafts to the directory — the rule on the fixture, the verifier as a reached guard, and the real repo's draft absent from the real bundle; 74 -> 77. S-03 (2026-09-12): the unpinned show index is named, bundled and budgeted; 77 -> 78
+  "tools/mobile/shell-invariants.test.mjs": 57, // +4: the L-05 plugin methods and the M-03 session needle/event name (2026-09-12) // +1: iOS plugin never calls setActive (F11/F13, 2026-09-09); +1: Swift writes the L-02 log needle (2026-09-10)
   /* 2026-09-04: the bundle's JS/CSS is minified (comments + whitespace, identifiers
      kept) and its JSON re-serialised on the way in — docs/mobile-shell.md §3.4.
      `minify.test.mjs` pins the transform (nothing renamed, nothing rewritten, only
@@ -772,7 +1223,24 @@ const FLOORS = {
      Speech fallback applies one, that a voice which is not installed is REPORTED
      rather than silently substituted, and that `listVoices()` answers on every
      path without throwing. */
-  "tools/mobile/foray-tts.test.mjs": 38,
+  /* K-06's model pins. What stands between "the upstream repository re-uploaded
+     this file" and "our app executes whatever is now at that URL" is one hash
+     comparison, and the load-bearing test here is that an UNPINNED entry never
+     verifies however right the bytes are. Zero slack. */
+  "tools/mobile/fetch-models.test.mjs": 18, // K-01 (2026-09-12): the pins are FILLED, and `bundle` decides what reaches a phone; 16 -> 18
+  /* The weights-into-the-app step. New with the filled pins (2026-09-12): the
+     failure it guards is a build that fetched 82 MB correctly and put it where
+     the app does not look — green, uploaded, and answering `model-absent` to a
+     founder holding a locked phone. Zero slack, same as its sibling above. */
+  "tools/mobile/inject-models.test.mjs": 7,
+  /* The phoneme-to-id table and the ids that were mapped through it. The ids
+     are the ONLY thing the phone ever sees of our text (deck §4: no G2P ships),
+     so a wrong one is not a crash and not silence — it is a different phoneme,
+     sung fluently, inside a measurement a founder then quotes. This suite needs
+     neither Python nor misaki, which is the point: it re-checks on every CI run
+     a file that CI could not have produced. */
+  "tools/mobile/kokoro-vocab.test.mjs": 7,
+  "tools/mobile/foray-tts.test.mjs": 62, // #685 (2026-09-13): a refusal carries the numbers the phone did produce, and a native payload cannot spread its way into a success; 60 -> 62 // K-01 (2026-09-12): the probe is a SEPARATE call with no Web Speech ladder under it; 53 -> 60 // L-05 (2026-09-12): pause/resume/stop/state on all three paths; 45 -> 53
   /* The foreground service's web half (#27's Android half, on #37). Zero slack, and
      for the reason `media-session.test.js` above gives: what this suite guards is
      mostly a set of single-line edits away from their opposites, on a surface nobody
@@ -795,7 +1263,7 @@ const FLOORS = {
      only thing standing between a lock screen that works and one that silently says
      the wrong episode. Section 7 of that doc maps each mechanism to the mutation that
      kills it, which is where to look before concluding these are vacuous. */
-  "tools/mobile/foray-media-session.test.mjs": 67,
+  "tools/mobile/foray-media-session.test.mjs": 79, // M-03 (2026-09-12): the session event reaches the page; 75 -> 79
   /* iOS on a runner (#38). These four are the only tests in the repo that can be
      run for a macOS-only feature by someone with no Mac, which makes their
      deletion unusually attractive to a future session that finds them
@@ -854,9 +1322,28 @@ const FLOORS = {
          alpha channel and a submission Apple rejects after the upload and the
          wait. */
   "tools/mobile/inject-app-icon.test.mjs": 27,
+  /* inject-splash (2026-09-06): the splash and the Android launcher icon were
+     Capacitor's placeholders on every build to 2026090603. Same rules as
+     inject-app-icon: byte-level --check, refuse a half fix. Floored exact. */
+  "tools/mobile/inject-splash.test.mjs": 19,
   "tools/mobile/inject-background-audio.test.mjs": 41,
-  "tools/mobile/ios-ci.test.mjs": 89,
-  "tools/mobile/ios-workflow.test.mjs": 45,
+  "tools/mobile/ios-ci.test.mjs": 136, // +7: L-02 takeover verdict + reached needle (2026-09-10); +4: M-03 session needle (2026-09-12)
+  /* The embedded-framework plist rules (2026-09-13). Release run 34739630705
+     archived, exported, and was REJECTED by App Store Connect: the ONNX Runtime
+     xcframework Microsoft ships carries no `MinimumOSVersion`, which altool
+     requires of every embedded framework (errors 90360/90530). Floored with no
+     slack, because two different things in here are one edit from silence — the
+     patch (which must refuse to report success when it found nothing to patch)
+     and the verify (which must refuse to pass when it cannot find the frameworks
+     it exists to check). The fixture is the real 613-byte upstream plist, so the
+     first test is evidence rather than restatement. 36 -> 40 after the first CI
+     run found the other half of the problem: the resolved tree also holds
+     Capacitor's and Cordova's xcframeworks, correctly built and stored as BINARY
+     plists, so the patcher must touch only what is actually missing the key and
+     must never change a vendored plist's format. */
+  "tools/mobile/ios-embedded-frameworks.test.mjs": 40,
+  "tools/mobile/ios-workflow.test.mjs": 43, // +4 (2026-09-13): the MinimumOSVersion patch runs before both builds, off one resolved SwiftPM tree, with the deployment target READ not written, and the built device bundle is read back
+
   "tools/mobile/probe/install-probe.test.mjs": 39,
   /* The one-shot that gets a newly curated show's back catalogue into the pipeline
      (#279). The floor matters because the whole script exists to make one silent
@@ -934,8 +1421,29 @@ const FLOORS = {
        - "the emulator job cannot gate the artefact". A cold emulator boot is the
          only genuinely flaky thing in this repo (mp1-background-audio.md §6.2), and
          the .aab is the critical path to a submission. One `needs:` would put the
-         flake in front of the artefact. */
-  "tools/mobile/android-workflow.test.mjs": 61,
+         flake in front of the artefact.
+
+     61 -> 62 (R-05, docs/release-lockstep-plan.md): "android-release.yml is the
+     PR-time check and the by-hand exception path — never an upload path". The
+     file holds no Play credential and no store-upload action, the upload action
+     appears in EXACTLY ONE `.github` file (the android-bundle composite that
+     `release.yml` calls), and the workflow's own header says so. A second path
+     to a store is the drift that produced the R-01 TestFlight flood. */
+  /* K-02 and K-03 (docs/bundled-voice-plan.md): the two stages that run on OUR
+     machines and never on a phone. Both suites drive the real Python through
+     the real interpreter, because "test the Python by running it" and "test
+     nothing" were the only honest options in a Node-only test tree.
+
+     THE FLOOR IS PROTECTING THE REFUSALS more than the arithmetic. misaki is
+     not installed here or on CI, so most of what these two files pin is that a
+     missing backend produces a non-zero exit and a command that fixes it —
+     never a phoneme string nobody produced, never an audition clip a founder
+     could not tell from a real one. Those are the tests somebody deleting "the
+     ones that only test the failure path" would take first, and they are the
+     reason this card is not a way to publish a mispronounced Foray. */
+  "tools/narration/phonemize.test.mjs": 13,
+  "tools/narration/render-audition.test.mjs": 12,
+  "tools/mobile/android-workflow.test.mjs": 62,
   /* Wiring the signing config into a project nobody commits. ZERO SLACK.
      `mobile/android/` is regenerated on every build, so the only evidence the
      release signing config ever reaches Gradle is that this script ran and its
@@ -961,7 +1469,8 @@ const FLOORS = {
      shared build steps into. Registered the same day both suites were
      written, per R-02's own precedent for this map. */
   "tools/mobile/release-ci.test.mjs": 15,
-  "tools/mobile/release-workflow.test.mjs": 25,
+  "tools/mobile/release-workflow.test.mjs": 29, // +4 (2026-09-13): the release composite is a THIRD build path — it patches the ONNX Runtime plist before archiving, archives from the patched tree, and reads the archive back before export/upload
+
   /* The launch verdict (the `android-smoke` job's brain). ZERO SLACK. This is the
      only thing in the repo that can judge a RUNNING Android app, and its risk is
      entirely one-directional: a verdict too generous reports a launch for a page
@@ -1296,11 +1805,16 @@ const BACKEND_FLOORS = {
      malformed-JSON/no-text-block error paths across all 5 real provider classes,
      plus the shared parseWithRetry helper extracted from their copy-pasted
      private implementations. */
-  "test/AnthropicDeepenActBuilder.test.ts": 7,
+  /* +2 (WS-C): the §4.4 side of F-38 — the prompt asks for a beat `kind`
+     and the parser accepts one, while a reply that omits it still parses. */
+  "test/AnthropicDeepenActBuilder.test.ts": 9,
   "test/AnthropicEnricher.test.ts": 10,
   "test/AnthropicExternalResearcher.test.ts": 9,
   "test/AnthropicPromptUnderstander.test.ts": 9,
-  "test/AnthropicSpineBuilder.test.ts": 8,
+  /* Raised from 8 by WS-L (F-63): what actually reaches the model — the quoted
+     transcript windows and the one seed rule when the research map has them,
+     neither when it does not, and the seed the reply carries back. */
+  "test/AnthropicSpineBuilder.test.ts": 11,
   "test/archetypes.test.ts": 7,
   "test/budgetGuard.test.ts": 6,
   "test/candidateExtractor.test.ts": 8,
@@ -1315,7 +1829,7 @@ const BACKEND_FLOORS = {
   /* DAILY_BUDGET_USD env parsing (L5): rejects negative / NaN / empty /
      over-cap values at startup instead of silently substituting the
      default, and leaves a genuinely unset variable on its fallback. */
-  "test/env.test.ts": 10,
+  "test/env.test.ts": 11,
   "test/events.test.ts": 15,
   "test/html.test.ts": 8,
   "test/interestLearning.test.ts": 30,
@@ -1327,7 +1841,15 @@ const BACKEND_FLOORS = {
   /* Anthropic provider error-path coverage (kanban card t_550d289f): the
      shared parseWithRetry/parseLastJsonBlock helper extracted from the 5
      real Anthropic provider classes' identical private copies. */
-  "test/parseWithRetry.test.ts": 9,
+  /* K-02 (docs/bundled-voice-plan.md): the phonemize stage. The property this
+     floor protects is not the arithmetic — it is that a Foray PUBLISHES whether
+     or not the phonemizer worked. The bundled voice is an upgrade to how
+     narration sounds, not a new way for generation to fail, and half this suite
+     is mutations of exactly that: a throwing subprocess, a half-answer with no
+     vocab, a missing interpreter. Delete those and a missing system package
+     takes down a written Foray after the writer has spent its tokens. */
+  "test/phonemize.test.ts": 12,
+  "test/parseWithRetry.test.ts": 17,
   "test/parser.test.ts": 29,
   "test/personas.test.ts": 6,
   "test/podcastIndex.test.ts": 3,
@@ -1337,7 +1859,11 @@ const BACKEND_FLOORS = {
      ("prompts are discarded") enforced structurally — this suite scans the
      generation-stage source for persistence primitives and proves a full
      understand-prompt run touches no file on disk. */
-  "test/promptNoPersistence.test.ts": 3,
+  /* WS-H raised this from 4: `transcriptTextIndex.ts` is the second module
+     allowed to write under `data-local/`, and the added case holds its cache
+     to §9.4 the way the evidence cache’s is — podcast words keyed by show id,
+     never the claim a search ran for. */
+  "test/promptNoPersistence.test.ts": 5,
   "test/property/dedup.property.test.ts": 5,
   "test/property/duration.property.test.ts": 5,
   "test/property/html.property.test.ts": 4,
@@ -1347,6 +1873,10 @@ const BACKEND_FLOORS = {
   "test/sessionBuilder.test.ts": 12,
   "test/stubEnricher.test.ts": 6,
   "test/userInterests.test.ts": 17,
+  /* #703: the warm pass's feed parsing, which is what decides whether a
+     reconciled episode comes out SEARCHABLE only or also MINTABLE — a duration
+     read as 58 rather than 3501 makes an episode rank and then yield nothing. */
+  "test/warmTranscriptIndex.test.ts": 13,
   /* Generation pipeline §4.0-4.1 (kanban card t_825eee4c): §3's input
      schema, `author_id` required and carried from day one per §1.3. */
   "test/generationRequest.test.ts": 5,
@@ -1368,43 +1898,230 @@ const BACKEND_FLOORS = {
     accuracy, and the cheap-first ordering (external research fires ONLY
     for a genuine catalogue gap) against an injected no-tape fixture so the
     assertion doesn't drift as the real catalogue grows. */
-  "test/researchShape.test.ts": 11,
+  /* Raised from 11 by WS-L (F-63): §4.2 now also returns what the tape SAYS
+     about each candidate — the top transcript windows, quoted — and the added
+     cases pin the quoting, the four honest reasons a window list can be empty,
+     the lineage gate running before any episode is opened, and one window per
+     episode, best first. */
+  /* Raised to 18 by F-73: the quoted window's duration band is what every
+     generated tape segment ends up being cut from (§4.3 seeds a beat with these
+     seconds and F-68 confines §4.5's search to them), so it is now sized against
+     `narration-craft.md` §0's own mean floor rather than against prompt length
+     alone — asserted on the constants and measured on a real window. */
+  "test/researchShape.test.ts": 18,
   /* The §4.0-§4.9 orchestrator (runPipeline.ts). Floored because it is the ONLY
      suite that exercises the chain as a chain: every stage has its own tests and
      all of them stayed green while nothing joined the stages together, which is
      how the pipeline reached "all nine stages built" with no way to run them.
      Four of its cases pin whole-Foray properties the first real run failed on —
      the §4.7 disclosure, and the runtime the checker recomputes. */
-  "test/runPipeline.test.ts": 11,
+  /* +1 (F-49): the orchestrator hands finalize the tier-2 segments and source
+     rows sourcing minted, without which the candidate names tape nothing can
+     resolve. */
+  /* +3 (F-91): the topic is decided BEFORE the research map and the spine with
+     the archive's supply in view — a subject no candidate topic's family can
+     carry stops `no-supply` with the spine builder never called; run 8's
+     prompt proceeds under the engineering candidate that carries *Being an
+     Engineer*; a resolution with supply is left alone and recorded `best`. */
+  "test/runPipeline.test.ts": 16,
   /* §4.3's spine types: SpineSchema (strict, no per-act voice field),
      isClaimShaped (claim- vs topic-shaped beats), and validateSpine
      (§3's shape budgets with ±15% tolerance, the ~30% exploration
      floor). Kanban card t_96a97be9. */
-  "test/spineTypes.test.ts": 26,
+  "test/spineTypes.test.ts": 28,
   /* §4.3 end to end: buildSpine() against StubSpineBuilder for every
      duration tier (shape budgets, claim-shape, exploration floor,
      single spine-level voice all actually hold), plus InvalidSpineError
      on a deliberately broken builder. Kanban card t_96a97be9. */
-  "test/buildSpine.test.ts": 6,
+  /* Raised from 6 by WS-L (F-63): the stub writes beats FROM the research map's
+     quoted tape windows, out of the window's own words, and leaves the spine
+     seedless when the map quoted nothing. */
+  "test/buildSpine.test.ts": 9,
   /* §4.4 end to end (kanban card t_c963701a): deepenActs() fans out
      builder.deepenAct() once per act IN PARALLEL, always passing the
      FULL spine. Covers shape/count correctness, the full-spine-context
      regression guard, genuine-parallelism proof, and explicit
      failure-isolation (one retry per act, then fail the whole build). */
-  "test/deepenActs.test.ts": 10,
+  /* Raised from 12 by F-49's argument cap: at most a third of a slot's beats
+     may be tagged `argument` (run 2 tagged 29 of 35 and lost every one of them
+     to §4.5's skip-tape branch). The added cases pin the rounding, the
+     re-tagging order, the warning field, idempotence, the resumed-act path, the
+     stub's own obedience, and a replay over run 2's real deepen output. */
+  /* Raised from 21 by WS-L (F-63): a beat's tape seed has to survive the stage —
+     kept by the stub, restored in code when a builder drops it, never re-pointed
+     when the builder changed a slot's beat count, and restored on a resumed act
+     checkpointed before seeds existed. */
+  "test/deepenActs.test.ts": 25,
   /* §4.5-4.6 end to end (kanban card t_648fbae7): sourceBeats() resolves
      every beat to a tier-1 segments.json hit, a tier-2 transcript-archive
      extraction, a tier-3 transcription-queue-candidate narration fallback,
      or a Patch/Carry narration assignment — never changing which beats
      exist, and never fetching/persisting any audio bytes. */
-  "test/sourceBeats.test.ts": 8,
+  /* WS-C (docs/curation/generation-fix-plan-2026-09-09.md) raised this from 8:
+     run 1's tape anchors were 5-of-22 on topic, and the added cases pin each of
+     the four things that fixes — argument beats skip tape (F-38), tier 1 scores
+     against the transcript window not a curator note (F-06/F-29), tier 2 needs
+     the claim's words around its anchor and mints a cue-cut segment rather than
+     a word run (F-24/F-33), and a candidate must share the Foray's taxonomy
+     lineage (F-23/F-29) — plus a replay of the real beat-4/beat-5 claims
+     against the real data/segments.json. */
+  /* Raised from 35 by F-49: sourcing now says WHY each narrated beat got no
+     tape (best candidate, score, bar, gate — per tier), refuses to mint tape
+     whose audio cannot be honestly registered, and is replayed over run 2's own
+     35 beats so the diagnosis is a test rather than a paragraph. */
+  /* WS-H (F-06/F-49) raised this from 49: tier 2 now finds its candidate
+     episodes by searching the archive’s transcript TEXT, so the suite pins
+     both halves — tape minted from an episode whose title says nothing, and
+     run 1’s Chernobyl/griddle/San Bruno mis-anchors still refused with the
+     text search switched on — plus two offline cases that skip by name on a
+     checkout without `data-local/transcripts/`. */
+  /* F-61/F-62 raised this from 59: tier 2 picks its window by overlap and mints
+     its anchors from the tape's own words, so the suite pins the window search
+     and its relevance floor (including the rare-word count that refuses a
+     window carried by one unusual word), anchors quoted verbatim at the span's
+     boundary cues, growth toward the claim rather than symmetric padding, and
+     the three run-1 mis-anchors refused by the FLOOR rather than by the
+     verbatim rule that used to carry them. The offline cases now find the real
+     bodies however the machine holds them, and skip by name when it holds
+     none. */
+  /* Raised from 72 by WS-L (F-63): a seeded beat opens its own episode first,
+     the seed never lowers a floor or slips an off-branch show past the lineage
+     gate, the trace says whether the seed won, and one offline case runs the
+     run-2 intent through research-shape, a stub spine seeded from its windows,
+     deepening and sourcing against the real archive. */
+  /* Raised from 79 by F-73: both tiers now keep a D-tier LENGTH ledger as well as
+     M3/M4 — the running mean floor (D3), the short-segment run (D2), the uniform
+     triple (D5's first clause, the one gate here that is a preference and gets
+     relaxed rather than costing a beat its tape) and M4's runtime clause — and
+     the tier-2 cut grows towards a varying target instead of stopping at
+     `MIN_TAPE_SEGMENT_SEC`. The added cases pin each gate's refusal, its
+     fall-through to another episode, its small-count exemption, and the ladder
+     the interquartile floor is sized against. */
+  /* 111 once F-72 merged alongside it: the seed window is judged on share alone
+     and the trace says when that floor DECIDED, and those twelve cases had no
+     floor of their own. Raised here rather than left as slack, for the reason at
+     the top of this file — slack is what lets a gate be deleted with CI green. */
+  /* 130 with F-80: D5's triple clause is a rule at placement, not a preference —
+     the tier-2 walk cuts the same window to a length outside the band before it
+     gives a candidate up, names `d5-triple` when no cut escapes, and the
+     tape-relevance row records when the clause chose a length. The fixtures
+     that filled a Foray with one length now alternate, because three of one
+     length is exactly what the rule refuses. */
+  /* LOWERED 130 -> 119 by Q-01/Q-04 (docs/curation/listening-quality-plan.md),
+     deliberately and in the open: seventeen cases pinned rules Q-04 retired —
+     D3's running mean (3), the interquartile re-cut pass (6), the 105/165/135/
+     210 s ladder (1), M4's whole-episode runtime share (3) and F-80's triple
+     clause chooser (4) — and six new ones pin what replaced them: M4's one-
+     long-clip and beyond-the-longest-clip clauses (3), and the tier-2 clip as
+     the thought around the claim with D5's pair clause asked of it (3). The
+     extension itself has its own floored suite below (`tapeExtent.test.ts`). */
+  /* RAISED 119 -> 124 by F-96 (Q-01 pass 2): the seed path extended, the
+     same-stretch merge (one clip, two beats), the gap and act-boundary
+     refusals, `seedLost` on a seeded beat that ends as narration, and the
+     end-to-end thesis case; the two ledger cases that pinned "a second beat
+     on the same episode is refused" now ask it across an act boundary. */
+  /* RAISED 124 -> 127 by F-101: `placementAllows` is the ONE length-rule
+     predicate, asked by the tier that places a clip and the tier that grows
+     one — the merge's hand-mirrored copy of M4's runtime clause is gone. */
+  /* RAISED 127 -> 128 by F-102 — ONE net case, while four were rewritten in
+     place. D5's pair clause stopped being a placement veto (it could only ever
+     be satisfied by playing less tape, and on the real archive it cost four
+     seeded beats theirs), so the four cases that pinned the veto now pin its
+     absence: the pool segment that makes a pair is PLACED, the full thought is
+     placed and MARKED rather than re-cut shorter, no beat is narrated for a
+     length, and `placementAllows` does not consult the clause on either path.
+     The added one is the case that NEVER SKIPS: it logs whether the offline
+     block ran and asserts that only a missing archive can skip it. That block
+     holds the two assertions guarding TAPE YIELD, CI structurally cannot run
+     it, and its silence is how F-102 survived a day with main's `backend` job
+     reporting `129 tests | 5 skipped` and green while both were red here.
+     (This floor counts `it(`/`test(` statically; Vitest reports 130 for the
+     same file, two cases being written in the multi-line `it(
+ "name",`
+     form. The two numbers have always differed by two; only this one is the
+     floor.) */
+  "test/sourceBeats.test.ts": 128,
+  /* Q-04: the checker's D5 arithmetic mirrored in `d5Pair.ts` — the pair
+     clause that replaced F-80's triple — pinned to `check-forays.mjs`'s own
+     `d5UniformPairs` row by row (run in a Node subprocess, the only way that
+     file loads on a checkout with a space in its path). `d5Triple.test.ts` (5)
+     went with the rule it pinned. */
+  /* UNCHANGED AT 5 BY F-102, one case swapped for another: `d5EscapeBelow` —
+     the function that told sourcing how far to CUT a clip back so a pair would
+     escape — is deleted, and the case that pinned its arithmetic is replaced by
+     one asserting this module exports no function returning a LENGTH at all.
+     The mirror-to-the-checker case is untouched; the arithmetic did not change,
+     only who obeys it. */
+  "test/d5Pair.test.ts": 5,
+  /* Q-01: `tapeExtent.ts` — the claim window extended to the thought around it
+     (turn and sentence boundaries, the host's question, the relevance walk and
+     its measured floor, the hole in the tape, the ceiling, the anchors) and the
+     hand-set numbers pinned. Every case names its mutation. */
+  /* RAISED 11 -> 13 by F-96: the claim and the thesis scored as two shares
+     (run 9's live timidity, the mutation being the old union query), and the
+     cut never shortening an extent below the boundary it found. */
+  "test/tapeExtent.test.ts": 13,
+  /* WS-H’s new module: the BM25 index over the normalised cue text, its disk
+     cache and the invalidation that makes a re-transcribed episode rebuild it,
+     and the Null implementation CI actually runs. Raised to 12 by F-61: the
+     idf a search scored with is carried out to tier 2's window search. */
+  /* #703: the two rules that decide what of the corpus on disk is readable —
+     the file-naming key the fetcher actually wrote, and the letter-spaced-cue
+     refusal — plus the coverage count that makes a blind spot impossible to
+     miss. Every case names the mutation it kills; four of them are the 990
+     dark Becker's episodes and the sigma-nutrition cover page that was served
+     as tape on a germ-theory Foray. */
+  "test/transcriptCorpus.test.ts": 19,
+  "test/transcriptTextIndex.test.ts": 13,
   /* §4.7 end to end (kanban card t_5a8b77c3): writeNarration() writes one
      page per narration beat (mode budgets, per-claim sources array),
      always through a genuinely separate verifier call (never the writer —
      proven with a spy test), the exact check-forays.mjs-compatible
      disclosure template, and decideConnectiveNarration()'s seam-position
      table for tape-adjacent beats needing short connective narration. */
-  "test/writeNarration.test.ts": 19,
+  /* WS-A raised this from 25: the suite now replays run 1's own failures
+     through the two-step, per-slot writer — the fabricated citation, the
+     griddle slug, the two-word span, the purpose quoted back, the
+     zero-source Frame — and pins the dry-run path to quoting real held text. */
+  /* F-50/F-51 (generation run 2) raised this from 40: run 2's own act 1 p2 —
+     a purpose the retrieved document contradicts — is now a fixture, and the
+     suite pins both halves of the fix (a page that reports the tension passes
+     and is flagged on both sides; a third rejection keeps the page unverified
+     instead of throwing), plus the per-slot resume hooks and the cue provider
+     the default evidence gatherer was silently dropping. */
+  /* F-60 raised this from 55: run 2's act 1 p5 — a Carry page whose retrieval
+     came back empty — now makes ZERO writer calls and comes out as an
+     unverified hand-off the gate refuses, and the two former throw sites (no
+     evidence, and no page ever produced) are pinned as degrade paths so the
+     surviving `NarrationWriteError` guards the beat count and nothing else. */
+  /* +1 (Q-03): the stub builders offer the per-act contract, so a dry run pays
+     one write and one verify for an act and never the per-slot calls. */
+  /* LOWERED 70 -> 49 by F-100, deliberately, and this is the reasoning the
+     header asks for. The suite above was written against the per-slot,
+     per-page orchestration runs 1-8 used. Q-03 replaced that orchestration
+     with one writer call per ACT and left the old one standing as a
+     "fallback"; F-100 established that the fallback could not run — both
+     builder factories return builders that implement the per-act contract —
+     and deleted it. The 21 tests that went with it are of two kinds:
+       - CALL ECONOMICS of a path that no longer exists (G-34's merged
+         select+prose call and its retry levers, "two calls per SLOT", the
+         per-slot resume hooks, the per-slot parallelism, F-60's
+         degrade-before-the-first-call). The act path's own economics are
+         measured in actNarration.test.ts, which is unchanged at 38.
+       - DUPLICATES of a rule that is now asserted once. Every mechanical
+         rule the deleted tests drove — the quote gate, the entity decode,
+         publication read off the document, F-42's span floor, F-46's
+         purpose echo, F-45's negative record, F-35's accumulating note —
+         is still asserted in this file, now THROUGH THE ACT PATH, and is
+         additionally pinned as a pure unit test in narrationRules.test.ts
+         (floored at 21, untouched).
+     What is genuinely gone with the path, and is named in the F-100 ledger
+     entry rather than quietly dropped: F-60's "a content page whose pack is
+     empty is degraded to a hand-off before any call", which has no act-path
+     equivalent (an unsupported seam is kept unverified for the gate
+     instead), and F-50's self-reported `purposeRevised` flag, whose only
+     producers were the deleted per-page reply shapes. */
+  "test/writeNarration.test.ts": 49,
   /* Stage 3b (kanban t_567b570f, docs/show-pages-plan.md §Stage 3): shared
      catalogue store CRUD (scoping by show_id, upsert-not-duplicate on
      (show_id, guid), published_at ordering, feed-state round-trip). */
@@ -1421,10 +2138,21 @@ const BACKEND_FLOORS = {
      hard-gate), the forward-only cross-act continuity Builder (§6.2),
      forayItems.ts's mapping to the real data/forays.json schema (with
      an internal-field-leak guard), and the cadence-measurement CLI. */
-  "test/forayItems.test.ts": 7,
+  /* RAISED 7 -> 17 by F-103: the derived `cites` shape a narrated beat
+     publishes — what each source kind reduces to, that an unverified or
+     never-verified page publishes none, that an empty result omits the field
+     rather than shipping `[]`, the dedup, the non-http url drop, and the leak
+     guard now that `sources`/`verified` actually reach this module. */
+  "test/forayItems.test.ts": 17,
   "test/measureCadence.test.ts": 3,
   "test/smoothSeam.test.ts": 8,
-  "test/stitchAct.test.ts": 9,
+  /* RAISED 9 -> 10 by F-96: a clip carrying two beats plays once. */
+  /* RAISED 10 -> 13 by F-103: this module is the hop the writer's provenance
+     used to die at, so the three tests are that `sources`/`verified` survive
+     it — from a beat page, from a connective page (the branch a Frame's tape
+     citation takes), and with `verified: false` copied verbatim rather than
+     interpreted here. */
+  "test/stitchAct.test.ts": 13,
   "test/stitchForay.test.ts": 4,
   /* A3.1/Q3 (kanban t_8d1a6a58): backend/src/catalog/breadthCatalog.ts +
      searchBreadthShows.ts — show search over the FULL breadth catalogue
@@ -1432,15 +2160,285 @@ const BACKEND_FLOORS = {
      client ships. Fixture-based ranking tests plus real-catalogue
      integration checks (merge/dedupe correctness against the committed
      data/catalog.json + data/catalog-breadth.json). */
-  "test/breadthCatalog.test.ts": 11,
+  /* RAISED 11 -> 17 by the client audit (2026-09-12): searchBreadthShows now
+     applies search-engine.js’s four-bucket rule with its popularity prior, so
+     the endpoint TRUNCATES to `limit` under the order the client will display
+     rather than under an order nobody sees. Six tests: the four buckets, the
+     bucketed prior, the row shape (no dead `rank`, a live `chart_rank`), and
+     three agreement tests that load the real search-engine.js in a node:vm and
+     compare bucket for bucket and row for row over the real catalogue. */
+  /* RAISED 17 -> 18 by P-08 (docs/search-parity-plan.md, 2026-09-12): the
+     `limit` cut is now taken with the popularity prior compared ABOVE the
+     prefix/word-start distinction, so a query with more than 25 title-initial
+     matches no longer spends all 25 slots on unranked ones. The added test is
+     the real-catalogue proof — for "history", *Dan Carlin's Hardcore History*
+     is IN the 25 rows the endpoint sends, where before it was not in the reply
+     at all and reached the listener only via Apple's directory. */
+  "test/breadthCatalog.test.ts": 18,
   /* §4.9 end to end (kanban card t_0b1729d6): finalizeForay() validates
      a candidate against the real check-forays.mjs/check-narration.mjs
      and only returns a writable record on a clean pass; stageTiming.ts
      is §6.3's minimal batch-pipeline scope (real per-stage wall-clock
      timing, nothing speculative — see that module's own doc comment for
      why no live-generation-lead monitoring is built here). */
-  "test/finalizeForay.test.ts": 5,
+  /* +3 (F-49): the candidate's own minted tier-2 segments and source rows are
+     merged into the pool and registry the checker is handed, never shadowing a
+     committed row. */
+  /* FD-07 / F-78: the minted tier-2 row against the real merge-segments --check gate,
+     one named mutation per required field. */
+  "test/mintedSegmentRow.test.ts": 18,
+  /* FD-07 / F-75: the publish branch is cut from origin/main and pushes exactly one commit. */
+  /* +7 (G-21c): the written files are gated by the app's real-data suites —
+     a red suite refuses (assertion printed, bytes restored, branch abandoned),
+     --force proceeds and the PR body lists the failing assertions, a green
+     run touches nothing, detached-HEAD restore, a file that did not exist is
+     removed again, and the refusal lands on report.json as publish_refused.
+     One named mutation per test. */
+  /* F-88 +1: the PR body names every page verified by synthesis and the
+     pages it rests on. */
+  /* RAISED 20 -> 26 by F-98: the superseded row rewritten in place, the draft
+     runtimes restated, --supersedes and the PR body paragraphs. */
+  /* +5 audit findings A/B/D (2026-09-12): `--force` implies `hold` (parseArgs,
+     three tests), the verdict telling the operator to delete a KNOWN_UNCOVERED
+     entry, and the PR body no longer claiming check-narration.mjs checked this
+     Foray; 26 -> 31. */
+  "test/publishForay.test.ts": 31,
+  /* G-21c: REAL_DATA_SUITES names the four roadmap suites and every other
+     suite the repo grep finds reading data/forays.json, data/segments.json or
+     data/segment-sources.json (the list cannot rot); the TAP parser (one
+     `not ok` → one failure with name/error/location, describe parents
+     skipped, load failures attributed by name); the runner's cwd/flags and
+     its three broken-run shapes; the summary and failure lines. One named
+     mutation per test. */
+  /* +4 audit finding B (2026-09-12): the fixture-coverage suite joins the gate,
+     the check-forays loader counts as a real-data read, and knownUncoveredGuidance;
+     15 -> 19. (Spelled without the call syntax on purpose: REAL_DATA_READ_RE now
+     matches that name, and this file is one of the suites it greps.) */
+  "test/publishSuites.test.ts": 19,
+  /* F-98: deterministic post-seeding, the seed floor and its one re-ask —
+     the scorer and its floor, the M4 ledger an assigned seed faces, the
+     summary line, and the re-ask that is kept only when it is better. */
+  "test/postSeedSpine.test.ts": 15,
+  /* G-25: spine seeding ledger (M4-derived caps) and seed order. */
+  /* RAISED 5 -> 6 by F-96: the seeding line's merged / pool-short / seedLost
+     counts. */
+  "test/spineSeeding.test.ts": 6,
+  /* G-30: self-resuming runs, abort on a refused partial, notification hook, id suffixing. */
+  "test/generateForaysHandsFree.test.ts": 20,
+  /* +1 audit finding E (2026-09-12): this package's `isGeneratedDraft` agrees
+     with player/foray-resolve.js over the whole truth table; 8 -> 9. */
+  "test/finalizeForay.test.ts": 9,
+  /* The `data/segment-sources.json` row a minted tier-2 segment needs, and the
+     refusals that stop this pipeline writing one it cannot vouch for — an
+     unknown DAI verdict above all, which ADR-0007 gates seek precision on. */
+  "test/audioSourceLookup.test.ts": 9,
   "test/stageTiming.test.ts": 5,
+  /* WS-D2 streaming publish (generation fix plan 2026-09-09): the partial
+     candidate written after each act, the driver's per-act rewrite, and the
+     private status read path. */
+  /* Requirements §8.10 raised this from 4: the driver passes the checkpoint
+     key as `sessionId`, which is the only thing that arms EPISODE_BUDGET_USD. */
+  "test/generateForays.test.ts": 5,
+  "test/generationStatus.test.ts": 4,
+  "test/partialCandidate.test.ts": 6,
+  /* F-79: a partial candidate is judged on the PROJECTED whole for the
+     share-of-whole rules (M4, D2-end, D4-share) and on itself for every
+     monotone rule — run 5 was aborted on an M4 share computed over a one-act
+     slice. Q-04 retired D3 and D5's interquartile clause and F-101 took them
+     out of the table. */
+  /* RAISED 7 -> 8 by F-96: a merged beat's clip is projected once. */
+  "test/partialProjection.test.ts": 8,
+  /* F-101 — the generalising guard the stale table needed. It drives the REAL
+     `tools/foray/check-forays.mjs` over mutated fixtures in a child process
+     (Vitest cannot import the `.mjs` on a path with a space) and asserts every
+     pattern in `PROJECTED_RULE_PATTERNS` matches a line the checker actually
+     emits, so a renamed or retired rule turns the table red instead of
+     silently reclassifying a share-of-whole rule as monotone. */
+  "test/partialProjectionRules.test.ts": 3,
+  /* F-87 (#315): a tape window whose cut ends past the episode's declared
+     duration is refused at sourcing (`past-duration`), never clamped; the
+     trace carries both numbers; the projection inherits the rule. Fixture is
+     run 7 attempt 3's 2375.72 s cut on a 2071 s episode. */
+  "test/pastDuration.test.ts": 7,
+  /* WS-F robustness (docs/curation/generation-fix-plan-2026-09-09.md), closing
+     F-03, F-04, F-11, F-13, F-17 and F-18 from generation run 1:
+       checkpoint / runPipelineCheckpoint — per-stage resume inside ONE Foray,
+         the store's own rules and then the whole pipeline driven through it
+         (a narration failure costs the narration, not the spine);
+       spineStructure — the §4.3->§4.4 gate, with run 1's real 3-act / 6-slot /
+         31-beat spine as the fixture it must keep passing;
+       researchTopicFilter — the `Ai` leak, asserted against the REAL semantic
+         index and taxonomy because the leak is a property of that data;
+       models — one file holds every model id, plus the grep that fails when a
+         new literal appears anywhere in src/;
+       generateForaysArgs — the --budget-usd flag and what it actually moves. */
+  "test/checkpoint.test.ts": 14,
+  "test/generateForaysArgs.test.ts": 10,
+  "test/models.test.ts": 7,
+  "test/researchTopicFilter.test.ts": 17,
+  /* F-59 (docs/curation/generation-run-2026-09-09.md): the topic resolver's
+     fusion magnet. Run 2's production-ML prompt resolved to
+     `engineering/energy-fusion` on two words — `engineering`, free to every
+     child of that root, and `systems`, from the label — and §4.5's lineage gate
+     then refused every AI show in the archive. Asserted against the REAL
+     taxonomy and semantic index, with run 2's own topic text, plus run 1's as
+     the resolution the fix must not move. */
+  "test/resolveTopic.test.ts": 14,
+  /* F-51 raised this from 10: `narrate:<act>:<slot>` keys, so a run that dies
+     partway through an act re-pays only for the slots that never landed, and
+     the per-Foray budget cap the batch path left inert by never passing a
+     sessionId. */
+  "test/runPipelineCheckpoint.test.ts": 13,
+  /* G-32: acts narrated in parallel, stitch and continuity in act order. Seven
+     cases latch the writer to PROVE overlap (acts start while act 1 is held,
+     the cap holds, a failure still banks in-flight acts and never starts
+     queued ones); seven drive the real pipeline — act 1 ready while later acts
+     are held, boundary order under reversed completion order, the checkpoint
+     key set identical to the serial pipeline's, a crash resumed by narrating
+     only the missing acts, the cap at 1 and at 4, and the report's per-act
+     timings. */
+  "test/parallelActs.test.ts": 14,
+  /* Raised from 14 by WS-L (F-63): the per-act seeded-beat floor — enforced only
+     when the research map quoted windows, never satisfiable by an invented
+     episode id, and thrown rather than reported. */
+  "test/spineStructure.test.ts": 19,
+  /* F-86: the spine is re-asked once with the structural violations named
+     before the run fails — pipeline banks only the passing spine, the
+     re-ask is metered and reported, `SPINE_STRUCTURAL_REASKS` caps it. */
+  "test/spineReask.test.ts": 7,
+  /* WS-C: §4.5's topic gate (taxonomyFamily.ts). A family is a node's LINEAGE
+     in data/taxonomy.json — itself, its ancestors, its descendants — not a
+     shared first path segment, which would put every sibling trade in scope of
+     every other. Unit-tested against the REAL committed catalogue files,
+     pinning relationships rather than counts, because the finding it closes
+     (F-29) is precisely two real files that were never joined. */
+  "test/taxonomyFamily.test.ts": 18,
+  /* F-91: supply-aware topic resolution (topicSupply.ts). `measureTopicSupply`
+     counts, per candidate topic, the archive entries and pool segments the
+     lineage gate admits — through the SAME predicates §4.5 applies — and
+     `chooseTopic` lets that count break a tie the word scorer could not,
+     within MIN_TOPIC_SUPPLY and TOPIC_SUPPLY_SCORE_FLOOR; no supply anywhere is
+     a `no-supply` verdict the pipeline stops on before the spine. Run 8's two
+     prompts are replayed against the REAL taxonomy and semantic index. */
+  "test/topicSupply.test.ts": 19,
+  /* WS-B veracity metrics (generation fix plan 2026-09-09): the grounded-quote /
+     attribution-stability / tape-relevance metrics and the publish gate, plus
+     the process-wide token-usage collector every Anthropic builder feeds. */
+  "test/usageTracking.test.ts": 4,
+  /* F-50/F-51 raised this from 31: `unverifiedPages` (the count the publish
+     gate now refuses on, replacing writeNarration's throw) and
+     `purposeRevisedPages` (reported, never gated). */
+  /* RAISED 43 -> 47 by F-101: `computeFirstAttemptPassRates` emits the pages
+     and beats units separately and declares which the legacy scalar carries;
+     `computeListeningShares` says its denominator in the field name. */
+  "test/veracityMetrics.test.ts": 47,
+  /* WS-A evidence-first narration (generation fix plan 2026-09-09): the
+     per-beat evidence pack (tape cue window + up to three retrieved print
+     passages, cached by claim hash) and the mechanical narration rules run 1's
+     writer kept breaking — every fixture in the second suite is a span,
+     publication or sentence a page actually shipped in that run. */
+  /* F-60 raised this from 19: an empty retrieval for a page that CARRIES
+     content is asked once more with the purpose stripped to its distinctive
+     nouns, cached under that second query's own key, and a cached emptiness
+     stops being a cache hit after 24 hours. G-35 raised it from 27: the two
+     queries now run concurrently (latched retriever proves the overlap, first
+     non-empty answer wins) and F-77 says what emptiness may be cached — only a
+     confirmed "two queries, nothing", for EVIDENCE_EMPTY_TTL_MS. */
+  "test/gatherEvidence.test.ts": 37,
+  /* G-35's prefetch stage (evidencePrefetch.ts): every page's evidence in one
+     bounded fan-out after `source`, memoised so writeNarration makes zero
+     retrieval calls; the concurrency cap is proven with latches. */
+  "test/evidencePrefetch.test.ts": 7,
+  "test/narrationRules.test.ts": 21,
+  /* F-81 (generation run 5): a Frame's source is the tape it introduces.
+     The `{kind: "tape", segmentId, quote?}` source shape, the mechanical
+     gate on it (window held, echo spoken in the window under the anchor
+     canonicalisation, connective modes only), the verifier handed the
+     window as the holding document, the run-5 Frame text accepted end to
+     end, and — pinned as unchanged — a source-less page that states a fact
+     is still refused. One named mutation per test. */
+  "test/frameTapeSource.test.ts": 24,
+  /* F-82 (generation run 6): a connective page cites the adjacent tape it
+     restates. A page holds the windows of BOTH segments beside it in play
+     order (across slot edges), the prefetch stage keys on them so the hit
+     rate stays 1, a content beat with no print but a neighbouring window
+     is written as a Hinge from that tape instead of degraded, a phrase from
+     the previous segment cited to the next one is refused and the note
+     names the window that says it, the four run-6 pages are accepted end
+     to end, `tapeCitedPages` counts, and — pinned as unchanged — a page
+     with no source that states a fact is still refused. One named
+     mutation per test. */
+  /* LOWERED 19 -> 17 by F-100. The orchestrator half of this suite drove
+     the per-slot path with a scripted per-page writer; it now drives the
+     act path with the stub builders, which is what production and
+     `--dry-run` run. Two tests went rather than moved, both because the
+     rule they pinned was superseded before F-100 and only the test
+     survived: "a content page that DID find print stays a Carry" (F-97
+     assigns a seam's mode AFTER writing, from what it rests on, so no one
+     can state the mode before the verifier answers — `isTapeClaim`'s mode
+     rule is pinned directly in frameTapeSource.test.ts), and "a content
+     page with neither print nor tape beside it is still degraded unwritten"
+     (F-60's degrade-before-the-first-call was part of the deleted path).
+     Everything else in the F-82 finding — both windows held and positioned,
+     a phrase cited to the wrong window refused with the right one named,
+     the four run-6 pages accepted end to end — is asserted unchanged. */
+  "test/hingeTapeSource.test.ts": 17,
+  /* F-84: a tier-2 cut at a start the pool holds reuses the pool's row and
+     nothing is minted; the runtime follows the reused cut; the committed row
+     wins an id tie in the runtime clock; an unrelated start still mints; a
+     refused pool cut refuses the candidate rather than minting beside it;
+     publish refuses the suffixed sibling, the same-start well-formed id and
+     the same-id different cut, accepts the idempotent twin, and finalize
+     throws before the checkers; and the half-second start rule is pinned in
+     numbers. One named mutation per test. */
+  /* RAISED 11 -> 17 by F-98: a draft mint superseded by a longer cut at the
+     same start — when sourcing may re-cut a committed row, when F-84 reuse
+     stands, and what the collision gate admits. */
+  "test/mintDedupe.test.ts": 17,
+  /* F-88 (run 7 attempt 4): nine thesis Hinges kept unverified because
+     print retrieval finds nothing for a generalisation. Synthesis
+     verification — the Hinge is written from the Foray's own verified pages
+     and verified as a fair generalisation of them, recorded as
+     `verification: { kind: "synthesis", restsOn, attempt }`; a Hinge naming
+     a case no verified page covers stays unverified (the mutation test); a
+     Patch never goes through it; the gate counts `synthesisVerifiedPages`
+     separately and treats them as verified. One named mutation per test. */
+  /* LOWERED 17 -> 8 by F-100. F-88 shipped as a SEPARATE PASS over pages
+     the per-page path had degraded to `unverifiedReason: "no-evidence"`.
+     Q-03/F-97 superseded it — the act writer is handed the earlier acts'
+     verified pages as documents and the act verifier answers which act
+     sources each seam rests on, in the call it was already making — and
+     after Q-03 the pass could not run at all, because the act path never
+     emits `no-evidence`. The pass is deleted and its nine tests with it.
+     What remains, and is what F-97 consumes: which pages may be ground
+     (never a page that itself rests on pages; never a source-less one),
+     the id and document conventions the writer, the verifier and
+     `verification.restsOn` share, and the gate counting these pages
+     separately while treating them as verified. The end-to-end property —
+     ground reaching the act and a seam resting on `p<n>` — is asserted in
+     actNarration.test.ts, which is unchanged at 38. */
+  "test/synthesisVerify.test.ts": 8,
+  /* Q-02/Q-03/Q-05 (listening-quality deck; ledger F-95): narration written
+     per ACT and verified per BEAT. A four-beat, two-clip act passes on all
+     four in two calls with one page per seam; a mutation dropping a beat from
+     the prose is red (the verifier names it, the retry edits the act, the
+     seam is kept unverified for the gate); an Intro before each clip names the
+     show, is absent when the host introduces the guest in the clip, is one
+     clause for a same-episode follow-on, and is refused in code when it
+     repeats the clip's first sentences; the listening KPIs
+     (`narrationPagesPerSeam`, `narrationShare`, `tapeShare`, `introRestates`,
+     `narrationCallsPerAct`, a beat-level `firstAttemptPassRate`); the seam
+     plan and Intro rules; the two prompts; the stitcher's one item per seam.
+     F-97 (Q-03 pass 2, after run 9 did not converge): support is act-scoped
+     — a bridge seam resting only on the previous clip's window passes and
+     its sources are what the verifier answered; the mode is assigned after
+     writing (a tape-only bridge is a Frame, valid under the per-page rules);
+     a clean Intro survives a retry for another seam (frozen, verbatim,
+     pagesDropped 0); a contested-record assertion is refused with the
+     sentence quoted; the verifier re-checks only what changed; F-88's ground
+     reaches the act; the validator's zero-source rules are act-scoped.
+     One named mutation per test. */
+  "test/actNarration.test.ts": 52,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */

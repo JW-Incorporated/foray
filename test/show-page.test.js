@@ -64,10 +64,57 @@ const PAGE_IDS = [
   "sh-note", "sh-results", "browse-all-link",
 ];
 
+/* `#view`, extended with the two descendants renderShow paints into by
+   attribute rather than by id (issue #687).
+
+   WHY THIS APPEARED. The show page's episode list used to be composed inline
+   into `#view`'s own innerHTML and only later REPLACED via
+   `[data-show-episodes]`; the first paint was therefore visible to a stub
+   that understood nothing but `#id`. #687 moved that first paint into the
+   container too — one writer for every state of that region, including
+   "loading" — so a harness that cannot resolve `#view [data-show-episodes]`
+   now sees an empty page and every row assertion in this file fails at once.
+
+   `view()` below splices the container's content back into the marker's place
+   rather than appending it, because several tests here assert ORDER (the
+   forays footer must come after the last episode row), and a helper that
+   concatenated would answer those questions wrongly while looking right. */
+function makeViewEl() {
+  const el = makeEl("div");
+  el.id = "view";
+  el.querySelector = (sel) => {
+    const s = String(sel);
+    if (s.includes("[data-show-episodes]")) {
+      if (!el.innerHTML.includes("data-show-episodes")) return null;
+      if (!el._episodes) el._episodes = makeEl("div");
+      return el._episodes;
+    }
+    if (s.includes("[data-show-count]")) {
+      if (!el.innerHTML.includes("data-show-count")) return null;
+      if (!el._count) el._count = makeEl("p");
+      return el._count;
+    }
+    /* The in-page episode search box is deliberately not modelled — that is
+       test/show-page-search.test.js's subject, and null here exercises
+       renderShow's own guard. */
+    return null;
+  };
+  /* A fresh render throws the old nodes away, as innerHTML does in a browser;
+     without this, a second renderShow() in one test would paint into the
+     PREVIOUS render's container and this harness would hide exactly the
+     leftover-paint class of bug #687 is about. */
+  let html = "";
+  Object.defineProperty(el, "innerHTML", {
+    get() { return html; },
+    set(v) { html = v; el._episodes = null; el._count = null; },
+  });
+  return el;
+}
+
 function mount({ seed = {}, boot = false } = {}) {
   const store = new Map(Object.entries(seed).map(([k, v]) => [k, String(v)]));
   const byId = new Map(PAGE_IDS.map((id) => {
-    const el = makeEl("div");
+    const el = id === "view" ? makeViewEl() : makeEl("div");
     el.id = id;
     return [id, el];
   }));
@@ -76,6 +123,19 @@ function mount({ seed = {}, boot = false } = {}) {
   const ctx = {
     console: { ...console, warn() {}, error() {} },
     fetch: (url) => {
+      /* S-06 (docs/search-plan.md): `renderShow`'s not-found path is no longer
+         synchronous. An id the curated catalogue does not hold is now asked of
+         `api/shows/search?id=`, because `state.breadthShowCache` is
+         session-only and every shared link, reload and restored tab used to
+         render "Show not found." for a perfectly real breadth show (#560 item
+         7). So this stub has to answer that one request, or a not-found test
+         would hang on "Loading show…" forever and pass or fail for the wrong
+         reason. `show: null` is the endpoint's honest "this id is in neither
+         catalogue" answer — a 200, deliberately, so the client can tell it
+         apart from a dead endpoint. */
+      if (String(url).includes("api/shows/search")) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => ({ show: null, degraded: false }) });
+      }
       if (!boot) return new Promise(() => {});
       const file = path.join(ROOT, String(url));
       const ok = String(url).startsWith("data/") && fs.existsSync(file);
@@ -96,7 +156,12 @@ function mount({ seed = {}, boot = false } = {}) {
       addEventListener() {}, createElement: (t) => makeEl(t),
       querySelector: (sel) => {
         const s = String(sel);
-        return s.startsWith("#") ? byId.get(s.slice(1)) ?? null : null;
+        if (!s.startsWith("#")) return null;
+        const rest = s.slice(1);
+        const space = rest.indexOf(" ");
+        if (space === -1) return byId.get(rest) ?? null;
+        const root = byId.get(rest.slice(0, space));
+        return root ? root.querySelector(rest.slice(space + 1)) : null;
       },
       querySelectorAll: () => [],
     },
@@ -119,7 +184,16 @@ function mount({ seed = {}, boot = false } = {}) {
   return {
     ctx, evalIn, store, body,
     state: evalIn("state"),
-    view: () => byId.get("view").innerHTML,
+    /* WHAT IS ON SCREEN, in document order — see makeViewEl's header. */
+    view: () => {
+      const el = byId.get("view");
+      const inner = el._episodes ? el._episodes.innerHTML : "";
+      return el.innerHTML.replace("<div data-show-episodes></div>", `<div data-show-episodes>${inner}</div>`);
+    },
+    countLabel: () => {
+      const el = byId.get("view");
+      return el._count ? el._count.textContent : null;
+    },
   };
 }
 
@@ -338,21 +412,37 @@ test("every discover-pool episode for the show renders as a playable ep-row", as
 /* 2. NOT-FOUND STATE                                                    */
 /* ==================================================================== */
 
-test("an unknown show_id renders 'Show not found', not a crash", () => {
+test("an unknown show_id renders 'Show not found', not a crash", async () => {
   /* Mirrors renderPlaylistDetail's existing "Playlist not found" guard —
      asserted with a synthetic pool so this test does not depend on the
      network/boot path at all.
 
+     ASYNC SINCE S-06 (docs/search-plan.md), and the change is the point: an
+     id the curated catalogue does not hold is no longer assumed unknown. It
+     is asked of `api/shows/search?id=` first, because `state.breadthShowCache`
+     is session-only and a shared link, a reload or a restored tab used to say
+     "Show not found." for a perfectly real breadth show (#560 item 7). So the
+     sequence is now loading -> confirmed miss -> not-found copy, and this test
+     asserts BOTH ends of it: the interim state must not already claim the show
+     is missing, and the final state must still be the honest empty one.
+
      MUTATION: remove the `if (!show)` guard from renderShow. This throws
-     (reading .title off null) instead of rendering the not-found copy, and
-     the test fails with an uncaught exception rather than a clean assertion. */
+     (reading .title off null) instead of rendering either state.
+     MUTATION 2: have `resolveMissingShow` render "Show not found." before the
+     lookup resolves. The interim assertion below goes red — and a listener
+     opening a valid shared link would see "not found" flash before their
+     show appeared. */
   const m = mount();
   m.state.catalog = { shows: [] };
   m.state.discover = { items: [] };
   m.state.taxonomy = { nodes: [] };
   m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+  m.ctx.location.hash = "#/show/this-show-does-not-exist";
 
   assert.doesNotThrow(() => m.ctx.renderShow("this-show-does-not-exist"));
+  assert.ok(!m.view().includes("Show not found"),
+    "the interim state must not claim the show is missing before the lookup answers");
+  await new Promise((r) => setTimeout(r, 0));
   const html = m.view();
   assert.ok(html.includes("Show not found"), `expected a not-found message, got: ${html}`);
   assert.strictEqual(rowCount(html), 0, "must render zero episode rows for an unknown show");
@@ -363,13 +453,38 @@ test("an unknown show_id renders 'Show not found', not a crash", () => {
 /*     episode list wired in yet — see kanban t_567b570f)                */
 /* ==================================================================== */
 
-test("a breadth-tier show (found via search, zero curated episodes) shows an honest 'fetching' state, not an empty/broken page", () => {
-  /* MUTATION: drop the `isBreadthTier` branch from renderShow so a breadth
-     show with zero discover-pool episodes falls through to the curated-tier
-     "No episodes... right now" copy. That copy implies the show is empty,
-     which is false for a breadth-tier show whose real episode list Stage 3b
-     (t_567b570f) hasn't wired in yet — this test pins the distinct, honest
-     copy the card's own constraint requires. */
+/* THESE TWO TESTS CHANGED SUBJECT ON 2026-09-14, and the change is the point
+   rather than a workaround for one.
+
+   They used to pin that a BREADTH show and a CURATED show with zero
+   discover-pool episodes get DIFFERENT copy — "Fetching this show's episodes
+   — 4a is adding full episode lists for shows outside its curated picks"
+   versus "No episodes from this show are in 4a's catalogue right now".
+
+   Both strings are gone. The founder deleted them on sight (standing
+   instruction, given twice: "don't blame it on 4a"), and issue #687 is the
+   defect they caused: the first was painted once, synchronously, before the
+   fetch resolved, and two of the three terminal outcomes never revisited it —
+   so it sat on screen contradicting a subtitle that said the load had failed.
+
+   THE DISTINCTION ITSELF WENT WITH THEM, deliberately. `tier` is a fact about
+   which of our two ingestion paths found the show. A listener cannot see it,
+   cannot act on it, and does not know what a tier is — encoding it in the
+   empty state is how "4a's wider catalogue" ended up on a phone screen. The
+   honest distinction is not between two KINDS OF SHOW before the fetch; it is
+   between the OUTCOMES of the fetch, and that is what the region now models
+   (`loading | loaded | empty | failed`, one writer — see
+   test/show-episode-load-states.test.js, which owns those four).
+
+   What survives here, because it is still true and still worth pinning, is
+   what these tests were really protecting: a breadth show_id RESOLVES rather
+   than 404ing, and neither kind of show claims to be empty while its fetch is
+   still in flight. */
+
+test("a breadth-tier show (found via search, zero curated episodes) resolves and reports loading, not an empty/broken page", () => {
+  /* MUTATION: remove `state.breadthShowCache` from `showById`'s lookup, so a
+     breadth show_id falls through to the not-found path. This fails, and a
+     shared link to any non-curated show 404s. RUN: failed as named. */
   const m = mount();
   m.state.catalog = { shows: [] }; // not in the curated set
   m.state.discover = { items: [] };
@@ -383,16 +498,22 @@ test("a breadth-tier show (found via search, zero curated episodes) shows an hon
   const html = m.view();
   assert.ok(html.includes("Deep Sea Engineering Hour"), "must render the breadth show's title");
   assert.ok(!html.includes("Show not found"), "a breadth-tier show_id must resolve, not 404");
-  assert.ok(!html.includes("No episodes from this show are in 4a's catalogue right now"), "must NOT use the curated-tier empty copy, which implies the show has none");
-  assert.ok(html.toLowerCase().includes("fetching"), "must show an honest in-progress state instead");
-  assert.strictEqual(rowCount(html), 0, "no episode rows yet — Stage 3b (t_567b570f) wires the real list in separately");
+  assert.match(html, /Loading episodes/, "an in-flight fetch says it is loading");
+  assert.ok(!/no episodes/i.test(html),
+    "…and must NOT claim the show is empty while the fetch is still in flight");
+  assert.strictEqual(rowCount(html), 0, "no episode rows until the endpoint answers");
 });
 
-test("a curated-tier show with genuinely zero discover-pool episodes keeps its original empty-state copy (regression guard)", () => {
-  /* MUTATION: remove the `isBreadthTier` condition entirely so EVERY
-     zero-episode show gets the breadth "fetching" copy. This test catches
-     that regression: a curated show is not "still loading," it genuinely
-     has none, and must keep saying so. */
+test("a curated-tier show with genuinely zero discover-pool episodes does not claim to be empty before the fetch answers", () => {
+  /* THE REGRESSION THIS GUARDS IS NOW THE OPPOSITE ONE. It used to guard
+     against a curated show being told it was "still loading" when it was
+     genuinely empty. Under the four-state model that is no longer a risk from
+     the tier — but the mirror-image lie is: painting an empty state before
+     the fetch has answered, which is a claim about a result nobody has yet.
+
+     MUTATION: initialise `loadState` to "empty" instead of "loading". This
+     fails — the page declares the show empty while its request is in flight.
+     RUN: failed as named. */
   const m = mount();
   m.state.catalog = {
     shows: [{ show_id: "curated-no-eps", title: "Curated No Episodes Show", artwork_url: null, taxonomy_node_ids: [], editorial_note: null }],
@@ -403,13 +524,40 @@ test("a curated-tier show with genuinely zero discover-pool episodes keeps its o
 
   m.ctx.renderShow("curated-no-eps");
   const html = m.view();
-  assert.ok(html.includes("No episodes from this show are in 4a's catalogue right now"), "curated-tier zero-episode state must be unchanged");
-  assert.ok(!html.toLowerCase().includes("fetching"), "must not show the breadth-tier in-progress copy for a curated show");
+  assert.match(html, /Loading episodes/, "the in-flight state is 'loading' for a curated show too");
+  assert.ok(!/No episodes yet/.test(html), "the empty state belongs to a finished fetch, not a pending one");
+  assert.strictEqual(m.countLabel(), "Loading episodes…",
+    "and the subtitle agrees, because one function writes both");
 });
 
-test("route() dispatches #/show/:id to renderShow, matching the #/playlist/:id pattern", () => {
+test("no user-facing string on the show page explains 4a's catalogue to the listener", () => {
+  /* The founder's standing instruction, given twice, asserted where it is
+     easiest to regress: the two show-page states that used to carry it.
+     MUTATION: restore either deleted string to renderShow. This fails. RUN:
+     failed as named, for both. */
+  const m = mount();
+  m.state.catalog = {
+    shows: [{ show_id: "curated-no-eps", title: "Curated No Episodes Show", artwork_url: null, taxonomy_node_ids: [], editorial_note: null }],
+  };
+  m.state.discover = { items: [] };
+  m.state.taxonomy = { nodes: [] };
+  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+
+  m.ctx.renderShow("curated-no-eps");
+  const onScreen = `${m.view()} ${m.countLabel()}`;
+  for (const re of [/4a is adding/i, /outside its curated picks/i, /wider catalogue/i, /check back/i]) {
+    assert.ok(!re.test(onScreen), `nothing on screen may match ${re}`);
+  }
+});
+
+test("route() dispatches #/show/:id to renderShow, matching the #/playlist/:id pattern", async () => {
   /* Pins the wiring itself, not just renderShow in isolation — a route()
      regex that stops matching would leave renderShow correct and unreachable.
+
+     ASYNC SINCE S-06: see the not-found test above for why the copy now
+     arrives one turn later. What this test is about is unchanged — that
+     route() reached renderShow at all — so it waits for the same turn rather
+     than asserting a different thing.
 
      MUTATION: delete the `#/show/` branch from route(). This test fails
      because renderHome (the fallback) runs instead and the view never
@@ -424,6 +572,7 @@ test("route() dispatches #/show/:id to renderShow, matching the #/playlist/:id p
 
   m.ctx.location.hash = "#/show/unknown-show";
   m.ctx.route();
+  await new Promise((r) => setTimeout(r, 0));
   assert.ok(m.view().includes("Show not found"), "route() must dispatch to renderShow for #/show/:id");
 });
 
@@ -633,9 +782,9 @@ test("renderEpisode links its show-name text to #/show/:show_id when the show jo
 /* ==================================================================== */
 
 test("similarShows ranks by shared taxonomy_node_ids count, against the real catalogue", async () => {
-  /* lex-fridman-podcast (engineering/energy-fusion only) against the real
+  /* titans-of-nuclear (engineering/energy-fusion only) against the real
      220-show catalogue, not a synthetic fixture — proves the join works on
-     what's actually shipped. omega-tau shares 1 node with lex (energy-fusion)
+     what's actually shipped. omega-tau shares 1 node with titans-of-nuclear (energy-fusion)
      same as titans-of-nuclear, but this only pins that every returned show
      actually shares at least one node — the mixed-count ranking is pinned
      with a synthetic fixture below where the counts are controlled.
@@ -644,10 +793,10 @@ test("similarShows ranks by shared taxonomy_node_ids count, against the real cat
      The "every result must overlap" assertion below fails immediately. */
   const m = await mountBooted();
   const catalog = readJson("data/catalog-client.json");
-  const show = catalog.shows.find((s) => s.show_id === "lex-fridman-podcast");
+  const show = catalog.shows.find((s) => s.show_id === "titans-of-nuclear");
   m.state.catalog = catalog;
   const results = m.ctx.similarShows(show);
-  assert.ok(results.length > 0, "fixture assumption: lex-fridman-podcast must have real overlapping shows");
+  assert.ok(results.length > 0, "fixture assumption: titans-of-nuclear must have real overlapping shows");
   const wanted = new Set(show.taxonomy_node_ids);
   for (const r of results) {
     assert.ok(r.show_id !== show.show_id, "must never include the show itself");
@@ -727,12 +876,12 @@ test("renderShow renders a 'Similar shows' section linking to each match, via th
      template. The heading and href assertions both fail. */
   const m = await mountBooted();
   const catalog = readJson("data/catalog-client.json");
-  const show = catalog.shows.find((s) => s.show_id === "lex-fridman-podcast");
-  m.ctx.renderShow("lex-fridman-podcast");
+  const show = catalog.shows.find((s) => s.show_id === "titans-of-nuclear");
+  m.ctx.renderShow("titans-of-nuclear");
   const html = m.view();
   assert.ok(html.includes("Similar shows"), "must render the 'Similar shows' heading");
   const expected = m.ctx.similarShows(show);
-  assert.ok(expected.length > 0, "fixture assumption: lex-fridman-podcast must have real similar shows");
+  assert.ok(expected.length > 0, "fixture assumption: titans-of-nuclear must have real similar shows");
   for (const s of expected) {
     assert.ok(html.includes(`href="#/show/${encodeURIComponent(s.show_id)}"`), `must link to ${s.show_id}`);
   }
@@ -959,9 +1108,17 @@ test("the vouch row renders on the Shows page and nowhere on Home, so it cannot 
      starvation actually turns on and this harness has no layout engine. The
      pixel evidence lives in the PR.
 
-     MUTATION: add `${vouchForHtml()}` back inside renderHome's `.home`
-     template. The two "must not appear on Home" assertions fail. MUTATION 2:
-     delete `${vouchForHtml()}` from renderAllShows's `above` block. The
+     CUTOVER (U-11, founder override, 2026-09-06, kanban card t_a3f01c8a):
+     Home itself is now always Home v2 (`.home.hv2-home`, no `.cards4` at
+     all — see test/home-information-architecture.test.js and
+     test/home-v2.test.js), so the fixed-height-flex-column starvation this
+     test guards against cannot recur on the retired `.cards4` layout. The
+     sanity check below is updated to Home v2's own shape; the vouch-row
+     absence assertions are unchanged and still the point of this test.
+
+     MUTATION: add `${vouchForHtml()}` back inside renderHomeV2's template.
+     The "must not appear on Home" assertions fail. MUTATION 2: delete
+     `${vouchForHtml()}` from renderAllShows's `above` block. The
      Shows-page assertion fails. */
   const m = await mountBooted();
   assert.ok(
@@ -977,10 +1134,10 @@ test("the vouch row renders on the Shows page and nowhere on Home, so it cannot 
 
   m.ctx.renderHome();
   const home = m.view();
-  assert.ok(home.includes('class="cards4"'), "sanity: .cards4 must still be inside .home");
+  assert.ok(home.includes('class="home hv2-home"'), "sanity: renderHome() must still render Home v2");
   assert.ok(
     !home.includes("fy-vouch"),
-    "the vouch row must NOT be a flex sibling inside .home — that is exactly what collapsed the cards to 0px in #433"
+    "the vouch row must NOT be a flex sibling inside Home — that is exactly what collapsed the cards to 0px in #433"
   );
   assert.ok(
     !home.includes("home-below"),

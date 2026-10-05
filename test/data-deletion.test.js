@@ -128,6 +128,7 @@ class El {
     this.hidden = false;
     this.attributes = {};
     this.style = {};
+    this.dataset = {};
     this._on = new Map();
     this._c = new Set();
     this.classList = {
@@ -403,7 +404,7 @@ async function mount({
 
 /* ================= 1. enumeration, not a list ================= */
 
-test("the shipped source names exactly the 23 cp_ key families the audit found", () => {
+test("the shipped source names exactly the 22 cp_ key families the audit found", () => {
   /* The count is pinned deliberately. 20-not-11 is the whole reason this control
      enumerates instead of carrying a list, and a new key is a privacy-policy
      change as much as a code change — see the next test.
@@ -436,11 +437,43 @@ test("the shipped source names exactly the 23 cp_ key families the audit found",
 
      22 -> 23 on 2026-09-06: `cp_ui_v2`, the U-02 tab-bar flag
      (docs/ui-transition-plan.md, kanban card t_806e5d01) — a local, cosmetic
-     preference, same mechanism as every prior addition here. */
+     preference, same mechanism as every prior addition here.
+
+     23 -> 22 on 2026-09-06 (U-11 cutover, founder override, kanban card
+     t_a3f01c8a): `cp_ui_v2` retired. ui2On() now always returns true and no
+     longer reads or writes the flag — the last legacy screen it gated is
+     gone, so there is nothing left to store. See STATE.md and
+     docs/legal/privacy-policy.md §1's note on the retirement.
+
+     22 -> 23 on 2026-09-06 (V-01, kanban card t_3c0c7e62): `cp_voice`, the
+     narration voice picker's persisted choice. Same mechanism as every prior
+     addition — this count failed first, then the "documented in the privacy
+     policy" test below failed, until privacy-policy.md §1 got the row.
+
+     23 -> 24 on 2026-09-10: `cp_interlude`, the on/off switch for the jingle
+     the player sounds between a Foray's tape segments (player/interlude.js,
+     queue-manager.js §13). A local per-device preference, absent means on.
+     Same mechanism again: this count failed first, then the policy check,
+     until privacy-policy.md §1 got the row.
+
+     24 -> 25 on 2026-09-11: `cp_show_drafts`, the founder's "Show draft
+     Forays" test-track switch (app.js § showDraftsOn; Wyatt: "I can't see
+     these forays in the app"). A local per-device preference, default off,
+     read only in app.js — player/ takes it as an option, never from the
+     store. Same mechanism: this count failed first, then the policy check,
+     until privacy-policy.md §1 got the row.
+
+     25 -> 26 on 2026-09-12: `cp_voice_probe`, K-01's voice-engine measurement
+     switch (app.js § voiceProbeOn; docs/bundled-voice-plan.md K-01). A local
+     per-device preference, default off, read only in app.js — the probe
+     itself (`player/kokoro-probe.js`) takes no flag, because whether to OFFER
+     a 90-second synthesis run is the page's decision, not the player's. Same
+     mechanism as every prior addition: this count failed first, then the
+     policy check, until privacy-policy.md §1 got the row. */
   const families = [...keyFamiliesInSource().keys()].sort();
   assert.strictEqual(
-    families.length, 23,
-    `expected 23 cp_ key families, found ${families.length}:\n${families.join("\n")}`
+    families.length, 26,
+    `expected 26 cp_ key families, found ${families.length}:\n${families.join("\n")}`
   );
   assert.ok(families.includes("cp_foray:"), "the patterned Foray resume key must be found as a family");
   assert.ok(families.includes("cp_pos:"), "the patterned episode-position key must be found as a family");

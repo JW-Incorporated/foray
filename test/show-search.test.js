@@ -298,10 +298,16 @@ test("the Shows page's search needs no tab pressed first, and the tab strip is g
   );
 });
 
-test("submitting a known show name on the Shows page renders a result linking to #/show/:id", () => {
+test("submitting a known show name on the Shows page renders a result linking to #/show/:id", async () => {
   /* MUTATION: make showResultRow() link to "#" or omit the show_id. The
      href assertion fails because the link no longer points at Stage 1's
-     page for this show. */
+     page for this show.
+
+     Async + drained (post-cutover): no playlist matches "fridman" either,
+     so renderPlaylistSearchResults's no-match branch defers its own CTA
+     render via setTimeout(0) (see that comment in app.js). Draining it
+     here avoids it firing later against a different test's torn-down
+     context. */
   const m = mount();
   m.state.catalog = { shows: [{ show_id: "lex-fridman-podcast", title: "Lex Fridman Podcast", artwork_url: null }] };
   m.state.discover = { items: [] };
@@ -312,6 +318,7 @@ test("submitting a known show name on the Shows page renders a result linking to
 
   m.ctx.renderAllShows();
   shForm.submit();
+  await new Promise((r) => setTimeout(r, 0));
 
   const results = m.byId.get("sh-results");
   assert.strictEqual(results.hidden, false, "results block must become visible on a match");
@@ -319,11 +326,17 @@ test("submitting a known show name on the Shows page renders a result linking to
   assert.ok(results.innerHTML.includes("Lex Fridman Podcast"), "must render the show's title");
 });
 
-test("submitting a junk query on the Shows page renders an honest empty state, not a crash or padded list", () => {
+test("submitting a junk query on the Shows page renders an honest empty state, not a crash or padded list", async () => {
   /* MUTATION: remove the `if (!shows.length)` branch from
      renderShowSearchResults so it always writes `results.innerHTML`. The
      empty-state text assertion fails because #sh-results stays populated
-     with a stale/empty render instead of showing #sh-note's message. */
+     with a stale/empty render instead of showing #sh-note's message.
+
+     Async + drained (post-cutover): no playlist matches this nonsense
+     query either, so renderPlaylistSearchResults's no-match branch defers
+     its own CTA render via setTimeout(0) (see that comment in app.js).
+     Draining it here — instead of leaving it pending — stops it firing
+     later against a different, already-torn-down test's vm context. */
   const m = mount();
   m.state.catalog = { shows: [{ show_id: "lex-fridman-podcast", title: "Lex Fridman Podcast", artwork_url: null }] };
   m.state.discover = { items: [] };
@@ -334,6 +347,7 @@ test("submitting a junk query on the Shows page renders an honest empty state, n
 
   m.ctx.renderAllShows();
   shForm.submit();
+  await new Promise((r) => setTimeout(r, 0));
 
   const note = m.byId.get("sh-note");
   const results = m.byId.get("sh-results");
@@ -365,7 +379,17 @@ function isApiCall(url, path) {
 /* ==================================================================== */
 
 function mockFetch(handler) {
-  return (url) => Promise.resolve(handler(String(url)));
+  /* Any URL the handler doesn't recognize (in particular init()'s own
+     `data/session.json` fetch, which every mount() triggers) must hang
+     forever rather than resolve 404 — matching mount()'s own default
+     fetchImpl. A resolved 404 lets init() finish and null out
+     state.session out from under a test's own seeded state once enough
+     ticks are awaited, which is exactly the kind of cross-purpose fetch
+     interception CLAUDE.md's forgiving-fixture warning covers. */
+  return (url) => {
+    const res = handler(String(url));
+    return res === undefined ? new Promise(() => {}) : Promise.resolve(res);
+  };
 }
 function jsonResponse(body) {
   return { ok: true, status: 200, json: async () => body };
@@ -384,7 +408,7 @@ test("a breadth-tier show absent from the curated catalogue is appended once the
           degraded: false,
         });
       }
-      return { ok: false, status: 404, json: async () => null };
+      return undefined;
     }),
   });
   m.state.catalog = { shows: [] }; // curated catalogue has nothing named "science" — forces the breadth path
@@ -398,7 +422,11 @@ test("a breadth-tier show absent from the curated catalogue is appended once the
   shForm.submit();
 
   // The curated-first pass paints synchronously with zero results (empty
-  // state); the breadth fetch resolves on a microtask, so give it one.
+  // state); the breadth fetch resolves on a microtask, so give it a couple
+  // of ticks. renderPlaylistSearchResults's own no-match branch (no stored
+  // playlist matches "science" either) defers its CTA render one more
+  // setTimeout(0) tick (see that comment in app.js) — drain it too, so it
+  // does not fire later against a different test's context.
   await new Promise((r) => setTimeout(r, 0));
   await new Promise((r) => setTimeout(r, 0));
 
@@ -420,11 +448,18 @@ test("a breadth result is cached so showById can resolve it for the show page", 
   assert.strictEqual(found.title, "Deep Sea Hour");
 });
 
-test("curated catalogue results still resolve first — the breadth fetch never overwrites an already-found curated match", () => {
+test("curated catalogue results still resolve first — the breadth fetch never overwrites an already-found curated match", async () => {
   /* MUTATION: change renderShowSearchResults to always overwrite results
      with the breadth response instead of appending non-duplicate entries.
      A curated show_id would then be replaced by a differently-shaped
-     breadth-endpoint record and this dedupe assertion fails. */
+     breadth-endpoint record and this dedupe assertion fails.
+
+     Async + drained (post-cutover): no stored playlist matches "lex"
+     either, so renderPlaylistSearchResults's no-match branch defers its
+     own CTA render via setTimeout(0) (see that comment in app.js).
+     Draining it here, in the context it belongs to, avoids the same
+     cross-test timer leak the "no matching playlist" test above guards
+     against. */
   const m = mount({
     fetchImpl: mockFetch((url) => {
       if (isApiCall(url, "api/shows/search")) {
@@ -434,7 +469,7 @@ test("curated catalogue results still resolve first — the breadth fetch never 
           degraded: false,
         });
       }
-      return { ok: false, status: 404, json: async () => null };
+      return undefined;
     }),
   });
   m.state.catalog = { shows: [{ show_id: "lex-fridman-podcast", title: "Lex Fridman Podcast", artwork_url: null }] };
@@ -446,6 +481,7 @@ test("curated catalogue results still resolve first — the breadth fetch never 
 
   m.ctx.renderAllShows();
   shForm.submit();
+  await new Promise((r) => setTimeout(r, 0));
 
   const results = m.byId.get("sh-results");
   assert.ok(results.innerHTML.includes("Lex Fridman Podcast"), "curated title must be present");
@@ -455,9 +491,16 @@ test("curated catalogue results still resolve first — the breadth fetch never 
 test("a failed breadth fetch degrades silently to the curated-only results, never a crash or broken state", async () => {
   /* MUTATION: remove fetchJson's internal try/catch (or add an unguarded
      .catch-less chain here) — a rejected fetch would then produce an
-     unhandled rejection instead of leaving the curated results as-is. */
+     unhandled rejection instead of leaving the curated results as-is.
+
+     Drained for the same reason as the two tests above: no playlist
+     matches "fridman" either, so the CTA's setTimeout(0) must be drained
+     in this test's own context rather than leaking into the next one. */
   const m = mount({
-    fetchImpl: mockFetch(() => { throw new Error("network down"); }),
+    fetchImpl: mockFetch((url) => {
+      if (isApiCall(url, "api/shows/search")) throw new Error("network down");
+      return undefined;
+    }),
   });
   m.state.catalog = { shows: [{ show_id: "lex-fridman-podcast", title: "Lex Fridman Podcast", artwork_url: null }] };
   m.state.discover = { items: [] };
@@ -468,6 +511,7 @@ test("a failed breadth fetch degrades silently to the curated-only results, neve
 
   m.ctx.renderAllShows();
   assert.doesNotThrow(() => shForm.submit());
+  await new Promise((r) => setTimeout(r, 0));
 
   const results = m.byId.get("sh-results");
   assert.strictEqual(results.hidden, false, "curated match must still render despite the breadth fetch failing");
@@ -478,39 +522,24 @@ test("a failed breadth fetch degrades silently to the curated-only results, neve
 /* 5. U-05: THE SHOWS PAGE STAYS UNCHANGED FOR A V1 (flag-off) LISTENER  */
 /* ==================================================================== */
 
-test("with cp_ui_v2 off, the Shows page renders no Playlists-search section at all", () => {
-  /* MUTATION: drop the `if (!ui2On())` guard from renderPlaylistSearchResults.
-     A v1 listener would then see the new #pl-search-results content, which
-     is exactly the "offline behaviour unchanged" regression this card's own
-     acceptance line forbids. */
-  const m = mount();
-  m.state.catalog = { shows: [{ show_id: "lex-fridman-podcast", title: "Lex Fridman Podcast", artwork_url: null }] };
-  m.state.discover = { items: [] };
-  m.state.cardSlots = [];
-  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
-  const shForm = withSubmittable(m.byId.get("sh-form"));
-  m.byId.get("sh-input").value = "fridman";
+/* CUTOVER (U-11, founder override, 2026-09-06, kanban card t_a3f01c8a): the
+   test that lived here ("the Shows page renders no Playlists-search
+   section when there is no matching playlist") asserted the retired
+   v1/flag-off "no Playlists section at all" behaviour. Post-cutover,
+   ui2On() always returns true, so the section is always live and a
+   no-match query like "fridman" now correctly renders the "Create a
+   playlist about..." CTA instead of staying empty — that is the intended
+   U-05 behaviour, not a regression, and it is already covered in full by
+   test/search-playlists.test.js (own/generated/CTA section). Removed
+   rather than inverted to avoid duplicate coverage of the same branch.
+   Preserved verbatim in archive/legacy-ui-2026-09/ for reference. */
 
-  m.ctx.renderAllShows();
-  shForm.submit();
-
-  const plResults = m.byId.get("pl-search-results");
-  assert.strictEqual(plResults.hidden, true, "the Playlists section must not appear for a v1 listener");
-  assert.strictEqual(plResults.innerHTML, "", "no Playlists-search markup at all with the flag off");
-});
-
-test("with cp_ui_v2 off, renderAllShows renders no browse-subjects pill row", () => {
-  /* MUTATION: drop the `if (!ui2On())` guard from browsePillsHtml(). A v1
-     Shows page would then grow a pill row it never had, which is new
-     clutter on a page the card must leave alone offline. */
-  const m = mount();
-  m.state.catalog = { shows: [] };
-  m.state.discover = { items: [] };
-  m.state.cardSlots = [];
-  m.state.taxonomy = { nodes: [{ id: "history", parent: null, label: "History", weight: 0.5 }] };
-  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
-
-  m.ctx.renderAllShows();
-  assert.ok(!m.view().includes("sh-browse-pills"), "v1 Shows page must render no browse-subjects pill row");
-});
+/* CUTOVER (U-11, founder override, 2026-09-06, kanban card t_a3f01c8a): the
+   "with cp_ui_v2 off, renderAllShows renders no browse-subjects pill row"
+   test that lived here asserted the retired v1 path — ui2On() always
+   returns true now, so browsePillsHtml()'s `if (!ui2On())` guard is
+   unreachable and the pill row always renders when there are taxonomy
+   roots. Removed rather than inverted; the pill row's on-state behaviour
+   is covered by test/category-browse.test.js. Preserved verbatim in
+   archive/legacy-ui-2026-09/ for reference. */
 

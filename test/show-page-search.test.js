@@ -1,10 +1,14 @@
 /* S-06 (kanban t_be4c1793, source: 4a-shows-pipeline-plan.md) — the in-page
  * episode search box on the show page: a real requirement from Wyatt's
  * original ask, not an extra. S-07 (the scoped full-catalogue search
- * endpoint) hasn't shipped yet, so this box runs a local-filter fallback
- * against whatever full-catalogue pages have loaded — labelled explicitly
- * as "searching loaded episodes" per the card's own instruction, rather
- * than silently filtering a partial list and implying completeness.
+ * endpoint) has since shipped and is the primary path; when it fails or
+ * degrades the box runs a local-filter fallback against whatever
+ * full-catalogue pages have loaded — labelled explicitly as "searching
+ * loaded episodes" per the card's own instruction, rather than silently
+ * filtering a partial list and implying completeness. Since 2026-09-13 that
+ * fallback is also the only thing standing between a listener and an
+ * unfindable old episode, because the "Show more episodes" control that used
+ * to page more of the list in is gone — see item 5 below.
  *
  * WHAT THIS PROVES, in order:
  *  1. The search box stays hidden until at least one full-catalogue page
@@ -18,10 +22,15 @@
  *     partial-list-honesty rule applied to search specifically.
  *  4. Once the full list IS fully loaded (no next_cursor left), the search
  *     note drops the partial-scope hedge and just reports the match count.
- *  5. A query with a real match on a page beyond what's loaded (i.e. "page
- *     12") is only findable after that page is loaded — the box does not
- *     fabricate a match it hasn't fetched.
- *  6. Clearing the query restores the full loaded list.
+ *  5. A scoped search leaves NO "Show more episodes" control under its
+ *     results. Added 2026-09-13 with the founder report that removed that
+ *     control: this is the state it could not survive, and the state its own
+ *     suite could not reach because none of those tests typed a query first.
+ *  6. With S-07 unreachable, a query matching a page beyond what's loaded
+ *     ("page 12") finds nothing AND says so. This test used to end by
+ *     clicking "Show more" to load that page; with the control gone, the
+ *     honest thing to pin is the disclosure rather than the recovery.
+ *  7. Clearing the query restores the full loaded list.
  *
  * Harness: same node:vm DOM stub + cursor-aware fetchImpl queue as
  * test/show-page-pagination.test.js, duplicated for the same fixture-scoped
@@ -425,23 +434,65 @@ test("once the full list is fully loaded, the fallback search note drops the par
   assert.match(note.textContent, /1 match/i, `note must still report the match count, got: "${note.textContent}"`);
 });
 
-test('a query matching only a not-yet-loaded page ("page 12"), with S-07 unreachable, is unfindable until that page loads, then finds it', async () => {
-  /* Pins the card's own acceptance criterion phrasing: "the box finds an
-     episode on page 12". Simulated here with two pages (rather than
-     fetching 12 real pages) — the mechanism under test (the fallback path
-     only considers `loaded`) is identical regardless of page count. S-07
-     is unreachable in this test (mount()'s default searchImpl) so the
-     fallback path is what's exercised, matching the card's own instruction
-     to ship the local-filter fallback for exactly this scenario.
+test("the founder's bug, from the other side: a scoped search leaves no Show more control under its results", async () => {
+  /* FOUNDER REPORT, 2026-09-13: "at the bottom of the search results there is
+     a 'Show more episodes' button which tries to do something but fails."
 
-     MUTATION: have filterLoadedEpisodes search some global/cached episode
-     list instead of the `loaded` array passed in. This assertion fails
-     because the page-2-only episode would be findable before page 2 loads. */
-  const page1 = makeEpisodes(100, { titles: Array.from({ length: 100 }, (_, i) => `Common Topic ${i}`) });
-  const page2 = makeEpisodes(20, { offset: 100, titles: ["Deep Cut On Page Two", ...Array.from({ length: 19 }, (_, i) => `Later Topic ${i}`)] });
+     This is the exact state the removed control could not survive. S-07 has
+     answered, so the container is showing `scopedResults` — a server-side
+     search over the show's whole catalogue. Page 1 still carries a cursor, and
+     the old paintMoreButton() consulted only that cursor, so it drew a button
+     underneath results the cursor had nothing to do with. Clicking it fetched
+     a page, appended it to `loaded`, repainted, and repainted the identical
+     search results: real work, no visible outcome.
+
+     MUTATION: restore paintMoreButton() and its wrap. This assertion fails
+     because a cursor-bearing page 1 puts the button back under exactly these
+     search results. The suite that used to own this control
+     (test/show-page-pagination.test.js) could not catch it: none of its tests
+     typed a query first, which is why five green tests sat on top of this. */
+  const loadedPage = makeEpisodes(100, { titles: Array.from({ length: 100 }, (_, i) => `Loaded ${i}`) });
   const m = mount({
-    responses: [pageResponse(page1, { cursor: "cursor-1" }), pageResponse(page2, { cursor: null })],
+    responses: [pageResponse(loadedPage, { cursor: "cursor-1" })],
+    searchImpl: () => Promise.resolve({
+      ok: true,
+      json: async () => ({
+        query: "scoped", show: "show-a",
+        episodes: [{ guid: "far-away", title: "Scoped Only Episode", description_text: "", audio_url: "https://cdn.example.com/far.mp3", duration_seconds: 60, published_at: null }],
+        source: ["live"], degraded: false, error: null,
+      }),
+    }),
   });
+  seedShowAndPool(m.ctx, { show: { show_id: "show-a", title: "Show A", taxonomy_node_ids: [] } });
+
+  m.ctx.renderShow("show-a");
+  await flushMicrotasks();
+
+  const input = m.viewEl.querySelector("[data-show-ep-search-input]");
+  input.type("scoped");
+  await waitForSearchDebounce();
+
+  const container = m.viewEl.querySelector("[data-show-episodes]");
+  assert.ok(container.innerHTML.includes("Scoped Only Episode"), "sanity: the scoped results are what is on screen");
+  assert.strictEqual(m.viewEl.querySelector("[data-show-more]"), null, "no Show more control may sit under a set of search results");
+  assert.ok(!m.viewEl.innerHTML.includes("data-show-more"), "and no Show more markup anywhere in the page");
+});
+
+test('with S-07 unreachable, a query matching a not-yet-loaded page ("page 12") finds nothing, and the note says the search only covered what is loaded', async () => {
+  /* This test used to end by clicking "Show more" to prove the episode became
+     findable once its page arrived. That control is gone (see the test above
+     for why), so the honest thing to pin is what actually happens now, which
+     is a real and deliberate narrowing: when S-07 is down, the fallback can
+     only ever see page 1, and an older episode is simply not findable. That
+     is acceptable ONLY because the box says so rather than reporting a
+     confident "no results" — which is the assertion that matters here.
+
+     MUTATION: drop the `fullyLoaded ? ... : ...` split in paintSearchNote and
+     always use the unhedged wording. The second assertion fails, because a
+     search that covered 100 of an unknown number of episodes would then
+     announce itself exactly like one that had covered the whole show. */
+  const page1 = makeEpisodes(100, { titles: Array.from({ length: 100 }, (_, i) => `Common Topic ${i}`) });
+  const m = mount({ responses: [pageResponse(page1, { cursor: "cursor-1" })] });
   seedShowAndPool(m.ctx, { show: { show_id: "show-a", title: "Show A", taxonomy_node_ids: [] } });
 
   m.ctx.renderShow("show-a");
@@ -451,16 +502,12 @@ test('a query matching only a not-yet-loaded page ("page 12"), with S-07 unreach
   input.type("deep cut on page two");
   await waitForSearchDebounce();
 
-  let container = m.viewEl.querySelector("[data-show-episodes]");
-  assert.ok(!container.innerHTML.includes("Deep Cut On Page Two"), "must not find an episode that hasn't loaded yet");
+  const container = m.viewEl.querySelector("[data-show-episodes]");
+  assert.ok(!container.innerHTML.includes("Deep Cut On Page Two"), "must not fabricate a match it never fetched");
 
-  const btn = m.viewEl.querySelector("[data-show-more]");
-  assert.ok(btn, "Show more control must be present to load page 2");
-  btn.click();
-  await flushMicrotasks();
-
-  container = m.viewEl.querySelector("[data-show-episodes]");
-  assert.ok(container.innerHTML.includes("Deep Cut On Page Two"), "episode must be findable once its page has loaded");
+  const note = m.viewEl.querySelector("[data-show-ep-search-note]");
+  assert.match(note.textContent, /loaded episodes only/i, `the note must disclose the narrowed scope rather than imply a whole-show search, got: "${note.textContent}"`);
+  assert.match(note.textContent, /100 of the full list/i, `and say how much was actually searched, got: "${note.textContent}"`);
 });
 
 test("clearing the query restores the full loaded list", async () => {

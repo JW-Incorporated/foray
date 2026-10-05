@@ -232,37 +232,47 @@ test("playlistMatchesQuery returns false for an empty or whitespace-only query",
 /* 2. generatedPlaylistCandidatesForQuery, PURE — REUSES U-03's GENERATOR */
 /* ==================================================================== */
 
-test("generatedPlaylistCandidatesForQuery reads today's subject queues (state.cardSlots), not a new backend", () => {
-  /* MUTATION: have this function build its own item list instead of
-     reading state.cardSlots — the whole point (D5: "no new backend") is
-     that this is the SAME data U-03's "Playlists for you" already
-     generates, not a fresh computation. */
+test("generatedPlaylistCandidatesForQuery reads the generated interest playlists, not the card slots (F14)", () => {
+  /* MUTATION: have this function read state.cardSlots again — the F14
+     regression (Playlists for you == Episodes for you). A card slot on
+     "tech" must NOT surface as a generated candidate; the interest leaf
+     "history/rome" filled from the discover pool must. */
   const m = mount();
-  m.state.taxonomy = { nodes: [{ id: "history", parent: null, label: "History", weight: 0.5 }] };
-  m.state.cardSlots = [{ slot: 1, branch: "history", role: "top", item: { id: "e1" }, items: [{ id: "e1", title: "Rome", show: "S1" }] }];
-  const cands = m.evalIn("generatedPlaylistCandidatesForQuery")("history");
+  seedV2Empty(m);
+  m.state.taxonomy = { nodes: [
+    { id: "history", parent: null, label: "History", weight: 0.5 },
+    { id: "history/rome", parent: "history", label: "Rome", weight: 0.5 },
+  ] };
+  m.state.interests = { history: 0.5, "history/rome": 0.8 };
+  m.state.discover = { items: [1, 2, 3].map(i => ({ id: "r" + i, title: "Rome " + i, show: "S1", topics: ["history/rome"], release_date: "2026-09-0" + i })) };
+  m.state.cardSlots = [{ slot: 1, branch: "tech", role: "top", item: { id: "e1" }, items: [{ id: "e1", title: "Chips", show: "S2" }] }];
+  const cands = m.evalIn("generatedPlaylistCandidatesForQuery")("rome");
   assert.strictEqual(cands.length, 1);
-  assert.strictEqual(cands[0].id, "subject-history");
-  assert.strictEqual(cands[0].isSubject, true, "must be the same shape subjectQueueById already produces");
+  assert.strictEqual(cands[0].id, "gen-history/rome");
+  assert.strictEqual(cands[0].isGenerated, true, "must be the same shape generatedPlaylists() produces");
+  assert.strictEqual(m.evalIn("generatedPlaylistCandidatesForQuery")("chips").length, 0, "a card slot is not a generated playlist");
 });
 
-test("generatedPlaylistCandidatesForQuery filters to branches whose label matches the query", () => {
-  /* MUTATION: drop the `.filter(...)` call, returning every cardSlot
-     regardless of the query. A "bbq" search would then surface a
-     "Technology" generated candidate. */
+test("generatedPlaylistCandidatesForQuery filters to generated playlists whose title matches the query", () => {
+  /* MUTATION: drop the `.filter(...)` call, returning every generated
+     playlist regardless of the query. A "bbq" search would then surface a
+     "Rome" generated candidate. */
   const m = mount();
-  m.state.taxonomy = {
-    nodes: [
-      { id: "history", parent: null, label: "History", weight: 0.5 },
-      { id: "tech", parent: null, label: "Technology", weight: 0.5 },
-    ],
-  };
-  m.state.cardSlots = [
-    { slot: 1, branch: "history", role: "top", item: { id: "e1" }, items: [{ id: "e1" }] },
-    { slot: 2, branch: "tech", role: "top", item: { id: "e2" }, items: [{ id: "e2" }] },
-  ];
-  const cands = m.evalIn("generatedPlaylistCandidatesForQuery")("hist");
-  assert.deepStrictEqual(cands.map((c) => c.id), ["subject-history"]);
+  seedV2Empty(m);
+  m.state.taxonomy = { nodes: [
+    { id: "history", parent: null, label: "History", weight: 0.5 },
+    { id: "history/rome", parent: "history", label: "Rome", weight: 0.5 },
+    { id: "food", parent: null, label: "Food", weight: 0.5 },
+    { id: "food/bbq", parent: "food", label: "Barbecue", weight: 0.5 },
+  ] };
+  m.state.interests = { "history/rome": 0.8, "food/bbq": 0.7 };
+  const mk = (t, n) => [1, 2, 3].map(i => ({ id: t + i, title: t + i, show: "S", topics: [n], release_date: "2026-09-0" + i }));
+  m.state.discover = { items: mk("rome", "history/rome").concat(mk("bbq", "food/bbq")) };
+  const all = m.evalIn("generatedPlaylists")();
+  assert.strictEqual(all.length, 2, "both interest leaves generate a playlist");
+  const cands = m.evalIn("generatedPlaylistCandidatesForQuery")("barbe");
+  assert.strictEqual(cands.length, 1);
+  assert.strictEqual(cands[0].id, "gen-food/bbq");
 });
 
 test("generatedPlaylistCandidatesForQuery returns nothing for an empty query", () => {
@@ -307,8 +317,12 @@ test("own playlists rank before generated candidates, and a generated one is bad
      indistinguishable, which is exactly what U-03's own badge rule forbids. */
   const m = mount({ seed: { cp_ui_v2: "true" } });
   seedV2Empty(m);
-  m.state.taxonomy = { nodes: [{ id: "history", parent: null, label: "History", weight: 0.5 }] };
-  m.state.cardSlots = [{ slot: 1, branch: "history", role: "top", item: { id: "e2" }, items: [{ id: "e2", title: "Rome Ep", show: "S1" }] }];
+  m.state.taxonomy = { nodes: [
+    { id: "history", parent: null, label: "History", weight: 0.5 },
+    { id: "history/rome", parent: "history", label: "Rome history", weight: 0.5 },
+  ] };
+  m.state.interests = { "history/rome": 0.8 };
+  m.state.discover = { items: [1, 2, 3].map(i => ({ id: "r" + i, title: "Rome " + i, show: "S1", topics: ["history/rome"], release_date: "2026-09-0" + i })) };
   m.store.set("cp_playlists", JSON.stringify([
     { id: "p1", title: "My History Mix", items: [{ id: "e1", title: "Ep", topics: ["history/rome"] }] },
   ]));
@@ -320,7 +334,7 @@ test("own playlists rank before generated candidates, and a generated one is bad
 
   const html = m.byId.get("pl-search-results").innerHTML;
   const ownIdx = html.indexOf("My History Mix");
-  const genIdx = html.indexOf("subject-history");
+  const genIdx = html.indexOf("gen-history/rome");
   assert.ok(ownIdx !== -1 && genIdx !== -1, "both an own and a generated result must be present");
   assert.ok(ownIdx < genIdx, "the own playlist must rank before the generated candidate");
   assert.ok(html.includes("Generated for you"), "the generated candidate must carry the badge");
@@ -468,27 +482,13 @@ test("tapping the CTA does not itself create a playlist — it hands off to #/pl
 /* 5. GATED ON cp_ui_v2 — U-05 SHIPS BEHIND THE FLAG LIKE EVERY OTHER CARD */
 /* ==================================================================== */
 
-test("with cp_ui_v2 off, no Playlists section, no pill row, and no CTA render at all", () => {
-  /* MUTATION: drop any of the three `if (!ui2On()) return ""` /
-     `if (!ui2On()) { ...; return; }` guards this card adds. Each one alone
-     regressing v1's "offline behaviour unchanged" acceptance line. */
-  const m = mount();
-  seedV2Empty(m);
-  m.state.taxonomy = { nodes: [{ id: "history", parent: null, label: "History", weight: 0.5 }] };
-  m.store.set("cp_playlists", JSON.stringify([
-    { id: "p1", title: "History Kick", items: [{ id: "e1", title: "Ep", topics: ["history/rome"] }] },
-  ]));
-  const shForm = withSubmittable(m.byId.get("sh-form"));
-  m.byId.get("sh-input").value = "history";
-
-  m.ctx.renderAllShows();
-  shForm.submit();
-
-  assert.ok(!m.view().includes("sh-browse-pills"), "v1 must render no browse-subjects pill row");
-  const pl = m.byId.get("pl-search-results");
-  assert.strictEqual(pl.hidden, true, "v1 must render no Playlists section");
-  assert.strictEqual(pl.innerHTML, "", "v1 must render no Playlists-search markup, including the CTA");
-});
+/* CUTOVER (U-11, founder override, 2026-09-06, kanban card t_a3f01c8a): the
+   v1/flag-off "no Playlists section, no pill row, no CTA" test that lived
+   here is retired along with cp_ui_v2 — ui2On() always returns true now,
+   so these guards are unconditionally active and there is no v1 path left
+   to assert against. The guarded code itself (the three `if (!ui2On())`
+   checks) is untouched; only the now-unreachable off-state test is gone.
+   Preserved verbatim in archive/legacy-ui-2026-09/ for reference. */
 
 /* ==================================================================== */
 /* 6. RANKING IS PRESENTATION-ONLY — THE CARD'S OWN SCOPE BOUNDARY       */
@@ -525,5 +525,85 @@ test("the full node tools/test-search.mjs battery still passes unchanged (assert
   const SearchEngine = m.evalIn("SearchEngine");
   for (const name of ["interpretQuery", "searchWithRelaxation", "classifyResults", "searchShows", "STRONG_RATIO"]) {
     assert.ok(name in SearchEngine, `SearchEngine must still export ${name}`);
+  }
+});
+
+
+/* ==================================================================== */
+/* 7. ONE SCORED PASS (finding 9, client audit 2026-09-12)              */
+/* ==================================================================== */
+
+test("topicSearchStatus and buildPlaylist score a query ONCE, through the one extracted pass", () => {
+  /* They carried eight identical lines each — the same `interpretQuery`, the
+     same empty guard, the same `poolFiltered()`, the same three-part cache key
+     (query + family mode + `state._interestsGen`), the same miss-then-insert.
+     Two copies of a CACHE KEY is the duplication that bites, because the two
+     functions deliberately SHARE the entry: typing into Search costs nothing
+     once the builder has scored the same query. The day one copy learns about
+     a new input and the other does not, whichever ran first silently answers
+     for the other with the wrong pool — and no test would have said so,
+     because both would still return a plausible answer.
+
+     Asserted as a CALL COUNT on the scorer, which is the only thing that can
+     tell "the second reader used the first's entry" from "the second reader
+     happened to agree".
+
+     MUTATION: give either function its own `JSON.stringify([...])` cache key
+     again with any difference at all (drop `familyMode()`, say). The second
+     call misses, the scorer runs twice, and this goes red. */
+  const m = mount();
+  seedV2Empty(m);
+  m.state.discover = readJson("data/discover.json");
+  m.state.itemTags = readJson("data/item-tags.json");
+  m.state.semantic = readJson("data/semantic-index.json");
+
+  const SearchEngine = m.evalIn("SearchEngine");
+  const real = SearchEngine.searchWithRelaxation;
+  let scored = 0;
+  SearchEngine.searchWithRelaxation = (...args) => { scored++; return real(...args); };
+  try {
+    const status = m.evalIn("topicSearchStatus('meditation')");
+    assert.strictEqual(scored, 1, "the first reader pays for the scan");
+    assert.ok(status && typeof status.status === "string", "and gets a real answer back");
+
+    const built = m.evalIn("buildPlaylist('meditation')");
+    assert.strictEqual(scored, 1, "the second reader is served the first's cache entry");
+    assert.ok(built && typeof built.status === "string");
+
+    /* The other order, so the shared entry cannot be an accident of which
+       function happens to write it. */
+    m.evalIn("buildPlaylist('sleep')");
+    const after = scored;
+    m.evalIn("topicSearchStatus('sleep')");
+    assert.strictEqual(scored, after, "and it works in either order — one key, one entry");
+  } finally {
+    SearchEngine.searchWithRelaxation = real;
+  }
+});
+
+test("a query that says nothing to score never reaches the scorer at all", () => {
+  /* The empty guard, which was the other copied line. `scoredResultsFor`
+     returns null for a query with no groups and no filters, and both callers
+     report that as `status: "empty"` — not as an error, and not as a scan.
+
+     MUTATION: drop the `if (!interp.groups.length && !interp.filters.length)`
+     guard from `scoredResultsFor`. The scorer runs over the whole pool for a
+     query that asked nothing, and the count below goes to 1. */
+  const m = mount();
+  seedV2Empty(m);
+  m.state.discover = readJson("data/discover.json");
+  m.state.itemTags = readJson("data/item-tags.json");
+  m.state.semantic = readJson("data/semantic-index.json");
+
+  const SearchEngine = m.evalIn("SearchEngine");
+  const real = SearchEngine.searchWithRelaxation;
+  let scored = 0;
+  SearchEngine.searchWithRelaxation = (...args) => { scored++; return real(...args); };
+  try {
+    assert.strictEqual(m.evalIn("topicSearchStatus('   ')").status, "empty");
+    assert.strictEqual(m.evalIn("buildPlaylist('   ')").status, "empty");
+    assert.strictEqual(scored, 0, "nothing scored for a query with nothing in it");
+  } finally {
+    SearchEngine.searchWithRelaxation = real;
   }
 });

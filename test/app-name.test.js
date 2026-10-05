@@ -70,12 +70,57 @@ test("the PWA manifest installs under the app name", () => {
   assert.equal(mf.short_name, APP_NAME);
 });
 
-/* KILLED BY: reverting `artist = "4a"` in player/media-session.js. This is the
-   line a car stereo and a lock screen show for narration we recorded ourselves.
-   It is deliberately our name and never a publisher's -- putting a publisher on
-   audio they did not record is the one credit error that module must not make. */
-test("the lock screen credits the app, not a publisher, for our own narration", () => {
-  assert.match(read("player/media-session.js"), /artist = "4a";/);
+/* REWRITTEN BY L-06 (founder feedback F15, 2026-09-12), and the rewrite is the
+   point rather than an accommodation.
+
+   This test used to assert the literal `artist = "4a";` in
+   `player/media-session.js` -- the credit a car stereo and a lock screen showed
+   for narration we recorded ourselves. The half of that rule which still holds
+   is that a line WE wrote never carries a PUBLISHER's name: putting a publisher
+   on audio they did not record is the one credit error that module must not
+   make. The half that did not survive contact with a car is the app's name
+   standing in for the credit. F15, verbatim: the lock screen and the head unit
+   showed only "4a" -- and for a narration line with no `nextItem` and a blank
+   Foray title, "4a" really was BOTH the title and the artist. `media-session.js`
+   §1b is the argument; `narrationCredit()` is the mechanism, and it walks the
+   Foray's title -> the next episode -> the next show and ends at EMPTY, never
+   at the app's name.
+
+   So what is pinned here is now the two things this file has always been for:
+   that the app's name is spelled once in that module rather than scattered as a
+   literal, and that a line of ours is still credited to something of OURS and
+   never to a publisher.
+
+   KILLED BY: inlining "4a" back into either narration branch of
+   `mediaMetadata`, or pointing the jingle/narration credit at `item.show`.
+   `player/media-session.test.js` holds the behavioural half of the same rule
+   (`narrationCredit walks Foray title -> next episode -> next show`); this is
+   the rename surface's own guard, which is why it reads the source. */
+test("the lock screen credits something of OURS, never a publisher, for our own narration", () => {
+  const src = read("player/media-session.js");
+  /* COMMENTS STRIPPED FOR THE NEGATIVE HALF, and the first version of this test
+     did not do it and went red on its own subject file: `media-session.js` §1b
+     QUOTES the old `artist = "4a"` line while explaining why it left. A negative
+     assertion that a prose explanation can trip is a test that punishes writing
+     the argument down, which is the opposite of what this repo wants. */
+  const code = src
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
+  assert.match(src, /export const APP_NAME = "4a";/,
+    "player/media-session.js no longer spells the app name once, as a named constant");
+  assert.match(src, /export function narrationCredit\(/,
+    "the narration/jingle credit ladder is gone -- see media-session.js §1b");
+  /* Both branches take the ladder. A jingle reverting to a publisher's show is
+     exactly the F-89 defect wearing the opposite sign. */
+  const matches = src.match(/artist = narrationCredit\(\{ forayTitle: foray, nextItem \}\);/g) || [];
+  assert.equal(matches.length, 2,
+    "both the jingle and the narration branch must credit through narrationCredit()");
+  /* The negative half, stated as a rule rather than a spelling: nothing may
+     assign the app's name to `artist`. */
+  assert.doesNotMatch(code, /artist = APP_NAME/,
+    '"4a" may not be the artist of anything a listener hears (L-06 / F15)');
+  assert.doesNotMatch(code, /artist = "4a"/,
+    '"4a" may not be the artist of anything a listener hears (L-06 / F15)');
 });
 
 /* KILLED BY: reverting the Android notification title string.
@@ -417,6 +462,12 @@ test("both shell notices name the app", () => {
    all -- it moved OUT of the set this test enumerates, not out of the app.
    See "a removed/missing playlist still renders a page head with a working
    ‹ back link" in test/back-navigation.test.js for its own coverage. */
+/* RAISED 7 -> 8 on 2026-09-12 (S-06, docs/search-plan.md), which is what this
+   count is for: `renderShow`'s not-found path became asynchronous, so
+   `resolveMissingShow` renders a "Loading show…" note while the id lookup is
+   in flight and the existing "Show not found." only after it confirms the
+   miss. Two notes where there was one. The unit rule below applies to the new
+   one exactly as it does to the others. */
 test("no note this app renders into #view capitalises the unit", () => {
   const notes = [
     ...read("app.js").matchAll(
@@ -425,8 +476,8 @@ test("no note this app renders into #view capitalises the unit", () => {
   ].map((m) => m[1]);
   assert.equal(
     notes.length,
-    7,
-    `expected seven one-line #view notes, found ${notes.length}. More is fine -- ` +
+    8,
+    `expected eight one-line #view notes, found ${notes.length}. More is fine -- ` +
       "raise this count so the new one is covered. Fewer means a note was lost " +
       `or reshaped: ${notes.join(" | ")}`
   );
@@ -477,33 +528,48 @@ test("the delete-data sheet names the app", () => {
   assert.equal(m[1], APP_NAME);
 });
 
-/* THE PLAYLIST-SHORTFALL COPY: five app-sense uses across four lines, all of
-   them about the CATALOGUE (what the product has today), none about a
+/* THE PLAYLIST-SHORTFALL COPY: the app-sense uses in this feature are all
+   about the CATALOGUE (what the product has today), never about a
    stitched-audio unit -- a playlist part was never "in a foray"; there is no
    foray anywhere in this feature. Judged individually and they all came out the
    same way, which is why they are one test.
 
-   FIVE, NOT FOUR. `app.js:1170` says the name TWICE in one sentence ("saved
-   before ... kept episode details" and "what ... has today"), and the KNOWN GAP
-   record this file used to carry quoted that line as ALREADY half-renamed. It
-   was not: on `main` both halves said "Foray". A per-line record miscounting a
-   line it quoted is the argument for pinning strings instead of listing them.
+   IT USED TO PIN FIVE PHRASES. Two of them said "not in 4a's catalogue right
+   now" and are gone as of issue #684 -- founder, 2026-09-13: "there is every
+   now and then messages that say 'no shows in 4a's catalogue.' Get rid of
+   that, just give some standard 'no results' response or something, don't
+   blame it on 4a." The EXPLANATION those two carried is kept in full (a row
+   that cannot play still says why); only our own catalogue stopped being named
+   as the reason. So they are pinned here in their new wording rather than
+   dropped from the list, which keeps this test's real subject -- that nothing
+   in this feature's rendered copy says "Foray" -- reading over the same two
+   function bodies as before.
+
+   WHAT DID NOT CHANGE, and why the remaining three still name 4a: "saved
+   before 4a kept episode details" and "what 4a has today" are statements about
+   OUR OWN history and OUR OWN holdings, where the app is genuinely the
+   subject of the sentence rather than a culprit being blamed for an empty
+   result. `app.js:1170` says the name twice in that one sentence, and a KNOWN
+   GAP record this file used to carry miscounted it -- which is the argument
+   for pinning strings instead of listing them.
 
    READ OUT OF THE TWO FUNCTIONS THAT RENDER THEM, not out of the file: the
    caption is `archivedRow`'s, the note is `partsNote`'s, and `partsNote`
    carries a block comment of its own that a file-wide search would read.
 
    KILLED BY: reverting any one of the five. `test/playlist-durability.test.js`
-   asserts three of them (its lines 529/564/594 for the caption, 679/681 for the
-   note) and was updated in this same commit -- so reverting the caption alone
-   fails there too, but reverting "what 4a has today" fails ONLY here. */
+   asserts three of them (the caption and the note) and was updated in the same
+   commit -- so reverting the caption alone fails there too, but reverting
+   "what 4a has today" fails ONLY here. MUTATION: put "in 4a's catalogue" back
+   into either function -- the two `not available right now` assertions go
+   red. */
 test("the playlist-shortfall copy names the app, not the unit", () => {
   const row = fnBody("app.js", "archivedRow");
   const note = fnBody("app.js", "partsNote");
   for (const [where, body, phrase] of [
-    ["archivedRow", row, `not in ${APP_NAME}'s catalogue right now`],
+    ["archivedRow", row, `not available right now`],
     ["archivedRow", row, `Saved before ${APP_NAME} kept episode details`],
-    ["partsNote", note, `not in ${APP_NAME}'s catalogue right now`],
+    ["partsNote", note, `not available right now`],
     ["partsNote", note, `saved before ${APP_NAME} kept episode details`],
     ["partsNote", note, `from what ${APP_NAME} has today`],
   ]) {
@@ -512,6 +578,20 @@ test("the playlist-shortfall copy names the app, not the unit", () => {
       !/Foray/.test(body),
       `${where}() still capitalises the name somewhere in its rendered copy`
     );
+  }
+  /* The direction the rewrite was FOR, and the one a careless revert would
+     undo: neither function may name OUR catalogue as the reason a row cannot
+     play.
+
+     The possessive specifically, not the bare word. `archivedRow` still titles
+     a detail-less row "Part no longer in the catalogue" — that is a statement
+     about a row we have nothing left to say about, not an explanation that
+     points at us, and the founder's complaint was about the latter. Widening
+     this to /catalogue/ would fail on that line and push a rewrite nobody
+     asked for. */
+  for (const [where, body] of [["archivedRow", row], ["partsNote", note]]) {
+    assert.ok(!new RegExp(`${APP_NAME}'s catalogue`).test(body),
+      `${where}() blames ${APP_NAME}'s catalogue for something the listener only needs told plainly`);
   }
 });
 

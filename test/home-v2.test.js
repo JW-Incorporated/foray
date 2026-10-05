@@ -129,10 +129,15 @@ function ui2Mount(overrides = {}) {
       { id: "engineering", parent: null, label: "Engineering", weight: 0.9 },
       { id: "business", parent: null, label: "Business", weight: 0.5 },
       { id: "comedy", parent: null, label: "Comedy", weight: 0.5 },
+      // A leaf under a root that is NOT a card slot, so "Playlists for you"
+      // has something to generate (F14: generated playlists are interest
+      // leaves filled from the pool, never the card slots).
+      { id: "business/startups", parent: "business", label: "Startups", weight: 0.5 },
     ],
   };
   m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
-  m.state.interests = { engineering: 0.9, business: 0.6, comedy: 0.1 };
+  m.state.interests = { engineering: 0.9, business: 0.6, comedy: 0.1, "business/startups": 0.8 };
+  m.state.discover = { items: [1, 2, 3].map(i => ({ id: "st" + i, title: "Startup " + i, show: "Founders", duration_min: 30, topics: ["business/startups"], release_date: "2026-09-0" + i, audio_url: "https://cdn.test/st" + i + ".mp3" })) };
   m.state.cardSlots = [
     {
       branch: "engineering", role: "top",
@@ -165,27 +170,18 @@ function ui2Mount(overrides = {}) {
 /* 1. THE FLAG DISPATCH                                                  */
 /* ==================================================================== */
 
-test("renderHome renders the v2 layout when cp_ui_v2 is on, and the old layout when it is off", () => {
-  // MUTATION: delete `if (ui2On()) return renderHomeV2();` from renderHome().
-  // Both assertions below fail — the flag-on mount would show `.cards4`
-  // instead of `.hv2-home`.
+test("renderHome always renders the v2 layout (cp_ui_v2 retired, U-11 cutover)", () => {
+  /* CUTOVER (U-11, founder override, 2026-09-06, kanban card t_a3f01c8a):
+     ui2On() always returns true now, so there is no flag-off mount left
+     to test — that layout, and its Settings toggle, are retired and
+     preserved verbatim in archive/legacy-ui-2026-09/. This test now only
+     pins renderHome()'s one remaining shape.
+     MUTATION: change renderHome() to render anything other than
+     renderHomeV2(). The v2 assertion fails. */
   const on = ui2Mount();
   on.ctx.renderHome();
-  assert.ok(on.view().includes('class="home hv2-home"'), "cp_ui_v2 on must render the v2 Home layout");
-  assert.ok(!on.view().includes('class="cards4"'), "cp_ui_v2 on must not render the old four-card grid");
-
-  const off = mount({ seed: { cp_ui_v2: "false" } });
-  off.state.catalog = { shows: [] };
-  off.state.forays = { forays: [] };
-  off.ctx.ForayPlayer = { listForays: () => [], forayResumeList: () => [] };
-  off.state.cardSlots = [0, 1, 2, 3].map((i) => ({
-    branch: `branch-${i}`, role: "top",
-    item: { id: `ep-${i}`, title: `Episode ${i}`, show: `Show ${i}`, duration_min: 30, artwork_url: null },
-    items: [{ id: `ep-${i}`, title: `Episode ${i}`, show: `Show ${i}`, duration_min: 30 }],
-  }));
-  off.ctx.renderHome();
-  assert.ok(off.view().includes('class="cards4"'), "cp_ui_v2 off must still render the old four-card grid");
-  assert.ok(!off.view().includes("hv2-home"), "cp_ui_v2 off must render no v2 markup at all");
+  assert.ok(on.view().includes('class="home hv2-home"'), "renderHome() must always render the v2 Home layout");
+  assert.ok(!on.view().includes('class="cards4"'), "renderHome() must never render the retired four-card grid");
 });
 
 /* ==================================================================== */
@@ -303,6 +299,39 @@ test("a generated playlist card is badged 'Generated for you'; the listener's ow
   const cardCloseAfter = html.indexOf("</a>", ownCardStart);
   const ownCardHtml = html.slice(cardOpenBefore, cardCloseAfter);
   assert.ok(!ownCardHtml.includes("Generated for you"), "the listener's own playlist must not carry the generated badge");
+});
+
+/* ==================================================================== */
+/* 5b. F14: GENERATED PLAYLISTS ARE NOT "EPISODES FOR YOU" REGROUPED     */
+/* ==================================================================== */
+
+test("F14: a generated playlist is an interest leaf filled from the pool, never a card slot", () => {
+  /* Wyatt, 2026-09-08: "playlists are now the same as 'episodes for you',
+     which is not the intent." MUTATION: make generatedPlaylists() return
+     the card slots projected as playlists (the first U-03 implementation)
+     -> the "Engineering" card appears under Playlists for you and this fails. */
+  const m = ui2Mount();
+  m.state.discover = { items: [1, 2, 3, 4].map(i => ({ id: "st" + i, title: "Startup " + i, show: "Founders", duration_min: 30, topics: ["business/startups"], release_date: "2026-09-0" + i, audio_url: "https://cdn.test/st" + i + ".mp3" })) };
+  m.ctx.renderHome();
+  const html = m.view();
+  const section = html.slice(html.indexOf("hv2-playlists"), html.indexOf("hv2-episodes"));
+  assert.ok(section.includes("Startups"), "the interest leaf playlist renders under Playlists for you");
+  assert.ok(section.includes('href="#/playlist/gen-business/startups"'), "a generated card links to its own detail page");
+  assert.ok(!section.includes("#/subject/"), "no card slot is presented as a generated playlist");
+  assert.ok(!/hv2-playlist-title">Engineering</.test(section) && !/hv2-playlist-title">Comedy</.test(section), "the card slots' subjects do not appear as generated playlists");
+});
+
+test("F14: the generated playlist's detail page resolves by id, lists the leaf's episodes newest first, and has no remove button", () => {
+  /* MUTATION: drop `|| generatedPlaylistById(id)` from renderPlaylistDetail
+     -> "Playlist not found." */
+  const m = ui2Mount();
+  m.state.discover = { items: [1, 2, 3].map(i => ({ id: "st" + i, title: "Startup " + i, show: "Founders", duration_min: 30, topics: ["business/startups"], release_date: "2026-09-0" + i, audio_url: "https://cdn.test/st" + i + ".mp3" })) };
+  m.ctx.renderPlaylistDetail("gen-business/startups");
+  const html = m.view();
+  assert.ok(!html.includes("Playlist not found"), "generated id resolves");
+  assert.ok(html.includes("generated for you"), "subtitle says what it is");
+  assert.ok(!html.includes("pl-remove"), "nothing to remove: it is not saved");
+  assert.ok(html.indexOf("Startup 3") < html.indexOf("Startup 1"), "newest episode first");
 });
 
 /* ==================================================================== */

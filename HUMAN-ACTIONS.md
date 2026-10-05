@@ -16,6 +16,66 @@ it is filed under `DONE`.
 
 ## OPEN
 
+### 43. Rule on `docs/search-plan.md`'s privacy gate (G1) — it blocks four cards of the search rebuild
+
+**Tag:** `[BLOCKING]` · **Time:** ~5 minutes to decide, plus a look at two diffs once S-07 lands them · **Owner:** Wyatt
+
+**Why it matters.** `docs/search-plan.md` (Hermes deck, written 2026-09-09) cuts
+the Shows-search rebuild into cards S-01 through S-08 and cards them on the
+`foray` Kanban board. §3 names five human gates (G1–G5); this item is **G1**,
+the one gate that actually stops code from shipping. Quoting the plan exactly:
+*"Until G1 is answered, no card in this deck may ship a network call attached
+to a keystroke."* S-02's network half, S-05, S-06, and S-08 all wait on it.
+
+**The gap it decides.** `docs/legal/privacy-policy.md` §2 promises: *"if a show
+or episode is already in that local catalogue nothing you typed leaves your
+device."* Measured: `renderShowSearchResults` and `renderEpisodeSearchResults`
+fire their network calls **unconditionally** today — there is no local-hit
+branch anywhere in the code. So every Shows search already transmits the typed
+query, including ones that matched locally. This has been true before this
+deck; the deck just found it.
+
+**The three options, as the plan states them (card S-07 will write the actual
+diffs for A and B on a branch, but you can decide the direction now):**
+- **Option A — honour the promise in code.** Gate both network passes on a
+  local miss. Cost, measured: 37 of 19,904 merged titles contain "lex", but
+  only 1 of today's 220 curated titles does — so under today's 220-show local
+  pass, a listener typing "lex" sees one show and never the other 36. That
+  contradicts the founder ruling already recorded in `docs/DECISIONS.md`
+  2026-09-02 ("the user should never notice any limitations based on our own
+  limited curation").
+- **Option B — the sentence loses its condition.** Rewrite privacy policy §2
+  to say plainly that a Shows search sends the typed query off-device.
+  Cheaper and honest, but costs the promise; `docs/legal/data-safety.md`
+  already flags this sentence class as worth a lawyer's eye.
+- **Option C — this deck's recommendation.** Once card S-03 ships the full
+  19,904-show client-side index (separate card, no gate), the local pass
+  covers everything the breadth endpoint covers. The only off-device call
+  left is the Apple fall-through (S-06), which by construction fires only on
+  a genuine zero-hit — at which point the shipped privacy sentence becomes
+  **true as written**, no rewrite needed and no product loss (Option A's cost
+  disappears because the local catalogue stops being 220 shows and becomes
+  the whole catalogue).
+
+**Steps:**
+1. Read `docs/search-plan.md` §3 (human gates table) and §S-07 for the full
+   argument, or just decide now: do you want Option A, B, or C (recommended)?
+2. Reply in the `#4a` Discord channel or comment directly on kanban card
+   `t_c21e53c3` (S-07, board `foray`) with your choice.
+3. If you pick C (recommended): no further action from you until S-03 lands
+   and the privacy sentence is re-verified true — nothing to approve now.
+4. If you pick A or B outright: say so, and S-07's diffs will be finished and
+   merged (note: `docs/DECISIONS.md` is a founder-approved-label path, G4 —
+   you'll still need to label that one PR).
+
+**Worked if:** kanban card `t_c21e53c3` (foray board) has your decision
+recorded in a comment, and cards S-02's network half, S-05, S-06, S-08 are no
+longer waiting on this item.
+
+**Status:** OPEN.
+
+---
+
 ### 1. Make `path-policy` a required check on `main`
 
 **Tag:** `[UPGRADE]` · **Time:** ~3 minutes · **Owner:** Wyatt

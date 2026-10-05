@@ -1,30 +1,50 @@
-/* S-06 (kanban t_be4c1793, source: 4a-shows-pipeline-plan.md) — the paginated
- * "Show more" control on top of Stage 3b's full-catalogue episode list
- * (test/show-pages-3b-full-catalogue.test.js), plus the partial-list-honesty
- * rule the card's acceptance criteria pin explicitly: the count label must
- * NEVER claim completeness while pages remain unfetched.
+/* S-06 (kanban t_be4c1793, source: 4a-shows-pipeline-plan.md), REWRITTEN
+ * 2026-09-13 for the founder report that took the "Show more episodes"
+ * control out of the show page.
+ *
+ * WHY THIS FILE STILL EXISTS RATHER THAN BEING DELETED WITH THE BUTTON.
+ * What it was really guarding was never the button: it was the rule that this
+ * page must not lie about how much of a show it is displaying. That rule
+ * outlived the control, and the two things this change did — remove the
+ * control, and delete the "N+ episodes loaded so far — more available"
+ * subtitle — both cut straight across it. So every test below was re-pointed
+ * at the behaviour that replaced the one it used to pin, and the file keeps
+ * its floor in test/suite-integrity.test.js unchanged.
+ *
+ * THE DEFECT THAT CAUSED THE REMOVAL, since a test file is where the next
+ * person will look for it: the control's visibility was decided by the
+ * pagination cursor alone (`fullyLoaded || !nextCursor`), with no regard for
+ * whether the container underneath it was showing the paginated list at all.
+ * During a scoped search it was showing S-07's server-side results instead, so
+ * clicking "Show more" fetched a page, appended it to `loaded`, repainted —
+ * and repainted the unchanged search results. Real work, invisible outcome.
+ * Note that the five tests this file used to hold ALL passed while that was
+ * true, because not one of them typed in the search box first; the case is now
+ * pinned from the other side in test/show-page-search.test.js.
  *
  * WHAT THIS PROVES, in order:
- *  1. Page 1 renders 100 episodes and a "Show more" control when the API
- *     says there's a next_cursor; the control resumes from that exact cursor.
- *  2. Clicking "Show more" appends page 2's episodes to what's already
- *     rendered (never replaces/loses page 1's rows).
- *  3. Once a page arrives with `next_cursor: null`, the "Show more" control
- *     disappears and the count label states the TRUE total with no
- *     qualifier — the only state honest enough to drop the "so far" hedge.
- *  4. Before that point, the count label always carries an explicit
- *     "loaded so far" / "+" qualifier — this is the partial-list-honesty
- *     rule from the card's acceptance criteria, pinned by test so a future
- *     edit can't quietly reintroduce a false completeness claim.
- *  5. A "Show more" fetch failure leaves the already-loaded rows and cursor
- *     intact (never discards progress) and re-offers the control to retry.
+ *  1. A page 1 that comes back with a next_cursor renders NO "Show more"
+ *     control and no wrap for one — the markup is gone, not merely empty.
+ *  2. Nothing pages on its own instead: exactly one request is made, so
+ *     removing the button did not become a silent auto-loader.
+ *  3. A fully-loaded list still states its TRUE total, unqualified — the
+ *     branch of the count label that survived, and the only one allowed to
+ *     state a number.
+ *  4. A partial load renders NO subtitle at all. This is the founder's own
+ *     call ("delete that, it's useless info") and it is pinned rather than
+ *     merely done, because the tempting repair — reusing the fully-loaded
+ *     shape, "100 episodes" — would be the false-completeness claim the
+ *     original hedge existed to prevent.
+ *  5. A partial load that came back STALE still says so. The count went; the
+ *     "couldn't refresh" signal did not, because that one is actionable.
  *
  * Harness: the same node:vm DOM stub test/show-pages-3b-full-catalogue.test.js
  * uses, duplicated for the same fixture-scoped reasons that file gives, and
  * extended here with a cursor-aware fetchImpl queue (each call in the queue
- * answers one fetch, matched to the request URL's cursor param).
+ * answers one fetch, matched to the request URL's cursor param). The
+ * more-wrap/button plumbing in makeViewEl() is deliberately KEPT: a stub that
+ * could not represent the control is a stub that cannot prove it is absent.
  */
-
 const { test } = require("node:test");
 const assert = require("node:assert");
 const vm = require("node:vm");
@@ -228,7 +248,7 @@ function seedShowAndPool(ctx, { show, discoverItems = [] } = {}) {
   ctx.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
 }
 
-function page(n, { cursor = null } = {}) {
+function page(n, { cursor = null, stale = false } = {}) {
   return {
     body: {
       episodes: Array.from({ length: n }, (_, i) => ({
@@ -240,30 +260,44 @@ function page(n, { cursor = null } = {}) {
         published_at: null,
       })),
       next_cursor: cursor,
-      stale: false,
+      stale,
       error: null,
     },
   };
 }
 
-test('page 1 with a next_cursor renders a "Show more" control', async () => {
-  /* MUTATION: drop paintMoreButton()'s call after page 1 resolves. This
-     assertion fails because the wrap never gets a button written into it. */
+test('a next_cursor no longer renders a "Show more" control, and no wrap is left behind for one', async () => {
+  /* The founder report, pinned from the DOM side. MUTATION: restore the
+     `<div data-show-more-wrap></div>` line in renderShow's markup together
+     with paintMoreButton(). The first assertion fails on the wrap alone, so
+     it also catches a half-revert that leaves dead markup in the page. */
   const m = mount({ responses: [page(100, { cursor: "cursor-1" })] });
   seedShowAndPool(m.ctx, { show: { show_id: "show-a", title: "Show A", taxonomy_node_ids: [] } });
 
   m.ctx.renderShow("show-a");
   await flushMicrotasks();
 
-  const wrap = m.viewEl.querySelector("[data-show-more-wrap]");
-  assert.ok(wrap, "more-wrap element must exist");
-  assert.ok(wrap.innerHTML.includes("data-show-more"), "must render a Show more button when a next_cursor is present");
+  assert.strictEqual(
+    m.viewEl.querySelector("[data-show-more-wrap]"), null,
+    "the Show more wrap must not be rendered at all, even empty",
+  );
+  assert.ok(
+    !m.viewEl.innerHTML.includes("data-show-more"),
+    "no Show more markup of any kind may reach the page",
+  );
+  assert.ok(
+    !m.viewEl.innerHTML.includes("show-more-btn"),
+    "and no Show more button class either",
+  );
 });
 
-test('clicking "Show more" fetches the next page using the exact cursor and appends its episodes', async () => {
-  /* MUTATION: call fetchShowEpisodes(show.show_id) instead of
-     fetchShowEpisodes(show.show_id, nextCursor) in loadNextPage. This
-     assertion fails because the second captured URL has no ?cursor= param. */
+test("a next_cursor does not silently auto-load the next page either: exactly one request is made", async () => {
+  /* Removing a control is not licence to do its job invisibly — an auto-pager
+     would re-introduce the same unbounded fetching with no way to stop it, and
+     on a 900-episode show would quietly pull nine pages on every visit.
+     MUTATION: call fetchShowEpisodes(show.show_id, nc) again from inside the
+     page-1 handler whenever `nc` is non-null. This assertion fails because a
+     second URL lands in `calls`. */
   const m = mount({
     responses: [page(100, { cursor: "cursor-1" }), page(50, { cursor: null })],
   });
@@ -272,43 +306,39 @@ test('clicking "Show more" fetches the next page using the exact cursor and appe
   m.ctx.renderShow("show-a");
   await flushMicrotasks();
 
-  const btn = m.viewEl.querySelector("[data-show-more]");
-  assert.ok(btn, "Show more button must exist after page 1");
-  btn.click();
-  await flushMicrotasks();
+  assert.strictEqual(m.calls.length, 1, `exactly one episodes request must be made, got: ${JSON.stringify(m.calls)}`);
+  assert.doesNotMatch(m.calls[0], /cursor=/, "and it must be the un-cursored page-1 request");
 
-  assert.match(m.calls[1], /cursor=cursor-1/, `second fetch must carry page 1's cursor, got: ${m.calls[1]}`);
   const container = m.viewEl.querySelector("[data-show-episodes]");
-  assert.ok(container.innerHTML.includes("Ep 0"), "page 1's first episode must still be present");
-  assert.ok(container.innerHTML.includes("Ep 99"), "page 1's last episode must still be present");
-  assert.ok(container.innerHTML.includes(">Ep 0<") || container.innerHTML.includes("Ep 0"), "sanity: page 1 content present");
-  // Page 2 reuses guids g0..g49 (fixture shorthand) so distinguish by count instead.
   const epRowCount = (container.innerHTML.match(/class="ep-row"/g) || []).length;
-  assert.strictEqual(epRowCount, 150, "must render all 150 episodes across both pages, not just the latest page");
+  assert.strictEqual(epRowCount, 100, "page 1's episodes are what is rendered");
 });
 
-test("once a page arrives with next_cursor: null, the Show more control disappears and the count label drops its hedge", async () => {
-  /* MUTATION: remove the `fullyLoaded || !nextCursor` guard in
-     paintMoreButton so it keeps rendering the button. This assertion fails
-     because the wrap still has button markup after the final page. */
+test("once a page arrives with next_cursor: null, the count label states the TRUE total with no qualifier", async () => {
+  /* The surviving branch of showEpisodeCountLabel, and the only one allowed to
+     state a number. MUTATION: drop the `fullyLoaded` branch so every load
+     falls through to the partial case. This assertion fails because the label
+     would then be empty instead of "30 episodes". */
   const m = mount({ responses: [page(30, { cursor: null })] });
   seedShowAndPool(m.ctx, { show: { show_id: "show-a", title: "Show A", taxonomy_node_ids: [] } });
 
   m.ctx.renderShow("show-a");
   await flushMicrotasks();
 
-  const wrap = m.viewEl.querySelector("[data-show-more-wrap]");
-  assert.ok(!wrap.innerHTML.includes("data-show-more"), "no Show more control once the list is fully loaded");
-
   const label = m.viewEl.querySelector("[data-show-count]");
   assert.strictEqual(label.textContent, "30 episodes", `count label must be the bare true total once fully loaded, got: "${label.textContent}"`);
 });
 
-test("partial-list-honesty rule: the count label always hedges while a next_cursor remains, never claims a bare total", async () => {
-  /* Direct pin of the card's own acceptance criterion. MUTATION: drop the
-     `fullyLoaded` branch split in showEpisodeCountLabel and always return the
-     bare "`N episodes`" form. This assertion fails because the partial-load
-     label would then read "100 episodes" with no qualifier. */
+test('a partial load renders NO subtitle: the "episodes loaded so far — more available" line is gone', async () => {
+  /* Founder report 1, verbatim: "On some shows there will be a subtitle '100+
+     episodes loaded so far - more available' delete that, it's useless info."
+
+     Both assertions matter and they fail to different mutations. The first
+     fails if the old hedge is restored. The second fails to the other
+     tempting repair — reusing the fully-loaded shape and rendering a bare
+     "100 episodes" for a partial load — which would be the false-completeness
+     claim the hedge existed to prevent. The honest partial subtitle is no
+     subtitle. */
   const m = mount({ responses: [page(100, { cursor: "cursor-1" })] });
   seedShowAndPool(m.ctx, { show: { show_id: "show-a", title: "Show A", taxonomy_node_ids: [] } });
 
@@ -316,30 +346,23 @@ test("partial-list-honesty rule: the count label always hedges while a next_curs
   await flushMicrotasks();
 
   const label = m.viewEl.querySelector("[data-show-count]");
-  assert.match(label.textContent, /\+/, `partial load must hedge with a qualifier (e.g. "100+"), got: "${label.textContent}"`);
-  assert.doesNotMatch(label.textContent, /^100 episodes$/, "must never render the bare, unqualified total while pages remain unfetched");
+  assert.strictEqual(label.textContent, "", `a partial load must render an empty subtitle, got: "${label.textContent}"`);
+  assert.doesNotMatch(label.textContent, /\d/, "and must state no episode count of any kind while pages remain unfetched");
 });
 
-test("a Show more fetch failure keeps the already-loaded episodes and re-offers the control, never discards progress", async () => {
-  /* MUTATION: clear `loaded` on a failed loadNextPage response. This
-     assertion fails because page 1's 100 episodes would disappear from the
-     rendered container. */
-  const m = mount({
-    responses: [page(100, { cursor: "cursor-1" }), { reject: "network down" }],
-  });
+test("a partial load that came back stale still says it couldn't refresh", async () => {
+  /* The count went; the failure signal did not. "Couldn't refresh" is
+     something the listener can act on, unlike the count that was deleted.
+     MUTATION: return "" unconditionally from showEpisodeCountLabel's partial
+     branch instead of branching on `stale`. This assertion fails because the
+     stale note disappears along with the count. */
+  const m = mount({ responses: [page(100, { cursor: "cursor-1", stale: true })] });
   seedShowAndPool(m.ctx, { show: { show_id: "show-a", title: "Show A", taxonomy_node_ids: [] } });
 
   m.ctx.renderShow("show-a");
   await flushMicrotasks();
 
-  const btn = m.viewEl.querySelector("[data-show-more]");
-  btn.click();
-  await flushMicrotasks();
-
-  const container = m.viewEl.querySelector("[data-show-episodes]");
-  const epRowCount = (container.innerHTML.match(/class="ep-row"/g) || []).length;
-  assert.strictEqual(epRowCount, 100, "page 1's 100 episodes must remain rendered after a failed Show more fetch");
-
-  const wrapAfter = m.viewEl.querySelector("[data-show-more-wrap]");
-  assert.ok(wrapAfter.innerHTML.includes("data-show-more") || m.viewEl.querySelector("[data-show-more]"), "the control must still exist to retry after a failure");
+  const label = m.viewEl.querySelector("[data-show-count]");
+  assert.match(label.textContent, /couldn.t refresh/i, `a stale partial load must still surface the staleness, got: "${label.textContent}"`);
+  assert.doesNotMatch(label.textContent, /more available/i, "and must not bring the deleted hedge back with it");
 });

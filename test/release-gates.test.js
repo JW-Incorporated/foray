@@ -89,7 +89,15 @@ const PRIVACY_SENTENCE =
    the source is hand-formatted for a human reader, not for a substring
    match, and the check has to meet it there. */
 function normalizeWrap(text) {
-  return text.replace(/([^\n])\n([^\n])/g, "$1 $2");
+  /* CRLF first, and this was a real (Windows-only) red rather than a
+     precaution: this repo commits LF and is developed with
+     `core.autocrlf=true`, so on a developer checkout every soft wrap is
+     "word\r\nword" and the collapse below leaves the `\r` sitting inside the
+     sentence — a substring check for the ABSENCE of a sentence passes
+     vacuously, and one for its PRESENCE fails on a file that says exactly
+     what it should. test/legal-citations.test.js documents the same trick for
+     the same file family; matched to it rather than re-derived. */
+  return text.replace(/\r\n/g, "\n").replace(/([^\n])\n([^\n])/g, "$1 $2");
 }
 
 /* Recognises `const/let/var SHOWS_SEARCH_OFF_DEVICE = true;` or `= "true";`
@@ -138,21 +146,82 @@ test("SHOWS_SEARCH_OFF_DEVICE recognizes a true source flag in app.js or search-
   }
 });
 
-test("SHOWS_SEARCH_OFF_DEVICE is false when neither app.js/search-engine.js nor the env sets it", () => {
-  /* Today's real state (pre-S-05, pre-G5): neither file declares the flag
-     and the env override is unset in a normal test run. This is the "pass
-     with flag off" acceptance case from S-08's own card, run against the
-     REAL shipped files rather than a fixture, so a stray flag left in by a
-     future edit is caught here directly.
+test("SHOWS_SEARCH_OFF_DEVICE is set true in the shipped source, because off-device Shows search is what ships (S-07/G1)", () => {
+  /* THIS TEST USED TO ASSERT THE OPPOSITE, and the inversion is the record of
+     a ruling rather than a weakening. It read "SHOWS_SEARCH_OFF_DEVICE is
+     false when neither app.js/search-engine.js nor the env sets it", which
+     was true while the flag was a promise about a feature nobody had built.
 
-     MUTATION THAT KILLS THIS: add `const SHOWS_SEARCH_OFF_DEVICE = true;`
-     to app.js without also editing the privacy sentence. Ran it — red,
-     which is exactly the tripwire this card exists to build. */
+     G1 (docs/search-plan.md §3, ruled by Wyatt 2026-09-11, recorded in
+     docs/DECISIONS.md) chose OPTION B: the typed Shows-search query leaves
+     the device unconditionally and the policy sentence changes to match. So
+     app.js now declares the flag, and the honest state of this repo is
+     "flag on, old sentence gone" — the (c) branch of the core gate below,
+     which until now was only ever simulated.
+
+     Asserting the flag is ON is not weaker than asserting it was off: the
+     AND-gate is what protects the release, and arming one half of it for
+     real is what makes the other half load-bearing. The thing that must
+     never happen — flag on AND the old sentence present — is asserted
+     against the live tree in the gate test below.
+
+     MUTATION THAT KILLS THIS: delete `const SHOWS_SEARCH_OFF_DEVICE = true;`
+     from app.js while `renderShowSearchResults`/`runShowSearchCostly` still
+     call `api/shows/search`. Ran it — red, and rightly: the code would then
+     be transmitting typed queries with the tripwire disarmed. */
   assert.equal(process.env.SHOWS_SEARCH_OFF_DEVICE, undefined,
     "this test assumes SHOWS_SEARCH_OFF_DEVICE is not set in the ambient " +
-    "test environment — if a workflow now sets it globally, that workflow " +
-    "config is itself a bug this suite should have caught elsewhere");
-  assert.equal(offDeviceSearchFlagOn(), false);
+    "test environment — it must be the SOURCE flag being read here, not an " +
+    "inherited env var, or this asserts nothing about the shipped files");
+  assert.equal(sourceFlagOn(), true,
+    "app.js (or search-engine.js) must declare `const SHOWS_SEARCH_OFF_DEVICE = true;` " +
+    "while the Shows search transmits typed queries — see docs/DECISIONS.md 2026-09-11");
+  assert.equal(offDeviceSearchFlagOn(), true);
+});
+
+test("S-07/G1 Option B: the policy states the lookup is unconditional, in the words the code makes true", () => {
+  /* The OTHER half of S-07's contract, and the one the old absolute-sentence
+     check cannot cover. Removing a false promise is not the same as making a
+     true statement: a policy that simply deleted the sentence would pass the
+     retirement check above while telling the reader nothing about what now
+     happens to what they type.
+
+     Two things are pinned, both against the real committed policy:
+       1. the RETIRED CONDITIONAL — "if a show or episode is already in that
+          local catalogue nothing you typed leaves your device" — is gone.
+          This is #560 item 2 and requirements §6.11/§6.13 row 6: it was
+          false as shipped (`renderShowSearchResults` fired both endpoints
+          unconditionally, with no local-hit branch anywhere), and Option B
+          resolves it by changing the sentence rather than the code.
+       2. the REPLACEMENT is affirmative and unconditional.
+
+     MUTATIONS THAT KILL THIS, both run:
+       (a) restore the old conditional sentence to §2 — red on the first
+           assertion, and the core gate below then also goes red because the
+           source flag is now genuinely on.
+       (b) soften the replacement back to "unless it is already on your
+           device" — red on the second assertion, because the phrase that
+           makes the disclosure unconditional is gone.
+
+     WHY A PHRASE AND NOT A WHOLE PARAGRAPH: the doc is hand-wrapped prose
+     that a lawyer is expected to edit (docs/legal/data-safety.md flags this
+     sentence class as "worth a lawyer's eye"). Pinning the paragraph would
+     make every copy-edit a red build. Pinning the CLAIM lets the wording
+     move and the meaning not. */
+  const policy = normalizeWrap(read(PRIVACY_DOC));
+  assert.equal(
+    policy.includes("nothing you typed leaves your device"),
+    false,
+    "docs/legal/privacy-policy.md §2 still carries the conditional promise G1 retired " +
+      "(Option B, docs/DECISIONS.md 2026-09-11) — the code has no local-hit branch and " +
+      "never had one, so this sentence is false as shipped."
+  );
+  assert.ok(
+    policy.includes("It does this whether or not the show was already on your device."),
+    "docs/legal/privacy-policy.md §2 must say plainly that the Shows-search lookup happens " +
+      "whether or not the show is already on the device — deleting the old promise without " +
+      "replacing it leaves the reader with no statement at all."
+  );
 });
 
 test("the privacy policy's absolute no-transmission sentence has been retired now that G5 is resolved", () => {
@@ -242,26 +311,358 @@ test("release gate: fails when off-device search is flagged on AND the old priva
   );
 });
 
-test("HUMAN-ACTIONS.md carries an open item for G5 quoting the sentence and this test", () => {
-  /* The card's own ask: "Add a HUMAN-ACTIONS.md item quoting the sentence to
-     change and linking the test." This does not require the item still be
-     OPEN forever — once Wyatt resolves G5 the item moves to DONE per the
-     file's own convention — but it must exist, quote the sentence, and name
-     this file, so a founder reading HUMAN-ACTIONS.md can find the lever
-     without reading this test file first.
+test("G5 (#38) is recorded closed in the ledger, tied to the real sentence this test protects", () => {
+  /* The card's original ask: "Add a HUMAN-ACTIONS.md item quoting the
+     sentence to change and linking the test." Under format v2
+     (2026-09-11), closing an item MOVES it out of HUMAN-ACTIONS.md entirely
+     into the sibling machine ledger, HUMAN-ACTIONS-DONE.md — "Closed items
+     are in HUMAN-ACTIONS-DONE.md — you never need it" (the live file's own
+     header). So the founder-discoverability half of the old assertion no
+     longer applies once G5 is resolved: there is nothing left for a founder
+     to act on, and the live file the founder actually reads carries no
+     trace of #38 by design.
 
-     MUTATION THAT KILLS THIS: delete the G5 item from HUMAN-ACTIONS.md
-     entirely. Ran it — red. */
-  const doc = read("HUMAN-ACTIONS.md");
+     What must still hold, because it is the part of the original intent
+     that outlives the close: the ledger's one-line record of #38 is
+     genuinely the G5 item (not a same-numbered coincidence), says it was
+     closed `done`, and still quotes enough of the real retired sentence to
+     prove the closure is tied to the actual legal text this suite guards —
+     not just a number and a label. The ledger line is machine-generated and
+     length-capped (by `ha.py`, not this repo), so this checks a generous
+     prefix of the sentence rather than the full 78 characters — long enough
+     that nothing except this exact sentence could match, short enough to
+     survive the ledger's own truncation.
+
+     MUTATIONS THAT KILL THIS: delete the #38 line from HUMAN-ACTIONS-DONE.md
+     entirely; change its status from `done` to anything else; replace the
+     quoted fragment with unrelated text. All three ran red. */
+  const ledger = read("HUMAN-ACTIONS-DONE.md");
+  const sentencePrefix = PRIVACY_SENTENCE.slice(0, -15); // drop the trailing
+  // "transmitted." verb+period — comfortably shorter than what the ledger's
+  // own truncation kept when this was generated.
+
+  const line = ledger
+    .split("\n")
+    .find((l) => /^-\s+#38\s+·/.test(l));
+
   assert.ok(
-    doc.includes("test/release-gates.test.js"),
-    "HUMAN-ACTIONS.md has no item referencing test/release-gates.test.js " +
-      "(G5) — the tripwire test exists but nothing in the human-actions " +
-      "file points a founder at it"
+    line,
+    "HUMAN-ACTIONS-DONE.md has no `- #38 · ...` ledger line — G5's closed " +
+      "record is gone; see HUMAN-ACTIONS-DONE.md and this suite's header."
+  );
+  assert.match(
+    line,
+    /·\s+done\s+·/,
+    `HUMAN-ACTIONS-DONE.md's #38 line is not recorded "done": "${line}"`
   );
   assert.ok(
-    normalizeWrap(doc).includes(PRIVACY_SENTENCE),
-    "HUMAN-ACTIONS.md's G5 item does not quote the exact sentence to change " +
-      `(\"${PRIVACY_SENTENCE}\")`
+    /G5/.test(line),
+    `HUMAN-ACTIONS-DONE.md's #38 line does not mention "G5": "${line}"`
   );
+  assert.ok(
+    normalizeWrap(line).includes(sentencePrefix),
+    "HUMAN-ACTIONS-DONE.md's #38 line does not quote the retired privacy " +
+      `sentence ("${sentencePrefix}..."): "${line}"`
+  );
+});
+
+/* The diagnostic-Foray tripwire (D-01, HUMAN-ACTIONS.md #29).
+ *
+ * #29's own steps said: "When it is answered, delete the instrument… None of
+ * it should be in the App Store build." D-01 did that deletion (the Foray
+ * `tts-locked-screen-check` out of data/forays.json, `DIAGNOSTIC_FORAY_ID`
+ * and `withDiagnosticUnlock()` out of player/foray-resolve.js, their call
+ * sites out of player/client.js). This gate is what stops the instrument
+ * quietly coming back — a revert, a bad merge, a copy-pasted fixture — from
+ * ever reaching a release build again: it fails release.yml the moment any
+ * of the three identifying strings reappears under player/, app.js or
+ * data/. docs/curation/tts-locked-screen-check.md is kept, deliberately, as
+ * the historical record of the measurement (#29's RESULT) — this gate does
+ * not touch docs/ or HUMAN-ACTIONS.md, on purpose, because the record of
+ * having built and retired the instrument must survive its deletion.
+ *
+ * MUTATION THAT KILLS THIS: re-add the Foray id to data/forays.json (or
+ * either identifier to player/) without also removing it — this test goes
+ * red immediately, pointing at #29.
+ */
+const DIAGNOSTIC_STRINGS = [
+  "tts-locked-screen-check",
+  "DIAGNOSTIC_FORAY_ID",
+  "withDiagnosticUnlock",
+];
+const DIAGNOSTIC_SCAN_DIRS = ["player", "data"];
+const DIAGNOSTIC_SCAN_FILES = ["app.js"];
+
+function listFilesRecursive(dir) {
+  const out = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...listFilesRecursive(full));
+    else out.push(full);
+  }
+  return out;
+}
+
+test("the diagnostic Foray instrument (#29) stays deleted from player/, app.js and data/", () => {
+  const files = [
+    ...DIAGNOSTIC_SCAN_DIRS.flatMap((rel) => {
+      const full = path.join(ROOT, rel);
+      return fs.existsSync(full) ? listFilesRecursive(full) : [];
+    }),
+    ...DIAGNOSTIC_SCAN_FILES.map((rel) => path.join(ROOT, rel)).filter(fs.existsSync),
+  ];
+
+  const offenders = [];
+  for (const file of files) {
+    let text;
+    try {
+      text = fs.readFileSync(file, "utf8");
+    } catch {
+      continue; // unreadable (permissions, race with deletion) — nothing to scan
+    }
+    for (const needle of DIAGNOSTIC_STRINGS) {
+      if (text.includes(needle)) offenders.push(`${path.relative(ROOT, file)}: "${needle}"`);
+    }
+  }
+
+  assert.deepEqual(
+    offenders,
+    [],
+    "the diagnostic Foray instrument from HUMAN-ACTIONS.md #29 has reappeared " +
+      `under player/, app.js or data/ — D-01 deleted it on purpose:\n${offenders.join("\n")}`
+  );
+});
+
+/* ======================================================================
+   K-06: the bundled voice's licence, size and provenance gates
+   (docs/bundled-voice-plan.md K-06)
+
+   THREE PROMISES, ONE PLACE. This suite already exists to hold a release to
+   what the shipped documents claim, which is exactly the shape of all three:
+
+     (1) THE GPL STAYS ON THE SERVER. Kokoro's weights are Apache-2.0, but
+         every Kokoro runtime in the wild reaches `espeak-ng` (GPL-3) for its
+         text front-end. The whole architecture of this deck — phonemes are
+         computed server-side and the phone receives ids — exists to keep that
+         dependency out of the app binary (deck §4). A gate is what makes that
+         an enforced property rather than an intention.
+     (2) THE MODEL IS FETCHED, NEVER COMMITTED, AND ALWAYS VERIFIED.
+     (3) THE APP HAS A SIZE CEILING WITH A STATED REASON, and a written
+         trigger for moving to on-demand resources.
+
+   WHAT THESE CANNOT DO FROM HERE, said plainly: (1) is asserted over the
+   SOURCE TREE, not over a built `.ipa`/`.aab` — no Apple or Android toolchain
+   exists on the machine this was written on, so the `strings`-the-binary half
+   of K-06's ask is named in the deck's remaining work rather than pretended at
+   here. A source gate is strictly weaker and strictly better than nothing: the
+   only way `espeak` reaches the binary is by first appearing in a manifest, a
+   Gradle file or a Package.swift in this tree.
+
+   THE PINS ARE LOADED WITH `await import(...)`, because this suite is
+   CommonJS (`__dirname` above) and `tools/mobile/fetch-models.mjs` is an ES
+   module. A dynamic import inside an async test is the one bridge that works
+   in both directions on every Node this repo supports.
+   ====================================================================== */
+
+const loadModelPins = () => import("../tools/mobile/fetch-models.mjs");
+
+/** Everything a native build reads to decide what to link. A file walk of the
+    whole repo would hit this suite's own prose and the deck that explains the
+    rule, which is why the gate reads BUILD INPUTS rather than grepping the
+    tree for a word. */
+const NATIVE_BUILD_INPUTS = [
+  "mobile/plugins/foray-tts/Package.swift",
+  "mobile/plugins/foray-tts/package.json",
+  "mobile/plugins/foray-tts/android/build.gradle",
+  "mobile/plugins/foray-audio/android/build.gradle",
+  "package.json",
+];
+
+test("K-06: no espeak dependency reaches any native build input", () => {
+  /* THE LICENCE GATE. `espeak-ng` is GPL-3 and would infect an App Store
+     binary; `generation-architecture.md` §1.2.1 already ruled it server-only,
+     and this deck's phoneme design is what makes that possible on-device too.
+     MUTATION: add `piper-phonemize` or `espeak-ng` to Package.swift's
+     dependencies, or to the plugin's build.gradle — this goes red. */
+  const offenders = [];
+  for (const rel of NATIVE_BUILD_INPUTS) {
+    const abs = path.join(ROOT, rel);
+    if (!fs.existsSync(abs)) continue;
+    const text = fs.readFileSync(abs, "utf8").toLowerCase();
+    for (const needle of ["espeak", "piper-phonemize", "phonemizer"]) {
+      if (text.includes(needle)) offenders.push(`${rel}: "${needle}"`);
+    }
+  }
+  assert.deepEqual(offenders, [],
+    "a GPL text front-end reached a native build input — phonemes are computed on the server "
+    + "(docs/bundled-voice-plan.md §4), and the app must never link espeak:\n" + offenders.join("\n"));
+});
+
+test("K-06: the model pin table is well-formed, and every pin is filled", async () => {
+  /* CI's half of "fails on a mismatch". The download now happens in the
+     `ios-shell` and `android-shell` jobs, and the table those jobs read is
+     checked on every run here. The failure this catches is somebody editing a
+     URL and not the hash.
+     MUTATION: half-pin an entry (bytes, no sha256) — `pinProblems` names it.
+
+     The previous form of this test asserted the OPPOSITE — that every pin was
+     unfilled — with the instruction "when that changes, this assertion is the
+     one that has to change too, in a diff that says who did it". This is that
+     diff: on 2026-09-12 every URL was fetched once and STREAM-hashed on a
+     Windows workstation — the bytes went through `createHash` chunk by chunk
+     and were never written to disk, so no 86 MB file entered a worktree.
+     `tools/mobile/fetch-models.test.mjs` carries the rest of the detail. */
+  const { PINS, pinProblems, unfilled } = await loadModelPins();
+  assert.deepEqual(pinProblems(), []);
+  assert.ok(PINS.length >= 13, "one model and the twelve audition voices");
+  assert.equal(unfilled().length, 0,
+    "an unfilled pin refuses to fetch, so a build carrying one would ship no weights at all");
+});
+
+test("K-06: every pinned artefact records a permissive licence and an https source", async () => {
+  /* The THIRD_PARTY_NOTICES entry is written FROM this table (K-06(4)), so a
+     pin with no licence is a notice that cannot be written. The deck's §11
+     non-goals also forbid "any voice whose licence is not Apache/MIT", and
+     this is where that becomes a check rather than a sentence.
+     MUTATION: change a pin's licence to OpenRAIL-M (Supertonic's) — red. */
+  const { PINS } = await loadModelPins();
+  for (const p of PINS) {
+    assert.match(p.licence, /^(Apache-2\.0|MIT)$/, `${p.name}: non-permissive or unrecorded licence`);
+    assert.match(p.source, /^https:\/\//, `${p.name}: no source for the licence claim`);
+  }
+});
+
+test("K-06: the notices file carries Kokoro, ORT and the voice data", () => {
+  /* MUTATION: delete any of the three entries. An app that bundles Apache-2.0
+     weights without reproducing the notice is out of compliance with the one
+     term Apache-2.0 actually imposes. */
+  const notices = read("docs/legal/third-party-notices.md");
+  for (const want of ["Kokoro-82M", "ONNX Runtime", "Apache-2.0", "MIT"]) {
+    assert.ok(notices.includes(want), `third-party-notices.md is missing ${want}`);
+  }
+});
+
+/* K-06(3): the ceiling, and the arithmetic behind it, in one place so the
+   number and its reason cannot drift apart.
+
+   150 MB, from the deck: Apple's App Store cellular-download cap is 200 MB, so
+   an app that crosses it stops installing away from wi-fi — which, for an app
+   used while driving, is a large share of its installs. Today's measured sizes
+   plus the model are the budget:
+
+     Android release .aab   5.46 MB   (deck §2, measured)
+     iOS App.app            8.3 MB    (deck §2, measured, simulator)
+     Kokoro q8f16 weights  ~86 MB     (model card, Documented)
+     ONNX Runtime mobile   ~10-20 MB  (Inferred — K-04 measures)
+     three voice files     ~1.5 MB
+                           --------
+     worst case            ~116 MB, leaving ~34 MB of headroom.
+
+   THE TRIGGER for moving to on-demand resources / Play Asset Delivery: the
+   ceiling being reached, or a second language (a second model and a second
+   audition). Written here, not left to be argued in the PR that hits it. */
+const APP_SIZE_CEILING_MB = 150;
+const APPLE_CELLULAR_CAP_MB = 200;
+
+test("K-06: the app-size ceiling is below Apple's cellular cap, with the reason stated", () => {
+  /* MUTATION: raise the ceiling above 200 — the app stops installing over
+     cellular and nothing else in the repo notices. This is the test that makes
+     raising it a deliberate, argued act. */
+  assert.ok(APP_SIZE_CEILING_MB < APPLE_CELLULAR_CAP_MB,
+    "a ceiling at or above the cellular cap is not a ceiling");
+  const deck = read("docs/bundled-voice-plan.md");
+  assert.ok(deck.includes("150 MB"), "the deck and this gate must name the same ceiling");
+  assert.ok(deck.includes("200 MB"), "the deck must state the cellular cap the ceiling is derived from");
+});
+
+test("K-06: the measured app sizes plus the model still fit under the ceiling", async () => {
+  /* NO LONGER AN ESTIMATE. Until 2026-09-13 every number here was quoted from
+     the deck, because no build in this repo had ever produced an artefact with
+     the weights in it. `android-shell` now does, and these are read off it:
+
+       app-release-unsigned.apk, WITHOUT the model   6,070,267 B
+         (run 34737154752, job 103670869175 — a PR that does not touch voice)
+       app-release-unsigned.apk, WITH it           137,468,845 B
+         (run 34737888251, job 103672413287 — this card's own PR)
+
+     The 125.3 MiB difference decomposes: 82.5 MiB is the pinned model plus one
+     voice (`bundledBytes()`, asserted below against the same table the build
+     copies from), and the remaining ~42.8 MiB is ONNX Runtime's native
+     libraries for FOUR ABIs.
+
+     ~42.8 MiB IS THE FINDING, and it is well outside the deck's inferred
+     "10–20 MB". The deck's figure is not wrong so much as about a different
+     artefact: `onnxruntime-android` carries arm64-v8a, armeabi-v7a, x86 and
+     x86_64, a universal APK contains all four, and Play splits the `.aab` so a
+     phone downloads roughly one. Per-ABI that is ~11 MiB, which is what the
+     deck meant.
+
+     SO THIS TEST CHECKS THE PESSIMISTIC ARTEFACT ON PURPOSE — the universal
+     APK, every ABI, no splitting — because it is the one that has actually been
+     built. It passes with ~19 MB of headroom. What is STILL NOT MEASURED is the
+     `.aab` Play actually receives (`android-release.yml` makes it; no run of it
+     exists for this branch) and the iOS `.ipa` (one arm64 slice, so it should
+     land near 8.3 + 82.5 + ~11 = ~102 MiB). Those two remain K-06's open soft
+     spot, and this comment is the record of exactly which numbers are real.
+
+     MUTATION: bundle a second voice, or pin fp32's 326 MB model — the sum
+     crosses the ceiling and the answer becomes "fetch it on first run", which
+     is the finding this test exists to surface rather than hide. */
+  const { bundledBytes } = await loadModelPins();
+  const MiB = 1024 * 1024;
+
+  /* Measured, both from android-shell runs named above. */
+  const APK_WITHOUT_MODEL_BYTES = 6_070_267;
+  const APK_WITH_MODEL_BYTES = 137_468_845;
+
+  const bundledMb = bundledBytes() / MiB;
+  assert.ok(bundledMb > 80 && bundledMb < 90,
+    `the bundled weights are ${bundledMb.toFixed(1)} MiB — if this moved, a different model variant got pinned`);
+
+  /* The build's own delta must be the weights plus a runtime, not the weights
+     plus a surprise. If a future change smuggled a second large file into the
+     app, this is where the arithmetic stops agreeing.
+     MUTATION: copy every pin instead of the bundled ones — the runtime share
+     would have to absorb 5.5 MB of unused voices and this goes red. */
+  const deltaMb = (APK_WITH_MODEL_BYTES - APK_WITHOUT_MODEL_BYTES) / MiB;
+  const runtimeShareMb = deltaMb - bundledMb;
+  assert.ok(runtimeShareMb > 35 && runtimeShareMb < 55,
+    `ONNX Runtime's four ABIs measured ${runtimeShareMb.toFixed(1)} MiB in a universal APK; `
+    + "outside 35–55 MiB, something other than the runtime is in the delta");
+
+  const worstApkMb = APK_WITH_MODEL_BYTES / MiB;
+  assert.ok(worstApkMb < APP_SIZE_CEILING_MB,
+    `the universal APK is ${worstApkMb.toFixed(1)} MiB, over the ${APP_SIZE_CEILING_MB} MB ceiling — `
+    + "the model must then be fetched on first run rather than bundled");
+
+  /* iOS ships ONE architecture, so its SHIPPED artefact cannot be worse than
+     Android's universal APK. Stated as an assertion rather than a sentence so
+     that a future iOS measurement pasted in above has something to contradict.
+
+     DO NOT REACH FOR THE 146 MB FIGURE IN `ios-shell`'s LOG. That run records
+     `du -sh App.app` = 146M (job 103673939658), and it is the SIMULATOR DEBUG
+     bundle: two simulator slices of the runtime, unoptimised, unstripped, and
+     never thinned. It is not the `.ipa`, it is not what a phone downloads, and
+     reading it as either would make a 102 MiB app look like it is 4 MB from the
+     ceiling. It is recorded here rather than left for someone to find in an
+     artifact and misread. The real iOS number needs a signed archive, which is
+     `ios-archive`'s job and has not run for this branch. */
+  const iosAppMb = 8.3;   // deck §2, measured, simulator, before the model
+  const iosProjectedMb = iosAppMb + bundledMb + (runtimeShareMb / 4);
+  assert.ok(iosProjectedMb < worstApkMb,
+    "a single-slice iOS app cannot exceed a four-ABI universal APK");
+  assert.ok(iosProjectedMb > 100,
+    "if this dropped below 100 MB a measurement changed and the whole budget should be re-read");
+});
+
+test("K-06: the web bundle's own model gate is wired into prepare-webdir", async () => {
+  /* Two different gates for two different failures, and this pins that the
+     second one is actually CALLED: `MAX_BYTES` catches "something enormous got
+     in" with the wrong diagnosis, `assertNoModelWeights` catches "a model got
+     in" — including the SMALL case (a 130 KB voice file) that fits under 3 MB
+     and would otherwise ship silently to the website as well as the shell.
+     MUTATION: delete the `assertNoModelWeights(files)` call from `prepare`. */
+  const src = read("tools/mobile/prepare-webdir.mjs");
+  assert.match(src, /^\s*assertNoModelWeights\(files\);$/m,
+    "prepare() must call the model gate, not merely export it");
 });
