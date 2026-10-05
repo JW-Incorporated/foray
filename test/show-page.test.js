@@ -1004,6 +1004,110 @@ test("catalog.json: every label_scope value is 'general' or absent", () => {
   assert.ok(general > 0, "fixture assumption: PKG-03 marked at least one show general");
 });
 
+/* PKG-10 (docs/roadmap/catalogue-personalization.md §3, finishing #560 item 4):
+   breadth show pages get chips and Similar shows. Once the backend keeps a
+   breadth show's folded taxonomy nodes (PKG-09), two things must hold on the
+   client: a breadth row that carries nodes renders them like a curated show's,
+   and a show seeded from the loaded show index — which carries no nodes — is
+   upgraded to the API row instead of staying bare for the whole visit. */
+
+/** A non-booted mount with one curated show on `science` and nothing else, so
+    a breadth show on `science` has exactly one Similar show to find. */
+function mountWithScienceShow() {
+  const m = mount();
+  m.state.catalog = { shows: [{ show_id: "curated-sci", title: "Curated Science Show", artwork_url: null, taxonomy_node_ids: ["science"], editorial_note: null }] };
+  m.state.discover = { items: [] };
+  m.state.taxonomy = { nodes: [{ id: "science", label: "Science" }] };
+  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+  return m;
+}
+
+/** Answer `api/shows/search?id=` with `show`; every other request hangs, as an
+    un-booted mount's do. */
+function answerShowSearch(m, show) {
+  m.ctx.fetch = (url) => (String(url).includes("api/shows/search")
+    ? Promise.resolve({ ok: true, status: 200, json: async () => ({ show, degraded: false }) })
+    : new Promise(() => {}));
+}
+
+/** Seed the loaded show index with one breadth row, the shape decodeShowIndex
+    leaves in memory (a title and a tier, no taxonomy nodes). */
+function seedShowIndex(m, row) {
+  m.ctx.__row = row;
+  m.evalIn("showIndex = { keys: [], rows: [__row] }");
+}
+
+test("a breadth row in the cache with taxonomy_node_ids renders chips and a Similar shows section", () => {
+  /* The page reads nodes off whichever row showById answers; nothing about a
+     breadth show should stop them rendering once the row carries them.
+     MUTATION: make similarShows return [] for `show.tier === "breadth"`. The
+     Similar shows assertions fail. RUN: failed as named. */
+  const m = mountWithScienceShow();
+  m.state.breadthShowCache = {
+    "123": { show_id: "123", title: "Breadth Science Hour", artwork_url: null, editorial_note: null, taxonomy_node_ids: ["science"], tier: "breadth" },
+  };
+  m.ctx.renderShow("123");
+  const html = m.view();
+  assert.ok(html.includes('href="#/category/science"'), "the breadth show's taxonomy chip must render");
+  assert.ok(html.includes("Similar shows"), "the breadth show must get a Similar shows section");
+  assert.ok(html.includes(`href="#/show/curated-sci"`), "…linking to the curated show it overlaps");
+});
+
+test("an index-seeded show is upgraded when the API row carries nodes", async () => {
+  /* The index row paints the page at once with `taxonomy_node_ids: []`; the
+     API row then upgrades it, and the page is drawn again with chips and
+     Similar shows. The seeded title survives a row that lacks one, because the
+     row is merged over the seed rather than replacing it.
+     MUTATION: restore the early return — delete the `upgradeBreadthShowRow`
+     call from resolveMissingShow's index branch. The cache row keeps its empty
+     nodes and the chip assertion fails. RUN: failed as named. */
+  const m = mountWithScienceShow();
+  seedShowIndex(m, { show_id: "123", title: "Breadth Science Hour", tier: "breadth" });
+  answerShowSearch(m, { show_id: "123", artwork_url: null, taxonomy_node_ids: ["science"], tier: "breadth" });
+  m.ctx.location.hash = "#/show/123";
+
+  m.ctx.renderShow("123");
+  const seeded = m.view();
+  assert.ok(seeded.includes("Breadth Science Hour"), "the index row paints the page at once");
+  assert.ok(!seeded.includes('href="#/category/science"'), "fixture assumption: the seeded page has no chips");
+
+  const html = await settled(m);
+  const row = m.state.breadthShowCache["123"];
+  assert.strictEqual(row.taxonomy_node_ids.length, 1, "the cache row must carry the API row's nodes");
+  assert.strictEqual(row.taxonomy_node_ids[0], "science");
+  assert.strictEqual(row.title, "Breadth Science Hour", "the seed's title survives a row without one");
+  assert.ok(html.includes('href="#/category/science"'), "the upgraded page renders the chip");
+  assert.ok(html.includes("Similar shows"), "…and a Similar shows section");
+  assert.ok(html.includes("Breadth Science Hour"), "…still under the show's title");
+});
+
+test("an API row without nodes leaves the seeded row and does not re-render", async () => {
+  /* Nothing on the page would change, so nothing is drawn again: a repaint
+     with the same content is a flicker, and it would restart the episode load.
+     The row's artwork is deliberately different from the seed's, so a merge
+     that slipped through is visible in the cache as well as in the count.
+     MUTATION: drop the `row.taxonomy_node_ids.length` guard. The row is merged
+     (the seed's null artwork is overwritten) and renderShow runs a second
+     time; both assertions fail. RUN: failed as named. */
+  const m = mountWithScienceShow();
+  seedShowIndex(m, { show_id: "123", title: "Breadth Science Hour", tier: "breadth" });
+  answerShowSearch(m, { show_id: "123", title: "Breadth Science Hour", artwork_url: "https://img.test/a.jpg", taxonomy_node_ids: [], tier: "breadth" });
+  m.ctx.location.hash = "#/show/123";
+  let renders = 0;
+  const realRenderShow = m.ctx.renderShow;
+  m.ctx.renderShow = (...args) => { renders++; return realRenderShow(...args); };
+
+  /* The first call re-enters once through resolveMissingShow's index seed, so
+     the count is read after it rather than assumed. */
+  m.ctx.renderShow("123");
+  const seededRenders = renders;
+  assert.ok(m.view().includes("Breadth Science Hour"), "fixture assumption: the index row painted the page");
+  await settled(m);
+  assert.strictEqual(renders, seededRenders, "a row without nodes must not re-render the page");
+  assert.strictEqual(m.state.breadthShowCache["123"].artwork_url, null, "the seeded row must be left as it was");
+  assert.ok(!m.view().includes("Similar shows"), "and the page still has no Similar shows");
+});
+
 test("catalog-client.json is measurably smaller than catalog.json (the gzip claim is real)", () => {
   /* Not a byte-exact pin (catalog.json changes nightly) — just proves the
      projection is doing real work, so the PR's "measured, not assumed" claim
