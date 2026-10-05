@@ -69,8 +69,8 @@
  *     Measured: the code half was 1,098 KB, 72% of it prose and formatting, and it
  *     was growing five times faster than the data file everybody was watching.
  *   - Every `data/*.json` in the plan is re-serialised with `JSON.stringify` and no
- *     indentation — the slices AND the copies. `COPIED_WHOLE` therefore asserts that
- *     the bundled document PARSES to the same document as the source, not that the
+ *     indentation — the slices AND the copies. `assertSlicesOnDisk` therefore asserts
+ *     that a copied document PARSES to the same document as the source, not that the
  *     bytes match; a trim still fails it, and that is all it ever guarded.
  * The web is untouched: the repo root stays dependency-free and no-build, GitHub
  * Pages serves the commented source, and the minifier lives in `tools/mobile/`'s
@@ -90,7 +90,7 @@
  * THE FILES THAT ARE COPIED IN PART, AND WHY THAT IS NOT A FORK EITHER
  * `data/discover.json` and `data/item-tags.json` are the two bundled files whose
  * size is a function of the CATALOGUE rather than of the product, and the
- * nightly refresh grows them. `data/segments.json` and `data/segment-sources.json`
+ * nightly refresh grows them (the tag map is sliced since #279 — see below). `data/segments.json` and `data/segment-sources.json`
  * are the two whose size is a function of the SEGMENT POOL, and every extraction
  * batch grows those — see the § above `referencedSegmentIds` for why that is the
  * worse of the two shapes and what #327 did about it. `data/forays.json` is the
@@ -118,9 +118,11 @@
  * 1,534 items are joinable today, and the per-file budget is the alarm if that
  * changes.
  *
- * `item-tags.json` is COPIED WHOLE and that is a deliberate, measured refusal, not
- * an oversight — see the § above `PROJECTED_DATA`. Trimming it is what makes the app
- * rank search results differently from the website.
+ * `item-tags.json` WAS COPIED WHOLE until #279, as a deliberate, measured refusal:
+ * a bare trim makes the app rank search results differently from the website. It is
+ * sliced now to the items the app searches, and carries the WHOLE map's term counts
+ * beside the slice so search reads exactly the website's numbers — see the § above
+ * `PROJECTED_DATA`.
  *
  * This is not the fork the header warns about, for the same reason the injected
  * script tag is not: there is one copy of the selection rule, it lives here, it
@@ -221,6 +223,15 @@ import { BUILD_STAMP_FILE, buildStampDoc } from "../../player/build-stamp.js";
    pointer it serves. Neither is a committed file any more — see
    `tools/ci/generate-manifest.mjs`'s header. */
 import { sourceStamp } from "../ci/generate-manifest.mjs";
+import { createRequire } from "node:module";
+
+/* The PRODUCTION search engine, for the same reason as the two joins above (#279):
+   the tag slice's correctness condition is "tagCount and tagDF cannot tell the
+   slice from the whole map", so the counts it carries are computed — and checked —
+   by the functions the app and the website run, not by a copy of their matcher.
+   A plain script with a CommonJS export (it is a <script> on the page), hence
+   createRequire rather than an import. */
+const SearchEngine = createRequire(import.meta.url)("../../search-engine.js");
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -1284,7 +1295,7 @@ const sameJson = (a, b) => JSON.stringify(a) === JSON.stringify(b);
  *
  * @param {object} foraysDoc  the Foray document AS BUNDLED — it is the selector, so
  *   verifying against the repo's copy while shipping another would prove the wrong
- *   thing. `data/forays.json` is in `COPIED_WHOLE` to keep those the same document.
+ *   thing. `assertSeedForaysComplete` pins the bundled one to `seedForays(source)`.
  * @param {{segments: object, sources: object}} full   the repo's two documents
  * @param {{segments: object, sources: object}} sliced what the bundle will carry
  */
@@ -1399,58 +1410,203 @@ export function assertForaySliceComplete(foraysDoc, full, sliced) {
   return true;
 }
 
-/* The one that is NOT sliced, and why, because "it is only tags" was the wrong
+/* THE TAG MAP, SLICED WITH THE WHOLE MAP'S COUNTS BESIDE IT (#279).
+ *
+ * `data/item-tags.json` is the OTHER catalogue-proportional file, second only to
+ * `discover.json` and still growing ~3 KB a night. Until #279 it was COPIED WHOLE,
+ * and the reason is the part worth keeping, because "it is only tags" was the wrong
  * answer and a reviewer caught it.
  *
- * `data/item-tags.json` is the OTHER catalogue-proportional file: 329 KB, ~4 KB a
- * night, second only to `discover.json`. Trimming it to the bundled pool takes it to
- * 121 KB and looks completely safe — `search-engine.js` only ever looks a tag list
- * up by an item it is already scoring, so an entry for an absent item is dead weight.
+ * A BARE TRIM IS NOT SAFE. `search-engine.js` looks a tag list up by an item it is
+ * already scoring (`scoreMatch`, `itemWordSets`), so an entry for an item the app
+ * cannot search looks like dead weight. It is not: `tagCount` and `tagDF` read the
+ * COMPOSITION of the whole map — how many entries carry a word, out of how many —
+ * and those numbers drive every threshold in the query interpreter. Before #275 the
+ * damage was arithmetic (an absolute count against absolute thresholds: 66 of 1,366
+ * terms changed expansion bucket, `war` 72 -> 24). #275 made `tagDF` a fraction, and
+ * what was left was SAMPLING: the pool is three items per show plus every session
+ * episode, stratified by SHOW and therefore skewed by TOPIC, so 12 terms still moved
+ * expansion bucket and 62 moved score multiplier (`comedy` 10.70% -> 8.47%: deleted
+ * as too broad on the website, kept at 0.4x in the app). `prepare-webdir.test.mjs`
+ * still measures that divergence on the real repo, as the reason the next part
+ * exists — 22 buckets and 60 multipliers on 2026-10-05, a sampling residue that
+ * moves with every nightly.
  *
- * IT IS NOT DEAD WEIGHT. `search-engine.js`'s `tagDF()` walks `Object.values()` of
- * the whole map, so the SIZE and the COMPOSITION of the map are inputs to every
- * threshold in the query interpreter, not just a lookup table keyed by item.
+ * WHAT SHIPS INSTEAD, and why it is exact rather than approximate. The slice keeps
+ * the tag lists of exactly the items the app SEARCHES — `session.episodes` plus the
+ * bundled discover slice, the pool `app.js`'s `fullPool()` builds and that
+ * `scoreMatch`, `itemWordSets` and `corpusDF` read — and adds a top-level `df`
+ * block, computed by the engine's own `buildTagDfBlock` over the WHOLE map: the
+ * whole map's entry count, and the count of every term whose candidate forms hit a
+ * segment (every prefix of every segment that counts nonzero, which is every term
+ * that can count nonzero at all — see `readTagDfBlock` in search-engine.js). The
+ * engine reads `tagCount` and `tagDF` off that block, so the app's numbers ARE the
+ * website's, term for term, including the union `tagCount` takes over a term's
+ * candidate forms, which a per-segment table would get wrong.
+ * `assertItemTagsSliceComplete` proves that on every build.
  *
- * WHEN THIS WAS WRITTEN THE PROBLEM WAS ARITHMETIC. `tagDF` returned an absolute
- * count and `interpretQuery` compared it against absolute thresholds — `df > 60`
- * deleted a term from query expansion, `df > 25` cut its weight to 0.4x — while
- * `scoreMatch` bucketed a multiplier at 10 and 30. Cutting 1,561 entries to 649
- * scaled every df by ~0.42, and over the 1,366 terms `tagDF` can be called with
- * (the concept vocabulary plus ALIASES) **66 changed expansion bucket and 176
- * changed score multiplier**: `war` 72 -> 24, deleted as too broad on the website
- * and at full weight in the app; `ai` 94 -> 38, deleted -> 0.4x.
+ * The block is honoured only on the map it was shipped with (`df.entries` must equal
+ * the map's own entry count), so a WHOLE `data/item-tags.json` — the website's, or
+ * the one issue #40's catalogue directory will fetch — carries no `df` block and
+ * counts the whole map itself: no stale bundle-time counts survive a refresh. The
+ * repo's own file must therefore never carry one, and `itemTagsSlice` refuses a
+ * source that does.
  *
- * #275 FIXED THAT HALF, AND THE REFUSAL STANDS ANYWAY — which is the part worth
- * reading, because the obvious reading of #275 is that it made this free. `tagDF` is
- * now a FRACTION of the map it walked, so a trim scales numerator and denominator
- * together and the whole arithmetic class of divergence is gone: `war` is 4.61% of
- * the whole map and 3.70% of the trimmed one, same bucket. What is left is SAMPLING.
- * The slice is three items per show plus every session episode — stratified by SHOW,
- * therefore skewed by TOPIC — so **12 terms still change expansion bucket and 62
- * change score multiplier**: `comedy` 10.70% -> 8.47% (the website deletes it, the
- * app would keep it at 0.4x), `world-war` 2.95% -> 1.69%. Smaller, better understood,
- * and the same failure in kind, bought for ~181 KB.
- *
- * So it is copied whole, and `prepare-webdir.test.mjs` asserts byte-identity to keep
- * it that way. WHAT THAT COSTS, stated rather than buried: the file is still
- * O(episodes), so the bundle still grows ~4 KB a night. From 1.96 MB that is about
- * 245 nights of headroom under the 3 MB cap, not a year.
- *
- * WHAT WOULD ACTUALLY BUY THE ~181 KB, named so the next attempt starts here: ship
- * the trimmed map PLUS a precomputed df table (term -> count, and the map size).
- * That is the second option #275 lists, and #275 is what makes it cheap — the
- * fraction is already the quantity search reads, so the sidecar is ~1,400 numbers
- * and the app and the website agree EXACTLY rather than approximately. It is a
- * bundle change, not a search-quality one, so unlike #275 it belongs in a PR like
- * this one.
+ * WHAT IT BOUGHT: see `PROJECTED_DATA`'s entry for the measured sizes. The tag half
+ * is now O(shows), like the discover slice; the counts grow with the VOCABULARY,
+ * which moves far slower than the episode count.
  */
+
+/** The ids the app's search runs over: `app.js`'s `fullPool()` — every session
+ *  episode, then every discover item — read off the documents AS BUNDLED. */
+export function searchedPoolIds(discoverDoc, sessionDoc) {
+  const ids = new Set(Object.keys(sessionDoc?.episodes ?? {}));
+  for (const item of Array.isArray(discoverDoc?.items) ? discoverDoc.items : []) {
+    if (item && typeof item.id === "string") ids.add(item.id);
+  }
+  return ids;
+}
+
+/**
+ * The bundled `data/item-tags.json`: the tag lists of the searched pool, in
+ * document order, every other top-level key kept, plus the whole map's counts
+ * (`df`, written by search-engine.js's `buildTagDfBlock`) — see the § above.
+ *
+ * @param {object} source  the repo's whole `data/item-tags.json`
+ * @param {{discover: object, session: object}} pool  the discover slice and the
+ *   session document the bundle carries
+ * @throws {WebDirError} on a map with no entries, or one that already carries a
+ *   `df` block — the same fails-green guard every other projection opens with.
+ */
+export function itemTagsSlice(source, { discover, session }) {
+  const tags = source?.tags;
+  if (!tags || typeof tags !== "object" || Array.isArray(tags) || Object.keys(tags).length === 0) {
+    throw new WebDirError(
+      `data/item-tags.json has no non-empty "tags" map, so there is nothing to slice. ` +
+        `Refusing to write an empty tag map: it would pass every budget in this file and ` +
+        `leave every search in the app scoring on titles alone.`
+    );
+  }
+  if (source.df !== undefined) {
+    throw new WebDirError(
+      `the repo's data/item-tags.json carries a "df" block. That block is the native ` +
+        `bundle's (prepare-webdir writes it into the slice); on the website's whole map ` +
+        `it would be bundle-time counts read in place of the map's own. Remove it from ` +
+        `the source.`
+    );
+  }
+  const pool = searchedPoolIds(discover, session);
+  const kept = {};
+  for (const [id, list] of Object.entries(tags)) if (pool.has(id)) kept[id] = list;
+  const keptEntries = Object.keys(kept).length;
+  const { tags: _all, ...rest } = source;
+  return {
+    ...rest,
+    /* Not decoration, for the reason discoverSlice gives: a phone holding 703 of
+       2,204 tag lists must say so, or it reads as a broken map. */
+    bundled_from: { entries: Object.keys(tags).length, pool: pool.size, kept: keptEntries },
+    df: SearchEngine.buildTagDfBlock(source, keptEntries),
+    tags: kept,
+  };
+}
+
+/**
+ * Prove the bundled tag map is the searched pool's tag lists and nothing else, and
+ * that `tagCount` and `tagDF` cannot tell it from the whole map.
+ *
+ * The count check is the one that matters, for the reason every verifier here
+ * exists: a slice that silently fell back to counting itself — a `df` block the
+ * engine rejects, a table missing the plural-only terms, a size that is the
+ * slice's — writes a smaller file and reports success, and the app ranks
+ * differently from the website on a phone. So it runs the REAL engine over both
+ * maps for every prefix of every whole-map segment (every term that can count
+ * nonzero) and every term the table names, and demands identical answers.
+ *
+ * @param {object} source   the repo's whole `data/item-tags.json`
+ * @param {object} written  what the bundle carries (or will)
+ * @param {{discover: object, session: object}} pool  the bundled pool documents
+ */
+export function assertItemTagsSliceComplete(source, written, { discover, session }) {
+  const whole = source?.tags ?? {};
+  const sliced = written?.tags;
+  if (!sliced || typeof sliced !== "object" || Object.keys(whole).length === 0) {
+    throw new WebDirError(
+      `the bundled data/item-tags.json has no "tags" map, or the source is empty. See itemTagsSlice's guard.`
+    );
+  }
+  const pool = searchedPoolIds(discover, session);
+  const wantIds = Object.keys(whole).filter((id) => pool.has(id));
+  const gotIds = Object.keys(sliced);
+  if (!isDeepStrictEqual(gotIds, wantIds)) {
+    const missing = wantIds.filter((id) => !(id in sliced));
+    const extra = gotIds.filter((id) => !pool.has(id) || !(id in whole));
+    throw new WebDirError(
+      `the bundled data/item-tags.json is not the searched pool's tag lists in document order: ` +
+        (missing.length
+          ? `it is missing ${JSON.stringify(missing.slice(0, 3))} — an item the app searches, scored ` +
+            `on its title alone in the app and on its tags on the website`
+          : extra.length
+            ? `it carries ${JSON.stringify(extra.slice(0, 3))}, which the app cannot search — bytes the ` +
+              `slice exists to drop`
+            : `the order changed`) +
+        `. The pool is session.episodes plus the bundled discover slice (app.js fullPool).`
+    );
+  }
+  for (const id of wantIds) {
+    if (!isDeepStrictEqual(sliced[id], whole[id])) {
+      throw new WebDirError(`the bundled tag list for ${JSON.stringify(id)} differs from the source's.`);
+    }
+  }
+  for (const key of Object.keys(source)) {
+    if (key === "tags") continue;
+    if (!isDeepStrictEqual(source[key], written[key])) {
+      throw new WebDirError(`the bundled data/item-tags.json lost or changed its top-level "${key}".`);
+    }
+  }
+
+  /* Fresh contexts, one per map, exactly as the app and the website each build
+     theirs: the engine memoizes on the ctx, so sharing one would compare a map
+     against its own cache. */
+  const wholeCtx = { itemTags: { tags: whole } };
+  const sliceCtx = { itemTags: written };
+  const terms = new Set();
+  for (const list of Object.values(whole)) {
+    for (const tag of Array.isArray(list) ? list : []) {
+      for (const seg of String(tag).split("-")) {
+        for (let k = 0; k <= seg.length; k++) terms.add(seg.slice(0, k));
+      }
+    }
+  }
+  for (const group of Object.values(written?.df?.by_count ?? {})) {
+    for (const t of Array.isArray(group) ? group : []) terms.add(t);
+  }
+  const off = [];
+  for (const t of terms) {
+    if (SearchEngine.tagCount(t, wholeCtx) !== SearchEngine.tagCount(t, sliceCtx) ||
+        SearchEngine.tagDF(t, wholeCtx) !== SearchEngine.tagDF(t, sliceCtx)) off.push(t);
+  }
+  if (off.length) {
+    const t = off[0];
+    throw new WebDirError(
+      `search-engine.js counts ${off.length} term(s) differently on the bundled tag slice than on ` +
+        `the whole map — ${JSON.stringify(t)}: tagCount ${SearchEngine.tagCount(t, wholeCtx)} vs ` +
+        `${SearchEngine.tagCount(t, sliceCtx)}, tagDF ${SearchEngine.tagDF(t, wholeCtx)} vs ` +
+        `${SearchEngine.tagDF(t, sliceCtx)}. The app would interpret queries differently from the ` +
+        `website. The slice's "df" block must carry the WHOLE map's count for every term that ` +
+        `counts nonzero and the whole map's entry count, and "df.entries" must equal the slice's ` +
+        `own entry count or the engine ignores the block (search-engine.js readTagDfBlock).`
+    );
+  }
+  return true;
+}
 
 /**
  * Which bundled data files are written as a slice rather than copied.
  *
- * FOUR ENTRIES, THREE DIFFERENT REASONS, and the difference is what each budget
- * means. `data/discover.json` is sliced because its size tracks the CATALOGUE and
- * the nightly refresh grows it whether or not anybody decided anything. The two
+ * FIVE ENTRIES, THREE DIFFERENT REASONS, and the difference is what each budget
+ * means. `data/discover.json` and `data/item-tags.json` are sliced because their
+ * size tracks the CATALOGUE and the nightly refresh grows them whether or not
+ * anybody decided anything (the tag map since #279 — see the § above). The two
  * segment documents are sliced because their size tracks the SEGMENT POOL, which
  * grows with every extraction batch — and unlike the catalogue, none of that growth
  * is reachable from the app until somebody authors a Foray against it (#327).
@@ -1467,6 +1623,15 @@ export function assertForaySliceComplete(foraysDoc, full, sliced) {
  *     silence. UNCHANGED by #327; LOWERED 800 -> 720 KB on 2026-09-04 when the
  *     JSON whitespace went (745 -> 636 KB), to keep it the same ~13% alarm it was
  *     rather than a 26% one.
+ *   - `data/item-tags.json` — 122.0 KB today (124,908 B, LF worktree at 919f925d:
+ *     88.1 KB of tag lists for the 703 searched items of 2,204, 33.8 KB of `df`
+ *     counts for 3,406 terms), budget 138 KB, ~13% above — the discover slice's
+ *     distance, for the same reason. ADDED on 2026-10-05 (#279) when the file
+ *     stopped being copied whole at 279.6 KB, which is what the 2026-09-04 note on
+ *     the headroom alarm in prepare-webdir.test.mjs asks for ("build the df
+ *     sidecar, do not raise it"). The tag half moves with the pool (shows, the
+ *     knob, the session); the df half with the WHOLE map's vocabulary, a few
+ *     words a night at most.
  *   - `data/forays.json` — 11.6 KB today (the three curated Forays; the four
  *     generated drafts are the directory's), budget 44 KB, 26% used. Its unit is
  *     a PUBLISHED GENERATED Foray: the four committed drafts weigh 17–25 KB each
@@ -1533,6 +1698,31 @@ export const PROJECTED_DATA = [
     project: (source, ctx) => discoverSlice(source, { perShow: ctx.perShow }),
     verify: (source, written) => assertDiscoverSliceComplete(source, written),
   },
+  {
+    rel: "data/item-tags.json",
+    maxBytes: 138 * 1024,
+    whenBreached:
+      "Two halves move it. The tag lists are the SEARCHED POOL's (session episodes plus the " +
+      "discover slice), so they grow with shows, BUNDLED_ITEMS_PER_SHOW and the session — " +
+      "lower BUNDLED_ITEMS_PER_SHOW to shrink them with no code change. The df block is one " +
+      "count per distinct tag word in the WHOLE map, so it grows with the tagger's vocabulary. " +
+      "If it is neither, the slice came undone: itemTagsSlice keeping ids outside the pool, " +
+      "or reverted to a copy.",
+    /* Against the discover slice the bundle carries — recomputed, since
+       `discoverSlice` is a pure function of the source, the way the segment
+       slices recompute `seedForays` — so this stays independent of its place in
+       this list. */
+    project: (source, ctx) =>
+      itemTagsSlice(source, {
+        discover: discoverSlice(ctx.source("data/discover.json"), { perShow: ctx.perShow }),
+        session: ctx.source("data/session.json"),
+      }),
+    verify: (source, written, ctx) =>
+      assertItemTagsSliceComplete(source, written, {
+        discover: ctx.bundled("data/discover.json"),
+        session: ctx.bundled("data/session.json"),
+      }),
+  },
   /* THE TWO FORAY DOCUMENTS VERIFY THE SAME JOINT PROPERTY FROM BOTH SIDES, on
      purpose, because the property IS joint: a segment with no registry row and a
      registry row with no segment are the same broken running order, and neither
@@ -1581,43 +1771,17 @@ export const PROJECTED_DATA = [
   },
 ];
 
-/** Bundled files that must arrive as the WHOLE DOCUMENT, asserted rather than
- *  assumed. Everything not in `PROJECTED_DATA` is carried whole, so this list adds
- *  nothing mechanical — what it adds is a failing test for the files somebody will
- *  reasonably try to trim next, with the reason attached.
- *
- *  "Whole" is PARSE-IDENTITY, not byte-identity, since 2026-09-04: every bundled
- *  data file is re-serialised without whitespace, so the bytes legitimately differ
- *  from the source. What the assertion guards — an entry dropped, a field trimmed,
- *  a Foray filtered out — still fails it, because a trimmed document does not parse
- *  to the same document. What it stopped guarding is formatting, which it never
- *  meant to.
- *
- *  `data/item-tags.json`: see the § above `PROJECTED_DATA`; trimming it re-ranks
- *  search in the app and not on the website.
- *
- *  `data/forays.json` WAS here until F-92 (2026-09-12), with the reason "it is the
- *  SELECTOR for the two segment slices, so the bundle must carry the same Foray
- *  document the slice was computed from" — which is still the invariant, and is
- *  now kept by `assertForaySliceComplete` verifying against the document AS
- *  BUNDLED and `assertSeedForaysComplete` pinning that document to
- *  `seedForays(source)`. What changed is that "bounded by how many Forays exist"
- *  stopped being a bound once the generator started appending one per run. */
-export const COPIED_WHOLE = ["data/item-tags.json"];
-
-/** Why each `COPIED_WHOLE` entry is copied whole, keyed by the same path.
- *
- *  A SEPARATE TABLE rather than a fallback string inside the failure message,
- *  because a fallback for a key that is always present is a branch that can never
- *  fire — and this repo has paid for those. `prepare-webdir.test.mjs` asserts the
- *  two lists have identical keys instead, so adding a file here without saying why
- *  fails a test rather than printing "undefined" at somebody in six months. */
-export const WHY_COPIED_WHOLE = {
-  "data/item-tags.json":
-    `search-engine.js's tagDF() reads the WHOLE map, so a trimmed one re-ranks 12 query ` +
-    `expansions and 62 score multipliers in the app and not on the website — sampling ` +
-    `skew since #275, arithmetic before it.`,
-};
+/* THERE WAS A `COPIED_WHOLE` LIST HERE, and #279 emptied it, so it is gone rather
+ * than kept as a loop over nothing — a guard with no members is a branch that can
+ * never fire, and this repo has paid for those. It named the bundled files that must
+ * arrive as the WHOLE document, each with its reason: `data/forays.json` until F-92
+ * (2026-09-12; it is now seeded, and `assertSeedForaysComplete` pins it), and
+ * `data/item-tags.json` until #279 (it is now sliced WITH the whole map's counts,
+ * and `assertItemTagsSliceComplete` proves search cannot tell). What the list
+ * asserted — "parses to the same document as the source" — is still asserted for
+ * every bundled data file that is not a slice, by the last loop in
+ * `assertSlicesOnDisk`. A file somebody must not trim next belongs in that loop's
+ * reach with a test naming why, as both of these had. */
 
 /** Exactly how a bundled data file is serialised, in one place, because the bytes
  *  are measured against a budget and compared across runs. NO INDENTATION: the
@@ -1721,26 +1885,16 @@ export function assertSlicesOnDisk(absOut, root = REPO_ROOT, { seedPointer = nul
     }
     /* Verified against the documents AS THEY SHIP — `bundled` reads out of the
        output directory, so the Foray document the segment slice is judged against
-       is the one on the device, not the one in the repo. `COPIED_WHOLE` is what
-       makes those the same file, and it is asserted a few lines below. */
+       is the one on the device, not the one in the repo, and the tag slice is
+       judged against the discover slice and session document the device holds. */
     spec.verify(source(spec.rel), bundled(spec.rel), { source, bundled });
   }
-  /* The files that are deliberately NOT sliced, asserted on the bytes that ship —
-     parsed, because the bytes are re-serialised on the way in (see COPIED_WHOLE). */
-  for (const rel of COPIED_WHOLE) {
-    if (!isDeepStrictEqual(source(rel), bundled(rel))) {
-      throw new Error(
-        `the bundled ${rel} does not parse to the same document as the source. It must be ` +
-          `carried whole: ${WHY_COPIED_WHOLE[rel]} See the comment above PROJECTED_DATA.`
-      );
-    }
-  }
-  /* And the same for every other data file in the bundle that is not a slice — the
-     ones with no reason attached because nobody has yet tried to trim them. The
+  /* Every data file in the bundle that is not a slice, asserted on the bytes that
+     ship — parsed, because the bytes are re-serialised on the way in. The
      re-serialisation is the only transform they go through, and "parses to the same
      document" is exactly the property that transform must preserve. */
   for (const rel of bundledDataFiles(absOut)) {
-    if (PROJECTED_DATA.some((p) => p.rel === rel) || COPIED_WHOLE.includes(rel)) continue;
+    if (PROJECTED_DATA.some((p) => p.rel === rel)) continue;
     /* The one data file that is neither a slice nor a copy: the seed's pointer, which
        must arrive as the web's pointer for this tree PLUS `partial: true` — see
        `seedPointerDoc`. Without the flag a fresh install built from the live deploy
@@ -1761,7 +1915,7 @@ export function assertSlicesOnDisk(absOut, root = REPO_ROOT, { seedPointer = nul
     if (!isDeepStrictEqual(source(rel), bundled(rel))) {
       throw new Error(
         `the bundled ${rel} does not parse to the same document as the source. It is neither ` +
-          `sliced (PROJECTED_DATA) nor listed in COPIED_WHOLE, so the only thing that should ` +
+          `sliced (PROJECTED_DATA) nor the seed's pointer, so the only thing that should ` +
           `have happened to it on the way into the bundle is losing its whitespace.`
       );
     }
