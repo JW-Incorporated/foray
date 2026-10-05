@@ -143,6 +143,7 @@ import {
 import { pickDefaultVoice, VOICE_LIST_LANG } from "./default-voice.js";
 import * as continuation from "./continuation.js";
 import * as queueOrder from "./queue-order.js";
+import * as queueDrag from "./queue-drag.js";
 import * as tailFill from "./tail-fill.js";
 
 /* Continuous playback's rules (NE-13), for app.js: it decides what plays after
@@ -157,6 +158,11 @@ window.forayQueueOrder = queueOrder;
    "and then more of what fits" once Up Next and the list are spent. app.js
    hands it today's subject deal; this module only says what order to play. */
 window.forayTailFill = tailFill;
+/* Up Next's drag-to-reorder ARITHMETIC (#762, PQ-03/PQ-04), for app.js the
+   same way: app.js owns the pointer listeners and the cp_queue write; this
+   module only says which slot the finger is over and, on release, whether the
+   row moves (commit on pointerup, DECISIONS 2026-09-23 lane L2). */
+window.forayQueueDrag = queueDrag;
 /* The transport's DECISIONS live in transport-policy.js as pure functions
    (NE-08), so the native engine can port them and be checked against them.
    This file gathers the state, asks, and acts; it keeps no copy of a rule. */

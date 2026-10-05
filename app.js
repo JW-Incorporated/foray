@@ -11668,7 +11668,7 @@ function renderQueue() {
     <div class="page">
       <div class="page-head">
         <a class="back" href="#/">‹</a>
-        <div><h2>Up Next</h2>${rows.length ? `<p class="sub">${rows.length} queued</p>` : ""}</div>
+        <div><h2>Up Next</h2>${rows.length ? `<p class="sub">${rows.length} queued</p><p class="sr-only" id="up-next-drag-hint">Drag to move this episode. Move up and Move down still move it one step.</p>` : ""}</div>
         ${rows.length > 1 ? `<button type="button" class="up-next-clear" id="up-next-clear">Clear</button>` : ""}
       </div>
       ${rows.length
@@ -11680,6 +11680,7 @@ function renderQueue() {
   bindStars($("#view"));
   bindPlay($("#view"));
   bindUpNextReorder($("#view"));
+  bindUpNextDrag($("#view"));
 }
 
 /* One row: the SAME playable shape epRow/archivedRow already give (so a
@@ -11734,6 +11735,7 @@ function upNextRow(r, idx, total) {
     </div>
     ${inApp}${named ? starBtn(item.id) : ""}
     <div class="up-next-reorder">
+      <button type="button" class="reorder drag-handle" data-drag-handle="${esc(id)}" aria-label="Drag to reorder" aria-describedby="up-next-drag-hint">⋮⋮</button>
       <button type="button" class="reorder playnext" data-playnext="${esc(id)}" ${playNextDisabled ? "disabled" : ""} aria-label="Play next">Next</button>
       <button class="reorder up" data-reorder-up="${esc(id)}" ${idx === 0 ? "disabled" : ""} aria-label="Move up">↑</button>
       <button class="reorder down" data-reorder-down="${esc(id)}" ${idx === total - 1 ? "disabled" : ""} aria-label="Move down">↓</button>
@@ -11852,6 +11854,134 @@ function bindUpNextReorder(scope) {
       const view = $("#view");
       focusQuietly(view && typeof view.querySelector === "function" ? view.querySelector("h2") : null);
     });
+  });
+}
+
+/* DRAG TO REORDER (#762, PQ-04). Each row's ⋮⋮ handle carries the row to
+   another slot. The ARITHMETIC — which slot the finger is over, whether the
+   press has become a drag, whether the release means it — is
+   `player/queue-drag.js` (PQ-03), published as `window.forayQueueDrag` by
+   player/client.js; this binder only reads the layout once at the press, feeds
+   it pointer samples and paints what it answers. "The arrows remain"
+   (DECISIONS 2026-09-23, lane L3, the Up Next model): a drag is the quick
+   way, not the only one.
+
+   COMMIT ON RELEASE (DECISIONS 2026-09-23, lane L2): the move is written in
+   `pointerup` through the one writer, `saveQueueIds`, with the order
+   `player/queue-order.js` `moveTo` gives — never on the click a release may be
+   followed by, and nothing at all for a press that never passed the 6 px lock
+   or a gesture the system cancelled. Then the arrows' own after-step: focus
+   on the row in its new place, the row kept under the finger, the new
+   position announced.
+
+   THE LIST SCROLLS UNDER A HELD FINGER (integration review, 2026-10-04): the
+   scroll offset goes with every sample, and the slot is asked for again after
+   each autoscroll nudge, so a row carried past the screen's edge lands where
+   the finger is in the LIST, not where it was on the glass.
+
+   `topBefore` for `afterQueueMove` is the handle's on-screen top at release,
+   transform included — the same kind of number the arrows hand it
+   (`buttonTop`), so the row lands back under the finger after the repaint. */
+function queueDragRules() {
+  const r = window.forayQueueDrag;
+  return r && typeof r.startRowDrag === "function" ? r : null;
+}
+
+function bindUpNextDrag(scope) {
+  if (!scope || typeof scope.querySelectorAll !== "function") return;
+  const scrollOffset = () => (typeof window.scrollY === "number" ? window.scrollY : 0);
+  scope.querySelectorAll("[data-drag-handle]").forEach(btn => {
+    if (btn._bound) return;
+    btn._bound = true;
+    let drag = null;
+    let pointer = null;
+    let row = null;
+    let rows = [];
+    const unmark = () => rows.forEach((r) => { r.classList.remove("drop-before"); r.classList.remove("drop-after"); });
+    /* Under the lock nothing moves: the press may still be a tap. Past it the
+       row follows the finger and the row it would land beside is marked —
+       above that row when it moves up, below it when it moves down. */
+    const paint = (g) => {
+      if (!drag || !row || !g.claimsTouch(drag)) return;
+      if (row.style) row.style.transform = `translateY(${drag.offsetPx}px)`;
+      unmark();
+      const target = drag.over !== drag.fromIndex ? rows[drag.over] : null;
+      if (target) target.classList.add(drag.over < drag.fromIndex ? "drop-before" : "drop-after");
+    };
+    const reset = () => {
+      unmark();
+      if (row) {
+        row.classList.remove("is-dragging");
+        if (row.style) row.style.transform = "";
+      }
+      drag = null;
+      pointer = null;
+      row = null;
+      rows = [];
+    };
+    btn.addEventListener("pointerdown", (e) => {
+      const g = queueDragRules();
+      if (!g || pointer != null) return;
+      if (typeof e.button === "number" && e.button !== 0) return; // primary button only
+      const own = typeof btn.closest === "function" ? btn.closest(".up-next-row") : null;
+      const all = [...scope.querySelectorAll(".up-next-row")];
+      const index = all.indexOf(own);
+      if (!own || index < 0) return;
+      const rowTops = all.map((r) => {
+        const b = typeof r.getBoundingClientRect === "function" ? r.getBoundingClientRect() : null;
+        return b && Number.isFinite(b.top) ? b.top : 0;
+      });
+      row = own;
+      rows = all;
+      pointer = e.pointerId;
+      try { btn.setPointerCapture(e.pointerId); } catch (_) { /* capture is best-effort */ }
+      drag = g.startRowDrag({ index, y: e.clientY, t: e.timeStamp, rowTops, scrollY: scrollOffset() });
+      row.classList.add("is-dragging");
+    });
+    btn.addEventListener("pointermove", (e) => {
+      const g = queueDragRules();
+      if (!drag || !g || e.pointerId !== pointer) return;
+      drag = g.moveRowDrag(drag, e.clientY, e.timeStamp, scrollOffset());
+      paint(g);
+      /* Only a claimed drag scrolls the page: a press near the bottom edge
+         that is still a tap must not nudge the list. */
+      const vh = window.innerHeight;
+      const d = g.claimsTouch(drag) && Number.isFinite(vh) ? g.autoscrollDelta(e.clientY, vh) : 0;
+      if (d && typeof window.scrollBy === "function") {
+        window.scrollBy(0, d);
+        drag = g.moveRowDrag(drag, e.clientY, e.timeStamp, scrollOffset());
+        paint(g);
+      }
+    });
+    /* NON-passive, or the cancel is ignored: once the drag owns the finger the
+       page under it must not pan (the sheet drag's rule, touch-2). */
+    btn.addEventListener("touchmove", (e) => {
+      const g = queueDragRules();
+      if (drag && g && g.claimsTouch(drag) && e.cancelable !== false && typeof e.preventDefault === "function") e.preventDefault();
+    }, { passive: false });
+    btn.addEventListener("pointerup", (e) => {
+      const g = queueDragRules();
+      if (!drag || e.pointerId !== pointer) return;
+      const r = g ? g.endRowDrag(drag) : { commit: false };
+      const top = buttonTop(btn);
+      const id = btn.dataset.dragHandle;
+      reset();
+      const order = window.forayQueueOrder;
+      if (!r.commit || !order || typeof order.moveTo !== "function") return;
+      const before = queueIds();
+      const next = order.moveTo(before, id, r.to);
+      if (next === before) return;
+      saveQueueIds(next);
+      afterQueueMove(id, r.to < r.from ? -1 : 1, top);
+    });
+    const cancel = (e) => {
+      if (!drag || e.pointerId !== pointer) return;
+      reset();
+    };
+    btn.addEventListener("pointercancel", cancel);
+    /* Capture lost without a pointerup is a cancel; after a pointerup the drag
+       is already over, so the release that follows finds nothing to undo. */
+    btn.addEventListener("lostpointercapture", cancel);
   });
 }
 
