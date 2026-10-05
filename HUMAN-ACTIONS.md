@@ -2,9 +2,28 @@
 
 <!-- ha-format: 2 -->
 
-> **23 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **24 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
+
+## #141 🟡 [DECIDE] Approve four privacy-policy sentences for bookmarks, downloads and followed-show alerts (~5 min)
+<!-- ha filed=2026-10-04 kind=default -->
+
+**Why:** The player-features plan (`docs/roadmap/player-features.md` §1, founder question 6) adds new rows to the privacy policy's §1 table of what stays on your phone. Changing a privacy-policy sentence needs your approval (`docs/roadmap/README.md` Q34), and these rows sit on a path that would otherwise merge without a review window. So each one is quoted below as written and waits here for your yes. Sentence 1 is in the bookmarks PR (branch `feat/w2-pq-12-14-bookmarks`, issue #30). Sentence 2, the downloads row, is already on `main`: it landed in commit 6ff25eda (PQ-16, #29) without an approval item, so it is quoted here too. Only the sentences not yet written are left for later PRs to append here: the PQ-23 §7 sentence on deleting downloaded audio (if it adds one) and the changed followed-shows row (PQ-27).
+
+Sentence 1, the new `cp_bookmarks` row in `docs/legal/privacy-policy.md` §1 (bookmarks stay on the device, with no new event type, under `docs/roadmap/README.md` Q19):
+
+> | `cp_bookmarks` | Bookmarks you set inside episodes — for each episode id, the second you marked, when you set it, an optional label you typed, and the episode's length at that moment (so a bookmark on an ad-stitched show can be shown as approximate if its copy changes). Set from the Now Playing sheet; listed on the episode page. Never sent, never synced | **No** |
+
+Sentence 2, the `cp_downloads` row in `docs/legal/privacy-policy.md` §1, already on `main` since 6ff25eda (PQ-16, #29):
+
+> | `cp_downloads` | Which episodes you downloaded for offline listening, each one's download state and size, the file's location on this device, the episode's length as downloaded, and your "download over cellular" setting. The audio files themselves sit in the app's own storage on the device (Application Support on iPhone, the app's files directory on Android), are never backed up, and are deleted by "Delete my data" and by removing the download | **No** |
+
+**Steps:**
+1. Read the sentence(s) above.
+2. Reply `approved`, or say what to change. Claude makes the change on the PR that carries the sentence, or, for a sentence already on `main`, in a small follow-up PR.
+
+**Worked if:** every sentence quoted here is approved or reworded, and the policy on `main` says the same thing.
 
 ## #134 🟡 [DECIDE] G6 — Re-confirm D1's liveness/count/recency filter, and settle the language question
 <!-- ha filed=2026-10-04 kind=default -->
