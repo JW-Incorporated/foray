@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  `foray-downloads` declares nothing: no permission, no service, no receiver.
+  - The transfer runs in the system's download provider, which has its own
+    network permission; the app needs none to hand it a request.
+  - The landing directory is getExternalFilesDir(null)/foray-downloads/, the
+    app's own external directory, which needs no storage permission on any API
+    this app supports (minSdk 24). The finished file is then moved into
+    getNoBackupFilesDir()/foray-downloads/, which Auto Backup always skips.
+  - The ACTION_DOWNLOAD_COMPLETE receiver is registered at RUNTIME by
+    DownloadStore while the app runs. A download that finishes while the app is
+    not running is found on the next start, when the store asks DownloadManager
+    about every row still in flight, so no manifest receiver is needed to wake
+    the app.
+  - The download's notification stays VISIBLE (DownloadManager's default);
+    hiding it would need DOWNLOAD_WITHOUT_NOTIFICATION.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+    </application>
+
+</manifest>

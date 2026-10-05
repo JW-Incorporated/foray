@@ -388,3 +388,177 @@ describe("buildSession round-3 fixes", () => {
     expect(entry.components.freshness).toBe(0.5);
   });
 });
+
+/* #72 (REQUIREMENTS-DELTA R17): every card carries provenance, and the
+   builder's signals are read off the ranking's own inputs. The issue's warning
+   is the thing under test: "it is easy to emit provenance that LOOKS like an
+   explanation but is generated independently of the actual ranking." So these
+   tests compare signals against the score log and against a taxonomy the
+   ranker could and could not match, not only against the schema.
+   Spec: docs/curation/session-doc-v1.md#provenance. */
+describe("buildSession — provenance (#72, R17)", () => {
+  const build = (extra: Partial<Parameters<typeof buildSession>[0]> = {}) =>
+    buildSession({
+      userId: "test-user",
+      sessionKey: "provenance",
+      builtAt: new Date("2026-07-08T04:30:00Z"),
+      commuteMinutes: 18,
+      playbackSpeed: 1.5,
+      taxonomy: loadRealTaxonomy(),
+      candidates: loadRealCandidates(),
+      enricher: new StubEnricher(),
+      ...extra
+    });
+  const topicSignals = (signals: string[]) => signals.filter((s) => s.startsWith("topic:")).map((s) => s.slice(6));
+
+  /* The acceptance criterion verbatim: signals non-empty and referencing real
+     taxonomy node ids.
+     MUTATION: drop the topic signals (`...matched.map(...)`) from
+     provenanceSignals -> red (no topic signal); emit `signals: ["placeholder"]`
+     -> red (SessionDocSchema.parse throws inside buildSession). */
+  it("every card's signals are non-empty and name real taxonomy nodes that are topics of the picked episode", async () => {
+    const realIds = new Set(loadRealTaxonomy().nodes.map((n) => n.id));
+    const { session } = await build();
+    expect(session.cards).toHaveLength(4);
+    for (const card of session.cards) {
+      expect(card.provenance.signals.length, `slot ${card.slot}`).toBeGreaterThan(0);
+      const topics = topicSignals(card.provenance.signals);
+      expect(topics.length, `slot ${card.slot} has no topic signal`).toBeGreaterThan(0);
+      for (const t of topics) {
+        expect(realIds.has(t), `slot ${card.slot}: topic:${t} is not a taxonomy node`).toBe(true);
+        expect(session.episodes[card.episode_id]!.topics, `slot ${card.slot}: topic:${t}`).toContain(t);
+      }
+    }
+  });
+
+  /* The ranker's relevance term only sees topics that are taxonomy nodes, so a
+     topic the taxonomy lacks drove nothing and must not be claimed. The
+     episode record still carries it (episodes[].topics is the enrichment
+     output), which is exactly what a post-hoc explainer would copy.
+     MUTATION: `const matched = input.topics` (no taxonomy filter) -> red. */
+  it("topic signals are exactly the topics the ranker matched: a topic missing from the taxonomy is not claimed", async () => {
+    const full = loadRealTaxonomy();
+    const removed = new Set(["science/materials", "comedy/casual-hangs", "history/military-ancient"]);
+    const taxonomy = { ...full, nodes: full.nodes.filter((n) => !removed.has(n.id)) };
+    const { session } = await build({ taxonomy });
+    let sawRemoved = false;
+    for (const card of session.cards) {
+      const episodeTopics = session.episodes[card.episode_id]!.topics;
+      if (episodeTopics.some((t) => removed.has(t))) sawRemoved = true;
+      expect(topicSignals(card.provenance.signals).sort(), `slot ${card.slot}`).toEqual(
+        episodeTopics.filter((t) => !removed.has(t)).sort()
+      );
+    }
+    expect(sawRemoved, "no picked episode carried a removed topic, so this proved nothing").toBe(true);
+  });
+
+  /* MUTATION: delete the `persona:` push in provenanceSignals -> red. */
+  it("names the persona when a persona weighted a matched topic, and never without a persona", async () => {
+    const provider = new InMemoryUserInterestsProvider();
+    provider.setPersonaSeed("new-user", "generalist");
+    const seeded = await build({ userId: "new-user", userInterestsProvider: provider });
+    for (const card of seeded.session.cards) expect(card.provenance.signals, `slot ${card.slot}`).toContain("persona:generalist");
+
+    const plain = await build();
+    for (const card of plain.session.cards) {
+      expect(card.provenance.signals.some((s) => s.startsWith("persona:")), `slot ${card.slot}`).toBe(false);
+    }
+  });
+
+  /* Observed rows win over the persona node by node (resolveEffectiveTaxonomy
+     tier 1), so a user whose every node has a real row was ranked on no
+     persona weight at all, even though a persona seed is on file.
+     MUTATION: drop the `matched.some(...)` condition (`if (pw)`) -> red. */
+  it("does not name the persona when observed rows, not the persona, weighted every node", async () => {
+    const taxonomy = loadRealTaxonomy();
+    const provider = new InMemoryUserInterestsProvider();
+    provider.setPersonaSeed("observed-user", "generalist");
+    provider.setUserTaxonomyNodes(
+      "observed-user",
+      taxonomy.nodes.map((n) => ({ nodeId: n.id, weight: 0.5, confidence: 0.9, source: "inferred" as const }))
+    );
+    const { session } = await build({ userId: "observed-user", userInterestsProvider: provider });
+    for (const card of session.cards) {
+      expect(card.provenance.signals.some((s) => s.startsWith("persona:")), `slot ${card.slot}`).toBe(false);
+      expect(topicSignals(card.provenance.signals).length, `slot ${card.slot}`).toBeGreaterThan(0);
+    }
+  });
+
+  /* recency / depth / fatigue are listed iff the score component they name
+     actually moved the score, read from the builder's own score log. Built at
+     a spread of dates so recency is seen both ways, including freshness in
+     (0, 0.5] (the neutral-or-worse band), and with every show recently picked
+     once so fatigue is seen at all.
+     MUTATION: `freshness > 0` for recency -> red; delete the fatigue push ->
+     red; list `depth:${depth}` for low depth too -> red. */
+  it("recency, depth and fatigue signals follow the score components that drove the pick", async () => {
+    const candidates = loadRealCandidates();
+    const allShows = [...new Set(candidates.map((c) => c.show))];
+    let recencyOn = 0;
+    let recencyOffButFresh = 0;
+    let fatigued = 0;
+    let lowDepth = 0;
+    for (const year of [2026, 2028, 2030, 2032, 2034]) {
+      const builtAt = new Date(`${year}-07-08T04:30:00Z`);
+      const recentPicks = year === 2026 ? allShows.map((show) => ({ show, pickedAtIso: "2026-07-07T00:00:00Z" })) : [];
+      const { session, scoreLog } = await build({ builtAt, recentPicks });
+      for (const card of session.cards) {
+        const { components } = scoreLog.find((e) => e.candidateId === card.episode_id)!;
+        const depth = candidates.find((c) => c.id === card.episode_id)!.curatedDepth;
+        const s = card.provenance.signals;
+        const where = `${year} slot ${card.slot}`;
+        expect(s.includes("recency"), `${where} freshness ${components.freshness}`).toBe(components.freshness > 0.5);
+        expect(s.includes("fatigue"), `${where} fatigue ${components.fatigue}`).toBe(components.fatigue > 0);
+        expect(s.filter((x) => x.startsWith("depth:")), where).toEqual(depth === "low" ? [] : [`depth:${depth}`]);
+        expect(s, where).toContain(`pool:${card.archetype}`);
+        if (components.freshness > 0.5) recencyOn += 1;
+        else if (components.freshness > 0) recencyOffButFresh += 1;
+        if (components.fatigue > 0) fatigued += 1;
+        if (depth === "low") lowDepth += 1;
+      }
+    }
+    expect(recencyOn, "never saw recency on").toBeGreaterThan(0);
+    expect(recencyOffButFresh, "never saw 0 < freshness <= 0.5, so `> 0` would pass").toBeGreaterThan(0);
+    expect(fatigued, "never saw fatigue").toBeGreaterThan(0);
+    expect(lowDepth, "never saw a low-depth pick").toBeGreaterThan(0);
+  });
+
+  /* MUTATION: `wildcard: false` -> red; `wildcard: true` -> red; prefer
+     generatedBridge over the curator's `slot.pick.bridge` -> red; drop the
+     `provenance.bridge = ...` assignment -> red (buildSession's own parse
+     throws on the stretch card). */
+  it("the stretch card is the wildcard and states the curator's bridge; no other card is a wildcard or bridged", async () => {
+    const candidates = loadRealCandidates();
+    const { session } = await build({ candidates });
+    const stretch = session.cards.filter((c) => c.archetype === "stretch");
+    expect(stretch).toHaveLength(1);
+    for (const card of session.cards) {
+      expect(card.provenance.wildcard, `slot ${card.slot}`).toBe(card.archetype === "stretch");
+      if (card.archetype !== "stretch") expect(card.provenance.bridge, `slot ${card.slot}`).toBeUndefined();
+    }
+    const curatorBridge = candidates.find((c) => c.id === stretch[0]!.episode_id)!.bridge;
+    expect(curatorBridge, "the stretch pick carries no curator bridge, so this proved nothing").toBeTruthy();
+    expect(stretch[0]!.provenance.bridge).toBe(curatorBridge!.trim());
+    for (const rx of [...BANNED, ...COMMUTE_FRAMING]) expect(stretch[0]!.provenance.bridge).not.toMatch(rx);
+  });
+
+  /* MUTATION: drop the `|| generatedBridge(...)` fallback -> red (the stretch
+     card has no bridge and buildSession's parse throws). */
+  it("generates a bridge from the dominant interest to the pick's topic when the candidate has none", async () => {
+    const candidates = loadRealCandidates().map((c) => ({ ...c, bridge: undefined }));
+    const taxonomy = loadRealTaxonomy();
+    const { session } = await build({ candidates, taxonomy });
+    const stretch = session.cards.find((c) => c.archetype === "stretch")!;
+    const dominant = [...taxonomy.nodes].sort((a, b) => b.weight - a.weight)[0]!;
+    const topicLabel = taxonomy.nodes.find((n) => n.id === session.episodes[stretch.episode_id]!.topics[0])!.label;
+    expect(stretch.provenance.bridge).toBe(`your ${dominant.label.toLowerCase()} interest -> ${topicLabel.toLowerCase()}`);
+  });
+
+  /* MUTATION: hardcode `builder: "machine-v1"` in the card provenance -> red
+     (SessionDocSchema's builder check throws inside buildSession). */
+  it("stamps the session's builder on every card's provenance", async () => {
+    const { session } = await build({ builder: "auto-v1" });
+    expect(session.builder).toBe("auto-v1");
+    for (const card of session.cards) expect(card.provenance.builder, `slot ${card.slot}`).toBe("auto-v1");
+  });
+});
