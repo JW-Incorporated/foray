@@ -1079,6 +1079,44 @@ test("an index-seeded show is upgraded when the API row carries nodes", async ()
   assert.ok(html.includes('href="#/category/science"'), "the upgraded page renders the chip");
   assert.ok(html.includes("Similar shows"), "…and a Similar shows section");
   assert.ok(html.includes("Breadth Science Hour"), "…still under the show's title");
+
+  /* …AND NOT WHEN THE LISTENER HAS LEFT. The same row arriving after the
+     listener moved on must not repaint the show over the page they are on
+     (the upgrade's `renderEpoch++` + renderShow would otherwise do exactly
+     that). Two departures, one per half of the guard: (a) the hash moved to
+     another route but nothing re-rendered yet, which only `onShowRoute`
+     sees; (b) the route is unchanged but a newer render superseded this one,
+     which only `isCurrentRender` sees.
+     MUTATION: delete the isCurrentRender/onShowRoute guard in
+     upgradeBreadthShowRow -> red ((a) fails first). MUTATION 2: drop only
+     `!onShowRoute(show_id)` -> (a) red. MUTATION 3: drop only
+     `!isCurrentRender()` -> (b) red. RUN: all three failed as named. */
+  for (const leave of [
+    { name: "(a) hash moved away", go: (mm) => { mm.ctx.location.hash = "#/shows"; } },
+    { name: "(b) newer render", go: (mm) => { mm.evalIn("renderEpoch++"); } },
+  ]) {
+    const mm = mountWithScienceShow();
+    seedShowIndex(mm, { show_id: "123", title: "Breadth Science Hour", tier: "breadth" });
+    let answer;
+    const pending = new Promise((r) => { answer = r; });
+    mm.ctx.fetch = (url) => (String(url).includes("api/shows/search")
+      ? pending
+      : new Promise(() => {}));
+    mm.ctx.location.hash = "#/show/123";
+    let renders = 0;
+    const realRenderShow = mm.ctx.renderShow;
+    mm.ctx.renderShow = (...args) => { renders++; return realRenderShow(...args); };
+    mm.ctx.renderShow("123");
+    const seededRenders = renders;
+    leave.go(mm);
+    mm.ctx.document.querySelector("#view").innerHTML = "<p>somewhere else</p>";
+    answer({ ok: true, status: 200, json: async () => ({ show: { show_id: "123", artwork_url: null, taxonomy_node_ids: ["science"], tier: "breadth" }, degraded: false }) });
+    const after = await settled(mm);
+    assert.strictEqual(renders, seededRenders, `${leave.name}: a row arriving after the listener left must not re-render the show`);
+    assert.ok(!after.includes("Similar shows") && !after.includes('href="#/category/science"'),
+      `${leave.name}: the left page must not be painted over with the upgraded show`);
+    assert.strictEqual(after, "<p>somewhere else</p>", `${leave.name}: the page the listener is on stays as it is`);
+  }
 });
 
 test("an API row without nodes leaves the seeded row and does not re-render", async () => {
