@@ -13,6 +13,8 @@
  *     the one change the engine could not otherwise see before the episode
  *     ends.
  *  3. With the switch off the chain is still sent, so the car's skip works.
+ *     Past the end of the list the chain runs on into the tail (PQ-11, #691),
+ *     each such hop marked `fromTail`, so the engine keeps playing too.
  *  4. `applyEngineAdvance` applies a hop the engine walked exactly once —
  *     across a second delivery AND across a reload — writing the page-owned
  *     `cp_engine_applied` watermark BEFORE `play_started` is logged.
@@ -42,7 +44,11 @@ const readJson = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8
 process.on("unhandledRejection", () => {});
 
 let RULES = null;
-before(async () => { RULES = await import("../player/continuation.js"); });
+let TAIL_FILL = null;
+before(async () => {
+  RULES = await import("../player/continuation.js");
+  TAIL_FILL = await import("../player/tail-fill.js");
+});
 
 function makeEl(tag) {
   return {
@@ -129,6 +135,7 @@ function mount({ store = new Map(), rules = RULES } = {}) {
   ctx.window = ctx;
   ctx.globalThis = ctx;
   ctx.forayContinuation = rules;
+  ctx.forayTailFill = TAIL_FILL;
   vm.createContext(ctx);
   vm.runInContext(SEARCH_SRC, ctx, { filename: "search-engine.js" });
   vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
@@ -232,6 +239,45 @@ test("flipping Continuous playback while an episode plays re-sends the plan with
   assert.strictEqual(plan.autoAdvance, false);
   assert.deepStrictEqual(plan.chain.map((h) => h.nextId), [b.id], "the chain is still planned with the switch off");
   assert.strictEqual(RULES.canNext(plan), true, "so the car's skip is still offered");
+});
+
+test("PQ-11: the plan sent after a list end carries hops with fromTail: true beyond the list", async () => {
+  /* The page is asleep in the car when the list ends, so the tail has to be
+     in the plan the engine was handed, not only in the page's own answer.
+     The deal is seeded on state.cardSlots (the dealer is never run here).
+     MUTATION: drop `tail: tailIds(currentId)` from continuationState -> the
+     chain stops at b. MUTATION 2: drop the `state.tailPlayed` line from
+     applyEngineAdvance -> the next plan is a fresh build: [t3, t2, s1]. */
+  const m = mount();
+  const byShow = new Map();
+  for (const it of m.playable) if (!byShow.has(it.show)) byShow.set(it.show, it);
+  const [a, b, t1, t2, t3, s1] = [...byShow.values()];
+  seedLivePool(m, [a, b, t1, t2, t3, s1]);
+  m.state.cardSlots = [
+    { slot: 1, branch: "craft", role: "stretch", item: s1, items: [s1] },
+    { slot: 2, branch: "engineering", role: "top", item: t1, items: [t1, t3] },
+    { slot: 3, branch: "science", role: "top", item: t2, items: [t2] },
+  ];
+  const fake = makeFakePlayer();
+  m.ctx.window.ForayPlayer = fake;
+  await clickRow(m, [a, b].map((it) => ({ id: it.id, ctx: "show-x" })), 0);
+  const plan = fake.plans.at(-1);
+  assert.deepStrictEqual(plan.chain.map((h) => h.nextId), [b.id, t1.id, t2.id, s1.id, t3.id],
+    "the rest of the list, then the tail: top, top, stretch, top");
+  assert.deepStrictEqual(plan.chain.map((h) => h.fromTail), [false, true, true, true, true], "each hop beyond the list says it is from the tail");
+  assert.deepStrictEqual(plan.chain.map((h) => h.fromList), [true, false, false, false, false]);
+
+  /* The engine walks b and then the first tail hop while the page sleeps;
+     applying the tail hop moves the chain like a list hop and leaves the list
+     cursor at the list's end, and the next plan continues the SAME tail (t2
+     next, not a rebuild that would put the stretch back at position 3). */
+  assert.strictEqual(m.ctx.applyEngineAdvance({ ...plan.chain[0], planSeq: plan.planSeq }), true);
+  assert.strictEqual(m.ctx.applyEngineAdvance({ ...plan.chain[1], planSeq: plan.planSeq }), true);
+  assert.strictEqual(m.state.playChainId, t1.id, "the chain is on the tail hop");
+  assert.strictEqual(m.state.playListCursor, b.id, "a tail hop leaves the list cursor at the list's end");
+  await fake.play(t1, {});
+  m.ctx.refreshEpisodeNavigation();
+  assert.deepStrictEqual(fake.plans.at(-1).chain.map((h) => h.nextId), [t2.id, s1.id, t3.id], "the walk continues where the engine left it");
 });
 
 /* ==================================================================== */

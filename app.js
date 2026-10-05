@@ -3217,9 +3217,19 @@ function queueRows() { return rowsForIds(queueIds()); }
        actually played, because the episode that just ended (X) is not in it.
      - AN UNPLAYABLE ROW IS PASSED OVER, not stopped at: stopping is the silence
        the ruling is about. liveEpisode() decides, so a show-page episode counts.
-     - The end of both is the end. "And then more of what fits" — pulling in
-       recommendations once the list runs out — is the rest of issue #691 and is
-       not built here; the exploration floor governs what it will pick. */
+     - THEN MORE OF WHAT FITS (PQ-11, issue #691). Once Up Next and the list
+       are both spent, the tail plays: `tailIds()` below hands
+       `player/tail-fill.js` today's subject deal (`state.cardSlots`, the four
+       slots Home dealt) and the rules walk what it builds. EVERY THIRD TAIL
+       PICK IS THE STRETCH SUBJECT (README founder-question default 18), the
+       exploration floor kept by construction (CLAUDE.md principle 1, ~30 %):
+       one stretch position in three, never borrowed by a top slot. Nothing
+       already played, queued, in the list or playing is in it. A stretch pick
+       says why with the bridge line, and every tail start is announced
+       ("Up next: <title>"), because the listener did not choose it. With no
+       deal yet (`state.cardSlots` empty) there is no tail and the end is the
+       end — the dealer is never run from here: it rolls dice and records a
+       Home deal as seen. The switch below turns the tail off with the rest. */
 function autoAdvanceOn() { return lsGet("cp_autoadvance", true); }
 
 /* ---------- cp_interlude: the jingle between a Foray's segments ----------
@@ -3315,42 +3325,90 @@ function continuationRules() {
   return rules && typeof rules.planAfterEnded === "function" ? rules : null;
 }
 
-/** The injected state `player/continuation.js` reads, from this page's own. */
+/* ---------- the tail: "and then more of what fits" (PQ-11, #691) ----------
+
+   The tail-fill rule lives in `player/tail-fill.js`, published by
+   player/client.js as `window.forayTailFill` beside the continuation rules.
+
+   NEVER buildCards() FROM HERE. The dealer calls Math.random, rewrites
+   `state.cardSlots` and records `cp_recent_branches` / `cp_seen` — a getter
+   that ran it (EPISODE_NAVIGATION.next is read on every lock-screen install)
+   would re-deal Home behind the listener's back and record a deal they never
+   saw. No deal yet means no tail.
+
+   THE TAIL IS ONE LIST FOR THE WHOLE WALK. buildTail places the stretch
+   subject at positions 3, 6, 9 of what it builds, so a tail rebuilt from
+   scratch after each pick (with that pick now in history, so excluded) would
+   put the stretch back at position 3 every time while the walk always takes
+   position 1: the stretch pick would never play. `state.tailPlayed` holds the
+   picks of the walk in progress; they are left OUT of `exclude`, so the build
+   is the same list each time, and taken out of the RESULT instead. A walk is
+   in progress while the chain sits on its latest pick; any other chain (a
+   tap, ◀◀ onto a list row) starts afresh, and history excludes what played. */
+function tailPlayedNow() {
+  const walked = Array.isArray(state.tailPlayed) ? state.tailPlayed : [];
+  return walked.length && walked[walked.length - 1] === state.playChainId ? walked : [];
+}
+
+/** The ids the rules may play once Up Next and the list are spent. */
+function tailIds(currentId = null) {
+  const tf = window.forayTailFill;
+  if (!tf || typeof tf.buildTail !== "function") return [];
+  if (!Array.isArray(state.cardSlots) || !state.cardSlots.length) return [];
+  const walked = new Set(tailPlayedNow());
+  const exclude = new Set([...pickedHistory(), ...queueIds(), ...(state.playList || []), currentId]
+    .filter(id => id && !walked.has(id)));
+  try {
+    return tf.buildTail({ slots: state.cardSlots, exclude: [...exclude] }).filter(id => !walked.has(id));
+  } catch (_) { return []; }
+}
+
+/** The injected state `player/continuation.js` reads, from this page's own.
+    `tail` feeds every reader of the rules: the end of an episode, the plan the
+    native engine is handed, AND the skip (EPISODE_NAVIGATION.next and the
+    switch-off path of advanceQueueOnEnded) — a skip is the end reached early,
+    so ⏭ past the last row of a list reaches into the tail too. */
 function continuationState(currentId = null) {
   return {
     queue: queueIds(),
     playList: state.playList,
     playChainId: state.playChainId,
     playListCursor: state.playListCursor,
+    tail: tailIds(currentId),
     isPlayable: isPlayableId,
     items: liveEpisode,
     currentId,
   };
 }
 
-/** What plays after `finishedId`, with no writes: `{ nextId, rest, fromList }`
-    — see `planAfterEnded` in player/continuation.js, which holds the Up Next
-    model above. Shared by the end of an episode and by the steering wheel's
-    and the sheet's ⏭, which mean the same thing: a skip is the end reached
-    early. */
+/** What plays after `finishedId`, with no writes:
+    `{ nextId, rest, fromList, fromTail }` — see `planAfterEnded` in
+    player/continuation.js, which holds the Up Next model above. Shared by the
+    end of an episode and by the steering wheel's and the sheet's ⏭, which mean
+    the same thing: a skip is the end reached early. */
 function planAfterEnded(finishedId) {
   const rules = continuationRules();
-  if (!rules) return { nextId: null, rest: null, fromList: false };
+  if (!rules) return { nextId: null, rest: null, fromList: false, fromTail: false };
   return rules.planAfterEnded(continuationState(), finishedId);
 }
 
-/** What plays after `finishedId`, or null. Applies the plan's one write (the
-    finished episode leaves Up Next) and moves the chain on to the pick. */
+/** What plays after `finishedId`, as `{ nextId, fromTail }` (`nextId` null
+    when nothing does). Applies the plan's one write (the finished episode
+    leaves Up Next) and moves the chain on to the pick; a tail pick also joins
+    the walk in progress (`state.tailPlayed`, see tailPlayedNow) and leaves the
+    list cursor where it was — the tail is after the list, not part of it. */
 function nextAfterEnded(finishedId) {
   const rules = continuationRules();
-  if (!rules) return null;
+  if (!rules) return { nextId: null, fromTail: false };
   const step = rules.nextAfterEnded(continuationState(), finishedId);
   if (step.rest) saveQueueIds(step.rest);
   if (step.nextId) {
+    const walked = tailPlayedNow();
     state.playChainId = step.state.playChainId;
     if (step.fromList) state.playListCursor = step.state.playListCursor;
+    if (step.fromTail) state.tailPlayed = [...walked, step.nextId];
   }
-  return step.nextId;
+  return { nextId: step.nextId || null, fromTail: Boolean(step.fromTail) };
 }
 
 /** A tap on row k of the Up Next page started playing: row k jumps to the
@@ -3495,9 +3553,14 @@ function applyEngineAdvance(hop) {
        after a reload that emptied the pool. */
     if (!state.itemIndex[id] && h.item && h.item.audio_url) state.itemIndex[id] = h.item;
     /* The chain first: saving Up Next re-plans (refreshEpisodeNavigation), and
-       the plan must start from where the engine now is. */
+       the plan must start from where the engine now is. A tail hop (PQ-11) is
+       applied like a list hop — the chain moves on to it — except that the
+       list cursor stays where it was (the tail is after the list), and it
+       joins the tail walk so the next plan continues the same tail. */
+    const walked = tailPlayedNow();
     state.playChainId = id;
     if (h.fromList) state.playListCursor = id;
+    if (h.fromTail) state.tailPlayed = [...walked, id];
     if (Array.isArray(h.queueAfter)) saveQueueIds(h.queueAfter.filter(x => typeof x === "string" && x));
     else refreshEpisodeNavigation();
     const item = liveEpisode(id) || h.item || {};
@@ -3560,20 +3623,34 @@ function playNextAfter(id, ctx) {
   if (!window.ForayPlayer) return;
   /* A skip and the natural end are one rule (the Up Next model): the episode
      leaves Up Next, nothing else does, and the head plays. */
-  const nextId = nextAfterEnded(id);
+  const step = nextAfterEnded(id);
   refreshEpisodeNavigation();
-  if (!nextId) return;
-  return startChained(nextId, ctx);
+  if (!step.nextId) return;
+  return startChained(step.nextId, ctx, { fromTail: step.fromTail });
 }
 
-function startChained(nextId, ctx) {
+/** The line under the title for a chained play. A stretch tail pick gets the
+    bridge line naming its subject (D1's copy rule: a pick from outside the
+    listener's usual subjects says why, never "because you like X"); anything
+    else keeps whyFor's curated line or hook. Plain text: the sheet sets it
+    with textContent, so it is stretchBridgeText, not the escaped
+    stretchBridgeLine Home writes into HTML ("Craft &amp; making"). */
+function chainedWhy(nextId, nextItem, fromTail) {
+  if (fromTail) {
+    const reason = window.forayTailFill?.tailReason?.(state.cardSlots, nextId);
+    if (reason && reason.role === "stretch") return stretchBridgeText(subjectLabel(reason.branch));
+  }
+  return whyFor(nextId, nextItem);
+}
+
+function startChained(nextId, ctx, { fromTail = false } = {}) {
   const nextItem = liveEpisode(nextId);
   if (!nextItem || !window.ForayPlayer) return;
   /* Called synchronously (the play belongs to this turn, as the end-of-episode
      event's), with a synchronous throw folded into the same rejection path. */
   let started;
   try {
-    started = Promise.resolve(window.ForayPlayer.play(nextItem, { why: whyFor(nextId, nextItem) }));
+    started = Promise.resolve(window.ForayPlayer.play(nextItem, { why: chainedWhy(nextId, nextItem, fromTail) }));
   } catch (err) {
     started = Promise.reject(err);
   }
@@ -3586,6 +3663,9 @@ function startChained(nextId, ctx) {
       if (!ok) return;
       logEvent("play_started", { episode_id: nextId, topics: nextItem.topics || [], ctx });
       recordHistory(nextId);
+      /* A tail pick is the app's choice, not the listener's: say what is now
+         playing, once it actually is (a refused play announces nothing). */
+      if (fromTail) announce(`Up next: ${nextItem.title || ""}`);
       sendContinuation();
       /* The Up Next page, if showing, marks the row that is now current. */
       noteQueuePlaybackMoved();
@@ -10106,7 +10186,14 @@ function pickWithStretchFloor(candidates, { branchFn, scoreFn, take }) {
     subject label so the sentence names the actual branch, matching how
     every other Home string prefers a real name over a generic one. */
 function stretchBridgeLine(subjectLabelText) {
-  return `Outside your usual subjects — a deliberate change of pace into ${esc(subjectLabelText)}.`;
+  return esc(stretchBridgeText(subjectLabelText));
+}
+/** The same sentence as plain text, for a surface that sets textContent (the
+    player sheet's why line for a stretch tail pick, PQ-11) — escaping it there
+    would print "Craft &amp; making". The sentence itself has nothing to escape,
+    so the line above is exactly what it was. */
+function stretchBridgeText(subjectLabelText) {
+  return `Outside your usual subjects — a deliberate change of pace into ${String(subjectLabelText ?? "")}.`;
 }
 
 function greetingWord(now = new Date()) {
