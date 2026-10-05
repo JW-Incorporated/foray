@@ -1,0 +1,13 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["D9N628AFHS.ai.jwlabs.foura"],
+        "components": [
+          { "/": "/api/*", "exclude": true, "comment": "The serverless API is never an in-app link" },
+          { "/": "/", "#": "/*", "comment": "A shared hash route on the site root, e.g. /#/show/<id>, opens in 4a" }
+        ]
+      }
+    ]
+  }
+}

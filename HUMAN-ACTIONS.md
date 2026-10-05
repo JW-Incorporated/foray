@@ -2,9 +2,47 @@
 
 <!-- ha-format: 2 -->
 
-> **24 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **27 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
+
+## #142 🟡 [DECIDE] Turn on Associated Domains for the iPhone app, so shared links open in 4a (~10 min)
+<!-- ha filed=2026-10-05 kind=default -->
+
+**Why:** You asked for shared links to open straight in the app (#1071). The website half is done: `https://foray-web-seven.vercel.app/.well-known/apple-app-site-association` now names the app (Team `D9N628AFHS`, `ai.jwlabs.foura`). The app half needs one line in its entitlements, and Apple refuses to sign a build with that line until the capability is on for the App ID. So only you can flip it, and the line goes in after you do. Until then nothing changes: links open Safari as today.
+
+**Steps:**
+1. developer.apple.com → **Certificates, Identifiers & Profiles** → **Identifiers** → `ai.jwlabs.foura`.
+2. Tick **Associated Domains** → **Save** → **Confirm**. Leave every other capability as it is.
+3. **Profiles** → the App Store profile for `ai.jwlabs.foura` (it now shows **Invalid**) → **Edit** → **Save** → **Download**.
+4. GitHub → `JW-Incorporated/foray` → **Settings** → **Secrets and variables** → **Actions** (or the `release` environment, if #115 is done) → `IOS_PROVISIONING_PROFILE_BASE64` → **Update**. Paste the downloaded file as base64 (Mac: `base64 -i <file>.mobileprovision | pbcopy`; Windows PowerShell: `[Convert]::ToBase64String([IO.File]::ReadAllBytes("<file>.mobileprovision")) | Set-Clipboard`).
+5. Reply `done`. Claude then adds `applinks:foray-web-seven.vercel.app` to the app's entitlements and ships it in the next TestFlight build.
+
+**Worked if:** the next TestFlight build signs, and tapping a `https://foray-web-seven.vercel.app/#/show/…` link in Messages or Notes opens 4a on that show.
+
+## #143 🟡 [DECIDE] Copy the Play App Signing fingerprint, so shared links open in the Android app (~5 min)
+<!-- ha filed=2026-10-05 kind=default -->
+
+**Why:** Same feature as #142, for Android (#1071). The app already asks Android to open `https://foray-web-seven.vercel.app/` links. Android only agrees once the website publishes `/.well-known/assetlinks.json` with the fingerprint of the key Google signs the app with. Google holds that key (Play App Signing), so its fingerprint is only shown in Play Console. A fingerprint is public, not a secret. The upload key's fingerprint is already in the repo; this is the other one.
+
+**Steps:**
+1. Play Console → **4a** → **Test and release** → **Setup** → **App integrity** → **App signing** tab.
+2. Under **App signing key certificate**, copy the **SHA-256 certificate fingerprint** (32 pairs like `AB:CD:…`).
+3. Paste it here, in a reply to this card. Claude publishes `assetlinks.json` with it.
+
+**Worked if:** on an Android phone with a Play build, tapping a `https://foray-web-seven.vercel.app/#/show/…` link opens 4a without asking which app to use.
+
+## #144 🟢 [UPGRADE] Optional, later: give share links your own address, such as `4a.jwlabs.ai` (~20 min)
+<!-- ha filed=2026-10-05 kind=default -->
+
+**Why:** Shared links use `foray-web-seven.vercel.app` for now (your answer on #1071). A custom domain reads better in a message and survives a move away from Vercel. Nothing waits on it. Once it is live, Claude changes one constant (`SHARE_ORIGIN` in `player/incoming-link.js`) and the two site files, and a #142-style entitlement line.
+
+**Steps:**
+1. Pick the address (for example `4a.jwlabs.ai`).
+2. Vercel → the project that serves `foray-web-seven.vercel.app` → **Settings** → **Domains** → **Add** → type it → follow Vercel's DNS instruction in Cloudflare (`jwlabs.ai`'s DNS), with the record **DNS only** (grey cloud), not proxied.
+3. Reply with the address once Vercel shows **Valid Configuration**.
+
+**Worked if:** `https://<your address>/.well-known/apple-app-site-association` opens in a browser and shows the same text as the `foray-web-seven.vercel.app` one.
 
 ## #141 🟡 [DECIDE] Approve four privacy-policy sentences for bookmarks, downloads and followed-show alerts (~5 min)
 <!-- ha filed=2026-10-04 kind=default -->

@@ -121,6 +121,17 @@ function fontSources() {
    and only partly on Pages until then. */
 const EXTRAS = [];
 
+/* The site-association files (#1071): what lets a shared
+   https://foray-web-seven.vercel.app/#/<route> link open in the app instead of
+   the browser. iOS fetches /.well-known/apple-app-site-association (no
+   extension; vercel.json gives it Content-Type application/json, which Apple
+   requires) from the root of the share origin, so it has to be in dist at that
+   exact path. Missing is FATAL, like runtime data: a deploy without it does
+   not break the site, it quietly turns every universal link back into a web
+   page, and nothing on the page would show it. Android's assetlinks.json joins
+   this list once the Play signing fingerprint exists (HUMAN-ACTIONS). */
+const WELL_KNOWN = [".well-known/apple-app-site-association"];
+
 function copy(rel) {
   const src = join(ROOT, rel);
   if (!existsSync(src)) return { rel, bytes: 0, missing: true };
@@ -136,7 +147,7 @@ mkdirSync(OUT, { recursive: true });
 const copied = [];
 const missing = [];
 
-for (const rel of [...SHELL, ...fontSources(), ...playerSources(), ...EXTRAS]) {
+for (const rel of [...SHELL, ...fontSources(), ...playerSources(), ...EXTRAS, ...WELL_KNOWN]) {
   const r = copy(rel);
   (r.missing ? missing : copied).push(r);
 }
@@ -165,6 +176,11 @@ if (!existsSync(join(OUT, "index.html"))) {
 const missingData = missing.filter((m) => m.rel.startsWith("data" + sep));
 if (missingData.length) {
   console.error("FATAL: runtime data missing: " + missingData.map((m) => m.rel).join(", "));
+  process.exit(1);
+}
+const missingWellKnown = missing.filter((m) => WELL_KNOWN.includes(m.rel));
+if (missingWellKnown.length) {
+  console.error("FATAL: site-association file missing: " + missingWellKnown.map((m) => m.rel).join(", "));
   process.exit(1);
 }
 if (missing.length) {
