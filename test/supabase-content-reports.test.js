@@ -40,6 +40,9 @@
  *   - drop the (status, created_at) index                       -> test 6
  *   - drop the review query from the README                     -> test 7
  *   - drop 0005 from HUMAN-ACTIONS #116                         -> test 7
+ *   - remove the #116 card from HUMAN-ACTIONS.md with no ledger line
+ *                                                               -> test 7
+ *   (and #116 closed in the ledger with its card gone passes test 7)
  */
 
 const { test } = require("node:test");
@@ -163,10 +166,22 @@ test("the apply step and the review query are written down where a founder will 
     "README: the daily review query"
   );
   assert.match(flat(readme), /on delete cascade` removes a listener's reports/);
+  /* HUMAN-ACTIONS #116 (apply the Supabase migrations) carries the 0005 apply
+     step while it is open. When the founder replies `done` (or `skip`), the
+     card leaves the open file for the ledger, so: an open #116 must still
+     carry the steps; otherwise the ledger must record #116 as closed. Same
+     shape as the #45 test in test/voice-probe-switch.test.js. */
   const ha = read("HUMAN-ACTIONS.md");
-  const at = ha.indexOf("\n## #116 ");
-  assert.ok(at > 0, "HUMAN-ACTIONS #116 (apply the Supabase migrations) is open");
-  const item = ha.slice(at, ha.indexOf("\n## #", at + 1));
-  assert.match(item, /backend\/migrations\/supabase\/0005_content_reports\.sql/, "#116 must carry the 0005 apply step");
-  assert.match(item, /0004_rls_shows_catalog\.sql` is also unapplied/, "#116 must say 0004 is unapplied too (gate G2)");
+  const open = /^## #116 /m.exec(ha);
+  if (open) {
+    const rest = ha.slice(open.index + 1);
+    const next = rest.search(/^## #/m);
+    const item = next < 0 ? rest : rest.slice(0, next);
+    assert.match(item, /backend\/migrations\/supabase\/0005_content_reports\.sql/, "#116 must carry the 0005 apply step");
+    assert.match(item, /0004_rls_shows_catalog\.sql` is also unapplied/, "#116 must say 0004 is unapplied too (gate G2)");
+  } else {
+    const ledger = read("HUMAN-ACTIONS-DONE.md");
+    assert.match(ledger, /^- #116 · \d{4}-\d{2}-\d{2} · (done|skip) · /m,
+      "HUMAN-ACTIONS #116 left the open file, so the ledger must record it as closed");
+  }
 });
