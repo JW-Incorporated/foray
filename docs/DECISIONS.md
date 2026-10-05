@@ -112,6 +112,211 @@ ruling, the entry says so, and none is supplied after the fact.
   Foray directory from the Vercel origin (2026-09-11, FD-06), and Pages got
   its own stamped build in `.github/workflows/pages.yml` (2026-09-24, #701).
 
+## 2026-10-04 — S-09: Postgres path for the shows pipeline (`backend/migrations/0017-0019`, `tools/shows/load-postgres.mjs`, `tools/shows/search-shows.mjs`)
+
+Source: `4a-shows-pipeline-plan.md` (Wyatt, 2026-09-04) §3.3; kanban card
+S-09 (`t_f00c0a28`), depends on S-04a's row parser (`t_c175e965`, already
+shipped as `tools/shows/import-dump.mjs` + submodules, PR #483). First
+written 2026-09-15 on PR #714, whose branch had no merge base with `main`;
+re-landed per `docs/roadmap/shows-search.md` section 3 (PKG-01, PKG-02).
+
+**Landed as two PRs: PKG-01 (#1026, tools half) and this one.** PKG-01
+auto-merged `tools/shows/load-postgres.mjs`, `tools/shows/search-shows.mjs`,
+their three suites and `tools/shows`'s `pg`/`pg-copy-streams` dependencies.
+This PR (PKG-02) carries the governed half: migrations 0017-0019,
+`PostgresShowEpisodesStore`'s move to `legacy_show_id`, the CI `db` job, the
+`BACKEND_FLOORS` entries, this entry and the STATE block. #714 is closed in
+favour of the two; its branch is kept.
+
+**Coupling, read before answering gate G1.** After this PR,
+`PostgresShowEpisodesStore` reads and writes `legacy_show_id`, a column that
+exists only once 0019 has run. The store is live only when `DATABASE_URL` is
+set: `api/shows/[show_id]/episodes.ts` builds it in its DB mode, which is
+dormant in production today (no `DATABASE_URL`; founder question 6 in
+`docs/roadmap/README.md` (Postgres for shows: not yet)). So **whoever later
+sets `DATABASE_URL` on Vercel (G1) must apply migrations 0017-0019 to that
+database (G2) first.** A database that stops at 0016 still has `show_id`, and
+every show-page read and feed-state write through the store would fail with
+"column legacy_show_id does not exist". G2 is a step inside G1, not a separate
+HUMAN-ACTIONS item. **On Supabase, G2 also applies
+`backend/migrations/supabase/0004_rls_shows_catalog.sql` right after
+0017-0019:** 0017/0018 create two new public tables, and without it the anon
+key could write `shows_catalog` and `show_id_map` (the backend-rest-4 hole that
+supabase/0003 closed for the 0016 catalogue). 0004 gives `shows_catalog`
+public-read, no-write RLS and `show_id_map` deny-all RLS;
+`test/supabase-rls-coverage.test.js` fails if a table a portable migration
+creates has no RLS in that folder.
+
+- **New tables, keyed on `pi_id` (PodcastIndex's own dump id), not the
+  curated `show_id` slug.** `shows_catalog` (0017) is the Postgres mirror
+  of S-04a's canonical dump rows — every show that passed D1/D13, not only
+  the 220 curated ones — with a generated `search_tsv` (title weight A,
+  author weight B) and a `pg_trgm` index on `title` for fuzzy matching.
+  `show_id_map` (0018) is the durable twin of S-04a's `id-map.json`: which
+  curated slug resolves to which `pi_id`. Deliberately separate from
+  0002/0003's `shows`/`episodes` (per-user tracked feeds) and from 0016's
+  `catalog_show_episodes`/`catalog_show_feed_state` (curated-slug-keyed
+  episode cache) — this is show-level breadth data across every dump row,
+  existing to answer "which shows are there" search queries the client's
+  static shard index (S-04a/§3.2) already answers offline; the Postgres
+  path exists for a real ranked FTS+trgm search once a backend Postgres is
+  provisioned.
+- **0019 rekeys `catalog_show_episodes`/`catalog_show_feed_state` from
+  `show_id` to `pi_id`** via `show_id_map`, renaming the old column to
+  `legacy_show_id` (kept, not dropped) rather than deleting it — an orphan
+  row (a `show_id` with no `show_id_map` entry) stays queryable by
+  `legacy_show_id` and is simply excluded from the new `pi_id`-keyed
+  indexes/foreign keys, so the migration can never destroy data even if
+  the "every curated show maps" guarantee S-04a enforces at import time
+  were ever violated by a stale row from before this migration existed.
+  0019's header names `backend/test/shows-rekey.test.ts` as its acceptance;
+  that file was never written. The acceptance lives in
+  `tools/shows/shows-postgres-integration.test.mjs` (its pre-migration test
+  seeds 0016-shaped rows, runs 0019, and asserts they survive). The
+  migration is taken verbatim, so the comment stays.
+- **`PostgresShowEpisodesStore` stays on `legacy_show_id`.** Every statement
+  it sends (the episode read, backend-rest-9's batched episode upsert in
+  `buildEpisodeUpsert`, the feed-state read and upsert) names
+  `legacy_show_id`, and the reads alias it back to `show_id` so the store's
+  public types do not change. Rewiring the store onto `pi_id` is a later
+  card's job, once the show page itself moves off curated slugs.
+  `backend/test/showEpisodesStore.test.ts` pins all four statements.
+- **`load-postgres.mjs` reuses S-04a's `runPipeline`** (fetch/filter/
+  dedupe/id-map is one pipeline, not reimplemented) and adds exactly the
+  Postgres-specific step: COPY into an `unlogged` staging table, then one
+  `insert ... on conflict (pi_id) do update` upsert into `shows_catalog` —
+  the card's own "COPY into staging → upsert" ask, verified against a real
+  Postgres 17 to actually load a fixture end to end (not just typecheck).
+  Also computes the `changed_in_dump` reasons (per-pi_id, from S-04a's
+  `changed.json` ids) and the bytes/row × in_4a sizing report that feeds
+  gate G8 (Supabase tier, HUMAN-ACTIONS.md).
+- **`search-shows.mjs`**: `ts_rank_cd` against `search_tsv` via
+  `websearch_to_tsquery`, with a `pg_trgm` similarity fallback when the FTS
+  pass returns nothing (a query too short/sparse for a lexeme, or a real
+  typo FTS's exact-token matching can't bridge) — verified with a golden
+  query set (exact title match, author-field match, typo tolerance via the
+  trgm fallback, a no-match query returning nothing, and curated shows
+  outranking equally-popular non-curated ones) against a real Postgres.
+  Curated shows get a small additive rank boost, same "curated is never
+  displaced" principle as `shard-build.mjs`'s `top.json`, applied to
+  ranking rather than a size-budget list.
+- **Inert in production, verified**: `resolveDatabaseUrl()` checks
+  `SHOWS_DATABASE_URL` then `DATABASE_URL`; with neither set,
+  `load-postgres.mjs` exits 0 and names gate G8 (Supabase tier,
+  HUMAN-ACTIONS.md) rather than failing or silently doing nothing
+  unexplained, confirmed by actually running the CLI with no DB configured.
+- **New CI `db` job** (`.github/workflows/ci.yml`) runs a real
+  `postgres:17` service container, applies all 19 migrations twice
+  (idempotency), then runs `backend`'s and `tools/shows`'s test suites
+  with `SHOWS_DATABASE_URL`/`TEST_DATABASE_URL` set so the DB-gated tests
+  (`backend/test/showsPostgresLive.test.ts`,
+  `tools/shows/shows-postgres-integration.test.mjs`) actually execute
+  instead of skipping. Deliberately uses `SHOWS_DATABASE_URL`, not
+  `DATABASE_URL`, for the `backend` step: `userInterests.test.ts`'s
+  `createUserInterestsProvider` suite asserts `DATABASE_URL` is absent
+  (guarding a genuinely not-yet-implemented `PostgresUserInterestsProvider`
+  — different card, future work) — found by actually running the full
+  backend suite with `DATABASE_URL` set and watching that assertion fail,
+  not by inspection. Not added to `protect-main`'s required-checks list
+  (`backend`, `data-and-site`): founder question 30 in
+  `docs/roadmap/README.md` rules "The new `db` CI job is not a required
+  check yet."
+- **What was verified against a real Postgres 17, and where.** On #714
+  (2026-09-15, a sandbox cluster built from the `io.zonky.test.postgres`
+  binaries): every migration applied clean, twice, from a fresh database;
+  `load-postgres.mjs`'s CLI ran end to end against a fixture sqlite dump
+  and landed real rows via COPY+upsert, confirmed idempotent on a second
+  run (0 inserted / N updated); the golden-query search set and the 0019
+  rekey-preserves-a-seeded-row acceptance criterion both passed against
+  live data, not fixtures alone. On this PR, the live evidence is the `db`
+  job's own run; locally only `npm run typecheck` and `npm test` ran, with
+  no database, so `showsPostgresLive.test.ts` skipped.
+- **Test floors**: PKG-01 added `tools/shows/load-postgres.test.mjs` (11),
+  `tools/shows/search-shows.test.mjs` (7) and
+  `tools/shows/shows-postgres-integration.test.mjs` (8, gated on
+  `TEST_DATABASE_URL`) to `test/suite-integrity.test.js`'s `FLOORS`. This PR
+  adds `BACKEND_FLOORS` `test/showsPostgresLive.test.ts` (3, gated on
+  `SHOWS_DATABASE_URL`/`DATABASE_URL`) and raises
+  `test/showEpisodesStore.test.ts` 9 -> 11.
+- **Fresh-context review (codex/gpt-6-astra) found and fixed six real
+  defects on #714, all against a live Postgres, not just re-read**:
+  (1) 0019 renamed `catalog_show_episodes`/`catalog_show_feed_state`'s
+  `show_id` to `legacy_show_id` and dropped its unique constraint without
+  updating `PostgresShowEpisodesStore`, which still queried/upserted by
+  the old name — fixed by re-creating an equivalent unique index on
+  `legacy_show_id` and updating the store to match; (2) 0019's
+  `show_id_map` join only ever sees whatever exists at MIGRATION time,
+  which is always empty on a fresh deploy — added
+  `backfillLegacyShowIdKeys()`, re-run on every real import so a mapping
+  that arrives later still resolves; (3) `loadCatalogRows` never removed a
+  show that stopped appearing in a later import's canonical set — added
+  retirement (delete any `shows_catalog` row not carrying the current
+  run's `export_version`, clearing any `show_id_map` reference first to
+  satisfy the FK); (4) `changed_in_dump` was computed with an always-empty
+  `previousNewest`, so every row reported changed on every run including
+  an unchanged re-import — added `fetchPreviousNewest()`, reading the
+  prior release's snapshot straight from `shows_catalog` before the
+  current run's upsert overwrites it; (5) the loader never checked
+  S-04a's `MAX_UNMAPPED_CURATED_FRACTION` id-map-completeness guard before
+  writing to Postgres — added `checkMissingMapping()`, mirroring
+  `import-dump.mjs`'s own `writeBuildOutput` check; (6) the integration
+  test suite exercised a hand-copied SQL snippet instead of the real
+  loader functions and never seeded feed-state — rewritten to call
+  `backfillLegacyShowIdKeys`/`loadCatalogRows`/`fetchPreviousNewest`/
+  `checkMissingMapping` directly and to seed both episode and feed-state
+  rows.
+- **Second review rejection → Fable arbiter ruling (2026-09-15), per
+  `policy/review-matrix.yaml`'s second-rejection escalation.** Codex
+  found two more real defects in the first repair: (1) 0019's
+  `legacy_show_id`-keyed unique indexes were PARTIAL (`where
+  legacy_show_id is not null`), which Postgres cannot infer as an `ON
+  CONFLICT` arbiter unless the `ON CONFLICT` clause repeats the same
+  predicate — `PostgresShowEpisodesStore`'s upserts did not, so every
+  write through the store would have failed at runtime with "no unique or
+  exclusion constraint matching the ON CONFLICT specification"; (2)
+  retirement compared `export_version <> current`, but `export_version`
+  can legitimately repeat across two runs of the identical dump (the
+  `local:` fallback hashes the file; the real path reuses the dump's own
+  `Last-Modified` header) while D1's staleness filter depends on
+  wall-clock time — a byte-identical re-import after a show aged past the
+  24-month cutoff would never retire it under that predicate. Ruling
+  (`claude --model claude-fable-5`) confirmed both as genuine blockers and
+  authorized one further repair cycle. **Fixes**: the two indexes became
+  plain non-partial unique indexes (NULL-distinctness already gives the
+  "orphans don't collide with each other" property, without a predicate
+  mismatch trap); retirement now anti-joins against the staging table's
+  actual `pi_id` set (ground truth for "was in this run"), not a version
+  label. Verified on #714: a hand-run `ON CONFLICT` insert/update against
+  the fixed index succeeds and updates in place (not a duplicate row);
+  `shows-postgres-integration.test.mjs` gained a regression that reuses
+  one `export_version` across two loads with a shrunk row set and asserts
+  the missing row is retired anyway, plus a genuine pre-migration test that
+  applies 0001-0018, seeds 0016-shaped data under the OLD `show_id`
+  column, THEN runs 0019 and asserts the row survives.
+- **Third review pass: one more real, reproduced finding — deferred by a
+  second Fable ruling (2026-09-15), not fixed in this card.**
+  `backfillLegacyShowIdKeys()` only backfills a `catalog_show_episodes`/
+  `catalog_show_feed_state` row's `pi_id` when it is still `null`. If a
+  curated show's `show_id_map` mapping REMAPS to a different `pi_id`
+  across import runs (D13's dedupe winner changes, or a feed migrates to
+  a new PodcastIndex id while the old one survives D1's 24-month window),
+  a row already resolved to the OLD `pi_id` never gets reconciled to the
+  new one — reproduced live by the reviewer against a real Postgres.
+  Ruling: **defer, do not fix now.** Nothing shipped by this card reads
+  or writes those two tables by `pi_id` — `search-shows.mjs` never
+  touches them, and `PostgresShowEpisodesStore` deliberately stays on
+  `legacy_show_id` — so the column is write-only plumbing today with zero
+  observable consumer effect. The naive fix (`is distinct from` instead of
+  `is null`) is unsafe to rush: `idx_csfs_pi_id`/`idx_cse_pi_id_guid` are
+  unique indexes, so reconciling into an already-occupied `pi_id` (the
+  exact scenario that causes the drift) would raise a unique-violation
+  and crash the whole load — a real merge/collision design (which row
+  wins, what happens to the loser's polling history) is needed first, and
+  belongs to the future card that actually rewires
+  `PostgresShowEpisodesStore` onto `pi_id`. Documented as a known
+  limitation in `backfillLegacyShowIdKeys()`'s own doc comment; follow-up
+  filed as kanban `t_aeed5440`.
+
 ## 2026-10-04 (an empty Now Playing album shows "4a" — issue #1006)
 
 Wyatt, 2026-10-04, verbatim (recorded on issue #1006): "when there is no album

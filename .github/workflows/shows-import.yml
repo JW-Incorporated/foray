@@ -109,6 +109,7 @@ jobs:
           fi
 
       - name: Open a PR updating the pointer, whenever it needs to change
+        id: pointer_pr
         # Gated on `pointer_changed`, NOT `published` — run-and-publish.mjs
         # reconciles the pointer independently of whether THIS run created
         # the release (fresh-context review finding, 2026-09-05): a prior
@@ -194,3 +195,46 @@ jobs:
           gh workflow run ci.yml --repo "${{ github.repository }}" --ref "$BRANCH"
           gh pr merge "$PR_NUMBER" --repo "${{ github.repository }}" \
             --squash --auto --delete-branch --match-head-commit "$HEAD_SHA"
+          echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+
+      - name: Approve the pointer PR's own pull_request runs (#1032)
+        # WHY THE DISPATCH ABOVE IS NO LONGER ENOUGH (issue #1032, measured on
+        # PR #1012, head 625137fa). GitHub now DOES create `pull_request` runs
+        # for a PR opened or pushed with the automatic GITHUB_TOKEN, but parks
+        # them at `action_required`. Our reading, not confirmed by GitHub
+        # docs: this public repo's PR-approval policy is
+        # `first_time_contributors` and github-actions[bot] is treated as one.
+        # The same parked state shows on bot-pushed PR heads since at least
+        # 2026-09-17 (ci.yml runs 35241072432, 35622040932, 37244137061). On #1012 the dispatched ci.yml run above passed all
+        # four required contexts on the same SHA, yet the PR showed only the
+        # Vercel checks, sat BLOCKED, and auto-merge never fired, until a user
+        # pushed an empty commit and the pull_request runs went normally.
+        #
+        # So this step does what that human did with the "Approve and run
+        # workflows" button: it approves every `pull_request` run parked at
+        # `action_required` on THIS head SHA (POST .../runs/{id}/approve,
+        # covered by `actions: write`). Safe to approve: the head is the
+        # commit the step above just made, and its only change is
+        # data/shows-index-pointer.json, so no PR-authored code runs. The
+        # dispatch stays as the backstop.
+        #
+        # LOUD, NOT SILENT. If GitHub refuses the approval (the API documents
+        # it for fork PRs; whether it accepts the automatic token for its own
+        # bot's runs is unverified until the next weekly run), runs are
+        # still parked afterwards, or the run list cannot be read at all, the
+        # job goes red with the manual remedy in
+        # the summary instead of stranding the PR quietly for a week.
+        if: steps.build.outputs.pointer_changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ steps.pointer_pr.outputs.head_sha }}
+          PR_NUMBER: ${{ steps.pointer_pr.outputs.pr_number }}
+        # The logic lives in tools/ci/approve-parked-runs.mjs (with tests;
+        # under tools/ci/ so path-policy denies it: it holds a token that can
+        # approve workflow runs) so it can be checked off-CI: it keeps polling and approving until a
+        # quiet window passes (runs from several workflows appear seconds
+        # apart), and it never reads a FAILED list call as "nothing parked".
+        # BRANCH comes from the workflow-level env.
+        run: node tools/ci/approve-parked-runs.mjs
