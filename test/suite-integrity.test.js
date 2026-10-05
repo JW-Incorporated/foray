@@ -1289,6 +1289,7 @@ const FLOORS = {
      `data-and-site` for the entire repo. All 10 named mutations were run and
      killed. */
   "tools/ci/crlf-guard.test.mjs": 10,
+  "tools/ci/approve-parked-runs.test.mjs": 10, // #1032 / PR #1038 review: pointer-PR run approval -- late-run race, failed list call never read as empty, approve failure, still parked, unconfirmed window
   /* The Foray directory pointer (FD-02): `data/forays-directory.json`, written
      and checked by generate-manifest.mjs. 16 pure-function tests on scratch
      trees plus 8 that run the REAL CLI as a subprocess against a synthetic LF
@@ -2102,7 +2103,7 @@ const FLOORS = {
   "tools/shows/dedupe.test.mjs": 11, // audit round 3 (L8): +2, Unicode dedupe key; 9 -> 11
   "tools/shows/filter.test.mjs": 11,
   "tools/shows/identity.test.mjs": 2,
-  "tools/shows/import-dump.test.mjs": 8, // audit round 3 integration: the real post-merge count, 5 -> 8
+  "tools/shows/import-dump.test.mjs": 12, // #1033: +4 changed.json baseline (snapshot round-trip, download reaches buildChanged, failed download -> baseline:false, never {}); 8 -> 12 // audit round 3 integration: the real post-merge count, 5 -> 8
   "tools/shows/shard-build.test.mjs": 15, // audit round 3 (L8): +1, changed.json baseline; 14 -> 15
   "tools/shows/state.test.mjs": 6,
   /* S-04b: GitHub Release publishing + the run-then-publish orchestration
@@ -2117,7 +2118,7 @@ const FLOORS = {
      independent release-already-exists check that catches a lost
      state.json). */
   "tools/shows/publish-release.test.mjs": 28, // OPS-03 review: +2 -- a starter (half-uploaded) asset reads as missing, and a stranded draft BATCH resumes in publishShardReleases (the #969 fix at the call site); 26 -> 28 // OPS-03: draft -> chunked uploads -> publish, resume, retry, rate-limit wait, pacing, releaseState; 19 -> 26 (true count)
-  "tools/shows/run-and-publish.test.mjs": 10, // OPS-01: +3 describeExecError (FATAL lines carry code/signal/stderr/stdout); 6 -> 10 (true count: 7 existing + 3)
+  "tools/shows/run-and-publish.test.mjs": 11, // #1033: +1 the baseline snapshot ships on the pointer's release; 10 -> 11 // OPS-01: +3 describeExecError (FATAL lines carry code/signal/stderr/stdout); 6 -> 10 (true count: 7 existing + 3)
   /* Fresh-context review finding (2026-09-05): runBuild spawns
      import-dump.mjs as a real child process, and Node does NOT
      auto-inherit process.execArgv (e.g. --experimental-sqlite) into a

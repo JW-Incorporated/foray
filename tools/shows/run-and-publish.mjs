@@ -9,6 +9,13 @@
    everything GitHub-Release-shaped is new in this card and lives here so
    the two cards' owned files never collide on the same lines.
 
+   CHANGED.JSON'S BASELINE (#1033) RIDES THE RELEASE. import-dump.mjs
+   downloads the previous release's newest-snapshot.json.gz through the
+   committed pointer BEFORE this script rewrites the pointer, and writes this
+   build's own snapshot next to changed.json; listReleaseAssets ships it on
+   the top-level release, so the pointer this run writes is exactly where the
+   next run looks.
+
    Usage:
      node tools/shows/run-and-publish.mjs [--dump-file PATH] [--dry-run]
    Flags are forwarded to import-dump.mjs's fetch/build step; --dry-run
@@ -159,6 +166,9 @@ export async function runAndPublish(argv, {
         `Automated shows-index release (S-04b).`,
         `export_version: ${state.export_version}`,
         `rows: read ${manifest.counts.read}, in_4a ${manifest.counts.in_4a}, canonical ${manifest.counts.canonical}`,
+        ...(manifest.newest_snapshot
+          ? [`changed.json baseline for the next release: ${manifest.newest_snapshot.asset} (${manifest.newest_snapshot.count} ids)`]
+          : []),
       ].join("\n"),
       assets,
       exec: ghExec,

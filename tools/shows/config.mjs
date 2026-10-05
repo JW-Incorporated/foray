@@ -77,6 +77,18 @@ export const RELEASE_TAG_PREFIX = "shows-index-";
          still reads as "no shard releases". */
 export const POINTER_SCHEMA_VERSION = 2;
 
+/** #1033: the prior-release baseline for changed.json. Every top-level
+    release ships this asset — one `{ "<pi_id>": newest_item_at epoch
+    seconds }` map over that build's canonical rows, gzipped — and the NEXT
+    run downloads it from the committed pointer's `asset_base_url` (public,
+    no token) and hands it to `buildChanged` as `previousNewest`. ~884k ids,
+    a few MB gzipped. The decompressed cap is a guard against a hostile or
+    corrupt asset, not a budget: the real map is ~20MB of JSON. */
+export const NEWEST_SNAPSHOT_ASSET = "newest-snapshot.json.gz";
+export const NEWEST_SNAPSHOT_VERSION = 1;
+export const MAX_NEWEST_SNAPSHOT_BYTES = 256 * 1024 * 1024;
+export const NEWEST_SNAPSHOT_FETCH_TIMEOUT_MS = 120_000;
+
 /** S-04c: shard publishing. GitHub Releases hard-caps a single release at
     1,000 total assets (confirmed via GitHub's own docs and a real HTTP 422
     "file_count limited to 1000 assets per release" against this repo, see
