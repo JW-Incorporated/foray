@@ -208,7 +208,14 @@ test("removeAll deletes the whole directory, and remove drops the row before can
   assert.match(removeAll, /try FileManager\.default\.removeItem\(at: dir\)/);
   assert.match(removeAll, /cancelTasks \{ _ in true \}/);
   const remove = /func remove\(id rawId: String\?\) throws -> Bool \{[\s\S]*?\n    \}/.exec(src)?.[0] ?? "";
-  assert.ok(remove.indexOf("index.items.removeValue") < remove.indexOf("cancelTasks"), "the row goes before the task is cancelled");
+  /* MUTATION: `index.items.removeValue(forKey: id)?.file` -> `index.items[id]?.file`
+     in remove() -> the deleted download comes back in list() as "missing". */
+  assert.ok(remove, "remove(id:) keeps its signature");
+  const dropped = remove.indexOf("index.items.removeValue(forKey: id)");
+  const cancelled = remove.indexOf("cancelTasks");
+  assert.ok(dropped >= 0, "remove drops the index row");
+  assert.ok(cancelled >= 0, "remove cancels the task");
+  assert.ok(dropped < cancelled, "the row goes before the task is cancelled");
 });
 
 test("the package is a self-contained SwiftPM plugin with XCTests for each policy rule", () => {

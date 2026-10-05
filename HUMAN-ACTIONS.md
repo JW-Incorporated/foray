@@ -19,7 +19,7 @@
    4. **PQ-28** — the iPhone half of `foray-notify` (alerts). PR: _(added by PQ-28)_
    5. **PQ-29** — the Android half of `foray-notify`. PR: _(added by PQ-29)_
    6. **PQ-30** — `chore(mobile): declare foray-notify and inject its background-refresh keys (PQ-30, #761) — human merge`. PR: _(added by PQ-30)_
-2. Before each merge, open the PR and check two things: every check at the bottom is green, and (for PQ-20 and PQ-28) the `hold` label is gone. Claude takes `hold` off once the iPhone build check (`ios-kit`) has passed on the PR's latest commit. If either is not true yet, skip it and come back; do not merge out of order.
+2. Before each merge, open the PR and check two things: every check at the bottom is green, and (for PQ-20 and PQ-28) the `hold` label is gone. Claude takes `hold` off once the iPhone build check (`ios-kit`) has passed on the PR's latest commit. For PQ-20 that green `ios-kit` proves less: it does not compile the new foray-downloads Swift at all, because the app only picks the plugin up once PQ-21 declares it, so that Swift is first built by PQ-21's `ios-build` check (or by a `swift test (foray-downloads, iOS Simulator)` step, if one is ever added to `ci.yml`). If either is not true yet, skip it and come back; do not merge out of order.
 3. Click **Ready for review** if the PR is still a draft, then **Squash and merge**.
 4. After the last one (PQ-30), reply `done`.
 
