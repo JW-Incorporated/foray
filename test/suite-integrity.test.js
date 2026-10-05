@@ -2261,6 +2261,7 @@ const FLOORS = {
   "tools/poll/tiers.test.mjs": 9, // PKG-05 (S-10): new -- cadence tiers (seed, correction, success/failure, dead)
   "tools/poll/politeness.test.mjs": 4, // PKG-06 (S-10): new -- per-host politeness port, constants pinned to backend/src/feeds/politeness.ts
   "tools/poll/select-due.test.mjs": 6, // PKG-06 (S-10): new -- due-set selection (dead, not-due, caps, order, bad URL, budget untouched) + the G9 weekly projection
+  "tools/poll/watchlist.test.mjs": 10, // PKG-07 (S-10): new -- watchlist assembly (curated, unmapped, changed top-N, tiers, 90-day expiry, seed size) + the seed builder (exit 2 on ok:false, curated-only seed, --check)
 };
 
 test("no suite is floored twice", () => {
