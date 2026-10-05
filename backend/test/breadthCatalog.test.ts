@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 import * as vm from "vm";
@@ -15,6 +15,27 @@ import {
   type ShowSearchResult,
 } from "../src/catalog/searchBreadthShows";
 import { loadBreadthCatalog, type CatalogueShowEntry } from "../src/catalog/breadthCatalog";
+
+/** Section 4's seam: when `breadthOverride.json` is set, a read of
+    `data/catalog-breadth.json` returns it instead of the 12 MB committed file;
+    every other read (catalog.json, catalog-client.json, search-engine.js) goes
+    to the real disk. `breadthCatalog.ts` has no path override and its
+    REPO_ROOT is fixed, so the read itself is the only place a fixture row can
+    enter. `vi.hoisted` because `vi.mock` is hoisted above the imports. */
+const breadthOverride = vi.hoisted(() => ({ json: null as string | null }));
+vi.mock("fs", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("fs")>();
+  const readFileSync = ((file: unknown, ...rest: unknown[]) => {
+    if (
+      breadthOverride.json !== null &&
+      String(file).replace(/\\/g, "/").endsWith("data/catalog-breadth.json")
+    ) {
+      return breadthOverride.json;
+    }
+    return (actual.readFileSync as (...args: unknown[]) => unknown)(file, ...rest);
+  }) as typeof actual.readFileSync;
+  return { ...actual, readFileSync, default: { ...actual, readFileSync } };
+});
 
 /**
  * backend/src/catalog/breadthCatalog.ts + searchBreadthShows.ts — the
@@ -493,5 +514,53 @@ describe("searchBreadthShows — agreement with the real search-engine.js", () =
     expect(dropped.some((e) => popularityBand(e) > Math.min(...kept.map(popularityBand)))).toBe(true);
     const jumped = dropped.filter((e) => key(e) < worstKeptKey).map((e) => e.title);
     expect(jumped).toEqual([]);
+  });
+});
+
+/* ==================================================================== */
+/* 4. BREADTH ROWS KEEP THEIR FOLDED TAXONOMY NODES (PKG-09)             */
+/* ==================================================================== */
+
+describe("loadBreadthCatalog — breadth taxonomy_node_ids pass through", () => {
+  /* docs/roadmap/catalogue-personalization.md PKG-09, #560 item 4. PKG-08
+     folded data/breadth-classification.json into catalog-breadth.json, but the
+     loader overwrote every breadth row's nodes with `[]`, and
+     `api/shows/search?id=` hands the show page that row unprojected — so a
+     breadth show page had no chips and no Similar shows. */
+  const rawBreadth = (shows: unknown[]) => JSON.stringify({ shows });
+
+  afterEach(() => {
+    /* The loader caches module-wide even when FORAY_SKIP_CATALOGUE_CACHE=1, so
+       re-read the REAL files once before handing back — otherwise a fixture
+       catalogue would leak into any later loadBreadthCatalog() caller. */
+    breadthOverride.json = null;
+    process.env.FORAY_SKIP_CATALOGUE_CACHE = "1";
+    loadBreadthCatalog();
+    delete process.env.FORAY_SKIP_CATALOGUE_CACHE;
+  });
+
+  it("a breadth row that carries taxonomy_node_ids keeps them", () => {
+    // MUTATION: revert breadthCatalog.ts's breadth branch to
+    // `taxonomy_node_ids: [],` - the row loads with [] and this fails.
+    breadthOverride.json = rawBreadth([
+      { apple_collection_id: 990000001, title: "Fixture Science Hour", feed_url: null, taxonomy_node_ids: ["science"] },
+    ]);
+    process.env.FORAY_SKIP_CATALOGUE_CACHE = "1";
+    const row = loadBreadthCatalog().find((e) => e.show_id === "990000001");
+    expect(row?.tier).toBe("breadth");
+    expect(row?.taxonomy_node_ids).toEqual(["science"]);
+  });
+
+  it("a breadth row without taxonomy_node_ids loads with []", () => {
+    // MUTATION: drop the `?? []` (`taxonomy_node_ids: show.taxonomy_node_ids
+    // as string[]`) - the row loads with undefined, which a client
+    // `.length`/`.map` would throw on, and this fails.
+    breadthOverride.json = rawBreadth([
+      { apple_collection_id: 990000002, title: "Fixture Unfolded Show", feed_url: null },
+    ]);
+    process.env.FORAY_SKIP_CATALOGUE_CACHE = "1";
+    const row = loadBreadthCatalog().find((e) => e.show_id === "990000002");
+    expect(row?.tier).toBe("breadth");
+    expect(row?.taxonomy_node_ids).toEqual([]);
   });
 });

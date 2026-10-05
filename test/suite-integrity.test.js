@@ -2651,7 +2651,11 @@ const BACKEND_FLOORS = {
      the real-catalogue proof — for "history", *Dan Carlin's Hardcore History*
      is IN the 25 rows the endpoint sends, where before it was not in the reply
      at all and reached the listener only via Apple's directory. */
-  "test/breadthCatalog.test.ts": 18,
+  /* RAISED 18 -> 20 by catalogue-personalization PKG-09 (2026-10-04): the
+     loader stops zeroing a breadth row's folded `taxonomy_node_ids`. Two
+     tests over a fixture catalog-breadth.json read: a row with nodes keeps
+     them, a row without loads []. */
+  "test/breadthCatalog.test.ts": 20,
   /* §4.9 end to end (kanban card t_0b1729d6): finalizeForay() validates
      a candidate against the real check-forays.mjs/check-narration.mjs
      and only returns a writable record on a clean pass; stageTiming.ts
