@@ -118,7 +118,7 @@ const FLOORS = {
      deleted once V-01's Audition button replaced it for the human tests it
      existed to support. See HUMAN-ACTIONS #29 and docs/curation/
      tts-locked-screen-check.md (kept as the historical record). */
-  "player/foray-playback.test.js": 91, // 2026-09-23 merge of the audit lanes: L2 (the Foray page paints its main button from `running`, "Start over" on a finished Foray; +2) and L8 (#236: the suite runs on the frozen fixture, plus "every segment of every committed Foray in data/ resolves"; +2) both landed; 87 -> 91
+  "player/foray-playback.test.js": 92, // DAI-07b: client.js sends every Foray path (resolve, playForay + its again re-entry, attachForay) through forayResolveOptions/forayQueueOptions; 91 -> 92 // 2026-09-23 merge of the audit lanes: L2 (the Foray page paints its main button from `running`, "Start over" on a finished Foray; +2) and L8 (#236: the suite runs on the frozen fixture, plus "every segment of every committed Foray in data/ resolves"; +2) both landed; 87 -> 91
   /* 2026-09-18, founder: "the podcast I was listening to should still be in the
      now playing ribbon". The POINTER to the last ordinary episode — position is
      not stored here, `cp_pos:` has owned that since #26, and two of these tests
