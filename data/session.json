@@ -12,7 +12,8 @@
       "episode_id": "lex-353-whyte",
       "why_line": "Your fusion-reactor tour opens with SPARC's co-founder: every confinement approach, then deep on tokamak magnets.",
       "fit_line": "194 min (≈ 129 at 1.5×); pick up where you left off.",
-      "alternates": ["titans-378-ma", "lex-485-kirtley", "omegatau-312-w7x", "cleantechies-216-thea", "catalyst-pacific-fusion"]
+      "alternates": ["titans-378-ma", "lex-485-kirtley", "omegatau-312-w7x", "cleantechies-216-thea", "catalyst-pacific-fusion"],
+      "provenance": { "signals": ["topic:engineering/energy-fusion", "depth:high"], "wildcard": false, "builder": "hand-architect-v1" }
     },
     {
       "slot": 2,
@@ -21,7 +22,8 @@
       "episode_id": "sysk-damascus-steel",
       "why_line": "You care how fusion-grade alloys behave under stress — ancient smiths solved carbon control completely blind.",
       "fit_line": "37 min (≈ 25 at 1.5×).",
-      "alternates": ["materialism-textiles-space", "insidechips-semi-mfg", "mtdcnc-forging"]
+      "alternates": ["materialism-textiles-space", "insidechips-semi-mfg", "mtdcnc-forging"],
+      "provenance": { "signals": ["topic:science/materials", "topic:history/technology", "depth:medium"], "bridge": "your fusion interest -> materials science", "wildcard": true, "builder": "hand-architect-v1" }
     },
     {
       "slot": 3,
@@ -30,7 +32,8 @@
       "episode_id": "foc-assyrians",
       "why_line": "An empire built on iron metallurgy and siege engineering — your ancient-military itch with a materials spine.",
       "fit_line": "185 min (≈ 123 at 1.5×) of documentary.",
-      "alternates": ["trih-netherlands-revolt", "foc-sumerians", "foc-han-dynasty"]
+      "alternates": ["trih-netherlands-revolt", "foc-sumerians", "foc-han-dynasty"],
+      "provenance": { "signals": ["topic:history/military-ancient", "topic:history/technology", "depth:high"], "wildcard": false, "builder": "hand-architect-v1" }
     },
     {
       "slot": 4,
@@ -39,7 +42,8 @@
       "episode_id": "conan-mcbride-returns",
       "why_line": "Zero homework: Conan and an old friend riffing — dropped yesterday, still warm.",
       "fit_line": "57 min (≈ 38 at 1.5×) of easy hang.",
-      "alternates": ["smartless-emma-thompson", "mbmbam-821", "conan-groban"]
+      "alternates": ["smartless-emma-thompson", "mbmbam-821", "conan-groban"],
+      "provenance": { "signals": ["topic:comedy/casual-hangs", "recency", "depth:low"], "wildcard": false, "builder": "hand-architect-v1" }
     }
   ],
   "categories": [
