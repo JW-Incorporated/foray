@@ -82,13 +82,14 @@ export const IGNORED_PREFIXES = [
  * builds (correct) and only a test does not.
  */
 /* The deploy stamp's modules (issue #701): `prepare-dist.mjs` imports them to
-   write deploy-manifest.json, the Foray directory pointer and sw.js's BUILD_ID
+   write deploy-manifest.json, the Foray and catalogue directory pointers and sw.js's BUILD_ID
    into dist/, so a change to one changes the bytes Vercel serves exactly as a
    change to prepare-dist.mjs itself does. Named, not a `tools/ci/` prefix: the
    rest of that directory is CI policy and never reaches a deploy. */
 export const STAMP_MODULES = [
   "tools/ci/generate-manifest.mjs",
   "tools/ci/forays-directory.mjs",
+  "tools/ci/catalogue-directory.mjs",
   "tools/ci/crlf-guard.mjs",
 ];
 
