@@ -2683,3 +2683,38 @@ test("a snapshot from an OLDER player module leaves the label alone rather than 
   assert.equal(dom.el("fy-rate").textContent, "1.5×");
 });
 
+
+test("client.js sends both Foray paths through the seek-policy switch", async () => {
+  /* DAI-07b (docs/roadmap/dai.md §3). The ad-pad switch (`AD_PAD_SHIPPED` in
+     player/seek-policy.js, still false) only means something if every page-side
+     Foray path asks it the same question, and the one place that question is
+     asked is foray-resolve.js's pair of helpers: `forayResolveOptions` for the
+     running order the page paints (the bridge's `resolve`) and
+     `forayQueueOptions` for the queue the manager plays (`playForay`, and NE-35's
+     `attachForay`, which rebuilds the page's half of a Foray the engine already
+     holds). A path that builds its options by hand silently keeps the old
+     default whatever the switch says.
+
+     A text assertion, for the reason the gesture test above gives: client.js
+     cannot be imported into a Node test.
+
+     MUTATION THAT KILLS THIS: delete `forayQueueOptions(` at the playForay site
+     (put back the hand-built `{ resolveItem }` object) — the helper count falls
+     to one of two. Dropping `allowAdPad` from the `again` closure, or the
+     `...forayResolveOptions(` spread in `resolve`, also turns it red. */
+  const client = fs.readFileSync(path.join(ROOT, "player/client.js"), "utf8");
+
+  const resolveSites = client.match(/resolveForay\(doc,\s*\{[^}]*\.\.\.forayResolveOptions\(/gs) ?? [];
+  assert.equal(resolveSites.length, 1, "the bridge's resolve() must spread forayResolveOptions into resolveForay");
+
+  const queueSites = (client.match(/setQueueFromForay\(/g) ?? []).length;
+  const viaHelper = (client.match(/setQueueFromForay\(resolved\.hydrated,\s*forayQueueOptions\(/g) ?? []).length;
+  assert.ok(queueSites >= 2, `expected playForay and attachForay to queue a Foray; found ${queueSites} setQueueFromForay( sites`);
+  assert.equal(viaHelper, queueSites, "every setQueueFromForay( must take its options from forayQueueOptions");
+  assert.match(client, /forayQueueOptions\(resolved,\s*\{\s*isLocalFile:\s*false,\s*allowAdPad\s*\}\)/,
+    "playForay must forward its allowAdPad option to forayQueueOptions");
+
+  const againLine = client.split("\n").find((line) => line.includes("again = () => ForayPlayer.playForay("));
+  assert.ok(againLine, "playForay's `again` re-entry closure moved or was renamed");
+  assert.ok(againLine.includes("allowAdPad"), "the `again` re-entry must carry allowAdPad, or a lane switch drops it");
+});
