@@ -404,3 +404,21 @@ test("Android: removeAll deletes both directories and every transfer; remove dro
   }
   assert.match(code(read(ANDROID, "build.gradle")), /testImplementation "junit:junit:4\.13\.2"/);
 });
+
+test("PQ-21: the shell declares the plugin, and the lockfile npm ci reads agrees, so cap sync links it on both platforms", () => {
+  /* MUTATION: drop "foray-downloads" from mobile/package.json's dependencies ->
+     cap sync never folds the plugin in, createDownloadBridge's calls time out in
+     the app, and no CI job compiles the Swift or the Java. RUN.
+     MUTATION: declare it without updating mobile/package-lock.json -> every
+     `npm ci` in ios-build / android-build refuses the out-of-sync lock. RUN. */
+  const mobile = JSON.parse(read(ROOT, "mobile", "package.json"));
+  assert.equal(mobile.dependencies["foray-downloads"], "file:plugins/foray-downloads");
+  assert.match(mobile["//foray-downloads"] ?? "", /NOT a third-party dependency/);
+  const lock = JSON.parse(read(ROOT, "mobile", "package-lock.json"));
+  assert.equal(lock.packages[""].dependencies["foray-downloads"], "file:plugins/foray-downloads");
+  assert.deepEqual(lock.packages["node_modules/foray-downloads"], { resolved: "plugins/foray-downloads", link: true });
+  assert.ok(lock.packages["plugins/foray-downloads"], "the lock records the linked package itself");
+  const own = JSON.parse(read(PLUGIN, "package.json"));
+  assert.equal(own.name, "foray-downloads");
+  assert.deepEqual(own.capacitor, { ios: { src: "ios" }, android: { src: "android" } });
+});
