@@ -5112,9 +5112,13 @@ async function fetchShowEpisodesUncached(show_id, cursor) {
    until now). Score = count of taxonomy_node_ids shared with `show`; a show
    sharing none is not "weakly similar", it is unrelated, so it is filtered
    out rather than padded in (same "honest sparse/empty beats padding" rule
-   buildPlaylist's tiering already follows). Ties broken by show_id so the
-   order is stable and pinnable in a test, not accidentally date- or
-   insertion-order-dependent. Returns [] (never throws) for a show with no
+   buildPlaylist's tiering already follows). Equal overlap prefers the
+   candidate with FEWER taxonomy_node_ids in total (a Jaccard-style share:
+   one shared node out of one is closer than one out of four), so a crowded
+   row is not cut alphabetically (#560 item 9; measured in
+   docs/research/similar-shows-eval-2026-10.md). show_id is only the final
+   key, so the order is stable and pinnable in a test, not accidentally date-
+   or insertion-order-dependent. Returns [] (never throws) for a show with no
    taxonomy_node_ids of its own — there is nothing to overlap against.
 
    `label_scope: "general"` (catalogue-personalization PKG-03, founder ruling
@@ -5131,7 +5135,9 @@ function similarShows(show, limit = 6) {
     .filter(s => s.show_id !== show.show_id && s.label_scope !== "general")
     .map(s => ({ show: s, shared: (s.taxonomy_node_ids || []).filter(id => nodeIds.has(id)).length }))
     .filter(x => x.shared > 0)
-    .sort((a, b) => b.shared - a.shared || a.show.show_id.localeCompare(b.show.show_id))
+    .sort((a, b) => b.shared - a.shared
+      || (a.show.taxonomy_node_ids || []).length - (b.show.taxonomy_node_ids || []).length
+      || a.show.show_id.localeCompare(b.show.show_id))
     .slice(0, limit)
     .map(x => x.show);
 }
