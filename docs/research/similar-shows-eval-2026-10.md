@@ -112,11 +112,17 @@ shows:
 | Wrong shows | 11 in 8 seeds | 9 in 6 seeds |
 | Expected pairs missed | 150 | 148 |
 
-- *WhiskyCast* (`food/drinks` only) now shows the six single-node drinks shows
-  ahead of the four that also carry `food/fermentation`: `beer-in-front`,
-  `bourbon-pursuit`, `ill-drink-to-that-wine-talk`, `spirits-and-distilling`,
-  `the-bourbon-life`, `the-bourbon-road`. The PKG-36 missed pair
-  (`spirits-and-distilling`) is back, and both bourbon shows are in the row.
+- *WhiskyCast* (`food/drinks` only) has 15 candidates: 10 single-node
+  `food/drinks` shows and 5 that also carry `food/fermentation`
+  (`basic-brewing-radio`, `beersmith-podcast`, `brew-strong`, `cider-chat`,
+  `inside-winemaking`). The row now shows six of the 10 single-node shows
+  ahead of the 5 two-node ones: `beer-in-front`, `bourbon-pursuit`,
+  `ill-drink-to-that-wine-talk`, `spirits-and-distilling`, `the-bourbon-life`,
+  `the-bourbon-road`. The bourbon shows and `spirits-and-distilling` come in,
+  so the PKG-36 missed pair is back. The row is still cut alphabetically
+  inside that single-node tier: `wine-educate`, `wine-enthusiast-podcast`,
+  `wine-for-normal-people` and `wine-talks-with-paul-k` tie on both keys and
+  lose to `show_id`.
 - *5-4* now shows *Strict Scrutiny* (`society/law` only) ahead of the
   two-node true-crime shows; *Serial* drops out of its row.
 - *Acquired* and *Fall of Civilizations* no longer suggest each other. Each
@@ -201,9 +207,11 @@ The failures fall into four groups.
    to keep the order stable, but it is not a measure of similarity.
    *(2026-10-05, #560 item 9: fixed for rows whose tied candidates differ in
    node count; equal overlap now prefers fewer total nodes, and `show_id` only
-   breaks what is still tied. A row where every tied candidate has the same
-   node count, such as *My Brother, My Brother and Me*, is still cut
-   alphabetically.)*
+   breaks what is still tied. A row is still cut alphabetically when more
+   than six of its best candidates also tie on node count: every
+   `comedy/casual-hangs` candidate of *My Brother, My Brother and Me*, and the
+   10 single-node `food/drinks` candidates of *WhiskyCast*, where the four
+   `wine-*` shows lose to `show_id`.)*
 
 ## Floors (test/similar-shows-eval.test.js)
 
