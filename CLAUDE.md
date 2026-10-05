@@ -42,7 +42,7 @@ PR, still never force-push `main`. What is gone is waiting for a human to press
 the button once the checks are green.
 
 1. **Touch secrets, credentials, or production infra** (incl. deleting data).
-   This repo's cloud automation is deliberately keyless — keep it that way.
+   This repo's cloud automation is deliberately keyless — keep it that way. The one exception is release signing in CI (ADR-0009, `docs/adr/0009-release-signing-secrets.md`).
 2. **Spend money or change product direction.** Any new paid API, any deviation
    from the product principles below, goes to the founders first.
 
