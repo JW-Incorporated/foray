@@ -32226,12 +32226,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/68/db/7d/68db7da0-f9a8-7410-0c4e-31a41960c1b1/mza_7733203469732363336.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion",
-        "business/startups"
+        "business/startups",
+        "business/founders"
       ],
       "hook": "A former VTT CEO on why brilliant researchers often struggle to build successful startups.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "cbc-ideas--bringing-a-farm-and-its-philosophy",
@@ -39626,11 +39626,12 @@
       "dai_suspected": false,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/08/5c/5e/085c5eba-cf9a-e672-9c1a-8f2647db3b98/mza_10188215343702646024.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "engineering/energy-grid",
+        "business/startups"
       ],
       "hook": "How Pila's mesh-networked home batteries cut installation costs and quietly upgrade the electric grid.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "catalyst-shayle-kann--the-rise-of-metal-fuels",
@@ -39671,12 +39672,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/b9/60/8c/b9608c71-77a4-f88d-eac2-65270783335c/mza_15167314141104622581.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion",
+        "science/materials",
         "business/startups"
       ],
       "hook": "Mint Innovation's CEO on recovering critical minerals from e-waste at industrial scale.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "stuff-you-should-know--sysk-tribute-why-does-everyone-love",

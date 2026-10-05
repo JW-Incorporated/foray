@@ -71,6 +71,14 @@ seeds that get a non-empty row, about **60% of the suggested shows are right**.
 On average a seed's row contains **41% of the shows it should**. **18 of the 64
 seeds get no row at all**, and **11 wrong shows appear across 8 seeds**.
 
+*2026-10-05 (#547 fusion residue):* the summary and the groups below are the
+2026-10-04 measurement. CleanTechies Podcast (`engineering/energy-grid`,
+`business/startups`) and Lab to Market Leadership (`business/startups`) then
+lost their wrong `engineering/energy-fusion` show label. The generated block is
+re-run on that catalogue: precision 0.611, recall 0.418 (curated 0.525), hit
+rate 0.703, coverage unchanged, violations unchanged. The floors stay at the
+2026-10-04 baseline, because other open catalogue PRs move the same numbers.
+
 The failures fall into four groups.
 
 1. **The general rule costs coverage to avoid wrong suggestions.** All 13
@@ -174,8 +182,8 @@ k = 6 (the slots the show page renders). Precision is over what was shown; recal
 
 | Group | Seeds | Precision (shown) | Recall@6 | Hit rate | Coverage | Must-not violations |
 |---|---:|---:|---:|---:|---:|---:|
-| All seeds | 64 | 0.602 (46 seeds) | 0.413 | 0.688 | 0.719 | 11 in 8 seeds |
-| Curated seeds | 51 | 0.602 (46 seeds) | 0.519 | 0.863 | 0.902 | 11 in 8 seeds |
+| All seeds | 64 | 0.611 (46 seeds) | 0.418 | 0.703 | 0.719 | 11 in 8 seeds |
+| Curated seeds | 51 | 0.611 (46 seeds) | 0.525 | 0.882 | 0.902 | 11 in 8 seeds |
 | `label_scope: "general"` seeds | 13 | n/a (0 seeds) | 0.000 | 0.000 | 0.000 | 0 in 0 seeds |
 
 ### Per seed
@@ -195,8 +203,8 @@ k = 6 (the slots the show page renders). Precision is over what was shown; recal
 | `unexplainable` | yes | 0 | 0 | n/a | 0.000 |  |
 | `huberman-lab` | yes | 0 | 0 | n/a | 0.000 |  |
 | `techsurge-deep-tech-podcast` | yes | 0 | 0 | n/a | 0.000 |  |
-| `titans-of-nuclear` |  | 3 | 2 | 0.667 | 0.400 |  |
-| `omega-tau` |  | 6 | 0 | 0.000 | 0.000 |  |
+| `titans-of-nuclear` |  | 1 | 1 | 1.000 | 0.200 |  |
+| `omega-tau` |  | 5 | 1 | 0.200 | 0.250 |  |
 | `materialism-podcast` |  | 4 | 2 | 0.500 | 0.667 |  |
 | `inside-chips` |  | 4 | 1 | 0.250 | 0.333 |  |
 | `making-chips` |  | 4 | 3 | 0.750 | 1.000 |  |
@@ -204,8 +212,8 @@ k = 6 (the slots the show page renders). Precision is over what was shown; recal
 | `hardcore-history` |  | 4 | 3 | 0.750 | 0.500 |  |
 | `engines-of-our-ingenuity` |  | 3 | 1 | 0.333 | 0.333 |  |
 | `acquired` |  | 6 | 1 | 0.167 | 0.250 | `fall-of-civilizations` |
-| `founders` |  | 4 | 1 | 0.250 | 0.250 |  |
-| `twenty-minute-vc` |  | 4 | 1 | 0.250 | 0.333 |  |
+| `founders` |  | 5 | 1 | 0.200 | 0.250 |  |
+| `twenty-minute-vc` |  | 5 | 1 | 0.200 | 0.333 |  |
 | `conan-obrien-needs-a-friend` |  | 6 | 4 | 0.667 | 0.667 |  |
 | `my-brother-my-brother-and-me` |  | 6 | 1 | 0.167 | 0.333 |  |
 | `black-box-down` |  | 1 | 1 | 1.000 | 0.250 |  |
@@ -245,7 +253,7 @@ k = 6 (the slots the show page renders). Precision is over what was shown; recal
 | `lore` |  | 4 | 3 | 0.750 | 0.600 |  |
 | `the-sharp-end-podcast` |  | 2 | 2 | 1.000 | 1.000 |  |
 | `f1-beyond-the-grid` |  | 2 | 2 | 1.000 | 1.000 |  |
-| `volts` |  | 2 | 2 | 1.000 | 0.500 |  |
+| `volts` |  | 3 | 3 | 1.000 | 0.750 |  |
 
 ### Failing pairs
 
@@ -279,8 +287,8 @@ k = 6 (the slots the show page renders). Precision is over what was shown; recal
 - `unexplainable` → `radiolab`, `science-vs`, `ologies-with-alie-ward`, `stuff-you-should-know`
 - `huberman-lab` → `the-matt-walker-podcast`, `the-peter-attia-drive`, `foundmyfitness`, `feel-better-live-more`
 - `techsurge-deep-tech-podcast` → `lab-to-market-leadership`, `twenty-minute-vc`, `this-week-in-startups`, `watt-it-takes`
-- `titans-of-nuclear` → `catalyst-shayle-kann`, `volts`, `energy-gang`
-- `omega-tau` → `titans-of-nuclear`, `off-nominal`, `main-engine-cut-off`, `the-engineering-history-podcast`
+- `titans-of-nuclear` → `cleantechies-podcast`, `catalyst-shayle-kann`, `volts`, `energy-gang`
+- `omega-tau` → `off-nominal`, `main-engine-cut-off`, `the-engineering-history-podcast`
 - `materialism-podcast` → `chemistry-world-podcast`
 - `inside-chips` → `mrs-bulletin-materials-news`, `materialism-podcast`
 - `fall-of-civilizations` → `the-rest-is-history`
@@ -319,23 +327,22 @@ k = 6 (the slots the show page renders). Precision is over what was shown; recal
 - `wow-in-the-world` → `story-pirates`, `circle-round`
 - `broken-record` → `song-exploder`, `dissect`, `switched-on-pop`
 - `lore` → `myths-and-legends`, `our-fake-history`
-- `volts` → `catalyst-shayle-kann`, `cleantechies-podcast`
+- `volts` → `catalyst-shayle-kann`
 
-150 expected pairs missed in all; 26 of them name a `label_scope: "general"` show, which similarShows never offers as a candidate.
+149 expected pairs missed in all; 26 of them name a `label_scope: "general"` show, which similarShows never offers as a candidate.
 
 **Shown but unjudged** (in the row, in neither list; counted as misses in precision):
 
-- `titans-of-nuclear` → `lab-to-market-leadership`
-- `omega-tau` → `cleantechies-podcast`, `its-a-material-world`, `lab-to-market-leadership`, `materialism-podcast`, `mrs-bulletin-materials-news`, `mtdcnc-podcast`
+- `omega-tau` → `its-a-material-world`, `materialism-podcast`, `mrs-bulletin-materials-news`, `mtdcnc-podcast`
 - `materialism-podcast` → `mtdcnc-podcast`, `omega-tau`
 - `inside-chips` → `business-of-machining`, `making-chips`, `mtdcnc-podcast`
 - `making-chips` → `inside-chips`
 - `fall-of-civilizations` → `engines-of-our-ingenuity`
 - `hardcore-history` → `ancient-history-fangirl`
 - `engines-of-our-ingenuity` → `acquired`, `fall-of-civilizations`
-- `acquired` → `engines-of-our-ingenuity`, `lab-to-market-leadership`, `the-engineering-history-podcast`, `this-week-in-startups`
-- `founders` → `lab-to-market-leadership`, `this-week-in-startups`, `twenty-minute-vc`
-- `twenty-minute-vc` → `acquired`, `founders`, `lab-to-market-leadership`
+- `acquired` → `cleantechies-podcast`, `engines-of-our-ingenuity`, `lab-to-market-leadership`, `the-engineering-history-podcast`
+- `founders` → `cleantechies-podcast`, `lab-to-market-leadership`, `this-week-in-startups`, `twenty-minute-vc`
+- `twenty-minute-vc` → `acquired`, `cleantechies-podcast`, `founders`, `lab-to-market-leadership`
 - `conan-obrien-needs-a-friend` → `2-bears-1-cave`, `bad-friends`
 - `my-brother-my-brother-and-me` → `2-bears-1-cave`, `bad-friends`, `conan-obrien-needs-a-friend`, `fly-on-the-wall`, `good-hang-amy-poehler`
 - `gastropod` → `the-bbq-central-show`

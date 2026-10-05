@@ -70,7 +70,8 @@
       "episode_count": null,
       "editorial_note": "Shorter founder interviews across the clean-energy startup landscape, fusion included.",
       "taxonomy_node_ids": [
-        "engineering/energy-fusion"
+        "engineering/energy-grid",
+        "business/startups"
       ],
       "archetype_fit": [
         "stretch"
@@ -109,7 +110,6 @@
       "episode_count": null,
       "editorial_note": "How deep-tech founders take a lab result to a company -- fusion and hard-tech leadership stories.",
       "taxonomy_node_ids": [
-        "engineering/energy-fusion",
         "business/startups"
       ],
       "archetype_fit": [
