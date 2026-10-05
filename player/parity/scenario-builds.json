@@ -164,6 +164,20 @@
         {"id":"foray-1#1","ord":1,"kind":"episode","audio_url":"https://cdn.example/other.mp3","start_sec":20,"end_sec":90,"authored_end_sec":90,"ad_pad_applied_sec":0,"source_item_id":"ep-other","dai_suspected":false,"seek_map":null,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Other","show":"Indie"}
       ]
     },
+    "manager-foray/a-padded-dai-segment-inside-its-pad-plays-to-the-padded-stop@0": {
+      "isLocalFile": false, "allowAdPad": true, "warnings": 1,
+      "skipped": [],
+      "items": [
+        {"id":"foray-1#0","ord":0,"kind":"episode","audio_url":"https://cdn.example/dai.mp3","start_sec":100,"end_sec":310,"authored_end_sec":210,"ad_pad_applied_sec":100,"source_item_id":"ep-dai","dai_suspected":true,"seek_map":null,"reference_duration_sec":2501,"ad_pad_sec":100,"needs_drift_check":true,"start_anchor":"so the thing about fire","end_anchor":"and that is why it stuck","why":"he explains it plainly","title":"Stitched","show":"Big"}
+      ]
+    },
+    "manager-foray/a-padded-dai-segment-over-its-pad-is-skipped@0": {
+      "isLocalFile": false, "allowAdPad": true, "warnings": 1,
+      "skipped": [],
+      "items": [
+        {"id":"foray-1#0","ord":0,"kind":"episode","audio_url":"https://cdn.example/dai.mp3","start_sec":100,"end_sec":310,"authored_end_sec":210,"ad_pad_applied_sec":100,"source_item_id":"ep-dai","dai_suspected":true,"seek_map":null,"reference_duration_sec":2501,"ad_pad_sec":100,"needs_drift_check":true,"start_anchor":"so the thing about fire","end_anchor":"and that is why it stuck","why":"he explains it plainly","title":"Stitched","show":"Big"}
+      ]
+    },
     "manager-foray/a-pause-holds-the-utterance@0": {
       "isLocalFile": false, "allowAdPad": false, "warnings": 0,
       "skipped": [],
@@ -1713,6 +1727,13 @@
       "items": [
         {"id":"nar-1","ord":0,"kind":"tts","audio_url":"narration/nar-1.mp3","title":"","script":"the line read aloud","duration_sec":1.118,"duration_source":"estimated"},
         {"id":"foray-1#1","ord":1,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":100,"end_sec":210,"authored_end_sec":210,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"seek_map":null,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"}
+      ]
+    },
+    "manager-foray/with-the-pad-off-a-padded-dai-segment-is-skipped@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"foray-1#0","ord":0,"kind":"episode","audio_url":"https://cdn.example/dai.mp3","start_sec":100,"end_sec":210,"authored_end_sec":210,"ad_pad_applied_sec":0,"source_item_id":"ep-dai","dai_suspected":true,"seek_map":null,"reference_duration_sec":2501,"ad_pad_sec":100,"needs_drift_check":true,"start_anchor":"so the thing about fire","end_anchor":"and that is why it stuck","why":"he explains it plainly","title":"Stitched","show":"Big"}
       ]
     },
     "prepare-narration/a-line-shorter-than-the-lead-prepares-the-next-clip-at-its-start@0": {
