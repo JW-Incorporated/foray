@@ -13,6 +13,7 @@
       "episode_count": null,
       "editorial_note": "Marathon technical interviews with the actual scientists and founders building fusion reactors, AI, and everything adjacent.",
       "taxonomy_node_ids": [],
+      "label_scope": "general",
       "archetype_fit": [
         "deep-learn"
       ],
@@ -90,6 +91,7 @@
       "taxonomy_node_ids": [
         "engineering/energy-fusion"
       ],
+      "label_scope": "general",
       "archetype_fit": [
         "deep-learn"
       ],
@@ -129,6 +131,7 @@
       "taxonomy_node_ids": [
         "engineering/energy-fusion"
       ],
+      "label_scope": "general",
       "archetype_fit": [
         "narrative"
       ],
@@ -149,6 +152,7 @@
         "science/materials",
         "history/technology"
       ],
+      "label_scope": "general",
       "archetype_fit": [
         "stretch"
       ],
@@ -231,6 +235,7 @@
         "craft/diy-home",
         "business/careers"
       ],
+      "label_scope": "general",
       "archetype_fit": [
         "stretch"
       ],
@@ -271,6 +276,7 @@
         "history/technology",
         "history/military-ancient"
       ],
+      "label_scope": "general",
       "archetype_fit": [
         "narrative"
       ],
@@ -618,6 +624,7 @@
         "business/startups",
         "engineering/energy-fusion"
       ],
+      "label_scope": "general",
       "archetype_fit": [
         "deep-learn"
       ],
@@ -1161,6 +1168,7 @@
       "taxonomy_node_ids": [
         "architecture/infrastructure"
       ],
+      "label_scope": "general",
       "archetype_fit": [
         "deep-learn",
         "narrative"
@@ -1219,6 +1227,7 @@
       "taxonomy_node_ids": [
         "nature/animal-cognition"
       ],
+      "label_scope": "general",
       "archetype_fit": [
         "stretch",
         "deep-learn"
@@ -1358,6 +1367,7 @@
       "taxonomy_node_ids": [
         "computing/history"
       ],
+      "label_scope": "general",
       "archetype_fit": [
         "deep-learn"
       ],
@@ -1416,6 +1426,7 @@
       "taxonomy_node_ids": [
         "economics/markets"
       ],
+      "label_scope": "general",
       "archetype_fit": [
         "stretch",
         "deep-learn"
@@ -1889,6 +1900,7 @@
       "taxonomy_node_ids": [
         "science/storytelling"
       ],
+      "label_scope": "general",
       "archetype_fit": [
         "stretch",
         "narrative"
@@ -2264,6 +2276,7 @@
       "taxonomy_node_ids": [
         "medicine/neuroscience"
       ],
+      "label_scope": "general",
       "archetype_fit": [
         "deep-learn"
       ],
