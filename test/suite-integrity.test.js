@@ -717,8 +717,12 @@ const FLOORS = {
      claims to be empty while its fetch is in flight — and the third asserts
      the copy itself, at the two states most likely to regress. The four
      OUTCOME states those two used to conflate are floored separately at
-     test/show-episode-load-states.test.js. 43 -> 44. */
-  "test/show-page.test.js": 44,
+     test/show-episode-load-states.test.js. 43 -> 44.
+     2026-10-04, +3 (catalogue-personalization PKG-03, founder ruling 24): a
+     `label_scope: "general"` show gets no Similar shows row and is never
+     offered as one, and catalog.json's label_scope is "general" or absent —
+     any other spelling silently re-enables label inheritance. 44 -> 47. */
+  "test/show-page.test.js": 47,
   /* Founder reports, 2026-09-13. The "Show more episodes" control came out of
      the show page, so show-page-pagination.test.js was RE-POINTED rather than
      shrunk — same five tests, now pinning the absence of the control, the

@@ -947,6 +947,63 @@ test("renderShow renders no 'Similar shows' section when no other show overlaps"
   assert.ok(!html.includes("Similar shows"), "must not render an empty 'Similar shows' section");
 });
 
+/* PKG-03 (docs/roadmap/catalogue-personalization.md; founder ruling 24 in
+   docs/roadmap/README.md, catalogue Q2 "yes"): `label_scope: "general"` marks a
+   broad show whose taxonomy_node_ids describe a slice of its episodes, not the
+   show. Overlap on such a label is not similarity, in either direction. */
+
+test("similarShows returns [] for a general show", () => {
+  /* The general show shares BOTH its nodes with B, so without the guard it
+     would get B at the top of a "Similar shows" row — SYSK offered materials
+     science shows off a label 4 of its 30 discover episodes carry (2026-10-04).
+
+     MUTATION: drop `if (show?.label_scope === "general") return [];` from
+     similarShows. B comes back and the length assertion fails. */
+  const m = mount();
+  const G = { show_id: "show-g", taxonomy_node_ids: ["x", "y"], label_scope: "general" };
+  const B = { show_id: "show-b", taxonomy_node_ids: ["x", "y"] };
+  m.state.catalog = { shows: [G, B] };
+  /* Length, not deepStrictEqual against `[]`: the result is an Array from the
+     app's vm realm, which deepStrictEqual refuses to equate with this realm's. */
+  assert.strictEqual(m.ctx.similarShows(G).length, 0, "a general show must get no Similar shows");
+});
+
+test("similarShows never lists a general show as a candidate", () => {
+  /* G outranks C on shared nodes (2 against 1), so a filter that let it
+     through would put it FIRST — the most visible slot, for the least honest
+     match. C must still come back: refusing the general show is not refusing
+     the row.
+
+     MUTATION: drop `&& s.label_scope !== "general"` from the candidate filter.
+     G appears ahead of C and the exact-order assertion fails. */
+  const m = mount();
+  const A = { show_id: "show-a", taxonomy_node_ids: ["x", "y"] };
+  const G = { show_id: "show-g", taxonomy_node_ids: ["x", "y"], label_scope: "general" };
+  const C = { show_id: "show-c", taxonomy_node_ids: ["x"] };
+  m.state.catalog = { shows: [A, G, C] };
+  assert.deepStrictEqual(m.ctx.similarShows(A).map((s) => s.show_id), ["show-c"], "a general show must never be offered as similar");
+});
+
+test("catalog.json: every label_scope value is 'general' or absent", () => {
+  /* The marker is a closed vocabulary of one: app.js and the generators test
+     `=== "general"`, so any other spelling ("broad", "General", null written
+     in by hand) silently means NOT general and the show's labels get inherited
+     again. Absent is the only other legal state (PKG-03: "All others: no
+     field"). Also pins that the curation pass actually landed on main — zero
+     general shows would make every refusal above dead code on real data.
+
+     MUTATION: set one show's label_scope in data/catalog.json to "broad".
+     The per-show assertion fails naming that show. */
+  const catalog = readJson("data/catalog.json");
+  let general = 0;
+  for (const show of catalog.shows) {
+    if (!Object.prototype.hasOwnProperty.call(show, "label_scope")) continue;
+    assert.strictEqual(show.label_scope, "general", `${show.show_id}: label_scope must be "general" or absent`);
+    general++;
+  }
+  assert.ok(general > 0, "fixture assumption: PKG-03 marked at least one show general");
+});
+
 test("catalog-client.json is measurably smaller than catalog.json (the gzip claim is real)", () => {
   /* Not a byte-exact pin (catalog.json changes nightly) — just proves the
      projection is doing real work, so the PR's "measured, not assumed" claim

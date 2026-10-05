@@ -4981,13 +4981,20 @@ async function fetchShowEpisodesUncached(show_id, cursor) {
    buildPlaylist's tiering already follows). Ties broken by show_id so the
    order is stable and pinnable in a test, not accidentally date- or
    insertion-order-dependent. Returns [] (never throws) for a show with no
-   taxonomy_node_ids of its own — there is nothing to overlap against. */
+   taxonomy_node_ids of its own — there is nothing to overlap against.
+
+   `label_scope: "general"` (catalogue-personalization PKG-03, founder ruling
+   24 in docs/roadmap/README.md) marks a broad show whose labels describe a
+   slice of its episodes, not the show — SYSK is not a materials-science show.
+   Overlap on such a label is not similarity, so a general show gets no
+   Similar shows row and is never offered as one. */
 function similarShows(show, limit = 6) {
+  if (show?.label_scope === "general") return [];
   const nodeIds = new Set(show?.taxonomy_node_ids || []);
   if (!nodeIds.size) return [];
   const all = state.catalog?.shows || [];
   return all
-    .filter(s => s.show_id !== show.show_id)
+    .filter(s => s.show_id !== show.show_id && s.label_scope !== "general")
     .map(s => ({ show: s, shared: (s.taxonomy_node_ids || []).filter(id => nodeIds.has(id)).length }))
     .filter(x => x.shared > 0)
     .sort((a, b) => b.shared - a.shared || a.show.show_id.localeCompare(b.show.show_id))
