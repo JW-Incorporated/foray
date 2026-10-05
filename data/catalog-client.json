@@ -9,7 +9,7 @@
       "taxonomy_node_ids": [],
       "episode_count": null,
       "explicit": null,
-      "label_scope": null
+      "label_scope": "general"
     },
     {
       "show_id": "titans-of-nuclear",
@@ -58,7 +58,7 @@
       ],
       "episode_count": null,
       "explicit": null,
-      "label_scope": null
+      "label_scope": "general"
     },
     {
       "show_id": "lab-to-market-leadership",
@@ -83,7 +83,7 @@
       ],
       "episode_count": null,
       "explicit": null,
-      "label_scope": null
+      "label_scope": "general"
     },
     {
       "show_id": "stuff-you-should-know",
@@ -96,7 +96,7 @@
       ],
       "episode_count": null,
       "explicit": null,
-      "label_scope": null
+      "label_scope": "general"
     },
     {
       "show_id": "materialism-podcast",
@@ -147,7 +147,7 @@
       ],
       "episode_count": null,
       "explicit": null,
-      "label_scope": null
+      "label_scope": "general"
     },
     {
       "show_id": "fall-of-civilizations",
@@ -173,7 +173,7 @@
       ],
       "episode_count": null,
       "explicit": null,
-      "label_scope": null
+      "label_scope": "general"
     },
     {
       "show_id": "conan-obrien-needs-a-friend",
@@ -391,7 +391,7 @@
       ],
       "episode_count": 37,
       "explicit": false,
-      "label_scope": null
+      "label_scope": "general"
     },
     {
       "show_id": "twenty-minute-vc",
@@ -727,7 +727,7 @@
       ],
       "episode_count": 812,
       "explicit": false,
-      "label_scope": null
+      "label_scope": "general"
     },
     {
       "show_id": "the-worlds-best-construction-podcast",
@@ -763,7 +763,7 @@
       ],
       "episode_count": 519,
       "explicit": false,
-      "label_scope": null
+      "label_scope": "general"
     },
     {
       "show_id": "spycast",
@@ -847,7 +847,7 @@
       ],
       "episode_count": 105,
       "explicit": false,
-      "label_scope": null
+      "label_scope": "general"
     },
     {
       "show_id": "planet-money",
@@ -883,7 +883,7 @@
       ],
       "episode_count": 985,
       "explicit": false,
-      "label_scope": null
+      "label_scope": "general"
     },
     {
       "show_id": "hidden-brain",
@@ -1173,7 +1173,7 @@
       ],
       "episode_count": 292,
       "explicit": false,
-      "label_scope": null
+      "label_scope": "general"
     },
     {
       "show_id": "how-i-built-this",
@@ -1401,7 +1401,7 @@
       ],
       "episode_count": 421,
       "explicit": false,
-      "label_scope": null
+      "label_scope": "general"
     },
     {
       "show_id": "the-matt-walker-podcast",
