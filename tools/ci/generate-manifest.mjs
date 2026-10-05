@@ -16,6 +16,10 @@
  *   - `data/forays-directory.json`, the Foray directory pointer the native shell
  *     reads from the live origin (`forays-directory.mjs`). It names the deploy id
  *     and is listed in the manifest, so it cannot feed the id itself.
+ *   - `data/catalogue-directory.json`, the catalogue directory pointer (issue
+ *     #40, narrowed 2026-09-30; `catalogue-directory.mjs`): the same contract
+ *     for the five frozen catalogue documents. Native-shell only, so it is NOT
+ *     a manifest entry and never feeds the id (that module's header says why).
  *
  * WHY IT IS NO LONGER COMMITTED (issue #701, 2026-09-24)
  * These three used to be committed, generated on every PR by
@@ -40,8 +44,8 @@
  *     pointer, both computed in memory by `sourceStamp(root)`.
  *
  * The committed `sw.js` carries `BUILD_ID = "unstamped"` forever, and
- * `.gitignore` names the other two. `--check` (the required `data-and-site`
- * gate) fails if either generated file is tracked or `sw.js` carries a stamp,
+ * `.gitignore` names the others (`GENERATED`). `--check` (the required
+ * `data-and-site` gate) fails if any generated file is tracked or `sw.js` carries a stamp,
  * so the conflict magnet cannot come back through a stray `git add`.
  *
  * WHY NOT `manifest.json` — THAT NAME IS TAKEN
@@ -72,13 +76,20 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { crlfOffenders, crlfFatalMessage } from "./crlf-guard.mjs";
 import { POINTER_PATH, DIRECTORY_FILES, deployIdFrom, buildPointer, pointerText, pointerProblems, buildTimestamp } from "./forays-directory.mjs";
+import {
+  CATALOGUE_POINTER_PATH,
+  buildCataloguePointer,
+  cataloguePointerText,
+  cataloguePointerProblems,
+} from "./catalogue-directory.mjs";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 export const MANIFEST_FILE = "deploy-manifest.json";
 export const SW_FILE = "sw.js";
-/** The two files a build writes and the tree must never track. */
-export const GENERATED = [MANIFEST_FILE, POINTER_PATH];
+/** The files a build writes and the tree must never track (issue #701; the
+    catalogue pointer joined them with issue #40). */
+export const GENERATED = [MANIFEST_FILE, POINTER_PATH, CATALOGUE_POINTER_PATH];
 /** What the committed `sw.js` says. Never a hex id, so it can never be mistaken
     for a stamp (`player/build-stamp.js`'s `deployIdOf` refuses it by shape). */
 export const UNSTAMPED_BUILD_ID = "unstamped";
@@ -133,6 +144,7 @@ function stampDeployMeta(root, deployId) {
 export const STAMP_MODULE_FILES = [
   "tools/ci/generate-manifest.mjs",
   "tools/ci/forays-directory.mjs",
+  "tools/ci/catalogue-directory.mjs",
   "tools/ci/crlf-guard.mjs",
 ];
 
@@ -293,14 +305,15 @@ function stampBuildId(root, deployId) {
 /**
  * Stamp a BUILT tree in place: write the pointer, then the manifest that lists
  * it, then `sw.js`'s BUILD_ID — all three naming one deploy id computed from the
- * bytes `dir` actually holds. `dir` is `dist/` (prepare-dist) or a throwaway
+ * bytes `dir` actually holds — plus the catalogue pointer (issue #40) under the
+ * same id and `built_at`, which the manifest does not list. `dir` is `dist/` (prepare-dist) or a throwaway
  * checkout (the Pages workflow); never the working tree anybody commits from.
  *
  * `builtAt` is the pointer's `built_at` — pass `stampTimestamp(repoRoot).builtAt`
  * (the committer date of the newest commit to touch a stamp input). Throws on a
  * CRLF tree or a missing file.
  *
- * -> { deployId, manifest, pointer }
+ * -> { deployId, manifest, pointer, cataloguePointer }
  */
 function stampBuild(dir, { builtAt } = {}) {
   if (typeof builtAt !== "string" || !Number.isFinite(Date.parse(builtAt))) {
@@ -316,10 +329,14 @@ function stampBuild(dir, { builtAt } = {}) {
      its final form before the manifest that names it is written. */
   const pointer = buildPointer(dir, base.deploy_id, new Date(builtAt));
   writeFileSync(path.join(dir, POINTER_PATH), pointerText(pointer));
+  /* Not a manifest entry, so its place relative to the manifest is free; it is
+     written beside the Foray pointer so one `built_at` dates both. */
+  const cataloguePointer = buildCataloguePointer(dir, base.deploy_id, new Date(builtAt));
+  writeFileSync(path.join(dir, CATALOGUE_POINTER_PATH), cataloguePointerText(cataloguePointer));
   const manifest = withPointerEntry(dir, base);
   writeFileSync(path.join(dir, MANIFEST_FILE), JSON.stringify(manifest, null, 2) + "\n");
   stampBuildId(dir, manifest.deploy_id);
-  return { deployId: manifest.deploy_id, manifest, pointer };
+  return { deployId: manifest.deploy_id, manifest, pointer, cataloguePointer };
 }
 
 /**
@@ -347,6 +364,7 @@ function stampedProblems(dir) {
     return [err.message];
   }
   problems.push(...pointerProblems(dir, base.deploy_id).map((p) => `${POINTER_PATH}: ${p}`));
+  problems.push(...cataloguePointerProblems(dir, base.deploy_id).map((p) => `${CATALOGUE_POINTER_PATH}: ${p}`));
   if (existsSync(path.join(dir, POINTER_PATH))) {
     const expected = withPointerEntry(dir, base);
     if (written.deploy_id !== expected.deploy_id) {
@@ -485,7 +503,7 @@ function main(argv = process.argv.slice(2)) {
   if (argv.includes("--write")) {
     console.error(
       "generate-manifest.mjs --write no longer exists (issue #701). deploy-manifest.json, " +
-        "data/forays-directory.json and sw.js's BUILD_ID are build outputs now, never committed:\n" +
+        "data/forays-directory.json, data/catalogue-directory.json and sw.js's BUILD_ID are build outputs now, never committed:\n" +
         "  - for a local site build:   node tools/web/prepare-dist.mjs   (stamps dist/)\n" +
         "  - to stamp a throwaway tree: node tools/ci/generate-manifest.mjs --stamp <dir>\n" +
         "There is nothing to regenerate in the working tree and nothing to commit."

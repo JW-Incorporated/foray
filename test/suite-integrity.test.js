@@ -160,6 +160,12 @@ const FLOORS = {
      a phone that either hangs on a dead cell or plays a torn deploy. The page-
      level half is test/foray-directory.test.js, floored separately below. */
   "player/foray-directory.test.js": 30, // +1 audit finding E (2026-09-12): the cache row carries `partial` instead of dropping it; 29 -> 30
+  /* The catalogue directory's pure decisions (issue #40, narrowed 2026-09-30):
+     the pointer's shape, the six-hour TTL, cached-fresh -> bundled -> error
+     precedence, adoption (current / older / fetch, the partial-seed rule) and
+     per-file verification. Zero slack; every named mutation was run and killed.
+     The writer's half is tools/ci/catalogue-directory.test.mjs. */
+  "player/catalogue-directory.test.js": 17,
   "player/foray-sources.test.js": 24,
     /* 108 -> 109 with #264: a telemetry sink that throws must not reject a load. That
      became reachable when `player/client.js` gave this backend its first real sink —
@@ -1317,6 +1323,13 @@ const FLOORS = {
      --check's no-committed-stamp rule (tracked file, stamped sw.js, missing
      .gitignore). The committed-file and committer-date mutations were run and
      killed; 29 -> 32. */
+  /* The catalogue directory pointer (issue #40): `data/catalogue-directory.json`,
+     stamped into built trees by generate-manifest.mjs beside the Foray pointer
+     and never committed (#701). 10 pure-function / real-repo tests plus 5 that
+     run the REAL CLI on a synthetic LF tree (--stamp shares the Foray pointer's
+     version and built_at and leaves the manifest alone; --verify and --check go
+     red by name). Zero slack; every named mutation was run and killed. */
+  "tools/ci/catalogue-directory.test.mjs": 15,
   "tools/ci/forays-directory.test.mjs": 35, // PR #795 review finding 1 (2026-09-24): the seed never outranks the live pointer (mobile-only HEAD, shallow clone, every input is a Vercel path); 32 -> 35
   /* +12 (machinery audit, 2026-09-12): the checks-missing self-heal had three
      holes — sweep-only, keyed on `pr.updatedAt` (which this workflow's own label
@@ -1659,7 +1672,7 @@ const FLOORS = {
      probe never HEAD, the eight-redirect cap, 403 = unplayable-here, usage from
      the index (no DiskSpace API, #1014). Uncompiled until PQ-21 declares the
      plugin, so these pins ARE the gate. New suite. */
-  "tools/mobile/foray-downloads.test.mjs": 15, // PQ-20 (#29)
+  "tools/mobile/foray-downloads.test.mjs": 26, // PQ-20 (#29); 15 -> 25 // PQ-22 (#29): the Android half -- name, seven @PluginMethods and three events against download-bridge.js, gradle/manifest/package agreement, DownloadManager lands in getExternalFilesDir (never setDestinationUri/getFilesDir) and the file moves to getNoBackupFilesDir, the exported ContextCompat receiver, allowCellular to metered+roaming, 403 = unplayable-here with iOS's reason strings, the 2 s poll, the fixed 5-redirect cap documented, removeAll deletes both directories; 25 -> 26 // PQ-21 (#29): mobile/package.json declares foray-downloads as a file: link and mobile/package-lock.json agrees, so npm ci and cap sync fold it in on both platforms
   "tools/mobile/foray-tts.test.mjs": 74, // audit round 3 integration: the real post-merge count, 66 -> 74 // fix/narration-1x (2026-09-24): rate 1 is each platform's normal rate — passed through, Web Speech 1, Android setSpeechRate(1.0f), iOS AVSpeechUtteranceDefaultSpeechRate; 62 -> 66 // #685 (2026-09-13): a refusal carries the numbers the phone did produce, and a native payload cannot spread its way into a success; 60 -> 62 // K-01 (2026-09-12): the probe is a SEPARATE call with no Web Speech ladder under it; 53 -> 60 // L-05 (2026-09-12): pause/resume/stop/state on all three paths; 45 -> 53
   /* The foreground service's web half (#27's Android half, on #37). Zero slack, and
      for the reason `media-session.test.js` above gives: what this suite guards is
@@ -1760,7 +1773,7 @@ const FLOORS = {
      Capacitor's placeholders on every build to 2026090603. Same rules as
      inject-app-icon: byte-level --check, refuse a half fix. Floored exact. */
   "tools/mobile/inject-splash.test.mjs": 19,
-  "tools/mobile/inject-background-audio.test.mjs": 55, // NE-38rs: +1 -- routeResumeBluetooth is a plist boolean written only when the block names it. NE-24: +4 -- the AppDelegate cold path (the import and ForayEngineColdPath.bootIfNeeded() as the first statement of didFinishLaunching, byte-identical elsewhere; idempotent, half-patched refused; exactly one didFinishLaunching, @main or @UIApplicationMain; the CLI patches beside the plist, --check quotes it, a missing AppDelegate fails with the plist untouched) // NE-17: +9 -- ForayEngineDefault / ForayEngineCapabilities from mobile/ENGINE_DEFAULT.json (committed js; absent reads js; written at the root, replaced not refused, byte-identical elsewhere; strict parse; the re-read is a real function; the CLI writes on every edit and --check prints ForayEngineDefault=js)
+  "tools/mobile/inject-background-audio.test.mjs": 59, // NE-38rs: +1 -- routeResumeBluetooth is a plist boolean written only when the block names it. NE-24: +4 -- the AppDelegate cold path (the import and ForayEngineColdPath.bootIfNeeded() as the first statement of didFinishLaunching, byte-identical elsewhere; idempotent, half-patched refused; exactly one didFinishLaunching, @main or @UIApplicationMain; the CLI patches beside the plist, --check quotes it, a missing AppDelegate fails with the plist untouched) // NE-17: +9 -- ForayEngineDefault / ForayEngineCapabilities from mobile/ENGINE_DEFAULT.json (committed js; absent reads js; written at the root, replaced not refused, byte-identical elsewhere; strict parse; the re-read is a real function; the CLI writes on every edit and --check prints ForayEngineDefault=js); 55 -> 59 // PQ-21 (#29): +4 -- the AppDelegate gains handleEventsForBackgroundURLSession forwarding to ForayDownloadsPlugin's own static entry point (exact lines, byte-identical elsewhere); idempotent, half-patched or hand-written refused; placed in the type that declares didFinishLaunching, not a later extension; the CLI writes it with the cold path and --check quotes it
   "tools/mobile/ios-ci.test.mjs": 152, // NE-36 (2026-09-25): +15, the lane seeding, the staged native pass, native-rows, and the native verdict and its report section; 137 -> 152 // founder 2026-09-23: section 3d reads taken-over-severed for a live object taken over with no tee onto WebKit's MediaSession — the state that shipped as "4a / unknown / unknown"; 136 -> 137 // +7: L-02 takeover verdict + reached needle (2026-09-10); +4: M-03 session needle (2026-09-12)
   /* The embedded-framework plist rules (2026-09-13). Release run 34739630705
      archived, exported, and was REJECTED by App Store Connect: the ONNX Runtime
@@ -2263,6 +2276,7 @@ const FLOORS = {
   "tools/poll/tiers.test.mjs": 9, // PKG-05 (S-10): new -- cadence tiers (seed, correction, success/failure, dead)
   "tools/poll/politeness.test.mjs": 4, // PKG-06 (S-10): new -- per-host politeness port, constants pinned to backend/src/feeds/politeness.ts
   "tools/poll/select-due.test.mjs": 6, // PKG-06 (S-10): new -- due-set selection (dead, not-due, caps, order, bad URL, budget untouched) + the G9 weekly projection
+  "tools/poll/watchlist.test.mjs": 10, // PKG-07 (S-10): new -- watchlist assembly (curated, unmapped, changed top-N, tiers, 90-day expiry, seed size) + the seed builder (exit 2 on ok:false, curated-only seed, --check)
 };
 
 test("no suite is floored twice", () => {
@@ -2412,7 +2426,11 @@ const BACKEND_FLOORS = {
   "test/property/interestWeight.property.test.ts": 3,
   "test/redirect.test.ts": 6,
   "test/scoring.test.ts": 17,
-  "test/sessionBuilder.test.ts": 15, // round-3 L6 (2026-09-25): backend-rest-15/-16: the dedup log names the survivor; an unparseable date is neutral; 12 -> 15
+  "test/sessionBuilder.test.ts": 23, // #72 R17 provenance: signals name real matched taxonomy nodes, persona only when it weighted a match, recency/depth/fatigue follow the score log, stretch = wildcard + bridge, builder stamped; 15 -> 23 // round-3 L6 (2026-09-25): backend-rest-15/-16: the dedup log names the survivor; an unparseable date is neutral; 12 -> 15
+  /* #72 (R17): the REAL data/session.json parsed with SessionDocSchema — a card
+     without provenance, a stretch card without a bridge, a placeholder signal,
+     or a topic signal that is not a real taxonomy node of that episode fails CI. */
+  "test/sessionDoc.test.ts": 9,
   "test/stubEnricher.test.ts": 6,
   "test/userInterests.test.ts": 17,
   /* #703: the warm pass's feed parsing, which is what decides whether a

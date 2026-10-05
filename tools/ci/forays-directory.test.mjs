@@ -368,7 +368,7 @@ test("END TO END (audit finding C, re-pinned for #701): a git revert gets a NEWE
 /* The real tool, run against a scratch tree that has every file the generator
    lists (so its private SHELL / RUNTIME_DATA / player lists are satisfied
    whatever they are today) with tiny LF bodies. */
-const CLI_MODULES = ["generate-manifest.mjs", "crlf-guard.mjs", "forays-directory.mjs"];
+const CLI_MODULES = ["generate-manifest.mjs", "crlf-guard.mjs", "forays-directory.mjs", "catalogue-directory.mjs"];
 const EPOCH = "1757505600"; // 2025-09-10T12:00:00Z — pins built_at for the CLI runs
 
 function cliTree() {
@@ -576,7 +576,7 @@ test("CLI: --write is gone, and says where the stamp is made now", () => {
 /** The CLI tree as a git repo with the real .gitignore rules for the stamp. */
 function gitCliTree() {
   const dir = cliTree();
-  put(dir, ".gitignore", "/deploy-manifest.json\n/data/forays-directory.json\n");
+  put(dir, ".gitignore", "/deploy-manifest.json\n/data/forays-directory.json\n/data/catalogue-directory.json\n");
   git(dir, ["init", "-q", "-b", "main"]);
   git(dir, ["add", "-A"]);
   return dir;

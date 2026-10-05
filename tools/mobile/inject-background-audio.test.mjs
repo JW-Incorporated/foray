@@ -30,6 +30,11 @@ import {
   assertAppDelegatePatched,
   coldPathState,
   injectAppDelegate,
+  BG_SESSION_FORWARD,
+  BG_SESSION_IMPORT,
+  assertBackgroundSessionPatched,
+  backgroundSessionState,
+  injectBackgroundSession,
   ENGINE_CAPABILITIES_KEY,
   ENGINE_DEFAULT_FILE,
   ENGINE_DEFAULT_KEY,
@@ -970,6 +975,136 @@ test("the CLI patches the AppDelegate beside the plist, --check quotes it, and a
     assert.equal(run([plist, "--check"]).status, 1, "--check fails on an unpatched AppDelegate");
     fs.rmSync(delegate);
     assert.equal(run([plist, "--check"]).status, 1, "--check fails with no AppDelegate");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+/* ─────────── the background-session hook (PQ-21, issue #29) ───────────
+
+   The foray-downloads plugin (PQ-20) owns a background URLSession. When a
+   transfer finishes while 4a is suspended, iOS calls the AppDelegate's
+   application(_:handleEventsForBackgroundURLSession:completionHandler:), which
+   Capacitor's generated AppDelegate lacks; this script writes it, forwarding to
+   the one entry point ForayDownloadsPlugin.swift exposes for it. */
+
+const DOWNLOADS_PLUGIN_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "mobile", "plugins", "foray-downloads");
+const DOWNLOADS_SWIFT = path.join(DOWNLOADS_PLUGIN_DIR, "ios", "Sources", "ForayDownloadsPlugin", "ForayDownloadsPlugin.swift");
+const DOWNLOADS_PACKAGE = path.join(DOWNLOADS_PLUGIN_DIR, "Package.swift");
+
+test("PQ-21: the hook forwards to ForayDownloadsPlugin's own static entry point inside the AppDelegate class, and nothing else changes", () => {
+  /* MUTATION: forward to `DownloadStore.shared.handleEventsForBackgroundURLSession(identifier: ...)`
+     (internal to the plugin's module, so the app cannot call it) -> the
+     forward-prefix pin below fails. RUN.
+     MUTATION: drop the `completionHandler()` fallback for another session's
+     identifier -> the exact-lines check fails. RUN. */
+  const plugin = fs.readFileSync(DOWNLOADS_SWIFT, "utf8");
+  assert.match(plugin, /public class ForayDownloadsPlugin: CAPPlugin, CAPBridgedPlugin/);
+  assert.match(plugin, /@objc public static func handleEventsForBackgroundURLSession\(_ identifier: String,\s*completionHandler: @escaping \(\) -> Void\) -> Bool/);
+  assert.match(fs.readFileSync(DOWNLOADS_PACKAGE, "utf8"), /\.target\(\s*name: "ForayDownloadsPlugin"/, "the module the import names");
+  assert.equal(BG_SESSION_IMPORT, "import ForayDownloadsPlugin");
+  assert.ok(BG_SESSION_FORWARD.startsWith("ForayDownloadsPlugin.handleEventsForBackgroundURLSession(identifier, completionHandler: "));
+
+  const cold = injectAppDelegate(CAPACITOR_APP_DELEGATE).swift;
+  assert.throws(() => assertBackgroundSessionPatched(cold), AppDelegateError, "the cold path alone has no hook");
+  const r = injectBackgroundSession(cold);
+  assert.equal(r.changed, true);
+  assertBackgroundSessionPatched(r.swift);
+  const lines = r.swift.split("\n");
+  assert.equal(lines[2], COLD_PATH_IMPORT);
+  assert.equal(lines[3], BG_SESSION_IMPORT, "the import lands after the others");
+  const sig = lines.findIndex((l) => l.includes("handleEventsForBackgroundURLSession identifier"));
+  assert.match(lines[sig - 1], /^ {4}\/\/ PQ-21 \(#29\), written by tools\/mobile\/inject-background-audio\.mjs/);
+  assert.deepEqual(lines.slice(sig, sig + 5), [
+    "    func application(_ application: UIApplication, handleEventsForBackgroundURLSession identifier: String, completionHandler: @escaping () -> Void) {",
+    `        if !${BG_SESSION_FORWARD} {`,
+    "            completionHandler()",
+    "        }",
+    "    }",
+  ]);
+  assert.equal(lines[sig + 5], "}", "the method is the class's last member");
+  assert.equal(lines[sig - 2], "", "a blank line separates it from the method above");
+  // Remove exactly the inserted lines (the import, a blank, the note, the method): the rest is byte-identical.
+  const drop = new Set([3, sig - 2, sig - 1, sig, sig + 1, sig + 2, sig + 3, sig + 4]);
+  assert.equal(lines.filter((_, i) => !drop.has(i)).join("\n"), cold);
+});
+
+test("PQ-21: the hook is idempotent, and a half-patched or hand-written hook is refused rather than doubled", () => {
+  /* MUTATION: drop the already-patched early return -> the second run is
+     refused as half-patched and the twice-check fails. RUN. */
+  const once = injectBackgroundSession(injectAppDelegate(CAPACITOR_APP_DELEGATE).swift).swift;
+  const twice = injectBackgroundSession(once);
+  assert.equal(twice.changed, false);
+  assert.equal(twice.swift, once);
+  assert.match(twice.reason, /already/);
+  // A forward inside a comment is not a forward.
+  assert.equal(injectBackgroundSession(`${once}\n// ${BG_SESSION_FORWARD}\n`).changed, false);
+
+  const importOnly = CAPACITOR_APP_DELEGATE.replace("import Capacitor\n", `import Capacitor\n${BG_SESSION_IMPORT}\n`);
+  const completed = injectBackgroundSession(importOnly);
+  assert.ok(completed.changed, "an import without the method gets the method");
+  assert.equal(backgroundSessionState(completed.swift).imports, 1, "and no second import");
+
+  const handWritten = CAPACITOR_APP_DELEGATE.replace(/\n\}\n$/,
+    "\n    func application(_ application: UIApplication, handleEventsForBackgroundURLSession identifier: String, completionHandler: @escaping () -> Void) {\n        completionHandler()\n    }\n}\n");
+  assert.equal(backgroundSessionState(handWritten).methods, 1);
+  assert.throws(() => injectBackgroundSession(handWritten), /half-patched or hand-written/);
+  assert.throws(() => assertBackgroundSessionPatched(handWritten), AppDelegateError);
+
+  const forwardElsewhere = once
+    .replace(`        if !${BG_SESSION_FORWARD} {\n            completionHandler()\n        }\n`, "        completionHandler()\n")
+    .replace("return ApplicationDelegateProxy.shared.application(app", `_ = ${BG_SESSION_FORWARD}\n        return ApplicationDelegateProxy.shared.application(app`);
+  assert.equal(backgroundSessionState(forwardElsewhere).forwardInMethod, false);
+  assert.throws(() => assertBackgroundSessionPatched(forwardElsewhere), /must forward/);
+  assert.throws(() => injectBackgroundSession(forwardElsewhere), /half-patched/);
+});
+
+test("PQ-21: the hook lands in the type that declares didFinishLaunching, not in a later extension, and refuses what it cannot place", () => {
+  /* MUTATION: insert before the file's LAST `}` instead of the class's own
+     closing brace -> the method lands in the extension and fails here. RUN. */
+  const tail = "\nextension AppDelegate {\n    // a brace in a comment: }\n    func helper() {}\n}\n";
+  const r = injectBackgroundSession(`${CAPACITOR_APP_DELEGATE}${tail}`);
+  const ext = r.swift.indexOf("extension AppDelegate {");
+  const method = r.swift.indexOf("handleEventsForBackgroundURLSession identifier");
+  assert.ok(method > 0 && method < ext, "the method is inside the class, before the extension");
+  assert.ok(r.swift.endsWith(tail), "the extension is untouched");
+  assertBackgroundSessionPatched(injectBackgroundSession(CAPACITOR_APP_DELEGATE.replace("@UIApplicationMain", "@main")).swift);
+
+  assert.throws(() => injectBackgroundSession(""), AppDelegateError);
+  assert.throws(() => injectBackgroundSession("import UIKit\nclass AppDelegate {}\n"), /exactly once, found 0/);
+  const sharedBrace = CAPACITOR_APP_DELEGATE.replace(/\n    \}\n\}\n$/, "\n    }}\n");
+  assert.throws(() => injectBackgroundSession(sharedBrace), /shares its line/);
+});
+
+test("PQ-21: the CLI writes the hook with the cold path, --check quotes it, and --check fails without it", () => {
+  /* MUTATION: skip injectBackgroundSession in the write path -> the --check
+     below exits 1. RUN.
+     MUTATION: skip assertBackgroundSessionPatched in --check -> the
+     cold-path-only AppDelegate passes. RUN. */
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "inject-bg-session-"));
+  try {
+    const plist = path.join(dir, "Info.plist");
+    const delegate = appDelegatePathFor(plist);
+    fs.writeFileSync(plist, CAPACITOR_PLIST);
+    fs.writeFileSync(delegate, CAPACITOR_APP_DELEGATE);
+    const write = run([plist]);
+    assert.equal(write.status, 0, write.stderr);
+    assert.match(write.stdout, /AppDelegate\.swift: forwarded handleEventsForBackgroundURLSession to ForayDownloadsPlugin/);
+    const patched = fs.readFileSync(delegate, "utf8");
+    assertAppDelegatePatched(patched);
+    assertBackgroundSessionPatched(patched);
+    const again = run([plist]);
+    assert.equal(again.status, 0, again.stderr);
+    assert.match(again.stdout, /already forwards handleEventsForBackgroundURLSession/);
+    assert.equal(fs.readFileSync(delegate, "utf8"), patched, "a second run changes nothing");
+    const check = run([plist, "--check"]);
+    assert.equal(check.status, 0, check.stderr);
+    assert.match(check.stdout, /AppDelegate\.swift: handleEventsForBackgroundURLSession forwards to ForayDownloadsPlugin \(PQ-21\)/);
+
+    fs.writeFileSync(delegate, injectAppDelegate(CAPACITOR_APP_DELEGATE).swift);
+    const coldOnly = run([plist, "--check"]);
+    assert.equal(coldOnly.status, 1, "--check fails on an AppDelegate with the cold path but no hook");
+    assert.match(coldOnly.stderr, /ForayDownloadsPlugin/);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

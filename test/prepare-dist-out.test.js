@@ -69,6 +69,7 @@ function scratchScriptTree() {
     "tools/web/out-dir.mjs",
     "tools/ci/generate-manifest.mjs",
     "tools/ci/forays-directory.mjs",
+    "tools/ci/catalogue-directory.mjs",
     "tools/ci/crlf-guard.mjs",
   ]) {
     fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
