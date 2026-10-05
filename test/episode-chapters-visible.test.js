@@ -199,7 +199,10 @@ test("chapter rows: blank titles are numbered, \\r is trimmed, art only over htt
   /* MUTATION: drop `c.start_time_seconds != null &&` in episodeChapterList —
      the null-start chapter seeks to 0:00 as "Chapter 1"; red on the titles.
      MUTATION 2: drop `/^https:/i.test(c.img) &&` in chapterEntry — the http art
-     renders; red. */
+     renders; red.
+     MUTATION 3: render `safeUrl(c.img)` without artUrl in episodeChaptersHtml —
+     Apple's 600 px chapter art is fetched for a 40 px box; red here and in
+     boot-path perf-2 (sweep). */
   const m = mount();
   m.ctx.ForaySeekPolicy = await seekPolicy();
   m.render(ep({
@@ -208,12 +211,15 @@ test("chapter rows: blank titles are numbered, \\r is trimmed, art only over htt
       { title: "No start", start_time_seconds: null },
       { title: "Opening\r", start_time_seconds: 5, img: "https://img.test/a.jpg" },
       { title: "  ", start_time_seconds: 65, img: "http://img.test/b.jpg" },
+      { title: "Apple art", start_time_seconds: 90, img: "https://is1-ssl.mzstatic.com/image/thumb/P/v4/mza_1.jpg/600x600bb.jpg" },
     ],
   }));
   const sec = m.section();
-  assert.deepStrictEqual(titles(sec), ["Opening", "Chapter 2"]);
-  assert.match(sec, /<img class="ep-chapter-img" src="https:\/\/img\.test\/a\.jpg" alt="" loading="lazy" width="40" height="40">/);
+  assert.deepStrictEqual(titles(sec), ["Opening", "Chapter 2", "Apple art"]);
+  assert.match(sec, /<img class="ep-chapter-img" src="https:\/\/img\.test\/a\.jpg" alt="" loading="lazy" decoding="async" width="40" height="40">/,
+    "a publisher's own chapter art is left at its address");
   assert.doesNotMatch(sec, /img\.test\/b\.jpg/);
+  assert.match(sec, /mza_1\.jpg\/120x120bb\.jpg"/, "Apple's chapter art is asked for at the 40 px box's size, not 600 px");
 });
 
 /* ---------- g: the saved copy ---------- */
@@ -228,12 +234,31 @@ test("(g) a starred long episode keeps the chapters written past the 4000-charac
   const saved = m.ctx.savableEpisode(m.ctx.snapshot("long", ep({ id: "long", description })));
   assert.ok(saved.description.length <= 4000, "the notes are still cut");
   assert.deepStrictEqual(JSON.parse(JSON.stringify(saved.chapters)), [
-    { title: "Intro", start_time_seconds: 0, img: null, url: null, source: "description" },
-    { title: "Middle", start_time_seconds: 1200, img: null, url: null, source: "description" },
-    { title: "End", start_time_seconds: 2400, img: null, url: null, source: "description" },
-  ]);
+    { title: "Intro", start_time_seconds: 0, source: "description" },
+    { title: "Middle", start_time_seconds: 1200, source: "description" },
+    { title: "End", start_time_seconds: 2400, source: "description" },
+  ], "no null img/url keys: 100 of them on every star broke boot-path app-1-8's size bound");
   m.render(saved);
   assert.deepStrictEqual(titles(m.section()), ["Intro", "Middle", "End"], "the saved copy renders all three");
+});
+
+test("(g2) a starred episode's feed chapters keep their art and link, and only the keys that carry a value", () => {
+  /* MUTATION: write `img: c?.img ?? null, url: c?.url ?? null` again in
+     savableEpisode — every chapter carries two null keys; red on the shape.
+     MUTATION 2: drop the `img` spread in savableEpisode — the saved copy loses
+     the chapter art; red. */
+  const m = mount();
+  const chapters = [
+    { title: "Art", start_time_seconds: 0, img: "https://img.test/a.jpg", url: "https://pub.test/a", extra: "dropped" },
+    { title: "Plain", start_time_seconds: 60 },
+  ];
+  const saved = m.ctx.savableEpisode(m.ctx.snapshot("feed", ep({ id: "feed", dai_known: true, chapters })));
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(saved.chapters)), [
+    { title: "Art", start_time_seconds: 0, img: "https://img.test/a.jpg", url: "https://pub.test/a" },
+    { title: "Plain", start_time_seconds: 60 },
+  ]);
+  m.render(saved);
+  assert.match(m.section(), /src="https:\/\/img\.test\/a\.jpg"/, "the saved copy still draws the chapter art");
 });
 
 /* ---------- h: the device reads the chapters ---------- */

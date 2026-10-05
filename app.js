@@ -3170,7 +3170,12 @@ function savableEpisode(snap) {
   const list = feed ? snap.chapters
     : descriptionChapters(d, itemDurationSec(snap, { upperBound: true })).map(c => ({ ...c, start_time_seconds: c.secs }));
   out.chapters = list.length
-    ? list.slice(0, SAVED_CHAPTERS_MAX).map(c => ({ title: c?.title ?? null, start_time_seconds: c?.start_time_seconds ?? null, img: c?.img ?? null, url: c?.url ?? null, ...(typeof c?.source === "string" ? { source: c.source } : {}) }))
+    ? list.slice(0, SAVED_CHAPTERS_MAX).map(c => ({ title: c?.title ?? null, start_time_seconds: c?.start_time_seconds ?? null,
+        /* Only keys that carry a value: a null img/url on each of 100 chapters
+           bloats every star (app-1-8); chapterEntry reads a missing one as null. */
+        ...(typeof c?.img === "string" && c.img ? { img: c.img } : {}),
+        ...(typeof c?.url === "string" && c.url ? { url: c.url } : {}),
+        ...(typeof c?.source === "string" ? { source: c.source } : {}) }))
     : (snap.chapters ?? null);
   return out;
 }
@@ -11661,6 +11666,7 @@ function episodeDescriptionSectionHtml(item) {
    FOREIGN (authored against the publisher's master), so on a stitched or
    unclassified show it reads "~68 min" with one plain line saying so. */
 const CHAPTERS_VISIBLE = 6;
+const CHAPTER_ART_PX = 120;  // a 40 px chapter thumbnail at 3x, like ROW_ART_PX (perf-2)
 function episodeChaptersHtml(item) {
   const list = episodeChapterList(item);
   if (!list.length) return "";
@@ -11671,7 +11677,7 @@ function episodeChaptersHtml(item) {
     const mins = Math.round(c.secs / 60);
     const time = exact ? fmtChapterTime(c.secs) : p?.formatTimestamp ? p.formatTimestamp(c.secs, precision) : `~${mins} min`;
     const said = exact ? fmtChapterTime(c.secs) : p?.describeTimestamp ? p.describeTimestamp(c.secs, precision) : `around minute ${mins}`;
-    const img = c.img ? `<img class="ep-chapter-img" src="${esc(safeUrl(c.img))}" alt="" loading="lazy" width="40" height="40">` : "";
+    const img = c.img ? `<img class="ep-chapter-img" src="${esc(safeUrl(artUrl(c.img, CHAPTER_ART_PX)))}" alt="" loading="lazy" decoding="async" width="40" height="40">` : "";
     return `<li><button type="button" class="ep-chapter-row" data-ts="${esc(String(c.secs))}" aria-label="${esc(`Play from ${said}, ${c.title}`)}">${img}<span class="ep-chapter-time">${esc(time)}</span><span class="ep-chapter-title">${esc(c.title)}</span></button></li>`;
   };
   const rest = list.slice(CHAPTERS_VISIBLE);
