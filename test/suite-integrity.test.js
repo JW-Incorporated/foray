@@ -2003,6 +2003,7 @@ const FLOORS = {
      merge.mjs wrote them. Runs the real script against a temp fixture; each
      test names its mutation. */
   "tools/refresh/backfill-provenance.test.mjs": 3,
+  "tools/refresh/topic-uniformity.test.mjs": 3, // #560 item 3 (2026-10-05): topic-uniformity ratchet on the REAL data -- no label_scope "general" show is uniform, and the uniform-show count (74 of 120 shows with >= 8 episodes on main) may fall but not rise; plus a fixture guard that keeps both from going vacuous; each test names its mutation; new, zero slack
   "tools/refresh/relabel.test.mjs": 4, // PKG-06 (2026-10-04): validated per-episode relabel of committed discover items (episodeTopics wrapped, topics_source stamped "episode", all-or-nothing write, --dry-run writes nothing); runs the real script against a temp fixture, each test names its mutation; new, zero slack
   /* REMOVED 2026-09-24 (issue #701): `tools/refresh/manifest-step.test.mjs`,
      floored at 9 here, and the module it tested. The nightly's deploy-manifest
