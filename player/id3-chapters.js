@@ -13,19 +13,26 @@
  *     link) and `img` (an APIC that is a link, MIME "-->"), https only; an
  *     embedded picture is never decoded. Garbage, v2.2, a missing tag: [].
  *   - `createId3Reader(env)` — the fetcher. A Range GET of bytes 0-9 reads the
- *     header, then a second one reads the tag, never more than MAX_TAG_BYTES.
- *     In the native shell it goes through Capacitor's built-in CapacitorHttp
- *     plugin (`Capacitor.nativePromise`, the call download-bridge.js and
- *     durable-store.js make — no import, no bundle), which is not subject to
- *     CORS; on the web it is plain `fetch`, and a host without CORS headers is
- *     a silent []. https audio only; no request at all while offline. A
- *     downloaded episode (pass `{ id }`) is read from its local file when the
- *     download store has one, which needs no network.
+ *     header, then a second one asks for the tag, at most MAX_TAG_BYTES.
+ *     NATIVE APP ONLY (#1071): the publisher's URL is read solely through
+ *     Capacitor's built-in CapacitorHttp plugin (`Capacitor.nativePromise`,
+ *     the call download-bridge.js and durable-store.js make — no import, no
+ *     bundle). Off the shell the answer is [] and nothing is requested: the
+ *     page's CSP connect-src names no publisher host (privacy policy §5), so a
+ *     WebView fetch could only raise a CSP violation. Only a 206 is read; any
+ *     other status (a 200 means the host ignored the Range and sent the whole
+ *     file) is a final "no chapters" for that URL this session, so such a host
+ *     costs at most one full download. On that path the 1 MB cap is the size
+ *     of the Range asked for, not a limit the reader can enforce. https audio
+ *     only; no request at all while offline. A downloaded episode (pass
+ *     `{ id }`) is read from its local file with `fetch` (the app's own
+ *     origin, 'self'), which needs no network; there the cap is enforced by
+ *     reading the body only that far.
  *
- * A TRUNCATED TAG (cut short, or longer than the cap) gives chapters only when
- * a top-level CTOC was read whole and every chapter it names was found: a
- * partial list would paint its last chapter running to the end of the
- * episode, which is worse than no chapters.
+ * A PARTIAL TAG gives no chapters: when a top-level CTOC names any chapter the
+ * read did not reach (the tag was cut short, longer than the cap, or frames
+ * stopped at a bad id), the answer is [] — a partial list would paint its last
+ * chapter running to the end of the episode, which is worse than none.
  *
  * TIMES ARE APPROXIMATE ON DAI-STITCHED SHOWS: the bytes this read gets can
  * come from a different stitch than the one playing (seek-policy FOREIGN).
@@ -92,17 +99,31 @@ function text(b, o, enc, end = b.length) {
 const clean = (s) => s.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, MAX_TITLE);
 const httpsOnly = (s) => (/^https:\/\/[^\s]+$/i.test(s) ? s : null);
 
+const frameId = (b, o) => String.fromCharCode(b[o], b[o + 1], b[o + 2], b[o + 3]);
+const isFrameId = (id) => /^[A-Z0-9]{4}$/.test(id);
+
+/** Does a frame that ends at `p` end cleanly: at `end`, on padding, or right
+    before another frame's id? */
+const landsAt = (b, p, end) => p === end || (p < end && (b[p] === 0 || (p + 4 <= end && isFrameId(frameId(b, p)))));
+
 /** Frames in b[o, end): [{id, data}], for one tag version. Stops at padding,
     a nonsense id or a frame that runs past the end (and says so). */
 function frames(b, o, end, v, tagUnsync) {
   const out = [];
   let cut = false;
   while (o + 10 <= end) {
-    const id = String.fromCharCode(b[o], b[o + 1], b[o + 2], b[o + 3]);
-    if (!/^[A-Z0-9]{4}$/.test(id)) break;
-    /* iTunes wrote v2.4 sizes unsynchsafe for years: a size byte with its high
-       bit set cannot be syncsafe, so read it plain. */
-    const size = v === 4 && !hasHigh(b, o + 4) ? syncsafe(b, o + 4) : u32(b, o + 4);
+    const id = frameId(b, o);
+    if (!isFrameId(id)) break;
+    /* iTunes wrote v2.4 sizes unsynchsafe for years. A size byte with its high
+       bit set cannot be syncsafe, so read it plain; otherwise read it
+       syncsafe, and (as mutagen does) fall back to the plain reading when only
+       that one ends the frame cleanly. */
+    let size;
+    if (v === 4 && !hasHigh(b, o + 4)) {
+      size = syncsafe(b, o + 4);
+      const plain = u32(b, o + 4);
+      if (plain !== size && !landsAt(b, o + 10 + size, end) && landsAt(b, o + 10 + plain, end)) size = plain;
+    } else size = u32(b, o + 4);
     const fmt = b[o + 9];
     const start = o + 10;
     if (start + size > end) { cut = true; break; }
@@ -196,7 +217,9 @@ export function parseId3Chapters(input) {
         }
       };
       walk(top, 0);
-      if ((truncated || cut) && ids.some((k) => !chaps.has(k))) return [];
+      /* Any chapter the table names but the read did not reach (a cut tag, or
+         frames stopped early at a bad id) means the list is partial: []. */
+      if (ids.some((k) => !chaps.has(k))) return [];
     } else {
       if (truncated || cut) return [];
       ids = [...chaps.keys()];
@@ -231,8 +254,15 @@ function fromBase64(s) {
   return out;
 }
 
-/** Plain fetch with a Range, reading at most `want` bytes even when the host
-    ignores the Range and sends the whole file. */
+/** A native answer that was not 206: the host ignored the Range (200) or
+    refused. Final for that URL — never parsed, never retried this session. */
+const NO_RANGE = Symbol("no-range");
+
+/** Plain fetch with a Range, reading at most `want` bytes even when the
+    server ignores the Range and sends the whole file. Used only for a
+    downloaded episode's local file (served by the app itself, 'self'), never
+    for the publisher's URL: the page's CSP connect-src names no publisher
+    host, and the founder's ruling is native app only. */
 async function viaFetch(fetchFn, url, want) {
   const res = await fetchFn(url, { headers: { Range: `bytes=0-${want - 1}` }, credentials: "omit", cache: "no-store" });
   if (!res || (res.status !== 206 && res.status !== 200)) return null;
@@ -252,12 +282,21 @@ async function viaFetch(fetchFn, url, want) {
 }
 
 /** CapacitorHttp, the plugin every Capacitor app carries built in. Its
-    arraybuffer answer crosses the bridge as base64. */
-async function viaNative(bridge, url, want, userAgent) {
+    arraybuffer answer crosses the bridge as base64. Only a 206 is read: a 200
+    means the host ignored the Range and the native side has already pulled the
+    whole file, which must not happen again for that URL. `track` records the
+    request in flight and a non-206 answer even when it lands after the
+    deadline. */
+async function viaNative(bridge, url, want, userAgent, track) {
   const headers = { Range: `bytes=0-${want - 1}` };
   if (userAgent) headers["User-Agent"] = userAgent;
-  const res = await bridge.nativePromise("CapacitorHttp", "request", { url, method: "GET", headers, responseType: "arraybuffer" });
-  if (!res || (res.status !== 206 && res.status !== 200)) return null;
+  track.inFlight.add(url);
+  let res;
+  try {
+    res = await bridge.nativePromise("CapacitorHttp", "request", { url, method: "GET", headers, responseType: "arraybuffer" });
+  } finally { track.inFlight.delete(url); }
+  if (!res || typeof res.status !== "number") return null;
+  if (res.status !== 206) { track.noRange(url); return NO_RANGE; }
   const d = res.data;
   const bytes = typeof d === "string" ? fromBase64(d) : d instanceof ArrayBuffer || ArrayBuffer.isView(d) ? new Uint8Array(d.buffer ?? d, d.byteOffset ?? 0, d.byteLength) : null;
   return bytes ? bytes.subarray(0, want) : null;
@@ -279,20 +318,33 @@ export function createId3Reader({
   timeoutMs = CALL_TIMEOUT_MS,
 } = {}) {
   const cache = new Map();
+  /* Native-path bookkeeping, in memory only: URLs with a CapacitorHttp request
+     still running (even past the deadline) and URLs whose host answered
+     without a 206. */
+  const noRangeUrls = new Set();
+  const track = {
+    inFlight: new Set(),
+    noRange(url) {
+      noRangeUrls.add(url);
+      if (noRangeUrls.size > MAX_CACHE) noRangeUrls.delete(noRangeUrls.values().next().value);
+    },
+  };
 
   /** One read of `want` bytes, raced against the deadline; null on any failure. */
   const read = (get) => new Promise((resolve) => {
     const t = setTimeout(() => resolve(null), timeoutMs);
-    Promise.resolve().then(get).then((b) => resolve(b instanceof Uint8Array ? b : null), () => resolve(null)).finally(() => clearTimeout(t));
+    Promise.resolve().then(get).then((b) => resolve(b instanceof Uint8Array || b === NO_RANGE ? b : null), () => resolve(null)).finally(() => clearTimeout(t));
   });
 
   /** Header, then tag, through `get(want)`; null when the transport failed. */
   async function chaptersVia(get) {
     const head = await read(() => get(10));
+    if (head === NO_RANGE) return [];
     if (!head) return null;
     const size = tagSize(head);
     if (size < 0) return head.length >= 10 ? [] : null;
     const tag = await read(() => get(Math.min(10 + size, MAX_TAG_BYTES)));
+    if (tag === NO_RANGE) return [];
     return tag ? parseId3Chapters(tag) : null;
   }
 
@@ -312,14 +364,17 @@ export function createId3Reader({
       const got = await chaptersVia((want) => viaFetch(fetchFn, local, want));
       if (got) return got;
     }
-    if (isOnline() === false) return null; // not cached: try again once online
+    /* Native app only (#1071): off the shell the publisher's file is never
+       asked for, and the answer is []. Returned as null so forUrl answers []
+       without caching it: the Capacitor bridge can arrive after a first call. */
     const bridge = getBridge();
-    if (typeof bridge?.nativePromise === "function") {
-      let ua = null;
-      try { ua = getDownloads()?.userAgent ?? null; } catch (_) { /* no UA */ }
-      return chaptersVia((want) => viaNative(bridge, url, want, ua));
-    }
-    return fetchFn ? chaptersVia((want) => viaFetch(fetchFn, url, want)) : null;
+    if (typeof bridge?.nativePromise !== "function") return null;
+    if (noRangeUrls.has(url)) return [];
+    if (isOnline() === false) return null; // not cached: try again once online
+    if (track.inFlight.has(url)) return null; // the last request is still running: do not start another
+    let ua = null;
+    try { ua = getDownloads()?.userAgent ?? null; } catch (_) { /* no UA */ }
+    return chaptersVia((want) => viaNative(bridge, url, want, ua, track));
   }
 
   return {
@@ -336,6 +391,6 @@ export function createId3Reader({
       return p;
     },
     /** For tests and a sign-out: forget every answer. */
-    clear: () => cache.clear(),
+    clear: () => { cache.clear(); noRangeUrls.clear(); },
   };
 }

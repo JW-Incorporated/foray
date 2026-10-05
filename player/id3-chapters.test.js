@@ -143,13 +143,40 @@ test("an extended header is skipped (v2.3: plain size excluding itself; v2.4: sy
 
 test("a truncated tag never yields a partial list: [] when a chapter the CTOC names is missing", () => {
   /* Cut in the middle of c3. MUTATION: delete the
-     `if ((truncated || cut) && ids.some(...)) return []` line -> c1 and c2
+     `if (ids.some((k) => !chaps.has(k))) return [];` line -> c1 and c2
      come back as if they were the whole list, and this goes red. */
   const whole = basic(3);
   const cutAt = whole.length - 64 - 20; // inside the last CHAP (64 bytes of padding follow it)
   assert.deepEqual(parseId3Chapters(whole.subarray(0, cutAt)), []);
   /* …but a cut in the padding loses nothing, so the list is whole. */
   assert.deepEqual(parseId3Chapters(whole.subarray(0, whole.length - 10)), BASIC);
+});
+
+test("a whole tag whose frames stop at a bad id before a chapter the CTOC names is [], not a partial list", () => {
+  /* CTOC [a, b, c], CHAP a, CHAP b, a frame with the nonsense id "xxxx",
+     then CHAP c. Frames stop at "xxxx" without the tag being cut. MUTATION:
+     restore `(truncated || cut) &&` in front of `ids.some(...)` -> [A, B]
+     comes back as the whole list and this goes red. */
+  const v = 3;
+  const junk = cat([0x78, 0x78, 0x78, 0x78], be(4), [0, 0], [1, 2, 3, 4]);
+  const bytes = tag(v, [ctoc(v, "toc", ["a", "b", "c"]), titled(v, "a", 0, "A"), titled(v, "b", 1000, "B"), junk, titled(v, "c", 2000, "C")]);
+  assert.deepEqual(parseId3Chapters(bytes), []);
+});
+
+test("v2.4 iTunes plain sizes with no high bit: when the syncsafe reading lands nowhere, the plain one is used", () => {
+  /* TIT2 data 300 bytes (00 00 01 2C) and its CHAP 328 (00 00 01 48): no
+     high bit, so they look syncsafe, but read that way they end mid-title on
+     "xxxx". MUTATION: delete the
+     `if (plain !== size && !landsAt(...) && landsAt(...)) size = plain;`
+     line -> the CHAP ends inside its own title, b is never reached and this
+     goes red ([] under the partial-CTOC rule). */
+  const v = 4;
+  const long = "x".repeat(299);
+  const t2 = frame(v, "TIT2", tit2(long), { plainSize: true });
+  const a = frame(v, "CHAP", cat(latin1z("a"), be(1000), be(0), be(0), be(0), t2), { plainSize: true });
+  assert.equal(a.length - 10, 328, "premise: a plain size with no high bit");
+  const bytes = tag(v, [ctoc(v, "t", ["a", "b"]), a, titled(v, "b", 2000, "B")], { padding: 16 });
+  assert.deepEqual(parseId3Chapters(bytes), [{ secs: 1, title: long.slice(0, 200) }, { secs: 2, title: "B" }]);
 });
 
 test("a truncated tag with no CTOC is [] — nothing says the list is complete", () => {
@@ -230,12 +257,12 @@ test("a chapter link (WXXX) and a linked picture (APIC \"-->\") are kept only wh
 /* ---------- the fetcher ---------- */
 
 /** A fetch that serves `file` honouring a Range (or ignoring it), streaming in
-    64 KB chunks, and records what it was asked. */
-function fakeFetch(file, { ignoreRange = false, fail = false, status } = {}) {
+    64 KB chunks, and records what it was asked. Only the local-file path
+    (a downloaded episode) still uses fetch. */
+function fakeFetch(file, { ignoreRange = false } = {}) {
   const calls = [];
   const fn = async (url, init = {}) => {
     calls.push({ url, range: init.headers?.Range ?? null });
-    if (fail) throw new TypeError("Failed to fetch (CORS)");
     const m = /^bytes=(\d+)-(\d+)$/.exec(init.headers?.Range ?? "");
     const slice = ignoreRange || !m ? file : file.subarray(Number(m[1]), Number(m[2]) + 1);
     let off = 0;
@@ -243,7 +270,7 @@ function fakeFetch(file, { ignoreRange = false, fail = false, status } = {}) {
     let served = 0;
     fn.stats = () => ({ cancelled, served });
     return {
-      status: status ?? (ignoreRange || !m ? 200 : 206),
+      status: ignoreRange || !m ? 200 : 206,
       body: {
         getReader: () => ({
           read: async () => {
@@ -261,43 +288,127 @@ function fakeFetch(file, { ignoreRange = false, fail = false, status } = {}) {
   fn.calls = calls;
   return fn;
 }
+
+/** A Capacitor bridge whose CapacitorHttp serves `file` as base64 (honouring
+    the Range unless told otherwise) and records every request. */
+function fakeBridge(file, { status, ignoreRange = false, fail = false, delayMs = 0 } = {}) {
+  const asked = [];
+  return {
+    asked,
+    nativePromise: async (plugin, method, opts) => {
+      asked.push({ plugin, call: method, opts });
+      if (delayMs) await new Promise((r) => setTimeout(r, delayMs));
+      if (fail) throw new Error("no plugin");
+      const m = /^bytes=(\d+)-(\d+)$/.exec(opts.headers?.Range ?? "");
+      const slice = ignoreRange || !m ? file : file.subarray(Number(m[1]), Number(m[2]) + 1);
+      return { status: status ?? (ignoreRange || !m ? 200 : 206), headers: {}, data: Buffer.from(slice).toString("base64") };
+    },
+  };
+}
 const withAudio = (t) => cat(t, [0xff, 0xfb, 0x90, 0x64], new Uint8Array(4000));
 const URL_A = "https://cdn.example.com/ep1.mp3";
 
-test("web: a Range read of the header, then of the tag; the answer is cached per URL", async () => {
-  /* MUTATION: delete `if (cache.has(url)) return cache.get(url);` -> the
-     second forUrl fetches again and this goes red. */
+test("native shell: CapacitorHttp's base64 arraybuffer answer, with a Range and the 4a User-Agent, cached per URL; fetch is never used", async () => {
+  /* MUTATIONS: in load(), `typeof bridge?.nativePromise !== "function"` ->
+     `true` -> nothing is read, [] and red; delete
+     `if (cache.has(url)) return cache.get(url);` -> the second forUrl asks
+     again and red. */
   const file = withAudio(basic(4));
+  const bridge = fakeBridge(file);
   const fetchFn = fakeFetch(file);
-  const r = createId3Reader({ fetchFn, isOnline: () => true });
+  const r = createId3Reader({ fetchFn, getBridge: () => bridge, getDownloads: () => ({ userAgent: "4a/1.2.3 (+x)" }) });
   assert.deepEqual(await r.forUrl(URL_A), BASIC);
-  assert.deepEqual(fetchFn.calls.map((c) => c.range), ["bytes=0-9", `bytes=0-${basic(4).length - 1}`]);
+  assert.equal(fetchFn.calls.length, 0);
+  assert.deepEqual(bridge.asked.map((a) => [a.plugin, a.call, a.opts.method, a.opts.url, a.opts.responseType, a.opts.headers.Range, a.opts.headers["User-Agent"]]), [
+    ["CapacitorHttp", "request", "GET", URL_A, "arraybuffer", "bytes=0-9", "4a/1.2.3 (+x)"],
+    ["CapacitorHttp", "request", "GET", URL_A, "arraybuffer", `bytes=0-${basic(4).length - 1}`, "4a/1.2.3 (+x)"],
+  ]);
   assert.deepEqual(await r.forUrl(URL_A), BASIC);
-  assert.equal(fetchFn.calls.length, 2, "the second answer came from memory");
+  assert.equal(bridge.asked.length, 2, "the second answer came from memory");
 });
 
-test("a tag over the 1 MB cap: only the first MAX_TAG_BYTES are asked for, and a CTOC read whole still answers", async () => {
+test("web (no native bridge): native app only, so [] and the publisher's URL is never fetched", async () => {
+  /* Founder ruling #1071 ("native app only"); the CSP connect-src names no
+     publisher host, so a WebView fetch could only raise a CSP violation.
+     MUTATION: restore the web fallback in load(),
+     `if (typeof bridge?.nativePromise !== "function") return fetchFn ?
+     chaptersVia((want) => viaFetch(fetchFn, url, want)) : null;` -> the fake
+     fetch is called (and answers BASIC) and this goes red. */
+  const fetchFn = fakeFetch(withAudio(basic(4)));
+  const r = createId3Reader({ fetchFn, isOnline: () => true });
+  assert.deepEqual(await r.forUrl(URL_A), []);
+  assert.deepEqual(await createId3Reader({ fetchFn, getBridge: () => ({}) }).forUrl(URL_A), []);
+  assert.equal(fetchFn.calls.length, 0, "nothing was asked of the publisher");
+  /* A bridge that arrives after a first call is used: the web [] was not cached. */
+  let bridge = null;
+  const late = createId3Reader({ fetchFn, getBridge: () => bridge });
+  assert.deepEqual(await late.forUrl(URL_A), []);
+  bridge = fakeBridge(withAudio(basic(4)));
+  assert.deepEqual(await late.forUrl(URL_A), BASIC);
+});
+
+test("native: a 200 (the host ignored Range) is never parsed; [] is cached for the URL, one request per session", async () => {
+  /* The 200 body is the whole file, chapters and all. MUTATIONS: in
+     viaNative, `if (res.status !== 206)` -> `if (res.status !== 206 &&
+     res.status !== 200)` -> the 200 is parsed, chapters come back and red;
+     `{ track.noRange(url); return NO_RANGE; }` -> `return null;` -> the miss
+     is not cached, the second forUrl asks again and red. */
+  const file = withAudio(basic(4));
+  const bridge = fakeBridge(file, { ignoreRange: true });
+  const r = createId3Reader({ getBridge: () => bridge });
+  assert.deepEqual(await r.forUrl(URL_A), []);
+  assert.equal(bridge.asked.length, 1, "the header read alone; the tag is not asked for");
+  assert.deepEqual(await r.forUrl(URL_A), []);
+  assert.equal(bridge.asked.length, 1, "no second request for that URL");
+  /* Any other non-206 is the same final answer. */
+  const refused = fakeBridge(file, { status: 403 });
+  const r2 = createId3Reader({ getBridge: () => refused });
+  assert.deepEqual(await r2.forUrl(URL_A), []);
+  assert.deepEqual(await r2.forUrl(URL_A), []);
+  assert.equal(refused.asked.length, 1);
+});
+
+test("native: a 200 that lands after the deadline still closes the URL, and no second request starts while one is running", async () => {
+  /* A Range-ignoring host can take longer than the deadline to send the whole
+     file. MUTATIONS: delete `if (track.inFlight.has(url)) return null;` ->
+     the call made while the first is running asks again and red; delete
+     `if (noRangeUrls.has(url)) return [];` -> after the late 200 a third
+     call asks again and red. */
+  const bridge = fakeBridge(withAudio(basic(4)), { ignoreRange: true, delayMs: 80 });
+  const r = createId3Reader({ getBridge: () => bridge, timeoutMs: 20 });
+  assert.deepEqual(await r.forUrl(URL_A), [], "the deadline answered");
+  assert.deepEqual(await r.forUrl(URL_A), []);
+  assert.equal(bridge.asked.length, 1, "the first request is still running: no second one");
+  await new Promise((res) => setTimeout(res, 120));
+  assert.deepEqual(await r.forUrl(URL_A), []);
+  assert.equal(bridge.asked.length, 1, "the late 200 closed the URL for the session");
+});
+
+test("a tag over the 1 MB cap: the Range asks for only the first MAX_TAG_BYTES, and a CTOC read whole still answers", async () => {
   /* A 1.2 MB PRIV frame after the chapters. MUTATION: drop `Math.min(…,
      MAX_TAG_BYTES)` in chaptersVia -> the second Range asks for the whole
      1.2 MB tag and this goes red. The second file puts c3 past the cap: []
-     (the truncated-CTOC rule, reached through the fetcher). */
+     (the partial-CTOC rule, reached through the fetcher). */
   const big = frame(4, "PRIV", new Uint8Array(1_200_000));
   const early = tag(4, [ctoc(4, "toc", ["c1", "c2", "c3"]), titled(4, "c1", 0, "Cold open"), titled(4, "c2", 61500, "The interview"), titled(4, "c3", 1800000, "Listener mail"), big]);
-  const f1 = fakeFetch(withAudio(early));
-  assert.deepEqual(await createId3Reader({ fetchFn: f1 }).forUrl(URL_A), BASIC);
-  assert.equal(f1.calls[1].range, `bytes=0-${MAX_TAG_BYTES - 1}`);
+  const b1 = fakeBridge(withAudio(early));
+  assert.deepEqual(await createId3Reader({ getBridge: () => b1 }).forUrl(URL_A), BASIC);
+  assert.equal(b1.asked[1].opts.headers.Range, `bytes=0-${MAX_TAG_BYTES - 1}`);
 
   const late = tag(4, [ctoc(4, "toc", ["c1", "c2", "c3"]), titled(4, "c1", 0, "A"), titled(4, "c2", 1000, "B"), big, titled(4, "c3", 2000, "C")]);
-  assert.deepEqual(await createId3Reader({ fetchFn: fakeFetch(withAudio(late)) }).forUrl(URL_A), []);
+  const b2 = fakeBridge(withAudio(late));
+  assert.deepEqual(await createId3Reader({ getBridge: () => b2 }).forUrl(URL_A), []);
 });
 
-test("a host that ignores Range: the read stops at the bytes it wanted and cancels the body", async () => {
-  /* MUTATION: in viaFetch, `while (n < want)` -> `while (true)` -> the whole
-     3 MB file is pulled through (and set() overflows into a RangeError, a
-     failed read) and this goes red. */
+test("a local file served without Range support: the read stops at the bytes it wanted and cancels the body", async () => {
+  /* The local-file path still uses fetch. MUTATION: in viaFetch,
+     `while (n < want)` -> `while (true)` -> the whole 3 MB file is pulled
+     through (and set() overflows into a RangeError, a failed read) and this
+     goes red. */
   const file = withAudio(cat(basic(3), new Uint8Array(3_000_000)));
   const fetchFn = fakeFetch(file, { ignoreRange: true });
-  assert.deepEqual(await createId3Reader({ fetchFn }).forUrl(URL_A), BASIC);
+  const downloads = { recordFor: () => ({ status: "done", path: "/data/files/ep1.mp3", webSrc: "https://localhost/_capacitor_file_/data/files/ep1.mp3" }) };
+  assert.deepEqual(await createId3Reader({ fetchFn, getDownloads: () => downloads }).forUrl(URL_A, { id: "ep1" }), BASIC);
   const { cancelled, served } = fetchFn.stats();
   assert.equal(cancelled, true);
   assert.ok(served < 200_000, `served ${served} bytes`);
@@ -307,86 +418,64 @@ test("no tag: one 10-byte read, [] and cached", async () => {
   /* MUTATION: in chaptersVia, `return head.length >= 10 ? [] : null` ->
      `return null` -> the no-tag answer is not cached, the second forUrl reads
      again and this goes red. */
-  const fetchFn = fakeFetch(Uint8Array.from([0xff, 0xfb, 0x90, 0x64, ...new Uint8Array(100)]));
-  const r = createId3Reader({ fetchFn });
+  const bridge = fakeBridge(Uint8Array.from([0xff, 0xfb, 0x90, 0x64, ...new Uint8Array(100)]));
+  const r = createId3Reader({ getBridge: () => bridge });
   assert.deepEqual(await r.forUrl(URL_A), []);
   assert.deepEqual(await r.forUrl(URL_A), []);
-  assert.deepEqual(fetchFn.calls.map((c) => c.range), ["bytes=0-9"]);
+  assert.deepEqual(bridge.asked.map((a) => a.opts.headers.Range), ["bytes=0-9"]);
 });
 
 test("only https audio, and no request at all while offline (retried once online)", async () => {
   /* MUTATIONS: delete `if (isOnline() === false) return null;` -> the offline
-     call fetches and this goes red; `!isHttps(url)` -> `false` in forUrl ->
-     the http:// URL is fetched (online) and this goes red. */
-  const fetchFn = fakeFetch(withAudio(basic(3)));
+     call asks and this goes red; `!isHttps(url)` -> `false` in forUrl ->
+     the http:// URL is asked for (online) and this goes red. */
+  const bridge = fakeBridge(withAudio(basic(3)));
   let online = true;
-  const r = createId3Reader({ fetchFn, isOnline: () => online });
+  const r = createId3Reader({ getBridge: () => bridge, isOnline: () => online });
   for (const bad of ["http://cdn.example.com/ep1.mp3", "file:///x.mp3", "", null, 7]) assert.deepEqual(await r.forUrl(bad), []);
-  assert.equal(fetchFn.calls.length, 0, "only https is ever asked for");
+  assert.equal(bridge.asked.length, 0, "only https is ever asked for");
   online = false;
   assert.deepEqual(await r.forUrl(URL_A), []);
-  assert.equal(fetchFn.calls.length, 0, "nothing left the phone");
+  assert.equal(bridge.asked.length, 0, "nothing left the phone");
   online = true;
   assert.deepEqual(await r.forUrl(URL_A), BASIC, "the offline [] was not cached");
 });
 
-test("web CORS refusal (fetch rejects) and a non-2xx are a silent [], not cached", async () => {
+test("native: a rejected call is a silent [], not cached", async () => {
   /* MUTATION: drop `if (r === null) cache.delete(url);` -> the failure is
-     remembered, the second call does not fetch and this goes red. */
-  const fetchFn = fakeFetch(withAudio(basic(3)), { fail: true });
-  const r = createId3Reader({ fetchFn });
+     remembered, the second call does not ask and this goes red. */
+  const bridge = fakeBridge(withAudio(basic(3)), { fail: true });
+  const r = createId3Reader({ getBridge: () => bridge });
   assert.deepEqual(await r.forUrl(URL_A), []);
   assert.deepEqual(await r.forUrl(URL_A), []);
-  assert.equal(fetchFn.calls.length, 2, "tried again");
-  assert.deepEqual(await createId3Reader({ fetchFn: fakeFetch(withAudio(basic(3)), { status: 403 }) }).forUrl(URL_A), []);
+  assert.equal(bridge.asked.length, 2, "tried again");
 });
 
-test("native shell: CapacitorHttp's base64 arraybuffer answer, with a Range and the 4a User-Agent; fetch is never used", async () => {
-  /* MUTATION: in load(), `typeof bridge?.nativePromise === "function"` ->
-     `false` -> the read goes through fetch and this goes red. */
-  const file = withAudio(basic(4));
-  const asked = [];
-  const bridge = {
-    nativePromise: async (plugin, method, opts) => {
-      asked.push({ plugin, call: method, opts });
-      const [, a, z] = /^bytes=(\d+)-(\d+)$/.exec(opts.headers.Range);
-      return { status: 206, headers: {}, data: Buffer.from(file.subarray(Number(a), Number(z) + 1)).toString("base64") };
-    },
-  };
-  const fetchFn = fakeFetch(file);
-  const r = createId3Reader({ fetchFn, getBridge: () => bridge, getDownloads: () => ({ userAgent: "4a/1.2.3 (+x)" }) });
-  assert.deepEqual(await r.forUrl(URL_A), BASIC);
-  assert.equal(fetchFn.calls.length, 0);
-  assert.deepEqual(asked.map((a) => [a.plugin, a.call, a.opts.method, a.opts.url, a.opts.responseType, a.opts.headers.Range, a.opts.headers["User-Agent"]]), [
-    ["CapacitorHttp", "request", "GET", URL_A, "arraybuffer", "bytes=0-9", "4a/1.2.3 (+x)"],
-    ["CapacitorHttp", "request", "GET", URL_A, "arraybuffer", `bytes=0-${basic(4).length - 1}`, "4a/1.2.3 (+x)"],
-  ]);
-});
-
-test("native: a call that never answers is [] at the deadline, and a rejection is []", async () => {
+test("native: a call that never answers is [] at the deadline", async () => {
   /* MUTATION: in read(), delete the setTimeout -> the hung call never
      settles, the test's own race fires and this goes red. */
   const hung = createId3Reader({ getBridge: () => ({ nativePromise: () => new Promise(() => {}) }), timeoutMs: 20 });
   const out = await Promise.race([hung.forUrl(URL_A), new Promise((res) => setTimeout(() => res("hung"), 500))]);
   assert.deepEqual(out, []);
-  const refused = createId3Reader({ getBridge: () => ({ nativePromise: async () => { throw new Error("no plugin"); } }) });
-  assert.deepEqual(await refused.forUrl(URL_A), []);
 });
 
-test("a downloaded episode is read from its local file — offline, without touching the remote URL", async () => {
+test("a downloaded episode is read from its local file, offline, without touching the remote URL", async () => {
   /* MUTATION: in load(), `const local = localSrc(id);` -> `= null` -> the
      offline call reads nothing and this goes red. */
   const file = withAudio(basic(3));
   const fetchFn = fakeFetch(file);
+  const bridge = fakeBridge(file);
   const downloads = {
     recordFor: (id) => (id === "ep1" ? { status: "done", path: "/data/files/ep1.mp3", webSrc: null } : null),
     bridge: { fileSrc: ({ path }) => `capacitor://localhost/_capacitor_file_${path}` },
   };
-  const r = createId3Reader({ fetchFn, isOnline: () => false, getDownloads: () => downloads });
+  const r = createId3Reader({ fetchFn, getBridge: () => bridge, isOnline: () => false, getDownloads: () => downloads });
   assert.deepEqual(await r.forUrl(URL_A, { id: "ep1" }), BASIC);
   assert.deepEqual([...new Set(fetchFn.calls.map((c) => c.url))], ["capacitor://localhost/_capacitor_file_/data/files/ep1.mp3"]);
+  assert.equal(bridge.asked.length, 0, "the publisher was not asked");
   /* Not downloaded (or not done): the remote rules apply, so offline is []. */
-  assert.deepEqual(await createId3Reader({ fetchFn: fakeFetch(file), isOnline: () => false, getDownloads: () => downloads }).forUrl(URL_A, { id: "ep2" }), []);
+  assert.deepEqual(await createId3Reader({ fetchFn: fakeFetch(file), getBridge: () => bridge, isOnline: () => false, getDownloads: () => downloads }).forUrl(URL_A, { id: "ep2" }), []);
+  assert.equal(bridge.asked.length, 0);
 });
 
 test("client.js publishes window.ForayId3Chapters from this module, reading the bridge per call", () => {
