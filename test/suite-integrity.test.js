@@ -764,6 +764,7 @@ const FLOORS = {
      values measured on main after PKG-07. A test deleted here is a ranking
      change that can make suggestions worse with every check green. */
   "test/similar-shows-eval.test.js": 12, // #560 item 8: new -- Similar-shows eval set, mirror pin, measured floors
+  "test/vouch-eval.test.js": 14, // #560 item 8, showsWeVouchFor half: new -- the row is app.js's own, rotation floors, Family Mode and label_scope ceilings (measured, not zero)
   /* Founder reports, 2026-09-13. The "Show more episodes" control came out of
      the show page, so show-page-pagination.test.js was RE-POINTED rather than
      shrunk — same five tests, now pinning the absence of the control, the
