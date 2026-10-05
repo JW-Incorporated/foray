@@ -157,3 +157,20 @@ Add one paragraph per module as it lands.
   `Body.transformToByteArray()` (64 MB cap, `TOO_LARGE`) and returns the
   farm's `sha256` metadata as `sha256Meta`. The SDK is imported lazily, and
   the tests inject a fake client and `S3Client` class.
+- **`show-map.mjs`** (PKG-12): `buildShowMap({ queue, catalog, breadth })`
+  maps each R2 show directory the farm wrote to a foray `show_id`. It returns
+  `{ map, collisions }`. The farm names a directory `safeKey(String(
+  podcastindex_feed_id))`, or `safeKey(slugify(title))` when the row has no
+  PodcastIndex id. `slugify` is the farm's `forayfmt.py` port: NFKD, drop
+  non-ASCII, lowercase, `[^a-z0-9]+` → `-`, trim, empty → `show`. Both
+  directories of a `data/transcription-queue.json` row map to one show. That
+  show is the `data/catalog.json` show with the same `normalizeFeedUrl` feed
+  (`catalog-feed`), else `String(apple_collection_id)` (`breadth-apple`),
+  else the title slug (`queue-title`). Every catalog `show_id` and every
+  `data/breadth-transcript-yield.json` id also maps to itself, raw and
+  `safeKey`'d (`identity`, the #831 forward contract). The first writer wins,
+  and each dropped mapping is listed in `collisions`. `resolveShowDir` returns
+  null for an unknown directory. `localDirFor(show_id)` is `safeKey(show_id)`,
+  the name `transcriptPath` writes and `transcriptArchiveLookup.ts` `showDir`
+  finds by prefix. `normalizeFeedUrl` and `safeKey` are imported, and the
+  caller parses the data files.
