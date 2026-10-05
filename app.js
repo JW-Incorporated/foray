@@ -2915,7 +2915,7 @@ function repaintQueuePage() {
    which still run after this and still win). The same control on the same
    episode gets focus back; if that row has left, the control at the same
    position in the list, else the page heading. */
-const QUEUE_FOCUS_ATTRS = ["data-play", "data-reorder-up", "data-reorder-down", "data-dequeue"];
+const QUEUE_FOCUS_ATTRS = ["data-play", "data-playnext", "data-reorder-up", "data-reorder-down", "data-dequeue"];
 
 function queueFocusBefore() {
   const view = $("#view");
@@ -2993,6 +2993,55 @@ function moveQueueItem(id, dir) {
   if (j < 0 || j >= ids.length) return;
   [ids[i], ids[j]] = [ids[j], ids[i]];
   saveQueueIds(ids);
+}
+
+/* ---------- Play next + Clear Up Next (#762, PQ-02) ----------
+
+   The ORDER each tool produces is `player/queue-order.js`'s (PQ-01), published
+   by player/client.js as `window.forayQueueOrder` the same way continuation's
+   rules are — this classic script cannot import it. What lives here is the
+   write (`saveQueueIds`, the one writer of `cp_queue`), the snapshot, and the
+   existing `queued`/`unqueued` events. No rules (a page that loaded app.js
+   without the player module) means Play next does nothing rather than guess. */
+function queueOrderRules() {
+  const r = window.forayQueueOrder;
+  return r && typeof r.playNextOrder === "function" ? r : null;
+}
+
+/** The episode the bar is on, playing or paused; null with no player. */
+function currentPlayingId() {
+  try { return window.ForayPlayer?.currentEpisodeId?.() || null; } catch (_) { return null; }
+}
+
+/** Put `id` directly after the playing row (at the head with nothing playing),
+    adding it when it was not queued. Refuses what 4a cannot play — the same
+    `liveEpisode` gate `addToQueue` holds. True only when the list changed:
+    `playNextOrder` returns the SAME array when the row is already there. */
+function playNextInQueue(id) {
+  if (!id || !liveEpisode(id)) return false;
+  const rules = queueOrderRules();
+  if (!rules) return false;
+  const before = queueIds();
+  const next = rules.playNextOrder(before, id, currentPlayingId());
+  if (next === before) return false;
+  const wasQueued = before.includes(id);
+  saveQueueIds(next);
+  /* After the id is in the list, so the snapshot prune keeps it (addToQueue). */
+  rememberEpisode(id);
+  if (!wasQueued) logEvent("queued", { episode_id: id });
+  return true;
+}
+
+/** Empty Up Next except the playing row, which leaves when it ends, as it
+    always has. Returns how many rows went. */
+function clearQueue() {
+  const rules = queueOrderRules();
+  const before = queueIds();
+  const left = rules ? rules.clearOrder(before, currentPlayingId()) : [];
+  const removed = before.filter((x) => !left.includes(x));
+  saveQueueIds(left);
+  removed.forEach((x) => logEvent("unqueued", { episode_id: x }));
+  return removed.length;
 }
 
 /* ---------- what "playable" means (audit 2026-09-22, theme A) ----------
@@ -6270,6 +6319,24 @@ function bindUpNext(scope) {
       addToQueue(id);
       /* Painted from the QUEUE, not from the tap: addToQueue can refuse, and
          "✓ Up Next" over an unchanged cp_queue was a false success. */
+      const on = isQueued(id);
+      scope.querySelectorAll(`[data-upnext="${CSS.escape(id)}"]`).forEach(b => {
+        setToggleLabel(b, on, UP_NEXT_TOGGLE);
+        b.classList.toggle("on", on);
+      });
+    });
+  });
+  /* Play next (#762, PQ-02) on the episode page: the episode goes right after
+     the playing one, queued if it was not, and its "+ Up Next" beside it is
+     painted from the queue the same way — never from the tap. */
+  scope.querySelectorAll("[data-playnext]").forEach(btn => {
+    if (btn._bound) return;
+    btn._bound = true;
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const id = btn.dataset.playnext;
+      if (playNextInQueue(id)) announce("Plays next.");
       const on = isQueued(id);
       scope.querySelectorAll(`[data-upnext="${CSS.escape(id)}"]`).forEach(b => {
         setToggleLabel(b, on, UP_NEXT_TOGGLE);
@@ -11426,7 +11493,7 @@ function renderEpisode(id) {
       </div>
       ${item.artwork_url ? `<img class="ep-art" src="${esc(safeUrl(item.artwork_url))}" alt="" decoding="async" width="600" height="600">` : ""}
       ${item.hook ? `<p class="fp-s-why">${esc(item.hook)}</p>` : ""}
-      <div class="ep-actions">${item.audio_url ? playBtn(item) : notPlayableNote()}${starBtn(item.id)}${upNextBtn(item.id, item)}</div>
+      <div class="ep-actions">${item.audio_url ? playBtn(item) : notPlayableNote()}${starBtn(item.id)}${upNextBtn(item.id, item)}${item.audio_url ? `<button type="button" class="up-next playnext" data-playnext="${esc(item.id)}" aria-label="Play next">Play next</button>` : ""}</div>
       ${item.audio_url ? "" : `<p class="note">${esc(NOT_PLAYABLE_WHY)}</p>`}
       ${episodeDescriptionSectionHtml(item)}
       ${episodeChaptersHtml(item)}
@@ -11466,6 +11533,7 @@ function renderQueue() {
       <div class="page-head">
         <a class="back" href="#/">‹</a>
         <div><h2>Up Next</h2>${rows.length ? `<p class="sub">${rows.length} queued</p>` : ""}</div>
+        ${rows.length > 1 ? `<button type="button" class="up-next-clear" id="up-next-clear">Clear</button>` : ""}
       </div>
       ${rows.length
         ? rows.map((r, i) => upNextRow(r, i, rows.length)).join("")
@@ -11514,6 +11582,14 @@ function upNextRow(r, idx, total) {
      `noteQueuePlaybackMoved` when playback moves. */
   let isCurrent = false;
   try { isCurrent = !!window.ForayPlayer?.isCurrent?.(id); } catch (_) { /* no player yet */ }
+  /* Play next (#762, PQ-02) is disabled where it would change nothing: on the
+     playing row, on the row already right after it (or row 1 with nothing
+     playing) — `playNextOrder` returns the list unchanged for exactly those —
+     and on a row 4a cannot play, which `playNextInQueue` refuses. */
+  const ids = queueIds();
+  const cur = currentPlayingId();
+  const curIdx = cur ? ids.indexOf(cur) : -1;
+  const playNextDisabled = !playable || isCurrent || id === cur || (curIdx >= 0 ? ids[curIdx + 1] === id : idx === 0);
   return `<div class="ep-row up-next-row ${playable ? "" : "gone"}${isCurrent ? " is-current" : ""}"${isCurrent ? ' aria-current="true"' : ""}>
     <span class="q-num">${idx + 1}</span>
     <div class="info">
@@ -11522,6 +11598,7 @@ function upNextRow(r, idx, total) {
     </div>
     ${inApp}${named ? starBtn(item.id) : ""}
     <div class="up-next-reorder">
+      <button type="button" class="reorder playnext" data-playnext="${esc(id)}" ${playNextDisabled ? "disabled" : ""} aria-label="Play next">Next</button>
       <button class="reorder up" data-reorder-up="${esc(id)}" ${idx === 0 ? "disabled" : ""} aria-label="Move up">↑</button>
       <button class="reorder down" data-reorder-down="${esc(id)}" ${idx === total - 1 ? "disabled" : ""} aria-label="Move down">↓</button>
     </div>
@@ -11611,6 +11688,33 @@ function bindUpNextReorder(scope) {
       const index = queueIds().indexOf(btn.dataset.dequeue);
       removeFromQueue(btn.dataset.dequeue);
       afterQueueRemove(Math.max(0, index));
+    });
+  });
+  /* Play next (#762, PQ-02): a move like ↑, so the same after-step — focus on
+     the row's arrow in its new place, the row kept under the finger, the new
+     position announced. Nothing changed (already next) runs no after-step. */
+  scope.querySelectorAll("[data-playnext]").forEach(btn => {
+    if (btn._bound) return;
+    btn._bound = true;
+    btn.addEventListener("click", (e) => {
+      e.preventDefault(); e.stopPropagation();
+      const id = btn.dataset.playnext;
+      const top = buttonTop(btn);
+      if (playNextInQueue(id)) afterQueueMove(id, -1, top);
+    });
+  });
+  /* Clear: `saveQueueIds` repaints the page (it is a live view of the list), so
+     this only says what happened and puts focus on the heading — the Clear
+     button itself is gone once one row or none is left. */
+  scope.querySelectorAll("#up-next-clear").forEach(btn => {
+    if (btn._bound) return;
+    btn._bound = true;
+    btn.addEventListener("click", (e) => {
+      e.preventDefault(); e.stopPropagation();
+      const n = clearQueue();
+      announce(n === 1 ? "Removed 1 episode from Up Next." : `Removed ${n} episodes from Up Next.`);
+      const view = $("#view");
+      focusQuietly(view && typeof view.querySelector === "function" ? view.querySelector("h2") : null);
     });
   });
 }
