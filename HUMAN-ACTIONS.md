@@ -250,9 +250,10 @@
 1. Wait for the round-3 fix PR to merge. The migration is `backend/migrations/supabase/0003_rls_least_privilege.sql`.
 2. Supabase dashboard → the 4a project → **SQL editor**. Paste that file's contents, read it, and run it (or `supabase db push` if you use the CLI).
 3. Check it worked: **Table editor** shows RLS **enabled** on each table the migration names. As an anonymous user, the app still loads Home, and **Developer → Playback diagnostics** shows no `sync` or `events` errors.
-4. Reply `done` (or paste any SQL error) here.
+4. Also apply `backend/migrations/supabase/0005_content_reports.sql` the same way, once its PR (PH2-10, the `content_reports` table for the Report sheet) merges. It needs nothing else, so it can go in the same sitting. Check: **Table editor** shows `content_reports` with RLS **enabled** and three policies. (Note `0004_rls_shows_catalog.sql` is also unapplied: it waits for gate G2, after the portable 0017-0019, so leave it for that step.)
+5. Reply `done` (or paste any SQL error) here.
 
-**Worked if:** RLS is on for every table the migration lists, the app still syncs events and interests, and Delete my data removes the `learning_cursor` rows (check in the Table editor after a test deletion).
+**Worked if:** RLS is on for every table the migration lists, the app still syncs events and interests, and Delete my data removes the `learning_cursor` rows (check in the Table editor after a test deletion). `content_reports` exists with RLS on.
 
 ## #44 🟡 [DECIDE] Add the founders as Play testers, so Play actually emails you (R-08)
 <!-- ha filed=2026-09-11 kind=default -->

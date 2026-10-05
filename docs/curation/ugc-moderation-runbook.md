@@ -122,13 +122,16 @@ Foray.
   `cp_reports_pending` (at most 20) until it syncs, and the `report_sent` event
   stays on the device.
 - **The table** (PH2-10, `content_reports`). The client inserts its own rows
-  with the anonymous session's bearer (PH2-12). RLS allows insert-own and
-  delete-own only. There is **no** select or update policy, so no client, and
-  no agent without the founder's credentials, can read a report. `on delete
-  cascade` from `auth.users` covers account deletion, and delete-own serves
-  Delete my data. **Migration number:** PH2-10 calls it `0004`, and the Spark
-  assessment (§3.6) also claims `0004` for `0004_generation_jobs.sql`. Whichever
-  lands second renumbers. Cite the table by name, not by file.
+  with the anonymous session's bearer (PH2-12). RLS allows insert-own,
+  delete-own, and a select-own that exists only so Delete my data's filtered
+  DELETE can match rows (Postgres applies SELECT policies to it). Column grants
+  limit what a client may select to `user_id`, its own id, and there is **no**
+  update policy, so no client, and no agent without the founder's credentials,
+  can read a report. `on delete cascade` from `auth.users` covers account
+  deletion, and delete-own serves Delete my data. **Migration number:** the
+  plan called it `0004`, but `0004` went to the shows-catalogue RLS, so PH2-10
+  ships it as `0005`; the Spark assessment (§3.6) also claims `0004` for
+  `0004_generation_jobs.sql` and renumbers. Cite the table by name, not by file.
 - **Email counts as a report.** Anything that reaches `help@jwlabs.ai`
   about a Foray or episode gets the same clock. Log it as a row so the queue
   stays the single record:
