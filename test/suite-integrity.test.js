@@ -765,6 +765,7 @@ const FLOORS = {
      values measured on main after PKG-07. A test deleted here is a ranking
      change that can make suggestions worse with every check green. */
   "test/similar-shows-eval.test.js": 12, // #560 item 8: new -- Similar-shows eval set, mirror pin, measured floors
+  "test/vouch-eval.test.js": 14, // #560 item 8, showsWeVouchFor half: new -- the row is app.js's own, rotation floors, Family Mode and label_scope ceilings (measured, not zero)
   /* Founder reports, 2026-09-13. The "Show more episodes" control came out of
      the show page, so show-page-pagination.test.js was RE-POINTED rather than
      shrunk — same five tests, now pinning the absence of the control, the
@@ -2170,6 +2171,7 @@ const FLOORS = {
   "tools/foraycorpus-export/wave-candidates.test.mjs": 4, // PKG-35 (docs/roadmap/corpus.md): #279 drinks-wave candidates (fixed positives, whole-word boundary negatives, dai_prior false/null/true before timed, english null without a shows.jsonl row)
   "tools/foraycorpus-export/r2-client.test.mjs": 6, // PKG-11 (docs/roadmap/corpus.md): R2 S3 client on a fake client (continuation-token paging, sha256 metadata, dashboard + HUMAN-ACTIONS #138 credential spellings with redacted toJSON, NO_CREDENTIALS names its sources, WHEN_REQUIRED checksum options, no tracked r2-credentials)
   "tools/foraycorpus-export/show-map.test.mjs": 7, // PKG-12 (docs/roadmap/corpus.md): R2 show directory -> foray show_id map (catalog feed match, breadth apple id, slug dirs, the farm's four pinned slugify examples, unknown -> null, localDirFor = safeKey, first writer wins + collision report)
+  "tools/foraycorpus-export/sync-r2.test.mjs": 8, // PKG-13 (docs/roadmap/corpus.md): R2 -> data-local mirror on a fake client (mapped dir lands under safeKey(show_id) byte-identical, rerun is skipped_same via sha256 metadata, bucket-root legacy + fingerprints/ keys ignored, bad transcript_source and sha mismatch quarantined, unmapped dir kept + listed, bodies_expected = bodies on disk, --dry-run writes nothing)
   "tools/foraycorpus-export/catalog-adapter.test.mjs": 5, // PKG-31 (docs/roadmap/corpus.md): breadth-shaped catalogue from the corpus (ruling-31 rights skip + counts, chart fields + taxonomy_node_ids from the old row else null/[], in_curated only for catalog ids, old 18 keys + 2 additive, minified CLI output that refuses data/)
   "tools/foraycorpus-export/export.test.mjs": 5, // PKG-08 (docs/roadmap/corpus.md): export CLI end to end on the synthetic fixture (English show + episode counts, a rerun is a new version with 0/0 delta and byte-identical shows.jsonl, one appended higher asset id -> 1 changed, --dry-run leaves outRoot absent, latest.json names the newest Windows-safe version directory)
   /* The breadth prioritiser and its yield report (#114). Floored for the same

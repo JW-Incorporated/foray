@@ -2,7 +2,8 @@
 
 Issue #560 item 8 said: *"Nothing measures whether a suggestion is good: no
 eval set, metric or gate on `similarShows` / `showsWeVouchFor`."* This note
-covers the `similarShows` half. It records the first measurement, taken on
+covers the `similarShows` half first; the `showsWeVouchFor` half is measured in
+its own section at the end ("Shows 4a vouches for"). It records the first measurement, taken on
 2026-10-04 against `main` at `c9692ee0`, after the catalogue PKG-07 relabel
 (#1037) and the PKG-03 `label_scope: "general"` rule. The numbers come from the
 labels as they are now, not from the labels before the clean-up.
@@ -16,6 +17,8 @@ labels as they are now, not from the labels before the clean-up.
 | `tools/similar-eval/score.mjs` | The scorer: precision, recall@k, hit rate, coverage and must-not violations, each averaged per seed. |
 | `tools/similar-eval/run.mjs` | The runner. It rewrites the generated block below. `--check` exits 1 when the block is out of date, and `--json` prints the totals. |
 | `test/similar-shows-eval.test.js` | 12 tests. They pin the copy to app.js (by text and by output across every catalogue show, 229 since PKG-36), check that the eval set is valid, check the scorer's arithmetic against hand-worked numbers, enforce the floors below, and check that this report is up to date. |
+| `tools/similar-eval/vouch-run.mjs` | The `showsWeVouchFor` runner (added 2026-10-05). It runs app.js's own row over one calendar year and rewrites the second generated block, at the end of this note. `--check` and `--json` work as they do for `run.mjs`. |
+| `test/vouch-eval.test.js` | The `showsWeVouchFor` gates: the measured row is app.js's own, plus the floors and ceilings in "Shows 4a vouches for". |
 
 No `app.js` change in the item 8 PR (item 9 later changed the tie-break; see
 the 2026-10-05 #560 item 9 note below). The scores use `data/catalog-client.json`, which is the
@@ -243,8 +246,12 @@ raise the floor in the same PR.
   that nobody judged counts as a miss, which makes precision a lower bound.
 - The breadth tier is not covered. Breadth shows only get nodes from the API
   row (PKG-09/10), and the eval reads only the committed curated catalogue.
-- `showsWeVouchFor`, the other half of item 8, is not covered. It is an
-  editorial row with no seed, so it needs a different kind of eval.
+- `showsWeVouchFor`, the other half of item 8, has no seed, so it is not in
+  this eval set. It is measured as a rotation instead, in "Shows 4a vouches
+  for" at the end of this note.
+- The curated tier's labels still have no classifier confidence,
+  `needs_review` flag or review cadence (the last clause of item 8). Neither
+  eval covers that.
 - Nothing here measures what listeners do (click-through, dwell time). This is
   an offline proxy only.
 
@@ -433,3 +440,187 @@ k = 6 (the slots the show page renders). Precision is over what was shown; recal
 - `practical-ai` → `robot-talk`
 - `lore` → `wicked-words-kate-winkler-dawson`
 <!-- END GENERATED -->
+
+## Shows 4a vouches for (`showsWeVouchFor`), measured 2026-10-05
+
+`app.js:showsWeVouchFor` fills the "Shows 4a vouches for" row on `#/shows`
+(`vouchForHtml`). It takes every show with a non-empty `editorial_note`, sorts
+them by `show_id`, shuffles them with an LCG seeded from the UTC calendar day,
+and keeps the first 8. There is no seed show and no right answer for a given
+day, so the eval set above does not apply. Instead
+`tools/similar-eval/vouch-run.mjs` runs the row for every day of one fixed
+calendar year and measures what a listener would see.
+
+**The code it measures is app.js's own.** The runner does not keep a copy.
+It lifts each function it needs out of `app.js` when it runs
+(`showsWeVouchFor`, `dayOfYearSeed`, `seededShuffle`, and `familyAllows` /
+`familySafe` with their helpers) and runs that text in a `vm` context. So an
+`app.js` edit changes the numbers with nothing to paste. `--check` then
+reports this block stale, and `test/vouch-eval.test.js` says whether the
+floors and ceilings still hold. The harness supplies only `state.catalog`
+(`data/catalog-client.json`), `state.discover` (`data/discover.json`), no
+session, and `familyMode()` returning true.
+
+**What the numbers say:**
+
+- **(a) The eligible set is the whole curated catalogue.** All 229 shows in
+  `data/catalog-client.json` carry an `editorial_note`, so the
+  `editorial_note` filter removes nothing. "Vouched for" means "in the
+  catalogue". Coverage is reported over all 229.
+- **(b) Every show surfaces at least once in the year, but not evenly.** An
+  even rotation would show each show about 12.75 days a year. The measured
+  range is 1 to 38 days. The shows that sort first by `show_id` (digits,
+  then `a`) surface about three times as often as an even rotation would
+  give: the first tenth of the set takes about 23% of the slots, not 10%.
+  The cause is the LCG's low bits. `seededShuffle` picks each swap with
+  `s % (i + 1)`, and the low bits of a power-of-two LCG repeat on short
+  cycles. A throwaway run (not committed) that took the swap from the high
+  16 bits instead, `(s >>> 16) % (i + 1)`, brought the first tenth's share
+  to 9.7% and the range to 2 to 24 days. Mixing the day seed alone did not
+  help (22.7%), although consecutive days' seeds differ only by 1
+  (`2026-01-01` is 1161665730, `2026-01-02` is 1161665731). This is a
+  finding for whoever next changes `app.js`. It is not a fix in this PR.
+- **(c) The row works as its comment promises.** Every day gives 8 distinct
+  eligible shows, and the 00:00 and 23:59 UTC rows always match. A row spans
+  about 8 top-level branches on average and never fewer than 5.
+- **(d) Family Mode is not applied to this row.** `showsWeVouchFor` has no
+  Family Mode filter. With Family Mode on, `familyAllows` rejects 39 of the
+  229 shows when given a show row: 17 comedy shows, 8 rated explicit and 14
+  unrated (`explicit: null`, not comedy). The row shows at least one of them
+  on most days of the year. The test holds this count as a **ceiling**, not
+  as a zero. Applying Family Mode here is an `app.js` change and is routed
+  as its own card (below).
+- **(e) `label_scope: "general"` shows appear too.** The row applies no
+  `label_scope` filter either, so all 13 general shows surface during the
+  year. For an editorial row this is arguably fine. The PKG-03 rule is about
+  inheriting a general show's *label*, and this row does not use labels. It
+  is recorded as a ceiling all the same, so a change in how the row draws
+  shows is visible.
+
+**Routed, not fixed here:** "the vouch row ignores Family Mode" is a new
+`app.js` card. It is blocked on bundle headroom (`issue-279-df-sidecar`). The
+rule it would apply is the one `familySafe` already enforces elsewhere
+(founder question 23 in `docs/roadmap/README.md`: confirm the rule #835
+shipped). The rotation skew in (b) belongs on the same card, since both
+are edits to `showsWeVouchFor` and `seededShuffle`.
+
+**Floors and ceilings (`test/vouch-eval.test.js`).** All values were measured
+on 2026-10-05 against `origin/main` at `919f925d`. Each test names the mutation
+that turns it red; every mutation was run.
+
+| Metric | Gate | Mutation that turns it red |
+|---|---|---|
+| (a) eligible | = the catalogue (229) | blank one `editorial_note` in `data/catalog-client.json` |
+| (b) coverage | 229 of 229 surface; each at least 1 day | `seededShuffle`: `const j = s % (i + 1)` → `const j = i` |
+| (b) skew | max ≤ 38 days; first-tenth share ≤ 0.232 | `showsWeVouchFor` `limit = 8` → `limit = 12` |
+| (c) integrity | 0 bad rows, 0 unstable days | `dayOfYearSeed` `.slice(0, 10)` → `.slice(0, 13)`; the swap → `a[i] = a[j]` |
+| (c) branches | mean ≥ 7.956 a row | `limit = 8` → `limit = 4` |
+| (d) Family Mode | ≤ 573 slots, ≤ 296 days | `limit = 8` → `limit = 12`; drop `familySafe`'s `explicit === false` early return |
+| (e) label_scope | ≤ 205 slots, ≤ 152 days | `limit = 8` → `limit = 12` |
+
+**To change the row:** edit `app.js`, run
+`node tools/similar-eval/vouch-run.mjs`, read the regenerated block, and move
+any gate the change earned. A Family Mode filter will drop (d) toward 0, and
+its ceiling should come down in the same PR.
+
+<!-- BEGIN GENERATED: node tools/similar-eval/vouch-run.mjs -->
+Window: 2026-01-01 to 2026-12-31 (365 UTC days), 8 slots a day (showsWeVouchFor's default limit), 2920 slots in all. Family Mode is evaluated ON, through app.js's own `familyAllows`.
+
+| Metric | Measured |
+|---|---|
+| (a) eligible: shows with a non-empty `editorial_note` | 229 of 229 (the whole curated catalogue) |
+| (b) rotation coverage: eligible shows surfaced at least once | 229 of 229 (1.000) |
+| (b) appearances per show: min / median / max (expected 12.75) | 1 / 11 / 38 |
+| (b) slots taken by the first 23 shows in show_id order (a tenth of the eligible set) | 23.2% |
+| (c) rows that are not 8 distinct eligible shows | 0 |
+| (c) days whose 00:00 and 23:59 UTC rows differ | 0 |
+| (c) top-level branches per row: mean / min; most slots one branch takes | 7.956 / 5; 4 |
+| (d) Family Mode violations: slots filled by a show familyAllows rejects | 573 (19.6%), on 296 of 365 days, at most 6 in one row |
+| (d) catalogue shows familyAllows rejects / of them surfaced | 39 / 39 |
+| (e) label_scope leakage: slots filled by a `label_scope: "general"` show | 205 (7.0%), on 152 of 365 days, at most 4 in one row |
+| (e) `label_scope: "general"` shows / of them surfaced | 13 / 13 |
+
+### (d) The shows Family Mode would hide, and how often the row shows them
+
+By familySafe's reason: comedy branch 17, unrated 14, rated explicit 8.
+
+| Show | Reason | `explicit` | Days in the row |
+|---|---|:-:|---:|
+| `2-bears-1-cave` | comedy branch | false | 31 |
+| `armchair-expert` | comedy branch | false | 25 |
+| `bad-friends` | comedy branch | false | 29 |
+| `beer-in-front` | rated explicit | true | 28 |
+| `being-an-engineer` | unrated | null | 26 |
+| `bourbon-pursuit` | rated explicit | true | 15 |
+| `call-her-daddy` | comedy branch | false | 18 |
+| `catalyst-shayle-kann` | unrated | null | 27 |
+| `cbc-ideas` | unrated | null | 18 |
+| `cider-chat` | rated explicit | true | 11 |
+| `cleantechies-podcast` | unrated | null | 11 |
+| `comedy-bang-bang` | comedy branch | false | 13 |
+| `conan-obrien-needs-a-friend` | comedy branch | null | 8 |
+| `ear-hustle` | rated explicit | true | 9 |
+| `fall-of-civilizations` | unrated | null | 15 |
+| `fly-on-the-wall` | comedy branch | false | 10 |
+| `good-hang-amy-poehler` | comedy branch | false | 25 |
+| `handsome` | comedy branch | false | 15 |
+| `heavyweight` | rated explicit | true | 15 |
+| `how-did-this-get-made` | comedy branch | false | 16 |
+| `ill-drink-to-that-wine-talk` | rated explicit | true | 22 |
+| `inside-chips` | unrated | null | 13 |
+| `kill-tony` | comedy branch | false | 20 |
+| `lab-to-market-leadership` | unrated | null | 7 |
+| `las-culturistas` | comedy branch | false | 7 |
+| `lex-fridman-podcast` | unrated | null | 18 |
+| `materialism-podcast` | unrated | null | 2 |
+| `modern-love` | rated explicit | true | 10 |
+| `mtdcnc-podcast` | unrated | null | 12 |
+| `my-brother-my-brother-and-me` | comedy branch | null | 2 |
+| `omega-tau` | unrated | null | 13 |
+| `smartless` | comedy branch | null | 7 |
+| `stuff-you-should-know` | unrated | null | 11 |
+| `the-rest-is-history` | unrated | null | 11 |
+| `this-past-weekend-theo-von` | comedy branch | false | 6 |
+| `titans-of-nuclear` | unrated | null | 7 |
+| `we-can-do-hard-things` | rated explicit | true | 7 |
+| `working-it-out-birbiglia` | comedy branch | false | 15 |
+| `wtf-marc-maron` | comedy branch | false | 18 |
+
+### (e) The `label_scope: "general"` shows, and how often the row shows them
+
+| Show | Days in the row |
+|---|---:|
+| `99-percent-invisible` | 28 |
+| `being-an-engineer` | 26 |
+| `catalyst-shayle-kann` | 27 |
+| `cbc-ideas` | 18 |
+| `freakonomics-radio` | 6 |
+| `huberman-lab` | 12 |
+| `lex-fridman-podcast` | 18 |
+| `ologies-with-alie-ward` | 8 |
+| `software-engineering-daily` | 22 |
+| `stuff-you-should-know` | 11 |
+| `techsurge-deep-tech-podcast` | 7 |
+| `the-rest-is-history` | 11 |
+| `unexplainable` | 11 |
+
+### (b) Rotation extremes
+
+**Never surfaced in the window:** none
+
+**Fewest days (1):** `our-fake-history`, `strict-scrutiny`, `the-worlds-best-construction-podcast`
+
+**Most days (38):** `advent-of-computing`, `amicus-dahlia-lithwick`, `ams-on-the-air`
+
+### The first seven rows of the window
+
+| Day | Shows |
+|---|---|
+| 2026-01-01 | `5-4-podcast`, `aria-code`, `the-rest-is-history`, `the-cinematography-podcast`, `song-exploder`, `the-ancients`, `happiness-lab`, `fall-of-civilizations` |
+| 2026-01-02 | `zoe-science-nutrition`, `corecursive`, `2-bears-1-cave`, `ask-lisa-parenting`, `we-have-ways-of-making-you-talk`, `bad-friends`, `aria-code`, `cleantechies-podcast` |
+| 2026-01-03 | `ten-percent-happier`, `gastropod`, `lab-to-market-leadership`, `the-moth`, `maritime-history-podcast`, `bourbon-pursuit`, `comedy-bang-bang`, `tiny-matters` |
+| 2026-01-04 | `ams-on-the-air`, `unexplainable`, `shipwrecks-and-sea-dogs`, `inside-chips`, `aria-code`, `foundmyfitness`, `the-race-f1-podcast`, `armchair-expert` |
+| 2026-01-05 | `tuned-in-hpa`, `storm-front-freaks`, `distillations`, `luthier-on-luthier`, `shop-talk-live`, `dear-prudence`, `the-cinematography-podcast`, `the-sound-aquatic` |
+| 2026-01-06 | `ill-drink-to-that-wine-talk`, `the-dirt-podcast`, `folklore-and-fiction`, `inside-chips`, `serial`, `common-descent`, `wtf-marc-maron`, `odd-lots` |
+| 2026-01-07 | `weather-geeks`, `fly-on-the-wall`, `omega-tau`, `distillations`, `dear-prudence`, `ancient-history-fangirl`, `mtdcnc-podcast`, `welcome-to-night-vale` |
+<!-- END GENERATED: vouch-run.mjs -->

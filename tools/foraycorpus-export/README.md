@@ -174,6 +174,31 @@ Add one paragraph per module as it lands.
   the name `transcriptPath` writes and `transcriptArchiveLookup.ts` `showDir`
   finds by prefix. `normalizeFeedUrl` and `safeKey` are imported, and the
   caller parses the data files.
+- **`sync-r2.mjs`** (PKG-13): `node tools/foraycorpus-export/sync-r2.mjs
+  [--out <dir>] [--raw] [--dry-run] [--prefix <p>] [--limit <n>] [--show
+  <dir|show_id>]` mirrors `transcripts/normalized/` (and `transcripts/raw/`
+  with `--raw`) into `data-local/transcripts/`. Only keys of the form
+  `transcripts/<kind>/<dir>/<file>` are bodies. The bucket-root legacy whisper
+  JSONs, `fingerprints/` and every other key are counted `ignored` and never
+  fetched. Each R2 directory goes through `resolveShowDir` and lands under
+  `localDirFor(show_id)`. An unmapped directory keeps its R2 name and is
+  listed in `unmapped_dirs`. File names stay the R2 names, under
+  `transcriptPath`'s `startsWith(base + sep)` guard (copied, because
+  `transcriptPath` re-applies `safeKey`). For a file already on disk with the
+  listed size, a HEAD reads the farm's `sha256` metadata and an equal local
+  sha256 is `skipped_same` (equal size when there is no metadata). Otherwise
+  a GET follows. A sha256 mismatch, bad JSON or a bad shape (`show_id`/`guid`
+  strings, cues with numeric `start_sec`/`end_sec` and string `text`,
+  `transcript_source` absent, null or in `TRANSCRIPT_SOURCES` from
+  `tools/segments/merge-segments.mjs`) is quarantined and nothing is written.
+  Accepted bytes are written unchanged via tmp + rename, so `show_id` is never
+  rewritten. Nothing local is deleted. The run writes `r2-sync-state.json` in
+  the out directory, and its `bodies_expected` is the sum of the normalized
+  bodies on disk per directory after the run (the run-start guard's number).
+  `--dry-run` fetches and validates, writes nothing (no state file), and
+  prints the state it would have written. The CLI reads credentials with
+  `loadR2Credentials` and builds the map from `data/transcription-queue.json`,
+  `data/catalog.json` and `data/breadth-transcript-yield.json`.
 - **`catalog-adapter.mjs`** (PKG-31): `catalogAdapter(showRows, {
   breadthOld, catalog, harvestedAt })` turns `buildShows` rows into
   `data/catalog-breadth.json`-shaped rows and returns `{ shows, report }`.
