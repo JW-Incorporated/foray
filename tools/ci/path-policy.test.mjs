@@ -1258,6 +1258,20 @@ function executedBy(cmd, wd, out, seenScripts = new Set()) {
   }
 }
 
+/** The relative module specifiers one source file loads: static imports and
+ *  re-exports, bare side-effect imports, dynamic import(), require(), and the
+ *  chained `createRequire(import.meta.url)("./x")` form, which has no
+ *  `require(` token for the require pattern to see. */
+function relativeSpecifiers(src) {
+  return [
+    ...src.matchAll(/(?:^|\n)\s*(?:import|export)\s[^;]*?from\s*["'](\.{1,2}\/[^"']+)["']/g),
+    ...src.matchAll(/(?:^|\n)\s*import\s*["'](\.{1,2}\/[^"']+)["']/g),
+    ...src.matchAll(/\bimport\(\s*["'](\.{1,2}\/[^"']+)["']\s*\)/g),
+    ...src.matchAll(/\brequire\(\s*["'](\.{1,2}\/[^"']+)["']\s*\)/g),
+    ...src.matchAll(/\bcreateRequire\([^()]*\)\s*\(\s*["'](\.{1,2}\/[^"']+)["']\s*\)/g),
+  ].map((m) => m[1]);
+}
+
 /** Every file a signing job reaches: its steps, the composite actions it uses,
  *  the npm scripts they call, and (transitively) what those modules import. */
 function signingJobExecutables() {
@@ -1287,12 +1301,7 @@ function signingJobExecutables() {
     const f = queue.shift();
     if (!/\.(mjs|cjs|js)$/.test(f) || !fs.existsSync(path.join(REPO, f))) continue;
     const src = fs.readFileSync(path.join(REPO, f), "utf8");
-    const specs = [
-      ...src.matchAll(/(?:^|\n)\s*(?:import|export)\s[^;]*?from\s*["'](\.{1,2}\/[^"']+)["']/g),
-      ...src.matchAll(/(?:^|\n)\s*import\s*["'](\.{1,2}\/[^"']+)["']/g),
-      ...src.matchAll(/\bimport\(\s*["'](\.{1,2}\/[^"']+)["']\s*\)/g),
-      ...src.matchAll(/\brequire\(\s*["'](\.{1,2}\/[^"']+)["']\s*\)/g),
-    ].map((m) => norm(path.posix.dirname(f), m[1]));
+    const specs = relativeSpecifiers(src).map((s) => norm(path.posix.dirname(f), s));
     for (const dep of specs) {
       if (!out.has(dep)) {
         out.add(dep);
@@ -1333,6 +1342,49 @@ test("review: every file a signing job executes is DENIED (or is app code, liste
   assert.deepStrictEqual(exposed, [], "run by a job that holds a signing secret, and not denied");
   const stale = Object.keys(ACKNOWLEDGED_RELEASE_APP_CODE).filter((f) => !files.has(f));
   assert.deepStrictEqual(stale, [], "acknowledged but no longer executed by a signing job");
+});
+
+test("review: the signing-job walk sees every way a module loads a relative file, chained createRequire included, and search-engine.js is unreachable from a signing job", () => {
+  /* #279 review: prepare-webdir.mjs loaded search-engine.js as
+     `createRequire(import.meta.url)("../../search-engine.js")`, which none of
+     the walk's patterns matched, so an ALLOWED file ran in the jobs holding the
+     signing secrets while the test above stayed green. The walk now sees that
+     form, and the rework took the load out altogether: the df block is computed
+     by governed code in prepare-webdir.mjs (`tagDfBlock`), and its equality with
+     the real engine is proven in the secret-free data-and-site check
+     (tools/mobile/prepare-webdir.test.mjs). search-engine.js is NOT in
+     ACKNOWLEDGED_RELEASE_APP_CODE and must stay unreachable from a signing job.
+     MUTATIONS (each run):
+       - drop the createRequire pattern from relativeSpecifiers -> the chained form
+         is no longer found;
+       - put `createRequire(import.meta.url)("../../search-engine.js")` back into
+         prepare-webdir.mjs -> the walk reaches search-engine.js and this test (and
+         "every file a signing job executes is DENIED") fails. */
+  const src = [
+    'import { a } from "./static.mjs";',
+    'export { b } from "../reexport.js";',
+    'import "./side-effect.js";',
+    'const c = await import("./dynamic.mjs");',
+    'const d = require("./required.js");',
+    'const e = createRequire(import.meta.url)("../../chained.js");',
+    'const f = createRequire(import.meta.url) ( "./spaced.cjs" );',
+    'const g = require("node:fs");',
+  ].join("\n");
+  assert.deepStrictEqual(relativeSpecifiers(src).sort(), [
+    "../../chained.js",
+    "../reexport.js",
+    "./dynamic.mjs",
+    "./required.js",
+    "./side-effect.js",
+    "./spaced.cjs",
+    "./static.mjs",
+  ]);
+  // And on the real tree: the walk reaches prepare-webdir.mjs and what it imports,
+  // and search-engine.js is not among them.
+  const reached = signingJobExecutables().files;
+  assert.ok(reached.has("tools/mobile/prepare-webdir.mjs"), "the walk no longer reaches prepare-webdir.mjs, so it proves nothing");
+  assert.ok(reached.has("player/foray-resolve.js"), "the walk no longer follows prepare-webdir.mjs's imports");
+  assert.ok(!reached.has("search-engine.js"), "search-engine.js is reachable from a job holding the signing secrets");
 });
 
 test("review: nothing a signing job executes may be ACKNOWLEDGED as a gate instead of denied", () => {
