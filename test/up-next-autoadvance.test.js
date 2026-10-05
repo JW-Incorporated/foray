@@ -19,6 +19,10 @@
  *  6. An unplayable row is passed over, not stopped at.
  *  7. The end of the list is the end: nothing loops.
  *  8. The switch still turns it off.
+ *  9. Then more of what fits (PQ-11, #691): once Up Next and the list are
+ *     spent, the tail built from today's deal plays — every third pick the
+ *     stretch subject, said with the bridge line and announced — never an
+ *     episode already played or queued, and the switch stops it too.
  *
  * Every test names the mutation that kills it, per CLAUDE.md "a green test is
  * not evidence until you have broken it".
@@ -48,7 +52,13 @@ process.on("unhandledRejection", () => {});
    below stands in for client.js, so the harness publishes the REAL rules the
    same way — every assertion in this suite runs through the delegation. */
 let CONTINUATION = null;
-before(async () => { CONTINUATION = await import("../player/continuation.js"); });
+/* The tail's ordering rule (player/tail-fill.js, PQ-10), published by
+   client.js as `window.forayTailFill`; the harness publishes the real one. */
+let TAIL_FILL = null;
+before(async () => {
+  CONTINUATION = await import("../player/continuation.js");
+  TAIL_FILL = await import("../player/tail-fill.js");
+});
 
 function makeEl(tag) {
   return {
@@ -148,6 +158,7 @@ function mount({ seed = {} } = {}) {
   ctx.window = ctx;
   ctx.globalThis = ctx;
   ctx.forayContinuation = CONTINUATION;
+  ctx.forayTailFill = TAIL_FILL;
   vm.createContext(ctx);
   vm.runInContext(SEARCH_SRC, ctx, { filename: "search-engine.js" });
   vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
@@ -625,4 +636,122 @@ test("REVIEW: ◀◀ restarts the episode past the window, and goes to the previ
   fake.restartWindowPassed = false;
   await previous();
   assert.deepStrictEqual(fake.seeks, [0, 0], "with no row before it, previous restarts even inside the window");
+});
+
+/* ==================================================================== */
+/* 9. THEN MORE OF WHAT FITS: THE TAIL (PQ-11, issue #691)                */
+/* ==================================================================== */
+
+/* Today's deal, seeded straight onto state.cardSlots in the shape buildCards
+   writes — the dealer itself is never run here (it rolls dice and records a
+   Home deal as seen; app.js never runs it from the continuation path either).
+   One stretch slot first, then two top slots; every episode from a different
+   show, so tail-fill's no-back-to-back-show rule never reorders the walk. The
+   stretch branch has the taxonomy label "Craft & making", whose "&" proves
+   the why line is plain text. Expected tail: t1, t2, s1, t3, t4, s2. */
+function seedDeal(m) {
+  const byShow = new Map();
+  for (const it of m.playable) if (!byShow.has(it.show)) byShow.set(it.show, it);
+  const [a, b, t1, t2, t3, t4, s1, s2] = [...byShow.values()];
+  seedLivePool(m, [a, b, t1, t2, t3, t4, s1, s2]);
+  m.state.taxonomy = { nodes: [{ id: "craft", parent: null, label: "Craft & making" }] };
+  m.state.cardSlots = [
+    { slot: 1, branch: "craft", role: "stretch", item: s1, items: [s1, s2] },
+    { slot: 2, branch: "engineering", role: "top", item: t1, items: [t1, t3] },
+    { slot: 3, branch: "science", role: "top", item: t2, items: [t2, t4] },
+  ];
+  return { a, b, t1, t2, t3, t4, s1, s2 };
+}
+
+const settle = () => new Promise((r) => setImmediate(r));
+
+test("PQ-11: with Up Next empty and the list finished, the next play is the tail's first pick", async () => {
+  /* The founder's car case (2026-09-14): the list runs out and the silence
+     returns. MUTATION: drop `tail: tailIds(currentId)` from continuationState
+     -> nothing plays after a. */
+  const m = mount();
+  const { a, t1 } = seedDeal(m);
+  const fake = makeFakePlayer();
+  m.ctx.window.ForayPlayer = fake;
+  await clickRow(m, [{ id: a.id, ctx: "show-x" }], 0);
+  assert.deepStrictEqual([...m.ctx.tailIds(a.id)].slice(0, 3), [t1.id, m.state.cardSlots[2].item.id, m.state.cardSlots[0].item.id],
+    "the tail is today's deal, top, top, stretch");
+
+  await m.ctx.advanceQueueOnEnded(a.id);
+  assert.strictEqual(fake.calls.length, 2, "the end of the list is no longer the end");
+  assert.strictEqual(fake.calls[1].item.id, t1.id, "the tail's first pick plays");
+  assert.strictEqual(m.state.playListCursor, a.id, "the list cursor stays where the list ended");
+});
+
+test("PQ-11: the third tail play is the stretch pick, its why is the bridge line naming the subject, and it is announced", async () => {
+  /* README founder-question default 18: every third tail pick is the stretch
+     subject. MUTATION: make tailIds rebuild from scratch each time (drop the
+     `walked` filtering, so the played pick is just excluded) -> the stretch
+     stays at position 3 of each fresh build and t3 plays third instead of s1.
+     MUTATION 2: return whyFor(...) unconditionally from chainedWhy -> the why
+     is the hook. MUTATION 3: drop the announce() after a tail start. */
+  const m = mount();
+  const { a, t1, t2, s1 } = seedDeal(m);
+  const fake = makeFakePlayer();
+  m.ctx.window.ForayPlayer = fake;
+  await clickRow(m, [{ id: a.id, ctx: "show-x" }], 0);
+
+  await m.ctx.advanceQueueOnEnded(a.id); await settle();
+  await m.ctx.advanceQueueOnEnded(t1.id); await settle();
+  await m.ctx.advanceQueueOnEnded(t2.id); await settle();
+
+  assert.deepStrictEqual(fake.calls.map((c) => c.item.id), [a.id, t1.id, t2.id, s1.id], "top, top, then the stretch subject");
+  assert.strictEqual(fake.calls[3].opts.why,
+    "Outside your usual subjects — a deliberate change of pace into Craft & making.",
+    "the stretch pick says why, naming the subject, in plain text");
+  assert.notStrictEqual(fake.calls[1].opts.why, fake.calls[3].opts.why, "a top pick does not get the bridge line");
+  const region = m.body.children.filter((el) => el.id === "a11y-status").at(-1);
+  assert.ok(region, "a tail start is announced");
+  assert.strictEqual(region.textContent, `Up next: ${s1.title}`);
+});
+
+test("PQ-11: a tail pick never repeats an episode already played or queued", async () => {
+  /* t1 is in history, t2 is queued. Up Next plays first (t2), and then the
+     tail must skip both. MUTATION: drop `...pickedHistory()` from tailIds'
+     exclude -> t1 plays again. MUTATION 2: drop `...queueIds()` -> the tail
+     read while t2 is queued offers t2. */
+  const m = mount();
+  const { a, t1, t2, t3 } = seedDeal(m);
+  m.ctx.recordHistory(t1.id);
+  m.ctx.addToQueue(t2.id);
+  const fake = makeFakePlayer();
+  m.ctx.window.ForayPlayer = fake;
+  await clickRow(m, [{ id: a.id, ctx: "show-x" }], 0);
+  assert.ok(![...m.ctx.tailIds(a.id)].includes(t1.id), "history is not in the tail");
+  assert.ok(![...m.ctx.tailIds(a.id)].includes(t2.id), "Up Next is not in the tail");
+
+  await m.ctx.advanceQueueOnEnded(a.id); await settle();
+  assert.strictEqual(fake.calls[1].item.id, t2.id, "Up Next still comes first");
+  await m.ctx.advanceQueueOnEnded(t2.id); await settle();
+  assert.strictEqual(fake.calls[2].item.id, t3.id, "the tail skips what was played and queued");
+  const played = fake.calls.map((c) => c.item.id);
+  assert.strictEqual(new Set(played).size, played.length, "nothing played twice");
+});
+
+test("PQ-11: the switch off stops the tail too — and the skip still reaches it (a skip is the end reached early)", async () => {
+  /* README default 18: "The existing switch turns off the whole chain."
+     MUTATION: drop the `if (!autoAdvanceOn())` branch from
+     advanceQueueOnEnded -> t1 plays with the switch off. */
+  const m = mount();
+  const { a, t1 } = seedDeal(m);
+  const fake = makeFakePlayer();
+  m.ctx.window.ForayPlayer = fake;
+  await clickRow(m, [{ id: a.id, ctx: "show-x" }], 0);
+  m.ctx.lsSet("cp_autoadvance", false);
+
+  await m.ctx.advanceQueueOnEnded(a.id); await settle();
+  assert.strictEqual(fake.calls.length, 1, "with the switch off, the end of the list is silence");
+
+  /* EPISODE_NAVIGATION.next reads the same rules, so the steering wheel's
+     skip at the end of the list goes into the tail — switch or no switch. */
+  m.ctx.refreshEpisodeNavigation();
+  const { next } = fake.offered();
+  assert.strictEqual(typeof next, "function", "the skip is offered at the end of the list");
+  await next();
+  assert.strictEqual(fake.calls[1]?.item.id, t1.id, "and plays the tail's first pick");
 });

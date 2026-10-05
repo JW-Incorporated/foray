@@ -150,7 +150,6 @@ test("no pipeline input is in the plan", () => {
   for (const big of [
     "data/breadth-classification.json",
     "data/catalog-breadth.json",
-    "data/catalog-breadth-intl.json.gz",
     "data/episode-archive.json.gz",
     "data/transcript-availability.json",
   ]) {

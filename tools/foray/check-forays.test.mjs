@@ -74,7 +74,9 @@ import {
   narrationAudioProblems,
   renderedDurationProblem,
   carriesRenderedNarration,
+  AD_TIERS,
 } from "./check-forays.mjs";
+import { ANCHOR_TIME_TOLERANCE_SEC } from "../segments/merge-segments.mjs";
 
 const { BANNED, INTERNAL_VOCABULARY, wordCount, MAX_WHY_LINE_WORDS } = copyRules;
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -1783,6 +1785,122 @@ test("a missing dai_suspected is rejected", () => {
   const f = fx();
   delete f.sources.sources[0].dai_suspected;
   assert.match(errorsFor(f).join("\n"), /dai_suspected` must be a boolean/);
+});
+
+/* DAI-06 (docs/roadmap/dai.md §3): the `ad_*` invariants on a source row and
+ * the LOCATE-REQUIRED refusal in a published Foray. Every case mutates a
+ * fixture clone's first source row (boundary-ep-a, played by item A-1). */
+const adErrorsFor = (f) => errorsFor(f).filter((e) => /`ad_/.test(e));
+/** A well-formed positive pad: two probes, max(0, 90) + 10 = 100 s, PADDABLE. */
+const withPad = (f, fields = {}) =>
+  Object.assign(f.sources.sources[0], {
+    ad_delta_sec: 90,
+    ad_delta_probes: 2,
+    ad_delta_spread_sec: 10,
+    ad_pad_sec: 100,
+    ad_tier: "PADDABLE",
+    ...fields,
+  });
+
+test("a pad that is not delta + spread is refused", () => {
+  /* MUTATION: drop the `Math.abs(pad - bound) > 0.05` check -> red on the
+     110 s pad. MUTATION: drop the finite->=0 shape check -> red on the
+     negative and the string pad. */
+  const ok = fx();
+  withPad(ok);
+  assert.deepEqual(adErrorsFor(ok), [], "a pad equal to max(0, delta) + spread passes");
+  const within = fx();
+  withPad(within, { ad_pad_sec: 100.04 });
+  assert.deepEqual(adErrorsFor(within), [], "0.05 s of rounding slack");
+  const wrong = fx();
+  withPad(wrong, { ad_pad_sec: 110 });
+  assert.match(adErrorsFor(wrong).join("\n"), /segment-sources "boundary-ep-a": `ad_pad_sec` 110 is not max\(0, ad_delta_sec\) \+ ad_delta_spread_sec = 100/);
+  const negDelta = fx();
+  withPad(negDelta, { ad_delta_sec: -30, ad_pad_sec: 10 });
+  assert.deepEqual(adErrorsFor(negDelta), [], "a negative delta clamps to 0 in the bound");
+  for (const bad of [-1, "100", Number.NaN]) {
+    const f = fx();
+    withPad(f, { ad_pad_sec: bad });
+    assert.match(adErrorsFor(f).join("\n"), /`ad_pad_sec` must be a finite number >= 0/, String(bad));
+  }
+  /* A positive pad with nothing to be the sum of. MUTATION: drop the
+     finite-delta or the finite->=0-spread check -> red. */
+  const noDelta = fx();
+  withPad(noDelta, { ad_delta_sec: undefined });
+  assert.match(adErrorsFor(noDelta).join("\n"), /a positive `ad_pad_sec` needs a finite `ad_delta_sec`/);
+  const negSpread = fx();
+  withPad(negSpread, { ad_delta_spread_sec: -10, ad_pad_sec: 80 });
+  assert.match(adErrorsFor(negSpread).join("\n"), /a positive `ad_pad_sec` needs a finite `ad_delta_spread_sec` >= 0/);
+});
+
+test("a positive pad with one probe is refused", () => {
+  /* MUTATION: drop the `ad_delta_probes >= 2` check -> red. */
+  for (const probes of [1, 0, 2.5, undefined]) {
+    const f = fx();
+    withPad(f, { ad_delta_probes: probes });
+    assert.match(adErrorsFor(f).join("\n"), /segment-sources "boundary-ep-a": a positive `ad_pad_sec` needs `ad_delta_probes` an integer >= 2/, String(probes));
+  }
+});
+
+test("a pad's tier must follow the ceiling", () => {
+  /* MUTATION: drop the tier-vs-ceiling check -> red on the over-ceiling
+     PADDABLE row. MUTATION: `<=` -> `<` -> red on the at-ceiling row. */
+  const over = ANCHOR_TIME_TOLERANCE_SEC + 1;
+  const f = fx();
+  withPad(f, { ad_delta_sec: over - 10, ad_pad_sec: over, ad_tier: "PADDABLE" });
+  assert.match(adErrorsFor(f).join("\n"), new RegExp(`\`ad_tier\` must be "LOCATE-REQUIRED" for a ${over} s pad`));
+  const at = fx();
+  withPad(at, { ad_delta_sec: ANCHOR_TIME_TOLERANCE_SEC - 10, ad_pad_sec: ANCHOR_TIME_TOLERANCE_SEC, ad_tier: "PADDABLE" });
+  assert.deepEqual(adErrorsFor(at), [], "a pad of exactly the ceiling is PADDABLE");
+  const locate = fx();
+  withPad(locate, { ad_delta_sec: over - 10, ad_pad_sec: over, ad_tier: "LOCATE-REQUIRED" });
+  assert.deepEqual(adErrorsFor(locate), []);
+});
+
+test("a zero pad with a legacy ad_free_ratio passes", () => {
+  /* The committed six-field zero shape (data/segment-sources.json's eight
+     PADDABLE rows). MUTATION: require `ad_delta_probes >= 2` on a zero pad,
+     or validate `ad_free_ratio` -> red. MUTATION: drop the AD_TIERS
+     membership check -> red on the unknown tier. */
+  const zero = { ad_free_ratio: 1.0001, ad_delta_sec: 0, ad_delta_probes: 3, ad_delta_spread_sec: 0, ad_pad_sec: 0, ad_tier: "PADDABLE" };
+  const f = fx();
+  Object.assign(f.sources.sources[0], zero);
+  assert.deepEqual(adErrorsFor(f), []);
+  const oneProbe = fx();
+  Object.assign(oneProbe.sources.sources[0], zero, { ad_delta_probes: 1 });
+  assert.deepEqual(adErrorsFor(oneProbe), [], "a zero pad asks nothing of the probe count");
+  assert.deepEqual(AD_TIERS, ["PADDABLE", "LOCATE-REQUIRED"]);
+  assert.ok(Object.isFrozen(AD_TIERS));
+  const unknown = fx();
+  Object.assign(unknown.sources.sources[0], zero, { ad_tier: "paddable" });
+  assert.match(adErrorsFor(unknown).join("\n"), /segment-sources "boundary-ep-a": `ad_tier` must be one of PADDABLE, LOCATE-REQUIRED/);
+});
+
+test("a published Foray on a LOCATE-REQUIRED source is an error; a draft is a warning", () => {
+  /* MUTATION: drop the LOCATE-REQUIRED check -> red on both halves.
+     MUTATION: always E (or always W) -> red on the other half. */
+  const over = ANCHOR_TIME_TOLERANCE_SEC + 30;
+  const locate = (f) => withPad(f, { ad_delta_sec: over - 10, ad_pad_sec: over, ad_tier: "LOCATE-REQUIRED" });
+  const rx = /foray "boundary-1": items\[\d+\]: item "A-1" draws on LOCATE-REQUIRED source "boundary-ep-a" — it would be skipped at play while locateStep\(\) is unimplemented \(ADR-0008 decision 5\)/;
+
+  const draft = fx();
+  assert.equal(boundary(draft).status, "draft");
+  locate(draft);
+  const d = checkForays(draft);
+  assert.match(d.warnings.join("\n"), rx);
+  assert.deepEqual(d.errors.filter((e) => /LOCATE-REQUIRED/.test(e)), []);
+
+  const published = fx();
+  locate(published);
+  boundary(published).status = "published";
+  const p = checkForays(published);
+  assert.match(p.errors.join("\n"), rx);
+  assert.deepEqual(p.warnings.filter((w) => /LOCATE-REQUIRED/.test(w)), []);
+
+  const paddable = fx();
+  withPad(paddable);
+  boundary(paddable).status = "published";
+  assert.deepEqual(errorsFor(paddable).filter((e) => /LOCATE-REQUIRED/.test(e)), [], "a PADDABLE source is not refused");
 });
 
 /* #65 §2, AND THE ONE THING THAT NOW SATISFIES IT (F-74).

@@ -84,17 +84,18 @@ whole feature:
 
 ## 2. Inputs and storage
 
-### 2.1 The three catalogues, and what each one is for
+### 2.1 The two catalogues, and what each one is for
 
-There are three distinct show catalogues plus a client projection. They are
-easy to confuse and they do not contain the same shows.
+There are two distinct show catalogues plus a client projection (a third, the
+international breadth file, was retired on 2026-10-04; see the table and §6.5).
+They are easy to confuse and they do not contain the same shows.
 
 | File | Size | Shape | Shows | Who writes it | Who reads it |
 |---|---|---|---|---|---|
 | `data/catalog.json` | 172,616 B | `{version, built_at, notes, shows[]}` | **220** | Hand curation, 11 commits ever (§2.5) | `tools/build-catalog-client.mjs`, `backend/src/catalog/breadthCatalog.ts`, `api/shows/[show_id]/episodes.ts`, `api/episodes/*`, `tools/refresh/scan.mjs` |
 | `data/catalog-client.json` | 102,550 B | `{version, shows[]}` | **220** | `tools/build-catalog-client.mjs:buildCatalogClient` | **`app.js` only** — `init()`'s `fetchJson("data/catalog-client.json")` → `state.catalog` |
 | `data/catalog-breadth.json` | 12,486,611 B | `{version, built_at, region, source, genre_count, shows[]}` | **19,787** (US) | `tools/harvest-catalog.mjs` | `backend/src/catalog/breadthCatalog.ts`, `api/shows/[show_id]/episodes.ts:loadShowIndex`, `api/episodes/search.ts:loadShowMeta`. **Never fetched by the client** (`docs/CATALOG-PIPELINE.md` §"Forward-compatibility requirements" #5) |
-| `data/catalog-breadth-intl.json.gz` | 13,779,425 B | same, 18 storefronts | **121,786** | same harvester, `--regions` | **Nothing.** No endpoint, tool or test reads it (§6.5) |
+| International breadth file (retired 2026-10-04) | — | — | **0** (held 121,786 before retirement) | was `tools/harvest-catalog.mjs --regions` | **Nothing** read it; deleted per founder ruling, catalogue Q4 "yes" (`docs/roadmap/README.md` item 26; §6.5) |
 | `data/discover.json` | 2,414,655 B | `{version, built_at, items[]}` | **2,080 episodes** across 221 distinct `show` strings | The nightly (§3.7) | `app.js:fullPool`, `app.js:episodesForShow`, `app.js:showArtworkUrl` |
 
 **The join.** `data/discover.json` items carry **no `show_id`** — measured, 0 of
@@ -190,12 +191,12 @@ by the topic scorer (`search-engine.js`), **not** by any show surface.
 | Pool | Count | Source |
 |---|---|---|
 | Curated | **220** shows / 2,080 episodes | `data/catalog.json` + `data/discover.json`. Cited at `docs/show-pages-plan.md` §1 and `docs/curation/interest-survey-plan.md` §1.2 ("220 shows, **zero** with an empty `taxonomy_node_ids`"). |
-| Harvested breadth | **138,470** unique feeds (19,787 US + 121,786 intl, 1,157 overlap) | `docs/curation/catalogue-broadening.md` §1: *"Our catalogue is **138,470 unique feeds** after normalising scheme, case and trailing slash… The dump is **34x larger**; we hold **2.94 %** of it."* Per-file breakdown at `docs/curation/grilling-foray-sourcing.md` §5.1. |
+| Harvested breadth | **19,787** US shows (the international file was retired on 2026-10-04; founder ruling, catalogue Q4 "yes", `docs/roadmap/README.md` item 26) | `data/catalog-breadth.json` `shows.length`. Before retirement the US and international files together came to 138,470 unique feeds (`docs/curation/catalogue-broadening.md` §1; per-file breakdown at `docs/curation/grilling-foray-sourcing.md` §5.1), but show search only ever reached the US file (§6.5). |
 | PodcastIndex universe | **4,712,165** feeds / 165,012,527 episodes | `docs/curation/grilling-foray-sourcing.md` §5.4 (keyless `stats.podcastindex.org/daily_counts.json`, 2026-08-15); the bulk dump itself carries 4,710,545 rows (`docs/curation/catalogue-broadening.md` §1). |
 
-`docs/catalog-growth-plan.md` §0 quotes **~141,500** for the middle row. That is
-the *undeduped* sum and disagrees with `catalogue-broadening.md`'s 138,470.
-**Use 138,470.**
+`docs/catalog-growth-plan.md` §0 quotes **~141,500** and older docs quote
+138,470 for the middle row. Both counted the since-retired international file
+(the first is the *undeduped* sum). **Use 19,787.**
 
 **The sourcing constraint, stated correctly.** A DAI (dynamic-ad-insertion) host
 stitches ads per request, so the same episode GUID serves different bytes and a
@@ -886,15 +887,16 @@ founder's ask — *"the user should never notice any limitations based on our ow
 limited curation"* (`app.js:renderShowSearchResults` header, A3.1/Q3) — is met
 for lookup and not met for discovery.
 
-### 6.5 The international breadth catalogue is dead weight — NOT RECORDED ANYWHERE
+### 6.5 The international breadth catalogue was dead weight — RETIRED 2026-10-04
 
-`data/catalog-breadth-intl.json.gz` (13.8 MB, **121,786 shows**) is read by no
-endpoint, tool or test. `loadBreadthCatalog` names only
-`data/catalog-breadth.json`. So the "138,470-feed catalogue" that
-`docs/curation/catalogue-broadening.md` §1 and `docs/agents/fleet-review-2026-08.md`
-both quote is **not what show search reaches** — search reaches 19,787 US rows
-minus 103 curated duplicates. Any statement that 4a can find "138k shows" is
-false as shipped.
+The international breadth file (13.8 MB gzipped, **121,786 shows**) was read by
+no endpoint, tool or test; `loadBreadthCatalog` names only
+`data/catalog-breadth.json`. It was deleted on 2026-10-04 (#560 item 6), per the
+founder's catalogue Q4 ruling "yes" (`docs/roadmap/README.md` item 26). The
+harvested breadth catalogue is now **19,787 US shows**, and show search reaches
+those rows minus 103 curated duplicates. The "138,470-feed catalogue" that
+`docs/agents/fleet-review-2026-08.md` quotes (a dated record) counted the retired
+file; any statement that 4a can find "138k shows" is false.
 
 ### 6.6 F-59 / #547 — the same magnet label drives Similar shows — PARTIALLY RECORDED
 
