@@ -25,6 +25,7 @@ const assert = require("node:assert");
 const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
+const { pathToFileURL } = require("node:url");
 
 const ROOT = path.join(__dirname, "..");
 /* CRLF NORMALISED ON READ. This repo is developed on Windows against a
@@ -263,25 +264,39 @@ test("episodeDescriptionSectionHtml passes the episode's duration through as the
   assert.match(out, /data-ts="300"/, "5:00 is inside a 20-minute episode");
 });
 
-test("chapter rows are seek controls carrying start_time_seconds", () => {
-  const out = app.episodeChaptersHtml({ chapters: [{ start_time_seconds: 0, title: "Cold open" }, { start_time_seconds: 754, title: "The bit" }] });
-  assert.match(out, /<button type="button" class="ep-chapter-row" data-ts="0"/);
-  assert.match(out, /<button type="button" class="ep-chapter-row" data-ts="754"/);
-  assert.match(out, /12:34/, "the human-readable time is still shown");
+test("chapter rows are seek controls carrying start_time_seconds", async () => {
+  /* The clock text is exact only on a classified static show with the seek
+     policy loaded (CH-1, #1071; test/episode-chapters-visible.test.js owns the
+     precision matrix), so this loads the real policy. */
+  app.ForaySeekPolicy = await import(pathToFileURL(path.join(ROOT, "player", "seek-policy.js")).href);
+  try {
+    const out = app.episodeChaptersHtml({ dai_known: true, chapters: [{ start_time_seconds: 0, title: "Cold open" }, { start_time_seconds: 754, title: "The bit" }] });
+    assert.match(out, /<button type="button" class="ep-chapter-row" data-ts="0"/);
+    assert.match(out, /<button type="button" class="ep-chapter-row" data-ts="754"/);
+    assert.match(out, /12:34/, "the human-readable time is still shown");
+  } finally {
+    delete app.ForaySeekPolicy;
+  }
 });
 
-test("a chapter with no usable start time is rendered, but not as a control", () => {
-  /* Losing the row entirely would hide a chapter the publisher wrote; making it
-     a button that cannot seek would be a promise the markup cannot keep. */
+test("a chapter with no usable start time is dropped, never a control that seeks to 0:00", () => {
+  /* CH-1 (#1071) spec: a feed chapter with no start is dropped from the one
+     chapter list (episodeChapterList), which Now Playing reads too; it used to
+     render as a dead row. `Number(null)` is 0, so the `== null` guard is what
+     keeps it from becoming a confident seek to the beginning.
+     MUTATION: drop `c.start_time_seconds != null &&` in episodeChapterList — a
+     "Chapter"-row seeking to 0 renders; red. */
   const out = app.episodeChaptersHtml({ chapters: [{ start_time_seconds: null, title: "Unplaceable" }] });
-  assert.match(out, /Unplaceable/);
-  assert.ok(!out.includes("ep-chapter-row"), "no seek control without a position");
+  assert.strictEqual(out, "", "no section for a list with no placeable chapter");
 });
 
 test("a chapter title is escaped like any other publisher text", () => {
   const out = app.episodeChaptersHtml({ chapters: [{ start_time_seconds: 1, title: "<img src=x onerror=1>" }] });
   assert.ok(!out.includes("<img"), "no tag from a chapter title may reach the output");
-  assert.ok(!/<[^>]*\sonerror/i.test(out));
+  /* Quoted attribute values blanked first: since CH-1 the row's aria-label
+     carries the (escaped) title, and text inside a quoted value is not an
+     attribute. esc() escapes `"`, so a title cannot close the quote. */
+  assert.ok(!/<[^>]*\sonerror/i.test(out.replace(/"[^"]*"/g, '""')));
   assert.match(out, /&lt;img/);
 });
 

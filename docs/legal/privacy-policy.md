@@ -450,6 +450,12 @@ the real chain can be longer.
 The app also loads **cover artwork over HTTPS from publisher and Apple-hosted
 image URLs**, which reveals the same kind of request metadata to those hosts.
 
+In the native app, opening an episode can also make your device **fetch that
+episode's chapter list, or read the start of its audio file for chapter marks,
+directly from the publisher's servers** (`app.js:readDeviceChapters()`), which
+reveals the same kind of request metadata to those hosts and involves no 4a
+server.
+
 Finally, the web app is served from **GitHub Pages**, so GitHub serves the page
 and the catalogue files and sees those requests. In the native app the shell and
 catalogue are bundled, so this does not apply there.
