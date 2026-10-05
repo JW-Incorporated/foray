@@ -215,5 +215,14 @@ The breadth tier is now **19,787 US shows** (`data/catalog-breadth.json`); the
 international file was retired on 2026-10-04 (founder ruling, catalogue Q4 "yes",
 `docs/roadmap/README.md` item 26; #560 item 6). It held 121,786 shows from 18
 regional Apple top-chart sets, gzipped, and no endpoint, tool or test read it.
-The file stays in git history if it is ever wanted back; re-harvesting is
-`tools/harvest-catalog.mjs --regions`.
+The file stays in git history if it is ever wanted back. To re-harvest instead,
+always pass `--out` with a path outside the repo, because without it the harvester
+overwrites `data/catalog-breadth.json`, the US file that server code reads:
+
+```
+node tools/harvest-catalog.mjs --regions fr,de,jp,br,mx,es,it,in,nl,dk,se,za,no,gb,ie,au,nz,ca \
+  --exclude data/catalog-breadth.json --out ../breadth-international.json
+```
+
+`--exclude` keeps the batch disjoint from the US file, as the retired file was.
+The output (~76 MB raw) is too large to commit uncompressed.
