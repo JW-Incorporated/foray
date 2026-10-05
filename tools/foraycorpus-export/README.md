@@ -93,3 +93,21 @@ Add one paragraph per module as it lands.
   key (`/`, `\`, `.`, `..`, empty) is refused, and the resolved path must
   stay under `episodes/` (the `startsWith(base + sep)` guard from
   `tools/segments/fetch-transcripts.mjs` `transcriptPath`).
+- **`manifest.mjs`, `delta.mjs`** (PKG-06): `delta.mjs` holds the export's
+  high-water mark in a state file (`readState` gives
+  `{version:1, last_export_version, high_water:{max_asset_id, max_episode_updated_at}}`,
+  defaults when the file is absent, `DeltaError CORRUPT_STATE` when it does not
+  parse). `computeHighWater(source)` streams `assets` and `episodes` once each.
+  `isChanged(episodeRow, hw)` is true when an episodes.jsonl row has a strictly
+  newer `updated_at` or an asset id above `max_asset_id`. `episodes.updated_at`
+  is ASSUMED until PKG-03 confirms it, so a null one makes that half false and
+  never throws, and the asset-id half works alone. Timestamps compare as
+  instants, not strings. `manifest.mjs` `buildManifest` lists every file of a
+  version directory with `bytes`, streamed `sha256` (`hashFile`) and `rows`,
+  plus counts, high-water mark, delta and overlap. `computeSourceCounts` gives
+  `feeds_known`, `feeds_crawled` (non-null `last_success_at`) and `inserts_30d`
+  (`updated_at`, else `source_published_at`, at or after `built_at` − 30 d).
+  `writeLatest` writes `latest.json` last. It first re-hashes every listed file
+  against the manifest (`ManifestError FILE_MISMATCH` otherwise) and writes
+  tmp + rename. Both modules write through `writeJsonAtomic` from
+  `tools/segments/sweep-transcripts.mjs`, whose CLI is guarded.
