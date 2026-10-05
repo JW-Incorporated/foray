@@ -131,6 +131,7 @@ gzipped over the wire.
   **Practical soft cap: ~2,000 discover items / ~1.5MB.** At the cap: shard discover.json per
   top-level branch and lazy-load — or treat hitting the cap as the natural trigger for API-served
   search (§3, stage 4). Write the cap into DURABLE-WORK.md before tonight's catalog wave (A26).
+  *(Done 2026-10-05: DURABLE-WORK.md §7. The measurement then was 2,167 items / 2.55 MB.)*
 - **F2.5 — Migration path to API-served data.** The client is already shaped for it: all data
   arrives through `fetchJson()` into `state.*`, so "try API with a short timeout, fall back to the
   static file" is a ~10-line change when stage 3 (§3) arrives. No pre-work needed now.
@@ -378,7 +379,7 @@ Effort: S <1h · M half-day · L multi-day.
 | A23 | Service worker: cache-first app shell + stale-while-revalidate data (fixes the offline white-screen noted in docs/marketing/09; bug-fix class, freeze-compatible) | M | — | 2nd-tester |
 | A24 | `GET /sessions/current` + API-first/static-fallback in `init()` (cutover stage 3); cron keeps baking the static fallback | M | A16, A20 | multi |
 | A25 | Per-profile session docs, or builder-neutral second-person copy, so testers stop being curated as you (F4.3) | M | A24 | multi |
-| A26 | Document the discover.json soft cap (~2,000 items / 1.5MB) + the shard-per-branch fallback in DURABLE-WORK.md, before more catalog waves land | S | — | now (doc) |
+| A26 | Document the discover.json soft cap (~2,000 items / 1.5MB) + the shard-per-branch fallback in DURABLE-WORK.md, before more catalog waves land. **DONE 2026-10-05** (#560 item 10): DURABLE-WORK.md §7. Measured then: 2,167 items / 2.55 MB, already over the cap; documented as a budget, not a CI gate | S | — | now (doc) |
 | A27 | iOS pre-Mac batch: `builder: String?` in the Swift Session model; `DEVELOPMENT_TEAM: ${DEVELOPMENT_TEAM}` substitution in project.yml; minute-one Mac checklist for `info.properties` synthesis and the package-test scheme reference | S | A9 | iOS |
 
 ### Fine — deliberately simple, do not touch

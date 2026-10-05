@@ -45,7 +45,7 @@
       "title": "omega tau",
       "apple_collection_id": 350159142,
       "feed_url": "https://omegataupodcast.net/show/en/feed/mp3/",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/45/79/ff/4579ffe8-ae75-a586-df5a-940e3b0b8ae7/mza_12776813321781247935.png/600x600bb.jpg",
       "apple_genre": null,
       "episode_count": null,
       "editorial_note": "The most technically dense engineering-tour podcast in English -- stellarators, magnets, superconductivity, no hand-holding.",
@@ -70,7 +70,8 @@
       "episode_count": null,
       "editorial_note": "Shorter founder interviews across the clean-energy startup landscape, fusion included.",
       "taxonomy_node_ids": [
-        "engineering/energy-fusion"
+        "engineering/energy-grid",
+        "business/startups"
       ],
       "archetype_fit": [
         "stretch"
@@ -109,7 +110,6 @@
       "episode_count": null,
       "editorial_note": "How deep-tech founders take a lab result to a company -- fusion and hard-tech leadership stories.",
       "taxonomy_node_ids": [
-        "engineering/energy-fusion",
         "business/startups"
       ],
       "archetype_fit": [
