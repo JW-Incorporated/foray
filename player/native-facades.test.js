@@ -326,6 +326,26 @@ test("an item with no id sends nothing and moves no pointer", async () => {
   s.done();
 });
 
+test("PQ-19: a downloaded pick plays its local file, and the engine's pointer row names the original episode", async () => {
+  // MUTATION: build the row from `item` instead of `rowItem` in play() -> the
+  // stored row carries the file:// URL and isLocalFile, not the stream.
+  const s = await stack();
+  const original = episode("a");
+  const playable = { ...original, audio_url: "file:///data/foray-downloads/a.bin", source_audio_url: original.audio_url, isLocalFile: true };
+  s.f.manager.setQueueFromPick(playable, { lastEpisodeItem: original });
+  assert.equal(await s.f.manager.play(0), true);
+  assert.equal(s.f.manager.queue[0].audio_url, playable.audio_url, "the engine is handed the local file");
+  const row = JSON.parse(s.ref.storage.getItem("cp_last_episode"));
+  assert.equal(row.id, "a");
+  assert.equal(row.audio_url, original.audio_url, "the pointer streams the episode if the file is gone tomorrow");
+  assert.equal(row.isLocalFile, undefined);
+  // A different episode's original is never used for this pick's row.
+  s.f.manager.setQueueFromPick(episode("b"), { lastEpisodeItem: original });
+  await s.f.manager.play(0);
+  assert.equal(JSON.parse(s.ref.storage.getItem("cp_last_episode")).id, "b");
+  s.done();
+});
+
 /* ---------- the listener's speed ---------- */
 
 test("a rate set at any moment reaches the engine, and the label reads it back before the engine answers", async () => {
