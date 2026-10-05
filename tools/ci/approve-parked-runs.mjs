@@ -4,6 +4,12 @@
    .github/workflows/shows-import.yml; see that step's comment for why the
    runs get parked and why approving them is safe.
 
+   WHY tools/ci/ AND NOT tools/shows/: the workflow runs this as a gate with
+   a token that can approve workflow runs (`actions: write`). On an allowed
+   path a bot PR could rewrite it and auto-merge unread; tools/ci/ is in
+   path-policy's DENIED_PREFIXES, so a change here needs a founder (the
+   gate scan in tools/ci/path-policy.test.mjs enforces this).
+
    This used to be inline bash in the workflow. It moved here because review
    of PR #1038 found two ways the bash gave a WRONG answer, and the whole
    point of the step is to measure whether the workflow token can approve

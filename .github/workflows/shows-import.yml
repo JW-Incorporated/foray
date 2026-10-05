@@ -231,9 +231,10 @@ jobs:
           REPO: ${{ github.repository }}
           HEAD_SHA: ${{ steps.pointer_pr.outputs.head_sha }}
           PR_NUMBER: ${{ steps.pointer_pr.outputs.pr_number }}
-        # The logic lives in tools/shows/approve-parked-runs.mjs (with tests)
-        # so it can be checked off-CI: it keeps polling and approving until a
+        # The logic lives in tools/ci/approve-parked-runs.mjs (with tests;
+        # under tools/ci/ so path-policy denies it: it holds a token that can
+        # approve workflow runs) so it can be checked off-CI: it keeps polling and approving until a
         # quiet window passes (runs from several workflows appear seconds
         # apart), and it never reads a FAILED list call as "nothing parked".
         # BRANCH comes from the workflow-level env.
-        run: node tools/shows/approve-parked-runs.mjs
+        run: node tools/ci/approve-parked-runs.mjs
