@@ -362,3 +362,9 @@ export function describeTimestamp(seconds, precision = EXACT) {
   const mins = Math.round(seconds / 60);
   return `around minute ${mins}`;
 }
+
+/* For app.js, a classic script that cannot import this module (CH-1, #1071):
+   the episode page's chapter times and timestamp links read the rule from
+   here rather than keeping a copy. Guarded, so node and the parity harness
+   import this file with no window. */
+if (typeof window !== "undefined") window.ForaySeekPolicy = { seekPrecision, formatTimestamp, describeTimestamp, FOREIGN, EXACT, APPROXIMATE };
