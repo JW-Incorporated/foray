@@ -64,3 +64,32 @@ Add one paragraph per module as it lands.
   `counts.json` (13 assets, 8 episodes, 4 English timed, 3 timed + audio);
   its README records which column lists are brief §1 and which are ASSUMED
   until PKG-03 confirms them.
+- **`catalogue.mjs`** (PKG-04): `buildShows(source, { catalog })` streams the
+  corpus tables once each and returns `{ rows, stats, chosenFeedByPodcast }`:
+  one `shows.jsonl` row per English podcast (`english_candidate_status ===
+  "yes"`), sorted by `corpus_podcast_id`, carrying the chosen feed (latest
+  `last_success_at`, else the first), PodcastIndex id, `itunes_id`, feed and
+  PodcastIndex categories, rights flags (`itunes:block` / `podcast:locked`
+  raw `"yes"|"true"|"1"` → true), crawl state, and distinct-episode counts
+  (`timed_transcript_episodes` via `isTimedMime`, `audio_episodes` from
+  `alternate` audio assets). `foray_show_id` is the `data/catalog.json`
+  `show_id` whose feed URL matches under `normalizeFeedUrl` from
+  `tools/shows/identity.mjs`, else `String(itunes_id)`, else null. The caller
+  passes the parsed catalog; the module never reads `data/`.
+  `chosenFeedByPodcast` (internal podcast id → feed id) is what
+  `episodes.mjs` takes as its injected Map.
+- **`episodes.mjs`** (PKG-05): `buildEpisodes(source, { podcastIds,
+  chosenFeedByPodcast })` is an async generator of `{ podcast_id, rows }`,
+  one row per episode, newest first, with the guid from the source record on
+  the chosen feed, the chosen transcript (`pickTranscriptAsset`: vtt > srt >
+  x-subrip > json > other timed, else the first plain, classified by
+  `classifyTranscriptMime`) plus the other transcript assets as
+  `transcript_alternates`, `chapters_url` (an `asset_type: "chapters"` asset),
+  the first `alternate` audio asset and the sorted `asset_ids`. It takes the
+  chosen-feed Map injected and does not import `catalogue.mjs`.
+  `writeEpisodesFile(outDir, showKey, rows)` writes
+  `episodes/<safeKey(showKey)>.jsonl` via a tmp file + rename; the show key is
+  `foray_show_id ?? corpus_podcast_id` (`showKeyOf(showRow)`). A path-shaped
+  key (`/`, `\`, `.`, `..`, empty) is refused, and the resolved path must
+  stay under `episodes/` (the `startsWith(base + sep)` guard from
+  `tools/segments/fetch-transcripts.mjs` `transcriptPath`).
