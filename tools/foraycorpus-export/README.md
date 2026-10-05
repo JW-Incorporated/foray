@@ -142,3 +142,18 @@ Add one paragraph per module as it lands.
   matches. The CLI is `node tools/foraycorpus-export/overlap.mjs --shows
   <shows.jsonl> [--breadth data/catalog-breadth.json]` and prints the JSON.
   PKG-08 wires `--breadth` into the exporter.
+- **`r2-client.mjs`** (PKG-11): `loadR2Credentials({ env, readFile, homedir })`
+  takes the `R2_ENV` names when key id, secret and endpoint are all set, else
+  the file named by `R2_CREDENTIALS_FILE`, else `~/.foray/r2-credentials`.
+  The file is `key = value` lines. Keys are lowercased and matched against the
+  farm's alias table (`ALIASES`), so the dashboard spelling (`Access_Key_ID`)
+  and the `R2_ACCESS_KEY_ID=` lines HUMAN-ACTIONS #138 asks for both resolve.
+  The bucket defaults to `DEFAULT_BUCKET`. A miss throws `R2Error
+  NO_CREDENTIALS` naming the sources tried and no value. The secret is
+  non-enumerable, and `toJSON()` redacts the key id. `createR2Client` builds
+  the farm's client: region `auto`, path-style, and both checksum options
+  `WHEN_REQUIRED`. It leaves the SDK's own User-Agent alone. `listPrefix` follows
+  `NextContinuationToken`. `getObject` reads the body with
+  `Body.transformToByteArray()` (64 MB cap, `TOO_LARGE`) and returns the
+  farm's `sha256` metadata as `sha256Meta`. The SDK is imported lazily, and
+  the tests inject a fake client and `S3Client` class.

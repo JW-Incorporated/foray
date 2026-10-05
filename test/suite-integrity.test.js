@@ -2153,6 +2153,7 @@ const FLOORS = {
   "tools/foraycorpus-export/pg-row-source.test.mjs": 5, // PKG-07 (docs/roadmap/corpus.md): read-only Postgres row source on a fake client (READ ONLY trio, id + tuple keyset paging, PKG-02 column lists, no password in describe/errors, unknown table)
   "tools/foraycorpus-export/overlap.test.mjs": 3, // PKG-09 (docs/roadmap/corpus.md): breadth overlap (itunes first, feed-only via normalizeFeedUrl, null ids never match, stable keys incl. CLI)
   "tools/foraycorpus-export/wave-candidates.test.mjs": 4, // PKG-35 (docs/roadmap/corpus.md): #279 drinks-wave candidates (fixed positives, whole-word boundary negatives, dai_prior false/null/true before timed, english null without a shows.jsonl row)
+  "tools/foraycorpus-export/r2-client.test.mjs": 6, // PKG-11 (docs/roadmap/corpus.md): R2 S3 client on a fake client (continuation-token paging, sha256 metadata, dashboard + HUMAN-ACTIONS #138 credential spellings with redacted toJSON, NO_CREDENTIALS names its sources, WHEN_REQUIRED checksum options, no tracked r2-credentials)
   /* The breadth prioritiser and its yield report (#114). Floored for the same
      reason politeness.test.mjs is, and the reason is not hypothetical here
      either: the first draft of `rank-breadth.mjs` had a seed hash that produced
