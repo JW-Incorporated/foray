@@ -25,6 +25,12 @@
  *                                                               -> test 3
  *   - add `create policy x on public.content_reports for select to anon, authenticated using (true);`
  *                                                               -> tests 3, 4
+ *   - add `create policy content_reports_read on public.content_reports using (true);`
+ *     (no FOR = FOR ALL, no TO = TO PUBLIC)                     -> test 3
+ *   - add `create policy x on public.content_reports as permissive for select to anon using (true);`
+ *                                                               -> tests 3, 4
+ *   - add `create policy x on public.content_reports for select to authenticated;`
+ *     (no USING: unparseable, caught by the raw count)          -> test 3
  *   - insert-own `with check (true)` instead of the uid match   -> test 3
  *   - delete the select-own policy                              -> tests 3, 4
  *   - `grant select on public.content_reports to authenticated;` (whole table)
@@ -52,12 +58,26 @@ const SQL = flat(sqlOnly(read(FILE)));
 const UID = "\\(\\(select auth\\.uid\\(\\)\\) = user_id\\)";
 
 /** Every `create policy` on content_reports in ANY supabase/ file: a later
-    migration cannot widen the table without these tests seeing it. */
+    migration cannot widen the table without these tests seeing it. `as`,
+    `for` and `to` are all optional in Postgres: no FOR means FOR ALL, no TO
+    means TO PUBLIC, so a bare `... on public.content_reports using (true);`
+    parses as verb "all", roles ["public"] and fails the role/verb checks.
+    `raw` counts every `create policy` on the table however it is written, so
+    a policy this parser cannot read still breaks `raw === parsed.length`. */
 function policies() {
   const all = fs.readdirSync(path.join(ROOT, SUPA)).filter((n) => n.endsWith(".sql")).sort()
     .map((f) => flat(sqlOnly(read(`${SUPA}/${f}`)))).join(" ");
-  return [...all.matchAll(/create policy (\w+) on public\.content_reports for (\w+) to ([\w, ]+?) (using|with check) (\(.*?\));/g)]
-    .map(([, name, verb, roles, clause, expr]) => ({ name, verb, roles: roles.split(/,\s*/).sort(), clause, expr }));
+  const raw = (all.match(/create policy \w+ on public\.content_reports\b/g) || []).length;
+  const parsed = [...all.matchAll(/create policy (\w+) on public\.content_reports(?: as (permissive|restrictive))?(?: for (\w+))?(?: to ([\w, ]+?))? (using|with check) (\(.*?\))(?: with check \(.*?\))?;/g)]
+    .map(([, name, as, verb, roles, clause, expr]) => ({
+      name,
+      as: as || "permissive",
+      verb: verb || "all",
+      roles: (roles || "public").split(/,\s*/).sort(),
+      clause,
+      expr,
+    }));
+  return Object.assign(parsed, { raw });
 }
 
 test("the table: owner, target, reasons, a 280-character note, a status the founder sets", () => {
@@ -82,6 +102,7 @@ test("RLS is enabled on content_reports", () => {
 
 test("insert-own and delete-own for authenticated; no update policy, no policy for anon, nothing for all", () => {
   const pol = policies();
+  assert.strictEqual(pol.raw, pol.length, `${pol.raw} create policy statements on content_reports, but only ${pol.length} parse as name/for/to/using|with check: write any new one in that shape so these checks can see it`);
   for (const p of pol) {
     assert.deepStrictEqual(p.roles, ["authenticated"], `${p.name}: reports are for a signed-in owner only, never anon`);
     assert.ok(!["update", "all"].includes(p.verb), `${p.name}: no client changes a report (founder triage runs as postgres)`);
