@@ -2086,6 +2086,9 @@ const FLOORS = {
      REAL node subprocess (no fake exec anywhere) to prove the forwarding
      actually reaches the child's argv. */
   "tools/shows/run-and-publish-execargv.test.mjs": 1,
+  "tools/shows/load-postgres.test.mjs": 11, // PKG-01 (S-09 tools half): pure-function halves of the Postgres loader, incl. main's { baseline, changed } shape
+  "tools/shows/search-shows.test.mjs": 7, // PKG-01: FTS/trgm query builders
+  "tools/shows/shows-postgres-integration.test.mjs": 8, // PKG-01: real-Postgres acceptance; skips without TEST_DATABASE_URL
   "tools/foraycorpus-export/config.test.mjs": 4, // PKG-01 (docs/roadmap/corpus.md): corpus-export package scaffold, config + identity scan
   "tools/foraycorpus-export/mimes.test.mjs": 3, // PKG-02 (docs/roadmap/corpus.md): transcript mime classifier (timed/plain/other, superset of TIMED_TRANSCRIPT_TYPES)
   "tools/foraycorpus-export/row-source.test.mjs": 5, // PKG-02 (docs/roadmap/corpus.md): JSONL row source over the synthetic fixture, counts.json recount
