@@ -192,3 +192,64 @@ Add one paragraph per module as it lands.
   [--breadth] [--catalog] [--out] [--harvested-at]`) writes the envelope
   minified to `data-local/corpus-export/catalog-breadth-corpus.json` and
   refuses an `--out` under `data/`.
+- **`export.mjs`** (PKG-08): the exporter CLI. `parseExportArgs(argv)` gives
+  `{ source, out, dryRun, catalogPath, breadthPath }`. `--source` is required,
+  as `pg` or `jsonl:<dir>`. `out` defaults to `data-local/corpus-export/`
+  (`EXPORT_OUT_DIR`) and `catalogPath` to `data/catalog.json`. An unknown,
+  repeated or valueless flag throws `ExportError`. `runExport(args, { now,
+  sourceFactory })` computes the high-water mark first. Then it runs
+  `buildShows`, passes its `chosenFeedByPodcast` to `buildEpisodes` (every
+  English podcast gets a file), and writes the manifest. The delta is taken
+  against the version `state.json` names. Everything is built in a hidden
+  `.partial-*` staging directory, which is renamed into place before
+  `latest.json` is written, and `state.json` is written after that. With
+  `--breadth` the manifest carries `computeOverlap`'s block, else `overlap:
+  null`. Two corpus podcasts with one show key: the later one's file falls
+  back to its `corpus_podcast_id`, with a warning on stderr.
+
+## Usage
+
+```
+node tools/foraycorpus-export/export.mjs --source jsonl:tools/foraycorpus-export/fixtures/synthetic --out "$TMP/out"
+node tools/foraycorpus-export/export.mjs --source pg --breadth data/catalog-breadth.json
+```
+
+| flag | meaning |
+|---|---|
+| `--source jsonl:<dir>` | read `<table>.jsonl` files (a fixture) |
+| `--source pg` | read foraycorpus read-only; connection string from `FORAYCORPUS_DATABASE_URL` |
+| `--out <dir>` | export root; default `data-local/corpus-export/`; a path under `data/` is refused |
+| `--catalog <file>` | the catalogue for `foray_show_id`; default `data/catalog.json` |
+| `--breadth <file>` | add the breadth overlap block (`data/catalog-breadth.json`) |
+| `--dry-run` | build in a tmp directory, print the manifest, write nothing under `--out` |
+
+The last line printed is the summary:
+`shows=<n> episodes=<n> delta_added=<n> delta_changed=<n> out=<version dir>`.
+
+One run writes:
+
+```
+<out>/<version dir>/shows.jsonl
+<out>/<version dir>/episodes/<safeKey(show key)>.jsonl
+<out>/<version dir>/manifest.json
+<out>/latest.json      {export_version, manifest_path, built_at}, written last
+<out>/state.json       {version, last_export_version, high_water}
+```
+
+**The version directory is not the export version (Windows).** `export_version`
+is the run's ISO instant, for example `2026-10-05T12:34:56.789Z`, kept exactly
+in `manifest.json`, `latest.json` and `state.json`. NTFS refuses `:` in a file
+name, so the directory is `versionDirName(export_version)`, with every `:`
+replaced by `-` (`2026-10-05T12-34-56.789Z`). The mapping is one-to-one and
+sorts in the same order, so the newest version is still the last directory by
+name. Readers follow `latest.json`'s `manifest_path`, which already names the
+directory.
+
+**Delta.** An episode is *added* when its `corpus_episode_id` is not in the
+same show's file of the previous version. It is *changed* when it was there and
+`isChanged` is true against the stored high-water mark (a newer asset id, or a
+newer `updated_at`). With no previous version every episode counts as added.
+A rerun over an unchanged corpus reports `delta_added=0 delta_changed=0` and
+writes a byte-identical `shows.jsonl`. A run that fails before `latest.json` is
+written leaves `latest.json` and `state.json` where they were, and leaves no
+version directory behind.
