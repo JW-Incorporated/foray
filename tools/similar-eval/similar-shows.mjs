@@ -30,7 +30,9 @@ function similarShows(show, limit = 6) {
     .filter(s => s.show_id !== show.show_id && s.label_scope !== "general")
     .map(s => ({ show: s, shared: (s.taxonomy_node_ids || []).filter(id => nodeIds.has(id)).length }))
     .filter(x => x.shared > 0)
-    .sort((a, b) => b.shared - a.shared || a.show.show_id.localeCompare(b.show.show_id))
+    .sort((a, b) => b.shared - a.shared
+      || (a.show.taxonomy_node_ids || []).length - (b.show.taxonomy_node_ids || []).length
+      || a.show.show_id.localeCompare(b.show.show_id))
     .slice(0, limit)
     .map(x => x.show);
 }

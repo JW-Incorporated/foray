@@ -2160,6 +2160,7 @@ const FLOORS = {
   "tools/foraycorpus-export/r2-client.test.mjs": 6, // PKG-11 (docs/roadmap/corpus.md): R2 S3 client on a fake client (continuation-token paging, sha256 metadata, dashboard + HUMAN-ACTIONS #138 credential spellings with redacted toJSON, NO_CREDENTIALS names its sources, WHEN_REQUIRED checksum options, no tracked r2-credentials)
   "tools/foraycorpus-export/show-map.test.mjs": 7, // PKG-12 (docs/roadmap/corpus.md): R2 show directory -> foray show_id map (catalog feed match, breadth apple id, slug dirs, the farm's four pinned slugify examples, unknown -> null, localDirFor = safeKey, first writer wins + collision report)
   "tools/foraycorpus-export/catalog-adapter.test.mjs": 5, // PKG-31 (docs/roadmap/corpus.md): breadth-shaped catalogue from the corpus (ruling-31 rights skip + counts, chart fields + taxonomy_node_ids from the old row else null/[], in_curated only for catalog ids, old 18 keys + 2 additive, minified CLI output that refuses data/)
+  "tools/foraycorpus-export/export.test.mjs": 5, // PKG-08 (docs/roadmap/corpus.md): export CLI end to end on the synthetic fixture (English show + episode counts, a rerun is a new version with 0/0 delta and byte-identical shows.jsonl, one appended higher asset id -> 1 changed, --dry-run leaves outRoot absent, latest.json names the newest Windows-safe version directory)
   /* The breadth prioritiser and its yield report (#114). Floored for the same
      reason politeness.test.mjs is, and the reason is not hypothetical here
      either: the first draft of `rank-breadth.mjs` had a seed hash that produced
@@ -2282,6 +2283,7 @@ const FLOORS = {
   "tools/poll/politeness.test.mjs": 4, // PKG-06 (S-10): new -- per-host politeness port, constants pinned to backend/src/feeds/politeness.ts
   "tools/poll/select-due.test.mjs": 6, // PKG-06 (S-10): new -- due-set selection (dead, not-due, caps, order, bad URL, budget untouched) + the G9 weekly projection
   "tools/poll/watchlist.test.mjs": 10, // PKG-07 (S-10): new -- watchlist assembly (curated, unmapped, changed top-N, tiers, 90-day expiry, seed size) + the seed builder (exit 2 on ok:false, curated-only seed, --check)
+  "tools/poll/poll-episodes.test.mjs": 7, // PKG-08 (S-10): new -- poll-episodes dry-run CLI (no-DB exit 0 naming G1/G3, DB set refuses exit 3, env var order, summary shape + fetched 0, seed-alone on a failed change index, the 40,000 target line, absent/missing/malformed seed)
 };
 
 test("no suite is floored twice", () => {
