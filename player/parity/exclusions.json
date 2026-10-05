@@ -1209,23 +1209,11 @@
     },
     "client.js actually passes a TTS bridge into the queue manager": {
       "reason": "js-module-shape",
-      "why": "client.js's wiring of the page's shared bridge instance (into the queue manager, and the Kokoro probe through the same instance). In native mode the engine owns its narrator; the page's wiring is pinned here and by native-mode.test.js, not reimplemented."
+      "why": "client.js's wiring of the page's shared bridge instance into the queue manager. In native mode the engine owns its narrator; the page's wiring is pinned here and by native-mode.test.js, not reimplemented."
     },
-    "kokoroProbe delegates to the module, through the same memoised load": {
+    "the bridge carries no Kokoro probe delegate, and client.js loads no probe (#1076)": {
       "reason": "js-module-shape",
-      "why": "The developer-only Kokoro probe's delegate on the page's bridge (kokoroProbe through the memoised module). It is a ForayTts plugin method the page calls; the engine neither probes nor exposes it."
-    },
-    "an older shell build — a module with no kokoroProbe — answers engine-absent": {
-      "reason": "js-module-shape",
-      "why": "The developer-only Kokoro probe's delegate on the page's bridge (kokoroProbe through the memoised module). It is a ForayTts plugin method the page calls; the engine neither probes nor exposes it."
-    },
-    "no module at all is no-bridge, and the probe still resolves": {
-      "reason": "js-module-shape",
-      "why": "The developer-only Kokoro probe's delegate on the page's bridge (kokoroProbe through the memoised module). It is a ForayTts plugin method the page calls; the engine neither probes nor exposes it."
-    },
-    "client.js runs the probe through the SAME shared bridge instance": {
-      "reason": "js-module-shape",
-      "why": "client.js's wiring of the page's shared bridge instance (into the queue manager, and the Kokoro probe through the same instance). In native mode the engine owns its narrator; the page's wiring is pinned here and by native-mode.test.js, not reimplemented."
+      "why": "A pin that the page's bridge no longer carries the developer-only Kokoro probe delegates (kokoroProbe, onProbePass) and that client.js no longer imports player/kokoro-probe.js (founder ruling 2026-10-05, issue #1076). The native engine never probed or exposed either; this is a rule about the JS module's shape, not about narration."
     },
     "a transport call before anything has spoken does NOT load the module": {
       "reason": "js-module-shape",

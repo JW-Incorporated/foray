@@ -575,11 +575,10 @@ export function isUnimplementedRejection(e) {
 }
 
 /** An error's code or name, admitted only as a bare ASCII identifier of at
-    most 40 characters; `null` otherwise. The same rule as
-    `player/kokoro-probe.js`'s `nameOf` — written twice rather than imported
-    for the reason `PROBE_ENGINE` is (a classic-script page and a plugin web
-    half cannot import each other; `tts-bridge.js`'s header).
-    `tools/mobile/foray-tts.test.mjs` holds the two in step. */
+    most 40 characters; `null` otherwise. It was the same rule as
+    `player/kokoro-probe.js`'s `nameOf` until that module left the app bundle
+    (2026-10-05, issue #1076); `tools/mobile/foray-tts.test.mjs` now pins it
+    case by case. */
 export function probeErrorName(e) {
   if (!e || (typeof e !== "object" && typeof e !== "function")) return null;
   for (const v of [e.code, e.name]) {

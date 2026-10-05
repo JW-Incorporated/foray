@@ -4,7 +4,7 @@
 lawyer (see §9).** Each remaining `TODO(founder)` below is a fact only a founder
 can supply. Do not publish this to a store listing with any of them unresolved.
 
-Last updated: 2026-09-30 (the effective date is the "Last updated" date of the
+Last updated: 2026-10-05 (the effective date is the "Last updated" date of the
 republished page at https://jwlabs.ai/4a/privacy/) · Applies to: the **4a** web app
 (https://jw-incorporated.github.io/foray/) and the iOS/Android app built from the
 same code. The app was formerly Foray. That is why the word is still in this URL
@@ -148,7 +148,7 @@ The app also asks the browser to mark its storage as persistent
 | `cp_interlude` | Whether the short jingle between a foray's segments is on or off — a local per-device preference. On unless you turn it off | **No** |
 | `cp_family` | Family mode on/off — a local content filter that hides explicit-rated episodes | **No** |
 | `cp_show_drafts` | Whether the settings switch that lists unpublished (draft) forays on this device is on — a local per-device preference for testing them before they are published. Off by default | **No** |
-| `cp_voice_probe` | Whether the settings switch that offers the voice-engine measurement on this device is on — a local per-device preference used to test a bundled narration voice before it ships. Off by default; when it is off the control is not shown at all | **No** |
+| `cp_voice_probe` | Retired (2026-10-05): it used to hold whether the settings switch that offered an on-device voice-engine measurement was on. The measurement and its switch were removed from the app. It is no longer written, and a copy left from an earlier version is deleted the next time the app starts | **No** |
 | `cp_autoadvance` | Continuous playback on/off — a local per-device preference for whether finishing an episode starts the next one: your Up Next list first, then the rest of the list you started from. On by default | **No** (but see `autoadvance_pref` in §2) |
 | `cp_engine_applied` | Bookkeeping for the iOS app's native audio player: the sequence numbers of the last automatic "next episode" and the last playback position that the player recorded while the app was in the background and that the app has since added to your on-device listening record, so reopening the app never adds one twice. No episode ids; one of the numbers is the time the app last planned what plays next. Written only when that player hands such records over | **No** |
 | `cp_intro_dismissed` | Whether you dismissed the intro card | **No** |

@@ -278,7 +278,7 @@ work, gated on the fixture below actually passing on real devices. What changed 
 narrower: a Foray whose data already carries a narration `script` is now spoken by
 the player instead of failing to load.
 
-## K-01: the bundled-voice probe (`kokoroProbe`)
+## K-01: the bundled-voice probe (`kokoroProbe`) — page half removed 2026-10-05 (#1076)
 
 `docs/bundled-voice-plan.md` K-01 — a **throwaway measurement path, not a product
 feature**, deleted in K-04's cutover. It answers one question: can this phone
@@ -351,13 +351,17 @@ natively — no path crosses the bridge).
 locked screen fine" because nothing ran would be worse than one that refuses: the
 first gets pasted into a decision.
 
-### Reaching it from a phone
+### Reaching it from a phone: no longer possible (2026-10-05)
 
-Settings → **Voice engine probe: on** → **Run the voice engine probe**. Off by
-default, and while it is off the run control is not in the DOM at all — the same
-idiom `app.js`'s "Show draft Forays" switch uses. The numbers land in the
-Playback-diagnostics record as a `voiceProbe` row, which is the surface a founder
-already knows how to copy out. The instruction is `HUMAN-ACTIONS.md` #45.
+**The page half of the probe is gone.** Founder ruling 2026-10-05 (issue #1076,
+recorded verbatim there): narration renders centrally (`docs/DECISIONS.md`
+2026-09-28), so `player/kokoro-probe.js`, the bundled
+`kokoro-probe-passage.json`, the drawer's "Voice engine probe" switch and the
+bridge's `kokoroProbe`/`onProbePass` delegates were removed from the app bundle.
+The plugin's own `kokoroProbe` method (web half and native engines) is still in
+the plugin; nothing in the app calls it. Until then it was Settings → **Voice
+engine probe: on** → **Run the voice engine probe**, writing a `voiceProbe` row
+into the Playback-diagnostics record (`HUMAN-ACTIONS.md` #45).
 
 ## What was NOT verified, stated plainly
 

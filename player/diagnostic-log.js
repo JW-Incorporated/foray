@@ -904,7 +904,13 @@ export const ENGINE_MODES = new Set(["native", "js", "undecided"]);
    The `summarizeProbe` keys `kokoro-probe.js` hands `voiceProbe()`, by the
    same closed sets and shapes that file admits them with. Kept as a second
    copy on purpose: this module imports nothing (its header), so the two are
-   pinned to each other by a test instead. */
+   pinned to each other by a test instead.
+
+   SINCE 2026-10-05 (founder ruling, issue #1076) `player/kokoro-probe.js`
+   and the tests that held these copies in step are gone from the app: no
+   page code writes a `voiceProbe` or `voiceSoak` row any more. The sets and
+   formatters below stay so a record that already holds such rows still reads
+   back; every "held in step" note in this section is history. */
 
 /** ORT's error code, named (L03, L36). */
 export const PROBE_ORT_CODES = new Set([

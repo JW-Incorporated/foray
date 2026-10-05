@@ -574,7 +574,13 @@ test("the shipped source names exactly the 22 cp_ key families the audit found",
      optional label, the episode's length then. Device-only — no event type,
      never sent, never synced (roadmap README Q19). Same mechanism: this count
      failed first, then the policy check, until privacy-policy.md §1 got the
-     row. */
+     row.
+
+     Still 33 on 2026-10-05: `cp_voice_probe` was retired with the on-device
+     Kokoro probe (founder ruling, issue #1076) — the switch and
+     `player/kokoro-probe.js` are gone — but it stays a family, the way
+     `cp_lastpick` did, because app.js's RETIRED_STORAGE_KEYS names it to
+     remove a copy left on an older device, and its policy row says Retired. */
   const families = [...keyFamiliesInSource().keys()].sort();
   assert.strictEqual(
     families.length, 33,
