@@ -1948,6 +1948,7 @@ const FLOORS = {
      merge.mjs wrote them. Runs the real script against a temp fixture; each
      test names its mutation. */
   "tools/refresh/backfill-provenance.test.mjs": 3,
+  "tools/refresh/relabel.test.mjs": 4, // PKG-06 (2026-10-04): validated per-episode relabel of committed discover items (episodeTopics wrapped, topics_source stamped "episode", all-or-nothing write, --dry-run writes nothing); runs the real script against a temp fixture, each test names its mutation; new, zero slack
   /* REMOVED 2026-09-24 (issue #701): `tools/refresh/manifest-step.test.mjs`,
      floored at 9 here, and the module it tested. The nightly's deploy-manifest
      step existed only because the stamp was committed (HUMAN-ACTIONS #37); the
