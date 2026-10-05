@@ -223,19 +223,15 @@ import { BUILD_STAMP_FILE, buildStampDoc } from "../../player/build-stamp.js";
    pointer it serves. Neither is a committed file any more — see
    `tools/ci/generate-manifest.mjs`'s header. */
 import { sourceStamp } from "../ci/generate-manifest.mjs";
-import { createRequire } from "node:module";
 
-/* The PRODUCTION search engine, for the same reason as the two joins above (#279):
-   the tag slice's correctness condition is "tagCount and tagDF cannot tell the
-   slice from the whole map", so the counts it carries are computed — and checked —
-   by the functions the app and the website run, not by a copy of their matcher.
-   A plain script with a CommonJS export (it is a <script> on the page), hence
-   createRequire rather than an import. Kept as a plain `require("...")` call so
-   tools/ci/path-policy.test.mjs's signing-job walk sees it: this file runs in the
-   release jobs that hold the signing secrets, and search-engine.js is listed there
-   in ACKNOWLEDGED_RELEASE_APP_CODE. */
-const require = createRequire(import.meta.url);
-const SearchEngine = require("../../search-engine.js");
+/* search-engine.js is deliberately NOT imported here (#279 review), unlike the two
+   joins above. This file runs inside the release jobs that hold the iOS and Android
+   signing secrets, and search-engine.js is a large ALLOWED file a bot can change and
+   auto-merge; tools/ci/path-policy.test.mjs's signing-job walk proves it stays
+   unreachable from those jobs. The tag slice's `df` block is computed instead by
+   `tagDfBlock` below, a few lines of governed code, and its equality with the real
+   engine's tagCount/tagDF is proven in the secret-free `data-and-site` check by
+   prepare-webdir.test.mjs, which imports the real search-engine.js. */
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -1440,14 +1436,38 @@ export function assertForaySliceComplete(foraysDoc, full, sliced) {
  * the tag lists of exactly the items the app SEARCHES — `session.episodes` plus the
  * bundled discover slice, the pool `app.js`'s `fullPool()` builds and that
  * `scoreMatch`, `itemWordSets` and `corpusDF` read — and adds a top-level `df`
- * block, computed by the engine's own `buildTagDfBlock` over the WHOLE map: the
- * whole map's entry count, and the count of every term whose candidate forms hit a
- * segment (every prefix of every segment that counts nonzero, which is every term
- * that can count nonzero at all — see `readTagDfBlock` in search-engine.js). The
- * engine reads `tagCount` and `tagDF` off that block, so the app's numbers ARE the
- * website's, term for term, including the union `tagCount` takes over a term's
- * candidate forms, which a per-segment table would get wrong.
- * `assertItemTagsSliceComplete` proves that on every build.
+ * block computed over the WHOLE map by `tagDfBlock` below: the whole map's entry
+ * count, and the count of every term whose candidate forms hit a segment (every
+ * prefix of every segment that counts nonzero, which is every term that can count
+ * nonzero at all — see `readTagDfBlock` in search-engine.js). The engine reads
+ * `tagCount` and `tagDF` off that block, so the app's numbers ARE the website's,
+ * term for term, including the union `tagCount` takes over a term's candidate
+ * forms, which a per-segment table would get wrong.
+ *
+ * WHY THE COUNTS ARE COMPUTED HERE AND NOT BY search-engine.js (#279 review). The
+ * first cut required the production engine and counted with its own `tagCount`.
+ * That put search-engine.js — a large ALLOWED file a bot can change and auto-merge
+ * — inside the release jobs that hold the signing secrets, which the repo does not
+ * accept (tools/ci/path-policy.test.mjs, ACKNOWLEDGED_RELEASE_APP_CODE). So the
+ * matcher's counting rule is restated below in governed code, and the two halves of
+ * the old build-time proof are split by where they can safely run:
+ *   - HERE, in the release path, only data checks: the slice is the pool, the
+ *     block's `total`/`entries` are the two maps' entry counts (the condition
+ *     `readTagDfBlock` honours a block on), and the block is the one `tagDfBlock`
+ *     computes from the source (`assertItemTagsSliceComplete`). No app code runs.
+ *   - In the secret-free `data-and-site` check, prepare-webdir.test.mjs imports the
+ *     REAL search-engine.js and proves the restatement cannot drift: its sense-locked
+ *     stems are the engine's, its block is the table the engine's own `tagCount`
+ *     produces over every prefix, and the engine's tagCount/tagDF give identical
+ *     answers on the slice and the whole map — on a fixture built to break each
+ *     rule and on today's real documents. A change to the engine's matcher turns that
+ *     required check red until this copy follows it (the matcher has moved twice in
+ *     the repo's history: #252 and #450).
+ * Why not a committed generated file instead: `data/item-tags.json` changes every
+ * night, and the nightly commits exactly two files (tools/refresh/nightly-runner.mjs
+ * NIGHTLY_FILES, #701), so a committed table would be stale — and red — every night
+ * unless that pinned contract grew a third file. Computing it here from the source
+ * the bundle is built from has no staleness to catch.
  *
  * The block is honoured only on the map it was shipped with (`df.entries` must equal
  * the map's own entry count), so a WHOLE `data/item-tags.json` — the website's, or
@@ -1471,10 +1491,63 @@ export function searchedPoolIds(discoverDoc, sessionDoc) {
   return ids;
 }
 
+/* THE ENGINE'S TAG MATCHER, RESTATED — search-engine.js `candidateForms`,
+   `tagSegmentIndex` and `tagCount`, and nothing else of it. A term counts an
+   entry when one of its candidate forms equals one of the entry's hyphen-split tag
+   segments; a term under 4 characters takes `s`, a longer one `s`, `es` and `ing`,
+   and a SENSE-LOCKED stem refuses `ing`. prepare-webdir.test.mjs pins this list to
+   the engine's `SENSE_LOCKED_STEMS` and the whole rule to the engine's answers;
+   change it only together with search-engine.js. */
+export const TAG_DF_SENSE_LOCKED_STEMS = Object.freeze(["book", "hang", "market", "train", "wind"]);
+const SENSE_LOCKED = new Set(TAG_DF_SENSE_LOCKED_STEMS);
+
+/** search-engine.js `candidateForms`, restated (see above). */
+export function tagCandidateForms(t) {
+  if (t.length < 4) return [t, t + "s"];
+  if (SENSE_LOCKED.has(t)) return [t, t + "s", t + "es"];
+  return [t, t + "s", t + "es", t + "ing"];
+}
+
+/**
+ * The `df` block for a slice of `source` that keeps `keptEntries` of its entries:
+ * `{ total, entries, by_count }`, where `total` is the WHOLE map's entry count and
+ * `by_count` groups every term whose count over the whole map is nonzero by that
+ * count (each count written once, ~7 KB less than a term -> count object on the real
+ * map), terms sorted. Every candidate form is the term plus a suffix, so a term can
+ * only match a segment it is a PREFIX of; walking every prefix of every segment
+ * therefore reaches every term that counts nonzero. A term's count is the size of
+ * the UNION of the entries its forms hit — `war` on an entry tagged both `war` and
+ * `wars` counts once.
+ */
+export function tagDfBlock(source, keptEntries) {
+  const tags = source?.tags || {};
+  const index = new Map(); // segment -> Set of entry indices, as tagSegmentIndex
+  let i = 0;
+  for (const list of Object.values(tags)) {
+    const segs = new Set();
+    for (const tag of list) for (const s of tag.split("-")) segs.add(s);
+    for (const s of segs) {
+      let set = index.get(s);
+      if (!set) index.set(s, (set = new Set()));
+      set.add(i);
+    }
+    i++;
+  }
+  const terms = new Set();
+  for (const seg of index.keys()) for (let k = 0; k <= seg.length; k++) terms.add(seg.slice(0, k));
+  const byCount = {};
+  for (const t of [...terms].sort()) {
+    const hit = new Set();
+    for (const f of tagCandidateForms(t)) for (const e of index.get(f) || []) hit.add(e);
+    if (hit.size > 0) (byCount[hit.size] ||= []).push(t);
+  }
+  return { total: Object.keys(tags).length, entries: keptEntries, by_count: byCount };
+}
+
 /**
  * The bundled `data/item-tags.json`: the tag lists of the searched pool, in
  * document order, every other top-level key kept, plus the whole map's counts
- * (`df`, written by search-engine.js's `buildTagDfBlock`) — see the § above.
+ * (`df`, written by `tagDfBlock`) — see the § above.
  *
  * @param {object} source  the repo's whole `data/item-tags.json`
  * @param {{discover: object, session: object}} pool  the discover slice and the
@@ -1509,22 +1582,24 @@ export function itemTagsSlice(source, { discover, session }) {
     /* Not decoration, for the reason discoverSlice gives: a phone holding 703 of
        2,204 tag lists must say so, or it reads as a broken map. */
     bundled_from: { entries: Object.keys(tags).length, pool: pool.size, kept: keptEntries },
-    df: SearchEngine.buildTagDfBlock(source, keptEntries),
+    df: tagDfBlock(source, keptEntries),
     tags: kept,
   };
 }
 
 /**
  * Prove the bundled tag map is the searched pool's tag lists and nothing else, and
- * that `tagCount` and `tagDF` cannot tell it from the whole map.
+ * that it carries the `df` block the engine needs to count it as the whole map.
  *
- * The count check is the one that matters, for the reason every verifier here
- * exists: a slice that silently fell back to counting itself — a `df` block the
- * engine rejects, a table missing the plural-only terms, a size that is the
- * slice's — writes a smaller file and reports success, and the app ranks
- * differently from the website on a phone. So it runs the REAL engine over both
- * maps for every prefix of every whole-map segment (every term that can count
- * nonzero) and every term the table names, and demands identical answers.
+ * The df check is the one that matters, for the reason every verifier here exists:
+ * a slice that silently fell back to counting itself — a lost block, a block the
+ * engine rejects because `entries` is not the slice's own entry count, a `total`
+ * that is the slice's, a table missing the plural-only terms — writes a smaller
+ * file and reports success, and the app ranks differently from the website on a
+ * phone. DATA CHECKS ONLY: this runs in the release jobs that hold the signing
+ * secrets, so it never loads search-engine.js (see the § above). That the block it
+ * demands is what the engine's own tagCount/tagDF compute is proven in secret-free
+ * CI, by prepare-webdir.test.mjs against the real engine.
  *
  * @param {object} source   the repo's whole `data/item-tags.json`
  * @param {object} written  what the bundle carries (or will)
@@ -1568,37 +1643,41 @@ export function assertItemTagsSliceComplete(source, written, { discover, session
     }
   }
 
-  /* Fresh contexts, one per map, exactly as the app and the website each build
-     theirs: the engine memoizes on the ctx, so sharing one would compare a map
-     against its own cache. */
-  const wholeCtx = { itemTags: { tags: whole } };
-  const sliceCtx = { itemTags: written };
-  const terms = new Set();
-  for (const list of Object.values(whole)) {
-    for (const tag of Array.isArray(list) ? list : []) {
-      for (const seg of String(tag).split("-")) {
-        for (let k = 0; k <= seg.length; k++) terms.add(seg.slice(0, k));
-      }
+  /* The block, against the one the source determines. The two entry counts first,
+     by name, because they are the condition search-engine.js `readTagDfBlock`
+     honours a block on: a wrong `entries` is not a wrong count, it is a block the
+     engine silently ignores. */
+  const df = written?.df;
+  const keptEntries = Object.keys(sliced).length;
+  const want = tagDfBlock(source, keptEntries);
+  const slicedNote =
+    `The app would count the slice instead of the whole map and interpret queries ` +
+    `differently from the website (search-engine.js readTagDfBlock).`;
+  if (!df || typeof df !== "object" || !df.by_count || typeof df.by_count !== "object") {
+    throw new WebDirError(`the bundled data/item-tags.json has no "df" block. ${slicedNote}`);
+  }
+  if (df.total !== want.total || df.entries !== keptEntries) {
+    throw new WebDirError(
+      `the bundled data/item-tags.json's df block says total ${df.total} / entries ${df.entries}; ` +
+        `the whole map has ${want.total} entries and the slice ${keptEntries}. ${slicedNote}`
+    );
+  }
+  if (!isDeepStrictEqual(df.by_count, want.by_count)) {
+    const got = new Map();
+    for (const [n, group] of Object.entries(df.by_count)) {
+      for (const t of Array.isArray(group) ? group : []) got.set(t, Number(n));
     }
-  }
-  for (const group of Object.values(written?.df?.by_count ?? {})) {
-    for (const t of Array.isArray(group) ? group : []) terms.add(t);
-  }
-  const off = [];
-  for (const t of terms) {
-    if (SearchEngine.tagCount(t, wholeCtx) !== SearchEngine.tagCount(t, sliceCtx) ||
-        SearchEngine.tagDF(t, wholeCtx) !== SearchEngine.tagDF(t, sliceCtx)) off.push(t);
-  }
-  if (off.length) {
+    const wantCounts = new Map();
+    for (const [n, group] of Object.entries(want.by_count)) for (const t of group) wantCounts.set(t, Number(n));
+    const off = [...new Set([...got.keys(), ...wantCounts.keys()])].filter((t) => got.get(t) !== wantCounts.get(t));
     const t = off[0];
     throw new WebDirError(
-      `search-engine.js counts ${off.length} term(s) differently on the bundled tag slice than on ` +
-        `the whole map — ${JSON.stringify(t)}: tagCount ${SearchEngine.tagCount(t, wholeCtx)} vs ` +
-        `${SearchEngine.tagCount(t, sliceCtx)}, tagDF ${SearchEngine.tagDF(t, wholeCtx)} vs ` +
-        `${SearchEngine.tagDF(t, sliceCtx)}. The app would interpret queries differently from the ` +
-        `website. The slice's "df" block must carry the WHOLE map's count for every term that ` +
-        `counts nonzero and the whole map's entry count, and "df.entries" must equal the slice's ` +
-        `own entry count or the engine ignores the block (search-engine.js readTagDfBlock).`
+      `the bundled data/item-tags.json's df block counts ${off.length} term(s) differently from the ` +
+        `whole map` +
+        (t === undefined
+          ? ` (same counts, different grouping or order)`
+          : ` — ${JSON.stringify(t)}: the block says ${got.get(t) ?? 0}, the whole map ${wantCounts.get(t) ?? 0}`) +
+        `. ${slicedNote}`
     );
   }
   return true;
@@ -1781,7 +1860,9 @@ export const PROJECTED_DATA = [
  * arrive as the WHOLE document, each with its reason: `data/forays.json` until F-92
  * (2026-09-12; it is now seeded, and `assertSeedForaysComplete` pins it), and
  * `data/item-tags.json` until #279 (it is now sliced WITH the whole map's counts,
- * and `assertItemTagsSliceComplete` proves search cannot tell). What the list
+ * `assertItemTagsSliceComplete` checks the slice and its block on every build, and
+ * prepare-webdir.test.mjs proves against the real engine that search cannot tell).
+ * What the list
  * asserted — "parses to the same document as the source" — is still asserted for
  * every bundled data file that is not a slice, by the last loop in
  * `assertSlicesOnDisk`. A file somebody must not trim next belongs in that loop's

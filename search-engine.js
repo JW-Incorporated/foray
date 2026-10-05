@@ -431,9 +431,17 @@ function tagSegmentIndex(ctx) {
    THE TABLE IS COMPLETE, not a sample of the vocabulary: it holds every term with
    a nonzero count. Every candidate form of a term is the term plus a suffix
    (candidateForms), so a term can only match a segment it is a PREFIX of, and
-   `buildTagDfBlock` counts every prefix of every segment of the whole map and keeps
-   the nonzero ones. A term absent from the table has a count of zero on the
-   website too.
+   the bundler (prepare-webdir.mjs `tagDfBlock`) counts every prefix of every
+   segment of the whole map and keeps the nonzero ones. A term absent from the
+   table has a count of zero on the website too.
+
+   THE TABLE IS BUILT WITHOUT THIS FILE, on purpose: the bundler runs inside the
+   release jobs that hold the signing secrets, and this file must never execute
+   there (tools/ci/path-policy.test.mjs). So `tagDfBlock` restates candidateForms,
+   SENSE_LOCKED_STEMS and the segment rule, and tools/mobile/prepare-webdir.test.mjs
+   pins that restatement to THIS file's tagCount and tagDF in the secret-free
+   data-and-site check. Change candidateForms, SENSE_LOCKED_STEMS or the hyphen
+   split here and that check goes red until tagDfBlock follows.
 
    IT APPLIES ONLY TO THE MAP IT WAS SHIPPED WITH. `entries` must equal this map's
    own entry count, so a WHOLE map (the website's file, or the one issue #40's
@@ -457,26 +465,6 @@ function readTagDfBlock(itemTags) {
 function bundledTagCounts(ctx) {
   if (ctx._bundledTagCounts === undefined) ctx._bundledTagCounts = readTagDfBlock(ctx.itemTags);
   return ctx._bundledTagCounts;
-}
-
-/* The `df` block for a slice of `itemTags` that keeps `keptEntries` of its entries:
-   every term whose count over the WHOLE map is nonzero, grouped by that count
-   (grouping writes each count once, ~7 KB less than a term -> count object on the
-   real map). Counted by `tagCount` itself, on a ctx holding the whole map, so the
-   table is by construction what the website computes. Build-time only
-   (prepare-webdir.mjs); the app never calls it. */
-function buildTagDfBlock(itemTags, keptEntries) {
-  const whole = { itemTags: { tags: itemTags?.tags || {} } };
-  const terms = new Set();
-  for (const seg of tagSegmentIndex(whole).keys()) {
-    for (let k = 0; k <= seg.length; k++) terms.add(seg.slice(0, k));
-  }
-  const byCount = {};
-  for (const t of [...terms].sort()) {
-    const n = tagCount(t, whole);
-    if (n > 0) (byCount[n] = byCount[n] || []).push(t);
-  }
-  return { total: Object.keys(whole.itemTags.tags).length, entries: keptEntries, by_count: byCount };
 }
 
 function tagCount(term, ctx) {
@@ -2573,8 +2561,6 @@ const SearchEngine = {
   STRONG_RATIO, RICH_MIN, DEFAULT_CAP, PER_SHOW_CAP, LISTENED_PENALTY, SENSE_LOCKED_STEMS,
   tokenize, branchOf, tagCount, tagDF, dfMultiplier, expansionBucket, corpusDF, hitText, hitTag,
   primeVocabulary,
-  /* #279: written into the native bundle's tag slice by tools/mobile/prepare-webdir.mjs. */
-  buildTagDfBlock,
   lemmaVariants,
   interpretQuery, passesFilters, scoreMatch, searchWithRelaxation, classifyResults, diversify,
   strongPrefix,

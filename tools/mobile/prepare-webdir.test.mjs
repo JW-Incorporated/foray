@@ -49,6 +49,7 @@ import {
   assertDiscoverSliceComplete, serializeSlice, sliceBytes, assertSlicesOnDisk, projectData,
   referencedSegmentIds, segmentSlice, segmentSourceSlice, assertForaySliceComplete,
   isBundledData, SEED_POINTER, itemTagsSlice, assertItemTagsSliceComplete, searchedPoolIds,
+  tagDfBlock, tagCandidateForms, TAG_DF_SENSE_LOCKED_STEMS,
   UNPINNED_DATA, unpinnedDataPlan, unpinnedDataOverBudget,
   seedCarries, seedForays, assertSeedForaysComplete, seedPointerDoc,
   MODEL_EXTENSIONS, assertNoModelWeights,
@@ -848,9 +849,42 @@ test("the artwork the app would show is the artwork the website shows", () => {
 });
 
 /* #279: the tag map is SLICED to the searched pool and carries the WHOLE map's
-   counts beside it. The production engine, loaded the way prepare-webdir.mjs and
-   the website load it, is what both sides of every comparison below run. */
+   counts beside it. The production engine, loaded here the way the website loads
+   it, is what both sides of every comparison below run.
+
+   THIS FILE IS WHERE THE ENGINE IS ALLOWED TO RUN, and prepare-webdir.mjs is not
+   (#279 review): the bundler executes in the release jobs that hold the signing
+   secrets, so it computes the df block with a governed restatement of the matcher
+   (`tagDfBlock`) and checks only data at build time. These tests run in the
+   secret-free `data-and-site` check and carry the half of the proof that needs the
+   real engine — that the restatement is the engine's rule, and that tagCount/tagDF
+   cannot tell the slice from the whole map. */
 const SE = createRequire(import.meta.url)(path.join(ROOT, "search-engine.js"));
+
+/** The df table the ENGINE says a map has: its own `tagCount`, on a fresh ctx
+ *  holding the whole map, over every term that can count nonzero (every prefix of
+ *  every segment), grouped like `tagDfBlock`'s. This is the construction the first
+ *  cut of #279 ran inside the bundler; it lives here now, where the engine may run. */
+function engineDfByCount(itemTags) {
+  const ctx = { itemTags: { tags: itemTags.tags } };
+  const byCount = {};
+  for (const t of [...tagTermUniverse(itemTags)].sort()) {
+    const n = SE.tagCount(t, ctx);
+    if (n > 0) (byCount[n] ||= []).push(t);
+  }
+  return byCount;
+}
+
+/** The engine-side half of the slice's proof, moved here out of the bundler's
+ *  `assertItemTagsSliceComplete` (#279 review): the REAL tagCount and tagDF, on a
+ *  fresh ctx per map, give identical answers on the whole map and on the slice for
+ *  every term that can count nonzero, every term the block names, and `extra`.
+ *  Returns the terms that differ. */
+function sliceCountDivergence(whole, slice, extra = []) {
+  const terms = tagTermUniverse(whole, extra);
+  for (const group of Object.values(slice?.df?.by_count ?? {})) for (const t of group) terms.add(t);
+  return tagCountDivergence(whole, slice, terms);
+}
 
 /** Every term `tagCount` can count nonzero on `itemTags` is a prefix of one of its
  *  segments (each candidate form is the term plus a suffix), so this set plus any
@@ -912,8 +946,10 @@ test("#279: the tag slice keeps exactly the searched pool, and tagCount/tagDF re
          counts itself, `comedy` 1 -> 0, parity fails;
        - search-engine.js tagDF: `bundled ? bundled.total :` -> `false ? bundled.total :`
          — the denominator is the slice's 3, not the map's 8;
-       - search-engine.js buildTagDfBlock: `let k = 0` -> `let k = seg.length` — the
-         table holds whole segments only, `cook` 1 -> 0;
+       - prepare-webdir.mjs tagDfBlock: `let k = 0` -> `let k = seg.length` — the
+         table holds whole segments only, `cook` 1 -> 0 (the bundler's own data check
+         recomputes with the same function and passes, which is exactly why the
+         engine-side comparison lives here);
        - prepare-webdir.mjs searchedPoolIds: `new Set(Object.keys(sessionDoc?.episodes ?? {}))`
          -> `new Set()` — `s1` is dropped, and the kept-ids assertion fails (the verifier
          shares that function, which is why the expected ids are written out here). */
@@ -959,8 +995,9 @@ test("#279: a WHOLE map counts itself — no stale bundle-time counts — and th
          — a block left on a NEWER whole map (issue #40 fetches the website's file,
          which may also have kept a stale block in a merge) is read as truth, and
          `war` reports the bundle-time 3 instead of the map's 4;
-       - prepare-webdir.mjs assertItemTagsSliceComplete: delete the `if (off.length)`
-         throw — a corrupted count ships and nothing notices;
+       - prepare-webdir.mjs assertItemTagsSliceComplete: delete the
+         `!isDeepStrictEqual(df.by_count, want.by_count)` throw — a corrupted count
+         ships and nothing at build time notices;
        - prepare-webdir.mjs itemTagsSlice: delete the `source.df !== undefined`
          refusal — a df block committed to the repo's file would be served to the
          website as its counts. */
@@ -982,7 +1019,21 @@ test("#279: a WHOLE map counts itself — no stale bundle-time counts — and th
   (corrupt.df.by_count["2"] ||= []).push("comedy");
   assert.throws(
     () => assertItemTagsSliceComplete(itemTags, corrupt, { discover, session }),
-    (e) => e instanceof WebDirError && /counts \d+ term\(s\) differently/.test(e.message) && /"comedy"/.test(e.message)
+    (e) => e instanceof WebDirError && /counts 1 term\(s\) differently from the whole map/.test(e.message) &&
+      /"comedy": the block says 2, the whole map 1/.test(e.message)
+  );
+  /* And the corruption IS a divergence the engine would act on, so the data check
+     above is guarding something real. */
+  assert.deepEqual(sliceCountDivergence(itemTags, corrupt), ["comedy"]);
+  /* The two entry counts are the condition the engine honours a block on: a wrong
+     `entries` is a block silently ignored, a wrong `total` a wrong denominator. */
+  assert.throws(
+    () => assertItemTagsSliceComplete(itemTags, { ...slice, df: { ...slice.df, entries: 8 } }, { discover, session }),
+    /says total 8 \/ entries 8; the whole map has 8 entries and the slice 3/
+  );
+  assert.throws(
+    () => assertItemTagsSliceComplete(itemTags, { ...slice, df: { ...slice.df, total: 3 } }, { discover, session }),
+    /says total 3 \/ entries 3/
   );
   /* ...and a slice that gained a row the app cannot search (which would also make
      the engine ignore its block) is refused by the pool check. */
@@ -1020,8 +1071,10 @@ test("#279: prepare writes the tag slice, and the on-disk check notices a bundle
   fs.writeFileSync(bundledAbs, serializeSlice(stripped));
   assert.throws(
     () => assertSlicesOnDisk(path.join(fake, "www"), fake),
-    (e) => /counts \d+ term\(s\) differently on the bundled tag slice/.test(e.message)
+    (e) => /the bundled data\/item-tags\.json has no "df" block/.test(e.message)
   );
+  /* ...and that loss is one the engine would act on. */
+  assert.notDeepEqual(sliceCountDivergence(source, stripped), []);
   /* Formatting alone must NOT trip it: pretty-print the real slice back. */
   fs.writeFileSync(bundledAbs, JSON.stringify(bundled, null, 4));
   assert.equal(assertSlicesOnDisk(path.join(fake, "www"), fake), true);
@@ -1058,6 +1111,9 @@ test("REAL REPO: the tag slice gives every term primeVocabulary walks — and ev
   assert.ok(tagged.length > 0, "no session episode is tagged today — the session half of the pool is untested here");
   for (const id of tagged) assert.ok(id in slice.tags, `session episode ${id} lost its tags`);
   assert.equal(slice.df.total, entries);
+  /* The bundler's restated matcher, on today's whole map, IS the engine's table. */
+  assert.deepEqual(slice.df.by_count, engineDfByCount(whole), "tagDfBlock no longer computes what the engine counts");
+  assert.equal(assertItemTagsSliceComplete(whole, slice, { discover, session }), true);
 
   const vocabulary = new Set();
   const concepts = read("data/semantic-index.json").concepts ?? {};
@@ -1091,6 +1147,58 @@ test("REAL REPO: the tag slice gives every term primeVocabulary walks — and ev
   t.diagnostic(`bare trim: ${movedCount.length} counts, ${movedBucket.length} expansion buckets, ${movedMult.length} multipliers moved; with the df block: 0`);
   assert.ok(movedCount.length > 0, "a bare trim moves no count — the comparison above is vacuous");
   assert.ok(sliceBytes(slice) < sliceBytes(whole) * 0.6, "the slice saves less than this change claims");
+});
+
+test("#279 review: the bundler's restated matcher is the engine's — sense-locked stems, candidate forms and the union — so search-engine.js never runs in a signing job", () => {
+  /* WHY THIS TEST EXISTS. prepare-webdir.mjs runs inside the release jobs that hold
+     the signing secrets, so it may not load search-engine.js (tools/ci/
+     path-policy.test.mjs proves the walk never reaches it). It computes the df
+     block with `tagDfBlock`, a restatement of the engine's candidateForms,
+     SENSE_LOCKED_STEMS and hyphen split. A restatement drifts the day somebody
+     tunes the engine, so this pins it to the REAL engine, here, in the secret-free
+     data-and-site check, where a drift is a red required check rather than an app
+     that ranks differently from the website.
+     MUTATIONS THIS KILLS (each run):
+       - search-engine.js: add "cook" to SENSE_LOCKED_STEMS — the stem list
+         assertion fails (and the probe map below diverges on `cook`);
+       - prepare-webdir.mjs tagCandidateForms: `t.length < 4` -> `t.length < 3` —
+         `war` gains `wares`/`waring`, the probe map's counts differ;
+       - prepare-webdir.mjs tagCandidateForms: drop `t + "ing"` from the long branch
+         — `grill` stops counting `grilling`;
+       - prepare-webdir.mjs tagDfBlock: count `hit.size` per FORM instead of the
+         union (sum of `index.get(f).size`) — `war` on an entry tagged war AND wars
+         counts twice. */
+  assert.deepEqual([...TAG_DF_SENSE_LOCKED_STEMS].sort(), [...SE.SENSE_LOCKED_STEMS].sort(),
+    "the bundler's sense-locked stems are not search-engine.js's — change both together");
+
+  /* A probe map that gives every form of every interesting term its own entry, plus
+     one entry carrying several forms at once (the union), so any difference in the
+     candidate-form rule moves a count. */
+  const stems = [...SE.SENSE_LOCKED_STEMS, "grill", "engineer", "cook", "war", "ai", "ox", "wars", "ware"];
+  const tags = {};
+  let n = 0;
+  for (const stem of stems) {
+    for (const suffix of ["", "s", "es", "ing", "ings", "ed"]) tags[`p${n++}`] = [`${stem}${suffix}-topic`];
+    tags[`p${n++}`] = [stem, `${stem}s`, `x-${stem}es`, `${stem}ing`];
+  }
+  const probe = { tags };
+  for (const stem of stems) {
+    assert.ok(tagCandidateForms(stem).includes(stem));
+    assert.ok(tagCandidateForms(stem).every((f) => f.startsWith(stem)), "a candidate form that is not the term plus a suffix breaks the prefix walk");
+  }
+  assert.deepEqual(tagDfBlock(probe, 0).by_count, engineDfByCount(probe));
+  assert.deepEqual(tagDfBlock(dfFixture().itemTags, 0).by_count, engineDfByCount(dfFixture().itemTags));
+
+  /* And end to end: a slice of the probe map carrying the restated block is
+     indistinguishable from the whole map to the real engine. */
+  const discover = { items: [{ id: "p0" }, { id: "p7" }] };
+  const slice = itemTagsSlice(probe, { discover, session: { episodes: {} } });
+  assert.equal(Object.keys(slice.tags).length, 2);
+  assert.deepEqual(sliceCountDivergence(probe, slice, stems), []);
+  /* Not vacuous: the probe map really does separate the rules — sense-locked and
+     open stems count differently on the same shape. */
+  const ctx = { itemTags: probe };
+  assert.notEqual(SE.tagCount("train", ctx), SE.tagCount("grill", ctx));
 });
 
 test("prepare WRITES the slice rather than copying the file", () => {
@@ -2052,16 +2160,54 @@ test("REAL REPO: the sliced bundle, its budgets and the headroom that is left", 
          2026-09-04 instruction stands: build the df sidecar, do not raise it.
          If the cause is feature code again, the next lever is the one named
          above (the Kokoro probe's ~66 KB), argued with the founder first. */
-      /* NOT RAISED on 2026-10-05: the df sidecar landed instead (#279), which is
-         what the 2026-09-04 note told the next red to do. main at 919f925d measured
-         2,936,004 B against this line's 2,936,012.8 — 8.8 B of headroom, so the next
-         card of any kind would have fired it. `data/item-tags.json` is now the
-         searched pool's tag lists plus the whole map's counts: 286,348 -> 124,908 B,
-         and search-engine.js +1,186 B minified to read them. The bundle is
-         2,775,750 B (LF, minified, as CI measures it): 160,263 B (~156.5 KB) under
-         this line and ~361 KB under the 3 MB cap. The tag file now has a per-file
-         budget of its own (PROJECTED_DATA, 138 KB), so its nightly growth no longer
-         reaches this line unannounced. */
+      /* RAISED 2.8 -> 2.85 MB on 2026-10-05, PR #1039 (PQ-12..14, bookmarks),
+         the sixth re-baseline. The note above says the next feature-code red
+         is the Kokoro probe's to answer, argued with the founder first; that
+         question is with the founder now and has no answer yet, so this is a
+         bridge to the answer, not a substitute for it.
+
+         RE-MEASURED 2026-10-05 (LF, minified, as CI measures it): main alone
+         (3f9f8d5a) is 2,936,004 B — 8.8 B under 2.8 MB, so main would fire
+         this line on its own with the next few bytes of anything. The branch
+         on top is 2,940,447 B: +4,443 B, all feature code —
+         player/bookmarks.js 3,181 B (new), player/client.js +817,
+         app.js +329, styles.css +62, and one preload line in index.html +54.
+         data/ is byte-identical (1,717,974 B on both). Straw, not load.
+
+         THE LOAD, since the tranche merge that set 2.8 (8da84eb3, 2,849,678 B
+         re-measured): main grew +86,326 B in ~17 hours. Code is +30.3 KB
+         (app.js +20,297 across ten PRs, catalogue-directory.js 3,301 and
+         locate-window.js 3,201 new, styles.css +2,041, client.js +976, the
+         rest +505). Data is +56.0 KB, and NOT the unbounded file this line
+         was written for: data/item-tags.json moved +1,305 B. The rest is the
+         catalogue — data/discover.json +29,495 (now 652 KB, inside its own
+         720 KB `PROJECTED_DATA` budget), data/catalog-client.json +19,367
+         (#1021 #1030 #1049 #1060: label_scope, chart_rank, tier, the drinks
+         wave), data/personas.json 4,531 newly shipped (#1058), +1,307 across
+         three others. The data half is 1,678 KB against B's 1.85 MB line, so
+         the data alarm has ~217 KB of its own left and is the one that
+         speaks for catalogue growth; the 2026-09-04 instruction (item-tags
+         red -> build the df sidecar, do not raise) is untouched by this.
+
+         WHAT 2.85 MB BUYS: ~47 KB over the branch today — ~10 cards the size
+         of this one — and it still fires ~154 KB before the 3 MB cap. Said
+         plainly: at main's trailing rate since 2026-10-04 (~86 KB in 17 h)
+         that is under a day, so the next red is close. When it comes, the
+         lever is still the Kokoro probe (player/kokoro-probe.js 31,459 B +
+         kokoro-probe-passage.json 34,794 B = 66,253 B, shell only) pending
+         the founder's answer — not a seventh raise. */
+      /* LOWERED 2.85 -> 2.8 MB on 2026-10-05 (#279): the df sidecar landed, which
+         is what the 2026-09-04 note told an item-tags red to do, and it takes away
+         the need for #1039's bridge above. `data/item-tags.json` is now the
+         searched pool's tag lists plus the whole map's counts — 286,348 -> 124,908 B
+         — and search-engine.js grows +740 B minified to read them (22,577 ->
+         23,317). RE-MEASURED at the merge of main (51b3c42b) into the branch, LF,
+         minified, as CI measures it: main alone 2,940,447 B (4.3 KB OVER this
+         line, under #1039's 2.85); the branch 2,779,747 B — -160,700 B, ~152.6 KB
+         under 2.8 MB and ~357 KB under the 3 MB cap. The tag file now has a
+         per-file budget of its own (PROJECTED_DATA, 138 KB), so its nightly growth
+         no longer reaches this line unannounced. The Kokoro question #1039 left
+         with the founder is untouched: the next feature-code red is still its. */
       r.total < 2.8 * 1024 * 1024,
       `the bundle is ${(r.total / 1024 / 1024).toFixed(2)} MB, leaving ` +
         `${((MAX_BYTES - r.total) / 1024).toFixed(0)} KB of headroom under the 3 MB cap`

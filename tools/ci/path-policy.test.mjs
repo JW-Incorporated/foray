@@ -1226,7 +1226,6 @@ const ACKNOWLEDGED_RELEASE_APP_CODE = {
   "player/foray-resolve.js": "app code imported by prepare-webdir.mjs; closes only with a secret-free build job",
   "player/foray-sources.js": "app code imported by prepare-webdir.mjs; closes only with a secret-free build job",
   "player/seek-policy.js": "app code imported by prepare-webdir.mjs; closes only with a secret-free build job",
-  "search-engine.js": "app code required by prepare-webdir.mjs (#279 df block); closes only with a secret-free build job",
 };
 
 const stripComments = (text) => text.split(/\r?\n/).filter((l) => !l.trimStart().startsWith("#")).join("\n");
@@ -1345,13 +1344,22 @@ test("review: every file a signing job executes is DENIED (or is app code, liste
   assert.deepStrictEqual(stale, [], "acknowledged but no longer executed by a signing job");
 });
 
-test("review: the signing-job walk sees every way a module loads a relative file, chained createRequire included", () => {
+test("review: the signing-job walk sees every way a module loads a relative file, chained createRequire included, and search-engine.js is unreachable from a signing job", () => {
   /* #279 review: prepare-webdir.mjs loaded search-engine.js as
      `createRequire(import.meta.url)("../../search-engine.js")`, which none of
      the walk's patterns matched, so an ALLOWED file ran in the jobs holding the
-     signing secrets while the test above stayed green.
-     MUTATION: drop the createRequire pattern from relativeSpecifiers -> the
-     chained form is no longer found. */
+     signing secrets while the test above stayed green. The walk now sees that
+     form, and the rework took the load out altogether: the df block is computed
+     by governed code in prepare-webdir.mjs (`tagDfBlock`), and its equality with
+     the real engine is proven in the secret-free data-and-site check
+     (tools/mobile/prepare-webdir.test.mjs). search-engine.js is NOT in
+     ACKNOWLEDGED_RELEASE_APP_CODE and must stay unreachable from a signing job.
+     MUTATIONS (each run):
+       - drop the createRequire pattern from relativeSpecifiers -> the chained form
+         is no longer found;
+       - put `createRequire(import.meta.url)("../../search-engine.js")` back into
+         prepare-webdir.mjs -> the walk reaches search-engine.js and this test (and
+         "every file a signing job executes is DENIED") fails. */
   const src = [
     'import { a } from "./static.mjs";',
     'export { b } from "../reexport.js";',
@@ -1371,8 +1379,12 @@ test("review: the signing-job walk sees every way a module loads a relative file
     "./spaced.cjs",
     "./static.mjs",
   ]);
-  // And on the real tree: prepare-webdir.mjs's load of search-engine.js is reached.
-  assert.ok(signingJobExecutables().files.has("search-engine.js"), "the walk no longer reaches search-engine.js");
+  // And on the real tree: the walk reaches prepare-webdir.mjs and what it imports,
+  // and search-engine.js is not among them.
+  const reached = signingJobExecutables().files;
+  assert.ok(reached.has("tools/mobile/prepare-webdir.mjs"), "the walk no longer reaches prepare-webdir.mjs, so it proves nothing");
+  assert.ok(reached.has("player/foray-resolve.js"), "the walk no longer follows prepare-webdir.mjs's imports");
+  assert.ok(!reached.has("search-engine.js"), "search-engine.js is reachable from a job holding the signing secrets");
 });
 
 test("review: nothing a signing job executes may be ACKNOWLEDGED as a gate instead of denied", () => {
