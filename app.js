@@ -6753,6 +6753,57 @@ function applyOnboardingPicks(pickedRootIds, typedSubject) {
   return [...new Set(ids.map(id => (byId.get(id)?.parent) || id))];
 }
 
+/* ---------- PKG-13: personas as a cold-start prior (#70) ----------
+
+   data/personas.json (loaded at init into state.personas) carries preset
+   weight vectors over top-level taxonomy nodes: `{id, label, description,
+   seed_confidence, weights:[{node_id, weight}]}`. The five directed personas
+   seed at 0.35, `generalist` at 0.15. */
+
+/** The persona with this id, or null (unknown id, or personas.json absent). */
+function personaById(id) {
+  return (state.personas?.personas || []).find(p => p && p.id === id) || null;
+}
+
+/** Applies a persona pick as a DECAYING PRIOR, never as config (issue #70:
+    "A persona pick is allowed only as a decaying cold-start prior, never as
+    persisted config ... Observed signal must overtake it").
+
+    It writes nothing of its own: no persona key is stored and nothing reads
+    the persona back. Each weighted root and its leaves (the same subtree
+    expansion a chip pick uses) is lifted by `seed_confidence × weight` ON
+    TOP of whatever loadInterests() seeded, through the same clamp
+    applyOnboardingPicks and nudgeTopics use. From then on the lift is just
+    part of the weight every play and thumb moves, so observed signal decays
+    it away: the largest lift any persona gives (0.35 × 1.0) is undone by five
+    subject thumbs-down (5 × 0.08), and test/personas-client.test.js pins that.
+
+    Returns false (no write, no _interestsGen bump) for an unknown persona or
+    one that lifts nothing; otherwise the ROOT ids it lifted, the same shape
+    applyOnboardingPicks returns, for the re-deal. */
+function applyPersonaPick(id) {
+  const persona = personaById(id);
+  if (!persona) return false;
+  const roots = [];
+  (persona.weights || []).forEach(({ node_id, weight } = {}) => {
+    const lift = persona.seed_confidence * weight;
+    if (!(lift > 0)) return; // a zero (generalist's `news`) or malformed weight lifts nothing
+    let touched = false;
+    expandTaxonomyPick(node_id).forEach(n => {
+      if (n in state.interests) {
+        setInterest(n, Math.max(0, Math.min(1, state.interests[n] + lift)));
+        touched = true;
+      }
+    });
+    const root = nodeById(node_id)?.parent || node_id; // a leaf weight counts for its root
+    if (touched && !roots.includes(root)) roots.push(root);
+  });
+  if (!roots.length) return false;
+  saveInterests();
+  state._interestsGen = (state._interestsGen || 0) + 1;
+  return roots;
+}
+
 /** U-09's third acceptance line ("picking three chips changes the FIRST Home
     render's ranking"), which shipped unmet in PR #503 (audit, 2026-09-10):
     Home's "Suggested" is `state.cardSlots`, dealt once per session by
@@ -11735,6 +11786,7 @@ function renderQueue() {
   bindPlay($("#view"));
   bindUpNextReorder($("#view"));
   bindUpNextDrag($("#view"));
+  bindUpNextSwipe($("#view"));
 }
 
 /* One row: the SAME playable shape epRow/archivedRow already give (so a
@@ -11783,7 +11835,7 @@ function upNextRow(r, idx, total) {
   const playNextDisabled = !playable || isCurrent || id === cur || (curIdx >= 0 ? ids[curIdx + 1] === id : idx === 0);
   return `<div class="ep-row up-next-row ${playable ? "" : "gone"}${isCurrent ? " is-current" : ""}"${isCurrent ? ' aria-current="true"' : ""}>
     <span class="q-num">${idx + 1}</span>
-    <div class="info">
+    <div class="info" data-swipe-id="${esc(id)}">
       <div class="t">${title}</div>
       <div class="s">${sub}</div>
     </div>
@@ -11795,6 +11847,7 @@ function upNextRow(r, idx, total) {
       <button class="reorder down" data-reorder-down="${esc(id)}" ${idx === total - 1 ? "disabled" : ""} aria-label="Move down">↓</button>
     </div>
     <button class="up-next-remove" data-dequeue="${esc(id)}" aria-label="Remove from Up Next">✕</button>
+    <span class="swipe-under" aria-hidden="true">Remove</span>
   </div>`;
 }
 
@@ -12036,6 +12089,96 @@ function bindUpNextDrag(scope) {
     /* Capture lost without a pointerup is a cancel; after a pointerup the drag
        is already over, so the release that follows finds nothing to undo. */
     btn.addEventListener("lostpointercapture", cancel);
+  });
+}
+
+/* SWIPE LEFT TO REMOVE (#762, PQ-06). A row's text block, pulled left, takes
+   the row out of Up Next. The ARITHMETIC — the 8 px direction lock (a
+   vertical start is the list scrolling, for good), only leftward travel
+   counts, how far or how fast a release must be, the rubber band past 160 px —
+   is `player/queue-swipe.js` (PQ-05), published as `window.forayQueueSwipe` by
+   player/client.js and read here lazily, null-guarded, when a gesture starts:
+   no rules (app.js loaded without the player) means no swipe, and the ✕ still
+   removes.
+
+   ON THE TEXT BLOCK, NOT THE BUTTONS: the listeners sit on `.up-next-row >
+   .info`, so a press on ▶, ☆, ⋮⋮ (its own drag), Next, ↑/↓ or ✕ is that
+   control's and never starts a swipe. styles.css gives `.info` `touch-action:
+   pan-y`, so the browser keeps the vertical scroll and hands the horizontal
+   travel to these listeners.
+
+   COMMIT ON RELEASE (DECISIONS 2026-09-23, lane L2): the removal is
+   `removeFromQueue` in `pointerup`, never on the click that may follow, and
+   then the ✕'s own after-step (`afterQueueRemove`: focus on the ✕ that took
+   the row's place, "Removed from Up Next." said politely). A release short of
+   the threshold, a scroll, or a gesture the system cancelled springs the row
+   back and writes nothing. The playing row may be swiped away, as its ✕ may. */
+function queueSwipeRules() {
+  const r = window.forayQueueSwipe;
+  return r && typeof r.startSwipe === "function" ? r : null;
+}
+
+function bindUpNextSwipe(scope) {
+  if (!scope || typeof scope.querySelectorAll !== "function") return;
+  scope.querySelectorAll(".up-next-row > .info").forEach(info => {
+    if (info._swipeBound) return;
+    info._swipeBound = true;
+    let swipe = null;
+    let pointer = null;
+    let row = null;
+    const reset = () => {
+      if (row) {
+        row.classList.remove("swiping");
+        if (row.style) row.style.transform = "";
+      }
+      swipe = null;
+      pointer = null;
+      row = null;
+    };
+    info.addEventListener("pointerdown", (e) => {
+      const g = queueSwipeRules();
+      if (!g || pointer != null) return;
+      if (typeof e.button === "number" && e.button !== 0) return; // primary button only
+      const own = typeof info.closest === "function" ? info.closest(".up-next-row") : null;
+      if (!own) return;
+      row = own;
+      pointer = e.pointerId;
+      try { info.setPointerCapture(e.pointerId); } catch (_) { /* capture is best-effort */ }
+      swipe = g.startSwipe(e.clientX, e.clientY, e.timeStamp);
+    });
+    info.addEventListener("pointermove", (e) => {
+      const g = queueSwipeRules();
+      if (!swipe || !g || e.pointerId !== pointer) return;
+      swipe = g.moveSwipe(swipe, e.clientX, e.clientY, e.timeStamp);
+      /* A vertical start is the list scrolling: let it go entirely. */
+      if (swipe.rejected) { reset(); return; }
+      if (!swipe.claimed) return; // under the lock: it may still be a tap
+      row.classList.add("swiping");
+      if (row.style) row.style.transform = `translateX(-${g.swipeOffset(swipe)}px)`;
+    });
+    /* NON-passive, or the cancel is ignored: once the swipe owns the finger
+       the page under it must not pan (the sheet drag's rule, touch-2). */
+    info.addEventListener("touchmove", (e) => {
+      if (swipe && swipe.claimed && !swipe.rejected && e.cancelable !== false && typeof e.preventDefault === "function") e.preventDefault();
+    }, { passive: false });
+    info.addEventListener("pointerup", (e) => {
+      const g = queueSwipeRules();
+      if (!swipe || e.pointerId !== pointer) return;
+      const r = g ? g.endSwipe(swipe) : { remove: false };
+      const id = info.dataset ? info.dataset.swipeId : null;
+      reset();
+      if (!r.remove || !id) return;
+      const index = queueIds().indexOf(id);
+      if (index < 0) return;
+      removeFromQueue(id);
+      afterQueueRemove(index);
+    });
+    const cancel = (e) => {
+      if (!swipe || e.pointerId !== pointer) return;
+      reset();
+    };
+    info.addEventListener("pointercancel", cancel);
+    info.addEventListener("lostpointercapture", cancel);
   });
 }
 
@@ -18899,6 +19042,12 @@ async function init() {
        (feed_url, apple_genre, cadence_hint, provenance) for a ~24% gzip saving;
        see that script's header for the measurement. */
     fetchJson("data/catalog-client.json"),
+    /* Cold-start persona priors (#70; catalogue-personalization.md PKG-13):
+       read by personaById()/applyPersonaPick(). A 404 or parse failure is
+       null like every other document here, and every read is null-safe
+       (`state.personas?.personas || []`), so a missing file costs the persona
+       pick and nothing else. */
+    fetchJson("data/personas.json"),
   ]);
   const session = await sessionP;
   state.session = session;
@@ -18949,6 +19098,7 @@ async function init() {
   [
     state.validated, state.taxonomy, state.discover,
     state.forays, state.segments, state.segmentSources, state.catalog,
+    state.personas,
   ] = await documentsP;
 
   /* THE THREE FORAY DOCUMENTS ARE ONE ARTIFACT AT BOOT TOO (audit round 2,

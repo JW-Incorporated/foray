@@ -1152,8 +1152,10 @@ const FLOORS = {
      player/queue-drag.js and queue-order.js — the handle and its hint, the
      6 px lock, commit on pointerup only, nothing on a tap or a cancel, the
      slot follows the list under autoscroll. Each test is one deleted line
-     from a gesture that reorders the wrong row or none. */
-  "test/up-next-gestures.test.js": 6, // PQ-04 (#762)
+     from a gesture that reorders the wrong row or none. Swipe to remove
+     (PQ-06) adds the 8 px lock's two refusals (a scroll, a rightward drag),
+     removal on pointerup only, the ✕'s after-step, and the ✕ kept. */
+  "test/up-next-gestures.test.js": 11, // PQ-04 (#762); 6 -> 11 // PQ-06 (#762): swipe left to remove (commit on pointerup, vertical-first and rightward refused, announcement + focus, the ✕ still works)
   "test/engine-continuation.test.js": 10, // PQ-07 (#762): Play next, drag reorder and Clear each re-send the engine's plan
   "test/engine-developer-rows.test.js": 14, // NE-22d: the engine's four Developer rows in the drawer
   "test/up-next-autoadvance.test.js": 25, // PQ-11 (#691): the tail after the list (first pick, third is the stretch with the bridge line + announcement, no repeats, switch off stops it); 21 -> 25 // audit round 3 (lane L1): app-1-9 the finished row leaves Up Next with the switch off; 20 -> 21 // founder, 2026-09-24, reversing lane L3's question-9 default: a play from the page moves THAT row to the top and ⏭ drops only the skipped episode (+1: a refused play moves nothing); no wrap-around, previous = restart past the window (p-car-5); 11 -> 19 -> 20 // // 2026-09-22: rewritten for the continuous-playback ruling (on by default, Up Next first, then the chosen list, unplayable rows passed over); 6 -> 11
@@ -1171,6 +1173,7 @@ const FLOORS = {
      noticing. Includes the MUTATION TEST the card asks for by name
      (restore leafNodes() as the seed set -> red). */
   "test/interests-roots.test.js": 8,
+  "test/personas-client.test.js": 4, // PKG-13 (#70 part 1, 2026-10-05): personas.json loads at init; applyPersonaPick lifts seed_confidence x weight over each root's subtree; an unknown id writes nothing; four/five subject thumbs-down overtake the prior; the plan's fifth test (persona_picked) waits for step 4
   /* #301's bound, over the REAL catalogue: improving a result the ranking keeps
      below the top one must never empty its query or drop a bar-clearer. One test,
      floored at one, because the alternative to a floor here is a suite that can be
@@ -2154,6 +2157,9 @@ const FLOORS = {
   "tools/foraycorpus-export/pg-row-source.test.mjs": 5, // PKG-07 (docs/roadmap/corpus.md): read-only Postgres row source on a fake client (READ ONLY trio, id + tuple keyset paging, PKG-02 column lists, no password in describe/errors, unknown table)
   "tools/foraycorpus-export/overlap.test.mjs": 3, // PKG-09 (docs/roadmap/corpus.md): breadth overlap (itunes first, feed-only via normalizeFeedUrl, null ids never match, stable keys incl. CLI)
   "tools/foraycorpus-export/wave-candidates.test.mjs": 4, // PKG-35 (docs/roadmap/corpus.md): #279 drinks-wave candidates (fixed positives, whole-word boundary negatives, dai_prior false/null/true before timed, english null without a shows.jsonl row)
+  "tools/foraycorpus-export/r2-client.test.mjs": 6, // PKG-11 (docs/roadmap/corpus.md): R2 S3 client on a fake client (continuation-token paging, sha256 metadata, dashboard + HUMAN-ACTIONS #138 credential spellings with redacted toJSON, NO_CREDENTIALS names its sources, WHEN_REQUIRED checksum options, no tracked r2-credentials)
+  "tools/foraycorpus-export/show-map.test.mjs": 7, // PKG-12 (docs/roadmap/corpus.md): R2 show directory -> foray show_id map (catalog feed match, breadth apple id, slug dirs, the farm's four pinned slugify examples, unknown -> null, localDirFor = safeKey, first writer wins + collision report)
+  "tools/foraycorpus-export/catalog-adapter.test.mjs": 5, // PKG-31 (docs/roadmap/corpus.md): breadth-shaped catalogue from the corpus (ruling-31 rights skip + counts, chart fields + taxonomy_node_ids from the old row else null/[], in_curated only for catalog ids, old 18 keys + 2 additive, minified CLI output that refuses data/)
   /* The breadth prioritiser and its yield report (#114). Floored for the same
      reason politeness.test.mjs is, and the reason is not hypothetical here
      either: the first draft of `rank-breadth.mjs` had a seed hash that produced
