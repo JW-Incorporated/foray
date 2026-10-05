@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
-import { parseFeed } from "../src/feeds/parser";
+import { MAX_INLINE_CHAPTERS, parseFeed, parseNormalPlayTime } from "../src/feeds/parser";
 
 const FIXTURES_DIR = path.resolve(__dirname, "..", "fixtures", "feeds");
 
@@ -423,5 +423,119 @@ describe("parseFeed round-3 hardening", () => {
     );
     expect(feed.episodes.map((e) => e.guid)).toEqual([null, null, null, null]);
     for (const ep of feed.episodes) expect(ep.warnings.join(" ")).toContain("missing guid");
+  });
+});
+
+/* #1071: Podlove Simple Chapters (psc:chapters) parsed into inline chapter
+ * markers, so the episodes list can hand the episode page a chapter list
+ * without a second fetch. */
+describe("psc:chapters inline chapters (#1071)", () => {
+  const wrapItem = (chapters: string) =>
+    `<rss xmlns:psc="http://podlove.org/simple-chapters"><channel><title>x</title>` +
+    `<item><title>Ep</title><guid>g</guid>${chapters}</item></channel></rss>`;
+  const chaptersOf = (chapters: string) => parseFeed(wrapItem(chapters)).episodes[0]!.inlineChapters;
+
+  it("omegatau.xml: the one item with a psc:chapters block yields its 3 chapters, sorted, and every other item null", () => {
+    /* MUTATION: return `inlineChapters: null` from parseItem (drop the
+       parsePscChapters call) — the 3 markers vanish and this goes red. */
+    const xml = fs.readFileSync(path.join(FIXTURES_DIR, "omegatau.xml"), "utf-8");
+    const feed = parseFeed(xml);
+    const withChapters = feed.episodes.filter((e) => e.inlineChapters !== null);
+    expect(withChapters).toHaveLength(1);
+    expect(withChapters[0]!.inlineChapters).toEqual([
+      { title: "Introduction of Peter Keith and to stratospheric aerosol injection", start_time_seconds: 517 },
+      { title: "Unintended effects and moral implications", start_time_seconds: 1745 },
+      { title: "Climate Model simulations and issues", start_time_seconds: 3262 }
+    ]);
+    // A psc block never displaces the podcasting-2.0 pointer, and vice versa.
+    for (const ep of feed.episodes) expect(ep).toHaveProperty("chaptersUrl");
+  });
+
+  it("sorts chapters by start whatever order the feed lists them in", () => {
+    /* MUTATION: delete the `chapters.sort(...)` line — the feed order
+       (30, 0, 10) comes back unsorted. */
+    expect(
+      chaptersOf(
+        `<psc:chapters version="1.2">` +
+          `<psc:chapter start="00:00:30" title="Third"/>` +
+          `<psc:chapter start="0" title="First"/>` +
+          `<psc:chapter start="00:10" title="Second"/>` +
+          `</psc:chapters>`
+      )!.map((c) => [c.start_time_seconds, c.title])
+    ).toEqual([
+      [0, "First"],
+      [10, "Second"],
+      [30, "Third"]
+    ]);
+  });
+
+  it("parseNormalPlayTime accepts HH:MM:SS(.mmm), MM:SS and plain seconds", () => {
+    /* MUTATION: fold fields base 100 instead of 60 (`total * 100 + n`) — every
+       multi-field case goes red. */
+    expect(parseNormalPlayTime("00:08:37.000")).toBe(517);
+    expect(parseNormalPlayTime("1:02:03.5")).toBe(3723.5);
+    expect(parseNormalPlayTime("08:37")).toBe(517);
+    expect(parseNormalPlayTime("8:37.250")).toBe(517.25);
+    expect(parseNormalPlayTime("517")).toBe(517);
+    expect(parseNormalPlayTime("517.125")).toBe(517.125);
+    expect(parseNormalPlayTime(" 00:00:05 ")).toBe(5);
+    expect(parseNormalPlayTime("90:00")).toBe(5400); // the leading field is unbounded
+    expect(parseNormalPlayTime("0")).toBe(0);
+  });
+
+  it("parseNormalPlayTime refuses anything that is not Normal Play Time", () => {
+    /* MUTATION: drop the `nums[i] >= 60` check — "1:60" and "00:61:00" parse.
+       MUTATION: drop the `parts.length > 3` check — "1:02:03:04" parses. */
+    for (const bad of [null, "", "   ", "-5", "1:60", "00:61:00", "1:02:03:04", "abc", "1:xx", "1.5:00", "1::00", "5s", "1e3"]) {
+      expect(parseNormalPlayTime(bad), String(bad)).toBeNull();
+    }
+  });
+
+  it("drops a chapter with no usable start, trims titles, and is null when nothing survives or the block is absent", () => {
+    /* MUTATION: return `chapters` (an empty array) instead of null when none
+       survive — the all-bad and empty-block cases go red. */
+    expect(
+      chaptersOf(
+        `<psc:chapters><psc:chapter start="nope" title="Bad"/><psc:chapter start="00:01:00" title="  Good  "/>` +
+          `<psc:chapter title="No start"/></psc:chapters>`
+      )
+    ).toEqual([{ title: "Good", start_time_seconds: 60 }]);
+    expect(chaptersOf(`<psc:chapters><psc:chapter start="x" title="Bad"/></psc:chapters>`)).toBeNull();
+    expect(chaptersOf(`<psc:chapters></psc:chapters>`)).toBeNull();
+    expect(chaptersOf(``)).toBeNull();
+  });
+
+  it("keeps href only as http(s) and image only as https", () => {
+    /* MUTATION: allow "http:" in the image protocol list — the http image
+       survives and this goes red. MUTATION: drop the protocol check entirely —
+       the javascript: href survives. */
+    const chapters = chaptersOf(
+      `<psc:chapters>` +
+        `<psc:chapter start="0" title="A" href="https://example.com/a" image="https://example.com/a.jpg"/>` +
+        `<psc:chapter start="1" title="B" href="http://example.com/b" image="http://example.com/b.jpg"/>` +
+        `<psc:chapter start="2" title="C" href="javascript:alert(1)" image="data:image/png;base64,AAAA"/>` +
+        `<psc:chapter start="3" title="D" href="not a url"/>` +
+        `</psc:chapters>`
+    );
+    expect(chapters).toEqual([
+      { title: "A", start_time_seconds: 0, url: "https://example.com/a", img: "https://example.com/a.jpg" },
+      { title: "B", start_time_seconds: 1, url: "http://example.com/b" },
+      { title: "C", start_time_seconds: 2 },
+      { title: "D", start_time_seconds: 3 }
+    ]);
+  });
+
+  it(`caps an episode at MAX_INLINE_CHAPTERS (${MAX_INLINE_CHAPTERS}), keeping the earliest`, () => {
+    /* MUTATION: delete the `.slice(0, MAX_INLINE_CHAPTERS)` — 600 come back.
+       MUTATION: slice before sorting — the feed lists them latest-first, so the
+       kept 500 would be the LAST 500 (start 100..599), not 0..499. */
+    const tags = Array.from({ length: 600 }, (_, i) => 599 - i)
+      .map((s) => `<psc:chapter start="${s}" title="c${s}"/>`)
+      .join("");
+    const chapters = chaptersOf(`<psc:chapters>${tags}</psc:chapters>`)!;
+    expect(MAX_INLINE_CHAPTERS).toBe(500);
+    expect(chapters).toHaveLength(500);
+    expect(chapters[0]!.start_time_seconds).toBe(0);
+    expect(chapters[499]!.start_time_seconds).toBe(499);
   });
 });

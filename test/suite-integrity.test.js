@@ -2427,7 +2427,7 @@ const BACKEND_FLOORS = {
      takes down a written Foray after the writer has spent its tokens. */
   "test/phonemize.test.ts": 15, // round-3 audit (L5-generation): gen-16 the phonemizer says why it produced nothing (ENOENT, exit+stderr), 64 MB buffer, phonemizedSummary; 12 -> 15
   "test/parseWithRetry.test.ts": 17,
-  "test/parser.test.ts": 36, // round-3 L6 (2026-09-25): backend-rest-1/-10: parseFeed never throws on out-of-range entities; an empty guid is null; 29 -> 36
+  "test/parser.test.ts": 43, // #1071 chapters-psc-inline: psc:chapters (Podlove Simple Chapters) parse into sorted inline chapters -- the omegatau fixture, sort, NPT accepted and refused, dropped starts/null when empty, href/image protocols, the 500 cap; 36 -> 43 // round-3 L6 (2026-09-25): backend-rest-1/-10: parseFeed never throws on out-of-range entities; an empty guid is null; 29 -> 36
   "test/parserItemIsolation.test.ts": 1, // round-3 L6 (2026-09-25): backend-rest-1 — a throwing item is a warning, the feed still parses
   "test/personas.test.ts": 6,
   "test/podcastIndex.test.ts": 3,
