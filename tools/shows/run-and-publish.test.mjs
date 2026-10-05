@@ -16,6 +16,9 @@ import assert from "node:assert/strict";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
+import { gzipSync } from "node:zlib";
+import { NEWEST_SNAPSHOT_ASSET } from "./config.mjs";
+import { buildNewestSnapshot, loadPreviousNewest } from "./import-dump.mjs";
 import { describeExecError, runAndPublish } from "./run-and-publish.mjs";
 
 /** Writes a minimal but real S-04a build output tree (state.json +
@@ -374,4 +377,45 @@ test("describeExecError: an empty stderr is said out loud", () => {
 
 test("describeExecError: a non-exec error keeps its first message line only", () => {
   assert.deepEqual(describeExecError(new Error("boom\nsecond")), ["FATAL: boom"]);
+});
+
+test("#1033 the baseline snapshot ships on the release the pointer names, at the URL the next run fetches", async () => {
+  /* The publish half of changed.json's baseline: the next run's import-dump
+     downloads `<pointer.asset_base_url>/newest-snapshot.json.gz`, so the
+     snapshot has to be an asset of the TOP-LEVEL release this run points
+     at. Served here only if the fake registry actually holds it.
+     MUTATION THAT KILLS THIS: drop NEWEST_SNAPSHOT_ASSET from
+     listReleaseAssets' list. The release ships without it, the next run's
+     download 404s, and the baseline stays false forever. Ran it: red. */
+  const root = await mkdtemp(join(tmpdir(), "shows-e2e-"));
+  const buildOutDir = join(root, "out");
+  const statePath = join(root, "state", "last-build.json");
+  const pointerPath = join(root, "shows-index-pointer.json");
+  const { ghExec, releases } = fakeGhRegistry();
+  try {
+    await seedBuildOutput({ buildOutDir, statePath, exportVersion: "local:snap01", checksum: "snap01" });
+    const snapshot = buildNewestSnapshot([{ id: 11, newestItemPubdate: 1000 }, { id: 12, newestItemPubdate: 2000 }], { exportVersion: "local:snap01" });
+    await writeFile(join(buildOutDir, NEWEST_SNAPSHOT_ASSET), gzipSync(Buffer.from(JSON.stringify(snapshot))));
+    const buildExecRan = async () => ({ stdout: "BUILD_COMPLETE: out (export_version local:snap01)" });
+
+    const result = await runAndPublish(["--dump-file", "fixture.db"], {
+      buildExec: buildExecRan, ghExec, statePath, buildOutDir, pointerPath, repo: "org/repo", log: () => {},
+    });
+    assert.equal(result.published, true);
+    assert.ok(releases.get(result.tag).assets.includes(NEWEST_SNAPSHOT_ASSET), "the snapshot is a top-level release asset");
+
+    // Next week's run: download through the pointer this run wrote.
+    const pointer = JSON.parse(await readFile(pointerPath, "utf8"));
+    const fetchImpl = async (url) => {
+      const prefix = `${pointer.asset_base_url}/`;
+      const name = url.startsWith(prefix) ? url.slice(prefix.length) : null;
+      if (!name || !releases.get(result.tag).assets.includes(name)) return new Response("Not Found", { status: 404 });
+      return new Response(await readFile(join(buildOutDir, name)), { status: 200 });
+    };
+    const loaded = await loadPreviousNewest({ pointerPath, fetchImpl });
+    assert.equal(loaded.reason, null);
+    assert.deepEqual(loaded.previousNewest, { 11: 1000, 12: 2000 });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });

@@ -1839,8 +1839,10 @@ function prettyConceptLabel(id) {
         in *Life Sciences* is NOT rank 3 in *Comedy*, so comparing two raw
         ranks across genres compares two different things. `popularityBand`
         therefore collapses it to <=10 / <=50 / <=200 / unranked, which is the
-        most the data honestly supports. Curated shows carry no `chart_rank`
-        and need none: rule 1 has already placed them.
+        most the data honestly supports. Curated shows carry the `chart_rank`
+        of their breadth twin (P-09, PKG-11a/11b) and are banded the same
+        way; rule 1 has already split them from breadth, so their band only
+        orders curated against curated (PKG-13, see `popularityBand`).
      3. `title.localeCompare` — so ties are stable and deterministic for a
         fixed catalogue snapshot, rather than depending on the input order
         (which for the index pass is byte order and for the curated pass is
@@ -2032,10 +2034,28 @@ function isBreadthShow(show) {
   return show?.tier === "breadth";
 }
 
-/** The bucketed popularity prior. See the header for why it is bucketed. */
+/** The bucketed popularity prior. See the header for why it is bucketed.
+
+    P-09 RULE HALF (PKG-13, docs/roadmap/shows-search.md): A CURATED ROW IS
+    BANDED TOO, ON THE SAME SCALE. It used to return 0 for every curated row,
+    which was harmless while no curated row carried a rank and became a defect
+    the day PKG-11a/11b joined one in: inside the curated tier every row tied
+    at 0, so the title alphabet decided, and "history" put *Ancient History
+    Fangirl* (no chart row) above *Dan Carlin's Hardcore History* (chart 14),
+    "science" put *Science for Sport Podcast* (none) above *Science Vs* (18).
+
+    One function for both tiers is safe ONLY because `compareShowMatches`
+    compares `isBreadthShow` BEFORE this — so the band never orders a curated
+    row against a breadth one, and a curated row's band can share the breadth
+    scale (1 + its 0-based bucket when ranked, `SHOW_PRIOR_BANDS.length + 1`
+    when not) without any curated row ever falling below a breadth row.
+
+    THE LOSER, RULED (docs/roadmap/README.md Q30, defaulting
+    docs/roadmap/shows-search.md §1 Q4): a curated show with no Apple chart row
+    may now sort below a ranked curated show in the same match tier — never
+    below breadth. 56 of the 220 curated rows have `chart_rank: null` today. */
 const SHOW_PRIOR_BANDS = [10, 50, 200];
 function popularityBand(show) {
-  if (!isBreadthShow(show)) return 0; // curated — rule 1 already placed it
   const rank = Number(show?.chart_rank);
   if (!Number.isFinite(rank) || rank <= 0) return SHOW_PRIOR_BANDS.length + 1;
   for (let i = 0; i < SHOW_PRIOR_BANDS.length; i++) {

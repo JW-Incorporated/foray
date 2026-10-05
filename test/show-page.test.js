@@ -387,9 +387,16 @@ test("against the committed data, no show renders blank while its own artwork si
      entering the fallback. Only shows whose OWN artwork_url is null exercise
      the code this test is about — 53 of them today.
 
-     MUTATION: delete the pool-index lookup from showArtworkUrl() so it is just
-     `return show.artwork_url || null`. `rescued` drops to 0 and the 53 shows
-     land in `offenders`, reported by id. */
+     BACKFILLED (2026-10-05, #560 item 10). PR #1008 filled 52 of the 53 and
+     omega tau was the last, so the committed catalogue has no null left and
+     the real-data pass rescues nothing. Each show the pool has artwork for is
+     therefore ALSO checked as a copy with `artwork_url: null`. That is the
+     only way the fallback still gets entered, and it keeps the mutation
+     below killing.
+
+     MUTATION (run 2026-10-05): delete the pool-index lookup from
+     showArtworkUrl() so it is just `return show.artwork_url || null`. Every
+     stripped copy lands in `offenders`, reported by id. */
   const m = await mountBooted();
   const pool = m.state.discover.items;
 
@@ -401,14 +408,15 @@ test("against the committed data, no show renders blank while its own artwork si
     const resolved = m.ctx.showArtworkUrl(show);
     if (!resolved) offenders.push(show.show_id);
     else if (!show.artwork_url) rescued.push(show.show_id);
+    const stripped = m.ctx.showArtworkUrl({ ...show, artwork_url: null });
+    if (!stripped) offenders.push(`${show.show_id} (artwork_url stripped)`);
+    else rescued.push(`${show.show_id} (artwork_url stripped)`);
   }
 
   assert.deepStrictEqual(offenders, [],
     `these shows render a blank artwork tile although the discover pool carries artwork for them: ${offenders.join(", ")}`);
   assert.ok(rescued.length > 0,
-    "no show in the committed catalogue has a null artwork_url that the pool can fill, so " +
-    "nothing here exercised the fallback. If catalog.json was backfilled that is GOOD news — " +
-    "keep the implication above, which still holds, and drop this line.");
+    "no show in the committed catalogue has discover-pool artwork, so nothing here exercised the fallback");
 });
 
 test("every discover-pool episode for the show renders as a playable ep-row", async () => {

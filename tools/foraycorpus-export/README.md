@@ -93,3 +93,52 @@ Add one paragraph per module as it lands.
   key (`/`, `\`, `.`, `..`, empty) is refused, and the resolved path must
   stay under `episodes/` (the `startsWith(base + sep)` guard from
   `tools/segments/fetch-transcripts.mjs` `transcriptPath`).
+- **`manifest.mjs`, `delta.mjs`** (PKG-06): `delta.mjs` holds the export's
+  high-water mark in a state file (`readState` gives
+  `{version:1, last_export_version, high_water:{max_asset_id, max_episode_updated_at}}`,
+  defaults when the file is absent, `DeltaError CORRUPT_STATE` when it does not
+  parse). `computeHighWater(source)` streams `assets` and `episodes` once each.
+  `isChanged(episodeRow, hw)` is true when an episodes.jsonl row has a strictly
+  newer `updated_at` or an asset id above `max_asset_id`. `episodes.updated_at`
+  is ASSUMED until PKG-03 confirms it, so a null one makes that half false and
+  never throws, and the asset-id half works alone. Timestamps compare as
+  instants, not strings. `manifest.mjs` `buildManifest` lists every file of a
+  version directory with `bytes`, streamed `sha256` (`hashFile`) and `rows`,
+  plus counts, high-water mark, delta and overlap. `computeSourceCounts` gives
+  `feeds_known`, `feeds_crawled` (non-null `last_success_at`) and `inserts_30d`
+  (`updated_at`, else `source_published_at`, at or after `built_at` − 30 d).
+  `writeLatest` writes `latest.json` last. It first re-hashes every listed file
+  against the manifest (`ManifestError FILE_MISMATCH` otherwise) and writes
+  tmp + rename. Both modules write through `writeJsonAtomic` from
+  `tools/segments/sweep-transcripts.mjs`, whose CLI is guarded.
+- **`pg-row-source.mjs`** (PKG-07): `pgRowSource({ connectionString =
+  process.env.FORAYCORPUS_DATABASE_URL, clientFactory, pageSize })` has the
+  `jsonlRowSource` interface (`rows(table)`, `counts()`, `describe()`) plus
+  `close()`. On first use it opens one transaction: `BEGIN`, `SET TRANSACTION
+  READ ONLY`, `SET LOCAL statement_timeout = 300000`. `rows` pages by keyset
+  with plain `query`, `PG_PAGE_SIZE` rows a page, stopping at a short page. It
+  uses `id` for podcasts, podcast_feeds, podcast_source_records, episodes and
+  assets. It uses the tuples `(episode_id, feed_id)` for
+  episode_source_records and `(podcast_source_record_id, feed_id)` for
+  podcast_source_links, and reads feed_host_policies whole. The exported
+  frozen `SQL` map selects exactly PKG-02's column lists. Its header marks
+  podcast_source_records, podcast_source_links, feed_host_policies and
+  `episodes.updated_at` as ASSUMED until PKG-03. `counts()` gives
+  `pg_class.reltuples` estimates, not exact counts. `describe()` is
+  `pg:<host redacted>/<db>`. A connection error is rethrown as
+  `RowSourceError PG_CONNECT` with the password replaced by `***`. `pg` is
+  imported only inside the default client factory, so the tests (a fake client)
+  need no `node_modules`. Rows pass through unchanged, and pg returns int8 as a
+  string.
+- **`overlap.mjs`** (PKG-09): `computeOverlap(showRows, breadthDoc)` counts
+  how much of the breadth tier the corpus already carries. Its inputs are
+  `buildShows` rows and `data/catalog-breadth.json`'s parsed object or its
+  `shows` array. It returns `{breadth_shows, matched_by_itunes_id,
+  matched_by_feed_url_only, unmatched}`, and each breadth show counts once,
+  itunes first. `apple_collection_id` is compared with `itunes_id` as strings,
+  because pg's int8 arrives as a string. Otherwise the breadth `feed_url`,
+  normalised with `normalizeFeedUrl` from `tools/shows/identity.mjs`, is
+  compared with `feed_url_normalized`. A null or blank id or feed never
+  matches. The CLI is `node tools/foraycorpus-export/overlap.mjs --shows
+  <shows.jsonl> [--breadth data/catalog-breadth.json]` and prints the JSON.
+  PKG-08 wires `--breadth` into the exporter.

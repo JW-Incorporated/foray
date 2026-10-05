@@ -28,7 +28,7 @@
     {
       "show_id": "omega-tau",
       "title": "omega tau",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/45/79/ff/4579ffe8-ae75-a586-df5a-940e3b0b8ae7/mza_12776813321781247935.png/600x600bb.jpg",
       "editorial_note": "The most technically dense engineering-tour podcast in English -- stellarators, magnets, superconductivity, no hand-holding.",
       "taxonomy_node_ids": [
         "engineering/energy-fusion",
@@ -45,7 +45,8 @@
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/30/a8/ad/30a8add4-53ad-7c34-1338-2ba77775cc8a/mza_1890398681110635913.jpg/600x600bb.jpg",
       "editorial_note": "Shorter founder interviews across the clean-energy startup landscape, fusion included.",
       "taxonomy_node_ids": [
-        "engineering/energy-fusion"
+        "engineering/energy-grid",
+        "business/startups"
       ],
       "episode_count": null,
       "explicit": null,
@@ -71,7 +72,6 @@
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/b7/61/cc/b761cc9f-7ad2-39bf-f055-214edfab8a9a/mza_9718301860875244049.jpg/600x600bb.jpg",
       "editorial_note": "How deep-tech founders take a lab result to a company -- fusion and hard-tech leadership stories.",
       "taxonomy_node_ids": [
-        "engineering/energy-fusion",
         "business/startups"
       ],
       "episode_count": null,

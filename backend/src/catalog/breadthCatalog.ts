@@ -50,8 +50,12 @@ export interface CatalogueShowEntry {
   editorial_note: string | null;
   /* Apple's PER-GENRE top-chart position, 1-200, paired with `chart_genre_id`
      in the harvest (docs/search-plan.md §1.1 - present on all 19,787 breadth
-     rows). `null` for a curated row, which has no chart position and needs
-     none: the tier term has already placed it.
+     rows). A CURATED row carries its breadth twin's rank, joined on
+     `apple_collection_id` (P-09 rule half, PKG-13 - the same join
+     `tools/build-show-index.mjs` and `tools/build-catalog-client.mjs` make
+     for the client files), and `null` when it has no ranked twin. The tier
+     term still splits curated from breadth first; the rank only orders
+     curated against curated.
 
      IT IS CARRIED BECAUSE THE RANKING RULE READS IT, on both sides of the
      wire. `searchBreadthShows`'s comparator bands it, and therefore decides
@@ -69,6 +73,7 @@ export interface CatalogueShowEntry {
 interface CuratedShowRaw {
   show_id: string;
   title: string;
+  apple_collection_id?: number | string | null;
   artwork_url?: string | null;
   feed_url?: string | null;
   taxonomy_node_ids?: string[];
@@ -108,6 +113,17 @@ export function loadBreadthCatalog(): CatalogueShowEntry[] {
   const entries: CatalogueShowEntry[] = [];
   const seenIds = new Set<string>();
 
+  /* P-09 rule half (PKG-13): the curated rows' chart positions, from EVERY
+     breadth row, `in_curated` or not - the curated shows' twins are exactly
+     the `in_curated` rows the breadth loop below skips, so filtering here
+     would join nothing. tools/build-show-index.mjs's `rankByAppleId`, copied
+     rather than imported (a backend module cannot import a repo tool). */
+  const rankByAppleId = new Map<string, number>();
+  for (const row of breadth.shows ?? []) {
+    const rank = normalizeChartRank(row?.chart_rank);
+    if (rank !== null) rankByAppleId.set(String(row?.apple_collection_id), rank);
+  }
+
   for (const show of curated.shows ?? []) {
     if (!show.show_id || !show.title) continue;
     if (seenIds.has(show.show_id)) continue;
@@ -120,7 +136,7 @@ export function loadBreadthCatalog(): CatalogueShowEntry[] {
       tier: "curated",
       taxonomy_node_ids: show.taxonomy_node_ids ?? [],
       editorial_note: show.editorial_note ?? null,
-      chart_rank: null, // a curated row has no chart position - see the field's note
+      chart_rank: rankByAppleId.get(String(show.apple_collection_id)) ?? null, // the breadth twin's rank - see the field's note
     });
   }
 

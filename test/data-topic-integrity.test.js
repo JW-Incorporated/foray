@@ -27,10 +27,13 @@
  * and `node tools/refresh/backfill-provenance.mjs --check` exits 1 on the same
  * edit.
  *
- * FUSION CONTAMINATION (PKG-07; #547 F19). The last test pins that no general
+ * FUSION CONTAMINATION (PKG-07; #547 F19). The PKG-07 test pins that no general
  * show's episode sits on `engineering/energy-fusion` by inheriting the show's
- * label, nor carries it without its own title or hook naming fusion; the
- * kills are in the test.
+ * label, nor carries it without its own title or hook naming fusion. The
+ * residue test after it (#547, 2026-10) closes the gap that test leaves for
+ * shows NOT marked general: only an explicitly allowlisted fusion-specific
+ * show may hand the fusion leaf to its episodes by inheritance. The kills are
+ * in the tests.
  *
  * The floor for this suite lives in test/suite-integrity.test.js.
  */
@@ -219,5 +222,48 @@ test("no engineering/energy-fusion item comes from a general show's inherited la
     .filter((i) => i.topics_source !== "show" && !/fusion/i.test(`${i.title || ""} ${i.hook || ""}`))
     .map((i) => `not about fusion by its own title/hook — ${i.show}: ${i.id}`);
   const bad = [...inherited, ...unjudged];
+  assert.deepEqual(bad, [], report(bad));
+});
+
+test("only an allowlisted fusion-specific show passes engineering/energy-fusion to its episodes by inheritance", () => {
+  /* #547 residue (2026-10). The PKG-07 test above guards only `label_scope:
+     "general"` shows. Lab to Market Leadership and CleanTechies Podcast are not
+     general, and their show labels carried `engineering/energy-fusion` onto
+     episodes about startup founders, e-waste minerals and home batteries.
+     Those three episodes were the newest three of the fusion playlist's six.
+     docs/curation/relabel-2026-10-fusion-residue.json relabelled them, and
+     both shows lost the fusion node from their catalog row.
+
+     THE ALLOWLIST IS EXPLICIT ON PURPOSE. "The show's own label contains the
+     leaf" would pass by construction: every inherited item inherits a label
+     that names the leaf. CleanTechies, whose only node was the fusion leaf,
+     passed that check while being wrong. A show joins this list only by
+     someone's judgement that every episode of it is fusion/fission
+     engineering.
+
+     Two halves: (1) no discover item outside the allowlist wears the leaf with
+     `topics_source: "show"`; (2) no catalog row outside the allowlist carries
+     the leaf, unless it is general (merge.mjs then refuses an episode that has
+     no topic of its own, PKG-05a). Without (2), the next nightly episode of
+     such a show would inherit the leaf again.
+     KILLED BY (run 2026-10-05): (1) setting
+     cleantechies-podcast--291-building-physical-infrastructure-at-the back to
+     `"topics": ["engineering/energy-fusion"], "topics_source": "show"` in
+     data/discover.json; (2) putting `engineering/energy-fusion` back in
+     CleanTechies Podcast's `taxonomy_node_ids` in data/catalog.json. */
+  const FUSION = "engineering/energy-fusion";
+  const FUSION_SPECIFIC_SHOWS = new Set(["Titans of Nuclear", "omega tau"]);
+  const shows = read("catalog.json").shows;
+  const titles = new Set(shows.map((s) => s.title));
+  const unknown = [...FUSION_SPECIFIC_SHOWS].filter((t) => !titles.has(t));
+  assert.deepEqual(unknown, [], `allowlisted shows missing from catalog.json: ${unknown.join(", ")}`);
+  const { items } = read("discover.json");
+  const inherited = items
+    .filter((i) => (i.topics || []).includes(FUSION) && i.topics_source === "show" && !FUSION_SPECIFIC_SHOWS.has(i.show))
+    .map((i) => `inherited — ${i.show}: ${i.id}`);
+  const labelled = shows
+    .filter((s) => (s.taxonomy_node_ids || []).includes(FUSION) && !FUSION_SPECIFIC_SHOWS.has(s.title) && s.label_scope !== "general")
+    .map((s) => `show label — ${s.show_id}`);
+  const bad = [...inherited, ...labelled];
   assert.deepEqual(bad, [], report(bad));
 });
