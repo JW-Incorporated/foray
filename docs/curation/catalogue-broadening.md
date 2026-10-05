@@ -66,10 +66,13 @@ that is not a gzip. Anything we automate here must set the UA explicitly.
 feeds; the dump carries 4,710,545. The dump is a weekly-ish snapshot running
 about 1,600 feeds and 7 days behind the live index.
 
-**Scale relative to us.** Our catalogue is **138,470 unique feeds** after
-normalising scheme, case and trailing slash (`grilling-foray-sourcing.md` §5.1
-says 138,480, counting raw strings). The dump is **34x larger**; we hold
-**2.94%** of it.
+**Scale relative to us.** Our harvested catalogue is **19,787 US shows** (the
+international file was retired on 2026-10-04; founder ruling, catalogue Q4 "yes",
+`docs/roadmap/README.md` item 26; #560 item 6). The dump is **~238x larger**; we
+hold **0.42%** of it. When this pass ran, the US and international files together
+came to 138,470 unique feeds after normalising scheme, case and trailing slash
+(`grilling-foray-sourcing.md` §5.1 says 138,480, counting raw strings), and the
+figures in §2.1 below were measured against that 138,470.
 
 ---
 
@@ -144,7 +147,9 @@ The dump nominated **7,237 candidate feeds** (food/history-category feeds with
 146 English food/history feeds whose title or description names a target region
 *and* a fire-cooking word).
 
-**6,410 of those 7,237 — 88.6% — are not in our 138,470-feed catalogue.** That
+**6,410 of those 7,237 — 88.6% — were not in our then-138,470-feed catalogue**
+(US plus the since-retired international file; today's catalogue is 19,787 US
+shows, so the share is at least as high now). That
 is the concrete measure of what the chart-harvest ceiling was hiding, and it
 corroborates the 79.6%-new figure the earlier Apple-search pass reported.
 
