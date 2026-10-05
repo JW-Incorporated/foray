@@ -45,9 +45,11 @@ Keep it for the curated tier; build a programmatic harvester for breadth.
 > universal shard/Postgres list (D8 of the S-12 decision record, which
 > lands in `docs/DECISIONS.md` with shows-search PKG-04) — Home/Forays/Playlists keep reading only the curated
 > overlay, exactly as this table's "Consumers" row already said. The
-> Apple-chart-harvested `data/catalog-breadth.json`/`-intl.json.gz`
-> files are a **fourth, older, and now largely superseded** source
-> (~150K rows from Apple's charts, no PodcastIndex id) that server
+> Apple-chart-harvested `data/catalog-breadth.json` file is a
+> **fourth, older, and now largely superseded** source
+> (19,787 US shows from Apple's charts, no PodcastIndex id; the
+> international file was retired on 2026-10-04, see "Breadth tier,
+> batch 2" below) that server
 > code still reads as a search/episode fallback; they are not marked
 > retired because nothing has replaced their specific server-side role
 > yet — that is a real follow-up, not done by this banner.
@@ -207,10 +209,11 @@ each source sits on a bare branch that has children — the defect
 `--baseline <snapshot>` prints before/after. Take a snapshot before any
 re-classification, because "did it work?" is otherwise unanswerable after the fact.
 
-## Breadth tier, batch 2 (international)
+## Breadth tier, batch 2 (international) — retired 2026-10-04
 
-`data/catalog-breadth-intl.json.gz` — 121,786 shows from 18 regional Apple top-chart
-sets (fr/de/jp/br/mx/es/it/in/nl/dk/se/za/no/gb/ie/au/nz/ca), zero overlap with the
-US batch, 99.4% with feed URLs. Stored gzipped (76MB raw exceeds repo limits);
-consumers: `zcat` / `zlib.gunzipSync`. Same schema as catalog-breadth.json with
-per-show `region`.
+The breadth tier is now **19,787 US shows** (`data/catalog-breadth.json`); the
+international file was retired on 2026-10-04 (founder ruling, catalogue Q4 "yes",
+`docs/roadmap/README.md` item 26; #560 item 6). It held 121,786 shows from 18
+regional Apple top-chart sets, gzipped, and no endpoint, tool or test read it.
+The file stays in git history if it is ever wanted back; re-harvesting is
+`tools/harvest-catalog.mjs --regions`.

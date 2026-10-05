@@ -1,6 +1,7 @@
 /* Feed-URL normalisation shared by identity (D2: feed URL is the join key)
-   and the id-map builder. Same normalisation catalogue-broadening.md used
-   to count "138,470 unique feeds" (scheme, case, trailing slash). */
+   and the id-map builder. Same normalisation (scheme, case, trailing slash)
+   catalogue-broadening.md §1 used to count unique feeds; the international
+   breadth file it also counted was retired on 2026-10-04 (#560 item 6). */
 export function normalizeFeedUrl(url) {
   let s = String(url ?? "").trim();
   if (!s) return "";
