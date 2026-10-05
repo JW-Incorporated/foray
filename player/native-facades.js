@@ -201,6 +201,8 @@ export class NativeManagerFacade {
     this._voice = typeof voice === "string" && voice ? voice : null;
     this._interludeEnabled = interludeEnabled !== false;
     this._queue = [];
+    /** The original item behind a local pick, for the pointer row (PQ-19). */
+    this._lastEpisodeItem = null;
     /** The Foray the page built (NE-35): `{id, title, report, isLocalFile,
         allowAdPad}` while the pick is a Foray, else null. */
     this._foray = null;
@@ -278,16 +280,25 @@ export class NativeManagerFacade {
     return reply.ok === true;
   }
 
-  /** The strategy's queue for a pick: the pick. */
-  setQueueFromPick(item) {
+  /** The strategy's queue for a pick: the pick. `lastEpisodeItem` (PQ-19,
+      #29) is the item the engine's pointer row is built from when it is not
+      the pick itself: a downloaded episode is picked as its local playable
+      (`audio_url` a file, `isLocalFile`), and the row the engine stores must
+      still name the ORIGINAL — a ribbon restored after the file is evicted
+      has to stream it. Ignored unless it is the same episode. (The JS
+      manager's second argument is the strategy's context; SINGLE_ITEM reads
+      none of it, so client.js passes the same call to both lanes.) */
+  setQueueFromPick(item, { lastEpisodeItem = null } = {}) {
     this._foray = null;
     this._queue = item ? [item] : [];
+    this._lastEpisodeItem = item && lastEpisodeItem?.id === item.id ? lastEpisodeItem : null;
     return this._queue;
   }
 
   loadQueue(items) {
     this._foray = null;
     this._queue = (items || []).filter(Boolean);
+    this._lastEpisodeItem = null;
   }
 
   /**
@@ -304,7 +315,8 @@ export class NativeManagerFacade {
     if (this._foray) return this.jump(index, opts);
     const item = this._queue[index];
     if (!item?.id) return false;
-    const args = { item, lastEpisodeRow: this._lastEpisodeRow(item) ?? { id: item.id } };
+    const rowItem = this._lastEpisodeItem?.id === item.id ? this._lastEpisodeItem : item;
+    const args = { item, lastEpisodeRow: this._lastEpisodeRow(rowItem) ?? { id: item.id } };
     const at = Number(opts?.startOffset);
     if (opts?.startOffset != null && Number.isFinite(at) && at >= 0) args.startSec = at;
     return this._send("playEpisode", args, opts?.source);
