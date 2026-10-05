@@ -45,10 +45,11 @@ import {
   MIN_DERIVED_DATA_FILES, runtimeDataFiles, playerFiles, buildPlan, prepare,
   SHELL_ONLY_FILES, shellOnlyPlan, shellScriptTags, injectShellScripts,
   assertShellScriptsPresent, WebDirError,
-  BUNDLED_ITEMS_PER_SHOW, PROJECTED_DATA, COPIED_WHOLE, discoverSlice,
+  BUNDLED_ITEMS_PER_SHOW, PROJECTED_DATA, discoverSlice,
   assertDiscoverSliceComplete, serializeSlice, sliceBytes, assertSlicesOnDisk, projectData,
   referencedSegmentIds, segmentSlice, segmentSourceSlice, assertForaySliceComplete,
-  WHY_COPIED_WHOLE, isBundledData, SEED_POINTER,
+  isBundledData, SEED_POINTER, itemTagsSlice, assertItemTagsSliceComplete, searchedPoolIds,
+  tagDfBlock, tagCandidateForms, TAG_DF_SENSE_LOCKED_STEMS,
   UNPINNED_DATA, unpinnedDataPlan, unpinnedDataOverBudget,
   seedCarries, seedForays, assertSeedForaysComplete, seedPointerDoc,
   MODEL_EXTENSIONS, assertNoModelWeights,
@@ -399,8 +400,7 @@ test("every bundled data file is compact JSON that parses to the source, and a d
          the bundled copies carry line breaks again and the first half fails.
        MUTATION 2 (ran): delete the "every other data file" loop in
          `assertSlicesOnDisk` — the corrupted session.json below goes unnoticed,
-         because that file is neither sliced nor in COPIED_WHOLE and nothing else
-         reads it back. */
+         because that file is not sliced and nothing else reads it back. */
   const fake = makeFakeRepo();
   fs.writeFileSync(path.join(fake, "data", "taxonomy.json"), JSON.stringify({ topics: ["a", "b"], nested: { k: 1 } }, null, 2) + "\n");
   prepare({ root: fake, out: "www" });
@@ -848,174 +848,357 @@ test("the artwork the app would show is the artwork the website shows", () => {
   assert.notDeepEqual([...artworkUrlsByShow(wrong)], [...artworkUrlsByShow(discover)]);
 });
 
-test("data/item-tags.json is COPIED WHOLE, and the bundle proves it entry for entry", () => {
-  /* THE FINDING THAT REVERTED HALF OF THIS CHANGE, kept as a test so nobody has to
-     rediscover it. Trimming item-tags.json to the bundled pool takes it from 295 KB
-     to 121 KB and looks obviously safe: search only ever looks a tag list up by an
-     item it is already scoring.
+/* #279: the tag map is SLICED to the searched pool and carries the WHOLE map's
+   counts beside it. The production engine, loaded here the way the website loads
+   it, is what both sides of every comparison below run.
 
-     But `search-engine.js`'s `tagDF()` walks Object.values() of the WHOLE map, so
-     cutting 1,561 entries to 649 changes what every threshold in the query
-     interpreter sees. It used to change it by ARITHMETIC: `tagDF` returned an
-     absolute count against absolute thresholds (over 60 deleted a term from query
-     expansion, over 25 cut its weight to 0.4x, and `scoreMatch` bucketed a
-     multiplier at 10 and 30), so the trim scaled every df by ~0.42 and 66 of the
-     1,366 terms changed expansion bucket — `war` 72 -> 24, deleted as too broad on
-     the website and at full weight in the app.
-     #275 fixed that half: `tagDF` is a fraction of the map it walked, so a trim
-     scales numerator and denominator together. What survives is SAMPLING — the slice
-     is three items per show, stratified by show and skewed by topic — and it is
-     still 12 expansion buckets and 62 multipliers. The app would rank differently
-     from the website, on a phone, with every guard in prepare-webdir.mjs green. The
-     test below measures both numbers so the refusal cannot rot into a quotation.
+   THIS FILE IS WHERE THE ENGINE IS ALLOWED TO RUN, and prepare-webdir.mjs is not
+   (#279 review): the bundler executes in the release jobs that hold the signing
+   secrets, so it computes the df block with a governed restatement of the matcher
+   (`tagDfBlock`) and checks only data at build time. These tests run in the
+   secret-free `data-and-site` check and carry the half of the proof that needs the
+   real engine — that the restatement is the engine's rule, and that tagCount/tagDF
+   cannot tell the slice from the whole map. */
+const SE = createRequire(import.meta.url)(path.join(ROOT, "search-engine.js"));
 
-     So it is copied, and the copy is asserted on the bytes — PARSED, since 2026-09-04,
-     because every bundled data file is re-serialised without whitespace and the
-     bytes legitimately differ. What the assertion is about has not moved: a trimmed
-     map does not parse to the same map. THE MUTATION THIS KILLS is somebody adding it
-     back to PROJECTED_DATA — which is a reasonable-looking 174 KB saving. */
+/** The df table the ENGINE says a map has: its own `tagCount`, on a fresh ctx
+ *  holding the whole map, over every term that can count nonzero (every prefix of
+ *  every segment), grouped like `tagDfBlock`'s. This is the construction the first
+ *  cut of #279 ran inside the bundler; it lives here now, where the engine may run. */
+function engineDfByCount(itemTags) {
+  const ctx = { itemTags: { tags: itemTags.tags } };
+  const byCount = {};
+  for (const t of [...tagTermUniverse(itemTags)].sort()) {
+    const n = SE.tagCount(t, ctx);
+    if (n > 0) (byCount[n] ||= []).push(t);
+  }
+  return byCount;
+}
+
+/** The engine-side half of the slice's proof, moved here out of the bundler's
+ *  `assertItemTagsSliceComplete` (#279 review): the REAL tagCount and tagDF, on a
+ *  fresh ctx per map, give identical answers on the whole map and on the slice for
+ *  every term that can count nonzero, every term the block names, and `extra`.
+ *  Returns the terms that differ. */
+function sliceCountDivergence(whole, slice, extra = []) {
+  const terms = tagTermUniverse(whole, extra);
+  for (const group of Object.values(slice?.df?.by_count ?? {})) for (const t of group) terms.add(t);
+  return tagCountDivergence(whole, slice, terms);
+}
+
+/** Every term `tagCount` can count nonzero on `itemTags` is a prefix of one of its
+ *  segments (each candidate form is the term plus a suffix), so this set plus any
+ *  extra names is every term worth comparing. */
+function tagTermUniverse(itemTags, extra = []) {
+  const terms = new Set(extra);
+  for (const list of Object.values(itemTags.tags)) {
+    for (const tag of list) for (const seg of tag.split("-")) for (let k = 0; k <= seg.length; k++) terms.add(seg.slice(0, k));
+  }
+  return terms;
+}
+
+/** Terms on which two tag maps give different `tagCount` or `tagDF` answers, each
+ *  map in its own fresh ctx (the engine memoizes on the ctx). */
+function tagCountDivergence(a, b, terms) {
+  const ca = { itemTags: a }, cb = { itemTags: b };
+  return [...terms].filter((t) => SE.tagCount(t, ca) !== SE.tagCount(t, cb) || SE.tagDF(t, ca) !== SE.tagDF(t, cb));
+}
+
+/** A tag map built to make every way the df block can be wrong visible:
+ *  - `x1` carries BOTH `war` and `wars`, so `tagCount("war")` is a UNION over its
+ *    candidate forms — summing per-form counts says 3, the engine says 2;
+ *  - `cook` and `ship` reach a segment only through a suffix (`cooks`, `ships` on
+ *    the searched side), so a table keyed by whole segments misses them;
+ *  - `train` and `book` are SENSE_LOCKED stems, so `training`/`booking` do not
+ *    count for them; `ai` is a short term (two forms only);
+ *  - `comedy` and `cooks` live ONLY on items the app cannot search, so a bare trim
+ *    counts them 0 and the whole map counts them 1. */
+function dfFixture() {
+  const discover = { items: [{ id: "d1" }, { id: "d2" }] };
+  const session = { episodes: { s1: { title: "s1" } } };
+  const itemTags = {
+    version: 1,
+    built_at: "2026-10-05T00:00:00.000Z",
+    tags: {
+      x1: ["wars", "war"],
+      d1: ["war-history", "ships"],
+      x2: ["comedy", "ship"],
+      d2: ["wars", "train-travel"],
+      x3: ["trains", "book-club"],
+      s1: ["training", "ai"],
+      x4: ["booking", "ais"],
+      x5: ["cooks"],
+    },
+  };
+  return { discover, session, itemTags };
+}
+
+test("#279: the tag slice keeps exactly the searched pool, and tagCount/tagDF read the WHOLE map's numbers off it", () => {
+  /* THE CORRECTNESS CONDITION OF THE SLICE, on a fixture built to break it (see
+     dfFixture). The skeptic pass named the three ways a df sidecar goes quietly
+     wrong, and each one is a line below:
+       1. a per-SEGMENT table: `war` is a union over war|wars, so x1 counts once;
+       2. a table missing terms that only reach a segment through a suffix (`cook`);
+       3. a slice keyed on the discover slice alone, dropping session episodes the
+          app searches (`s1`).
+     MUTATIONS THIS KILLS (each run):
+       - search-engine.js tagCount: `if (bundled) {` -> `if (false) {` — the slice
+         counts itself, `comedy` 1 -> 0, parity fails;
+       - search-engine.js tagDF: `bundled ? bundled.total :` -> `false ? bundled.total :`
+         — the denominator is the slice's 3, not the map's 8;
+       - prepare-webdir.mjs tagDfBlock: `let k = 0` -> `let k = seg.length` — the
+         table holds whole segments only, `cook` 1 -> 0 (the bundler's own data check
+         recomputes with the same function and passes, which is exactly why the
+         engine-side comparison lives here);
+       - prepare-webdir.mjs searchedPoolIds: `new Set(Object.keys(sessionDoc?.episodes ?? {}))`
+         -> `new Set()` — `s1` is dropped, and the kept-ids assertion fails (the verifier
+         shares that function, which is why the expected ids are written out here). */
+  const { discover, session, itemTags } = dfFixture();
+  const slice = itemTagsSlice(itemTags, { discover, session });
+
+  assert.deepEqual(Object.keys(slice.tags), ["d1", "d2", "s1"], "the slice is not the searched pool, in document order");
+  for (const id of ["d1", "d2", "s1"]) assert.deepEqual(slice.tags[id], itemTags.tags[id]);
+  assert.equal(slice.version, 1);
+  assert.equal(slice.built_at, itemTags.built_at);
+  assert.deepEqual(slice.bundled_from, { entries: 8, pool: 3, kept: 3 });
+  assert.equal(slice.df.total, 8);
+  assert.equal(slice.df.entries, 3);
+  assert.deepEqual([...searchedPoolIds(discover, session)].sort(), ["d1", "d2", "s1"]);
+
+  /* The named cases, as numbers, so a reader can check them by eye. */
+  const sliceCtx = { itemTags: slice };
+  assert.equal(SE.tagCount("war", sliceCtx), 3, "war: x1 (war+wars, ONE item), d1 (war-history), d2 (wars)");
+  assert.equal(SE.tagCount("cook", sliceCtx), 1, "cook reaches `cooks` only through its plural, on an unsearched item");
+  assert.equal(SE.tagCount("comedy", sliceCtx), 1, "comedy lives only on an item the app cannot search");
+  assert.equal(SE.tagCount("train", sliceCtx), 2, "train is sense-locked: train-travel and trains, never training");
+  assert.equal(SE.tagCount("book", sliceCtx), 1, "book is sense-locked: book-club, never booking");
+  assert.equal(SE.tagCount("ai", sliceCtx), 2, "ai is short: ai and ais");
+  assert.equal(SE.tagCount("nonesuch", sliceCtx), 0);
+  assert.equal(SE.tagDF("comedy", sliceCtx), 1 / 8, "the denominator is the WHOLE map's entry count");
+
+  /* And over every term that can count nonzero, plus the sense-locked and
+     unknown ones, tagCount AND tagDF agree with the whole map exactly. */
+  const terms = tagTermUniverse(itemTags, ["train", "book", "nonesuch", "constructor", "__proto__", ""]);
+  assert.deepEqual(tagCountDivergence(itemTags, slice, terms), []);
+  assert.equal(assertItemTagsSliceComplete(itemTags, slice, { discover, session }), true);
+
+  /* NOT VACUOUS: the same slice WITHOUT its df block — a bare trim — does diverge,
+     on exactly the terms the block exists for. */
+  const { df: _df, ...bare } = slice;
+  const moved = tagCountDivergence(itemTags, bare, terms);
+  for (const t of ["war", "comedy", "cook"]) assert.ok(moved.includes(t), `a bare trim should move ${t}`);
+});
+
+test("#279: a WHOLE map counts itself — no stale bundle-time counts — and the verifier and the source guard are reached", () => {
+  /* Three guards, three mutations, each run:
+       - search-engine.js readTagDfBlock: delete `|| df.entries !== Object.keys(itemTags.tags || {}).length`
+         — a block left on a NEWER whole map (issue #40 fetches the website's file,
+         which may also have kept a stale block in a merge) is read as truth, and
+         `war` reports the bundle-time 3 instead of the map's 4;
+       - prepare-webdir.mjs assertItemTagsSliceComplete: delete the
+         `!isDeepStrictEqual(df.by_count, want.by_count)` throw — a corrupted count
+         ships and nothing at build time notices;
+       - prepare-webdir.mjs itemTagsSlice: delete the `source.df !== undefined`
+         refusal — a df block committed to the repo's file would be served to the
+         website as its counts. */
+  const { discover, session, itemTags } = dfFixture();
+  const slice = itemTagsSlice(itemTags, { discover, session });
+
+  /* The website's file has no df block: whole-map counting, by definition. */
+  assert.equal(SE.tagCount("war", { itemTags }), 3);
+  /* A newer whole map carrying the OLD block: the engine must ignore the block. */
+  const newer = { ...itemTags, df: slice.df, tags: { ...itemTags.tags, x6: ["war"] } };
+  assert.equal(SE.tagCount("war", { itemTags: newer }), 4, "a stale df block was read on a map it does not describe");
+  assert.equal(SE.tagDF("war", { itemTags: newer }), 4 / 9);
+  /* On the slice it was shipped with, the block IS read: same answer, from the table. */
+  assert.equal(SE.tagCount("war", { itemTags: slice }), 3);
+
+  /* The verifier, reached: move `comedy` to the wrong count. */
+  const corrupt = structuredClone(slice);
+  corrupt.df.by_count["1"] = corrupt.df.by_count["1"].filter((t) => t !== "comedy");
+  (corrupt.df.by_count["2"] ||= []).push("comedy");
+  assert.throws(
+    () => assertItemTagsSliceComplete(itemTags, corrupt, { discover, session }),
+    (e) => e instanceof WebDirError && /counts 1 term\(s\) differently from the whole map/.test(e.message) &&
+      /"comedy": the block says 2, the whole map 1/.test(e.message)
+  );
+  /* And the corruption IS a divergence the engine would act on, so the data check
+     above is guarding something real. */
+  assert.deepEqual(sliceCountDivergence(itemTags, corrupt), ["comedy"]);
+  /* The two entry counts are the condition the engine honours a block on: a wrong
+     `entries` is a block silently ignored, a wrong `total` a wrong denominator. */
+  assert.throws(
+    () => assertItemTagsSliceComplete(itemTags, { ...slice, df: { ...slice.df, entries: 8 } }, { discover, session }),
+    /says total 8 \/ entries 8; the whole map has 8 entries and the slice 3/
+  );
+  assert.throws(
+    () => assertItemTagsSliceComplete(itemTags, { ...slice, df: { ...slice.df, total: 3 } }, { discover, session }),
+    /says total 3 \/ entries 3/
+  );
+  /* ...and a slice that gained a row the app cannot search (which would also make
+     the engine ignore its block) is refused by the pool check. */
+  const extraRow = structuredClone(slice);
+  extraRow.tags.x5 = ["cooks"];
+  assert.throws(() => assertItemTagsSliceComplete(itemTags, extraRow, { discover, session }), /not the searched pool's tag lists/);
+
+  /* The source guard. */
+  assert.throws(() => itemTagsSlice({ ...itemTags, df: slice.df }, { discover, session }), /carries a "df" block/);
+  assert.throws(() => itemTagsSlice({ ...itemTags, tags: {} }, { discover, session }), /no non-empty "tags" map/);
+});
+
+test("#279: prepare writes the tag slice, and the on-disk check notices a bundled map that lost its df block", () => {
+  /* THE MUTATION THIS KILLS: the `data/item-tags.json` entry's `verify` in
+     PROJECTED_DATA replaced with `() => true` (or the entry deleted, which brings
+     back the whole copy and fails the size assertion). With the block stripped the
+     engine counts the slice itself, and only the verifier, run by
+     `assertSlicesOnDisk` on the bytes that ship, can tell. */
   const fake = makeFakeRepo({ catalogue: makeCatalogue({ shows: 4, episodes: 6 }) });
   prepare({ root: fake, out: "www", perShow: 2 });
-  for (const rel of COPIED_WHOLE) {
-    const bundledText = fs.readFileSync(path.join(fake, "www", rel), "utf8");
-    const sourceText = fs.readFileSync(path.join(fake, rel), "utf8");
-    assert.deepEqual(JSON.parse(bundledText), JSON.parse(sourceText), `${rel} is not the whole document in the bundle`);
-    /* And it really was re-serialised rather than copied: the fixture is written
-       indented, and the bundle's copy must not be. Otherwise "parses equal" is true
-       of a verbatim copy and the whitespace saving is unmeasured. */
-    assert.ok(sourceText.includes("\n  "), `the fixture's ${rel} is not indented, so this proves nothing`);
-    assert.ok(!bundledText.includes("\n"), `the bundled ${rel} still carries the source's line breaks`);
-  }
-  assert.ok(COPIED_WHOLE.includes("data/item-tags.json"));
-  /* And it is not in PROJECTED_DATA, which is the list that would trim it. */
-  assert.equal(PROJECTED_DATA.some((sp) => COPIED_WHOLE.includes(sp.rel)), false);
+  const bundledAbs = path.join(fake, "www", "data", "item-tags.json");
+  const bundledText = fs.readFileSync(bundledAbs, "utf8");
+  const sourceText = fs.readFileSync(path.join(fake, "data", "item-tags.json"), "utf8");
+  const bundled = JSON.parse(bundledText);
+  const source = JSON.parse(sourceText);
+  assert.ok(!bundledText.includes("\n"), "the bundled tag slice still carries the source's line breaks");
+  assert.ok(bundledText.length < sourceText.length, "the bundled tag map is not smaller than the source");
+  /* 4 shows x 2 per show, the one topic top-up (`rare`), and the two session episodes. */
+  assert.equal(Object.keys(bundled.tags).length, 11);
+  assert.equal(Object.keys(source.tags).length, 26);
+  assert.equal(bundled.df.total, 26);
+  assert.deepEqual(tagCountDivergence(source, bundled, tagTermUniverse(source)), []);
 
-  /* THE GUARD ITSELF, REACHED. A first mutation run deleted the COPIED_WHOLE loop
-     inside `assertSlicesOnDisk` and this test stayed green, because everything above
-     reads the two files directly — it proves `prepare` copies, not that anything
-     would NOTICE if it stopped. So corrupt the bundled copy and demand the throw. */
-  const bundled = path.join(fake, "www", "data", "item-tags.json");
-  const whole = JSON.parse(fs.readFileSync(bundled, "utf8"));
-  delete whole.tags[Object.keys(whole.tags)[0]];
-  fs.writeFileSync(bundled, serializeSlice(whole));
+  const { df: _df, ...stripped } = bundled;
+  fs.writeFileSync(bundledAbs, serializeSlice(stripped));
   assert.throws(
     () => assertSlicesOnDisk(path.join(fake, "www"), fake),
-    (e) => /does not parse to the same document as the source/.test(e.message) && /tagDF/.test(e.message)
+    (e) => /the bundled data\/item-tags\.json has no "df" block/.test(e.message)
   );
-  /* Formatting alone must NOT trip it, or the guard is back to asserting bytes and
-     the re-serialisation could never have landed. Pretty-print the bundled copy of
-     the whole document and the guard stays quiet. */
-  const restored = JSON.parse(fs.readFileSync(path.join(fake, "data", "item-tags.json"), "utf8"));
-  fs.writeFileSync(bundled, JSON.stringify(restored, null, 4));
+  /* ...and that loss is one the engine would act on. */
+  assert.notDeepEqual(sliceCountDivergence(source, stripped), []);
+  /* Formatting alone must NOT trip it: pretty-print the real slice back. */
+  fs.writeFileSync(bundledAbs, JSON.stringify(bundled, null, 4));
   assert.equal(assertSlicesOnDisk(path.join(fake, "www"), fake), true);
 });
 
-test("REAL REPO: trimming item-tags STILL re-ranks the app, on sampling now rather than arithmetic (#275)", () => {
-  /* The measurement behind the test above, executed rather than quoted, so the
-     refusal cannot quietly stop being true. #275 landed and this test changed
-     shape — which is what it was written to do — but the refusal survived, and the
-     reason is worth having in one place because the obvious reading of #275 is
-     that it made the trim free.
-
-     WHAT #275 FIXED. `tagDF` was an absolute count against absolute thresholds, so
-     trimming 1,561 entries to 649 divided every df by ~2.4 and 66 terms changed
-     expansion bucket on that arithmetic alone — `war` 72 → 24, deleted from the
-     expansion on the web and at full weight on the phone. `tagDF` is now a fraction
-     of the map it walked, so a trim scales numerator and denominator together and
-     that whole class of divergence is gone. `war` is 4.61% of the whole map and
-     3.70% of the trimmed one: same bucket, no divergence at all.
-
-     WHAT IS LEFT, AND WHY IT IS STILL A NO. The bundled slice is not a
-     representative sample of the catalogue — it is three items per show plus every
-     session episode, so it is stratified by SHOW and therefore skewed by TOPIC.
-     Measured: 12 terms still change expansion bucket and 62 change score
-     multiplier, because their share of the slice genuinely differs from their share
-     of the catalogue. `comedy` is 10.70% of the whole map and 8.47% of the slice, so
-     the website deletes it from expansions as too broad and the app would keep it at
-     0.4x; `world-war` is 2.95% and 1.69%, demoted on the web and full weight on the
-     phone. That is a smaller and better-understood divergence than the one #274
-     found — sampling rather than arithmetic, 12 terms rather than 66 — but it is the
-     same failure in kind, and ~181 KB does not buy it.
-
-     WHAT WOULD BUY IT, named so the next attempt starts here rather than at the
-     beginning: ship the trimmed map PLUS a precomputed df table (term → count, and
-     the map size), which is the second option #275 itself lists and is now the
-     cheap one — the fraction is already the quantity search reads, so the sidecar
-     is ~1,400 numbers and the app and the website would agree EXACTLY rather than
-     approximately. That recovers most of the ~181 KB and is a bundle change, not a
-     search-quality one.
-
-     THIS TEST GOES RED THE DAY THE TRIM BECOMES SAFE, deliberately, exactly as its
-     previous version did. `moved > 0` is the refusal; the ratio assertion under it
-     is the part that fails if somebody reverts `tagDF` to a count, because then
-     the two rules agree again and the improvement disappears. */
-  const require_ = createRequire(import.meta.url);
-  const SE = require_(path.join(ROOT, "search-engine.js"));
+test("REAL REPO: the tag slice gives every term primeVocabulary walks — and every term that can count at all — the website's tagCount and tagDF (#279)", (t) => {
+  /* THE PARITY TEST THE SKEPTIC PASS ASKED FOR, on today's real documents:
+     tagCount AND tagDF (and therefore expansionBucket and dfMultiplier, which read
+     only tagDF) equal on the whole map and on the bundled slice, for
+       - every term whose candidate forms hit a segment (every prefix of every
+         segment of the whole map — the complete nonzero set), and
+       - every semantic-index concept term primeVocabulary walks (a concept's own
+         terms and its related concepts' terms), plus ALIASES — the vocabulary
+         interpretQuery expands into and suggestAdjacentTopics sums.
+     WHY A BARE TRIM WAS REFUSED, still measured as the reason the block exists:
+     the pool is three items per show plus every session episode, stratified by
+     show and skewed by topic, so without the block terms change expansion bucket
+     and score multiplier (12 and 62 when the refusal was written; reported below).
+     MUTATIONS THIS KILLS: the four in the fixture test above, on real data — and
+     the one the fixture cannot show, the slice keyed on the discover slice alone
+     (`searchedPoolIds` without the session), which drops real session episodes and
+     fails `assertItemTagsSliceComplete`'s pool check. */
   const read = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
-  const itemTags = read("data/item-tags.json");
+  const whole = read("data/item-tags.json");
   const session = read("data/session.json");
-  const slice = discoverSlice(read("data/discover.json"));
+  const discover = discoverSlice(read("data/discover.json"));
+  assert.equal(whole.df, undefined, "the repo's data/item-tags.json must never carry a df block");
 
-  const pool = new Set([...Object.keys(session.episodes ?? {}), ...slice.items.map((i) => i.id)]);
-  const trimmed = { tags: {} };
-  for (const [id, tags] of Object.entries(itemTags.tags)) if (pool.has(id)) trimmed.tags[id] = tags;
-  assert.ok(Object.keys(trimmed.tags).length < Object.keys(itemTags.tags).length * 0.6);
+  const slice = itemTagsSlice(whole, { discover, session });
+  const entries = Object.keys(whole.tags).length;
+  assert.ok(Object.keys(slice.tags).length < entries * 0.6, "the slice is not slicing the real map");
+  /* Every session episode the map tags is kept: the pool is not the discover slice alone. */
+  const tagged = Object.keys(session.episodes ?? {}).filter((id) => id in whole.tags);
+  assert.ok(tagged.length > 0, "no session episode is tagged today — the session half of the pool is untested here");
+  for (const id of tagged) assert.ok(id in slice.tags, `session episode ${id} lost its tags`);
+  assert.equal(slice.df.total, entries);
+  /* The bundler's restated matcher, on today's whole map, IS the engine's table. */
+  assert.deepEqual(slice.df.by_count, engineDfByCount(whole), "tagDfBlock no longer computes what the engine counts");
+  assert.equal(assertItemTagsSliceComplete(whole, slice, { discover, session }), true);
 
-  /* The vocabulary tagDF can be called with: concept terms plus ALIASES, since a
-     typed token reaches tagDF as itself and an alias is added as a term. */
-  const terms = new Set();
-  for (const c of Object.values(read("data/semantic-index.json").concepts ?? {})) {
-    for (const t of c.terms ?? []) terms.add(t);
+  const vocabulary = new Set();
+  const concepts = read("data/semantic-index.json").concepts ?? {};
+  for (const c of Object.values(concepts)) {
+    (c.terms ?? []).forEach((x) => vocabulary.add(x));
+    for (const rid of c.related ?? []) (concepts[rid]?.terms ?? []).forEach((x) => vocabulary.add(x));
   }
-  for (const [k, vs] of Object.entries(SE.ALIASES)) { terms.add(k); vs.forEach((v) => terms.add(v)); }
+  for (const [k, vs] of Object.entries(SE.ALIASES)) { vocabulary.add(k); vs.forEach((v) => vocabulary.add(v)); }
+  assert.ok(vocabulary.size > 1000, `the concept vocabulary is only ${vocabulary.size} terms`);
+  /* primeVocabulary's own count, so the set above cannot drift from what it walks
+     (ALIASES are on top of it). */
+  const primed = SE.primeVocabulary({ semantic: read("data/semantic-index.json"), itemTags: slice, discover });
+  assert.ok(primed <= vocabulary.size && primed > 1000);
 
-  const whole = { itemTags }, part = { itemTags: trimmed };
-  /* READ FROM THE ENGINE, not mirrored, and the first version of this line only got
-     halfway there. It was an inline `df > 60 ? "delete" : df > 25 ? ...`, which #275
-     would have left comparing a fraction against 60 — every term "full", zero moved,
-     and the assertion below would have gone red claiming the trim was safe when
-     nothing of the kind had been measured. Reading the CONSTANTS from the engine and
-     rewriting the COMPARISON fixed the values and kept the copy; review caught that,
-     so the RULE comes from the engine now too. */
-  const bucket = (df) => SE.expansionBucket(df);
-  const moved = [...terms].filter((t) => bucket(SE.tagDF(t, whole)) !== bucket(SE.tagDF(t, part)));
-  const movedMultiplier = [...terms].filter(
-    (t) => SE.dfMultiplier(SE.tagDF(t, whole)) !== SE.dfMultiplier(SE.tagDF(t, part))
-  );
-  /* The pre-#275 rule, on the same two maps. This is the only place in
-     tools/mobile/ that still knows what it was, and it is here to be beaten. */
-  const absolute = (n) => (n > 60 ? "delete" : n > 25 ? "0.4x" : "full");
-  const movedAbsolute = [...terms].filter((t) => absolute(SE.tagCount(t, whole)) !== absolute(SE.tagCount(t, part)));
+  const terms = tagTermUniverse(whole, vocabulary);
+  assert.deepEqual(tagCountDivergence(whole, slice, terms), [], "the app would interpret a query differently from the website");
+  const wc = { itemTags: whole }, sc = { itemTags: slice };
+  for (const x of vocabulary) {
+    assert.equal(SE.expansionBucket(SE.tagDF(x, sc)), SE.expansionBucket(SE.tagDF(x, wc)), x);
+    assert.equal(SE.dfMultiplier(SE.tagDF(x, sc)), SE.dfMultiplier(SE.tagDF(x, wc)), x);
+  }
+  /* #274's headline example, by name. */
+  assert.equal(SE.tagCount("war", sc), SE.tagCount("war", wc));
 
-  /* THE MARGIN IS THIN, AND THE INSTRUCTION IS DELIBERATELY NOT "DELETE THIS TEST".
-     12 of 1,366 is a sampling residue on a slice the nightly rebuilds, so one refresh
-     could take it to 0 without anybody having decided anything. The version this
-     replaced had 20-against-66 of headroom; this one has 12 against zero. So the
-     failure message has to be honest about what a red run means here: evidence, not a
-     verdict, and ~181 KB is not worth acting on one night's data. */
-  assert.ok(
-    moved.length > 0,
-    `no term changes expansion bucket on the trim (multipliers: ${movedMultiplier.length}) — the ` +
-      `divergence COPIED_WHOLE refuses may have gone, which would make trimming ` +
-      `data/item-tags.json correct and worth ~181 KB. DO NOT act on one run: this is a ` +
-      `sampling residue of 12 terms on a slice the nightly rebuilds, so re-measure across ` +
-      `several refreshes, and prefer the precomputed-df-table follow-up named above — it ` +
-      `makes the app and the website agree exactly rather than approximately. See COPIED_WHOLE.`
-  );
-  assert.ok(
-    moved.length * 2 < movedAbsolute.length,
-    `the trim moves ${moved.length} expansion buckets against ${movedAbsolute.length} under the pre-#275 ` +
-      `absolute rule — normalising tagDF was supposed to remove the arithmetic half of this divergence ` +
-      `(measured 12 against 66), so if the two are now within 2x, tagDF is probably reading a count again`
-  );
-  /* #274's headline example, named because it is the one the docs quote: the term
-     whose 72 → 24 made the app and the website disagree is no longer a divergence
-     at all. Asserted rather than narrated, so the claim cannot rot. */
-  assert.equal(bucket(SE.tagDF("war", whole)), bucket(SE.tagDF("war", part)));
-  assert.notEqual(absolute(SE.tagCount("war", whole)), absolute(SE.tagCount("war", part)));
-  /* And the multipliers, which are the larger half of what is left. Reported in the
-     message rather than bounded, because the honest claim is "still nonzero". */
-  assert.ok(movedMultiplier.length > 0, `no term changes score multiplier either (${movedMultiplier.length}) — see above, the trim may be safe`);
+  /* The bare trim, measured: it must still diverge, or this fixture proves nothing. */
+  const { df: _df, ...bare } = slice;
+  const bc = { itemTags: bare };
+  const movedCount = [...vocabulary].filter((x) => SE.tagCount(x, bc) !== SE.tagCount(x, wc));
+  const movedBucket = [...vocabulary].filter((x) => SE.expansionBucket(SE.tagDF(x, bc)) !== SE.expansionBucket(SE.tagDF(x, wc)));
+  const movedMult = [...vocabulary].filter((x) => SE.dfMultiplier(SE.tagDF(x, bc)) !== SE.dfMultiplier(SE.tagDF(x, wc)));
+  t.diagnostic(`bare trim: ${movedCount.length} counts, ${movedBucket.length} expansion buckets, ${movedMult.length} multipliers moved; with the df block: 0`);
+  assert.ok(movedCount.length > 0, "a bare trim moves no count — the comparison above is vacuous");
+  assert.ok(sliceBytes(slice) < sliceBytes(whole) * 0.6, "the slice saves less than this change claims");
+});
+
+test("#279 review: the bundler's restated matcher is the engine's — sense-locked stems, candidate forms and the union — so search-engine.js never runs in a signing job", () => {
+  /* WHY THIS TEST EXISTS. prepare-webdir.mjs runs inside the release jobs that hold
+     the signing secrets, so it may not load search-engine.js (tools/ci/
+     path-policy.test.mjs proves the walk never reaches it). It computes the df
+     block with `tagDfBlock`, a restatement of the engine's candidateForms,
+     SENSE_LOCKED_STEMS and hyphen split. A restatement drifts the day somebody
+     tunes the engine, so this pins it to the REAL engine, here, in the secret-free
+     data-and-site check, where a drift is a red required check rather than an app
+     that ranks differently from the website.
+     MUTATIONS THIS KILLS (each run):
+       - search-engine.js: add "cook" to SENSE_LOCKED_STEMS — the stem list
+         assertion fails (and the probe map below diverges on `cook`);
+       - prepare-webdir.mjs tagCandidateForms: `t.length < 4` -> `t.length < 3` —
+         `war` gains `wares`/`waring`, the probe map's counts differ;
+       - prepare-webdir.mjs tagCandidateForms: drop `t + "ing"` from the long branch
+         — `grill` stops counting `grilling`;
+       - prepare-webdir.mjs tagDfBlock: count `hit.size` per FORM instead of the
+         union (sum of `index.get(f).size`) — `war` on an entry tagged war AND wars
+         counts twice. */
+  assert.deepEqual([...TAG_DF_SENSE_LOCKED_STEMS].sort(), [...SE.SENSE_LOCKED_STEMS].sort(),
+    "the bundler's sense-locked stems are not search-engine.js's — change both together");
+
+  /* A probe map that gives every form of every interesting term its own entry, plus
+     one entry carrying several forms at once (the union), so any difference in the
+     candidate-form rule moves a count. */
+  const stems = [...SE.SENSE_LOCKED_STEMS, "grill", "engineer", "cook", "war", "ai", "ox", "wars", "ware"];
+  const tags = {};
+  let n = 0;
+  for (const stem of stems) {
+    for (const suffix of ["", "s", "es", "ing", "ings", "ed"]) tags[`p${n++}`] = [`${stem}${suffix}-topic`];
+    tags[`p${n++}`] = [stem, `${stem}s`, `x-${stem}es`, `${stem}ing`];
+  }
+  const probe = { tags };
+  for (const stem of stems) {
+    assert.ok(tagCandidateForms(stem).includes(stem));
+    assert.ok(tagCandidateForms(stem).every((f) => f.startsWith(stem)), "a candidate form that is not the term plus a suffix breaks the prefix walk");
+  }
+  assert.deepEqual(tagDfBlock(probe, 0).by_count, engineDfByCount(probe));
+  assert.deepEqual(tagDfBlock(dfFixture().itemTags, 0).by_count, engineDfByCount(dfFixture().itemTags));
+
+  /* And end to end: a slice of the probe map carrying the restated block is
+     indistinguishable from the whole map to the real engine. */
+  const discover = { items: [{ id: "p0" }, { id: "p7" }] };
+  const slice = itemTagsSlice(probe, { discover, session: { episodes: {} } });
+  assert.equal(Object.keys(slice.tags).length, 2);
+  assert.deepEqual(sliceCountDivergence(probe, slice, stems), []);
+  /* Not vacuous: the probe map really does separate the rules — sense-locked and
+     open stems count differently on the same shape. */
+  const ctx = { itemTags: probe };
+  assert.notEqual(SE.tagCount("train", ctx), SE.tagCount("grill", ctx));
 });
 
 test("prepare WRITES the slice rather than copying the file", () => {
@@ -1037,12 +1220,15 @@ test("prepare WRITES the slice rather than copying the file", () => {
   );
   assert.equal(assertDiscoverSliceComplete(source("data/discover.json"), bundled), true);
 
-  /* Every bundled item can still be searched with its own tags, and so can every
-     item that is NOT bundled — the tag map is copied whole on purpose. */
+  /* Every bundled item can still be searched with its own tags, and an item that
+     is NOT bundled carries none — the tag map is sliced to the searched pool (#279),
+     with the whole map's counts beside it. */
   const tags = read("data/item-tags.json");
+  const bundledIds = new Set(bundled.items.map((i) => i.id));
   for (const item of source("data/discover.json").items) {
-    assert.ok(item.id in tags.tags, `${item.id} lost its tags`);
+    assert.equal(item.id in tags.tags, bundledIds.has(item.id), `${item.id}: tags kept iff the item is bundled`);
   }
+  assert.equal(tags.df.total, Object.keys(source("data/item-tags.json").tags).length);
 
   /* The COPIED files are untouched — this slices one file, it does not rewrite the
      data directory. */
@@ -1108,7 +1294,8 @@ test("every PROJECTED_DATA entry carries a projection, a verification and a budg
      have `undefined` compared against with `>`, which is false — a budget that can
      never fail. Both are one careless entry away the next time this list grows. */
   assert.deepEqual(PROJECTED_DATA.map((p) => p.rel), [
-    "data/forays.json", "data/discover.json", "data/segments.json", "data/segment-sources.json",
+    "data/forays.json", "data/discover.json", "data/item-tags.json", "data/segments.json",
+    "data/segment-sources.json",
   ]);
   /* ORDER-INDEPENDENCE, ASSERTED RATHER THAN ORDER. The first draft of this test
      pinned segments-before-sources and said the second is derived from the first —
@@ -1174,14 +1361,6 @@ test("every PROJECTED_DATA entry carries a projection, a verification and a budg
        byte. */
     assert.equal(typeof spec.whenBreached, "string", `${spec.rel} does not say what a breach means`);
     assert.ok(spec.whenBreached.length > 60, `${spec.rel}'s breach note is too short to be advice`);
-  }
-  /* Same rule for the list that refuses to slice: a file copied whole with no reason
-     attached is exactly the state somebody optimises away. Asserted as identical key
-     sets rather than defended with a `??` fallback, which would be a branch that can
-     never fire. */
-  assert.deepEqual([...COPIED_WHOLE].sort(), Object.keys(WHY_COPIED_WHOLE).sort());
-  for (const rel of COPIED_WHOLE) {
-    assert.ok(WHY_COPIED_WHOLE[rel].length > 60, `${rel} is copied whole with no reason given`);
   }
   const fake = makeFakeRepo();
   assert.equal(projectData(fake).size, PROJECTED_DATA.length);
@@ -1574,7 +1753,6 @@ test("F-92: the seed's data/forays.json is the source minus its generated drafts
      THE MUTATIONS THIS KILLS: reverting `seedForays` to a copy (the generated draft
      is back, with its ~20 KB); "tidying" the bundle's copy by hand (a curated draft
      gone). Both reach `assertSlicesOnDisk` and both are named. */
-  assert.ok(!COPIED_WHOLE.includes("data/forays.json"));
   assert.ok(PROJECTED_DATA.some((sp) => sp.rel === "data/forays.json"));
   const fake = makeFakeRepo({ forays: withGeneratedDraft(makeForayDocs()) });
   prepare({ root: fake, out: "www" });
@@ -1827,8 +2005,8 @@ test("REAL REPO: the sliced bundle, its budgets and the headroom that is left", 
          - ~230 nights of `data/item-tags.json`, which is COPIED WHOLE on purpose and
            grows ~4 KB a night. That is the one deliberately-unbounded thing left, and
            when this assertion next goes red THAT is what it will be about — the fix
-           is the df sidecar named in `COPIED_WHOLE`'s comment, not another
-           re-baseline.
+           is the df sidecar, not another re-baseline. (It landed: #279, see the note
+           under assertion A.)
          - ~30 new Forays, at ~15 KB of segments plus up to ~15 KB of registry each.
 
        SO THE TWO ASSERTIONS NOW SAY DIFFERENT THINGS, which is what the old pair did
@@ -2018,7 +2196,19 @@ test("REAL REPO: the sliced bundle, its budgets and the headroom that is left", 
          lever is still the Kokoro probe (player/kokoro-probe.js 31,459 B +
          kokoro-probe-passage.json 34,794 B = 66,253 B, shell only) pending
          the founder's answer — not a seventh raise. */
-      r.total < 2.85 * 1024 * 1024,
+      /* LOWERED 2.85 -> 2.8 MB on 2026-10-05 (#279): the df sidecar landed, which
+         is what the 2026-09-04 note told an item-tags red to do, and it takes away
+         the need for #1039's bridge above. `data/item-tags.json` is now the
+         searched pool's tag lists plus the whole map's counts — 286,348 -> 124,908 B
+         — and search-engine.js grows +740 B minified to read them (22,577 ->
+         23,317). RE-MEASURED at the merge of main (b96c5780) into the branch, LF,
+         minified, as CI measures it: main alone 2,942,217 B (6.1 KB OVER this
+         line, under #1039's 2.85); the branch 2,781,517 B — -160,700 B, ~150.9 KB
+         under 2.8 MB and ~356 KB under the 3 MB cap. The tag file now has a
+         per-file budget of its own (PROJECTED_DATA, 138 KB), so its nightly growth
+         no longer reaches this line unannounced. The Kokoro question #1039 left
+         with the founder is untouched: the next feature-code red is still its. */
+      r.total < 2.8 * 1024 * 1024,
       `the bundle is ${(r.total / 1024 / 1024).toFixed(2)} MB, leaving ` +
         `${((MAX_BYTES - r.total) / 1024).toFixed(0)} KB of headroom under the 3 MB cap`
     );
@@ -2043,6 +2233,11 @@ test("REAL REPO: the sliced bundle, its budgets and the headroom that is left", 
          1.85 MB leaves ~294 KB above today — the same ~80-90 nights of item-tags the
          1.4 MB line was set to leave. Same shape, re-measured, and the new file is the
          one member of `data/` that has a per-file budget of its own. */
+      /* LEFT AT 1.85 MB on 2026-10-05 (#279), deliberately: the tag slice took the
+         data half down ~158 KB, and the file that moved — the one unbounded member
+         this line was mostly watching — now carries a per-file budget of its own
+         (138 KB), which is the tighter alarm for it. Re-tighten this line only with
+         a measurement of what else in data/ it is now watching. */
       dataBytes < 1.85 * 1024 * 1024,
       `the bundle's data/ half is ${(dataBytes / 1024).toFixed(0)} KB — something in data/ stopped being bounded`
     );

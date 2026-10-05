@@ -4,7 +4,7 @@
 lawyer (see §9).** Each remaining `TODO(founder)` below is a fact only a founder
 can supply. Do not publish this to a store listing with any of them unresolved.
 
-Last updated: 2026-09-30 (the effective date is the "Last updated" date of the
+Last updated: 2026-10-05 (the effective date is the "Last updated" date of the
 republished page at https://jwlabs.ai/4a/privacy/) · Applies to: the **4a** web app
 (https://jw-incorporated.github.io/foray/) and the iOS/Android app built from the
 same code. The app was formerly Foray. That is why the word is still in this URL
@@ -450,6 +450,12 @@ the real chain can be longer.
 The app also loads **cover artwork over HTTPS from publisher and Apple-hosted
 image URLs**, which reveals the same kind of request metadata to those hosts.
 
+In the native app, opening an episode can also make your device **fetch that
+episode's chapter list, or read the start of its audio file for chapter marks,
+directly from the publisher's servers** (`app.js:readDeviceChapters()`), which
+reveals the same kind of request metadata to those hosts and involves no 4a
+server.
+
 Finally, the web app is served from **GitHub Pages**, so GitHub serves the page
 and the catalogue files and sees those requests. In the native app the shell and
 catalogue are bundled, so this does not apply there.
@@ -499,6 +505,14 @@ bound on the channel that would carry data *out*.
     (`backend/src/cli/buildSession.ts`, and `docs/DECISIONS.md` records the
     decision not to stand it up). If that changes, this sentence changes with it;
     see `data-safety.md` § What would change these answers.
+- **Sharing sends nothing to us.** When you tap Share, the app builds the link on
+  your device and hands it to your phone's share sheet, or copies it to your
+  clipboard. It sends nothing to us and records no event that you shared. A link
+  holds only the public address of what you shared (a show, an episode or a
+  published foray) and, for one of your own playlists or a Suggested list, its
+  title and the ids of up to 50 of its catalogue episodes; never the playlist's
+  own id, your listening history or anything else about you. Whoever you send it
+  to can read what it holds, including a playlist title you chose.
 
 ## 6. Children
 

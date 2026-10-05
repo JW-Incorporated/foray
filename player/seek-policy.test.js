@@ -306,3 +306,23 @@ test("AD_PAD_SHIPPED is the one switch and it is off until D5", () => {
     APPROXIMATE,
   );
 });
+
+test("publishes window.ForaySeekPolicy only where a window exists", async () => {
+  /* CH-1 (#1071): app.js, a classic script, reads the rule from window rather
+     than keeping a copy. This file imported cleanly above with no window (node,
+     the parity harness); a fresh instance under a window stub publishes.
+     MUTATION: drop `typeof window !== "undefined"` from the guard at the end of
+     seek-policy.js — the static import at the top of this file throws
+     ReferenceError and the whole suite is red. */
+  assert.equal(typeof globalThis.window, "undefined");
+  globalThis.window = {};
+  try {
+    await import("./seek-policy.js?window-stub");
+    const p = globalThis.window.ForaySeekPolicy;
+    assert.deepEqual(Object.keys(p).sort(), ["APPROXIMATE", "EXACT", "FOREIGN", "describeTimestamp", "formatTimestamp", "seekPrecision"]);
+    assert.equal(p.seekPrecision({ dai_suspected: true }, { source: p.FOREIGN }).precision, p.APPROXIMATE);
+    assert.equal(p.formatTimestamp(4080, p.APPROXIMATE), "~68 min");
+  } finally {
+    delete globalThis.window;
+  }
+});

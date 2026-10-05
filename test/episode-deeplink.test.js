@@ -14,7 +14,10 @@
  *     stamp as the start offset (races-1: the seek-during-load path).
  *  5. Precision follows player/seek-policy.js `seekPrecision` for a FOREIGN
  *     stamp: a DAI stream reads "~1:07:30", a static enclosure or a downloaded
- *     file reads an exact "1:07:30".
+ *     file reads an exact "1:07:30". Since CH-1 (#1071) app.js reads the rule
+ *     from the module itself (window.ForaySeekPolicy, `chapterPrecision`), so
+ *     the harness loads the real module; with none loaded the link reads
+ *     approximate (fail honest).
  *  6. Nothing plays on its own: rendering the page, cold or warm, starts no
  *     audio (WebView gesture rules; the shell's cp_last_route relaunch).
  *
@@ -34,6 +37,9 @@ const ROOT = path.join(__dirname, "..");
 const APP_SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
 
 process.on("unhandledRejection", () => {});
+
+/* The real seek policy, as player/seek-policy.js publishes it to window. */
+const seekPolicy = () => import(pathToFileURL(path.join(ROOT, "player", "seek-policy.js")).href);
 
 function makeEl(tag) {
   return {
@@ -289,10 +295,11 @@ test("the Play-from button is a data-ts control: the existing binder starts it t
 /* 5. PRECISION                                                          */
 /* ==================================================================== */
 
-test("a stitched (dai_suspected) stream reads ~<stamp>, and 'about' to a screen reader", () => {
+test("a stitched (dai_suspected) stream reads ~<stamp>, and 'about' to a screen reader", async () => {
   /* MUTATION: make deepLinkPrecise `return true` unconditionally — the tilde
      goes and a moved timeline is claimed to the second; red. */
   const m = mount();
+  m.ctx.ForaySeekPolicy = await seekPolicy();
   seed(m, STITCHED);
   m.ctx.renderEpisode("ep-dai", { t: 4050 });
   const btn = m.view.querySelectorAll("[data-ts]").find((c) => /ep-play-from-btn/.test(c.attrs));
@@ -306,9 +313,10 @@ test("a stitched (dai_suspected) stream reads ~<stamp>, and 'about' to a screen 
 test("a static enclosure reads an exact stamp, and so does a stitched episode the listener downloaded", async () => {
   /* MUTATION: prefix every stamp with `~` (`const shown = \`~${stamp}\``) —
      the static enclosure is called approximate; red. MUTATION 2: drop the
-     download check in deepLinkPrecise (`return false` for every DAI item) —
-     a downloaded file's frozen timeline still reads "~"; red. */
+     download check (`isLocalFile: false` in chapterPrecision) — a downloaded
+     file's frozen timeline still reads "~"; red. */
   const m = mount();
+  m.ctx.ForaySeekPolicy = await seekPolicy();
   seed(m, STATIC, STITCHED);
   m.ctx.renderEpisode("ep-1", { t: 4050 });
   let btn = m.view.querySelectorAll("[data-ts]").find((c) => /ep-play-from-btn/.test(c.attrs));
@@ -318,8 +326,14 @@ test("a static enclosure reads an exact stamp, and so does a stitched episode th
 
   /* The real normaliser, as the player module publishes it. */
   const store = await import(pathToFileURL(path.join(ROOT, "player", "download-store.js")).href);
-  m.ctx.forayDownloads = { store };
+  /* PQ-19's own decision (playSource): on iOS a `done` record plays from its
+     file. On "web" with no webSrc the same record STREAMS, so it stays "~". */
+  m.ctx.forayDownloads = { store, platform: "web", recordFor: (id) => m.ctx.downloadsValue().items[id] || null };
   m.ctx.lsSet("cp_downloads", { items: { "ep-dai": { status: "done", path: "file:///d/ep-dai.mp3", bytes: 1, total: 1 } } });
+  m.ctx.renderEpisode("ep-dai", { t: 4050 });
+  btn = m.view.querySelectorAll("[data-ts]").find((c) => /ep-play-from-btn/.test(c.attrs));
+  assert.strictEqual(btn.text, "Play from ~1:07:30", "a record that will not play from the file is not exact");
+  m.ctx.forayDownloads.platform = "ios";
   m.ctx.renderEpisode("ep-dai", { t: 4050 });
   btn = m.view.querySelectorAll("[data-ts]").find((c) => /ep-play-from-btn/.test(c.attrs));
   assert.strictEqual(btn.text, "Play from 1:07:30", "a local file is exact (seekPrecision rung 1)");
@@ -329,10 +343,28 @@ test("a static enclosure reads an exact stamp, and so does a stitched episode th
 /* 6. NO AUTOPLAY                                                        */
 /* ==================================================================== */
 
+test("an unclassified show, or no seek policy loaded yet, reads approximate: never exact by default", async () => {
+  /* CH-1 (#1071): the one rule is chapterPrecision.
+     MUTATION: in chapterPrecision's catch, `return "exact"` — with no policy
+     loaded the static enclosure claims "1:07:30"; red on the first assert.
+     MUTATION 2: drop `|| item?.dai_known === false` — the unclassified
+     episode reads exact; red on the second. */
+  const m = mount();
+  seed(m, STATIC, { ...STATIC, id: "ep-unk", dai_known: false });
+  m.ctx.renderEpisode("ep-1", { t: 4050 });
+  let btn = m.view.querySelectorAll("[data-ts]").find((c) => /ep-play-from-btn/.test(c.attrs));
+  assert.strictEqual(btn.text, "Play from ~1:07:30", "no policy: approximate");
+  m.ctx.ForaySeekPolicy = await seekPolicy();
+  m.ctx.renderEpisode("ep-unk", { t: 4050 });
+  btn = m.view.querySelectorAll("[data-ts]").find((c) => /ep-play-from-btn/.test(c.attrs));
+  assert.strictEqual(btn.text, "Play from ~1:07:30", "unclassified: approximate");
+});
+
 test("nothing plays on its own: a cold #/play/ link and a direct render start no audio", async () => {
   /* MUTATION: append `if (t !== null) startEpisodePlay(item.id, item, { ctx: null, list: [], startOffset: t });`
      to renderEpisode — the link plays on arrival; red. */
   const m = mount({ hash: "#/play/ep-1?t=4050" });
+  m.ctx.ForaySeekPolicy = await seekPolicy();
   seed(m, STATIC);
   const rec = recordingPlayer();
   m.ctx.ForayPlayer = rec.api;

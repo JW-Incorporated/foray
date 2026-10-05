@@ -698,7 +698,7 @@ test("catalog-client.json is derived from catalog.json via the committed build s
   assert.ok(CLIENT_SHOW_FIELDS.includes("label_scope"), "CLIENT_SHOW_FIELDS must project label_scope");
 });
 
-test("catalog-client.json carries exactly the six fields renderShow() reads, plus Family mode's show rating, label_scope and P-09's chart_rank, for every show", () => {
+test("catalog-client.json carries exactly the six fields renderShow() reads, plus Family mode's show rating, label_scope, P-09's chart_rank and CH-1's dai, for every show", () => {
   /* The whitelist is the decision, so it is pinned literally — same pattern as
      playlist-durability.test.js's PLAYLIST_PART_FIELDS pin.
 
@@ -713,10 +713,31 @@ test("catalog-client.json carries exactly the six fields renderShow() reads, plu
   const expectedKeys = [
     "show_id", "title", "artwork_url", "editorial_note", "taxonomy_node_ids", "episode_count", "explicit", "label_scope",
     "chart_rank", // P-09 / PKG-11b: curated Apple chart rank, read by popularityBand from PKG-13
+    "dai", // CH-1 (#1071): the show's DAI class, read by fullCatalogueRowToEpRowItem for chapter-time precision
   ].sort();
   for (const show of client.shows) {
     assert.deepStrictEqual(Object.keys(show).sort(), expectedKeys, `show ${show.show_id} has an unexpected field set`);
   }
+});
+
+test("a curated show's DAI class rides from catalog-client.json onto its show-page episode rows (CH-1, #1071)", () => {
+  /* Real committed data: the class tools/build-catalog-client.mjs joined from
+     data/dai-classification.json reaches the item the episode page reads, so
+     a stitched show's chapter times read approximate.
+     MUTATION: drop `dai_suspected: show.dai === true,` from
+     fullCatalogueRowToEpRowItem — the stitched show's row reads clean; red.
+     MUTATION 2: join dai on `show?.show_id` in the builder and regenerate —
+     every show's dai is null, so neither fixture assumption holds; red. */
+  const client = readJson("data/catalog-client.json");
+  const stitched = client.shows.find((s) => s.dai === true);
+  const clean = client.shows.find((s) => s.dai === false);
+  assert.ok(stitched && clean, "fixture assumption: catalog-client.json carries both DAI classes");
+  const { ctx } = mount();
+  const ep = { guid: "g1", title: "T", audio_url: "https://cdn.example.com/a.mp3" };
+  const a = ctx.fullCatalogueRowToEpRowItem(stitched, ep);
+  const b = ctx.fullCatalogueRowToEpRowItem(clean, ep);
+  assert.deepStrictEqual([a.dai_suspected, a.dai_known], [true, true]);
+  assert.deepStrictEqual([b.dai_suspected, b.dai_known], [false, true]);
 });
 
 /* ==================================================================== */

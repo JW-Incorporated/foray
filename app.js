@@ -1130,6 +1130,10 @@ function snapshot(id, src) {
     audio_bytes: src.audio_bytes ?? null,
     duration_sec: src.duration_sec ?? null,
     dai_suspected: src.dai_suspected ?? false,
+    // Whether anyone classified the show at all (CH-1, #1071): `dai_suspected:
+    // false` above is also the default for "never looked", and a foreign stamp
+    // on an unclassified show must read approximate (chapterPrecision).
+    dai_known: src.dai_known ?? (typeof src.dai_suspected === "boolean"),
     // Explicit-content flag (kanban card t_02c6bb0b): already ingested at the
     // source (tools/refresh/merge.mjs), but this whitelist projection dropped
     // it on the floor before the badge existed to read it — every pool item
@@ -1158,6 +1162,10 @@ function snapshot(id, src) {
     // it, see backend/src/catalog/showEpisodesStore.ts) — absence here is a
     // real, expected state, not a bug.
     chapters: src.chapters ?? null,
+    // The feed's Podcasting 2.0 chapters address and the episode's guid (CH-1):
+    // the device reads the chapter list from the publisher (readDeviceChapters).
+    chapters_url: src.chapters_url ?? null,
+    guid: src.guid ?? null,
   };
   state.itemIndex[id] = snap;
   return snap;
@@ -3155,7 +3163,20 @@ function savableEpisode(snap) {
   out.description = typeof d === "string" && d.length > SAVED_DESCRIPTION_MAX
     ? d.slice(0, SAVED_DESCRIPTION_MAX - 1) + "…"
     : (d ?? null);
-  out.chapters = Array.isArray(snap.chapters) ? snap.chapters.slice(0, SAVED_CHAPTERS_MAX) : (snap.chapters ?? null);
+  /* With no feed chapters, the list the page derives from the notes is saved,
+     from the FULL text: the 4000-character cut above would drop a long
+     episode's tail chapters (CH-1). Whitelisted either way. */
+  const feed = Array.isArray(snap.chapters) && snap.chapters.length;
+  const list = feed ? snap.chapters
+    : descriptionChapters(d, itemDurationSec(snap, { upperBound: true })).map(c => ({ ...c, start_time_seconds: c.secs }));
+  out.chapters = list.length
+    ? list.slice(0, SAVED_CHAPTERS_MAX).map(c => ({ title: c?.title ?? null, start_time_seconds: c?.start_time_seconds ?? null,
+        /* Only keys that carry a value: a null img/url on each of 100 chapters
+           bloats every star (app-1-8); chapterEntry reads a missing one as null. */
+        ...(typeof c?.img === "string" && c.img ? { img: c.img } : {}),
+        ...(typeof c?.url === "string" && c.url ? { url: c.url } : {}),
+        ...(typeof c?.source === "string" ? { source: c.source } : {}) }))
+    : (snap.chapters ?? null);
   return out;
 }
 
@@ -3810,6 +3831,9 @@ function playlistById(id) { return playlists().find(p => p.id === id); }
     stamps a real playlist's `last_played_at`. The detail page and Home's play
     button both start a playlist, so both name it through this. */
 function playlistCtx(p) {
+  /* A shared playlist's id IS its payload (the sharer's title and ids): the
+     `picked` event carries this ctx, so it is named, never quoted (#1071). */
+  if (p.isShared) return "shared-playlist";
   return (p.isSubject ? "subject-" : (p.isGenerated ? "generated-" : "playlist-")) + p.id;
 }
 
@@ -4895,6 +4919,13 @@ function fullCatalogueRowToEpRowItem(show, ep) {
     release_date: ep.published_at || null,
     description: ep.description_text || null,
     chapters: Array.isArray(ep.chapters) ? ep.chapters : null,
+    /* CH-1 (#1071): the chapters pointer and the show's DAI class
+       (tools/build-catalog-client.mjs `dai`; absent on a breadth show, which
+       therefore reads unknown, and its chapter times approximate). */
+    chapters_url: ep.chapters_url || null,
+    guid: showEpisodeGuid(ep),
+    dai_suspected: show.dai === true,
+    dai_known: typeof show.dai === "boolean",
   });
 }
 
@@ -5418,6 +5449,171 @@ function forayRoutePath(id) {
   return `/foray/${encodeURIComponent(id)}`;
 }
 
+/* ---------- share links (#1071, SH-1) ----------
+
+   Founder, #1071 (2026-10-05): share links on shows, episodes, playlists,
+   Suggested cards and Forays, built "towards opening directly in the app" — so
+   the origin is one whose root we control (it will serve the universal-link
+   files), not GitHub Pages. Not gated on a legal review (docs/DECISIONS.md,
+   2026-10-05). test/share-links.test.js pins every rule below.
+
+   A LINK IS BUILT FROM THE ROUTE PRODUCERS, NEVER FROM location.href: on the web
+   that carries the `?foray=` draft unlock, and in the shell it is
+   capacitor://localhost. Each link is one the RECIPIENT can open cold: a show
+   page without its /q/ search; an episode page only for a catalogue episode
+   (resolveEpisode finds nothing else on a fresh device), else its show; a
+   playlist only the recipient could not rebuild (their own playlist, a
+   Suggested queue) is FROZEN into the link as title + catalogue ids. No event
+   is logged for a share. */
+const PUBLIC_WEB_ORIGIN = "https://foray-web-seven.vercel.app/";
+const SHARED_PLAYLIST_PREFIX = "shared~";
+const SHARED_PLAYLIST_MAX = 50;
+
+function inDiscoverPool(id) {
+  if (state.session && state.session.episodes) {
+    try { fullPool(); } catch (_) { /* no catalogue yet: nothing is in it */ }
+  }
+  return typeof id === "string" && state.poolIds.has(id);
+}
+
+const b64url = (s) => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const unb64url = (s) => {
+  const b = s.replace(/-/g, "+").replace(/_/g, "/");
+  return decodeURIComponent(escape(atob(b + "===".slice((b.length + 3) % 4))));
+};
+
+/** A shared playlist decoded from its own id, or null for anything malformed.
+    Read-only: only ids in the catalogue, at most SHARED_PLAYLIST_MAX. */
+function sharedPlaylistFromId(id) {
+  const s = String(id || "");
+  if (!s.startsWith(SHARED_PLAYLIST_PREFIX)) return null;
+  try {
+    const d = JSON.parse(unb64url(s.slice(SHARED_PLAYLIST_PREFIX.length)));
+    if (!d || typeof d.t !== "string" || !Array.isArray(d.e)) return null;
+    const ids = [...new Set(d.e.filter(inDiscoverPool))].slice(0, SHARED_PLAYLIST_MAX);
+    if (!ids.length) return null;
+    return withMirror({
+      id: s, title: d.t.slice(0, 200), items: ids.map(x => playlistPart(state.itemIndex[x])),
+      sparse: false, isSubject: false, isGenerated: false, isShared: true,
+    });
+  } catch (_) { return null; }
+}
+
+function playlistForId(id) {
+  return playlistById(id) || subjectQueueById(id) || generatedPlaylistById(id) || sharedPlaylistFromId(id);
+}
+
+/** `{ url, text }` for a share target, or null when the recipient could not
+    open it. target: { kind: "show"|"episode"|"playlist"|"foray", id, item?, playlist? }.
+    `text` is the item's own title (and show) only — never a hook or summary. */
+function shareLinkFor(target) {
+  const t = target || {};
+  if (t.kind === "show") {
+    const s = showById(t.id);
+    if (!s) return null;
+    if (!String(t.id).startsWith("pi:")) return { url: PUBLIC_WEB_ORIGIN + "#" + showRoutePath(t.id), text: s.title || "" };
+    /* A `pi:` id never cold-resolves (showById); pod.link is
+       data/app-links.json's derivable aggregator, when the Apple id is known. */
+    const apple = String(s.apple_collection_id ?? "");
+    return /^\d+$/.test(apple) ? { url: "https://pod.link/" + apple, text: s.title || "" } : null;
+  }
+  if (t.kind === "episode") {
+    const item = t.item || state.itemIndex[t.id] || resolveEpisode(t.id);
+    if (!item || !item.id) return null;
+    const text = item.show ? `${item.title} · ${item.show}` : String(item.title || "");
+    if (inDiscoverPool(item.id)) return { url: PUBLIC_WEB_ORIGIN + "#/episode/" + encodeURIComponent(item.id), text };
+    const sid = item.show_id || showIdForShowName(item.show);
+    if (sid && !String(sid).startsWith("pi:")) return { url: PUBLIC_WEB_ORIGIN + "#" + showRoutePath(sid), text };
+    const apple = safeUrl(item.apple_episode_url);
+    return apple === "#" ? null : { url: apple, text };
+  }
+  if (t.kind === "playlist") {
+    const p = t.playlist || playlistForId(t.id);
+    if (!p) return null;
+    if (p.isGenerated) return { url: PUBLIC_WEB_ORIGIN + "#/" + playlistRoute({ id: p.id }), text: p.title || "" };
+    const e = [...new Set(playlistSpine(p).map(partId).filter(inDiscoverPool))].slice(0, SHARED_PLAYLIST_MAX);
+    if (!e.length) return null;
+    const id = SHARED_PLAYLIST_PREFIX + b64url(JSON.stringify({ t: String(p.title || ""), e }));
+    return { url: PUBLIC_WEB_ORIGIN + "#/" + playlistRoute({ id }), text: p.title || "" };
+  }
+  if (t.kind === "foray") {
+    const f = (state.forays?.forays || []).find(x => x && x.id === t.id);
+    if (!f || f.status !== "published") return null;
+    return { url: PUBLIC_WEB_ORIGIN + "#" + forayRoutePath(f.id), text: f.title || "" };
+  }
+  return null;
+}
+
+/** The share button, or "" when there is no link to give. A link that cannot
+    be built costs the button, never the page around it. */
+function safeShareLink(target) {
+  try { return shareLinkFor(target); } catch (_) { return null; }
+}
+
+function shareBtn(target) {
+  if (!safeShareLink(target)) return "";
+  bindShareClicks();
+  return `<button type="button" class="share-btn" data-share="${esc(target.kind)}" data-share-id="${esc(target.id)}" aria-label="${esc("Share " + (target.title || ""))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"></path></svg></button>`;
+}
+
+/** Where a share's result is said: beside the button, and to a screen reader.
+    With `url`, the last resort — the link in a selected read-only field. */
+function shareNote(anchor, msg, url = "") {
+  announce(msg);
+  if (!anchor || typeof anchor.insertAdjacentHTML !== "function") return;
+  const old = anchor.nextElementSibling;
+  if (old && old.classList.contains("share-note")) old.remove();
+  anchor.insertAdjacentHTML("afterend", `<span class="share-note">${esc(msg)}${url ? `<input class="share-input" readonly value="${esc(url)}" aria-label="${esc(msg)}">` : ""}</span>`);
+  const note = anchor.nextElementSibling;
+  const input = note && note.querySelector("input");
+  if (input) { input.focus(); input.select(); } else if (note) setTimeout(() => note.remove(), 4000);
+}
+
+/** Deliver a link: the native share plugin, the Web Share sheet, the
+    clipboard, then the link on screen. A cancel ends it — it is not a failure
+    to fall back from. */
+async function shareTo(link, anchor = null) {
+  if (!link) return "none";
+  const data = { title: link.text, text: link.text, url: link.url };
+  const cancelled = (e) => !!e && (e.name === "AbortError" || /cancel/i.test(String(e.message || "")));
+  const plugin = window.Capacitor?.Plugins?.Share;
+  if (plugin && typeof plugin.share === "function") {
+    try { await plugin.share(data); return "shared"; } catch (e) { if (cancelled(e)) return "cancelled"; }
+  }
+  if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+    try { await navigator.share(data); return "shared"; } catch (e) { if (e && e.name === "AbortError") return "cancelled"; }
+  }
+  try {
+    await navigator.clipboard.writeText(link.url);
+    shareNote(anchor, "Link copied");
+    return "copied";
+  } catch (_) { /* no clipboard, or refused: show the link */ }
+  shareNote(anchor, "Copy this link", link.url);
+  return "manual";
+}
+
+function onShareClick(e) {
+  const btn = e.target && e.target.closest && e.target.closest("[data-share]");
+  if (!btn) return;
+  e.preventDefault();
+  shareTo(safeShareLink({ kind: btn.dataset.share, id: btn.dataset.shareId }), btn);
+}
+
+let shareClicksBound = false;
+function bindShareClicks() {
+  if (shareClicksBound || typeof document === "undefined" || typeof document.addEventListener !== "function") return;
+  document.addEventListener("click", onShareClick);
+  shareClicksBound = true;
+}
+
+if (typeof window !== "undefined") {
+  window.ForayShare = {
+    shareEpisode: (item) => shareTo(shareLinkFor({ kind: "episode", item, id: item && item.id })),
+    shareForay: (id) => shareTo(shareLinkFor({ kind: "foray", id })),
+    linkFor: shareLinkFor,
+  };
+}
+
 /** Whether the page on screen is `show_id`'s — compared DECODED: the hash
     carries the encoded id, and comparing it with the raw one never matched an
     id that needed encoding. */
@@ -5563,7 +5759,7 @@ function renderShow(show_id, initialQuery = "") {
          .show-hero, visual pass 1). The title stays in the page head. -->
     <div class="show-hero">
       ${showArt ? `<img class="show-art" src="${esc(safeUrl(showArt))}" alt="">` : ""}
-      ${showStarBtn(show.show_id)}
+      ${shareBtn({ kind: "show", id: show.show_id, title: show.title })}${showStarBtn(show.show_id)}
       <p class="note show-follow-note">${esc(FOLLOW_NOTE)}</p>
     </div>
     <!-- The publisher's own description. EMPTY at first paint and filled by
@@ -6621,7 +6817,7 @@ function miniCard(slot) {
       <h3><a class="mc-link" href="#/${esc(playlistRoute({ isSubject: true, branch: slot.branch }))}">${esc(subjectLabel(slot.branch))}</a></h3>
       <p class="mc-hook">${startsWithLine(item.title)} ${esc(subjectBlurb(slot))}${stretch ? ` ${STRETCH_WHY}` : ""}</p>
     </div>
-    ${starBtn(item.id)}
+    ${starBtn(item.id)}${shareBtn({ kind: "episode", id: item.id, item, title: item.title })}
   </div>`;
 }
 
@@ -11247,7 +11443,7 @@ function partsNote(rows) {
 
 function renderPlaylistDetail(id) {
   setBodyClass("view-page");
-  const p = playlistById(id) || subjectQueueById(id) || generatedPlaylistById(id);
+  const p = playlistForId(id);
   /* A gone playlist still gets a real page head, ‹ included: with ‹ now
      going back one real step (see § in-app history) instead of always
      Home, an entry for a just-removed playlist sits one step behind the
@@ -11296,18 +11492,19 @@ function renderPlaylistDetail(id) {
         <a class="back" href="#/">‹</a>
         <div>
           <h2>${esc(p.title)}</h2>
-          <p class="sub">${joinMeta(countLabel(rows.length, "episode"), p.isSubject ? "picked for you" : (p.isGenerated ? "generated for you" : "playlist"), played ? `${played} played` : "")}</p>
+          <p class="sub">${joinMeta(p.isShared ? "Shared playlist" : "", countLabel(rows.length, "episode"), p.isSubject ? "picked for you" : (p.isGenerated ? "generated for you" : (p.isShared ? "" : "playlist")), played ? `${played} played` : "")}</p>
         </div>
+        ${shareBtn({ kind: "playlist", id: p.id, playlist: p, title: p.title })}
       </div>
       ${source ? savePlaylistControlHtml(p) : ""}
       ${p.sparse ? `<p class="note">Only found a few on this — here's what 4a has.</p>` : ""}
       ${p.relaxed === "duration" ? `<p class="note">Couldn't match the length you asked for — here's what 4a found without it.</p>` : ""}
       ${partsNote(rows)}
       ${rows.map((r, i) => r.state === "live" ? epRow(r.item, i, ctx, nextIdx) : r.state === "hidden" ? familyHiddenRow(i, ctx) : archivedRow(r.item, i, ctx)).join("")}
-      ${(p.isSubject || p.isGenerated) ? "" : `<button class="danger" id="pl-remove">remove this playlist</button>`}
+      ${(p.isSubject || p.isGenerated || p.isShared) ? "" : `<button class="danger" id="pl-remove">remove this playlist</button>`}
     </div>`;
 
-  if (!p.isSubject && !p.isGenerated) $("#pl-remove")?.addEventListener("click", () => {
+  if (!p.isSubject && !p.isGenerated && !p.isShared) $("#pl-remove")?.addEventListener("click", () => {
     /* A pure edit (editPlaylists), so a remove made before hydration composes
        with a save still queued there instead of being undone by it. */
     editPlaylists(list => list.filter(x => x.id !== p.id));
@@ -11594,6 +11791,8 @@ function episodeDescriptionTokens(text, durationSec = null) {
 
 if (typeof window !== "undefined") {
   window.ForayNotes = { tokens: episodeDescriptionTokens, lines: episodeNotesTokens };
+  /* The episode page's chapter list and its precision, for Now Playing (CH-4). */
+  window.ForayChapters = { forItem: episodeChapterList, precision: chapterPrecision };
 }
 
 /* COLLAPSED BY DEFAULT (founder, 2026-09-18): "When I'm listening to a podcast
@@ -11629,29 +11828,162 @@ function episodeDescriptionSectionHtml(item) {
     </details>`;
 }
 
+/* CHAPTERS ON THE PAGE, VISIBLE (CH-1, #1071). Six rows show; the rest wait
+   in a native <details>, so a 40-chapter episode still leaves the page mostly
+   artwork (founder, 2026-09-18, above). Each row is a `data-ts` seek control,
+   the contract bindEpisodeSeeks binds. Times are honest: a chapter stamp is
+   FOREIGN (authored against the publisher's master), so on a stitched or
+   unclassified show it reads "~68 min" with one plain line saying so. */
+const CHAPTERS_VISIBLE = 6;
+const CHAPTER_ART_PX = 120;  // a 40 px chapter thumbnail at 3x, like ROW_ART_PX (perf-2)
 function episodeChaptersHtml(item) {
-  const chapters = Array.isArray(item.chapters) ? item.chapters : [];
-  if (!chapters.length) return "";
-  /* Each row is a seek control now, for the same reason the timestamps in the
-     description are: a chapter list you cannot jump from is a table of contents
-     with no page numbers. `data-ts` is the one contract both share, so
-     `bindEpisodeSeeks` binds them in a single pass. */
+  const list = episodeChapterList(item);
+  if (!list.length) return "";
+  const precision = chapterPrecision(item);
+  const exact = precision === "exact";
+  const p = window.ForaySeekPolicy;
+  const row = (c) => {
+    const mins = Math.round(c.secs / 60);
+    const time = exact ? fmtChapterTime(c.secs) : p?.formatTimestamp ? p.formatTimestamp(c.secs, precision) : `~${mins} min`;
+    const said = exact ? fmtChapterTime(c.secs) : p?.describeTimestamp ? p.describeTimestamp(c.secs, precision) : `around minute ${mins}`;
+    const img = c.img ? `<img class="ep-chapter-img" src="${esc(safeUrl(artUrl(c.img, CHAPTER_ART_PX)))}" alt="" loading="lazy" decoding="async" width="40" height="40">` : "";
+    return `<li><button type="button" class="ep-chapter-row" data-ts="${esc(String(c.secs))}" aria-label="${esc(`Play from ${said}, ${c.title}`)}">${img}<span class="ep-chapter-time">${esc(time)}</span><span class="ep-chapter-title">${esc(c.title)}</span></button></li>`;
+  };
+  const rest = list.slice(CHAPTERS_VISIBLE);
   return `<section class="ep-chapters">
     <h3>Chapters</h3>
-    <ol class="ep-chapters-list">
-      ${chapters.map(c => {
-        /* `== null` FIRST, because `Number(null)` is 0 and `Number("")` is 0 —
-           a chapter with no recorded start would otherwise render as a control
-           that seeks confidently to the beginning. Caught by a test. */
-        const secs = c.start_time_seconds == null ? NaN : Number(c.start_time_seconds);
-        const time = esc(fmtChapterTime(c.start_time_seconds));
-        const title = esc(c.title || "");
-        return Number.isFinite(secs)
-          ? `<li><button type="button" class="ep-chapter-row" data-ts="${esc(String(secs))}"><span class="ep-chapter-time">${time}</span><span class="ep-chapter-title">${title}</span></button></li>`
-          : `<li><span class="ep-chapter-time">${time}</span><span class="ep-chapter-title">${title}</span></li>`;
-      }).join("")}
-    </ol>
+    ${exact ? "" : `<p class="ep-chapters-note">Times are approximate on this show.</p>`}
+    <ol class="ep-chapters-list">${list.slice(0, CHAPTERS_VISIBLE).map(row).join("")}</ol>
+    ${rest.length ? `<details class="ep-chapters-more"><summary>All ${list.length} chapters</summary><ol class="ep-chapters-list" start="${CHAPTERS_VISIBLE + 1}">${rest.map(row).join("")}</ol></details>` : ""}
   </section>`;
+}
+
+/* ---------- the one chapter source (CH-1, #1071) ----------
+
+   `episodeChapterList(item)` -> [{secs, title, img, url, source}], read by the
+   page above and, through window.ForayChapters, by Now Playing (CH-4), so the
+   two can never list different chapters. Order (founder on #1071, "Phone
+   reads the MP3"): the feed's own chapters (item.chapters — the API's, or
+   ones this device read: the podcast:chapters JSON, then the MP3's ID3 tag,
+   see hydrateFeedChapters) win; with none, a chapter list typed into the notes
+   counts only with two or more stamps in strictly ascending order — one stamp,
+   or times out of order, is prose, not a table of contents. */
+function episodeChapterList(item) {
+  const feed = (Array.isArray(item?.chapters) ? item.chapters : [])
+    /* `== null` FIRST, because `Number(null)` is 0 and `Number("")` is 0 — a
+       chapter with no recorded start would otherwise seek confidently to the
+       beginning. Such a chapter is dropped. */
+    .filter(c => c && c.start_time_seconds != null && Number.isFinite(Number(c.start_time_seconds)));
+  if (feed.length) return feed.map((c, i) => chapterEntry(Number(c.start_time_seconds), c, c.source || "feed", i));
+  return descriptionChapters(item?.description, item ? itemDurationSec(item, { upperBound: true }) : null);
+}
+
+function descriptionChapters(text, durationSec = null) {
+  const rows = String(text ?? "").split("\n").map(l => descChapterToken(l, durationSec)).filter(Boolean);
+  if (rows.length < 2 || rows.some((r, i) => i && r.secs <= rows[i - 1].secs)) return [];
+  return rows.map((r, i) => chapterEntry(r.secs, { title: r.title }, "description", i));
+}
+
+/* Titles trimmed (a CRLF feed leaves `\r`), an empty one numbered; the art
+   kept only over https and the link only over http(s), both through safeUrl. */
+function chapterEntry(secs, c, source, i) {
+  const img = typeof c.img === "string" && /^https:/i.test(c.img) && safeUrl(c.img) !== "#" ? c.img : null;
+  const url = typeof c.url === "string" && safeUrl(c.url) !== "#" ? c.url : null;
+  return { secs, title: String(c.title ?? "").trim() || `Chapter ${i + 1}`, img, url, source };
+}
+
+/* ONE PRECISION RULE FOR EVERY FOREIGN STAMP — chapters and timestamp links
+   (deepLinkPrecise) alike: player/seek-policy.js `seekPrecision`, published as
+   window.ForaySeekPolicy. An unclassified show (`dai_known: false`) counts as
+   stitched, and with no policy loaded yet (app.js is a classic script that
+   runs before the module) the answer is approximate: fail honest, never exact. */
+function chapterPrecision(item) {
+  const p = window.ForaySeekPolicy;
+  try {
+    return p.seekPrecision({ dai_suspected: item?.dai_suspected === true || item?.dai_known === false },
+      { source: p.FOREIGN, isLocalFile: playsLocalFile(item) }).precision;
+  } catch (_) {
+    return "approximate";
+  }
+}
+
+/* True only when a play would come from the downloaded file: PQ-19's own
+   decision (client.js localSourceFor, download-store playSource), so a `done`
+   record the platform cannot play from is not called exact. */
+function playsLocalFile(item) {
+  try {
+    const dl = window.forayDownloads;
+    if (!dl?.store || typeof dl.recordFor !== "function") return false;
+    const platform = dl.platform || window.Capacitor?.getPlatform?.() || "web";
+    return dl.store.playSource(item, dl.recordFor(item.id), { platform }).isLocalFile === true;
+  } catch (_) {
+    return false;
+  }
+}
+
+/* THE DEVICE READS THE CHAPTERS (founder on #1071: "Phone reads the MP3", no
+   4a server, native app only). When the page has no feed chapters, the phone
+   asks the publisher for the feed's podcast:chapters JSON, then for the MP3's
+   own ID3 chapters (window.ForayId3Chapters, when that module is loaded), and
+   repaints only the chapter section — and only while this episode's page is
+   still the route. Through CapacitorHttp, as the ID3 reader goes: the page's
+   CSP allows no publisher host in connect-src, so a WebView fetch could never
+   land. Once per episode per session, misses included; every failure is
+   silent and the notes' chapters stay. */
+const deviceChapterMemo = new Map();
+function hydrateFeedChapters(scope, item) {
+  const hasFeed = (it) => Array.isArray(it.chapters) && it.chapters.some(c => c && c.source !== "description");
+  if (!item?.id || hasFeed(item) || !isNativeShell() || !(item.chapters_url || item.audio_url)) return;
+  if (!deviceChapterMemo.has(item.id)) deviceChapterMemo.set(item.id, readDeviceChapters(item));
+  deviceChapterMemo.get(item.id).then((rows) => {
+    const m = /^#\/(?:episode|play)\/([^?]+)/.exec(String(window.location?.hash || ""));
+    if (!rows.length || hasFeed(item) || !m || safeDecode(m[1]) !== item.id) return;
+    item.chapters = rows;
+    if (state.itemIndex[item.id]) state.itemIndex[item.id].chapters = rows;
+    const html = episodeChaptersHtml(item);
+    const old = scope.querySelector(".ep-chapters");
+    if (old) old.outerHTML = html;
+    else (scope.querySelector(".ep-description") || scope.querySelector(".ep-actions"))?.insertAdjacentHTML("afterend", html);
+    bindEpisodeSeeks(scope, item);
+  }).catch(() => {});
+}
+
+async function readDeviceChapters(item) {
+  try {
+    const cap = window.Capacitor;
+    const url = item.chapters_url;
+    if (typeof url === "string" && /^https:\/\//i.test(url) && typeof cap?.nativePromise === "function") {
+      const ua = window.forayDownloads?.userAgent;
+      const res = await Promise.race([
+        cap.nativePromise("CapacitorHttp", "request", { url, method: "GET", headers: ua ? { "User-Agent": ua } : {}, responseType: "json" }),
+        new Promise((r) => setTimeout(() => r(null), 8000)),
+      ]);
+      if (res?.status === 200) {
+        const rows = validChapterRows((typeof res.data === "string" ? JSON.parse(res.data) : res.data)?.chapters, "json");
+        if (rows.length) return rows;
+      }
+    }
+  } catch (_) { /* a bad answer is no answer */ }
+  try {
+    const id3 = window.ForayId3Chapters;
+    if (item.audio_url && typeof id3?.forUrl === "function") {
+      const got = await id3.forUrl(item.audio_url, { id: item.id });
+      return validChapterRows(Array.isArray(got) ? got.map(c => ({ ...c, startTime: c?.secs })) : [], "id3");
+    }
+  } catch (_) { /* nothing read */ }
+  return [];
+}
+
+/* A Podcasting 2.0 chapters body (`startTime`; `toc: false` is a silent
+   chapter, not a list row) or our own shape, as item.chapters rows. */
+function validChapterRows(list, source) {
+  if (!Array.isArray(list)) return [];
+  return list.filter(c => c && typeof c === "object" && c.toc !== false).map((c) => {
+    const s = c.startTime ?? c.start_time_seconds;
+    return { title: typeof c.title === "string" ? c.title.slice(0, 200) : "", start_time_seconds: s == null || s === "" ? NaN : Number(s),
+      img: typeof c.img === "string" ? c.img : null, url: typeof c.url === "string" ? c.url : null, source };
+  }).filter(c => Number.isFinite(c.start_time_seconds) && c.start_time_seconds >= 0)
+    .sort((a, b) => a.start_time_seconds - b.start_time_seconds).slice(0, 500);
 }
 
 /**
@@ -11727,6 +12059,7 @@ function bindEpisodeSeeks(scope, item) {
       }
     });
   });
+  hydrateFeedChapters(scope, item);
 }
 
 /* `t` is a timestamp link's offset in whole seconds (#30, see episodeDeepLink),
@@ -11767,7 +12100,7 @@ function renderEpisode(id, { t = null } = {}) {
       ${item.artwork_url ? `<img class="ep-art" src="${esc(safeUrl(item.artwork_url))}" alt="" decoding="async" width="600" height="600">` : ""}
       ${item.hook ? `<p class="fp-s-why">${esc(item.hook)}</p>` : ""}
       ${playFromHtml(item, t)}
-      <div class="ep-actions">${item.audio_url ? playBtn(item) : notPlayableNote()}${starBtn(item.id)}${upNextBtn(item.id, item)}${item.audio_url ? `<button type="button" class="up-next playnext" data-playnext="${esc(item.id)}" aria-label="Play next">Play next</button>` : ""}</div>
+      <div class="ep-actions">${item.audio_url ? playBtn(item) : notPlayableNote()}${starBtn(item.id)}${upNextBtn(item.id, item)}${item.audio_url ? `<button type="button" class="up-next playnext" data-playnext="${esc(item.id)}" aria-label="Play next">Play next</button>` : ""}${shareBtn({ kind: "episode", id: item.id, item, title: item.title })}</div>
       ${item.audio_url ? "" : `<p class="note">${esc(NOT_PLAYABLE_WHY)}</p>`}
       ${downloadControlHtml(item)}
       ${episodeDescriptionSectionHtml(item)}
@@ -13984,6 +14317,7 @@ async function renderForay(id) {
           <h2>${esc(r.title)}</h2>
           <p class="sub">${esc(forayHeadSub(r, player))}</p>
         </div>
+        ${draft ? "" : shareBtn({ kind: "foray", id: r.id, title: r.title })}
       </div>
       ${draft ? `<p class="fy-draft">${draftNote}</p>` : ""}
       ${r.foray.summary ? `<p class="fy-summary">${esc(r.foray.summary)}</p>` : ""}
@@ -18386,19 +18720,12 @@ function episodeDeepLinkHash({ seg, t }) {
 
 /** Is a timestamp link's target exact for this item? seekPrecision's answer
     (player/seek-policy.js) for a FOREIGN stamp with no durations to compare —
-    a link was made against somebody else's copy: a downloaded file is exact
-    (its timeline is frozen), a static enclosure is exact, a stitched (DAI)
-    stream is approximate. app.js is a classic script and cannot import that
-    module, and client.js does not publish it; this is the same two-input rule,
-    read from the same fields. */
+    a link was made against somebody else's copy: a file that will play from
+    the download is exact (its timeline is frozen), a classified static
+    enclosure is exact, a stitched or unclassified stream is approximate. The
+    rule lives once, in chapterPrecision (CH-1), not mirrored here. */
 function deepLinkPrecise(item) {
-  if (!item || !item.dai_suspected) return true;
-  try {
-    const rec = downloadsValue().items[item.id];
-    return !!rec && rec.status === "done";
-  } catch (_) {
-    return false;
-  }
+  return !!item && chapterPrecision(item) === "exact";
 }
 
 /** The episode page's "Play from <stamp>" button for a timestamp link, or "".
