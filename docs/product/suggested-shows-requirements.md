@@ -565,10 +565,17 @@ against `https://itunes.apple.com/search?entity=podcastEpisode`, keyless,
 cached 1 h by `api/episodes/searchCache.ts` keyed
 `` `${show ?? ""}::${limit}::${q.trim().toLowerCase()}` ``. Every hit's
 `collectionId` is mapped back to a 4a `show_id` via
-`api/episodes/showIdMap.ts:loadShowIdMap`; **an unmapped hit is dropped** rather
-than shown with a broken link. The id map's preferred source,
-`data/shows-index-pointer.json`, **does not exist in the repo**, so the map is
-always the 220-entry `catalog.json` fallback.
+`api/_lib/showIdMap.ts:loadShowIdMap`; **an unmapped hit is dropped** rather
+than shown with a broken link. The id map's preferred source is a released
+`id-map.json` named by `data/shows-index-pointer.json`'s `id_map_url`. The
+pointer **is committed** (re-pointed by #1012), but it carries **no
+`id_map_url`** — `tools/shows/publish-release.mjs:buildPointer` never writes
+one — so `tryLoadReleaseIdMap` returns no map and the release id-map is
+**not** in use. Every hit is mapped through the catalogue fallback instead,
+which P-05 (`docs/search-parity-plan.md` §4) widened from `data/catalog.json`
+alone (220 curated, slug ids) to curated-first plus `data/catalog-breadth.json`
+(~19.7k breadth, numeric ids). The old 220-show ceiling is gone because of
+P-05, not because of the pointer.
 
 ### 3.7 The nightly refresh, and the weekly show import
 
@@ -1098,15 +1105,30 @@ code grows the local-hit branch or the sentence loses its condition.
   an `s-maxage` to compensate — that would be a second unverified directive
   beside the first — and wrote the finding into the source header instead,
   pinned by a test. **Two decks already assumed this token was in effect.**
-- **`tools/build-catalog-client.mjs` runs in no workflow.** A `data/catalog.json`
-  edit that skips the test suite ships a stale client catalogue.
-- **`data/shows-index-pointer.json` does not exist**, so
-  `api/episodes/showIdMap.ts` is permanently on its 220-show fallback. Documented
-  in the source as expected pre-S-04; not recorded in any doc or issue as a
-  *product* ceiling on general episode search.
+- **`tools/build-catalog-client.mjs` runs in no workflow** — **mitigated.**
+  The builder still runs in no workflow, but CI now catches the drift it
+  could cause: `test/show-page.test.js` runs
+  `node tools/build-catalog-client.mjs --check` and fails when
+  `data/catalog-client.json` is stale, and `tools/build-catalog-client.test.mjs`
+  byte-compares the committed file with the builder's output. Both suites are
+  pinned in `test/suite-integrity.test.js`. A `data/catalog.json` edit that
+  skips the rebuild now fails CI.
+- **`data/shows-index-pointer.json` does not exist** — **corrected; the
+  220-show cap is gone (through P-05).** The pointer is committed now
+  (re-pointed by #1012), but it has no `id_map_url`, because
+  `tools/shows/publish-release.mjs:buildPointer` never writes one. So
+  `api/_lib/showIdMap.ts:tryLoadReleaseIdMap` still returns no map, and the
+  release id-map is **not** live. General episode search maps hits through
+  the catalogue fallback, which P-05 (`docs/search-parity-plan.md` §4)
+  widened to curated (220) plus breadth (~19.7k) — that is what removed the
+  220-show ceiling. Using the full release id-map would still need
+  `buildPointer` to publish an `id_map_url`.
 - **Two stray root scripts** — `classify-shows.mjs` and `classify-shard-0.mjs`
-  (the latter with hardcoded `/home/user/foray/...` paths). Already flagged in
-  `HUMAN-ACTIONS.md` and two review docs; neither deleted.
+  (the latter with hardcoded `/home/user/foray/...` paths) — **FIXED**: both
+  deleted in the #560 item-10 residue PR. Nothing in the repo ran or imported
+  them; the only remaining mentions are in the dated review docs
+  (`docs/agents/fleet-review-2026-08.md`,
+  `docs/research/taxonomy-review-2026-08.md`), which stay as written.
 
 ### 6.13 Open decisions that belong to a human
 
