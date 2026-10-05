@@ -1103,6 +1103,7 @@ const FLOORS = {
      would notice losing. */
   "test/starred-shows.test.js": 9,
   "test/supabase-rls-verbs.test.js": 7, // round-3 L6 (2026-09-25): backend-rest-4/-5, data-integrity-10 — supabase/0003's policies pinned against the PostgREST verbs app.js uses, both ways
+  "test/supabase-rls-coverage.test.js": 3, // PR #1045 review (PKG-02, S-09): every portable table has Supabase RLS (supabase/0004 for shows_catalog/show_id_map); the G1/G2 coupling text cites Q6 and names 0004; new
   /* "Up Next" listening queue, Stage 1 of docs/listening-queue-plan.md
      (kanban card t_f4da81f5). Floored because the queue's own decay path
      (an id ageing out of the pool, or the queue emptying) is exactly the

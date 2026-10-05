@@ -4027,10 +4027,15 @@ backfill is a future, separate pass.
 - **Coupling (gates G1/G2):** `PostgresShowEpisodesStore` now names
   `legacy_show_id`, which exists only after 0019. It runs only in
   `api/shows/[show_id]/episodes.ts`'s DB mode, dormant while `DATABASE_URL`
-  is unset (founder question 31 in `docs/roadmap/README.md`: not yet).
-  **Whoever later sets `DATABASE_URL` (G1) must apply 0017-0019 to that
-  database (G2) first**, or every show-page read and feed-state write
-  through the store fails with "column legacy_show_id does not exist".
+  is unset (founder question 6 in `docs/roadmap/README.md`: Postgres for
+  shows, not yet). **Whoever later sets `DATABASE_URL` (G1) must apply
+  0017-0019 to that database (G2) first**, or every show-page read and
+  feed-state write through the store fails with "column legacy_show_id does
+  not exist". **On Supabase, G2 also applies
+  `backend/migrations/supabase/0004_rls_shows_catalog.sql`** (public-read,
+  no-write RLS on `shows_catalog`; deny-all on `show_id_map`), or the anon key
+  can write both new tables (backend-rest-4). Pinned by
+  `test/supabase-rls-coverage.test.js`.
 - **Verified against a real Postgres 17 on #714** (2026-09-15, a sandbox
   cluster built from the `io.zonky.test.postgres` binaries): all 19
   migrations applied twice from a fresh database (idempotent);

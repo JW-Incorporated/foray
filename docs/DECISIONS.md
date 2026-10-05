@@ -22,13 +22,20 @@ favour of the two; its branch is kept.
 `PostgresShowEpisodesStore` reads and writes `legacy_show_id`, a column that
 exists only once 0019 has run. The store is live only when `DATABASE_URL` is
 set: `api/shows/[show_id]/episodes.ts` builds it in its DB mode, which is
-dormant in production today (no `DATABASE_URL`; founder question 31 in
-`docs/roadmap/README.md`, default "not yet"). So **whoever later sets
-`DATABASE_URL` on Vercel (G1) must apply migrations 0017-0019 to that database
-(G2) first.** A database that stops at 0016 still has `show_id`, and every
-show-page read and feed-state write through the store would fail with
+dormant in production today (no `DATABASE_URL`; founder question 6 in
+`docs/roadmap/README.md` (Postgres for shows: not yet)). So **whoever later
+sets `DATABASE_URL` on Vercel (G1) must apply migrations 0017-0019 to that
+database (G2) first.** A database that stops at 0016 still has `show_id`, and
+every show-page read and feed-state write through the store would fail with
 "column legacy_show_id does not exist". G2 is a step inside G1, not a separate
-HUMAN-ACTIONS item.
+HUMAN-ACTIONS item. **On Supabase, G2 also applies
+`backend/migrations/supabase/0004_rls_shows_catalog.sql` right after
+0017-0019:** 0017/0018 create two new public tables, and without it the anon
+key could write `shows_catalog` and `show_id_map` (the backend-rest-4 hole that
+supabase/0003 closed for the 0016 catalogue). 0004 gives `shows_catalog`
+public-read, no-write RLS and `show_id_map` deny-all RLS;
+`test/supabase-rls-coverage.test.js` fails if a table a portable migration
+creates has no RLS in that folder.
 
 - **New tables, keyed on `pi_id` (PodcastIndex's own dump id), not the
   curated `show_id` slug.** `shows_catalog` (0017) is the Postgres mirror
