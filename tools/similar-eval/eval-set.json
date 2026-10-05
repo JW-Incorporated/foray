@@ -1,0 +1,754 @@
+{
+  "version": 1,
+  "issue": "#560 item 8",
+  "reviewed": "2026-10-04",
+  "reviewer": "Claude (agent), by hand, from each show's title and editorial_note in data/catalog-client.json; not founder-reviewed",
+  "catalog": "data/catalog-client.json",
+  "k": 6,
+  "judging_rule": "expected = shows a listener of the seed would plausibly want next, judged from the shows themselves and NOT from their taxonomy_node_ids. must_not = a suggestion that would make the listener distrust the row (different subject and different audience), listed only where a shared label could plausibly surface it. A returned show in neither list is unjudged and counts as a miss in precision.",
+  "seeds": [
+    {
+      "seed": "lex-fridman-podcast",
+      "expected": [
+        "twiml-ai",
+        "robot-brains",
+        "practical-ai",
+        "the-peter-attia-drive",
+        "huberman-lab"
+      ],
+      "must_not": [
+        "titans-of-nuclear",
+        "omega-tau"
+      ],
+      "note": "General seed with no nodes: long-form technical interviews (AI, science). Its editorial note's fusion framing is the old magnet."
+    },
+    {
+      "seed": "catalyst-shayle-kann",
+      "expected": [
+        "volts",
+        "energy-gang",
+        "watt-it-takes",
+        "cleantechies-podcast"
+      ],
+      "must_not": [
+        "omega-tau"
+      ],
+      "note": "General seed: an energy-transition market show, not a fusion-engineering tour."
+    },
+    {
+      "seed": "cbc-ideas",
+      "expected": [
+        "philosophy-bites",
+        "philosophize-this",
+        "radiolab",
+        "hidden-brain",
+        "distillations"
+      ],
+      "must_not": [
+        "titans-of-nuclear",
+        "omega-tau",
+        "cleantechies-podcast",
+        "lab-to-market-leadership"
+      ],
+      "note": "General seed: an ideas documentary strand that only occasionally lands on fusion."
+    },
+    {
+      "seed": "stuff-you-should-know",
+      "expected": [
+        "radiolab",
+        "science-vs",
+        "engines-of-our-ingenuity",
+        "ologies-with-alie-ward",
+        "freakonomics-radio",
+        "unexplainable"
+      ],
+      "must_not": [
+        "materialism-podcast",
+        "mrs-bulletin-materials-news",
+        "mtdcnc-podcast"
+      ],
+      "note": "General seed: a general-audience explainer, not a materials or machining show."
+    },
+    {
+      "seed": "being-an-engineer",
+      "expected": [
+        "making-chips",
+        "business-of-machining",
+        "within-tolerance"
+      ],
+      "must_not": [
+        "wood-talk",
+        "around-the-house-eric-g",
+        "gardenfork-radio"
+      ],
+      "note": "General seed: product-engineering careers. Its craft/diy-home label is a slice."
+    },
+    {
+      "seed": "the-rest-is-history",
+      "expected": [
+        "hardcore-history",
+        "fall-of-civilizations",
+        "we-have-ways-of-making-you-talk",
+        "the-ancients",
+        "our-fake-history"
+      ],
+      "must_not": [
+        "acquired"
+      ],
+      "note": "General seed: conversational narrative history. Acquired shares history/technology but is company histories."
+    },
+    {
+      "seed": "99-percent-invisible",
+      "expected": [
+        "twenty-thousand-hertz",
+        "the-worlds-best-construction-podcast",
+        "strong-towns-podcast",
+        "the-engineering-history-podcast",
+        "design-matters"
+      ],
+      "must_not": [],
+      "note": "General seed: design and infrastructure stories."
+    },
+    {
+      "seed": "ologies-with-alie-ward",
+      "expected": [
+        "radiolab",
+        "science-vs",
+        "this-podcast-will-kill-you",
+        "stuff-you-should-know",
+        "unexplainable"
+      ],
+      "must_not": [],
+      "note": "General seed: one -ology per week, a different science each time."
+    },
+    {
+      "seed": "software-engineering-daily",
+      "expected": [
+        "practical-ai",
+        "corecursive",
+        "twiml-ai"
+      ],
+      "must_not": [
+        "advent-of-computing"
+      ],
+      "note": "General seed: working-engineer interviews. Its computing/history label points at a retro-computing history show."
+    },
+    {
+      "seed": "freakonomics-radio",
+      "expected": [
+        "planet-money",
+        "hidden-brain",
+        "odd-lots",
+        "choiceology",
+        "you-are-not-so-smart"
+      ],
+      "must_not": [],
+      "note": "General seed: economics and behavioural reasoning."
+    },
+    {
+      "seed": "unexplainable",
+      "expected": [
+        "radiolab",
+        "science-vs",
+        "ologies-with-alie-ward",
+        "stuff-you-should-know"
+      ],
+      "must_not": [
+        "the-moth",
+        "snap-judgment"
+      ],
+      "note": "General seed: a science show. The Moth and Snap Judgment carry science/storytelling but are personal stories."
+    },
+    {
+      "seed": "huberman-lab",
+      "expected": [
+        "the-matt-walker-podcast",
+        "the-peter-attia-drive",
+        "foundmyfitness",
+        "feel-better-live-more"
+      ],
+      "must_not": [],
+      "note": "General seed: neuroscience protocols and health."
+    },
+    {
+      "seed": "techsurge-deep-tech-podcast",
+      "expected": [
+        "lab-to-market-leadership",
+        "twenty-minute-vc",
+        "this-week-in-startups",
+        "watt-it-takes"
+      ],
+      "must_not": [
+        "titans-of-nuclear",
+        "omega-tau"
+      ],
+      "note": "General seed: a VC show on frontier tech, fusion only a slice."
+    },
+    {
+      "seed": "titans-of-nuclear",
+      "expected": [
+        "omega-tau",
+        "cleantechies-podcast",
+        "catalyst-shayle-kann",
+        "volts",
+        "energy-gang"
+      ],
+      "must_not": [
+        "cbc-ideas"
+      ],
+      "note": "Nuclear-energy interviews. Catalyst is general: a good candidate the rule excludes."
+    },
+    {
+      "seed": "omega-tau",
+      "expected": [
+        "titans-of-nuclear",
+        "off-nominal",
+        "main-engine-cut-off",
+        "the-engineering-history-podcast"
+      ],
+      "must_not": [],
+      "note": "Dense engineering tours (reactors, spaceflight, aviation); its similars sit under other nodes."
+    },
+    {
+      "seed": "materialism-podcast",
+      "expected": [
+        "its-a-material-world",
+        "mrs-bulletin-materials-news",
+        "chemistry-world-podcast"
+      ],
+      "must_not": [],
+      "note": "The materials-science show."
+    },
+    {
+      "seed": "inside-chips",
+      "expected": [
+        "within-tolerance",
+        "mrs-bulletin-materials-news",
+        "materialism-podcast"
+      ],
+      "must_not": [],
+      "note": "Semiconductor-fab process talk; its chips are wafers, not machine-shop swarf."
+    },
+    {
+      "seed": "making-chips",
+      "expected": [
+        "business-of-machining",
+        "mtdcnc-podcast",
+        "within-tolerance"
+      ],
+      "must_not": [],
+      "note": "Machine-shop leadership."
+    },
+    {
+      "seed": "fall-of-civilizations",
+      "expected": [
+        "hardcore-history",
+        "the-ancients",
+        "history-of-ancient-greece",
+        "ancient-history-fangirl",
+        "the-rest-is-history"
+      ],
+      "must_not": [
+        "acquired"
+      ],
+      "note": "Long-form civilizational history; the-rest-is-history is general."
+    },
+    {
+      "seed": "hardcore-history",
+      "expected": [
+        "fall-of-civilizations",
+        "the-rest-is-history",
+        "we-have-ways-of-making-you-talk",
+        "the-ancients",
+        "history-of-wwii-podcast",
+        "history-of-ancient-greece"
+      ],
+      "must_not": [],
+      "note": "Narrative military history across eras; the WWII shows sit under history/military-modern."
+    },
+    {
+      "seed": "engines-of-our-ingenuity",
+      "expected": [
+        "the-engineering-history-podcast",
+        "distillations",
+        "advent-of-computing"
+      ],
+      "must_not": [],
+      "note": "Five-minute invention stories."
+    },
+    {
+      "seed": "acquired",
+      "expected": [
+        "founders",
+        "business-wars",
+        "how-i-built-this",
+        "masters-of-scale"
+      ],
+      "must_not": [
+        "fall-of-civilizations"
+      ],
+      "note": "Company histories; history/technology pulls in a civilizational saga."
+    },
+    {
+      "seed": "founders",
+      "expected": [
+        "acquired",
+        "how-i-built-this",
+        "masters-of-scale",
+        "business-wars"
+      ],
+      "must_not": [],
+      "note": "Founder biographies; business/startups and business/founders are split nodes."
+    },
+    {
+      "seed": "twenty-minute-vc",
+      "expected": [
+        "this-week-in-startups",
+        "masters-of-scale",
+        "techsurge-deep-tech-podcast"
+      ],
+      "must_not": [],
+      "note": "Venture-capital interviews; TechSurge is general."
+    },
+    {
+      "seed": "conan-obrien-needs-a-friend",
+      "expected": [
+        "smartless",
+        "good-hang-amy-poehler",
+        "fly-on-the-wall",
+        "armchair-expert",
+        "comedy-bang-bang",
+        "handsome"
+      ],
+      "must_not": [],
+      "note": "The warm celebrity hang."
+    },
+    {
+      "seed": "my-brother-my-brother-and-me",
+      "expected": [
+        "comedy-bang-bang",
+        "handsome",
+        "how-did-this-get-made"
+      ],
+      "must_not": [],
+      "note": "Absurdist advice comedy."
+    },
+    {
+      "seed": "black-box-down",
+      "expected": [
+        "flight-safety-detectives",
+        "well-theres-your-problem",
+        "causality-engineered-network",
+        "brady-heywood-podcast"
+      ],
+      "must_not": [],
+      "note": "Aviation disasters; the engineering-disaster shows sit under engineering/disasters."
+    },
+    {
+      "seed": "well-theres-your-problem",
+      "expected": [
+        "causality-engineered-network",
+        "brady-heywood-podcast",
+        "black-box-down",
+        "flight-safety-detectives"
+      ],
+      "must_not": [],
+      "note": "Engineering disasters; the aviation-accident shows sit under aviation/accidents."
+    },
+    {
+      "seed": "gastropod",
+      "expected": [
+        "fermup",
+        "tiny-matters",
+        "distillations"
+      ],
+      "must_not": [],
+      "note": "Food chemistry and history."
+    },
+    {
+      "seed": "lingthusiasm",
+      "expected": [
+        "the-allusionist"
+      ],
+      "must_not": [],
+      "note": "Linguistics."
+    },
+    {
+      "seed": "song-exploder",
+      "expected": [
+        "dissect",
+        "switched-on-pop",
+        "broken-record",
+        "twenty-thousand-hertz"
+      ],
+      "must_not": [],
+      "note": "How a song was built; broken-record sits on the parent node music."
+    },
+    {
+      "seed": "spit-and-twitches-animal-cognition",
+      "expected": [
+        "the-sound-aquatic",
+        "ologies-with-alie-ward"
+      ],
+      "must_not": [],
+      "note": "Animal-cognition research; Ologies is general."
+    },
+    {
+      "seed": "the-worlds-best-construction-podcast",
+      "expected": [
+        "99-percent-invisible",
+        "strong-towns-podcast",
+        "brady-heywood-podcast",
+        "the-engineering-history-podcast"
+      ],
+      "must_not": [],
+      "note": "Megaprojects and infrastructure; 99PI is general."
+    },
+    {
+      "seed": "spycast",
+      "expected": [
+        "we-have-ways-of-making-you-talk",
+        "unauthorized-history-pacific-war",
+        "history-of-wwii-podcast"
+      ],
+      "must_not": [],
+      "note": "Espionage and Cold War history; alone on its node."
+    },
+    {
+      "seed": "main-engine-cut-off",
+      "expected": [
+        "off-nominal",
+        "planetary-radio"
+      ],
+      "must_not": [],
+      "note": "Rocket-industry news."
+    },
+    {
+      "seed": "corecursive",
+      "expected": [
+        "advent-of-computing",
+        "software-engineering-daily",
+        "practical-ai"
+      ],
+      "must_not": [],
+      "note": "Stories behind the code; SE Daily is general."
+    },
+    {
+      "seed": "planet-money",
+      "expected": [
+        "odd-lots",
+        "freakonomics-radio"
+      ],
+      "must_not": [],
+      "note": "Narrative economics; Freakonomics is general."
+    },
+    {
+      "seed": "hidden-brain",
+      "expected": [
+        "you-are-not-so-smart",
+        "choiceology",
+        "freakonomics-radio",
+        "happiness-lab",
+        "the-psychology-podcast"
+      ],
+      "must_not": [],
+      "note": "Behavioural psychology; psychology and psychology/decision-making are split nodes."
+    },
+    {
+      "seed": "the-matt-walker-podcast",
+      "expected": [
+        "huberman-lab",
+        "the-peter-attia-drive",
+        "foundmyfitness",
+        "feel-better-live-more"
+      ],
+      "must_not": [],
+      "note": "Sleep neuroscience; Huberman is general."
+    },
+    {
+      "seed": "strict-scrutiny",
+      "expected": [
+        "amicus-dahlia-lithwick",
+        "5-4-podcast"
+      ],
+      "must_not": [
+        "dateline-nbc",
+        "crime-junkie",
+        "casefile-true-crime"
+      ],
+      "note": "Supreme Court analysis; society/law also sits on true-crime shows."
+    },
+    {
+      "seed": "5-4-podcast",
+      "expected": [
+        "strict-scrutiny",
+        "amicus-dahlia-lithwick"
+      ],
+      "must_not": [
+        "dateline-nbc",
+        "crime-junkie"
+      ],
+      "note": "Supreme Court analysis."
+    },
+    {
+      "seed": "criminal",
+      "expected": [
+        "serial",
+        "in-the-dark",
+        "bone-valley",
+        "casefile-true-crime",
+        "crime-junkie"
+      ],
+      "must_not": [
+        "strict-scrutiny",
+        "5-4-podcast",
+        "amicus-dahlia-lithwick"
+      ],
+      "note": "Reported crime stories; the law-analysis shows share society/law only."
+    },
+    {
+      "seed": "dateline-nbc",
+      "expected": [
+        "crime-junkie",
+        "casefile-true-crime",
+        "serial",
+        "in-the-dark",
+        "bone-valley"
+      ],
+      "must_not": [
+        "strict-scrutiny",
+        "5-4-podcast",
+        "amicus-dahlia-lithwick"
+      ],
+      "note": "Single-case true-crime documentaries."
+    },
+    {
+      "seed": "morbid",
+      "expected": [
+        "crime-junkie",
+        "casefile-true-crime",
+        "lore",
+        "wicked-words-kate-winkler-dawson",
+        "astonishing-legends"
+      ],
+      "must_not": [],
+      "note": "True crime and dark history."
+    },
+    {
+      "seed": "radiolab",
+      "expected": [
+        "science-vs",
+        "unexplainable",
+        "this-american-life",
+        "ologies-with-alie-ward",
+        "stuff-you-should-know"
+      ],
+      "must_not": [],
+      "note": "Science storytelling; three of its similars are general."
+    },
+    {
+      "seed": "the-moth",
+      "expected": [
+        "snap-judgment",
+        "this-american-life",
+        "storycorps",
+        "modern-love"
+      ],
+      "must_not": [
+        "science-vs"
+      ],
+      "note": "Live personal storytelling; Science Vs shares science/storytelling but tries claims against evidence."
+    },
+    {
+      "seed": "science-vs",
+      "expected": [
+        "radiolab",
+        "unexplainable",
+        "maintenance-phase",
+        "ologies-with-alie-ward"
+      ],
+      "must_not": [
+        "the-moth",
+        "snap-judgment"
+      ],
+      "note": "Claims tried against evidence."
+    },
+    {
+      "seed": "happiness-lab",
+      "expected": [
+        "ten-percent-happier",
+        "the-psychology-podcast",
+        "hidden-brain",
+        "happier-gretchen-rubin",
+        "mel-robbins-podcast"
+      ],
+      "must_not": [],
+      "note": "Happiness research."
+    },
+    {
+      "seed": "the-psychology-podcast",
+      "expected": [
+        "hidden-brain",
+        "happiness-lab",
+        "you-are-not-so-smart",
+        "choiceology",
+        "ten-percent-happier"
+      ],
+      "must_not": [],
+      "note": "Psychology researcher interviews."
+    },
+    {
+      "seed": "good-inside-dr-becky",
+      "expected": [
+        "ask-lisa-parenting"
+      ],
+      "must_not": [],
+      "note": "Parenting."
+    },
+    {
+      "seed": "heavyweight",
+      "expected": [
+        "this-american-life",
+        "snap-judgment",
+        "death-sex-money",
+        "modern-love",
+        "the-moth",
+        "ear-hustle"
+      ],
+      "must_not": [],
+      "note": "Personal narrative."
+    },
+    {
+      "seed": "where-should-we-begin",
+      "expected": [
+        "death-sex-money",
+        "modern-love",
+        "dear-sugars",
+        "we-can-do-hard-things"
+      ],
+      "must_not": [],
+      "note": "Relationships and therapy."
+    },
+    {
+      "seed": "armchair-expert",
+      "expected": [
+        "wtf-marc-maron",
+        "smartless",
+        "conan-obrien-needs-a-friend",
+        "call-her-daddy",
+        "this-past-weekend-theo-von"
+      ],
+      "must_not": [],
+      "note": "Long-form celebrity interviews."
+    },
+    {
+      "seed": "kill-tony",
+      "expected": [
+        "working-it-out-birbiglia",
+        "2-bears-1-cave",
+        "bad-friends"
+      ],
+      "must_not": [],
+      "note": "Stand-up and comics' comedy."
+    },
+    {
+      "seed": "welcome-to-night-vale",
+      "expected": [
+        "the-magnus-archives",
+        "old-gods-of-appalachia",
+        "levar-burton-reads"
+      ],
+      "must_not": [],
+      "note": "Audio fiction."
+    },
+    {
+      "seed": "whiskycast",
+      "expected": [
+        "bourbon-pursuit",
+        "spirits-and-distilling"
+      ],
+      "must_not": [],
+      "note": "Whisky and distilling."
+    },
+    {
+      "seed": "craft-beer-and-brewing-magazine-podcast",
+      "expected": [
+        "experimental-brewing",
+        "basic-brewing-radio"
+      ],
+      "must_not": [],
+      "note": "Brewing."
+    },
+    {
+      "seed": "practical-ai",
+      "expected": [
+        "twiml-ai",
+        "software-engineering-daily",
+        "lex-fridman-podcast",
+        "robot-brains"
+      ],
+      "must_not": [],
+      "note": "Applied AI engineering; SE Daily and Lex are general."
+    },
+    {
+      "seed": "wow-in-the-world",
+      "expected": [
+        "story-pirates",
+        "circle-round"
+      ],
+      "must_not": [],
+      "note": "Kids' science; the kids' shows sit under kids-family/stories."
+    },
+    {
+      "seed": "broken-record",
+      "expected": [
+        "song-exploder",
+        "dissect",
+        "switched-on-pop"
+      ],
+      "must_not": [],
+      "note": "Musicians on craft; carries only the parent node music, which nothing else carries."
+    },
+    {
+      "seed": "lore",
+      "expected": [
+        "astonishing-legends",
+        "unexplained",
+        "myths-and-legends",
+        "our-fake-history",
+        "morbid"
+      ],
+      "must_not": [],
+      "note": "Folklore and dark history."
+    },
+    {
+      "seed": "the-sharp-end-podcast",
+      "expected": [
+        "the-enormocast",
+        "alpinist"
+      ],
+      "must_not": [],
+      "note": "Climbing."
+    },
+    {
+      "seed": "f1-beyond-the-grid",
+      "expected": [
+        "the-race-f1-podcast",
+        "tuned-in-hpa"
+      ],
+      "must_not": [],
+      "note": "Formula 1."
+    },
+    {
+      "seed": "volts",
+      "expected": [
+        "energy-gang",
+        "watt-it-takes",
+        "catalyst-shayle-kann",
+        "cleantechies-podcast"
+      ],
+      "must_not": [],
+      "note": "The grid and electrification; Catalyst is general."
+    }
+  ]
+}
