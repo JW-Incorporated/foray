@@ -402,6 +402,7 @@ const FLOORS = {
      each is exactly one careless edit from its opposite, and #302 exists because
      reverting one of them passed the whole suite. */
   "test/app-name.test.js": 21,
+  "test/link-preview-meta.test.js": 6, // sh-3-1071: the static link-preview tags in index.html's head (each once, fixed values, copy rules, origin + image on disk >= 512px + deployed, CSP byte-identical, no script); zero slack
   /* Back-navigation (kanban t_0faae03f, Wyatt 2026-09-05): the ‹ button must
      go back one real step, not always Home — see the suite's own header
      for the full journey list this covers.
