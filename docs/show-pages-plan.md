@@ -1,12 +1,13 @@
 # Plan: show search, browse, and per-show pages
 
 > **SUPERSEDED IN PART, 2026-09-21 (`4a-shows-pipeline-plan.md`, S-deck,
-> the S-12 decision record, which lands in `docs/DECISIONS.md` with
-> shows-search PKG-04).** This plan's Stage 3
+> the S-12 decision record: `docs/DECISIONS.md`, 2026-10-05 entry,
+> re-landed by shows-search PKG-04).** This plan's Stage 3
 > ("does the show list ever grow past 220?") is now answered: the show
 > list is the full PodcastIndex-dump-derived universal list (S-04), the
 > curated 220 are an overlay flag on it (D8), and search reaches it via
 > the S-05 shard index (client) plus an inert Postgres path (S-09,
+> schema merged in #1045 on 2026-10-05,
 > not yet live). Stages 1–2 and 3b (per-show pages, full episode list)
 > shipped as this plan intended and are unaffected — see
 > `docs/product/suggested-shows-requirements.md` for what actually runs.
