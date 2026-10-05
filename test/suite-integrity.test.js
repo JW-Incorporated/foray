@@ -1372,6 +1372,7 @@ const FLOORS = {
      needed because the sort order is a contract between two files and either
      side can break it alone. */
   "tools/build-show-index.test.mjs": 10, // PKG-11a (docs/roadmap/shows-search.md, 2026-10-04): +1 — a curated row carries its breadth twin's chart_rank joined on apple_collection_id, and null without a twin; 9 -> 10
+  "tools/build-catalog-client.test.mjs": 2, // PKG-11b (P-09): the curated chart_rank breadth join (rank or null) and the committed data/catalog-client.json equals the builder's output
   "tools/popularity-signal-probe.test.mjs": 6, // PKG-12 (P-10, docs/roadmap/shows-search.md): the top.json position probe — the String() join for breadth and curated rows, would_lead_by_top_position, the validator, the pi_id-order flag, one polite GET for top.json alone, the 5xx retry
   /* The Windows entrypoint-guard class (machinery audit finding 3). A main-
      module check written as ``import.meta.url === `file://${process.argv[1]}` ``
