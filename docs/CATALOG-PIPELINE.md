@@ -31,8 +31,9 @@ Keep it for the curated tier; build a programmatic harvester for breadth.
 > **third** layer now sits over this table and is the one a listener
 > actually meets: the PodcastIndex-dump-derived shard index (4.7M+ rows,
 > `tools/shows/`, published as GitHub Release assets) plus its inert
-> Postgres twin (`shows_catalog`, S-09; PR #714, not merged as of
-> 2026-10-04). Read the table below as **"the
+> Postgres twin (`shows_catalog`, S-09; migrations 0017–0019 merged in
+> #1045 on 2026-10-04, applied to no production database yet). Read the
+> table below as **"the
 > two tiers this repo hand-built before 2026-09"**, both of which are
 > still live and **not retired** — `data/catalog-breadth.json` remains a
 > real server-side dependency (`backend/src/catalog/breadthCatalog.ts`,
@@ -43,7 +44,7 @@ Keep it for the curated tier; build a programmatic harvester for breadth.
 > mental model going forward:** the curated 220 (this table's left
 > column) are a `curated: true` overlay flag on rows in the new
 > universal shard/Postgres list (D8 of the S-12 decision record, which
-> lands in `docs/DECISIONS.md` with shows-search PKG-04) — Home/Forays/Playlists keep reading only the curated
+> is `docs/DECISIONS.md`'s 2026-10-05 entry) — Home/Forays/Playlists keep reading only the curated
 > overlay, exactly as this table's "Consumers" row already said. The
 > Apple-chart-harvested `data/catalog-breadth.json` file is a
 > **fourth, older, and now largely superseded** source
