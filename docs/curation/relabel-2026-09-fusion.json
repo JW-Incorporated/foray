@@ -320,5 +320,26 @@
       "business/management",
       "business/careers"
     ]
+  },
+  {
+    "id": "lex-fridman-podcast--499-gary-gallagher-american-civil-war",
+    "topics": [
+      "history/military-modern",
+      "history/social-history"
+    ]
+  },
+  {
+    "id": "lex-fridman-podcast--500-khabib-nurmagomedov-dagestan-mma-ufc",
+    "topics": [
+      "sports/combat-sports",
+      "religion/islam"
+    ]
+  },
+  {
+    "id": "lex-fridman-podcast--501-dhh-future-of-programming-ai",
+    "topics": [
+      "computing/software-engineering",
+      "engineering/ai-robotics"
+    ]
   }
 ]

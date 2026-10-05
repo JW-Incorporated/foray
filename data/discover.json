@@ -23517,7 +23517,8 @@
       "dai_suspected": false,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/3e/e3/9c/3ee39c89-de08-47a6-7f3d-3849cef6d255/mza_16657851278549137484.png/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "history/military-modern",
+        "history/social-history"
       ],
       "hook": "Historian Gary Gallagher joins Lex Fridman to discuss the Civil War, slavery, Lincoln, Grant, and Lee.",
       "explicit": true,
@@ -31553,7 +31554,8 @@
       "dai_suspected": false,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/3e/e3/9c/3ee39c89-de08-47a6-7f3d-3849cef6d255/mza_16657851278549137484.png/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "sports/combat-sports",
+        "religion/islam"
       ],
       "hook": "Khabib Nurmagomedov on retiring undefeated, Dagestan roots, and faith — recorded in Russian, dubbed with voice-cloning.",
       "explicit": false,
@@ -39601,7 +39603,8 @@
       "dai_suspected": false,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/3e/e3/9c/3ee39c89-de08-47a6-7f3d-3849cef6d255/mza_16657851278549137484.png/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "computing/software-engineering",
+        "engineering/ai-robotics"
       ],
       "hook": "DHH on Rails, Omarchy Linux, and where agentic coding tools are taking programming next.",
       "explicit": true,

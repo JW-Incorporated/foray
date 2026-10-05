@@ -29,7 +29,8 @@
  *
  * FUSION CONTAMINATION (PKG-07; #547 F19). The last test pins that no general
  * show's episode sits on `engineering/energy-fusion` by inheriting the show's
- * label; the kill is in the test.
+ * label, nor carries it without its own title or hook naming fusion; the
+ * kills are in the test.
  *
  * The floor for this suite lives in test/suite-integrity.test.js.
  */
@@ -195,12 +196,28 @@ test("no engineering/energy-fusion item comes from a general show's inherited la
      fusion leaf, but only by someone's per-episode judgement, never by
      inheritance. KILLED BY: setting one relabelled item back to
      `"topics": ["engineering/energy-fusion"], "topics_source": "show"` in
-     data/discover.json (e.g. cbc-ideas--david-bowie-took-his-own-death). */
+     data/discover.json (e.g. cbc-ideas--david-bowie-took-his-own-death).
+
+     "episode" IS NOT PROOF OF A JUDGEMENT. Lex Fridman's catalog row has
+     `taxonomy_node_ids: []`, so PKG-01's backfill stamped any topic its
+     episodes carried "episode" — and #499 Gary Gallagher (Civil War), #500
+     Khabib Nurmagomedov (MMA) and #501 DHH (programming) all sat on the fusion
+     leaf as "episode" until the same batch relabelled them. So a general
+     show's fusion item must also name fusion in its own title or hook: an
+     episode a person actually judged to be about fusion says so (the SYSK
+     reactor episode does). KILLED BY: setting
+     lex-fridman-podcast--501-dhh-future-of-programming-ai back to
+     `"topics": ["engineering/energy-fusion"]`, leaving `topics_source`
+     "episode". */
+  const FUSION = "engineering/energy-fusion";
   const general = new Set(read("catalog.json").shows.filter((s) => s.label_scope === "general").map((s) => s.title));
   assert.ok(general.size > 0, "catalog.json marks no show label_scope general — the guard would be vacuous");
   const { items } = read("discover.json");
-  const bad = items
-    .filter((i) => i.topics_source === "show" && general.has(i.show) && (i.topics || []).includes("engineering/energy-fusion"))
-    .map((i) => `${i.show}: ${i.id}`);
+  const onLeaf = items.filter((i) => general.has(i.show) && (i.topics || []).includes(FUSION));
+  const inherited = onLeaf.filter((i) => i.topics_source === "show").map((i) => `inherited — ${i.show}: ${i.id}`);
+  const unjudged = onLeaf
+    .filter((i) => i.topics_source !== "show" && !/fusion/i.test(`${i.title || ""} ${i.hook || ""}`))
+    .map((i) => `not about fusion by its own title/hook — ${i.show}: ${i.id}`);
+  const bad = [...inherited, ...unjudged];
   assert.deepEqual(bad, [], report(bad));
 });
