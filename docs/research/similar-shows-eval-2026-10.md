@@ -17,7 +17,8 @@ labels as they are now, not from the labels before the clean-up.
 | `tools/similar-eval/run.mjs` | The runner. It rewrites the generated block below. `--check` exits 1 when the block is out of date, and `--json` prints the totals. |
 | `test/similar-shows-eval.test.js` | 12 tests. They pin the copy to app.js (by text and by output across every catalogue show, 229 since PKG-36), check that the eval set is valid, check the scorer's arithmetic against hand-worked numbers, enforce the floors below, and check that this report is up to date. |
 
-No `app.js` change. The scores use `data/catalog-client.json`, which is the
+No `app.js` change in the item 8 PR (item 9 later changed the tie-break; see
+the 2026-10-05 #560 item 9 note below). The scores use `data/catalog-client.json`, which is the
 file `app.js` loads. Its `taxonomy_node_ids` and `label_scope` values match
 `data/catalog.json` on all 220 rows.
 
@@ -94,6 +95,52 @@ a named cause. It is not a new baseline anyone chose. A tie-break that prefers
 fewer total nodes, or `apple_genre`, is the obvious fix, and it belongs to
 whoever next changes `similarShows`.
 
+*2026-10-05 (#560 item 9, crowded-row half):* `similarShows` now breaks a tie
+on `shared` by preferring the candidate with **fewer total
+`taxonomy_node_ids`**, a Jaccard-style share: one shared node out of one is a
+closer match than one out of two. `show_id` is kept only as the last key, so
+the order stays stable. `apple_genre` was not used, because it is not in
+`data/catalog-client.json`, the file `app.js` loads. Both `label_scope:
+"general"` guards are unchanged. The generated block is re-run on the same 229
+shows:
+
+| Measure | Alphabetical tie-break | Fewer-nodes tie-break |
+|---|---|---|
+| Precision (46 seeds) | 0.606 | 0.613 |
+| Recall, all / curated | 0.410 / 0.515 | 0.426 / 0.534 |
+| Hit rate / coverage | 0.703 / 0.719 | 0.703 / 0.719 |
+| Wrong shows | 11 in 8 seeds | 9 in 6 seeds |
+| Expected pairs missed | 150 | 148 |
+
+- *WhiskyCast* (`food/drinks` only) has 15 candidates: 10 single-node
+  `food/drinks` shows and 5 that also carry `food/fermentation`
+  (`basic-brewing-radio`, `beersmith-podcast`, `brew-strong`, `cider-chat`,
+  `inside-winemaking`). The row now shows six of the 10 single-node shows
+  ahead of the 5 two-node ones: `beer-in-front`, `bourbon-pursuit`,
+  `ill-drink-to-that-wine-talk`, `spirits-and-distilling`, `the-bourbon-life`,
+  `the-bourbon-road`. The bourbon shows and `spirits-and-distilling` come in,
+  so the PKG-36 missed pair is back. The row is still cut alphabetically
+  inside that single-node tier: `wine-educate`, `wine-enthusiast-podcast`,
+  `wine-for-normal-people` and `wine-talks-with-paul-k` tie on both keys and
+  lose to `show_id`.
+- *5-4* now shows *Strict Scrutiny* (`society/law` only) ahead of the
+  two-node true-crime shows; *Serial* drops out of its row.
+- *Acquired* and *Fall of Civilizations* no longer suggest each other. Each
+  sits on `history/technology` plus one other node, so single-node neighbours
+  now take their slots. That removes the two `history/technology` violations.
+- *omega tau* already showed *Titans of Nuclear* on this catalogue before the
+  change: the #547 fusion residue left omega tau only five candidates, so its
+  row was never cut. It is unchanged.
+- *My Brother, My Brother and Me* is unchanged. Every `comedy/casual-hangs`
+  candidate has the same number of nodes, so the alphabetical last key still
+  decides that row.
+
+The tie-break only reorders candidates. It never adds or removes one, so no
+row gets longer or shorter, and hit rate and coverage do not move. **The
+precision floor, both recall floors and the curated must-not ceiling were
+raised to this measurement (0.613, 0.425 / 0.534, ≤ 9).** Group 4 below
+describes the 2026-10-04 behaviour that this change addresses.
+
 The failures fall into four groups.
 
 1. **The general rule costs coverage to avoid wrong suggestions.** All 13
@@ -147,7 +194,9 @@ The failures fall into four groups.
    - `history/technology` links *Acquired* and *Fall of Civilizations* (2)
 
    PKG-07 relabelled episodes. These are show-level labels, so PKG-07 did not
-   touch them.
+   touch them. *(2026-10-05, #560 item 9: the fewer-nodes tie-break pushed the
+   two `history/technology` violations out of their rows. The 9 that remain
+   are the `society/law` and `science/storytelling` ones.)*
 
 4. **Alphabetical order decides crowded rows.** When more than six candidates
    share the same number of nodes with the seed, `show_id` order picks which
@@ -156,6 +205,13 @@ The failures fall into four groups.
    has. *My Brother, My Brother and Me* shows the first six
    `comedy/casual-hangs` shows in alphabetical order. The tie-break was chosen
    to keep the order stable, but it is not a measure of similarity.
+   *(2026-10-05, #560 item 9: fixed for rows whose tied candidates differ in
+   node count; equal overlap now prefers fewer total nodes, and `show_id` only
+   breaks what is still tied. A row is still cut alphabetically when more
+   than six of its best candidates also tie on node count: every
+   `comedy/casual-hangs` candidate of *My Brother, My Brother and Me*, and the
+   10 single-node `food/drinks` candidates of *WhiskyCast*, where the four
+   `wine-*` shows lose to `show_id`.)*
 
 ## Floors (test/similar-shows-eval.test.js)
 
@@ -166,10 +222,10 @@ raise the floor in the same PR.
 
 | Gate | Value | Mutation that turns it red (run 2026-10-04) |
 |---|---|---|
-| precision (shown) | ≥ 0.601 | remove `.filter(x => x.shared > 0)` |
-| recall@6, all / curated | ≥ 0.410 / ≥ 0.514 (was 0.413 / 0.518 before PKG-36) | `limit = 6` → `limit = 3` |
+| precision (shown) | ≥ 0.613 (was 0.601 before #560 item 9) | remove `.filter(x => x.shared > 0)`; drop the node-count tie-break key (run 2026-10-05) |
+| recall@6, all / curated | ≥ 0.425 / ≥ 0.534 (was 0.413 / 0.518 before PKG-36, 0.410 / 0.514 before #560 item 9) | `limit = 6` → `limit = 3`; drop the node-count tie-break key (run 2026-10-05) |
 | hit rate / coverage | ≥ 0.687 / ≥ 0.718 | `x.shared > 0` → `x.shared > 1` |
-| must-not, curated seeds | ≤ 11 | drop `&& s.label_scope !== "general"` |
+| must-not, curated seeds | ≤ 9 (was 11 before #560 item 9) | drop `&& s.label_scope !== "general"`; drop the node-count tie-break key (run 2026-10-05) |
 | must-not, general seeds | = 0 | drop `if (show?.label_scope === "general") return [];` |
 
 **To change the ranking:**
@@ -197,8 +253,8 @@ k = 6 (the slots the show page renders). Precision is over what was shown; recal
 
 | Group | Seeds | Precision (shown) | Recall@6 | Hit rate | Coverage | Must-not violations |
 |---|---:|---:|---:|---:|---:|---:|
-| All seeds | 64 | 0.606 (46 seeds) | 0.410 | 0.703 | 0.719 | 11 in 8 seeds |
-| Curated seeds | 51 | 0.606 (46 seeds) | 0.515 | 0.882 | 0.902 | 11 in 8 seeds |
+| All seeds | 64 | 0.613 (46 seeds) | 0.426 | 0.703 | 0.719 | 9 in 6 seeds |
+| Curated seeds | 51 | 0.613 (46 seeds) | 0.534 | 0.882 | 0.902 | 9 in 6 seeds |
 | `label_scope: "general"` seeds | 13 | n/a (0 seeds) | 0.000 | 0.000 | 0.000 | 0 in 0 seeds |
 
 ### Per seed
@@ -223,10 +279,10 @@ k = 6 (the slots the show page renders). Precision is over what was shown; recal
 | `materialism-podcast` |  | 4 | 2 | 0.500 | 0.667 |  |
 | `inside-chips` |  | 4 | 1 | 0.250 | 0.333 |  |
 | `making-chips` |  | 4 | 3 | 0.750 | 1.000 |  |
-| `fall-of-civilizations` |  | 6 | 4 | 0.667 | 0.800 | `acquired` |
+| `fall-of-civilizations` |  | 6 | 4 | 0.667 | 0.800 |  |
 | `hardcore-history` |  | 4 | 3 | 0.750 | 0.500 |  |
 | `engines-of-our-ingenuity` |  | 3 | 1 | 0.333 | 0.333 |  |
-| `acquired` |  | 6 | 1 | 0.167 | 0.250 | `fall-of-civilizations` |
+| `acquired` |  | 6 | 1 | 0.167 | 0.250 |  |
 | `founders` |  | 5 | 1 | 0.200 | 0.250 |  |
 | `twenty-minute-vc` |  | 5 | 1 | 0.200 | 0.333 |  |
 | `conan-obrien-needs-a-friend` |  | 6 | 4 | 0.667 | 0.667 |  |
@@ -245,7 +301,7 @@ k = 6 (the slots the show page renders). Precision is over what was shown; recal
 | `hidden-brain` |  | 2 | 2 | 1.000 | 0.400 |  |
 | `the-matt-walker-podcast` |  | 2 | 2 | 1.000 | 0.500 |  |
 | `strict-scrutiny` |  | 6 | 2 | 0.333 | 1.000 | `dateline-nbc` |
-| `5-4-podcast` |  | 6 | 1 | 0.167 | 0.500 | `dateline-nbc` |
+| `5-4-podcast` |  | 6 | 2 | 0.333 | 1.000 | `dateline-nbc` |
 | `criminal` |  | 6 | 3 | 0.500 | 0.600 | `5-4-podcast`, `amicus-dahlia-lithwick` |
 | `dateline-nbc` |  | 6 | 3 | 0.500 | 0.600 | `5-4-podcast`, `amicus-dahlia-lithwick` |
 | `morbid` |  | 6 | 4 | 0.667 | 0.800 |  |
@@ -260,7 +316,7 @@ k = 6 (the slots the show page renders). Precision is over what was shown; recal
 | `armchair-expert` |  | 5 | 3 | 0.600 | 0.600 |  |
 | `kill-tony` |  | 1 | 1 | 1.000 | 0.333 |  |
 | `welcome-to-night-vale` |  | 3 | 3 | 1.000 | 1.000 |  |
-| `whiskycast` |  | 6 | 1 | 0.167 | 0.500 |  |
+| `whiskycast` |  | 6 | 2 | 0.333 | 1.000 |  |
 | `craft-beer-and-brewing-magazine-podcast` |  | 6 | 2 | 0.333 | 1.000 |  |
 | `practical-ai` |  | 3 | 2 | 0.667 | 0.500 |  |
 | `wow-in-the-world` |  | 0 | 0 | n/a | 0.000 |  |
@@ -274,8 +330,6 @@ k = 6 (the slots the show page renders). Precision is over what was shown; recal
 
 **Must-not shows that appeared** (seed → shown show):
 
-- `fall-of-civilizations` → `acquired`
-- `acquired` → `fall-of-civilizations`
 - `strict-scrutiny` → `dateline-nbc`
 - `5-4-podcast` → `dateline-nbc`
 - `criminal` → `5-4-podcast`, `amicus-dahlia-lithwick`
@@ -325,7 +379,6 @@ k = 6 (the slots the show page renders). Precision is over what was shown; recal
 - `planet-money` → `freakonomics-radio`
 - `hidden-brain` → `freakonomics-radio`, `happiness-lab`, `the-psychology-podcast`
 - `the-matt-walker-podcast` → `huberman-lab`, `feel-better-live-more`
-- `5-4-podcast` → `strict-scrutiny`
 - `criminal` → `casefile-true-crime`, `crime-junkie`
 - `dateline-nbc` → `crime-junkie`, `casefile-true-crime`
 - `morbid` → `lore`
@@ -338,14 +391,13 @@ k = 6 (the slots the show page renders). Precision is over what was shown; recal
 - `where-should-we-begin` → `modern-love`, `we-can-do-hard-things`
 - `armchair-expert` → `smartless`, `conan-obrien-needs-a-friend`
 - `kill-tony` → `2-bears-1-cave`, `bad-friends`
-- `whiskycast` → `spirits-and-distilling`
 - `practical-ai` → `software-engineering-daily`, `lex-fridman-podcast`
 - `wow-in-the-world` → `story-pirates`, `circle-round`
 - `broken-record` → `song-exploder`, `dissect`, `switched-on-pop`
 - `lore` → `myths-and-legends`, `our-fake-history`
 - `volts` → `catalyst-shayle-kann`
 
-150 expected pairs missed in all; 26 of them name a `label_scope: "general"` show, which similarShows never offers as a candidate.
+148 expected pairs missed in all; 26 of them name a `label_scope: "general"` show, which similarShows never offers as a candidate.
 
 **Shown but unjudged** (in the row, in neither list; counted as misses in precision):
 
@@ -353,17 +405,17 @@ k = 6 (the slots the show page renders). Precision is over what was shown; recal
 - `materialism-podcast` → `mtdcnc-podcast`, `omega-tau`
 - `inside-chips` → `business-of-machining`, `making-chips`, `mtdcnc-podcast`
 - `making-chips` → `inside-chips`
-- `fall-of-civilizations` → `engines-of-our-ingenuity`
+- `fall-of-civilizations` → `engines-of-our-ingenuity`, `the-engineering-history-podcast`
 - `hardcore-history` → `ancient-history-fangirl`
 - `engines-of-our-ingenuity` → `acquired`, `fall-of-civilizations`
-- `acquired` → `cleantechies-podcast`, `engines-of-our-ingenuity`, `lab-to-market-leadership`, `the-engineering-history-podcast`
-- `founders` → `cleantechies-podcast`, `lab-to-market-leadership`, `this-week-in-startups`, `twenty-minute-vc`
-- `twenty-minute-vc` → `acquired`, `cleantechies-podcast`, `founders`, `lab-to-market-leadership`
+- `acquired` → `engines-of-our-ingenuity`, `lab-to-market-leadership`, `the-engineering-history-podcast`, `this-week-in-startups`, `twenty-minute-vc`
+- `founders` → `lab-to-market-leadership`, `this-week-in-startups`, `twenty-minute-vc`, `cleantechies-podcast`
+- `twenty-minute-vc` → `founders`, `lab-to-market-leadership`, `acquired`, `cleantechies-podcast`
 - `conan-obrien-needs-a-friend` → `2-bears-1-cave`, `bad-friends`
 - `my-brother-my-brother-and-me` → `2-bears-1-cave`, `bad-friends`, `conan-obrien-needs-a-friend`, `fly-on-the-wall`, `good-hang-amy-poehler`
 - `gastropod` → `the-bbq-central-show`
 - `strict-scrutiny` → `bone-valley`, `criminal`, `in-the-dark`
-- `5-4-podcast` → `bone-valley`, `criminal`, `in-the-dark`, `serial`
+- `5-4-podcast` → `bone-valley`, `criminal`, `in-the-dark`
 - `criminal` → `dateline-nbc`
 - `dateline-nbc` → `criminal`
 - `morbid` → `bone-valley`, `criminal`
@@ -372,12 +424,12 @@ k = 6 (the slots the show page renders). Precision is over what was shown; recal
 - `science-vs` → `this-american-life`
 - `happiness-lab` → `ask-lisa-parenting`, `feel-better-live-more`, `good-inside-dr-becky`
 - `the-psychology-podcast` → `ask-lisa-parenting`, `good-inside-dr-becky`, `where-should-we-begin`
-- `good-inside-dr-becky` → `happiness-lab`, `ten-percent-happier`, `the-psychology-podcast`, `where-should-we-begin`
+- `good-inside-dr-becky` → `the-psychology-podcast`, `happiness-lab`, `ten-percent-happier`, `where-should-we-begin`
 - `heavyweight` → `dear-prudence`, `dear-sugars`
-- `where-should-we-begin` → `ask-lisa-parenting`, `dear-prudence`, `good-inside-dr-becky`, `happiness-lab`
+- `where-should-we-begin` → `the-psychology-podcast`, `ask-lisa-parenting`, `dear-prudence`, `good-inside-dr-becky`
 - `armchair-expert` → `las-culturistas`, `working-it-out-birbiglia`
-- `whiskycast` → `basic-brewing-radio`, `beer-in-front`, `beersmith-podcast`, `brew-strong`, `cider-chat`
-- `craft-beer-and-brewing-magazine-podcast` → `beersmith-podcast`, `brew-strong`, `cider-chat`, `fermup`
+- `whiskycast` → `beer-in-front`, `ill-drink-to-that-wine-talk`, `the-bourbon-life`, `the-bourbon-road`
+- `craft-beer-and-brewing-magazine-podcast` → `fermup`, `beersmith-podcast`, `brew-strong`, `cider-chat`
 - `practical-ai` → `robot-talk`
 - `lore` → `wicked-words-kate-winkler-dawson`
 <!-- END GENERATED -->

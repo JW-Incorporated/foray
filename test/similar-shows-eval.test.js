@@ -51,16 +51,22 @@ const CATALOG = "data/catalog-client.json";
    b-prefixed beer shows (`beer-in-front`, `beersmith-podcast`, `brew-strong`)
    take slots ahead of `spirits-and-distilling`. Recall drops only because
    that one expected pair is missed (149 -> 150). The single-node
-   alphabetical tie-break is the finding for #560's owner. */
+   alphabetical tie-break is the finding for #560's owner.
+   RAISED 2026-10-05 (#560 item 9, crowded-row half): equal overlap now
+   prefers the candidate with fewer total taxonomy_node_ids, show_id last.
+   Precision, both recalls and the curated must-not ceiling moved and are
+   re-pinned to that measurement. Hit rate and coverage did not move (the
+   tie-break reorders rows, it never empties or fills one), so their floors
+   keep the 2026-10-04 baseline. */
 const FLOOR = {
-  precisionAll: 0.601, // 0.6018 over the 46 seeds whose row is non-empty (0.6061 after PKG-36)
-  recallAll: 0.41, // 0.4101 over all 64 seeds after PKG-36 (0.4133 at 220 shows)
-  recallCurated: 0.514, // 0.5147 over the 51 curated seeds after PKG-36 (0.5186 at 220 shows)
-  hitRateAll: 0.687, // 44 / 64
+  precisionAll: 0.613, // 0.6134 after the #560-9 tie-break (0.6018 on 2026-10-04, 0.6061 after PKG-36)
+  recallAll: 0.425, // 0.4257 after the #560-9 tie-break (0.4133 at 220 shows, 0.4101 after PKG-36)
+  recallCurated: 0.534, // 0.5343 after the #560-9 tie-break (0.5186 at 220 shows, 0.5147 after PKG-36)
+  hitRateAll: 0.687, // 44 / 64 on 2026-10-04 (45 / 64 since #547; unchanged by #560-9)
   coverageAll: 0.718, // 46 / 64
 };
 const CEILING = {
-  violationsCurated: 11, // in 8 seeds: the society/law and science/storytelling magnets, history/technology
+  violationsCurated: 9, // in 6 seeds: the society/law and science/storytelling magnets (11 in 8 before #560-9, which dropped the history/technology pair)
   violationsGeneral: 0,
 };
 
@@ -184,14 +190,21 @@ test("scorer: precision over what was shown, recall capped at k, violations only
 
 test(`floor: precision of the shown row >= ${FLOOR.precisionAll}`, async () => {
   /* MUTATION (run): remove `.filter(x => x.shared > 0)` from the mirror
-     (unrelated shows pad every short row, alphabetically) -> red. */
+     (unrelated shows pad every short row, alphabetically) -> red.
+     MUTATION (run 2026-10-05, #560-9): delete the taxonomy_node_ids length
+     key from the sort in BOTH app.js and the mirror (back to the alphabetical
+     tie-break, so the mirror tests stay green) -> red here, on both recalls
+     and on the curated must-not ceiling (0.606 / 0.410 / 0.515 / 11). Flipping
+     it to prefer MORE nodes (`b` minus `a`) -> red here and on both recalls. */
   const { all } = await measured();
   assert.ok(all.precision >= FLOOR.precisionAll, `precision ${all.precision} < floor ${FLOOR.precisionAll}`);
 });
 
 test(`floor: recall@6 >= ${FLOOR.recallAll} over all seeds, >= ${FLOOR.recallCurated} over curated seeds`, async () => {
   /* MUTATION (run): change the mirror's `limit = 6` to `limit = 3` -> red.
-     Re-run 2026-10-05 against the re-measured PKG-36 floors: still red. */
+     Re-run 2026-10-05 against the re-measured PKG-36 floors: still red.
+     MUTATION (run 2026-10-05, #560-9): the alphabetical-tie-break revert
+     described on the precision floor -> red (0.410 < 0.425). */
   const { all, curated } = await measured();
   assert.ok(all.recall >= FLOOR.recallAll, `recall ${all.recall} < floor ${FLOOR.recallAll}`);
   assert.ok(curated.recall >= FLOOR.recallCurated, `curated recall ${curated.recall} < floor ${FLOOR.recallCurated}`);
@@ -207,7 +220,11 @@ test(`floor: hit rate >= ${FLOOR.hitRateAll}, coverage >= ${FLOOR.coverageAll}`,
 
 test(`ceiling: curated seeds show at most ${CEILING.violationsCurated} must-not shows`, async () => {
   /* MUTATION (run): drop `&& s.label_scope !== "general"` from the mirror's
-     candidate filter (cbc-ideas returns to titans-of-nuclear's row) -> red. */
+     candidate filter (cbc-ideas returns to titans-of-nuclear's row) -> red.
+     Re-run 2026-10-05 against the #560-9 ceiling of 9: still red.
+     MUTATION (run 2026-10-05, #560-9): the alphabetical-tie-break revert
+     described on the precision floor -> red (11 > 9: acquired and
+     fall-of-civilizations meet on history/technology again). */
   const { curated } = await measured();
   assert.ok(
     curated.violations <= CEILING.violationsCurated,
