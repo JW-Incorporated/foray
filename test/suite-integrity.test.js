@@ -1115,9 +1115,9 @@ const FLOORS = {
      and writes `cp_engine_applied` before logging a replayed advance or
      position. Each is one deleted line from a car that plays the wrong thing,
      or a history that counts a drive twice. */
-  "test/engine-continuation.test.js": 6,
+  "test/engine-continuation.test.js": 7, // PQ-11 (#691): the plan runs on into the tail, fromTail hops; 6 -> 7
   "test/engine-developer-rows.test.js": 14, // NE-22d: the engine's four Developer rows in the drawer
-  "test/up-next-autoadvance.test.js": 21, // audit round 3 (lane L1): app-1-9 the finished row leaves Up Next with the switch off; 20 -> 21 // founder, 2026-09-24, reversing lane L3's question-9 default: a play from the page moves THAT row to the top and ⏭ drops only the skipped episode (+1: a refused play moves nothing); no wrap-around, previous = restart past the window (p-car-5); 11 -> 19 -> 20 // // 2026-09-22: rewritten for the continuous-playback ruling (on by default, Up Next first, then the chosen list, unplayable rows passed over); 6 -> 11
+  "test/up-next-autoadvance.test.js": 25, // PQ-11 (#691): the tail after the list (first pick, third is the stretch with the bridge line + announcement, no repeats, switch off stops it); 21 -> 25 // audit round 3 (lane L1): app-1-9 the finished row leaves Up Next with the switch off; 20 -> 21 // founder, 2026-09-24, reversing lane L3's question-9 default: a play from the page moves THAT row to the top and ⏭ drops only the skipped episode (+1: a refused play moves nothing); no wrap-around, previous = restart past the window (p-car-5); 11 -> 19 -> 20 // // 2026-09-22: rewritten for the continuous-playback ruling (on by default, Up Next first, then the chosen list, unplayable rows passed over); 6 -> 11
   /* U-07's Interests page (docs/ui-transition-plan.md D6, kanban card
      t_1cb3688a). Floored for the same reason as up-next-queue.test.js: a
      wrong row set, a wrong slider range, or a drag that silently fails to
@@ -2092,6 +2092,8 @@ const FLOORS = {
   "tools/foraycorpus-export/config.test.mjs": 4, // PKG-01 (docs/roadmap/corpus.md): corpus-export package scaffold, config + identity scan
   "tools/foraycorpus-export/mimes.test.mjs": 3, // PKG-02 (docs/roadmap/corpus.md): transcript mime classifier (timed/plain/other, superset of TIMED_TRANSCRIPT_TYPES)
   "tools/foraycorpus-export/row-source.test.mjs": 5, // PKG-02 (docs/roadmap/corpus.md): JSONL row source over the synthetic fixture, counts.json recount
+  "tools/foraycorpus-export/catalogue.test.mjs": 4, // PKG-04 (docs/roadmap/corpus.md): shows.jsonl builder over the synthetic fixture (English filter, distinct-episode aggregates, normalised catalog join, sort)
+  "tools/foraycorpus-export/episodes.test.mjs": 5, // PKG-05 (docs/roadmap/corpus.md): per-show episodes.jsonl builder (transcript preference, chapters, alternates, path-shaped key refusal, newest first)
   /* The breadth prioritiser and its yield report (#114). Floored for the same
      reason politeness.test.mjs is, and the reason is not hypothetical here
      either: the first draft of `rank-breadth.mjs` had a seed hash that produced
