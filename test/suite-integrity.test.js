@@ -118,7 +118,7 @@ const FLOORS = {
      deleted once V-01's Audition button replaced it for the human tests it
      existed to support. See HUMAN-ACTIONS #29 and docs/curation/
      tts-locked-screen-check.md (kept as the historical record). */
-  "player/foray-playback.test.js": 91, // 2026-09-23 merge of the audit lanes: L2 (the Foray page paints its main button from `running`, "Start over" on a finished Foray; +2) and L8 (#236: the suite runs on the frozen fixture, plus "every segment of every committed Foray in data/ resolves"; +2) both landed; 87 -> 91
+  "player/foray-playback.test.js": 92, // DAI-07b: client.js sends every Foray path (resolve, playForay + its again re-entry, attachForay) through forayResolveOptions/forayQueueOptions; 91 -> 92 // 2026-09-23 merge of the audit lanes: L2 (the Foray page paints its main button from `running`, "Start over" on a finished Foray; +2) and L8 (#236: the suite runs on the frozen fixture, plus "every segment of every committed Foray in data/ resolves"; +2) both landed; 87 -> 91
   /* 2026-09-18, founder: "the podcast I was listening to should still be in the
      now playing ribbon". The POINTER to the last ordinary episode — position is
      not stored here, `cp_pos:` has owned that since #26, and two of these tests
@@ -2160,6 +2160,7 @@ const FLOORS = {
   "tools/foraycorpus-export/r2-client.test.mjs": 6, // PKG-11 (docs/roadmap/corpus.md): R2 S3 client on a fake client (continuation-token paging, sha256 metadata, dashboard + HUMAN-ACTIONS #138 credential spellings with redacted toJSON, NO_CREDENTIALS names its sources, WHEN_REQUIRED checksum options, no tracked r2-credentials)
   "tools/foraycorpus-export/show-map.test.mjs": 7, // PKG-12 (docs/roadmap/corpus.md): R2 show directory -> foray show_id map (catalog feed match, breadth apple id, slug dirs, the farm's four pinned slugify examples, unknown -> null, localDirFor = safeKey, first writer wins + collision report)
   "tools/foraycorpus-export/catalog-adapter.test.mjs": 5, // PKG-31 (docs/roadmap/corpus.md): breadth-shaped catalogue from the corpus (ruling-31 rights skip + counts, chart fields + taxonomy_node_ids from the old row else null/[], in_curated only for catalog ids, old 18 keys + 2 additive, minified CLI output that refuses data/)
+  "tools/foraycorpus-export/export.test.mjs": 5, // PKG-08 (docs/roadmap/corpus.md): export CLI end to end on the synthetic fixture (English show + episode counts, a rerun is a new version with 0/0 delta and byte-identical shows.jsonl, one appended higher asset id -> 1 changed, --dry-run leaves outRoot absent, latest.json names the newest Windows-safe version directory)
   /* The breadth prioritiser and its yield report (#114). Floored for the same
      reason politeness.test.mjs is, and the reason is not hypothetical here
      either: the first draft of `rank-breadth.mjs` had a seed hash that produced
