@@ -2134,6 +2134,9 @@ const FLOORS = {
   "tools/foraycorpus-export/row-source.test.mjs": 5, // PKG-02 (docs/roadmap/corpus.md): JSONL row source over the synthetic fixture, counts.json recount
   "tools/foraycorpus-export/catalogue.test.mjs": 4, // PKG-04 (docs/roadmap/corpus.md): shows.jsonl builder over the synthetic fixture (English filter, distinct-episode aggregates, normalised catalog join, sort)
   "tools/foraycorpus-export/episodes.test.mjs": 5, // PKG-05 (docs/roadmap/corpus.md): per-show episodes.jsonl builder (transcript preference, chapters, alternates, path-shaped key refusal, newest first)
+  "tools/foraycorpus-export/manifest.test.mjs": 5, // PKG-06 (docs/roadmap/corpus.md): manifest file list + sha256, re-hash before the atomic latest.json, isChanged / high-water null-safety, 30-day insert window
+  "tools/foraycorpus-export/pg-row-source.test.mjs": 5, // PKG-07 (docs/roadmap/corpus.md): read-only Postgres row source on a fake client (READ ONLY trio, id + tuple keyset paging, PKG-02 column lists, no password in describe/errors, unknown table)
+  "tools/foraycorpus-export/overlap.test.mjs": 3, // PKG-09 (docs/roadmap/corpus.md): breadth overlap (itunes first, feed-only via normalizeFeedUrl, null ids never match, stable keys incl. CLI)
   /* The breadth prioritiser and its yield report (#114). Floored for the same
      reason politeness.test.mjs is, and the reason is not hypothetical here
      either: the first draft of `rank-breadth.mjs` had a seed hash that produced
