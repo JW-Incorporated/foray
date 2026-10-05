@@ -740,6 +740,14 @@ const FLOORS = {
      nodes; and a row without nodes leaves the seeded page alone, no re-render.
      47 -> 50. */
   "test/show-page.test.js": 50,
+  /* #560 item 8 (2026-10-04): the measurement for Similar shows. The mirror of
+     app.js's similarShows is pinned to app.js's text and behaviour, the
+     hand-reviewed eval set is checked against the catalogue (all 13 general
+     shows are seeds), the scorer's arithmetic is hand-computed, and precision,
+     recall@6, hit rate, coverage and must-not violations are floored at the
+     values measured on main after PKG-07. A test deleted here is a ranking
+     change that can make suggestions worse with every check green. */
+  "test/similar-shows-eval.test.js": 12, // #560 item 8: new -- Similar-shows eval set, mirror pin, measured floors
   /* Founder reports, 2026-09-13. The "Show more episodes" control came out of
      the show page, so show-page-pagination.test.js was RE-POINTED rather than
      shrunk — same five tests, now pinning the absence of the control, the
