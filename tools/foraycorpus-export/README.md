@@ -111,3 +111,22 @@ Add one paragraph per module as it lands.
   against the manifest (`ManifestError FILE_MISMATCH` otherwise) and writes
   tmp + rename. Both modules write through `writeJsonAtomic` from
   `tools/segments/sweep-transcripts.mjs`, whose CLI is guarded.
+- **`pg-row-source.mjs`** (PKG-07): `pgRowSource({ connectionString =
+  process.env.FORAYCORPUS_DATABASE_URL, clientFactory, pageSize })` has the
+  `jsonlRowSource` interface (`rows(table)`, `counts()`, `describe()`) plus
+  `close()`. On first use it opens one transaction: `BEGIN`, `SET TRANSACTION
+  READ ONLY`, `SET LOCAL statement_timeout = 300000`. `rows` pages by keyset
+  with plain `query`, `PG_PAGE_SIZE` rows a page, stopping at a short page. It
+  uses `id` for podcasts, podcast_feeds, podcast_source_records, episodes and
+  assets. It uses the tuples `(episode_id, feed_id)` for
+  episode_source_records and `(podcast_source_record_id, feed_id)` for
+  podcast_source_links, and reads feed_host_policies whole. The exported
+  frozen `SQL` map selects exactly PKG-02's column lists. Its header marks
+  podcast_source_records, podcast_source_links, feed_host_policies and
+  `episodes.updated_at` as ASSUMED until PKG-03. `counts()` gives
+  `pg_class.reltuples` estimates, not exact counts. `describe()` is
+  `pg:<host redacted>/<db>`. A connection error is rethrown as
+  `RowSourceError PG_CONNECT` with the password replaced by `***`. `pg` is
+  imported only inside the default client factory, so the tests (a fake client)
+  need no `node_modules`. Rows pass through unchanged, and pg returns int8 as a
+  string.
