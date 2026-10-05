@@ -222,6 +222,10 @@ export const DENIED_PREFIXES = [
   "tools/mobile/ios-ci.mjs",
   "tools/mobile/ios-embedded-frameworks.mjs",
   "tools/mobile/inject-background-audio.mjs",
+  // #948: writes the privacy manifest App Store review checks and edits the
+  // generated project.pbxproj, in the same release job as the plist injector
+  // above; a one-line neuter ships a build Apple rejects at submission.
+  "tools/mobile/inject-privacy-manifest.mjs",
   "tools/mobile/prepare-webdir.mjs",
   "tools/mobile/minify.mjs",
   "tools/mobile/package.json",

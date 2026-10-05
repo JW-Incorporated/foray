@@ -1729,6 +1729,14 @@ const FLOORS = {
      plists, so the patcher must touch only what is actually missing the key and
      must never change a vendored plist's format. */
   "tools/mobile/ios-embedded-frameworks.test.mjs": 40,
+  /* #948 (2026-10-04): the app-target PrivacyInfo.xcprivacy, written and wired
+     into the generated project's Resources phase on both iOS build paths, then
+     read back out of the built bundle. App Store submission rejects a missing
+     Required Reason declaration (ITMS-91053); TestFlight only warns, so nothing
+     else would notice. The fixture is the real Capacitor 8.5.0 SwiftPM template
+     pbxproj, and four REAL REPO tests tie the declarations to the plugin Swift,
+     their cited call sites, and data-safety.md B2/B4. Floored exact. */
+  "tools/mobile/inject-privacy-manifest.test.mjs": 31,
   /* NE-26r (docs/native-engine-plan.md §7, §10): tools/mobile/engine-report.mjs,
      a Copy paste (or the ring file) to the DV-1..DV-13 verdict table — every
      verdict's pass, fail and no-data paths, an evicted early seam flagged

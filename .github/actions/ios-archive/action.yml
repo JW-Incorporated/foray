@@ -136,6 +136,19 @@ runs:
         plutil -lint mobile/ios/App/App/Info.plist
         node tools/mobile/inject-background-audio.mjs mobile/ios/App/App/Info.plist --check --encryption false
 
+    - name: Add the privacy manifest (Required Reason APIs), and have Apple's parser check it
+      # Issue #948: THIS is the path App Store review sees. A binary that uses a
+      # Required Reason API without a declaring PrivacyInfo.xcprivacy is rejected
+      # at submission (ITMS-91053); TestFlight only warns. Same step as
+      # ios-build.yml's; the evidence is in tools/mobile/inject-privacy-manifest.mjs.
+      shell: bash
+      run: |
+        set -euo pipefail
+        node tools/mobile/inject-privacy-manifest.mjs mobile/ios/App
+        plutil -lint mobile/ios/App/App/PrivacyInfo.xcprivacy
+        plutil -lint mobile/ios/App/App.xcodeproj/project.pbxproj
+        node tools/mobile/inject-privacy-manifest.mjs mobile/ios/App --check
+
     - name: Put the REAL app icon in the generated asset catalog
       shell: bash
       run: |
@@ -334,6 +347,19 @@ runs:
         node tools/mobile/ios-embedded-frameworks.mjs verify \
           "$RUNNER_TEMP/Foray.xcarchive/Products/Applications/App.app" \
           | tee "$ART/embedded-frameworks.txt"
+
+    - name: Read the privacy manifest back out of the archive (no secrets in this step)
+      if: steps.signing.outputs.ready == 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        # Issue #948, on the bundle that is about to be uploaded: the manifest is
+        # at the root of App.app and declares what tools/mobile/inject-privacy-
+        # manifest.mjs declares. A project edit that did not reach the archive
+        # surfaces here, not in App Store review.
+        node tools/mobile/inject-privacy-manifest.mjs --bundle \
+          "$RUNNER_TEMP/Foray.xcarchive/Products/Applications/App.app" \
+          | tee "$ART/privacy-manifest-bundle.txt"
 
     - name: Export and upload to TestFlight (App Store Connect key only)
       id: upload

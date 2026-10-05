@@ -337,16 +337,47 @@ Applies to **User ID**, **Product Interaction** and **Other User Content**.
   `app.js:trySyncEvents()` for the event insert, `app.js:sbDeleteOwnRows()` for
   the deletion — and `package.json` declares no dependencies and no build
   step). So no SDK manifest is inherited **today**.
-  - The native shell does bundle Capacitor plugins. Whether Xcode's aggregated
-    `PrivacyInfo.xcprivacy` covers all of them is tracked in GitHub issue #948.
-    If the native shell ever adds the Supabase Swift SDK, it needs its own
-    manifest entry; `docs/marketing/05-legal-risk-memo.md` flagged a
-    Supabase-SDK manifest as a checklist item, which is **not applicable to
-    the current code**.
-  - **Required Reason APIs:** the client uses none of the categories Apple
-    requires a declared reason for (no file-timestamp, disk-space, active-keyboard
-    or user-defaults access from native code). A Capacitor shell should be
-    re-checked against the list, since plugins can pull them in.
+  - **The native shell has an app-target manifest** (GitHub issue #948).
+    `cap add ios` generates none, so `tools/mobile/inject-privacy-manifest.mjs`
+    writes `App/PrivacyInfo.xcprivacy` and adds it to the app target's Copy
+    Bundle Resources phase on both iOS build paths (`ios-build.yml` and the
+    `ios-archive` action that makes the TestFlight/App Store build), then
+    reads it back out of the built `App.app`. It says `NSPrivacyTracking`
+    false, no tracking domains, and the three collected types of B2/B3 (User
+    ID, Product Interaction, Other User Content: linked, not tracking, App
+    Functionality and Product Personalization).
+  - **Which bundled SDKs ship their own manifest** (Capacitor 8, measured
+    2026-10-04 with `npm ci` in `mobile/`): only `@capacitor/ios` (8.5.0), for
+    its Capacitor and Cordova frameworks, both declaring nothing.
+    `@capacitor/core` (8.5.0, JavaScript only), `@capacitor/app` (8.1.1),
+    `@capacitor/preferences` (8.0.1), `@capacitor/splash-screen` (8.0.2) and
+    `@capacitor/status-bar` (8.0.3) ship none. Of those, only Preferences uses
+    a Required Reason API (`UserDefaults`), and the app manifest declares it.
+    ONNX Runtime 1.20.0 (foray-tts) ships none either. If the native shell
+    ever adds the Supabase Swift SDK, it needs its own manifest entry;
+    `docs/marketing/05-legal-risk-memo.md` flagged a Supabase-SDK manifest as
+    a checklist item, which is **not applicable to the current code**.
+  - **Required Reason APIs.** The web client uses none. The native shell
+    declares three categories, each with its call sites in the injector's
+    header (the injector's test re-greps the plugin Swift on every run):
+    - `NSPrivacyAccessedAPICategoryUserDefaults`, reason **CA92.1** (data
+      only this app reads): the native engine's store (`EngineStore.swift`;
+      keys in foray-engine-core's `Persist/EngineKeys.swift`), the engine-mode
+      flag, foray-vault's reinstall check, and `@capacitor/preferences`.
+    - `NSPrivacyAccessedAPICategorySystemBootTime`, reason **35F9.1**
+      (time elapsed between in-app events): `NowPlayingPublisher.swift`'s
+      `ProcessInfo.processInfo.systemUptime`, and the monotonic
+      `DispatchTime.now().uptimeNanoseconds` timing in the audio engine and
+      foray-tts.
+    - `NSPrivacyAccessedAPICategoryFileTimestamp`, reason **C617.1** (size
+      and metadata of files in the app's own container): not our Swift. The
+      statically linked ONNX Runtime binary references `stat`/`fstat`, so
+      the app's manifest is the only place it can be declared. Re-measure
+      when the ONNX Runtime pin moves.
+    - No disk-space or active-keyboard API is used.
+  - **Still a human step on a Mac:** Xcode's Organizer > Generate Privacy
+    Report on an archive, which merges this manifest with every embedded
+    framework's. Run it once before the first App Store submission.
 - **Rule 5.1.2 / third-party AI disclosure.** The legal memo treats this as a
   live obligation. **On the current code it is not:** no user data reaches an AI
   provider from the app, and `connect-src` would block a call from the device. AI
