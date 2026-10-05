@@ -58,3 +58,5 @@ __pycache__/
 # fails if either is tracked again. Root-anchored: only these exact paths.
 /deploy-manifest.json
 /data/forays-directory.json
+# The catalogue directory pointer (issue #40), stamped beside it by the same build.
+/data/catalogue-directory.json

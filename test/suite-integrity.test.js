@@ -160,6 +160,12 @@ const FLOORS = {
      a phone that either hangs on a dead cell or plays a torn deploy. The page-
      level half is test/foray-directory.test.js, floored separately below. */
   "player/foray-directory.test.js": 30, // +1 audit finding E (2026-09-12): the cache row carries `partial` instead of dropping it; 29 -> 30
+  /* The catalogue directory's pure decisions (issue #40, narrowed 2026-09-30):
+     the pointer's shape, the six-hour TTL, cached-fresh -> bundled -> error
+     precedence, adoption (current / older / fetch, the partial-seed rule) and
+     per-file verification. Zero slack; every named mutation was run and killed.
+     The writer's half is tools/ci/catalogue-directory.test.mjs. */
+  "player/catalogue-directory.test.js": 17,
   "player/foray-sources.test.js": 24,
     /* 108 -> 109 with #264: a telemetry sink that throws must not reject a load. That
      became reachable when `player/client.js` gave this backend its first real sink —
@@ -1315,6 +1321,13 @@ const FLOORS = {
      --check's no-committed-stamp rule (tracked file, stamped sw.js, missing
      .gitignore). The committed-file and committer-date mutations were run and
      killed; 29 -> 32. */
+  /* The catalogue directory pointer (issue #40): `data/catalogue-directory.json`,
+     stamped into built trees by generate-manifest.mjs beside the Foray pointer
+     and never committed (#701). 10 pure-function / real-repo tests plus 5 that
+     run the REAL CLI on a synthetic LF tree (--stamp shares the Foray pointer's
+     version and built_at and leaves the manifest alone; --verify and --check go
+     red by name). Zero slack; every named mutation was run and killed. */
+  "tools/ci/catalogue-directory.test.mjs": 15,
   "tools/ci/forays-directory.test.mjs": 35, // PR #795 review finding 1 (2026-09-24): the seed never outranks the live pointer (mobile-only HEAD, shallow clone, every input is a Vercel path); 32 -> 35
   /* +12 (machinery audit, 2026-09-12): the checks-missing self-heal had three
      holes — sweep-only, keyed on `pr.updatedAt` (which this workflow's own label
