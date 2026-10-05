@@ -142,3 +142,53 @@ Add one paragraph per module as it lands.
   matches. The CLI is `node tools/foraycorpus-export/overlap.mjs --shows
   <shows.jsonl> [--breadth data/catalog-breadth.json]` and prints the JSON.
   PKG-08 wires `--breadth` into the exporter.
+- **`r2-client.mjs`** (PKG-11): `loadR2Credentials({ env, readFile, homedir })`
+  takes the `R2_ENV` names when key id, secret and endpoint are all set, else
+  the file named by `R2_CREDENTIALS_FILE`, else `~/.foray/r2-credentials`.
+  The file is `key = value` lines. Keys are lowercased and matched against the
+  farm's alias table (`ALIASES`), so the dashboard spelling (`Access_Key_ID`)
+  and the `R2_ACCESS_KEY_ID=` lines HUMAN-ACTIONS #138 asks for both resolve.
+  The bucket defaults to `DEFAULT_BUCKET`. A miss throws `R2Error
+  NO_CREDENTIALS` naming the sources tried and no value. The secret is
+  non-enumerable, and `toJSON()` redacts the key id. `createR2Client` builds
+  the farm's client: region `auto`, path-style, and both checksum options
+  `WHEN_REQUIRED`. It leaves the SDK's own User-Agent alone. `listPrefix` follows
+  `NextContinuationToken`. `getObject` reads the body with
+  `Body.transformToByteArray()` (64 MB cap, `TOO_LARGE`) and returns the
+  farm's `sha256` metadata as `sha256Meta`. The SDK is imported lazily, and
+  the tests inject a fake client and `S3Client` class.
+- **`show-map.mjs`** (PKG-12): `buildShowMap({ queue, catalog, breadth })`
+  maps each R2 show directory the farm wrote to a foray `show_id`. It returns
+  `{ map, collisions }`. The farm names a directory `safeKey(String(
+  podcastindex_feed_id))`, or `safeKey(slugify(title))` when the row has no
+  PodcastIndex id. `slugify` is the farm's `forayfmt.py` port: NFKD, drop
+  non-ASCII, lowercase, `[^a-z0-9]+` → `-`, trim, empty → `show`. Both
+  directories of a `data/transcription-queue.json` row map to one show. That
+  show is the `data/catalog.json` show with the same `normalizeFeedUrl` feed
+  (`catalog-feed`), else `String(apple_collection_id)` (`breadth-apple`),
+  else the title slug (`queue-title`). Every catalog `show_id` and every
+  `data/breadth-transcript-yield.json` id also maps to itself, raw and
+  `safeKey`'d (`identity`, the #831 forward contract). The first writer wins,
+  and each dropped mapping is listed in `collisions`. `resolveShowDir` returns
+  null for an unknown directory. `localDirFor(show_id)` is `safeKey(show_id)`,
+  the name `transcriptPath` writes and `transcriptArchiveLookup.ts` `showDir`
+  finds by prefix. `normalizeFeedUrl` and `safeKey` are imported, and the
+  caller parses the data files.
+- **`catalog-adapter.mjs`** (PKG-31): `catalogAdapter(showRows, {
+  breadthOld, catalog, harvestedAt })` turns `buildShows` rows into
+  `data/catalog-breadth.json`-shaped rows and returns `{ shows, report }`.
+  Rows are skipped, and counted, when they have no `itunes_id`
+  (`skipped_no_apple_id`), when either rights flag is set (`skipped_rights`,
+  founder ruling 31 in `docs/roadmap/README.md`), when `language` is neither
+  `en*` nor null (`skipped_language`), or when they repeat an apple id. A row
+  carries the old file's 18 keys: the plan's 17 plus `taxonomy_node_ids`,
+  which `breadthCatalog.ts` reads. Then come the additive
+  `timed_transcript_episodes` and `audio_episodes`. The chart fields and
+  `taxonomy_node_ids` are copied from the old breadth row with the same
+  `apple_collection_id`, else null and `[]`. `in_curated` is true only when
+  `foray_show_id` is a `data/catalog.json` `show_id`, so the numeric
+  `String(itunes_id)` fallback never counts. The report adds `new_vs_old`,
+  `dropped_vs_old` and `feed_url_changed`. The CLI (`--shows <shows.jsonl>
+  [--breadth] [--catalog] [--out] [--harvested-at]`) writes the envelope
+  minified to `data-local/corpus-export/catalog-breadth-corpus.json` and
+  refuses an `--out` under `data/`.
