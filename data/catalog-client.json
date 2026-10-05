@@ -28,7 +28,7 @@
     {
       "show_id": "omega-tau",
       "title": "omega tau",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/45/79/ff/4579ffe8-ae75-a586-df5a-940e3b0b8ae7/mza_12776813321781247935.png/600x600bb.jpg",
       "editorial_note": "The most technically dense engineering-tour podcast in English -- stellarators, magnets, superconductivity, no hand-holding.",
       "taxonomy_node_ids": [
         "engineering/energy-fusion",
