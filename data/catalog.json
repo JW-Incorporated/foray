@@ -4344,6 +4344,181 @@
       "cadence_hint": "ended",
       "explicit": false,
       "source": "itunes_verified"
+    },
+    {
+      "show_id": "the-bourbon-road",
+      "title": "The Bourbon Road",
+      "apple_collection_id": 1457878143,
+      "feed_url": "https://rss.libsyn.com/shows/172469/destinations/1159028.xml",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/3f/40/3b/3f403bd3-07d7-bec7-12f0-393277a8c5c3/mza_3239835081741539080.png/600x600bb.jpg",
+      "apple_genre": "Food",
+      "episode_count": 514,
+      "editorial_note": "Distillery visits and blind flights; distillers and blenders explain their own process.",
+      "taxonomy_node_ids": [
+        "food/drinks"
+      ],
+      "archetype_fit": [
+        "stretch"
+      ],
+      "cadence_hint": "weekly",
+      "explicit": false,
+      "source": "wave-279"
+    },
+    {
+      "show_id": "beersmith-podcast",
+      "title": "BeerSmith Home and Beer Brewing Podcast",
+      "apple_collection_id": 398500515,
+      "feed_url": "https://beersmith.com/content/feed/podcast/",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/dd/e1/83/dde18320-3859-6314-c84c-1ffa29922bf2/mza_6956310066618780573.png/600x600bb.jpg",
+      "apple_genre": "Hobbies",
+      "episode_count": 300,
+      "editorial_note": "Maltsters, yeast scientists and brewing authors on how beer is actually made.",
+      "taxonomy_node_ids": [
+        "food/fermentation",
+        "food/drinks"
+      ],
+      "archetype_fit": [
+        "deep-learn"
+      ],
+      "cadence_hint": "biweekly",
+      "explicit": false,
+      "source": "wave-279"
+    },
+    {
+      "show_id": "the-bourbon-life",
+      "title": "The Bourbon Life",
+      "apple_collection_id": 1498387060,
+      "feed_url": "https://thebourbonlife.libsyn.com/rss",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/ef/3c/ab/ef3cab95-8d5f-e26b-7765-612c3a645a75/mza_527499069065500089.jpg/600x600bb.jpg",
+      "apple_genre": "Food",
+      "episode_count": 105,
+      "editorial_note": "Interviews with master distillers, blenders and maturation leads across American whiskey.",
+      "taxonomy_node_ids": [
+        "food/drinks"
+      ],
+      "archetype_fit": [
+        "stretch"
+      ],
+      "cadence_hint": "weekly",
+      "explicit": false,
+      "source": "wave-279"
+    },
+    {
+      "show_id": "wine-talks-with-paul-k",
+      "title": "Wine Talks with Paul K.",
+      "apple_collection_id": 1617481013,
+      "feed_url": "https://rss.libsyn.com/shows/181523/destinations/1238996.xml",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/93/ca/ca/93caca00-d18d-8ca4-5b4b-225fe474c017/mza_8549991008830833869.jpg/600x600bb.jpg",
+      "apple_genre": "Food",
+      "episode_count": 528,
+      "editorial_note": "A wine-club owner interviews producers, importers and port houses about how wine gets made and sold.",
+      "taxonomy_node_ids": [
+        "food/drinks"
+      ],
+      "archetype_fit": [
+        "stretch"
+      ],
+      "cadence_hint": "weekly",
+      "explicit": false,
+      "source": "wave-279"
+    },
+    {
+      "show_id": "wine-for-normal-people",
+      "title": "Wine for Normal People",
+      "apple_collection_id": 413879919,
+      "feed_url": "https://rss.libsyn.com/shows/45638/destinations/1472927.xml",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/90/56/f3/9056f383-d3fb-b954-4909-7bedfddec06c/mza_1568762029983158170.jpg/600x600bb.jpg",
+      "apple_genre": "Food",
+      "episode_count": 92,
+      "editorial_note": "Plain-spoken wine education: grapes, regions, structure and the history behind them.",
+      "taxonomy_node_ids": [
+        "food/drinks"
+      ],
+      "archetype_fit": [
+        "deep-learn",
+        "comfort"
+      ],
+      "cadence_hint": "weekly",
+      "explicit": false,
+      "source": "wave-279"
+    },
+    {
+      "show_id": "wine-educate",
+      "title": "Wine Educate: Wine Lessons, Travel & WSET Study Prep",
+      "apple_collection_id": 1781687341,
+      "feed_url": "https://rss.libsyn.com/shows/556097/destinations/4803262.xml",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/ae/cd/b7/aecdb777-9a27-a54c-81de-684800f1e63b/mza_8559686797506846474.jpg/600x600bb.jpg",
+      "apple_genre": "Food",
+      "episode_count": 131,
+      "editorial_note": "WSET-style lessons on grapes, winemaking methods and appellation law.",
+      "taxonomy_node_ids": [
+        "food/drinks"
+      ],
+      "archetype_fit": [
+        "deep-learn"
+      ],
+      "cadence_hint": "weekly",
+      "explicit": false,
+      "source": "wave-279"
+    },
+    {
+      "show_id": "wine-enthusiast-podcast",
+      "title": "Wine Enthusiast Podcast",
+      "apple_collection_id": 1168716155,
+      "feed_url": "https://api.riverside.com/hosting/uUvr0IqJ.rss",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/fa/21/43/fa214372-8d82-30f7-9fea-e22c88e49f80/mza_5788364734232111071.png/600x600bb.jpg",
+      "apple_genre": "Food",
+      "episode_count": 229,
+      "editorial_note": "The magazine's editors report on wine and spirits, from orange wine to mezcal.",
+      "taxonomy_node_ids": [
+        "food/drinks"
+      ],
+      "archetype_fit": [
+        "stretch"
+      ],
+      "cadence_hint": null,
+      "explicit": false,
+      "source": "wave-279"
+    },
+    {
+      "show_id": "brew-strong",
+      "title": "The Brewing Network Presents |  Brew Strong",
+      "apple_collection_id": 288838352,
+      "feed_url": "https://feeds.megaphone.fm/brewstrong",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/5b/1d/ee/5b1deef3-549b-bc0a-5c54-1ab71195ac58/mza_9287330847818074238.jpg/600x600bb.jpg",
+      "apple_genre": "Food",
+      "episode_count": 361,
+      "editorial_note": "John Palmer and Jamil Zainasheff answer brewing questions on yeast, water and mashing.",
+      "taxonomy_node_ids": [
+        "food/fermentation",
+        "food/drinks"
+      ],
+      "archetype_fit": [
+        "deep-learn"
+      ],
+      "cadence_hint": null,
+      "explicit": false,
+      "source": "wave-279"
+    },
+    {
+      "show_id": "beer-in-front",
+      "title": "Beer In Front",
+      "apple_collection_id": 1500155339,
+      "feed_url": "https://www.spreaker.com/show/5704447/episodes/feed",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/71/06/be/7106be64-29ae-de13-d070-7c55a62acab7/mza_13393508569446909877.jpg/600x600bb.jpg",
+      "apple_genre": "Crafts",
+      "episode_count": 292,
+      "editorial_note": "A Chicago beer fan talks with maltsters, brewers and makers, then tastes what they make.",
+      "taxonomy_node_ids": [
+        "food/drinks"
+      ],
+      "archetype_fit": [
+        "stretch",
+        "comfort"
+      ],
+      "cadence_hint": "weekly",
+      "explicit": true,
+      "source": "wave-279"
     }
   ]
 }

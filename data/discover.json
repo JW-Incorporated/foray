@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-09-13T11:55:15.964Z",
+  "built_at": "2026-10-05T11:26:50.093Z",
   "items": [
     {
       "id": "lex-fridman-podcast--don-lincoln-physics",
@@ -48419,6 +48419,229 @@
       "hook": "Dan Harris and Laurie Santos join Gretchen to spot what's blocking a stuck habit.",
       "explicit": false,
       "topics_source": "show"
+    },
+    {
+      "id": "the-bourbon-road--492-old-glory-distilling-co-clarksville",
+      "show": "The Bourbon Road",
+      "title": "492. Old Glory Distilling Co: Clarksville's Grain-to-Glass Story with Devin Puckett",
+      "apple_collection_id": 1457878143,
+      "apple_track_id": 1000763009613,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/492-old-glory-distilling-co-clarksvilles-grain-to-glass/id1457878143?i=1000763009613&uo=4",
+      "release_date": "2026-04-22",
+      "duration_min": 64,
+      "duration_sec": 3857,
+      "audio_url": "https://traffic.libsyn.com/secure/thebourbonroad/Episode_492_mixdown.mp3?dest-id=1159028",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 92574106,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/3f/40/3b/3f403bd3-07d7-bec7-12f0-393277a8c5c3/mza_3239835081741539080.png/600x600bb.jpg",
+      "topics": [
+        "food/drinks"
+      ],
+      "topics_source": "show",
+      "hook": "Hand-sanitizer money bought a 24-foot column still: a Tennessee distillery, pot to column.",
+      "explicit": false
+    },
+    {
+      "id": "beersmith-podcast--craft-malting-with-jeff-bloem-beersmith",
+      "show": "BeerSmith Home and Beer Brewing Podcast",
+      "title": "Craft Malting with Jeff Bloem – BeerSmith Podcast #348",
+      "apple_collection_id": 398500515,
+      "apple_track_id": 1000780333143,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/craft-malting-with-jeff-bloem-beersmith-podcast-348/id398500515?i=1000780333143&uo=4",
+      "release_date": "2026-08-06",
+      "duration_min": 39,
+      "duration_sec": 2366,
+      "audio_url": "https://traffic.libsyn.com/beersmith/BSHB-348-Bloem.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 37971356,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/dd/e1/83/dde18320-3859-6314-c84c-1ffa29922bf2/mza_6956310066618780573.png/600x600bb.jpg",
+      "topics": [
+        "food/fermentation",
+        "food/drinks"
+      ],
+      "topics_source": "show",
+      "hook": "A Virginia maltster on what it takes to make craft malt and run a malt house.",
+      "explicit": false
+    },
+    {
+      "id": "the-bourbon-life--season-7-episode-21-john-wadell",
+      "show": "The Bourbon Life",
+      "title": "Season 7, Episode 21: John Wadell, Head Blender/Taster & Single Barrel Curator - Kentucky Peerless Distilling Co.",
+      "apple_collection_id": 1498387060,
+      "apple_track_id": 1000784720097,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/season-7-episode-21-john-wadell-head-blender-taster/id1498387060?i=1000784720097&uo=4",
+      "release_date": "2026-08-21",
+      "duration_min": 70,
+      "duration_sec": 4193,
+      "audio_url": "https://traffic.libsyn.com/secure/thebourbonlife/Ep._312_-_John_Wadell_mixdown.mp3?dest-id=1821971",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 100632672,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/ef/3c/ab/ef3cab95-8d5f-e26b-7765-612c3a645a75/mza_527499069065500089.jpg/600x600bb.jpg",
+      "topics": [
+        "food/drinks"
+      ],
+      "topics_source": "show",
+      "hook": "Kentucky Peerless's head blender on choosing single barrels and shaping the distillery's whiskey.",
+      "explicit": true
+    },
+    {
+      "id": "wine-talks-with-paul-k--orange-wine-is-not-a-fad",
+      "show": "Wine Talks with Paul K.",
+      "title": "Orange Wine Is Not a Fad: Digging Up Ancient Flavors in Modern Bottles; Meet Stetson Robbins.",
+      "apple_collection_id": 1617481013,
+      "apple_track_id": 1000783212281,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/orange-wine-is-not-a-fad-digging-up-ancient-flavors/id1617481013?i=1000783212281&uo=4",
+      "release_date": "2026-08-13",
+      "duration_min": 70,
+      "duration_sec": 4174,
+      "audio_url": "https://traffic.libsyn.com/secure/winetalks/WT_Stetson_Robbins_Audio_MJ.mp3?dest-id=1238996",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 172215337,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/93/ca/ca/93caca00-d18d-8ca4-5b4b-225fe474c017/mza_8549991008830833869.jpg/600x600bb.jpg",
+      "topics": [
+        "food/drinks"
+      ],
+      "topics_source": "show",
+      "hook": "An importer of Georgian wine on why white grapes left on their skins become orange wine.",
+      "explicit": false
+    },
+    {
+      "id": "wine-talks-with-paul-k--is-port-wine-dying-the-battle",
+      "show": "Wine Talks with Paul K.",
+      "title": "Is Port Wine Dying? The Battle Between Tradition and Millennial/Gen Z Tastes. Rupert Symington",
+      "apple_collection_id": 1617481013,
+      "apple_track_id": 1000773461634,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/is-port-wine-dying-the-battle-between-tradition/id1617481013?i=1000773461634&uo=4",
+      "release_date": "2026-06-19",
+      "duration_min": 51,
+      "duration_sec": 3050,
+      "audio_url": "https://traffic.libsyn.com/secure/winetalks/SYMINGTON_MASTER_mixdown_1.mp3?dest-id=1238996",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 85098240,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/93/ca/ca/93caca00-d18d-8ca4-5b4b-225fe474c017/mza_8549991008830833869.jpg/600x600bb.jpg",
+      "topics": [
+        "food/drinks"
+      ],
+      "topics_source": "show",
+      "hook": "Graham's Rupert Symington on fortification, vintage port and whether younger drinkers will come.",
+      "explicit": false
+    },
+    {
+      "id": "wine-for-normal-people--ep-607-wine-legends-the-people",
+      "show": "Wine for Normal People",
+      "title": "Ep 607: Wine Legends - The People Who Solved the Great French Wine Blight",
+      "apple_collection_id": 413879919,
+      "apple_track_id": 1000768648108,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/wine-legends-the-people-who-solved-the-great-french/id413879919?i=1000768648108&uo=4",
+      "release_date": "2026-05-20",
+      "duration_min": 37,
+      "duration_sec": 2190,
+      "audio_url": "https://traffic.libsyn.com/secure/winefornormalpeople/Ep_607__Wine_Legends_-_The_People_Who_Solved_the_Great_French_Wine_BlightFINAL.mp3?dest-id=1472927",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 35618817,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/90/56/f3/9056f383-d3fb-b954-4909-7bedfddec06c/mza_1568762029983158170.jpg/600x600bb.jpg",
+      "topics": [
+        "food/drinks",
+        "food/food-history"
+      ],
+      "topics_source": "episode",
+      "hook": "The eight people who saved Europe's vines from phylloxera, an insect from America.",
+      "explicit": false
+    },
+    {
+      "id": "wine-educate--114-banyuls-and-collioure-france-s",
+      "show": "Wine Educate: Wine Lessons, Travel & WSET Study Prep",
+      "title": "114. Banyuls and Collioure - France's Southernmost Wine Region",
+      "apple_collection_id": 1781687341,
+      "apple_track_id": 1000771150013,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/114-banyuls-and-collioure-frances-southernmost-wine/id1781687341?i=1000771150013&uo=4",
+      "release_date": "2026-06-04",
+      "duration_min": 12,
+      "duration_sec": 746,
+      "audio_url": "https://traffic.libsyn.com/secure/5f4daff3-757f-4d12-9291-e3756146bcca/Edited_audio-Wine_Educate_Podcast__114.mp3?dest-id=4803262",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 29834270,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/ae/cd/b7/aecdb777-9a27-a54c-81de-684800f1e63b/mza_8559686797506846474.jpg/600x600bb.jpg",
+      "topics": [
+        "food/drinks"
+      ],
+      "topics_source": "show",
+      "hook": "Banyuls and Collioure, France's southernmost wines, where the fortified sweet reds come from.",
+      "explicit": false
+    },
+    {
+      "id": "wine-enthusiast-podcast--episode-221-3-up-and-coming",
+      "show": "Wine Enthusiast Podcast",
+      "title": "Episode 221: 3 Up-and-Coming Italian Wine Regions You Absolutely Need on Your Radar",
+      "apple_collection_id": 1168716155,
+      "apple_track_id": 1000778896655,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/episode-221-3-up-and-coming-italian-wine-regions-you/id1168716155?i=1000778896655&uo=4",
+      "release_date": "2026-07-29",
+      "duration_min": 38,
+      "duration_sec": 2294,
+      "audio_url": "https://api.riverside.com/hosting-analytics/media/ef33ff347f1151565ec742fa12eb7d02c6f9266c100484cc68ba095d84ca4646/eyJlcGlzb2RlSWQiOiI1ODIwYzk3MS0zOGQ4LTQ5MjktYWQwMC00MjhiMWM3MGMwNzIiLCJwb2RjYXN0SWQiOiIzYTc1ZDQ1NS1jZDgwLTQyZjUtYThiNy0zNTk0ZGJmMWFiNTIiLCJhY2NvdW50SWQiOiI2OTgzOGFmYTkyMGYyMjEyN2ZhODg1MzkiLCJwYXRoIjoibWVkaWEvY2xpcHMvNmE2N2M5OTMzNzZhMjBkZTBlNDQ0NmVhL3dpbmUtZW50aHVzaWFzdC1wb2RjYXN0LWNvbXBvc2VyLTIwMjYtNy0yN19fMjMtMTEtNDcubXAzIn0=.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 73410396,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/fa/21/43/fa214372-8d82-30f7-9fea-e22c88e49f80/mza_5788364734232111071.png/600x600bb.jpg",
+      "topics": [
+        "food/drinks"
+      ],
+      "topics_source": "show",
+      "hook": "Three Italian regions to know now: Bardolino, Maremma and Mamoiada, from the magazine's writers.",
+      "explicit": false
+    },
+    {
+      "id": "brew-strong--brew-strong-decoction-mashing-with-michael",
+      "show": "The Brewing Network Presents |  Brew Strong",
+      "title": "Brew Strong | Decoction Mashing with Michael \"Mufasa\" Ferguson",
+      "apple_collection_id": 288838352,
+      "apple_track_id": 1000676004627,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/decoction-mashing-with-michael-mufasa-ferguson/id288838352?i=1000676004627&uo=4",
+      "release_date": "2024-11-07",
+      "duration_min": 71,
+      "duration_sec": 4256,
+      "audio_url": "https://traffic.megaphone.fm/TBN1518563999.mp3?updated=1730949117",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/5b/1d/ee/5b1deef3-549b-bc0a-5c54-1ab71195ac58/mza_9287330847818074238.jpg/600x600bb.jpg",
+      "topics": [
+        "food/fermentation",
+        "food/drinks"
+      ],
+      "topics_source": "show",
+      "hook": "Decoction mashing, debated for decades: whether to do it, and how to do it right.",
+      "explicit": false
+    },
+    {
+      "id": "beer-in-front--why-craft-malt-matters-more-than",
+      "show": "Beer In Front",
+      "title": "Why Craft Malt Matters More Than You Think",
+      "apple_collection_id": 1500155339,
+      "apple_track_id": 1000787266536,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/why-craft-malt-matters-more-than-you-think/id1500155339?i=1000787266536&uo=4",
+      "release_date": "2026-09-01",
+      "duration_min": 41,
+      "duration_sec": 2485,
+      "audio_url": "https://pdcn.co/e/api.spreaker.com/download/episode/74796578/319.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 39746500,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/71/06/be/7106be64-29ae-de13-d070-7c55a62acab7/mza_13393508569446909877.jpg/600x600bb.jpg",
+      "topics": [
+        "food/drinks"
+      ],
+      "topics_source": "show",
+      "hook": "A maltster who started in his basement on why craft malt changes beer and whiskey.",
+      "explicit": false
     }
   ]
 }
