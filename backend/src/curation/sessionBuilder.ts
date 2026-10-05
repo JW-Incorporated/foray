@@ -1,12 +1,13 @@
 import type { Enricher } from "../enrich/Enricher";
 import type { TaxonomyFile } from "../types/taxonomy";
-import type { Archetype, SessionCard, SessionCategory, SessionDoc, SessionEpisodeDetail } from "../types/session";
+import type { Archetype, Provenance, SessionCard, SessionCategory, SessionDoc, SessionEpisodeDetail } from "../types/session";
+import type { Persona } from "../types/personas";
 import { SessionDocSchema } from "../types/session";
 import type { NormalizedCandidate } from "./candidateExtractor";
 import { DEFAULT_WEIGHTS, scoreCandidate, type RecentPick, type ScoreComponents, type ScoreWeights } from "./scoring";
 import { ARCHETYPE_LABELS, ARCHETYPE_ORDER, auditMenuDiversity, pickSlots, type DiversityAuditResult } from "./archetypes";
 import { groupDuplicates, type DedupCandidate } from "../identity/dedup";
-import { resolveEffectiveTaxonomy, type UserInterestsProvider } from "./userInterests";
+import { resolveEffectiveTaxonomy, type UserInterestsProvider, type UserTaxonomyRow } from "./userInterests";
 
 /**
  * Ties enrichment (Tier-1 classification), dedup, scoring, and archetype
@@ -71,11 +72,16 @@ export async function buildSession(opts: BuildSessionOptions): Promise<BuildSess
   const maxAlternates = opts.maxAlternates ?? 5;
   const weights = opts.weights ?? DEFAULT_WEIGHTS;
   const recentPicks = opts.recentPicks ?? [];
+  const builder = opts.builder ?? "machine-v1";
 
   // --- per-user interest resolution (personalization-and-depth-plan.md Step
   // A+B). Omitting userInterestsProvider keeps this byte-identical to the
   // pre-personalization pipeline: effectiveTaxonomy === opts.taxonomy.
   let effectiveTaxonomy: TaxonomyFile = opts.taxonomy;
+  // Provenance (#72): which taxonomy nodes took their effective weight from a
+  // persona — either tier 2 of resolveEffectiveTaxonomy, or a user row that a
+  // persona seed wrote. A topic match on one of these was persona-driven.
+  let personaWeighted: { personaId: string; nodeIds: Set<string> } | undefined;
   if (opts.userInterestsProvider) {
     const provider = opts.userInterestsProvider;
     const [userRows, personaId] = await Promise.all([
@@ -90,6 +96,9 @@ export async function buildSession(opts: BuildSessionOptions): Promise<BuildSess
       personaId ? provider.getPersona(personaId) : Promise.resolve(undefined)
     ]);
     effectiveTaxonomy = { ...opts.taxonomy, nodes: resolveEffectiveTaxonomy(opts.taxonomy, resolvedRows, persona) };
+    if (personaId) {
+      personaWeighted = { personaId, nodeIds: personaWeightedNodeIds(opts.taxonomy, resolvedRows, persona) };
+    }
   }
 
   // --- dedup safety net (corner case 3): drop accidental duplicates across
@@ -138,6 +147,7 @@ export async function buildSession(opts: BuildSessionOptions): Promise<BuildSess
 
   // --- scoring
   const scoreLog: CandidateScoreLogEntry[] = [];
+  const componentsByCandidateId = new Map<string, ScoreComponents>();
   const scoredByArchetype: Record<Archetype, { candidate: NormalizedCandidate; totalScore: number }[]> = {
     "deep-learn": [],
     stretch: [],
@@ -174,6 +184,7 @@ export async function buildSession(opts: BuildSessionOptions): Promise<BuildSess
       depth: c.curatedDepth,
       components
     });
+    componentsByCandidateId.set(c.id, components);
 
     scoredByArchetype[c.archetypeHint].push({ candidate: c, totalScore: components.total });
   }
@@ -224,6 +235,26 @@ export async function buildSession(opts: BuildSessionOptions): Promise<BuildSess
     }
     const { whyLine } = await opts.enricher.generateWhyLine(whyLineInput, { userId: opts.userId, sessionId: opts.sessionKey });
 
+    const pickTopics = topicsByCandidateId.get(slot.pick.id) ?? [];
+    const provenance: Provenance = {
+      signals: provenanceSignals({
+        archetype: slot.archetype,
+        topics: pickTopics,
+        depth: slot.pick.curatedDepth,
+        components: componentsByCandidateId.get(slot.pick.id)!,
+        taxonomy: effectiveTaxonomy,
+        personaWeighted
+      }),
+      // The exploration floor is structural in this builder: the Stretch slot
+      // draws from the adjacent/cold pool (archetypes.ts pickSlots), so it IS
+      // the ~30% wildcard pick (1 of 4 slots).
+      wildcard: slot.archetype === "stretch",
+      builder
+    };
+    if (bridgeFrom !== undefined) {
+      provenance.bridge = slot.pick.bridge?.trim() || generatedBridge(bridgeFrom, pickTopics, effectiveTaxonomy, slot.pick.title);
+    }
+
     cards.push({
       slot: i + 1,
       archetype: slot.archetype,
@@ -231,7 +262,8 @@ export async function buildSession(opts: BuildSessionOptions): Promise<BuildSess
       episode_id: slot.pick.id,
       why_line: whyLine,
       fit_line: fitLine(slot.pick.durationMin, opts.commuteMinutes, opts.playbackSpeed),
-      alternates: slot.alternates.map((a) => a.id)
+      alternates: slot.alternates.map((a) => a.id),
+      provenance
     });
   }
 
@@ -258,7 +290,7 @@ export async function buildSession(opts: BuildSessionOptions): Promise<BuildSess
   const session: SessionDoc = SessionDocSchema.parse({
     version: 1,
     session_id: opts.sessionKey,
-    builder: opts.builder ?? "machine-v1",
+    builder,
     built_at: builtAt.toISOString(),
     commute: {
       minutes: opts.commuteMinutes,
@@ -285,6 +317,68 @@ function topLevelBranch(nodeId: string): string {
 function dominantTaxonomyNodeId(taxonomy: TaxonomyFile): string {
   const sorted = [...taxonomy.nodes].sort((a, b) => b.weight - a.weight);
   return sorted[0]?.id ?? "unknown";
+}
+
+/**
+ * The signals that actually drove a pick (#72, R17), read off the same inputs
+ * the ranker used — never re-derived from the episode afterwards:
+ *   pool:<archetype>  pickSlots ranked the pick within this archetype pool.
+ *   topic:<id>        exactly computeRelevance's matched set: the enriched
+ *                     topics that are nodes of the (effective) taxonomy. A
+ *                     topic the taxonomy lacks scored nothing and is omitted.
+ *   persona:<id>      a matched topic took its weight from that persona.
+ *   depth:<d>         computeQuality's depth bonus was non-zero (medium/high).
+ *   recency           freshness beat the neutral 0.5 an undated episode gets.
+ *   fatigue           computeFatigue's same-show penalty was applied.
+ * Spec: docs/curation/session-doc-v1.md#provenance.
+ */
+function provenanceSignals(input: {
+  archetype: Archetype;
+  topics: string[];
+  depth: "low" | "medium" | "high";
+  components: ScoreComponents;
+  taxonomy: TaxonomyFile;
+  personaWeighted: { personaId: string; nodeIds: Set<string> } | undefined;
+}): string[] {
+  const nodeIds = new Set(input.taxonomy.nodes.map((n) => n.id));
+  const matched = input.topics.filter((t) => nodeIds.has(t));
+  const signals: string[] = [`pool:${input.archetype}`, ...matched.map((t) => `topic:${t}`)];
+  const pw = input.personaWeighted;
+  if (pw && matched.some((t) => pw.nodeIds.has(t))) signals.push(`persona:${pw.personaId}`);
+  if (input.depth !== "low") signals.push(`depth:${input.depth}`);
+  if (input.components.freshness > 0.5) signals.push("recency");
+  if (input.components.fatigue > 0) signals.push("fatigue");
+  return [...new Set(signals)];
+}
+
+/**
+ * Node ids whose effective weight came from a persona, mirroring
+ * resolveEffectiveTaxonomy's tiers exactly: a user row wins (persona-driven
+ * only when a persona seed wrote it); otherwise the persona's weight for the
+ * node or its top-level parent; otherwise the global taxonomy (not persona).
+ */
+function personaWeightedNodeIds(globalTaxonomy: TaxonomyFile, rows: UserTaxonomyRow[], persona: Persona | undefined): Set<string> {
+  const rowByNode = new Map(rows.map((r) => [r.nodeId, r]));
+  const personaNodes = new Set((persona?.weights ?? []).map((w) => w.node_id));
+  const out = new Set<string>();
+  for (const node of globalTaxonomy.nodes) {
+    const row = rowByNode.get(node.id);
+    if (row) {
+      if (row.source === "persona-seed") out.add(node.id);
+    } else if (personaNodes.has(node.id) || personaNodes.has(topLevelBranch(node.id))) {
+      out.add(node.id);
+    }
+  }
+  return out;
+}
+
+/** A stretch bridge when the candidate carries no curator-written one: the
+    node the why-line generator was told to bridge from, to the pick's topic. */
+function generatedBridge(bridgeFrom: string, topics: string[], taxonomy: TaxonomyFile, title: string): string {
+  const labelOf = new Map(taxonomy.nodes.map((n) => [n.id, n.label]));
+  const from = labelOf.get(bridgeFrom) ?? bridgeFrom;
+  const to = topics.map((t) => labelOf.get(t)).find((l): l is string => !!l) ?? title;
+  return `your ${from.toLowerCase()} interest -> ${to.toLowerCase()}`;
 }
 
 function buildUserContext(topics: string[], taxonomy: TaxonomyFile): string[] {

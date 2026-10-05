@@ -2423,7 +2423,11 @@ const BACKEND_FLOORS = {
   "test/property/interestWeight.property.test.ts": 3,
   "test/redirect.test.ts": 6,
   "test/scoring.test.ts": 17,
-  "test/sessionBuilder.test.ts": 15, // round-3 L6 (2026-09-25): backend-rest-15/-16: the dedup log names the survivor; an unparseable date is neutral; 12 -> 15
+  "test/sessionBuilder.test.ts": 23, // #72 R17 provenance: signals name real matched taxonomy nodes, persona only when it weighted a match, recency/depth/fatigue follow the score log, stretch = wildcard + bridge, builder stamped; 15 -> 23 // round-3 L6 (2026-09-25): backend-rest-15/-16: the dedup log names the survivor; an unparseable date is neutral; 12 -> 15
+  /* #72 (R17): the REAL data/session.json parsed with SessionDocSchema — a card
+     without provenance, a stretch card without a bridge, a placeholder signal,
+     or a topic signal that is not a real taxonomy node of that episode fails CI. */
+  "test/sessionDoc.test.ts": 9,
   "test/stubEnricher.test.ts": 6,
   "test/userInterests.test.ts": 17,
   /* #703: the warm pass's feed parsing, which is what decides whether a
