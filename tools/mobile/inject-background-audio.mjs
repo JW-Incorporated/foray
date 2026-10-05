@@ -18,7 +18,9 @@
  * generated `AppDelegate.swift`'s `didFinishLaunching` (the file BESIDE the
  * plist it is given), and every `--check` reads it back. In the web lane
  * (`ForayEngineDefault = js`) that call decides the lane and boots nothing.
- * See the AppDelegate section below.
+ * See the AppDelegate section below. Since PQ-21 the same runs also write an
+ * `application(_:handleEventsForBackgroundURLSession:completionHandler:)` that
+ * forwards to the foray-downloads plugin (the background-session section).
  *
  * That "something" used to be a human on a Mac (`HUMAN-ACTIONS.md` #16 step 4).
  * This script is that step, so a CI runner can do it, and so it can be TESTED on
@@ -920,6 +922,149 @@ export function injectAppDelegate(src) {
   return { swift: out, changed: true, reason: changes.join(", ") };
 }
 
+/* --------------------------- the background-session hook (PQ-21, issue #29) */
+
+/* WHY THIS IS HERE (docs/roadmap/player-features.md PQ-21)
+ * The foray-downloads plugin (PQ-20) fetches episodes in a background
+ * `URLSession` (`ai.jwlabs.foura.downloads`). When a transfer finishes while
+ * the app is suspended or terminated, iOS relaunches it in the background and
+ * calls the AppDelegate's
+ * `application(_:handleEventsForBackgroundURLSession:completionHandler:)`;
+ * the app must hand that completion handler to the session's owner, which
+ * calls it once the session's events are delivered. Capacitor's generated
+ * AppDelegate has no such method, so it is written here, beside the cold path,
+ * forwarding to the one entry point the plugin exposes for it:
+ * `ForayDownloadsPlugin.handleEventsForBackgroundURLSession(_:completionHandler:)`
+ * (ForayDownloadsPlugin.swift; it returns false for any other identifier, and
+ * then the handler is called at once, as iOS expects of every session).
+ *
+ * WITHOUT IT downloads still complete (DownloadStore.swift's header: iOS
+ * replays the events on the next launch); what it adds is finishing, and
+ * emitting `downloadDone`, while the app stays in the background.
+ *
+ * Same discipline as the cold path: placed, not guessed (inside the class that
+ * declares didFinishLaunching, before its closing brace), idempotent, a
+ * half-patched or hand-written method refused, and the result re-checked
+ * before it is returned. `import ForayDownloadsPlugin` names the plugin's
+ * module, so a wrong patch is a compile error, never a silent no-op. */
+export const BG_SESSION_IMPORT = "import ForayDownloadsPlugin";
+export const BG_SESSION_FORWARD =
+  "ForayDownloadsPlugin.handleEventsForBackgroundURLSession(identifier, completionHandler: completionHandler)";
+const BG_SESSION_NOTE =
+  "// PQ-21 (#29), written by tools/mobile/inject-background-audio.mjs: a background download that " +
+  "finishes while the app is suspended is handed to the foray-downloads plugin, which owns the session.";
+const BG_SESSION_SIGNATURE =
+  "func application(_ application: UIApplication, handleEventsForBackgroundURLSession identifier: String, " +
+  "completionHandler: @escaping () -> Void)";
+const HANDLE_EVENTS =
+  /func\s+application\s*\(\s*_\s+\w+\s*:\s*UIApplication\s*,\s*handleEventsForBackgroundURLSession\b/g;
+
+/** What the hook looks like in this AppDelegate, read, not assumed. */
+export function backgroundSessionState(src) {
+  const code = swiftCodeMask(src);
+  const imports = [...code.matchAll(/^[ \t]*import[ \t]+ForayDownloadsPlugin[ \t]*$/gm)].length;
+  const methods = [...code.matchAll(HANDLE_EVENTS)];
+  let forwards = 0;
+  for (let at = code.indexOf(BG_SESSION_FORWARD); at >= 0; at = code.indexOf(BG_SESSION_FORWARD, at + 1)) forwards++;
+  let forwardInMethod = false;
+  if (methods.length === 1) {
+    const open = code.indexOf("{", methods[0].index);
+    let depth = 0;
+    for (let i = open; open >= 0 && i < code.length; i++) {
+      if (code[i] === "{") depth++;
+      else if (code[i] === "}" && --depth === 0) {
+        forwardInMethod = code.slice(open, i).includes(BG_SESSION_FORWARD);
+        break;
+      }
+    }
+  }
+  return { imports, methods: methods.length, forwards, forwardInMethod };
+}
+
+/** Throw unless the AppDelegate imports the plugin once and has exactly one
+ *  handleEventsForBackgroundURLSession, which forwards to the plugin. */
+export function assertBackgroundSessionPatched(src) {
+  const s = backgroundSessionState(src);
+  if (s.imports !== 1) {
+    throw new AppDelegateError(`AppDelegate.swift must have exactly one "${BG_SESSION_IMPORT}", found ${s.imports}`);
+  }
+  if (s.methods !== 1) {
+    throw new AppDelegateError(
+      `AppDelegate.swift must declare application(_:handleEventsForBackgroundURLSession:completionHandler:) exactly once, found ${s.methods}`
+    );
+  }
+  if (s.forwards !== 1 || !s.forwardInMethod) {
+    throw new AppDelegateError(`handleEventsForBackgroundURLSession must forward to ${BG_SESSION_FORWARD} exactly once`);
+  }
+  return s;
+}
+
+/**
+ * Write the import and the method: inserted when absent, untouched when
+ * already as `assertBackgroundSessionPatched` wants. A half-patched file, or
+ * one with a handleEventsForBackgroundURLSession this script did not write, is
+ * refused: two owners of one completion handler is a crash or a hang.
+ *
+ * @returns {{swift: string, changed: boolean, reason: string}}
+ * @throws {AppDelegateError}
+ */
+export function injectBackgroundSession(src) {
+  if (typeof src !== "string" || src.trim() === "") throw new AppDelegateError("empty AppDelegate.swift");
+  const state = backgroundSessionState(src);
+  if (state.imports === 1 && state.methods === 1 && state.forwards === 1 && state.forwardInMethod) {
+    return { swift: src, changed: false, reason: "already forwards handleEventsForBackgroundURLSession to ForayDownloadsPlugin" };
+  }
+  if (state.imports > 1 || state.methods > 0 || state.forwards > 0) {
+    throw new AppDelegateError(
+      `AppDelegate.swift's background-session hook is half-patched or hand-written (imports=${state.imports}, ` +
+        `methods=${state.methods}, forwards=${state.forwards}); regenerate it with cap sync`
+    );
+  }
+  /* The class body that holds didFinishLaunching: walk back from it to the
+     unmatched `{`, then forward to that brace's partner. */
+  const code = swiftCodeMask(src);
+  const { funcStart } = didFinishLaunchingBody(src);
+  let depth = 0;
+  let classOpen = -1;
+  for (let i = funcStart - 1; i >= 0; i--) {
+    if (code[i] === "}") depth++;
+    else if (code[i] === "{" && depth-- === 0) { classOpen = i; break; }
+  }
+  if (classOpen < 0) throw new AppDelegateError("didFinishLaunchingWithOptions is not inside a type body");
+  let classClose = -1;
+  depth = 0;
+  for (let i = classOpen; i < code.length; i++) {
+    if (code[i] === "{") depth++;
+    else if (code[i] === "}" && --depth === 0) { classClose = i; break; }
+  }
+  if (classClose < 0) throw new AppDelegateError("the AppDelegate's type body is never closed");
+  const lineStart = src.lastIndexOf("\n", funcStart) + 1;
+  const indent = /^[ \t]*/.exec(src.slice(lineStart))[0] || "    ";
+  const closeLine = src.lastIndexOf("\n", classClose) + 1;
+  if (src.slice(closeLine, classClose).trim() !== "") {
+    throw new AppDelegateError("the AppDelegate's closing brace shares its line with code; regenerate it with cap sync");
+  }
+  const method =
+    `\n${indent}${BG_SESSION_NOTE}\n` +
+    `${indent}${BG_SESSION_SIGNATURE} {\n` +
+    `${indent}    if !${BG_SESSION_FORWARD} {\n` +
+    `${indent}        completionHandler()\n` +
+    `${indent}    }\n` +
+    `${indent}}\n`;
+  let out = `${src.slice(0, closeLine)}${method}${src.slice(closeLine)}`;
+  const changes = ["forwarded handleEventsForBackgroundURLSession to ForayDownloadsPlugin"];
+  if (state.imports === 0) {
+    const imports = [...swiftCodeMask(out).matchAll(/^[ \t]*import[ \t]+\w[^\n]*$/gm)];
+    if (!imports.length) throw new AppDelegateError("AppDelegate.swift has no import to add the plugin's beside");
+    const last = imports[imports.length - 1];
+    const at = last.index + last[0].length;
+    out = `${out.slice(0, at)}\n${BG_SESSION_IMPORT}${out.slice(at)}`;
+    changes.push(`added ${BG_SESSION_IMPORT}`);
+  }
+  assertBackgroundSessionPatched(out);
+  return { swift: out, changed: true, reason: changes.join(", ") };
+}
+
 /* --------------------------------------------------------------------- main */
 
 const isMain =
@@ -1025,8 +1170,12 @@ if (isMain) {
          injection time, and it calls the cold path first. */
       const delegate = appDelegatePathFor(file);
       if (!fs.existsSync(delegate)) throw new AppDelegateError(`${delegate} does not exist beside ${file}`);
-      assertAppDelegatePatched(fs.readFileSync(delegate, "utf8"));
+      const delegateSrc = fs.readFileSync(delegate, "utf8");
+      assertAppDelegatePatched(delegateSrc);
       console.log(`${delegate}: ${COLD_PATH_CALL} is the first statement of didFinishLaunching (NE-24 cold path)`);
+      /* PQ-21's evidence line: the background-session hook forwards to the plugin. */
+      assertBackgroundSessionPatched(delegateSrc);
+      console.log(`${delegate}: handleEventsForBackgroundURLSession forwards to ForayDownloadsPlugin (PQ-21)`);
     } else {
       const r = injectBackgroundAudio(src, mode);
       let xml = r.xml;
@@ -1049,8 +1198,10 @@ if (isMain) {
       }
       const patched = injectAppDelegate(fs.readFileSync(delegate, "utf8"));
       console.log(`${delegate}: ${patched.reason}`);
+      const hooked = injectBackgroundSession(patched.swift);
+      console.log(`${delegate}: ${hooked.reason}`);
       if (xml !== src) fs.writeFileSync(file, xml);
-      if (patched.changed) fs.writeFileSync(delegate, patched.swift);
+      if (patched.changed || hooked.changed) fs.writeFileSync(delegate, hooked.swift);
     }
   } catch (e) {
     console.error(`inject-background-audio failed: ${e.message}`);

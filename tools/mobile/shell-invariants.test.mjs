@@ -1045,11 +1045,18 @@ test("mobile/'s only non-Capacitor dependency is our own plugin, by a file: path
      `java-library` module nested at plugins/foray-audio/android/foray-engine-core-jvm/,
      declared here only because this list is how `cap add android` learns which
      Gradle modules to include in the generated project. The A-21 test below pins
-     what it is. */
-  assert.equal(local.length, 4, "expected exactly four local packages, found: " + (local.map((l) => l.name).join(", ") || "none"));
+     what it is.
+
+     FIVE SINCE PQ-21 (issue #29), FOUR OF THEM BRIDGE PLUGINS. `foray-downloads`
+     is the fourth plugin: offline episode downloads, iOS half PQ-20 (a background
+     URLSession into Application Support, excluded from backup) and Android half
+     PQ-22 (DownloadManager, the finished file moved into the no-backup directory);
+     player/download-bridge.js is its web half and tools/mobile/foray-downloads.test.mjs
+     pins it. */
+  assert.equal(local.length, 5, "expected exactly five local packages, found: " + (local.map((l) => l.name).join(", ") || "none"));
   assert.deepEqual(
     local.map((l) => l.name).sort(),
-    ["foray-audio", "foray-engine-core-jvm", "foray-tts", "foray-vault"]
+    ["foray-audio", "foray-downloads", "foray-engine-core-jvm", "foray-tts", "foray-vault"]
   );
 });
 
