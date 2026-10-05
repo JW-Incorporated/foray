@@ -577,7 +577,7 @@ const FLOORS = {
      it protects is gameable in exactly one direction: a misspelled `food/bakin`
      reads as "has a child" to the root-dumping report and silently erases a
      root-only pair, so a deleted gate would make the number look better. */
-  "test/data-topic-integrity.test.js": 14, // PKG-01 (2026-10-04): +2, every discover item carries topics_source and an explicit key; 12 -> 14
+  "test/data-topic-integrity.test.js": 15, // PKG-07 (2026-10-04): +1, no engineering/energy-fusion item comes from a general show's inherited label; 14 -> 15 // PKG-01 (2026-10-04): +2, every discover item carries topics_source and an explicit key; 12 -> 14
   /* The code citations in the two store-submission documents. Same argument as
      data-deletion above and the same stakes: what this suite guards is whether a
      document going to a store reviewer describes the code that shipped. It is

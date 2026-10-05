@@ -1,0 +1,324 @@
+[
+  {
+    "id": "ologies-with-alie-ward--megafelinology",
+    "topics": [
+      "nature/animal-cognition"
+    ]
+  },
+  {
+    "id": "ologies-with-alie-ward--deep-sea-microbiology-unseen-ocean-critters",
+    "topics": [
+      "nature/ocean-science",
+      "medicine/biology"
+    ]
+  },
+  {
+    "id": "techsurge-deep-tech-podcast--the-moving-bottleneck-networking-power-memory",
+    "topics": [
+      "engineering/ai-robotics",
+      "engineering/energy-grid",
+      "business/startups"
+    ]
+  },
+  {
+    "id": "techsurge-deep-tech-podcast--intel-ceo-lip-bu-tan-on",
+    "topics": [
+      "business/founders",
+      "business/startups"
+    ]
+  },
+  {
+    "id": "techsurge-deep-tech-podcast--the-nobel-winner-behind-google-s",
+    "topics": [
+      "science/physics",
+      "business/startups"
+    ]
+  },
+  {
+    "id": "catalyst-shayle-kann--the-commercial-battery-comeback",
+    "topics": [
+      "engineering/energy-grid"
+    ]
+  },
+  {
+    "id": "catalyst-shayle-kann--the-electrician-shortage-slowing-the-ai",
+    "topics": [
+      "engineering/energy-grid",
+      "engineering/ai-robotics"
+    ]
+  },
+  {
+    "id": "catalyst-shayle-kann--critical-capital-senator-tillis-case-for",
+    "topics": [
+      "engineering/energy-grid",
+      "society/government"
+    ]
+  },
+  {
+    "id": "catalyst-shayle-kann--is-now-the-time-for-ders",
+    "topics": [
+      "engineering/energy-grid"
+    ]
+  },
+  {
+    "id": "catalyst-shayle-kann--can-ai-revolutionize-grid-operations",
+    "topics": [
+      "engineering/energy-grid",
+      "engineering/ai-robotics"
+    ]
+  },
+  {
+    "id": "catalyst-shayle-kann--the-rise-of-metal-fuels",
+    "topics": [
+      "engineering/energy-grid",
+      "science/chemistry"
+    ]
+  },
+  {
+    "id": "cbc-ideas--we-believe-in-artificial-intelligence-the",
+    "topics": [
+      "computing/history",
+      "philosophy/ideas",
+      "engineering/ai-robotics"
+    ]
+  },
+  {
+    "id": "cbc-ideas--are-psychopaths-real-a-review-of",
+    "topics": [
+      "health/mental",
+      "society/law"
+    ]
+  },
+  {
+    "id": "cbc-ideas--a-book-prescription-for-mental-health",
+    "topics": [
+      "health/mental",
+      "culture/books"
+    ]
+  },
+  {
+    "id": "cbc-ideas--what-emerges-from-the-ashes-after",
+    "topics": [
+      "nature/earth-science"
+    ]
+  },
+  {
+    "id": "cbc-ideas--how-indigenous-ecology-is-reviving-land",
+    "topics": [
+      "nature/earth-science"
+    ]
+  },
+  {
+    "id": "cbc-ideas--how-brutal-wildfires-are-killing-indigenous",
+    "topics": [
+      "nature/weather",
+      "nature/earth-science"
+    ]
+  },
+  {
+    "id": "cbc-ideas--bringing-a-farm-and-its-philosophy",
+    "topics": [
+      "food/food-history",
+      "philosophy/ideas"
+    ]
+  },
+  {
+    "id": "cbc-ideas--how-to-brace-for-a-world",
+    "topics": [
+      "philosophy/ideas",
+      "nature/earth-science"
+    ]
+  },
+  {
+    "id": "cbc-ideas--david-bowie-took-his-own-death",
+    "topics": [
+      "music/music-history",
+      "culture/art"
+    ]
+  },
+  {
+    "id": "cbc-ideas--the-overlapping-truths-of-history-and",
+    "topics": [
+      "culture/books",
+      "history/social-history"
+    ]
+  },
+  {
+    "id": "stuff-you-should-know--rope-yeah-rope",
+    "topics": [
+      "history/technology",
+      "science/materials"
+    ]
+  },
+  {
+    "id": "stuff-you-should-know--sysk-tribute-why-does-everyone-love",
+    "topics": [
+      "music/music-history",
+      "culture/pop-culture"
+    ]
+  },
+  {
+    "id": "stuff-you-should-know--short-stuff-hisashi-ouchi",
+    "topics": [
+      "engineering/disasters",
+      "medicine/biology"
+    ]
+  },
+  {
+    "id": "stuff-you-should-know--terry-fox-greatest-canadian-hero",
+    "topics": [
+      "sports/endurance",
+      "history/social-history"
+    ]
+  },
+  {
+    "id": "freakonomics-radio--is-a-museum-just-a-trophy",
+    "topics": [
+      "culture/art",
+      "society/law"
+    ]
+  },
+  {
+    "id": "freakonomics-radio--how-to-return-stolen-art-update",
+    "topics": [
+      "culture/art",
+      "society/law"
+    ]
+  },
+  {
+    "id": "freakonomics-radio--how-to-run-an-institution-in",
+    "topics": [
+      "business/management"
+    ]
+  },
+  {
+    "id": "freakonomics-radio--685-how-to-survive-the-a",
+    "topics": [
+      "engineering/ai-robotics",
+      "economics/markets"
+    ]
+  },
+  {
+    "id": "freakonomics-radio--amazon-was-supposed-to-kill-the",
+    "topics": [
+      "business/management",
+      "culture/books"
+    ]
+  },
+  {
+    "id": "freakonomics-radio--686-why-is-it-so-hard",
+    "topics": [
+      "sports/football",
+      "psychology/decision-making"
+    ]
+  },
+  {
+    "id": "the-rest-is-history--699-the-troubles-return-of-the",
+    "topics": [
+      "history/military-modern"
+    ]
+  },
+  {
+    "id": "the-rest-is-history--700-the-troubles-bloody-sunday-part",
+    "topics": [
+      "history/military-modern"
+    ]
+  },
+  {
+    "id": "the-rest-is-history--701-roman-civil-war-rise-of",
+    "topics": [
+      "history/military-ancient"
+    ]
+  },
+  {
+    "id": "the-rest-is-history--703-roman-civil-war-marching-on",
+    "topics": [
+      "history/military-ancient"
+    ]
+  },
+  {
+    "id": "unexplainable--the-idea-of-a-song",
+    "topics": [
+      "music/theory-production",
+      "music/pop-global"
+    ]
+  },
+  {
+    "id": "unexplainable--stopping-the-science-that-could-stop",
+    "topics": [
+      "philosophy/ethics",
+      "medicine/biology",
+      "science/storytelling"
+    ]
+  },
+  {
+    "id": "unexplainable--a-breakthrough-in-synthetic-life",
+    "topics": [
+      "medicine/biology",
+      "science/storytelling"
+    ]
+  },
+  {
+    "id": "huberman-lab--how-to-improve-motivation-overcome-procrastination",
+    "topics": [
+      "medicine/neuroscience",
+      "education/self-improvement"
+    ]
+  },
+  {
+    "id": "huberman-lab--how-to-accelerate-learning-improve-education",
+    "topics": [
+      "education/self-improvement",
+      "engineering/ai-robotics"
+    ]
+  },
+  {
+    "id": "huberman-lab--essentials-genes-the-inheritance-of-memories",
+    "topics": [
+      "medicine/biology",
+      "medicine/neuroscience"
+    ]
+  },
+  {
+    "id": "99-percent-invisible--100-objects-15-bundy-clock",
+    "topics": [
+      "history/technology",
+      "culture/design"
+    ]
+  },
+  {
+    "id": "99-percent-invisible--1-800-podcast",
+    "topics": [
+      "history/technology",
+      "business/marketing"
+    ]
+  },
+  {
+    "id": "99-percent-invisible--100-objects-17-m43-field-jacket",
+    "topics": [
+      "culture/fashion",
+      "history/military-modern",
+      "culture/design"
+    ]
+  },
+  {
+    "id": "software-engineering-daily--typescript-7-and-what-comes-next",
+    "topics": [
+      "computing/software-engineering"
+    ]
+  },
+  {
+    "id": "software-engineering-daily--the-death-of-online-anonymity",
+    "topics": [
+      "computing/cybersecurity",
+      "society/law"
+    ]
+  },
+  {
+    "id": "being-an-engineer--antonio-valadez-nate-post-building-better",
+    "topics": [
+      "business/management",
+      "business/careers"
+    ]
+  }
+]

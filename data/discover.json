@@ -9597,7 +9597,7 @@
       "audio_bytes": 82361550,
       "duration_sec": 5128,
       "dai_suspected": true,
-      "topics_source": "show",
+      "topics_source": "episode",
       "explicit": null
     },
     {
@@ -23583,12 +23583,13 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/1b/46/9c/1b469cf6-a85d-2977-1ac5-51f92ef65669/mza_5261734729492018704.jpg/600x600bb.jpg",
       "topics": [
-        "business/startups",
-        "engineering/energy-fusion"
+        "engineering/ai-robotics",
+        "engineering/energy-grid",
+        "business/startups"
       ],
       "hook": "Rajiv Khemani explains the power and networking bottlenecks limiting AI infrastructure at scale.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "good-hang-amy-poehler--anne-lamott",
@@ -24188,11 +24189,11 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts112/v4/85/b4/75/85b475a8-93d1-ccdf-be5e-3399f4b322b2/mza_4579948121520406325.jpeg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "engineering/energy-grid"
       ],
       "hook": "Voltus's Tim Hade explains why commercial battery storage is finally scaling past its 'missing middle' problem.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "cbc-ideas--we-believe-in-artificial-intelligence-the",
@@ -24210,11 +24211,13 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/94/fe/a5/94fea51f-9e41-b60f-b5f2-3549407ef6fc/mza_4140352385670983274.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "computing/history",
+        "philosophy/ideas",
+        "engineering/ai-robotics"
       ],
       "hook": "Alan Turing's 1950 paper linked machine intelligence to his belief in ESP and telepathy.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1609",
@@ -25219,11 +25222,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/94/fe/a5/94fea51f-9e41-b60f-b5f2-3549407ef6fc/mza_4140352385670983274.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "health/mental",
+        "society/law"
       ],
       "hook": "Author Rasmus Rosenberg Larsen argues 'psychopath' is a flawed diagnosis misused in criminal justice.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "the-rest-is-history--693-elizabeth-i-vs-the-catholics",
@@ -27077,11 +27081,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts112/v4/85/b4/75/85b475a8-93d1-ccdf-be5e-3399f4b322b2/mza_4579948121520406325.jpeg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "engineering/energy-grid",
+        "engineering/ai-robotics"
       ],
       "hook": "Shayle Kann and Compass Datacenters' Raymond Hawkins on why skilled-electrician shortages are bottlenecking data center construction.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "business-of-machining--463-vibe-coding-fun",
@@ -27479,11 +27484,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/94/fe/a5/94fea51f-9e41-b60f-b5f2-3549407ef6fc/mza_4140352385670983274.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "health/mental",
+        "culture/books"
       ],
       "hook": "Researchers Sara Haslam and Edmund King trace bibliotherapy's century-long use as approved mental health treatment.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "materialism-podcast--episode-120-thermal-protection-systems",
@@ -28890,11 +28896,11 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/94/fe/a5/94fea51f-9e41-b60f-b5f2-3549407ef6fc/mza_4140352385670983274.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "nature/earth-science"
       ],
       "hook": "Four years after the McKay Creek wildfire, IDEAS returns to see what recovery looks like.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "cbc-ideas--how-indigenous-ecology-is-reviving-land",
@@ -28912,11 +28918,11 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/94/fe/a5/94fea51f-9e41-b60f-b5f2-3549407ef6fc/mza_4140352385670983274.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "nature/earth-science"
       ],
       "hook": "IDEAS visits St'at'imc territory to see land guardians rebuild a wildfire-scarred ecosystem using Indigenous knowledge.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "cbc-ideas--how-brutal-wildfires-are-killing-indigenous",
@@ -28934,11 +28940,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/94/fe/a5/94fea51f-9e41-b60f-b5f2-3549407ef6fc/mza_4140352385670983274.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "nature/weather",
+        "nature/earth-science"
       ],
       "hook": "St'at'imc community members describe how 2021 heat-dome wildfires damaged land, culture, and their way of life.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "my-brother-my-brother-and-me--mbmbam-826-right-to-the-couch",
@@ -30828,11 +30835,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts112/v4/85/b4/75/85b475a8-93d1-ccdf-be5e-3399f4b322b2/mza_4579948121520406325.jpeg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "engineering/energy-grid",
+        "society/government"
       ],
       "hook": "Sen. Thom Tillis makes the case for all-of-the-above energy policy amid record electricity demand.",
       "explicit": true,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "stuff-you-should-know--bonnie-and-clyde",
@@ -30895,12 +30903,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/1b/46/9c/1b469cf6-a85d-2977-1ac5-51f92ef65669/mza_5261734729492018704.jpg/600x600bb.jpg",
       "topics": [
-        "business/startups",
-        "engineering/energy-fusion"
+        "business/founders",
+        "business/startups"
       ],
       "hook": "Intel CEO Lip-Bu Tan discusses 40 years betting against consensus in the semiconductor industry.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "good-hang-amy-poehler--rosie-o-donnell",
@@ -32194,11 +32202,11 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts112/v4/85/b4/75/85b475a8-93d1-ccdf-be5e-3399f4b322b2/mza_4579948121520406325.jpeg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "engineering/energy-grid"
       ],
       "hook": "Distributed energy resources flopped a decade ago — has the market finally caught up?",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "lab-to-market-leadership--why-great-scientists-don-39-t",
@@ -32239,11 +32247,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/94/fe/a5/94fea51f-9e41-b60f-b5f2-3549407ef6fc/mza_4140352385670983274.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "food/food-history",
+        "philosophy/ideas"
       ],
       "hook": "How one family rebuilt an Indigenous farm in B.C., now feeding 300 households for free.",
       "explicit": true,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "stuff-you-should-know--who-was-robert-maxwell-l",
@@ -33869,11 +33878,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/94/fe/a5/94fea51f-9e41-b60f-b5f2-3549407ef6fc/mza_4140352385670983274.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "philosophy/ideas",
+        "nature/earth-science"
       ],
       "hook": "Philosopher Alain Deneault on turning eco-angst into action as crises strain nations and networks.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "smartless--tim-robbins",
@@ -34335,11 +34345,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/94/fe/a5/94fea51f-9e41-b60f-b5f2-3549407ef6fc/mza_4140352385670983274.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "music/music-history",
+        "culture/art"
       ],
       "hook": "Bowie used his own mortality as the theme of the final album he released before dying.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "stuff-you-should-know--isn-t-it-ironic-dontcha-think",
@@ -35002,11 +35013,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts112/v4/85/b4/75/85b475a8-93d1-ccdf-be5e-3399f4b322b2/mza_4579948121520406325.jpeg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "engineering/energy-grid",
+        "engineering/ai-robotics"
       ],
       "hook": "ThinkLabs AI's founder on physics-informed models for utility planning, and why the grid already works.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "cbc-ideas--the-overlapping-truths-of-history-and",
@@ -35024,11 +35036,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/94/fe/a5/94fea51f-9e41-b60f-b5f2-3549407ef6fc/mza_4140352385670983274.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "culture/books",
+        "history/social-history"
       ],
       "hook": "Esi Edugyan and Tiya Miles on imagining past lives the historical record left out.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "stuff-you-should-know--rope-yeah-rope",
@@ -35051,7 +35064,7 @@
       ],
       "hook": "The case for rope as one of the unsung heroes of the world of inventions.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1618",
@@ -37076,11 +37089,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/f7/0c/c5/f70cc540-ce36-d96f-b111-c970aad5505c/mza_17703422762227531425.jpg/600x600bb.jpg",
       "topics": [
-        "economics/markets"
+        "culture/art",
+        "society/law"
       ],
       "hook": "Museums grapple with returning plundered art and artifacts to their rightful owners.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "partially-examined-life--pel-presents-closereads-peirce-s-new",
@@ -37519,12 +37533,11 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/a3/05/8f/a3058ff1-eff9-036b-f412-8c4e96aad380/mza_221907431660085079.jpg/600x600bb.jpg",
       "topics": [
-        "history/technology",
-        "history/military-ancient"
+        "history/military-modern"
       ],
       "hook": "The Provisional IRA's return, the Short Strand Battle, and the Troubles' spiral into civilian attacks.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "conan-obrien-needs-a-friend--john-cena",
@@ -38341,11 +38354,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/eb/87/4d/eb874d60-4424-62df-a136-d5b5f32c451b/mza_11680166435885601347.jpg/600x600bb.jpg",
       "topics": [
-        "science/storytelling"
+        "music/theory-production",
+        "music/pop-global"
       ],
       "hook": "Switched on Pop's hosts explain why modern hits are ditching the classic song intro.",
       "explicit": true,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "we-have-ways-of-making-you-talk--british-band-of-brothers-operation-bluecoat",
@@ -38451,11 +38465,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/9a/d3/19/9ad31912-0b5a-a16e-2d7c-9fd074698b9c/mza_8994222203629500925.jpg/600x600bb.jpg",
       "topics": [
-        "medicine/neuroscience"
+        "medicine/neuroscience",
+        "education/self-improvement"
       ],
       "hook": "Dr. Masud Husain explains the brain circuits behind motivation, apathy, and procrastination.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "mwa-woodworking--mwa621-mark-hicks-in-the-house",
@@ -39630,11 +39645,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts112/v4/85/b4/75/85b475a8-93d1-ccdf-be5e-3399f4b322b2/mza_4579948121520406325.jpeg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "engineering/energy-grid",
+        "science/chemistry"
       ],
       "hook": "Why metal fuels could replace diesel generators as data centers strain the power grid.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "lab-to-market-leadership--critical-minerals-e-waste-and-the",
@@ -39675,12 +39691,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/aa/82/91/aa82912f-23ee-6f6a-583c-a4e993164d0e/mza_12111158076643383507.jpg/600x600bb.jpg",
       "topics": [
-        "science/materials",
-        "history/technology"
+        "music/music-history",
+        "culture/pop-culture"
       ],
       "hook": "A short tribute to why Dolly Parton earned near-universal love and admiration.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "being-an-engineer--robert-states-how-engineers-can-thrive",
@@ -39721,12 +39737,11 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/a3/05/8f/a3058ff1-eff9-036b-f412-8c4e96aad380/mza_221907431660085079.jpg/600x600bb.jpg",
       "topics": [
-        "history/technology",
-        "history/military-ancient"
+        "history/military-modern"
       ],
       "hook": "Part four on Bloody Sunday 1972: how it erupted and its final push for peace.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "conan-obrien-needs-a-friend--summer-s-pouses-episode-5-the",
@@ -40140,11 +40155,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/79/d0/35/79d035ea-9043-b43e-7380-33cd47bd968b/mza_2606971010425550919.jpg/600x600bb.jpg",
       "topics": [
-        "architecture/infrastructure"
+        "history/technology",
+        "culture/design"
       ],
       "hook": "How the first employee time clock reshaped work, efficiency, and workplace surveillance.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "the-worlds-best-construction-podcast--the-race-to-save-the-uk",
@@ -40294,11 +40310,11 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/95/aa/58/95aa58ac-8618-5259-4a26-2f864665ebf4/mza_15276922367235047332.png/600x600bb.jpg",
       "topics": [
-        "computing/history"
+        "computing/software-engineering"
       ],
       "hook": "What TypeScript 7's biggest rewrite in years means for how developers write JavaScript.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "planet-money--branded-fruit-how-produce-got-honeycrisp",
@@ -40382,11 +40398,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/f7/0c/c5/f70cc540-ce36-d96f-b111-c970aad5505c/mza_17703422762227531425.jpg/600x600bb.jpg",
       "topics": [
-        "economics/markets"
+        "culture/art",
+        "society/law"
       ],
       "hook": "Museums are purging looted treasures; can returning them also give something back?",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "geology-bites--brian-wernicke-on-lithospheric-extension-and",
@@ -41517,12 +41534,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/55/12/49/551249a0-b78c-0bf2-8b7a-7e1992390f8c/mza_9165157696428370392.jpg/600x600bb.jpg",
       "topics": [
-        "science/materials",
-        "history/technology"
+        "engineering/disasters",
+        "medicine/biology"
       ],
       "hook": "Why a Japanese nuclear worker was called the world's most radioactive man, and what's true.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "stuff-you-should-know--terry-fox-greatest-canadian-hero",
@@ -41540,12 +41557,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/aa/82/91/aa82912f-23ee-6f6a-583c-a4e993164d0e/mza_12111158076643383507.jpg/600x600bb.jpg",
       "topics": [
-        "science/materials",
-        "history/technology"
+        "sports/endurance",
+        "history/social-history"
       ],
       "hook": "Terry Fox's story and why Canada has honored him as a national hero for 50 years.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "the-rest-is-history--701-roman-civil-war-rise-of",
@@ -41563,12 +41580,11 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/a3/05/8f/a3058ff1-eff9-036b-f412-8c4e96aad380/mza_221907431660085079.jpg/600x600bb.jpg",
       "topics": [
-        "history/technology",
         "history/military-ancient"
       ],
       "hook": "Tom and Dominic launch into Gaius Marius's rise and Rome's brutal first-century-BC civil war.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "conan-obrien-needs-a-friend--andy-daly-returns",
@@ -41762,12 +41778,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/1b/46/9c/1b469cf6-a85d-2977-1ac5-51f92ef65669/mza_5261734729492018704.jpg/600x600bb.jpg",
       "topics": [
-        "business/startups",
-        "engineering/energy-fusion"
+        "science/physics",
+        "business/startups"
       ],
       "hook": "Nobel laureate John Martinis explains superconducting qubits and why he's building a quantum-computing rival to Nvidia.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "twenty-minute-vc--20vc-the-ai-bubble-is-wrong",
@@ -41983,11 +41999,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/79/d0/35/79d035ea-9043-b43e-7380-33cd47bd968b/mza_2606971010425550919.jpg/600x600bb.jpg",
       "topics": [
-        "architecture/infrastructure"
+        "history/technology",
+        "business/marketing"
       ],
       "hook": "Two stories about the surprising cultural power of the humble 1-800 phone number.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "spit-and-twitches-animal-cognition--episode-31-season-3-episode-4",
@@ -42027,11 +42044,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/44/4e/42/444e42f6-1ce8-1e7b-2d50-4ed506c27004/mza_18370866018545460916.jpg/600x600bb.jpg",
       "topics": [
-        "nature/animal-cognition"
+        "nature/ocean-science",
+        "medicine/biology"
       ],
       "hook": "A Harvard deep-sea microbiologist on extremophiles, tube worms, methane-eating microbes, and life on other planets.",
       "explicit": true,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "spycast--japanese-surveillance-enslavement-and-experimentation-in",
@@ -42093,11 +42111,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/95/aa/58/95aa58ac-8618-5259-4a26-2f864665ebf4/mza_15276922367235047332.png/600x600bb.jpg",
       "topics": [
-        "computing/history"
+        "computing/cybersecurity",
+        "society/law"
       ],
       "hook": "How age-verification laws pushed by child-safety goals are reshaping privacy and anonymity online.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "planet-money--love-in-the-time-of-palantir",
@@ -42181,11 +42200,11 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/f7/0c/c5/f70cc540-ce36-d96f-b111-c970aad5505c/mza_17703422762227531425.jpg/600x600bb.jpg",
       "topics": [
-        "economics/markets"
+        "business/management"
       ],
       "hook": "Two museum and university leaders on keeping the peace inside institutions during a culture war.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "hidden-brain--the-things-we-don-t-say",
@@ -42401,11 +42420,13 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/eb/87/4d/eb874d60-4424-62df-a136-d5b5f32c451b/mza_11680166435885601347.jpg/600x600bb.jpg",
       "topics": [
+        "philosophy/ethics",
+        "medicine/biology",
         "science/storytelling"
       ],
       "hook": "The finale of a three-part series asks how scientists judge what's too dangerous to build.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "unexplainable--a-breakthrough-in-synthetic-life",
@@ -42423,11 +42444,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/eb/87/4d/eb874d60-4424-62df-a136-d5b5f32c451b/mza_11680166435885601347.jpg/600x600bb.jpg",
       "topics": [
+        "medicine/biology",
         "science/storytelling"
       ],
       "hook": "A synthetic biologist's lab is building cells that feed, divide, and grow from nonliving parts.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "how-i-built-this--late-july-snacks-nicole-bernard-dawes",
@@ -42643,11 +42665,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/9a/d3/19/9ad31912-0b5a-a16e-2d7c-9fd074698b9c/mza_8994222203629500925.jpg/600x600bb.jpg",
       "topics": [
-        "medicine/neuroscience"
+        "education/self-improvement",
+        "engineering/ai-robotics"
       ],
       "hook": "An Alpha School founder on AI-driven learning that compresses academics into two hours a day.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "the-matt-walker-podcast--the-night-ferryman-a-sleep-story",
@@ -43828,11 +43851,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/f7/0c/c5/f70cc540-ce36-d96f-b111-c970aad5505c/mza_17703422762227531425.jpg/600x600bb.jpg",
       "topics": [
+        "engineering/ai-robotics",
         "economics/markets"
       ],
       "hook": "Former commerce secretary Gina Raimondo's plan to manage AI's disruption of the job market.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "the-race-f1-podcast--in-car-insights-unpacking-a-day",
@@ -44541,12 +44565,11 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/a3/05/8f/a3058ff1-eff9-036b-f412-8c4e96aad380/mza_221907431660085079.jpg/600x600bb.jpg",
       "topics": [
-        "history/technology",
         "history/military-ancient"
       ],
       "hook": "Marius and Sulla's rivalry escalates as Sulla takes a fateful, unprecedented step against Rome.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "conan-obrien-needs-a-friend--matt-groening",
@@ -46009,11 +46032,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/f7/0c/c5/f70cc540-ce36-d96f-b111-c970aad5505c/mza_17703422762227531425.jpg/600x600bb.jpg",
       "topics": [
-        "economics/markets"
+        "business/management",
+        "culture/books"
       ],
       "hook": "James Daunt on reviving Barnes & Noble and Waterstones after Amazon was supposed to kill bookstores.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "f1-beyond-the-grid--pedro-de-la-rosa-aston-s",
@@ -46635,13 +46659,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/f9/ea/7e/f9ea7e14-28a4-07e0-7727-ba24527dfb7c/mza_2694726557793121439.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/precision-mfg",
-        "craft/diy-home",
+        "business/management",
         "business/careers"
       ],
       "hook": "Two medical-device engineering leaders on mentoring better engineers through better leadership, not just technical skill.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "the-rest-is-history--704-roman-civil-war-master-of",
@@ -47055,11 +47078,13 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/79/d0/35/79d035ea-9043-b43e-7380-33cd47bd968b/mza_2606971010425550919.jpg/600x600bb.jpg",
       "topics": [
-        "architecture/infrastructure"
+        "culture/fashion",
+        "history/military-modern",
+        "culture/design"
       ],
       "hook": "How the M43 Field Jacket solved the military's soldier-outfitting problem and changed what everyone wears daily.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "the-worlds-best-construction-podcast--manhattan-builds-another-stone-skyscraper-204",
@@ -47253,11 +47278,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/f7/0c/c5/f70cc540-ce36-d96f-b111-c970aad5505c/mza_17703422762227531425.jpg/600x600bb.jpg",
       "topics": [
-        "economics/markets"
+        "sports/football",
+        "psychology/decision-making"
       ],
       "hook": "A scout, a psychologist, a data analyst, and a Hall of Famer on scouting NFL quarterbacks.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "planetgeo-geology-podcast--the-silicates-geology-101-minerals-part",
@@ -47627,11 +47653,12 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/9a/d3/19/9ad31912-0b5a-a16e-2d7c-9fd074698b9c/mza_8994222203629500925.jpg/600x600bb.jpg",
       "topics": [
+        "medicine/biology",
         "medicine/neuroscience"
       ],
       "hook": "Dr. Oded Rechavi on how small RNAs in worms may pass memories across generations.",
       "explicit": false,
-      "topics_source": "show"
+      "topics_source": "episode"
     },
     {
       "id": "strict-scrutiny--we-need-to-talk-about-term",
