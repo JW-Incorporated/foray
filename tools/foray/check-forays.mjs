@@ -75,7 +75,7 @@ import {
  * row is that file's to own. Importing keeps `merge-segments.mjs` ignorant of
  * Forays — the direction its header insists on — while giving this file one
  * source of truth for the values `ACCEPTED_SHAPES` enumerates. */
-import { TRANSCRIPT_SOURCES } from "../segments/merge-segments.mjs";
+import { TRANSCRIPT_SOURCES, ANCHOR_TIME_TOLERANCE_SEC } from "../segments/merge-segments.mjs";
 
 /* The six narration modes, imported from check-narration.mjs rather than
  * re-declared. That file already carries the enum (and the char bands each
@@ -432,6 +432,21 @@ export const ACCEPTED_SHAPES = Object.freeze({
   "source.dai_suspected": Object.freeze([true, false]),
   "source.source": SOURCE_PROVENANCE,
 });
+
+/**
+ * The two tiers an episode's measured ad pad falls into (DAI-06,
+ * docs/roadmap/dai.md §3; ADR-0008 "The pad must be an UPPER BOUND on the
+ * delta"). PADDABLE: `ad_pad_sec <= ANCHOR_TIME_TOLERANCE_SEC`, so a clip can
+ * be widened by the pad and still land inside the anchor's tolerance.
+ * LOCATE-REQUIRED: the pad is wider than that ceiling, and the clip cannot
+ * play until `locateStep()` exists (ADR-0008 Decision 5: "LOCATE-REQUIRED
+ * shows are authored, not played").
+ *
+ * Deliberately NOT a key of `ACCEPTED_SHAPES`: that enumeration's rule is that
+ * every value is carried by a committed Foray, and no committed source is
+ * LOCATE-REQUIRED — nor may a published Foray draw on one (the rule below).
+ */
+export const AD_TIERS = Object.freeze(["PADDABLE", "LOCATE-REQUIRED"]);
 
 /* Narration ceilings, from docs/curation/narration-craft.md §0.
  *
@@ -805,6 +820,41 @@ export function checkForays(files, { renderedNarrationOnPublished = RENDERED_NAR
      * a looser match — drop precision on a VBR file. Absent is fine (precise). */
     if (s.seek_map !== undefined && !SEEK_MAPS.has(s.seek_map)) {
       err(`segment-sources "${s.id}": \`seek_map\` must be one of ${[...SEEK_MAPS].join(", ")} (or absent)`);
+    }
+    /* DAI-06 (docs/roadmap/dai.md §3): the `ad_*` fields stamped by
+     * tools/segments/stamp-ad-pad.mjs from a same-episode probe ledger. A pad
+     * is ADR-0008's upper bound on the ad-insertion delta,
+     * `max(0, delta_max) + spread`, and it is only a bound when at least two
+     * probes measured it — one probe bounds nothing. A zero pad (every
+     * committed row today) needs nothing beyond a known tier, when it has one.
+     * `ad_free_ratio` is the legacy ad-inflation-scan field and is not
+     * validated here. */
+    if (s.ad_pad_sec !== undefined) {
+      const pad = s.ad_pad_sec;
+      if (typeof pad !== "number" || !Number.isFinite(pad) || pad < 0) {
+        err(`segment-sources "${s.id}": \`ad_pad_sec\` must be a finite number >= 0; got ${JSON.stringify(pad)}`);
+      } else if (pad > 0) {
+        if (!(Number.isInteger(s.ad_delta_probes) && s.ad_delta_probes >= 2)) {
+          err(`segment-sources "${s.id}": a positive \`ad_pad_sec\` needs \`ad_delta_probes\` an integer >= 2 — one probe bounds nothing (ADR-0008); got ${JSON.stringify(s.ad_delta_probes)}`);
+        }
+        const deltaOk = typeof s.ad_delta_sec === "number" && Number.isFinite(s.ad_delta_sec);
+        if (!deltaOk) err(`segment-sources "${s.id}": a positive \`ad_pad_sec\` needs a finite \`ad_delta_sec\`; got ${JSON.stringify(s.ad_delta_sec)}`);
+        const spreadOk = typeof s.ad_delta_spread_sec === "number" && Number.isFinite(s.ad_delta_spread_sec) && s.ad_delta_spread_sec >= 0;
+        if (!spreadOk) err(`segment-sources "${s.id}": a positive \`ad_pad_sec\` needs a finite \`ad_delta_spread_sec\` >= 0; got ${JSON.stringify(s.ad_delta_spread_sec)}`);
+        if (deltaOk && spreadOk) {
+          const bound = Math.max(0, s.ad_delta_sec) + s.ad_delta_spread_sec;
+          if (Math.abs(pad - bound) > 0.05) {
+            err(`segment-sources "${s.id}": \`ad_pad_sec\` ${pad} is not max(0, ad_delta_sec) + ad_delta_spread_sec = ${Math.round(bound * 10) / 10} (ADR-0008's upper bound)`);
+          }
+        }
+        const tier = pad <= ANCHOR_TIME_TOLERANCE_SEC ? "PADDABLE" : "LOCATE-REQUIRED";
+        if (s.ad_tier !== tier && (s.ad_tier === undefined || AD_TIERS.includes(s.ad_tier))) {
+          err(`segment-sources "${s.id}": \`ad_tier\` must be ${JSON.stringify(tier)} for a ${pad} s pad (the ceiling is ANCHOR_TIME_TOLERANCE_SEC, ${ANCHOR_TIME_TOLERANCE_SEC} s); got ${JSON.stringify(s.ad_tier)}`);
+        }
+      }
+    }
+    if (s.ad_tier !== undefined && !AD_TIERS.includes(s.ad_tier)) {
+      err(`segment-sources "${s.id}": \`ad_tier\` must be one of ${AD_TIERS.join(", ")} (or absent); got ${JSON.stringify(s.ad_tier)}`);
     }
   }
   report.sources = sources.size;
@@ -1394,6 +1444,18 @@ export function checkForays(files, { renderedNarrationOnPublished = RENDERED_NAR
       if (!seg) { E(`${at}: unknown segment_id "${item.segment_id}" — not in data/segments.json`); itemsOk = false; continue; }
       if (seenSegmentIds.has(item.segment_id)) E(`${at}: segment "${item.segment_id}" appears twice in one Foray`);
       seenSegmentIds.add(item.segment_id);
+
+      /* DAI-06: a LOCATE-REQUIRED source's pad is wider than the anchor
+       * tolerance, so its clip is skipped at play while locateStep() is
+       * unimplemented (ADR-0008 Decision 5, "authored, not played"). Refused on
+       * a published Foray, reported on a draft, which may wait for the locate
+       * step. Its own lookup: the `src` below exists only on a published Foray. */
+      const adSrc = sources.get(seg.item_id);
+      if (adSrc?.ad_tier === "LOCATE-REQUIRED") {
+        (foray.status === "published" ? E : W)(
+          `${at}: item ${JSON.stringify(item.label ?? item.segment_id)} draws on LOCATE-REQUIRED source "${seg.item_id}" — it would be skipped at play while locateStep() is unimplemented (ADR-0008 decision 5)`
+        );
+      }
 
       if (foray.status === "published") {
         const src = sources.get(seg.item_id);
