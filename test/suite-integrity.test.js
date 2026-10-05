@@ -962,7 +962,7 @@ const FLOORS = {
      others kept the file's count up, which is precisely what a floor cannot
      see. */
   "test/show-search-live.test.js": 10,
-  "test/show-search-ranking.test.js": 16, // P-08 (docs/search-parity-plan.md, 2026-09-12): the MATCH TIER is interposed above the bucket, so the popularity prior can speak across prefix and word-start — four tests (the charting word-start row wins; the bucket still breaks the tie the prior cannot; the exact/mid-word edges hold against the prior; and the real committed index puts nothing worse-banded above the show the listener meant); 12 -> 16 // P-03b (docs/search-parity-plan.md, 2026-09-12): the author bucket was BUILT, measured against the live directory over 20 host-name queries, and refused — two tests pin the refusal on the real Apple strings (`tim ferriss` promotes his audiobooks over his show; `andrew huberman` promotes three SEO-stuffed artist fields over Huberman Lab); 10 -> 12 // client audit (2026-09-12): the server twin is pinned mechanically — backend/src/catalog/searchBreadthShows.ts’s bucket table is read and compared to this file’s, so a fifth bucket cannot land on one side only; 9 -> 10
+  "test/show-search-ranking.test.js": 18, // P-09 rule half (PKG-13, docs/roadmap/shows-search.md): popularityBand reads the curated chart_rank PKG-11a/11b joined in, on the breadth scale — two tests (a ranked curated row beats an unranked one inside the curated tier and both beat breadth; over the real files history puts Hardcore History above Ancient History Fangirl and science puts Science Vs above Science for Sport, with every boundary-tier curated row above every breadth row per README Q30), and the curated `=== 0` pin re-argued as the worst curated band; 16 -> 18 // P-08 (docs/search-parity-plan.md, 2026-09-12): the MATCH TIER is interposed above the bucket, so the popularity prior can speak across prefix and word-start — four tests (the charting word-start row wins; the bucket still breaks the tie the prior cannot; the exact/mid-word edges hold against the prior; and the real committed index puts nothing worse-banded above the show the listener meant); 12 -> 16 // P-03b (docs/search-parity-plan.md, 2026-09-12): the author bucket was BUILT, measured against the live directory over 20 host-name queries, and refused — two tests pin the refusal on the real Apple strings (`tim ferriss` promotes his audiobooks over his show; `andrew huberman` promotes three SEO-stuffed artist fields over Huberman Lab); 10 -> 12 // client audit (2026-09-12): the server twin is pinned mechanically — backend/src/catalog/searchBreadthShows.ts’s bucket table is read and compared to this file’s, so a fifth bucket cannot land on one side only; 9 -> 10
   "test/show-index.test.js": 11,
   /* The search PAGE's chrome, as opposed to the search itself (founder
      reports, 2026-09-13): no catalogue subtitle, the browse furniture hides
@@ -2718,7 +2718,15 @@ const BACKEND_FLOORS = {
      loader stops zeroing a breadth row's folded `taxonomy_node_ids`. Two
      tests over a fixture catalog-breadth.json read: a row with nodes keeps
      them, a row without loads []. */
-  "test/breadthCatalog.test.ts": 20,
+  /* RAISED 20 -> 22 by shows-search PKG-13b (P-09 rule half, server mirror):
+     curated entries take their breadth twin's `chart_rank` via the
+     `apple_collection_id` join and `popularityBand` bands them on the breadth
+     scale. Two tests: the join over a fixture catalog-breadth.json (an
+     `in_curated` twin's rank reaches the curated entry, no twin stays null),
+     and ranked curated > unranked curated > breadth in the comparator. The
+     curated `chart_rank === null` pin is re-argued in place and the
+     agreement test gains "history"/"science". */
+  "test/breadthCatalog.test.ts": 22,
   /* §4.9 end to end (kanban card t_0b1729d6): finalizeForay() validates
      a candidate against the real check-forays.mjs/check-narration.mjs
      and only returns a writable record on a clean pass; stageTiming.ts

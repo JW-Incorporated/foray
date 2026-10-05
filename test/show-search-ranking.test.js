@@ -106,17 +106,127 @@ test("inside one bucket, a curated show beats a breadth show", () => {
      data/catalog-client.json's 220 rows carry no `tier` field at all and are
      the curated set by construction.
 
-     MUTATION: drop the tier term from `compareShowMatches`. "Ada Breadth
-     Show" then wins on `localeCompare` and this fails. */
+     THE `=== 0` PIN THAT USED TO CLOSE THIS TEST IS RE-ARGUED, NOT DROPPED
+     (P-09 rule half, PKG-13, docs/roadmap/shows-search.md). It said "a curated
+     row needs no chart_rank — the tier term has already placed it", which was
+     true of curated-vs-breadth and false of curated-vs-curated: every curated
+     row tied at 0 and the alphabet decided. A curated row is now banded on the
+     breadth scale, so one with NO rank is the WORST curated band
+     (`SHOW_PRIOR_BANDS.length + 1`) — and this fixture is what proves that is
+     safe: "Zeta" is unranked, "Ada" is rank 1 (the BEST breadth band), and the
+     curated row still leads, because the tier term is compared first. That is
+     the ruled loser policy (docs/roadmap/README.md Q30): an unranked curated
+     row may sort below a ranked curated row, never below breadth.
+
+     MUTATION A: drop the tier term from `compareShowMatches`. "Ada Breadth
+     Show" (band 1) then beats "Zeta Curated Show" (band 4) on the prior and
+     this fails.
+     MUTATION B: restore `if (!isBreadthShow(show)) return 0;` at the top of
+     `popularityBand`. The band assertion below fails (0, not 4). */
   const shows = [
     breadth("Ada Breadth Show", 1),
     curated("Zeta Curated Show"),
   ];
   const got = SearchEngine.searchShows("show", shows).map((s) => s.show_id);
   assert.deepStrictEqual(got, ["Zeta Curated Show", "Ada Breadth Show"]);
-  assert.strictEqual(SearchEngine.popularityBand(curated("Zeta Curated Show")), 0,
-    "a curated row needs no chart_rank — the tier term has already placed it");
+  assert.strictEqual(SearchEngine.popularityBand(curated("Zeta Curated Show")),
+    SearchEngine.SHOW_PRIOR_BANDS.length + 1,
+    "a curated row with no rank is the worst CURATED band — and still beats every breadth row, because the tier term comes first");
+  assert.ok(SearchEngine.popularityBand(curated("Zeta Curated Show")) > SearchEngine.popularityBand(shows[0]),
+    "fixture teeth: the curated row is banded WORSE than the breadth row it beats, so only the tier term can put it first");
 });
+
+test("inside the curated tier, a curated show WITH a chart rank beats one without (P-09)", () => {
+  /* P-09 RULE HALF (PKG-13, docs/search-parity-plan.md P-09). The curated
+     rows carry their breadth twin's `chart_rank` since PKG-11a/11b, and
+     `popularityBand` now reads it, so two curated rows in one match tier are
+     ordered by the prior instead of by the letter A.
+
+     THE RANKED ROW IS ALPHABETICALLY LAST, DELIBERATELY: with every curated row
+     tied at band 0 the alphabet alone produced "Aaa Unranked" first, so only
+     the band can produce the assertion below.
+
+     MUTATION: restore `if (!isBreadthShow(show)) return 0;` at the top of
+     `popularityBand`. Both curated rows tie, `compareTitles` puts "Aaa
+     Unranked Curated Show" first, and this fails. */
+  const curatedRanked = (title, chart_rank) => ({ show_id: title, title, chart_rank });
+  const got = SearchEngine.searchShows("show", [
+    curatedRanked("Aaa Unranked Curated Show", null),
+    curatedRanked("Mmm Rank 150 Curated Show", 150),
+    curatedRanked("Zzz Rank 14 Curated Show", 14),
+    breadth("Bbb Breadth Show", 1),
+  ]).map((s) => s.title);
+  assert.deepStrictEqual(got, [
+    "Zzz Rank 14 Curated Show", "Mmm Rank 150 Curated Show", "Aaa Unranked Curated Show", "Bbb Breadth Show",
+  ], "ranked curated, then unranked curated, then breadth — never an unranked curated row below breadth");
+});
+
+test("over the REAL files, history puts Hardcore History above Ancient History Fangirl and science puts Science Vs above Science for Sport", () => {
+  /* P-09's two measured defects, over the real committed
+     `data/catalog-client.json` merged with `data/show-index.tsv` — exactly
+     `app.js:localShowMatches`'s input. Before PKG-13 both pairs were decided
+     by the alphabet: *Ancient History Fangirl* (no chart row) led "history"
+     over *Dan Carlin's Hardcore History* (chart 14), and *Science for Sport
+     Podcast* (no chart row) led "science" over *Science Vs* (chart 18).
+
+     STATED AS A RELATION, NOT "FIRST". Measured 2026-10-04, the rule puts
+     *The Rest Is History* (chart 1) above Hardcore History, and *Materialism*
+     and *ZOE Science & Nutrition* (chart 6 each) above Science Vs — all curated,
+     all in a better band. P-10 names that gap (chart_rank is per-genre and
+     cannot be sharpened); asserting "first" here would pin a claim the data
+     does not support.
+
+     The second half pins the ruled loser policy (docs/roadmap/README.md Q30)
+     on real data: in the boundary tier every curated row — ranked or not —
+     still precedes every breadth row.
+
+     MUTATION A: restore `if (!isBreadthShow(show)) return 0;` in
+     `popularityBand`. The alphabet decides again and the first pair fails.
+     MUTATION B: move the `isBreadthShow` comparison below the popularity band
+     in `compareShowMatches`. Band-1 breadth rows jump the unranked curated
+     ones and the tier-order assertion fails. */
+  const catalog = readJson("data/catalog-client.json");
+  const index = SearchEngine.parseShowIndex(
+    fs.readFileSync(path.join(ROOT, "data/show-index.tsv"), "utf8"));
+  const seen = new Set(catalog.shows.map((s) => s.show_id));
+  const all = catalog.shows.concat(index.rows.filter((r) => !seen.has(r.show_id)));
+
+  for (const [q, winner, loser] of [
+    ["history", "Dan Carlin's Hardcore History", "Ancient History Fangirl"],
+    ["science", "Science Vs", "Science for Sport Podcast"],
+  ]) {
+    const results = SearchEngine.searchShows(q, all);
+    const titles = results.map((s) => s.title);
+    const w = titles.indexOf(winner);
+    const l = titles.indexOf(loser);
+    assert.ok(w >= 0 && l >= 0, `fixture assumption: "${q}" finds both ${winner} and ${loser}`);
+    const wRow = results[w];
+    const lRow = results[l];
+    assert.ok(!SearchEngine.isBreadthShow(wRow) && !SearchEngine.isBreadthShow(lRow),
+      `fixture assumption: both are curated rows`);
+    assert.ok(Number.isFinite(wRow.chart_rank) && lRow.chart_rank === null,
+      `fixture assumption: ${winner} carries a chart_rank and ${loser} does not`);
+    assert.ok(compareTitlesNaive(loser, winner) < 0,
+      `fixture teeth: ${loser} sorts first alphabetically, so only the band can put ${winner} above it`);
+    assert.ok(w < l, `"${q}": ${winner} (#${w + 1}) must rank above ${loser} (#${l + 1})`);
+
+    const boundary = results.filter((s) =>
+      SearchEngine.showMatchTier(SearchEngine.showMatchBucket(SearchEngine.foldDiacritics(s.title), q).bucket) === SearchEngine.SHOW_TIER_BOUNDARY);
+    const firstBreadth = boundary.findIndex((s) => SearchEngine.isBreadthShow(s));
+    const lastCurated = boundary.map((s) => !SearchEngine.isBreadthShow(s)).lastIndexOf(true);
+    assert.ok(firstBreadth > 0, `fixture teeth: "${q}" has breadth rows in the boundary tier`);
+    assert.ok(lastCurated < firstBreadth,
+      `"${q}": ${boundary[lastCurated].title} (curated, band ${SearchEngine.popularityBand(boundary[lastCurated])}) sits below a breadth row — Q30 says never`);
+  }
+});
+
+/* Code-unit order, case-folded: the "the alphabet alone" baseline the teeth
+   assertion above compares against. Not `compareTitles` (unexported). */
+function compareTitlesNaive(a, b) {
+  const x = a.toLowerCase();
+  const y = b.toLowerCase();
+  return x < y ? -1 : x > y ? 1 : 0;
+}
 
 test("the popularity prior is BUCKETED, so two ranks inside one band do not compete across genres", () => {
   /* THE CROSS-GENRE CASE, and the reason this suite exists at all.
@@ -303,6 +413,16 @@ test("over the REAL index, nothing in a worse popularity band outranks the show 
      now. The `worseExists` assertion is the teeth — each list really does
      contain rows the prior bands worse.
 
+     "WORSE" IS (CATALOGUE TIER, BAND), NOT THE BAND ALONE (re-argued by
+     PKG-13, P-09 rule half). Before PKG-13 every curated row was band 0, so
+     comparing raw bands across the two catalogue tiers happened to work. Now a
+     curated row is banded on the breadth scale, and *Software Engineering
+     Daily* (curated, chart 18, band 2) legitimately sits above *The Daily*
+     (breadth, chart 1, band 1): the curated-before-breadth term is compared
+     BEFORE the band, on purpose. So the key is the comparator's own two keys
+     packed most-significant first — the same packing
+     backend/test/breadthCatalog.test.ts's limit-cut test uses.
+
      MUTATION: revert `compareShowMatches` to bucket-first. All four queries go
      red, each naming the rows that jumped the prior. */
   const catalog = readJson("data/catalog-client.json");
@@ -311,6 +431,8 @@ test("over the REAL index, nothing in a worse popularity band outranks the show 
   assert.ok(index.rows.length > 100, "fixture assumption: the committed index decoded");
   const seen = new Set(catalog.shows.map((s) => s.show_id));
   const all = catalog.shows.concat(index.rows.filter((r) => !seen.has(r.show_id)));
+  /* band <= SHOW_PRIOR_BANDS.length + 1 = 4 < 10, so the radix cannot collide. */
+  const priorKey = (s) => (SearchEngine.isBreadthShow(s) ? 10 : 0) + SearchEngine.popularityBand(s);
 
   for (const [q, title] of [
     ["history", "Dan Carlin's Hardcore History"],
@@ -321,10 +443,10 @@ test("over the REAL index, nothing in a worse popularity band outranks the show 
     const results = SearchEngine.searchShows(q, all);
     const at = results.findIndex((s) => s.title === title);
     assert.ok(at >= 0, `fixture assumption: "${q}" still finds ${title} in the committed index`);
-    const band = SearchEngine.popularityBand(results[at]);
-    assert.ok(results.some((s) => SearchEngine.popularityBand(s) > band),
+    const band = priorKey(results[at]);
+    assert.ok(results.some((s) => priorKey(s) > band),
       `"${q}": the list must contain rows the prior bands WORSE, or this test asserts nothing`);
-    const jumped = results.slice(0, at).filter((s) => SearchEngine.popularityBand(s) > band);
+    const jumped = results.slice(0, at).filter((s) => priorKey(s) > band);
     assert.deepStrictEqual(jumped.map((s) => s.title), [],
       `"${q}": these sit above ${title} despite a worse popularity band`);
   }
