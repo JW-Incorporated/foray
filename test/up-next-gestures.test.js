@@ -20,13 +20,27 @@
  *     again after each autoscroll nudge — integration review 2026-10-04), and
  *     the arrows' after-step announces the new position.
  *
+ * And swipe left to remove (PQ-06, #762; player-features.md §3 PQ-06), whose
+ * arithmetic is player/queue-swipe.js (PQ-05, pinned by its own suite):
+ *
+ *  7. a 100 px leftward pull on a row's text block removes the row on
+ *     `pointerup` (lane L2 again), through `removeFromQueue`;
+ *  8. a gesture that moves vertically first is the list scrolling: nothing is
+ *     painted, the page keeps the finger, nothing is written;
+ *  9. a rightward drag never paints and never removes;
+ * 10. after a swipe removal the ✕'s after-step runs: "Removed from Up Next."
+ *     and focus on the ✕ that took the row's place;
+ * 11. the ✕ still removes, beside the swipe (the alternative a pointer-only
+ *     gesture owes keyboard and switch users, WCAG 2.5.1).
+ *
  * Every test names the mutation that kills it (CLAUDE.md: "a green test is not
  * evidence until you have broken it"); each was run and went red.
  *
  * Harness: the node:vm page of test/engine-continuation.test.js, duplicated
  * rather than imported for the reason that suite gives. Its elements remember
  * their listeners. The REAL player/queue-drag.js and player/queue-order.js are
- * published on `window` exactly as player/client.js publishes them — a fake
+ * published on `window` exactly as player/client.js publishes them (and,
+ * for the swipe, the REAL player/queue-swipe.js) — a fake
  * rules object here would be the "fixture more forgiving than the thing it
  * stands for" failure CLAUDE.md lists five times. The drag tests hand
  * `bindUpNextDrag` a scope of rows whose `getBoundingClientRect().top` is
@@ -47,9 +61,11 @@ process.on("unhandledRejection", () => {});
 
 let QUEUE_DRAG = null;
 let QUEUE_ORDER = null;
+let QUEUE_SWIPE = null;
 before(async () => {
   QUEUE_DRAG = await import("../player/queue-drag.js");
   QUEUE_ORDER = await import("../player/queue-order.js");
+  QUEUE_SWIPE = await import("../player/queue-swipe.js");
 });
 
 function makeEl(tag) {
@@ -120,6 +136,7 @@ function mount({ ids = ["a", "b", "c"], hash = "#/queue" } = {}) {
   /* As player/client.js publishes them, at module evaluation. */
   ctx.forayQueueDrag = QUEUE_DRAG;
   ctx.forayQueueOrder = QUEUE_ORDER;
+  ctx.forayQueueSwipe = QUEUE_SWIPE;
   vm.createContext(ctx);
   vm.runInContext(SEARCH_SRC, ctx, { filename: "search-engine.js" });
   vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
@@ -309,4 +326,179 @@ test("a row carried past the screen's edge lands where the finger is in the list
   fire(handles[0], "pointerup", { clientY: 138 });
   assert.deepStrictEqual(m.queueRaw(), ["b", "c", "a"], "the slot follows the list, not the glass");
   assert.strictEqual(m.said(), "Moved to position 3 of 3.", "the arrows' after-step announces where it landed");
+});
+
+/* ==================================================================== */
+/* Swipe left to remove (PQ-06, #762)                                    */
+
+/** #view as the swipe and the ✕ see it: `querySelectorAll` answers from the
+    CURRENT innerHTML, so every repaint (`saveQueueIds` -> `renderQueue`) hands
+    out fresh elements, as a real live view does. Each row's `.info` remembers
+    its listeners and leads to a row whose class list really records; each ✕
+    remembers its listeners and records focus. `focused` is the last element
+    given focus, as `{ attr, id }`. */
+function liveView(m) {
+  const view = m.byId.get("view");
+  const seen = { html: null, infos: [], removes: [] };
+  const out = { focused: null };
+  const listenable = () => ({
+    listeners: {},
+    addEventListener(type, fn) { (this.listeners[type] ||= []).push(fn); },
+  });
+  const build = () => {
+    if (seen.html === view.innerHTML) return seen;
+    seen.html = view.innerHTML;
+    seen.infos = [...seen.html.matchAll(/data-swipe-id="([^"]+)"/g)].map((x) => {
+      const row = { classList: classes(), style: {} };
+      return Object.assign(listenable(), {
+        dataset: { swipeId: x[1] }, row,
+        closest: (sel) => (sel === ".up-next-row" ? row : null),
+        setPointerCapture() {},
+      });
+    });
+    seen.removes = [...seen.html.matchAll(/data-dequeue="([^"]+)"/g)].map((x) => Object.assign(listenable(), {
+      dataset: { dequeue: x[1] }, disabled: false,
+      getAttribute: (a) => (a === "data-dequeue" ? x[1] : null),
+      focus() { out.focused = { attr: "data-dequeue", id: x[1] }; },
+      click() { for (const fn of this.listeners.click || []) fn({ preventDefault() {}, stopPropagation() {} }); },
+    }));
+    return seen;
+  };
+  view.querySelectorAll = (sel) => {
+    const v = build();
+    if (sel === ".up-next-row > .info") return v.infos;
+    if (sel === "[data-dequeue]") return v.removes;
+    return [];
+  };
+  view.querySelector = () => null;
+  out.info = (id) => build().infos.find((i) => i.dataset.swipeId === id);
+  out.remove = (id) => build().removes.find((b) => b.dataset.dequeue === id);
+  return out;
+}
+
+/** A pointer gesture on `el`, one sample every 16 ms: the [x, y] pairs after
+    the press at (x0, y0), then — unless `hold` — the release. Returns whether
+    ANY touchmove was cancelled (did the swipe take the finger from the page). */
+function swipe(el, x0, y0, moves, { hold = false } = {}) {
+  let t = 0;
+  fire(el, "pointerdown", { clientX: x0, clientY: y0, timeStamp: t });
+  let cancelled = false;
+  for (const [x, y] of moves) {
+    t += 16;
+    fire(el, "pointermove", { clientX: x, clientY: y, timeStamp: t });
+    fire(el, "touchmove", { preventDefault() { cancelled = true; } });
+  }
+  const last = moves.length ? moves[moves.length - 1] : [x0, y0];
+  if (!hold) fire(el, "pointerup", { clientX: last[0], clientY: last[1], timeStamp: t + 16 });
+  return cancelled;
+}
+
+test("a 100 px leftward pull on a row's text block removes it on pointerup (PQ-06, #762)", () => {
+  /* MUTATION (run, red): bind the swipe's removal handler to "click" instead
+     of "pointerup" -> the release writes nothing and cp_queue keeps b (lane
+     L2: the removal belongs to the release, never to the click after it).
+     MUTATION 2 (run, red): delete `bindUpNextSwipe($("#view"));` from
+     renderQueue -> the rows render with nothing listening; cp_queue keeps b.
+     MUTATION 3 (run, red): delete `row.classList.add("swiping");` -> the
+     carried row keeps the spring-back easing and lags the finger. */
+  const m = mount();
+  const v = liveView(m);
+  m.ctx.renderQueue();
+  assert.strictEqual((m.view().match(/<span class="swipe-under" aria-hidden="true">Remove<\/span>/g) || []).length, 3,
+    "every row carries the label the swipe reveals, hidden from assistive tech");
+  const info = v.info("b");
+  assert.ok(info, "the swipe listens on the row's text block, keyed by its id");
+  fire(info, "pointerdown", { clientX: 300, clientY: 60, timeStamp: 0 });
+  fire(info, "pointermove", { clientX: 250, clientY: 61, timeStamp: 50 });
+  assert.ok(info.row.classList.contains("swiping"), "past the lock the row is carried");
+  assert.strictEqual(info.row.style.transform, "translateX(-50px)", "the row follows the finger left");
+  fire(info, "pointermove", { clientX: 200, clientY: 61, timeStamp: 100 });
+  assert.deepStrictEqual(m.queueRaw(), ["a", "b", "c"], "nothing is written before the release");
+  fire(info, "pointerup", { clientX: 200, clientY: 61, timeStamp: 400 });
+  assert.deepStrictEqual(m.queueRaw(), ["a", "c"], "the swiped row left Up Next");
+  assert.strictEqual(m.queueWrites(), 1, "one write, through removeFromQueue -> saveQueueIds");
+  assert.ok(!m.view().includes('data-swipe-id="b"'), "the page is a live view of cp_queue: b's row is gone");
+});
+
+test("a gesture that moves vertically first is the list scrolling: nothing moves, nothing is written (PQ-06, #762)", () => {
+  /* MUTATION (run, red): delete `if (swipe.rejected) { reset(); return; }`
+     and `if (!swipe.claimed) return;` from pointermove -> the scroll paints
+     the row (`translateX(-0px)` and `.swiping`). */
+  const m = mount();
+  const v = liveView(m);
+  m.ctx.renderQueue();
+  const info = v.info("a");
+  const cancelled = swipe(info, 300, 60, [[300, 64], [300, 75], [200, 80], [150, 82]], { hold: true });
+  assert.strictEqual(cancelled, false, "the page keeps the finger: it is scrolling");
+  assert.ok(!info.row.classList.contains("swiping"), "the row is never carried, mid-gesture");
+  assert.ok(!info.row.style.transform, "the row never moves, mid-gesture");
+  fire(info, "pointerup", { clientX: 150, clientY: 82, timeStamp: 80 });
+  assert.deepStrictEqual(m.queueRaw(), ["a", "b", "c"], "a long leftward pull after a vertical start removes nothing");
+  assert.strictEqual(m.queueWrites(), 0);
+});
+
+test("a rightward drag never paints and never removes (PQ-06, #762)", () => {
+  /* MUTATION (run, red): replace `g.endSwipe(swipe)` in the pointerup handler
+     with `{ remove: true }` -> the rightward drag removes c: the removal must
+     be the rules' decision, never the binder's. MUTATION 2 (run, red): drop
+     `if (!swipe.claimed) return;` from pointermove -> the unclaimed rightward
+     drag is painted `.swiping`. MUTATION 3 (run, red): drop `swipe.claimed && `
+     from the touchmove listener -> an unclaimed drag cancels the page's
+     touchmove and the list under the finger cannot pan. */
+  const m = mount();
+  const v = liveView(m);
+  m.ctx.renderQueue();
+  const info = v.info("c");
+  const cancelled = swipe(info, 100, 140, [[150, 140], [220, 141], [330, 141]], { hold: true });
+  assert.strictEqual(cancelled, false, "a rightward drag never takes the finger from the page");
+  assert.ok(!info.row.style.transform, "a rightward drag paints nothing, mid-gesture");
+  assert.ok(!info.row.classList.contains("swiping"), "and carries nothing");
+  fire(info, "pointerup", { clientX: 330, clientY: 141, timeStamp: 64 });
+  assert.deepStrictEqual(m.queueRaw(), ["a", "b", "c"], "rightward never removes");
+  assert.strictEqual(m.queueWrites(), 0);
+});
+
+test("after a swipe removal: 'Removed from Up Next.' and focus on the ✕ that took its place (PQ-06, #762)", () => {
+  /* MUTATION (run, red): delete `afterQueueRemove(index);` from the swipe's
+     pointerup handler -> nothing is announced and focus is left behind.
+     MUTATION 2 (run, red): pass `index + 1` -> focus lands on c's ✕. */
+  const m = mount();
+  const v = liveView(m);
+  m.ctx.renderQueue();
+  swipe(v.info("a"), 300, 20, [[280, 21], [240, 21], [190, 21]]);
+  assert.deepStrictEqual(m.queueRaw(), ["b", "c"]);
+  assert.strictEqual(m.said(), "Removed from Up Next.", "the removal is said, politely (the shared status region)");
+  assert.deepStrictEqual(v.focused, { attr: "data-dequeue", id: "b" }, "focus goes to the ✕ of the row that took its place");
+  /* A pull short of the threshold, released slowly, springs back. */
+  const info = v.info("b");
+  fire(info, "pointerdown", { clientX: 300, clientY: 20, timeStamp: 0 });
+  fire(info, "pointermove", { clientX: 250, clientY: 20, timeStamp: 400 });
+  fire(info, "pointermove", { clientX: 250, clientY: 20, timeStamp: 800 });
+  assert.strictEqual(info.row.style.transform, "translateX(-50px)");
+  fire(info, "pointerup", { clientX: 250, clientY: 20, timeStamp: 900 });
+  assert.ok(!info.row.style.transform && !info.row.classList.contains("swiping"), "short of 96 px, slow: it springs back");
+  assert.deepStrictEqual(m.queueRaw(), ["b", "c"], "and stays");
+});
+
+test("the ✕ still removes beside the swipe, with the same after-step (PQ-06, #762)", () => {
+  /* MUTATION (run, red): delete the `[data-dequeue]` binder from
+     bindUpNextReorder -> the ✕ click does nothing and cp_queue keeps b.
+     MUTATION 2 (run, red): delete `info.addEventListener("pointercancel",
+     cancel);` -> the cancelled row stays carried and translated. */
+  const m = mount();
+  const v = liveView(m);
+  m.ctx.renderQueue();
+  v.remove("b").click();
+  assert.deepStrictEqual(m.queueRaw(), ["a", "c"], "the ✕ removes its row");
+  assert.strictEqual(m.said(), "Removed from Up Next.");
+  assert.deepStrictEqual(v.focused, { attr: "data-dequeue", id: "c" }, "focus goes to the ✕ that took its place");
+  /* A swipe the system cancels writes nothing and springs the row back. */
+  const info = v.info("a");
+  fire(info, "pointerdown", { clientX: 300, clientY: 20, timeStamp: 0 });
+  fire(info, "pointermove", { clientX: 180, clientY: 20, timeStamp: 50 });
+  assert.ok(info.row.classList.contains("swiping"), "precondition: a carried row");
+  fire(info, "pointercancel", {});
+  assert.ok(!info.row.classList.contains("swiping") && !info.row.style.transform, "a cancel springs the row back");
+  fire(info, "pointerup", { clientX: 180, clientY: 20, timeStamp: 60 });
+  assert.deepStrictEqual(m.queueRaw(), ["a", "c"], "a release after the cancel finds no gesture to commit");
 });

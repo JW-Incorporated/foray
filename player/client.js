@@ -120,6 +120,7 @@ import {
   bubblePosition, bubbleContentOffset,
 } from "./strip-scrub-gesture.js";
 import { startDrag, moveDrag, endDrag, dragOffset, claimsTouch } from "./sheet-drag-dismiss.js";
+import * as queueSwipe from "./queue-swipe.js";
 import { createDurableStore, preferencesTier, vaultTier, deferredPrefixesFor, engineDataDeletion } from "./durable-store.js";
 import { OWNED_PREFIXES } from "./engine-contract.js";
 import { createNativeEngine } from "./native-engine.js";
@@ -986,6 +987,13 @@ const directory = createForayDirectory({
   },
 });
 window.forayDirectory = directory;
+/* Up Next's swipe-to-remove ARITHMETIC (#762, PQ-05/PQ-06), for app.js the
+   same way as the drag rules: app.js owns the listeners on each row's text
+   block and the cp_queue write; this module only says how far left to paint
+   the row and, on release, whether it leaves (commit on pointerup, DECISIONS
+   2026-09-23 lane L2). Play next / Clear's order is already published above
+   as `window.forayQueueOrder`. */
+window.forayQueueSwipe = queueSwipe;
 /**
  * The page's own `data` entry (FD-01): the boot-time source of each document as
  * app.js saw it, and the web's `stale-shell` pin. Same shape and the same

@@ -1151,8 +1151,10 @@ const FLOORS = {
      player/queue-drag.js and queue-order.js — the handle and its hint, the
      6 px lock, commit on pointerup only, nothing on a tap or a cancel, the
      slot follows the list under autoscroll. Each test is one deleted line
-     from a gesture that reorders the wrong row or none. */
-  "test/up-next-gestures.test.js": 6, // PQ-04 (#762)
+     from a gesture that reorders the wrong row or none. Swipe to remove
+     (PQ-06) adds the 8 px lock's two refusals (a scroll, a rightward drag),
+     removal on pointerup only, the ✕'s after-step, and the ✕ kept. */
+  "test/up-next-gestures.test.js": 11, // PQ-04 (#762); 6 -> 11 // PQ-06 (#762): swipe left to remove (commit on pointerup, vertical-first and rightward refused, announcement + focus, the ✕ still works)
   "test/engine-continuation.test.js": 10, // PQ-07 (#762): Play next, drag reorder and Clear each re-send the engine's plan
   "test/engine-developer-rows.test.js": 14, // NE-22d: the engine's four Developer rows in the drawer
   "test/up-next-autoadvance.test.js": 25, // PQ-11 (#691): the tail after the list (first pick, third is the stretch with the bridge line + announcement, no repeats, switch off stops it); 21 -> 25 // audit round 3 (lane L1): app-1-9 the finished row leaves Up Next with the switch off; 20 -> 21 // founder, 2026-09-24, reversing lane L3's question-9 default: a play from the page moves THAT row to the top and ⏭ drops only the skipped episode (+1: a refused play moves nothing); no wrap-around, previous = restart past the window (p-car-5); 11 -> 19 -> 20 // // 2026-09-22: rewritten for the continuous-playback ruling (on by default, Up Next first, then the chosen list, unplayable rows passed over); 6 -> 11

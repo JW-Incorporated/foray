@@ -275,3 +275,40 @@ next. The player module stays exactly as ignorant of "Up Next" as it is
 today — Stage 1's separation between the two "queue" concepts (§3) is
 unchanged by this addendum.
 
+## 9. Stage 4 — the tools (2026-09, #762)
+
+*The founder, 2026-09-24, on issue #762: "Build it after native engine."
+Specified as tasks PQ-01..PQ-08 in `docs/roadmap/player-features.md` §3;
+closes round-2 audit finding `p-impatient-8` (19 taps to move the bottom of a
+20-deep queue to the top, and no drag, Play next, swipe or Clear).*
+
+**The engine never owns `cp_queue`.** #762 waited for "the native engine owns
+the queue"; under the shipped contract it never will. The page owns Up Next
+and every decision about what plays next; the engine only walks the hops the
+page precomputes (`docs/native-engine-plan.md` §5.5). So every tool below is
+page-side, writes through the one writer (`saveQueueIds` in `app.js`), and
+that write re-sends the engine's plan (`refreshEpisodeNavigation` ->
+`sendContinuation`), pinned for each tool by `test/engine-continuation.test.js`
+(PQ-07). The ORDER each tool produces is a pure rule in a player module
+(`player/queue-order.js`, `queue-drag.js`, `queue-swipe.js`) published on
+`window` by `player/client.js`; `app.js` owns the listeners and the write.
+
+**Drag to reorder (PQ-03, PQ-04).** A ⋮⋮ handle on every row carries it to
+another slot. It claims the finger after 6 px, follows the list under
+autoscroll, and commits on `pointerup` only (DECISIONS 2026-09-23, lane L2);
+a tap or a cancelled gesture writes nothing. The ↑/↓ arrows remain, one step
+each, for keyboards and screen readers (lane L3).
+
+**Play next (PQ-01, PQ-02).** On every Up Next row and on the episode page:
+the episode moves (or is added) directly after the playing row, or to the
+head with nothing playing. Disabled where it would change nothing.
+
+**Swipe to remove (PQ-05, PQ-06).** Pull a row's text block left past 96 px,
+or flick it past 32 px, and it leaves Up Next on release, with the ✕'s
+announcement ("Removed from Up Next.") and focus on the ✕ that took its place.
+A vertical start is the list scrolling, for good; a rightward drag never
+counts. The ✕ stays, as the non-gesture way.
+
+**Clear (PQ-01, PQ-02).** In the page head when two or more rows are queued:
+empties Up Next except the playing row, which leaves when it ends as it always
+has, and says how many went ("Removed 2 episodes from Up Next.").
