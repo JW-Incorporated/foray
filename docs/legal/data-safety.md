@@ -353,6 +353,10 @@ Applies to **User ID**, **Product Interaction** and **Other User Content**.
     `@capacitor/preferences` (8.0.1), `@capacitor/splash-screen` (8.0.2) and
     `@capacitor/status-bar` (8.0.3) ship none. Of those, only Preferences uses
     a Required Reason API (`UserDefaults`), and the app manifest declares it.
+    `@capacitor/share` (8.0.3, added 2026-10-05 for the native share sheet,
+    issue #1071) ships none and needs none: its Swift imports only Foundation
+    and Capacitor and presents the system share sheet, its Android manifest
+    asks for no permission, and nothing is sent to us when a listener shares.
     ONNX Runtime 1.20.0 (foray-tts) ships none either. If the native shell
     ever adds the Supabase Swift SDK, it needs its own manifest entry;
     `docs/marketing/05-legal-risk-memo.md` flagged a Supabase-SDK manifest as
