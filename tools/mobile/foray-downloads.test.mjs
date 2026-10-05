@@ -235,3 +235,172 @@ test("the package is a self-contained SwiftPM plugin with XCTests for each polic
     assert.match(tests, new RegExp(`func ${name}\\(\\)`), name);
   }
 });
+
+/* ─────────── PQ-22 (#29): the Android half — DownloadManager ───────────
+ *
+ * Same honesty as above, one platform over. No JDK runs in this suite, and
+ * until PQ-21 declares the plugin in mobile/package.json `cap sync` never
+ * includes `:foray-downloads`, so android-build.yml does not compile this Java
+ * either. These pins hold the SOURCE facts: the name, the seven methods and
+ * three events against download-bridge.js, the Gradle/manifest/package
+ * agreement, the destination (never internal storage handed to
+ * DownloadManager; the finished file in the no-backup directory), the exported
+ * completion receiver, the cellular switch, the 403 mapping, the 2 s poll,
+ * and the redirect cap's Android truth (five, fixed, documented). */
+
+const ANDROID = path.join(PLUGIN, "android");
+const JAVA_DIR = path.join(ANDROID, "src", "main", "java", "ai", "jwlabs", "foura", "downloads");
+const jPlugin = () => code(read(JAVA_DIR, "ForayDownloadsPlugin.java"));
+const jStore = () => code(read(JAVA_DIR, "DownloadStore.java"));
+const jRules = () => code(read(JAVA_DIR, "DownloadRules.java"));
+const allJava = () => [jPlugin(), jStore(), jRules()].join("\n");
+
+test("Android: the plugin is ForayDownloads with exactly download-bridge.js's seven calls", () => {
+  /* MUTATION: `@CapacitorPlugin(name = "ForayDownload")` -> every call from the
+     page lands on no plugin on Android. RUN.
+     MUTATION: delete the `@PluginMethod` above `fileSrc` -> the set differs. RUN. */
+  assert.match(jPlugin(), /@CapacitorPlugin\(name = "ForayDownloads"\)\s*public class ForayDownloadsPlugin extends Plugin/);
+  assert.match(jRules(), /static final String PLUGIN_NAME = "ForayDownloads";/);
+  const names = [...jPlugin().matchAll(/@PluginMethod\s+public void (\w+)\(PluginCall call\)/g)].map((m) => m[1]).sort();
+  assert.deepEqual(names, bridgeMethods());
+});
+
+test("Android: the three events are download-bridge.js's, each emitted through notifyListeners", () => {
+  /* MUTATION: EVENT_DONE = "downloadComplete" -> the page never hears an
+     Android download finish. RUN. */
+  const src = jRules();
+  const declared = ["EVENT_PROGRESS", "EVENT_DONE", "EVENT_FAILED"].map((k) => {
+    const m = new RegExp(`static final String ${k} = "([a-zA-Z]+)";`).exec(src);
+    assert.ok(m, `${k} not declared`);
+    return m[1];
+  });
+  assert.deepEqual(declared, [...DOWNLOAD_EVENTS]);
+  for (const k of ["EVENT_PROGRESS", "EVENT_DONE", "EVENT_FAILED"]) {
+    assert.match(jStore(), new RegExp(`emit\\(DownloadRules\\.${k},`), `the store never emits ${k}`);
+  }
+  assert.match(jPlugin(), /store\.setEmitter\(\(name, payload\) -> notifyListeners\(name, payload\)\)/);
+  /* The payload keys download-store.js's reportFromEvent reads. */
+  assert.match(jStore(), /p\.put\("id", id\);\s*p\.put\("bytes", [^;]+\);\s*p\.put\("total", /);
+  assert.match(jStore(), /p\.put\("id", id\);\s*p\.put\("path", dest\.getAbsolutePath\(\)\);\s*p\.put\("bytes", bytes\);/);
+  assert.match(jStore(), /p\.put\("id", id\);\s*p\.put\("reason", reason\);\s*p\.put\("status", /);
+});
+
+test("Android: package.json, build.gradle, the manifest and the Java package all name the module", () => {
+  /* MUTATION: `namespace = "ai.jwlabs.foura.download"` -> R and the manifest
+     resolve into a package the Java is not in. RUN. */
+  const json = JSON.parse(read(PLUGIN, "package.json"));
+  assert.equal(json.capacitor?.android?.src, "android", "cap sync discovers the Android module through this");
+  assert.ok(json.files.includes("android/src/main/") && json.files.includes("android/build.gradle"));
+  assert.doesNotMatch(json.description, /not yet here/, "the description no longer says the Android half is missing");
+  const gradle = read(ANDROID, "build.gradle");
+  const ns = /^\s*namespace\s*=?\s*["']([\w.]+)["']/m.exec(gradle)?.[1];
+  assert.equal(ns, "ai.jwlabs.foura.downloads");
+  for (const f of ["ForayDownloadsPlugin.java", "DownloadStore.java", "DownloadRules.java"]) {
+    assert.equal(/^package\s+([\w.]+)\s*;/m.exec(read(JAVA_DIR, f))?.[1], ns, f);
+  }
+  assert.equal(path.relative(path.join(ANDROID, "src", "main", "java"), JAVA_DIR).split(path.sep).join("."), ns);
+  const manifest = read(ANDROID, "src", "main", "AndroidManifest.xml");
+  assert.match(manifest, /<manifest xmlns:android="http:\/\/schemas\.android\.com\/apk\/res\/android">/);
+  assert.doesNotMatch(manifest, /<uses-permission|<receiver|<service/, "the plugin declares nothing");
+  assert.match(code(gradle), /implementation project\(':capacitor-android'\)/);
+});
+
+test("Android: DownloadManager lands in the external files dir, never internal storage, and the file moves to no-backup", () => {
+  /* MUTATION: `request.setDestinationUri(Uri.fromFile(new File(context.getFilesDir(), ...)))`
+     -> DownloadProvider throws SecurityException "Unsupported path" on enqueue. RUN.
+     MUTATION: drop `moveInto(landed, dest)` and keep the landed file -> it sits in
+     Auto Backup's default set. RUN. */
+  const src = allJava();
+  assert.doesNotMatch(src, /setDestinationUri\s*\(/);
+  assert.doesNotMatch(src, /getFilesDir\s*\(/);
+  assert.match(jStore(), /request\.setDestinationInExternalFilesDir\(context, null, DownloadRules\.DIRECTORY_NAME \+ "\/" \+ file\)/);
+  assert.match(jStore(), /new File\(context\.getNoBackupFilesDir\(\), DownloadRules\.DIRECTORY_NAME\)/);
+  assert.match(jStore(), /File base = context\.getExternalFilesDir\(null\);/);
+  const complete = /private void complete\([\s\S]*?\n    \}/.exec(jStore())?.[0] ?? "";
+  assert.match(complete, /bytes = moveInto\(landed, dest\);/);
+  assert.match(complete, /File dest = storedFile\(file\);/);
+  assert.match(jRules(), /static final String DIRECTORY_NAME = "foray-downloads";/);
+  assert.match(jRules(), /static final String INDEX_FILE_NAME = "index\.json";/);
+  assert.match(jStore(), /new AtomicFile\(new File\(storeDir\(\), DownloadRules\.INDEX_FILE_NAME\)\)/);
+});
+
+test("Android: the completion receiver is registered through ContextCompat, exported, for ACTION_DOWNLOAD_COMPLETE", () => {
+  /* MUTATION: ContextCompat.RECEIVER_NOT_EXPORTED -> the download provider (another
+     app) cannot reach the receiver on API 34, so completion waits for the poll. RUN. */
+  assert.match(jStore(), /ContextCompat\.registerReceiver\(context, receiver,\s*new IntentFilter\(DownloadManager\.ACTION_DOWNLOAD_COMPLETE\), ContextCompat\.RECEIVER_EXPORTED\)/);
+  assert.doesNotMatch(allJava(), /RECEIVER_NOT_EXPORTED/);
+  assert.match(code(read(ANDROID, "build.gradle")), /implementation "androidx\.core:core:/);
+});
+
+test("Android: allowCellular reaches setAllowedOverMetered and setAllowedOverRoaming, and defaults off", () => {
+  /* MUTATION: `call.getBoolean("allowCellular", true)` -> a Wi-Fi-only listener's
+     download runs on LTE. RUN. */
+  assert.match(jPlugin(), /call\.getBoolean\("allowCellular", false\)/);
+  assert.match(jStore(), /request\.setAllowedOverMetered\(allowCellular\);/);
+  assert.match(jStore(), /request\.setAllowedOverRoaming\(allowCellular\);/);
+  assert.doesNotMatch(allJava(), /setAllowedOver(Metered|Roaming)\(true\)/);
+  assert.match(jStore(), /request\.addRequestHeader\("User-Agent", ua\)/);
+  assert.match(jPlugin(), /call\.getString\("userAgent"\)/);
+});
+
+test("Android: a 403 in COLUMN_REASON is unplayable-here, and the failure reasons are iOS's strings", () => {
+  /* MUTATION: `if (reason == 403) return "http 403";` -> fails, and the page
+     would offer a retry that can never work. RUN. */
+  const src = jRules();
+  assert.match(src, /if \(reason == 403\) return REASON_UNPLAYABLE_HERE;/);
+  assert.match(src, /case DownloadManager\.ERROR_TOO_MANY_REDIRECTS:\s*return REASON_TOO_MANY_REDIRECTS;/);
+  assert.match(jStore(), /int reason = c\.getInt\(colReason\);\s*fail\(id, transfer, DownloadRules\.failureReason\(reason\), DownloadRules\.httpStatus\(reason\)\);/);
+  assert.match(jStore(), /c\.getColumnIndexOrThrow\(DownloadManager\.COLUMN_REASON\)/);
+  /* Every reason both platforms name is the same string on both. */
+  const swift = Object.fromEntries([...policy().matchAll(/public static let reason(\w+) = "([^"]+)"/g)]
+    .map((m) => [m[1].replace(/([a-z])([A-Z])/g, "$1_$2").toUpperCase(), m[2]]));
+  const java = Object.fromEntries([...src.matchAll(/static final String REASON_(\w+) = "([^"]+)";/g)].map((m) => [m[1], m[2]]));
+  for (const k of ["TOO_MANY_REDIRECTS", "UNPLAYABLE_HERE", "BAD_URL", "CANCELLED", "NOT_SAVED", "INTERRUPTED"]) {
+    assert.ok(java[k], `REASON_${k} missing on Android`);
+    assert.equal(java[k], swift[k], `REASON_${k} differs between the platforms`);
+  }
+});
+
+test("Android: progress is polled every 2 s while a download runs, and the poll stops when none does", () => {
+  /* MUTATION: PROGRESS_POLL_MS = 200L -> a ten-row queue queries DownloadManager
+     fifty times a second. RUN. */
+  assert.match(jRules(), /static final long PROGRESS_POLL_MS = 2000L;/);
+  assert.match(jStore(), /worker\.scheduleWithFixedDelay\(this::tick, DownloadRules\.PROGRESS_POLL_MS,\s*DownloadRules\.PROGRESS_POLL_MS, TimeUnit\.MILLISECONDS\)/);
+  const tick = /private void tick\(\) \{[\s\S]*?\n    \}/.exec(jStore())?.[0] ?? "";
+  assert.match(tick, /if \(hasInFlight\(\)\) return;/);
+  assert.match(tick, /poller\.cancel\(false\)/);
+  assert.match(jStore(), /status == DownloadManager\.STATUS_RUNNING\) \{\s*progress\(/);
+});
+
+test("Android: no HEAD request, file names are the id's SHA-256, and the 5-redirect cap is documented as fixed", () => {
+  /* MUTATION: DOWNLOAD_MANAGER_MAX_REDIRECTS = 8 -> fails: the provider's cap is
+     five and cannot be raised, so claiming eight on Android is false. RUN. */
+  assert.doesNotMatch(allJava(), /"HEAD"/);
+  assert.match(jRules(), /MessageDigest\.getInstance\("SHA-256"\)/);
+  assert.match(jRules(), /return sb\.append\("\.bin"\)\.toString\(\);/);
+  assert.match(jRules(), /static final int DOWNLOAD_MANAGER_MAX_REDIRECTS = 5;/);
+  const raw = read(JAVA_DIR, "DownloadRules.java");
+  assert.match(raw, /THE REDIRECT CAP IS iOS-ONLY/);
+  assert.match(raw, /FIXED cap of five/);
+});
+
+test("Android: removeAll deletes both directories and every transfer; remove drops the row first; JUnit covers the rules", () => {
+  /* MUTATION: removeAll clears the index but skips `deleteTree(storeDir())` ->
+     "Delete my data" leaves the audio on the phone. RUN. */
+  const src = jStore();
+  const removeAll = /void removeAll\(\) throws IOException \{[\s\S]*?\n    \}/.exec(src)?.[0] ?? "";
+  assert.match(removeAll, /items\.clear\(\);/);
+  assert.match(removeAll, /manager\.remove\(ids\);/);
+  assert.match(removeAll, /deleteTree\(landing\)/);
+  assert.match(removeAll, /deleteTree\(storeDir\(\)\)/);
+  const remove = /boolean remove\(String id\) \{[\s\S]*?\n    \}/.exec(src)?.[0] ?? "";
+  const dropped = remove.indexOf("items.remove(id)");
+  const stopped = remove.indexOf("manager.remove(transfer)");
+  assert.ok(dropped >= 0 && stopped >= 0 && dropped < stopped, "the row goes before the transfer is stopped");
+  const junit = read(ANDROID, "src", "test", "java", "ai", "jwlabs", "foura", "downloads", "DownloadRulesTest.java");
+  for (const name of ["onlyHttpAndHttpsSourcesAreAccepted", "theFileNameIsTheIdsSha256", "a403IsUnplayableHere",
+    "tooManyRedirectsIsTheSameReasonIosUses", "theUserAgentIsOnePrintableLine"]) {
+    assert.match(junit, new RegExp(`@Test\\s+public void ${name}\\(\\)`), name);
+  }
+  assert.match(code(read(ANDROID, "build.gradle")), /testImplementation "junit:junit:4\.13\.2"/);
+});

@@ -1657,7 +1657,7 @@ const FLOORS = {
      probe never HEAD, the eight-redirect cap, 403 = unplayable-here, usage from
      the index (no DiskSpace API, #1014). Uncompiled until PQ-21 declares the
      plugin, so these pins ARE the gate. New suite. */
-  "tools/mobile/foray-downloads.test.mjs": 15, // PQ-20 (#29)
+  "tools/mobile/foray-downloads.test.mjs": 25, // PQ-20 (#29); 15 -> 25 // PQ-22 (#29): the Android half -- name, seven @PluginMethods and three events against download-bridge.js, gradle/manifest/package agreement, DownloadManager lands in getExternalFilesDir (never setDestinationUri/getFilesDir) and the file moves to getNoBackupFilesDir, the exported ContextCompat receiver, allowCellular to metered+roaming, 403 = unplayable-here with iOS's reason strings, the 2 s poll, the fixed 5-redirect cap documented, removeAll deletes both directories
   "tools/mobile/foray-tts.test.mjs": 74, // audit round 3 integration: the real post-merge count, 66 -> 74 // fix/narration-1x (2026-09-24): rate 1 is each platform's normal rate — passed through, Web Speech 1, Android setSpeechRate(1.0f), iOS AVSpeechUtteranceDefaultSpeechRate; 62 -> 66 // #685 (2026-09-13): a refusal carries the numbers the phone did produce, and a native payload cannot spread its way into a success; 60 -> 62 // K-01 (2026-09-12): the probe is a SEPARATE call with no Web Speech ladder under it; 53 -> 60 // L-05 (2026-09-12): pause/resume/stop/state on all three paths; 45 -> 53
   /* The foreground service's web half (#27's Android half, on #37). Zero slack, and
      for the reason `media-session.test.js` above gives: what this suite guards is
