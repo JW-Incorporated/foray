@@ -125,6 +125,7 @@ const FLOORS = {
      exist only to pin that separation. */
   "player/download-store.test.js": 16, // PQ-16 (#29) // integration review (2026-10-04): the iPhone path is percent-encoded into its file:// URL (Application Support has a space; URL(string:) is nil for it on iOS 15/16), a late progress tick never un-finishes a done row, and reportFromEvent maps the bridge events onto record statuses; 13 -> 16
   "player/download-bridge.test.js": 12, // PQ-17 (#29) // integration review: a resolved answer without ok reads as ok: true; 9 -> 10 // integration review (2026-10-04): an answered call clears its deadline, and userAgentFor(build) replaces the never-set window.__forayBuild; 10 -> 12
+  "player/download-play.test.js": 4, // PQ-19 (#29)
   "player/episode-progress.test.js": 23, // 2026-09-22 audit theme L: `episodeProgress`, the one reading of a stored position (played / in-progress / sampled / unplayed) that Jump back in and the episode rows share, on position-store's own thresholds; 19 -> 23
   /* 2026-09-22 (audit L2, founder report 3): which build wrote a diagnostics
      record — the web deploy id on both hosts and the native build number in the
@@ -365,7 +366,7 @@ const FLOORS = {
      ported. reference-engine.test.js is protocol v1 over the real manager: the
      contract family, the 1 Hz / hidden event rule, the warm handover. Zero slack. */
   "player/native-engine.test.js": 18,
-  "player/native-facades.test.js": 16,
+  "player/native-facades.test.js": 18, // PQ-19 (#29): a downloaded pick plays its local file while the engine's pointer row is built from the original item; the suite already stood at 17 against 16, so the floor is set exact: 16 -> 18
   "player/parity/reference-engine.test.js": 14,
   /* NE-22: the real client.js booted in a pretend iOS shell over the
      reference engine — no <audio> or jingle element (even while hello is

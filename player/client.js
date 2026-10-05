@@ -1453,6 +1453,13 @@ function setSheetDragOffset(px) {
 /* ---------- state -> DOM ---------- */
 
 let current = null;
+/* The downloaded copy this play is trying (PQ-19, #29): `{ item, opts }` — the
+   ORIGINAL item and the caller's options — while the play that chose the local
+   file is the current one, else null. It is the missing-file degrade's single
+   use ticket: `degradeLocalPlay` takes it and nulls it before retrying, and
+   the retry is `noLocal`, so it can never set another. One failed file, one
+   fallback to streaming, never a loop. */
+let localAttempt = null;
 let scrubbing = false;
 /* A FOCUSED SLIDER IS FROZEN, BUT ITS NEXT STEP IS TAKEN FROM THE AUDIO (audit
    round 2 review of a11y-7). `paintPage` stops writing the value while the
@@ -2414,14 +2421,25 @@ function setNowPlaying(item, why) {
   // reliable for this listener (#22's corollary), so scrubbing is exact — but
   // any timestamp we might later show from chapters is not. Say nothing when
   // it's exact; say something plain when it isn't.
-  const { precision } = seekPrecision(item, { isLocalFile: false, source: OWN });
-  ui.note.textContent = precision === EXACT ? "" : "Timings on this show are approximate.";
-  ui.note.hidden = !ui.note.textContent;
+  paintSeekNote();
   /* Something else is current now, so neither the last item's failure nor its
      stall describes it. */
   buffering = false;
   setPlayFailure(null);
   render();
+}
+
+/* The scrub affordance `setNowPlaying` describes, painted.
+   THE FLAG IS THE CURRENT ITEM'S (PQ-19, #29). A downloaded file has a frozen
+   timeline, so `seekPrecision` answers exact for it whatever the feed does.
+   `play()` learns whether this play is the local file only AFTER
+   `setNowPlaying` has run (the source is chosen just before the queue is
+   set), so it marks `current` and calls this again — which is why the note
+   reads `current`, not an argument. */
+function paintSeekNote() {
+  const { precision } = seekPrecision(current, { isLocalFile: Boolean(current?.isLocalFile), source: OWN });
+  ui.note.textContent = precision === EXACT ? "" : "Timings on this show are approximate.";
+  ui.note.hidden = !ui.note.textContent;
 }
 
 /* ---------- the notes in the sheet (audit round 2, p-switcher-2) ----------
@@ -4341,6 +4359,40 @@ function wireMediaListeners() {
   }
 }
 
+/* ---------- playing the downloaded copy (PQ-19, #29) ---------- */
+
+/** The item the queue should carry for this play: `localPlayable(item, src)`
+    over `playSource(item, record, {platform})`, or the item itself — when the
+    caller said `noLocal`, when app.js has not published the downloads surface,
+    or when reading the record throws (a broken store is a stream, not a
+    refused play). `platform` is the build stamp's answer, then Capacitor's,
+    then "web" (which plays the bridge's `webSrc`, like Android). */
+function localSourceFor(item, opts) {
+  try {
+    const dl = window.forayDownloads;
+    if (opts?.noLocal || !dl?.store || typeof dl.recordFor !== "function") return item;
+    const platform = dl.platform || window.Capacitor?.getPlatform?.() || "web";
+    const src = dl.store.playSource(item, dl.recordFor(item.id), { platform });
+    return dl.store.localPlayable(item, src) || item;
+  } catch (_) {
+    return item;
+  }
+}
+
+/** The missing-file degrade: spend the one ticket `play()` left in
+    `localAttempt`, tell app.js the copy is gone (`onMissing` marks the record
+    and says "streaming instead"), and play the ORIGINAL item again with
+    `noLocal`. Null when there is no ticket — the retry already ran, or the
+    current play never chose a file — so nothing here can call itself twice. */
+function degradeLocalPlay() {
+  const attempt = localAttempt;
+  if (!attempt || current?.id !== attempt.item.id) return null;
+  localAttempt = null;
+  try { window.forayDownloads?.onMissing?.(attempt.item.id); } catch (_) { /* the record is app.js's; streaming is still owed */ }
+  const opts = attempt.opts && typeof attempt.opts === "object" ? attempt.opts : {};
+  return ForayPlayer.play(attempt.item, { ...opts, noLocal: true });
+}
+
 /* ---------- public surface ---------- */
 
 const ForayPlayer = {
@@ -4448,13 +4500,49 @@ const ForayPlayer = {
       const lastRec = makeLastEpisode(item);
       if (lastRec) writeLastEpisode(storage, lastRec);
     }
-    manager.setQueueFromPick(item);
+    /* THE DOWNLOADED COPY, WHEN THERE IS ONE (PQ-19, #29). `playSource` is the
+       rule (download-store.js): a `done` record with a path plays from the
+       file — a `file://` URL on iOS, the bridge's `webSrc` elsewhere — and
+       anything else is the item's own `audio_url`, so a download that is not
+       ready never breaks a play streaming would have served. `localPlayable`
+       is the item the QUEUE carries: the local URL in `audio_url`, the remote
+       one kept as `source_audio_url`, and `isLocalFile`; the same object when
+       the source is remote.
+       ONLY THE AUDIO GETS IT. `setNowPlaying` above and the pointer row keep
+       the ORIGINAL item — a ribbon restored tomorrow must point at the
+       episode, not at a file that may have been evicted since — and the native
+       facade is handed the original for its `lastEpisodeRow` for the same
+       reason. `current` takes only the flag, for the seek note.
+       Off the shell `window.forayDownloads.recordFor` answers null until
+       app.js fills it in, and `noLocal` is the missing-file retry below. */
+    const playable = localSourceFor(item, opts);
+    localAttempt = null;
+    if (playable !== item && playable.isLocalFile) {
+      localAttempt = { item, opts };
+      if (current === item) {
+        current = { ...item, isLocalFile: true };
+        paintSeekNote();
+      }
+    }
+    manager.setQueueFromPick(playable, { lastEpisodeItem: item });
+    let loadError = null;
     playsInFlight++;
     try {
       await manager.play(0, startOffset != null ? { startOffset } : undefined);
+    } catch (err) {
+      loadError = { err };
     } finally {
       playsInFlight--;
     }
+    /* THE FILE WAS NOT THERE (PQ-19). The OS can clear it, the listener can
+       free space, a restore can drop it: a local load that rejects, or lands
+       the manager in `idle` (`E.error`), is a missing file. Mark the record so
+       the episode page stops claiming the download, then stream — once. */
+    if (current?.isLocalFile && current.id === item.id && (loadError || manager.state?.type === "idle")) {
+      const retried = degradeLocalPlay();
+      if (retried) return retried;
+    }
+    if (loadError) throw loadError.err;
     render();
     /* THE ANSWER, NOT THE ATTEMPT (audit 2026-09-22). This returned `true`
        whatever happened, so every caller's `if (!ok)` was dead code and a 404
@@ -4627,6 +4715,19 @@ const ForayPlayer = {
    * swallowed. `err` is read for its name only, for the autoplay split.
    */
   reportPlayFailure(err) {
+    /* A DOWNLOADED COPY THAT FAILED IS A STREAM, NOT AN ERROR (PQ-19, #29).
+       While the failing play is still the one that chose the local file, the
+       ticket is unspent: mark the copy missing and stream instead of painting
+       "could not load". The retry is `noLocal`, so a failure of THAT play
+       arrives here with no ticket and is painted below as usual. */
+    const retry = current?.isLocalFile ? degradeLocalPlay() : null;
+    if (retry) {
+      retry.then(
+        (ok) => { if (!ok) ForayPlayer.reportPlayFailure(null); },
+        (e) => ForayPlayer.reportPlayFailure(e),
+      );
+      return;
+    }
     /* A REFUSAL WITH NO ERROR DOES NOT OVERWRITE ONE THAT SAID WHY (review
        2026-09-23). app.js calls this with `null` when `play()` answered false,
        and on the iOS lost-gesture path the telemetry sink has ALREADY painted
