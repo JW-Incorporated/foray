@@ -230,8 +230,12 @@ import { createRequire } from "node:module";
    slice from the whole map", so the counts it carries are computed — and checked —
    by the functions the app and the website run, not by a copy of their matcher.
    A plain script with a CommonJS export (it is a <script> on the page), hence
-   createRequire rather than an import. */
-const SearchEngine = createRequire(import.meta.url)("../../search-engine.js");
+   createRequire rather than an import. Kept as a plain `require("...")` call so
+   tools/ci/path-policy.test.mjs's signing-job walk sees it: this file runs in the
+   release jobs that hold the signing secrets, and search-engine.js is listed there
+   in ACKNOWLEDGED_RELEASE_APP_CODE. */
+const require = createRequire(import.meta.url);
+const SearchEngine = require("../../search-engine.js");
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
