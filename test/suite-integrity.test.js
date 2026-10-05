@@ -2083,6 +2083,7 @@ const FLOORS = {
      its own migration+ingest pipeline. Floored individually so a change
      that silently drops, say, the id-map fail-closed test is caught by
      name rather than by a combined count going down by one among many. */
+  "tools/shows/approve-parked-runs.test.mjs": 10, // #1032 / PR #1038 review: pointer-PR run approval -- late-run race, failed list call never read as empty, approve failure, still parked, unconfirmed window
   "tools/shows/dedupe.test.mjs": 11, // audit round 3 (L8): +2, Unicode dedupe key; 9 -> 11
   "tools/shows/filter.test.mjs": 11,
   "tools/shows/identity.test.mjs": 2,

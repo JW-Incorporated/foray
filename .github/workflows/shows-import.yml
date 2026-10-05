@@ -221,8 +221,9 @@ jobs:
         #
         # LOUD, NOT SILENT. If GitHub refuses the approval (the API documents
         # it for fork PRs; whether it accepts the automatic token for its own
-        # bot's runs is unverified until the next weekly run), or runs are
-        # still parked afterwards, the job goes red with the manual remedy in
+        # bot's runs is unverified until the next weekly run), runs are
+        # still parked afterwards, or the run list cannot be read at all, the
+        # job goes red with the manual remedy in
         # the summary instead of stranding the PR quietly for a week.
         if: steps.build.outputs.pointer_changed == 'true'
         env:
@@ -230,46 +231,9 @@ jobs:
           REPO: ${{ github.repository }}
           HEAD_SHA: ${{ steps.pointer_pr.outputs.head_sha }}
           PR_NUMBER: ${{ steps.pointer_pr.outputs.pr_number }}
-        run: |
-          set -uo pipefail
-          parked() {
-            gh api "repos/$REPO/actions/runs?head_sha=$HEAD_SHA&status=action_required&per_page=100" \
-              --jq '.workflow_runs[] | select(.event == "pull_request") | "\(.id) \(.name)"'
-          }
-          # The pull_request runs appear a few seconds after the push / PR
-          # open; give them up to a minute. None appearing at all is fine:
-          # it means GitHub ran them normally (or created none).
-          runs=""
-          for _ in $(seq 1 12); do
-            sleep 5
-            runs=$(parked || true)
-            if [ -n "$runs" ]; then break; fi
-          done
-          if [ -z "$runs" ]; then
-            echo "No pull_request run is parked at action_required on $HEAD_SHA; nothing to approve."
-            exit 0
-          fi
-          failed=0
-          while read -r id name; do
-            if [ -z "$id" ]; then continue; fi
-            if gh api -X POST "repos/$REPO/actions/runs/$id/approve" >/dev/null; then
-              echo "approved run $id ($name)"
-            else
-              echo "::warning::could not approve run $id ($name) on $HEAD_SHA"
-              failed=$((failed + 1))
-            fi
-          done <<<"$runs"
-          sleep 5
-          still=$(parked || true)
-          if [ "$failed" -gt 0 ] || [ -n "$still" ]; then
-            {
-              echo "### Pointer PR #$PR_NUMBER needs a human (#1032)"
-              echo
-              echo "Its pull_request runs are parked at action_required and could not be approved by the workflow token."
-              echo "Remedy: open PR #$PR_NUMBER and press \"Approve and run workflows\", or push an empty commit to \`$BRANCH\` as a user."
-              echo "Do not hand-edit data/shows-index-pointer.json."
-            } >> "$GITHUB_STEP_SUMMARY"
-            echo "::error::pointer PR #$PR_NUMBER has pull_request runs parked at action_required (#1032); see the job summary"
-            exit 1
-          fi
-          echo "Every parked pull_request run on $HEAD_SHA is approved."
+        # The logic lives in tools/shows/approve-parked-runs.mjs (with tests)
+        # so it can be checked off-CI: it keeps polling and approving until a
+        # quiet window passes (runs from several workflows appear seconds
+        # apart), and it never reads a FAILED list call as "nothing parked".
+        # BRANCH comes from the workflow-level env.
+        run: node tools/shows/approve-parked-runs.mjs
