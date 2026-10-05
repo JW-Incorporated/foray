@@ -4007,6 +4007,63 @@ backfill is a future, separate pass.
 - **Out of scope, untouched:** `tools/shows/*` (S-04's own pipeline),
   `merge.mjs`'s copy-rule preflight, `data/catalog.json`.
 
+### S-09: Postgres path for the shows pipeline (2026-09-15; re-landed 2026-10-04 as PKG-01 #1026 + PKG-02) — `foray/t_f00c0a28`
+
+- **What:** `backend/migrations/0017-0019` (`shows_catalog` with a
+  generated `search_tsv` + `pg_trgm` index, `show_id_map`, rekey of
+  `catalog_show_episodes`/`catalog_show_feed_state` from `show_id` to
+  `pi_id`, the old column kept as `legacy_show_id`);
+  `tools/shows/load-postgres.mjs` (COPY-into-staging → upsert,
+  reusing S-04a's `runPipeline`, plus `changed_in_dump` reasons and a
+  bytes/row sizing report); `tools/shows/search-shows.mjs` (FTS+trgm
+  ranking module with a golden-query test set); a CI `db` job running
+  a real `postgres:17` service container.
+- **How it landed:** PR #714's branch had no merge base with `main`, so it
+  was re-landed in two parts per `docs/roadmap/shows-search.md` section 3:
+  PKG-01 (#1026, the `tools/shows` half, auto-merged) and PKG-02 (the
+  migrations, `PostgresShowEpisodesStore`'s `legacy_show_id` rename, the
+  `db` job, `BACKEND_FLOORS`, DECISIONS, this block). #714 is closed; its
+  branch is kept.
+- **Coupling (gates G1/G2):** `PostgresShowEpisodesStore` now names
+  `legacy_show_id`, which exists only after 0019. It runs only in
+  `api/shows/[show_id]/episodes.ts`'s DB mode, dormant while `DATABASE_URL`
+  is unset (founder question 31 in `docs/roadmap/README.md`: not yet).
+  **Whoever later sets `DATABASE_URL` (G1) must apply 0017-0019 to that
+  database (G2) first**, or every show-page read and feed-state write
+  through the store fails with "column legacy_show_id does not exist".
+- **Verified against a real Postgres 17 on #714** (2026-09-15, a sandbox
+  cluster built from the `io.zonky.test.postgres` binaries): all 19
+  migrations applied twice from a fresh database (idempotent);
+  `load-postgres.mjs`'s CLI ran end to end against a fixture sqlite dump
+  (real COPY + upsert, idempotent on a second run); the golden-query search
+  set and the 0019 rekey-preserves-a-seeded-row test passed against live
+  data. On PKG-02 the live run is the `db` job itself.
+- **Inert in production, confirmed by running it**: with neither
+  `SHOWS_DATABASE_URL` nor `DATABASE_URL` set, `load-postgres.mjs` exits 0
+  and names gate G8 (Supabase tier, HUMAN-ACTIONS.md) rather than failing.
+- **Tests**: `tools/shows/load-postgres.test.mjs` (11, pure functions, no
+  DB), `tools/shows/search-shows.test.mjs` (7, pure query builder, no DB),
+  `tools/shows/shows-postgres-integration.test.mjs` (8, gated on
+  `TEST_DATABASE_URL`: migrations apply twice, golden queries, the rekey
+  before and after 0019), `backend/test/showsPostgresLive.test.ts` (3, gated
+  on `SHOWS_DATABASE_URL`/`DATABASE_URL`: schema assertions), and two new
+  cases in `backend/test/showEpisodesStore.test.ts` pinning every store
+  statement to `legacy_show_id`. The gated suites skip cleanly (not fail)
+  without a database.
+- **CI `db` job note:** uses `SHOWS_DATABASE_URL` (not `DATABASE_URL`) for
+  the `backend` test step — `userInterests.test.ts` asserts `DATABASE_URL`
+  is absent to guard a not-yet-implemented `PostgresUserInterestsProvider`
+  (a different, future card); found by actually running the suite with
+  `DATABASE_URL` set and watching that assertion fail. Not a required
+  check: founder question 30 in `docs/roadmap/README.md` ("The new `db` CI
+  job is not a required check yet").
+- **Known, deferred:** a curated show whose `show_id_map` entry later remaps
+  to a different `pi_id` keeps its old `pi_id` on episode/feed-state rows
+  (`backfillLegacyShowIdKeys()` fills nulls only). Nothing reads those rows
+  by `pi_id` yet; the fix belongs to the card that rewires the store onto
+  `pi_id` (kanban `t_aeed5440`).
+- **Decision entry:** `docs/DECISIONS.md`, 2026-10-04.
+
 
 - **The bundled voice (K-deck) — K-01's probe, K-02, K-03, K-06, K-07 landed;
   K-04 and K-05 deliberately unstarted.** `docs/bundled-voice-plan.md` was written
