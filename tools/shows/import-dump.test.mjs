@@ -6,12 +6,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { DUMP_COLUMNS } from "./config.mjs";
-import { runPipeline, writeBuildOutput } from "./import-dump.mjs";
+import { gzipSync } from "node:zlib";
+import { DUMP_COLUMNS, NEWEST_SNAPSHOT_ASSET } from "./config.mjs";
+import {
+  buildNewestSnapshot, loadPreviousNewest, parseNewestSnapshot, runPipeline, runPipelineWithBaseline,
+  writeBuildOutput,
+} from "./import-dump.mjs";
+import { buildChanged } from "./shard-build.mjs";
 
 const NOW = Date.parse("2026-09-05T00:00:00Z");
 const monthsAgo = (n) => Math.floor((NOW - n * (365.25 / 12) * 24 * 60 * 60 * 1000) / 1000);
@@ -229,13 +234,13 @@ test("acceptance: two builds over the same fixture produce byte-identical output
   const dirA = await buildOnce();
   const dirB = await buildOnce();
   try {
-    for (const file of ["manifest.json", "top.json", "id-map.json", "changed.json"]) {
+    for (const file of ["manifest.json", "top.json", "id-map.json", "changed.json", NEWEST_SNAPSHOT_ASSET]) {
       const a = await readFile(join(dirA, file));
       const b = await readFile(join(dirB, file));
       assert.ok(a.equals(b), `${file} differs between two runs over the same fixture`);
     }
-    /* data-tools-14: no prior-release snapshot is persisted, so the build says
-       it has no baseline instead of listing every show as changed. */
+    /* data-tools-14: runPipeline was handed no prior-release snapshot, so the
+       build says it has no baseline instead of listing every show as changed. */
     assert.deepEqual(JSON.parse(await readFile(join(dirA, "changed.json"), "utf8")), { baseline: false, changed: null });
     // Spot-check a shard too.
     const shardA = readFileSync(join(dirA, "shards", "sh.json.gz"));
@@ -280,5 +285,169 @@ test("writeBuildOutput: manifest's shard_inventory reports the real per-shard si
   } finally {
     db.close();
     rmSync(outDir, { recursive: true, force: true });
+  }
+});
+
+/* ------------------------------------------------ #1033: the baseline -- */
+
+const PREV_EXPORT = "Sat, 03 Oct 2026 23:18:00 GMT";
+const BASE_URL = "https://github.com/org/repo/releases/download/shows-index-prev";
+
+function snapshotGz(newest, { exportVersion = PREV_EXPORT, version = 1 } = {}) {
+  return gzipSync(Buffer.from(JSON.stringify({ version, export_version: exportVersion, count: Object.keys(newest).length, newest })));
+}
+
+/** A committed-pointer stand-in plus a fake public fetch. `serve` is the body
+    (Buffer) for the snapshot URL, a status number, or an Error to throw. */
+async function baselineFixture(serve, { pointer = { export_version: PREV_EXPORT, asset_base_url: BASE_URL } } = {}) {
+  const dir = mkdtempSync(join(tmpdir(), "shows-baseline-"));
+  const pointerPath = join(dir, "shows-index-pointer.json");
+  if (pointer !== null) await writeFile(pointerPath, JSON.stringify(pointer));
+  const requests = [];
+  const fetchImpl = async (url, opts = {}) => {
+    requests.push({ url, opts });
+    if (serve instanceof Error) throw serve;
+    if (typeof serve === "number") return new Response("Not Found", { status: serve });
+    return new Response(serve, { status: 200 });
+  };
+  return { dir, pointerPath, fetchImpl, requests, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
+}
+
+const baselineRows = () => [
+  fixtureRow({ id: 1, url: "https://feeds.example.com/one", title: "Alpha One", newestItemPubdate: monthsAgo(1) }),
+  fixtureRow({ id: 2, url: "https://feeds.example.com/two", title: "Bravo Two", newestItemPubdate: monthsAgo(2) }),
+  fixtureRow({ id: 3, url: "https://feeds.example.com/three", title: "Charlie Three", newestItemPubdate: monthsAgo(3) }),
+];
+const baselineCurated = [{ show_id: "alpha-one", title: "Alpha One", feed_url: "https://feeds.example.com/one" }];
+
+test("#1033 snapshot round-trip: the asset a build writes is the baseline the next run reads back", async () => {
+  /* MUTATION THAT KILLS THIS: delete the `writeFile(join(outDir,
+     NEWEST_SNAPSHOT_ASSET), snapshotGz)` line in writeBuildOutput. The build
+     still writes changed.json, but no snapshot exists for the release to
+     ship, so the next week has no baseline again (readFile ENOENT here).
+     Second mutation: store `null` instead of 0 for a dateless row in
+     buildNewestSnapshot. parseNewestSnapshot rejects the whole snapshot (and
+     buildChanged would call that row changed every week). Ran both: red. */
+  const db = buildFixtureDb(baselineRows());
+  const outDir = mkdtempSync(join(tmpdir(), "shows-build-"));
+  try {
+    const result = runPipeline(db, { curatedShows: baselineCurated, now: NOW });
+    const manifest = await writeBuildOutput(result, { outDir, exportVersion: "v-next", builtAt: "2026-10-04T00:00:00.000Z" });
+    const parsed = parseNewestSnapshot(await readFile(join(outDir, NEWEST_SNAPSHOT_ASSET)), { expectedExportVersion: "v-next" });
+    assert.equal(parsed.ok, true, parsed.reason);
+    assert.deepEqual(parsed.previousNewest, { 1: monthsAgo(1), 2: monthsAgo(2), 3: monthsAgo(3) });
+    assert.equal(manifest.newest_snapshot.count, 3);
+    assert.equal(manifest.newest_snapshot.asset, NEWEST_SNAPSHOT_ASSET);
+    // A byte-identical re-import diffed against its own snapshot reports nothing.
+    assert.deepEqual(buildChanged(result.canonical, parsed.previousNewest), { baseline: true, changed: [] });
+
+    // A dateless row is listed as 0: unchanged next week, changed once it gains a date.
+    const dateless = [{ id: 7, newestItemPubdate: null }];
+    const snap = buildNewestSnapshot(dateless, { exportVersion: "v" });
+    assert.deepEqual(snap.newest, { 7: 0 });
+    const back = parseNewestSnapshot(gzipSync(Buffer.from(JSON.stringify(snap))));
+    assert.equal(back.ok, true, back.reason);
+    assert.deepEqual(buildChanged(dateless, back.previousNewest), { baseline: true, changed: [] });
+    assert.deepEqual(buildChanged([{ id: 7, newestItemPubdate: 5 }], back.previousNewest), { baseline: true, changed: [7] });
+  } finally {
+    db.close();
+    rmSync(outDir, { recursive: true, force: true });
+  }
+});
+
+test("#1033 the downloaded previous snapshot reaches buildChanged (baseline:true, only real changes)", async () => {
+  /* MUTATION THAT KILLS THIS: in runPipelineWithBaseline, hand runPipeline
+     `previousNewest: null` (the old hard-coded `const previousNewest = null`
+     in main). changed.json goes back to { baseline:false, changed:null }.
+     Ran it: red. */
+  const prev = { 1: monthsAgo(4), 2: monthsAgo(2) }; // 1 advanced, 2 unchanged, 3 new since last release
+  const fx = await baselineFixture(snapshotGz(prev));
+  const db = buildFixtureDb(baselineRows());
+  const logs = [];
+  try {
+    const { result, baseline } = await runPipelineWithBaseline(db, {
+      curatedShows: baselineCurated, now: NOW, pointerPath: fx.pointerPath, fetchImpl: fx.fetchImpl, log: (m) => logs.push(m),
+    });
+    assert.deepEqual(result.changed, { baseline: true, changed: [1, 3] });
+    assert.equal(baseline.count, 2);
+    assert.equal(fx.requests.length, 1);
+    assert.equal(fx.requests[0].url, `${BASE_URL}/${NEWEST_SNAPSHOT_ASSET}`, "fetched from the committed pointer's asset_base_url");
+    const headers = new Headers(fx.requests[0].opts.headers || {});
+    assert.equal(headers.has("authorization"), false, "a public asset: no token is sent");
+    assert.ok(logs.some((m) => /^BASELINE: 2 ids from /.test(m)), logs.join("\n"));
+  } finally {
+    db.close();
+    fx.cleanup();
+  }
+});
+
+test("#1033 a failed download keeps baseline:false, logs why, and never fails the run", async () => {
+  /* MUTATIONS THAT KILL THIS: (a) delete the `if (!res.ok)` guard in
+     loadPreviousNewest, so a 404 page is parsed as a snapshot (the reason
+     stops naming HTTP 404); (b) rethrow from the fetch catch instead of
+     returning, so a network error escapes to the outer catch (the reason
+     stops naming the download). Ran both: red. */
+  const cases = [
+    { name: "404 (a release from before #1033)", serve: 404, reason: /HTTP 404/ },
+    { name: "network error", serve: Object.assign(new Error("getaddrinfo ENOTFOUND github.com"), { code: "ENOTFOUND" }), reason: /^download failed: getaddrinfo ENOTFOUND/ },
+    { name: "no pointer file", serve: snapshotGz({ 1: 1 }), pointer: null, reason: /no readable pointer/ },
+    { name: "pointer without asset_base_url", serve: snapshotGz({ 1: 1 }), pointer: { export_version: PREV_EXPORT }, reason: /no https asset_base_url/ },
+  ];
+  for (const c of cases) {
+    const fx = await baselineFixture(c.serve, c.pointer === undefined ? {} : { pointer: c.pointer });
+    const db = buildFixtureDb(baselineRows());
+    const logs = [];
+    try {
+      const { result, baseline } = await runPipelineWithBaseline(db, {
+        curatedShows: baselineCurated, now: NOW, pointerPath: fx.pointerPath, fetchImpl: fx.fetchImpl, log: (m) => logs.push(m),
+      });
+      assert.deepEqual(result.changed, { baseline: false, changed: null }, c.name);
+      assert.equal(baseline.previousNewest, null, c.name);
+      assert.match(baseline.reason, c.reason, c.name);
+      assert.ok(logs.some((m) => m.startsWith("NO_BASELINE: ")), `${c.name}: the reason is logged`);
+      assert.equal(result.canonical.length, 3, `${c.name}: the build itself still ran`);
+    } finally {
+      db.close();
+      fx.cleanup();
+    }
+  }
+});
+
+test("#1033 never {}: an empty, malformed or mismatched snapshot is no baseline, not an all-changed diff", async () => {
+  /* The data-tools-14 regression (shard-build.test.mjs pins buildChanged's
+     half): `{}` as previousNewest lists EVERY show as changed and calls it a
+     real index. MUTATIONS THAT KILL THIS: (a) make loadPreviousNewest's
+     failure value `previousNewest: {}` instead of null; (b) delete the
+     `count === 0` check in parseNewestSnapshot, so an empty snapshot passes
+     as {}. Either one turns these into { baseline:true, changed:[1,2,3] }.
+     Ran both: red. */
+  const bad = [
+    { name: "empty map", body: snapshotGz({}) },
+    { name: "non-numeric value", body: snapshotGz({ 1: "yesterday" }) },
+    { name: "wrong schema version", body: snapshotGz({ 1: 1 }, { version: 2 }) },
+    { name: "another release's snapshot", body: snapshotGz({ 1: 1 }, { exportVersion: "Sat, 26 Sep 2026 23:18:00 GMT" }) },
+    { name: "not gzip", body: Buffer.from("<html>rate limited</html>") },
+  ];
+  for (const c of bad) {
+    const fx = await baselineFixture(c.body);
+    const db = buildFixtureDb(baselineRows());
+    try {
+      const loaded = await loadPreviousNewest({ pointerPath: fx.pointerPath, fetchImpl: fx.fetchImpl });
+      assert.equal(loaded.previousNewest, null, `${c.name}: null, never {}`);
+      const { result } = await runPipelineWithBaseline(db, {
+        curatedShows: baselineCurated, now: NOW, pointerPath: fx.pointerPath, fetchImpl: fx.fetchImpl, log: () => {},
+      });
+      assert.deepEqual(result.changed, { baseline: false, changed: null }, c.name);
+    } finally {
+      db.close();
+      fx.cleanup();
+    }
+  }
+  // And the failure path itself: a 404 is null too, not {}.
+  const fx = await baselineFixture(404);
+  try {
+    assert.equal((await loadPreviousNewest({ pointerPath: fx.pointerPath, fetchImpl: fx.fetchImpl })).previousNewest, null);
+  } finally {
+    fx.cleanup();
   }
 });

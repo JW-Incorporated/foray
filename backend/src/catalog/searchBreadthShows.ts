@@ -132,12 +132,18 @@ export function showMatchBucket(title: string, q: string): number {
     in *Life Sciences* is NOT rank 3 in *Comedy*, so comparing two raw ranks
     across genres compares two different things; the bands collapse it to
     <=10 / <=50 / <=200 / unranked, which is the most the data honestly
-    supports. A curated row returns 0 and needs no `chart_rank`: the tier term
-    has already placed it. An unranked breadth row is the WORST band, not the
-    best — a missing number must never read as zero. */
+    supports. An unranked row is the WORST band, not the best — a missing
+    number must never read as zero.
+
+    A CURATED ROW IS BANDED TOO, on the same scale (P-09 rule half, PKG-13,
+    mirroring search-engine.js's `popularityBand`): it used to return 0, so
+    every curated row tied and the alphabet put *Ancient History Fangirl* (no
+    chart row) above *Dan Carlin's Hardcore History* (chart 14). Safe only
+    because the comparator below compares the breadth flag BEFORE the band, so
+    an unranked curated row may sort below a ranked curated one but never
+    below breadth (docs/roadmap/README.md Q30). */
 export const SHOW_PRIOR_BANDS = [10, 50, 200];
 export function popularityBand(show: CatalogueShowEntry): number {
-  if (show.tier !== "breadth") return 0;
   const rank = Number(show.chart_rank);
   if (!Number.isFinite(rank) || rank <= 0) return SHOW_PRIOR_BANDS.length + 1;
   for (let i = 0; i < SHOW_PRIOR_BANDS.length; i++) {

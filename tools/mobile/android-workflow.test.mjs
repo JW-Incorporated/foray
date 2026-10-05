@@ -755,13 +755,18 @@ test("ci.yml still declares exactly its five jobs, and #245 added none", () => {
      Raised from five to eight by NE-06: `engine-paths`, `ios-gate` and
      `engine-parity`, the native iOS engine's gates. The two that become
      required at G-1b are designed for it: step-level short-circuits, green in
-     seconds on a content PR. Nothing Android is among them. */
+     seconds on a content PR. Nothing Android is among them.
+
+     Raised from eight to nine by PKG-02 (S-09): the `db` job (Postgres
+     service container for the shows-search migrations), advisory only — not
+     a required check per docs/roadmap/README.md Q30 — and nothing to do with
+     Android. */
   const jobs = block(CI, "jobs");
   const names = jobs
     .split(/\r?\n/)
     .filter((l) => /^ {2}[a-z][\w-]*:/.test(l))
     .map((l) => l.trim().replace(":", ""));
-  assert.deepEqual(names, ["backend", "api", "engine-paths", "ios-kit", "ios-gate", "engine-parity", "data-and-site", "playwright"]);
+  assert.deepEqual(names, ["backend", "db", "api", "engine-paths", "ios-kit", "ios-gate", "engine-parity", "data-and-site", "playwright"]);
   assert.equal(
     /android/i.test(code(CI)),
     false,
