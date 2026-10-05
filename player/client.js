@@ -101,7 +101,7 @@ import { TTS } from "./queue-state.js";
 import {
   resolveForay, indexSegments, indexSources, findForay, listableForays, allForays,
   forayElapsed, segmentAtElapsed, segmentStarts, fmtClock, fmtSpan, progressSegments,
-  foraysReferencingShow,
+  foraysReferencingShow, forayQueueOptions, forayResolveOptions,
 } from "./foray-resolve.js";
 import {
   ForayProgressStore, resumePoint, progressLabel, percentDone,
@@ -3466,9 +3466,7 @@ function attachForay(resolved, { discoverDoc = null } = {}) {
   setSkipButtonMode(true);
   artworkByShow = artworkUrlsByShow(discoverDoc);
   media.setActions(forayMediaSurface);
-  const report = manager.setQueueFromForay(resolved.hydrated, {
-    resolveItem: (itemId) => resolved.sources.get(itemId) ?? null,
-  });
+  const report = manager.setQueueFromForay(resolved.hydrated, forayQueueOptions(resolved, { isLocalFile: false }));
   setForayIndex(clampIndex(Number.isInteger(s?.index) ? s.index : 0, report.items.length), { pending: false });
   render();
   return current;
@@ -4859,12 +4857,15 @@ const ForayPlayer = {
   /** The three-document join, re-exported so app.js resolves the running order
       with exactly the code that builds the queue. app.js is a classic script and
       cannot import an ES module, which is the whole reason this bridge exists. */
-  resolve(foraysDoc, { id, segmentsDoc, sourcesDoc, unlocked = [], showDrafts = false } = {}) {
+  resolve(foraysDoc, { id, segmentsDoc, sourcesDoc, unlocked = [], showDrafts = false, allowAdPad } = {}) {
     const doc = findForay(foraysDoc, id, { unlocked, showDrafts });
     if (!doc) return null;
+    /* DAI-07b: `allowAdPad` has no default on purpose — an absent value is
+       left to forayResolveOptions, which answers with AD_PAD_SHIPPED. */
     return resolveForay(doc, {
       segments: indexSegments(segmentsDoc),
       sources: indexSources(sourcesDoc),
+      ...forayResolveOptions({ allowAdPad }),
     });
   },
 
@@ -5287,16 +5288,18 @@ const ForayPlayer = {
    *   we have that carries per-show artwork. Optional and thin — it covers one
    *   of the twelve shows the shipped Forays draw on — so its absence costs the
    *   lock screen the publisher's square and nothing else (#27).
+   * @param {boolean} [opts.allowAdPad] DAI-07b: forwarded through
+   *   forayQueueOptions; absent means the seek-policy switch (AD_PAD_SHIPPED).
    * @returns the build report, or null when nothing is playable.
    */
   async playForay(resolved, {
-    startIndex = 0, startElapsedSec = null, onChange = null, discoverDoc = null,
+    startIndex = 0, startElapsedSec = null, onChange = null, discoverDoc = null, allowAdPad,
   } = {}) {
     if (!resolved || !resolved.playable.length) return null;
     /* The lane first (NE-22), by re-entry rather than an await, so that on
        every path that has an element the gesture below is still spent before
        anything is awaited. */
-    const again = () => ForayPlayer.playForay(resolved, { startIndex, startElapsedSec, onChange, discoverDoc });
+    const again = () => ForayPlayer.playForay(resolved, { startIndex, startElapsedSec, onChange, discoverDoc, allowAdPad });
     if (engineMode === null) return engineModeReady.then(again);
     /* WITHOUT ITS 'foray' CAPABILITY THE ENGINE DOES NOT PLAY FORAYS (M1, and
        M2 until NE-37 advertises it). The tap runs the ordered relinquish
@@ -5334,9 +5337,10 @@ const ForayPlayer = {
     // Previous/next become segment boundaries the moment a Foray is loaded.
     media.setActions(forayMediaSurface);
 
-    const report = manager.setQueueFromForay(resolved.hydrated, {
-      resolveItem: (itemId) => resolved.sources.get(itemId) ?? null,
-    });
+    /* DAI-07b: the options come from the one helper, so the seek-policy
+       switch (AD_PAD_SHIPPED, unless the caller names allowAdPad) reaches the
+       manager — and through it the native engine — on this path too. */
+    const report = manager.setQueueFromForay(resolved.hydrated, forayQueueOptions(resolved, { isLocalFile: false, allowAdPad }));
 
     const at = Number.isFinite(startElapsedSec) && startElapsedSec > 0
       ? segmentAtElapsed(report.items, startElapsedSec)
