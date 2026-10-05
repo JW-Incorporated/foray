@@ -2,6 +2,116 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
+## 2026-10-05 (backfill: four July decisions this log never recorded — issue #798)
+
+Issue #798, carried over from #74, found four early decisions missing from
+this file. Each is recorded below under the date its own record gives, and
+cites that record. Nothing is reopened. Where the record holds no founder
+ruling, the entry says so, and none is supplied after the fact.
+
+### 2026-07-26: the player's queue is one item by default (`SINGLE_ITEM`, issue #33, PR #49)
+
+- **The decision.** `player/queue-strategy.js` makes "what is the queue?"
+  something passed in at construction. It ships `SINGLE_ITEM` as the default:
+  the picked episode is the whole queue, and when it ends the session ends.
+  `PICKED_FIRST` (the pick, then the other cards) and `CONTINUE_TAIL` (the
+  pick, then the part-heard episode) are one constructor argument away.
+- **Who decided, and the gap in the record.** #33 (filed 2026-07-26 from the
+  architecture review on epic #20) marked this a blocking product question:
+  "This determines what `nextItem` means and cannot be decided inside this WP.
+  **Ask Joey.**" It recommended (a), single-item. PR #49 (merged 2026-07-26)
+  did not wait for an answer. Its commit made the strategy injected and
+  shipped (a) as "a real default, not a placeholder", because it was "the
+  only option consistent with CLAUDE.md's no-autoplay-chains principle", and
+  added that "Joey can still overrule it without any code being rewritten".
+  **No founder answer to #33 is on record.** The issue has no comments. The
+  PR closed it. The only status note, #20's progress comment written before
+  the merge on 2026-07-26, still lists #33 as "blocked on a product decision".
+  So the default was an agent's call made under product principle 1, and it
+  stood unchallenged.
+- **What changed since.** The ground it stood on is gone. On 2026-09-14 the
+  founder struck "no autoplay chains" from principle 1 (entry below:
+  continuous playback is wanted, #691). `SINGLE_ITEM` is still the player's
+  queue for a single episode (`player/client.js`). Continuing past the end is
+  now app.js's Up Next advance, a layer above the player, and
+  `player/client.js` says so where it used to cite the struck clause.
+
+### 2026-07-26: an http enclosure is upgraded to https, not dropped (issue #21, PR #45)
+
+- **The decision.** When a feed declares a cleartext `http://` enclosure, the
+  pipeline publishes the same URL over `https://` with host, path, query and
+  fragment unchanged. It neither drops the URL nor publishes it as http. One
+  shared helper, `normalizeAudioUrl` in `tools/refresh/enclosure.mjs`, does
+  this for the nightly scan, the iTunes fallback and the backfill. Any other
+  scheme gives `audio_url: null` with a logged reason, and CI fails on a
+  published `audio_url` that is not `https:`. #21's body asked for that CI
+  failure.
+- **Why upgrade rather than reject.** PR #45's second commit (merged
+  2026-07-26) records it. Cleartext cannot play in the shipped app: iOS ATS,
+  Android's cleartext-traffic policy and the CSP's `media-src https:` all
+  block it. Rejecting it, which the first commit did, "would have silently
+  cost" real catalogue shows their in-app playback. The commit names Hardcore
+  History, Lingthusiasm, Designer Notes, Music History Monday and Two
+  Scientists, served through podtrac, soundcloud and blubrry. All four
+  affected hosts served the identical path over https, each verified with a
+  ranged GET returning 206 and `audio/mpeg`. Brief corner case #1 (publishers
+  count downloads at the URL they declared) still holds, because only the
+  transport changes.
+- **Who decided.** The implementing agent decided this inside PR #45, which
+  was merged from Wyatt's account. **No separate founder ruling is on
+  record.** Neither #21's body nor its 2026-07-26 amendment (RSS primary,
+  iTunes fallback) addresses http.
+
+### 2026-07-26: the DAI duration-variance probe is dropped; the host list is the signal (issue #22, PR #47)
+
+- **The decision.** `dai_suspected` is set from a maintained host list,
+  `tools/refresh/dai-hosts.json`. Each enclosure is matched after following
+  redirects, so download-measurement prefixes cannot hide the origin. Verdicts
+  are cached per show in `data/dai-classification.json`, and an unknown show
+  counts as `dai_suspected: true`. #22's second signal is **not built**. That
+  signal probed an enclosure twice with `Range: bytes=0-0` and compared the
+  total lengths.
+- **The rule it was dropped under.** #22's amendment, posted 2026-07-26 from
+  Wyatt's account after the architecture review on #20: "run it by hand
+  against **3 known-DAI shows and 3 known-static shows** ... If it does not
+  cleanly discriminate, **drop signal 2 entirely** and ship the host allowlist
+  alone."
+- **The measurement that triggered it.** PR #47 (merged 2026-07-26) probed six
+  shows about 6 s apart: megaphone, art19 and acast (DAI), and blubrry,
+  libsyn and podtrac (static). The byte delta was 0 on all six. Its reasoning
+  is also why the idea is wrong in principle: DAI serves a stable file to a
+  given listener so that resume works, so the bytes differ across listeners
+  and long gaps, never between two requests from one IP. One corollary was
+  carried to #30: a position a listener created on their own copy is reliable
+  for them.
+
+### 2026-07-30: the web client deploys to Vercel; GitHub Pages keeps running beside it (PR #62)
+
+- **The decision.** PR #62 merged 2026-07-30 02:43 UTC (2026-07-29 Pacific).
+  It created the Vercel project `foray-web` under the
+  `wjduvall-cmds-projects` scope, which auto-deploys `main` to
+  `https://foray-web-seven.vercel.app`. It built the site through an allowlist
+  copy, `tools/web/prepare-dist.mjs`. The build fails if `index.html` or a
+  runtime data file is missing, or if `dist` exceeds 8 MB. At the time it
+  shipped 1.87 MB, where the repo root held about 55 MB of pipeline inputs.
+  The site stays at the repo root rather than moving to an `apps/web`
+  workspace, because moving it would have broken Pages, the `tools/refresh`
+  data paths, CI and the Capacitor plan at once.
+- **Why Vercel.** The PR body says it supersedes #58 and that "Wyatt asked for
+  a real Vercel project since that is where a purchased domain will be
+  hosted". #58 asked for a Vercel demo link for Joey's prototype, and Joey
+  closed it on 2026-07-29 by serving the prototype from GitHub Pages instead.
+  That reason reaches this log as the PR body's report of Wyatt's request. No
+  verbatim quote of Wyatt is on record.
+- **Why Pages stayed, and what is still open.** The PR body: "GitHub Pages is
+  deliberately left running. Joey already shared
+  `jw-incorporated.github.io` links (#58) … Retiring Pages is a separate
+  outward-facing decision, not a side effect of this PR." **That retirement
+  decision has not been made.** #798's infrastructure section still asks it.
+  Later entries built on the split without settling it. The app reads the
+  Foray directory from the Vercel origin (2026-09-11, FD-06), and Pages got
+  its own stamped build in `.github/workflows/pages.yml` (2026-09-24, #701).
+
 ## 2026-10-04 — S-09: Postgres path for the shows pipeline (`backend/migrations/0017-0019`, `tools/shows/load-postgres.mjs`, `tools/shows/search-shows.mjs`)
 
 Source: `4a-shows-pipeline-plan.md` (Wyatt, 2026-09-04) §3.3; kanban card

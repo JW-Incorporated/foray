@@ -249,6 +249,21 @@ Android file in the no-backup directory, so the token is never in a phone backup
 while every other row still is. `tools/mobile/foray-vault.test.mjs` pins its
 source facts; `docs/durable-storage.md` has the web half.
 
+`foray-downloads` (PQ-21, issue #29) is the fourth plugin, declared the same way:
+offline episode downloads. Its iOS half (PQ-20) is a background `URLSession` writing
+into `Application Support/foray-downloads/`, excluded from backup; its Android half
+(PQ-22) is the system `DownloadManager`, which lands the file in the app's external
+files directory and has it moved on completion into the no-backup directory.
+`player/download-bridge.js` is the web half and `tools/mobile/foray-downloads.test.mjs`
+pins the native source facts. One generated-project edit comes with it:
+`tools/mobile/inject-background-audio.mjs` writes an
+`application(_:handleEventsForBackgroundURLSession:completionHandler:)` into the
+generated `AppDelegate.swift` that forwards to
+`ForayDownloadsPlugin.handleEventsForBackgroundURLSession`, so a download that
+finishes while the app is suspended is delivered then, not at the next launch.
+With the Android engine's JVM core, `mobile/package.json` now declares five local
+packages, four of them bridge plugins; `shell-invariants.test.mjs` pins the list.
+
 One mechanical consequence: `tools/ci/run-suites.mjs` hard-errors on a
 `package.json` that declares dependencies but no `test` script. `mobile/` is safe
 because the runner only scans `player/`, `test/` and `tools/` — but that is why

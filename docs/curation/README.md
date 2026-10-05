@@ -26,6 +26,10 @@ depth-based learning paths.
   has nowhere to be stored. Proposes one skippable chip screen, a bounded prior
   worth ~4 finishes, and the leaf-only fix as a standalone defect repair.
   **Awaiting a founder ruling — not a decided plan.**
+- **[session-doc-v1.md](session-doc-v1.md)** — the `data/session.json` contract
+  (schema: `backend/src/types/session.ts`), including per-card `provenance`
+  (#72, R17): the signals that drove each pick, the stretch bridge, the
+  wildcard flag, and the CI checks that hold the real file to it.
 - **[persona-catalogue-fit.md](persona-catalogue-fit.md)** — preliminary check on
   Decision #2: candidate default personas and whether the catalogue actually
   serves them (finding: the taxonomy architecture fits; content is founder-skewed,
