@@ -130,7 +130,7 @@ function fixtureCatalog(): CatalogueShowEntry[] {
       tier: "curated",
       taxonomy_node_ids: ["engineering/energy-fusion"],
       editorial_note: "Marathon technical interviews.",
-      chart_rank: null, // curated: no chart position, and the tier term places it anyway
+      chart_rank: null, // curated with no ranked breadth twin; the tier term still places it above breadth
     },
     {
       show_id: "111111",
@@ -367,15 +367,52 @@ describe("searchBreadthShows — the four buckets and the popularity prior", () 
        exactly that re-rank, and a row arriving without it is banded UNRANKED,
        the worst band.
 
+       THE CURATED PIN IS RE-ARGUED (P-09 rule half, PKG-13). It used to read
+       "the first curated entry's chart_rank is null", the old rule written as a
+       test. A curated entry now carries its breadth twin's rank, joined on
+       `apple_collection_id`, so the pin names one of each over the real files:
+       *Dan Carlin's Hardcore History* (chart 14 in History) and *Ancient
+       History Fangirl* (no breadth row at all - P-09's measured loser).
+
        MUTATION: re-add `rank` to the returned row, or drop `chart_rank` from
-       `breadthCatalog.ts`'s entry. Either half of this fails. */
+       `breadthCatalog.ts`'s entry. Either half of this fails. MUTATION (curated
+       half): revert the curated entry to `chart_rank: null` - the Hardcore
+       History assertion fails. */
     const entries = loadBreadthCatalog();
     const row = topResult(searchBreadthShows("the daily", 25, entries));
     expect(Object.prototype.hasOwnProperty.call(row, "rank")).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(row, "chart_rank")).toBe(true);
     const ranked = entries.find((e) => e.tier === "breadth" && e.chart_rank !== null);
     expect(typeof ranked?.chart_rank).toBe("number");
-    expect(entries.find((e) => e.tier === "curated")?.chart_rank).toBe(null);
+    const curated = (id: string) => entries.find((e) => e.tier === "curated" && e.show_id === id);
+    expect(curated("hardcore-history")?.chart_rank).toBe(14);
+    expect(curated("ancient-history-fangirl")?.chart_rank).toBe(null);
+  });
+
+  it("bands a curated row too: ranked curated, then unranked curated, then breadth (P-09, README Q30)", () => {
+    /* search-engine.js's `popularityBand` mirrored (PKG-13). A curated row is
+       banded on the breadth scale, and only the breadth flag - compared FIRST -
+       keeps it above breadth: here the unranked curated row is band 4 and the
+       breadth row band 1, and the curated row still leads. The ranked curated
+       row is alphabetically LAST, so only the band can put it first.
+
+       MUTATION: restore `if (show.tier !== "breadth") return 0;` at the top of
+       this file's `popularityBand`. The two curated rows tie, the alphabet puts
+       "Aaa Unranked" first, and the order assertion fails. */
+    const row = (title: string, tier: "curated" | "breadth", chart_rank: number | null): CatalogueShowEntry => ({
+      show_id: title, title, artwork_url: null, feed_url: null, tier,
+      taxonomy_node_ids: [], editorial_note: null, chart_rank,
+    });
+    const catalog = [
+      row("Aaa Unranked Curated Show", "curated", null),
+      row("Bbb Breadth Show", "breadth", 1),
+      row("Zzz Rank 14 Curated Show", "curated", 14),
+    ];
+    expect(searchBreadthShows("show", 25, catalog).map((r) => r.title)).toEqual([
+      "Zzz Rank 14 Curated Show", "Aaa Unranked Curated Show", "Bbb Breadth Show",
+    ]);
+    expect(popularityBand(row("Aaa Unranked Curated Show", "curated", null))).toBe(4);
+    expect(popularityBand(row("Zzz Rank 14 Curated Show", "curated", 14))).toBe(2);
   });
 });
 
@@ -416,7 +453,10 @@ describe("searchBreadthShows — agreement with the real search-engine.js", () =
        disagrees on 6 of its 25 rows and "show" on 14. */
     const client = clientRule();
     const entries = loadBreadthCatalog();
-    for (const q of ["show", "talk", "news", "daily", "fridman"]) {
+    /* "history" and "science" since PKG-13: the two queries whose curated
+       rows the P-09 rank join reorders, so a band mirrored on one side only
+       disagrees here. */
+    for (const q of ["show", "talk", "news", "daily", "fridman", "history", "science"]) {
       const mine = searchBreadthShows(q, 25, entries).map((r) => r.show_id);
       const theirs = client.searchShows(q, entries).slice(0, 25).map((r) => r.show_id);
       expect({ q, ids: mine }).toEqual({ q, ids: theirs });
@@ -549,6 +589,29 @@ describe("loadBreadthCatalog — breadth taxonomy_node_ids pass through", () => 
     const row = loadBreadthCatalog().find((e) => e.show_id === "990000001");
     expect(row?.tier).toBe("breadth");
     expect(row?.taxonomy_node_ids).toEqual(["science"]);
+  });
+
+  it("a curated entry takes its breadth twin's chart_rank via apple_collection_id, in_curated or not (P-09)", () => {
+    /* PKG-13's server join, against the REAL data/catalog.json and a fixture
+       breadth file. The twin is `in_curated: true` - exactly the row the
+       breadth loop drops - so a join that skipped `in_curated` rows (the
+       obvious "reuse the loop" refactor) would find nothing. Ancient History
+       Fangirl has no twin in the fixture and must stay null, not 0.
+
+       MUTATION A: revert the curated entry to `chart_rank: null` - Hardcore
+       History loads null and this fails.
+       MUTATION B: skip `in_curated` rows when filling `rankByAppleId` - the
+       only twin is skipped and this fails the same way. */
+    breadthOverride.json = rawBreadth([
+      { apple_collection_id: 173001861, title: "Dan Carlin's Hardcore History", feed_url: null, in_curated: true, chart_rank: 7 },
+      { apple_collection_id: 990000003, title: "Fixture Ranked Breadth Show", feed_url: null, chart_rank: 3 },
+    ]);
+    process.env.FORAY_SKIP_CATALOGUE_CACHE = "1";
+    const entries = loadBreadthCatalog();
+    expect(entries.find((e) => e.show_id === "hardcore-history")?.chart_rank).toBe(7);
+    expect(entries.find((e) => e.show_id === "ancient-history-fangirl")?.chart_rank).toBe(null);
+    expect(entries.some((e) => e.show_id === "173001861")).toBe(false); // the twin is still deduped
+    expect(entries.find((e) => e.show_id === "990000003")?.chart_rank).toBe(3);
   });
 
   it("a breadth row without taxonomy_node_ids loads with []", () => {

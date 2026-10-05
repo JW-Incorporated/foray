@@ -2696,7 +2696,15 @@ const BACKEND_FLOORS = {
      loader stops zeroing a breadth row's folded `taxonomy_node_ids`. Two
      tests over a fixture catalog-breadth.json read: a row with nodes keeps
      them, a row without loads []. */
-  "test/breadthCatalog.test.ts": 20,
+  /* RAISED 20 -> 22 by shows-search PKG-13b (P-09 rule half, server mirror):
+     curated entries take their breadth twin's `chart_rank` via the
+     `apple_collection_id` join and `popularityBand` bands them on the breadth
+     scale. Two tests: the join over a fixture catalog-breadth.json (an
+     `in_curated` twin's rank reaches the curated entry, no twin stays null),
+     and ranked curated > unranked curated > breadth in the comparator. The
+     curated `chart_rank === null` pin is re-argued in place and the
+     agreement test gains "history"/"science". */
+  "test/breadthCatalog.test.ts": 22,
   /* §4.9 end to end (kanban card t_0b1729d6): finalizeForay() validates
      a candidate against the real check-forays.mjs/check-narration.mjs
      and only returns a writable record on a clean pass; stageTiming.ts
