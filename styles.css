@@ -825,6 +825,25 @@ button.star {
 }
 button.star.on { color: var(--gold); }
 
+/* Share (#1071): the star's plain style at a full 44px of its own, so it needs
+   no hit-area entry. In a Suggested card it sits above the stretched link like
+   the star; the note it leaves ("Link copied", or the link to copy) too. */
+button.share-btn {
+  position: relative;
+  flex: none;
+  width: 44px; height: 44px;
+  padding: 10px;
+  background: none; border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+button.share-btn svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.page-head > button.share-btn { margin-left: auto; }
+.show-hero > button.share-btn { vertical-align: top; margin-right: 4px; }
+.mini-card > button.share-btn, .share-note { z-index: 1; }
+.share-note { position: relative; font-size: var(--fs-sm); color: var(--text-dim); }
+.share-input { display: block; width: 100%; margin-top: 4px; }
+
 /* ---------- starred shows (follow-lite) ---------- */
 
 button.show-star {

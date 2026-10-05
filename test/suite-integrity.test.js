@@ -457,6 +457,7 @@ const FLOORS = {
   "test/app-surface-round3.test.js": 23, // round-3 completeness sweep: app-2-6 a changed or withdrawn thumbs vote is logged with the vote it replaces (the suite stood at 22 unfloored); 20 -> 23 // audit round 3 (2026-09-25, lane L2): the app-surface fixes with no better-fitting suite (app-2-14/15, app-1-15/16, app-2-1/2/3/5/6/7/8/9/10/11/12/13, app-3-1, data-integrity-8), each test naming its id and the mutation that kills it; zero slack; new
   "test/episode-page.test.js": 8,
   "test/episode-deeplink.test.js": 9, // issue #30 (2026-10-05): #/episode/<id>?t=N + the #/play/ alias normalized in place, garbage t ignored, past-the-end draws no button, the Play-from data-ts control on the existing binder, ~ for a DAI stream / exact for static or downloaded, no autoplay; new
+  "test/share-links.test.js": 20, // #1071 SH-1 (2026-10-05): share links on shows, episodes, playlists, Suggested cards and published Forays — origin pin, cold-resolvable routes only, frozen shared~ playlists (escaped, capped, malformed is not-found), delivery order plugin > Web Share > clipboard > on-screen link, no event; new
   /* 2026-09-18, founder: "Only forays are in the jump back in section, podcasts
      and playlists should be there too." The episode card existed but was
      unreachable — it read cp_lastpick, written only for discover-pool episodes. */

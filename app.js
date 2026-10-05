@@ -3810,6 +3810,9 @@ function playlistById(id) { return playlists().find(p => p.id === id); }
     stamps a real playlist's `last_played_at`. The detail page and Home's play
     button both start a playlist, so both name it through this. */
 function playlistCtx(p) {
+  /* A shared playlist's id IS its payload (the sharer's title and ids): the
+     `picked` event carries this ctx, so it is named, never quoted (#1071). */
+  if (p.isShared) return "shared-playlist";
   return (p.isSubject ? "subject-" : (p.isGenerated ? "generated-" : "playlist-")) + p.id;
 }
 
@@ -5418,6 +5421,171 @@ function forayRoutePath(id) {
   return `/foray/${encodeURIComponent(id)}`;
 }
 
+/* ---------- share links (#1071, SH-1) ----------
+
+   Founder, #1071 (2026-10-05): share links on shows, episodes, playlists,
+   Suggested cards and Forays, built "towards opening directly in the app" — so
+   the origin is one whose root we control (it will serve the universal-link
+   files), not GitHub Pages. Not gated on a legal review (docs/DECISIONS.md,
+   2026-10-05). test/share-links.test.js pins every rule below.
+
+   A LINK IS BUILT FROM THE ROUTE PRODUCERS, NEVER FROM location.href: on the web
+   that carries the `?foray=` draft unlock, and in the shell it is
+   capacitor://localhost. Each link is one the RECIPIENT can open cold: a show
+   page without its /q/ search; an episode page only for a catalogue episode
+   (resolveEpisode finds nothing else on a fresh device), else its show; a
+   playlist only the recipient could not rebuild (their own playlist, a
+   Suggested queue) is FROZEN into the link as title + catalogue ids. No event
+   is logged for a share. */
+const PUBLIC_WEB_ORIGIN = "https://foray-web-seven.vercel.app/";
+const SHARED_PLAYLIST_PREFIX = "shared~";
+const SHARED_PLAYLIST_MAX = 50;
+
+function inDiscoverPool(id) {
+  if (state.session && state.session.episodes) {
+    try { fullPool(); } catch (_) { /* no catalogue yet: nothing is in it */ }
+  }
+  return typeof id === "string" && state.poolIds.has(id);
+}
+
+const b64url = (s) => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const unb64url = (s) => {
+  const b = s.replace(/-/g, "+").replace(/_/g, "/");
+  return decodeURIComponent(escape(atob(b + "===".slice((b.length + 3) % 4))));
+};
+
+/** A shared playlist decoded from its own id, or null for anything malformed.
+    Read-only: only ids in the catalogue, at most SHARED_PLAYLIST_MAX. */
+function sharedPlaylistFromId(id) {
+  const s = String(id || "");
+  if (!s.startsWith(SHARED_PLAYLIST_PREFIX)) return null;
+  try {
+    const d = JSON.parse(unb64url(s.slice(SHARED_PLAYLIST_PREFIX.length)));
+    if (!d || typeof d.t !== "string" || !Array.isArray(d.e)) return null;
+    const ids = [...new Set(d.e.filter(inDiscoverPool))].slice(0, SHARED_PLAYLIST_MAX);
+    if (!ids.length) return null;
+    return withMirror({
+      id: s, title: d.t.slice(0, 200), items: ids.map(x => playlistPart(state.itemIndex[x])),
+      sparse: false, isSubject: false, isGenerated: false, isShared: true,
+    });
+  } catch (_) { return null; }
+}
+
+function playlistForId(id) {
+  return playlistById(id) || subjectQueueById(id) || generatedPlaylistById(id) || sharedPlaylistFromId(id);
+}
+
+/** `{ url, text }` for a share target, or null when the recipient could not
+    open it. target: { kind: "show"|"episode"|"playlist"|"foray", id, item?, playlist? }.
+    `text` is the item's own title (and show) only — never a hook or summary. */
+function shareLinkFor(target) {
+  const t = target || {};
+  if (t.kind === "show") {
+    const s = showById(t.id);
+    if (!s) return null;
+    if (!String(t.id).startsWith("pi:")) return { url: PUBLIC_WEB_ORIGIN + "#" + showRoutePath(t.id), text: s.title || "" };
+    /* A `pi:` id never cold-resolves (showById); pod.link is
+       data/app-links.json's derivable aggregator, when the Apple id is known. */
+    const apple = String(s.apple_collection_id ?? "");
+    return /^\d+$/.test(apple) ? { url: "https://pod.link/" + apple, text: s.title || "" } : null;
+  }
+  if (t.kind === "episode") {
+    const item = t.item || state.itemIndex[t.id] || resolveEpisode(t.id);
+    if (!item || !item.id) return null;
+    const text = item.show ? `${item.title} · ${item.show}` : String(item.title || "");
+    if (inDiscoverPool(item.id)) return { url: PUBLIC_WEB_ORIGIN + "#/episode/" + encodeURIComponent(item.id), text };
+    const sid = item.show_id || showIdForShowName(item.show);
+    if (sid && !String(sid).startsWith("pi:")) return { url: PUBLIC_WEB_ORIGIN + "#" + showRoutePath(sid), text };
+    const apple = safeUrl(item.apple_episode_url);
+    return apple === "#" ? null : { url: apple, text };
+  }
+  if (t.kind === "playlist") {
+    const p = t.playlist || playlistForId(t.id);
+    if (!p) return null;
+    if (p.isGenerated) return { url: PUBLIC_WEB_ORIGIN + "#/" + playlistRoute({ id: p.id }), text: p.title || "" };
+    const e = [...new Set(playlistSpine(p).map(partId).filter(inDiscoverPool))].slice(0, SHARED_PLAYLIST_MAX);
+    if (!e.length) return null;
+    const id = SHARED_PLAYLIST_PREFIX + b64url(JSON.stringify({ t: String(p.title || ""), e }));
+    return { url: PUBLIC_WEB_ORIGIN + "#/" + playlistRoute({ id }), text: p.title || "" };
+  }
+  if (t.kind === "foray") {
+    const f = (state.forays?.forays || []).find(x => x && x.id === t.id);
+    if (!f || f.status !== "published") return null;
+    return { url: PUBLIC_WEB_ORIGIN + "#" + forayRoutePath(f.id), text: f.title || "" };
+  }
+  return null;
+}
+
+/** The share button, or "" when there is no link to give. A link that cannot
+    be built costs the button, never the page around it. */
+function safeShareLink(target) {
+  try { return shareLinkFor(target); } catch (_) { return null; }
+}
+
+function shareBtn(target) {
+  if (!safeShareLink(target)) return "";
+  bindShareClicks();
+  return `<button type="button" class="share-btn" data-share="${esc(target.kind)}" data-share-id="${esc(target.id)}" aria-label="${esc("Share " + (target.title || ""))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"></path></svg></button>`;
+}
+
+/** Where a share's result is said: beside the button, and to a screen reader.
+    With `url`, the last resort — the link in a selected read-only field. */
+function shareNote(anchor, msg, url = "") {
+  announce(msg);
+  if (!anchor || typeof anchor.insertAdjacentHTML !== "function") return;
+  const old = anchor.nextElementSibling;
+  if (old && old.classList.contains("share-note")) old.remove();
+  anchor.insertAdjacentHTML("afterend", `<span class="share-note">${esc(msg)}${url ? `<input class="share-input" readonly value="${esc(url)}" aria-label="${esc(msg)}">` : ""}</span>`);
+  const note = anchor.nextElementSibling;
+  const input = note && note.querySelector("input");
+  if (input) { input.focus(); input.select(); } else if (note) setTimeout(() => note.remove(), 4000);
+}
+
+/** Deliver a link: the native share plugin, the Web Share sheet, the
+    clipboard, then the link on screen. A cancel ends it — it is not a failure
+    to fall back from. */
+async function shareTo(link, anchor = null) {
+  if (!link) return "none";
+  const data = { title: link.text, text: link.text, url: link.url };
+  const cancelled = (e) => !!e && (e.name === "AbortError" || /cancel/i.test(String(e.message || "")));
+  const plugin = window.Capacitor?.Plugins?.Share;
+  if (plugin && typeof plugin.share === "function") {
+    try { await plugin.share(data); return "shared"; } catch (e) { if (cancelled(e)) return "cancelled"; }
+  }
+  if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+    try { await navigator.share(data); return "shared"; } catch (e) { if (e && e.name === "AbortError") return "cancelled"; }
+  }
+  try {
+    await navigator.clipboard.writeText(link.url);
+    shareNote(anchor, "Link copied");
+    return "copied";
+  } catch (_) { /* no clipboard, or refused: show the link */ }
+  shareNote(anchor, "Copy this link", link.url);
+  return "manual";
+}
+
+function onShareClick(e) {
+  const btn = e.target && e.target.closest && e.target.closest("[data-share]");
+  if (!btn) return;
+  e.preventDefault();
+  shareTo(safeShareLink({ kind: btn.dataset.share, id: btn.dataset.shareId }), btn);
+}
+
+let shareClicksBound = false;
+function bindShareClicks() {
+  if (shareClicksBound || typeof document === "undefined" || typeof document.addEventListener !== "function") return;
+  document.addEventListener("click", onShareClick);
+  shareClicksBound = true;
+}
+
+if (typeof window !== "undefined") {
+  window.ForayShare = {
+    shareEpisode: (item) => shareTo(shareLinkFor({ kind: "episode", item, id: item && item.id })),
+    shareForay: (id) => shareTo(shareLinkFor({ kind: "foray", id })),
+    linkFor: shareLinkFor,
+  };
+}
+
 /** Whether the page on screen is `show_id`'s — compared DECODED: the hash
     carries the encoded id, and comparing it with the raw one never matched an
     id that needed encoding. */
@@ -5563,7 +5731,7 @@ function renderShow(show_id, initialQuery = "") {
          .show-hero, visual pass 1). The title stays in the page head. -->
     <div class="show-hero">
       ${showArt ? `<img class="show-art" src="${esc(safeUrl(showArt))}" alt="">` : ""}
-      ${showStarBtn(show.show_id)}
+      ${shareBtn({ kind: "show", id: show.show_id, title: show.title })}${showStarBtn(show.show_id)}
       <p class="note show-follow-note">${esc(FOLLOW_NOTE)}</p>
     </div>
     <!-- The publisher's own description. EMPTY at first paint and filled by
@@ -6621,7 +6789,7 @@ function miniCard(slot) {
       <h3><a class="mc-link" href="#/${esc(playlistRoute({ isSubject: true, branch: slot.branch }))}">${esc(subjectLabel(slot.branch))}</a></h3>
       <p class="mc-hook">${startsWithLine(item.title)} ${esc(subjectBlurb(slot))}${stretch ? ` ${STRETCH_WHY}` : ""}</p>
     </div>
-    ${starBtn(item.id)}
+    ${starBtn(item.id)}${shareBtn({ kind: "episode", id: item.id, item, title: item.title })}
   </div>`;
 }
 
@@ -11247,7 +11415,7 @@ function partsNote(rows) {
 
 function renderPlaylistDetail(id) {
   setBodyClass("view-page");
-  const p = playlistById(id) || subjectQueueById(id) || generatedPlaylistById(id);
+  const p = playlistForId(id);
   /* A gone playlist still gets a real page head, ‹ included: with ‹ now
      going back one real step (see § in-app history) instead of always
      Home, an entry for a just-removed playlist sits one step behind the
@@ -11296,18 +11464,19 @@ function renderPlaylistDetail(id) {
         <a class="back" href="#/">‹</a>
         <div>
           <h2>${esc(p.title)}</h2>
-          <p class="sub">${joinMeta(countLabel(rows.length, "episode"), p.isSubject ? "picked for you" : (p.isGenerated ? "generated for you" : "playlist"), played ? `${played} played` : "")}</p>
+          <p class="sub">${joinMeta(p.isShared ? "Shared playlist" : "", countLabel(rows.length, "episode"), p.isSubject ? "picked for you" : (p.isGenerated ? "generated for you" : (p.isShared ? "" : "playlist")), played ? `${played} played` : "")}</p>
         </div>
+        ${shareBtn({ kind: "playlist", id: p.id, playlist: p, title: p.title })}
       </div>
       ${source ? savePlaylistControlHtml(p) : ""}
       ${p.sparse ? `<p class="note">Only found a few on this — here's what 4a has.</p>` : ""}
       ${p.relaxed === "duration" ? `<p class="note">Couldn't match the length you asked for — here's what 4a found without it.</p>` : ""}
       ${partsNote(rows)}
       ${rows.map((r, i) => r.state === "live" ? epRow(r.item, i, ctx, nextIdx) : r.state === "hidden" ? familyHiddenRow(i, ctx) : archivedRow(r.item, i, ctx)).join("")}
-      ${(p.isSubject || p.isGenerated) ? "" : `<button class="danger" id="pl-remove">remove this playlist</button>`}
+      ${(p.isSubject || p.isGenerated || p.isShared) ? "" : `<button class="danger" id="pl-remove">remove this playlist</button>`}
     </div>`;
 
-  if (!p.isSubject && !p.isGenerated) $("#pl-remove")?.addEventListener("click", () => {
+  if (!p.isSubject && !p.isGenerated && !p.isShared) $("#pl-remove")?.addEventListener("click", () => {
     /* A pure edit (editPlaylists), so a remove made before hydration composes
        with a save still queued there instead of being undone by it. */
     editPlaylists(list => list.filter(x => x.id !== p.id));
@@ -11767,7 +11936,7 @@ function renderEpisode(id, { t = null } = {}) {
       ${item.artwork_url ? `<img class="ep-art" src="${esc(safeUrl(item.artwork_url))}" alt="" decoding="async" width="600" height="600">` : ""}
       ${item.hook ? `<p class="fp-s-why">${esc(item.hook)}</p>` : ""}
       ${playFromHtml(item, t)}
-      <div class="ep-actions">${item.audio_url ? playBtn(item) : notPlayableNote()}${starBtn(item.id)}${upNextBtn(item.id, item)}${item.audio_url ? `<button type="button" class="up-next playnext" data-playnext="${esc(item.id)}" aria-label="Play next">Play next</button>` : ""}</div>
+      <div class="ep-actions">${item.audio_url ? playBtn(item) : notPlayableNote()}${starBtn(item.id)}${upNextBtn(item.id, item)}${item.audio_url ? `<button type="button" class="up-next playnext" data-playnext="${esc(item.id)}" aria-label="Play next">Play next</button>` : ""}${shareBtn({ kind: "episode", id: item.id, item, title: item.title })}</div>
       ${item.audio_url ? "" : `<p class="note">${esc(NOT_PLAYABLE_WHY)}</p>`}
       ${downloadControlHtml(item)}
       ${episodeDescriptionSectionHtml(item)}
@@ -13984,6 +14153,7 @@ async function renderForay(id) {
           <h2>${esc(r.title)}</h2>
           <p class="sub">${esc(forayHeadSub(r, player))}</p>
         </div>
+        ${draft ? "" : shareBtn({ kind: "foray", id: r.id, title: r.title })}
       </div>
       ${draft ? `<p class="fy-draft">${draftNote}</p>` : ""}
       ${r.foray.summary ? `<p class="fy-summary">${esc(r.foray.summary)}</p>` : ""}
