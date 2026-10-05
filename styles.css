@@ -2429,6 +2429,14 @@ body.fp-expanded { overflow: hidden; }
 }
 .ep-chapter-row:hover .ep-chapter-title,
 .ep-chapter-row:active .ep-chapter-title { color: var(--accent); }
+/* CH-1 (#1071): the publisher's chapter art, the approximate-times line and
+   the "All N chapters" disclosure past the first six rows. */
+.ep-chapter-img { flex: none; align-self: center; width: 40px; height: 40px; border-radius: var(--radius-sm); object-fit: cover; }
+.ep-chapters-note { margin: 0 0 4px; font-size: var(--fs-sm); color: var(--text-dim); }
+.ep-chapters-more > summary {
+  display: flex; align-items: center; min-height: 44px;
+  color: var(--accent); cursor: pointer; touch-action: manipulation;
+}
 /* A1.8 "More from this show" — same section-label language as .fy-slot h3. */
 .ep-more { margin: 24px 0 0; }
 .ep-more h3, .sh-results-head {

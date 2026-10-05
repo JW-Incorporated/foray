@@ -207,6 +207,11 @@ even where the form has no checkbox. **Do not let the absence of a form field
 become an absence of disclosure** — that is the one move that would turn a
 defensible position into a misleading one.
 
+Chapters take the same path (#1071): in the native app, opening an episode can
+make the device fetch the episode's chapter list, or read the start of its audio
+file, directly from the publisher's host (`app.js:readDeviceChapters()`), so
+this section's answer applies unchanged — we receive nothing.
+
 One consequence to keep straight when filling in the forms: "4a contains no ad
 tracking" is true of **our** code and is the right answer to the advertising
 questions. It is not the same statement as "no advertising-related party sees

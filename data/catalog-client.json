@@ -10,7 +10,8 @@
       "episode_count": null,
       "explicit": null,
       "label_scope": "general",
-      "chart_rank": 10
+      "chart_rank": 10,
+      "dai": false
     },
     {
       "show_id": "titans-of-nuclear",
@@ -23,7 +24,8 @@
       "episode_count": null,
       "explicit": null,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": false
     },
     {
       "show_id": "omega-tau",
@@ -37,7 +39,8 @@
       "episode_count": null,
       "explicit": null,
       "label_scope": null,
-      "chart_rank": 88
+      "chart_rank": 88,
+      "dai": false
     },
     {
       "show_id": "cleantechies-podcast",
@@ -51,7 +54,8 @@
       "episode_count": null,
       "explicit": null,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": false
     },
     {
       "show_id": "catalyst-shayle-kann",
@@ -64,7 +68,8 @@
       "episode_count": null,
       "explicit": null,
       "label_scope": "general",
-      "chart_rank": 115
+      "chart_rank": 115,
+      "dai": true
     },
     {
       "show_id": "lab-to-market-leadership",
@@ -77,7 +82,8 @@
       "episode_count": null,
       "explicit": null,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": true
     },
     {
       "show_id": "cbc-ideas",
@@ -90,7 +96,8 @@
       "episode_count": null,
       "explicit": null,
       "label_scope": "general",
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": true
     },
     {
       "show_id": "stuff-you-should-know",
@@ -104,7 +111,8 @@
       "episode_count": null,
       "explicit": null,
       "label_scope": "general",
-      "chart_rank": 2
+      "chart_rank": 2,
+      "dai": true
     },
     {
       "show_id": "materialism-podcast",
@@ -117,7 +125,8 @@
       "episode_count": null,
       "explicit": null,
       "label_scope": null,
-      "chart_rank": 6
+      "chart_rank": 6,
+      "dai": false
     },
     {
       "show_id": "inside-chips",
@@ -130,7 +139,8 @@
       "episode_count": null,
       "explicit": null,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": false
     },
     {
       "show_id": "mtdcnc-podcast",
@@ -144,7 +154,8 @@
       "episode_count": null,
       "explicit": null,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": false
     },
     {
       "show_id": "being-an-engineer",
@@ -159,7 +170,8 @@
       "episode_count": null,
       "explicit": null,
       "label_scope": "general",
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": true
     },
     {
       "show_id": "fall-of-civilizations",
@@ -173,7 +185,8 @@
       "episode_count": null,
       "explicit": null,
       "label_scope": null,
-      "chart_rank": 48
+      "chart_rank": 48,
+      "dai": true
     },
     {
       "show_id": "the-rest-is-history",
@@ -187,7 +200,8 @@
       "episode_count": null,
       "explicit": null,
       "label_scope": "general",
-      "chart_rank": 1
+      "chart_rank": 1,
+      "dai": true
     },
     {
       "show_id": "conan-obrien-needs-a-friend",
@@ -200,7 +214,8 @@
       "episode_count": null,
       "explicit": null,
       "label_scope": null,
-      "chart_rank": 9
+      "chart_rank": 9,
+      "dai": true
     },
     {
       "show_id": "smartless",
@@ -213,7 +228,8 @@
       "episode_count": null,
       "explicit": null,
       "label_scope": null,
-      "chart_rank": 4
+      "chart_rank": 4,
+      "dai": true
     },
     {
       "show_id": "my-brother-my-brother-and-me",
@@ -226,7 +242,8 @@
       "episode_count": null,
       "explicit": null,
       "label_scope": null,
-      "chart_rank": 40
+      "chart_rank": 40,
+      "dai": true
     },
     {
       "show_id": "making-chips",
@@ -239,7 +256,8 @@
       "episode_count": 530,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 144
+      "chart_rank": 144,
+      "dai": false
     },
     {
       "show_id": "business-of-machining",
@@ -252,7 +270,8 @@
       "episode_count": 459,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": false
     },
     {
       "show_id": "within-tolerance",
@@ -265,7 +284,8 @@
       "episode_count": 283,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": false
     },
     {
       "show_id": "mrs-bulletin-materials-news",
@@ -278,7 +298,8 @@
       "episode_count": 136,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": true
     },
     {
       "show_id": "its-a-material-world",
@@ -291,7 +312,8 @@
       "episode_count": 100,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 31
+      "chart_rank": 31,
+      "dai": true
     },
     {
       "show_id": "hardcore-history",
@@ -304,7 +326,8 @@
       "episode_count": 12,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 14
+      "chart_rank": 14,
+      "dai": false
     },
     {
       "show_id": "the-ancients",
@@ -317,7 +340,8 @@
       "episode_count": 743,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 4
+      "chart_rank": 4,
+      "dai": true
     },
     {
       "show_id": "ancient-history-fangirl",
@@ -330,7 +354,8 @@
       "episode_count": 359,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": true
     },
     {
       "show_id": "history-of-ancient-greece",
@@ -343,7 +368,8 @@
       "episode_count": 131,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": false
     },
     {
       "show_id": "engines-of-our-ingenuity",
@@ -356,7 +382,8 @@
       "episode_count": 100,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": false
     },
     {
       "show_id": "the-engineering-history-podcast",
@@ -369,7 +396,8 @@
       "episode_count": 67,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": false
     },
     {
       "show_id": "acquired",
@@ -383,7 +411,8 @@
       "episode_count": 215,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 2
+      "chart_rank": 2,
+      "dai": true
     },
     {
       "show_id": "founders",
@@ -396,7 +425,8 @@
       "episode_count": 448,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 16
+      "chart_rank": 16,
+      "dai": true
     },
     {
       "show_id": "this-week-in-startups",
@@ -409,7 +439,8 @@
       "episode_count": 1442,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 53
+      "chart_rank": 53,
+      "dai": false
     },
     {
       "show_id": "techsurge-deep-tech-podcast",
@@ -423,7 +454,8 @@
       "episode_count": 37,
       "explicit": false,
       "label_scope": "general",
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": true
     },
     {
       "show_id": "twenty-minute-vc",
@@ -436,7 +468,8 @@
       "episode_count": 1478,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 45
+      "chart_rank": 45,
+      "dai": false
     },
     {
       "show_id": "luthier-on-luthier",
@@ -449,7 +482,8 @@
       "episode_count": 115,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 113
+      "chart_rank": 113,
+      "dai": false
     },
     {
       "show_id": "fretboard-journal-guitar-podcast",
@@ -462,7 +496,8 @@
       "episode_count": 542,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 61
+      "chart_rank": 61,
+      "dai": false
     },
     {
       "show_id": "violin-chronicles",
@@ -475,7 +510,8 @@
       "episode_count": 49,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 186
+      "chart_rank": 186,
+      "dai": true
     },
     {
       "show_id": "piano-tech-radio-hour",
@@ -488,7 +524,8 @@
       "episode_count": 102,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": true
     },
     {
       "show_id": "gardenfork-radio",
@@ -501,7 +538,8 @@
       "episode_count": 100,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 69
+      "chart_rank": 69,
+      "dai": false
     },
     {
       "show_id": "around-the-house-eric-g",
@@ -514,7 +552,8 @@
       "episode_count": 1242,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 87
+      "chart_rank": 87,
+      "dai": true
     },
     {
       "show_id": "wood-talk",
@@ -527,7 +566,8 @@
       "episode_count": 620,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 18
+      "chart_rank": 18,
+      "dai": true
     },
     {
       "show_id": "shop-talk-live",
@@ -540,7 +580,8 @@
       "episode_count": 386,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 25
+      "chart_rank": 25,
+      "dai": false
     },
     {
       "show_id": "good-hang-amy-poehler",
@@ -553,7 +594,8 @@
       "episode_count": 72,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 2
+      "chart_rank": 2,
+      "dai": true
     },
     {
       "show_id": "fly-on-the-wall",
@@ -566,7 +608,8 @@
       "episode_count": 399,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 7
+      "chart_rank": 7,
+      "dai": false
     },
     {
       "show_id": "bad-friends",
@@ -579,7 +622,8 @@
       "episode_count": 334,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 1
+      "chart_rank": 1,
+      "dai": true
     },
     {
       "show_id": "gastropod",
@@ -592,7 +636,8 @@
       "episode_count": 291,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 4
+      "chart_rank": 4,
+      "dai": true
     },
     {
       "show_id": "the-bbq-central-show",
@@ -605,7 +650,8 @@
       "episode_count": 1846,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 74
+      "chart_rank": 74,
+      "dai": false
     },
     {
       "show_id": "black-box-down",
@@ -618,7 +664,8 @@
       "episode_count": 150,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": true
     },
     {
       "show_id": "flight-safety-detectives",
@@ -631,7 +678,8 @@
       "episode_count": 335,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 17
+      "chart_rank": 17,
+      "dai": true
     },
     {
       "show_id": "this-podcast-will-kill-you",
@@ -644,7 +692,8 @@
       "episode_count": 293,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 19
+      "chart_rank": 19,
+      "dai": true
     },
     {
       "show_id": "two-scientists-walk-into-a-bar",
@@ -657,7 +706,8 @@
       "episode_count": 56,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": false
     },
     {
       "show_id": "lingthusiasm",
@@ -670,7 +720,8 @@
       "episode_count": 117,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": false
     },
     {
       "show_id": "the-allusionist",
@@ -683,7 +734,8 @@
       "episode_count": 251,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 171
+      "chart_rank": 171,
+      "dai": true
     },
     {
       "show_id": "science-for-sport-podcast",
@@ -696,7 +748,8 @@
       "episode_count": 326,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": false
     },
     {
       "show_id": "just-fly-performance-podcast",
@@ -709,7 +762,8 @@
       "episode_count": 300,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 63
+      "chart_rank": 63,
+      "dai": false
     },
     {
       "show_id": "the-outlaw-ocean",
@@ -722,7 +776,8 @@
       "episode_count": 19,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": true
     },
     {
       "show_id": "the-sound-aquatic",
@@ -735,7 +790,8 @@
       "episode_count": 6,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": true
     },
     {
       "show_id": "song-exploder",
@@ -748,7 +804,8 @@
       "episode_count": 369,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 12
+      "chart_rank": 12,
+      "dai": true
     },
     {
       "show_id": "switched-on-pop",
@@ -761,7 +818,8 @@
       "episode_count": 542,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 17
+      "chart_rank": 17,
+      "dai": true
     },
     {
       "show_id": "my-favorite-theorem",
@@ -774,7 +832,8 @@
       "episode_count": 96,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 7
+      "chart_rank": 7,
+      "dai": false
     },
     {
       "show_id": "99-percent-invisible",
@@ -787,7 +846,8 @@
       "episode_count": 812,
       "explicit": false,
       "label_scope": "general",
-      "chart_rank": 1
+      "chart_rank": 1,
+      "dai": true
     },
     {
       "show_id": "the-worlds-best-construction-podcast",
@@ -800,7 +860,8 @@
       "episode_count": 196,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 28
+      "chart_rank": 28,
+      "dai": true
     },
     {
       "show_id": "spit-and-twitches-animal-cognition",
@@ -813,7 +874,8 @@
       "episode_count": 25,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": false
     },
     {
       "show_id": "ologies-with-alie-ward",
@@ -826,7 +888,8 @@
       "episode_count": 519,
       "explicit": false,
       "label_scope": "general",
-      "chart_rank": 4
+      "chart_rank": 4,
+      "dai": true
     },
     {
       "show_id": "spycast",
@@ -839,7 +902,8 @@
       "episode_count": 752,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 118
+      "chart_rank": 118,
+      "dai": true
     },
     {
       "show_id": "main-engine-cut-off",
@@ -852,7 +916,8 @@
       "episode_count": 337,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 30
+      "chart_rank": 30,
+      "dai": true
     },
     {
       "show_id": "off-nominal",
@@ -865,7 +930,8 @@
       "episode_count": 251,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 62
+      "chart_rank": 62,
+      "dai": true
     },
     {
       "show_id": "planetary-radio",
@@ -878,7 +944,8 @@
       "episode_count": 1346,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 56
+      "chart_rank": 56,
+      "dai": true
     },
     {
       "show_id": "advent-of-computing",
@@ -891,7 +958,8 @@
       "episode_count": 202,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": false
     },
     {
       "show_id": "corecursive",
@@ -904,7 +972,8 @@
       "episode_count": 118,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 30
+      "chart_rank": 30,
+      "dai": false
     },
     {
       "show_id": "software-engineering-daily",
@@ -917,7 +986,8 @@
       "episode_count": 105,
       "explicit": false,
       "label_scope": "general",
-      "chart_rank": 18
+      "chart_rank": 18,
+      "dai": true
     },
     {
       "show_id": "planet-money",
@@ -930,7 +1000,8 @@
       "episode_count": 659,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 20
+      "chart_rank": 20,
+      "dai": true
     },
     {
       "show_id": "odd-lots",
@@ -943,7 +1014,8 @@
       "episode_count": 1243,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 13
+      "chart_rank": 13,
+      "dai": true
     },
     {
       "show_id": "freakonomics-radio",
@@ -956,7 +1028,8 @@
       "episode_count": 985,
       "explicit": false,
       "label_scope": "general",
-      "chart_rank": 4
+      "chart_rank": 4,
+      "dai": true
     },
     {
       "show_id": "hidden-brain",
@@ -969,7 +1042,8 @@
       "episode_count": 696,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 1
+      "chart_rank": 1,
+      "dai": true
     },
     {
       "show_id": "you-are-not-so-smart",
@@ -982,7 +1056,8 @@
       "episode_count": 340,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 10
+      "chart_rank": 10,
+      "dai": true
     },
     {
       "show_id": "choiceology",
@@ -995,7 +1070,8 @@
       "episode_count": 114,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 14
+      "chart_rank": 14,
+      "dai": true
     },
     {
       "show_id": "planetgeo-geology-podcast",
@@ -1008,7 +1084,8 @@
       "episode_count": 290,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 12
+      "chart_rank": 12,
+      "dai": true
     },
     {
       "show_id": "geology-bites",
@@ -1021,7 +1098,8 @@
       "episode_count": 125,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 5
+      "chart_rank": 5,
+      "dai": false
     },
     {
       "show_id": "dont-panic-geocast",
@@ -1034,7 +1112,8 @@
       "episode_count": 433,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": false
     },
     {
       "show_id": "well-theres-your-problem",
@@ -1047,7 +1126,8 @@
       "episode_count": 261,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 26
+      "chart_rank": 26,
+      "dai": true
     },
     {
       "show_id": "causality-engineered-network",
@@ -1060,7 +1140,8 @@
       "episode_count": 76,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": false
     },
     {
       "show_id": "brady-heywood-podcast",
@@ -1073,7 +1154,8 @@
       "episode_count": 37,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": true
     },
     {
       "show_id": "f1-beyond-the-grid",
@@ -1086,7 +1168,8 @@
       "episode_count": 434,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": false
     },
     {
       "show_id": "tuned-in-hpa",
@@ -1099,7 +1182,8 @@
       "episode_count": 366,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 40
+      "chart_rank": 40,
+      "dai": true
     },
     {
       "show_id": "the-race-f1-podcast",
@@ -1112,7 +1196,8 @@
       "episode_count": 933,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 99
+      "chart_rank": 99,
+      "dai": true
     },
     {
       "show_id": "volts",
@@ -1125,7 +1210,8 @@
       "episode_count": 431,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 113
+      "chart_rank": 113,
+      "dai": false
     },
     {
       "show_id": "energy-gang",
@@ -1138,7 +1224,8 @@
       "episode_count": 578,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 9
+      "chart_rank": 9,
+      "dai": true
     },
     {
       "show_id": "watt-it-takes",
@@ -1151,7 +1238,8 @@
       "episode_count": 98,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": true
     },
     {
       "show_id": "philosophize-this",
@@ -1164,7 +1252,8 @@
       "episode_count": 249,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 3
+      "chart_rank": 3,
+      "dai": true
     },
     {
       "show_id": "partially-examined-life",
@@ -1177,7 +1266,8 @@
       "episode_count": 876,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 24
+      "chart_rank": 24,
+      "dai": false
     },
     {
       "show_id": "philosophy-bites",
@@ -1190,7 +1280,8 @@
       "episode_count": 406,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 44
+      "chart_rank": 44,
+      "dai": false
     },
     {
       "show_id": "camera-shake-photography-podcast",
@@ -1203,7 +1294,8 @@
       "episode_count": 316,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": true
     },
     {
       "show_id": "go-creative-show",
@@ -1217,7 +1309,8 @@
       "episode_count": 101,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 124
+      "chart_rank": 124,
+      "dai": false
     },
     {
       "show_id": "the-cinematography-podcast",
@@ -1231,7 +1324,8 @@
       "episode_count": 429,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 45
+      "chart_rank": 45,
+      "dai": false
     },
     {
       "show_id": "radiolab",
@@ -1244,7 +1338,8 @@
       "episode_count": 856,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 1
+      "chart_rank": 1,
+      "dai": false
     },
     {
       "show_id": "science-vs",
@@ -1257,7 +1352,8 @@
       "episode_count": 337,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 18
+      "chart_rank": 18,
+      "dai": true
     },
     {
       "show_id": "unexplainable",
@@ -1270,7 +1366,8 @@
       "episode_count": 292,
       "explicit": false,
       "label_scope": "general",
-      "chart_rank": 4
+      "chart_rank": 4,
+      "dai": true
     },
     {
       "show_id": "how-i-built-this",
@@ -1283,7 +1380,8 @@
       "episode_count": 849,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 39
+      "chart_rank": 39,
+      "dai": true
     },
     {
       "show_id": "business-wars",
@@ -1296,7 +1394,8 @@
       "episode_count": 723,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 7
+      "chart_rank": 7,
+      "dai": true
     },
     {
       "show_id": "masters-of-scale",
@@ -1309,7 +1408,8 @@
       "episode_count": 713,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 26
+      "chart_rank": 26,
+      "dai": true
     },
     {
       "show_id": "we-have-ways-of-making-you-talk",
@@ -1322,7 +1422,8 @@
       "episode_count": 1006,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 29
+      "chart_rank": 29,
+      "dai": true
     },
     {
       "show_id": "unauthorized-history-pacific-war",
@@ -1335,7 +1436,8 @@
       "episode_count": 228,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 100
+      "chart_rank": 100,
+      "dai": true
     },
     {
       "show_id": "history-of-wwii-podcast",
@@ -1348,7 +1450,8 @@
       "episode_count": 643,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 87
+      "chart_rank": 87,
+      "dai": true
     },
     {
       "show_id": "the-war-on-cars",
@@ -1361,7 +1464,8 @@
       "episode_count": 246,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": false
     },
     {
       "show_id": "strong-towns-podcast",
@@ -1374,7 +1478,8 @@
       "episode_count": 600,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 30
+      "chart_rank": 30,
+      "dai": true
     },
     {
       "show_id": "talking-headways",
@@ -1387,7 +1492,8 @@
       "episode_count": 807,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 117
+      "chart_rank": 117,
+      "dai": false
     },
     {
       "show_id": "chemistry-world-podcast",
@@ -1400,7 +1506,8 @@
       "episode_count": 72,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 29
+      "chart_rank": 29,
+      "dai": false
     },
     {
       "show_id": "distillations",
@@ -1413,7 +1520,8 @@
       "episode_count": 362,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": false
     },
     {
       "show_id": "tiny-matters",
@@ -1426,7 +1534,8 @@
       "episode_count": 179,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 26
+      "chart_rank": 26,
+      "dai": true
     },
     {
       "show_id": "the-sharp-end-podcast",
@@ -1439,7 +1548,8 @@
       "episode_count": 138,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": false
     },
     {
       "show_id": "the-enormocast",
@@ -1452,7 +1562,8 @@
       "episode_count": 340,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 55
+      "chart_rank": 55,
+      "dai": false
     },
     {
       "show_id": "alpinist",
@@ -1465,7 +1576,8 @@
       "episode_count": 74,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": false
     },
     {
       "show_id": "designer-notes",
@@ -1478,7 +1590,8 @@
       "episode_count": 96,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 124
+      "chart_rank": 124,
+      "dai": false
     },
     {
       "show_id": "game-design-round-table",
@@ -1491,7 +1604,8 @@
       "episode_count": 391,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 144
+      "chart_rank": 144,
+      "dai": false
     },
     {
       "show_id": "clockwork-game-design-podcast",
@@ -1504,7 +1618,8 @@
       "episode_count": 50,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": false
     },
     {
       "show_id": "huberman-lab",
@@ -1517,7 +1632,8 @@
       "episode_count": 421,
       "explicit": false,
       "label_scope": "general",
-      "chart_rank": 3
+      "chart_rank": 3,
+      "dai": true
     },
     {
       "show_id": "the-matt-walker-podcast",
@@ -1530,7 +1646,8 @@
       "episode_count": 179,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 47
+      "chart_rank": 47,
+      "dai": true
     },
     {
       "show_id": "the-peter-attia-drive",
@@ -1543,7 +1660,8 @@
       "episode_count": 446,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 5
+      "chart_rank": 5,
+      "dai": false
     },
     {
       "show_id": "strict-scrutiny",
@@ -1556,7 +1674,8 @@
       "episode_count": 419,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 1
+      "chart_rank": 1,
+      "dai": false
     },
     {
       "show_id": "amicus-dahlia-lithwick",
@@ -1569,7 +1688,8 @@
       "episode_count": 617,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": true
     },
     {
       "show_id": "5-4-podcast",
@@ -1582,7 +1702,8 @@
       "episode_count": 408,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 2
+      "chart_rank": 2,
+      "dai": true
     },
     {
       "show_id": "craft-beer-and-brewing-magazine-podcast",
@@ -1595,7 +1716,8 @@
       "episode_count": 490,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 56
+      "chart_rank": 56,
+      "dai": false
     },
     {
       "show_id": "experimental-brewing",
@@ -1608,7 +1730,8 @@
       "episode_count": 385,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": false
     },
     {
       "show_id": "fermup",
@@ -1621,7 +1744,8 @@
       "episode_count": 100,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": false
     },
     {
       "show_id": "i-know-dino",
@@ -1634,7 +1758,8 @@
       "episode_count": 766,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 22
+      "chart_rank": 22,
+      "dai": true
     },
     {
       "show_id": "common-descent",
@@ -1647,7 +1772,8 @@
       "episode_count": 378,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 10
+      "chart_rank": 10,
+      "dai": true
     },
     {
       "show_id": "palaeocast",
@@ -1660,7 +1786,8 @@
       "episode_count": 244,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 105
+      "chart_rank": 105,
+      "dai": false
     },
     {
       "show_id": "the-archaeology-show",
@@ -1673,7 +1800,8 @@
       "episode_count": 345,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": true
     },
     {
       "show_id": "the-dirt-podcast",
@@ -1686,7 +1814,8 @@
       "episode_count": 271,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": true
     },
     {
       "show_id": "storm-front-freaks",
@@ -1699,7 +1828,8 @@
       "episode_count": 316,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 34
+      "chart_rank": 34,
+      "dai": true
     },
     {
       "show_id": "weather-geeks",
@@ -1712,7 +1842,8 @@
       "episode_count": 432,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 50
+      "chart_rank": 50,
+      "dai": true
     },
     {
       "show_id": "ams-on-the-air",
@@ -1725,7 +1856,8 @@
       "episode_count": 42,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": false
     },
     {
       "show_id": "myths-and-legends",
@@ -1738,7 +1870,8 @@
       "episode_count": 653,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 3
+      "chart_rank": 3,
+      "dai": false
     },
     {
       "show_id": "our-fake-history",
@@ -1751,7 +1884,8 @@
       "episode_count": 308,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 108
+      "chart_rank": 108,
+      "dai": true
     },
     {
       "show_id": "folklore-and-fiction",
@@ -1764,7 +1898,8 @@
       "episode_count": 51,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": true
     },
     {
       "show_id": "artcurious",
@@ -1777,7 +1912,8 @@
       "episode_count": 227,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 61
+      "chart_rank": 61,
+      "dai": true
     },
     {
       "show_id": "the-lonely-palette",
@@ -1790,7 +1926,8 @@
       "episode_count": 107,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 5
+      "chart_rank": 5,
+      "dai": true
     },
     {
       "show_id": "a-piece-of-work",
@@ -1803,7 +1940,8 @@
       "episode_count": 11,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": false
     },
     {
       "show_id": "sticky-notes",
@@ -1816,7 +1954,8 @@
       "episode_count": 291,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 58
+      "chart_rank": 58,
+      "dai": false
     },
     {
       "show_id": "aria-code",
@@ -1829,7 +1968,8 @@
       "episode_count": 52,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 51
+      "chart_rank": 51,
+      "dai": false
     },
     {
       "show_id": "music-history-monday",
@@ -1842,7 +1982,8 @@
       "episode_count": 120,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 199
+      "chart_rank": 199,
+      "dai": false
     },
     {
       "show_id": "that-triathlon-show",
@@ -1855,7 +1996,8 @@
       "episode_count": 705,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": true
     },
     {
       "show_id": "fast-talk",
@@ -1868,7 +2010,8 @@
       "episode_count": 470,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": true
     },
     {
       "show_id": "physiology-endurance-running",
@@ -1881,7 +2024,8 @@
       "episode_count": 110,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 56
+      "chart_rank": 56,
+      "dai": false
     },
     {
       "show_id": "shipwrecks-and-sea-dogs",
@@ -1894,7 +2038,8 @@
       "episode_count": 186,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": true
     },
     {
       "show_id": "maritime-history-podcast",
@@ -1907,7 +2052,8 @@
       "episode_count": 76,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": false
     },
     {
       "show_id": "the-roundhouse",
@@ -1920,7 +2066,8 @@
       "episode_count": 166,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": false
     },
     {
       "show_id": "railway-mania",
@@ -1933,7 +2080,8 @@
       "episode_count": 39,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": false
     },
     {
       "show_id": "woodshop-life",
@@ -1946,7 +2094,8 @@
       "episode_count": 100,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 113
+      "chart_rank": 113,
+      "dai": true
     },
     {
       "show_id": "mwa-woodworking",
@@ -1959,7 +2108,8 @@
       "episode_count": 618,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 83
+      "chart_rank": 83,
+      "dai": true
     },
     {
       "show_id": "practical-ai",
@@ -1972,7 +2122,8 @@
       "episode_count": 364,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 56
+      "chart_rank": 56,
+      "dai": true
     },
     {
       "show_id": "twiml-ai",
@@ -1985,7 +2136,8 @@
       "episode_count": 789,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 97
+      "chart_rank": 97,
+      "dai": true
     },
     {
       "show_id": "robot-brains",
@@ -1998,7 +2150,8 @@
       "episode_count": 67,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": true
     },
     {
       "show_id": "robot-talk",
@@ -2011,7 +2164,8 @@
       "episode_count": 169,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": false
     },
     {
       "show_id": "happiness-lab",
@@ -2025,7 +2179,8 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 59
+      "chart_rank": 59,
+      "dai": true
     },
     {
       "show_id": "ten-percent-happier",
@@ -2039,7 +2194,8 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 6
+      "chart_rank": 6,
+      "dai": false
     },
     {
       "show_id": "feel-better-live-more",
@@ -2053,7 +2209,8 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 8
+      "chart_rank": 8,
+      "dai": true
     },
     {
       "show_id": "the-psychology-podcast",
@@ -2066,7 +2223,8 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 12
+      "chart_rank": 12,
+      "dai": true
     },
     {
       "show_id": "maintenance-phase",
@@ -2079,7 +2237,8 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 24
+      "chart_rank": 24,
+      "dai": true
     },
     {
       "show_id": "zoe-science-nutrition",
@@ -2092,7 +2251,8 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 6
+      "chart_rank": 6,
+      "dai": true
     },
     {
       "show_id": "foundmyfitness",
@@ -2106,7 +2266,8 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 8
+      "chart_rank": 8,
+      "dai": false
     },
     {
       "show_id": "sigma-nutrition-radio",
@@ -2119,7 +2280,8 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 53
+      "chart_rank": 53,
+      "dai": false
     },
     {
       "show_id": "mel-robbins-podcast",
@@ -2133,7 +2295,8 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 2
+      "chart_rank": 2,
+      "dai": true
     },
     {
       "show_id": "happier-gretchen-rubin",
@@ -2146,7 +2309,8 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 46
+      "chart_rank": 46,
+      "dai": true
     },
     {
       "show_id": "good-inside-dr-becky",
@@ -2160,7 +2324,8 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 2
+      "chart_rank": 2,
+      "dai": true
     },
     {
       "show_id": "ask-lisa-parenting",
@@ -2174,7 +2339,8 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 15
+      "chart_rank": 15,
+      "dai": true
     },
     {
       "show_id": "armchair-expert",
@@ -2187,7 +2353,8 @@
       "episode_count": 1067,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 7
+      "chart_rank": 7,
+      "dai": true
     },
     {
       "show_id": "call-her-daddy",
@@ -2200,7 +2367,8 @@
       "episode_count": 598,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 10
+      "chart_rank": 10,
+      "dai": true
     },
     {
       "show_id": "this-past-weekend-theo-von",
@@ -2213,7 +2381,8 @@
       "episode_count": 554,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 5
+      "chart_rank": 5,
+      "dai": true
     },
     {
       "show_id": "wtf-marc-maron",
@@ -2226,7 +2395,8 @@
       "episode_count": 1226,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 148
+      "chart_rank": 148,
+      "dai": true
     },
     {
       "show_id": "las-culturistas",
@@ -2240,7 +2410,8 @@
       "episode_count": 566,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 22
+      "chart_rank": 22,
+      "dai": true
     },
     {
       "show_id": "comedy-bang-bang",
@@ -2253,7 +2424,8 @@
       "episode_count": 162,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 72
+      "chart_rank": 72,
+      "dai": true
     },
     {
       "show_id": "2-bears-1-cave",
@@ -2266,7 +2438,8 @@
       "episode_count": 333,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 70
+      "chart_rank": 70,
+      "dai": true
     },
     {
       "show_id": "how-did-this-get-made",
@@ -2280,7 +2453,8 @@
       "episode_count": 378,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 29
+      "chart_rank": 29,
+      "dai": true
     },
     {
       "show_id": "handsome",
@@ -2293,7 +2467,8 @@
       "episode_count": 251,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 20
+      "chart_rank": 20,
+      "dai": true
     },
     {
       "show_id": "kill-tony",
@@ -2306,7 +2481,8 @@
       "episode_count": 775,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 12
+      "chart_rank": 12,
+      "dai": true
     },
     {
       "show_id": "working-it-out-birbiglia",
@@ -2320,7 +2496,8 @@
       "episode_count": 253,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 22
+      "chart_rank": 22,
+      "dai": true
     },
     {
       "show_id": "criminal",
@@ -2334,7 +2511,8 @@
       "episode_count": 470,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 34
+      "chart_rank": 34,
+      "dai": true
     },
     {
       "show_id": "serial",
@@ -2348,7 +2526,8 @@
       "episode_count": 125,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 17
+      "chart_rank": 17,
+      "dai": true
     },
     {
       "show_id": "astonishing-legends",
@@ -2362,7 +2541,8 @@
       "episode_count": 454,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 130
+      "chart_rank": 130,
+      "dai": false
     },
     {
       "show_id": "lore",
@@ -2376,7 +2556,8 @@
       "episode_count": 799,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 10
+      "chart_rank": 10,
+      "dai": false
     },
     {
       "show_id": "casefile-true-crime",
@@ -2389,7 +2570,8 @@
       "episode_count": 499,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 26
+      "chart_rank": 26,
+      "dai": true
     },
     {
       "show_id": "unexplained",
@@ -2402,7 +2584,8 @@
       "episode_count": 424,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": true
     },
     {
       "show_id": "in-the-dark",
@@ -2416,7 +2599,8 @@
       "episode_count": 70,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 67
+      "chart_rank": 67,
+      "dai": true
     },
     {
       "show_id": "crime-junkie",
@@ -2429,7 +2613,8 @@
       "episode_count": 517,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 1
+      "chart_rank": 1,
+      "dai": true
     },
     {
       "show_id": "morbid",
@@ -2443,7 +2628,8 @@
       "episode_count": 879,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 3
+      "chart_rank": 3,
+      "dai": true
     },
     {
       "show_id": "dateline-nbc",
@@ -2457,7 +2643,8 @@
       "episode_count": 882,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 2
+      "chart_rank": 2,
+      "dai": true
     },
     {
       "show_id": "wicked-words-kate-winkler-dawson",
@@ -2471,7 +2658,8 @@
       "episode_count": 286,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 148
+      "chart_rank": 148,
+      "dai": true
     },
     {
       "show_id": "bone-valley",
@@ -2485,7 +2673,8 @@
       "episode_count": 134,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 29
+      "chart_rank": 29,
+      "dai": true
     },
     {
       "show_id": "this-american-life",
@@ -2499,7 +2688,8 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 4
+      "chart_rank": 4,
+      "dai": true
     },
     {
       "show_id": "snap-judgment",
@@ -2513,7 +2703,8 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 5
+      "chart_rank": 5,
+      "dai": true
     },
     {
       "show_id": "the-moth",
@@ -2527,7 +2718,8 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 1
+      "chart_rank": 1,
+      "dai": false
     },
     {
       "show_id": "ear-hustle",
@@ -2541,7 +2733,8 @@
       "episode_count": null,
       "explicit": true,
       "label_scope": null,
-      "chart_rank": 15
+      "chart_rank": 15,
+      "dai": true
     },
     {
       "show_id": "storycorps",
@@ -2555,7 +2748,8 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": true
     },
     {
       "show_id": "heavyweight",
@@ -2569,7 +2763,8 @@
       "episode_count": null,
       "explicit": true,
       "label_scope": null,
-      "chart_rank": 2
+      "chart_rank": 2,
+      "dai": true
     },
     {
       "show_id": "death-sex-money",
@@ -2583,7 +2778,8 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 8
+      "chart_rank": 8,
+      "dai": true
     },
     {
       "show_id": "where-should-we-begin",
@@ -2597,7 +2793,8 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 51
+      "chart_rank": 51,
+      "dai": true
     },
     {
       "show_id": "modern-love",
@@ -2611,7 +2808,8 @@
       "episode_count": null,
       "explicit": true,
       "label_scope": null,
-      "chart_rank": 33
+      "chart_rank": 33,
+      "dai": true
     },
     {
       "show_id": "we-can-do-hard-things",
@@ -2625,7 +2823,8 @@
       "episode_count": null,
       "explicit": true,
       "label_scope": null,
-      "chart_rank": 4
+      "chart_rank": 4,
+      "dai": true
     },
     {
       "show_id": "dear-sugars",
@@ -2639,7 +2838,8 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": true
     },
     {
       "show_id": "dear-prudence",
@@ -2653,7 +2853,8 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": true
     },
     {
       "show_id": "wow-in-the-world",
@@ -2666,7 +2867,8 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 1
+      "chart_rank": 1,
+      "dai": true
     },
     {
       "show_id": "story-pirates",
@@ -2679,7 +2881,8 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 6
+      "chart_rank": 6,
+      "dai": true
     },
     {
       "show_id": "circle-round",
@@ -2692,7 +2895,8 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 2
+      "chart_rank": 2,
+      "dai": true
     },
     {
       "show_id": "welcome-to-night-vale",
@@ -2706,7 +2910,8 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 3
+      "chart_rank": 3,
+      "dai": true
     },
     {
       "show_id": "the-magnus-archives",
@@ -2720,7 +2925,8 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 2
+      "chart_rank": 2,
+      "dai": true
     },
     {
       "show_id": "old-gods-of-appalachia",
@@ -2734,7 +2940,8 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 2
+      "chart_rank": 2,
+      "dai": true
     },
     {
       "show_id": "levar-burton-reads",
@@ -2748,7 +2955,8 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 13
+      "chart_rank": 13,
+      "dai": true
     },
     {
       "show_id": "twenty-thousand-hertz",
@@ -2762,7 +2970,8 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 6
+      "chart_rank": 6,
+      "dai": true
     },
     {
       "show_id": "design-matters",
@@ -2775,7 +2984,8 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 4
+      "chart_rank": 4,
+      "dai": true
     },
     {
       "show_id": "the-great-women-artists",
@@ -2788,7 +2998,8 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null
+      "chart_rank": null,
+      "dai": false
     },
     {
       "show_id": "dissect",
@@ -2801,7 +3012,8 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 35
+      "chart_rank": 35,
+      "dai": true
     },
     {
       "show_id": "broken-record",
@@ -2814,7 +3026,8 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 25
+      "chart_rank": 25,
+      "dai": true
     },
     {
       "show_id": "basic-brewing-radio",
@@ -2828,7 +3041,8 @@
       "episode_count": 978,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 131
+      "chart_rank": 131,
+      "dai": false
     },
     {
       "show_id": "whiskycast",
@@ -2841,7 +3055,8 @@
       "episode_count": 1176,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 118
+      "chart_rank": 118,
+      "dai": false
     },
     {
       "show_id": "ill-drink-to-that-wine-talk",
@@ -2854,7 +3069,8 @@
       "episode_count": 505,
       "explicit": true,
       "label_scope": null,
-      "chart_rank": 69
+      "chart_rank": 69,
+      "dai": true
     },
     {
       "show_id": "inside-winemaking",
@@ -2868,7 +3084,8 @@
       "episode_count": 224,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 109
+      "chart_rank": 109,
+      "dai": false
     },
     {
       "show_id": "cider-chat",
@@ -2882,7 +3099,8 @@
       "episode_count": 514,
       "explicit": true,
       "label_scope": null,
-      "chart_rank": 196
+      "chart_rank": 196,
+      "dai": false
     },
     {
       "show_id": "bourbon-pursuit",
@@ -2895,7 +3113,8 @@
       "episode_count": 1207,
       "explicit": true,
       "label_scope": null,
-      "chart_rank": 20
+      "chart_rank": 20,
+      "dai": true
     },
     {
       "show_id": "spirits-and-distilling",
@@ -2908,7 +3127,8 @@
       "episode_count": 47,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 80
+      "chart_rank": 80,
+      "dai": false
     },
     {
       "show_id": "the-bourbon-road",
@@ -2921,7 +3141,8 @@
       "episode_count": 514,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 116
+      "chart_rank": 116,
+      "dai": false
     },
     {
       "show_id": "beersmith-podcast",
@@ -2935,7 +3156,8 @@
       "episode_count": 300,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 131
+      "chart_rank": 131,
+      "dai": false
     },
     {
       "show_id": "the-bourbon-life",
@@ -2948,7 +3170,8 @@
       "episode_count": 105,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 143
+      "chart_rank": 143,
+      "dai": false
     },
     {
       "show_id": "wine-talks-with-paul-k",
@@ -2961,7 +3184,8 @@
       "episode_count": 528,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 200
+      "chart_rank": 200,
+      "dai": false
     },
     {
       "show_id": "wine-for-normal-people",
@@ -2974,7 +3198,8 @@
       "episode_count": 92,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 36
+      "chart_rank": 36,
+      "dai": false
     },
     {
       "show_id": "wine-educate",
@@ -2987,7 +3212,8 @@
       "episode_count": 131,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 58
+      "chart_rank": 58,
+      "dai": false
     },
     {
       "show_id": "wine-enthusiast-podcast",
@@ -3000,7 +3226,8 @@
       "episode_count": 229,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 66
+      "chart_rank": 66,
+      "dai": false
     },
     {
       "show_id": "brew-strong",
@@ -3014,7 +3241,8 @@
       "episode_count": 361,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 188
+      "chart_rank": 188,
+      "dai": true
     },
     {
       "show_id": "beer-in-front",
@@ -3027,7 +3255,8 @@
       "episode_count": 292,
       "explicit": true,
       "label_scope": null,
-      "chart_rank": 111
+      "chart_rank": 111,
+      "dai": true
     }
   ]
 }
