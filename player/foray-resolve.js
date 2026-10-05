@@ -34,7 +34,7 @@
 import {
   buildForayQueue, forayRuntimeSec, itemRuntimeSec, narrationDuration, runtimeIsEstimated, SEGMENT,
 } from "./foray-queue.js";
-import { hms } from "./seek-policy.js";
+import { AD_PAD_SHIPPED, hms } from "./seek-policy.js";
 
 /** The one status that may be shown to a visitor who did not ask by id. */
 export const PUBLISHED = "published";
@@ -505,6 +505,41 @@ export function resolveForay(foray, opts = {}) {
     unplayable,
     warnings: report.warnings,
   };
+}
+
+/* ---------- where the pad switch enters (DAI-07a) ----------
+
+   `resolveForay` keeps `allowAdPad = false` as its own default: a caller that
+   forgets the option gets the ADR-0008 "approximate, skip it" behaviour, never
+   the pad. These two helpers are the ONE place `AD_PAD_SHIPPED` (seek-policy.js)
+   enters the Foray paths, so both of them — the resolve that builds the
+   playlist view and the queue `setQueueFromForay` builds — answer the same
+   question the same way. An explicit boolean `allowAdPad` wins over the switch;
+   anything else (absent, null, a string) falls back to it. */
+
+/**
+ * Options for `setQueueFromForay(resolved.hydrated, …)`.
+ *
+ * @param {{ sources: Map }} resolved  a resolveForay() result
+ * @param {{ isLocalFile?: boolean, allowAdPad?: boolean }} [opts]
+ * @returns {{ resolveItem: (itemId: string) => object|null, isLocalFile: boolean, allowAdPad: boolean }}
+ */
+export function forayQueueOptions(resolved, opts = {}) {
+  return {
+    resolveItem: (itemId) => resolved.sources.get(itemId) ?? null,
+    isLocalFile: Boolean(opts.isLocalFile),
+    allowAdPad: typeof opts.allowAdPad === "boolean" ? opts.allowAdPad : AD_PAD_SHIPPED,
+  };
+}
+
+/**
+ * The piece a caller spreads into `resolveForay(doc, { segments, sources, … })`.
+ *
+ * @param {{ allowAdPad?: boolean }} [opts]
+ * @returns {{ allowAdPad: boolean }}
+ */
+export function forayResolveOptions(opts = {}) {
+  return { allowAdPad: typeof opts.allowAdPad === "boolean" ? opts.allowAdPad : AD_PAD_SHIPPED };
 }
 
 /* ---------- validating a whole set of the three documents (FD-03) ----------
