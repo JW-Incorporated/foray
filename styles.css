@@ -1513,6 +1513,32 @@ button.up-next-clear {
   font-weight: 600;
   cursor: pointer;
 }
+/* Drag to reorder (#762, PQ-04). The ⋮⋮ handle opens the arrows' group and IS
+   a button.reorder, so it has their 40px circle and their 44px hit area (the
+   tap-target rule above). `touch-action: none` on the handle alone: a finger
+   that lands there is asking to drag, so the browser must not take it as a
+   pan; everywhere else on the row the page still scrolls. While a row is
+   carried it is lifted over its neighbours, and the row it would land beside
+   has its hairline turn accent on the side it would land on (a border colour,
+   not a shadow: rows in a list sit flat, test/ui-tokens.test.js). Only
+   `transform` and colours change, so nothing reflows and nothing can push the
+   page sideways. */
+button.reorder.drag-handle {
+  cursor: grab;
+  touch-action: none;
+  letter-spacing: -0.2em;
+  color: var(--text-dim);
+}
+.up-next-row.is-dragging {
+  position: relative;
+  z-index: 2;
+  opacity: 0.85;
+  background: var(--surface-2);
+  touch-action: none;
+}
+.up-next-row.is-dragging button.reorder.drag-handle { cursor: grabbing; }
+.up-next-row.drop-before { border-top-color: var(--accent); }
+.up-next-row.drop-after { border-bottom-color: var(--accent); }
 
 /* ---------- in-app player (#25) ---------- */
 
@@ -3868,6 +3894,10 @@ body.ui-v2 button.up-next-clear {
   background: var(--surface2);
   color: var(--muted);
 }
+body.ui-v2 button.reorder.drag-handle { color: var(--muted); }
+body.ui-v2 .up-next-row.is-dragging { background: var(--surface2); }
+body.ui-v2 .up-next-row.drop-before { border-top-color: var(--violet); }
+body.ui-v2 .up-next-row.drop-after { border-bottom-color: var(--violet); }
 
 /* ---------- Playlists index + detail (renderPlaylists/renderPlaylistDetail) ---------- */
 body.ui-v2 .show-ep-search input {
