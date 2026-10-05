@@ -232,8 +232,11 @@ test("#/play/<id>?t=N is rewritten to #/episode/<id>?t=N in place — replaceSta
 test("an invalid t is ignored and the page renders with no Play-from button", () => {
   /* MUTATION: loosen deepLinkOffset's seconds pattern to `/^[\d.e+-]+$/` —
      `1e3` parses as 1000 and `-5` reaches the guard; red on `1e3`.
-     MUTATION 2: drop `t === null ||` from playFromHtml's first line —
-     fmtChapterTime(null) is "0:00" and a `data-ts="null"` button renders; red. */
+     MUTATION 2: delete playFromHtml's whole first guard line (the
+     null/undefined/isSafeInteger/negative check) — t=null slips past
+     `null > dur`, fmtChapterTime(null) is "0:00" and a `data-ts="null"`
+     "Play from 0:00" button renders; red. (Dropping only `t === null ||`
+     is NOT a kill: Number.isSafeInteger(null) is false, so it still bails.) */
   const m = mount();
   for (const raw of ["", "abc", "-5", "1e3", "Infinity", "NaN", "%", "99:99", "1:2:3:4", "0x10"]) {
     assert.strictEqual(m.ctx.deepLinkOffset(`t=${raw}`), null, `t=${raw} must be ignored`);
