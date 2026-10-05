@@ -105,7 +105,7 @@ test("the seek note reads isLocalFile from the current item, and play() marks cu
   assert.ok(marked < pos(PLAY, "paintSeekNote();"), "the note is repainted after the flag is set");
 });
 
-test("a missing local file calls onMissing and retries the original item ONCE with noLocal", () => {
+test("a missing local file calls onMissing and retries the original item ONCE with noLocal; an autoplay refusal or a settled load never does", () => {
   // MUTATION: drop `noLocal: true` from degradeLocalPlay's retry -> the retry
   // picks the same missing file again (the ticket stops the loop, but the
   // listener gets the error instead of the stream).
@@ -115,7 +115,23 @@ test("a missing local file calls onMissing and retries the original item ONCE wi
   assert.match(degrade, /return ForayPlayer\.play\(attempt\.item, \{ \.\.\.opts, noLocal: true \}\);/);
   assert.match(body("function localSourceFor(item, opts) {"), /if \(opts\?\.noLocal \|\|/);
   // Both triggers: a local load that rejects or lands idle, and reportPlayFailure.
-  assert.match(PLAY, /if \(current\?\.isLocalFile && current\.id === item\.id && \(loadError \|\| manager\.state\?\.type === ""\)\)/);
+  // MUTATION (review of PQ-19): drop `&& playFailure !== EP_PLAY_HELD` from
+  // play()'s degrade -> an autoplay refusal (idle, "Press play again") marks a
+  // good download missing and retries outside the gesture.
+  assert.match(PLAY, /if \(current\?\.isLocalFile && current\.id === item\.id && \(loadError \|\| manager\.state\?\.type === ""\) && playFailure !== EP_PLAY_HELD\)/);
   assert.ok(pos(PLAY, "degradeLocalPlay()") < pos(PLAY, "throw loadError.err"), "a degrade answers before the error is rethrown");
-  assert.match(body("reportPlayFailure(err) {"), /current\?\.isLocalFile \? degradeLocalPlay\(\) : null/);
+  // MUTATION (review of PQ-19): delete the line that spends a settled load's
+  // ticket, or drop its `localAttempt === ticket` -> a later report about a
+  // file that PLAYED (a timestamp seek that threw) degrades it; or a superseded
+  // play clears the newer play's ticket and a real missing file is not streamed.
+  assert.match(PLAY, /ticket = localAttempt = \{ item, opts \};/);
+  const spent = pos(PLAY, "if (!loadError && manager.state?.type !== \"\" && localAttempt === ticket) localAttempt = null;");
+  assert.ok(pos(PLAY, "degradeLocalPlay()") < spent && spent < pos(PLAY, "throw loadError.err"),
+    "the ticket is spent after the degrade had its chance, before the rethrow");
+  // MUTATION (review of PQ-19): `const retry = current?.isLocalFile ? ...`
+  // without `!refused`, or `refused` without the NotAllowedError test -> a
+  // refused chained advance reported to the bar marks the download missing.
+  const report = body("reportPlayFailure(err) {");
+  assert.match(report, /const refused = \/NotAllowedError\/\.test\(name\) \|\| \(err == null && playFailure === EP_PLAY_HELD\);/);
+  assert.match(report, /const retry = current\?\.isLocalFile && !refused \? degradeLocalPlay\(\) : null;/);
 });

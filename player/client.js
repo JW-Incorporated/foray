@@ -1455,7 +1455,8 @@ function setSheetDragOffset(px) {
 let current = null;
 /* The downloaded copy this play is trying (PQ-19, #29): `{ item, opts }` — the
    ORIGINAL item and the caller's options — while the play that chose the local
-   file is the current one, else null. It is the missing-file degrade's single
+   file is loading (or was refused by autoplay), else null: a load that settles
+   spends it. It is the missing-file degrade's single
    use ticket: `degradeLocalPlay` takes it and nulls it before retrying, and
    the retry is `noLocal`, so it can never set another. One failed file, one
    fallback to streaming, never a loop. */
@@ -4517,8 +4518,9 @@ const ForayPlayer = {
        app.js fills it in, and `noLocal` is the missing-file retry below. */
     const playable = localSourceFor(item, opts);
     localAttempt = null;
+    let ticket = null;
     if (playable !== item && playable.isLocalFile) {
-      localAttempt = { item, opts };
+      ticket = localAttempt = { item, opts };
       if (current === item) {
         current = { ...item, isLocalFile: true };
         paintSeekNote();
@@ -4537,11 +4539,24 @@ const ForayPlayer = {
     /* THE FILE WAS NOT THERE (PQ-19). The OS can clear it, the listener can
        free space, a restore can drop it: a local load that rejects, or lands
        the manager in `idle` (`E.error`), is a missing file. Mark the record so
-       the episode page stops claiming the download, then stream — once. */
-    if (current?.isLocalFile && current.id === item.id && (loadError || manager.state?.type === "idle")) {
+       the episode page stops claiming the download, then stream — once.
+       AN AUTOPLAY REFUSAL IS NOT A MISSING FILE (review of PQ-19). A refused
+       element.play() (NotAllowedError: the iOS lost gesture, a chained advance
+       on a locked screen) also lands the manager in `idle`, and the telemetry
+       sink has painted EP_PLAY_HELD for it. Degrading then marked a good
+       download missing (`path: null`, so it left `usedBytes` and the cap while
+       the file stayed on disk) and retried outside the gesture, refused again.
+       The ticket is left unspent: the listener's next tap plays the file. */
+    if (current?.isLocalFile && current.id === item.id && (loadError || manager.state?.type === "idle") && playFailure !== EP_PLAY_HELD) {
       const retried = degradeLocalPlay();
       if (retried) return retried;
     }
+    /* A LOAD THAT SETTLED IS SPENT (review of PQ-19). The ticket used to live
+       as long as the episode stayed current, so ANY later failure report about
+       it — a timestamp seek that threw, a chained advance — degraded a file
+       that had played. Only this call's own ticket is cleared: a newer play
+       that superseded this one owns `localAttempt` now. */
+    if (!loadError && manager.state?.type !== "idle" && localAttempt === ticket) localAttempt = null;
     if (loadError) throw loadError.err;
     render();
     /* THE ANSWER, NOT THE ATTEMPT (audit 2026-09-22). This returned `true`
@@ -4719,8 +4734,15 @@ const ForayPlayer = {
        While the failing play is still the one that chose the local file, the
        ticket is unspent: mark the copy missing and stream instead of painting
        "could not load". The retry is `noLocal`, so a failure of THAT play
-       arrives here with no ticket and is painted below as usual. */
-    const retry = current?.isLocalFile ? degradeLocalPlay() : null;
+       arrives here with no ticket and is painted below as usual.
+       NOT FOR AN AUTOPLAY REFUSAL (review of PQ-19): an `err` named
+       NotAllowedError, or a bare `null` after the sink painted EP_PLAY_HELD, is
+       the browser holding audio back, not a missing file. It is painted as
+       "Press play again" and the ticket stays for that next tap. */
+    let name = "";
+    try { name = String(err?.name ?? ""); } catch (_) { name = ""; }
+    const refused = /NotAllowedError/.test(name) || (err == null && playFailure === EP_PLAY_HELD);
+    const retry = current?.isLocalFile && !refused ? degradeLocalPlay() : null;
     if (retry) {
       retry.then(
         (ok) => { if (!ok) ForayPlayer.reportPlayFailure(null); },
@@ -4736,8 +4758,6 @@ const ForayPlayer = {
        listener to check a connection nothing was wrong with. `setNowPlaying`
        clears the line for every new item, so what is here is this attempt. */
     if (err == null && playFailure) return;
-    let name = "";
-    try { name = String(err?.name ?? ""); } catch (_) { name = ""; }
     setPlayFailure(playFailureCopy(name));
   },
 
