@@ -50,7 +50,7 @@ round-2 decision list: "Rename it 'Suggested'" (`docs/DECISIONS.md`,
 | D7 | Search gains a **Playlists** results section beside Shows and Episodes. Create gets a **Foray | Playlist** toggle where Playlist is today's builder restyled. | **#135** (C7) + new |
 | D8 | **Foray generation stays out** of the UI for now. The Create screen ships Playlist creation only; the Foray half of the toggle is not built. | new |
 | D9 | **Incremental**, behind a `cp_ui_v2` flag, tokens first, one screen per card, so TestFlight can compare old and new. | new |
-| D10 | Out of scope: share sheet and everything social (**#126** deferred); the full/mini player gets a token restyle only, its logic is owned by the iOS-audio work; **Library is Joey's #374**. | confirmed |
+| D10 | Out of scope: share sheet and everything social (**#126** deferred); the full/mini player gets a token restyle only, its logic is owned by the iOS-audio work; **Library is Joey's #374**. **2026-10-05:** sharing is no longer held by D10 or #126. The legal-review gate is withdrawn, #126 now tracks content safety in Foray generation, and share links are #1071 (`docs/DECISIONS.md` 2026-10-05). The friends/social layer is not ruled on. | confirmed; sharing part superseded 2026-10-05 |
 | D11 | Wordmark and product name → **4a**. Tagline **"Podcasts, stitched around you."** kept. | new |
 
 ## 2. What exists today, and the architectural constraint
@@ -146,6 +146,7 @@ Read first: `CLAUDE.md`; this file; `docs/ux/README.md`; issues #102, #123,
 
 #### U-11 · Cutover and records — **S** — **cutover DONE, founder-overridden schedule (2026-09-06, PR #512, kanban `t_a3f01c8a`); records DONE after PR #604 (2026-09-10: DECISIONS #125/#126/D3, README table, C-issues closed or repointed)**
 - **Ask:** after every card above is green on TestFlight for a week: default `cp_ui_v2` on for everyone, delete the four-card Home and the menu-as-primary-nav code paths, delete the flag. DECISIONS entries: #123 resolved (floor kept), #125 resolved (anonymous-first stands), #126 deferred, D3 (tab bar reverses #467), D4 (self-hosted fonts). Close or repoint C1, C2, C3, C4, C7 issues; leave C6/C10/C11 open with a pointer here. `docs/ux/README.md` gains a "what shipped vs the mockup" table.
+- **2026-10-05:** the "#126 deferred" record is superseded. #126 is re-scoped to content safety in Foray generation, and sharing is not gated on a legal review (`docs/DECISIONS.md` 2026-10-05).
 - **FOUNDER OVERRIDE (2026-09-06):** Joey directed cutting over immediately
   rather than waiting out the week of TestFlight soak time above — see
   STATE.md's U-11 entry and `archive/legacy-ui-2026-09/README.md`. The wait
@@ -215,7 +216,7 @@ fans out from U-02.
 
 - Adding React or any framework, a build step, or a runtime dependency to the root.
 - Foray generation in the UI (D8). The pipeline exists; its key and segment pool do not.
-- Social, sharing, friends, "Wyatt sent you a Foray" (#126).
+- Social, friends, "Wyatt sent you a Foray". (Sharing used to be listed here behind #126's legal review. That gate is withdrawn, `docs/DECISIONS.md` 2026-10-05, and share links are tracked on #1071.)
 - Accounts, login, connectors (#125, C5).
 - Changing search ranking, playback logic, or anything under `player/*.js`.
 - An interests **history** or evidence feed (D6).

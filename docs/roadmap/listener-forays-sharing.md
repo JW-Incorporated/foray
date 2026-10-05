@@ -33,7 +33,7 @@ Written 2026-09-25 against `origin/main` @ `ecb6bfa3` (foray; "feat(playlists): 
 
 | id | title | executor | why-opus | depends-on | size |
 |---|---|---|---|---|---|
-| PH2-01 | Sharing legal gate (#126) answered + share-origin ruling (DECISIONS + policy §5 sentence) | opus | legal judgement; `docs/DECISIONS.md` is DENIED | — | S |
+| PH2-01 | Share-origin ruling + policy §5 sentence (DECISIONS); no #126 legal gate, withdrawn 2026-10-05 | opus | `docs/DECISIONS.md` is DENIED | — | S |
 | PH2-02 | Pure share helpers in `app.js` + `test/share-links.test.js` | qwen | — | — | S |
 | PH2-03 | Share control + Foray page mount (#690) + `shared` legal rows | qwen | — | 01, 02, 08 | S |
 | PH2-04 | Episode page mount (#71 share-a-pick) | qwen | — | 03 | XS |
@@ -76,18 +76,19 @@ Written 2026-09-25 against `origin/main` @ `ecb6bfa3` (foray; "feat(playlists): 
 
 ## 3. Task sections
 
-### PH2-01 — Sharing legal gate (#126) answered and the share-origin ruling
-**Executor:** opus — legal reasoning; edits `docs/DECISIONS.md` (DENIED).
-**Context:** `docs/DECISIONS.md` lines 797-812 (2026-09-10 entry; line 807 "Issue #126 (C10) deferred: social sharing stays out"); `docs/product/2026-08-scope.md` line 115 (row 13, "revisit hard when generated output leaves the account that made it"); `docs/marketing/09-product-feature-review.md` lines 114 and 251 (R16 share-a-pick: `navigator.share` + clipboard fallback, `shared` event); `docs/legal/privacy-policy.md` §2 (line 221), §5 (line 445); `test/legal-citations.test.js` lines 560-760 (the event-type derivation and the test "both documents' event-type totals are the numbers the code produces" at line 705, whose comment at 713 says adding `logEvent("shared", {})` makes both documents wrong); `app.js:toEventRow` (line 674; `default: return null` = local only).
+### PH2-01 — The share-origin ruling and the policy §5 sentence
+**Executor:** opus; edits `docs/DECISIONS.md` (DENIED).
+**No legal gate (2026-10-05).** This card used to "answer the #126 sharing legal gate". That gate is withdrawn: Wyatt ruled there is no legal review before sharing AI-generated content, and #126 now tracks content safety in Foray generation (`docs/DECISIONS.md` 2026-10-05). Sharing waits on nothing from #126.
+**Context:** `docs/DECISIONS.md` 2026-10-05 entry (the ruling above); `docs/marketing/09-product-feature-review.md` lines 114 and 251 (R16 share-a-pick: `navigator.share` + clipboard fallback, `shared` event); `docs/legal/privacy-policy.md` §2 (line 221), §5 (line 445); `test/legal-citations.test.js` lines 560-760 (the event-type derivation and the test "both documents' event-type totals are the numbers the code produces" at line 705, whose comment at 713 says adding `logEvent("shared", {})` makes both documents wrong); `app.js:toEventRow` (line 674; `default: return null` = local only).
 **Exact change:**
-1. DECISIONS entry "2026-09-2x (sharing opens for published Forays and episodes; #126 gate answered)": the shared object is either a Foray already in the public catalogue or an episode's public page; nothing generated leaves the account that made it (private Forays from PH2-22 have no share control); no third party is contacted by 4a (the OS share sheet is the device's); the `shared` and `report_sent` events are local-only. State that the memo trigger is therefore not tripped and social graph / "Shared with you" remain out. Record `PUBLIC_SITE_ORIGIN = "https://jw-incorporated.github.io/foray/"` unless the founder answers Q1 otherwise.
+1. DECISIONS entry "(share origin; share and report events are local-only)": no third party is contacted by 4a (the OS share sheet is the device's); the `shared` and `report_sent` events are local-only; social graph / "Shared with you" remain out (not ruled on). Do not restate a legal gate; cite the 2026-10-05 entry. Record `PUBLIC_SITE_ORIGIN = "https://jw-incorporated.github.io/foray/"` unless the founder answers Q1 otherwise.
 2. `docs/legal/privacy-policy.md` §5: one sentence — sharing hands a public link to the device's share sheet and records nothing about who received it.
 3. **Do not** touch §1's local-only event list or either document's "N of M" totals: `legal-citations` derives the set from `logEvent("…")` calls in `app.js`, so those edits must travel with the emitters (PH2-03 adds `shared`, PH2-11 adds `report_sent`). Put in the PR body the exact text those two tasks will paste: the §1/§2 event-row wording for `shared` and `report_sent`, and the sentence pattern for the totals (read it from the current §2 sentence the test locates via "policy §2's local-only-count sentence").
 **Tests to add:** none; `test/legal-citations.test.js` is the gate.
 **Commands:** `node --test test/legal-citations.test.js` → green (docs edited, `app.js` unedited); `node --test test/human-actions-integrity.test.js` → green.
 **Do not touch:** `app.js`, `styles.css`, `index.html`, `docs/legal/data-safety.md`.
 **Stop and escalate if:** the founder's answer to Q1 is anything but the two origins named; or the §5 sentence alone turns `legal-citations` red.
-**Definition of done:** DRAFT PR "docs(legal): sharing gate answered (#126), share origin, local-only share/report events" with the DECISIONS entry, the §5 sentence, the PR-body text block; commands green; human merge.
+**Definition of done:** DRAFT PR "docs(legal): share origin, local-only share/report events" with the DECISIONS entry, the §5 sentence, the PR-body text block; commands green; human merge.
 
 ### PH2-02 — Pure share helpers in `app.js`
 **Executor:** qwen.

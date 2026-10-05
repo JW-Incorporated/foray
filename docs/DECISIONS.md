@@ -2,6 +2,44 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
+## 2026-10-05 — No legal review before sharing AI-generated content; #126 re-scoped to content safety in Foray generation
+
+**Founder ruling (Wyatt, 2026-10-05, in a Claude Code session, verbatim):**
+
+> "Issue #126 - no chance we will ever do that. The root of that issue (nasty content) needs to be addressed during foray generation. Move the issue to that topic and delete this concept of legal review prior to sharing AI generated content"
+
+- **There is no legal review before sharing AI-generated content.** That
+  concept is deleted from the repo's plans. Sharing is not gated on #126
+  and does not wait for a legal review. That covers copy/share links on
+  shows, episodes, playlists, suggested episodes and Forays, which Wyatt
+  asked for the same day in #1071.
+- **Issue #126 is re-scoped.** Its new title is "Foray generation: keep
+  nasty content out of generated Forays (content safety at generation
+  time)". The concern behind it, nasty content, is handled where the
+  content is made: Foray generation. A review step before sharing is not
+  the place. The open work on that is tracked on #126.
+- **What this supersedes.** The 2026-09-10 entry's "Issue #126 (C10)
+  deferred: social sharing stays out" bullet (PR #604). Its "legal-review
+  trigger … remains the gate for re-opening it" no longer holds. Also
+  superseded: the deck-level D10 in `docs/ui-transition-plan.md` (share
+  sheet out of scope, #126 deferred) as far as it held sharing behind
+  #126, and C10 "Social sharing — legal review gate" in
+  `docs/product/2026-08-scope.md`. Earlier entries are left as written.
+  This entry is the current record.
+- **What is not ruled on here.** The ruling removes only the legal-review
+  gate. The friends / social-graph layer ("Shared with you", "Wyatt sent
+  you a Foray", an inbox, accounts) is not decided by it, and neither is
+  the C6 auth model. The App Store Guideline 1.2 moderation pieces for
+  listener-requested Forays (report, block, contact address; PH2-10/11/14)
+  are a separate requirement and continue.
+- **Docs changed to match:** `docs/marketing/05-legal-risk-memo.md` (the §3
+  "revisit before generated text leaves the account" requirement and its
+  checklist line are removed, the risk analysis is kept, and a dated note
+  is added), `docs/roadmap/listener-forays-sharing.md` (PH2-01 no longer
+  "answers the #126 gate"), `docs/ui-transition-plan.md` (D10, U-11,
+  non-goals), `docs/product/2026-08-scope.md` (row 13, C10) and
+  `docs/ux/README.md` (the ShareSheet row).
+
 ## 2026-10-05 — S-12: the shows-pipeline decisions D1–D14, and what has landed against each
 
 Source: `4a-shows-pipeline-plan.md`, drafted 2026-09-04 from a scoping
