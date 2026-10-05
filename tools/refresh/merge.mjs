@@ -12,6 +12,8 @@
    Inputs (override paths via env):
      RESOLVED_PATH  resolved digest from resolve.mjs   (default data-local/resolved.json)
      EDITS_PATH     agent-authored { id: {hook, tags} } (default data-local/edits.json)
+     MERGE_CATALOG_PATH  the curated catalogue, read for each show's label_scope
+                         (default data/catalog.json; never written)
    Writes data/discover.json + data/item-tags.json in place, and nothing else.
    (Until issue #701 it also restamped deploy-manifest.json + sw.js's BUILD_ID,
    because both data files are hashed by the deploy stamp and that stamp was
@@ -34,7 +36,11 @@
    Supply it and it replaces that label outright, for a show that ranges. It is
    applied HERE, at the one point both the nightly and the backfill converge, so
    the two pipelines cannot disagree about it. Rules and rationale live in
-   `tools/refresh/topics.mjs`.                                                  */
+   `tools/refresh/topics.mjs`.
+
+   ONE EXCEPTION: an episode of a show marked `"label_scope": "general"` in
+   catalog.json MUST carry its own `topics`, or the run is refused in the
+   preflight with TOPICS_REQUIRED_GENERAL (docs/roadmap/README.md item 24).    */
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
@@ -56,12 +62,22 @@ const EDITS_PATH = envPath("EDITS_PATH", "data-local/edits.json");
    README recipe are untouched. */
 const MERGE_DISCOVER_PATH = envPath("MERGE_DISCOVER_PATH", "data/discover.json");
 const MERGE_TAGS_PATH = envPath("MERGE_TAGS_PATH", "data/item-tags.json");
+/* Read-only: the catalogue is consulted for each show's `label_scope` (see
+   topics.mjs, TOPICS_REQUIRED_GENERAL). Overridable so the tests can hand merge
+   a fixture catalogue instead of the real one. */
+const MERGE_CATALOG_PATH = envPath("MERGE_CATALOG_PATH", "data/catalog.json");
 
 const { resolved } = JSON.parse(readFileSync(RESOLVED_PATH, "utf8"));
 const edits = JSON.parse(readFileSync(EDITS_PATH, "utf8"));
 const discover = JSON.parse(readFileSync(MERGE_DISCOVER_PATH, "utf8"));
 const tagsDoc = JSON.parse(readFileSync(MERGE_TAGS_PATH, "utf8"));
 const nodeIds = new Set(JSON.parse(readFileSync(p("data/taxonomy.json"), "utf8")).nodes.map((n) => n.id));
+/* Keyed by show TITLE because that is the only show key a resolved record
+   carries (`ep.show`), the same key the item literal below writes. A missing or
+   unreadable catalogue is NOT tolerated: swallowing it would switch the
+   general-show guard off without a word. */
+const catalog = JSON.parse(readFileSync(MERGE_CATALOG_PATH, "utf8"));
+const labelScopeByShow = new Map(catalog.shows.map((s) => [s.title, s.label_scope]));
 
 // DAI status is a per-SHOW property (issue #22), so a new episode inherits its
 // show's existing verdict for free — no network call in the nightly path. A
@@ -82,6 +98,12 @@ const daiFor = (cid) => Boolean(daiByShow[cid]?.dai);
 const { BANNED, wordCount: wc } = copyRules;
 
 const copyErrors = [];
+/* The preflight walks EDITS, which carry no show, so the edit's show is found
+   through its resolved record. An edit with no resolved record, or one already
+   in discover.json, is never merged (see the item loop), so it is not judged
+   here either — re-running a night stays idempotent. */
+const resolvedById = new Map(resolved.map((ep) => [ep.id, ep]));
+const presentIds = new Set(discover.items.map((i) => i.id));
 for (const [id, e] of Object.entries(edits)) {
   if (!e || typeof e.hook !== "string") { copyErrors.push(`${id}: missing hook`); continue; }
   if (wc(e.hook) > 16) copyErrors.push(`${id}: hook ${wc(e.hook)}w > 16`);
@@ -95,9 +117,11 @@ for (const [id, e] of Object.entries(edits)) {
      override aborts the run instead of half-writing the catalogue. It must never
      become a filter — see topics.mjs on why a dropped bad id restores the very
      defect #292 is about. */
-  if (e.topics !== undefined) {
+  const ep = presentIds.has(id) ? undefined : resolvedById.get(id);
+  const labelScope = ep ? labelScopeByShow.get(ep.show) : undefined;
+  if (e.topics !== undefined || labelScope === "general") {
     try {
-      episodeTopics({ showTopics: [], editTopics: e.topics, nodeIds, id });
+      episodeTopics({ showTopics: [], editTopics: e.topics, nodeIds, id, labelScope });
     } catch (err) {
       copyErrors.push(err.message);
     }
@@ -143,7 +167,10 @@ for (const ep of resolved) {
     /* The show-level seed unless the agent judged this episode differently
        (#292). Already validated in the preflight above; this call is the one that
        chooses. */
-    topics: episodeTopics({ showTopics: ep.topics, editTopics: edit.topics, nodeIds, id: ep.id }),
+    topics: episodeTopics({
+      showTopics: ep.topics, editTopics: edit.topics, nodeIds, id: ep.id,
+      labelScope: labelScopeByShow.get(ep.show),
+    }),
     /* Provenance of the line above (#547): "show" = inherited seed, "episode" =
        the agent's own override. tools/refresh/backfill-provenance.mjs stamped
        the items merged before this field existed. */
