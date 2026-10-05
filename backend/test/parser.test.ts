@@ -508,21 +508,31 @@ describe("psc:chapters inline chapters (#1071)", () => {
   it("keeps href only as http(s) and image only as https", () => {
     /* MUTATION: allow "http:" in the image protocol list — the http image
        survives and this goes red. MUTATION: drop the protocol check entirely —
-       the javascript: href survives. */
+       the javascript: href survives. MUTATION: return the raw `trimmed` input
+       instead of the normalized `u.href` in safeUrl — chapter E's url keeps a
+       raw `"` and `<` (an attribute breakout) and the E assertions go red. */
     const chapters = chaptersOf(
       `<psc:chapters>` +
         `<psc:chapter start="0" title="A" href="https://example.com/a" image="https://example.com/a.jpg"/>` +
         `<psc:chapter start="1" title="B" href="http://example.com/b" image="http://example.com/b.jpg"/>` +
         `<psc:chapter start="2" title="C" href="javascript:alert(1)" image="data:image/png;base64,AAAA"/>` +
         `<psc:chapter start="3" title="D" href="not a url"/>` +
+        `<psc:chapter start="4" title="E" href="https://e.com/&quot;&gt;&lt;img src=x onerror=alert(1)&gt;"/>` +
         `</psc:chapters>`
     );
-    expect(chapters).toEqual([
+    expect(chapters!.slice(0, 4)).toEqual([
       { title: "A", start_time_seconds: 0, url: "https://example.com/a", img: "https://example.com/a.jpg" },
       { title: "B", start_time_seconds: 1, url: "http://example.com/b" },
       { title: "C", start_time_seconds: 2 },
       { title: "D", start_time_seconds: 3 }
     ]);
+    const e = chapters![4]!;
+    expect(e.title).toBe("E");
+    expect(e.url).toBeDefined();
+    expect(e.url!.startsWith("https://e.com/")).toBe(true);
+    expect(e.url).not.toContain('"');
+    expect(e.url).not.toContain("<");
+    expect(e.url).not.toContain(">");
   });
 
   it(`caps an episode at MAX_INLINE_CHAPTERS (${MAX_INLINE_CHAPTERS}), keeping the earliest`, () => {

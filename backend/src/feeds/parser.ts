@@ -173,7 +173,10 @@ function safeUrl(raw: string | null, protocols: readonly string[]): string | nul
   if (!trimmed) return null;
   try {
     const u = new URL(trimmed);
-    return protocols.includes(u.protocol) ? trimmed : null;
+    /* Return the normalized href, not the raw input: WHATWG serialization
+       percent-encodes `"`, `<` and `>`, so an allowed-scheme URL can never
+       close an attribute it is later interpolated into. */
+    return protocols.includes(u.protocol) ? u.href : null;
   } catch {
     return null;
   }
