@@ -5,11 +5,13 @@
  * player/download-bridge.js (PQ-17), each pinned by its own suite. This suite
  * pins app.js's wiring around them, with the REAL modules handed over on
  * `window.forayDownloads` exactly as player/client.js publishes them, and a fake
- * `window.Capacitor` ({ nativePromise, addListener, convertFileSrc }) standing
+ * `window.Capacitor` ({ nativePromise, addListener, convertFileSrc,
+ * isPluginAvailable }) standing
  * in for the shell — so the only fake is the phone:
  *
- *  1. Off the shell there is no bridge, and so no Download control, no Library
- *     section and no cellular switch — an honest absence.
+ *  1. Off the shell — or on a shell built without the ForayDownloads plugin —
+ *     there is no bridge, and so no Download control, no Library section and
+ *     no cellular switch — an honest absence.
  *  2. Download enqueues the episode's ORIGINAL enclosure URL with the build's
  *     user agent, over Wi-Fi only by default, after writing a `queued` row.
  *  3. A `downloadProgress` event repaints the control in place.
@@ -150,11 +152,14 @@ const PAGE_IDS = [
  * A fake shell. `answers[method]` is what `nativePromise` resolves with (a
  * function gets the options); a method with no answer REJECTS, the way
  * Capacitor does for a method the plugin lacks — so nothing is ok by default.
+ * `plugin`: true (the default) is a shell whose isPluginAvailable names
+ * ForayDownloads; false is one built without it; null is a shell with no
+ * isPluginAvailable at all, which cannot say either way.
  */
-function makeCapacitor(answers = {}) {
+function makeCapacitor(answers = {}, { plugin = true } = {}) {
   const calls = [];
   const listeners = {};
-  return {
+  const shell = {
     calls, listeners,
     nativePromise(plugin, method, options) {
       calls.push({ plugin, method, options });
@@ -167,6 +172,8 @@ function makeCapacitor(answers = {}) {
     /** The plugin emits: every subscriber for that event hears it. */
     emit(eventName, payload) { for (const l of listeners[eventName] || []) l.fn(payload); },
   };
+  if (plugin !== null) shell.isPluginAvailable = (name) => plugin === true && name === "ForayDownloads";
+  return shell;
 }
 
 function mount({ store = new Map(), capacitor = null, build = "37", order = null, durable = false } = {}) {
@@ -277,7 +284,10 @@ test("off the shell there is no Download control, no Library section and no cell
      MUTATION 2: drop the `state.downloadBridge ?` gate on Library's
      Downloads section — red on the Library half.
      MUTATION 3: drop `if (state.downloadBridge)` around the cellular
-     drawerToggle — red on the drawer half. */
+     drawerToggle — red on the drawer half.
+     MUTATION 4: delete bootDownloads' `pluginMissing("ForayDownloads")` check
+     — a shell built before the plugin (#1052) gets a bridge, and a control
+     whose every tap fails. */
   const m = mount({ capacitor: null });
   assert.strictEqual(m.state.downloadBridge, null, "no nativePromise, no bridge");
   m.ctx.renderEpisode(m.item.id);
@@ -292,6 +302,18 @@ test("off the shell there is no Download control, no Library section and no cell
   const appended = m.byId.get("drawer").children.map((c) => c.id);
   assert.ok(appended.includes("interlude-toggle"), "fixture premise: the drawer's switches were bound");
   assert.ok(!appended.includes("downloads-cellular-toggle"), "no cellular switch off the shell");
+
+  /* A shell that says it has no ForayDownloads plugin: the same absence. */
+  const old = mount({ capacitor: makeCapacitor({}, { plugin: false }) });
+  assert.strictEqual(old.state.downloadBridge, null, "a shell without the plugin has no bridge");
+  old.ctx.renderEpisode(old.item.id);
+  assert.ok(old.view.innerHTML.includes("ep-actions"), "fixture premise: the episode page rendered");
+  assert.ok(!/data-download/.test(old.view.innerHTML), "no Download control on a plugin-less shell");
+  old.ctx.renderLibrary();
+  assert.ok(!old.view.innerHTML.includes(">Downloads<"), "no Downloads section on a plugin-less shell");
+  old.ctx.bindDrawerToggles();
+  assert.ok(!old.byId.get("drawer").children.some((c) => c.id === "downloads-cellular-toggle"),
+    "no cellular switch on a plugin-less shell");
 });
 
 test("Download enqueues the ORIGINAL audio_url with the build's user agent, Wi-Fi only, after a queued row", async () => {
@@ -446,8 +468,9 @@ test("Delete my data empties the plugin's files before the keys, and a refusal w
      so the order assertion fails (and the refusal case reads an empty record).
      MUTATION 2: drop `&& Boolean(downloads.ok)` from clearLocalData's `ok` —
      a plugin that kept the files is reported as a clear device.
-     MUTATION 3: delete clearDownloads' `none-recorded` line — a shell with no
-     plugin (every one built before PQ-20) reads "NOT fully clear" forever. */
+     MUTATION 3: delete clearDownloads' `none-recorded` line — a shell that
+     cannot say whether it has the plugin (no isPluginAvailable), and lacks it,
+     reads "NOT fully clear" forever. */
   const order = [];
   const store = new Map();
   seedDone(store, "ep-1");
@@ -473,8 +496,10 @@ test("Delete my data empties the plugin's files before the keys, and a refusal w
   assert.deepStrictEqual({ ...out2.local.downloads }, { ok: false, state: "kept", reason: "io-error" });
   assert.strictEqual(out2.local.ok, false, "files that may remain are not a clear device");
 
-  /* A shell with no plugin at all and nothing recorded: no file can exist. */
-  const m3 = mount({ store: new Map(), capacitor: makeCapacitor({}), durable: true });
+  /* A shell that cannot say whether it has the plugin (no isPluginAvailable),
+     lacks it, and has nothing recorded: no file can exist. (A shell that SAYS
+     it lacks the plugin gets no bridge at all — test 1.) */
+  const m3 = mount({ store: new Map(), capacitor: makeCapacitor({}, { plugin: null }), durable: true });
   m3.evalIn('deleteSheet().input.value = "DELETE"');
   const out3 = await m3.ctx.deleteMyData({ deviceOnly: true });
   assert.strictEqual(out3.local.downloads.ok, true);
@@ -490,10 +515,13 @@ test("a download that crosses the cap evicts least-recently played first, never 
      MUTATION: make downloadPositions return `{}` (drop the in-progress mapping)
      — the oldest download, the one being listened to, is evicted.
      MUTATION 2: delete the `evictDownloads()` call in onDownloadEvent — the cap
-     is never enforced and nothing is removed. */
+     is never enforced and nothing is removed.
+     MUTATION 3: give DOWNLOAD_IN_PROGRESS `durationSec: null` — isInProgress
+     falls back to the row's observed_duration_sec (3600), reads the sentinel's
+     huge `sec` as past the end, and the episode being listened to is evicted. */
   const store = new Map();
   let v = STORE.normaliseDownloads({ settings: { capBytes: 100 } });
-  v = STORE.applyProgress(v, { id: "listening", status: "done", path: "/d/a.bin", bytes: 60, now: "2026-10-01T00:00:00Z" });
+  v = STORE.applyProgress(v, { id: "listening", status: "done", path: "/d/a.bin", bytes: 60, observed_duration_sec: 3600, now: "2026-10-01T00:00:00Z" });
   v = STORE.applyProgress(v, { id: "finished", status: "done", path: "/d/b.bin", bytes: 30, now: "2026-10-02T00:00:00Z" });
   v = STORE.applyProgress(v, { id: "fresh", status: "downloading", bytes: 10, total: 30, now: "2026-10-03T00:00:00Z" });
   store.set("cp_downloads", JSON.stringify(v));

@@ -12304,11 +12304,33 @@ function setDownloadsCellular(on) {
  * second call returns the bridge the first one built. Null — and nothing drawn
  * anywhere — off the shell or with no player module.
  */
+/** True only when the shell positively says it lacks `name`; a shell that
+    cannot say (no isPluginAvailable, or it throws) is not refused here. */
+function pluginMissing(name) {
+  const cap = window.Capacitor;
+  try {
+    return typeof cap?.isPluginAvailable === "function" && cap.isPluginAvailable(name) === false;
+  } catch (_) { return false; }
+}
+
 function bootDownloads() {
   if (state.downloadBridge) return state.downloadBridge;
   const surface = window.forayDownloads;
   if (!surface || typeof surface.createBridge !== "function") {
     state.downloadBridge = null;
+    return null;
+  }
+  /* A SHELL WITHOUT THE PLUGIN DRAWS NOTHING. createBridge only asks for
+     `nativePromise`, which every shell has; one built before ForayDownloads
+     (#1052) would get a Download control whose every tap answers "not
+     implemented", a `failed` row, and — through that row — a "NOT fully
+     clear" Delete my data on a device that never held a file. Capacitor's own
+     answer decides, as player/native-engine.js reads it for its plugin.
+     MUTATION: delete this check — test/downloads.test.js "off the shell…"
+     draws the control on a plugin-less shell. */
+  if (pluginMissing("ForayDownloads")) {
+    state.downloadBridge = null;
+    surface.bridge = null;
     return null;
   }
   let bridge = null;
@@ -12368,9 +12390,14 @@ function onDownloadEvent(name, payload) {
 }
 
 /* An episode the listener is partway through, as `evictionPlan` reads a
-   position: `isInProgress` needs a finite `sec` at or past MIN_RESUME_SEC and,
-   with no duration, takes the episode as unfinished. */
-const DOWNLOAD_IN_PROGRESS = Object.freeze({ sec: Number.MAX_SAFE_INTEGER, durationSec: null });
+   position: `isInProgress` needs a finite `sec` at or past MIN_RESUME_SEC and
+   at most NEAR_END_SEC short of the duration. The sentinel carries its OWN
+   duration, so the row's `observed_duration_sec` is never consulted — with a
+   null one, a row that knows its length (3600 s) would read the huge `sec` as
+   past the end, "finished", and evict the half-heard episode.
+   MUTATION: `{ sec: Number.MAX_SAFE_INTEGER, durationSec: null }` — test 9's
+   in-progress row (observed_duration_sec 3600) is evicted. */
+const DOWNLOAD_IN_PROGRESS = Object.freeze({ sec: 1e9, durationSec: 2e9 });
 
 /**
  * `evictionPlan`'s `positions`, from the player's own reading of each stored
