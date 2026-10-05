@@ -50,3 +50,17 @@ Add one paragraph per module as it lands.
   `tools/segments/fetch-transcripts.mjs` and `CORPUS_UA` / `AUDIO_UA` /
   `CONTACT` from `tools/segments/politeness.mjs`. This package defines no
   identity strings of its own.
+- **`mimes.mjs`, `row-source.mjs`, `fixtures/synthetic/`** (PKG-02): `mimes.mjs`
+  is the package's only mime list: `TIMED_MIMES` / `PLAIN_MIMES` (corpus brief
+  §2, leading-slash and `plain/txt` variants kept verbatim) and
+  `classifyTranscriptMime` / `isTimedMime`, normalising with
+  `normalizeMimeType` from `tools/segments/sweep-transcripts.mjs`; a null mime
+  is `"other"`. `row-source.mjs` defines the row-source interface
+  (`rows(table)` async generator, `counts()`, `describe()`) over the eight
+  corpus tables in `TABLES`, and `jsonlRowSource(dir)` streams
+  `<table>.jsonl` files line by line, throwing `RowSourceError`
+  `MALFORMED_ROW` (with `file:line`) or `UNKNOWN_TABLE`.
+  `fixtures/synthetic/` is a hand-written four-podcast corpus with
+  `counts.json` (13 assets, 8 episodes, 4 English timed, 3 timed + audio);
+  its README records which column lists are brief §1 and which are ASSUMED
+  until PKG-03 confirms them.
