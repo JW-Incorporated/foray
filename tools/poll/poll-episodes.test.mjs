@@ -55,7 +55,7 @@ function writeSeed(dir, rows = SEED_ROWS) {
 
 const fakeIndex = () => ({
   ok: true,
-  changedIds: new Set([11, 900, 901]),
+  changedIds: new Set([11, 900, 901, 902]),
   idMap: { alpha: 11, beta: 12 },
   topRows: [
     { id: 11, t: "Show alpha", a: "", i: null, u: "https://feeds.alpha.example.com/rss", img: null, n: 10, c: true },
@@ -104,6 +104,8 @@ test("DATABASE_URL_VARS is exactly SHOWS_DATABASE_URL then DATABASE_URL", () => 
 
 test("runDryRun with a fake changeIndex writes the summary shape and fetched is 0", async () => {
   // MUTATION: delete the `projection,` key from the summary object -> red.
+  // MUTATION: drop `topN` from the buildWatchlist call in runDryRun (falls back
+  // to 5000, so changed row 902 is no longer cut) -> red (watchlist.total 6).
   const dir = tmp();
   try {
     const outPath = path.join(dir, "nested", "out.json");
@@ -112,7 +114,7 @@ test("runDryRun with a fake changeIndex writes the summary shape and fetched is 
       seedPath: writeSeed(dir),
       outPath,
       nowMs: NOW,
-      topN: 2, // top.json's first two NON-curated rows: 900 and 901 (902 is cut)
+      topN: 2, // top.json's first two NON-curated rows: 900 and 901 (902 is changed but cut)
       changeIndex: fakeIndex(),
       loadIndex: async () => { loaderCalled = true; return { ok: false, reason: "must not be called" }; },
       ...quiet,
@@ -129,7 +131,7 @@ test("runDryRun with a fake changeIndex writes the summary shape and fetched is 
     assert.equal(onDisk.fetched, 0);
     assert.equal(onDisk.seed_rows, 3);
     assert.equal(onDisk.seed_status, "ok");
-    assert.deepEqual(onDisk.change_index, { ok: true, changed: 3, top_rows: 4 });
+    assert.deepEqual(onDisk.change_index, { ok: true, changed: 4, top_rows: 4 });
     assert.equal(onDisk.watchlist.total, 5); // 3 curated + 900 + 901
     assert.equal(onDisk.watchlist.mapped, 4); // gamma is unmapped
     assert.deepEqual(onDisk.watchlist.byReason, { changed_in_dump: 3, curated: 3, unmapped: 1 });
