@@ -21,9 +21,10 @@ pure parts have merged under `tools/poll/`, built as a no-DB dry-run first:
 - `watchlist.mjs` (PKG-07, #1054): the watchlist (every curated show, plus
   the top-N non-curated shows the weekly change index says just published).
   No seed file is committed yet.
+- `poll-episodes.mjs` (PKG-08, #1062): the `--dry-run` CLI, which puts the
+  watchlist, the due set and the G9 projection together; it fetches nothing.
 
-The `--dry-run` CLI `tools/poll/poll-episodes.mjs` (PKG-08) is in review as
-#1062. Still to come: a daily dry-run workflow (PKG-09), then the live path
+Still to come: a daily dry-run workflow (PKG-09), then the live path
 (PKG-10). The live path adds migration `0020_watchlist.sql`, sends real
 conditional GETs through `fetchFeedConditional`, and waits on gates G1 and G3
 (see `docs/DECISIONS.md`'s 2026-10-05 S-12 entry). Move this status to

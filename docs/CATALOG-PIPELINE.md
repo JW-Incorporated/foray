@@ -32,7 +32,7 @@ Keep it for the curated tier; build a programmatic harvester for breadth.
 > actually meets: the PodcastIndex-dump-derived shard index (4.7M+ rows,
 > `tools/shows/`, published as GitHub Release assets) plus its inert
 > Postgres twin (`shows_catalog`, S-09; migrations 0017–0019 merged in
-> #1045 on 2026-10-04, applied to no production database yet). Read the
+> #1045 on 2026-10-05, applied to no production database yet). Read the
 > table below as **"the
 > two tiers this repo hand-built before 2026-09"**, both of which are
 > still live and **not retired** — `data/catalog-breadth.json` remains a
