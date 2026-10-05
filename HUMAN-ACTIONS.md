@@ -13,7 +13,7 @@
 
 **Steps:**
 1. Merge them in this order. Each card adds its PR link here when it opens.
-   1. **PQ-20** — `feat(ios): foray-downloads plugin — background downloads into Application Support (PQ-20, #29) — human merge`. PR: _(link added when it opens)_
+   1. **PQ-20** — `feat(ios): foray-downloads plugin — background downloads into Application Support (PQ-20)`. PR: #1020
    2. **PQ-22** — `feat(android): foray-downloads — DownloadManager-backed offline store (PQ-22, #29) — human merge`. PR: _(added by PQ-22)_
    3. **PQ-21** — `chore(mobile): declare the foray-downloads plugin and its background-session hook (PQ-21, #29) — human merge`. PR: _(added by PQ-21)_
    4. **PQ-28** — the iPhone half of `foray-notify` (alerts). PR: _(added by PQ-28)_
