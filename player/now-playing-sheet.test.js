@@ -435,6 +435,35 @@ test("Stop leads the sheet's second row, alone at the danger end; the ✕ is the
   assert.match(FLAT_TEXT, /ui\.closeBtn\.addEventListener\("click", \(\) => setExpanded\(false\)\)/, "the ✕ collapses the sheet");
 });
 
+test("PQ-13 (#30): Bookmark sits in the sheet's second row directly after Save, built as a transport box", () => {
+  /* Both are "keep this"; Stop still leads (the test above).
+     MUTATION: remove `bookmarkBtn` from the `row2.append(...)` list -> the
+     button is built and wired but never on screen; red. */
+  const m = /row2\.append\(([^)]*)\)/.exec(CODE);
+  assert.ok(m);
+  const order = m[1].split(",").map((x) => x.trim());
+  assert.strictEqual(order[0], "stopBtn", "Stop still leads");
+  const save = order.indexOf("saveBtn");
+  assert.ok(save > 0, "Save is in the row");
+  assert.strictEqual(order[save + 1], "bookmarkBtn", "Bookmark directly after Save");
+  assert.match(FLAT_TEXT, /const bookmarkBtn = el\("button", "fp-btn fp-bookmark", "Bookmark"\)/);
+  assert.match(FLAT_TEXT, /ui\.bookmarkBtn\.hidden = !\(showEpisode && typeof nav\?\.addBookmark === "function"\)/,
+    "hidden on a Foray and on a page with no addBookmark, as Save is");
+});
+
+test("PQ-13 (#30): the Bookmark click hands the page episodePositionSec(), not the element's raw clock", () => {
+  /* `backend.currentTime` reads 0 through a cold load and on a restored bar;
+     `episodePositionSec()` is the position the bar paints.
+     MUTATION: swap `episodePositionSec()` for `backend.currentTime` in the
+     click handler -> red. */
+  const fn = /ui\.bookmarkBtn\.addEventListener\("click", \(\) => \{[\s\S]*?\n  \}\);/.exec(TEXT);
+  assert.ok(fn, "the Bookmark click handler exists");
+  const body = fn[0].replace(/\s+/g, " ");
+  assert.match(body, /nav\.addBookmark\(id, episodePositionSec\(\), episodeDurationSec\(\)\)/);
+  assert.doesNotMatch(body, /currentTime/, "never the element's clock");
+  assert.match(body, /const id = ForayPlayer\.currentEpisodeId\(\);/, "the ordinary episode only — null on a Foray");
+});
+
 test("one finger drives the drag-to-dismiss; a second finger cannot restart or end it", () => {
   /* A second pointerdown used to reset the origin to that finger, and a lift
      of EITHER finger committed a dismiss nobody made. The Foray strip's own

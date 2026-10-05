@@ -2542,6 +2542,10 @@ input[type="range"] { accent-color: var(--amber); }
 .fp-next, .fp-save { min-width: 52px; padding: 0 14px; }
 .fp-save[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
 .fp-upnext { white-space: nowrap; }
+/* Bookmark (#30, PQ-13) is Save's neighbour and wears Save's box; its
+   "Bookmarked ✓" is a 1.5 s confirmation, not a pressed state, so no
+   aria-pressed colour. Seven controls now; the row still wraps. */
+.fp-bookmark { min-width: 52px; padding: 0 14px; white-space: nowrap; }
 /* THE SECOND ROW IS ONE CONTROL TREATMENT (visual pass 1, 2026-09-23). It
    mixed a caption-size grey box, a danger box, a bare underlined link and a
    second Close beside the grab zone's ✕. Now: the boxed controls are the
