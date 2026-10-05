@@ -2,9 +2,24 @@
 
 <!-- ha-format: 2 -->
 
-> **23 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **24 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
+
+## #141 🟡 [DECIDE] Approve four privacy-policy sentences for bookmarks, downloads and followed-show alerts (~5 min)
+<!-- ha filed=2026-10-04 kind=default -->
+
+**Why:** The player-features plan (`docs/roadmap/player-features.md` §1, founder question 6) adds new rows to the privacy policy's §1 table of what stays on your phone. Changing a privacy-policy sentence needs your approval (`docs/roadmap/README.md` Q34), and these rows sit on a path that would otherwise merge without a review window. So each one ships as written below and waits here for your yes. The first is in the bookmarks PR (branch `feat/w2-pq-12-14-bookmarks`, issue #30); the downloads row (PQ-23) and the changed followed-shows row (PQ-27) are appended here by their own PRs.
+
+Sentence 1, the new `cp_bookmarks` row in `docs/legal/privacy-policy.md` §1 (bookmarks stay on the device, with no new event type, under `docs/roadmap/README.md` Q19):
+
+> | `cp_bookmarks` | Bookmarks you set inside episodes — for each episode id, the second you marked, when you set it, an optional label you typed, and the episode's length at that moment (so a bookmark on an ad-stitched show can be shown as approximate if its copy changes). Set from the Now Playing sheet; listed on the episode page. Never sent, never synced | **No** |
+
+**Steps:**
+1. Read the sentence(s) above.
+2. Reply `approved`, or say what to change. Claude makes the change on the PR that carries the sentence.
+
+**Worked if:** every sentence quoted here is approved or reworded, and the policy on `main` says the same thing.
 
 ## #134 🟡 [DECIDE] G6 — Re-confirm D1's liveness/count/recency filter, and settle the language question
 <!-- ha filed=2026-10-04 kind=default -->

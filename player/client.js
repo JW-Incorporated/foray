@@ -145,6 +145,7 @@ import * as continuation from "./continuation.js";
 import * as queueOrder from "./queue-order.js";
 import * as queueDrag from "./queue-drag.js";
 import * as tailFill from "./tail-fill.js";
+import * as bookmarks from "./bookmarks.js";
 
 /* Continuous playback's rules (NE-13), for app.js: it decides what plays after
    an episode, and it is a classic script that cannot import them. Published at
@@ -163,6 +164,11 @@ window.forayTailFill = tailFill;
    module only says which slot the finger is over and, on release, whether the
    row moves (commit on pointerup, DECISIONS 2026-09-23 lane L2). */
 window.forayQueueDrag = queueDrag;
+/* Bookmarks inside episodes (#30, PQ-12/PQ-13), for app.js the same way: the
+   page owns the `cp_bookmarks` write (EPISODE_NAVIGATION.addBookmark, through
+   its lsGet/lsSet); this module only says what a row is, what is a duplicate
+   and what the caps drop. Device-only: no event, never sent (roadmap Q3). */
+window.forayBookmarks = bookmarks;
 /* The transport's DECISIONS live in transport-policy.js as pure functions
    (NE-08), so the native engine can port them and be checked against them.
    This file gathers the state, asks, and acts; it keeps no copy of a rule. */
@@ -1283,7 +1289,7 @@ function buildUI() {
      box is the speed readout's, muted and light on purpose, and borrowing it
      painted two actions as a de-emphasised readout (audit round 2 review of
      visual-5). `.fp-next` / `.fp-save` / `.fp-upnext` carry their own rules
-     in styles.css, and `.fp-row2` wraps, so six controls fit a 320px phone. */
+     in styles.css, and `.fp-row2` wraps, so seven controls fit a 320px phone. */
   const nextBtn = el("button", "fp-btn fp-next", "⏭");
   nextBtn.type = "button";
   nextBtn.setAttribute("aria-label", "Next episode");
@@ -1295,12 +1301,20 @@ function buildUI() {
   saveBtn.type = "button";
   saveBtn.setAttribute("aria-pressed", "false");
   saveBtn.hidden = true;
+  /* BOOKMARK THIS POINT (#30, PQ-13). Beside Save, because both are "keep
+     this" and both are the page's to honour: the click hands the page the
+     episode position, the page writes `cp_bookmarks` and says "Bookmarked.".
+     Hidden on a Foray and on a page that publishes no `addBookmark`, as Save is. */
+  const bookmarkBtn = el("button", "fp-btn fp-bookmark", "Bookmark");
+  bookmarkBtn.type = "button";
+  bookmarkBtn.setAttribute("aria-label", "Bookmark this point");
+  bookmarkBtn.hidden = true;
   /* STOP FIRST, ALONE AT THE DANGER END (audit 2026-09-22, persona "Stop sits
      next to Close"; visual pass 1). It used to sit in the middle of the row
      beside an identical grey Close. The row is `justify-content: space-between`,
      so Stop leads and the navigation links trail; styles.css gives `.fp-stop`
      the danger colour. No confirmation (a stop is undone by pressing play). */
-  row2.append(stopBtn, rateBtn, nextBtn, saveBtn, queueLink, openLink, forayLink);
+  row2.append(stopBtn, rateBtn, nextBtn, saveBtn, bookmarkBtn, queueLink, openLink, forayLink);
 
   const note = el("p", "fp-note");
   note.hidden = true;
@@ -1339,7 +1353,7 @@ function buildUI() {
     root, bar, art, title, show, playBtn, skipBtn, closeBtn, fill, sheet,
     grabZone, scroll, sArt, sDesc, sDescText, clips, clipPrev, clipNext,
     sTitle, sShow, sWhy, scrub, tNow, tLeft, bigPlay, backBtn, fwdBtn,
-    rateBtn, nextBtn, saveBtn, queueLink, openLink, forayLink, stopBtn, info, note, err, sErr, announce,
+    rateBtn, nextBtn, saveBtn, bookmarkBtn, queueLink, openLink, forayLink, stopBtn, info, note, err, sErr, announce,
   };
 }
 
@@ -3103,10 +3117,10 @@ function reaskEpisodeNeighbours() {
   paintEpisodeSurface();
 }
 
-/** The sheet's ⏭, Up Next link and Save, from the page's episode surface (see
-    `buildUI`'s row2). Every reading is a getter on the page's object, taken now,
-    so the count and the saved state are the list's and the stars' as they are
-    at this paint. A Foray hides all three: its next is a clip, its Up Next is
+/** The sheet's ⏭, Up Next link, Save and Bookmark, from the page's episode
+    surface (see `buildUI`'s row2). Every reading is a getter on the page's
+    object, taken now, so the count and the saved state are the list's and the
+    stars' as they are at this paint. A Foray hides all four: its next is a clip, its Up Next is
     not consulted, and its "current" is not an episode a star can name. */
 function paintEpisodeSurface() {
   if (!ui) return;
@@ -3131,6 +3145,7 @@ function paintEpisodeSurface() {
   paintControl(ui.saveBtn, saved ? "Saved ✓" : "Save", saved ? "Saved — tap to unsave" : "Save this episode");
   ui.saveBtn.setAttribute("aria-pressed", saved ? "true" : "false");
   ui.saveBtn.classList.toggle("on", saved);
+  ui.bookmarkBtn.hidden = !(showEpisode && typeof nav?.addBookmark === "function");
 }
 
 /** Previous/next are the page's (see `episodeNavigation`), read at the moment
@@ -3833,6 +3848,19 @@ function bind() {
     if (!id || typeof nav?.toggleSaved !== "function") return;
     try { nav.toggleSaved(id); } catch (_) { /* the page's own star failed; the paint below says so */ }
     paintEpisodeSurface();
+  });
+  /* The position is `episodePositionSec()`, the one the bar paints — not the
+     element's raw clock, which reads 0 through a cold load and on a restored
+     bar (see that function). The duration rides along so a bookmark on an
+     ad-stitched copy can later be shown as approximate (seek-policy OWN). */
+  ui.bookmarkBtn.addEventListener("click", () => {
+    const nav = episodeNavigation;
+    const id = ForayPlayer.currentEpisodeId();
+    if (!nav || !id || typeof nav.addBookmark !== "function") return;
+    let bm = null;
+    try { bm = nav.addBookmark(id, episodePositionSec(), episodeDurationSec()); } catch (_) { bm = null; }
+    paintControl(ui.bookmarkBtn, bm ? "Bookmarked ✓" : "Bookmark", bm ? "Bookmarked at this point" : "Bookmark this point");
+    if (bm) setTimeout(() => paintControl(ui.bookmarkBtn, "Bookmark", "Bookmark this point"), 1500);
   });
 
   /* ---------- drag the sheet down to dismiss it ----------

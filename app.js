@@ -3448,6 +3448,13 @@ const UP_NEXT_CTX = "upnext";
  * in player/transport-policy.js, read through `previousMeansRestart`), not a
  * second copy.
  */
+/* The store player/bookmarks.js is handed: the page's own tiered read/write.
+   The key (`cp_bookmarks`, bookmarks.js KEY) is that module's; the key
+   inventory in test/data-deletion.test.js scans player/*.js and finds it
+   there, and privacy-policy.md §1 has its row. "Delete my data" clears it by
+   prefix like every other `cp_` row. */
+const BOOKMARK_STORE = { get: lsGet, set: lsSet };
+
 const EPISODE_NAVIGATION = {
   get next() {
     const cur = window.ForayPlayer?.currentEpisodeId?.();
@@ -3474,6 +3481,22 @@ const EPISODE_NAVIGATION = {
   get upNextCount() { return queueIds().length; },
   isSaved(id) { return isSaved(id); },
   toggleSaved(id) { toggleStar(id); return isSaved(id); },
+  /* Bookmarks inside episodes (#30, PQ-13). The sheet's Bookmark hands over
+     the position it paints; the RULES (dedupe, caps, row shape) are
+     player/bookmarks.js's, published as `window.forayBookmarks`, and the write
+     is the page's own lsGet/lsSet. Device-only (roadmap Q3): no logEvent, no
+     sync. Null when the player module has not published the rules. */
+  addBookmark(id, sec, durationSec) {
+    const b = window.forayBookmarks;
+    if (!b) return null;
+    const bm = b.addBookmark(BOOKMARK_STORE, { episodeId: id, sec, durationSec });
+    if (bm) announce("Bookmarked.");
+    return bm;
+  },
+  bookmarksFor(id) {
+    const b = window.forayBookmarks;
+    return b ? b.listBookmarks(BOOKMARK_STORE, id) : [];
+  },
 };
 
 /** Tell the player the answer changed (a play, an Up Next edit), so the OS

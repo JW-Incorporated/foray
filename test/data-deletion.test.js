@@ -565,11 +565,20 @@ test("the shipped source names exactly the 22 cp_ key families the audit found",
      as an argument. The audio files live in the app's own files directory;
      PQ-18's Delete-my-data purge removes them and PQ-23 adds that sentence
      to §7. Same mechanism: this count failed first, then the policy check,
-     until privacy-policy.md §1 got the row. */
+     until privacy-policy.md §1 got the row.
+
+     32 -> 33 on 2026-10-04: `cp_bookmarks`, bookmarks inside episodes (issue
+     #30, PQ-12..14, docs/roadmap/player-features.md). player/bookmarks.js owns
+     the key; app.js writes it through lsGet/lsSet when the Now Playing
+     sheet's Bookmark is pressed. Per episode id: the second marked, when, an
+     optional label, the episode's length then. Device-only — no event type,
+     never sent, never synced (roadmap README Q19). Same mechanism: this count
+     failed first, then the policy check, until privacy-policy.md §1 got the
+     row. */
   const families = [...keyFamiliesInSource().keys()].sort();
   assert.strictEqual(
-    families.length, 32,
-    `expected 32 cp_ key families, found ${families.length}:\n${families.join("\n")}`
+    families.length, 33,
+    `expected 33 cp_ key families, found ${families.length}:\n${families.join("\n")}`
   );
   assert.ok(families.includes("cp_foray:"), "the patterned Foray resume key must be found as a family");
   assert.ok(families.includes("cp_pos:"), "the patterned episode-position key must be found as a family");

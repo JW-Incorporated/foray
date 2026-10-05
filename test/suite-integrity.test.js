@@ -286,7 +286,7 @@ const FLOORS = {
      opened through app.js's sheet owner with the topbar kept reachable, Stop
      releases the owner, the artwork opens the player, Stop and Close sit at
      opposite ends of their row, and one finger drives the drag (+6). */
-  "player/now-playing-sheet.test.js": 30, // audit round 2, L2 (2026-09-23): the touchmove claim, the live region as a sibling, Stop order, sheet motion, panel motion, the drawer lock in CSS; 24 -> 30 //
+  "player/now-playing-sheet.test.js": 32, // audit round 2, L2 (2026-09-23): the touchmove claim, the live region as a sibling, Stop order, sheet motion, panel motion, the drawer lock in CSS; 24 -> 30; 30 -> 32 // PQ-13 (#30): Bookmark directly after Save in row2, and its click reads episodePositionSec()
   /* DAI-07a (2026-10-04): AD_PAD_SHIPPED, the one switch for ADR-0008's pad
      tier, pinned off until DAI-09 flips it (README founder question 15); 33 -> 34. */
   "player/seek-policy.test.js": 34,
@@ -1133,6 +1133,7 @@ const FLOORS = {
      from a gesture that reorders the wrong row or none. */
   "test/up-next-gestures.test.js": 6, // PQ-04 (#762)
   "test/engine-continuation.test.js": 10, // PQ-07 (#762): Play next, drag reorder and Clear each re-send the engine's plan
+  "test/bookmarks.test.js": 5, // PQ-13 (#30): the page writes the real module's row into cp_bookmarks, keeps no copy of the dedupe, lists sorted, announces, and logs no event (README Q19)
   "test/engine-developer-rows.test.js": 14, // NE-22d: the engine's four Developer rows in the drawer
   "test/up-next-autoadvance.test.js": 25, // PQ-11 (#691): the tail after the list (first pick, third is the stretch with the bridge line + announcement, no repeats, switch off stops it); 21 -> 25 // audit round 3 (lane L1): app-1-9 the finished row leaves Up Next with the switch off; 20 -> 21 // founder, 2026-09-24, reversing lane L3's question-9 default: a play from the page moves THAT row to the top and ⏭ drops only the skipped episode (+1: a refused play moves nothing); no wrap-around, previous = restart past the window (p-car-5); 11 -> 19 -> 20 // // 2026-09-22: rewritten for the continuous-playback ruling (on by default, Up Next first, then the chosen list, unplayable rows passed over); 6 -> 11
   /* U-07's Interests page (docs/ui-transition-plan.md D6, kanban card
