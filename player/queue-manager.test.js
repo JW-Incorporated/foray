@@ -1532,6 +1532,48 @@ test("a copy that reports no duration at all is skipped, not guessed at", async 
   assert.ok(log.some((t) => /reports no duration/.test(t)));
 });
 
+/* ---------- ADR-0008's pad, at load (DAI-17) ----------
+
+   The pad sits between rungs 3 and 4 (seek-policy.js `seekPrecision`): a DAI
+   copy whose duration has drifted past DRIFT_TOLERANCE_SEC may still play if
+   the Foray opted in (`allowAdPad`, DAI-07a's AD_PAD_SHIPPED switch) and this
+   copy's own ad load fits inside the source's `ad_pad_sec`. The pad extends the
+   STOP only (foray-queue.js: `end_sec = authoredEnd + appliedPad`), so a 100 s
+   pad on a 100-210 segment arms the out-point at 310. `fdai` declares a
+   reference copy of 2501 s, so a 2561 s copy carries 60 s of ad load (inside a
+   100 s pad, past the 30 s drift tolerance) and a 2701 s copy carries 200 s. */
+
+test("a padded DAI segment whose copy stays inside the pad plays with the PADDED out-point", async () => {
+  const { m, backend, log } = make({ backend: { durationById: { "foray-1#0": 2561 } } });
+  await m.playForay(foray([fdai({ ad_pad_sec: 100 })]), { resolveItem, allowAdPad: true });
+  assert.equal(m.state.type, "playing");
+  assert.ok(backend.calls.includes("outPoint:310"), `the stop carries the pad: ${backend.calls}`);
+  assert.ok(!backend.calls.includes("outPoint:210"), "never the authored stop, which would cut the payload short");
+  assert.ok(log.some((t) => /foray\.segment\.foray-1#0: padded/i.test(t)), `got ${log}`);
+});
+
+test("a padded DAI segment whose copy carries more ad load than the pad is skipped at load", async () => {
+  // The pad is a bound, and this copy exceeds it: the stop would land early
+  // and truncate the payload, so the honest answer is a skip (ADR-0008).
+  const { m, backend, log } = make({ backend: { durationById: { "foray-1#0": 2701 } } });
+  await m.playForay(foray([fdai({ ad_pad_sec: 100 })]), { resolveItem, allowAdPad: true });
+  assert.equal(m.state.type, "ended");
+  assert.ok(!backend.calls.includes("outPoint:310"), "the over-pad segment never became audible");
+  assert.ok(!backend.calls.includes("play"));
+  assert.ok(log.some((t) => /foray\.segment\.skipped\.atLoad foray-1#0: .*the pad bounds/.test(t)), `got ${log}`);
+});
+
+test("with the pad off, the same segment is skipped and the pad is never applied", async () => {
+  // allowAdPad omitted: the pad stays off until D5 (seek-policy.js
+  // AD_PAD_SHIPPED), so a 60 s drift is a plain rung-3 failure.
+  const { m, backend, log } = make({ backend: { durationById: { "foray-1#0": 2561 } } });
+  await m.playForay(foray([fdai({ ad_pad_sec: 100 })]), { resolveItem });
+  assert.equal(m.state.type, "ended");
+  assert.ok(!backend.calls.includes("outPoint:310"), "the pad is never applied");
+  assert.ok(!backend.calls.includes("play"));
+  assert.ok(log.some((t) => /foray\.segment\.skipped\.atLoad foray-1#0: .*not implemented/.test(t)), `got ${log}`);
+});
+
 /* ---------- refusals that must be loud ---------- */
 
 test("a backend with no out-point watch refuses the Foray instead of playing whole episodes", async () => {

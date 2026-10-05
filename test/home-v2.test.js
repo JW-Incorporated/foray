@@ -137,7 +137,8 @@ function ui2Mount(overrides = {}) {
   };
   m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
   m.state.interests = { engineering: 0.9, business: 0.6, comedy: 0.1, "business/startups": 0.8 };
-  m.state.discover = { items: [1, 2, 3].map(i => ({ id: "st" + i, title: "Startup " + i, show: "Founders", duration_min: 30, topics: ["business/startups"], release_date: "2026-09-0" + i, audio_url: "https://cdn.test/st" + i + ".mp3" })) };
+  // One show per episode: a generated playlist holds at most 2 from one show (PKG-04).
+  m.state.discover = { items: [1, 2, 3].map(i => ({ id: "st" + i, title: "Startup " + i, show: "Founders " + i, duration_min: 30, topics: ["business/startups"], release_date: "2026-09-0" + i, audio_url: "https://cdn.test/st" + i + ".mp3" })) };
   m.state.cardSlots = [
     {
       branch: "engineering", role: "top",
@@ -324,7 +325,7 @@ test("F14: a generated playlist is an interest leaf filled from the pool, never 
      the card slots projected as playlists (the first U-03 implementation)
      -> the "Engineering" card appears under Playlists for you and this fails. */
   const m = ui2Mount();
-  m.state.discover = { items: [1, 2, 3, 4].map(i => ({ id: "st" + i, title: "Startup " + i, show: "Founders", duration_min: 30, topics: ["business/startups"], release_date: "2026-09-0" + i, audio_url: "https://cdn.test/st" + i + ".mp3" })) };
+  m.state.discover = { items: [1, 2, 3, 4].map(i => ({ id: "st" + i, title: "Startup " + i, show: "Founders " + i, duration_min: 30, topics: ["business/startups"], release_date: "2026-09-0" + i, audio_url: "https://cdn.test/st" + i + ".mp3" })) };
   m.ctx.renderHome();
   const html = m.view();
   const section = html.slice(html.indexOf("hv2-playlists"), html.indexOf("hv2-suggested"));
@@ -340,7 +341,7 @@ test("F14: the generated playlist's detail page resolves by id, lists the leaf's
   /* MUTATION: drop `|| generatedPlaylistById(id)` from renderPlaylistDetail
      -> "Playlist not found." */
   const m = ui2Mount();
-  m.state.discover = { items: [1, 2, 3].map(i => ({ id: "st" + i, title: "Startup " + i, show: "Founders", duration_min: 30, topics: ["business/startups"], release_date: "2026-09-0" + i, audio_url: "https://cdn.test/st" + i + ".mp3" })) };
+  m.state.discover = { items: [1, 2, 3].map(i => ({ id: "st" + i, title: "Startup " + i, show: "Founders " + i, duration_min: 30, topics: ["business/startups"], release_date: "2026-09-0" + i, audio_url: "https://cdn.test/st" + i + ".mp3" })) };
   m.ctx.renderPlaylistDetail("gen-business/startups");
   const html = m.view();
   assert.ok(!html.includes("Playlist not found"), "generated id resolves");

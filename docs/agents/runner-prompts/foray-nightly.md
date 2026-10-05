@@ -17,7 +17,7 @@ The Action already did the deterministic half (scan feeds, resolve Apple
 trackIds, dedup) and published two files to the **`refresh-digest`** branch:
 `resolved.json` (the episodes to publish) and `refresh-state.json` (ignore it).
 You produce `edits.json` (hooks, tags, and `topics` where an episode differs
-from its show's label) and run the committed merge. See
+from its show's label or its show is general) and run the committed merge. See
 `tools/refresh/README.md` for the full contract.
 
 ## Steps (follow exactly)
@@ -90,7 +90,7 @@ from its show's label) and run the committed merge. See
      episode's title/subject instead — never quote the tease.
    - **tags**: 5–10, lowercase-hyphenated (`^[a-z0-9]+(-[a-z0-9]+)*$`). Reuse
      the existing vocabulary in `data/item-tags.json` wherever it applies.
-   - **topics** (OPTIONAL, #292): the resolved item's `topics` field is its
+   - **topics** (OPTIONAL, #292 — REQUIRED for a general show, below): the resolved item's `topics` field is its
      **show's** label, not this episode's. **Omit `topics` and that label
      stands** — which is right for a single-subject show, and is the normal
      case. Supply it *only when this episode is about something else*, and it
@@ -109,6 +109,23 @@ from its show's label) and run the committed merge. See
      appealed: 77 of the 99 shows with ≥ 8 episodes carried one identical topic
      set on **every** episode. Authoring `topics` when an episode genuinely
      differs is how that stays fixed; skipping it is how it comes back.
+
+     **A general show's episodes must carry their own `topics`.** If the
+     item's show has `"label_scope": "general"` in `data/catalog.json` (*CBC
+     Ideas*, *Stuff You Should Know*, *Huberman Lab* and the rest), its show
+     label ranges too widely to describe any one episode, so for that item
+     `topics` is **REQUIRED**, not optional: 1–3 ids from `data/taxonomy.json`,
+     chosen from the episode's own `_description`, primary first. Omit it and
+     `merge.mjs` refuses the **whole run** in preflight with
+     `TOPICS_REQUIRED_GENERAL`, naming the item, and writes nothing — every
+     other episode that night is lost with it (founder ruling,
+     `docs/roadmap/README.md` item 24; #547). So check each item's show in
+     `data/catalog.json` before you leave `topics` out. If the description
+     gives you nothing to ground a topic in, drop the item rather than guess.
+     *Lex Fridman Podcast* is general and has `taxonomy_node_ids: []`, so
+     `scan.mjs` seeds its episodes with no topic and `resolve.mjs` drops them
+     as `no valid topic`: they never reach `resolved.json`. That is expected;
+     do not edit `data/catalog.json` to bring them back.
    - **To drop an item**, simply omit it from `edits.json` — `merge.mjs` skips
      resolved items with no edit and reports them. Prefer dropping over forcing
      a weak hook. Drop, at minimum:
@@ -138,8 +155,12 @@ from its show's label) and run the committed merge. See
    - 5 `MERGE_FAILED` — a copy-rule or `topics` failure in `edits.json`. Nothing
      was written. A `not taxonomy node ids: "…"` line is a `topics` typo —
      correct the id against `data/taxonomy.json`, or delete the `topics` key to
-     fall back to the show's label. Fix the hook, tags or `topics` (or drop the
-     item) and re-run.
+     fall back to the show's label. A `this show is marked label_scope
+     "general"` line is `TOPICS_REQUIRED_GENERAL` (step 4): that item's show is
+     general and its edit has no `topics`. Add 1–3 ids from its description or
+     drop the item. **Deleting the `topics` key is NOT a fallback for a general
+     show** — that is the very thing refused, for a typo or anything else. Fix
+     the hook, tags or `topics` (or drop the item) and re-run.
    - 6 `TESTS_FAILED` — `merge.mjs` already WROTE the two data files before the
      tests ran. Put them back first:
      `git restore data/discover.json data/item-tags.json`, then fix or drop the
@@ -168,7 +189,10 @@ from its show's label) and run the committed merge. See
    offending **hook, tags or `topics`** in `edits.json` (or drop the item) and
    re-run. A `not taxonomy node ids: "…"` failure is a `topics` typo — correct
    the id against `data/taxonomy.json`, or delete the `topics` key to fall back
-   to the show's label. **Nothing was written on a copy-rule or `topics`
+   to the show's label. A `this show is marked label_scope "general"` failure
+   is `TOPICS_REQUIRED_GENERAL`: the show is general, so add 1–3 ids from the
+   episode's description or drop the item — deleting the `topics` key is NOT a
+   fallback for a general show. **Nothing was written on a copy-rule or `topics`
    failure**: merge validates every item before it writes anything, so that
    kind of failed run leaves the data files untouched and re-running after the
    fix is safe. It writes `data/discover.json` + `data/item-tags.json` and
