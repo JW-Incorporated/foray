@@ -589,7 +589,7 @@ const FLOORS = {
      it protects is gameable in exactly one direction: a misspelled `food/bakin`
      reads as "has a child" to the root-dumping report and silently erases a
      root-only pair, so a deleted gate would make the number look better. */
-  "test/data-topic-integrity.test.js": 15, // PKG-07 (2026-10-04): +1, no engineering/energy-fusion item comes from a general show's inherited label; 14 -> 15 // PKG-01 (2026-10-04): +2, every discover item carries topics_source and an explicit key; 12 -> 14
+  "test/data-topic-integrity.test.js": 16, // #547 residue (2026-10-05): +1, only an allowlisted fusion-specific show passes engineering/energy-fusion by inheritance; 15 -> 16 // PKG-07 (2026-10-04): +1, no engineering/energy-fusion item comes from a general show's inherited label; 14 -> 15 // PKG-01 (2026-10-04): +2, every discover item carries topics_source and an explicit key; 12 -> 14
   /* The code citations in the two store-submission documents. Same argument as
      data-deletion above and the same stakes: what this suite guards is whether a
      document going to a store reviewer describes the code that shipped. It is
@@ -2139,6 +2139,7 @@ const FLOORS = {
   "tools/foraycorpus-export/manifest.test.mjs": 5, // PKG-06 (docs/roadmap/corpus.md): manifest file list + sha256, re-hash before the atomic latest.json, isChanged / high-water null-safety, 30-day insert window
   "tools/foraycorpus-export/pg-row-source.test.mjs": 5, // PKG-07 (docs/roadmap/corpus.md): read-only Postgres row source on a fake client (READ ONLY trio, id + tuple keyset paging, PKG-02 column lists, no password in describe/errors, unknown table)
   "tools/foraycorpus-export/overlap.test.mjs": 3, // PKG-09 (docs/roadmap/corpus.md): breadth overlap (itunes first, feed-only via normalizeFeedUrl, null ids never match, stable keys incl. CLI)
+  "tools/foraycorpus-export/wave-candidates.test.mjs": 4, // PKG-35 (docs/roadmap/corpus.md): #279 drinks-wave candidates (fixed positives, whole-word boundary negatives, dai_prior false/null/true before timed, english null without a shows.jsonl row)
   /* The breadth prioritiser and its yield report (#114). Floored for the same
      reason politeness.test.mjs is, and the reason is not hypothetical here
      either: the first draft of `rank-breadth.mjs` had a seed hash that produced
