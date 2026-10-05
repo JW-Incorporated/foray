@@ -398,7 +398,7 @@ test("the derivation floor is pinned at 6 files", () => {
   assert.equal(MIN_DERIVED_DATA_FILES, 6);
 });
 
-test("the sliced files' per-file budgets are pinned, all four of them", () => {
+test("the sliced files' per-file budgets are pinned, all five of them", () => {
   /* THE THIRD INSTANCE OF THE SAME SELF-REFERENTIAL SHAPE, added with the budgets
      themselves rather than after somebody defeated them. `prepare-webdir` only fails
      when a slice EXCEEDS its own `maxBytes`, so raising `maxBytes` satisfies both
@@ -438,10 +438,16 @@ test("the sliced files' per-file budgets are pinned, all four of them", () => {
      had (26% used) and the same statement: one published generated Foray takes
      the seed to 35–43 KB (79–97%, every committed draft fits), a second is far
      over. 40 KB would false-red the fattest draft's first publish; 48 KB would
-     leave 11.6 KB at 24%, under prepare-webdir.test.mjs's 25% floor. */
+     leave 11.6 KB at 24%, under prepare-webdir.test.mjs's 25% floor.
+
+     `data/item-tags.json` 138 KB, added on 2026-10-05 (#279) when the tag map
+     stopped being copied whole (279.6 KB) and became the searched pool's tag lists
+     plus the whole map's counts (122.0 KB, LF). ~13% above, the discover slice's
+     distance: it watches the same catalogue growth, plus the tagger's vocabulary. */
   assert.deepEqual(PROJECTED_DATA.map((p) => [p.rel, p.maxBytes]), [
     ["data/forays.json", 44 * 1024],
     ["data/discover.json", 720 * 1024],
+    ["data/item-tags.json", 138 * 1024],
     ["data/segments.json", 100 * 1024],
     ["data/segment-sources.json", 40 * 1024],
   ]);
