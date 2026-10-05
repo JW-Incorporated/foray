@@ -721,8 +721,13 @@ const FLOORS = {
      2026-10-04, +3 (catalogue-personalization PKG-03, founder ruling 24): a
      `label_scope: "general"` show gets no Similar shows row and is never
      offered as one, and catalog.json's label_scope is "general" or absent —
-     any other spelling silently re-enables label inheritance. 44 -> 47. */
-  "test/show-page.test.js": 47,
+     any other spelling silently re-enables label inheritance. 44 -> 47.
+     2026-10-04, +3 (catalogue-personalization PKG-10, #560 item 4): a breadth
+     row carrying taxonomy nodes renders chips and Similar shows; an
+     index-seeded breadth show is upgraded to its API row when that row carries
+     nodes; and a row without nodes leaves the seeded page alone, no re-render.
+     47 -> 50. */
+  "test/show-page.test.js": 50,
   /* Founder reports, 2026-09-13. The "Show more episodes" control came out of
      the show page, so show-page-pagination.test.js was RE-POINTED rather than
      shrunk — same five tests, now pinning the absence of the control, the

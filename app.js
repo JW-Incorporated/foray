@@ -5279,7 +5279,10 @@ async function searchShowEpisodesScoped(show_id, query) {
 
      1. THE LOADED INDEX, if it is already in memory. Free, no network. It is
         in memory exactly when the listener searched before tapping, which is
-        the common in-session case.
+        the common in-session case. (Since catalogue-personalization PKG-10 the
+        page it paints is then upgraded in the background by the one-row
+        lookup below, because an index row carries no taxonomy nodes — see
+        upgradeBreadthShowRow. The listener never waits on that lookup.)
      2. OTHERWISE THE ENDPOINT, one row over the wire. NOT the index: fetching
         436 KB and paying a ~50 ms decode to render one show page would be a
         worse trade than one ~200 ms round trip for one row, and a cold open of
@@ -5361,6 +5364,10 @@ function resolveMissingShow(show_id) {
       editorial_note: null, taxonomy_node_ids: [], tier: fromIndex.tier,
     };
     renderShow(show_id, parseShowRoute()?.query || "");
+    /* The index row is enough to paint the page, not to finish it: it carries
+       no taxonomy nodes, so no chips and no Similar shows. Ask for the full row
+       behind the paint (catalogue-personalization PKG-10). */
+    upgradeBreadthShowRow(show_id);
     return;
   }
 
@@ -5400,6 +5407,41 @@ function resolveMissingShow(show_id) {
     state.breadthShowCache[show_id] = row;
     if (showById(show_id)) renderShow(show_id, parseShowRoute()?.query || "");
   }); // fetchApiJson swallows network/parse errors to null — the `data === null` branch above is that case
+}
+
+/* AN INDEX-SEEDED BREADTH SHOW IS UPGRADED TO ITS API ROW (catalogue-
+   personalization PKG-10, finishing #560 item 4).
+
+   resolveMissingShow's index branch paints from the loaded show index, which
+   holds a title and a tier and nothing else, so its seed carries
+   `taxonomy_node_ids: []` — and it returned before the `api/shows/search?id=`
+   fetch ran. Once the backend stopped zeroing breadth nodes (PKG-09), that
+   early return was the one thing keeping a breadth show page that had been
+   reached through search from showing its chips and its Similar shows. This
+   asks for the same row the fetch path asks for, behind the page already on
+   screen.
+
+   ONLY AN ANSWER WITH NODES CHANGES ANYTHING. A failed fetch, a miss, or a row
+   whose nodes are empty leaves the seeded page exactly as it is — no flash, no
+   error state over a page that is working. A repaint that would draw the same
+   page again is not worth the flicker.
+
+   The repaint supersedes the seeded render first (`renderEpoch++`, the step
+   renderCurrentPage takes before it repaints): that render's episode fetch is
+   still in flight, and left current it would paint into the upgraded page's
+   list and bind its own search handlers beside the new render's. */
+function upgradeBreadthShowRow(show_id) {
+  const isCurrentRender = renderToken();
+  fetchApiJson(`api/shows/search?id=${encodeURIComponent(show_id)}`).then((data) => {
+    /* Navigated away while the row was in flight — the same guard as
+       resolveMissingShow's fetch path. */
+    if (!isCurrentRender() || !onShowRoute(show_id)) return;
+    const row = data?.show || null;
+    if (!row || !Array.isArray(row.taxonomy_node_ids) || !row.taxonomy_node_ids.length) return;
+    state.breadthShowCache[show_id] = { ...state.breadthShowCache[show_id], ...row };
+    renderEpoch++;
+    renderShow(show_id, parseShowRoute()?.query || "");
+  }); // fetchApiJson swallows network/parse errors to null, which the row guard above ignores
 }
 
 function renderShow(show_id, initialQuery = "") {
