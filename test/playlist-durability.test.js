@@ -353,10 +353,12 @@ test("REPRODUCED: the list's part count and the detail view's rows agree after a
 /* 2. WHAT A PLAYLIST PERSISTS                                          */
 /* ==================================================================== */
 
-test("a saved part carries exactly the seven whitelisted fields, and no more", () => {
+test("a saved part carries exactly the eight whitelisted fields, and no more", () => {
   /* The whitelist is the decision, so it is pinned literally: a field added to
      the pool must not silently start costing 50 playlists' worth of storage,
-     and a field removed here must not silently stop rendering.
+     and a field removed here must not silently stop rendering. Eight since
+     catalogue-personalization PKG-11 (#558 item 8) added `release_date`, which
+     archivedRow prints: `id` plus the seven PLAYLIST_PART_FIELDS.
 
      MUTATION 1: add `audio_url` to PLAYLIST_PART_FIELDS — fails here and again in
      the byte-budget test below. MUTATION 2: drop `title` — fails here, and the
@@ -364,7 +366,7 @@ test("a saved part carries exactly the seven whitelisted fields, and no more", (
   const m = mount();
   const part = m.ctx.playlistPart(poolItem(1));
   assert.deepStrictEqual(Object.keys(part).sort(), [
-    "apple_collection_id", "apple_track_id", "duration_min", "id", "show", "title", "topics",
+    "apple_collection_id", "apple_track_id", "duration_min", "id", "release_date", "show", "title", "topics",
   ]);
 });
 
@@ -384,8 +386,8 @@ test("the fields that ROT or cost the most are deliberately not copied", () => {
 });
 
 test("a full store of 50 playlists stays inside its stated storage budget", () => {
-  /* The arithmetic from app.js's § header, asserted rather than claimed: ~268 B a
-     part, ~3.4 KB a playlist, ~168 KB for a full 50 against savePlaylists' cap
+  /* The arithmetic from app.js's § header, asserted rather than claimed: ~298 B a
+     part, ~3.6 KB a playlist, ~178 KB for a full 50 against savePlaylists' cap
      and SearchEngine.DEFAULT_CAP's 10 picks. Measured on REAL catalogue rows, so
      the titles and show names are the real lengths.
 
@@ -402,11 +404,16 @@ test("a full store of 50 playlists stays inside its stated storage budget", () =
      worst case separated from the mean — the first draft sampled `slice(0, 10)` and
      left 49% slack against its own stated figure, so adding `hook` (97 B) or
      `duration_sec` (20 B) would have passed the budget it claimed to defend. The
-     ceilings below are tight enough that either one goes red. */
+     ceilings below are tight enough that either one goes red.
+
+     2026-10-04 (catalogue-personalization PKG-11, #558 item 8): the mean ceiling
+     moved 285 -> 310 B when `release_date` (28 B) joined the whitelist; measured
+     297.6 B over 2,167 items. Adding `hook` still measures 395.9 B and goes red.
+     Max (496 B against 500), typical and worst were re-measured and still fit. */
   const real = readJson("data/discover.json").items;
   const sizes = real.map((it) => JSON.stringify(m.ctx.playlistPart(it)).length);
   const mean = sizes.reduce((a, b) => a + b, 0) / sizes.length;
-  assert.ok(mean < 285, `the mean part is ${mean.toFixed(0)} B against a documented 268; the budget is 285`);
+  assert.ok(mean < 310, `the mean part is ${mean.toFixed(0)} B against a documented 298; the budget is 310`);
   assert.ok(Math.max(...sizes) < 500, `the largest part is ${Math.max(...sizes)} B; the budget is 500`);
 
   const playlistOf = (parts) => m.ctx.withMirror({
@@ -415,12 +422,13 @@ test("a full store of 50 playlists stays inside its stated storage budget", () =
   });
   const fifty = (parts) => JSON.stringify(Array.from({ length: 50 }, () => playlistOf(parts))).length;
 
-  /* The typical full store, which is the ~168 KB app.js documents. */
+  /* The typical full store: ~170 KB on the first ten rows, against the ~178 KB
+     app.js derives from the mean part. */
   const typical = fifty(real.slice(0, cap).map((it) => m.ctx.playlistPart(it)));
   assert.ok(typical < 180 * 1024, `50 typical playlists are ${(typical / 1024).toFixed(0)} KB; the budget is 180 KB`);
 
   /* And the true worst case: 50 playlists of the ten longest-titled episodes in the
-     catalogue. ~252 KB, which is the number to compare against a browser quota. */
+     catalogue. ~267 KB, which is the number to compare against a browser quota. */
   const longest = [...real].sort((a, b) =>
     JSON.stringify(m.ctx.playlistPart(b)).length - JSON.stringify(m.ctx.playlistPart(a)).length).slice(0, cap);
   const worst = fifty(longest.map((it) => m.ctx.playlistPart(it)));
@@ -540,6 +548,31 @@ test("an archived part is SHOWN and labelled, never hidden — 'label, never exc
   assert.ok(html.includes("Episode 2 of something"), "the archived part must still be named");
   assert.ok(html.includes("Show 2"), "and still credit its show");
   assert.ok(html.includes("not available right now"), "and say what happened to it");
+});
+
+test("a playlist part stores release_date, so an archived part still shows its date", () => {
+  /* archivedRow prints `fmtDate(item.release_date)`, and an archived part has
+     nothing to read but its stored row — so before release_date joined
+     PLAYLIST_PART_FIELDS (catalogue-personalization PKG-11, #558 item 8) the
+     date line went blank the day the episode left the pool. Built from an item
+     WITH a date, the pool then rotated, and asserted on the second render (the
+     harness rule above).
+
+     MUTATION: remove "release_date" from PLAYLIST_PART_FIELDS. The stored part
+     has no date and both assertions fail. */
+  const m = mount();
+  const items = setPool(m, [poolItem(1), poolItem(2, { release_date: "2024-03-07" })]);
+  m.ctx.fullPool();
+  const parts = items.map((it) => m.ctx.playlistPart(it));
+  m.ctx.savePlaylists([{
+    id: "q1", query: "physics", title: "Physics", items: parts,
+    created: "2026-08-18T00:00:00.000Z", last_played_at: null, sparse: false,
+  }]);
+  assert.strictEqual(m.playlistsRaw()[0].items[1].release_date, "2024-03-07", "the stored part must keep its date");
+  setPool(m, [poolItem(1)]);            // episode 2 has rotated out
+  const { second } = renderTwice(m, "q1");
+  assert.strictEqual(goneCount(second), 1, "episode 2 must render archived");
+  assert.ok(second.includes("Mar 7, 2024"), "the archived row must still print its publish date");
 });
 
 test("THE SECOND RENDER SAYS WHAT THE FIRST SAID — liveness is the pool, not the snapshot cache", () => {
