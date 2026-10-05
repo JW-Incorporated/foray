@@ -6753,6 +6753,57 @@ function applyOnboardingPicks(pickedRootIds, typedSubject) {
   return [...new Set(ids.map(id => (byId.get(id)?.parent) || id))];
 }
 
+/* ---------- PKG-13: personas as a cold-start prior (#70) ----------
+
+   data/personas.json (loaded at init into state.personas) carries preset
+   weight vectors over top-level taxonomy nodes: `{id, label, description,
+   seed_confidence, weights:[{node_id, weight}]}`. The five directed personas
+   seed at 0.35, `generalist` at 0.15. */
+
+/** The persona with this id, or null (unknown id, or personas.json absent). */
+function personaById(id) {
+  return (state.personas?.personas || []).find(p => p && p.id === id) || null;
+}
+
+/** Applies a persona pick as a DECAYING PRIOR, never as config (issue #70:
+    "A persona pick is allowed only as a decaying cold-start prior, never as
+    persisted config ... Observed signal must overtake it").
+
+    It writes nothing of its own: no persona key is stored and nothing reads
+    the persona back. Each weighted root and its leaves (the same subtree
+    expansion a chip pick uses) is lifted by `seed_confidence × weight` ON
+    TOP of whatever loadInterests() seeded, through the same clamp
+    applyOnboardingPicks and nudgeTopics use. From then on the lift is just
+    part of the weight every play and thumb moves, so observed signal decays
+    it away: the largest lift any persona gives (0.35 × 1.0) is undone by five
+    subject thumbs-down (5 × 0.08), and test/personas-client.test.js pins that.
+
+    Returns false (no write, no _interestsGen bump) for an unknown persona or
+    one that lifts nothing; otherwise the ROOT ids it lifted, the same shape
+    applyOnboardingPicks returns, for the re-deal. */
+function applyPersonaPick(id) {
+  const persona = personaById(id);
+  if (!persona) return false;
+  const roots = [];
+  (persona.weights || []).forEach(({ node_id, weight } = {}) => {
+    const lift = persona.seed_confidence * weight;
+    if (!(lift > 0)) return; // a zero (generalist's `news`) or malformed weight lifts nothing
+    let touched = false;
+    expandTaxonomyPick(node_id).forEach(n => {
+      if (n in state.interests) {
+        setInterest(n, Math.max(0, Math.min(1, state.interests[n] + lift)));
+        touched = true;
+      }
+    });
+    const root = nodeById(node_id)?.parent || node_id; // a leaf weight counts for its root
+    if (touched && !roots.includes(root)) roots.push(root);
+  });
+  if (!roots.length) return false;
+  saveInterests();
+  state._interestsGen = (state._interestsGen || 0) + 1;
+  return roots;
+}
+
 /** U-09's third acceptance line ("picking three chips changes the FIRST Home
     render's ranking"), which shipped unmet in PR #503 (audit, 2026-09-10):
     Home's "Suggested" is `state.cardSlots`, dealt once per session by
@@ -18899,6 +18950,12 @@ async function init() {
        (feed_url, apple_genre, cadence_hint, provenance) for a ~24% gzip saving;
        see that script's header for the measurement. */
     fetchJson("data/catalog-client.json"),
+    /* Cold-start persona priors (#70; catalogue-personalization.md PKG-13):
+       read by personaById()/applyPersonaPick(). A 404 or parse failure is
+       null like every other document here, and every read is null-safe
+       (`state.personas?.personas || []`), so a missing file costs the persona
+       pick and nothing else. */
+    fetchJson("data/personas.json"),
   ]);
   const session = await sessionP;
   state.session = session;
@@ -18949,6 +19006,7 @@ async function init() {
   [
     state.validated, state.taxonomy, state.discover,
     state.forays, state.segments, state.segmentSources, state.catalog,
+    state.personas,
   ] = await documentsP;
 
   /* THE THREE FORAY DOCUMENTS ARE ONE ARTIFACT AT BOOT TOO (audit round 2,

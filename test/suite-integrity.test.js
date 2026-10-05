@@ -1164,6 +1164,7 @@ const FLOORS = {
      noticing. Includes the MUTATION TEST the card asks for by name
      (restore leafNodes() as the seed set -> red). */
   "test/interests-roots.test.js": 8,
+  "test/personas-client.test.js": 4, // PKG-13 (#70 part 1, 2026-10-05): personas.json loads at init; applyPersonaPick lifts seed_confidence x weight over each root's subtree; an unknown id writes nothing; four/five subject thumbs-down overtake the prior; the plan's fifth test (persona_picked) waits for step 4
   /* #301's bound, over the REAL catalogue: improving a result the ranking keeps
      below the top one must never empty its query or drop a bar-clearer. One test,
      floored at one, because the alternative to a floor here is a suite that can be
