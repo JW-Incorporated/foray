@@ -690,7 +690,7 @@ test("catalog-client.json is derived from catalog.json via the committed build s
   assert.ok(CLIENT_SHOW_FIELDS.includes("label_scope"), "CLIENT_SHOW_FIELDS must project label_scope");
 });
 
-test("catalog-client.json carries exactly the six fields renderShow() reads, plus Family mode's show rating and label_scope, for every show", () => {
+test("catalog-client.json carries exactly the six fields renderShow() reads, plus Family mode's show rating, label_scope and P-09's chart_rank, for every show", () => {
   /* The whitelist is the decision, so it is pinned literally — same pattern as
      playlist-durability.test.js's PLAYLIST_PART_FIELDS pin.
 
@@ -702,7 +702,10 @@ test("catalog-client.json carries exactly the six fields renderShow() reads, plu
      unrated episode by its show's catalogue rating (founder Q1 default).
      + "label_scope" (catalogue-personalization PKG-02): "general" marks a
      broad show whose labels must not be inherited; null until PKG-03. */
-  const expectedKeys = ["show_id", "title", "artwork_url", "editorial_note", "taxonomy_node_ids", "episode_count", "explicit", "label_scope"].sort();
+  const expectedKeys = [
+    "show_id", "title", "artwork_url", "editorial_note", "taxonomy_node_ids", "episode_count", "explicit", "label_scope",
+    "chart_rank", // P-09 / PKG-11b: curated Apple chart rank, read by popularityBand from PKG-13
+  ].sort();
   for (const show of client.shows) {
     assert.deepStrictEqual(Object.keys(show).sort(), expectedKeys, `show ${show.show_id} has an unexpected field set`);
   }
