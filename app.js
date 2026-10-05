@@ -2247,17 +2247,15 @@ function playlistMatchesQuery(playlist, query) {
     (part.topics || []).some(t => String(t).toLowerCase().includes(q)));
 }
 
-/* U-05 (D5, D7): the same interest-based generator U-03's "Playlists for
-   you" reuses -- today's subject queues, `state.cardSlots`, built once per
-   session by buildCards() (re-dealt once more if the first-run Preferences
-   picks change its inputs — redealAfterOnboardingPicks) -- filtered to the
-   branches whose label matches
-   the typed query and projected through the existing subjectQueueById() so
-   a generated match renders and opens exactly like a Home "Playlists for
-   you" generated card (same #/playlist/subject-<branch> route, same
-   isSubject/withMirror shape). No new backend, no new scoring: this reads
-   cardSlots as they already are, it does not rebuild or re-rank them for
-   the query the way buildPlaylist's topic scorer does. */
+/* U-05 (D5, D7): Search's generated-playlist matches are Home's own generated
+   playlists -- generatedPlaylists() above, the listener's strongest interest
+   LEAVES ordered by state.interests, each filled with that leaf's newest pool
+   episodes -- kept where the leaf's title contains the typed query (a plain
+   case-insensitive substring). So a match renders and opens exactly like the
+   Home card (same #/playlist/gen-<leaf> route, same withMirror shape, resolved
+   on the detail page by generatedPlaylistById). No new backend, no new
+   scoring: nothing is rebuilt or re-ranked for the query the way
+   buildPlaylist's topic scorer does. */
 function generatedPlaylistCandidatesForQuery(query) {
   const q = String(query || "").trim().toLowerCase();
   if (!q) return [];
@@ -2403,13 +2401,16 @@ function prettyTitle(query) {
    resolved array (resolveParts), and the pool's only remaining power is to
    UPGRADE a row it still recognises — artwork, a why-line, in-app playback.
 
-   WHICH FIELDS, AND WHY NOT THE REST. Measured over the 1,534-item pool as
-   serialized JSON, key name included, bytes per item:
+   WHICH FIELDS, AND WHY NOT THE REST. Measured over the 2,167-item pool as
+   serialized JSON, key name included, bytes per item (re-measured 2026-10-04
+   when `release_date` joined the list; the first measurement, over 1,534
+   items, was 268 B kept):
 
-     kept       id 52 · title 62 · show 32 · duration_min 18
-                apple_collection_id 33 · apple_track_id 31 · topics 39   = 268 B
-     not kept   audio_url 182 · artwork_url 161 · apple_episode_url 134
-                hook 97 · duration_sec 20                                = 594 B
+     kept       id 54 · title 63 · show 32 · duration_min 18
+                apple_collection_id 33 · apple_track_id 31 · topics 39
+                release_date 28                                          = 298 B
+     not kept   audio_url 183 · artwork_url 161 · apple_episode_url 134
+                hook 98 · duration_sec 20                                = 596 B
 
    `audio_url` is both the most expensive field and the only one that ROTS. A
    copied enclosure URL that has since moved renders a play button that fails,
@@ -2426,12 +2427,17 @@ function prettyTitle(query) {
    the strongest intent signal in the app, and it would silently stop teaching.
    At 39 B it is the cheapest field that does not rot.
 
+   `release_date` is kept (catalogue-personalization PKG-11, #558 item 8)
+   because archivedRow prints it: an archived part renders from this row alone,
+   and without the field its date line went blank the day the episode left the
+   pool. 28 B, and a publish date never rots.
+
    THE ARITHMETIC against savePlaylists' cap of 50 and SearchEngine.DEFAULT_CAP's
-   10 picks. Measured over all 1,534 items, the MEAN part is 268 B → 2.7 KB of
-   parts, plus a 0.5 KB `item_ids` mirror and ~0.2 KB of metadata → ~3.4 KB a
-   playlist, ~168 KB for a full 50 (from ~33 KB before). The WORST case is worth
-   naming rather than rounding away: the largest single part is 468 B, and 50
-   playlists of the ten longest-titled episodes in the catalogue come to ~252 KB.
+   10 picks. Measured over all 2,167 items, the MEAN part is 298 B → 3.0 KB of
+   parts, plus a 0.5 KB `item_ids` mirror and ~0.2 KB of metadata → ~3.6 KB a
+   playlist, ~178 KB for a full 50 (from ~33 KB before). The WORST case is worth
+   naming rather than rounding away: the largest single part is 496 B, and 50
+   playlists of the ten longest-titled episodes in the catalogue come to ~267 KB.
    A blanket self-sufficient copy would be ~861 B a part — ~430 KB — for the worse
    failure mode above. This lands in DurableStore's localStorage tier — the event
    queue (M3) moved off it into IndexedDB, so it is no longer the comparison point
@@ -2448,7 +2454,7 @@ function prettyTitle(query) {
    blanking the whole view for the length of the update window. 47 B a part buys
    immunity to that. `items` is authoritative — nothing in this file reads
    `item_ids` except the compatibility paths that predate it. */
-const PLAYLIST_PART_FIELDS = ["title", "show", "duration_min", "apple_collection_id", "apple_track_id", "topics"];
+const PLAYLIST_PART_FIELDS = ["title", "show", "duration_min", "apple_collection_id", "apple_track_id", "topics", "release_date"];
 
 /** Project a pool item (or a `cp_saved` snapshot) down to a storable part.
     A whitelist, like snapshot(): a field added to the pool does not silently

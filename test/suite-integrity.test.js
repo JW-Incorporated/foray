@@ -692,7 +692,7 @@ const FLOORS = {
      playlist play (two tests — the positive case and that a non-playlist
      play never fabricates one), and searchWithRelaxation's `relaxed` signal
      being discarded by buildPlaylist instead of disclosed on the page. */
-  "test/playlist-durability.test.js": 39, // audit round 2, lane L3 (2026-09-23): 'N played' counts finished episodes only (honesty-6); 38 -> 39 //
+  "test/playlist-durability.test.js": 40, // audit round 2, lane L3 (2026-09-23): 'N played' counts finished episodes only (honesty-6); 38 -> 39 // catalogue-personalization PKG-11 (#558 item 8, 2026-10-04): a playlist part stores release_date, so an archived part still shows its date; 39 -> 40 //
   /* #/show/:id, Stage 1 of docs/show-pages-plan.md. Floored because the join it
      guards (show_id first, title-alias fallback for Lingthusiasm) fails
      silently in exactly the way #276's playlist decay did: a dropped fallback

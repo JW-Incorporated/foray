@@ -276,7 +276,7 @@ test("a generated playlist's page carries Save, and Save stores its current item
   assert.ok(!copy.isGenerated && !copy.isSubject, "a saved copy is not a generated playlist");
   assert.notStrictEqual(copy.id, GEN_ID, "the copy has its own id");
   assert.deepStrictEqual(Object.keys(copy.items[0]).sort(),
-    ["apple_collection_id", "apple_track_id", "duration_min", "id", "show", "title", "topics"]
+    ["apple_collection_id", "apple_track_id", "duration_min", "id", "release_date", "show", "title", "topics"]
       .filter((k) => k in copy.items[0]).sort());
   assert.ok(copy.items.every((p) => p.title && !("audio_url" in p) && !("hook" in p)), "parts are playlistPart snapshots");
   const firstWrite = JSON.parse(m.writes.find(([k]) => k === "cp_playlists")[1]);
