@@ -2071,6 +2071,8 @@ const FLOORS = {
      actually reaches the child's argv. */
   "tools/shows/run-and-publish-execargv.test.mjs": 1,
   "tools/foraycorpus-export/config.test.mjs": 4, // PKG-01 (docs/roadmap/corpus.md): corpus-export package scaffold, config + identity scan
+  "tools/foraycorpus-export/mimes.test.mjs": 3, // PKG-02 (docs/roadmap/corpus.md): transcript mime classifier (timed/plain/other, superset of TIMED_TRANSCRIPT_TYPES)
+  "tools/foraycorpus-export/row-source.test.mjs": 5, // PKG-02 (docs/roadmap/corpus.md): JSONL row source over the synthetic fixture, counts.json recount
   /* The breadth prioritiser and its yield report (#114). Floored for the same
      reason politeness.test.mjs is, and the reason is not hypothetical here
      either: the first draft of `rank-breadth.mjs` had a seed hash that produced
