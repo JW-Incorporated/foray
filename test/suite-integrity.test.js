@@ -1613,6 +1613,13 @@ const FLOORS = {
      the no-backup directory, the plugin name and four calls, the declaration
      in mobile/package.json. No toolchain runs here, so these pins ARE the gate. */
   "tools/mobile/foray-vault.test.mjs": 16, // audit round 3 integration: the real post-merge count, 14 -> 16
+  /* PQ-20 (#29): the iOS foray-downloads plugin's source facts — the plugin
+     name, seven calls and three events download-bridge.js uses, Application
+     Support never Caches, excluded from backup, cellular from the call, a GET
+     probe never HEAD, the eight-redirect cap, 403 = unplayable-here, usage from
+     the index (no DiskSpace API, #1014). Uncompiled until PQ-21 declares the
+     plugin, so these pins ARE the gate. New suite. */
+  "tools/mobile/foray-downloads.test.mjs": 15, // PQ-20 (#29)
   "tools/mobile/foray-tts.test.mjs": 74, // audit round 3 integration: the real post-merge count, 66 -> 74 // fix/narration-1x (2026-09-24): rate 1 is each platform's normal rate — passed through, Web Speech 1, Android setSpeechRate(1.0f), iOS AVSpeechUtteranceDefaultSpeechRate; 62 -> 66 // #685 (2026-09-13): a refusal carries the numbers the phone did produce, and a native payload cannot spread its way into a success; 60 -> 62 // K-01 (2026-09-12): the probe is a SEPARATE call with no Web Speech ladder under it; 53 -> 60 // L-05 (2026-09-12): pause/resume/stop/state on all three paths; 45 -> 53
   /* The foreground service's web half (#27's Android half, on #37). Zero slack, and
      for the reason `media-session.test.js` above gives: what this suite guards is

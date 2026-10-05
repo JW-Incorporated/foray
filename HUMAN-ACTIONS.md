@@ -2,9 +2,28 @@
 
 <!-- ha-format: 2 -->
 
-> **23 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **24 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
+
+## #141 🔴 [BLOCKING] Merge the six plugin PRs in order (~2 min each, as each turns green)
+<!-- ha filed=2026-10-04 kind=default -->
+
+**Why:** Offline downloads (#29) and new-episode alerts (#761) each need native code in a new plugin under `mobile/plugins/`. Creating a plugin means adding a `package.json` and a `Package.swift` or `build.gradle`, and `tools/ci/path-policy.mjs` lets only you merge those files (they control what goes into the app binary). So six PRs wait for your merge: two new plugins, each with an iPhone half, an Android half and a PR that switches it on. Until all six are in, the Download button and the alerts stay hidden in the app; nothing breaks while they wait. The order comes from `docs/roadmap/player-features.md` (Wave 4): each PR builds on the one before it.
+
+**Steps:**
+1. Merge them in this order. Each card adds its PR link here when it opens.
+   1. **PQ-20** — `feat(ios): foray-downloads plugin — background downloads into Application Support (PQ-20, #29) — human merge`. PR: _(link added when it opens)_
+   2. **PQ-22** — `feat(android): foray-downloads — DownloadManager-backed offline store (PQ-22, #29) — human merge`. PR: _(added by PQ-22)_
+   3. **PQ-21** — `chore(mobile): declare the foray-downloads plugin and its background-session hook (PQ-21, #29) — human merge`. PR: _(added by PQ-21)_
+   4. **PQ-28** — the iPhone half of `foray-notify` (alerts). PR: _(added by PQ-28)_
+   5. **PQ-29** — the Android half of `foray-notify`. PR: _(added by PQ-29)_
+   6. **PQ-30** — `chore(mobile): declare foray-notify and inject its background-refresh keys (PQ-30, #761) — human merge`. PR: _(added by PQ-30)_
+2. Before each merge, open the PR and check two things: every check at the bottom is green, and (for PQ-20 and PQ-28) the `hold` label is gone. Claude takes `hold` off once the iPhone build check (`ios-kit`) has passed on the PR's latest commit. If either is not true yet, skip it and come back; do not merge out of order.
+3. Click **Ready for review** if the PR is still a draft, then **Squash and merge**.
+4. After the last one (PQ-30), reply `done`.
+
+**Worked if:** all six PRs show "Merged" in the order above. With the downloads page work (PQ-16..19) also merged, the next TestFlight build shows a **Download** button on an episode page; the phone check for that is a separate item.
 
 ## #134 🟡 [DECIDE] G6 — Re-confirm D1's liveness/count/recency filter, and settle the language question
 <!-- ha filed=2026-10-04 kind=default -->

@@ -1,0 +1,17 @@
+{
+  "name": "foray-downloads",
+  "version": "0.1.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "description": "Foray's own Capacitor plugin: downloads an episode's audio for offline listening into the app's own storage. iOS: a background URLSession (identifier ai.jwlabs.foura.downloads) writing into Application Support/foray-downloads/, excluded from backup, with a JSON index beside the files. Android (PQ-22, not yet here): the system DownloadManager. Issue #29; docs/roadmap/player-features.md PQ-20. NOT published, NOT a third-party dependency -- this repo's own hand-written native code, same pattern as foray-audio, foray-tts and foray-vault (docs/android-native-code.md). Not yet declared in mobile/package.json: that is PQ-21, so until it merges no shell compiles this plugin.",
+  "//no-js-entry": "No main/module/types on purpose, matching foray-audio, foray-tts and foray-vault. The web half is player/download-bridge.js's createDownloadBridge(), which talks to this plugin through window.Capacitor.nativePromise('ForayDownloads', ...) with the seven calls enqueue/cancel/remove/removeAll/list/usage/fileSrc. There is no bundler in this repo.",
+  "capacitor": {
+    "ios": {
+      "src": "ios"
+    }
+  },
+  "files": [
+    "ios/Sources/",
+    "ios/Package.swift"
+  ]
+}
