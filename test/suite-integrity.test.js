@@ -2189,6 +2189,8 @@ const FLOORS = {
      deleted here is a keep-* that could become a remove. */
   "tools/dev/worktree-gc.test.mjs": 27, // OPS-12 review (2026-10-04): +8 -- keep-unpushed (tip not in the merged head), the CLI asks git for containment, fork PRs ignored, prototype-named branches, locked trees, strays found from the main tree not cwd, a refused branch -D or prune exits 1, --repo without a value; 19 -> 27
   "tools/poll/tiers.test.mjs": 9, // PKG-05 (S-10): new -- cadence tiers (seed, correction, success/failure, dead)
+  "tools/poll/politeness.test.mjs": 4, // PKG-06 (S-10): new -- per-host politeness port, constants pinned to backend/src/feeds/politeness.ts
+  "tools/poll/select-due.test.mjs": 6, // PKG-06 (S-10): new -- due-set selection (dead, not-due, caps, order, bad URL, budget untouched) + the G9 weekly projection
 };
 
 test("no suite is floored twice", () => {
