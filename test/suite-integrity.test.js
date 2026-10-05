@@ -538,6 +538,13 @@ const FLOORS = {
      unchanged — the badge is additive, not a replacement for that filter. */
   "test/explicit-badge.test.js": 9,
   "test/first-time-onboarding.test.js": 33, // round-2 integration (2026-09-23): the counts of both lanes; -> 33 // audit round 2 (L6): p-first-1/3/7 — picks fill the first Home's top tier over the shipped pool with real randomness, never the stretch slot; a typed word matches label words and leaves, and a miss is said with the sheet kept open; 'Show my picks'; 28 -> 32 // audit round 2, L2 (2026-09-23): a Foray resume row is prior use (p-first-5); 28 -> 29 // // U-09 audit fix (2026-09-10): +2 — the picks re-deal and repaint the FIRST Home, and the pre-pick deal's memory is undone
+  /* Generated playlists (catalogue-personalization PKG-04; #547 fix 3, #558
+     item 5, #560 item 3): one leafPlaylistItems helper for Home's card and the
+     detail route, at most 2 items per show, no item on a leaf only by a
+     general show's inherited label, MIN checked after the cap, and snapshot()
+     keeping topics_source. Floored at its exact landing count; every test
+     names the mutation that kills it. */
+  "test/generated-playlists.test.js": 6,
   /* Duplicate-ID guard for HUMAN-ACTIONS.md's own numbering rule (full-repo
      review finding L3, 2026-08-31). Two tests: the file has numbered items,
      and no numeric ID repeats. */
@@ -692,7 +699,7 @@ const FLOORS = {
      playlist play (two tests — the positive case and that a non-playlist
      play never fabricates one), and searchWithRelaxation's `relaxed` signal
      being discarded by buildPlaylist instead of disclosed on the page. */
-  "test/playlist-durability.test.js": 39, // audit round 2, lane L3 (2026-09-23): 'N played' counts finished episodes only (honesty-6); 38 -> 39 //
+  "test/playlist-durability.test.js": 40, // audit round 2, lane L3 (2026-09-23): 'N played' counts finished episodes only (honesty-6); 38 -> 39 // catalogue-personalization PKG-11 (#558 item 8, 2026-10-04): a playlist part stores release_date, so an archived part still shows its date; 39 -> 40 //
   /* #/show/:id, Stage 1 of docs/show-pages-plan.md. Floored because the join it
      guards (show_id first, title-alias fallback for Lingthusiasm) fails
      silently in exactly the way #276's playlist decay did: a dropped fallback

@@ -244,7 +244,8 @@ test("generatedPlaylistCandidatesForQuery reads the generated interest playlists
     { id: "history/rome", parent: "history", label: "Rome", weight: 0.5 },
   ] };
   m.state.interests = { history: 0.5, "history/rome": 0.8 };
-  m.state.discover = { items: [1, 2, 3].map(i => ({ id: "r" + i, title: "Rome " + i, show: "S1", topics: ["history/rome"], release_date: "2026-09-0" + i })) };
+  // One show per episode: a generated playlist holds at most 2 from one show (PKG-04).
+  m.state.discover = { items: [1, 2, 3].map(i => ({ id: "r" + i, title: "Rome " + i, show: "S" + i, topics: ["history/rome"], release_date: "2026-09-0" + i })) };
   m.state.cardSlots = [{ slot: 1, branch: "tech", role: "top", item: { id: "e1" }, items: [{ id: "e1", title: "Chips", show: "S2" }] }];
   const cands = m.evalIn("generatedPlaylistCandidatesForQuery")("rome");
   assert.strictEqual(cands.length, 1);
@@ -266,7 +267,8 @@ test("generatedPlaylistCandidatesForQuery filters to generated playlists whose t
     { id: "food/bbq", parent: "food", label: "Barbecue", weight: 0.5 },
   ] };
   m.state.interests = { "history/rome": 0.8, "food/bbq": 0.7 };
-  const mk = (t, n) => [1, 2, 3].map(i => ({ id: t + i, title: t + i, show: "S", topics: [n], release_date: "2026-09-0" + i }));
+  // One show per episode: a generated playlist holds at most 2 from one show (PKG-04).
+  const mk = (t, n) => [1, 2, 3].map(i => ({ id: t + i, title: t + i, show: "S" + i, topics: [n], release_date: "2026-09-0" + i }));
   m.state.discover = { items: mk("rome", "history/rome").concat(mk("bbq", "food/bbq")) };
   const all = m.evalIn("generatedPlaylists")();
   assert.strictEqual(all.length, 2, "both interest leaves generate a playlist");
@@ -322,7 +324,8 @@ test("own playlists rank before generated candidates, and a generated one is bad
     { id: "history/rome", parent: "history", label: "Rome history", weight: 0.5 },
   ] };
   m.state.interests = { "history/rome": 0.8 };
-  m.state.discover = { items: [1, 2, 3].map(i => ({ id: "r" + i, title: "Rome " + i, show: "S1", topics: ["history/rome"], release_date: "2026-09-0" + i })) };
+  // One show per episode: a generated playlist holds at most 2 from one show (PKG-04).
+  m.state.discover = { items: [1, 2, 3].map(i => ({ id: "r" + i, title: "Rome " + i, show: "S" + i, topics: ["history/rome"], release_date: "2026-09-0" + i })) };
   m.store.set("cp_playlists", JSON.stringify([
     { id: "p1", title: "My History Mix", items: [{ id: "e1", title: "Ep", topics: ["history/rome"] }] },
   ]));
