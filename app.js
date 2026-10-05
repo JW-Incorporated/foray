@@ -11735,6 +11735,7 @@ function renderQueue() {
   bindPlay($("#view"));
   bindUpNextReorder($("#view"));
   bindUpNextDrag($("#view"));
+  bindUpNextSwipe($("#view"));
 }
 
 /* One row: the SAME playable shape epRow/archivedRow already give (so a
@@ -11783,7 +11784,7 @@ function upNextRow(r, idx, total) {
   const playNextDisabled = !playable || isCurrent || id === cur || (curIdx >= 0 ? ids[curIdx + 1] === id : idx === 0);
   return `<div class="ep-row up-next-row ${playable ? "" : "gone"}${isCurrent ? " is-current" : ""}"${isCurrent ? ' aria-current="true"' : ""}>
     <span class="q-num">${idx + 1}</span>
-    <div class="info">
+    <div class="info" data-swipe-id="${esc(id)}">
       <div class="t">${title}</div>
       <div class="s">${sub}</div>
     </div>
@@ -11795,6 +11796,7 @@ function upNextRow(r, idx, total) {
       <button class="reorder down" data-reorder-down="${esc(id)}" ${idx === total - 1 ? "disabled" : ""} aria-label="Move down">↓</button>
     </div>
     <button class="up-next-remove" data-dequeue="${esc(id)}" aria-label="Remove from Up Next">✕</button>
+    <span class="swipe-under" aria-hidden="true">Remove</span>
   </div>`;
 }
 
@@ -12036,6 +12038,96 @@ function bindUpNextDrag(scope) {
     /* Capture lost without a pointerup is a cancel; after a pointerup the drag
        is already over, so the release that follows finds nothing to undo. */
     btn.addEventListener("lostpointercapture", cancel);
+  });
+}
+
+/* SWIPE LEFT TO REMOVE (#762, PQ-06). A row's text block, pulled left, takes
+   the row out of Up Next. The ARITHMETIC — the 8 px direction lock (a
+   vertical start is the list scrolling, for good), only leftward travel
+   counts, how far or how fast a release must be, the rubber band past 160 px —
+   is `player/queue-swipe.js` (PQ-05), published as `window.forayQueueSwipe` by
+   player/client.js and read here lazily, null-guarded, when a gesture starts:
+   no rules (app.js loaded without the player) means no swipe, and the ✕ still
+   removes.
+
+   ON THE TEXT BLOCK, NOT THE BUTTONS: the listeners sit on `.up-next-row >
+   .info`, so a press on ▶, ☆, ⋮⋮ (its own drag), Next, ↑/↓ or ✕ is that
+   control's and never starts a swipe. styles.css gives `.info` `touch-action:
+   pan-y`, so the browser keeps the vertical scroll and hands the horizontal
+   travel to these listeners.
+
+   COMMIT ON RELEASE (DECISIONS 2026-09-23, lane L2): the removal is
+   `removeFromQueue` in `pointerup`, never on the click that may follow, and
+   then the ✕'s own after-step (`afterQueueRemove`: focus on the ✕ that took
+   the row's place, "Removed from Up Next." said politely). A release short of
+   the threshold, a scroll, or a gesture the system cancelled springs the row
+   back and writes nothing. The playing row may be swiped away, as its ✕ may. */
+function queueSwipeRules() {
+  const r = window.forayQueueSwipe;
+  return r && typeof r.startSwipe === "function" ? r : null;
+}
+
+function bindUpNextSwipe(scope) {
+  if (!scope || typeof scope.querySelectorAll !== "function") return;
+  scope.querySelectorAll(".up-next-row > .info").forEach(info => {
+    if (info._swipeBound) return;
+    info._swipeBound = true;
+    let swipe = null;
+    let pointer = null;
+    let row = null;
+    const reset = () => {
+      if (row) {
+        row.classList.remove("swiping");
+        if (row.style) row.style.transform = "";
+      }
+      swipe = null;
+      pointer = null;
+      row = null;
+    };
+    info.addEventListener("pointerdown", (e) => {
+      const g = queueSwipeRules();
+      if (!g || pointer != null) return;
+      if (typeof e.button === "number" && e.button !== 0) return; // primary button only
+      const own = typeof info.closest === "function" ? info.closest(".up-next-row") : null;
+      if (!own) return;
+      row = own;
+      pointer = e.pointerId;
+      try { info.setPointerCapture(e.pointerId); } catch (_) { /* capture is best-effort */ }
+      swipe = g.startSwipe(e.clientX, e.clientY, e.timeStamp);
+    });
+    info.addEventListener("pointermove", (e) => {
+      const g = queueSwipeRules();
+      if (!swipe || !g || e.pointerId !== pointer) return;
+      swipe = g.moveSwipe(swipe, e.clientX, e.clientY, e.timeStamp);
+      /* A vertical start is the list scrolling: let it go entirely. */
+      if (swipe.rejected) { reset(); return; }
+      if (!swipe.claimed) return; // under the lock: it may still be a tap
+      row.classList.add("swiping");
+      if (row.style) row.style.transform = `translateX(-${g.swipeOffset(swipe)}px)`;
+    });
+    /* NON-passive, or the cancel is ignored: once the swipe owns the finger
+       the page under it must not pan (the sheet drag's rule, touch-2). */
+    info.addEventListener("touchmove", (e) => {
+      if (swipe && swipe.claimed && !swipe.rejected && e.cancelable !== false && typeof e.preventDefault === "function") e.preventDefault();
+    }, { passive: false });
+    info.addEventListener("pointerup", (e) => {
+      const g = queueSwipeRules();
+      if (!swipe || e.pointerId !== pointer) return;
+      const r = g ? g.endSwipe(swipe) : { remove: false };
+      const id = info.dataset ? info.dataset.swipeId : null;
+      reset();
+      if (!r.remove || !id) return;
+      const index = queueIds().indexOf(id);
+      if (index < 0) return;
+      removeFromQueue(id);
+      afterQueueRemove(index);
+    });
+    const cancel = (e) => {
+      if (!swipe || e.pointerId !== pointer) return;
+      reset();
+    };
+    info.addEventListener("pointercancel", cancel);
+    info.addEventListener("lostpointercapture", cancel);
   });
 }
 
