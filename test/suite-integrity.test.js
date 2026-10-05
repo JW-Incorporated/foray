@@ -1126,7 +1126,7 @@ const FLOORS = {
      slot follows the list under autoscroll. Each test is one deleted line
      from a gesture that reorders the wrong row or none. */
   "test/up-next-gestures.test.js": 6, // PQ-04 (#762)
-  "test/engine-continuation.test.js": 7, // PQ-11 (#691): the plan runs on into the tail, fromTail hops; 6 -> 7
+  "test/engine-continuation.test.js": 10, // PQ-07 (#762): Play next, drag reorder and Clear each re-send the engine's plan
   "test/engine-developer-rows.test.js": 14, // NE-22d: the engine's four Developer rows in the drawer
   "test/up-next-autoadvance.test.js": 25, // PQ-11 (#691): the tail after the list (first pick, third is the stretch with the bridge line + announcement, no repeats, switch off stops it); 21 -> 25 // audit round 3 (lane L1): app-1-9 the finished row leaves Up Next with the switch off; 20 -> 21 // founder, 2026-09-24, reversing lane L3's question-9 default: a play from the page moves THAT row to the top and ⏭ drops only the skipped episode (+1: a refused play moves nothing); no wrap-around, previous = restart past the window (p-car-5); 11 -> 19 -> 20 // // 2026-09-22: rewritten for the continuous-playback ruling (on by default, Up Next first, then the chosen list, unplayable rows passed over); 6 -> 11
   /* U-07's Interests page (docs/ui-transition-plan.md D6, kanban card

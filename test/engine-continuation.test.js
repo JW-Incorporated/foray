@@ -20,6 +20,10 @@
  *     `cp_engine_applied` watermark BEFORE `play_started` is logged.
  *  5. `drainEngineEvents` logs each engine `position` event once, with the
  *     time the engine recorded it, watermark first.
+ *  6. Every Up Next tool re-sends the plan (PQ-07, #762): Play next, a drag
+ *     reorder and Clear all write through `saveQueueIds`, and the engine's
+ *     K-hop chain follows each new order — the iOS parity pin behind the
+ *     founder's drag gesture.
  *
  * Every test names the mutation that kills it (CLAUDE.md: "a green test is not
  * evidence until you have broken it").
@@ -45,9 +49,11 @@ process.on("unhandledRejection", () => {});
 
 let RULES = null;
 let TAIL_FILL = null;
+let QUEUE_ORDER = null;
 before(async () => {
   RULES = await import("../player/continuation.js");
   TAIL_FILL = await import("../player/tail-fill.js");
+  QUEUE_ORDER = await import("../player/queue-order.js");
 });
 
 function makeEl(tag) {
@@ -136,6 +142,9 @@ function mount({ store = new Map(), rules = RULES } = {}) {
   ctx.globalThis = ctx;
   ctx.forayContinuation = rules;
   ctx.forayTailFill = TAIL_FILL;
+  /* player/client.js publishes the Up Next order rules (PQ-01) the same way;
+     Play next and Clear read them through queueOrderRules(). */
+  ctx.forayQueueOrder = QUEUE_ORDER;
   vm.createContext(ctx);
   vm.runInContext(SEARCH_SRC, ctx, { filename: "search-engine.js" });
   vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
@@ -363,4 +372,90 @@ test("drainEngineEvents logs each position once, at the engine's timestamp, wate
   ], "client.js's own position payload, so the privacy disclosure is unchanged");
   assert.deepStrictEqual(rows.map((e) => e.appliedAtAppend?.event), [1, 2], "each row logged after its seq was recorded");
   assert.deepStrictEqual(m.applied(), { advance: null, event: 2 });
+});
+
+/* ==================================================================== */
+/* 6. EVERY UP NEXT TOOL RE-SENDS THE PLAN (PQ-07, #762)                  */
+/* ==================================================================== */
+
+/** `a` playing, with `queued` in Up Next and a plan already sent from that
+    state. No dealt cards, so the chain has no tail hops: what follows the
+    queued rows is the play list or nothing. */
+async function playingWithQueue(m, playing, queued) {
+  m.state.cardSlots = [];
+  const fake = makeFakePlayer();
+  m.ctx.window.ForayPlayer = fake;
+  for (const it of queued) m.ctx.addToQueue(it.id);
+  await fake.play(playing, {});
+  m.ctx.refreshEpisodeNavigation();
+  return fake;
+}
+
+test("PQ-07: Play next re-sends the plan, and the engine's chain reaches the moved row first", async () => {
+  /* MUTATION: drop refreshEpisodeNavigation() from saveQueueIds — the last
+     plan is still the one sent before Play next: [b, c]. */
+  const m = mount();
+  const [a, b, c] = m.playable;
+  seedLivePool(m, [a, b, c]);
+  const fake = await playingWithQueue(m, a, [a, b, c]);
+  assert.deepStrictEqual(fake.plans.at(-1).chain.map((h) => h.nextId), [b.id, c.id], "before: Up Next in order");
+  const sent = fake.plans.length;
+  const prevSeq = fake.plans.at(-1).planSeq;
+
+  assert.strictEqual(m.ctx.playNextInQueue(c.id), true);
+  assert.deepStrictEqual([...m.queueRaw()], [a.id, c.id, b.id], "c sits right after the playing row");
+  assert.ok(fake.plans.length > sent, "Play next sent a plan");
+  const plan = fake.plans.at(-1);
+  assert.strictEqual(plan.chain[0].nextId, c.id, "the engine plays c next");
+  assert.strictEqual(plan.chain[1].nextId, b.id, "then b");
+  assert.strictEqual(plan.chain.length, 2);
+  assert.ok(plan.planSeq > prevSeq, "the new plan supersedes the old one");
+});
+
+test("PQ-07: a drag reorder (saveQueueIds(moveTo(...))) re-sends the plan in the new order", async () => {
+  /* The drag handle (PQ-04) commits on pointerup through exactly this call.
+     MUTATION: drop refreshEpisodeNavigation() from saveQueueIds — the engine
+     keeps the pre-drag chain [b, c, d]. */
+  const m = mount();
+  const [a, b, c, d] = m.playable;
+  seedLivePool(m, [a, b, c, d]);
+  const fake = await playingWithQueue(m, a, [a, b, c, d]);
+  assert.deepStrictEqual(fake.plans.at(-1).chain.map((h) => h.nextId), [b.id, c.id, d.id]);
+  const sent = fake.plans.length;
+  const prevSeq = fake.plans.at(-1).planSeq;
+
+  const order = m.ctx.forayQueueOrder.moveTo(m.ctx.queueIds(), b.id, 3);
+  m.ctx.saveQueueIds(order);
+  assert.deepStrictEqual([...m.queueRaw()], [a.id, c.id, d.id, b.id], "b dragged to the bottom");
+  assert.ok(fake.plans.length > sent, "the drop sent a plan");
+  const plan = fake.plans.at(-1);
+  assert.deepStrictEqual(plan.chain.map((h) => h.nextId), [c.id, d.id, b.id], "the engine walks the dragged order");
+  assert.ok(plan.planSeq > prevSeq, "the new plan supersedes the old one");
+});
+
+test("PQ-07: Clear re-sends the plan: the chain goes on with the play list and has no queued hops", async () => {
+  /* MUTATION: drop refreshEpisodeNavigation() from saveQueueIds — the engine
+     still holds the cleared rows b and c at the head of its chain. */
+  const m = mount();
+  const [a, p1, p2, b, c] = m.playable;
+  seedLivePool(m, [a, p1, p2, b, c]);
+  m.state.cardSlots = [];
+  const fake = makeFakePlayer();
+  m.ctx.window.ForayPlayer = fake;
+  await clickRow(m, [a, p1, p2].map((it) => ({ id: it.id, ctx: "show-x" })), 0);
+  m.ctx.addToQueue(b.id);
+  m.ctx.addToQueue(c.id);
+  m.ctx.refreshEpisodeNavigation();
+  const queuedPlan = fake.plans.at(-1);
+  assert.deepStrictEqual(queuedPlan.chain.map((h) => h.nextId).slice(0, 2), [b.id, c.id], "before: Up Next comes first");
+  const sent = fake.plans.length;
+
+  const removed = m.ctx.clearQueue();
+  assert.ok(removed >= 2, "b and c were cleared");
+  assert.ok(!m.ctx.queueIds().includes(b.id) && !m.ctx.queueIds().includes(c.id));
+  assert.ok(fake.plans.length > sent, "Clear sent a plan");
+  const plan = fake.plans.at(-1);
+  assert.deepStrictEqual(plan.chain.map((h) => h.nextId), [p1.id, p2.id], "the rest of the play list");
+  assert.ok(plan.chain.every((h) => h.fromList === true && !h.fromTail), "no queued hops left in the plan");
+  assert.ok(plan.planSeq > queuedPlan.planSeq, "the new plan supersedes the old one");
 });
