@@ -130,3 +130,15 @@ Add one paragraph per module as it lands.
   imported only inside the default client factory, so the tests (a fake client)
   need no `node_modules`. Rows pass through unchanged, and pg returns int8 as a
   string.
+- **`overlap.mjs`** (PKG-09): `computeOverlap(showRows, breadthDoc)` counts
+  how much of the breadth tier the corpus already carries. Its inputs are
+  `buildShows` rows and `data/catalog-breadth.json`'s parsed object or its
+  `shows` array. It returns `{breadth_shows, matched_by_itunes_id,
+  matched_by_feed_url_only, unmatched}`, and each breadth show counts once,
+  itunes first. `apple_collection_id` is compared with `itunes_id` as strings,
+  because pg's int8 arrives as a string. Otherwise the breadth `feed_url`,
+  normalised with `normalizeFeedUrl` from `tools/shows/identity.mjs`, is
+  compared with `feed_url_normalized`. A null or blank id or feed never
+  matches. The CLI is `node tools/foraycorpus-export/overlap.mjs --shows
+  <shows.jsonl> [--breadth data/catalog-breadth.json]` and prints the JSON.
+  PKG-08 wires `--breadth` into the exporter.
