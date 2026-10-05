@@ -87,6 +87,14 @@ Sources:
 
 ## 3. AI-generated derivative text/audio (summaries, why-lines, TTS intros)
 
+> **Founder ruling, 2026-10-05.** Wyatt: *"delete this concept of legal
+> review prior to sharing AI generated content"*. The root concern, nasty
+> content, is handled during Foray generation (issue #126, re-scoped). This
+> section's risk analysis stands as analysis. It no longer requires a legal
+> review or a re-rating before generated text becomes visible outside the
+> account, such as through shared links. See `docs/DECISIONS.md`,
+> 2026-10-05.
+
 **Risk: LOW-MEDIUM today, rises if scope changes** — the personalized/short/private nature of the output is the thing keeping this low; each of those three properties is a lever that, if relaxed later, raises risk.
 
 The 2024-2026 case law gives an actual dividing line, not just vibes. In *Advance Local Media v. Cohere* (S.D.N.Y., 2025), the court held that "substitutive summaries" — non-verbatim outputs that nonetheless mirror the expressive structure and storytelling choices of the original — can plausibly infringe, denying Cohere's motion to dismiss. Contrast that with *CIR v. Microsoft* (April 2025), where a judge dismissed claims that Copilot's bullet-point "abridgments" of news articles infringed, because the reorganized, skeletal summaries weren't substantially similar to the originals. The U.S. Copyright Office's own report on RAG-style summarization says the use is "less likely to be transformative where the purpose is to generate outputs that summarize or provide abridged versions" of the source.
@@ -99,7 +107,7 @@ There's no bright-line word count in fair-use law — the "10%" and "300-word" r
 - **No verbatim quoting from show notes beyond a short phrase** (a handful of words) — paraphrase, don't lift sentences. A quoted line is a reproduction of the publisher's copyrighted description text, not just the underlying facts.
 - **Always frame around the listener's specific context**, not a generic recap of the episode — this is both the product's soul (per the brief) and the thing that keeps output on the "transformative" side of the Cohere/CIR line.
 - **Attribute** show and episode title/publisher in every intro.
-- **Don't build a public, browsable archive** of generated summaries — single-user-private consumption is a meaningfully different (lower-risk) posture than a public content surface, and this product is single-user by design today. Revisit hard if a future feature makes summaries visible outside the account that generated them (shared links, social features, marketing use of blurbs).
+- **Don't build a public, browsable archive** of generated summaries — single-user-private consumption is a meaningfully different (lower-risk) posture than a public content surface, and this product is single-user by design today.
 - Where Tier-2 transcript-based enrichment lands later, apply the same rules to transcript-derived text — don't let internal ranking text leak out as user-facing copy without going through the same length/paraphrase discipline.
 
 Sources:
@@ -180,5 +188,4 @@ Sources:
 - [ ] Get a real (paid, attorney-assisted) trademark clearance search before formally registering "CommutePilot" as a mark.
 - [ ] Get an actual lawyer to review the privacy policy and terms of service, especially data export/delete flows if EU users are in scope.
 - [ ] Re-check CCPA thresholds annually against real user/revenue numbers (100K CA consumers/devices, ~$26.6M revenue, or 50%+ revenue from data sales).
-- [ ] Revisit Section 3's risk rating the moment generated summaries/why-lines become visible outside the account that generated them (shared links, social features, marketing use of blurbs) — the fair-use posture changes materially once output leaves single-user private use.
 - [ ] Treat any ad-adjacent feature request (even "skip the sponsor read," not full stripping) as a new legal-review trigger, not a routine feature — this is the constraint most likely to erode quietly through good intentions.
