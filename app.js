@@ -1113,6 +1113,13 @@ function snapshot(id, src) {
     duration_min: src.duration_min ?? null,
     artwork_url: src.artwork_url ?? null,
     topics: src.topics || [],
+    // Where `topics` came from ("episode" = its own label, "show" = inherited
+    // from its show; tools/refresh/merge.mjs, catalogue-personalization PKG-01).
+    // Kept so a generated playlist can refuse an item whose only claim to a
+    // leaf is a general show's label (PKG-04, leafPlaylistItems). null for a
+    // source without it — session.json's curated episodes have none, and are
+    // kept as their own labels.
+    topics_source: src.topics_source ?? null,
     hook: src.hook || src.summary || src.title,
     // Audio provenance (#21) + DAI flag (#22). This projection is a whitelist,
     // so anything not named here is dropped — which is exactly how in-app
@@ -2163,10 +2170,52 @@ function subjectQueueById(id) {
    LEAVES (never the roots the card slots already cover), each filled from the
    discover pool with the newest episodes on that leaf, excluding any episode a
    card slot is already showing. Pure over state, no persistence, no backend;
-   recomputed per render and resolvable by id for the detail page. */
+   recomputed per render and resolvable by id for the detail page.
+
+   WHAT A LEAF'S LIST MAY HOLD (catalogue-personalization PKG-04; #547 fix 3,
+   #558 item 5, #560 item 3). One leaf's newest six used to be whatever the
+   pool held newest on it, so one prolific show could fill the whole list, and
+   an episode of a broad ("general") show sat on a leaf only because its SHOW
+   was labelled there. leafPlaylistItems is the one rule both generators use:
+   at most GENERATED_PER_SHOW_CAP items from one show, and an item whose topics
+   were inherited from a `label_scope: "general"` show is refused (its own
+   per-episode label is kept). The MIN check runs on what survives. */
 const GENERATED_PLAYLIST_COUNT = 3;
 const GENERATED_PLAYLIST_SIZE = 6;
 const GENERATED_PLAYLIST_MIN = 3;
+/* The same rule as search-engine.js PER_SHOW_CAP (2), which keeps one show
+   from filling a topic search's results; restated rather than imported so the
+   generator does not borrow the search ranker's diversify(). */
+const GENERATED_PER_SHOW_CAP = 2;
+
+/** Titles of the shows the catalogue marks `label_scope: "general"` (broad
+    shows whose show-level label does not describe each episode; PKG-02). */
+function generalShowTitleSet() {
+  return new Set((state.catalog?.shows || [])
+    .filter(s => s.label_scope === "general")
+    .map(s => s.title));
+}
+
+/** One leaf's playlist items from `candidates` (pool items already on the
+    leaf): drop the ones whose only claim to it is a general show's label,
+    newest first (ties by id), at most GENERATED_PER_SHOW_CAP per show, up to
+    GENERATED_PLAYLIST_SIZE. The caller applies GENERATED_PLAYLIST_MIN. */
+function leafPlaylistItems(candidates, { generalShowTitles }) {
+  const sorted = candidates
+    .filter(it => !(it.topics_source === "show" && generalShowTitles.has(it.show)))
+    .sort((a, b) => String(b.release_date || "").localeCompare(String(a.release_date || "")) || String(a.id).localeCompare(String(b.id)));
+  const perShow = new Map();
+  const out = [];
+  for (const it of sorted) {
+    if (out.length >= GENERATED_PLAYLIST_SIZE) break;
+    const n = perShow.get(it.show) || 0;
+    if (n >= GENERATED_PER_SHOW_CAP) continue;
+    perShow.set(it.show, n + 1);
+    out.push(it);
+  }
+  return out;
+}
+
 function generatedPlaylists() {
   const pool = poolFiltered();
   const slots = state.cardSlots || [];
@@ -2184,12 +2233,10 @@ function generatedPlaylists() {
     .map(n => ({ n, w: state.interests[n.id] ?? 0 }))
     .filter(x => x.w > 0)
     .sort((a, b) => (b.w - a.w) || a.n.id.localeCompare(b.n.id));
+  const generalShowTitles = generalShowTitleSet();
   const out = [];
   for (const { n } of leaves) {
-    const items = byTopic.get(n.id)
-      .filter(it => !slotItemIds.has(it.id))
-      .sort((a, b) => String(b.release_date || "").localeCompare(String(a.release_date || "")) || String(a.id).localeCompare(String(b.id)))
-      .slice(0, GENERATED_PLAYLIST_SIZE);
+    const items = leafPlaylistItems(byTopic.get(n.id).filter(it => !slotItemIds.has(it.id)), { generalShowTitles });
     if (items.length < GENERATED_PLAYLIST_MIN) continue;
     out.push(withMirror({
       id: "gen-" + n.id, branch: n.id, title: n.label || n.id,
@@ -2208,7 +2255,9 @@ function generatedPlaylists() {
    out of the top three. Now the id resolves from the catalogue alone: the leaf
    exists and holds at least GENERATED_PLAYLIST_MIN pool episodes, newest first,
    leaving out the episodes the card slots show where enough remain (so the
-   page matches Home's card whenever Home shows it). */
+   page matches Home's card whenever Home shows it). The chosen episodes go
+   through the same leafPlaylistItems as Home's card (PKG-04: per-show cap,
+   no inherited general labels), so the two can never list different ids. */
 function generatedPlaylistById(id) {
   const m = /^gen-(.+)$/.exec(String(id || ""));
   if (!m) return null;
@@ -2218,9 +2267,8 @@ function generatedPlaylistById(id) {
   const slots = state.cardSlots || [];
   const slotItemIds = new Set(slots.flatMap(sl => (sl.items || []).map(it => it.id)).concat(slots.map(sl => sl.item?.id)).filter(Boolean));
   const unslotted = onLeaf.filter(it => !slotItemIds.has(it.id));
-  const items = (unslotted.length >= GENERATED_PLAYLIST_MIN ? unslotted : onLeaf)
-    .sort((a, b) => String(b.release_date || "").localeCompare(String(a.release_date || "")) || String(a.id).localeCompare(String(b.id)))
-    .slice(0, GENERATED_PLAYLIST_SIZE);
+  const items = leafPlaylistItems(unslotted.length >= GENERATED_PLAYLIST_MIN ? unslotted : onLeaf,
+    { generalShowTitles: generalShowTitleSet() });
   if (items.length < GENERATED_PLAYLIST_MIN) return null;
   return withMirror({
     id: "gen-" + node.id, branch: node.id, title: node.label || node.id,

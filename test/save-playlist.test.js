@@ -201,7 +201,10 @@ function appMount({ seed = {}, startups = [1, 2, 3, 4] } = {}) {
   m.state.interests = { engineering: 0.9, business: 0.6, "business/startups": 0.8 };
   const eng = [ep("eng-1", { topics: ["engineering"], show: "Engineering Weekly" }), ep("eng-2", { topics: ["engineering"], show: "Engineering Weekly" })];
   m.state.discover = {
-    items: startups.map((i) => ep("st" + i, { release_date: `2026-09-0${i}` })).concat(eng),
+    /* Two shows, alternating: a generated playlist holds at most 2 episodes
+       from one show (catalogue-personalization PKG-04), so four of one show
+       would leave the startups leaf under GENERATED_PLAYLIST_MIN. */
+    items: startups.map((i) => ep("st" + i, { release_date: `2026-09-0${i}`, show: i % 2 ? "Founders" : "Founders Daily" })).concat(eng),
   };
   m.state.itemIndex = {};
   m.state.poolIds = new Set();
@@ -543,7 +546,8 @@ test("a copy saved with Family Mode OFF neither lists nor plays an explicit epis
      Home's play button starts it (it is newest, so first); this fails. */
   const m = appMount({ startups: [1, 2, 3, 4] });
   rateClean(m);
-  m.state.discover.items.push(ep("st-explicit", { release_date: "2026-09-08", explicit: true }));
+  // Its own show, so the per-show cap (2, PKG-04) keeps all five on the leaf.
+  m.state.discover.items.push(ep("st-explicit", { release_date: "2026-09-08", explicit: true, show: "Founders After Dark" }));
   renderAndSave(m, GEN_ID);
   const copy = m.stored()[0];
   assert.strictEqual(copy.items[0].id, "st-explicit", "fixture assumption: saved with it off, the explicit episode is first");
