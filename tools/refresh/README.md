@@ -223,6 +223,16 @@ reasoning behind each live in `topics.mjs`; the short version:
 - the first topic is the item's **branch** for discovery diversity
   (`branchOf` in `search-engine.js`), so put the primary subject first.
 
+**A general show's episodes must carry their own `topics`.** A show marked
+`"label_scope": "general"` in `data/catalog.json` (*Lex Fridman Podcast*, *CBC
+Ideas*, *Stuff You Should Know* and the rest) ranges too widely for its show
+label to describe any one episode, so for those shows omitting `topics` is not
+the cheap default: `merge.mjs` refuses the run in preflight with
+`TOPICS_REQUIRED_GENERAL`, naming the item, before anything is written (founder
+ruling, `docs/roadmap/README.md` item 24; #547). Supply 1-3 taxonomy ids chosen
+from the episode itself. The catalogue is read from `MERGE_CATALOG_PATH`
+(default `data/catalog.json`).
+
 Before deciding whether a show needs overrides, read it:
 
 ```
@@ -393,6 +403,7 @@ GitHub Actions (ephemeral workspace) and locally (`data-local/`):
 | `EDITS_PATH`    | `data-local/edits.json`         | Cloud agent writes this |
 | `MERGE_DISCOVER_PATH` | `data/discover.json`      | Tests only — the nightly writes the real file. |
 | `MERGE_TAGS_PATH`     | `data/item-tags.json`     | Tests only — the nightly writes the real file |
+| `MERGE_CATALOG_PATH`  | `data/catalog.json`       | Tests only — read (never written) for each show's `label_scope` |
 
 **The `MERGE_` prefix is load-bearing, not tidiness.** `tools/classify/root-dumping-report.mjs`
 has its own live `DISCOVER_PATH`, and its documented workflow has you exporting it

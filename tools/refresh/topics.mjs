@@ -73,13 +73,31 @@ export class TopicError extends Error {
     `nodeIds` is the set from data/taxonomy.json. Every override id is validated
     against it: the taxonomy is the only topic space that exists, and an id
     outside it is dead weight that CI's data-topic-integrity suite would later
-    fail on anyway — better here, before anything is written. */
-export function episodeTopics({ showTopics, editTopics, nodeIds, id = "?" } = {}) {
+    fail on anyway — better here, before anything is written.
+
+    `labelScope` is the show's `label_scope` from data/catalog.json. A show
+    marked `"general"` ranges too widely for its show-level label to say anything
+    about one episode (founder ruling, docs/roadmap/README.md item 24: "the
+    nightly requires per-episode topics for those shows"), so for such a show an
+    ABSENT override is no longer the cheap default — it is refused with
+    TOPICS_REQUIRED_GENERAL. Inheriting is how most of the 26
+    `engineering/energy-fusion` items on main came from general shows like CBC
+    Ideas and Catalyst (#547); catalogue-PKG-07 relabels those, and this guard
+    is what stops the nightly re-creating them. */
+export function episodeTopics({ showTopics, editTopics, nodeIds, id = "?", labelScope } = {}) {
   /* Copied, not aliased: the return value is written onto a discover item, and
      handing back the resolved record's own array makes two documents share one
      mutable list for free. Costs nothing; removes a whole class of later bug. */
   const seed = Array.isArray(showTopics) ? [...showTopics] : [];
-  if (editTopics === undefined || editTopics === null) return seed;
+  if (editTopics === undefined || editTopics === null) {
+    if (labelScope === "general") {
+      throw new TopicError(
+        "TOPICS_REQUIRED_GENERAL",
+        `${id}: this show is marked label_scope "general"; its episodes need their own topics (1-3 taxonomy node ids in edits.json)`
+      );
+    }
+    return seed;
+  }
   if (!Array.isArray(editTopics)) {
     throw new TopicError("TOPICS_NOT_ARRAY", `${id}: topics must be an array, got ${typeof editTopics}`);
   }
