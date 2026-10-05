@@ -148,8 +148,11 @@ const FLOORS = {
      F-103's `resolveCites`, which denormalises a narration beat's citations
      against the same two documents rather than having them shipped twice in
      data/forays.json; 63 -> 69. DAI-05: the per-episode ad pad hydrates from
-     the source row (carried, segment wins, typed); 69 -> 72. */
-  "player/foray-resolve.test.js": 72,
+     the source row (carried, segment wins, typed); 69 -> 72. DAI-07a
+     (2026-10-04): forayQueueOptions/forayResolveOptions, where seek-policy's
+     AD_PAD_SHIPPED switch enters both Foray paths (default, explicit override,
+     the padded join); 72 -> 75. */
+  "player/foray-resolve.test.js": 75,
   /* The Foray directory (FD-03, 2026-09-10): the mechanism that lets a phone see
      a new Foray without a store build. Floored with zero slack because each of
      its three rules — never block first paint, never adopt an unvalidated set,
@@ -283,7 +286,9 @@ const FLOORS = {
      releases the owner, the artwork opens the player, Stop and Close sit at
      opposite ends of their row, and one finger drives the drag (+6). */
   "player/now-playing-sheet.test.js": 30, // audit round 2, L2 (2026-09-23): the touchmove claim, the live region as a sibling, Stop order, sheet motion, panel motion, the drawer lock in CSS; 24 -> 30 //
-  "player/seek-policy.test.js": 33,
+  /* DAI-07a (2026-10-04): AD_PAD_SHIPPED, the one switch for ADR-0008's pad
+     tier, pinned off until DAI-09 flips it (README founder question 15); 33 -> 34. */
+  "player/seek-policy.test.js": 34,
   /* DAI-10 (docs/roadmap/dai.md): ADR-0008's locate-step arithmetic -- the
      search window is delta_max + margin wide, the margin never below the
      spread, and a located span may grow by a mid-roll but never shrink. */

@@ -10,6 +10,7 @@ import {
   seekPrecision, canSeekExactly, canPlaySegment, locateStep,
   formatTimestamp, describeTimestamp,
   OWN, FOREIGN, EXACT, APPROXIMATE, PADDED, DRIFT_TOLERANCE_SEC, AD_PAD_CEILING_SEC,
+  AD_PAD_SHIPPED,
 } from "./seek-policy.js";
 
 const stitched = { id: "ep-dai", dai_suspected: true };
@@ -294,4 +295,14 @@ test("DRIFT_TOLERANCE_SEC stays at 30 — ADR-0008 forbids widening it for ads",
   // different question with a correct answer already. The pad is the ad rung.
   assert.equal(DRIFT_TOLERANCE_SEC, 30);
   assert.equal(AD_PAD_CEILING_SEC, 120);
+});
+
+test("AD_PAD_SHIPPED is the one switch and it is off until D5", () => {
+  // README founder question 15 rules D5 yes, but the flip waits for DAI-08's
+  // probe data on main; flipping it (and this expectation, to PADDED) is DAI-09.
+  assert.equal(AD_PAD_SHIPPED, false);
+  assert.equal(
+    seekPrecision(stitched, { source: FOREIGN, adPadSec: 100, allowAdPad: AD_PAD_SHIPPED }).precision,
+    APPROXIMATE,
+  );
 });
