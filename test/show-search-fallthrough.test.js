@@ -712,15 +712,18 @@ test("a genuinely unknown id still says 'Show not found.', and a loaded index an
      for exactly this reason (a 404 would be indistinguishable from a dead
      endpoint through `fetchApiJson`).
 
-     (b) WHICH PATH WINS. Once the index is loaded it can answer a
-     `#/show/:id` miss with no network at all — but it is only loaded when the
-     listener searched first. On a genuine cold open it is not, and fetching
-     436 KB of index to render one page would be a worse trade than one row
-     over the wire, so the index is never fetched FOR this.
+     (b) WHICH PATH WINS. Once the index is loaded it can paint a
+     `#/show/:id` miss without waiting on the network — but it is only loaded
+     when the listener searched first. On a genuine cold open it is not, and
+     fetching 436 KB of index to render one page would be a worse trade than
+     one row over the wire, so the index is never fetched FOR this. (Since
+     PKG-10 the one-row lookup still runs behind the painted page, to upgrade
+     it with the row's taxonomy nodes; see the note in the second half.)
 
-     MUTATION: make `resolveMissingShow` always fetch. The second half's
-     fetch-count assertion goes red, and a listener who has already paid for
-     the index pays again for every show page. */
+     MUTATION: make `resolveMissingShow` always take the fetch path (skip the
+     index branch). The second half's "without waiting" assertion goes red:
+     the page says "Loading show…" for a show the index already had. RUN:
+     failed as named (2026-10-04). */
   const m = mount({ showById: null });
   m.ctx.location.hash = "#/show/nope-not-real";
   m.ctx.renderShow("nope-not-real");
@@ -731,17 +734,23 @@ test("a genuinely unknown id still says 'Show not found.', and a loaded index an
   const m2 = mount();
   m2.input.fire("focus");
   await sleep(10);
-  const before = m2.apiCalls().length;
   m2.ctx.location.hash = "#/show/1000001";
   m2.ctx.renderShow("1000001");
-  /* NO ID LOOKUP — not "no network at all". `renderShow` itself legitimately
-     fetches the show's episode list, so a bare call-count assertion would be
-     about the wrong request and would go red for a reason unrelated to this
-     card. What must be absent is the single-row lookup. */
-  assert.ok(!m2.apiCalls().some((u) => u.includes("api/shows/search") && u.includes("id=")),
-    "a loaded index must answer the id miss with no lookup at all");
-  void before;
-  assert.ok(m2.byId.get("view").innerHTML.includes("Deep History Hour"));
+  /* THE INDEX PAINTS FIRST; THE ROW LOOKUP NOW FOLLOWS IT (2026-10-04,
+     catalogue-personalization PKG-10). This used to assert there was NO id
+     lookup at all. That premise went with PKG-10 on purpose: an index row
+     carries no taxonomy nodes, so a page that never asked for the full row
+     could never show a breadth show's chips or Similar shows. What survives,
+     and is what (b) was protecting, is that the listener is not made to WAIT
+     on that row — the show page is on screen in this same task, with no
+     "Loading show…" in between — and that the lookup is one single-row request
+     rather than an index fetch. The upgrade itself is pinned in
+     test/show-page.test.js. */
+  const painted = m2.byId.get("view").innerHTML;
+  assert.ok(painted.includes("Deep History Hour"), "a loaded index must paint the show page at once");
+  assert.ok(!painted.includes("Loading show"), "…without waiting on the id lookup");
+  const idCalls = m2.apiCalls().filter((u) => u.includes("api/shows/search") && u.includes("id="));
+  assert.strictEqual(idCalls.length, 1, "the background upgrade is one single-row request");
 });
 
 test("navigating away while the id lookup is in flight does not clobber the new page", async () => {

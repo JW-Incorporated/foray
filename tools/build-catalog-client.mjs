@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /* Derives data/catalog-client.json from data/catalog.json (docs/show-pages-plan.md
-   Stage 1, kanban card "Build: per-show pages Stage 1").
+   Stage 1, kanban card "Build: per-show pages Stage 1"), plus each curated
+   show's chart_rank joined from data/catalog-breadth.json (P-09, PKG-11b).
 
    WHY THIS EXISTS
    data/catalog.json is the backend curation engine's 220-show bench
@@ -11,7 +12,8 @@
    83,552 B (25,451 B gzip) — a ~24% gzip saving for zero behaviour change, and it
    keeps feed_url (a legally-relevant field per CLAUDE.md product principle #3) out
    of a public static fetch that has no use for it yet. Re-run whenever
-   data/catalog.json changes (nightly refresh, a new show).
+   data/catalog.json or data/catalog-breadth.json changes (nightly refresh, a
+   new show, a re-harvested chart).
 
    THE FIELD LIST IS THE CONTRACT app.js's renderShow() reads against — a field this
    script does not project will 404 out of the client silently (undefined, not an
@@ -53,6 +55,11 @@ export const CLIENT_SHOW_FIELDS = [
   /* "general" on a broad show whose labels describe the show, not each episode
      (docs/roadmap/catalogue-personalization.md PKG-02/03); null until set. */
   "label_scope",
+  /* P-09 data half (docs/roadmap/shows-search.md PKG-11b): the curated show's
+     Apple chart rank, joined from data/catalog-breadth.json on
+     apple_collection_id; null without a ranked breadth twin. popularityBand
+     reads it from PKG-13 on — until then nothing in the client does. */
+  "chart_rank",
 ];
 
 export function projectShow(show) {
@@ -61,17 +68,40 @@ export function projectShow(show) {
   return out;
 }
 
-export function buildCatalogClient(catalog) {
+/* `breadth` is data/catalog-breadth.json, or null (every chart_rank null).
+   The same join tools/build-show-index.mjs's mergeShowIndexRows makes for
+   data/show-index.tsv (PKG-11a) — copied, not imported, so neither builder
+   depends on the other. */
+export function buildCatalogClient(catalog, breadth = null) {
   if (!catalog || !Array.isArray(catalog.shows)) {
     throw new Error("data/catalog.json did not parse to { shows: [...] } — refusing to write an empty derivation");
   }
-  return { version: catalog.version, shows: catalog.shows.map(projectShow) };
+  if (breadth !== null && !Array.isArray(breadth?.shows)) {
+    throw new Error("data/catalog-breadth.json did not parse to { shows: [...] } — refusing to write an empty derivation");
+  }
+
+  /* Every breadth row, `in_curated` or not — the curated shows' twins are
+     exactly the `in_curated` rows, so filtering them out would join nothing. */
+  const rankByAppleId = new Map();
+  for (const row of breadth?.shows ?? []) {
+    const rank = Number(row?.chart_rank);
+    if (Number.isFinite(rank) && rank > 0) rankByAppleId.set(String(row?.apple_collection_id), rank);
+  }
+
+  return {
+    version: catalog.version,
+    shows: catalog.shows.map((show) => projectShow({
+      ...show,
+      chart_rank: rankByAppleId.get(String(show?.apple_collection_id)) ?? null,
+    })),
+  };
 }
 
 function main() {
   const { outPath, check } = parseArgs(args);
   const catalog = JSON.parse(readFileSync(path.join(ROOT, "data", "catalog.json"), "utf8"));
-  const client = buildCatalogClient(catalog);
+  const breadth = JSON.parse(readFileSync(path.join(ROOT, "data", "catalog-breadth.json"), "utf8"));
+  const client = buildCatalogClient(catalog, breadth);
   if (!client.shows.length) throw new Error("derived catalog-client.json has zero shows — refusing to write");
   const text = JSON.stringify(client, null, 2) + "\n";
 

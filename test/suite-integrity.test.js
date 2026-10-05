@@ -721,8 +721,13 @@ const FLOORS = {
      2026-10-04, +3 (catalogue-personalization PKG-03, founder ruling 24): a
      `label_scope: "general"` show gets no Similar shows row and is never
      offered as one, and catalog.json's label_scope is "general" or absent —
-     any other spelling silently re-enables label inheritance. 44 -> 47. */
-  "test/show-page.test.js": 47,
+     any other spelling silently re-enables label inheritance. 44 -> 47.
+     2026-10-04, +3 (catalogue-personalization PKG-10, #560 item 4): a breadth
+     row carrying taxonomy nodes renders chips and Similar shows; an
+     index-seeded breadth show is upgraded to its API row when that row carries
+     nodes; and a row without nodes leaves the seeded page alone, no re-render.
+     47 -> 50. */
+  "test/show-page.test.js": 50,
   /* Founder reports, 2026-09-13. The "Show more episodes" control came out of
      the show page, so show-page-pagination.test.js was RE-POINTED rather than
      shrunk — same five tests, now pinning the absence of the control, the
@@ -1115,6 +1120,12 @@ const FLOORS = {
      and writes `cp_engine_applied` before logging a replayed advance or
      position. Each is one deleted line from a car that plays the wrong thing,
      or a history that counts a drive twice. */
+  /* Up Next drag to reorder (#762, PQ-04): app.js's wiring around the REAL
+     player/queue-drag.js and queue-order.js — the handle and its hint, the
+     6 px lock, commit on pointerup only, nothing on a tap or a cancel, the
+     slot follows the list under autoscroll. Each test is one deleted line
+     from a gesture that reorders the wrong row or none. */
+  "test/up-next-gestures.test.js": 6, // PQ-04 (#762)
   "test/engine-continuation.test.js": 7, // PQ-11 (#691): the plan runs on into the tail, fromTail hops; 6 -> 7
   "test/engine-developer-rows.test.js": 14, // NE-22d: the engine's four Developer rows in the drawer
   "test/up-next-autoadvance.test.js": 25, // PQ-11 (#691): the tail after the list (first pick, third is the stretch with the bridge line + announcement, no repeats, switch off stops it); 21 -> 25 // audit round 3 (lane L1): app-1-9 the finished row leaves Up Next with the switch off; 20 -> 21 // founder, 2026-09-24, reversing lane L3's question-9 default: a play from the page moves THAT row to the top and ⏭ drops only the skipped episode (+1: a refused play moves nothing); no wrap-around, previous = restart past the window (p-car-5); 11 -> 19 -> 20 // // 2026-09-22: rewritten for the continuous-playback ruling (on by default, Up Next first, then the chosen list, unplayable rows passed over); 6 -> 11
@@ -1372,6 +1383,7 @@ const FLOORS = {
      needed because the sort order is a contract between two files and either
      side can break it alone. */
   "tools/build-show-index.test.mjs": 10, // PKG-11a (docs/roadmap/shows-search.md, 2026-10-04): +1 — a curated row carries its breadth twin's chart_rank joined on apple_collection_id, and null without a twin; 9 -> 10
+  "tools/build-catalog-client.test.mjs": 2, // PKG-11b (P-09): the curated chart_rank breadth join (rank or null) and the committed data/catalog-client.json equals the builder's output
   "tools/popularity-signal-probe.test.mjs": 6, // PKG-12 (P-10, docs/roadmap/shows-search.md): the top.json position probe — the String() join for breadth and curated rows, would_lead_by_top_position, the validator, the pi_id-order flag, one polite GET for top.json alone, the 5xx retry
   /* The Windows entrypoint-guard class (machinery audit finding 3). A main-
      module check written as ``import.meta.url === `file://${process.argv[1]}` ``
