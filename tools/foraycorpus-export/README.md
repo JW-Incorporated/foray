@@ -174,3 +174,21 @@ Add one paragraph per module as it lands.
   the name `transcriptPath` writes and `transcriptArchiveLookup.ts` `showDir`
   finds by prefix. `normalizeFeedUrl` and `safeKey` are imported, and the
   caller parses the data files.
+- **`catalog-adapter.mjs`** (PKG-31): `catalogAdapter(showRows, {
+  breadthOld, catalog, harvestedAt })` turns `buildShows` rows into
+  `data/catalog-breadth.json`-shaped rows and returns `{ shows, report }`.
+  Rows are skipped, and counted, when they have no `itunes_id`
+  (`skipped_no_apple_id`), when either rights flag is set (`skipped_rights`,
+  founder ruling 31 in `docs/roadmap/README.md`), when `language` is neither
+  `en*` nor null (`skipped_language`), or when they repeat an apple id. A row
+  carries the old file's 18 keys: the plan's 17 plus `taxonomy_node_ids`,
+  which `breadthCatalog.ts` reads. Then come the additive
+  `timed_transcript_episodes` and `audio_episodes`. The chart fields and
+  `taxonomy_node_ids` are copied from the old breadth row with the same
+  `apple_collection_id`, else null and `[]`. `in_curated` is true only when
+  `foray_show_id` is a `data/catalog.json` `show_id`, so the numeric
+  `String(itunes_id)` fallback never counts. The report adds `new_vs_old`,
+  `dropped_vs_old` and `feed_url_changed`. The CLI (`--shows <shows.jsonl>
+  [--breadth] [--catalog] [--out] [--harvested-at]`) writes the envelope
+  minified to `data-local/corpus-export/catalog-breadth-corpus.json` and
+  refuses an `--out` under `data/`.
