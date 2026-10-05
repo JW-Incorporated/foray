@@ -2909,6 +2909,125 @@
       "explicit": false,
       "label_scope": null,
       "chart_rank": 80
+    },
+    {
+      "show_id": "the-bourbon-road",
+      "title": "The Bourbon Road",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/3f/40/3b/3f403bd3-07d7-bec7-12f0-393277a8c5c3/mza_3239835081741539080.png/600x600bb.jpg",
+      "editorial_note": "Distillery visits and blind flights; distillers and blenders explain their own process.",
+      "taxonomy_node_ids": [
+        "food/drinks"
+      ],
+      "episode_count": 514,
+      "explicit": false,
+      "label_scope": null,
+      "chart_rank": 116
+    },
+    {
+      "show_id": "beersmith-podcast",
+      "title": "BeerSmith Home and Beer Brewing Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/dd/e1/83/dde18320-3859-6314-c84c-1ffa29922bf2/mza_6956310066618780573.png/600x600bb.jpg",
+      "editorial_note": "Maltsters, yeast scientists and brewing authors on how beer is actually made.",
+      "taxonomy_node_ids": [
+        "food/fermentation",
+        "food/drinks"
+      ],
+      "episode_count": 300,
+      "explicit": false,
+      "label_scope": null,
+      "chart_rank": 131
+    },
+    {
+      "show_id": "the-bourbon-life",
+      "title": "The Bourbon Life",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/ef/3c/ab/ef3cab95-8d5f-e26b-7765-612c3a645a75/mza_527499069065500089.jpg/600x600bb.jpg",
+      "editorial_note": "Interviews with master distillers, blenders and maturation leads across American whiskey.",
+      "taxonomy_node_ids": [
+        "food/drinks"
+      ],
+      "episode_count": 105,
+      "explicit": false,
+      "label_scope": null,
+      "chart_rank": 143
+    },
+    {
+      "show_id": "wine-talks-with-paul-k",
+      "title": "Wine Talks with Paul K.",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/93/ca/ca/93caca00-d18d-8ca4-5b4b-225fe474c017/mza_8549991008830833869.jpg/600x600bb.jpg",
+      "editorial_note": "A wine-club owner interviews producers, importers and port houses about how wine gets made and sold.",
+      "taxonomy_node_ids": [
+        "food/drinks"
+      ],
+      "episode_count": 528,
+      "explicit": false,
+      "label_scope": null,
+      "chart_rank": 200
+    },
+    {
+      "show_id": "wine-for-normal-people",
+      "title": "Wine for Normal People",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/90/56/f3/9056f383-d3fb-b954-4909-7bedfddec06c/mza_1568762029983158170.jpg/600x600bb.jpg",
+      "editorial_note": "Plain-spoken wine education: grapes, regions, structure and the history behind them.",
+      "taxonomy_node_ids": [
+        "food/drinks"
+      ],
+      "episode_count": 92,
+      "explicit": false,
+      "label_scope": null,
+      "chart_rank": 36
+    },
+    {
+      "show_id": "wine-educate",
+      "title": "Wine Educate: Wine Lessons, Travel & WSET Study Prep",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/ae/cd/b7/aecdb777-9a27-a54c-81de-684800f1e63b/mza_8559686797506846474.jpg/600x600bb.jpg",
+      "editorial_note": "WSET-style lessons on grapes, winemaking methods and appellation law.",
+      "taxonomy_node_ids": [
+        "food/drinks"
+      ],
+      "episode_count": 131,
+      "explicit": false,
+      "label_scope": null,
+      "chart_rank": 58
+    },
+    {
+      "show_id": "wine-enthusiast-podcast",
+      "title": "Wine Enthusiast Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/fa/21/43/fa214372-8d82-30f7-9fea-e22c88e49f80/mza_5788364734232111071.png/600x600bb.jpg",
+      "editorial_note": "The magazine's editors report on wine and spirits, from orange wine to mezcal.",
+      "taxonomy_node_ids": [
+        "food/drinks"
+      ],
+      "episode_count": 229,
+      "explicit": false,
+      "label_scope": null,
+      "chart_rank": 66
+    },
+    {
+      "show_id": "brew-strong",
+      "title": "The Brewing Network Presents |  Brew Strong",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/5b/1d/ee/5b1deef3-549b-bc0a-5c54-1ab71195ac58/mza_9287330847818074238.jpg/600x600bb.jpg",
+      "editorial_note": "John Palmer and Jamil Zainasheff answer brewing questions on yeast, water and mashing.",
+      "taxonomy_node_ids": [
+        "food/fermentation",
+        "food/drinks"
+      ],
+      "episode_count": 361,
+      "explicit": false,
+      "label_scope": null,
+      "chart_rank": 188
+    },
+    {
+      "show_id": "beer-in-front",
+      "title": "Beer In Front",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/71/06/be/7106be64-29ae-de13-d070-7c55a62acab7/mza_13393508569446909877.jpg/600x600bb.jpg",
+      "editorial_note": "A Chicago beer fan talks with maltsters, brewers and makers, then tastes what they make.",
+      "taxonomy_node_ids": [
+        "food/drinks"
+      ],
+      "episode_count": 292,
+      "explicit": true,
+      "label_scope": null,
+      "chart_rank": 111
     }
   ]
 }
