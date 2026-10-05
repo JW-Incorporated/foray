@@ -296,7 +296,7 @@ const FLOORS = {
   "player/now-playing-sheet.test.js": 32, // audit round 2, L2 (2026-09-23): the touchmove claim, the live region as a sibling, Stop order, sheet motion, panel motion, the drawer lock in CSS; 24 -> 30; 30 -> 32 // PQ-13 (#30): Bookmark directly after Save in row2, and its click reads episodePositionSec()
   /* DAI-07a (2026-10-04): AD_PAD_SHIPPED, the one switch for ADR-0008's pad
      tier, pinned off until DAI-09 flips it (README founder question 15); 33 -> 34. */
-  "player/seek-policy.test.js": 34,
+  "player/seek-policy.test.js": 35, // CH-1 (#1071): the guarded window.ForaySeekPolicy publication app.js reads; 34 -> 35
   /* DAI-10 (docs/roadmap/dai.md): ADR-0008's locate-step arithmetic -- the
      search window is delta_max + margin wide, the margin never below the
      spread, and a located span may grow by a mid-roll but never shrink. */
@@ -456,7 +456,8 @@ const FLOORS = {
   "test/app-security.test.js": 26,
   "test/app-surface-round3.test.js": 23, // round-3 completeness sweep: app-2-6 a changed or withdrawn thumbs vote is logged with the vote it replaces (the suite stood at 22 unfloored); 20 -> 23 // audit round 3 (2026-09-25, lane L2): the app-surface fixes with no better-fitting suite (app-2-14/15, app-1-15/16, app-2-1/2/3/5/6/7/8/9/10/11/12/13, app-3-1, data-integrity-8), each test naming its id and the mutation that kills it; zero slack; new
   "test/episode-page.test.js": 8,
-  "test/episode-deeplink.test.js": 9, // issue #30 (2026-10-05): #/episode/<id>?t=N + the #/play/ alias normalized in place, garbage t ignored, past-the-end draws no button, the Play-from data-ts control on the existing binder, ~ for a DAI stream / exact for static or downloaded, no autoplay; new
+  "test/episode-chapters-visible.test.js": 12, // CH-1 (#1071, 2026-10-05): chapters on the episode page — feed over notes, the 2+/ascending notes guard, six visible + "All N chapters", one FOREIGN precision rule (unknown and no-policy read approximate), saved chapters from the full notes, the device read (JSON, then ID3) once per episode, silent, route-checked, and window.ForayChapters is the rendered list; new
+  "test/episode-deeplink.test.js": 10, // CH-1 (#1071): an unclassified show or no policy loaded reads approximate (deepLinkPrecise now calls chapterPrecision); 9 -> 10 // issue #30 (2026-10-05): #/episode/<id>?t=N + the #/play/ alias normalized in place, garbage t ignored, past-the-end draws no button, the Play-from data-ts control on the existing binder, ~ for a DAI stream / exact for static or downloaded, no autoplay; new
   /* 2026-09-18, founder: "Only forays are in the jump back in section, podcasts
      and playlists should be there too." The episode card existed but was
      unreachable — it read cp_lastpick, written only for discover-pool episodes. */
@@ -758,7 +759,7 @@ const FLOORS = {
      index-seeded breadth show is upgraded to its API row when that row carries
      nodes; and a row without nodes leaves the seeded page alone, no re-render.
      47 -> 50. */
-  "test/show-page.test.js": 50,
+  "test/show-page.test.js": 51, // CH-1 (#1071): a curated show's DAI class rides from catalog-client.json onto its show-page episode rows; 50 -> 51
   /* #560 item 8 (2026-10-04): the measurement for Similar shows. The mirror of
      app.js's similarShows is pinned to app.js's text and behaviour, the
      hand-reviewed eval set is checked against the catalogue (all 13 general
@@ -842,7 +843,7 @@ const FLOORS = {
      page's newest-first sort with no filter controls (Joey's Q7 answer).
      Every test names its mutation; see the suite header for the full list
      of what each test pins. */
-  "test/episode-page-publish-date-description-chapters.test.js": 12,
+  "test/episode-page-publish-date-description-chapters.test.js": 13, // CH-1 (#1071): the mapper keeps chapters_url and guid and maps the show's dai class; 12 -> 13
 
   /* Episodes section under Shows search (S-07, kanban t_6baccaa0): six
      mutations named and killed in the file's own header — rendering,
@@ -1437,7 +1438,7 @@ const FLOORS = {
      needed because the sort order is a contract between two files and either
      side can break it alone. */
   "tools/build-show-index.test.mjs": 10, // PKG-11a (docs/roadmap/shows-search.md, 2026-10-04): +1 — a curated row carries its breadth twin's chart_rank joined on apple_collection_id, and null without a twin; 9 -> 10
-  "tools/build-catalog-client.test.mjs": 2, // PKG-11b (P-09): the curated chart_rank breadth join (rank or null) and the committed data/catalog-client.json equals the builder's output
+  "tools/build-catalog-client.test.mjs": 4, // CH-1 (#1071): dai joined on String(apple_collection_id), null when unclassified, and --check flags drift; 2 -> 4 // PKG-11b (P-09): the curated chart_rank breadth join (rank or null) and the committed data/catalog-client.json equals the builder's output
   "tools/popularity-signal-probe.test.mjs": 6, // PKG-12 (P-10, docs/roadmap/shows-search.md): the top.json position probe — the String() join for breadth and curated rows, would_lead_by_top_position, the validator, the pi_id-order flag, one polite GET for top.json alone, the 5xx retry
   /* The Windows entrypoint-guard class (machinery audit finding 3). A main-
      module check written as ``import.meta.url === `file://${process.argv[1]}` ``

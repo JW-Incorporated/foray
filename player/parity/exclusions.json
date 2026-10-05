@@ -920,6 +920,10 @@
     "formatTimestamp renders exact times to the second": {
       "reason": "text-pin",
       "why": "Pins formatTimestamp's clock strings. The page renders every timestamp a listener sees (chapter lists, the scrubber, spoken answers). The engine carries seconds and a precision token (seekPrecision, fixtured) and never formats one, so this wording has no Swift meaning."
+    },
+    "publishes window.ForaySeekPolicy only where a window exists": {
+      "reason": "js-module-shape",
+      "why": "Pins the guarded window hand-off from this module to app.js, a classic page script that cannot import it (CH-1, #1071: chapter times and timestamp links read the rule from here). A browser global between two page scripts; the engine imports nothing from the page and has no window, so it has no Swift meaning. seekPrecision's answers are fixtured (seek-policy/seek-precision)."
     }
   },
   "transport-policy": {

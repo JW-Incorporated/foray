@@ -292,3 +292,24 @@ test("fullCatalogueRowToEpRowItem renders a real epRow with the publish date onc
   const html = m.ctx.epRow(item, 0, "ctx", -1);
   assert.match(html, /Feb 3, 2019/, `expected the full-catalogue row to show its publish date, got: ${html}`);
 });
+
+test("fullCatalogueRowToEpRowItem keeps chapters_url and guid, and maps the show's dai class true / false / missing (CH-1, #1071)", () => {
+  /* MUTATION: drop `chapters_url: ep.chapters_url || null,` from the mapper (the
+     pointer was dropped here before CH-1) — chapters_url comes back null; red.
+     MUTATION 2: `dai_known: typeof show.dai === "boolean"` -> `dai_known: true` —
+     the unclassified show reads clean; red.
+     MUTATION 3: drop `chapters_url: src.chapters_url ?? null,` from snapshot() —
+     the whitelist loses it before the mapper's value lands; red. */
+  const m = mount();
+  const ep = { guid: "g-ch", title: "Ep", audio_url: "https://cdn.example.com/c.mp3", chapters_url: "https://pub.example.com/c.json" };
+  const pick = (it) => [it.chapters_url, it.guid, it.dai_suspected, it.dai_known];
+  assert.deepStrictEqual(pick(m.ctx.fullCatalogueRowToEpRowItem({ show_id: "s-dai", title: "S", dai: true }, ep)),
+    ["https://pub.example.com/c.json", "g-ch", true, true]);
+  assert.deepStrictEqual(pick(m.ctx.fullCatalogueRowToEpRowItem({ show_id: "s-clean", title: "S", dai: false }, ep)),
+    ["https://pub.example.com/c.json", "g-ch", false, true]);
+  assert.deepStrictEqual(pick(m.ctx.fullCatalogueRowToEpRowItem({ show_id: "s-breadth", title: "S" }, { ...ep, chapters_url: undefined, guid: null, published_at: "2026-01-01" })),
+    [null, "noguid:Ep:2026-01-01", false, false]);
+  /* A curated source that never carried a DAI flag is unknown; one that did is known. */
+  assert.strictEqual(m.ctx.snapshot("x1", { title: "t" }).dai_known, false);
+  assert.strictEqual(m.ctx.snapshot("x2", { title: "t", dai_suspected: false }).dai_known, true);
+});
