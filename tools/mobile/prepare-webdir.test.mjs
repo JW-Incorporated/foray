@@ -2201,10 +2201,10 @@ test("REAL REPO: the sliced bundle, its budgets and the headroom that is left", 
          the need for #1039's bridge above. `data/item-tags.json` is now the
          searched pool's tag lists plus the whole map's counts — 286,348 -> 124,908 B
          — and search-engine.js grows +740 B minified to read them (22,577 ->
-         23,317). RE-MEASURED at the merge of main (51b3c42b) into the branch, LF,
-         minified, as CI measures it: main alone 2,940,447 B (4.3 KB OVER this
-         line, under #1039's 2.85); the branch 2,779,747 B — -160,700 B, ~152.6 KB
-         under 2.8 MB and ~357 KB under the 3 MB cap. The tag file now has a
+         23,317). RE-MEASURED at the merge of main (b96c5780) into the branch, LF,
+         minified, as CI measures it: main alone 2,942,217 B (6.1 KB OVER this
+         line, under #1039's 2.85); the branch 2,781,517 B — -160,700 B, ~150.9 KB
+         under 2.8 MB and ~356 KB under the 3 MB cap. The tag file now has a
          per-file budget of its own (PROJECTED_DATA, 138 KB), so its nightly growth
          no longer reaches this line unannounced. The Kokoro question #1039 left
          with the founder is untouched: the next feature-code red is still its. */
