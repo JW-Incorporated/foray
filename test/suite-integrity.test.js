@@ -562,6 +562,16 @@ const FLOORS = {
      and the published privacy policy and Play declaration both now rest on them.
      A deleted test here is a false statement in a store submission. */
   "test/data-deletion.test.js": 88, // audit round 3 (lane L1): app-1-2 single-flight sync and signup (x2), app-1-10 per-chunk markSynced, app-1-4 transient refresh keeps the account (x2), app-3-6 the retry after a local-incomplete run (x4); 79 -> 88 // NE-23: in native mode the deletion stops and purges the engine before the page's own purge (its private keys go, cp_engine_applied is the page's to clear), and an engine that refuses is not a clear device; 77 -> 79 // persist-6: Delete my data finds the token in the vault and empties it, a sync signs up into the vault only, and never refreshes or signs up against a vault it could not read; 68 -> 73 // audit round 2 (L5): the deletion as a transaction — refreshed token saved (persist-1 x2), in-flight sync gated and waited out (persist-8 x2), no cp_playlists/onboarding after the re-render (persist-2), shard cache cleared (persist-4), diagnostics forgotten (persist-5), device-only cost stated (persist-7); 60 -> 68 // 2026-09-22 audit: "Delete everything" is red under ui-v2 and the drawer item is not gold; 57 -> 58 // 2026-09-22 audit (theme J, R11): the foray_events queue is purged with everything else, a queue that will not clear is not called clear, a store with no queue is not a success, no status line speaks storage jargon or a count, every store the code opens sits in a deleted-or-kept ledger, and the policy says so; 51 -> 57
+  /* Offline downloads, the listener-visible half (#29, PQ-18): app.js's wiring
+     around the REAL player/download-store.js and download-bridge.js with only
+     the phone faked — no control off the shell, the original enclosure URL and
+     the build's UA, progress repainted in place, done/refused written from the
+     events, Library's section between Up Next and History, the cellular
+     switch, the files purged before the keys, eviction that spares an episode
+     in progress, and client.js's published surface. Each test is one deleted
+     line from a download that goes to the wrong URL, a device called clear
+     with files on it, or a half-heard episode deleted. */
+  "test/downloads.test.js": 10, // PQ-18 (#29): the plan's 8 + eviction wiring + client.js's window.forayDownloads pin
   "test/event-sync-mapping.test.js": 5, // PKG-17 (docs/roadmap/catalogue-personalization.md): exact wire rows for picked (contract archetype or null), saved, thumbs (no node -> null, episode_slug absent not null), session_shown -> session_built, and a local-only-only batch marked synced with no POST; the Not-sent -> null and per-chunk cases live in legal-citations and data-deletion (app-1-10)
   /** The field record's surface (#264) — see the note beside the two `player/`
       halves above. */
