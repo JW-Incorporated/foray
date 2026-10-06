@@ -1141,3 +1141,99 @@ test("Home names itself: 'Home' is said when focus survived, and a lost focus la
   assert.strictEqual(m.doc.activeElement, greeting, "focus lands on the greeting, not the bare region");
   assert.strictEqual(greeting.getAttribute("tabindex"), "-1");
 });
+
+/* ==================================================================== */
+/* CH-38: the two onboarding sheets, and the four sheet closers         */
+/* ==================================================================== */
+
+test("CH-38: parking the first-run explainer leaves the intro popup able to open the same visit (parked state is per sheet)", () => {
+  /* Characterization of today's twin flags, kept by the shared builder.
+     Home's gate never reaches the popup while the explainer is parked (the
+     explainer answers `true`), but the popup itself is not parked by it, and
+     parking the popup does not park the explainer.
+     MUTATION: one parked flag for both sheets (park either -> both parked) -> red. */
+  const m = mount();
+  assert.strictEqual(m.ctx.showFirstTimeExplainerOnce(), true, "fixture: a fresh profile gets the explainer");
+  m.doc.body.querySelector("#first-time-sheet").querySelector(".fy-scrim").fire("click");
+  assert.strictEqual(m.doc.body.querySelector("#first-time-sheet"), null, "the scrim parked it");
+  assert.strictEqual(m.ctx.showFirstTimeExplainerOnce(), true, "parked answers true: the explainer still owns the visit");
+  assert.strictEqual(m.doc.body.querySelector("#first-time-sheet"), null, "without mounting again");
+  m.ctx.showIntroPopupOnce();
+  assert.ok(m.doc.body.querySelector("#intro-sheet"), "the intro popup is not parked by the explainer's park");
+
+  const other = mount();
+  other.ctx.showIntroPopupOnce();
+  other.doc.body.querySelector("#intro-sheet").querySelector(".fy-scrim").fire("click");
+  assert.strictEqual(other.doc.body.querySelector("#intro-sheet"), null, "the scrim parked the popup");
+  other.ctx.showIntroPopupOnce();
+  assert.strictEqual(other.doc.body.querySelector("#intro-sheet"), null, "a parked popup stays down this visit");
+  assert.strictEqual(other.ctx.showFirstTimeExplainerOnce(), true);
+  assert.ok(other.doc.body.querySelector("#first-time-sheet"), "and the explainer is not parked by the popup's park");
+});
+
+test("CH-38: the intro popup parks on the scrim and Escape, and only 'Got it' writes cp_intro_dismissed", () => {
+  /* MUTATION: bind the popup's scrim (or onRequestClose) to `dismiss` -> red.
+     MUTATION 2: drop the `lsSet("cp_intro_dismissed", true)` from the popup's
+     dismiss -> red. */
+  const m = mount();
+  m.ctx.showIntroPopupOnce();
+  const wrap = m.doc.body.querySelector("#intro-sheet");
+  assert.ok(wrap && m.doc.activeElement === wrap.querySelector(".fy-panel"), "a real dialog: focus moved in");
+  m.doc.key("Escape");
+  assert.strictEqual(m.doc.body.querySelector("#intro-sheet"), null, "Escape closed it");
+  assert.strictEqual(m.store.get("cp_intro_dismissed"), undefined, "without ending onboarding");
+
+  const fresh = mount();
+  fresh.ctx.showIntroPopupOnce();
+  fresh.doc.body.querySelector("#intro-sheet-ok").fire("click");
+  assert.strictEqual(fresh.doc.body.querySelector("#intro-sheet"), null, "Got it closes it");
+  assert.strictEqual(fresh.store.get("cp_intro_dismissed"), "true", "and is the considered press that ends onboarding");
+  assert.ok(!fresh.doc.body.classList.contains("fy-sheet-open"), "no lock left behind");
+});
+
+/** The feedback sheet as `feedbackSheetHtml` ships it, in the parts its
+    opener and closer read (this DOM ignores innerHTML). */
+function feedbackSheetInto(m) {
+  const wrap = m.doc.createElement("div");
+  wrap.className = "fy-sheet";
+  wrap.id = "fy-sheet";
+  wrap.hidden = true;
+  const panel = m.doc.createElement("div");
+  panel.className = "fy-panel";
+  panel.setAttribute("role", "dialog");
+  const sub = m.doc.createElement("p");
+  sub.id = "fy-sheet-sub";
+  const note = m.doc.createElement("input");
+  note.id = "fy-sheet-note";
+  const go = m.doc.createElement("button");
+  go.id = "fy-sheet-go";
+  panel.append(sub, note, go);
+  wrap.appendChild(panel);
+  m.view.appendChild(wrap);
+  return wrap;
+}
+
+test("CH-38: each of the four sheet closers leaves its root hidden and the page released", () => {
+  /* Characterization for deleting the `.hidden = true` each closer wrote after
+     closeSheet() (A3-11): the owner's close is what hides. MUTATION (after the
+     deletion): drop `wrap.hidden = true` from closeSheet's found branch -> red
+     for all four. */
+  const m = mount();
+  const cases = [
+    ["feedback", () => { feedbackSheetInto(m); m.ctx.openFeedbackSheet({ show: "A show" }); },
+      () => m.ctx.closeFeedbackSheet(), () => m.doc.body.querySelector("#fy-sheet")],
+    ["delete", () => m.ctx.openDeleteSheet(), () => m.ctx.closeDeleteSheet(), () => m.doc.body.querySelector("#dd-sheet")],
+    ["voice", () => m.ctx.openVoiceSheet(), () => m.ctx.closeVoiceSheet(), () => m.doc.body.querySelector("#voice-sheet")],
+    ["diagnostics", () => m.ctx.openDiagSheet(), () => m.ctx.closeDiagSheet(), () => m.doc.body.querySelector("#diag-sheet")],
+  ];
+  for (const [name, open, close, root] of cases) {
+    open();
+    assert.ok(root(), `fixture: the ${name} sheet exists`);
+    assert.strictEqual(root().hidden, false, `fixture: the ${name} sheet opened`);
+    assert.strictEqual(m.ctx.openSheetCount(), 1, `fixture: the owner holds the ${name} sheet`);
+    close();
+    assert.strictEqual(root().hidden, true, `the ${name} sheet is hidden after its close`);
+    assert.strictEqual(m.ctx.openSheetCount(), 0, `and the owner let go of it`);
+    assert.ok(!inert(m.view), `and the page is reachable again after the ${name} sheet`);
+  }
+});
