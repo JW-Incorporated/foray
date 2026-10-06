@@ -243,12 +243,21 @@ test("a ?foray= link enters its Foray once; reloading on Home stays on Home", ()
   assert.strictEqual(m.evalIn("forayParam()"), "capital-types-1", "the unlock (the param) is untouched");
 });
 
+/* bootAndWait's tick budget, as a wall-clock bound with its premise asserted: a
+   busy machine reading the real data documents can take longer than 200 ticks,
+   and these tests read the address init() left, so they must not read it early. */
+async function bootUntilWired(m, ms = 15000) {
+  const until = Date.now() + ms;
+  while (!m.listeners.includes("hashchange") && Date.now() < until) await new Promise((r) => setTimeout(r, 5));
+  assert.ok(m.listeners.includes("hashchange"), "premise: init() ran to the line that wires the router");
+}
+
 test("CH-23: booting a bare URL that carries ?foray=<id> lands on #/foray/<id>, not on Home", async () => {
   /* Characterization (code-health CH-23): init() runs enterForayFromQuery and
      only THEN rewrites a bare hash to relaunchRoute(), so the Foray entry wins.
      MUTATION: drop the enterForayFromQuery() call from init() -> "#/"; red. */
   const m = mount({ hash: "", search: "?foray=capital-types-1", serveFiles: true });
-  await bootAndWait(m);
+  await bootUntilWired(m);
   assert.strictEqual(m.ctx.location.hash, "#/foray/capital-types-1");
   assert.strictEqual(m.session.get("foray_entered:capital-types-1"), "1", "the entry is marked for the tab");
 });
@@ -259,7 +268,7 @@ test("CH-23: a bare URL with no ?foray= goes to relaunchRoute()", async () => {
      with `replaceHash("#/")` in init() -> "#/"; red. */
   const m = mount({ hash: "", serveFiles: true });
   m.ctx.relaunchRoute = () => "#/shows";
-  await bootAndWait(m);
+  await bootUntilWired(m);
   assert.strictEqual(m.ctx.location.hash, "#/shows");
 });
 
@@ -271,7 +280,7 @@ test("CH-23 (A3-09): where replaceState does not reflect into location.hash, a ?
      MUTATION: restore the inline `history.replaceState(...)` in
      enterForayFromQuery -> "#/" with the mark set; red. */
   const m = mount({ hash: "", search: "?foray=capital-types-1", serveFiles: true, reflect: false });
-  await bootAndWait(m);
+  await bootUntilWired(m);
   assert.strictEqual(m.ctx.location.hash, "#/foray/capital-types-1");
   assert.strictEqual(m.session.get("foray_entered:capital-types-1"), "1");
 });
