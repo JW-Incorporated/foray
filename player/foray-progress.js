@@ -35,8 +35,13 @@
    none — so they are named constants, not literals buried in a branch.
 */
 
-/** One row per Foray. `cp_` prefix: renaming these wipes user state. */
-export const KEY_PREFIX = "cp_foray:";
+import { FORAY_PROGRESS_KEY_PREFIX } from "./engine-vocabulary.js";
+
+/** One row per Foray. `cp_` prefix: renaming these wipes user state. Spelled
+    once, in engine-vocabulary.js, beside the other two rows the native engine
+    owns (code-health CH-31); this name is the one callers and gen-constants
+    read. */
+export const KEY_PREFIX = FORAY_PROGRESS_KEY_PREFIX;
 
 /** Below this, there is nothing worth resuming to — offer a fresh start. */
 export const MIN_RESUME_SEC = 20;
