@@ -22,18 +22,12 @@ import {
   speak,
   createForayTtsShell,
   onFinished,
-  kokoroProbe,
-  onProbePass,
-  PROBE_PASS_EVENT,
-  PROBE_MODES,
-  probeErrorName,
-  isUnimplementedRejection,
-  PROBE_ENGINE,
   pause,
   resume,
   stop,
   state,
 } from "../../mobile/plugins/foray-tts/web/foray-tts.js";
+import * as forayTts from "../../mobile/plugins/foray-tts/web/foray-tts.js";
 
 const LEXICON = [
   { term: "binchōtan", ipa: "biɲtɕoːtaɰ̃" },
@@ -628,214 +622,6 @@ test("createForayTtsShell: exposes onFinished wired to the same baked-in bridge"
   assert.equal(listeners.get(`${PLUGIN_NAME}:${FINISHED_EVENT}`)?.size, 1);
 });
 
-/* ---------- K-01: the bundled-voice probe (docs/bundled-voice-plan.md) ----------
- *
- * The measurement path, and the one property that makes it worth shipping: it
- * is a SEPARATE call from `speak()` with no fallback ladder under it. `speak()`
- * degrades native -> Web Speech -> honest refusal, which is right for
- * narration and catastrophic for a probe: a probe that fell down that ladder
- * would time the SYSTEM voice and report a Kokoro number. Every test below is
- * a mutation of that separation.
- */
-
-test("kokoroProbe: no bridge is `no-bridge`, and it never reaches speechSynthesis", async () => {
-  /* TO SEE IT FAIL: give `kokoroProbe` the same `speechSynth` fallback
-     `speak()` has. `spoke` becomes true and the probe reports a measurement of
-     the phone's own voice. */
-  let spoke = false;
-  const speechSynth = { speak: () => { spoke = true; }, getVoices: () => [] };
-  const out = await kokoroProbe({ bridge: undefined, speechSynth });
-  assert.equal(out.ok, false);
-  assert.equal(out.reason, "no-bridge");
-  assert.equal(spoke, false);
-});
-
-test("kokoroProbe: calls the native method by the name the plugin declares", async () => {
-  /* The Swift half's `pluginMethods` and the Java half's `@PluginMethod` are
-     both named `kokoroProbe`; a rename on one side reports as `engine-absent`,
-     which reads exactly like "this build has no runtime".
-     TO SEE IT FAIL: change the method string here or in either native half. */
-  const calls = [];
-  const bridge = {
-    nativePromise: async (plugin, method, payload) => {
-      calls.push({ plugin, method, payload });
-      return { ok: true, model: "1.0", provider: "cpu" };
-    },
-  };
-  const passage = { lines: [{ ids: [1, 2] }] };
-  const out = await kokoroProbe({ bridge, passage });
-  assert.equal(calls[0].plugin, PLUGIN_NAME);
-  assert.equal(calls[0].method, "kokoroProbe");
-  assert.equal(calls[0].payload.engine, PROBE_ENGINE);
-  assert.deepEqual(calls[0].payload.passage, passage);
-  assert.equal(out.ok, true);
-  assert.equal(out.path, "native");
-  assert.equal(calls[0].payload.mode, undefined, "the matrix carries no mode");
-});
-
-test("kokoroProbe: KV-R3's soak, stop and listen modes travel, and nothing else does", async () => {
-  /* The soak (30-minute locked loop) and listen (play one pass's WAV) are
-     the same native method with a mode. Only the two known modes, a real
-     number of minutes and a pass-shaped token cross the bridge.
-     TO SEE IT FAIL: spread `opts` into the payload. */
-  const calls = [];
-  const bridge = { nativePromise: async (plugin, method, payload) => { calls.push(payload); return { ok: true }; } };
-  await kokoroProbe({ bridge, mode: "soak", soakMinutes: 30 });
-  await kokoroProbe({ bridge, mode: "listen", pass: "ane-cputail" });
-  await kokoroProbe({ bridge, mode: "wipe", pass: "../../etc", soakMinutes: "30" });
-  await kokoroProbe({ bridge, mode: "stop" });
-  assert.equal(calls[3].mode, "stop", "the soak's stop travels (KV-R3 review)");
-  assert.equal(calls[0].mode, "soak");
-  assert.equal(calls[0].soakMinutes, 30);
-  assert.equal(calls[1].mode, "listen");
-  assert.equal(calls[1].pass, "ane-cputail");
-  assert.deepEqual(Object.keys(calls[2]).sort(), ["engine", "passage"], "an unknown mode, path or string is dropped");
-});
-
-test("kokoroProbe: an answer without `ok` is a refusal, never a success", async () => {
-  /* TO SEE IT FAIL: return the native payload unchanged. `{}` then reads as a
-     complete measurement of nothing. */
-  const bridge = { nativePromise: async () => ({}) };
-  const out = await kokoroProbe({ bridge });
-  assert.equal(out.ok, false);
-  assert.equal(out.reason, "refused");
-});
-
-test("kokoroProbe: the native reason code is carried through verbatim", async () => {
-  /* `model-absent` (the build skipped the fetch step) and `engine-absent` (no
-     runtime compiled in) are different things for a founder to do next.
-     TO SEE IT FAIL: replace `native.reason` with a constant. */
-  for (const reason of ["model-absent", "engine-absent", "passage-unphonemized"]) {
-    const bridge = { nativePromise: async () => ({ ok: false, reason }) };
-    assert.equal((await kokoroProbe({ bridge })).reason, reason);
-  }
-});
-
-test("kokoroProbe: a refusal carries the numbers the phone DID produce (#685)", async () => {
-  /* `runKokoroProbe` hands THIS object to `summarizeProbe` as the native
-     payload, so anything left one level down in `native` never reaches the
-     record. That cost nothing while every refusal was `model-absent`-shaped
-     and carried no numbers — but `synthesis-failed` comes from a phone that
-     loaded the model and reached its peak memory, and its `detail` sub-code is
-     the difference between "no number" and "no number because there was no
-     ONNX session".
-     TO SEE IT FAIL: drop the spread and name only `reason` again — `detail`,
-     `modelLoadColdMs` and `peakMemoryBytes` all come back undefined. */
-  const bridge = { nativePromise: async () => ({
-    ok: false, reason: "synthesis-failed", detail: "inference-threw", synthFailures: 4,
-    modelLoadColdMs: 467, modelLoadWarmMs: 388, peakMemoryBytes: 305_000_000, lines: 4,
-  }) };
-  const out = await kokoroProbe({ bridge });
-  assert.equal(out.ok, false, "a spread native payload must never talk its way into a success");
-  assert.equal(out.reason, "synthesis-failed");
-  assert.equal(out.detail, "inference-threw");
-  assert.equal(out.modelLoadColdMs, 467);
-  assert.equal(out.peakMemoryBytes, 305_000_000);
-});
-
-test("kokoroProbe: a native `ok: true` in the payload cannot override a refusal", async () => {
-  /* The spread above is written BEFORE `ok`/`reason` for exactly this reason.
-     TO SEE IT FAIL: move `...native` after them. */
-  const bridge = { nativePromise: async () => ({ ok: "yes", reason: "model-absent" }) };
-  const out = await kokoroProbe({ bridge });
-  assert.equal(out.ok, false);
-  assert.equal(out.reason, "model-absent");
-});
-
-test("kokoroProbe: Capacitor's UNIMPLEMENTED rejection is `engine-absent`, not a throw", async () => {
-  /* Capacitor rejects an unknown method with code `UNIMPLEMENTED`, which is
-     exactly what an older shell build — one whose plugin predates this card —
-     does, and what a rename on one side of the bridge looks like.
-     TO SEE IT FAIL: drop the try/catch (the call rejects into a drawer
-     handler), or drop the UNIMPLEMENTED branch (it reads as `threw`). */
-  const err = Object.assign(new Error("\"ForayTts.kokoroProbe()\" is not implemented on ios"), { code: "UNIMPLEMENTED" });
-  const bridge = { nativePromise: async () => { throw err; } };
-  const out = await kokoroProbe({ bridge, log: () => {} });
-  assert.equal(out.ok, false);
-  assert.equal(out.reason, "engine-absent");
-  assert.equal(out.path, "native");
-});
-
-test("kokoroProbe: an older bridge that only WORDS the missing method is still `engine-absent`", async () => {
-  /* `player/native-engine.js`'s `isUnimplemented` rule: Capacitor spells it
-     `code: "UNIMPLEMENTED"`, older bridges only word it. Without this an
-     older shell's missing method would read `threw/Error` and send the next
-     reader hunting for a crash that never happened. MUTATION: drop the
-     wording branch. */
-  for (const err of [new Error("plugin not implemented"), new Error("\"ForayTts\" plugin is not implemented on android"), "UNIMPLEMENTED"]) {
-    const bridge = { nativePromise: async () => { throw err; } };
-    const out = await kokoroProbe({ bridge, log: () => {} });
-    assert.deepEqual(out, { ok: false, path: "native", reason: "engine-absent" }, String(err));
-  }
-  assert.equal(isUnimplementedRejection(new TypeError("x is undefined")), false);
-  assert.equal(isUnimplementedRejection(null), false);
-});
-
-test("kokoroProbe: any other rejection is `threw` with the error's NAME and never its message (L12)", async () => {
-  /* Every rejection used to report `engine-absent`, which reads as "no
-     runtime in this build" and sends the next reader to the wrong place.
-     MUTATION: report every rejection as `engine-absent` again (reason is
-     wrong), or put `e.message` in `detail` (the path leaks into the paste). */
-  const secret = "/var/mobile/Containers/Data/Application/ABCD-1234/model.onnx";
-  const bridge = { nativePromise: async () => { throw new TypeError(`cannot read ${secret}`); } };
-  const out = await kokoroProbe({ bridge, log: () => {} });
-  assert.deepEqual(out, { ok: false, path: "native", reason: "threw", detail: "TypeError" });
-  assert.ok(!JSON.stringify(out).includes("/var/mobile"), "no message text reaches the record");
-});
-
-test("kokoroProbe: a rejection's code wins over its name, and neither is admitted unless identifier-shaped", async () => {
-  /* MUTATION: drop the shape check — a code with spaces or a path in it
-     would ride into `detail`. */
-  const cases = [
-    [Object.assign(new Error("x"), { code: "UNAVAILABLE" }), "UNAVAILABLE"],
-    [Object.assign(new Error("x"), { code: "not a code", name: "RangeError" }), "RangeError"],
-    [Object.assign(new Error("x"), { code: "/var/mobile/x", name: "has space" }), null],
-    ["a bare string rejection", null],
-    [null, null],
-  ];
-  for (const [err, want] of cases) {
-    const bridge = { nativePromise: async () => { throw err; } };
-    const out = await kokoroProbe({ bridge, log: () => {} });
-    assert.equal(out.reason, "threw");
-    assert.equal(out.detail, want);
-  }
-  assert.equal(probeErrorName({ code: "A".repeat(40) }), "A".repeat(40));
-  assert.equal(probeErrorName({ code: "A".repeat(41) }), null, "40 characters at most");
-});
-
-test("kokoroProbe: the web half's error-name rule, pinned case by case", async () => {
-  /* This used to be held in step with `player/kokoro-probe.js`'s `nameOf`.
-     That module left the app bundle on 2026-10-05 (founder ruling, issue
-     #1076), so the rule it shared is pinned here on its own, with the
-     answers `nameOf` gave for the same inputs on the day it went.
-     MUTATION: loosen the regex (e.g. admit `-`, or 41 characters) — red. */
-  const cases = [
-    [new TypeError("m"), "TypeError"], [{ code: "UNIMPLEMENTED" }, "UNIMPLEMENTED"],
-    [{ code: "x y", name: "Error" }, "Error"], [{ name: "9lives" }, null],
-    [{ code: "a".repeat(40) }, "a".repeat(40)], [{ code: "a".repeat(41) }, null],
-    [null, null], ["str", null], [{ code: "has-hyphen" }, null],
-  ];
-  for (const [p, want] of cases) assert.equal(probeErrorName(p), want, JSON.stringify(p));
-});
-
-test("kokoroProbe: `speak()` is untouched by the probe engine", async () => {
-  /* THE INERTNESS CLAIM from this file's side: narration still goes through
-     the `speak` method, with no `engine` in its payload, exactly as before.
-     TO SEE IT FAIL: add an `engine` branch to `speak()`. */
-  const calls = [];
-  const bridge = {
-    nativePromise: async (plugin, method, payload) => { calls.push({ method, payload }); return { ok: true }; },
-  };
-  await speak("hello", { bridge, engine: PROBE_ENGINE });
-  assert.equal(calls[0].method, "speak");
-  assert.equal(calls[0].payload.engine, undefined, "speak() has no engine field to switch on");
-});
-
-test("createForayTtsShell: exposes kokoroProbe on the same baked-in bridge", async () => {
-  const bridge = { nativePromise: async () => ({ ok: true, model: "1.0" }) };
-  const shell = createForayTtsShell({ bridge });
-  assert.equal((await shell.kokoroProbe({ passage: { lines: [{ ids: [1] }] } })).ok, true);
-});
 /* ------------------------------------------- L-05: pause, resume, stop
 
    Founder feedback F12, TestFlight 2026090603: "Once the on-device narration
@@ -1052,101 +838,74 @@ test("mobile-native-8: Android resumes from the plain line, never from a substri
   assert.match(bodyOf(java, "public void resume(PluginCall call) {"), /int from = lastWasSsml \? 0 : lastBoundary;/);
 });
 
-test("mobile-native-5: the Kokoro probe runs off the shared plugin thread and closes the session it opened", () => {
-  /* Each run used to leak one native OrtSession (~86 MB) on Android and block
-     every Capacitor call for its duration on both platforms. MUTATION: call
-     `measureProbe` inline instead of through PROBE_EXECUTOR, drop the finally's
-     close(), or have KokoroOrtProbeEngine.close() leave `session` open. */
-  const java = JAVA_SRC();
-  assert.match(java, /private static final ExecutorService PROBE_EXECUTOR = Executors\.newSingleThreadExecutor\(\);/);
-  const probe = bodyOf(java, "public void kokoroProbe(PluginCall call) {");
-  assert.match(probe, /PROBE_EXECUTOR\.execute\(\(\) -> \{[\s\S]*?measureProbe\(call, result, lines, passage, engine\);[\s\S]*?\} finally \{[\s\S]*?owned\.close\(\);/);
-  assert.equal((java.match(/measureProbe\(/g) ?? []).length, 2, "defined once, called once, from the executor");
-  assert.match(java, /default void close\(\) \{ \}/, "the engine seam can be closed");
-  const engine = readPlugin("android/src/main/java/ai/jwlabs/foura/tts/KokoroOrtProbeEngine.java");
-  assert.match(engine, /public void close\(\) \{\s*OrtSession s = session;\s*session = null;\s*if \(s != null\) \{\s*try \{ s\.close\(\); \}/);
-  const swift = SWIFT_SRC();
-  /* KV-R3 review: the ONE thing answered before the queue is the soak's
-     stop, which only flips a flag — it must not wait behind the soak it
-     stops. Everything that loads a model still goes through the queue. */
-  const entry = swift.match(/@objc func kokoroProbe\(_ call: CAPPluginCall\) \{([\s\S]*?)Self\.probeQueue\.async \{ \[weak self\] in\s*self\?\.runKokoroProbe\(call\)/);
-  assert.ok(entry, "kokoroProbe hands the run to probeQueue");
-  const beforeQueue = entry[1].replace(/\/\*[\s\S]*?\*\//g, "");
-  /* Probe v3.1 adds the ledger's three answers (`status`, `killed-ack`,
-     `reset`), which read and write a few small files and touch no model: the
-     drawer's "Reset skipped passes" must not wait out a running matrix. */
-  assert.match(beforeQueue, /^\s*if call\.getString\("mode"\) == "stop" \{\s*ProbeSoakStop\.shared\.request\(\)[\s\S]*?call\.resolve\(stop\)\s*return\s*\}\s*switch call\.getString\("mode"\) \{[\s\S]*\}\s*$/,
-    "only the stop and the ledger's answers run off the probe queue");
-  for (const heavy of ["buildEngine", "measurePasses", "runSoak", ".load()", "synthesize", "ProbeKeepAlive"]) {
-    assert.ok(!beforeQueue.includes(heavy), `${heavy} must stay on the probe queue`);
+
+/* ---------- CH-20: the on-device Kokoro probe is gone, natively too ----------
+
+   Founder ruling on issue #1076 (2026-10-05): "Remove it all". #1082 took
+   the probe out of the page; CH-20 (docs/roadmap/code-health.md, N1-02) took
+   out what was left in the plugin: the web half's `kokoroProbe`/`onProbePass`
+   transport, both native `kokoroProbe` methods, the ONNX Runtime and Core ML
+   engines, iOS's ProbeLedger boot-time file I/O, ForayAudio's voice-probe row
+   relay, and ONNX Runtime itself from both build manifests. Each test below
+   kills one way of bringing a piece of it back. */
+
+const PLUGIN_SOURCES = ["ios/Sources/ForayTtsPlugin", "android/src/main/java/ai/jwlabs/foura/tts"];
+
+test("CH-20: the web half exports no probe transport, and the shell exposes none", () => {
+  /* MUTATION: restore `export async function kokoroProbe` (or `onProbePass`,
+     `PROBE_PASS_EVENT`) in foray-tts.js, or the `kokoroProbe` entry in
+     `createForayTtsShell` — red. */
+  for (const name of ["kokoroProbe", "onProbePass", "PROBE_PASS_EVENT", "PROBE_MODES", "PROBE_ENGINE",
+    "probeErrorName", "isUnimplementedRejection"]) {
+    assert.equal(forayTts[name], undefined, `foray-tts.js exports no ${name}`);
   }
-  assert.deepEqual([...beforeQueue.matchAll(/case "([a-z-]+)":/g)].map((m) => m[1]), ["status", "killed-ack", "reset"]);
-  assert.match(java, /failed\.put\("reason", "threw"\);/, "a throw is reported in the page's closed vocabulary");
+  const shell = createForayTtsShell({ bridge: { nativePromise: async () => ({ ok: true }) } });
+  assert.deepEqual(Object.keys(shell).sort(),
+    ["listVoices", "onFinished", "pause", "resume", "shellApplies", "speak", "state", "stop"]);
 });
 
-/* ---------- probe v3.1: crash-resilient and self-reporting ---------- */
-
-test("probe v3.1: the ledger's modes, report ids and the arm switch travel; nothing else does", async () => {
-  /* MUTATION: drop `status` from PROBE_MODES — an iPhone that crashed never
-     gets its kill report read at boot (the native half answers the matrix's
-     `passage-empty` instead). */
-  const calls = [];
-  const bridge = { nativePromise: async (plugin, method, payload) => { calls.push(payload); return { ok: true }; } };
-  await kokoroProbe({ bridge, mode: "status" });
-  await kokoroProbe({ bridge, mode: "killed-ack", ids: ["1790000000000-1-2", "../etc/passwd", 7] });
-  await kokoroProbe({ bridge, mode: "reset" });
-  await kokoroProbe({ bridge, armCoreML: true });
-  await kokoroProbe({ bridge, armCoreML: "yes" });
-  assert.deepEqual([...PROBE_MODES], ["soak", "listen", "stop", "status", "killed-ack", "reset"]);
-  assert.equal(calls[0].mode, "status");
-  assert.equal(calls[0].passage, null, "no passage: an older native half answers passage-empty, never a matrix run");
-  assert.deepEqual(calls[1].ids, ["1790000000000-1-2"], "only id-shaped report ids travel");
-  assert.equal(calls[2].mode, "reset");
-  assert.equal(calls[3].armCoreML, true);
-  assert.equal(calls[4].armCoreML, undefined, "only a literal true arms Core ML");
-});
-
-test("probe v3.1: each finished pass arrives on `probePass`, the same word the Swift half raises", () => {
-  /* MUTATION: rename the event on either side — the rows only land when the
-     whole matrix answers, and a crash in pass 4 loses passes 1-3's rows. */
-  const listeners = new Map();
-  const bridge = {
-    getPlatform: () => "ios",
-    isNativePlatform: () => true,
-    nativePromise: async () => ({}),
-    addListener: (plugin, event, fn) => {
-      const key = `${plugin}:${event}`;
-      if (!listeners.has(key)) listeners.set(key, new Set());
-      listeners.get(key).add(fn);
-      return { remove: () => listeners.get(key).delete(fn) };
-    },
-  };
-  const seen = [];
-  const off = onProbePass((e) => seen.push(e.pass), { bridge });
-  const key = `${PLUGIN_NAME}:${PROBE_PASS_EVENT}`;
-  assert.equal(listeners.get(key)?.size, 1);
-  for (const fn of listeners.get(key)) fn({ pass: "ort-cpu-t2", passes: [] });
-  assert.deepEqual(seen, ["ort-cpu-t2"]);
-  off();
-  assert.equal(listeners.get(key).size, 0);
-  assert.equal(typeof onProbePass(() => {}, { bridge: undefined }), "function", "no bridge: a no-op unsubscribe");
+test("CH-20: neither native half declares `kokoroProbe`, and iOS's load() does no probe I/O", () => {
+  /* MUTATION: put `CAPPluginMethod(name: "kokoroProbe", ...)` back in
+     `pluginMethods`, a `@PluginMethod public void kokoroProbe` back in the
+     Java half, or `ProbeLedger.shared.promoteLeftover()` back in load() — red. */
   const swift = SWIFT_SRC();
-  assert.match(swift, new RegExp(`static let PROBE_PASS_EVENT = "${PROBE_PASS_EVENT}"`));
-  assert.match(swift, /notifyListeners\(Self\.PROBE_PASS_EVENT, data:/);
+  const java = JAVA_SRC();
+  assert.doesNotMatch(swift, /kokoroProbe/, "the Swift plugin names no kokoroProbe");
+  assert.doesNotMatch(java, /kokoroProbe/, "the Java plugin names no kokoroProbe");
+  assert.doesNotMatch(bodyOf(swift, "override public func load() {"), /Probe/, "load() touches no probe ledger");
+  const declared = [...swift.matchAll(/CAPPluginMethod\(name: "(\w+)"/g)].map((m) => m[1]);
+  assert.deepEqual(declared, ["speak", "pause", "resume", "stop", "state", "listVoices"]);
 });
 
-test("probe v3.1: a pass start is a row in the engine's ring, over ONE notification name on both plugins", () => {
-  /* ForayTts cannot import ForayAudio, so it posts and ForayAudio writes the
-     `probe` row. MUTATION: rename either side — the ring never sees a pass
-     start, and a pass that kills 4a has no `e#` row. */
-  const ledger = readPlugin("ios/Sources/ForayTtsPlugin/ProbeLedger.swift");
+test("CH-20: no probe engine, ledger or Kokoro source file is left in either native half", () => {
+  /* MUTATION: restore KokoroOrtProbeEngine.swift/.java, KokoroCoreMLEngine.swift,
+     KokoroProbeMatrix.swift or ProbeLedger.swift — red. */
+  const left = [];
+  for (const dir of PLUGIN_SOURCES) {
+    for (const f of fs.readdirSync(new URL(dir + "/", PLUGIN_DIR))) {
+      if (/kokoro|probe/i.test(f)) left.push(`${dir}/${f}`);
+    }
+  }
+  assert.deepEqual(left, []);
+  assert.ok(!fs.existsSync(new URL("ios/Tests/ForayTtsPluginTests/ProbeLedgerTests.swift", PLUGIN_DIR)));
+});
+
+test("CH-20: ONNX Runtime is linked by neither build manifest", () => {
+  /* The runtime's only caller was the probe; a manifest line alone links
+     ~34 MB (iOS, embedded framework) and four ABIs of .so files (Android).
+     MUTATION: re-add `onnxruntime-swift-package-manager` to Package.swift or
+     `com.microsoft.onnxruntime:onnxruntime-android` to build.gradle — red. */
+  const code = (src) => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+  assert.doesNotMatch(code(readPlugin("Package.swift")), /onnxruntime/i);
+  assert.doesNotMatch(code(readPlugin("android/build.gradle")), /onnxruntime/i);
+});
+
+test("CH-20: ForayAudio relays no voice-probe rows into the engine's ring", () => {
+  /* The relay existed so a probe pass start was a row before its (possibly
+     fatal) load. MUTATION: restore `relayVoiceProbeRows()` in
+     ForayAudioPlugin.load() or `voiceProbeRow` in EngineOwnership — red. */
   const audio = fs.readFileSync(new URL("../../mobile/plugins/foray-audio/ios/Sources/ForayAudioPlugin/ForayAudioPlugin.swift", import.meta.url), "utf8");
   const owner = fs.readFileSync(new URL("../../mobile/plugins/foray-audio/ios/Sources/ForayAudioPlugin/Engine/EngineOwnership.swift", import.meta.url), "utf8");
-  const tts = ledger.match(/static let NOTIFICATION = "([^"]+)"/);
-  const aud = audio.match(/static let VOICE_PROBE_ROW_NOTIFICATION = "([^"]+)"/);
-  assert.ok(tts && aud);
-  assert.equal(tts[1], aud[1]);
-  assert.match(audio, /override public func load\(\) \{[\s\S]*?Self\.relayVoiceProbeRows\(\)/, "registered at plugin load");
-  assert.match(owner, /func voiceProbeRow\(_ info: \[AnyHashable: Any\]\) \{[\s\S]*?row\("probe", fields\)/, "filed as a `probe` row");
-  assert.match(SWIFT_SRC(), /onPassStart: \{ pass, order in\s*ProbeEngineRow\.post\(event: "voice-pass"/);
+  assert.doesNotMatch(audio, /voiceProbe|VOICE_PROBE/i);
+  assert.doesNotMatch(owner, /voiceProbeRow/);
 });

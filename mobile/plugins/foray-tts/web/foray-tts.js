@@ -86,11 +86,6 @@ export const PLUGIN_NAME = "ForayTts";
  *  a rename on one side without the other, once either side needs it. */
 export const FINISHED_EVENT = "finished";
 
-/** Probe v3.1: the event each finished probe pass's records travel on, the
- *  moment the pass ends (iOS's `ForayTtsPlugin.PROBE_PASS_EVENT`), so a pass
- *  that later kills 4a cannot take the passes before it down with it. */
-export const PROBE_PASS_EVENT = "probePass";
-
 /** True when an installed voice's BCP-47 tag is RELEVANT to a requested one:
  *  exact locale, or the same primary subtag (`en-US` ~ `en-GB`, never `fr-FR`).
  *
@@ -439,153 +434,11 @@ export async function listVoices(opts = {}) {
   };
 }
 
-/* ---------- K-01: the measurement path, and only the measurement path ----------
-
-   `docs/bundled-voice-plan.md` K-01 asks for "a throwaway measurement path,
-   not a product feature": an `engine: "kokoro-probe"` branch that loads a
-   bundled Kokoro model and one voice, synthesizes a PRE-PHONEMIZED passage
-   (no text front-end on device, which is the whole licence argument — deck
-   §4), and reports numbers. It is deleted in K-04's cutover.
-
-   IT IS A SEPARATE FUNCTION AND NOT AN `engine` OPTION ON `speak()`, and that
-   is the safety decision rather than a stylistic one. `speak()`'s documented
-   contract is a ladder — native, then Web Speech, then an honest refusal —
-   and a probe that fell down that ladder would measure the SYSTEM voice while
-   reporting a Kokoro number. The one thing this instrument must never do is
-   produce a plausible measurement of the wrong engine. So: no ladder, no Web
-   Speech path, and the only answer when nothing is there is `ok: false` with
-   a named reason. `speak()` itself is untouched by this card — narration is
-   spoken exactly as it was.
-
-   `PROBE_ENGINE` is duplicated in `player/kokoro-probe.js` (a classic-script
-   page and a plugin web half cannot import each other — `tts-bridge.js`'s
-   header has the URL argument). `tools/mobile/foray-tts.test.mjs` pins the
-   two strings equal, so the duplication cannot drift into a silent
-   degradation. */
-export const PROBE_ENGINE = "kokoro-probe";
-
-/**
- * Ask the native half for K-01's measurement. NEVER throws and NEVER rejects,
- * same rule as `speak()`.
- *
- * @param {object} [opts]
- * @param {object} [opts.passage] the parsed `tools/mobile/kokoro-probe-passage.json`
- * @param {string} [opts.mode]    `soak` for KV-R3's 30-minute locked loop, `listen` to play a
- *   pass's WAV (with `opts.pass`), `stop` to end a running soak early; probe v3.1's `status`
- *   (unacknowledged kill reports and the skip list), `killed-ack` (with `opts.ids`) and
- *   `reset` (empty the skip list); anything else is the matrix
- * @param {string[]} [opts.ids]   the kill reports `killed-ack` acknowledges
- * @param {boolean} [opts.armCoreML] probe v3.1: run Core ML on iOS 26.4+ although Apple's
- *   libBNNS may crash it (FluidAudio #844/#889); only a literal `true` travels
- * @param {string} [opts.pass]    the pass whose WAV `listen` plays
- * @param {number} [opts.soakMinutes] the soak's length (the native half clamps it to 1..60)
- * @param {object} [opts.bridge]  injected `window.Capacitor` (or a fake, for tests)
- * @param {Function} [opts.log]
- * @returns {Promise<object>} `{ ok, reason?, ...native }` — the native payload
- *   verbatim on success, so `player/kokoro-probe.js` owns the arithmetic and
- *   this file owns only the transport.
- */
-/** The probe modes that cross the bridge; anything else is the matrix. */
-export const PROBE_MODES = Object.freeze(["soak", "listen", "stop", "status", "killed-ack", "reset"]);
-
-export async function kokoroProbe(opts = {}) {
-  const {
-    passage = null,
-    mode = null,
-    soakMinutes = null,
-    pass = null,
-    ids = null,
-    armCoreML = false,
-    bridge = (typeof window !== "undefined" ? window.Capacitor : undefined),
-    log = (typeof console !== "undefined" ? console.warn.bind(console) : () => {}),
-  } = opts;
-
-  if (!shellApplies(bridge)) {
-    return { ok: false, path: "none", reason: "no-bridge" };
-  }
-  try {
-    const native = await bridge.nativePromise(PLUGIN_NAME, "kokoroProbe", {
-      engine: PROBE_ENGINE,
-      passage: passage ?? null,
-      /* KV-R3: only a known mode and a real number travel. */
-      ...(PROBE_MODES.includes(mode) ? { mode } : {}),
-      ...(typeof pass === "string" && /^[a-z0-9-]{1,16}$/.test(pass) ? { pass } : {}),
-      ...(Number.isFinite(soakMinutes) ? { soakMinutes } : {}),
-      /* Probe v3.1: report ids (`run-at-reportedAt`, digits and dashes) and
-         the arm switch, each only in its one admitted shape. */
-      ...(Array.isArray(ids) ? { ids: ids.filter((id) => typeof id === "string" && /^[0-9-]{1,64}$/.test(id)).slice(0, 16) } : {}),
-      ...(armCoreML === true ? { armCoreML: true } : {}),
-    });
-    /* `ok` is the native side's to give. An older shell build whose plugin has
-       no `kokoroProbe` method REJECTS (Capacitor's own behaviour for an
-       unknown method) and lands in the catch below; one that answers without
-       an `ok` is treated as a refusal rather than a success, because a probe
-       that defaults to "it worked" is the failure mode this whole file is
-       written around. */
-    if (!native || native.ok !== true) {
-      /* SPREAD, not just `reason` (#685). `runKokoroProbe` hands THIS object to
-         `summarizeProbe` as the native payload, so anything left one level
-         down in `native` is a field the record never sees. That cost nothing
-         while every refusal was `model-absent`-shaped and carried no numbers —
-         but `synthesis-failed` is a refusal from a phone that DID load the
-         model, and its load times, peak memory and `detail` sub-code are the
-         most useful things the run produced. Losing them would make the next
-         failed probe less informative than #685's was.
-
-         `ok`/`path`/`reason` are written AFTER the spread so a native payload
-         can never talk its way into looking like a success. */
-      return {
-        ...(native && typeof native === "object" ? native : {}),
-        ok: false,
-        path: "native",
-        reason: (native && typeof native.reason === "string" && native.reason) || "refused",
-        native: native ?? null,
-      };
-    }
-    return { ...native, ok: true, path: "native" };
-  } catch (e) {
-    /* TWO DIFFERENT REJECTIONS, told apart (L12). Capacitor rejects a method
-       the native plugin does not have with code `UNIMPLEMENTED` — an older
-       shell whose plugin predates the probe — and THAT is `engine-absent`.
-       Anything else (a plugin that threw, a bridge that broke mid-call) used
-       to land here as `engine-absent` too, which reads exactly like "this
-       build has no runtime" and sent the next reader looking in the wrong
-       place. It is `threw`, and it carries the error's NAME — never its
-       message, which is free text from native code and can carry a path. */
-    try { log("foray-tts: kokoroProbe rejected", e); } catch (_e) { /* logging must never throw */ }
-    if (isUnimplementedRejection(e)) {
-      return { ok: false, path: "native", reason: "engine-absent" };
-    }
-    return { ok: false, path: "native", reason: "threw", detail: probeErrorName(e) };
-  }
-}
-
-/** Is `e` Capacitor's "this binary has no such method/plugin" rejection?
-    Capacitor spells it `code: "UNIMPLEMENTED"`; older bridges only WORD it
-    ("… is not implemented on ios", "plugin not implemented"). The same rule as
-    `player/native-engine.js`'s `isUnimplemented`, written again for the
-    reason `probeErrorName` is. The message is READ to classify and never
-    kept: only the closed `engine-absent` leaves this function's caller. */
-export function isUnimplementedRejection(e) {
-  if (!e) return false;
-  if (e.code === "UNIMPLEMENTED") return true;
-  let text = "";
-  try { text = String(typeof e === "object" && "message" in e ? e.message : e); } catch (_e) { return false; }
-  return /not implemented|unimplemented/i.test(text);
-}
-
-/** An error's code or name, admitted only as a bare ASCII identifier of at
-    most 40 characters; `null` otherwise. It was the same rule as
-    `player/kokoro-probe.js`'s `nameOf` until that module left the app bundle
-    (2026-10-05, issue #1076); `tools/mobile/foray-tts.test.mjs` now pins it
-    case by case. */
-export function probeErrorName(e) {
-  if (!e || (typeof e !== "object" && typeof e !== "function")) return null;
-  for (const v of [e.code, e.name]) {
-    if (typeof v === "string" && /^[A-Za-z][A-Za-z0-9_]{0,39}$/.test(v)) return v;
-  }
-  return null;
-}
+/* K-01's measurement path (`kokoroProbe`, `onProbePass` and their
+   transport) lived here until CH-20: the founder ruled on issue #1076
+   (2026-10-05) to remove the on-device Kokoro probe from the native apps as
+   well as the page, so the plugin has no such method to call. Git history
+   has it; reviving on-device TTS would rebuild it. */
 
 /* ── L-05 (founder feedback F12): pause, resume, stop ───────────────────────
  *
@@ -729,8 +582,6 @@ export function createForayTtsShell(defaults = {}) {
   return {
     speak: (text, opts = {}) => speak(text, { ...defaults, ...opts }),
     listVoices: (opts = {}) => listVoices({ ...defaults, ...opts }),
-    kokoroProbe: (opts = {}) => kokoroProbe({ ...defaults, ...opts }),
-    onProbePass: (fn) => onProbePass(fn, defaults),
     pause: (opts = {}) => pause({ ...defaults, ...opts }),
     resume: (opts = {}) => resume({ ...defaults, ...opts }),
     stop: (opts = {}) => stop({ ...defaults, ...opts }),
@@ -769,26 +620,6 @@ export function createForayTtsShell(defaults = {}) {
  * @param {Function} [opts.log] injected logger
  * @returns {Function} unsubscribe
  */
-export function onProbePass(fn, opts = {}) {
-  /* Probe v3.1: each finished pass's records, as the native half sends them
-     (`{platform, pass, probeRun, passes}`). Same subscription shape and the
-     same no-op rules as `onFinished` below. */
-  const {
-    bridge = (typeof window !== "undefined" ? window.Capacitor : undefined),
-    log = (typeof console !== "undefined" ? console.warn.bind(console) : () => {}),
-  } = opts;
-  if (typeof fn !== "function" || !shellApplies(bridge)) return () => {};
-  try {
-    if (typeof bridge.addListener === "function") {
-      const handle = bridge.addListener(PLUGIN_NAME, PROBE_PASS_EVENT, fn);
-      return () => { try { handle?.remove?.(); } catch (_e) { /* never throw on teardown */ } };
-    }
-  } catch (e) {
-    try { log("foray-tts: could not subscribe to " + PROBE_PASS_EVENT, e); } catch (_e) { /* never throw */ }
-  }
-  return () => {};
-}
-
 export function onFinished(fn, opts = {}) {
   const {
     bridge = (typeof window !== "undefined" ? window.Capacitor : undefined),

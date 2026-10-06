@@ -25,14 +25,21 @@
  * two disagreeing is a different diagnosis from a hash mismatch alone.
  *
  * ── What runs this ────────────────────────────────────────────────────────
- * The `ios-shell` and `android-shell` jobs, one step each, added 2026-09-12
- * with the pins below (deck H3's `founder-approved` sitting). By hand:
+ * NO SHELL BUILD, SINCE CH-20 (docs/roadmap/code-health.md, N1-03; founder
+ * ruling on issue #1076, 2026-10-05: "Remove it all"). From 2026-09-12 the
+ * `ios-shell`/`android-shell` jobs and both release composites fetched the
+ * bundled pins and copied them into the apps for the on-device Kokoro probe;
+ * the probe is gone, so every `bundle` list below is `[]` and no build path
+ * calls this file. What still reads it: `render-narration.yml` runs `--check`,
+ * and the central narration tools (`tools/narration/render-foray.py`,
+ * `render-audition.py`, `bench-narration.py`) parse the model and voice pins
+ * out of this file's text, so the hashes live in ONE table. By hand:
  *
  *     node tools/mobile/fetch-models.mjs            # fetch + verify
  *     node tools/mobile/fetch-models.mjs --verify   # verify what is on disk
  *     node tools/mobile/fetch-models.mjs --check    # check the pins only (CI)
- *     node tools/mobile/fetch-models.mjs --bundled ios      # names the files an iOS build copies
- *     node tools/mobile/fetch-models.mjs --bundled android  # ... and an Android one
+ *     node tools/mobile/fetch-models.mjs --bundled ios      # what an iOS build copies: nothing
+ *     node tools/mobile/fetch-models.mjs --bundled android  # ... and an Android one: nothing
  *
  * `--check` is the mode CI can run with no download and no secret: it asserts
  * every pin is well-formed and internally consistent, which is what makes
@@ -43,8 +50,8 @@
  * ── The pins were FILLED on 2026-09-12, and here is exactly how ───────────
  * Until that date every `sha256` was `null`, because nobody in this repo had
  * downloaded the files and a hash copied out of a model card is an unlabelled
- * claim. The probe on Wyatt's phone could not produce a number without them,
- * so they were measured: each URL below was fetched once and STREAM-hashed —
+ * claim. The (since removed) probe on Wyatt's phone could not produce a number
+ * without them, so they were measured: each URL below was fetched once and STREAM-hashed —
  * the bytes went through `crypto.createHash("sha256")` chunk by chunk and were
  * never written to disk, so no 86 MB file entered a worktree at any point.
  * `bytes` is the streamed length. The 522,240 of a voice file is its own
@@ -64,19 +71,11 @@
  * Two, because the card's stop rule is "two stream-hashes disagree": one
  * download proves only that one response was self-consistent.
  *
- * ── The Core ML pins were filled on 2026-09-27 (KV-R3), the same way, twice ─
- * The seven compiled stages of the laishere 7-stage Core ML chain
- * (`FluidInference/kokoro-82m-coreml`, folder `ANE/`, 34 files, 82,270,465
- * bytes) were stream-hashed on the founder's Windows PC by two independent
- * downloads, nothing written to disk, and all 34 pairs agreed:
- *
- *     run 1 2026-09-27T06:43:33Z .. 06:45:46Z  34 files  82270465 bytes
- *     run 2 2026-09-27T06:45:54Z .. 06:48:10Z  34 files  82270465 bytes, 0 disagreements
- *
- * The URLs name the repository's COMMIT (`COREML_REVISION`), not `main`, so
- * a re-upload upstream cannot change what a URL serves; the hash would catch it
- * anyway. The weight files' sha256 also equals the LFS sha256 Hugging Face
- * publishes for them.
+ * ── The Core ML pins are gone (CH-20) ─────────────────────────────────────
+ * KV-R3 (2026-09-27) pinned the 34 files of FluidInference's seven-stage
+ * Core ML chain for the iOS probe build only. Nothing outside the deleted
+ * probe ever read them (render-narration.yml names none), so they left with
+ * it; git history has the hashes and how they were measured.
  */
 
 import fs from "node:fs";
@@ -96,21 +95,23 @@ export const MODELS_DIR = path.join("mobile", "models");
 /**
  * THE PINS.
  *
- * `name` is the filename the native halves look for —
- * `ForayTtsPlugin.swift`'s `MODEL_RESOURCE` (iOS: the fp32 pin) and
- * `ForayTtsPlugin.java`'s `MODEL_ASSET` (Android: the q8f16 pin). Changing one
- * without the other is caught by `tools/mobile/fetch-models.test.mjs` and the
- * XCTest pin of the same name.
+ * `name` is the filename under `mobile/models/` (and, until CH-20, the name
+ * the on-device probe looked the bundled file up by). The narration tools
+ * find the model pins by it, so it is not cosmetic.
  *
  * `bundle` IS PER PLATFORM (KV-R2, deck D13): the list of platforms whose app
  * binary carries the file — `["ios"]`, `["android"]`, `["ios", "android"]`,
  * or `[]` for a workstation-only file. There is no implicit value and no
- * boolean: "goes into the app" stopped being one question the day the two
- * platforms stopped shipping the same model.
+ * boolean. SINCE CH-20 EVERY LIST IS `[]`: no app carries a Kokoro file, and
+ * `test/release-gates.test.js` holds both `--bundled` answers empty. Putting
+ * a platform back in a list is a decision to ship weights again, which takes
+ * a founder ruling (issue #1076 is the one that took them out) and a build
+ * step to copy them.
  *
- * WHY fp32 ON iOS, q8f16 ON ANDROID, AND NOTHING ELSE (deck §10b, D13).
- * The first answer here was q8f16 everywhere — 86 MB, the variant NimbleEdge
- * ships on phones — and it was a starting point, not a finding. The finding
+ * WHY fp32 ON iOS, q8f16 ON ANDROID (deck §10b, D13), kept as the record of
+ * the probe-era choice. The first answer here was q8f16 everywhere — 86 MB,
+ * the variant NimbleEdge ships on phones — and it was a starting point, not a
+ * finding. The finding
  * came from an ARM64 sweep on GitHub's macos-14 Apple-silicon runners (ORT
  * 1.20.1 Python, 1.22.0 as a cross-check; runs 36280828928, 36281480135 and
  * 36282008323), on the probe passage and `af_heart`:
@@ -127,56 +128,28 @@ export const MODELS_DIR = path.join("mobile", "models");
  *   - The finite small variants are too slow (`model_quantized`, int8 dynamic:
  *     RTF ~1.8, ConvInteger is slow on ARM) or not small (`model_q4`: 305 MB,
  *     RTF ~1.0). No small, finite, fast export exists.
- * So iOS bundles fp32, over the 150 MB ceiling, for TestFlight only
- * (`test/release-gates.test.js` holds its own budget). ANDROID STAYS ON q8f16
- * because Play's base-module limit will not take 325 MB (fp32 there is KV-14,
- * via Play Asset Delivery) — and Android carries the SAME fp16 NaN risk, which
- * nobody has yet measured on an ARM Android phone; its probe reports
- * finiteness per chunk for exactly that reason.
+ * So the iOS probe build bundled fp32 and Android q8f16 (Play's base-module
+ * limit will not take 325 MB). Central narration renders fp32 on a CPU
+ * (`tools/narration/render-profile.json`), where it is finite; the PC
+ * audition renders q8f16, which is finite on x86.
  *
  * THE VOICES ARE THE AUDITION SLATE, twelve of them (deck §6), because K-03
- * renders all twelve and K-04 bundles only the three the founders pick. A
- * voice file is a 256-float style matrix per token length: ~130 KB each.
+ * renders all twelve. A voice file is a 256-float style matrix per token
+ * length: ~130 KB each.
  */
-/** The voice the probe (and only the probe) bundles. K-01 measures ONE voice:
- *  it times the graph, and the graph takes the same time whichever 256-float
- *  style vector it is handed. `af_heart` because it is the voice Wyatt already
- *  judged good in the acceptance fixture (deck §2) and the only A-grade voice
- *  on the slate. The other eleven are pinned for K-03's audition, which renders
- *  them on a workstation, and are NOT bundled — eleven unused voices would add
- *  5.5 MB to every install for a card that is not K-01. */
-export const PROBE_VOICE = "af_heart";
 
 /** Download attempts per pin, and the linear backoff step between them. */
 export const FETCH_ATTEMPTS = 4;
 const FETCH_BACKOFF_MS = 10_000;
 
-/** The platforms a pin's `bundle` list may name — `inject-models.mjs`'s own
-    `PLATFORMS` keys. */
+/** The platforms a pin's `bundle` list may name: the two shell apps. */
 export const BUNDLE_PLATFORMS = Object.freeze(["ios", "android"]);
 
-/** KV-R3: where the Core ML chain's stages live, under `mobile/models/` and
-    under the iOS app's `public/` — `KokoroCoreMLEngine.swift`'s
-    `KokoroCoreMLFiles.DIR`. */
-export const COREML_DIR = "kokoro-coreml";
-/** The Hugging Face commit the Core ML pins are fetched at (never `main`). */
-export const COREML_REVISION = "006395f65025af251858b1ab0a7178a6a1e73f9f";
-/** The seven stage directories, in chain order — `KokoroCoreMLStage`'s
-    bundle names in Swift. */
-export const COREML_STAGES = Object.freeze([
-  "KokoroAlbert", "KokoroPostAlbert", "KokoroAlignment", "KokoroProsody_v2",
-  "KokoroNoise_v2", "KokoroVocoder", "KokoroTail_v2",
-]);
-/** The ONLY shape a pin name with a `/` may take: one file of one compiled
-    stage, under `COREML_DIR`. Anything else with a separator is refused,
-    because a name is a path on disk and this file is the one place a remote
-    URL decides what lands there. */
-export const COREML_NAME_RE = /^kokoro-coreml\/Kokoro[A-Za-z]+(?:_v2)?\.mlmodelc\/(?:analytics\/coremldata\.bin|coremldata\.bin|metadata\.json|model\.mil|weights\/weight\.bin)$/;
-
 export const PINS = Object.freeze([
-  /* ANDROID's model (D13). Kept FIRST, and kept in this exact field order:
-     `render-audition.py`'s `read_pins` parses this pin out of this file's
-     text, and the PC audition renders q8f16, which is finite on x86. */
+  /* The q8f16 export (the probe-era Android model, D13). Kept FIRST, and
+     kept in this exact field order: `render-audition.py`'s `read_pins` parses
+     this pin out of this file's text, and the PC audition renders q8f16,
+     which is finite on x86. */
   Object.freeze({
     kind: "model",
     name: "kokoro-v1_0-q8f16.onnx",
@@ -185,10 +158,11 @@ export const PINS = Object.freeze([
     bytes: 86033585,
     licence: "Apache-2.0",
     source: "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX",
-    bundle: Object.freeze(["android"]),
+    bundle: Object.freeze([]),
   }),
-  /* iOS's model (D13, KV-R2): the fp32 export, the only one finite and near
-     real time on Apple silicon. Hashed twice, independently — see the header. */
+  /* The fp32 export (D13, KV-R2): the only one finite and near real time on
+     Apple silicon, and the model central narration renders with
+     (render-profile.json). Hashed twice, independently — see the header. */
   Object.freeze({
     kind: "model",
     name: "kokoro-v1_0-fp32.onnx",
@@ -197,7 +171,7 @@ export const PINS = Object.freeze([
     bytes: 325532232,
     licence: "Apache-2.0",
     source: "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX",
-    bundle: Object.freeze(["ios"]),
+    bundle: Object.freeze([]),
   }),
   ...[
     ["af_heart", "d583ccff3cdca2f7fae535cb998ac07e9fcb90f09737b9a41fa2734ec44a8f0b", 522240],
@@ -220,8 +194,7 @@ export const PINS = Object.freeze([
     bytes,
     licence: "Apache-2.0",
     source: "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX",
-    /* The probe voice goes to BOTH apps; the other eleven to neither. */
-    bundle: Object.freeze(id === PROBE_VOICE ? ["ios", "android"] : []),
+    bundle: Object.freeze([]),
   })),
   /* THE ID TABLE'S RECEIPT. `tools/narration/kokoro-vocab.json` is the
      phoneme-to-id table, committed because it is 3 KB and because
@@ -244,72 +217,12 @@ export const PINS = Object.freeze([
     source: "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX",
     bundle: Object.freeze([]),
   }),
-  /* KV-R3 (probe v3, docs/voice/kokoro-speed-1.5x.md §4 S5 and §5): THE CORE ML
-     CHAIN'S SEVEN COMPILED STAGES, iOS only. Kokoro split into seven Core ML
-     models so most of it runs on the Neural Engine (laishere/kokoro-coreml,
-     Apache-2.0), as FluidInference repackaged them for FluidAudio. They are
-     `.mlmodelc` directories — already compiled, so no build step compiles
-     anything — and a directory is five files, so each FILE is a pin: `name`
-     is its path under `mobile/models/` and under the app's `public/`
-     (`kokoro-coreml/<Stage>.mlmodelc/<file>`), the one pin kind allowed a
-     `/` (`COREML_NAME_RE`). `KokoroCoreMLEngine.swift` loads them from there.
-
-     WHICH STAGE FILES: the three `_v2` ones (Prosody, Noise, Tail) are what
-     FluidAudio's shipping pipeline loads — a long-utterance onset fix, a noise
-     phase fix and a level fix over the originals. The other four have one
-     version. For the probe build only (card KV-R3); ~78.5 MiB beside fp32. */
-  ...[
-    ["KokoroAlbert.mlmodelc/analytics/coremldata.bin", "14a61873d8759a38b79c93f9021ae865f408f56301209a0168dbfc2283265ccd", 243],
-    ["KokoroAlbert.mlmodelc/coremldata.bin", "70b6d2f8429229f6800dda9480341669f7ac0eabf05a82934d8632ab2b4b63a6", 433],
-    ["KokoroAlbert.mlmodelc/metadata.json", "fe1d005481f646707a948267ac089dfb2cd2ccea7d5827a14c28587eb4c89930", 2480],
-    ["KokoroAlbert.mlmodelc/model.mil", "2038154d06a20e399a8ae35ec5c9242702cb23db8dd24dde7679cd53708e4eae", 101485],
-    ["KokoroAlbert.mlmodelc/weights/weight.bin", "36089a39359b800d3e2c60e5e8ac9217d8f2d1010a8b9273192290e621f1fabc", 5718848],
-    ["KokoroAlignment.mlmodelc/analytics/coremldata.bin", "f6074d1039a9151d0f97dc6ec9ee0cd9c7b865f1af646d718ab38b659fa84f3f", 243],
-    ["KokoroAlignment.mlmodelc/coremldata.bin", "9a0fb4a536f665a052914d7f17b0e6ac80a3614f702e4be87ac0302c1143a4ea", 484],
-    ["KokoroAlignment.mlmodelc/metadata.json", "6f610d23b9f93c7f1a968d6a861efa99725a191de696bf1c3be334ead39b7f00", 3021],
-    ["KokoroAlignment.mlmodelc/model.mil", "eb3a618bda0cdf95cdffab586ef5c76333d0d0a1dcb881190b3ef414f3421b3e", 8194],
-    ["KokoroAlignment.mlmodelc/weights/weight.bin", "2e7d69128b59d615fc3d3cf85637a687235fc086b1eb136359adb11a61615f6b", 4128],
-    ["KokoroNoise_v2.mlmodelc/analytics/coremldata.bin", "53af6bf61482f6002bdb6e3a62f30774cde6e96411aebd888222a34b369f3d04", 243],
-    ["KokoroNoise_v2.mlmodelc/coremldata.bin", "9911047f924b41f8b92811c32c50b7c718bd7b0c14842b3bc1b66b9ffe341a19", 440],
-    ["KokoroNoise_v2.mlmodelc/metadata.json", "eb3102217532d952479c6f1b04d26d7ac4cdbc59875b6a23e8aae86e5e02c2bc", 3020],
-    ["KokoroNoise_v2.mlmodelc/model.mil", "60233949d896f15ef38aea19afda558935d7569fa77a3ca4babddd3ffe845a36", 93152],
-    ["KokoroNoise_v2.mlmodelc/weights/weight.bin", "1102fc2d31dfcfe3de3978a4c78b65202ff8b0a4d55a9304213bd4e8bda66bc2", 4580160],
-    ["KokoroPostAlbert.mlmodelc/analytics/coremldata.bin", "6640044c875505382edbc361cdd56f3f1c30f082953e0f9473a31ae3f71e6c43", 243],
-    ["KokoroPostAlbert.mlmodelc/coremldata.bin", "86de3ab0c1e8c6f8842b57bc24695a5099590c49b864e3fa2737b1fb5b15ba3b", 556],
-    ["KokoroPostAlbert.mlmodelc/metadata.json", "2e3be1af412a76e340120a01cd04a502666371ada86b1fdaf5a622896e0bf979", 4171],
-    ["KokoroPostAlbert.mlmodelc/model.mil", "450b73a3b179e1702e7b2210bad008eac20d58b2d6076e3c2de76290a66e5fef", 60047],
-    ["KokoroPostAlbert.mlmodelc/weights/weight.bin", "e4f300a23cc2e05d38680d9fc94681cc722d445076d1d248f83255122ba091c8", 13806464],
-    ["KokoroProsody_v2.mlmodelc/analytics/coremldata.bin", "804d7d2e9a8fed345cedb57da61bd27fdd95db22a070cfa7d42ccd4f8e80a443", 243],
-    ["KokoroProsody_v2.mlmodelc/coremldata.bin", "db8776a4896f690fd254cdb68a4551c168411c9b3fb98219630215bc3c357986", 421],
-    ["KokoroProsody_v2.mlmodelc/model.mil", "e6acad9f44d70b1dba0aea6a5d25ee4edf68fe8f2933399ee81f70ace61cbc8b", 73353],
-    ["KokoroProsody_v2.mlmodelc/weights/weight.bin", "70eea4cd2523992fa1fea840e31ab6f4fdd69c1598e220985a2ae6ea5da1e944", 8513664],
-    ["KokoroTail_v2.mlmodelc/analytics/coremldata.bin", "a06e4b91c2b8a8be3ff701558a5f1f6484921f948202663fe6df78f248d42222", 243],
-    ["KokoroTail_v2.mlmodelc/coremldata.bin", "527271f6df56cc308a5f89374c92108aef7b837ab15f0ba4900d555588dbd905", 392],
-    ["KokoroTail_v2.mlmodelc/metadata.json", "7708ecc145eecf8e3ef5ef8979ea7a4f77d04c8da787454c6d9190e5300fc50b", 1872],
-    ["KokoroTail_v2.mlmodelc/model.mil", "b0b8fd573bac76ba7eb85730eeb25538fc7f1c666ecbf939fd4b3a4ad4495ad7", 7014],
-    ["KokoroTail_v2.mlmodelc/weights/weight.bin", "8ede31ec20df7d86a124287ac12d13507651e2a693e9d4f35f0e7f92cba422c7", 81088],
-    ["KokoroVocoder.mlmodelc/analytics/coremldata.bin", "1cc4f1e6436597c6d458a845570d9d0ace458813ff90f225d08e0e713496b463", 243],
-    ["KokoroVocoder.mlmodelc/coremldata.bin", "71bac80d2f2f077fefc0d66cdc39c0faaa96540b3a6149093ef29de01b1f8764", 626],
-    ["KokoroVocoder.mlmodelc/metadata.json", "a8e768f151225a52476d35f6ab90805ae00f1f78b83be4ca21327029c800c183", 4331],
-    ["KokoroVocoder.mlmodelc/model.mil", "52f2febec45094e78a5948a3a47f023be8fc57cfd48cc99e8d4c358a13674ef2", 309000],
-    ["KokoroVocoder.mlmodelc/weights/weight.bin", "6d1f96eb50218ab687b12d6d862d2ae854c12b7165c3cd9b6b5cef261ef02ff1", 48889920],
-  ].map(([file, sha256, bytes]) => Object.freeze({
-    kind: "coreml",
-    name: `${COREML_DIR}/${file}`,
-    url: `https://huggingface.co/FluidInference/kokoro-82m-coreml/resolve/${COREML_REVISION}/ANE/${file}`,
-    sha256,
-    bytes,
-    licence: "Apache-2.0",
-    source: "https://huggingface.co/FluidInference/kokoro-82m-coreml",
-    bundle: Object.freeze(["ios"]),
-  })),
 ]);
 
-/** The pins ONE PLATFORM's shell build copies into its app. Everything else is
-    fetched for a workstation's use (the audition's eleven other voices, the
-    tokenizer) or for the other platform, and stays out of this binary — which
-    is what keeps each platform's size budget in `test/release-gates.test.js`
-    honest rather than aspirational.
+/** The pins ONE PLATFORM's shell build would copy into its app: none since
+    CH-20, and `test/release-gates.test.js` holds it there. Every pin is
+    fetched for a workstation's use (the narration renders, the audition, the
+    tokenizer) and stays out of every binary.
 
     THE PLATFORM IS REQUIRED. "Bundled" with no platform named has no answer
     since D13 (fp32 on iOS, q8f16 on Android), and the old no-argument form
@@ -354,14 +267,12 @@ export function pinProblems(pins = PINS) {
     if (typeof p.name !== "string" || !p.name) problems.push(`${at}: no name`);
     if (seen.has(p.name)) problems.push(`${at}: named twice — a second pin would overwrite the first on disk`);
     seen.add(p.name);
-    const nested = p.kind === "coreml" && typeof p.name === "string" && COREML_NAME_RE.test(p.name);
-    if (p.name && ((p.name.includes("/") && !nested) || p.name.includes("\\") || p.name.includes(".."))) {
+    if (p.name && (p.name.includes("/") || p.name.includes("\\") || p.name.includes(".."))) {
       /* A pin's name becomes a path under `mobile/models/`. A `..` in it writes
          outside the directory, and this file's whole job is to be the one place
          a remote URL is allowed to decide what lands on disk. */
-      problems.push(`${at}: a name may not contain a path separator or ".." (only a Core ML stage file may be nested, as kokoro-coreml/<Stage>.mlmodelc/<file>)`);
+      problems.push(`${at}: a name may not contain a path separator or ".."`);
     }
-    if (p.kind === "coreml" && !nested) problems.push(`${at}: a Core ML pin must be named kokoro-coreml/<Stage>.mlmodelc/<file>`);
     if (typeof p.url !== "string" || !/^https:\/\//.test(p.url)) {
       problems.push(`${at}: url must be https (got ${JSON.stringify(p.url)})`);
     }
@@ -377,12 +288,11 @@ export function pinProblems(pins = PINS) {
       problems.push(`${at}: sha256 and bytes must be pinned together — a half-pin verifies nothing`);
     }
     /* `bundle` decides whether a 86–326 MB file goes into an app store
-       binary, and since D13 it answers that PER PLATFORM. A pin that merely
-       FORGOT the field would default to falsy and silently stop shipping the
-       model — the probe would then answer `model-absent` on a build that
-       fetched everything correctly. Required, and a LIST of known platforms
-       (`[]` for none), so the omission is the error. A bare `true` is refused
-       too: it used to mean "both", and "both" is now a thing a pin has to say. */
+       binary, and since D13 it answers that PER PLATFORM. Required, and a LIST
+       of known platforms (`[]` for none, which every pin is since CH-20), so a
+       pin that merely forgot the field is an error rather than a silent
+       answer. A bare `true` is refused too: it used to mean "both", and "both"
+       is a thing a pin has to say. */
     if (!Array.isArray(p.bundle)) {
       problems.push(`${at}: bundle must be a list of platforms (${BUNDLE_PLATFORMS.map((x) => `"${x}"`).join(", ")}, or [] for none) — "goes into the app" is never left implicit`);
     } else {
@@ -478,13 +388,10 @@ async function main() {
   }
   const missing = unfilled();
   if (mode === "--bundled") {
-    /* One filename per line, for a build step to read. Deliberately NOT a glob
-       over `mobile/models/` in the workflow: the fetch pulls twelve voices and
-       a tokenizer that must NOT reach the binary, and a `cp mobile/models/*`
-       would ship all of them. The decision belongs to the pin table, in the
-       same file as the hashes, where a reviewer sees both at once.
-       Per platform since D13: an iOS build and an Android build carry
-       different models. */
+    /* One filename per line, for a build step to read: none since CH-20.
+       Deliberately NOT a glob over `mobile/models/`: the decision belongs to
+       the pin table, in the same file as the hashes, where a reviewer sees
+       both at once. */
     const platform = process.argv[3];
     if (!BUNDLE_PLATFORMS.includes(platform)) {
       console.error(`Usage: node tools/mobile/fetch-models.mjs --bundled <${BUNDLE_PLATFORMS.join("|")}>`);
@@ -495,15 +402,10 @@ async function main() {
   }
   if (mode === "--check") {
     console.log(`${PINS.length} pins, all well-formed.`);
-    /* One line PER PLATFORM (KV-R2's CI evidence): the iOS app carries fp32,
-       the APK q8f16, and a log that summed them would describe neither. */
+    /* One line PER PLATFORM: what each app carries (nothing since CH-20). */
     for (const platform of BUNDLE_PLATFORMS) {
-      const pins = bundledPins(platform);
-      /* The 34 Core ML stage files (KV-R3) print as one count, not 34 names. */
-      const coreml = pins.filter((p) => p.kind === "coreml");
-      const names = pins.filter((p) => p.kind !== "coreml").map((p) => p.name);
-      if (coreml.length) names.push(`${coreml.length} Core ML stage files under ${COREML_DIR}/`);
-      console.log(`${platform}: ${pins.length} bundled (${names.join(", ")}): `
+      const names = bundledPins(platform).map((p) => p.name);
+      console.log(`${platform}: ${names.length} bundled${names.length ? ` (${names.join(", ")})` : ""}: `
         + `${(bundledBytes(platform) / (1024 * 1024)).toFixed(1)} MiB.`);
     }
     if (missing.length) {
@@ -530,11 +432,10 @@ async function main() {
     console.error("Usage: node tools/mobile/fetch-models.mjs [--fetch [ios|android]|--verify|--check|--bundled <ios|android>]");
     process.exit(2);
   }
-  /* `--fetch <ios|android>` fetches only what that platform bundles. A shell
-     or release build needs two files, not the audition's twelve voices — and
-     every extra download is one more chance for Hugging Face to answer 504,
-     which is what failed release 36295569334 (2026-09-27). Bare `--fetch`
-     still fetches every pin, for a workstation. */
+  /* `--fetch <ios|android>` fetches only what that platform bundles, which is
+     nothing since CH-20. It existed so a shell build downloaded its two files
+     rather than every pin (a Hugging Face 504 failed release 36295569334,
+     2026-09-27). Bare `--fetch` fetches every pin, for a workstation. */
   const platform = process.argv[3];
   if (platform !== undefined && !BUNDLE_PLATFORMS.includes(platform)) {
     console.error(`--fetch takes an optional platform (${BUNDLE_PLATFORMS.join("|")}), not ${JSON.stringify(platform)}`);
@@ -568,7 +469,7 @@ async function main() {
       }
     }
     if (!buf) { console.error(`  ${pin.name}: ${last}`); failed++; continue; }
-    fs.mkdirSync(path.dirname(abs), { recursive: true });   // a Core ML stage file is nested (KV-R3)
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
     fs.writeFileSync(abs, buf);
     console.log(`  ${pin.name}  ${buf.length} bytes  ok`);
   }

@@ -437,6 +437,13 @@ test("the diagnostic Foray instrument (#29) stays deleted from player/, app.js a
    K-06: the bundled voice's licence, size and provenance gates
    (docs/bundled-voice-plan.md K-06)
 
+   SINCE CH-20 NO APP BUNDLES A VOICE (founder ruling on issue #1076,
+   2026-10-05: "Remove it all"). The on-device Kokoro probe, its native
+   engines and ONNX Runtime left both shells, and so did the weights they
+   read. The licence gate and the pin table below still hold: central
+   narration renders with the same pinned weights, and the espeak gate is
+   what keeps a GPL front end out of any app binary whatever it speaks with.
+
    THREE PROMISES, ONE PLACE. This suite already exists to hold a release to
    what the shipped documents claim, which is exactly the shape of all three:
 
@@ -499,10 +506,10 @@ test("K-06: no espeak dependency reaches any native build input", () => {
 });
 
 test("K-06: the model pin table is well-formed, and every pin is filled", async () => {
-  /* CI's half of "fails on a mismatch". The download now happens in the
-     `ios-shell` and `android-shell` jobs, and the table those jobs read is
-     checked on every run here. The failure this catches is somebody editing a
-     URL and not the hash.
+  /* CI's half of "fails on a mismatch". The table is read by central
+     narration (render-narration.yml's `--check`, the narration tools' pin
+     parsers) and checked on every run here. The failure this catches is
+     somebody editing a URL and not the hash.
      MUTATION: half-pin an entry (bytes, no sha256) — `pinProblems` names it.
 
      The previous form of this test asserted the OPPOSITE — that every pin was
@@ -514,7 +521,7 @@ test("K-06: the model pin table is well-formed, and every pin is filled", async 
      `tools/mobile/fetch-models.test.mjs` carries the rest of the detail. */
   const { PINS, pinProblems, unfilled } = await loadModelPins();
   assert.deepEqual(pinProblems(), []);
-  assert.ok(PINS.length >= 14, "a model per platform (D13) and the twelve audition voices");
+  assert.ok(PINS.length >= 14, "two models (q8f16, fp32) and the twelve audition voices");
   assert.equal(unfilled().length, 0,
     "an unfilled pin refuses to fetch, so a build carrying one would ship no weights at all");
 });
@@ -542,13 +549,34 @@ test("K-06: the notices file carries Kokoro, ORT and the voice data", () => {
   }
 });
 
+test("CH-20: the notices file describes no bundled voice and names no deleted file", () => {
+  /* The notices file "covers what is DISTRIBUTED". After CH-20 deleted the
+     probe engines, ONNX Runtime and every bundle list, it still said ORT was
+     "LINKED" and the Core ML models were "Bundled in the iOS app", and it
+     pointed at KokoroCoreMLEngine.swift by path. A legal file that describes a
+     binary we no longer build is a false statement about the app.
+     MUTATIONS (each RUN, red, restored): put back "**Status in this build:**
+     LINKED" in the ONNX Runtime entry; put back "Bundled in the iOS app only";
+     put back the `mobile/plugins/foray-tts/ios/Sources/ForayTtsPlugin/KokoroCoreMLEngine.swift`
+     path; drop the "Status since CH-20" paragraph. */
+  const notices = read("docs/legal/third-party-notices.md");
+  assert.ok(!/Status in this build:\*{0,2}\s*LINKED/.test(notices), "ONNX Runtime is linked by neither app since CH-20");
+  assert.ok(!notices.includes("Bundled in the iOS app"), "no Core ML stage is bundled since CH-20");
+  assert.match(notices, /Status since CH-20 \(founder ruling on issue #1076/,
+    "the notices must say, with the ruling, that nothing below is distributed");
+  const repoPaths = [...notices.matchAll(/`((?:mobile|tools|docs|test|player)\/[^`\s]+)`/g)].map((m) => m[1]);
+  assert.ok(repoPaths.length >= 3, "the walk found the notices' repo paths");
+  const missing = repoPaths.filter((rel) => !fs.existsSync(path.join(ROOT, rel)));
+  assert.deepEqual(missing, [], "the notices name a repo path that no longer exists");
+});
+
 /* K-06(3): the ceiling, and the arithmetic behind it, in one place so the
    number and its reason cannot drift apart.
 
    150 MB, from the deck: Apple's App Store cellular-download cap is 200 MB, so
    an app that crosses it stops installing away from wi-fi — which, for an app
-   used while driving, is a large share of its installs. Today's measured sizes
-   plus the model are the budget:
+   used while driving, is a large share of its installs. The probe-era budget
+   (history since CH-20: no app carries the model or the runtime now) was:
 
      Android release .aab   5.46 MB   (deck §2, measured)
      iOS App.app            8.3 MB    (deck §2, measured, simulator)
@@ -575,171 +603,69 @@ test("K-06: the app-size ceiling is below Apple's cellular cap, with the reason 
   assert.ok(deck.includes("200 MB"), "the deck must state the cellular cap the ceiling is derived from");
 });
 
-test("K-06: the measured app sizes plus the model still fit under the ceiling", async () => {
-  /* NO LONGER AN ESTIMATE. Until 2026-09-13 every number here was quoted from
-     the deck, because no build in this repo had ever produced an artefact with
-     the weights in it. `android-shell` now does, and these are read off it:
+test("CH-20: neither shell app carries model bytes, and the measured app without them is far under the ceiling", async () => {
+  /* WHAT THIS TEST WAS. Until CH-20 it decomposed a measured universal APK
+     WITH the q8f16 model and one voice (137,468,845 B, android-shell run
+     34737888251) into the pinned weights plus ~42.8 MiB of ONNX Runtime's
+     four ABIs, and a sibling test gave iOS its own 440 MiB TestFlight-only
+     budget for fp32 + the Core ML chain (~409 MiB projected). Both apps now
+     carry none of it, so the arithmetic that is left is the app itself:
 
        app-release-unsigned.apk, WITHOUT the model   6,070,267 B
-         (run 34737154752, job 103670869175 — a PR that does not touch voice)
-       app-release-unsigned.apk, WITH it           137,468,845 B
-         (run 34737888251, job 103672413287 — this card's own PR)
+         (run 34737154752, job 103670869175 — no weights, no ONNX Runtime)
+       iOS App.app                                    8.3 MB
+         (deck §2, measured, simulator, before any model)
 
-     The 125.3 MiB difference decomposes: 82.5 MiB is the pinned model plus one
-     voice (`bundledBytes()`, asserted below against the same table the build
-     copies from), and the remaining ~42.8 MiB is ONNX Runtime's native
-     libraries for FOUR ABIs.
-
-     ~42.8 MiB IS THE FINDING, and it is well outside the deck's inferred
-     "10–20 MB". The deck's figure is not wrong so much as about a different
-     artefact: `onnxruntime-android` carries arm64-v8a, armeabi-v7a, x86 and
-     x86_64, a universal APK contains all four, and Play splits the `.aab` so a
-     phone downloads roughly one. Per-ABI that is ~11 MiB, which is what the
-     deck meant.
-
-     SO THIS TEST CHECKS THE PESSIMISTIC ARTEFACT ON PURPOSE — the universal
-     APK, every ABI, no splitting — because it is the one that has actually been
-     built. It passes with ~19 MB of headroom. What is STILL NOT MEASURED is the
-     `.aab` Play actually receives (`android-release.yml` makes it; no run of it
-     exists for this branch) and the iOS `.ipa` (one arm64 slice, so it should
-     land near 8.3 + 82.5 + ~11 = ~102 MiB). Those two remain K-06's open soft
-     spot, and this comment is the record of exactly which numbers are real.
-
-     MUTATION: bundle a second voice on Android, or bundle fp32's 326 MB model
-     there — the sum crosses the ceiling and the answer becomes "fetch it on
-     first run", which is the finding this test exists to surface rather than
-     hide. iOS DOES bundle fp32, on purpose (D13, KV-R2): it has its own budget
-     in the next test, with its own reason. THIS test is Android's, and reads
-     Android's bundled bytes. */
+     MUTATION: put a platform back in any pin's `bundle` — the bundled bytes
+     stop being zero and this goes red before a 300 MB TestFlight build does. */
   const { bundledBytes } = await loadModelPins();
   const MiB = 1024 * 1024;
+  assert.equal(bundledBytes("android"), 0, "the APK carries no Kokoro weights (CH-20)");
+  assert.equal(bundledBytes("ios"), 0, "the iOS app carries no Kokoro weights (CH-20)");
 
-  /* Measured, both from android-shell runs named above. */
   const APK_WITHOUT_MODEL_BYTES = 6_070_267;
-  const APK_WITH_MODEL_BYTES = 137_468_845;
-
-  const bundledMb = bundledBytes("android") / MiB;
-  assert.ok(bundledMb > 80 && bundledMb < 90,
-    `the APK's bundled weights are ${bundledMb.toFixed(1)} MiB — if this moved, a different model variant got pinned for Android`);
-
-  /* The build's own delta must be the weights plus a runtime, not the weights
-     plus a surprise. If a future change smuggled a second large file into the
-     app, this is where the arithmetic stops agreeing.
-     MUTATION: copy every pin instead of the bundled ones — the runtime share
-     would have to absorb 5.5 MB of unused voices and this goes red. */
-  const deltaMb = (APK_WITH_MODEL_BYTES - APK_WITHOUT_MODEL_BYTES) / MiB;
-  const runtimeShareMb = deltaMb - bundledMb;
-  assert.ok(runtimeShareMb > 35 && runtimeShareMb < 55,
-    `ONNX Runtime's four ABIs measured ${runtimeShareMb.toFixed(1)} MiB in a universal APK; `
-    + "outside 35–55 MiB, something other than the runtime is in the delta");
-
-  const worstApkMb = APK_WITH_MODEL_BYTES / MiB;
-  assert.ok(worstApkMb < APP_SIZE_CEILING_MB,
-    `the universal APK is ${worstApkMb.toFixed(1)} MiB, over the ${APP_SIZE_CEILING_MB} MB ceiling — `
-    + "the model must then be fetched on first run rather than bundled");
-
-  /* THE iOS HALF OF THIS PARAGRAPH IS HISTORY SINCE D13 (KV-R2). It argued
-     that a one-slice iOS app with the same q8f16 model could not exceed the
-     universal APK. iOS now bundles fp32 instead, so the iOS figure lives in
-     the next test, against its own budget. Kept below as the q8f16-era
-     projection because the arithmetic is still the right shape for Android's
-     per-ABI share.
-
-     DO NOT REACH FOR THE 146 MB FIGURE IN `ios-shell`'s LOG. That run records
-     `du -sh App.app` = 146M (job 103673939658), and it is the SIMULATOR DEBUG
-     bundle: two simulator slices of the runtime, unoptimised, unstripped, and
-     never thinned. It is not the `.ipa`, it is not what a phone downloads, and
-     reading it as either would make a 102 MiB app look like it is 4 MB from the
-     ceiling. It is recorded here rather than left for someone to find in an
-     artifact and misread. The real iOS number needs a signed archive, which is
-     `ios-archive`'s job and has not run for this branch. */
-  const iosAppMb = 8.3;   // deck §2, measured, simulator, before the model
-  const q8f16OneSliceMb = iosAppMb + bundledMb + (runtimeShareMb / 4);
-  assert.ok(q8f16OneSliceMb < worstApkMb,
-    "a single-slice app with Android's model cannot exceed a four-ABI universal APK");
-  assert.ok(q8f16OneSliceMb > 100,
-    "if this dropped below 100 MB a measurement changed and the whole budget should be re-read");
+  const IOS_APP_MB = 8.3;
+  assert.ok(APK_WITHOUT_MODEL_BYTES / MiB < APP_SIZE_CEILING_MB, "the APK fits under the ceiling");
+  assert.ok(IOS_APP_MB < APP_SIZE_CEILING_MB, "the iOS app fits under the ceiling");
+  assert.ok(IOS_APP_MB < APPLE_CELLULAR_CAP_MB,
+    "with no fp32 model the iOS app is back under the cellular cap, so it needs no TestFlight-only budget of its own");
 });
 
-/* THE iOS BUDGET, AND WHY IT IS NOT THE CEILING ABOVE (KV-R2, deck D13).
+/* CH-20 (docs/roadmap/code-health.md, N1-03): what a shell build copies into
+   each app is whatever `fetch-models.mjs --bundled <platform>` prints, so the
+   CLI's own answer is the thing to pin, not only the in-process table. */
+const bundledByCli = (platform) => {
+  const r = require("node:child_process").spawnSync(process.execPath,
+    [path.join(ROOT, "tools/mobile/fetch-models.mjs"), "--bundled", platform], { encoding: "utf8" });
+  assert.equal(r.status, 0, r.stderr);
+  return r.stdout.split("\n").filter(Boolean);
+};
 
-   iOS bundles the fp32 export (325.5 MB) because it is the only Kokoro export
-   that is finite and near real time on Apple silicon: q8f16 and fp16 both go
-   NaN there (deck §10b). That puts the iOS app over the 150 MB ceiling AND over
-   Apple's 200 MB cellular cap: the projection is 8.3 (app) + 310.5 (fp32) +
-   0.5 (one voice) + ~11 (one ORT slice) ≈ 330 MiB.
-
-   IT IS ACCEPTED FOR TESTFLIGHT ONLY. TestFlight installs of a build over the
-   cellular cap still work (the phone asks, or waits for wi-fi); a store
-   listing is where the cap costs installs, and a public store launch is out of
-   scope for the deck. A PUBLIC STORE LAUNCH REOPENS THIS BUDGET: on-demand
-   resources, a first-run download, or a smaller finite export, decided then.
-
-   360 MiB was the KV-R2 budget: headroom for the ORT slice's uncertainty (the
-   ~11 MiB is a quarter of Android's four-ABI share, inferred, not measured on
-   iOS), and no more — a second fp32-sized file would cross it. The first REAL
-   iOS figure with fp32 is KV-R2's ios-shell/ios-archive run, and it replaces
-   the projection here when it exists.
-
-   KV-R3 (PROBE v3) RAISES IT TO 440 MiB, FOR THE PROBE BUILD ONLY. Probe v3
-   measures the seven-stage Core ML chain (docs/voice/kokoro-speed-1.5x.md
-   §4 S5) against fp32 ORT on the founder's phone, so this build carries BOTH:
-   the 34 compiled Core ML stage files (82,270,465 bytes, 78.5 MiB) beside
-   fp32 — a projection of ~409 MiB. Once the probe decides, one engine leaves
-   the bundle: Core ML alone is ~87 MiB of models (325 MB -> 82 MB, the doc's
-   S5), ORT alone is back under 360. Android is untouched (its bytes are
-   asserted exactly above). */
-const IOS_TESTFLIGHT_BUDGET_MB = 440;
-const IOS_BUDGET_REASON = "TestFlight only: the fp32 model is over Apple's 200 MB cellular cap by design (D13), and the probe v3 build carries the Core ML chain beside it (KV-R3) until the probe picks one engine; a public store launch reopens this budget";
-
-test("K-06: Android's bundled bytes are still q8f16's", async () => {
-  /* D13 moved iOS to fp32 and left Android alone, on purpose: Play's
-     base-module limit will not take 325 MB. So the APK's weights are exactly
-     the q8f16 model plus one voice, byte for byte, and the measured
-     `APK_WITH_MODEL_BYTES` above still describes them.
-     MUTATION: bundle fp32 on Android (`bundle: ["ios", "android"]`) — the
-     sum moves by 239 MiB and this goes red, as does the ceiling above. */
-  const { PINS, bundledPins, bundledBytes } = await loadModelPins();
-  const q8f16 = PINS.find((p) => p.name === "kokoro-v1_0-q8f16.onnx");
-  const models = bundledPins("android").filter((p) => p.kind === "model");
-  assert.deepEqual(models.map((p) => p.name), ["kokoro-v1_0-q8f16.onnx"]);
-  assert.equal(bundledBytes("android"), q8f16.bytes + 522_240, "q8f16 plus one voice, nothing else");
+test("CH-20: `--bundled ios` and `--bundled android` are empty, and no build path fetches or injects weights", () => {
+  /* Founder ruling on issue #1076 (2026-10-05): stop bundling the model
+     files. Before CH-20 iOS copied fp32, af_heart and the 34 Core ML stage
+     files, and Android q8f16 and af_heart.
+     MUTATION: re-add "ios" or "android" to a pin's `bundle` — the CLI prints
+     a name and this goes red. MUTATION: put the "Fetch the Kokoro weights"
+     step back in any of the four build paths — red. */
+  assert.deepEqual(bundledByCli("ios"), []);
+  assert.deepEqual(bundledByCli("android"), []);
+  for (const rel of [".github/workflows/ios-build.yml", ".github/actions/ios-archive/action.yml",
+    ".github/workflows/android-build.yml", ".github/actions/android-bundle/action.yml"]) {
+    const src = read(rel);
+    assert.ok(!src.includes("fetch-models.mjs"), `${rel} fetches no model`);
+    assert.ok(!src.includes("inject-models"), `${rel} injects no model`);
+  }
+  assert.ok(!fs.existsSync(path.join(ROOT, "tools/mobile/inject-models.mjs")), "the injector is retired");
 });
 
-test("K-06: iOS's budget is its own, with the TestFlight reason in the file", async () => {
-  /* The iOS app is over the 150 MB ceiling and the 200 MB cellular cap, and
-     that is a DECISION (D13), not a leak. So it gets a budget that says so:
-     the projection must stay under it, it must stay ABOVE the cellular cap
-     (if it ever fits, the reason below is stale and the budget should return
-     to the shared ceiling), and the reason must travel with the number.
-     MUTATION: bundle a second fp32-sized model on iOS — over budget.
-     MUTATION: delete "TestFlight only" from the reason — red. */
-  const { bundledBytes, bundledPins } = await loadModelPins();
-  const MiB = 1024 * 1024;
-  const iosModels = bundledPins("ios").filter((p) => p.kind === "model").map((p) => p.name);
-  assert.deepEqual(iosModels, ["kokoro-v1_0-fp32.onnx"], "iOS bundles the fp32 export (D13)");
-
-  const iosAppMb = 8.3;                  // deck §2, measured, simulator, before any model
-  const ortSliceMb = 11;                 // one arm64 slice: ~a quarter of the APK's 42.8 MiB four-ABI share
-  const iosProjectedMb = iosAppMb + bundledBytes("ios") / MiB + ortSliceMb;
-  /* KV-R3: fp32 (~330 projected) plus the Core ML chain's 78.5 MiB. */
-  const coremlMb = bundledPins("ios").filter((p) => p.kind === "coreml").reduce((n, p) => n + p.bytes, 0) / MiB;
-  assert.ok(coremlMb > 75 && coremlMb < 82, `the Core ML chain is ${coremlMb.toFixed(1)} MiB; the doc says ~82 MB`);
-  assert.ok(!bundledPins("android").some((p) => p.kind === "coreml"), "the Core ML chain never reaches the APK");
-  assert.ok(iosProjectedMb > 395 && iosProjectedMb < 420,
-    `the iOS projection is ${iosProjectedMb.toFixed(1)} MiB; KV-R3 says about 409 — re-read the budget if this moved`);
-  assert.ok(iosProjectedMb < IOS_TESTFLIGHT_BUDGET_MB,
-    `the iOS app projects to ${iosProjectedMb.toFixed(1)} MiB, over its ${IOS_TESTFLIGHT_BUDGET_MB} MiB TestFlight budget`);
-  assert.ok(iosProjectedMb > APPLE_CELLULAR_CAP_MB,
-    "the iOS app fits under the cellular cap now — the TestFlight-only exception is stale; move iOS back under the shared ceiling");
-  assert.ok(IOS_TESTFLIGHT_BUDGET_MB > APP_SIZE_CEILING_MB, "iOS's budget is an exception to the ceiling, stated as one");
-
-  assert.match(IOS_BUDGET_REASON, /TestFlight only/);
-  assert.match(IOS_BUDGET_REASON, /public store launch reopens/);
-  const self = fs.readFileSync(__filename, "utf8");
-  assert.ok(self.includes("IT IS ACCEPTED FOR TESTFLIGHT ONLY"), "the budget's reason is written beside it in this file");
-  const deck = read("docs/kokoro-voices-in-app-plan.md");
-  assert.ok(deck.includes("TestFlight only"), "the deck records the same decision (D13)");
+test("CH-20: render-narration still checks the model pins with `fetch-models.mjs --check`", () => {
+  /* Central narration (render-narration.yml) reads the fp32 and voice pins out
+     of fetch-models.mjs, so the pin table outlives every shell build's use of it.
+     MUTATION: delete the "Model pins are consistent" step, or fetch-models.mjs. */
+  const wf = read(".github/workflows/render-narration.yml");
+  assert.match(wf, /^\s*run: node tools\/mobile\/fetch-models\.mjs --check$/m);
+  assert.ok(fs.existsSync(path.join(ROOT, "tools/mobile/fetch-models.mjs")));
 });
 
 test("K-06: the web bundle's own model gate is wired into prepare-webdir", async () => {

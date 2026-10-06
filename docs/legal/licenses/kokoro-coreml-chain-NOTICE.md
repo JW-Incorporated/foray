@@ -1,5 +1,11 @@
 # Third-party code vendored into the ForayTts iOS plugin
 
+HISTORY since CH-20 (founder ruling on issue #1076, 2026-10-05): the engine
+below was deleted with the on-device voice probe, and neither app distributes
+this code or the Core ML models any more. This notice and the two licence texts
+beside it are kept in case the probe is revived; the rest of this file is the
+notice as it stood while the code shipped.
+
 mobile/plugins/foray-tts/ios/Sources/ForayTtsPlugin/KokoroCoreMLEngine.swift
 contains code adapted from:
 

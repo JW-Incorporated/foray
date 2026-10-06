@@ -30,17 +30,14 @@
  *   System boot time (35F9.1) — `NowPlayingPublisher.swift`'s
  *     `ProcessInfo.processInfo.systemUptime`, plus the monotonic
  *     `DispatchTime.now().uptimeNanoseconds` intervals in AVDeck,
- *     AudioSessionOwner, MainQueueTiming and foray-tts. Elapsed time between
- *     in-app events only: 35F9.1.
- *   File timestamp (C617.1) — NOT in our Swift. The ONNX Runtime binary that
- *     foray-tts pins (`pod-archive-onnxruntime-c-1.20.0.zip`, sha256
- *     50891a8a…, the slice `ios-embedded-frameworks.mjs` already patches)
- *     references `_stat` and `_fstat`, which are on Apple's file-timestamp list,
- *     and it is linked STATICALLY into `App.app/App`, so the app's own manifest
- *     is the only one that can declare them. ORT ships no manifest (neither the
- *     zip nor the onnxruntime-swift-package-manager 1.20.0 tree has one). It
- *     reads the size/metadata of the bundled Kokoro model files in the app's own
- *     container: C617.1. Re-measure when that pin moves.
+ *     AudioSessionOwner and MainQueueTiming. Elapsed time between in-app
+ *     events only: 35F9.1.
+ *   File timestamp (C617.1) — NO LONGER DECLARED (CH-20, issue #1076). It was
+ *     declared for the statically linked ONNX Runtime 1.20.0 that foray-tts
+ *     pinned for the on-device Kokoro probe (`_stat`/`_fstat`, sizing the
+ *     bundled model files). The probe, ORT and the weights left the app
+ *     together, and no plugin Swift reads a file timestamp (the REAL REPO
+ *     scan in the test proves it on every run).
  *
  * No disk-space or active-keyboard API appears anywhere. The other Capacitor
  * plugins (@capacitor/app, splash-screen, status-bar) use no Required Reason API;
@@ -130,14 +127,6 @@ export const ACCESSED_API_TYPES = Object.freeze([
     evidence: Object.freeze([
       { file: "mobile/plugins/foray-audio/ios/Sources/ForayAudioPlugin/Engine/NowPlayingPublisher.swift", pattern: /ProcessInfo\.processInfo\.systemUptime/ },
       { file: "mobile/plugins/foray-audio/ios/Sources/ForayAudioPlugin/Engine/MainQueueTiming.swift", pattern: /uptimeNanoseconds/ },
-    ]),
-  }),
-  Object.freeze({
-    category: "NSPrivacyAccessedAPICategoryFileTimestamp",
-    reasons: Object.freeze(["C617.1"]),
-    why: "The statically linked ONNX Runtime 1.20.0 references stat/fstat to size the bundled model files in the app's own container.",
-    evidence: Object.freeze([
-      { file: "mobile/plugins/foray-tts/Package.swift", pattern: /onnxruntime-swift-package-manager",\s*exact: "1\.20\.0"/ },
     ]),
   }),
 ]);

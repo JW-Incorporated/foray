@@ -197,9 +197,10 @@ jobs:
           echo "DD_DEV=$RUNNER_TEMP/dd-dev" >> "$GITHUB_ENV"
           # ONE resolved SwiftPM tree for both builds, at a path this workflow
           # chooses rather than one Xcode derives from a hash of the project path.
-          # The MinimumOSVersion patch below has to find the downloaded
-          # onnxruntime.xcframework, and "wherever DerivedData put it" is not a
-          # location a build step can assert against.
+          # The MinimumOSVersion patch below has to find the downloaded binary
+          # xcframeworks (ONNX Runtime's, until CH-20; Capacitor's and Cordova's),
+          # and "wherever DerivedData put it" is not a location a build step can
+          # assert against.
           echo "SPM_DIR=$RUNNER_TEMP/ios-spm" >> "$GITHUB_ENV"
           mkdir -p "$RUNNER_TEMP/ios-ci"
           { sw_vers; xcodebuild -version; echo "sqlite3 $(sqlite3 --version)"; pod --version; } \
@@ -233,28 +234,6 @@ jobs:
           # recorded instead, and the next step decides what to build.
           find ios -maxdepth 4 -not -path '*/public/*' | sort | tee "$ART/ios-tree.txt"
 
-      - name: Fetch the Kokoro weights and put them in the app (K-01/K-06)
-        # docs/bundled-voice-plan.md K-06(1): "pins {url, sha256, bytes} for the
-        # model and each voice; CI fails on a mismatch." This is the step that
-        # calls it, and H3 is the founder-approved sitting that lets it be here.
-        #
-        # WHY IT IS HERE AND NOT EARLIER: `cap add`/`cap sync` rewrites the
-        # generated project's resource directories, so weights copied in before
-        # it would be deleted by it. Immediately after is the first safe point
-        # and the last one before the build reads the tree.
-        #
-        # THREE COMMANDS, NOT ONE, because they fail for three different
-        # reasons and a red build has to say which: the pin table is malformed
-        # (somebody edited a URL and not the hash), the download did not match
-        # its pin, or the copy landed somewhere the app does not look. The last
-        # is the one that would otherwise ship a green build with no weights in
-        # it and tell a founder `model-absent`.
-        run: |
-          set -euo pipefail
-          node tools/mobile/fetch-models.mjs --check
-          node tools/mobile/fetch-models.mjs --fetch ios
-          node tools/mobile/inject-models.mjs ios mobile/ios/App/App/public
-          node tools/mobile/inject-models.mjs ios mobile/ios/App/App/public --check
       - name: Put the seam jingle in the app (NE-34)
         # The same step `.github/actions/ios-archive` runs. NOT a SwiftPM
         # resource: a `resources:` on a plugin target makes a resource-bundle
@@ -342,7 +321,7 @@ jobs:
         # Required Reason API that no PrivacyInfo.xcprivacy declares (ITMS-91053);
         # TestFlight only emails a warning, so a build can reach testers and still
         # be unsubmittable. `cap add ios` generates no manifest. This writes one
-        # (UserDefaults CA92.1, system boot time 35F9.1, file timestamp C617.1, and
+        # (UserDefaults CA92.1, system boot time 35F9.1, and
         # the collected data types of docs/legal/data-safety.md Part B) and adds it
         # to the app target's Copy Bundle Resources phase in project.pbxproj -- a
         # file the project does not reference never reaches App.app. Not a SwiftPM
@@ -419,6 +398,14 @@ jobs:
           ls -l "$SPLASHSET" | tee "$ART/splashset.txt"
 
       - name: Give the embedded ONNX Runtime framework the MinimumOSVersion Apple requires
+        # ONNX RUNTIME IS GONE SINCE CH-20 (founder ruling on issue #1076: the
+        # Kokoro probe, its only caller, left the app), so there is no thin
+        # plist left to patch today and `patch` reports every slice "already
+        # declares". The step and `verify` stay, under this name (the workflow
+        # tests pin it): Capacitor's and Cordova's xcframeworks are still
+        # embedded, and the next binary dependency with a thin plist should go
+        # red here rather than at `altool`.
+        #
         # THE STEP THAT WOULD HAVE SAVED RELEASE RUN 34739630705. That build
         # compiled, archived, exported — and died in `altool` with error 90360:
         # `App.app/Frameworks/onnxruntime.framework` has no `MinimumOSVersion`.

@@ -106,8 +106,8 @@ final class InterludePlayer: InterludePlaying {
     static let assetSubdirectory = "public/player/assets"
 
     /// Where the jingle is under `resourceRoot` (the app's resources), or nil.
-    /// The root FIRST and `public/player/assets` second, `KokoroModelFiles`'
-    /// order (foray-tts), so a later real resource phase needs no change here.
+    /// The root FIRST and `public/player/assets` second, so a later real
+    /// resource phase needs no change here.
     /// Plain file lookups rather than `Bundle.module`, which traps when its
     /// bundle is missing: a packaging slip must cost the jingle (the boot
     /// leaves `interludeAvailable` off), never the app.

@@ -3759,14 +3759,8 @@ const GUARDED_SESSION_SITES = [
   ["ForayAudioPlugin.swift", "releaseSession", "setActive"],
   ["ForayTtsPlugin.swift", "claimSession", "setActive"],
   ["ForayTtsPlugin.swift", "claimSession", "setCategory"],
-  /* KV-R3: the voice probe's silent keep-alive and its WAV player, both
-     legacy-mode only (with the engine owning the session they play inside
-     the owner's category and touch nothing). */
-  ["KokoroProbeMatrix.swift", "start", "setCategory"],
-  ["KokoroProbeMatrix.swift", "start", "setActive"],
-  ["KokoroProbeMatrix.swift", "stop", "setCategory"],
-  ["KokoroProbeMatrix.swift", "playProbeWav", "setCategory"],
-  ["KokoroProbeMatrix.swift", "playProbeWav", "setActive"],
+  /* KV-R3's voice-probe keep-alive and WAV player (KokoroProbeMatrix.swift,
+     five guarded sites) left with the probe (CH-20, issue #1076). */
 ];
 
 /** The start offset and name of the Swift func whose body encloses offset `at`. */
@@ -5029,8 +5023,8 @@ test("NE-33: SpeechRules is byte-identical in the core and foray-tts, the lexico
  * that ships in the app. A `.testTarget` may (the click tracks are one): the App
  * scheme's archive never builds test targets. A file the app needs goes into
  * the generated project's `public/` folder reference instead
- * (tools/mobile/inject-interlude.mjs for NE-34's jingle, inject-models.mjs for
- * the Kokoro weights). */
+ * (tools/mobile/inject-interlude.mjs for NE-34's jingle; inject-models.mjs did
+ * the same for the Kokoro weights until CH-20 retired it). */
 test("no Package.swift under mobile/plugins declares `resources:` on a shipping target: a resource bundle cannot take the signed archive's provisioning profile", () => {
   /* MUTATION: put `resources: [.copy("Resources/interlude-placeholder.wav")]`
      back on ForayAudioPlugin, or add `resources:` to any `.target` in

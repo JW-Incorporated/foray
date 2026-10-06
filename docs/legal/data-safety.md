@@ -363,12 +363,12 @@ Applies to **User ID**, **Product Interaction** and **Other User Content**.
     issue #1071) ships none and needs none: its Swift imports only Foundation
     and Capacitor and presents the system share sheet, its Android manifest
     asks for no permission, and nothing is sent to us when a listener shares.
-    ONNX Runtime 1.20.0 (foray-tts) ships none either. If the native shell
+    If the native shell
     ever adds the Supabase Swift SDK, it needs its own manifest entry;
     `docs/marketing/05-legal-risk-memo.md` flagged a Supabase-SDK manifest as
     a checklist item, which is **not applicable to the current code**.
   - **Required Reason APIs.** The web client uses none. The native shell
-    declares three categories, each with its call sites in the injector's
+    declares two categories, each with its call sites in the injector's
     header (the injector's test re-greps the plugin Swift on every run):
     - `NSPrivacyAccessedAPICategoryUserDefaults`, reason **CA92.1** (data
       only this app reads): the native engine's store (`EngineStore.swift`;
@@ -377,13 +377,7 @@ Applies to **User ID**, **Product Interaction** and **Other User Content**.
     - `NSPrivacyAccessedAPICategorySystemBootTime`, reason **35F9.1**
       (time elapsed between in-app events): `NowPlayingPublisher.swift`'s
       `ProcessInfo.processInfo.systemUptime`, and the monotonic
-      `DispatchTime.now().uptimeNanoseconds` timing in the audio engine and
-      foray-tts.
-    - `NSPrivacyAccessedAPICategoryFileTimestamp`, reason **C617.1** (size
-      and metadata of files in the app's own container): not our Swift. The
-      statically linked ONNX Runtime binary references `stat`/`fstat`, so
-      the app's manifest is the only place it can be declared. Re-measure
-      when the ONNX Runtime pin moves.
+      `DispatchTime.now().uptimeNanoseconds` timing in the audio engine.
     - No disk-space or active-keyboard API is used.
   - **Still a human step on a Mac:** Xcode's Organizer > Generate Privacy
     Report on an archive, which merges this manifest with every embedded
