@@ -340,9 +340,8 @@ test("a pi: id with no /k/ key renders honest 'Show not found.' immediately — 
 });
 
 test("a shared #/show/pi:<n>/k/<key> link cold-opens on a fresh device from exactly one shard request", async () => {
-  /* SH-COLD. MUTATION: in resolveMissingShow, render "Show not found." for
-     every pi: id again (delete everything after the guard) -> no request
-     and no page; red. MUTATION 2: match `r.id === n` (number vs string) ->
+  /* SH-COLD. MUTATION: make resolveMissingShow's pi: guard `if (true)` (the
+     old "Show not found." for every pi: id) -> no request and no page; red. MUTATION 2: match `r.id === n` (number vs string) ->
      the row is never found; red. */
   const m = mount({ onLine: true });
   m.ctx.location.hash = "#/show/pi%3A555/k/sc";
@@ -372,9 +371,10 @@ test("a malformed /k/ hint or pi: id is not found at once, with no request", asy
 
 test("a shard without the row says 'Show not found.'; a shard that failed says so, with Try again", async () => {
   /* fetchShardRows folds a failure into [], so the memo is what tells them
-     apart. MUTATION: drop `&& !shardMemoryCache.has(key)` (every empty answer a
-     failure) -> the miss says "Couldn't load"; red. MUTATION 2: drop that whole
-     failure branch -> the 404 says "Show not found."; red. */
+     apart. MUTATION: make the shard lookup answer `null` for every empty
+     result (drop its `shardMemoryCache.has(key) ? { row: null } :` arm) -> the
+     miss says "Couldn't load"; red. MUTATION 2: answer `{ row: null }` for
+     every empty result -> the 404 says "Show not found."; red. */
   const m = mount({ onLine: true });
   const view = m.byId.get("view");
   m.ctx.location.hash = "#/show/pi%3A556/k/sc";
@@ -389,8 +389,9 @@ test("a shard without the row says 'Show not found.'; a shard that failed says s
 });
 
 test("a shard that answers after the listener left repaints nothing", async () => {
-  /* MUTATION: delete the `if (!isShardRender() || !onShowRoute(show_id)) return;`
-     line -> Science Friday paints over the page the listener moved to; red. */
+  /* MUTATION: delete resolveMissingShow's
+     `if (!isCurrentRender() || !onShowRoute(show_id)) return;` line -> Science
+     Friday paints over the page the listener moved to; red. */
   const m = mount({ onLine: true });
   const view = m.byId.get("view");
   const real = m.ctx.fetch;
