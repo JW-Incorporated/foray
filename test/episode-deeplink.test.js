@@ -20,6 +20,10 @@
  *     approximate (fail honest).
  *  6. Nothing plays on its own: rendering the page, cold or warm, starts no
  *     audio (WebView gesture rules; the shell's cp_last_route relaunch).
+ *  7. A shared breadth episode cold-opens on a fresh device (SH-COLD): up to
+ *     three pages of its show's list, matched on the show-page id, t= kept;
+ *     a late answer repaints nothing; an id naming no servable show is not
+ *     found with no request; a failure offers Try again.
  *
  * Dependency-free node:vm harness, the router.test.js shape (history that
  * reflects replaceState into location.hash) with test/episode-page.test.js's
@@ -375,4 +379,167 @@ test("nothing plays on its own: a cold #/play/ link and a direct render start no
   assert.deepStrictEqual(rec.plays, [], "no play");
   assert.deepStrictEqual(rec.seeks, [], "no seek");
   assert.strictEqual(rec.toggles, 0, "no toggle");
+});
+
+/* ==================================================================== */
+/* 7. A SHARED BREADTH EPISODE COLD-OPENS (SH-COLD)                      */
+/* ==================================================================== */
+
+/* api/shows/<id>/episodes as a fake: `pages` episode lists, each page's
+   next_cursor naming the next one ("c1", "c2", ...), the last none. `hold`
+   parks every answer until release(), so a test can move the page first.
+   `fail` answers a 500. `degraded` answers what the no-DB path sends when
+   the feed cannot be read: 200, no episodes, `degraded` and the error.
+   Every request is recorded. */
+function episodesEndpoint(m, pages, { hold = false, fail = false, degraded = false } = {}) {
+  const calls = [];
+  const parked = [];
+  m.ctx.fetch = (url) => {
+    const u = String(url);
+    calls.push(u);
+    const cur = /[?&]cursor=([^&]+)/.exec(u);
+    const i = cur ? Number(decodeURIComponent(cur[1]).slice(1)) : 0;
+    const body = degraded
+      ? { show: { title: "Founders", description: null, image: null }, episodes: [], next_cursor: null, degraded: true, error: "feed unavailable" }
+      : {
+        show: { title: "Founders", description: null, image: "https://x.test/founders.png" },
+        episodes: pages[i] || [],
+        next_cursor: i + 1 < pages.length ? "c" + (i + 1) : null,
+      };
+    const answer = fail ? { ok: false, status: 500, json: async () => ({}) } : { ok: true, status: 200, json: async () => body };
+    if (!hold) return Promise.resolve(answer);
+    return new Promise((resolve) => parked.push(() => resolve(answer)));
+  };
+  return { calls, release: () => { while (parked.length) parked.shift()(); } };
+}
+
+const feedEp = (n) => ({ guid: "g-" + n, title: "Feed episode " + n, audio_url: `https://x.test/f${n}.mp3`, duration_seconds: 3600, published_at: "2026-09-01" });
+const feedPage = (from) => Array.from({ length: 100 }, (_, k) => feedEp(from + k));
+
+test("a shared breadth episode cold-opens from page 2 of its show's list, playable, with its t= intact", async () => {
+  /* MUTATION: `const COLD_EPISODE_PAGES = 1` -> page 2 is never asked and the
+     page says "Episode not found."; red. MUTATION 2: render the hit with
+     `renderEpisode(id)` (dropping `{ t }`) -> no Play-from button; red.
+     MUTATION 3: drop the resolveMissingEpisode call from renderEpisode's
+     not-found branch (paint "Episode not found." there) -> no request; red. */
+  const m = mount({ hash: "#/episode/founders--g-150?t=90" });
+  const api = episodesEndpoint(m, [feedPage(0), feedPage(100)]);
+  m.evalIn("route()");
+  assert.match(m.view.innerHTML, /Loading episode…/, "never a blank page while it looks");
+  await ticks(30);
+  assert.strictEqual(api.calls.length, 2);
+  assert.match(api.calls[1], /\/api\/shows\/founders\/episodes\?cursor=c1$/);
+  assert.match(m.view.innerHTML, /Feed episode 150/);
+  assert.match(m.view.innerHTML, /data-ts="90"/, "the timestamp link's button survived the cold path");
+  assert.match(m.view.innerHTML, /class="play-btn"/, "and it plays");
+  const item = m.evalIn('state.itemIndex["founders--g-150"]');
+  assert.strictEqual(item.audio_url, "https://x.test/f150.mp3");
+  assert.strictEqual(item.show_id, "founders");
+  assert.strictEqual(item.artwork_url, "https://x.test/founders.png", "the show header's art, as a show page would carry it");
+  assert.strictEqual(m.ctx.location.hash, "#/episode/founders--g-150?t=90");
+});
+
+test("the cold lookup stops after 3 pages: not found, with a link to the show", async () => {
+  /* MUTATION: loop `page < 10` instead of COLD_EPISODE_PAGES -> 10 requests; red. */
+  const m = mount({ hash: "#/episode/founders--g-9999" });
+  const api = episodesEndpoint(m, Array.from({ length: 10 }, (_, p) => feedPage(p * 100)));
+  m.evalIn("route()");
+  await ticks(40);
+  assert.strictEqual(api.calls.length, 3);
+  assert.match(m.view.innerHTML, /Episode not found\./);
+  assert.match(m.view.innerHTML, /href="#\/show\/founders"/, "the way on is the show page");
+});
+
+test("a late answer never repaints a page re-rendered since (the render token)", async () => {
+  /* The same route, repainted with the episode now resolvable (a ↻ or a
+     settings switch after another surface seeded it), and the stale lookup
+     then fails. MUTATION: drop `isCurrentRender() &&` from stillHere -> the
+     failure paints "Couldn't load" over the real page; red. */
+  const m = mount({ hash: "#/episode/founders--g-5" });
+  const api = episodesEndpoint(m, [feedPage(0)], { hold: true, fail: true });
+  m.evalIn("route()");
+  assert.match(m.view.innerHTML, /Loading episode…/);
+  seed(m, { ...STATIC, id: "founders--g-5", title: "Seeded since" });
+  m.evalIn("renderCurrentPage()");
+  assert.match(m.view.innerHTML, /Seeded since/);
+  api.release();
+  await ticks(30);
+  assert.match(m.view.innerHTML, /Seeded since/, "the stale answer was dropped");
+  assert.doesNotMatch(m.view.innerHTML, /Couldn't load/);
+});
+
+test("a late answer never repaints another route (the route check)", async () => {
+  /* A render outside the router does not move the token, so the route is the
+     guard. MUTATION: drop `&& currentHash() === askedOn` -> the episode paints
+     over the other page; red. */
+  const m = mount({ hash: "#/episode/founders--g-5" });
+  const api = episodesEndpoint(m, [feedPage(0)], { hold: true });
+  m.ctx.renderEpisode("founders--g-5");
+  m.ctx.location.hash = "#/library";
+  m.view.innerHTML = "OTHER PAGE";
+  api.release();
+  await ticks(30);
+  assert.strictEqual(api.calls.length, 1, "the lookup did run");
+  assert.strictEqual(m.view.innerHTML, "OTHER PAGE");
+});
+
+test("an id that names no servable show is not found at once, with no request", async () => {
+  /* MUTATION: drop `!guid ||` -> `founders--` asks the endpoint; red.
+     MUTATION 2: drop `|| show_id.startsWith("pi:")` -> the pi: id asks an
+     endpoint that does not serve it; red. */
+  const m = mount();
+  const api = episodesEndpoint(m, [feedPage(0)]);
+  for (const id of ["solo", "--g-1", "founders--", "pi:77--g-1", "apple:founders"]) {
+    m.ctx.renderEpisode(id);
+    assert.match(m.view.innerHTML, /Episode not found\./, id);
+    assert.doesNotMatch(m.view.innerHTML, /Loading/, id);
+  }
+  await ticks(10);
+  assert.deepStrictEqual(api.calls, []);
+});
+
+test("a failed lookup says so with Try again, which runs the same lookup", async () => {
+  /* MUTATION: paint the failure without `retry` / bindRetry -> no data-retry
+     control is wired; red. */
+  const m = mount({ hash: "#/episode/founders--g-7?t=30" });
+  const api = episodesEndpoint(m, [feedPage(0)], { fail: true });
+  let retry = null;
+  m.view.querySelector = (sel) => (sel === "[data-retry]" && /data-retry/.test(m.view.innerHTML)
+    ? { addEventListener: (type, fn) => { if (type === "click") retry = fn; } } : null);
+  m.evalIn("route()");
+  await ticks(20);
+  assert.match(m.view.innerHTML, /Couldn't load this episode\./);
+  assert.ok(retry, "Try again is wired");
+  episodesEndpoint(m, [feedPage(0)]);
+  retry({ preventDefault() {} });
+  await ticks(20);
+  assert.match(m.view.innerHTML, /Feed episode 7/);
+  assert.match(m.view.innerHTML, /data-ts="30"/, "and the retry kept t=");
+  assert.strictEqual(api.calls.length, 1);
+});
+
+test("a feed the endpoint could not read (200, degraded, no episodes) is a failure with Try again, not \"not found\"", async () => {
+  /* MUTATION: drop the `|| (r.error && !r.episodes.length)` arm from the page
+     loop -> the empty degraded page reads as a miss and paints "Episode not
+     found." with no Try again; red. */
+  const m = mount({ hash: "#/episode/founders--g-7" });
+  const api = episodesEndpoint(m, [feedPage(0)], { degraded: true });
+  m.view.querySelector = () => null;
+  m.evalIn("route()");
+  await ticks(20);
+  assert.strictEqual(api.calls.length, 1);
+  assert.match(m.view.innerHTML, /Couldn't load this episode\./);
+  assert.match(m.view.innerHTML, /data-retry/, "with Try again");
+  assert.doesNotMatch(m.view.innerHTML, /Episode not found/);
+});
+
+test("the apple:<show>:<guid> spelling of an episode cold-opens under the id it was shared by", async () => {
+  /* MUTATION: drop `if (row.id !== id) snapshot(id, row)` -> the hit is
+     indexed only as founders--g-3 and the shared id is "not found"; red. */
+  const m = mount({ hash: "#/episode/" + encodeURIComponent("apple:founders:g-3") });
+  episodesEndpoint(m, [feedPage(0)]);
+  m.evalIn("route()");
+  await ticks(20);
+  assert.match(m.view.innerHTML, /Feed episode 3/);
+  assert.strictEqual(m.evalIn('state.itemIndex["apple:founders:g-3"]').audio_url, "https://x.test/f3.mp3");
 });

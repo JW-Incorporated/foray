@@ -10,8 +10,10 @@
  * What this suite pins, each with the one-line mutation that turns it red (all
  * run):
  *   (a) a show link is the bare show route, whatever the address bar says;
- *   (b) an episode link is the episode page only for a catalogue episode, else
- *       its show, else the publisher's Apple page, else no button;
+ *   (b) an episode link is the episode page for a catalogue episode and for a
+ *       breadth one whose id names a non-pi: show (SH-COLD), else its show,
+ *       else the publisher's Apple page, else no button; a pi: show's link
+ *       carries its shard key (/k/), else pod.link, else no button;
  *   (c) a draft Foray has no button and no link; nothing reads location;
  *   (d) the origin is the one constant, the API's own;
  *   (e) a listener's own playlist is FROZEN into the link: never its own id,
@@ -42,6 +44,7 @@ const assert = require("node:assert");
 const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
+const { pathToFileURL } = require("node:url");
 
 const ROOT = path.join(__dirname, "..");
 const APP_SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
@@ -169,6 +172,28 @@ test("(a) the show page renders a 44px Share button named for the show, beside F
   assert.match(m.view(), /<button type="button" class="share-btn" data-share="show" data-share-id="lex-fridman-podcast" aria-label="Share Lex Fridman Podcast">[\s\S]*?<\/button><button class="show-star[^"]*" data-show-star="lex-fridman-podcast"/);
 });
 
+test("(a) a shared breadth show link cold-opens on a fresh device through the id lookup", async () => {
+  /* CHARACTERIZATION for SH-COLD's refactor of resolveMissingShow (the `pi:`
+     shard lookup and this one now share one Loading / late-answer / miss /
+     Try again path); green on the code before it as well.
+     MUTATION: drop `else state.breadthShowCache[show_id] = row;` -> showById
+     never answers and the page stays on "Loading show…"; red. */
+  const m = appMount({ hash: "#/show/breadth-77" });
+  const asked = [];
+  m.ctx.fetch = (url) => {
+    asked.push(String(url));
+    return String(url).includes("api/shows/search?id=breadth-77")
+      ? Promise.resolve({ ok: true, status: 200, json: async () => ({ show: { show_id: "breadth-77", title: "Breadth Seventy-Seven", artwork_url: null, taxonomy_node_ids: [], tier: "breadth" } }) })
+      : new Promise(() => {});
+  };
+  m.ctx.renderShow("breadth-77");
+  assert.match(m.view(), /Loading show…/);
+  for (let i = 0; i < 20 && !m.view().includes("Breadth Seventy-Seven"); i++) await new Promise((r) => setImmediate(r));
+  assert.match(m.view(), /Breadth Seventy-Seven/);
+  assert.strictEqual(asked.filter((u) => u.includes("api/shows/search?id=")).length, 1);
+  assert.deepStrictEqual(link(m, { kind: "show", id: "breadth-77" }), { url: ORIGIN + "#/show/breadth-77", text: "Breadth Seventy-Seven" });
+});
+
 /* (b) ------------------------------------------------------------------- */
 
 test("(b) a catalogue episode links to its own page, encoded", () => {
@@ -179,30 +204,98 @@ test("(b) a catalogue episode links to its own page, encoded", () => {
   assert.strictEqual(link(m, { kind: "episode", id }).text, "Episode " + id + " · Lex Fridman Podcast");
 });
 
-test("(b) an episode outside the catalogue gets its show's link (naming the episode), then Apple's page, then nothing", () => {
-  /* MUTATION: make the `inDiscoverPool(item.id)` branch unconditional -> a
-     breadth episode emits #/episode/<id>, which a fresh device cannot resolve. */
+test("(b) a breadth episode links to its own page, its id naming its show; a pi: or unparseable id falls back to its show, then Apple's page, then nothing", () => {
+  /* SH-COLD: a fresh device pages the show named in the id for it
+     (resolveMissingEpisode, test/episode-deeplink.test.js).
+     MUTATION: delete shareLinkFor's `localEpisodeIdentity` branch -> the
+     breadth episode gets #/show/founders again; red on the first assert.
+     MUTATION 2: drop `!idShow.startsWith("pi:")` -> the pi: episode (whose
+     endpoint does not answer yet) gets an #/episode/ link; red.
+     MUTATION 3: drop the `item.show_id` pi: check -> `x--1` of a pi: show
+     gets an #/episode/ link the fresh device would page the wrong show for; red. */
   const m = appMount();
   const breadth = ep("founders--guid-9", { show_id: "founders", title: "Breadth one" });
   assert.deepStrictEqual(link(m, { kind: "episode", item: breadth }),
-    { url: ORIGIN + "#/show/founders", text: "Breadth one · Founders" });
+    { url: ORIGIN + "#/episode/founders--guid-9", text: "Breadth one · Founders" });
+  const urlGuid = ep("lex-fridman-podcast--https://lexfridman.com/?p=1", { show_id: "lex-fridman-podcast" });
+  assert.strictEqual(link(m, { kind: "episode", item: urlGuid }).url, ORIGIN + "#/episode/" + encodeURIComponent(urlGuid.id), "encoded");
+  const fromSearch = ep("apple:founders:g-1", { title: "From search" });
+  assert.strictEqual(link(m, { kind: "episode", item: fromSearch }).url, ORIGIN + "#/episode/" + encodeURIComponent("apple:founders:g-1"));
+
+  const piEpisode = ep("pi:77--g", { show: "Nowhere", apple_episode_url: "https://podcasts.apple.com/us/podcast/x/id1?i=3" });
+  assert.strictEqual(link(m, { kind: "episode", item: piEpisode }).url, "https://podcasts.apple.com/us/podcast/x/id1?i=3");
   const onlyApple = ep("x--1", { show: "Nowhere", show_id: "pi:77", apple_episode_url: "https://podcasts.apple.com/us/podcast/x/id1?i=2" });
   assert.strictEqual(link(m, { kind: "episode", item: onlyApple }).url, "https://podcasts.apple.com/us/podcast/x/id1?i=2");
-  const nothing = ep("x--2", { show: "Nowhere", show_id: "pi:77", apple_episode_url: "javascript:alert(1)" });
+  const unparsed = ep("solo", { title: "Solo" });
+  assert.strictEqual(link(m, { kind: "episode", item: unparsed }).url, ORIGIN + "#/show/founders", "an id that does not parse keeps its show's link");
+  const nothing = ep("pi:77--2", { show: "Nowhere", apple_episode_url: "javascript:alert(1)" });
   assert.strictEqual(link(m, { kind: "episode", item: nothing }), null);
   assert.strictEqual(m.ctx.shareBtn({ kind: "episode", id: nothing.id, item: nothing, title: "t" }), "");
 });
 
-test("(b) a pi: show with no Apple id has no link and no button; with one, pod.link", () => {
-  /* MUTATION: let a pi: id fall through to the #/show route -> a link no
-     recipient can open (showById never cold-resolves pi:). */
+test("(b) a pi: show links with its shard key (title, else author); with no key, pod.link; with neither, no link and no button", () => {
+  /* SH-COLD: the key is what lets a fresh device find the row
+     (resolveMissingShow, test/offline-search.test.js).
+     MUTATION: delete the `if (key) return` line -> pod.link / null; red.
+     MUTATION 2: drop `|| SearchEngine.shardKeyForQuery(s.artist_name)` -> the
+     title with no a-z0-9 token has no key and falls to pod.link; red. */
   const m = appMount({ hash: "#/show/pi:42" });
   m.state.shardShowCache["pi:42"] = { show_id: "pi:42", title: "Shard show", tier: "breadth" };
-  assert.strictEqual(link(m, { kind: "show", id: "pi:42" }), null);
-  m.ctx.renderShow("pi:42");
-  assert.ok(m.view().includes("Shard show") && !m.view().includes("share-btn"), "rendered, with no share button");
-  m.state.shardShowCache["pi:42"].apple_collection_id = 1434243584;
-  assert.strictEqual(link(m, { kind: "show", id: "pi:42" }).url, "https://pod.link/1434243584");
+  assert.deepStrictEqual(link(m, { kind: "show", id: "pi:42" }),
+    { url: ORIGIN + "#/show/pi%3A42/k/sh", text: "Shard show" }, "the longest title token keys the shard");
+  m.state.shardShowCache["pi:43"] = { show_id: "pi:43", title: "日本の話", artist_name: "Taro Yamada", apple_collection_id: 1434243584 };
+  assert.strictEqual(link(m, { kind: "show", id: "pi:43" }).url, ORIGIN + "#/show/pi%3A43/k/ya", "the author keys it when the title cannot");
+  m.state.shardShowCache["pi:44"] = { show_id: "pi:44", title: "日本の話", tier: "breadth" };
+  assert.strictEqual(link(m, { kind: "show", id: "pi:44" }), null);
+  m.ctx.location.hash = "#/show/pi:44";
+  m.ctx.renderShow("pi:44");
+  assert.ok(m.view().includes("日本の話") && !m.view().includes("share-btn"), "rendered, with no share button");
+  m.state.shardShowCache["pi:44"].apple_collection_id = 1434243584;
+  assert.strictEqual(link(m, { kind: "show", id: "pi:44" }).url, "https://pod.link/1434243584");
+});
+
+test("(b) a pi: link's key is one tools/shows/shard-build.mjs files that row under, so client and builder cannot drift", async () => {
+  /* Mirrors the builder: tokenPrefixesFor over the same title and author.
+     MUTATION: derive the key as
+     `SearchEngine.normalizeShardPrefixKey(String(s.title).slice(0, 2).toLowerCase())`
+     -> "¡Café Tacvba!" keys "__", a shard the builder never put it in; red. */
+  const builder = await import(pathToFileURL(path.join(ROOT, "tools", "shows", "shard-build.mjs")).href);
+  const m = appMount();
+  const cases = [
+    { title: "¡Café Tacvba!", author: null },
+    { title: "The Daily", author: "The New York Times" },
+    { title: "Économie & Société", author: "Radio France" },
+    { title: "99% Invisible", author: "Roman Mars" },
+    { title: "X", author: null },
+    { title: "日本の話", author: "Taro Yamada" },
+  ];
+  cases.forEach(({ title, author }, i) => {
+    const id = "pi:" + (900 + i);
+    m.state.shardShowCache[id] = { show_id: id, title, artist_name: author };
+    const url = link(m, { kind: "show", id }).url;
+    const key = decodeURIComponent(/\/k\/([^/]+)$/.exec(url)[1]);
+    const prefixes = builder.tokenPrefixesFor({ title, itunesAuthor: author });
+    assert.ok(prefixes.includes(key), `${title}: key ${key} not among the builder's ${prefixes}`);
+    assert.strictEqual(m.ctx.parseShowRoute(url.slice(ORIGIN.length)).key, key, "and the router reads it back");
+  });
+});
+
+test("(b) parseShowRoute round-trips id, /k/ key and /q/ query; every older spelling parses as before", () => {
+  /* MUTATION: drop the `(?:\/k\/([^/]+))?` group -> `pi:123/k/ab` no longer
+     parses (the id segment cannot hold a `/`); red.
+     MUTATION 2: emit `/q/` before `/k/` in showRoutePath -> the key is read as
+     part of the query; red on the round trip. */
+  const m = appMount();
+  const parse = (h) => JSON.parse(JSON.stringify(m.ctx.parseShowRoute(h)));
+  assert.deepStrictEqual(parse("#/show/pi%3A123/k/ab"), { id: "pi:123", key: "ab", query: "" });
+  assert.deepStrictEqual(parse("#/show/pi%3A123/k/ab/q/foo"), { id: "pi:123", key: "ab", query: "foo" });
+  assert.deepStrictEqual(parse("#/show/founders"), { id: "founders", key: "", query: "" });
+  assert.deepStrictEqual(parse("#/show/founders/q/k%2Fab"), { id: "founders", key: "", query: "k/ab" });
+  assert.deepStrictEqual(parse("#/show/founders/q/k/ab"), { id: "founders", key: "", query: "k/ab" }, "a raw /k/ after /q/ is query text");
+  for (const [id, query, key] of [["pi:123", "", "ab"], ["pi:123", "big thing", "a_"], ["x/y?z", "q/r", ""], ["founders", "", ""]]) {
+    assert.deepStrictEqual(parse("#" + m.ctx.showRoutePath(id, query, key)), { id, key, query });
+  }
+  assert.strictEqual(m.ctx.showRouteHash("founders", "foo"), "#/show/founders/q/foo", "the two-argument callers are unchanged");
 });
 
 test("(b) the episode page's action row carries the share button", () => {

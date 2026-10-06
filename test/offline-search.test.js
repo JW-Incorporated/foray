@@ -9,7 +9,9 @@
  * Also covers `showById`'s `pi:` resolution and the `#/show/pi:<n>` route
  * S-05 adds: a shard result renders a show page it has never seen before,
  * from the shard row + S-02's header fields (artwork, title, editorial
- * note absence handled the same way a breadth-tier show already is).
+ * note absence handled the same way a breadth-tier show already is), and
+ * SH-COLD's cold open of a shared `#/show/pi:<n>/k/<key>` link: one shard
+ * request with a key, none without one or with a malformed one.
  *
  * Every test names the mutation that kills it.
  *
@@ -284,9 +286,9 @@ test("offline: no OTHER request fires either — the directory and catalogue pas
 test("a pi: result opens a page with a header and (when present) episodes, from the shard row alone", async () => {
   /* MUTATION: drop the `pi:` branch from showById, or fail to seed
      state.shardShowCache from the shard pass — renderShow would then call
-     resolveMissingShow, which for a `pi:` id renders "Show not found."
-     immediately (no fallback lookup — see that function's own header), and
-     this assertion would fail on the title. */
+     resolveMissingShow, which for a `pi:` id with no /k/ shard key in the
+     route renders "Show not found." with no request (see that function's
+     own header), and this assertion would fail on the title. */
   const m = mount({ onLine: true });
   m.type("science friday");
   await settled(m);
@@ -320,17 +322,95 @@ test("#/show/pi:<n> route: the URL-encoded colon still resolves (encodeURICompon
   assert.ok(view.innerHTML.includes("Science Friday"));
 });
 
-test("a pi: id with no cached shard result renders honest 'Show not found.' immediately — no network fallback", async () => {
-  /* S-05's own scope decision (see resolveMissingShow's header): a pi: id
-     has no id-map/network fallback, because no shard-index release exists
-     yet. A cold open must not hang on "Loading show..." forever. */
+test("a pi: id with no /k/ key renders honest 'Show not found.' immediately — no request of any kind", async () => {
+  /* showById's header: a pi: row is found only in its shard, and only a
+     shared link's /k/<key> names that shard. With none there is nothing to
+     ask, so a cold open must neither hang on "Loading show..." nor guess.
+     MUTATION: drop `|| SearchEngine.shardKeyForQuery(key) !== key`
+     from resolveMissingShow's pi: guard -> it asks `shards/.json` (the empty
+     key); red on the zero. */
   const m = mount({ onLine: true });
   m.ctx.location.hash = "#/show/pi:999999";
   m.evalIn("renderCurrentPage()");
   const view = m.byId.get("view");
   assert.ok(view.innerHTML.includes("Show not found."));
-  // No id-lookup request of any kind for a pi: id.
-  assert.strictEqual(m.apiCalls().filter((u) => u.includes("id=pi")).length, 0);
+  assert.doesNotMatch(view.innerHTML, /Loading/);
+  await new Promise((r) => setImmediate(r));
+  assert.deepStrictEqual(m.apiCalls(), [], "no shard, id or search request");
+});
+
+test("a shared #/show/pi:<n>/k/<key> link cold-opens on a fresh device from exactly one shard request", async () => {
+  /* SH-COLD. MUTATION: make resolveMissingShow's pi: guard `if (true)` (the
+     old "Show not found." for every pi: id) -> no request and no page; red. MUTATION 2: match `r.id === n` (number vs string) ->
+     the row is never found; red. */
+  const m = mount({ onLine: true });
+  m.ctx.location.hash = "#/show/pi%3A555/k/sc";
+  m.evalIn("renderCurrentPage()");
+  const view = m.byId.get("view");
+  assert.match(view.innerHTML, /Loading show…/, "never a blank page while it looks");
+  await waitFor(() => view.innerHTML.includes("Science Friday"));
+  assert.deepStrictEqual(m.shardCalls().map((u) => u.replace(/^.*\/api\//, "api/")), ["api/shows/index/shards/sc.json"]);
+  assert.strictEqual(m.evalIn('showById("pi:555")').artwork_url, "https://x.test/sf.png");
+  assert.strictEqual(m.evalIn('rememberedShardShow("pi:555")').title, "Science Friday", "remembered (renderShow's rememberShardShow), so a reload resolves it with no request");
+});
+
+test("a malformed /k/ hint or pi: id is not found at once, with no request", async () => {
+  /* MUTATION: drop the `shardKeyForQuery(key) !== key` check -> each
+     bad key is requested; red. MUTATION 2: drop the `/^\d+$/` id check ->
+     `pi:abc` is requested; red. MUTATION 3: check with
+     `normalizeShardPrefixKey(key) !== key` instead -> `/k/__`, a key
+     shareLinkFor never produces, is requested; red. */
+  const m = mount({ onLine: true });
+  const view = m.byId.get("view");
+  for (const h of ["#/show/pi%3A555/k/S!", "#/show/pi%3A555/k/__", "#/show/pi%3A555/k/abc", "#/show/pi%3A555/k/_a", "#/show/pi%3A555/k/%", "#/show/pi%3Aabc/k/sc", "#/show/pi%3A/k/sc"]) {
+    m.ctx.location.hash = h;
+    m.evalIn("renderCurrentPage()");
+    assert.ok(view.innerHTML.includes("Show not found."), h);
+  }
+  await new Promise((r) => setImmediate(r));
+  assert.deepStrictEqual(m.apiCalls(), []);
+});
+
+test("a shard without the row says 'Show not found.'; a shard that failed says so, with Try again", async () => {
+  /* fetchShardRows folds a failure into [], so the memo is what tells them
+     apart. MUTATION: make the shard lookup answer `null` for every empty
+     result (drop its `shardMemoryCache.has(key) ? { row: null } :` arm) -> the
+     miss says "Couldn't load"; red. MUTATION 2: answer `{ row: null }` for
+     every empty result -> the 404 says "Show not found."; red. */
+  const m = mount({ onLine: true });
+  const view = m.byId.get("view");
+  m.ctx.location.hash = "#/show/pi%3A556/k/sc";
+  m.evalIn("renderCurrentPage()");
+  await waitFor(() => !view.innerHTML.includes("Loading"));
+  assert.ok(view.innerHTML.includes("Show not found."), view.innerHTML);
+  m.ctx.location.hash = "#/show/pi%3A555/k/zz"; // the harness answers any other shard 404
+  m.evalIn("renderCurrentPage()");
+  await waitFor(() => !view.innerHTML.includes("Loading"));
+  assert.match(view.innerHTML, /Couldn't load this show\./);
+  assert.match(view.innerHTML, /data-retry/);
+});
+
+test("a shard that answers after the listener left repaints nothing", async () => {
+  /* MUTATION: delete resolveMissingShow's
+     `if (!isCurrentRender() || !onShowRoute(show_id)) return;` line -> Science
+     Friday paints over the page the listener moved to; red. */
+  const m = mount({ onLine: true });
+  const view = m.byId.get("view");
+  const real = m.ctx.fetch;
+  let release = null;
+  m.ctx.fetch = (url) => (String(url).includes("shards/sc.json")
+    ? new Promise((r) => { release = () => r(real(url)); m.calls.push(String(url)); })
+    : real(url));
+  m.ctx.location.hash = "#/show/pi%3A555/k/sc";
+  m.evalIn("renderCurrentPage()");
+  await waitFor(() => release !== null);
+  m.ctx.location.hash = "#/show/lex-fridman-podcast";
+  m.evalIn("renderCurrentPage()");
+  assert.ok(view.innerHTML.includes("Lex Fridman Podcast"));
+  release();
+  await new Promise((r) => setTimeout(r, 20));
+  assert.ok(!view.innerHTML.includes("Science Friday"), "the late shard did not repaint");
+  assert.ok(view.innerHTML.includes("Lex Fridman Podcast"));
 });
 
 test("a curated show_id is unaffected by the pi: branch — showById's existing rule for a real slug still applies", async () => {
