@@ -3041,3 +3041,47 @@ test("CH-10: client.js indexes one list — no read of the page's build is left"
   assert.ok(builds >= 2, `precondition: playForay and attachForay build a queue; found ${builds}`);
   assert.equal(kept, builds, "every Foray queue build is stored as foray.playable");
 });
+
+/* CH-26 (P1-12, docs/roadmap/code-health.md): `ForayPlayer.cycleRate`,
+   `stripModel`, `stripSummary` and `lastVoiceFallback()` were public surface
+   nothing called — four entry points app.js could start calling, two of them a
+   second opinion about state the snapshot already carries (`voiceFallback`).
+   The two tests below read SOURCE, because client.js is a DOM module no node
+   harness boots: the shipped callers of the bridge are app.js, index.html and
+   sw.js, and `window.ForayPlayer` is the `const ForayPlayer = { … }` literal. */
+const CH26_DEAD = ["cycleRate", "stripModel", "stripSummary", "lastVoiceFallback"];
+
+/** The member names of client.js's `const ForayPlayer = { … }` literal (the
+    object `window.ForayPlayer` publishes): every key at the literal's own
+    two-space indent, method, getter or shorthand alike. */
+function forayPlayerMembers() {
+  const client = fs.readFileSync(path.join(ROOT, "player/client.js"), "utf8");
+  const start = client.indexOf("\nconst ForayPlayer = {\n");
+  assert.ok(start >= 0, "precondition: client.js declares `const ForayPlayer = {`");
+  const end = client.indexOf("\n};\n", start);
+  assert.ok(end > start, "precondition: the ForayPlayer literal closes with `};` at column 0");
+  const body = client.slice(start, end).replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.match(client, /\nwindow\.ForayPlayer = ForayPlayer;\n/, "precondition: the literal is what the page sees");
+  return new Set([...body.matchAll(/^ {2}(?:async |get |set )?([A-Za-z_$][\w$]*)\s*[(,:]/gm)].map((m) => m[1]));
+}
+
+test("CH-26: nothing shipped calls ForayPlayer.cycleRate, stripModel, stripSummary or lastVoiceFallback", () => {
+  /* Characterization: the premise of the deletion. A caller in any of the three
+     shipped classic files would make the deletion a crash on that path.
+     MUTATION: add `window.ForayPlayer.stripSummary(m)` (or `?.cycleRate()`) to
+     app.js — red. The surface half proves the reader is not vacuous: drop
+     `stripTally,` from the literal — red. */
+  const names = CH26_DEAD.join("|");
+  const dead = new RegExp(String.raw`\.(?:${names})\b|\[\s*["'\x60](?:${names})["'\x60]\s*\]`, "g");
+  for (const rel of ["app.js", "index.html", "sw.js"]) {
+    const src = fs.readFileSync(path.join(ROOT, rel), "utf8");
+    assert.deepEqual((src.match(dead) ?? []), [], `${rel} reads none of the four members`);
+  }
+  const members = forayPlayerMembers();
+  for (const kept of ["stripInto", "stripTally", "segmentStripHtml", "applyStripGrow", "setPlaybackRate", "rateStops", "playbackRate"]) {
+    assert.ok(members.has(kept), `ForayPlayer still publishes ${kept}`);
+  }
+  const client = fs.readFileSync(path.join(ROOT, "player/client.js"), "utf8");
+  assert.match(client, /voiceFallback: manager \? manager\.lastVoiceFallback : null,/,
+    "the snapshot keeps carrying the manager's lastVoiceFallback (parity)");
+});
