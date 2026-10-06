@@ -171,7 +171,7 @@ test("previous/next clip are a labelled row: words, 44px tall, next disabled on 
      MUTATION: drop either setAttribute -> red. */
   assert.match(CODE, /clipPrev\.setAttribute\("aria-label", "Previous clip"\);/);
   assert.match(CODE, /clipNext\.setAttribute\("aria-label", "Next clip"\);/);
-  assert.match(CODE, /ui\.clipNext\.disabled = Boolean\(foray\) && foray\.index >= foray\.resolved\.playable\.length - 1;/);
+  assert.match(CODE, /ui\.clipNext\.disabled = Boolean\(foray\) && foray\.index >= foray\.playable\.length - 1;/);
   assert.doesNotMatch(CODE, /ui\.fwdBtn\.disabled/, "30↻ is never disabled — it is a seek, not a clip change");
   assert.match(CODE, /scroll\.append\(sArt, sTitle, sShow, sWhy, scrub, times, row, clips, row2,/, "the clip row sits under the seek pair");
   assert.ok(px(valueOf(".fp-clip, .fy-clip", "min-height")) >= 44);
