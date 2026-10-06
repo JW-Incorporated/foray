@@ -1275,7 +1275,7 @@ it rather than re-argued: each is a number the trend can now answer for.
 - **Denied (founder-approved label; the overlord reviews and labels under
   standing approval — never apply it yourself):** `backend/src/`, `.github/`,
   `tools/ci/`, `docs/DECISIONS.md`, `docs/adr/`, `docs/roles.md`,
-  `docs/agents/routine-invariants.md`, `.claude/`, `CLAUDE.md`,
+  `docs/agents/routine-invariants.md`, `docs/legal/`, `.claude/`, `CLAUDE.md`,
   `tools/test-search.mjs`, `tools/validate-semantic-index.mjs`,
   `tools/events-server.mjs`, `tools/mobile/{wire-signing, inject-app-icon,
   inject-splash, release-ci}.mjs`.

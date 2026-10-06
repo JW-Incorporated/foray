@@ -19,7 +19,7 @@ Qwen agents are capable coders, but they must not be given judgement, ambiguity,
 - product, UX or copy judgement, or a choice between designs;
 - security, credentials, auth, RLS, or spend (keys, caps, outbound traffic to third-party hosts);
 - Swift, Java or other native code, or a measurement on a device;
-- a **DENIED** path in `tools/ci/path-policy.mjs`: `.github/`, `.claude/`, `CLAUDE.md`, `docs/DECISIONS.md`, `docs/adr/`, `docs/roles.md`, `backend/src/`, `tools/ci/`, `tools/release/`, the listed `tools/mobile/*` files, `mobile/**/package.json`, `Package.swift`, `*.gradle` and the other DENIED_PATTERNS. Unlisted paths such as `api/`, `index.html` and `backend/migrations/` also wait for a human merge;
+- a **DENIED** path in `tools/ci/path-policy.mjs`: `.github/`, `.claude/`, `CLAUDE.md`, `docs/DECISIONS.md`, `docs/adr/`, `docs/roles.md`, `docs/legal/` (since 2026-10-05: question 34 below, after #1083/#1084 auto-merged new privacy-policy sentences), `backend/src/`, `tools/ci/`, `tools/release/`, the listed `tools/mobile/*` files, `mobile/**/package.json`, `Package.swift`, `*.gradle` and the other DENIED_PATTERNS. Unlisted paths such as `api/`, `index.html` and `backend/migrations/` also wait for a human merge;
 - prompt or LLM design;
 - a cross-cutting refactor;
 - diagnosing from field records (CI logs, run reports, probe data) or curating data by hand.
@@ -86,7 +86,7 @@ Every task proceeds on the default unless a ruling overrides it. Where two packa
 33. **Sharing** (listener): links use the Pages origin `https://jw-incorporated.github.io/foray/`. Build all four Guideline 1.2 pieces before the Foray option is enabled for anyone but the founders. Blocking abusive users is operator-side only. A JW Labs LLC mailbox is the public contact address.
 
 **Legal wording**
-34. **Privacy-policy sentences** (player bookmarks/downloads/alerts; listener share/report; catalogue personas/`card_shown`/observed events): each package files its sentences for one `[DECIDE]` approval. The exact wording is in each plan.
+34. **Privacy-policy sentences** (player bookmarks/downloads/alerts; listener share/report; catalogue personas/`card_shown`/observed events): each package files its sentences for one `[DECIDE]` approval. The exact wording is in each plan. Enforced since 2026-10-05: `docs/legal/` is on `DENIED_PREFIXES`, so a PR that touches it never auto-merges, and its enforcing `path-policy` check stays red until the `founder-approved` label is applied.
 
 **Repo and machine**
 35. **Worktree cleanup** (ops Q4): remove the ~208 worktrees whose PR merged, and their branches. Prune the stale `%TEMP%` entries and delete the 47 stray files under `.claude/worktrees/`. Keep anything dirty and every branch that has no PR. A dry-run listing comes first.

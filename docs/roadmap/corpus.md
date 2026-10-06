@@ -78,7 +78,7 @@ Planned 2026-09-25 against `origin/main` 0b2b8f92; revised 2026-09-25 after revi
 - One test process at a time; run the named suite, then `node --test "test/suite-integrity.test.js"`.
 - Every test comment names the one-line mutation that turns it red (CLAUDE.md § "A green test is not evidence").
 - Commit trailers: `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>` and `Claude-Session: https://claude.ai/code/session_017FFM7M73d6sEYQiHroVesz`. PR body ends with `🤖 Generated with [Claude Code](https://claude.com/claude-code)` and the session URL. PRs open as DRAFT (`gh pr create --draft`). Never babysit a PR.
-- DENIED paths (`tools/ci/path-policy.mjs:61-230`): `.github/`, `.claude/`, `CLAUDE.md`, `docs/DECISIONS.md`, `docs/adr/`, `docs/roles.md`, `backend/src/`, `tools/ci/`, `tools/release/`, listed `tools/mobile/*` files, `test/release-gates.test.js`. `api/` and `index.html` are unlisted (human merge). A qwen task that would need any of these stops.
+- DENIED paths (`tools/ci/path-policy.mjs:61-230`): `.github/`, `.claude/`, `CLAUDE.md`, `docs/DECISIONS.md`, `docs/adr/`, `docs/roles.md`, `docs/legal/`, `backend/src/`, `tools/ci/`, `tools/release/`, listed `tools/mobile/*` files, `test/release-gates.test.js`. `api/` and `index.html` are unlisted (human merge). A qwen task that would need any of these stops.
 - No network in any test. No credential is ever read, printed or written by a test.
 - No task edits a module another task created unless its depends-on lists that task; shared files are only `test/suite-integrity.test.js` (one line each) and `tools/foraycorpus-export/README.md` (append one paragraph).
 

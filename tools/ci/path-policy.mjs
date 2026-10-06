@@ -66,6 +66,23 @@ export const DENIED_PREFIXES = [
   "docs/adr/",
   "docs/roles.md",
   "docs/agents/routine-invariants.md",
+  // The published legal text (2026-10-05): the privacy policy, the store
+  // data-safety answers, the third-party notices and the licence files. Founder
+  // rule (docs/roadmap/README.md founder question 34, and the HUMAN-ACTIONS #125
+  // convention): every NEW privacy-policy sentence gets the founder's approval
+  // before it merges. That rule lived only in prose, and `docs/` is allowlisted,
+  // so the policy contradicted it: on 2026-10-05 PRs #1083 (chapter list) and
+  // #1084 (share links) auto-merged new docs/legal/privacy-policy.md sentences
+  // before the founder had seen them (he approved them afterwards, recorded on
+  // both PRs). #125 had already worked around the gap by hand with `hold`, which
+  // only works when the author remembers. Denied as a directory so data-safety.md,
+  // third-party-notices.md and the next file placed here are governed from birth;
+  // nothing generates files under docs/legal/, so no bot PR depends on landing
+  // here unread. Cost: a feature PR that adds a disclosure never auto-merges and
+  // its path-policy check is red until it carries `founder-approved` - the
+  // approval Q34 asks for anyway. The label here means the FOUNDER read the new
+  // sentences, not a standing approval exercised on his behalf.
+  "docs/legal/",
   // Was `backend/src/config/` (2026-07-24). Widened to the whole source tree on
   // 2026-08-16 in the same change that allowlisted `backend/test/`: the argument
   // for letting tests land unread is precisely that they cannot change
