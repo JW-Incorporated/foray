@@ -17,7 +17,7 @@ Source of truth for a cleared session. Update on every deliverable.
 | 0a Eyes | done | tools/ui-lab/ |
 | 0b Judge | done | calibrated, accuracy 100% |
 | 0c Test classification | done | docs/redesign-2026/test-classification.md |
-| 0d Split app.js | not started | |
+| 0d Split app.js | done | merged 2614fc29; see split-notes.md |
 | 0e Lab build path | not started | needs owner Apple + Play setup |
 | 1 Research | done | docs/redesign-2026/research/, design-brief.md |
 | 2 Directions | not started | Fable art directors |
@@ -67,3 +67,4 @@ Source of truth for a cleared session. Update on every deliverable.
 - 2026-10-05/06 — 0b Judge done, calibrated, accuracy 100%: `docs/redesign-2026/judge/`.
 - 2026-10-05/06 — 0c Test classification done: `docs/redesign-2026/test-classification.md`.
 - 2026-10-05/06 — 1 Research done: `docs/redesign-2026/research/` (7 notes) and `docs/redesign-2026/design-brief.md`.
+- 2026-10-05/06 — 0d Split app.js merged into trunk (2614fc29). node --check clean; run-suites had 10 Windows CRLF failures identical to the pre-merge trunk (not caused by the split).
