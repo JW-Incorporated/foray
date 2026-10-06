@@ -14,9 +14,11 @@ import Foundation
 ///   (`DownloadPolicy.sessionIdentifier`), so it continues while the app is
 ///   suspended, fetching the URL the probe landed on.
 ///
-/// WITHOUT THE APPDELEGATE HOOK. `handleEventsForBackgroundURLSession` is
-/// forwarded by a patch PQ-21 adds to the generated AppDelegate. Until then,
-/// a transfer that finishes while the app is suspended is still delivered:
+/// THE APPDELEGATE HOOK. `handleEventsForBackgroundURLSession` is forwarded
+/// here by the method `tools/mobile/inject-background-audio.mjs` writes into
+/// the generated AppDelegate (PQ-21); the shell build re-checks it is there.
+/// The hook is not what makes a download land: a transfer that finishes while
+/// the app is suspended is still delivered if the hook is missing, because
 /// iOS replays the session's delegate events when the app next creates the
 /// session with this identifier (on the plugin's `load()`), and a transfer
 /// that finishes in the foreground needs no hook at all. What the hook adds

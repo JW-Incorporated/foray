@@ -15,12 +15,15 @@
  * and no bundle (there is no bundler in this repo), because the plugin is
  * compiled into the app by `cap sync` from `mobile/package.json`. Like
  * `foray-vault/package.json` says of itself (`//no-js-entry`), the plugin has
- * no JS entry on purpose — THIS file is its web half. The iOS half (a
- * background `URLSession` store) is PQ-20; the Android half (the system
- * `DownloadManager`) is PQ-22; neither exists yet, so on a shell built before
- * them every call answers `{ ok: false }` through the same deadline that
- * guards a hung one, and the page shows "Download failed" rather than a
- * spinner that never ends.
+ * no JS entry on purpose — THIS file is its web half. Both native halves
+ * exist and `mobile/package.json` declares the plugin (PQ-21): the iOS half (a
+ * background `URLSession` store, PQ-20) is
+ * `mobile/plugins/foray-downloads/ios/Sources/ForayDownloadsPlugin/`, the
+ * Android half (the system `DownloadManager`, PQ-22) is
+ * `mobile/plugins/foray-downloads/android/src/main/java/ai/jwlabs/foura/downloads/`.
+ * The `{ ok: false }` deadline path below is for a bridge that hangs, or a
+ * shell built without the plugin: every call answers through it, and the
+ * page shows "Download failed" rather than a spinner that never ends.
  *
  * WHEN THERE IS NO BRIDGE. `createDownloadBridge` returns `null`, and the page
  * draws no Download control at all (PQ-18: a web build never downloads —

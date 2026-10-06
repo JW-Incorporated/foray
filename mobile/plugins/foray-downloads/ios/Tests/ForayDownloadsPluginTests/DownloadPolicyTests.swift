@@ -5,9 +5,10 @@ import XCTest
 /// checked without a network or a background session. Each test names the
 /// mutation that turns it red.
 ///
-/// These run once ci.yml's `ios-kit` gains a `swift test (foray-downloads,
-/// iOS Simulator)` step mirroring foray-tts's; the package links Capacitor,
-/// which ships iOS slices only, so a host `swift test` cannot build it.
+/// These run in ci.yml's `ios-kit` job, in the `swift test (foray-downloads,
+/// iOS Simulator)` step beside foray-tts's (CH-06); the package links
+/// Capacitor, which ships iOS slices only, so a host `swift test` cannot
+/// build it.
 final class DownloadPolicyTests: XCTestCase {
     private let enclosure = URL(string: "https://dts.podtrac.com/redirect.mp3/example.com/ep.mp3")!
     private let ua = "4a/2026100401 (+https://jw-incorporated.github.io/foray/)"

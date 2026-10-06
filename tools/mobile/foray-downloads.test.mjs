@@ -4,16 +4,17 @@
  * fetches an episode's audio into `Application Support/foray-downloads/`,
  * kept out of backups, with a JSON index beside the files.
  *
- * WHAT THIS CAN AND CANNOT PROVE, said plainly. No Swift toolchain runs here,
- * and until PQ-21 declares the plugin in mobile/package.json no CI job compiles
- * it either (`ios-build.yml` folds in only declared `file:` plugins; `ios-kit`
- * runs only the packages it names). The rules are in `DownloadPolicy.swift`,
- * pure, with XCTests in `DownloadPolicyTests.swift` that run once ios-kit gains
- * a foray-downloads step. So this suite pins the SOURCE facts the contract
- * rests on — the plugin name, method set and events the web half
- * (`player/download-bridge.js`) calls, the directory, the backup exclusion,
- * the cellular switch, the GET probe, the redirect cap, the 403 mapping — so
- * that deleting or weakening one of them fails CI today, uncompiled.
+ * WHAT THIS CAN AND CANNOT PROVE, said plainly. No Swift toolchain runs here.
+ * mobile/package.json declares the plugin (PQ-21), so `ios-build.yml`'s
+ * `cap sync` compiles it into the shell, and the rules — `DownloadPolicy.swift`,
+ * pure — are run by the XCTests in `DownloadPolicyTests.swift` in ci.yml's
+ * ios-kit job (CH-06; the last test below pins that step). That job is a
+ * macOS one and runs only when a Swift path changes. So this suite pins the
+ * SOURCE facts the contract rests on — the plugin name, method set and events
+ * the web half (`player/download-bridge.js`) calls, the directory, the backup
+ * exclusion, the cellular switch, the GET probe, the redirect cap, the 403
+ * mapping — so that deleting or weakening one of them fails on every run,
+ * with no toolchain.
  *
  * Every pattern is matched against CODE with comments stripped: the files
  * explain themselves at length, and a comment naming an API is not a call.
@@ -238,10 +239,12 @@ test("the package is a self-contained SwiftPM plugin with XCTests for each polic
 
 /* ─────────── PQ-22 (#29): the Android half — DownloadManager ───────────
  *
- * Same honesty as above, one platform over. No JDK runs in this suite, and
- * until PQ-21 declares the plugin in mobile/package.json `cap sync` never
- * includes `:foray-downloads`, so android-build.yml does not compile this Java
- * either. These pins hold the SOURCE facts: the name, the seven methods and
+ * Same honesty as above, one platform over. No JDK runs in this suite. Since
+ * PQ-21 declared the plugin, `cap sync` includes `:foray-downloads`, so
+ * android-build.yml compiles this Java and its native unit-test step runs
+ * `DownloadRulesTest` (CH-06; pinned by the last test below), but only on the
+ * pull requests its path filter selects. These pins hold the SOURCE facts
+ * on every run: the name, the seven methods and
  * three events against download-bridge.js, the Gradle/manifest/package
  * agreement, the destination (never internal storage handed to
  * DownloadManager; the finished file in the no-backup directory), the exported
