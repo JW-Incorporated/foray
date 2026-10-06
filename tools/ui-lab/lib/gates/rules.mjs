@@ -55,14 +55,29 @@ export function evaluateCsp(events) {
   return dedupe(events.map((c) => v("csp", c.screen, `${c.directive} ${String(c.blocked).slice(0, 80)}`, `${c.directive} blocked ${c.blocked}${c.source ? " at " + c.source : ""}`)));
 }
 
-/** tap-targets. `els` = [{selector,text,w,h,tag,inlineInText}] already filtered to visible interactive. */
+/** tap-targets. `els` = [{selector,text,w,h,tag,inlineInText,hits:boolean[],centerHit}], visible interactive
+ *  elements already hit-tested in the page (measure.mjs collectTapTargets).
+ *  Pass = a tap lands on the element across the whole min x min square: every sample hits (an `::after`
+ *  that extends the hit area counts, a neighbour overlapping it does not). An element whose own box is
+ *  already min x min passes on size, but must not be covered at its centre. (A 44px round button's
+ *  corner samples fall outside its radius; that is why size alone is accepted.) */
 export function evaluateTapTargets(screen, els, { min = MIN_TAP_PX, tol = TAP_TOLERANCE_PX, exemptions = TAP_EXEMPTIONS } = {}) {
   const out = [];
+  const q = (n) => Math.floor(n / 4) * 4; // size bucket: a regression changes the key
   for (const e of els) {
-    if (e.w + tol >= min && e.h + tol >= min) continue;
     if (exemptions.inlineTextLinks && e.tag === "a" && e.inlineInText) continue;
     if (exemptions.selectors.some((s) => s.id === e.selector)) continue;
-    out.push(v("tap-targets", screen, e.selector, `${Math.round(e.w * 10) / 10}x${Math.round(e.h * 10) / 10} "${(e.text || "").slice(0, 40)}"`));
+    const boxOk = e.w + tol >= min && e.h + tol >= min;
+    const hits = e.hits || [];
+    const misses = hits.filter((h) => !h).length;
+    const bucket = `${q(e.w)}x${q(e.h)}`;
+    if (boxOk) {
+      if (e.centerHit !== false) continue;
+      out.push(v("tap-targets", screen, `${e.selector} ${bucket} covered`, `${Math.round(e.w)}x${Math.round(e.h)} but another element is on top at its centre "${(e.text || "").slice(0, 40)}"`));
+      continue;
+    }
+    if (hits.length > 0 && misses === 0) continue; // the hit area reaches min x min (pseudo-element extension)
+    out.push(v("tap-targets", screen, `${e.selector} ${bucket}`, `${Math.round(e.w * 10) / 10}x${Math.round(e.h * 10) / 10}, ${hits.length ? `${misses}/${hits.length} samples in the ${min}px square miss it` : "not measurable"} "${(e.text || "").slice(0, 40)}"`));
   }
   return dedupe(out);
 }
@@ -77,10 +92,13 @@ export function evaluateReducedMotion(screen, recs, { minMs = MIN_MOTION_MS } = 
   return dedupe(out);
 }
 
-/** overflow. m = { scrollWidth, clientWidth, viewport, offenders:[selector] } */
+/** overflow. m = { viewport, innerWidth, scrollWidth, clientWidth, offenders:[{selector,left,right}] }.
+ *  Geometry first: styles.css clips html/body (`overflow-x: clip`), which pins scrollWidth to clientWidth,
+ *  so scrollWidth alone can never fire on the app. It stays as a backstop for pages without that clip. */
 export function evaluateOverflow(screen, m) {
-  if (!(m.scrollWidth > m.clientWidth)) return [];
-  return [v("overflow", screen, `overflow@${m.viewport}`, `scrollWidth ${m.scrollWidth} > clientWidth ${m.clientWidth} at ${m.viewport}; widest: ${(m.offenders || []).slice(0, 3).join(", ") || "n/a"}`)];
+  const out = (m.offenders || []).map((o) => v("overflow", screen, `overflow@${m.viewport} ${o.selector}`, `${o.selector} spans ${o.left}..${o.right} in a ${m.innerWidth || m.clientWidth}px viewport at ${m.viewport}`));
+  if (!out.length && m.scrollWidth > m.clientWidth) out.push(v("overflow", screen, `overflow@${m.viewport} scrollWidth`, `scrollWidth ${m.scrollWidth} > clientWidth ${m.clientWidth} at ${m.viewport}`));
+  return out;
 }
 
 /** sheet-focus. t = { dialog, focusedIn, tabs:[{inside,at}], closed, closedBy, returnChecked, returnedToOpener, activeAfter } | null */

@@ -23,15 +23,18 @@ export const INIT_SCRIPT = `(() => {
   document.addEventListener("securitypolicyviolation", (e) => {
     try { window.__gatesCsp({ directive: e.violatedDirective, blocked: e.blockedURI || e.sample || "inline", source: (e.sourceFile || "") + (e.lineNumber ? ":" + e.lineNumber : "") }); } catch (_) {}
   });
-  const motion = (kind, name, el, duration) => { try { window.__gatesMotion({ kind, name, selector: sel(el), duration }); } catch (_) {} };
+  const motion = (kind, name, el, duration, pseudo) => { try { window.__gatesMotion({ kind, name, selector: sel(el) + (pseudo || ""), duration }); } catch (_) {} };
   const dur = (a) => { try { const d = a.effect.getComputedTiming().duration; return typeof d === "number" ? d : 0; } catch (_) { return 0; } };
+  /* document.getAnimations() includes animations on ::before/::after; el.getAnimations() does not.
+     The event's target is the originating element, its pseudoElement says which pseudo. */
+  const find = (e, pred) => document.getAnimations().find((a) => a.effect && a.effect.target === e.target && (a.effect.pseudoElement || "") === (e.pseudoElement || "") && pred(a));
   document.addEventListener("animationstart", (e) => {
-    const a = e.target.getAnimations().find((x) => x.animationName === e.animationName);
-    motion("animation", e.animationName, e.target, a ? dur(a) : 0);
+    const a = find(e, (x) => x.animationName === e.animationName);
+    motion("animation", e.animationName, e.target, a ? dur(a) : 0, e.pseudoElement);
   }, true);
   document.addEventListener("transitionrun", (e) => {
-    const a = e.target.getAnimations().find((x) => x.transitionProperty === e.propertyName);
-    motion("transition", e.propertyName, e.target, a ? dur(a) : 0);
+    const a = find(e, (x) => x.transitionProperty === e.propertyName);
+    motion("transition", e.propertyName, e.target, a ? dur(a) : 0, e.pseudoElement);
   }, true);
   const wa = Element.prototype.animate;
   Element.prototype.animate = function (kf, opts) {
@@ -41,8 +44,12 @@ export const INIT_SCRIPT = `(() => {
   };
 })();`;
 
-/** Visible interactive elements with their hit boxes. Runs in the page. */
-export function collectTapTargets() {
+/** Visible interactive elements, each hit-tested where a thumb would land. Runs in the page.
+ *  `hits` is a 5x5 grid over the min x min square centred on the element (clipped to the viewport;
+ *  clipped-out samples are dropped). A sample hits when elementFromPoint returns the element, a
+ *  descendant (pseudo-elements hit-test as their element) or its label; a sibling is a miss.
+ *  `centerHit` is whether the centre sample hits (false = covered by something else). */
+export function collectTapTargets(min) {
   const SEL = 'a[href], a:not([href])[tabindex], button, [role="button"], input:not([type="hidden"]), select, textarea, [tabindex]:not([tabindex^="-"]), summary';
   const sel = (el) => {
     const parts = [];
@@ -55,40 +62,80 @@ export function collectTapTargets() {
     }
     return parts.join(" > ");
   };
+  const sx = window.scrollX, sy = window.scrollY;
+  const half = min / 2 - 1, offs = [-half, -half / 2, 0, half / 2, half];
   const out = [];
   for (const el of document.querySelectorAll(SEL)) {
     if (el.disabled || el.closest("[inert]") || el.closest("[hidden]")) continue;
     if (!el.checkVisibility({ visibilityProperty: true, contentVisibilityAuto: true })) continue;
     let r = el.getBoundingClientRect();
-    /* A checkbox/radio hidden behind its label is hit through the label. */
-    if (el.labels && el.labels.length && (r.width < 2 || r.height < 2 || getComputedStyle(el).opacity === "0")) {
-      const lr = [...el.labels].map((l) => l.getBoundingClientRect()).sort((a, b) => b.width * b.height - a.width * a.height)[0];
-      if (lr) r = lr;
-    }
     if (r.width === 0 && r.height === 0) continue;
+    const ih = window.innerHeight, iw = window.innerWidth;
+    /* Always centre it: a control half under the fixed tab bar or mini player is tappable once scrolled, and a fixed one does not move. */
+    el.scrollIntoView({ block: "center", inline: "center", behavior: "instant" }); r = el.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const hits = [];
+    let centerHit = null;
+    for (const dy of offs) for (const dx of offs) {
+      const x = cx + dx, y = cy + dy;
+      if (x < 0 || y < 0 || x >= iw || y >= ih) continue;
+      const t = document.elementFromPoint(x, y);
+      const ok = Boolean(t && (el === t || el.contains(t) || (el.labels && [...el.labels].some((l) => l.contains(t)))));
+      hits.push(ok);
+      if (dx === 0 && dy === 0) centerHit = ok;
+    }
     const cs = getComputedStyle(el);
     let inlineInText = false;
     if (el.tagName === "A" && cs.display === "inline" && el.parentElement) {
-      const own = el.textContent.length;
-      inlineInText = el.parentElement.textContent.trim().length > own + 1;
+      inlineInText = el.parentElement.textContent.trim().length > el.textContent.length + 1;
     }
-    out.push({ selector: sel(el), tag: el.tagName.toLowerCase(), text: (el.getAttribute("aria-label") || el.textContent || el.getAttribute("title") || "").trim().replace(/\s+/g, " ").slice(0, 60), w: r.width, h: r.height, inlineInText });
+    out.push({ selector: sel(el), tag: el.tagName.toLowerCase(), text: (el.getAttribute("aria-label") || el.textContent || el.getAttribute("title") || "").trim().replace(/\s+/g, " ").slice(0, 60), w: r.width, h: r.height, inlineInText, hits, centerHit });
   }
+  window.scrollTo(sx, sy);
   return out;
 }
 
+/** Geometry, not scrollWidth: styles.css clips html/body with `overflow-x: clip`, which pins
+ *  scrollWidth to clientWidth and hides every overflow. Reports the OUTERMOST visible element
+ *  whose box leaves the viewport, ignoring (a) descendants of a horizontally scrollable
+ *  container (carousels) and (b) elements clipped by an ancestor that is itself inside the
+ *  viewport. html/body are never treated as that clipping ancestor: they are the backstop. */
 export function measureOverflow() {
+  const iw = window.innerWidth;
   const de = document.documentElement;
-  const offenders = [];
-  if (de.scrollWidth > de.clientWidth) {
-    const sel = (el) => el.tagName.toLowerCase() + (el.id ? "#" + el.id : "") + ([...el.classList][0] ? "." + [...el.classList][0] : "");
-    for (const el of document.body.querySelectorAll("*")) {
-      const r = el.getBoundingClientRect();
-      if (r.width > 0 && r.right > de.clientWidth + 0.5) offenders.push([r.right, sel(el)]);
+  const sel = (el) => {
+    const parts = [];
+    for (let n = el, i = 0; n && n.nodeType === 1 && i < 3; n = n.parentElement, i++) {
+      let s = n.tagName.toLowerCase();
+      if (n.id) { parts.unshift(s + "#" + n.id); break; }
+      const c = [...n.classList].slice(0, 2).join(".");
+      if (c) s += "." + c;
+      parts.unshift(s);
     }
-    offenders.sort((a, b) => b[0] - a[0]);
+    return parts.join(" > ");
+  };
+  const out = new Set();
+  const offenders = [];
+  for (const el of document.body.querySelectorAll("*")) {
+    if (!el.checkVisibility({ visibilityProperty: true })) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) continue;
+    if (!(r.right > iw + 1 || r.left < -1)) continue;
+    let skip = false;
+    for (let a = el.parentElement; a && a !== document.body && a !== de; a = a.parentElement) {
+      if (out.has(a)) { skip = true; break; } // a descendant of an offender: report the outermost only
+      const ox = getComputedStyle(a).overflowX;
+      if (ox === "auto" || ox === "scroll") { skip = true; break; } // carousel: scrolls on purpose
+      if (ox === "hidden" || ox === "clip") {
+        const ar = a.getBoundingClientRect();
+        if (ar.left >= -1 && ar.right <= iw + 1) { skip = true; break; } // clipped inside the viewport
+      }
+    }
+    if (skip) continue;
+    out.add(el);
+    offenders.push({ selector: sel(el), left: Math.round(r.left), right: Math.round(r.right) });
   }
-  return { scrollWidth: de.scrollWidth, clientWidth: de.clientWidth, offenders: offenders.slice(0, 3).map((o) => `${o[1]} (right ${Math.round(o[0])})`) };
+  return { innerWidth: iw, scrollWidth: de.scrollWidth, clientWidth: de.clientWidth, offenders: offenders.slice(0, 12) };
 }
 
 /** The topmost visible [role=dialog], described; null when none is open. */

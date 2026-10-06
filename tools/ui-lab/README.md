@@ -4,7 +4,7 @@ A Playwright screenshot + accessibility harness. It looks at today's app, or at
 any static prototype with hash routes, the same deterministic way every time, so
 two renders can be compared by a judge (or a diff).
 
-**One suite lives here: `baseline.test.mjs`** (pure diff/report logic, synthetic
+**Two suites live here: `baseline.test.mjs` and `gates.test.mjs`** (pure diff/report and gate-rule logic, synthetic
 PNGs, no browser; floored in `test/suite-integrity.test.js`). `tools/ci/run-suites.mjs`
 therefore runs `npm ci` in this directory. That installs playwright, axe-core,
 pixelmatch and pngjs but downloads **no browser** (`playwright install` is a
@@ -210,9 +210,9 @@ A full app run is about 5 minutes (46 screens, three viewports).
 | `errors` | console errors, uncaught `pageerror` | first viewport |
 | `requests` | failed or >=400 same-origin requests (ignore list in `lib/gates/config.mjs`) | first |
 | `csp` | `securitypolicyviolation` events (inline `style=`/script, `javascript:`) | first |
-| `tap-targets` | every visible a/button/[role=button]/input/select/[tabindex>=0]/summary has a hit box >= 44x44 | first |
+| `tap-targets` | every visible a/button/[role=button]/input/select/[tabindex>=0]/summary is hit-tested: a 5x5 grid over the 44x44 square centred on it, via `elementFromPoint`, must land on it (an `::after` extension counts, an overlapping neighbour does not); a box already 44x44 passes unless covered at its centre | first |
 | `reduced-motion` | under `reducedMotion: reduce`, no animation/transition/`animate()` over 1 ms starts during a step, none running at the shot | first |
-| `overflow` | `documentElement.scrollWidth > clientWidth` | every viewport |
+| `overflow` | geometry, not `scrollWidth` (styles.css clips html/body with `overflow-x: clip`, so scrollWidth always equals clientWidth): the outermost visible element whose box leaves the viewport, ignoring horizontal scrollers and anything clipped inside the viewport | every viewport |
 | `sheet-focus` | an open `[role=dialog]`: focus moves in, 10 Tab presses stay inside, Escape (else its close control) closes it, focus returns to the opener | first |
 | `contrast` | axe `color-contrast` | first |
 
@@ -228,16 +228,17 @@ first-run intro; add an opener row when a build adds a sheet.
 **Proof the gates fire.** `fixtures/gates-fixture.html` (with the app's exact CSP
 `<meta>`) carries one violation per gate; `--target url --url
 tools/ui-lab/fixtures/gates-fixture.html --routes "#/,#/sheet"` reports all eight
-gates and nothing for its exempt inline link. The only suite is `gates.test.mjs`
+gates and nothing for its exempt inline link. Its rule logic is covered by `gates.test.mjs`
 (pure rule logic, no browser, floored).
 
-### Today's debt (trunk, 46 screens, 2026-10-05): `gates-known-debt.json`, 246 entries
+### Today's debt (trunk, 46 screens, 2026-10-05): `gates-known-debt.json`, 119 entries
 
 | Gate | Entries | What |
 |---|---|---|
-| tap-targets | 238 | `#menu-btn` and `#refresh-btn` are 42x42 (on all 46 screens), the `4a` wordmark link is 24x25 (41 screens), episode-row `star`/`up-next`/`play` buttons are 40x40, plus `ep-title-link`, `mc-link` and browse `fy-chip` pills |
+| tap-targets | 110 | `a.fy-chip` pills (63, about 35px tall), the `4a` wordmark link (41 screens, 24x25), 2 each of `button.fy-chip`, `input.interest-slider` (16px) and `button.fp-close` |
+| overflow | 1 | `stress/episode-token` at 375x667: the page-head title block spans 72..389 (the unbreakable 100-character token) |
 | contrast | 8 | Home's `.hv2-play-title` (2.48:1) and `.hv2-play-text` (2.72:1), on 4 states |
-| errors, requests, csp, reduced-motion, overflow, sheet-focus | 0 | the app is clean today |
+| errors, requests, csp, reduced-motion, sheet-focus | 0 | the app is clean today |
 
 **First real-browser smoke of the 0d `app.js` split: clean.** Zero console errors,
 zero page errors, zero CSP violations and zero failed same-origin requests across

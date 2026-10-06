@@ -12,54 +12,104 @@ import {
 } from "./lib/gates/rules.mjs";
 import { MIN_TAP_PX, TAP_EXEMPTIONS } from "./lib/gates/config.mjs";
 
-const el = (o) => ({ selector: "button.x", tag: "button", text: "t", w: 44, h: 44, inlineInText: false, ...o });
+/* A hit-tested element as measure.mjs hands it over: 25 grid samples over the 44px square. */
+const grid = (misses) => Array.from({ length: 25 }, (_, i) => i >= misses);
+const el = (o) => ({ selector: "button.x", tag: "button", text: "t", w: 44, h: 44, inlineInText: false, hits: grid(0), centerHit: true, ...o });
 
-/* MUTATION: in evaluateTapTargets change `e.w + tol >= min && e.h + tol >= min` to `||`
-   (or drop the `h` clause) -> the 44x30 and 30x44 cases stop failing. */
-test("tap target: both axes must reach 44, either short side fails", () => {
-  const out = evaluateTapTargets("s/a", [el({ selector: "a1", w: 44, h: 30 }), el({ selector: "a2", w: 30, h: 44 }), el({ selector: "ok", w: 44, h: 44 }), el({ selector: "big", w: 80, h: 48 })]);
-  assert.deepEqual(out.map((x) => x.id).sort(), ["a1", "a2"]);
+/* MUTATION: in evaluateTapTargets drop the `hits.length > 0 && misses === 0` pass (or make it `misses < 5`)
+   -> the 40px button whose ::after reaches 44px is reported (the 194 false positives), or the 40px/40px one passes. */
+test("tap target: a 40px box passes when its ::after hit area covers the whole 44px square, fails when it does not", () => {
+  const out = evaluateTapTargets("s/a", [
+    el({ selector: "ext44", w: 40, h: 40, hits: grid(0) }),   // ::after is 44px: every sample hits
+    el({ selector: "ext40", w: 40, h: 40, hits: grid(16) }),  // ::after is 40px: the 16 edge samples miss
+    el({ selector: "neighbour", w: 40, h: 40, hits: grid(4) }), // a sibling overlaps a strip: its hits are misses
+  ]);
+  assert.deepEqual(out.map((x) => x.id.split(" ")[0]).sort(), ["ext40", "neighbour"]);
+  assert.match(out.find((x) => x.id.startsWith("ext40")).detail, /16\/25/);
 });
 
-/* MUTATION: set TAP_TOLERANCE_PX to 5 in config.mjs -> 40x40 passes and this fails;
-   set it to 0 -> the 43.6 case fails. */
-test("tap target: sub-pixel rounding passes, a real 40px miss does not", () => {
-  const out = evaluateTapTargets("s/a", [el({ selector: "round", w: 43.6, h: 43.6 }), el({ selector: "miss", w: 40, h: 40 })]);
-  assert.deepEqual(out.map((x) => x.id), ["miss"]);
+/* MUTATION: in evaluateTapTargets change `e.w + tol >= min && e.h + tol >= min` to `||` -> the 44x30
+   (no extension) passes; to `&& true`-less variants the 80x48 case still passes, so only `||` is caught here. */
+test("tap target: with no hit-area extension both axes must reach 44", () => {
+  const out = evaluateTapTargets("s/a", [
+    el({ selector: "wide-short", w: 44, h: 30, hits: grid(8) }),
+    el({ selector: "tall-narrow", w: 30, h: 44, hits: grid(8) }),
+    el({ selector: "big", w: 80, h: 48 }),
+  ]);
+  assert.deepEqual(out.map((x) => x.id.split(" ")[0]).sort(), ["tall-narrow", "wide-short"]);
+});
+
+/* MUTATION: set TAP_TOLERANCE_PX to 0 in config.mjs -> the 43.6 box (a rounded 44) is reported; to 5 -> 40x40 with misses passes. */
+test("tap target: a 44px round button passes on size even though its corner samples miss", () => {
+  const out = evaluateTapTargets("s/a", [el({ selector: "round", w: 43.6, h: 43.6, hits: grid(8), centerHit: true })]);
+  assert.equal(out.length, 0);
+});
+
+/* MUTATION: in evaluateTapTargets delete the `centerHit !== false` branch -> a 44px button buried under a
+   sibling/overlay at its centre passes. */
+test("tap target: a big box that something else covers at its centre is a miss", () => {
+  const out = evaluateTapTargets("s/a", [el({ selector: "covered", w: 48, h: 48, hits: grid(10), centerHit: false })]);
+  assert.equal(out.length, 1);
+  assert.match(out[0].id, /covered$/);
+});
+
+/* MUTATION: in evaluateTapTargets drop the `hits.length > 0 &&` guard -> an element with no samples
+   (fully off-screen after clipping) passes by default instead of being reported as unmeasurable. */
+test("tap target: no samples and a small box is reported, not waved through", () => {
+  const out = evaluateTapTargets("s/a", [el({ selector: "nowhere", w: 20, h: 20, hits: [] })]);
+  assert.equal(out.length, 1);
+  assert.match(out[0].detail, /not measurable/);
 });
 
 /* MUTATION: drop the `e.tag === "a"` test (or the `inlineInText` test) in evaluateTapTargets
    -> a small button, or a lone inline link, is exempted and one of the asserts fails. */
 test("tap target: only an <a> inside running text is exempt (WCAG 2.5.8 inline)", () => {
+  const small = { w: 60, h: 18, hits: grid(20) };
   const els = [
-    el({ selector: "link-in-text", tag: "a", w: 60, h: 18, inlineInText: true }),
-    el({ selector: "lone-link", tag: "a", w: 60, h: 18, inlineInText: false }),
-    el({ selector: "inline-button", tag: "button", w: 60, h: 18, inlineInText: true }),
+    el({ selector: "link-in-text", tag: "a", inlineInText: true, ...small }),
+    el({ selector: "lone-link", tag: "a", inlineInText: false, ...small }),
+    el({ selector: "inline-button", tag: "button", inlineInText: true, ...small }),
   ];
-  assert.deepEqual(evaluateTapTargets("s/a", els).map((x) => x.id).sort(), ["inline-button", "lone-link"]);
+  assert.deepEqual(evaluateTapTargets("s/a", els).map((x) => x.id.split(" ")[0]).sort(), ["inline-button", "lone-link"]);
   /* and the exemption is switchable, so it is a decision, not an accident */
   assert.equal(evaluateTapTargets("s/a", els, { exemptions: { ...TAP_EXEMPTIONS, inlineTextLinks: false } }).length, 3);
 });
 
-/* MUTATION: change MIN_TAP_PX in config.mjs from 44 to 24 -> the default-threshold tests above fail;
-   here: the constant itself is pinned to the PLAN.md number. */
+/* MUTATION: change MIN_TAP_PX in config.mjs from 44 to 24 -> the PLAN number is pinned here. */
 test("tap target: the threshold is the PLAN's 44", () => assert.equal(MIN_TAP_PX, 44));
 
 /* MUTATION: in evaluateTapTargets, drop dedupe() -> 3 identical rows stay 3 and count is 1. */
-test("tap target: identical selectors on one screen collapse into one violation with a count", () => {
-  const out = evaluateTapTargets("s/a", [el({ selector: "row", w: 20 }), el({ selector: "row", w: 20 }), el({ selector: "row", w: 20 })]);
+test("tap target: identical selectors and sizes on one screen collapse into one violation with a count", () => {
+  const out = evaluateTapTargets("s/a", [1, 2, 3].map(() => el({ selector: "row", w: 20, h: 20, hits: grid(21) })));
   assert.equal(out.length, 1);
   assert.equal(out[0].count, 3);
 });
 
-/* MUTATION: in evaluateOverflow change `>` to `>=` -> the equal case is flagged; change to `<`-sense -> the wide one passes. */
-test("overflow: scrollWidth strictly greater than clientWidth fails, equal passes", () => {
-  assert.equal(evaluateOverflow("s/a", { scrollWidth: 393, clientWidth: 393, viewport: "393x852" }).length, 0);
-  const o = evaluateOverflow("s/a", { scrollWidth: 656, clientWidth: 393, viewport: "393x852", offenders: ["div.wide"] });
-  assert.equal(o.length, 1);
-  assert.equal(o[0].id, "overflow@393x852");
-  assert.match(o[0].detail, /div\.wide/);
+/* MUTATION: in evaluateTapTargets remove the `bucket` from the id -> the 40px and 28px versions of the same
+   selector share a key, so a known-debt entry for 40px silences a regression to 28px. */
+test("tap target: the id carries a size bucket, so a shrink is a new violation, not the old debt", () => {
+  const at40 = evaluateTapTargets("s/a", [el({ selector: "star", w: 40, h: 40, hits: grid(16) })]);
+  const at28 = evaluateTapTargets("s/a", [el({ selector: "star", w: 28, h: 28, hits: grid(21) })]);
+  assert.notEqual(at40[0].id, at28[0].id);
+  assert.equal(splitByAllow(at28, toAllowList(at40, "n")).fresh.length, 1);
 });
+
+/* MUTATION: revert evaluateOverflow to compare only scrollWidth > clientWidth -> the first case (the real app's
+   situation: html/body are `overflow-x: clip`, scrollWidth == clientWidth) reports nothing and fails. */
+test("overflow: a geometry offender fires even though scrollWidth equals clientWidth (the app's clip backstop)", () => {
+  const out = evaluateOverflow("s/a", { viewport: "393x852", innerWidth: 393, scrollWidth: 393, clientWidth: 393, offenders: [{ selector: "div.wide", left: 16, right: 656 }] });
+  assert.equal(out.length, 1);
+  assert.equal(out[0].id, "overflow@393x852 div.wide", "the key names the offender, so a different offender is a new violation");
+  assert.deepEqual(evaluateOverflow("s/a", { viewport: "393x852", innerWidth: 393, scrollWidth: 393, clientWidth: 393, offenders: [] }), []);
+});
+
+/* MUTATION: delete the `!out.length && m.scrollWidth > m.clientWidth` backstop line -> a page without the clip
+   that overflows with no measurable offender (e.g. a pseudo-element) goes unreported. */
+test("overflow: scrollWidth stays as a backstop when no element is to blame", () => {
+  const out = evaluateOverflow("s/a", { viewport: "393x852", innerWidth: 393, scrollWidth: 500, clientWidth: 393, offenders: [] });
+  assert.deepEqual(out.map((x) => x.id), ["overflow@393x852 scrollWidth"]);
+});
+
 
 /* MUTATION: in evaluateReducedMotion change `!(r.duration > minMs)` to `!(r.duration > 0)` -> the 0.01ms reset
    is flagged and the "instant" assert fails; change it to `r.duration < 0` -> nothing is flagged at all. */
@@ -199,4 +249,32 @@ test("the gate list is the PLAN's six gates plus requests and contrast", () => {
   assert.equal(c.csp, 1);
   assert.equal(c.errors, 0);
   assert.equal(dedupe([]).length, 0);
+});
+
+/* MUTATION: in splitByAllow change the match to ignore `a.id` (gate + screen only) -> the new, different violation
+   on an already-indebted screen is silenced and `fresh` is empty. This is the gate's whole point: a screen with
+   debt must still fail when it picks up a NEW problem. */
+test("known debt: a NEW violation (different id) on an already-indebted screen still fails the run", () => {
+  const debt = [{ gate: "tap-targets", screen: "returning/home", id: "button#menu-btn 40x40", detail: "d", count: 1 }];
+  const today = [
+    ...debt,
+    { gate: "tap-targets", screen: "returning/home", id: "button.new-thing 20x20", detail: "d", count: 1 },
+    { gate: "csp", screen: "returning/home", id: "style-src-attr inline", detail: "d", count: 1 },
+  ];
+  const { fresh, known } = splitByAllow(today, toAllowList(debt, "n"));
+  assert.deepEqual(fresh.map((x) => x.id).sort(), ["button.new-thing 20x20", "style-src-attr inline"]);
+  assert.equal(known.length, 1);
+  /* and a same-gate, same-screen entry never matches on id alone either */
+  assert.equal(splitByAllow([{ ...debt[0], gate: "contrast" }], toAllowList(debt, "n")).fresh.length, 1);
+});
+
+/* MUTATION: widen the CSP pattern in config.mjs back to `/Content Security Policy|^Refused to /i` -> the MIME
+   "Refused to execute script" error (not a CSP message) is swallowed and the length assert fails. */
+test("errors: a non-CSP 'Refused to ...' console error (MIME type) is still an error; a CSP one is left to the csp gate", () => {
+  const out = evaluateErrors([
+    { state: "s", label: "a", kind: "console", message: "Refused to execute script from 'http://h/x.js' because its MIME type ('text/html') is not executable, and strict MIME type checking is enabled." },
+    { state: "s", label: "a", kind: "console", message: "Refused to load the script 'http://h/x.js' because it violates the following Content Security Policy directive: \"script-src 'self'\"." },
+  ]);
+  assert.equal(out.length, 1);
+  assert.match(out[0].detail, /MIME/);
 });

@@ -21,6 +21,7 @@ import { createRequire } from "node:module";
 import { readFileSync, mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { parseArgs, parseViewports } from "./lib/args.mjs";
 import { walk, repoRootFrom, readCss } from "./lib/walk.mjs";
+import { MIN_TAP_PX } from "./lib/gates/config.mjs";
 import { INIT_SCRIPT, collectTapTargets, measureOverflow, traceSheet } from "./lib/gates/measure.mjs";
 import {
   GATES, evaluateErrors, evaluateRequests, evaluateCsp, evaluateTapTargets, evaluateReducedMotion,
@@ -76,7 +77,7 @@ const pass1 = await walk(
     const ov = await page.evaluate(measureOverflow);
     violations.push(...evaluateOverflow(screen, { ...ov, viewport: meta.viewport }));
     if (meta.viewport !== first) return null;
-    violations.push(...evaluateTapTargets(screen, await page.evaluate(collectTapTargets)));
+    violations.push(...evaluateTapTargets(screen, await page.evaluate(collectTapTargets, MIN_TAP_PX)));
     await page.evaluate(AXE_SRC); // page.evaluate is not subject to the page's CSP
     const nodes = await page.evaluate(async () => {
       // eslint-disable-next-line no-undef
@@ -112,7 +113,7 @@ const pass2 = await walk(
     const running = await page.evaluate(() => document.getAnimations().filter((a) => a.playState === "running").map((a) => {
       const t = a.effect && a.effect.target; let d = 0; try { d = a.effect.getComputedTiming().duration; } catch (_) { /* ignore */ }
       const sel = t && t.tagName ? t.tagName.toLowerCase() + (t.id ? "#" + t.id : "") + ([...t.classList][0] ? "." + [...t.classList][0] : "") : "?";
-      return { kind: "running", name: a.animationName || a.transitionProperty || a.constructor.name, selector: sel, duration: typeof d === "number" ? d : 0 };
+      return { kind: "running", name: a.animationName || a.transitionProperty || a.constructor.name, selector: sel + ((a.effect && a.effect.pseudoElement) || ""), duration: typeof d === "number" ? d : 0 };
     }));
     (motion.get(screen) || motion.set(screen, []).get(screen)).push(...running);
     return null;

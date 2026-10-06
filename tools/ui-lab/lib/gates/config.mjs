@@ -34,7 +34,7 @@ export const IGNORED_FAILED_REQUESTS = [
 /** Console messages already reported by a more specific gate. */
 export const CONSOLE_COVERED_ELSEWHERE = [
   { pattern: /^Failed to load resource/i, gate: "requests", reason: "the failed-requests gate reports same-origin failures with the URL; cross-origin refusals are the harness's own network stub" },
-  { pattern: /Content Security Policy|^Refused to /i, gate: "csp", reason: "reported by the securitypolicyviolation listener" },
+  { pattern: /Content Security Policy/i, gate: "csp", reason: "reported by the securitypolicyviolation listener" },
 ];
 
 /** Sheet scenarios: how to find the opener a dialog should return focus to.

@@ -51,1432 +51,670 @@
       "detail": "Fix any of the following: |   Element has insufficient color contrast of 2.48 (foreground color: #f6f3ff, background color: #a78bfa, font si"
     },
     {
-      "gate": "tap-targets",
-      "screen": "empty/create",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
+      "gate": "overflow",
+      "screen": "stress/episode-token",
+      "id": "overflow@375x667 div.page > div.page-head > div",
+      "detail": "div.page > div.page-head > div spans 72..389 in a 375px viewport at 375x667"
     },
     {
       "gate": "tap-targets",
       "screen": "empty/create",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
+      "id": "div.page.cr-page > div.cr-suggestions > button.fy-chip 164x32",
+      "detail": "168x35.1, 5/25 samples in the 44px square miss it \"The history of the Fed\""
     },
     {
       "gate": "tap-targets",
       "screen": "empty/create",
-      "id": "div.page.cr-page > div.cr-suggestions > button.fy-chip",
-      "detail": "168x35.1 \"The history of the Fed\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "empty/create",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "empty/episode-not-found",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "empty/episode-not-found",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "empty/episode-not-found",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "empty/forays",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "empty/forays",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "empty/forays",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "empty/home",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "empty/home",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "empty/home",
-      "id": "div.hv2-cards > div.mini-card > button.star",
-      "detail": "40x40 \"Save episode\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "empty/home",
-      "id": "div.mc-info > h3 > a.mc-link",
-      "detail": "78.9x20 \"Education\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "empty/interests",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
+      "id": "div.interest-row.interest-row-root > div.interest-row-controls > input.interest-slider 152x16",
+      "detail": "155.6x16, 20/25 samples in the 44px square miss it \"Adventure interest\""
     },
     {
       "gate": "tap-targets",
       "screen": "empty/interests",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "empty/interests",
-      "id": "div.interest-row.interest-row-root > div.interest-row-controls > input.interest-slider",
-      "detail": "155.6x16 \"Adventure interest\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "empty/interests",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "empty/library",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "empty/library",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "empty/library",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "empty/playlist-not-found",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "empty/playlist-not-found",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "empty/playlist-not-found",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "empty/playlists",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "empty/playlists",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "empty/playlists",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "empty/search",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 100x32",
+      "detail": "103.9x35.1, 4/25 samples in the 44px square miss it \"Automotive\""
     },
     {
       "gate": "tap-targets",
       "screen": "empty/search",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 104x32",
+      "detail": "104.5x35.1, 5/25 samples in the 44px square miss it \"Engineering\""
     },
     {
       "gate": "tap-targets",
       "screen": "empty/search",
-      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip",
-      "detail": "96.4x35.1 \"Adventure\""
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 108x32",
+      "detail": "110.8x35.1, 4/25 samples in the 44px square miss it \"Architecture\""
     },
     {
       "gate": "tap-targets",
       "screen": "empty/search",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 112x32",
+      "detail": "114.6x35.1, 5/25 samples in the 44px square miss it \"Kids & Family\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "empty/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 124x32",
+      "detail": "125.3x35.1, 5/25 samples in the 44px square miss it \"Craft & making\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "empty/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 132x32",
+      "detail": "133.7x35.1, 5/25 samples in the 44px square miss it \"Health & Fitness\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "empty/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 140x32",
+      "detail": "141.4x35.1, 5/25 samples in the 44px square miss it \"Personal Journals\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "empty/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 144x32",
+      "detail": "144.6x35.1, 5/25 samples in the 44px square miss it \"Hobbies & Leisure\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "empty/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 164x32",
+      "detail": "165.6x35.1, 4/25 samples in the 44px square miss it \"Religion & Spirituality\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "empty/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 168x32",
+      "detail": "171.5x35.1, 5/25 samples in the 44px square miss it \"Fiction & Audio Drama\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "empty/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 172x32",
+      "detail": "174.8x35.1, 5/25 samples in the 44px square miss it \"News & Current Affairs\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "empty/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 60x32",
+      "detail": "61.3x35.1, 2/25 samples in the 44px square miss it \"Food\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "empty/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 64x32",
+      "detail": "66.8x35.1, 4/25 samples in the 44px square miss it \"Cities\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "empty/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 68x32",
+      "detail": "69.5x35.1, 5/25 samples in the 44px square miss it \"Space\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "empty/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 72x32",
+      "detail": "75.7x35.1, 2/25 samples in the 44px square miss it \"History\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "empty/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 76x32",
+      "detail": "77.3x35.1, 5/25 samples in the 44px square miss it \"Culture\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "empty/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 80x32",
+      "detail": "81.5x35.1, 5/25 samples in the 44px square miss it \"Aviation\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "empty/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 84x32",
+      "detail": "86x35.1, 5/25 samples in the 44px square miss it \"Business\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "empty/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 88x32",
+      "detail": "88.1x35.1, 5/25 samples in the 44px square miss it \"Medicine\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "empty/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 92x32",
+      "detail": "94.2x35.1, 5/25 samples in the 44px square miss it \"Education\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "empty/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 96x32",
+      "detail": "96.4x35.1, 5/25 samples in the 44px square miss it \"Adventure\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "empty/search",
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "empty/starred-shows",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "empty/starred-shows",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "empty/starred-shows",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "empty/up-next",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "empty/up-next",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "empty/up-next",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "first-run/intro-sheet",
-      "id": "button#first-time-sheet-skip",
-      "detail": "108.7x40.4 \"Skip for now\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/mini-player-home",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/mini-player-home",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/mini-player-home",
-      "id": "div.hv2-cards > div.mini-card > button.star",
-      "detail": "40x40 \"Save episode\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/mini-player-home",
-      "id": "div.hv2-hscroll > div.hv2-jbi-card > a.hv2-jbi-title.hv2-jbi-link",
-      "detail": "210x22.4 \"The fusion reactor tour\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/mini-player-home",
-      "id": "div.mc-info > h3 > a.mc-link",
-      "detail": "78.9x20 \"Education\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "player/mini-player-library",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/mini-player-library",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/mini-player-library",
-      "id": "div.info > div.t > a.ep-title-link",
-      "detail": "107.1x20 \"Surroundings\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/mini-player-library",
-      "id": "div.lib-section > div.ep-row > button.play-btn",
-      "detail": "40x40 \"Play #497 – Biggest Mysteries in Physics\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/mini-player-library",
-      "id": "div.lib-section > div.ep-row > button.star",
-      "detail": "40x40 \"Save episode\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/mini-player-library",
-      "id": "div.lib-section > div.ep-row > button.star.on",
-      "detail": "40x40 \"Saved\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/mini-player-library",
-      "id": "div.lib-section > div.ep-row > button.up-next",
-      "detail": "82.9x40 \"Add to Up Next\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/mini-player-library",
-      "id": "div.lib-section > div.ep-row > button.up-next.on",
-      "detail": "85x40 \"In Up Next\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/mini-player-library",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "player/mini-player-up-next",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/mini-player-up-next",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/mini-player-up-next",
-      "id": "button#up-next-clear",
-      "detail": "62.8x40 \"Clear\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/mini-player-up-next",
-      "id": "div.ep-row.up-next-row > div.up-next-reorder > button.reorder.down",
-      "detail": "40x40 \"Move down\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/mini-player-up-next",
-      "id": "div.ep-row.up-next-row > div.up-next-reorder > button.reorder.drag-handle",
-      "detail": "40x40 \"Drag to reorder\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/mini-player-up-next",
-      "id": "div.ep-row.up-next-row > div.up-next-reorder > button.reorder.playnext",
-      "detail": "54.4x40 \"Play next\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/mini-player-up-next",
-      "id": "div.ep-row.up-next-row > div.up-next-reorder > button.reorder.up",
-      "detail": "40x40 \"Move up\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/mini-player-up-next",
-      "id": "div.page > div.ep-row.up-next-row > button.play-btn",
-      "detail": "40x40 \"Play #497 – Biggest Mysteries in Physics\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/mini-player-up-next",
-      "id": "div.page > div.ep-row.up-next-row > button.star.on",
-      "detail": "40x40 \"Saved\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/mini-player-up-next",
-      "id": "div.page > div.ep-row.up-next-row > button.up-next-remove",
-      "detail": "40x40 \"Remove from Up Next\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/mini-player-up-next",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "player/now-playing",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
+      "id": "div.fp-sheet > div.fp-grab-zone > button.fp-close 36x36",
+      "detail": "36x36, 1/25 samples in the 44px square miss it \"Collapse player\""
     },
     {
       "gate": "tap-targets",
       "screen": "player/now-playing",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/now-playing",
-      "id": "div.fp-sheet > div.fp-grab-zone > button.fp-close",
-      "detail": "36x36 \"Collapse player\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/now-playing",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "player/now-playing-closed",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/now-playing-closed",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/now-playing-closed",
-      "id": "div.info > div.t > a.ep-title-link",
-      "detail": "107.1x20 \"Surroundings\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/now-playing-closed",
-      "id": "div.lib-section > div.ep-row > button.play-btn",
-      "detail": "40x40 \"Play #497 – Biggest Mysteries in Physics\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/now-playing-closed",
-      "id": "div.lib-section > div.ep-row > button.star",
-      "detail": "40x40 \"Save episode\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/now-playing-closed",
-      "id": "div.lib-section > div.ep-row > button.star.on",
-      "detail": "40x40 \"Saved\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/now-playing-closed",
-      "id": "div.lib-section > div.ep-row > button.up-next",
-      "detail": "82.9x40 \"Add to Up Next\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/now-playing-closed",
-      "id": "div.lib-section > div.ep-row > button.up-next.on",
-      "detail": "85x40 \"In Up Next\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "player/now-playing-closed",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "returning/browse-pill",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/browse-pill",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/browse-pill",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "returning/category",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/category",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/category",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "returning/create",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
+      "id": "div.page.cr-page > div.cr-suggestions > button.fy-chip 164x32",
+      "detail": "168x35.1, 5/25 samples in the 44px square miss it \"The history of the Fed\""
     },
     {
       "gate": "tap-targets",
       "screen": "returning/create",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/create",
-      "id": "div.page.cr-page > div.cr-suggestions > button.fy-chip",
-      "detail": "168x35.1 \"The history of the Fed\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/create",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "returning/episode",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/episode",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/episode",
-      "id": "div.info > div.t > a.ep-title-link",
-      "detail": "321.1x40.8 \"#501 – DHH: Future of Programming, AI, A\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/episode",
-      "id": "div.page > div.ep-actions > button.play-btn",
-      "detail": "40x40 \"Play #497 – Biggest Mysteries in Physics\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/episode",
-      "id": "div.page > div.ep-actions > button.star.on",
-      "detail": "40x40 \"Saved\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/episode",
-      "id": "div.page > div.ep-actions > button.up-next.on",
-      "detail": "85x40 \"In Up Next\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/episode",
-      "id": "div.page > div.ep-actions > button.up-next.playnext",
-      "detail": "79.6x40 \"Play next\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/episode",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/episode",
-      "id": "section.ep-more > div.ep-row > button.play-btn",
-      "detail": "40x40 \"Play #501 – DHH: Future of Programming, \""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/episode",
-      "id": "section.ep-more > div.ep-row > button.star",
-      "detail": "40x40 \"Save episode\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/episode",
-      "id": "section.ep-more > div.ep-row > button.up-next",
-      "detail": "82.9x40 \"Add to Up Next\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "returning/foray",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/foray",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/foray",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "returning/forays",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/forays",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/forays",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/home",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/home",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/home",
-      "id": "div.hv2-cards > div.mini-card > button.star",
-      "detail": "40x40 \"Save episode\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/home",
-      "id": "div.hv2-hscroll > div.hv2-jbi-card > a.hv2-jbi-title.hv2-jbi-link",
-      "detail": "210x22.4 \"The fusion reactor tour\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/home",
-      "id": "div.mc-info > h3 > a.mc-link",
-      "detail": "78.9x20 \"Education\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "returning/interests",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
+      "id": "div.interest-row.interest-row-root > div.interest-row-controls > input.interest-slider 152x16",
+      "detail": "155.6x16, 20/25 samples in the 44px square miss it \"Adventure interest\""
     },
     {
       "gate": "tap-targets",
       "screen": "returning/interests",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/interests",
-      "id": "div.interest-row.interest-row-root > div.interest-row-controls > input.interest-slider",
-      "detail": "155.6x16 \"Adventure interest\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/interests",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "returning/library",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/library",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/library",
-      "id": "div.info > div.t > a.ep-title-link",
-      "detail": "107.1x20 \"Surroundings\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/library",
-      "id": "div.lib-section > div.ep-row > button.play-btn",
-      "detail": "40x40 \"Play #497 – Biggest Mysteries in Physics\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/library",
-      "id": "div.lib-section > div.ep-row > button.star",
-      "detail": "40x40 \"Save episode\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/library",
-      "id": "div.lib-section > div.ep-row > button.star.on",
-      "detail": "40x40 \"Saved\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/library",
-      "id": "div.lib-section > div.ep-row > button.up-next",
-      "detail": "82.9x40 \"Add to Up Next\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/library",
-      "id": "div.lib-section > div.ep-row > button.up-next.on",
-      "detail": "85x40 \"In Up Next\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/library",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "returning/playlist-detail",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/playlist-detail",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/playlist-detail",
-      "id": "div.info > div.t > a.ep-title-link",
-      "detail": "107.1x20 \"Surroundings\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/playlist-detail",
-      "id": "div.page > div.ep-row > button.play-btn",
-      "detail": "40x40 \"Play #497 – Biggest Mysteries in Physics\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/playlist-detail",
-      "id": "div.page > div.ep-row > button.star.on",
-      "detail": "40x40 \"Saved\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/playlist-detail",
-      "id": "div.page > div.ep-row > button.up-next.on",
-      "detail": "85x40 \"In Up Next\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/playlist-detail",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "returning/playlists",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/playlists",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/playlists",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "returning/search",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 100x32",
+      "detail": "103.9x35.1, 4/25 samples in the 44px square miss it \"Automotive\""
     },
     {
       "gate": "tap-targets",
       "screen": "returning/search",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 104x32",
+      "detail": "104.5x35.1, 5/25 samples in the 44px square miss it \"Engineering\""
     },
     {
       "gate": "tap-targets",
       "screen": "returning/search",
-      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip",
-      "detail": "96.4x35.1 \"Adventure\""
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 108x32",
+      "detail": "110.8x35.1, 4/25 samples in the 44px square miss it \"Architecture\""
     },
     {
       "gate": "tap-targets",
       "screen": "returning/search",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 112x32",
+      "detail": "114.6x35.1, 5/25 samples in the 44px square miss it \"Kids & Family\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "returning/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 124x32",
+      "detail": "125.3x35.1, 5/25 samples in the 44px square miss it \"Craft & making\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "returning/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 132x32",
+      "detail": "133.7x35.1, 5/25 samples in the 44px square miss it \"Health & Fitness\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "returning/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 140x32",
+      "detail": "141.4x35.1, 5/25 samples in the 44px square miss it \"Personal Journals\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "returning/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 144x32",
+      "detail": "144.6x35.1, 5/25 samples in the 44px square miss it \"Hobbies & Leisure\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "returning/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 164x32",
+      "detail": "165.6x35.1, 4/25 samples in the 44px square miss it \"Religion & Spirituality\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "returning/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 168x32",
+      "detail": "171.5x35.1, 5/25 samples in the 44px square miss it \"Fiction & Audio Drama\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "returning/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 172x32",
+      "detail": "174.8x35.1, 5/25 samples in the 44px square miss it \"News & Current Affairs\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "returning/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 60x32",
+      "detail": "61.3x35.1, 2/25 samples in the 44px square miss it \"Food\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "returning/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 64x32",
+      "detail": "66.8x35.1, 4/25 samples in the 44px square miss it \"Cities\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "returning/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 68x32",
+      "detail": "69.5x35.1, 5/25 samples in the 44px square miss it \"Space\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "returning/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 72x32",
+      "detail": "75.7x35.1, 2/25 samples in the 44px square miss it \"History\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "returning/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 76x32",
+      "detail": "77.3x35.1, 5/25 samples in the 44px square miss it \"Culture\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "returning/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 80x32",
+      "detail": "81.5x35.1, 5/25 samples in the 44px square miss it \"Aviation\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "returning/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 84x32",
+      "detail": "86x35.1, 5/25 samples in the 44px square miss it \"Business\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "returning/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 88x32",
+      "detail": "88.1x35.1, 5/25 samples in the 44px square miss it \"Medicine\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "returning/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 92x32",
+      "detail": "94.2x35.1, 5/25 samples in the 44px square miss it \"Education\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "returning/search",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 96x32",
+      "detail": "96.4x35.1, 5/25 samples in the 44px square miss it \"Adventure\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "returning/search",
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "returning/show",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/show",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/show",
-      "id": "div > div.ep-row > button.play-btn",
-      "detail": "40x40 \"Play #501 – DHH: Future of Programming, \""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/show",
-      "id": "div > div.ep-row > button.star",
-      "detail": "40x40 \"Save episode\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/show",
-      "id": "div > div.ep-row > button.star.on",
-      "detail": "40x40 \"Saved\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/show",
-      "id": "div > div.ep-row > button.up-next",
-      "detail": "82.9x40 \"Add to Up Next\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/show",
-      "id": "div > div.ep-row > button.up-next.on",
-      "detail": "85x40 \"In Up Next\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/show",
-      "id": "div.info > div.t > a.ep-title-link",
-      "detail": "321.1x40.8 \"#501 – DHH: Future of Programming, AI, A\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/show",
-      "id": "div.page > div.show-hero > button.show-star.on",
-      "detail": "111.2x42 \"Followed\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/show",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "returning/starred-shows",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/starred-shows",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/starred-shows",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "returning/up-next",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/up-next",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/up-next",
-      "id": "button#up-next-clear",
-      "detail": "62.8x40 \"Clear\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/up-next",
-      "id": "div.ep-row.up-next-row > div.up-next-reorder > button.reorder.down",
-      "detail": "40x40 \"Move down\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/up-next",
-      "id": "div.ep-row.up-next-row > div.up-next-reorder > button.reorder.drag-handle",
-      "detail": "40x40 \"Drag to reorder\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/up-next",
-      "id": "div.ep-row.up-next-row > div.up-next-reorder > button.reorder.playnext",
-      "detail": "54.4x40 \"Play next\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/up-next",
-      "id": "div.ep-row.up-next-row > div.up-next-reorder > button.reorder.up",
-      "detail": "40x40 \"Move up\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/up-next",
-      "id": "div.page > div.ep-row.up-next-row > button.play-btn",
-      "detail": "40x40 \"Play #497 – Biggest Mysteries in Physics\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/up-next",
-      "id": "div.page > div.ep-row.up-next-row > button.star.on",
-      "detail": "40x40 \"Saved\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/up-next",
-      "id": "div.page > div.ep-row.up-next-row > button.up-next-remove",
-      "detail": "40x40 \"Remove from Up Next\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "returning/up-next",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "search/search-idle",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 100x32",
+      "detail": "103.9x35.1, 4/25 samples in the 44px square miss it \"Automotive\""
     },
     {
       "gate": "tap-targets",
       "screen": "search/search-idle",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 104x32",
+      "detail": "104.5x35.1, 5/25 samples in the 44px square miss it \"Engineering\""
     },
     {
       "gate": "tap-targets",
       "screen": "search/search-idle",
-      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip",
-      "detail": "96.4x35.1 \"Adventure\""
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 108x32",
+      "detail": "110.8x35.1, 4/25 samples in the 44px square miss it \"Architecture\""
     },
     {
       "gate": "tap-targets",
       "screen": "search/search-idle",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 112x32",
+      "detail": "114.6x35.1, 5/25 samples in the 44px square miss it \"Kids & Family\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "search/search-idle",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 124x32",
+      "detail": "125.3x35.1, 5/25 samples in the 44px square miss it \"Craft & making\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "search/search-idle",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 132x32",
+      "detail": "133.7x35.1, 5/25 samples in the 44px square miss it \"Health & Fitness\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "search/search-idle",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 140x32",
+      "detail": "141.4x35.1, 5/25 samples in the 44px square miss it \"Personal Journals\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "search/search-idle",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 144x32",
+      "detail": "144.6x35.1, 5/25 samples in the 44px square miss it \"Hobbies & Leisure\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "search/search-idle",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 164x32",
+      "detail": "165.6x35.1, 4/25 samples in the 44px square miss it \"Religion & Spirituality\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "search/search-idle",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 168x32",
+      "detail": "171.5x35.1, 5/25 samples in the 44px square miss it \"Fiction & Audio Drama\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "search/search-idle",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 172x32",
+      "detail": "174.8x35.1, 5/25 samples in the 44px square miss it \"News & Current Affairs\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "search/search-idle",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 60x32",
+      "detail": "61.3x35.1, 2/25 samples in the 44px square miss it \"Food\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "search/search-idle",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 64x32",
+      "detail": "66.8x35.1, 4/25 samples in the 44px square miss it \"Cities\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "search/search-idle",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 68x32",
+      "detail": "69.5x35.1, 5/25 samples in the 44px square miss it \"Space\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "search/search-idle",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 72x32",
+      "detail": "75.7x35.1, 2/25 samples in the 44px square miss it \"History\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "search/search-idle",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 76x32",
+      "detail": "77.3x35.1, 5/25 samples in the 44px square miss it \"Culture\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "search/search-idle",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 80x32",
+      "detail": "81.5x35.1, 5/25 samples in the 44px square miss it \"Aviation\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "search/search-idle",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 84x32",
+      "detail": "86x35.1, 5/25 samples in the 44px square miss it \"Business\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "search/search-idle",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 88x32",
+      "detail": "88.1x35.1, 5/25 samples in the 44px square miss it \"Medicine\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "search/search-idle",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 92x32",
+      "detail": "94.2x35.1, 5/25 samples in the 44px square miss it \"Education\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "search/search-idle",
+      "id": "div#sh-browse > div.sh-browse-pills > a.fy-chip 96x32",
+      "detail": "96.4x35.1, 5/25 samples in the 44px square miss it \"Adventure\""
+    },
+    {
+      "gate": "tap-targets",
+      "screen": "search/search-idle",
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "search/search-no-results",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "search/search-no-results",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "search/search-no-results",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "search/search-results-fusion",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "search/search-results-fusion",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "search/search-results-fusion",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "search/search-results-history",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "search/search-results-history",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "search/search-results-history",
-      "id": "div#sh-results > button.fy-script-more",
-      "detail": "361x24.6 \"Show more shows\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "search/search-results-history",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "stress/episode",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/episode",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/episode",
-      "id": "div.page > div.ep-actions > button.play-btn",
-      "detail": "40x40 \"Play The extraordinarily long and windin\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/episode",
-      "id": "div.page > div.ep-actions > button.star.on",
-      "detail": "40x40 \"Saved\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/episode",
-      "id": "div.page > div.ep-actions > button.up-next.on",
-      "detail": "85x40 \"In Up Next\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/episode",
-      "id": "div.page > div.ep-actions > button.up-next.playnext",
-      "detail": "79.6x40 \"Play next\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/episode",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "stress/episode-token",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/episode-token",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/episode-token",
-      "id": "div.page > div.ep-actions > button.play-btn",
-      "detail": "40x40 \"Play Supercalifragilisticexpialidocious-\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/episode-token",
-      "id": "div.page > div.ep-actions > button.star.on",
-      "detail": "40x40 \"Saved\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/episode-token",
-      "id": "div.page > div.ep-actions > button.up-next.on",
-      "detail": "85x40 \"In Up Next\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/episode-token",
-      "id": "div.page > div.ep-actions > button.up-next.playnext",
-      "detail": "79.6x40 \"Play next\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/episode-token",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/home",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/home",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/home",
-      "id": "div.hv2-cards > div.mini-card > button.star",
-      "detail": "40x40 \"Save episode\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/home",
-      "id": "div.hv2-hscroll > div.hv2-jbi-card > a.hv2-jbi-title.hv2-jbi-link",
-      "detail": "210x22.4 \"Short one\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/home",
-      "id": "div.mc-info > h3 > a.mc-link",
-      "detail": "78.9x20 \"Education\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "stress/library",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/library",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/library",
-      "id": "div.info > div.t > a.ep-title-link",
-      "detail": "107.1x20 \"Surroundings\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/library",
-      "id": "div.lib-section > div.ep-row > button.play-btn",
-      "detail": "40x40 \"Play The extraordinarily long and windin\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/library",
-      "id": "div.lib-section > div.ep-row > button.star",
-      "detail": "40x40 \"Save episode\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/library",
-      "id": "div.lib-section > div.ep-row > button.star.on",
-      "detail": "40x40 \"Saved\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/library",
-      "id": "div.lib-section > div.ep-row > button.up-next",
-      "detail": "82.9x40 \"Add to Up Next\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/library",
-      "id": "div.lib-section > div.ep-row > button.up-next.on",
-      "detail": "85x40 \"In Up Next\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/library",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "stress/mini-player",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/mini-player",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/mini-player",
-      "id": "div.info > div.t > a.ep-title-link",
-      "detail": "107.1x20 \"Surroundings\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/mini-player",
-      "id": "div.lib-section > div.ep-row > button.play-btn",
-      "detail": "40x40 \"Play The extraordinarily long and windin\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/mini-player",
-      "id": "div.lib-section > div.ep-row > button.star",
-      "detail": "40x40 \"Save episode\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/mini-player",
-      "id": "div.lib-section > div.ep-row > button.star.on",
-      "detail": "40x40 \"Saved\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/mini-player",
-      "id": "div.lib-section > div.ep-row > button.up-next",
-      "detail": "82.9x40 \"Add to Up Next\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/mini-player",
-      "id": "div.lib-section > div.ep-row > button.up-next.on",
-      "detail": "85x40 \"In Up Next\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/mini-player",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "stress/now-playing",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
+      "id": "div.fp-sheet > div.fp-grab-zone > button.fp-close 36x36",
+      "detail": "36x36, 1/25 samples in the 44px square miss it \"Collapse player\""
     },
     {
       "gate": "tap-targets",
       "screen": "stress/now-playing",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/now-playing",
-      "id": "div.fp-sheet > div.fp-grab-zone > button.fp-close",
-      "detail": "36x36 \"Collapse player\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/now-playing",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "stress/playlist-detail",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/playlist-detail",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/playlist-detail",
-      "id": "div.info > div.t > a.ep-title-link",
-      "detail": "107.1x20 \"Surroundings\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/playlist-detail",
-      "id": "div.page > div.ep-row > button.play-btn",
-      "detail": "40x40 \"Play The extraordinarily long and windin\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/playlist-detail",
-      "id": "div.page > div.ep-row > button.star.on",
-      "detail": "40x40 \"Saved\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/playlist-detail",
-      "id": "div.page > div.ep-row > button.up-next.on",
-      "detail": "85x40 \"In Up Next\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/playlist-detail",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "stress/playlists",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/playlists",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/playlists",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "stress/starred-shows",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/starred-shows",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/starred-shows",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     },
     {
       "gate": "tap-targets",
       "screen": "stress/up-next",
-      "id": "button#menu-btn",
-      "detail": "42x42 \"Menu\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/up-next",
-      "id": "button#refresh-btn",
-      "detail": "42x42 \"Refresh this page\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/up-next",
-      "id": "button#up-next-clear",
-      "detail": "62.8x40 \"Clear\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/up-next",
-      "id": "div.ep-row.up-next-row > div.up-next-reorder > button.reorder.down",
-      "detail": "40x40 \"Move down\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/up-next",
-      "id": "div.ep-row.up-next-row > div.up-next-reorder > button.reorder.drag-handle",
-      "detail": "40x40 \"Drag to reorder\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/up-next",
-      "id": "div.ep-row.up-next-row > div.up-next-reorder > button.reorder.playnext",
-      "detail": "54.4x40 \"Play next\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/up-next",
-      "id": "div.ep-row.up-next-row > div.up-next-reorder > button.reorder.up",
-      "detail": "40x40 \"Move up\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/up-next",
-      "id": "div.page > div.ep-row.up-next-row > button.play-btn",
-      "detail": "40x40 \"Play The extraordinarily long and windin\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/up-next",
-      "id": "div.page > div.ep-row.up-next-row > button.star.on",
-      "detail": "40x40 \"Saved\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/up-next",
-      "id": "div.page > div.ep-row.up-next-row > button.up-next-remove",
-      "detail": "40x40 \"Remove from Up Next\""
-    },
-    {
-      "gate": "tap-targets",
-      "screen": "stress/up-next",
-      "id": "header.topbar > h1 > a.wordmark",
-      "detail": "24.1x25 \"4a\""
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
     }
   ]
 }
