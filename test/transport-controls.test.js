@@ -253,10 +253,10 @@ test("the sheet's second row is one treatment: 48px transport boxes, a quiet tex
   assert.strictEqual(valueOf(".fp-openep", "text-decoration"), "none", "…not an underlined inline link");
   assert.doesNotMatch(CODE, /"fp-collapse"/, "no Close button is built");
   assert.doesNotMatch(CODE, /ui\.collapse/, "…and nothing is wired to one");
-  /* Stop first; the round-2 staples (⏭, Save, Up Next) and PQ-13's Bookmark
-     (#30) sit between the speed and the two navigation links, ⏭ and Save in the transport family's plain
+  /* Stop first; the round-2 staples (⏭, Save, Up Next), PQ-13's Bookmark
+     (#30) and SH-2's Share (#690) sit between the speed and the two navigation links, ⏭ and Save in the transport family's plain
      `.fp-btn` box so they are at the same tap floor. */
-  assert.match(CODE, /row2\.append\(stopBtn, rateBtn, nextBtn, saveBtn, bookmarkBtn, queueLink, openLink, forayLink\);/, "Stop leads the row, alone at the danger end");
+  assert.match(CODE, /row2\.append\(stopBtn, rateBtn, nextBtn, saveBtn, bookmarkBtn, shareBtn, queueLink, openLink, forayLink\);/, "Stop leads the row, alone at the danger end");
   assert.match(CODE, /ui\.closeBtn\.addEventListener\("click", \(\) => setExpanded\(false\)\);/, "the ✕ is the way out");
   assert.strictEqual(valueOf(".fp-collapse", "color"), null, "and its rule is gone");
 });

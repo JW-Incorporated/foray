@@ -1322,12 +1322,19 @@ function buildUI() {
   bookmarkBtn.type = "button";
   bookmarkBtn.setAttribute("aria-label", "Bookmark this point");
   bookmarkBtn.hidden = true;
+  /* SHARE (#690, SH-2). What is playing, from where it is playing: the episode,
+     or inside a Foray the Foray itself (never the segment). Beside Bookmark in
+     the same box. Hidden until app.js's one link producer (`window.ForayShare`,
+     SH-1) says there is a link to give — see `paintSheetShare`. */
+  const shareBtn = el("button", "fp-btn fp-share", "Share");
+  shareBtn.type = "button";
+  shareBtn.hidden = true;
   /* STOP FIRST, ALONE AT THE DANGER END (audit 2026-09-22, persona "Stop sits
      next to Close"; visual pass 1). It used to sit in the middle of the row
      beside an identical grey Close. The row is `justify-content: space-between`,
      so Stop leads and the navigation links trail; styles.css gives `.fp-stop`
      the danger colour. No confirmation (a stop is undone by pressing play). */
-  row2.append(stopBtn, rateBtn, nextBtn, saveBtn, bookmarkBtn, queueLink, openLink, forayLink);
+  row2.append(stopBtn, rateBtn, nextBtn, saveBtn, bookmarkBtn, shareBtn, queueLink, openLink, forayLink);
 
   const note = el("p", "fp-note");
   note.hidden = true;
@@ -1368,6 +1375,7 @@ function buildUI() {
     chapterBox, chapterLine, chapterPrev, chapterNext,
     sTitle, sShow, sWhy, scrub, tNow, tLeft, bigPlay, backBtn, fwdBtn,
     rateBtn, nextBtn, saveBtn, bookmarkBtn, queueLink, openLink, forayLink, stopBtn, info, note, err, sErr, announce,
+    shareBtn,
   };
 }
 
@@ -2424,7 +2432,7 @@ function setNowPlaying(item, why) {
   /* A RESTORED FORAY (`restoreForay`) is a bar with a Foray behind it and no
      `foray` loaded yet: it links to its Foray page, never to an episode page
      that does not exist. */
-  const forayId = foray ? foray.resolved.id : (item.forayId ?? null);
+  const forayId = nowPlayingForayId(item);
   if (item.id && !item.forayId) {
     // Our own route, built from our own id — mirrors ui.forayLink below:
     // an in-app hash change, never target="_blank".
@@ -3394,6 +3402,67 @@ function paintEpisodeSurface() {
   ui.saveBtn.setAttribute("aria-pressed", saved ? "true" : "false");
   ui.saveBtn.classList.toggle("on", saved);
   ui.bookmarkBtn.hidden = !(showEpisode && typeof nav?.addBookmark === "function");
+  paintSheetShare();
+}
+
+/** The Foray behind the bar, or null: the loaded one, else a RESTORED Foray's
+    (`restoreForay`), which is a bar with a Foray behind it and no `foray`
+    loaded yet. The one reading for the sheet's "Back to this foray" and Share. */
+function nowPlayingForayId(item) {
+  return foray ? foray.resolved.id : (item?.forayId ?? null);
+}
+
+/* ---------- Share, from the sheet (#690, SH-2) ----------
+
+   app.js's `window.ForayShare` (SH-1) is the ONE producer of share links:
+   which origin, which route, a draft's and a breadth episode's "no link", and
+   the delivery (native sheet, Web Share, clipboard, the link on screen). This
+   file only asks it. Nothing here spells a URL, and nothing is logged — SH-1
+   logs no event for a share and neither does its second caller.
+
+   A Foray shares the Foray, by id, never the segment that happens to be
+   playing; a Foray that is not published has no link (nobody else can open a
+   draft), so `linkFor` answers null and the button stays hidden. An episode
+   shares the very item on the bar, which carries the show and Apple URL the
+   link may need. `window.ForayShare` absent (a harness without app.js) or a
+   `linkFor` that throws is no button — never a broken sheet. */
+function forayShare() {
+  return (typeof window !== "undefined" && window.ForayShare) || null;
+}
+
+/** `{ kind, id, item? }` the sheet would share, or null when the producer has
+    no link for it (or there is no producer). Pure: `share` is ForayShare. */
+function sheetShareTarget(share, item, forayId) {
+  let target = null;
+  if (forayId) target = { kind: "foray", id: forayId };
+  else if (item && item.id && !item.forayId) target = { kind: "episode", id: item.id, item };
+  if (!target) return null;
+  /* The try IS the guard: no producer, a producer without `linkFor`, and a
+     `linkFor` that throws all land in the catch, and this runs from `render()`
+     at 4 Hz, where a throw would stop the bar. */
+  try { return share.linkFor(target) ? target : null; } catch (_) { return null; }
+}
+
+/** Share what `sheetShareTarget` names, through the producer. Resolves to its
+    answer ("shared" | "cancelled" | "copied" | "manual" | "none"), or null
+    when there was nothing to share or the producer failed. */
+async function shareFromSheet(share, item, forayId) {
+  const target = sheetShareTarget(share, item, forayId);
+  if (!target) return null;
+  try {
+    return await (target.kind === "foray" ? share.shareForay(target.id) : share.shareEpisode(target.item));
+  } catch (_) { return null; }
+}
+
+/** Shown only while the producer has a link for what is playing. From
+    `paintEpisodeSurface`, so it follows every play, render and navigation. */
+function paintSheetShare() {
+  if (!ui) return;
+  const target = sheetShareTarget(forayShare(), current, nowPlayingForayId(current));
+  ui.shareBtn.hidden = !target;
+  if (target && ui.shareBtn.dataset.copied !== "1") {
+    paintControl(ui.shareBtn, "Share", target.kind === "foray" ? "Share this foray" : "Share this episode");
+  }
 }
 
 /** Previous/next are the page's (see `episodeNavigation`), read at the moment
@@ -4104,6 +4173,16 @@ function bind() {
     try { bm = nav.addBookmark(id, episodePositionSec(), episodeDurationSec()); } catch (_) { bm = null; }
     paintControl(ui.bookmarkBtn, bm ? "Bookmarked ✓" : "Bookmark", bm ? "Bookmarked at this point" : "Bookmark this point");
     if (bm) setTimeout(() => paintControl(ui.bookmarkBtn, "Bookmark", "Bookmark this point"), 1500);
+  });
+  /* Share (#690, SH-2): the producer delivers; the sheet only says "Link
+     copied" when the clipboard was the way, because SH-1's own note is
+     spoken-only for a caller that hands it no anchor. 1.5 s, as Bookmark's. */
+  ui.shareBtn.addEventListener("click", async () => {
+    const how = await shareFromSheet(forayShare(), current, nowPlayingForayId(current));
+    if (how !== "copied") return;
+    ui.shareBtn.dataset.copied = "1";
+    paintControl(ui.shareBtn, "Link copied ✓", "Link copied");
+    setTimeout(() => { delete ui.shareBtn.dataset.copied; paintSheetShare(); }, 1500);
   });
 
   /* ---------- drag the sheet down to dismiss it ----------

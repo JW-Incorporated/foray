@@ -833,3 +833,138 @@ test("ROUND 2 nav-5: the drawer's lock and its scrim's touch-action live beside 
   assert.match(CSS_RULES, /#drawer \{[^}]*overscroll-behavior:\s*contain/);
   assert.match(CSS_RULES, /#drawer-overlay \{[^}]*touch-action:\s*none/);
 });
+
+/* ==================================================================== */
+/* SH-2 (#690): SHARE ON THE NOW PLAYING SHEET                           */
+/* ==================================================================== */
+
+/* The sheet's Share asks app.js's one producer (`window.ForayShare`, SH-1)
+   for everything: whether there is a link at all (`linkFor`), and the share
+   itself (`shareEpisode` / `shareForay`). These tests EXECUTE the two pure
+   helpers the sheet uses — lifted out of client.js by brace-matching, the way
+   test/toggle-labels.test.js lifts `paintControl` — against a stub of that
+   publication, so the decision is checked as behaviour, not as spelling. */
+function sheetShareFn(name) {
+  const start = CLIENT.indexOf(`function ${name}(`);
+  assert.ok(start >= 0, `player/client.js has no function ${name}`);
+  let depth = 0;
+  for (let i = CLIENT.indexOf("{", start); i < CLIENT.length; i++) {
+    if (CLIENT[i] === "{") depth++;
+    else if (CLIENT[i] === "}" && --depth === 0) return CLIENT.slice(start, i + 1);
+  }
+  throw new Error(`unbalanced ${name}`);
+}
+/** The same, keeping an `async` in front: without it an `await` inside reads
+    as a call to an identifier and the lifted function silently misbehaves. */
+function sheetShareFnAsync(name) {
+  const src = sheetShareFn(name);
+  const at = CLIENT.indexOf(src);
+  return CLIENT.slice(Math.max(0, at - 6), at) === "async " ? "async " + src : src;
+}
+/* Lifted per test, so a missing helper fails these tests and not the file. */
+const sheetShareSrc = () => ["sheetShareTarget", "shareFromSheet"].map(sheetShareFnAsync).join("\n");
+const sheetShare = () => new Function(`${sheetShareSrc()}\nreturn { sheetShareTarget, shareFromSheet };`)();
+
+/** A stand-in for app.js's ForayShare whose `linkFor` keeps SH-1's rule: a
+    Foray has a link only when published; an episode only when it can be
+    opened (here: when it has a show or an Apple URL). Records every call. */
+function stubShare(forays = {}) {
+  const calls = [];
+  return {
+    calls,
+    linkFor(t) {
+      calls.push(["linkFor", t]);
+      if (t.kind === "foray") return forays[t.id] === "published" ? { url: "u", text: "" } : null;
+      if (t.kind === "episode") return t.item && (t.item.show || t.item.apple_episode_url) ? { url: "u", text: "" } : null;
+      return null;
+    },
+    shareEpisode(item) { calls.push(["shareEpisode", item]); return Promise.resolve("shared"); },
+    shareForay(id) { calls.push(["shareForay", id]); return Promise.resolve("shared"); },
+  };
+}
+
+test("SH-2 (a): a tap on an episode hands ForayShare.shareEpisode the current item itself", async () => {
+  /* MUTATION: pass `{ id: target.id }` (or any copy) instead of `target.item`
+     to `shareEpisode` in `shareFromSheet` -> the identity check is red, and the
+     recipient's link would lose the show and Apple URL the item carries. */
+  const { shareFromSheet } = sheetShare();
+  const share = stubShare();
+  const current = { id: "ep-1", title: "T", show: "S" };
+  assert.strictEqual(await shareFromSheet(share, current, null), "shared");
+  const tap = share.calls.filter(([k]) => k.startsWith("share"));
+  assert.strictEqual(tap.length, 1);
+  assert.strictEqual(tap[0][0], "shareEpisode");
+  assert.strictEqual(tap[0][1], current, "the very item on the bar, not a rebuilt one");
+});
+
+test("SH-2: a tap on a published Foray shares the Foray by its id, never the segment playing", async () => {
+  /* MUTATION: drop the `forayId ?` branch in `sheetShareTarget` -> the segment
+     item would be shared as an episode; red. */
+  const { shareFromSheet } = sheetShare();
+  const share = stubShare({ "f-1": "published" });
+  await shareFromSheet(share, { id: "seg-3", title: "x", show: "S", forayId: "f-1" }, "f-1");
+  const tap = share.calls.filter(([k]) => k.startsWith("share"));
+  assert.deepStrictEqual(tap, [["shareForay", "f-1"]]);
+});
+
+test("SH-2 (b): a draft Foray gets no button, and a tap on it shares nothing", async () => {
+  /* MUTATION: return the target without asking `share.linkFor` in
+     `sheetShareTarget` (the missing guard) -> a draft, which nobody else can
+     open, offers a Share; red. */
+  const { sheetShareTarget, shareFromSheet } = sheetShare();
+  const share = stubShare({ "f-draft": "draft", "f-pub": "published" });
+  assert.strictEqual(sheetShareTarget(share, { id: "seg", forayId: "f-draft" }, "f-draft"), null);
+  assert.deepStrictEqual(sheetShareTarget(share, { id: "seg", forayId: "f-pub" }, "f-pub"), { kind: "foray", id: "f-pub" });
+  assert.strictEqual(await shareFromSheet(share, { id: "seg", forayId: "f-draft" }, "f-draft"), null);
+  assert.ok(!share.calls.some(([k]) => k.startsWith("share")), "nothing shared for a draft");
+  /* The same guard covers a breadth episode with no resolvable link. */
+  assert.strictEqual(sheetShareTarget(share, { id: "pi:1", title: "x" }, null), null);
+});
+
+test("SH-2 (c): with no ForayShare on the page there is no button and nothing throws", async () => {
+  /* MUTATION: unwrap the `try { return share.linkFor(target) … } catch` in
+     `sheetShareTarget` to a bare `return share.linkFor(target) ? target : null;`
+     -> `share.linkFor` on undefined throws; red. */
+  const { sheetShareTarget, shareFromSheet } = sheetShare();
+  const item = { id: "ep-1", title: "T", show: "S" };
+  for (const share of [undefined, null, {}, { linkFor: 1 }]) {
+    assert.strictEqual(sheetShareTarget(share, item, null), null);
+    assert.strictEqual(await shareFromSheet(share, item, null), null);
+  }
+  /* A producer that throws costs the button, never the sheet. */
+  const broken = { linkFor() { throw new Error("boom"); }, shareEpisode() { throw new Error("boom"); } };
+  assert.strictEqual(sheetShareTarget(broken, item, null), null);
+  /* Nothing current, nothing to share. */
+  assert.strictEqual(sheetShareTarget(stubShare(), null, null), null);
+});
+
+test("SH-2: the Share button is built in the second row after Bookmark, painted from the producer, and wired to it", () => {
+  /* MUTATION 1: remove `shareBtn` from `row2.append(...)` -> red. MUTATION 2:
+     drop `paintSheetShare()` from `paintEpisodeSurface` -> the button never
+     un-hides; red. MUTATION 3: the click calls `shareFromSheet` with anything
+     but `current` -> red. */
+  const m = /row2\.append\(([^)]*)\)/.exec(CODE);
+  const order = m[1].split(",").map((x) => x.trim());
+  assert.strictEqual(order[order.indexOf("bookmarkBtn") + 1], "shareBtn", "Share directly after Bookmark");
+  assert.match(FLAT_TEXT, /const shareBtn = el\("button", "fp-btn fp-share", "Share"\)/);
+  assert.match(FLAT_TEXT, /shareBtn\.hidden = true;/, "hidden until the producer says there is a link");
+  const paint = sheetShareFn("paintEpisodeSurface").replace(/\s+/g, " ");
+  assert.match(commentsStripped(paint), /paintSheetShare\(\);/);
+  assert.match(commentsStripped(sheetShareFn("paintSheetShare")).replace(/\s+/g, " "),
+    /sheetShareTarget\(forayShare\(\), current, nowPlayingForayId\(current\)\)/);
+  assert.match(FLAT, /ui\.shareBtn\.addEventListener\(/);
+  assert.match(FLAT_TEXT, /shareFromSheet\(forayShare\(\), current, nowPlayingForayId\(current\)\)/);
+  assert.match(CSS_RULES, /\.fp-share \{[^}]*min-width:\s*52px/, "Share wears Bookmark's box (48px tall, the transport family)");
+});
+
+test("SH-2 (d): the sheet builds no link and logs no event — SH-1 is the one producer", () => {
+  /* MUTATION: build the URL in `shareFromSheet` from `location.href`, or add a
+     `logEvent(` to the click -> red. */
+  const handler = /ui\.shareBtn\.addEventListener\("click",[\s\S]*?\n  \}\);/.exec(TEXT);
+  assert.ok(handler, "the Share click handler exists");
+  const fresh = [sheetShareSrc(), sheetShareFn("paintSheetShare"), sheetShareFn("forayShare"), handler[0]]
+    .map(commentsStripped).join("\n");
+  assert.doesNotMatch(fresh, /location\.href/);
+  assert.doesNotMatch(fresh, /logEvent\(/);
+  assert.doesNotMatch(fresh, /PUBLIC_WEB_ORIGIN|#\/episode\/|#\/foray\//, "no route or origin spelled here");
+});
