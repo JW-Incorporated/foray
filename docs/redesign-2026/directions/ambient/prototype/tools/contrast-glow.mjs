@@ -112,6 +112,11 @@ sweep(`Dusk Today hot spot ${Math.round(100 - HOT * 100)}/${Math.round(HOT * 100
 sweep('Dusk Today wash + hot spot, at the eyebrow (measured falloff)', 0.66, C, (g) => oklabToSrgb(mix(D0, g, 1 - (0.40 + HOT * 0.29 * 0.60))), { 'text-2': DUSK.t2, 'on-wash-2': OWS, lamp: DUSK.lamp });
 sweep(`Dawn Today hot spot ${Math.round(100 - HOT * 100)}/${Math.round(HOT * 100)}`, 0.56, C, (g) => oklabToSrgb(mix(W0, g, 1 - HOT)), { ink: DAWN.text });
 
+// ---------------------------------------------------------------- round 4 row (critique-r3 item 2): the Dock casts upward
+// .page-glow is Glow at 14% (Dusk) / 9% (Dawn) over bg0 at its brightest point, the Dock's top edge; page text sits on it.
+sweep('Dusk Dock cast 14% over bg0 (page text)', 0.66, C, (g) => oklabToSrgb(mix(D0, g, 0.86)), { text: DUSK.text, 'text-2': DUSK.t2, 'text-3': DUSK.t3 });
+sweep('Dawn Dock cast 9% over bg0 (page text)', 0.56, C, (g) => oklabToSrgb(mix(W0, g, 0.91)), { ink: DAWN.text, 'ink-2': DAWN.t2, 'ink-3': DAWN.t3 });
+
 let fail = 0;
 for (const [surface, fn, r, h] of results) {
   const need = /head/.test(surface) ? 3 : 4.5;

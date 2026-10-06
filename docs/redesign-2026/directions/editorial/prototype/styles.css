@@ -48,7 +48,9 @@
 
   --t-micro: 120ms; --t-state: 200ms; --t-page: 320ms; --t-sheet: 420ms; --t-fade-rm: 150ms;
   --ease-out: cubic-bezier(.2,.7,.2,1); --ease-in-out: cubic-bezier(.45,0,.2,1); --ease-in: cubic-bezier(.5,0,.8,.2);
-  --spring-sheet: linear(0, 0.013, 0.05 2.6%, 0.19 6.2%, 0.41 10.6%, 0.63 15.2%, 0.79 19.8%, 0.9 24.6%, 0.96 29.6%, 0.99 34.8%, 1.008 41%, 1.012 48%, 1.008 58%, 1.002 72%, 1);
+  /* r4 AD: stiffness 230 / damping 28 / mass 1 over 420ms (50% at 105ms, 90% at 230ms, 99% at 365ms, no visible overshoot). The
+     r3 curve (260/28) was at 0.99 by 146ms, so the sheet landed ~100ms before the plate, rule and title. */
+  --spring-sheet: linear(0, 0.04 5%, 0.14 10%, 0.26 15%, 0.38 20%, 0.5 25%, 0.6 30%, 0.69 35%, 0.76 40%, 0.82 45%, 0.86 50%, 0.9 55%, 0.93 60%, 0.95 65%, 0.964 70%, 0.975 75%, 0.983 80%, 0.989 85%, 0.993 90%, 0.996 95%, 1);
   --spring-snap: linear(0, 0.06 4%, 0.3 12%, 0.62 22%, 0.84 32%, 0.95 44%, 0.99 58%, 1);
   --seg-narration: repeating-linear-gradient(45deg, var(--red) 0 3px, transparent 3px 6px);
 }
@@ -127,18 +129,25 @@ body[data-find="1"] .view { padding-bottom: calc(var(--folio-h) + var(--folio-li
 body[data-find="1"][data-ticker="1"] .view { padding-bottom: calc(var(--folio-h) + var(--folio-lift) + var(--safe-b) + var(--ticker-h) + 48px + 2 * var(--folio-gap) + 24px); }
 .view--enter { animation: view-in var(--t-page) var(--ease-out) both; }
 @keyframes view-in { from { opacity: 0; } to { opacity: 1; } }
-.view--push { animation: push-in var(--t-page) var(--ease-out) both; }
-@keyframes push-in { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
-.view--pop { animation: pop-in 280ms var(--ease-out) both; }
-@keyframes pop-in { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+.view--push { animation: push-in var(--t-page) var(--ease-out) both; position: relative; z-index: 2; }
+/* Push (r3 critique 2): the incoming page is opaque after 48ms (15% of 320ms; the brief allows 100ms, and at 31% the
+   25fps capture still caught an outgoing ghost at ~25% in its third frame) and sits above the outgoing, so two
+   headlines are never readable at once. */
+@keyframes push-in { from { opacity: 0; transform: translateX(24px); } 15% { opacity: 1; } to { opacity: 1; transform: none; } }
+.view--pop { animation: pop-under 280ms var(--ease-out) both; }
+@keyframes pop-under { from { opacity: .6; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+/* Pop is the mirror: the leaving page stays opaque and on top until its last 42ms (85% of 280ms). */
+@keyframes pop-out { from { opacity: 1; transform: none; } 85% { opacity: 1; } to { opacity: 0; transform: translateX(24px); } }
 
 /* view transitions (row to detail): the plate is the shared element */
-::view-transition-old(root) { animation: vt-out var(--t-page) var(--ease-out) both; }
-::view-transition-new(root) { animation: push-in var(--t-page) var(--ease-out) both; }
-@keyframes vt-out { from { opacity: 1; transform: none; } to { opacity: .9; transform: translateX(-8px); } }
+/* normal blending: the UA default plus-lighter would add two opaque pages together */
+::view-transition-old(root), ::view-transition-new(root) { mix-blend-mode: normal; }
+::view-transition-old(root) { animation: vt-out var(--t-page) var(--ease-out) both; z-index: 1; }
+::view-transition-new(root) { animation: push-in var(--t-page) var(--ease-out) both; z-index: 2; }
+@keyframes vt-out { from { opacity: 1; transform: none; } to { opacity: .6; transform: translateX(-8px); } }
 ::view-transition-group(detail-plate) { animation-duration: var(--t-page); animation-timing-function: var(--ease-out); }
-html.vt-back::view-transition-old(root) { animation: pop-in 280ms var(--ease-out) reverse both; }
-html.vt-back::view-transition-new(root) { animation: pop-in 280ms var(--ease-out) both; }
+html.vt-back::view-transition-old(root) { animation: pop-out 280ms var(--ease-out) both; z-index: 2; }
+html.vt-back::view-transition-new(root) { animation: pop-under 280ms var(--ease-out) both; z-index: 1; }
 
 /* ---------- masthead, dateline, rules ---------- */
 .masthead { display: flex; align-items: baseline; justify-content: space-between; height: 56px; }
@@ -482,7 +491,7 @@ body.np-open .toast-host { bottom: calc(24px + var(--safe-b)); }
 .onb-top .t-d1 { margin-top: 32px; }
 .onb-top .note { margin-top: 16px; }
 .onb-spacer { flex: 1; }
-.first-actions { display: grid; gap: 8px; background: var(--page); border-top: 1px solid var(--rule); padding: 16px var(--margin) calc(16px + var(--safe-b)); margin-inline: calc(-1 * var(--margin)); margin-bottom: calc(-16px - var(--safe-b)); }
+.first-actions { position: relative; display: grid; gap: 8px; background: var(--page); border-top: 1px solid var(--rule); padding: 16px var(--margin) calc(16px + var(--safe-b)); margin-inline: calc(-1 * var(--margin)); margin-bottom: calc(-16px - var(--safe-b)); }
 body.is-onb #page { transition: none; }
 
 /* colophon */
@@ -518,6 +527,9 @@ body.is-onb .folio { visibility: hidden; }
   .onb-top .t-d1 { margin-top: 16px; }
   .onb-top .note { margin-top: 10px; }
 }
+
+/* r3 critique: the veiled page dissolves into the action band over 48px, so the band's rule never cuts a line of type */
+.first-actions::before { content: ""; position: absolute; left: 0; right: 0; bottom: calc(100% + 1px); height: 48px; background: linear-gradient(to bottom, transparent, var(--page)); pointer-events: none; }
 
 /* ---------- round 2 ---------- */
 .ic--14 { width: 14px; height: 14px; }

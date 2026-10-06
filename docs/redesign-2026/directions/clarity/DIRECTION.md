@@ -33,7 +33,15 @@ was grey everywhere but the stretch row, which inverted the hierarchy the
 board exists for), and **it finishes**: the why runs under the data column
 to the right gutter and takes up to three lines (r3 critique: a two-line
 clamp in the 201px stack cut every one of forty hooks; a loud line that ends
-in an ellipsis on every row is worse than a grey one that ends).
+in an ellipsis on every row is worse than a grey one that ends). Three lines
+hold **about 90 characters**, not the 102 the r3 arithmetic promised: words
+do not break at the line end, and the round-4 builder set all forty hooks in
+the real columns to find that 10 of them still needed a fourth line. The
+layout is right and the copy rule is short by one number: a why-line is
+≤ 18 words **and about 90 characters**; the clamp is the fallback for the
+few that run long, never the expected case. That ceiling goes into the
+writer's brief and the copy test in Phase 3 (`copyRules.test.ts` gates
+words today, not characters).
 Fraunces + DM Sans is **overturned**: a board is set in one grotesk; the
 character lives in the mono column.
 
@@ -218,8 +226,10 @@ end the Up next line rises into the title slot.
 show, play/pause 48px, 30-forward 44px, a 2px progress line on the top edge.
 One landmark: "Now playing: title, show".
 
-**Find.** Field at the bottom above the mini player. Idle: subjects board
-(name, mono show count), Shows you follow, Recent. Typing: Shows / Episodes /
+**Find.** Field at the bottom above the mini player. Idle: the "Name a
+subject" row (its second line promises a playlist, not a foray: custom
+forays are out of scope and the board never promises what it cannot build),
+subjects board (name, mono show count), Shows you follow, Recent. Typing: Shows / Episodes /
 Playlists, each head with a count. No results: "Nothing for 'fusion'. Fusion &
 energy systems has 5 shows", with that row under it, so the message never
 contradicts the screen.
@@ -236,7 +246,11 @@ with undo.
 
 **Foray detail.** Display title, subject, mono "22 min · 8 segments · 6
 shows", the 24px timeline, "Why for you", a Signal "Play" / "Resume at 9:40" /
-"Play again", then the legend table, which is also "Where this came from".
+"Play again", then the legend table, which is also "Where this came from"
+(chip, show, "4 segments", minutes: the board labels everything, so the
+count is a word, not "seg"). The subject sits in the header line, centred
+between the back button and its empty twin: the one centred caption in the
+app, accepted in round 4 because it is the page's running head, not a row.
 Unavailable: timeline greyed, "Not available right now; the shows are still
 here". Un-narrated: no hatched gaps, "No narration yet".
 

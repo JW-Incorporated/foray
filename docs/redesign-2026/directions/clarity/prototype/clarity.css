@@ -1,4 +1,4 @@
-/* Clarity ("The Board") prototype, round 3 (critique-r2 applied). Tokens follow BUILD-NOTES.md section 1.
+/* Clarity ("The Board") prototype, round 4 (critique-r3 applied). Tokens follow BUILD-NOTES.md section 1.
    No inline style attributes: JS sets widths and fills through the CSSOM.
 
    Unplayed strip bars (r1 critique 4): the show colour mixed into --bg. 62% fails
@@ -125,7 +125,7 @@ img { display: block; max-width: 100%; }
 /* ------------------------------------------------------------ frame */
 .frame { max-width: 430px; margin: 0 auto; min-height: 100dvh; position: relative; }
 #view { outline: none; min-height: 100dvh; padding: calc(var(--safe-t) + 12px) 0 calc(var(--dock-h) + var(--safe-b) + 28px); }
-body.is-onboarding #view { padding-bottom: 0; }
+body.is-onboarding #view { padding-top: 0; padding-bottom: 0; }
 body.has-find #view { padding-bottom: calc(var(--dock-h) + var(--safe-b) + 92px); }
 @media (min-width: 431px) { .frame { box-shadow: 0 0 0 var(--hair) var(--line); } }
 
@@ -160,16 +160,28 @@ body.has-find #view { padding-bottom: calc(var(--dock-h) + var(--safe-b) + 92px)
 .sechead { display: flex; justify-content: space-between; align-items: baseline; padding: 0 var(--gutter); margin: var(--s-6) 0 var(--s-2); color: var(--muted); }
 .sechead .t-data-sm { font: 450 .9375rem/1.25rem var(--mono); color: var(--muted); }
 
-.row { display: grid; grid-template-columns: var(--art-row) minmax(0, 1fr) var(--col-data); column-gap: 12px; align-items: start;
+/* r4 item 1: the row is a grid of up to three rows. Row 1 = art (spans all) / stack (show, title) / data column;
+   row 2 = the why, grid-column 2 / -1, so it passes UNDER the data column to the right gutter (285px at 393, 269 on the lead);
+   row 3 = the strip, the same width. Rows are content-sized: 112 with a two-line why, 136 with three. */
+.row { display: grid; grid-template-columns: var(--art-row) minmax(0, 1fr) var(--col-data); grid-template-rows: auto auto auto; column-gap: 12px; row-gap: 0; align-items: start;
   padding: 12px var(--gutter); min-height: 80px; position: relative; width: 100%; color: inherit; }
+.row > .row__art { grid-column: 1; grid-row: 1 / span 2; }
+.row > .row__stack { grid-column: 2; grid-row: 1; }
+.row > .row__data { grid-column: 3; grid-row: 1; }
+.row > .row__why { grid-column: 2 / -1; grid-row: 2; }
+.row > .strip { grid-column: 2 / -1; grid-row: 3; }
+.row--why { min-height: 112px; }
 .row::after { content: ""; position: absolute; right: var(--gutter); bottom: 0; left: calc(var(--gutter) + var(--art-row) + 12px); height: var(--hair); background: var(--line); }
 .row:active, .row.is-pressed { background: var(--surface); }
 .row--noart { grid-template-columns: minmax(0, 1fr) var(--col-data); }
+.row--noart > .row__stack { grid-column: 1; }
+.row--noart > .row__data { grid-column: 2; }
 .row--noart::after { left: var(--gutter); }
 .row--show { min-height: 56px; align-items: center; padding-top: 0; padding-bottom: 0; }
+.row--show > .row__art, .row--show > .row__stack, .row--show > .row__data { grid-row: 1; }
 .row--show .row__stack { padding: 8px 0; }
-.row--lead { grid-template-columns: var(--art-lead) minmax(0, 1fr) var(--col-data); min-height: 144px; padding-top: 12px; padding-bottom: 12px; }
-.row--stretch { min-height: 128px; }
+.row--lead { grid-template-columns: var(--art-lead) minmax(0, 1fr) var(--col-data); min-height: 160px; padding-top: 12px; padding-bottom: 12px; }
+.row--stretch { min-height: 136px; }
 .row--resume { min-height: 80px; padding-top: 12px; padding-bottom: 6px; }
 .row--resume .row__title { padding-top: 2px; }
 .row__art.row__art--prog { overflow: visible; background: none; box-shadow: none; }
@@ -189,6 +201,7 @@ body.has-find #view { padding-bottom: calc(var(--dock-h) + var(--safe-b) + 92px)
 .row__art .prog::after { content: ""; position: absolute; inset: 0; background: var(--accent); transform-origin: left; transform: scaleX(var(--p, 0)); }
 .row__stack { min-width: 0; display: flex; flex-direction: column; }
 .row__eyebrow { color: var(--muted); letter-spacing: .01em; white-space: nowrap; }
+.row__eyebrow .badge { vertical-align: top; margin-left: 4px; } /* offline lead: the saved badge rides the eyebrow, so the data column stays 64px and the row stays 160/184 */
 .row__show { color: var(--muted); }
 .row--lead .row__show { color: var(--ink); font-weight: 500; }
 .row__title { color: var(--ink); }
@@ -196,7 +209,11 @@ body.has-find #view { padding-bottom: calc(var(--dock-h) + var(--safe-b) + 92px)
 .row__data { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; min-width: 0; font: 450 .9375rem/1.25rem var(--mono); white-space: nowrap; }
 .row__data .t-data-sm { white-space: nowrap; color: var(--muted); text-align: right; }
 .row--lead .row__data { gap: 6px; }
-.bridge { display: flex; align-items: center; column-gap: 6px; color: var(--accent-ink); font: 500 .75rem/1rem var(--mono); letter-spacing: .01em; flex-wrap: wrap; margin-bottom: 0; }
+/* mid-play: circle 44 + "35 min" + "left" must fit the 76px the stack above the why measures (16 + 16 + 44), or the row grows past 184 */
+.row--lead .row__data--mid { gap: 0; }
+.row--lead .row__data--mid .dur2 > span:first-child { line-height: 18px; }
+.row--lead .row__data--mid .dur2 .t-data-sm { line-height: 14px; }
+.bridge { display: flex; align-items: center; column-gap: 6px; color: var(--accent-ink); font: 500 .75rem/1rem var(--mono); letter-spacing: .01em; flex-wrap: wrap; min-height: 20px; margin-bottom: 4px; }
 .bridge__to { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .bridge .i { width: 16px; height: 16px; }
 .row--dim, .row--dim .row__title, .row--dim .row__why, .row--dim .row__show { color: var(--muted); }
@@ -267,7 +284,9 @@ body.has-find #view { padding-bottom: calc(var(--dock-h) + var(--safe-b) + 92px)
 .rowq__art { width: 44px; height: 44px; border-radius: var(--r-sm); overflow: hidden; background: var(--surface); box-shadow: inset 0 0 0 var(--hair) var(--line); }
 .rowq__art img { width: 100%; height: 100%; object-fit: cover; }
 .rowq__txt { min-width: 0; }
-.rowq__data { text-align: right; font: 450 .9375rem/1.25rem var(--mono); }
+.rowq__data { text-align: right; font: 450 .9375rem/1.25rem var(--mono); white-space: nowrap; }
+.rowq__data .dur2 { display: flex; flex-direction: column; align-items: flex-end; }
+.rowq__data .t-data-sm { color: var(--muted); }
 .rowq__main { display: contents; }
 
 /* ------------------------------------------------------------ library grid */
@@ -275,7 +294,7 @@ body.has-find #view { padding-bottom: calc(var(--dock-h) + var(--safe-b) + 92px)
 .cell { display: block; min-width: 0; }
 .cell__art { aspect-ratio: 1; border-radius: var(--r-sm); overflow: hidden; background: var(--surface); box-shadow: inset 0 0 0 var(--hair) var(--line); }
 .cell__art img { width: 100%; height: 100%; object-fit: cover; }
-.cell__name { margin-top: 6px; }
+.cell__name { margin-top: 4px; color: var(--muted); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
 .textrow { padding: 4px var(--gutter) 0; }
 .textrow + .sechead { margin-top: var(--s-2); }
 .textrow .btn--text { padding-left: 0; }
@@ -307,10 +326,10 @@ body.has-find #view { padding-bottom: calc(var(--dock-h) + var(--safe-b) + 92px)
 .mini__fwd { width: 44px; height: 44px; margin-left: -8px; display: inline-flex; align-items: center; justify-content: center; flex: none; }
 .mini__fwd .i { width: 24px; height: 24px; }
 /* progress line: INSIDE the capsule at its top edge, inset 20px each side so it clears the 24px radius */
-.mini__line { position: absolute; left: 20px; right: 20px; top: 0; height: 2px; background: var(--line-strong); border-radius: 1px; pointer-events: none; }
+.mini__line { position: absolute; left: 20px; right: 20px; top: 0; height: 2px; background: var(--line); border-radius: 1px; pointer-events: none; } /* r4 item 6: track = the rim (--line), only the Signal fill reads */
 .mini__line::after { content: ""; position: absolute; inset: 0; border-radius: 1px; background: var(--accent); transform-origin: left; transform: scaleX(var(--p, 0)); transition: transform 1s linear; }
 /* while the shared elements fly, the mini's own copies step aside (the dock itself stays painted) */
-body.is-flying .mini__art, body.is-flying .mini__title { visibility: hidden; }
+body.is-flying .mini__art, body.is-flying-open .mini__title { visibility: hidden; }
 
 body.is-onboarding .dockwrap { visibility: hidden; }
 
@@ -353,7 +372,8 @@ body.has-mini.dock-min .find-dock { transform: translateY(var(--dock-mini)); }
 .ob__def { margin-top: 12px; color: var(--muted); }
 .ob__spacer { flex: 1; min-height: 24px; }
 .ob__cta { padding: 0 var(--gutter); display: flex; flex-direction: column; align-items: center; gap: 8px; }
-@media (max-height: 700px) { .ob { padding-top: calc(var(--safe-t) + 24px); } .ob__head .t-display { font-size: 1.75rem; line-height: 2rem; } .ob__board .row:nth-child(3) { display: none; } }
+/* r4 item 1: at <= 700 high the budget no longer closes with a 34px headline; it is set at `title` (22/26) with 32px top padding, two rows */
+@media (max-height: 700px) { .ob { padding-top: calc(var(--safe-t) + 32px); } .ob__head .t-display { font-size: 1.375rem; line-height: 1.625rem; letter-spacing: -.015em; } .ob__board .row:nth-child(3) { display: none; } }
 
 /* ------------------------------------------------------------ now playing sheet */
 .scrim { position: fixed; inset: 0; background: var(--scrim); z-index: 30; }
@@ -362,7 +382,10 @@ body.has-mini.dock-min .find-dock { transform: translateY(var(--dock-mini)); }
   transform: translateY(100%); transition: transform var(--t-4) var(--spring); visibility: hidden; }
 .np.is-open, .sheet.is-open { transform: translateY(0); visibility: visible; }
 .np { transition: none; }
+/* r4 item 2: while a flyer is in the air (either direction) the art slot is INVISIBLE: no tile, no hairline.
+   Only the two flyers and the plain sheet surface move. */
 .np.is-flying .np__art > *, .np.is-flying .np__title { visibility: hidden; }
+.np.is-flying .np__art { background: transparent; box-shadow: none; }
 /* shared-element flyers: fixed copies that travel between the mini and the sheet (and strip to timeline); removed on arrival */
 .flyer { position: fixed; z-index: 45; margin: 0; transform-origin: 0 0; pointer-events: none; will-change: transform; }
 .flyer--art { border-radius: var(--r-sm); overflow: hidden; background: var(--surface); box-shadow: inset 0 0 0 var(--hair) var(--line); }
@@ -407,8 +430,6 @@ canvas.compc { display: block; width: 100%; height: 100%; }
 .tplay { width: 72px; height: 72px; border-radius: var(--r-pill); background: var(--accent); color: var(--on-accent); display: inline-flex; align-items: center; justify-content: center; transition: transform var(--t-1) var(--ease); }
 .tplay .i { width: 32px; height: 32px; }
 .tplay:active { transform: scale(.96); }
-.np.is-open .transport { animation: rise calc(var(--t-4) / 2) var(--ease) calc(var(--t-4) / 2) both; }
-@keyframes rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
 .ctrls { display: flex; justify-content: space-between; margin-top: 16px; }
 .ctrl { width: 56px; display: flex; flex-direction: column; align-items: center; gap: 0; color: var(--ink); }
 .ctrl .iconbtn { height: 40px; }
@@ -467,7 +488,7 @@ body.np-open { overflow: hidden; }
 .noresult--tight { padding-top: 0; }
 .cell__art { display: block; }
 .sprite { position: absolute; }
-@media (max-height: 700px) { .np__why { -webkit-line-clamp: 1; line-clamp: 1; } .np__meta { margin-top: 16px; } .scrub { margin-top: 16px; } .scrub--ep { margin-top: 0; } .transport { margin-top: 16px; } }
+@media (max-height: 700px) { .np__why { -webkit-line-clamp: 2; line-clamp: 2; } .np__meta { margin-top: 16px; } .scrub { margin-top: 16px; } .scrub--ep { margin-top: 0; } .transport { margin-top: 16px; } }
 .sheet__in .sechead, .sheet__in .empty { padding-left: 0; padding-right: 0; }
 
 /* ---- round 2 additions ---- */
@@ -490,9 +511,13 @@ body.np-open { overflow: hidden; }
 .skel--why { width: 100%; height: 14px; margin: 5px 0; }
 .skel--short { width: 62%; }
 .skel--dur { width: 40px; height: 16px; margin-top: 2px; }
-.row--skel { min-height: 112px; }
-.row--skel.row--lead { min-height: 144px; }
-.skel--strip { height: 4px; margin-top: 8px; border-radius: 0; }
+/* r4: skeleton rows carry three why bars (136; the lead 184 with its strip block): most hooks are three lines */
+.row--skel { min-height: 136px; }
+.row--skel.row--lead { min-height: 184px; }
+.row--skel > .row__why { display: flex; flex-direction: column; margin-top: 2px; }
+.row--skel .skel--why { display: block; }
+.row--skel > .skel--strip { grid-column: 2 / -1; grid-row: 3; }
+.skel--strip { height: 4px; margin-top: 6px; border-radius: 0; }
 .row--skel .row__art { box-shadow: none; }
 .clamp1 { display: block; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; -webkit-line-clamp: unset; line-clamp: unset; }
 .row--lead .strip { margin-top: 6px; }

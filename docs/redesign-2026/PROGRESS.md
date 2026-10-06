@@ -34,22 +34,21 @@ Artifacts:
 - [4a Redesign: Native 2026](https://claude.ai/artifact/GnXudytwoQVx57t98wNwGc)
 - [4a Redesign: Clarity](https://claude.ai/artifact/1YAp1DjBVKMzZEgKpkW6UY)
 
-Recommendation: Build Tactile and Ambient. They are the top two (15/15 and 12/15 wins, each beat every other direction 3-0). Tactile is the only one the art director passed, and Ambient's gaps are small CSS fixes. They are two different bets, tactile keys versus artwork-lit, and they share the 3-tab, no-drawer IA. Editorial is the third choice. The judge is calibrated, but only for wide gaps.
+Recommendation (unchanged after the 2026-10-06 polish-to-ready pass, links refreshed
+in place): build Tactile and Ambient. All five directions are now Ready (Tactile r3,
+Ambient r4, Editorial r4, Native 2026 r5, Clarity r4), so the ranking is no longer
+weighted toward polish. Tactile 20/20 votes (4-0 against every direction); Ambient 15/20,
+losing only to Tactile (3-1 over Editorial, 4-0 over the rest); Editorial 11 and Native
+2026 10 tied 2-2 head to head for third; Clarity 4; today 0. Every direction beats today
+4/4. Position-following 10% (under the 20% limit), so the ranking is binding. Judges'
+Phase 3 watch items: Ambient's Foray labels over Library artwork, content showing
+through Editorial's tab bar. Detail: `checkpoint/README.md`.
 
 ## In flight
 
 (Agent/workflow and what it is doing. Clear an entry when it lands.)
 
-- **Polish-to-ready pass** (owner request 2026-10-06 06:25 PDT, workflow `wf_dfc8207d-359`,
-  launched ~06:35 PDT): ambient, editorial, native-2026, clarity get revise -> Fable
-  critique rounds from r4 until their art director says Ready (cap r6); then all six
-  re-ranked (4 Opus judges per pair, 2 per order, position-bias check); the comparison
-  page and changed prototypes republished to the SAME artifact URLs; its own git step
-  commits and updates this file. Why: the overnight run stopped every direction at a
-  fixed 3 rounds, so only Tactile was Ready and the comparison favoured polish.
-  If it died: relaunch with Workflow({scriptPath, resumeFromRunId: "wf_dfc8207d-359"}) in
-  the same session; in a new session, check critique-r4+.md / shots r4+ on disk and
-  rerun only the missing parts. Don't commit in the trunk worktree while it runs.
+(Nothing in flight.)
 
 Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40-22:40 PDT, 128 agents,
 0 errors) ran 0a-0e, 1, 2, Rank and the checkpoint package.
@@ -85,6 +84,7 @@ Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40-22:40 PDT, 128 agents
 (Date, phase, count, why. Owner-authorized 2026-10-05 for Phase 2 art direction.)
 
 - 2026-10-05/06, Phase 2 art direction, 20 Fable calls across 5 directors, owner-authorized.
+- 2026-10-06, Phase 2 polish-to-ready, 5 Fable calls (ambient r4, editorial r4, clarity r4, native-2026 r4+r5), owner-requested.
 
 ## Log
 
@@ -106,3 +106,4 @@ Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40-22:40 PDT, 128 agents
 - 2026-10-05/06 — Phases 3-5 workflow staged: `docs/redesign-2026/workflows/build-directions.workflow.js` (c24d5e69), stub dry run clean.
 - 2026-10-05/06 — Lab dry run dispatched (PR #1087 merged 21:17 PDT, so lab-build.yml is on main). First Android attempt exposed a pipefail bug in the read-back step; fixed and tested (a684a6c0); re-run queued. Trunk CI 37424512769 green on all Linux jobs after the gates/fidelity merges.
 - 2026-10-06 — Lab dry run DELIVERED: iOS uploaded to TestFlight (run 37423123667, delivery 752b5524-1d15-44a4-b8e6-0209b87a879b); Android uploaded to the Play internal testing track (run 37424888622, with the read-back fix). The 4a Lab delivery path is proven for both platforms; no HUMAN-ACTIONS item needed.
+- 2026-10-06 — Polish-to-ready pass (owner request, workflow wf_dfc8207d-359, 76 agents, 0 errors): ambient r4, editorial r4, native-2026 r5, clarity r4 all Ready; re-ranked six entrants, 4 judges per pair in both orders: tactile 20, ambient 15, editorial 11, native-2026 10, clarity 4, today 0; position-following 10%. Recommendation unchanged (Tactile + Ambient). Comparison page and four prototypes republished to the same URLs (version 2). Why it was needed: the overnight run capped every direction at a fixed 3 rounds instead of polishing to Ready.

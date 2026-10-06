@@ -172,10 +172,13 @@ on 375px they overprint each other. At ≤ 380px wide they take
 --ease-out: cubic-bezier(.2,.7,.2,1);
 --ease-in-out: cubic-bezier(.45,0,.2,1);
 --ease-in: cubic-bezier(.5,0,.8,.2);
-/* spring, stiffness 260 / damping 28 / mass 1, ~1.2% overshoot, 420ms */
---spring-sheet: linear(0, 0.013, 0.05 2.6%, 0.19 6.2%, 0.41 10.6%, 0.63 15.2%,
-  0.79 19.8%, 0.9 24.6%, 0.96 29.6%, 0.99 34.8%, 1.008 41%, 1.012 48%,
-  1.008 58%, 1.002 72%, 1);
+/* spring, stiffness 230 / damping 28 / mass 1, no visible overshoot, 420ms:
+   50% at 105ms, 90% at 230ms, 99% at 365ms (r4: the 260/28 curve was at
+   0.99 by 146ms and the sheet landed ~100ms before the plate and the rule) */
+--spring-sheet: linear(0, 0.04 5%, 0.14 10%, 0.26 15%, 0.38 20%, 0.5 25%,
+  0.6 30%, 0.69 35%, 0.76 40%, 0.82 45%, 0.86 50%, 0.9 55%, 0.93 60%,
+  0.95 65%, 0.964 70%, 0.975 75%, 0.983 80%, 0.989 85%, 0.993 90%,
+  0.996 95%, 1);
 /* spring, stiffness 400 / damping 34, no visible overshoot, 240ms: chips, toggles, folio */
 --spring-snap: linear(0, 0.06 4%, 0.3 12%, 0.62 22%, 0.84 32%, 0.95 44%, 0.99 58%, 1);
 ```
@@ -756,8 +759,15 @@ interrupt).
   the title (`np-title`) 15px → 24px, `font-size` animated on the pseudo
   (`::view-transition-new(np-title)` only; old fades).
 - The sheet panel: `transform: translateY(100%) → 0`, `--spring-sheet`, 420ms.
+- **The plate, the rule and the sheet ride one curve** (r4): the flights use
+  `--spring-sheet` too (Web Animations `easing` takes the same `linear()`
+  string; read it from the stylesheet, never a second copy), so the three
+  land in the same frame. The title fades in over the sheet's second half
+  (opacity 0 until 40%, then to 1 at 420ms).
 - The ticker progress rule → the scrubber: `view-transition-name: np-scrub`,
-  width/height morph is done by the group animation; opacity cross-fade.
+  width/height morph is done by the group animation; it travels for the full
+  420ms, then thickens (`scaleY(3)`) and fades out over `--t-micro` into the
+  real scrubber underneath.
 - The page behind: `scale(1) → scale(.96)`, opacity 1 → .82, `--ease-out`, 320ms.
 - Close: reverse with `--ease-in`, 280ms; drag down follows the finger 1:1 with
   the page behind interpolating scale by progress; release above 35% or

@@ -229,12 +229,13 @@ img { display: block; }
 .collage.c4 > .art { width: 100%; height: 100%; border-radius: 0; }
 .collage.c2 > .art, .collage.c3 > .art { position: absolute; height: auto; aspect-ratio: 1; }
 .collage.c2 > .art { width: 68%; }
-.collage.c2 > .art:nth-child(1) { left: 8%; top: 8%; }
-.collage.c2 > .art:nth-child(2) { right: 8%; bottom: 8%; z-index: 1; box-shadow: var(--shadow-1); }
+/* round 4 item 3: the first show's square is whole and on top (it is the show the Room is lit by); the others peek out behind it */
+.collage.c2 > .art:nth-child(1) { right: 8%; bottom: 8%; left: auto; top: auto; z-index: 1; box-shadow: var(--shadow-1); }
+.collage.c2 > .art:nth-child(2) { left: 8%; top: 8%; }
 .collage.c3 > .art { width: 58%; }
-.collage.c3 > .art:nth-child(1) { left: 6%; top: 6%; }
-.collage.c3 > .art:nth-child(2) { right: 6%; top: 6%; z-index: 1; box-shadow: var(--shadow-1); }
-.collage.c3 > .art:nth-child(3) { left: 21%; bottom: 6%; z-index: 2; box-shadow: var(--shadow-1); }
+.collage.c3 > .art:nth-child(1) { left: 21%; bottom: 6%; top: auto; z-index: 2; box-shadow: var(--shadow-1); }
+.collage.c3 > .art:nth-child(2) { left: 6%; top: 6%; }
+.collage.c3 > .art:nth-child(3) { right: 6%; top: 6%; z-index: 1; box-shadow: var(--shadow-1); }
 .collage .art .mono { font-size: calc(var(--sz, 120px) * 0.24); }
 .collage.r-lg { border-radius: var(--r-lg); } .collage.r-xl { border-radius: var(--r-xl); } .collage.r-sm { border-radius: var(--r-sm); }
 .collage.dim { opacity: 0.5; }
@@ -302,6 +303,7 @@ img { display: block; }
 .q-row .main { gap: 0; }
 .q-row .t-label { color: var(--text); }
 .q-row .why2 { color: var(--text-2); }
+.q-row .qwhy { color: var(--text-2); margin-top: 2px; }   /* round 4 item 5: the Up Next peek carries the item's why-line, not its duration again */
 .q-row.narr { background: none; box-shadow: none; min-height: 48px; padding-top: 4px; padding-bottom: 4px; }
 .q-row.narr .nbar { width: 56px; height: 4px; border-radius: 2px; background: var(--lamp); flex: none; }
 :root:not([data-theme="dusk"]) .q-row.narr .nbar { box-shadow: 0 0 0 1px #E0D6C8; }
@@ -378,6 +380,8 @@ html.big .hero .t-title { font-size: 1.25rem; line-height: 1.2; }
 .subj .txt { min-width: 0; flex: 1; }
 .subj .txt .t-label { overflow-wrap: normal; word-break: normal; hyphens: none; }
 .subj .txt .count { color: var(--text-2); display: block; }
+/* round 4 item 8: on the full-width odd tile only, the name steps up to the headline style so the extra width carries something */
+.grid-2 > .subj:last-child:nth-child(odd) .txt .t-label { font: 500 1.25rem/1.2 var(--font-display); font-variation-settings: 'SOFT' 100, 'WONK' 0; font-optical-sizing: auto; }
 
 .banner { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 6px 12px; margin-top: 12px; color: var(--warn); border-radius: var(--r-md); }
 .banner span { color: var(--text-2); }
@@ -397,6 +401,14 @@ html.big .hero .t-title { font-size: 1.25rem; line-height: 1.2; }
 }
 .dock > :not([hidden]) ~ :not([hidden]) { box-shadow: inset 0 1px 0 var(--rim); }   /* rows divided by the rim, never by a gap */
 /* content runs under the Dock and fades to bg behind it; the Dock's rounded edge never slices a line of text */
+/* round 4 item 2, the sixth light: the Dock casts upward. A Glow radial anchored to the Dock's top edge, behind the content (over bg0, under the
+   screens and under the Dock fade), so the thing that is playing lights the page it is on. Nothing plays: nothing to cast. */
+.page-glow { position: absolute; left: 0; right: 0; z-index: 0; pointer-events: none; height: 260px;
+  bottom: calc(var(--safe-bottom) + 12px + var(--dock-h) - 24px);
+  background: radial-gradient(90% 100% at 50% 100%, color-mix(in oklab, var(--glow) 14%, transparent) 0%, transparent 100%);
+  transition: opacity var(--m-ui) var(--e-out), bottom var(--m-ui) var(--e-out); }
+[data-scheme="dawn"] .page-glow { background: radial-gradient(90% 100% at 50% 100%, color-mix(in oklab, var(--glow) 9%, transparent) 0%, transparent 100%); }
+#app.np-open .page-glow, #app.no-chrome .page-glow, [data-posture="car"] .page-glow, #app:not(.has-mini) .page-glow { opacity: 0; }
 .dock-fade { position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--safe-bottom) + 28px); z-index: 19; pointer-events: none;
   background: linear-gradient(transparent, var(--bg0) 70%); transition: opacity var(--m-ui) var(--e-out); }
 #app.np-open .dock-fade, #app.no-chrome .dock-fade, #app.kb .dock-fade { opacity: 0; }
@@ -497,9 +509,10 @@ html.big .np { --np-art: 160px; }
 .np-art .swap > .in { animation: art-in var(--m-room) var(--e-spring-soft) both; }
 @keyframes art-out { to { transform: translateX(-24%); opacity: 0.4; } }
 @keyframes art-in { from { transform: translateX(100%); } to { transform: none; } }
-/* ?state=ending: the handoff frozen mid-flight: next art at 60% of its travel, current at -24% and 40% */
-.np-art .swap.frozen > .out { animation: none; transform: translateX(-24%); opacity: 0.4; }
-.np-art .swap.frozen > .in { animation: none; transform: translateX(40%); }
+/* ?state=ending: the handoff frozen late in flight (round 4 item 7: 85% of travel, so a judge sees one sleeve arriving, not two halves):
+   next art 15% off centre, current at -36% and 20% opacity */
+.np-art .swap.frozen > .out { animation: none; transform: translateX(-36%); opacity: 0.2; }
+.np-art .swap.frozen > .in { animation: none; transform: translateX(15%); }
 .np-titles { margin-top: 12px; text-align: center; position: relative; }
 .np-eyebrow { height: 18px; overflow: hidden; display: flex; align-items: center; justify-content: center; color: var(--lamp-text); opacity: 0; transition: opacity var(--m-ui); }   /* reserved: the title never jumps */
 .np-eyebrow.lit { opacity: 1; }
@@ -539,7 +552,8 @@ html.big .handle .hl { display: none; }
 .sb .bar { position: relative; display: block; width: 100%; height: var(--bh, 16px); margin-top: var(--bt, 14px); border-radius: var(--r-xs); overflow: hidden; transform-origin: left; transition: height var(--m-ui) var(--e-out), margin-top var(--m-ui) var(--e-out); }
 .sb .bar::before { content: ''; position: absolute; inset: 0; background: var(--c); opacity: var(--seg-dim); }
 .sb .bar .fill { position: absolute; inset: 0; background: var(--c); transform-origin: left; transform: scaleX(var(--f, 0)); }
-.sb.cur .bar { height: calc(var(--bh, 16px) + 4px); margin-top: calc(var(--bt, 14px) - 2px); }
+/* round 4 item 4: the current bar grows upward only, so its lower edge never moves onto the thumbnail row */
+.sb.cur .bar { height: calc(var(--bh, 16px) + 4px); margin-top: calc(var(--bt, 14px) - 4px); }
 .sb.cur .bar::before { opacity: 0.62; }
 .sb.cur .bar .fill { background: color-mix(in oklab, var(--c) 78%, var(--lamp)); }
 .sb.narr { min-width: 10px; }
@@ -548,12 +562,14 @@ html.big .handle .hl { display: none; }
 .sb.narr .bar .fill { background: var(--lamp); }
 :root:not([data-theme="dusk"]) .sb.narr .bar { box-shadow: 0 0 0 1px #E0D6C8; }
 .np .sb.narr .bar, .room-scope .sb.narr .bar { box-shadow: none; }
-.sb .thumbs { position: absolute; left: 0; top: calc(var(--bt, 14px) + var(--bh, 16px) + 4px); }
+/* the bar is a <button>, and a button centres its content: round 3 put a 28px bar in a 54px box at y=17, so the thumbs row (placed from y=0) sat on the bars. With thumbnails the content starts at the top. */
+.strip.thumbed .sb { display: flex; flex-direction: column; justify-content: flex-start; }
+.sb .thumbs { position: absolute; left: 0; top: calc(var(--bt, 14px) + var(--bh, 16px) + 6px); }
 .sb .thumbs .art { --sz: 20px; border-radius: var(--r-xs); }
 .strip.draw .sb .bar { animation: bar-in 280ms var(--e-spring) both; animation-delay: calc(var(--i, 0) * 60ms); }
 @keyframes bar-in { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .strip.s32 { --bh: 16px; --hit: 44px; --bt: 14px; }
-.strip.s48 { --bh: 24px; --hit: 52px; --bt: 2px; }
+.strip.s48 { --bh: 24px; --hit: 54px; --bt: 4px; }
 
 /* Foray detail / Onboarding */
 .foray-room, .onb { position: absolute; inset: 0; overflow: hidden; }
@@ -576,17 +592,28 @@ html.big .handle .hl { display: none; }
 .foray-body .seglist .q-row { margin-top: 8px; background: linear-gradient(var(--overlay), var(--overlay)) rgb(29 25 22 / 0.7); }
 [data-scheme="dawn"] .foray-body .seglist .q-row { background: linear-gradient(var(--overlay), var(--overlay)) var(--bg1); }
 .onb .onb-inner { position: absolute; inset: 0; display: flex; flex-direction: column; padding: calc(var(--safe-top) + 24px) var(--gutter) calc(var(--safe-bottom) + 24px); }
-.onb .onb-mid { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 12px; }
+.onb .onb-mid { flex: 1; display: flex; flex-direction: column; justify-content: flex-start; gap: 0; padding-top: 40px; }   /* round 4 item 1: sleeves top-anchored under the wordmark, buttons bottom-anchored, the surplus opens between copy and buttons */
+.onb .onb-mid .strip-wrap { margin-top: 24px; }
+.onb .onb-mid .t-display { margin-top: 28px; }
 .onb .t-display { color: var(--text); }
 .onb .t-body { color: var(--text-2); margin-top: 12px; }
 .onb .actions { display: flex; flex-direction: column; gap: 12px; }
 .wordmark { font: italic 500 1.625rem/1.875rem var(--font-display); font-variation-settings: 'SOFT' 100, 'WONK' 0; color: var(--text); }
 .onb .wordmark { color: var(--text); }
 /* four sleeves, scattered: rotations -8, 4, -3, 7 degrees, fully opaque, two-layer shadow */
-.onb-arts { position: relative; height: 150px; margin: 0 -4px 0; }
-@media (min-height: 800px) { .onb-arts { height: 176px; --sb: 1.15; } .onb .onb-mid { gap: 20px; } }
+.onb-arts { position: relative; height: 176px; margin: 0 -4px 0; }
+@media (min-height: 800px) { .onb-arts { --sb: 1.15; } }
 .onb-arts .art { position: absolute; left: calc(var(--x) * 1%); top: calc(var(--y) * 1px); transform: rotate(calc(var(--r) * 1deg)) scale(calc(var(--s, 1) * var(--sb, 1))); opacity: 1; transition: transform var(--m-room) var(--e-spring-soft); }
 .onb-arts .art.lit { --s: 1.08; z-index: 2; }
+/* round 4 item 1: the onboarding Room's stops follow the sleeves. Wordmark row = safe-top + 24 + 30, sleeves start 40 below it and are 176 tall,
+   the strip starts 24 under them: head band to wordmark's end + 18, bright zone = the sleeves' box, mid stop where the strip begins (measured in tools/qa.mjs) */
+.onb .room-bg { --ob-top: calc(var(--safe-top) + 72px); --ob-art: calc(var(--safe-top) + 94px + 176px); }
+.onb .room-bg::after { background: linear-gradient(180deg,
+  var(--scrim-head, rgb(20 17 15 / 0.52)) 0,
+  var(--scrim-top) var(--ob-top),
+  var(--scrim-top) calc(var(--ob-art) - 70px),   /* the ramp starts behind the sleeves' lower edge so no seam is drawn (round 3 note) */
+  var(--scrim-mid) calc(var(--ob-art) + 24px),
+  var(--scrim-low) 100%); }
 
 /* sheet (settings) and toast */
 .sheet-scrim { position: absolute; inset: 0; z-index: 60; background: rgb(10 6 4 / 0.5); opacity: 0; visibility: hidden; transition: opacity var(--m-ui), visibility 0s linear var(--m-ui); }
@@ -610,6 +637,7 @@ html.big .handle .hl { display: none; }
 [data-posture="car"] .np .t-headline { font-size: 1.5625rem; }
 [data-posture="car"] .np .sec-row, [data-posture="car"] .np .np-detail, [data-posture="car"] .np .handle, [data-posture="car"] .np .why { display: none; }
 [data-posture="car"] .np .t-display { -webkit-line-clamp: 2; line-clamp: 2; }
+@media (min-height: 800px) { [data-posture="car"] .np .t-display { -webkit-line-clamp: 3; line-clamp: 3; } }
 [data-posture="car"] .np { --np-art: 240px; }
 @media (max-height: 700px) { [data-posture="car"] .np { --np-art: 200px; } }
 [data-posture="car"] .np .playbtn.s88 { --sz: 112px; } [data-posture="car"] .np .playbtn.s88 .icon { width: 52px; height: 52px; }

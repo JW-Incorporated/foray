@@ -1,4 +1,10 @@
-/* 4a - Native 2026 prototype, round 3 (critique-r2 applied). No build step, no real audio: playback is simulated.
+/* 4a - Native 2026 prototype, round 4 (critique-r3 applied). No build step, no real audio: playback is simulated.
+   Round-4 calls made without asking: (a) the voice face is never ellipsized: rows grow instead of clamping the why-line (no clamp at
+   all, not clamp 2, because 18 words need three lines at 375 and a clamp would clip them again); (b) the bridge chip sits on the
+   cover's corner with a 16px horizontal stitch, the rail art block is 168 tall; (c) iOS Up Next rows have no leading handle and use
+   the horizontal overflow glyph, and the queue rows really swipe (leading Top, trailing Remove); (d) the hash honours
+   &scroll=<px>, state=chip on #/foray and swipe=1 on the Up Next list; (e) sm strips merge a show's consecutive clips into one bar
+   once a foray has more than 12 clips; (f) the onboarding loop starts with bars 1 and 2 played and animates bar 3.
    Calls carried from round 2: (1) the credits' second line is "<clip length> · <gist>" because the data has no
    per-clip episode titles; (2) during a narration beat the art slot already shows the NEXT clip's show, so the listener
    sees who is about to speak; (3) library played-state counts clips (9 of 22), not the r1 "2 of 4" fudge.
@@ -44,6 +50,8 @@ $('.statusbar').innerHTML = IOS
   : '<span class="sb-time">9:41</span><span class="sb-right"><svg class="sb-ic sb-signal"><use href="#i-sba-signal"/></svg><svg class="sb-ic sb-wifi"><use href="#i-sba-wifi"/></svg><svg class="sb-ic sb-batt"><use href="#i-sba-batt"/></svg></span>';
 
 /* ---------- formatting ---------- */
+/* a bridge footer names the show, not its tagline: "Sticky Notes: The Classical Music Podcast" is "Sticky Notes" (critique r4 #2: the footer must never cut the show name) */
+const shortShow = n => { const k = String(n).split(/\s*(?::|\||–|—| - )\s*/)[0].trim(); return k || String(n); };
 const fmtMin = m => { m = Math.max(1, Math.round(m)); return m < 60 ? m + ' min' : (Math.floor(m / 60) + ' hr' + (m % 60 ? ' ' + (m % 60) + ' min' : '')); };
 const fmtSec = s => fmtMin(s / 60);
 const clock = s => { s = Math.max(0, Math.floor(s)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0'); };
@@ -83,13 +91,27 @@ function strip(F, size, pos, o = {}) {
   let clips = F.tl.filter(s => s.type === 'clip');
   if (o.cap) clips = clips.slice(0, o.cap);
   const prog = !!(o.prog || (o.played > 0) || (!o.noCur && pos > 0.5));
+  // critique r3 #8: a small strip with more than 12 clips merges a show's consecutive clips into one bar (a show run), so 22 clips
+  // are not 22 beads. Opacity applies per run and the run holding the played boundary splits at --p. md and lg keep one bar per clip.
+  if (size === 'sm' && clips.length > 12) {
+    const playedSec = o.played > 0 ? clips.filter(c => c.n < o.played).reduce((a, c) => a + c.len, 0) : 0;
+    const runs = []; clips.forEach(c => { const r = runs[runs.length - 1]; if (r && r.show === c.show) { r.len += c.len; } else runs.push({ show: c.show, c: c.c, first: c, start: c.start, len: c.len }); });
+    let hr = `<div class="seam sm${prog ? ' prog' : ''}${F.f.narrated ? '' : ' no-thread'}" aria-hidden="true"${o.id ? ` id="${o.id}"` : ''}>`;
+    runs.forEach(r => {
+      const p = o.played > 0 ? clamp((playedSec - r.start) / r.len, 0, 1) : clamp((pos - r.start) / r.len, 0, 1);
+      hr += `<span class="sb c${r.c} run${p > 0 && p < 1 ? ' is-cur' : ''}${p >= 1 ? ' is-played' : ''}${o.unavail ? ' is-unavail' : ''}" data-grow="${r.len}" data-p="${p.toFixed(4)}" data-k="${F.tl.indexOf(r.first)}"></span>`;
+    });
+    return hr + '</div>';
+  }
   const preK = (cur >= 0 && F.tl[cur].type === 'narr') ? cur - 1 : -1; // during narration the playhead sits on the thread after this bar
   let h = `<div class="seam ${size}${prog ? ' prog' : ''}${F.f.narrated ? '' : ' no-thread'}"${o.slider ? ` role="slider" tabindex="0" aria-label="Foray position" aria-valuemin="0" aria-valuemax="${Math.round(F.total)}" aria-valuenow="${Math.round(pos)}" aria-valuetext="${esc(sliderText(F, pos))}"` : ' aria-hidden="true"'}${o.id ? ` id="${o.id}"` : ''}>`;
   clips.forEach((s, ci) => {
     const k = F.tl.indexOf(s);
     const p = clamp((pos - s.start) / s.len, 0, 1);
-    const loop = o.loop ? (ci === 0 ? ' loop-a' : ci === 1 ? ' loop-b' : '') : '';
-    h += `<span class="sb c${s.c}${k === cur ? ' is-cur' : ''}${k === preK ? ' is-pre' : ''}${p >= 1 ? ' is-done' : ''}${o.played > 0 && s.n < o.played ? ' is-played' : ''}${o.unavail ? ' is-unavail' : ''}${loop}" data-grow="${s.len}" data-p="${p.toFixed(4)}" data-k="${k}">${size === 'sm' ? '' : '<i class="ph"></i>'}</span>`;
+    // critique r3 #9: the onboarding loop starts with bars 1 and 2 played and animates bar 3, so any frame reads as progress.
+    // Static (reduced motion): bar 3 half filled, because the animation is what overrides this --p while it runs.
+    const loop = o.loop ? (ci === 2 ? ' loop-a' : ci === 3 ? ' loop-b' : '') : '';
+    h += `<span class="sb c${s.c}${k === cur ? ' is-cur' : ''}${k === preK ? ' is-pre' : ''}${p >= 1 ? ' is-done' : ''}${o.played > 0 && s.n < o.played ? ' is-played' : ''}${o.unavail ? ' is-unavail' : ''}${loop}" data-grow="${s.len}" data-p="${(loop === ' loop-a' ? 0.5 : p).toFixed(4)}" data-k="${k}">${size === 'sm' ? '' : '<i class="ph"></i>'}</span>`;
   });
   h += '</div>';
   if (o.labels) {
@@ -156,7 +178,7 @@ let curView = null;
 function navbar(o) {
   const back = o.back ? `<button class="nb-btn${o.hero ? ' on-hero' : ''}" data-act="back" aria-label="Back">${ic(IOS ? 'chevron-left' : 'arrow-back', 's28')}</button>` : '';
   const title = o.title ? `<div class="nb-title">${esc(o.title)}</div>` : '';
-  const tr = (o.trailing || []).map(t => `<button class="nb-btn${o.hero ? ' on-hero' : ''}" data-act="${t.act}"${t.arg ? ` data-arg="${esc(t.arg)}"` : ''} aria-label="${esc(t.label)}">${ic(t.icon, 's24')}</button>`).join('');
+  const tr = (o.trailing || []).map(t => `<button class="nb-btn${o.hero ? ' on-hero' : ''}${t.accent ? ' accent' : ''}" data-act="${t.act}"${t.arg ? ` data-arg="${esc(t.arg)}"` : ''} aria-label="${esc(t.label)}">${ic(t.icon, 's24')}</button>`).join('');
   return `<header class="navbar${o.back ? ' has-back' : ''}${o.hero ? ' is-transparent' : ''}">${back}${title}<span class="nb-spacer"></span>${tr}</header>`;
 }
 
@@ -169,10 +191,10 @@ function pickRow(i, o = {}) {
   const hit = `<button class="row-hit" data-act="play-ep" data-i="${i}" data-ctx="1" aria-label="${esc(e.title)}, ${esc(e.show)}. Press and hold for more."></button>`;
   const prog = o.progress != null ? `<div class="row-prog"><i data-p="${o.progress}"></i></div>` : '';
   if (br) {
-    return `<div class="row bridge-row${cur ? ' is-cur' : ''}${o.dim ? ' dim' : ''}"><div class="bart sm"><div class="main r-sm">${im(e.artwork_url)}</div><span class="chip-from">${im(e.bridge.from_art)}</span></div><div class="row-body"><div class="eyebrow">${ic('stretch', 's14')}Stretch</div><div class="voice lg clamp2">${esc(e.bridge.line)}</div><div class="row-s clamp1">${esc(e.title)} · ${esc(e.show)}</div></div>${act}${hit}${prog}</div>`;
+    return `<div class="row bridge-row${cur ? ' is-cur' : ''}${o.dim ? ' dim' : ''}"><div class="bart sm"><div class="main r-sm">${im(e.artwork_url)}</div><span class="stitch"></span><span class="chip-from">${im(e.bridge.from_art)}</span></div><div class="row-body"><div class="eyebrow">${ic('stretch', 's14')}Stretch</div><div class="voice lg clamp3">${esc(e.bridge.line)}</div><div class="row-s foot clamp1">${esc(shortShow(e.show))} · ${fmtMin(e.dur_min)}</div></div>${act}${hit}${prog}</div>`;
   }
   // two tiers: art + title + meta + actions, then the why-line at full row width (duration first so it survives truncation)
-  return `<div class="row pick${cur ? ' is-cur' : ''}${o.dim ? ' dim' : ''}">${art(e.artwork_url, 'r-sm')}<div class="row-body"><div class="row-t clamp1">${esc(e.title)}</div><div class="row-s clamp1">${fmtMin(e.dur_min)} · ${esc(e.show)}</div></div>${act}<div class="row-w voice clamp1">${esc(why)}</div>${hit}${prog}</div>`;
+  return `<div class="row pick${cur ? ' is-cur' : ''}${o.dim ? ' dim' : ''}">${art(e.artwork_url, 'r-sm')}<div class="row-body"><div class="row-t clamp2">${esc(e.title)}</div><div class="row-s clamp1">${fmtMin(e.dur_min)} · ${esc(e.show)}</div></div>${act}<div class="row-w voice">${esc(why)}</div>${hit}${prog}</div>`;
 }
 
 function rail(items) { return `<div class="rail">${items.join('')}</div>`; }
@@ -182,13 +204,13 @@ function forayCard(F, o = {}) {
     ? `<div class="bart"><div class="main r-md">${comp(f.art, 'r-md')}</div><span class="stitch"></span><span class="chip-from">${im(br.from_art)}</span></div>`
     : comp(f.art, 'r-md');
   const body = br
-    ? `<div class="eyebrow">${ic('stretch', 's14')}Stretch</div><div class="voice lg clamp3">${esc(br.line)}</div><div class="rcard-t clamp2">${esc(f.title)}</div><div class="rcard-m">${fmtSec(F.total)} · ${plural(f.shows.length, 'show')}</div>`
+    ? `<div class="eyebrow">${ic('stretch', 's14')}Stretch</div><div class="voice vrail clamp3">${esc(br.line)}</div><div class="rcard-m">${esc(shortShow(f.shows[0]))} · ${fmtSec(F.total)}</div>`
     : `${strip(F, 'sm', 0, { noCur: true })}<div class="rcard-t clamp2">${esc(f.title)}</div><div class="rcard-m">${fmtSec(F.total)} · ${plural(f.shows.length, 'show')}</div>`;
   return `<button class="rcard${br ? ' bridge' : ''}" data-act="open-foray" data-id="${esc(f.id)}" aria-label="${esc(f.title)}, foray">${artBlock}${body}</button>`;
 }
 function epCard(i, kind) {
   const e = EP[i];
-  if (e.bridge) return `<button class="rcard bridge" data-act="play-ep" data-i="${i}"><div class="bart"><div class="main r-md">${im(e.artwork_url)}</div><span class="stitch"></span><span class="chip-from">${im(e.bridge.from_art)}</span></div><div class="eyebrow">${ic('stretch', 's14')}Stretch</div><div class="voice lg clamp3">${esc(e.bridge.line)}</div><div class="rcard-t clamp2">${esc(e.title)}</div><div class="rcard-m">${esc(e.show)}</div></button>`;
+  if (e.bridge) return `<button class="rcard bridge" data-act="play-ep" data-i="${i}"><div class="bart"><div class="main r-md">${im(e.artwork_url)}</div><span class="stitch"></span><span class="chip-from">${im(e.bridge.from_art)}</span></div><div class="eyebrow">${ic('stretch', 's14')}Stretch</div><div class="voice vrail clamp3">${esc(e.bridge.line)}</div><div class="rcard-m">${esc(shortShow(e.show))} · ${fmtMin(e.dur_min)}</div></button>`;
   return `<button class="rcard" data-act="play-ep" data-i="${i}">${art(e.artwork_url, 'r-md')}<div class="rcard-t clamp2">${esc(e.title)}</div><div class="rcard-m">${esc(e.show)} · ${fmtMin(e.dur_min)}</div></button>`;
 }
 function plCard(p) {
@@ -213,7 +235,7 @@ function heroCard(opts = {}) {
     <div class="hero-top">${comp(f.art, 'r-art', false)}
       <div class="hero-txt"><div class="eyebrow">${ic('4a', 's14')}${esc(eyebrow)}</div><h2 class="hero-title clamp3">${esc(f.title)}</h2><div class="hero-meta">${esc(meta)}</div></div></div>
     ${strip(F, 'lg', pos, { noCur: !inProg })}
-    <p class="why voice clamp3">${esc(why)}</p>
+    <p class="why voice">${esc(why)}</p>
     <div class="hero-actions">${actionRow({ id: f.id, aria: `${inProg ? 'Resume' : 'Play'} ${f.title}`, label: inProg ? 'Resume' : 'Play', extra: pill('open-foray', 'Details', { id: f.id }) })}</div>
   </article>`;
 }
@@ -230,7 +252,7 @@ function renderHome(q) {
     body = `<article class="hero sk-hero" aria-hidden="true"><div class="hero-top"><div class="sk sk-comp"></div><div class="hero-txt"><div class="sk sk-l w40"></div><div class="sk sk-t"></div><div class="sk sk-t"></div><div class="sk sk-t w70"></div><div class="sk sk-l w50"></div></div></div><div class="sk sk-strip"></div><div class="sk sk-w"></div><div class="sk sk-w w80"></div><div class="hero-actions"><div class="act-row"><div class="sk sk-play"></div><div class="sk sk-l w30"></div></div></div></article>${skRail}${skRail}`;
   } else {
     const rails = [1, 2, 3, 4, 5, 6].map(k => FORAYS[k]).map(f => f.id === 'geology-plates-1'
-      ? forayCard(TLS[f.id], { bridge: { from_art: EP[25].artwork_url, line: "You play Don't Panic Geocast. This one goes deeper into how plates began." } })
+      ? forayCard(TLS[f.id], { bridge: { from_art: EP[25].artwork_url, line: "Like Don't Panic Geocast, but deeper into how plates began." } })
       : forayCard(TLS[f.id]));
     const resumeShown = !first && !(S.item && S.item.kind === 'ep' && S.item.i === RESUME.i) && !(S.item && S.item.kind === 'foray');
     body = `
@@ -241,7 +263,7 @@ function renderHome(q) {
       <section class="section"><div class="sec-h"><h2>Playlists for you</h2><button class="link" data-act="nav" data-arg="#/library/playlists">See all</button></div>${rail(D.playlists.map(plCard))}</section>
       <section class="section"><div class="sec-h"><h2>More picks</h2></div><div class="list">${rows.map(i => pickRow(i, st === 'offline' && i % 2 ? { dim: true } : {})).join('')}</div>${st === 'offline' ? '<p class="foot pad">Needs a connection: the faded rows.</p>' : ''}</section>`;
   }
-  return { nav: navbar({ title: 'Today', trailing: [{ act: 'settings', icon: 'settings', label: 'Interests and settings' }] }), html: `<h1 class="ltitle">Today</h1>${body}` };
+  return { nav: navbar({ title: 'Today', trailing: [{ act: 'settings', icon: 'settings', label: 'Interests and settings', accent: true }] }), html: `<h1 class="ltitle">Today</h1>${body}` };
 }
 
 /* ----- Search ----- */
@@ -307,16 +329,22 @@ function libBody(seg, st) {
     const curI = S.item && S.item.kind === 'ep' ? S.item.i : null;
     return `<div class="q-head"><span>${S.upnext.length} queued · ${fmtMin(mins)}</span><button class="icon-btn" data-act="menu-queue" aria-label="Queue options">${ic('more-h', 's20')}</button></div>
       <div class="list" id="qlist">${S.upnext.map((i, k) => { const e = EP[i]; const cur = i === (curI != null && S.upnext.includes(curI) ? curI : S.upnext[0]);
-        return `<div class="qrow${cur ? ' is-cur' : ''}"><span class="drag" aria-hidden="true">${ic('drag', 's20')}</span>${art(e.artwork_url, '')}<div class="row-body"><div class="row-t clamp1" >${esc(e.title)}</div><div class="row-s clamp1">${esc(e.show)} · ${fmtMin(e.dur_min)}</div></div>
-          <div class="qrow-end">${cur ? ic('eq', 's20') : ''}<span class="pos" aria-label="Position ${k + 1}${cur ? ', playing' : ''}">${k + 1}</span><button class="icon-btn" data-act="menu-q" data-i="${i}" aria-label="Options for ${esc(e.title)}">${ic('more-v', 's20')}</button></div>
-          <button class="row-hit" data-act="play-ep" data-i="${i}" aria-label="Play ${esc(e.title)}"></button></div>`; }).join('')}</div>`;
+        // critique r3 #3: the leading drag handle and the vertical overflow glyph are Material's. iOS rows carry neither: trailing
+        // position number (accent on the current row) + graphic_eq on the current row + the horizontal overflow glyph.
+        // Title 15/600/20 clamp 2, show 13/18 one line; the row grows from 64 only when the title wraps. Rows swipe: right reveals Top, left reveals Remove.
+        return `<div class="qwrap" data-i="${i}"><div class="q-act q-l"><button data-act="qtop" data-i="${i}" aria-label="Move ${esc(e.title)} to the top">${ic('to-top', 's20')}Top</button></div><div class="q-act q-r"><button data-act="qrm" data-i="${i}" aria-label="Remove ${esc(e.title)}">${ic('delete', 's20')}Remove</button></div>
+          <div class="qrow${cur ? ' is-cur' : ''}">${IOS ? '' : `<span class="drag" aria-hidden="true">${ic('drag', 's20')}</span>`}${art(e.artwork_url, '')}<div class="row-body"><div class="row-t clamp2">${esc(e.title)}</div><div class="row-s clamp1">${fmtMin(e.dur_min)} · ${esc(e.show)}</div></div>
+          <div class="qrow-end"><span class="pos" aria-label="Position ${k + 1}${cur ? ', playing' : ''}">${k + 1}</span>${cur ? ic('eq', 's20') : ''}<button class="icon-btn" data-act="menu-q" data-i="${i}" aria-label="Options for ${esc(e.title)}">${ic(IOS ? 'more-h' : 'more-v', 's20')}</button></div>
+          <button class="row-hit" data-act="play-ep" data-i="${i}" aria-label="Play ${esc(e.title)}"></button></div></div>`; }).join('')}</div>`;
   }
   if (seg === 'history') return `<div class="list">${D.library.history.map(i => { const e = EP[i]; return `<div class="row sz40"><div class="art r-sm">${im(e.artwork_url)}</div><div class="row-body"><div class="row-t clamp1">${esc(e.title)}</div><div class="row-s clamp1">${esc(e.show)}</div></div><div class="row-act tick">${ic('check-circle', 's20')}</div><button class="row-hit" data-act="play-ep" data-i="${i}" aria-label="Play ${esc(e.title)} again"></button></div>`; }).join('')}</div>`;
   return '';
 }
 function renderLibrary(arg, q) {
-  const seg = SEGS.some(s => s[0] === arg) ? arg : S.seg; S.seg = seg;
-  const st = q.get('state') || '';
+  // the segment comes from the path (#/library/upnext) or, for the harness, from state (#/library?state=upnext)
+  const sq = q.get('state') || '';
+  const seg = SEGS.some(s => s[0] === arg) ? arg : SEGS.some(s => s[0] === sq) ? sq : S.seg; S.seg = seg;
+  const st = SEGS.some(s => s[0] === sq) ? '' : sq;
   const tabs = `<div class="seg" role="tablist" aria-label="Library">${SEGS.map(([k, l]) => `<button role="tab" data-act="seg" data-arg="${k}" aria-selected="${k === seg}">${l}</button>`).join('')}</div>`;
   return { nav: navbar({ title: 'Library', trailing: [{ act: 'toast', arg: 'New playlist: search a subject and choose Build a playlist.', icon: 'plus', label: 'New playlist' }, { act: 'menu-lib', icon: 'more-h', label: 'More' }] }),
     html: `<h1 class="ltitle">Library</h1>${tabs}<div id="libbody">${libBody(seg, st)}</div>`, st };
@@ -329,7 +357,7 @@ function credits(F, curK, mode) {
     const cur = k === curK; const tag = 'button';
     const at = mode === 'seek' ? ` data-act="seek-clip" data-arg="${k}"` : ` data-act="toast" data-arg="Show pages are not in this prototype."`;
     if (s.type === 'clip') return `<${tag} class="credit${cur ? ' is-cur' : ''}" data-k="${k}" data-t="clip"${at}>${art(s.art, 'r-sm')}<div><div class="t clamp1">${esc(s.show)}</div><div class="s clamp1">${fmtMS(s.len)} · ${esc(s.gist)}</div></div><span class="row-act">${ic(cur ? 'eq' : 'open', 's20')}</span></${tag}>`;
-    return `<${tag} class="credit${cur ? ' is-cur' : ''}" data-k="${k}" data-t="narr"${at}><span class="narr-ic">${ic('4a', 's20')}</span><div><div class="t voice clamp1">Narration</div><div class="s clamp1">${esc(s.line)}</div></div><span class="row-act">${cur ? ic('eq', 's20') : ''}</span></${tag}>`;
+    return `<${tag} class="credit${cur ? ' is-cur' : ''}" data-k="${k}" data-t="narr"${at}><span class="narr-ic">${ic('4a', 's20')}</span><div><div class="t voice">${esc(s.line)}</div><div class="s clamp1">4a narration · ${fmtMS(s.len)}</div></div><span class="row-act">${cur ? ic('eq', 's20') : ''}</span></${tag}>`;
   }).join('');
 }
 function renderForay(arg, q) {
@@ -346,7 +374,7 @@ function renderForay(arg, q) {
     ? 'Each foray starts from a subject you keep returning to. 4a finds the strongest minutes in real shows, orders them so each clip leads into the next, and adds a short link only where one is needed.'
     : 'Each foray starts from a subject you keep returning to. 4a finds the strongest minutes in real shows and orders them so each clip leads into the next.';
   return {
-    nav: navbar({ back: true, hero: true, trailing: [{ act: 'share', icon: IOS ? 'share-ios' : 'share-and', label: 'Share' }, { act: 'menu-foray', icon: 'more-h', label: 'More' }] }),
+    nav: navbar({ back: true, hero: true, title: f.title, trailing: [{ act: 'share', icon: IOS ? 'share-ios' : 'share-and', label: 'Share' }, { act: 'menu-foray', icon: 'more-h', label: 'More' }] }),
     // title below the mosaic, not on it (critique r2 #6): a 200px 3x2 mosaic of the credited shows' covers, no text on the art
     html: `<div class="fd-hero">${comp(f.art, 'mosaic', false, 6)}</div>
     <div class="fd-body"><div class="eyebrow">${ic('4a', 's14')}Foray</div><h1 class="fd-title clamp2">${esc(f.title)}</h1>
@@ -365,9 +393,9 @@ function fitOnb(r) { const c = $('.onb-card', r); const h = c && $('.hero', c); 
 function renderOnboarding() {
   const F = TLS[LEAD.id]; const f = LEAD;
   // the loop: bar one fills over 4 s, the playhead crosses the thread over 1 s, bar two begins (static at 40% under reduced motion)
-  const sh = strip(F, 'lg', 0, { noCur: true, prog: true, loop: true });
+  const sh = strip(F, 'lg', 0, { noCur: true, prog: true, loop: true, played: 2 });
   return { onb: `<div class="onb"><div class="onb-block">
-    <div class="onb-card"><div class="onb-glow"></div><article class="hero" aria-hidden="true"><div class="hero-top">${comp(f.art, 'r-art', false)}<div class="hero-txt"><div class="eyebrow">${ic('4a', 's14')}Today's foray</div><h2 class="hero-title clamp3">${esc(f.title)}</h2><div class="hero-meta">${fmtSec(F.total)} · ${plural(f.shows.length, 'show')}</div></div></div>${sh}<p class="why voice clamp3">${esc(f.why)}</p></article></div>
+    <div class="onb-card"><div class="onb-glow"></div><article class="hero" aria-hidden="true"><div class="hero-top">${comp(f.art, 'r-art', false)}<div class="hero-txt"><div class="eyebrow">${ic('4a', 's14')}Today's foray</div><h2 class="hero-title clamp3">${esc(f.title)}</h2><div class="hero-meta">${fmtSec(F.total)} · ${plural(f.shows.length, 'show')}</div></div></div>${sh}<p class="why voice">${esc(f.why)}</p></article></div>
     <div class="onb-copy"><h1>Podcasts, stitched around you</h1><p>4a picks real shows and joins their best parts into one listen, with a reason for each.</p></div></div>
     <div class="onb-btns"><button class="btn fill block" data-act="nav" data-arg="#/home">Show my picks</button><button class="btn tonal block" data-act="nav" data-arg="#/home">Skip for now</button></div></div>` };
 }
@@ -390,12 +418,13 @@ function route() {
     if (st === 'episode') setEpisode(r.q.get('ep') != null ? clamp(+r.q.get('ep'), 0, EP.length - 1) : 6, 0.38); else if (st === 'unnarrated') setForay('capital-types-1', 520); else if (st === 'narration') setForay(LEAD.id, 153 + 4); else setForay(LEAD.id, 275);
     S.playing = r.q.get('paused') !== '1'; S.buffering = r.q.get('state') === 'buffering';
   }
-  if (r.name === 'library' && r.arg === 'upnext' && !S.item) { setEpisode(S.upnext[0], 0.22); S.playing = true; }
+  if (r.name === 'library' && (r.arg === 'upnext' || r.q.get('state') === 'upnext') && !S.item) { setEpisode(S.upnext[0], 0.22); S.playing = true; }
   if (r.name === 'search' && r.q.get('mini') === '1' && !S.item) { setEpisode(RESUME.i, RESUME.pos); S.playing = true; }
 
   if (r.name === 'now-playing') {
         if (!curView) mountView('home', '', new URLSearchParams(), { instant: true, first: true });
     if (!S.npOpen) openNP({ instant: first || r.q.get('instant') === '1' });
+    harnessParams($('#np'), 'now-playing', r.q, '');
     return;
   }
   if (S.npOpen) closeNP({ quick: true });
@@ -436,6 +465,7 @@ function mountView(name, arg, q, o = {}) {
     if (name === 'foray') $('#app').classList.add('over-hero');
     if (name === 'onboarding') fitOnb(screen);
     chromeFor(name);
+    harnessParams(screen, name, q, arg);
   };
   const pushed = name === 'foray' && !o.first;
   if (pushed && !reduced()) screen.classList.add('push-in');
@@ -447,6 +477,23 @@ function mountView(name, arg, q, o = {}) {
   $('#app').classList.remove('np-open');
   if (name !== 'foray') $('#app').classList.remove('over-hero');
   if (name === 'home' && q.get('state') === 'menu') setTimeout(() => { const r = $('.row.pick'); if (r) ctxOpen(r); }, 60);
+}
+
+/* Hash parameters the harness drives after layout (critique r3 #6; none of the iOS shell's scrolled states had ever been rendered):
+   &scroll=<px> scrolls the route's scroller and dispatches `scroll`, so the collapsed title, the glass nav backing, the minimised
+   tab bar and the opaque Android app bar render; state=chip on #/foray shows a tapped clip bar's chip; swipe=1 on the Up Next list
+   reveals the trailing Remove on the second row. Re-applied once more at 450 ms because fonts and artwork can move the layout. */
+function harnessParams(screen, name, q, arg) {
+  const sp = +q.get('scroll') || 0;
+  const apply = () => { if (sp > 0) { const sc = name === 'now-playing' ? $('#np-scroll') : $('.view', screen); if (sc) { sc.scrollTop = sp; sc.dispatchEvent(new Event('scroll')); } } };
+  const extra = () => {
+    if (name === 'foray' && q.get('state') === 'chip') {
+      const bars = $$('.fd-body .seam.lg .sb', screen); const bar = bars[2] || bars[0]; if (!bar) return;
+      const F = TLS[FORAYS.some(f => f.id === arg) ? arg : LEAD.id]; const s = F.tl[+bar.getAttribute('data-k')]; if (s) chipFor(bar, s, true);
+    }
+    if (name === 'library' && q.get('swipe') === '1') { const rows = $$('.qrow', screen); const r = rows.find(x => !x.classList.contains('is-cur')) || rows[1]; if (r) r.classList.add('open-r'); }
+  };
+  requestAnimationFrame(() => { apply(); setTimeout(() => { apply(); extra(); }, 450); });
 }
 
 /* Android chips row bleeds to the screen edge; the selected chip is scrolled into view so an edge cuts a chip, never the gutter */
@@ -734,13 +781,18 @@ function bindNPInteractions() {
       if (dy > 110 || v > 0.6) { sheet.style.transform = ''; closeNP({ from: dy }); } else { sheet.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: 320, easing: SPRING.snappy }); sheet.style.transform = ''; } };
     h.addEventListener('pointerup', end); h.addEventListener('pointercancel', end); });
 }
-function chipFor(bar, s) {
+function chipFor(bar, s, keep) {
   const wrap = bar.closest('.seam-wrap'); if (!wrap) return; $$('.chip-pop', wrap).forEach(c => c.remove());
   const r = bar.getBoundingClientRect(), w = wrap.getBoundingClientRect();
   const c = document.createElement('div'); c.className = 'chip-pop';
   c.innerHTML = `<div class="art">${im(s.art, false)}</div><span>${esc(s.show)}</span>`;
-  c.style.left = clamp(r.left - w.left + r.width / 2, 100, w.width - 100) + 'px'; c.style.top = '-6px';
-  wrap.appendChild(c); setTimeout(() => c.remove(), 2400);
+  c.style.top = '-12px'; c.style.visibility = 'hidden';
+  wrap.appendChild(c);
+  /* centred on the tapped bar's midpoint, clamped to the gutters (the wrap sits inside them) with the 6px tail kept on the bar (critique r4 #5) */
+  const mid = r.left - w.left + r.width / 2, half = c.offsetWidth / 2;
+  const left = clamp(mid, half - 16, w.width - half + 16);
+  c.style.left = left + 'px'; c.style.setProperty('--tail', (half + (mid - left)) + 'px'); c.style.visibility = '';
+  if (!keep) setTimeout(() => c.remove(), 2400);
 }
 
 function openNP(o = {}) {
@@ -861,6 +913,36 @@ document.addEventListener('pointerdown', e => {
 document.addEventListener('pointermove', e => { if (Math.hypot(e.clientX - lpX, e.clientY - lpY) > 8) clearTimeout(lpT); });
 document.addEventListener('contextmenu', e => { const row = e.target.closest(LP_SEL); if (row) { e.preventDefault(); clearTimeout(lpT); ctxOpen(row); } });
 document.addEventListener('click', e => { if (Date.now() - lpAt < 700) { e.stopPropagation(); e.preventDefault(); lpAt = 0; } }, true);
+
+/* ---------- Up Next swipe (critique r3 #6) ----------
+   Drag a queue row right to reveal "Top" (accent), left to reveal "Remove" (danger); release past the threshold to hold it open, tap the
+   revealed action. The row is opaque, so the action layers behind it only show while it is moved. Position is class-driven (.open-l,
+   .open-r); the drag itself writes the transform through CSSOM, and the release hands back to the class so the spring runs. */
+const SW_L = 80, SW_R = 88;
+let sw = null;
+const closeSwipes = keep => $$('.qrow.open-l, .qrow.open-r').forEach(r => { if (r !== keep) r.classList.remove('open-l', 'open-r'); });
+document.addEventListener('pointerdown', e => {
+  const row = e.target.closest('.qrow'); if (!row || e.target.closest('.icon-btn')) { if (!row) closeSwipes(); return; }
+  closeSwipes(row);
+  sw = { row, id: e.pointerId, x0: e.clientX, y0: e.clientY, base: row.classList.contains('open-l') ? SW_L : row.classList.contains('open-r') ? -SW_R : 0, dx: 0, on: false };
+});
+document.addEventListener('pointermove', e => {
+  if (!sw || e.pointerId !== sw.id) return;
+  const dx = e.clientX - sw.x0, dy = e.clientY - sw.y0;
+  if (!sw.on) {
+    if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.5) { sw.on = true; sw.row.classList.add('dragging'); sw.row.classList.remove('open-l', 'open-r'); try { sw.row.setPointerCapture(e.pointerId); } catch (err) { /* synthetic pointers */ } }
+    else { if (Math.abs(dy) > 10) sw = null; return; }
+  }
+  sw.dx = clamp(sw.base + dx, -SW_R, SW_L); sw.row.style.transform = `translateX(${sw.dx}px)`;
+});
+const swEnd = e => {
+  if (!sw || e.pointerId !== sw.id) return;
+  const s = sw; sw = null; if (!s.on) return;
+  s.row.classList.remove('dragging'); s.row.style.transform = '';
+  s.row.classList.toggle('open-l', s.dx > SW_L / 2); s.row.classList.toggle('open-r', s.dx < -SW_R / 2);
+  lpAt = Date.now(); // the click that follows a swipe must not play the row
+};
+document.addEventListener('pointerup', swEnd); document.addEventListener('pointercancel', swEnd);
 
 /* ---------- actions ---------- */
 let lastRemoved = null;

@@ -38,8 +38,9 @@ Android, or the reverse, is refused (brief §8).
   (overturns the type ruling): its wonk fights a system feel. **The voice is
   never ellipsized** (critique r3: every why-line in a row and the rail's
   bridge headline ended in "..."): rows grow to hold two lines of why-line,
-  rail bridge sentences are 12 words or fewer at 17px, and a harness check
-  fails the round on any clipped voice element.
+  rail bridge sentences are 10 words or fewer at 17px (critique r4: 12 words
+  ran four lines at 168px; three is the budget), and a harness check fails
+  the round on any clipped voice element.
 - Scale: nine steps, Large Title 34/700 to Caption 12/400 (the iOS text styles,
   shared by Android); Voice 17 italic, bridge 19. Type follows the OS text size.
 
@@ -171,13 +172,21 @@ is a list of 56px rows in play order (art, show, clip length), each linking to
 the show (changed from a tile row in critique r1: tiles clipped and repeated).
 
 **The bridge.** A Stretch pick is the only card with two artworks: the pick's
-art and a 24px chip of the familiar show it is adjacent to, **sitting on the
-cover's bottom-left corner** (never hanging beneath it: critique r3, a chip
-on a vertical stitch under the cover read as a pin and pushed the card's text
-36px below its neighbours'), joined by a short horizontal stitch of the same
-dashed thread the seam uses. The bridge sentence is the card's headline,
-Newsreader 19px in rows and on the detail, 17px in the 168px rail card,
-under the `stretch` fork icon, never cut. No longer the quietest line.
+art and a chip of the familiar show it is adjacent to (32px in the rail, 24
+in rows), **sitting on the cover's bottom-left corner** (never hanging
+beneath it: critique r3, a chip on a vertical stitch under the cover read as
+a pin and pushed the card's text 36px below its neighbours'), joined by a
+short horizontal stitch of the same dashed thread the seam uses. **The
+stitch runs in the band where the chip overhangs the cover, on the card's
+surface, never across the cover** (critique r4: drawn over the cover it was
+invisible on every light cover, so the join, the whole point of the second
+artwork, was missing in every placement). The bridge sentence is the card's
+headline, Newsreader 19px in rows and on the detail, 17px in the 168px rail
+card, under the `stretch` fork icon, never cut. No longer the quietest line.
+**In the rail and in rows the sentence is followed by one line, "show ·
+length", and no episode title** (critique r4: sentence + title + show made
+the rail card's text block 2.5x its neighbours' and left a 200px void under
+the rail); the title is on the detail and in Now Playing.
 
 **The hand-off.** Mini player to Now Playing, above.
 
@@ -193,7 +202,9 @@ a real foray whose why-line cites nothing personal. Offline: a thin banner,
 downloaded items lead. Loading: skeletons.
 
 **Now Playing (full).** Edge-to-edge artwork colour; a sheet on iOS, full
-screen on Android. Art at width minus 48px, shrinking to 60% when paused
+screen on Android, where the scroller starts below the status bar and
+scrolled content clips at its edge while the room carries the status glyphs
+(critique r5: the title ran under the clock). Art at width minus 48px, shrinking to 60% when paused
 (spring). For a foray the art is the **current clip's show artwork** (the
 composite stays on Home, rails and Library); on hand-off it crossfades to the
 next show and the room's tint follows, so the listener always sees which show

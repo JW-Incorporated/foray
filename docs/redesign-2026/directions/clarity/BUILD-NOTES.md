@@ -178,8 +178,8 @@ keep one class per component and modifiers as `--`.
 
 | Component | Anatomy | Sizes and rules |
 |---|---|---|
-| `Row` (episode) | a grid of two rows: first row = art 56 · stack(show `caption` muted, title `body-strong` **1-line** clamp) · data column (duration `data`, optional state glyph); second row = the why `body` **`--ink`**, **3-line clamp**, `grid-column: 2 / -1` (from the stack's left edge to the right gutter, passing under the data column) | min-height 112 (12 + 16 + 22 + 2 + 48 + 12); 136 with a three-line why. 285px wide at 393 for the why (34 characters a line; a 16-word hook fits in three). r3 item 1: the 201px stack cut every hook at two lines. Padding 12 0, gap 12, hairline bottom. Whole row is one `<a>` or `<button>`; secondary actions live in a trailing 44px "more" menu, never inline. Durations ≥ 60 min are `3h 14m` on one line. |
-| `Row--lead` | first row = art 72 · stack(eyebrow `caption` muted "Today's lead" / "Picked to start", one line `nowrap`; show line `caption` `--ink` 500: the show name, or "Foray · 6 shows" for a foray; title 2-line clamp) · data column: 44px Signal play circle above the duration; second row = why `body` 3-line clamp spanning columns 2 to the right gutter (269px at 393); then the 4px Strip at the same width | min-height 160 (12 + 16 + 16 + 44 + 2 + 48 + 6 + 4 + 12), 184 with a three-line why; padding 12 0. Only one per screen. The circle column is 64px tall (44 + 20) and the why starts 96px down, so they never meet. Mid-play: the circle keeps the play glyph with `aria-label` "Resume"; the duration becomes "35 min" `data` over "left" `data-sm` muted. The word Resume never goes in the 72px column (r2 item 5). |
+| `Row` (episode) | a grid of two rows: first row = art 56 · stack(show `caption` muted, title `body-strong` **1-line** clamp) · data column (duration `data`, optional state glyph); second row = the why `body` **`--ink`**, **3-line clamp**, `grid-column: 2 / -1` (from the stack's left edge to the right gutter, passing under the data column) | min-height 112 (12 + 16 + 22 + 2 + 48 + 12); 136 with a three-line why. 285px wide at 393 for the why: about 30 characters a line once words wrap whole, so three lines hold **about 90 characters** (r4 `fit.mjs` over all 40 hooks: 10 needed a fourth line at 285, 16 at the lead's 269). The copy budget is ≤ 18 words **and about 90 characters**; the clamp catches the rest. The art spans the first two grid rows only (r4: a three-row span gave the empty third row 8px and every row measured 144). r3 item 1: the 201px stack cut every hook at two lines. Padding 12 0, gap 12, hairline bottom. Whole row is one `<a>` or `<button>`; secondary actions live in a trailing 44px "more" menu, never inline. Durations ≥ 60 min are `3h 14m` on one line. |
+| `Row--lead` | first row = art 72 · stack(eyebrow `caption` muted "Today's lead" / "Picked to start", one line `nowrap`; show line `caption` `--ink` 500: the show name, or "Foray · 6 shows" for a foray; title 2-line clamp) · data column: 44px Signal play circle above the duration; second row = why `body` 3-line clamp spanning columns 2 to the right gutter (269px at 393); then the 4px Strip at the same width | min-height 160 (12 + 16 + 16 + 44 + 2 + 48 + 6 + 4 + 12), 184 with a three-line why; padding 12 0. Only one per screen. The circle column is 64px tall (44 + 20) and the why starts 96px down, so they never meet. Mid-play: the circle keeps the play glyph with `aria-label` "Resume"; the duration becomes "35 min" `data` over "left" `data-sm` muted, the two lines set at 18 and 14 line height with no gap so the column is 76px (44 + 18 + 14), never taller than the stack above the why (r4: at 20/16 with a gap the column was 86 and grew the row to 194). The word Resume never goes in the 72px column (r2 item 5). Offline, the "saved" Badge sits on the eyebrow line after "Today's lead", not under the duration, for the same height reason (r4). |
 | `Row--stretch` | adds a `Bridge` line as the first line of the stack: bridge · show `caption` · title, then the why in the second grid row as `Row` | the bridge replaces the eyebrow, never the show name; the data column holds the duration only. Min-height 136, 160 with a three-line why; the one taller row per section. |
 | `Row--resume` | art 56 with a 2px Signal progress line 4px under it (art width, track `--line-strong`, radius 1) · stack(show `caption` muted, title `body-strong` 1-line) · data: "28 min" `data` over "left" `data-sm` muted | height 80 (12 + 56 + 12); no why-line (the pick was already chosen); hairline as other rows |
 | `Row--show` | art 56 · name `body-strong` · data column: episode count `data` | height 56 |
@@ -335,7 +335,12 @@ Budget check at 375×667: safe-top 0 (harness) + 12 + 4 + 20 + artwork
 (min(335, 198, 390) = 198) + 20 + title 52 + show 20 + why 48 + 32 + scrubber
 6 + clocks 26 + 24 + transport 72 = 534 < 667, transport centred at ~560.
 At 393×852: artwork 300, transport at ~760, control row on screen. Play stays
-on screen with a two-line title and a two-line why-line. If the title is
+on screen with a two-line title and a two-line why-line. For a **foray** the
+track is the 24px Strip plus ticks and labels (about 46px more than the 6px
+track), so at 375×667 the transport centre lands at ~573 and the control
+row's glyphs peek at the fold with their labels below it (r4 shot); that is
+the glance posture working, not a cut. The transport never leaves the thumb
+zone. If the title is
 expanded, the sheet scrolls; the transport is never pushed off by a clamp.
 
 States:
@@ -381,7 +386,7 @@ shows `Undo` ("Stopped · Undo") for 6s.
 Header (44): "Find" `title`
 [16]
 Idle:
-  Row (56): "Name a subject" field-looking row → focuses the docked Field with placeholder "A subject, a show, or an episode"
+  Row (56): "Name a subject" over `caption` muted "Build a playlist on anything" (r4: the build said "foray"; custom forays are out of UI scope, D8, and the row must not promise one) → focuses the docked Field with placeholder "A subject, a show, or an episode"
   SectionHead "Subjects" (count "24")
   Row--show ×6 without art: subject name `body-strong` · data: show count `data`; then a text-button row "All 24 subjects" (chevron) that expands in place (r2 item 11: eight rows pushed every piece of artwork under the fold)
   SectionHead "Shows you follow" (count)
@@ -437,9 +442,7 @@ SectionHead "History" · Row ×n with data "Yesterday" / "3 Oct" / "3 Oct 2025" 
 
 ```
 [safe-top + 12]
-Header (44): IconButton `chevron-left` ("Back") · (no title in the header; the display title is the content)
-[8]
-Eyebrow `caption` muted: "Foray · Food"      (the subject, sentence case)
+Header (44): IconButton `chevron-left` ("Back") · `caption` muted "Foray · Food" centred (the subject, sentence case; r4 ruling: the build put the eyebrow in the header line as a running head and it reads right, so the 8px + eyebrow block below is gone) · an empty 44px spacer so the caption centres
 Title `display`, 3-line max
 [8]
 Meta `data` muted: "22 min · 8 segments · 6 shows"
@@ -451,7 +454,7 @@ Why `body`: the foray's why-line (≤18 words)
 Button--primary 44: "Play" / "Resume at 9:40" / "Play again"   +   Button--secondary "Up Next" (list-plus)   +   IconButton share
 [32]
 SectionHead "Where this came from" (count "6 shows")
-Row--segment × n (48): index · chip · show · segment title · duration; show name is a link to the show page (safeUrl)
+Legend row × n (48): chip 12×12 · show `label` 1-line · `data-sm` muted "4 segments" (the word, never "seg": r4) · `data` "10 min"; show name is a link to the show page (safeUrl). One row per show, in strip order; the per-segment `Row--segment` list is Now Playing's, not this page's.
 [32]
 Summary `body` muted (the foray's summary field)
 ```
@@ -602,6 +605,11 @@ build without the plugin is silent.
    round 2, plus `state=midlisten` at all three viewports, and the density
    count from `measure.mjs` in the builder's notes. (Done r3; the dismiss
    failed review, see 8.)
+9. (r4 critique) Closed: the dismiss passed all four frame checks and the
+   stills match the table. No round 5. The three P2 items in
+   `critique-r4.md` (Find subline, legend wording, the ~90-character copy
+   ceiling in the copy test) are Phase 3 work on the port, not prototype
+   work.
 8. (r3 critique) Round-4 recording: the same five clips at 393×852. The
    close and the drag release are judged frame by frame on four things: no
    grey square, nothing painted over the dock, the page behind dimmed until

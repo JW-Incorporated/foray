@@ -16,7 +16,8 @@
     get: function (k) { try { return localStorage.getItem('cp_' + k); } catch (e) { return null; } },
     set: function (k, v) { try { localStorage.setItem('cp_' + k, v); } catch (e) { /* private window */ } }
   };
-  var webdriver = !!navigator.webdriver; // the screenshot harness: freeze the playhead so renders are repeatable
+  var webdriver = !!navigator.webdriver; // the screenshot harness: freezes the playhead (and nothing else) so renders repeat
+  var userOpen = false; // a tap or drag on the ticker: always runs the full page turn, even under the harness
   var reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   function ic(name, cls) { return '<svg class="ic' + (cls ? ' ' + cls : '') + '" aria-hidden="true" focusable="false"><use href="#' + name + '"/></svg>'; }
@@ -120,7 +121,14 @@
       segs.map(function (s, i) { return '<i class="seg' + (s.narration ? ' seg--n' : '') + '"' + (s.narration ? '' : ' data-show="' + (s.show_idx % 8) + '"') + ' data-w="' + s.duration_sec + '"></i>'; }).join('') +
       '<b class="strip-cursor" aria-hidden="true"></b></div>';
   }
-  function strandSegs(arr) { return arr.map(function (n, i) { return { duration_sec: n * 60, show_idx: i % 5, narration: false }; }); }
+  function strandSegs(arr, nShows) { return arr.map(function (n, i) { return { duration_sec: n * 60, show_idx: i % (nShows || 5), narration: false }; }); }
+  /* A foray's show count, its key and its plate are one fact (r3 critique): the count printed in the meta is the number
+     of distinct inks in the rule beneath it, and the plate is the first four of those shows. */
+  function forayStrand(f) {
+    var segs = strandSegs(f.strip, f.shows), seen = {}, n = 0;
+    segs.forEach(function (g) { if (!seen[g.show_idx]) { seen[g.show_idx] = 1; n++; } });
+    return { segs: segs, n: n };
+  }
   function key(cap) {
     return '<div class="strip-key t-meta' + (cap ? ' strip-key--cap' : '') + '"><span class="key key-n"><i class="n"></i>4a</span>' + F.shows.map(function (s) { return '<span class="key key-s"><i data-show="' + (s.idx % 8) + '"></i>' + esc(s.name) + '</span>'; }).join('') + (cap ? '<span class="key key-more" hidden></span>' : '') + '</div>';
   }
@@ -138,10 +146,13 @@
   }
   function metaTxt(show, tail, pre) { return '<span class="meta-txt">' + (pre || '') + '<span class="ell">' + esc(show) + '</span><span class="nw"> · ' + esc(tail) + '</span></span>'; }
   /* Hooks are authored, never derived (r2 critique 5): a `hook` field on the item, one complete sentence of at most
-     16 words. fitHooks is only the 3-line guard: it warns when a hook overflows, it never cuts one. */
+     16 words and 72 characters. fitHooks is the 3-line guard: an overflow is marked data-hook-overflow and logged with
+     console.error (a failed check, r3 critique 3); it never cuts a hook. */
   function fitHooks(root) {
     $$('.hook', root || document).forEach(function (el) {
-      if (el.scrollHeight > el.clientHeight + 1 && window.console) console.warn('hook overflows three lines:', el.textContent);
+      var over = el.scrollHeight > el.clientHeight + 1, host = el.closest('.splat-item') || el;
+      if (over) { host.setAttribute('data-hook-overflow', ''); if (window.console) console.error('hook overflows three lines:', el.textContent); }
+      else host.removeAttribute('data-hook-overflow');
     });
   }
   function note(text, cls) { return '<p class="note ' + (cls || '') + '"><span class="t-note">' + esc(text) + '</span></p>'; }
@@ -154,7 +165,7 @@
   function inQueue(id) { return S.queue.some(function (e) { return e.id === id; }); }
   function addBtn(e) {
     var on = inQueue(e.id);
-    return '<button class="btn-icon" data-act="add" data-id="' + esc(e.id) + '" aria-label="' + (on ? 'In Up Next: ' : 'Add to Up Next: ') + esc(e.title) + '"' + (on ? ' aria-pressed="true"' : '') + '>' + ic(on ? 'check' : 'list-plus') + '</button>';
+    return '<button class="btn-icon" data-act="add" data-id="' + esc(e.id) + '" aria-label="' + (on ? 'In Up Next: ' : 'Add to Up Next: ') + esc(e.title) + '"' + (on ? ' aria-pressed="true"' : '') + '>' + ic(on ? 'list-checks' : 'list-plus') + '</button>';
   }
   function offlineDim(e) { return S.offline && (e.id.charCodeAt(0) % 2 === 0); }
 
@@ -172,9 +183,9 @@
       '<span class="meta-line"><span class="t-meta c-2">' + metaTxt(e.show, e.duration_min + ' min', off ? ic('cloud-slash', 'ic--16') : '') + '</span>' + addBtn(e) + '</span></span></li>';
   }
   function rowForay(f) {
-    var frac = f.progress || 0;
+    var frac = f.progress || 0, st = forayStrand(f);
     return '<li class="row row-foray"><a class="row-plain" href="#/foray" data-act="open-foray" data-art="1">' + contact(f.art, 'plate--lg') + '<span class="row-body"><span class="t-title clamp-2">' + esc(f.title) + '</span>' +
-      strip(strandSegs(f.strip), 'strip--row', { frac: frac, shows: f.shows }) + '<span class="t-meta">' + fmtMin(f.runtime_sec) + ' · ' + f.shows + (f.shows === 1 ? ' show' : ' shows') + '</span></span></a></li>';
+      strip(st.segs, 'strip--row', { frac: frac, shows: st.n }) + '<span class="t-meta">' + fmtMin(f.runtime_sec) + ' · ' + st.n + (st.n === 1 ? ' show' : ' shows') + '</span></span></a></li>';
   }
   function rowForayMain() {
     var arts = F.shows.map(function (s) { return s.artwork_url; });
@@ -185,7 +196,7 @@
   function rowPlaylist(p) {
     var eps = p.episodes.map(epById).filter(Boolean);
     return '<li class="row row-foray"><a class="row-plain" href="#/search?q=' + encodeURIComponent(p.name) + '">' + contact(eps.map(function (e) { return e.artwork_url; }), 'plate--lg') + '<span class="row-body"><span class="t-title clamp-2">' + esc(p.name + ', set in order') + '</span>' +
-      '<span class="progress-rule" data-p="' + Math.round(p.played / eps.length * 100) + '"></span><span class="t-meta">' + eps.length + ' episodes · ' + p.played + ' of ' + eps.length + ' played</span></span></a></li>';
+      '<span class="progress-rule" data-p="' + Math.round(p.played / eps.length * 100) + '"></span><span class="t-meta">' + eps.length + ' episodes · ' + (p.fresh ? 'new' : p.played + ' of ' + eps.length + ' played') + '</span></span></a></li>';
   }
   function rowShow(s) {
     return '<li class="row row-show"><a class="row-plain" href="#/search?q=' + encodeURIComponent(s.name) + '">' + plate(s.artwork_url, 'plate--md', s.name) + '<span class="row-body"><span class="t-title clamp-1">' + esc(s.name) + '</span><span class="t-meta">' + s.episodes + ' episodes · ' + esc(s.subject) + '</span></span></a><span></span></li>';
@@ -271,8 +282,7 @@
     var out = '<header><div class="page-title"><h1 class="t-d1">Browse</h1></div><hr class="masthead-rule"></header>';
     if (q) return out + searchResults(q);
     out += section('Commission', '<button class="field" data-act="focus-find" data-mode="commission">' + ic('pencil-simple-line', 'ic--20') + 'Name a subject…</button>' +
-      '<div class="chips mt-12">' + D.commissions.map(function (c) { return '<button class="chip" data-act="chip" data-q="' + esc(c) + '">' + esc(c) + '</button>'; }).join('') + '</div>' +
-      '<p class="t-meta c-3 mt-12">Forays by commission come later.</p>', { meta: 'A playlist, on any subject', sub: true });
+      '<div class="chips mt-12">' + D.commissions.map(function (c) { return '<button class="chip" data-act="chip" data-q="' + esc(c) + '">' + esc(c) + '</button>'; }).join('') + '</div>', { meta: 'A playlist, on any subject', sub: true });
     var pat = ['', 's', 's', '', '', 's'];
     out += section('Off your beaten path', '<div class="splat">' + BEATEN.map(function (e, i) {
       return '<a class="splat-item ' + pat[i] + '" href="#/home" data-act="play-ep" data-id="' + esc(e.id) + '">' + plate(e.artwork_url, 'plate--sq', e.show) + '<span class="t-title">' + esc(e.title) + '</span><span class="t-text-sm hook">' + esc(e.hook) + '</span></a>';
@@ -282,11 +292,32 @@
     return out;
   }
   var SYN = { fusion: ['Science', 'Engineering'], rockets: ['Space', 'Engineering'], money: ['Economics', 'Business'] };
+  /* Commission is today's Create (r3 critique): submitting the field or tapping a chip opens the results for that
+     subject with the playlist first, then shows, then episodes. The catalog playlist stands in for the cut one. */
+  var COMMISSION = { 'the history of salt': 'History', 'how bridges fail': 'Engineering', 'fusion energy': 'Science' };
+  function commissionSubject(lq) {
+    if (COMMISSION[lq]) return COMMISSION[lq];
+    if (SYN[lq]) return SYN[lq][0];
+    var hit = D.subjects.filter(function (x) { return x.name.toLowerCase() === lq; })[0];
+    if (hit) return hit.name;
+    var e = D.episodes.filter(function (x) { return (x.title + ' ' + x.note).toLowerCase().indexOf(lq) >= 0; })[0];
+    return e ? e.subject : null;
+  }
+  function commissionedPlaylist(q, sub) {
+    var ids = D.episodes.filter(function (e) { return e.subject === sub; }).slice(0, 4).map(function (e) { return e.id; });
+    return { name: q.charAt(0).toUpperCase() + q.slice(1), episodes: ids, played: 0, fresh: true };
+  }
   function searchResults(q) {
     var lq = q.toLowerCase(), out = '<div class="mt-24"></div>';
     var shows = D.shows.filter(function (s) { return s.name.toLowerCase().indexOf(lq) >= 0; });
     var eps = D.episodes.filter(function (e) { return (e.title + ' ' + e.show + ' ' + e.subject + ' ' + e.note).toLowerCase().indexOf(lq) >= 0; });
     var pls = D.playlists.filter(function (p) { return p.name.toLowerCase().indexOf(lq) >= 0; });
+    var cmSub = S.commissioned && S.commissioned.toLowerCase() === lq ? commissionSubject(lq) : null;
+    if (cmSub) {
+      pls = [commissionedPlaylist(q, cmSub)];
+      shows = D.shows.filter(function (s) { return s.subject === cmSub; });
+      eps = D.episodes.filter(function (e) { return e.subject === cmSub; });
+    }
     if (!shows.length && !eps.length && !pls.length) {
       var subs = (SYN[lq] || []).concat(D.subjects.filter(function (s) { return s.name.toLowerCase().indexOf(lq) >= 0; }).map(function (s) { return s.name; }));
       var rows = D.subjects.filter(function (s) { return subs.indexOf(s.name) >= 0; });
@@ -294,9 +325,9 @@
         '<p class="commission-line t-text mt-24">Or commission a playlist on <button class="chip" data-act="commission" data-q="' + esc(q) + '">' + esc(q) + '</button></p>';
       return out + empty('Nothing titled ‘' + q + '’.', 'Browse subjects', '#/search');
     }
+    if (pls.length) out += section('Playlists', '<ul>' + pls.map(rowPlaylist).join('') + '</ul>');
     if (shows.length) out += section('Shows', '<ul>' + shows.slice(0, 5).map(rowShow).join('') + '</ul>' + (shows.length > 5 ? '<button class="btn-text">More shows (' + (shows.length - 5) + ')</button>' : ''));
     if (eps.length) out += section('Episodes', '<ul>' + eps.slice(0, 5).map(function (e) { return rowEp(e); }).join('') + '</ul>' + (eps.length > 5 ? '<button class="btn-text">More episodes (' + (eps.length - 5) + ')</button>' : ''));
-    if (pls.length) out += section('Playlists', '<ul>' + pls.map(rowPlaylist).join('') + '</ul>');
     return out;
   }
 
@@ -411,10 +442,14 @@
     slot.innerHTML = '<div class="find chrome" role="search">' + ic('magnifying-glass', 'ic--20') + '<input type="search" id="find" placeholder="Find a show, episode or subject" aria-label="Find a show, episode or subject" autocomplete="off" enterkeyhint="search" value="' + esc(S.q) + '">' + (S.q ? '<button class="btn-icon" data-act="clear-find" aria-label="Clear">' + ic('x', 'ic--20') + '</button>' : '') + '</div>';
     var inp = $('#find');
     inp.addEventListener('input', function () {
-      clearTimeout(findTimer);
+      clearTimeout(findTimer); S.commissioned = null;
       findTimer = setTimeout(function () {
         S.q = inp.value; var pos = inp.selectionStart;
         renderPageKeepFind(); }, 200);
+    });
+    inp.addEventListener('keydown', function (ev) {
+      if (ev.key !== 'Enter') return; ev.preventDefault(); clearTimeout(findTimer); S.q = inp.value.trim();
+      S.commissioned = inp.getAttribute('data-mode') === 'commission' ? S.q : null; renderPageKeepFind(); window.scrollTo(0, 0); inp.blur();
     });
     inp.addEventListener('focus', function () { document.body.classList.add('kbd'); });
     inp.addEventListener('blur', function () { document.body.classList.remove('kbd'); });
@@ -453,7 +488,7 @@
     el.addEventListener('pointerdown', function (e) { if (e.target.closest('.btn-icon')) return; y0 = e.clientY; t0 = e.timeStamp; });
     el.addEventListener('pointerup', function (e) {
       if (y0 == null) return; var dy = e.clientY - y0, v = dy / Math.max(1, e.timeStamp - t0); y0 = null;
-      if (dy <= -24) { e.preventDefault(); location.hash = '#/now-playing'; }
+      if (dy <= -24) { e.preventDefault(); userOpen = true; location.hash = '#/now-playing'; }
       else if (dy >= 48 && v > 0.3) { stopWithUndo(); }
     });
   }
@@ -597,7 +632,9 @@
     if (npRec || !S.cur) return;
     S.npOpen = true;
     var it = item();
-    npRec = openSheet({ id: 'sheet-np', cls: 'np', np: true, html: npHTML(), label: 'Now playing', instant: !booted || webdriver,
+    var animate = !webdriver || userOpen || S.opts.motion === '1';
+    userOpen = false;
+    npRec = openSheet({ id: 'sheet-np', cls: 'np', np: true, html: npHTML(), label: 'Now playing', instant: !booted || !animate,
       onClose: function () { npRec = null; S.npOpen = false; document.body.classList.remove('np-open'); } });
     document.body.classList.add('np-open');
     var el = npRec.el;
@@ -605,7 +642,7 @@
     wireNP(el);
     tintFor(it.kind === 'foray' ? it.arts[0] : it.art, function (h) { $('.sheet-panel', el).style.setProperty('--tint-h', h); });
     npUpdate(true);
-    if (fromRect && !reduceMotion && !webdriver) flyPlate(fromRect, el);
+    if (fromRect && !reduceMotion && animate) flyPlate(fromRect, el);
   }
   /* The page turn. The plate is the shared element; the title and the progress rule fly with it. Only transform
      and opacity animate. */
@@ -619,19 +656,29 @@
     var fly = document.createElement('div'); fly.className = 'fly'; fly.innerHTML = '<img alt="" src="' + esc(safeUrl(src.src)) + '">';
     fly.style.setProperty('left', from.left + 'px'); fly.style.setProperty('top', from.top + 'px'); fly.style.setProperty('width', from.width + 'px'); fly.style.setProperty('height', from.height + 'px');
     document.body.appendChild(fly); target.style.setProperty('opacity', '0');
+    // r4 AD: the plate and the rule fly on the sheet's own spring (`--spring-sheet`, read from the stylesheet) so the three
+    // land in the same frame; the r3 ease-out left the plate still scaling ~100ms after the sheet had stopped.
     var s = to.width / from.width, EASE = 'cubic-bezier(.2,.7,.2,1)';
-    var a = fly.animate([{ transform: 'translate(0,0) scale(1)' }, { transform: 'translate(' + (to.left - from.left) + 'px,' + (to.top - from.top) + 'px) scale(' + s + ')' }], { duration: 420, easing: EASE, fill: 'forwards' });
+    var SPRING = (getComputedStyle(document.documentElement).getPropertyValue('--spring-sheet') || '').trim() || EASE;
+    var a = fly.animate([{ transform: 'translate(0,0) scale(1)' }, { transform: 'translate(' + (to.left - from.left) + 'px,' + (to.top - from.top) + 'px) scale(' + s + ')' }], { duration: 420, easing: SPRING, fill: 'forwards' });
     a.onfinish = function () { target.style.removeProperty('opacity'); fly.remove(); };
     a.oncancel = a.onfinish;
     var tk = $('#ticker');
-    // r2 critique (should-fix): the title cross-fades in place; only the plate and the rule fly.
-    if (nt) { nt.animate([{ opacity: 0 }, { opacity: 0, offset: .3 }, { opacity: 1 }], { duration: 420, easing: 'linear' }); }
+    // r2 critique (should-fix): the title cross-fades in place; only the plate and the rule fly. It fades in over the
+    // sheet's second half (from 40%, 168ms), landing with the plate.
+    if (nt) { nt.animate([{ opacity: 0 }, { opacity: 0, offset: .4 }, { opacity: 1 }], { duration: 420, easing: 'linear' }); }
     if (tk && sr) {
       var kr = tk.getBoundingClientRect(), fr = document.createElement('div'); fr.className = 'fly-rule';
       fr.style.setProperty('left', sr.left + 'px'); fr.style.setProperty('top', (sr.top + sr.height / 2 - 1) + 'px'); fr.style.setProperty('width', sr.width + 'px');
       document.body.appendChild(fr);
-      var d = fr.animate([{ transform: 'translate(' + (kr.left - sr.left) + 'px,' + (kr.top - (sr.top + sr.height / 2 - 1)) + 'px) scaleX(' + (kr.width / sr.width) + ')', opacity: 1, transformOrigin: '0 50%' }, { transform: 'none', opacity: 1, offset: .75, transformOrigin: '0 50%' }, { transform: 'scaleY(3)', opacity: 0, transformOrigin: '0 50%' }], { duration: 420, easing: EASE, fill: 'forwards' });
-      d.onfinish = function () { fr.remove(); };
+      // Travel on the spring for the full 420ms (so the rule rides with the scrubber it is becoming), then a 120ms
+      // (`--t-micro`) thicken-and-fade into the real scrubber underneath.
+      var d = fr.animate([{ transform: 'translate(' + (kr.left - sr.left) + 'px,' + (kr.top - (sr.top + sr.height / 2 - 1)) + 'px) scaleX(' + (kr.width / sr.width) + ')', transformOrigin: '0 50%' }, { transform: 'none', transformOrigin: '0 50%' }], { duration: 420, easing: SPRING, fill: 'forwards' });
+      d.onfinish = function () {
+        var e = fr.animate([{ transform: 'none', opacity: 1, transformOrigin: '0 50%' }, { transform: 'scaleY(3)', opacity: 0, transformOrigin: '0 50%' }], { duration: 120, easing: EASE, fill: 'forwards' });
+        e.onfinish = function () { fr.remove(); }; e.oncancel = e.onfinish;
+      };
+      d.oncancel = function () { fr.remove(); };
     }
   }
   function closeNP(silent) { if (npRec) { var r = npRec; npRec = null; S.npOpen = false; document.body.classList.remove('np-open'); closeSheet(r, true); } }
@@ -722,7 +769,7 @@
     if (inQueue(e.id)) return;
     S.queue.push(e);
     var btn = srcEl && srcEl.closest('[data-act="add"]');
-    if (btn) { btn.innerHTML = ic('check'); btn.setAttribute('aria-pressed', 'true'); btn.setAttribute('aria-label', 'In Up Next: ' + e.title); }
+    if (btn) { btn.innerHTML = ic('list-checks'); btn.setAttribute('aria-pressed', 'true'); btn.setAttribute('aria-label', 'In Up Next: ' + e.title); }
     var pl = srcEl && srcEl.closest('.row, .splat-item');
     var img = pl && $('.plate img', pl), tab = $('#folio a[data-tab="library"]');
     if (img && tab && !reduceMotion) {
@@ -790,7 +837,7 @@
   /* ---------- router ---------- */
   function applyParams(q) {
     var o = S.opts = S.opts || {};
-    ['state', 'np', 'scheme', 'text', 'kbd', 'progress', 'fstate', 'large', 'vt', 'dl', 'cur', 'noart'].forEach(function (k) { if (q.has(k)) o[k] = q.get(k); });
+    ['state', 'np', 'scheme', 'text', 'kbd', 'progress', 'fstate', 'large', 'vt', 'dl', 'cur', 'noart', 'motion'].forEach(function (k) { if (q.has(k)) o[k] = q.get(k); });
     S.offline = o.state === 'offline'; S.loading = o.state === 'loading';
     S.vt = o.vt !== '0'; S.noart = o.noart === '1';
     if (o.text) document.documentElement.setAttribute('data-text', o.text);
@@ -908,7 +955,7 @@
     if (act === 'play-ep') { ev.preventDefault(); var e = epById(id); if (e && !(S.offline && offlineDim(e))) playEp(e); return; }
     if (act === 'resume') { ev.preventDefault(); location.hash = '#/now-playing?np=episode'; return; }
     if (act === 'add') { ev.preventDefault(); var e2 = epById(id); if (e2) addToQueue(e2, el); return; }
-    if (act === 'np-open') { ev.preventDefault(); S.under = S.page === 'home' ? 'mini' : S.page; location.hash = '#/now-playing'; return; }
+    if (act === 'np-open') { ev.preventDefault(); userOpen = true; S.under = S.page === 'home' ? 'mini' : S.page; location.hash = '#/now-playing'; return; }
     if (act === 'toggle-play') { S.playing = !S.playing; updateTicker(); npUpdate(); return; }
     if (act === 'skip') { var d = +el.getAttribute('data-d'); S.pos = clamp(S.pos + d, 0, item().dur - 1); updateTicker(); npUpdate(); return; }
     if (act === 'peek') { openPeek(); return; }
@@ -921,9 +968,9 @@
     if (act === 'clear-q') { actionSheet('Up Next', [{ label: 'Clear ' + S.queue.length + ' items', icon: 'x', fn: function () { var keep = S.queue.slice(); S.queue = []; rerender(); bumpCount(); toast('Up Next cleared', 'Undo', function () { S.queue = keep; rerender(); }); } }, { label: 'Cancel' }]); return; }
     if (act === 'all-queue') { ev.preventDefault(); sheetStack.slice().forEach(function (s) { closeSheet(s, true); }); S.under = 'library'; location.hash = '#/library'; setTimeout(function () { var u = $('#up-next'); u && u.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' }); }, 80); return; }
     if (act === 'seek-seg') { var sg = F.segments[+el.getAttribute('data-i')]; if (!S.cur || S.cur.kind !== 'foray') { S.cur = { kind: 'foray' }; renderTicker(); } S.pos = sg.start_sec; S.playing = true; updateTicker(); npUpdate(); return; }
-    if (act === 'chip') { S.q = el.getAttribute('data-q'); renderPage('search'); return; }
-    if (act === 'commission') { var cq = el.getAttribute('data-q'); S.q = ''; renderPage('search'); var cf = $('#find'); if (cf) { cf.value = cq; cf.setAttribute('data-mode', 'commission'); cf.focus(); } var fld = $('.field'); if (fld) fld.scrollIntoView({ block: 'center' }); return; }
-    if (act === 'focus-find') { var f = $('#find'); f && f.focus(); return; }
+    if (act === 'chip') { S.q = el.getAttribute('data-q'); S.commissioned = S.q; renderPage('search'); window.scrollTo(0, 0); return; }
+    if (act === 'commission') { var cq = el.getAttribute('data-q'); S.q = cq; S.commissioned = cq; renderPage('search'); window.scrollTo(0, 0); return; }
+    if (act === 'focus-find') { var f = $('#find'); if (f && el.getAttribute('data-mode') === 'commission') { f.setAttribute('data-mode', 'commission'); f.setAttribute('placeholder', 'Name a subject…'); } f && f.focus(); return; }
     if (act === 'clear-find') { S.q = ''; var inp = $('#find'); if (inp) { inp.value = ''; inp.focus(); } renderPageKeepFind(); return; }
     if (act === 'back') { if (history.length > 1 && S.fromBack !== false) history.back(); else location.hash = '#/home'; return; }
     if (act === 'why') { openWhy(); return; }

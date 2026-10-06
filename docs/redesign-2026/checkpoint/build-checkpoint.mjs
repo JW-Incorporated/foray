@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 // Builds the Phase 2 checkpoint package's local, gitignored half.
 //
-//   node docs/redesign-2026/checkpoint/build-checkpoint.mjs
+//   node docs/redesign-2026/checkpoint/build-checkpoint.mjs [--compare-only]
+//
+// --compare-only refreshes shots/ and publish/compare/ and skips the prototype
+// bundles (no network, no artwork downloads).
 //
 // Writes only under data-local/redesign/checkpoint/ (gitignored; public repo):
 //   shots/<dir>/<screen>.png   hero-screen renders copied from data-local/redesign/shots/
@@ -25,6 +28,9 @@ const SHOTS = join(ROOT, 'data-local/redesign/shots');
 const OUT = join(ROOT, 'data-local/redesign/checkpoint');
 
 export const DIRECTIONS = ['tactile', 'ambient', 'editorial', 'native-2026', 'clarity'];
+// Each direction's final critique round: the round its art director passed it
+// at (polish-to-ready pass, 2026-10-06). The checkpoint shows these renders.
+export const ROUNDS = { tactile: 'r3', ambient: 'r4', editorial: 'r4', 'native-2026': 'r5', clarity: 'r4' };
 export const SCREENS = ['home', 'now-playing', 'foray', 'search', 'library', 'mini', 'onboarding'];
 const TODAY_LABEL = {
   home: 'returning__home', 'now-playing': 'player__now-playing', foray: 'returning__foray',
@@ -60,7 +66,7 @@ function copyShots() {
       const label = slug === 'today' ? TODAY_LABEL[s] : `default__${s}`;
       const src = slug === 'today'
         ? join(SHOTS, 'today/shots', `${label}__${VIEWPORT}.png`)
-        : join(SHOTS, slug, 'r3/shots', `${label}__${VIEWPORT}.png`);
+        : join(SHOTS, slug, ROUNDS[slug], 'shots', `${label}__${VIEWPORT}.png`);
       if (existsSync(src)) copyFileSync(src, join(OUT, 'shots', slug, `${s}.png`));
       else missing.push(relative(ROOT, src));
     }
@@ -144,6 +150,6 @@ function publishCompare() {
 const missing = copyShots();
 mkdirSync(join(OUT, 'artwork'), { recursive: true });
 const results = [];
-for (const slug of DIRECTIONS) results.push(await bundle(slug));
+if (!process.argv.includes('--compare-only')) for (const slug of DIRECTIONS) results.push(await bundle(slug));
 if (existsSync(join(HERE, 'compare.html'))) publishCompare();
 console.log(JSON.stringify({ missingShots: missing, bundles: results }, null, 1));

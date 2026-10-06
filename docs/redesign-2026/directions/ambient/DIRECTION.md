@@ -2,7 +2,7 @@
 
 **Thesis:** the artwork is the light source. Every surface in 4a is lit by whatever is playing, and a foray is a row of lanterns, one per show.
 
-Builder detail: `BUILD-NOTES.md`. Contrast proof: `contrast-check.mjs` and `prototype/tools/contrast-glow.mjs`. Critiques: `critique-r1.md`, `critique-r2.md`, `critique-r3.md`.
+Builder detail: `BUILD-NOTES.md`. Contrast proof: `contrast-check.mjs` and `prototype/tools/contrast-glow.mjs`. Critiques: `critique-r1.md`, `critique-r2.md`, `critique-r3.md`, `critique-r4.md` (ready; no direction change, two builder corrections in `BUILD-NOTES.md` §12).
 
 ## Mood
 

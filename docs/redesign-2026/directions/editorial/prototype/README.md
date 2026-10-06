@@ -1,4 +1,20 @@
-# Edition prototype (round 3)
+# Edition prototype (round 4)
+
+Round 4 (critique-r3, in priority order)
+1. The page turn runs under the harness. The guard now freezes the playhead only (`tick`); a tap or drag-up on the ticker (`userOpen`) or `?motion=1` runs the full choreography (sheet on `--spring-sheet`, plate 40px to the large plate, red rule into the scrubber, title cross-fade, page behind at `scale(.96)` / 82%). `?np=...` route-opens stay instant so static renders repeat. Recorded by tapping with `?motion=1` at 25fps: `data-local/redesign/shots/editorial/r4/motion-393x852.webm`, script `r4/motion/record.mjs`, strips in `r4/motion/` (the open spans about eight frames, `motion-open-25fps-2.2-3.8s.png`).
+2. The push is no longer a double exposure. `push-in` is opaque at 15% of 320ms (48ms; the brief allows 100ms, but at the brief's 31% the 25fps capture still caught an outgoing ghost at about 25% in the third frame), `vt-out` dims to 60% and moves 8px, `new` is above `old` (explicit `z-index`, and `mix-blend-mode: normal` so the UA's `plus-lighter` cannot add two opaque pages). The pop mirrors it: the leaving page stays opaque and on top until its last 42ms (`pop-out`), the list under it eases `.6 -> 1` (`pop-under`). `?vt=0` path gets the same `z-index`.
+3. Hooks: the two splatter hooks are rewritten (`Databases dodge the hard distributed problems. Rust borrows the trick.` is 70 characters: the brief's own wording counts 73 by `[...s].length`, over its 72 limit, so `the hardest` became `the hard`; `Seven destroyers ran aground at Honda Point in one night, in 1923.` is 66). The first run of the new check then failed on a third hook at 375px (`Anansi ... trail of broken people in his wake.`, 72 characters, four lines in the narrow column), so it is now `Anansi the spider trickster, and the broken people in his wake.` (63). `fitHooks` marks an overflowing item `data-hook-overflow` and calls `console.error`; the harness reports it under `errors`. All six pass at 393, 375, 412 (`errors: 0`).
+Should-fix done
+- Browse has no deferral line. Commission submits to results: a chip tap, or Enter in the Commission field, or the `Or commission a playlist on [x]` chip opens results with `PLAYLISTS` first (the commissioned playlist is cut from the catalog by subject: salt -> History, bridges -> Engineering, fusion -> Science), then `SHOWS`, `EPISODES`. Every result page now orders Playlists, Shows, Episodes. State is in `S.commissioned`, never the URL, so `?q=fusion` still renders the `Nothing titled` state.
+- Queued rows show `list-checks` (new glyph in `icons.js`, Phosphor Regular) in `addBtn` and in the cross-fade; no bare `check` remains in the app.
+- The onboarding band carries the 48px `::before` fade (its rule stays; the fade ends 1px above it). Checked at 393x852, 375x667 and 412x915.
+- A foray's meta is derived from its rule: `forayStrand` counts the distinct inks; `data.json` `more_forays` now carry `shows: 6` and `shows: 4`, and the tectonics plate has four different covers (it repeated one). The lead's meta and key already read `F.shows.length`.
+- Browse's Followed grid: a viewport render scrolled to the grid shows 8 of 8 covers at all three sizes (`r4/checks/followed-*.png`, `followedImgs: 8`); the initials in the earlier full-page captures are image load timing on a tall page, not a wrong URL.
+Art director's tune after round 4 (critique-r4 §2): `--spring-sheet` is stiffness 230 / damping 28 (was 260 / 28, which landed the sheet by 146ms while the plate was still in flight); the plate and the rule fly on the same `linear()` read from the stylesheet, the title fades in from 40%, and the rule travels the full 420ms then thickens and fades over 120ms. Re-recorded capture and tiles: `data-local/redesign/shots/editorial/r4-ad/motion/`.
+Params: `?motion=1` is new (it persists for the session like the others and never writes the store).
+Checks that a route list cannot reach are in `data-local/redesign/shots/editorial/r4/motion/check.mjs`.
+
+# Round 3 (kept for the record)
 
 Round 3 (critique-r2, in priority order)
 1. 4:3 contact plates (Today lead, Foray detail, onboarding) are lead-and-column: `.plate--contact.is-lead`, `3fr 1fr` by three rows, so the first show is a full-height square and no cover is cropped. Square plates keep the 2x2.

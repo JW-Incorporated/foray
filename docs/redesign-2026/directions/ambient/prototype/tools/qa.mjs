@@ -1,4 +1,4 @@
-// Round-3 QA for the Afterglow prototype: serves prototype/ over http (the harness refuses a ?query on a file path),
+// Round-4 QA (the round-3 list, rerun for critique-r3) for the Afterglow prototype: serves prototype/ over http (the harness refuses a ?query on a file path),
 // shoots every state critique-r1.md "What round 2 must shoot" and critique-r2.md "What round 3 must shoot" ask for, at 393x852 and 375x667, Dusk and Dawn,
 // composes labelled contact sheets, and asserts the layout facts the critique named. It is a tool, not a test suite:
 // there is deliberately no *.test.* file and no package.json (tools/ci/run-suites.mjs would otherwise pick it up).
@@ -12,7 +12,7 @@ import { pathToFileURL } from 'node:url';
 const root = process.cwd();
 const proto = path.join(root, 'docs/redesign-2026/directions/ambient/prototype');
 const arg = (k, d) => { const i = process.argv.indexOf('--' + k); return i > 0 ? process.argv[i + 1] : d; };
-const out = path.resolve(arg('out', path.join(root, 'data-local/redesign/shots/ambient/r3/states')));
+const out = path.resolve(arg('out', path.join(root, 'data-local/redesign/shots/ambient/r4/states')));
 const only = arg('only', 'all');
 const VPS = arg('vp', '393x852,375x667').split(',').map((s) => s.split('x').map(Number));
 const { chromium } = await import(pathToFileURL(path.join(root, 'tools/ui-lab/node_modules/playwright/index.mjs')).href);
@@ -152,7 +152,7 @@ if (only !== 'shots') {
     // 20: ending renders the handoff mid-flight
     await open(page, '#/now-playing', 'state=ending', 'dusk');
     const en = await page.evaluate(() => { const o = document.querySelector('.swap > .out'), i = document.querySelector('.swap > .in'); return { out: !!o, inn: !!i, cap: document.querySelector('.np-eyebrow').textContent, outT: o && getComputedStyle(o).transform, inT: i && getComputedStyle(i).transform, outO: o && getComputedStyle(o).opacity }; });
-    A(`[${tag}] #20 ending: next art at 40% offset, current at -24% and 40% opacity, caption "Up next"`, en.out && en.inn && en.cap === 'Up next' && Math.abs(parseFloat(en.outO) - 0.4) < 0.02, JSON.stringify(en));
+    A(`[${tag}] #20 ending: next art at 15% offset (85% travel), current at -36% and 20% opacity, caption "Up next"`, en.out && en.inn && en.cap === 'Up next' && Math.abs(parseFloat(en.outO) - 0.2) < 0.02, JSON.stringify(en));
     // 25: authored eyebrows are Lamp
     await open(page, '#/home', '', 'dusk');
     const eyb = await page.evaluate(() => { const e = document.querySelector('.eyebrow.lamp'); return [getComputedStyle(e).color, getComputedStyle(document.documentElement).getPropertyValue('--lamp-text').trim()]; });
@@ -235,6 +235,41 @@ if (only !== 'shots') {
     await open(page, '#/home', 'state=midlisten', 'dusk');
     const fadeE = await page.evaluate(() => { const f = document.querySelector('.dock-fade'); const cs = getComputedStyle(f); return { pe: cs.pointerEvents, h: Math.round(f.getBoundingClientRect().height), op: cs.opacity }; });
     A(`[${tag}] #19 Dock fade: 28px, pointer-events none, visible on Today`, fadeE.pe === 'none' && fadeE.h === 28 && fadeE.op === '1', JSON.stringify(fadeE));
+    // ---- round 4 (critique-r3) ----
+    {
+    // item 1: onboarding stands in its own light: sleeves 40px under the wordmark row, buttons above safe-bottom + 24, surplus between copy and buttons
+    await open(page, '#/onboarding', '', 'dusk');
+    const ob = await page.evaluate(() => { const wm = document.querySelector('.onb .wordmark').getBoundingClientRect(); const ar = document.querySelector('.onb-arts').getBoundingClientRect(); const t = document.querySelector('.onb .t-body').getBoundingClientRect(); const b = [...document.querySelectorAll('.onb .actions button')].map((x) => x.getBoundingClientRect()); return { sleeveGap: Math.round(ar.top - wm.bottom), arts: Math.round(ar.height), copyBottom: Math.round(t.bottom), btnTop: Math.round(b[0].top), btnBottom: Math.round(b[1].bottom), vh: innerHeight, justify: getComputedStyle(document.querySelector('.onb .onb-mid')).justifyContent }; });
+    A(`[${tag}] r4 #1 onboarding: sleeves 40px under the wordmark, 176 tall, top-anchored, buttons hold the bottom, copy above the buttons`, ob.sleeveGap === 40 && ob.arts === 176 && ob.justify === 'flex-start' && ob.btnBottom <= ob.vh - 24 + 1 && ob.copyBottom < ob.btnTop, JSON.stringify(ob));
+    // item 2: the Dock casts upward on every tab page with something playing, and is off in the Room, on Today with nothing playing, and in the car
+    for (const r of ['#/search', '#/library']) {
+      await open(page, r, '', 'dusk');
+      const pg = await page.evaluate(() => { const g = document.querySelector('.page-glow'); const cs = getComputedStyle(g); const d = document.querySelector('.dock').getBoundingClientRect(); const gr = g.getBoundingClientRect(); return { op: cs.opacity, bg: /radial-gradient/.test(cs.backgroundImage), pe: cs.pointerEvents, h: Math.round(gr.height), centreToDockTop: Math.round(gr.bottom - d.top) }; });
+      A(`[${tag}] r4 #2 ${r}: Dock cast is a visible 260px radial, non-interactive, centred within 30px of the Dock's top edge`, pg.op === '1' && pg.bg && pg.pe === 'none' && pg.h === 260 && Math.abs(pg.centreToDockTop) <= 30, JSON.stringify(pg));
+    }
+    await open(page, '#/home', '', 'dusk');
+    const pg0 = await page.evaluate(() => getComputedStyle(document.querySelector('.page-glow')).opacity);
+    A(`[${tag}] r4 #2 nothing playing: nothing to cast`, pg0 === '0', pg0);
+    await open(page, '#/library', '', 'dawn');
+    const pgd = await page.evaluate(() => getComputedStyle(document.querySelector('.page-glow')).backgroundImage.includes('radial-gradient'));
+    A(`[${tag}] r4 #2 Dawn Library has the cast`, pgd, String(pgd));
+    // item 3: the first show's square is whole, inside its cell and on top, in c2 and c3
+    await open(page, '#/library', '', 'dusk');
+    const cl = await page.evaluate(() => [...document.querySelectorAll('.collage.c2, .collage.c3')].map((c) => { const cr = c.getBoundingClientRect(); const kids = [...c.children]; const f = kids[0].getBoundingClientRect(); const z = (k) => parseInt(getComputedStyle(k).zIndex, 10) || 0; const top = document.elementFromPoint(f.left + f.width / 2, f.top + f.height / 2); return { cls: c.className, inside: f.left >= cr.left - 0.5 && f.right <= cr.right + 0.5 && f.top >= cr.top - 0.5 && f.bottom <= cr.bottom + 0.5, onTop: kids.slice(1).every((k) => z(kids[0]) > z(k)), hit: kids[0].contains(top) || top === kids[0] }; }));
+    A(`[${tag}] r4 #3 first show's square is whole and on top in every c2/c3 collage (${cl.length} found)`, cl.length >= 2 && cl.every((c) => c.inside && c.onTop && c.hit), JSON.stringify(cl));
+    // item 4: on Foray detail the current bar's lower edge never reaches the thumbnail row
+    await open(page, '#/foray', '', 'dusk');
+    const sb = await page.evaluate(() => [...document.querySelectorAll('.foray-room .sb')].filter((x) => x.querySelector('.thumbs')).map((x) => { const th = x.querySelector('.thumbs').getBoundingClientRect(); const b = x.querySelector('.bar').getBoundingClientRect(); return { cur: x.classList.contains('cur'), gap: Math.round((th.top - b.bottom) * 10) / 10 }; }));
+    A(`[${tag}] r4 #4 foray strip: every bar (the current one included) clears its thumbnail by >= 5px (${sb.length} thumbs)`, sb.length > 0 && sb.every((x) => x.gap >= 5), JSON.stringify(sb));
+    // item 5: the Up Next peek carries the why-line, once-only duration
+    await open(page, '#/now-playing', 'state=np-detail3', 'dusk');
+    const pk = await page.evaluate(() => { const r = [...document.querySelectorAll('.np .section')].find((x) => /Up next/.test(x.textContent)).querySelector('.q-row'); const w = r.querySelector('.qwhy'); return { why: w && w.textContent.length, clamp: w && getComputedStyle(w).webkitLineClamp, italic: w && getComputedStyle(w).fontStyle, mins: (r.textContent.match(/ min/g) || []).length, eyebrow: !!r.querySelector('.auto') }; });
+    A(`[${tag}] r4 #5 Up Next peek: 4a added eyebrow, why-line italic clamp 2, duration once`, pk.why > 10 && pk.clamp === '2' && pk.italic === 'italic' && pk.mins === 1 && pk.eyebrow, JSON.stringify(pk));
+    // item 6: the car posture title takes three lines on a tall screen, two on a short one
+    await open(page, '#/now-playing', 'posture=car', 'dusk');
+    const cc = await page.evaluate(() => getComputedStyle(document.querySelector('.np .t-display')).webkitLineClamp);
+    A(`[${tag}] r4 #6 car posture title clamp is ${h >= 800 ? 3 : 2}`, cc === String(h >= 800 ? 3 : 2), cc);
+    }
     await page.context().close();
   }
 }

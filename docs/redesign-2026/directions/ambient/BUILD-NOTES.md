@@ -788,3 +788,25 @@ second top-left, third top-right (third above second). `.c4` unchanged.
   duration once, then the item's why-line in `--t-why` clamped to two lines.
 - Car posture: title clamp 3 at >= 800px tall, 2 below.
 - `np-ending` state freezes at 85% travel.
+
+## 12. After round 4 (art director, 2026-10-06, see `critique-r4.md`)
+
+No direction change. The round is ready; two builder corrections land in the
+polish pass before the checkpoint package, each pinned by `tools/qa.mjs`, no
+art-director reshoot review.
+
+### 12.1 Dock fade reaches bg before the Dock's bottom edge (item 1)
+
+`.dock-fade { height: calc(var(--safe-bottom) + 12px + 44px); background:
+linear-gradient(transparent 0, var(--bg0) 32px); }` (Dawn `--paper0`),
+still z-index 19 under the Dock. Solid bg from 12px above the Dock's bottom
+edge to the screen bottom; the gutters beside the Dock's corner radius fade.
+Assert: no text node intersects the band below the Dock's bottom edge at
+rendered opacity above 0.02, every tab page, both schemes, 375x667 and 393x852.
+
+### 12.2 Grid captions clamp to three lines (item 2)
+
+`.stile .name, .ftile .name` clamp 3; `.grid-3 { align-items: start }`; the
+three `t-caption name clamp2` spans in `afterglow.js` become `clamp3`. Assert:
+no `.name` on Library or "Where this came from" has `scrollHeight >
+clientHeight` at 375 or 393; tile row gap never under 16px.

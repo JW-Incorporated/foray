@@ -1,4 +1,4 @@
-/* Clarity ("The Board") prototype, round 3 (critique-r2 applied). Classic script, no build, no inline styles:
+/* Clarity ("The Board") prototype, round 4 (critique-r3 applied). Classic script, no build, no inline styles:
    widths and fills are set through the CSSOM after render (hydrate()).
    Playback is simulated; no audio is loaded. */
 (function () { try { var t = new URLSearchParams(location.search).get("theme"); if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t); } catch (e) {} })();
@@ -140,7 +140,8 @@
 
   function startForay() {
     var seg8 = parts.filter(function (p) { return p.type === "segment" && p.no === 8; })[0];
-    P = { kind: "foray", id: F.id, pos: seg8.start + 61, dur: TOTAL, playing: true };
+    /* r4 item 8: one source of position per item. midlisten seeds the foray at 9:40 everywhere (lead, mini, Library, detail). */
+    P = { kind: "foray", id: F.id, pos: STATE === "midlisten" ? S.fpos : seg8.start + 61, dur: TOTAL, playing: true };
   }
   function startEnding() {
     /* np-end: an episode three seconds from its end, held there so the Up next line can rise into the title slot. */
@@ -173,44 +174,48 @@
   function rowEp(e, o) {
     o = o || {};
     var lead = !!o.lead, stretch = !!e.bridge && !o.noBridge && o.why !== false && !lead;
-    var cls = "row" + (lead ? " row--lead" : "") + (stretch ? " row--stretch" : "") + (o.dim ? " row--dim" : "") + (o.prog != null ? " row--resume" : "");
+    var cls = "row" + (lead ? " row--lead" : "") + (stretch ? " row--stretch" : "") + (o.dim ? " row--dim" : "") + (o.prog != null ? " row--resume" : "") + (o.why !== false && o.prog == null ? " row--why" : "");
     var why = o.whyText || e.hook;
     var h = '<div class="' + cls + '" role="button" tabindex="0" data-act="open-ep" data-id="' + esc(e.id) + '"' + (o.dim ? ' aria-disabled="true"' : "");
     h += ' aria-label="' + esc((stretch ? "Stretch pick: " : "") + e.title + ", " + e.show + ", " + fmtSpoken(e.min) + (o.badge ? ", saved" : "") + (o.why !== false ? ", " + why : "")) + '">';
     if (o.prog != null) h += '<span class="row__art row__art--prog"><span class="row__artbox">' + (art(e.art, "") || mono(e.show)) + '</span><span class="prog" data-p="' + o.prog + '"></span></span>';
     else h += '<span class="row__art">' + (art(e.art, "") || mono(e.show)) + "</span>";
     h += '<span class="row__stack">';
-    if (lead) h += '<span class="t-caption row__eyebrow">' + esc(o.eyebrow || "Today’s lead") + "</span>";
+    if (lead) h += '<span class="t-caption row__eyebrow">' + esc(o.eyebrow || "Today’s lead") + (o.badge ? " <span class=\"badge\">saved</span>" : "") + "</span>";
     if (stretch) h += bridgeHTML(e);
     h += '<span class="t-caption row__show clamp1">' + esc(e.show) + (e.explicit ? ' <span class="badge">E</span>' : "") + "</span>";
     h += '<span class="t-strong row__title ' + (lead ? "clamp2" : "clamp1") + '" title="' + esc(e.title) + '">' + esc(e.title) + "</span>";
-    if (o.why !== false) h += '<span class="t-body row__why clamp2">' + esc(why) + "</span>";
     h += "</span>";
     h += '<span class="row__data">';
     if (lead) h += capsuleHTML("play-ep", e.id, (o.mid ? "Resume " : "Play ") + e.title);
     h += o.data != null ? o.data : durHTML(e.min);
-    if (o.badge) h += '<span class="badge">saved</span>';
-    h += "</span></div>";
+    if (o.badge && !lead) h += '<span class="badge">saved</span>';
+    h += "</span>";
+    /* r4 item 1: the why is its own grid row (column 2 to the right gutter), under the data column; three lines, it finishes */
+    if (o.why !== false) h += '<span class="t-body row__why clamp3">' + esc(why) + "</span>";
+    h += "</div>";
     return h;
   }
   function rowForay(o) {
     o = o || {};
     var lead = !!o.lead;
-    var cls = "row" + (lead ? " row--lead" : "") + (o.dim ? " row--dim" : "");
+    var cls = "row row--why" + (lead ? " row--lead" : "") + (o.dim ? " row--dim" : "");
     var h = '<div class="' + cls + '" role="button" tabindex="0" data-act="open-foray" aria-label="' + esc("Foray: " + F.title + ", " + fmtSpoken(TOTAL / 60) + ", " + F.shows.length + " shows" + (o.badge ? ", saved" : "")) + '">';
     h += '<span class="row__art">' + compHTML() + "</span>";
     h += '<span class="row__stack">';
     /* r2 item 4: the same two caption lines as every other lead: "Today's lead", then "Foray · 7 shows" (ink, 500) */
-    if (lead) h += '<span class="t-caption row__eyebrow">' + esc(o.eyebrow || "Today’s lead") + "</span>";
+    if (lead) h += '<span class="t-caption row__eyebrow">' + esc(o.eyebrow || "Today’s lead") + (o.badge ? " <span class=\"badge\">saved</span>" : "") + "</span>";
     h += '<span class="t-caption row__show">Foray · ' + F.shows.length + " shows</span>";
     h += '<span class="t-strong row__title ' + (lead ? "clamp2" : "clamp1") + '">' + esc(F.title) + "</span>";
-    h += '<span class="t-body row__why clamp2">' + esc(F.why) + "</span>";
-    h += stripHTML({ cls: "strip--row" }) + "</span>";
-    h += '<span class="row__data">';
+    h += "</span>";
+    h += '<span class="row__data' + (o.mid ? " row__data--mid" : "") + '">';
     if (lead) h += capsuleHTML("play-foray", "", (o.mid ? "Resume " : "Play ") + F.title);
-    h += o.mid ? leftHTML((TOTAL - S.fpos) / 60) : durHTML(TOTAL / 60);
-    if (o.badge) h += '<span class="badge">saved</span>';
-    h += "</span></div>";
+    h += o.mid ? leftHTML((TOTAL - forayPos()) / 60) : durHTML(TOTAL / 60);
+    if (o.badge && !lead) h += '<span class="badge">saved</span>';
+    h += "</span>";
+    /* r4 item 1: the why and the 4px strip are grid rows 2 and 3 of the row, both stack-left to the right gutter */
+    h += '<span class="t-body row__why clamp3">' + esc(F.why) + "</span>";
+    h += stripHTML({ cls: "strip--row" }) + "</div>";
     return h;
   }
   function sechead(t, n) { return '<div class="sechead t-caption"><h2>' + esc(t) + "</h2>" + (n != null ? '<span class="t-data-sm">' + esc(n) + "</span>" : "") + "</div>"; }
@@ -221,7 +226,8 @@
     return '<div class="row row--show row--noart subjrow" role="button" tabindex="0" data-act="open-subject" data-id="' + esc(s.id) + '"><span class="row__stack"><span class="t-strong row__title clamp1">' + esc(s.label) + '</span></span><span class="row__data">' + s.shows + "</span></div>";
   }
   function skelRow(lead) {
-    return '<div class="row row--skel' + (lead ? " row--lead" : "") + '" aria-hidden="true"><span class="row__art skel"></span><span class="row__stack"><span class="skel skel--cap"></span><span class="skel skel--title"></span><span class="skel skel--why"></span><span class="skel skel--why skel--short"></span>' + (lead ? '<span class="skel skel--strip"></span>' : "") + '</span><span class="row__data"><span class="skel skel--dur"></span></span></div>';
+    /* r4: same grid as a real row: caption(s) + title in the stack, three why bars under the data column, a strip block under the lead */
+    return '<div class="row row--why row--skel' + (lead ? " row--lead" : "") + '" aria-hidden="true"><span class="row__art skel"></span><span class="row__stack"><span class="skel skel--cap"></span>' + (lead ? '<span class="skel skel--cap"></span>' : "") + '<span class="skel skel--title"></span></span><span class="row__data"><span class="skel skel--dur"></span></span><span class="row__why"><span class="skel skel--why"></span><span class="skel skel--why"></span><span class="skel skel--why skel--short"></span></span>' + (lead ? '<span class="skel skel--strip"></span>' : "") + "</div>";
   }
 
   /* ---------------------------------------------------------------- screens */
@@ -241,13 +247,13 @@
     var h = '<header class="hdr hdr--today" id="todayHdr"><span class="hdr__dates"><h1 class="today__date t-data-lg">' + esc(dateLabel()) + '</h1><span class="today__date-sm t-caption" aria-hidden="true">' + esc(dateLabel()) + '</span></span><button class="iconbtn" data-act="open-you" aria-label="You">' + icon("user") + "</button></header>";
     if (stat) h += '<p class="stat t-data muted" id="todayStat">' + esc(stat) + "</p>";
     if (loading) {
-      h += '<div class="gap12"></div><div role="status" aria-label="Loading today’s picks">' + skelRow(true) + sechead("Picked for you") + skelRow() + skelRow() + skelRow() + skelRow() + "</div>";
+      h += '<div class="gap12"></div><div role="status" aria-label="Loading today’s picks">' + skelRow(true) + sechead("Picked for you") + skelRow() + skelRow() + skelRow() + "</div>";
       return h;
     }
     if (offline) h += '<div class="empty empty--top"><span class="t-body">Offline. Saved episodes play.</span>' + tbtn(S.offlineOnly ? "Show all" : "Show saved", 'data-act="offline-toggle"') + "</div>";
     else h += '<div class="gap12"></div>';
     var rowOpts = function (e) { return offline ? { dim: !offlineSaved[e.id], badge: !!offlineSaved[e.id] } : {}; };
-    if (leadForay) h += rowForay({ lead: true, mid: S.fpos > 5, badge: offline });
+    if (leadForay) h += rowForay({ lead: true, mid: forayPos() > 5, badge: offline });
     else h += rowEp(picks[0], { lead: true, eyebrow: "Picked to start", whyText: picks[0].fr, noBridge: true });
     if (mid) {
       h += sechead("Resume", String(resumeRows.length));
@@ -326,21 +332,25 @@
     h += '<span class="rowq__pos"><span class="t-data">' + i + "</span>" + (isNow ? '<span class="t-data-sm now">Now</span>' : "") + "</span>";
     h += '<span class="rowq__art">' + artH + "</span>";
     h += '<span class="rowq__txt"><span class="t-strong clamp1">' + esc(title) + '</span><span class="t-caption muted clamp1">' + esc(sub) + "</span></span>";
-    h += '<span class="rowq__data">' + (rem < 1 ? "<1 min" : fmtMin(rem)) + "</span>";
+    /* r4 item 4: a started item says what the number is: "35 min" over "left" (the same two-line form as Resume rows);
+       an unstarted item shows its plain duration on one line. */
+    var started = isNow && P && P.pos > 5;
+    h += '<span class="rowq__data">' + (started ? '<span class="dur2"><span>' + (rem < 1 ? "<1 min" : fmtMin(rem)) + '</span><span class="t-data-sm">left</span></span>' : (rem < 1 ? "<1 min" : fmtMin(rem))) + "</span>";
     h += isNow ? "<span></span>" : '<button class="iconbtn" data-act="qmenu" data-id="' + esc(ep.id) + '" aria-label="More for ' + esc(ep.title) + '">' + icon("more") + "</button>";
     return h + "</div>";
   }
   function screenLibrary() {
     var h = '<header class="hdr"><h1 class="t-title">Library</h1><button class="iconbtn" data-act="scroll-saved" aria-label="Saved">' + icon("download") + "</button></header><div class=\"gap16\"></div>";
-    h += '<div class="shows-grid">' + D.shows.slice(0, 6).map(function (s) { return '<a class="cell" href="#/search" aria-label="' + esc(s.name) + '"><span class="cell__art">' + (art(s.art, "") || mono(s.name)) + '</span><span class="t-caption cell__name clamp1">' + esc(s.name) + "</span></a>"; }).join("") + "</div>";
+    h += '<div class="shows-grid">' + D.shows.slice(0, 6).map(function (s) { return '<a class="cell" href="#/search" aria-label="' + esc(s.name) + '"><span class="cell__art">' + (art(s.art, "") || mono(s.name)) + '</span><span class="t-caption cell__name">' + esc(s.name) + "</span></a>"; }).join("") + "</div>";
     h += '<div class="textrow">' + tbtn("All " + D.shows.length + " shows", 'data-act="nav" data-to="#/search"') + "</div>";
     h += sechead("Forays", "1") + rowForay();
-    var total = Q.length + (P ? 1 : 0);
+    /* r4 item 5: the Up Next count is the items AFTER the one playing, here and on the Now Playing control row (both read Q.length) */
+    var total = Q.length;
     h += sechead("Up Next", String(total));
     var n = 1;
     if (P) { h += nowRowQ(n++, 0, P.kind === "ep" ? byId[P.id] : null, true); }
     Q.slice(0, P ? 4 : 5).forEach(function (id, qi) { h += nowRowQ(n++, qi, byId[id], false); });
-    if (total > 5) h += '<div class="textrow">' + tbtn("All " + total, 'data-act="toast" data-msg="The full Up Next page lists all ' + total + '."') + "</div>";
+    if (total > (P ? 4 : 5)) h += '<div class="textrow">' + tbtn("All " + total, 'data-act="toast" data-msg="The full Up Next page lists all ' + total + '."') + "</div>";
     h += '<div id="savedAnchor"></div>' + sechead("Saved", String(savedIds.length));
     savedIds.forEach(function (id) { h += rowEp(byId[id], { why: false, badge: true }); });
     h += sechead("Playlists", String(D.playlists.length));
@@ -432,8 +442,9 @@
     var p = h.replace(/^#\/?/, "").split("/");
     return { name: p[0] || "home", arg: decodeURIComponent(p.slice(1).join("/") || "") };
   }
-  var inNP = false;
+  var inNP = false, routedHref = "";
   function route() {
+    routedHref = location.href;
     var r = parseRoute(), n = r.name;
     if (n === "mini") { ensureP(); n = "home"; }
     if (n === "foray") ensureP();
@@ -567,10 +578,12 @@
     var end = endNear(); npEndShown = end;
     var hc = c;
     if (end) { var ne = byId[Q[0]]; hc = { title: ne.title, show: ne.show, why: ne.hook, art: ne.art }; }
-    var artH = hc.foray ? compHTML() : art(hc.art, "", true) || mono(hc.show);
+    /* r4 item 7: the title slot rises to the next item early, but the ARTWORK stays the finishing item's until 0:00
+       (then the item advances and the art crossfades on --t-3); the picture never lies about what is playing. */
+    var artH = c.foray ? compHTML() : art(c.art, "", true) || mono(c.show);
     var h = '<div class="np__top" id="npTop"><span class="np__grab"></span><button class="iconbtn np__close" data-act="close-np" aria-label="Close">' + icon("x") + "</button></div>";
     h += '<div class="np__in"><div class="np__art">' + artH + "</div>";
-    h += '<div class="np__meta">' + (end ? '<p class="t-data-sm np__eyebrow" id="npEye">Up next · in ' + clock(P.dur - P.pos) + "</p>" : "") + '<h2 class="t-title np__title clamp2" tabindex="-1" title="' + esc(hc.title) + '">' + esc(hc.title) + '</h2><p class="t-label np__show"><span class="clamp1">' + esc(hc.show) + '</span></p><p class="t-body np__why clamp2">' + esc(hc.why) + "</p></div>";
+    h += '<div class="np__meta">' + (end ? '<p class="t-data-sm np__eyebrow" id="npEye">Up next · in ' + clock(P.dur - P.pos) + "</p>" : "") + '<h2 class="t-title np__title clamp2" tabindex="-1" title="' + esc(hc.title) + '">' + esc(hc.title) + '</h2><p class="t-label np__show"><span class="clamp1">' + esc(hc.show) + '</span></p><p class="t-body np__why clamp3">' + esc(hc.why) + "</p></div>";
     h += '<div class="scrub' + (foray ? "" : " scrub--ep") + '" id="scrub">';
     if (foray) {
       h += '<div class="scrub__hit scrub__hit--strip" id="scrubHit" role="slider" tabindex="0" aria-label="Position" aria-valuemin="0" aria-valuemax="' + Math.round(TOTAL) + '" aria-valuenow="0">' + stripHTML({ lg: true, prog: true }) + ticksHTML() + "</div>";
@@ -609,6 +622,15 @@
   /* Mini (or tapped row) -> Now Playing. The sheet rises over the dock (the dock stays painted beneath it) on the
      spring; the artwork and the title are shared elements flown by fixed flyers on the same curve. The art slot keeps
      its --surface tile while the flyer is in the air, so it is never a hole. r2 item 1. */
+  /* the sheet's content that is NOT a flyer source: top bar (grabber, close), show line, why, scrubber and clocks, readout,
+     transport, control row, sections. Open fades it in from 16px below over the second half; close fades it out in the
+     first --t-1, so nothing with text or glyphs ever crosses the dock (r3 item 2). */
+  function sheetContent() {
+    var els = [$(".np__top", np)], meta = $(".np__meta", np);
+    if (meta) Array.prototype.forEach.call(meta.children, function (c) { if (!c.classList.contains("np__title")) els.push(c); });
+    [".scrub", ".transport", ".ctrls", ".np__sec"].forEach(function (s) { els.push($(s, np)); });
+    return els.filter(Boolean);
+  }
   function openNP() {
     inNP = true; clearFlyers();
     var src = S.npFrom || {}; S.npFrom = null;
@@ -630,8 +652,12 @@
     var toA = R(npA), toT = R(npT), anims = [];
     anims.push(run(np, [{ transform: "translateY(" + H + "px)" }, { transform: "none" }], { duration: D, easing: E }));
     anims.push(run(scrim, [{ opacity: 0 }, { opacity: 1 }], { duration: D * 0.6, easing: "linear" }));
+    sheetContent().forEach(function (el) {
+      var top = el.classList.contains("np__top");
+      anims.push(run(el, top ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: "translateY(16px)" }, { opacity: 1, transform: "none" }], { duration: D / 2, delay: D / 2, easing: easeOf("--ease"), fill: "backwards" }));
+    });
     if (fromA && onScreen(fromA) && toA.width) {
-      np.classList.add("is-flying"); document.body.classList.add("is-flying");
+      np.classList.add("is-flying"); document.body.classList.add("is-flying", "is-flying-open");
       var fa = artFlyer(npA, toA);
       anims.push(run(fa, [{ transform: tf(fromA, toA) }, { transform: "none" }], { duration: D, easing: E }));
     }
@@ -645,7 +671,7 @@
       if (miniTitle && tEl === miniTitle) titleAnim = run(miniTitle, [{ opacity: 1 }, { opacity: 0 }], { duration: D * 0.4, easing: "linear", fill: "forwards" });
     }
     whenDone(anims, function () {
-      clearFlyers(); np.classList.remove("is-flying"); document.body.classList.remove("is-flying");
+      clearFlyers(); np.classList.remove("is-flying"); document.body.classList.remove("is-flying", "is-flying-open");
       if (titleAnim) titleAnim.cancel();
       if (inNP) focusIt();
     });
@@ -658,8 +684,9 @@
       if (fin) return; fin = true;
       clearFlyers();
       np.getAnimations().forEach(function (a) { a.cancel(); }); scrim.getAnimations().forEach(function (a) { a.cancel(); });
-      np.classList.remove("is-open", "is-dragging", "is-flying"); document.body.classList.remove("np-open", "is-flying");
-      scrim.hidden = true; np.hidden = true; np.style.transform = "";
+      $$(".mini__title").forEach(function (el) { el.getAnimations().forEach(function (a) { a.cancel(); }); });
+      np.classList.remove("is-open", "is-dragging", "is-flying"); document.body.classList.remove("np-open", "is-flying", "is-flying-open");
+      scrim.hidden = true; np.hidden = true; np.style.transform = ""; scrim.style.opacity = "";
       $("#view").removeAttribute("inert"); $("#dockwrap").removeAttribute("inert");
       if (cb) cb();
       var b = $(".mini__body"); if (b) b.focus({ preventScroll: true });
@@ -673,7 +700,12 @@
     var dockMin = $("#dock").classList.contains("is-min");
     var toA = mA && !dockMin ? R(mA) : null, toT = mT && !dockMin ? R(mT) : null;
     anims.push(run(np, [{ transform: "translateY(" + dy0 + "px)" }, { transform: "translateY(" + H + "px)" }], { duration: D, easing: E, fill: "forwards" }));
-    anims.push(run(scrim, [{ opacity: 1 }, { opacity: 0 }], { duration: D, easing: "linear", fill: "forwards" }));
+    /* r4 item 2: the open played backwards. One group, one duration: the sheet, the scrim (1 -> 0, linear, over the whole
+       exit, so the page stays dimmed until the sheet is gone) and the two flyers all run for D on the same clock; the
+       content fades to 0 in the first --t-1; the art slot is transparent from the first frame (CSS .is-flying). */
+    var so = parseFloat(getComputedStyle(scrim).opacity); if (isNaN(so)) so = 1; /* a drag has already brightened the page in step with the sheet; the release continues from there */
+    anims.push(run(scrim, [{ opacity: so }, { opacity: 0 }], { duration: D, easing: "linear", fill: "forwards" }));
+    sheetContent().forEach(function (el) { anims.push(run(el, [{ opacity: 1 }, { opacity: 0 }], { duration: ms("--t-1"), easing: "linear", fill: "forwards" })); });
     if (fromA && onScreen(fromA) && toA && toA.width) {
       np.classList.add("is-flying"); document.body.classList.add("is-flying");
       var fa = artFlyer(npA, fromA);
@@ -684,7 +716,10 @@
       var fl = lineOf(mT), tl = lineOf(npT), sc = fl.fs / tl.fs;
       var ft = titleFlyer(npT.textContent, fromT);
       var dx = toT.left - fromT.left, dy = (toT.top + fl.lh / 2) - (fromT.top + tl.lh * sc / 2);
-      anims.push(run(ft, [{ transform: "none", opacity: 1 }, { opacity: 1, offset: 0.6 }, { transform: "translate(" + dx + "px," + dy + "px) scale(" + sc + ")", opacity: 0 }], { duration: D, easing: E, fill: "forwards" }));
+      /* the flyer stays opaque while it travels and crossfades with the mini's own title over the last fifth of the path
+         (a two-line sheet title must not land as a block over the mini's show line); both are settled in the final frame */
+      anims.push(run(ft, [{ transform: "none", opacity: 1 }, { opacity: 1, offset: 0.8 }, { transform: "translate(" + dx + "px," + dy + "px) scale(" + sc + ")", opacity: 0 }], { duration: D, easing: E, fill: "forwards" }));
+      anims.push(run(mT, [{ opacity: 0 }, { opacity: 0, offset: 0.8 }, { opacity: 1 }], { duration: D, easing: E, fill: "forwards" }));
     }
     whenDone(anims, finish);
   }
@@ -694,11 +729,11 @@
   (function () {
     var y0 = 0, dy = 0, on = false, lastY = 0, lastT = 0, vel = 0;
     np.addEventListener("pointerdown", function (e) { if (!e.target.closest("#npTop") || e.target.closest(".np__close")) return; on = true; y0 = lastY = e.clientY; lastT = e.timeStamp; dy = 0; np.classList.add("is-dragging"); np.setPointerCapture(e.pointerId); });
-    np.addEventListener("pointermove", function (e) { if (!on) return; dy = Math.max(0, e.clientY - y0); vel = (e.clientY - lastY) / Math.max(1, e.timeStamp - lastT); lastY = e.clientY; lastT = e.timeStamp; np.style.transform = "translateY(" + dy + "px)"; });
+    np.addEventListener("pointermove", function (e) { if (!on) return; dy = Math.max(0, e.clientY - y0); vel = (e.clientY - lastY) / Math.max(1, e.timeStamp - lastT); lastY = e.clientY; lastT = e.timeStamp; np.style.transform = "translateY(" + dy + "px)"; scrim.style.opacity = String(Math.max(0, 1 - dy / np.offsetHeight)); });
     function end() {
       if (!on) return; on = false; np.classList.remove("is-dragging");
       if (dy > 120 || vel > .6) { closeNPNav(); }
-      else if (dy > 0) { var d = dy; np.style.transform = ""; run(np, [{ transform: "translateY(" + d + "px)" }, { transform: "none" }], { duration: ms("--t-3"), easing: easeOf("--spring-stiff") }); }
+      else if (dy > 0) { var d = dy, so = parseFloat(scrim.style.opacity); np.style.transform = ""; scrim.style.opacity = ""; if (!isNaN(so)) run(scrim, [{ opacity: so }, { opacity: 1 }], { duration: ms("--t-3"), easing: easeOf("--spring-stiff") }); run(np, [{ transform: "translateY(" + d + "px)" }, { transform: "none" }], { duration: ms("--t-3"), easing: easeOf("--spring-stiff") }); }
     }
     np.addEventListener("pointerup", end); np.addEventListener("pointercancel", end);
   })();
@@ -742,7 +777,7 @@
     P.pos += 1;
     if (P.pos >= P.dur) {
       var nid = Q.shift();
-      if (nid) { playEp(nid); updateMini(); if (inNP) { buildNP(); np.classList.add("fade-in"); } }
+      if (nid) { playEp(nid); updateMini(); if (inNP) { buildNP(); if (!reduce.matches) { run($(".np__art"), [{ opacity: 0 }, { opacity: 1 }], { duration: ms("--t-3"), easing: easeOf("--ease") }); run($(".np__meta"), [{ opacity: 0 }, { opacity: 1 }], { duration: ms("--t-3"), easing: easeOf("--ease") }); } } }
       else { P.pos = P.dur; P.playing = false; }
     }
     syncPlayer();
@@ -891,8 +926,10 @@
     qTimer = setTimeout(function () { S.q = v; var r = $("#results"); if (r) { r.innerHTML = resultsHTML(v); hydrate(r); } }, 250);
   });
 
-  window.addEventListener("hashchange", route);
-  window.addEventListener("popstate", route);
+  /* history.back() fires popstate AND hashchange; the second must not re-render the page the first already handled */
+  function onNavEvent() { if (location.href !== routedHref) route(); }
+  window.addEventListener("hashchange", onNavEvent);
+  window.addEventListener("popstate", onNavEvent);
   if (!location.hash) history.replaceState(null, "", "#/home");
   ensureComp();
   route();

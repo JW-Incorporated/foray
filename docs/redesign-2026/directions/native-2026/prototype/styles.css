@@ -213,8 +213,13 @@ html[data-os="android"] .navbar { background: var(--bg); padding-inline: 4px; }
 html[data-os="android"] .navbar.is-collapsed { background: var(--surface-2); }
 .nb-title { position: absolute; left: 56px; right: 56px; top: var(--sb); height: var(--nav-h); display: flex; align-items: center; justify-content: center; font: var(--t-headline); text-align: center; opacity: 0; transition: opacity var(--dur-s) var(--ease-out); pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .navbar.is-collapsed .nb-title { opacity: 1; }
-html[data-os="android"] .nb-title { justify-content: flex-start; left: 20px; right: 120px; opacity: 1; font: 400 22px/28px var(--font-text); text-align: left; }
+/* M3's headline sits on the 16px gutter when there is no navigation icon (critique r3 #10; it was 20) */
+html[data-os="android"] .nb-title { justify-content: flex-start; left: 16px; right: 120px; opacity: 1; font: 400 22px/28px var(--font-text); text-align: left; }
 html[data-os="android"] .navbar.has-back .nb-title { left: 60px; }
+/* the title is a block so a long foray title ellipsizes at its end instead of being clipped on both sides; on the transparent Foray bar it appears once the bar collapses */
+.nb-title, html[data-os="android"] .nb-title { display: block; line-height: var(--nav-h); }
+html[data-os="android"] .navbar.is-transparent:not(.is-collapsed) .nb-title { opacity: 0; }
+html[data-os="ios"] .navbar.is-transparent .nb-title { left: 104px; right: 104px; }
 .nb-spacer { flex: 1; }
 .nb-btn { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; color: var(--accent); }
 html[data-os="android"] .nb-btn { color: var(--label); }
@@ -223,6 +228,12 @@ html[data-os="android"] .nb-btn { color: var(--label); }
 .nb-btn.on-hero { position: relative; width: 44px; height: 44px; margin-inline: 2px; background: none; color: var(--label); }
 .nb-btn.on-hero::before { content: ""; position: absolute; inset: 2px; border-radius: 50%; background: var(--glass-bg); -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%); box-shadow: var(--glass-edge); z-index: -1; }
 html[data-os="android"] .nb-btn.on-hero::before { background: var(--surface-2); -webkit-backdrop-filter: none; backdrop-filter: none; }
+/* iOS circles take the glass tint at 78% in both schemes so they match the tab bar's material (critique r3 #5) */
+html[data-os="ios"] .nb-btn.on-hero::before { background: rgba(242,242,247,.78); }
+@media (prefers-color-scheme: dark) { html[data-os="ios"]:not([data-scheme="light"]) .nb-btn.on-hero::before { background: rgba(28,28,30,.78); } }
+html[data-os="ios"][data-scheme="dark"] .nb-btn.on-hero::before { background: rgba(28,28,30,.78); }
+/* Home's settings gear is amber on both platforms (critique r3 #11) */
+html[data-os="android"] .nb-btn.accent { color: var(--accent); }
 .nb-btn.on-hero { z-index: 0; isolation: isolate; }
 html[data-os="ios"] .nb-btn.on-hero { color: var(--accent); }
 html[data-os="ios"] .navbar.is-transparent:not(.is-collapsed) { background: transparent; box-shadow: none; }
@@ -244,6 +255,10 @@ html[data-os="android"] .ltitle { display: none; }
 .clamp1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
 .clamp2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .clamp3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.clamp4 { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+/* the voice face is never ellipsized (critique r3 #1): a .voice element carries no clamp except the bridge sentences, whose copy is
+   bounded (12 words in the rail at 17/22 clamp 4, 16 in rows at 19/26 clamp 3) and checked by the harness (check D) */
+.voice.vrail { font-size: 17px; line-height: 22px; font-variation-settings: "opsz" 17; }
 
 /* artwork */
 .art { position: relative; overflow: hidden; background: var(--fill); flex: none; }
@@ -320,13 +335,13 @@ html[data-os="android"] .play.s64 { box-shadow: 0 2px 6px rgba(0,0,0,.3); }
 .seam.lg::before { top: 50%; }
 .fd-body, .rcard { --seam-bg: var(--bg); }
 .np { --seam-bg: oklch(0.2 0.05 var(--art-h)); }
-html[data-os="android"] .np { --seam-bg: oklch(0.22 0.03 var(--art-h)); }
+html[data-os="android"] .np { --seam-bg: oklch(0.2 0.05 var(--art-h)); }
 @media (prefers-color-scheme: light) { html:not([data-scheme="dark"]) .np { --seam-bg: oklch(0.93 0.04 var(--art-h)); } }
 html[data-scheme="light"] .np { --seam-bg: oklch(0.93 0.04 var(--art-h)); }
 html[data-scheme="dark"] .np { --seam-bg: oklch(0.2 0.05 var(--art-h)); }
-@media (prefers-color-scheme: light) { html[data-os="android"]:not([data-scheme="dark"]) .np { --seam-bg: oklch(0.96 0.02 var(--art-h)); } }
-html[data-os="android"][data-scheme="light"] .np { --seam-bg: oklch(0.96 0.02 var(--art-h)); }
-html[data-os="android"][data-scheme="dark"] .np { --seam-bg: oklch(0.22 0.03 var(--art-h)); }
+@media (prefers-color-scheme: light) { html[data-os="android"]:not([data-scheme="dark"]) .np { --seam-bg: oklch(0.95 0.028 var(--art-h)); } }
+html[data-os="android"][data-scheme="light"] .np { --seam-bg: oklch(0.95 0.028 var(--art-h)); }
+html[data-os="android"][data-scheme="dark"] .np { --seam-bg: oklch(0.2 0.05 var(--art-h)); }
 /* onboarding loop: bar one fills over 4 s, the playhead crosses the gap over 1 s, bar two begins; 6 s, still at 40% under reduced motion */
 .onb .sb.loop-a .ph, .onb .sb.loop-b .ph { display: block; opacity: 0; }
 .onb .sb.loop-a { animation: loop-a 6s linear infinite; }
@@ -342,7 +357,8 @@ html[data-os="android"][data-scheme="dark"] .np { --seam-bg: oklch(0.22 0.03 var
 .seam-labels > span { position: absolute; top: 0; white-space: nowrap; padding: 0 4px; text-align: center; }
 .seam-labels > span.hide { visibility: hidden; }
 .seam-cap { margin-top: 8px; font: var(--t-foot); color: var(--label-2); }
-.chip-pop { position: absolute; z-index: 5; display: flex; align-items: center; gap: 8px; max-width: 260px; padding: 6px 12px 6px 6px; border-radius: 999px; background: var(--surface-2); color: var(--label); font: 600 13px/18px var(--font-text); box-shadow: 0 4px 16px rgba(0,0,0,.28); transform: translate(-50%, -100%); animation: pop var(--dur-m) var(--spring-snappy); }
+.chip-pop { position: absolute; z-index: 5; width: max-content; display: flex; align-items: center; gap: 8px; max-width: 260px; padding: 6px 12px 6px 6px; border-radius: 999px; background: var(--surface-2); color: var(--label); font: 600 13px/18px var(--font-text); box-shadow: 0 4px 16px rgba(0,0,0,.28); transform: translate(-50%, -100%); animation: pop var(--dur-m) var(--spring-snappy); }
+.chip-pop::after { content: ""; position: absolute; top: 100%; left: var(--tail, 50%); width: 12px; height: 6px; transform: translateX(-50%); background: var(--surface-2); clip-path: polygon(0 0, 100% 0, 50% 100%); }
 .chip-pop .art { width: 28px; height: 28px; border-radius: 6px; }
 .chip-pop span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @keyframes pop { from { opacity: 0; transform: translate(-50%, -80%) scale(.9); } }
@@ -376,14 +392,15 @@ html[data-os="android"][data-scheme="dark"] .np { --seam-bg: oklch(0.22 0.03 var
 .rcard.bridge .art { position: relative; overflow: visible; background: none; }
 .rcard.bridge .art .main { width: 168px; height: 168px; border-radius: var(--r-md); overflow: hidden; background: var(--fill); }
 .rcard.bridge .eyebrow { margin-top: 8px; }
-.rcard.bridge .voice { margin-top: 2px; font-size: 19px; line-height: 26px; font-variation-settings: "opsz" 19; }
+.rcard.bridge .voice { margin-top: 0; }
 .rcard.bridge .rcard-t { font: 400 15px/20px var(--font-text); color: var(--label-2); margin-top: 4px; }
 .rcard.bridge .rcard-m { margin-top: 0; }
-/* the familiar show's 24px chip: radius 6 so it reads as a tiny cover, joined to the pick's cover by the same thread gradient as the
-   seam (critique r2 #12). In rails the chip hangs 12px below the cover on the stitch; in 56px rows it overlaps the corner. */
-.chip-from { position: absolute; left: 8px; bottom: -10px; width: 24px; height: 24px; border-radius: 6px; overflow: hidden; box-shadow: 0 0 0 2px var(--bg); background: var(--fill); z-index: 2; }
+/* The familiar show's 24px chip SITS on the cover's bottom-left corner (critique r3 #2): 8px in from the left, overhanging the bottom
+   edge by 8, radius 6, a 2px ring in the card's surface. It is joined to the cover by a 16px horizontal stitch of the seam's thread, 2px
+   tall, starting at the chip's right edge on its vertical centre. Rows and rails share this one idea. */
+.chip-from { position: absolute; left: 8px; bottom: -10px; width: 32px; height: 32px; border-radius: 8px; overflow: hidden; box-shadow: 0 0 0 2px var(--surface); background: var(--fill); z-index: 2; }
 .chip-from img { width: 100%; height: 100%; object-fit: cover; }
-.stitch { position: absolute; left: 19px; top: 168px; width: 2px; height: 12px; background: repeating-linear-gradient(180deg, color-mix(in srgb, var(--label) 45%, transparent) 0 4px, transparent 4px 8px); z-index: 1; }
+.stitch { position: absolute; left: 42px; bottom: -6px; width: 16px; height: 2px; background: repeating-linear-gradient(90deg, var(--label) 0 4px, transparent 4px 8px); opacity: .45; z-index: 1; }
 .see-all { flex: none; width: 120px; height: 168px; border-radius: var(--r-md); background: var(--surface); display: grid; place-items: center; text-align: center; color: var(--accent); font: var(--t-headline); }
 
 /* ---------- pick rows ---------- */
@@ -419,18 +436,36 @@ html[data-os="android"][data-scheme="dark"] .np { --seam-bg: oklch(0.22 0.03 var
 .row.bridge-row .art { position: relative; overflow: visible; }
 .row.bridge-row .art .main { width: 56px; height: 56px; border-radius: var(--r-sm); overflow: hidden; }
 .row.bridge-row .chip-from { left: -4px; bottom: -8px; width: 24px; height: 24px; }
-.row.bridge-row .stitch { display: none; }
+/* the play glyph centres on the 56px cover (row top + 12 + 28), as in every plain row; the 44px button carries -8px margins (critique r5 #2) */
+.row.bridge-row .row-act { margin-top: 14px; }
 .row-prog { position: absolute; left: var(--gutter); right: var(--s-4); bottom: 0; height: 2px; border-radius: 1px; background: var(--fill); }
 .row-prog i { display: block; height: 100%; width: calc(var(--p, 0) * 100%); background: var(--accent); border-radius: 1px; }
 .pos { font: 600 13px/18px var(--font-text); font-feature-settings: "tnum"; color: var(--label-2); min-width: 18px; text-align: center; }
-.row.is-cur .pos { color: var(--accent); }
+.row.is-cur .pos, .qrow.is-cur .pos { color: var(--accent); }
 .drag { color: var(--label-3); width: 24px; display: grid; place-items: center; }
-.qrow { display: grid; grid-template-columns: 24px 44px 1fr auto; column-gap: var(--s-3); align-items: center; padding: 10px 4px 10px var(--gutter); min-height: 64px; position: relative; width: 100%; text-align: left; }
-.qrow + .qrow::before { content: ""; position: absolute; top: 0; left: calc(var(--gutter) + 24px + 12px + 44px + 12px); right: 0; height: .5px; background: var(--separator); }
+/* QueueRow (critique r3 #3). iOS: art, title, trailing number + eq + horizontal overflow; no leading handle (the `.drag` handle and the
+   vertical overflow are Android's). The title is 15/600/20 clamp 2, the show 13/18 one line; the row is 64 and grows only when the title wraps. */
+.qwrap { position: relative; overflow: hidden; }
+.qwrap + .qwrap::before { content: ""; position: absolute; z-index: 3; top: 0; left: calc(var(--gutter) + 44px + 12px); right: 0; height: .5px; background: var(--separator); pointer-events: none; }
+html[data-os="android"] .qwrap + .qwrap::before { left: calc(var(--gutter) + 24px + 12px + 44px + 12px); }
+.qrow { display: grid; grid-template-columns: 44px 1fr auto; column-gap: var(--s-3); align-items: center; padding: 8px 4px 8px var(--gutter); min-height: 64px; position: relative; z-index: 1; width: 100%; text-align: left; touch-action: pan-y; background: var(--surface); transition: transform var(--dur-m) var(--spring-snappy); }
+html[data-os="android"] .qrow { grid-template-columns: 24px 44px 1fr auto; }
+.qrow.dragging { transition: none; }
+.qrow.open-r { transform: translateX(-88px); }
+.qrow.open-l { transform: translateX(80px); }
 .qrow .art { width: 44px; height: 44px; border-radius: 8px; }
-.qrow.is-cur { background: var(--accent-soft); }
+.qrow .row-t { font: 600 15px/20px var(--font-text); }
+.qrow .row-s { font: var(--t-foot); }
+/* the current row keeps being a row: accent at 12% over the surface (the number, the eq glyph and the mini say "playing") */
+.qrow.is-cur { background: linear-gradient(color-mix(in srgb, var(--accent) 12%, transparent), color-mix(in srgb, var(--accent) 12%, transparent)), var(--surface); }
 .qrow-end { display: flex; align-items: center; gap: 2px; }
-.qrow-end .ic { color: var(--accent); }
+.qrow-end .ic { color: var(--label-2); }
+.qrow-end .pos { margin-right: 2px; }
+.qrow.is-cur .qrow-end > .ic:not(:last-child) { color: var(--accent); }
+.q-act { position: absolute; z-index: 0; top: 0; bottom: 0; display: flex; }
+.q-act button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 100%; font: 600 13px/18px var(--font-text); }
+.q-l { left: 0; width: 80px; background: var(--accent); color: var(--on-accent); }
+.q-r { right: 0; width: 88px; background: var(--danger); color: var(--bg); }
 .q-head { padding: 0 var(--gutter) var(--s-2); font: var(--t-subhead); color: var(--label-2); display: flex; justify-content: space-between; align-items: center; }
 
 /* ---------- mini player + tab bar ---------- */
@@ -498,14 +533,24 @@ html[data-os="ios"][data-scheme="dark"] .np-bg { background: linear-gradient(180
 html[data-os="ios"][data-scheme="dark"] .np-tex { opacity: .3; }
 html[data-os="ios"][data-scheme="dark"] .np-tex img { filter: blur(48px) saturate(1.6) brightness(.6); }
 html[data-os="android"] .np-tex { display: none; }
-html[data-os="android"] .np { --np-surface: oklch(0.97 0.02 var(--art-h)); --np-container: oklch(0.92 0.04 var(--art-h)); --np-primary: oklch(0.45 0.12 var(--art-h)); }
-html[data-os="android"] .np-bg { background: var(--np-surface); }
-@media (prefers-color-scheme: dark) { html[data-os="android"]:not([data-scheme="light"]) .np { --np-surface: oklch(0.22 0.03 var(--art-h)); --np-container: oklch(0.30 0.05 var(--art-h)); --np-primary: oklch(0.82 0.12 var(--art-h)); } }
-html[data-os="android"][data-scheme="dark"] .np { --np-surface: oklch(0.22 0.03 var(--art-h)); --np-container: oklch(0.30 0.05 var(--art-h)); --np-primary: oklch(0.82 0.12 var(--art-h)); }
+/* Android room (critique r3 #4): the same chroma as iOS, as a gradient, so the room is a room and not a grey-brown tint.
+   Dark: oklch(0.26 0.07 h) to oklch(0.15 0.05 h) (spec says 0.06 / 0.04, which sampled 0.048 at the title's y against the 0.05 gate, so
+   chroma is raised by 0.01 at both stops, as the iOS room's was in r3), container 0.32 / 0.07. Light: 0.97 / 0.02 to 0.93 / 0.035, container 0.92 / 0.04. */
+html[data-os="android"] .np { --np-container: oklch(0.92 0.04 var(--art-h)); --np-primary: oklch(0.45 0.12 var(--art-h)); }
+html[data-os="android"] .np-bg { background: linear-gradient(180deg, oklch(0.97 0.02 var(--art-h)) 0, oklch(0.93 0.035 var(--art-h)) 100%); }
+@media (prefers-color-scheme: dark) {
+  html[data-os="android"]:not([data-scheme="light"]) .np { --np-container: oklch(0.32 0.07 var(--art-h)); --np-primary: oklch(0.82 0.12 var(--art-h)); }
+  html[data-os="android"]:not([data-scheme="light"]) .np-bg { background: linear-gradient(180deg, oklch(0.26 0.07 var(--art-h)) 0, oklch(0.15 0.05 var(--art-h)) 100%); }
+}
+html[data-os="android"][data-scheme="dark"] .np { --np-container: oklch(0.32 0.07 var(--art-h)); --np-primary: oklch(0.82 0.12 var(--art-h)); }
+html[data-os="android"][data-scheme="dark"] .np-bg { background: linear-gradient(180deg, oklch(0.26 0.07 var(--art-h)) 0, oklch(0.15 0.05 var(--art-h)) 100%); }
 .np-scroll { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; padding: 0 var(--gutter) calc(var(--sab) + 32px); }
 .np-scroll::-webkit-scrollbar { display: none; }
 .np-fold { padding-top: 8px; }
-html[data-os="android"] .np-fold { padding-top: calc(var(--sb) + 12px); }
+/* Android: full screen, so the scroller starts under the status bar and content clips at its edge; the room (.np-bg, inset 0)
+   carries the status glyphs. Scrolled content never runs under the clock (critique r5 #1). */
+html[data-os="android"] .np-scroll { top: var(--sb); }
+html[data-os="android"] .np-fold { padding-top: 12px; }
 .grabber { width: 36px; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--label) 30%, transparent); margin: 0 auto; touch-action: none; }
 html[data-os="android"] .grabber { width: 32px; height: 4px; }
 .np-head { position: relative; display: flex; align-items: center; justify-content: space-between; margin-top: 4px; min-height: 44px; touch-action: none; }
@@ -548,6 +593,7 @@ html[data-os="android"] .np-art { border-radius: var(--r-lg); box-shadow: none; 
 .sec-btn { position: relative; min-width: 44px; height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--label); border-radius: 22px; font: 600 15px/20px var(--font-text); }
 .sec-btn:active { background: var(--fill); }
 .sec-btn.on { color: var(--accent); }
+.sec-btn span { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 .sec-btn small { display: none; font: 500 12px/14px var(--font-text); color: var(--label-2); }
 html[data-os="android"] .secondary .sec-btn { height: 60px; justify-content: flex-start; padding-top: 6px; border-radius: 12px; min-width: 56px; }
 html[data-os="android"] .secondary .sec-btn small { display: block; }
@@ -566,7 +612,8 @@ html[data-os="android"] .sec-btn .badge { top: 0; right: 4px; }
 .credit .s { font: var(--t-foot); color: var(--label-2); }
 .credit .row-act { color: var(--label-2); }
 .credit .narr-ic { width: 40px; height: 40px; border-radius: 8px; display: grid; place-items: center; background: var(--fill); color: var(--label); }
-.credit .t.voice { font-size: 17px; font-weight: 400; }
+/* a narration row's title is the narration line itself, in 4a's voice at 16/22, never clamped; the footnote names the source (critique r3 #7) */
+.credit .t.voice { font-family: var(--font-voice); font-style: italic; font-size: 16px; line-height: 22px; font-weight: 400; font-variation-settings: "opsz" 16; }
 .credit.is-cur { background: var(--accent-soft); }
 .credit.is-cur .row-act { color: var(--accent); }
 .notes { font: var(--t-body); color: var(--label); }
@@ -644,7 +691,8 @@ html[data-os="android"] .seg button[aria-selected="true"] { background: var(--ac
    then the title on --bg: eyebrow +16, title +4, meta +8, strip +16, why-line +12, action row +16. Play lands on screen unscrolled. */
 .fd-hero { position: relative; margin-top: calc(-1 * (var(--sb) + var(--nav-h))); aspect-ratio: 393 / 200; width: 100%; overflow: hidden; background: var(--fill); }
 .fd-hero .comp { position: absolute; inset: 0; width: 100%; height: 100%; aspect-ratio: auto; gap: 1px; }
-.fd-hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.45) 0, rgba(0,0,0,0) 40%); pointer-events: none; }
+/* the scrim's one job is to carry the status bar and the three circles over a 100px row of busy covers (critique r3 #5) */
+.fd-hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.62) 0, rgba(0,0,0,.32) 22%, rgba(0,0,0,0) 48%); pointer-events: none; }
 .fd-body { padding: var(--s-4) var(--gutter) 0; }
 .fd-title { margin-top: 4px; font: var(--t-title1); letter-spacing: -0.3px; }
 @media (max-width: 380px) { .fd-title { font-size: 25px; line-height: 30px; } }
@@ -722,14 +770,17 @@ html[data-os="android"] .tab-in { animation: fadein var(--dur-s) var(--ease-out)
 .bart .main { width: 100%; height: 100%; overflow: hidden; background: var(--fill); }
 .bart .main .comp { width: 100%; height: 100%; }
 .bart.sm { width: 56px; height: 56px; grid-area: art; align-self: start; }
-.bart.sm .chip-from { left: -4px; bottom: -8px; }
-.bart.sm .stitch { display: none; }
-.rcard.bridge .bart { height: 204px; margin-bottom: 8px; }
+.bart.sm .chip-from { left: -4px; bottom: -8px; width: 24px; height: 24px; border-radius: 6px; }
+.bart.sm .stitch { left: 22px; bottom: -5px; }
+/* rail: the art block is 168 tall, the same as RailCard, so the card's text starts where its neighbours' does (critique r3 #2).
+   The eyebrow clears the chip's 8px overhang; the margin is tuned so its baseline lands within 2px of the neighbours' title baseline
+   (neighbours: cover, 8px, 5px strip, 8px, 17/22 title; measured by check E). */
+.rcard.bridge .bart { height: 168px; margin-bottom: 0; }
 .rcard.bridge .bart .main { height: 168px; }
-.rcard.bridge .bart .chip-from { top: 180px; bottom: auto; }
-.rcard.bridge .eyebrow { margin-top: 0; }
-.rcard.bridge .voice { margin-top: 2px; }
-.row.bridge-row .row-body { padding-left: 8px; }
+.rcard.bridge .eyebrow { display: flex; margin-top: 30px; }
+.rcard.bridge .voice { margin-top: 0; }
+.rcard.bridge .rcard-m { margin-top: 2px; }
+.row.bridge-row .row-s.foot { font: var(--t-foot); margin-top: 4px; }
 .seam-wrap { position: relative; }
 /* Skeleton = the real boxes (composite square, eyebrow, three title lines, meta, strip, two why-lines, play circle), so content fades in with no shift */
 .sk-hero { pointer-events: none; }
@@ -780,20 +831,20 @@ html[data-os="ios"] .tabbar.is-min .pill { height: 28px; }
 /* ---------- Android: shape scale (cards 16, hero/sheets/mini 28), pressed ripple, tonal current rows, tonal Now Playing track ---------- */
 html[data-os="android"] .list, html[data-os="android"] .empty, html[data-os="android"] .build-row { border-radius: var(--r-md); }
 html[data-os="android"] .hero { border-radius: 28px; }
-html[data-os="android"] .row, html[data-os="android"] .qrow, html[data-os="android"] .credit { transition: background-color 200ms var(--ease-out); }
+html[data-os="android"] .row, html[data-os="android"] .credit { transition: background-color 200ms var(--ease-out); }
 html[data-os="android"] .row:active, html[data-os="android"] .credit:active { background: color-mix(in srgb, var(--label) 12%, transparent); }
-html[data-os="android"] .row.is-cur, html[data-os="android"] .qrow.is-cur, html[data-os="android"] .credit.is-cur { background: color-mix(in srgb, var(--accent-container) 35%, transparent); }
+html[data-os="android"] .row.is-cur, html[data-os="android"] .credit.is-cur { background: color-mix(in srgb, var(--accent-container) 35%, transparent); }
 html[data-os="android"] .np .track { background: var(--np-container); }
 html[data-os="android"] .np .sec-btn:active { background: var(--np-container); }
 
 /* ---------- reduced motion, transparency, contrast ---------- */
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
   html[data-os="ios"] .tabbar, html[data-os="ios"] .mini, html[data-os="ios"] .search-field, html[data-os="ios"] .sheet, html[data-os="ios"] .navbar.is-collapsed, html[data-os="ios"] .toast, html[data-os="ios"] .ctx-menu, html[data-os="ios"] .nb-btn.on-hero::before {
-    background: var(--glass-solid); -webkit-backdrop-filter: none; backdrop-filter: none;
+    background: var(--glass-solid) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
   }
 }
 html[data-transparency="reduced"][data-os="ios"] .tabbar, html[data-transparency="reduced"][data-os="ios"] .mini, html[data-transparency="reduced"][data-os="ios"] .search-field, html[data-transparency="reduced"][data-os="ios"] .sheet, html[data-transparency="reduced"][data-os="ios"] .navbar.is-collapsed, html[data-transparency="reduced"][data-os="ios"] .toast, html[data-transparency="reduced"][data-os="ios"] .ctx-menu, html[data-transparency="reduced"][data-os="ios"] .nb-btn.on-hero::before {
-  background: var(--glass-solid); -webkit-backdrop-filter: none; backdrop-filter: none;
+  background: var(--glass-solid) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -804,7 +855,7 @@ html[data-transparency="reduced"][data-os="ios"] .tabbar, html[data-transparency
   }
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
   .np-art, .mini-art, .hero-strip, .play { transition-property: opacity !important; transform: none !important; }
-  /* the onboarding seam loop stops: every bar stays at 40%, no playhead */
+  /* the onboarding seam loop stops on its first frame's state: bars 1 and 2 played, bar 3 half filled, no playhead (critique r3 #9) */
   .onb .sb.loop-a, .onb .sb.loop-b, .onb .sb.loop-a .ph, .onb .sb.loop-b .ph { animation: none !important; }
   .ctx-lift, .ctx-menu { animation: none !important; }
 }

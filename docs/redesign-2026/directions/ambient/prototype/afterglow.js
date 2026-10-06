@@ -184,12 +184,13 @@
   var $mini = h('div', { class: 'mini', role: 'region', hidden: true });
   var $dock = h('div', { class: 'dock veil' }, $fieldRow, $mini, $tabbar);
   var $fade = h('div', { class: 'dock-fade', 'aria-hidden': 'true' });
+  var $pageGlow = h('div', { class: 'page-glow', 'aria-hidden': 'true' });
   var $np = h('div', { class: 'np', 'aria-hidden': 'true', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Now playing' });
   var $toast = h('div', { class: 'toast raised', role: 'status', 'aria-live': 'polite' });
   var $scrim = h('div', { class: 'sheet-scrim' });
   var $sheet = h('div', { class: 'sheet', role: 'dialog', 'aria-modal': 'true' });
   var $kb = h('div', { class: 'kbpad', 'aria-hidden': 'true' });
-  $app.append($screenHost, $fade, $dock, $np, $scrim, $sheet, $toast, $kb);
+  $app.append($pageGlow, $screenHost, $fade, $dock, $np, $scrim, $sheet, $toast, $kb);
 
   var TABS = [['home', 'Today', 'i-house', 'i-house-fill', '#/home'], ['discover', 'Discover', 'i-compass', 'i-compass-fill', '#/search'], ['library', 'Library', 'i-books', 'i-books-fill', '#/library']];
   var upCount = 0;
@@ -435,7 +436,7 @@
     o = o || {};
     var W = ($app.clientWidth || 393) - 2 * (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gutter')) || 20) - (o.inset || 0);
     var gaps = (FT.items.length - 1) * 2;
-    var el = h('div', { class: 'strip ' + size + (o.draw ? ' draw' : ''), role: 'group', 'aria-label': 'Foray strip: ' + FT.shows.length + ' shows' });
+    var el = h('div', { class: 'strip ' + size + (o.draw ? ' draw' : '') + (o.thumbs ? ' thumbed' : ''), role: 'group', 'aria-label': 'Foray strip: ' + FT.shows.length + ' shows' });
     FT.items.forEach(function (it, i) {
       var narr = it.type !== 'segment', px = (W - gaps) * it.dur / FT.total;
       if (narr && o.narr === false) return;
@@ -543,15 +544,15 @@
         h('button', { class: 'playbtn ol', 'aria-label': 'Play ' + e.title, 'aria-disabled': o.unavailable ? 'true' : null, onclick: function () { if (!o.unavailable) playEp(e, a2); } }, icon('i-play'))));
   }
   function qRow(o) {
-    // o: {ep, reason, current, menu, date}
+    // o: {ep, reason, why (the item's why-line, Fraunces italic, 2 lines), auto (show the 4a added eyebrow), current, menu, date}
     var e = o.ep;
     var r = h('div', { class: 'row raised q-row' + (o.current ? ' is-playing' : ''), 'data-qep': e.id },
       art(e.show, e.art, 56, 'r-sm'),
       h('div', { class: 'main' },
-        o.reason && h('span', { class: 't-caption auto' }, '4a added'),
+        (o.reason || o.auto) && h('span', { class: 't-caption auto' }, '4a added'),
         h('div', { class: 't-label clamp2' }, o.current && icon('i-play-fill', 's16'), o.current ? ' ' : null, e.title),
         h('div', { class: 't-caption c2' }, o.current ? 'Playing' : (o.date ? dshort(e.date) + ' · ' : ''), o.current ? ' · ' : '', e.show, ' · ', e.dur + ' min'),
-        o.reason && h('div', { class: 't-caption c2 clamp2' }, o.reason.replace(/^4a added: /, ''))),
+        o.why ? h('div', { class: 't-why clamp2 qwhy' }, o.why) : o.reason && h('div', { class: 't-caption c2 clamp2' }, o.reason.replace(/^4a added: /, ''))),
       o.menu && h('button', { class: 'icon-btn', 'aria-label': 'More for ' + e.title, onclick: function () { o.menu(e); } }, icon('i-dots')));
     return r;
   }
@@ -898,8 +899,8 @@
       detail.append(h('section', { class: 'section' }, sectionHead('Show notes'), notes, more));
     }
     var nx = S.upnext[0];
-    if (nx && !handoff) detail.append(h('section', { class: 'section' }, sectionHead('Up next'), qRow({ ep: nx.ep, reason: nx.reason || '4a added: ' + 'next in the queue, ' + nx.ep.dur + ' min.' }), h('button', { class: 'btn btn-quiet', onclick: function () { closeNP(true); go('#/library'); } }, 'Up Next (' + S.upnext.length + ')')));
-    else if (nx) detail.append(h('section', { class: 'section' }, sectionHead('Up next'), qRow({ ep: nx.ep, reason: nx.reason || '4a added: ' + 'next in the queue, ' + nx.ep.dur + ' min.' })));
+    if (nx && !handoff) detail.append(h('section', { class: 'section' }, sectionHead('Up next'), qRow({ ep: nx.ep, auto: true, why: nx.ep.hook }), h('button', { class: 'btn btn-quiet', onclick: function () { closeNP(true); go('#/library'); } }, 'Up Next (' + S.upnext.length + ')')));
+    else if (nx) detail.append(h('section', { class: 'section' }, sectionHead('Up next'), qRow({ ep: nx.ep, auto: true, why: nx.ep.hook })));
     NPR.scroll = h('div', { class: 'np-scroll' }, NPR.first, detail);
     $np.append(bg, NPR.scroll);
     $np.style.setProperty('--glow', isF ? glowAt(forayAt(S.t)) : glowOf(e.show));
@@ -1038,7 +1039,7 @@
     $np.classList.remove('handoff-half');
     S.cur = null; S.playing = false; lastIdx = -1; S.freeze = false; $np.classList.remove('segfrozen');
     var firstLike = st === 'empty' || st === 'firstrun' || st === 'loading';
-    var withMini = !firstLike && (name === 'mini' || name === 'search' || name === 'library' || Q.get('mini') === '1' || st === 'midlisten');
+    var withMini = !firstLike && Q.get('mini') !== '0' && (name === 'mini' || name === 'search' || name === 'library' || Q.get('mini') === '1' || st === 'midlisten');
     if (withMini) setCurrent({ kind: 'ep', ep: KEEP }, { paused: st === 'paused' });
     if (withMini) { S.t = S.prog[KEEP.id]; renderProgress(true); }
     if (name === 'now-playing') {

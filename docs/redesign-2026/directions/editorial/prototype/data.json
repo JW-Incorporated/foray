@@ -216,7 +216,7 @@
    "duration_min": 51,
    "released": "2026-09-10",
    "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/95/aa/58/95aa58ac-8618-5259-4a26-2f864665ebf4/mza_15276922367235047332.png/600x600bb.jpg",
-   "hook": "Why databases dodge the hardest distributed problems, and what Rust borrows from them."
+   "hook": "Databases dodge the hard distributed problems. Rust borrows the trick."
   },
   {
    "id": "the-allusionist--233-phobia",
@@ -240,7 +240,7 @@
    "duration_min": 28,
    "released": "2026-09-08",
    "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/a3/6a/6e/a36a6eee-d6fa-4def-65b8-33304a949d54/mza_15180103104043645429.jpeg/600x600bb.jpg",
-   "hook": "Seven Navy destroyers ran aground at Honda Point, the largest peacetime loss in Navy history."
+   "hook": "Seven destroyers ran aground at Honda Point in one night, in 1923."
   },
   {
    "id": "the-race-f1-podcast--f1-rewind-when-a-young-ayrton",
@@ -439,7 +439,7 @@
    "duration_min": 61,
    "released": "2026-09-09",
    "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/db/81/8e/db818e29-55f8-5343-a185-8db92a0e1981/mza_6705057508729367288.jpg/600x600bb.jpg",
-   "hook": "Anansi the spider trickster, and the trail of broken people in his wake."
+   "hook": "Anansi the spider trickster, and the broken people in his wake."
   },
   {
    "id": "partially-examined-life--pel-presents-closereads-peirce-s-new",
@@ -949,11 +949,11 @@
    "title": "How Earth got plate tectonics and Venus never did",
    "note": "Water, sinking slabs and two blobs at the bottom of the mantle: the machine that moves continents.",
    "runtime_sec": 2420,
-   "shows": 1,
+   "shows": 4,
    "art": [
     "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/62/15/18/621518e5-8eb3-392b-25a7-e7444aab86b6/mza_815589518502039493.jpg/600x600bb.jpg",
     "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/87/5d/4e/875d4e34-c3cc-9fef-4f4c-7f3df40d7c20/mza_12594608809318197590.png/600x600bb.jpg",
-    "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/62/15/18/621518e5-8eb3-392b-25a7-e7444aab86b6/mza_815589518502039493.jpg/600x600bb.jpg",
+    "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/38/86/14/388614d9-589d-ec16-8605-d30fc7743100/mza_8513962717529195959.jpg/600x600bb.jpg",
     "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/94/fe/a5/94fea51f-9e41-b60f-b5f2-3549407ef6fc/mza_4140352385670983274.jpg/600x600bb.jpg"
    ],
    "progress": 0.38,

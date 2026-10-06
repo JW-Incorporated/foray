@@ -60,6 +60,7 @@ button { font: inherit; color: inherit; }
 .stack { display: grid; gap: 28px; min-width: 0; }
 header.top { display: grid; gap: 10px; }
 header.top p { color: var(--ink-2); }
+header.top p.process { color: var(--ink); font-weight: 500; }
 
 .modes { display: flex; gap: 4px; padding: 4px; background: var(--sheet); border: 1px solid var(--rule); border-radius: 999px; width: fit-content; max-width: 100%; }
 .modes button { min-height: 44px; padding: 0 18px; border: 0; border-radius: 999px; background: transparent; font-weight: 600; cursor: pointer; }
@@ -78,9 +79,10 @@ header.top p { color: var(--ink-2); }
 .dir .row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .dir h3 { font-size: 17px; }
 .dir .thesis { color: var(--ink-2); font-size: 14px; line-height: 1.4; }
+.dir .round { color: var(--ink-3); font-size: 13px; line-height: 1.4; }
 .pill { font: 500 11px/1 var(--f-mono); letter-spacing: .04em; padding: 5px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
 .pill.ready { color: var(--good); }
-.pill.wait { color: var(--wait); }
+.pill.capped { color: var(--ink-2); }
 .pill.base { color: var(--ink-3); }
 .dir .open { font-size: 14px; font-weight: 600; }
 
@@ -146,7 +148,8 @@ textarea { width: 100%; min-height: 120px; font: 13px/1.4 var(--f-mono); color: 
   <header class="top">
     <span class="label">4a Redesign 2026 · Phase 2 checkpoint</span>
     <h1>Five directions, side by side</h1>
-    <p>Round-3 renders of the hero screens at 393 × 852, ranked by the judges' pairwise wins. Today's app is the baseline on the right. Tap any screen to see it larger.</p>
+    <p>Final-round renders of the hero screens at 393 × 852, ranked by the judges' pairwise wins. Today's app is the baseline on the right. Tap any screen to see it larger.</p>
+    <p class="process">All five directions went through the same polish-to-ready process: critique and revise until the art director passed it, capped at round 6. Every one passed. Polished and re-judged on 6 October 2026.</p>
   </header>
 
   <div class="modes" role="tablist" aria-label="Mode">
@@ -192,20 +195,23 @@ textarea { width: 100%; min-height: 120px; font: 13px/1.4 var(--f-mono); color: 
 (function () {
   'use strict';
   // Ranked by judge wins (docs/redesign-2026/checkpoint/README.md).
+  // Verdicts are final: "ready" passed the art director; "capped" hit round 6
+  // without a pass and shows neutral, never as pending work.
+  var MAX_WINS = 20;
   var DIRS = [
-    { slug: 'tactile', name: 'Tactile', code: 'Dial', wins: 15, verdict: 'Ready', ready: true,
+    { slug: 'tactile', name: 'Tactile', code: 'Dial', wins: 20, round: 3, verdict: 'Ready', state: 'ready',
       thesis: 'A well-made little radio: forays are bands on a dial, controls are keys you press.',
       artifact: 'https://claude.ai/artifact/6N8mk5PZJc32D8shdHw7GK' },
-    { slug: 'ambient', name: 'Ambient', code: 'Afterglow', wins: 12, verdict: 'Nearly ready', ready: false,
+    { slug: 'ambient', name: 'Ambient', code: 'Afterglow', wins: 15, round: 4, verdict: 'Ready', state: 'ready',
       thesis: 'The artwork is the light source; the room changes colour as a foray moves between shows.',
       artifact: 'https://claude.ai/artifact/SAQuPQZudiWo3y3eDViZiW' },
-    { slug: 'editorial', name: 'Editorial', code: 'Edition', wins: 8, verdict: 'One more round', ready: false,
+    { slug: 'editorial', name: 'Editorial', code: 'Edition', wins: 11, round: 4, verdict: 'Ready', state: 'ready',
       thesis: 'A dated daily edition, typeset, with every reason in red pencil.',
       artifact: 'https://claude.ai/artifact/KJ216C5n7Yu927WKEVY6WD' },
-    { slug: 'native-2026', name: 'Native 2026', code: 'Native', wins: 7, verdict: 'Round 4 needed', ready: false,
+    { slug: 'native-2026', name: 'Native 2026', code: 'Native', wins: 10, round: 5, verdict: 'Ready', state: 'ready',
       thesis: 'The chrome belongs to the phone; only what 4a says gets its own serif voice.',
       artifact: 'https://claude.ai/artifact/GnXudytwoQVx57t98wNwGc' },
-    { slug: 'clarity', name: 'Clarity', code: 'The Board', wins: 3, verdict: 'Round 4 needed', ready: false,
+    { slug: 'clarity', name: 'Clarity', code: 'The Board', wins: 4, round: 4, verdict: 'Ready', state: 'ready',
       thesis: 'A departures board for your day: one grid, one accent, numbers that line up.',
       artifact: 'https://claude.ai/artifact/1YAp1DjBVKMzZEgKpkW6UY' }
   ];
@@ -254,11 +260,12 @@ textarea { width: 100%; min-height: 120px; font: 13px/1.4 var(--f-mono); color: 
       var href = protoHref(d);
       box.appendChild(el('article', { cls: 'dir' }, [
         el('div', { cls: 'row' }, [
-          el('span', { cls: 'label', text: '#' + (i + 1) + ' · ' + d.wins + ' of 15 wins' }),
-          el('span', { cls: 'pill ' + (d.ready ? 'ready' : 'wait'), text: d.verdict })
+          el('span', { cls: 'label', text: '#' + (i + 1) + ' · ' + d.wins + ' of ' + MAX_WINS + ' wins' }),
+          el('span', { cls: 'pill ' + (d.state === 'ready' ? 'ready' : 'capped'), text: d.verdict })
         ]),
         el('h3', { text: d.name + ' · ' + d.code }),
         el('p', { cls: 'thesis', text: d.thesis }),
+        el('p', { cls: 'round', text: d.state === 'ready' ? 'Art director passed it at round ' + d.round + '.' : 'Shown as it stood at round ' + d.round + '.' }),
         href ? el('a', { cls: 'open', href: href, target: '_blank', rel: 'noopener', text: 'Open the prototype' }) : null
       ]));
     });
@@ -404,7 +411,7 @@ textarea { width: 100%; min-height: 120px; font: 13px/1.4 var(--f-mono); color: 
       body.appendChild(el('tr', null, [
         el('td', { text: r.d.name }), el('td', { cls: 'num', text: String(r.w) }), el('td', { cls: 'num', text: String(r.f) }),
         el('td', { cls: 'num', text: r.f ? Math.round(r.rate * 100) + '%' : '–' }), el('td', { cls: 'bar-cell' }, [m]),
-        el('td', { cls: 'num', text: r.d.base ? '0' : r.d.wins + '/15' })
+        el('td', { cls: 'num', text: r.d.base ? '0' : r.d.wins + '/' + MAX_WINS })
       ]));
     });
     tb.appendChild(body);
@@ -412,7 +419,7 @@ textarea { width: 100%; min-height: 120px; font: 13px/1.4 var(--f-mono); color: 
   function resultsText() {
     var t = load(), lines = ['4a checkpoint, pass-the-phone results (Home screens)', t.voters + (t.voters === 1 ? ' person, ' : ' people, ') + t.votes + ' votes, ' + t.skips + ' skips', ''];
     ranked(t).forEach(function (r, i) {
-      lines.push((i + 1) + '. ' + r.d.name + ': won ' + r.w + ' of ' + r.f + (r.f ? ' (' + Math.round(r.rate * 100) + '%)' : '') + ', judges ' + (r.d.base ? '0' : r.d.wins + '/15'));
+      lines.push((i + 1) + '. ' + r.d.name + ': won ' + r.w + ' of ' + r.f + (r.f ? ' (' + Math.round(r.rate * 100) + '%)' : '') + ', judges ' + (r.d.base ? '0' : r.d.wins + '/' + MAX_WINS));
     });
     lines.push('', 'Head to head:');
     Object.keys(t.pairs).sort().forEach(function (k) {

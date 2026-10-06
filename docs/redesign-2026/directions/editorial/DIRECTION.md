@@ -65,7 +65,7 @@ Plates: 4px radius, 1px inner rule at 10% ink.
 
 Calm and interruptible; overshoot never above 2%. Tokens `--t-micro 120ms`, `--t-state 200ms`, `--t-page 320ms`, `--t-sheet 420ms`, `--ease-out cubic-bezier(.2,.7,.2,1)`, `--spring-sheet` as `linear()`. Only `transform` and `opacity` animate. One `prefers-reduced-motion` block swaps every transition for a 150ms fade.
 
-1. **Ticker to Now Playing, the page turn.** The 56px ticker expands into the sheet on `--spring-sheet`; the 40px plate is a shared element (View Transitions, FLIP fallback) landing in the large plate; the progress rule stretches into the scrubber; the title cross-fades 15 to 24px. Drag-to-dismiss follows the finger, then the spring.
+1. **Ticker to Now Playing, the page turn.** The 56px ticker expands into the sheet on `--spring-sheet` (stiffness 230, damping 28: half way at 105ms, 90% at 230ms, no visible overshoot; a page turned, not a drawer snapped); the 40px plate is a shared element (View Transitions, FLIP fallback) landing in the large plate; the progress rule stretches into the scrubber; the title cross-fades 15 to 24px. Plate, rule and sheet ride the same curve and land in the same frame (round 4 showed the sheet stopping ~100ms before the plate). Drag-to-dismiss follows the finger, then the spring.
 2. **Row to detail.** Push: incoming slides 24px and is opaque within 100ms, outgoing parallaxes 8px and dims to 60%, 320ms; the plate is shared. Two headlines are never readable at once (round 3 showed a double exposure). Edge-swipe back tracks the finger (Web+).
 3. **Add to Up Next.** The plate shrinks toward the Library tab while the queue opens a 60px gap and the count rolls like a numeral wheel. Remove reverses, with undo.
 

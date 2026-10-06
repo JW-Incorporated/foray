@@ -1,19 +1,26 @@
 # Phase 2 checkpoint: pick the directions to build
 
-Five art directions reached round 3. Each one is a clickable prototype of the
-hero screens, built on real catalog data and real artwork. This page is the
-owner's decision package: the ranking, one short card per direction, and a
-recommendation. The owner picks; two directions are recommended (PLAN.md,
-owner decision 8).
+Five art directions, each a clickable prototype of the hero screens built on
+real catalog data and real artwork. This page is the owner's decision
+package: the ranking, one short card per direction, and a recommendation. The
+owner picks; two directions are recommended (PLAN.md, owner decision 8).
+
+**Every direction is finished.** On 6 October 2026 all five went through the
+same polish-to-ready process: critique and revise, round after round, until
+the art director passed it, with a cap at round 6. All five passed before the
+cap: Tactile at round 3, Ambient, Editorial and Clarity at round 4, Native
+2026 at round 5. The first ranking stopped every direction at a fixed three
+rounds, so only Tactile was ready and the comparison favoured polish. This
+ranking compares five finished directions.
 
 **How to look at them**
 
 - `compare.html` (this folder) puts the same hero screen from every direction
-  side by side, with today's app as a baseline. It also has a **Pass the
-  phone** mode: it shows two directions' Home screens with the names hidden,
-  the person holding the phone taps the one they would rather use, and the
-  tally stays on that device. "Copy results" gives a text summary to paste
-  into chat.
+  side by side, using each direction's final-round renders, with today's app
+  as a baseline. It also has a **Pass the phone** mode: it shows two
+  directions' Home screens with the names hidden, the person holding the
+  phone taps the one they would rather use, and the tally stays on that
+  device. "Copy results" gives a text summary to paste into chat.
 - Each prototype and the comparison page are also published as private
   claude.ai artifacts (only the owner can open them until he shares them):
   - Comparison page and pass the phone: https://claude.ai/artifact/56qxbdHQ9V5LYyR8r5qCyE
@@ -23,52 +30,73 @@ owner decision 8).
   - Native 2026: https://claude.ai/artifact/GnXudytwoQVx57t98wNwGc
   - Clarity: https://claude.ai/artifact/1YAp1DjBVKMzZEgKpkW6UY
 
-  The published prototypes are the round-3 builds with three bundle-only
-  changes, so they run inside an artifact: artwork served as local files,
-  fonts inlined into the CSS, and `safeUrl()` widened to accept the
-  bundle's own files. The source in `../directions/` is unchanged.
+  The polish pass republishes each changed prototype at the same link. A
+  published prototype is its final-round build with three bundle-only
+  changes, so it runs inside an artifact: artwork served as local files,
+  fonts inlined into the CSS, and `safeUrl()` widened to accept the bundle's
+  own files. The source in `../directions/` is unchanged.
 - Local copy: run `node docs/redesign-2026/checkpoint/build-checkpoint.mjs`
-  once. It copies the renders and artwork into `data-local/redesign/checkpoint/`
+  once (add `--compare-only` to refresh just the renders and the comparison
+  page). It copies each direction's final-round renders (the round list is
+  `ROUNDS` in the script) and the artwork into `data-local/redesign/checkpoint/`
   (gitignored: podcast artwork never goes into this public repo). Then open
   `compare.html` in a browser.
 
 ## Ranking
 
-Three judges voted on every pair of designs against the written rubric
-(`../judge/rubric.md`), with today's app included as a baseline. Each
-direction met five opponents, so 15 votes is the maximum.
+Four judges voted on every pair of designs against the written rubric
+(`../judge/rubric.md`), two with each design shown first, with today's app
+included as a baseline. Each direction met five opponents, so 20 votes is the
+maximum. The judges saw each direction's final-round still frames.
 
-| Rank | Direction | Wins (of 15) | Beats today | Art director's last verdict |
-|---|---|---|---|---|
-| 1 | **Tactile** ("Dial") | 15 | 3/3 | Ready |
-| 2 | **Ambient** ("Afterglow") | 12 | 3/3 | Not ready, by a small margin |
-| 3 | **Editorial** ("Edition") | 8 | 3/3 | Not ready, one short round |
-| 4 | **Native 2026** | 7 | 3/3 | Not ready, round 4 needed |
-| 5 | **Clarity** ("The Board") | 3 | 3/3 | Not ready, round 4 needed |
-| 6 | Today's app (baseline) | 0 | — | — |
+| Rank | Direction | Wins (of 20) | Beats today | Final round | Art director's verdict |
+|---|---|---|---|---|---|
+| 1 | **Tactile** ("Dial") | 20 | 4/4 | 3 | Ready |
+| 2 | **Ambient** ("Afterglow") | 15 | 4/4 | 4 | Ready |
+| 3 | **Editorial** ("Edition") | 11 | 4/4 | 4 | Ready |
+| 4 | **Native 2026** | 10 | 4/4 | 5 | Ready |
+| 5 | **Clarity** ("The Board") | 4 | 4/4 | 4 | Ready |
+| 6 | Today's app (baseline) | 0 | — | — | — |
 
-**How far to trust it.** The judge is calibrated: round 1 of calibration
-decided 14 of 14 reference pairs the expected way (`../judge/calibration.md`).
-That round only proved the judges separate wide quality gaps, though, not
-close ones. Here, 9 of the 10 pairs between directions were unanimous (3-0).
-The one split was Editorial over Native 2026, 2-1, and those two are
-effectively tied. The judges saw round-3 still frames only. They saw no
-motion and pressed nothing.
+**Head to head.** Each cell is the row's votes against the column's, out of 4.
+A 4-0 or 3-1 pair is a decision; 2-2 is a tie.
+
+| | Tactile | Ambient | Editorial | Native 2026 | Clarity | Today |
+|---|---|---|---|---|---|---|
+| **Tactile** | — | 4-0 | 4-0 | 4-0 | 4-0 | 4-0 |
+| **Ambient** | 0-4 | — | 3-1 | 4-0 | 4-0 | 4-0 |
+| **Editorial** | 0-4 | 1-3 | — | **2-2** | 4-0 | 4-0 |
+| **Native 2026** | 0-4 | 0-4 | **2-2** | — | 4-0 | 4-0 |
+| **Clarity** | 0-4 | 0-4 | 0-4 | 0-4 | — | 4-0 |
+
+**How far to trust it.** Thirteen of the 15 pairs were unanimous. Ambient over
+Editorial was 3-1, still a decision. The only tie is Editorial against Native
+2026, 2-2, so third and fourth place are not separated. The position-following
+rate was 10%, under the protocol's 20% threshold, so the ranking stands rather
+than being advisory. The judge was calibrated on wide quality gaps
+(`../judge/calibration.md`), and the judges saw still frames only: no motion,
+nothing pressed.
 
 What the judges kept saying:
 
-- **Tactile** won on hierarchy: one bold card and one big play button per
-  screen, large type, tap targets well over 44pt. Almost every Tactile vote said so.
-- **Ambient** won on distinctiveness: a warm gradient, serif headlines and
-  artwork-led cards. It lost points for small, low-contrast text on the warm
-  gradients.
-- **Editorial** had the strongest identity of all five. It lost on legibility
-  (tiny small-caps captions) and on content showing through its flat tab bar.
-- **Native 2026** was the best fit for 2026 phones. Seven of its eight losing
-  votes called it generic, and its Foray header art collides with the status
-  bar.
-- **Clarity** was dense, with truncated rows and small mono text. It beat only
-  today's app.
+- **Tactile** won every vote, mostly on hierarchy: one bold headline and one
+  big play button per screen, high contrast, tap targets well over 44pt, and a
+  labelled segment bar that reads at a glance. Several votes also called its
+  warm, raised look the most recognisable.
+- **Ambient** won on identity: a warm palette and serif headlines held across
+  all seven screens, with artwork-led cards and a floating glass dock. Its
+  losses named polish: the "Foray" labels sit over the Library artwork, the
+  search pill and mini player sit over cards, and the grey italic secondary
+  text is small and low in contrast.
+- **Editorial** still has the strongest typographic voice. Its translucent tab
+  bar and search field let the content behind them show through and collide
+  with them, and its metadata is small.
+- **Native 2026** was the best fit for a 2026 phone (floating glass tab bar,
+  full-bleed Now Playing). Most of its losing votes called it generic, and
+  several noted the Foray header artwork running under the status bar and a
+  crowded search mosaic.
+- **Clarity** was dense: small mono text and rows of equal weight. It beat
+  only today's app.
 
 ## The five directions
 
@@ -83,9 +111,10 @@ What the judges kept saying:
   Bricolage Grotesque and Azeret Mono); card anatomy; the A-Z search list
   (now a subject mosaic); interest sliders (now a Dials screen); "Show my
   picks" (now "Play today's foray"); no share sheet.
-- Art director: **ready** after round 3. Three P1 and six P2 fixes are written
-  into the build notes. Two risks remain for the Lab build: how pressing a key
-  feels on a real phone, and `backdrop-filter` on older Android WebViews.
+- Art director: **ready at round 3** (unchanged in this pass). Three P1 and
+  six P2 fixes are written into the build notes. Two risks remain for the Lab
+  build: how pressing a key feels on a real phone, and `backdrop-filter` on
+  older Android WebViews.
 
 **Ambient ("Afterglow")**
 - Thesis: the artwork is the light source. Every surface is lit by whatever
@@ -97,10 +126,10 @@ What the judges kept saying:
   Library in one floating Dock); "violet means 4a wrote it" (now ivory
   "Lamp"); interest sliders (now less / 4a's pick / more); no share sheet;
   "Suggested" (now "Off your path"). Keeps no zoom.
-- Art director: **not ready, by a small margin.** Onboarding and Discover /
-  Library are not yet lit by the artwork, and one collage hides its first
-  show. Each fix is under 20 lines of CSS. Round 3 can be shown as it stands,
-  with those gaps named.
+- Art director: **ready at round 4.** Round 4 fixed every round-3 item, and
+  the artwork now lights all seven hero screens, onboarding and Discover /
+  Library included. Two small CSS corrections (the Dock fade and a caption
+  clamp) are in BUILD-NOTES §12. Critique: `../directions/ambient/critique-r4.md`.
 
 **Editorial ("Edition")**
 - Thesis: a daily listening edition, dated and typeset, with every reason
@@ -112,10 +141,10 @@ What the judges kept saying:
   Library, plus a Colophon sheet); the amber/violet roles (now one red
   pencil); radii and elevations; adds Newsreader as the reading face. Keeps
   no zoom, as long as type follows the OS text size.
-- Art director: **not ready, one short round.** The still screens are
-  checkpoint quality. The signature page-turn has never been captured (a
-  harness guard turns it off), the push to detail double-exposes, and two
-  hooks are clipped.
+- Art director: **ready at round 4.** Every round-4 acceptance point passes,
+  re-verified. The sheet spring was retuned so the sheet, the plate and the
+  rule land together, and the motion was re-recorded and measured. Critique:
+  `../directions/editorial/critique-r4.md`.
 
 **Native 2026**
 - Thesis: the chrome belongs to the phone and the content belongs to 4a.
@@ -126,9 +155,10 @@ What the judges kept saying:
 - Overturns: dark-only; the type and palette rulings (drops Fraunces);
   4 tabs + drawer (now Home, Search, Library); the A-Z list; interest sliders;
   no share sheet. Keeps no zoom, conditionally.
-- Art director: **not ready.** Two P0s: 4a's own sentences are truncated
-  wherever they sit in a row, and the bridge chip hangs below the cover
-  instead of sitting on it. Four P1s; round 4 needed.
+- Art director: **ready at round 5.** The bridge chip now sits on the cover.
+  The last two leftovers (an Android Now Playing status-bar clip and the
+  bridge-row play button's centring) were fixed in round 5. Critique:
+  `../directions/native-2026/critique-r5.md`.
 
 **Clarity ("The Board")**
 - Thesis: a listening schedule you can read at arm's length, like a
@@ -139,23 +169,30 @@ What the judges kept saying:
 - Overturns: Fraunces + DM Sans (now Geist and Geist Mono); dark-only; the
   accent roles; the Create tab and the drawer; the A-Z list; no zoom; card
   anatomy; the Home order.
-- Art director: **not ready.** Two P0s: every why-line truncates (a fault in
-  the direction's own geometry), and the Now Playing dismiss leaves debris
-  behind. Round 4 needed.
+- Art director: **ready at round 4.** Why-lines now finish (a 90-character
+  why budget), and the Now Playing dismiss passes all four frame checks. Three
+  P2 copy items are deferred to Phase 3. Critique:
+  `../directions/clarity/critique-r4.md`.
 
-## Recommendation: build Tactile and Ambient
+## Recommendation: build Tactile and Ambient (unchanged)
 
-1. **They are the top two, by a margin.** Tactile won all 15 of its votes and
-   Ambient won 12, losing only to Tactile. Both beat every other direction
-   3-0. No ranking change is within reach of the one split vote.
-2. **They are ready, or nearly.** Tactile is the only direction the art
-   director passed. Ambient's remaining items are small builder fixes. The
-   other three each carry P0s that change what every row says.
-3. **They are two different bets.** Tactile is physical controls, a light
+The recommendation is the same as before the polish pass. What changed is the
+reason: readiness no longer separates the directions, because all five are
+ready. The head-to-head votes alone now make the call.
+
+1. **Tactile is a clear first.** It won all 20 of its votes and beat every
+   direction 4-0, Ambient included.
+2. **Ambient is a clear second.** It lost only to Tactile. It beat Native 2026
+   and Clarity 4-0, and Editorial 3-1. All three are decisions, not ties.
+3. **Polishing the others did not close the gap.** Editorial, Native 2026 and
+   Clarity each gained a round or two of fixes and are now ready, and the top
+   two did not change. Editorial and Native 2026 finished level with each
+   other (2-2), a step behind Ambient.
+4. **They are two different bets.** Tactile is physical controls, a light
    scheme by default and its own grotesk. Ambient is artwork-lit, dark by
-   default and carries a serif voice. Building both tests two answers, rather
+   default and carries a serif voice. Building both tests two answers rather
    than two versions of one answer.
-4. **They agree on the structure,** so Phase 3 shares more work. Both replace
+5. **They agree on the structure,** so Phase 3 shares more work. Both replace
    4 tabs + drawer with three tabs and no drawer, both fold Create into the
    search field, both ship two colour schemes, and both add native share.
 
@@ -163,13 +200,16 @@ What to watch in the build:
 
 - **Tactile:** how a key press feels on Joey's Android phone, and
   `backdrop-filter` support on older Android WebViews.
-- **Ambient:** contrast of small text on the warm gradients (the judges'
-  repeated complaint), and the light Dawn scheme, which is the less proven of
-  its two rooms.
+- **Ambient:** the judges' repeated polish notes (the "Foray" labels over the
+  Library artwork, cards running under the search pill and mini player, small
+  low-contrast secondary text), and the light Dawn scheme, which is the less
+  proven of its two rooms.
 
-If the owner wants a print-like serif voice in the pair, **Editorial** is the
-third choice. It had the most distinctive identity in the judges' notes, and
-its weak spot is legibility, which can be fixed.
+If the owner wants a third direction, or a swap for one of the two, Editorial
+and Native 2026 are tied for it. **Editorial** has the most distinctive
+typographic identity; its weak spots are chrome that lets content show through
+and small metadata. **Native 2026** is the best fit for a 2026 phone; its weak
+spot is that it looks generic.
 
 **Rulings the owner decides with this pick.** Both recommended directions
 overturn dark-only and 4 tabs + drawer. Tactile also restores pinch zoom and
