@@ -223,7 +223,10 @@ function loadPointer(): Pointer | null {
   }
 }
 
-function firstParam(v: string | string[] | undefined): string[] {
+/** Every value of a catch-all parameter: Vercel hands `[...path]` over as the
+ * path segments. Deliberately NOT `_lib/params.ts`'s `firstParam`, which
+ * keeps only the first value (code-health CH-17). */
+function allParams(v: string | string[] | undefined): string[] {
   if (Array.isArray(v)) return v;
   if (typeof v === "string") return [v];
   return [];
@@ -253,7 +256,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     return;
   }
 
-  const segments = firstParam(req.query.path);
+  const segments = allParams(req.query.path);
   const requestPath = segments.join("/");
 
   let upstreamAsset: string;
