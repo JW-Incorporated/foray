@@ -2,9 +2,22 @@
 
 <!-- ha-format: 2 -->
 
-> **28 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **29 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
+
+## #148 🟡 [DECIDE] Pick which 4a redesign directions to build (~15 min)
+<!-- ha filed=2026-10-05 kind=default -->
+
+**Why:** Phase 2 produced five phone-sized directions. Building starts only once you pick; Claude recommends two. The checkpoint page has a vote mode for passing the phone around.
+
+**Steps:**
+1. Open the checkpoint (compare + vote): https://claude.ai/artifact/56qxbdHQ9V5LYyR8r5qCyE
+2. Try each on your phone: Tactile https://claude.ai/artifact/6N8mk5PZJc32D8shdHw7GK , Ambient https://claude.ai/artifact/SAQuPQZudiWo3y3eDViZiW , Editorial https://claude.ai/artifact/KJ216C5n7Yu927WKEVY6WD , Native 2026 https://claude.ai/artifact/GnXudytwoQVx57t98wNwGc , Clarity https://claude.ai/artifact/1YAp1DjBVKMzZEgKpkW6UY
+3. Recommended: build Tactile and Ambient (15/15 and 12/15 wins, each beat every other direction 3-0; only Tactile passed the art director; Ambient's gaps are small CSS fixes; two different bets, same 3-tab no-drawer IA). Editorial is third. The judge is calibrated only for wide gaps.
+4. Reply in a Claude session with the directions to build.
+
+**Worked if:** you have named the directions to build in a Claude session.
 
 ## #145 🟡 [DECIDE] Turn on Associated Domains for the iPhone app, so shared links open in 4a (~10 min)
 <!-- ha filed=2026-10-05 kind=default -->
