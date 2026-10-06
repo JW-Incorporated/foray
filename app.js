@@ -4056,12 +4056,13 @@ const TITLE_ALIASES = {
    `tools/shows/shard-build.mjs:toShardRow`) resolves from
    `state.shardShowCache`, populated the same way `breadthShowCache` is:
    the moment a shard-search result lands, before the listener ever taps
-   it. There is deliberately no id-map/network fallback for a `pi:` id that
-   is NOT in that cache (e.g. a cold open of a shared `#/show/pi:<n>` link)
-   — S-04a/b's release pipeline is not live yet (SHARD_TOO_LARGE, tracked
-   separately), so there is no published shard/id-map to resolve against;
-   `resolveMissingShow` below renders the honest "Show not found." rather
-   than querying `api/shows/search`, which is keyed on a different id space
+   it. A `pi:` id NOT in that cache (a cold open of a shared link) has no
+   id-map to ask: shards are keyed by title/author token prefix, not by id.
+   So a shared link carries the shard key as `#/show/pi:<n>/k/<key>`
+   (SH-COLD, shareLinkFor), and `resolveMissingShow` fetches that one
+   published shard (data/shows-index-pointer.json: shards_published) and
+   finds the row; with no key it renders "Show not found." with no request.
+   Never `api/shows/search`, which is keyed on a different id space
    entirely and would never answer a `pi:` id correctly. */
 function showById(id) {
   if (typeof id === "string" && id.startsWith("pi:")) {
@@ -5591,11 +5592,13 @@ async function searchShowEpisodesScoped(show_id, query) {
     (safeDecode). The `/q/` half is the show page's own episode search, kept in
     the address so ‹ back from an episode, a reload or a shared link comes back
     to the search rather than the bare list (audit 2026-09-22). An id never
-    carries a raw `/`: every producer encodes it. */
+    carries a raw `/`: every producer encodes it. `/k/<key>` (SH-COLD) is a
+    shared `pi:` link's shard key, a PATH segment because a `?k=` query would
+    be swallowed into the id; `key` is "" when absent. */
 function parseShowRoute(hash = currentHash()) {
-  const m = /^#\/show\/([^/]+)(?:\/q\/(.*))?$/.exec(hash);
+  const m = /^#\/show\/([^/]+)(?:\/k\/([^/]+))?(?:\/q\/(.*))?$/.exec(hash);
   if (!m) return null;
-  return { id: safeDecode(m[1]), query: m[2] === undefined ? "" : safeDecode(m[2]) };
+  return { id: safeDecode(m[1]), key: m[2] === undefined ? "" : safeDecode(m[2]), query: m[3] === undefined ? "" : safeDecode(m[3]) };
 }
 
 function showRouteHash(show_id, query = "") {
@@ -5606,9 +5609,9 @@ function showRouteHash(show_id, query = "") {
     app-security census reads an href that OPENS with an interpolation as an
     outside URL owed to safeUrl, and an in-app route is not one (the way
     playlistRoute is written into `href="#/${…}"`). */
-function showRoutePath(show_id, query = "") {
+function showRoutePath(show_id, query = "", key = "") {
   const q = String(query || "").trim();
-  return `/show/${encodeURIComponent(show_id)}${q ? "/q/" + encodeURIComponent(q) : ""}`;
+  return `/show/${encodeURIComponent(show_id)}${key ? "/k/" + encodeURIComponent(key) : ""}${q ? "/q/" + encodeURIComponent(q) : ""}`;
 }
 
 /** `#/foray/<id>`, encoded (audit round 3, app-2-13) — the one producer of a
@@ -5689,8 +5692,13 @@ function shareLinkFor(target) {
     const s = showById(t.id);
     if (!s) return null;
     if (!String(t.id).startsWith("pi:")) return { url: PUBLIC_WEB_ORIGIN + "#" + showRoutePath(t.id), text: s.title || "" };
-    /* A `pi:` id never cold-resolves (showById); pod.link is
-       data/app-links.json's derivable aggregator, when the Apple id is known. */
+    /* A `pi:` id cold-resolves only through the shard its row lives in
+       (showById), so the link names that shard: the key the shard pass would
+       fetch for the show's own title (or author), one of the prefixes
+       tools/shows/shard-build.mjs files the row under. pod.link (data/
+       app-links.json's derivable aggregator) only when no key can be derived. */
+    const key = SearchEngine.shardKeyForQuery(s.title) || SearchEngine.shardKeyForQuery(s.artist_name);
+    if (key) return { url: PUBLIC_WEB_ORIGIN + "#" + showRoutePath(t.id, "", key), text: s.title || "" };
     const apple = String(s.apple_collection_id ?? "");
     return /^\d+$/.test(apple) ? { url: "https://pod.link/" + apple, text: s.title || "" } : null;
   }
@@ -5699,6 +5707,14 @@ function shareLinkFor(target) {
     if (!item || !item.id) return null;
     const text = item.show ? `${item.title} · ${item.show}` : String(item.title || "");
     if (inDiscoverPool(item.id)) return { url: PUBLIC_WEB_ORIGIN + "#/episode/" + encodeURIComponent(item.id), text };
+    /* A breadth episode's id names its show (`<show>--<guid>`, `apple:<show>:
+       <guid>`), so a fresh device pages that show's episodes for it
+       (resolveMissingEpisode). Not a `pi:` show: its episodes endpoint does not
+       answer one yet. Only an id that does not parse falls back below. */
+    const { show_id: idShow, guid } = localEpisodeIdentity(item.id);
+    if (idShow && guid && !idShow.startsWith("pi:") && !String(item.show_id || "").startsWith("pi:")) {
+      return { url: PUBLIC_WEB_ORIGIN + "#/episode/" + encodeURIComponent(item.id), text };
+    }
     const sid = item.show_id || showIdForShowName(item.show);
     if (sid && !String(sid).startsWith("pi:")) return { url: PUBLIC_WEB_ORIGIN + "#" + showRoutePath(sid), text };
     const apple = safeUrl(item.apple_episode_url);
@@ -5801,30 +5817,48 @@ function onShowRoute(show_id) {
 
 function resolveMissingShow(show_id) {
   const view = $("#view");
-  /* S-05: a `pi:` id has no fallback lookup at all — see showById's own
-     header for why `api/shows/search?id=` (a different id space) can never
-     answer one, and why that is correct today rather than a gap: no
-     shard-index release is published yet. Rendering the honest empty state
-     immediately, with no "Loading show…" flash for a fetch that would
-     never have resolved this id anyway. */
-  if (typeof show_id === "string" && show_id.startsWith("pi:")) {
-    if (view) view.innerHTML = statusPageHtml({ title: "Show", note: "Show not found. Search for it again to open it.", back: "#/shows" });
-    return;
-  }
-  const fromIndex = showIndex
-    ? showIndex.rows.find((r) => r.show_id === show_id)
-    : null;
-  if (fromIndex) {
-    state.breadthShowCache[show_id] = {
-      show_id: fromIndex.show_id, title: fromIndex.title, artwork_url: null,
-      editorial_note: null, taxonomy_node_ids: [], tier: fromIndex.tier,
-    };
-    renderShow(show_id, parseShowRoute()?.query || "");
-    /* The index row is enough to paint the page, not to finish it: it carries
-       no taxonomy nodes, so no chips and no Similar shows. Ask for the full row
-       behind the paint (catalogue-personalization PKG-10). */
-    upgradeBreadthShowRow(show_id);
-    return;
+  /* S-05 / SH-COLD: a `pi:` id is found only in the shard its row lives in,
+     named by a shared link's `/k/<key>` (showById's header says why
+     `api/shows/search?id=` never can). One shard, one request. With no key
+     or any key shareLinkFor would not produce (it keys on shardKeyForQuery,
+     whose answer is its own key for "ab" or "a_" and null for "", "__" and
+     anything else), or an id that is not `pi:<digits>`: the honest empty
+     state at once, with NO request. Either lookup answers the same
+     three ways below: `{ row }`, `{ row: null }` (a miss), or null (failed). */
+  const pi = typeof show_id === "string" && show_id.startsWith("pi:");
+  let lookup;
+  if (pi) {
+    const key = parseShowRoute()?.key || "";
+    const n = show_id.slice(3);
+    if (!/^\d+$/.test(n) || SearchEngine.shardKeyForQuery(key) !== key) {
+      if (view) view.innerHTML = statusPageHtml({ title: "Show", note: "Show not found. Search for it again to open it.", back: "#/shows" });
+      return;
+    }
+    /* fetchShardRows folds a failure into [] and memoizes only an answer,
+       so an unmemoized empty result is a failure, not a miss. It never rejects. */
+    lookup = () => fetchShardRows(key).then((rows) => {
+      const row = rows.find((r) => r && String(r.id) === n);
+      return row ? { row: mapShardRow(row) } : shardMemoryCache.has(key) ? { row: null } : null;
+    });
+  } else {
+    const fromIndex = showIndex
+      ? showIndex.rows.find((r) => r.show_id === show_id)
+      : null;
+    if (fromIndex) {
+      state.breadthShowCache[show_id] = {
+        show_id: fromIndex.show_id, title: fromIndex.title, artwork_url: null,
+        editorial_note: null, taxonomy_node_ids: [], tier: fromIndex.tier,
+      };
+      renderShow(show_id, parseShowRoute()?.query || "");
+      /* The index row is enough to paint the page, not to finish it: it carries
+         no taxonomy nodes, so no chips and no Similar shows. Ask for the full row
+         behind the paint (catalogue-personalization PKG-10). */
+      upgradeBreadthShowRow(show_id);
+      return;
+    }
+    // fetchApiJson swallows network/parse errors to null — the failed case
+    lookup = () => fetchApiJson(`api/shows/search?id=${encodeURIComponent(show_id)}`)
+      .then((data) => (data === null ? null : { row: data?.show || null }));
   }
 
   /* Every state here carries a page head with ‹ (audit 2026-09-22). These three
@@ -5839,7 +5873,7 @@ function resolveMissingShow(show_id) {
      lookup. */
   if (view) view.innerHTML = statusPageHtml({ title: "Show", note: "Loading show…", back: "#/shows" });
   const isCurrentRender = renderToken();
-  fetchApiJson(`api/shows/search?id=${encodeURIComponent(show_id)}`).then((data) => {
+  lookup().then((got) => {
     /* Navigated away while the row was in flight — repainting #view now would
        clobber whatever page the listener is actually on. The same render-token
        rule renderShow's own episode fetch follows, plus the route itself for a
@@ -5848,21 +5882,22 @@ function resolveMissingShow(show_id) {
        matched and the page stayed on "Loading show…"; onShowRoute decodes.) */
     if (!isCurrentRender() || !onShowRoute(show_id)) return;
     const v = $("#view");
-    if (data === null) {
+    if (got === null) {
       if (v) {
         v.innerHTML = statusPageHtml({ title: "Show", note: "Couldn't load this show.", back: "#/shows", retry: true });
         bindRetry(v, () => resolveMissingShow(show_id));
       }
       return;
     }
-    const row = data?.show || null;
+    const row = got.row;
     if (!row) {
       if (v) v.innerHTML = statusPageHtml({ title: "Show", note: "Show not found.", back: "#/shows" });
       return;
     }
-    state.breadthShowCache[show_id] = row;
+    if (pi) cacheShowRow("shard", row); // renderShow remembers it (cp_shard_shows), so a reload asks nothing
+    else state.breadthShowCache[show_id] = row;
     if (showById(show_id)) renderShow(show_id, parseShowRoute()?.query || "");
-  }); // fetchApiJson swallows network/parse errors to null — the `data === null` branch above is that case
+  });
 }
 
 /* AN INDEX-SEEDED BREADTH SHOW IS UPGRADED TO ITS API ROW (catalogue-
@@ -8821,16 +8856,17 @@ async function writeShardToCacheStorage(shardKey, rows, version) {
 
     ONLY A SUCCESSFUL FETCH IS MEMOIZED (review finding, 2026-09-15): a
     failed/degraded response used to be cached as `null` right alongside a
-    real empty shard, so one transient failure (a cold-start 502, the
-    pipeline's own "no release published yet" 404 before S-04a/b's
-    SHARD_TOO_LARGE bug is fixed) permanently suppressed that shard for the
+    real empty shard, so one transient failure (a cold-start 502, a 404
+    while a release is mid-publish; shards are published now, see
+    data/shows-index-pointer.json) permanently suppressed that shard for the
     rest of the session — every later keystroke landing on the same prefix
     would read the cached failure and never retry, unlike every other
     fetch-backed cache in this file (`showBreadthQueryCache`,
     `showDirectoryQueryCache` both key ONLY on `data`'s presence). A
     genuinely empty shard (the release exists and this prefix has no rows)
     is still memoized as `[]`, which is the correct "asked, got nothing"
-    answer.
+    answer — and that difference is how a shared `pi:` link's cold open
+    (resolveMissingShow) tells a failure, with Try again, from a miss.
 
     A CACHE STORAGE HIT IS DISCARDED WHEN STALE (S-04c, FR-t_546eac9f-2):
     if this session has already seen a network response with a NEWER/
@@ -12454,6 +12490,61 @@ function bindBookmarkRemove(scope, item) {
   });
 }
 
+/* A SHARED BREADTH EPISODE ON A FRESH DEVICE (SH-COLD; founder, #1071: links
+   should open the app). It is in no pool and no store here, but its id names
+   its show (`<show>--<guid>`, `apple:<show>:<guid>`: localEpisodeIdentity), so
+   that show's own list finds it: up to COLD_EPISODE_PAGES pages of
+   api/shows/<id>/episodes (100 a page), matched on the id a show page mints.
+   fullCatalogueRowToEpRowItem seeds state.itemIndex, so play, star, bookmark
+   and share work as they do from the show page. Never a blank page: Loading,
+   then the episode, "not found" with its show, or a failure with Try again;
+   and a late answer never repaints another page (render token + the route it
+   was asked on). A `pi:` show's episodes are not served yet
+   (api/shows/[show_id]/episodes.ts), so that id, like one that does not
+   parse, is "not found" at once with no request. The ‹ on every state (audit
+   2026-09-22): these pages are reached through stale or shared links. */
+const COLD_EPISODE_PAGES = 3;
+
+function resolveMissingEpisode(id, t) {
+  const { show_id, guid } = localEpisodeIdentity(id);
+  const paint = (html, retry = false) => {
+    const v = $("#view");
+    if (!v) return;
+    v.innerHTML = html;
+    if (retry) bindRetry(v, () => renderEpisode(id, { t }));
+  };
+  const failed = () => paint(statusPageHtml({ title: "Episode", note: "Couldn't load this episode.", retry: true }), true);
+  if (!show_id || !guid || show_id.startsWith("pi:")) { paint(statusPageHtml({ title: "Episode", note: "Episode not found." })); return; }
+  const want = `${show_id}--${guid}`;
+  paint(statusPageHtml({ title: "Episode", note: "Loading episode…" }));
+  const isCurrentRender = renderToken();
+  const askedOn = currentHash();
+  const stillHere = () => isCurrentRender() && currentHash() === askedOn;
+  (async () => {
+    let cursor = null;
+    for (let page = 0; page < COLD_EPISODE_PAGES; page++) {
+      const r = await fetchShowEpisodes(show_id, cursor);
+      if (!stillHere()) return;
+      /* A feed the endpoint could not read is not an empty show: its no-DB
+         path answers 200 `degraded` with `episodes: []` and the error, which
+         fetchShowEpisodes passes on as `error`. That is a failure (Try
+         again), never "not found". */
+      if (!r || !Array.isArray(r.episodes) || (r.error && !r.episodes.length)) { failed(); return; }
+      const ep = r.episodes.find((e) => `${show_id}--${showEpisodeGuid(e)}` === want);
+      if (ep) {
+        const show = showById(show_id) || { show_id, title: r.show?.title || "", artwork_url: r.show?.image || null };
+        const row = fullCatalogueRowToEpRowItem({ ...show, show_id }, ep);
+        if (row.id !== id) snapshot(id, row); // the `apple:` spelling of the same episode
+        if (resolveEpisode(id)) { renderEpisode(id, { t }); return; }
+        break;
+      }
+      cursor = r.nextCursor;
+      if (!cursor) break;
+    }
+    paint(statusPageHtml({ title: "Episode", note: `Episode not found. <a class="show-link" href="#${esc(showRoutePath(show_id))}">Open the show</a>` }));
+  })().catch(() => { if (stillHere()) failed(); });
+}
+
 /* `t` is a timestamp link's offset in whole seconds (#30, see episodeDeepLink),
    or null. It adds the "Play from" button and nothing else: the page never
    starts playback on its own. */
@@ -12461,10 +12552,7 @@ function renderEpisode(id, { t = null } = {}) {
   setBodyClass("view-page");
   const item = resolveEpisode(id);
   if (!item) {
-    /* With a ‹ (audit 2026-09-22): this page is reached through stale links —
-       a queued id whose snapshot is gone, a search row from an earlier session —
-       and a sentence with no way back was a dead end. */
-    $("#view").innerHTML = statusPageHtml({ title: "Episode", note: "Episode not found." });
+    resolveMissingEpisode(id, t);
     return;
   }
   // populate itemIndex/poolIds so "more from this show" rows can play in-app;
