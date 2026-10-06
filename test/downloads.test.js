@@ -29,6 +29,11 @@
  * 10. player/client.js publishes the real modules on `window.forayDownloads`
  *     (the object every test above stands in for), with the user agent built
  *     from the build stamp's string and no second stamp read.
+ * 11. A missing downloaded file with NO network (#29: "stream if network
+ *     exists, else drop the item with an earcon and advance"): the rule
+ *     (`missingFileAction`), client.js's degrade executed over each answer,
+ *     the earcon executed over a fake Web Audio, and app.js dropping the
+ *     episode from Up Next and playing the next by the natural end's rule.
  *
  * Tests 9 and 10 are beyond the plan's eight: 9 because eviction deletes a
  * listener's files, 10 because the stand-in would otherwise be unchecked.
@@ -62,9 +67,11 @@ process.on("unhandledRejection", () => {});
 
 let STORE = null;
 let BRIDGE = null;
+let CONTINUATION = null;
 before(async () => {
   STORE = await import("../player/download-store.js");
   BRIDGE = await import("../player/download-bridge.js");
+  CONTINUATION = await import("../player/continuation.js");
 });
 
 function makeEl(tag) {
@@ -710,4 +717,191 @@ test("app.js keeps no copy of the record's rules: no key literal, no downloadsWi
   assert.deepStrictEqual(run({ localAttempt: { item: { id: "ep-2" } }, ticket: T }), [], "superseded by a newer local play");
   assert.deepStrictEqual(run({ localAttempt: null, ticket: T }), [], "superseded by a stream");
   assert.deepStrictEqual(run({ localAttempt: null, ticket: null }), [], "a stream, or the noLocal retry after a missing file");
+});
+
+/* ==================================================================== */
+/* 11. OFFLINE, A MISSING FILE IS DROPPED WITH AN EARCON AND UP NEXT ADVANCES */
+/* ==================================================================== */
+
+/* client.js cannot load under node (test 10 says why), so its two pieces are
+   lifted out of the source text — comments stripped, code verbatim — and RUN
+   over fakes, the way the onPlayedFromFile placement test runs its snippet. */
+const CLIENT_CODE = fs.readFileSync(path.join(ROOT, "player", "client.js"), "utf8")
+  .replace(/\r\n/g, "\n")
+  .replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`])\/\/.*$/gm, "$1");
+function clientFn(head) {
+  const at = CLIENT_CODE.indexOf(head);
+  assert.ok(at >= 0, `client.js has ${head}`);
+  let depth = 0;
+  for (let i = CLIENT_CODE.indexOf("{", at + head.length - 1); i < CLIENT_CODE.length; i++) {
+    if (CLIENT_CODE[i] === "{") depth++;
+    else if (CLIENT_CODE[i] === "}" && --depth === 0) return CLIENT_CODE.slice(at, i + 1);
+  }
+  throw new Error(`unbalanced ${head}`);
+}
+
+test("missingFileAction: only a positive offline drops; online and unknown stream", () => {
+  /* MUTATION: `online !== true ? MISSING_DROP` — a browser that cannot say
+     (null) drops an episode the network could have served; red.
+     MUTATION 2: swap the two answers — online drops, offline streams; red. */
+  assert.strictEqual(STORE.missingFileAction({ online: false }), STORE.MISSING_DROP);
+  assert.strictEqual(STORE.missingFileAction({ online: true }), STORE.MISSING_STREAM);
+  assert.strictEqual(STORE.missingFileAction({ online: null }), STORE.MISSING_STREAM, "unknown is not offline");
+  assert.strictEqual(STORE.missingFileAction(), STORE.MISSING_STREAM, "total");
+  assert.notStrictEqual(STORE.MISSING_DROP, STORE.MISSING_STREAM);
+});
+
+test("client.js degrade: offline drops (bar line, earcon, onMissing offline, answers false); online streams once with noLocal", () => {
+  /* degradeLocalPlay, executed over each answer of browserOnline().
+     MUTATION: delete the `if (downloadStore.missingFileAction(...) ===
+     downloadStore.MISSING_DROP) { ... }` branch — offline streams again (the
+     retry that can only fail); red on the offline case.
+     MUTATION 2: drop `playEarcon();` from the branch — red on `earcons`.
+     MUTATION 3: drop `{ offline: true }` from the offline onMissing call —
+     app.js says "streaming instead" and never advances; red.
+     MUTATION 4: `return null;` instead of `return false;` in the branch —
+     play() falls through to its rethrow/"couldn't load"; red on the answer. */
+  const src = clientFn("function degradeLocalPlay() {");
+  const run = (online, { ticketFor = "ep-1" } = {}) => {
+    const log = { missing: [], plays: [], lines: [], earcons: 0 };
+    const window = { forayDownloads: { onMissing: (...a) => log.missing.push(a) } };
+    const ForayPlayer = { play: (item, opts) => { log.plays.push({ id: item.id, opts }); return Promise.resolve(true); } };
+    const answer = new Function(
+      "localAttempt", "current", "downloadStore", "browserOnline", "setPlayFailure", "EP_MISSING_OFFLINE",
+      "playEarcon", "window", "ForayPlayer",
+      `${src}\nreturn degradeLocalPlay();`,
+    )(
+      ticketFor ? { item: { id: ticketFor }, opts: { why: "w" } } : null, { id: "ep-1" }, STORE, () => online,
+      (line) => log.lines.push(line), "OFFLINE-LINE", () => { log.earcons++; }, window, ForayPlayer,
+    );
+    return { answer, ...log };
+  };
+
+  const off = run(false);
+  assert.strictEqual(off.answer, false, "offline: this item did not start, and play() answers false");
+  assert.deepStrictEqual(off.missing, [["ep-1", { offline: true }]], "app.js is told it was dropped offline");
+  assert.strictEqual(off.earcons, 1, "one earcon");
+  assert.deepStrictEqual(off.lines, ["OFFLINE-LINE"], "the bar says why nothing played");
+  assert.deepStrictEqual(off.plays, [], "no stream retry with no network");
+
+  for (const online of [true, null]) {
+    const on = run(online);
+    assert.ok(on.answer && typeof on.answer.then === "function", `online=${online}: the stream retry's promise`);
+    assert.deepStrictEqual(on.missing, [["ep-1"]], `online=${online}: marked, streaming instead`);
+    assert.deepStrictEqual(on.plays, [{ id: "ep-1", opts: { why: "w", noLocal: true } }], "streamed once, never the file again");
+    assert.strictEqual(on.earcons, 0, "no earcon when it streams");
+    assert.deepStrictEqual(on.lines, []);
+  }
+
+  const none = run(false, { ticketFor: null });
+  assert.strictEqual(none.answer, null, "no ticket, nothing to degrade");
+  assert.deepStrictEqual([none.missing, none.plays, none.earcons], [[], [], 0]);
+
+  /* The two callers. play() returns the drop's `false` rather than falling
+     through to the rethrow; reportPlayFailure chains nothing after a drop —
+     `current` may be the NEXT episode by then, loading its own file.
+     MUTATION 5: back to `if (retried) return retried;` in play(); red.
+     MUTATION 6: drop `if (retry === false) return;` from reportPlayFailure; red. */
+  assert.match(clientFn("async play(item, opts) {"), /const retried = degradeLocalPlay\(\);\s*if \(retried != null\) return retried;/);
+  const report = clientFn("reportPlayFailure(err) {");
+  const dropAt = report.indexOf("if (retry === false) return;");
+  assert.ok(dropAt > 0 && dropAt < report.indexOf("if (retry) {"), "a drop returns before the stream retry is chained");
+});
+
+test("the earcon: one short tone on Web Audio, the context reused, and silence (never a throw) without it", () => {
+  /* MUTATION: drop `tone.start(t0);` — the tone is built and never sounds; red.
+     MUTATION 2: drop `gain.connect(ac.destination);` — it sounds into nothing; red.
+     MUTATION 3: drop the try/catch around the body — a context that throws
+     takes the degrade (and Up Next's advance) down with it; red. */
+  const make = (window) => new Function("window", `let earconContext = null;\n${clientFn("function playEarcon() {")}\nreturn playEarcon;`)(window);
+  const made = [];
+  class FakeContext {
+    constructor() {
+      made.push(this);
+      this.state = "suspended";
+      this.resumed = 0;
+      this.currentTime = 5;
+      this.destination = { name: "speakers" };
+      this.tones = [];
+    }
+    resume() { this.resumed++; return Promise.resolve(); }
+    createGain() {
+      const ramps = [];
+      return { ramps, gain: { setValueAtTime: (v, t) => ramps.push([v, t]), exponentialRampToValueAtTime: (v, t) => ramps.push([v, t]) },
+        connect(to) { this.to = to; } };
+    }
+    createOscillator() {
+      const tone = { freqs: [], frequency: { setValueAtTime: (v, t) => tone.freqs.push([v, t]) },
+        connect(to) { this.to = to; }, start(t) { this.startAt = t; }, stop(t) { this.stopAt = t; } };
+      this.tones.push(tone);
+      return tone;
+    }
+  }
+  const earcon = make({ AudioContext: FakeContext });
+  assert.strictEqual(earcon(), true);
+  assert.strictEqual(earcon(), true);
+  assert.strictEqual(made.length, 1, "one context, reused");
+  const [ac] = made;
+  assert.ok(ac.resumed >= 1, "a suspended context is asked to resume");
+  assert.strictEqual(ac.tones.length, 2);
+  const [tone] = ac.tones;
+  assert.strictEqual(tone.startAt, 5, "starts now");
+  assert.ok(tone.stopAt > 5 && tone.stopAt - 5 < 1, "and is short (under a second)");
+  assert.strictEqual(tone.to.to, ac.destination, "through its gain to the speakers");
+
+  assert.strictEqual(make({ webkitAudioContext: FakeContext })(), true, "the prefixed constructor (older WebKit)");
+  assert.strictEqual(make({})(), false, "no Web Audio: silence");
+  assert.strictEqual(make({ AudioContext: class { constructor() { throw new Error("refused"); } } })(), false, "a refusing context: silence, not a throw");
+});
+
+test("offline, a missing download is dropped: the record is missing, Up Next loses it and the next one plays", async () => {
+  /* app.js's half: onMissing(id, { offline: true }) marks the row, says so,
+     and runs the natural end's rule, `advanceQueueOnEnded`.
+     MUTATION: drop the `advanceQueueOnEnded(id)` call in bootDownloads'
+     onMissing — the episode stays at the head of Up Next and nothing plays; red.
+     MUTATION 2: call `playNextAfter(id, "autoadvance")` instead — with
+     Continuous playback off the next episode plays anyway; red on that half.
+     MUTATION 3: advance on every onMissing (drop the `if (offline)`) — online,
+     the stream retry and the next episode both start; red on the online half. */
+  const setup = ({ autoadvance = true } = {}) => {
+    const store = new Map();
+    const m = mount({ store, capacitor: makeCapacitor({}) });
+    m.ctx.forayContinuation = CONTINUATION;
+    seedDone(store, m.item.id);
+    store.set("cp_queue", JSON.stringify([m.item.id, m.other.id]));
+    if (!autoadvance) store.set("cp_autoadvance", "false");
+    const plays = [];
+    m.ctx.ForayPlayer = {
+      play: async (item, opts) => { plays.push({ id: item.id, opts }); return true; },
+      onEpisodeEnded: () => () => {},
+      setEpisodeNavigation: () => true,
+      setContinuation() {},
+      currentEpisodeId: () => null,
+      isCurrent: () => true,
+    };
+    const said = () => m.ctx.document.body.children.map((c) => c.textContent).filter(Boolean);
+    return { m, store, plays, said, queue: () => JSON.parse(store.get("cp_queue") || "[]") };
+  };
+
+  const off = setup();
+  off.m.ctx.forayDownloads.onMissing(off.m.item.id, { offline: true });
+  await settle();
+  assert.strictEqual(off.m.record().items[off.m.item.id].status, "missing", "the row is marked");
+  assert.deepStrictEqual(off.queue(), [off.m.other.id], "the missing episode leaves Up Next");
+  assert.deepStrictEqual(off.plays.map((p) => p.id), [off.m.other.id], "and the next one plays");
+  assert.ok(off.said().includes("Downloaded copy missing, and no connection — skipped."), "the listener is told");
+
+  const still = setup({ autoadvance: false });
+  still.m.ctx.forayDownloads.onMissing(still.m.item.id, { offline: true });
+  await settle();
+  assert.deepStrictEqual(still.queue(), [still.m.other.id], "switch off: dropped all the same");
+  assert.deepStrictEqual(still.plays, [], "but nothing plays — the switch decides, as at an end");
+
+  const on = setup();
+  on.m.ctx.forayDownloads.onMissing(on.m.item.id);
+  await settle();
+  assert.strictEqual(on.m.record().items[on.m.item.id].status, "missing");
+  assert.deepStrictEqual(on.queue(), [on.m.item.id, on.m.other.id], "online: Up Next untouched, the episode streams");
+  assert.deepStrictEqual(on.plays, [], "app.js starts nothing: client.js's retry streams it");
+  assert.ok(on.said().includes("Downloaded copy missing — streaming instead."));
 });

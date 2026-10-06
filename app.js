@@ -13260,13 +13260,28 @@ function bootDownloads() {
   surface.recordFor = (id) => downloadsValue().items[id] || null;
   /* The file the record points at is gone (the OS reclaimed it, a restore
      without the files): the row stays, as `missing`, so the Library and the
-     episode page say so and offer the download again; the play streams. */
-  surface.onMissing = (id) => {
+     episode page say so and offer the download again; the play streams.
+     OFFLINE (#29: "stream if network exists, else drop the item with an
+     earcon and advance"): player/client.js has decided by download-store.js's
+     `missingFileAction`, painted the bar and sounded the earcon, and passes
+     `{ offline: true }`. The record is marked the same way; the episode is
+     then DROPPED by the natural end's own rule, `advanceQueueOnEnded`: it
+     leaves Up Next and the next one plays — or, with Continuous playback off,
+     nothing plays, exactly as at an end. Not `playNextAfter` directly: that
+     would ignore the listener's switch.
+     MUTATION: drop the `advanceQueueOnEnded(id)` call — test/downloads.test.js
+     "offline, a missing download is dropped…" keeps the episode at the head
+     of Up Next and plays nothing; red. */
+  surface.onMissing = (id, how) => {
     const rules = downloadRules();
     if (!rules) return;
+    const offline = how?.offline === true;
     saveDownloads(rules.markMissing(downloadsValue(), id));
-    announce("Downloaded copy missing — streaming instead.");
+    announce(offline
+      ? "Downloaded copy missing, and no connection — skipped."
+      : "Downloaded copy missing — streaming instead.");
     repaintDownload(id);
+    if (offline) advanceQueueOnEnded(id);
   };
   /* The downloaded copy PLAYED (CH-02, P2-01): player/client.js fires this
      where a local load succeeded, never where the file was merely chosen. It

@@ -1400,6 +1400,11 @@ function buildUI() {
    shaped around a test. */
 const EP_START_FAILED = "That episode couldn't load. Check the connection, then press play.";
 const EP_PLAY_HELD = "Press play again to start it.";
+/* A downloaded copy that turned out missing while the device is offline
+   (#29): the episode is dropped, not streamed, so the bar says why nothing
+   played. Up Next moving on clears it (`setNowPlaying`); with nothing after it,
+   or Continuous playback off, it stays on the dropped episode's bar. */
+const EP_MISSING_OFFLINE = "Downloaded copy missing, and no connection to stream it. Skipped.";
 
 let playFailure = null;
 
@@ -4670,17 +4675,71 @@ function localSourceFor(item, opts) {
 }
 
 /** The missing-file degrade: spend the one ticket `play()` left in
-    `localAttempt`, tell app.js the copy is gone (`onMissing` marks the record
-    and says "streaming instead"), and play the ORIGINAL item again with
-    `noLocal`. Null when there is no ticket — the retry already ran, or the
-    current play never chose a file — so nothing here can call itself twice. */
+    `localAttempt`, then follow #29's rule (`missingFileAction`,
+    download-store.js): "stream if network exists, else drop the item with an
+    earcon and advance".
+    ONLINE (or unknown): tell app.js the copy is gone (`onMissing(id)` marks
+    the record and says "streaming instead") and play the ORIGINAL item again
+    with `noLocal` — returns that play's promise.
+    OFFLINE (`navigator.onLine` positively false): a stream cannot start, and
+    retrying one only painted "couldn't load" with the car stopped on it. So
+    the bar says why, the earcon sounds, and `onMissing(id, { offline: true })`
+    has app.js mark the record and move Up Next on (`advanceQueueOnEnded`, the
+    natural end's own rule) — returns `false`: this item did not start, and
+    nothing is owed for it. Both lanes come here (the JS manager and the native
+    engine's facade report a failed load the same way), so the web shell and
+    the engine drop alike.
+    Null when there is no ticket — the retry already ran, or the current play
+    never chose a file — so nothing here can call itself twice. */
 function degradeLocalPlay() {
   const attempt = localAttempt;
   if (!attempt || current?.id !== attempt.item.id) return null;
   localAttempt = null;
+  if (downloadStore.missingFileAction({ online: browserOnline() }) === downloadStore.MISSING_DROP) {
+    setPlayFailure(EP_MISSING_OFFLINE);
+    playEarcon();
+    try { window.forayDownloads?.onMissing?.(attempt.item.id, { offline: true }); } catch (_) { /* the record and Up Next are app.js's; the drop is already said */ }
+    return false;
+  }
   try { window.forayDownloads?.onMissing?.(attempt.item.id); } catch (_) { /* the record is app.js's; streaming is still owed */ }
   const opts = attempt.opts && typeof attempt.opts === "object" ? attempt.opts : {};
   return ForayPlayer.play(attempt.item, { ...opts, noLocal: true });
+}
+
+/* The earcon (#29; docs/brief/04_VOICE_AUDIO_SPEC.md: "Confirmations are
+   earcons, not sentences"). One short falling two-note tone, synthesised with
+   Web Audio so it needs no asset and no `media-src` (the CSP allows `https:`
+   media only), and plays beside whatever element the lane owns. The context is
+   made once and reused; a suspended one is asked to resume (iOS starts a
+   context outside a gesture suspended). Best effort and total: no Web Audio,
+   or a context that refuses, is silence, never a thrown play — the bar line
+   and the spoken announcement still say what happened. Returns whether the
+   tone was scheduled. */
+let earconContext = null;
+function playEarcon() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (typeof Ctx !== "function") return false;
+    if (!earconContext) earconContext = new Ctx();
+    const ac = earconContext;
+    if (ac.state === "suspended" && typeof ac.resume === "function") ac.resume().catch(() => {});
+    const t0 = ac.currentTime;
+    const gain = ac.createGain();
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(0.25, t0 + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.34);
+    gain.connect(ac.destination);
+    const tone = ac.createOscillator();
+    tone.type = "sine";
+    tone.frequency.setValueAtTime(660, t0);
+    tone.frequency.setValueAtTime(440, t0 + 0.15);
+    tone.connect(gain);
+    tone.start(t0);
+    tone.stop(t0 + 0.36);
+    return true;
+  } catch (_) {
+    return false;
+  }
 }
 
 /* ---------- public surface ---------- */
@@ -4837,8 +4896,10 @@ const ForayPlayer = {
        the file stayed on disk) and retried outside the gesture, refused again.
        The ticket is left unspent: the listener's next tap plays the file. */
     if (current?.isLocalFile && current.id === item.id && (loadError || manager.state?.type === "idle") && playFailure !== EP_PLAY_HELD) {
+      /* A promise (the stream retry) or `false` (dropped offline: app.js has
+         moved Up Next on, and this item never started); null is no ticket. */
       const retried = degradeLocalPlay();
-      if (retried) return retried;
+      if (retried != null) return retried;
     }
     /* A LOAD THAT SETTLED IS SPENT (review of PQ-19). The ticket used to live
        as long as the episode stayed current, so ANY later failure report about
@@ -5044,6 +5105,10 @@ const ForayPlayer = {
     try { name = String(err?.name ?? ""); } catch (_) { name = ""; }
     const refused = /NotAllowedError/.test(name) || (err == null && playFailure === EP_PLAY_HELD);
     const retry = current?.isLocalFile && !refused ? degradeLocalPlay() : null;
+    /* Dropped offline: the bar line is painted and Up Next has moved on.
+       Nothing is chained — by now `current` may be the NEXT episode, whose own
+       downloaded copy is loading, and a second report would degrade it. */
+    if (retry === false) return;
     if (retry) {
       retry.then(
         (ok) => { if (!ok) ForayPlayer.reportPlayFailure(null); },

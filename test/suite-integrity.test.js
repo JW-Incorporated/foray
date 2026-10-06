@@ -579,7 +579,7 @@ const FLOORS = {
      in progress, and client.js's published surface. Each test is one deleted
      line from a download that goes to the wrong URL, a device called clear
      with files on it, or a half-heard episode deleted. */
-  "test/downloads.test.js": 14, // PQ-18 (#29): the plan's 8 + eviction wiring + client.js's window.forayDownloads pin // CH-02: cp_downloads goes through the durable store and null removes, unplayed eviction is oldest-finished, a play from the file moves the row back, and no key literal / downloadsWithout / mapper-side stamp; 10 -> 14
+  "test/downloads.test.js": 18, // PQ-18 (#29): the plan's 8 + eviction wiring + client.js's window.forayDownloads pin // CH-02: cp_downloads goes through the durable store and null removes, unplayed eviction is oldest-finished, a play from the file moves the row back, and no key literal / downloadsWithout / mapper-side stamp; 10 -> 14 // offline-missing-file (#29): with no network a missing downloaded file is dropped with an earcon and Up Next advances -- missingFileAction, client.js degrade executed per answer, the Web Audio earcon, app.js drop+advance by advanceQueueOnEnded; 14 -> 18
   "test/event-sync-mapping.test.js": 5, // PKG-17 (docs/roadmap/catalogue-personalization.md): exact wire rows for picked (contract archetype or null), saved, thumbs (no node -> null, episode_slug absent not null), session_shown -> session_built, and a local-only-only batch marked synced with no POST; the Not-sent -> null and per-chunk cases live in legal-citations and data-deletion (app-1-10)
   /** The field record's surface (#264) — see the note beside the two `player/`
       halves above. */
