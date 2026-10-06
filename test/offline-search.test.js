@@ -228,8 +228,11 @@ test("an EMPTY offline search says so in one line — no 'No shows found' over '
      empty note itself says "You're offline", the offline note (which explains
      ROWS) stays hidden with none to explain, and the failure line with its
      useless-offline Try again is not painted. MUTATION: drop the
-     `isOfflineForShardSearch()` clause from paintShowSearchPartialNote, or the
-     `shows.length > 0` clause from the offline note's hidden test. */
+     `shows.length > 0` clause from the offline note's hidden test — red here.
+     (The `isOffline()` clause of paintShowSearchPartialNote is not reachable in
+     this mount: offline, the network passes are guarded and record no failure,
+     so dropping it stays green here; show-search-fallthrough's search-12 test,
+     which fails the directory pass, is the one it turns red.) */
   const m = mount({ onLine: false });
   m.type("zzqx-nothing");
   await settled(m);
