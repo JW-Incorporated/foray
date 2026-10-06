@@ -33,6 +33,10 @@
       "reason": "webview-only",
       "why": "Reads client.js's source for the members of the `window.ForayPlayer` literal and greps app.js, index.html and sw.js for callers: the page-side bridge's public surface (CH-26 deletes four members nothing called). The native engine has no window bridge; in native mode the page still talks to this same literal, so nothing here is a rule the engine reimplements."
     },
+    "CH-34 characterization: the live Foray snapshot carries every key a page paints from": {
+      "reason": "webview-only",
+      "why": "client.js's page-side Foray snapshot (forayStateSnapshot), the object window.ForayPlayer hands the Foray page's onChange. In native mode the page reads the engine's snapshot through the facades (NE-35) and this object is still built here, so nothing here is a rule the engine reimplements."
+    },
     "DELETING EVERYTHING leaves the page interactive, and resume works again after it": {
       "reason": "webview-only",
       "why": "The page's own storage tiers (window.forayStorage, localStorage, the durable IndexedDB/Preferences tier, quota handling) as app.js reads them. In native mode the engine owns cp_foray and friends (OWNED_PREFIXES) and the page adopts them (NE-23); these pin the web tiers."

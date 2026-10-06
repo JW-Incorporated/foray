@@ -3097,3 +3097,36 @@ test("CH-26: window.ForayPlayer no longer publishes cycleRate, stripModel, strip
   assert.deepEqual(CH26_DEAD.filter((name) => members.has(name)), [],
     "the four dead members are gone from the bridge");
 });
+
+/* CH-34 (P1-11, docs/roadmap/code-health.md): the Foray snapshot a page paints
+   from. `stopAndClose` used to hand the page a hand-written literal it called
+   "the same shape the live snapshot has" while it left out `buffering`, `gap`,
+   `rate` and `voiceFallback` — a new consumer trusting that comment read
+   `undefined` on stop. These tests boot the REAL client.js (the CH-10 harness
+   above). */
+const CH34_SNAPSHOT_KEYS = [
+  "buffering", "elapsedSec", "ended", "error", "forayId", "gap", "index", "loading",
+  "playing", "rate", "running", "totalSec", "voiceFallback",
+];
+
+test("CH-34 characterization: the live Foray snapshot carries every key a page paints from", async (t) => {
+  /* Pins today's live shape before the stop path is made to share it.
+     MUTATION (run): delete the `gap: manager?.inSeamGap === true,` line from
+     client.js's `forayStateSnapshot` — red (`gap` missing). */
+  const booted = await bootRealClient(t);
+  const { foraysDoc, segmentsDoc, sourcesDoc } = ch10Docs();
+  const resolved = booted.client.resolve(foraysDoc, { id: "f-ch10", segmentsDoc, sourcesDoc });
+  const seen = [];
+  await booted.client.playForay(resolved, { startIndex: 0, onChange: (s) => seen.push(s) });
+  await tick();
+  booted.audio.currentTime = 110;
+  booted.audio.fire("timeupdate");
+  await tick();
+  const live = seen.at(-1);
+  assert.ok(live, "precondition: the page was repainted while the Foray played");
+  assert.equal(live.forayId, "f-ch10");
+  assert.equal(live.index, 0);
+  assert.deepEqual(Object.keys(live).sort(), CH34_SNAPSHOT_KEYS);
+  assert.deepEqual(Object.keys(booted.client.forayStatus()).sort(), CH34_SNAPSHOT_KEYS,
+    "forayStatus() is the same snapshot");
+});
