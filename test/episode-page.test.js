@@ -250,3 +250,33 @@ test("renderEpisode omits the 'More from this show' section when the show does n
   const html = app._view.innerHTML;
   assert.doesNotMatch(html, /More from this show/, "no section when the show has no catalog.json record");
 });
+
+/* ---------- the progress chip (CH-35, A2-07) ---------- */
+
+test("renderEpisode paints the player's progress chip when it has one, and none without a player or a label (CH-35, characterization)", () => {
+  /* The page shares the one chip template with epRow and the Up Next row
+     (test/up-next-queue.test.js pins the three byte-identical).
+     MUTATION (run, red): drop the chip from renderEpisode's meta line -> the
+     first assertion fails. MUTATION 2 (run, red): paint the chip with an empty
+     label -> the no-player page carries an empty `ep-progress` span. */
+  const seed = `state.itemIndex["ep-9"] = {
+    id: "ep-9", title: "Chip Title", show: "Great Show",
+    duration_min: 42, audio_url: "https://example.com/a.mp3",
+  };`;
+  const app = loadApp();
+  app._state(seed);
+  app.window.ForayPlayer = { episodeProgress: (id, durSec) => (id === "ep-9" && durSec === 2520 ? { state: "played", percent: 100, label: "Played" } : null) };
+  app.renderEpisode("ep-9");
+  assert.match(app._view.innerHTML, /<span class="ep-progress is-played">Played<\/span>/, "the played mark follows the episode onto its page");
+
+  const bare = loadApp();
+  bare._state(seed);
+  bare.renderEpisode("ep-9");
+  assert.doesNotMatch(bare._view.innerHTML, /ep-progress/, "no player, no chip");
+
+  const unplayed = loadApp();
+  unplayed._state(seed);
+  unplayed.window.ForayPlayer = { episodeProgress: () => ({ state: "unplayed", percent: 0, label: "" }) };
+  unplayed.renderEpisode("ep-9");
+  assert.doesNotMatch(unplayed._view.innerHTML, /ep-progress/, "a mark with no words paints no chip");
+});
