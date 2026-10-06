@@ -12,7 +12,8 @@
    83,552 B (25,451 B gzip) — a ~24% gzip saving for zero behaviour change, and it
    keeps feed_url (a legally-relevant field per CLAUDE.md product principle #3) out
    of a public static fetch that has no use for it yet. Re-run whenever
-   data/catalog.json or data/catalog-breadth.json changes (nightly refresh, a
+   data/catalog.json, data/catalog-breadth.json or data/dai-classification.json
+   changes (nightly refresh, a
    new show, a re-harvested chart).
 
    THE FIELD LIST IS THE CONTRACT app.js's renderShow() reads against — a field this
@@ -60,6 +61,12 @@ export const CLIENT_SHOW_FIELDS = [
      apple_collection_id; null without a ranked breadth twin. popularityBand
      reads it from PKG-13 on — until then nothing in the client does. */
   "chart_rank",
+  /* CH-1 (#1071): the show's DAI class from data/dai-classification.json,
+     keyed on String(apple_collection_id) — true / false, null when the show
+     is unclassified. fullCatalogueRowToEpRowItem turns it into dai_suspected /
+     dai_known, so a chapter stamp on a stitched or unknown show reads
+     approximate. */
+  "dai",
 ];
 
 export function projectShow(show) {
@@ -68,11 +75,12 @@ export function projectShow(show) {
   return out;
 }
 
-/* `breadth` is data/catalog-breadth.json, or null (every chart_rank null).
+/* `breadth` is data/catalog-breadth.json, or null (every chart_rank null);
+   `daiClass` is data/dai-classification.json, or null (every dai null).
    The same join tools/build-show-index.mjs's mergeShowIndexRows makes for
    data/show-index.tsv (PKG-11a) — copied, not imported, so neither builder
    depends on the other. */
-export function buildCatalogClient(catalog, breadth = null) {
+export function buildCatalogClient(catalog, breadth = null, daiClass = null) {
   if (!catalog || !Array.isArray(catalog.shows)) {
     throw new Error("data/catalog.json did not parse to { shows: [...] } — refusing to write an empty derivation");
   }
@@ -88,11 +96,17 @@ export function buildCatalogClient(catalog, breadth = null) {
     if (Number.isFinite(rank) && rank > 0) rankByAppleId.set(String(row?.apple_collection_id), rank);
   }
 
+  const dai = (show) => {
+    const v = daiClass?.shows?.[String(show?.apple_collection_id)]?.dai;
+    return typeof v === "boolean" ? v : null;
+  };
+
   return {
     version: catalog.version,
     shows: catalog.shows.map((show) => projectShow({
       ...show,
       chart_rank: rankByAppleId.get(String(show?.apple_collection_id)) ?? null,
+      dai: dai(show),
     })),
   };
 }
@@ -101,7 +115,8 @@ function main() {
   const { outPath, check } = parseArgs(args);
   const catalog = JSON.parse(readFileSync(path.join(ROOT, "data", "catalog.json"), "utf8"));
   const breadth = JSON.parse(readFileSync(path.join(ROOT, "data", "catalog-breadth.json"), "utf8"));
-  const client = buildCatalogClient(catalog, breadth);
+  const daiClass = JSON.parse(readFileSync(path.join(ROOT, "data", "dai-classification.json"), "utf8"));
+  const client = buildCatalogClient(catalog, breadth, daiClass);
   if (!client.shows.length) throw new Error("derived catalog-client.json has zero shows — refusing to write");
   const text = JSON.stringify(client, null, 2) + "\n";
 

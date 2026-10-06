@@ -102,7 +102,8 @@ test("the table pins two models (q8f16, fp32) and the twelve audition voices", (
      TWO MODELS SINCE KV-R2 (D13): q8f16 for Android, and the fp32 export for
      iOS, because every fp16-activation export goes NaN on Apple silicon. The
      q8f16 pin stays FIRST: `render-audition.py`'s `read_pins` reads it by
-     name and `kokoro-probe.test.js` finds each platform's pin by bundle. */
+     name. (`player/kokoro-probe.test.js` also found each platform's pin by
+     bundle until the probe left the app on 2026-10-05, issue #1076.) */
   const models = PINS.filter((p) => p.kind === "model");
   const voices = PINS.filter((p) => p.kind === "voice");
   assert.equal(models.length, 2, "one model per platform");

@@ -2,9 +2,21 @@
 
 <!-- ha-format: 2 -->
 
-> **24 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **25 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
+
+## #144 🟡 [DECIDE] Add the `founder-approved` label to PR #1087, so the 4a Lab build can run (~2 min)
+<!-- ha filed=2026-10-05 -->
+
+**Why:** The "4a Lab" workflow only becomes runnable once it is on `main`. PR #1087 adds only that file and its tests, but it touches governed paths, so it cannot auto-merge without your label. Until then no lab build reaches either phone.
+
+**Steps:**
+1. Open https://github.com/JW-Incorporated/foray/pull/1087 and check the checks are green.
+2. Right sidebar → **Labels** → choose `founder-approved`.
+3. Reply `done` here. The PR then merges; nothing builds until someone presses Run workflow.
+
+**Worked if:** `.github/workflows/lab-build.yml` is on `main`, and Actions → **lab-build** shows a **Run workflow** button.
 
 ## #141 🟡 [DECIDE] Approve four privacy-policy sentences for bookmarks, downloads and followed-show alerts (~5 min)
 <!-- ha filed=2026-10-04 kind=default -->

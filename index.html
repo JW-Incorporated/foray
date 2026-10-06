@@ -34,6 +34,20 @@
      'self' widens this to same-origin, which is the app's own bundle. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' https: data:; media-src https:; connect-src 'self' https://qjdllvqdcgacvujhclny.supabase.co https://foray-web-seven.vercel.app; manifest-src 'self'; base-uri 'none'; form-action 'none'">
 <title>4a</title>
+<!-- LINK PREVIEWS (sh-3-1071). A shared 4a link unfurls with the name, one
+     plain line and the icon. These tags are inert: no script reads them and the
+     CSP above is untouched. og:url and og:image are absolute on the public web
+     origin (SH-1), and the image is icon-512.png, which tools/web/prepare-dist.mjs
+     ships. The line is the Play short description (docs/store/play/README.md).
+     Per-item previews are out of scope. test/link-preview-meta.test.js pins it. -->
+<meta name="description" content="Podcast playlists stitched across shows, plus new episodes picked for you">
+<meta property="og:site_name" content="4a">
+<meta property="og:title" content="4a">
+<meta property="og:description" content="Podcast playlists stitched across shows, plus new episodes picked for you">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://foray-web-seven.vercel.app/">
+<meta property="og:image" content="https://foray-web-seven.vercel.app/icon-512.png">
+<meta name="twitter:card" content="summary">
 <meta name="theme-color" content="#151119">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -79,9 +93,9 @@
 <link rel="modulepreload" href="player/foray-sources.js">
 <link rel="modulepreload" href="player/foray-structure.js">
 <link rel="modulepreload" href="player/html-audio-backend.js">
+<link rel="modulepreload" href="player/id3-chapters.js">
 <link rel="modulepreload" href="player/idb-tier.js">
 <link rel="modulepreload" href="player/interlude.js">
-<link rel="modulepreload" href="player/kokoro-probe.js">
 <link rel="modulepreload" href="player/locate-window.js">
 <link rel="modulepreload" href="player/media-session.js">
 <link rel="modulepreload" href="player/native-engine.js">

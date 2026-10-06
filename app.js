@@ -1130,6 +1130,10 @@ function snapshot(id, src) {
     audio_bytes: src.audio_bytes ?? null,
     duration_sec: src.duration_sec ?? null,
     dai_suspected: src.dai_suspected ?? false,
+    // Whether anyone classified the show at all (CH-1, #1071): `dai_suspected:
+    // false` above is also the default for "never looked", and a foreign stamp
+    // on an unclassified show must read approximate (chapterPrecision).
+    dai_known: src.dai_known ?? (typeof src.dai_suspected === "boolean"),
     // Explicit-content flag (kanban card t_02c6bb0b): already ingested at the
     // source (tools/refresh/merge.mjs), but this whitelist projection dropped
     // it on the floor before the badge existed to read it — every pool item
@@ -1158,6 +1162,10 @@ function snapshot(id, src) {
     // it, see backend/src/catalog/showEpisodesStore.ts) — absence here is a
     // real, expected state, not a bug.
     chapters: src.chapters ?? null,
+    // The feed's Podcasting 2.0 chapters address and the episode's guid (CH-1):
+    // the device reads the chapter list from the publisher (readDeviceChapters).
+    chapters_url: src.chapters_url ?? null,
+    guid: src.guid ?? null,
   };
   state.itemIndex[id] = snap;
   return snap;
@@ -3155,7 +3163,20 @@ function savableEpisode(snap) {
   out.description = typeof d === "string" && d.length > SAVED_DESCRIPTION_MAX
     ? d.slice(0, SAVED_DESCRIPTION_MAX - 1) + "…"
     : (d ?? null);
-  out.chapters = Array.isArray(snap.chapters) ? snap.chapters.slice(0, SAVED_CHAPTERS_MAX) : (snap.chapters ?? null);
+  /* With no feed chapters, the list the page derives from the notes is saved,
+     from the FULL text: the 4000-character cut above would drop a long
+     episode's tail chapters (CH-1). Whitelisted either way. */
+  const feed = Array.isArray(snap.chapters) && snap.chapters.length;
+  const list = feed ? snap.chapters
+    : descriptionChapters(d, itemDurationSec(snap, { upperBound: true })).map(c => ({ ...c, start_time_seconds: c.secs }));
+  out.chapters = list.length
+    ? list.slice(0, SAVED_CHAPTERS_MAX).map(c => ({ title: c?.title ?? null, start_time_seconds: c?.start_time_seconds ?? null,
+        /* Only keys that carry a value: a null img/url on each of 100 chapters
+           bloats every star (app-1-8); chapterEntry reads a missing one as null. */
+        ...(typeof c?.img === "string" && c.img ? { img: c.img } : {}),
+        ...(typeof c?.url === "string" && c.url ? { url: c.url } : {}),
+        ...(typeof c?.source === "string" ? { source: c.source } : {}) }))
+    : (snap.chapters ?? null);
   return out;
 }
 
@@ -3810,6 +3831,9 @@ function playlistById(id) { return playlists().find(p => p.id === id); }
     stamps a real playlist's `last_played_at`. The detail page and Home's play
     button both start a playlist, so both name it through this. */
 function playlistCtx(p) {
+  /* A shared playlist's id IS its payload (the sharer's title and ids): the
+     `picked` event carries this ctx, so it is named, never quoted (#1071). */
+  if (p.isShared) return "shared-playlist";
   return (p.isSubject ? "subject-" : (p.isGenerated ? "generated-" : "playlist-")) + p.id;
 }
 
@@ -4895,6 +4919,13 @@ function fullCatalogueRowToEpRowItem(show, ep) {
     release_date: ep.published_at || null,
     description: ep.description_text || null,
     chapters: Array.isArray(ep.chapters) ? ep.chapters : null,
+    /* CH-1 (#1071): the chapters pointer and the show's DAI class
+       (tools/build-catalog-client.mjs `dai`; absent on a breadth show, which
+       therefore reads unknown, and its chapter times approximate). */
+    chapters_url: ep.chapters_url || null,
+    guid: showEpisodeGuid(ep),
+    dai_suspected: show.dai === true,
+    dai_known: typeof show.dai === "boolean",
   });
 }
 
@@ -5418,6 +5449,171 @@ function forayRoutePath(id) {
   return `/foray/${encodeURIComponent(id)}`;
 }
 
+/* ---------- share links (#1071, SH-1) ----------
+
+   Founder, #1071 (2026-10-05): share links on shows, episodes, playlists,
+   Suggested cards and Forays, built "towards opening directly in the app" — so
+   the origin is one whose root we control (it will serve the universal-link
+   files), not GitHub Pages. Not gated on a legal review (docs/DECISIONS.md,
+   2026-10-05). test/share-links.test.js pins every rule below.
+
+   A LINK IS BUILT FROM THE ROUTE PRODUCERS, NEVER FROM location.href: on the web
+   that carries the `?foray=` draft unlock, and in the shell it is
+   capacitor://localhost. Each link is one the RECIPIENT can open cold: a show
+   page without its /q/ search; an episode page only for a catalogue episode
+   (resolveEpisode finds nothing else on a fresh device), else its show; a
+   playlist only the recipient could not rebuild (their own playlist, a
+   Suggested queue) is FROZEN into the link as title + catalogue ids. No event
+   is logged for a share. */
+const PUBLIC_WEB_ORIGIN = "https://foray-web-seven.vercel.app/";
+const SHARED_PLAYLIST_PREFIX = "shared~";
+const SHARED_PLAYLIST_MAX = 50;
+
+function inDiscoverPool(id) {
+  if (state.session && state.session.episodes) {
+    try { fullPool(); } catch (_) { /* no catalogue yet: nothing is in it */ }
+  }
+  return typeof id === "string" && state.poolIds.has(id);
+}
+
+const b64url = (s) => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const unb64url = (s) => {
+  const b = s.replace(/-/g, "+").replace(/_/g, "/");
+  return decodeURIComponent(escape(atob(b + "===".slice((b.length + 3) % 4))));
+};
+
+/** A shared playlist decoded from its own id, or null for anything malformed.
+    Read-only: only ids in the catalogue, at most SHARED_PLAYLIST_MAX. */
+function sharedPlaylistFromId(id) {
+  const s = String(id || "");
+  if (!s.startsWith(SHARED_PLAYLIST_PREFIX)) return null;
+  try {
+    const d = JSON.parse(unb64url(s.slice(SHARED_PLAYLIST_PREFIX.length)));
+    if (!d || typeof d.t !== "string" || !Array.isArray(d.e)) return null;
+    const ids = [...new Set(d.e.filter(inDiscoverPool))].slice(0, SHARED_PLAYLIST_MAX);
+    if (!ids.length) return null;
+    return withMirror({
+      id: s, title: d.t.slice(0, 200), items: ids.map(x => playlistPart(state.itemIndex[x])),
+      sparse: false, isSubject: false, isGenerated: false, isShared: true,
+    });
+  } catch (_) { return null; }
+}
+
+function playlistForId(id) {
+  return playlistById(id) || subjectQueueById(id) || generatedPlaylistById(id) || sharedPlaylistFromId(id);
+}
+
+/** `{ url, text }` for a share target, or null when the recipient could not
+    open it. target: { kind: "show"|"episode"|"playlist"|"foray", id, item?, playlist? }.
+    `text` is the item's own title (and show) only — never a hook or summary. */
+function shareLinkFor(target) {
+  const t = target || {};
+  if (t.kind === "show") {
+    const s = showById(t.id);
+    if (!s) return null;
+    if (!String(t.id).startsWith("pi:")) return { url: PUBLIC_WEB_ORIGIN + "#" + showRoutePath(t.id), text: s.title || "" };
+    /* A `pi:` id never cold-resolves (showById); pod.link is
+       data/app-links.json's derivable aggregator, when the Apple id is known. */
+    const apple = String(s.apple_collection_id ?? "");
+    return /^\d+$/.test(apple) ? { url: "https://pod.link/" + apple, text: s.title || "" } : null;
+  }
+  if (t.kind === "episode") {
+    const item = t.item || state.itemIndex[t.id] || resolveEpisode(t.id);
+    if (!item || !item.id) return null;
+    const text = item.show ? `${item.title} · ${item.show}` : String(item.title || "");
+    if (inDiscoverPool(item.id)) return { url: PUBLIC_WEB_ORIGIN + "#/episode/" + encodeURIComponent(item.id), text };
+    const sid = item.show_id || showIdForShowName(item.show);
+    if (sid && !String(sid).startsWith("pi:")) return { url: PUBLIC_WEB_ORIGIN + "#" + showRoutePath(sid), text };
+    const apple = safeUrl(item.apple_episode_url);
+    return apple === "#" ? null : { url: apple, text };
+  }
+  if (t.kind === "playlist") {
+    const p = t.playlist || playlistForId(t.id);
+    if (!p) return null;
+    if (p.isGenerated) return { url: PUBLIC_WEB_ORIGIN + "#/" + playlistRoute({ id: p.id }), text: p.title || "" };
+    const e = [...new Set(playlistSpine(p).map(partId).filter(inDiscoverPool))].slice(0, SHARED_PLAYLIST_MAX);
+    if (!e.length) return null;
+    const id = SHARED_PLAYLIST_PREFIX + b64url(JSON.stringify({ t: String(p.title || ""), e }));
+    return { url: PUBLIC_WEB_ORIGIN + "#/" + playlistRoute({ id }), text: p.title || "" };
+  }
+  if (t.kind === "foray") {
+    const f = (state.forays?.forays || []).find(x => x && x.id === t.id);
+    if (!f || f.status !== "published") return null;
+    return { url: PUBLIC_WEB_ORIGIN + "#" + forayRoutePath(f.id), text: f.title || "" };
+  }
+  return null;
+}
+
+/** The share button, or "" when there is no link to give. A link that cannot
+    be built costs the button, never the page around it. */
+function safeShareLink(target) {
+  try { return shareLinkFor(target); } catch (_) { return null; }
+}
+
+function shareBtn(target) {
+  if (!safeShareLink(target)) return "";
+  bindShareClicks();
+  return `<button type="button" class="share-btn" data-share="${esc(target.kind)}" data-share-id="${esc(target.id)}" aria-label="${esc("Share " + (target.title || ""))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"></path></svg></button>`;
+}
+
+/** Where a share's result is said: beside the button, and to a screen reader.
+    With `url`, the last resort — the link in a selected read-only field. */
+function shareNote(anchor, msg, url = "") {
+  announce(msg);
+  if (!anchor || typeof anchor.insertAdjacentHTML !== "function") return;
+  const old = anchor.nextElementSibling;
+  if (old && old.classList.contains("share-note")) old.remove();
+  anchor.insertAdjacentHTML("afterend", `<span class="share-note">${esc(msg)}${url ? `<input class="share-input" readonly value="${esc(url)}" aria-label="${esc(msg)}">` : ""}</span>`);
+  const note = anchor.nextElementSibling;
+  const input = note && note.querySelector("input");
+  if (input) { input.focus(); input.select(); } else if (note) setTimeout(() => note.remove(), 4000);
+}
+
+/** Deliver a link: the native share plugin, the Web Share sheet, the
+    clipboard, then the link on screen. A cancel ends it — it is not a failure
+    to fall back from. */
+async function shareTo(link, anchor = null) {
+  if (!link) return "none";
+  const data = { title: link.text, text: link.text, url: link.url };
+  const cancelled = (e) => !!e && (e.name === "AbortError" || /cancel/i.test(String(e.message || "")));
+  const plugin = window.Capacitor?.Plugins?.Share;
+  if (plugin && typeof plugin.share === "function") {
+    try { await plugin.share(data); return "shared"; } catch (e) { if (cancelled(e)) return "cancelled"; }
+  }
+  if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+    try { await navigator.share(data); return "shared"; } catch (e) { if (e && e.name === "AbortError") return "cancelled"; }
+  }
+  try {
+    await navigator.clipboard.writeText(link.url);
+    shareNote(anchor, "Link copied");
+    return "copied";
+  } catch (_) { /* no clipboard, or refused: show the link */ }
+  shareNote(anchor, "Copy this link", link.url);
+  return "manual";
+}
+
+function onShareClick(e) {
+  const btn = e.target && e.target.closest && e.target.closest("[data-share]");
+  if (!btn) return;
+  e.preventDefault();
+  shareTo(safeShareLink({ kind: btn.dataset.share, id: btn.dataset.shareId }), btn);
+}
+
+let shareClicksBound = false;
+function bindShareClicks() {
+  if (shareClicksBound || typeof document === "undefined" || typeof document.addEventListener !== "function") return;
+  document.addEventListener("click", onShareClick);
+  shareClicksBound = true;
+}
+
+if (typeof window !== "undefined") {
+  window.ForayShare = {
+    shareEpisode: (item) => shareTo(shareLinkFor({ kind: "episode", item, id: item && item.id })),
+    shareForay: (id) => shareTo(shareLinkFor({ kind: "foray", id })),
+    linkFor: shareLinkFor,
+  };
+}
+
 /** Whether the page on screen is `show_id`'s — compared DECODED: the hash
     carries the encoded id, and comparing it with the raw one never matched an
     id that needed encoding. */
@@ -5563,7 +5759,7 @@ function renderShow(show_id, initialQuery = "") {
          .show-hero, visual pass 1). The title stays in the page head. -->
     <div class="show-hero">
       ${showArt ? `<img class="show-art" src="${esc(safeUrl(showArt))}" alt="">` : ""}
-      ${showStarBtn(show.show_id)}
+      ${shareBtn({ kind: "show", id: show.show_id, title: show.title })}${showStarBtn(show.show_id)}
       <p class="note show-follow-note">${esc(FOLLOW_NOTE)}</p>
     </div>
     <!-- The publisher's own description. EMPTY at first paint and filled by
@@ -6367,8 +6563,10 @@ function bindPickLogging(scope) {
 /* Keys the app no longer writes, removed from every storage tier once the
    durable store has hydrated — before that, a removal from the localStorage
    mirror would be undone by the IndexedDB copy migrating back. The privacy
-   policy's row for each says it is retired. */
-const RETIRED_STORAGE_KEYS = ["cp_lastpick"];
+   policy's row for each says it is retired. `cp_voice_probe` was K-01's
+   "Voice engine probe" switch, retired with the on-device Kokoro probe on
+   2026-10-05 (founder ruling, issue #1076). */
+const RETIRED_STORAGE_KEYS = ["cp_lastpick", "cp_voice_probe"];
 function forgetRetiredKeys() {
   const store = storageBackend();
   if (!store) return;
@@ -6621,7 +6819,7 @@ function miniCard(slot) {
       <h3><a class="mc-link" href="#/${esc(playlistRoute({ isSubject: true, branch: slot.branch }))}">${esc(subjectLabel(slot.branch))}</a></h3>
       <p class="mc-hook">${startsWithLine(item.title)} ${esc(subjectBlurb(slot))}${stretch ? ` ${STRETCH_WHY}` : ""}</p>
     </div>
-    ${starBtn(item.id)}
+    ${starBtn(item.id)}${shareBtn({ kind: "episode", id: item.id, item, title: item.title })}
   </div>`;
 }
 
@@ -11247,7 +11445,7 @@ function partsNote(rows) {
 
 function renderPlaylistDetail(id) {
   setBodyClass("view-page");
-  const p = playlistById(id) || subjectQueueById(id) || generatedPlaylistById(id);
+  const p = playlistForId(id);
   /* A gone playlist still gets a real page head, ‹ included: with ‹ now
      going back one real step (see § in-app history) instead of always
      Home, an entry for a just-removed playlist sits one step behind the
@@ -11296,18 +11494,19 @@ function renderPlaylistDetail(id) {
         <a class="back" href="#/">‹</a>
         <div>
           <h2>${esc(p.title)}</h2>
-          <p class="sub">${joinMeta(countLabel(rows.length, "episode"), p.isSubject ? "picked for you" : (p.isGenerated ? "generated for you" : "playlist"), played ? `${played} played` : "")}</p>
+          <p class="sub">${joinMeta(p.isShared ? "Shared playlist" : "", countLabel(rows.length, "episode"), p.isSubject ? "picked for you" : (p.isGenerated ? "generated for you" : (p.isShared ? "" : "playlist")), played ? `${played} played` : "")}</p>
         </div>
+        ${shareBtn({ kind: "playlist", id: p.id, playlist: p, title: p.title })}
       </div>
       ${source ? savePlaylistControlHtml(p) : ""}
       ${p.sparse ? `<p class="note">Only found a few on this — here's what 4a has.</p>` : ""}
       ${p.relaxed === "duration" ? `<p class="note">Couldn't match the length you asked for — here's what 4a found without it.</p>` : ""}
       ${partsNote(rows)}
       ${rows.map((r, i) => r.state === "live" ? epRow(r.item, i, ctx, nextIdx) : r.state === "hidden" ? familyHiddenRow(i, ctx) : archivedRow(r.item, i, ctx)).join("")}
-      ${(p.isSubject || p.isGenerated) ? "" : `<button class="danger" id="pl-remove">remove this playlist</button>`}
+      ${(p.isSubject || p.isGenerated || p.isShared) ? "" : `<button class="danger" id="pl-remove">remove this playlist</button>`}
     </div>`;
 
-  if (!p.isSubject && !p.isGenerated) $("#pl-remove")?.addEventListener("click", () => {
+  if (!p.isSubject && !p.isGenerated && !p.isShared) $("#pl-remove")?.addEventListener("click", () => {
     /* A pure edit (editPlaylists), so a remove made before hydration composes
        with a save still queued there instead of being undone by it. */
     editPlaylists(list => list.filter(x => x.id !== p.id));
@@ -11594,6 +11793,8 @@ function episodeDescriptionTokens(text, durationSec = null) {
 
 if (typeof window !== "undefined") {
   window.ForayNotes = { tokens: episodeDescriptionTokens, lines: episodeNotesTokens };
+  /* The episode page's chapter list and its precision, for Now Playing (CH-4). */
+  window.ForayChapters = { forItem: episodeChapterList, precision: chapterPrecision };
 }
 
 /* COLLAPSED BY DEFAULT (founder, 2026-09-18): "When I'm listening to a podcast
@@ -11629,29 +11830,162 @@ function episodeDescriptionSectionHtml(item) {
     </details>`;
 }
 
+/* CHAPTERS ON THE PAGE, VISIBLE (CH-1, #1071). Six rows show; the rest wait
+   in a native <details>, so a 40-chapter episode still leaves the page mostly
+   artwork (founder, 2026-09-18, above). Each row is a `data-ts` seek control,
+   the contract bindEpisodeSeeks binds. Times are honest: a chapter stamp is
+   FOREIGN (authored against the publisher's master), so on a stitched or
+   unclassified show it reads "~68 min" with one plain line saying so. */
+const CHAPTERS_VISIBLE = 6;
+const CHAPTER_ART_PX = 120;  // a 40 px chapter thumbnail at 3x, like ROW_ART_PX (perf-2)
 function episodeChaptersHtml(item) {
-  const chapters = Array.isArray(item.chapters) ? item.chapters : [];
-  if (!chapters.length) return "";
-  /* Each row is a seek control now, for the same reason the timestamps in the
-     description are: a chapter list you cannot jump from is a table of contents
-     with no page numbers. `data-ts` is the one contract both share, so
-     `bindEpisodeSeeks` binds them in a single pass. */
+  const list = episodeChapterList(item);
+  if (!list.length) return "";
+  const precision = chapterPrecision(item);
+  const exact = precision === "exact";
+  const p = window.ForaySeekPolicy;
+  const row = (c) => {
+    const mins = Math.round(c.secs / 60);
+    const time = exact ? fmtChapterTime(c.secs) : p?.formatTimestamp ? p.formatTimestamp(c.secs, precision) : `~${mins} min`;
+    const said = exact ? fmtChapterTime(c.secs) : p?.describeTimestamp ? p.describeTimestamp(c.secs, precision) : `around minute ${mins}`;
+    const img = c.img ? `<img class="ep-chapter-img" src="${esc(safeUrl(artUrl(c.img, CHAPTER_ART_PX)))}" alt="" loading="lazy" decoding="async" width="40" height="40">` : "";
+    return `<li><button type="button" class="ep-chapter-row" data-ts="${esc(String(c.secs))}" aria-label="${esc(`Play from ${said}, ${c.title}`)}">${img}<span class="ep-chapter-time">${esc(time)}</span><span class="ep-chapter-title">${esc(c.title)}</span></button></li>`;
+  };
+  const rest = list.slice(CHAPTERS_VISIBLE);
   return `<section class="ep-chapters">
     <h3>Chapters</h3>
-    <ol class="ep-chapters-list">
-      ${chapters.map(c => {
-        /* `== null` FIRST, because `Number(null)` is 0 and `Number("")` is 0 —
-           a chapter with no recorded start would otherwise render as a control
-           that seeks confidently to the beginning. Caught by a test. */
-        const secs = c.start_time_seconds == null ? NaN : Number(c.start_time_seconds);
-        const time = esc(fmtChapterTime(c.start_time_seconds));
-        const title = esc(c.title || "");
-        return Number.isFinite(secs)
-          ? `<li><button type="button" class="ep-chapter-row" data-ts="${esc(String(secs))}"><span class="ep-chapter-time">${time}</span><span class="ep-chapter-title">${title}</span></button></li>`
-          : `<li><span class="ep-chapter-time">${time}</span><span class="ep-chapter-title">${title}</span></li>`;
-      }).join("")}
-    </ol>
+    ${exact ? "" : `<p class="ep-chapters-note">Times are approximate on this show.</p>`}
+    <ol class="ep-chapters-list">${list.slice(0, CHAPTERS_VISIBLE).map(row).join("")}</ol>
+    ${rest.length ? `<details class="ep-chapters-more"><summary>All ${list.length} chapters</summary><ol class="ep-chapters-list" start="${CHAPTERS_VISIBLE + 1}">${rest.map(row).join("")}</ol></details>` : ""}
   </section>`;
+}
+
+/* ---------- the one chapter source (CH-1, #1071) ----------
+
+   `episodeChapterList(item)` -> [{secs, title, img, url, source}], read by the
+   page above and, through window.ForayChapters, by Now Playing (CH-4), so the
+   two can never list different chapters. Order (founder on #1071, "Phone
+   reads the MP3"): the feed's own chapters (item.chapters — the API's, or
+   ones this device read: the podcast:chapters JSON, then the MP3's ID3 tag,
+   see hydrateFeedChapters) win; with none, a chapter list typed into the notes
+   counts only with two or more stamps in strictly ascending order — one stamp,
+   or times out of order, is prose, not a table of contents. */
+function episodeChapterList(item) {
+  const feed = (Array.isArray(item?.chapters) ? item.chapters : [])
+    /* `== null` FIRST, because `Number(null)` is 0 and `Number("")` is 0 — a
+       chapter with no recorded start would otherwise seek confidently to the
+       beginning. Such a chapter is dropped. */
+    .filter(c => c && c.start_time_seconds != null && Number.isFinite(Number(c.start_time_seconds)));
+  if (feed.length) return feed.map((c, i) => chapterEntry(Number(c.start_time_seconds), c, c.source || "feed", i));
+  return descriptionChapters(item?.description, item ? itemDurationSec(item, { upperBound: true }) : null);
+}
+
+function descriptionChapters(text, durationSec = null) {
+  const rows = String(text ?? "").split("\n").map(l => descChapterToken(l, durationSec)).filter(Boolean);
+  if (rows.length < 2 || rows.some((r, i) => i && r.secs <= rows[i - 1].secs)) return [];
+  return rows.map((r, i) => chapterEntry(r.secs, { title: r.title }, "description", i));
+}
+
+/* Titles trimmed (a CRLF feed leaves `\r`), an empty one numbered; the art
+   kept only over https and the link only over http(s), both through safeUrl. */
+function chapterEntry(secs, c, source, i) {
+  const img = typeof c.img === "string" && /^https:/i.test(c.img) && safeUrl(c.img) !== "#" ? c.img : null;
+  const url = typeof c.url === "string" && safeUrl(c.url) !== "#" ? c.url : null;
+  return { secs, title: String(c.title ?? "").trim() || `Chapter ${i + 1}`, img, url, source };
+}
+
+/* ONE PRECISION RULE FOR EVERY FOREIGN STAMP — chapters and timestamp links
+   (deepLinkPrecise) alike: player/seek-policy.js `seekPrecision`, published as
+   window.ForaySeekPolicy. An unclassified show (`dai_known: false`) counts as
+   stitched, and with no policy loaded yet (app.js is a classic script that
+   runs before the module) the answer is approximate: fail honest, never exact. */
+function chapterPrecision(item) {
+  const p = window.ForaySeekPolicy;
+  try {
+    return p.seekPrecision({ dai_suspected: item?.dai_suspected === true || item?.dai_known === false },
+      { source: p.FOREIGN, isLocalFile: playsLocalFile(item) }).precision;
+  } catch (_) {
+    return "approximate";
+  }
+}
+
+/* True only when a play would come from the downloaded file: PQ-19's own
+   decision (client.js localSourceFor, download-store playSource), so a `done`
+   record the platform cannot play from is not called exact. */
+function playsLocalFile(item) {
+  try {
+    const dl = window.forayDownloads;
+    if (!dl?.store || typeof dl.recordFor !== "function") return false;
+    const platform = dl.platform || window.Capacitor?.getPlatform?.() || "web";
+    return dl.store.playSource(item, dl.recordFor(item.id), { platform }).isLocalFile === true;
+  } catch (_) {
+    return false;
+  }
+}
+
+/* THE DEVICE READS THE CHAPTERS (founder on #1071: "Phone reads the MP3", no
+   4a server, native app only). When the page has no feed chapters, the phone
+   asks the publisher for the feed's podcast:chapters JSON, then for the MP3's
+   own ID3 chapters (window.ForayId3Chapters, when that module is loaded), and
+   repaints only the chapter section — and only while this episode's page is
+   still the route. Through CapacitorHttp, as the ID3 reader goes: the page's
+   CSP allows no publisher host in connect-src, so a WebView fetch could never
+   land. Once per episode per session, misses included; every failure is
+   silent and the notes' chapters stay. */
+const deviceChapterMemo = new Map();
+function hydrateFeedChapters(scope, item) {
+  const hasFeed = (it) => Array.isArray(it.chapters) && it.chapters.some(c => c && c.source !== "description");
+  if (!item?.id || hasFeed(item) || !isNativeShell() || !(item.chapters_url || item.audio_url)) return;
+  if (!deviceChapterMemo.has(item.id)) deviceChapterMemo.set(item.id, readDeviceChapters(item));
+  deviceChapterMemo.get(item.id).then((rows) => {
+    const m = /^#\/(?:episode|play)\/([^?]+)/.exec(String(window.location?.hash || ""));
+    if (!rows.length || hasFeed(item) || !m || safeDecode(m[1]) !== item.id) return;
+    item.chapters = rows;
+    if (state.itemIndex[item.id]) state.itemIndex[item.id].chapters = rows;
+    const html = episodeChaptersHtml(item);
+    const old = scope.querySelector(".ep-chapters");
+    if (old) old.outerHTML = html;
+    else (scope.querySelector(".ep-description") || scope.querySelector(".ep-actions"))?.insertAdjacentHTML("afterend", html);
+    bindEpisodeSeeks(scope, item);
+  }).catch(() => {});
+}
+
+async function readDeviceChapters(item) {
+  try {
+    const cap = window.Capacitor;
+    const url = item.chapters_url;
+    if (typeof url === "string" && /^https:\/\//i.test(url) && typeof cap?.nativePromise === "function") {
+      const ua = window.forayDownloads?.userAgent;
+      const res = await Promise.race([
+        cap.nativePromise("CapacitorHttp", "request", { url, method: "GET", headers: ua ? { "User-Agent": ua } : {}, responseType: "json" }),
+        new Promise((r) => setTimeout(() => r(null), 8000)),
+      ]);
+      if (res?.status === 200) {
+        const rows = validChapterRows((typeof res.data === "string" ? JSON.parse(res.data) : res.data)?.chapters, "json");
+        if (rows.length) return rows;
+      }
+    }
+  } catch (_) { /* a bad answer is no answer */ }
+  try {
+    const id3 = window.ForayId3Chapters;
+    if (item.audio_url && typeof id3?.forUrl === "function") {
+      const got = await id3.forUrl(item.audio_url, { id: item.id });
+      return validChapterRows(Array.isArray(got) ? got.map(c => ({ ...c, startTime: c?.secs })) : [], "id3");
+    }
+  } catch (_) { /* nothing read */ }
+  return [];
+}
+
+/* A Podcasting 2.0 chapters body (`startTime`; `toc: false` is a silent
+   chapter, not a list row) or our own shape, as item.chapters rows. */
+function validChapterRows(list, source) {
+  if (!Array.isArray(list)) return [];
+  return list.filter(c => c && typeof c === "object" && c.toc !== false).map((c) => {
+    const s = c.startTime ?? c.start_time_seconds;
+    return { title: typeof c.title === "string" ? c.title.slice(0, 200) : "", start_time_seconds: s == null || s === "" ? NaN : Number(s),
+      img: typeof c.img === "string" ? c.img : null, url: typeof c.url === "string" ? c.url : null, source };
+  }).filter(c => Number.isFinite(c.start_time_seconds) && c.start_time_seconds >= 0)
+    .sort((a, b) => a.start_time_seconds - b.start_time_seconds).slice(0, 500);
 }
 
 /**
@@ -11727,6 +12061,7 @@ function bindEpisodeSeeks(scope, item) {
       }
     });
   });
+  hydrateFeedChapters(scope, item);
 }
 
 /* `t` is a timestamp link's offset in whole seconds (#30, see episodeDeepLink),
@@ -11767,7 +12102,7 @@ function renderEpisode(id, { t = null } = {}) {
       ${item.artwork_url ? `<img class="ep-art" src="${esc(safeUrl(item.artwork_url))}" alt="" decoding="async" width="600" height="600">` : ""}
       ${item.hook ? `<p class="fp-s-why">${esc(item.hook)}</p>` : ""}
       ${playFromHtml(item, t)}
-      <div class="ep-actions">${item.audio_url ? playBtn(item) : notPlayableNote()}${starBtn(item.id)}${upNextBtn(item.id, item)}${item.audio_url ? `<button type="button" class="up-next playnext" data-playnext="${esc(item.id)}" aria-label="Play next">Play next</button>` : ""}</div>
+      <div class="ep-actions">${item.audio_url ? playBtn(item) : notPlayableNote()}${starBtn(item.id)}${upNextBtn(item.id, item)}${item.audio_url ? `<button type="button" class="up-next playnext" data-playnext="${esc(item.id)}" aria-label="Play next">Play next</button>` : ""}${shareBtn({ kind: "episode", id: item.id, item, title: item.title })}</div>
       ${item.audio_url ? "" : `<p class="note">${esc(NOT_PLAYABLE_WHY)}</p>`}
       ${downloadControlHtml(item)}
       ${episodeDescriptionSectionHtml(item)}
@@ -13070,36 +13405,6 @@ function unlockedForays() {
    as the `showDrafts` OPTION every visibility call below passes. */
 function showDraftsOn() { return lsGet("cp_show_drafts", false); }
 
-/* ---------- K-01: the founder's voice-engine probe switch ----------
-
-   `docs/bundled-voice-plan.md` K-01 asks for the measurement to reach a phone
-   behind the same unlock discipline HUMAN-ACTIONS.md #29 used — a hidden
-   affordance, not a product feature. That instrument itself is gone (D-01
-   deleted it, and `test/release-gates.test.js` keeps it deleted by name, so
-   nothing here reuses its identifiers). On `main` today the shape that
-   discipline has taken is `showDraftsOn` directly above: a `cp_` key, off by
-   default, a
-   drawer toggle that reads `<thing>: on|off`, and NOTHING RENDERED AT ALL
-   while it is off. This follows it exactly rather than inventing a second
-   idiom for the same job — there is one founder, and two ways of hiding a
-   founder switch is one too many to explain over a phone.
-
-   WHY A SWITCH AND THEN A BUTTON, rather than one button. The probe is a
-   90-second synthesis loop that pins a CPU; a stray tap on it during a drive
-   is a measurement nobody asked for and a battery reading nobody can use. The
-   switch is the deliberate act; the button is the run. When the switch is off
-   the run button is not merely disabled — it is not in the DOM, so the drawer
-   is byte-identical to what shipped before this card (the same claim
-   `test/draft-forays-switch.test.js` makes about its own switch, and
-   `test/voice-probe-switch.test.js` makes here).
-
-   `cp_voice_probe` goes through lsGet/lsSet like every other `cp_` key, has
-   its row in `docs/legal/privacy-policy.md` §1, is counted by
-   `test/data-deletion.test.js`, and is wiped by "Delete my data". `player/`
-   never reads it — `ForayPlayer.runVoiceProbe()` takes no flag, because the
-   decision of whether to offer the run belongs to the page. */
-function voiceProbeOn() { return lsGet("cp_voice_probe", false); }
-
 /** The visibility options every Foray surface hands the bridge: the `?foray=`
     unlock AND the switch, together, so no call site can pass one and forget
     the other.
@@ -13984,6 +14289,7 @@ async function renderForay(id) {
           <h2>${esc(r.title)}</h2>
           <p class="sub">${esc(forayHeadSub(r, player))}</p>
         </div>
+        ${draft ? "" : shareBtn({ kind: "foray", id: r.id, title: r.title })}
       </div>
       ${draft ? `<p class="fy-draft">${draftNote}</p>` : ""}
       ${r.foray.summary ? `<p class="fy-summary">${esc(r.foray.summary)}</p>` : ""}
@@ -15429,10 +15735,6 @@ function renderDrawer() {
      on/off — and the sixth switch is what made that a shape rather than a
      list (finding 6, client audit 2026-09-12). */
   paintDrawerToggles();
-  /* K-01: whether the RUN button exists at all. The toggle's own label is
-     painted above with the others; this is the control that appears and
-     disappears with it, which no label line can express. */
-  syncVoiceProbeRun();
   /* NE-22d: the engine's Developer rows, which exist only where an engine
      answered (see § the engine's Developer rows). */
   syncEngineDevRows();
@@ -15943,10 +16245,11 @@ function bindDrawerToggles() {
 
 /* ---------- the Developer group (2026-09-22 audit, founder ruling R8) ----------
 
-   "Show draft Forays", "Voice engine probe" and "Playback diagnostics" are the
-   founder's field-report tools, and they sat among a listener's three real
-   settings: the persona audit read them as debug switches shipped to everyone,
-   and one of them offers a button that blocks for ~90 seconds. They must stay
+   "Show draft Forays" and "Playback diagnostics" are the founder's
+   field-report tools (a third, "Voice engine probe", left with the on-device
+   Kokoro probe on 2026-10-05, issue #1076), and they sat among a listener's
+   three real settings: the persona audit read them as debug switches shipped
+   to everyone. They must stay
    REACHABLE — the founder files reports from a car with them — so they are not
    hidden behind an unlock. They are grouped instead: one collapsed "Developer"
    disclosure at the bottom of Settings, directly above "Delete my data" (which
@@ -15969,7 +16272,9 @@ function drawerDevGroup() {
   return group;
 }
 
-/** The founder's two switches, into the Developer group. */
+/** The founder's switch, into the Developer group. (The second, K-01's
+    "Voice engine probe", left with the on-device Kokoro probe on 2026-10-05:
+    founder ruling, issue #1076.) */
 function bindDeveloperToggles() {
   const into = drawerDevGroup();
   if (!into) return;
@@ -15977,148 +16282,6 @@ function bindDeveloperToggles() {
      his own switch, not listener behaviour worth a row. */
   drawerToggle("drafts-toggle", "Show draft Forays", showDraftsOn,
     (on) => lsSet("cp_show_drafts", on), { repaint: true, into });
-
-  /* K-01's measurement switch (see § voiceProbeOn). Its RUN button is not a
-     switch and is added/removed by `syncVoiceProbeRun` instead. */
-  drawerToggle("voice-probe-toggle", "Voice engine probe", voiceProbeOn,
-    (on) => lsSet("cp_voice_probe", on), { into });
-}
-
-/** The run control, created on demand by `renderDrawer`. Returns nothing; the
-    element is found by id like every other drawer control. */
-function syncVoiceProbeRun() {
-  const drawer = $("#drawer");
-  if (!drawer) return;
-  const toggle = $("#voice-probe-toggle");
-  const existing = $("#voice-probe-run");
-  if (!voiceProbeOn()) {
-    if (existing) existing.remove();
-    for (const id of ["#voice-probe-soak", "#voice-probe-arm", "#voice-probe-reset"]) {
-      const el = $(id);
-      if (el) el.remove();
-    }
-    return;
-  }
-  if (existing) return;
-  const run = ddEl("button", "drawer-item as-btn", "Run the voice engine probe");
-  run.type = "button";
-  run.id = "voice-probe-run";
-  /* Immediately after the toggle, not at the end of the drawer: "Delete my
-     data" is the last item by the rule `bindDeleteControl` states, and a
-     control that appears BELOW it would be the one a scrolled thumb lands on
-     instead. */
-  if (toggle && toggle.parentNode) toggle.parentNode.insertBefore(run, toggle.nextSibling);
-  else (drawerDevGroup() || drawer).appendChild(run);
-  run.disabled = Boolean(voiceProbeRunning);   // a control rebuilt mid-run is still busy (app-3-11)
-  run.addEventListener("click", () => runVoiceProbe());
-
-  /* KV-R3: the optional 30-minute SOAK (docs/voice/kokoro-speed-1.5x.md §5
-     item 9), iPhone only — Android's probe has no soak. Directly under the
-     run control, for the reason that one sits under its switch. */
-  if (!voiceSoakOffered() || !run.parentNode) return;
-  const soak = ddEl("button", "drawer-item as-btn", VOICE_SOAK_START_LABEL);
-  soak.type = "button";
-  soak.id = "voice-probe-soak";
-  run.parentNode.insertBefore(soak, run.nextSibling);
-  paintVoiceSoakControl(soak);
-  /* KV-R3 review: WHILE A SOAK RUNS this control STOPS it — thirty minutes
-     is too long to hold a phone hostage to an instrument. */
-  soak.addEventListener("click", () => (voiceProbeRunning && voiceProbeRunningSoak ? stopVoiceSoak() : runVoiceProbe("soak")));
-
-  /* PROBE v3.1, iPhone only, under the soak. "Arm Core ML (may crash)": on
-     iOS 26.4+ Apple's libBNNS crashes the Kokoro Core ML chain (FluidAudio
-     #844/#889; the founder's two crashes on build 2026092705), so the probe
-     refuses Core ML there (`coreml-bnns-os`) unless this is on. IN MEMORY
-     ONLY, never stored: a crash relaunches the app disarmed, so it can never
-     crash-loop. "Reset skipped passes": a pass that killed 4a is skipped by
-     every later run until this is tapped. */
-  const arm = ddEl("button", "drawer-item as-btn", "");
-  arm.type = "button";
-  arm.id = "voice-probe-arm";
-  soak.parentNode.insertBefore(arm, soak.nextSibling);
-  paintVoiceProbeArm(arm);
-  arm.addEventListener("click", () => {
-    voiceProbeArmCoreML = !voiceProbeArmCoreML;
-    paintVoiceProbeArm(arm);
-  });
-  const reset = ddEl("button", "drawer-item as-btn", VOICE_PROBE_RESET_LABEL);
-  reset.type = "button";
-  reset.id = "voice-probe-reset";
-  arm.parentNode.insertBefore(reset, arm.nextSibling);
-  reset.addEventListener("click", () => resetVoiceProbeSkips());
-}
-
-/* PROBE v3.1: whether the NEXT matrix run may run Core ML on iOS 26.4+.
-   Per app session, never persisted (see syncVoiceProbeRun). */
-let voiceProbeArmCoreML = false;
-const VOICE_PROBE_RESET_LABEL = "Reset skipped passes";
-
-function paintVoiceProbeArm(btn) {
-  setControlLabel(btn, voiceProbeArmCoreML
-    ? "Arm Core ML (may crash): ON for the next run"
-    : "Arm Core ML (may crash): off");
-}
-
-/** "Reset skipped passes": the passes that killed 4a run again next time. */
-function resetVoiceProbeSkips() {
-  const player = window.ForayPlayer;
-  const ui = diagSheet();
-  openDiagSheet();
-  if (!player || typeof player.resetVoiceProbeSkips !== "function") {
-    ui.status.textContent = "This build has no skipped passes to reset.";
-    return Promise.resolve(null);
-  }
-  return Promise.resolve(player.resetVoiceProbeSkips()).then((out) => {
-    ui.status.textContent = out && out.ok
-      ? `Reset: ${out.cleared ?? 0} skipped pass(es) will run again on the next probe.`
-      : "Could not reset the skipped passes.";
-    return out;
-  }, () => {
-    ui.status.textContent = "Could not reset the skipped passes.";
-    return null;
-  });
-}
-
-const VOICE_SOAK_START_LABEL = "Start the 30-minute soak (then lock the phone)";
-const VOICE_SOAK_STOP_LABEL = "Stop the soak now (keeps what it measured)";
-
-/** The soak control's state: "Start" when idle, disabled while the matrix
-    runs, and "Stop" (enabled) while a soak runs. */
-function paintVoiceSoakControl(btn) {
-  if (!btn) return;
-  const soaking = Boolean(voiceProbeRunning) && voiceProbeRunningSoak;
-  btn.disabled = Boolean(voiceProbeRunning) && !soaking;
-  setControlLabel(btn, soaking ? VOICE_SOAK_STOP_LABEL : VOICE_SOAK_START_LABEL);
-}
-
-/** End a running soak early. The soak's own promise then resolves with the
-    loops it finished and paints its report as usual. */
-function stopVoiceSoak() {
-  const player = window.ForayPlayer;
-  const ui = diagSheet();
-  openDiagSheet();
-  if (!player || typeof player.stopVoiceSoak !== "function") {
-    ui.status.textContent = "This build cannot stop the soak early. It ends on its own after 30 minutes.";
-    return Promise.resolve(null);
-  }
-  ui.status.textContent = "Stopping the soak — the record will show the loops it finished.";
-  const btn = $("#voice-probe-soak");
-  if (btn) btn.disabled = true;
-  return Promise.resolve(player.stopVoiceSoak()).then((out) => {
-    if (!out || !out.ok) ui.status.textContent = `Could not stop the soak (${(out && out.reason) || "unknown"}). It ends on its own after 30 minutes.`;
-    return out;
-  }, () => null);
-}
-
-/** Whether this shell can soak: the iOS app (Android's plugin has no soak
-    mode, and a browser has no probe at all). */
-function voiceSoakOffered() {
-  try {
-    const cap = window.Capacitor;
-    return Boolean(cap && typeof cap.getPlatform === "function" && cap.getPlatform() === "ios");
-  } catch (_) {
-    return false;
-  }
 }
 
 /* ---------- the engine's Developer rows (NE-22d) ----------
@@ -16140,7 +16303,8 @@ function voiceSoakOffered() {
    client's engineSend). Nothing here reaches the bridge directly, so a page
    with no engine cannot send one of these by any path.
 
-   APPENDED AND REMOVED, NEVER `hidden` (the reason `syncVoiceProbeRun` gives).
+   APPENDED AND REMOVED, NEVER `hidden`: a control that is only hidden is still
+   in the DOM, so the drawer is not byte-identical to one without it.
    Painted by `renderDrawer` like every other drawer label, from the ENGINE's
    answer: the pause hold is its snapshot, the engine setting is what it
    confirmed storing, and a one-shot row says what the engine replied to the
@@ -16319,171 +16483,6 @@ function bindEngineDevRows() {
   };
   if (window.ForayPlayer) whenLane();
   else window.addEventListener("forayplayer:ready", whenLane, { once: true });
-}
-
-/** Run the probe and show its numbers where the founder can copy them: the
-    Playback-diagnostics sheet, which is already the one copyable surface on
-    the phone (HUMAN-ACTIONS.md #21). The record is written into `cp_diag` by
-    `ForayPlayer.runVoiceProbe()` itself, so the sheet's own refresh picks it
-    up — this function opens the sheet and paints the human-readable summary
-    into its status line so the answer is legible before anyone scrolls.
-
-    GUARDED THE SAME WAY EVERY FORAY TAP IS (#225): a rejected promise here
-    must not become a console line nobody has open. */
-/* ONE PROBE AT A TIME (audit round 3, app-3-11). Nothing guarded a second
-   tap: a founder who reopened the drawer and pressed RUN again (nothing else
-   shows a run is under way for its ~90 s, and reopening the sheet clears its
-   status line) started a second engine load beside the first, both writing
-   the one status line in whatever order they finished. While a run is in
-   flight the control is disabled, and a second call reopens the sheet, says
-   it is running, and hands back the same promise. */
-let voiceProbeRunning = null;
-/* KV-R3: an iPhone runs SIX passes (the Core ML chain three ways, fp32 ORT
-   at 2/3/4 threads), each at speed 1.0 and 1.5; the Core ML passes compile
-   first. The founder runs it twice — unlocked, then locked right after the
-   tap — and the record says which run was which. */
-const VOICE_PROBE_RUNNING_LINE = "Running the voice probe — six passes at two speeds on iPhone, about five to ten minutes. "
-  + "For the locked run, lock the phone now; otherwise leave the app open. "
-  + "If 4a closes, just reopen it and tap the probe again; each run skips what crashed.";
-/* The soak: one pass, speed 1.5, in a loop for 30 minutes. */
-const VOICE_SOAK_RUNNING_LINE = "Running the 30-minute soak. Lock the phone now and leave it locked for 30 minutes. "
-  + "To end it early, unlock and tap \"Stop the soak now\".";
-/** ONE probe or soak at a time (app-3-11): both controls are disabled while
-    either runs, and a second tap reopens the sheet and hands back the run
-    already under way. */
-let voiceProbeRunningSoak = false;
-function runVoiceProbe(mode = "matrix") {
-  if (voiceProbeRunning) {
-    const ui = diagSheet();
-    openDiagSheet();
-    ui.status.textContent = voiceProbeRunningSoak ? VOICE_SOAK_RUNNING_LINE : VOICE_PROBE_RUNNING_LINE;
-    return voiceProbeRunning;
-  }
-  const soak = mode === "soak";
-  const run = soak ? runVoiceSoakOnce() : runVoiceProbeOnce();
-  voiceProbeRunning = run;
-  voiceProbeRunningSoak = soak;
-  const runBtn = $("#voice-probe-run");
-  if (runBtn) runBtn.disabled = true;
-  paintVoiceSoakControl($("#voice-probe-soak"));
-  const done = () => {
-    if (voiceProbeRunning !== run) return;
-    voiceProbeRunning = null;
-    voiceProbeRunningSoak = false;
-    const b = $("#voice-probe-run");
-    if (b) b.disabled = false;
-    paintVoiceSoakControl($("#voice-probe-soak"));
-  };
-  run.then(done, done);
-  return run;
-}
-
-/** KV-R3: the soak, reported the way the matrix is — into the record by the
-    player, and its readable summary into the sheet's status line. */
-async function runVoiceSoakOnce() {
-  const player = window.ForayPlayer;
-  const ui = diagSheet();
-  openDiagSheet();
-  ui.status.classList.remove("dd-status-report");
-  ui.status.textContent = VOICE_SOAK_RUNNING_LINE;
-  if (!player || typeof player.runVoiceSoak !== "function") {
-    ui.status.textContent = "This build has no soak. Update the app and try again.";
-    return null;
-  }
-  try {
-    const result = await player.runVoiceSoak();
-    const record = Array.isArray(result) ? result[0] : result;
-    refreshDiagSheet();
-    ui.status.classList.add("dd-status-report");
-    ui.status.textContent = typeof player.formatVoiceSoak === "function" && record
-      ? `${player.formatVoiceSoak(record)}\nCopy the record above and paste it into the card.`
-      : "The soak finished. Copy the record above.";
-    return result;
-  } catch (_) {
-    ui.status.textContent = "The soak failed to run. Copy the record above and say what build this is.";
-    return null;
-  }
-}
-
-/** KV-R3: one "Play" button per pass whose speed-1.5 WAV the run kept, under
-    the sheet's status line — the founder's ear on each engine at 1.5x (§5
-    item 10). The phone plays it natively; nothing here holds a path.
-    Replaced on every run, never stacked. */
-function paintVoiceProbeListen(ui, player, records) {
-  const old = $("#voice-probe-listen");
-  if (old) old.remove();
-  if (!player || typeof player.voiceProbeWavPasses !== "function" || typeof player.playVoiceProbeWav !== "function") return;
-  const passes = player.voiceProbeWavPasses(records);
-  if (!passes.length || !ui.status || !ui.status.parentNode) return;
-  const box = ddEl("div", "diag-listen");
-  box.id = "voice-probe-listen";
-  for (const pass of passes) {
-    const label = `Play ${pass} at 1.5x`;
-    const btn = ddEl("button", "drawer-item as-btn", label);
-    btn.type = "button";
-    btn.addEventListener("click", () => {
-      Promise.resolve(player.playVoiceProbeWav(pass)).then((out) => {
-        setControlLabel(btn, out && out.ok ? label : `${label} (could not play: ${(out && out.reason) || "unknown"})`);
-      }, () => {});
-    });
-    box.appendChild(btn);
-  }
-  ui.status.parentNode.insertBefore(box, ui.status.nextSibling);
-}
-
-async function runVoiceProbeOnce() {
-  const player = window.ForayPlayer;
-  const ui = diagSheet();
-  openDiagSheet();
-  ui.status.classList.remove("dd-status-report");
-  ui.status.textContent = VOICE_PROBE_RUNNING_LINE;
-  if (!player || typeof player.runVoiceProbe !== "function") {
-    ui.status.textContent = "The player hasn't loaded, so the probe can't run.";
-    return null;
-  }
-  try {
-    /* ONE RECORD PER PASS since KV-R2 (`cpu`, then `coreml` on iPhone); an
-       older player answers one record, which is a list of one. */
-    const result = await player.runVoiceProbe({ armCoreML: voiceProbeArmCoreML });
-    const records = Array.isArray(result) ? result : (result ? [result] : []);
-    refreshDiagSheet();
-    /* KV-R3: a v3 run (records carry a speed) is one compact TABLE with a
-       1.5x verdict per pass and §4's decision rule, not twelve blocks of
-       K-01's go/no-go (whose 0.8 ceiling is not this card's question). */
-    const table = typeof player.formatVoiceProbeTable === "function" ? player.formatVoiceProbeTable(records) : "";
-    if (table && records.some((r) => r && r.speed != null)) {
-      ui.status.classList.add("dd-status-report");   // a table: kept lines, fixed-width columns
-      /* PROBE v3.1: say, in words, why Core ML did not run or was skipped. */
-      const why = records.some((r) => r && r.reason === "coreml-bnns-os")
-        ? "\nCore ML did not run: iOS 26.4 and later crash it (an Apple bug). Tap \"Arm Core ML (may crash)\" first to try it anyway."
-        : "";
-      const skipped = records.some((r) => r && r.reason === "skipped-killed-last-run")
-        ? "\nSome passes were skipped because they closed 4a last time. \"Reset skipped passes\" runs them again."
-        : "";
-      ui.status.textContent = `${table}${why}${skipped}\nCopy the record above and paste it into the card.`;
-      paintVoiceProbeListen(ui, player, records);
-      return result;
-    }
-    const format = (record) => (typeof player.formatVoiceProbe === "function"
-      ? player.formatVoiceProbe(record)
-      : { text: "", verdict: { go: false, failures: ["no verdict available"] } });
-    /* A pass that measured shows its numbers and its verdict; a pass that
-       could not says why, beside the one that could. Only when NO pass
-       measured does the line collapse to the reason. */
-    ui.status.textContent = records.some((r) => r && r.ok)
-      ? records.map((r) => {
-        const out = format(r);
-        return r && r.ok
-          ? `${out.text}\n  go/no-go: ${out.verdict.go ? "GO" : `NO — ${out.verdict.failures.join("; ")}`}`
-          : out.text;
-      }).join("\n\n")
-      : `The probe could not measure anything: ${records.map((r) => (r && r.reason) || "unknown").join(", ") || "unknown"}. `
-        + `The record above says the same thing — copy it.`;
-    return result;
-  } catch (_) {
-    ui.status.textContent = "The probe failed to run. Copy the record above and say what build this is.";
-    return null;
-  }
 }
 
 /* The Interests page (#/interests, U-07) is reachable from Settings, but
@@ -18386,19 +18385,12 @@ function episodeDeepLinkHash({ seg, t }) {
 
 /** Is a timestamp link's target exact for this item? seekPrecision's answer
     (player/seek-policy.js) for a FOREIGN stamp with no durations to compare —
-    a link was made against somebody else's copy: a downloaded file is exact
-    (its timeline is frozen), a static enclosure is exact, a stitched (DAI)
-    stream is approximate. app.js is a classic script and cannot import that
-    module, and client.js does not publish it; this is the same two-input rule,
-    read from the same fields. */
+    a link was made against somebody else's copy: a file that will play from
+    the download is exact (its timeline is frozen), a classified static
+    enclosure is exact, a stitched or unclassified stream is approximate. The
+    rule lives once, in chapterPrecision (CH-1), not mirrored here. */
 function deepLinkPrecise(item) {
-  if (!item || !item.dai_suspected) return true;
-  try {
-    const rec = downloadsValue().items[item.id];
-    return !!rec && rec.status === "done";
-  } catch (_) {
-    return false;
-  }
+  return !!item && chapterPrecision(item) === "exact";
 }
 
 /** The episode page's "Play from <stamp>" button for a timestamp link, or "".

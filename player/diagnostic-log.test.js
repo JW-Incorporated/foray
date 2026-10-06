@@ -35,7 +35,6 @@ import {
   dataTokenOf, dataVersionOf, dataFileTagOf, dataIdOf, DATA_PHASES, DATA_SOURCES,
   nowPlayingFieldOf, NOWPLAYING_FIELD_MAX, NOWPLAYING_VIA, SESSION_KINDS, SESSION_PRODUCERS,
   TRANSPORT_SOURCES, TRANSPORT_ACTIONS, REMOTE_COMMANDS, REMOTE_ORIGINS,
-  PROBE_ORT_CODES, PROBE_ORT_STAGES, PROBE_LINE_OUTCOMES, THERMAL_STATES,
   NARRATION_FALLBACK_REASONS, NARRATION_FALLBACK_AT, audioHostTokenOf,
 } from "./diagnostic-log.js";
 /* The REAL store for the held-write tests below: whether a row written before a
@@ -2875,18 +2874,6 @@ test("GAPS Lane A: a probe value in the wrong shape is dropped, never stored —
   assert.doesNotMatch(store.getItem(DIAG_KEY), /var\/mobile|iPhone15,2|04c658ae1|boom/);
   assert.equal(lineOf(log, "voiceProbe").replace(/^#1 {4}\S+ /, ""),
     "voiceProbe kokoro-probe could not measure: synthesis-failed  hidden=n");
-});
-
-test("GAPS Lane A: this file's probe vocabularies are the ones kokoro-probe.js admits (when it exports them)", async (t) => {
-  /* This module imports nothing, so the two copies are pinned here instead.
-     Skipped until Lane A's kokoro-probe.js exports its sets. */
-  const kp = await import("./kokoro-probe.js");
-  if (!Array.isArray(kp.ORT_CODES)) { t.skip("kokoro-probe.js does not export ORT_CODES yet (Lane A)"); return; }
-  const same = (a, b) => assert.deepEqual([...a].sort(), [...b].sort());
-  same(PROBE_ORT_CODES, kp.ORT_CODES);
-  same(PROBE_ORT_STAGES, kp.ORT_STAGES);
-  same(PROBE_LINE_OUTCOMES, kp.LINE_OUTCOMES);
-  same(THERMAL_STATES, kp.THERMAL_STATES);
 });
 
 /* ==================================================================== */
