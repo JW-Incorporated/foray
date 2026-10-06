@@ -371,6 +371,41 @@ function fileUrl(path) {
   return "file://" + path.split("/").map((seg) => encodeURIComponent(seg)).join("/");
 }
 
+/** THE ONE GATE for "this download has a file to open" (CH-27, P2-18): `done`
+    with a non-empty `path`. It is `normaliseItem`'s rule read the other way —
+    a done row without a path is read back as `missing` — so a row the record
+    calls missing never opens a file, whichever reader asks. `playSource` (the
+    engine) and `readSource` (the WebView's own fetch) both go through it. */
+function hasFile(record) {
+  return !!record && record.status === "done" && isStr(record.path);
+}
+
+/**
+ * The URL the WEBVIEW can fetch a downloaded file at, or null — for a reader
+ * that opens the bytes itself (the chapter reader, `id3-chapters.js`), not for
+ * the engine (that is `playSource`).
+ *
+ * Same gate as `playSource` (`hasFile`). The URL is the bridge's
+ * `fileSrc({path})` first — Capacitor's `convertFileSrc`, computed now, so a
+ * record whose `webSrc` was stamped by an older shell or another origin is not
+ * trusted over the live answer — then the stored `webSrc`.
+ *
+ * A `file:` URL IS REFUSED. On iOS the native engine takes `file://` (that is
+ * `playSource`'s iPhone branch), but the page's `fetch` cannot: the WebView's
+ * origin is `capacitor://localhost` / `https://localhost`, and a `file:` read
+ * from it is blocked. Handing it over would only spend the reader's deadline
+ * on a request that cannot succeed. Total: a bridge that throws is null.
+ */
+export function readSource(record, bridge) {
+  if (!hasFile(record)) return null;
+  try {
+    const src = bridge?.fileSrc?.({ path: record.path }) ?? record.webSrc;
+    return isStr(src) && !src.startsWith("file:") ? src : null;
+  } catch (_) {
+    return null;
+  }
+}
+
 /**
  * The source to hand the engine for this item. A `done` record with a path
  * plays from the file: on iOS the native engine takes any absolute URL with a
@@ -383,7 +418,7 @@ function fileUrl(path) {
  */
 export function playSource(item, record, { platform } = {}) {
   const remote = { audio_url: item ? item.audio_url : undefined, isLocalFile: false };
-  if (!record || record.status !== "done" || !isStr(record.path)) return remote;
+  if (!hasFile(record)) return remote;
   const local = platform === "ios" ? fileUrl(record.path) : record.webSrc;
   if (!isStr(local)) return remote;
   return { audio_url: local, isLocalFile: true };
