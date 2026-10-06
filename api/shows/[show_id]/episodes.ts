@@ -152,10 +152,13 @@ function firstParam(v: string | string[] | undefined): string | null {
 }
 
 /** Maps a freshly-parsed feed episode to the same shape the DB path returns.
- * `chapters` is always null here — same lazy-fetch rule as ingestShowFeed.ts
- * (only the pointer is ever stored/returned, the body is fetched separately
- * per-episode). A missing enclosure never fabricates an audio_url — dropped,
- * matching ingestShowFeed's own toCatalogEpisode rule. */
+ * `chapters` carries the chapters the feed published INLINE (Podlove Simple
+ * Chapters, `psc:chapters` — parser.ts `inlineChapters`), sorted by start, or
+ * null when the item has none. A podcasting-2.0 `podcast:chapters` JSON file
+ * is still never fetched here: only its pointer, `chapters_url`, is returned,
+ * and the body is fetched separately per-episode (#1071). A missing enclosure
+ * never fabricates an audio_url — dropped, matching ingestShowFeed's own
+ * toCatalogEpisode rule. */
 /**
  * The row as the LIST is served: everything except `description_html`.
  *
@@ -205,7 +208,7 @@ function toLiveEpisode(showId: string, ep: ParsedEpisode, idx: number): CatalogS
     season_number: ep.seasonNumber,
     episode_number: ep.episodeNumber,
     chapters_url: ep.chaptersUrl,
-    chapters: null
+    chapters: ep.inlineChapters ?? null
   };
 }
 

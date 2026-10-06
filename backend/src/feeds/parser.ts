@@ -22,8 +22,33 @@ export interface ParsedEpisode {
   timedTranscriptUrl: string | null;
   timedTranscriptType: string | null;
   chaptersUrl: string | null;
+  /**
+   * Chapters carried INLINE in the feed as Podlove Simple Chapters
+   * (`<psc:chapters><psc:chapter start=".." title=".."/></psc:chapters>`),
+   * sorted by start and capped at {@link MAX_INLINE_CHAPTERS}. Null when the
+   * item has no psc:chapters block or none of its chapters has a usable start.
+   * Independent of `chaptersUrl` (the podcasting-2.0 JSON pointer): a feed may
+   * publish either, both, or neither (#1071).
+   */
+  inlineChapters: ParsedChapter[] | null;
   warnings: string[];
 }
+
+/**
+ * One inline chapter. Same `title` + `start_time_seconds` pair as the
+ * catalogue's `ChapterMarker` (so it drops straight into an episode row's
+ * `chapters`), plus the two optional links Podlove allows. `url` and `img`
+ * are present only when the feed gave a safe value.
+ */
+export interface ParsedChapter {
+  title: string;
+  start_time_seconds: number;
+  url?: string;
+  img?: string;
+}
+
+/** Upper bound on inline chapters kept per episode — a feed is untrusted input. */
+export const MAX_INLINE_CHAPTERS = 500;
 
 export interface ParsedFeed {
   title: string;
@@ -113,6 +138,80 @@ function normalizeMimeType(raw: string | null): string | null {
   return base ? base : null;
 }
 
+/**
+ * Parses a Podlove `start` attribute — Normal Play Time — into seconds.
+ * Accepted: `HH:MM:SS`, `MM:SS` or plain `SS`, each with an optional
+ * fractional part on the seconds (`00:08:37.000`, `8:37.5`, `517.25`). The
+ * leading field is unbounded (a 90-minute chapter may be written `90:00`);
+ * any field after the first must be below 60. Returns null for anything else
+ * — negative, empty, more than three fields, letters — so a malformed start
+ * drops that one chapter rather than seeking to a fabricated time.
+ */
+export function parseNormalPlayTime(raw: string | null): number | null {
+  if (raw === null) return null;
+  const parts = raw.trim().split(":");
+  if (parts.length > 3) return null;
+  const secPart = parts[parts.length - 1] as string;
+  if (!/^\d+$/.test(secPart) && !/^\d+\.\d+$/.test(secPart)) return null;
+  const head = parts.slice(0, -1);
+  if (!head.every((p) => /^\d+$/.test(p))) return null;
+  const nums = parts.map(Number);
+  // Every field after the leading one is a base-60 digit.
+  for (let i = 1; i < nums.length; i++) {
+    if ((nums[i] as number) >= 60) return null;
+  }
+  let total = 0;
+  for (const n of nums) total = total * 60 + n;
+  if (!Number.isFinite(total)) return null;
+  return Math.round(total * 1000) / 1000;
+}
+
+/** A URL string with one of the allowed protocols, or null. */
+function safeUrl(raw: string | null, protocols: readonly string[]): string | null {
+  if (raw === null) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  try {
+    const u = new URL(trimmed);
+    /* Return the normalized href, not the raw input: WHATWG serialization
+       percent-encodes `"`, `<` and `>`, so an allowed-scheme URL can never
+       close an attribute it is later interpolated into. */
+    return protocols.includes(u.protocol) ? u.href : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Podlove Simple Chapters (psc:chapters) on one item -> sorted inline
+ * chapters, or null when absent/empty. A chapter with no parseable `start`
+ * is dropped; `href` survives only as http(s), `image` only as https (it is
+ * rendered on an https page, and http would be mixed content).
+ */
+function parsePscChapters(item: Record<string, unknown>): ParsedChapter[] | null {
+  const block = firstOf(item["psc:chapters"] as unknown);
+  if (!isPlainObject(block)) return null;
+  const raw = block["psc:chapter"];
+  const list: unknown[] = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  const chapters: ParsedChapter[] = [];
+  for (const node of list) {
+    const start = parseNormalPlayTime(attrOf(node, "start"));
+    if (start === null) continue;
+    const chapter: ParsedChapter = {
+      title: decodeEntities((attrOf(node, "title") ?? "").trim()),
+      start_time_seconds: start
+    };
+    const url = safeUrl(attrOf(node, "href"), ["http:", "https:"]);
+    if (url) chapter.url = url;
+    const img = safeUrl(attrOf(node, "image"), ["https:"]);
+    if (img) chapter.img = img;
+    chapters.push(chapter);
+  }
+  if (chapters.length === 0) return null;
+  chapters.sort((a, b) => a.start_time_seconds - b.start_time_seconds);
+  return chapters.slice(0, MAX_INLINE_CHAPTERS);
+}
+
 function parsePubDate(raw: string | null): { iso: string | null; warning?: string } {
   if (!raw) return { iso: null };
   const d = new Date(raw);
@@ -144,6 +243,8 @@ const xmlParser = new XMLParser({
       "rss.channel.item",
       "rss.channel.item.enclosure",
       "rss.channel.item.podcast:transcript",
+      "rss.channel.item.psc:chapters",
+      "rss.channel.item.psc:chapters.psc:chapter",
       "rss.channel.item.itunes:category",
       "rss.channel.itunes:category"
     ].includes(jpath)
@@ -330,6 +431,7 @@ function parseItem(rawItem: unknown, idx: number): ParsedEpisode {
   const timedTranscriptType = timedTranscriptUrl ? normalizeMimeType(attrOf(timedTranscript, "type")) : null;
 
   const chaptersUrl = attrOf(item["podcast:chapters"], "url");
+  const inlineChapters = parsePscChapters(item);
 
   return {
     guid,
@@ -351,6 +453,7 @@ function parseItem(rawItem: unknown, idx: number): ParsedEpisode {
     timedTranscriptUrl,
     timedTranscriptType,
     chaptersUrl,
+    inlineChapters,
     warnings
   };
 }
