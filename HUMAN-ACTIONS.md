@@ -2,9 +2,21 @@
 
 <!-- ha-format: 2 -->
 
-> **29 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **30 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
+
+## #149 🟢 [UPGRADE] On a phone, check the download manager against the #29 acceptance list (~20 min)
+<!-- ha filed=2026-10-06 kind=default -->
+
+**Why:** Offline downloads are merged (#1020, #1052, #1068, #1073) and unit-tested, but nobody has run them on a phone, and five of #29's acceptance asks can only be proven there: background download, airplane-mode playback, exact bookmarks on a downloaded `dai_suspected` episode, the missing-file fallback, and that the download fetches the publisher's original URL. iPhone only: the Android half waits for the Android native engine (your ruling D-A3, 2026-09-29; #127). The Wi-Fi-only, 2 GB, manual-only behaviour being checked is the default from `docs/roadmap/README.md` question 17, still a proposal, not a ruling. Automatic download of a session's picks and the offline "earcon and advance" path are not built, so this check does not cover them.
+
+**Steps:**
+1. Install the first TestFlight build containing #1073 (`3a9dfefa`), or any later one, and turn TestFlight's Automatic Updates off for 4a.
+2. Run `docs/downloads-device-check.md` step by step (steps 0 to 7). Step 3's second half needs a second day. Step 4 needs a Mac with Xcode and a development build, and step 6 needs Proxyman or Charles. Mark a step "not run" if you lack those.
+3. Post one comment on issue #29 with pass, fail or not run for each step and the build number from Developer → Playback diagnostics → Copy. Add a Copy for any fail.
+
+**Worked if:** issue #29 has a comment with a result for all eight steps on a named build, and steps 1, 2, 3, 5, 6 and 7 pass.
 
 ## #148 🟡 [DECIDE] Pick which 4a redesign directions to build (~15 min)
 <!-- ha filed=2026-10-05 kind=default -->
