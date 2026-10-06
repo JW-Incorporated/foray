@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- The CSP below is byte-for-byte index.html's. A fixture with a weaker policy would pass the csp gate for the wrong reason. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' https: data:; media-src https:; connect-src 'self' https://qjdllvqdcgacvujhclny.supabase.co https://foray-web-seven.vercel.app; manifest-src 'self'; base-uri 'none'; form-action 'none'">
+<title>gates fixture</title>
+<link rel="stylesheet" href="gates-fixture.css">
+</head>
+<body>
+<!-- One deliberate violation per gate. Served only by `gates.mjs --target url`; never part of the app. -->
+<main>
+  <h1>Gates fixture</h1>
+  <p class="lowc">Low contrast text, fails color-contrast.</p>
+  <p>A sentence with an <a href="#/inline">inline link</a> that is exempt as inline text.</p>
+  <button id="gx-tiny" class="tiny">x</button>
+  <div class="spin"></div>
+  <div class="wide">wide</div>
+  <div class="carousel"><div>one</div><div>two</div><div>three</div></div>
+  <div class="clipbox"><div>clipped inside a 200px box</div></div>
+  <div class="pseudo"></div>
+  <div><button class="t40 ext44" id="gx-ext44" aria-label="ext44">a</button><button class="t40 ext40" id="gx-ext40" aria-label="ext40">b</button></div>
+  <div class="pair"><button class="t40 ext44" id="gx-pair1" aria-label="pair1">c</button><button class="t40 ext44" id="gx-pair2" aria-label="pair2">d</button></div>
+  <div style="color:red">inline style attribute (CSP)</div>
+  <button id="gx-open">Open sheet</button>
+  <div id="gx-sheet" role="dialog" aria-label="Fixture sheet" hidden>
+    <p>A sheet that never moves focus, never traps Tab, ignores Escape and never returns focus.</p>
+    <button id="gx-close" class="big">Close</button>
+  </div>
+</main>
+<script src="gates-fixture.js"></script>
+</body>
+</html>

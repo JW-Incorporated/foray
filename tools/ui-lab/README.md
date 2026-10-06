@@ -4,7 +4,7 @@ A Playwright screenshot + accessibility harness. It looks at today's app, or at
 any static prototype with hash routes, the same deterministic way every time, so
 two renders can be compared by a judge (or a diff).
 
-**One suite lives here: `baseline.test.mjs`** (pure diff/report logic, synthetic
+**Two suites live here: `baseline.test.mjs` and `gates.test.mjs`** (pure diff/report and gate-rule logic, synthetic
 PNGs, no browser; floored in `test/suite-integrity.test.js`). `tools/ci/run-suites.mjs`
 therefore runs `npm ci` in this directory. That installs playwright, axe-core,
 pixelmatch and pngjs but downloads **no browser** (`playwright install` is a
@@ -186,3 +186,62 @@ inline-style-free author rule of higher specificity.
 `lib/server.mjs` makes the same single CSP edit the Playwright site server does:
 `media-src https:` becomes `media-src 'self' https:` so the silent WAV can play. A
 prototype without that string is served byte-for-byte.
+
+## Hard-limit gates (`gates.mjs`)
+
+Mechanical checks of PLAN.md "Hard limits", so every Phase 4 screen build is
+measured before a judge looks at it. Same walker, states and stubs as `shoot.mjs`.
+
+```
+node tools/ui-lab/gates.mjs --target app --allow tools/ui-lab/gates-known-debt.json
+node tools/ui-lab/gates.mjs --target url --url path/to/prototype.html --routes "#/,#/x"
+# record today's violations as the known-debt list (re-run only when burning debt down)
+node tools/ui-lab/gates.mjs --target app --no-remote-images --write-allow tools/ui-lab/gates-known-debt.json
+```
+
+Writes `data-local/redesign/gates/<run>/gates.json` + `report.md` (grouped by gate,
+then screen). Exit 1 on any violation not in the `--allow` list (stale allow entries
+are reported, not fatal: remove them as the debt is fixed). `--no-reduce` runs the
+motion pass without reduced motion; it is calibration only and must find motion.
+A full app run is about 5 minutes (46 screens, three viewports).
+
+| Gate | Checks | Runs at |
+|---|---|---|
+| `errors` | console errors, uncaught `pageerror` | first viewport |
+| `requests` | failed or >=400 same-origin requests (ignore list in `lib/gates/config.mjs`) | first |
+| `csp` | `securitypolicyviolation` events (inline `style=`/script, `javascript:`) | first |
+| `tap-targets` | every visible a/button/[role=button]/input/select/[tabindex>=0]/summary is hit-tested: a 5x5 grid over the 44x44 square centred on it, via `elementFromPoint`, must land on it (an `::after` extension counts, an overlapping neighbour does not); a box already 44x44 passes unless covered at its centre | first |
+| `reduced-motion` | under `reducedMotion: reduce`, no animation/transition/`animate()` over 1 ms starts during a step, none running at the shot | first |
+| `overflow` | geometry, not `scrollWidth` (styles.css clips html/body with `overflow-x: clip`, so scrollWidth always equals clientWidth): the outermost visible element whose box leaves the viewport, ignoring horizontal scrollers and anything clipped inside the viewport | every viewport |
+| `sheet-focus` | an open `[role=dialog]`: focus moves in, 10 Tab presses stay inside, Escape (else its close control) closes it, focus returns to the opener | first |
+| `contrast` | axe `color-contrast` | first |
+
+First viewport = `393x852`. **Exemptions are explicit** in `lib/gates/config.mjs`: an
+`<a>` that is inline *and* has sibling text (WCAG 2.5.8 inline exception), a
+selector list (empty), the 1 ms "instant" motion floor, ignored same-origin 404s
+(`deploy-manifest.json`, `data/forays-directory.json`: both built at deploy time),
+and `SHEET_OPENERS`, which maps a dialog to its opener and close control. A dialog
+with no opener (the first-run sheet opens on load) reports return-focus as
+*unchecked*, never as a pass. The sheets covered today are Now Playing and the
+first-run intro; add an opener row when a build adds a sheet.
+
+**Proof the gates fire.** `fixtures/gates-fixture.html` (with the app's exact CSP
+`<meta>`) carries one violation per gate; `--target url --url
+tools/ui-lab/fixtures/gates-fixture.html --routes "#/,#/sheet"` reports all eight
+gates and nothing for its exempt inline link. Its rule logic is covered by `gates.test.mjs`
+(pure rule logic, no browser, floored).
+
+### Today's debt (trunk, 46 screens, 2026-10-05): `gates-known-debt.json`, 119 entries
+
+| Gate | Entries | What |
+|---|---|---|
+| tap-targets | 110 | `a.fy-chip` pills (63, about 35px tall), the `4a` wordmark link (41 screens, 24x25), 2 each of `button.fy-chip`, `input.interest-slider` (16px) and `button.fp-close` |
+| overflow | 1 | `stress/episode-token` at 375x667: the page-head title block spans 72..389 (the unbreakable 100-character token) |
+| contrast | 8 | Home's `.hv2-play-title` (2.48:1) and `.hv2-play-text` (2.72:1), on 4 states |
+| errors, requests, csp, reduced-motion, sheet-focus | 0 | the app is clean today |
+
+**First real-browser smoke of the 0d `app.js` split: clean.** Zero console errors,
+zero page errors, zero CSP violations and zero failed same-origin requests across
+all 46 screens, so the `ui/*.js` load order holds in Chromium, not only under `node:vm`.
+The reduced-motion recorder saw 0 motion under `reduce` and 3 records with it off
+(Now Playing slide, the intro panel), so the zero is a measurement, not a blind spot.
