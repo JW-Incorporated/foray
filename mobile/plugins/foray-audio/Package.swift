@@ -13,13 +13,11 @@ import PackageDescription
  * `cap sync`. Nothing here is committed to `mobile/ios/`, which stays
  * gitignored in full per `docs/android-shell-build.md` §1.5.
  *
- * UNLIKE `foray-tts`, this plugin is NOT `foray-audio`'s whole iOS story:
- * the audio-keepalive half (`android/`) stays Android-only per this
- * plugin's `package.json` `"//no-ios"` note (WebKit already keeps
- * backgrounded <audio> alive on iOS by itself). This SwiftPM package is
- * ONLY the L-01 Now Playing / remote-command half: `MPNowPlayingInfoCenter`
- * + `MPRemoteCommandCenter` behind the same `setNowPlaying` contract
- * Android answers.
+ * WHAT IT HOLDS: the L-01 Now Playing / remote-command half
+ * (`ForayAudioPlugin.swift`, the same `setNowPlaying` contract Android
+ * answers) AND the native playback engine under
+ * `ios/Sources/ForayAudioPlugin/Engine/`, which links `ForayEngineCore`
+ * (below) and owns the audio session in native mode.
  *
  * ── THE NATIVE ENGINE'S CORE IS A NESTED PATH DEPENDENCY (NE-01) ───────────
  *

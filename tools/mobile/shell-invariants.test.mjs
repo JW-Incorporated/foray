@@ -3885,6 +3885,27 @@ test("NE-16: EngineModeFlag.swift is byte-identical in foray-audio and foray-tts
   assert.match(stripSwiftComments(fs.readFileSync(TTS_SWIFT, "utf8")), /EngineModeFlag\.sessionOwnedByEngine/);
 });
 
+test("N1-06: routeChangeReason is byte-identical in ForayAudioPlugin.swift and ForayTtsPlugin.swift", () => {
+  /* Both plugins observe the same AVAudioSession route change and each emits a
+     session event for it: two producers per route change is the designed
+     signal, so both functions stay. What must not happen is the two token
+     tables drifting apart: diagnostic-log admits any dashed token, so a reason
+     added or respelled in one copy gives the same event two spellings and
+     nothing fails. The EngineModeFlag.swift pattern, applied to one function:
+     its body (the switch, from `{` to the closing brace) compared byte for
+     byte. The doc comments above the two differ and are not compared.
+     MUTATION: change one token in one copy (`"wake"` -> `"wake-from-sleep"`
+     in ForayTtsPlugin.swift), or add a case to one table only. */
+  const audio = swiftFuncDecl(fs.readFileSync(AUDIO_SWIFT, "utf8"), "routeChangeReason");
+  const tts = swiftFuncDecl(fs.readFileSync(TTS_SWIFT, "utf8"), "routeChangeReason");
+  assert.ok(audio, "ForayAudioPlugin.swift has no routeChangeReason");
+  assert.ok(tts, "ForayTtsPlugin.swift has no routeChangeReason");
+  assert.equal(tts, audio, "the two routeChangeReason copies differ");
+  assert.match(audio, /^func routeChangeReason\(_ raw: UInt\) -> String \{/);
+  assert.match(audio, /AVAudioSession\.RouteChangeReason\(rawValue: raw\)/);
+  assert.match(audio, /default: return "unknown"/);
+});
+
 const GRACE_SWIFT = path.join(ENGINE_DIR, "BackgroundGrace.swift");
 const CORE_ENGINE_SWIFT = path.join(CORE_DIR, "Sources/ForayEngineCore/Engine/EngineCore.swift");
 

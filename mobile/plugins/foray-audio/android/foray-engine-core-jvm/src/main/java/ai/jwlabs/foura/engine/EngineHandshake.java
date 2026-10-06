@@ -17,7 +17,15 @@ import java.util.Map;
  * cards.
  *
  * <p>Nothing calls it on Android yet: {@code engineHello} is not answered there until
- * A-31, and {@code mobile/ENGINE_DEFAULT.json} keeps Android on {@code legacy}.
+ * A-28 (docs/plans/android-assessment.md), and {@code mobile/ENGINE_DEFAULT.json} keeps
+ * Android on {@code js} until A-31 flips it.
+ *
+ * <p>{@code js} there and {@code NOT_BUILT_MODE}'s {@code legacy} here are the same lane
+ * (as is the Developer override's {@code web}): the JS player in the page. They are wire and
+ * file values, never renamed to match: {@code legacy} is never written into
+ * ENGINE_DEFAULT.json (the injector accepts only {@code js} or {@code native}), and
+ * {@code js} is never a hello answer. The glossary is the "ONE LANE, THREE NAMES" paragraph
+ * beside {@code ENGINE_MODES} in {@code player/engine-contract.js}.
  */
 public final class EngineHandshake {
     private EngineHandshake() {}

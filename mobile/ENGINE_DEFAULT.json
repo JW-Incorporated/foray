@@ -1,5 +1,5 @@
 {
-  "//": "Per platform since A-20 (docs/plans/android-assessment.md). ios: the plist injector (tools/mobile/inject-background-audio.mjs) writes ForayEngineDefault and ForayEngineCapabilities from this block; native since NE-27b, foray since NE-37 (the M2 flip). android: js, the legacy lane, until A-31 flips it; no Android build reads it before the Media3 engine exists.",
+  "//": "Per platform since A-20 (docs/plans/android-assessment.md). ios: the plist injector (tools/mobile/inject-background-audio.mjs) writes ForayEngineDefault and ForayEngineCapabilities from this block; native since NE-27b, foray since NE-37 (the M2 flip). android: js (the JS lane, which engineHello calls legacy and the Developer override calls web: player/engine-contract.js, ONE LANE, THREE NAMES) until A-31 flips it. The Media3 engine exists (A-21..A-26: the JVM core, ExoDeck, ForayPlaybackService) and ships in release APKs ahead of that flip, but nothing in a shipping build reads this block or reaches the engine until A-28 adds the bridge; until then only the debug build's EngineDriveReceiver drives it (docs/plans/android-assessment.md A-26).",
   "ios": {
     "mode": "native",
     "capabilities": ["episode", "continuation", "restore", "foray"],
