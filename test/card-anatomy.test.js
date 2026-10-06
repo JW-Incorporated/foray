@@ -584,7 +584,7 @@ test("an intro paragraph sits a section (20px) above the first card, not the row
 /* 9. Home's grouping rules, with no search engine on the page          */
 /* ==================================================================== */
 /* code-health CH-36 (X1-09, X1-19). This harness loads app.js WITHOUT
-   search-engine.js, as 43 app.js harnesses do, so these are also the proof
+   search-engine.js, as 30 app.js harnesses do, so these are also the proof
    that Home's grouping never needs the ranker to be present. */
 
 test("Home's branch grouping files a 'science/physics' episode under 'science', and an untagged one under 'other'", () => {
@@ -612,4 +612,21 @@ test("a generated playlist holds at most two episodes of one show when no search
   for (const it of picked) perShow[it.show] = (perShow[it.show] || 0) + 1;
   assert.deepStrictEqual(perShow, { "Show A": 2, "Show B": 2 });
   assert.deepStrictEqual(JSON.parse(JSON.stringify(picked.map((it) => it.id))), ["a4", "a3", "b1", "b0"], "newest first within the cap"); // a vm-realm array has a foreign prototype
+});
+
+test("the per-show cap is read from the engine LAZILY: app.js alone loads and answers 2, and follows an engine that arrives later", () => {
+  /* code-health CH-36 (X1-19). The generator reads SearchEngine.PER_SHOW_CAP
+     at call time, with GENERATED_PER_SHOW_CAP as the no-engine answer.
+     MUTATIONS: (1) read the engine at the TOP LEVEL (`const GENERATED_PER_
+     SHOW_CAP = SearchEngine.PER_SHOW_CAP;`) -> loadApp throws a ReferenceError
+     here, red. (Ran it. test/api-origin.test.js, the guard the card named,
+     stays green under it: it reads app.js's source and never runs it. This
+     harness runs app.js with no engine at all, so it is the guard.)
+     (2) ignore the engine in generatedPerShowCap() -> the last assertion is
+     red. */
+  const evalIn = loadApp();
+  assert.strictEqual(evalIn("typeof SearchEngine"), "undefined", "the premise: no engine on this page");
+  assert.strictEqual(evalIn("generatedPerShowCap()"), 2);
+  evalIn("globalThis.SearchEngine = { PER_SHOW_CAP: 3 }");
+  assert.strictEqual(evalIn("generatedPerShowCap()"), 3, "an engine on the page sets the cap");
 });

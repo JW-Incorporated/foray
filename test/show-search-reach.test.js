@@ -11,8 +11,8 @@
  *
  * Nothing in the suite would have gone red if the gate at that call site had
  * been deleted or inverted. `test/show-search-fallthrough.test.js` names the
- * constant (`SHOW_PREFIX_UNDERDELIVERS_BELOW`) only as a counterexample for a
- * DIFFERENT gate, the directory pass's. This suite closes that hole from the
+ * old gate's count (10, once `SHOW_PREFIX_UNDERDELIVERS_BELOW`) only as a
+ * counterexample for a DIFFERENT gate, the directory pass's. This suite closes that hole from the
  * outside: type a query, look at what is on the page, with no endpoint
  * answering at all.
  *
@@ -177,7 +177,7 @@ const THE_DAILY = { title: "The Daily", show_id: "1200361736" };
 test("a broad query reaches a word-start row the device is already holding: The Daily, from the committed index, with no endpoint", async () => {
   /* THE TEST THAT WOULD HAVE CAUGHT IT. Measured 2026-09-13 over the committed
      data/show-index.tsv: `daily` returns 25 rows from curated + the prefix
-     pass, so the old gate (`shown().length < SHOW_PREFIX_UNDERDELIVERS_BELOW`)
+     pass, so the old gate (`shown().length < 10`, SHOW_PREFIX_UNDERDELIVERS_BELOW)
      skipped the index scan, and The Daily — `chart_rank` 1, `show_id`
      1200361736, physically present in the file the phone already downloaded —
      was absent from the client's answer ENTIRELY. With the scan it is 17 of
@@ -188,7 +188,7 @@ test("a broad query reaches a word-start row the device is already holding: The 
      endpoint ever answers, so a pass means the device could answer this query
      on a plane.
 
-     MUTATION: restore `if (showIndex && shown().length < SHOW_PREFIX_UNDERDELIVERS_BELOW)`
+     MUTATION: restore `if (showIndex && shown().length < 10)`
      at the scan's call site in `runShowSearchCostly`, or any other gate keyed
      on how many rows the local pass already produced. `daily` produces 25, the
      scan never runs, and this goes red — which is exactly the state main was
@@ -206,8 +206,8 @@ test("the premise the test above rests on: `daily` really does deliver enough lo
      "Daily…" rows, `daily` would fall under ten local hits, the old gate would
      have run the scan anyway, and the test above would pass without proving
      anything at all. This asserts the fixture's own premise instead of
-     assuming it: the local pass alone clears `SHOW_PREFIX_UNDERDELIVERS_BELOW`,
-     which is what made the scan skippable in the first place.
+     assuming it: the local pass alone clears the old gate's 10, which is what
+     made the scan skippable in the first place.
 
      It also pins the SHAPE of the defect rather than its size — `>=`, not
      `=== 25` — so a data refresh that changes the count by a few rows does not
@@ -220,7 +220,10 @@ test("the premise the test above rests on: `daily` really does deliver enough lo
   m.input.fire("focus");
   await sleep(20);
   const localRows = m.evalIn('localShowMatches("daily").length');
-  const oldGate = m.evalIn("SHOW_PREFIX_UNDERDELIVERS_BELOW");
+  /* The old gate's number, written here: app.js no longer declares
+     SHOW_PREFIX_UNDERDELIVERS_BELOW (code-health CH-36, A2-15), because
+     nothing but this premise read it. */
+  const oldGate = 10;
   assert.ok(localRows >= oldGate,
     `the old gate only suppressed the scan when the local pass was full: got ${localRows} local rows against a gate of ${oldGate}`);
   const prefixOnly = m.evalIn('SearchEngine.prefixSearchShows("daily", showIndex).map(s => s.title)');

@@ -25,9 +25,10 @@
  *       - A count threshold is not merely unnecessary, it is BACKWARDS at the
  *         lengths that matter. `tim` returns ten strong local matches and not
  *         one of them is The Tim Ferriss Show, which Apple returns at #5. A
- *         threshold of ten — the value already in app.js as
- *         `SHOW_PREFIX_UNDERDELIVERS_BELOW` — suppresses exactly the show the
- *         listener meant, BECAUSE the local pass delivered plenty.
+ *         threshold of ten — the count app.js once gated its index scan on
+ *         (`SHOW_PREFIX_UNDERDELIVERS_BELOW`, deleted by code-health CH-36) —
+ *         suppresses exactly the show the listener meant, BECAUSE the local
+ *         pass delivered plenty.
  *       - The local list paints first and never waits for either request, and
  *         a directory pass that fails or times out leaves it exactly as it
  *         was. Both are asserted below rather than argued.
@@ -337,14 +338,15 @@ test("TEN strong local matches still ask the directory: the `tim` case, which ev
      Sermons, Timcast IRL, Timcast News, Tiny Matters...), and NOT ONE of them
      is The Tim Ferriss Show — which Apple returns at position 5. Strong-match
      COUNT anti-correlates with relevance at short lengths. Ten is also exactly
-     `SHOW_PREFIX_UNDERDELIVERS_BELOW`, the constant already in app.js, so the
-     obvious cheap gate is the one that breaks this query.
+     the count app.js once gated its index scan on (SHOW_PREFIX_UNDERDELIVERS_
+     BELOW, since deleted), so the obvious cheap gate is the one that breaks
+     this query.
 
      The fixture reproduces the shape rather than the data: ten index rows that
      all prefix-match "tim", none of which is the show the listener meant.
 
-     MUTATION: gate the directory pass on `shown.length < SHOW_PREFIX_UNDERDELIVERS_BELOW`,
-     or on any other count of local hits. Ten local rows suppress the request
+     MUTATION: gate the directory pass on `shown.length < 10`, or on any
+     other count of local hits. Ten local rows suppress the request
      and this goes red. */
   const rows = [];
   for (let i = 0; i < 10; i++) rows.push(`Timcast Filler ${i}\t200000${i}\t${i + 1}\t0`);
@@ -1452,7 +1454,7 @@ test("search-12 / states-9: offline, a NON-empty list carries the honest offline
   /* Offline, the catalogue and directory passes fail (fetch rejects), so the
      failure line joined the offline note over the rows. The offline note is
      the explanation; a Try again with no connection is a button that does
-     nothing. MUTATION: drop the `isOfflineForShardSearch()` clause from
+     nothing. MUTATION: drop the `isOffline()` clause from
      paintShowSearchPartialNote — the failure line paints alongside, red. */
   const m = mount({ onLine: false, directoryOk: false });
   m.input.value = "radiolab";
@@ -1605,12 +1607,12 @@ test("search-9: the local passes and the dedup keys fold diacritics, so 'cafe' f
 
 /* ---------- code-health CH-36: the app.js copies pinned to the engine ----------
    app.js keeps its own `branchOf` and `normaliseShowTitle` rather than calling
-   search-engine.js at runtime, because 43 app.js harnesses (card-anatomy,
-   home-layout, generated-playlists, explicit-badge, ...) load app.js WITHOUT
-   search-engine.js and Home groups on `branchOf` in every one of them; a
+   search-engine.js at runtime, because 30 test harnesses (card-anatomy,
+   generated-playlists, explicit-badge, jump-back-in-kinds, ...) run app.js
+   WITHOUT search-engine.js and Home groups on `branchOf` in them; a
    `typeof SearchEngine` fallback would just be the duplicate again
    (docs/roadmap/code-health.md §0.3 item 14). So the copies are pinned to the
-   engine here, in the one harness that loads both. */
+   engine here, in a harness that loads both. */
 
 test("CH-36 (X1-09): app.js's branchOf files every item where the ranker's branchOf does", () => {
   /* Home's subject grouping and search's branch filter must agree on which
@@ -1665,4 +1667,38 @@ test("CH-36 (A2-17): offline, the Episodes section asks nothing and reports the 
   m.evalIn('renderEpisodeSearchResults("radiolab", showSearchToken, __report)');
   assert.strictEqual(m.apiCalls().filter((u) => u.includes("api/episodes/search")).length, before, "no request offline");
   assert.deepStrictEqual(reported, [null, null], "reported as not asked");
+});
+
+test("CH-36 (A2-17): the Episodes section asks the one offline predicate, so a better signal there reaches it", () => {
+  /* `isOffline()` is the shard pass's, the partial line's and the offline
+     note's predicate; the Episodes section read `navigator.onLine` itself, so
+     a "use the shell's Network plugin" change to the helper would have left
+     it firing a fetch under an offline note. Here the browser says online and
+     the predicate says offline — the predicate must win.
+     MUTATION: restore `if (typeof navigator !== "undefined" && navigator.onLine
+     === false)` in renderEpisodeSearchResults -> a request goes out, red. */
+  const m = mount({ onLine: true });
+  m.evalIn("isOffline = () => true");
+  const before = m.apiCalls().filter((u) => u.includes("api/episodes/search")).length;
+  m.evalIn('renderEpisodeSearchResults("radiolab", showSearchToken)');
+  assert.strictEqual(m.apiCalls().filter((u) => u.includes("api/episodes/search")).length, before);
+  m.evalIn("isOffline = () => false"); // and the control: the same call online does ask
+  m.evalIn('renderEpisodeSearchResults("radiolab", showSearchToken)');
+  assert.strictEqual(m.apiCalls().filter((u) => u.includes("api/episodes/search")).length, before + 1, "the control: online, it asks");
+});
+
+test("CH-36 (X1-19): with the engine on the page, a generated playlist's per-show cap IS the ranker's PER_SHOW_CAP", () => {
+  /* A topic search keeps at most PER_SHOW_CAP of one show; the playlist built
+     from the same subject must not keep a different number.
+     MUTATION: make generatedPerShowCap() return GENERATED_PER_SHOW_CAP
+     unconditionally -> the second half (a moved engine cap) is red. */
+  const m = mount();
+  const SE = m.evalIn("SearchEngine");
+  assert.strictEqual(m.evalIn("generatedPerShowCap()"), SE.PER_SHOW_CAP);
+  const items = [];
+  for (let i = 0; i < 5; i++) items.push({ id: `a${i}`, show: "Show A", release_date: `2026-09-0${i + 1}` });
+  const count = () => m.evalIn(`leafPlaylistItems(${JSON.stringify(items)}, { generalShowTitles: new Set() }).length`);
+  assert.strictEqual(count(), SE.PER_SHOW_CAP);
+  m.evalIn("SearchEngine.PER_SHOW_CAP = 3"); // this mount's own engine object; nothing else shares it
+  assert.strictEqual(count(), 3, "the ranker's cap moved, the playlist's moved with it");
 });

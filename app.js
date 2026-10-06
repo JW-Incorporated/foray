@@ -1790,6 +1790,12 @@ function fmtDate(dateStr, { local = false, now = new Date() } = {}) {
   return d.toLocaleDateString("en-US", opts);
 }
 
+/* THE SAME RULE AS search-engine.js `branchOf`, kept as a copy on purpose
+   (code-health CH-36, X1-09): Home's subject cards and Family mode group on
+   it, and 30 test harnesses run app.js without search-engine.js, so
+   calling `SearchEngine.branchOf` here would break them and a `typeof
+   SearchEngine` fallback would be this copy again. test/show-search-fallthrough.test.js
+   pins the two equal over a fixture; change both or neither. */
 function branchOf(item) {
   const t = item.topics?.[0] || "";
   return t.split("/")[0] || "other";
@@ -2278,16 +2284,25 @@ function subjectQueueById(id) {
    pool held newest on it, so one prolific show could fill the whole list, and
    an episode of a broad ("general") show sat on a leaf only because its SHOW
    was labelled there. leafPlaylistItems is the one rule both generators use:
-   at most GENERATED_PER_SHOW_CAP items from one show, and an item whose topics
+   at most generatedPerShowCap() items from one show, and an item whose topics
    were inherited from a `label_scope: "general"` show is refused (its own
    per-episode label is kept). The MIN check runs on what survives. */
 const GENERATED_PLAYLIST_COUNT = 3;
 const GENERATED_PLAYLIST_SIZE = 6;
 const GENERATED_PLAYLIST_MIN = 3;
 /* The same rule as search-engine.js PER_SHOW_CAP (2), which keeps one show
-   from filling a topic search's results; restated rather than imported so the
-   generator does not borrow the search ranker's diversify(). */
+   from filling a topic search's results. The generator does not borrow the
+   ranker's diversify(), but it reads the ranker's NUMBER (code-health CH-36,
+   X1-19), so a cap moved there moves here and a topic search and the playlist
+   built from it cannot disagree about how many of one show is too many.
+   LAZILY, never at the top level: 30 test harnesses run app.js with no
+   search-engine.js, and a top-level `SearchEngine` read is a ReferenceError
+   there. GENERATED_PER_SHOW_CAP is the value with no engine on the page. */
 const GENERATED_PER_SHOW_CAP = 2;
+function generatedPerShowCap() {
+  const cap = typeof SearchEngine !== "undefined" ? SearchEngine.PER_SHOW_CAP : undefined;
+  return Number.isInteger(cap) && cap > 0 ? cap : GENERATED_PER_SHOW_CAP;
+}
 
 /** Titles of the shows the catalogue marks `label_scope: "general"` (broad
     shows whose show-level label does not describe each episode; PKG-02). */
@@ -2299,7 +2314,7 @@ function generalShowTitleSet() {
 
 /** One leaf's playlist items from `candidates` (pool items already on the
     leaf): drop the ones whose only claim to it is a general show's label,
-    newest first (ties by id), at most GENERATED_PER_SHOW_CAP per show, up to
+    newest first (ties by id), at most generatedPerShowCap() per show, up to
     GENERATED_PLAYLIST_SIZE. The caller applies GENERATED_PLAYLIST_MIN. */
 function leafPlaylistItems(candidates, { generalShowTitles }) {
   const sorted = candidates
@@ -2307,10 +2322,11 @@ function leafPlaylistItems(candidates, { generalShowTitles }) {
     .sort((a, b) => String(b.release_date || "").localeCompare(String(a.release_date || "")) || String(a.id).localeCompare(String(b.id)));
   const perShow = new Map();
   const out = [];
+  const cap = generatedPerShowCap();
   for (const it of sorted) {
     if (out.length >= GENERATED_PLAYLIST_SIZE) break;
     const n = perShow.get(it.show) || 0;
-    if (n >= GENERATED_PER_SHOW_CAP) continue;
+    if (n >= cap) continue;
     perShow.set(it.show, n + 1);
     out.push(it);
   }
@@ -6994,7 +7010,7 @@ function miniCard(slot) {
    narration. A function, not a constant, for that one clause; still ONE
    sentence for the Forays page and the first-run sheet. */
 function forayAbout() {
-  const narrated = forayCards().some(f => Array.isArray(f?.items) && f.items.some(i => i?.type === "narration"));
+  const narrated = forayCards().some(f => Array.isArray(f?.items) && f.items.some(isForayNarration));
   return `One subject, heard across several podcasts: moments from their episodes, played in turn from each show's own feed${narrated ? ", with a narrator between them" : ""}.`;
 }
 
@@ -7838,8 +7854,11 @@ function openSheetCount() {
   return sheetStack.length;
 }
 
+/* `openSheetCount` is app.js's own question (the Back gesture asks it) and is
+   not published: nothing outside this file reads it (code-health CH-36,
+   A2-15). */
 if (typeof window !== "undefined") {
-  window.ForaySheets = { openSheet, closeSheet, closeAllSheets, openSheetCount, slideIn, slideOut };
+  window.ForaySheets = { openSheet, closeSheet, closeAllSheets, slideIn, slideOut };
 }
 
 /* ---------- ONCE MEANS ONCE, INCLUDING WITHIN A SINGLE VISIT ----------
@@ -8372,11 +8391,20 @@ const SEARCH_INPUT_ATTRS = 'enterkeyhint="search" autocorrect="off" autocapitali
 
 /* WHAT AN OFFLINE SEARCH CAN HONESTLY SAY (audit round 2, states-9). It read
    "Showing shows available offline", which was written from the engine's side
-   (which TIERS answered) and read from the listener's as a promise: nothing is
-   available offline — the rows are title projections of the curated 220 and
-   the on-device index, and every tap on one needs the network (there is no
-   download feature, and that is deliberate: persona 71). Shown only above a
-   non-empty list; an empty offline search says so in `#sh-note` instead. */
+   (which TIERS answered) and read from the listener's as a promise: the rows
+   are title projections of the curated 220 and the on-device index, and every
+   tap on one needs the network. Shown only above a non-empty list; an empty
+   offline search says so in `#sh-note` instead.
+   DOWNLOADS EXIST NOW (PQ-18/PQ-19; code-health CH-36, A2-11 — this said
+   "there is no download feature, and that is deliberate"). A downloaded
+   episode plays with no connection, and its home is Library's Downloads
+   section. So "Episodes need a connection." is a generalisation, not a law:
+   it is true of the endpoint's Episodes rows and of every show row here, and
+   NOT of a downloaded episode the local Episodes tier happens to match (it
+   searches the listener's saved and queued episodes). The copy is kept as it
+   is (CH-36 is behaviour-preserving; a wording change is copy work with its
+   own pin in test/offline-search.test.js), and this is the sentence to read
+   before trusting it. */
 const OFFLINE_SEARCH_NOTE = "You're offline — these are show names 4a already knows. Episodes need a connection.";
 
 /* WHERE THE SEARCH TAB LAST WAS (audit round 2, search-5). Round 1 put the
@@ -8462,12 +8490,6 @@ function isShowSearchCurrent(query) {
      listener presses Try again, return, or types the query over. */
   return !(showSearchFailure.token === showSearchToken && (showSearchFailure.shows || showSearchFailure.episodes));
 }
-
-/* Below this many hits from the prefix pass, the debounce tick also runs the
-   LINEAR scan over the index (12.9-19.9 ms measured over 19,904 rows, 4.1 ms
-   median over the committed 10,113-row cut — either way too expensive for a
-   keystroke, and pointless when the prefix pass already filled the list). */
-const SHOW_PREFIX_UNDERDELIVERS_BELOW = 10;
 
 /** Monotonic where available (S-01, docs/search-plan.md): `performance.now()`
     in a browser, `Date.now()` in the node:vm test harness that has no
@@ -8642,10 +8664,10 @@ const showBreadthQueryCache = new Map();
    for why no CSP change lands with this card).
 
    OFFLINE (D9): the fetch is skipped entirely, not attempted-and-failed —
-   `navigator.onLine === false` is checked BEFORE building the request, the
-   same guard `renderEpisodeSearchResults` already uses for the identical
-   reason (this file's "absence is a real state, a network-only feature
-   does not get a spinner that will never resolve" rule). Skipped means
+   `isOffline()` is checked BEFORE building the request, the same predicate
+   `renderEpisodeSearchResults` asks for the identical reason (this file's
+   "absence is a real state, a network-only feature does not get a spinner
+   that will never resolve" rule). Skipped means
    zero requests, which is the card's literal acceptance criterion, not an
    approximation of it — a request that starts and is expected to fail
    would still be a request.
@@ -8674,10 +8696,15 @@ const showBreadthQueryCache = new Map();
    most recently seen version (`lastSeenShardVersion`, updated from every
    successful network fetch this session) before trusting a Cache Storage
    hit — a version mismatch is treated as a cache miss and the shard is
-   re-fetched, overwriting the stale entry. `SHARD_CACHE_NAME`'s `-v1`
-   suffix remains as a manual escape hatch (bump it to invalidate the whole
-   cache at once, e.g. if the entry shape itself ever changes again) but is
-   no longer the ONLY invalidation path. */
+   re-fetched, overwriting the stale entry.
+
+   THE NAME STAYS `-v1`, AND IS NOT AN ESCAPE HATCH (code-health CH-36,
+   A2-16). Bumping it would not invalidate anything: sw.js deletes only the
+   caches it owns and names this one as a cache it must leave alone, and
+   Delete my data deletes only the CURRENT name, so a bump would orphan every
+   device's v1 bucket for good. A changed entry shape is handled by the
+   reader instead: anything that is not `{ version, rows }` is a miss.
+   test/shard-cache.test.js pins the name. */
 const SHARD_CACHE_NAME = "foray-shows-index-v1";
 const shardMemoryCache = new Map(); // shardKey -> rows[] | null (null = "fetched, came back empty/unavailable")
 
@@ -8693,10 +8720,15 @@ let lastSeenShardVersion = null;
 
 /** True only when the runtime has told us we are offline. A browser that
     never sets `navigator.onLine` (or an older WebKit) defaults to "assume
-    online" — the same posture `renderEpisodeSearchResults` already takes —
-    rather than silently disabling the shard pass everywhere that API is
-    absent. */
-function isOfflineForShardSearch() {
+    online" rather than silently disabling the network passes everywhere that
+    API is absent.
+    THE ONE OFFLINE PREDICATE FOR SEARCH (code-health CH-36, A2-17): the shard
+    pass, the partial-load line, the offline note and the Episodes section
+    all ask this, so a better signal (the shell's Network plugin, say) lands
+    in one place — the Episodes section used to read `navigator.onLine`
+    itself and would have kept showing the offline note while still firing
+    its fetch. Named for what it answers, not for its first caller. */
+function isOffline() {
   return typeof navigator !== "undefined" && navigator.onLine === false;
 }
 
@@ -8707,12 +8739,15 @@ function isOfflineForShardSearch() {
 
     RETURNS `{ version, rows }`, NOT BARE ROWS (S-04c) — `fetchShardRows`
     needs the stored version to decide whether this hit is stale before it
-    can be trusted; a caller wanting only the rows reads `.rows`. An entry
-    written before this change (bare `rows[]`, from `-v1`'s original shape)
-    reads back as `Array.isArray(parsed)` and is treated as `{ version:
-    null, rows: parsed }` — version `null` never matches a real tag, so an
-    old entry is correctly treated as stale exactly once (re-fetched, then
-    rewritten in the new shape) rather than thrown away as corrupt. */
+    can be trusted; a caller wanting only the rows reads `.rows`.
+    ONE STORED SHAPE (code-health CH-36, A2-16). An entry of any other shape
+    is a miss — including a bare `rows[]` written before S-04c under the same
+    `-v1` name. The miss costs one fetch, whose answer overwrites the entry in
+    the current shape, so an old entry heals the first time it is read. (The
+    branch that read a bare entry back as `{ version: null, rows }` is gone:
+    it served those rows unversioned on a fresh page and only refetched once
+    the session had seen a release, so a second stored shape stayed readable
+    indefinitely to save one fetch per old entry.) */
 async function readShardFromCacheStorage(shardKey) {
   if (typeof caches === "undefined") return null;
   try {
@@ -8720,7 +8755,6 @@ async function readShardFromCacheStorage(shardKey) {
     const res = await cache.match(`shards/${shardKey}.json`);
     if (!res) return null;
     const parsed = await res.json();
-    if (Array.isArray(parsed)) return { version: null, rows: parsed }; // pre-S-04c entry shape
     if (parsed && Array.isArray(parsed.rows)) return { version: parsed.version ?? null, rows: parsed.rows };
     return null;
   } catch (_) {
@@ -8780,7 +8814,7 @@ async function writeShardToCacheStorage(shardKey, rows, version) {
     guarantee no newer release exists anywhere. */
 async function fetchShardRows(shardKey) {
   if (shardMemoryCache.has(shardKey)) return shardMemoryCache.get(shardKey);
-  if (isOfflineForShardSearch()) return []; // D9: no request, not a failed one — and not memoized
+  if (isOffline()) return []; // D9: no request, not a failed one — and not memoized
 
   const cached = await readShardFromCacheStorage(shardKey);
   if (cached && (lastSeenShardVersion === null || cached.version === lastSeenShardVersion)) {
@@ -8860,9 +8894,9 @@ function mapShardRow(row) {
        a threshold on it is worse than none. `tim` returns TEN strong local
        matches, all `prefix` (Timothy Keller Sermons, Timcast IRL, Tiny
        Matters...) and NOT ONE of them is The Tim Ferriss Show, which Apple
-       returns at position 5. A threshold of 10 — the value already in this
-       file as `SHOW_PREFIX_UNDERDELIVERS_BELOW` — would suppress the one show
-       the listener meant, BECAUSE the local pass delivered plenty.
+       returns at position 5. A threshold of 10 — the count the index scan
+       itself was once gated on (see `runShowSearchCostly`) — would suppress
+       the one show the listener meant, BECAUSE the local pass delivered plenty.
      - The "strong, not substring" distinction P-02 proposed as a first cut is
        INERT: across all 25 listener queries the local result contained ZERO
        `substring` matches. Substring hits only appear at 1-3 characters (`h`:
@@ -8906,7 +8940,13 @@ function showBreadthCacheKey(query) {
    NORMALISE FIRST, LOWERCASE LAST — foldDiacritics' order (search-engine.js;
    round-2 review): a compatibility letter such as mathematical-bold "𝐁" has no
    lowercase mapping, so lowercasing before NFKD left it an uppercase "B" and
-   "𝐁𝟑𝟒𝐧’𝐬 …" never met the plain "B34n's …" from the other source. */
+   "𝐁𝟑𝟒𝐧’𝐬 …" never met the plain "B34n's …" from the other source.
+   ITS FOLD HALF IS SearchEngine.foldDiacritics, WRITTEN OUT (code-health
+   CH-36, X1-06). It cannot call the engine: the expression is pinned verbatim
+   to the server's copy above, and 30 test harnesses run app.js with no
+   search-engine.js. test/show-search-fallthrough.test.js pins this function
+   equal to `foldDiacritics(t)` plus the class collapse over a fixture, so a
+   change to the engine's fold that is not made here goes red. */
 function normaliseShowTitle(title) {
   return String(title || "").normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 }
@@ -9093,7 +9133,7 @@ function paintShowSearchPartialNote(query, myToken) {
   if (!box) return;
   if (myToken !== showSearchToken) return;
   const failed = showSearchFailure.token === myToken && (showSearchFailure.shows || showSearchFailure.episodes);
-  if (!failed || isOfflineForShardSearch()) { box.innerHTML = ""; box.hidden = true; return; }
+  if (!failed || isOffline()) { box.innerHTML = ""; box.hidden = true; return; }
   box.innerHTML = failedNoteHtml("Part of this search didn't load.");
   box.hidden = false;
   /* The plain submit path: a search with a recorded failure is not "current"
@@ -9117,7 +9157,7 @@ function paintShowResults(query, shows, myToken) {
   const results = $("#sh-results");
   const offlineNote = $("#sh-offline-note");
   if (!note || !results) return;
-  const offline = isOfflineForShardSearch();
+  const offline = isOffline();
   if (offlineNote) offlineNote.hidden = !(offline && shows.length > 0);
   /* Recorded whether or not there is anything to draw, and BEFORE the empty
      branch returns: "nothing matched" is a painted answer like any other, and a
@@ -9597,8 +9637,8 @@ function runShowSearchCostly(query, myToken, local) {
      ALREADY PAINTED, and that swap is the whole of defect 1 (2026-09-13).
 
      WHAT THE OLD GATE WAS AND WHY IT STOPPED BEING TRUE. It read
-     `shown().length < SHOW_PREFIX_UNDERDELIVERS_BELOW` — skip the scan once
-     the prefix pass has filled the list — and that was sound while the
+     `shown().length < SHOW_PREFIX_UNDERDELIVERS_BELOW` (10) — skip the scan
+     once the prefix pass has filled the list — and that was sound while the
      comparator read the BUCKET first, because then a word-start row could
      never outrank the prefix rows already on screen and scanning for it bought
      nothing but latency. P-08 (docs/search-parity-plan.md) interposed a MATCH
@@ -9650,12 +9690,12 @@ function runShowSearchCostly(query, myToken, local) {
      rows are already painted before it runs, and `mergeShowRows` only
      repaints when the scan added something.
 
-     `SHOW_PREFIX_UNDERDELIVERS_BELOW` is deliberately left declared: it is
-     cited by name as a counterexample both above (the directory gate) and in
-     test/show-search-fallthrough.test.js, whose `tim` case already argues that
-     a count of local hits is the wrong gate for a pass like this one. That
-     argument was always about this constant; it simply had not been applied
-     here.
+     THE CONSTANT IS GONE (code-health CH-36, A2-15). It was left declared as
+     a counterexample cited by name, which kept a number alive with no reader;
+     the counterexample is the NUMBER, 10, and that is what the directory
+     gate's comment above and test/show-search-fallthrough.test.js's `tim` case
+     now cite — a count of local hits is the wrong gate for a pass like this
+     one, and that argument was always about this number.
 
      `scanShowIndex` returns word-start and substring hits only, so there is
      nothing here to dedupe against the prefix answer beyond the curated rows. */
@@ -9827,7 +9867,7 @@ function runShowSearchCostly(query, myToken, local) {
      way `state.breadthShowCache` is, so a tapped `pi:` result resolves
      through `showById` without a second network round trip. */
   const shardKey = SearchEngine.shardKeyForQuery(query);
-  if (isOfflineForShardSearch()) {
+  if (isOffline()) {
     settle({ shardMs: null, shardHits: null }); // D9: no request, a real "did not run" state
     showPassDone(false);
   } else if (!shardKey) {
@@ -10530,7 +10570,7 @@ function renderEpisodeSearchResults(query, myToken, report = () => {}, localEpis
      — it is a scan over tens of stored items, not something worth a flag. */
   const local = localEpisodes || localEpisodeMatches(query);
 
-  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+  if (isOffline()) {
     /* OFFLINE IS WHERE THE LOCAL TIER EARNS ITS KEEP, so it must not be wiped
        here. Before P-05 this branch cleared the container because there was
        genuinely nothing to show without the network; now the listener's own
@@ -11036,7 +11076,7 @@ function jumpBackInEntries(limit = 6) {
     const played = rows.filter(r => rowProgress(r.item)?.state === "played").length;
     entries.push({
       kind: "playlist", id: p.id, at: p.last_played_at,
-      title: p.title || p.name || "Playlist",
+      title: p.title || "Playlist",
       sub: playlistLengthLabel(p),
       percent: rows.length && played ? Math.round((played / rows.length) * 100) : null,
       left: rows.length && played ? `${played} of ${rows.length} played` : "",
@@ -13983,7 +14023,11 @@ function thumbsHtml(entry) {
 
 /** An authored narration beat — 4a's own writing, read by 4a's own voice. The
     other authored type is `segment` (somebody else's tape); a `jingle` is
-    neither and is credited to nobody. */
+    neither and is credited to nobody.
+    IT READS AN AUTHORED OR HYDRATED ENTRY — a Foray's `items[]` or a report
+    row, which say `type: "narration"` — never a built queue item, which says
+    `kind: "tts"` instead; player/item-kind.js `isNarration` reads both, and no
+    app.js surface is handed a built queue item (code-health CH-36, X1-05). */
 function isForayNarration(entry) {
   return entry?.type === "narration";
 }

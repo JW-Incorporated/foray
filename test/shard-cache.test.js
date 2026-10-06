@@ -158,34 +158,51 @@ test("a fetched shard is written back as { version, rows } under the v1 name", a
   assert.deepStrictEqual(stored(m, "cd"), { version: RELEASE, rows: ROWS_NEW });
 });
 
-test("a pre-S-04c bare-array entry, once this session has seen a release: refetched once and rewritten, then served from memory", async () => {
-  /* The same outcome before and after CH-36 deleted the bare-array branch:
-     today's `{ version: null }` never matches a real tag, and after the
-     deletion the entry is no hit at all. Either way one request, one rewrite.
+test("once this session has seen a release, an older release's entry and a pre-S-04c bare one are each refetched once and rewritten", async () => {
+  /* The bare entry's half is the same outcome before and after CH-36 deleted
+     the bare-array branch: the old `{ version: null }` read never matched a
+     real tag, and now the entry is no hit at all — one request, one rewrite
+     either way. The older-release half is what the version check is for.
      MUTATION: trust any Cache Storage hit regardless of version (drop the
-     `cached.version === lastSeenShardVersion` clause) -> no request, red. */
-  const m = loadApp({ buckets: bucketsWith("ef", ROWS_OLD) });
+     `cached.version === lastSeenShardVersion` clause from fetchShardRows) ->
+     the older release's rows are served with no request, red. */
+  const buckets = bucketsWith("ef", ROWS_OLD);
+  buckets.get("foray-shows-index-v1").set("shards/kl.json", JSON.stringify({ version: "rel-2026-09-01", rows: ROWS_OLD }));
+  const m = loadApp({ buckets });
   await m.evalIn('fetchShardRows("zz")'); // a network answer this session: lastSeenShardVersion is set
   assert.strictEqual(m.evalIn("lastSeenShardVersion"), RELEASE);
-  const before = m.shardRequests.length;
-  const rows = await m.evalIn('fetchShardRows("ef")');
-  assert.deepStrictEqual(plain(rows), ROWS_NEW, "the stale rows are not served");
-  assert.strictEqual(m.shardRequests.length - before, 1, "exactly one request");
-  await new Promise((r) => setImmediate(r));
-  assert.deepStrictEqual(stored(m, "ef"), { version: RELEASE, rows: ROWS_NEW }, "rewritten in the versioned shape");
-  await m.evalIn('fetchShardRows("ef")');
-  assert.strictEqual(m.shardRequests.length - before, 1, "and the session map answers the next keystroke");
+  for (const key of ["kl", "ef"]) {
+    const before = m.shardRequests.length;
+    const rows = await m.evalIn(`fetchShardRows("${key}")`);
+    assert.deepStrictEqual(plain(rows), ROWS_NEW, `${key}: the stale rows are not served`);
+    assert.strictEqual(m.shardRequests.length - before, 1, `${key}: exactly one request`);
+    await new Promise((r) => setImmediate(r));
+    assert.deepStrictEqual(stored(m, key), { version: RELEASE, rows: ROWS_NEW }, `${key}: rewritten in the current shape`);
+    await m.evalIn(`fetchShardRows("${key}")`);
+    assert.strictEqual(m.shardRequests.length - before, 1, `${key}: and the session map answers the next keystroke`);
+  }
 });
 
-test("a pre-S-04c bare-array entry on a fresh page (TODAY): served as an unversioned hit, no request", async () => {
-  /* CHARACTERIZATION of the branch CH-36 deletes. `Array.isArray(parsed)`
-     reads a bare entry back as `{ version: null, rows }`, and on a fresh page
-     (`lastSeenShardVersion === null`) an unversioned hit is trusted. */
+test("a pre-S-04c bare-array entry on a fresh page is a miss: one request, then rewritten in the versioned shape", async () => {
+  /* CH-36 deleted the `Array.isArray(parsed)` branch. Before, a bare entry
+     read back as `{ version: null, rows }` and, on a fresh page
+     (`lastSeenShardVersion === null`), was SERVED with no request — so the old
+     shape stayed readable indefinitely. Now it is a miss like any other
+     unrecognised entry: one request, whose answer overwrites it, and the
+     shape is gone from that device. The cost is that one request per old
+     entry, once.
+     MUTATION: restore `if (Array.isArray(parsed)) return { version: null,
+     rows: parsed };` in readShardFromCacheStorage -> the old rows are served
+     with no request, red. */
   const m = loadApp({ buckets: bucketsWith("gh", ROWS_OLD) });
-  assert.deepStrictEqual(plain(await m.evalIn('readShardFromCacheStorage("gh")')), { version: null, rows: ROWS_OLD });
+  assert.strictEqual(await m.evalIn('readShardFromCacheStorage("gh")'), null);
   const rows = await m.evalIn('fetchShardRows("gh")');
-  assert.deepStrictEqual(plain(rows), ROWS_OLD);
-  assert.strictEqual(m.shardRequests.length, 0);
+  assert.deepStrictEqual(plain(rows), ROWS_NEW, "the old rows are not served");
+  assert.strictEqual(m.shardRequests.length, 1, "exactly one request");
+  await new Promise((r) => setImmediate(r));
+  assert.deepStrictEqual(stored(m, "gh"), { version: RELEASE, rows: ROWS_NEW }, "rewritten under the same v1 name");
+  await m.evalIn('fetchShardRows("gh")');
+  assert.strictEqual(m.shardRequests.length, 1, "and the next keystroke is answered from memory");
 });
 
 test("an entry of neither shape is a miss: one request, then the versioned shape", async () => {
