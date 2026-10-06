@@ -297,7 +297,7 @@ const FLOORS = {
      opened through app.js's sheet owner with the topbar kept reachable, Stop
      releases the owner, the artwork opens the player, Stop and Close sit at
      opposite ends of their row, and one finger drives the drag (+6). */
-  "player/now-playing-sheet.test.js": 32, // audit round 2, L2 (2026-09-23): the touchmove claim, the live region as a sibling, Stop order, sheet motion, panel motion, the drawer lock in CSS; 24 -> 30; 30 -> 32 // PQ-13 (#30): Bookmark directly after Save in row2, and its click reads episodePositionSec()
+  "player/now-playing-sheet.test.js": 41, // CH-4 (#690/#1071, 2026-10-06): the chapter line, previous/next chapter (3 s rule, last-chapter disabled), one write per chapter change, no chapter UI in a Foray, the approximate note with chapters (FOREIGN) and unchanged without, no throw without window.ForayChapters, the lit notes row, the wiring; 32 -> 41 | audit round 2, L2 (2026-09-23): the touchmove claim, the live region as a sibling, Stop order, sheet motion, panel motion, the drawer lock in CSS; 24 -> 30; 30 -> 32 // PQ-13 (#30): Bookmark directly after Save in row2, and its click reads episodePositionSec()
   /* DAI-07a (2026-10-04): AD_PAD_SHIPPED, the one switch for ADR-0008's pad
      tier, pinned off until DAI-09 flips it (README founder question 15); 33 -> 34. */
   "player/seek-policy.test.js": 35, // CH-1 (#1071): the guarded window.ForaySeekPolicy publication app.js reads; 34 -> 35

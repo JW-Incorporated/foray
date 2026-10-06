@@ -173,7 +173,7 @@ test("previous/next clip are a labelled row: words, 44px tall, next disabled on 
   assert.match(CODE, /clipNext\.setAttribute\("aria-label", "Next clip"\);/);
   assert.match(CODE, /ui\.clipNext\.disabled = Boolean\(foray\) && foray\.index >= foray\.playable\.length - 1;/);
   assert.doesNotMatch(CODE, /ui\.fwdBtn\.disabled/, "30↻ is never disabled — it is a seek, not a clip change");
-  assert.match(CODE, /scroll\.append\(sArt, sTitle, sShow, sWhy, scrub, times, row, clips, row2,/, "the clip row sits under the seek pair");
+  assert.match(CODE, /scroll\.append\(sArt, sTitle, sShow, chapterBox, sWhy, scrub, times, row, clips, row2,/, "the clip row sits under the seek pair");
   assert.ok(px(valueOf(".fp-clip, .fy-clip", "min-height")) >= 44);
   assert.ok(px(valueOf(".fp-clip, .fy-clip", "min-width")) >= 44);
   assert.match(valueOf(".fp-clip:disabled, .fy-clip:disabled", "opacity") || "", /^0\.\d+$/);

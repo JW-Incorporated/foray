@@ -39,6 +39,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import vm from "node:vm";
+import { seekPrecision, EXACT, OWN, FOREIGN } from "./seek-policy.js";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
@@ -121,7 +123,7 @@ test("the sheet's scroller starts with the artwork, then the title", () => {
      append to `scroll.append(sTitle, sArt, ...)`. This fails. */
   assert.match(
     FLAT,
-    /scroll\.append\(sArt, sTitle, sShow, sWhy,/,
+    /scroll\.append\(sArt, sTitle, sShow, chapterBox, sWhy,/,
     "the scroller's first child must be the artwork element"
   );
   assert.match(CODE, /const sArt = el\(/, "the sheet must build its own artwork element");
@@ -157,6 +159,268 @@ test("the sheet's notes are the episode page's notes, built as nodes from the on
   assert.match(fn[0], /a\.rel = "noopener noreferrer"/);
   assert.match(fn[0], /\^https\?:/, "the scheme is re-checked here, behind app.js's safeUrl");
   assert.match(CODE, /paintNotes\(item\);/, "setNowPlaying paints through it");
+});
+
+/* ==================================================================== */
+/* CH-4 (#690 / #1071): THE CHAPTER YOU ARE IN                          */
+/* ==================================================================== */
+
+/* These run the code, not just read it. The chapter block of client.js (from
+   its own section header to the next one) and `paintSeekNote` are lifted out
+   and evaluated in a vm context that supplies exactly what they read from the
+   rest of the module — `current`, `foray`, `ui`, `el`, `episodePositionSec`,
+   `seekEpisodeTo` and seek-policy's real `seekPrecision` — over a stub DOM
+   that counts every write. */
+const CHAPTER_BLOCK = (() => {
+  const start = CLIENT.indexOf("/* ---------- the chapter you are in (CH-4");
+  const end = CLIENT.indexOf("\n/* ---------- ", start + 1);
+  assert.ok(start > 0 && end > start, "client.js carries the CH-4 chapter block");
+  return CLIENT.slice(start, end);
+})();
+const SEEK_NOTE_FN = /function paintSeekNote\(\) \{[\s\S]*?\n\}/.exec(CLIENT)[0];
+
+const ch = (secs, title) => ({ secs, title, img: null, url: null, source: "feed" });
+const THREE = [ch(0, "Cold open"), ch(60, "Tokamaks"), ch(120, "Stellarators")];
+/* app.js chapterPrecision's rule: FOREIGN, an unclassified show read as stitched. */
+const FOREIGN_RULE = (item) => seekPrecision(
+  { dai_suspected: item?.dai_suspected === true || item?.dai_known === false }, { source: FOREIGN }).precision;
+
+function chapterSheet({ chapters = THREE, precision = FOREIGN_RULE, item = { id: "ep1" }, onForay = false, bridge } = {}) {
+  const log = { writes: 0, seeks: [] };
+  class Stub {
+    constructor(tag, cls, text) {
+      this.tagName = String(tag).toUpperCase();
+      this.className = cls ?? "";
+      this._text = text == null ? "" : String(text);
+      this._hidden = false;
+      this._disabled = false;
+      this.attrs = new Map();
+      this.children = [];
+      this.listeners = new Map();
+      this.classes = new Set();
+      this.classList = {
+        add: (c) => { log.writes++; this.classes.add(c); },
+        remove: (c) => { log.writes++; this.classes.delete(c); },
+        contains: (c) => this.classes.has(c),
+      };
+    }
+    get textContent() { return this._text; }
+    set textContent(v) { log.writes++; this._text = String(v); }
+    get hidden() { return this._hidden; }
+    set hidden(v) { log.writes++; this._hidden = Boolean(v); }
+    get disabled() { return this._disabled; }
+    set disabled(v) { log.writes++; this._disabled = Boolean(v); }
+    setAttribute(k, v) { log.writes++; this.attrs.set(k, String(v)); }
+    getAttribute(k) { return this.attrs.has(k) ? this.attrs.get(k) : null; }
+    removeAttribute(k) { log.writes++; this.attrs.delete(k); }
+    append(...kids) { this.children.push(...kids); }
+    addEventListener(t, fn) { if (!this.listeners.has(t)) this.listeners.set(t, []); this.listeners.get(t).push(fn); }
+    click() { for (const fn of this.listeners.get("click") ?? []) fn({ preventDefault() {}, stopPropagation() {} }); }
+  }
+  const forayChapters = bridge !== undefined ? bridge : {
+    forItem: () => chapters,
+    precision: typeof precision === "function" ? precision : () => precision,
+  };
+  const ctx = {
+    window: forayChapters === null ? {} : { ForayChapters: forayChapters },
+    el: (tag, cls, text) => new Stub(tag, cls, text),
+    seekPrecision, EXACT, OWN, FOREIGN,
+    current: item,
+    foray: onForay ? { resolved: { id: "fy1" } } : null,
+    clock: 0,
+    episodePositionSec: () => ctx.clock,
+    seekEpisodeTo: (s) => { log.seeks.push(s); return Promise.resolve(true); },
+  };
+  vm.createContext(ctx);
+  vm.runInContext(`${CHAPTER_BLOCK}\n${SEEK_NOTE_FN}`, ctx);
+  ctx.ui = { ...vm.runInContext("buildSheetChapter()", ctx), note: new Stub("p", "fp-note") };
+  ctx.ui.note.hidden = true;
+  const rows = [];
+  const api = {
+    ui: ctx.ui,
+    log,
+    rows,
+    /* paintNotes' half: the notes' chapter rows, as it registers them. */
+    noteRows(secsList) {
+      for (const secs of secsList) rows.push({ secs, row: new Stub("button", "ep-chapter-row") });
+      ctx.__rows = rows;
+      vm.runInContext("sheetNoteRows = __rows;", ctx);
+    },
+    /* setNowPlaying's call, and play()'s again once the source is known. */
+    open() { vm.runInContext("paintSeekNote();", ctx); },
+    at(sec) { ctx.clock = sec; vm.runInContext("trackSheetChapter();", ctx); return api; },
+    run(src) { return vm.runInContext(src, ctx); },
+  };
+  return api;
+}
+
+test("CH-4 (a): a clock exactly on a chapter's start is IN that chapter", () => {
+  /* MUTATION: `list[mid].secs <= t` -> `list[mid].secs < t` in chapterIndexAt
+     -> at 60.0 the line still says chapter 1; red. */
+  const s = chapterSheet();
+  s.open();
+  s.at(60);
+  assert.strictEqual(s.ui.chapterLine.textContent, "Chapter 2 of 3 · Tokamaks");
+  assert.strictEqual(s.run("chapterIndexAt")(THREE, 120), 2);
+  assert.strictEqual(s.run("chapterIndexAt")(THREE, 119.9), 1);
+  assert.strictEqual(s.ui.chapterBox.hidden, false, "the box shows with two or more chapters");
+  assert.strictEqual(s.ui.chapterLine.hidden, false);
+});
+
+test("CH-4 (b): Previous within 3 s of a chapter's start goes to the chapter before; past 3 s, to this one's start", () => {
+  /* MUTATION: `CHAPTER_RESTART_SEC = 3` -> `1` -> at +2 s Previous restarts
+     Tokamaks instead of going back; red. MUTATION: -> `10` -> at +5 s it goes
+     back a chapter; red. */
+  const s = chapterSheet();
+  s.open();
+  s.at(62);
+  s.ui.chapterPrev.click();
+  s.at(65);
+  s.ui.chapterPrev.click();
+  assert.deepStrictEqual(s.log.seeks, [0, 60]);
+  /* The first chapter has nothing behind it: its own start. */
+  s.at(1);
+  s.ui.chapterPrev.click();
+  assert.strictEqual(s.log.seeks.at(-1), 0);
+  assert.strictEqual(s.ui.chapterPrev.getAttribute("aria-label"), "Previous chapter");
+  assert.strictEqual(s.ui.chapterNext.getAttribute("aria-label"), "Next chapter");
+});
+
+test("CH-4 (c): Next goes to the next start, and is disabled — and seeks nowhere — on the last chapter", () => {
+  /* MUTATION: `ui.chapterNext.disabled = i >= list.length - 1` -> `= false`
+     -> red. MUTATION: `i < list.length ? list[i].secs : null` -> `i <= list.length
+     ? …` in nextChapterStart -> a seek past the end (a throw on the missing
+     chapter); red. */
+  const s = chapterSheet();
+  s.open();
+  s.at(70);
+  assert.strictEqual(s.ui.chapterNext.disabled, false);
+  s.ui.chapterNext.click();
+  assert.deepStrictEqual(s.log.seeks, [120]);
+  s.at(130);
+  assert.strictEqual(s.ui.chapterNext.disabled, true, "the last chapter has no next");
+  s.ui.chapterNext.click();
+  assert.deepStrictEqual(s.log.seeks, [120], "and a press there seeks nowhere");
+});
+
+test("CH-4 (d): forty render ticks inside one chapter are ONE paint", () => {
+  /* MUTATION: drop the `if (i !== shownChapter)` test in trackSheetChapter (paint
+     every tick) -> 40 painting ticks; red. */
+  const s = chapterSheet();
+  s.noteRows([0, 60, 120]);
+  s.open();
+  s.log.writes = 0;
+  let painting = 0;
+  for (let k = 0; k < 40; k++) {
+    const before = s.log.writes;
+    s.at(61 + k * 0.25);
+    if (s.log.writes !== before) painting++;
+  }
+  assert.strictEqual(painting, 1, "the line, the buttons and the lit row are written once");
+  const before = s.log.writes;
+  s.at(121);
+  assert.ok(s.log.writes > before, "and written again when the chapter changes");
+  /* The live wiring: render()'s page paint is what ticks it. MUTATION: delete
+     `trackSheetChapter();` from paintPage -> red. */
+  const page = /function paintPage\(running\) \{[\s\S]*?\n\}/.exec(CODE);
+  assert.ok(page, "paintPage exists");
+  assert.match(page[0], /paintEpisodeSurface\(\);\s*trackSheetChapter\(\);\s*\}$/);
+});
+
+test("CH-4 (e): a Foray — loaded, or restored with only its forayId — shows no chapter UI", () => {
+  /* MUTATION: drop `!foray && !current.forayId &&` from loadSheetChapters ->
+     a clip's source chapters are offered inside a Foray; red. */
+  for (const s of [chapterSheet({ onForay: true }), chapterSheet({ item: { id: "seg1", forayId: "fy1" } })]) {
+    s.noteRows([0, 60, 120]);
+    s.open();
+    s.log.writes = 0;
+    for (let k = 0; k < 8; k++) s.at(30 * k);
+    assert.strictEqual(s.ui.chapterBox.hidden, true);
+    assert.strictEqual(s.log.writes, 0, "nothing written, no row lit");
+    s.ui.chapterNext.click();
+    assert.deepStrictEqual(s.log.seeks, []);
+  }
+});
+
+test("CH-4 (f): on a stitched show with chapters the approximate note shows and the line reads ~; without chapters the note is unchanged", () => {
+  /* MUTATION: `sheetChapters ?? seekPrecision(…, source: OWN)` -> the OWN call
+     alone -> the note is empty under approximate chapters, dead code again;
+     red. MUTATION: `list.length >= 2` -> `list.length >= 0` -> the note shows
+     on a show with no chapters; red. */
+  const dai = { id: "ep1", dai_suspected: true };
+  const s = chapterSheet({ item: dai });
+  s.open();
+  assert.strictEqual(s.ui.note.textContent, "Chapter times on this show are approximate.");
+  assert.strictEqual(s.ui.note.hidden, false);
+  s.at(65);
+  assert.strictEqual(s.ui.chapterLine.textContent, "~Chapter 2 of 3 · Tokamaks");
+
+  for (const chapters of [[], [ch(0, "Only")]]) {
+    const none = chapterSheet({ item: dai, chapters });
+    none.open();
+    assert.strictEqual(none.ui.note.textContent, "", "OWN on the listener's own copy: exact, no note");
+    assert.strictEqual(none.ui.note.hidden, true);
+    assert.strictEqual(none.ui.chapterBox.hidden, true, "fewer than two chapters change nothing");
+  }
+
+  /* A static show, and the downloaded file of a stitched one: exact, no note,
+     no tilde. */
+  for (const item of [{ id: "ep1" }, { id: "ep1", dai_suspected: true, isLocalFile: true }]) {
+    const exact = chapterSheet({ item });
+    exact.open();
+    exact.at(0);
+    assert.strictEqual(exact.ui.note.textContent, "");
+    assert.strictEqual(exact.ui.chapterLine.textContent, "Chapter 1 of 3 · Cold open");
+  }
+});
+
+test("CH-4 (g): no window.ForayChapters (or one without forItem) is no throw and no UI", () => {
+  /* MUTATION: drop `!sheetChapters ||` from trackSheetChapter's guard -> every
+     tick reads `.list` of null and throws; red. */
+  for (const bridge of [null, {}, { forItem() { throw new Error("boom"); }, precision: () => "exact" }]) {
+    const s = chapterSheet({ bridge });
+    s.noteRows([0, 60]);
+    assert.doesNotThrow(() => { s.open(); s.at(10); s.at(70); });
+    assert.strictEqual(s.ui.chapterBox.hidden, true);
+    assert.strictEqual(s.ui.note.textContent, "", "the note keeps its OWN reading");
+    assert.ok(s.rows.every((r) => !r.row.classes.has("is-current")), "no row lit");
+  }
+});
+
+test("CH-4: the notes' chapter row the clock is in is is-current with aria-current, and only that one", () => {
+  /* MUTATION: drop `if (markedNoteRow) unmarkNoteRow(markedNoteRow);` from the
+     tick -> two rows lit after a chapter change; red. MUTATION: drop the
+     `setAttribute("aria-current", "true")` -> red. */
+  const s = chapterSheet();
+  s.noteRows([0, 60, 120]);
+  s.open();
+  s.at(60);
+  const lit = () => s.rows.map((r) => r.row.classes.has("is-current"));
+  assert.deepStrictEqual(lit(), [false, true, false]);
+  assert.strictEqual(s.rows[1].row.getAttribute("aria-current"), "true");
+  s.at(125);
+  assert.deepStrictEqual(lit(), [false, false, true]);
+  assert.strictEqual(s.rows[1].row.getAttribute("aria-current"), null);
+  assert.strictEqual(s.rows[2].row.getAttribute("aria-current"), "true");
+  /* paintNotes registers its rows. MUTATION: delete the push -> red. */
+  const fn = /function paintNotes\(item\) \{[\s\S]*?\n\}/.exec(TEXT);
+  assert.match(fn[0], /ui\.sDescText\.append\(row\);\s*sheetNoteRows\.push\(\{ secs: t\.secs, row \}\);/);
+  assert.match(fn[0], /sheetNoteRows = \[\];\s*markedNoteRow = null;/, "a new item's notes start unlit");
+});
+
+test("CH-4: the chapter box sits under the title and show, its buttons are 44px, the note reads the chapters", () => {
+  /* MUTATION: drop `chapterBox` from scroll.append -> built and never shown;
+     red. MUTATION: drop `loadSheetChapters();` from paintSeekNote -> a new
+     episode keeps the last one's chapters; red. MUTATION: `min-height: 44px`
+     off `.np-chapter-btn` -> red. */
+  assert.match(FLAT, /scroll\.append\(sArt, sTitle, sShow, chapterBox, sWhy,/);
+  assert.match(SEEK_NOTE_FN, /loadSheetChapters\(\);\s*const \{ precision \} = sheetChapters \?\? seekPrecision\(current, \{ isLocalFile: Boolean\(current\?\.isLocalFile\), source: OWN \}\);/);
+  const btn = /\.np-chapter-btn \{[^}]*\}/.exec(CSS_RULES);
+  assert.ok(btn, ".np-chapter-btn has a rule of its own");
+  assert.match(btn[0], /min-height:\s*44px/);
+  assert.match(btn[0], /min-width:\s*44px/);
+  assert.match(CSS_RULES, /\.np-chapter-btn:disabled \{[^}]*opacity/);
+  assert.match(CSS_RULES, /\.ep-chapter-row\.is-current \.ep-chapter-title \{[^}]*color:\s*var\(--accent\)/);
 });
 
 /* ==================================================================== */
