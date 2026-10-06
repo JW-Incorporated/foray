@@ -14653,14 +14653,19 @@ function forayHeadSub(r, player) {
    `forayToggle`, `watchForay`, …) are not listed either: they are not
    guarded, so a missing one throws where it is called (inside
    guardForayStart/guardForayTap for a tap) — loud already, never a quiet
-   section. */
+   section. The one guarded transport call is leaveForayPage's
+   `watchForay(null)` unhook, whose absence paintForay's `!state.foray` gate
+   already covers. test/foray-page.test.js scans the page for `typeof player.X`
+   guards and fails on any that is neither listed here nor one of these three. */
 const FORAY_PAGE_EXPORTS = Object.freeze([
   "fmtClock", "fmtSpan",                 // the clocks, the header's runtime
   "stripTally", "stripInto",             // the header's counts and "~"; the strip (#128)
+  "segmentAt",                           // the strip's fill bars (paintSegFill)
   "forayCredits",                        // "Where this came from"
   "forayResume", "clearForayResume",     // Jump back in / Played, Start over
   "nudgeSteps",                          // ↺ / ↻ step sizes
   "rateStops", "playbackRate", "setPlaybackRate", "rateLabel",   // the speed button (#242)
+  "rateAriaLabel",                       // ... and its accessible name (paintRateButton)
 ]);
 /** The gaps already said this page load, so a listener revisiting the page
     does not fill the 200-entry ring with the same row. */

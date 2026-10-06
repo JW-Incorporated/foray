@@ -420,3 +420,30 @@ test("A3-05: every export the Foray page names is a member of the real ForayPlay
     assert.match(body, new RegExp(`\\n  (?:async )?${name}\\b`),`ForayPlayer has no member "${name}"`);
   }
 });
+
+test("A3-05: every `typeof player.X` guard on the Foray page is in FORAY_PAGE_EXPORTS or a named exception", () => {
+  /* The list only closes A3-05 while it keeps up with the page: a guard whose
+     export is not on it degrades silently again (review: `segmentAt` left the
+     strip's fill bars unpainted, `rateAriaLabel` left the speed button without
+     its accessible name, both with nothing said). Scans app.js from the credit
+     block (the first section the page renders) to the end of paintForay. The
+     exceptions are the ones FORAY_PAGE_EXPORTS's comment names, whose absence
+     costs nothing a listener was promised. MUTATION: drop "segmentAt" (or
+     "rateAriaLabel") from FORAY_PAGE_EXPORTS — red. */
+  const app = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+  const from = app.indexOf("\nfunction foraySourcesHtml(");
+  const to = app.indexOf("\nfunction resolveListedForay(");
+  assert.ok(from >= 0 && to > from, "fixture: the Foray page's region is where this scan expects it");
+  const region = app.slice(from, to);
+  assert.ok(region.includes("\nfunction paintForay("), "fixture: the region runs through paintForay");
+  const guarded = new Set([...region.matchAll(/typeof player\??\.(\w+) *[!=]==/g)].map((g) => g[1]));
+  assert.ok(guarded.size >= 10, `fixture: the scan found the page's guards: ${[...guarded]}`);
+  const exceptions = new Set([
+    "forayDriftIsClean", // a telemetry event: absent, no event
+    "itemLen",           // segLenOf carries its own arithmetic
+    "watchForay",        // the unhook on the way out; paintForay's `!state.foray` gate already holds
+  ]);
+  const names = new Set(pageExports(mount({ hash: "#/", bridge: {} }).ctx));
+  const unlisted = [...guarded].filter((n) => !names.has(n) && !exceptions.has(n));
+  assert.deepStrictEqual(unlisted, [], "a guarded export missing from FORAY_PAGE_EXPORTS degrades the page with nothing said");
+});
