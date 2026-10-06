@@ -797,6 +797,10 @@
       "reason": "webview-only",
       "why": "WebKit's user-gesture indicator is task-scoped, so a timer between the load and play() strands an autoplay start. The native engine starts audio from native code, where no autoplay gesture exists to lose."
     },
+    "the stale-load guard uses the reducer's identity rule: a ref that differs only in bounds or kind is dropped (CH-05)": {
+      "reason": "js-module-shape",
+      "why": "Pins that PlayerQueueManager._loadItem's stale-load check (player-core-9) imports queue-state.js's own identity rule (id, kind and bounds) instead of a copy. That check exists only because the JS manager parks a load behind an await (manager-await is JS only, NE-39s); the native engine issues its load in the same synchronous turn as its event, so no load is ever parked behind a newer one. The identity rule itself is the reducer's, fixtured in the queue-state family."
+    },
     "reconnecting a route never resumes on the web and Android path, even one reported as a car (player-core-10)": {
       "reason": "webview-only",
       "why": "The JS manager's route policy runs only on the web and Android path (founder Q5 default, audit round 3): reconnecting never resumes there. The native engine owns route policy (EngineCore.knownCarRoutes) and pins it with its own XCTests."
