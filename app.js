@@ -2458,26 +2458,30 @@ function prettyTitle(query) {
    resolved array (resolveParts), and the pool's only remaining power is to
    UPGRADE a row it still recognises — artwork, a why-line, in-app playback.
 
-   WHICH FIELDS, AND WHY NOT THE REST. Measured over the 2,167-item pool as
-   serialized JSON, key name included, bytes per item (re-measured 2026-10-04
-   when `release_date` joined the list; the first measurement, over 1,534
-   items, was 268 B kept):
+   WHICH FIELDS, AND WHY NOT THE REST. Measured over the 2,177-item pool as
+   serialized JSON, key name included, bytes per item (re-measured 2026-10-06
+   when the two Apple ids left the list, code-health CH-08; 2026-10-04, with
+   them, it was 298 B kept; the first measurement, over 1,534 items, 268 B):
 
      kept       id 54 · title 63 · show 32 · duration_min 18
-                apple_collection_id 33 · apple_track_id 31 · topics 39
-                release_date 28                                          = 298 B
+                topics 39 · release_date 28                              = 234 B
      not kept   audio_url 183 · artwork_url 161 · apple_episode_url 134
-                hook 98 · duration_sec 20                                = 596 B
+                hook 98 · apple_collection_id 33 · apple_track_id 31
+                duration_sec 20                                          = 660 B
 
    `audio_url` is both the most expensive field and the only one that ROTS. A
    copied enclosure URL that has since moved renders a play button that fails,
    which is strictly worse than the honest "Not available to play" an absent one
    already degrades to (see playBtn: no `audio_url`, no button, no Up Next, no
    link out of 4a) — so in-app playback comes from the live pool only, never from a
-   playlist. `artwork_url` is 161 B that epRow never renders. `apple_episode_url`
-   is derivable from the two Apple ids that are kept (`id<collection>?i=<track>`),
-   and nothing links out to Apple any more anyway. `hook` feeds the player's why-line, which only a live part
-   reaches, and `duration_sec` only the player; epRow prints `duration_min`.
+   playlist. `artwork_url` is 161 B that epRow never renders. Nothing links out
+   to Apple any more, so neither `apple_episode_url` nor the two Apple ids are
+   kept: they were whitelisted for a derivation (`id<collection>?i=<track>`)
+   that nothing performs, and no reader takes either id from a part —
+   shareLinkFor's `apple_episode_url` fallback reads a LIVE item, never a
+   part (code-health CH-08, A1-09). `hook` feeds the player's why-line, which
+   only a live part reaches, and `duration_sec` only the player; epRow prints
+   `duration_min`.
 
    `topics` is kept even though nothing renders it, because without it an
    archived part cannot be starred at all (toggleStar bails when itemIndex has no
@@ -2490,12 +2494,13 @@ function prettyTitle(query) {
    and without the field its date line went blank the day the episode left the
    pool. 28 B, and a publish date never rots.
 
-   THE ARITHMETIC against savePlaylists' cap of 50 and SearchEngine.DEFAULT_CAP's
-   10 picks. Measured over all 2,167 items, the MEAN part is 298 B → 3.0 KB of
-   parts, plus a 0.5 KB `item_ids` mirror and ~0.2 KB of metadata → ~3.6 KB a
-   playlist, ~178 KB for a full 50 (from ~33 KB before). The WORST case is worth
-   naming rather than rounding away: the largest single part is 496 B, and 50
-   playlists of the ten longest-titled episodes in the catalogue come to ~267 KB.
+   THE ARITHMETIC against PLAYLISTS_CAP (50) and SearchEngine.DEFAULT_CAP's
+   10 picks. Measured over all 2,177 items, the MEAN part is 234 B → 2.3 KB of
+   parts, plus a 0.5 KB `item_ids` mirror and ~0.2 KB of metadata → ~3.0 KB a
+   playlist, ~150 KB for a full 50 (from ~33 KB before #276). The WORST case is
+   worth naming rather than rounding away: the largest single part is 433 B,
+   and 50 playlists of the ten longest-titled episodes in the catalogue come to
+   ~236 KB.
    A blanket self-sufficient copy would be ~861 B a part — ~430 KB — for the worse
    failure mode above. This lands in DurableStore's localStorage tier — the event
    queue (M3) moved off it into IndexedDB, so it is no longer the comparison point
@@ -2512,7 +2517,7 @@ function prettyTitle(query) {
    blanking the whole view for the length of the update window. 47 B a part buys
    immunity to that. `items` is authoritative — nothing in this file reads
    `item_ids` except the compatibility paths that predate it. */
-const PLAYLIST_PART_FIELDS = ["title", "show", "duration_min", "apple_collection_id", "apple_track_id", "topics", "release_date"];
+const PLAYLIST_PART_FIELDS = ["title", "show", "duration_min", "topics", "release_date"];
 
 /** Project a pool item (or a `cp_saved` snapshot) down to a storable part.
     A whitelist, like snapshot(): a field added to the pool does not silently
@@ -2621,82 +2626,89 @@ function playlistSpine(p) {
   return (Array.isArray(p.item_ids) ? p.item_ids : []).map(id => ({ id }));
 }
 
-function playlists() {
-  /* Through the pending-edit overlay (round-3 review, L1, app-1-1's
-     remainder): a playlist built, removed or played before hydration lands
-     shows at once, and lands on the durable list rather than over it. A FRESH
-     parse either way: this function backfills the records it returns. */
-  let all = pendingStoredEdits.has("cp_playlists") ? storedValue("cp_playlists", null) : lsGet("cp_playlists", null);
-  let touched = false;
-  if (all === null) {
-    all = lsGet("cp_quests", []);   // migrate the old key once
-    /* Only a legacy list with something IN it is migrated. An absent key used
-       to be materialised as `[]` by this read, so Home's first paint after
-       "Delete my data" wrote `cp_playlists` straight back into every tier of a
-       device just reported clear (persist-2). */
-    touched = Array.isArray(all) && all.length > 0;
-  }
+/** A stored cp_playlists value (`null` for a key never written) as the records
+    every reader can use. ONE definition for both sides of the key (code-health
+    CH-08): playlists() shows what this returns, and editPlaylists hands the
+    same repaired list to its edit, so the list a reader is shown is the list
+    the next real edit writes. It repairs the records it is handed in place, so
+    it takes a FRESH parse, never the shared one. Not pure in the strict sense:
+    a missing `created` is stamped with the time of the read, and a stub is
+    recovered from whatever the pool and cp_saved hold right now. */
+function backfillPlaylists(v) {
+  let all = v;
+  /* The old key, migrated: only a legacy list with something IN it becomes
+     playlists. An absent key used to be materialised as `[]` by a read, so
+     Home's first paint after "Delete my data" wrote `cp_playlists` straight
+     back into every tier of a device just reported clear (persist-2); a read
+     no longer writes at all. */
+  if (all === null) all = lsGet("cp_quests", []);
   if (!Array.isArray(all)) return [];   // a store this app never wrote
   /* An entry that is not an object is not a playlist, and dropping it is not data
-     loss — there is nothing in it to lose. It is also the only safe answer: SIX
-     places iterate this array (renderPlaylists, renderDrawer, playlistById,
-     touchPlaylistPlayed, savePlaylists and the remove button's filter), and a
-     `null` in it threw out of whichever ran first, blanking the list, the detail
-     view and the drawer together. Guarding one call site would have moved the
-     crash rather than removed it. */
-  const real = all.filter(p => p && typeof p === "object");
-  if (real.length !== all.length) { all = real; touched = true; }
+     loss — there is nothing in it to lose. It is also the only safe answer: every
+     place that iterates this array (renderPlaylists, renderDrawer, playlistById,
+     touchPlaylistPlayed, the remove button's filter, each edit), and a `null` in
+     it threw out of whichever ran first, blanking the list, the detail view and
+     the drawer together. Guarding one call site would have moved the crash
+     rather than removed it. */
+  all = all.filter(p => p && typeof p === "object");
   let cached = null;
   const sources = () => (cached ||= { pool: hydrationPool(), saved: savedMap() });
   for (const p of all) {
-    if (!p.title) { p.title = prettyTitle(p.query || ""); touched = true; }
+    if (!p.title) p.title = prettyTitle(p.query || "");
     /* A hand-edited store, a truncated write, or a cp_quests entry that never
        carried `created` leaves a record with neither `created` nor
        `last_played_at` — and every sort that orders playlists by recency
        (renderDrawer, playlistsForYouHtml) reads one of the two. Backfilling
        here, the same way the title above is backfilled, makes the record
-       whole at the one place all six playlist-reading call sites pass
-       through, rather than leaning on every sort site to guess a fallback
-       (#558 item 1). */
-    if (!p.created) { p.created = new Date().toISOString(); touched = true; }
-    if (hydratePlaylistParts(p, sources)) touched = true;
+       whole at the one place every playlist reader and writer passes through,
+       rather than leaning on every sort site to guess a fallback (#558 item 1). */
+    if (!p.created) p.created = new Date().toISOString();
+    hydratePlaylistParts(p, sources);
   }
-  /* Deliberately not through savePlaylists(): a read must not be the thing that
-     enforces the 50 cap on a store that already holds more. And never before
-     hydration has answered: a read-path write then is exactly the early write
-     property 2 of durable-store.js keeps over the durable list for good
-     (offerHomeOnboarding: cp_playlists is not in memory before hydration). The
-     backfill is recomputed on every read, so nothing is lost by waiting. */
-  if (touched && !storageWaiting()) lsSet("cp_playlists", all);
   return all;
 }
 
-function savePlaylists(all) { return lsSet("cp_playlists", all.slice(0, 50).map(withMirror)); }
+function playlists() {
+  /* Through the pending-edit overlay (round-3 review, L1, app-1-1's
+     remainder): a playlist built, removed or played before hydration lands
+     shows at once, and lands on the durable list rather than over it. A FRESH
+     parse either way: backfillPlaylists repairs the records it returns.
 
-/** Change the stored playlists by `fn` (list -> list), through editStored: now,
-    or over the hydrated store once it settles, never over it (app-1-1). `fn`
-    must be pure: it is re-run on every read of the overlay. A key never written
-    starts from the legacy cp_quests list, as playlists() does. Returns lsSet's
-    answer now, or true for a queued edit. */
-function editPlaylists(fn) {
-  return editStored("cp_playlists", null, (v) => {
-    let base = v;
-    if (base === null) {
-      const legacy = lsGet("cp_quests", []);
-      base = Array.isArray(legacy) ? legacy : [];
-    }
-    const list = Array.isArray(base) ? base.filter(x => x && typeof x === "object") : [];
-    /* NO SLICE HERE (#839 review): an edit that adds refuses at the cap
-       itself (buildPlaylist, savePlaylistCopy -- "the cap is said, not
-       applied"), and one that stamps or removes must not be the thing that
-       cuts a store already holding more than 50 (the legacy cp_quests
-       migration keeps every entry; playlists()'s read path holds the same
-       line). savePlaylists keeps its slice. */
-    return fn(list).map(withMirror);
-  });
+     A READ NEVER WRITES (code-health CH-08, A1-02). This used to persist its
+     backfill with its own lsSet once storage had settled, which made it a
+     second writer of cp_playlists racing editStored's flush: Home painted
+     before hydration queues the onboarding waiter, a save queues its edit
+     behind it, and when hydration landed the waiter's read (through the
+     overlay, the queued copy included) wrote the copy itself; the flush then
+     re-ran the save over a list already holding it and told the listener it
+     already existed. The repair is recomputed on every read, so readers lose
+     nothing, and the next real edit writes it (editPlaylists runs the same
+     backfill first). A repaired legacy list is therefore not on disk until
+     the listener next builds, saves, plays or removes a playlist. */
+  return backfillPlaylists(pendingStoredEdits.has("cp_playlists")
+    ? storedValue("cp_playlists", null)
+    : lsGet("cp_playlists", null));
 }
 
-/* The most playlists cp_playlists keeps (savePlaylists' slice). */
+/** Change the stored playlists by `fn` (list -> list), through editStored: now,
+    or over the hydrated store once it settles, never over it (app-1-1). The
+    ONE writer of cp_playlists (code-health CH-08). `fn` must be pure: it is
+    re-run on every read of the overlay. It is handed the list as playlists()
+    shows it (backfillPlaylists: a key never written starts from the legacy
+    cp_quests list, and the records are repaired), so an edit also writes the
+    repair. Returns lsSet's answer now, or true for a queued edit. */
+function editPlaylists(fn) {
+  /* NO SLICE HERE (#839 review): an edit that adds refuses at PLAYLISTS_CAP
+     itself (buildPlaylist, savePlaylistCopy -- "the cap is said, not
+     applied"), and one that stamps or removes must not be the thing that cuts
+     a store already holding more than the cap (the legacy cp_quests migration
+     keeps every entry). */
+  return editStored("cp_playlists", null, (v) => fn(backfillPlaylists(v)).map(withMirror));
+}
+
+/* The most playlists cp_playlists keeps, and the only statement of it: an add
+   refuses at it (buildPlaylist, savePlaylistCopy, the Create page) and nothing
+   slices the stored list to it. */
 const PLAYLISTS_CAP = 50;
 
 /* ---------- keeping a playlist 4a made (founder, 2026-09-25) ----------
@@ -6496,9 +6508,11 @@ function topicSearchStatus(query) {
 }
 
 function buildPlaylist(query) {
-  /* THE CAP IS SAID, NOT APPLIED (as savePlaylistCopy): with 50 kept, building
-     a 51st would silently push the oldest off the end of savePlaylists' slice —
-     possibly a saved copy the listener was told "stays as it is now". */
+  /* THE CAP IS SAID, NOT APPLIED (as savePlaylistCopy): with PLAYLISTS_CAP
+     kept, a 51st is refused here rather than squeezed in. Nothing slices the
+     stored list, so this refusal is the cap; the old slice to 50 pushed the
+     oldest off the end -- possibly a saved copy the listener was told "stays
+     as it is now". */
   if (playlists().length >= PLAYLISTS_CAP) return { status: "full", suggestions: [] };
   const scored = scoredResultsFor(query);
   if (!scored) return { status: "empty", suggestions: [] };

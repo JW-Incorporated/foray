@@ -31,7 +31,10 @@
  *      is provisional ("Saving"), written over the HYDRATED list, and reports
  *      its real outcome only then — full or already-saved included; a play
  *      stamp or a remove made while it waits composes with it, never writing
- *      the unhydrated list over the durable one.
+ *      the unhydrated list over the durable one. And it IS the single writer
+ *      (code-health CH-08): a read at settle (Home's onboarding check) no
+ *      longer writes the overlay ahead of the flush and flips Saved to
+ *      "already saved".
  *  11. "Delete my data" clears it; the copy follows CLAUDE.md's copy rules.
  *
  * Every test names the one-line mutation that turns it red, and each was run.
@@ -279,7 +282,7 @@ test("a generated playlist's page carries Save, and Save stores its current item
   assert.ok(!copy.isGenerated && !copy.isSubject, "a saved copy is not a generated playlist");
   assert.notStrictEqual(copy.id, GEN_ID, "the copy has its own id");
   assert.deepStrictEqual(Object.keys(copy.items[0]).sort(),
-    ["apple_collection_id", "apple_track_id", "duration_min", "id", "release_date", "show", "title", "topics"]
+    ["duration_min", "id", "release_date", "show", "title", "topics"]
       .filter((k) => k in copy.items[0]).sort());
   assert.ok(copy.items.every((p) => p.title && !("audio_url" in p) && !("hook" in p)), "parts are playlistPart snapshots");
   const firstWrite = JSON.parse(m.writes.find(([k]) => k === "cp_playlists")[1]);
@@ -421,7 +424,7 @@ test("once the source's episodes change, the page no longer says Saved: the new 
 test("with 50 playlists kept, Save says so and pushes nothing off the end", () => {
   /* MUTATION: drop `if (all.length >= PLAYLISTS_CAP) return { status: "full" }`
      -> the edit's own guard keeps the list, but the page claims "Saved"; drop
-     both guards -> the slice to 50 silently removes "Own 49" and this fails. */
+     both guards -> the copy lands as a 51st and the length assertion fails. */
   const fifty = Array.from({ length: 50 }, (_, i) => ownPlaylist(i));
   const m = appMount({ seed: { cp_playlists: JSON.stringify(fifty) } });
   const btn = renderAndSave(m, GEN_ID);
@@ -443,8 +446,9 @@ test("with 50 playlists kept, Save says so and pushes nothing off the end", () =
 });
 
 test("Create's builder refuses at the cap too, and nothing cuts a store that already holds more than 50", () => {
-  /* MUTATION 1: drop buildPlaylist's cap check -> savePlaylists' slice pushes
-     the oldest playlist off the end and the first half fails. MUTATION 2: put
+  /* MUTATION 1: drop buildPlaylist's cap check -> the 51st build is written
+     beside the 50 and the first half fails (nothing slices cp_playlists any
+     more; savePlaylists and its slice went in code-health CH-08). MUTATION 2: put
      `.slice(0, 50)` back in editPlaylists -> the refused save
      and the remove each cut the 52-entry store and the second half fails. */
   const m = appMount({ seed: { cp_playlists: JSON.stringify(Array.from({ length: 49 }, (_, i) => ownPlaylist(i))) } });
@@ -730,8 +734,9 @@ test("a save before hydration does not duplicate a copy the durable list already
 });
 
 test("removing a pending copy before hydration removes it; the queued save does not bring it back", async () => {
-  /* MUTATION: go back to `savePlaylists(playlists().filter(...))` in the remove
-     handler -> it writes the unhydrated list before hydration (and the queued
+  /* MUTATION: go back to `lsSet("cp_playlists", playlists().filter(...))` in the
+     remove handler (what the deleted savePlaylists did) -> it writes the
+     unhydrated list before hydration (and the queued
      save re-adds the copy at settle); this fails. */
   const m = appMount();
   const h = await hydrating(m, { cp_playlists: JSON.stringify([ownPlaylist(1)]) });
@@ -748,8 +753,8 @@ test("removing a pending copy before hydration removes it; the queued save does 
 });
 
 test("playing a pending copy before hydration stamps it without writing the unhydrated list over the durable one", async () => {
-  /* MUTATION: go back to `savePlaylists(all)` in touchPlaylistPlayed -> the
-     stamp writes [copy] before hydration, property 2 keeps it over the durable
+  /* MUTATION: go back to `lsSet("cp_playlists", all)` in touchPlaylistPlayed
+     (what the deleted savePlaylists did) -> the stamp writes [copy] before hydration, property 2 keeps it over the durable
      list, and "Own 1" is lost; this fails. */
   const m = appMount();
   const h = await hydrating(m, { cp_playlists: JSON.stringify([ownPlaylist(1)]) });
@@ -761,6 +766,56 @@ test("playing a pending copy before hydration stamps it without writing the unhy
   const list = h.list();
   assert.deepStrictEqual(list.map((p) => p.title), ["Startups", "Own 1"], "the durable list is whole");
   assert.match(list[0].last_played_at || "", /^\d{4}-/, "and the copy carries its stamp");
+});
+
+test("savePlaylistCopy on a settled store answers saved and logs exactly one playlist_saved", () => {
+  /* Characterization for code-health CH-08 (A1-02): the plain, settled path the
+     queued one below must end up agreeing with. Written before playlists()
+     stopped persisting its backfill, and green on both sides of that change.
+     MUTATION: drop the logEvent("playlist_saved", ...) line from finish() in
+     savePlaylistCopy -> the event count is 0 and this fails; call it twice ->
+     the count is 2. */
+  const m = appMount();
+  const events = spyEvents(m);
+  const source = m.ctx.generatedPlaylistById(GEN_ID);
+  const res = m.ctx.savePlaylistCopy(source);
+  assert.strictEqual(res.status, "saved");
+  assert.strictEqual(res.playlist.id, m.stored()[0].id, "the answer names the copy that was written");
+  assert.deepStrictEqual(events().filter((t) => t === "playlist_saved"), ["playlist_saved"]);
+});
+
+test("a save queued behind hydration still lands Saved when Home's onboarding reads a legacy list that needs a backfill first", async () => {
+  /* Code-health CH-08 (A1-02): cp_playlists had TWO writers. Home painted
+     before hydration queues the onboarding waiter; the listener then saves a
+     playlist, which queues the edit (and its flush) behind it. Hydration lands
+     a durable list whose record has no `created` -- a backfill. The onboarding
+     waiter runs first: isGenuineFirstTimeUser -> playlists() reads the
+     pending-edit overlay (the copy included) and its read-path lsSet wrote
+     that overlay, copy and all. The flush then re-ran the edit over a list
+     already holding the copy -> outcome "exists": the listener was told the
+     playlist was already theirs and no playlist_saved was ever logged. Now
+     editStored's flush is the only writer, and playlists() never writes.
+     MUTATION: put back `if (touched && !storageWaiting()) lsSet("cp_playlists", all);`
+     at the end of playlists() -> the note is the "already in your playlists"
+     one, the event list is empty, and this fails. */
+  const m = appMount();
+  const events = spyEvents(m);
+  const legacy = ownPlaylist(1);
+  delete legacy.created;   // a record playlists() has to repair on every read
+  const h = await hydrating(m, { cp_playlists: JSON.stringify([legacy]) });
+
+  m.ctx.renderHomeV2();   // Home before hydration: offerHomeOnboarding queues its waiter first
+  assert.strictEqual(m.evalIn("onboardingAfterSettle"), true, "fixture assumption: the onboarding waiter is queued");
+  const btn = renderAndSave(m, GEN_ID);
+  assert.strictEqual(m.el("pl-save-note").textContent, "Saving. 4a is still opening your playlists.");
+
+  h.land();
+  assert.strictEqual(m.el("pl-save-note").textContent, SAVED_NOTE, "the save that landed is reported as saved");
+  assert.strictEqual(btn.textContent, "✓ Saved");
+  assert.deepStrictEqual(events().filter((t) => t === "playlist_saved"), ["playlist_saved"], "logged exactly once");
+  const list = h.list();
+  assert.deepStrictEqual(list.map((p) => p.title), ["Startups", "Own 1"], "one copy, on the durable list");
+  assert.match(list[1].created || "", /^\d{4}-/, "the flush that wrote the copy wrote the repaired record too");
 });
 
 /* ==================================================================== */
