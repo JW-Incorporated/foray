@@ -178,7 +178,7 @@ const FLOORS = {
      survives the others' mutations (audio, the boundary's arming order, and the
      reject branch's report are three separate lines), so a floor that allowed one
      to be dropped would allow exactly a third of it. */
-  "player/html-audio-backend.test.js": 129, // NE-45j: the web lane prepares nothing across a narration seam (the handover stays parked, from a window and from the line-start warm); 128 -> 129 // Phase 2 player card (2026-09-28): pitch is kept at every speed, and the narration warm is a spare never-played element, one file, aborted on a visible cancel, untouched on a hidden one, and stood down by an unexplained pause; 113 -> 128 // audit round 3 integration: the real post-merge count, 112 -> 113
+  "player/html-audio-backend.test.js": 131, // CH-21 characterization: a cold load resolves on the canplay at its in-point (600) and not the head's, and from the top on canplay with no seek; 129 -> 131 // NE-45j: the web lane prepares nothing across a narration seam (the handover stays parked, from a window and from the line-start warm); 128 -> 129 // Phase 2 player card (2026-09-28): pitch is kept at every speed, and the narration warm is a spare never-played element, one file, aborted on a visible cancel, untouched on a hidden one, and stood down by an unexplained pause; 113 -> 128 // audit round 3 integration: the real post-merge count, 112 -> 113
   /* What the player believes after an interruption it could not observe (#263).
      Floored because this suite is the only thing in the repo that boots
      `player/client.js` for real, and the cheapest way to lose that is for

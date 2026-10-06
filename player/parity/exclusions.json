@@ -366,6 +366,10 @@
     "NE-45j: the web lane prepares nothing across a narration seam — prefetch stays parked": {
       "reason": "webview-only",
       "why": "Pins that the WEB lane stays parked: the production HtmlAudioBackend (no second element) is never asked to prefetch across a narration seam, from a window or from the line-start warm. The native standby deck does prepare there; that rule is the prepare-narration family (NE-45s)."
+    },
+    "CH-21 characterization: a load from the top (offset 0) asks for no seek and resolves on canplay": {
+      "reason": "webview-only",
+      "why": "Which HTMLMediaElement event (`canplay`, with no `currentTime` assignment at an in-point of 0) settles a cold load of the web element. AVDeck has no such events: a load is one `.ready` after its own preroll (AVDeckTests/testNothingIsAudibleBeforeReady), so there is no event choice for the engine to reimplement."
     }
   },
   "interlude": {

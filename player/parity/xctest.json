@@ -22,6 +22,7 @@
     "§16: the Foray clip's silence bound is the attempts times the hidden-page deadline": "xctest:AVDeckTests/testTheClipSilenceBoundIsTheAttemptsTimesTheClipDeadline"
   },
   "html-audio-backend": {
+    "CH-21 characterization: a load at 600 resolves on the canplay that finds the playhead at 600, and not on the one for the head": "xctest:AVDeckTests/testOffsetLandsOnTheCbrMp3AndTheWav",
     "a first load that stalls without erroring also degrades rather than hanging": "xctest:AVDeckTests/testANeverReadyUrlHitsTheDeadlineWithNoPreroll",
     "a released backend refuses further work instead of half-operating": "xctest:AVDeckTests/testInvalidateSilencesDetachesAndStopsReporting",
     "an item with no audio_url rejects rather than loading an empty src": "xctest:AVDeckTests/testALoadWithNoUsableUrlFailsThatLoad",
