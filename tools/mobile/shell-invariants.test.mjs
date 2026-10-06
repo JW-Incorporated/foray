@@ -674,6 +674,24 @@ test("a bridge that throws on an https origin degrades to the web answer", async
   assert.deepEqual(registered, ["sw.js"]);
 });
 
+test("CH-23: one shell detector — shouldRegisterServiceWorker is !isNativeShell, so a new shell signal reaches both", async () => {
+  /* The two were written twice with inverted returns (A1-05, A3-04, X1-08), on
+     a "different question / source order" premise that does not hold: function
+     declarations hoist. A signal added to isNativeShell alone would have let
+     sw.js register inside a shell that relaunch, data-source and chapter logic
+     treat as native — the #213/#220 class of bug. MUTATION: restore the copied
+     body in shouldRegisterServiceWorker -> the stubbed new signal is ignored and
+     the census finds two `"capacitor:"` checks; red. */
+  const { ctx } = await runAppShell();
+  ctx.isNativeShell = () => true;              // a signal only the one detector knows
+  assert.equal(ctx.shouldRegisterServiceWorker(ctx), false, "the worker follows isNativeShell");
+  ctx.isNativeShell = () => false;
+  assert.equal(ctx.shouldRegisterServiceWorker(ctx), true);
+  const code = APP_SRC.replace(/\/\*[\s\S]*?\*\//g, " ");
+  assert.equal((code.match(/"capacitor:"/g) || []).length, 1, "the capacitor: origin is tested in exactly one function");
+  assert.equal((code.match(/\.isNativePlatform\(\)/g) || []).length, 1, "and the bridge is asked in exactly one");
+});
+
 test("app.js is the only file in the bundle that registers a service worker", () => {
   /* All the tests above execute app.js, so a `register()` added anywhere ELSE in
      the bundle — player/client.js and search-engine.js both ship — would put a

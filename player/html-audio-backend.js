@@ -1712,7 +1712,9 @@ export class HtmlAudioBackend {
       };
       const onErr = () => {
         if (superseded()) return;
-        fail(`load failed (code ${el.error?.code ?? "?"}) for ${item.id}`);
+        // `media error N`: the one spelling of the element's code, the same as
+        // the persistent listener's report (queue-manager.js reads it).
+        fail(`load of ${item.id} failed: media error ${el.error?.code ?? "unknown"}`);
       };
 
       // Offset is applied here, not before: assigning currentTime at
@@ -1823,7 +1825,7 @@ export class HtmlAudioBackend {
       const onProgress = () => { if (!superseded() && near()) done(); };
       const onErr = () => {
         if (superseded()) return;
-        fail(`in-place seek to ${Math.round(target)}s failed (code ${el.error?.code ?? "?"})`);
+        fail(`in-place seek to ${Math.round(target)}s failed: media error ${el.error?.code ?? "unknown"}`);
       };
 
       el.addEventListener("seeked", onProgress);

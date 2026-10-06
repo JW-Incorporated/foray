@@ -197,6 +197,7 @@ const BUTTONS = {
   ".diag-clear": { tall: ".diag-clear", why: "width: 100% of the sheet" },
   ".drawer-item": { tall: ".drawer-item", why: "display: block, the drawer's full width" },
   ".ep-chapter-row": { tall: ".ep-chapter-row", why: "width: 100% of the chapter list or the description" },
+  ".ep-bookmark-remove": { size: [".ep-bookmark-remove"] }, // CH-09b (PQ-15): the episode page's bookmark Remove, 44x44 by its own declarations
   ".ep-ts": { inline: "a stamp inside running prose; its hit box is its line, and a line that STARTS with a stamp renders as .ep-chapter-row instead (touch-10)" },
   ".fp-btn": { size: [".fp-btn"] },
   ".fp-clip": { size: [".fp-clip"] },

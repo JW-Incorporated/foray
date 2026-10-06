@@ -82,6 +82,7 @@ const state = {
   forayResume: null,        // its stored resume point, or null — see paintForay
   forayPlaying: null,       // id of the Foray the player is inside, or null
   forayPainted: null,       // last segment index painted onto the running order
+  forayPaintedLive: null,   // which Foray the page last painted LIVE — see paintForay
   cardSlots: [],            // the four dealt suggestions
   itemIndex: {},            // id -> snapshot (a CACHE, never a membership test — see fullPool)
   poolIds: new Set(),       // ids the catalogue holds RIGHT NOW — rebuilt by fullPool
@@ -1244,21 +1245,36 @@ function playBtn(item, ctx) {
    branch (older comedy items predate per-episode ratings). */
 function familyMode() { return lsGet("cp_family", false); }
 
-/* ---------- U-02: the ui-v2 flag (docs/ui-transition-plan.md) ----------
+/* ---------- the one native-shell detector (issue #36; code-health CH-23) ----------
 
-   cp_ui_v2 gates the whole v2 surface (tab bar, and every screen U-03+
-   restyles): default OFF on the web, default ON for a native-shell build so
-   the app the founders actually carry shows the new look without a manual
-   toggle. There is no separate "TestFlight vs production" signal today
-   (R-01 stopped shipping PR builds to TestFlight, but there is no
-   store-production build yet either) -- isNativeShell() below duplicates
-   shouldRegisterServiceWorker's Capacitor detection (further down this
-   file) rather than sharing it, because that function answers a different
-   question (should the SW register) with an inverted return and this one
-   must be callable before that function's own definition site in source
-   order is guaranteed relevant. When a real production channel exists this
-   default should be revisited; until then "native shell" and "TestFlight"
-   are the same population. */
+   Is this page running inside the Capacitor shell rather than a browser? The
+   ONE answer in this file: the service worker (shouldRegisterServiceWorker),
+   the relaunch route, the boot's data-source row and chapter hydration all ask
+   here, so a new shell signal added below reaches every one of them. Two
+   copies with inverted returns used to exist; a signal added to one would
+   have registered sw.js inside a shell the rest of the file treats as native,
+   or the reverse (the #213/#220 class of bug).
+
+   Two signals, checked in SEPARATE `try` blocks on purpose. The origin goes
+   first because it cannot throw: on iOS the page is served from
+   `capacitor://localhost`. `window.Capacitor.isNativePlatform()` goes second —
+   the bridge is injected before page scripts, so it is normally the more
+   precise answer, but it is somebody else's object and calling into it can
+   throw (a bridge that is not ready, a plugin-proxy getter). Sharing one `try`
+   made the guard FAIL OPEN: a throwing bridge skipped the origin check too and
+   registered the worker inside the shell, which is the exact case the origin
+   check exists to cover. A throwing bridge is not a "yes"; the origin already
+   spoke.
+
+   Deliberately NOT a hostname check. Capacitor's Android default is
+   `https://localhost`, so testing for "localhost" would also treat anyone
+   serving the real site from a local dev server as the shell — a live web
+   behaviour broken to fix an app one.
+
+   Deliberately NOT a user-agent check either. Every real Foray listener is on a
+   phone, so UA-sniffing here would switch the offline shell off for essentially
+   the whole audience. `shell-invariants.test.mjs` asserts a mobile-web UA still
+   registers. */
 function isNativeShell(win = window) {
   try {
     const proto = (win && win.location && win.location.protocol) || "";
@@ -3603,11 +3619,20 @@ const EPISODE_NAVIGATION = {
     if (!b) return null;
     const bm = b.addBookmark(BOOKMARK_STORE, { episodeId: id, sec, durationSec });
     if (bm) announce("Bookmarked.");
+    /* The episode page under the sheet lists it at once (CH-09b, PQ-15):
+       "Bookmarked." for a row no page showed was the write-only defect. */
+    if (bm) repaintBookmarks(id);
     return bm;
   },
   bookmarksFor(id) {
     const b = window.forayBookmarks;
     return b ? b.listBookmarks(BOOKMARK_STORE, id) : [];
+  },
+  /* The episode page's Remove (CH-09b, PQ-15): the module's rule through the
+     page's store, like addBookmark. True when a row went and the write took. */
+  removeBookmark(id, createdAt) {
+    const b = window.forayBookmarks;
+    return b ? b.removeBookmark(BOOKMARK_STORE, id, createdAt) : false;
   },
 };
 
@@ -5515,8 +5540,12 @@ function forayRoutePath(id) {
    (resolveEpisode finds nothing else on a fresh device), else its show; a
    playlist only the recipient could not rebuild (their own playlist, a
    Suggested queue) is FROZEN into the link as title + catalogue ids. No event
-   is logged for a share. */
-const PUBLIC_WEB_ORIGIN = "https://foray-web-seven.vercel.app/";
+   is logged for a share.
+
+   Spelled FROM API_ORIGIN, not as a second literal of the same host (CH-23,
+   A1-17): a domain move edits one line. The trailing "/" is the share links'
+   root; API_ORIGIN carries none (apiUrl joins with one). */
+const PUBLIC_WEB_ORIGIN = API_ORIGIN + "/";
 const SHARED_PLAYLIST_PREFIX = "shared~";
 const SHARED_PLAYLIST_MAX = 50;
 
@@ -12117,6 +12146,107 @@ function bindEpisodeSeeks(scope, item) {
   hydrateFeedChapters(scope, item);
 }
 
+/* ---------- the episode page's bookmarks (issue #30, PQ-15; code-health CH-09b) ----------
+
+   The listener's own marks on this episode, set from the Now Playing sheet
+   (EPISODE_NAVIGATION.addBookmark) and listed here, which is where the
+   privacy policy's `cp_bookmarks` row says they are. Before this the sheet
+   said "Bookmarked." for something no page showed (P2-02).
+
+   - Every rule is player/bookmarks.js's, published whole as
+     window.forayBookmarks: the list (bookmarksFor), the precision
+     (bookmarkPrecision: an OWN marker, exact unless a stitched copy's length
+     drifted past seek-policy's tolerance since it was set) and the words
+     (bookmarkLabel: "at 1:02:03" or "around minute 62"). No clock text is
+     made here, so a moved timeline is never claimed to the second.
+   - A row is a `data-ts` control, so a tap is bindEpisodeSeeks's
+     play-then-seek, the one path the chapters and timestamps already take.
+   - Remove goes through EPISODE_NAVIGATION.removeBookmark (the page's store).
+   - The section lives in a slot that is always rendered, so a bookmark made
+     with this page under the sheet, a Remove, or a late hydration repaints
+     just the list, the way repaintDownload repaints the download control.
+   No event is logged and no key is added: `cp_bookmarks` stays on the device. */
+function bookmarksSlotHtml(item) {
+  return `<div class="ep-bookmarks-slot" data-bookmarks-slot="${esc(item.id)}">${bookmarksHtml(item)}</div>`;
+}
+
+/** The length of the copy in hand, the other half of a bookmark's drift
+    test: the player's reading (`observedDurationSec`), never the catalogue's
+    declared length. Null when the player cannot say, and today it never can:
+    PQ-15 leaves client.js alone and `episodeProgress` has no duration field,
+    so (its escalation) the page passes null and claims no drift. "Around
+    minute N" shows once a later card exposes the measured length as
+    ForayPlayer.observedDurationSec(id); nothing here changes then. */
+function bookmarkObservedSec(id) {
+  try {
+    const sec = window.ForayPlayer?.observedDurationSec?.(id);
+    return typeof sec === "number" && Number.isFinite(sec) && sec > 0 ? sec : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function bookmarksHtml(item) {
+  const list = EPISODE_NAVIGATION.bookmarksFor(item.id);
+  if (!list.length) return "";
+  const b = window.forayBookmarks;
+  const observed = bookmarkObservedSec(item.id);
+  /* chapterPrecision's reading of the show: unclassified counts as stitched. */
+  const show = { dai_suspected: item.dai_suspected === true || item.dai_known === false };
+  const row = (bm) => {
+    let precision;
+    try { precision = b.bookmarkPrecision(show, bm, observed).precision; } catch (_) { precision = "approximate"; }
+    const said = b.bookmarkLabel(bm, precision);
+    const shown = bm.label ? said : said.charAt(0).toUpperCase() + said.slice(1);
+    const named = bm.label ? `, ${said}` : ` ${said}`;
+    return `<li><button type="button" class="ep-chapter-row ep-bookmark-row" data-ts="${esc(String(bm.sec))}" aria-label="${esc(`Play bookmark${named}`)}"><span class="ep-chapter-title">${esc(shown)}</span></button><button type="button" class="ep-bookmark-remove" data-bookmark-remove="${esc(bm.created_at)}" aria-label="${esc(`Remove bookmark${named}`)}">Remove</button></li>`;
+  };
+  return `<section class="ep-bookmarks">
+    <h3>Bookmarks</h3>
+    <ol class="ep-chapters-list ep-bookmarks-list">${list.map(row).join("")}</ol>
+  </section>`;
+}
+
+/** Repaint one episode's bookmark list where its page is on screen, and bind
+    what the repaint drew. A no-op on every other page. */
+function repaintBookmarks(id) {
+  const view = $("#view");
+  if (!view || typeof view.querySelectorAll !== "function") return;
+  view.querySelectorAll("[data-bookmarks-slot]").forEach(slot => {
+    if (!slot.dataset || slot.dataset.bookmarksSlot !== id) return;
+    const item = resolveEpisode(id);
+    if (!item) return;
+    slot.innerHTML = bookmarksHtml(item);
+    bindEpisodeSeeks(slot, item);
+    bindBookmarkRemove(slot, item);
+  });
+}
+
+/* Per element with the `_bound` guard, bindEpisodeSeeks's idiom: the
+   listeners die with the markup they belong to. A refused write (the store at
+   quota) removes nothing and says nothing; the list repaints from storage
+   either way, so it shows what is kept. Focus moves to the next row's Remove
+   (or the new last one), so clearing several is a run of taps in one place. */
+function bindBookmarkRemove(scope, item) {
+  scope.querySelectorAll("[data-bookmark-remove]").forEach(btn => {
+    if (btn._bound) return;
+    btn._bound = true;
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const createdAt = btn.dataset.bookmarkRemove;
+      const at = EPISODE_NAVIGATION.bookmarksFor(item.id).findIndex(bm => bm.created_at === createdAt);
+      const ok = EPISODE_NAVIGATION.removeBookmark(item.id, createdAt);
+      repaintBookmarks(item.id);
+      if (!ok) return;
+      announce("Bookmark removed.");
+      const left = $("#view")?.querySelectorAll?.("[data-bookmark-remove]") || [];
+      const next = left.length ? left[Math.min(Math.max(at, 0), left.length - 1)] : null;
+      try { next?.focus?.(); } catch (_) { /* focus is best-effort */ }
+    });
+  });
+}
+
 /* `t` is a timestamp link's offset in whole seconds (#30, see episodeDeepLink),
    or null. It adds the "Play from" button and nothing else: the page never
    starts playback on its own. */
@@ -12158,6 +12288,7 @@ function renderEpisode(id, { t = null } = {}) {
       <div class="ep-actions">${item.audio_url ? playBtn(item) : notPlayableNote()}${starBtn(item.id)}${upNextBtn(item.id, item)}${item.audio_url ? `<button type="button" class="up-next playnext" data-playnext="${esc(item.id)}" aria-label="Play next">Play next</button>` : ""}${shareBtn({ kind: "episode", id: item.id, item, title: item.title })}</div>
       ${item.audio_url ? "" : `<p class="note">${esc(NOT_PLAYABLE_WHY)}</p>`}
       ${downloadControlHtml(item)}
+      ${bookmarksSlotHtml(item)}
       ${episodeDescriptionSectionHtml(item)}
       ${episodeChaptersHtml(item)}
       ${moreFromShow(item)}
@@ -12168,6 +12299,10 @@ function renderEpisode(id, { t = null } = {}) {
   bindDownloads($("#view"));
   bindPlay($("#view"));
   bindEpisodeSeeks($("#view"), item);
+  bindBookmarkRemove($("#view"), item);
+  /* Painted before the durable store landed: the list repaints when it does,
+     so this device's bookmarks are not read as none. */
+  if (storageWaiting()) afterStorageSettles(() => repaintBookmarks(item.id));
 }
 
 /* The count printed here is `resolveParts(p).length` — the SAME call
@@ -14271,13 +14406,22 @@ async function renderForay(id) {
 
   /* `forayViewOpts()` carries the `?foray=` unlock AND the test-track switch:
      a draft the switch listed must open and play through this same call, or
-     the list would advertise a page that answers "isn't available". */
-  const r = player.resolve(state.forays, {
-    id,
-    segmentsDoc: state.segments,
-    sourcesDoc: state.segmentSources,
-    ...forayViewOpts(),
-  });
+     the list would advertise a page that answers "isn't available". It is the
+     list surfaces' own call (`resolveForay`), so the page cannot open a Foray
+     by a rule the lists do not list it by.
+
+     A RESOLVER THAT THROWS IS A FAILED LOAD (code-health CH-22, A3-01). The
+     throw used to escape this function and leave the page on "Loading…" with
+     no Try again; it is the same documents failing as `!state.forays` above,
+     and it gets the same page and the same retry. */
+  let r;
+  try {
+    r = resolveForay(player, id);
+  } catch (_) {
+    $("#view").innerHTML = statusPageHtml({ title: "Foray", note: "Couldn't load forays right now.", back: "#/forays", retry: true });
+    bindRetry($("#view"), retryForayDocs);
+    return;
+  }
   // Same answer for "no such Foray" and "not published": a client that
   // distinguishes them announces the existence of unpublished work.
   if (!r) {
@@ -14328,14 +14472,12 @@ async function renderForay(id) {
      exactly like one never touched, no banner, no mark. It now says "Played"
      with a "Play again" beside it, the finished episode's word. Split here so
      `resume` keeps meaning "a place to start from", which a finished Foray is
-     not: its main button starts from the top, as before. */
-  const point = typeof player.forayResume === "function"
-    ? player.forayResume(r.id, { totalSec: r.totalSec, itemCount: r.playable.length, resolved: r, includeFinished: true })
-    : null;
-  const played = point && point.finished ? point : null;
-  const resume = played ? null : point;
+     not: its main button starts from the top, as before. The read and the
+     split are `readForayPoint`'s, shared with the live->cold re-read and the
+     now-playing bar. */
+  const { resume, played } = readForayPoint(player, r);
   state.forayResume = resume;
-  forayPaintedLive = null;
+  state.forayPaintedLive = null;
   /* The document changed under a stored position. Nothing user-facing — the
      resume already degraded correctly — but it is the one signal that says how
      often real listeners hit it, and #40 is explicit that a stale-data event must
@@ -14438,7 +14580,7 @@ async function renderForay(id) {
   if (played) sizeProgressBars($("#view"));
   bindFeedback(r);
   bindSourceLinks(r);
-  bindForayTransport(r, player, resume);
+  bindForayTransport(r, player);
   pageDidPaint();   // the real page is up: a clamped back-step restore can land now
   joinForayCreditsToShowIndex(r, player);
 }
@@ -15007,6 +15149,9 @@ async function guardForayStart(run) {
     return await run();
   } catch (err) {
     console.warn("[foray] start failed", err);
+    /* Only the LIVE half, not `leaveForayPage()`: the listener is still on this
+       page, and its Foray and resume point are what the next press retries
+       from (pinned in test/foray-page.test.js). */
     state.forayPlaying = null;
     state.forayPainted = null;
     /* THE PAINT FIRST AND THE RECORD LAST, but the record lands either way.
@@ -15069,7 +15214,7 @@ function forayNudgeSteps(player) {
   return { back: 15, fwd: 30 };
 }
 
-function bindForayTransport(r, player, resume = null) {
+function bindForayTransport(r, player) {
   const onChange = (s) => paintForay(s);
   const nudge = forayNudgeSteps(player);
 
@@ -15092,17 +15237,18 @@ function bindForayTransport(r, player, resume = null) {
   /* The main button, pressed cold. With a stored position that means RESUME —
      the whole point of the feature — and an explicit index (a row, the strip)
      always wins, because the listener just named a segment. */
-  /* FROM `state.forayResume`, NOT THE BIND-TIME `resume` (audit round 3,
+  /* FROM `state.forayResume`, NOT A BIND-TIME POINT (audit round 3,
      app-3-1). The closure was the point captured when the page rendered, so
      after play -> advance -> close the bar, Play restarted from that old point
      (or 0) and the player's next save overwrote the real one. paintForay
-     re-reads the stored point when this Foray goes from live to cold. */
+     re-reads the stored point when this Foray goes from live to cold. The
+     bind-time parameter itself is gone (code-health CH-22, A3-03): Start over
+     logged it after the point it named no longer existed. */
   const startOrResume = () => state.forayResume ? startAt(state.forayResume.elapsedSec) : start(0);
 
   $("#fy-restart")?.addEventListener("click", async () => {
     if (typeof player.clearForayResume === "function") player.clearForayResume(r.id);
-    logEvent("foray_restart", { foray_id: r.id, from_sec: Math.round(state.forayResume?.elapsedSec || resume?.elapsedSec || 0) });
-    resume = null;
+    logEvent("foray_restart", { foray_id: r.id, from_sec: Math.round(state.forayResume?.elapsedSec || 0) });
     state.forayResume = null;
     $("#fy-resume")?.remove();
     await start(0);
@@ -15331,9 +15477,28 @@ function openRateMenu(player, onChange) {
 /** The only thing that changes 4x a second. Deliberately not a re-render: the
     running order is 32 rows and rebuilding it would fight the scroll position
     and drop focus. */
-/** Which Foray the page last painted LIVE (app-3-1), so a cold tick can tell
-    "just stopped" from "never started". Reset by every renderForay. */
-let forayPaintedLive = null;
+/* Which Foray the page last painted LIVE (app-3-1), so a cold tick can tell
+   "just stopped" from "never started", is `state.forayPaintedLive`: reset by
+   every renderForay, and with the rest of the page's state by leaveForayPage. */
+
+/** A Foray's stored point, read ONE way (code-health CH-22, A3-03), split into
+    `resume` — a place to start from — and `played` — finished, which is not.
+    Read against the resolved running order with `includeFinished`, from which
+    the player derives the runtime and the segment count itself. A read that
+    throws (a corrupt progress row, an older module) is no point at all: the
+    Foray page opens with no offer rather than on "Loading…", and the bar falls
+    back to the episode. Shared by renderForay, the live->cold re-read below and
+    the now-playing bar, so the finished-vs-resume rule lives here only. */
+function readForayPoint(player, r) {
+  let point = null;
+  if (r && typeof player?.forayResume === "function") {
+    try {
+      point = player.forayResume(r.id, { resolved: r, includeFinished: true }) || null;
+    } catch (_) { point = null; }
+  }
+  const played = point && point.finished ? point : null;
+  return { resume: played ? null : point, played };
+}
 
 /** Re-read this Foray's stored resume point into `state.forayResume` and repaint
     the banner's words from it (app-3-1). A finished Foray has no resume point. */
@@ -15341,11 +15506,8 @@ function refreshForayResume() {
   const r = state.foray;
   const player = window.ForayPlayer;
   if (!r || !player || typeof player.forayResume !== "function") return;
-  let point = null;
-  try {
-    point = player.forayResume(r.id, { totalSec: r.totalSec, itemCount: (r.playable || []).length, resolved: r, includeFinished: true });
-  } catch (_) { point = null; }
-  state.forayResume = point && !point.finished ? point : null;
+  const { resume, played } = readForayPoint(player, r);
+  state.forayResume = resume;
   const at = $("#fy-resume .fy-resume-at");
   const left = $("#fy-resume .fy-resume-left");
   if (state.forayResume && typeof player.fmtClock === "function") {
@@ -15363,14 +15525,36 @@ function refreshForayResume() {
      point at all the banner goes. */
   const banner = $("#fy-resume");
   if (!banner) return;
-  if (point && point.finished) {
+  if (played) {
     banner.classList?.add("fy-played");
     if (at && typeof at.remove === "function") at.remove();
-    setStatusText(left, point.label || "Played");
+    setStatusText(left, played.label || "Played");
     setStatusText($("#fy-restart"), "Play again");
   } else if (typeof banner.remove === "function") {
     banner.remove();
   }
+}
+
+/** LEAVING THE FORAY PAGE CLEARS WHAT IT HELD (code-health CH-22, A3-02).
+    `state.foray*` and `fbTarget` describe the Foray page on screen; nothing
+    cleared them on navigation, so a Foray still playing in the bar kept
+    calling this page's paint after the listener went Home, and closing the
+    bar re-read its resume point into `state.forayResume` with Home on screen.
+    One list of what the page owns, cleared by every page change
+    (`renderCurrentPage`) and by Delete my data; the player stops calling the
+    page back (`watchForay(null)`) until a Foray page hooks itself again.
+    guardForayStart deliberately clears only the live half: its page stays. */
+function leaveForayPage() {
+  state.foray = null;
+  state.forayPlaying = null;
+  state.forayPainted = null;
+  state.forayResume = null;
+  state.forayPaintedLive = null;
+  fbTarget = null;
+  const player = window.ForayPlayer;
+  try {
+    if (typeof player?.watchForay === "function") player.watchForay(null);
+  } catch (_) { /* an older module that will not unhook still meets paintForay's `!state.foray` gate */ }
 }
 
 function paintForay(s) {
@@ -15404,9 +15588,9 @@ function paintForay(s) {
      point was read once, at render; after the listener played on and closed
      the bar, the cold page (clock, banner, and the Play the next press runs)
      fell back to that stale point, or to 0. */
-  if (live) forayPaintedLive = state.foray.id;
-  else if (forayPaintedLive === state.foray.id) {
-    forayPaintedLive = null;
+  if (live) state.forayPaintedLive = state.foray.id;
+  else if (state.forayPaintedLive === state.foray.id) {
+    state.forayPaintedLive = null;
     refreshForayResume();
   }
 
@@ -15593,12 +15777,23 @@ function resolveListedForay(id) {
   const player = window.ForayPlayer;
   if (!id || !state.forays || typeof player?.resolve !== "function") return null;
   try {
-    return player.resolve(state.forays, {
-      id, segmentsDoc: state.segments, sourcesDoc: state.segmentSources, ...forayViewOpts(),
-    }) || null;
+    return resolveForay(player, id);
   } catch (_) {
     return null;   // malformed segments/sources must not break a list
   }
+}
+
+/** THE ONE RESOLVE CALL (code-health CH-22, A3-01): the three Foray documents
+    and the `forayViewOpts()` gate, spelled once. Every reader of a Foray's
+    running order — the list surfaces and the now-playing bar through
+    `resolveListedForay`, the Foray page directly — comes through here, so none
+    can resolve a Foray by a rule of its own. It THROWS what the resolver
+    throws: `resolveListedForay` reads a throw as "no Foray"; the Foray page
+    reads it as a failed load and offers Try again. */
+function resolveForay(player, id) {
+  return player.resolve(state.forays, {
+    id, segmentsDoc: state.segments, sourcesDoc: state.segmentSources, ...forayViewOpts(),
+  }) || null;
 }
 
 function forayCards() {
@@ -15718,19 +15913,22 @@ function restoreNowPlayingRibbon() {
     the listener may not see resolves to null and is never advertised on the
     bar. The resume point is read with the resolved running order in hand, so a
     Foray whose segments moved resumes to the same audio (#40). Every step is
-    capability-checked: an older player module simply has no Foray ribbon. */
+    capability-checked: an older player module simply has no Foray ribbon.
+
+    Both reads are the page's shared ones (code-health CH-22): a resolver or a
+    point read that throws is "no Foray" here, so the caller's episode fallback
+    still runs — a bare call used to throw past it and the bar restored nothing.
+    A finished Foray is `played`, not `resume`, and is never put on the bar. */
 function restoreLastForayRibbon(player) {
   if (!player || typeof player.lastPlayedForay !== "function" || typeof player.restoreForay !== "function") return null;
   if (!state.forays) return null;
   const id = player.lastPlayedForay();
   if (!id) return null;
-  const r = player.resolve(state.forays, {
-    id, segmentsDoc: state.segments, sourcesDoc: state.segmentSources, ...forayViewOpts(),
-  });
+  const r = resolveListedForay(id);
   if (!r) return null;
-  const at = player.forayResume(id, { resolved: r });
-  if (!at) return null;
-  return player.restoreForay(r, { startElapsedSec: at.elapsedSec, discoverDoc: state.discover || null });
+  const { resume } = readForayPoint(player, r);
+  if (!resume) return null;
+  return player.restoreForay(r, { startElapsedSec: resume.elapsedSec, discoverDoc: state.discover || null });
 }
 
 /** True when the current route is the home screen — the only page whose content
@@ -16011,7 +16209,9 @@ function bindHardwareBack(win = window) {
 }
 
 if (typeof window !== "undefined") {
-  window.ForayNav = { handleBack, landOnPage, announce };
+  /* What player/client.js calls when the player stops and closes. handleBack is
+     the shell's (bindHardwareBack), not public surface (CH-23). */
+  window.ForayNav = { landOnPage, announce };
 }
 
 /* ---------- THE DRAWER LEAVES WHEN IT IS USED (founder, 2026-09-23) ----------
@@ -17251,10 +17451,7 @@ async function deleteMyData({ deviceOnly = false } = {}) {
     interestsSetThisSession = new Set();
     loadInterests();
     state._interestsGen = (state._interestsGen || 0) + 1;
-    state.forayResume = null;
-    state.forayPlaying = null;
-    state.foray = null;
-    state.forayPainted = null;
+    leaveForayPage();
     /* And this is the one action the app does not log. `logEvent` writes
        `cp_events` and mints `cp_profile_id`, and the next sync would create a
        fresh anonymous account — telling our server about a deletion by starting a
@@ -18097,9 +18294,9 @@ function forayRouteId() {
 }
 
 /* `?foray=<id>` on the site root opens that Foray once, by rewriting the hash
-   in place. replaceState rather than assigning location.hash: assigning fires
-   hashchange and renders the page twice, and it would also put an entry in the
-   history that the back button bounces off.
+   in place. replaceHash (replaceState) rather than assigning location.hash:
+   assigning fires hashchange and renders the page twice, and it would also put
+   an entry in the history that the back button bounces off.
 
    After this the param does nothing but unlock — so the Foray page's back link
    reaches a real home screen, which then LISTS the unlocked draft. The first
@@ -18122,9 +18319,11 @@ function enterForayFromQuery() {
     if (window.sessionStorage && window.sessionStorage.getItem(mark)) return;
     if (window.sessionStorage) window.sessionStorage.setItem(mark, "1");
   } catch (_) { /* no session store: fall through and enter, as before */ }
-  try {
-    history.replaceState(history.state ?? null, "", `${location.pathname}${location.search}#/foray/${encodeURIComponent(id)}`);
-  } catch (_) { /* a hash we cannot write is a home screen, not a broken page */ }
+  /* Through replaceHash, like every in-place rewrite (CH-23): it keeps the
+     entry's state AND writes location.hash where replaceState does not, so
+     init()'s bare-hash line next cannot overwrite the entry with Home. A hash
+     we cannot write is a home screen, not a broken page. */
+  replaceHash(forayRouteHash(id));
 }
 
 /* Renders whichever page the current hash points at, WITHOUT touching the
@@ -18135,12 +18334,14 @@ function enterForayFromQuery() {
    split fixes. route() itself still closes the drawer, for real navigation. */
 function renderCurrentPage() {
   if (!state.ready) return;
-  /* Both of these belong to a page that is about to be replaced. The sheet's DOM
-     and listeners die with #view, so neither can act — but a stale entry left
-     pointing at a detached segment is the kind of thing that becomes a bug the
-     next time someone reuses the sheet. */
-  fbTarget = null;
-  state.forayResume = null;
+  /* The Foray page's state belongs to a page that is about to be replaced
+     (code-health CH-22, A3-02). The feedback sheet's DOM and listeners die with
+     #view, so a stale `fbTarget` cannot act — but an entry left pointing at a
+     detached segment is the kind of thing that becomes a bug the next time
+     someone reuses the sheet; and a Foray still playing in the bar kept calling
+     the old page's paint, which re-read its resume point into state with Home
+     on screen. renderForay sets all of it again when the next page is a Foray. */
+  leaveForayPage();
   /* And the sheets that live INSIDE #view (the Foray feedback sheet) go through
      the owner before their DOM does, so the modal lock and the `inert` they
      put on the page cannot outlive them (audit 2026-09-22). */
@@ -19060,18 +19261,34 @@ function dataDeadlineMs(path) {
   return /(^|\/)session\.json$/.test(String(path)) ? BOOT_DEADLINE_MS : DATA_DEADLINE_MS;
 }
 
-async function fetchJson(path) {
+/* THE ONE FETCH SHAPE (code-health CH-23, A3-16): a `no-cache` GET of the URL
+   `urlOf()` builds, its parsed body when the answer is ok, and `null` for
+   anything else — a non-ok status, a throw, or `ms` passing with no answer, when
+   the request is aborted so the stalled socket is freed (see withDeadline). The
+   URL is built INSIDE the guard, as both fetchers always did: a builder that
+   throws (pinnedUrl over a pin that is not a string) is a failure, not a throw
+   out of init(). fetchJson and fetchApiJson were twins of this differing only in
+   URL and deadline, so the next fix to the abort or deadline would have landed in
+   one of them. They keep their names and their one-argument signatures:
+   tools/mobile/prepare-webdir.mjs derives the bundle's data files from each
+   fetchJson call's one quoted data/ path, by name (so this comment names no
+   call). */
+async function fetchJsonAt(urlOf, ms) {
   const ctl = typeof AbortController === "function" ? new AbortController() : null;
   const attempt = (async () => {
     try {
-      const res = await fetch(pinnedUrl(path), ctl ? { cache: "no-cache", signal: ctl.signal } : { cache: "no-cache" });
+      const res = await fetch(urlOf(), ctl ? { cache: "no-cache", signal: ctl.signal } : { cache: "no-cache" });
       return res.ok ? await res.json() : null;
     } catch (_) { return null; }
   })();
-  return withDeadline(attempt, dataDeadlineMs(path), () => {
+  return withDeadline(attempt, ms, () => {
     try { if (ctl) ctl.abort(); } catch (_) { /* nothing left to free */ }
     return null;
   });
+}
+
+async function fetchJson(path) {
+  return fetchJsonAt(() => pinnedUrl(path), dataDeadlineMs(path));
 }
 
 /* A3.1/Q3: a plain, unpinned fetch for /api/* backend endpoints — deliberately
@@ -19088,18 +19305,8 @@ async function fetchJson(path) {
    fetchJson, so callers don't need their own try/catch for a down or
    unreachable endpoint. */
 async function fetchApiJson(path) {
-  const ctl = typeof AbortController === "function" ? new AbortController() : null;
-  const attempt = (async () => {
-    try {
-      const res = await fetch(apiUrl(path), ctl ? { cache: "no-cache", signal: ctl.signal } : { cache: "no-cache" });
-      return res.ok ? await res.json() : null;
-    } catch (_) { return null; }
-  })();
-  /* A deadline, then the same `null` a failure gives (see withDeadline). */
-  return withDeadline(attempt, API_DEADLINE_MS, () => {
-    try { if (ctl) ctl.abort(); } catch (_) { /* nothing left to free */ }
-    return null;
-  });
+  /* A deadline, then the same `null` a failure gives (see fetchJsonAt). */
+  return fetchJsonAt(() => apiUrl(path), API_DEADLINE_MS);
 }
 
 /* NO REQUEST WAITS FOREVER (review 2026-09-23). A stalled socket — a captive
@@ -19283,12 +19490,7 @@ function foraySurfaceSignature() {
     }
     if (currentHash() === "#/library") return libraryForaysHtml();
     const id = forayRouteId();
-    if (id) {
-      const r = window.ForayPlayer?.resolve?.(state.forays, {
-        id, segmentsDoc: state.segments, sourcesDoc: state.segmentSources, ...forayViewOpts(),
-      });
-      return JSON.stringify(r ?? null);
-    }
+    if (id) return JSON.stringify(resolveListedForay(id));   // the page's own resolve (CH-22)
     return JSON.stringify(forayCards());
   } catch (_) {
     return null;   // cannot tell: treated as unchanged, which keeps the listener's page
@@ -19947,38 +20149,13 @@ init();
    the cached copy of its own bundle after an app-store update replaced it, and
    the symptom is an app that ignores new versions with no error anywhere.
 
-   Two signals, and they are checked in SEPARATE `try` blocks on purpose. The
-   origin goes first because it cannot throw: on iOS the page is served from
-   `capacitor://localhost`. `window.Capacitor.isNativePlatform()` goes second —
-   the bridge is injected before page scripts, so it is normally the more precise
-   answer, but it is somebody else's object and calling into it can throw (a
-   bridge that is not ready, a plugin-proxy getter). Sharing one `try` made the
-   guard FAIL OPEN: a throwing bridge skipped the origin check too and registered
-   the worker inside the shell, which is the exact case the origin check exists
-   to cover.
-
-   Deliberately NOT a hostname check. Capacitor's Android default is
-   `https://localhost`, so testing for "localhost" would also disable the service
-   worker for anyone serving the real site from a local dev server — a live web
-   behaviour broken to fix an app one.
-
-   Deliberately NOT a user-agent check either. Every real Foray listener is on a
-   phone, so UA-sniffing here would switch the offline shell off for essentially
-   the whole audience. `shell-invariants.test.mjs` asserts a mobile-web UA still
-   registers. */
+   WHICH PAGES ARE "THE SHELL" IS NOT DECIDED HERE. isNativeShell() is the one
+   detector (its header has the two signals and why neither a hostname nor a
+   user agent is one); this function is its negation and nothing else, so a new
+   shell signal cannot reach the relaunch route and miss the worker, or the
+   reverse (code-health CH-23). */
 function shouldRegisterServiceWorker(win) {
-  try {
-    const proto = (win && win.location && win.location.protocol) || "";
-    if (proto === "capacitor:" || proto === "ionic:") return false;
-  } catch (_) { /* no location: treat as the web, and let the bridge check speak */ }
-  try {
-    const cap = win && win.Capacitor;
-    if (cap) {
-      if (typeof cap.isNativePlatform === "function") { if (cap.isNativePlatform()) return false; }
-      else if (cap.isNative) return false;
-    }
-  } catch (_) { /* a bridge that throws is not an answer; the origin already spoke */ }
-  return true;
+  return !isNativeShell(win);
 }
 
 /* ---------- the page's half of #233 ----------
@@ -20096,16 +20273,17 @@ if ("serviceWorker" in navigator && shouldRegisterServiceWorker(window)) {
     navigator.serviceWorker.addEventListener("message", (e) => {
       const msg = e && e.data;
       if (!msg || msg.source !== "foray-sw") return;
-      /* By the time this fires, `pinnedDeployId` is already set synchronously
-         (see the top of this file) if this load fell back at all — this
-         assignment is now a REDUNDANT confirmation, not the establishing
-         write, kept only as a safety net for a message that legitimately
-         arrives with a different id than the synchronous read found (there is
-         no such path today, but it costs nothing and a future one should not
-         have to remember this). A `deployId` of null (an unretained/unknown
-         generation on the worker's side) intentionally does not clear an
-         already-set pin — see sw.js's `handleData` fail-safe for the matching
-         reasoning.
+      /* The pin is WRITTEN ONCE (code-health CH-23, A3-15). By the time this
+         fires, `pinnedDeployId` is already set synchronously (see the top of
+         this file) if this load fell back at all, and a page keeps the
+         generation its code and its first data fetches came from: a message
+         naming a DIFFERENT id does not move it — that would pair this code
+         with another generation's data — it is recorded as a `pin-mismatch`
+         row instead (no such path exists today; the row is how one would be
+         seen). A page with no synchronous pin adopts the worker's id. A
+         `deployId` of null (an unretained/unknown generation on the worker's
+         side) intentionally does not clear an already-set pin — see sw.js's
+         `handleData` fail-safe for the matching reasoning.
 
          `pin: false` (round-3 audit, app-3-5) is a fallback of a file that does
          not read data (search-engine.js, a player module) while this app.js
@@ -20120,13 +20298,15 @@ if ("serviceWorker" in navigator && shouldRegisterServiceWorker(window)) {
          name its own deploy, is still told. */
       if (msg.reason === "generation-changed" && !pinnedDeployId && pageDeployId && msg.deployId === pageDeployId) return;
       const adoptsPin = msg.reason === "stale-shell" && msg.pin !== false;
-      if (adoptsPin && msg.deployId) pinnedDeployId = msg.deployId;
+      const mismatch = adoptsPin && !!msg.deployId && !!pinnedDeployId && msg.deployId !== pinnedDeployId;
+      if (adoptsPin && msg.deployId && !pinnedDeployId) pinnedDeployId = msg.deployId;
       /* FD-01: the web's pinned-generation path records the same fact the shell's
          boot row does — where the documents came from, and which deploy id. */
       if (adoptsPin) {
         const tag = `sw-cache@${pinnedDeployId || "unknown"}`;
         noteDataSource({
           phase: "stale-shell", source: "sw-cache", version: pinnedDeployId || "unknown",
+          ...(mismatch ? { status: "pin-mismatch" } : {}),
           files: { forays: tag, segments: tag, sources: tag },
         });
       }
