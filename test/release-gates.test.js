@@ -549,6 +549,27 @@ test("K-06: the notices file carries Kokoro, ORT and the voice data", () => {
   }
 });
 
+test("CH-20: the notices file describes no bundled voice and names no deleted file", () => {
+  /* The notices file "covers what is DISTRIBUTED". After CH-20 deleted the
+     probe engines, ONNX Runtime and every bundle list, it still said ORT was
+     "LINKED" and the Core ML models were "Bundled in the iOS app", and it
+     pointed at KokoroCoreMLEngine.swift by path. A legal file that describes a
+     binary we no longer build is a false statement about the app.
+     MUTATIONS (each RUN, red, restored): put back "**Status in this build:**
+     LINKED" in the ONNX Runtime entry; put back "Bundled in the iOS app only";
+     put back the `mobile/plugins/foray-tts/ios/Sources/ForayTtsPlugin/KokoroCoreMLEngine.swift`
+     path; drop the "Status since CH-20" paragraph. */
+  const notices = read("docs/legal/third-party-notices.md");
+  assert.ok(!/Status in this build:\*{0,2}\s*LINKED/.test(notices), "ONNX Runtime is linked by neither app since CH-20");
+  assert.ok(!notices.includes("Bundled in the iOS app"), "no Core ML stage is bundled since CH-20");
+  assert.match(notices, /Status since CH-20 \(founder ruling on issue #1076/,
+    "the notices must say, with the ruling, that nothing below is distributed");
+  const repoPaths = [...notices.matchAll(/`((?:mobile|tools|docs|test|player)\/[^`\s]+)`/g)].map((m) => m[1]);
+  assert.ok(repoPaths.length >= 3, "the walk found the notices' repo paths");
+  const missing = repoPaths.filter((rel) => !fs.existsSync(path.join(ROOT, rel)));
+  assert.deepEqual(missing, [], "the notices name a repo path that no longer exists");
+});
+
 /* K-06(3): the ceiling, and the arithmetic behind it, in one place so the
    number and its reason cannot drift apart.
 

@@ -519,6 +519,28 @@ test("tools/mobile/inject-app-icon.mjs is denied, not merely acknowledged", () =
   );
 });
 
+test("CH-20: the model pin table stays denied after the shell builds stopped running it", () => {
+  /* Until CH-20 every shell build ran fetch-models.mjs, so the signing-job walk
+     above would have named it the moment its deny entry went. No signing job
+     runs it now (render-narration.yml's `--check` and the narration tools'
+     pin parsers are its readers), so that walk is satisfied either way and
+     only this test holds the entry. The retired injector stays denied too, so
+     a resurrected copy cannot land unread.
+     MUTATIONS (each RUN, red, restored): delete the "tools/mobile/fetch-models.mjs"
+     entry from DENIED_PREFIXES; delete the "tools/mobile/inject-models.mjs" entry. */
+  for (const f of ["tools/mobile/fetch-models.mjs", "tools/mobile/inject-models.mjs"]) {
+    const p = pathPolicy([f]);
+    assert.equal(p.denied.length, 1, `${f} must stay DENIED`);
+    assert.equal(p.denied[0].prefix, f);
+    assert.equal(p.allowed.length, 0, "deny must win over the tools/ allow entry");
+  }
+  assert.ok(
+    fs.readFileSync(path.join(REPO, ".github/workflows/render-narration.yml"), "utf8")
+      .includes("node tools/mobile/fetch-models.mjs --check"),
+    "the deny's stated reason is central narration reading the pins"
+  );
+});
+
 /* --------------------------------------------------------- pathPolicy() */
 
 test("denied wins over allowed, always", () => {

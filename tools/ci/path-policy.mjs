@@ -168,22 +168,24 @@ export const DENIED_PREFIXES = [
   // two need different merge authority. Found while fixing PR #501's gate
   // scan (kanban t_5458c0a2).
   "tools/mobile/release-ci.mjs",
-  // The two scripts that decide WHICH BINARY GETS EXECUTED ON A LISTENER'S
-  // PHONE (2026-09-12, docs/bundled-voice-plan.md K-01/K-06). `fetch-models.mjs`
-  // holds the sha256 of an 82 MB ONNX graph that ONNX Runtime then runs on
-  // device, and `inject-models.mjs` is what verifies the bytes one last time
-  // and copies them into the app. Both are run by all four build paths — both
-  // shell workflows and both release composite actions — and `tools/mobile/` is
-  // allowlisted, so without these entries a bot-authored one-line change to a
-  // URL, a hash, or a `verifyBuffer` call would auto-merge unread and the next
-  // TestFlight build would execute whatever is at the new URL.
+  // The model pin table (2026-09-12, docs/bundled-voice-plan.md K-01/K-06).
+  // `fetch-models.mjs` holds the sha256 of every Kokoro artefact central
+  // narration trusts: render-narration.yml runs it with `--check` and keys its
+  // weights cache on it, and the narration tools' pin parsers
+  // (tools/narration/render-audition.py, bench-narration.py) read their hashes
+  // out of its text. A bot-authored one-line change to a URL and its hash would
+  // otherwise auto-merge unread (`tools/mobile/` is allowlisted) and the next
+  // render would run whatever graph is at the new URL. Change frequency is near
+  // zero: the pins move when the model does, which is a deliberate act with an
+  // audition behind it.
   //
-  // This is a STRICTLY LARGER exposure than the icon and splash entries above,
-  // which ship a wrong picture: this ships arbitrary code to a phone. Denied
-  // rather than acknowledged for that reason alone. Change frequency is near
-  // zero — the pins move when the model does, which is a deliberate act with
-  // an audition behind it.
+  // History: until CH-20 (founder ruling on issue #1076, 2026-10-05) all four
+  // shell build paths ran this file and its companion `inject-models.mjs`,
+  // which copied the verified weights into the app for ONNX Runtime to execute
+  // on a phone. No shell build calls either now, ORT left both apps, and the
+  // injector was deleted.
   "tools/mobile/fetch-models.mjs",
+  // Deleted by CH-20; stays denied so the retired injector cannot come back unread.
   "tools/mobile/inject-models.mjs",
   // Same step, one file over (2026-09-29): NE-34's seam jingle, copied into the
   // iOS app's public/ by both iOS build paths (the release composite action
