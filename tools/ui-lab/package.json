@@ -1,0 +1,11 @@
+{
+  "name": "foray-ui-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Redesign 2026 screenshot + a11y harness. Deliberately has NO test script: tools/ci/run-suites.mjs auto-runs any tools/<dir> package that has one.",
+  "dependencies": {
+    "axe-core": "4.10.3",
+    "playwright": "1.62.1"
+  }
+}

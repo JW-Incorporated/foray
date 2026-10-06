@@ -1,0 +1,30 @@
+/* Judge calibration degrader 1: inconsistent type + cramped spacing.
+   Injected with `node tools/ui-lab/shoot.mjs --target app --css <this file>`.
+   Deliberately worse than today's 4a: no type scale, families and weights
+   mixed at random, gutters and padding collapsed, crowded rows. Colours and
+   layout structure are left alone so the defect is typography + rhythm only.
+   Calibration use only; never ship. */
+body, body.ui-v2 {
+  --gutter: 3px !important;
+  --fs-xs: 0.62rem !important;
+  --fs-sm: 0.95rem !important;
+  --fs-md: 0.7rem !important;
+  --fs-lg: 1.3rem !important;
+  --fs-xl: 0.85rem !important;
+  --font-display: "Courier New", monospace !important;
+  --font-body: "Times New Roman", serif !important;
+  font-family: "Times New Roman", serif !important;
+}
+* { line-height: 1.02 !important; letter-spacing: normal !important; }
+h1, h2, h3, .page-head, .page-head * { font-family: Impact, "Arial Black", sans-serif !important; font-weight: 400 !important; }
+p, span, a, button, li, div { margin-top: 0 !important; margin-bottom: 0 !important; }
+main, section, article, header, nav, ul, ol, li, div[class] { padding-top: 1px !important; padding-bottom: 1px !important; }
+main, section, header, .page-head, .topbar { padding-left: 3px !important; padding-right: 3px !important; }
+[class*="row"], [class*="card"] { gap: 1px !important; padding: 2px !important; }
+*:nth-child(3n) { font-weight: 800 !important; }
+*:nth-child(3n+1) > span, *:nth-child(4n) > a { font-weight: 200 !important; font-style: italic !important; }
+*:nth-child(5n) { font-size: 1.12em; }
+*:nth-child(7n) { font-size: 0.82em; font-family: Verdana, sans-serif !important; }
+button, [role="button"], .tab-btn { padding: 1px 3px !important; font-family: Arial, sans-serif !important; }
+[class*="title"] { font-weight: 300 !important; text-transform: uppercase; }
+[class*="meta"], [class*="sub"] { font-weight: 700 !important; font-size: 0.95em !important; }

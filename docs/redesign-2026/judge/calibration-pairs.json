@@ -1,0 +1,19 @@
+{
+  "about": "Judge calibration set (protocol.md). Paths are relative to the worktree root; every image lives in data-local/ (gitignored, never committed). refs/ are App Store iPhone listing images fetched 2026-10-05 (see data-local/redesign/refs/manifest.json); shots/ are tools/ui-lab renders at 393x852. degraded-1 = degraders/degrade-1-type-spacing.css, degraded-2 = degraders/degrade-2-colour-align.css. 'expected' is the side that should win before the per-judge coin flip.",
+  "pairs": [
+    { "id": "rt-1", "kind": "ref-vs-today", "a": "data-local/redesign/refs/spotify/2.png", "b": "data-local/redesign/shots/today/shots/player__now-playing__393x852.png", "expected": "a" },
+    { "id": "rt-2", "kind": "ref-vs-today", "a": "data-local/redesign/shots/today/shots/returning__library__393x852.png", "b": "data-local/redesign/refs/overcast/1.png", "expected": "b" },
+    { "id": "rt-3", "kind": "ref-vs-today", "a": "data-local/redesign/refs/apple-podcasts/2.png", "b": "data-local/redesign/shots/today/shots/returning__show__393x852.png", "expected": "a" },
+    { "id": "rt-4", "kind": "ref-vs-today", "a": "data-local/redesign/shots/today/shots/returning__home__393x852.png", "b": "data-local/redesign/refs/tide-guide/2.png", "expected": "b" },
+    { "id": "rt-5", "kind": "ref-vs-today", "a": "data-local/redesign/refs/pocket-casts/2.png", "b": "data-local/redesign/shots/today/shots/stress__now-playing__393x852.png", "expected": "a" },
+    { "id": "rt-6", "kind": "ref-vs-today", "a": "data-local/redesign/shots/today/shots/search__search-results-history__393x852.png", "b": "data-local/redesign/refs/moonlitt/2.png", "expected": "b" },
+    { "id": "td-1", "kind": "today-vs-degraded", "a": "data-local/redesign/shots/today/shots/returning__home__393x852.png", "b": "data-local/redesign/shots/degraded-1/shots/returning__home__393x852.png", "expected": "a" },
+    { "id": "td-2", "kind": "today-vs-degraded", "a": "data-local/redesign/shots/degraded-2/shots/player__now-playing__393x852.png", "b": "data-local/redesign/shots/today/shots/player__now-playing__393x852.png", "expected": "b" },
+    { "id": "td-3", "kind": "today-vs-degraded", "a": "data-local/redesign/shots/degraded-1/shots/returning__library__393x852.png", "b": "data-local/redesign/shots/today/shots/returning__library__393x852.png", "expected": "b" },
+    { "id": "td-4", "kind": "today-vs-degraded", "a": "data-local/redesign/shots/today/shots/search__search-results-history__393x852.png", "b": "data-local/redesign/shots/degraded-2/shots/search__search-results-history__393x852.png", "expected": "a" },
+    { "id": "td-5", "kind": "today-vs-degraded", "a": "data-local/redesign/shots/today/shots/returning__show__393x852.png", "b": "data-local/redesign/shots/degraded-1/shots/returning__show__393x852.png", "expected": "a" },
+    { "id": "td-6", "kind": "today-vs-degraded", "a": "data-local/redesign/shots/degraded-2/shots/returning__up-next__393x852.png", "b": "data-local/redesign/shots/today/shots/returning__up-next__393x852.png", "expected": "b" },
+    { "id": "rd-1", "kind": "ref-vs-degraded", "a": "data-local/redesign/refs/tide-guide/2.png", "b": "data-local/redesign/shots/degraded-1/shots/returning__home__393x852.png", "expected": "a" },
+    { "id": "rd-2", "kind": "ref-vs-degraded", "a": "data-local/redesign/shots/degraded-2/shots/player__now-playing__393x852.png", "b": "data-local/redesign/refs/spotify/2.png", "expected": "b" }
+  ]
+}

@@ -1,0 +1,41 @@
+/* Judge calibration degrader 2: clashing colours + misaligned edges.
+   Injected with `node tools/ui-lab/shoot.mjs --target app --css <this file>`.
+   Deliberately worse than today's 4a: a palette with no relationship
+   (saturated green page, magenta and orange surfaces, cyan/red accents),
+   low-contrast secondary text, mixed corner radii, hard offset shadows, and
+   edges nudged off a common left line. The type scale is left alone so the
+   defect is colour + alignment only. Calibration use only; never ship. */
+body, body.ui-v2 {
+  --bg: #1f6b2a !important;
+  --surface: #8a1f7a !important;
+  --surface2: #c4511b !important;
+  --surface-2: #c4511b !important;
+  --line: #f2ff00 !important;
+  --muted: #3fa34d !important;
+  --text-dim: #3fa34d !important;
+  --faint: #2b8a3e !important;
+  --amber: #00e5ff !important;
+  --violet: #ff3b30 !important;
+  --accent: #ff3b30 !important;
+  --gold: #00e5ff !important;
+  --text: #ffe9f5 !important;
+  --radius-sm: 0px !important;
+  --radius-md: 20px !important;
+  --radius-lg: 2px !important;
+  --radius-pill: 3px !important;
+  --radius-round: 4px !important;
+  --shadow: 6px 6px 0 #000 !important;
+  --shadow-sm: 3px 3px 0 #ff00aa !important;
+  --shadow-lift: 10px 10px 0 #0000ff !important;
+  background: #1f6b2a !important;
+}
+[class*="row"], [class*="card"] { border: 2px solid #f2ff00 !important; }
+[class*="row"]:nth-child(odd), [class*="card"]:nth-child(odd) { margin-left: 13px !important; background: #4b0f8f !important; }
+[class*="row"]:nth-child(3n), [class*="card"]:nth-child(3n) { margin-left: -5px !important; transform: rotate(-0.6deg); }
+h1, h2, h3, .page-head { margin-left: 22px !important; color: #ff8c00 !important; text-align: center; }
+*:nth-child(4n) > img { margin-left: 9px !important; border-radius: 0 !important; }
+*:nth-child(5n) { padding-left: 7px !important; }
+button, [role="button"] { background: #ff00aa !important; color: #00ff66 !important; border: 1px dashed #00e5ff !important; }
+.tab-btn:nth-child(even) { transform: translateY(5px); }
+.topbar { background: #0044ff !important; }
+a { color: #ffdd00 !important; text-decoration: underline wavy !important; }
