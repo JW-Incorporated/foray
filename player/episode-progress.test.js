@@ -217,10 +217,20 @@ test("percent is clamped to 0..1", () => {
   assert.equal(episodePercentDone(rec, 999999), 1);
 });
 
-test("a position at or past the end reads as finished, not as negative time", () => {
-  const rec = makeLastEpisode(EPISODE);
-  assert.equal(episodeRemainingLabel(rec, 7200), "finished");
-  assert.equal(episodeRemainingLabel(rec, 999999), "finished");
+test("a position at or past the end reads 'Played' — the one finished word — not negative time", () => {
+  /* It said "finished", a second vocabulary the honesty-2 audit removed from
+     every surface; none showed it only because none reached it. Now it is
+     PLAYED_LABEL, and it flips exactly where episodeProgress calls the episode
+     played (inside NEAR_END_SEC of the end), so the two never disagree
+     (code-health CH-24, P2-16).
+     MUTATION: put `"finished"` back for `mins <= 0` in episodeRemainingLabel. */
+  const rec = makeLastEpisode(EPISODE); // 7200 s
+  assert.equal(episodeRemainingLabel(rec, 7200), "Played");
+  assert.equal(episodeRemainingLabel(rec, 999999), "Played");
+  assert.equal(episodeRemainingLabel(rec, 7200 - NEAR_END_SEC + 1), "Played");
+  assert.equal(episodeProgress(rec, 7200 - NEAR_END_SEC + 1).state, "played");
+  assert.equal(episodeRemainingLabel(rec, 7200 - NEAR_END_SEC), "1 min left");
+  assert.equal(episodeProgress(rec, 7200 - NEAR_END_SEC).state, "in-progress");
 });
 
 /* ---------- episodeProgress: ONE reading of a position (audit 2026-09-22) --- */

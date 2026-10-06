@@ -43,8 +43,9 @@
    ── What is pure and what touches the DOM ─────────────────────────────────
    `stripModel` is the whole element as data — widths, capsule boundaries,
    past/current/upcoming, the fill fraction, the summary sentence. It has no
-   DOM, no `document`, and it is where the arithmetic is tested. `renderStrip`
-   and `mountStrip` turn that data into elements and know nothing else.
+   DOM, no `document`, and it is where the arithmetic is tested. `mountStrip`
+   turns that data into elements and knows nothing else; `segmentStripHtml` is
+   the same strip as a string, for the template-string cards.
 
    ── Constraints this file lives under ─────────────────────────────────────
      - NO INLINE STYLES. The page CSP is `style-src 'self'` and
@@ -685,28 +686,17 @@ function applyFloorPlan(el, plan) {
   set("--seam", plan ? `${plan.seam}px` : null);
 }
 
-/**
- * Build a standalone strip element — the shape a card or a list row wants,
- * where there is no container to decorate.
- */
-export function renderStrip(items, opts = {}) {
-  const doc = opts.document;
-  if (!doc || typeof doc.createElement !== "function") return null;
-  const el = doc.createElement("div");
-  mountStrip(el, items, opts);
-  return el;
-}
-
 /* ---------- U-04: the string half ---------- */
 
 /**
- * `segmentStripHtml` exists for the callers `mountStrip`/`renderStrip` do not
- * fit: `app.js`'s Home cards (U-03) and the show/episode restyle (U-08) build
- * their markup as TEMPLATE STRINGS interpolated into `innerHTML`, the same way
- * every other card on the page does (`miniCard`, `foraySlotHtml`, …) — handing
- * them a live DOM node built by `renderStrip` would mean one card element built
- * two different ways, and the string half is the one that already fits how
- * `app.js` renders everything else.
+ * `segmentStripHtml` exists for the callers `mountStrip` does not fit: `app.js`'s
+ * Home cards (U-03) and the show/episode restyle (U-08) build their markup as
+ * TEMPLATE STRINGS interpolated into `innerHTML`, the same way every other card
+ * on the page does (`miniCard`, `foraySlotHtml`, …) — handing them a live DOM
+ * node would mean one card element built two different ways, and the string
+ * half is the one that already fits how `app.js` renders everything else. (A
+ * standalone-element builder, `renderStrip`, had only tests for callers and
+ * went in code-health CH-24.)
  *
  * `<3 chars of HTML>` to escape: `esc()` in `app.js` cannot be imported here —
  * `app.js` is a classic script and this file is an ES module (`player/` is the
