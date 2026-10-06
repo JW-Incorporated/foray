@@ -151,14 +151,25 @@ protocol RemoteCommandRegistering: AnyObject {
 /// cleared on a pause, an unresumed interruption or a relinquish (plan §4.5):
 /// `clear()` is for a finished Foray, a close or a data deletion only.
 ///
-/// The host decides WHEN (every transition and every seek, and whenever the
-/// playhead has moved away from where the OS would have extrapolated it); the
-/// conformer decides nothing but the dictionary. The whole `SessionView` is
-/// handed over because the rate the entry carries depends on the playback
-/// state: the true rate while `PLAYING`, 0 otherwise, and `playbackState`
-/// itself is never written (OQ-8: it is macOS-only).
+/// The host decides WHEN (every transition, every seek, whenever the playhead
+/// has moved away from where the OS would have extrapolated it, and every
+/// second while the entry's clock runs); the conformer decides nothing but
+/// the dictionary. The whole `SessionView` is handed over because the rate
+/// the entry carries depends on the playback state: the true rate while
+/// `PLAYING`, 0 otherwise, and `playbackState` itself is never written (OQ-8:
+/// it is macOS-only).
+///
+/// `listenRate` is the listener's chosen speed (`EngineState.rate`). The
+/// conformer writes `MPNowPlayingInfoPropertyDefaultPlaybackRate` as the
+/// entry's own running rate (`NowPlayingRate.of`) whenever that is above 0,
+/// so a playing entry's rate and default always agree (a spoken line at 1.5x
+/// says 1 and 1, as the legacy lane's element rate did), and as `listenRate`
+/// only when the entry's clock stands still (paused, stalled or loading:
+/// rate 0) (docs/ios-lock-screen.md §3). It is not in `SessionView` because
+/// `positionState.playbackRate` is 0 while buffering, and the default rate
+/// must not be.
 protocol NowPlayingWriting: AnyObject {
-    func write(_ view: MediaMapping.SessionView)
+    func write(_ view: MediaMapping.SessionView, listenRate: Double)
     func clear()
 }
 

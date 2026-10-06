@@ -138,10 +138,11 @@ final class ForayEngineHostTests: XCTestCase {
     // MARK: - Teardown
 
     /// Plan §4.6 step 5: every observer, remote target, timer and grace task
-    /// is gone, the deck is invalidated, and nothing that fires afterwards
-    /// reaches a seam.
+    /// is gone (the host's own 1 s Now Playing refresh too), the deck is
+    /// invalidated, and nothing that fires afterwards reaches a seam.
     /// TO SEE IT FAIL: skip any line of `teardown()` (the matching count
-    /// stays at one), or its `isTornDown` refusal in `handle`.
+    /// stays at one; `cancelSurfaceRefresh()` leaves the heartbeat live), or
+    /// its `isTornDown` refusal in `handle`.
     @MainActor
     func testTeardownLeavesZeroLiveObservers() {
         let world = FakeWorld()
@@ -151,8 +152,9 @@ final class ForayEngineHostTests: XCTestCase {
         XCTAssertEqual(world.background.liveLifecycleObservers, 1)
         XCTAssertEqual(world.remote.liveTargets, MediaMapping.RemoteCommand.allCases.count)
         XCTAssertEqual(world.background.liveTasks, 1, "a background tap play holds grace until the deck confirms")
-        XCTAssertEqual(world.timing.live.count, 1, "the position cadence runs while playing")
+        XCTAssertEqual(world.timing.live.count, 2, "the position cadence and the Now Playing refresh run while playing")
         XCTAssertEqual(engine.liveTimers, [.positionTick])
+        XCTAssertTrue(engine.isRefreshingNowPlaying)
         XCTAssertTrue(world.deck.isObserved)
 
         engine.teardown()
@@ -163,6 +165,7 @@ final class ForayEngineHostTests: XCTestCase {
         XCTAssertEqual(world.background.liveTasks, 0)
         XCTAssertEqual(world.timing.live.count, 0)
         XCTAssertEqual(engine.liveTimers, [])
+        XCTAssertFalse(engine.isRefreshingNowPlaying)
         XCTAssertFalse(engine.hasGraceTask)
         XCTAssertTrue(world.deck.invalidated)
         XCTAssertFalse(world.deck.isObserved)
@@ -180,15 +183,19 @@ final class ForayEngineHostTests: XCTestCase {
     /// deactivate, no notify: nothing 4a interrupted is invited back), and
     /// leaves Now Playing for the legacy lane. Synthetic notifications
     /// afterwards produce zero engine commands and zero activations.
+    /// The host's 1 s Now Playing refresh dies with it: a tick already on
+    /// its way writes nothing over the legacy lane's entry.
     /// TO SEE IT FAIL: drop the `.relinquished` check at the end of
-    /// `runTurn`, or clear Now Playing in `teardown()`.
+    /// `runTurn`, clear Now Playing in `teardown()`, or drop
+    /// `cancelSurfaceRefresh()` from it.
     @MainActor
-    func testARelinquishTearsDownAndLeavesTheSessionAndNowPlaying() {
+    func testARelinquishTearsDownAndLeavesTheSessionAndNowPlaying() throws {
         let world = FakeWorld()
         let engine = playing(world)
         world.log.clear()
         let written = world.nowPlaying.writes
         XCTAssertGreaterThan(written, 0, "the engine published the playing entry (NE-18)")
+        let heartbeat = try XCTUnwrap(world.timing.live.first { $0.afterMs == ForayEngine.nowPlayingRefreshSec * 1000 })
 
         engine.handle(.command(.relinquish(cap: .foray), source: .tap))
 
@@ -202,6 +209,10 @@ final class ForayEngineHostTests: XCTestCase {
         XCTAssertTrue(world.deck.invalidated)
         XCTAssertEqual(world.session.liveObservers + world.background.liveLifecycleObservers + world.remote.liveTargets, 0)
         XCTAssertEqual(world.timing.live.count + world.background.liveTasks, 0)
+        XCTAssertFalse(heartbeat.token.isLive, "the Now Playing refresh is cancelled with the rest")
+        world.timing.advance(1000)
+        heartbeat.fire()
+        XCTAssertEqual(world.nowPlaying.writes, written, "a refresh tick after the relinquish writes nothing")
 
         let seen = world.log.entries.count
         let activations = world.session.activateCalls
@@ -374,7 +385,7 @@ final class ForayEngineHostTests: XCTestCase {
     func testThePositionTimerRunsExactlyWhilePlaying() throws {
         let world = FakeWorld()
         let engine = playing(world)
-        let tick = try XCTUnwrap(world.timing.live.first)
+        let tick = try XCTUnwrap(world.timing.live.first { $0.afterMs == ResumeRules.positionIntervalMs })
         XCTAssertTrue(tick.repeating)
         XCTAssertEqual(tick.afterMs, ResumeRules.positionIntervalMs)
 
