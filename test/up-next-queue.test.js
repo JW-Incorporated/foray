@@ -822,3 +822,64 @@ test("a pool row WITH audio_url still queues, and the walk plays every queued id
   assert.deepStrictEqual(m.queueRaw(), ids, "every playable pool row is queued, in order");
   assert.deepStrictEqual(walkQueue(m), ids, "and the walk plays every queued id");
 });
+
+/* ==================================================================== */
+/* 11. CH-29 (A1-19): queueIds IS stringList; ONE ensurePool              */
+/* ==================================================================== */
+
+test("queueIds drops every entry that is not a non-empty string, and a non-array store reads as empty (CH-29, characterization)", () => {
+  /* queueIds re-implemented stringList's filter inline; it is now that helper.
+     The rule both carried: an id that cannot be a real episode id is dropped,
+     never rendered as a permanently broken row.
+     MUTATION (run, red): `return storedValue("cp_queue", [])` (no filter) ->
+     the mixed list comes back with its 3, "", null and {} intact.
+     MUTATION 2 (run, red): stringList keeps "" (`typeof x === "string"` alone)
+     -> the empty id survives. */
+  const m = mount({ seed: { cp_queue: JSON.stringify(["a", 3, "", null, "b", {}, ["c"]]) } });
+  assert.deepStrictEqual([...m.ctx.queueIds()], ["a", "b"]);
+  const objectStore = mount({ seed: { cp_queue: JSON.stringify({ a: 1 }) } });
+  assert.deepStrictEqual([...objectStore.ctx.queueIds()], [], "a corrupt non-array value is an empty Up Next, not a crash");
+  const nothing = mount();
+  assert.deepStrictEqual([...nothing.ctx.queueIds()], []);
+});
+
+test("inDiscoverPool and hydrationPool build the pool on demand when a session is loaded, and never throw without one (CH-29, characterization)", () => {
+  /* Both re-implemented "build the pool if there is a session; a missing
+     catalogue is not an error" — now one ensurePool(). hydrationPool keeps its
+     extra rule: it builds only while the index is still empty.
+     MUTATION (run, red): drop the fullPool() call from ensurePool -> nothing
+     builds the pool and "a pool id is in the pool" fails.
+     MUTATION 2 (run, red): drop ensurePool's try/catch -> the throwing
+     fullPool escapes and both "never throws" assertions fail.
+     MUTATION 3 (run, red): drop ensurePool's session guard -> fullPool runs
+     with no session and throws (session.episodes) inside the catch, but the
+     spy counts the call, so "no session, no build" fails. */
+  const items = [1, 2].map((n) => ({ id: `p-${n}`, title: `P ${n}`, show: "S", audio_url: "https://x.test/a.mp3", topics: [] }));
+
+  const m = mount();
+  m.state.session = { session_id: "s", episodes: {}, cards: [] };
+  m.state.discover = { items };
+  assert.strictEqual(m.ctx.inDiscoverPool("p-1"), true, "a pool id is in the pool, built on demand");
+  assert.strictEqual(m.ctx.inDiscoverPool("nope"), false);
+  assert.strictEqual(m.ctx.inDiscoverPool(7), false, "a non-string id is never in the pool");
+
+  const h = mount();
+  h.state.session = { session_id: "s", episodes: {}, cards: [] };
+  h.state.discover = { items };
+  assert.deepStrictEqual(Object.keys(h.ctx.hydrationPool()).sort(), ["p-1", "p-2"], "hydrationPool builds the empty index");
+
+  const bare = mount();
+  bare.state.discover = { items };
+  const real = bare.ctx.fullPool;
+  let calls = 0;
+  bare.ctx.fullPool = (...a) => { calls++; return real(...a); };
+  assert.strictEqual(bare.ctx.inDiscoverPool("p-1"), false, "no session: nothing is in the pool");
+  assert.deepStrictEqual(Object.keys(bare.ctx.hydrationPool()), [], "no session: an empty index");
+  assert.strictEqual(calls, 0, "no session, no build");
+
+  const broken = mount();
+  broken.state.session = { session_id: "s", episodes: {}, cards: [] };
+  broken.ctx.fullPool = () => { throw new Error("catalogue not there yet"); };
+  assert.doesNotThrow(() => broken.ctx.inDiscoverPool("p-1"), "inDiscoverPool never throws");
+  assert.doesNotThrow(() => broken.ctx.hydrationPool(), "hydrationPool never throws");
+});
