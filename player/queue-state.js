@@ -1,9 +1,16 @@
 /* Foray player queue — formal state machine.
 
-   Direct JS port of ios/ForayKit/Sources/ForayKit/PlayerQueueState.swift.
-   The two files are meant to be diffable by eye: same states, same events,
-   same effects, same transition table, same telemetry strings. If you change
-   behaviour here, change it there too (or retire the Swift — see #28).
+   THIS FILE IS THE REFERENCE. It began as a port of the scaffold's
+   ios/ForayKit/Sources/ForayKit/PlayerQueueState.swift, but that copy is now
+   FROZEN (nothing ships from ios/; see ios/README.md and #28) — do not edit it
+   to follow a change here. The live mirrors are the native engine's:
+     - mobile/plugins/foray-audio/foray-engine-core/Sources/ForayEngineCore/Reducer/PlayerQueueState.swift
+     - mobile/plugins/foray-audio/android/foray-engine-core-jvm/src/main/java/ai/jwlabs/foura/engine/PlayerQueueStateMachine.java
+   They are held to this file by the `queue-state` parity family
+   (player/parity/manifest.json, fixtures under player/parity/fixtures/queue-state),
+   not by eye: a rule change lands here first, is re-recorded with
+   tools/parity/record.mjs, and only then is ported. Telemetry strings are
+   byte-identical across all three.
 
    `reduce(state, event) -> [nextState, effects]` is pure. No DOM, no timers,
    no Capacitor, no I/O. The *caller* (player/queue-manager.js, issue #33) is
@@ -11,8 +18,8 @@
    split is what makes every corner case in docs/brief/05_CORNER_CASES.md
    #11-19 testable without a device.
 
-   Design decisions carried over from the Swift (read its header for the full
-   reasoning — these are choices, not accidents):
+   Design decisions carried over from the Swift (the engine copy's header
+   keeps the full reasoning — these are choices, not accidents):
 
    1. Ownership split: this state machine does NOT own "what's the next item
       in the queue" — that's the manager's job. Events that need a target
@@ -34,10 +41,10 @@
       `loadItem` and always emits telemetry, so it's observable in
       production, not just in tests.
 
-   Extension beyond the Swift: seek. See §"seek" below and issue #30 — the
+   Extension beyond the original Swift: seek. See §"seek" below and issue #30 — the
    `precise` flag is passed through, never decided here.
 
-   Extension beyond the Swift: OUT-POINTS (issues #111 / #65). A Foray segment
+   Extension beyond the original Swift: OUT-POINTS (issues #111 / #65). A Foray segment
    is a `[start_sec, end_sec]` slice of an episode, so an item may finish
    before its file does. Two deliberate non-changes, both from #65:
 
@@ -52,16 +59,10 @@
      audible). The backend owns accuracy.
 
    The boundary itself rides on the item ref as `bounds`, supplied by the
-   caller — same ownership split as design note 1.
-
-   **This one is JS-only and the Swift has NOT been updated** (#111). Neither
-   `PlayerQueueState.swift` nor `PlayerQueueManager.swift` knows about bounds,
-   `setOutPoint`, or the in-point override, so a Foray cannot play on the
-   native backend yet — and the "diffable by eye" promise at the top of this
-   file is broken for this section until #28 either ports it or retires the
-   Swift. `ios/` is outside the auto-merge allowlist, so porting it is its own
-   PR with a human on it, and it needs a macOS box to build. Said out loud
-   here rather than discovered later.
+   caller — same ownership split as design note 1. The engine mirrors carry
+   bounds and `setOutPoint` too (NE-07s), and the native engine plays a
+   Foray (player/native-facades.js `playForay`); only the frozen
+   ios/ForayKit copy predates them.
 */
 
 /* ---------- value types ---------- */
@@ -258,16 +259,21 @@ function sameBounds(a, b) {
     idempotence, the skip debounce, the in-flight-load replacement — would
     otherwise treat the second as a redundant repeat of the first and silently
     drop it. Consecutive same-episode segments are common in a Foray, so this
-    is the normal case, not a corner. */
-function sameRef(a, b) {
+    is the normal case, not a corner.
+
+    Exported because queue-manager.js asks the same question of its own (its
+    stale-load guard, player-core-9): it imports this rule rather than keeping
+    a copy, so a field added to identity here reaches the manager too (CH-05). */
+export function sameRef(a, b) {
   if (a === b) return true;
   if (!a || !b) return false;
   return a.id === b.id && a.kind === b.kind && sameBounds(a.bounds ?? null, b.bounds ?? null);
 }
 
-/** The item currently "in focus" for a state, if any. */
-function currentItem(state) {
-  switch (state.type) {
+/** The item currently "in focus" for a state, if any. Exported for the
+    manager, which reads the reducer's focus by this rule (as `focusOf`). */
+export function currentItem(state) {
+  switch (state?.type) {
     case "playing": return state.item;
     case "transitioning": return state.to;
     case "interrupted": return state.item;
