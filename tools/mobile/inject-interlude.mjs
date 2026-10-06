@@ -7,8 +7,8 @@
  * to every target, and a resource bundle cannot take a profile: release run
  * 36535801479 (build 2026092902) failed in `xcodebuild archive` with
  * "ForayAudio_ForayAudioPlugin does not support provisioning profiles". So the
- * jingle now reaches the app the way the Kokoro weights do
- * (tools/mobile/inject-models.mjs, whose header explains the mechanism):
+ * jingle now reaches the app the way the Kokoro weights did until CH-20
+ * retired tools/mobile/inject-models.mjs (issue #1076; git history has it):
  * copied into the generated project's `public/` FOLDER REFERENCE after
  * `cap add ios` / `cap sync`, which Xcode copies into `App.app/public/`
  * whole, with no project surgery and no extra target.

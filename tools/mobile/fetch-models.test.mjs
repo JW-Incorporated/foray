@@ -4,11 +4,13 @@
  * `{url, sha256, bytes}` for the model and each voice; CI fails on a
  * mismatch."
  *
- * WHAT THIS SUITE IS FOR, stated once. The file it covers downloads ~88 MB of
- * weights that are then EXECUTED on a listener's phone. There is exactly one
- * thing standing between "the upstream repository re-uploaded this file" and
- * "our app runs whatever is now at that URL", and it is a hash comparison.
- * Every test below is a mutation of that comparison or of the table it reads.
+ * WHAT THIS SUITE IS FOR, stated once. The file it covers downloads the
+ * Kokoro weights central narration renders with (and, until CH-20 took them
+ * out of every shell build, weights that were EXECUTED on a listener's phone).
+ * There is exactly one thing standing between "the upstream repository
+ * re-uploaded this file" and "we render with whatever is now at that URL",
+ * and it is a hash comparison. Every test below is a mutation of that
+ * comparison or of the table it reads.
  *
  * NOTHING HERE DOWNLOADS ANYTHING. `verifyBuffer` is pure and takes a buffer;
  * `verifyOnDisk` reads a directory a test builds. A suite that hit the network
@@ -25,8 +27,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   PINS, MODELS_DIR, pinProblems, unfilled, verifyBuffer, verifyOnDisk,
-  digest, ensureIgnored, fillPinCommand, bundledPins, bundledBytes, PROBE_VOICE, BUNDLE_PLATFORMS,
-  COREML_DIR, COREML_REVISION, COREML_STAGES, COREML_NAME_RE,
+  digest, ensureIgnored, fillPinCommand, bundledPins, bundledBytes, BUNDLE_PLATFORMS,
 } from "./fetch-models.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -95,18 +96,20 @@ test("two pins with the same name are a problem", () => {
 /* ---------- the slate ---------- */
 
 test("the table pins two models (q8f16, fp32) and the twelve audition voices", () => {
-  /* Deck §6's slate is twelve, and K-04 bundles three of them. A table that
-     drifted to eleven would silently drop a voice the founders were asked to
-     rank. MUTATION: remove one id from the voice list in fetch-models.mjs.
+  /* Deck §6's slate is twelve. A table that drifted to eleven would silently
+     drop a voice the founders were asked to rank.
+     MUTATION: remove one id from the voice list in fetch-models.mjs.
 
-     TWO MODELS SINCE KV-R2 (D13): q8f16 for Android, and the fp32 export for
-     iOS, because every fp16-activation export goes NaN on Apple silicon. The
-     q8f16 pin stays FIRST: `render-audition.py`'s `read_pins` reads it by
-     name. (`player/kokoro-probe.test.js` also found each platform's pin by
-     bundle until the probe left the app on 2026-10-05, issue #1076.) */
+     TWO MODELS SINCE KV-R2 (D13): q8f16 (the PC audition's) and the fp32
+     export (central narration's, render-profile.json), because every
+     fp16-activation export goes NaN on Apple silicon. The q8f16 pin stays
+     FIRST: `render-audition.py`'s `read_pins` reads it by name. The only
+     kinds are model, voice and tokenizer: KV-R3's Core ML stage pins left
+     with the on-device probe (CH-20). */
   const models = PINS.filter((p) => p.kind === "model");
   const voices = PINS.filter((p) => p.kind === "voice");
-  assert.equal(models.length, 2, "one model per platform");
+  assert.deepEqual([...new Set(PINS.map((p) => p.kind))].sort(), ["model", "tokenizer", "voice"]);
+  assert.equal(models.length, 2, "q8f16 and fp32");
   assert.equal(voices.length, 12, "deck §6's slate is twelve voices");
   assert.equal(models[0].name, "kokoro-v1_0-q8f16.onnx");
   assert.equal(PINS[0], models[0], "q8f16 is still the table's first pin");
@@ -121,79 +124,16 @@ test("the table pins two models (q8f16, fp32) and the twelve audition voices", (
   }
 });
 
-test("each platform's model filename matches what that platform's native half looks for", () => {
-  /* THE CROSS-TREE PIN. `ForayTtsPlugin.swift` looks up MODEL_RESOURCE +
-     MODEL_EXTENSION; `ForayTtsPlugin.java` looks up MODEL_ASSET. Nothing but
-     this test connects a build script's output filename to two native lookups
-     in two languages — and a mismatch reports as `model-absent`, which reads
-     exactly like "the build skipped the fetch". Since D13 each half looks for
-     ITS platform's model: fp32 on iOS, q8f16 on Android.
-     MUTATION: rename a pin without renaming its constant, or point Swift back
-     at q8f16. */
-  const modelFor = (platform) => bundledPins(platform).filter((p) => p.kind === "model");
-  const [ios] = modelFor("ios");
-  const [android] = modelFor("android");
-  const swift = fs.readFileSync(
-    path.join(REPO, "mobile/plugins/foray-tts/ios/Sources/ForayTtsPlugin/ForayTtsPlugin.swift"), "utf8");
-  const java = fs.readFileSync(
-    path.join(REPO, "mobile/plugins/foray-tts/android/src/main/java/ai/jwlabs/foura/tts/ForayTtsPlugin.java"), "utf8");
-  const base = ios.name.replace(/\.onnx$/, "");
-  assert.ok(swift.includes(`MODEL_RESOURCE = "${base}"`), `Swift must look for ${base}`);
-  assert.ok(swift.includes('MODEL_EXTENSION = "onnx"'));
-  assert.ok(java.includes(`MODEL_ASSET = "${android.name}"`), `Java must look for ${android.name}`);
-});
-
-/* ---------- KV-R3: the Core ML chain's compiled stages ---------- */
-
-test("the Core ML chain is 34 pinned files: seven compiled stages, iOS only, at a fixed commit", () => {
-  /* Probe v3's second backend (docs/voice/kokoro-speed-1.5x.md §4 S5). Each
-     `.mlmodelc` is a directory, so each FILE is a pin; the two stream-hashes
-     that filled them are in fetch-models.mjs's header.
-     MUTATION: point a URL at `main` instead of the commit — red. Drop a
-     stage — red. Bundle one on Android — red. */
-  const coreml = PINS.filter((p) => p.kind === "coreml");
-  assert.equal(coreml.length, 34, "7 stages x 5 files, less Prosody_v2's absent metadata.json");
-  assert.equal(coreml.reduce((n, p) => n + p.bytes, 0), 82270465);
-  const stages = [...new Set(coreml.map((p) => p.name.split("/")[1].replace(/\.mlmodelc$/, "")))].sort();
-  assert.deepEqual(stages, [...COREML_STAGES].sort());
-  for (const p of coreml) {
-    assert.match(p.name, COREML_NAME_RE);
-    assert.ok(p.name.startsWith(`${COREML_DIR}/`));
-    assert.equal(p.url, `https://huggingface.co/FluidInference/kokoro-82m-coreml/resolve/${COREML_REVISION}/ANE/${p.name.slice(COREML_DIR.length + 1)}`);
-    assert.deepEqual([...p.bundle], ["ios"], `${p.name} is for the iOS probe build only`);
-    assert.equal(p.licence, "Apache-2.0");
-  }
-  for (const stage of COREML_STAGES) {
-    assert.ok(coreml.some((p) => p.name === `${COREML_DIR}/${stage}.mlmodelc/weights/weight.bin`), `${stage} has its weights`);
-    assert.ok(coreml.some((p) => p.name === `${COREML_DIR}/${stage}.mlmodelc/model.mil`), `${stage} has its program`);
-  }
-  assert.match(COREML_REVISION, /^[0-9a-f]{40}$/, "a commit, never a branch");
-});
-
-test("the Swift engine looks for exactly the stage directories the pins create", () => {
-  /* THE CROSS-TREE PIN for Core ML, as the model-filename test above is for
-     ORT: `KokoroCoreMLEngine.swift`'s bundle names and directory must be the
-     ones this table writes, or every Core ML pass reads `model-absent`.
-     MUTATION: rename a `_v2` stage in either file. */
-  const swift = fs.readFileSync(
-    path.join(REPO, "mobile/plugins/foray-tts/ios/Sources/ForayTtsPlugin/KokoroCoreMLEngine.swift"), "utf8");
-  for (const stage of COREML_STAGES) assert.ok(swift.includes(`return "${stage}"`), `Swift must name ${stage}`);
-  assert.ok(swift.includes(`static let DIR = "${COREML_DIR}"`));
-});
-
-test("only a Core ML stage file may carry a path, and only in its one shape", () => {
-  /* The separator rule still holds for every other kind, and a Core ML pin
-     cannot use its exemption to write anywhere else.
-     MUTATION: exempt any name containing `kokoro-coreml/` — the `..` case
-     goes green and a remote file can land outside mobile/models. */
-  const coreml = PINS.find((p) => p.kind === "coreml");
-  assert.deepEqual(pinProblems([coreml]), []);
-  for (const name of ["kokoro-coreml/../../app.js", "kokoro-coreml/KokoroAlbert.mlmodelc/../x.bin",
-    "kokoro-coreml/KokoroAlbert.mlmodelc/extra/weight.bin", "other/KokoroAlbert.mlmodelc/model.mil", "kokoro-coreml\\x"]) {
-    assert.notDeepEqual(pinProblems([{ ...coreml, name }]), [], `"${name}" must be refused`);
-  }
-  assert.match(pinProblems([{ ...PINS[0], name: coreml.name }]).join("\n"), /path separator/,
-    "a model pin may not borrow the Core ML shape");
+test("a pin name may not carry a path, KV-R3's Core ML shape included", () => {
+  /* KV-R3 let ONE shape through the separator rule, a Core ML stage file
+     (`kokoro-coreml/<Stage>.mlmodelc/<file>`), for the iOS probe build. The
+     probe and its Core ML pins are gone (CH-20), so the exemption went with
+     them and every name is a flat file under mobile/models/ again.
+     MUTATION: restore the `kind === "coreml"` exemption in `pinProblems` —
+     the stage-shaped name is accepted and this goes red. */
+  const stageShaped = { ...PINS[0], kind: "coreml", name: "kokoro-coreml/KokoroAlbert.mlmodelc/model.mil" };
+  assert.match(pinProblems([stageShaped]).join("\n"), /path separator/);
+  for (const p of PINS) assert.ok(!/[\\/]/.test(p.name), `${p.name} is a flat file name`);
 });
 
 test("main() runs only after the constants it reads exist", () => {
@@ -265,50 +205,27 @@ test("every pin is filled, and the fill command is still printable for the next 
   assert.match(fillPinCommand(PINS[0]), /sha256/);
 });
 
-test("each app bundles its own model and ONE voice, and nothing else", () => {
-  /* The size budget is enforced by what `bundle` says, not by what a
-     workflow's glob happens to match. Twelve voices are pinned because K-03's
-     audition renders twelve; eleven of them have no business in an app store
-     binary, and the tokenizer has no business on a phone at all (deck §4: no
-     text front end on the device).
-     MUTATION: add a platform to a second voice's `bundle` — that platform's
-     byte count moves and this goes red before the .ipa does. */
-  /* KV-R3: iOS also carries the Core ML chain's 34 stage files (82,270,465
-     bytes) for the probe v3 build; they are asserted file by file below. */
-  const iosFlat = bundledPins("ios").filter((p) => p.kind !== "coreml");
-  assert.deepEqual(iosFlat.map((p) => p.name), ["kokoro-v1_0-fp32.onnx", `${PROBE_VOICE}.bin`]);
-  assert.deepEqual(bundledPins("android").map((p) => p.name), ["kokoro-v1_0-q8f16.onnx", `${PROBE_VOICE}.bin`]);
-  assert.equal(bundledBytes("ios"), 325532232 + 522240 + 82270465);
-  assert.equal(bundledBytes("android"), 86033585 + 522240);
-  for (const p of PINS.filter((p) => p.kind === "tokenizer")) {
-    assert.deepEqual([...p.bundle], [], "the id table never ships to a phone");
+test("no app bundles any pin: both shell builds carry zero Kokoro bytes (CH-20)", () => {
+  /* Founder ruling on issue #1076 (2026-10-05): "Remove it all". Until then
+     iOS bundled fp32 + af_heart + the 34 Core ML stage files (~409 MiB
+     projected) and Android q8f16 + af_heart (~83 MiB), read only by the
+     on-device probe. The pins stay, for central narration and the audition;
+     no `bundle` list names a platform.
+     MUTATION: put "ios" back in fp32's `bundle`, or "android" in q8f16's or
+     af_heart's — red. */
+  for (const platform of BUNDLE_PLATFORMS) {
+    assert.deepEqual(bundledPins(platform), [], `${platform} bundles nothing`);
+    assert.equal(bundledBytes(platform), 0, `${platform} carries no model bytes`);
   }
-});
-
-test("fp32 is bundled on iOS only and q8f16 on Android only", () => {
-  /* D13, both halves. fp32 is 325.5 MB: in an APK it breaks Android's 150 MB
-     ceiling and Play's base-module limit. q8f16 goes NaN on Apple silicon: in
-     the iOS app it is 86 MB of a model the phone cannot sing with, beside the
-     one it can. And the probe voice is in both, or one probe has no voice.
-     MUTATION: bundle fp32 on Android (`bundle: ["ios", "android"]`) — red.
-     MUTATION: bundle q8f16 on iOS — red. */
-  const byName = (name) => PINS.find((p) => p.name === name);
-  assert.deepEqual([...byName("kokoro-v1_0-fp32.onnx").bundle], ["ios"]);
-  assert.deepEqual([...byName("kokoro-v1_0-q8f16.onnx").bundle], ["android"]);
-  assert.deepEqual([...byName(`${PROBE_VOICE}.bin`).bundle].sort(), ["android", "ios"]);
-  assert.ok(!bundledPins("android").some((p) => p.name === "kokoro-v1_0-fp32.onnx"), "fp32 never reaches the APK");
-  assert.ok(!bundledPins("ios").some((p) => p.name === "kokoro-v1_0-q8f16.onnx"), "q8f16 never reaches the iOS app");
-  assert.equal(bundledPins("ios").filter((p) => p.kind === "model").length, 1, "one model per app");
-  assert.equal(bundledPins("android").filter((p) => p.kind === "model").length, 1, "one model per app");
+  for (const p of PINS) assert.deepEqual([...p.bundle], [], `${p.name} names no platform`);
 });
 
 test("a pin with an implicit bundle value is refused", () => {
-  /* The dangerous default is falsy: a model pin whose `bundle` was dropped in
-     a rebase would stop being copied, the app would ship without weights, and
-     the probe would answer `model-absent` — which reads as "the build did not
-     fetch the weights" and sends a founder to look at the wrong thing. A bare
-     `true` is refused as well: it meant "both apps" before D13, and a pin that
-     still says it has not been told which model each app carries.
+  /* `bundle` is never implicit: a pin whose field was dropped in a rebase
+     must be an error, not a silent answer about what an app store binary
+     carries (every list is `[]` since CH-20, and that is said, not assumed).
+     A bare `true` is refused as well: it meant "both apps" before D13, and a
+     pin that still says it has not been told which model each app carries.
      MUTATION: fall back to `p.bundle ?? []` in `pinProblems`, or accept
      `true` as "every platform". */
   const { bundle, ...noBundle } = PINS[0];

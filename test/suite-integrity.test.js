@@ -651,7 +651,7 @@ const FLOORS = {
      app.js and data/ for the diagnostic Foray instrument's three identifying
      strings (HUMAN-ACTIONS.md #29) so it cannot silently come back into a
      release build once deleted. */
-  "test/release-gates.test.js": 18, // CH-20 characterization (2026-10-06): +2 -- the `--bundled ios`/`--bundled android` CLI answer pinned as it is today, and render-narration still runs `fetch-models.mjs --check`; 16 -> 18 // KV-R2 (2026-09-26): Android's bundled bytes are still q8f16's, and iOS's budget is its own with the TestFlight reason; 14 -> 16 // K-06 (2026-09-12): the espeak licence gate, the model pin table, the notices file and the 150 MB app-size ceiling; 7 -> 14 // S-07/G1 (2026-09-12): +1 — the Option-B contract, that §2 states the Shows-search lookup is unconditional rather than merely dropping the old promise; 6 -> 7
+  "test/release-gates.test.js": 16, // CH-20 (2026-10-06): -2 -- the weights left every shell build (founder ruling, issue #1076), so the q8f16 measurement, Android-bytes and iOS TestFlight-budget tests became one zero-bytes test, and the characterization flipped to `--bundled` empty + no fetch step in any build path; 18 -> 16 // CH-20 characterization (2026-10-06): +2 -- the `--bundled ios`/`--bundled android` CLI answer pinned as it is today, and render-narration still runs `fetch-models.mjs --check`; 16 -> 18 // KV-R2 (2026-09-26): Android's bundled bytes are still q8f16's, and iOS's budget is its own with the TestFlight reason; 14 -> 16 // K-06 (2026-09-12): the espeak licence gate, the model pin table, the notices file and the 150 MB app-size ceiling; 7 -> 14 // S-07/G1 (2026-09-12): +1 — the Option-B contract, that §2 states the Shows-search lookup is unconditional rather than merely dropping the old promise; 6 -> 7
   /* The shared search matcher (#218/#219). Floored because both of the things it
      pins are invisible when they break. Loosening the prefix guard buys recall
      and reintroduces a documented collision flood that only the ~170-second
@@ -1661,7 +1661,6 @@ const FLOORS = {
      failure it guards is a build that fetched 82 MB correctly and put it where
      the app does not look — green, uploaded, and answering `model-absent` to a
      founder holding a locked phone. Zero slack, same as its sibling above. */
-  "tools/mobile/inject-models.test.mjs": 9,
   /* NE-34's jingle into App.app/public (2026-09-29, after a SwiftPM resource
      broke the signed archive): the copy lands where InterludePlayer looks, a
      source off the pin writes nothing, a wrong file fails --check, and both

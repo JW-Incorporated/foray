@@ -77,25 +77,12 @@ runs:
         set -euo pipefail
         npm run add:ios 2>&1 | tee "$ART/cap-add-ios.log"
 
-    - name: Fetch the Kokoro weights and put them in the app (K-01/K-06)
-      # The same step `.github/workflows/ios-build.yml` runs, and for the same reasons — see that
-      # file's copy of this comment. This is the release path: it is what puts
-      # the weights into the build a founder actually installs, which is the
-      # whole point of K-01 and of HUMAN-ACTIONS.md #45.
-      shell: bash
-      run: |
-        set -euo pipefail
-        node tools/mobile/fetch-models.mjs --check
-        node tools/mobile/fetch-models.mjs --fetch ios
-        node tools/mobile/inject-models.mjs ios mobile/ios/App/App/public
-        node tools/mobile/inject-models.mjs ios mobile/ios/App/App/public --check
-
     - name: Put the seam jingle in the app (NE-34)
       # NOT a SwiftPM resource: a `resources:` on a plugin target makes a
       # resource-bundle target, and this action's signed archive fails on it
       # ("ForayAudio_ForayAudioPlugin does not support provisioning profiles",
       # release run 36535801479). Copied into the public/ folder reference
-      # instead, like the weights above; see the script's header.
+      # instead; see the script's header.
       shell: bash
       run: |
         set -euo pipefail

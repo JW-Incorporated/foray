@@ -4,8 +4,8 @@
  * BUNDLE, at `App.app/public/player/assets/interlude-placeholder.wav`: the
  * same repo-relative path the web serves it from, placed into the generated
  * iOS project's `public/` folder reference by tools/mobile/inject-interlude.mjs
- * after `cap add ios` / `cap sync` (the same injection point
- * tools/mobile/inject-models.mjs uses for the Kokoro weights).
+ * after `cap add ios` / `cap sync` (the same injection point the retired
+ * tools/mobile/inject-models.mjs used for the Kokoro weights until CH-20).
  *
  * IT IS NOT A SWIFTPM RESOURCE ANY MORE, AND MUST NOT BECOME ONE AGAIN. M2
  * (#873) shipped it as `resources: [.copy(...)]` on the ForayAudioPlugin
