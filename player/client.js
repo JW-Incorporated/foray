@@ -4831,8 +4831,22 @@ const ForayPlayer = {
     return rec;
   },
 
+  /**
+   * Is this episode current AND is the transport running — sound coming out
+   * as far as the bar, the card and the press are concerned?
+   *
+   * READS THE SAME PREDICATE AS `togglePlayback()` (`transportIsRunning()`),
+   * and that is the whole contract (CH-03, P1-01). app.js asks this and then
+   * toggles on a "no" — the Episode-notes stamp tap is `seekTo` then
+   * `if (!isPlaying(id)) togglePlayback()`, Home's ▶ the same without the
+   * seek. When this read the reducer's belief (`isPlaying()`), the #689 drift
+   * — the machine `interrupted`, the element audible — answered "not playing",
+   * the toggle then found the transport running and PAUSED, and the tap that
+   * meant "hear this part" stopped the audio. One authority, so a "no" here is
+   * always a press that starts.
+   */
   isPlaying(id) {
-    return isPlaying() && current?.id === id;
+    return transportIsRunning() && current?.id === id;
   },
 
   /**
@@ -4960,6 +4974,10 @@ const ForayPlayer = {
    * have to reimplement it — and deliberately NOT parameterised by id: a card
    * that is the current item toggles the player, and a card that is not should
    * be calling `play()`. `isCurrent` is how a caller tells those apart.
+   *
+   * Decides from `transportIsRunning()`, the same predicate `isPlaying(id)`
+   * answers from (CH-03): a caller that toggles on `!isPlaying(id)` is never
+   * handed a "stopped" by one authority and a pause by the other.
    */
   async togglePlayback() {
     await setRunning(!transportIsRunning());
