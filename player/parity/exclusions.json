@@ -366,6 +366,18 @@
     "NE-45j: the web lane prepares nothing across a narration seam — prefetch stays parked": {
       "reason": "webview-only",
       "why": "Pins that the WEB lane stays parked: the production HtmlAudioBackend (no second element) is never asked to prefetch across a narration seam, from a window or from the line-start warm. The native standby deck does prepare there; that rule is the prepare-narration family (NE-45s)."
+    },
+    "CH-21 characterization: a load from the top (offset 0) asks for no seek and resolves on canplay": {
+      "reason": "webview-only",
+      "why": "Which HTMLMediaElement event (`canplay`, with no `currentTime` assignment at an in-point of 0) settles a cold load of the web element. AVDeck has no such events: a load is one `.ready` after its own preroll (AVDeckTests/testNothingIsAudibleBeforeReady), so there is no event choice for the engine to reimplement."
+    },
+    "CH-21: a `seeked` the load did not ask for, before its offset seek lands, does not resolve it at 0:00": {
+      "reason": "webview-only",
+      "why": "A stray HTMLMediaElement `seeked` (readyState already HAVE_FUTURE_DATA, playhead still at the head) arriving before the web element's offset seek lands. AVDeck's in-point is the completion of its own seek followed by one preroll (AVDeckTests/testOffsetLandsOnTheCbrMp3AndTheWav); there is no unrequested seek-complete event for the engine to guard against."
+    },
+    "CH-21: how near a cold load must land is deck-policy's SETTLE_NEAR_SEC, on both events": {
+      "reason": "webview-only",
+      "why": "That the web element's two settling events (`canplay`, `seeked`) read deck-policy.js's SETTLE_NEAR_SEC rather than an inline 1. The constant itself is the deck-episode family's (its settledNear cases, mirrored by DeckPolicy.settleNearSec); AVDeck seeks with zero tolerance and has no events to choose between."
     }
   },
   "interlude": {

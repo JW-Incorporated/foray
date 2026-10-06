@@ -67,7 +67,8 @@
    scheduling under load — which are only observable in a browser.
 */
 
-import { idbConnection, withStore } from "./idb-tier.js";
+import { idbConnection, openDb, withStore } from "./idb-tier.js";
+import { errText } from "./durable-store.js";
 
 export const DB_NAME = "foray_events";
 export const DB_VERSION = 1;
@@ -87,10 +88,6 @@ const DEFAULT_FLUSH_DELAY_MS = 50;
     `durable-store.js`'s `MAX_FAULTS`: a tier that fails on every call must not
     be allowed to call the app back on every call too. */
 const MAX_FAULTS = 20;
-
-function errText(err) {
-  return err && err.message ? String(err.message) : String(err ?? "unknown error");
-}
 
 /**
  * Build the event queue, or a memory-only stand-in when IndexedDB is
@@ -128,11 +125,14 @@ export function createEventLog({
   const ring = [];
   let nextRingId = 1;
 
-  /* idb-tier.js's connection and transaction helpers, shared rather than
-     copied (audit round 3, player-rest-2): a failed open is not cached (hazard
-     2), a connection the browser closed is forgotten and retried once, and a
-     transaction that never settles is abandoned at a deadline. */
-  const open = idbConnection(() => openDb(factory, DB_NAME, DB_VERSION, STORE_NAME));
+  /* idb-tier.js's open, connection and transaction helpers, imported rather
+     than copied (audit round 3, player-rest-2; CH-13 for `openDb`): one open
+     path that rejects on a blocked upgrade instead of hanging, a failed open
+     is not cached (hazard 2), a connection the browser closed is forgotten and
+     retried once, and a transaction that never settles is abandoned at a
+     deadline. Only the store's shape is this file's own. */
+  const open = idbConnection(() =>
+    openDb(factory, DB_NAME, DB_VERSION, STORE_NAME, { keyPath: "id", autoIncrement: true }));
 
   const pendingRows = [];
   let flushTimer = null;
@@ -523,24 +523,6 @@ export function createEventLog({
 }
 
 /* ---------- IndexedDB plumbing (idb-tier.js's two hazards apply here too) ---------- */
-
-function openDb(factory, name, version, storeName) {
-  return new Promise((resolve, reject) => {
-    let req;
-    try { req = factory.open(name, version); } catch (err) { reject(err); return; }
-    req.onupgradeneeded = () => {
-      const db = req.result;
-      try {
-        if (!db.objectStoreNames.contains(storeName)) {
-          db.createObjectStore(storeName, { keyPath: "id", autoIncrement: true });
-        }
-      } catch (err) { reject(err); }
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error || new Error("indexedDB open failed"));
-    req.onblocked = () => reject(new Error("indexedDB open blocked by another tab"));
-  });
-}
 
 /* `withStore` is idb-tier.js's (imported above): one transaction, resolved
    with the LAST request's result after commit. `fn` may issue several

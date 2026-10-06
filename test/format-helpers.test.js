@@ -163,7 +163,9 @@ function onePartPlaylist(m) {
   const item = { id: "ep-1", title: "Only episode", show: "Show", audio_url: "https://a.test/1.mp3", topics: [] };
   m.state.discover = { items: [item] };
   m.ctx.fullPool && m.ctx.fullPool();
-  m.ctx.savePlaylists([{
+  /* Seeded straight into the store (code-health CH-08 deleted the test-only
+     savePlaylists; a fixture is not one of the app's writes). */
+  m.ctx.lsSet("cp_playlists", [{
     id: "q1", title: "Solo", items: [m.ctx.playlistPart(item)],
     created: "2019-09-20T00:00:00.000Z", last_played_at: "2019-09-21T18:00:00.000Z",
   }]);
