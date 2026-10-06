@@ -14,12 +14,12 @@ Source of truth for a cleared session. Update on every deliverable.
 | Phase | Status | Notes |
 |---|---|---|
 | Kickoff (STATE.md + HUMAN-ACTIONS via doc-only PR to main) | done | PR #1085 (auto-merges on green); HA #142 Apple lab setup, HA #143 Play lab setup |
-| 0a Eyes | not started | |
-| 0b Judge | not started | |
-| 0c Test classification | not started | |
+| 0a Eyes | done | tools/ui-lab/ |
+| 0b Judge | done | calibrated, accuracy 100% |
+| 0c Test classification | done | docs/redesign-2026/test-classification.md |
 | 0d Split app.js | not started | |
 | 0e Lab build path | not started | needs owner Apple + Play setup |
-| 1 Research | not started | |
+| 1 Research | done | docs/redesign-2026/research/, design-brief.md |
 | 2 Directions | not started | Fable art directors |
 | Checkpoint | — | owner picks |
 | 3–5 | — | after checkpoint |
@@ -63,3 +63,7 @@ Source of truth for a cleared session. Update on every deliverable.
 
 - 2026-10-05 — Plan approved by the owner in session; trunk branch created from
   `main` @ 3a9dfefa; PLAN/PROGRESS/RESTART written.
+- 2026-10-05/06 — 0a Eyes done: screenshot + a11y harness at `tools/ui-lab/`.
+- 2026-10-05/06 — 0b Judge done, calibrated, accuracy 100%: `docs/redesign-2026/judge/`.
+- 2026-10-05/06 — 0c Test classification done: `docs/redesign-2026/test-classification.md`.
+- 2026-10-05/06 — 1 Research done: `docs/redesign-2026/research/` (7 notes) and `docs/redesign-2026/design-brief.md`.
