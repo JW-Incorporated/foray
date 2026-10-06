@@ -1793,7 +1793,7 @@ function fmtDate(dateStr, { local = false, now = new Date() } = {}) {
 /* THE SAME RULE AS search-engine.js `branchOf`, kept as a copy on purpose
    (code-health CH-36, X1-09): Home's subject cards and Family mode group on
    it, and 30 test harnesses run app.js without search-engine.js, so
-   calling `SearchEngine.branchOf` here would break them and a `typeof
+   calling the engine's `branchOf` here would break them and a `typeof
    SearchEngine` fallback would be this copy again. test/show-search-fallthrough.test.js
    pins the two equal over a fixture; change both or neither. */
 function branchOf(item) {

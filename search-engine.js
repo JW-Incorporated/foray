@@ -2561,16 +2561,17 @@ function rankShardRows(query, rows) {
    anywhere, `prettyConceptLabel` (suggestAdjacentTopics' label helper) and
    `showIndexLowerBound` (prefixSearchShows' binary search), are private.
 
-   app.js (the page) reads 15 members, as `SearchEngine.<name>`, and only these:
+   app.js (the page) reads 16 members, as `SearchEngine.<name>`, and only these:
    `classifyResults`, `DEFAULT_CAP`, `foldDiacritics`, `interpretQuery`,
-   `parseShowIndex`, `prefixSearchShows`, `primeVocabulary`, `rankShardRows`,
-   `rankShows`, `scanShowIndex`, `searchShows`, `searchWithRelaxation`,
-   `shardKeyForQuery`, `STOPWORDS`, `suggestAdjacentTopics` (`DEFAULT_CAP` only
-   in the playlist-size arithmetic comment, not in code).
+   `parseShowIndex`, `PER_SHOW_CAP`, `prefixSearchShows`, `primeVocabulary`,
+   `rankShardRows`, `rankShows`, `scanShowIndex`, `searchShows`,
+   `searchWithRelaxation`, `shardKeyForQuery`, `STOPWORDS`,
+   `suggestAdjacentTopics` (`DEFAULT_CAP` only in the playlist-size arithmetic
+   comment, not in code).
    test/search-engine-exports.test.js holds this list to app.js.
 
    Everything else is read by tests and tools that `require()` this file (the
-   many app.js harnesses load it into a vm only so the page can reach the 15). */
+   many app.js harnesses load it into a vm only so the page can reach the 16). */
 const SearchEngine = {
   /* The topic scorer, its tunables and the shared matcher: tools/test-search.mjs
      (the quality battery) reads nearly all of them; test/search-*.test.js and
