@@ -7,6 +7,15 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-10-05 — Redesign 2026: ground-up UI redesign, built beside the current app
+
+- **Branches:** trunk `feature/redesign-2026`; work branches `redesign/*`. **Worktree:** `.claude/worktrees/redesign-2026`. **Plan:** `docs/redesign-2026/PLAN.md` on the trunk.
+- **Owned:** `docs/redesign-2026/` and `tools/ui-lab/`. On the trunk only (nothing reaches main): `app.js`, `ui/`, `styles.css`, `index.html`, `test/`.
+- **Out of scope:** main, the release pipeline, nightly, the Android/iOS native engine work.
+- **Owner authorizations (2026-10-05):** up to 20 concurrent agents; Fable 5.1 for the Phase 2 art directors (each invocation logged in the trunk's PROGRESS.md); no paid tools; Mac CI minutes as needed.
+- **Lab app:** `ai.jwlabs.foura.lab` / "4a Lab", installed beside the real app; lab builds never write to production. Store setup: HUMAN-ACTIONS #142 (Apple), #143 (Google Play).
+- **Rule for other sessions:** never open a PR into main from redesign work.
+
 ### 2026-10-04 — corpus supply package (`docs/roadmap/corpus.md`, G-03, G-10…G-16, G-19)
 
 foray-db / transcript farm → R2 → foray. Owned paths: `tools/foraycorpus-export/**`, `data/dai-measurements.json`, `data/episode-topics.json`, `data/corpus-catalogue-pointer.json`. Other sessions route around them; the shared files are one `FLOORS` line each in `test/suite-integrity.test.js` and a paragraph each in `tools/foraycorpus-export/README.md`. On main today: nothing yet (PKG-01, the package scaffold, is PR #1001).
