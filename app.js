@@ -10600,45 +10600,36 @@ function renderEpisodeSearchResults(query, myToken, report = () => {}, localEpis
   });
 }
 
-/* HOME IS THE FOUR SUBJECT CARDS AND THE RESUME BANNER. NOTHING ELSE.
-   (Founder instruction, 2026-09-03, after the first TestFlight build: "the
-   home page has so much clutter … Home should be the four cards.")
-
-   That is a layout invariant as much as a product one. `.cards4` is the
-   only `flex: 1` child of `.home`, the one-screen column, so ANY sibling
-   added here takes its height straight off the four cards. While `.home` was
-   a FIXED-height column that starved them to 0px and overflowed on top of
-   whatever followed — shipped as a visible bug twice, #433 (the vouch row)
-   and again before it. #464 made the column `min-height` and gave `.cards4`
-   a floor, so the failure now degrades to a taller scrolling page instead of
-   crushed cards. That is a backstop, not a licence: the product is one
-   screen, and what was wrong both times was putting a second surface inside
-   it.
-
-   So everything that used to compete for this space now has its own menu
-   destination, and that is where it goes back to if it comes back:
+/* WHAT HOME DOES NOT CARRY. Home is the greeting, its one play button and the
+   sections renderHomeV2 draws (Jump back in, Forays for you, Playlists for
+   you, Suggested) — the list is that function's, not this comment's. What
+   used to compete for the space has its own menu destination, and that is
+   where it goes back to if it comes back:
 
      "Shows we vouch for" (vouchForHtml)   -> Shows      (#/shows)
      show search (#sh-form/#sh-results)     -> Shows      (#/shows)
      "Browse all shows" link                -> gone; Shows IS that page
      playlist builder (#pl-form)            -> Playlists  (#/playlists), then Create (#/create) since 2026-09-23
-     foray list + "Jump back in"            -> Forays     (#/forays)
+     foray list                             -> Forays     (#/forays)
 
    test/home-information-architecture.test.js asserts each of those in both
    directions — absent here, present there — so a future re-add fails CI
-   rather than shipping. */
-/* CUTOVER (U-11, founder override 2026-09-06): renderHome() used to branch
-   on the retired `cp_ui_v2` flag and render the old four-card Home inline
-   when it was off. That branch was unreachable and has been removed; the
-   old implementation is preserved verbatim in
-   archive/legacy-ui-2026-09/app.js.pre-cutover-2026-09-06 (see that
-   directory's README to restore it). */
+   rather than shipping. (Jump back in is on both: Home's rail, and the same
+   cards, Forays only, above the list on #/forays — renderForays.)
+
+   The old Home — four subject cards and a resume banner, behind the retired
+   `cp_ui_v2` flag — is preserved verbatim in
+   archive/legacy-ui-2026-09/app.js.pre-cutover-2026-09-06 (U-11, founder
+   override 2026-09-06; that directory's README restores it). */
+/* Two names, one page: `renderHome` is the one renderCurrentPage calls, and
+   `renderHomeV2` the one the tests use — kept rather than renamed across
+   eleven suites for a word (code-health CH-32, A2-14). */
 function renderHome() {
   return renderHomeV2();
 }
 
 /* ==================================================================== */
-/* U-03: HOME v2 — four sections plus the greeting, behind cp_ui_v2       */
+/* U-03: HOME v2 — the greeting and its sections                         */
 /* (docs/ui-transition-plan.md, kanban t_6e8343b6, resolves gate #123)   */
 /* ==================================================================== */
 
@@ -10650,7 +10641,8 @@ function renderHome() {
    THE FLOOR (Wyatt's decision, resolves #123): "Forays for you" and
    "Suggested" EACH reserve at least one slot for a STRETCH pick —
    something outside the listener's top interest tier, on purpose, visibly
-   labelled "Stretch" with a bridge line stating why it's being suggested.
+   labelled "Stretch" with a sentence stating why it's being suggested (the
+   Foray card's bridge line; the Suggested card's hook, `STRETCH_WHY`).
    A row reason ("Because you finish every Odd Lots") is allowed elsewhere
    but never on the stretch slot itself — that is the whole point of a
    stretch: it is not being justified by what the listener already likes.
@@ -10762,8 +10754,9 @@ function homeGreeting() {
    next thing. It is not rendered at all only when nothing on Home can play.
 
    Each kind starts the way its own page starts it, through the same code:
-     foray     the Foray page's main button — `playForay`, resuming where the
-               listener left it (`forayResume`), else from the top;
+     foray     the Foray page's main button's path — `startForayCold`, from
+               where the listener left it (`readForayPoint`), else from the top
+               (code-health CH-32: one start, one `foray_play`, for both);
      episode   a row's ▶ (`startEpisodePlay`);
      playlist  its first playable row, with the playlist's rows as the list
                continuous playback goes on through — a saved playlist, a
@@ -10887,27 +10880,53 @@ async function startHomeEpisode(player, t) {
   return startEpisodePlay(item.id, item, { ctx: t.ctx, list: t.list });
 }
 
+/** START A FORAY FROM COLD — the one path both of its play buttons take (code-
+    health CH-32, A2-02): Home's (`startHomeForay`) and the Foray page's
+    (`bindForayTransport`'s `start` / `startAt`). Each used to own its own
+    playForay-then-`foray_play` sequence, so a field added to the event, or a
+    change to what a start is handed, had two places to land.
+
+    The call into the player is the FIRST thing here — nothing awaited before
+    it: the tap is the gesture Safari lets audio start inside (#225). Then the
+    one `foray_play`, when the caller says this start is a press of Play
+    (`logPlay`; the Foray page's rows, strip and Start over start a Foray
+    without one, as they always have). A synchronous throw comes back as a
+    rejection, so each caller's own failure painter sees one shape.
+
+    WHERE it starts is the caller's: `startElapsedSec` (a resume point — both
+    buttons read it through `readForayPoint`, so a finished Foray starts from
+    the top on both — or a strip position) or else `startIndex` (a row; 0 is the
+    top). `opts` is handed to the player beside it: `discoverDoc` (the lock
+    screen's artwork, #27) on every start, `onChange` from the page. */
+function startForayCold(player, r, { startElapsedSec = null, startIndex = 0, logPlay = true, ...opts } = {}) {
+  const at = startElapsedSec != null ? { startElapsedSec } : { startIndex };
+  let started;
+  try {
+    started = Promise.resolve(player.playForay(r, { ...at, ...opts }));
+  } catch (err) {
+    started = Promise.reject(err);
+  }
+  if (logPlay) {
+    logEvent("foray_play", {
+      foray_id: r.id, segments: r.playable.length,
+      resumed_from_sec: startElapsedSec != null ? Math.round(startElapsedSec) : null,
+    });
+  }
+  return started;
+}
+
 async function startHomeForay(player, r) {
   const live = player.forayStatus?.();
   if (live && live.forayId === r.id) {
     if (!live.running) await player.forayToggle?.();
     return true;
   }
-  let resume = null;
-  try { resume = player.forayResume?.(r.id, { resolved: r }) || null; } catch (_) { resume = null; }
-  /* The call into the player comes before any await: the tap is the gesture
-     Safari lets audio start inside (#225, the Foray page's own rule). */
-  const at = resume ? { startElapsedSec: resume.elapsedSec } : { startIndex: 0 };
-  let started;
-  try {
-    started = Promise.resolve(player.playForay(r, { ...at, discoverDoc: state.discover }));
-  } catch (err) {
-    started = Promise.reject(err);
-  }
-  logEvent("foray_play", {
-    foray_id: r.id, segments: r.playable.length,
-    resumed_from_sec: resume ? Math.round(resume.elapsedSec) : null,
-  });
+  /* The stored point, read the Foray page's way (`readForayPoint`): a place to
+     start from, or nothing — a finished Foray starts from the top on both. */
+  const { resume } = readForayPoint(player, r);
+  const started = startForayCold(player, r, resume
+    ? { startElapsedSec: resume.elapsedSec, discoverDoc: state.discover }
+    : { startIndex: 0, discoverDoc: state.discover });
   let report = null;
   try {
     report = await started;
@@ -10929,7 +10948,9 @@ async function startHomeForay(player, r) {
 }
 
 /** "Jump back in": forayResumeRows() plus the ordinary-episode continue
-    banner, as one horizontal scroller — the mockup's own shape for this
+    banner, as one horizontal scroller. Home draws it with every kind; the
+    Forays page draws the same cards with its Foray entries only
+    (renderForays, code-health CH-32) — the mockup's own shape for this
     section (docs/ux/foray-mockup.jsx `HomeScreen`'s first row). Degrades
     to "" when neither has anything to resume, so the section simply does
     not render rather than showing an empty rail. */
@@ -11000,17 +11021,19 @@ function jumpBackInEntries(limit = 6) {
      WHERE YOU ARE IN IT, like the Foray and episode cards beside it (audit
      round 2, honesty-7): the rail mixed three grammars — a bar and "N min
      left" on those two, a bare "12 episodes" here — though the playlist page
-     itself knew "3 played". The card reads `hasOpened` (history OR a stored
-     position) — the page's next-up marker's reading; the page's own header
-     count moved to the player's "played" verdict in honesty-6.
-     NO ZERO (round-2 review; copy-13, "a zero is not a fact worth a line"): a
-     played playlist can reach 0 here once its ids age out of the 200-entry
-     history ring, and the card then said "0 of 12 played" over an empty bar
-     beside "12 episodes" — the page drops its "0 played" the same way. */
-  const history = new Set(pickedHistory());
+     itself knew "3 played".
+     ONE READING OF "PLAYED" (code-health CH-32, A2-04): the card counts what the
+     page header counts — the player's own verdict per row (`rowProgress`, state
+     "played", honesty-6). It read `hasOpened` (history OR any stored position),
+     the page's next-up marker's question, so a listener who opened 3 of 12 and
+     finished 1 saw "3 of 12 played" here and "1 played" one tap later.
+     NO ZERO (round-2 review; copy-13, "a zero is not a fact worth a line"):
+     nothing finished is no line and no bar, rather than "0 of 12 played" over
+     an empty bar beside "12 episodes" — the page drops its "0 played" the same
+     way. */
   for (const p of playlists().filter(p => p.last_played_at)) {
     const rows = resolveParts(p);
-    const played = rows.filter(r => hasOpened(r.item.id, history)).length;
+    const played = rows.filter(r => rowProgress(r.item)?.state === "played").length;
     entries.push({
       kind: "playlist", id: p.id, at: p.last_played_at,
       title: p.title || p.name || "Playlist",
@@ -11241,32 +11264,24 @@ function playlistsForYouHtml({ own, generated } = playlistsForYouPicks()) {
   </section>`;
 }
 
-/** One episode card for "Suggested" — miniCard()'s existing markup
-    plus the visible bridge line D1's copy rule requires on a stretch
-    slot, which miniCard() itself does not render (its "Stretch" tag is a
-    hover-only `title`, pinned as-is elsewhere and left untouched here).
-    Composes rather than forks: the card body is exactly miniCard(slot),
-    with the bridge line appended after it for a stretch slot only. */
-function miniCardV2(slot) {
-  const card = miniCard(slot);
-  if (slot.role !== "stretch") return card;
-  // Insert the bridge line just before the card's closing tag.
-  const bridge = `<p class="hv2-bridge">${stretchBridgeLine(subjectLabel(slot.branch))}</p></div>`;
-  return card.replace(/<\/div>$/, bridge);
-}
-
 /** "Suggested": buildCards()'s ranked discover-pool picks, i.e.
-    state.cardSlots verbatim — the SAME floor buildCards() already
-    computes for the flag-off four-card Home, so this section and that
-    one can never disagree about which slot is the stretch. renderHomeV2()
-    guarantees state.cardSlots is already built before this runs (same as
-    v1's own renderHome()), so this only guards a caller that invokes this
-    function directly (e.g. a future test). */
+    state.cardSlots verbatim, each drawn by miniCard(). renderHomeV2()
+    guarantees state.cardSlots is already built before this runs, so this
+    only guards a caller that invokes this function directly (e.g. a test).
+
+    THE STRETCH CARD SAYS WHY ONCE (code-health CH-32, A2-03). D1's copy rule
+    — a stretch pick states why it is there — is met by miniCard's own hook
+    sentence (`STRETCH_WHY`, visible text since audit round 2, a11y-11). A
+    `miniCardV2` used to append the bridge line to it as well, written when the
+    reason was a tooltip, so every stretch card on Home said the same thing
+    twice in a row; it went, and with it the second place a copy edit had to
+    land. The Foray card's bridge line (forayCardV2Html) is that card's only
+    reason and stays. */
 function suggestedHtml() {
   if (!state.cardSlots.length) return "";
   return `<section class="hv2-section hv2-suggested">
     <h2 class="hv2-title">Suggested</h2>
-    <div class="hv2-cards">${state.cardSlots.map(miniCardV2).join("")}</div>
+    <div class="hv2-cards">${state.cardSlots.map(miniCard).join("")}</div>
   </section>`;
 }
 
@@ -11305,10 +11320,13 @@ function renderHomeV2() {
    "get rid of the recommended foray at the top of Home. Move it into a page
    accessible via the menu exclusively for Forays").
 
-   "Jump back in" moves here WITH the list rather than staying on Home. The
-   two render the same `.fy-home-row` markup and read as one block, so
-   splitting them would have left Home with a row that looks exactly like the
-   thing the founder asked to remove. Both are still gated by the same
+   "Jump back in" here is HOME'S RAIL, FORAYS ONLY (code-health CH-32, A2-08;
+   founder question 5's default in docs/roadmap/code-health.md). Home grew its
+   own mixed rail (Forays, episodes, playlists — jumpBackInV2Html) while this
+   page kept a second renderer of its own `.fy-jbi-row` markup, so one Foray
+   read two ways a tap apart and a fix to the card had two places to land. The
+   page now draws Home's cards from Home's entries (`jumpBackInEntries`), keeping
+   its own content rule: Forays only. Both are still gated by the same
    visibility rule (forayCards / forayResumeRows) — an unpublished Foray is
    listed only to someone who arrived with its `?foray=` link this session. */
 /* THE THREE STATES, AND WHAT THE PAGE SAYS ABOVE THEM (audit 2026-09-22).
@@ -11370,11 +11388,13 @@ function renderForays() {
   }
 
   const list = forayCards();
-  const resume = forayResumeRows();
+  /* Filter BEFORE any cap: Home's 6 is shared by every kind, so newer episodes
+     and playlists would crowd the Forays out of it and this page would show no
+     Jump back in at all. forayResumeRows() already caps the Forays at 3. */
   $("#view").innerHTML = `
     <div class="page">
       ${head}
-      ${jumpBackInHtml(resume)}
+      ${jumpBackInV2Html(jumpBackInEntries(Infinity).filter(e => e.kind === "foray"))}
       ${list.length
         ? forayListHtml({ inSection: true })
         : `<p class="note">No forays right now — 4a puts these together by hand, so they arrive a few at a time.</p>`}
@@ -15369,8 +15389,10 @@ function bindForayTransport(r, player) {
      the failure line is cleared in the same breath, because the message from the
      last attempt is not evidence about this one — inside the guard, so even that
      cannot become the unhandled rejection this whole thing is about. */
-  const start = (index) => guardForayStart(() => (paintForayFailure(null), player.playForay(r, { startIndex: index, ...forayOpts })));
-  const startAt = (elapsedSec) => guardForayStart(() => (paintForayFailure(null), player.playForay(r, { startElapsedSec: elapsedSec, ...forayOpts })));
+  /* Both reach the player through `startForayCold`, Home's start path too
+     (code-health CH-32); `logPlay` is true only for the main button's press. */
+  const start = (index, logPlay = false) => guardForayStart(() => (paintForayFailure(null), startForayCold(player, r, { startIndex: index, logPlay, ...forayOpts })));
+  const startAt = (elapsedSec, logPlay = false) => guardForayStart(() => (paintForayFailure(null), startForayCold(player, r, { startElapsedSec: elapsedSec, logPlay, ...forayOpts })));
   /* The main button, pressed cold. With a stored position that means RESUME —
      the whole point of the feature — and an explicit index (a row, the strip)
      always wins, because the listener just named a segment. */
@@ -15381,7 +15403,7 @@ function bindForayTransport(r, player) {
      re-reads the stored point when this Foray goes from live to cold. The
      bind-time parameter itself is gone (code-health CH-22, A3-03): Start over
      logged it after the point it named no longer existed. */
-  const startOrResume = () => state.forayResume ? startAt(state.forayResume.elapsedSec) : start(0);
+  const startOrResume = (logPlay = false) => state.forayResume ? startAt(state.forayResume.elapsedSec, logPlay) : start(0, logPlay);
 
   $("#fy-restart")?.addEventListener("click", async () => {
     if (typeof player.clearForayResume === "function") player.clearForayResume(r.id);
@@ -15429,13 +15451,10 @@ function bindForayTransport(r, player) {
 
   $("#fy-play").addEventListener("click", async () => {
     if (playerHasForay(r)) return guardForayTap(() => player.forayToggle());
-    // Only the real start is an event. Logging a pause as a play is the kind of
-    // small lie that makes a metric useless six months later.
-    logEvent("foray_play", {
-      foray_id: r.id, segments: r.playable.length,
-      resumed_from_sec: state.forayResume ? Math.round(state.forayResume.elapsedSec) : null,
-    });
-    await startOrResume();
+    // Only the real start is an event (startForayCold writes it). Logging a
+    // pause as a play is the kind of small lie that makes a metric useless six
+    // months later.
+    await startOrResume(true);
   });
   // Before anything has started, every transport button means "start it" — a
   // next that begins at segment 2 silently drops the opening of the Foray.
@@ -16095,17 +16114,6 @@ function forayResumeRows({ limit = 3, includeFinished = false } = {}) {
   return player.forayResumeList({ foraysDoc: state.forays, resolveFor })
     .filter(p => visible.has(p.id) && p.drift !== "dropped" && (includeFinished || !p.finished) && p.label)
     .slice(0, limit);
-}
-
-function jumpBackInHtml(rows) {
-  if (!rows.length) return "";
-  return `<div class="fy-home fy-jbi">${rows.map(p => `
-    <a class="fy-home-row fy-jbi-row" href="#${esc(forayRoutePath(p.id))}">
-      <span class="fy-home-kicker">Jump back in</span>
-      <span class="fy-home-title">${esc(p.title || p.id)}</span>
-      <span class="fy-bar"><span class="fy-bar-fill" data-pct="${esc(String(p.percent))}"></span></span>
-      <span class="fy-jbi-left">${esc(p.label)}</span>
-    </a>`).join("")}</div>`;
 }
 
 /** Bar widths are a DOM property, never a style attribute — the page CSP is

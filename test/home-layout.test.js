@@ -664,26 +664,25 @@ test("`.hv2-home` still reserves the safe-area inset at the bottom, like every o
   }
 });
 
-test("a stretch card's bridge line is a row of its own under the card, not a fourth column beside the star", () => {
-  /* Audit 2026-09-22. miniCardV2() appends `<p class="hv2-bridge">` INSIDE the
-     `.mini-card` anchor, and `.mini-card` is a single-line flex row — so the
-     sentence a stretch pick is required to carry (D1's copy rule) rendered as
-     a narrow italic column to the right of the star, clipping the title. The
-     Foray card's identical line only worked because that card is a column.
+test("a Suggested card's title block keeps its zero basis in a wrapping row; no rule styles a bridge line it no longer has", () => {
+  /* Audit 2026-09-22: miniCardV2() appended `<p class="hv2-bridge">` inside
+     the single-line flex row of `.mini-card`, so it rendered as a narrow column
+     beside the star; the row was made to wrap and `.mc-info` given a zero basis.
+     Code-health CH-32 (A2-03) dropped that appended line — the hook states a
+     stretch card's reason, once — and with it the `> .hv2-bridge` rule. The
+     wrap and the zero basis stay: the layout the card ships with.
 
-     MUTATION: drop `flex-wrap: wrap` from `body.ui-v2 .hv2-suggested
-     .mini-card` -> the first assertion fails. Drop the `.mc-info` zero basis
-     -> the third fails (and on a device the title jumps to a line of its own,
-     because its max-content width is the whole unclamped title). */
+     MUTATION: drop the `.mc-info` zero basis -> red (and on a device the title
+     jumps to a line of its own, because its max-content width is the whole
+     unclamped title). MUTATION 2: put the `> .hv2-bridge` rule back -> red. */
   const APP = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
-  assert.ok(APP.includes('</p></div>`;') && APP.includes("return card.replace("),
-    "fixture assumption: the bridge is still injected inside the card's anchor — if it moved outside, this rule is moot");
-  assert.strictEqual(valueOf("body.ui-v2 .hv2-suggested .mini-card", "flex-wrap"), "wrap",
-    "the Suggested card row must wrap so the bridge can take a line of its own");
-  assert.strictEqual(valueOf("body.ui-v2 .hv2-suggested .mini-card > .hv2-bridge", "flex-basis"), "100%",
-    "the bridge line must span the card's full width");
+  assert.ok(!APP.includes("function miniCardV2(") && !APP.includes("return card.replace("),
+    "fixture assumption: nothing appends a bridge line to the Suggested card");
+  assert.strictEqual(valueOf("body.ui-v2 .hv2-suggested .mini-card", "flex-wrap"), "wrap");
   assert.strictEqual(valueOf("body.ui-v2 .hv2-suggested .mini-card > .mc-info", "flex-basis"), "0",
     "the title block needs a zero basis or wrapping pushes IT onto its own line instead");
+  assert.strictEqual(valueOf("body.ui-v2 .hv2-suggested .mini-card > .hv2-bridge", "flex-basis"), null,
+    "no rule for a line the card does not draw");
 });
 
 test("a snapped rail card rests on the gutter, not the viewport edge: scroll-padding equals the rail's inline padding", () => {

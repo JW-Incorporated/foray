@@ -275,9 +275,10 @@ test("at inset 0 and at inset 59 px the same sections render, and the stylesheet
 /* 3. THE FLOOR OVER REAL DATA — SUGGESTED, 20 RENDERS            */
 /* ==================================================================== */
 
-test("THE FLOOR over real data: Suggested carries a visible Stretch tag with its bridge line on 20 consecutive renders of a fresh profile", async () => {
+test("THE FLOOR over real data: Suggested carries a visible Stretch tag with its reason on 20 consecutive renders of a fresh profile", async () => {
   /* MUTATION: in buildCards(), set `stretchBranch` to null -> no slot has
-     role "stretch", miniCardV2 appends no bridge line, and run 0 fails.
+     role "stretch", miniCard writes no Stretch tag and no STRETCH_WHY, and run
+     0 fails. (The reason is the hook's sentence, once — code-health CH-32.)
      Real Math.random throughout: the stretch slot is structural (a branch
      outside the top interest tier, chosen deliberately), not a jitter
      outcome, so 20 unseeded renders is the honest form of "20 seeded
@@ -289,7 +290,7 @@ test("THE FLOOR over real data: Suggested carries a visible Stretch tag with its
     const html = m.view();
     const episodes = html.slice(html.indexOf("hv2-suggested"));
     assert.ok(/class="mc-stretch"[^>]*>Stretch</.test(episodes), `run ${i}: Suggested must carry a visible Stretch tag over the real pool`);
-    assert.ok(episodes.includes('class="hv2-bridge">'), `run ${i}: the stretch pick must carry its bridge line`);
+    assert.ok(/<p class="mc-hook">[^<]*Outside your usual subjects, on purpose\.<\/p>/.test(episodes), `run ${i}: the stretch pick must say why`);
     const stretchSlots = m.state.cardSlots.filter((sl) => sl.role === "stretch");
     assert.strictEqual(stretchSlots.length, 1, `run ${i}: exactly one of the four slots is the stretch pick`);
   }

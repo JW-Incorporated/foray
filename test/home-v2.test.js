@@ -230,21 +230,21 @@ test("the card-slot section is headed \"Suggested\" (founder, 2026-09-24), and H
 /* 3. THE FLOOR — STRETCH SLOT PRESENCE, 20 SEEDED RENDERS               */
 /* ==================================================================== */
 
-test("both 'for you' sections carry a visible Stretch label with its bridge line, on 20 consecutive seeded renders", () => {
+test("both 'for you' sections carry a visible Stretch label with its reason, on 20 consecutive seeded renders", () => {
   // MUTATION: in pickWithStretchFloor, change `.filter(x => !topBranchIds.has(x.b))[0]`
   // to always return null (no stretch ever found) — every iteration below
-  // fails immediately. MUTATION 2: in miniCardV2, drop the bridge-line
-  // insertion — the "Stretch" tag would still render but its paired bridge
-  // line would not, and the pairing assertion (test 4 below) is what
-  // actually catches that; this test's own count would still pass, which is
-  // why both tests exist.
+  // fails immediately. MUTATION 2: in forayCardV2Html, drop the bridge line
+  // (or in miniCard, the STRETCH_WHY hook) — the "Stretch" tag would still
+  // render but its paired reason would not, and the pairing assertion (test 4
+  // below) is what actually catches that.
   for (let i = 0; i < 20; i++) {
     const m = ui2Mount();
     m.ctx.renderHome();
     const html = m.view();
     assert.ok(/class="hv2-stretch-tag">Stretch</.test(html), `run ${i}: Forays for you must carry a visible Stretch tag`);
     assert.ok(/class="mc-stretch"[^>]*>Stretch</.test(html), `run ${i}: Suggested must carry a visible Stretch tag`);
-    assert.ok(html.includes('class="hv2-bridge">'), `run ${i}: the stretch pick must carry a bridge line`);
+    assert.ok(html.includes('class="hv2-bridge">'), `run ${i}: the Foray stretch pick must carry a bridge line`);
+    assert.ok(/<p class="mc-hook">[^<]*Outside your usual subjects, on purpose\.<\/p>/.test(html), `run ${i}: the Suggested stretch pick must say why in its hook`);
   }
 });
 
@@ -252,19 +252,23 @@ test("both 'for you' sections carry a visible Stretch label with its bridge line
 /* 4. THE STRETCH TAG AND ITS BRIDGE LINE NEVER APPEAR ALONE             */
 /* ==================================================================== */
 
-test("a Stretch tag never appears without its bridge line, and a bridge line never appears without a Stretch tag", () => {
-  // MUTATION: render `hv2-stretch-tag`/`mc-stretch` without also appending
-  // `.hv2-bridge` (or vice versa) on one card type. The counts below diverge.
+test("a Stretch tag never appears without its reason, and a reason never appears without a Stretch tag", () => {
+  // MUTATION: render `hv2-stretch-tag`/`mc-stretch` without also stating the
+  // reason (the Foray card's `.hv2-bridge`, the Suggested card's hook) or vice
+  // versa, on one card type — the counts below diverge. Since CH-32 the
+  // Suggested card's reason is its hook sentence, once (A2-03).
   const m = ui2Mount();
   m.ctx.renderHome();
   const html = m.view();
   const forayStretchTags = (html.match(/class="hv2-stretch-tag"/g) || []).length;
   const episodeStretchTags = (html.match(/class="mc-stretch"/g) || []).length;
-  const stretchTags = forayStretchTags + episodeStretchTags;
   const bridgeLines = (html.match(/class="hv2-bridge"/g) || []).length;
-  assert.ok(stretchTags > 0, "expected at least one Stretch tag to render");
-  assert.strictEqual(stretchTags, bridgeLines,
-    `${stretchTags} Stretch tag(s) but ${bridgeLines} bridge line(s) — every stretch card must carry exactly one of each`);
+  const hookReasons = (html.match(/Outside your usual subjects, on purpose\./g) || []).length;
+  assert.ok(forayStretchTags + episodeStretchTags > 0, "expected at least one Stretch tag to render");
+  assert.strictEqual(forayStretchTags, bridgeLines,
+    `${forayStretchTags} Foray Stretch tag(s) but ${bridgeLines} bridge line(s) — every stretch card must carry exactly one of each`);
+  assert.strictEqual(episodeStretchTags, hookReasons,
+    `${episodeStretchTags} Suggested Stretch tag(s) but ${hookReasons} hook reason(s) — every stretch card must carry exactly one of each`);
 });
 
 test("the stretch bridge line never reads as a row-reason match to the listener's taste", () => {
@@ -362,4 +366,25 @@ test("'Shared with you' and 'Build your own' are not built anywhere in the v2 re
   const html = m.view();
   assert.ok(!/shared with you/i.test(html), "'Shared with you' must not appear on Home v2");
   assert.ok(!/build your own/i.test(html), "'Build your own' must not appear on Home v2");
+});
+
+/* ==================================================================== */
+/* CH-32 (A2-03): A STRETCH CARD SAYS WHY ONCE                           */
+/* ==================================================================== */
+
+test("CH-32: Suggested's stretch card states its reason once", () => {
+  /* A2-03: the card carried miniCard's hook sentence ("Outside your usual
+     subjects, on purpose.") AND miniCardV2's appended bridge line ("Outside your
+     usual subjects — a deliberate change of pace into …") — two consecutive
+     sentences with one meaning (pinned at 2 by this test's characterization
+     commit). MUTATION: append the bridge line to the Suggested card again ->
+     2, red. */
+  const m = ui2Mount();
+  m.ctx.renderHome();
+  const html = m.view();
+  const cards = html.slice(html.indexOf("hv2-suggested")).split('<div class="mini-card"').slice(1);
+  const stretch = cards.filter((c) => c.includes('class="mc-stretch"'));
+  assert.strictEqual(stretch.length, 1, "fixture: one stretch card in Suggested");
+  assert.strictEqual((stretch[0].match(/Outside your usual subjects/g) || []).length, 1, "said once");
+  assert.ok(!stretch[0].includes("hv2-bridge"), "by the hook, not an appended line");
 });

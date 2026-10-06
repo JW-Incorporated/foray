@@ -717,9 +717,9 @@ body.view-home .topbar h1 .wordmark { display: none; }
 /* The Continue banner (`.banner`, `#banner-slot`) is gone (visual pass 1,
    2026-09-23): `bannerHtml()` lost its only caller at the U-11 cutover and
    "Jump back in" reads the player's own position store instead (see
-   jumpBackInHtml's header in app.js). Its rules were pinned by two tests that
-   guarded markup no listener could reach, so the rules, the renderer and the
-   tests went together. */
+   jumpBackInEntries / jumpBackInV2Html's header in app.js). Its rules were
+   pinned by two tests that guarded markup no listener could reach, so the
+   rules, the renderer and the tests went together. */
 
 /* ---------- first-run intro popup ---------- */
 
@@ -3390,11 +3390,6 @@ body.fy-sheet-keeps-player.fp-open .fy-sheet .fy-panel {
 }
 .fy-restart:hover { color: var(--text); }
 
-/* the home-screen rail */
-.fy-jbi-row { position: relative; }
-.fy-jbi-row .fy-bar { margin-top: 8px; }
-.fy-jbi-left { margin-top: 5px; font-size: var(--fs-xs); font-weight: 700; color: var(--gold); }
-
 /* ---------- where this came from ----------
    Publisher credit. Every clip is a download against the show's own feed, so
    this is the page that says whose work it was and where to go and get more. */
@@ -3856,7 +3851,7 @@ body.ui-v2 .fp-s-why { color: var(--muted); }
 body.ui-v2 .ep-more h3 { color: var(--muted); }
 body.ui-v2 .ep-more h3 .note { color: var(--muted); }
 
-/* ---------- Forays list + Jump back in (renderForays) ---------- */
+/* ---------- Forays list (renderForays; its Jump back in is Home's .hv2-jbi-card) ---------- */
 body.ui-v2 .fy-home-row {
   border-color: var(--line);
   background: var(--surface);
@@ -3864,14 +3859,10 @@ body.ui-v2 .fy-home-row {
 }
 /* "foray"/"foray · draft" kicker is 4a's editorial framing -- violet. */
 body.ui-v2 .fy-home-kicker { color: var(--violet); }
-/* …except on a "Jump back in" row, which marks the listener's own progress
-   -- amber, the same reading Home's `.hv2-jbi-kicker` gives it. */
-body.ui-v2 .fy-jbi-row .fy-home-kicker { color: var(--amber); }
 body.ui-v2 .fy-home-title { font-family: var(--font-display); }
 body.ui-v2 .fy-bar { background: var(--surface2); }
 /* The resume position is the listener's own progress -- amber. */
 body.ui-v2 .fy-bar-fill { background: var(--amber); }
-body.ui-v2 .fy-jbi-left { color: var(--amber); }
 body.ui-v2 .fy-summary { color: var(--muted); }
 body.ui-v2 .fy-draft { border-color: var(--line); background: var(--surface2); color: var(--muted); }
 
@@ -4144,8 +4135,8 @@ body.ui-v2 .hv2-jbi-sub, body.ui-v2 .hv2-jbi-left, body.ui-v2 .hv2-playlist-sub,
   font-size: var(--fs-sm); color: var(--muted);
 }
 /* "N min left" is the listener's own progress: amber and bold, the way it
-   reads on the Forays index (`.fy-jbi-left`) and a Foray's resume line
-   (`.fy-resume-left`). Home's card was the one place it went grey and
+   reads on a Foray's resume line (`.fy-resume-left`) — and the Forays index,
+   whose Jump back in is this card (code-health CH-32). Home's card was the one place it went grey and
    regular — the same number for the same Foray in two voices (round 2,
    honesty-8; qa 55's gold-to-amber remap missed this class). */
 body.ui-v2 .hv2-jbi-left { color: var(--amber); font-weight: 700; }
@@ -4161,8 +4152,9 @@ body.ui-v2 .hv2-jbi-card > .play-btn { z-index: 1; }
    pick must always state WHY it's being suggested). `.hv2-bridge` is the one
    thing that must NEVER appear without `.hv2-stretch-tag` alongside it on the
    same card, and vice versa — both are written by the same caller
-   (forayCardV2Html/miniCardV2) so they can't drift apart independently, and
-   test/home-v2.test.js pins that pairing directly. */
+   (forayCardV2Html) so they can't drift apart independently, and
+   test/home-v2.test.js pins that pairing directly (a Suggested card's reason
+   is its hook sentence instead, code-health CH-32). */
 body.ui-v2 .hv2-stretch { border-color: var(--violet); }
 body.ui-v2 .hv2-stretch-tag {
   align-self: flex-start;
@@ -4211,22 +4203,17 @@ body.ui-v2 .hv2-test-track {
   font-size: var(--fs-sm); font-weight: 600; color: var(--violet);
 }
 
-/* Suggested reuses miniCard()'s own `.mini-card` markup and rules
-   unchanged (miniCardV2() wraps it rather than forking it) — only the
-   section container and the appended `.hv2-bridge` line are new here.
+/* Suggested reuses miniCard()'s own `.mini-card` markup and rules unchanged
+   — only the section container is new here.
 
-   THE BRIDGE LINE IS A ROW OF ITS OWN. miniCardV2() appends it inside the
-   `.mini-card` anchor, which is a single-line flex ROW — so it became a fourth
-   item beside the star: a narrow italic column squeezed to the right of the
-   card, stealing width from a title that then clipped (audit 2026-09-22). The
-   Foray card's identical line works only because that card is a column. So the
-   row wraps, the bridge takes the full width of the second line, and
-   `.mc-info` gets a zero basis so wrapping can never push IT onto a line of its
-   own (its max-content width is the whole unclamped title). Cards without a
-   bridge are three items that always fit, so for them nothing changes. */
+   The row wraps and `.mc-info` has a zero basis so that wrapping can never push
+   the title block onto a line of its own (its max-content width is the whole
+   unclamped title). Written for an appended `.hv2-bridge` line (audit
+   2026-09-22), which went with miniCardV2 (code-health CH-32: the hook states a
+   stretch card's reason, once); a card is now three items that always fit, and
+   the rule is kept as the layout it ships with. */
 body.ui-v2 .hv2-suggested .mini-card { min-height: 0; flex-wrap: wrap; row-gap: 4px; }
 body.ui-v2 .hv2-suggested .mini-card > .mc-info { flex-basis: 0; }
-body.ui-v2 .hv2-suggested .mini-card > .hv2-bridge { flex-basis: 100%; }
 
 /* The publisher's own show description (founder, 2026-09-21). Body copy, not a
    `.note`: it is the show speaking for itself and should read like prose.

@@ -1848,27 +1848,35 @@ test("the tap reaches playForay with nothing awaited in front of it", async () =
      Asserted on the SOURCE because the module that does the priming
      (`player/client.js`) cannot be loaded here: it builds DOM at import. The
      ordering inside it is pinned the same way below. */
+  /* ONE START PATH since code-health CH-32 (A2-02): both funnels, and Home's
+     play button, reach the player through `startForayCold`, so the funnels must
+     call IT as the first thing inside the tap, and it must call the player
+     before anything else it does. */
   assert.match(
     APP_SRC,
-    /const start = \(index\) => guardForayStart\(\(\) => \(paintForayFailure\(null\), player\.playForay\(/,
-    "the index funnel must call the player as the first thing inside the tap"
+    /const start = \(index, logPlay = false\) => guardForayStart\(\(\) => \(paintForayFailure\(null\), startForayCold\(/,
+    "the index funnel must start the Foray as the first thing inside the tap"
   );
   assert.match(
     APP_SRC,
-    /const startAt = \(elapsedSec\) => guardForayStart\(\(\) => \(paintForayFailure\(null\), player\.playForay\(/,
+    /const startAt = \(elapsedSec, logPlay = false\) => guardForayStart\(\(\) => \(paintForayFailure\(null\), startForayCold\(/,
     "the resume/scrub funnel must too"
   );
-  /* Both funnels, no third path: every control on the page routes through one of
-     them, so neither can be fixed and the other left awaiting. Comment lines are
-     dropped in all three shapes — this file and app.js both discuss `playForay(`
-     in prose, and a test that goes red at a paragraph is a test people delete. */
+  const from = APP_SRC.indexOf("function startForayCold(");
+  assert.ok(from > 0, "startForayCold moved or was renamed");
+  const cold = APP_SRC.slice(from, APP_SRC.indexOf("\n}\n", from));
+  const callAt = cold.indexOf("player.playForay(");
+  assert.ok(callAt > 0, "startForayCold calls the player");
+  assert.ok(!/\bawait\b|\blogEvent\(/.test(cold.slice(0, callAt)),
+    "nothing is awaited (or written) in front of the call into the player");
+  /* No second path: every control on the page and Home's button route through
+     the one call. Comment lines are dropped in all three shapes — this file and
+     app.js both discuss `playForay(` in prose, and a test that goes red at a
+     paragraph is a test people delete. */
   const bodies = APP_SRC.split("\n")
     .filter((l) => l.includes("playForay("))
     .filter((l) => !/^\s*(\/\/|\/\*|\*)/.test(l));
-  /* THREE since 2026-09-24: Home's one play button (founder: "Add a play button
-     at the Home Screen level…") starts a Foray from its own tap through
-     `startHomeForay`, which calls the player first as well. */
-  assert.equal(bodies.length, 3, `expected three call sites, found:\n${bodies.join("\n")}`);
+  assert.equal(bodies.length, 1, `expected one call site (startForayCold), found:\n${bodies.join("\n")}`);
   for (const line of bodies) {
     assert.ok(!/await/.test(line), `a start must not await anything before playForay: ${line}`);
   }
