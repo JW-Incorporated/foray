@@ -496,7 +496,11 @@ test("both shell notices name the app", () => {
    playlist note is counted here with the rest.
    15 -> 16 in round 2 (L5, states-6): the Foray page's player-failed branch now
    tells "still loading" from "failed to load", and the failed one is its own
-   statusPageHtml note with Reload 4a. */
+   statusPageHtml note with Reload 4a.
+   17 -> 19 in SH-COLD (wave 11): a shared breadth episode's cold open
+   (resolveMissingEpisode) says "Loading episode…" while it pages the show and
+   "Couldn't load this episode." with Try again when the lookup fails; its
+   "Episode not found." moved there and is counted once, as before. */
 test("no note this app renders into #view capitalises the unit", () => {
   const src = read("app.js");
   const notes = [
@@ -506,8 +510,8 @@ test("no note this app renders into #view capitalises the unit", () => {
   ].map((m) => m[1]);
   assert.equal(
     notes.length,
-    17,
-    `expected seventeen #view status notes, found ${notes.length}. More is fine -- ` +
+    19,
+    `expected nineteen #view status notes, found ${notes.length}. More is fine -- ` +
       "raise this count so the new one is covered. Fewer means a note was lost " +
       `or reshaped: ${notes.join(" | ")}`
   );
