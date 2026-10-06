@@ -27,7 +27,13 @@
  *
  * UPWARD MOVEMENT IS CLAMPED, NOT TRACKED. A sheet that can be dragged UP off
  * the top of the screen is a bug, not a feature; `dy` never goes below 0.
+ *
+ * The release speed is `player/gesture-math.js`'s `releaseVelocity`, shared
+ * with the Up Next swipe. The thresholds below are this sheet's own: they are
+ * tuned for a full-height sheet and do not follow the swipe's.
  */
+
+import { releaseVelocity } from "./gesture-math.js";
 
 /** How far down the sheet must travel, in CSS px, before letting go closes it.
     Below this it springs back. Chosen as roughly a thumb's comfortable travel
@@ -39,12 +45,14 @@ export const DISMISS_DISTANCE_PX = 120;
 /** A FLICK closes it too, short of the distance above: releasing while still
     moving down at this speed (CSS px per ms — 0.5 is 500 px/s) is an unambiguous
     throw-it-away, and requiring the full 120px from a fast gesture is what makes
-    a sheet feel sticky. Paired with `FLICK_MIN_PX` so a fast 3px twitch during a
-    tap on the grab handle can never count. */
+    a sheet feel sticky. Paired with `SHEET_FLICK_MIN_PX` so a fast 3px twitch
+    during a tap on the grab handle can never count. */
 export const DISMISS_VELOCITY_PX_PER_MS = 0.5;
 
-/** The floor under the flick rule. A flick must still have MOVED this far. */
-export const FLICK_MIN_PX = 40;
+/** The floor under the flick rule. A flick must still have MOVED this far.
+    Named for the sheet because the Up Next swipe has its own
+    (`SWIPE_FLICK_MIN_PX`), with a different value. */
+export const SHEET_FLICK_MIN_PX = 40;
 
 /** How far a pointer must travel down before the gesture takes over from the
     scroller. Under this it is a tap (or a jitter) and the sheet does not move,
@@ -93,21 +101,9 @@ export function moveDrag(state, y, t) {
   return { ...state, dy, engaged, prevY: state.lastY, prevT: state.lastT, lastY: y, lastT: t };
 }
 
-/**
- * Downward speed at the moment of release, in CSS px per ms. Measured over the
- * last TWO samples rather than the whole gesture, because "was it still moving
- * when they let go" is the question — a slow drag out and a hold at the bottom
- * must not read as a flick just because it covered ground earlier.
- *
- * Returns 0 when the two samples share a timestamp (division by zero) or when
- * the movement was upward, so every caller gets a number it can compare.
- */
-export function releaseVelocity(state) {
-  if (!state) return 0;
-  const dt = state.lastT - state.prevT;
-  if (!(dt > 0)) return 0;
-  const v = (state.lastY - state.prevY) / dt;
-  return v > 0 ? v : 0;
+/** Downward speed at release over the last two samples (see gesture-math.js). */
+function downwardReleaseVelocity(state) {
+  return releaseVelocity({ y: state.prevY, t: state.prevT }, { y: state.lastY, t: state.lastT }, "+y");
 }
 
 /**
@@ -130,7 +126,7 @@ export function endDrag(state) {
   }
   const dy = state.dy;
   if (dy >= DISMISS_DISTANCE_PX) return { dismiss: true, dy };
-  if (dy >= FLICK_MIN_PX && releaseVelocity(state) >= DISMISS_VELOCITY_PX_PER_MS) {
+  if (dy >= SHEET_FLICK_MIN_PX && downwardReleaseVelocity(state) >= DISMISS_VELOCITY_PX_PER_MS) {
     return { dismiss: true, dy };
   }
   return { dismiss: false, dy };
@@ -149,6 +145,9 @@ export function dragOffset(state) {
 /**
  * Does this gesture own the finger — should the caller cancel the browser's
  * own `touchmove` so the scroller under the sheet cannot start a pan?
+ * `queue-drag.js` has a `claimsTouch` too: each is its own gesture's "does
+ * this finger belong to me" predicate over its own state (this one reads
+ * `allowed`/`engaged`/`dy`, that one reads `claimed`), not one shared rule.
  *
  * WHY A SEPARATE QUESTION FROM `dragOffset` (audit round 2, touch-2). The
  * body of the sheet has no `touch-action: none` — it is the scroller, and it

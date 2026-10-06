@@ -24,9 +24,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  DISMISS_DISTANCE_PX, DISMISS_VELOCITY_PX_PER_MS, FLICK_MIN_PX, DIRECTION_LOCK_PX,
-  startDrag, moveDrag, endDrag, dragOffset, releaseVelocity, claimsTouch,
+  DISMISS_DISTANCE_PX, DISMISS_VELOCITY_PX_PER_MS, SHEET_FLICK_MIN_PX, DIRECTION_LOCK_PX,
+  startDrag, moveDrag, endDrag, dragOffset, claimsTouch,
 } from "./sheet-drag-dismiss.js";
+import { releaseVelocity } from "./gesture-math.js";
 
 /** Replay a whole gesture: a press at `y0`, then `[y, t]` samples, then release. */
 function gesture(y0, t0, opts, samples) {
@@ -44,7 +45,7 @@ test("the published thresholds are the ones the sheet is documented to use", () 
      silent retune would leave both lying. */
   assert.equal(DISMISS_DISTANCE_PX, 120);
   assert.equal(DISMISS_VELOCITY_PX_PER_MS, 0.5);
-  assert.equal(FLICK_MIN_PX, 40);
+  assert.equal(SHEET_FLICK_MIN_PX, 40);
   assert.equal(DIRECTION_LOCK_PX, 8);
 });
 
@@ -162,13 +163,13 @@ test("a fast flick closes the sheet well short of the full distance", () => {
      This fails, and a real thumb-flick would feel like a stuck sheet. */
   const { result } = gesture(100, 0, { atTop: true }, [[140, 10], [150, 20]]);
   assert.equal(result.dy, 50);
-  assert.ok(releaseVelocity({ prevY: 140, prevT: 10, lastY: 150, lastT: 20 }) >= DISMISS_VELOCITY_PX_PER_MS);
+  assert.ok(releaseVelocity({ y: 140, t: 10 }, { y: 150, t: 20 }, "+y") >= DISMISS_VELOCITY_PX_PER_MS);
   assert.equal(result.dismiss, true);
 });
 
 test("a fast twitch shorter than the flick floor does not close it", () => {
   /* Same speed, a third of the travel. MUTATION: delete the
-     `dy >= FLICK_MIN_PX` half of the velocity branch. This fails — a 30px
+     `dy >= SHEET_FLICK_MIN_PX` half of the velocity branch. This fails — a 30px
      twitch while reaching for the scrub bar would dismiss the sheet. */
   const { result } = gesture(100, 0, { atTop: true }, [[120, 10], [130, 20]]);
   assert.equal(result.dy, 30);
@@ -195,9 +196,9 @@ test("releaseVelocity is zero for a zero time delta and for upward movement", ()
      MUTATION: drop the `dt > 0` guard and this returns Infinity (or NaN),
      which compares true against the threshold and dismisses on a stationary
      press whose samples share a timestamp. */
-  assert.equal(releaseVelocity({ prevY: 10, prevT: 5, lastY: 400, lastT: 5 }), 0);
-  assert.equal(releaseVelocity({ prevY: 400, prevT: 0, lastY: 10, lastT: 10 }), 0);
-  assert.equal(releaseVelocity(null), 0);
+  assert.equal(releaseVelocity({ y: 10, t: 5 }, { y: 400, t: 5 }, "+y"), 0);
+  assert.equal(releaseVelocity({ y: 400, t: 0 }, { y: 10, t: 10 }, "+y"), 0);
+  assert.equal(releaseVelocity(null, null, "+y"), 0);
 });
 
 /* ---------- nothing survives a finished gesture ---------- */
@@ -280,4 +281,14 @@ test("CH-14: release velocity is the DOWNWARD speed between the last two samples
   assert.deepEqual(under.result, { dismiss: false, dy: 54 });
   const sameT = gesture(100, 0, { atTop: true }, [[130, 10], [160, 10]]);
   assert.deepEqual(sameT.result, { dismiss: false, dy: 60 });
+});
+
+test("CH-14: the shared releaseVelocity reads the sheet's fixture downward on y", () => {
+  /* The same fixture as above, straight into player/gesture-math.js: 10 px
+     down in dt 20 ms is 0.5 px/ms. The sheet's samples carry only y.
+     MUTATION: swap the axis in gesture-math.js ("+y" reads `x`) — the sheet's
+     samples have no x, the speed reads 0 and this fails, as does the
+     threshold release above. */
+  assert.equal(releaseVelocity({ y: 145, t: 30 }, { y: 155, t: 50 }, "+y"), 0.5);
+  assert.equal(releaseVelocity({ y: 145, t: 30 }, { y: 155, t: 50 }, "-y"), 0);
 });
