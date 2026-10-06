@@ -451,3 +451,46 @@ test("the founder's tools sit in ONE collapsed Developer group, directly above D
     assert.ok(top.includes(id), `${id} is a listener setting and belongs outside the group`);
   }
 });
+
+test("CH-39 (A3-08): the drawer's and tab bar's comments count what the code builds", async () => {
+  /* Comments a reader counts against: "Six of them now" over four switches,
+     "the founder's two" over one, "the four rows" over five engine rows (NE-40
+     added Route sharing), and a tab bar "removed to match the flag" whose flag
+     is retired. This cannot fail on today's code unless a comment drifts again;
+     that is what it is for (CLAUDE.md, "A test that cannot fail on today's data
+     is not worthless").
+
+     MUTATION: restore "Six of them now" in § the drawer's switches — red.
+     MUTATION: add a sixth row to ENGINE_DEV_ROWS without touching the header —
+     "The five rows" no longer matches the count, red. */
+  const WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight"];
+  const between = (from, to) => {
+    const a = APP_SRC.indexOf(from);
+    const b = APP_SRC.indexOf(to, a);
+    assert.ok(a >= 0 && b > a, `fixture: found ${from} … ${to}`);
+    return APP_SRC.slice(a, b);
+  };
+  const m = await mountBooted();
+  const web = m.evalIn("drawerToggles.length");
+  m.state.downloadBridge = {};
+  m.evalIn("bindDrawerToggles()");
+  const shell = m.evalIn("drawerToggles.length");
+  assert.deepStrictEqual([web, shell], [4, 5], "fixture: the cellular switch exists only where downloads do");
+  const founders = m.evalIn("drawerDevGroup().children.filter((c) => c.getAttribute && c.id && /-toggle$/.test(c.id)).length");
+  assert.strictEqual(founders, 1, "fixture: one founder switch in the Developer group");
+  const rows = m.evalIn("ENGINE_DEV_ROWS.length");
+
+  const cap = (w) => w[0].toUpperCase() + w.slice(1);
+  assert.match(between("the drawer's switches, in ONE shape", "const drawerToggles"),
+    new RegExp(`${cap(WORDS[web])} of them on the web and ${WORDS[shell]} in the shell`));
+  assert.match(between("the engine's Developer rows (NE-22d)", "const ENGINE_OVERRIDE_ORDER"),
+    new RegExp(`The ${WORDS[rows]} rows`));
+  assert.ok(APP_SRC.includes(`The engine's ${WORDS[rows]} rows land above`), "init()'s note counts them too");
+  for (const stale of [
+    "Six of them now", "The founder's two", "the founder's two switches", "The engine's four rows",
+    "The four rows the M1", "Renders (or removes) the tab bar to match the flag",
+    "Appending only when the flag is on", "BELOW the\n     two settings toggles",
+  ]) {
+    assert.ok(!APP_SRC.includes(stale), `a stale count survives in app.js: "${stale}"`);
+  }
+});

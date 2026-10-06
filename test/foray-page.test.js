@@ -325,3 +325,125 @@ test("A3-02: leaving the page unhooks its callback from the live player", async 
   await go(m, "#/");
   assert.strictEqual(m.bridge.watched.at(-1), null, "Home holds no Foray callback");
 });
+
+/* ==================================================================== */
+/* A3-05 (code-health CH-39): the bridge's capabilities are visible      */
+/* ==================================================================== */
+
+/** FORAY_PAGE_EXPORTS, read out of the vm (a top-level `const` is not a
+    property of the global object); [] before CH-39 defined it. */
+function pageExports(ctx) {
+  return [...vm.runInContext("typeof FORAY_PAGE_EXPORTS === 'undefined' ? [] : FORAY_PAGE_EXPORTS", ctx)];
+}
+
+/** The page, opened over a bridge that has every export the Foray page names
+    except `drop`, with the field record's page entry (`forayNoteDataSource`)
+    captured. The rest of the bridge is the real one above. */
+async function openForayWithout(drop) {
+  const b = await forayBridge();
+  const noop = () => null;
+  Object.assign(b, {
+    stripInto() {}, forayCredits: () => ({ credits: [], summary: "" }),
+    nudgeSteps: () => ({ back: 15, fwd: 30 }), rateLabel: (r) => `${r}×`,
+  });
+  delete b[drop];
+  const m = mount({ hash: `#/foray/${ID}`, bridge: b });
+  const rows = [];
+  const warned = [];
+  m.ctx.forayNoteDataSource = (fields) => { rows.push(fields); return true; };
+  m.ctx.console.warn = (...args) => { warned.push(args.join(" ")); };
+  /* Anything the page names that this bridge still lacks is stubbed, so the one
+     export missing is the one the test dropped. */
+  for (const name of pageExports(m.ctx)) if (name !== drop && typeof b[name] !== "function") b[name] = noop;
+  m.ctx.renderCurrentPage();
+  await settle();
+  return { ...m, bridge: b, rows, warned };
+}
+
+test("characterization: a bridge with no `stripTally` still renders the Foray page, without the header's counts", async () => {
+  /* THE DEGRADE STAYS (sw.js's "THE PIN CAN STILL LAND AFTER THE DATA" relies
+     on it): a module of another vintage costs a section, never the page.
+     MUTATION: call `player.stripTally(r.playable)` unguarded in forayHeadSub —
+     the page throws and stays on "Loading…", red. */
+  const m = await openForayWithout("stripTally");
+  assert.match(m.html(), /id="fy-play"/, "the page rendered");
+  const sub = /<p class="sub">([^<]*)<\/p>/.exec(m.html());
+  assert.ok(sub, "the header line is there");
+  assert.doesNotMatch(sub[1], /clip|show/, "with no counts: a missing number, not a wrong one");
+  assert.match(sub[1], /^\d+ min$/, `the runtime alone: "${sub[1]}"`);
+});
+
+test("A3-05: a missing bridge export is said once — a console line and one diagnostics row naming it — and the page still renders", async () => {
+  /* Was: a typo or rename of a bridge export shipped green and the page lost
+     its header counts with nothing anywhere saying why. MUTATION: delete the
+     `bridgeCapabilities(player, id)` call from renderForay — no row and no
+     line, red. MUTATION: drop the once-per-load guard — the second render
+     writes a second row, red. */
+  const m = await openForayWithout("stripTally");
+  assert.match(m.html(), /id="fy-play"/, "the page still rendered");
+  assert.strictEqual(m.rows.length, 1, `one diagnostics row: ${JSON.stringify(m.rows)}`);
+  const row = m.rows[0];
+  assert.strictEqual(row.status, "bridge-missing");
+  assert.strictEqual(row.trigger, "foray-page");
+  assert.strictEqual(row.code, "strip-tally", "the export, as a token diagnostic-log.js admits (lower-case, no prose)");
+  assert.strictEqual(row.forayId, ID);
+  assert.ok(m.warned.some((w) => /stripTally/.test(w)), `and the console names it: ${JSON.stringify(m.warned)}`);
+  await go(m, "#/");
+  await go(m, `#/foray/${ID}`);
+  assert.match(m.html(), /id="fy-play"/, "fixture: the page rendered a second time");
+  assert.strictEqual(m.rows.length, 1, "once per page load, not once per visit: the ring is 200 entries");
+});
+
+test("A3-05: a complete bridge writes no row", async () => {
+  /* MUTATION: invert the filter in bridgeCapabilities (`=== "function"`) —
+     a complete bridge reports every export as a gap, red. */
+  const m = await openForayWithout("__nothing__");
+  assert.match(m.html(), /id="fy-play"/);
+  assert.deepStrictEqual(m.rows, []);
+  assert.deepStrictEqual(m.warned.filter((w) => /bridge/.test(w)), []);
+});
+
+test("A3-05: every export the Foray page names is a member of the real ForayPlayer (player/client.js)", () => {
+  /* The list is what turns a rename into a red build instead of a silent
+     section. Read off client.js's ForayPlayer object literal: a member is a
+     line indented two spaces that opens with its name. MUTATION: rename
+     `stripTally` in client.js's ForayPlayer (or misspell it in
+     FORAY_PAGE_EXPORTS) — red. */
+  const client = fs.readFileSync(path.join(ROOT, "player/client.js"), "utf8");
+  const start = client.indexOf("const ForayPlayer = {");
+  assert.ok(start >= 0, "fixture: client.js defines ForayPlayer as an object literal");
+  const body = client.slice(start);
+  const m = mount({ hash: "#/", bridge: {} });
+  const names = pageExports(m.ctx);
+  assert.ok(names.length >= 10, `the page names its exports: ${names}`);
+  for (const name of names) {
+    assert.match(body, new RegExp(`\\n  (?:async )?${name}\\b`),`ForayPlayer has no member "${name}"`);
+  }
+});
+
+test("A3-05: every `typeof player.X` guard on the Foray page is in FORAY_PAGE_EXPORTS or a named exception", () => {
+  /* The list only closes A3-05 while it keeps up with the page: a guard whose
+     export is not on it degrades silently again (review: `segmentAt` left the
+     strip's fill bars unpainted, `rateAriaLabel` left the speed button without
+     its accessible name, both with nothing said). Scans app.js from the credit
+     block (the first section the page renders) to the end of paintForay. The
+     exceptions are the ones FORAY_PAGE_EXPORTS's comment names, whose absence
+     costs nothing a listener was promised. MUTATION: drop "segmentAt" (or
+     "rateAriaLabel") from FORAY_PAGE_EXPORTS — red. */
+  const app = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+  const from = app.indexOf("\nfunction foraySourcesHtml(");
+  const to = app.indexOf("\nfunction resolveListedForay(");
+  assert.ok(from >= 0 && to > from, "fixture: the Foray page's region is where this scan expects it");
+  const region = app.slice(from, to);
+  assert.ok(region.includes("\nfunction paintForay("), "fixture: the region runs through paintForay");
+  const guarded = new Set([...region.matchAll(/typeof player\??\.(\w+) *[!=]==/g)].map((g) => g[1]));
+  assert.ok(guarded.size >= 10, `fixture: the scan found the page's guards: ${[...guarded]}`);
+  const exceptions = new Set([
+    "forayDriftIsClean", // a telemetry event: absent, no event
+    "itemLen",           // segLenOf carries its own arithmetic
+    "watchForay",        // the unhook on the way out; paintForay's `!state.foray` gate already holds
+  ]);
+  const names = new Set(pageExports(mount({ hash: "#/", bridge: {} }).ctx));
+  const unlisted = [...guarded].filter((n) => !names.has(n) && !exceptions.has(n));
+  assert.deepStrictEqual(unlisted, [], "a guarded export missing from FORAY_PAGE_EXPORTS degrades the page with nothing said");
+});
