@@ -1661,6 +1661,20 @@ test("CH-29 (A1-06): a second TITLE_ALIASES entry reaches all five title joins â
   assert.strictEqual(m.ctx.catalogShowForItem({ show: SHORT }), null);
 });
 
+test("CH-29 (A1-06): a title two catalogue shows share joins to the FIRST of them, the same answer from every join", () => {
+  /* No shipped catalogue has a duplicate title (checked 2026-10-06: 229 shows,
+     229 titles), but the copies disagreed about one: showIdForShowName used
+     `.find()` (first wins) while catalogShowForItem's index overwrote (last
+     wins), so Family Mode could read one show's rating for a row whose link
+     opened the other. The one index keeps `.find()`'s answer.
+     MUTATION (run, red): drop the `!byTitle.has(s.title)` guard from the index
+     build -> catalogShowForItem answers "twin-b". */
+  const m = mount();
+  m.state.catalog = { shows: [{ show_id: "twin-a", title: "Twin Title" }, { show_id: "twin-b", title: "Twin Title" }] };
+  assert.strictEqual(m.ctx.catalogShowForItem({ show: "Twin Title" })?.show_id, "twin-a");
+  assert.strictEqual(m.ctx.showIdForShowName("Twin Title"), "twin-a");
+});
+
 /* Every combination of the inputs showEpisodeCountLabel reads, as one row per
    combination with its output. */
 function countLabelGrid(label) {
@@ -1700,4 +1714,30 @@ test("CH-29 (A1-12): showEpisodeCountLabel's outputs are unchanged across its wh
   assert.strictEqual(label({ ...loaded, fullyLoaded: false, loadedCount: 2, stale: true, curatedCount: 0 }),
     "Showing the last saved list â€” couldn't refresh just now.");
   assert.strictEqual(label({ ...loaded, loadState: "loading", loadedCount: 2, curatedCount: 33 }), "");
+});
+
+test("CH-29 (A1-12): the show page's plurals are countLabel's, not hand-rolled beside it", () => {
+  /* countLabel is the one plural (test/format-helpers.test.js holds its rule).
+     The count label and the failed-search note each wrote `n === 1 ? "" : "s"`
+     by hand, so the next plural copy change would land in countLabel and miss
+     them. Proved two ways: the label carries a stubbed countLabel's mark, and
+     renderShow's source holds no hand-rolled plural.
+     MUTATION (run, red): restore `${loadedCount} episode${loadedCount === 1 ? "" : "s"}`
+     in showEpisodeCountLabel -> the stub's mark is missing ("1 episode").
+     MUTATION 2 (run, red): restore the failed note's
+     `${matchCount} match${matchCount === 1 ? "" : "es"}` -> the source scan fails. */
+  const m = mount();
+  m.evalIn("countLabel = (n, one, many) => `<${n}|${one}|${many || ''}>`;");
+  const label = (args) => m.ctx.showEpisodeCountLabel({ familyHidden: 0, stale: false, loadState: "loaded", ...args });
+  assert.strictEqual(label({ loadedCount: 1, fullyLoaded: true, curatedCount: 0 }), "<1|episode|>");
+  assert.strictEqual(label({ loadedCount: 0, fullyLoaded: true, curatedCount: 1 }), "<1|episode|> in 4a's catalogue");
+
+  const body = (name) => {
+    const at = APP_SRC.indexOf(`\nfunction ${name}(`);
+    assert.ok(at >= 0, `app.js declares ${name}`);
+    return APP_SRC.slice(at, APP_SRC.indexOf("\n}\n", at));
+  };
+  for (const name of ["showEpisodeCountLabel", "renderShow"]) {
+    assert.ok(!/===\s*1\s*\?\s*""\s*:\s*"(s|es)"/.test(body(name)), `${name} hand-rolls a plural countLabel owns`);
+  }
 });

@@ -1241,8 +1241,10 @@ function playBtn(item, ctx) {
   return `<button class="play-btn" data-play="${esc(item.id)}"${ctx ? ` data-ctx="${esc(ctx)}"` : ""} data-title="${esc(item.title || "")}"${controlLabelAttr("▶", `Play ${item.title || "this episode"}`)}>▶</button>`;
 }
 
-/* Family mode (corner-case 28): hide explicit-rated episodes and the comedy
-   branch (older comedy items predate per-episode ratings). */
+/* Family mode (corner-case 28). The switch only; what it hides is
+   `familySafe`'s rule table (below), and that rule FAILS CLOSED: an episode
+   with no rating is hidden unless its catalogue show is rated clean and none of
+   that show's pool episodes is rated explicit. */
 function familyMode() { return lsGet("cp_family", false); }
 
 /* ---------- the one native-shell detector (issue #36; code-health CH-23) ----------
@@ -1555,38 +1557,76 @@ function familyAllows(item) {
   return !familyMode() || familySafe(item);
 }
 
-/* The catalogue record an episode belongs to: by show_id when it carries one,
-   else by title (and the one alias), the join episodesForShow uses. Indexed
-   once per loaded catalogue. */
+/* THE ONE TITLE -> CATALOGUE-SHOW JOIN (code-health CH-29, A1-06). An episode
+   names its show by a `show` string (discover.json and itemIndex never carry a
+   show_id), and five places asked which catalogue record that string means:
+   Family Mode (here), the show page's episode list (episodesForShow), its
+   artwork (showArtworkUrl), every row's show-name link (showIdForShowName) and
+   the show page's Forays footer (foraysUsingShow). Each read TITLE_ALIASES its
+   own way, so a second alias had five chances to be missed — and a miss is a
+   show page listing zero episodes while its rows link to it. They all answer
+   from this one index now, built once per loaded catalogue (keyed on the shows
+   ARRAY's identity, so a replaced catalogue is re-indexed, never answered from
+   the old one):
+     byId     show_id -> show;
+     byTitle  title -> show, plus each TITLE_ALIASES name -> its show (an alias
+              never shadows a real title). A title two shows share joins to the
+              FIRST, `.find()`'s answer, which showIdForShowName always gave
+              (the shipped catalogue has no duplicate title);
+     aliases  title -> the alias names that join to it, for the questions that
+              start from a show (catalogShowNames).
+   `catalogShowByTitle` and `catalogShowNames` are this function asked by name:
+   it stays the one place the index is built because tools/similar-eval/
+   vouch-run.mjs lifts it out of this file on its own (with TITLE_ALIASES and
+   catalogShowIndex) to run Family Mode's predicate. */
 let catalogShowIndex = null;
 function catalogShowForItem(item) {
   const shows = state.catalog?.shows;
   if (!Array.isArray(shows)) return null;
   if (!catalogShowIndex || catalogShowIndex.shows !== shows) {
-    const byId = new Map(), byTitle = new Map();
+    const byId = new Map(), byTitle = new Map(), aliases = new Map();
     for (const s of shows) {
       if (!s) continue;
       if (s.show_id) byId.set(s.show_id, s);
-      if (s.title) byTitle.set(s.title, s);
+      if (s.title && !byTitle.has(s.title)) byTitle.set(s.title, s);
     }
     for (const [title, alias] of Object.entries(TITLE_ALIASES)) {
-      if (byTitle.has(title) && !byTitle.has(alias)) byTitle.set(alias, byTitle.get(title));
+      if (!byTitle.has(title) || byTitle.has(alias)) continue;
+      byTitle.set(alias, byTitle.get(title));
+      aliases.set(title, [...(aliases.get(title) || []), alias]);
     }
-    catalogShowIndex = { shows, byId, byTitle };
+    catalogShowIndex = { shows, byId, byTitle, aliases };
   }
+  if (!item) return null;
   return (item.show_id && catalogShowIndex.byId.get(item.show_id))
     || (item.show && catalogShowIndex.byTitle.get(item.show))
     || null;
 }
 
-/* The visible half of the same flag Family Mode has quietly filtered on since
-   corner-case 28 (kanban card t_02c6bb0b): every mainstream podcast app shows
-   an "E" next to explicit content, and 4a never did, even though the
-   publisher's <itunes:explicit> flag was captured all along. Additive only —
-   Family Mode's `i.explicit !== true` filter above is untouched, this just
-   makes the same field visible when Family Mode is off. Strict `=== true`
-   because the field is tri-state (true/false/null) at both the episode and
-   show level; false and null both mean "no badge", not "unknown = flag it".
+/** The catalogue show a bare name joins to (exact title, then TITLE_ALIASES),
+    or null — the same join, for callers that hold a name and no row. */
+function catalogShowByTitle(title) {
+  return title ? catalogShowForItem({ show: title }) : null;
+}
+
+/** Every name that joins to `show`: its own title first, then the alias names
+    the index maps onto it. A show the catalogue does not hold (a breadth-tier
+    record) is known by its title alone. */
+function catalogShowNames(show) {
+  if (!show || !show.title) return [];
+  const aliases = catalogShowByTitle(show.title) ? catalogShowIndex.aliases.get(show.title) : null;
+  return aliases ? [show.title, ...aliases] : [show.title];
+}
+
+/* The visible half of the flag Family Mode filters on (corner-case 28, kanban
+   card t_02c6bb0b): every mainstream podcast app shows an "E" next to explicit
+   content, and 4a never did, even though the publisher's <itunes:explicit>
+   flag was captured all along. Additive only — it changes nothing Family Mode
+   hides. Strict `=== true` because the field is tri-state (true/false/null) at
+   both the episode and show level: for the BADGE, false and null both mean "no
+   badge", not "unknown = flag it". Family Mode reads null the other way — an
+   unrated episode is hidden unless its show is rated clean (`familySafe`'s rule
+   table above) — so a null here is not "safe", only "not marked".
 
    `role="img"`, because `aria-label` on a bare <span> is ignored by most
    screen readers (ARIA forbids it on the generic role), so VoiceOver read the
@@ -1628,7 +1668,17 @@ function headingName(head) {
    "185 min left". "1 hr" for an exact hour, never "1 hr 0 min" (49 episodes
    of the shipped pool are whole hours, and a subject card's summed runtime
    lands on one often). The colon clock (`fmtClock`) is for live playheads and
-   scrubbers only. Whole minutes: a fraction is rounded, not printed. */
+   scrubbers only.
+
+   Whole minutes, ON PURPOSE: a fraction is rounded, never printed, because a
+   row's length is a listing, not a measurement. Its rungs below the hour tail
+   differ from the player's on purpose too: an unknown length is "" here
+   (absence, not "0 min"), while the player's `fmtSpan` counts seconds under 90
+   ("60 sec": a Foray segment's length is a measurement of somebody else's
+   audio). The tail itself is player/duration.js's (`hoursMinutes`); this stays
+   a classic-script copy because it paints cards before the player module has
+   loaded, and test/format-helpers.test.js pins it word for word against that
+   module, rungs included (code-health CH-24, P1-14). */
 function fmtDur(min) {
   if (!min) return "";
   const n = Math.round(Number(min));
@@ -1963,9 +2013,9 @@ function bindShowStars(scope) {
 
 /* ---------- Starred Shows page (#/starred-shows) ----------
 
-   Reachable from the drawer, deliberately NOT on the home screen (Joey's
-   framing: "somewhat easily accessible" but distinct from home). Renders
-   exactly what cp_starred_shows holds -- no fetch, no ranking, no
+   Reachable from Library and the Shows page, deliberately NOT on the home
+   screen (Joey's framing: "somewhat easily accessible" but distinct from
+   home). Renders exactly what cp_starred_shows holds -- no fetch, no ranking, no
    algorithmic surfacing. An empty state is a real, renderable state, same
    convention as every other page in the app. Reuses showResultRow's visual
    language (artwork + title, no play/star/duration controls -- a show,
@@ -1982,9 +2032,11 @@ function starredShowRow(entry) {
   </a>`;
 }
 
-/* Back goes to #/shows: since 2026-09-03 this page is reached from the Shows
-   page (the drawer entry came off with the five-page menu), so the back
-   button returns there rather than to a home screen that no longer links here. */
+/* Back goes to #/library: Library is this page's parent — its Followed shows
+   section ends in "All N followed shows" here — so the back button returns
+   there rather than to a home screen that no longer links here. (The Shows
+   page also links here, with its "Followed shows" shortcut; Library is still
+   the page this one is the full list of.) */
 function renderStarredShows() {
   setBodyClass("view-page");
   const starred = Object.values(starredShowsMap())
@@ -2558,16 +2610,23 @@ function withMirror(p) {
   return Array.isArray(p.items) ? { ...p, item_ids: p.items.map(partId) } : p;
 }
 
+/* Build the pool if a session is loaded, and never throw: no catalogue yet is
+   a reason to answer from what is there, not a reason to lose a view. The one
+   copy of the rule hydrationPool and inDiscoverPool both need (code-health
+   CH-29, A1-19); fullPool is memoised, so a repeat call costs a slice. */
+function ensurePool() {
+  if (!state.session || !state.session.episodes) return;
+  try { fullPool(); } catch (_) { /* catalogue not really there yet */ }
+}
+
 /* The pool, for hydration. `state.itemIndex` is already full by the first
    render (init() calls buildCards() -> poolFiltered() -> fullPool() before
    route()), but `playlists()` is also reachable from the drawer and from
    touchPlaylistPlayed, so this does not assume that ordering. It builds the
-   pool only when nothing has yet, and never throws: no catalogue is a reason to
+   pool only when nothing has yet (ensurePool): no catalogue is a reason to
    leave a stub alone, not a reason to lose a view. */
 function hydrationPool() {
-  if (!Object.keys(state.itemIndex).length && state.session && state.session.episodes) {
-    try { fullPool(); } catch (_) { /* catalogue not really there yet */ }
-  }
+  if (!Object.keys(state.itemIndex).length) ensurePool();
   return state.itemIndex;
 }
 
@@ -2957,15 +3016,12 @@ function bindSavePlaylist(p) {
    names here (`cp_queue`, `queueIds`, `renderQueue`) are implementation detail
    and are fine to say "queue" — nothing here renders to the screen. */
 
-function queueIds() {
-  const ids = storedValue("cp_queue", []);
-  /* A non-string/empty entry cannot be resolved against itemIndex or savedMap
-     (both keyed by real episode ids), so it can only ever render as a
-     permanently-broken row — dropping it here is not data loss, it is the
-     same "nothing in it to lose" guard `playlists()` applies to a corrupt
-     entry (line ~810 above). */
-  return Array.isArray(ids) ? ids.filter(id => typeof id === "string" && id) : [];
-}
+/* A non-string/empty entry cannot be resolved against itemIndex or savedMap
+   (both keyed by real episode ids), so it can only ever render as a
+   permanently-broken row — dropping it is not data loss, it is the same
+   "nothing in it to lose" rule every stored id list reads through:
+   `stringList`, beside `plainObject` near the top of this file. */
+function queueIds() { return stringList(storedValue("cp_queue", [])); }
 
 /** THE ONE WRITER OF `cp_queue`, and the one place the two things that watch it
     are told. The car's skip may have appeared or gone; and the Up Next PAGE, if
@@ -3937,7 +3993,8 @@ function playlistRoute(p) {
    so the exact-title fallback below would miss it. TITLE_ALIASES exists for
    exactly that one show and is not expected to grow — a second alias is a sign
    the underlying assumption (title strings agree) needs revisiting, not that
-   this list needs a third line. */
+   this list needs a third line. Read in ONE place, catalogShowForItem's index;
+   every title join asks that index (code-health CH-29). */
 const TITLE_ALIASES = {
   "Lingthusiasm - A podcast that's enthusiastic about linguistics": "Lingthusiasm",
 };
@@ -4030,7 +4087,7 @@ function dateValue(dateStr) {
 function episodesForShow(show) {
   if (!show) return [];
   const pool = (state.discover?.items || []);
-  const wanted = new Set([show.title, TITLE_ALIASES[show.title]].filter(Boolean));
+  const wanted = new Set(catalogShowNames(show));
   /* familyAllows: a show page skipped Family Mode entirely (data-integrity-4). */
   return pool.filter(it => wanted.has(it.show) && familyAllows(it))
     .sort((a, b) => dateValue(b.release_date) - dateValue(a.release_date));
@@ -4072,10 +4129,11 @@ function episodesForShow(show) {
    answer for the previous fixture — a stale-cache bug that reads as a passing
    test. Identity comparison costs nothing and cannot get that wrong.
 
-   The join is episodesForShow's, restated as two lookups because a Set-per-
-   call is what made the one-liner expensive: exact title first, then the one
-   TITLE_ALIASES entry. If that list ever grows past its single documented
-   entry, both places have to learn about it.
+   The join is episodesForShow's — the names catalogShowNames gives (the
+   title, then each TITLE_ALIASES name that joins to it) — asked one Map lookup
+   per name, in that order, because a Set-per-call is what made the one-liner
+   expensive. A second alias reaches this through the shared index, with no
+   second place to teach (code-health CH-29).
 
    Backfilling catalog.json's 53 nulls is still the root fix. This is what
    makes the UI right in the meantime, and on the next show that harvests
@@ -4121,37 +4179,34 @@ function showArtworkUrl(show) {
       if (it.artwork_url && !_artByShowTitle.has(it.show)) _artByShowTitle.set(it.show, it.artwork_url);
     }
   }
-  return _artByShowTitle.get(show.title)
-    || _artByShowTitle.get(TITLE_ALIASES[show.title])
-    || null;
+  for (const name of catalogShowNames(show)) {
+    const art = _artByShowTitle.get(name);
+    if (art) return art;
+  }
+  return null;
 }
 
 /* ---------- show-name links (Stage 4 of docs/show-pages-plan.md) ----------
 
    epRow/archivedRow/renderEpisode only ever have an episode's `show` string
    (discover.json/itemIndex never carry show_id) — the reverse of
-   episodesForShow's join. Same two-step rule as Stage 1: match catalog.json's
-   `title` first, then TITLE_ALIASES for the one show (Lingthusiasm) whose
-   catalog title and discover `show` string disagree. Returns null (never
+   episodesForShow's join, asked of the same index (catalogShowByTitle):
+   catalog.json's `title` first, then TITLE_ALIASES for the one show (Lingthusiasm) whose
+   catalog title and discover `show` string disagree — one Map lookup, where
+   this used to scan every show for every row it linked. Returns null (never
    throws) when no show record matches, e.g. state.catalog not loaded yet or a
    show discover.json carries that catalog.json doesn't — the caller falls
    back to plain text, matching renderShow's own "absence is a real state, not
    an error" rule. */
 function showIdForShowName(showName) {
   if (!showName) return null;
-  const shows = state.catalog?.shows || [];
-  let s = shows.find(sh => sh.title === showName);
-  if (!s) {
-    const aliasedTitle = Object.keys(TITLE_ALIASES).find(k => TITLE_ALIASES[k] === showName);
-    if (aliasedTitle) s = shows.find(sh => sh.title === aliasedTitle);
-  }
   /* THEN THE SHOW INDEX (audit round 2, p-foray-2): the curated 220 is not the
      set of shows this app can open. Every show in the published Foray was a
      plain name with no page, while `data/show-index.tsv` — the 10,113 rows the
      Shows search already links through — carries some of them. Consulted only
      once it has loaded (it is never fetched for this); see showIndexIdForTitle
      for why the match is exact and unique. */
-  return s ? s.show_id : showIndexIdForTitle(showName);
+  return catalogShowByTitle(showName)?.show_id ?? showIndexIdForTitle(showName);
 }
 
 /* The show index as an EXACT, UNIQUE title -> id join. Exact because a fuzzy
@@ -5306,7 +5361,7 @@ function similarShowsSection(show) {
 function foraysUsingShow(show) {
   if (!show || !window.ForayPlayer || typeof window.ForayPlayer.foraysUsingShow !== "function") return [];
   if (!state.forays) return [];
-  const names = [show.title, TITLE_ALIASES[show.title]].filter(Boolean);
+  const names = catalogShowNames(show);
   /* Same two-call shape as forayCards(): the published rows exactly as before,
      then the drafts the test-track switch admitted. */
   return withTestTrackDrafts(opts => window.ForayPlayer.foraysUsingShow(state.forays, names, {
@@ -5358,7 +5413,7 @@ function showForaysHtml(show) {
        refresh" is a failure the listener can act on (come back on a
        better connection); silence about it would be a
        different lie from the one we just deleted. */
-function showEpisodeCountLabel({ loadedCount, familyHidden = 0, fullyLoaded, curatedCount, isBreadthTier, stale, loadError, loadState }) {
+function showEpisodeCountLabel({ loadedCount, familyHidden = 0, fullyLoaded, curatedCount, stale, loadState }) {
   /* THE LOADING BRANCH MOVED IN HERE (issue #687). It used to be written by
      hand, inline, into renderShow's initial `innerHTML` — a second author for
      this one label, with its own phrasing, that the fetch's terminal paths
@@ -5405,14 +5460,12 @@ function showEpisodeCountLabel({ loadedCount, familyHidden = 0, fullyLoaded, cur
      (FAMILY_HIDES_NOTE), and one sentence per outcome means this says nothing. */
   if (loadedCount === 0 && familyHidden > 0) return "";
   if (loadedCount === 0) {
-    return curatedCount
-      ? `${curatedCount} episode${curatedCount === 1 ? "" : "s"} in 4a's catalogue`
-      : "";
+    return curatedCount ? `${countLabel(curatedCount, "episode")} in 4a's catalogue` : "";
   }
   const staleNote = stale ? " (showing the last saved list — couldn't refresh just now)" : "";
   const familyNote = familyHidden > 0 ? ` (${familyHidden} hidden by Family mode)` : "";
   if (fullyLoaded) {
-    return `${loadedCount} episode${loadedCount === 1 ? "" : "s"}${familyNote}${staleNote}`;
+    return `${countLabel(loadedCount, "episode")}${familyNote}${staleNote}`;
   }
   // Partial load: no count, because any count we could state here would
   // either hedge uselessly or claim a completeness we do not have.
@@ -5550,9 +5603,7 @@ const SHARED_PLAYLIST_PREFIX = "shared~";
 const SHARED_PLAYLIST_MAX = 50;
 
 function inDiscoverPool(id) {
-  if (state.session && state.session.episodes) {
-    try { fullPool(); } catch (_) { /* no catalogue yet: nothing is in it */ }
-  }
+  ensurePool();
   return typeof id === "string" && state.poolIds.has(id);
 }
 
@@ -5812,15 +5863,6 @@ function renderShow(show_id, initialQuery = "") {
   const curatedEps = episodesForShow(show);
   const ctx = "show-" + show.show_id;
   const chips = (show.taxonomy_node_ids || []).map(taxonomyChip).join("");
-  /* A3.1/Q3: a breadth-tier show (found via the full-catalogue search
-     endpoint, never curated) has zero discover-pool episodes by construction
-     — discover.json only ever holds the curated 220's hand-picked episodes.
-     That is not the same as "this show genuinely has none" (the curated-tier
-     empty state below), so it gets its own honest, non-alarming copy instead
-     of implying the show is empty. Stage 3b's async fetch below (kanban
-     t_567b570f) supersedes this once it resolves; until then this stays the
-     safe degrade for the curated-pool-only render. */
-  const isBreadthTier = show.tier === "breadth";
   const showArt = showArtworkUrl(show);
 
   const head = `
@@ -5923,7 +5965,6 @@ function renderShow(show_id, initialQuery = "") {
      than assumed. */
   let fullyLoaded = false;
   let anyStale = false;     // whether the list on screen came from a stale/degraded answer; the latest answer decides
-  let lastLoadError = null;
   /* WHAT STATE THE EPISODE CONTAINER IS ACTUALLY IN (issue #687). Four
      values, one of which used to be invisible to the code entirely:
 
@@ -6004,11 +6045,10 @@ function renderShow(show_id, initialQuery = "") {
      The breadth-tier distinction went with them. It was never a difference
      the listener could see or act on — it is a fact about which of our two
      ingestion paths found the show — and encoding it in the empty state is
-     how "4a's wider catalogue" ended up on a phone screen. `isBreadthTier`
-     is still handed to showEpisodeCountLabel — a tier-specific subtitle would
-     be composed there and nowhere else — but since the round-2 audit
-     (states-8) no outcome's copy reads it: the "…yet." variant it used to pick
-     went with the doubled empty-state sentence. */
+     how "4a's wider catalogue" ended up on a phone screen. Since the round-2
+     audit (states-8) no outcome's copy read the tier, so showEpisodeCountLabel
+     no longer takes it (code-health CH-29, A1-12): a tier-specific subtitle
+     would be composed there and nowhere else. */
   /* `failed` offers "Try again" rather than "Pull to refresh" (audit
      2026-09-22): there is no pull gesture on this page, and a failure the
      listener cannot act on from where they are standing is a dead end. The
@@ -6111,9 +6151,7 @@ function renderShow(show_id, initialQuery = "") {
       familyHidden: loaded.length - shownCount,
       fullyLoaded,
       curatedCount: curatedEps.length,
-      isBreadthTier,
       stale: anyStale,
-      loadError: loaded.length === 0 ? lastLoadError : null,
       loadState,
     });
   }
@@ -6169,7 +6207,7 @@ function renderShow(show_id, initialQuery = "") {
        `runSearch` that failed. */
     note.hidden = true;
     if (!failed) return;
-    failed.innerHTML = failedNoteHtml(`${matchCount} match${matchCount === 1 ? "" : "es"} — searching the ${loaded.length} loaded episodes only; the connection didn't answer for the rest.`);
+    failed.innerHTML = failedNoteHtml(`${countLabel(matchCount, "match", "matches")} — searching the ${loaded.length} loaded episodes only; the connection didn't answer for the rest.`);
     failed.hidden = false;
     bindRetry(failed, runSearch);
   }
@@ -6322,7 +6360,7 @@ function renderShow(show_id, initialQuery = "") {
      theme G). A retry that was a separate "reload" path would be a second
      author for the same outcome — the shape issue #687 removed from this page. */
   function loadEpisodes() {
-    fetchShowEpisodes(show.show_id).then(({ episodes, nextCursor: nc, stale, error, show: header }) => {
+    fetchShowEpisodes(show.show_id).then(({ episodes, nextCursor: nc, stale, show: header }) => {
       if (!stillMounted()) return; // navigated away before the fetch resolved
 
       /* THE DESCRIPTION FIRST, BEFORE ANY OUTCOME BRANCH (audit 2026-09-22). It
@@ -6350,7 +6388,6 @@ function renderShow(show_id, initialQuery = "") {
           paintCount();
           return;
         }
-        lastLoadError = error || "load failed";
         paintEpisodeOutcome("failed");
         return;
       }
@@ -6389,10 +6426,9 @@ function renderShow(show_id, initialQuery = "") {
   }
 
   /* "Try again" on the failed body: back to `loading` through the one writer,
-     then the same fetch. `lastLoadError` is cleared first so the subtitle does
-     not go on saying "couldn't" over a second attempt that is in flight. */
+     then the same fetch, so the body does not go on saying "couldn't" over a
+     second attempt that is in flight. */
   function retryEpisodes() {
-    lastLoadError = null;
     paintEpisodeOutcome("loading");
     loadEpisodes();
   }

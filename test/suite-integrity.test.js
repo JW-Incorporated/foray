@@ -755,7 +755,7 @@ const FLOORS = {
      index-seeded breadth show is upgraded to its API row when that row carries
      nodes; and a row without nodes leaves the seeded page alone, no re-render.
      47 -> 50. */
-  "test/show-page.test.js": 53, // CH-29 (A1-06/A1-12): a second TITLE_ALIASES entry reaches all five title joins; showEpisodeCountLabel's whole input grid unchanged; 51 -> 53 // CH-1 (#1071): a curated show's DAI class rides from catalog-client.json onto its show-page episode rows; 50 -> 51
+  "test/show-page.test.js": 55, // CH-29 (A1-06/A1-12): a second TITLE_ALIASES entry reaches all five title joins; a shared title joins to the first show everywhere; showEpisodeCountLabel's whole input grid unchanged and its plurals are countLabel's; 51 -> 55 // CH-1 (#1071): a curated show's DAI class rides from catalog-client.json onto its show-page episode rows; 50 -> 51
   /* #560 item 8 (2026-10-04): the measurement for Similar shows. The mirror of
      app.js's similarShows is pinned to app.js's text and behaviour, the
      hand-reviewed eval set is checked against the catalogue (all 13 general
