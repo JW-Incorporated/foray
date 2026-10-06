@@ -8,7 +8,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import {
-  parseId3Chapters, tagSize, createId3Reader, MAX_TAG_BYTES, MAX_CHAPTERS,
+  parseId3Chapters, tagSize, createId3Reader, MAX_TAG_BYTES, MAX_CHAPTERS, CALL_TIMEOUT_MS,
 } from "./id3-chapters.js";
 
 /* ---------- fixture builders ---------- */
@@ -522,4 +522,34 @@ test("client.js publishes window.ForayId3Chapters from this module, reading the 
   const src = fs.readFileSync(new URL("./client.js", import.meta.url), "utf8");
   assert.match(src, /import \{ createId3Reader \} from "\.\/id3-chapters\.js";/);
   assert.match(src, /window\.ForayId3Chapters = createId3Reader\(\{\s*getBridge: \(\) =>/);
+});
+
+/* ---------- CH-33: the transport rules app.js's JSON read takes from here ---------- */
+
+test("CH-33: the reader publishes its deadline — the module's 10 s unless configured — for app.js's chapters JSON read", () => {
+  /* app.js readDeviceChapters races the podcast:chapters JSON request against
+     this, not a literal of its own (A2-10). MUTATION: drop
+     `CALL_TIMEOUT_MS: timeoutMs,` from the returned object -> undefined; red.
+     MUTATION 2: publish the module constant instead of `timeoutMs` -> the
+     configured reader reports 10000; red. */
+  assert.equal(CALL_TIMEOUT_MS, 10_000);
+  assert.equal(createId3Reader().CALL_TIMEOUT_MS, CALL_TIMEOUT_MS);
+  assert.equal(createId3Reader({ timeoutMs: 25 }).CALL_TIMEOUT_MS, 25);
+});
+
+test("CH-33: shellUserAgent() is the downloads surface's User-Agent, read per call, null when absent or throwing — and the MP3 Range read sends the same", async () => {
+  /* MUTATION: `shellUserAgent` returns null always -> red on the first
+     assertion (and on the native read's header). MUTATION 2: read the UA once
+     at createId3Reader time -> the late-arriving surface is missed; red. */
+  let dl = null;
+  const file = withAudio(basic(4));
+  const bridge = fakeBridge(file);
+  const r = createId3Reader({ getBridge: () => bridge, getDownloads: () => dl });
+  assert.equal(r.shellUserAgent(), null, "no downloads surface yet");
+  dl = { userAgent: "4a/9.9 (+late)" };
+  assert.equal(r.shellUserAgent(), "4a/9.9 (+late)", "read per call: the surface can arrive after the reader");
+  await r.forUrl(URL_A);
+  assert.deepEqual(bridge.asked.map((a) => a.opts.headers["User-Agent"]), ["4a/9.9 (+late)", "4a/9.9 (+late)"]);
+  const throwing = createId3Reader({ getDownloads: () => { throw new Error("not yet"); } });
+  assert.equal(throwing.shellUserAgent(), null);
 });

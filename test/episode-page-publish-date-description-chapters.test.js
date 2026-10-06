@@ -32,6 +32,7 @@ const assert = require("node:assert");
 const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
+const { pathToFileURL } = require("node:url");
 
 const ROOT = path.join(__dirname, "..");
 const APP_SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
@@ -173,10 +174,13 @@ test("renderEpisode renders no description section when description is absent (c
 /* 3. CHAPTERS — GENUINELY SEPARATE FROM FORAY SEGMENTS                  */
 /* ==================================================================== */
 
-test("renderEpisode renders chapter markers in their own section with their own classes", () => {
+test("renderEpisode renders chapter markers in their own section with their own classes", async () => {
   /* MUTATION: drop episodeChaptersHtml(item) from renderEpisode's template.
-     This assertion fails because no chapters text appears. */
+     This assertion fails because no chapters text appears. The real seek
+     policy is published, as client.js does on a device: an approximate row
+     renders only once it is (code-health CH-33). */
   const m = mount();
+  m.ctx.ForaySeekPolicy = await import(pathToFileURL(path.join(ROOT, "player", "seek-policy.js")).href);
   m.state.itemIndex = {
     "ep-3": {
       id: "ep-3", title: "Ep Three", show: "Some Show", hook: "hook",
