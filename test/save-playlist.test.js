@@ -784,24 +784,33 @@ test("savePlaylistCopy on a settled store answers saved and logs exactly one pla
   assert.deepStrictEqual(events().filter((t) => t === "playlist_saved"), ["playlist_saved"]);
 });
 
-test("a save queued behind hydration still lands Saved when Home's onboarding reads a legacy list that needs a backfill first", async () => {
+test("a save queued behind hydration still lands Saved when Home's onboarding reads the list first, and the flush is the one write", async () => {
   /* Code-health CH-08 (A1-02): cp_playlists had TWO writers. Home painted
      before hydration queues the onboarding waiter; the listener then saves a
-     playlist, which queues the edit (and its flush) behind it. Hydration lands
-     a durable list whose record has no `created` -- a backfill. The onboarding
-     waiter runs first: isGenuineFirstTimeUser -> playlists() reads the
-     pending-edit overlay (the copy included) and its read-path lsSet wrote
-     that overlay, copy and all. The flush then re-ran the edit over a list
-     already holding the copy -> outcome "exists": the listener was told the
-     playlist was already theirs and no playlist_saved was ever logged. Now
-     editStored's flush is the only writer, and playlists() never writes.
-     MUTATION: put back `if (touched && !storageWaiting()) lsSet("cp_playlists", all);`
-     at the end of playlists() -> the note is the "already in your playlists"
-     one, the event list is empty, and this fails. */
+     playlist, which queues the edit (and its flush) behind it. When hydration
+     lands the onboarding waiter runs first: isGenuineFirstTimeUser ->
+     playlists() reads the pending-edit overlay, the queued copy included. A
+     read that wrote that overlay wrote the copy itself; the flush then re-ran
+     the edit over a list already holding it -> outcome "exists": the listener
+     was told the playlist was already theirs and no playlist_saved was ever
+     logged. Now editStored's flush is the only writer, and playlists() never
+     writes.
+     The durable record has no `created`. The queued edit repairs it before
+     anything reads it (editPlaylists runs backfillPlaylists ahead of the
+     edit), so the overlay the onboarding read sees is already whole; the
+     record only pins that the flush writes that repair.
+     MUTATION: an unconditional read-path write at the end of playlists(),
+     `if (!storageWaiting()) lsSet("cp_playlists", all);` -> the note is the
+     "already in your playlists" one, the event list is empty, cp_playlists is
+     written twice at settle, and this fails. The pre-CH-08 guarded form
+     (`if (touched && !storageWaiting()) ...`, written only when the backfill
+     changed something) does NOT fail here, because the overlay it reads is
+     already backfilled; "MIGRATION: a read writes nothing" in
+     playlist-durability.test.js is the test that kills that form. */
   const m = appMount();
   const events = spyEvents(m);
   const legacy = ownPlaylist(1);
-  delete legacy.created;   // a record playlists() has to repair on every read
+  delete legacy.created;   // repaired by the queued edit, before any read
   const h = await hydrating(m, { cp_playlists: JSON.stringify([legacy]) });
 
   m.ctx.renderHomeV2();   // Home before hydration: offerHomeOnboarding queues its waiter first
@@ -813,6 +822,8 @@ test("a save queued behind hydration still lands Saved when Home's onboarding re
   assert.strictEqual(m.el("pl-save-note").textContent, SAVED_NOTE, "the save that landed is reported as saved");
   assert.strictEqual(btn.textContent, "✓ Saved");
   assert.deepStrictEqual(events().filter((t) => t === "playlist_saved"), ["playlist_saved"], "logged exactly once");
+  assert.deepStrictEqual(h.store.setCalls.filter((k) => k === "cp_playlists"), ["cp_playlists"],
+    "settle writes cp_playlists exactly once: the flush, and no read");
   const list = h.list();
   assert.deepStrictEqual(list.map((p) => p.title), ["Startups", "Own 1"], "one copy, on the durable list");
   assert.match(list[1].created || "", /^\d{4}-/, "the flush that wrote the copy wrote the repaired record too");
