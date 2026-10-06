@@ -11797,7 +11797,7 @@ const DESC_TOKEN_RE = /(https?:\/\/[^\s<>"']*[^\s<>"'.,;:)\]}])|(\b(?:\d{1,3}:)?
  * the duration is unknown nothing is filtered, because refusing every timestamp
  * on an episode whose length we failed to record would be the wrong default.
  */
-function episodeDescriptionHtml(text, durationSec = null) {
+function episodeDescriptionHtml(text, durationSec = null, precision = null) {
   const src = String(text ?? "");
   if (!src) return "";
   /* A LINE THAT STARTS WITH A TIMESTAMP IS A CHAPTER ROW (audit round 2,
@@ -11813,8 +11813,10 @@ function episodeDescriptionHtml(text, durationSec = null) {
      after a row is dropped: the row is a block, and under `pre-line` a newline
      opening the next run would paint an empty line under every chapter.
      Every other line goes through the ONE tokeniser below
-     (`episodeDescriptionTokens`), which the Now Playing sheet shares. */
-  return episodeNotesTokens(src, durationSec).map(descTokenHtml).join("");
+     (`episodeDescriptionTokens`), which the Now Playing sheet shares.
+     `precision` (the episode's chapterPrecision) makes a promoted row print its
+     time and label the way the Chapters section does (code-health CH-33). */
+  return episodeNotesTokens(src, durationSec, precision).map(descTokenHtml).join("");
 }
 
 /** THE NOTES AS LINE-AWARE TOKENS — the chapter-row promotion above AND the
@@ -11826,14 +11828,28 @@ function episodeDescriptionHtml(text, durationSec = null) {
 
       { kind: "chapter", secs, stamp, title, label }   a whole stamp-led line
       …and every kind `episodeDescriptionTokens` emits, with a "\n" text token
-      between lines (none after a chapter row: the row is a block). */
-function episodeNotesTokens(text, durationSec = null) {
+      between lines (none after a chapter row: the row is a block).
+
+    CHAPTER ROWS SAY WHAT THE CHAPTERS SECTION SAYS (code-health CH-33, A2-05).
+    A line is promoted only when the notes' stamp-led lines ARE a chapter list
+    by the Chapters section's own rule (`isChapterList`: two or more, strictly
+    ascending) — a lone stamp in prose stays an inline seek stamp, as the
+    section ignores it. And with `precision` given (the episode page passes
+    chapterPrecision), the row's time and label come from `chapterStamp`, the
+    call the section's rows make: on a DAI show both read "~68 min", where the
+    notes used to print the publisher's "1:08:12" under a section saying times
+    are approximate. Approximate before the seek policy has loaded, the line
+    stays prose. With no `precision` (the Now Playing sheet, which carries its
+    own approximate note) the row keeps the stamp as the publisher wrote it. */
+function episodeNotesTokens(text, durationSec = null, precision = null) {
   const src = String(text ?? "");
   if (!src) return [];
   const lines = src.split("\n");
+  const rows = lines.map(l => descChapterToken(l, durationSec));
+  const isList = isChapterList(rows.filter(Boolean));
   const out = [];
   for (let i = 0; i < lines.length; i++) {
-    const chapter = descChapterToken(lines[i], durationSec);
+    const chapter = isList && rows[i] ? chapterRowToken(rows[i], precision) : null;
     if (chapter) { out.push(chapter); continue; }
     out.push(...episodeDescriptionTokens(lines[i], durationSec));
     if (i < lines.length - 1) out.push({ kind: "text", text: "\n" });
@@ -11855,6 +11871,14 @@ function descChapterToken(line, durationSec) {
   if (DESC_TOKEN_RE.test(rest)) return null;
   const title = rest.trim();
   return { kind: "chapter", secs, stamp, title, label: `Play from ${stamp}${title ? `, ${title}` : ""}` };
+}
+
+/* A promoted notes row in the episode's precision; null when it cannot be
+   printed honestly yet (see episodeNotesTokens). */
+function chapterRowToken(row, precision) {
+  if (precision == null) return row;
+  const s = chapterStamp(row.secs, precision);
+  return s ? { ...row, stamp: s.time, label: `Play from ${s.said}${row.title ? `, ${row.title}` : ""}` } : null;
 }
 
 /** One token as safe HTML: a chapter row, a link, an inline seek stamp, or
@@ -11973,7 +11997,7 @@ function episodeDescriptionSectionHtml(item) {
   const durationSec = itemDurationSec(item, { upperBound: true });
   return `<details class="ep-description">
       <summary class="ep-description-toggle">Episode notes</summary>
-      <p class="ep-description-text">${episodeDescriptionHtml(item.description, durationSec)}</p>
+      <p class="ep-description-text">${episodeDescriptionHtml(item.description, durationSec, chapterPrecision(item))}</p>
     </details>`;
 }
 
@@ -11982,19 +12006,34 @@ function episodeDescriptionSectionHtml(item) {
    artwork (founder, 2026-09-18, above). Each row is a `data-ts` seek control,
    the contract bindEpisodeSeeks binds. Times are honest: a chapter stamp is
    FOREIGN (authored against the publisher's master), so on a stitched or
-   unclassified show it reads "~68 min" with one plain line saying so. */
+   unclassified show it reads "~68 min" with one plain line saying so.
+   Approximate rows render only once player/seek-policy.js has published its
+   wording (code-health CH-33, P2-13): app.js keeps no copy of "~68 min" or
+   "around minute 68", so a copy edit there cannot leave this page behind. */
 const CHAPTERS_VISIBLE = 6;
 const CHAPTER_ART_PX = 120;  // a 40 px chapter thumbnail at 3x, like ROW_ART_PX (perf-2)
+
+/* ONE CHAPTER STAMP, for the Chapters section's rows and the notes' promoted
+   rows alike (code-health CH-33): `time` is the row's visible clock, `said` the
+   words its label speaks. Exact prints fmtChapterTime (pinned to seek-policy's
+   `hms` by test/clock-formatters.test.js); approximate is seek-policy's own
+   formatTimestamp/describeTimestamp. Null while approximate and the policy has
+   not loaded — never a guess at its wording. */
+function chapterStamp(secs, precision) {
+  if (precision === "exact") return { time: fmtChapterTime(secs), said: fmtChapterTime(secs) };
+  const p = window.ForaySeekPolicy;
+  if (typeof p?.formatTimestamp !== "function" || typeof p?.describeTimestamp !== "function") return null;
+  return { time: p.formatTimestamp(secs, precision), said: p.describeTimestamp(secs, precision) };
+}
+
 function episodeChaptersHtml(item) {
   const list = episodeChapterList(item);
   if (!list.length) return "";
   const precision = chapterPrecision(item);
   const exact = precision === "exact";
-  const p = window.ForaySeekPolicy;
+  if (!chapterStamp(0, precision)) return "";
   const row = (c) => {
-    const mins = Math.round(c.secs / 60);
-    const time = exact ? fmtChapterTime(c.secs) : p?.formatTimestamp ? p.formatTimestamp(c.secs, precision) : `~${mins} min`;
-    const said = exact ? fmtChapterTime(c.secs) : p?.describeTimestamp ? p.describeTimestamp(c.secs, precision) : `around minute ${mins}`;
+    const { time, said } = chapterStamp(c.secs, precision);
     const img = c.img ? `<img class="ep-chapter-img" src="${esc(safeUrl(artUrl(c.img, CHAPTER_ART_PX)))}" alt="" loading="lazy" decoding="async" width="40" height="40">` : "";
     return `<li><button type="button" class="ep-chapter-row" data-ts="${esc(String(c.secs))}" aria-label="${esc(`Play from ${said}, ${c.title}`)}">${img}<span class="ep-chapter-time">${esc(time)}</span><span class="ep-chapter-title">${esc(c.title)}</span></button></li>`;
   };
@@ -12029,8 +12068,15 @@ function episodeChapterList(item) {
 
 function descriptionChapters(text, durationSec = null) {
   const rows = String(text ?? "").split("\n").map(l => descChapterToken(l, durationSec)).filter(Boolean);
-  if (rows.length < 2 || rows.some((r, i) => i && r.secs <= rows[i - 1].secs)) return [];
+  if (!isChapterList(rows)) return [];
   return rows.map((r, i) => chapterEntry(r.secs, { title: r.title }, "description", i));
+}
+
+/* Stamp-led lines are a table of contents only as two or more stamps in
+   strictly ascending order. The one rule for the Chapters section (above) and
+   the notes' row promotion (episodeNotesTokens, code-health CH-33). */
+function isChapterList(rows) {
+  return rows.length >= 2 && rows.every((r, i) => !i || r.secs > rows[i - 1].secs);
 }
 
 /* Titles trimmed (a CRLF feed leaves `\r`), an empty one numbered; the art
@@ -12073,16 +12119,19 @@ function playsLocalFile(item) {
 /* THE DEVICE READS THE CHAPTERS (founder on #1071: "Phone reads the MP3", no
    4a server, native app only). When the page has no feed chapters, the phone
    asks the publisher for the feed's podcast:chapters JSON, then for the MP3's
-   own ID3 chapters (window.ForayId3Chapters, when that module is loaded), and
-   repaints only the chapter section — and only while this episode's page is
-   still the route. Through CapacitorHttp, as the ID3 reader goes: the page's
-   CSP allows no publisher host in connect-src, so a WebView fetch could never
-   land. Once per episode per session, misses included; every failure is
-   silent and the notes' chapters stay. */
+   own ID3 chapters (window.ForayId3Chapters), and repaints only the chapter
+   section — and only while this episode's page is still the route. Through
+   CapacitorHttp, as the ID3 reader goes: the page's CSP allows no publisher
+   host in connect-src, so a WebView fetch could never land. Once per episode
+   per session, misses included; every failure is silent and the notes'
+   chapters stay. Both reads take the ID3 module's transport rules
+   (readDeviceChapters), so nothing is asked — and no miss is remembered —
+   before client.js has published that module (code-health CH-33). */
 const deviceChapterMemo = new Map();
 function hydrateFeedChapters(scope, item) {
   const hasFeed = (it) => Array.isArray(it.chapters) && it.chapters.some(c => c && c.source !== "description");
   if (!item?.id || hasFeed(item) || !isNativeShell() || !(item.chapters_url || item.audio_url)) return;
+  if (!window.ForayId3Chapters) return;
   if (!deviceChapterMemo.has(item.id)) deviceChapterMemo.set(item.id, readDeviceChapters(item));
   deviceChapterMemo.get(item.id).then((rows) => {
     const m = /^#\/(?:episode|play)\/([^?]+)/.exec(String(window.location?.hash || ""));
@@ -12097,15 +12146,21 @@ function hydrateFeedChapters(scope, item) {
   }).catch(() => {});
 }
 
+/* The JSON request rides the ID3 reader's transport rules (code-health CH-33,
+   A2-10): its deadline (`CALL_TIMEOUT_MS`, 10 s — this read kept its own 8 s
+   before) and the shell's User-Agent (`shellUserAgent()`) are read off
+   window.ForayId3Chapters, so tuning either in player/id3-chapters.js moves
+   the JSON read and the MP3 read together. */
 async function readDeviceChapters(item) {
+  const id3 = window.ForayId3Chapters;
   try {
     const cap = window.Capacitor;
     const url = item.chapters_url;
-    if (typeof url === "string" && /^https:\/\//i.test(url) && typeof cap?.nativePromise === "function") {
-      const ua = window.forayDownloads?.userAgent;
+    if (typeof url === "string" && /^https:\/\//i.test(url) && typeof cap?.nativePromise === "function" && Number.isFinite(id3?.CALL_TIMEOUT_MS)) {
+      const ua = typeof id3.shellUserAgent === "function" ? id3.shellUserAgent() : null;
       const res = await Promise.race([
         cap.nativePromise("CapacitorHttp", "request", { url, method: "GET", headers: ua ? { "User-Agent": ua } : {}, responseType: "json" }),
-        new Promise((r) => setTimeout(() => r(null), 8000)),
+        new Promise((r) => setTimeout(() => r(null), id3.CALL_TIMEOUT_MS)),
       ]);
       if (res?.status === 200) {
         const rows = validChapterRows((typeof res.data === "string" ? JSON.parse(res.data) : res.data)?.chapters, "json");
@@ -12114,7 +12169,6 @@ async function readDeviceChapters(item) {
     }
   } catch (_) { /* a bad answer is no answer */ }
   try {
-    const id3 = window.ForayId3Chapters;
     if (item.audio_url && typeof id3?.forUrl === "function") {
       const got = await id3.forUrl(item.audio_url, { id: item.id });
       return validChapterRows(Array.isArray(got) ? got.map(c => ({ ...c, startTime: c?.secs })) : [], "id3");

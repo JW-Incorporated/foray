@@ -23,7 +23,7 @@
  * markup, as a browser's does.
  */
 
-const { test } = require("node:test");
+const { test, before } = require("node:test");
 const assert = require("node:assert");
 const vm = require("node:vm");
 const fs = require("node:fs");
@@ -36,6 +36,13 @@ const SEARCH_SRC = fs.readFileSync(path.join(ROOT, "search-engine.js"), "utf8");
 const seekPolicy = () => import(pathToFileURL(path.join(ROOT, "player", "seek-policy.js")).href);
 
 process.on("unhandledRejection", () => {});
+
+/* The real seek policy, loaded once: approximate chapter rows render only once
+   it is published (code-health CH-33), as on a device, where client.js imports
+   it before the first route renders. `mount({ policy: null })` is the page
+   before the module has run. */
+let POLICY = null;
+before(async () => { POLICY = await seekPolicy(); });
 
 function makeEl(tag) {
   return {
@@ -54,7 +61,7 @@ function makeEl(tag) {
 
 const SECTION_RE = /<section class="ep-chapters">[\s\S]*?<\/section>/;
 
-function mount({ hash = "#/", native = null } = {}) {
+function mount({ hash = "#/", native = null, policy } = {}) {
   const byId = new Map();
   const el = (id) => { if (!byId.has(id)) { const e = makeEl("div"); e.id = id; byId.set(id, e); } return byId.get(id); };
   const view = el("view");
@@ -94,6 +101,8 @@ function mount({ hash = "#/", native = null } = {}) {
     encodeURIComponent, decodeURIComponent,
   };
   if (native) ctx.Capacitor = { isNativePlatform: () => true, getPlatform: () => "ios", nativePromise: native };
+  if (native) ctx.ForayId3Chapters = id3Stub();
+  if (policy !== null) ctx.ForaySeekPolicy = policy ?? POLICY;
   ctx.window = ctx;
   ctx.globalThis = ctx;
   vm.createContext(ctx);
@@ -107,6 +116,11 @@ function mount({ hash = "#/", native = null } = {}) {
     render(item) { state.itemIndex[item.id] = item; ctx.renderEpisode(item.id); },
   };
 }
+
+/* What client.js publishes as window.ForayId3Chapters, minus the MP3 read: the
+   transport rules readDeviceChapters takes (CH-33) and a reader that finds no
+   tag. A test that reads ID3 replaces it. */
+const id3Stub = (over = {}) => ({ forUrl: async () => [], CALL_TIMEOUT_MS: 10_000, shellUserAgent: () => null, ...over });
 
 const ticks = async (n = 10) => { for (let i = 0; i < n; i++) await new Promise((r) => setImmediate(r)); };
 const titles = (html) => [...html.matchAll(/<span class="ep-chapter-title">([^<]*)<\/span>/g)].map((m) => m[1]);
@@ -165,20 +179,23 @@ test("(d) ten chapters: six rows visible, the other four inside 'All 10 chapters
 
 /* ---------- e: precision ---------- */
 
-test("(e) precision: stitched and unclassified read '~68 min', a classified static show '1:08:00', no policy loaded reads approximate", async () => {
+test("(e) precision: stitched and unclassified read '~68 min', a classified static show '1:08:00'; with no policy loaded nothing guesses", async () => {
   /* MUTATION 1: `source: p.FOREIGN` -> `source: "own"` in chapterPrecision — the
      stitched row reads 1:08:00; red.
      MUTATION 2: drop `|| item?.dai_known === false` — the unclassified row reads
      1:08:00; red.
      MUTATION 3: chapterPrecision's catch `return "exact"` — with no policy the
-     row reads 1:08:00; red. */
+     row reads 1:08:00; red.
+     MUTATION 4 (CH-33, P2-13): put back an inline `~${mins} min` fallback in
+     chapterStamp/episodeChaptersHtml — the page before the policy loads prints
+     app.js's own copy of the approximate wording; red. */
   const chapters = [{ title: "Intro", start_time_seconds: 0 }, { title: "The turn", start_time_seconds: 4080 }];
-  const m = mount();
-  m.render(ep({ id: "bare", chapters, dai_known: true, dai_suspected: false }));
-  assert.match(m.section(), /~68 min/, "no policy loaded: approximate, never exact");
-  assert.doesNotMatch(m.section(), /1:08:00/);
+  const bare = mount({ policy: null });
+  bare.render(ep({ id: "bare", chapters, dai_known: true, dai_suspected: false }));
+  assert.strictEqual(bare.section(), "", "no policy loaded: no row guesses at its wording, and none reads exact");
+  assert.doesNotMatch(bare.html(), /~68 min|around minute|1:08:00/);
 
-  m.ctx.ForaySeekPolicy = await seekPolicy();
+  const m = mount();
   m.render(ep({ id: "dai", chapters, dai_known: true, dai_suspected: true }));
   let sec = m.section();
   assert.match(sec, /<span class="ep-chapter-time">~68 min<\/span>/);
@@ -322,7 +339,7 @@ test("(h) source order: JSON beats ID3; with no chapters_url the MP3's ID3 chapt
      MUTATION 2: drop `!isNativeShell() ||` from the hydrate guard — the web
      page makes a request; red. */
   const id3Calls = [];
-  const id3 = { forUrl: async (url, opts) => { id3Calls.push([url, opts.id]); return [{ secs: 0, title: "Tag one" }, { secs: 61, title: "Tag two", img: "https://img.test/t.jpg" }]; } };
+  const id3 = id3Stub({ forUrl: async (url, opts) => { id3Calls.push([url, opts.id]); return [{ secs: 0, title: "Tag one" }, { secs: 61, title: "Tag two", img: "https://img.test/t.jpg" }]; } });
   const m = mount({ hash: "#/episode/ep-j", native: async () => ({ status: 200, data: JSON.stringify(JSON_BODY) }) });
   m.ctx.ForayId3Chapters = id3;
   m.render(ep({ id: "ep-j", description: NOTES3, chapters_url: "https://pub.test/ch.json" }));
@@ -414,5 +431,91 @@ test("CH-33 characterization: the podcast:chapters JSON request carries the shel
   m.render(ep({ id: "ep-ua", description: NOTES3, chapters_url: "https://pub.test/ch.json" }));
   await ticks();
   assert.deepStrictEqual(seen.map((h) => ({ ...h })), [{ "User-Agent": "4a/1.2 (shell)" }]);
+  assert.deepStrictEqual(titles(m.section()), ["Json one", "Json two"]);
+});
+
+/* ---------- CH-33: chapter rows say one thing ---------- */
+
+test("CH-33 (A2-05): a DAI show with chapters only in the notes — the Chapters section and Episode notes print the same time and label for every stamp", () => {
+  /* The bug: the section read "~68 min" under "Times are approximate" while
+     the notes' promoted rows printed the publisher's "1:08:12" exactly.
+     MUTATION: chapterRowToken `if (precision == null) return row;` ->
+     `return row;` (the notes keep the stamp as written) -> red on both
+     shows. MUTATION 2: episodeDescriptionSectionHtml stops passing
+     chapterPrecision(item) -> red the same way. */
+  const description = "Welcome.\n00:00 Cold open\n1:08:12 The turn\nThanks.";
+  for (const [id, cls, want] of [
+    ["dai", { dai_known: true, dai_suspected: true }, ["~0 min", "~68 min"]],
+    ["clean", { dai_known: true, dai_suspected: false }, ["0:00", "1:08:12"]],
+  ]) {
+    const m = mount();
+    m.render(ep({ id, ...cls, duration_sec: 5400, chapters: null, description }));
+    const section = rowsOf(m.section());
+    const notes = rowsOf(notesHtml(m.html()));
+    assert.deepStrictEqual(section.map((r) => r.time), want, `${id}: the section's clock`);
+    assert.deepStrictEqual(notes, section, `${id}: the notes' rows are the section's rows, word for word`);
+    assert.doesNotMatch(notesHtml(m.html()), id === "dai" ? /1:08:12|00:00/ : /00:00/, `${id}: no stamp as written survives in a row`);
+  }
+});
+
+test("CH-33 (A2-05): a lone stamp-led line in the notes is an inline seek stamp, not a 44 px chapter row — the section's two-ascending rule", () => {
+  /* MUTATION: `const isList = isChapterList(…)` -> `const isList = true` in
+     episodeNotesTokens -> the lone line is promoted to .ep-chapter-row; red. */
+  const m = mount();
+  m.render(ep({ id: "lone", dai_known: true, dai_suspected: false, chapters: null, description: "We talk at length.\n12:30 The main story\nBye." }));
+  const notes = notesHtml(m.html());
+  assert.strictEqual(m.section(), "", "the section ignores it");
+  assert.doesNotMatch(notes, /ep-chapter-row/, "and so do the notes");
+  assert.match(notes, /<button type="button" class="ep-ts" data-ts="750" aria-label="Play from 12:30">12:30<\/button>/, "it is still a seek stamp");
+  const lines = m.ctx.ForayNotes.lines("12:30 The main story\nmore prose", 3600);
+  assert.ok(!lines.some((t) => t.kind === "chapter"), "the Now Playing sheet's tokens agree");
+  const outOfOrder = m.ctx.ForayNotes.lines("0:00 Open\n30:00 Late\n10:00 Back", 3600);
+  assert.ok(!outOfOrder.some((t) => t.kind === "chapter"), "stamps out of order are prose there too");
+});
+
+test("CH-33 (A2-10): readDeviceChapters races the JSON request against ForayId3Chapters.CALL_TIMEOUT_MS, then falls through to the ID3 read", async () => {
+  /* MUTATION: put back `setTimeout(() => r(null), 8000)` in
+     readDeviceChapters -> the JSON request that never answers holds the page
+     past this test's wait; the ID3 read never starts; red. */
+  let id3Read = 0;
+  const m = mount({ hash: "#/episode/ep-dl", native: () => new Promise(() => {}) });
+  m.ctx.ForayId3Chapters = id3Stub({
+    CALL_TIMEOUT_MS: 20,
+    forUrl: async () => { id3Read += 1; return [{ secs: 0, title: "Tag one" }, { secs: 61, title: "Tag two" }]; },
+  });
+  m.render(ep({ id: "ep-dl", description: NOTES3, chapters_url: "https://pub.test/slow.json" }));
+  await new Promise((r) => setTimeout(r, 250));
+  await ticks();
+  assert.strictEqual(id3Read, 1, "the JSON read gave up at the reader's deadline");
+  assert.deepStrictEqual(titles(m.section()), ["Tag one", "Tag two"]);
+});
+
+test("CH-33 (A2-10): the JSON request's User-Agent is the reader's shellUserAgent(), not app.js's own lookup", async () => {
+  /* MUTATION: `const ua = window.forayDownloads?.userAgent;` back in
+     readDeviceChapters -> the request carries "page-copy"; red. */
+  const seen = [];
+  const m = mount({ hash: "#/episode/ep-ua2", native: async (_p, _m, opts) => { seen.push(opts.headers); return { status: 200, data: JSON_BODY }; } });
+  m.ctx.forayDownloads = { userAgent: "page-copy" };
+  m.ctx.ForayId3Chapters = id3Stub({ shellUserAgent: () => "4a/reader" });
+  m.render(ep({ id: "ep-ua2", description: NOTES3, chapters_url: "https://pub.test/ch.json" }));
+  await ticks();
+  assert.deepStrictEqual(seen.map((h) => ({ ...h })), [{ "User-Agent": "4a/reader" }]);
+});
+
+test("CH-33: before client.js has published the ID3 reader nothing is asked and no miss is remembered; the next render asks", async () => {
+  /* MUTATION: drop `if (!window.ForayId3Chapters) return;` from
+     hydrateFeedChapters -> the first render memoises an empty answer and the
+     second render asks nothing; red. */
+  const calls = [];
+  const m = mount({ hash: "#/episode/ep-late", native: async (_p, _m, opts) => { calls.push(opts.url); return { status: 200, data: JSON_BODY }; } });
+  delete m.ctx.ForayId3Chapters;
+  const item = ep({ id: "ep-late", description: NOTES3, chapters_url: "https://pub.test/ch.json" });
+  m.render(item);
+  await ticks();
+  assert.deepStrictEqual(calls, [], "no transport rules yet: no request");
+  m.ctx.ForayId3Chapters = id3Stub();
+  m.render(item);
+  await ticks();
+  assert.deepStrictEqual(calls, ["https://pub.test/ch.json"]);
   assert.deepStrictEqual(titles(m.section()), ["Json one", "Json two"]);
 });
