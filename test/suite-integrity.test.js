@@ -123,7 +123,7 @@ const FLOORS = {
      now playing ribbon". The POINTER to the last ordinary episode — position is
      not stored here, `cp_pos:` has owned that since #26, and two of these tests
      exist only to pin that separation. */
-  "player/download-store.test.js": 16, // PQ-16 (#29) // integration review (2026-10-04): the iPhone path is percent-encoded into its file:// URL (Application Support has a space; URL(string:) is nil for it on iOS 15/16), a late progress tick never un-finishes a done row, and reportFromEvent maps the bridge events onto record statuses; 13 -> 16
+  "player/download-store.test.js": 18, // PQ-16 (#29) // integration review (2026-10-04): the iPhone path is percent-encoded into its file:// URL (Application Support has a space; URL(string:) is nil for it on iOS 15/16), a late progress tick never un-finishes a done row, and reportFromEvent maps the bridge events onto record statuses; 13 -> 16 // CH-02: writeDownloads(null) removes and a refusing store is false (characterization), removeRow is the moved downloadsWithout; 16 -> 18
   "player/download-bridge.test.js": 12, // PQ-17 (#29) // integration review: a resolved answer without ok reads as ok: true; 9 -> 10 // integration review (2026-10-04): an answered call clears its deadline, and userAgentFor(build) replaces the never-set window.__forayBuild; 10 -> 12
   "player/download-play.test.js": 4, // PQ-19 (#29)
   "player/episode-progress.test.js": 23, // 2026-09-22 audit theme L: `episodeProgress`, the one reading of a stored position (played / in-progress / sampled / unplayed) that Jump back in and the episode rows share, on position-store's own thresholds; 19 -> 23
@@ -570,7 +570,7 @@ const FLOORS = {
      in progress, and client.js's published surface. Each test is one deleted
      line from a download that goes to the wrong URL, a device called clear
      with files on it, or a half-heard episode deleted. */
-  "test/downloads.test.js": 10, // PQ-18 (#29): the plan's 8 + eviction wiring + client.js's window.forayDownloads pin
+  "test/downloads.test.js": 14, // PQ-18 (#29): the plan's 8 + eviction wiring + client.js's window.forayDownloads pin // CH-02: cp_downloads goes through the durable store and null removes, unplayed eviction is oldest-finished, a play from the file moves the row back, and no key literal / downloadsWithout / mapper-side stamp; 10 -> 14
   "test/event-sync-mapping.test.js": 5, // PKG-17 (docs/roadmap/catalogue-personalization.md): exact wire rows for picked (contract archetype or null), saved, thumbs (no node -> null, episode_slug absent not null), session_shown -> session_built, and a local-only-only batch marked synced with no POST; the Not-sent -> null and per-chunk cases live in legal-citations and data-deletion (app-1-10)
   /** The field record's surface (#264) — see the note beside the two `player/`
       halves above. */
@@ -1123,7 +1123,7 @@ const FLOORS = {
      #276/show-pages shape: silently wrong is the failure mode, not a crash.
      Every test names its mutation; see the suite header for the full list
      of what each test pins. */
-  "test/up-next-queue.test.js": 26, // PQ-02 (#762): Play next lands after the playing row, adds/refuses like addToQueue, Clear keeps the playing row, the controls render, the episode page's Play next; 20 -> 26 (exact: the 21st test had landed unfloored) // audit round 2, lane L3 (2026-09-23): the page is a live view of cp_queue, .is-current, the row mark, one unnamed sentence, no + Up Next on an archived part, addToQueue refuses the unplayable, the cap never prunes a queued key, fullPool memoised; 13 -> 20 //
+  "test/up-next-queue.test.js": 28, // CH-01 (A1-01): a pool row with no audio_url gets no + Up Next and is refused by addToQueue/Play next so the walk plays every queued id, plus the playable-pool-row characterization; 26 -> 28 // PQ-02 (#762): Play next lands after the playing row, adds/refuses like addToQueue, Clear keeps the playing row, the controls render, the episode page's Play next; 20 -> 26 (exact: the 21st test had landed unfloored) // audit round 2, lane L3 (2026-09-23): the page is a live view of cp_queue, .is-current, the row mark, one unnamed sentence, no + Up Next on an archived part, addToQueue refuses the unplayable, the cap never prunes a queued key, fullPool memoised; 13 -> 20 //
   /* Library screen (#/library, `docs/ux/foray-mockup.jsx`'s LibraryScreen,
      kanban card t_a1e7a69c). Floored for the same reason up-next-queue is:
      the four sections' decay path (an aged-out saved/history id, an empty
