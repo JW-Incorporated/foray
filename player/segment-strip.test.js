@@ -51,7 +51,7 @@ import {
 } from "./foray-resolve.js";
 import { itemRuntimeSec } from "./foray-queue.js";
 import {
-  stripModel, stripSummary, stripTally, mountStrip, renderStrip, assignTones, toneSeed,
+  stripModel, stripSummary, stripTally, mountStrip, assignTones, toneSeed,
   sourceKeyOf, growOf, TONE_COUNT, NARRATOR_SOURCE, NARRATOR_NAME, SIZES,
   stripFloorPlan, STRIP_METRICS, STRIP_HAIRLINE_PX, FLOOR_BUDGET,
   segmentStripHtml, applyStripGrow,
@@ -734,19 +734,22 @@ test("a re-mount replaces the strip rather than growing it", () => {
      sizes comes back ["sm","lg"] and the strip is 5px and 12px tall at once. */
 });
 
-test("renderStrip builds a standalone strip at each of the three sizes", () => {
+test("mountStrip builds a strip at each of the three sizes", () => {
+  /* Was "renderStrip builds a standalone strip …": `renderStrip` (a wrapper that
+     made a div and called mountStrip) had only this test for a caller and went
+     in code-health CH-24 (P2-16). The size rule it pinned is mountStrip's, so
+     the test now mounts directly and keeps that coverage.
+     MUTATION (killed, run for CH-24): in mountStrip,
+     `const chosen = SIZES.includes(size) ? size : "md";` -> `const chosen = "md";`.
+     Every size renders as the card size; the sm and lg assertions fail. */
   const r = real("grilling-history-2");
   for (const size of SIZES) {
-    const el = renderStrip(r.playable, { document: stubDocument, size });
-    assert.ok(el, `no element at size ${size}`);
-    assert.ok(el.classList.contains("fy-strip"));
+    const el = new StubEl("div");
+    mountStrip(el, r.playable, { document: stubDocument, size });
+    assert.ok(el.classList.contains("fy-strip"), `no strip class at size ${size}`);
     assert.ok(el.classList.contains(`fy-strip--${size}`));
     assert.equal(el.children.length, r.playable.length);
   }
-  assert.equal(renderStrip(r.playable, {}), null, "no document, no element — and no throw");
-  /* MUTATION (killed): in mountStrip,
-     `const chosen = SIZES.includes(size) ? size : "md";` -> `const chosen = "md";`.
-     Every size renders as the card size; the sm and lg assertions fail. */
 });
 
 test("an empty or broken running order renders nothing rather than throwing", () => {

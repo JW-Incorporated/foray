@@ -35,6 +35,7 @@
    none — so they are named constants, not literals buried in a branch.
 */
 
+import { hoursMinutes } from "./duration.js";
 import { FORAY_PROGRESS_KEY_PREFIX } from "./engine-vocabulary.js";
 
 /** One row per Foray. `cp_` prefix: renaming these wipes user state. Spelled
@@ -51,7 +52,9 @@ export const MIN_RESUME_SEC = 20;
 export const NEAR_END_SEC = 45;
 
 /** Progress older than this stops being offered. A month-old half-listen is not
-    a thing anyone is "jumping back in" to, and the row is otherwise immortal. */
+    a thing anyone is "jumping back in" to, and the row is otherwise immortal.
+    `episode-progress.js` imports this for the last-episode pointer, so a Foray
+    and an episode leave "Jump back in" on the same day (code-health CH-24). */
 export const MAX_AGE_H = 24 * 30;
 
 /* ---------- data freshness: the row and the document can disagree ----------
@@ -386,21 +389,23 @@ export function percentDone(elapsedSec, totalSec) {
  * rather than rounding to "0 min left".
  */
 export function remainingLabel(remainingSec, { estimated = false } = {}) {
+  /* "finished" for nothing left. No page surface reaches this rung — every one
+     asks `progressLabel`, which says PLAYED_LABEL for a finished point first —
+     but it is the native engine's contract too: the parity `foray-progress`
+     family records it (remaining-zero / -negative / -null) and
+     ForayProgressRules.swift ports it, so it changes only with a re-record and
+     the Swift port in the same change (code-health CH-24, P2-16). */
   if (!isNum(remainingSec) || remainingSec <= 0) return "finished";
   if (remainingSec < 60) return "under a minute left";
-  /* Past the hour it rolls over — "1 hr 5 min left", never "65 min left" — in
-     the one duration dialect every label in 4a uses (audit round 2, copy-2);
-     the rule is foray-resolve's `fmtSpan`, written here as well because this
-     module does not import the resolver for a string. */
-  const mins = Math.round(remainingSec / 60);
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
   /* AN ESTIMATE SAYS SO (audit round 2, states-11). A narrated Foray's total is
      partly a script-length projection; the page header already read "about
      41 min" while this said "32 min left" from the same number. "Under a
-     minute" is its own hedge and needs no "about". */
+     minute" is its own hedge and needs no "about". Past the hour it rolls
+     over — "1 hr 5 min left", never "65 min left" — in the one duration
+     dialect every label in 4a uses (audit round 2, copy-2), read from
+     `duration.js`, its one owner (code-health CH-24). */
   const about = estimated ? "about " : "";
-  return h ? `${about}${h} hr${m ? ` ${m} min` : ""} left` : `${about}${m} min left`;
+  return `${about}${hoursMinutes(Math.round(remainingSec / 60))} left`;
 }
 
 /** What a finished Foray's row says — the word a finished episode's row says

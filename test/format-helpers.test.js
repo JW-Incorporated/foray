@@ -136,6 +136,65 @@ test("fmtDur, fmtSpan and both remaining labels speak one dialect at every lengt
   }
 });
 
+/* CH-24 CHARACTERIZATION (P1-14, P2-07, X1-02). The tail is one rule: app.js's
+   fmtDur (a classic script that paints cards before the player module loads,
+   so it keeps its own copy) says exactly what the player's fmtSpan says for the
+   same length in seconds, and episode-progress's fmtMinutes says what fmtDur
+   says for every length of a minute or more, fractions rounded the same way.
+   The two rungs BELOW that differ on purpose and are pinned as such: fmtSpan
+   counts seconds under 90 ("60 sec", a segment is a measurement), and an
+   unknown length is "" to fmtDur (absence) but "0 min" to fmtMinutes.
+   MUTATION: in player/foray-resolve.js's fmtSpan (player/duration.js after
+   CH-24) print the hour as `${h} hr ${m} min` unconditionally -> fmtSpan(3600)
+   reads "1 hr 0 min" against fmtDur's "1 hr" and this goes red. */
+test("CH-24: fmtDur(m) is fmtSpan(m*60), fmtMinutes(m) is fmtDur(m) for m >= 1, and the rungs below differ on purpose", async () => {
+  const { ctx } = mount();
+  const url = (rel) => require("node:url").pathToFileURL(path.join(ROOT, rel)).href;
+  const { fmtSpan } = await import(url("player/foray-resolve.js"));
+  const { fmtMinutes } = await import(url("player/episode-progress.js"));
+  for (const m of [2, 59, 60, 61, 125]) {
+    assert.strictEqual(ctx.fmtDur(m), fmtSpan(m * 60), `fmtDur(${m}) vs fmtSpan(${m * 60})`);
+  }
+  for (const m of [1, 1.4, 2, 44.6, 59, 59.5, 60, 61, 119.6, 125, 600]) {
+    assert.strictEqual(fmtMinutes(m), ctx.fmtDur(m), `fmtMinutes(${m}) vs fmtDur(${m})`);
+  }
+  assert.strictEqual(fmtSpan(60), "60 sec", "the sec rung is fmtSpan's alone");
+  assert.strictEqual(ctx.fmtDur(1), "1 min");
+  assert.strictEqual(fmtMinutes(0), "0 min", "zero is a number to fmtMinutes");
+  assert.strictEqual(ctx.fmtDur(0), "", "and absence to fmtDur");
+});
+
+/* CH-24: player/duration.js OWNS the tail. fmtSpan (re-exported by
+   foray-resolve, not copied), episode-progress's fmtMinutes and both "left"
+   labels say exactly `hoursMinutes(m)`, so a copy ruling on the hour lands in
+   one module and every player label follows it; app.js's fmtDur is held to the
+   same words by the tests above.
+   MUTATION (run): put an inline tail back in foray-progress's remainingLabel
+   (`h ? `${h} hr…` : …`) and change duration.js's hour to "hrs" — the module
+   labels follow, remainingLabel does not, and its row here goes red. Also
+   killed: a second `export function fmtSpan` in foray-resolve.js (the identity
+   assertion). */
+test("CH-24: duration.js owns the tail — fmtSpan, fmtMinutes and both remaining labels say hoursMinutes(m)", async () => {
+  const url = (rel) => require("node:url").pathToFileURL(path.join(ROOT, rel)).href;
+  const duration = await import(url("player/duration.js"));
+  const { hoursMinutes } = duration;
+  const resolve = await import(url("player/foray-resolve.js"));
+  const { remainingLabel } = await import(url("player/foray-progress.js"));
+  const { episodeRemainingLabel, fmtMinutes } = await import(url("player/episode-progress.js"));
+  assert.strictEqual(resolve.fmtSpan, duration.fmtSpan, "foray-resolve re-exports duration.js's fmtSpan, it does not keep a copy");
+  for (const m of [1, 2, 45, 59, 60, 61, 65, 95, 120, 125, 185, 600]) {
+    const tail = hoursMinutes(m);
+    assert.strictEqual(fmtMinutes(m), tail, `fmtMinutes(${m})`);
+    assert.strictEqual(remainingLabel(m * 60), `${tail} left`, `remainingLabel(${m} min)`);
+    assert.strictEqual(remainingLabel(m * 60, { estimated: true }), `about ${tail} left`, `remainingLabel(${m} min, estimated)`);
+    assert.strictEqual(episodeRemainingLabel({ duration_sec: m * 60 + 600 }, 600), `${tail} left`, `episodeRemainingLabel(${m} min)`);
+    if (m >= 2) assert.strictEqual(duration.fmtSpan(m * 60), tail, `fmtSpan(${m * 60})`);
+  }
+  assert.strictEqual(hoursMinutes(60), "1 hr");
+  assert.strictEqual(hoursMinutes(65), "1 hr 5 min");
+  assert.strictEqual(hoursMinutes(44.6), "45 min", "a fraction is rounded, never printed");
+});
+
 /* A missing duration is absence, not zero. MUTATION: drop the `!min` guard
    and "0 min" / "undefined min" reaches a row. */
 test("fmtDur: no duration renders nothing", () => {

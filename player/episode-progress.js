@@ -30,6 +30,8 @@
  */
 
 import { NEAR_END_SEC, MIN_RESUME_SEC } from "./position-store.js";
+import { MAX_AGE_H, PLAYED_LABEL } from "./foray-progress.js";
+import { hoursMinutes } from "./duration.js";
 import { LAST_EPISODE_KEY } from "./engine-vocabulary.js";
 
 /** The single pointer row. `cp_` prefix: renaming wipes user state (CLAUDE.md).
@@ -41,13 +43,15 @@ export const KEY = LAST_EPISODE_KEY;
 
 /** A pointer older than this stops being offered.
  *
- * Thirty days, matching `foray-progress.js`'s own MAX_AGE_H, so a Foray and an
- * episode age out of "Jump back in" together — one rail holding two kinds of
- * thing that disappear on different schedules is a bug report waiting to
- * happen. It is emphatically NOT the old 72-hour `CONTINUE_MAX_AGE_H`: "after a
- * day" is the founder's own headline and three days is uncomfortably close to
- * it. */
-export const MAX_AGE_H = 24 * 30;
+ * `foray-progress.js`'s own MAX_AGE_H (thirty days), IMPORTED rather than
+ * restated (code-health CH-24, P2-17), so a Foray and an episode age out of
+ * "Jump back in" together — one rail holding two kinds of thing that disappear
+ * on different schedules is a bug report waiting to happen, and a copy by
+ * value is how the two windows would come apart the day one was tuned. It is
+ * emphatically NOT the old 72-hour `CONTINUE_MAX_AGE_H`: "after a day" is the
+ * founder's own headline and three days is uncomfortably close to it.
+ * Re-exported, because callers and tests read it from here. */
+export { MAX_AGE_H };
 
 /** Kept from the item for repainting, as a closed list. The whole item would
     drag topics, scores and provenance into a row rewritten on every play —
@@ -139,28 +143,29 @@ export function episodePercentDone(record, positionSec) {
 }
 
 /** "18 min", "1 hr 5 min": the one duration dialect every label in 4a uses
-    (audit round 2, copy-2 — a row read "3h 5m" beside "185 min left"). Mirrors
-    app.js's `fmtDur` and foray-resolve's `fmtSpan`; a classic script and an ES
-    module cannot share one function, so the RULE is shared and each file's test
-    pins it. Whole minutes: a fraction is rounded, never printed. */
+    (audit round 2, copy-2 — a row read "3h 5m" beside "185 min left"). The
+    tail is `duration.js`'s `hoursMinutes`, its one owner (code-health CH-24);
+    this file owns only its zero rung, "0 min". app.js's `fmtDur` is the
+    classic-script copy test/format-helpers pins against it. Whole minutes: a
+    fraction is rounded, never printed. */
 export function fmtMinutes(mins) {
   const n = Math.round(Number(mins));
-  if (!(n > 0)) return "0 min";
-  if (n < 60) return `${n} min`;
-  const h = Math.floor(n / 60);
-  const m = n % 60;
-  return m ? `${h} hr ${m} min` : `${h} hr`;
+  return n > 0 ? hoursMinutes(n) : "0 min";
 }
 
 /** "18 min left" / "1 hr 5 min left", or null when the duration is unknown.
     Minutes, not seconds: a second-precision countdown on a home card is noise
-    that changes while you read it. */
+    that changes while you read it. Under half a minute left — exactly
+    position-store's NEAR_END_SEC, where `episodeProgress` says the episode is
+    played — it is PLAYED_LABEL, the one word a finished episode or Foray says
+    (audit round 2, honesty-2); it used to say "finished", a second vocabulary
+    no surface showed only because none reached it (code-health CH-24, P2-16). */
 export function episodeRemainingLabel(record, positionSec) {
   const pct = episodePercentDone(record, positionSec);
   if (pct === null) return null;
   const dur = Number(record.duration_sec ?? record.duration_min * 60);
   const mins = Math.round(Math.max(0, dur - Number(positionSec)) / 60);
-  return mins <= 0 ? "finished" : `${fmtMinutes(mins)} left`;
+  return mins <= 0 ? PLAYED_LABEL : `${fmtMinutes(mins)} left`;
 }
 
 /**

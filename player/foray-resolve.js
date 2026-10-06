@@ -775,18 +775,9 @@ export function fmtClock(sec) {
   return hms(isNum(sec) && sec > 0 ? sec : 0);
 }
 
-/** "45 sec" / "2 min" / "1 hr 35 min". Rounded, because a segment's length is a
-    measurement of somebody else's audio and second-precision would overstate
-    it. Past the hour it rolls over, in the one duration dialect every label in
-    4a uses (audit round 2, copy-2): a Foray's header said "about 95 min" over
-    rows that said "1h 12m". The colon clock (`fmtClock`) is for live playheads
-    and scrubbers only. */
-export function fmtSpan(sec) {
-  const total = isNum(sec) && sec > 0 ? Math.round(sec) : 0;
-  if (total < 90) return `${total} sec`;
-  const mins = Math.round(total / 60);
-  if (mins < 60) return `${mins} min`;
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return m ? `${h} hr ${m} min` : `${h} hr`;
-}
+/* `fmtSpan` ("45 sec" / "2 min" / "1 hr 35 min") lives in `duration.js`, the
+   one owner of the hours-and-minutes tail (code-health CH-24), and is
+   re-exported from here because this is where the page (client.js) and the
+   parity `foray-clock` family read it. The colon clock above is for live
+   playheads and scrubbers only. */
+export { fmtSpan } from "./duration.js";

@@ -1305,6 +1305,7 @@ const SIGNING_SECRET = /secrets\.(IOS_DIST_CERT|IOS_PROVISIONING_PROFILE|APP_STO
  * that holds no signing secret, which is a release-pipeline change of its own. */
 const ACKNOWLEDGED_RELEASE_APP_CODE = {
   "player/build-stamp.js": "app code imported by prepare-webdir.mjs; closes only with a secret-free build job",
+  "player/duration.js": "app code imported by prepare-webdir.mjs (via foray-resolve.js's fmtSpan re-export, code-health CH-24); closes only with a secret-free build job",
   "player/foray-queue.js": "app code imported by prepare-webdir.mjs; closes only with a secret-free build job",
   "player/foray-resolve.js": "app code imported by prepare-webdir.mjs; closes only with a secret-free build job",
   "player/foray-sources.js": "app code imported by prepare-webdir.mjs; closes only with a secret-free build job",

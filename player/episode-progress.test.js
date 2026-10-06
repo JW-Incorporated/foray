@@ -23,6 +23,7 @@ import {
   episodePercentDone, episodeRemainingLabel, episodeProgress,
 } from "./episode-progress.js";
 import { PositionStore, NEAR_END_SEC, MIN_RESUME_SEC } from "./position-store.js";
+import { MAX_AGE_H as FORAY_MAX_AGE_H } from "./foray-progress.js";
 
 /** A Storage-shaped fake that can also be made to fail, because a refused write
     is a path this module has an opinion about. */
@@ -143,6 +144,22 @@ test("a record older than the age limit is not offered", () => {
   assert.equal(lastEpisodeState(justInside, { positionSec: 60, now }).state, "resume");
 });
 
+test("the age limit is foray-progress's: a Foray and an episode leave Jump back in on the same day (CH-24, P2-17)", () => {
+  /* One rail holds both kinds of thing, so they must age out together. This
+     module used to restate foray-progress's thirty days by value, so tuning the
+     Foray window (say to 14 days) would have dropped Forays from "Jump back in"
+     a fortnight before episodes. Now the number is imported, and this pins both
+     the export and the behaviour at the Foray module's own boundary.
+     MUTATION: give episode-progress its own `export const MAX_AGE_H = 24 * 31;`
+     (or, before CH-24, set foray-progress's to `24 * 14`) and this goes red. */
+  assert.equal(MAX_AGE_H, FORAY_MAX_AGE_H);
+  const now = Date.parse("2026-09-18T10:00:00Z");
+  const past = makeLastEpisode(EPISODE, { now: now - (FORAY_MAX_AGE_H + 1) * 3.6e6 });
+  assert.equal(lastEpisodeState(past, { positionSec: 60, now }).state, "none");
+  const inside = makeLastEpisode(EPISODE, { now: now - (FORAY_MAX_AGE_H - 1) * 3.6e6 });
+  assert.equal(lastEpisodeState(inside, { positionSec: 60, now }).state, "resume");
+});
+
 test("a day old is comfortably inside the limit — the founder's own case", () => {
   /* The headline of the report is "after a day". The retired `cp_lastpick` card
      used 72 hours, which is uncomfortably close to it.
@@ -200,10 +217,20 @@ test("percent is clamped to 0..1", () => {
   assert.equal(episodePercentDone(rec, 999999), 1);
 });
 
-test("a position at or past the end reads as finished, not as negative time", () => {
-  const rec = makeLastEpisode(EPISODE);
-  assert.equal(episodeRemainingLabel(rec, 7200), "finished");
-  assert.equal(episodeRemainingLabel(rec, 999999), "finished");
+test("a position at or past the end reads 'Played' — the one finished word — not negative time", () => {
+  /* It said "finished", a second vocabulary the honesty-2 audit removed from
+     every surface; none showed it only because none reached it. Now it is
+     PLAYED_LABEL, and it flips exactly where episodeProgress calls the episode
+     played (inside NEAR_END_SEC of the end), so the two never disagree
+     (code-health CH-24, P2-16).
+     MUTATION: put `"finished"` back for `mins <= 0` in episodeRemainingLabel. */
+  const rec = makeLastEpisode(EPISODE); // 7200 s
+  assert.equal(episodeRemainingLabel(rec, 7200), "Played");
+  assert.equal(episodeRemainingLabel(rec, 999999), "Played");
+  assert.equal(episodeRemainingLabel(rec, 7200 - NEAR_END_SEC + 1), "Played");
+  assert.equal(episodeProgress(rec, 7200 - NEAR_END_SEC + 1).state, "played");
+  assert.equal(episodeRemainingLabel(rec, 7200 - NEAR_END_SEC), "1 min left");
+  assert.equal(episodeProgress(rec, 7200 - NEAR_END_SEC).state, "in-progress");
 });
 
 /* ---------- episodeProgress: ONE reading of a position (audit 2026-09-22) --- */
