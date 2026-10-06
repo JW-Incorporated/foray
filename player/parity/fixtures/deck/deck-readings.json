@@ -86,7 +86,7 @@
     },
     {
       "id": "deck/volume-kept",
-      "covers": ["html-audio-backend::volume clamps to 0..1 — ducking uses this, not Web Audio"],
+      "covers": [],
       "note": "The duck: clamped to 0..1, and junk is silence rather than a throw.",
       "call": "deckVolume",
       "args": [0.3],

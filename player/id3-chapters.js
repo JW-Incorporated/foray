@@ -41,8 +41,10 @@
  * Cache: in memory, per URL, for the session. Deliberately not localStorage —
  * a new stored key would need a privacy-policy row.
  *
- * Published as `window.ForayId3Chapters = { forUrl(url, { id }?) }` by
- * client.js, for the episode page's chapter card (CH-1). Nothing in this card
+ * Published as `window.ForayId3Chapters = { forUrl(url, { id }?), clear(),
+ * CALL_TIMEOUT_MS, shellUserAgent() }` by client.js, for the episode page's
+ * chapter card (CH-1); app.js's podcast:chapters JSON read takes the deadline
+ * and the User-Agent from here too (code-health CH-33). Nothing in this card
  * is visible to a listener. */
 
 import { readSource } from "./download-store.js";
@@ -375,9 +377,14 @@ export function createId3Reader({
     if (noRangeUrls.has(url)) return [];
     if (isOnline() === false) return null; // not cached: try again once online
     if (track.inFlight.has(url)) return null; // the last request is still running: do not start another
-    let ua = null;
-    try { ua = getDownloads()?.userAgent ?? null; } catch (_) { /* no UA */ }
+    const ua = shellUserAgent();
     return chaptersVia((want) => viaNative(bridge, url, want, ua, track));
+  }
+
+  /** The User-Agent the shell sends publishers (the downloads surface's), or
+      null. Read per call: the downloads surface can arrive after this reader. */
+  function shellUserAgent() {
+    try { return getDownloads()?.userAgent ?? null; } catch (_) { return null; }
   }
 
   return {
@@ -395,5 +402,12 @@ export function createId3Reader({
     },
     /** For tests and a sign-out: forget every answer. */
     clear: () => { cache.clear(); noRangeUrls.clear(); },
+    /* THE TRANSPORT RULES, for app.js's podcast:chapters JSON read
+       (readDeviceChapters, code-health CH-33): it races the same deadline and
+       sends the same User-Agent as this reader, so the two reads of one
+       publisher host cannot drift apart. `CALL_TIMEOUT_MS` is this reader's
+       deadline — the module's CALL_TIMEOUT_MS unless a test configured one. */
+    CALL_TIMEOUT_MS: timeoutMs,
+    shellUserAgent,
   };
 }

@@ -363,8 +363,14 @@ export function describeTimestamp(seconds, precision = EXACT) {
   return `around minute ${mins}`;
 }
 
-/* For app.js, a classic script that cannot import this module (CH-1, #1071):
-   the episode page's chapter times and timestamp links read the rule from
-   here rather than keeping a copy. Guarded, so node and the parity harness
-   import this file with no window. */
+/* For app.js, a classic script that cannot import this module (CH-1, #1071).
+   What it reads from here: the PRECISION rule (`seekPrecision` with FOREIGN,
+   through chapterPrecision, which deepLinkPrecise shares) and the APPROXIMATE
+   wording (`formatTimestamp`/`describeTimestamp`, through chapterStamp, for the
+   Chapters section and the notes' chapter rows — app.js keeps no copy of it
+   and renders no approximate row before this has loaded). What it does NOT
+   read: the exact clock text. That is `hms` above copied as app.js
+   `fmtChapterTime`, and test/clock-formatters.test.js pins the two equal
+   (code-health CH-33, X1-01). Guarded, so node and the parity harness import
+   this file with no window. */
 if (typeof window !== "undefined") window.ForaySeekPolicy = { seekPrecision, formatTimestamp, describeTimestamp, FOREIGN, EXACT, APPROXIMATE };

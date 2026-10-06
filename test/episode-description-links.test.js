@@ -264,6 +264,13 @@ test("episodeDescriptionSectionHtml passes the episode's duration through as the
   assert.match(out, /data-ts="300"/, "5:00 is inside a 20-minute episode");
 });
 
+/* The real player/seek-policy.js published for one call, as client.js does on
+   a device: approximate chapter rows wait for it (code-health CH-33). */
+async function withPolicy(fn) {
+  app.ForaySeekPolicy = await import(pathToFileURL(path.join(ROOT, "player", "seek-policy.js")).href);
+  try { return fn(); } finally { delete app.ForaySeekPolicy; }
+}
+
 test("chapter rows are seek controls carrying start_time_seconds", async () => {
   /* The clock text is exact only on a classified static show with the seek
      policy loaded (CH-1, #1071; test/episode-chapters-visible.test.js owns the
@@ -290,8 +297,10 @@ test("a chapter with no usable start time is dropped, never a control that seeks
   assert.strictEqual(out, "", "no section for a list with no placeable chapter");
 });
 
-test("a chapter title is escaped like any other publisher text", () => {
-  const out = app.episodeChaptersHtml({ chapters: [{ start_time_seconds: 1, title: "<img src=x onerror=1>" }] });
+test("a chapter title is escaped like any other publisher text", async () => {
+  /* With the real seek policy: an approximate row renders only once it is
+     loaded (code-health CH-33). */
+  const out = await withPolicy(() => app.episodeChaptersHtml({ chapters: [{ start_time_seconds: 1, title: "<img src=x onerror=1>" }] }));
   assert.ok(!out.includes("<img"), "no tag from a chapter title may reach the output");
   /* Quoted attribute values blanked first: since CH-1 the row's aria-label
      carries the (escaped) title, and text inside a quoted value is not an
@@ -375,12 +384,12 @@ test("the timestamps still work inside the collapsed notes", () => {
   assert.match(out, /data-ts="754"/);
 });
 
-test("chapters stay OUT of the disclosure", () => {
+test("chapters stay OUT of the disclosure", async () => {
   /* They are navigation, not prose: short, scannable, and individually tappable
      to seek. Burying the one part of the notes that DOES something would be the
      wrong half to hide.
      MUTATION: wrap episodeChaptersHtml in a <details> too. */
-  const out = app.episodeChaptersHtml({ chapters: [{ start_time_seconds: 0, title: "Intro" }] });
+  const out = await withPolicy(() => app.episodeChaptersHtml({ chapters: [{ start_time_seconds: 0, title: "Intro" }] }));
   assert.ok(!out.includes("<details"), "the chapter list is not hidden behind a disclosure");
   assert.match(out, /^<section class="ep-chapters">/);
 });

@@ -3105,3 +3105,82 @@ test("CH-26: window.ForayPlayer no longer publishes cycleRate, stripModel, strip
   assert.deepEqual(CH26_DEAD.filter((name) => members.has(name)), [],
     "the four dead members are gone from the bridge");
 });
+
+/* CH-34 (P1-11, docs/roadmap/code-health.md): the Foray snapshot a page paints
+   from. `stopAndClose` used to hand the page a hand-written literal it called
+   "the same shape the live snapshot has" while it left out `buffering`, `gap`,
+   `rate` and `voiceFallback` — a new consumer trusting that comment read
+   `undefined` on stop. These tests boot the REAL client.js (the CH-10 harness
+   above). */
+const CH34_SNAPSHOT_KEYS = [
+  "buffering", "elapsedSec", "ended", "error", "forayId", "gap", "index", "loading",
+  "playing", "rate", "running", "totalSec", "voiceFallback",
+];
+
+test("CH-34 characterization: the live Foray snapshot carries every key a page paints from", async (t) => {
+  /* Pins today's live shape before the stop path is made to share it.
+     MUTATION (run, at the characterization commit only): delete the
+     `gap: manager?.inSeamGap === true,` line from client.js's
+     `forayStateSnapshot` — red (`gap` missing). Since CH-34 the snapshot
+     spreads `emptyForaySnapshot`, whose `gap: false` keeps the key, so that
+     mutation is green now.
+     MUTATIONS (run, after CH-34): drop the `...emptyForaySnapshot(foray.resolved)`
+     spread from `forayStateSnapshot` — red (`forayId` and `totalSec` missing);
+     delete `totalSec: resolved.totalSec` from `emptyForaySnapshot` — red here
+     and in the stop test below. (Deleting `gap: false` from
+     `emptyForaySnapshot` is caught by the stop test only: the live snapshot
+     sets `gap` itself.) */
+  const booted = await bootRealClient(t);
+  const { foraysDoc, segmentsDoc, sourcesDoc } = ch10Docs();
+  const resolved = booted.client.resolve(foraysDoc, { id: "f-ch10", segmentsDoc, sourcesDoc });
+  const seen = [];
+  await booted.client.playForay(resolved, { startIndex: 0, onChange: (s) => seen.push(s) });
+  await tick();
+  booted.audio.currentTime = 110;
+  booted.audio.fire("timeupdate");
+  await tick();
+  const live = seen.at(-1);
+  assert.ok(live, "precondition: the page was repainted while the Foray played");
+  assert.equal(live.forayId, "f-ch10");
+  assert.equal(live.index, 0);
+  assert.deepEqual(Object.keys(live).sort(), CH34_SNAPSHOT_KEYS);
+  assert.deepEqual(Object.keys(booted.client.forayStatus()).sort(), CH34_SNAPSHOT_KEYS,
+    "forayStatus() is the same snapshot");
+});
+
+test("CH-34: the stop snapshot has the live snapshot's keys — gap, rate and voiceFallback included", async (t) => {
+  /* Before CH-34 the page's last repaint on stop lacked `buffering`, `gap`,
+     `rate` and `voiceFallback` (red against that code). Now the stop hands
+     over `emptyForaySnapshot`, the same builder the live snapshot spreads its
+     readings over.
+     MUTATION (run): in client.js's `stopAndClose`, hand `onChange` the old
+     literal `{ forayId, index: -1, loading: false, playing: false, running:
+     false, ended: false, elapsedSec: 0, totalSec, error: null }` instead of
+     `emptyForaySnapshot(wasForay.resolved)` — red. */
+  const booted = await bootRealClient(t);
+  const { foraysDoc, segmentsDoc, sourcesDoc } = ch10Docs();
+  const resolved = booted.client.resolve(foraysDoc, { id: "f-ch10", segmentsDoc, sourcesDoc });
+  const seen = [];
+  await booted.client.playForay(resolved, { startIndex: 1, onChange: (s) => seen.push(s) });
+  await tick();
+  booted.audio.currentTime = 510;
+  booted.audio.fire("timeupdate");
+  await tick();
+  const live = seen.at(-1);
+  assert.equal(live.index, 1, "precondition: the Foray is live at clip 2");
+
+  assert.equal(await booted.client.stopForDataDeletion(), true, "precondition: a booted player was stopped");
+  const stopped = seen.at(-1);
+  assert.notEqual(stopped, live, "the stop repainted the page");
+  assert.deepEqual(Object.keys(stopped).sort(), Object.keys(live).sort(), "the stop snapshot has the live keys");
+  assert.deepEqual(Object.keys(stopped).sort(), CH34_SNAPSHOT_KEYS);
+  assert.equal(stopped.forayId, "f-ch10");
+  assert.equal(stopped.totalSec, resolved.totalSec);
+  assert.equal(stopped.index, -1, "nobody is in the Foray");
+  assert.equal(stopped.playing, false);
+  assert.equal(stopped.running, false);
+  assert.equal(stopped.gap, false);
+  assert.equal(stopped.voiceFallback, null);
+  assert.equal(stopped.rate, live.rate, "the listener's speed outlives the stop");
+  assert.equal(booted.client.forayStatus(), null, "and nothing is live any more");
+});

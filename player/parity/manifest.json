@@ -182,8 +182,8 @@
     },
     "deck": {
       "files": {
-        "player/parity/fixtures/deck/deck-pair.json": "fe9cf893dadb656d6ac4deda3deb05a601f0b47a3cc968ffffeb22ef398d13e1",
-        "player/parity/fixtures/deck/deck-readings.json": "b1d829b7f4e8a2136f175e46c9ceee24053751718d88de1855adbe5ce08cbe6f",
+        "player/parity/fixtures/deck/deck-pair.json": "a3492963ee97719688628c290aa685be55188e54a4947b55b405d534f5cd72d0",
+        "player/parity/fixtures/deck/deck-readings.json": "25a6dca65bcb6e26564eeef8e1341cd4e3be7b4fe839dae985c6461ce2037621",
         "player/parity/fixtures/deck/deck-slices.json": "998c065862b4f89cfcdff1b4e07ee4fca5f6884392b653bd26d1db58248b529c"
       },
       "ids": [
