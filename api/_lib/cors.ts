@@ -22,6 +22,8 @@
  * to this module without re-deriving that argument from scratch.
  */
 
+import { firstParam as firstHeader } from "./params";
+
 /**
  * Exact-match allowlist — never a wildcard, never a suffix/prefix match.
  * `https://jw-incorporated.github.io` is org-wide (CORS cannot path-scope
@@ -48,11 +50,6 @@ interface ApiResponse {
   json(body: unknown): void;
   setHeader(name: string, value: string): void;
   end(): void;
-}
-
-function firstHeader(v: string | string[] | undefined): string | null {
-  if (Array.isArray(v)) return v[0] ?? null;
-  return v ?? null;
 }
 
 /**

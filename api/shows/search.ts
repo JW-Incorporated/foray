@@ -1,6 +1,7 @@
 import { searchBreadthShows } from "../../backend/src/catalog/searchBreadthShows";
 import { loadBreadthCatalog } from "../../backend/src/catalog/breadthCatalog";
 import { applyCors } from "../_lib/cors";
+import { firstParam } from "../_lib/params";
 import { appleShowSearch, mergeDirectoryShows } from "../_lib/appleShowSearch";
 import { clientKey, normalizeSearchText, QUERY_MAX_CHARS, QUERY_MIN_CHARS, QUERY_TOO_LONG_ERROR, QUERY_TOO_SHORT_ERROR } from "../_lib/clientLimit";
 
@@ -142,11 +143,6 @@ interface ApiResponse {
   json(body: unknown): void;
   setHeader(name: string, value: string): void;
   end(): void;
-}
-
-function firstParam(v: string | string[] | undefined): string | null {
-  if (Array.isArray(v)) return v[0] ?? null;
-  return v ?? null;
 }
 
 /** The id -> row index over the merged catalogue, built once per warm

@@ -5,6 +5,7 @@ import { ingestShowFeed } from "../../../backend/src/catalog/ingestShowFeed";
 import { PostgresShowEpisodesStore, type CatalogShowEpisode } from "../../../backend/src/catalog/showEpisodesStore";
 import { type ParsedEpisode } from "../../../backend/src/feeds/parser";
 import { applyCors } from "../../_lib/cors";
+import { firstParam } from "../../_lib/params";
 import { decodeCursor, paginate } from "../../_lib/episodeCursor";
 import { liveEpisodeGuid } from "../../_lib/liveEpisodeId";
 import { sharedFeedReader } from "../../_lib/feedCache";
@@ -145,11 +146,6 @@ interface ApiResponse {
 }
 
 const PAGE_SIZE = 100;
-
-function firstParam(v: string | string[] | undefined): string | null {
-  if (Array.isArray(v)) return v[0] ?? null;
-  return v ?? null;
-}
 
 /** Maps a freshly-parsed feed episode to the same shape the DB path returns.
  * `chapters` carries the chapters the feed published INLINE (Podlove Simple

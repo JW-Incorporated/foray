@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { applyCors } from "../_lib/cors";
+import { firstParam } from "../_lib/params";
 import { type ParsedEpisode } from "../../backend/src/feeds/parser";
 import { DEFAULT_FEED_USER_AGENT } from "../../backend/src/feeds/userAgent";
 import { appleSearchBucket } from "../_lib/appleBucket";
@@ -129,11 +130,6 @@ interface ApiResponse {
   json(body: unknown): void;
   setHeader(name: string, value: string): void;
   end(): void;
-}
-
-function firstParam(v: string | string[] | undefined): string | null {
-  if (Array.isArray(v)) return v[0] ?? null;
-  return v ?? null;
 }
 
 export interface EpisodeSearchResult {
