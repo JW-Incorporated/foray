@@ -363,3 +363,21 @@ test("'Shared with you' and 'Build your own' are not built anywhere in the v2 re
   assert.ok(!/shared with you/i.test(html), "'Shared with you' must not appear on Home v2");
   assert.ok(!/build your own/i.test(html), "'Build your own' must not appear on Home v2");
 });
+
+/* ==================================================================== */
+/* CH-32 (A2-03): A STRETCH CARD SAYS WHY ONCE                           */
+/* ==================================================================== */
+
+test("CH-32: Suggested's stretch card states its reason, and how many times", () => {
+  /* CHARACTERIZATION (main): the card carries miniCard's hook sentence
+     ("Outside your usual subjects, on purpose.") AND miniCardV2's appended
+     bridge line ("Outside your usual subjects — a deliberate change of pace
+     into …") — two consecutive sentences with one meaning. */
+  const m = ui2Mount();
+  m.ctx.renderHome();
+  const html = m.view();
+  const cards = html.slice(html.indexOf("hv2-suggested")).split('<div class="mini-card"').slice(1);
+  const stretch = cards.filter((c) => c.includes('class="mc-stretch"'));
+  assert.strictEqual(stretch.length, 1, "fixture: one stretch card in Suggested");
+  assert.strictEqual((stretch[0].match(/Outside your usual subjects/g) || []).length, 2, "today: said twice");
+});

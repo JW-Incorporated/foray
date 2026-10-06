@@ -48,6 +48,7 @@ function loadApp({ lastEpisodeCard = null } = {}) {
     };
   }
   const store = new Map();
+  const view = makeEl();
   const ctx = {
     console,
     fetch: () => new Promise(() => {}),
@@ -59,7 +60,7 @@ function loadApp({ lastEpisodeCard = null } = {}) {
     document: {
       body: makeEl(), documentElement: makeEl(),
       addEventListener: noop, createElement: makeEl,
-      querySelector: () => makeEl(), querySelectorAll: () => [],
+      querySelector: (sel) => (sel === "#view" ? view : makeEl()), querySelectorAll: () => [],
     },
     navigator: { userAgent: "node" },
     location: { hash: "#/", href: "https://example.test/" },
@@ -72,14 +73,18 @@ function loadApp({ lastEpisodeCard = null } = {}) {
   ctx.globalThis = ctx;
   /* The bridge, faked at exactly the surface app.js uses. `forayResumeList` is
      what `forayResumeRows` walks; `lastEpisodeCard` is the new one. */
+  /* `episodeProgress` is the player's per-episode reading (rowProgress), from
+     `_progress` when a test sets it: unplayed otherwise. */
   ctx.ForayPlayer = {
     forayResumeList: () => ctx._forayRows || [],
     lastEpisodeCard: () => lastEpisodeCard,
+    episodeProgress: (id) => (ctx._progress && ctx._progress[id]) || { state: "unplayed", percent: null, label: null },
   };
   vm.createContext(ctx);
   process.on("unhandledRejection", noop);
   vm.runInContext(SRC, ctx, { filename: "app.js" });
   ctx._state = (code) => vm.runInContext(code, ctx);
+  ctx._view = view;
   return ctx;
 }
 
@@ -374,4 +379,34 @@ test("ROUND 2 review (honesty-7 x copy-13): a playlist card never says '0 of N p
   assert.strictEqual(pl.left, "", "no zero line");
   assert.strictEqual(pl.percent, null, "and no empty bar");
   assert.doesNotMatch(app.jumpBackInCardHtml(pl), /0 of 3 played/);
+});
+
+/* ---------- one reading of "played" (code-health CH-32, A2-04) ------------- */
+
+test("CH-32: a playlist's card on Home and its page header count 'played' the same way", () => {
+  /* The listener opened 3 of 12 episodes and finished 1. CHARACTERIZATION
+     (main): the card counts `hasOpened` (history OR a position) and says
+     "3 of 12 played" with a 25% bar; one tap later the page header, which
+     counts the player's "played" verdict, says "1 played". */
+  const app = loadApp();
+  const ids = Array.from({ length: 12 }, (_, i) => `e${i + 1}`);
+  const item = (id) => ({ id, title: `T ${id}`, show: "S", audio_url: `https://a.test/${id}.mp3`, topics: [] });
+  app._state("state.discover = { items: [] }; state.session = { session_id: 's', builder: 't', episodes: {}, cards: [] }; state.itemIndex = {};");
+  app._state("state.discover.items = " + JSON.stringify(ids.map(item)) + "; fullPool();");
+  app.lsSet("cp_playlists", [{
+    id: "pl-12", title: "Twelve", items: ids.map((id) => app.playlistPart(item(id))),
+    created: "2026-09-18T07:00:00.000Z", last_played_at: "2026-09-18T08:00:00.000Z",
+  }]);
+  app.lsSet("cp_history", ["e1", "e2", "e3"]);
+  app._progress = {
+    e1: { state: "played", percent: 100, label: "Played" },
+    e2: { state: "in-progress", percent: 50, label: "15 min left" },
+    e3: { state: "sampled", percent: null, label: null },
+  };
+  const card = app.jumpBackInEntries().find((e) => e.kind === "playlist");
+  app.renderPlaylistDetail("pl-12");
+  const header = (/· (\d+) played/.exec(app._view.innerHTML) || [])[1];
+  assert.strictEqual(header, "1", "the page header counts the finished episode");
+  assert.strictEqual(card.left, "3 of 12 played", "today: the card counts every opened one");
+  assert.strictEqual(card.percent, 25);
 });

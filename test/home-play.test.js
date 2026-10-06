@@ -105,7 +105,7 @@ async function makeBridge({ resumeRows = [], lastEpisode = null } = {}) {
   };
 }
 
-function loadApp(bridge, { pool = [EP(1), EP(2), EP(3)], cardSlots = null, playlists = null, forays = true } = {}) {
+function loadApp(bridge, { pool = [EP(1), EP(2), EP(3)], cardSlots = null, playlists = null, forays = true, els = {} } = {}) {
   const noop = () => {};
   function makeEl() {
     return {
@@ -133,7 +133,9 @@ function loadApp(bridge, { pool = [EP(1), EP(2), EP(3)], cardSlots = null, playl
     document: {
       body: makeEl(), documentElement: makeEl(), readyState: "complete",
       addEventListener: noop, createElement: makeEl,
-      querySelector: (sel) => (sel === "#view" ? view : sel === "#intro-sheet" ? null : makeEl()),
+      /* `els`: elements a test registers by selector, so a handler bound to one
+         (the Foray page's #fy-play) can be pressed. */
+      querySelector: (sel) => (sel === "#view" ? view : sel === "#intro-sheet" ? null : els[sel] || makeEl()),
       querySelectorAll: () => [],
     },
     navigator: { userAgent: "node" },
@@ -395,4 +397,104 @@ test("a press on the Foray already live resumes it rather than rebuilding it", a
   await renderAndPress(app);
   assert.strictEqual(bridge.calls.playForay.length, 0);
   assert.strictEqual(bridge.calls.forayToggle, 1);
+});
+
+/* ==================================================================== */
+/* 6. ONE FORAY START PATH (code-health CH-32, A2-02)                    */
+/* ==================================================================== */
+
+/** A button that records its click handler, for the Foray page's #fy-play. */
+function pressable() {
+  const btn = fakeButton();
+  btn.disabled = false;
+  return btn;
+}
+
+/** Press the Foray page's main button cold: render the page the way the route
+    does (renderForay reads the stored point and binds the transport), then fire
+    the #fy-play handler it bound. */
+async function pressForayPagePlay(app) {
+  const play = pressable();
+  app.els["#fy-play"] = play;
+  app.ctx.location.hash = `#/foray/${FORAY_ID}`;
+  await app.ctx.renderForay(FORAY_ID);
+  assert.ok(play.handler, "renderForay bound no #fy-play handler");
+  await play.handler();
+}
+
+test("CH-32: Home's play button and the Foray page's main button start a new, part-played or finished Foray at the same point, with one foray_play each", async () => {
+  /* Two buttons start a Foray from cold: Home's (startHomeForay) and the Foray
+     page's main button (bindForayTransport). Each owned its own resume ->
+     playForay -> logEvent("foray_play") sequence (A2-02); this table is the
+     characterization that they answer alike for each stored state, and that a
+     press is ONE event.
+     MUTATION: log `foray_play` a second time on either path -> "exactly one
+     foray_play" goes red. MUTATION 2: start Home from the point read with
+     `includeFinished` whatever it says -> the finished row starts at 3000 on
+     Home only, red. */
+  const CASES = [
+    ["never started", null, { startIndex: 0 }, null],
+    ["part-played", { elapsedSec: 600, finished: false }, { startElapsedSec: 600 }, 600],
+    ["finished", { elapsedSec: 3000, finished: true }, { startIndex: 0 }, null],
+  ];
+  for (const [name, point, expectAt, resumedFrom] of CASES) {
+    for (const surface of ["home", "foray page"]) {
+      const bridge = await makeBridge();
+      bridge.forayResume = (id, { includeFinished = false } = {}) =>
+        (id === FORAY_ID && point && (!point.finished || includeFinished)
+          ? { ...point, index: 0, label: point.finished ? "Played" : "50 min left", drift: "exact" } : null);
+      bridge.watchForay = () => null;
+      const els = {};
+      const app = loadApp(bridge, { cardSlots: [], els });
+      app.els = els;
+      const events = [];
+      const logEvent = app.ctx.logEvent;
+      app.ctx.logEvent = (type, data) => { if (type === "foray_play") events.push(data); return logEvent(type, data); };
+      if (surface === "home") {
+        const r = app.ctx.resolveListedForay(FORAY_ID);
+        assert.ok(await app.ctx.playHomeTarget({ kind: "foray", r, title: FORAY_TITLE }), `${name}/${surface}: the start succeeds`);
+      } else {
+        await pressForayPagePlay(app);
+      }
+      const where = `${name}, ${surface}`;
+      assert.strictEqual(bridge.calls.playForay.length, 1, `${where}: one start`);
+      const opts = bridge.calls.playForay[0].opts;
+      const at = "startElapsedSec" in opts ? { startElapsedSec: opts.startElapsedSec } : { startIndex: opts.startIndex };
+      assert.deepStrictEqual(at, expectAt, `${where}: where it starts`);
+      assert.strictEqual(opts.discoverDoc, vm.runInContext("state.discover", app.ctx), `${where}: the artwork document rides along`);
+      assert.strictEqual(events.length, 1, `${where}: exactly one foray_play`);
+      assert.deepStrictEqual({ ...events[0] }, {
+        foray_id: FORAY_ID, segments: bridge.calls.playForay[0].r.playable.length, resumed_from_sec: resumedFrom,
+      }, `${where}: the event says what started`);
+    }
+  }
+});
+
+/* ==================================================================== */
+/* 7. ONE JUMP BACK IN (code-health CH-32, A2-08)                        */
+/* ==================================================================== */
+
+/** The Jump back in rows a render drew, as [href, markup] pairs. */
+function jumpBackInRows(html) {
+  return [...html.matchAll(/<(?:div class="hv2-jbi-card"|a class="fy-home-row fy-jbi-row"[^>]*)>[\s\S]*?<\/(?:div|a)>/g)]
+    .map(([row]) => [(/href="([^"]+)"/.exec(row) || [])[1], row.trim()]);
+}
+
+test("CH-32: #/forays' Jump back in shows the Foray Home's rail shows, and only Forays", async () => {
+  /* A2-08: Home's rail holds Forays, episodes and playlists; the Forays page
+     keeps its content rule (Forays only). CHARACTERIZATION: on main the page
+     draws the same Foray in its own `.fy-jbi-row` markup — a second renderer. */
+  const bridge = await makeBridge({
+    resumeRows: [{ id: FORAY_ID, title: FORAY_TITLE, updated_at: "2026-09-21T00:00:00Z", percent: 40, label: "30 min left", finished: false, drift: "unverified" }],
+    lastEpisode: { ...EP(3), updated_at: "2026-09-22T00:00:00Z", percent: 30, label: "20 min left" },
+  });
+  const app = loadApp(bridge, { cardSlots: [subjectSlot([EP(2)])] });
+  app.ctx.renderHome();
+  const home = jumpBackInRows(app.view.innerHTML);
+  assert.deepStrictEqual(home.map(([href]) => href), ["#/episode/ep-3", `#/foray/${FORAY_ID}`], "fixture: Home's rail holds the episode and the Foray");
+  app.ctx.location.hash = "#/forays";
+  app.ctx.renderForays();
+  const page = jumpBackInRows(app.view.innerHTML);
+  assert.deepStrictEqual(page.map(([href]) => href), [`#/foray/${FORAY_ID}`], "the Forays page lists the Foray, and no episode");
+  assert.match(page[0][1], /class="fy-home-row fy-jbi-row"/, "today: in its own markup");
 });
