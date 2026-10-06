@@ -788,7 +788,7 @@ test("OFFLINE RELOAD: a fully offline reload gets one internally consistent gene
   await h.lifecycle("install");
   await h.lifecycle("activate");
   assert.equal(h.pointerDeployId(), "B");
-  assert.ok(h.cacheNames().includes("foray-gen-A"), "A is still retained (RETAIN_GENERATIONS=2)");
+  assert.ok(h.cacheNames().includes("foray-gen-A"), "A is still retained (activate keeps the current and the previous generation)");
 
   // Now offline. A reload navigates fresh, with no _fdid — same as any visit.
   h.setNetwork(offline);
@@ -1201,6 +1201,16 @@ test("CH-15 characterization: the pin meta attribute escapes &, \" and < in a de
      ends the attribute early and the meta regex captures `a&amp;`. */
   assert.equal(await pinMetaFor("3f9c2a"), "3f9c2a", "a hex id is written as is");
   assert.equal(await pinMetaFor('a&"<b'), "a&amp;&quot;&lt;b");
+});
+
+test("CH-15: the pin meta attribute escapes > and ' too (the five-character table app.js's esc uses)", async () => {
+  /* X1-18: sw.js cannot import app.js's esc(), so its copy must be the whole
+     table, not the three characters a double-quoted attribute happens to need
+     today — the day stampPin interpolates anything else into the fallback
+     document, a partial table is an injection.
+     MUTATION: revert escapeHtmlAttr to the three-entry table (&, ", <) — `>`
+     and `'` come back raw. */
+  assert.equal(await pinMetaFor("a>b'c"), "a&gt;b&#39;c");
 });
 
 test("SYNCHRONOUS PIN: styles/icons (non-code fallbacks) are never stamped", async () => {
