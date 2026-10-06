@@ -66,8 +66,15 @@ function makeEl(tag) {
  * @param {string} [o.search]
  * @param {boolean} [o.serveFiles]  answer fetches from the repo on disk, so the
  *   REAL init() can run to completion; otherwise fetch never settles.
+ * @param {boolean} [o.reflect]  whether `history.replaceState` writes the new
+ *   hash into `location.hash`, as a browser does. False models the harness or
+ *   embedder `replaceHash` names (CH-23, A3-09).
+ * @param {string} [o.stamp]  a generation id sw.js prepended to app.js
+ *   (`self.__forayPinnedDeployId`), read synchronously at the top of the file.
+ * @param {boolean} [o.sw]  a `navigator.serviceWorker` whose message listener
+ *   is captured, plus the `forayNoteDataSource` bridge recording its rows.
  */
-function mount({ hash = "#/", search = "", serveFiles = false } = {}) {
+function mount({ hash = "#/", search = "", serveFiles = false, reflect = true, stamp = null, sw = false } = {}) {
   /* Every `#id` lookup answers with an element, created on first ask — init()
      wires a dozen controls and this suite is about what happens AROUND them. */
   const byId = new Map();
@@ -112,7 +119,7 @@ function mount({ hash = "#/", search = "", serveFiles = false } = {}) {
       state: null,
       replaceState(state, _t, url) {
         this.state = state;
-        if (url !== undefined && url !== null) {
+        if (reflect && url !== undefined && url !== null) {
           const i = String(url).indexOf("#");
           ctx.location.hash = i >= 0 ? String(url).slice(i) : "";
         }
@@ -130,11 +137,22 @@ function mount({ hash = "#/", search = "", serveFiles = false } = {}) {
   ctx.scrollTo = (x, y) => { scrolls.push(y); ctx.scrollY = y; };
   ctx.window = ctx;
   ctx.globalThis = ctx;
+  if (stamp) { ctx.self = ctx; ctx.__forayPinnedDeployId = stamp; }
+  const swListeners = [];
+  const dataSourceNotes = [];
+  if (sw) {
+    ctx.navigator.serviceWorker = {
+      register: () => Promise.resolve(),
+      addEventListener: (type, fn) => { if (type === "message") swListeners.push(fn); },
+    };
+    ctx.forayNoteDataSource = (fields) => { dataSourceNotes.push(fields); return true; };
+  }
   vm.createContext(ctx);
   vm.runInContext(SEARCH_SRC, ctx, { filename: "search-engine.js" });
   vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
   const evalIn = (src) => vm.runInContext(src, ctx);
-  return { ctx, evalIn, listeners, scrolls, session, el, view: () => el("view").innerHTML };
+  const swSend = (data) => { for (const fn of swListeners) fn({ data }); };
+  return { ctx, evalIn, listeners, scrolls, session, el, view: () => el("view").innerHTML, swListeners, swSend, dataSourceNotes };
 }
 
 /* ==================================================================== */
@@ -223,6 +241,39 @@ test("a ?foray= link enters its Foray once; reloading on Home stays on Home", ()
   m.evalIn("enterForayFromQuery()");
   assert.strictEqual(m.ctx.location.hash, "#/", "a reload on Home must not bounce back to the Foray");
   assert.strictEqual(m.evalIn("forayParam()"), "capital-types-1", "the unlock (the param) is untouched");
+});
+
+test("CH-23: booting a bare URL that carries ?foray=<id> lands on #/foray/<id>, not on Home", async () => {
+  /* Characterization (code-health CH-23): init() runs enterForayFromQuery and
+     only THEN rewrites a bare hash to relaunchRoute(), so the Foray entry wins.
+     MUTATION: drop the enterForayFromQuery() call from init() -> "#/"; red. */
+  const m = mount({ hash: "", search: "?foray=capital-types-1", serveFiles: true });
+  await bootAndWait(m);
+  assert.strictEqual(m.ctx.location.hash, "#/foray/capital-types-1");
+  assert.strictEqual(m.session.get("foray_entered:capital-types-1"), "1", "the entry is marked for the tab");
+});
+
+test("CH-23: a bare URL with no ?foray= goes to relaunchRoute()", async () => {
+  /* Characterization: the bare-hash line asks relaunchRoute() (the native shell's
+     reopened page; "#/" on the web). MUTATION: replace `replaceHash(relaunchRoute())`
+     with `replaceHash("#/")` in init() -> "#/"; red. */
+  const m = mount({ hash: "", serveFiles: true });
+  m.ctx.relaunchRoute = () => "#/shows";
+  await bootAndWait(m);
+  assert.strictEqual(m.ctx.location.hash, "#/shows");
+});
+
+test("CH-23 (A3-09): where replaceState does not reflect into location.hash, a ?foray= arrival still lands on the Foray", async () => {
+  /* enterForayFromQuery wrote the hash with its own inline replaceState, past
+     replaceHash's "a harness (or an embedder) that does not reflect replaceState"
+     fallback. In such a host init()'s next line saw a bare hash and overwrote the
+     Foray entry with Home while the sessionStorage mark said it was entered.
+     MUTATION: restore the inline `history.replaceState(...)` in
+     enterForayFromQuery -> "#/" with the mark set; red. */
+  const m = mount({ hash: "", search: "?foray=capital-types-1", serveFiles: true, reflect: false });
+  await bootAndWait(m);
+  assert.strictEqual(m.ctx.location.hash, "#/foray/capital-types-1");
+  assert.strictEqual(m.session.get("foray_entered:capital-types-1"), "1");
 });
 
 /* ==================================================================== */
@@ -373,4 +424,98 @@ test("a show page's episode search is in the address, and coming back to it re-r
   input.value = "peace";
   m.el("#view [data-show-ep-search-form]").fire("submit");
   assert.strictEqual(m.ctx.location.hash, "#/show/s1/q/peace", "typing moves the address with it, in place");
+});
+
+/* ==================================================================== */
+/* 9. ONE FETCH SHAPE (code-health CH-23, A3-16)                          */
+/* ==================================================================== */
+
+test("CH-23: fetchJson and fetchApiJson give up the same way: one no-cache request, aborted at the deadline, answered null", async () => {
+  /* The two were twins differing only in URL and deadline, so the next fix to
+     the abort/deadline shape could land in one of them. MUTATION 1: drop
+     `ctl.abort()` from the deadline's onLate in either fetcher (today) or in
+     fetchJsonAt (after) -> a signal is not aborted; red. MUTATION 2: drop the
+     `signal` from one fetcher's request init -> the keys differ; red. */
+  const m = mount();
+  const calls = [];
+  m.ctx.AbortController = AbortController;
+  m.ctx.fetch = (url, init) => { calls.push({ url: String(url), init }); return new Promise(() => {}); };
+  m.evalIn("DATA_DEADLINE_MS = 5; API_DEADLINE_MS = 5;");
+  const data = await m.evalIn('fetchJson("data/forays.json")');
+  const api = await m.evalIn('fetchApiJson("api/shows/search?q=war")');
+  assert.strictEqual(data, null, "a stalled data document answers null at its deadline");
+  assert.strictEqual(api, null, "a stalled API call answers null at its deadline");
+  assert.deepStrictEqual(calls.map((c) => c.url),
+    ["data/forays.json", m.evalIn('apiUrl("api/shows/search?q=war")')],
+    "each fetcher keeps its own URL: the pinned static path, the API origin");
+  for (const c of calls) {
+    assert.deepStrictEqual(Object.keys(c.init).sort(), ["cache", "signal"], `${c.url}: the same request shape`);
+    assert.strictEqual(c.init.cache, "no-cache");
+    assert.strictEqual(c.init.signal.aborted, true, `${c.url}: the stalled request is freed at the deadline`);
+  }
+
+  /* The rest of the contract, the same on both: not ok -> null, a throw -> null,
+     ok -> the parsed body. */
+  for (const answer of [
+    () => Promise.resolve({ ok: false, status: 502, json: async () => ({ x: 1 }) }),
+    () => Promise.reject(new Error("offline")),
+  ]) {
+    m.ctx.fetch = answer;
+    assert.strictEqual(await m.evalIn('fetchJson("data/forays.json")'), null);
+    assert.strictEqual(await m.evalIn('fetchApiJson("api/x")'), null);
+  }
+  m.ctx.fetch = () => Promise.resolve({ ok: true, status: 200, json: async () => ({ x: 1 }) });
+  assert.deepStrictEqual({ ...(await m.evalIn('fetchJson("data/forays.json")')) }, { x: 1 });
+  assert.deepStrictEqual({ ...(await m.evalIn('fetchApiJson("api/x")')) }, { x: 1 });
+
+  /* The URL is built inside the guard, as both always did: a pin that cannot be
+     spelled is a null answer, not a rejection out of init(). MUTATION: build
+     the URL before fetchJsonAt's try (`fetchJsonAt(pinnedUrl(path), …)`) -> the
+     call rejects; red. */
+  m.evalIn('pinnedDeployId = { toString() { throw new Error("not a string"); } };');
+  assert.strictEqual(await m.evalIn('fetchJson("data/forays.json")'), null);
+  m.evalIn("pinnedDeployId = null;");
+});
+
+/* ==================================================================== */
+/* 10. THE GENERATION PIN IS WRITTEN ONCE (code-health CH-23, A3-15)      */
+/* ==================================================================== */
+
+test("CH-23: a stale-shell message naming a DIFFERENT generation does not move a page that is already pinned; the mismatch is a diagnostics row", () => {
+  /* The pin is established synchronously at the top of app.js (#233). The
+     message handler's write was a "redundant confirmation" for a path its own
+     comment says does not exist — and if a worker ever did send a different id,
+     it would move the page's later data fetches onto a generation other than
+     the one its code and earlier fetches came from. MUTATION: restore the
+     unconditional `pinnedDeployId = msg.deployId` -> the pin is gen-9; red. */
+  const m = mount({ stamp: "gen-7", sw: true });
+  assert.strictEqual(m.swListeners.length, 1, "premise: app.js listens to the worker");
+  assert.strictEqual(m.evalIn("pinnedDeployId"), "gen-7", "premise: the synchronous pin");
+  m.swSend({ source: "foray-sw", reason: "stale-shell", deployId: "gen-9" });
+  assert.strictEqual(m.evalIn("pinnedDeployId"), "gen-7");
+  assert.strictEqual(m.evalIn('pinnedUrl("data/forays.json")'), "data/forays.json?_fdid=gen-7");
+  const rows = m.dataSourceNotes.filter((r) => r.phase === "stale-shell");
+  assert.strictEqual(rows.length, 1);
+  assert.strictEqual(rows[0].version, "gen-7", "the row names the generation the page is on");
+  assert.strictEqual(rows[0].status, "pin-mismatch", "and says the worker named another");
+});
+
+test("CH-23: the pin's other two cases are unchanged — the same id is a plain row, and an unpinned page adopts the worker's id", () => {
+  /* Characterization. MUTATION 1: tag every stale-shell row "pin-mismatch" ->
+     the same-id row carries a status; red. MUTATION 2: drop the adoption on an
+     unpinned page -> its row says "unknown"; red. */
+  const same = mount({ stamp: "gen-7", sw: true });
+  same.swSend({ source: "foray-sw", reason: "stale-shell", deployId: "gen-7" });
+  const sameRows = same.dataSourceNotes.filter((r) => r.phase === "stale-shell");
+  assert.strictEqual(sameRows.length, 1);
+  assert.strictEqual(sameRows[0].version, "gen-7");
+  assert.strictEqual(sameRows[0].status, undefined);
+
+  const bare = mount({ sw: true });
+  assert.strictEqual(bare.evalIn("pinnedDeployId"), null, "premise: no synchronous pin");
+  bare.swSend({ source: "foray-sw", reason: "stale-shell", deployId: "g1" });
+  assert.strictEqual(bare.evalIn("pinnedDeployId"), "g1");
+  const bareRows = bare.dataSourceNotes.filter((r) => r.phase === "stale-shell");
+  assert.strictEqual(bareRows.length, 1);
+  assert.strictEqual(bareRows[0].version, "g1");
 });

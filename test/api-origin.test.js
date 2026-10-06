@@ -95,11 +95,18 @@ test("every api/* call in app.js goes through apiUrl(), none through pinnedUrl()
   for (const name of fetchers) {
     const fn = new RegExp(`async function ${name}\\([^)]*\\) \\{([\\s\\S]*?)\\n\\}`).exec(APP);
     assert.ok(fn, `app.js does not define ${name}()`);
-    assert.match(fn[1], /fetch\(\s*apiUrl\(/,
+    /* `fetchJsonAt(() => apiUrl(…))` since CH-23: fetchApiJson hands its URL
+       builder to the one fetch shape it shares with fetchJson, which fetches
+       what the builder returns, unchanged (asserted below). */
+    assert.match(fn[1], /\bfetch\(\s*apiUrl\(|\bfetchJsonAt\(\s*\(\)\s*=>\s*apiUrl\(/,
       `${name}() must fetch through apiUrl(), or its request resolves against the shell`);
     assert.ok(!/pinnedUrl\(/.test(fn[1]),
       `${name}() must not pin a deploy id onto a live function call`);
   }
+  const shared = /async function fetchJsonAt\(urlOf, ms\) \{([\s\S]*?)\n\}/.exec(APP);
+  assert.ok(shared, "app.js does not define fetchJsonAt(urlOf, ms)");
+  assert.match(shared[1], /fetch\(\s*urlOf\(\)\s*,/, "fetchJsonAt() fetches what its URL builder returns, unchanged");
+  assert.ok(!/pinnedUrl\(/.test(shared[1]), "fetchJsonAt() must not pin: fetchJson pins before it calls");
 
   /* And nothing else builds an api/* request by hand. Every occurrence of an
      `api/...` literal must be an argument to one of the two fetchers above (they
