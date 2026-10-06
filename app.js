@@ -5820,16 +5820,17 @@ function resolveMissingShow(show_id) {
   /* S-05 / SH-COLD: a `pi:` id is found only in the shard its row lives in,
      named by a shared link's `/k/<key>` (showById's header says why
      `api/shows/search?id=` never can). One shard, one request. With no key
-     or any key the client's own normalizer would not produce (the empty key
-     normalizes to "__"), or an id that is not `pi:<digits>`: the honest
-     empty state at once, with NO request. Either lookup answers the same
+     or any key shareLinkFor would not produce (it keys on shardKeyForQuery,
+     whose answer is its own key for "ab" or "a_" and null for "", "__" and
+     anything else), or an id that is not `pi:<digits>`: the honest empty
+     state at once, with NO request. Either lookup answers the same
      three ways below: `{ row }`, `{ row: null }` (a miss), or null (failed). */
   const pi = typeof show_id === "string" && show_id.startsWith("pi:");
   let lookup;
   if (pi) {
     const key = parseShowRoute()?.key || "";
     const n = show_id.slice(3);
-    if (!/^\d+$/.test(n) || SearchEngine.normalizeShardPrefixKey(key) !== key) {
+    if (!/^\d+$/.test(n) || SearchEngine.shardKeyForQuery(key) !== key) {
       if (view) view.innerHTML = statusPageHtml({ title: "Show", note: "Show not found. Search for it again to open it.", back: "#/shows" });
       return;
     }
@@ -12524,7 +12525,11 @@ function resolveMissingEpisode(id, t) {
     for (let page = 0; page < COLD_EPISODE_PAGES; page++) {
       const r = await fetchShowEpisodes(show_id, cursor);
       if (!stillHere()) return;
-      if (!r || !Array.isArray(r.episodes)) { failed(); return; }
+      /* A feed the endpoint could not read is not an empty show: its no-DB
+         path answers 200 `degraded` with `episodes: []` and the error, which
+         fetchShowEpisodes passes on as `error`. That is a failure (Try
+         again), never "not found". */
+      if (!r || !Array.isArray(r.episodes) || (r.error && !r.episodes.length)) { failed(); return; }
       const ep = r.episodes.find((e) => `${show_id}--${showEpisodeGuid(e)}` === want);
       if (ep) {
         const show = showById(show_id) || { show_id, title: r.show?.title || "", artwork_url: r.show?.image || null };

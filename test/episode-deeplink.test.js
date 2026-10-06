@@ -388,8 +388,10 @@ test("nothing plays on its own: a cold #/play/ link and a direct render start no
 /* api/shows/<id>/episodes as a fake: `pages` episode lists, each page's
    next_cursor naming the next one ("c1", "c2", ...), the last none. `hold`
    parks every answer until release(), so a test can move the page first.
-   `fail` answers a 500. Every request is recorded. */
-function episodesEndpoint(m, pages, { hold = false, fail = false } = {}) {
+   `fail` answers a 500. `degraded` answers what the no-DB path sends when
+   the feed cannot be read: 200, no episodes, `degraded` and the error.
+   Every request is recorded. */
+function episodesEndpoint(m, pages, { hold = false, fail = false, degraded = false } = {}) {
   const calls = [];
   const parked = [];
   m.ctx.fetch = (url) => {
@@ -397,11 +399,13 @@ function episodesEndpoint(m, pages, { hold = false, fail = false } = {}) {
     calls.push(u);
     const cur = /[?&]cursor=([^&]+)/.exec(u);
     const i = cur ? Number(decodeURIComponent(cur[1]).slice(1)) : 0;
-    const body = {
-      show: { title: "Founders", description: null, image: "https://x.test/founders.png" },
-      episodes: pages[i] || [],
-      next_cursor: i + 1 < pages.length ? "c" + (i + 1) : null,
-    };
+    const body = degraded
+      ? { show: { title: "Founders", description: null, image: null }, episodes: [], next_cursor: null, degraded: true, error: "feed unavailable" }
+      : {
+        show: { title: "Founders", description: null, image: "https://x.test/founders.png" },
+        episodes: pages[i] || [],
+        next_cursor: i + 1 < pages.length ? "c" + (i + 1) : null,
+      };
     const answer = fail ? { ok: false, status: 500, json: async () => ({}) } : { ok: true, status: 200, json: async () => body };
     if (!hold) return Promise.resolve(answer);
     return new Promise((resolve) => parked.push(() => resolve(answer)));
@@ -512,6 +516,21 @@ test("a failed lookup says so with Try again, which runs the same lookup", async
   assert.match(m.view.innerHTML, /Feed episode 7/);
   assert.match(m.view.innerHTML, /data-ts="30"/, "and the retry kept t=");
   assert.strictEqual(api.calls.length, 1);
+});
+
+test("a feed the endpoint could not read (200, degraded, no episodes) is a failure with Try again, not \"not found\"", async () => {
+  /* MUTATION: drop the `|| (r.error && !r.episodes.length)` arm from the page
+     loop -> the empty degraded page reads as a miss and paints "Episode not
+     found." with no Try again; red. */
+  const m = mount({ hash: "#/episode/founders--g-7" });
+  const api = episodesEndpoint(m, [feedPage(0)], { degraded: true });
+  m.view.querySelector = () => null;
+  m.evalIn("route()");
+  await ticks(20);
+  assert.strictEqual(api.calls.length, 1);
+  assert.match(m.view.innerHTML, /Couldn't load this episode\./);
+  assert.match(m.view.innerHTML, /data-retry/, "with Try again");
+  assert.doesNotMatch(m.view.innerHTML, /Episode not found/);
 });
 
 test("the apple:<show>:<guid> spelling of an episode cold-opens under the id it was shared by", async () => {

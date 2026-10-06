@@ -326,7 +326,7 @@ test("a pi: id with no /k/ key renders honest 'Show not found.' immediately — 
   /* showById's header: a pi: row is found only in its shard, and only a
      shared link's /k/<key> names that shard. With none there is nothing to
      ask, so a cold open must neither hang on "Loading show..." nor guess.
-     MUTATION: drop `|| SearchEngine.normalizeShardPrefixKey(key) !== key`
+     MUTATION: drop `|| SearchEngine.shardKeyForQuery(key) !== key`
      from resolveMissingShow's pi: guard -> it asks `shards/.json` (the empty
      key); red on the zero. */
   const m = mount({ onLine: true });
@@ -355,12 +355,14 @@ test("a shared #/show/pi:<n>/k/<key> link cold-opens on a fresh device from exac
 });
 
 test("a malformed /k/ hint or pi: id is not found at once, with no request", async () => {
-  /* MUTATION: drop the `normalizeShardPrefixKey(key) !== key` check -> each
+  /* MUTATION: drop the `shardKeyForQuery(key) !== key` check -> each
      bad key is requested; red. MUTATION 2: drop the `/^\d+$/` id check ->
-     `pi:abc` is requested; red. */
+     `pi:abc` is requested; red. MUTATION 3: check with
+     `normalizeShardPrefixKey(key) !== key` instead -> `/k/__`, a key
+     shareLinkFor never produces, is requested; red. */
   const m = mount({ onLine: true });
   const view = m.byId.get("view");
-  for (const h of ["#/show/pi%3A555/k/S!", "#/show/pi%3A555/k/abc", "#/show/pi%3A555/k/_a", "#/show/pi%3A555/k/%", "#/show/pi%3Aabc/k/sc", "#/show/pi%3A/k/sc"]) {
+  for (const h of ["#/show/pi%3A555/k/S!", "#/show/pi%3A555/k/__", "#/show/pi%3A555/k/abc", "#/show/pi%3A555/k/_a", "#/show/pi%3A555/k/%", "#/show/pi%3Aabc/k/sc", "#/show/pi%3A/k/sc"]) {
     m.ctx.location.hash = h;
     m.evalIn("renderCurrentPage()");
     assert.ok(view.innerHTML.includes("Show not found."), h);
