@@ -1,0 +1,11 @@
+body { background: #101014; color: #f2f2f5; font: 16px/1.4 system-ui, sans-serif; margin: 0; padding: 16px; }
+.lowc { color: #3a3a44; }                       /* gate: contrast */
+.tiny { width: 20px; height: 20px; padding: 0; } /* gate: tap-targets */
+.big { min-width: 48px; min-height: 48px; }
+.spin { width: 24px; height: 24px; background: #c33; animation: gx-spin 2s linear infinite; } /* gate: reduced-motion (no reduce block, on purpose) */
+@keyframes gx-spin { to { transform: rotate(360deg); } }
+.wide { width: 640px; background: #333; }        /* gate: overflow */
+#gx-sheet { position: fixed; left: 0; right: 0; bottom: 0; background: #222; padding: 16px; }
+#gx-sheet[hidden] { display: none; }
+#gx-open { min-width: 48px; min-height: 48px; }
+a { color: #8ab4ff; }

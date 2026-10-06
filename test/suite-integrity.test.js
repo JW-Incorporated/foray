@@ -1879,6 +1879,7 @@ const FLOORS = {
   "tools/refresh/entities.test.mjs": 5,
   /* Redesign 2026 visual baselines (pure diff/report logic, synthetic PNGs). Each test names its mutation. */
   "tools/ui-lab/baseline.test.mjs": 16,
+  "tools/ui-lab/gates.test.mjs": 19, // hard-limit gate rules; pure, each test names its mutation
   /* Audit round 3 (L8, data-tools-11): session.json is patched and verified
      before backfill-audio / classify-dai write any file, with replacer
      functions so a `$&` in an audio URL stays literal. Zero slack. */

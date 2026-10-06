@@ -100,6 +100,8 @@ async function gotoHash(page, hash) {
  * @param {string[]} [o.states]   subset of app state ids
  * @param {boolean} [o.remoteImages=true]
  * @param {string} [o.scheme="dark"]
+ * @param {"reduce"|"no-preference"} [o.reducedMotion]  emulated prefers-reduced-motion (default: browser default)
+ * @param {(page, getCurrent)=>Promise<void>} [o.onPage]  called once per new page, before navigation
  * @param {(page, meta)=>Promise<any>} onShot
  */
 export async function walk(o, onShot) {
@@ -147,12 +149,14 @@ export async function walk(o, onShot) {
         locale: "en-US",
         timezoneId: "UTC",
         colorScheme: o.scheme || "dark",
+        ...(o.reducedMotion ? { reducedMotion: o.reducedMotion } : {}),
       });
       const seed = o.target === "app" ? buildSeed(st.seed, fx) : {};
       await context.addInitScript(initScript({ seed, css: o.css }));
       const stubs = await installStubs(context, { localOrigins: server ? [new URL(server.baseUrl).origin] : [], remoteImages });
       const page = await context.newPage();
       let current = { state: st.id, label: "boot", route: "", viewport: vp.name };
+      if (o.onPage) await o.onPage(page, () => current); // gates.mjs: per-page listeners
       page.on("pageerror", (e) => errors.push({ ...current, kind: "pageerror", message: String(e && e.message || e).slice(0, 300) }));
       page.on("console", (m) => { if (m.type() === "error") errors.push({ ...current, kind: "console", message: (m.text() + " " + (m.location().url || "")).slice(0, 300) }); });
       try {
