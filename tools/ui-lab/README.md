@@ -4,10 +4,12 @@ A Playwright screenshot + accessibility harness. It looks at today's app, or at
 any static prototype with hash routes, the same deterministic way every time, so
 two renders can be compared by a judge (or a diff).
 
-**This directory has no `test` script and no `*.test.*` files, on purpose.**
-`tools/ci/run-suites.mjs` auto-runs every `tools/<dir>` package that has a `test`
-script, and `test/suite-integrity.test.js` demands a floor for every suite. This
-is a tool, not a suite. Do not add either.
+**One suite lives here: `baseline.test.mjs`** (pure diff/report logic, synthetic
+PNGs, no browser; floored in `test/suite-integrity.test.js`). `tools/ci/run-suites.mjs`
+therefore runs `npm ci` in this directory. That installs playwright, axe-core,
+pixelmatch and pngjs but downloads **no browser** (`playwright install` is a
+separate step CI never runs), so CI cost is a few seconds. Do not add a test that
+launches a browser.
 
 ## Setup (once per checkout)
 
@@ -48,6 +50,45 @@ image, for a fully offline run), `--scheme dark|light` (default `dark`),
 Windows note: Git Bash rewrites an argument that looks like a path, so
 `--routes "#/a"` can arrive as `C:/Program Files/Git/a`. Run from PowerShell, or
 set `MSYS_NO_PATHCONV=1`.
+
+## Visual baselines (`baseline.mjs`)
+
+Lock a render set, then catch unintended visual change later. Direction-independent:
+it works on the current app or any prototype `shoot.mjs` can drive.
+
+```
+# record: renders with shoot.mjs (args after the options are passed through) and copies the shots
+node tools/ui-lab/baseline.mjs record --name gallery-v1 --target url --url path/to/gallery.html      --routes "#/gallery" --no-remote-images
+# or lock an existing render dir
+node tools/ui-lab/baseline.mjs record --name today --from data-local/redesign/shots/today [--force]
+
+# compare: re-renders with the SAME shoot args (stored in baseline.json), or --from <renderDir>
+node tools/ui-lab/baseline.mjs compare --name gallery-v1 [--max-pct 0] [--pixel-threshold 0.1] [--out dir]
+node tools/ui-lab/baseline.mjs list
+```
+
+Baselines: `data-local/redesign/baselines/<name>/` (gitignored; renders are never
+committed). Compare writes `data-local/redesign/compare/<name>/report.md`,
+`report.json` and `diffs/<shot>.png` (pixelmatch overlay) for every changed shot.
+Exit 0 = pass, 1 = a shot over threshold or any added/missing shot, 2 = usage.
+
+**Threshold.** Two knobs. `--pixel-threshold 0.1` is pixelmatch's per-pixel colour
+tolerance (its default; ignores sub-visible noise, not a real colour change), with
+anti-aliased pixels ignored. `--max-pct 0` fails a shot when more than that % of
+its pixels differ; 0 because the harness is deterministic (below), so any differing
+pixel is a real change. A size change, added shot or missing shot always fails.
+Raise `--max-pct` (e.g. 0.05) only for a known, accepted drift.
+
+**Determinism result (2026-10-05).** Full app set (138 shots: 6 states x 3
+viewports, `--no-remote-images`) rendered twice: 138 same, 0 differ. A 20-shot
+set with remote artwork also matched. No new nondeterminism source was found, so
+nothing was changed in `walk.mjs`; the existing controls (pinned clock, seeded
+`Math.random`, animations disabled, caret hidden, pinned audio position, fixed
+locale/timezone/scheme) are sufficient. Sanity check that compare can fail: a
+`--css` hue-rotate flagged 20/20 shots. **Record baselines with `--no-remote-images`**:
+remote artwork passes through to the live network, so a changed or slow CDN image is
+a diff your code did not cause. Baselines are also tied to the machine's Chromium
+and fonts; re-record after upgrading Playwright or on a different OS.
 
 ## What a run writes
 
