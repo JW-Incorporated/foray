@@ -208,14 +208,14 @@ self.addEventListener("install", (e) => {
 async function precache() {
   const manifestRes = await fetch(MANIFEST_URL, { cache: "reload" });
   if (!manifestRes || !manifestRes.ok) {
-    throw new TypeError(`precache failed: manifest.json did not answer`);
+    throw new TypeError(`precache failed: ${MANIFEST_URL} did not answer`);
   }
   const manifest = await manifestRes.json();
   const deployId = manifest && manifest.deploy_id;
   const files = (manifest && manifest.files) || {};
   const paths = Object.keys(files);
   if (!deployId || paths.length === 0) {
-    throw new TypeError("precache failed: manifest.json is missing deploy_id or files");
+    throw new TypeError(`precache failed: ${MANIFEST_URL} is missing deploy_id or files`);
   }
 
   /* A DEPLOY DOWNLOADS WHAT CHANGED, ONCE (round-2 audit, perf-4). Every file
@@ -815,8 +815,15 @@ async function stampPin(request, response, deployId) {
   return new Response(stamped, { status: response.status, headers });
 }
 
+/* A copy of app.js's `esc()`, the same five-character table and the same
+   `?? ""` guard: a service worker cannot import a classic page script, so this
+   stays a copy, and a copy is only safe whole (X1-18). Today it sees only a
+   deploy id inside a double-quoted attribute; the full table means it is still
+   correct the day `stampPin` interpolates anything else. Pinned by
+   test/sw-generation.test.js ("CH-15"). */
 function escapeHtmlAttr(s) {
-  return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+  return String(s ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
 /**
@@ -834,8 +841,9 @@ function escapeHtmlAttr(s) {
  * valid) FAILS VISIBLY rather than silently falling through to the live,
  * untagged path — a review correctly named this as the failure mode the
  * whole feature exists to prevent. A page can stay open across two
- * subsequent deploys (RETAIN_GENERATIONS keeps only the current and
- * immediately-previous one), and if its tagged generation is deleted by then,
+ * subsequent deploys (the `activate` handler keeps only the current and
+ * immediately-previous generation — "Bounded retention" there; it is not a
+ * setting), and if its tagged generation is deleted by then,
  * quietly serving it CURRENT data would recreate exactly the mismatched
  * code/data pair #233 was about — the tag exists specifically so that never
  * happens silently. `unavailable(request)` is the same 504 an untagged
@@ -903,10 +911,12 @@ self.addEventListener("fetch", (e) => {
   if (isApi(url)) return;
   /* MEDIA GOES STRAIGHT TO THE NETWORK (round-3 audit, app-3-7). networkFetch
      re-issues a subresource as `fetch(request.url, ...)`, which drops every
-     request header, Range included: the page's <audio> (the interlude jingle
-     is same-origin on Pages) asked for bytes and got a 200 full body, which
-     WebKit's media loader does not expect through a worker. A ranged or
-     media request is left to the browser. */
+     request header, Range included: the page's <audio> asked for bytes and
+     got a 200 full body, which WebKit's media loader does not expect through a
+     worker. A ranged or media request is left to the browser. The interlude
+     jingle is an ABSOLUTE github.io URL (player/interlude.js SITE_ROOT), so it
+     reaches this check only on GitHub Pages, where it is same-origin; on
+     Vercel it is cross-origin and the origin check above already let it go. */
   if (isRangeOrMedia(request)) return;
 
   /* Which page asked, and how to keep the worker alive for the writes that
