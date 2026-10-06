@@ -245,8 +245,10 @@ test("ROUND 2 review: generate-manifest runs as a script when reached through a 
 
 test("perf-1: index.html modulepreloads exactly the player graph the manifest generator lists", async () => {
   /* Five import levels were five serial round trips before hydration could
-     even start. MUTATION: add a player module (or delete a <link>) — the two
-     lists differ and this goes red until index.html follows. */
+     even start. The list is player/client.js's import closure (CH-07), so a
+     module nothing imports is neither preloaded nor listed. MUTATION: import a
+     new player module from client.js (or delete a <link>) — the two lists
+     differ and this goes red until index.html follows. */
   const { playerSources } = await import(pathToFileURL(path.join(ROOT, "tools/ci/generate-manifest.mjs")).href);
   const html = read("index.html");
   const preloaded = [...html.matchAll(/<link rel="modulepreload" href="([^"]+)">/g)].map((m) => m[1]).sort();
@@ -254,6 +256,100 @@ test("perf-1: index.html modulepreloads exactly the player graph the manifest ge
   assert.deepStrictEqual(preloaded, listed);
   // And they are in the head, ahead of the stylesheet, where they start early.
   assert.ok(html.indexOf("modulepreload") < html.indexOf("</head>"));
+});
+
+/* The player's module graph as the BROWSER sees it, walked independently of
+   tools/ci/generate-manifest.mjs so the two cannot agree by sharing a bug: from
+   player/client.js, every `from "./x.js"` and bare `import "./x.js"` in each
+   module reached, recursively. Deliberately looser than the generator's parser
+   (no line anchoring), so it can only ever find MORE edges than the generator. */
+function clientImportGraph() {
+  const seen = new Set();
+  const queue = ["player/client.js"];
+  while (queue.length) {
+    const rel = queue.shift();
+    if (seen.has(rel)) continue;
+    seen.add(rel);
+    for (const m of read(rel).matchAll(/\b(?:from|import)\s*["']\.\/([\w.-]+\.js)["']/g)) queue.push(`player/${m[1]}`);
+  }
+  return [...seen].sort();
+}
+
+test("CH-07 (P2-04): every module player/client.js imports, transitively, is on the boot list", async () => {
+  /* The SW precaches the manifest's list and index.html preloads it; a module
+     the page imports that is missing from it is a 404 offline. MUTATION: walk
+     only client.js's DIRECT imports (no recursion) in playerSources — seam-gap.js,
+     deck-policy.js and engine-vocabulary.js, reached only through other
+     modules, drop off and this goes red. */
+  const { playerSources } = await import(pathToFileURL(path.join(ROOT, "tools/ci/generate-manifest.mjs")).href);
+  const listed = new Set(playerSources().map((p) => p.split(path.sep).join("/")));
+  const graph = clientImportGraph();
+  assert.ok(graph.length >= 40, `premise: the walk found the real graph, got ${graph.length}`);
+  assert.ok(graph.includes("player/seam-gap.js"), "premise: a module only reached transitively is in the graph");
+  assert.deepStrictEqual(graph.filter((rel) => !listed.has(rel)), []);
+});
+
+test("CH-07 (P2-04): the modules nothing imports are NOT on the boot list, and stay on disk", async () => {
+  /* The list was a directory walk, so catalogue-directory, show-alerts,
+     locate-window and route-resume (and foray-structure, a parity reference) —
+     imported by no page code — were modulepreloaded and precached on every
+     cold boot. It is client.js's import closure now. MUTATION: put the
+     `readdirSync(player)` walk back in playerSources — all five are listed
+     again and this goes red (perf-1 too, until index.html follows). */
+  const { playerSources } = await import(pathToFileURL(path.join(ROOT, "tools/ci/generate-manifest.mjs")).href);
+  const listed = playerSources().map((p) => p.split(path.sep).join("/"));
+  const graph = new Set(clientImportGraph());
+  for (const rel of [
+    "player/catalogue-directory.js",
+    "player/show-alerts.js",
+    "player/locate-window.js",
+    "player/route-resume.js",
+    "player/foray-structure.js",
+  ]) {
+    assert.ok(fs.existsSync(path.join(ROOT, rel)), `${rel} stays on disk for its tests and parity`);
+    assert.ok(!graph.has(rel), `premise: nothing client.js reaches imports ${rel}`);
+    assert.ok(!listed.includes(rel), `${rel} is not on the boot list`);
+  }
+  assert.deepStrictEqual(listed, clientImportGraph(), "the list is the import graph, no more and no less");
+});
+
+test("CH-07: the generator reads every import shape a player module uses, and no prose", async () => {
+  /* MUTATION: drop the `\s` from STATIC_IMPORT_RE's clause class — a
+     multi-line `import { a, … } from` clause (client.js has eight) is missed;
+     or drop the `export` alternative — a re-export is missed. Either goes red. */
+  const { moduleImports, playerSources } = await import(pathToFileURL(path.join(ROOT, "tools/ci/generate-manifest.mjs")).href);
+  const src = [
+    "import {",
+    "  a,",
+    "  b as c,",
+    '} from "./multi.js";',
+    'import * as ns from "./star.js";',
+    'import def, { d } from "./mixed.js";',
+    'import "./side-effect.js";',
+    'export { e } from "./re-export.js";',
+    'export * from "./re-export-all.js";',
+    'const lazy = () => import("./dynamic.js");',
+    '/* prose: this used to come from "./prose.js" */',
+    ' * @returns {import("./jsdoc-type.js").T}',
+    'export const notAnImport = "./string.js";',
+  ].join("\n");
+  assert.deepStrictEqual(moduleImports(src), [
+    "./multi.js", "./star.js", "./mixed.js", "./side-effect.js", "./re-export.js", "./re-export-all.js", "./dynamic.js",
+  ]);
+  /* And a runtime module importing anything but a ./ sibling fails the list
+     loudly instead of shipping a page that fetches a file no deploy holds. */
+  const os = require("node:os");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ch07-graph-"));
+  try {
+    fs.mkdirSync(path.join(dir, "player"));
+    fs.writeFileSync(path.join(dir, "player", "client.js"), 'import { x } from "./a.js";\n');
+    fs.writeFileSync(path.join(dir, "player", "a.js"), 'export { y } from "../tools/elsewhere.mjs";\n');
+    assert.throws(() => playerSources(dir), /player\/a\.js imports "\.\.\/tools\/elsewhere\.mjs"/);
+    fs.writeFileSync(path.join(dir, "player", "a.js"), 'import "./gone.js";\n');
+    assert.throws(() => playerSources(dir), /missing on disk: player\/gone\.js/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 /* ==================================================================== */

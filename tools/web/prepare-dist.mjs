@@ -23,7 +23,7 @@ import { mkdirSync, rmSync, cpSync, existsSync, statSync, readdirSync } from "no
 import { fileURLToPath } from "node:url";
 import { dirname, join, relative, sep } from "node:path";
 import { POINTER_PATH } from "../ci/forays-directory.mjs";
-import { stampBuild, stampedProblems, stampTimestamp } from "../ci/generate-manifest.mjs";
+import { playerSources, stampBuild, stampedProblems, stampTimestamp } from "../ci/generate-manifest.mjs";
 import { resolveOutDir, USAGE } from "./out-dir.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -90,18 +90,16 @@ const RUNTIME_DATA = [
   "show-index.tsv",
 ];
 
-/* The player modules (#23/#24/#33). Loaded as ES modules by the client once
-   #25 wires them in; shipping them now keeps dist honest about what the app is.
-   Test files are deliberately NOT shipped. */
-function playerSources() {
-  return readdirSync(join(ROOT, "player"))
-    .filter((f) => f.endsWith(".js") && !f.endsWith(".test.js"))
-    .map((f) => join("player", f));
-}
+/* The player modules (#23/#24/#33) are `playerSources` from
+   tools/ci/generate-manifest.mjs: the import closure of player/client.js
+   (CH-07, P2-04 in docs/roadmap/code-health.md). This used to be a second
+   directory walk, so dist shipped modules no page code imports; one list now
+   decides what dist ships, what the manifest hashes for the SW to precache and
+   what index.html modulepreloads. Test files are never listed. */
 
 /* The brand faces (round-2 audit, perf-5): the Vercel dist shipped none, so
    the web deploy 404'd every @font-face and drew the fallback typeface for
-   good. Derived from the directory, like playerSources(). */
+   good. Derived from the directory, so a new face cannot be forgotten. */
 function fontSources() {
   const dir = join(ROOT, "fonts");
   if (!existsSync(dir)) return [];
@@ -147,7 +145,7 @@ mkdirSync(OUT, { recursive: true });
 const copied = [];
 const missing = [];
 
-for (const rel of [...SHELL, ...fontSources(), ...playerSources(), ...EXTRAS, ...WELL_KNOWN]) {
+for (const rel of [...SHELL, ...fontSources(), ...playerSources(ROOT), ...EXTRAS, ...WELL_KNOWN]) {
   const r = copy(rel);
   (r.missing ? missing : copied).push(r);
 }

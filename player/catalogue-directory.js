@@ -1,6 +1,10 @@
 /* The catalogue directory — the pure decisions behind "refresh the frozen
    catalogue without a store build" (issue #40, narrowed 2026-09-30).
 
+   Not on the boot path (CH-07): unwired — nothing in the page imports it yet,
+   so the web neither modulepreloads, precaches nor deploys it; importing it
+   from client.js is what puts it on all three.
+
    ── Why this exists ──────────────────────────────────────────────────────
    The first store release ships the catalogue (the discover slice, session,
    taxonomy, item tags, semantic index) frozen at build time: DECISIONS "v1 ships

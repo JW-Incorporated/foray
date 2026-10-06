@@ -62,17 +62,17 @@
 <!-- THE FIRST PAINT IS ALREADY THE DESIGN (round-2 audit, perf-5 / perf-1).
      The two roman faces are asked for before styles.css is parsed, so the first
      paint can use them rather than swap to them; the italic is left to its
-     @font-face. The player's whole module graph (every player/*.js, all
-     imported by player/client.js) is fetched in parallel here instead of one
-     import level at a time — five serial round trips, each a service-worker
-     revalidation, that app.js's boot waits on for hydration. The list is
-     player/*.js exactly; test/boot-path.test.js fails when it drifts from
-     tools/ci/generate-manifest.mjs's playerSources(). -->
+     @font-face. The player's whole module graph (player/client.js and every
+     module it imports, transitively) is fetched in parallel here instead of
+     one import level at a time — five serial round trips, each a
+     service-worker revalidation, that app.js's boot waits on for hydration.
+     The list is that import closure exactly, not every player/*.js: a module
+     nothing imports is not preloaded (CH-07). test/boot-path.test.js fails
+     when it drifts from tools/ci/generate-manifest.mjs's playerSources(). -->
 <link rel="preload" href="fonts/fraunces-variable.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/dm-sans-variable.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="modulepreload" href="player/bookmarks.js">
 <link rel="modulepreload" href="player/build-stamp.js">
-<link rel="modulepreload" href="player/catalogue-directory.js">
 <link rel="modulepreload" href="player/client.js">
 <link rel="modulepreload" href="player/continuation.js">
 <link rel="modulepreload" href="player/deck-policy.js">
@@ -91,13 +91,11 @@
 <link rel="modulepreload" href="player/foray-queue.js">
 <link rel="modulepreload" href="player/foray-resolve.js">
 <link rel="modulepreload" href="player/foray-sources.js">
-<link rel="modulepreload" href="player/foray-structure.js">
 <link rel="modulepreload" href="player/html-audio-backend.js">
 <link rel="modulepreload" href="player/id3-chapters.js">
 <link rel="modulepreload" href="player/idb-tier.js">
 <link rel="modulepreload" href="player/incoming-link.js">
 <link rel="modulepreload" href="player/interlude.js">
-<link rel="modulepreload" href="player/locate-window.js">
 <link rel="modulepreload" href="player/media-session.js">
 <link rel="modulepreload" href="player/native-engine.js">
 <link rel="modulepreload" href="player/native-facades.js">
@@ -109,12 +107,10 @@
 <link rel="modulepreload" href="player/queue-state.js">
 <link rel="modulepreload" href="player/queue-strategy.js">
 <link rel="modulepreload" href="player/queue-swipe.js">
-<link rel="modulepreload" href="player/route-resume.js">
 <link rel="modulepreload" href="player/seam-gap.js">
 <link rel="modulepreload" href="player/seek-policy.js">
 <link rel="modulepreload" href="player/segment-strip.js">
 <link rel="modulepreload" href="player/sheet-drag-dismiss.js">
-<link rel="modulepreload" href="player/show-alerts.js">
 <link rel="modulepreload" href="player/strip-scrub-gesture.js">
 <link rel="modulepreload" href="player/tail-fill.js">
 <link rel="modulepreload" href="player/transport-policy.js">

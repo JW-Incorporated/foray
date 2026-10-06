@@ -97,6 +97,32 @@ test("prepare-dist exits 2 with usage for --out . / .. / bare, and deletes nothi
   }
 });
 
+test("CH-07 (P2-04): the dist's player/ modules are exactly the ones its stamped manifest lists", async () => {
+  /* Two lists decided what player code ships: prepare-dist.mjs copied one
+     directory walk into dist/ and generate-manifest.mjs hashed another for the
+     SW to precache. They must be one list. Builds a real dist into a temp
+     directory (prepare-dist deletes and rewrites only that). MUTATION: give
+     prepare-dist.mjs its own `readdirSync(player)` walk again — dist ships
+     modules the manifest does not list and this goes red. */
+  const { playerSources } = await import("../tools/ci/generate-manifest.mjs");
+  const parent = fs.mkdtempSync(path.join(os.tmpdir(), "prepare-dist-player-"));
+  const out = path.join(parent, "dist");
+  try {
+    const r = spawnSync(process.execPath, [path.join(ROOT, "tools", "web", "prepare-dist.mjs"), "--out", out], {
+      cwd: ROOT, encoding: "utf8",
+    });
+    assert.equal(r.status, 0, r.stderr);
+    const shipped = fs.readdirSync(path.join(out, "player")).filter((f) => f.endsWith(".js")).map((f) => `player/${f}`).sort();
+    const manifest = JSON.parse(fs.readFileSync(path.join(out, "deploy-manifest.json"), "utf8"));
+    const listed = Object.keys(manifest.files).filter((k) => k.startsWith("player/")).sort();
+    assert.ok(listed.includes("player/client.js"), "premise: the manifest lists the player");
+    assert.deepEqual(shipped, listed);
+    assert.deepEqual(listed, playerSources(ROOT).map((p) => p.split(path.sep).join("/")).sort());
+  } finally {
+    fs.rmSync(parent, { recursive: true, force: true });
+  }
+});
+
 test("the dist ships nothing from docs/, so the UX prototype is not on the app's origin (security-11)", () => {
   /* docs/ux/foray-m3-prototype.html has no CSP, inline scripts and unescaped
      innerHTML interpolation. Deployed into dist it shared the app's origin,

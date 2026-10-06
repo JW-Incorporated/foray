@@ -24,8 +24,11 @@
         LOCATED_SPAN_TOLERANCE_SEC: content does not shrink under ad load.
 
    `player/seek-policy.js` `locateStep()` stays `{ implemented: false }`; this
-   file wires nothing. It is shipped (tools/ci/generate-manifest.mjs ships every
-   non-test player/*.js), so it stays dependency-free and small. */
+   file wires nothing. Not on the boot path (CH-07): it is a JS reference
+   nothing in the page imports, so the web neither modulepreloads, precaches
+   nor deploys it until a caller imports it (tools/ci/generate-manifest.mjs
+   lists only player/client.js's import closure); the native webdir still
+   copies it, so it stays dependency-free and small. */
 
 /** How much shorter than authored a located span may be (anchor-match jitter). */
 export const LOCATED_SPAN_TOLERANCE_SEC = 2;

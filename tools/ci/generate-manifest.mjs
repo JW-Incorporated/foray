@@ -55,7 +55,8 @@
  * WHICH FILES ARE LISTED
  * Exactly what sw.js needs for one complete generation: the app shell (also
  * `tools/web/prepare-dist.mjs`'s SHELL — this SHELL additionally covers
- * `manifest.json`), the brand faces, every player module the client loads, and
+ * `manifest.json`), the brand faces, every player module the client loads (the
+ * import closure of `player/client.js`, `playerSources()`), and
  * the runtime `data/*.json` app.js's `init()` fetches (kept in sync with
  * prepare-dist's RUNTIME_DATA by design), plus the pointer. The manifest never
  * lists itself (circular) and never feeds the pointer into `deploy_id`.
@@ -180,18 +181,73 @@ const RUNTIME_DATA = [
   "dai-classification.json",
 ];
 
-/* The player modules the client actually loads (#23/#24/#33). Test files are
-   deliberately excluded — they never ship. */
+/* THE PLAYER MODULES THE PAGE ACTUALLY LOADS (#23/#24/#33; CH-07, P2-04 in
+   docs/roadmap/code-health.md). The static import closure of player/client.js,
+   plus any player/*.js index.html loads with its own <script> tag — NOT every
+   player/*.js. It used to be the directory walk, which listed modules no page
+   code imports (catalogue-directory, show-alerts, locate-window, route-resume,
+   foray-structure: tested, parity references or waiting for their card), so
+   every cold boot modulepreloaded and the SW precached files the page never
+   executes, and the orphan count could only grow.
+
+   This one list decides all three: index.html's modulepreload lines
+   (test/boot-path.test.js perf-1 pins them equal), the manifest the SW
+   precaches, and tools/web/prepare-dist.mjs's dist, which imports it. A module
+   joins by being imported, and nothing else. The native webdir
+   (tools/mobile/prepare-webdir.mjs) still copies every non-test player/*.js.
+
+   The edges are read from the source with a pattern, not a parser: a static
+   `import … from "./x.js"`, `import "./x.js"` or `export … from "./x.js"`
+   STARTING A LINE (multi-line clauses included), plus a dynamic
+   `import("./x.js")` with a literal specifier. Anchoring at the line start is
+   what keeps prose in a comment from becoming an edge. A specifier that is not
+   a `./` sibling throws: the player is a flat directory of sibling modules, and
+   anything else would be a browser fetch of a file no deploy ships. A missing
+   module throws too, where `readListed` would. Test files are never listed. */
+const PLAYER_ENTRY = "player/client.js";
+const STATIC_IMPORT_RE = /^[ \t]*(?:import|export)\b[ \t]*(?:[\w$*{},\s]*?\bfrom[ \t]*)?["']([^"'\n]+)["']/gm;
+const DYNAMIC_IMPORT_RE = /(?<![{\w.$])import\(\s*["']([^"'\n]+)["']\s*\)/g;
+const PAGE_SCRIPT_RE = /<script\b[^>]*\bsrc="(player\/[^"]+\.js)"/g;
+
+/** The relative specifiers one module's source imports (static and literal
+    dynamic), in source order, deduplicated. */
+function moduleImports(src) {
+  const out = [];
+  for (const re of [STATIC_IMPORT_RE, DYNAMIC_IMPORT_RE]) {
+    for (const m of src.matchAll(re)) if (!out.includes(m[1])) out.push(m[1]);
+  }
+  return out;
+}
+
 function playerSources(root = ROOT) {
-  return readdirSync(path.join(root, "player"))
-    .filter((f) => f.endsWith(".js") && !f.endsWith(".test.js"))
-    .sort()
-    .map((f) => path.join("player", f));
+  const indexAbs = path.join(root, INDEX_FILE);
+  const pageScripts = existsSync(indexAbs)
+    ? [...readFileSync(indexAbs, "utf8").matchAll(PAGE_SCRIPT_RE)].map((m) => m[1])
+    : [];
+  const seen = new Set();
+  const queue = [PLAYER_ENTRY, ...pageScripts];
+  while (queue.length) {
+    const rel = queue.shift();
+    if (seen.has(rel)) continue;
+    const abs = path.join(root, rel);
+    if (!existsSync(abs)) throw new Error(`generate-manifest: listed file is missing on disk: ${rel}`);
+    seen.add(rel);
+    for (const spec of moduleImports(readFileSync(abs, "utf8"))) {
+      if (!/^\.\/[\w.-]+\.js$/.test(spec)) {
+        throw new Error(
+          `generate-manifest: ${rel} imports ${JSON.stringify(spec)}, which no deploy ships — ` +
+            "player modules import only ./ siblings"
+        );
+      }
+      queue.push(`player/${spec.slice(2)}`);
+    }
+  }
+  return [...seen].sort().map((rel) => path.join(...rel.split("/")));
 }
 
 /* The self-hosted brand faces styles.css's @font-face rules load (round-2
-   audit, perf-5). Derived from the directory, like playerSources(), so a new
-   face cannot be forgotten here. */
+   audit, perf-5). Derived from the directory, so a new face cannot be
+   forgotten here. */
 function fontSources(root = ROOT) {
   const dir = path.join(root, "fonts");
   if (!existsSync(dir)) return [];
@@ -608,6 +664,7 @@ export {
   computeManifest,
   readDeployMeta,
   listedFiles,
+  moduleImports,
   playerSources,
   fontSources,
   isEntryScript,
