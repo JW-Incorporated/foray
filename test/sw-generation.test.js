@@ -1179,6 +1179,30 @@ test("SYNCHRONOUS PIN: a stale navigation is stamped with a <head> meta tag, bef
   assert.ok(headIdx > -1 && headIdx < scriptIdx, "the pin meta tag is parsed before any <script> tag runs");
 });
 
+/** The pin meta `stampPin` writes into a fallback document whose generation
+    is `deployId` (the pointer names it, the origin is offline). */
+async function pinMetaFor(deployId) {
+  const h = loadWorker({
+    generations: { [deployId]: { "./": "<!doctype html><html><head><title>4a</title></head><body></body></html>" } },
+    pointer: deployId,
+    network: offline,
+  });
+  const html = await (await h.fetch(nav("./"), { resultingClientId: "page-1" })).text();
+  const m = html.match(/<meta name="foray-pin-deploy-id" content="([^"]*)">/);
+  assert.ok(m, `no pin meta in the fallback document: ${html}`);
+  return m[1];
+}
+
+test("CH-15 characterization: the pin meta attribute escapes &, \" and < in a deploy id", async () => {
+  /* Pins today's attribute bytes before escapeHtmlAttr is widened (X1-18):
+     a real deploy id is hex and passes through untouched, and the three
+     characters the original table covered keep their entities.
+     MUTATION: drop `.replace(/"/g, "&quot;")` from escapeHtmlAttr — the quote
+     ends the attribute early and the meta regex captures `a&amp;`. */
+  assert.equal(await pinMetaFor("3f9c2a"), "3f9c2a", "a hex id is written as is");
+  assert.equal(await pinMetaFor('a&"<b'), "a&amp;&quot;&lt;b");
+});
+
 test("SYNCHRONOUS PIN: styles/icons (non-code fallbacks) are never stamped", async () => {
   /* Only CODE (isCode() -> pin=true) gets stamped; a stylesheet fallback must
      come back byte-identical, since nothing reads a pin off it and stamping
