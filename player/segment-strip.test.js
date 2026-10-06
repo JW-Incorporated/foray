@@ -385,6 +385,32 @@ test("a bridge renders hatched, not merely tinted", () => {
      -> `classes.push("fy-t2")`. narrBars.length 0 vs 1. */
 });
 
+test("CH-11 characterization: a narrator item draws the narration hairline in both its shapes, a tape segment a show capsule", () => {
+  /* Pins the classification the strip had before `player/item-kind.js` owned
+     it. A bridge travels as `kind: "tts"` on the built queue and as
+     `type: "narration"` on the authored entry; both are narration-class bars
+     with no show tone, and the tape either side is a toned show capsule.
+     MUTATION (killed): drop the `type === "narration"` clause from
+     `isNarration` — the authored entry is drawn as a toned segment and
+     `entryBars` loses its narration bar. */
+  const r = withBridges("grilling-history-2", [2]);
+  const built = renderedBarClasses(mount(r.playable).markup);
+  const bridgeAt = r.playable.findIndex((i) => i.kind === "tts");
+  assert.ok(bridgeAt > 0 && bridgeAt < r.playable.length - 1, "premise: the bridge sits between two segments");
+  assert.ok(built[bridgeAt].includes("fy-seg--narration"));
+  assert.deepEqual(built[bridgeAt].filter((c) => /^fy-t\d+$/.test(c)), []);
+  for (const at of [bridgeAt - 1, bridgeAt + 1]) {
+    assert.ok(!built[at].includes("fy-seg--narration"), "tape is never narration-class");
+    assert.equal(built[at].filter((c) => /^fy-t\d+$/.test(c)).length, 1, "tape wears exactly one show tone");
+  }
+  const entries = r.entries.filter((e) => e.playable);
+  const authored = entries.findIndex((e) => e.type === "narration");
+  assert.ok(authored >= 0, "premise: the authored entry keeps `type: \"narration\"`");
+  const entryBars = renderedBarClasses(mount(entries).markup);
+  assert.ok(entryBars[authored].includes("fy-seg--narration"), "the authored shape is narration-class too");
+  assert.equal(stripTally(entries).bridges, 1);
+});
+
 test("an item with no identifiable episode joins the capsule it is next to", () => {
   /* `sourceKeyOf`'s last resort. It used to fall through to `item.id`, which on
      a built queue item is `${forayId}#${ord}` — a POSITION, unique per item — so
