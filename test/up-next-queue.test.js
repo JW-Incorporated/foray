@@ -693,8 +693,9 @@ test("Clear keeps the playing row and announces the count (PQ-02, #762)", () => 
 });
 
 test("#/queue renders Clear only with two or more rows, and a Play next per row, disabled on the row after the playing one (PQ-02, #762)", () => {
-  /* MUTATION (run, red): drop `ids[curIdx + 1] === id` from upNextRow's
-     playNextDisabled (leave `false`) -> b's Play next is enabled. MUTATION 2:
+  /* MUTATION (run, red): drop `rules.playNextOrder(ids, id, cur) === ids` from
+     upNextRow's playNextDisabled (leave `false`) -> b's Play next is enabled
+     (CH-35 replaced the hand-derived `ids[curIdx + 1] === id`). MUTATION 2:
      render Clear for any non-empty list -> the one-row page shows it. */
   const m = mountQueue(["a", "b", "c"], "a");
   m.ctx.renderQueue();

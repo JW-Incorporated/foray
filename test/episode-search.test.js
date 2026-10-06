@@ -1016,10 +1016,13 @@ test("CH-35 (A2-06): a saved episode with no session entry is painted from the l
      `ep._localSnapshot` -> the artwork, topics and release date are lost.
      MUTATION 2 (run, red): a second `_localId:` producer, or one without
      `_localSnapshot` -> the source assertions fail. */
-  const m = mount({ storage: SHOW_PAGE_SAVED });
-  m.state.catalog = { shows: [] };
   const ID = "lex-fridman-podcast--abc-123-guid";
-  const rich = SHOW_PAGE_SAVED.cp_saved[ID];
+  /* No audio_url: `liveEpisode` seeds a PLAYABLE stored snapshot into the
+     session cache on its own, so only an unplayable one reaches `rowFor` with
+     nothing under its id — the path that registers `_localSnapshot`. */
+  const { audio_url: _drop, ...rich } = SHOW_PAGE_SAVED.cp_saved[ID];
+  const m = mount({ storage: { cp_saved: { [ID]: rich } } });
+  m.state.catalog = { shows: [] };
   assert.strictEqual(m.state.itemIndex[ID], undefined, "saved in an earlier session: nothing in the session cache yet");
 
   vm.runInContext("onShowSearchInput('neuralink')", m.ctx);

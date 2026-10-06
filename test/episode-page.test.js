@@ -253,7 +253,7 @@ test("renderEpisode omits the 'More from this show' section when the show does n
 
 /* ---------- the progress chip (CH-35, A2-07) ---------- */
 
-test("renderEpisode paints the player's progress chip when it has one, and none without a player (CH-35, characterization)", () => {
+test("renderEpisode paints the player's progress chip when it has one, and none without a player or a label (CH-35, characterization)", () => {
   /* The page shares the one chip template with epRow and the Up Next row
      (test/up-next-queue.test.js pins the three byte-identical).
      MUTATION (run, red): drop the chip from renderEpisode's meta line -> the
@@ -273,4 +273,10 @@ test("renderEpisode paints the player's progress chip when it has one, and none 
   bare._state(seed);
   bare.renderEpisode("ep-9");
   assert.doesNotMatch(bare._view.innerHTML, /ep-progress/, "no player, no chip");
+
+  const unplayed = loadApp();
+  unplayed._state(seed);
+  unplayed.window.ForayPlayer = { episodeProgress: () => ({ state: "unplayed", percent: 0, label: "" }) };
+  unplayed.renderEpisode("ep-9");
+  assert.doesNotMatch(unplayed._view.innerHTML, /ep-progress/, "a mark with no words paints no chip");
 });
