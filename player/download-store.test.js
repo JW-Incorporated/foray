@@ -282,6 +282,21 @@ test("playSource is the item's remote audio_url for anything that is not a playa
   assert.deepEqual(playSource(item, done(1), {}), remote, "no platform and no webSrc: remote, never a null audio_url");
 });
 
+test("CH-27 characterization: playSource's gate is `done` with a non-empty path, and nothing else opens the file", () => {
+  /* The gate readSource shares (CH-27, P2-18). MUTATION: in the gate, test
+     `typeof record.path === "string"` -> the empty-path row plays a local URL
+     and this goes red. */
+  const item = { id: "e1", audio_url: "https://cdn/e1.mp3" };
+  const remote = { audio_url: "https://cdn/e1.mp3", isLocalFile: false };
+  const rec = { ...done(MB), webSrc: "https://localhost/_capacitor_file_/files/e1.mp3" };
+  assert.equal(playSource(item, rec, { platform: "android" }).isLocalFile, true);
+  assert.deepEqual(playSource(item, { ...rec, path: "" }, { platform: "android" }), remote, "done, empty path");
+  assert.deepEqual(playSource(item, { ...rec, path: null }, { platform: "ios" }), remote, "done, no path");
+  for (const status of STATUSES.filter((s) => s !== "done")) {
+    assert.deepEqual(playSource(item, { ...rec, status }, { platform: "android" }), remote, status);
+  }
+});
+
 /* ---------- missing ---------- */
 
 test("markMissing flips a done row to missing, drops its path, keeps the row; an unknown id is a no-op", () => {
