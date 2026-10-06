@@ -204,12 +204,19 @@
    `narration.fallback reason= at= item= host=` telemetry line, which
    `diagnostic-log.js` keeps as a `narration` row — the URL's HOST only.
 
-   ONE ORDERING TRAP, handled in `_onBackendError`: the backend's persistent
+   ONE ORDERING TRAP, ONE MARKER (code-health CH-25): the backend's persistent
    `error` listener is registered before a load's own, so a media error during
-   a load reached `E.error` (idle) BEFORE the load's rejection reached the
-   catch — and the fallback would have found the player already stopped. While
-   a rendered narration load that can fall back is in flight, that report is
-   left to the load's own rejection.
+   a load reaches `onError` BEFORE the load rejects. Every `backend.load` runs
+   inside `_loadRenderedOrCatch`, which holds `_loadInFlight = { id, seq }` for
+   its duration, and `_onBackendError` leaves any report made under it to the
+   load's own rejection — which is the one place a failed load is decided: a
+   rendered line falls back to its script (here), a Foray clip retries or
+   steps over (§16), a bridge that cannot fall back is skipped, and anything
+   else is one `E.error`. Without the marker the early report stopped the
+   player first (the fallback and the retry found it idle), and a plain episode
+   reached the reducer twice (two `pausePlayback`s, two `player.error` rows).
+   A new kind of item with a load-failure policy needs nothing here: its
+   policy lives in the rejection.
 
    AND ITS LATE TWIN: a load that fails by DEADLINE leaves the element pointed
    at the file, persistent listener attached, so a stalled fetch that finally
@@ -432,9 +439,10 @@ const isNum = (n) => typeof n === "number" && Number.isFinite(n);
  * (§14) — for the `narration.fallback` row, which must never carry the
  * backend's own message (it can hold a URL). Read off the messages
  * `html-audio-backend.js` actually produces: `did not settle within Nms` (the
- * load deadline), `load failed (code N)` / `media error N` (the element's
- * MediaError code: 2 network, 3 decode, 4 source not supported — which is how
- * most engines report a 404), and `play rejected: <Name>`.
+ * load deadline), `media error N` (the element's MediaError code, spelled the
+ * same by its persistent listener and by a load's or an in-place seek's own
+ * rejection: 2 network, 3 decode, 4 source not supported — which is how most
+ * engines report a 404), and `play rejected: <Name>`.
  *
  * @param {*} err  an Error, or the string `onError` was given
  * @returns {"timeout"|"network"|"decode"|"unsupported"|"play-rejected"|"failed"}
@@ -444,7 +452,7 @@ export function narrationFallbackReason(err) {
   try { m = String(err?.message ?? err ?? ""); } catch (_) { m = ""; }
   if (/did not settle within/.test(m)) return "timeout";
   if (/play rejected/.test(m)) return "play-rejected";
-  const code = /(?:\(code |media error )(\d+)/.exec(m)?.[1];
+  const code = /media error (\d+)/.exec(m)?.[1];
   if (code === "2") return "network";
   if (code === "3") return "decode";
   if (code === "4") return "unsupported";
@@ -789,13 +797,10 @@ export class PlayerQueueManager {
       backend.onPrefetchWindow = () => this._warmNextSegment();
     }
 
-    /** §14: `{ id, seq }` while a RENDERED narration load that can fall back to
-        its script is in flight, else `null` — see `_onBackendError`. */
-    this._narrationLoadInFlight = null;
-    /** §16: `{ id, seq }` while a Foray CLIP's backend load is in flight, else
+    /** §14 (CH-25): `{ id, seq }` while ANY `backend.load` is in flight, else
         `null`, so the element's early `error` report is left to the load's own
-        rejection, which retries or steps over — see `_onBackendError`. */
-    this._clipLoadInFlight = null;
+        rejection — see `_loadRenderedOrCatch` and `_onBackendError`. */
+    this._loadInFlight = null;
     /** §16: clips stepped over in a row for not loading
         (`FORAY_CLIP_LOAD_MAX_STEPS`); 0 again when a clip lands. */
     this._clipLoadSteps = 0;
@@ -2100,11 +2105,13 @@ export class PlayerQueueManager {
   }
 
   /**
-   * `backend.load`, except that for a line that can fall back (§14) a failure
-   * is RETURNED rather than thrown, and the load is marked in flight so the
-   * backend's own error report does not stop the player first (see
-   * `_onBackendError`). Resolves `null` on success. Any other item throws
-   * exactly as `backend.load` does.
+   * `backend.load`, the only call site of it: the load is marked in flight
+   * (`_loadInFlight`) so the backend's early error report is left to this
+   * load's rejection (§14, one ordering trap, one marker — see
+   * `_onBackendError`). For a line that can fall back (§14) a failure is
+   * RETURNED rather than thrown; any other item throws exactly as
+   * `backend.load` does, into the caller's catch (a clip's retry, §16).
+   * Resolves `null` on success.
    *
    * @param {object} item
    * @param {number} startOffset
@@ -2112,33 +2119,16 @@ export class PlayerQueueManager {
    * @returns {Promise<Error|null>}
    */
   async _loadRenderedOrCatch(item, startOffset, seq) {
-    if (!this._canSpeakInstead(item)) {
-      if (!this._isForayClip(item)) {
-        await this.backend.load(item, { startOffset });
-        return null;
-      }
-      /* §16: the same ordering trap as a narration line's, for a clip. The
-         element's persistent `error` listener reports a media error BEFORE
-         this load rejects; reported as `E.error`, the player was idle by the
-         time `_retryOrSkipClip` looked, so the web lane never retried. */
-      const marker = { id: item.id, seq };
-      this._clipLoadInFlight = marker;
-      try {
-        await this.backend.load(item, { startOffset });
-        return null;
-      } finally {
-        if (this._clipLoadInFlight === marker) this._clipLoadInFlight = null;
-      }
-    }
     const marker = { id: item.id, seq };
-    this._narrationLoadInFlight = marker;
+    this._loadInFlight = marker;
     try {
       await this.backend.load(item, { startOffset });
       return null;
     } catch (err) {
+      if (!this._canSpeakInstead(item)) throw err;
       return err ?? new Error(`load of ${item.id} failed`);
     } finally {
-      if (this._narrationLoadInFlight === marker) this._narrationLoadInFlight = null;
+      if (this._loadInFlight === marker) this._loadInFlight = null;
     }
   }
 
@@ -2156,12 +2146,12 @@ export class PlayerQueueManager {
    * The backend reports a media error or a refused `play()` (§14).
    *
    * Four cases, in order:
-   *   1. a rendered narration load that can fall back is IN FLIGHT: the
+   *   1. a backend load is IN FLIGHT (`_loadInFlight`, any item): the
    *      element's persistent `error` listener fires before the load's own, so
    *      reporting here would stop the player before the load's rejection
-   *      could fall back. The load decides; nothing is dispatched here. A
-   *      Foray clip's load (§16) is the same case: its rejection retries or
-   *      steps over the clip, and that is lost if this has gone idle first.
+   *      could fall back (§14) or retry (§16), and for any other item would
+   *      reach the reducer a second time. The load decides; nothing is
+   *      dispatched here.
    *   2. the element's file has ALREADY been given up on — a fallback
    *      `speak()` is in flight, or the line is being spoken instead of its
    *      file. A load that failed by DEADLINE leaves the element pointed at
@@ -2176,16 +2166,9 @@ export class PlayerQueueManager {
    */
   _onBackendError(msg) {
     const text = String(msg);
-    const inFlight = this._narrationLoadInFlight;
+    const inFlight = this._loadInFlight;
     if (inFlight && inFlight.seq === this._loadSeq) {
-      this._emit(`narration.error.leftToLoad ${inFlight.id} — its own load's failure decides`);
-      return undefined;
-    }
-    /* §16, the same trap for a Foray clip: its load's rejection follows and
-       either retries, steps over, or dispatches the `E.error` this would have. */
-    const clipLoad = this._clipLoadInFlight;
-    if (clipLoad && clipLoad.seq === this._loadSeq) {
-      this._emit(`foray.segment.error.leftToLoad ${clipLoad.id} — its own load's failure decides`);
+      this._emit(`load.error.leftToLoad ${inFlight.id} — its own load's failure decides`);
       return undefined;
     }
     const pending = this._narrationFallbackPending;
