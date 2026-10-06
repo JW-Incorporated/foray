@@ -43,11 +43,11 @@
  *
  * EVENTS. The plugin emits `downloadProgress {id, bytes, total}`,
  * `downloadDone {id, path, bytes}` and `downloadFailed {id, reason, status}`;
- * each is subscribed with the `listen` shape from `native-engine.js` lines
- * 116–124, copied exactly, per event name: `Capacitor.addListener` when the
- * bridge has it, else its thinner primitive `nativeCallback(plugin,
- * "addListener", { eventName })`, else nothing (a page with no event path
- * still works — it can `list()` on resume). Every event reaches the caller as
+ * each is subscribed through `native-engine.js`'s `listenTo` (imported, one
+ * copy for both plugins — code-health CH-12), per event name:
+ * `Capacitor.addListener` when the bridge has it, else its thinner primitive
+ * `nativeCallback(plugin, "addListener", { eventName })`, else nothing (a
+ * page with no event path still works — it can `list()` on resume). Every event reaches the caller as
  * `onEvent(name, payload)`, untouched; `download-store.js`'s
  * `reportFromEvent(name, payload)` turns it into the record status
  * `applyProgress` keys on (`downloadFailed`'s own `status` is the HTTP one).
@@ -65,6 +65,8 @@
  * after this module has evaluated — so a constant cannot carry it. Hence
  * `userAgentFor(build)`: the caller that enqueues (PQ-18) passes the build
  * build-stamp read, and `USER_AGENT` is only the default, `4a/dev`. */
+
+import { listenTo } from "./native-engine.js";
 
 /** The plugin's registered name on both platforms (PQ-20 iOS, PQ-22 Android). */
 export const DOWNLOADS_PLUGIN = "ForayDownloads";
@@ -94,21 +96,6 @@ export function userAgentFor(build) {
 
 /** The default UA, before the caller knows the build: `4a/dev (+…)`. */
 export const USER_AGENT = userAgentFor(null);
-
-/** Subscribe `fn` to one plugin event — the `listen(fn)` helper of
-    `native-engine.js` (lines 116–124), copied exactly, parameterised by name.
-    Returns whatever `addListener` returns (a handle with `remove()` on a real
-    bridge), or `null` when the thinner primitive or no path was used. */
-function listen(cap, eventName, fn) {
-  try {
-    if (typeof cap?.addListener === "function") return cap.addListener(DOWNLOADS_PLUGIN, eventName, fn);
-    if (typeof cap?.nativeCallback === "function") {
-      cap.nativeCallback(DOWNLOADS_PLUGIN, "addListener", { eventName }, fn);
-      return null;
-    }
-  } catch (_) { /* a page with no event path still works: it can list() on resume */ }
-  return null;
-}
 
 /**
  * The web half of ForayDownloads, or `null` when this page has no bridge that
@@ -169,7 +156,7 @@ export function createDownloadBridge({ bridge, onEvent, setTimeoutFn = setTimeou
   }
 
   const forward = typeof onEvent === "function" ? onEvent : () => {};
-  const handles = DOWNLOAD_EVENTS.map((name) => listen(bridge, name, (payload) => {
+  const handles = DOWNLOAD_EVENTS.map((name) => listenTo(bridge, DOWNLOADS_PLUGIN, name, (payload) => {
     try { forward(name, payload ?? {}); } catch (_) { /* a listener's bug is not the wire's */ }
   }));
 
