@@ -414,6 +414,14 @@
     "CH-21: how near a cold load must land is deck-policy's SETTLE_NEAR_SEC, on both events": {
       "reason": "webview-only",
       "why": "That the web element's two settling events (`canplay`, `seeked`) read deck-policy.js's SETTLE_NEAR_SEC rather than an inline 1. The constant itself is the deck-episode family's (its settledNear cases, mirrored by DeckPolicy.settleNearSec); AVDeck seeks with zero tolerance and has no events to choose between."
+    },
+    "CH-37 characterization: through the manager, a paused element is not audible and a playing one is (web lane)": {
+      "reason": "webview-only",
+      "why": "Reads HtmlAudioBackend's `audible` off an HTMLMediaElement's `paused` and `ended` (CH-37): the web lane composing its own answer to \"is sound coming out\", with an element that may not model `paused` at all. The native lane's answer is NativeBackendFacade/NativeManagerFacade over the engine's snapshot (native-facades.test.js's CH-37 and one-authority cases); AVDeck has no element flags to compose, so nothing here is a rule the engine reimplements."
+    },
+    "CH-37: the backend's `audible` is a definite yes only — an element that does not model `paused` is not audible": {
+      "reason": "webview-only",
+      "why": "Reads HtmlAudioBackend's `audible` off an HTMLMediaElement's `paused` and `ended` (CH-37): the web lane composing its own answer to \"is sound coming out\", with an element that may not model `paused` at all. The native lane's answer is NativeBackendFacade/NativeManagerFacade over the engine's snapshot (native-facades.test.js's CH-37 and one-authority cases); AVDeck has no element flags to compose, so nothing here is a rule the engine reimplements."
     }
   },
   "interlude": {
@@ -916,6 +924,18 @@
     "the position timer also runs while the ELEMENT plays behind a paused machine (founder report 1, 2026-09-22)": {
       "reason": "webview-only",
       "why": "On the web the lock screen or the car can resume the <audio> element directly, behind a machine that still says paused, so the periodic writer has to follow the element as well as the state. In native mode every remote press is an engine command (plan §4.5; EngineCore's remote handlers, the media family) and the deck is the engine's own, so its belief and its deck cannot part that way. The native rule, that the writer runs only while playing, is the manager-remainder position-timer case."
+    },
+    "CH-37 characterization: elementIsAudible is false for a paused element and true for a playing one": {
+      "reason": "js-module-shape",
+      "why": "The JS manager's `elementIsAudible` getter taking the injected backend's `audible` answer (CH-37): which object composes \"is sound coming out\" from an element's flags. In native mode the page reads the engine's snapshot through NativeManagerFacade.elementIsAudible (native-facades.test.js), and the engine reads its own deck rather than a JS backend's answer, so nothing here is a rule the engine reimplements; what the drift guards DO with the answer is fixtured (manager-episode/pause-silences-an-audible-element, manager-remainder/stop-is-silence-behind-a-paused-machine)."
+    },
+    "CH-37: an element that does not model `paused` is NOT audible through the manager": {
+      "reason": "webview-only",
+      "why": "An element without a `paused` property under HtmlAudioBackend, read through the JS manager (CH-37, P1-10): the web lane's unknown-is-not-a-yes default. AVDeck is the engine's own and always knows whether it is playing; the native page side reads the snapshot (native-facades.test.js), so there is no unmodelled element for the engine to guard against."
+    },
+    "CH-37: the manager asks the backend `audible`, and only `true` counts": {
+      "reason": "js-module-shape",
+      "why": "The JS manager's `elementIsAudible` getter taking the injected backend's `audible` answer (CH-37): which object composes \"is sound coming out\" from an element's flags. In native mode the page reads the engine's snapshot through NativeManagerFacade.elementIsAudible (native-facades.test.js), and the engine reads its own deck rather than a JS backend's answer, so nothing here is a rule the engine reimplements; what the drift guards DO with the answer is fixtured (manager-episode/pause-silences-an-audible-element, manager-remainder/stop-is-silence-behind-a-paused-machine)."
     }
   },
   "queue-state": {

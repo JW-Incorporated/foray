@@ -3312,3 +3312,21 @@ test("CH-37 characterization: through the manager, a paused element is not audib
   assert.equal(m.elementIsAudible, false, "an element that ran out is not, whatever `paused` says");
   m.dispose();
 });
+
+test("CH-37: the backend's `audible` is a definite yes only — an element that does not model `paused` is not audible", () => {
+  /* `paused` reads an unknown as NOT paused (the reconcile towards paused);
+     `audible` must read it as NOT audible, or the moves towards playing are
+     driven by a guess. KILLING MUTATIONS: `audible` as `!this.el?.paused && …`
+     (or `!this.paused`) reads the bare element as audible; dropping the
+     `ended` clause reads a run-out element as audible. */
+  const { el, b } = mk();
+  assert.equal("paused" in el, false, "precondition: this fake does not model `paused`");
+  assert.equal(b.paused, false, "`paused`'s default is unchanged: unknown reads as not paused");
+  assert.equal(b.audible, false, "and unknown is NOT audible");
+  el.paused = true;
+  assert.equal(b.audible, false, "paused");
+  el.paused = false;
+  assert.equal(b.audible, true, "playing");
+  el.ended = true;
+  assert.equal(b.audible, false, "ran out");
+});

@@ -472,3 +472,14 @@ test("CH-37 characterization: a paused engine is not audible and a playing one i
   assert.equal(s.f.manager.elementIsAudible, false, "a paused engine is not");
   assert.equal(s.f.backend.paused, true);
 });
+
+test("CH-37: the backend facade's `audible` mirrors HtmlAudioBackend's — a running deck that has not run out, nothing else", async () => {
+  /* KILLING MUTATION: drop the `ended !== true` clause — a deck that ran out
+     reads audible. */
+  const s = await scripted({ ...SNAP.playing, durationSec: 3600 });
+  assert.equal(s.f.backend.audible, true, "a running deck");
+  await s.push({ state: "interrupted", running: false, wasPlaying: true, effectiveRate: 0 });
+  assert.equal(s.f.backend.audible, false, "a stopped deck");
+  await s.push({ state: "playing", running: true, ended: true, effectiveRate: 0 });
+  assert.equal(s.f.backend.audible, false, "a deck that ran out");
+});

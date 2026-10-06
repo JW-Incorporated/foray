@@ -15,6 +15,7 @@ import { forayRuntimeSec } from "./foray-queue.js";
 import { INTERLUDE_CEILING_SEC } from "./interlude.js";
 import { INTERRUPTION_REWIND_SEC } from "./transport-policy.js";
 import { SEAM_GAP_SEC } from "./seam-gap.js";
+import { HtmlAudioBackend } from "./html-audio-backend.js";
 
 /** The shipped beat in ms — the founder's 0.5 s (2026-09-24). Read from the
     module rather than typed, so a future ruling moves one number. */
@@ -40,6 +41,9 @@ class FakeBackend {
   }
   get duration() { return this.durationById[this._loadedId] ?? this._duration; }
   set duration(v) { this._duration = v; }
+  /** HtmlAudioBackend's `audible`, over this fake's own `paused`/`ended`:
+      a definite yes only, so a fake that never sets `paused` is not audible. */
+  get audible() { return this.paused === false && this.ended !== true; }
   async load(item, { startOffset = 0 } = {}) {
     this._loadedId = item.id;
     this.outPoint = null; // contract: a load drops any armed boundary
@@ -4477,5 +4481,66 @@ test("CH-37 characterization: elementIsAudible is false for a paused element and
   assert.equal(m.elementIsAudible, true, "playing");
   backend.ended = true;
   assert.equal(m.elementIsAudible, false, "ran out");
+  m.dispose();
+});
+
+test("CH-37: an element that does not model `paused` is NOT audible through the manager", async () => {
+  /* The defect (P1-10): HtmlAudioBackend's `paused` reads an unknown as "not
+     paused", and the manager composed `backend.paused === false` on top of it,
+     so a bare element came out audible — an `interrupted` Foray would flip to
+     `playing` on the next visibilitychange with nothing flowing.
+     KILLING MUTATION: `elementIsAudible` back to `this.backend?.paused === false
+     && this.backend?.ended !== true`. */
+  __resetInstanceForTests();
+  const listeners = new Map();
+  const el = {
+    src: "", currentSrc: "", currentTime: 0, duration: 3600, playbackRate: 1, readyState: 0,
+    addEventListener(t, fn) { if (!listeners.has(t)) listeners.set(t, new Set()); listeners.get(t).add(fn); },
+    removeEventListener(t, fn) { listeners.get(t)?.delete(fn); },
+    load() {
+      this.currentSrc = this.src;
+      queueMicrotask(() => {
+        this.readyState = 4;
+        for (const t of ["loadedmetadata", "canplay"]) for (const fn of [...(listeners.get(t) ?? [])]) fn();
+      });
+    },
+    play() { return Promise.resolve(); },
+    pause() {},
+    removeAttribute() { this.src = ""; },
+  };
+  const backend = new HtmlAudioBackend({ element: el });
+  const m = new PlayerQueueManager({ backend, scheduler: INSTANT_SCHEDULER });
+  m.setQueueFromPick({ id: "a", kind: "episode", audio_url: "https://cdn.example/a.mp3" });
+  await m.play(0);
+  assert.equal(m.playheadItemId, "a", "precondition: the element holds this item");
+  assert.equal("paused" in el, false, "precondition: the element does not model `paused`");
+  assert.equal(backend.paused, false, "precondition: `paused` reads the unknown as not paused");
+  assert.equal(m.elementIsAudible, false, "an unknown is not a yes");
+  el.paused = false;
+  assert.equal(m.elementIsAudible, true, "a definite yes is");
+  m.dispose();
+});
+
+test("CH-37: the manager asks the backend `audible`, and only `true` counts", async () => {
+  /* KILLING MUTATION: the manager reading `paused`/`ended` itself again — the
+     backend below says not paused but NOT audible, and the manager must take
+     the backend's word. */
+  class Answering extends FakeBackend {
+    constructor(o) { super(o); this.answer = undefined; }
+    get audible() { return this.answer; }
+  }
+  const { m, backend } = make({ backendClass: Answering });
+  m.setQueueFromPick(ep("a"));
+  await m.play(0);
+  backend.paused = false;
+  backend.ended = false;
+  backend.answer = false;
+  assert.equal(m.elementIsAudible, false, "the backend says no; `paused` is not consulted");
+  backend.answer = undefined;
+  assert.equal(m.elementIsAudible, false, "a backend that does not answer is not audible");
+  backend.answer = 1;
+  assert.equal(m.elementIsAudible, false, "a truthy non-boolean is not a yes");
+  backend.answer = true;
+  assert.equal(m.elementIsAudible, true);
   m.dispose();
 });

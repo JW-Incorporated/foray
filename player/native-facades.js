@@ -140,6 +140,13 @@ export class NativeBackendFacade {
 
   get paused() { return !this.engine.latest()?.snapshot?.running; }
   get ended() { return this.engine.latest()?.snapshot?.ended === true; }
+  /** HtmlAudioBackend's `audible`, mirrored: a definite yes only — the deck is
+      running and has not run out. No snapshot, or a stopped deck, is not
+      audible (CH-37). */
+  get audible() {
+    const s = this.engine.latest()?.snapshot;
+    return s?.running === true && s?.ended !== true;
+  }
 
   /** A tap's autoplay grant is a WebKit element rule. The engine's AVPlayer
       needs none, so there is nothing to spend. */

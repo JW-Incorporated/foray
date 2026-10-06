@@ -186,6 +186,8 @@ class Backend {
     this.failLoadFor = new Set();
     this.beforeStartPlayback = null;
   }
+  /** HtmlAudioBackend's `audible` (CH-37): a definite yes only. */
+  get audible() { return this.paused === false && this.ended !== true; }
   async load(item, { startOffset = 0 } = {}) {
     this.outPoint = null;
     this.currentTime = startOffset;
