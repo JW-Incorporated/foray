@@ -3709,6 +3709,54 @@ test("a skip's load that a newer skip already replaced is dropped, not run after
   m.dispose();
 });
 
+test("the stale-load guard uses the reducer's identity rule: a ref that differs only in bounds or kind is dropped (CH-05)", async () => {
+  /* `_loadItem`'s player-core-9 check compares the ref it was asked to load
+     with the reducer's item in focus, and it must use queue-state.js's OWN
+     identity rule (id, kind AND bounds) — two slices of one episode are two
+     queue items, so a load for the slice the reducer has already left is
+     stale even though the id matches. The rule is imported, not copied
+     (CH-05 / P1-06). MUTATIONS THAT KILL THIS: make the manager's
+     `sameItemRef` compare id only (the bounds and kind cases load), or make
+     its `focusOf` read the wrong field (the identical case is dropped). */
+  const { m, backend, log } = make();
+  m.setQueueFromPick(ep("a"));
+  const slice = (startSec, endSec) => ({ startSec, endSec });
+  const attempt = async (target, ref) => {
+    m.state = { type: "loadingItem", target, previous: null, pendingSeek: null };
+    backend.calls.length = 0;
+    log.length = 0;
+    await m._loadItem(ref);
+    return backend.loads();
+  };
+
+  const otherSlice = await attempt(
+    { id: "a", kind: "episode", bounds: slice(0, 100) },
+    { id: "a", kind: "episode", bounds: slice(100, 200) },
+  );
+  assert.deepEqual(otherSlice, [], "a load for another slice of the same episode is not run");
+  assert.ok(log.some((t) => t.startsWith("load.stale a")), `the drop is reported: ${log}`);
+
+  const unbounded = await attempt(
+    { id: "a", kind: "episode", bounds: slice(0, 100) },
+    { id: "a", kind: "episode", bounds: null },
+  );
+  assert.deepEqual(unbounded, [], "the whole episode is not the slice the reducer is on");
+
+  const otherKind = await attempt(
+    { id: "a", kind: "tts", bounds: null },
+    { id: "a", kind: "episode", bounds: null },
+  );
+  assert.deepEqual(otherKind, [], "the same id under another kind is another item");
+
+  const same = await attempt(
+    { id: "a", kind: "episode", bounds: slice(0, 100) },
+    { id: "a", kind: "episode", bounds: slice(0, 100) },
+  );
+  assert.deepEqual(same, ["load:a"], "the ref the reducer is on loads (an equal copy, not the same object)");
+  assert.ok(!log.some((t) => t.startsWith("load.stale")), `no drop for the live target: ${log}`);
+  m.dispose();
+});
+
 test("stop() is silence even when the machine believed it was already paused (player-core-7)", async () => {
   /* The #689 drift: the element is audible while the state says `interrupted`,
      and the reducer's stop from there emits no pausePlayback. MUTATION: delete

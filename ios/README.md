@@ -15,11 +15,20 @@
 >   The same `ios-kit` job also generates `ios/Foray.xcodeproj` (`xcodegen`) and
 >   runs `xcodebuild test`, which compiles and runs `ios/AppTests/` against
 >   `PlayerQueueManager` — see "What's implemented vs. stubbed" below.
-> - **Two files are mirrored in JavaScript and must be changed together.**
->   `ForayKit/Sources/ForayKit/PlayerQueueState.swift` ↔ `player/queue-state.js`,
->   and `App/Player/PlayerQueueManager.swift` ↔ `player/queue-manager.js`. The
->   port was deliberate and the two are meant to stay diffable by eye — see the
->   header of `player/queue-state.js`. **Where they differ in status:**
+> - **`ForayKit/Sources/ForayKit/PlayerQueueState.swift` is a FROZEN legacy
+>   copy, pending #28. Do not edit it to follow a reducer change.** The
+>   reference is `player/queue-state.js`; its live mirrors are the native
+>   engine's `mobile/plugins/foray-audio/foray-engine-core/Sources/ForayEngineCore/Reducer/PlayerQueueState.swift`
+>   (copied from this file at NE-02, then brought to parity at NE-07s) and the
+>   Android twin `PlayerQueueStateMachine.java` in `foray-engine-core-jvm`,
+>   held to the JS by the `queue-state` parity family
+>   (`player/parity/manifest.json`), not by eye. This copy predates bounds,
+>   seek and the out-point. It is kept, not deleted, because `ci.yml`'s
+>   `ios-kit` job still builds and tests it (`swift test --package-path
+>   ios/ForayKit`) and `App/` reaches its types through ForayKit; retiring it
+>   is #28 (optional card NE-44). `App/Player/PlayerQueueManager.swift` was
+>   ported alongside `player/queue-manager.js` the same way and is equally
+>   historical: nothing ships from `ios/`. **History, for the record:**
 >   `PlayerQueueState` is tested on both sides (`PlayerQueueStateTests` here,
 >   `player/queue-state.test.js` there); `PlayerQueueManager` was tested
 >   **only** in JavaScript until this change (`ios/AppTests/PlayerQueueManagerTests.swift`
@@ -148,7 +157,9 @@ ios/
   instead of failing to decode on a future/unknown tag, and a
   `Session.decode(from:)` entry point that gates on `version` before
   trusting the rest of the shape.
-- `PlayerQueueState.swift` — the full `idle → loadingItem → playing →
+- `PlayerQueueState.swift` — (FROZEN legacy copy pending #28; the live
+  reducer is `player/queue-state.js` and its engine mirrors — see the box at
+  the top) the full `idle → loadingItem → playing →
   transitioning → interrupted → ended` state machine as a pure
   `reduce(state:event:) -> (PlayerQueueState, [PlayerEffect])` function.
   Encodes: position-save-on-interruption, resume-only-if-shouldResume,

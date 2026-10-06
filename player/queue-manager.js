@@ -259,7 +259,15 @@
    to the next item would start it playing. A plain episode, a narration line
    (§14) and a bridge fail exactly as before. */
 
-import { reduce, S, E, itemRef, itemBounds, TTS, END_NATURAL, END_OUT_POINT } from "./queue-state.js";
+import {
+  reduce, S, E, itemRef, itemBounds, TTS, END_NATURAL, END_OUT_POINT,
+  // The reducer's own identity (id, kind and bounds) and focus rules, imported
+  // under the names this file has always used for its staleness checks (audit
+  // round 3, player-core-4/9). One rule, one place: the manager kept a copy of
+  // each until CH-05, and a field added to identity in the reducer would have
+  // left this file's copy behind.
+  currentItem as focusOf, sameRef as sameItemRef,
+} from "./queue-state.js";
 import { SINGLE_ITEM, assertStrategy } from "./queue-strategy.js";
 import { segmentLoadGate } from "./seek-policy.js";
 import { buildForayQueue } from "./foray-queue.js";
@@ -3311,28 +3319,6 @@ function boundsOf(item) {
 
 /** Queue items are plain catalogue-shaped objects; the reducer only needs
     identity, kind, and (for a segment) the slice it occupies. */
-/** `queue-state.js`'s identity rule (id, kind and bounds), for the manager's
-    own staleness checks (audit round 3, player-core-4/9). */
-/** The item a state is about, as queue-state.js's `currentItem` reads it. */
-function focusOf(state) {
-  switch (state?.type) {
-    case "playing": return state.item;
-    case "transitioning": return state.to;
-    case "interrupted": return state.item;
-    case "loadingItem": return state.target;
-    default: return null;
-  }
-}
-
-function sameItemRef(a, b) {
-  if (a === b) return true;
-  if (!a || !b) return false;
-  const ab = a.bounds ?? null;
-  const bb = b.bounds ?? null;
-  const sameBounds = ab === bb || (ab != null && bb != null && ab.startSec === bb.startSec && ab.endSec === bb.endSec);
-  return a.id === b.id && a.kind === b.kind && sameBounds;
-}
-
 function refOf(item) {
   return itemRef(item.id, item.kind ?? "episode", boundsOf(item));
 }
