@@ -14069,7 +14069,10 @@ function isForayNarration(entry) {
   return entry?.type === "narration";
 }
 
-/* WHICH CATALOGUE SHOW A BEAT BELONGS TO, or null when nothing joins.
+/* WHICH CATALOGUE SHOW A BEAT BELONGS TO, or null when nothing joins. A
+   narration beat's tape cite (`citesHtml`) carries the same `show_id` + `show`
+   pair and is joined HERE too, so a cite and a credit naming one show cannot
+   link it two ways (code-health CH-39, A3-06).
 
    Two joins, asked in this order, and the order is the point:
 
@@ -14215,8 +14218,12 @@ function narrationScriptHtml(entry) {
    never "nothing was written", and the UI says nothing rather than implying
    either.
 
-   A tape cite links to the cited show's page through the same two joins a tape
-   beat's own credit uses; a print cite links out when it has a URL and is plain
+   A tape cite links to the cited show's page through THE join a tape beat's
+   own credit uses — `forayShowId`, not a copy of it (code-health CH-39, A3-06)
+   — and an unlinked one is the credit's own relinkable span, so the show
+   index arriving after paint upgrades a cite exactly as it upgrades a credit
+   (`relinkForayCredits`; `joinForayCreditsToShowIndex` asks for the index when
+   a cite needs it). A print cite links out when it has a URL and is plain
    text when it does not. `player/foray-resolve.js` has already dropped any cite
    that could not be resolved, so nothing here can render an empty citation. */
 function citesHtml(entry) {
@@ -14224,10 +14231,10 @@ function citesHtml(entry) {
   if (!cites.length) return "";
   const one = (c) => {
     if (c.kind === "tape") {
-      const showId = c.show_id && showById(c.show_id) ? c.show_id : showIdForShowName(c.show);
+      const showId = forayShowId(c);
       const name = showId
         ? `<a class="show-link" href="#${esc(showRoutePath(showId))}">${esc(c.show)}</a>`
-        : esc(c.show);
+        : `<span class="fy-credit" data-credit-show="${esc(c.show)}">${esc(c.show)}</span>`;
       return `<li>${name}${c.episode_title ? ` — ${esc(c.episode_title)}` : ""}</li>`;
     }
     const pub = c.url
@@ -14464,9 +14471,9 @@ function bindFeedback(r) {
    grouping and the links are computed in player/foray-sources.js, where they are
    tested; this only renders them. */
 function foraySourcesHtml(r, player) {
-  // Deployed asynchronously from player/client.js (service worker, cache), so a
-  // returning visitor can briefly hold a new app.js against an older module.
-  // Losing the credit block is a missing section; throwing here is a blank page.
+  // A module without `forayCredits` (the web's one remaining window, where
+  // client.js fell back to an older generation — see FORAY_PAGE_EXPORTS) costs
+  // a missing section; throwing here would be a blank page.
   if (typeof player.forayCredits !== "function") return "";
   const { credits, summary } = player.forayCredits(r, { discoverDoc: state.discover, collectionIds: showIndexCollectionIds(r) });
   if (!credits.length) return "";
@@ -14513,12 +14520,22 @@ function showIndexCollectionIds(r) {
    ~200 KB and never on the boot path (the S-03 rules above loadShowIndex), so
    the page paints with what the catalogue knows and, only when some credited
    show has no page of its own, asks for the index once and relinks in place:
-   the row credits, then the "Where this came from" block. Nothing is re-rendered
-   that the transport owns. */
+   the row credits and a narration beat's cites (one span, one pass), then the
+   "Where this came from" block. Nothing is re-rendered that the transport owns.
+
+   A CITE COUNTS (code-health CH-39, A3-06). This asked only of the tape beats,
+   so a narrated Foray whose beats all joined the catalogue never fetched the
+   index for a cite naming a show only the index knows, and that cite stayed
+   text beside beats that would have relinked. */
+function forayEntryNeedsIndex(e) {
+  if (!e) return false;
+  if (e.playable && e.show && !isForayNarration(e) && !forayShowId(e)) return true;
+  return Array.isArray(e.cites) && e.cites.some(c => c?.kind === "tape" && c.show && !forayShowId(c));
+}
+
 function joinForayCreditsToShowIndex(r, player) {
   if (showIndex) return;
-  const unlinked = (r?.entries || []).some(e => e?.playable && e.show && !isForayNarration(e) && !forayShowId(e));
-  if (!unlinked) return;
+  if (!(r?.entries || []).some(forayEntryNeedsIndex)) return;
   loadShowIndex().then((idx) => {
     if (!idx || state.foray !== r) return;   // failed, or the listener has moved on
     relinkForayCredits(r, player);
@@ -14606,6 +14623,66 @@ function forayHeadSub(r, player) {
   return joinMeta(...parts);
 }
 
+/* ---------- what this page needs from the player bridge (code-health CH-39, A3-05) ----------
+
+   THE ONE WINDOW WHERE THIS PAGE MEETS A MODULE OF ANOTHER VINTAGE, stated
+   once so the guards below can point here. Since #233 the service worker no
+   longer refreshes app.js and `player/client.js` on separate schedules: both
+   are revalidated on every load, and a page that falls back to the cache is
+   pinned to it. What is left is narrower and WEB-ONLY: `client.js`'s own
+   request, fired in parallel with app.js's, failing on its own and falling
+   back to an OLDER retained generation's copy while app.js answered live
+   (sw.js, "THE PIN CAN STILL LAND AFTER THE DATA"). The native shells run no
+   worker and ship app.js and the module in one bundle, so there a missing
+   export is not skew at all — it is a rename or a typo.
+
+   Either way the page DEGRADES rather than breaks — sw.js relies on that, and
+   every `typeof player.X` guard on this page is that degrade — but it used to
+   degrade SILENTLY: a renamed `stripTally` shipped green and the page lost its
+   header counts with nothing anywhere saying why. So the exports the page
+   needs to show everything it promises are named here, and a missing one is
+   said once per page load: a console line, and one `data` row in the field
+   record (`bridge-missing`, the export as a token — never prose, per
+   diagnostic-log.js's rules; no new event type and no `cp_` key).
+   test/foray-page.test.js pins every name here to a member of the real
+   ForayPlayer, so a rename on either side is a red build, not a quiet page.
+
+   Not listed, because their absence costs nothing a listener was promised:
+   `forayDriftIsClean` (a telemetry event — absent, no event) and `itemLen`
+   (segLenOf carries its own arithmetic). The transport's calls (`playForay`,
+   `forayToggle`, `watchForay`, …) are not listed either: they are not
+   guarded, so a missing one throws where it is called (inside
+   guardForayStart/guardForayTap for a tap) — loud already, never a quiet
+   section. */
+const FORAY_PAGE_EXPORTS = Object.freeze([
+  "fmtClock", "fmtSpan",                 // the clocks, the header's runtime
+  "stripTally", "stripInto",             // the header's counts and "~"; the strip (#128)
+  "forayCredits",                        // "Where this came from"
+  "forayResume", "clearForayResume",     // Jump back in / Played, Start over
+  "nudgeSteps",                          // ↺ / ↻ step sizes
+  "rateStops", "playbackRate", "setPlaybackRate", "rateLabel",   // the speed button (#242)
+]);
+/** The gaps already said this page load, so a listener revisiting the page
+    does not fill the 200-entry ring with the same row. */
+const forayBridgeGapsSaid = new Set();
+
+/** Which of FORAY_PAGE_EXPORTS `player` lacks. Says so (once per distinct gap
+    per page load) and returns the list; never throws and never stops the page. */
+function bridgeCapabilities(player, forayId = null) {
+  const missing = FORAY_PAGE_EXPORTS.filter((name) => typeof player?.[name] !== "function");
+  const key = missing.join(",");
+  if (missing.length && !forayBridgeGapsSaid.has(key)) {
+    forayBridgeGapsSaid.add(key);
+    console.warn("[foray] the player bridge is missing", key, "— the Foray page degrades without it");
+    noteDataSource({
+      trigger: "foray-page", status: "bridge-missing", forayId,
+      // diagnostic-log.js admits lower-case tokens only: stripTally -> strip-tally.
+      code: missing[0].replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`),
+    });
+  }
+  return missing;
+}
+
 /* The back link on this page goes to `#/forays`, not `#/`. enterForayFromQuery's
    whole point is that a `?foray=` link lands somewhere the unlocked DRAFT is
    still listed, so the back button is not a dead end for the one person
@@ -14636,6 +14713,9 @@ async function renderForay(id) {
     bindRetry($("#view"), () => renderForay(id));
     return;
   }
+  /* Say what this bridge cannot do before anything depends on it; the page
+     still renders on whatever it has (see FORAY_PAGE_EXPORTS). */
+  bridgeCapabilities(player, id);
   if (!state.forays) {
     $("#view").innerHTML = statusPageHtml({ title: "Foray", note: "Couldn't load forays right now.", back: "#/forays", retry: true });
     bindRetry($("#view"), retryForayDocs);
@@ -14691,13 +14771,11 @@ async function renderForay(id) {
      data file cannot leave someone resuming past the end of a Foray that got
      shorter, or paint a running order that is entirely behind them.
 
-     Still guarded, for a narrower reason than the one that used to be written
-     here. The service worker no longer refreshes app.js and the ES module on
-     separate schedules — since #233 both are revalidated on every load and a
-     page that falls back to the cache is pinned to it — but the module is loaded
-     from a deferred module script tag, and the native shells run with no worker
-     at all. An older or not-yet-evaluated module costs the resume offer, which
-     is a missing banner rather than a page stuck on "Loading…". */
+     Still guarded, for the narrower reason written once above
+     FORAY_PAGE_EXPORTS: the only remaining window is the web's, where
+     `client.js`'s own request fell back to an older generation. A module
+     without `forayResume` costs the resume offer — a missing banner rather
+     than a page stuck on "Loading…" — and `bridgeCapabilities` has said so. */
   /* `resolved` is the freshness half of #40, and it is about STORED state rather
      than about the worker: a `cp_` position written days ago can name a segment
      that a later `data/forays.json` moved or dropped, however fresh both the code
@@ -15287,10 +15365,10 @@ const FORAY_IDLE = { index: -1, playing: false, ended: false, elapsedSec: 0 };
    did not arrive, where the connection is the first thing to check.
 
    Matched on the player's telemetry STRING rather than a structured field on
-   purpose: app.js and player/client.js are cached and refreshed independently by
-   the service worker (see the note in `renderForay`), so this page is regularly
-   paired with a module of a different vintage. `NotAllowedError` is a DOM
-   exception name — it is stable in both directions across that skew. */
+   purpose: on the web this page can still be paired with an older module, when
+   `client.js`'s own request fell back to a retained generation (the one window
+   left, stated above FORAY_PAGE_EXPORTS). `NotAllowedError` is a DOM exception
+   name — it is stable in both directions across that skew. */
 /* WORDED FOR BOTH HOMES OF THIS FILE (audit 2026-09-22, qa row 141). The same
    bytes run in a browser tab and inside the Capacitor shell, where there is no
    visible browser and no reload button, so "your browser" and "reload the page"
@@ -15358,9 +15436,9 @@ function paintForayNotice(text, hint) {
    threw here would take the on-screen message down with it and restore the exact
    failure mode the issue is about: a tap that does nothing and says nothing.
    `record()` and `save()` are both written never to throw — but the function on
-   `window` comes from a module the service worker refreshes independently of this
-   file (see the vintage note in `renderForay`), so "never throws" is a property
-   of a version, not of this call. Checked, and caught anyway.
+   `window` comes from a module that, on the web, can be an older generation's
+   copy (the window stated above FORAY_PAGE_EXPORTS), so "never throws" is a
+   property of a version, not of this call. Checked, and caught anyway.
 
    THE NAME, NEVER THE MESSAGE. `err.message` carries URLs and prose, and this
    record is built to be pasted into an issue. `player/diagnostic-log.js` drops
@@ -15396,8 +15474,9 @@ async function guardForayStart(run) {
     state.forayPainted = null;
     /* THE PAINT FIRST AND THE RECORD LAST, but the record lands either way.
 
-       The order: the bridge comes from a module the service worker refreshes
-       independently of this file, which is why it is wrapped at all. A `try`
+       The order: the bridge comes from a module that can be of another vintage
+       (the web's one window, above FORAY_PAGE_EXPORTS), which is why it is
+       wrapped at all. A `try`
        covers a throw and not a slow synchronous write, and every statement
        between the catch and the paint is one that can stand between a listener
        and the only thing on screen telling them what happened. #225 is a
@@ -15915,10 +15994,10 @@ function paintForay(s) {
      and two controls, and a stale label on either is the app disagreeing with
      itself about a value the listener just set.
 
-     GUARDED, and the guard is the whole of it. app.js and the ES module are cached
-     and refreshed independently by the service worker (see the note in
-     `renderForay`), so this page is regularly paired with a module of a different
-     vintage; an older one sends no `rate`, and `FORAY_IDLE` carries none either for
+     GUARDED, and the guard is the whole of it. On the web this page can still be
+     paired with an older module, when `client.js`'s own request fell back to a
+     retained generation (the window stated above FORAY_PAGE_EXPORTS); an older
+     one sends no `rate`, and `FORAY_IDLE` carries none either for
      the same reason it carries no id. Painting anyway would put "1×" on the button
      — `rateLabel` normalises `undefined` to normal speed — and silently contradict
      a listener who is at 1.5x. Skipping leaves the label it was bound with, which
@@ -16509,15 +16588,15 @@ function bindDrawerChrome() {
    auto-merge allowlist), so the bar cannot be a static element in
    index.html.
 
-   APPENDED/REMOVED, NOT `hidden`-toggled. test/home-layout.test.js's own
+   APPENDED, NEVER `hidden`-TOGGLED. test/home-layout.test.js's own
    BUG 3 documents why: `[hidden] { display: none }` is a UA-stylesheet
    rule, and ANY author `display` declaration (which `.tab-bar { display:
    flex }` in styles.css necessarily is) beats it at any specificity. A
    `hidden` attribute on this element would therefore render anyway the
    moment its own display rule existed — exactly the bug that suite exists
-   to catch. Appending only when the flag is on, and removing it the moment
-   the flag goes off, sidesteps that cascade question entirely instead of
-   relying on getting it right. */
+   to catch. The flag that once appended and removed it is retired: the bar
+   is created once, on the first render, and lives for the page
+   (`renderTabBar`), so the cascade question never arises. */
 const TAB_ROUTES = [
   { key: "home", label: "Home", hash: "#/",
     icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
@@ -16576,10 +16655,12 @@ function onTabBarClick(e) {
   }
 }
 
-/** Renders (or removes) the tab bar to match the flag, and syncs which tab
-    reads as current. Called from renderCurrentPage() so every navigation —
-    real or a settings-toggle refresh — keeps it in sync, same as the
-    drawer's own settings text. */
+/** Creates the tab bar once — the first call appends it, every later call
+    finds it — and syncs which tab reads as current (`aria-current="page"`).
+    Called from renderCurrentPage() so every navigation — real or a
+    settings-toggle refresh — keeps the current tab in sync, same as the
+    drawer's own settings text. Nothing removes it: the flag it once followed
+    is retired. */
 function renderTabBar() {
   let bar = $("#tab-bar");
   if (!bar) {
@@ -16613,8 +16694,9 @@ function renderTabBar() {
 
 /* ---------- the drawer's switches, in ONE shape ----------
 
-   Six of them now, and until the 2026-09-12 client audit there were five
-   copies of one idea: three bound by hand in `init()` against markup in
+   Four of them on the web and five in the shell (Download over cellular
+   exists only where downloads do), and until the 2026-09-12 client audit
+   there were five copies of one idea: three bound by hand in `init()` against markup in
    index.html, two injected by near-identical fifteen-line twins
    (`bindDraftsControl`, `bindVoiceProbeControl`), and five ad-hoc label lines
    in `renderDrawer` — three unguarded, two guarded, each spelling its own
@@ -16699,11 +16781,13 @@ function paintDrawerToggles() {
   }
 }
 
-/** The listener's three, in the drawer's reading order: two from index.html,
-    the jingle appended. The founder's two are `bindDeveloperToggles`', which
-    `init()` binds later so they land in the Developer group below the
-    listener's settings. ("Open in", once a sixth switch, was deleted on
-    2026-09-22 — it chose a link-out that no longer existed.) */
+/** The listener's switches, in the drawer's reading order: two from
+    index.html, the jingle appended, and Download over cellular appended only
+    in the shell (three on the web, four in the shell). The founder's one is
+    `bindDeveloperToggles`', which `init()` binds later so it lands in the
+    Developer group below the listener's settings. ("Open in", once a sixth
+    switch, was deleted on 2026-09-22 — it chose a link-out that no longer
+    existed.) */
 function bindDrawerToggles() {
   drawerToggle("family-toggle", "Family mode", familyMode, (on) => {
     lsSet("cp_family", on);
@@ -16782,12 +16866,13 @@ function bindDeveloperToggles() {
 
 /* ---------- the engine's Developer rows (NE-22d) ----------
 
-   The four rows the M1 car test drives (docs/native-engine-m1-car-test.md,
-   "Before it can be run" item 2), in the Developer group above "Playback
-   diagnostics":
+   The five rows the car tests drive (docs/native-engine-m1-car-test.md,
+   "Before it can be run" item 2, and NE-40's M3 route-sharing arm), in the
+   Developer group above "Playback diagnostics", in ENGINE_DEV_ROWS order:
 
      Playback engine: Automatic / Native / Web (applies after restart)  NE-17
      Pause hold: forever / none                                          NE-16
+     Route sharing: Default / Long-form (applies after restart)         NE-40
      Simulate system termination                                         NE-24
      Session probe                                                       NE-25c
 
@@ -17260,8 +17345,9 @@ async function deleteRemoteData() {
  *
  * The real work for the keys is `DurableStore.purge()`, which enumerates the tiers rather
  * than the facade and verifies afterwards. The fallback in `clearStoredKeys` matters and is not
- * decoration: app.js and `player/client.js` deploy independently through the
- * service worker, so a page can be running with no store published — and then
+ * decoration: the store is published by `player/client.js`, a deferred module that can
+ * fail to load or not have evaluated yet (and on the web can be an older generation's
+ * copy — see FORAY_PAGE_EXPORTS), so a page can be running with no store published — and then
  * `localStorage` is reachable and IndexedDB is not. That case reports `ok: false`
  * with a reason, because a cleared mirror is not cleared storage.
  */
@@ -19709,8 +19795,13 @@ async function bootForayDirectory(directory) {
 function isForaySurface(hash) {
   const h = hash || "#/";
   /* `#/library` since Library grew a Forays section (review 2026-09-23): a
-     foreground refresh that adopted a new set left its list stale. */
-  return h === "#/" || h === "#/forays" || h === "#/library" || /^#\/(foray|show)\//.test(h);
+     foreground refresh that adopted a new set left its list stale.
+     `#/shows/q/<q>` since Search results paint a Forays group from
+     `forayCards()` (code-health CH-39, A3-14): an adopted set left that group
+     on the old titles until the next keystroke, and a withdrawn Foray linked to
+     "That foray isn't available". */
+  return h === "#/" || h === "#/forays" || h === "#/library"
+    || /^#\/(foray|show)\//.test(h) || /^#\/shows\/q\//.test(h);
 }
 
 /* WHAT THE PAGE ON SCREEN SHOWS OF THE FORAY SET, as a string to compare
@@ -19736,13 +19827,25 @@ function foraySurfaceSignature() {
 }
 
 /** Repaint only what the new set changed: on a show page that is its "Used in
-    the following forays" footer, in place; anywhere else the page itself. */
+    the following forays" footer, in place; on Search results, the Forays group
+    for the query on screen, in place (the field, its typed query and the
+    keyboard are the listener's — the same reason as the show page's episode
+    search); anywhere else the page itself. */
 function repaintForaySurface() {
   const r = parseShowRoute();
   if (r) {
     const slot = $("#view [data-show-forays]");
     const show = showById(r.id);
     if (slot && show) slot.innerHTML = showForaysHtml(show);
+    return;
+  }
+  if (/^#\/shows\/q\//.test(currentHash())) {
+    /* The query the page last painted, under the CURRENT token, so a repaint
+       can never resurrect a superseded query's group. Nothing painted yet
+       (or superseded since) — the next pass paints from the new set anyway. */
+    if (showSearchPainted.token === showSearchToken && showSearchPainted.query) {
+      paintForaySearchResults(showSearchPainted.query, showSearchToken);
+    }
     return;
   }
   renderCurrentPage();
@@ -20302,19 +20405,20 @@ async function init() {
   /* Narration voice (V-01): a listener setting, so it stays with the switches
      above rather than inside the Developer group below (2026-09-22 audit, R8). */
   bindVoiceControl();
-  /* The Developer group (R8): the founder's two switches, then the field
+  /* The Developer group (R8): the founder's switch, then the field
      record's surface (#264), all inside one collapsed disclosure. Deliberately
      ABOVE the control below: "Delete my data" must stay the drawer's last item,
      because it is the one control in there that cannot be undone and the last
      item is where a scrolled thumb lands. */
   bindDeveloperToggles();
   bindDiagnosticsControl();
-  /* The engine's four rows land above "Playback diagnostics", once the player
+  /* The engine's five rows land above "Playback diagnostics", once the player
      says which lane plays (NE-22d). */
   bindEngineDevRows();
   /* The drawer's last item, appended rather than written into index.html — see
-     the § delete my data header for why, and note it is deliberately BELOW the
-     two settings toggles: it is the one control in there that cannot be undone. */
+     the § delete my data header for why, and note it is deliberately BELOW
+     every switch and the Developer group: it is the one control in there that
+     cannot be undone. */
   bindDeleteControl();
   $("#refresh-btn").addEventListener("click", refreshCurrentPage);
   setBootChrome(true);

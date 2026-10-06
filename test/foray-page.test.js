@@ -395,9 +395,8 @@ test("A3-05: a missing bridge export is said once — a console line and one dia
 });
 
 test("A3-05: a complete bridge writes no row", async () => {
-  /* MUTATION: put an export the real ForayPlayer does not have in
-     FORAY_PAGE_EXPORTS (the test below goes red too) — or invert the filter in
-     bridgeCapabilities — and a complete bridge reports a gap, red. */
+  /* MUTATION: invert the filter in bridgeCapabilities (`=== "function"`) —
+     a complete bridge reports every export as a gap, red. */
   const m = await openForayWithout("__nothing__");
   assert.match(m.html(), /id="fy-play"/);
   assert.deepStrictEqual(m.rows, []);
