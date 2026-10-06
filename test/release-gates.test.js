@@ -742,6 +742,34 @@ test("K-06: iOS's budget is its own, with the TestFlight reason in the file", as
   assert.ok(deck.includes("TestFlight only"), "the deck records the same decision (D13)");
 });
 
+/* CH-20 (docs/roadmap/code-health.md, N1-03): what a shell build copies into
+   each app is whatever `fetch-models.mjs --bundled <platform>` prints, so the
+   CLI's own answer is the thing to pin, not only the in-process table. */
+const bundledByCli = (platform) => {
+  const r = require("node:child_process").spawnSync(process.execPath,
+    [path.join(ROOT, "tools/mobile/fetch-models.mjs"), "--bundled", platform], { encoding: "utf8" });
+  assert.equal(r.status, 0, r.stderr);
+  return r.stdout.split("\n").filter(Boolean);
+};
+
+test("CH-20: `--bundled ios` and `--bundled android` name what each shell build copies", () => {
+  /* CHARACTERIZATION: today iOS copies the fp32 model, af_heart and the 34
+     Core ML stage files; Android copies q8f16 and af_heart. */
+  const ios = bundledByCli("ios");
+  assert.equal(ios.length, 36);
+  assert.deepEqual(ios.slice(0, 2), ["kokoro-v1_0-fp32.onnx", "af_heart.bin"]);
+  assert.deepEqual(bundledByCli("android"), ["kokoro-v1_0-q8f16.onnx", "af_heart.bin"]);
+});
+
+test("CH-20: render-narration still checks the model pins with `fetch-models.mjs --check`", () => {
+  /* Central narration (render-narration.yml) reads the fp32 and voice pins out
+     of fetch-models.mjs, so the pin table outlives every shell build's use of it.
+     MUTATION: delete the "Model pins are consistent" step, or fetch-models.mjs. */
+  const wf = read(".github/workflows/render-narration.yml");
+  assert.match(wf, /^\s*run: node tools\/mobile\/fetch-models\.mjs --check$/m);
+  assert.ok(fs.existsSync(path.join(ROOT, "tools/mobile/fetch-models.mjs")));
+});
+
 test("K-06: the web bundle's own model gate is wired into prepare-webdir", async () => {
   /* Two different gates for two different failures, and this pins that the
      second one is actually CALLED: `MAX_BYTES` catches "something enormous got
