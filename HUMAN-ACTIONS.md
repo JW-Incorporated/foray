@@ -2,36 +2,9 @@
 
 <!-- ha-format: 2 -->
 
-> **26 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **24 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
-
-## #143 🟢 [UPGRADE] Google Play: set up the separate "4a Lab" Android app (~15 min)
-<!-- ha filed=2026-10-05 kind=default -->
-
-**Why:** The 2026 redesign is tested as a separate app beside the real 4a, so the current app is never affected. Lab builds reach Joey's Android phone through Play internal testing. Not needed until the first lab build.
-**Steps:**
-1. Play Console → Create app → Name `4a Lab`, App, Free → accept the declarations.
-2. Testing → Internal testing → Testers: create an email list with Joey's Google account. Save the opt-in link.
-3. Users and permissions: grant the service account CI uses to upload 4a "Release to testing tracks" on 4a Lab.
-4. Play may require the first bundle of a new app to be uploaded by hand. If so, the session supplies the file and the clicks.
-
-**Worked if:** the opt-in link installs "4a Lab" from the Play Store beside the real 4a.
-
-## #142 🟢 [UPGRADE] Apple: set up the separate "4a Lab" iOS app (~30 min)
-<!-- ha filed=2026-10-05 kind=default -->
-
-**Why:** The 2026 redesign is tested as a separate app beside the real 4a, so the current app is never affected. Lab builds reach Wyatt's iPhone through TestFlight. Not needed until the first lab build; early setup lets a dry run prove the path.
-**Steps:**
-1. developer.apple.com → Account → Identifiers → + → App IDs → App. Description `4a Lab`, Explicit ID `ai.jwlabs.foura.lab`, no capabilities → Register.
-2. appstoreconnect.apple.com → Apps → + → New App: iOS, `4a Lab` (if taken `4a Lab by JW`), English (U.S.), that bundle ID, SKU `4a-lab`, Full Access.
-3. Profiles → + → App Store Connect distribution, that App ID, the Apple Distribution cert the real 4a profile uses, name `4a Lab App Store` → Download.
-4. PowerShell: `[Convert]::ToBase64String([IO.File]::ReadAllBytes("$HOME\Downloads\4a_Lab_App_Store.mobileprovision")) | Set-Clipboard`
-5. github.com/JW-Incorporated/foray/settings/secrets/actions → New secret `IOS_LAB_PROVISIONING_PROFILE_BASE64`, paste. Moves to `release` env with #115.
-6. App Store Connect → Users and Access → Integrations → Team Keys: CI's key needs Admin or App Manager; if not, tell chat.
-7. 4a Lab → TestFlight → Internal Testing → +: group `Founders`, add Joey and Wyatt, automatic distribution.
-
-**Worked if:** the first lab build appears in TestFlight as "4a Lab" and installs beside the real 4a.
 
 ## #141 🟡 [DECIDE] Approve four privacy-policy sentences for bookmarks, downloads and followed-show alerts (~5 min)
 <!-- ha filed=2026-10-04 kind=default -->
