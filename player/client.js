@@ -145,6 +145,7 @@ import * as queueOrder from "./queue-order.js";
 import * as queueDrag from "./queue-drag.js";
 import * as tailFill from "./tail-fill.js";
 import * as bookmarks from "./bookmarks.js";
+import { bindIncomingLinks } from "./incoming-link.js";
 import { createId3Reader } from "./id3-chapters.js";
 
 /* Continuous playback's rules (NE-13), for app.js: it decides what plays after
@@ -169,6 +170,20 @@ window.forayQueueDrag = queueDrag;
    its lsGet/lsSet); this module only says what a row is, what is a duplicate
    and what the caps drop. Device-only: no event, never sent (roadmap Q3). */
 window.forayBookmarks = bookmarks;
+/* Shared links that open the app (#1071): Capacitor's `appUrlOpen` hands over
+   https://foray-web-seven.vercel.app/#/<route>, and its hash becomes the page's
+   hash, which app.js's router renders like any in-app link (see
+   player/incoming-link.js). Bound at module evaluation, before app.js's async
+   init() reaches its relaunch route, so a cold launch from a link lands on the
+   link rather than on the page last left. `arrivedBare` is read here, once: a
+   reload keeps its hash and must not replay the launch URL. No-op on the web. */
+try {
+  bindIncomingLinks({
+    app: typeof window !== "undefined" ? window.Capacitor?.Plugins?.App ?? null : null,
+    navigate: (hash) => { if (location.hash !== hash) location.hash = hash; },
+    arrivedBare: typeof location !== "undefined" && (location.hash === "" || location.hash === "#"),
+  });
+} catch (_) { /* a shell without the App plugin still plays; links open the browser as before */ }
 /* Chapters read from the MP3's own ID3 tag (#1071, founder: "Phone reads the
    MP3"), for the episode page's chapter card (CH-1). The bridge, the online
    flag and the downloads surface are read per call, not at module load: the
