@@ -129,6 +129,7 @@ import { createNativeFacades } from "./native-facades.js";
 import { engineDiagnosticReport, engineBridgePresent, pageEngineView } from "./engine-diagnostics.js";
 import { readBuildStamp, BUILD_STAMP_WAIT_MS } from "./build-stamp.js";
 import { withinMs } from "./deadline.js";
+import { isNum } from "./guards.js";
 import { createTtsBridge } from "./tts-bridge.js";
 import { createInterludePlayer, readInterludePref, writeInterludePref } from "./interlude.js";
 import { makeIdbTier } from "./idb-tier.js";
@@ -5541,7 +5542,7 @@ const ForayPlayer = {
   forayResume(forayId, { totalSec = null, itemCount = null, resolved = null, present = true, includeFinished = false } = {}) {
     const record = forayProgress.get(forayId);
     const segments = resolved ? progressSegments(resolved) : null;
-    const total = isFiniteNum(totalSec) ? totalSec : (resolved ? resolved.totalSec : null);
+    const total = isNum(totalSec) ? totalSec : (resolved ? resolved.totalSec : null);
     const count = Number.isInteger(itemCount) ? itemCount : (resolved ? resolved.playable.length : null);
     const maxIndex = Number.isInteger(count) && count > 0 ? count - 1 : null;
     /* `present: false` is FD-05's "the Foray itself is gone from the directory":
@@ -5598,7 +5599,7 @@ const ForayPlayer = {
       if (present && typeof resolveFor === "function") {
         try { resolved = resolveFor(r.foray_id) || null; } catch (_) { resolved = null; }
       }
-      const liveTotal = resolved && isFiniteNum(resolved.totalSec) && resolved.totalSec > 0 ? resolved.totalSec : null;
+      const liveTotal = resolved && isNum(resolved.totalSec) && resolved.totalSec > 0 ? resolved.totalSec : null;
       const liveCount = resolved && Array.isArray(resolved.playable) ? resolved.playable.length : null;
       const point = resumePoint(r, {
         present,
@@ -5817,8 +5818,9 @@ const ForayPlayer = {
    transport-policy.js (NE-08), exported, so the native engine's generated
    constants and its TransportPolicy port read the same numbers. */
 
-const isFiniteNum = (n) => typeof n === "number" && Number.isFinite(n);
-
+/** Onto the sheet: an index past the end is the LAST item, a missing one the
+    first. Not foray-progress.js's `indexOrMissing`, which answers -1 for past
+    the end (code-health CH-41, X1-17). */
 function clampIndex(index, length) {
   const n = Number.isInteger(index) ? index : 0;
   return Math.min(Math.max(0, n), Math.max(0, length - 1));

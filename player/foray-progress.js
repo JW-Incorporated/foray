@@ -36,6 +36,7 @@
 */
 
 import { hoursMinutes } from "./duration.js";
+import { isNum } from "./guards.js";
 import { FORAY_PROGRESS_KEY_PREFIX } from "./engine-vocabulary.js";
 
 /** One row per Foray. `cp_` prefix: renaming these wipes user state. Spelled
@@ -90,7 +91,6 @@ export const DRIFT_UNANCHORED = "unanchored";
     half-second as drift would report `moved` on every ordinary resume. */
 export const DRIFT_TOLERANCE_SEC = 1;
 
-const isNum = (n) => typeof n === "number" && Number.isFinite(n);
 const nonEmpty = (s) => typeof s === "string" && s.trim().length > 0;
 
 export function progressKey(forayId) {
@@ -267,13 +267,13 @@ export function resumePoint(record, { totalSec = null, maxIndex = null, segments
   // A stored position past the end of the Foray as it exists NOW is not a
   // resume point; it is a stale row against a shorter document.
   const elapsed = Math.min(isNum(at.elapsedSec) ? at.elapsedSec : record.elapsed_sec, total);
-  /* A live index from reconciliation is already live and needs no clamp. Without
-     one, the stored index is clamped against the live count exactly as before —
-     a stored 31 against a 20-segment Foray must not mark the whole running order
-     as heard. */
+  /* A live index from reconciliation is already live and needs no check.
+     Without one, the stored index is checked against the live count exactly as
+     before (`indexOrMissing`) — a stored 31 against a 20-segment Foray must not
+     mark the whole running order as heard. */
   const index = at.drift === DRIFT_DROPPED
     ? -1
-    : (Number.isInteger(at.index) ? at.index : clampIndex(record.index, maxIndex));
+    : (Number.isInteger(at.index) ? at.index : indexOrMissing(record.index, maxIndex));
   if (elapsed < MIN_RESUME_SEC) return null;
   if (elapsed > total - NEAR_END_SEC) {
     return { elapsedSec: elapsed, index, remainingSec: 0, percent: 100, finished: true, drift: at.drift };
@@ -347,10 +347,14 @@ function isSegmentDescriptor(s) {
   );
 }
 
-/** -1 ("we do not know") is a legal answer and must survive the clamp; anything
-    past the live end becomes -1 rather than the last segment, because "the whole
-    thing is behind you" is a stronger claim than the stale row can support. */
-function clampIndex(index, maxIndex) {
+/** -1 ("we do not know") is a legal answer and must survive; anything past the
+    live end becomes -1 rather than the last segment, because "the whole thing is
+    behind you" is a stronger claim than the stale row can support. NOT a clamp,
+    and named so (code-health CH-41, X1-17): client.js's `clampIndex` pulls an
+    out-of-range index onto the last item because a sheet must point somewhere;
+    this one answers "not found". Moving resume logic between the two files
+    must not carry one name's rule under the other's. */
+function indexOrMissing(index, maxIndex) {
   if (!Number.isInteger(index) || index < 0) return -1;
   if (!Number.isInteger(maxIndex) || maxIndex < 0) return index;
   return index > maxIndex ? -1 : index;

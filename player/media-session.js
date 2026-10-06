@@ -212,6 +212,7 @@
 */
 
 import { isNarration, isJingle } from "./item-kind.js";
+import { isNum } from "./guards.js";
 
 /** `navigator.mediaSession.playbackState` values, spelled once. */
 export const NONE = "none";
@@ -235,7 +236,6 @@ export const MEDIA_ACTIONS = Object.freeze([
   "seekbackward", "seekforward", "seekto",
 ]);
 
-const isNum = (n) => typeof n === "number" && Number.isFinite(n);
 const nonEmpty = (s) => typeof s === "string" && s.trim().length > 0;
 const clean = (s) => (nonEmpty(s) ? s.trim() : "");
 
