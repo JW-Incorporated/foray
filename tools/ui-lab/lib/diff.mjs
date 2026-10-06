@@ -3,9 +3,9 @@
  * with synthetic images (baseline.test.mjs). The CLI is ../baseline.mjs.
  *
  * THRESHOLDS (two, deliberately separate):
- *   pixelThreshold  pixelmatch colour-distance tolerance per pixel, 0..1
- *                   (YIQ delta). Default 0.1 = pixelmatch's own default: absorbs
- *                   sub-visible colour noise, not a real colour change.
+ *   pixelThreshold  pixelmatch colour-distance tolerance per pixel, 0..1 (YIQ delta).
+ *                   Default 0: any channel change counts. 0.1 (pixelmatch's default)
+ *                   was measured to pass #666->#808080, #1a1a1a->#2a2a2a, #fff->#f3f4f6.
  *   maxPct          a shot FAILS when more than this % of its pixels differ.
  *                   Default 0: the harness is deterministic (see README), so
  *                   any differing pixel is a real change. Raise it per run only
@@ -15,8 +15,9 @@
  */
 import { PNG } from "pngjs";
 import pixelmatch from "pixelmatch";
+import { parseArgs } from "./args.mjs";
 
-export const DEFAULTS = { pixelThreshold: 0.1, maxPct: 0 };
+export const DEFAULTS = { pixelThreshold: 0, maxPct: 0 };
 
 /** Diff two PNG buffers. -> { status, width, height, changed, pct, diff } */
 export function diffPng(bufA, bufB, opts = {}) {
@@ -70,4 +71,11 @@ export function renderMarkdown(report, title = "Baseline compare") {
     for (const x of bad) lines.push(`| ${x.name} | ${x.status}${x.baselineSize ? ` (${x.baselineSize} -> ${x.currentSize})` : ""} | ${x.changed ?? "-"} | ${x.pct ?? "-"} | ${x.fails ? "yes" : "no"} |`);
   } else lines.push("No differences.");
   return lines.join("\n") + "\n";
+}
+
+/** Merge shoot args: explicit (given) win over stored. Both are argv arrays. A stored boolean flag cannot be switched off. */
+export function mergeArgs(stored, given) {
+  const m = { ...parseArgs(stored || []), ...parseArgs(given || []) };
+  delete m._;
+  return Object.entries(m).flatMap(([k, v]) => (v === true ? ["--" + k] : ["--" + k, String(v)]));
 }

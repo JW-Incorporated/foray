@@ -1,12 +1,17 @@
 /* Pure-logic tests for lib/diff.mjs: synthetic PNGs generated here, no browser.
  * Each test names the one-line mutation (in lib/diff.mjs) that makes it fail;
  * all were run and confirmed on 2026-10-05.
- * Suites covering other mechanisms: none - the CLI (baseline.mjs) is exercised by
- * the determinism run documented in README.md, not by CI (it needs a browser). */
+ * The CLI tests (record/compare --from, name/out guards) need no browser; the
+ * render path (shoot.mjs) is covered by the determinism run in README.md, not CI. */
 import test from "node:test";
 import assert from "node:assert/strict";
+import path from "node:path";
+import { tmpdir } from "node:os";
+import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { PNG } from "pngjs";
-import { diffPng, compareSets, renderMarkdown, DEFAULTS } from "./lib/diff.mjs";
+import { diffPng, compareSets, renderMarkdown, mergeArgs, DEFAULTS } from "./lib/diff.mjs";
 
 function png(w, h, fill = [20, 20, 20], paint = []) {
   const p = new PNG({ width: w, height: h });
@@ -33,12 +38,110 @@ test("a changed block is counted exactly and reported as a percentage of all pix
   assert.ok(PNG.sync.read(r.diff).width === 10, "a diff PNG of the same size is produced");
 });
 
-test("pixelThreshold absorbs a tiny colour delta but not a real one", () => {
-  // MUTATION: in diffPng, hard-code `threshold: 0` (the tiny delta then counts) or ignore pixelThreshold (the strict run below never fails).
+test("pixelThreshold is a tolerance: default 0 counts a tiny delta, an explicit 0.1 absorbs it", () => {
+  // MUTATION: in diffPng, hard-code `threshold: 0` (the 0.1 half fails) or `threshold: 0.1` (the default half fails).
   const a = png(8, 8, [100, 100, 100]);
   const tiny = png(8, 8, [102, 100, 100]);
-  assert.equal(diffPng(a, tiny).changed, 0);
-  assert.ok(diffPng(a, tiny, { pixelThreshold: 0 }).changed > 0);
+  assert.ok(diffPng(a, tiny).changed > 0);
+  assert.equal(diffPng(a, tiny, { pixelThreshold: 0.1 }).changed, 0);
+});
+
+test("real colour-token changes are caught at the DEFAULT options (the 0.1 default passed these)", () => {
+  // MUTATION: in diff.mjs set DEFAULTS.pixelThreshold to 0.1 (these pairs read 'same' and the run passes).
+  const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  for (const [from, to] of [["#ffffff", "#f3f4f6"], ["#1a1a1a", "#2a2a2a"], ["#666666", "#808080"], ["#ffffff", "#fafafa"]]) {
+    const { report } = compareSets({ "t.png": png(8, 8, hex(from)) }, { "t.png": png(8, 8, hex(to)) });
+    assert.equal(report.passed, false, `${from} -> ${to} must fail at default options`);
+    assert.equal(report.shots[0].pct, 100);
+  }
+});
+
+test("compareSets passes pixelThreshold through to the diff and reports the thresholds it used", () => {
+  // MUTATION: in compareSets, drop the option from the diffPng call: `diffPng(baseline[name], current[name], { pixelThreshold })` -> `diffPng(baseline[name], current[name])`.
+  const base = { "t.png": png(8, 8, [102, 102, 102]) };
+  const cur = { "t.png": png(8, 8, [128, 128, 128]) };
+  assert.equal(compareSets(base, cur).report.passed, false);
+  const loose = compareSets(base, cur, { pixelThreshold: 0.5, maxPct: 0.25 });
+  assert.equal(loose.report.passed, true);
+  assert.equal(loose.report.pixelThreshold, 0.5);
+  assert.equal(loose.report.maxPct, 0.25);
+});
+
+test("pct is reported to 4 decimals, not rounded away", () => {
+  // MUTATION: in compareSets, change `toFixed(4)` to `toFixed(0)`.
+  const base = { "t.png": png(100, 30) };
+  const cur = { "t.png": png(100, 30, [20, 20, 20], [{ x: 0, y: 0, rgb: [255, 255, 255] }]) }; // 1 / 3000 px
+  assert.equal(compareSets(base, cur).report.shots[0].pct, 0.0333);
+});
+
+test("mergeArgs: explicit args override stored ones, the rest are kept", () => {
+  // MUTATION: in mergeArgs, swap the spread order (stored then wins) or drop the stored spread.
+  const out = mergeArgs(["--target", "app", "--states", "a", "--no-remote-images"], ["--states", "b", "--full"]);
+  assert.deepEqual(out, ["--target", "app", "--states", "b", "--no-remote-images", "--full"]);
+});
+
+/* ---- CLI paths that delete things (no browser: everything runs with --from) ---- */
+const CLI = path.join(path.dirname(fileURLToPath(import.meta.url)), "baseline.mjs");
+const cli = (root, cmd, ...a) => spawnSync(process.execPath, [CLI, cmd, "--root", root, ...a], { encoding: "utf8" });
+function scratch() {
+  const root = mkdtempSync(path.join(tmpdir(), "uilab-test-"));
+  const render = path.join(mkdtempSync(path.join(tmpdir(), "uilab-render-")), "render"); // outside root, or the --from guard masks the name guards
+  mkdirSync(path.join(render, "shots"), { recursive: true });
+  writeFileSync(path.join(render, "shots", "a.png"), png(6, 6));
+  writeFileSync(path.join(root, "precious.txt"), "keep me");
+  return { root, render };
+}
+
+test("record/compare round trip: a clean compare exits 0, a changed shot exits 1 and writes the report", () => {
+  // MUTATION: in baseline.mjs change `process.exit(report.passed ? 0 : 1)` to `process.exit(0)`.
+  const { root, render } = scratch();
+  assert.equal(cli(root, "record", "--name", "b", "--from", render).status, 0);
+  assert.equal(cli(root, "compare", "--name", "b", "--from", render).status, 0);
+  writeFileSync(path.join(render, "shots", "a.png"), png(6, 6, [20, 20, 20], [{ x: 0, y: 0, w: 2, h: 2, rgb: [255, 0, 0] }]));
+  assert.equal(cli(root, "compare", "--name", "b", "--from", render).status, 1);
+  assert.ok(existsSync(path.join(root, "compare", "b", "report.json")));
+  assert.ok(existsSync(path.join(root, "compare", "b", "diffs", "a.png")));
+});
+
+test("--name '..' and path-like names are refused and nothing is deleted", () => {
+  // MUTATION 1: in baseline.mjs delete BOTH the `/^\.+$/.test(args.name)` clause and the `path.dirname(dir) !== baseRoot` guard ('..' --force then wipes the data root).
+  // MUTATION 2: add "/" to the allowed name charset (a/b is then accepted).
+  const { root, render } = scratch();
+  assert.equal(cli(root, "record", "--name", "ok", "--from", render).status, 0);
+  for (const name of ["..", ".", "a/b", "a\\b"]) {
+    assert.equal(cli(root, "record", "--name", name, "--force", "--from", render).status, 2, `name ${JSON.stringify(name)}`);
+  }
+  assert.ok(existsSync(path.join(root, "precious.txt")));
+  assert.ok(existsSync(path.join(root, "baselines", "ok", "shots", "a.png")));
+});
+
+test("record --force --from the baseline's own dir (or inside it) is refused and the baseline survives", () => {
+  // MUTATION: in baseline.mjs delete the `if (inside(dir, src)) die(...)` line (the baseline is deleted, then ENOENT).
+  const { root, render } = scratch();
+  assert.equal(cli(root, "record", "--name", "b", "--from", render).status, 0);
+  const own = path.join(root, "baselines", "b");
+  for (const from of [own, path.join(own, "shots")]) {
+    assert.equal(cli(root, "record", "--name", "b", "--force", "--from", from).status, 2);
+    assert.ok(existsSync(path.join(own, "shots", "a.png")), "baseline still there");
+  }
+});
+
+test("compare --out only clears an empty dir or a previous compare output", () => {
+  // MUTATION 1: in baseline.mjs delete the `die("--out ... refusing to delete it")` guard (the foreign file is deleted).
+  // MUTATION 2: stop writing the MARKER file (the 'own previous output is reusable' half fails).
+  const { root, render } = scratch();
+  assert.equal(cli(root, "record", "--name", "b", "--from", render).status, 0);
+  const foreign = path.join(root, "mine");
+  mkdirSync(foreign);
+  writeFileSync(path.join(foreign, "notes.txt"), "not a report");
+  assert.equal(cli(root, "compare", "--name", "b", "--from", render, "--out", foreign).status, 2);
+  assert.ok(existsSync(path.join(foreign, "notes.txt")));
+  const fresh = path.join(root, "fresh");
+  assert.equal(cli(root, "compare", "--name", "b", "--from", render, "--out", fresh).status, 0);
+  assert.equal(cli(root, "compare", "--name", "b", "--from", render, "--out", fresh).status, 0, "own previous output is reusable");
+  const empty = path.join(root, "empty");
+  mkdirSync(empty);
+  assert.equal(cli(root, "compare", "--name", "b", "--from", render, "--out", empty).status, 0);
 });
 
 test("a size change is always a failure, even with a huge maxPct", () => {
