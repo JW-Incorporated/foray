@@ -4288,12 +4288,15 @@ function showIndexIdForTitle(title) {
    checked resolves (api/episodes/search.ts drops any hit that does not) — so
    that is the link, and the title join stays the fallback for rows that never
    had an id (the curated pool). */
-function showNameLink(showName, showId = null) {
+/* `key` is a `pi:` show's shard key (`/k/<key>`, see showRoutePath), for a
+   caller that knows one: without it a fresh device cannot open that show
+   (resolveMissingShow). */
+function showNameLink(showName, showId = null, key = "") {
   const label = esc(showName || "");
   const id = showId || showIdForShowName(showName);
   /* Through showRoutePath (showRouteHash without its #), which encodes (audit round 3, app-1-16): the router
      decodes the segment, so an id carrying `%`, `/` or `#` misrouted from here. */
-  return id ? `<a class="show-link" href="#${esc(showRoutePath(id))}">${label}</a>` : label;
+  return id ? `<a class="show-link" href="#${esc(showRoutePath(id, "", key))}">${label}</a>` : label;
 }
 
 /* A3.2 — tapping a chip goes to "shows in this category" (renderCategory),
@@ -12643,7 +12646,7 @@ function resolveMissingEpisode(id, t, key = "") {
         const show = showById(show_id) || { show_id, title: r.show?.title || "", artwork_url: r.show?.image || null };
         const row = fullCatalogueRowToEpRowItem({ ...show, show_id }, ep);
         if (row.id !== id) snapshot(id, row); // the `apple:` spelling of the same episode
-        if (resolveEpisode(id)) { renderEpisode(id, { t }); return; }
+        if (resolveEpisode(id)) { renderEpisode(id, { t, key: k }); return; }
         break;
       }
       cursor = r.nextCursor;
@@ -12653,10 +12656,24 @@ function resolveMissingEpisode(id, t, key = "") {
   })().catch(() => { if (stillHere()) failed(); });
 }
 
+/* The shard key an episode page's show link carries when its show is a `pi:`
+   one (pi-episodes-cold-open): a fresh device opens that show only through
+   `/k/<key>` (resolveMissingShow), and a cold-opened episode's show is in no
+   cache, so a bare `#/show/pi:<n>` would be "Show not found." The show
+   record's key, else the link's own key (the shard the episode was just found
+   through), else the one the episode's show title gives (shareLinkFor's
+   derivation). "" for any other show, whose link is unchanged. */
+function episodeShowKey(item, key = "") {
+  const sid = String(item?.show_id || "");
+  if (!sid.startsWith("pi:")) return "";
+  return shardKeyForShow(showById(sid)) || (isShareShardKey(key) ? key : "") || shardKeyForShow({ title: item.show });
+}
+
 /* `t` is a timestamp link's offset in whole seconds (#30, see episodeDeepLink),
    or null. It adds the "Play from" button and nothing else: the page never
    starts playback on its own. `key` is a `pi:` episode link's shard key
-   (parseEpisodeSeg), read only when the episode is not here yet. */
+   (parseEpisodeSeg): what a missing episode is asked with, and what the
+   page's show link carries (episodeShowKey). */
 function renderEpisode(id, { t = null, key = "" } = {}) {
   setBodyClass("view-page");
   const item = resolveEpisode(id);
@@ -12674,13 +12691,14 @@ function renderEpisode(id, { t = null, key = "" } = {}) {
   /* The row's "Played" / "NN min left" follows the listener onto the page
      (audit round 2, honesty-5): it used to vanish on the way in. */
   const progHtml = progressChipHtml(item);
+  const showKey = episodeShowKey(item, key);
   $("#view").innerHTML = `
     <div class="page">
       <div class="page-head">
         <a class="back" href="#/">‹</a>
         <div>
           <h2 class="fp-s-title">${esc(item.title)}${explicitBadge(item.explicit)}</h2>
-          <p class="fp-s-show">${joinMeta(item.show ? showNameLink(item.show, item.show_id) : "", fmtDur(episodeMinutes(item)), esc(dateStr), progHtml)}</p>
+          <p class="fp-s-show">${joinMeta(item.show ? showNameLink(item.show, item.show_id, showKey) : "", fmtDur(episodeMinutes(item)), esc(dateStr), progHtml)}</p>
         </div>
       </div>
       ${item.artwork_url ? `<img class="ep-art" src="${esc(safeUrl(item.artwork_url))}" alt="" decoding="async" width="600" height="600">` : ""}

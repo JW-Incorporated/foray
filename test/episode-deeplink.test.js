@@ -582,6 +582,23 @@ test("a shared pi: episode cold-opens: its link's /k/ key names the shard on eve
   assert.strictEqual(m.ctx.location.hash, PI_HASH + "?t=90");
 });
 
+test("a cold-opened pi: episode's show name links to the show WITH the key it was found through", async () => {
+  /* A fresh device has the show in no cache, so a bare #/show/pi%3A77 would be
+     "Show not found." (resolveMissingShow needs /k/).
+     MUTATION: showNameLink back to `showRoutePath(id)` (drop the key) -> the
+     link is #/show/pi%3A77; red. MUTATION 2: resolveMissingEpisode's found
+     branch back to `renderEpisode(id, { t })` (drop `key: k`) -> the key comes
+     from the endpoint's show title "Founders" (/k/fo), not the shard the show
+     was found in; red. */
+  const m = mount({ hash: PI_HASH });
+  episodesEndpoint(m, [feedPage(0), feedPage(100)]);
+  m.evalIn("route()");
+  await ticks(30);
+  assert.match(m.view.innerHTML, /Feed episode 150/);
+  assert.strictEqual(m.evalIn('showById("pi:77")'), null, "the show is in no cache: only the key can open it");
+  assert.match(m.view.innerHTML, /<p class="fp-s-show"><a class="show-link" href="#\/show\/pi%3A77\/k\/ti">/);
+});
+
 test("a pi: episode link with no ?t= cold-opens through the router's keyed episode branch", async () => {
   /* MUTATION: delete the router's keyed `#/episode/<id>/k/<key>` branch -> the
      plain branch reads "pi:77--g-5/k/ti" as the id, which names no servable
