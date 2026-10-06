@@ -185,6 +185,13 @@ function lsSet(key, value) {
 /* `let`, so a suite can shorten it (test/boot-path.test.js). */
 let STORAGE_WAIT_MS = 5000;
 
+/* The event player/client.js dispatches once it has published its bridges
+   (`window.ForayPlayer`, `window.forayStorage`, ...). Spelled ONCE on this side
+   (code-health CH-28, X1-20): a typo in one of seven literals would leave its
+   `once: true` listener waiting forever. test/player-ready-event.test.js pins
+   it to client.js's dispatch. */
+const PLAYER_READY_EVENT = "forayplayer:ready";
+
 /* HAVE THE DEFERRED MODULES RUN? (audit round 2 review of states-6 and
    races-4.) Per the HTML spec the parser sets `readyState` to "interactive"
    BEFORE it runs the deferred and module scripts, and DOMContentLoaded fires
@@ -223,7 +230,7 @@ function waitForStorage() {
   return new Promise(resolve => {
     let done = false;
     const finish = () => { if (!done) { done = true; resolve(window.forayStorage || null); } };
-    window.addEventListener("forayplayer:ready", finish, { once: true });
+    window.addEventListener(PLAYER_READY_EVENT, finish, { once: true });
     /* Every deferred module has run (or failed) once DOMContentLoaded has
        fired: either the store is here (handled above) or it is never arriving. */
     afterDeferredScripts(finish);
@@ -312,7 +319,7 @@ function settleWhenStoreArrives() {
   };
   if (deferredScriptsRan) { arrived(); return; }
   storageLate = true;
-  try { window.addEventListener("forayplayer:ready", arrived, { once: true }); } catch (_) { /* no events: DOMContentLoaded below */ }
+  try { window.addEventListener(PLAYER_READY_EVENT, arrived, { once: true }); } catch (_) { /* no events: DOMContentLoaded below */ }
   afterDeferredScripts(arrived);
   armStorageSettleCeiling();
 }
@@ -812,25 +819,22 @@ async function syncEventsOnce(epoch) {
 
 /* ---------- interests / topics ---------- */
 
-function leafNodes() {
-  return (state.taxonomy?.nodes || []).filter(n => n.parent !== null);
-}
-
 /* All taxonomy nodes, roots and leaves alike — the seeding/persistence set for
-   interests (see loadInterests's header comment: `leafNodes()` used to be the
-   seed set here too, which is the root-node bug this fixes). Kept distinct
-   from leafNodes() because callers that mean "just the leaves" (none today,
-   but the name invites it) must not silently start seeing roots. */
+   interests (see loadInterests's header comment: the leaves alone used to be
+   the seed set here, which is the root-node bug it fixes). */
 function taxonomyNodes() {
   return state.taxonomy?.nodes || [];
 }
 
+/** The ONE taxonomy lookup by id (code-health CH-28, A1-14): every reader that
+    needs a node by its id comes through here, so an id rule (an alias map, say)
+    lands once. */
 function nodeById(id) {
   return taxonomyNodes().find(n => n.id === id) || null;
 }
 
 /* Bug fix (kanban t_1cb3688a / docs/ui-transition-plan.md D6): this used to
-   iterate leafNodes() only, so a declared interest in a ROOT node (e.g.
+   iterate the leaf nodes only, so a declared interest in a ROOT node (e.g.
    `true-crime`) was never seeded into state.interests, and the very next
    saveInterests() call persisted an object that had silently dropped it —
    the listener's root-level pick vanished on reload with no error anywhere.
@@ -903,6 +907,29 @@ function saveInterests() {
   return lsSet("cp_interests", next);
 }
 
+/* THE RE-SCORE KEY (code-health CH-28, A1-18). buildPlaylist's `searchCache`
+   is keyed on [query, familyMode, _interestsGen]. interestScore (used as
+   searchWithRelaxation's zero-content-token rankFallback, e.g. a bare
+   "comedy"/"something short" query) reads state.interests, so the weights are
+   the one thing besides the query text and the family-mode flag that can
+   change what buildPlaylist should return for the exact same typed query.
+   Every change to them moves this key, or a rebuild silently serves a stale
+   ranking. `bumpInterestsGen` alone is for the two places that change the
+   weights WITHOUT writing them (a reset to defaults after "Delete my data",
+   and the re-seed when a late hydration lands); everything else commits. */
+function bumpInterestsGen() {
+  state._interestsGen = (state._interestsGen || 0) + 1;
+}
+
+/** The end of every interest write: persist the profile, then move the
+    re-score key. Six writers each repeated these two lines (A1-18); a seventh
+    that forgot the bump would rank against the old weights. */
+function commitInterests() {
+  const saved = saveInterests();
+  bumpInterestsGen();
+  return saved;
+}
+
 /* How much of a leaf's own nudge also moves its parent root. Stated here per
    the card's ask ("state the ratio"): a play/thumb on a leaf is signal about
    the parent subject too, just weaker than a direct signal on the parent
@@ -945,18 +972,10 @@ function nudgeTopics(topics, amount) {
   parentsToPropagate.forEach(parent => {
     setInterest(parent, Math.max(0, Math.min(1, state.interests[parent] + amount * PARENT_NUDGE_RATIO)));
   });
-  saveInterests();
-  /* Bumps the repeated-query cache key (see buildPlaylist's `searchCache`) so
-     a playlist rebuild after a pick/play/thumbs nudge re-scores instead of
-     silently serving a stale ranking. interestScore (used as
-     searchWithRelaxation's zero-content-token rankFallback, e.g. a bare
-     "comedy"/"something short" query) reads state.interests, so this is the
-     one thing besides the query text and family-mode flag that can change
-     what buildPlaylist should return for the exact same typed query. */
-  state._interestsGen = (state._interestsGen || 0) + 1;
+  /* Saves, and moves the repeated-query cache key so a playlist rebuild after
+     a pick/play/thumbs nudge re-scores (see commitInterests). */
+  commitInterests();
 }
-
-function boostTopics(topics, amount) { nudgeTopics(topics, amount); }
 
 /* ---------- interests page (#/interests, U-07 / docs/ui-transition-plan.md D6) ----------
 
@@ -1058,8 +1077,7 @@ function bindInterestsControls(scope) {
     const apply = () => {
       const v = Math.max(0, Math.min(1, Number(input.value)));
       setInterest(id, v);
-      saveInterests();
-      state._interestsGen = (state._interestsGen || 0) + 1;
+      commitInterests();
       input.setAttribute("aria-valuenow", String(v));
       input.setAttribute("aria-valuetext", `${Math.round(v * 100)}%`);
       const row = input.closest(".interest-row");
@@ -1080,8 +1098,7 @@ function bindInterestsControls(scope) {
       const node = nodeById(id);
       if (!node) return;
       setInterest(id, Math.max(0, node.weight));
-      saveInterests();
-      state._interestsGen = (state._interestsGen || 0) + 1;
+      commitInterests();
       renderInterests();
     });
   });
@@ -1842,7 +1859,7 @@ function toggleStar(id) {
     if (had) {
       logEvent("unsaved", { episode_id: id });
     } else {
-      boostTopics(entry.topics, 0.05);
+      nudgeTopics(entry.topics, 0.05);
       logEvent("saved", { episode_id: id, topics: entry.topics });
     }
   }
@@ -2145,7 +2162,8 @@ let dealEpoch = 0;
 let lastDealRecorded = false;
 
 function subjectLabel(branch) {
-  return (state.taxonomy?.nodes || []).find(n => n.id === branch && n.parent === null)?.label || branch;
+  const n = nodeById(branch);
+  return (n && n.parent === null && n.label) || branch;
 }
 
 /* Subject queues are today's auto-built groupings (state.cardSlots), distinct
@@ -2247,11 +2265,31 @@ function leafPlaylistItems(candidates, { generalShowTitles }) {
   return out;
 }
 
+/* ONE SHAPE FOR A GENERATED PLAYLIST (code-health CH-28, A1-13). Home's card
+   (generatedPlaylists) and the page a tap or a reload opens
+   (generatedPlaylistById) each built the slot-id set and the playlist literal;
+   a field added to one literal only and `currentCopyOf` found no copy on the
+   other, so Save showed again on a playlist already saved. */
+
+/** Every episode id the card slots show, from a slot's `items` and its `item`. */
+function slotItemIdSet(slots) {
+  return new Set(slots.flatMap(sl => (sl.items || []).map(it => it.id)).concat(slots.map(sl => sl.item?.id)).filter(Boolean));
+}
+
+/** The generated playlist for taxonomy leaf `node` holding `items` (already
+    chosen by leafPlaylistItems). */
+function generatedPlaylistFor(node, items) {
+  return withMirror({
+    id: "gen-" + node.id, branch: node.id, title: node.label || node.id,
+    items: items.map(playlistPart), sparse: false, isSubject: false, isGenerated: true,
+  });
+}
+
 function generatedPlaylists() {
   const pool = poolFiltered();
   const slots = state.cardSlots || [];
   const slotBranches = new Set(slots.map(sl => sl.branch));
-  const slotItemIds = new Set(slots.flatMap(sl => (sl.items || []).map(it => it.id)).concat(slots.map(sl => sl.item?.id)).filter(Boolean));
+  const slotItemIds = slotItemIdSet(slots);
   const byTopic = new Map();
   for (const it of pool) {
     for (const t of (it.topics || [])) {
@@ -2269,10 +2307,7 @@ function generatedPlaylists() {
   for (const { n } of leaves) {
     const items = leafPlaylistItems(byTopic.get(n.id).filter(it => !slotItemIds.has(it.id)), { generalShowTitles });
     if (items.length < GENERATED_PLAYLIST_MIN) continue;
-    out.push(withMirror({
-      id: "gen-" + n.id, branch: n.id, title: n.label || n.id,
-      items: items.map(playlistPart), sparse: false, isSubject: false, isGenerated: true,
-    }));
+    out.push(generatedPlaylistFor(n, items));
     if (out.length >= GENERATED_PLAYLIST_COUNT) break;
   }
   return out;
@@ -2295,16 +2330,12 @@ function generatedPlaylistById(id) {
   const node = nodeById(m[1]);
   if (!node || node.parent === null) return null;
   const onLeaf = poolFiltered().filter(it => (it.topics || []).includes(node.id));
-  const slots = state.cardSlots || [];
-  const slotItemIds = new Set(slots.flatMap(sl => (sl.items || []).map(it => it.id)).concat(slots.map(sl => sl.item?.id)).filter(Boolean));
+  const slotItemIds = slotItemIdSet(state.cardSlots || []);
   const unslotted = onLeaf.filter(it => !slotItemIds.has(it.id));
   const items = leafPlaylistItems(unslotted.length >= GENERATED_PLAYLIST_MIN ? unslotted : onLeaf,
     { generalShowTitles: generalShowTitleSet() });
   if (items.length < GENERATED_PLAYLIST_MIN) return null;
-  return withMirror({
-    id: "gen-" + node.id, branch: node.id, title: node.label || node.id,
-    items: items.map(playlistPart), sparse: false, isSubject: false, isGenerated: true,
-  });
+  return generatedPlaylistFor(node, items);
 }
 
 /* U-05 (docs/ui-transition-plan.md D7): does one of the listener's OWN
@@ -4211,7 +4242,7 @@ function showNameLink(showName, showId = null) {
    tagged with. Same renderer, two populations, and only one of them joined.
    test/category-browse.test.js pins both halves. */
 function taxonomyChip(nodeId) {
-  const node = (state.taxonomy?.nodes || []).find(n => n.id === nodeId);
+  const node = nodeById(nodeId);
   const label = esc(node?.label || nodeId);
   return `<a class="fy-chip" href="#/category/${esc(encodeURIComponent(nodeId))}">${label}</a>`;
 }
@@ -4335,7 +4366,7 @@ function catalogShowsOrNull() {
    false claim as the empty-state sentence under it, so both wait on the
    catalogue having answered. */
 function renderCategory(nodeId) {
-  const node = (state.taxonomy?.nodes || []).find(n => n.id === nodeId);
+  const node = nodeById(nodeId);
   const label = node?.label || nodeId;
   if (catalogShowsOrNull() === null) { renderShowIndexPage(label, "", null); return; }
   const shows = showsForCategory(nodeId).slice().sort((a, b) => a.title.localeCompare(b.title));
@@ -4367,13 +4398,12 @@ function renderCategory(nodeId) {
    from Home to THIS page, and the menu's own "Shows" item is now that
    affordance. Nothing else in the app linked to it. */
 /* U-05 (docs/ui-transition-plan.md): every taxonomy ROOT, for a "browse
-   subjects" pill row on the Shows page (v2 only). Distinct from leafNodes()
-   above the same way taxonomyNodes() is -- a root has `parent === null` --
-   and this stays its own tiny helper rather than reusing subjectLabel's
-   inline find, because that one looks up ONE root by id and this needs all
-   of them, sorted for a stable pill order across renders. */
+   subjects" pill row on the Shows page (v2 only). A root has
+   `parent === null`; this stays its own tiny helper rather than reusing
+   nodeById, because that looks up ONE node by id and this needs all of the
+   roots, sorted for a stable pill order across renders. */
 function taxonomyRootNodes() {
-  return (state.taxonomy?.nodes || []).filter(n => n.parent === null).slice().sort((a, b) => a.label.localeCompare(b.label));
+  return taxonomyNodes().filter(n => n.parent === null).slice().sort((a, b) => a.label.localeCompare(b.label));
 }
 
 /* `decodeURIComponent` throws a URIError on a lone `%` — and a hash is
@@ -4438,7 +4468,7 @@ function safeDecode(s) {
    the router is pinned in test/category-browse.test.js rather than held
    together by a shared constant. */
 function browseTile(nodeId) {
-  const node = (state.taxonomy?.nodes || []).find(n => n.id === nodeId);
+  const node = nodeById(nodeId);
   const label = node?.label || nodeId;
   return `<a class="fy-chip" href="#/shows/q/${esc(encodeURIComponent(label))}">${esc(label)}</a>`;
 }
@@ -6482,9 +6512,10 @@ function listenedShows() {
    that is otherwise fixed for the session -- state.discover/state.session are
    fetched once in init() and never reassigned, so the pool a query scores
    against cannot change mid-session; the one thing that visibly changes
-   without a page reload is `state.interests` (nudgeTopics, on every
-   pick/play/thumbs), which is why `state._interestsGen` is bumped there and
-   folded into this key. Deliberately CACHES BEFORE classifyResults, not
+   without a page reload is `state.interests` (nudgeTopics on every
+   pick/play/thumbs, the Interests sliders, onboarding and persona picks),
+   which is why every one of those writes goes through commitInterests, which
+   bumps `state._interestsGen`, and that is folded into this key. Deliberately CACHES BEFORE classifyResults, not
    after: classifyResults reads `listenedShows()`, which changes on every pick
    independent of the query -- caching past that point would serve a stale
    listened-show penalty. classifyResults itself is O(results), not
@@ -7056,8 +7087,7 @@ function applyOnboardingPicks(pickedRootIds, typedSubject) {
       setInterest(id, Math.max(0, Math.min(1, state.interests[id] + lift)));
     }
   });
-  saveInterests();
-  state._interestsGen = (state._interestsGen || 0) + 1;
+  commitInterests();
   const byId = new Map(taxonomyNodes().map(n => [n.id, n]));
   return [...new Set(ids.map(id => (byId.get(id)?.parent) || id))];
 }
@@ -7108,8 +7138,7 @@ function applyPersonaPick(id) {
     if (touched && !roots.includes(root)) roots.push(root);
   });
   if (!roots.length) return false;
-  saveInterests();
-  state._interestsGen = (state._interestsGen || 0) + 1;
+  commitInterests();
   return roots;
 }
 
@@ -13657,25 +13686,43 @@ function withTestTrackDrafts(listFn) {
    deploy shows a message instead of an empty page. */
 const PLAYER_WAIT_MS = 5000;
 
-function playerBridge() {
-  if (window.ForayPlayer) return Promise.resolve(window.ForayPlayer);
-  /* EACH WAIT CLEANS UP AFTER ITSELF (audit round 3, app-2-14). On the broken-
-     deploy path the event never fires, and every visit to #/forays, Library or
-     a Try again used to leave one listener and its closure attached for the
-     session: finish() resolved but removed nothing. */
-  return new Promise(resolve => {
-    let done = false;
-    let timer = null;
-    const finish = () => {
-      if (done) return;
-      done = true;
-      window.removeEventListener("forayplayer:ready", finish);
+/** THE ONE WAIT FOR THE PLAYER BRIDGE (code-health CH-28, A3-13). Calls
+    `fn({ player, late })`:
+      - at once, SYNCHRONOUSLY, with `late: false`, when the bridge is here;
+      - on PLAYER_READY_EVENT with `late: true` (the module arrived after this
+        asked), `player` being whatever it published, or null;
+      - after `timeoutMs` with whatever is there (null on a broken deploy) and
+        `late: true`, when a bound is given. `timeoutMs: null` waits for the
+        event however long it takes -- the boot restores do, on purpose: a
+        module landing at 7 s on a slow link must still restore the bar.
+    A callback and not a Promise because the present-bridge case is
+    synchronous at boot (the ribbon restore runs before the caller returns);
+    `playerBridge` wraps it in the Promise its callers await.
+    EACH WAIT CLEANS UP AFTER ITSELF (audit round 3, app-2-14): on the broken-
+    deploy path the event never fires, and every visit to #/forays, Library or
+    a Try again used to leave one listener and its closure attached for the
+    session. */
+function whenPlayerBridge(fn, { timeoutMs = null } = {}) {
+  if (window.ForayPlayer) { fn({ player: window.ForayPlayer, late: false }); return; }
+  let done = false;
+  let timer = null;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    if (timeoutMs != null) {
+      window.removeEventListener(PLAYER_READY_EVENT, finish);
       clearTimeout(timer);
-      resolve(window.ForayPlayer || null);
-    };
-    window.addEventListener("forayplayer:ready", finish, { once: true });
-    timer = setTimeout(finish, PLAYER_WAIT_MS);
-  });
+    }
+    fn({ player: window.ForayPlayer || null, late: true });
+  };
+  window.addEventListener(PLAYER_READY_EVENT, finish, { once: true });
+  if (timeoutMs != null) timer = setTimeout(finish, timeoutMs);
+}
+
+/** The bridge, or null once PLAYER_WAIT_MS has passed without it -- the wait
+    every click and page render uses. */
+function playerBridge() {
+  return new Promise(resolve => whenPlayerBridge(({ player }) => resolve(player), { timeoutMs: PLAYER_WAIT_MS }));
 }
 
 /* "STILL LOADING" IS NOT "FAILED TO LOAD" (audit round 2, states-6). A null
@@ -15901,8 +15948,8 @@ function restoreNowPlayingRibbon() {
     if (!pending) return go(late);
     Promise.resolve(p.whenEngineReady()).then(() => go(late), () => go(late));
   };
-  if (window.ForayPlayer) whenLaneKnown(false);
-  else window.addEventListener("forayplayer:ready", () => whenLaneKnown(true), { once: true });
+  /* Unbounded: a module that lands late still restores the bar (A3-13). */
+  whenPlayerBridge(({ late }) => whenLaneKnown(late));
 }
 
 /** The part-played Foray for the bar, when it is the most recent thing played —
@@ -16748,8 +16795,7 @@ function bindEngineDevRows() {
     const ready = p && typeof p.whenEngineReady === "function" ? p.whenEngineReady() : null;
     Promise.resolve(ready).then(syncEngineDevRows, syncEngineDevRows);
   };
-  if (window.ForayPlayer) whenLane();
-  else window.addEventListener("forayplayer:ready", whenLane, { once: true });
+  whenPlayerBridge(whenLane); // unbounded, like the ribbon restore
 }
 
 /* The Interests page (#/interests, U-07) is reachable from Settings, but
@@ -17450,7 +17496,7 @@ async function deleteMyData({ deviceOnly = false } = {}) {
     state.interests = {};
     interestsSetThisSession = new Set();
     loadInterests();
-    state._interestsGen = (state._interestsGen || 0) + 1;
+    bumpInterestsGen();
     leaveForayPage();
     /* And this is the one action the app does not log. `logEvent` writes
        `cp_events` and mints `cp_profile_id`, and the next sync would create a
@@ -19949,7 +19995,7 @@ async function init() {
   if (storageWaiting()) {
     afterStorageSettles(() => {
       loadInterests();
-      state._interestsGen = (state._interestsGen || 0) + 1;
+      bumpInterestsGen();
     });
   }
   buildCards();
