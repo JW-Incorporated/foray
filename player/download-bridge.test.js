@@ -98,7 +98,7 @@ test("a throwing bridge resolves {ok:false, reason} — never rejects", async ()
   assert.deepEqual(r2, { ok: false, reason: "busy" });
 });
 
-// Mutation: drop the `setTimeoutFn(...)` line from `call`.
+// Mutation: in `scheduler`, never call `setTimeoutFn` (`const timer = null`).
 test("a call that never answers resolves {ok:false, reason:\"timeout\"} at the 10 s deadline (injected timer)", async () => {
   const bridge = { nativePromise: () => new Promise(() => {}) };
   const timer = manualTimer();
@@ -209,8 +209,8 @@ test("USER_AGENT is `4a/<build> (+https://jw-incorporated.github.io/foray/)`, bu
 /* Integration review (2026-10-04): the deadline used to outlive the answer —
    every settled call left a ten-second timer behind (this very suite took
    10 s to exit because of it), and the page will `list()` on every resume.
-   MUTATION: drop the `clearTimeoutFn(timer)` line in `call` and the
-   `cleared` assertion fails. */
+   MUTATION: make `scheduler`'s cancel a no-op (drop its `clearTimeoutFn(timer)`)
+   and the `cleared` assertion fails. */
 test("an answered call clears its deadline; the timer is not left running", async () => {
   const pending = new Map();
   const cleared = [];
@@ -265,10 +265,10 @@ test("a resolved answer with no ok of its own reads as ok: true; an explicit ok:
    answer (no deadline, not a lost answer); a clear that throws is swallowed; a
    null timer handle is never handed to clearTimeoutFn; and the timeout answer
    is a fresh object per call.
-   MUTATIONS: drop the try around `setTimeoutFn(...)` -> the first usage()
-   rejects; drop the try around `clearTimeoutFn(timer)` -> the second never
-   settles (the test's timeout is the red); drop `timer != null` -> `cleared`
-   holds a null. */
+   MUTATIONS: drop the try around `scheduler.schedule` in deadline.js -> the
+   first usage() rejects; drop the try around `cancel()` in deadline.js's
+   `settle` -> the second never settles (the test's timeout is the red); drop
+   `timer != null` in this module's `scheduler` -> `cleared` holds a null. */
 test("CH-40 characterization: no timer, a throwing clear and a null handle all still deliver the answer; each timeout answer is its own object", { timeout: 5000 }, async () => {
   const { bridge } = fakeBridge({ answer: { ok: true, bytes: 7 } });
   const noTimer = createDownloadBridge({ bridge, setTimeoutFn: () => { throw new Error("no timers here"); } });

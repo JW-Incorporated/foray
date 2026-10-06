@@ -139,6 +139,8 @@
    testable without a browser.
 */
 
+import { withinMs } from "./deadline.js";
+
 /** The namespace this store owns. CLAUDE.md § Conventions: the legacy `cp_`
     prefix stays — renaming a key wipes user state, so the shim changes the
     BACKING STORE and never the key names. */
@@ -1310,13 +1312,9 @@ export class DurableStore {
       counts), so the serial queue moves on instead of waiting forever behind it. */
   _timed(p, tierName) {
     const ms = this._opDeadlineMs;
-    if (!(ms > 0)) return p;
-    let timer = null;
-    const deadline = new Promise((_, reject) => {
-      timer = setTimeout(() => reject(Object.assign(
-        new Error(`${tierName} did not answer within ${ms} ms`), { name: "TimeoutError" })), ms);
+    return withinMs(p, ms, {
+      reject: () => Object.assign(new Error(`${tierName} did not answer within ${ms} ms`), { name: "TimeoutError" }),
     });
-    return Promise.race([Promise.resolve(p), deadline]).finally(() => clearTimeout(timer));
   }
 
   /** `await this._queue` for `purge()`, bounded: a queue still busy at the
@@ -1324,10 +1322,7 @@ export class DurableStore {
       leaving Delete my data on "Deleting…" (player-rest-1). */
   async _queueSettled(unverified) {
     const ms = this._purgeDeadlineMs;
-    if (!(ms > 0)) { await this._queue; return true; }
-    let timer = null;
-    const deadline = new Promise((resolve) => { timer = setTimeout(() => resolve(false), ms); });
-    const settled = await Promise.race([this._queue.then(() => true), deadline]).finally(() => clearTimeout(timer));
+    const settled = await withinMs(this._queue.then(() => true), ms, { fallback: false });
     if (!settled) unverified.push({ tier: "queue", phase: "write", reason: `durable writes still pending after ${ms} ms` });
     return settled;
   }

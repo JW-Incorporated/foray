@@ -521,8 +521,8 @@ test("THE THIRD RULE: a network failure keeps the held set AND the cache exactly
 });
 
 test("a pointer that never answers times out to `offline` — and the held set stays", async () => {
-  /* MUTATION: remove the `timeout` promise from fetchBytes' race. This test hangs;
-     the harness timeout is the red. */
+  /* MUTATION: return `request` from fetchBytes without its withinMs bound. This
+     test hangs; the harness timeout is the red. */
   const { d } = make({ fetch: fakeFetch({}, { never: true }), pointerTimeoutMs: 20 });
   await d.boot({ seed: makeSet(1) });
   const out = await d.refresh({ origin: ORIGIN });
@@ -729,9 +729,9 @@ test("CH-40 characterization: a fetch past its bound is ABORTED and answers `tim
      later, cannot replace that answer. Every bound (fetchBytes' and
      `bounded`'s around the cache and local-pointer reads) is cleared the
      moment its race settles.
-     MUTATIONS: drop `ctrl?.abort()` -> the pointer's signal is not aborted;
-     drop the `clearTimeout(timer)` in fetchBytes' finally (or `bounded`'s)
-     -> 4321 ms bounds are still live after an adopted refresh. */
+     MUTATIONS: drop fetchBytes' `onTimeout: () => ctrl?.abort()` -> the
+     pointer's signal is not aborted; drop the `cancel()` in deadline.js's
+     `settle` -> 4321 ms bounds are still live after an adopted refresh. */
   const signals = new Map();
   const abortable = (url, init) => {
     const signal = init?.signal ?? null;

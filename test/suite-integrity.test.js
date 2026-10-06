@@ -130,6 +130,7 @@ const FLOORS = {
   /* 2026-09-22 (audit L2, founder report 3): which build wrote a diagnostics
      record — the web deploy id on both hosts and the native build number in the
      shell, each from where only it is known. New suite. */
+  "player/deadline.test.js": 10, // CH-40 (P2-05, 2026-10-06): the one deadline race and REAL_SCHEDULER -- fallback vs reject on the clock, onTimeout, the inner rejection propagated, the bound cancelled on every settle, no bound for a non-finite/non-positive ms, a scheduler that cannot arm or cancel, the real scheduler, build-stamp.js's local copy pinned equal, and one owner
   "player/build-stamp.test.js": 10, // CH-40 (P2-05): characterization, an answered half leaves no live timer, a rejecting half reads null, Infinity is no bound (the floor also takes in the L09 OS tests already there); 7 -> 10 // 2026-09-23: each half of the stamp is bounded, so a bridge or a bundle read that never answers still yields a row; 5 -> 7
   "player/foray-progress.test.js": 62, // audit round 2 (L8): an estimated runtime says about, progressLabel says Played, markFinished writes a finished row; 59 -> 62 // FD-05 (2026-09-10): a Foray gone from the directory reads `dropped`; 58 -> 59
   "player/foray-structure.test.js": 4, // NE-29j (J-4, docs/native-engine-plan.md): the structural check is buildForayQueue's post-condition, its refusal token is on the wire and its problem codes are closed and all reachable, the census counts a jingle exactly where the source changes, and nothing hostile throws

@@ -4548,9 +4548,9 @@ test("CH-37: the manager asks the backend `audible`, and only `true` counts", as
 test("CH-40 characterization: with no scheduler injected (or null), the manager's clock is the wall clock and its timers are real, cancellable setTimeouts", async () => {
   /* The default scheduler's contract: `nowMs()` is Date.now(), `schedule(ms,
      fn)` arms a real timer and answers its cancel.
-     MUTATIONS: default `nowMs` to `() => 0` -> the clock assertion fails;
-     make the default cancel a no-op -> the cancelled timer fires too; drop
-     `?? REAL_SCHEDULER` -> the `null` round throws. */
+     MUTATIONS: make deadline.js REAL_SCHEDULER's `nowMs` `() => 0` -> the
+     clock assertion fails; make its cancel a no-op -> the cancelled timer
+     fires too; drop `?? REAL_SCHEDULER` -> the `null` round throws. */
   for (const scheduler of [undefined, null]) {
     const m = new PlayerQueueManager({ backend: new FakeBackend(), allowMultiple: true, scheduler });
     const s = m._scheduler;

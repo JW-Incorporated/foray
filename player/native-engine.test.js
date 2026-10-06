@@ -459,7 +459,7 @@ test("the client calls the plugin the Swift side registers, and engineHello is o
 test("CH-40 characterization: with no scheduler injected the hello bound is a REAL timer: it fires on the wall clock, and a hello answered in time clears it", { timeout: 5000 }, async () => {
   /* The default scheduler's contract: `schedule(ms, fn)` arms setTimeout and
      answers a cancel that clears it.
-     MUTATIONS: make the default scheduler's cancel a no-op -> the 4321 ms
+     MUTATIONS: make deadline.js REAL_SCHEDULER's cancel a no-op -> the 4321 ms
      bound is still live once native mode is decided; make its schedule never
      arm -> the hung hello never resolves (the test's timeout is the red). */
   const realSet = globalThis.setTimeout;

@@ -575,9 +575,9 @@ test("CH-40 characterization: the read's bound is armed at timeoutMs and cancell
   /* readEngineDiagnostics' contract: `timeout` on the clock, `failed` for a
      rejection (swallowed, never thrown), the ring otherwise; the scheduler's
      cancel runs on every settle.
-     MUTATIONS: drop `cancel()` from `finish` -> `live` is 1 after an answered
-     read; arm the bound at a constant instead of `timeoutMs` -> still pending
-     at 1234 ms. */
+     MUTATIONS: drop the `cancel()` in deadline.js's `settle` -> `live` is 1
+     after an answered read; bound the read by ENGINE_READ_TIMEOUT_MS instead
+     of `timeoutMs` -> still pending at 1234 ms. */
   const answeredSched = manualScheduler();
   const answered = await readEngineDiagnostics({ engine: { read: async () => ({ rows: [] }) }, timeoutMs: 1234, scheduler: answeredSched });
   assert.deepEqual(answered, { rows: [], readError: null });

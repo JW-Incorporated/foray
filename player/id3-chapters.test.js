@@ -452,8 +452,8 @@ test("native: a rejected call is a silent [], not cached", async () => {
 });
 
 test("native: a call that never answers is [] at the deadline", async () => {
-  /* MUTATION: in read(), delete the setTimeout -> the hung call never
-     settles, the test's own race fires and this goes red. */
+  /* MUTATION: in read(), hand withinMs `Infinity` instead of `timeoutMs` ->
+     the hung call never settles, the test's own race fires and this goes red. */
   const hung = createId3Reader({ getBridge: () => ({ nativePromise: () => new Promise(() => {}) }), timeoutMs: 20 });
   const out = await Promise.race([hung.forUrl(URL_A), new Promise((res) => setTimeout(() => res("hung"), 500))]);
   assert.deepEqual(out, []);
@@ -575,7 +575,7 @@ async function liveTimersAfter(body) {
 test("CH-40 characterization: a read answered in time leaves no live deadline, and a transport that rejects is swallowed to [], never a throw", async () => {
   /* read()'s contract: null on the clock (the test above), null on a
      rejection, the bytes otherwise; the deadline is cleared on settle.
-     MUTATION: drop `.finally(() => clearTimeout(t))` in read() -> the
+     MUTATION: drop the `cancel()` in deadline.js's `settle` -> the
      header's and the tag's 4321 ms deadlines are still live. */
   const file = withAudio(basic(4));
   const bridge = fakeBridge(file);

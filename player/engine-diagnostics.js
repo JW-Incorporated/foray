@@ -26,19 +26,13 @@
 import { decideMode, HELLO_PLATFORMS } from "./engine-contract.js";
 import { ENGINE_PLUGIN } from "./native-engine.js";
 import { formatDiagnosticReport } from "./diagnostic-log.js";
+import { withinMs, REAL_SCHEDULER } from "./deadline.js";
 
 /** How long Copy waits for the engine's ring before printing the page's record
     without it. The ring is a local file read on the main thread (NE-20), a few
     hundred KB at most; three seconds is a bridge that is not answering, not a
     slow disk. */
 export const ENGINE_READ_TIMEOUT_MS = 3000;
-
-const REAL_SCHEDULER = Object.freeze({
-  schedule(ms, fn) {
-    const h = setTimeout(fn, ms);
-    return () => clearTimeout(h);
-  },
-});
 
 function platformOf(capacitor) {
   try { return typeof capacitor?.getPlatform === "function" ? capacitor.getPlatform() : null; } catch (_) { return null; }
@@ -85,20 +79,18 @@ export function pageEngineView({ engine = null, capacitor = null } = {}) {
  */
 export function readEngineDiagnostics({ engine, timeoutMs = ENGINE_READ_TIMEOUT_MS, scheduler = REAL_SCHEDULER } = {}) {
   if (!engine || typeof engine.read !== "function") return Promise.resolve({ rows: null, readError: "no-engine" });
-  return new Promise((resolve) => {
-    let done = false;
-    let cancel = () => {};
-    const finish = (v) => { if (!done) { done = true; cancel(); resolve(v); } };
-    cancel = scheduler.schedule(timeoutMs, () => finish({ rows: null, readError: "timeout" }));
-    let pending;
-    try { pending = Promise.resolve(engine.read("diagnostics")); } catch (_) { pending = Promise.resolve(null); }
+  let pending;
+  try { pending = Promise.resolve(engine.read("diagnostics")); } catch (_) { pending = Promise.resolve(null); }
+  return withinMs(
     pending.then(
       /* native-engine.js `read` answers null for a bridge that threw or a reply
          the contract refused; either way the ring was not read. */
-      (reply) => finish(Array.isArray(reply?.rows) ? { rows: reply.rows, readError: null } : { rows: null, readError: "failed" }),
-      () => finish({ rows: null, readError: "failed" }),
-    );
-  });
+      (reply) => (Array.isArray(reply?.rows) ? { rows: reply.rows, readError: null } : { rows: null, readError: "failed" }),
+      () => ({ rows: null, readError: "failed" }),
+    ),
+    timeoutMs,
+    { fallback: { rows: null, readError: "timeout" }, scheduler },
+  );
 }
 
 /**
