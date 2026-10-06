@@ -22,15 +22,20 @@ extension MPNowPlayingInfoCenter: NowPlayingInfoCentering {}
 /// second while the clock runs), and the rate is `NowPlayingRate`. What
 /// lives here is only the dictionary:
 ///
-///   - THE DEFAULT RATE IS THE LISTENER'S, ON EVERY ENTRY.
-///     `MPNowPlayingInfoPropertyDefaultPlaybackRate` is the speed the
-///     listener chose (1.5 at the founder's), playing, paused or buffering,
-///     exactly as the legacy lane wrote it (ForayAudioPlugin.swift
-///     `applyNowPlayingInfo`). Without it iOS sees an item playing at 1.5
-///     whose default is 1.0, which a rate-to-AVRCP mapper may report as a
-///     scan rather than play; the two native-era car reports (2026-09-28,
-///     2026-10-06: a plain-Bluetooth head unit's bar stuck at 0 while
-///     playing) both lacked it.
+///   - THE DEFAULT RATE NEVER DISAGREES WITH A RUNNING CLOCK.
+///     `MPNowPlayingInfoPropertyDefaultPlaybackRate` is the entry's own
+///     running rate whenever it has one (1.5 for a clip at the founder's
+///     1.5x, 1 for a spoken line, which runs at 1x whatever the listener's
+///     speed), and the listener's chosen rate only when the clock stands
+///     still (paused, stalled or loading: rate 0). That is the legacy lane's
+///     behaviour (ForayAudioPlugin.swift `applyNowPlayingInfo` writes both
+///     keys from the same `payload.playbackRate`, the element's real rate),
+///     not "always the listener's": a playing entry whose rate differs from
+///     its default is what a rate-to-AVRCP mapper may report as a scan
+///     rather than play. The native lane had dropped the key, so at 1.5x iOS
+///     saw an item playing at 1.5 whose default was 1.0; the two native-era
+///     car reports (2026-09-28, 2026-10-06: a plain-Bluetooth head unit's
+///     bar stuck at 0 while playing) both lacked it.
 ///   - RATE 0 WHEN NOT PLAYING, AND `playbackState` IS NEVER WRITTEN (OQ-8).
 ///     Apple documents `playbackState` as macOS-only; on iOS what makes a
 ///     paused entry read as paused, and what keeps 4a the Now Playing app
@@ -60,7 +65,7 @@ final class NowPlayingPublisher: NowPlayingWriting {
     /// Monotonic seconds, for the playhead an artwork re-post carries.
     private let uptime: () -> Double
 
-    /// The entry last written, the listener's rate it carried, and when
+    /// The entry last written, the listener's rate it was written with, and when
     /// (`uptime`); nil after `clear()`.
     private var current: (view: MediaMapping.SessionView, listenRate: Double, at: Double)?
     /// The one artwork object the entry shows, for the picture it was built
@@ -123,10 +128,14 @@ final class NowPlayingPublisher: NowPlayingWriting {
                                           listenRate: current.listenRate, advancedBySec: elapsed)
     }
 
-    /// `MPNowPlayingInfoPropertyDefaultPlaybackRate`: the listener's rate, or
-    /// 1 when the host has none to give (never 0, never NaN).
-    static func defaultRate(_ listenRate: Double) -> Double {
-        listenRate.isFinite && listenRate > 0 ? listenRate : 1
+    /// `MPNowPlayingInfoPropertyDefaultPlaybackRate`: the entry's running
+    /// rate (`NowPlayingRate.of`) when its clock runs, so a playing entry's
+    /// rate and default always agree (a spoken line at 1.5x says 1 and 1);
+    /// the listener's rate when it stands still (rate 0: paused, stalled,
+    /// loading); 1 when neither is usable (never 0, never NaN).
+    static func defaultRate(entryRate: Double, listenRate: Double) -> Double {
+        if entryRate.isFinite && entryRate > 0 { return entryRate }
+        return listenRate.isFinite && listenRate > 0 ? listenRate : 1
     }
 
     /// The dictionary. `advancedBySec` moves the playhead on at the entry's
@@ -141,7 +150,7 @@ final class NowPlayingPublisher: NowPlayingWriting {
             MPMediaItemPropertyAlbumTitle: view.metadata.album,
             MPNowPlayingInfoPropertyMediaType: NSNumber(value: MPNowPlayingInfoMediaType.audio.rawValue),
             MPNowPlayingInfoPropertyPlaybackRate: NSNumber(value: rate),
-            MPNowPlayingInfoPropertyDefaultPlaybackRate: NSNumber(value: defaultRate(listenRate))
+            MPNowPlayingInfoPropertyDefaultPlaybackRate: NSNumber(value: defaultRate(entryRate: rate, listenRate: listenRate))
         ]
         if let position = view.positionState {
             let elapsed = Swift.min(position.position + advancedBySec * rate, position.duration)

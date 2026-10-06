@@ -735,7 +735,7 @@ final class ForayEngine {
             // and duration this entry carried (nil: none was published),
             // and WHY a playing entry says rate 0 (the core's buffering
             // latch, or a load in flight) next to the listener's rate (the
-            // entry's default rate).
+            // default rate an entry at rate 0 falls back to).
             JSONMember("elapsedSec", entry.positionState.map { JSONNode.number(Self.millis($0.position)) } ?? .null),
             JSONMember("durationSec", entry.positionState.map { JSONNode.number(Self.millis($0.duration)) } ?? .null),
             JSONMember("buffering", .bool(core.state.buffering)),

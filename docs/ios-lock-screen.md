@@ -199,7 +199,7 @@ nothing for it to exit.
 | album | `MPMediaItemPropertyAlbumTitle` | the Foray's title, plus "part N of M" |
 | duration | `MPMediaItemPropertyPlaybackDuration` | the **Foray's** clock, not the segment's — §3.5 below |
 | position | `MPNowPlayingInfoPropertyElapsedPlaybackTime` | rewritten about once a second while playing (the legacy lane: once per report, at the shim's 1 s floor; the native lane: every 1 s while the entry's rate is above 0) and never while paused — see below |
-| rate | `MPNowPlayingInfoPropertyPlaybackRate` / `…DefaultPlaybackRate` | `PlaybackRate` is `0` when not `playing` (and while stalled), so the OS stops extrapolating a paused Foray; `DefaultPlaybackRate` is **always the listener's rate** (1.5 at 1.5x), playing, paused or buffering, on both lanes |
+| rate | `MPNowPlayingInfoPropertyPlaybackRate` / `…DefaultPlaybackRate` | `PlaybackRate` is `0` when not `playing` (and while stalled), so the OS stops extrapolating a paused Foray; `DefaultPlaybackRate` **never disagrees with a running clock**: while the entry's rate is above 0 it is that rate (1.5 for a clip at 1.5x, 1 for a spoken line, which runs at 1x whatever the listener's speed); while it is 0 (paused, stalled, loading) the native lane writes the listener's rate. The legacy lane writes both keys from the element's real rate |
 | artwork | `MPMediaItemPropertyArtwork` via `MPMediaItemArtwork` | loaded from the app bundle's `public/` for our own icon (`bundle://public/…`, resolved against `Bundle.main`), from the network for a publisher's; a failed or missing load omits the key rather than guessing — same "no artwork, never a guess" rule `media-session.js`'s `artworkUrl()` already enforces upstream |
 
 **Written once per report, not once per `timeupdate`.** Same reasoning as Android's
@@ -221,10 +221,15 @@ provably right both times. The native lane now rewrites a running entry (rate ab
 every 1 s at the deck's playhead (`ForayEngine.nowPlayingRefreshSec`), never while
 paused, stalled or loading, and hands every rewrite of the same picture the same
 `MPMediaItemArtwork` object so CarPlay and a head unit do not refetch or flicker the
-artwork. It also writes `MPNowPlayingInfoPropertyDefaultPlaybackRate` as the listener's
-rate again: the native lane had dropped it, so at 1.5x iOS saw an item playing at 1.5
-whose default was 1.0. Which of the two froze that car is not yet known (a 1.0x drive
-would say); both were regressions from the legacy lane, and both are fixed.
+artwork. It also writes `MPNowPlayingInfoPropertyDefaultPlaybackRate` again: the
+native lane had dropped it, so at 1.5x iOS saw an item playing at 1.5 whose default
+was 1.0. The default is the entry's running rate whenever its clock runs, and the
+listener's rate only while it stands still (rate 0), so a playing entry's rate and
+default always agree, as on the legacy lane (both keys from the element's real rate).
+A spoken line at 1.5x carries rate 1 and default 1, not a default of 1.5 against a
+rate of 1, which is the same mismatch a rate-to-AVRCP mapper may report as a scan.
+Which of the two froze that car is not yet known (a 1.0x drive would say); both were
+regressions from the legacy lane, and both are fixed.
 `DECISIONS.md` 2026-10-06 records the choice of 1 Hz over Apple's "periodic updates are
 not necessary".
 

@@ -341,21 +341,87 @@ final class NowPlayingPublisherTests: XCTestCase {
     }
 
     /// The host hands the publisher the listener's rate on every write, the
-    /// paused one included: what the entry carries as its default rate.
+    /// paused one included: the default an entry whose clock stands still
+    /// (rate 0) falls back to. A running entry's default is its own rate, so
+    /// what each write carries is 1.5 / 1.5 playing a clip at 1.5x and
+    /// 0 / 1.5 paused there.
     /// TO SEE IT FAIL: pass `NowPlayingRate.of(entry)` (0 while paused) or a
     /// literal 1 instead of `core.state.rate` in `publishSurface`.
     @MainActor
     func testTheHostPassesTheListenersRateOnEveryWrite() throws {
         let world = FakeWorld()
         let engine = playing(world)
+        func published() throws -> (rate: Double, defaultRate: Double) {
+            let rate = NowPlayingRate.of(try XCTUnwrap(world.nowPlaying.last))
+            let listen = try XCTUnwrap(world.nowPlaying.listenRates.last)
+            return (rate, NowPlayingPublisher.defaultRate(entryRate: rate, listenRate: listen))
+        }
         XCTAssertEqual(world.nowPlaying.listenRates.last, 1)
         world.deck.reading.audible = true
         engine.handle(.queue(.setRate(1.5)))
         XCTAssertEqual(world.nowPlaying.listenRates.last, 1.5)
+        XCTAssertEqual(try published().rate, 1.5)
+        XCTAssertEqual(try published().defaultRate, 1.5)
         engine.handle(.command(.pause, source: .tap))
-        XCTAssertEqual(NowPlayingRate.of(try XCTUnwrap(world.nowPlaying.last)), 0)
+        XCTAssertEqual(try published().rate, 0)
         XCTAssertEqual(world.nowPlaying.listenRates.last, 1.5, "a paused entry keeps the listener's default rate")
+        XCTAssertEqual(try published().defaultRate, 1.5)
         XCTAssertEqual(world.nowPlaying.listenRates.count, world.nowPlaying.writes)
+    }
+
+    /// A SPOKEN Foray line at 1.5x, through the host and the real publisher:
+    /// the line runs at 1x on the wall clock (`forayMediaView` says 1), so
+    /// the entry carries rate 1 AND default 1. A default of 1.5 against a
+    /// rate of 1 is the very mismatch a rate-to-AVRCP mapper may report as a
+    /// scan, on every narration line; the legacy lane never wrote it (both
+    /// keys from the element's real rate). Paused on the line, the clock
+    /// stops and the default falls back to the listener's 1.5.
+    /// TO SEE IT FAIL: write `defaultRate` from `listenRate` alone (1.5 over
+    /// a running 1x line), or from the entry's rate alone (1 instead of 1.5
+    /// while paused).
+    @MainActor
+    func testASpokenLineAtOneAndAHalfCarriesRateOneAndDefaultOne() throws {
+        let world = FakeWorld()
+        world.deck.answersReady = true
+        let center = DictionaryCenter()
+        let publisher = NowPlayingPublisher(center: center, artwork: ArtworkCache(
+            fetcher: { _, _, _ in {} }, bundleReader: { _ in nil }, deadline: { _, _ in }))
+        var seams = world.seams
+        seams.nowPlaying = publisher
+        let engine = ForayEngine(seams: seams, config: EngineConfig(build: "test", forayTapeEnabled: true))
+        engine.start()
+        let line = try XCTUnwrap(EngineItem(node: .object([
+            JSONMember("id", .string("f1#0")), JSONMember("kind", .string("tts")),
+            JSONMember("type", .string("narration")), JSONMember("script", .string("a line")),
+            JSONMember("audio_url", .null)
+        ])))
+        let clip = try XCTUnwrap(EngineItem(node: .object([
+            JSONMember("id", .string("f1#1")), JSONMember("kind", .string("episode")),
+            JSONMember("audio_url", .string("https://cdn.test/b.mp3")),
+            JSONMember("start_sec", .number(300)), JSONMember("end_sec", .number(400)),
+            JSONMember("duration_sec", .number(3600))
+        ])))
+        engine.handle(.queue(.loadForay([line, clip], isLocalFile: false, allowAdPad: false)))
+        engine.handle(.queue(.setRate(1.5)))
+        engine.handle(.queue(.playIndex(0, startSec: nil, source: .tap)))
+        let seq = try XCTUnwrap(world.speaker.narrated.compactMap { command -> Int? in
+            if case let .speak(seq, _, _, _) = command { return seq }
+            return nil
+        }.last, "no line was spoken: \(world.speaker.narrated)")
+        world.speaker.report(.started(seq: seq, voiceFallback: false))
+        XCTAssertEqual(engine.state.stateType, "playing")
+        XCTAssertEqual(engine.state.rate, 1.5)
+        func rates() throws -> (rate: Double?, defaultRate: Double?) {
+            let info = try XCTUnwrap(center.nowPlayingInfo)
+            return ((info[MPNowPlayingInfoPropertyPlaybackRate] as? NSNumber)?.doubleValue,
+                    (info[MPNowPlayingInfoPropertyDefaultPlaybackRate] as? NSNumber)?.doubleValue)
+        }
+        XCTAssertEqual(try rates().rate, 1, "a spoken line runs at 1x on the wall clock")
+        XCTAssertEqual(try rates().defaultRate, 1, "and its default agrees, whatever the listener's speed")
+
+        engine.handle(.command(.pause, source: .tap))
+        XCTAssertEqual(try rates().rate, 0)
+        XCTAssertEqual(try rates().defaultRate, 1.5, "a stopped clock falls back to the listener's rate")
     }
 
     // MARK: - The real MPNowPlayingInfoCenter
@@ -386,13 +452,18 @@ final class NowPlayingPublisherTests: XCTestCase {
         XCTAssertEqual((paused[MPNowPlayingInfoPropertyElapsedPlaybackTime] as? NSNumber)?.doubleValue, 131)
     }
 
-    /// The default rate is the listener's on EVERY entry (the legacy lane's
-    /// `applyNowPlayingInfo`, docs/ios-lock-screen.md §3): 1.5 while playing
-    /// at 1.5, while paused (rate 0) and while buffering (rate 0). Without it
-    /// iOS sees an item playing at 1.5 whose default is 1.0 (2026-10-06).
+    /// The default rate is the entry's running rate while its clock runs and
+    /// the listener's while it stands still (docs/ios-lock-screen.md §3):
+    /// 1.5 playing a clip at 1.5, 1 for a spoken line at 1.5x (it runs at
+    /// 1x; a playing entry's rate and default never disagree, as the legacy
+    /// lane's `applyNowPlayingInfo` wrote both from the element's real rate),
+    /// and the listener's 1.5 while paused and while buffering (rate 0).
+    /// Without the key iOS sees an item playing at 1.5 whose default is 1.0
+    /// (2026-10-06).
     /// TO SEE IT FAIL: drop `MPNowPlayingInfoPropertyDefaultPlaybackRate`
-    /// from `info`, or write `rate` there (0 while paused).
-    func testTheDefaultRateIsTheListenersWhilePlayingPausedAndBuffering() throws {
+    /// from `info`, write `rate` there unguarded (0 while paused), or write
+    /// the listener's rate over a running entry (1.5 over the spoken line).
+    func testTheDefaultRateIsTheRunningRateOrTheListenersWhileStopped() throws {
         let center = MPNowPlayingInfoCenter.default()
         let publisher = NowPlayingPublisher(center: center, artwork: ArtworkCache(bundleReader: { _ in nil }))
         defer { center.nowPlayingInfo = nil }
@@ -419,10 +490,20 @@ final class NowPlayingPublisherTests: XCTestCase {
         XCTAssertEqual(try rates().rate, 0, "a stall stops the clock (p-car-8)")
         XCTAssertEqual(try rates().defaultRate, 1.5, "and keeps the default")
 
-        // Never 0 or NaN: a host with no rate to give writes 1.
-        XCTAssertEqual(NowPlayingPublisher.defaultRate(0), 1)
-        XCTAssertEqual(NowPlayingPublisher.defaultRate(.nan), 1)
-        XCTAssertEqual(NowPlayingPublisher.defaultRate(2), 2)
+        // A spoken line at the listener's 1.5x runs at 1x, and so does its
+        // default: 1.5 over a 1x clock is what may read as a scan.
+        publisher.write(MediaMapping.sessionView(MediaMapping.View(
+            item: MediaMapping.Item(kind: "tts", title: "Narration", show: "Foray"), durationSec: 1800,
+            positionSec: 140, playbackRate: 1, playing: true, foray: true)), listenRate: 1.5)
+        XCTAssertEqual(try rates().rate, 1)
+        XCTAssertEqual(try rates().defaultRate, 1)
+
+        // Never 0 or NaN: a running rate wins, then the listener's, then 1.
+        XCTAssertEqual(NowPlayingPublisher.defaultRate(entryRate: 1, listenRate: 1.5), 1)
+        XCTAssertEqual(NowPlayingPublisher.defaultRate(entryRate: 0, listenRate: 1.5), 1.5)
+        XCTAssertEqual(NowPlayingPublisher.defaultRate(entryRate: .nan, listenRate: 2), 2)
+        XCTAssertEqual(NowPlayingPublisher.defaultRate(entryRate: 0, listenRate: 0), 1)
+        XCTAssertEqual(NowPlayingPublisher.defaultRate(entryRate: 0, listenRate: .nan), 1)
     }
 
     /// A rewrite of the same picture (the host's 1 s refresh) hands the

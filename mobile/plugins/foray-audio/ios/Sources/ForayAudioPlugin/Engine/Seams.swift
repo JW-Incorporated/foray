@@ -159,11 +159,15 @@ protocol RemoteCommandRegistering: AnyObject {
 /// `PLAYING`, 0 otherwise, and `playbackState` itself is never written (OQ-8:
 /// it is macOS-only).
 ///
-/// `listenRate` is the listener's chosen speed (`EngineState.rate`), written
-/// as `MPNowPlayingInfoPropertyDefaultPlaybackRate` on EVERY entry, playing,
-/// paused or buffering, as the legacy lane wrote it (docs/ios-lock-screen.md
-/// §3). It is not in `SessionView` because `positionState.playbackRate` is 0
-/// while buffering, and the default rate must not be.
+/// `listenRate` is the listener's chosen speed (`EngineState.rate`). The
+/// conformer writes `MPNowPlayingInfoPropertyDefaultPlaybackRate` as the
+/// entry's own running rate (`NowPlayingRate.of`) whenever that is above 0,
+/// so a playing entry's rate and default always agree (a spoken line at 1.5x
+/// says 1 and 1, as the legacy lane's element rate did), and as `listenRate`
+/// only when the entry's clock stands still (paused, stalled or loading:
+/// rate 0) (docs/ios-lock-screen.md §3). It is not in `SessionView` because
+/// `positionState.playbackRate` is 0 while buffering, and the default rate
+/// must not be.
 protocol NowPlayingWriting: AnyObject {
     func write(_ view: MediaMapping.SessionView, listenRate: Double)
     func clear()

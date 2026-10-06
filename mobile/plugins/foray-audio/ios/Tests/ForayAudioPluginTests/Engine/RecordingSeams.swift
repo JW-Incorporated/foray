@@ -196,8 +196,8 @@ final class FakeNowPlaying: NowPlayingWriting {
     /// (nil after a clear).
     private(set) var written: [MediaMapping.SessionView] = []
     private(set) var last: MediaMapping.SessionView?
-    /// The listener's rate each write carried (the entry's default rate),
-    /// in the same order as `written`.
+    /// The listener's rate each write carried (the default rate the entry
+    /// falls back to while its rate is 0), in the same order as `written`.
     private(set) var listenRates: [Double] = []
 
     init(log: SeamLog) { self.log = log }

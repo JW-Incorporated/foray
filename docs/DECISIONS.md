@@ -15,8 +15,8 @@ Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
   sent stayed at its first value. The legacy lane it replaced rewrote the entry on
   every report, and reports arrived about once a second while playing (the page's
   4 Hz `timeupdate`, the shim's 1 s position floor). The native lane had also dropped
-  `MPNowPlayingInfoPropertyDefaultPlaybackRate`, which the legacy lane wrote as the
-  listener's rate.
+  `MPNowPlayingInfoPropertyDefaultPlaybackRate`, which the legacy lane wrote from the
+  element's real rate (the same value as `PlaybackRate` while playing).
 - **Decision: legacy parity, 1 Hz, over Apple's guidance.** Apple says periodic
   elapsed-time updates are not necessary because the system extrapolates. That holds
   for Apple's own surfaces (lock screen, CarPlay). It does not hold for this car: a
@@ -26,9 +26,12 @@ Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
   deck's own playhead (`ForayEngine.nowPlayingRefreshSec`, a host-only heartbeat; the
   core and the parity fixtures are unchanged). A paused, stalled or loading entry is
   never refreshed, so a pause costs nothing and the p-car-8 stall rule holds. Every
-  entry carries `DefaultPlaybackRate` = the listener's rate again, and every rewrite of
-  the same picture reuses one `MPMediaItemArtwork` object so CarPlay does not refetch
-  or flicker it.
+  entry carries `DefaultPlaybackRate` again: the entry's running rate while it is above
+  0, and the listener's rate only while it is 0 (paused, stalled, loading), so a
+  playing entry's rate and default never disagree (a spoken line at 1.5x carries 1 and
+  1, as the legacy lane's element rate did; a default of 1.5 over a 1x line would be
+  the very mismatch suspected of reading as a scan). Every rewrite of the same picture
+  reuses one `MPMediaItemArtwork` object so CarPlay does not refetch or flicker it.
 - **Not yet known:** which of the two gaps froze this car. A 1.0x drive on a build
   without the fix would separate them; the fix ships both either way. If the 1 Hz
   rewrites ever make a head unit re-read metadata visibly, the artwork-object reuse is
