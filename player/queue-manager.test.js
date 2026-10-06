@@ -3932,12 +3932,12 @@ test("§14: a media error during the first line's load does not stop the player 
   const tts = fakeTts();
   const { m, log } = make({
     tts, backendClass: FlakyBackend,
-    backend: { errors: { "nar-1": "load failed (code 4) for nar-1" }, errorEventFor: ["nar-1"] },
+    backend: { errors: { "nar-1": "load of nar-1 failed: media error 4" }, errorEventFor: ["nar-1"] },
   });
   await m.playForay(foray([RLINE(), fseg()]), { resolveItem });
   assert.equal(m.state.type, "playing", `not idle: ${log.join(" | ")}`);
   assert.equal(tts.calls.length, 1);
-  assert.ok(log.some((l) => /^narration\.error\.leftToLoad nar-1/.test(l)));
+  assert.ok(log.some((l) => /^load\.error\.leftToLoad nar-1/.test(l)));
   assert.ok(log.includes(`narration.fallback reason=unsupported at=load item=nar-1 host=${N_HOST}`));
 });
 
@@ -3947,11 +3947,12 @@ test("§16: a media error during a Foray clip's load (web lane) is retried, not 
      player was idle by the time `_retryOrSkipClip` looked, so a web clip with a
      media error stopped the Foray. Here the clip errors on BOTH attempts: one
      retry, then the step to the next clip.
-     MUTATION THAT KILLS THIS (run 2026-10-04, red): delete the `_clipLoadInFlight` branch of
-     `_onBackendError` (idle, `player.error`, one load). */
+     MUTATION THAT KILLS THIS (run 2026-10-04, red; re-run 2026-10-06 on the one
+     marker, CH-25): delete the `_loadInFlight` branch of `_onBackendError`
+     (idle, `player.error`, one load). */
   const { m, backend, log } = make({
     backendClass: FlakyBackend,
-    backend: { errors: { "foray-1#1": "load failed (code 4) for foray-1#1" }, errorEventFor: ["foray-1#1"] },
+    backend: { errors: { "foray-1#1": "load of foray-1#1 failed: media error 4" }, errorEventFor: ["foray-1#1"] },
   });
   await m.playForay(foray([fseg(), fseg({ item_id: "ep-other", start_sec: 400, end_sec: 500 }),
     fseg({ start_sec: 700, end_sec: 800 })]), { resolveItem });
@@ -3962,30 +3963,111 @@ test("§16: a media error during a Foray clip's load (web lane) is retried, not 
   assert.deepEqual(backend.loads(), ["load:foray-1#1", "load:foray-1#1", "load:foray-1#2"], `got ${backend.calls}`);
   assert.equal(m.state.type, "playing", `not idle: ${log.join(" | ")}`);
   assert.equal(m.currentIndex, 2);
-  assert.ok(log.some((l) => /^foray\.segment\.error\.leftToLoad foray-1#1/.test(l)), `got ${log}`);
+  assert.ok(log.some((l) => /^load\.error\.leftToLoad foray-1#1/.test(l)), `got ${log}`);
   assert.ok(!log.some((l) => /player\.error/.test(l)), `got ${log}`);
 });
 
 test("§16: a media error on a plain episode's load still stops the player (not a clip)", async () => {
-  /* MUTATION THAT KILLS THIS (run 2026-10-04, red): set `_clipLoadInFlight` for every backend load
-     (drop the `_isForayClip` test in `_loadRenderedOrCatch`) — the early report
-     is swallowed and `foray.segment.error.leftToLoad a` appears. */
+  /* Since CH-25 the element's early report is left to the load for EVERY item
+     (one marker), so a plain episode stops through its load's own rejection,
+     once — `load.error.leftToLoad a`, then the `_loadItem` catch's `E.error`.
+     What stays particular to a clip is the retry.
+     MUTATION THAT KILLS THIS (run 2026-10-06, red): make `_isForayClip` true
+     for any item (the episode is loaded again). */
   const { m, backend, log } = make({
     backendClass: FlakyBackend,
-    backend: { errors: { a: "load failed (code 4) for a" }, errorEventFor: ["a"] },
+    backend: { errors: { a: "load of a failed: media error 4" }, errorEventFor: ["a"] },
   });
   m.loadQueue([ep("a"), ep("b")]);
   await m.play(0);
   await tick();
   assert.equal(m.state.type, "idle");
   assert.deepEqual(backend.loads(), ["load:a"]);
-  assert.ok(!log.some((l) => /leftToLoad/.test(l)), `got ${log}`);
+  assert.ok(log.some((l) => /^load\.error\.leftToLoad a /.test(l)), `got ${log}`);
+});
+
+test("one load-in-flight marker: a plain episode whose load errors reaches the reducer once — one player.error, one pause (CH-25)", async () => {
+  /* P1-02 (docs/roadmap/code-health.md): html-audio-backend's persistent
+     `error` listener reports a media error BEFORE the load's own rejection, and
+     both used to reach `E.error` — two `pausePlayback` effects, two
+     `player.error` rows, two failure paints for one failed file. Every backend
+     load now holds the one in-flight marker, so the early report is left to the
+     rejection and the reducer hears about the failure once.
+     MUTATION THAT KILLS THIS: delete the in-flight branch of `_onBackendError`
+     (two rows, two pauses). */
+  const { m, backend, log } = make({
+    backendClass: FlakyBackend,
+    backend: { errors: { a: "load of a failed: media error 4" }, errorEventFor: ["a"] },
+  });
+  m.loadQueue([ep("a"), ep("b")]);
+  await m.play(0);
+  await tick();
+  assert.equal(m.state.type, "idle", "the failed episode still stops the player");
+  assert.deepEqual(backend.loads(), ["load:a"], "and is not retried");
+  const errors = log.filter((l) => /^player\.error/.test(l));
+  assert.equal(errors.length, 1, `one player.error row: ${errors.join(" | ")}`);
+  assert.match(errors[0], /^player\.error: loadItem\(a\) failed: load of a failed: media error 4$/, "the load's own message, not the listener's");
+  assert.equal(backend.calls.filter((c) => c === "pause").length, 1, `one pausePlayback: ${backend.calls}`);
+});
+
+test("one load-in-flight marker: a rendered line whose load errors falls back exactly once, and the marker ends with its load (CH-25)", async () => {
+  /* The other side of the one marker: it must not swallow more than the early
+     report of the load it was set for. The line's own rejection still falls
+     back (one speak, one `narration.fallback` row, no stop), and once the next
+     item has LANDED, an error while it sounds reaches the reducer again.
+     MUTATIONS THAT KILL THIS: drop the marker's clear after the load settles
+     (the clip's sounding error is swallowed and the player plays on); make
+     `_loadRenderedOrCatch` rethrow a fallback-able line's failure (idle). */
+  const tts = fakeTts();
+  const { m, backend, log } = make({
+    tts, backendClass: FlakyBackend,
+    backend: { errors: { "nar-1": "load of nar-1 failed: media error 2" }, errorEventFor: ["nar-1"] },
+  });
+  await m.playForay(foray([RLINE(), fseg()]), { resolveItem });
+  assert.equal(m.state.type, "playing", `not idle: ${log.join(" | ")}`);
+  assert.equal(tts.calls.length, 1, "spoken once");
+  assert.deepEqual(log.filter((l) => /^narration\.fallback /.test(l)),
+    [`narration.fallback reason=network at=load item=nar-1 host=${N_HOST}`], "one fallback row");
+  assert.ok(!log.some((l) => /^player\.error/.test(l)), `no stop: ${log.join(" | ")}`);
+
+  tts.finish();
+  await tick();
+  await tick();
+  assert.ok(backend.calls.includes("load:foray-1#1@100"), `the clip after it landed: ${backend.calls}`);
+  assert.equal(m.state.type, "playing");
+  backend.onError("media error 2");
+  await tick();
+  assert.equal(m.state.type, "idle", "an error after the load settled is the reducer's again");
+  assert.equal(log.filter((l) => /^player\.error/.test(l)).length, 1);
+});
+
+test("one load-in-flight marker: a rendered bridge with no script whose load errors is skipped, as when no early report comes (CH-25)", async () => {
+  /* The marker covers every load, a bridge's too, so the bridge's own
+     rejection decides: `_advancePastBridgeFailure` steps to the clip after it —
+     what a bridge failure has always done when the backend sends no early
+     report (§14 header; the native deck never does). Before CH-25 the web
+     lane's early report reached `E.error` first and the Foray stopped here.
+     MUTATION THAT KILLS THIS (run 2026-10-06, red): delete the in-flight
+     branch of `_onBackendError` (idle, `player.error`, the next clip never
+     loads). */
+  const tts = fakeTts();
+  const { m, backend, log } = make({
+    tts, backendClass: FlakyBackend,
+    backend: { errors: { "nar-1": "load of nar-1 failed: media error 4" }, errorEventFor: ["nar-1"] },
+  });
+  await m.playForay(foray([fseg(), RLINE({ script: undefined }), fseg({ start_sec: 400, end_sec: 500 })]), { resolveItem });
+  await m._handleBackendItemEnded(END_OUT_POINT);
+  await tick();
+  assert.equal(m.state.type, "playing", `not idle: ${log.join(" | ")}`);
+  assert.deepEqual(backend.loads(), ["load:foray-1#0", "load:nar-1", "load:foray-1#2"], "skipped to the next clip");
+  assert.equal(tts.calls.length, 0, "no script, nothing spoken");
+  assert.ok(!log.some((l) => /^player\.error/.test(l)), `no stop: ${log.join(" | ")}`);
 });
 
 test("§14: jumping onto a line whose file fails speaks it (the jump case)", async () => {
   const tts = fakeTts();
   const { m, log } = make({
-    tts, backendClass: FlakyBackend, backend: { errors: { "nar-1": "load failed (code 2) for nar-1" } },
+    tts, backendClass: FlakyBackend, backend: { errors: { "nar-1": "load of nar-1 failed: media error 2" } },
   });
   await m.playForay(foray([fseg(), RLINE(), fseg({ start_sec: 400, end_sec: 500 })]), { resolveItem });
   await m.play(1);
@@ -4000,7 +4082,7 @@ test("§14: a rendered BRIDGE whose file fails is spoken, not skipped", async ()
      THIS: make the bridge path's `_loadRenderedOrCatch` result throw. */
   const tts = fakeTts();
   const { m, backend, log } = make({
-    tts, backendClass: FlakyBackend, backend: { errors: { "nar-1": "load failed (code 3) for nar-1" } },
+    tts, backendClass: FlakyBackend, backend: { errors: { "nar-1": "load of nar-1 failed: media error 3" } },
   });
   await m.playForay(foray([fseg(), RLINE(), fseg({ start_sec: 400, end_sec: 500 })]), { resolveItem });
   await m._handleBackendItemEnded(END_OUT_POINT);
@@ -4132,7 +4214,7 @@ test("§14: an error on a CLIP still stops the player exactly as before", async 
 test("§14: a rendered line with NO script fails exactly as before", async () => {
   const tts = fakeTts();
   const { m, log } = make({
-    tts, backendClass: FlakyBackend, backend: { errors: { "nar-1": "load failed (code 4) for nar-1" } },
+    tts, backendClass: FlakyBackend, backend: { errors: { "nar-1": "load of nar-1 failed: media error 4" } },
   });
   await m.playForay(foray([RLINE({ script: undefined }), fseg()]), { resolveItem });
   assert.equal(m.state.type, "idle");
@@ -4142,7 +4224,7 @@ test("§14: a rendered line with NO script fails exactly as before", async () =>
 
 test("§14: with no speech bridge wired a failed file fails exactly as before", async () => {
   const { m } = make({
-    backendClass: FlakyBackend, backend: { errors: { "nar-1": "load failed (code 4) for nar-1" } },
+    backendClass: FlakyBackend, backend: { errors: { "nar-1": "load of nar-1 failed: media error 4" } },
   });
   await m.playForay(foray([RLINE(), fseg()]), { resolveItem });
   assert.equal(m.state.type, "idle");
@@ -4161,7 +4243,7 @@ function refusingTts() {
 test("§14: if speech is refused too, the first line stops as before", async () => {
   const tts = refusingTts();
   const { m } = make({
-    tts, backendClass: FlakyBackend, backend: { errors: { "nar-1": "load failed (code 4) for nar-1" } },
+    tts, backendClass: FlakyBackend, backend: { errors: { "nar-1": "load of nar-1 failed: media error 4" } },
   });
   await m.playForay(foray([RLINE(), fseg()]), { resolveItem });
   assert.equal(tts.calls.length, 1, "speech was tried");
@@ -4171,7 +4253,7 @@ test("§14: if speech is refused too, the first line stops as before", async () 
 test("§14: if speech is refused too, a bridge is skipped as before", async () => {
   const tts = refusingTts();
   const { m, backend } = make({
-    tts, backendClass: FlakyBackend, backend: { errors: { "nar-1": "load failed (code 4) for nar-1" } },
+    tts, backendClass: FlakyBackend, backend: { errors: { "nar-1": "load of nar-1 failed: media error 4" } },
   });
   await m.playForay(foray([fseg(), RLINE(), fseg({ start_sec: 400, end_sec: 500 })]), { resolveItem });
   await m._handleBackendItemEnded(END_OUT_POINT);
@@ -4183,7 +4265,7 @@ test("§14: if speech is refused too, a bridge is skipped as before", async () =
 test("§14: pausing and resuming a fallback line continues the utterance, never retries the file mid-line", async () => {
   const tts = fakeTts();
   const { m, backend } = make({
-    tts, backendClass: FlakyBackend, backend: { errors: { "nar-1": "load failed (code 2) for nar-1" } },
+    tts, backendClass: FlakyBackend, backend: { errors: { "nar-1": "load of nar-1 failed: media error 2" } },
   });
   await m.playForay(foray([RLINE(), fseg()]), { resolveItem });
   await m.pause();
@@ -4211,7 +4293,7 @@ test("§14: a failing load the listener has already skipped past is not spoken",
   assert.ok(rejectLine, "precondition: the line's load is in flight");
   const skipping = m.skipToNext();
   await tick();
-  rejectLine(new Error("load failed (code 2) for nar-1"));
+  rejectLine(new Error("load of nar-1 failed: media error 2"));
   await Promise.all([starting, skipping]);
   await tick();
   assert.equal(tts.calls.length, 0, "nothing talks over the clip the listener chose");
@@ -4221,12 +4303,15 @@ test("§14: a failing load the listener has already skipped past is not spoken",
 
 test("§14: narrationFallbackReason reads the backend's own messages into six words", () => {
   assert.equal(narrationFallbackReason(new Error("load of n did not settle within 20000ms")), "timeout");
-  assert.equal(narrationFallbackReason(new Error("load failed (code 2) for n")), "network");
+  assert.equal(narrationFallbackReason(new Error("load of n failed: media error 2")), "network");
   assert.equal(narrationFallbackReason("media error 3"), "decode");
-  assert.equal(narrationFallbackReason(new Error("load failed (code 4) for n")), "unsupported");
+  assert.equal(narrationFallbackReason(new Error("load of n failed: media error 4")), "unsupported");
   assert.equal(narrationFallbackReason("play rejected: NotAllowedError"), "play-rejected");
   assert.equal(narrationFallbackReason(new Error("https://x.test/a?token=secret")), "failed", "never the text");
   assert.equal(narrationFallbackReason(null), "failed");
+  // CH-25: one spelling of the element's code. The backend's old load wording
+  // is no longer read as a code; nothing produces it.
+  assert.equal(narrationFallbackReason(new Error("load failed (code 4) for n")), "failed");
 });
 
 test("§14: audioHostOf keeps the host and nothing else", () => {
@@ -4258,7 +4343,7 @@ test("D2: a rendered line straight after a SPOKEN one (a narration chain) still 
   const tts = fakeTts();
   const { m, backend } = make({
     tts, rate: 2, backendClass: FlakyBackend,
-    backend: { errors: { "nar-1": "load failed (code 2) for nar-1" } },
+    backend: { errors: { "nar-1": "load of nar-1 failed: media error 2" } },
   });
   await m.playForay(foray([RLINE(), RLINE({ id: "nar-2", script: "The second line." }), fseg()]), { resolveItem });
   assert.equal(m.isNarrationPlayhead, true, "precondition: the first line fell back to speech");

@@ -839,11 +839,23 @@
     },
     "§16: a media error during a Foray clip's load (web lane) is retried, not reported idle first": {
       "reason": "webview-only",
-      "why": "The same ordering trap as §14's, for a Foray clip: html-audio-backend.js's persistent `error` listener fires before the load's own rejection, so the page leaves the report to the load (`_clipLoadInFlight`). AVDeck reports one `.failed` (or `.deadlineExceeded`) per load token and nothing else, and the core retries or steps over from that one event (retryOrSkipClip; ClipLoadRetryTests.testAClipWhoseLoadFailsIsRetriedToo, fixture manager-foray/clip-load)."
+      "why": "The same ordering trap as §14's, for a Foray clip: html-audio-backend.js's persistent `error` listener fires before the load's own rejection, so the page leaves the report to the load (`_loadInFlight`, one marker for every load since CH-25). AVDeck reports one `.failed` (or `.deadlineExceeded`) per load token and nothing else, and the core retries or steps over from that one event (retryOrSkipClip; ClipLoadRetryTests.testAClipWhoseLoadFailsIsRetriedToo, fixture manager-foray/clip-load)."
     },
     "§16: a media error on a plain episode's load still stops the player (not a clip)": {
       "reason": "webview-only",
-      "why": "The other half of the §16 ordering-trap fix: only a Foray clip's load holds back html-audio-backend.js's early `error` report, so a plain episode's media error still stops through `_onBackendError`. AVDeck has no early report to hold back; the core's plain-episode stop is ClipLoadRetryTests.testAPlainEpisodeWhoseLoadFailsIsNotRetried."
+      "why": "The other half of the §16 ordering-trap fix: since CH-25 every load holds back html-audio-backend.js's early `error` report, and only a Foray clip's rejection retries, so a plain episode's media error stops through its load's own rejection. AVDeck has no early report to hold back; the core's plain-episode stop is ClipLoadRetryTests.testAPlainEpisodeWhoseLoadFailsIsNotRetried."
+    },
+    "one load-in-flight marker: a plain episode whose load errors reaches the reducer once — one player.error, one pause (CH-25)": {
+      "reason": "webview-only",
+      "why": "P1-02: html-audio-backend.js's persistent `error` listener fires before a load's own rejection, so the page holds one in-flight marker over every load (`_loadInFlight`) and the reducer hears the failure once. AVDeck reports one `.failed` (or `.deadlineExceeded`) per load token and nothing else, so the core has no second report to hold back; its plain-episode stop is ClipLoadRetryTests.testAPlainEpisodeWhoseLoadFailsIsNotRetried."
+    },
+    "one load-in-flight marker: a rendered line whose load errors falls back exactly once, and the marker ends with its load (CH-25)": {
+      "reason": "webview-only",
+      "why": "The page-side bound on the same marker: it holds back only the early `error` report of the load it was set for, so the line's rejection still falls back once and a later error while the next item sounds reaches the reducer. AVDeck has no early report and no marker; the core falls back from the one `.failed` event (fallBackToScript; fixture manager-foray/a-first-line-whose-file-fails-is-spoken); a failure after the load settled is a separate `.failed` on the deck that is playing, never held back."
+    },
+    "one load-in-flight marker: a rendered bridge with no script whose load errors is skipped, as when no early report comes (CH-25)": {
+      "reason": "webview-only",
+      "why": "The same page-side marker on a bridge's load: html-audio-backend.js's early `error` report is left to the bridge's own rejection, which skips it. AVDeck sends no early report, so the core skips a failed bridge from its one `.failed` event already; there is no ordering to port."
     },
     "§14: a refused play() of a rendered line falls back too": {
       "reason": "webview-only",

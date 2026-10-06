@@ -10,6 +10,7 @@ import test, { after } from "node:test";
 import assert from "node:assert/strict";
 import { HtmlAudioBackend } from "./html-audio-backend.js";
 import { SETTLE_NEAR_SEC } from "./deck-policy.js";
+import { narrationFallbackReason } from "./queue-manager.js";
 
 const item = (id, url = "https://cdn.example/ep.mp3") => ({ id, audio_url: url, kind: "episode" });
 
@@ -191,8 +192,16 @@ test("CH-21: how near a cold load must land is deck-policy's SETTLE_NEAR_SEC, on
 });
 
 test("a media error rejects so the manager's degrade path can run", async () => {
+  /* CH-25: the rejection spells the element's code exactly as the persistent
+     listener's `onError` report does (`media error N`), so the manager reads
+     one spelling (`narrationFallbackReason`). MUTATION THAT KILLS THIS: put
+     back `load failed (code N) for <id>` (the manager reads "failed", not
+     "unsupported"). */
   const { b } = mk({ failWith: 4 });
-  await assert.rejects(() => b.load(item("a")), /load failed/);
+  let err = null;
+  await assert.rejects(() => b.load(item("a")), (e) => { err = e; return true; });
+  assert.equal(err.message, "load of a failed: media error 4");
+  assert.equal(narrationFallbackReason(err), "unsupported");
 });
 
 test("an item with no audio_url rejects rather than loading an empty src", async () => {
@@ -1677,7 +1686,11 @@ test("a media error during an in-place seek rejects, so the degrade path runs", 
   const p = b.load(item("seg-2", "https://cdn.example/one.mp3"), { startOffset: 4000 });
   el.error = { code: 2 };
   el._fire("error");
-  await assert.rejects(() => p, /in-place seek to 4000s failed/);
+  let err = null;
+  await assert.rejects(() => p, (e) => { err = e; return true; });
+  // CH-25: the same one spelling of the code as a cold load's rejection.
+  assert.equal(err.message, "in-place seek to 4000s failed: media error 2");
+  assert.equal(narrationFallbackReason(err), "network");
 });
 
 test("a first load that stalls without erroring also degrades rather than hanging", async () => {
