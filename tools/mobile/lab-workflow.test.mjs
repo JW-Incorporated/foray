@@ -155,6 +155,41 @@ test("ios-archive: the lab reads the bundle id, display name and flag back out o
   assert.ok(IOS.indexOf("Lab variant - read the identity back") > IOS.indexOf("Build the webDir and generate the iOS project"));
 });
 
+/** A generated Android project as `npx cap add android` leaves it: ONE build file
+ *  (Groovy build.gradle today), strings.xml, and the copied web bundle. */
+function runAndroidReadBack({ appId = "ai.jwlabs.foura.lab", name = "4a Lab", kts = false, flag = true } = {}) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "lab-readback-"));
+  const put = (rel, body) => {
+    fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
+    fs.writeFileSync(path.join(dir, rel), body);
+  };
+  put(`mobile/android/app/build.gradle${kts ? ".kts" : ""}`, kts ? `android {\n    defaultConfig {\n        applicationId = "${appId}"\n    }\n}\n` : `android {\n    defaultConfig {\n        applicationId "${appId}"\n    }\n}\n`);
+  put("mobile/android/app/src/main/res/values/strings.xml", `<resources>\n    <string name="app_name">${name}</string>\n</resources>\n`);
+  put("mobile/android/app/src/main/assets/public/foray-lab.js", flag ? "window.__FORAY_LAB__ = true;\n" : "\n");
+  put("mobile/android/app/src/main/assets/public/index.html", '<script src="foray-lab.js"></script>\n');
+  fs.writeFileSync(path.join(dir, "step.sh"), runOf(step(AND, "Lab variant - read the identity back")));
+  const r = spawnSync(BASH, ["step.sh"], { cwd: dir, encoding: "utf8" });
+  return { status: r.status, out: (r.stdout || "") + (r.stderr || "") };
+}
+
+test("android-bundle: the identity read-back RUNS clean on a generated project and refuses a wrong one", needBash, () => {
+  /* The text-only test above passed while this step died on its first real runner:
+     `GRADLE=$(ls build.gradle build.gradle.kts 2>/dev/null | head -1)` exits 2 under
+     pipefail because only one of the two files exists.
+     MUTATION: restore that `ls ... | head -1` line -> the first assertion goes red (status 2). */
+  const ok = runAndroidReadBack();
+  assert.equal(ok.status, 0, ok.out);
+  const okKts = runAndroidReadBack({ kts: true });
+  assert.equal(okKts.status, 0, okKts.out);
+  /* MUTATION: delete the "still declares the REAL applicationId" if-block AND the
+     lab-id grep -> the real-id row is accepted (red). */
+  for (const [label, opts] of [["real application id", { appId: "ai.jwlabs.foura" }], ["real app name", { name: "4a" }], ["no lab flag", { flag: false }]]) {
+    const r = runAndroidReadBack(opts);
+    assert.equal(r.status, 1, `${label} was accepted: ${r.out}`);
+    assert.match(r.out, /::error::/, `${label} failed without saying why`);
+  }
+});
+
 test("ios-archive: the archive and ExportOptions are keyed on the input, the lab icon follows the real one with --source", () => {
   /* MUTATION: `APP_ID: ${{ inputs.app_id }}` -> `APP_ID: ai.jwlabs.foura` -> the lab
      profile is mapped to the REAL bundle id in ExportOptions and signing fails (red). */

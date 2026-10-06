@@ -160,7 +160,11 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        GRADLE=$(ls mobile/android/app/build.gradle mobile/android/app/build.gradle.kts 2>/dev/null | head -1)
+        # Not `ls a b | head -1`: ls exits 2 when either file is missing, and under
+        # pipefail that killed this step with no message on the first real run.
+        GRADLE=mobile/android/app/build.gradle
+        [ -f "$GRADLE" ] || GRADLE=mobile/android/app/build.gradle.kts
+        [ -f "$GRADLE" ] || { echo "::error::no mobile/android/app/build.gradle(.kts) was generated"; exit 1; }
         grep -Eq 'applicationId[ =]+"ai\.jwlabs\.foura\.lab"' "$GRADLE" || { echo "::error::$GRADLE does not declare applicationId ai.jwlabs.foura.lab"; grep -n applicationId "$GRADLE" || true; exit 1; }
         if grep -Eq 'applicationId[ =]+"ai\.jwlabs\.foura"' "$GRADLE"; then
           echo "::error::$GRADLE still declares the REAL applicationId"; exit 1
