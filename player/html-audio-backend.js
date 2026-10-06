@@ -10,7 +10,6 @@
      seek(seconds, { precise })
      setOutPoint(seconds | null)         stop here and report a normal end
      setRate(rate)
-     setVolume(v)                        0..1 — hold-to-talk ducking later
      get currentTime() / get duration()
      release()
      onItemEnded(reason) / onError       assigned by the manager
@@ -23,22 +22,25 @@
 
    ── Things that will bite, all load-bearing ───────────────────────────────
 
-   TWO ELEMENTS, AND ONLY ONE OF THEM IS EVER ALLOWED TO PRODUCE AUDIO. See
-   §"prefetch" below for why the second one exists. Creating an element per
-   ITEM is still the web equivalent of corner case #19's two-AVPlayers bug —
-   the old one keeps decoding and you get two things audible at once — so
-   there are exactly two for the lifetime of the app, they swap roles, and the
-   invariant is written down and tested: `this.el` is the player and owns the
-   audio session; `this._warmEl` is a loader that is never played, never
-   un-paused, and never given a volume. A handover pauses the outgoing element
-   BEFORE the swap, so at no instant are two elements un-paused.
+   ONE PLAYER ELEMENT, AND ONLY ONE ELEMENT IS EVER ALLOWED TO PRODUCE AUDIO.
+   Creating an element per ITEM is the web equivalent of corner case #19's
+   two-AVPlayers bug — the old one keeps decoding and you get two things
+   audible at once — so `this.el` is the player for the lifetime of the app
+   and owns the audio session. A second, swapping element (`this._warmEl`)
+   exists ONLY when the backend is built with `prefetch: true`, which
+   production does not pass: the handover is parked (§"prefetch"; code-health
+   P1-03), so `player/client.js` runs one player element. When it is turned
+   on, the two swap roles at every cross-episode seam and the invariant is
+   written down and tested: `this._warmEl` is a loader that is never played
+   and never un-paused, and a handover pauses the outgoing element BEFORE the
+   swap, so at no instant are two elements un-paused. (The narration warm,
+   §"narration warm", is a spare that is never played or promoted.)
 
    NO `crossorigin` ATTRIBUTE. Podcast CDNs send no `Access-Control-Allow-
    Origin` (measured — see #20 §3). A media element loads cross-origin fine
    without CORS; setting the attribute turns a working no-cors load into a
-   hard failure. The cost is that Web Audio cannot touch this element, so
-   ducking uses `.volume` rather than a gain node — which is all the spec
-   actually needs.
+   hard failure. The cost is that Web Audio cannot touch this element: any
+   future ducking would have to write `.volume`, not a gain node.
 
    `currentTime` BEFORE METADATA IS LOST. Assigning it while `readyState` is 0
    either throws or is silently discarded depending on the browser, so the
@@ -72,7 +74,7 @@ import {
   LOAD_SETTLE_TIMEOUT_HIDDEN_MS, FINE_WAKE, RECOVERY,
   outPointArmed, fineWatchDelayMs, fineWakeAction, loadDeadlineMs, sameSourceIsSeek, settledNear,
   recoveryLoadedOps, recoveryFailedOps,
-  deckRate, deckSeekTarget, deckVolume, deckDuration, deckReportedRate,
+  deckRate, deckSeekTarget, deckDuration, deckReportedRate,
   warmOffset, prefetchDecision, warmSettled, warmPromotion, handoverSteps, discardFreesBuffer,
   playRefusalAction, unexplainedPauseAction, prefetchWindowOpens,
 } from "./deck-policy.js";
@@ -504,9 +506,6 @@ export class HtmlAudioBackend {
     /** Every `pause` WE cause. What is left is a pause nobody asked for, which
         on iOS is what losing the audio session looks like from JS. */
     this._expectPause = false;
-    /** Ducking level, held on the backend rather than on the element, because
-        the element changes underneath it at a handover. */
-    this._volume = 1;
     /** Bumped by every `load()`. Only one thing reads it — the autoplay-refusal
         recovery, which is the only path here that continues after a promise
         nobody awaited, and therefore the only one that can be overtaken. */
@@ -1198,12 +1197,17 @@ export class HtmlAudioBackend {
           this._currentUrl = item.audio_url;
           this._handoverUnproven = true;
           break;
-        /* State that lives on the BACKEND has to be re-applied to whatever
-           element is now the player: neither of these survives the swap on its
-           own. Both are guarded — Safari refuses some playback rates outright. */
+        /* A NO-OP ON THE WEB (CH-34, P1-08). The web backend has no volume
+           of its own to carry — `setVolume` had no caller and is gone — but
+           the step stays in deck-policy.js's `handoverSteps()` because the
+           native `DeckPair` performs it live, and the `deck` parity family
+           records that order. Kept as a case so the default below does not
+           throw on it. */
         case "carry-volume":
-          try { this.el.volume = this._volume; } catch (_) { /* fine */ }
           break;
+        /* The rate lives on the BACKEND and has to be re-applied to whatever
+           element is now the player: it does not survive the swap on its own.
+           Guarded — Safari refuses some playback rates outright. */
         case "carry-rate":
           try { this.el.playbackRate = this._pendingRate; } catch (_) { /* refused; the rate stays pending */ }
           break;
@@ -2035,17 +2039,6 @@ export class HtmlAudioBackend {
       element has no usable answer. */
   get rate() {
     return deckReportedRate({ elementRate: this.el?.playbackRate, pendingRate: this._pendingRate });
-  }
-
-  /** 0..1. Ducking for hold-to-talk uses this rather than a Web Audio gain
-      node, because no `crossorigin` means Web Audio cannot see this element. */
-  setVolume(v) {
-    if (this._released) return;
-    // Held on the backend as well as written to the element: a handover swaps
-    // the element underneath this, and a duck that silently reset to 1.0 on the
-    // next segment would be a bug with no visible cause.
-    this._volume = deckVolume(v);
-    this.el.volume = this._volume;
   }
 
   get currentTime() { return this.el?.currentTime ?? 0; }

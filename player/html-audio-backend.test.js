@@ -9,7 +9,7 @@
 import test, { after } from "node:test";
 import assert from "node:assert/strict";
 import { HtmlAudioBackend } from "./html-audio-backend.js";
-import { SETTLE_NEAR_SEC } from "./deck-policy.js";
+import { SETTLE_NEAR_SEC, handoverSteps } from "./deck-policy.js";
 import { narrationFallbackReason } from "./queue-manager.js";
 
 const item = (id, url = "https://cdn.example/ep.mp3") => ({ id, audio_url: url, kind: "episode" });
@@ -406,16 +406,6 @@ test("seek carries the precise flag into telemetry without changing behaviour", 
   await b.load(item("a"));
   b.seek(90, { precise: true });
   assert.ok(log.some((m) => /precise=true/.test(m)));
-});
-
-/* ---------- volume / ducking ---------- */
-
-test("volume clamps to 0..1 — ducking uses this, not Web Audio", () => {
-  const { b, el } = mk();
-  b.setVolume(0.15);
-  assert.equal(el.volume, 0.15);
-  b.setVolume(5); assert.equal(el.volume, 1);
-  b.setVolume(-2); assert.equal(el.volume, 0);
 });
 
 /* ---------- callbacks ---------- */
@@ -2271,19 +2261,40 @@ test("a handover PAUSES the demoted element but does not drop its buffer at the 
   assert.equal(a.src, C_URL, "the demoted element's stale buffer is replaced by the next prefetch");
 });
 
-test("a handover carries the rate and the duck onto the element that inherits the role", async () => {
-  // Neither survives the swap on its own, and a duck that silently reset to 1.0
-  // on the next segment would be a bug with no visible cause.
+test("a handover carries the rate onto the element that inherits the role", async () => {
+  // The rate does not survive the swap on its own, and a speed that silently
+  // reset to 1x on the next segment would be a bug with no visible cause.
+  // (CH-34 dropped the duck half of this test with the web `setVolume`.)
   const { b, w } = pair();
   await b.load(item("a", A_URL), { startOffset: 100 });
   b.setRate(1.5);
-  b.setVolume(0.3);
   b.prefetch(item("b", B_URL), { startOffset: 12 });
   await settle();
   await b.load(item("b", B_URL), { startOffset: 12 });
   b.play();
-  assert.equal(w.volume, 0.3, "the duck must follow the role");
-  assert.equal(w.playbackRate, 1.5, "and so must the rate");
+  assert.equal(b.el, w, "precondition: the handover happened");
+  assert.equal(w.playbackRate, 1.5, "the rate must follow the role");
+});
+
+test("CH-34: the web backend has no setVolume, and a handover's carry-volume step writes nothing", async () => {
+  /* P1-08: web `setVolume`/`_volume` ("hold-to-talk ducking later") had no
+     caller, so it is deleted. `handoverSteps()` still names `carry-volume` —
+     the native DeckPair performs it, and the `deck` parity family records the
+     order — so the web backend keeps the step as a no-op rather than throwing.
+     MUTATIONS (run): delete the `case "carry-volume":` label from
+     `_promoteWarm` (the default throws, the load rejects) — red; put
+     `setVolume(v) { this.el.volume = v; }` back on the class — red. */
+  const { b, w } = pair();
+  assert.equal(typeof b.setVolume, "undefined", "no setVolume on the web backend");
+  assert.equal("_volume" in b, false, "and no held volume");
+  assert.ok(handoverSteps().includes("carry-volume"), "precondition: the shared step order still names it");
+  await b.load(item("a", A_URL), { startOffset: 100 });
+  b.prefetch(item("b", B_URL), { startOffset: 12 });
+  await settle();
+  w.volume = 0.42;
+  await b.load(item("b", B_URL), { startOffset: 12 });
+  assert.equal(b.el, w, "precondition: the handover ran every step");
+  assert.equal(w.volume, 0.42, "carry-volume wrote nothing to the promoted element");
 });
 
 test("an out-point armed after a handover still fires — the watch moved with the role", async () => {

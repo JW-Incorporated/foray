@@ -37,6 +37,10 @@
       "reason": "webview-only",
       "why": "client.js's page-side Foray snapshot (forayStateSnapshot), the object window.ForayPlayer hands the Foray page's onChange. In native mode the page reads the engine's snapshot through the facades (NE-35) and this object is still built here, so nothing here is a rule the engine reimplements."
     },
+    "CH-34: the stop snapshot has the live snapshot's keys — gap, rate and voiceFallback included": {
+      "reason": "webview-only",
+      "why": "client.js's page-side Foray snapshot on stop (stopAndClose hands the page emptyForaySnapshot, the builder the live snapshot spreads over). The native engine has no page callback to repaint; the object is built here in either lane, so nothing here is a rule the engine reimplements."
+    },
     "DELETING EVERYTHING leaves the page interactive, and resume works again after it": {
       "reason": "webview-only",
       "why": "The page's own storage tiers (window.forayStorage, localStorage, the durable IndexedDB/Preferences tier, quota handling) as app.js reads them. In native mode the engine owns cp_foray and friends (OWNED_PREFIXES) and the page adopts them (NE-23); these pin the web tiers."
@@ -259,6 +263,10 @@
     }
   },
   "html-audio-backend": {
+    "CH-34: the web backend has no setVolume, and a handover's carry-volume step writes nothing": {
+      "reason": "webview-only",
+      "why": "The web backend's parked <audio> handover: it has no volume of its own, so the shared carry-volume step is a no-op on the HTML element. The native DeckPair performs carry-volume live and the deck family's handover-order case pins the step list it walks, so nothing here is a rule the engine reimplements."
+    },
     "A TELEMETRY SINK THAT THROWS CANNOT BREAK THE PLAYER (#264)": {
       "reason": "js-module-shape",
       "why": "A JS telemetry callback that throws. The engine writes diagnostics rows through EngineDiagnostics (plan §4.1), a typed seam with its own recording fake, not an injected callback."

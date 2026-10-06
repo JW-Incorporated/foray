@@ -217,7 +217,7 @@ let positions = null;
  *  still null, the offset defaulted to 0, and the card drew an empty bar.
  *
  *  Deliberately NOT solved by booting the player from a home render: that would
- *  build the manager, the backend and two <audio> elements to paint a progress
+ *  build the manager, the backend and its <audio> element to paint a progress
  *  bar. `PositionStore` over the same durable store is a thin reader on the same
  *  `cp_pos:<id>` rows the booted one writes, so there is still ONE definition of
  *  a position -- this just reaches it earlier. The booted instance is preferred
@@ -1767,11 +1767,25 @@ function foraySecondLine(playable, index) {
   return show ? `${show} · ${clip}` : clip.charAt(0).toUpperCase() + clip.slice(1);
 }
 
+/** The snapshot of a Foray nobody is in (CH-34, P1-11): what `stopAndClose`
+    hands the page on the way out, and the base `forayStateSnapshot` spreads
+    its live readings over, so the two carry the same keys by construction
+    rather than by a comment. `rate` is the listener's speed, which outlives a
+    stop (it lives in `cp_rate`); everything else reads "nothing happening". */
+function emptyForaySnapshot(resolved) {
+  return {
+    forayId: resolved.id, index: -1, loading: false, buffering: false,
+    playing: false, running: false, gap: false, ended: false,
+    elapsedSec: 0, totalSec: resolved.totalSec, error: null,
+    rate: currentRate(), voiceFallback: null,
+  };
+}
+
 /** Everything a page needs to paint itself, in Foray terms. */
 function forayStateSnapshot() {
   if (!foray) return null;
   return {
-    forayId: foray.resolved.id,
+    ...emptyForaySnapshot(foray.resolved),
     index: foray.index,
     loading: manager?.state?.type === "loadingItem",
     /* Playback halted for data (audit 2026-09-22) — the Foray page's own
@@ -1793,7 +1807,6 @@ function forayStateSnapshot() {
     gap: manager?.inSeamGap === true,
     ended: manager?.state?.type === "ended",
     elapsedSec: forayPosition(),
-    totalSec: foray.resolved.totalSec,
     // A segment that would not load is the failure a listener actually meets,
     // and it is silent otherwise: the manager pauses and the page just sits
     // there. Hand it up so the surface can say what happened.
@@ -1949,10 +1962,13 @@ function forayProgressSegments() {
     2026-09-22): the minus is a promise that there is time left to count, and at
     the exact end — and for the whole of a scrub past a Foray's end — this read
     "-0:00". THE SIGN FOLLOWS THE CLOCK, NOT THE RAW SECONDS (audit round 2,
-    honesty-13): the Foray clock floors and the episode clock rounds
-    (`formatTimestamp` → `hms`), so a rule written as `left >= 1` dropped the
-    sign for the last half-second of an episode — "-0:01", "0:01", "0:00". A
-    minus goes on whatever the formatter shows as more than nothing. */
+    honesty-13): when this was written the Foray clock floored and the
+    episode clock rounded, so a rule written as `left >= 1` dropped the sign
+    for the last half-second of an episode — "-0:01", "0:01", "0:00". Both now
+    floor (`fmtClock` and `formatTimestamp` share seek-policy.js's `hms`, audit
+    round 3, arch-drift-10); the rule stays on the formatter's output so the
+    sign can never again disagree with the digits. A minus goes on whatever the
+    formatter shows as more than nothing. */
 function remainingClock(leftSec) {
   const left = Math.max(0, Number.isFinite(leftSec) ? leftSec : 0);
   const clock = foray ? fmtClock(left) : formatTimestamp(left, EXACT);
@@ -2264,9 +2280,9 @@ function paintPage(running) {
  * paints from, or the thumb's while a drag is in progress.
  *
  * THE COUNTDOWN IS DERIVED FROM THE CLOCK THE LISTENER SEES, not from the raw
- * difference: elapsed rounds (episode) or floors (Foray) on its own, and a
- * countdown rounded separately made 13 + 48 = 61 out of 12.5 s into 60. Both
- * clocks go through the same formatter's rule first, so they add up.
+ * difference: a countdown rounded separately from its elapsed clock made
+ * 13 + 48 = 61 out of 12.5 s into 60. Both clocks go through the same
+ * formatter's rule first (floored, seek-policy.js `hms`), so they add up.
  */
 function paintClocks(pos, dur, valuetext = true) {
   /* One rounding rule for both clocks (audit round 3, arch-drift-10): the
@@ -3076,16 +3092,12 @@ async function stopAndClose({ persist = true } = {}) {
      what I was listening to" — the same distinction the Foray resume point
      makes two lines above. */
   restoredPending = null;
-  // Same shape the live snapshot has, so the page never has to guess which
-  // fields it got.
+  /* The live snapshot's keys, from the one builder the live snapshot spreads
+     over (`emptyForaySnapshot`), so the page never has to guess which fields
+     it got — `gap`, `rate` and `voiceFallback` included. */
   const wasForay = foray;
   foray = null;
-  if (wasForay?.onChange) {
-    wasForay.onChange({
-      forayId: wasForay.resolved.id, index: -1, loading: false, playing: false,
-      running: false, ended: false, elapsedSec: 0, totalSec: wasForay.resolved.totalSec, error: null,
-    });
-  }
+  if (wasForay?.onChange) wasForay.onChange(emptyForaySnapshot(wasForay.resolved));
   syncCardButtons();
 }
 
@@ -4339,13 +4351,15 @@ function buildMediaSession({ nav }) {
     the lane built (the facade synthesises the same events from snapshots). */
 function wireMediaListeners() {
   /* `addMediaListener`, NOT `backend.el.addEventListener`, and this is not a
-     style preference. The backend now owns two `<audio>` elements and hands the
-     player role between them at every cross-episode seam
-     (`html-audio-backend.js` §"prefetch"). A listener bound to one element
-     directly is left attached to a paused, src-less element from the first seam
-     onwards — the transport would keep playing and this surface would silently
-     stop repainting for the rest of the Foray, with no error anywhere. The
-     backend migrates anything registered this way. */
+     style preference. Built with `prefetch: true`, the backend owns a second
+     `<audio>` element and hands the player role between the two at every
+     cross-episode seam (`html-audio-backend.js` §"prefetch"). This file does
+     not pass it — the handover is parked (code-health P1-03), so production
+     has one player element — but the day it is turned on, a listener bound to
+     one element directly is left attached to a paused, src-less element from
+     the first seam onwards: the transport would keep playing and this surface
+     would silently stop repainting for the rest of the Foray, with no error
+     anywhere. The backend migrates anything registered this way. */
   backend.addMediaListener("timeupdate", render);
   backend.addMediaListener("play", render);
   backend.addMediaListener("pause", render);
@@ -4364,8 +4378,8 @@ function wireMediaListeners() {
      diagnostic, and a record that wrote localStorage on it would be the
      instrument perturbing the measurement — see `html-audio-backend.js:1534`.
 
-     `addMediaListener`, like the repaints above, so these survive the handover
-     to the second element at a cross-episode seam. */
+     `addMediaListener`, like the repaints above, so these would survive the
+     (parked) handover to a second element at a cross-episode seam. */
   for (const type of ["playing", "waiting", "stalled", "ended"]) {
     /* L25: the element's own state rides with a stall (paused, where, how much
        is buffered ahead) plus the browser's online flag, so a starving element

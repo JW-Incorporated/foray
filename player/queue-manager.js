@@ -1341,12 +1341,12 @@ export class PlayerQueueManager {
   /** Corner case #13. A lost route pauses. RECONNECTING NEVER RESUMES on this
       path (audit round 3, player-core-10; founder Q5 default). A known-car-route
       auto-resume used to live here, but the only production caller
-      (`client.js` `onNativeSession`) reports route LOSS alone, with no name
-      and no car flag, so the set it read was never filled and the branch never
+      (`client.js` `onNativeSession`) reports route LOSS alone, so it never
       ran — and it would have resumed a pause the listener made themselves. The
       native iOS engine owns route policy (EngineCore's `knownCarRoutes`, pinned
-      by its own XCTests). `routeName`/`isCarRoute` are accepted and ignored,
-      so an older caller is not an error. */
+      by its own XCTests). The `false` arm is parity-only (the parity runner's
+      `routeAvailable` step): production never passes it, but the reducer's
+      `routeChanged(false)` is a token shared with the Swift ports, so it stays. */
   async routeChanged({ oldDeviceUnavailable }) {
     // Losing the output device mid-beat is not the beat's business to finish:
     // the next thing that happens is a pause, and a beat that outlived it would
@@ -1366,7 +1366,13 @@ export class PlayerQueueManager {
 
   /** Rebuild queue and position from local state BEFORE any network call.
       Airplane-mode cold launch is an acceptance test, so nothing here may
-      await the network. */
+      await the network.
+
+      A PARITY / SWIFT-MIRRORED SEAM (code-health P1-05): its callers are the
+      parity runner's `coldLaunch` lifecycle step and the Swift
+      `PlayerQueueManager` it mirrors. Production does not call it — a Foray
+      cold-restore in the page is `client.js` `restoreForay` (paints the bar),
+      whose first press runs `playForay` → `setQueueFromForay`. */
   async restoreColdLaunchState({ items, index = 0, autoplay = false }) {
     this.loadQueue(items);
     if (!this.queue[index]) return this._emit("restore.ignored.badIndex");
@@ -1670,9 +1676,10 @@ export class PlayerQueueManager {
         return this._emit(`seek.rejected: ${effect.reason}`);
 
       case "setOutPoint":
-        // setQueueFromForay asserts the capability, but loadQueue() and
-        // restoreColdLaunchState() reach the queue without going through it —
-        // a cold-launch restore of a Foray is exactly that path. So this has to
+        // setQueueFromForay asserts the capability, but loadQueue() and the
+        // parity runner's restoreColdLaunchState() step reach the queue without
+        // going through it (production's Foray cold-restore does not: client.js
+        // `restoreForay` -> `playForay` -> setQueueFromForay). So this has to
         // be a real refusal. THROWING is the refusal: `_perform` runs inside a
         // loop over the effect list, so a bare `return` here would emit the
         // telemetry and then let `startPlayback` run anyway, which is precisely

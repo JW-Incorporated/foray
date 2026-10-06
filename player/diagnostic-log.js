@@ -646,9 +646,10 @@ const STAGE_NAME_MAX = 48;
  * Without the colon, `player.error:` carries a trailing punctuation mark, fails
  * the character check below and the stage is DROPPED — so the most important line
  * in the stream would contribute nothing. Without the equals, the same happens to
- * `queue.built.SINGLE_ITEM.n=2`, `restore.index=…` and `play.ignored.noItemAt=0`.
- * Cutting at the separator keeps the name and drops the value, which is the rule:
- * a stage name is a vocabulary word, never data.
+ * `restore.index=…` and `play.ignored.noItemAt=0`. Cutting at the separator keeps
+ * the name and drops the value, which is the rule: a stage name is a vocabulary
+ * word, never data. (`queue.built.single-item.n=<len>`, setQueueFromPick's word,
+ * is not a stage either way: its hyphen fails the character check.)
  */
 export function stageOf(message) {
   const head = String(message ?? "").trim().split(/[\s:=]/, 1)[0] ?? "";

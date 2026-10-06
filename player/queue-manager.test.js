@@ -407,20 +407,22 @@ test("a route disappearing pauses immediately", async () => {
 test("reconnecting a route never resumes on the web and Android path, even one reported as a car (player-core-10)", async () => {
   /* Founder Q5 default (audit round 3): the known-car-route auto-resume was
      dead code here (no caller ever named a route) and is deleted; the native
-     iOS engine owns route policy. MUTATION: restore the auto-resume block and
-     the car reconnect goes to `playing`. */
+     iOS engine owns route policy. `routeChanged` takes no route name or car
+     flag (CH-34, P1-13), so a car reconnect is the same call as any other.
+     MUTATION: restore an auto-resume on the `false` arm and the reconnect
+     goes to `playing`. */
   const { m, backend } = make();
   m.setQueueFromPick(ep("a"));
   await m.play(0);
 
-  await m.routeChanged({ oldDeviceUnavailable: true, routeName: "Some Headphones" });
-  await m.routeChanged({ oldDeviceUnavailable: false, routeName: "Some Headphones" });
+  await m.routeChanged({ oldDeviceUnavailable: true });
+  await m.routeChanged({ oldDeviceUnavailable: false });
   assert.equal(m.state.type, "interrupted", "headphones reappearing start nothing");
 
   await m.resume();
-  await m.routeChanged({ oldDeviceUnavailable: true, routeName: "Civic", isCarRoute: true });
+  await m.routeChanged({ oldDeviceUnavailable: true });
   backend.calls.length = 0;
-  await m.routeChanged({ oldDeviceUnavailable: false, routeName: "Civic", isCarRoute: true });
+  await m.routeChanged({ oldDeviceUnavailable: false });
   assert.equal(m.state.type, "interrupted", "a car reappearing starts nothing either");
   assert.ok(!backend.calls.includes("play"), `${backend.calls}`);
 });

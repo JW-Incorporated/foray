@@ -325,7 +325,7 @@
       "covers": [
         "html-audio-backend::the outgoing element is paused BEFORE the incoming one plays, never both at once",
         "html-audio-backend::a handover PAUSES the demoted element but does not drop its buffer at the boundary",
-        "html-audio-backend::a handover carries the rate and the duck onto the element that inherits the role",
+        "html-audio-backend::a handover carries the rate onto the element that inherits the role",
         "html-audio-backend::the warm element is NEVER played — one element owns the audio session"
       ],
       "note": "The handover's order: the outgoing deck stops reporting and is paused before the roles swap (never two audible), its buffer is kept (no drop step), identity is adopted before any write, the rate and the duck are carried over — and no step plays: the manager's own play follows.",

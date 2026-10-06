@@ -3130,3 +3130,40 @@ test("CH-34 characterization: the live Foray snapshot carries every key a page p
   assert.deepEqual(Object.keys(booted.client.forayStatus()).sort(), CH34_SNAPSHOT_KEYS,
     "forayStatus() is the same snapshot");
 });
+
+test("CH-34: the stop snapshot has the live snapshot's keys — gap, rate and voiceFallback included", async (t) => {
+  /* Before CH-34 the page's last repaint on stop lacked `buffering`, `gap`,
+     `rate` and `voiceFallback` (red against that code). Now the stop hands
+     over `emptyForaySnapshot`, the same builder the live snapshot spreads its
+     readings over.
+     MUTATION (run): in client.js's `stopAndClose`, hand `onChange` the old
+     literal `{ forayId, index: -1, loading: false, playing: false, running:
+     false, ended: false, elapsedSec: 0, totalSec, error: null }` instead of
+     `emptyForaySnapshot(wasForay.resolved)` — red. */
+  const booted = await bootRealClient(t);
+  const { foraysDoc, segmentsDoc, sourcesDoc } = ch10Docs();
+  const resolved = booted.client.resolve(foraysDoc, { id: "f-ch10", segmentsDoc, sourcesDoc });
+  const seen = [];
+  await booted.client.playForay(resolved, { startIndex: 1, onChange: (s) => seen.push(s) });
+  await tick();
+  booted.audio.currentTime = 510;
+  booted.audio.fire("timeupdate");
+  await tick();
+  const live = seen.at(-1);
+  assert.equal(live.index, 1, "precondition: the Foray is live at clip 2");
+
+  assert.equal(await booted.client.stopForDataDeletion(), true, "precondition: a booted player was stopped");
+  const stopped = seen.at(-1);
+  assert.notEqual(stopped, live, "the stop repainted the page");
+  assert.deepEqual(Object.keys(stopped).sort(), Object.keys(live).sort(), "the stop snapshot has the live keys");
+  assert.deepEqual(Object.keys(stopped).sort(), CH34_SNAPSHOT_KEYS);
+  assert.equal(stopped.forayId, "f-ch10");
+  assert.equal(stopped.totalSec, resolved.totalSec);
+  assert.equal(stopped.index, -1, "nobody is in the Foray");
+  assert.equal(stopped.playing, false);
+  assert.equal(stopped.running, false);
+  assert.equal(stopped.gap, false);
+  assert.equal(stopped.voiceFallback, null);
+  assert.equal(stopped.rate, live.rate, "the listener's speed outlives the stop");
+  assert.equal(booted.client.forayStatus(), null, "and nothing is live any more");
+});
