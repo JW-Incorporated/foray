@@ -1656,6 +1656,57 @@ test("AUDIT: the Foray page is handed the answer its press is decided by", async
   restore();
 });
 
+/* ---- CH-03 (P1-01): ForayPlayer.isPlaying(id) reads the transport ---- */
+
+test("CH-03: isPlaying(id) is true for the current episode while it plays, and false for any other id", async (t) => {
+  /* CHARACTERIZATION, written before the change and green on both sides of it:
+     with the machine saying `playing` and the element audible, belief and
+     element agree, so whichever authority `isPlaying(id)` reads, the current id
+     is playing and nothing else is. The id is part of the question — a card for
+     another episode must never read as playing. */
+  const { client, audio, restore } = await bootClient(t);
+  assert.equal(client.isPlaying("ep-a"), false, "nothing current, nothing playing");
+  await client.play(episodeItem());
+  await settle();
+  assert.equal(audio.paused, false, "precondition: the element is playing");
+  assert.equal(client.isPlaying("ep-a"), true, "the current episode is playing");
+  assert.equal(client.isPlaying("ep-b"), false, "another id is not, whatever the transport says");
+  assert.equal(client.isPlaying(undefined), false, "no id is not");
+  restore();
+});
+
+test("CH-03: a timestamp tap in the #689 drift seeks and leaves the sound running, because isPlaying(id) and togglePlayback() read one authority", async (t) => {
+  /* THE BUG (P1-01). The machine says `interrupted`, the element is audible —
+     the drift `PlayerQueueManager.reconcileWithBackend`'s header documents.
+     app.js's Episode-notes stamp tap is `seekTo(secs)` then
+     `if (!isPlaying(id)) togglePlayback()`. `isPlaying(id)` used to read the
+     reducer's belief (false) while `togglePlayback()` acts on
+     `transportIsRunning()` (true), so the toggle ran, decided "running → stop",
+     and the tap that meant "hear this part" paused the audio.
+
+     KILLING MUTATION: `ForayPlayer.isPlaying(id)` back to
+     `isPlaying() && current?.id === id`. The predicate below reads false, the
+     sequence calls `togglePlayback()`, and the element records a pause. */
+  const { client, audio, restore } = await driftedEpisode(t);
+  assert.equal(client.forayStatus(), null, "precondition: an ordinary episode, not a Foray");
+  assert.equal(audio.paused, false, "precondition: sound is coming out");
+  assert.equal(client.isPlaying("ep-a"), true, "the transport is running, so the current episode is playing");
+  assert.equal(client.isPlaying("ep-b"), false, "and still not some other episode");
+
+  // app.js's stamp tap (the [data-ts] handler), on a loaded current episode.
+  const before = audio.calls.length;
+  assert.equal(await client.seekTo(1234), true, "the seek happened");
+  if (!client.isPlaying("ep-a")) await client.togglePlayback();
+  await settle();
+
+  assert.deepEqual(
+    audio.calls.slice(before).filter((c) => c === "pause"), [],
+    "the tap must not pause the element"
+  );
+  assert.equal(audio.paused, false, "the sound is still running after the tap");
+  restore();
+});
+
 /* ---- one episode seek, whatever asked for it ---- */
 
 /** The Now Playing sheet's controls, found by class like `transport` above. */
@@ -2290,11 +2341,22 @@ test("REPORT 1: the machine is corrected TOWARDS playing when the element plays"
   /* KILLING MUTATION: delete the `interrupted` branch at the top of
      `reconcileWithBackend`. The machine then says paused over sound, and the
      NEXT external stop (the car switched off) is invisible to the reconcile,
-     which only catches a machine that says `playing`. */
+     which only catches a machine that says `playing`.
+
+     READ FROM THE DIAGNOSTIC RECORD, NOT `client.isPlaying(id)` (CH-03).
+     `isPlaying(id)` used to be the reducer's belief, which made it this test's
+     probe; it now answers from `transportIsRunning()` — the element's word
+     included — so it says true here with or without the correction and would
+     let the mutation through. The record's two reconcile rows are the
+     machine's own account: the correction is logged as a play from
+     `reconcile`, and the next unseen stop is caught only by a machine that
+     says `playing`. Under the mutation neither row is written. */
   const { client, doc, audio, restore } = await pausedAt(t, 600);
+  const report = () => globalThis.window.forayDiagnosticReport();
   const before = audio.calls.length;
   await resumedFromOutside(audio);
-  assert.equal(client.isPlaying("ep-a"), true, "the machine agrees with the element");
+  assert.equal(client.isPlaying("ep-a"), true, "the transport says playing");
+  assert.match(report(), /transport\s+play from reconcile/, "the machine agrees with the element");
   assert.deepEqual(
     audio.calls.slice(before).filter((c) => c === "play" || c === "load"), [],
     "and the correction started and loaded nothing itself"
@@ -2304,6 +2366,7 @@ test("REPORT 1: the machine is corrected TOWARDS playing when the element plays"
   doc.fire("visibilitychange");
   await settle();
   assert.equal(transport(doc).label, "Play", "so the next unseen stop is caught on return");
+  assert.match(report(), /stop\s+reconcile visible\s+state=interrupted/, "the reconcile caught it");
   restore();
 });
 
