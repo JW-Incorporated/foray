@@ -18,7 +18,7 @@ import assert from "node:assert/strict";
 
 import {
   KEY, DEFAULT_CAP_BYTES, STATUSES,
-  readDownloads, writeDownloads, applyProgress, markPlayed, markMissing,
+  readDownloads, writeDownloads, applyProgress, markPlayed, markMissing, removeRow,
   evictionPlan, playSource, localPlayable, usageLine, reportFromEvent,
 } from "./download-store.js";
 import { NEAR_END_SEC, MIN_RESUME_SEC } from "./position-store.js";
@@ -299,6 +299,27 @@ test("markMissing flips a done row to missing, drops its path, keeps the row; an
   assert.equal(played.items.a.last_played_at, "2026-09-09T00:00:00.000Z");
   assert.deepEqual(evictionPlan(played, {}), ["b"]);
   assert.equal(markPlayed(v, "nope"), v);
+});
+
+test("removeRow is app.js's old downloadsWithout, moved: one row gone, the rest and the settings kept", () => {
+  /* CH-02 (P2-11): the rule moved out of app.js. `downloadsWithout` below is
+     app.js's at origin/main c58b35c4, verbatim, run over the normalised value
+     app.js always handed it (downloadsValue()).
+     MUTATION: drop `delete items[id];` in removeRow — the row survives; red.
+     MUTATION 2: return `{ items }` (lose `...base`) — the settings go; red. */
+  function downloadsWithout(value, id) {
+    const items = { ...value.items };
+    delete items[id];
+    return { ...value, items };
+  }
+  const v = readDownloads((() => { const s = fakeStorage(); writeDownloads(s, { ...threeOverCap(), settings: { cellular: true, capBytes: 2 * GB } }); return s; })());
+  for (const id of ["a", "b", "c"]) {
+    assert.deepEqual(removeRow(v, id), downloadsWithout(v, id), `removing ${id}`);
+  }
+  assert.deepEqual(Object.keys(removeRow(v, "b").items), ["a", "c"]);
+  assert.equal(removeRow(v, "b").settings.cellular, true, "the cellular switch survives a Remove");
+  assert.deepEqual(Object.keys(v.items), ["a", "b", "c"], "pure: the input is not mutated");
+  assert.equal(removeRow(v, "nope"), v, "identity for an id with no record, like markPlayed/markMissing");
 });
 
 /* ---------- the usage line ---------- */
