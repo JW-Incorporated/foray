@@ -1066,6 +1066,31 @@ test("mobile/'s only non-Capacitor dependency is our own plugin, by a file: path
   );
 });
 
+test("#1071: @capacitor/share is declared and locked at @capacitor/core's major, so both native builds carry the share sheet", () => {
+  /* The share-links card feature-detects Capacitor.Plugins.Share and falls back
+     to navigator.share or copy-link, so losing this dependency fails NOTHING at
+     runtime: the iOS and Android apps quietly trade the native share sheet for
+     the fallback. This pin is what makes that removal red. It needs no
+     capacitor.config entry and no committed native file: mobile/ios/ and
+     mobile/android/ are generated on the runner, and `cap add` / `cap sync`
+     discover the plugin from this dependency list (SwiftPM on iOS, a Gradle
+     module on Android).
+     MUTATION: delete "@capacitor/share" from mobile/package.json -> red; set it
+     to "^7.0.0" -> red (major mismatch with @capacitor/core); delete
+     "node_modules/@capacitor/share" from mobile/package-lock.json -> red. */
+  const deps = capPkg().dependencies || {};
+  const lock = readJson(path.join(MOBILE, "package-lock.json"));
+  const major = (v) => /^[\^~]?(\d+)\./.exec(v ?? "")?.[1];
+  const spec = deps["@capacitor/share"];
+  assert.ok(spec, "mobile/package.json no longer declares @capacitor/share (#1071)");
+  assert.equal(major(spec), major(deps["@capacitor/core"]), "@capacitor/share must match @capacitor/core's major");
+  assert.equal(lock.packages[""].dependencies["@capacitor/share"], spec, "the lockfile's root entry disagrees with package.json");
+  const locked = lock.packages["node_modules/@capacitor/share"];
+  assert.ok(locked, "mobile/package-lock.json does not lock @capacitor/share, so npm ci cannot install it");
+  assert.equal(major(locked.version), major(lock.packages["node_modules/@capacitor/core"]?.version), "the locked share plugin is a different major from the locked core");
+  assert.match(locked.resolved, /^https:\/\/registry\.npmjs\.org\/@capacitor\/share\/-\/share-/);
+});
+
 test("the plugin name the web half calls is the name the Java registers", () => {
   /* IF THESE DISAGREE, NOTHING FAILS. The bridge answers "ForayAudio does not have a
      method called start" on a WebView console nobody is reading, the foreground
