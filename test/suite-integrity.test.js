@@ -1202,6 +1202,7 @@ const FLOORS = {
      (restore leafNodes() as the seed set -> red). */
   "test/interests-roots.test.js": 8,
   "test/personas-client.test.js": 4, // PKG-13 (#70 part 1, 2026-10-05): personas.json loads at init; applyPersonaPick lifts seed_confidence x weight over each root's subtree; an unknown id writes nothing; four/five subject thumbs-down overtake the prior; the plan's fifth test (persona_picked) waits for step 4
+  "test/first-run.test.js": 7, // PKG-14 (#70, 2026-10-06): the first-run sheet's step 2 offers the five directed personas (never the generalist) as single-select pills; a tap writes nothing; Show my picks seeds the lit persona before the chips, logs no event, and re-deals the first Home once with the union of subjects; Skip and a typed miss write nothing; a returning listener is never offered it
   /* #301's bound, over the REAL catalogue: improving a result the ranking keeps
      below the top one must never empty its query or drop a bar-clearer. One test,
      floored at one, because the alternative to a floor here is a suite that can be
