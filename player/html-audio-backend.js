@@ -1627,6 +1627,10 @@ export class HtmlAudioBackend {
   load(item, { startOffset = 0 } = {}) {
     if (this._released) return Promise.reject(new Error("backend released"));
     if (!item?.audio_url) return Promise.reject(new Error(`item ${item?.id} has no audio_url`));
+    /* The in-point, normalised ONCE by deck-policy.js's `warmOffset` (a positive
+       finite offset, else 0) — the same rule the warm element, the in-place
+       seek and the native deck park at, so no path spells it again below. */
+    const offset = warmOffset(startOffset);
     // After the guards, so a malformed call cannot invalidate a recovery that is
     // legitimately in flight.
     this._loadSeq++;
@@ -1652,8 +1656,8 @@ export class HtmlAudioBackend {
       // Whatever was being warmed was warmed for a different "next" than the
       // one we just turned out to want — see the invariant below.
       this._discardWarm(`notNeededBy:${item.id}`);
-      this._emit(`load.sameSource ${item.id} -> ${Math.round(startOffset)}s (seek, no refetch)`);
-      return this._seekWithinLoadedSource(startOffset);
+      this._emit(`load.sameSource ${item.id} -> ${Math.round(offset)}s (seek, no refetch)`);
+      return this._seekWithinLoadedSource(offset);
     }
 
     /* THE HANDOVER, and the ONE invariant that keeps it honest: after this
@@ -1662,7 +1666,7 @@ export class HtmlAudioBackend {
        has already skipped past is a buffer waiting to be promoted for the wrong
        item — the "next segment starts mid-word" failure — and dropping it costs
        only a re-warm at the next window, 12 s before it is needed. */
-    if (this._warmReadyFor(item.audio_url, startOffset)) return this._promoteWarm(item, startOffset);
+    if (this._warmReadyFor(item.audio_url, offset)) return this._promoteWarm(item, offset);
     this._discardWarm(`notReadyFor:${item.id}`);
 
     this._currentItem = item;
@@ -1716,19 +1720,24 @@ export class HtmlAudioBackend {
       // let the episode's opening be briefly audible before the jump.
       const onMeta = () => {
         if (superseded()) return;
-        if (startOffset > 0 && Number.isFinite(startOffset)) {
-          try { el.currentTime = startOffset; } catch (_) { /* browser refused; continue at 0 */ }
+        if (offset > 0) {
+          try { el.currentTime = offset; } catch (_) { /* browser refused; continue at 0 */ }
         }
       };
-      const onSeeked = () => { if (!superseded() && el.readyState >= READY_ENOUGH) done(); };
-      const onCanPlay = () => {
-        if (superseded()) return;
-        // If we asked for an offset, wait until we are actually near it —
-        // otherwise `canplay` can fire for the buffered head while the seek
-        // is still resolving.
-        if (startOffset > 0 && Math.abs(el.currentTime - startOffset) > 1) return;
-        done();
-      };
+      /* SETTLED = AT THE IN-POINT AND ABLE TO PLAY, asked identically on BOTH
+         events. This is deck-policy.js `warmSettled` (NE-30j): `settledNear`'s
+         SETTLE_NEAR_SEC around the offset (an in-point of 0 needs no seek) AND
+         readyState >= HAVE_FUTURE_DATA — the verdict the warm element and the
+         in-place seek (`_seekWithinLoadedSource`) already settle on, so
+         widening SETTLE_NEAR_SEC moves all three together.
+         Why both arms (code-health CH-21): `canplay` can fire for the buffered
+         head while the seek is still resolving, and so can a `seeked` this load
+         did not ask for — resolving on either would start playback at 0:00. */
+      const atInPoint = () => warmSettled({
+        offsetSec: offset, atSec: el.currentTime, canPlay: el.readyState >= READY_ENOUGH,
+      });
+      const onSeeked = () => { if (!superseded() && atInPoint()) done(); };
+      const onCanPlay = () => { if (!superseded() && atInPoint()) done(); };
 
       el.addEventListener("loadedmetadata", onMeta);
       el.addEventListener("canplay", onCanPlay);
@@ -1779,8 +1788,7 @@ export class HtmlAudioBackend {
    */
   _seekWithinLoadedSource(startOffset) {
     const el = this.el;
-    const target = typeof startOffset === "number" && Number.isFinite(startOffset) && startOffset > 0
-      ? startOffset : 0;
+    const target = warmOffset(startOffset); // deck-policy.js: a positive finite offset, else 0
     /* Same capture as `load()`'s, for the same reason: these listeners are on
        the element, and a later load re-points it. */
     const mine = this._loadSeq;

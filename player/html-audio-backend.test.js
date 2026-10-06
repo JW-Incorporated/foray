@@ -9,6 +9,7 @@
 import test, { after } from "node:test";
 import assert from "node:assert/strict";
 import { HtmlAudioBackend } from "./html-audio-backend.js";
+import { SETTLE_NEAR_SEC } from "./deck-policy.js";
 
 const item = (id, url = "https://cdn.example/ep.mp3") => ({ id, audio_url: url, kind: "episode" });
 
@@ -145,6 +146,48 @@ test("CH-21 characterization: a load from the top (offset 0) asks for no seek an
   el._fire("canplay");
   await watch.done;
   assert.equal(el.currentTime, 0);
+});
+
+test("CH-21: a `seeked` the load did not ask for, before its offset seek lands, does not resolve it at 0:00", async () => {
+  /* P1-07: `onSeeked` resolved on readiness alone, so a seek-complete for
+     anything but the offset (the playhead still at the head, the buffer able
+     to play) started the episode at 0:00 and reported it at 600. Now both
+     arms ask deck-policy's "at the in-point AND able to play".
+     MUTATION: revert `onSeeked` to `if (!superseded() && el.readyState >=
+     READY_ENOUGH) done();` -> red on the first assertion. */
+  const { el, watch } = coldLoad(600);
+  el.meta();
+  el.readyState = 3;
+  el._fire("seeked");
+  await flush();
+  assert.equal(watch.settled, false, "a seeked at 0:00 must not resolve a load aimed at 600");
+  el.land();
+  el._fire("seeked");
+  await watch.done;
+  assert.equal(el.currentTime, 600);
+});
+
+test("CH-21: how near a cold load must land is deck-policy's SETTLE_NEAR_SEC, on both events", async () => {
+  /* One number decides "near enough" for the cold load, the warm element, the
+     in-place seek and the native deck. This test is parameterised on it, so
+     widening SETTLE_NEAR_SEC must move `load()` with it.
+     MUTATION: set SETTLE_NEAR_SEC = 2 in deck-policy.js with `onCanPlay`
+     reverted to its inline `Math.abs(el.currentTime - startOffset) > 1` ->
+     red (a landing 2 s off never resolves on canplay); with the code as it is,
+     the same constant change stays green. */
+  for (const event of ["canplay", "seeked"]) {
+    const { el, watch } = coldLoad(600);
+    el.meta();
+    el.readyState = 4;
+    el.land(600 + SETTLE_NEAR_SEC + 0.5);
+    el._fire(event);
+    await flush();
+    assert.equal(watch.settled, false, `${event}: ${SETTLE_NEAR_SEC + 0.5}s off is not near`);
+    el.land(600 + SETTLE_NEAR_SEC);
+    el._fire(event);
+    await watch.done;
+    assert.equal(el.currentTime, 600 + SETTLE_NEAR_SEC, `${event}: exactly SETTLE_NEAR_SEC off is near`);
+  }
 });
 
 test("a media error rejects so the manager's degrade path can run", async () => {
