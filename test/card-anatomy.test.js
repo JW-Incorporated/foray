@@ -172,9 +172,11 @@ test("the subject card is a card: the title is the link, the star is a sibling a
   assert.strictEqual(valueOf(".mini-card", "position"), "relative", "the card is the link's containing block");
   assert.strictEqual(valueOf(".mc-link::after", "inset"), "0", "the link stretches over the card");
   assert.strictEqual(valueOf(".mini-card > button.star", "z-index"), "1", "the star sits above the stretched link");
-  /* And the stretch card's bridge line still lands inside the card. */
-  const stretch = run(`miniCardV2(${JSON.stringify({ ...SLOT, role: "stretch" })})`);
-  assert.match(stretch, /<p class="hv2-bridge">[^<]+<\/p><\/div>$/, "miniCardV2 appends the bridge before the card's closing tag");
+  /* And the stretch card's reason is inside the card, in its hook — said once
+     (code-health CH-32: Suggested draws miniCard itself; no appended bridge). */
+  const stretch = run(`miniCard(${JSON.stringify({ ...SLOT, role: "stretch" })})`);
+  assert.match(stretch, /<p class="mc-hook">[^<]*Outside your usual subjects, on purpose\.<\/p>/, "the reason is the hook's last sentence");
+  assert.doesNotMatch(stretch, /hv2-bridge/, "and not a second line");
 });
 
 test("the Jump back in card is a card: the title is the link, play is a sibling above it", () => {
@@ -517,9 +519,11 @@ test("Home's tags, Search's Generated badge and both kickers are one shape on on
   for (const sel of [".fy-home-kicker", "body.ui-v2 .hv2-jbi-kicker"]) {
     assert.strictEqual(valueOf(sel, "align-self"), "flex-start", `${sel} hugs its text`);
   }
-  /* Amber only where it marks the listener's own material. */
+  /* Amber only where it marks the listener's own material. (The Forays page's
+     Jump back in is Home's card since code-health CH-32, so its amber is
+     `.hv2-jbi-kicker`'s; the `.fy-jbi-row` rule went with that markup.) */
   assert.strictEqual(valueOf("body.ui-v2 .hv2-jbi-kicker", "color"), "var(--amber)");
-  assert.strictEqual(valueOf("body.ui-v2 .fy-jbi-row .fy-home-kicker", "color"), "var(--amber)");
+  assert.strictEqual(valueOf("body.ui-v2 .fy-jbi-row .fy-home-kicker", "color"), null, "no second Jump back in markup to colour");
   assert.strictEqual(valueOf("body.ui-v2 .fy-home-kicker", "color"), "var(--violet)");
 });
 

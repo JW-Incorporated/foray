@@ -1729,10 +1729,21 @@ test("EVERY playForay call site in app.js passes the artwork document", () => {
      has exactly one funnel per option shape — `start` for an index, `startAt`
      for an elapsed — and every control routes through one of them. */
   const calls = liveLines(APP, "playForay(");
-  /* Three since 2026-09-24: Home's play button (startHomeForay, the founder's "play button at the Home Screen level") is a third, and passes it too. */
-  assert.equal(calls.length, 3, `the known call sites are three; found ${calls.length} — check the new one`);
-  const missing = calls.filter((c) => !/forayOpts|discoverDoc/.test(c));
-  assert.deepEqual(missing, [], "a Foray started without discoverDoc loses the publisher's artwork");
+  /* Three since 2026-09-24 (Home's play button was the third); ONE since
+     code-health CH-32: the page's two funnels and Home's button all start
+     through `startForayCold`, which hands the player what each caller passed —
+     so the artwork document is pinned at the callers below. */
+  assert.equal(calls.length, 1, `the known call site is startForayCold's; found ${calls.length} — check the new one`);
+  assert.match(calls[0], /\.\.\.opts/, "startForayCold hands the player its caller's options");
+  /* The page's two funnels spread `forayOpts` (pinned in the next test). */
+  const funnels = liveLines(APP, "guardForayStart(() => (paintForayFailure(null), startForayCold(");
+  assert.equal(funnels.length, 2, "the page's index and elapsed funnels");
+  assert.deepEqual(funnels.filter((c) => !/\.\.\.forayOpts/.test(c)), [], "a funnel without the artwork document");
+  /* Home's button starts through it too, from a resume point or the top. */
+  const home = APP.indexOf("async function startHomeForay(");
+  const homeStart = APP.slice(home, APP.indexOf("\n}\n", home));
+  assert.equal((homeStart.match(/discoverDoc: state\.discover/g) || []).length, 2,
+    "a Foray started from Home without discoverDoc loses the publisher's artwork");
 });
 
 test("app.js hands over the discover pool it already fetched, not a new request", () => {

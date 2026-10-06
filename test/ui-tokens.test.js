@@ -832,11 +832,14 @@ test("Reduce Motion is one block and it names every transition in the sheet", ()
 });
 
 test("'N min left' is amber and bold on Home's card, as on the Forays page and the Foray page", () => {
-  /* Round 2, honesty-8. MUTATION: delete `body.ui-v2 .hv2-jbi-left { … }` -> red. */
+  /* Round 2, honesty-8. MUTATION: delete `body.ui-v2 .hv2-jbi-left { … }` -> red.
+     The Forays page's Jump back in IS this card since code-health CH-32 (its
+     `.fy-jbi-left` went with its markup); the Foray page's resume line is the
+     comparison left. */
   assert.strictEqual(lastOn("body.ui-v2 .hv2-jbi-left", "color"), "var(--amber)");
   assert.strictEqual(lastOn("body.ui-v2 .hv2-jbi-left", "font-weight"), "700");
-  assert.strictEqual(lastOn("body.ui-v2 .fy-jbi-left", "color"), "var(--amber)", "the Forays page's, for comparison");
-  assert.strictEqual(lastOn(".fy-jbi-left", "font-weight"), "700");
+  assert.strictEqual(lastOn(".fy-resume-left", "font-weight"), "700", "the Foray page's resume line, for comparison");
+  assert.strictEqual(lastOn(".fy-jbi-left", "font-weight"), null, "no second Jump back in markup");
 });
 
 test("Home shows the wordmark once: the greeting has it, the bar keeps only its tagline there", () => {

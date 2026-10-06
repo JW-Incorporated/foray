@@ -474,16 +474,19 @@ test("CH-32: Home's play button and the Foray page's main button start a new, pa
 /* 7. ONE JUMP BACK IN (code-health CH-32, A2-08)                        */
 /* ==================================================================== */
 
-/** The Jump back in rows a render drew, as [href, markup] pairs. */
+/** The Jump back in cards a render drew, as [href, markup] pairs. */
 function jumpBackInRows(html) {
-  return [...html.matchAll(/<(?:div class="hv2-jbi-card"|a class="fy-home-row fy-jbi-row"[^>]*)>[\s\S]*?<\/(?:div|a)>/g)]
+  return [...html.matchAll(/<div class="hv2-jbi-card">[\s\S]*?<\/div>/g)]
     .map(([row]) => [(/href="([^"]+)"/.exec(row) || [])[1], row.trim()]);
 }
 
-test("CH-32: #/forays' Jump back in shows the Foray Home's rail shows, and only Forays", async () => {
+test("CH-32: #/forays' Jump back in is Home's card for the same Foray, and only Forays", async () => {
   /* A2-08: Home's rail holds Forays, episodes and playlists; the Forays page
-     keeps its content rule (Forays only). CHARACTERIZATION: on main the page
-     draws the same Foray in its own `.fy-jbi-row` markup — a second renderer. */
+     keeps its content rule (Forays only) and, since CH-32, draws Home's cards
+     rather than its own `.fy-jbi-row` markup (founder question 5's default).
+     MUTATION: give renderForays its own row markup back (a third renderer) ->
+     the markup comparison goes red. MUTATION 2: drop the `kind === "foray"`
+     filter -> the episode appears on the Forays page, red. */
   const bridge = await makeBridge({
     resumeRows: [{ id: FORAY_ID, title: FORAY_TITLE, updated_at: "2026-09-21T00:00:00Z", percent: 40, label: "30 min left", finished: false, drift: "unverified" }],
     lastEpisode: { ...EP(3), updated_at: "2026-09-22T00:00:00Z", percent: 30, label: "20 min left" },
@@ -496,5 +499,7 @@ test("CH-32: #/forays' Jump back in shows the Foray Home's rail shows, and only 
   app.ctx.renderForays();
   const page = jumpBackInRows(app.view.innerHTML);
   assert.deepStrictEqual(page.map(([href]) => href), [`#/foray/${FORAY_ID}`], "the Forays page lists the Foray, and no episode");
-  assert.match(page[0][1], /class="fy-home-row fy-jbi-row"/, "today: in its own markup");
+  assert.strictEqual(page[0][1], home[1][1], "the same card, drawn by the same renderer");
+  assert.match(app.view.innerHTML, /<h2 class="hv2-title">Jump back in<\/h2>/, "under its own heading");
+  assert.ok(!/fy-jbi/.test(app.view.innerHTML), "no second markup");
 });

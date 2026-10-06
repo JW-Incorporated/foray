@@ -342,8 +342,8 @@ test("the card's bar and label read the RAW stored position, never the collapsed
 test("a playlist card says how far in you are, in the same reading as the playlist page", () => {
   /* The rail mixed three grammars: a bar and "N min left" on Foray and episode
      cards, a bare "12 episodes" on a playlist's, though its page knew
-     "3 played". MUTATION: drop `percent`/`left` from the playlist entry, or
-     count them some other way than `hasOpened` (history OR a position). */
+     "3 played". MUTATION: drop `percent`/`left` from the playlist entry. Since
+     CH-32 "played" is the player's verdict (`rowProgress`), as on the page. */
   const app = loadApp();
   const item = (id) => ({ id, title: `T ${id}`, show: "S", audio_url: `https://a.test/${id}.mp3`, topics: [] });
   app._state("state.discover = { items: [] }; state.session = { session_id: 's', builder: 't', episodes: {}, cards: [] }; state.itemIndex = {};");
@@ -352,7 +352,7 @@ test("a playlist card says how far in you are, in the same reading as the playli
     id: "pl-3", title: "Four", items: ["a", "b", "c", "d"].map((id) => app.playlistPart(item(id))),
     created: "2026-09-18T07:00:00.000Z", last_played_at: "2026-09-18T08:00:00.000Z",
   }]);
-  app.lsSet("cp_history", ["a"]);
+  app._progress = { a: { state: "played", percent: 100, label: "Played" } };
   const pl = app.jumpBackInEntries().find((e) => e.kind === "playlist");
   assert.strictEqual(pl.left, "1 of 4 played");
   assert.strictEqual(pl.percent, 25);
@@ -362,9 +362,10 @@ test("a playlist card says how far in you are, in the same reading as the playli
 });
 
 test("ROUND 2 review (honesty-7 x copy-13): a playlist card never says '0 of N played'", () => {
-  /* A played playlist whose ids aged out of the history ring counted 0 and the
-     card read "0 of 12 played" over an empty bar. MUTATION: drop the
-     `&& played` guards from the playlist entry -> red. */
+  /* A played playlist with nothing finished counts 0 (the case was ids aging
+     out of the history ring; since CH-32 it is any playlist started and not yet
+     finished), and the card read "0 of 12 played" over an empty bar.
+     MUTATION: drop the `&& played` guards from the playlist entry -> red. */
   const app = loadApp();
   const item = (id) => ({ id, title: `T ${id}`, show: "S", audio_url: `https://a.test/${id}.mp3`, topics: [] });
   app._state("state.discover = { items: [] }; state.session = { session_id: 's', builder: 't', episodes: {}, cards: [] }; state.itemIndex = {};");
@@ -384,10 +385,12 @@ test("ROUND 2 review (honesty-7 x copy-13): a playlist card never says '0 of N p
 /* ---------- one reading of "played" (code-health CH-32, A2-04) ------------- */
 
 test("CH-32: a playlist's card on Home and its page header count 'played' the same way", () => {
-  /* The listener opened 3 of 12 episodes and finished 1. CHARACTERIZATION
-     (main): the card counts `hasOpened` (history OR a position) and says
-     "3 of 12 played" with a 25% bar; one tap later the page header, which
-     counts the player's "played" verdict, says "1 played". */
+  /* A2-04. The listener opened 3 of 12 episodes and finished 1. The card
+     counted `hasOpened` (history OR a position) and said "3 of 12 played" with
+     a 25% bar; one tap later the page header, which counts the player's
+     "played" verdict, said "1 played" (pinned by this test's characterization
+     commit). MUTATION: count `hasOpened(r.item.id, history)` on the card again
+     -> "3 of 12 played", red. */
   const app = loadApp();
   const ids = Array.from({ length: 12 }, (_, i) => `e${i + 1}`);
   const item = (id) => ({ id, title: `T ${id}`, show: "S", audio_url: `https://a.test/${id}.mp3`, topics: [] });
@@ -407,6 +410,6 @@ test("CH-32: a playlist's card on Home and its page header count 'played' the sa
   app.renderPlaylistDetail("pl-12");
   const header = (/· (\d+) played/.exec(app._view.innerHTML) || [])[1];
   assert.strictEqual(header, "1", "the page header counts the finished episode");
-  assert.strictEqual(card.left, "3 of 12 played", "today: the card counts every opened one");
-  assert.strictEqual(card.percent, 25);
+  assert.strictEqual(card.left, `${header} of 12 played`, "the card says the page's number");
+  assert.strictEqual(card.percent, 8, "and draws its bar from it");
 });

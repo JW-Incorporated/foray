@@ -378,7 +378,8 @@ test("(g) a Suggested card's share button shares its lead episode, not the subje
   const shared = await clickShare(m, btn[1], btn[2]);
   assert.strictEqual(shared.length, 1);
   assert.strictEqual(shared[0].url, ORIGIN + "#/episode/" + encodeURIComponent(slot.item.id));
-  assert.ok(m.ctx.miniCardV2({ ...slot, role: "stretch" }).includes("share-btn"), "Suggested's V2 card keeps it");
+  /* Suggested draws miniCard itself since code-health CH-32 (miniCardV2 went). */
+  assert.ok(m.ctx.miniCard({ ...slot, role: "stretch" }).includes("share-btn"), "Suggested's stretch card keeps it");
 });
 
 /* (h) ------------------------------------------------------------------- */
