@@ -252,6 +252,9 @@ final class ForayEngine {
         observations = []
         timers.values.forEach { $0.cancel() }
         timers = [:]
+        // The 1 s refresh of a running entry: the entry itself is left for the
+        // legacy lane, but nothing of ours may write it again.
+        cancelSurfaceRefresh()
         if let task = graceTask {
             graceTask = nil
             seams.background.endTask(task)
@@ -528,7 +531,7 @@ final class ForayEngine {
             switch deckCommand {
             // The playhead jumps: Now Playing is rewritten after this turn
             // whatever the drift check would say (plan §4.5: every seek).
-            case .seek, .load, .unload: surfaceMoved = true
+            case .seek, .load, .unload: surfaceMove = .jump
             case .play, .pause, .setRate, .setOutPoint, .prepare: break
             }
             seams.deck.send(deckCommand)
@@ -579,7 +582,7 @@ final class ForayEngine {
             seams.silence?.stop()
         case .narrationPulse:
             // A spoken line's clock moved with no deck event to say so.
-            surfaceMoved = true
+            if surfaceMove == nil { surfaceMove = .pulse }
         case let .emit(event):
             seams.output.emit(event)
             onEmit?(event)
@@ -605,35 +608,76 @@ final class ForayEngine {
     private var published: PublishedEntry?
     /// The enabled set last applied; nil until `start()` applied one.
     private var enabledCommands: Set<MediaMapping.RemoteCommand>?
-    /// The turn loaded, unloaded or seeked the deck.
-    private var surfaceMoved = false
+
+    /// What moved the playhead in the turn being interpreted: the deck
+    /// jumped (a load, an unload or a seek), or a spoken line's clock pulsed
+    /// (NE-31s). Either forces a rewrite after the turn; a jump is on record
+    /// (`via=seek`), a pulse (four a second while a line sounds) is counted.
+    private enum SurfaceMove { case pulse, jump }
+    private var surfaceMove: SurfaceMove?
 
     /// How far the deck's playhead may sit from where the lock screen's
-    /// extrapolation has it before the entry is rewritten. The OS counts on
-    /// by itself between writes; a rewrite per position tick would be a write
-    /// every few seconds for nothing (the JS write floor is one second too).
+    /// extrapolation has it before the entry is rewritten at once.
     static let nowPlayingDriftSec: Double = 1
+
+    /// How often a RUNNING entry (rate above 0) is rewritten at the deck's
+    /// playhead, whether or not it drifted (2026-10-06, the car progress bar).
+    /// iOS extrapolates the elapsed time for its own surfaces (the lock
+    /// screen, CarPlay), but a plain-Bluetooth (AVRCP) head unit draws its bar
+    /// from the positions it is SENT, and an entry written once is a bar that
+    /// sits at its first value. The founder's car stuck at 0 in both
+    /// native-era reports (2026-09-28, 2026-10-06) while the phone's own clock
+    /// was right. The legacy lane rewrote the entry about once a second (the
+    /// shim's 1 s floor over the page's 4 Hz `timeupdate`), and that cost was
+    /// bridge traffic; in-process it is one dictionary a second. A paused,
+    /// stalled or loading entry (rate 0) is never refreshed: its clock stands
+    /// still, so a pause costs nothing and the p-car-8 stall rule holds.
+    /// docs/ios-lock-screen.md §3, DECISIONS.md 2026-10-06.
+    static let nowPlayingRefreshSec: Double = 1
+    /// How early a refresh may come and still count: the heartbeat is a
+    /// DispatchSourceTimer with leeway on a main queue that may be busy, so a
+    /// tick can land a little short of a second after the last write, and a
+    /// refresh skipped for being a few milliseconds early would halve the
+    /// cadence to 2 s.
+    static let nowPlayingRefreshEarlyMs: Double = 250
+
+    /// The host's own 1 s heartbeat, live exactly while the published entry
+    /// runs (rate above 0, with a playhead). Not a core timer: the core
+    /// decides nothing about the surface, and Android's Media3 session
+    /// extrapolates from position, update time and speed by itself.
+    private var surfaceRefresh: EngineObservation?
+    /// Writes since the last `nowplaying` row that wrote no row of their own
+    /// (the 1 s refresh, a narration pulse, a duration landing): the next row
+    /// carries the count as `refreshes`, so a Copy shows the cadence without
+    /// 3,600 rows an hour.
+    private var quietWrites = 0
 
     /// Whether Now Playing is showing an entry the engine wrote.
     var isPublishingNowPlaying: Bool { published != nil }
 
-    /// After every input handled to the end (and once at start): the enabled
-    /// set, then the entry. Never after a teardown: a relinquish leaves both
-    /// for the legacy lane to overwrite (plan §4.6).
+    /// Whether the 1 s refresh is armed (tests, diagnostics).
+    var isRefreshingNowPlaying: Bool { surfaceRefresh != nil }
+
+    /// After every input handled to the end, once at start, and every second
+    /// while the published entry runs: the enabled set, then the entry. Never
+    /// after a teardown: a relinquish leaves both for the legacy lane to
+    /// overwrite (plan §4.6).
     private func publishSurface() {
         guard !isTornDown else { return }
         let availability = MediaMapping.commandAvailability(core.commandSnapshot)
         applyEnablement(availability.enabled)
-        let moved = surfaceMoved
-        surfaceMoved = false
+        let move = surfaceMove
+        surfaceMove = nil
 
         guard !availability.clearsNowPlaying,
               let view = core.mediaView(deck: seams.deck.reading, monoMs: seams.timing.monoMs) else {
+            cancelSurfaceRefresh()
             // Nil ONLY for a finished Foray, a close or a data deletion, and
             // only if the engine had written something (a fresh engine does
             // not wipe an entry it never owned).
             guard published != nil else { return }
             published = nil
+            quietWrites = 0
             seams.nowPlaying.clear()
             seams.output.diag(DiagEntry(kind: DiagGate.nowPlayingKind, fields: [JSONMember("via", .string("clear"))]))
             return
@@ -641,19 +685,26 @@ final class ForayEngine {
         let entry = MediaMapping.sessionView(view)
         let mono = seams.timing.monoMs
         let previous = published
-        if let previous, !moved, !Self.needsWrite(entry, since: previous.view, elapsedMs: mono - previous.atMono) {
-            return
+        var reason: NowPlayingRewrite?
+        if let previous, move == nil {
+            reason = Self.rewriteReason(entry, since: previous.view, elapsedMs: mono - previous.atMono)
+            if reason == nil { return }
         }
         published = PublishedEntry(view: entry, atMono: mono)
-        seams.nowPlaying.write(entry)
+        seams.nowPlaying.write(entry, listenRate: core.state.rate)
+        keepSurfaceRefresh(for: entry)
 
         // DV-10 / H6: what the lock screen and the car were told, whenever
-        // the words, the state or the RATE change (not on a drift rewrite).
-        // The rate is its own reason because a load writes `state=playing
-        // rate=0` (buffering: the clock stands still) and the moment sound
-        // starts changes only the rate: without `via=rate` every row of the
-        // 2026-09-28 paste read rate=0 and none could say whether the lock
-        // screen's clock ever ran.
+        // the words, the state or the RATE change, the playhead jumped, or it
+        // drifted from the OS's extrapolation. The rate is its own reason
+        // because a load writes `state=playing rate=0` (buffering: the clock
+        // stands still) and the moment sound starts changes only the rate:
+        // without `via=rate` every row of the 2026-09-28 paste read rate=0
+        // and none could say whether the lock screen's clock ever ran. A seek
+        // and a drift are on record because a paste with no row after a
+        // car's skip reads as a missing write (2026-10-06), when the write
+        // happened. The 1 s refresh and a narration pulse write no row; they
+        // are counted into the next one (`refreshes`).
         let via: String?
         if previous?.view.metadata != entry.metadata {
             via = "metadata"
@@ -661,29 +712,38 @@ final class ForayEngine {
             via = "state"
         } else if let previous, NowPlayingRate.of(previous.view) != NowPlayingRate.of(entry) {
             via = "rate"
+        } else if move == .jump {
+            via = "seek"
+        } else if reason == .drift {
+            via = "drift"
         } else {
             via = nil
         }
-        if let via {
-            seams.output.diag(DiagEntry(kind: DiagGate.nowPlayingKind, fields: [
-                JSONMember("via", .string(via)),
-                JSONMember("title", .string(entry.metadata.title)),
-                JSONMember("artist", .string(entry.metadata.artist)),
-                JSONMember("album", .string(entry.metadata.album)),
-                JSONMember("artwork", .string(entry.metadata.artwork.isEmpty ? "n" : "y")),
-                JSONMember("state", .string(entry.playbackState)),
-                JSONMember("rate", .number(NowPlayingRate.of(entry))),
-                // What the car draws its progress bar from: the elapsed time
-                // and duration this entry carried (nil: none was published),
-                // and WHY a playing entry says rate 0 (the core's buffering
-                // latch, or a load in flight) next to the listener's rate.
-                JSONMember("elapsedSec", entry.positionState.map { JSONNode.number(Self.millis($0.position)) } ?? .null),
-                JSONMember("durationSec", entry.positionState.map { JSONNode.number(Self.millis($0.duration)) } ?? .null),
-                JSONMember("buffering", .bool(core.state.buffering)),
-                JSONMember("engineState", .string(core.state.stateType)),
-                JSONMember("listenRate", .number(core.state.rate))
-            ]))
+        guard let via else {
+            quietWrites += 1
+            return
         }
+        seams.output.diag(DiagEntry(kind: DiagGate.nowPlayingKind, fields: [
+            JSONMember("via", .string(via)),
+            JSONMember("title", .string(entry.metadata.title)),
+            JSONMember("artist", .string(entry.metadata.artist)),
+            JSONMember("album", .string(entry.metadata.album)),
+            JSONMember("artwork", .string(entry.metadata.artwork.isEmpty ? "n" : "y")),
+            JSONMember("state", .string(entry.playbackState)),
+            JSONMember("rate", .number(NowPlayingRate.of(entry))),
+            // What the car draws its progress bar from: the elapsed time
+            // and duration this entry carried (nil: none was published),
+            // and WHY a playing entry says rate 0 (the core's buffering
+            // latch, or a load in flight) next to the listener's rate (the
+            // entry's default rate).
+            JSONMember("elapsedSec", entry.positionState.map { JSONNode.number(Self.millis($0.position)) } ?? .null),
+            JSONMember("durationSec", entry.positionState.map { JSONNode.number(Self.millis($0.duration)) } ?? .null),
+            JSONMember("buffering", .bool(core.state.buffering)),
+            JSONMember("engineState", .string(core.state.stateType)),
+            JSONMember("listenRate", .number(core.state.rate)),
+            JSONMember("refreshes", .number(Double(quietWrites)))
+        ]))
+        quietWrites = 0
     }
 
     /// Seconds to three decimals, for a row.
@@ -691,18 +751,57 @@ final class ForayEngine {
         sec.isFinite ? (sec * 1000).rounded() / 1000 : 0
     }
 
-    /// A transition (words, state, duration or rate changed), or a playhead
-    /// that has drifted from the OS's extrapolation of the last entry.
-    static func needsWrite(_ next: MediaMapping.SessionView, since last: MediaMapping.SessionView,
-                           elapsedMs: Double) -> Bool {
-        if next.metadata != last.metadata || next.playbackState != last.playbackState { return true }
+    /// Why an entry is rewritten when nothing forced it.
+    enum NowPlayingRewrite: Equatable {
+        /// The words, the state, the duration or the rate changed.
+        case transition
+        /// The playhead sits more than `nowPlayingDriftSec` from where the
+        /// OS's extrapolation of the last entry has it.
+        case drift
+        /// The last entry runs and was written `nowPlayingRefreshSec` ago.
+        case refresh
+    }
+
+    /// Whether `next` must be written over `last` (written `elapsedMs` ago),
+    /// and why; nil when the entry the OS holds still says it.
+    static func rewriteReason(_ next: MediaMapping.SessionView, since last: MediaMapping.SessionView,
+                              elapsedMs: Double) -> NowPlayingRewrite? {
+        if next.metadata != last.metadata || next.playbackState != last.playbackState { return .transition }
         guard let now = next.positionState, let then = last.positionState else {
-            return next.positionState != last.positionState
+            return next.positionState != last.positionState ? .transition : nil
         }
-        if now.duration != then.duration || NowPlayingRate.of(next) != NowPlayingRate.of(last) { return true }
+        if now.duration != then.duration || NowPlayingRate.of(next) != NowPlayingRate.of(last) { return .transition }
         let expected = then.position + Swift.max(0, elapsedMs) / 1000 * NowPlayingRate.of(last)
         let clamped = Swift.min(Swift.max(0, expected), then.duration)
-        return abs(now.position - clamped) > nowPlayingDriftSec
+        if abs(now.position - clamped) > nowPlayingDriftSec { return .drift }
+        if NowPlayingRate.of(last) > 0, elapsedMs >= nowPlayingRefreshSec * 1000 - nowPlayingRefreshEarlyMs {
+            return .refresh
+        }
+        return nil
+    }
+
+    /// The 1 s refresh runs exactly while the entry just written runs: armed
+    /// once (a rewrite does not re-phase it), cancelled the moment an entry
+    /// says rate 0 or has no playhead to move.
+    private func keepSurfaceRefresh(for entry: MediaMapping.SessionView) {
+        guard NowPlayingRate.of(entry) > 0, entry.positionState != nil else { return cancelSurfaceRefresh() }
+        guard surfaceRefresh == nil else { return }
+        surfaceRefresh = seams.timing.schedule(afterMs: Self.nowPlayingRefreshSec * 1000, repeating: true) { [weak self] in
+            MainActor.assumeIsolated { self?.refreshSurface() }
+        }
+    }
+
+    private func cancelSurfaceRefresh() {
+        surfaceRefresh?.cancel()
+        surfaceRefresh = nil
+    }
+
+    /// The heartbeat: the surface is published as after a turn, and
+    /// `rewriteReason` decides whether the entry is written (it is, at the
+    /// deck's own playhead, once a second while it runs).
+    private func refreshSurface() {
+        guard !isTornDown, depth == 0 else { return }
+        publishSurface()
     }
 
     /// Set only what changed: MediaPlayer re-lays the car's buttons on every

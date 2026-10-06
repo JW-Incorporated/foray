@@ -139,31 +139,109 @@ final class NowPlayingPublisherTests: XCTestCase {
         XCTAssertEqual(world.remote.enabled[.play], true)
     }
 
-    /// A seek rewrites the entry at the new playhead at once; a position tick
-    /// that lands where the OS's extrapolation already has it writes nothing,
-    /// and one the playhead drifted away from does.
-    /// TO SEE IT FAIL: drop the seek's forced write, or write on every turn.
+    /// THE CAR PROGRESS BAR (2026-10-06; the 2026-09-28 report too): a
+    /// plain-Bluetooth head unit draws its bar from the elapsed time it is
+    /// SENT, so a running entry is rewritten once a second at the deck's own
+    /// playhead even when the OS's extrapolation already has it there (steady
+    /// 1.5x). A seek and a drift still write at once. A paused or stalled
+    /// entry (rate 0) is never refreshed, and no heartbeat stays armed for it.
+    /// TO SEE IT FAIL: drop the `.refresh` clause in `rewriteReason` (no write
+    /// at the second), arm the heartbeat whatever the rate in
+    /// `keepSurfaceRefresh` (it stays live after the pause and the stall), or
+    /// drop the seek's forced write (`surfaceMove = .jump`).
     @MainActor
-    func testASeekRewritesAndAnOnScheduleTickDoesNot() {
+    func testAPlayingEntryIsRefreshedEverySecondAndAPausedOneIsNot() throws {
         let world = FakeWorld()
         let engine = playing(world)
+        world.deck.reading.audible = true
+        engine.handle(.queue(.setRate(1.5)))
+        XCTAssertTrue(engine.isRefreshingNowPlaying, "a running entry arms the 1 s refresh")
+        let refreshMs = ForayEngine.nowPlayingRefreshSec * 1000
+        XCTAssertEqual(refreshMs, 1000)
+        let heartbeat = try XCTUnwrap(world.timing.live.last { $0.afterMs == refreshMs }, "\(world.log.entries)")
+        XCTAssertTrue(heartbeat.repeating)
         let start = world.deck.reading.positionSec ?? 0
         let writes = world.nowPlaying.writes
 
-        world.timing.advance(5000)
-        world.deck.reading.positionSec = start + 5
-        engine.handle(.timer(.positionTick))
-        XCTAssertEqual(world.nowPlaying.writes, writes, "the lock screen already counts on by itself")
+        // Steady 1.5x, the deck exactly where the OS extrapolates it: still
+        // one write a second, at the deck's playhead and the listener's rate.
+        for second in 1...3 {
+            world.deck.reading.positionSec = start + 1.5 * Double(second)
+            world.timing.fire(afterMs: refreshMs)
+            XCTAssertEqual(world.nowPlaying.writes, writes + second, "second \(second)")
+            let entry = try XCTUnwrap(world.nowPlaying.last)
+            XCTAssertEqual(entry.positionState?.position, start + 1.5 * Double(second))
+            XCTAssertEqual(NowPlayingRate.of(entry), 1.5)
+        }
 
+        // A turn half a second after a write writes nothing: no drift, no refresh yet.
+        world.timing.advance(500)
+        world.deck.reading.positionSec = start + 4.5 + 0.75
+        engine.handle(.timer(.positionTick))
+        XCTAssertEqual(world.nowPlaying.writes, writes + 3, "half a second after a write")
+
+        // A seek writes at once, at the new playhead.
         engine.handle(.command(.seekTo(sec: 600), source: .tap))
-        XCTAssertEqual(world.nowPlaying.writes, writes + 1)
+        XCTAssertEqual(world.nowPlaying.writes, writes + 4)
         XCTAssertEqual(world.nowPlaying.last?.positionState?.position, 600)
 
-        world.timing.advance(1000)
+        // So does a drift, whatever the second says.
+        world.timing.advance(200)
         world.deck.reading.positionSec = 900
         engine.handle(.timer(.positionTick))
-        XCTAssertEqual(world.nowPlaying.writes, writes + 2, "a drift is corrected")
+        XCTAssertEqual(world.nowPlaying.writes, writes + 5, "a drift is corrected at once")
         XCTAssertEqual(world.nowPlaying.last?.positionState?.position, 900)
+
+        // A pause writes rate 0 once and disarms the heartbeat: a minute
+        // passes with no write.
+        engine.handle(.command(.pause, source: .tap))
+        XCTAssertEqual(NowPlayingRate.of(try XCTUnwrap(world.nowPlaying.last)), 0)
+        XCTAssertFalse(engine.isRefreshingNowPlaying, "a paused entry's clock stands still")
+        XCTAssertFalse(heartbeat.token.isLive)
+        XCTAssertNil(world.timing.live.first { $0.afterMs == refreshMs }, "no heartbeat outlives the pause")
+        let paused = world.nowPlaying.writes
+        world.timing.fire(afterMs: refreshMs)
+        world.timing.advance(60_000)
+        XCTAssertEqual(world.nowPlaying.writes, paused)
+
+        // A stall (playing, rate 0) is not refreshed either; the sound coming
+        // back re-arms it.
+        engine.handle(.command(.play, source: .tap))
+        let token = try XCTUnwrap(world.deck.lastToken)
+        world.deck.report(.timeControl(token: token, status: .playing, waitingReason: nil))
+        XCTAssertTrue(engine.isRefreshingNowPlaying, "\(world.log.entries.suffix(8))")
+        world.deck.report(.timeControl(token: token, status: .waiting, waitingReason: "AVPlayerWaitingToMinimizeStallsReason"))
+        XCTAssertEqual(NowPlayingRate.of(try XCTUnwrap(world.nowPlaying.last)), 0, "a stall stops the clock")
+        XCTAssertFalse(engine.isRefreshingNowPlaying, "a stalled entry is not refreshed (p-car-8)")
+        world.deck.report(.timeControl(token: token, status: .playing, waitingReason: nil))
+        XCTAssertTrue(engine.isRefreshingNowPlaying)
+        XCTAssertEqual(world.timing.live.filter { $0.afterMs == refreshMs }.count, 1, "one heartbeat, never two")
+    }
+
+    /// The rule itself, on the views: a running entry is due one second after
+    /// it was written (a tick a little early still counts, so a busy main
+    /// queue does not halve the cadence), a drift is named as one, and a
+    /// paused or buffering entry is never due however long it sits.
+    /// TO SEE IT FAIL: drop the `.refresh` clause, check it before the drift
+    /// (the drift is then misnamed), refresh on rate 0, or drop the early
+    /// allowance.
+    @MainActor
+    func testTheRefreshRuleRunsOnlyWithTheClock() {
+        let at100 = Self.view(title: "A", position: 100)
+        XCTAssertEqual(ForayEngine.rewriteReason(Self.view(title: "A", position: 101), since: at100, elapsedMs: 1000), .refresh)
+        XCTAssertEqual(ForayEngine.rewriteReason(Self.view(title: "A", position: 100.8), since: at100, elapsedMs: 800), .refresh,
+                       "a heartbeat a little early still writes")
+        XCTAssertNil(ForayEngine.rewriteReason(Self.view(title: "A", position: 100.5), since: at100, elapsedMs: 500))
+        XCTAssertEqual(ForayEngine.rewriteReason(Self.view(title: "A", position: 103), since: at100, elapsedMs: 1000), .drift)
+        XCTAssertEqual(ForayEngine.rewriteReason(Self.view(title: "B", position: 101), since: at100, elapsedMs: 1000), .transition)
+
+        let paused = Self.view(title: "A", position: 100, playing: false)
+        XCTAssertNil(ForayEngine.rewriteReason(paused, since: paused, elapsedMs: 60_000), "a paused entry is never refreshed")
+        let buffering = MediaMapping.sessionView(MediaMapping.View(
+            item: MediaMapping.Item(kind: "episode", title: "A", show: "Show"), durationSec: 600, positionSec: 100,
+            playbackRate: 1.5, buffering: true, playing: true))
+        XCTAssertEqual(NowPlayingRate.of(buffering), 0)
+        XCTAssertNil(ForayEngine.rewriteReason(buffering, since: buffering, elapsedMs: 60_000), "nor is a stalled one")
     }
 
     /// DV-10: what the car was told is on record, with the words, whenever
@@ -216,6 +294,70 @@ final class NowPlayingPublisherTests: XCTestCase {
         for row in rows { XCTAssertNil(DiagGate.admit(row)?[field: DiagGate.droppedField], "the gate dropped part of \(row)") }
     }
 
+    /// A car's skip and a drift are rewritten AND on record (2026-10-06: a
+    /// paste with no row after a skip read as a missing write), with the new
+    /// playhead; the 1 s refreshes write no row of their own and are counted
+    /// into the next one (`refreshes`), and every row passes the gate whole.
+    /// TO SEE IT FAIL: leave `via` nil for a jump or a drift in
+    /// `publishSurface`, write a row per refresh, or never reset the count.
+    @MainActor
+    func testSeekAndDriftRewritesAreOnRecord() throws {
+        let world = FakeWorld()
+        let engine = playing(world)
+        world.deck.reading.audible = true
+        world.deck.reading.positionSec = 100
+        func rows() -> [DiagEntry] { world.output.diags.filter { $0.kind == "nowplaying" } }
+        XCTAssertEqual(rows().map { $0[field: "via"] }, [.string("metadata")])
+
+        XCTAssertEqual(world.remote.press(.skipForward), .success)
+        let seek = try XCTUnwrap(rows().last)
+        XCTAssertEqual(seek[field: "via"], .string("seek"), "\(rows().map(\.fields))")
+        XCTAssertEqual(seek[field: "elapsedSec"], .number(100 + MediaMapping.seekForwardSec))
+        XCTAssertEqual(seek[field: "state"], .string(MediaMapping.playing))
+
+        world.timing.advance(200)
+        world.deck.reading.positionSec = 400
+        engine.handle(.timer(.positionTick))
+        let drift = try XCTUnwrap(rows().last)
+        XCTAssertEqual(drift[field: "via"], .string("drift"))
+        XCTAssertEqual(drift[field: "elapsedSec"], .number(400))
+        XCTAssertEqual(drift[field: "refreshes"], .number(0))
+
+        let before = rows().count
+        for second in 1...3 {
+            world.deck.reading.positionSec = 400 + Double(second)
+            world.timing.fire(afterMs: ForayEngine.nowPlayingRefreshSec * 1000)
+        }
+        XCTAssertEqual(rows().count, before, "a refresh writes no row: 3,600 an hour would flood the ring")
+        engine.handle(.command(.pause, source: .tap))
+        let pause = try XCTUnwrap(rows().last)
+        XCTAssertEqual(pause[field: "via"], .string("state"))
+        XCTAssertEqual(pause[field: "refreshes"], .number(3), "the refreshes since the last row are counted into the next")
+        XCTAssertEqual(pause[field: "listenRate"], .number(1))
+        for row in rows() {
+            let admitted = try XCTUnwrap(DiagGate.admit(row))
+            XCTAssertNil(admitted[field: DiagGate.droppedField], "the gate dropped part of \(row)")
+        }
+    }
+
+    /// The host hands the publisher the listener's rate on every write, the
+    /// paused one included: what the entry carries as its default rate.
+    /// TO SEE IT FAIL: pass `NowPlayingRate.of(entry)` (0 while paused) or a
+    /// literal 1 instead of `core.state.rate` in `publishSurface`.
+    @MainActor
+    func testTheHostPassesTheListenersRateOnEveryWrite() throws {
+        let world = FakeWorld()
+        let engine = playing(world)
+        XCTAssertEqual(world.nowPlaying.listenRates.last, 1)
+        world.deck.reading.audible = true
+        engine.handle(.queue(.setRate(1.5)))
+        XCTAssertEqual(world.nowPlaying.listenRates.last, 1.5)
+        engine.handle(.command(.pause, source: .tap))
+        XCTAssertEqual(NowPlayingRate.of(try XCTUnwrap(world.nowPlaying.last)), 0)
+        XCTAssertEqual(world.nowPlaying.listenRates.last, 1.5, "a paused entry keeps the listener's default rate")
+        XCTAssertEqual(world.nowPlaying.listenRates.count, world.nowPlaying.writes)
+    }
+
     // MARK: - The real MPNowPlayingInfoCenter
 
     /// The acceptance line: after a pause the real centre shows rate 0 with
@@ -230,18 +372,92 @@ final class NowPlayingPublisherTests: XCTestCase {
         let item = MediaMapping.Item(kind: "episode", title: "Grilling", show: "Cooking Show")
 
         publisher.write(MediaMapping.sessionView(MediaMapping.View(item: item, durationSec: 1800, positionSec: 120,
-                                                                   playbackRate: 1.5, playing: true)))
+                                                                   playbackRate: 1.5, playing: true)), listenRate: 1.5)
         let playing = try XCTUnwrap(center.nowPlayingInfo)
         XCTAssertEqual((playing[MPNowPlayingInfoPropertyPlaybackRate] as? NSNumber)?.doubleValue, 1.5)
 
         publisher.write(MediaMapping.sessionView(MediaMapping.View(item: item, durationSec: 1800, positionSec: 131,
-                                                                   playbackRate: 1.5, playing: false)))
+                                                                   playbackRate: 1.5, playing: false)), listenRate: 1.5)
         let paused = try XCTUnwrap(center.nowPlayingInfo)
         XCTAssertEqual((paused[MPNowPlayingInfoPropertyPlaybackRate] as? NSNumber)?.doubleValue, 0)
         XCTAssertEqual(paused[MPMediaItemPropertyTitle] as? String, "Grilling")
         XCTAssertEqual(paused[MPMediaItemPropertyArtist] as? String, "Cooking Show")
         XCTAssertEqual((paused[MPMediaItemPropertyPlaybackDuration] as? NSNumber)?.doubleValue, 1800)
         XCTAssertEqual((paused[MPNowPlayingInfoPropertyElapsedPlaybackTime] as? NSNumber)?.doubleValue, 131)
+    }
+
+    /// The default rate is the listener's on EVERY entry (the legacy lane's
+    /// `applyNowPlayingInfo`, docs/ios-lock-screen.md §3): 1.5 while playing
+    /// at 1.5, while paused (rate 0) and while buffering (rate 0). Without it
+    /// iOS sees an item playing at 1.5 whose default is 1.0 (2026-10-06).
+    /// TO SEE IT FAIL: drop `MPNowPlayingInfoPropertyDefaultPlaybackRate`
+    /// from `info`, or write `rate` there (0 while paused).
+    func testTheDefaultRateIsTheListenersWhilePlayingPausedAndBuffering() throws {
+        let center = MPNowPlayingInfoCenter.default()
+        let publisher = NowPlayingPublisher(center: center, artwork: ArtworkCache(bundleReader: { _ in nil }))
+        defer { center.nowPlayingInfo = nil }
+        let item = MediaMapping.Item(kind: "episode", title: "Grilling", show: "Cooking Show")
+        func rates() throws -> (rate: Double?, defaultRate: Double?) {
+            let info = try XCTUnwrap(center.nowPlayingInfo)
+            return ((info[MPNowPlayingInfoPropertyPlaybackRate] as? NSNumber)?.doubleValue,
+                    (info[MPNowPlayingInfoPropertyDefaultPlaybackRate] as? NSNumber)?.doubleValue)
+        }
+
+        publisher.write(MediaMapping.sessionView(MediaMapping.View(item: item, durationSec: 1800, positionSec: 120,
+                                                                   playbackRate: 1.5, playing: true)), listenRate: 1.5)
+        XCTAssertEqual(try rates().rate, 1.5)
+        XCTAssertEqual(try rates().defaultRate, 1.5)
+
+        publisher.write(MediaMapping.sessionView(MediaMapping.View(item: item, durationSec: 1800, positionSec: 131,
+                                                                   playbackRate: 1.5, playing: false)), listenRate: 1.5)
+        XCTAssertEqual(try rates().rate, 0)
+        XCTAssertEqual(try rates().defaultRate, 1.5, "a paused entry keeps the listener's default")
+
+        publisher.write(MediaMapping.sessionView(MediaMapping.View(item: item, durationSec: 1800, positionSec: 131,
+                                                                   playbackRate: 1.5, buffering: true, playing: true)),
+                        listenRate: 1.5)
+        XCTAssertEqual(try rates().rate, 0, "a stall stops the clock (p-car-8)")
+        XCTAssertEqual(try rates().defaultRate, 1.5, "and keeps the default")
+
+        // Never 0 or NaN: a host with no rate to give writes 1.
+        XCTAssertEqual(NowPlayingPublisher.defaultRate(0), 1)
+        XCTAssertEqual(NowPlayingPublisher.defaultRate(.nan), 1)
+        XCTAssertEqual(NowPlayingPublisher.defaultRate(2), 2)
+    }
+
+    /// A rewrite of the same picture (the host's 1 s refresh) hands the
+    /// centre the SAME `MPMediaItemArtwork`, so CarPlay and a head unit are
+    /// never asked to fetch and redraw it once a second; a new picture is a
+    /// new object.
+    /// TO SEE IT FAIL: build `MPMediaItemArtwork(boundsSize:)` on every write
+    /// (`artworkItem` without its one-entry hold).
+    func testTheArtworkObjectIsReusedAcrossRewrites() throws {
+        let square = Self.square()
+        let png = try XCTUnwrap(square.pngData())
+        let cache = ArtworkCache(fetcher: { _, _, done in
+            done(png)
+            return {}
+        }, bundleReader: { _ in square }, deadline: { _, _ in })
+        let center = DictionaryCenter()
+        let publisher = NowPlayingPublisher(center: center, artwork: cache)
+        let showA = "https://img.example/a/600x600bb.jpg"
+        let showB = "https://img.example/b/600x600bb.jpg"
+        func artwork() -> MPMediaItemArtwork? { center.nowPlayingInfo?[MPMediaItemPropertyArtwork] as? MPMediaItemArtwork }
+
+        publisher.write(Self.view(title: "A", artwork: showA, position: 10), listenRate: 1.5)
+        waitUntil("A's square lands") { center.nowPlayingInfo?[MPMediaItemPropertyArtwork] != nil }
+        let first = try XCTUnwrap(artwork())
+        for second in 1...3 {
+            publisher.write(Self.view(title: "A", artwork: showA, position: 10 + 1.5 * Double(second)), listenRate: 1.5)
+            XCTAssertTrue(artwork() === first, "rewrite \(second) handed the centre a new artwork object")
+        }
+
+        publisher.write(Self.view(title: "B", artwork: showB, position: 0), listenRate: 1.5)
+        waitUntil("B's square lands") { center.nowPlayingInfo?[MPMediaItemPropertyArtwork] != nil }
+        let second = try XCTUnwrap(artwork())
+        XCTAssertFalse(second === first, "a new picture is a new object")
+        publisher.write(Self.view(title: "B", artwork: showB, position: 1.5), listenRate: 1.5)
+        XCTAssertTrue(artwork() === second)
     }
 
     // MARK: - Artwork
@@ -276,7 +492,7 @@ final class NowPlayingPublisherTests: XCTestCase {
 
         // Our own icon (bundled) lands on a later main turn and is attached,
         // with its deadline armed and not yet passed.
-        publisher.write(Self.view(title: "A"))
+        publisher.write(Self.view(title: "A"), listenRate: 1)
         XCTAssertNil(center.nowPlayingInfo?[MPMediaItemPropertyArtwork])
         XCTAssertEqual(deadlines.armed, [ArtworkCache.timeoutSec], "every load is bounded at the plan's 10 s")
         waitUntil("our icon lands") { center.nowPlayingInfo?[MPMediaItemPropertyArtwork] != nil }
@@ -284,7 +500,7 @@ final class NowPlayingPublisherTests: XCTestCase {
 
         // A publisher's square that never answers.
         let show = "https://img.example/show/600x600bb.jpg"
-        publisher.write(Self.view(title: "B", artwork: show, position: 10))
+        publisher.write(Self.view(title: "B", artwork: show, position: 10), listenRate: 1)
         XCTAssertNil(center.nowPlayingInfo?[MPMediaItemPropertyArtwork], "never the previous item's square")
         XCTAssertTrue(cache.isLoading(show))
         XCTAssertEqual(deadlines.armed, [ArtworkCache.timeoutSec, ArtworkCache.timeoutSec])
@@ -298,7 +514,7 @@ final class NowPlayingPublisherTests: XCTestCase {
         }
         XCTAssertNil(center.nowPlayingInfo?[MPMediaItemPropertyArtwork])
 
-        publisher.write(Self.view(title: "B", artwork: show, position: 20, playing: false))
+        publisher.write(Self.view(title: "B", artwork: show, position: 20, playing: false), listenRate: 1)
         XCTAssertNil(center.nowPlayingInfo?[MPMediaItemPropertyArtwork])
         XCTAssertEqual(fetches, 1, "a dead source costs one attempt")
     }

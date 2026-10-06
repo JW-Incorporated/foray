@@ -18,9 +18,19 @@ extension MPNowPlayingInfoCenter: NowPlayingInfoCentering {}
 /// It decides NOTHING about what the entry says or when it is written. The
 /// words are `MediaMapping.metadata` (fixture-pinned against
 /// player/media-session.js), the moment is the host's (every transition,
-/// every seek, and a playhead that drifted from the OS's extrapolation), and
-/// the rate is `NowPlayingRate`. What lives here is only the dictionary:
+/// every seek, a playhead that drifted from the OS's extrapolation, and every
+/// second while the clock runs), and the rate is `NowPlayingRate`. What
+/// lives here is only the dictionary:
 ///
+///   - THE DEFAULT RATE IS THE LISTENER'S, ON EVERY ENTRY.
+///     `MPNowPlayingInfoPropertyDefaultPlaybackRate` is the speed the
+///     listener chose (1.5 at the founder's), playing, paused or buffering,
+///     exactly as the legacy lane wrote it (ForayAudioPlugin.swift
+///     `applyNowPlayingInfo`). Without it iOS sees an item playing at 1.5
+///     whose default is 1.0, which a rate-to-AVRCP mapper may report as a
+///     scan rather than play; the two native-era car reports (2026-09-28,
+///     2026-10-06: a plain-Bluetooth head unit's bar stuck at 0 while
+///     playing) both lacked it.
 ///   - RATE 0 WHEN NOT PLAYING, AND `playbackState` IS NEVER WRITTEN (OQ-8).
 ///     Apple documents `playbackState` as macOS-only; on iOS what makes a
 ///     paused entry read as paused, and what keeps 4a the Now Playing app
@@ -36,6 +46,12 @@ extension MPNowPlayingInfoCenter: NowPlayingInfoCentering {}
 ///     it is still loading is attached when it lands (if the entry is still
 ///     on it); artwork that failed or timed out is simply absent, so the key
 ///     is dropped rather than left showing the previous item's square.
+///   - THE ARTWORK OBJECT IS REUSED. The host rewrites a playing entry every
+///     second (the car's progress bar, docs/ios-lock-screen.md §3); each of
+///     those carries the SAME `MPMediaItemArtwork` for as long as the entry
+///     shows the same picture, so neither CarPlay nor a head unit is handed a
+///     "new" artwork to fetch and redraw once a second (legacy:
+///     `artworkItem(for:)`).
 ///
 /// MAIN-CONFINED, like the host that drives it.
 final class NowPlayingPublisher: NowPlayingWriting {
@@ -44,8 +60,12 @@ final class NowPlayingPublisher: NowPlayingWriting {
     /// Monotonic seconds, for the playhead an artwork re-post carries.
     private let uptime: () -> Double
 
-    /// The entry last written and when (`uptime`), nil after `clear()`.
-    private var current: (view: MediaMapping.SessionView, at: Double)?
+    /// The entry last written, the listener's rate it carried, and when
+    /// (`uptime`); nil after `clear()`.
+    private var current: (view: MediaMapping.SessionView, listenRate: Double, at: Double)?
+    /// The one artwork object the entry shows, for the picture it was built
+    /// from: every rewrite of the same picture hands the centre this object.
+    private var artworkObject: (src: String, image: UIImage, item: MPMediaItemArtwork)?
 
     init(center: NowPlayingInfoCentering = MPNowPlayingInfoCenter.default(),
          artwork: ArtworkCache = ArtworkCache(),
@@ -55,25 +75,35 @@ final class NowPlayingPublisher: NowPlayingWriting {
         self.uptime = uptime
     }
 
-    func write(_ view: MediaMapping.SessionView) {
-        current = (view, uptime())
-        var image: UIImage?
+    func write(_ view: MediaMapping.SessionView, listenRate: Double) {
+        current = (view, listenRate, uptime())
+        var picture: MPMediaItemArtwork?
         if let src = Self.artworkSource(of: view) {
             switch artwork.lookup(src) {
             case let .image(found):
-                image = found
+                picture = artworkItem(src, found)
             case .failed:
-                image = nil
+                picture = nil
             case .missing:
                 artwork.load(src) { [weak self] landed in self?.artworkLanded(src, landed) }
             }
         }
-        center.nowPlayingInfo = Self.info(for: view, artwork: image)
+        center.nowPlayingInfo = Self.info(for: view, artwork: picture, listenRate: listenRate)
     }
 
     func clear() {
         current = nil
+        artworkObject = nil
         center.nowPlayingInfo = nil
+    }
+
+    /// The `MPMediaItemArtwork` for `image`: the one already handed out while
+    /// the picture is the same, a new one only when it changed.
+    func artworkItem(_ src: String, _ image: UIImage) -> MPMediaItemArtwork {
+        if let held = artworkObject, held.src == src, held.image === image { return held.item }
+        let item = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+        artworkObject = (src, image, item)
+        return item
     }
 
     /// The artwork the entry would show: the first (and only) one
@@ -89,29 +119,37 @@ final class NowPlayingPublisher: NowPlayingWriting {
     private func artworkLanded(_ src: String, _ image: UIImage?) {
         guard let image, let current, Self.artworkSource(of: current.view) == src else { return }
         let elapsed = Swift.max(0, uptime() - current.at)
-        center.nowPlayingInfo = Self.info(for: current.view, artwork: image, advancedBySec: elapsed)
+        center.nowPlayingInfo = Self.info(for: current.view, artwork: artworkItem(src, image),
+                                          listenRate: current.listenRate, advancedBySec: elapsed)
+    }
+
+    /// `MPNowPlayingInfoPropertyDefaultPlaybackRate`: the listener's rate, or
+    /// 1 when the host has none to give (never 0, never NaN).
+    static func defaultRate(_ listenRate: Double) -> Double {
+        listenRate.isFinite && listenRate > 0 ? listenRate : 1
     }
 
     /// The dictionary. `advancedBySec` moves the playhead on at the entry's
     /// rate (clamped to the duration), for a re-post of an entry written
     /// earlier.
-    static func info(for view: MediaMapping.SessionView, artwork image: UIImage?,
-                     advancedBySec: Double = 0) -> [String: Any] {
+    static func info(for view: MediaMapping.SessionView, artwork picture: MPMediaItemArtwork?,
+                     listenRate: Double, advancedBySec: Double = 0) -> [String: Any] {
         let rate = NowPlayingRate.of(view)
         var info: [String: Any] = [
             MPMediaItemPropertyTitle: view.metadata.title,
             MPMediaItemPropertyArtist: view.metadata.artist,
             MPMediaItemPropertyAlbumTitle: view.metadata.album,
             MPNowPlayingInfoPropertyMediaType: NSNumber(value: MPNowPlayingInfoMediaType.audio.rawValue),
-            MPNowPlayingInfoPropertyPlaybackRate: NSNumber(value: rate)
+            MPNowPlayingInfoPropertyPlaybackRate: NSNumber(value: rate),
+            MPNowPlayingInfoPropertyDefaultPlaybackRate: NSNumber(value: defaultRate(listenRate))
         ]
         if let position = view.positionState {
             let elapsed = Swift.min(position.position + advancedBySec * rate, position.duration)
             info[MPMediaItemPropertyPlaybackDuration] = NSNumber(value: position.duration)
             info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = NSNumber(value: elapsed)
         }
-        if let image {
-            info[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+        if let picture {
+            info[MPMediaItemPropertyArtwork] = picture
         }
         return info
     }

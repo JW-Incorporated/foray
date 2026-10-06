@@ -655,6 +655,32 @@ test("rate-latch catches the #866 latch itself: buffering=y stuck on while the d
   assert.equal(m3(paste([bootRow(), npRow({ elapsedSec: 90 }), npRow({ rate: 0, elapsedSec: 100 }), { ...bootRow(), dt: 60_000 }, { ...npRow({ elapsedSec: 160 }), dt: 2_000 }]), "rate-latch").verdict, "pass");
 });
 
+test("rate-latch: a via=seek row is the listener's jump, not the clock; a via=drift row still is the clock (2026-10-06)", () => {
+  /* The native lane's seek and drift rewrites are on record since the car
+     progress-bar fix (ForayEngine.publishSurface `via=seek|drift`, with
+     `refreshes=` counting the quiet 1 s rewrites). A car's +30 s skip during a
+     20 s rate-0 span at 1.5x lands inside what the span could have played
+     (20 x 1.5 x 1.1 + 2 = 35 s), so read as the clock it would fail the
+     verdict on the listener's own press. MUTATION: drop the
+     `next.f.via === "seek"` guard in rateLatch (the first case fails). */
+  const seekRow = { ...npRow({ via: "seek", rate: 0, elapsedSec: 130, listenRate: 1.5, refreshes: 0 }), dt: 20_000 };
+  const skipped = m3(paste([npRow({ rate: 0, via: "rate", elapsedSec: 100, listenRate: 1.5 }), seekRow,
+    { ...npRow({ rate: 1.5, elapsedSec: 131, listenRate: 1.5, refreshes: 0 }), dt: 1_000 }]), "rate-latch");
+  assert.equal(skipped.verdict, "pass", skipped.why);
+  // The deck rule still judges a span that ends on a seek.
+  const deckRan = m3(paste([deck("time-control", 1, { status: "playing" }), npRow({ rate: 0, via: "rate", elapsedSec: 100, listenRate: 1.5 }),
+    seekRow]), "rate-latch");
+  assert.equal(deckRan.verdict, "fail", deckRan.why);
+  // A drift row on a rate-0 entry IS the clock running under it: still a latch.
+  const drift = m3(paste([npRow({ rate: 0, via: "rate", elapsedSec: 100 }), { ...npRow({ via: "drift", rate: 0, elapsedSec: 105, refreshes: 0 }), dt: 5_000 }]), "rate-latch");
+  assert.equal(drift.verdict, "fail", drift.why);
+  // And the new fields parse: refreshes= is a number on the row.
+  const parsed = parsePaste(paste([npRow({ via: "state", refreshes: 42 })]));
+  const row = parsed.engineRows.find((r) => r.kind === "nowplaying");
+  assert.equal(row.f.refreshes, 42);
+  assert.equal(row.f.via, "state");
+});
+
 test("resume-latency: heldMs split cold vs reuse; an expired span fails; an unclassified span is no-coverage", () => {
   const a = analyze(paste([
     bootRow(),
