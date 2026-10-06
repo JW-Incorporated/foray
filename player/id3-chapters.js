@@ -45,6 +45,8 @@
  * client.js, for the episode page's chapter card (CH-1). Nothing in this card
  * is visible to a listener. */
 
+import { readSource } from "./download-store.js";
+
 export const MAX_TAG_BYTES = 1024 * 1024;
 export const MAX_CHAPTERS = 500;
 export const CALL_TIMEOUT_MS = 10_000;
@@ -348,13 +350,14 @@ export function createId3Reader({
     return tag ? parseId3Chapters(tag) : null;
   }
 
+  /* What a downloaded episode is read from is download-store's rule
+     (`readSource`, CH-27): the same done+path gate the player's `playSource`
+     uses, so a row the record calls missing is never fetched here either. */
   function localSrc(id) {
     try {
       const d = getDownloads();
       const rec = id != null && typeof d?.recordFor === "function" ? d.recordFor(id) : null;
-      if (!rec || rec.status !== "done" || typeof rec.path !== "string") return null;
-      const src = d.bridge?.fileSrc?.({ path: rec.path }) ?? rec.webSrc;
-      return typeof src === "string" && src && !src.startsWith("file:") ? src : null;
+      return readSource(rec, d?.bridge);
     } catch (_) { return null; }
   }
 
