@@ -62,7 +62,6 @@ const REQUIRED_PLAYER_FILES = [
   "html-audio-backend.js",
   "queue-manager.js",
   "queue-state.js",
-  "queue-strategy.js",
   "seam-gap.js",
   "seek-policy.js",
   "foray-queue.js",

@@ -280,14 +280,14 @@ export class NativeManagerFacade {
     return reply.ok === true;
   }
 
-  /** The strategy's queue for a pick: the pick. `lastEpisodeItem` (PQ-19,
-      #29) is the item the engine's pointer row is built from when it is not
-      the pick itself: a downloaded episode is picked as its local playable
+  /** The queue for a pick: the pick, as the JS manager builds it.
+      `lastEpisodeItem` (PQ-19, #29) is the item the engine's pointer row is
+      built from when it is not the pick itself: a downloaded episode is picked as its local playable
       (`audio_url` a file, `isLocalFile`), and the row the engine stores must
       still name the ORIGINAL — a ribbon restored after the file is evicted
       has to stream it. Ignored unless it is the same episode. (The JS
-      manager's second argument is the strategy's context; SINGLE_ITEM reads
-      none of it, so client.js passes the same call to both lanes.) */
+      manager takes the pick alone and ignores a second argument, so
+      client.js passes the same call to both lanes.) */
   setQueueFromPick(item, { lastEpisodeItem = null } = {}) {
     this._foray = null;
     this._queue = item ? [item] : [];

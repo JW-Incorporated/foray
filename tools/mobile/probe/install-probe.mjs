@@ -109,7 +109,8 @@ export const PHASE_ASSET = "probe-phase.js";
  *
  *  Phase B imports `html-audio-backend.js`; phase C imports `queue-manager.js`,
  *  `html-audio-backend.js` and `seam-gap.js`, and `queue-manager.js` in turn imports
- *  `queue-state.js`, `queue-strategy.js`, `seek-policy.js` and `foray-queue.js`.
+ *  `queue-state.js`, `seek-policy.js` and `foray-queue.js` (CH-30 deleted
+ *  `queue-strategy.js`).
  *  Since NE-14j `html-audio-backend.js` asks `deck-policy.js` its out-point and
  *  deadline decisions, and `queue-manager.js` asks `transport-policy.js` for the
  *  interruption resume's step back.
@@ -118,7 +119,6 @@ export const PROBE_PLAYER_DEPS = [
   "html-audio-backend.js",
   "queue-manager.js",
   "queue-state.js",
-  "queue-strategy.js",
   "seam-gap.js",
   "seek-policy.js",
   "foray-queue.js",
@@ -282,8 +282,8 @@ export function assertBuildArtefact(dir) {
      so a bundle missing either would have the probe measuring a reimplementation
      of the thing under test, which is worth nothing. */
   /* THE WHOLE IMPORT CLOSURE, not a spot-check on three of it. A review pointed out
-     that `queue-manager.js` also pulls in `queue-state.js`, `queue-strategy.js`,
-     `seek-policy.js` and `foray-queue.js`, and a bundle missing any of them dies as
+     that `queue-manager.js` also pulls in `queue-state.js`, `seek-policy.js` and
+     `foray-queue.js`, and a bundle missing any of them dies as
      an unreadable module error inside a WKWebView on a CI runner — which surfaces as
      "the probe reported nothing" and is indistinguishable from the seam genuinely
      stalling. That is the one confusion this phase exists to avoid, so the refusal

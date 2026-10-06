@@ -4,7 +4,10 @@
    The reducer (queue-state.js) is a pure function of its own inputs and
    deliberately owns none of the following. This does:
 
-     1. the queue — the flat item list and where we are in it
+     1. the queue — the flat item list and where we are in it. A picked
+        episode is a one-item queue (`setQueueFromPick`); what plays after it
+        is the page's Up Next (`continuation.js` + app.js), not this list —
+        continuous playback is wanted (docs/DECISIONS.md 2026-09-14, #691)
      2. resolving "next", including skipping over bridge TTS items
      3. interpreting every PlayerEffect into a backend call
      4. the 15s position timer, which the reducer explicitly does not model
@@ -275,7 +278,6 @@ import {
   // left this file's copy behind.
   currentItem as focusOf, sameRef as sameItemRef,
 } from "./queue-state.js";
-import { SINGLE_ITEM, assertStrategy } from "./queue-strategy.js";
 import { segmentLoadGate } from "./seek-policy.js";
 import { buildForayQueue } from "./foray-queue.js";
 import { seamGapSec, describeSeam, SEAM_GAP_SEC, AUTO_ADVANCE } from "./seam-gap.js";
@@ -506,7 +508,6 @@ export class PlayerQueueManager {
    * @param {object}   opts
    * @param {object}   opts.backend        see the contract above
    * @param {object}   [opts.positionStore] { save(id, seconds), load(id) } — #26
-   * @param {object}   [opts.strategy]     see queue-strategy.js; default SINGLE_ITEM
    * @param {Function} [opts.telemetry]    (message) => void
    * @param {boolean}  [opts.allowMultiple] test-only escape hatch
    * @param {number}   [opts.seamGapSec]   length of the unbridged-seam beat
@@ -579,7 +580,7 @@ export class PlayerQueueManager {
    *   `cp_interlude` once at boot the way it reads `cp_rate`.
    */
   constructor({
-    backend, positionStore = null, strategy = SINGLE_ITEM, telemetry = null, allowMultiple = false,
+    backend, positionStore = null, telemetry = null, allowMultiple = false,
     seamGapSec: gapSec = SEAM_GAP_SEC, scheduler = REAL_SCHEDULER, onSeamGapChange = null,
     onNarrationTick = null, onStateSettled = null,
     rate = DEFAULT_RATE, tts = null, voice = null,
@@ -596,7 +597,6 @@ export class PlayerQueueManager {
 
     this.backend = backend;
     this.positionStore = positionStore;
-    this.strategy = assertStrategy(strategy);
     this._telemetry = telemetry;
     // Passed straight through, deliberately un-sanitised: `seam-gap.js` already
     // owns what a nonsense length means (it collapses to no beat), and a second
@@ -899,18 +899,20 @@ export class PlayerQueueManager {
 
   /* ---------- queue construction ---------- */
 
-  /** Build the queue from a picked item using the injected strategy.
-      `context` is passed straight through (e.g. `{ others }` for PICKED_FIRST). */
-  setQueueFromPick(picked, context = {}) {
-    this.queue = this.strategy.build(picked, context).filter(Boolean);
+  /** The queue for a picked episode: the pick, and nothing after it (header
+      §1). A second argument is ignored — client.js passes `{ lastEpisodeItem }`
+      for the native facade, which takes the same call. The telemetry word
+      `queue.built.single-item` predates CH-30 and is kept as the diagnostics
+      stream has always carried it. */
+  setQueueFromPick(picked) {
+    this.queue = picked ? [picked] : [];
     this.currentIndex = -1;
-    this._emit(`queue.built.${this.strategy.name}.n=${this.queue.length}`);
+    this._emit(`queue.built.single-item.n=${this.queue.length}`);
     return this.queue;
   }
 
-  /** Set an explicit queue, bypassing the strategy. Used by cold-launch
-      restore, where the queue is whatever it was, not whatever the strategy
-      would build today. */
+  /** Set an explicit queue, as given. Used by cold-launch restore, where the
+      queue is whatever it was, not whatever a pick would build today. */
   loadQueue(items) {
     this.queue = (items || []).filter(Boolean);
     this.currentIndex = -1;
@@ -919,9 +921,8 @@ export class PlayerQueueManager {
   /* ---------- Forays (#111) ---------- */
 
   /**
-   * Load a Foray as the queue. The strategy is bypassed on purpose: a Foray is
-   * already an ordered list somebody authored, and no strategy gets a vote on
-   * it. It is also ONE queue — when the last segment ends, the session ends
+   * Load a Foray as the queue. A Foray is already an ordered list somebody
+   * authored, so it is loaded as written. It is also ONE queue — when the last segment ends, the session ends
    * (CLAUDE.md principle 1, no chaining into a second Foray).
    *
    * @returns the build report from `buildForayQueue`, including `skipped` —
