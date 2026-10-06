@@ -51,6 +51,17 @@ Source of truth for a cleared session. Update on every deliverable.
   upload of the new app, file one HUMAN-ACTIONS item with the AAB link and the
   console clicks.
 
+- **Sanity-check the judge.** Calibration read 100% on the first round. Per
+  CLAUDE.md ("a metric that reads 1.000 on the first try is a bug until proven
+  otherwise"), have one skeptic agent confirm the calibration pairs were not
+  trivially easy before trusting the Phase 2 ranking.
+- **Confirm the 10 Windows CRLF test failures are environment-only.** Both merges
+  (split 2614fc29, lab b74338a0) were committed with the same 10 failures as the
+  pre-merge trunk. Verify on Linux, e.g. a CI run on a PR into the trunk, before
+  building on them.
+- `mobile/VERSION` shows as modified in the main worktree, but it is a
+  line-ending-only (CRLF) change with no content diff. Leave it alone.
+
 ## Blocked
 
 (Item, reason, what would unblock it.)
