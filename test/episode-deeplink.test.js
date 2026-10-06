@@ -24,6 +24,11 @@
  *     three pages of its show's list, matched on the show-page id, t= kept;
  *     a late answer repaints nothing; an id naming no servable show is not
  *     found with no request; a failure offers Try again.
+ *  8. An episode of a pi: (shard) show cold-opens the same way
+ *     (pi-episodes-cold-open): the link's /k/<key> segment (or the key the
+ *     show record gives) names the shard on every page request, a miss links
+ *     to the show with that key, Try again keeps it, and a pi: id with no
+ *     usable key is not found with no request.
  *
  * Dependency-free node:vm harness, the router.test.js shape (history that
  * reflects replaceState into location.hash) with test/episode-page.test.js's
@@ -39,6 +44,9 @@ const { pathToFileURL } = require("node:url");
 
 const ROOT = path.join(__dirname, "..");
 const APP_SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+/* The page loads search-engine.js before app.js; a pi: shard key is read
+   through it (SearchEngine.shardKeyForQuery, app.js shardKeyForShow). */
+const SEARCH_SRC = fs.readFileSync(path.join(ROOT, "search-engine.js"), "utf8");
 
 process.on("unhandledRejection", () => {});
 
@@ -139,6 +147,7 @@ function mount({ hash = "#/" } = {}) {
   ctx.window = ctx;
   ctx.globalThis = ctx;
   vm.createContext(ctx);
+  vm.runInContext(SEARCH_SRC, ctx, { filename: "search-engine.js" });
   vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
   const evalIn = (src) => vm.runInContext(src, ctx);
   evalIn(`state.ready = true;
@@ -485,8 +494,8 @@ test("a late answer never repaints another route (the route check)", async () =>
 
 test("an id that names no servable show is not found at once, with no request", async () => {
   /* MUTATION: drop `!guid ||` -> `founders--` asks the endpoint; red.
-     MUTATION 2: drop `|| show_id.startsWith("pi:")` -> the pi: id asks an
-     endpoint that does not serve it; red. */
+     MUTATION 2: drop `|| !k` from the pi: guard -> the keyless pi: id asks
+     the endpoint with no key, which can only answer 404; red. */
   const m = mount();
   const api = episodesEndpoint(m, [feedPage(0)]);
   for (const id of ["solo", "--g-1", "founders--", "pi:77--g-1", "apple:founders"]) {
@@ -542,4 +551,130 @@ test("the apple:<show>:<guid> spelling of an episode cold-opens under the id it 
   await ticks(20);
   assert.match(m.view.innerHTML, /Feed episode 3/);
   assert.strictEqual(m.evalIn('state.itemIndex["apple:founders:g-3"]').audio_url, "https://x.test/f3.mp3");
+});
+
+/* pi: (shard) shows (pi-episodes-cold-open) ------------------------------ */
+
+const PI_ID = "pi:77--g-150";
+const PI_HASH = "#/episode/" + encodeURIComponent(PI_ID) + "/k/ti";
+
+test("a shared pi: episode cold-opens: its link's /k/ key names the shard on every page request, t= intact", async () => {
+  /* MUTATION: call `fetchShowEpisodes(show_id, cursor)` without `k` in
+     resolveMissingEpisode -> the requests carry no key; red. MUTATION 2: the
+     router's `?t=` branch back to `renderEpisode(safeDecode(m.seg), { t: m.t })`
+     -> the whole "pi:77--g-150/k/ti" is the id and nothing is asked; red.
+     MUTATION 3: drop the `k=` part of fetchShowEpisodesUncached's query
+     -> red. */
+  const m = mount({ hash: PI_HASH + "?t=90" });
+  const api = episodesEndpoint(m, [feedPage(0), feedPage(100)]);
+  m.evalIn("route()");
+  assert.match(m.view.innerHTML, /Loading episode…/);
+  await ticks(30);
+  assert.deepStrictEqual(api.calls.map((u) => u.replace(/^.*\/api\//, "api/")), [
+    "api/shows/pi%3A77/episodes?k=ti",
+    "api/shows/pi%3A77/episodes?k=ti&cursor=c1",
+  ]);
+  assert.match(m.view.innerHTML, /Feed episode 150/);
+  assert.match(m.view.innerHTML, /data-ts="90"/, "the timestamp survived");
+  const item = m.evalIn(`state.itemIndex["${PI_ID}"]`);
+  assert.strictEqual(item.show_id, "pi:77");
+  assert.strictEqual(item.audio_url, "https://x.test/f150.mp3");
+  assert.strictEqual(m.ctx.location.hash, PI_HASH + "?t=90");
+});
+
+test("a pi: episode link with no ?t= cold-opens through the router's keyed episode branch", async () => {
+  /* MUTATION: delete the router's keyed `#/episode/<id>/k/<key>` branch -> the
+     plain branch reads "pi:77--g-5/k/ti" as the id, which names no servable
+     show; red. */
+  const m = mount({ hash: "#/episode/" + encodeURIComponent("pi:77--g-5") + "/k/ti" });
+  const api = episodesEndpoint(m, [feedPage(0)]);
+  m.evalIn("route()");
+  await ticks(20);
+  assert.strictEqual(api.calls.length, 1);
+  assert.match(api.calls[0], /\/api\/shows\/pi%3A77\/episodes\?k=ti$/);
+  assert.match(m.view.innerHTML, /Feed episode 5/);
+});
+
+test("a pi: episode with no key in its link asks with the key its show record gives", async () => {
+  /* MUTATION: drop the `: shardKeyForShow(showById(show_id))` fallback in
+     resolveMissingEpisode (use the link's key or nothing) -> "not found" with
+     no request; red. */
+  const m = mount({ hash: "#/episode/" + encodeURIComponent("pi:77--g-5") });
+  m.evalIn('state.shardShowCache["pi:77"] = { show_id: "pi:77", title: "Tiny", artist_name: null }');
+  const api = episodesEndpoint(m, [feedPage(0)]);
+  m.evalIn("route()");
+  await ticks(20);
+  assert.match(api.calls[0], /\/api\/shows\/pi%3A77\/episodes\?k=ti$/);
+  assert.match(m.view.innerHTML, /Feed episode 5/);
+});
+
+test("a pi: id with a key no share link makes, or no pi:<digits> id, is not found at once, with no request", async () => {
+  /* MUTATION: take the link's key as-is (drop `isShareShardKey(key) ?`) ->
+     `/k/TI` and `/k/__` ask the endpoint; red. MUTATION 2: drop the
+     `!/^pi:\\d+$/.test(show_id) ||` check -> `pi:x7--g` asks; red. */
+  const m = mount();
+  const api = episodesEndpoint(m, [feedPage(0)]);
+  for (const [id, key] of [["pi:77--g-1", "TI"], ["pi:77--g-1", "__"], ["pi:77--g-1", "tin"], ["pi:x7--g", "ti"], ["pi:--g", "ti"]]) {
+    m.ctx.renderEpisode(id, { key });
+    assert.match(m.view.innerHTML, /Episode not found\./, id + " " + key);
+    assert.doesNotMatch(m.view.innerHTML, /Loading/, id + " " + key);
+  }
+  await ticks(10);
+  assert.deepStrictEqual(api.calls, []);
+});
+
+test("a pi: episode the show's first pages lack links to the show WITH its key, so that cold-opens too", async () => {
+  /* MUTATION: `showRoutePath(show_id)` (no key) in the miss -> the show link
+     is #/show/pi%3A77, which a fresh device cannot open; red. */
+  const m = mount({ hash: "#/episode/" + encodeURIComponent("pi:77--g-9999") + "/k/ti" });
+  const api = episodesEndpoint(m, Array.from({ length: 5 }, (_, p) => feedPage(p * 100)));
+  m.evalIn("route()");
+  await ticks(40);
+  assert.strictEqual(api.calls.length, 3, "the same 3-page cap");
+  assert.match(m.view.innerHTML, /Episode not found\./);
+  assert.match(m.view.innerHTML, /href="#\/show\/pi%3A77\/k\/ti"/);
+});
+
+test("a failed pi: lookup offers Try again, and the retry keeps the key and t=", async () => {
+  /* MUTATION: bind the retry as `renderEpisode(id, { t })` (dropping `key`)
+     -> the retry has no key and says "not found" with no request; red. */
+  const m = mount({ hash: PI_HASH.replace("g-150", "g-7") + "?t=30" });
+  const api = episodesEndpoint(m, [feedPage(0)], { fail: true });
+  let retry = null;
+  m.view.querySelector = (sel) => (sel === "[data-retry]" && /data-retry/.test(m.view.innerHTML)
+    ? { addEventListener: (type, fn) => { if (type === "click") retry = fn; } } : null);
+  m.evalIn("route()");
+  await ticks(20);
+  assert.match(m.view.innerHTML, /Couldn't load this episode\./);
+  assert.ok(retry, "Try again is wired");
+  const again = episodesEndpoint(m, [feedPage(0)]);
+  retry({ preventDefault() {} });
+  await ticks(20);
+  assert.strictEqual(api.calls.length, 1);
+  assert.match(again.calls[0] || "", /\?k=ti$/, "the retry asked with the key");
+  assert.match(m.view.innerHTML, /Feed episode 7/);
+  assert.match(m.view.innerHTML, /data-ts="30"/);
+});
+
+test("the episodes request of a pi: show names its shard (the caller's key, else the record's); a catalogue show's is unchanged", async () => {
+  /* The show page's own list (renderShow -> fetchShowEpisodes) of a pi: show
+     the listener opened asks with the record's key, so its episodes load.
+     MUTATION: drop the `|| shardKeyForShow(showById(show_id))` fallback in
+     fetchShowEpisodesUncached -> the record-keyed request has no k; red.
+     MUTATION 2: drop the `String(show_id).startsWith("pi:") ?` gate (key
+     every show) -> the catalogue show's request carries k=fo; red. */
+  const m = mount();
+  const api = episodesEndpoint(m, [feedPage(0)]);
+  m.evalIn('state.catalog = { shows: [{ show_id: "founders", title: "Founders" }] }');
+  m.evalIn('state.shardShowCache["pi:78"] = { show_id: "pi:78", title: "日本の話", artist_name: "Taro Yamada" }');
+  await m.ctx.fetchShowEpisodes("pi:78");
+  await m.ctx.fetchShowEpisodes("pi:79", "c1", "ab");
+  await m.ctx.fetchShowEpisodes("founders");
+  await m.ctx.fetchShowEpisodes("pi:80");
+  assert.deepStrictEqual(api.calls.map((u) => u.replace(/^.*\/api\//, "api/")), [
+    "api/shows/pi%3A78/episodes?k=ya",
+    "api/shows/pi%3A79/episodes?k=ab&cursor=c1",
+    "api/shows/founders/episodes",
+    "api/shows/pi%3A80/episodes",
+  ]);
 });

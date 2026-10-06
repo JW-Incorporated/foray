@@ -11,9 +11,10 @@
  * run):
  *   (a) a show link is the bare show route, whatever the address bar says;
  *   (b) an episode link is the episode page for a catalogue episode and for a
- *       breadth one whose id names a non-pi: show (SH-COLD), else its show,
- *       else the publisher's Apple page, else no button; a pi: show's link
- *       carries its shard key (/k/), else pod.link, else no button;
+ *       breadth one whose id names its show (SH-COLD), an episode of a pi:
+ *       show carrying its show's shard key (/k/, pi-episodes-cold-open), else
+ *       its show, else the publisher's Apple page, else no button; a pi:
+ *       show's link carries its shard key (/k/), else pod.link, else no button;
  *   (c) a draft Foray has no button and no link; nothing reads location;
  *   (d) the origin is the one constant, the API's own;
  *   (e) a listener's own playlist is FROZEN into the link: never its own id,
@@ -204,13 +205,16 @@ test("(b) a catalogue episode links to its own page, encoded", () => {
   assert.strictEqual(link(m, { kind: "episode", id }).text, "Episode " + id + " · Lex Fridman Podcast");
 });
 
-test("(b) a breadth episode links to its own page, its id naming its show; a pi: or unparseable id falls back to its show, then Apple's page, then nothing", () => {
+test("(b) a breadth episode links to its own page, its id naming its show; a keyless pi: or unparseable id falls back to its show, then Apple's page, then nothing", () => {
   /* SH-COLD: a fresh device pages the show named in the id for it
-     (resolveMissingEpisode, test/episode-deeplink.test.js).
+     (resolveMissingEpisode, test/episode-deeplink.test.js). REWRITTEN for
+     pi-episodes-cold-open: a pi: episode now links to its own page when its
+     show gives a shard key (the next test), so the fallbacks are pinned on
+     pi: episodes whose show title gives none ("日本の話").
      MUTATION: delete shareLinkFor's `localEpisodeIdentity` branch -> the
      breadth episode gets #/show/founders again; red on the first assert.
-     MUTATION 2: drop `!idShow.startsWith("pi:")` -> the pi: episode (whose
-     endpoint does not answer yet) gets an #/episode/ link; red.
+     MUTATION 2: drop `!idShow.startsWith("pi:")` -> the keyless pi: episode
+     gets an #/episode/ link with no key, which a fresh device cannot open; red.
      MUTATION 3: drop the `item.show_id` pi: check -> `x--1` of a pi: show
      gets an #/episode/ link the fresh device would page the wrong show for; red. */
   const m = appMount();
@@ -222,15 +226,49 @@ test("(b) a breadth episode links to its own page, its id naming its show; a pi:
   const fromSearch = ep("apple:founders:g-1", { title: "From search" });
   assert.strictEqual(link(m, { kind: "episode", item: fromSearch }).url, ORIGIN + "#/episode/" + encodeURIComponent("apple:founders:g-1"));
 
-  const piEpisode = ep("pi:77--g", { show: "Nowhere", apple_episode_url: "https://podcasts.apple.com/us/podcast/x/id1?i=3" });
+  const piEpisode = ep("pi:77--g", { show: "日本の話", apple_episode_url: "https://podcasts.apple.com/us/podcast/x/id1?i=3" });
   assert.strictEqual(link(m, { kind: "episode", item: piEpisode }).url, "https://podcasts.apple.com/us/podcast/x/id1?i=3");
   const onlyApple = ep("x--1", { show: "Nowhere", show_id: "pi:77", apple_episode_url: "https://podcasts.apple.com/us/podcast/x/id1?i=2" });
   assert.strictEqual(link(m, { kind: "episode", item: onlyApple }).url, "https://podcasts.apple.com/us/podcast/x/id1?i=2");
   const unparsed = ep("solo", { title: "Solo" });
   assert.strictEqual(link(m, { kind: "episode", item: unparsed }).url, ORIGIN + "#/show/founders", "an id that does not parse keeps its show's link");
-  const nothing = ep("pi:77--2", { show: "Nowhere", apple_episode_url: "javascript:alert(1)" });
+  const nothing = ep("pi:77--2", { show: "日本の話", apple_episode_url: "javascript:alert(1)" });
   assert.strictEqual(link(m, { kind: "episode", item: nothing }), null);
   assert.strictEqual(m.ctx.shareBtn({ kind: "episode", id: nothing.id, item: nothing, title: "t" }), "");
+});
+
+test("(b) an episode of a pi: show links to its own page with its show's shard key: the show record's, else the episode's show title's", () => {
+  /* pi-episodes-cold-open: the endpoint finds a pi: show only in the shard its
+     row lives in (api/shows/[show_id]/episodes.ts resolvePiShow), so the link
+     carries it the way a pi: show link does, and the router hands it back.
+     MUTATION: delete the pi: branch (`if (idShow && guid && /^pi:\d+$/ ...`)
+     -> the Apple fallback; red. MUTATION 2: drop `showById(idShow) ||` ->
+     the record's author key ("ya") is lost and the title gives none; red.
+     MUTATION 3: drop `|| { title: item.show }` -> an episode whose show is
+     not in this session has no key and falls back; red. MUTATION 4: drop
+     `!item.show_id ||` -> an episode with no show_id field falls back; red.
+     MUTATION 5: parseEpisodeSeg's id part `(.+)` instead of `([^/]+)` ->
+     a raw-slash legacy id is split at its own "/k/"; red. */
+  const m = appMount();
+  const apple = "https://podcasts.apple.com/us/podcast/x/id1?i=9";
+  const fromTitle = ep("pi:77--g-1", { show: "Tiny", show_id: "pi:77", apple_episode_url: apple });
+  const url = link(m, { kind: "episode", item: fromTitle }).url;
+  assert.strictEqual(url, ORIGIN + "#/episode/" + encodeURIComponent("pi:77--g-1") + "/k/ti");
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(m.ctx.parseEpisodeSeg(url.slice((ORIGIN + "#/episode/").length)))),
+    { id: "pi:77--g-1", key: "ti" }, "the router reads the id and the key back");
+  const noShowId = ep("pi:77--g-2", { show: "Tiny", apple_episode_url: apple });
+  assert.strictEqual(link(m, { kind: "episode", item: noShowId }).url, ORIGIN + "#/episode/" + encodeURIComponent("pi:77--g-2") + "/k/ti");
+  m.state.shardShowCache["pi:78"] = { show_id: "pi:78", title: "日本の話", artist_name: "Taro Yamada" };
+  const fromRecord = ep("pi:78--g", { show: "日本の話", show_id: "pi:78", apple_episode_url: apple });
+  assert.strictEqual(link(m, { kind: "episode", item: fromRecord }).url, ORIGIN + "#/episode/" + encodeURIComponent("pi:78--g") + "/k/ya",
+    "the show record's author keys it, as on the show's own link");
+  const showLink = link(m, { kind: "show", id: "pi:78" }).url;
+  assert.strictEqual(/\/k\/([^/]+)$/.exec(showLink)[1], "ya", "the same key the show's own link carries");
+  for (const [seg, want] of [
+    ["founders--g", { id: "founders--g", key: "" }],
+    [encodeURIComponent("lex--https://x.test/k/ab"), { id: "lex--https://x.test/k/ab", key: "" }],
+    ["lex--https://x.test/k/ab", { id: "lex--https://x.test/k/ab", key: "" }],
+  ]) assert.deepStrictEqual(JSON.parse(JSON.stringify(m.ctx.parseEpisodeSeg(seg))), want, seg);
 });
 
 test("(b) a pi: show links with its shard key (title, else author); with no key, pod.link; with neither, no link and no button", () => {
