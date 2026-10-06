@@ -28,6 +28,26 @@ inputs:
     required: true
   play_service_account_json:
     required: true
+  lab:
+    description: >-
+      "true" builds the 4a Lab variant (Redesign 2026, docs/redesign-2026/PLAN.md):
+      a SEPARATE app, applicationId ai.jwlabs.foura.lab, name "4a Lab", LAB launcher
+      icon, and a web bundle that never writes to production. Only
+      .github/workflows/lab-build.yml passes it; it also builds a debug APK as a
+      run artifact. Anything else leaves the real build exactly as it was.
+    required: false
+    default: "false"
+  app_id:
+    description: >-
+      The Play package the upload targets. The default is the real app's. With
+      lab=true it MUST be ai.jwlabs.foura.lab (and with lab=false the default): the
+      consistency step refuses a mismatch rather than upload one app to the other's listing.
+    required: false
+    default: "ai.jwlabs.foura"
+  artifact_name:
+    description: "Name of the uploaded .aab artifact."
+    required: false
+    default: "foray-android-release"
 
 outputs:
   signed:
@@ -96,6 +116,34 @@ runs:
         set -euo pipefail
         npm ci --no-audit --no-fund
 
+    - name: Lab variant - which app is this? (refuses a lab/app_id mismatch)
+      # Runs for BOTH values of `lab` so a real build cannot be handed the lab id
+      # and a lab build cannot be handed the real one. With lab=true it then
+      # rewrites the CHECKED-OUT mobile/capacitor.config.json (appId, appName) and
+      # sets FORAY_LAB=1 for every later step, which is what makes prepare-webdir
+      # ship the lab flag. With lab=false it touches nothing.
+      shell: bash
+      env:
+        LAB: ${{ inputs.lab }}
+        APP_ID_IN: ${{ inputs.app_id }}
+      run: |
+        set -euo pipefail
+        case "$LAB" in
+          true)
+            if [ "$APP_ID_IN" != "ai.jwlabs.foura.lab" ]; then
+              echo "::error::lab=true must build ai.jwlabs.foura.lab, got app_id '$APP_ID_IN'"; exit 1
+            fi
+            node tools/mobile/lab-variant.mjs apply-config mobile/capacitor.config.json
+            echo "FORAY_LAB=1" >> "$GITHUB_ENV"
+            ;;
+          false)
+            if [ "$APP_ID_IN" != "ai.jwlabs.foura" ]; then
+              echo "::error::lab=false must build ai.jwlabs.foura, got app_id '$APP_ID_IN'"; exit 1
+            fi
+            ;;
+          *) echo "::error::lab must be 'true' or 'false', got '$LAB'"; exit 1 ;;
+        esac
+
     - name: Build the webDir and generate the Android project
       shell: bash
       working-directory: mobile
@@ -104,6 +152,22 @@ runs:
         npm run add:android 2>&1 | tee "$ART/cap-add-android.log"
         echo "sdk.dir=$ANDROID_HOME" > android/local.properties
         chmod +x android/gradlew
+
+    - name: Lab variant - read the identity back out of the generated project
+      if: inputs.lab == 'true'
+      # The "green and wrong" guard: a config edit that did not reach Gradle would
+      # build the REAL application id and name under the lab listing.
+      shell: bash
+      run: |
+        set -euo pipefail
+        GRADLE=$(ls mobile/android/app/build.gradle mobile/android/app/build.gradle.kts 2>/dev/null | head -1)
+        grep -Eq 'applicationId[ =]+"ai\.jwlabs\.foura\.lab"' "$GRADLE" || { echo "::error::$GRADLE does not declare applicationId ai.jwlabs.foura.lab"; grep -n applicationId "$GRADLE" || true; exit 1; }
+        if grep -Eq 'applicationId[ =]+"ai\.jwlabs\.foura"' "$GRADLE"; then
+          echo "::error::$GRADLE still declares the REAL applicationId"; exit 1
+        fi
+        grep -q '<string name="app_name">4a Lab</string>' mobile/android/app/src/main/res/values/strings.xml || { echo "::error::strings.xml app_name is not '4a Lab'"; exit 1; }
+        grep -q '__FORAY_LAB__' mobile/android/app/src/main/assets/public/foray-lab.js || { echo "::error::the lab bundle has no foray-lab.js flag"; exit 1; }
+        grep -q 'foray-lab.js' mobile/android/app/src/main/assets/public/index.html || { echo "::error::index.html does not load foray-lab.js"; exit 1; }
 
     - name: Fetch the Kokoro weights and put them in the app (K-01/K-06)
       # The same step `.github/workflows/android-build.yml` runs, and for the same reasons — see that
@@ -135,6 +199,15 @@ runs:
         set -euo pipefail
         node tools/mobile/inject-splash.mjs android mobile/android/app/src/main/res
         node tools/mobile/inject-splash.mjs android mobile/android/app/src/main/res --check
+
+    - name: Lab variant - replace the launcher icon with today's icon wearing a LAB band
+      if: inputs.lab == 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        node tools/mobile/lab-variant.mjs icon "$RUNNER_TEMP/lab-icon-1024.png"
+        node tools/mobile/inject-splash.mjs android mobile/android/app/src/main/res --icon "$RUNNER_TEMP/lab-icon-1024.png"
+        node tools/mobile/inject-splash.mjs android mobile/android/app/src/main/res --check --icon "$RUNNER_TEMP/lab-icon-1024.png"
 
     - name: Materialise the upload key, if the founder has installed one
       id: key
@@ -265,7 +338,7 @@ runs:
       uses: r0adkll/upload-google-play@935ef9c68bb393a8e6116b1575626a7f5be3a7fb # v1.1.3
       with:
         serviceAccountJsonPlainText: ${{ inputs.play_service_account_json }}
-        packageName: ai.jwlabs.foura
+        packageName: ${{ inputs.app_id }}
         releaseFiles: ${{ steps.bundle.outputs.aab_path }}
         track: internal
         status: completed
@@ -285,7 +358,31 @@ runs:
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: foray-android-release
+        name: ${{ inputs.artifact_name }}
         path: ${{ steps.bundle.outputs.aab_path }}
         if-no-files-found: warn
         retention-days: 30
+
+    - name: Lab variant - also build a debug APK a founder can install directly
+      # Debug-signed: it cannot update a Play-installed lab build (different
+      # signature) and it never reaches Play. No signing key is involved (the
+      # upload key was shredded above).
+      if: inputs.lab == 'true'
+      shell: bash
+      working-directory: mobile/android
+      run: |
+        set -euo pipefail
+        ./gradlew assembleDebug --no-daemon --console=plain -q
+        APK=app/build/outputs/apk/debug/app-debug.apk
+        test -f "$APK" || { echo "::error::no debug APK at $APK"; exit 1; }
+        mkdir -p "$RUNNER_TEMP/lab-apk"
+        cp "$APK" "$RUNNER_TEMP/lab-apk/4a-lab-debug.apk"
+
+    - name: Lab variant - keep the APK as a run artifact
+      if: inputs.lab == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: foray-lab-android-apk
+        path: ${{ runner.temp }}/lab-apk/4a-lab-debug.apk
+        if-no-files-found: error
+        retention-days: 14

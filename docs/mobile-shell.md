@@ -926,3 +926,52 @@ Filed as `HUMAN-ACTIONS.md` items with exact steps. In brief:
 change of its own. `HUMAN-ACTIONS.md` **#9** stays open for the one thing the
 bump did not settle — the `forayStorageHealth()` console check after a deploy,
 which measures IndexedDB.
+
+## The 4a Lab build (Redesign 2026)
+
+A second app, installed beside the real one, so a redesign can be tried on a
+founder's phone without touching the shipping app. Plan and owner decisions:
+`docs/redesign-2026/PLAN.md`.
+
+| | iOS | Android |
+|---|---|---|
+| App | TestFlight "4a Lab" (Wyatt's iPhone) | Play internal testing "4a Lab" (Joey's phone) |
+| Identity | bundle id `ai.jwlabs.foura.lab` | applicationId `ai.jwlabs.foura.lab` |
+| Signing | existing distribution cert and App Store Connect key, plus `IOS_LAB_PROVISIONING_PROFILE_BASE64` | existing upload key and Play service account |
+| Also | | a debug APK as the run artifact `foray-lab-android-apk` (cannot update a Play-installed lab build: different signature) |
+
+**How a build is made.** `.github/workflows/lab-build.yml` (dispatch only; inputs
+`ref` and `platforms`) checks out the named redesign branch and calls the same two
+composite actions the release uses, with `lab: "true"` and `app_id:
+ai.jwlabs.foura.lab`. With `lab` off the actions are the real build's, unchanged
+(their new inputs default to the real app). With it on:
+
+- `tools/mobile/lab-variant.mjs apply-config` rewrites the CHECKED-OUT
+  `mobile/capacitor.config.json` (`appId`, `appName`) and the action sets
+  `FORAY_LAB=1`; Capacitor then generates the project under the lab identity, and a
+  read-back step asserts the identity in the generated Xcode / Gradle project.
+- `prepare-webdir.mjs` (with `FORAY_LAB=1`) adds `foray-lab.js`
+  (`window.__FORAY_LAB__ = true`) as a CLASSIC head script, ahead of `app.js`. In
+  `app.js`, `isLabBuild()` then makes `sbAuth`, `ensureAnonSessionOnce` and
+  `syncEventsOnce` return without a network call: no anonymous sign-up, no token
+  refresh, no `/rest/v1/events` POST. Reads are untouched.
+- `lab-variant.mjs icon` draws an amber LAB band on today's `icon-1024.png` (no new
+  icon is designed); it goes in through `inject-app-icon.mjs --source` (iOS) and
+  `inject-splash.mjs android --icon`.
+
+**It cannot ship the real app.** The workflow refuses to run unless it is
+dispatched from `main`, refuses any `ref` that is not `redesign/*` or
+`feature/redesign-2026*` (so `main`, `v*`, tags and SHAs), and refuses a ref whose
+actions have no `lab` input (an old branch would otherwise upload the real package).
+`tools/ci/lab-build-workflow.test.mjs` runs the guard script over a ref matrix;
+`tools/mobile/lab-workflow.test.mjs` pins the actions; `test/lab-flag.test.js` pins
+the no-production-writes gates.
+
+**Build numbers** are `YYYYMMDDnn` with `nn` = this run's rank among today's
+lab-build runs (1-99). A re-run is refused (it would replay attempt 1's number).
+
+**HA #115.** Signing secrets are still repository secrets and no `release`
+environment exists, so the workflow names none (naming a missing one would
+auto-create it unprotected). When #115 lands, add `environment: release` to the
+`ios` and `android` jobs; its main-and-`v*` branch rule matches the dispatch-from-main
+rule above.

@@ -131,6 +131,11 @@ export const DENIED_PREFIXES = [
   // build paths, and its `--check` is the only thing that would notice a
   // one-line `process.exit(0)` shipping the placeholder to both stores unread.
   "tools/mobile/inject-splash.mjs",
+  // The lab variant (Redesign 2026): `lab-variant.mjs` rewrites the checked-out
+  // app identity and icon in the ios-archive and android-bundle actions, which
+  // run with signing keys. Edited unread, it could point a lab build at the real
+  // bundle id or applicationId. Denied, like the two scripts above.
+  "tools/mobile/lab-variant.mjs",
   // release.yml's `guard` job runs `release-ci.mjs release-guard` to decide
   // whether THIS ref may proceed to build+upload at all — the only thing
   // standing between an arbitrary dispatched ref/tag and a job that receives
