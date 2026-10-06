@@ -1400,6 +1400,11 @@ function buildUI() {
    shaped around a test. */
 const EP_START_FAILED = "That episode couldn't load. Check the connection, then press play.";
 const EP_PLAY_HELD = "Press play again to start it.";
+/* A downloaded copy that turned out missing while the device is offline
+   (#29): the episode is dropped, not streamed, so the bar says why nothing
+   played. Up Next moving on clears it (`setNowPlaying`); with nothing after it,
+   or Continuous playback off, it stays on the dropped episode's bar. */
+const EP_MISSING_OFFLINE = "Downloaded copy missing, and no connection to stream it. Skipped.";
 
 let playFailure = null;
 
@@ -3933,9 +3938,14 @@ async function auditionThroughEngine(text, voiceId) {
   return { ok: true, voiceFallback: reply.snapshot?.voiceFallback === true };
 }
 
-/** An engine event other than a snapshot (the facades take those). */
+/** An engine event. The facades take the snapshots' repaint; here, a
+    downloaded copy's load is settled by both (`settleEngineLocalLoad`), and
+    the rest are the events below. */
 function onEngineEvent(ev) {
   if (!ev || engineMode !== "native") return;
+  /* The downloaded copy the engine is loading (#29): it played, or it was
+     missing — stream online, drop and advance offline. */
+  settleEngineLocalLoad(ev);
   /* A hop the engine walked while the page watched: apply and ack it now,
      and move the bar to the episode it plays. */
   if (ev.type === "advanced") {
@@ -4670,17 +4680,109 @@ function localSourceFor(item, opts) {
 }
 
 /** The missing-file degrade: spend the one ticket `play()` left in
-    `localAttempt`, tell app.js the copy is gone (`onMissing` marks the record
-    and says "streaming instead"), and play the ORIGINAL item again with
-    `noLocal`. Null when there is no ticket — the retry already ran, or the
-    current play never chose a file — so nothing here can call itself twice. */
+    `localAttempt`, then follow #29's rule (`missingFileAction`,
+    download-store.js): "stream if network exists, else drop the item with an
+    earcon and advance".
+    ONLINE (or unknown): tell app.js the copy is gone (`onMissing(id)` marks
+    the record and says "streaming instead") and play the ORIGINAL item again
+    with `noLocal` — returns that play's promise.
+    OFFLINE (`navigator.onLine` positively false): a stream cannot start, and
+    retrying one only painted "couldn't load" with the car stopped on it. So
+    the bar says why, the earcon sounds, and `onMissing(id, { offline: true })`
+    has app.js mark the record and move Up Next on (`advanceQueueOnEnded`, the
+    natural end's own rule) — returns `false`: this item did not start, and
+    nothing is owed for it. Both lanes come here, by different roads: the JS
+    manager fails a load INSIDE `play()` (it rejects, or lands `idle`), and
+    `play()` or `reportPlayFailure` calls this; the native engine fails it
+    AFTER `play()` has returned (its `error` event, code "load"), and
+    `settleEngineLocalLoad` calls this over the ticket `play()` held for it.
+    Null when there is no ticket — the retry already ran, or the current play
+    never chose a file — so nothing here can call itself twice. */
 function degradeLocalPlay() {
   const attempt = localAttempt;
   if (!attempt || current?.id !== attempt.item.id) return null;
   localAttempt = null;
+  if (downloadStore.missingFileAction({ online: browserOnline() }) === downloadStore.MISSING_DROP) {
+    setPlayFailure(EP_MISSING_OFFLINE);
+    playEarcon();
+    try { window.forayDownloads?.onMissing?.(attempt.item.id, { offline: true }); } catch (_) { /* the record and Up Next are app.js's; the drop is already said */ }
+    return false;
+  }
   try { window.forayDownloads?.onMissing?.(attempt.item.id); } catch (_) { /* the record is app.js's; streaming is still owed */ }
   const opts = attempt.opts && typeof attempt.opts === "object" ? attempt.opts : {};
   return ForayPlayer.play(attempt.item, { ...opts, noLocal: true });
+}
+
+/** The native engine's word on the downloaded copy `play()` left it loading
+    (the ticket `play()` HELD past `loadingItem`; review of offline-missing-file).
+    Called with every engine event in native mode.
+    - `error` with code "load" while the ticket names the current episode: the
+      file was not there. `degradeLocalPlay` — online the stream retry (and a
+      retry that fails is painted, as `reportPlayFailure` chains it), offline
+      the drop: bar line, earcon, and app.js moves Up Next on.
+    - a snapshot that says that episode is `playing` (or already `ended`): the
+      file played. The ticket is spent and app.js stamps the play
+      (`onPlayedFromFile`), exactly what `play()` does when a load has settled
+      by the time it returns.
+    Anything else leaves the ticket alone: `loadingItem` is still going, and
+    `idle` is what the engine snapshots JUST BEFORE its load error (the
+    snapshot comes first, native-engine.js), so idle must not spend it. A
+    `chain-start` error is a hop the engine walked, never this play. */
+function settleEngineLocalLoad(ev) {
+  const attempt = localAttempt;
+  if (!attempt || current?.id !== attempt.item.id) return;
+  if (ev?.type === "error") {
+    if (ev.code !== "load") return;
+    const retry = degradeLocalPlay();
+    if (retry && typeof retry.then === "function") {
+      retry.then(
+        (ok) => { if (!ok) ForayPlayer.reportPlayFailure(null); },
+        (e) => ForayPlayer.reportPlayFailure(e),
+      );
+    }
+    return;
+  }
+  if (ev?.type !== "snapshot") return;
+  const s = ev.snapshot;
+  if (s?.itemId !== attempt.item.id || (s.state !== "playing" && s.state !== "ended")) return;
+  localAttempt = null;
+  try { window.forayDownloads?.onPlayedFromFile?.(attempt.item.id); } catch (_) { /* the record is app.js's; the play already started */ }
+}
+
+/* The earcon (#29; docs/brief/04_VOICE_AUDIO_SPEC.md: "Confirmations are
+   earcons, not sentences"). One short falling two-note tone, synthesised with
+   Web Audio so it needs no asset and no `media-src` (the CSP allows `https:`
+   media only), and plays beside whatever element the lane owns. The context is
+   made once and reused; a suspended one is asked to resume (iOS starts a
+   context outside a gesture suspended). Best effort and total: no Web Audio,
+   or a context that refuses, is silence, never a thrown play — the bar line
+   and the spoken announcement still say what happened. Returns whether the
+   tone was scheduled. */
+let earconContext = null;
+function playEarcon() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (typeof Ctx !== "function") return false;
+    if (!earconContext) earconContext = new Ctx();
+    const ac = earconContext;
+    if (ac.state === "suspended" && typeof ac.resume === "function") ac.resume().catch(() => {});
+    const t0 = ac.currentTime;
+    const gain = ac.createGain();
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(0.25, t0 + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.34);
+    gain.connect(ac.destination);
+    const tone = ac.createOscillator();
+    tone.type = "sine";
+    tone.frequency.setValueAtTime(660, t0);
+    tone.frequency.setValueAtTime(440, t0 + 0.15);
+    tone.connect(gain);
+    tone.start(t0);
+    tone.stop(t0 + 0.36);
+    return true;
+  } catch (_) {
+    return false;
+  }
 }
 
 /* ---------- public surface ---------- */
@@ -4837,15 +4939,28 @@ const ForayPlayer = {
        the file stayed on disk) and retried outside the gesture, refused again.
        The ticket is left unspent: the listener's next tap plays the file. */
     if (current?.isLocalFile && current.id === item.id && (loadError || manager.state?.type === "idle") && playFailure !== EP_PLAY_HELD) {
+      /* A promise (the stream retry) or `false` (dropped offline: app.js has
+         moved Up Next on, and this item never started); null is no ticket. */
       const retried = degradeLocalPlay();
-      if (retried) return retried;
+      if (retried != null) return retried;
     }
     /* A LOAD THAT SETTLED IS SPENT (review of PQ-19). The ticket used to live
        as long as the episode stayed current, so ANY later failure report about
        it — a timestamp seek that threw, a chained advance — degraded a file
        that had played. Only this call's own ticket is cleared: a newer play
-       that superseded this one owns `localAttempt` now. */
-    if (!loadError && manager.state?.type !== "idle" && localAttempt === ticket) localAttempt = null;
+       that superseded this one owns `localAttempt` now.
+       NATIVE: THE ENGINE IS STILL LOADING IT (review of offline-missing-file).
+       The facade's `play()` resolves when `playEpisode` is TAKEN; the engine
+       loads the file afterwards (EngineCore.playIndex), so the reply's
+       snapshot says `loadingItem` and a missing file fails LATER, as an
+       `error` event with code "load". Spending the ticket here left that
+       failure nothing to degrade — no stream online, no drop offline, on the
+       shipping iOS lane (mobile/ENGINE_DEFAULT.json). So the ticket is HELD
+       and nothing is stamped yet: `settleEngineLocalLoad` spends it on the
+       engine's own word — a `playing` snapshot stamps the play, a load error
+       degrades it. */
+    if (engineMode === "native" && ticket && localAttempt === ticket && !loadError && manager.state?.type === "loadingItem") ticket = null;
+    else if (!loadError && manager.state?.type !== "idle" && localAttempt === ticket) localAttempt = null;
     else ticket = null;
     /* THE FILE PLAYED (CH-02, P2-01): the line above spent this call's ticket
        on a successful LOCAL load, so app.js stamps `last_played_at` and the
@@ -5044,6 +5159,10 @@ const ForayPlayer = {
     try { name = String(err?.name ?? ""); } catch (_) { name = ""; }
     const refused = /NotAllowedError/.test(name) || (err == null && playFailure === EP_PLAY_HELD);
     const retry = current?.isLocalFile && !refused ? degradeLocalPlay() : null;
+    /* Dropped offline: the bar line is painted and Up Next has moved on.
+       Nothing is chained — by now `current` may be the NEXT episode, whose own
+       downloaded copy is loading, and a second report would degrade it. */
+    if (retry === false) return;
     if (retry) {
       retry.then(
         (ok) => { if (!ok) ForayPlayer.reportPlayFailure(null); },

@@ -51,10 +51,6 @@ than it is.
 - **Automatic download of a session's picks is not built.** Downloads start
   only when the listener taps Download. Whether picks should download by
   themselves is a policy call #29 keeps for Joey and Wyatt.
-- **With no network, "drop the item with an earcon and advance" is not
-  built.** When a downloaded file is missing, the player streams instead. With
-  no network that stream fails and the bar shows its usual load error. Step 4
-  therefore runs online; its offline variant only records what happens.
 - **The download policy is a proposal, not a ruling.** Manual downloads, Wi-Fi
   only ("Download over cellular" off), and a 2 GB cap are the default the
   code implements from `docs/roadmap/README.md` question 17
@@ -151,10 +147,25 @@ than it is.
    (exact string, `app.js` `surface.onMissing`). That message is spoken to the
    screen reader, not shown on screen: hear it with VoiceOver on, or count the
    visible signs above as the pass. It is said once; the player never loops.
-   *Offline variant (record only, no pass or fail):* repeat with Airplane
-   Mode on before pressing play. The stream cannot start, and the bar shows
-   its usual load error. Write down what the bar says and whether anything
-   advanced. The earcon-and-advance behaviour #29 describes is not built.
+   *Offline variant (#29: "stream if network exists, else drop the item with
+   an earcon and advance"):* put the episode at the head of Up Next with
+   another episode after it, and leave **Continuous playback** on. Delete the
+   `.bin` again as above (download it again first if needed), turn **Airplane
+   Mode on** (and Wi-Fi off if it stays on), reopen 4a and press play on the
+   episode.
+   *Expected:* a short two-note falling tone (the earcon) sounds; the bar
+   reads **"Downloaded copy missing, and no connection to stream it.
+   Skipped."** (exact string, `player/client.js` `EP_MISSING_OFFLINE`); the
+   screen reader hears **"Downloaded copy missing, and no connection —
+   skipped."** (`app.js` `surface.onMissing`); the episode leaves Up Next and
+   the next one starts playing (it must be downloaded too, or its own stream
+   fails offline, which is a separate result: write it down); the episode
+   page's control is back to **Download** (the row is `missing`). Nothing
+   loops and no "couldn't load" line is shown for the dropped episode. Then
+   repeat once with **Continuous playback off**: the episode is dropped from
+   Up Next the same way, and **nothing** plays after it. If no tone is heard
+   but everything else happens, record that as a fail of the earcon only
+   (it is Web Audio inside the app's web view, `playEarcon`).
 
 5. **Cellular is opt-in (#29: "cellular download is opt-in and
    respected").** Settings drawer → **Download over cellular** is off. Turn
@@ -198,9 +209,9 @@ than it is.
 
 ## How it is judged
 
-Steps 1, 2, 3, 5, 6 and 7 must pass on the build named in the record. Step 4
-passes, or is "not run" only for want of a development build. Its offline
-variant and the second half of step 3 are recorded, not judged. When every
-step is in the #29 comment, the device-check asks in #29 can be ticked. #29
-itself stays open while automatic download of picks, the offline
-earcon-and-advance path and the bookmark drift reading are unbuilt.
+Steps 1, 2, 3, 5, 6 and 7 must pass on the build named in the record. Step 4,
+online and offline, passes, or is "not run" only for want of a development
+build. The second half of step 3 is recorded, not judged. When every step is
+in the #29 comment, the device-check asks in #29 can be ticked. #29 itself
+stays open while automatic download of picks and the bookmark drift reading
+are unbuilt.
