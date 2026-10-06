@@ -22,7 +22,8 @@
       "duration_sec": 1523,
       "dai_suspected": false,
       "ad_free_ratio": 1,
-      "audio_verified_on": "2026-08-16"
+      "audio_verified_on": "2026-08-16",
+      "seek_map": "cbr"
     },
     {
       "id": "bfh-griddle-bakestone",
@@ -36,7 +37,8 @@
       "duration_sec": 2764,
       "dai_suspected": false,
       "ad_free_ratio": 1,
-      "audio_verified_on": "2026-08-16"
+      "audio_verified_on": "2026-08-16",
+      "seek_map": "cbr"
     },
     {
       "id": "bfh-medieval-meals-manners",
@@ -50,7 +52,8 @@
       "duration_sec": 2210,
       "dai_suspected": false,
       "ad_free_ratio": 1,
-      "audio_verified_on": "2026-08-16"
+      "audio_verified_on": "2026-08-16",
+      "seek_map": "cbr"
     },
     {
       "id": "bfh-18c-tavern-briggs",
@@ -64,7 +67,8 @@
       "duration_sec": 2557,
       "dai_suspected": false,
       "ad_free_ratio": 1,
-      "audio_verified_on": "2026-08-16"
+      "audio_verified_on": "2026-08-16",
+      "seek_map": "cbr"
     },
     {
       "id": "bbqc-moss-school",
@@ -78,7 +82,8 @@
       "duration_sec": 3734,
       "dai_suspected": false,
       "ad_free_ratio": 1.0001,
-      "audio_verified_on": "2026-08-16"
+      "audio_verified_on": "2026-08-16",
+      "seek_map": "cbr"
     },
     {
       "id": "bbqc-traeger-history",
@@ -92,7 +97,8 @@
       "duration_sec": 3733,
       "dai_suspected": false,
       "ad_free_ratio": 1,
-      "audio_verified_on": "2026-08-16"
+      "audio_verified_on": "2026-08-16",
+      "seek_map": "cbr"
     },
     {
       "id": "bbqrn-santa-maria-grillzilla",
@@ -106,7 +112,8 @@
       "duration_sec": 2575,
       "dai_suspected": false,
       "ad_free_ratio": 1,
-      "audio_verified_on": "2026-08-16"
+      "audio_verified_on": "2026-08-16",
+      "seek_map": "cbr"
     },
     {
       "id": "bbqrn-argentina-open-fire",
@@ -120,7 +127,8 @@
       "duration_sec": 2414,
       "dai_suspected": false,
       "ad_free_ratio": 1,
-      "audio_verified_on": "2026-08-16"
+      "audio_verified_on": "2026-08-16",
+      "seek_map": "cbr"
     },
     {
       "id": "moreish-jerk-jamaica",
@@ -134,7 +142,8 @@
       "duration_sec": 1444,
       "dai_suspected": false,
       "ad_free_ratio": 1,
-      "audio_verified_on": "2026-08-16"
+      "audio_verified_on": "2026-08-16",
+      "seek_map": "cbr"
     },
     {
       "id": "satay-okay-e01-satay-myth",
@@ -148,7 +157,8 @@
       "duration_sec": 2323,
       "dai_suspected": false,
       "ad_free_ratio": 1,
-      "audio_verified_on": "2026-08-17"
+      "audio_verified_on": "2026-08-17",
+      "seek_map": "cbr"
     },
     {
       "id": "ss-inlaw-investors",
@@ -168,7 +178,8 @@
       "ad_delta_spread_sec": 0,
       "ad_pad_sec": 0,
       "ad_tier": "PADDABLE",
-      "audio_verified_on": "2026-08-16"
+      "audio_verified_on": "2026-08-16",
+      "seek_map": "cbr"
     },
     {
       "id": "yc-how-fundraising-works",
@@ -188,7 +199,8 @@
       "ad_delta_spread_sec": 0,
       "ad_pad_sec": 0,
       "ad_tier": "PADDABLE",
-      "audio_verified_on": "2026-08-16"
+      "audio_verified_on": "2026-08-16",
+      "seek_map": "cbr"
     },
     {
       "id": "am-sba-lender-roundtable",
@@ -208,7 +220,8 @@
       "ad_delta_spread_sec": 0,
       "ad_pad_sec": 0,
       "ad_tier": "PADDABLE",
-      "audio_verified_on": "2026-08-16"
+      "audio_verified_on": "2026-08-16",
+      "seek_map": "cbr"
     },
     {
       "id": "ftb-89-sbir-grants",
@@ -228,7 +241,8 @@
       "ad_delta_spread_sec": 0,
       "ad_pad_sec": 0,
       "ad_tier": "PADDABLE",
-      "audio_verified_on": "2026-08-16"
+      "audio_verified_on": "2026-08-16",
+      "seek_map": "vbr-toc"
     },
     {
       "id": "crowdcrux-557-atombeam",
@@ -248,7 +262,8 @@
       "ad_delta_spread_sec": 0,
       "ad_pad_sec": 0,
       "ad_tier": "PADDABLE",
-      "audio_verified_on": "2026-08-16"
+      "audio_verified_on": "2026-08-16",
+      "seek_map": "cbr"
     },
     {
       "id": "rtn-venture-debt",
@@ -269,7 +284,8 @@
       "ad_tier": "PADDABLE",
       "transcript_url": "https://transcript-files.spotifycdn.com/0zQCkklNnVgMD364kCW5SV/5DjC7WKsMnun27MqA7d7c4/transcript.srt",
       "transcript_type": "application/x-subrip",
-      "audio_verified_on": "2026-08-16"
+      "audio_verified_on": "2026-08-16",
+      "seek_map": "cbr"
     },
     {
       "id": "tbf-309-funded",
@@ -290,7 +306,8 @@
       "ad_tier": "PADDABLE",
       "transcript_url": "https://share.transistor.fm/s/79eb6f73/transcription.vtt",
       "transcript_type": "text/vtt",
-      "audio_verified_on": "2026-08-16"
+      "audio_verified_on": "2026-08-16",
+      "seek_map": "cbr"
     },
     {
       "id": "tbf-328-tringas",
@@ -311,7 +328,8 @@
       "ad_tier": "PADDABLE",
       "transcript_url": "https://share.transistor.fm/s/c54b3c3e/transcription.vtt",
       "transcript_type": "text/vtt",
-      "audio_verified_on": "2026-08-16"
+      "audio_verified_on": "2026-08-16",
+      "seek_map": "cbr"
     },
     {
       "id": "grill-coach-adrian-miller",
@@ -325,7 +343,8 @@
       "duration_sec": 3306,
       "dai_suspected": false,
       "ad_free_ratio": 1,
-      "audio_verified_on": "2026-08-17"
+      "audio_verified_on": "2026-08-17",
+      "seek_map": "cbr"
     },
     {
       "id": "causality-engineered-network--11-flint-michigan",
@@ -340,7 +359,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://engineered.network/transcripts/causality/11.srt",
-      "transcript_sha256": "a705163820a5eb17fc000c8cb2fca1759fe18e0268730c9d109a725373c85640"
+      "transcript_sha256": "a705163820a5eb17fc000c8cb2fca1759fe18e0268730c9d109a725373c85640",
+      "seek_map": "cbr"
     },
     {
       "id": "causality-engineered-network--17-three-mile-island",
@@ -355,7 +375,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://engineered.network/transcripts/causality/17.srt",
-      "transcript_sha256": "d541319ec225a45a6c6cf7eb4679246bba0eba1db8a557ec0abdd73ceaffa522"
+      "transcript_sha256": "d541319ec225a45a6c6cf7eb4679246bba0eba1db8a557ec0abdd73ceaffa522",
+      "seek_map": "cbr"
     },
     {
       "id": "causality-engineered-network--18-the-fog",
@@ -370,7 +391,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://engineered.network/transcripts/causality/18.srt",
-      "transcript_sha256": "7150ec65f0503f59caa9ee26351103346374f17d4db71cdc2a5971fad9ed369e"
+      "transcript_sha256": "7150ec65f0503f59caa9ee26351103346374f17d4db71cdc2a5971fad9ed369e",
+      "seek_map": "cbr"
     },
     {
       "id": "causality-engineered-network--22-chernobyl",
@@ -385,7 +407,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://engineered.network/transcripts/causality/22.srt",
-      "transcript_sha256": "ddd69acd65b074fa17e1eabc365ed792270eb95332752bb8abf54b1fd3fa4bb6"
+      "transcript_sha256": "ddd69acd65b074fa17e1eabc365ed792270eb95332752bb8abf54b1fd3fa4bb6",
+      "seek_map": "cbr"
     },
     {
       "id": "causality-engineered-network--3-fukushima",
@@ -400,7 +423,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://engineered.network/transcripts/causality/3.srt",
-      "transcript_sha256": "709be09889d938d50f700065a837463ad9e9b8491b81a1fb90a73f3f78780b5a"
+      "transcript_sha256": "709be09889d938d50f700065a837463ad9e9b8491b81a1fb90a73f3f78780b5a",
+      "seek_map": "cbr"
     },
     {
       "id": "causality-engineered-network--31-black-energy",
@@ -415,7 +439,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://engineered.network/transcripts/causality/31.srt",
-      "transcript_sha256": "8c1b0cccb3378ee5f6651877c61ee724098f4bf594742fb83c5489a51ab1a22b"
+      "transcript_sha256": "8c1b0cccb3378ee5f6651877c61ee724098f4bf594742fb83c5489a51ab1a22b",
+      "seek_map": "cbr"
     },
     {
       "id": "causality-engineered-network--32-walkerton",
@@ -430,7 +455,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://engineered.network/transcripts/causality/32.srt",
-      "transcript_sha256": "5a8c1e8b77510fd8c515dade13c484de53b44d968c41ccd4a5162c9cc9f61d23"
+      "transcript_sha256": "5a8c1e8b77510fd8c515dade13c484de53b44d968c41ccd4a5162c9cc9f61d23",
+      "seek_map": "cbr"
     },
     {
       "id": "causality-engineered-network--35-san-bruno",
@@ -445,7 +471,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://engineered.network/transcripts/causality/35.srt",
-      "transcript_sha256": "36f2c49b89212df6cec0bf313a5f13223fc11edb2a44231b591e720905a39060"
+      "transcript_sha256": "36f2c49b89212df6cec0bf313a5f13223fc11edb2a44231b591e720905a39060",
+      "seek_map": "cbr"
     },
     {
       "id": "causality-engineered-network--36-big-dig",
@@ -460,7 +487,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://engineered.network/transcripts/causality/36.srt",
-      "transcript_sha256": "daf7e1bb6f15f789b8e7d511840915e916f103a24b2dc556b90ced5c38075e32"
+      "transcript_sha256": "daf7e1bb6f15f789b8e7d511840915e916f103a24b2dc556b90ced5c38075e32",
+      "seek_map": "cbr"
     },
     {
       "id": "causality-engineered-network--47-hyatt-regency-kansas-city",
@@ -475,7 +503,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://engineered.network/transcripts/causality/47.srt",
-      "transcript_sha256": "1a46b67b88b0516c1e52fa91a4073abb712b8e394092c70b959018716614d375"
+      "transcript_sha256": "1a46b67b88b0516c1e52fa91a4073abb712b8e394092c70b959018716614d375",
+      "seek_map": "cbr"
     },
     {
       "id": "causality-engineered-network--50-737-max-ethiopian-air",
@@ -490,7 +519,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://engineered.network/transcripts/causality/50.srt",
-      "transcript_sha256": "fe94a4a3db62263a4c7e1cf2db97412dc74cee019c858fc38ef9a9330c273216"
+      "transcript_sha256": "fe94a4a3db62263a4c7e1cf2db97412dc74cee019c858fc38ef9a9330c273216",
+      "seek_map": "cbr"
     },
     {
       "id": "geology-bites--alec-brenner-on-when-tectonic-plates-first-moved",
@@ -505,7 +535,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcript-files.spotifycdn.com/6q57AqrzK2L8RfMpsA8eDl/0iTKJ2Sw5Ltmlk4VbEAgMy/transcript.srt",
-      "transcript_sha256": "4d65da160cf97f13c31633ce9f6a6101422791bf0d3b48016123b4b79ca060f8"
+      "transcript_sha256": "4d65da160cf97f13c31633ce9f6a6101422791bf0d3b48016123b4b79ca060f8",
+      "seek_map": "vbr-toc"
     },
     {
       "id": "geology-bites--allen-mcnamara-on-the-deep-mantle-structure-of-the-earth",
@@ -520,7 +551,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcript-files.spotifycdn.com/6q57AqrzK2L8RfMpsA8eDl/1GyPjerZJo8F6vEtkvkQRz/transcript.srt",
-      "transcript_sha256": "0fa501ef7d1bbfcfafbb6ca18118ade8c6cdd2fb71d571016afb2e131d0a267f"
+      "transcript_sha256": "0fa501ef7d1bbfcfafbb6ca18118ade8c6cdd2fb71d571016afb2e131d0a267f",
+      "seek_map": "vbr-toc"
     },
     {
       "id": "geology-bites--barbara-romanowicz-on-seeing-deep-into-the-earth",
@@ -535,7 +567,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcript-files.spotifycdn.com/6q57AqrzK2L8RfMpsA8eDl/4Yt8nkndW4rBvLo2WpLznz/transcript.srt",
-      "transcript_sha256": "65cdf324388838a08138e46e961ac3a5f91f516223dd0b3d005e165386cf778c"
+      "transcript_sha256": "65cdf324388838a08138e46e961ac3a5f91f516223dd0b3d005e165386cf778c",
+      "seek_map": "vbr-toc"
     },
     {
       "id": "geology-bites--bruce-buffett-on-probing-the-earth-s-core",
@@ -550,7 +583,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcript-files.spotifycdn.com/6q57AqrzK2L8RfMpsA8eDl/1fDjsC2DlsKawGjAtSrXfU/transcript.srt",
-      "transcript_sha256": "f89c87e6cff1e455c5466c8b42e3f0a9e43ab0c642820712fceaba971b65a560"
+      "transcript_sha256": "f89c87e6cff1e455c5466c8b42e3f0a9e43ab0c642820712fceaba971b65a560",
+      "seek_map": "vbr-toc"
     },
     {
       "id": "geology-bites--clark-johnson-on-the-banded-iron-formations",
@@ -565,7 +599,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcript-files.spotifycdn.com/6q57AqrzK2L8RfMpsA8eDl/0lgM5T6EAdRHL20zbQtzsf/transcript.srt",
-      "transcript_sha256": "fb39d0ed523cb0474ab302752366b23cd014a02a85ca9f7e361341092c9179a0"
+      "transcript_sha256": "fb39d0ed523cb0474ab302752366b23cd014a02a85ca9f7e361341092c9179a0",
+      "seek_map": "vbr-toc"
     },
     {
       "id": "geology-bites--claude-jaupart-on-whether-the-earth-is-cooling-down",
@@ -580,7 +615,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcript-files.spotifycdn.com/6q57AqrzK2L8RfMpsA8eDl/4AhHMmASQP9CqlhFVBgCGV/transcript.srt",
-      "transcript_sha256": "036d2e06efa2138ecfbdbd10c2daf7865b5fa8cd873d2e004197f0490b3b799c"
+      "transcript_sha256": "036d2e06efa2138ecfbdbd10c2daf7865b5fa8cd873d2e004197f0490b3b799c",
+      "seek_map": "vbr-toc"
     },
     {
       "id": "geology-bites--claudio-faccenna-on-the-dynamics-of-subduction-zones",
@@ -595,7 +631,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcript-files.spotifycdn.com/6q57AqrzK2L8RfMpsA8eDl/6BI0MPzuBrne9XjLW9atvQ/transcript.srt",
-      "transcript_sha256": "93dac78d6d9abea0b20a0f5ebb15a13bf4e3925421e7388b9232a9a3324c9be9"
+      "transcript_sha256": "93dac78d6d9abea0b20a0f5ebb15a13bf4e3925421e7388b9232a9a3324c9be9",
+      "seek_map": "vbr-toc"
     },
     {
       "id": "geology-bites--damian-nance-on-what-drives-the-supercontinent-cycle",
@@ -610,7 +647,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcript-files.spotifycdn.com/6q57AqrzK2L8RfMpsA8eDl/2z6thQFuCZdICBjl9iNgcT/transcript.srt",
-      "transcript_sha256": "e8fb8b615f2d7fc74964978e22f9a27965a70e11cbd2506ef0d06b9bb44bd50c"
+      "transcript_sha256": "e8fb8b615f2d7fc74964978e22f9a27965a70e11cbd2506ef0d06b9bb44bd50c",
+      "seek_map": "vbr-toc"
     },
     {
       "id": "geology-bites--dan-rothman-on-thresholds-of-catastrophe-in-the-earth-system",
@@ -625,7 +663,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcript-files.spotifycdn.com/6q57AqrzK2L8RfMpsA8eDl/5a05oxoQRVaCSW3NFb0PS9/transcript.srt",
-      "transcript_sha256": "7c870c85efe8f9bb7a8fb4f520e1d85be77566f4c50f0b8cbe85e125c6474462"
+      "transcript_sha256": "7c870c85efe8f9bb7a8fb4f520e1d85be77566f4c50f0b8cbe85e125c6474462",
+      "seek_map": "vbr-toc"
     },
     {
       "id": "geology-bites--david-bercovici-on-how-plate-subduction-starts",
@@ -640,7 +679,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcript-files.spotifycdn.com/6q57AqrzK2L8RfMpsA8eDl/0LIe72bTbNlrNaGDudteRg/transcript.srt",
-      "transcript_sha256": "238d01261ae499eb3d60e6f0d0fb0ad086a498bcdaf1a4672ce0c7870263dcf3"
+      "transcript_sha256": "238d01261ae499eb3d60e6f0d0fb0ad086a498bcdaf1a4672ce0c7870263dcf3",
+      "seek_map": "vbr-toc"
     },
     {
       "id": "geology-bites--david-evans-on-supercontinents",
@@ -655,7 +695,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcript-files.spotifycdn.com/6q57AqrzK2L8RfMpsA8eDl/6Ue3A8k9fmyxr2iHxXfNMG/transcript.srt",
-      "transcript_sha256": "6dd4fb589dd9d89e974eb42f22ff9d6e4b4465a5e578e16d2bf9deb05d5bac0b"
+      "transcript_sha256": "6dd4fb589dd9d89e974eb42f22ff9d6e4b4465a5e578e16d2bf9deb05d5bac0b",
+      "seek_map": "vbr-toc"
     },
     {
       "id": "geology-bites--douwe-van-hinsbergen-on-what-drives-the-motions-of-tectonic",
@@ -670,7 +711,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcript-files.spotifycdn.com/6q57AqrzK2L8RfMpsA8eDl/1C1GVSp9uw0sZ65ObmcFsS/transcript.srt",
-      "transcript_sha256": "44a0c22e1f28917341cf67b989e707a8120708f8eb7106f83864ab2c6ed20d82"
+      "transcript_sha256": "44a0c22e1f28917341cf67b989e707a8120708f8eb7106f83864ab2c6ed20d82",
+      "seek_map": "vbr-toc"
     },
     {
       "id": "geology-bites--james-jackson-on-the-fatal-attraction-between-cities-and",
@@ -685,7 +727,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcript-files.spotifycdn.com/6q57AqrzK2L8RfMpsA8eDl/7wPaWaSMXpA5BQwbOOc5j5/transcript.srt",
-      "transcript_sha256": "d30e4b9623d852fc1e037258552bf19da8239daafbc869b69c4cdeeff0e5c814"
+      "transcript_sha256": "d30e4b9623d852fc1e037258552bf19da8239daafbc869b69c4cdeeff0e5c814",
+      "seek_map": "vbr-toc"
     },
     {
       "id": "geology-bites--jan-smit-on-resolving-a-single-hour-of-the-cataclysm-that",
@@ -700,7 +743,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcript-files.spotifycdn.com/6q57AqrzK2L8RfMpsA8eDl/7f91q2ux86ckZPWtTvM5Ct/transcript.srt",
-      "transcript_sha256": "a60c1602ec10a3fb7d935c22da11966ff05ec47a6d5f450053144a74f7fef9ee"
+      "transcript_sha256": "a60c1602ec10a3fb7d935c22da11966ff05ec47a6d5f450053144a74f7fef9ee",
+      "seek_map": "vbr-toc"
     },
     {
       "id": "geology-bites--john-valley-on-the-early-earth",
@@ -715,7 +759,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcript-files.spotifycdn.com/6q57AqrzK2L8RfMpsA8eDl/0SMIlkB1PeHQg9r68x4H9J/transcript.srt",
-      "transcript_sha256": "24caa59299e59e4a68355ac47d51f9ab8095f0c391232cf030d79da173c16fe6"
+      "transcript_sha256": "24caa59299e59e4a68355ac47d51f9ab8095f0c391232cf030d79da173c16fe6",
+      "seek_map": "vbr-toc"
     },
     {
       "id": "geology-bites--lindy-elkins-tanton-on-the-origin-of-earth-s-water",
@@ -730,7 +775,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcript-files.spotifycdn.com/6q57AqrzK2L8RfMpsA8eDl/028NHggcwynIhDkgO7b0uw/transcript.srt",
-      "transcript_sha256": "dc075cda52b9a47a375f94d9c181cd37c111b96e270e6fb0b561e9ef571734a3"
+      "transcript_sha256": "dc075cda52b9a47a375f94d9c181cd37c111b96e270e6fb0b561e9ef571734a3",
+      "seek_map": "vbr-toc"
     },
     {
       "id": "geology-bites--martin-van-kranendonk-on-the-earliest-life-on-earth",
@@ -745,7 +791,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcript-files.spotifycdn.com/6q57AqrzK2L8RfMpsA8eDl/3cO72yqEzFv9Y6JamREAkF/transcript.srt",
-      "transcript_sha256": "dd12cfb8132a3dff3737e800a9485617d08d377b8cce2df7e808c1db5e37a61f"
+      "transcript_sha256": "dd12cfb8132a3dff3737e800a9485617d08d377b8cce2df7e808c1db5e37a61f",
+      "seek_map": "vbr-toc"
     },
     {
       "id": "geology-bites--matt-jackson-on-the-heterogeneity-of-the-mantle",
@@ -760,7 +807,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcript-files.spotifycdn.com/6q57AqrzK2L8RfMpsA8eDl/7E6LNLObWCbDRkDck4u0kZ/transcript.srt",
-      "transcript_sha256": "e574f2e5563da58490ddde7240a2875861d6bbf36442dfe2282a3bb8e47fdfa9"
+      "transcript_sha256": "e574f2e5563da58490ddde7240a2875861d6bbf36442dfe2282a3bb8e47fdfa9",
+      "seek_map": "vbr-toc"
     },
     {
       "id": "geology-bites--michael-manga-on-wet-eruptions",
@@ -775,7 +823,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcript-files.spotifycdn.com/6q57AqrzK2L8RfMpsA8eDl/2pGDfMfKulafOmIE7nam41/transcript.srt",
-      "transcript_sha256": "d15dd99c739be1540f424b003eea14493a915b2769ab3fd427c1e7ac590a37c3"
+      "transcript_sha256": "d15dd99c739be1540f424b003eea14493a915b2769ab3fd427c1e7ac590a37c3",
+      "seek_map": "vbr-toc"
     },
     {
       "id": "geology-bites--mike-searle-on-why-mountains-exist",
@@ -790,7 +839,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcript-files.spotifycdn.com/6q57AqrzK2L8RfMpsA8eDl/4cG70nTKEsAGzVV62w6n2r/transcript.srt",
-      "transcript_sha256": "04afbe1e887e19f738478f15f0eb2511d7922067d8e8c15cfe1e64cbd6c1739d"
+      "transcript_sha256": "04afbe1e887e19f738478f15f0eb2511d7922067d8e8c15cfe1e64cbd6c1739d",
+      "seek_map": "vbr-toc"
     },
     {
       "id": "geology-bites--nadja-drabon-on-a-new-lens-into-the-hadean-eon",
@@ -805,7 +855,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcript-files.spotifycdn.com/6q57AqrzK2L8RfMpsA8eDl/5Iwg8wdX0Kfi4uHb39b1RC/transcript.srt",
-      "transcript_sha256": "82540b89229a72a6ab2d747a746313c0bbb9eac34a9d27a61540ce44ff91609c"
+      "transcript_sha256": "82540b89229a72a6ab2d747a746313c0bbb9eac34a9d27a61540ce44ff91609c",
+      "seek_map": "vbr-toc"
     },
     {
       "id": "geology-bites--neil-davies-on-the-greening-of-the-continents",
@@ -820,7 +871,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcript-files.spotifycdn.com/6q57AqrzK2L8RfMpsA8eDl/2FrvRTS8HquQDYFvbKAQbU/transcript.srt",
-      "transcript_sha256": "c553b288dbd1497188a0a4bbbe1822fe80c80b404387bcf16e8fafef1493d5b1"
+      "transcript_sha256": "c553b288dbd1497188a0a4bbbe1822fe80c80b404387bcf16e8fafef1493d5b1",
+      "seek_map": "vbr-toc"
     },
     {
       "id": "geology-bites--patrick-fulton-on-the-2011-tohoku-earthquake",
@@ -835,7 +887,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcript-files.spotifycdn.com/6q57AqrzK2L8RfMpsA8eDl/087O1X2E5ZcjbBGo8OYqq6/transcript.srt",
-      "transcript_sha256": "8d58f699b45dae1fdde936e652a75b4e9e272b88dd51a01ef8edae4611975172"
+      "transcript_sha256": "8d58f699b45dae1fdde936e652a75b4e9e272b88dd51a01ef8edae4611975172",
+      "seek_map": "vbr-toc"
     },
     {
       "id": "geology-bites--paul-hoffman-on-the-snowball-earth-hypothesis",
@@ -850,7 +903,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcript-files.spotifycdn.com/6q57AqrzK2L8RfMpsA8eDl/5DzefSi8TAX5SMIF2ItCUq/transcript.srt",
-      "transcript_sha256": "5640fc32221656b47aa2d50caeeaebaa38de979dff5fb5393a5f5b0e825968e9"
+      "transcript_sha256": "5640fc32221656b47aa2d50caeeaebaa38de979dff5fb5393a5f5b0e825968e9",
+      "seek_map": "vbr-toc"
     },
     {
       "id": "geology-bites--paul-smith-on-the-cambrian-explosion",
@@ -865,7 +919,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcript-files.spotifycdn.com/6q57AqrzK2L8RfMpsA8eDl/49fyQQtN73aWkCLSBYu3nu/transcript.srt",
-      "transcript_sha256": "f6c9f3bb67297c21f6307ddf80d43fc8c0d38c0c8f63484e21dc9bbc6ebbc592"
+      "transcript_sha256": "f6c9f3bb67297c21f6307ddf80d43fc8c0d38c0c8f63484e21dc9bbc6ebbc592",
+      "seek_map": "vbr-toc"
     },
     {
       "id": "geology-bites--peter-cawood-on-when-plate-tectonics-started",
@@ -880,7 +935,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcript-files.spotifycdn.com/6q57AqrzK2L8RfMpsA8eDl/4nQ5ll3iWv4N3cNJ2NYQsP/transcript.srt",
-      "transcript_sha256": "606e1a14e7dd4324222f17263700990b9e183a4fcd9c98999fb7f84c781bef4c"
+      "transcript_sha256": "606e1a14e7dd4324222f17263700990b9e183a4fcd9c98999fb7f84c781bef4c",
+      "seek_map": "vbr-toc"
     },
     {
       "id": "geology-bites--peter-molnar-on-why-the-tibetan-plateau-is-so-high",
@@ -895,7 +951,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcript-files.spotifycdn.com/6q57AqrzK2L8RfMpsA8eDl/6UgWC3tZCmxWK7fxmxqRVd/transcript.srt",
-      "transcript_sha256": "b6b5fa2d22a3276710f5b19a9719ce66d5a795c91269a5204008e2acffdf118e"
+      "transcript_sha256": "b6b5fa2d22a3276710f5b19a9719ce66d5a795c91269a5204008e2acffdf118e",
+      "seek_map": "vbr-toc"
     },
     {
       "id": "geology-bites--richard-fortey-on-the-trilobite-chronometer",
@@ -910,7 +967,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcript-files.spotifycdn.com/6q57AqrzK2L8RfMpsA8eDl/2Ohx16y7yqkpLqr5yAqbWd/transcript.srt",
-      "transcript_sha256": "3375053092753cabdb5f8d0d34c986a534b20cc7eaff1de3af88a28e4e7e8f9c"
+      "transcript_sha256": "3375053092753cabdb5f8d0d34c986a534b20cc7eaff1de3af88a28e4e7e8f9c",
+      "seek_map": "vbr-toc"
     },
     {
       "id": "geology-bites--roger-bilham-on-himalayan-earthquakes",
@@ -925,7 +983,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcript-files.spotifycdn.com/6q57AqrzK2L8RfMpsA8eDl/3KShur72axex0f0PBUN7E3/transcript.srt",
-      "transcript_sha256": "9009234398cf5c2cff929d787e9aea04564c26e9557bc38ffcf0c38bbf01a5df"
+      "transcript_sha256": "9009234398cf5c2cff929d787e9aea04564c26e9557bc38ffcf0c38bbf01a5df",
+      "seek_map": "vbr-toc"
     },
     {
       "id": "geology-bites--sarah-stewart-on-a-new-scenario-for-how-the-moon-formed",
@@ -940,7 +999,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcript-files.spotifycdn.com/6q57AqrzK2L8RfMpsA8eDl/4tgGSukuHaezftCew8XXAY/transcript.srt",
-      "transcript_sha256": "4387d36cfdbb5e615e9d41007dbedc691e4c1ac3ac0ec0fb712dc0df2f313ba9"
+      "transcript_sha256": "4387d36cfdbb5e615e9d41007dbedc691e4c1ac3ac0ec0fb712dc0df2f313ba9",
+      "seek_map": "vbr-toc"
     },
     {
       "id": "geology-bites--steve-sparks-on-what-makes-a-volcano-erupt",
@@ -970,7 +1030,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcripts.blubrry.com/rewildingearth/150695838-65754.srt",
-      "transcript_sha256": "f3c2c81592a674284cf1024ab5a2f3b015e066e325005e4cccdbe82efd01e991"
+      "transcript_sha256": "f3c2c81592a674284cf1024ab5a2f3b015e066e325005e4cccdbe82efd01e991",
+      "seek_map": "cbr"
     },
     {
       "id": "rewilding-earth--episode-165-filming-the-elusive-el-tigre-for-borderlands",
@@ -985,7 +1046,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcripts.blubrry.com/rewildingearth/151340081-67356.srt",
-      "transcript_sha256": "fdb8da076b15991bee7430a27c488dc2a02495331fe8d4aa0d3d5184193ae43c"
+      "transcript_sha256": "fdb8da076b15991bee7430a27c488dc2a02495331fe8d4aa0d3d5184193ae43c",
+      "seek_map": "cbr"
     },
     {
       "id": "rewilding-earth--episode-95-liz-hillard-on-wildlife-connectivity-in-the",
@@ -1000,7 +1062,8 @@
       "ad_free_ratio": 1,
       "audio_verified_on": null,
       "transcript_url": "https://transcripts.blubrry.com/rewildingearth/89533331-1459.srt",
-      "transcript_sha256": "5948c9419636ec61cdc8e1b006875e0691920b04a26f4a4185836c4928bbbac4"
+      "transcript_sha256": "5948c9419636ec61cdc8e1b006875e0691920b04a26f4a4185836c4928bbbac4",
+      "seek_map": "cbr"
     },
     {
       "id": "practical-ai--building-durable-ai-agents",
@@ -1010,9 +1073,11 @@
       "episode_guid": "8b5b6bd9-8bc8-4b5c-93a8-4d660f14b6dd",
       "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/facb92e2/33d1bc96.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 44818279,
       "duration_sec": 2799,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "practical-ai--the-future-of-ai-infrastructure-with-coreweave",
@@ -1022,9 +1087,11 @@
       "episode_guid": "c555f52e-7f0a-403b-acf4-e3a30957582d",
       "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/01c30767/eed885fc.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 48106607,
       "duration_sec": 3004,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "practical-ai--federated-learning-in-production-part-2",
@@ -1034,9 +1101,11 @@
       "episode_guid": "d723ab20-4c1c-497a-8b1f-02d5defcefd7",
       "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/1e3c9247/e9f0e8cd.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 43855107,
       "duration_sec": 2725,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "practical-ai--creating-a-private-ai-assistant-in-thunderbird",
@@ -1046,9 +1115,11 @@
       "episode_guid": "552ed99d-351d-4fbb-b653-d2f5e1c5402a",
       "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/c73dd974/7b2ed2ac.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 51281590,
       "duration_sec": 3188,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "practical-ai--the-myth-of-model-wars-open-vs-closed-ai-in-2026",
@@ -1058,9 +1129,11 @@
       "episode_guid": "1b717d56-974a-4ffe-8189-8df486ba2198",
       "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/6095edc5/d370f038.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 40703534,
       "duration_sec": 2542,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "practical-ai--ai-at-the-edge-is-a-different-operating-environment",
@@ -1070,9 +1143,11 @@
       "episode_guid": "c0bc0a38-8ba5-40a7-994e-0e60e37985f3",
       "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/ea7694a9/378817af.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 45136659,
       "duration_sec": 2819,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "practical-ai--rebooting-enterprise-ai-with-mcp-and-kubernetes",
@@ -1082,9 +1157,11 @@
       "episode_guid": "16863a1c-38c8-4d5c-ac85-efdbf1da5b40",
       "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/d76e02d5/e934139b.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 46262132,
       "duration_sec": 2889,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "practical-ai--ai-policy-and-the-battle-for-computing-power",
@@ -1094,9 +1171,11 @@
       "episode_guid": "65c042ae-28bb-4ec7-b442-4bce381ddcb2",
       "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/1923dca1/0dd54a72.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 70437623,
       "duration_sec": 2934,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "practical-ai--surviving-the-new-economics-of-a-post-agentic-world",
@@ -1106,9 +1185,11 @@
       "episode_guid": "9bcca966-be29-4f64-951a-2a49fe7b6d3a",
       "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/8a2e4fc0/e08735dd.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 34217114,
       "duration_sec": 2136,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "practical-ai--educating-a-data-literate-generation",
@@ -1118,9 +1199,11 @@
       "episode_guid": "a1a0a979-7151-48cb-8234-0d31cfbfb373",
       "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/a952cb30/c4daf7a6.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 43102364,
       "duration_sec": 2681,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "practical-ai--reimagining-actuarial-science-with-ai",
@@ -1130,9 +1213,11 @@
       "episode_guid": "fccfe798-4145-481d-af81-c8c4cc73fd7b",
       "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/4771f92e/5b998ce7.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 39533500,
       "duration_sec": 2459,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "practical-ai--breaking-down-the-2026-stanford-ai-index-report",
@@ -1142,9 +1227,11 @@
       "episode_guid": "fe415ec1-2ec5-4f37-9a63-5cb23414339c",
       "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/302b36f8/d474795e.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 45365394,
       "duration_sec": 2833,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "practical-ai--federated-learning-in-production-part-1",
@@ -1154,9 +1241,11 @@
       "episode_guid": "cc6e6d9b-5a7d-46fa-b784-6b5f3c12c9e7",
       "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/e283a9d0/77122826.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 43046110,
       "duration_sec": 2678,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "practical-ai--model-context-protocol-deep-dive",
@@ -1166,9 +1255,11 @@
       "episode_guid": "0deadba3-7280-47cf-8346-dd75bb5f7983",
       "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/d7a0d796/0e8b4946.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 40814001,
       "duration_sec": 2543,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "practical-ai--software-and-hardware-acceleration-with-groq",
@@ -1178,9 +1269,11 @@
       "episode_guid": "5edd910e-8474-40c8-8b83-ee289c67ae3b",
       "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/5e63c891/c3ddeda7.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 62680686,
       "duration_sec": 2604,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "practical-ai--how-is-ai-shaping-democracy",
@@ -1190,9 +1283,11 @@
       "episode_guid": "e26c0ac8-688a-4957-bbab-3ce2f48ef9e4",
       "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/0d2fa64e/d7cf6a15.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 46583280,
       "duration_sec": 2903,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "practical-ai--autonomous-vehicle-research-at-waymo",
@@ -1202,9 +1297,11 @@
       "episode_guid": "5604b042-20c2-4aa8-b9c5-95664ad78ddd",
       "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/7b9cfe10/fe5031af.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 50178657,
       "duration_sec": 3128,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "causality-engineered-network--1-bp-texas-city",
@@ -1216,7 +1313,8 @@
       "audio_type": "audio/mpeg",
       "duration_sec": 2071,
       "dai_suspected": false,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "being-an-engineer--s5e50-roopinder-tara-timing-fea-the-beginning-of-cad",
@@ -1226,9 +1324,11 @@
       "episode_guid": "Buzzsprout-16209193",
       "audio_url": "https://www.buzzsprout.com/995575/episodes/16209193-s5e50-roopinder-tara-timing-fea-the-beginning-of-cad.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 30414211,
       "duration_sec": 2532,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "being-an-engineer--s6e46-rick-james-ansys-engineering-simulation",
@@ -1238,9 +1338,11 @@
       "episode_guid": "Buzzsprout-18151676",
       "audio_url": "https://www.buzzsprout.com/995575/episodes/18151676-s6e46-rick-james-ansys-engineering-simulation.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 36199155,
       "duration_sec": 3014,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "being-an-engineer--s2e36-shaking-things-up-as-we-get-to-know-aaron-moncur",
@@ -1250,9 +1352,11 @@
       "episode_guid": "Buzzsprout-9073942",
       "audio_url": "https://www.buzzsprout.com/995575/episodes/9073942-s2e36-shaking-things-up-as-we-get-to-know-aaron-moncur.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 35228190,
       "duration_sec": 2933,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "being-an-engineer--s6s25-andy-thompson-practical-applications-of-gd-t",
@@ -1262,9 +1366,11 @@
       "episode_guid": "Buzzsprout-17289606",
       "audio_url": "https://www.buzzsprout.com/995575/episodes/17289606-s6s25-andy-thompson-practical-applications-of-gd-t.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 32915615,
       "duration_sec": 2740,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "being-an-engineer--s5e19-krishna-raichur-the-ins-outs-of-engineering-simulation",
@@ -1274,9 +1380,11 @@
       "episode_guid": "Buzzsprout-14993184",
       "audio_url": "https://www.buzzsprout.com/995575/episodes/14993184-s5e19-krishna-raichur-the-ins-outs-of-engineering-simulation-fea-cfd.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 35152338,
       "duration_sec": 2927,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "being-an-engineer--s6e5-keegan-schoch-pro-tips-on-creating-an-engineering-consu",
@@ -1286,9 +1394,11 @@
       "episode_guid": "Buzzsprout-16479182",
       "audio_url": "https://www.buzzsprout.com/995575/episodes/16479182-s6e5-keegan-schoch-pro-tips-on-creating-an-engineering-consultancy.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 35391982,
       "duration_sec": 2947,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "being-an-engineer--ian-mceachern-artificial-hearts-times-square-led-displays-en",
@@ -1298,9 +1408,11 @@
       "episode_guid": "Buzzsprout-10183062",
       "audio_url": "https://www.buzzsprout.com/995575/episodes/10183062-ian-mceachern-artificial-hearts-times-square-led-displays-engineering-freelancing.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 34107954,
       "duration_sec": 2840,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "being-an-engineer--daniel-servansky-electromechanical-engineering-root-cause-an",
@@ -1310,9 +1422,11 @@
       "episode_guid": "Buzzsprout-12363761",
       "audio_url": "https://www.buzzsprout.com/995575/episodes/12363761-daniel-servansky-electromechanical-engineering-root-cause-analysis-engineering-ethics.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 37817251,
       "duration_sec": 3149,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "being-an-engineer--s4e45-jonathan-macwilliams-career-planning-metallurgy-dealin",
@@ -1322,9 +1436,11 @@
       "episode_guid": "Buzzsprout-13971270",
       "audio_url": "https://www.buzzsprout.com/995575/episodes/13971270-s4e45-jonathan-macwilliams-career-planning-metallurgy-dealing-with-ambiguity.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 39009992,
       "duration_sec": 3248,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "being-an-engineer--s5e9-jon-montcrief-medical-device-engineering-leaders-8",
@@ -1334,9 +1450,11 @@
       "episode_guid": "Buzzsprout-14513545",
       "audio_url": "https://www.buzzsprout.com/995575/episodes/14513545-s5e9-jon-montcrief-medical-device-engineering-leaders-8.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 28340452,
       "duration_sec": 2359,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "being-an-engineer--s6e18-nikolaj-kloch-public-speaking-career-changes-leading-w",
@@ -1346,9 +1464,11 @@
       "episode_guid": "Buzzsprout-16997701",
       "audio_url": "https://www.buzzsprout.com/995575/episodes/16997701-s6e18-nikolaj-kloch-public-speaking-career-changes-leading-with-value.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 41325598,
       "duration_sec": 3441,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "being-an-engineer--s1e10-from-engineering-startups-to-established-corporations",
@@ -1358,9 +1478,11 @@
       "episode_guid": "Buzzsprout-3965951",
       "audio_url": "https://www.buzzsprout.com/995575/episodes/3965951-s1e10-from-engineering-startups-to-established-corporations-patrick-stephens.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 29761523,
       "duration_sec": 2478,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "being-an-engineer--s4e30-dhruv-bhate-engineering-in-india-biomimicry-using-whit",
@@ -1370,9 +1492,11 @@
       "episode_guid": "Buzzsprout-13324306",
       "audio_url": "https://www.buzzsprout.com/995575/episodes/13324306-s4e30-dhruv-bhate-engineering-in-india-biomimicry-using-white-papers.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 34996296,
       "duration_sec": 2914,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "being-an-engineer--david-oh-nasa-systems-engineering-and-sending-robots-to-spac",
@@ -1382,9 +1506,11 @@
       "episode_guid": "Buzzsprout-11839351",
       "audio_url": "https://www.buzzsprout.com/995575/episodes/11839351-david-oh-nasa-systems-engineering-and-sending-robots-to-space.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 38621859,
       "duration_sec": 3216,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "being-an-engineer--ray-kampmeier-the-humble-transistor",
@@ -1394,9 +1520,11 @@
       "episode_guid": "Buzzsprout-11368960",
       "audio_url": "https://www.buzzsprout.com/995575/episodes/11368960-ray-kampmeier-the-humble-transistor.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 37409942,
       "duration_sec": 3115,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     },
     {
       "id": "being-an-engineer--s2e28-test-stands-x-ray-other-instrumentation-william-gabler",
@@ -1406,9 +1534,11 @@
       "episode_guid": "Buzzsprout-8751812",
       "audio_url": "https://www.buzzsprout.com/995575/episodes/8751812-s2e28-test-stands-x-ray-other-instrumentation-william-gabler.mp3",
       "audio_type": "audio/mpeg",
+      "audio_bytes": 22077997,
       "duration_sec": 1837,
       "dai_suspected": true,
-      "source": "generation-tier-2"
+      "source": "generation-tier-2",
+      "seek_map": "cbr"
     }
   ]
 }

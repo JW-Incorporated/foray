@@ -172,7 +172,8 @@ test("an index past the end is clamped rather than reported as clip 40 of 32", (
 });
 
 test("a zero total suppresses the counter — single-episode playback has no parts", () => {
-  assert.equal(mediaMetadata({ item: SEG, forayTitle: "", index: 0, total: 0 }).album, "");
+  // No parts and no Foray: the album is the app's name (issue #1006), not "".
+  assert.equal(mediaMetadata({ item: SEG, forayTitle: "", index: 0, total: 0 }).album, APP_NAME);
   assert.equal(mediaMetadata({ item: SEG, forayTitle: "A Foray", index: 0, total: 0 }).album, "A Foray");
 });
 
@@ -198,7 +199,7 @@ test("with nothing at all the display still says something true", () => {
   const m = mediaMetadata();
   assert.equal(m.title, "4a");
   assert.equal(m.artist, "");
-  assert.equal(m.album, "");
+  assert.equal(m.album, APP_NAME);
 });
 
 test("whitespace-only strings count as missing, not as content", () => {
@@ -313,10 +314,44 @@ test("a SEGMENT keeps Apple Podcasts parity untouched: title=episode, artist=sho
   assert.equal(m.album, "The history of grilling · clip 12 of 32");
 });
 
-// TO SEE IT FAIL: give single-episode playback a non-empty album (e.g. by
-// defaulting `total` to 1). A single episode is not a collection.
-test("single-episode play keeps an empty album (L-06)", () => {
-  assert.equal(mediaMetadata({ item: SEG, forayTitle: "", index: 0, total: 0 }).album, "");
+// FOUNDER RULING 2026-10-04 (issue #1006): "when there is no album info to
+// serve to a car/ wherever, we should populate that field with \"4a\"". Was
+// "single-episode play keeps an empty album (L-06)"; the ruling replaced it.
+// TO SEE IT FAIL: put `return "";` back as `albumOf`'s last line (the first
+// test goes red), or default `total` to 1 (a single episode would read
+// "Clip 1 of 1": the same test goes red).
+test("no collection and no counter: album is the app's name, never empty (#1006)", () => {
+  // A plain episode, a playlist part: no Foray title, no part counter.
+  assert.equal(mediaMetadata({ item: SEG, forayTitle: "", index: 0, total: 0 }).album, APP_NAME);
+  assert.equal(mediaMetadata({ item: SEG }).album, APP_NAME);
+  // A narration line and a jingle with no Foray around them.
+  assert.equal(mediaMetadata({ item: { kind: "tts", id: "n" }, nextItem: SEG }).album, APP_NAME);
+  assert.equal(mediaMetadata({ item: { kind: "jingle", id: "j" } }).album, APP_NAME);
+  // Whitespace is no title.
+  assert.equal(mediaMetadata({ item: SEG, forayTitle: "   ", index: 0, total: 0 }).album, APP_NAME);
+  // The value is the exported constant, not a second copy of the string.
+  assert.equal(APP_NAME, "4a");
+});
+
+// TO SEE IT FAIL: return `APP_NAME` before the Foray / counter branches of
+// `albumOf` (or append it to them): every assertion here goes red.
+test("an album that has a collection or a counter is unchanged by #1006", () => {
+  assert.equal(mediaMetadata({ item: SEG, forayTitle: "The history of grilling", index: 11, total: 32 }).album,
+    "The history of grilling · clip 12 of 32");
+  assert.equal(mediaMetadata({ item: SEG, forayTitle: "A Foray", index: 0, total: 0 }).album, "A Foray");
+  assert.equal(mediaMetadata({ item: SEG, forayTitle: "", index: 2, total: 9 }).album, "Clip 3 of 9");
+});
+
+// TO SEE IT FAIL: make `albumOf`'s fallback leak into a credit (e.g. use
+// `albumOf(...)` as the segment branch's `artist`). The ruling is about album
+// only; "4a" still never credits anything a listener hears.
+test("#1006 leaves title and artist alone: 4a is still never a credit", () => {
+  const seg = mediaMetadata({ item: SEG });
+  assert.equal(seg.title, SEG.title);
+  assert.equal(seg.artist, SEG.show);
+  const tts = mediaMetadata({ item: { kind: "tts", id: "n" }, nextItem: SEG });
+  assert.notEqual(tts.artist, APP_NAME);
+  assert.notEqual(tts.title, APP_NAME);
 });
 
 // TO SEE IT FAIL: delete the `report(...)` call from `createMediaSession`'s
@@ -877,6 +912,53 @@ test("two lock-screen nexttracks advance two segments", async () => {
   await map.get("nexttrack")();
   await map.get("nexttrack")();
   assert.equal(manager.currentIndex, 2);
+});
+
+/* NE-39n (2026-09-29): the car's own Next over narration. The page's Next
+   (client.js `forayNext`, `play(index + 1)`) always landed on a narration line;
+   the manager's `skipToNext`, which the engine's `next` ports, stepped over it.
+   One behaviour on every surface: Next is the next item, a line included. The
+   Foray is literal (the `manager-foray/remote-nexttrack-*-line` fixtures carry the same
+   one), with the line between two clips of one episode. */
+async function playerWithLine() {
+  __resetInstanceForTests();
+  const backend = new FakeBackend();
+  const manager = new PlayerQueueManager({ backend, seamGapSec: 0, allowMultiple: true });
+  const catalogue = {
+    "ep-a": { id: "ep-a", title: "Fire", show: "Origin Stories", audio_url: "https://example.test/a.mp3", duration_sec: 3600 },
+  };
+  manager.setQueueFromForay({
+    id: "foray-1",
+    title: "Fire",
+    items: [
+      { type: "segment", item_id: "ep-a", start_sec: 100, end_sec: 210 },
+      { type: "narration", id: "nar-1", asset: "narration/fire-1.mp3" },
+      { type: "segment", item_id: "ep-a", start_sec: 400, end_sec: 520 },
+    ],
+  }, { resolveItem: (id) => catalogue[id] ?? null });
+  const surface = {
+    next: () => manager.skipToNext(),
+    previous: () => manager.skipToPrevious(),
+  };
+  return { backend, manager, map: actionMap(surface) };
+}
+
+test("nexttrack from a clip whose next item is a narration line lands on the line (NE-39n)", async () => {
+  const { backend, manager, map } = await playerWithLine();
+  await manager.play(0);
+  backend.calls.length = 0;
+  await map.get("nexttrack")();
+  assert.equal(manager.currentIndex, 1, "the line is the next item");
+  assert.ok(backend.calls.includes("load:nar-1@0"), `the line is what loads: ${backend.calls.join(" ")}`);
+});
+
+test("nexttrack from a narration line lands on the next clip at its in-point (NE-39n)", async () => {
+  const { backend, manager, map } = await playerWithLine();
+  await manager.play(1);
+  backend.calls.length = 0;
+  await map.get("nexttrack")();
+  assert.equal(manager.currentIndex, 2, "the clip after the line");
+  assert.ok(backend.calls.includes("load:foray-1#2@400"), `at its in-point: ${backend.calls.join(" ")}`);
 });
 
 test("previoustrack from a lock screen restarts the segment at its in-point", async () => {

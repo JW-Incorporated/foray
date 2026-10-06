@@ -86,8 +86,17 @@
    is not a thing anyone is hearing, and is how `client.js` renders an empty
    player — still says "4a".
 
-   Album keeps the Foray title plus the part counter (§1), and single-episode
-   playback keeps an empty album because a single episode is not a collection.
+   The rule is about the CREDITS — title and artist — and it holds for both.
+   ALBUM IS THE ONE EXCEPTION: album keeps the Foray title plus the part counter
+   (§1), and when there is no collection at all — single-episode playback, a
+   playlist part, a narration line with no Foray around it — album falls back to
+   the app's name rather than staying empty (founder ruling 2026-10-04, issue
+   #1006: "when there is no album info to serve to a car/ wherever, we should
+   populate that field with \"4a\""). That is not a credit: album is the
+   collection field, and with no collection the app is the one true answer to
+   "what is this playing inside". It does not reopen the F15 complaint, which
+   was "4a" shown as the SONG with placeholders for artist and album
+   (`docs/DECISIONS.md`); title and artist are unchanged.
 
    Artwork for a narration or jingle line stays OUR icon: a publisher's square
    on a line they did not record is the same credit error in a picture.
@@ -370,7 +379,7 @@ export function narrationCredit({ forayTitle = "", nextItem = null } = {}) {
  * @param {object} [view.nextItem]  the item after it — only read for narration,
  *   whose spec title is "Up next: <episode>"
  * @param {string} [view.forayTitle] "" for single-episode playback, which has no
- *   collection and therefore no album
+ *   collection, so its album is the app's name (issue #1006)
  * @param {number} [view.index]     0-based position in the playable queue
  * @param {number} [view.total]     length of the playable queue; 0 suppresses
  *   the part counter
@@ -424,7 +433,8 @@ export function mediaMetadata({
 }
 
 /** "The history of grilling · clip 12 of 32". Worded as the mini bar words it —
-    "clip", the listener's word for a Foray's pieces (audit 2026-09-22). */
+    "clip", the listener's word for a Foray's pieces (audit 2026-09-22). With
+    neither a Foray title nor a counter it is `APP_NAME` (issue #1006). */
 function albumOf(forayTitle, index, total) {
   const n = Number.isInteger(index) && index >= 0 && Number.isInteger(total) && total > 0
     ? `clip ${Math.min(index, total - 1) + 1} of ${total}`
@@ -432,7 +442,10 @@ function albumOf(forayTitle, index, total) {
   if (forayTitle && n) return `${forayTitle} · ${n}`;
   if (forayTitle) return forayTitle;
   if (n) return n.charAt(0).toUpperCase() + n.slice(1);
-  return "";
+  /* No collection and no counter (a plain episode, a playlist part, a narration
+     line with no Foray around it): the app's name, never an empty album. Founder
+     ruling 2026-10-04, issue #1006; §1b says why this is not a credit. */
+  return APP_NAME;
 }
 
 /* ---------- position and playback state ---------- */

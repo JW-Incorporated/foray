@@ -1826,3 +1826,22 @@ test("no measured row claims a grid result its grid did not produce", () => {
     }
   }
 });
+
+/* MUTATION: delete the `verdict === "suspect"` line from `dispositionOf` (it
+   then falls through to `recover`, since undersized is 0 on the fixture) -- or
+   revert `deriveRow` to `summariseShow` -- and this fails. HA #24: an undersized
+   show whose declared length is duration x 192 kbps (Around the House) is
+   dropped, not parked as unresolved. */
+test("undersized against a computed-bitrate length is a drop, via deriveRow", () => {
+  assert.equal(dispositionOf("suspect", {}), "drop");
+  const ath = { declared_bytes: 54729590, delivered_bytes: 41493310, duration_sec: 2280, ratio: 0.758 };
+  const row = deriveRow({ show_id: "ath", title: "Around the House", samples: [ath, { ...ath, ratio: 0.746 }, { ...ath, ratio: 0.691 }] });
+  assert.equal(row.verdict, "suspect");
+  assert.equal(row.disposition, "drop");
+  assert.equal(row.undersized_samples, 3);
+  // A real (non-computed) size mismatch keeps the milder reading.
+  const real = { ...ath, declared_bytes: 51890381 };
+  const mild = deriveRow({ show_id: "x", title: "X", samples: [real, real, real].map((s) => ({ ...s, ratio: 0.75 })) });
+  assert.equal(mild.verdict, "unknown");
+  assert.equal(mild.disposition, "unresolved");
+});

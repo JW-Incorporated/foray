@@ -6,6 +6,9 @@ This is the versioned prompt for the nightly content-refresh agent. It runs
 **judgment half**: turn a resolved digest into published episodes via a PR.
 Be conservative — a broken deploy is far worse than a skipped night.
 
+Version 3 (2026-09-25): the mechanical halves are one command each, `tools/refresh/nightly-runner.mjs` (issue #760). Steps 2-3 and 5 call it (they were hand steps 1-3 and 5-7 before version 3); step 4, the judgement, is unchanged.
+The host that runs this prompt is pending: it is moving off the Cloud routine to the Spark (#760 → `docs/plans/spark-central-narration-assessment.md` §5 Phase 5).
+
 Read `CLAUDE.md` first; the copy rules and product principles there are binding.
 
 ## The pipeline you sit in
@@ -14,32 +17,42 @@ The Action already did the deterministic half (scan feeds, resolve Apple
 trackIds, dedup) and published two files to the **`refresh-digest`** branch:
 `resolved.json` (the episodes to publish) and `refresh-state.json` (ignore it).
 You produce `edits.json` (hooks, tags, and `topics` where an episode differs
-from its show's label) and run the committed merge. See
+from its show's label or its show is general) and run the committed merge. See
 `tools/refresh/README.md` for the full contract.
 
 ## Steps (follow exactly)
 
-1. **Sync.** Ensure you are on an up-to-date `main`. Then pull the digest:
-   ```sh
-   git fetch origin refresh-digest
-   mkdir -p data-local
-   git show origin/refresh-digest:resolved.json > data-local/resolved.json
-   ```
+1. **Sync.** Ensure you are on an up-to-date `main`.
 
-2. **Check the digest is fresh — do this before anything else.**
+2. **Fetch the digest and check it is fresh — one command, before anything else:**
    ```sh
-   node -e "
-     const r = require('./data-local/resolved.json');
-     const hours = (Date.now() - new Date(r.generated_at)) / 3600000;
-     console.log('digest generated_at ' + r.generated_at + ' (' + hours.toFixed(1) + 'h old)');
-     if (hours > 12) { console.error('STALE DIGEST — the Action has not published today. Stopping.'); process.exit(1); }
-   "
+   node tools/refresh/nightly-runner.mjs fetch-digest
    ```
-   If this fails, **stop and open no PR.** It means the `nightly-refresh` Action
-   has not run yet, so the digest is yesterday's. Every item in it is already in
-   `discover.json`, so `merge.mjs` would skip them all and report "0 items
-   added" — a silently skipped night that looks like a successful one. Say so in
-   your run output so a human notices.
+   It pulls `origin/refresh-digest:resolved.json` into `data-local/resolved.json`
+   and prints one verdict line. Exit 0 with `DIGEST_OK date=<YYYY-MM-DD> ...`
+   means continue; the `date` it prints is the digest's date and is the date
+   you use in step 5. **Any other exit code: stop and open no PR.**
+   - exit 3 `DIGEST_STALE` — the `nightly-refresh` Action has not published
+     today, so the digest is yesterday's and every item in it is already in
+     `discover.json`. Say so in your run output so a human notices.
+   - exit 4 `DIGEST_EMPTY` — nothing resolved tonight. Stop.
+
+   **If you were sent here to clear a red watchdog**, the digest is older than
+   12 h and `fetch-digest` refuses it — correctly. Do not override it. Re-cut
+   the digest instead, which is what recovered #290's lost day:
+   ```sh
+   rm -f data-local/refresh-state.json          # no seen-guid state: re-emit the window
+   node tools/refresh/scan.mjs --window-hours 72
+   node tools/refresh/resolve.mjs
+   ```
+   then continue from step 4, and in step 5 pass `--date <the stranded digest's
+   date> --suffix recovery`. That branch name, `nightly/<digest date>-recovery`,
+   is load bearing: the overwrite guard in `nightly-refresh.yml` clears itself
+   only when a PR matching the stranded digest's date appears (#293 got this
+   right as `nightly/2026-08-19-recovery`). The red run's own report prints the
+   exact date and `--window-hours` to use; prefer those numbers.
+
+   <details><summary>Why 12 hours, and why the guard points both ways</summary>
 
    (GitHub does not honour cron punctually under load: the Action's 09:40 slot
    was measured starting at 10:54 and 11:05 on consecutive days. The cron moved
@@ -51,31 +64,9 @@ from its show's label) and run the committed merge. See
    12 here is not an arbitrary number in one file any more: a digest must be
    consumed within 12h of being made, and whichever half drops it goes red.
 
-   **If you were sent here to clear a red watchdog**, the digest on the branch is
-   by definition older than 12h and step 2 will refuse it — correctly, because
-   the items in it may already be in `discover.json`. Do not override the guard.
-   Re-cut the digest instead, which is what recovered #290's lost day:
-   ```sh
-   rm -f data-local/refresh-state.json          # no seen-guid state: re-emit the window
-   node tools/refresh/scan.mjs --window-hours 72
-   node tools/refresh/resolve.mjs
-   ```
-   `resolve.mjs` dedups against `discover.json` on `id` and `apple_track_id` and
-   `merge.mjs` skips ids already in the pool, so nothing already published comes
-   back and only the missing tail lands. Then continue from step 4 as normal.
+   </details>
 
-   **Name the branch `nightly/<the digest's date>-recovery`, not today's date.**
-   That string is load bearing, not cosmetic: the overwrite guard in
-   `nightly-refresh.yml` clears itself when a PR matching the stranded digest's
-   date appears, and a branch named after the day you did the work matches
-   nothing and leaves the guard red every morning after. #293 got this right —
-   it merged on the 21st as `nightly/2026-08-19-recovery`. The red run's own
-   report prints the exact name and the `--window-hours` to use; prefer those
-   numbers over the ones above, because they are computed from the digest that
-   is actually stuck.
-
-3. **If `resolved.resolved` is empty**, there is nothing to do. Stop. Do not
-   open a PR, do not commit.
+3. **If `fetch-digest` printed `CANDIDATES <n>`**, read on; otherwise go to step 4.
 
    **Curation candidates (S-11).** `resolved.json` may also carry a
    top-level `candidates` array — shows that are NOT in the curated
@@ -99,7 +90,7 @@ from its show's label) and run the committed merge. See
      episode's title/subject instead — never quote the tease.
    - **tags**: 5–10, lowercase-hyphenated (`^[a-z0-9]+(-[a-z0-9]+)*$`). Reuse
      the existing vocabulary in `data/item-tags.json` wherever it applies.
-   - **topics** (OPTIONAL, #292): the resolved item's `topics` field is its
+   - **topics** (OPTIONAL, #292 — REQUIRED for a general show, below): the resolved item's `topics` field is its
      **show's** label, not this episode's. **Omit `topics` and that label
      stands** — which is right for a single-subject show, and is the normal
      case. Supply it *only when this episode is about something else*, and it
@@ -118,6 +109,23 @@ from its show's label) and run the committed merge. See
      appealed: 77 of the 99 shows with ≥ 8 episodes carried one identical topic
      set on **every** episode. Authoring `topics` when an episode genuinely
      differs is how that stays fixed; skipping it is how it comes back.
+
+     **A general show's episodes must carry their own `topics`.** If the
+     item's show has `"label_scope": "general"` in `data/catalog.json` (*CBC
+     Ideas*, *Stuff You Should Know*, *Huberman Lab* and the rest), its show
+     label ranges too widely to describe any one episode, so for that item
+     `topics` is **REQUIRED**, not optional: 1–3 ids from `data/taxonomy.json`,
+     chosen from the episode's own `_description`, primary first. Omit it and
+     `merge.mjs` refuses the **whole run** in preflight with
+     `TOPICS_REQUIRED_GENERAL`, naming the item, and writes nothing — every
+     other episode that night is lost with it (founder ruling,
+     `docs/roadmap/README.md` item 24; #547). So check each item's show in
+     `data/catalog.json` before you leave `topics` out. If the description
+     gives you nothing to ground a topic in, drop the item rather than guess.
+     *Lex Fridman Podcast* is general and has `taxonomy_node_ids: []`, so
+     `scan.mjs` seeds its episodes with no topic and `resolve.mjs` drops them
+     as `no valid topic`: they never reach `resolved.json`. That is expected;
+     do not edit `data/catalog.json` to bring them back.
    - **To drop an item**, simply omit it from `edits.json` — `merge.mjs` skips
      resolved items with no edit and reports them. Prefer dropping over forcing
      a weak hook. Drop, at minimum:
@@ -132,6 +140,47 @@ from its show's label) and run the committed merge. See
      A good test: if you cannot write a hook that says what the listener will
      actually learn or hear, the item does not belong in the pool.
 
+5. **Merge, validate, and open the PR — one command** (committed machinery; do
+   not edit it, just run it):
+   ```sh
+   node tools/refresh/nightly-runner.mjs finish --date <the DIGEST_OK date> \
+     --trailer "Co-Authored-By: <the trailer your harness gives you>"
+   ```
+   For a recovery run add `--suffix recovery`. It runs `merge.mjs`, then
+   `backend`'s `copyRules` + `poolIntegrity` tests, then creates
+   `nightly/<date>`, stages exactly `data/discover.json` and
+   `data/item-tags.json`, commits `Nightly refresh: +N episodes (<date>)`,
+   pushes, and opens the PR. Exit 0 prints `PR_OPENED <url>`. Exits 2, 4 and 5
+   have changed nothing; the others stop part-way, so read which:
+   - 5 `MERGE_FAILED` — a copy-rule or `topics` failure in `edits.json`. Nothing
+     was written. A `not taxonomy node ids: "…"` line is a `topics` typo —
+     correct the id against `data/taxonomy.json`, or delete the `topics` key to
+     fall back to the show's label. A `this show is marked label_scope
+     "general"` line is `TOPICS_REQUIRED_GENERAL` (step 4): that item's show is
+     general and its edit has no `topics`. Add 1–3 ids from its description or
+     drop the item. **Deleting the `topics` key is NOT a fallback for a general
+     show** — that is the very thing refused, for a typo or anything else. Fix
+     the hook, tags or `topics` (or drop the item) and re-run.
+   - 6 `TESTS_FAILED` — `merge.mjs` already WROTE the two data files before the
+     tests ran. Put them back first:
+     `git restore data/discover.json data/item-tags.json`, then fix or drop the
+     offenders in `edits.json` and re-run `finish`. Without the restore the
+     re-run finds every item already in the pool and stops at 4
+     `NOTHING_ADDED` with your fixes never applied.
+   - 4 `NOTHING_ADDED` — every item was already in the pool. Stop; no PR.
+   - 7 `UNEXPECTED_FILES` — you are on an old checkout that still stamps
+     `deploy-manifest.json` or `sw.js`. Stop and re-sync `main`.
+   - 1 `GIT_FAILED <step>` or `PR_FAILED` — a git or gh call failed after the
+     branch was created (it may already be pushed). Do not re-run `finish` and
+     do not open a second PR by hand; stop and put the verdict line and its
+     output in your run output for a daytime human.
+   **Do NOT merge the PR yourself.** `automerge-nightly.yml` enables auto-merge
+   on `nightly/*` PRs whose changed files are all on `ALLOWED_PREFIXES` — both
+   of yours are — so it merges once the required checks (`backend`,
+   `data-and-site`) pass; the deploys then build and stamp from `main`.
+
+   <details><summary>What `finish` does, step by step (the old hand steps 5-7)</summary>
+
 5. **Merge** (this is committed machinery — do not edit it, just run it):
    ```sh
    node tools/refresh/merge.mjs
@@ -140,7 +189,10 @@ from its show's label) and run the committed merge. See
    offending **hook, tags or `topics`** in `edits.json` (or drop the item) and
    re-run. A `not taxonomy node ids: "…"` failure is a `topics` typo — correct
    the id against `data/taxonomy.json`, or delete the `topics` key to fall back
-   to the show's label. **Nothing was written on a copy-rule or `topics`
+   to the show's label. A `this show is marked label_scope "general"` failure
+   is `TOPICS_REQUIRED_GENERAL`: the show is general, so add 1–3 ids from the
+   episode's description or drop the item — deleting the `topics` key is NOT a
+   fallback for a general show. **Nothing was written on a copy-rule or `topics`
    failure**: merge validates every item before it writes anything, so that
    kind of failed run leaves the data files untouched and re-running after the
    fix is safe. It writes `data/discover.json` + `data/item-tags.json` and
@@ -174,6 +226,8 @@ from its show's label) and run the committed merge. See
    yours are — so it merges automatically once the required checks (`backend`,
    `data-and-site`) pass; the deploys then build and stamp from `main`.
 
+   </details>
+
 ## Hard constraints
 
 - Touch ONLY `data/discover.json` and `data/item-tags.json` (both via
@@ -195,4 +249,4 @@ from its show's label) and run the committed merge. See
   Action is keyless. The only external calls `merge.mjs`/tests make are none —
   all inputs are already local.
 - Version this prompt: if the steps change, bump and record it in
-  `docs/agents/runners.md`.
+  `docs/agents/runners.md`. Version 3 is recorded there by OPS-15/OPS-17 (#760).

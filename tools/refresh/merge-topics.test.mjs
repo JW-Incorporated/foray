@@ -33,7 +33,7 @@ import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { episodeTopics, topicKey, uniformTopicShows, substantialShows, TopicError, MAX_TOPICS } from "./topics.mjs";
+import { episodeTopics, topicKey, topicSource, uniformTopicShows, substantialShows, TopicError, MAX_TOPICS } from "./topics.mjs";
 import { pendingRecord } from "./backfill-show.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -237,14 +237,23 @@ test("REAL REPO: every topic in the catalogue is a taxonomy node id", () => {
 // ------------------------------------------------- the real merge.mjs, run --
 
 /** A throwaway data dir + a real merge run. `discover`/`tags` are the files the
-    run mutates; the taxonomy and the copy rules come from the real repo. */
-function runMerge({ resolved, edits }) {
+    run mutates; the taxonomy and the copy rules come from the real repo.
+
+    `catalog` is what merge reads for each show's `label_scope` (via
+    MERGE_CATALOG_PATH). It defaults to an EMPTY catalogue, not the real one,
+    and that is deliberate: the fixture show below is Stuff You Should Know,
+    which the real data/catalog.json marks `label_scope: "general"`, so against
+    the real file every test here that leaves `topics` out would be refused with
+    TOPICS_REQUIRED_GENERAL and stop testing what it names. The general-show
+    guard has its own two tests at the bottom, which pass a fixture catalogue. */
+function runMerge({ resolved, edits, catalog = { shows: [] } }) {
   const dir = mkdtempSync(join(tmpdir(), "foray-merge-"));
   const path = (f) => join(dir, f);
   writeFileSync(path("resolved.json"), JSON.stringify({ resolved }));
   writeFileSync(path("edits.json"), JSON.stringify(edits));
   writeFileSync(path("discover.json"), JSON.stringify({ built_at: "x", items: [] }));
   writeFileSync(path("item-tags.json"), JSON.stringify({ built_at: "x", tags: {} }));
+  writeFileSync(path("catalog.json"), JSON.stringify(catalog));
   let status = 0, stderr = "", stdout = "";
   try {
     stdout = execFileSync(process.execPath, [MERGE], {
@@ -256,6 +265,7 @@ function runMerge({ resolved, edits }) {
         EDITS_PATH: path("edits.json"),
         MERGE_DISCOVER_PATH: path("discover.json"),
         MERGE_TAGS_PATH: path("item-tags.json"),
+        MERGE_CATALOG_PATH: path("catalog.json"),
       },
     });
   } catch (e) {
@@ -467,4 +477,104 @@ test("merge writes an episode's minute count from its seconds when it has them (
     edits: { "sysk--kola": EDIT },
   });
   assert.equal(unmeasured.items[0].duration_min, 45, "no seconds: the listing's minutes stand");
+});
+
+// ------------------------------------------- topic provenance (PKG-01) --
+
+test("topicSource is 'show' for an absent override and 'episode' for a present one", () => {
+  /* Absent means exactly what episodeTopics means by absent (undefined/null), so
+     the label and its provenance can never disagree about whether an override
+     was authored.
+     KILLED BY: `return "episode";` as the body of topicSource. */
+  assert.equal(topicSource(undefined), "show");
+  assert.equal(topicSource(null), "show");
+  assert.equal(topicSource(["nature/earth-science"]), "episode");
+});
+
+test("merge writes topics_source 'episode' when edits.json carries topics, 'show' otherwise", () => {
+  /* Through the real script: an inherited label and a judged one are otherwise
+     indistinguishable on a written item, and that difference is what the
+     generated-playlist and Similar-shows builders need (#547).
+     KILLED BY: deleting the `topics_source: topicSource(edit.topics),` line in
+     merge.mjs — the key is then absent on both items. */
+  const { status, items } = runMerge({
+    resolved: [resolvedFromBackfill({ id: "sysk--a" }), resolvedFromBackfill({ id: "sysk--b", apple_track_id: 12 })],
+    edits: {
+      "sysk--a": { ...EDIT, topics: ["nature/earth-science"] },
+      "sysk--b": EDIT,
+    },
+  });
+  assert.equal(status, 0);
+  assert.deepEqual(items.map((i) => [i.id, i.topics_source]), [["sysk--a", "episode"], ["sysk--b", "show"]]);
+});
+
+test("merge writes explicit: null when the resolved episode has no flag", () => {
+  /* The key is always present so "unrated" is a stated value, not a missing
+     key (#560 §6.3); a rated episode keeps its flag.
+     KILLED BY: reverting `explicit: ep.explicit ?? null,` to `explicit: ep.explicit,`
+     in merge.mjs — JSON.stringify then drops the undefined key. */
+  const { status, items } = runMerge({
+    resolved: [resolvedFromBackfill({ id: "sysk--a", explicit: undefined }), resolvedFromBackfill({ id: "sysk--b", apple_track_id: 12, explicit: true })],
+    edits: { "sysk--a": EDIT, "sysk--b": EDIT },
+  });
+  assert.equal(status, 0);
+  assert.ok("explicit" in items[0], "an unflagged episode must still carry the explicit key");
+  assert.equal(items[0].explicit, null);
+  assert.equal(items[1].explicit, true);
+});
+
+// ------------------------------- general shows need their own topic (PKG-05a) --
+
+/* Founder ruling, docs/roadmap/README.md item 24: a show marked
+   `label_scope: "general"` ranges too widely for its show label to describe an
+   episode, so the nightly must author that episode's topics. Lex Fridman is the
+   fixture because it is the real catalogue's starkest general show: its
+   `taxonomy_node_ids` is `[]`, so there is no show label to inherit at all. */
+const LEX = { title: "Lex Fridman Podcast", label_scope: "general", taxonomy_node_ids: [] };
+const GENERAL_CATALOG = {
+  shows: [LEX, { title: "Engines of Our Ingenuity", taxonomy_node_ids: ["history/technology"] }],
+};
+const lexEpisode = (over = {}) =>
+  resolvedFromBackfill({ id: "lex--a", show: LEX.title, topics: [...LEX.taxonomy_node_ids], ...over });
+
+test("a general show's episode without an override is refused with TOPICS_REQUIRED_GENERAL", () => {
+  /* Through the real script with a fixture catalogue: the run is refused in the
+     same preflight as the copy rules, names the item, and writes nothing.
+     KILLED BY: deleting the `throw new TopicError("TOPICS_REQUIRED_GENERAL", ...)`
+     in episodeTopics — the episode then merges wearing its show's (here empty)
+     label and the run exits 0. */
+  assert.throws(
+    () => episodeTopics({ showTopics: [], nodeIds, id: "lex--a", labelScope: "general" }),
+    (e) => e instanceof TopicError && e.code === "TOPICS_REQUIRED_GENERAL"
+  );
+  const { status, stderr, items } = runMerge({
+    resolved: [lexEpisode()],
+    edits: { "lex--a": EDIT },
+    catalog: GENERAL_CATALOG,
+  });
+  assert.equal(status, 1);
+  assert.match(stderr, /COPY RULE FAILURES/);
+  assert.match(stderr, /lex--a: this show is marked label_scope "general"/);
+  assert.deepEqual(items, [], "a refused run must not write the catalogue");
+});
+
+test("a general show's episode with an override merges with topics_source 'episode'", () => {
+  /* The guard asks for the episode's own topics; it must not refuse an episode
+     that has them, nor touch a show that is not general.
+     KILLED BY: hoisting the guard above the absent-override check in
+     episodeTopics (`if (labelScope === "general") throw ...` unconditionally) —
+     the authored Lex episode is then refused and the run exits 1. */
+  const { status, stderr, items } = runMerge({
+    resolved: [
+      lexEpisode(),
+      resolvedFromBackfill({ id: "eng--b", show: "Engines of Our Ingenuity", apple_track_id: 12, topics: ["history/technology"] }),
+    ],
+    edits: { "lex--a": { ...EDIT, topics: ["engineering/ai-robotics"] }, "eng--b": EDIT },
+    catalog: GENERAL_CATALOG,
+  });
+  assert.equal(status, 0, stderr);
+  assert.deepEqual(
+    items.map((i) => [i.id, i.topics, i.topics_source]),
+    [["lex--a", ["engineering/ai-robotics"], "episode"], ["eng--b", ["history/technology"], "show"]]
+  );
 });

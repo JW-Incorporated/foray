@@ -193,6 +193,11 @@ cadence.
 
 ### ⚠️ THE BUILD NUMBER COLLIDES ON A RE-RUN — read this before automating anything
 
+*Status: written against the lifetime-`run_number` scheme. Consequence 2 was
+fixed by PR #821 (run-of-day count); consequence 1 is now refused outright by
+the first step of `ios`/`android` in `release.yml` (OPS-04). The text below is
+kept as the record of why.*
+
 `release.yml:172` computes `RUN_OF_DAY=$(( (github.run_number - 1) % 99 + 1 ))`
 and `version.mjs:139` makes `YYYYMMDDnn` from it. Despite the header at
 `release.yml:33-35` calling it a "clamp", it is a **modulo wrap**, and
@@ -292,8 +297,12 @@ can say so.
   summary log is also the one fetch allowed to fail: logs expire after 90 days,
   and G2's job-conclusion fallback does not need it.
 
-**Still open, not built here:** the build number is still derived from the
-lifetime `run_number` (§3's warning stands; the trigger simply never re-runs);
-§4's build stamp in diagnostics; and §5's second and third blind spots in the
+**Since closed:** the build number no longer rides the lifetime `run_number` —
+the run-of-day count landed in PR #821 (`tools/release/build-number.mjs`), and
+a re-run is now refused outright by the first step of `release.yml`'s `ios` and
+`android` jobs (OPS-04: `github.run_attempt != '1'` fails before checkout and
+names the fresh dispatch); the trigger never re-ran to begin with.
+
+**Still open, not built here:** §4's build stamp in diagnostics; and §5's second and third blind spots in the
 summary step itself — G1 already reds on every one of those runs, so they cost a
 worse message, not a missed alarm.

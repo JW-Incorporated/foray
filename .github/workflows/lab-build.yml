@@ -1,0 +1,259 @@
+name: lab-build
+
+# THE 4a LAB BUILD (Redesign 2026, docs/redesign-2026/PLAN.md, phase 0e).
+#
+# Builds a redesign branch as a SEPARATE app installed beside the real one:
+#   iOS     TestFlight app "4a Lab", bundle id ai.jwlabs.foura.lab    (Wyatt's iPhone)
+#   Android Play internal-testing app "4a Lab", applicationId
+#           ai.jwlabs.foura.lab, plus a debug APK as a run artifact   (Joey's phone)
+# The lab web bundle carries window.__FORAY_LAB__ = true, so it never signs a user
+# up, refreshes a token or POSTs an event to production (test/lab-flag.test.js).
+#
+# THIS FILE MUST NEVER SHIP THE REAL APP. Four independent refusals, each pinned
+# by tools/ci/lab-build-workflow.test.mjs (and each with its mutation):
+#   1. dispatch only: no `push`, no `schedule`, no `pull_request`. The only trigger
+#      is a founder pressing the button (or `gh workflow run lab-build.yml`).
+#   2. the dispatched workflow ref must be main, so the signing secrets only ever
+#      flow through THIS file as reviewed on main, never a branch's edited copy.
+#   3. `ref` (the branch to build) must be a redesign branch: `redesign/*` or
+#      `feature/redesign-2026*`. main, master, v* and tags are refused, and so is
+#      anything else, SHAs included.
+#   4. the checked-out ref must carry the lab build path (the `lab` input on both
+#      composite actions). An older branch whose actions ignore `lab` would build
+#      the REAL application id and upload it to Play; that is refused before the
+#      action runs.
+#
+# WHY THIS FILE IS ALSO ON main. workflow_dispatch only runs workflows that exist
+# on the default branch. It is a governed path (.github/workflows/), so its PR is
+# not auto-merged and needs the `founder-approved` label (HUMAN-ACTIONS.md).
+#
+# SECRETS. The same iOS certificate and App Store Connect key and the same Android
+# upload key and Play service account as release.yml, plus the lab's own
+# IOS_LAB_PROVISIONING_PROFILE_BASE64. HA #115 moves the signing secrets behind a
+# protected `release` environment; that environment does not exist yet, and naming
+# a missing environment would auto-create it unprotected, which would pre-empt that
+# item. When #115 lands, add `environment: release` to the `ios` and `android` jobs
+# (its branch rule, main and v*, matches refusal 2 above, because an environment's
+# branch rule is checked against the workflow's ref, not against `ref`).
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "The redesign branch to build: redesign/<name> or feature/redesign-2026[-<direction>]. main, v* and tags are refused."
+        type: string
+        required: true
+      platforms:
+        description: "Which lab app to build and upload."
+        type: choice
+        options: [both, ios, android]
+        default: both
+
+concurrency:
+  group: lab-build
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      allowed: ${{ steps.guard.outputs.allowed }}
+    steps:
+      - name: Refuse anything that could ship the real app
+        id: guard
+        env:
+          WORKFLOW_REF: ${{ github.ref }}
+          INPUT_REF: ${{ inputs.ref }}
+          PLATFORMS: ${{ inputs.platforms }}
+        run: |
+          set -euo pipefail
+          refuse() { echo "::error::$1"; echo "allowed=false" >> "$GITHUB_OUTPUT"; exit 1; }
+
+          [ "$WORKFLOW_REF" = "refs/heads/main" ] \
+            || refuse "dispatch this workflow from main (got '$WORKFLOW_REF'): the signing secrets must only flow through the copy of this file that is on main. Pass the branch to build as the 'ref' input."
+
+          case "$PLATFORMS" in ios|android|both) ;; *) refuse "platforms must be ios, android or both (got '$PLATFORMS')" ;; esac
+
+          REF="$INPUT_REF"
+          case "$REF" in
+            ""|*[[:space:]]*|*..*|*\\*|*~*|*^*|*:*|*\?*|*\**|*\[*) refuse "ref '$REF' is empty or not a plain branch name" ;;
+            refs/tags/*) refuse "ref '$REF' is a tag: the lab never builds a tag" ;;
+          esac
+          SHORT="${REF#refs/heads/}"
+          case "$SHORT" in
+            main|master|HEAD) refuse "ref '$REF' is the real app's branch: the lab must never ship the real app" ;;
+            v*) refuse "ref '$REF' looks like a release (v*): the lab must never ship the real app" ;;
+            redesign/*|feature/redesign-2026|feature/redesign-2026-*) ;;
+            *) refuse "ref '$REF' is not a redesign branch (redesign/* or feature/redesign-2026*)" ;;
+          esac
+          echo "allowed=true" >> "$GITHUB_OUTPUT"
+          echo "Building '$SHORT' as 4a Lab for: $PLATFORMS"
+
+  version:
+    needs: guard
+    if: needs.guard.outputs.allowed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      marketing_version: ${{ steps.pair.outputs.marketing_version }}
+      build_number: ${{ steps.pair.outputs.build_number }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: The version pair (mobile/VERSION, YYYYMMDDnn with nn = this run's rank among today's lab-build runs)
+        id: pair
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          CREATED_AT=$(gh api "repos/$REPO/actions/runs/$RUN_ID" --jq '.created_at')
+          DAY="${CREATED_AT%%T*}"
+          # The listing can lag behind the run that is executing; wait for this run to show up.
+          for attempt in 1 2 3 4 5 6 7 8; do
+            gh api --paginate "repos/$REPO/actions/workflows/lab-build.yml/runs?created=$DAY&per_page=100" \
+              --jq '.workflow_runs[].id' > runs-today.txt
+            if grep -qx "$RUN_ID" runs-today.txt; then break; fi
+            echo "::warning::run $RUN_ID not yet in the runs listing for $DAY (attempt $attempt); re-listing in 15s"
+            sleep 15
+          done
+          grep -qx "$RUN_ID" runs-today.txt || { echo "::error::this run never appeared in the listing"; exit 1; }
+          RUN_OF_DAY=$(awk -v me="$RUN_ID" '$1 + 0 <= me + 0' runs-today.txt | wc -l | tr -d ' ')
+          if [ "$RUN_OF_DAY" -lt 1 ] || [ "$RUN_OF_DAY" -gt 99 ]; then
+            echo "::error::run-of-day $RUN_OF_DAY is outside 1-99; dispatch again tomorrow"; exit 1
+          fi
+          OUT=$(node tools/mobile/version.mjs pair --run-of-day "$RUN_OF_DAY" --now "$CREATED_AT")
+          echo "$OUT"
+          echo "marketing_version=$(echo "$OUT" | sed -n 's/^MARKETING_VERSION=//p')" >> "$GITHUB_OUTPUT"
+          echo "build_number=$(echo "$OUT" | sed -n 's/^BUILD_NUMBER=//p')" >> "$GITHUB_OUTPUT"
+
+  ios:
+    needs: [guard, version]
+    if: needs.guard.outputs.allowed == 'true' && (inputs.platforms == 'ios' || inputs.platforms == 'both')
+    runs-on: macos-latest
+    timeout-minutes: 60
+    outputs:
+      state: ${{ steps.ios.outputs.state }}
+      uploaded: ${{ steps.ios.outputs.uploaded }}
+    steps:
+      - name: A re-run replays attempt 1's build number; dispatch a fresh run instead
+        if: github.run_attempt != '1'
+        run: |
+          echo "::error::a re-run would ship the build number attempt 1 already used. Dispatch a fresh run."
+          exit 1
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+          filter: blob:none
+
+      - name: The checked-out ref must carry the lab build path
+        run: |
+          set -euo pipefail
+          test -f tools/mobile/lab-variant.mjs || { echo "::error::this ref has no tools/mobile/lab-variant.mjs; merge the lab build path (redesign/p0-lab) into it first"; exit 1; }
+          grep -q "inputs.lab" .github/actions/ios-archive/action.yml || { echo "::error::this ref's ios-archive action has no 'lab' input; it would build the REAL bundle id"; exit 1; }
+
+      - uses: ./.github/actions/ios-archive
+        id: ios
+        with:
+          marketing_version: ${{ needs.version.outputs.marketing_version }}
+          build_number: ${{ needs.version.outputs.build_number }}
+          lab: "true"
+          app_id: ai.jwlabs.foura.lab
+          ios_dist_cert_p12_base64: ${{ secrets.IOS_DIST_CERT_P12_BASE64 }}
+          ios_dist_cert_password: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
+          ios_provisioning_profile_base64: ${{ secrets.IOS_LAB_PROVISIONING_PROFILE_BASE64 }}
+          apple_team_id: ${{ secrets.APPLE_TEAM_ID }}
+          app_store_connect_key_id: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          app_store_connect_issuer_id: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          app_store_connect_private_key_base64: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}
+
+  android:
+    needs: [guard, version]
+    if: needs.guard.outputs.allowed == 'true' && (inputs.platforms == 'android' || inputs.platforms == 'both')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    outputs:
+      play_state: ${{ steps.android.outputs.play_state }}
+      uploaded: ${{ steps.android.outputs.uploaded }}
+      signed: ${{ steps.android.outputs.signed }}
+    steps:
+      - name: A re-run replays attempt 1's build number; dispatch a fresh run instead
+        if: github.run_attempt != '1'
+        run: |
+          echo "::error::a re-run would ship the build number attempt 1 already used. Dispatch a fresh run."
+          exit 1
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+          filter: blob:none
+
+      - name: The checked-out ref must carry the lab build path
+        run: |
+          set -euo pipefail
+          test -f tools/mobile/lab-variant.mjs || { echo "::error::this ref has no tools/mobile/lab-variant.mjs; merge the lab build path (redesign/p0-lab) into it first"; exit 1; }
+          grep -q "inputs.lab" .github/actions/android-bundle/action.yml || { echo "::error::this ref's android-bundle action has no 'lab' input; it would upload the REAL package to Play"; exit 1; }
+
+      - uses: ./.github/actions/android-bundle
+        id: android
+        with:
+          marketing_version: ${{ needs.version.outputs.marketing_version }}
+          build_number: ${{ needs.version.outputs.build_number }}
+          lab: "true"
+          app_id: ai.jwlabs.foura.lab
+          artifact_name: foray-lab-android-release
+          android_keystore_b64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          android_keystore_password: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          android_key_alias: ${{ secrets.ANDROID_KEY_ALIAS }}
+          play_service_account_json: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+
+  summary:
+    needs: [version, ios, android]
+    if: always() && needs.version.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: One table - which lab apps were built and uploaded
+        env:
+          REF: ${{ inputs.ref }}
+          MARKETING_VERSION: ${{ needs.version.outputs.marketing_version }}
+          BUILD_NUMBER: ${{ needs.version.outputs.build_number }}
+          IOS_RESULT: ${{ needs.ios.result }}
+          IOS_STATE: ${{ needs.ios.outputs.state }}
+          IOS_UPLOADED: ${{ needs.ios.outputs.uploaded }}
+          ANDROID_RESULT: ${{ needs.android.result }}
+          ANDROID_STATE: ${{ needs.android.outputs.play_state }}
+          ANDROID_UPLOADED: ${{ needs.android.outputs.uploaded }}
+        run: |
+          set -euo pipefail
+          {
+            echo "## 4a Lab ${MARKETING_VERSION} (build ${BUILD_NUMBER}) from ${REF}"
+            echo
+            echo "| | job | credential state | uploaded |"
+            echo "|---|---|---|---|"
+            echo "| iOS / TestFlight (ai.jwlabs.foura.lab) | ${IOS_RESULT} | ${IOS_STATE:-not reached} | ${IOS_UPLOADED:-false} |"
+            echo "| Android / Play internal (ai.jwlabs.foura.lab) | ${ANDROID_RESULT} | ${ANDROID_STATE:-not reached} | ${ANDROID_UPLOADED:-false} |"
+            echo
+            echo "The Android debug APK is the run artifact foray-lab-android-apk. It cannot update a Play-installed lab build (different signature): uninstall one before installing the other."
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "${IOS_STATE:-}" = "partial" ] || [ "${ANDROID_STATE:-}" = "partial" ]; then
+            echo "::error::a half-configured signing/upload credential set was detected; see the job logs."
+            exit 1
+          fi

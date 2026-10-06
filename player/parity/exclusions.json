@@ -141,6 +141,10 @@
       "reason": "dom-only",
       "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
     },
+    "client.js sends both Foray paths through the seek-policy switch": {
+      "reason": "text-pin",
+      "why": "It pins client.js's page-side wiring (resolve, playForay and attachForay take their options from foray-resolve.js's helpers); the engine receives allowAdPad through the setQueueFromForay options and has no client.js to pin."
+    },
     "client.js spends the gesture on the element BEFORE its first await": {
       "reason": "webview-only",
       "why": "WebKit lifts an <audio> element's autoplay restriction only for a play() made inside a user gesture's task (#225), so the page must reach the element with nothing awaited first. The native engine starts AVPlayer from a bridge command with an active session; there is no gesture to spend."
@@ -358,6 +362,10 @@
     "D2: keepPitch sets the prefixed flags only where the engine has them, and never throws": {
       "reason": "dom-only",
       "why": "`preservesPitch` and its vendor-prefixed flags on the HTMLMediaElement. AVDeck keeps pitch at every rate by setting `audioTimePitchAlgorithm = .timeDomain` on every item it makes (AVDeck.load)."
+    },
+    "NE-45j: the web lane prepares nothing across a narration seam — prefetch stays parked": {
+      "reason": "webview-only",
+      "why": "Pins that the WEB lane stays parked: the production HtmlAudioBackend (no second element) is never asked to prefetch across a narration seam, from a window or from the line-start warm. The native standby deck does prepare there; that rule is the prepare-narration family (NE-45s)."
     }
   },
   "interlude": {
@@ -797,6 +805,14 @@
       "reason": "webview-only",
       "why": "The ordering trap between html-audio-backend.js's persistent `error` listener and a load's own rejection: the listener fires first, so the page must leave the report to the load. AVDeck reports one `.failed` (or `.deadlineExceeded`) per load token and nothing else, and the core decides the fallback from that one event (fallBackToScript; fixture manager-foray/a-first-line-whose-file-fails-is-spoken)."
     },
+    "§16: a media error during a Foray clip's load (web lane) is retried, not reported idle first": {
+      "reason": "webview-only",
+      "why": "The same ordering trap as §14's, for a Foray clip: html-audio-backend.js's persistent `error` listener fires before the load's own rejection, so the page leaves the report to the load (`_clipLoadInFlight`). AVDeck reports one `.failed` (or `.deadlineExceeded`) per load token and nothing else, and the core retries or steps over from that one event (retryOrSkipClip; ClipLoadRetryTests.testAClipWhoseLoadFailsIsRetriedToo, fixture manager-foray/clip-load)."
+    },
+    "§16: a media error on a plain episode's load still stops the player (not a clip)": {
+      "reason": "webview-only",
+      "why": "The other half of the §16 ordering-trap fix: only a Foray clip's load holds back html-audio-backend.js's early `error` report, so a plain episode's media error still stops through `_onBackendError`. AVDeck has no early report to hold back; the core's plain-episode stop is ClipLoadRetryTests.testAPlainEpisodeWhoseLoadFailsIsNotRetried."
+    },
     "§14: a refused play() of a rendered line falls back too": {
       "reason": "webview-only",
       "why": "An HTMLMediaElement `play()` promise rejected by the browser's autoplay policy. AVPlayer has no play promise and the engine's session is active before any play (plan §4.4); a file that fails while sounding is AVDeck's `.failed`, which falls back the same way (fixture manager-foray/a-line-that-fails-while-sounding-is-spoken-from-its-first-word)."
@@ -817,7 +833,7 @@
       "reason": "webview-only",
       "why": "Section 15 is the web lane's narration warm: HtmlAudioBackend.warmNarration fetches the next rendered file on a spare muted element that is never played or promoted. queue-manager.js checks the capability and says so: a backend without it (every fake, the native engine) behaves exactly as before. The engine's own prefetch is NE-32's DeckPair standby, pinned by the deck and prepare families and DeckPairTests."
     },
-    "§15: a skip past the warmed line cancels it, and the new next line is warmed": {
+    "§15: a jump past the warmed line cancels it, and the new next line is warmed": {
       "reason": "webview-only",
       "why": "Section 15 is the web lane's narration warm: HtmlAudioBackend.warmNarration fetches the next rendered file on a spare muted element that is never played or promoted. queue-manager.js checks the capability and says so: a backend without it (every fake, the native engine) behaves exactly as before. The engine's own prefetch is NE-32's DeckPair standby, pinned by the deck and prepare families and DeckPairTests."
     },
@@ -840,6 +856,14 @@
     "§15: pausing and resuming the clip before a warmed line keeps the warm — no refetch": {
       "reason": "webview-only",
       "why": "Section 15 is the web lane's narration warm: HtmlAudioBackend.warmNarration fetches the next rendered file on a spare muted element that is never played or promoted. queue-manager.js checks the capability and says so: a backend without it (every fake, the native engine) behaves exactly as before. The engine's own prefetch is NE-32's DeckPair standby, pinned by the deck and prepare families and DeckPairTests."
+    },
+    "a backend with no prefetch is never asked for one": {
+      "reason": "js-module-shape",
+      "why": "A backend without a prefetch method, and the manager's refusal to wire onPrefetchWindow to it (a capability check at construction). The native engine has one deck type, DeckPair, and its standby always prepares (the prepare and deck families, DeckPairTests), so there is no backend without prefetch for it to leave unasked. What the manager asks for when it does warm is the manager-remainder warming cases (NE-39j)."
+    },
+    "the position timer also runs while the ELEMENT plays behind a paused machine (founder report 1, 2026-09-22)": {
+      "reason": "webview-only",
+      "why": "On the web the lock screen or the car can resume the <audio> element directly, behind a machine that still says paused, so the periodic writer has to follow the element as well as the state. In native mode every remote press is an engine command (plan §4.5; EngineCore's remote handlers, the media family) and the deck is the engine's own, so its belief and its deck cannot part that way. The native rule, that the writer runs only while playing, is the manager-remainder position-timer case."
     }
   },
   "queue-state": {
@@ -850,6 +874,12 @@
     "reduce never mutates the state it is given": {
       "reason": "js-module-shape",
       "why": "Pins that the JS reducer leaves its argument object untouched. The Swift PlayerQueueState is an enum value type passed by value, so a reducer that mutates its input cannot be written; every transition's output is pinned by the queue-state family instead."
+    }
+  },
+  "route-resume": {
+    "neither queue-manager.js nor client.js imports route-resume.js: the JS lanes never resume on a reconnect": {
+      "reason": "js-module-shape",
+      "why": "Pins that player/queue-manager.js and player/client.js do not import or name route-resume.js, so the web and Android JS lanes keep 'a reconnect never resumes' (player-core-10); the native engines have neither file, and their port of the rule is checked by the route-resume family instead."
     }
   },
   "seam-gap": {
@@ -863,6 +893,10 @@
     }
   },
   "seek-policy": {
+    "AD_PAD_SHIPPED is the one switch and it is off until D5": {
+      "reason": "js-module-shape",
+      "why": "Pins the value of AD_PAD_SHIPPED, a page-side constant (DAI-07a): the page reads it through foray-resolve.js's forayQueueOptions/forayResolveOptions and sends it to the engine as playForay's allowAdPad argument (engine-contract.js), so the engine receives the decision and never holds the switch. What seekPrecision does with allowAdPad on or off is already pinned by the existing pad tests and fixtured (seek-policy/seek-precision)."
+    },
     "a padded timestamp still renders as an estimate, never as a clock time": {
       "reason": "text-pin",
       "why": "Pins formatTimestamp's wording for a PADDED time. That a padded segment is playable but never exact is fixtured (seek-policy/can-play-padded-not-exact). The page renders every timestamp a listener sees (chapter lists, the scrubber, spoken answers). The engine carries seconds and a precision token (seekPrecision, fixtured) and never formats one, so this wording has no Swift meaning."
@@ -886,6 +920,10 @@
     "formatTimestamp renders exact times to the second": {
       "reason": "text-pin",
       "why": "Pins formatTimestamp's clock strings. The page renders every timestamp a listener sees (chapter lists, the scrubber, spoken answers). The engine carries seconds and a precision token (seekPrecision, fixtured) and never formats one, so this wording has no Swift meaning."
+    },
+    "publishes window.ForaySeekPolicy only where a window exists": {
+      "reason": "js-module-shape",
+      "why": "Pins the guarded window hand-off from this module to app.js, a classic page script that cannot import it (CH-1, #1071: chapter times and timestamp links read the rule from here). A browser global between two page scripts; the engine imports nothing from the page and has no window, so it has no Swift meaning. seekPrecision's answers are fixtured (seek-policy/seek-precision)."
     }
   },
   "transport-policy": {
@@ -1175,23 +1213,11 @@
     },
     "client.js actually passes a TTS bridge into the queue manager": {
       "reason": "js-module-shape",
-      "why": "client.js's wiring of the page's shared bridge instance (into the queue manager, and the Kokoro probe through the same instance). In native mode the engine owns its narrator; the page's wiring is pinned here and by native-mode.test.js, not reimplemented."
+      "why": "client.js's wiring of the page's shared bridge instance into the queue manager. In native mode the engine owns its narrator; the page's wiring is pinned here and by native-mode.test.js, not reimplemented."
     },
-    "kokoroProbe delegates to the module, through the same memoised load": {
+    "the bridge carries no Kokoro probe delegate, and client.js loads no probe (#1076)": {
       "reason": "js-module-shape",
-      "why": "The developer-only Kokoro probe's delegate on the page's bridge (kokoroProbe through the memoised module). It is a ForayTts plugin method the page calls; the engine neither probes nor exposes it."
-    },
-    "an older shell build — a module with no kokoroProbe — answers engine-absent": {
-      "reason": "js-module-shape",
-      "why": "The developer-only Kokoro probe's delegate on the page's bridge (kokoroProbe through the memoised module). It is a ForayTts plugin method the page calls; the engine neither probes nor exposes it."
-    },
-    "no module at all is no-bridge, and the probe still resolves": {
-      "reason": "js-module-shape",
-      "why": "The developer-only Kokoro probe's delegate on the page's bridge (kokoroProbe through the memoised module). It is a ForayTts plugin method the page calls; the engine neither probes nor exposes it."
-    },
-    "client.js runs the probe through the SAME shared bridge instance": {
-      "reason": "js-module-shape",
-      "why": "client.js's wiring of the page's shared bridge instance (into the queue manager, and the Kokoro probe through the same instance). In native mode the engine owns its narrator; the page's wiring is pinned here and by native-mode.test.js, not reimplemented."
+      "why": "A pin that the page's bridge no longer carries the developer-only Kokoro probe delegates (kokoroProbe, onProbePass) and that client.js no longer imports player/kokoro-probe.js (founder ruling 2026-10-05, issue #1076). The native engine never probed or exposed either; this is a rule about the JS module's shape, not about narration."
     },
     "a transport call before anything has spoken does NOT load the module": {
       "reason": "js-module-shape",

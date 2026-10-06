@@ -375,63 +375,24 @@ test("client.js actually passes a TTS bridge into the queue manager", () => {
     "the queue manager is built without the shared ttsBridge — a script-only narration item cannot be spoken");
 });
 
-/* ---------- K-01: the probe delegate (docs/bundled-voice-plan.md) ---------- */
+/* ---------- #1076: the on-device Kokoro probe left the app bundle ---------- */
 
-test("kokoroProbe delegates to the module, through the same memoised load", () => {
-  /* One resolution per page, not one per call — the rule this file's header
-     states for `speak`. A probe that re-resolved the module would be measuring
-     a DIFFERENT instance of the plugin from the one narration speaks through,
-     and "which build answered?" is one of the questions the probe exists to
-     settle.
-     MUTATION: give `kokoroProbe` its own `loadModule()` call — `loads` becomes
-     2 and this goes red. */
-  let loads = 0;
-  const mod = {
-    speak: async () => ({ ok: true }),
-    kokoroProbe: async (opts) => ({ ok: true, sawPassage: opts.passage }),
-  };
-  const bridge = createTtsBridge({ load: async () => { loads++; return mod; }, log: () => {} });
-  return bridge.speak("x")
-    .then(() => bridge.kokoroProbe({ passage: { lines: [] } }))
-    .then((out) => {
-      assert.equal(loads, 1, "one module resolution for both calls");
-      assert.equal(out.ok, true);
-      assert.deepEqual(out.sawPassage, { lines: [] });
-    });
-});
-
-test("an older shell build — a module with no kokoroProbe — answers engine-absent", async () => {
-  /* THE COMMON CASE, not a defensive branch: every shell built before this card
-     carries a flattened copy of `foray-tts.js` with no probe in it at all, the
-     same hazard `listVoices`'s own comment states for the same reason.
-     MUTATION: call `mod.kokoroProbe(opts)` without the typeof guard — a founder
-     tapping Run gets a TypeError instead of a sentence. */
+test("the bridge carries no Kokoro probe delegate, and client.js loads no probe (#1076)", () => {
+  /* Founder ruling 2026-10-05 (issue #1076): narration renders centrally
+     (docs/DECISIONS.md 2026-09-28), so the on-device probe and everything
+     that only existed to reach it left the bundle. A delegate left behind
+     here is dead weight in every install, and a page that could still call
+     `kokoroProbe` would load the plugin module at boot for nothing.
+     MUTATION: restore `async kokoroProbe(opts = {}) { ... }` (or
+     `onProbePass`) on the object `createTtsBridge` returns — red.
+     MUTATION: restore `import { runKokoroProbe, ... } from "./kokoro-probe.js"`
+     in client.js — red. */
   const bridge = createTtsBridge({ load: async () => ({ speak: async () => ({ ok: true }) }), log: () => {} });
-  const out = await bridge.kokoroProbe({});
-  assert.equal(out.ok, false);
-  assert.equal(out.reason, "engine-absent");
-});
-
-test("no module at all is no-bridge, and the probe still resolves", async () => {
-  /* MUTATION: throw instead of resolving — the drawer's click handler then
-     carries an unhandled rejection (#225's lesson). */
-  const bridge = createTtsBridge({ load: async () => { throw new Error("404"); }, log: () => {} });
-  const out = await bridge.kokoroProbe({});
-  assert.equal(out.ok, false);
-  assert.equal(out.reason, "no-bridge");
-});
-
-test("client.js runs the probe through the SAME shared bridge instance", () => {
-  /* Same source-level guard, same reason as the `tts: ttsBridge` pin above:
-     the failure being caught is a second `createTtsBridge()` that nothing else
-     in the repo would notice.
-     MUTATION: build a fresh bridge inside `runVoiceProbe`. */
+  assert.equal(bridge.kokoroProbe, undefined, "no kokoroProbe delegate on the bridge");
+  assert.equal(bridge.onProbePass, undefined, "no onProbePass delegate on the bridge");
   const src = fs.readFileSync(path.join(HERE, "client.js"), "utf8");
-  const fn = src.slice(src.indexOf("async runVoiceProbe("));
-  const body = fn.slice(0, fn.indexOf("\n  },"));
-  assert.match(body, /runKokoroProbe\(\{\s*tts: ttsBridge,/,
-    "runVoiceProbe must use the shared ttsBridge");
-  assert.ok(!body.includes("createTtsBridge("), "and must not build a second one");
+  assert.ok(!src.includes("kokoro-probe"), "client.js names no kokoro-probe module or passage");
+  assert.ok(!fs.existsSync(path.join(HERE, "kokoro-probe.js")), "player/kokoro-probe.js is gone");
 });
 
 /* ---------------------------------------------- L-05: pause, resume, stop

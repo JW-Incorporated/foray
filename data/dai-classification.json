@@ -1,5 +1,5 @@
 {
-  "built_at": "2026-08-19T16:05:06.346Z",
+  "built_at": "2026-10-05T11:26:50.093Z",
   "shows": {
     "75092679": {
       "show": "Basic Brewing Radio",
@@ -157,6 +157,17 @@
       "resolved_host": "dovetail-cdn.prxu.org",
       "checked_at": "2026-07-26T19:27:13.143Z"
     },
+    "288838352": {
+      "show": "The Brewing Network Presents |  Brew Strong",
+      "dai": true,
+      "reason": "host:traffic.megaphone.fm (in redirect chain; landed on dcs-cached.megaphone.fm)",
+      "resolved_host": "dcs-cached.megaphone.fm",
+      "resolved_chain": [
+        "traffic.megaphone.fm",
+        "dcs-cached.megaphone.fm"
+      ],
+      "checked_at": "2026-10-05T10:21:20.260Z"
+    },
     "290783428": {
       "show": "Planet Money",
       "dai": true,
@@ -248,12 +259,34 @@
       "resolved_host": "stitcher.simplecastaudio.com",
       "checked_at": "2026-07-26T19:22:14.252Z"
     },
+    "398500515": {
+      "show": "BeerSmith Home and Beer Brewing Podcast",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "resolved_chain": [
+        "traffic.libsyn.com",
+        "content.libsyn.com"
+      ],
+      "checked_at": "2026-10-05T10:21:11.694Z"
+    },
     "409287913": {
       "show": "How Did This Get Made?",
       "dai": true,
       "reason": "host:stitcher.simplecastaudio.com",
       "resolved_host": "stitcher.simplecastaudio.com",
       "checked_at": "2026-07-26T19:26:26.221Z"
+    },
+    "413879919": {
+      "show": "Wine for Normal People",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "resolved_chain": [
+        "traffic.libsyn.com",
+        "content.libsyn.com"
+      ],
+      "checked_at": "2026-10-05T10:21:15.391Z"
     },
     "490027390": {
       "show": "The Enormocast: the climbing podcast",
@@ -490,13 +523,24 @@
       "resolved_host": "episodes.captivate.fm",
       "checked_at": "2026-07-26T19:21:28.049Z",
       "ad_inflation": {
-        "verdict": "unknown",
+        "verdict": "excess-audio",
         "median_ratio": 0.758,
         "episodes_probed": 5,
         "measured_at": "2026-08-23T04:24:10.666Z",
         "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
         "undersized_samples": 4,
-        "note": "delivered bytes fall short of the feed-declared length, so the declared length does not describe the file we receive and the ratio cannot answer the ad question",
+        "decode": {
+          "verdict": "excess-audio",
+          "episode": "From Drips to Disasters: Stop Water Damage Before It Starts!",
+          "decoded_sec": 2593.33,
+          "declared_sec": 2280,
+          "transcript_end_sec": 2279.2,
+          "beyond_declared_sec": 313.33,
+          "beyond_transcript_sec": 314.13,
+          "source": "data/decode-and-compare.json (id: around-the-house)",
+          "ruling": "HA #24, 2026-09-30"
+        },
+        "note": "ratio 0.758 was unknown (the declared length is computed, ~192.03 kbps x duration, so the ratio cannot answer the ad question); a full decode then found 2593.33s of audio against a feed declaring 2280s and a transcript ending at 2279.2s, i.e. +313s the transcript does not describe. Detail in data/decode-and-compare.json. The show stays in the catalog.",
         "samples": [
           {
             "item_id": "around-the-house-eric-g--healthy-home",
@@ -1231,6 +1275,17 @@
       "resolved_host": "injector.simplecastaudio.com",
       "checked_at": "2026-07-26T19:24:37.749Z"
     },
+    "1168716155": {
+      "show": "Wine Enthusiast Podcast",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "hosting-media.riverside.com",
+      "resolved_chain": [
+        "api.riverside.com",
+        "hosting-media.riverside.com"
+      ],
+      "checked_at": "2026-10-05T10:21:17.952Z"
+    },
     "1171270672": {
       "show": "Twenty Thousand Hertz",
       "dai": true,
@@ -1743,6 +1798,17 @@
       "resolved_host": "dcs-spotify.megaphone.fm",
       "checked_at": "2026-07-26T19:23:36.284Z"
     },
+    "1457878143": {
+      "show": "The Bourbon Road",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "resolved_chain": [
+        "traffic.libsyn.com",
+        "content.libsyn.com"
+      ],
+      "checked_at": "2026-10-05T10:21:10.418Z"
+    },
     "1459158254": {
       "show": "MRS Bulletin Materials News Podcast",
       "dai": true,
@@ -1929,6 +1995,29 @@
           }
         ]
       }
+    },
+    "1498387060": {
+      "show": "The Bourbon Life",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "resolved_chain": [
+        "traffic.libsyn.com",
+        "content.libsyn.com"
+      ],
+      "checked_at": "2026-10-05T10:21:13.034Z"
+    },
+    "1500155339": {
+      "show": "Beer In Front",
+      "dai": true,
+      "reason": "host:api.spreaker.com (in redirect chain; landed on d1bxy2pveef3fq.cloudfront.net)",
+      "resolved_host": "d1bxy2pveef3fq.cloudfront.net",
+      "resolved_chain": [
+        "pdcn.co",
+        "api.spreaker.com",
+        "d1bxy2pveef3fq.cloudfront.net"
+      ],
+      "checked_at": "2026-10-05T10:21:22.199Z"
     },
     "1503540842": {
       "show": "Black Box Down",
@@ -2339,6 +2428,17 @@
       "resolved_host": "dcs-cached.megaphone.fm",
       "checked_at": "2026-07-26T19:25:51.811Z"
     },
+    "1617481013": {
+      "show": "Wine Talks with Paul K.",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "resolved_chain": [
+        "traffic.libsyn.com",
+        "content.libsyn.com"
+      ],
+      "checked_at": "2026-10-05T10:21:13.975Z"
+    },
     "1626752040": {
       "show": "The Engineering History Podcast",
       "dai": false,
@@ -2549,6 +2649,17 @@
           }
         ]
       }
+    },
+    "1781687341": {
+      "show": "Wine Educate: Wine Lessons, Travel & WSET Study Prep",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "resolved_chain": [
+        "traffic.libsyn.com",
+        "content.libsyn.com"
+      ],
+      "checked_at": "2026-10-05T10:21:16.639Z"
     },
     "1795483480": {
       "show": "Good Hang with Amy Poehler",

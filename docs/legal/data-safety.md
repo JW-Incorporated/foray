@@ -110,7 +110,12 @@ Applies to **User IDs**, **App interactions**, **Other user-generated content**
 and **Other actions** (the four "Yes" rows above).
 
 - **Is this data processed ephemerally?** **No.** Rows are stored in the `events`
-  table for later curation work.
+  table for later curation work. That table lives in our Supabase project
+  (id `qjdllvqdcgacvujhclny`), hosted in **AWS `us-east-1` — US East (N.
+  Virginia), United States**; `privacy-policy.md` §3 ("The anonymous account")
+  states the same fact to users. Neither store's form asks for the region, but
+  Play's and Apple's policy-link checks expect the published policy to name
+  where data is stored, so the two documents must keep saying the same thing.
 - **Is collection required or optional?** **Required** for App interactions,
   User IDs and Other actions — the app syncs without asking. **Optional** for
   Other user-generated content (the note): it is only sent if you type one, and
@@ -202,6 +207,11 @@ even where the form has no checkbox. **Do not let the absence of a form field
 become an absence of disclosure** — that is the one move that would turn a
 defensible position into a misleading one.
 
+Chapters take the same path (#1071): in the native app, opening an episode can
+make the device fetch the episode's chapter list, or read the start of its audio
+file, directly from the publisher's host (`app.js:readDeviceChapters()`), so
+this section's answer applies unchanged — we receive nothing.
+
 One consequence to keep straight when filling in the forms: "4a contains no ad
 tracking" is true of **our** code and is the right answer to the advertising
 questions. It is not the same statement as "no advertising-related party sees
@@ -237,7 +247,7 @@ drawn.
     no name, email, phone number or password, with its `app_users` row and all its
     events deleted, and the device's token discarded so the next event creates a
     **new** anonymous account. Removing the empty shell is a server-side job:
-    the 90-day retention job in `supabase/0004_event_retention.sql` (which
+    the 90-day retention job in `supabase/0006_event_retention.sql` (which
     retires `HUMAN-ACTIONS.md` #14) once it is applied. It also cannot delete what the publisher CDNs and
     ad-attribution prefixes already observed — see §A6; the control's own UI says
     so rather than implying otherwise.
@@ -245,19 +255,22 @@ drawn.
     to Play only in that a deletion control that fires accidentally is its own
     kind of data-loss complaint.
 - **Independent security review?** **No.** None has been done. Do not check it.
-- **Committed to Play Families policy?** > TODO(founder) — a listing decision.
-  The app is general-audience and collects no age (policy §6).
+- **Committed to Play Families policy?** **No** (founder ruling, 2026-09-30).
+  The app is general-audience, target audience 18+, and collects no age
+  (policy §6). Answer the IARC questionnaire truthfully (expect Teen); Apple
+  age rating is 12+.
 
 ## A8. Data deletion + policy URLs
 
 The **in-app** half of this is now built (see A7). The form additionally wants a
 **public URL** describing deletion, which is a hosting task, not a code one.
 
-> TODO(founder): the **privacy policy URL** and the **data-deletion URL** the form
-> requires. `privacy-policy.md` must be hosted somewhere public first — a path in
-> a GitHub repo is not an acceptable answer for a store listing. Its §7 is already
-> written as the deletion page: it describes the control, the order it works in,
-> and what it cannot reach.
+**Privacy policy URL:** https://jwlabs.ai/4a/privacy/
+**Data-deletion URL:** https://jwlabs.ai/4a/privacy/#7 (that page's section 7
+anchor; no separate page — founder ruling, 2026-09-30). `privacy-policy.md` §7
+is written as the deletion page: it describes the control, the order it works
+in, and what it cannot reach. The page must be republished from this file
+before the form is submitted.
 
 ---
 
@@ -330,14 +343,47 @@ Applies to **User ID**, **Product Interaction** and **Other User Content**.
   `app.js:trySyncEvents()` for the event insert, `app.js:sbDeleteOwnRows()` for
   the deletion — and `package.json` declares no dependencies and no build
   step). So no SDK manifest is inherited **today**.
-  - > TODO(founder): if the native shell ever adds the Supabase Swift SDK or any
-    Capacitor plugin, each needs its own manifest entry. `docs/marketing/05-legal-risk-memo.md`
-    flagged a Supabase-SDK manifest as a checklist item; that item is **not
-    applicable to the current code** and would only become applicable then.
-  - **Required Reason APIs:** the client uses none of the categories Apple
-    requires a declared reason for (no file-timestamp, disk-space, active-keyboard
-    or user-defaults access from native code). A Capacitor shell should be
-    re-checked against the list, since plugins can pull them in.
+  - **The native shell has an app-target manifest** (GitHub issue #948).
+    `cap add ios` generates none, so `tools/mobile/inject-privacy-manifest.mjs`
+    writes `App/PrivacyInfo.xcprivacy` and adds it to the app target's Copy
+    Bundle Resources phase on both iOS build paths (`ios-build.yml` and the
+    `ios-archive` action that makes the TestFlight/App Store build), then
+    reads it back out of the built `App.app`. It says `NSPrivacyTracking`
+    false, no tracking domains, and the three collected types of B2/B3 (User
+    ID, Product Interaction, Other User Content: linked, not tracking, App
+    Functionality and Product Personalization).
+  - **Which bundled SDKs ship their own manifest** (Capacitor 8, measured
+    2026-10-04 with `npm ci` in `mobile/`): only `@capacitor/ios` (8.5.0), for
+    its Capacitor and Cordova frameworks, both declaring nothing.
+    `@capacitor/core` (8.5.0, JavaScript only), `@capacitor/app` (8.1.1),
+    `@capacitor/preferences` (8.0.1), `@capacitor/splash-screen` (8.0.2) and
+    `@capacitor/status-bar` (8.0.3) ship none. Of those, only Preferences uses
+    a Required Reason API (`UserDefaults`), and the app manifest declares it.
+    ONNX Runtime 1.20.0 (foray-tts) ships none either. If the native shell
+    ever adds the Supabase Swift SDK, it needs its own manifest entry;
+    `docs/marketing/05-legal-risk-memo.md` flagged a Supabase-SDK manifest as
+    a checklist item, which is **not applicable to the current code**.
+  - **Required Reason APIs.** The web client uses none. The native shell
+    declares three categories, each with its call sites in the injector's
+    header (the injector's test re-greps the plugin Swift on every run):
+    - `NSPrivacyAccessedAPICategoryUserDefaults`, reason **CA92.1** (data
+      only this app reads): the native engine's store (`EngineStore.swift`;
+      keys in foray-engine-core's `Persist/EngineKeys.swift`), the engine-mode
+      flag, foray-vault's reinstall check, and `@capacitor/preferences`.
+    - `NSPrivacyAccessedAPICategorySystemBootTime`, reason **35F9.1**
+      (time elapsed between in-app events): `NowPlayingPublisher.swift`'s
+      `ProcessInfo.processInfo.systemUptime`, and the monotonic
+      `DispatchTime.now().uptimeNanoseconds` timing in the audio engine and
+      foray-tts.
+    - `NSPrivacyAccessedAPICategoryFileTimestamp`, reason **C617.1** (size
+      and metadata of files in the app's own container): not our Swift. The
+      statically linked ONNX Runtime binary references `stat`/`fstat`, so
+      the app's manifest is the only place it can be declared. Re-measure
+      when the ONNX Runtime pin moves.
+    - No disk-space or active-keyboard API is used.
+  - **Still a human step on a Mac:** Xcode's Organizer > Generate Privacy
+    Report on an archive, which merges this manifest with every embedded
+    framework's. Run it once before the first App Store submission.
 - **Rule 5.1.2 / third-party AI disclosure.** The legal memo treats this as a
   live obligation. **On the current code it is not:** no user data reaches an AI
   provider from the app, and `connect-src` would block a call from the device. AI
@@ -376,7 +422,6 @@ Applies to **User ID**, **Product Interaction** and **Other User Content**.
     needs a service-role key. If a reviewer reads 5.1.1(v) as requiring the
     account record itself to go, the remaining work is server-side
     (`HUMAN-ACTIONS.md` #14), not client-side.
-  - > TODO(founder): confirm this reading, or just build the control.
 
 ---
 
@@ -395,8 +440,9 @@ are the answers that will actually be submitted.
 | Catalogue JSON | Fetched from GitHub Pages | **Bundled in the app** (`tools/mobile/prepare-webdir.mjs`) | Slightly *fewer* third parties: GitHub no longer sees catalogue requests. |
 | App origin | `https://…github.io` | `capacitor://localhost` (iOS) / `https://localhost` (Android) | None. It is why the shell widens `img-src` to include `'self'`. |
 | Audio from publisher CDNs | Direct | **Direct — unchanged** | §A6 applies identically. |
+| Share links (#1071) | The Web Share sheet, else the clipboard (`app.js:shareTo()`) | The Capacitor Share plugin when the shell has it, else the same | **None.** The link is built on the device from public ids and titles (`app.js:shareLinkFor()`) and handed to the OS share sheet or clipboard. Nothing is sent to us and no event type is added; a shared playlist link carries its title and up to 50 catalogue episode ids, never its own id. Privacy policy §5. |
 | Local storage tiers | localStorage + IndexedDB | **Same**, inside the WebView, **plus** a copy of the same `cp_` rows in the app's own preferences store (iOS `UserDefaults` / Android `SharedPreferences`, via `@capacitor/preferences`) so a WebView storage sweep cannot erase them. All three are app data, so **they are included in the phone's own backups** (iCloud / Google), as the privacy policy §1 says. **Except the account token `cp_sb_session`**, which the shell keeps only in `mobile/plugins/foray-vault/` — an iOS Keychain item with `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, an Android file in the no-backup directory — and in none of the three (`player/durable-store.js:vaultTier()`; founder ruling 2026-09-24, audit persist-6). | None — nothing new is transmitted to us. The backup is the user's own, made by the phone's OS to their own Apple or Google account; 4a never receives it. |
-| Native audio player storage (iOS only) | None — the web app plays through the page | When the iOS app's native audio player is the one in use (the build's default comes from `mobile/ENGINE_DEFAULT.json`; the Developer switch goes back to the web view's), it writes the page's own position rows (`cp_pos:`, `cp_foray:`, `cp_last_episode`; `player/engine-contract.js:OWNED_PREFIXES`) into the same preferences store, and keeps six values of its own under `ForayEngine.` in `UserDefaults` (`ForayEngine.modeOverride`, `ForayEngine.strikes`, `ForayEngine.sentinel`, `ForayEngine.stickyLegacyBuild`, `ForayEngine.restore`, `ForayEngine.holdPolicy`) plus a capped diagnostics file, `Application Support/foray-engine/diag.jsonl`, marked to be left out of backups. Privacy policy §1 lists each one. Delete my data stops the player and purges all of it before the page's own purge (`player/durable-store.js:engineDataDeletion()`). The player fetches audio, and the lock screen's artwork, from the same addresses the web view would (§A6), and adds no network destination and no event type. | **None.** Nothing new is collected or transmitted; it is on-device storage like the rows above, and the `ForayEngine.` values ride in the phone's own backup the same way. |
+| Native audio player storage (iOS only) | None — the web app plays through the page | When the iOS app's native audio player is the one in use (the build's default comes from `mobile/ENGINE_DEFAULT.json`; the Developer switch goes back to the web view's), it writes the page's own position rows (`cp_pos:`, `cp_foray:`, `cp_last_episode`; `player/engine-contract.js:OWNED_PREFIXES`) into the same preferences store, and keeps eight values of its own under `ForayEngine.` in `UserDefaults` (`ForayEngine.modeOverride`, `ForayEngine.strikes`, `ForayEngine.sentinel`, `ForayEngine.stickyLegacyBuild`, `ForayEngine.restore`, `ForayEngine.holdPolicy`, `ForayEngine.routeSharing`: a Developer setting, `ForayEngine.knownRoutes`: salted one-way hashes of the audio outputs it has played through, never a device name or id) plus a capped diagnostics file, `Application Support/foray-engine/diag.jsonl`, marked to be left out of backups. Privacy policy §1 lists each one. Delete my data stops the player and purges all of it before the page's own purge (`player/durable-store.js:engineDataDeletion()`). The player fetches audio, and the lock screen's artwork, from the same addresses the web view would (§A6), and adds no network destination and no event type. | **None.** Nothing new is collected or transmitted; it is on-device storage like the rows above, and the `ForayEngine.` values ride in the phone's own backup the same way. |
 
 **To re-verify before submitting:** that the shell adds no plugin which collects
 anything (each Capacitor plugin can), and that `connect-src` still names only
@@ -454,7 +500,7 @@ is a fact the answers assume.
    about RLS directly.)
 3. **Retention.** Decided (HA #13): event rows are deleted 90 days after
    recorded; empty anonymous accounts after 90 days. The job is
-   `backend/migrations/supabase/0004_event_retention.sql` and is **not applied
+   `backend/migrations/supabase/0006_event_retention.sql` and is **not applied
    to production until the human action that applies it is done** — until then
    nothing deletes an event row. The answers above are unchanged by it: a
    retention period does not alter what is collected.

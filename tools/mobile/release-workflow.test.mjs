@@ -150,6 +150,27 @@ test("ios and android jobs both depend on version and both run the privacy tripw
   assert.match(WF, /node --test test\/release-gates\.test\.js/);
 });
 
+test("ios and android refuse a re-run before spending a minute (the version job would replay attempt 1's build number)", () => {
+  // OPS-04. "Re-run failed jobs" does not re-execute `version`; its cached
+  // outputs are replayed, so attempt 2 would archive under a build number the
+  // stores already saw. The refusal has to sit in the platform jobs (a guard in
+  // `version` would be skipped along with the job) and has to be the FIRST
+  // step — ahead of checkout — so a re-run costs seconds, not macOS minutes.
+  // MUTATION: delete the step from one job -> red for that job.
+  for (const job of ["ios", "android"]) {
+    const src = block(WF, job, 2);
+    assert.ok(src, `${job} job not found`);
+    const steps = src.split(/\n(?= {6}- (?:name|uses):)/).filter((c) => /^\s*- (?:name|uses):/.test(c));
+    const first = steps.find((c) => /^\s*- name:/.test(c));
+    assert.ok(first, `${job}: no named step`);
+    assert.equal(steps.indexOf(first), 0, `${job}: the re-run refusal must be the first step, before checkout`);
+    assert.match(first, /if: github\.run_attempt != '1'/, `${job}: the refusal is conditioned on run_attempt`);
+    assert.match(first, /exit 1/, `${job}: the refusal fails the job`);
+    assert.match(first, /gh workflow run release\.yml/, `${job}: the error names the fresh dispatch`);
+    assert.match(steps[1] ?? "", /actions\/checkout@v4/, `${job}: checkout still follows the refusal`);
+  }
+});
+
 test("ios job runs on macos-latest and android on ubuntu-latest", () => {
   assert.match(WF, /runs-on: macos-latest/);
   assert.match(WF, /runs-on: ubuntu-latest/);
@@ -309,6 +330,36 @@ test("NE-06: ios-checks is behind the guard, reads checks, and waits on Linux", 
   assert.match(job, /checks: read/);
   assert.match(job, /runs-on: ubuntu-latest/);
   assert.doesNotMatch(rjob("ios", "android"), /if:\s*always\(\)/, "an always() on ios would build a refused SHA");
+});
+
+test("2026-10-04: ios-checks may dispatch ci.yml, and tells release-checks which branch it is on", () => {
+  /* An auto-merged tip of main has no CI run (GITHUB_TOKEN pushes create none),
+     so release-checks dispatches ci.yml when both checks are absent
+     (engine-ci.mjs releaseDispatchPlan). MUTATION: drop `actions: write` -> the
+     dispatch is a 403 and every auto-merged tip is refused again; drop REF_NAME
+     or DEFAULT_BRANCH -> the plan cannot tell it is on main and never dispatches. */
+  const job = rjob("ios-checks", "ios");
+  assert.match(job, /^ {6}actions: write$/m);
+  const s = step(WF, "engine-parity and ios-kit are green on this exact SHA") ?? "";
+  assert.ok(s.includes("REF_NAME: ${{ github.ref_name }}"), "REF_NAME is not passed to release-checks");
+  assert.ok(s.includes("DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}"), "DEFAULT_BRANCH is not passed to release-checks");
+});
+
+test("2026-10-04: ios-checks waits out a busy macOS queue, and the script's refusal beats the runner's kill", () => {
+  /* Release run 37228218257's dispatched ios-kit sat QUEUED 40+ minutes and the
+     40-minute default refused the TestFlight. MUTATION: drop
+     RELEASE_CHECKS_TIMEOUT_MIN -> the 40-minute default refuses again; leave
+     the job at timeout-minutes 50 -> the runner kills the step at 50 minutes
+     with no verdict line; set the grace too -> a check run that never appears
+     waits hours instead of minutes. */
+  const job = rjob("ios-checks", "ios");
+  const jobTimeout = Number(/^ {4}timeout-minutes: (\d+)$/m.exec(job)?.[1]);
+  const s = step(WF, "engine-parity and ios-kit are green on this exact SHA") ?? "";
+  const scriptTimeout = Number(/RELEASE_CHECKS_TIMEOUT_MIN: "(\d+)"/.exec(s)?.[1]);
+  assert.equal(scriptTimeout, 120, "release-checks must wait 120 minutes for a queued ios-kit");
+  assert.equal(jobTimeout, 130);
+  assert.ok(jobTimeout > scriptTimeout, "the job must outlive the script's own timeout");
+  assert.doesNotMatch(s, /RELEASE_CHECKS_MISSING_GRACE_MIN/, "the missing-check grace keeps its default");
 });
 
 test("NE-06: the summary names a refusal, so a skipped iOS is not mistaken for a credential gap", () => {

@@ -115,6 +115,13 @@ export const INTERLUDE_ASSET_DURATION_SEC = 3.0;
 /** A jingle item plays that file to its end, so it lasts exactly as long. */
 export const JINGLE_DURATION_SEC = INTERLUDE_ASSET_DURATION_SEC;
 
+/** The values `segment-sources[].seek_map` may carry: what an approximate seek
+    into the source can rely on, measured by tools/audio/mp3-probe.mjs. Anything
+    else builds as null. Generated into EngineConstants.ForayQueue.SeekMap, which
+    the native engine reads (`cbr` relaxes P-7's precise timing for a clip). */
+export const SEEK_MAP = Object.freeze({ CBR: "cbr", VBR_TOC: "vbr-toc", VBR_NOTOC: "vbr-notoc" });
+const SEEK_MAP_VALUES = new Set(Object.values(SEEK_MAP));
+
 const isNum = (n) => typeof n === "number" && Number.isFinite(n);
 const nonEmpty = (s) => typeof s === "string" && s.trim().length > 0;
 
@@ -447,6 +454,14 @@ export function buildForayQueue(foray, opts = {}) {
       // never has to go back to a catalogue it does not own.
       source_item_id: episode.id ?? raw.item_id ?? null,
       dai_suspected: Boolean(episode.dai_suspected),
+      /* What an approximate seek into this source can rely on, as measured by
+         tools/audio/mp3-probe.mjs ("cbr" | "vbr-toc" | "vbr-notoc"), or null
+         when nobody measured it. The native engine reads "cbr" to skip
+         AVFoundation's precise timing, which reads the WHOLE file before the
+         clip can start and buys nothing on a constant-bitrate file (M2 drive
+         2026-10-01: 7.8 s, 11.2 s and 20+ s clip loads on cellular). The web
+         player ignores it. */
+      seek_map: SEEK_MAP_VALUES.has(episode.seek_map) ? episode.seek_map : null,
       reference_duration_sec: isNum(raw.reference_duration_sec) ? raw.reference_duration_sec : null,
       ad_pad_sec: padSec,
       needs_drift_check: needsDriftCheck,

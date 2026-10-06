@@ -1,9 +1,34 @@
 # ADR 0001: Feed Polling Strategy
 
 ## Status
-Accepted (initial version — polling scheduler itself not yet built; this ADR
-governs the primitives already implemented: `src/feeds/conditionalGet.ts`,
-`src/feeds/politeness.ts`, `shows.polling_tier` / `shows.next_poll_due_at`).
+Accepted (scheduler not yet built; this ADR governs the primitives already
+implemented: `backend/src/feeds/conditionalGet.ts`,
+`backend/src/feeds/politeness.ts`, `shows.polling_tier` /
+`shows.next_poll_due_at`).
+
+**Updated 2026-10-05 (S-10, `docs/roadmap/shows-search.md` PKG-05..PKG-10).**
+The scheduler is still not built, and nothing polls a feed on a schedule. Its
+pure parts have merged under `tools/poll/`, built as a no-DB dry-run first:
+- `tiers.mjs` (PKG-05, #998): the cadence tiering this ADR deferred below.
+  A tier is seeded from the dump's pubdates and watch reasons, corrected from
+  the median gap between observed publish times once there are at least four,
+  and moved by success and failure (five failures → `backoff`; 410, or a 404
+  for 30 days → dead).
+- `politeness.mjs` and `select-due.mjs` (PKG-06, #1017): a pinned JS port of
+  `PolitenessBudget`'s per-host rules from `backend/src/feeds/politeness.ts`
+  (unchanged), and the due-set selection and weekly request projection that
+  gate G9 is judged against.
+- `watchlist.mjs` (PKG-07, #1054): the watchlist (every curated show, plus
+  the top-N non-curated shows the weekly change index says just published).
+  No seed file is committed yet.
+- `poll-episodes.mjs` (PKG-08, #1062): the `--dry-run` CLI, which puts the
+  watchlist, the due set and the G9 projection together; it fetches nothing.
+
+Still to come: a daily dry-run workflow (PKG-09), then the live path
+(PKG-10). The live path adds migration `0020_watchlist.sql`, sends real
+conditional GETs through `fetchFeedConditional`, and waits on gates G1 and G3
+(see `docs/DECISIONS.md`'s 2026-10-05 S-12 entry). Move this status to
+"scheduler live" only when PKG-10 runs in production.
 
 ## Context
 01_PROMPT.md item 1 asks for a polite conditional-GET polling cadence that's
@@ -34,10 +59,10 @@ politeness (how often we hit a publisher's server for nothing).
 Option 3, with WebSub flagged as a future upgrade (not this phase — the
 `shows` table's `polling_tier` column reserves room for a `websub` tier
 later without a schema change). Implemented pieces:
-- `src/feeds/conditionalGet.ts`: `fetchFeedConditional()` always attaches
+- `backend/src/feeds/conditionalGet.ts`: `fetchFeedConditional()` always attaches
   prior ETag/Last-Modified, returns `notModified: true` on 304 with no body
   fetched.
-- `src/feeds/politeness.ts`: `PolitenessBudget` is keyed by **hostname**,
+- `backend/src/feeds/politeness.ts`: `PolitenessBudget` is keyed by **hostname**,
   not feed URL — `msUntilAllowed(host)` enforces a minimum interval between
   *any* two requests to the same host regardless of which show triggered
   them. `recordFailure` applies exponential backoff (base × 2^failures,
@@ -53,7 +78,9 @@ Cadence tiering itself (turning "this show published weekly for the last 8
 episodes" into a `polling_tier` value) is a small statistics job on top of
 `episodes.published_at`, deliberately deferred until there's a populated
 `episodes` table to compute it from — no fixture-testable logic to write
-yet, so it's not implemented in this pass.
+yet, so it's not implemented in this pass. (It has since been written,
+without waiting for that table, as `tools/poll/tiers.mjs`: see the
+2026-10-05 update under Status.)
 
 ## Consequences
 - Every poll, hit or miss, goes through one code path

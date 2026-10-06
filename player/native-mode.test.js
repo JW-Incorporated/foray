@@ -700,7 +700,7 @@ for (const platform of ["web", "android"]) {
     assert.equal(await h.client.whenEngineReady(), "js");
     assert.equal(h.client.engineDeveloperStatus(), null, "no rows");
     for (const [cmd, args] of [["setModeOverride", { mode: "native" }], ["setHoldPolicy", { policy: "none" }],
-      ["simulateTermination", undefined], ["probeSession", undefined]]) {
+      ["simulateTermination", undefined], ["probeSession", undefined], ["setRouteSharing", { policy: "longFormAudio" }]]) {
       assert.equal(await h.client.engineDeveloperSend(cmd, args), null, `${cmd}: nothing to send it to`);
     }
     assert.deepEqual(engineCalls(h), [], "the bridge was never called");
@@ -718,14 +718,15 @@ test("DEVELOPER: while engineHello is unanswered there are no rows and nothing i
   assert.equal(await h.client.whenEngineReady(), "native");
 });
 
-test("DEVELOPER (native lane): all four rows; each command goes out as one engineSend with the right args", async (t) => {
+test("DEVELOPER (native lane): all five rows; each command goes out as one engineSend with the right args", async (t) => {
   /* KILLING MUTATION: send under a different cmd name, or skip `engine.send`
      — the engine's own command record diverges. */
   const h = await bootNative(t);
   assert.equal(await h.client.whenEngineReady(), "native");
   const st = h.client.engineDeveloperStatus();
-  assert.deepEqual(st.commands, ["setModeOverride", "setHoldPolicy", "simulateTermination", "probeSession"]);
+  assert.deepEqual(st.commands, ["setModeOverride", "setHoldPolicy", "simulateTermination", "probeSession", "setRouteSharing"]);
   assert.equal(st.lane, "native");
+  assert.equal(st.routeSharing, null, "not known until the engine confirms storing one (NE-40)");
   assert.equal(st.holdPolicy, "forever", "read back from the engine's snapshot");
   assert.equal(st.override, "auto", "build-default decided this launch: Automatic");
 
@@ -746,7 +747,15 @@ test("DEVELOPER (native lane): all four rows; each command goes out as one engin
   assert.equal(r4.ok, false, "nothing loaded: refused, as the Swift core refuses it");
   assert.equal(r4.reason, "not-loaded");
 
-  const dev = ["setHoldPolicy", "setModeOverride", "probeSession", "simulateTermination"];
+  /* NE-40 (DV-8): the route-sharing trial, stored for the next launch.
+     KILLING MUTATION: drop the `developerRouteSharing` write in
+     engineDeveloperSend — the row never reads back what it stored. */
+  const r5 = await h.client.engineDeveloperSend("setRouteSharing", { policy: "longFormAudio" });
+  assert.equal(r5.ok, true);
+  assert.equal(h.ref.routeSharing, "longFormAudio");
+  assert.equal(h.client.engineDeveloperStatus().routeSharing, "longFormAudio", "the value the engine confirmed storing");
+
+  const dev = ["setHoldPolicy", "setModeOverride", "probeSession", "simulateTermination", "setRouteSharing"];
   const sent = h.ref.diagnostics.filter((r) => r.kind === "cmd" && dev.includes(r.cmd));
   assert.deepEqual(sent.map((r) => r.cmd), dev);
   assert.ok(sent.every((r) => r.source === "tap"), "a Developer row is a tap");

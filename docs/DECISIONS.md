@@ -2,6 +2,491 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
+## 2026-10-05 — No legal review before sharing AI-generated content; #126 re-scoped to content safety in Foray generation
+
+**Founder ruling (Wyatt, 2026-10-05, in a Claude Code session, verbatim):**
+
+> "Issue #126 - no chance we will ever do that. The root of that issue (nasty content) needs to be addressed during foray generation. Move the issue to that topic and delete this concept of legal review prior to sharing AI generated content"
+
+- **There is no legal review before sharing AI-generated content.** That
+  concept is deleted from the repo's plans. Sharing is not gated on #126
+  and does not wait for a legal review. That covers copy/share links on
+  shows, episodes, playlists, suggested episodes and Forays, which Wyatt
+  asked for the same day in #1071.
+- **Issue #126 is re-scoped.** Its new title is "Foray generation: keep
+  nasty content out of generated Forays (content safety at generation
+  time)". The concern behind it, nasty content, is handled where the
+  content is made: Foray generation. A review step before sharing is not
+  the place. The open work on that is tracked on #126.
+- **What this supersedes.** The 2026-09-10 entry's "Issue #126 (C10)
+  deferred: social sharing stays out" bullet (PR #604). Its "legal-review
+  trigger … remains the gate for re-opening it" no longer holds. Also
+  superseded: the deck-level D10 in `docs/ui-transition-plan.md` (share
+  sheet out of scope, #126 deferred) as far as it held sharing behind
+  #126, and C10 "Social sharing — legal review gate" in
+  `docs/product/2026-08-scope.md`. Earlier entries are left as written.
+  This entry is the current record.
+- **What is not ruled on here.** The ruling removes only the legal-review
+  gate. The friends / social-graph layer ("Shared with you", "Wyatt sent
+  you a Foray", an inbox, accounts) is not decided by it, and neither is
+  the C6 auth model. The App Store Guideline 1.2 moderation pieces for
+  listener-requested Forays (report, block, contact address; PH2-10/11/14)
+  are a separate requirement and continue.
+- **Docs changed to match:** `docs/marketing/05-legal-risk-memo.md` (the §3
+  "revisit before generated text leaves the account" requirement and its
+  checklist line are removed, the risk analysis is kept, and a dated note
+  is added), `docs/roadmap/listener-forays-sharing.md` (PH2-01 no longer
+  "answers the #126 gate"), `docs/ui-transition-plan.md` (D10, U-11,
+  non-goals), `docs/product/2026-08-scope.md` (row 13, C10) and
+  `docs/ux/README.md` (the ShareSheet row).
+
+## 2026-10-05 — S-12: the shows-pipeline decisions D1–D14, and what has landed against each
+
+Source: `4a-shows-pipeline-plan.md`, drafted 2026-09-04 from a scoping
+conversation with Wyatt. Its header status is "proposed, awaiting Wyatt's
+read". Its §0 lists fourteen items, each with its own status: D2, D4–D10 and
+D12 "Decided" (D6 "Decided (b)"); D1, D11 and D13 "Default"; D3 "Pending
+Joey"; D14 "Proposed here". The Plan status column below gives each in the
+plan's own words. This entry lists them by D-number and says what is on
+`main` for each as of 2026-10-05. It was first written 2026-09-21 on PR
+#729 (kanban `t_5f7cadcd`). That PR's branch said the S-10 poller was "built and unit-tested", which no
+ref held, so it is re-landed here per `docs/roadmap/shows-search.md` PKG-04,
+with the S-10 claims replaced by what has actually merged. Detail for each
+card stays under its own heading in this file (2026-09-05 S-04a and S-04b,
+2026-09-12 search ranking and S-07, 2026-10-04 S-09). This entry is the index.
+
+| # | Plan §0 item (2026-09-04) | Plan status | On `main` as of 2026-10-05 |
+|---|---|---|---|
+| **D1** | "In 4a" = alive, ≥3 episodes, updated within 24 months. Language filter open. | Default; re-confirm with Joey's export in hand | **Shipped as written.** `tools/shows/filter.mjs` (`evaluateD1` / `applyD1Filter`, S-04a) applies the liveness, count and recency gates. It stores `language` and never drops a row for it. A curated show is exempt from the filter (see D8). **Not re-confirmed against Joey's export**, because D3 is still pending. D1 stays a default until gate **G6** (HUMAN-ACTIONS #134, open; card S-17). |
+| **D2** | PodcastIndex id is show identity; feed URL is the join key; Apple id is a cross-reference. | Decided | **Shipped.** `tools/shows/identity.mjs` (feed-URL normalisation, `curatedKeys`) and `buildIdMap` in `tools/shows/shard-build.mjs` (S-04a). The feed URL matches first; `apple_collection_id` is the fallback for a moved feed. The build refuses to write if any of the curated 220 is left unresolved. `pi:<id>` is the route for a new show (S-05). No curated slug was renamed. |
+| **D3** | Joey's export: contract in plan §3.1; format, location and cadence pending. Agents build against the public dump until then. | Pending Joey | **Still pending Joey.** Every Track A card built against the public PodcastIndex dump, the interim source the plan named. `DUMP_URL` in `tools/shows/config.mjs` is the one value to change once gate **G7** (HUMAN-ACTIONS #135, open; card S-16) is answered. |
+| **D4** | Show search runs server-side or against a fetched index; the privacy policy's promise must change *before* shipping, with a mechanical tripwire. | Decided | **Shipped, and its gate is answered.** `test/release-gates.test.js` (S-08, PR #476) is the tripwire. `docs/legal/privacy-policy.md` §2 was edited (PR #482). Wyatt ruled Option B on 2026-09-11: typed search text may leave the device (HUMAN-ACTIONS #43, done; this file's 2026-09-11 and 2026-09-12 S-07 entries). That gate is `docs/search-plan.md`'s G1, a different deck's letter from this one's G1. `SHOWS_SEARCH_OFF_DEVICE = true` in `app.js` is the flag the tripwire reads. |
+| **D5** | Episodes fetched lazily on show open, plus a scheduled poller over a watchlist so curation sees episodes nobody opened. | Decided | **The lazy half is shipped; the poller is partly built and not live.** Lazy fetch is S-02/S-03 (`/api/shows/:id/episodes`, `fetchShowEpisodes`). The poller (S-10) is being built as `docs/roadmap/shows-search.md` PKG-05 to PKG-10. Merged: cadence tiers `tools/poll/tiers.mjs` (PKG-05, #998); the per-host budget port `tools/poll/politeness.mjs` and due-set selection `tools/poll/select-due.mjs` (PKG-06, #1017); the watchlist builder `tools/poll/watchlist.mjs` (PKG-07, #1054; no `data/watchlist-seed.json` committed yet); the `--dry-run` CLI `tools/poll/poll-episodes.mjs` (PKG-08, #1062), which fetches nothing. The first four are pure modules with no I/O. Not started: the daily dry-run workflow (PKG-09) and the live path with migration `0020_watchlist.sql` (PKG-10, blocked on gates G1 and G3). Nothing polls a feed on a schedule today. |
+| **D6** | Episode search = episodes we hold, plus Apple's keyless episode search as breadth fallback. No 4.7M-feed crawl. | Decided (b) | **Shipped**, S-07 (`api/episodes/search.ts`). A `show=`-scoped search reuses S-02's live-feed fetch. The unscoped path calls Apple's `entity=podcastEpisode` behind a 20-per-minute token bucket. The dump is never crawled for episodes, as D6 chose (and `docs/curation/catalogue-broadening.md` §2 found the dump has no episode table). |
+| **D7** | A search box on the show page. | Decided | **Shipped**, S-06: `renderShow`'s in-page episode search. It filtered the loaded pages locally until S-07 landed, then asked S-07's scoped endpoint first (`docs/product/suggested-shows-requirements.md` §3.3). |
+| **D8** | Curated tier becomes an overlay on the universal list; Home, Forays and playlists keep drawing from the curated subset; Joey's appended columns stay out of the app path. | Decided | **Shipped as an overlay**, S-04a/S-04c. The curated 220 are `curated: true` on every shard and `top.json` row, and D1's filter never drops them (S-04c, PR #486: "a curated show is in 4a by definition"). Home, Forays and Playlists still read only `state.catalog`. No column from Joey's export reaches the client, but D3 has not landed, so no real appended column has tested that yet. |
+| **D9** | Offline: search only what is already on the device. | Decided | **Shipped**, S-05. An offline search sends no request (`navigator.onLine === false` is checked before the request is built). The header it shipped with, "Showing shows available offline", was reworded in audit round 2 (states-9) to `OFFLINE_SEARCH_NOTE` in `app.js`, because nothing is playable offline. |
+| **D10** | Vercel functions + Supabase Postgres stay; GitHub Actions cron for scheduled work. | Decided | **Unchanged.** No new hosting decision was needed. S-02/S-07's functions are Vercel. S-09's schema is Supabase-shaped Postgres (migrations 0017–0019, #1045), inert until `DATABASE_URL` is set. `shows-import.yml` is the weekly Actions cron. The poller's daily dry-run workflow is PKG-09, not yet written. |
+| **D11** | Revalidate a show's feed on open when the cached copy is older than one hour. | Default | **Shipped for the no-DB path**, S-02: `/api/shows/:id/episodes` answers with `s-maxage=3600, stale-while-revalidate=86400`, so the CDN is the one-hour cache. DB mode's own revalidate-if-stale rule is not built, because DB mode is not live (D14). |
+| **D12** | Three decoupled loops: show-list refresh, episode refresh, curation. | Decided | **Two and a half loops run.** Loop 1 = S-04 (weekly import, shard release). Loop 2a = S-02's lazy fetch. Loop 2b = the S-10 poller, partly built and not live (D5). Loop 3 = S-11 (`scan.mjs --source index`), which reads Loop 1's change index rather than polling feeds itself. |
+| **D13** | Dedupe: several feeds for one show collapse to the one Apple lists, else the most recently updated. | Default | **Shipped, with a sharper rule than the plan's one line** (S-04a, `tools/shows/dedupe.mjs`; full rule in this file's 2026-09-05 S-04a entry). Group by `podcastGuid` case-insensitively, else by normalised title + author. The canonical row has a non-null `itunesId` ("the one Apple lists"), lowest dump id breaking ties. With no `itunesId` in the group, the newest `newestItemPubdate` wins, same tie-break. The tie-breaks make two runs on one fixture byte-identical, the card's acceptance bar. |
+| **D14** | Everything DB-shaped ships first in a no-DB mode that is honest and useful, and switches to Postgres when `DATABASE_URL` is present. No card may block on a credential. | "Proposed here": proposed in the plan, not separately ruled by the founder; built in practice, and consistent with README question 6 | **Held across the deck.** S-02/S-07's endpoints run on live fetch and Apple fallback with no `DATABASE_URL`. S-09's schema (0017–0019, #1045) and its loader and search modules (#1026) pass CI against a real `postgres:17` service but write nothing in production; `load-postgres.mjs` exits with a `NO-OP:` naming gate G8 when no database is set. The poller's CLI (PKG-08, #1062), run without `--dry-run` and with no database, names gates G1 and G3 and exits 0. |
+
+**What is not true yet, though most rows above read "shipped".** DB mode is
+not live for search, episodes or polling. Migrations 0017–0019 are on `main`
+(#1045) but applied to no production database, and no `DATABASE_URL` is set.
+The poller has pure modules and a merged dry-run CLI (#1062) on `main`. It has no
+schedule, no live path and no migration 0020. Where a row above mentions D5's
+poller, D10's Postgres, D11's DB-mode revalidation or D14's DB branch, it
+describes code that exists and passes CI, or is still to be written. None of
+it runs in production.
+
+### Human gates for the shows deck, with HUMAN-ACTIONS ids
+
+The plan's §6 names the gates by letter. `docs/roadmap/shows-search.md` §1
+lists G1–G3, G8 and G9. Shows-search PKG-03 (#1003) filed G1–G3 and G6–G8 as
+HUMAN-ACTIONS #131–#136 (#729's branch had numbered them #108–#113, which
+`main` had since used). G1, G2 and G3 were then closed by an agent at the
+proposed default of `docs/roadmap/README.md` founder question 6 ("Postgres
+for shows: not yet"), and G8 at that question's proposed storage default. No
+founder ruling is recorded for any of the four (HUMAN-ACTIONS-DONE #131–#133
+and #136 each read "by claude (roadmap default; no docs/DECISIONS.md
+override)"), so "skipped" and "done" below are agent closures, not founder
+decisions. No later entry in this file overrides question 6.
+
+- **G1** `DATABASE_URL` on the Vercel project (foray-web): **skipped**,
+  HUMAN-ACTIONS #131, closed by an agent at README question 6's proposed
+  default; no founder ruling recorded. `api/shows/search` stays
+  in no-DB mode. Re-file when PKG-10 is next.
+- **G2** apply migrations 0017–0019 on Supabase: **skipped**, HUMAN-ACTIONS
+  #132, closed by an agent at the same proposed default; no founder ruling
+  recorded. #132 was closed before #1045 merged the migrations. The
+  2026-10-04 S-09 entry below treats G2 as a step inside G1: whoever sets
+  `DATABASE_URL` applies 0017–0019 and `supabase/0004_rls_shows_catalog.sql`
+  first.
+- **G3** repo secret `SHOWS_DATABASE_URL` for GitHub Actions: **skipped**,
+  HUMAN-ACTIONS #133, closed by an agent at the same proposed default; no
+  founder ruling recorded. Only the live poller (PKG-10) needs it.
+- **G6** re-confirm D1 and settle the language filter, with S-04's real
+  summary in hand: **open**, HUMAN-ACTIONS #134 (Wyatt + Joey). Card S-17.
+  It waits on G7.
+- **G7** Joey's export format, location and cadence (D3): **open**,
+  HUMAN-ACTIONS #135. Card S-16.
+- **G8** Supabase tier vs. `in_4a`-only storage: **done**, HUMAN-ACTIONS #136,
+  closed by an agent at README question 6's proposed default; no founder
+  ruling recorded. Storage stays `in_4a`-only until
+  `load-postgres.mjs`'s sizing report prints bytes per row; re-file if that
+  number argues for more.
+- **G9** watchlist N and weekly request budget: no HUMAN-ACTIONS item. No
+  founder ruling; proceeding on `docs/roadmap/README.md` question 6's proposed
+  default (N = 5,000, under 40,000 requests a week, daily dry-run). The README
+  lists G9 as a founder question. `tools/poll/select-due.mjs`'s
+  `weeklyProjection` is the number G9 is judged against.
+
+The plan's G4 and G5 are not named anywhere in this repo (the plan itself is
+off-repo), and no HUMAN-ACTIONS item carries them. PR #729 was closed on
+2026-10-05 as superseded by PKG-03 (#1003) and this entry (PR #1067,
+`docs/roadmap/shows-search.md` PKG-04 step 3); its branch is kept.
+
+## 2026-10-05 (backfill: four July decisions this log never recorded — issue #798)
+
+Issue #798, carried over from #74, found four early decisions missing from
+this file. Each is recorded below under the date its own record gives, and
+cites that record. Nothing is reopened. Where the record holds no founder
+ruling, the entry says so, and none is supplied after the fact.
+
+### 2026-07-26: the player's queue is one item by default (`SINGLE_ITEM`, issue #33, PR #49)
+
+- **The decision.** `player/queue-strategy.js` makes "what is the queue?"
+  something passed in at construction. It ships `SINGLE_ITEM` as the default:
+  the picked episode is the whole queue, and when it ends the session ends.
+  `PICKED_FIRST` (the pick, then the other cards) and `CONTINUE_TAIL` (the
+  pick, then the part-heard episode) are one constructor argument away.
+- **Who decided, and the gap in the record.** #33 (filed 2026-07-26 from the
+  architecture review on epic #20) marked this a blocking product question:
+  "This determines what `nextItem` means and cannot be decided inside this WP.
+  **Ask Joey.**" It recommended (a), single-item. PR #49 (merged 2026-07-26)
+  did not wait for an answer. Its commit made the strategy injected and
+  shipped (a) as "a real default, not a placeholder", because it was "the
+  only option consistent with CLAUDE.md's no-autoplay-chains principle", and
+  added that "Joey can still overrule it without any code being rewritten".
+  **No founder answer to #33 is on record.** The issue has no comments. The
+  PR closed it. The only status note, #20's progress comment written before
+  the merge on 2026-07-26, still lists #33 as "blocked on a product decision".
+  So the default was an agent's call made under product principle 1, and it
+  stood unchallenged.
+- **What changed since.** The ground it stood on is gone. On 2026-09-14 the
+  founder struck "no autoplay chains" from principle 1 (entry below:
+  continuous playback is wanted, #691). `SINGLE_ITEM` is still the player's
+  queue for a single episode (`player/client.js`). Continuing past the end is
+  now app.js's Up Next advance, a layer above the player, and
+  `player/client.js` says so where it used to cite the struck clause.
+
+### 2026-07-26: an http enclosure is upgraded to https, not dropped (issue #21, PR #45)
+
+- **The decision.** When a feed declares a cleartext `http://` enclosure, the
+  pipeline publishes the same URL over `https://` with host, path, query and
+  fragment unchanged. It neither drops the URL nor publishes it as http. One
+  shared helper, `normalizeAudioUrl` in `tools/refresh/enclosure.mjs`, does
+  this for the nightly scan, the iTunes fallback and the backfill. Any other
+  scheme gives `audio_url: null` with a logged reason, and CI fails on a
+  published `audio_url` that is not `https:`. #21's body asked for that CI
+  failure.
+- **Why upgrade rather than reject.** PR #45's second commit (merged
+  2026-07-26) records it. Cleartext cannot play in the shipped app: iOS ATS,
+  Android's cleartext-traffic policy and the CSP's `media-src https:` all
+  block it. Rejecting it, which the first commit did, "would have silently
+  cost" real catalogue shows their in-app playback. The commit names Hardcore
+  History, Lingthusiasm, Designer Notes, Music History Monday and Two
+  Scientists, served through podtrac, soundcloud and blubrry. All four
+  affected hosts served the identical path over https, each verified with a
+  ranged GET returning 206 and `audio/mpeg`. Brief corner case #1 (publishers
+  count downloads at the URL they declared) still holds, because only the
+  transport changes.
+- **Who decided.** The implementing agent decided this inside PR #45, which
+  was merged from Wyatt's account. **No separate founder ruling is on
+  record.** Neither #21's body nor its 2026-07-26 amendment (RSS primary,
+  iTunes fallback) addresses http.
+
+### 2026-07-26: the DAI duration-variance probe is dropped; the host list is the signal (issue #22, PR #47)
+
+- **The decision.** `dai_suspected` is set from a maintained host list,
+  `tools/refresh/dai-hosts.json`. Each enclosure is matched after following
+  redirects, so download-measurement prefixes cannot hide the origin. Verdicts
+  are cached per show in `data/dai-classification.json`, and an unknown show
+  counts as `dai_suspected: true`. #22's second signal is **not built**. That
+  signal probed an enclosure twice with `Range: bytes=0-0` and compared the
+  total lengths.
+- **The rule it was dropped under.** #22's amendment, posted 2026-07-26 from
+  Wyatt's account after the architecture review on #20: "run it by hand
+  against **3 known-DAI shows and 3 known-static shows** ... If it does not
+  cleanly discriminate, **drop signal 2 entirely** and ship the host allowlist
+  alone."
+- **The measurement that triggered it.** PR #47 (merged 2026-07-26) probed six
+  shows about 6 s apart: megaphone, art19 and acast (DAI), and blubrry,
+  libsyn and podtrac (static). The byte delta was 0 on all six. Its reasoning
+  is also why the idea is wrong in principle: DAI serves a stable file to a
+  given listener so that resume works, so the bytes differ across listeners
+  and long gaps, never between two requests from one IP. One corollary was
+  carried to #30: a position a listener created on their own copy is reliable
+  for them.
+
+### 2026-07-30: the web client deploys to Vercel; GitHub Pages keeps running beside it (PR #62)
+
+- **The decision.** PR #62 merged 2026-07-30 02:43 UTC (2026-07-29 Pacific).
+  It created the Vercel project `foray-web` under the
+  `wjduvall-cmds-projects` scope, which auto-deploys `main` to
+  `https://foray-web-seven.vercel.app`. It built the site through an allowlist
+  copy, `tools/web/prepare-dist.mjs`. The build fails if `index.html` or a
+  runtime data file is missing, or if `dist` exceeds 8 MB. At the time it
+  shipped 1.87 MB, where the repo root held about 55 MB of pipeline inputs.
+  The site stays at the repo root rather than moving to an `apps/web`
+  workspace, because moving it would have broken Pages, the `tools/refresh`
+  data paths, CI and the Capacitor plan at once.
+- **Why Vercel.** The PR body says it supersedes #58 and that "Wyatt asked for
+  a real Vercel project since that is where a purchased domain will be
+  hosted". #58 asked for a Vercel demo link for Joey's prototype, and Joey
+  closed it on 2026-07-29 by serving the prototype from GitHub Pages instead.
+  That reason reaches this log as the PR body's report of Wyatt's request. No
+  verbatim quote of Wyatt is on record.
+- **Why Pages stayed, and what is still open.** The PR body: "GitHub Pages is
+  deliberately left running. Joey already shared
+  `jw-incorporated.github.io` links (#58) … Retiring Pages is a separate
+  outward-facing decision, not a side effect of this PR." **That retirement
+  decision has not been made.** #798's infrastructure section still asks it.
+  Later entries built on the split without settling it. The app reads the
+  Foray directory from the Vercel origin (2026-09-11, FD-06), and Pages got
+  its own stamped build in `.github/workflows/pages.yml` (2026-09-24, #701).
+
+## 2026-10-04 — S-09: Postgres path for the shows pipeline (`backend/migrations/0017-0019`, `tools/shows/load-postgres.mjs`, `tools/shows/search-shows.mjs`)
+
+Source: `4a-shows-pipeline-plan.md` (Wyatt, 2026-09-04) §3.3; kanban card
+S-09 (`t_f00c0a28`), depends on S-04a's row parser (`t_c175e965`, already
+shipped as `tools/shows/import-dump.mjs` + submodules, PR #483). First
+written 2026-09-15 on PR #714, whose branch had no merge base with `main`;
+re-landed per `docs/roadmap/shows-search.md` section 3 (PKG-01, PKG-02).
+
+**Landed as two PRs: PKG-01 (#1026, tools half) and this one.** PKG-01
+auto-merged `tools/shows/load-postgres.mjs`, `tools/shows/search-shows.mjs`,
+their three suites and `tools/shows`'s `pg`/`pg-copy-streams` dependencies.
+This PR (PKG-02) carries the governed half: migrations 0017-0019,
+`PostgresShowEpisodesStore`'s move to `legacy_show_id`, the CI `db` job, the
+`BACKEND_FLOORS` entries, this entry and the STATE block. #714 is closed in
+favour of the two; its branch is kept.
+
+**Coupling, read before answering gate G1.** After this PR,
+`PostgresShowEpisodesStore` reads and writes `legacy_show_id`, a column that
+exists only once 0019 has run. The store is live only when `DATABASE_URL` is
+set: `api/shows/[show_id]/episodes.ts` builds it in its DB mode, which is
+dormant in production today (no `DATABASE_URL`; founder question 6 in
+`docs/roadmap/README.md` (Postgres for shows: not yet)). So **whoever later
+sets `DATABASE_URL` on Vercel (G1) must apply migrations 0017-0019 to that
+database (G2) first.** A database that stops at 0016 still has `show_id`, and
+every show-page read and feed-state write through the store would fail with
+"column legacy_show_id does not exist". G2 is a step inside G1, not a separate
+HUMAN-ACTIONS item. **On Supabase, G2 also applies
+`backend/migrations/supabase/0004_rls_shows_catalog.sql` right after
+0017-0019:** 0017/0018 create two new public tables, and without it the anon
+key could write `shows_catalog` and `show_id_map` (the backend-rest-4 hole that
+supabase/0003 closed for the 0016 catalogue). 0004 gives `shows_catalog`
+public-read, no-write RLS and `show_id_map` deny-all RLS;
+`test/supabase-rls-coverage.test.js` fails if a table a portable migration
+creates has no RLS in that folder.
+
+- **New tables, keyed on `pi_id` (PodcastIndex's own dump id), not the
+  curated `show_id` slug.** `shows_catalog` (0017) is the Postgres mirror
+  of S-04a's canonical dump rows — every show that passed D1/D13, not only
+  the 220 curated ones — with a generated `search_tsv` (title weight A,
+  author weight B) and a `pg_trgm` index on `title` for fuzzy matching.
+  `show_id_map` (0018) is the durable twin of S-04a's `id-map.json`: which
+  curated slug resolves to which `pi_id`. Deliberately separate from
+  0002/0003's `shows`/`episodes` (per-user tracked feeds) and from 0016's
+  `catalog_show_episodes`/`catalog_show_feed_state` (curated-slug-keyed
+  episode cache) — this is show-level breadth data across every dump row,
+  existing to answer "which shows are there" search queries the client's
+  static shard index (S-04a/§3.2) already answers offline; the Postgres
+  path exists for a real ranked FTS+trgm search once a backend Postgres is
+  provisioned.
+- **0019 rekeys `catalog_show_episodes`/`catalog_show_feed_state` from
+  `show_id` to `pi_id`** via `show_id_map`, renaming the old column to
+  `legacy_show_id` (kept, not dropped) rather than deleting it — an orphan
+  row (a `show_id` with no `show_id_map` entry) stays queryable by
+  `legacy_show_id` and is simply excluded from the new `pi_id`-keyed
+  indexes/foreign keys, so the migration can never destroy data even if
+  the "every curated show maps" guarantee S-04a enforces at import time
+  were ever violated by a stale row from before this migration existed.
+  0019's header names `backend/test/shows-rekey.test.ts` as its acceptance;
+  that file was never written. The acceptance lives in
+  `tools/shows/shows-postgres-integration.test.mjs` (its pre-migration test
+  seeds 0016-shaped rows, runs 0019, and asserts they survive). The
+  migration is taken verbatim, so the comment stays.
+- **`PostgresShowEpisodesStore` stays on `legacy_show_id`.** Every statement
+  it sends (the episode read, backend-rest-9's batched episode upsert in
+  `buildEpisodeUpsert`, the feed-state read and upsert) names
+  `legacy_show_id`, and the reads alias it back to `show_id` so the store's
+  public types do not change. Rewiring the store onto `pi_id` is a later
+  card's job, once the show page itself moves off curated slugs.
+  `backend/test/showEpisodesStore.test.ts` pins all four statements.
+- **`load-postgres.mjs` reuses S-04a's `runPipeline`** (fetch/filter/
+  dedupe/id-map is one pipeline, not reimplemented) and adds exactly the
+  Postgres-specific step: COPY into an `unlogged` staging table, then one
+  `insert ... on conflict (pi_id) do update` upsert into `shows_catalog` —
+  the card's own "COPY into staging → upsert" ask, verified against a real
+  Postgres 17 to actually load a fixture end to end (not just typecheck).
+  Also computes the `changed_in_dump` reasons (per-pi_id, from S-04a's
+  `changed.json` ids) and the bytes/row × in_4a sizing report that feeds
+  gate G8 (Supabase tier, HUMAN-ACTIONS.md).
+- **`search-shows.mjs`**: `ts_rank_cd` against `search_tsv` via
+  `websearch_to_tsquery`, with a `pg_trgm` similarity fallback when the FTS
+  pass returns nothing (a query too short/sparse for a lexeme, or a real
+  typo FTS's exact-token matching can't bridge) — verified with a golden
+  query set (exact title match, author-field match, typo tolerance via the
+  trgm fallback, a no-match query returning nothing, and curated shows
+  outranking equally-popular non-curated ones) against a real Postgres.
+  Curated shows get a small additive rank boost, same "curated is never
+  displaced" principle as `shard-build.mjs`'s `top.json`, applied to
+  ranking rather than a size-budget list.
+- **Inert in production, verified**: `resolveDatabaseUrl()` checks
+  `SHOWS_DATABASE_URL` then `DATABASE_URL`; with neither set,
+  `load-postgres.mjs` exits 0 and names gate G8 (Supabase tier,
+  HUMAN-ACTIONS.md) rather than failing or silently doing nothing
+  unexplained, confirmed by actually running the CLI with no DB configured.
+- **New CI `db` job** (`.github/workflows/ci.yml`) runs a real
+  `postgres:17` service container, applies all 19 migrations twice
+  (idempotency), then runs `backend`'s and `tools/shows`'s test suites
+  with `SHOWS_DATABASE_URL`/`TEST_DATABASE_URL` set so the DB-gated tests
+  (`backend/test/showsPostgresLive.test.ts`,
+  `tools/shows/shows-postgres-integration.test.mjs`) actually execute
+  instead of skipping. Deliberately uses `SHOWS_DATABASE_URL`, not
+  `DATABASE_URL`, for the `backend` step: `userInterests.test.ts`'s
+  `createUserInterestsProvider` suite asserts `DATABASE_URL` is absent
+  (guarding a genuinely not-yet-implemented `PostgresUserInterestsProvider`
+  — different card, future work) — found by actually running the full
+  backend suite with `DATABASE_URL` set and watching that assertion fail,
+  not by inspection. Not added to `protect-main`'s required-checks list
+  (`backend`, `data-and-site`): founder question 30 in
+  `docs/roadmap/README.md` rules "The new `db` CI job is not a required
+  check yet."
+- **What was verified against a real Postgres 17, and where.** On #714
+  (2026-09-15, a sandbox cluster built from the `io.zonky.test.postgres`
+  binaries): every migration applied clean, twice, from a fresh database;
+  `load-postgres.mjs`'s CLI ran end to end against a fixture sqlite dump
+  and landed real rows via COPY+upsert, confirmed idempotent on a second
+  run (0 inserted / N updated); the golden-query search set and the 0019
+  rekey-preserves-a-seeded-row acceptance criterion both passed against
+  live data, not fixtures alone. On this PR, the live evidence is the `db`
+  job's own run; locally only `npm run typecheck` and `npm test` ran, with
+  no database, so `showsPostgresLive.test.ts` skipped.
+- **Test floors**: PKG-01 added `tools/shows/load-postgres.test.mjs` (11),
+  `tools/shows/search-shows.test.mjs` (7) and
+  `tools/shows/shows-postgres-integration.test.mjs` (8, gated on
+  `TEST_DATABASE_URL`) to `test/suite-integrity.test.js`'s `FLOORS`. This PR
+  adds `BACKEND_FLOORS` `test/showsPostgresLive.test.ts` (3, gated on
+  `SHOWS_DATABASE_URL`/`DATABASE_URL`) and raises
+  `test/showEpisodesStore.test.ts` 9 -> 11.
+- **Fresh-context review (codex/gpt-6-astra) found and fixed six real
+  defects on #714, all against a live Postgres, not just re-read**:
+  (1) 0019 renamed `catalog_show_episodes`/`catalog_show_feed_state`'s
+  `show_id` to `legacy_show_id` and dropped its unique constraint without
+  updating `PostgresShowEpisodesStore`, which still queried/upserted by
+  the old name — fixed by re-creating an equivalent unique index on
+  `legacy_show_id` and updating the store to match; (2) 0019's
+  `show_id_map` join only ever sees whatever exists at MIGRATION time,
+  which is always empty on a fresh deploy — added
+  `backfillLegacyShowIdKeys()`, re-run on every real import so a mapping
+  that arrives later still resolves; (3) `loadCatalogRows` never removed a
+  show that stopped appearing in a later import's canonical set — added
+  retirement (delete any `shows_catalog` row not carrying the current
+  run's `export_version`, clearing any `show_id_map` reference first to
+  satisfy the FK); (4) `changed_in_dump` was computed with an always-empty
+  `previousNewest`, so every row reported changed on every run including
+  an unchanged re-import — added `fetchPreviousNewest()`, reading the
+  prior release's snapshot straight from `shows_catalog` before the
+  current run's upsert overwrites it; (5) the loader never checked
+  S-04a's `MAX_UNMAPPED_CURATED_FRACTION` id-map-completeness guard before
+  writing to Postgres — added `checkMissingMapping()`, mirroring
+  `import-dump.mjs`'s own `writeBuildOutput` check; (6) the integration
+  test suite exercised a hand-copied SQL snippet instead of the real
+  loader functions and never seeded feed-state — rewritten to call
+  `backfillLegacyShowIdKeys`/`loadCatalogRows`/`fetchPreviousNewest`/
+  `checkMissingMapping` directly and to seed both episode and feed-state
+  rows.
+- **Second review rejection → Fable arbiter ruling (2026-09-15), per
+  `policy/review-matrix.yaml`'s second-rejection escalation.** Codex
+  found two more real defects in the first repair: (1) 0019's
+  `legacy_show_id`-keyed unique indexes were PARTIAL (`where
+  legacy_show_id is not null`), which Postgres cannot infer as an `ON
+  CONFLICT` arbiter unless the `ON CONFLICT` clause repeats the same
+  predicate — `PostgresShowEpisodesStore`'s upserts did not, so every
+  write through the store would have failed at runtime with "no unique or
+  exclusion constraint matching the ON CONFLICT specification"; (2)
+  retirement compared `export_version <> current`, but `export_version`
+  can legitimately repeat across two runs of the identical dump (the
+  `local:` fallback hashes the file; the real path reuses the dump's own
+  `Last-Modified` header) while D1's staleness filter depends on
+  wall-clock time — a byte-identical re-import after a show aged past the
+  24-month cutoff would never retire it under that predicate. Ruling
+  (`claude --model claude-fable-5`) confirmed both as genuine blockers and
+  authorized one further repair cycle. **Fixes**: the two indexes became
+  plain non-partial unique indexes (NULL-distinctness already gives the
+  "orphans don't collide with each other" property, without a predicate
+  mismatch trap); retirement now anti-joins against the staging table's
+  actual `pi_id` set (ground truth for "was in this run"), not a version
+  label. Verified on #714: a hand-run `ON CONFLICT` insert/update against
+  the fixed index succeeds and updates in place (not a duplicate row);
+  `shows-postgres-integration.test.mjs` gained a regression that reuses
+  one `export_version` across two loads with a shrunk row set and asserts
+  the missing row is retired anyway, plus a genuine pre-migration test that
+  applies 0001-0018, seeds 0016-shaped data under the OLD `show_id`
+  column, THEN runs 0019 and asserts the row survives.
+- **Third review pass: one more real, reproduced finding — deferred by a
+  second Fable ruling (2026-09-15), not fixed in this card.**
+  `backfillLegacyShowIdKeys()` only backfills a `catalog_show_episodes`/
+  `catalog_show_feed_state` row's `pi_id` when it is still `null`. If a
+  curated show's `show_id_map` mapping REMAPS to a different `pi_id`
+  across import runs (D13's dedupe winner changes, or a feed migrates to
+  a new PodcastIndex id while the old one survives D1's 24-month window),
+  a row already resolved to the OLD `pi_id` never gets reconciled to the
+  new one — reproduced live by the reviewer against a real Postgres.
+  Ruling: **defer, do not fix now.** Nothing shipped by this card reads
+  or writes those two tables by `pi_id` — `search-shows.mjs` never
+  touches them, and `PostgresShowEpisodesStore` deliberately stays on
+  `legacy_show_id` — so the column is write-only plumbing today with zero
+  observable consumer effect. The naive fix (`is distinct from` instead of
+  `is null`) is unsafe to rush: `idx_csfs_pi_id`/`idx_cse_pi_id_guid` are
+  unique indexes, so reconciling into an already-occupied `pi_id` (the
+  exact scenario that causes the drift) would raise a unique-violation
+  and crash the whole load — a real merge/collision design (which row
+  wins, what happens to the loser's polling history) is needed first, and
+  belongs to the future card that actually rewires
+  `PostgresShowEpisodesStore` onto `pi_id`. Documented as a known
+  limitation in `backfillLegacyShowIdKeys()`'s own doc comment; follow-up
+  filed as kanban `t_aeed5440`.
+
+## 2026-10-04 (an empty Now Playing album shows "4a" — issue #1006)
+
+Wyatt, 2026-10-04, verbatim (recorded on issue #1006): "when there is no album
+info to serve to a car/ wherever, we should populate that field with "4a"".
+
+- `albumOf(forayTitle, index, total)` in `player/media-session.js` (the
+  reference) and its ports `MediaMapping.swift` / `MediaMapping.java` returned
+  `""` when there was neither a Foray title nor a clip counter: a plain episode,
+  a playlist part, a narration line with no Foray around it. It now returns the
+  app's name, read from the existing `APP_NAME` constant (`EngineConstants.
+  MediaSession` on the native side, generated from the JS), never a new literal.
+  An album with a Foray title and/or a counter is unchanged.
+- Title and artist are unchanged. The rule "4a never credits anything a
+  listener hears" is about the credits and still holds; album is the
+  collection field, and with no collection the app is the true answer. The
+  `media-session.js` header (§1b) now says so.
+- **Why this does not reopen 2026-09-23's "4a / unknown / unknown"** (below):
+  that complaint was "4a" shown as the SONG with placeholder artist and album
+  because nothing was published. The song is still the episode, the artist is
+  still the show; only an album that was blank now reads "4a".
+- Visible effects: the car, lock screen and Bluetooth show "4a" under a single
+  episode; the Android notification's subtext, which was hidden for an empty
+  album (`PlaybackKeepAliveService`), now shows "4a" (intended). This replaces
+  the `media-session.js` §1b line "single-episode playback keeps an empty album
+  because a single episode is not a collection".
+
+## 2026-10-03 (every episode row shows a few lines of its description)
+
+Wyatt, 2026-10-03, with an Apple Podcasts screenshot of a show page: "episodes
+show a few lines of the description to give you a hint what it's about. This is
+super helpful. Please implement the same on 4a wherever appropriate."
+
+- `epRow()` draws an `.ep-hook` line between the title and the metadata line:
+  the publisher's `description` when the row carries it (feed episodes), else
+  the row's `hook` (4a's one-liner for the curated pool; the stored 280-character
+  prefix for a snapshot). Plain text, escaped, whitespace collapsed, cut at a
+  word boundary at 220 characters; `styles.css` clamps it to two lines. A hook
+  that only repeats the title is not drawn.
+- "Wherever appropriate" = every list built from `epRow`: a show's episodes,
+  search results, Saved, History, playlist and subject detail pages. Not Up Next
+  (`upNextRow`), which Apple also keeps to titles, and not Foray part rows, which
+  already carry their own why-line.
+- Pinned by `test/episode-row-snippet.test.js`.
+
 ## 2026-09-30 (founder rulings on six open owner items, delegated to Fable: HA #31, #24, #22, #17, #13, #8)
 
 The owner (Joey), 2026-09-30: "Fables decision is my decision." Two Fable agents

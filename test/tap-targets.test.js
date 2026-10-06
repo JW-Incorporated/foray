@@ -221,10 +221,12 @@ const BUTTONS = {
   ".pl-save": { tall: "button.pl-save", why: "a labelled capsule (\"Save to my playlists\" / \"✓ Saved\") with 16px side padding" },
   ".rate-option": { tall: ".rate-option", why: "a row of the speed sheet's full-width column" },
   ".reorder": { rule: "button.reorder" },
+  ".share-btn": { size: ["button.share-btn"] }, // #1071 SH-1: 44x44 by its own declarations
   ".show-star": { rule: "button.show-star" },
   ".star": { rule: "button.star" },
   ".up-next": { rule: "button.up-next" },
   ".up-next-remove": { rule: "button.up-next-remove" },
+  ".up-next-clear": { rule: "button.up-next-clear" }, // PQ-02 (#762): the Up Next page head's Clear
   ".voice-row-audition": { rule: ".voice-row-audition" },
   /* #pl-form's Go went with the #/playlists builder (round-3 audit,
      search-api-css-10); Create's Build is the one submit button left. */

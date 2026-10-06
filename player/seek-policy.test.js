@@ -10,6 +10,7 @@ import {
   seekPrecision, canSeekExactly, canPlaySegment, locateStep,
   formatTimestamp, describeTimestamp,
   OWN, FOREIGN, EXACT, APPROXIMATE, PADDED, DRIFT_TOLERANCE_SEC, AD_PAD_CEILING_SEC,
+  AD_PAD_SHIPPED,
 } from "./seek-policy.js";
 
 const stitched = { id: "ep-dai", dai_suspected: true };
@@ -294,4 +295,34 @@ test("DRIFT_TOLERANCE_SEC stays at 30 — ADR-0008 forbids widening it for ads",
   // different question with a correct answer already. The pad is the ad rung.
   assert.equal(DRIFT_TOLERANCE_SEC, 30);
   assert.equal(AD_PAD_CEILING_SEC, 120);
+});
+
+test("AD_PAD_SHIPPED is the one switch and it is off until D5", () => {
+  // README founder question 15 rules D5 yes, but the flip waits for DAI-08's
+  // probe data on main; flipping it (and this expectation, to PADDED) is DAI-09.
+  assert.equal(AD_PAD_SHIPPED, false);
+  assert.equal(
+    seekPrecision(stitched, { source: FOREIGN, adPadSec: 100, allowAdPad: AD_PAD_SHIPPED }).precision,
+    APPROXIMATE,
+  );
+});
+
+test("publishes window.ForaySeekPolicy only where a window exists", async () => {
+  /* CH-1 (#1071): app.js, a classic script, reads the rule from window rather
+     than keeping a copy. This file imported cleanly above with no window (node,
+     the parity harness); a fresh instance under a window stub publishes.
+     MUTATION: drop `typeof window !== "undefined"` from the guard at the end of
+     seek-policy.js — the static import at the top of this file throws
+     ReferenceError and the whole suite is red. */
+  assert.equal(typeof globalThis.window, "undefined");
+  globalThis.window = {};
+  try {
+    await import("./seek-policy.js?window-stub");
+    const p = globalThis.window.ForaySeekPolicy;
+    assert.deepEqual(Object.keys(p).sort(), ["APPROXIMATE", "EXACT", "FOREIGN", "describeTimestamp", "formatTimestamp", "seekPrecision"]);
+    assert.equal(p.seekPrecision({ dai_suspected: true }, { source: p.FOREIGN }).precision, p.APPROXIMATE);
+    assert.equal(p.formatTimestamp(4080, p.APPROXIMATE), "~68 min");
+  } finally {
+    delete globalThis.window;
+  }
 });

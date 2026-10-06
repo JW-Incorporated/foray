@@ -9,8 +9,10 @@
    under the strict CSP with no build step, and is also require()-able from
    Node (tools/test-search.mjs) for the search-quality battery.
 
-   ctx shape: { semantic, itemTags, discover, _dfMemo?, _corpusDfMemo?, _dfTotal? }
-   (the two memo maps and the cached tag-map size are created lazily on the ctx
+   ctx shape: { semantic, itemTags, discover, _dfMemo?, _corpusDfMemo?, _dfTotal?,
+   _bundledTagCounts? }
+   (the two memo maps, the cached tag-map size and the decoded `df` block of a
+   bundled tag slice -- see readTagDfBlock -- are created lazily on the ctx
    object the caller passes in — callers should reuse one ctx per session/run, and
    must NOT swap `itemTags` on a ctx that has already been used, since all three
    caches describe the corpus that was there when they were filled). */
@@ -411,20 +413,78 @@ function tagSegmentIndex(ctx) {
   return ctx._tagSegmentIndex;
 }
 
+/* THE BUNDLED DF TABLE (#279). The native app ships a SLICE of the tag map --
+   only the items it can search (session.episodes plus the bundled discover slice;
+   tools/mobile/prepare-webdir.mjs `itemTagsSlice`) -- and the slice carries the
+   WHOLE map's counts beside it, as a top-level `df` block:
+
+     df: { total: <entries in the whole map>, entries: <entries in this slice>,
+           by_count: { "<count>": [term, ...], ... } }
+
+   so `tagCount` and `tagDF` answer exactly what they answer on the website, and
+   the app's query interpretation cannot drift from the web's on sampling (a bare
+   trim moved 22 expansion buckets and 60 score multipliers on 2026-10-05;
+   prepare-webdir.test.mjs measures both). `tagCount` and `tagDF` are the ONLY readers of the whole map's
+   composition; `scoreMatch` and `itemWordSets` look a tag list up by an item they
+   are already scoring, and the slice keeps every one of those.
+
+   THE TABLE IS COMPLETE, not a sample of the vocabulary: it holds every term with
+   a nonzero count. Every candidate form of a term is the term plus a suffix
+   (candidateForms), so a term can only match a segment it is a PREFIX of, and
+   the bundler (prepare-webdir.mjs `tagDfBlock`) counts every prefix of every
+   segment of the whole map and keeps the nonzero ones. A term absent from the
+   table has a count of zero on the website too.
+
+   THE TABLE IS BUILT WITHOUT THIS FILE, on purpose: the bundler runs inside the
+   release jobs that hold the signing secrets, and this file must never execute
+   there (tools/ci/path-policy.test.mjs). So `tagDfBlock` restates candidateForms,
+   SENSE_LOCKED_STEMS and the segment rule, and tools/mobile/prepare-webdir.test.mjs
+   pins that restatement to THIS file's tagCount and tagDF in the secret-free
+   data-and-site check. Change candidateForms, SENSE_LOCKED_STEMS or the hyphen
+   split here and that check goes red until tagDfBlock follows.
+
+   IT APPLIES ONLY TO THE MAP IT WAS SHIPPED WITH. `entries` must equal this map's
+   own entry count, so a WHOLE map (the website's file, or the one issue #40's
+   catalogue directory fetches -- neither carries a `df` block) counts the whole map
+   itself, and a block left on a map that has since been replaced or merged is
+   ignored rather than read as stale bundle-time counts. Read once per ctx, under
+   the same "don't swap itemTags on a used ctx" contract as the memo maps. */
+function readTagDfBlock(itemTags) {
+  const df = itemTags?.df;
+  if (!df || typeof df !== "object" || !df.by_count || typeof df.by_count !== "object") return null;
+  if (!Number.isInteger(df.total) || df.entries !== Object.keys(itemTags.tags || {}).length) return null;
+  const counts = new Map();
+  for (const [n, terms] of Object.entries(df.by_count)) {
+    const c = Number(n);
+    if (!Number.isInteger(c) || c < 1 || c > df.total || !Array.isArray(terms)) return null;
+    for (const t of terms) counts.set(t, c);
+  }
+  return { total: df.total, counts };
+}
+
+function bundledTagCounts(ctx) {
+  if (ctx._bundledTagCounts === undefined) ctx._bundledTagCounts = readTagDfBlock(ctx.itemTags);
+  return ctx._bundledTagCounts;
+}
+
 function tagCount(term, ctx) {
   if (!ctx._dfMemo) ctx._dfMemo = new Map();
   if (ctx._dfMemo.has(term)) return ctx._dfMemo.get(term);
-  const idx = tagSegmentIndex(ctx);
-  const forms = candidateForms(term);
-  const matchedItems = new Set();
-  for (const f of forms) {
-    const set = idx.get(f);
-    if (set) for (const i of set) matchedItems.add(i);
+  const bundled = bundledTagCounts(ctx);
+  let n = 0;
+  if (bundled) {
+    n = bundled.counts.get(term) || 0;
+  } else {
+    const idx = tagSegmentIndex(ctx);
+    const matchedItems = new Set();
+    for (const f of candidateForms(term)) {
+      const set = idx.get(f);
+      if (set) for (const i of set) matchedItems.add(i);
+    }
+    n = matchedItems.size;
   }
-  const n = matchedItems.size;
   ctx._dfMemo.set(term, n);
   return n;
-
 }
 
 /* Fraction of the TAG MAP (0..1) whose tag list carries `term`, through the same
@@ -456,9 +516,11 @@ function tagCount(term, ctx) {
      identical fractions (0 terms move -- pinned on fixtures in
      test/search-df-scaling.test.js), and a skewed one does not. #274's real slice
      is skewed, being three items per show, and it still moves 12 expansion buckets
-     and 62 multipliers -- down from 66 and 176. So the file is STILL copied whole;
-     tools/mobile/prepare-webdir.test.mjs owns that measurement and that refusal.
-     Do not read this paragraph as "the trim is now safe".
+     and 62 multipliers -- down from 66 and 176. So a BARE trim is still not safe,
+     and the app's slice is not a bare trim: since #279 it carries the whole map's
+     counts and size (the `df` block, readTagDfBlock above), and the divergence is
+     zero rather than small. tools/mobile/prepare-webdir.test.mjs owns both
+     measurements.
 
      it is NOT interchangeable with the pool size, so do not "tidy" it into one.
      `discover.items` and the searched pool are different sets from the tag map
@@ -468,9 +530,17 @@ function tagCount(term, ctx) {
 
    Memoized on the same `_dfMemo` as `tagCount` via that function, plus one cached
    map size -- `Object.keys().length` is O(entries) and query time calls this once
-   per expansion term. */
+   per expansion term.
+
+   ON A BUNDLED SLICE (#279) the map size is the WHOLE map's, from the slice's `df`
+   block (see readTagDfBlock above), and so is the count: the fraction is the one
+   the website computes, exactly, which is what let prepare-webdir.mjs stop copying
+   the file whole. */
 function tagDF(term, ctx) {
-  if (ctx._dfTotal === undefined) ctx._dfTotal = Object.keys(ctx.itemTags?.tags || {}).length;
+  if (ctx._dfTotal === undefined) {
+    const bundled = bundledTagCounts(ctx);
+    ctx._dfTotal = bundled ? bundled.total : Object.keys(ctx.itemTags?.tags || {}).length;
+  }
   return ctx._dfTotal ? tagCount(term, ctx) / ctx._dfTotal : 0;
 }
 
@@ -1839,8 +1909,10 @@ function prettyConceptLabel(id) {
         in *Life Sciences* is NOT rank 3 in *Comedy*, so comparing two raw
         ranks across genres compares two different things. `popularityBand`
         therefore collapses it to <=10 / <=50 / <=200 / unranked, which is the
-        most the data honestly supports. Curated shows carry no `chart_rank`
-        and need none: rule 1 has already placed them.
+        most the data honestly supports. Curated shows carry the `chart_rank`
+        of their breadth twin (P-09, PKG-11a/11b) and are banded the same
+        way; rule 1 has already split them from breadth, so their band only
+        orders curated against curated (PKG-13, see `popularityBand`).
      3. `title.localeCompare` — so ties are stable and deterministic for a
         fixed catalogue snapshot, rather than depending on the input order
         (which for the index pass is byte order and for the curated pass is
@@ -2032,10 +2104,28 @@ function isBreadthShow(show) {
   return show?.tier === "breadth";
 }
 
-/** The bucketed popularity prior. See the header for why it is bucketed. */
+/** The bucketed popularity prior. See the header for why it is bucketed.
+
+    P-09 RULE HALF (PKG-13, docs/roadmap/shows-search.md): A CURATED ROW IS
+    BANDED TOO, ON THE SAME SCALE. It used to return 0 for every curated row,
+    which was harmless while no curated row carried a rank and became a defect
+    the day PKG-11a/11b joined one in: inside the curated tier every row tied
+    at 0, so the title alphabet decided, and "history" put *Ancient History
+    Fangirl* (no chart row) above *Dan Carlin's Hardcore History* (chart 14),
+    "science" put *Science for Sport Podcast* (none) above *Science Vs* (18).
+
+    One function for both tiers is safe ONLY because `compareShowMatches`
+    compares `isBreadthShow` BEFORE this — so the band never orders a curated
+    row against a breadth one, and a curated row's band can share the breadth
+    scale (1 + its 0-based bucket when ranked, `SHOW_PRIOR_BANDS.length + 1`
+    when not) without any curated row ever falling below a breadth row.
+
+    THE LOSER, RULED (docs/roadmap/README.md Q30, defaulting
+    docs/roadmap/shows-search.md §1 Q4): a curated show with no Apple chart row
+    may now sort below a ranked curated show in the same match tier — never
+    below breadth. 56 of the 220 curated rows have `chart_rank: null` today. */
 const SHOW_PRIOR_BANDS = [10, 50, 200];
 function popularityBand(show) {
-  if (!isBreadthShow(show)) return 0; // curated — rule 1 already placed it
   const rank = Number(show?.chart_rank);
   if (!Number.isFinite(rank) || rank <= 0) return SHOW_PRIOR_BANDS.length + 1;
   for (let i = 0; i < SHOW_PRIOR_BANDS.length; i++) {

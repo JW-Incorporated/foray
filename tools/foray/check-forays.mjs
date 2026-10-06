@@ -66,6 +66,7 @@ import {
   SEGMENT,
   NARRATION,
   JINGLE,
+  SEEK_MAP,
 } from "../../player/foray-queue.js";
 
 /* The pool's own provenance enum, imported from the file that WRITES the pool
@@ -74,14 +75,21 @@ import {
  * row is that file's to own. Importing keeps `merge-segments.mjs` ignorant of
  * Forays — the direction its header insists on — while giving this file one
  * source of truth for the values `ACCEPTED_SHAPES` enumerates. */
-import { TRANSCRIPT_SOURCES } from "../segments/merge-segments.mjs";
+import { TRANSCRIPT_SOURCES, ANCHOR_TIME_TOLERANCE_SEC } from "../segments/merge-segments.mjs";
 
 /* The six narration modes, imported from check-narration.mjs rather than
  * re-declared. That file already carries the enum (and the char bands each
  * mode budgets to) as `MODE_CHAR_BANDS`; a second copy of the six keys here
  * is exactly the kind of drift `copyRules` above exists to prevent — two
  * lists of "the modes" that could disagree about a seventh. */
-import { MODE_CHAR_BANDS, narratorStructureErrors } from "./check-narration.mjs";
+import {
+  MODE_CHAR_BANDS,
+  narratorStructureErrors,
+  FORAY_MODES,
+  FORAY_MODE_NARRATION_LED,
+  PRIMER_NARRATION_SHARE_MAX,
+  forayModeOf,
+} from "./check-narration.mjs";
 const NARRATION_MODES = new Set(Object.keys(MODE_CHAR_BANDS));
 
 const { BANNED, INTERNAL_VOCABULARY, titleStyleProblems, TITLE_CASE_PROBLEM, wordCount, MAX_WHY_LINE_WORDS } = copyRules;
@@ -391,6 +399,11 @@ export const SEGMENT_BOUNDARIES = Object.freeze(["turn", "sentence", "claim-only
 /** `segment-sources[].source` — only the tier-2 mint stamps a source row;
     a curated row carries no `source` field at all. */
 export const SOURCE_PROVENANCE = Object.freeze(["generation-tier-2"]);
+/** `segment-sources[].seek_map` — what an approximate seek into the delivered
+    file can rely on, measured by `tools/audio/mp3-probe.mjs --sources`. Only
+    "cbr" changes playback (the native engine drops precise timing for it).
+    Owned by the builder that carries it onto the queue item. */
+export const SEEK_MAPS = new Set(Object.values(SEEK_MAP));
 
 /**
  * The shapes this checker accepts — G-21c's enumeration. Keys name the field
@@ -419,6 +432,21 @@ export const ACCEPTED_SHAPES = Object.freeze({
   "source.dai_suspected": Object.freeze([true, false]),
   "source.source": SOURCE_PROVENANCE,
 });
+
+/**
+ * The two tiers an episode's measured ad pad falls into (DAI-06,
+ * docs/roadmap/dai.md §3; ADR-0008 "The pad must be an UPPER BOUND on the
+ * delta"). PADDABLE: `ad_pad_sec <= ANCHOR_TIME_TOLERANCE_SEC`, so a clip can
+ * be widened by the pad and still land inside the anchor's tolerance.
+ * LOCATE-REQUIRED: the pad is wider than that ceiling, and the clip cannot
+ * play until `locateStep()` exists (ADR-0008 Decision 5: "LOCATE-REQUIRED
+ * shows are authored, not played").
+ *
+ * Deliberately NOT a key of `ACCEPTED_SHAPES`: that enumeration's rule is that
+ * every value is carried by a committed Foray, and no committed source is
+ * LOCATE-REQUIRED — nor may a published Foray draw on one (the rule below).
+ */
+export const AD_TIERS = Object.freeze(["PADDABLE", "LOCATE-REQUIRED"]);
 
 /* Narration ceilings, from docs/curation/narration-craft.md §0.
  *
@@ -785,6 +813,49 @@ export function checkForays(files, { renderedNarrationOnPublished = RENDERED_NAR
     if (typeof s.dai_suspected !== "boolean") {
       err(`segment-sources "${s.id}": \`dai_suspected\` must be a boolean — it gates seek precision (#30), and a missing flag reads as falsy`);
     }
+    /* `seek_map` is measured by tools/audio/mp3-probe.mjs and read by the native
+     * engine: "cbr" turns OFF AVFoundation's precise timing for this source's
+     * clips (it reads the whole file and buys nothing on CBR). A typo there
+     * would silently keep the slow path, or — worse, if the engine ever keyed on
+     * a looser match — drop precision on a VBR file. Absent is fine (precise). */
+    if (s.seek_map !== undefined && !SEEK_MAPS.has(s.seek_map)) {
+      err(`segment-sources "${s.id}": \`seek_map\` must be one of ${[...SEEK_MAPS].join(", ")} (or absent)`);
+    }
+    /* DAI-06 (docs/roadmap/dai.md §3): the `ad_*` fields stamped by
+     * tools/segments/stamp-ad-pad.mjs from a same-episode probe ledger. A pad
+     * is ADR-0008's upper bound on the ad-insertion delta,
+     * `max(0, delta_max) + spread`, and it is only a bound when at least two
+     * probes measured it — one probe bounds nothing. A zero pad (every
+     * committed row today) needs nothing beyond a known tier, when it has one.
+     * `ad_free_ratio` is the legacy ad-inflation-scan field and is not
+     * validated here. */
+    if (s.ad_pad_sec !== undefined) {
+      const pad = s.ad_pad_sec;
+      if (typeof pad !== "number" || !Number.isFinite(pad) || pad < 0) {
+        err(`segment-sources "${s.id}": \`ad_pad_sec\` must be a finite number >= 0; got ${JSON.stringify(pad)}`);
+      } else if (pad > 0) {
+        if (!(Number.isInteger(s.ad_delta_probes) && s.ad_delta_probes >= 2)) {
+          err(`segment-sources "${s.id}": a positive \`ad_pad_sec\` needs \`ad_delta_probes\` an integer >= 2 — one probe bounds nothing (ADR-0008); got ${JSON.stringify(s.ad_delta_probes)}`);
+        }
+        const deltaOk = typeof s.ad_delta_sec === "number" && Number.isFinite(s.ad_delta_sec);
+        if (!deltaOk) err(`segment-sources "${s.id}": a positive \`ad_pad_sec\` needs a finite \`ad_delta_sec\`; got ${JSON.stringify(s.ad_delta_sec)}`);
+        const spreadOk = typeof s.ad_delta_spread_sec === "number" && Number.isFinite(s.ad_delta_spread_sec) && s.ad_delta_spread_sec >= 0;
+        if (!spreadOk) err(`segment-sources "${s.id}": a positive \`ad_pad_sec\` needs a finite \`ad_delta_spread_sec\` >= 0; got ${JSON.stringify(s.ad_delta_spread_sec)}`);
+        if (deltaOk && spreadOk) {
+          const bound = Math.max(0, s.ad_delta_sec) + s.ad_delta_spread_sec;
+          if (Math.abs(pad - bound) > 0.05) {
+            err(`segment-sources "${s.id}": \`ad_pad_sec\` ${pad} is not max(0, ad_delta_sec) + ad_delta_spread_sec = ${Math.round(bound * 10) / 10} (ADR-0008's upper bound)`);
+          }
+        }
+        const tier = pad <= ANCHOR_TIME_TOLERANCE_SEC ? "PADDABLE" : "LOCATE-REQUIRED";
+        if (s.ad_tier !== tier && (s.ad_tier === undefined || AD_TIERS.includes(s.ad_tier))) {
+          err(`segment-sources "${s.id}": \`ad_tier\` must be ${JSON.stringify(tier)} for a ${pad} s pad (the ceiling is ANCHOR_TIME_TOLERANCE_SEC, ${ANCHOR_TIME_TOLERANCE_SEC} s); got ${JSON.stringify(s.ad_tier)}`);
+        }
+      }
+    }
+    if (s.ad_tier !== undefined && !AD_TIERS.includes(s.ad_tier)) {
+      err(`segment-sources "${s.id}": \`ad_tier\` must be one of ${AD_TIERS.join(", ")} (or absent); got ${JSON.stringify(s.ad_tier)}`);
+    }
   }
   report.sources = sources.size;
 
@@ -826,6 +897,12 @@ export function checkForays(files, { renderedNarrationOnPublished = RENDERED_NAR
     const W = (m) => warn(`foray "${fid}": ${m}`);
 
     if (!FORAY_KINDS.includes(foray.kind)) E(`\`kind\` must be ${FORAY_KINDS.map((k) => JSON.stringify(k)).join(" or ")} (#134); got ${JSON.stringify(foray.kind)}`);
+    /* HA #22 (2026-09-30): the running order's product mode. Optional, absent
+     * means "foray", so every committed record stays valid unchanged. Compared
+     * through the constants exported by check-narration.mjs, never a literal
+     * here (fixture-coverage.test.mjs scans this file for `mode` literals). */
+    const forayMode = forayModeOf(foray);
+    if (!FORAY_MODES.includes(forayMode)) E(`\`mode\` must be one of ${FORAY_MODES.map((m) => JSON.stringify(m)).join(", ")} when present; got ${JSON.stringify(foray.mode)}`);
     if (!FORAY_STATUSES.includes(foray.status)) E(`\`status\` must be ${FORAY_STATUSES.map((s) => JSON.stringify(s)).join(" or ")}`);
     /* `title` is deliberately not checked here — the copy loop below already
      * rejects a missing one, and checking it twice reported it twice. */
@@ -1368,6 +1445,18 @@ export function checkForays(files, { renderedNarrationOnPublished = RENDERED_NAR
       if (seenSegmentIds.has(item.segment_id)) E(`${at}: segment "${item.segment_id}" appears twice in one Foray`);
       seenSegmentIds.add(item.segment_id);
 
+      /* DAI-06: a LOCATE-REQUIRED source's pad is wider than the anchor
+       * tolerance, so its clip is skipped at play while locateStep() is
+       * unimplemented (ADR-0008 Decision 5, "authored, not played"). Refused on
+       * a published Foray, reported on a draft, which may wait for the locate
+       * step. Its own lookup: the `src` below exists only on a published Foray. */
+      const adSrc = sources.get(seg.item_id);
+      if (adSrc?.ad_tier === "LOCATE-REQUIRED") {
+        (foray.status === "published" ? E : W)(
+          `${at}: item ${JSON.stringify(item.label ?? item.segment_id)} draws on LOCATE-REQUIRED source "${seg.item_id}" — it would be skipped at play while locateStep() is unimplemented (ADR-0008 decision 5)`
+        );
+      }
+
       if (foray.status === "published") {
         const src = sources.get(seg.item_id);
         for (const p of captionProblems(seg.why, { show: src?.show, episodeTitle: src?.title })) {
@@ -1478,6 +1567,16 @@ export function checkForays(files, { renderedNarrationOnPublished = RENDERED_NAR
     const narrationRuntime = narrations.reduce((a, n) => a + n.sec, 0);
     const runtime = tapeRuntime + narrationRuntime + jingleRuntime;
     const mean = tapeRuntime / durations.length;
+
+    /* HA #22: a narration-led running order ("Primer") may be mostly narrator,
+     * but not more than 75 % of what the listener hears. Foray mode's 25/35/40
+     * stay reported-not-gated (see narration_share below), exactly as before. */
+    if (forayMode === FORAY_MODE_NARRATION_LED && runtime > 0 && narrationRuntime / runtime > PRIMER_NARRATION_SHARE_MAX) {
+      E(
+        `narration is ${((narrationRuntime / runtime) * 100).toFixed(1)} % of the running order, past the ` +
+          `${PRIMER_NARRATION_SHARE_MAX * 100} % bound for a narration-led mode (narration-craft.md §4e, HA #22)`
+      );
+    }
 
     /* ---- D1's start list, on the listener's clock ------------------------
      *
@@ -1817,6 +1916,8 @@ export function checkForays(files, { renderedNarrationOnPublished = RENDERED_NAR
          of it, so the two can be compared without recomputing either. On a Foray
          with no narration they are equal, `narration_sec` is 0, and every
          existing assertion on this shape holds. */
+      /* HA #22: the surface reads this to say which mode a listener is getting. */
+      mode: forayMode,
       runtime_sec: +runtime.toFixed(2),
       tape_runtime_sec: +tapeRuntime.toFixed(2),
       narration_items: narrations.length,
@@ -1885,7 +1986,7 @@ if (invokedDirectly) {
   } else {
     for (const f of report.forays) {
       console.log(
-        `${f.id} (${f.status}): ${f.segments} segments, ${(f.runtime_sec / 60).toFixed(1)} min, mean ${f.mean_sec} s` +
+        `${f.id} (${f.status}): ${f.segments} segments, ${(f.runtime_sec / 60).toFixed(1)} min, mean ${f.mean_sec} s, ${f.mode} mode` +
           (f.narration_items
             ? `\n  ${f.narration_items} narration item(s), ${(f.narration_sec / 60).toFixed(1)} min ` +
               `(${(f.narration_share * 100).toFixed(1)} % of the Foray; ${(f.tape_runtime_sec / 60).toFixed(1)} min is tape)`

@@ -66,14 +66,35 @@ that is not a gzip. Anything we automate here must set the UA explicitly.
 feeds; the dump carries 4,710,545. The dump is a weekly-ish snapshot running
 about 1,600 feeds and 7 days behind the live index.
 
-**Scale relative to us.** Our catalogue is **138,470 unique feeds** after
-normalising scheme, case and trailing slash (`grilling-foray-sourcing.md` §5.1
-says 138,480, counting raw strings). The dump is **34x larger**; we hold
-**2.94%** of it.
+**Scale relative to us.** Our harvested catalogue is **19,787 US shows** (the
+international file was retired on 2026-10-04; founder ruling, catalogue Q4 "yes",
+`docs/roadmap/README.md` item 26; #560 item 6). The dump is **~238x larger**; we
+hold **0.42%** of it. When this pass ran, the US and international files together
+came to 138,470 unique feeds after normalising scheme, case and trailing slash
+(`grilling-foray-sourcing.md` §5.1 says 138,480, counting raw strings), and the
+figures in §2.1 below were measured against that 138,470.
 
 ---
 
 ## 2. Is it a viable ongoing ingest path? No — and the reason is structural
+
+> **SUPERSEDED FOR THE SHOW LIST, 2026-09-21 (S-04/S-04a, `4a-shows-pipeline-plan.md`,
+> `docs/DECISIONS.md`'s 2026-09-05 S-04a entry).** This section's verdict was
+> "the dump is a research tool, not an ingest path" — correct for the
+> *episode*-level questions this document was answering (§2(a) below), and
+> deliberately overridden for the *show list* by the later plan: the full
+> weekly dump now IS the ongoing ingest path for "which shows exist,"
+> imported by `tools/shows/import-dump.mjs` into a static shard index
+> (published as GitHub Release assets) plus an inert Postgres path. §2(a)'s
+> finding stands unchanged and is exactly why: the show-list import reads
+> only feed-level columns (id, url, title, dead, episodeCount, dates) and
+> never asks an episode-shaped question of the dump — every episode still
+> comes from fetching the feed XML directly, as this section says it must.
+> §2(b)'s full-table-scan cost is answered by building the shard index once
+> a week rather than querying the dump live. §2(c)'s runner budget concern
+> is answered by streaming with `node:sqlite` rather than downloading whole.
+> Read this section for *why episode-level breadth work still fetches feeds
+> directly* — it no longer describes the show list.
 
 The keyless/$0 constraint is satisfied. Three other things are not.
 
@@ -126,7 +147,9 @@ The dump nominated **7,237 candidate feeds** (food/history-category feeds with
 146 English food/history feeds whose title or description names a target region
 *and* a fire-cooking word).
 
-**6,410 of those 7,237 — 88.6% — are not in our 138,470-feed catalogue.** That
+**6,410 of those 7,237 — 88.6% — were not in our then-138,470-feed catalogue**
+(US plus the since-retired international file; today's catalogue is 19,787 US
+shows, so the share is at least as high now). That
 is the concrete measure of what the chart-harvest ceiling was hiding, and it
 corroborates the 79.6%-new figure the earlier Apple-search pass reported.
 

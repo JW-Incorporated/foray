@@ -479,6 +479,28 @@ test("data-integrity-8: cp_lastpick is never written, and a stored copy is remov
   assert.match(policy, /\| `cp_lastpick` \| Retired/, "the privacy policy says it is retired");
 });
 
+test("#1076: cp_voice_probe is retired with the on-device Kokoro probe — never read or written, removed once storage settles", () => {
+  /* Founder ruling 2026-10-05 (issue #1076): the Kokoro probe left the app
+     bundle, and with it K-01's "Voice engine probe" drawer switch. A device
+     that had the switch on still holds the key; it goes the way cp_lastpick
+     went, through RETIRED_STORAGE_KEYS.
+     MUTATION: drop "cp_voice_probe" from RETIRED_STORAGE_KEYS — the stored
+     copy survives, red.
+     MUTATION: restore `lsGet("cp_voice_probe", false)` (voiceProbeOn) or the
+     switch's `lsSet("cp_voice_probe", on)` — red. */
+  const m = loadApp();
+  m.store.set("cp_voice_probe", "true");
+  m.store.set("cp_show_drafts", "true");
+  m.run("markStorageSettled();");
+  assert.strictEqual(m.store.has("cp_voice_probe"), false, "the retired key is removed after hydration");
+  assert.strictEqual(m.store.get("cp_show_drafts"), "true", "and the founder's other switch is untouched");
+  const code = SRC.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:/])\/\/[^\n]*/g, "$1");
+  assert.ok(!/ls(Get|Set)\(\s*["']cp_voice_probe["']/.test(code), "no code path reads or writes it");
+  assert.ok(!/voice-probe-toggle|runVoiceProbe/.test(code), "the drawer switch and its run control are gone");
+  const policy = fs.readFileSync(path.join(ROOT, "docs/legal/privacy-policy.md"), "utf8");
+  assert.match(policy, /\| `cp_voice_probe` \| Retired/, "the privacy policy says it is retired");
+});
+
 /* ---------- app-2-11: the Search CTA's query reaches Create without a timer --- */
 
 test("app-2-11: the Search CTA hands its query to Create through module state, consumed when the form is bound", () => {

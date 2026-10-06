@@ -1,4 +1,4 @@
-/* supabase/0004_event_retention.sql, pinned (founder ruling HA #13, 2026-09-30).
+/* supabase/0006_event_retention.sql, pinned (founder ruling HA #13, 2026-09-30).
  *
  * WHY THIS EXISTS
  * The privacy policy promises: event rows are deleted 90 days after they were
@@ -12,7 +12,7 @@
  *
  * Static, like supabase-rls-verbs.test.js: no database. The SQL is read with
  * comments stripped (the header discusses these clauses at length, and a
- * comment must not satisfy an assertion). Applying 0004 to the live project
+ * comment must not satisfy an assertion). Applying 0006 to the live project
  * is a human action.
  *
  * HOW EACH TEST WAS BROKEN (run on the real file, then restored):
@@ -35,7 +35,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const ROOT = path.join(__dirname, "..");
-const FILE = "backend/migrations/supabase/0004_event_retention.sql";
+const FILE = "backend/migrations/supabase/0006_event_retention.sql";
 const RAW = fs.readFileSync(path.join(ROOT, FILE), "utf8");
 const SQL = RAW.replace(/--[^\n]*/g, "").replace(/\s+/g, " ");
 

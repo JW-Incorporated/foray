@@ -916,7 +916,17 @@ plausibly close a thirty-point gap, but that is a judgement and #22 wants a meas
 Read §11 as *"the catalogue action was worth doing and did not answer the funding
 question"*, which is what #279 was scoped to find out.
 
-**One inheritance to declare.** The headline 2 / 21 / 40 rests on #278 §9a's undecided
+> **Ruled, HA #22 (2026-09-30), added after this pass:** the SYSK register is **IN, as
+> thin, never strong; the counts stand at 2 / 21 / 40.** The inheritance described next
+> is therefore settled in favour of the headline, and #22's funding question has been
+> re-run against these counts in `narration-architecture.md` §10b: tape 2,400.4 s,
+> **63.8 % narrator written in full**, Foray mode still unfundable (25 % target
+> −225.7 s over before one empty beat is carried; 35 % ceiling carries 3 of 40), and
+> the narration-led mode ("Primer", bound ≤ 75 %) clears with 11 points of margin.
+> The paragraph above that says nobody has re-run the arithmetic is true of this
+> document at the time it was written.
+
+**One inheritance to declare.** The headline 2 / 21 / 40 rested on #278 §9a's then-undecided
 founder call: the SYSK register decides 11 of the 15 thin verdicts this pass inherits,
 and under a SYSK-out reading the same gate gives roughly **2 / 12 / 49**. #278 recorded
 that as open and it is still open, so the counts here carry it too.
@@ -930,3 +940,446 @@ This document is stage 2b of #226, opened by #279. It supersedes nothing in
 measured against and its §3–§8 beat entries remain the record for the 56 beats this
 pass did not touch. Where the two disagree, they disagree about a **different
 catalogue**, and both say which one they measured.
+
+---
+
+## 13. The wave applied (PKG-36, 2026-10-05): before and after
+
+This section is the wave card's re-score (`docs/roadmap/corpus.md`, PKG-36), taken
+against the candidate list in `wave-drinks-candidates-2026-09.md` (PKG-35). §0–§12
+above are unchanged. They are this section's *before*, in the same way #278's counts
+were theirs.
+
+**Measured on `main` = `9f70441e`** (the beat reads were first taken on `4f1cec4`, eight
+commits earlier; none of those commits touch the catalogue or this subject, and every
+size figure below was re-measured on `9f70441e`), with `data/catalog.json` at 229 shows
+(220 before) and `data/discover.json` at 2,177 items (2,167 before). The four tests are §2's, which
+are #278 §1a's, quoted again here so nothing is paraphrased:
+
+1. the passage was **read** in a transcript, not inferred from a title, hook or tag;
+2. the speaker has **sourced expertise** in the thing being claimed;
+3. the passage advances the **beat's claim**, not one clause of it;
+4. it is **cuttable** inside the 75–180 s band without double-booking a passage another
+   beat is already using.
+
+**Thin** is a narration beat with a partial supporting cut. **Empty is a result.**
+The counts carry HA #22's ruling (2026-09-30: the SYSK register is in, as thin, never
+strong). **None of the five new thin verdicts below rests on that register.** Every one
+comes from a producer, maltster, blender, brewer or importer talking about their own
+work.
+
+### 13a. How the picks were made
+
+The candidate list had 65 rows. English was `?` on all of them, and so was the DAI
+prior. Only 2 rows showed timed transcripts, according to the 3,000-show sweep.
+All three columns were resolved from the live feeds on 2026-10-05: one request per feed,
+1.5 s apart, carrying the repository's own User-Agent (`tools/segments/politeness.mjs`).
+
+- **English.** It was read from each feed's `<language>` and never assumed (the standing
+  English-only instruction). 64 of the 65 feeds declare `en`, `en-us`, `en-gb` or `en-au`.
+  One row, *True Crime & Cocktails*, has no feed URL in its breadth row. Its language
+  could not be resolved, so it was not added.
+- **DAI.** A read was taken on **every** candidate, not only the picks. It used the
+  shipped classifier (`tools/refresh/dai.mjs` `classifyShow`) on the newest enclosure,
+  following redirects. The nine picks were then classified for real by
+  `tools/refresh/classify-dai.mjs`, which wrote `data/dai-classification.json` and
+  stamped `dai_suspected` on the new items. The two reads agree on all nine.
+- **Transcripts.** Each feed was checked for `<podcast:transcript>`. The sweep's "2" is
+  stale: The Bourbon Road carries 72 (vtt), Wine Talks with Paul K. 151 (srt), Beer In
+  Front 88 (vtt), The Wine Pair Podcast 258 (html), Wine Blast 75, and others fewer.
+- **"Target 80" is a ceiling, not a quota** (#279's 2026-08-19 comment: *"curate
+  selectively against the spine, not wholesale"*, Act I first). **Nine** were added.
+  29 of the 65 are the wrong sense of the word: finance, theology, soccer, cricket,
+  dentistry, hot rods, Bravo recaps. #289's §1a found the same failure class among
+  the `spirits` rows. The other 27 were not picked. One of them (#50) has no resolvable language,
+  and the appendix table gives every row's reason.
+- **Label, never exclude.** Nothing already curated was removed or relabelled.
+  `data/catalog.json` gains nine rows with `source: "wave-279"`. Every id, feed URL,
+  artwork URL, genre and episode count comes from a fresh `itunes.apple.com/lookup` call
+  on 2026-10-05.
+
+| Show | `show_id` | Apple id | Genre | Episodes | DAI read | `taxonomy_node_ids` | Items merged → kept | Aimed at (empty beats first) |
+|---|---|---|---|---|---|---|---|---|
+| The Bourbon Road | `the-bourbon-road` | 1457878143 | Food | 514 | no (libsyn) | `food/drinks` | 4 → 1 (492) | 11, 12, 13, 37, 38 |
+| BeerSmith Home and Beer Brewing Podcast | `beersmith-podcast` | 398500515 | Hobbies | 300 | no (libsyn) | `food/fermentation`, `food/drinks` | 4 → 1 (#348) | **7**, 2, 4, 23, 28, 29, 60 |
+| The Bourbon Life | `the-bourbon-life` | 1498387060 | Food | 105 | no (libsyn) | `food/drinks` | 4 → 1 (Wadell) | 11–14, 38 |
+| Wine Talks with Paul K. | `wine-talks-with-paul-k` | 1617481013 | Food | 528 | no (libsyn) | `food/drinks` | 3 → 2 (orange wine, port) | 18, 32, 52, 53 |
+| Wine for Normal People | `wine-for-normal-people` | 413879919 | Food | 92 | no (libsyn) | `food/drinks` | 4 → 1 (607) | 21, 5, 17, 19 |
+| Wine Educate | `wine-educate` | 1781687341 | Food | 131 | no (libsyn) | `food/drinks` | 3 → 1 (114) | 18, 20, 52 |
+| Wine Enthusiast Podcast | `wine-enthusiast-podcast` | 1168716155 | Food | 229 | no (riverside) | `food/drinks` | 1 → 1 (221) | 18, 44 |
+| The Brewing Network Presents \| Brew Strong | `brew-strong` | 288838352 | Food | 361 | **DAI** (Megaphone) | `food/fermentation`, `food/drinks` | 4 → 1 (decoction) | **7**, 2, 4, 5, 9, 29 |
+| Beer In Front | `beer-in-front` | 1500155339 | Crafts | 292 | **DAI** (Spreaker) | `food/drinks` | 3 → 1 (craft malt) | **7**, 28, 29, 60 |
+
+The items were built with the shipped backfill path: `backfill-show.mjs --match`,
+then `resolve.mjs` (31 of 31 resolved by guid), then `merge.mjs` (30 merged), then
+`classify-dai.mjs`. The 31st episode, Wine Enthusiast 224, is sponsored by the
+Franciacorta consortium. It was deliberately left without an edit, and `merge.mjs` skips it.
+
+**Then trimmed from 30 to 10, because 30 broke the mobile bundle's 2.8 MB alarm**
+(§13g has the numbers). The trim went through the same path, not a hand edit:
+`data/discover.json` and `data/item-tags.json` were reset to `main`, `merge.mjs` was
+re-run on the same `resolved.json` with an edits file holding only the ten kept ids (an
+item with no edit is skipped, so this is exactly a 10-item merge), and `classify-dai.mjs`
+re-stamped them from its cache with no new network reads. The result is byte-identical to
+the 30-item merge minus the twenty dropped entries. Each show keeps **one** item, the one
+this section actually leans on: the §13c beat-12 tape (Bourbon Road 492), the §13c beat-18
+span (*Orange Wine Is Not a Fad*), and a §13h queue row wherever one exists (Symington's
+port episode, BeerSmith #348, WFNP 607, Wine Educate 114, Brew Strong's decoction episode,
+Beer In Front's craft-malt episode). The two shows with neither keep the item nearest
+their aimed-at beats (Bourbon Life's head blender, for 38) or their only item (Wine
+Enthusiast 221). Wine Talks keeps two because it carries both. **No verdict in §13c–§13e
+moves**: beats 7, 32, 38 and 60 were scored on episodes that were never `discover.json`
+items, and the two that were (492 and the orange-wine episode) are kept. The twenty dropped
+episodes were never on `main`, so nothing a user can reach today is removed. Their edits
+are kept outside the repository, and they can be merged in a later pass once the bundle
+has room for them (§13g says what that would take).
+The README's `--newest 25` window decided which episodes could enter `discover.json` at
+all. So several of the episodes read below are curated **shows**, but they are not
+`discover.json` **items**, exactly as `cider-chat` 424 was in §3.
+
+Two DAI shows came in on purpose. Brew Strong and Beer In Front are the only
+candidates whose newest titles name **malting, mashing enzymes and yeast handling**. That
+is Act I's beat 7, and it was the reason to look. Their spans are
+authorable-and-unplayable under `ADR-0008` until the locate step exists, the same caveat
+§8 puts on Bourbon Pursuit. One more show was considered and set aside: The Wine Pair Podcast.
+It has 258 "transcripts", but they are **pre-written show scripts with section-level
+timestamps only**. No passage in them can be put in a band (test 4), and the interview episodes
+do not carry the interview at all (test 1). Its sherry script also places Jerez "in
+Portugal".
+
+### 13b. What was read
+
+Twenty-seven transcripts were fetched from the picks' own feeds to a scratch directory
+outside the repository. None is stored. The Wine Pair's seven scripts were fetched too,
+then set aside as §13a describes. They were searched for each empty beat's
+vocabulary, and every candidate passage was read in full:
+
+- The Bourbon Road (vtt): 492, 466, 458, 465, 474, 509, 510, 513, 515 and 490.
+- Wine Talks with Paul K. (srt): the Stetson Robbins, Rupert Symington and Ben Bell
+  episodes, plus nine Armenian-wine episodes.
+- Beer In Front (vtt): Riverbend Malt House, Blue Ox Malthouse, Dirty Water Hard
+  Seltzer, the Alesmith NA episode and Japanese Lagers.
+
+Quotations below are as the transcripts hold them, garbles included ("enzomatic",
+"2 2 to 6 weeks"), per #278 §2a.
+
+### 13c. The beats that moved: five, all empty to thin
+
+**Beat 7 (malting) — empty → thin.** `beer-in-front`, *Riverbend Malt House*, band
+**00:16:46.6 → 00:18:52.2 (125.6 s)**. Brent Manning, co-founder of Riverbend Malt House,
+gives the whole malting sequence as a maltster's decision chain: *"So the process of malting
+is basically"* / *"designed to manage the enzomatic digestion of the cell walls"*, the
+three steps with moisture numbers (*"from about twelve percent moisture"* … *"up to about
+forty five percent moisture"*), the beat's own image (*"We're essentially tricking the
+grain into growing by"* / *"steeping it."*), germination length as the modification dial,
+and the kiln as the flavour step with its range (*"anywhere from one hundred"* / *"and
+twenty to two hundred and twenty fahrenheit over this process,"* from pilsner to dark
+Munich). **Missing: the beat's centre.** Alpha- and beta-amylase are never named, the
+mash-temperature dial does not appear, and diastatic power is only gestured at, at
+00:20:42 (*"push enzymes to the forefront"* for distillers converting corn). Test 3 fails,
+so this is thin. The span is DAI (Spreaker). An alternate is Blue Ox Malthouse at 00:13:59 →
+00:15:09, which carries the porridge line (*"if you take raw grain and you add"* / *"hot
+water, you get a porridge like oatmeal."*). That line is about ten seconds of beat 6's
+locked-starch half, which is not enough to move beat 6.
+
+**Beat 18 (red and white is a contact decision) — empty → thin.** `wine-talks-with-paul-k`,
+*Orange Wine Is Not a Fad*, band **00:54:03.3 → 00:56:04.9 (121.6 s)**. §3a held this beat
+empty on a 34.6 s fragment. This span clears test 4. The host sets up the inversion (*"taking a red
+grape and fermenting it like a white wine and you end up"* / *"with pink."*). Then
+Stetson Robbins, who imports Georgian and Slovenian skin-contact wine, gives contact time as
+the variable: *"this style of wine production predates"* / *"white wine production."*,
+*"the red grapes are in"* / *"qvevri with the skins for 2 2 to 6 weeks. The white"* /
+*"grapes are with the skins for, you know, up to a year."*, and *"there's nothing
+physiologically"* / *"different between red and white grapes other than pigment."* A
+continuation at 00:57:05 carries the beat's one-variable claim second-hand from Clark
+Smith (*"White"* / *"wine and rosé are the same thing. Red wine and orange"* / *"wine are
+the same thing."*). **Why thin, not strong:** test 2 is an importer rather than a
+winemaker, and some mechanism is muddled (*"because the acid content in the skin"*). There is
+no cap management and no temperature. Blanc de noirs comes only through the host's white
+Zinfandel aside, and rosé's three routes are never separated. Non-DAI (libsyn).
+
+**Beat 32 (sake is brewed) — empty → thin.** `wine-talks-with-paul-k`, *Americans Don't
+Make Sake*, band **00:21:26.8 → 00:23:06.0 (99.2 s)**. Ben Bell trained two years at the
+Nanbu Bijin brewery. He covers the milling clause with its reason (*"Rice polishing"* /
+*"technology, having that ability to mill down, take fat and"* / *"protein off the grain
+of the rice, get more starch,"*) and pure-culture yeast selection around 1900. **Missing:
+koji, the starter, the three-stage addition and the parallel conversion.** The word koji
+does not occur in the episode. About 30 s of the band is serving-temperature advice, which
+the beat rejects. One clause, so thin. Non-DAI.
+
+**Beat 38 (grain whisky, blending, the ruling) — empty → thin.** `the-bourbon-road` 466
+(*Blending Masters*, Barrel Craft Spirits), band **00:31:01.9 → 00:33:13.9 (132.0 s)**. This
+is the beat's strong-signal clause: blending defended on process grounds by people who do it.
+Joe Beatrice and Tripp Stimson describe composition as gap-filling, not dilution (*"sometimes there
+are more dominant whiskeys than others,"*, *"and then we go through a process of filling
+in gaps."*, *"the saturation point of the complexity"*). There is a 29.5 s companion at
+00:18:41.4 on the legal stigma: *"if you said the word blended whiskey or blended,"* /
+*"it was a dirty word."* … *"a whiskey that's 90% GNS and 10% whiskey."* **Missing: grain
+whisky, the column, consistency as an industrial achievement, and the 1909 Royal
+Commission.** This is American blending of straight whiskeys, which is one clause of a
+Scotch beat. Non-DAI.
+
+**Beat 60 (the additive frontier) — empty → thin.** `beer-in-front`, *Dirty Water Hard
+Seltzer*, band **00:06:28.6 → 00:08:26.4 (117.8 s)**. Dominic Minogue, the brand's
+founder, covers the flavour-house system and the category's construction in his own words:
+*"There's a spirit based and then you're malt based, right,"* / *"malt based in this
+case, people call it malt based,"* / *"but realistically it's just called sugar brew or
+fermented sugar."* That is the beat's "fermented drink by law, flavoured base in practice"
+from the inside. **Missing: stripping to neutrality, and the whole dealcoholisation
+half.** The NA episode (Alesmith) names no removal technology. DAI (Spreaker).
+
+**Already thin, better tape, no count change: beat 12.** `the-bourbon-road` 492 (Old
+Glory, Devin Puckett), band **00:12:08.0 → 00:13:30.5 (82.5 s)**. It has the column's spec
+(*"There's about 15 plates for the mash to fall through"*), the doubler and its proofs,
+and then at 00:16:12.3 the economics of continuity, the clause beat 12 asks for: *"a 500
+gallon pot still is going to give you about a barrel a day"* against *"about 15 barrels a
+day off that column still"*. There is no reflux and no patent history, and the speaker is a
+brand representative, so it stays thin.
+
+### 13d. Searched hard and still empty
+
+- **11 and 13 (distillation physics, cuts and methanol).** Ten Bourbon Road distillery
+  and tasting episodes contain no azeotrope, no boiling-point account, no heads or tails
+  and no methanol. The one *"hearts of heart"* (465) is a two-word aside. **Distillation
+  is still the hole in Act I**, and a curated whisky show did not fill it. That matches
+  §5's prediction for WhiskyCast.
+- **52 and 53 (fortification, port).** Rupert Symington says exactly the beat's
+  mechanism: *"we actually add brandy to the, to the port"* / *"during fermentation so we
+  preserve some of the natural grape sugar"*. But it lasts **34 s**, from 00:03:35 to
+  00:04:09, and both sides of it are trade history. On §3a's precedent a fragment is
+  not a cut, so both beats stay empty. The full episode is worth an ASR-free re-listen
+  for a longer span, and that is §13g's first row.
+- **54 (sherry).** The only sherry text in the pool is The Wine Pair's script, which was
+  set aside in §13a.
+- **62 (proof).** Bourbon Road 490 is a proof flight. It has tasting talk and no
+  hydrometry, duty or legal minimum.
+- **37 (malt whisky, peat at the kiln).** Bourbon Road 515 tastes five American single
+  malts. Riverbend (at 00:21:11) says specialty-malt flavour carries into single malt.
+  Neither has peat, a kiln or the wash.
+
+### 13e. Counts, before and after
+
+| Verdict | #278 | §4a (PR #289) | **now (PKG-36)** | change |
+|---|---|---|---|---|
+| **Strong** | 1 | 2 (19, 26) | **2** (19, 26) | 0 |
+| **Thin** | 15 | 21 | **26** | **+5** |
+| **Empty** | 47 | 40 | **35** | **−5** |
+
+2 + 26 + 35 = 63. **Moved empty → thin:** 7, 18, 32, 38, 60. **Moved to strong:** none.
+
+**Weighted by the spine's share column.** The five beats carry 2.0 + 1.8 + 2.0 + 1.7 +
+1.4 = 8.9 points.
+
+| | #278 | §4a | **now** |
+|---|---|---|---|
+| strong | 2.0 % | 3.5 % | **3.5 %** |
+| thin | 25.8 % | 35.2 % | **44.1 %** |
+| empty | 72.2 % | 61.3 % | **52.4 %** |
+
+Each column sums to 100.0.
+
+**By act.**
+
+| Act | Beats | #278 (S/T/E) | §4a (S/T/E) | **now (S/T/E)** |
+|---|---|---|---|---|
+| I — one molecule, four questions | 1–16 | 0 / 3 / 13 | 0 / 7 / 9 | **0 / 8 / 8** |
+| II — sugar already sweet | 17–25 | 0 / 1 / 8 | 1 / 3 / 5 | **1 / 4 / 4** |
+| III — sugar unlocked | 26–35 | 1 / 2 / 7 | 1 / 2 / 7 | **1 / 3 / 6** |
+| IV — concentration | 36–51 | 0 / 5 / 11 | 0 / 5 / 11 | **0 / 6 / 10** |
+| V — made by addition | 52–60 | 0 / 3 / 6 | 0 / 3 / 6 | **0 / 4 / 5** |
+| VI — the rules and the coda | 61–63 | 0 / 1 / 2 | 0 / 1 / 2 | 0 / 1 / 2 |
+
+**Chain versus fan**, on #278 §9b's segments. Four of the five moves are chain beats:
+7 (Act I), 18 (the wine chain), 32 (the koji chain) and 38 (the whisky chain). Beat 60 is a fan
+stop. Chain empties fall **24 → 20** of 40, and fan empties **16 → 15**. The wine chain now
+reads 1 strong / 2 thin / 2 empty, the koji chain 1 thin / 1 empty, and the whisky chain
+2 thin / 2 empty.
+
+**Still empty, all thirty-five:** 1, 2, 6, 8, 9, 11, 13, 16, 21, 23, 24, 25, 28, 29, 31,
+33, 34, 35, 37, 40, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 62, 63.
+
+**Act I still has no strong tape.** Its one new thin beat, 7, is a maltster without the
+enzymes. Beats 1, 2, 6, 8, 9, 11, 13 and 16 are untouched, so §11's answer stands: *"the
+derivation the founder asked for … is still narration with tape as illustration."* This
+pass does not reopen the product-mode question (`narration-architecture.md` §10b).
+
+### 13f. The non-DAI share
+
+| | before | after |
+|---|---|---|
+| this wave's picks (shows) | — | **7 of 9 non-DAI (77.8 %)** |
+| this wave's items | — | **8 of 10 non-DAI (80.0 %)** |
+| curated shows labelled `food/drinks` | 5 of 7 non-DAI (71.4 %) | **12 of 16 non-DAI (75.0 %)** |
+| `discover.json` items labelled `food/drinks` | 28 of 47 non-DAI (59.6 %) | **36 of 57 non-DAI (63.2 %)** |
+
+Of the five new thin spans, **three are playable today** (18, 32, 38, all libsyn) and two
+are authorable-and-unplayable (7 and 60, Spreaker).
+
+### 13g. The bundle, and two checks re-run
+
+**Measured with the shipped tool.** `prepare()` from `tools/mobile/prepare-webdir.mjs`, run
+on each tree with esbuild pinned at 0.28.2 and every file LF, which is what CI runs. Two
+limits apply, and the first version of this section checked only one of them:
+
+- the **720 KB `data/discover.json` slice budget** (`PROJECTED_DATA`; the 800 KB figure in
+  #279 is stale, it was lowered 2026-09-04 when the slice dropped its JSON whitespace);
+- the **2.8 MB whole-bundle alarm**, assertion A of *"REAL REPO: the sliced bundle, its
+  budgets and the headroom that is left"* in `tools/mobile/prepare-webdir.test.mjs`, which
+  fires ~200 KB before the 3 MB `MAX_BYTES` cap.
+
+| | bundle total | under the 2.8 MB alarm | under the 3 MB cap | discover slice (of 720 KB) |
+|---|---|---|---|---|
+| `main` `9f70441e` | 2,910,653 B (2.776 MB) | 24.8 KB | 229.6 KB | 658,701 B = 643.3 KB (76.7 KB free) |
+| this wave as first built, 30 items | 2,942,541 B (2.806 MB) | **−6.4 KB (red)** | 198.4 KB | 682,243 B = 666.3 KB (53.7 KB free) |
+| **this wave, 10 items** | **2,925,600 B (2.790 MB)** | **10.2 KB** | **215.0 KB** | **667,848 B = 652.2 KB (67.8 KB free)** |
+
+The 30-item build passed the slice budget and failed the alarm: *"the bundle is 2.81 MB,
+leaving 198 KB of headroom under the 3 MB cap"*. It was measured on `4f1cec4`, where it fit,
+and `main` then gained feature code (#1051–#1058) that took most of the room before the
+branch was rebased. **The alarm was not raised or edited.** Its comment chain says not to
+raise it again without arguing it with the founder first, and trimming the wave (§13a) was
+available without that. The test passes on this head.
+
+What the ten-item wave costs, by file: discover slice +8.9 KB, `catalog-client.json`
++3.9 KB, `item-tags.json` +1.3 KB (copied whole), `show-index.tsv` +0.5 KB. That is
+**14.6 KB, about 1.6 KB a show**. Roughly a third of it is the show rows themselves
+(`catalog-client`, `show-index`), which no item trim can reduce.
+
+**The alarm now has 10.2 KB left, so the next thing to grow will trip it.** `main` had
+24.8 KB, and this wave spends 14.6 KB of it. At the ~4 KB a night that `item-tags.json`
+grows (the figure in the test's own comment), that is two or three nightlies. When it goes
+red, the test's comment already names the fix: if the cause is `item-tags`, build the df
+sidecar and do not raise the alarm; if the cause is feature code, the next lever is argued
+with the founder. This wave neither makes that decision nor hides it. Any further drinks
+curation, including putting back the twenty episodes cut here, needs that room first.
+
+**`tagDF` (#275), re-run from the engine on `item-tags.json`, `main` `9f70441e` (2,194
+entries) against this branch (2,204).** The vocabulary is §7's: semantic-index concepts,
+`ALIASES`, and every tag on either side (3,009 terms).
+- **No term moves because of a drinks tag.** Five expansion buckets do move, and each one is
+  pure denominator dilution, the effect §7a-i describes: `documentary`, `industry`,
+  `advice`, `biography` and `panel` sit at exactly 44 items. They go from 44/2,194 = 2.005 % to
+  44/2,204 = 1.996 %, crossing `TAG_DF_COMMON` downward (0.4x → full) with no change to
+  their counts. Those terms were sitting on the line, and any block of five or more items
+  would have moved them.
+- Three drinks terms cross `TAG_DF_RARE` (multiplier 1.35 → 1): `wine` 13 → 18,
+  `distilling` 17 → 20, `bourbon` 16 → 18. Those are drinks terms becoming less rare
+  because the catalogue holds more drinks. (The five 44-item terms above also change
+  multiplier, 0.75 → 1, for the same denominator reason.)
+- `comedy` is 228/2,204 = 10.34 %. The tag map can grow by about 76 entries before it falls
+  back under `TAG_DF_TOO_BROAD`. That is not the "seven items from the edge" §7a-ii
+  measured, because nightlies have moved it since. Re-measure rather than cite.
+
+**Two side effects caught by existing suites, and how each was handled.**
+- `tools/test-search.mjs` failed once on the 30-item build: Lone Star Beer reached the
+  `grill` top five, because the semantic index's barbecue concept lists `texas` and the
+  episode was tagged `texas`. The tag was changed to `san-antonio`, and the cooperage and
+  Balcones tags were adjusted the same way. All three episodes are among the twenty cut in
+  §13a, so none of that tagging ships. The search battery passes 127 of 127 on the
+  ten-item head.
+- `test/similar-shows-eval.test.js` failed on its recall floors (#560). `whiskycast` has
+  one node, so every drinks show ties with it. `similarShows` breaks ties by `show_id`,
+  so `beer-in-front`, `beersmith-podcast` and `brew-strong` push `spirits-and-distilling`
+  out of its six slots. Recall falls 0.418 → 0.410 (curated 0.525 → 0.515) on that one
+  pair. The floors were re-measured and lowered in the same change, with the cause written
+  next to them and in `docs/research/similar-shows-eval-2026-10.md`. **The tie-break is the
+  finding**: it also keeps The Bourbon Road and The Bourbon Life out of WhiskyCast's row.
+
+**Not regenerated, on purpose:**
+- `data/topic-coverage-report.json` has drifted about 2,700 lines from a fresh run since
+  PR #289 (nightlies, not this wave). Regenerating it here would bundle that drift into a
+  curation PR.
+- `in_curated` in `catalog-breadth.json` is still stale (§10), now by sixteen.
+- `deploy-manifest.json` is a gitignored build output (#701). It was neither generated nor
+  committed.
+
+### 13h. What this pass adds to §8's queue
+
+These are curated, non-DAI unless marked, and each would need ASR or a longer read:
+
+1. **`wine-talks-with-paul-k`, Rupert Symington, full read** for a ≥75 s span on
+   fortification timing (52, 53). It is already transcribed, so it is the cheapest row in
+   the queue.
+2. **`beersmith-podcast` #348 (Jeff Bloem) and #271 (Randy Mosher, kilning and
+   Maillard)** for beat 7's missing enzymes and kiln chemistry. Bloem is also on Beer In
+   Front's craft-malt episode, which is DAI.
+3. **`wine-for-normal-people` 607 (phylloxera's eight rescuers)** for beat 21, empty since
+   #278.
+4. **`beersmith-podcast` #337, #326 and #323 (mead)** for beat 23's nitrogen problem.
+5. **`wine-educate` 114 (Banyuls)** for beat 52. Banyuls is a *mutage* wine, the beat's
+   sweet side.
+6. **`brew-strong`, "Enzymes With John Palmer" and "Decoction Mashing"** (DAI) for beat 7's
+   mash-temperature dial.
+
+### 13i. Appendix — all 65 candidates, resolved
+
+"Transcripts" counts feed items that carry `<podcast:transcript>` of any type. The DAI
+read names the host the newest enclosure resolved to.
+
+| # | show | `<language>` | DAI read (resolved host) | transcripts | verdict |
+|---|---|---|---|---|---|
+| 1 | The Bourbon Road | en | no (content.libsyn.com) | 72 | **added** as `the-bourbon-road` |
+| 2 | Cocktails and Gossip | en | no (delivery-edge.libsyn.com) | 8 | off-subject: Bravo gossip |
+| 3 | Beer on the Run Podcast | en | no (content.libsyn.com) | 0 | off-subject: running |
+| 4 | BeerSmith Home and Beer Brewing Podcast | en-US | no (content.libsyn.com) | 0 | **added** as `beersmith-podcast` |
+| 5 | COCKTAILS AND TAKEAWAYS | en | DAI (stitcher2.acast.com) | 0 | off-subject: celebrity chat |
+| 6 | Free Beer and Hot Wings: Free Clip of the Day | en | no (d11untcg2uthr3.cloudfront.net) | 0 | off-subject: comedy clips |
+| 7 | The Bourbon Daily | en | no (content.libsyn.com) | 0 | not added: daily lighthearted bourbon news; no mechanism register |
+| 8 | The Bourbon Show | en | no (content.libsyn.com) | 0 | not added: bourbon news and reviews; Act IV already identified via WhiskyCast/Bourbon Pursuit |
+| 9 | The Wine Makers on Radio Misfits | en-US | no (archives.radiomisfits.com) | 0 | not added: Sonoma winemakers' chat; nothing aimed at an empty beat in the newest 433 titles |
+| 10 | This is My Bourbon Podcast | en | DAI (audio.buzzsprout.com) | 0 | not added: bottle reviews, DAI |
+| 11 | We Wine Whenever's Podcast | en-us | DAI (audio.buzzsprout.com) | 375 | off-subject: reality-TV recaps |
+| 12 | Wheeling Wine and Whiskey | en-US | DAI (d1bxy2pveef3fq.cloudfront.net) | 0 | off-subject: off-roading |
+| 13 | Wine and Gold Talk Podcast | en | DAI (dcs-cached.megaphone.fm) | 0 | off-subject: Cavaliers basketball |
+| 14 | All About Beer | en | DAI (audio.transistor.fm) | 0 | not added: beer culture news, DAI |
+| 15 | Always Look on the Bright Cider Life - The Somerset Cricket Podcast | en | no (hosting-media.riverside.com) | 27 | off-subject: county cricket |
+| 16 | Animal Spirits Podcast | en | DAI (dcs-spotify.megaphone.fm) | 0 | off-subject: investing |
+| 17 | Beer In Front | en | DAI (d1bxy2pveef3fq.cloudfront.net) | 88 | **added** as `beer-in-front` |
+| 18 | Beer with Alan | en-us | DAI (d3ctxlq1ktw2nl.cloudfront.net) | 0 | not added: 10 episodes, personal beer diary, DAI |
+| 19 | Beer, Fitness, and Being Kidless | en | DAI (d3ctxlq1ktw2nl.cloudfront.net) | 0 | off-subject: running; dormant since 2023 |
+| 20 | Beyond Bourbon Street, an Insider's Guide to New Orleans | en | no (content.libsyn.com) | 0 | off-subject: New Orleans travel |
+| 21 | Bonding and Beer | en-us | DAI (audio.buzzsprout.com) | 0 | off-subject: dentistry |
+| 22 | Bourbon Podcast | en | DAI (d3ctxlq1ktw2nl.cloudfront.net) | 0 | not added: bottle reviews, DAI |
+| 23 | Bourbon with Brad | en-US | DAI (audio1.redcircle.com) | 28 | off-subject: AI news |
+| 24 | C3: Crystals, Cauldrons & Cocktails | en-us | DAI (audio.buzzsprout.com) | 0 | off-subject: witchcraft |
+| 25 | Cocktail Nation | en | DAI (s400.podbean.com) | 0 | off-subject: lounge music |
+| 26 | Cocktail Party Chemistry | en | DAI (rsscom.pdn.tritondigital.com) | 211 | off-subject: general chemistry factoids |
+| 27 | Drink Beer, Think Beer With John Holl | en | DAI (audio.transistor.fm) | 0 | not added: brewery profiles, DAI; Act III beer already has its strong beat |
+| 28 | Drinks On Us | en | DAI (stitcher2.acast.com) | 0 | off-subject: friendship chat |
+| 29 | EAT SLEEP WINE REPEAT: A Wine Podcast Exploring Wine Regions, Grapes & Education | en | DAI (s376.podbean.com) | 0 | not added: wine-region education, DAI, no transcripts; Wine Educate and Wine for Normal People cover the same beats without DAI |
+| 30 | For Flux Sake | en | no (content.libsyn.com) | 0 | off-subject: ceramics glazes |
+| 31 | For Heaven's Sake | en | no (podcasts.beehiiv.com) | 252 | off-subject: Judaism |
+| 32 | Fossil Huntress — Palaeo Sommelier | en | DAI (d3ctxlq1ktw2nl.cloudfront.net) | 0 | off-subject: palaeontology |
+| 33 | GIN & JUICE Podcast | en | no (d11untcg2uthr3.cloudfront.net) | 0 | off-subject: pop culture |
+| 34 | Good Beer Hunting | en-us | no (content.libsyn.com) | 0 | not added: ended September 2024; beer business and culture |
+| 35 | Got Somme : Master Sommelier's Wine Podcast | en-au | DAI (d3ctxlq1ktw2nl.cloudfront.net) | 0 | not added: wine consumer video-style titles, DAI |
+| 36 | HEY SPIRITS | en | DAI (d3ctxlq1ktw2nl.cloudfront.net) | 0 | off-subject: women's soccer |
+| 37 | No Sediment Wine Podcast | en | DAI (d3ctxlq1ktw2nl.cloudfront.net) | 0 | not added: 39 episodes, DAI; one terroir-geology episode is the only beat-adjacent row |
+| 38 | Oil and Whiskey with Roadster Shop | en-us | DAI (dcs-cached.megaphone.fm) | 0 | off-subject: hot rods |
+| 39 | SOMM TV wine & food | en-us | no (ed.podomatic.net) | 0 | not added: wine and food stories; no beat-shaped titles |
+| 40 | Spirits Beside Us | en-us | no (cloudfeed.podetize.com) | 0 | off-subject: mediumship |
+| 41 | Steal This Beer | en-US | no (static1.squarespace.com) | 0 | not added: craft-beer industry banter |
+| 42 | The Beerists Craft Beer Podcast | en | no (content.libsyn.com) | 0 | not added: comedy tasting panel |
+| 43 | The Best 5 Minute Wine Podcast | en | DAI (injector.simplecastaudio.com) | 0 | not added: 5-minute consumer tips, DAI |
+| 44 | The Bourbon Hunters Podcast | en | DAI (injector.simplecastaudio.com) | 0 | not added: long-form bourbon chat, DAI |
+| 45 | The Bourbon Life | en | no (content.libsyn.com) | 0 | **added** as `the-bourbon-life` |
+| 46 | The Brewing Network Presents \| Brew Strong | en-us | DAI (dcs-cached.megaphone.fm) | 0 | **added** as `brew-strong` |
+| 47 | The Lord of Spirits | en-us | no (media.ancientfaith.com) | 0 | off-subject: Orthodox theology |
+| 48 | The Taste with Doug Shafer – a Podcast About Wine, Food, and Friends | en-us | no (content.blubrry.com) | 0 | not added: Napa vintner stories; no beat-shaped titles |
+| 49 | The Wine Pair Podcast | en-us | DAI (audio.buzzsprout.com) | 258 | not added: transcripts are pre-written show scripts with section-level times only (no passage can be banded), host register, DAI |
+| 50 | True Crime & Cocktails | unresolved | — | — | not added: no feed URL in the breadth row; language unresolvable, so not added |
+| 51 | Where Wine Takes You - A Paso Wine Podcast | en-US | no (content.blubrry.com) | 1 | not added: Paso Robles region profiles |
+| 52 | Whiskey and a Map:  True Stories of Adventure. | en | DAI (stitcher2.acast.com) | 0 | off-subject: adventure travel |
+| 53 | Whiskey Ginger with Andrew Santino | en | DAI (dcs-cached.megaphone.fm) | 0 | off-subject: comedy interviews |
+| 54 | Whiskey Riff Raff | en | DAI (content.production.cdn.art19.com) | 0 | off-subject: country music |
+| 55 | Wine 101 | en | DAI (stitcher2.acast.com) | 0 | not added: VinePair wine education, DAI, no transcripts; overlaps the two non-DAI wine-education picks |
+| 56 | Wine 101 with Brainscape | en-us | DAI (audio.buzzsprout.com) | 0 | not added: 25 episodes, dormant since February 2024, DAI |
+| 57 | Wine Access Unfiltered | en | DAI (dcs-cached.megaphone.fm) | 0 | not added: wine-club stories, DAI |
+| 58 | Wine Blast with Susie and Peter | en-gb | DAI (audio.buzzsprout.com) | 75 | not added: Masters of Wine, readable but DAI; titles aim at regions and tasting, not an empty beat |
+| 59 | Wine Educate: Wine Lessons, Travel & WSET Study Prep | en | no (content.libsyn.com) | 0 | **added** as `wine-educate` |
+| 60 | Wine Enthusiast Podcast | en | no (hosting-media.riverside.com) | 5 | **added** as `wine-enthusiast-podcast` |
+| 61 | Wine for Normal People | en | no (content.libsyn.com) | 0 | **added** as `wine-for-normal-people` |
+| 62 | Wine Spectator's Straight Talk | en | DAI (stitcher2.acast.com) | 0 | not added: 38 episodes, DAI |
+| 63 | Wine Talks with Paul K. | en | no (content.libsyn.com) | 151 | **added** as `wine-talks-with-paul-k` |
+| 64 | WRAP DRINKS | en-us | DAI (d3ctxlq1ktw2nl.cloudfront.net) | 0 | off-subject: film crews |
+| 65 | XChateau Wine Podcast | en | DAI (stitcher2.acast.com) | 0 | not added: wine business and marketing, DAI |

@@ -121,3 +121,58 @@ describe("PostgresShowEpisodesStore.upsertEpisodes", () => {
     expect(params[13]).toBe("b");
   });
 });
+
+/* PKG-02 (S-09): migration 0019 renames catalog_show_episodes /
+   catalog_show_feed_state's `show_id` to `legacy_show_id` and recreates the
+   unique indexes on the renamed column. Every statement this store sends
+   must name the new column, or each read errors with "column show_id does
+   not exist" and each upsert fails with "no unique or exclusion constraint
+   matching the ON CONFLICT specification" once 0019 is applied. Reads alias
+   it back to `show_id` so the public CatalogShowEpisode/ShowFeedState shape
+   does not change. */
+describe("PostgresShowEpisodesStore after the 0019 rekey (legacy_show_id)", () => {
+  function recordingClient(rows: Record<string, unknown>[] = []) {
+    const sqls: string[] = [];
+    const client = {
+      query: async (sql: string) => {
+        sqls.push(sql);
+        return { rows };
+      }
+    };
+    return { client: client as unknown as Client, sqls };
+  }
+  const squash = (sql: string) => sql.replace(/\s+/g, " ");
+
+  it("the batched episode upsert inserts into legacy_show_id and conflicts on (legacy_show_id, guid)", () => {
+    const sql = squash(buildEpisodeUpsert([ep()]).sql);
+    expect(sql).toContain("insert into catalog_show_episodes (legacy_show_id, guid, title,");
+    expect(sql).toContain("on conflict (legacy_show_id, guid) do update set");
+    expect(sql).not.toMatch(/[(,]\s*show_id\b/);
+  });
+
+  it("episode and feed-state reads filter on legacy_show_id and alias it back to show_id; the feed-state upsert conflicts on legacy_show_id", async () => {
+    const { client, sqls } = recordingClient([{ show_id: "show-a", guid: "g1", title: "t", feed_url: "u", last_fetched_at: null }]);
+    const store = new PostgresShowEpisodesStore(client);
+    const eps = await store.episodesForShow("show-a");
+    const state = await store.getFeedState("show-a");
+    await store.recordFeedFetch({
+      show_id: "show-a",
+      feed_url: "https://example.com/feed.xml",
+      etag: null,
+      last_modified: null,
+      last_fetched_at: null,
+      last_fetch_ok: true,
+      last_error: null,
+      consecutive_failures: 0
+    });
+    const [readEpisodes, readState, writeState] = sqls.map(squash);
+    expect(readEpisodes).toMatch(/^select legacy_show_id as show_id, guid,/);
+    expect(readEpisodes).toContain("where legacy_show_id = $1");
+    expect(readState).toMatch(/^select legacy_show_id as show_id, feed_url,/);
+    expect(readState).toContain("where legacy_show_id = $1");
+    expect(writeState).toContain("insert into catalog_show_feed_state (legacy_show_id, feed_url,");
+    expect(writeState).toContain("on conflict (legacy_show_id) do update set");
+    expect(eps[0]!.show_id).toBe("show-a");
+    expect(state?.show_id).toBe("show-a");
+  });
+});

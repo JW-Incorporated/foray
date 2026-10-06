@@ -1,10 +1,11 @@
 # 4a — Privacy Policy
 
-**Status: DRAFT — not yet published, not yet reviewed by a lawyer.**
-Every `TODO(founder)` below is a fact only a founder can supply. Do not publish
-this to a store listing with any of them unresolved.
+**Status: DRAFT — not yet republished at the policy URL, not yet reviewed by a
+lawyer (see §9).** Each remaining `TODO(founder)` below is a fact only a founder
+can supply. Do not publish this to a store listing with any of them unresolved.
 
-Last updated: 2026-09-25 · Applies to: the **4a** web app
+Last updated: 2026-10-05 (the effective date is the "Last updated" date of the
+republished page at https://jwlabs.ai/4a/privacy/) · Applies to: the **4a** web app
 (https://jw-incorporated.github.io/foray/) and the iOS/Android app built from the
 same code. The app was formerly Foray. That is why the word is still in this URL
 and in the names of the local database and the cache bucket §1 describes:
@@ -133,6 +134,7 @@ The app also asks the browser to mark its storage as persistent
 | `cp_playlists` | Playlists you built, including the text you typed to build them, and playlists you saved from ones 4a made for you (a generated playlist or a Suggested subject). A saved one also notes where it came from: which kind it was and its id, so saving it again does not make a second copy. Since 2026-08-19 each part also keeps a copy of the episode's own details — its id, title, show name, length, Apple Podcasts ids and topic ids — so a playlist still lists what is in it after the episode leaves 4a's catalogue. It deliberately does **not** copy the audio URL or the artwork URL | **No** |
 | `cp_quests` | A legacy key, migrated once into `cp_playlists` | **No** |
 | `cp_queue` | Your Up Next list — an ordered array of episode ids you added from any episode row's "+ Up Next" control. Separate from `cp_playlists`; holds only the ids — the details it shows are in `cp_episode_snaps` | **No** |
+| `cp_bookmarks` | Bookmarks you set inside episodes — for each episode id, the second you marked, when you set it, an optional label you typed, and the episode's length at that moment (so a bookmark on an ad-stitched show can be shown as approximate if its copy changes). Set from the Now Playing sheet; listed on the episode page. Never sent, never synced | **No** |
 | `cp_episode_snaps` | A copy of the details of each episode in your Up Next list and your recent history — title, show name, length, publish date, artwork and audio addresses, topic ids and the first couple of sentences of its description — so those lists can still show and play an episode after the app reloads, including episodes from outside 4a's own catalogue. An episode is dropped from it once neither list names it any more | **No** |
 | `cp_shard_shows` | The last 50 shows from the wider podcast directory whose page you opened — title, publisher name and artwork address — so a link to one of them still opens after the app reloads | **No** |
 | `cp_starred_shows` | A per-device map of shows you followed from a show page (the Follow button; the key keeps its older "starred" name) — a lightweight favorite, separate from episode saves (`cp_saved`). No notifications, no auto-download, following a show never adds its new episodes anywhere, and never changes what 4a surfaces to you elsewhere | **No** |
@@ -140,12 +142,13 @@ The app also asks the browser to mark its storage as persistent
 | `cp_foray:<id>` | Where you are inside a given foray, and which segment you were in. In the iOS app, written by the native audio player when it is the one playing (see below) | **No** |
 | `cp_pos:<id>` | Your position in seconds inside an individual episode. In the iOS app, written by the native audio player when it is the one playing (see below) | **No** |
 | `cp_last_episode` | Which single episode was playing most recently, plus the title, show name, artwork address and audio address needed to redraw the now-playing bar before anything else has loaded. One row, overwritten each time you start something — not a listening history. Your position in it is not stored here; that is `cp_pos:<id>` above. In the iOS app, written by the native audio player when it is the one playing (see below) | **No** |
+| `cp_downloads` | Which episodes you downloaded for offline listening, each one's download state and size, the file's location on this device, the episode's length as downloaded, and your "download over cellular" setting. The audio files themselves sit in the app's own storage on the device (Application Support on iPhone, the app's files directory on Android), are never backed up, and are deleted by "Delete my data" and by removing the download | **No** |
 | `cp_rate` | Your playback speed | **No** |
 | `cp_voice` | Your chosen narration voice — an identifier the device's own voice list reported | **No** |
 | `cp_interlude` | Whether the short jingle between a foray's segments is on or off — a local per-device preference. On unless you turn it off | **No** |
 | `cp_family` | Family mode on/off — a local content filter that hides explicit-rated episodes | **No** |
 | `cp_show_drafts` | Whether the settings switch that lists unpublished (draft) forays on this device is on — a local per-device preference for testing them before they are published. Off by default | **No** |
-| `cp_voice_probe` | Whether the settings switch that offers the voice-engine measurement on this device is on — a local per-device preference used to test a bundled narration voice before it ships. Off by default; when it is off the control is not shown at all | **No** |
+| `cp_voice_probe` | Retired (2026-10-05): it used to hold whether the settings switch that offered an on-device voice-engine measurement was on. The measurement and its switch were removed from the app. It is no longer written, and a copy left from an earlier version is deleted the next time the app starts | **No** |
 | `cp_autoadvance` | Continuous playback on/off — a local per-device preference for whether finishing an episode starts the next one: your Up Next list first, then the rest of the list you started from. On by default | **No** (but see `autoadvance_pref` in §2) |
 | `cp_engine_applied` | Bookkeeping for the iOS app's native audio player: the sequence numbers of the last automatic "next episode" and the last playback position that the player recorded while the app was in the background and that the app has since added to your on-device listening record, so reopening the app never adds one twice. No episode ids; one of the numbers is the time the app last planned what plays next. Written only when that player hands such records over | **No** |
 | `cp_intro_dismissed` | Whether you dismissed the intro card | **No** |
@@ -188,6 +191,8 @@ is marked to be left out of them.
 | `ForayEngine.stickyLegacyBuild` | The app's build number, when three failed starts switched it to the web view's player, so the next update tries the native player again | **No** |
 | `ForayEngine.restore` | What the player needs to carry on after iOS closed the app in the background — so a car's play button still works: the episodes it was playing and could play next (id, title, show name, artwork and audio addresses — the same details `cp_episode_snaps` keeps), where in them it was, your speed, and any positions and automatic "next episode" steps it recorded while the app was closed and has not yet added to your on-device listening record. Overwritten as you listen | **No** |
 | `ForayEngine.holdPolicy` | A **Developer** setting: how long the paused player keeps its claim on the phone's audio | **No** |
+| `ForayEngine.routeSharing` | A **Developer** setting: whether the player asks the phone to route its audio as long-form audio (a trial) or the usual way. Absent until the setting is used | **No** |
+| `ForayEngine.knownRoutes` | The audio outputs (a car's CarPlay or Bluetooth, headphones) the native player has played through, at most 8, so that when a car it knows is switched off mid-episode and on again it can carry on by itself. Each is kept only as a one-way scrambled code of the output's type and its device id, mixed with a random value made on this phone; never a car's or a device's name, and never the id itself | **No** |
 | `Application Support/foray-engine/diag.jsonl` (a file, not a key) | The native player's diagnostic record, capped at the most recent 2,000 rows: the same kinds of row as `cp_diag` — the audio session, interruptions, remote and car button presses, now-playing, resumes, and the *type* of audio route (for example `carAudio`) — under the same rules: no audio, no URLs, no account id, and no device or car names. The only free text is what the lock screen was shown — the now-playing title, artist and album fields, which are catalogue names such as the episode and show — each cut to 40 characters. A copy of each row, without that free text, goes to the iPhone's own system log, which stays on the phone like every app's. **Playback diagnostics** → Copy includes these rows | **No** — it is never transmitted, and it is marked to be left out of phone backups |
 
 **Delete my data** reaches these too, in any iPhone app that has the native
@@ -336,16 +341,26 @@ do not ship in a public web page — §7 says so plainly.
 Because it is an ordinary network request, **Supabase necessarily observes the IP
 address it came from**, as any server does.
 
-> TODO(founder): the Supabase project's **region / hosting jurisdiction**, and
-> whether a data-processing agreement is in place. Needed for the policy to state
-> where data is stored, and required if EU users are in scope.
+**Where the data is stored.** Our Supabase project (id `qjdllvqdcgacvujhclny`) is
+hosted in **AWS region `us-east-1` — US East (N. Virginia), United States**.
+Every event row described in this section, and the anonymous account that carries
+it, lives on servers in the United States. If you are outside the US, sending an
+event means that row crosses a border.
+
+Supabase processes this data under Supabase's standard data-processing
+agreement.
+
+> TODO(founder): whether a **separate data-processing agreement** has been
+> signed with Supabase beyond their standard terms. The region half of this
+> question is answered above; the agreement half is not recorded anywhere in the
+> repo and is not to be guessed.
 
 **How long we keep it (founder ruling, 2026-09-30).** Event rows are deleted
 90 days after they were recorded. What the app learns from them (your interests,
 playlists, listening positions and learned parameters) is kept as long as your
 account exists, and is removed by Delete my data (§7). An anonymous account that
 has no events and no linked sign-in is removed after 90 days of inactivity. A
-daily job does this (`backend/migrations/supabase/0004_event_retention.sql`).
+daily job does this (`backend/migrations/supabase/0006_event_retention.sql`).
 *Draft note: do not republish this paragraph until that migration has been
 applied to the live project (`HUMAN-ACTIONS.md`); until then no event row is
 deleted automatically.*
@@ -441,6 +456,12 @@ the real chain can be longer.
 The app also loads **cover artwork over HTTPS from publisher and Apple-hosted
 image URLs**, which reveals the same kind of request metadata to those hosts.
 
+In the native app, opening an episode can also make your device **fetch that
+episode's chapter list, or read the start of its audio file for chapter marks,
+directly from the publisher's servers** (`app.js:readDeviceChapters()`), which
+reveals the same kind of request metadata to those hosts and involves no 4a
+server.
+
 Finally, the web app is served from **GitHub Pages**, so GitHub serves the page
 and the catalogue files and sees those requests. In the native app the shell and
 catalogue are bundled, so this does not apply there.
@@ -490,6 +511,14 @@ bound on the channel that would carry data *out*.
     (`backend/src/cli/buildSession.ts`, and `docs/DECISIONS.md` records the
     decision not to stand it up). If that changes, this sentence changes with it;
     see `data-safety.md` § What would change these answers.
+- **Sharing sends nothing to us.** When you tap Share, the app builds the link on
+  your device and hands it to your phone's share sheet, or copies it to your
+  clipboard. It sends nothing to us and records no event that you shared. A link
+  holds only the public address of what you shared (a show, an episode or a
+  published foray) and, for one of your own playlists or a Suggested list, its
+  title and the ids of up to 50 of its catalogue episodes; never the playlist's
+  own id, your listening history or anything else about you. Whoever you send it
+  to can read what it holds, including a playlist title you chose.
 
 ## 6. Children
 
@@ -498,9 +527,9 @@ not ask for, or knowingly collect, anyone's age. "Family mode" is only a local
 content filter that hides explicit-rated episodes — it collects nothing and sends
 nothing.
 
-> TODO(founder): the **target age rating** to declare in each store, and whether
-> to opt in to Google Play's Families policy. This is a listing decision, not a
-> code fact.
+**Age ratings and audience (founder ruling, 2026-09-30).** Apple: 12+. Google
+Play: the IARC questionnaire answered truthfully (we expect Teen). Target
+audience is 18+. 4a is **not** enrolled in Google Play's Families policy.
 
 ## 7. How to delete your data
 
@@ -576,9 +605,11 @@ The `foray-gen-<deploy_id>` Cache Storage buckets are not touched by the
 button: they hold the app shell and the catalogue files (§1), which are the
 same for every listener and say nothing about you.
 
-> TODO(founder): publish a **data-deletion URL** for the store listings. The
-> in-app control answers Play's "can users request deletion" question, but the
-> form also wants a public web page describing it — see `data-safety.md` § A8.
+**Data-deletion URL for the store listings:**
+https://jwlabs.ai/4a/privacy/#7 (this section; there is no separate page). The
+in-app control answers Play's "can users request deletion" question; this
+section is the public page describing it. You can also ask for deletion by
+writing to help@jwlabs.ai. See `data-safety.md` § A8.
 
 ## 8. Changes to this policy
 
@@ -590,20 +621,18 @@ declaration.
 
 ## 9. Who we are, and how to reach us
 
-> TODO(founder): the **legal entity name** to name as data controller.
+The data controller is **JW Labs LLC, a California limited liability
+company**. Privacy and deletion questions: **help@jwlabs.ai**.
 
-> TODO(founder): a **privacy contact address**. Both stores require a working
-> contact; Google Play's Data Safety form requires a privacy policy URL, and
-> Apple requires one in App Store Connect. No address is invented here.
+This policy is published at https://jwlabs.ai/4a/privacy/ and takes effect on
+the "Last updated" date shown at the top of that page.
 
-> TODO(founder): where this policy will be **publicly hosted** (a store listing
-> needs a URL, not a file in a repo), and its **effective date**.
+**Where 4a is offered.** At the first public release the listing is US-only (a
+store-country setting, reversible). If that changes, this policy changes with it
+before the new countries go live; it does not yet make promises tied to any
+non-US privacy law.
 
-> TODO(founder): the **geo-availability decision** — US-only listing versus
-> accepting GDPR obligations from day one. `docs/marketing/05-legal-risk-memo.md`
-> §5 sets out the trade; it is unresolved, and it changes what this policy must
-> promise (access, portability, erasure, a lawful basis).
-
-> TODO(founder): **legal review.** This draft is written from the code by an
-> engineer, not a lawyer. It is accurate about behaviour; it is not a
-> professional opinion about sufficiency under any particular law.
+**Legal review (status as of 2026-09-30).** Not lawyer-reviewed; scheduled for
+the monetization milestone. This draft is written from the code by an engineer,
+not a lawyer. It is accurate about behaviour; it is not a professional opinion
+about sufficiency under any particular law. This is not a publish blocker.

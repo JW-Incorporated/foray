@@ -125,13 +125,13 @@ pinned.
 
 | disposition | rows |
 |---|---:|
-| fixed | 161 |
+| fixed | 162 |
 | already-fixed | 0 |
 | refuted (verifier) | 2 |
 | deliberate (verifier) | 5 |
 | uncertain (verifier, still needs a device) | 1 |
 | refuted-now (re-verified: no longer holds) | 1 |
-| deferred-founder | 1 |
+| deferred-founder | 0 |
 | deferred-device | 0 |
 | open | 1 |
 | **all rows** | **172** |
@@ -156,7 +156,8 @@ the Dynamic Type bridge, DECISIONS sentence corrected (`a11y-1`); Q8 "Show my
 picks" (`p-first-7`); Q9 remove-on-skip, with drag / Play next / Clear as one
 follow-up card (`p-impatient-7`, `p-impatient-8`) — **reversed by the founder on
 2026-09-24**: the row played from Up Next jumps to the top and nothing is
-removed (`docs/DECISIONS.md`, 2026-09-24); Q10 Up Next link and Save in
+removed (`docs/DECISIONS.md`, 2026-09-24), and the follow-up card shipped as
+PQ-01..PQ-07 (#762: drag, Play next, swipe to remove, Clear); Q10 Up Next link and Save in
 the sheet, sleep timer parked (`p-switcher-5`); Q11 the shell reopens the last
 route, the web stays bare-URL-means-Home (`nav-10`).
 
@@ -186,7 +187,5 @@ answered on 2026-09-24, `docs/DECISIONS.md`: Q6 "Option A", a follow-up PR; Q7
   those rows and nothing else keeps that fact — and the safe fix (one
   `cp_positions` map, a copy-never-delete migration) renames a key the privacy
   policy lists, so it needs its own policy edit (Q7's approved wording did not cover it) and a ruling for how long "Played" lasts.
-- **`p-impatient-8`** (deferred-founder, by Q9's default): drag-to-reorder,
-  Play next and Clear Up Next are one follow-up card.
 - **`native-6`** (uncertain): whether WebKit's delayed category change rewrites
   the app process's audio session. Needs a device record.

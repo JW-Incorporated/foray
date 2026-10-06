@@ -250,9 +250,13 @@ public enum TransportPolicy {
     /// `scrubTarget(...)`'s answer.
     public struct Scrub: Equatable {
         public let index: Double
-        /// The target needs its own load: another clip, or a Foray with
-        /// nothing loaded to seek in (`ended`, `idle`).
+        /// The target needs its own load: another clip, a Foray with
+        /// nothing loaded to seek in (`ended`, `idle`), or a rendered line in
+        /// `transitioning`, where the reducer refuses every seek.
         public let reload: Bool
+        /// The scrub lands in the SPOKEN line already sounding: speech has no
+        /// offset, so the line is said again from the top (the restart).
+        public let restart: Bool
         public let offset: Double?
     }
 
@@ -260,11 +264,16 @@ public enum TransportPolicy {
     /// Foray clock has said where it lands (`at`, from `segmentAtElapsed`);
     /// nil when it found nowhere. `at.index !== currentIndex`: a
     /// `currentIndex` that is not a number (nil) is never the same index.
+    /// M2 drive 2026-10-01: a line reached by its seam is `transitioning`, so
+    /// a same-index answer must never be a seek there.
     public static func scrubTarget(atIndex: Double, into: Double?, item: Item?,
                                    currentIndex: Double?, stateType: String?) -> Scrub {
+        let offset = sourceOffset(for: item, into: into)
         let sameIndex = currentIndex.map { $0 == atIndex } ?? false
-        let reload = !sameIndex || stateType == "ended" || stateType == "idle"
-        return Scrub(index: atIndex, reload: reload, offset: sourceOffset(for: item, into: into))
+        let elsewhere = !sameIndex || stateType == "ended" || stateType == "idle"
+        let restart = !elsewhere && offset == nil
+        let reload = elsewhere || (!restart && stateType == "transitioning")
+        return Scrub(index: atIndex, reload: reload, restart: restart, offset: offset)
     }
 
     // MARK: remote stop

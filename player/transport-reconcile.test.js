@@ -896,26 +896,31 @@ async function bootClient(t, { seed = [], mediaSession = null, capacitor = null,
 }
 
 /** Two segments from DIFFERENT episodes, so the seam is a real cross-episode
-    load — the shape both field reports were on. */
-function synthetic() {
+    load — the shape both field reports were on. `third` adds a third, from a
+    third episode (`c.mp3`): §16 steps over ONE clip that will not load, so a
+    test that needs the Foray STOPPED on a failed clip fails two in a row. */
+function synthetic({ third = false } = {}) {
   const foray = {
     id: "f263", kind: "deep-dive", title: "A Foray", status: "published",
     slots: [{ id: "one", title: "Slot one" }],
     items: [
       { type: "segment", slot: "one", label: "L1", role: "explanation", segment_id: "sa" },
       { type: "segment", slot: "one", label: "L2", role: "explanation", segment_id: "sb" },
+      ...(third ? [{ type: "segment", slot: "one", label: "L3", role: "explanation", segment_id: "sc" }] : []),
     ],
   };
   const segments = indexSegments({
     segments: [
       { id: "sa", item_id: "ep-a", start_sec: 100, end_sec: 200, reference_duration_sec: 3600, why: "w", topic: "food/grilling-bbq", confidence: "high" },
       { id: "sb", item_id: "ep-b", start_sec: 500, end_sec: 600, reference_duration_sec: 3600, why: "w", topic: "food/grilling-bbq", confidence: "high" },
+      { id: "sc", item_id: "ep-c", start_sec: 300, end_sec: 400, reference_duration_sec: 3600, why: "w", topic: "food/grilling-bbq", confidence: "high" },
     ],
   });
   const sources = indexSources({
     sources: [
       { id: "ep-a", show: "Show A", title: "Ep A", audio_url: "https://cdn.test/a.mp3", duration_sec: 3600, dai_suspected: false },
       { id: "ep-b", show: "Show B", title: "Ep B", audio_url: "https://cdn.test/b.mp3", duration_sec: 3600, dai_suspected: false },
+      { id: "ep-c", show: "Show C", title: "Ep C", audio_url: "https://cdn.test/c.mp3", duration_sec: 3600, dai_suspected: false },
     ],
   });
   return resolveForay(foray, { segments, sources });
@@ -1085,9 +1090,13 @@ test("A FAILED SEAM MUST NOT REWRITE THE RESUME ROW WITH THE FAILED SEGMENT'S IN
      Kill this by making `persistForayProgress` read `forayPosition()` again
      instead of `forayPlayhead()`: the row becomes segment "sb" at 0 s in. */
   const { client, doc, audio, storage, restore } = await bootClient(t);
+  /* §16: B alone would be retried and stepped over onto C; with C failing too
+     the Foray stops on C, the stopped-after-a-failed-seam state this pins.
+     (Dropping §16's two-in-a-row cap turns this red: the Foray runs to the end.) */
   audio.loadPlan.set("https://cdn.test/b.mp3", "error");
+  audio.loadPlan.set("https://cdn.test/c.mp3", "error");
 
-  await client.playForay(synthetic(), { startIndex: 0 });
+  await client.playForay(synthetic({ third: true }), { startIndex: 0 });
   await settle();
 
   // Most of the way through segment A, whose slice is [100, 200] of episode A.
@@ -1103,7 +1112,8 @@ test("A FAILED SEAM MUST NOT REWRITE THE RESUME ROW WITH THE FAILED SEGMENT'S IN
   audio.fire("timeupdate");
   await settle();
   await settle();
-  assert.equal(audio.calls.filter((c) => c === "load").length, 2, "B was attempted");
+  assert.equal(audio.calls.filter((c) => c === "load").length, 5, "A, then B and C twice each (§16)");
+  assert.equal(client.forayStatus().ended, false, "stopped on C, not run to the end");
 
   // The audio has stopped, so the listener presses play. This is the repaint.
   transport(doc).press();
@@ -3251,9 +3261,15 @@ test("ROUND 2 player-5: 30↻ near the end of a Foray stops short of the end ins
 test("ROUND 2 player-7: a Foray clip that will not load says so on the bar and in the sheet", async (t) => {
   /* `paintStatus` dropped a Foray's failure on the assumption its page was on
      screen; started from the ribbon, Jump back in or the car it is not.
-     KILLING MUTATION: `const failure = foray ? null : playFailure;`. */
+     KILLING MUTATION: `const failure = foray ? null : playFailure;`.
+     §16: one clip that will not load is stepped over, so BOTH clips fail here
+     and the Foray stops on the second, the failure this pins. Its error lands
+     before a render catches `foray.index` up, so this is also the test for
+     `foray.errorAt`. MUTATION (run 2026-10-04, red): make `syncForaySegment`
+     clear `foray.error` on every index move again. */
   const { client, doc, audio, restore } = await bootClient(t);
   audio.loadPlan.set("https://cdn.test/a.mp3", "error");
+  audio.loadPlan.set("https://cdn.test/b.mp3", "error");
   await client.playForay(synthetic(), { startIndex: 0 });
   await settle();
   await settle();
@@ -3284,6 +3300,51 @@ test("ROUND 2 player-11: a nudge inside a SPOKEN line restarts it (back) or skip
   await settle();
   assert.equal(client.forayStatus().index, 1, "30↻ inside the line skips it");
   assert.equal(announce.textContent, "Narration skipped");
+  restore();
+});
+
+test("M2 drive 2026-10-01: ↺15 inside a RENDERED line reached by its seam seeks inside it, not refused", async (t) => {
+  /* Every narration test above starts ON the line (`startIndex`), which is
+     `playing`. A line reached by the clip before it ending is `transitioning`,
+     and the reducer refuses every seek there, so ↺15 / 30↻ inside it did
+     nothing ("skip backwards didn't work during the AI narration").
+     KILLING MUTATION: drop `|| (!restart && stateType === "transitioning")`
+     from `scrubTarget`'s `reload` (transport-policy.js). */
+  const { client, doc, audio, restore } = await bootClient(t);
+  await client.playForay(forayWithLine({ rendered: true, lineSec: 30 }), { startIndex: 0 });
+  await settle();
+  audio.currentTime = 200.01;                                // the clip's out-point
+  audio.fire("timeupdate");
+  await settle();
+  await settle();
+  assert.equal(client.forayStatus().index, 1, "precondition: the line, reached by its seam");
+  audio.currentTime = 20;
+  audio.fire("timeupdate");
+  await sheet(doc).back.click();
+  await settle();
+  await settle();
+  assert.equal(client.forayStatus().index, 1, "still the line");
+  assert.ok(Math.abs(audio.currentTime - 5) < 0.01, `↺15 from 20 s into the line lands at 5 s, got ${audio.currentTime}s`);
+  restore();
+});
+
+test("M2 drive 2026-10-01: a scrub into the SPOKEN line sounding says it again, never nothing", async (t) => {
+  /* `scrubTarget` answered `{reload: false, offset: null}` for the spoken line
+     already sounding, and `foraySeek` did nothing with it: a lock-screen or car
+     scrub inside a line was dropped silently. KILLING MUTATION: answer
+     `restart: false` from `scrubTarget`. */
+  const speech = fakeSpeech();
+  const { client, restore } = await bootClient(t, { speech });
+  t.after(() => client.stopForDataDeletion().catch(() => {}));
+  await client.playForay(forayWithLine({ rendered: false, lineSec: 60, lineFirst: true }), { startIndex: 0 });
+  await settle();
+  await settle();
+  assert.equal(speech.spoken.length, 1, "precondition: the line is being spoken");
+  await client.foraySeek(30);
+  await settle();
+  await settle();
+  assert.equal(speech.spoken.length, 2, "the scrub inside the line speaks it again from the top");
+  assert.equal(client.forayStatus().index, 0, "and stays on it");
   restore();
 });
 
@@ -3615,8 +3676,12 @@ test("‹‹ after a failed Foray load retries the clip; it never marks the Fora
      `ended` (without it). */
   const { client, audio, restore } = await bootClient(t);
   const resolved = synthetic();
+  /* §16: one clip that will not load is retried and stepped over (from the
+     last clip, onto the end), so the Foray STOPS on a failed clip only when a
+     second in a row fails too: A, then B, which is where it stops. */
+  audio.loadPlan.set("https://cdn.test/a.mp3", "error");
   audio.loadPlan.set("https://cdn.test/b.mp3", "error");
-  await client.playForay(resolved, { startIndex: 1 });
+  await client.playForay(resolved, { startIndex: 0 });
   await settle();
   await settle();
   assert.equal(client.forayStatus().ended, false, "precondition: a failed load is not the end");

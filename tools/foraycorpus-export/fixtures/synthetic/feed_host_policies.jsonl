@@ -1,0 +1,2 @@
+{"host":"feeds.example.org","state":"normal","reason":null}
+{"host":"www.omnycontent.com","state":"paused","reason":"auto: 5 consecutive rate-limit signals (timeout)"}

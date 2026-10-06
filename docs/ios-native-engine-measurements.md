@@ -9,8 +9,8 @@ one and is never quoted as a measurement.
 
 Cards append their own section. NE-01 (the packaging spike) wrote §1-§6;
 NE-25a (the click-track spike) wrote §7, NE-15 (AVDeck) §8, NE-06
-(engine-parity CI) §9, NE-25b (two-deck preroll) §10 and NE-25c (the speech
-smoke and the session probe) §11.
+(engine-parity CI) §9, NE-25b (two-deck preroll) §10, NE-25c (the speech
+smoke and the session probe) §11 and NE-38 (the M3 provisional values) §12.
 
 ## 1. What NE-01 changed, in one paragraph
 
@@ -844,3 +844,199 @@ turned the `ForayAudio` XCTest run red:
 | 2 | 36064548407 | the host dropping `Speaking.onFinish` (the probe never hears the line end) and teardown not cancelling the probe | 7 `SessionProbeTests` |
 | 3 | 36064551700 | the row's `activated` hard-wired to `false` | `SessionProbeTests` `testAPlayAfterTheLineActivatesWhenTheSessionWasLostAndRecordsTheCost`, `testARefusedActivationIsRecordedWithItsTokenAndNothingPlays` |
 | 4 | 36066858645 | the speaker reporting a replaced line's finish (the stale-utterance guard alone) | `SpeechSessionSmokeTests` `testAReplacedLineEndsSilentlyAndTheNewOneReportsOnce` |
+
+## 12. Provisional values (M3)
+
+Card NE-38 (plan §14 Track M3, re-planned 2026-09-29). M3 does not wait for
+the founder's field data. Every value below that needs field data ships now
+as a **provisional value**, based on the evidence already on file. Each one:
+
+- is a named constant;
+- is tagged `// MEASURE: verdict=<name>` on the line that defines it;
+- has a header comment that cites this table, the rows that settle it, and
+  the NE-38e verdict that reads those rows.
+
+NE-38f (human-gated input only) settles them later from the pastes of
+HUMAN-ACTIONS #128 (the M2 drive) and the NE-40 drive (G-6). It either applies
+each verdict's proposal or keeps the value with a dated reason. Nothing else
+waits on NE-38f.
+
+`grep -rn "// MEASURE" mobile/plugins/foray-audio` lists exactly these seven
+constants (the seventh, the voice preview's deadline, came with NE-47).
+
+| Value | Constant | Provisional | Evidence it rests on | Settled by (rows → NE-38e verdict) |
+|---|---|---|---|---|
+| P-13 load deadline, clip or episode | `AVDeck.defaultLoadDeadlineSec` | **20 s**, unchanged | Simulator cold first loads took 1.5-19.6 s (§8.2), and warm loads took 0.2-1.2 s (§8.1, §10.1). In the field (2026-09-28, build 2026092706), token 1 had its duration in 2.2 s and token 3 in 1.4 s. The only load past 19 s (token 2) was a same-source refetch, which #866 made a seek. | `deck kind=ready elapsedMs marks` for cold loads, and every `deck kind=deadline step= class=clip` → `P13-clip` |
+| P-13 load deadline, rendered narration line | `AVDeck.defaultLineLoadDeadlineSec` | **8 s**, new | A line is about 160 KB (64 kbps, about 20 s of speech), and warm AVPlayer loads take under 1.3 s. A line that fails is read aloud from its script on a fresh token (NE-37c), so waiting longer only lengthens a silence. | The same rows with `class=line` → `P13-line` |
+| Reuse idle limit | `AVDeck.defaultReuseMaxIdleSec`, also used by `AssetCache` | **600 s**, unchanged | #866's review: an item held for hours can report ready over an expired connection. M1's car win (#114) came from cold loads. | A `deck kind=reuse idleSec=` followed within 30 s by `failed`, `deadline` or `stalled` on that token (the risk), and `deck kind=attach cold=stale idleSec=` (the cost) → `reuse-idle` |
+| Low background time | `ForayEngine.lowBackgroundRemainingMs` | **5 s**, unchanged | About one CDN load that goes wrong. The value only labels the row and decides nothing. | `grace low=y` against the span's outcome (`grace kind=end outcome= heldMs`) → `resume-latency` |
+| Pause hold (OQ-12) | `SessionPolicy.HoldPolicy.default` | **`.forever`**, unchanged (the §9a default) | #114 passed on `.forever`: after a day parked, the car's play resumed 4a. The HA #108 baseline shows a held session is necessary but not sufficient. The Developer "Pause hold: none" arm stays. | The H-1 block's rows against the H-1b block's (`hold=` in the Copy header, each car `remote play` and whether 4a resumed, `grace heldMs`) → G-5 (the founder's OQ-12 ruling) |
+| P-14 stall display | `EngineCore.bufferingWhileWaiting` | **buffering while `waitingToPlayAtSpecifiedRate`**, no debounce (as #866 ships it) | #866: the per-item Now Playing rate latch publishes a buffering stall honestly. | `deck kind=time-control status=waiting reason=` against `nowplaying via=rate` → `rate-latch` |
+| Voice preview load deadline (NE-47) | `EngineBoot.previewLoadDeadlineSec`, on the preview deck for both classes | **6 s**, new | A rendered `preview.m4a` is one sentence at 64 kbps (tens of KB), smaller than a line (8 s above), and a listener is waiting on a tap. A preview that misses it is spoken by the Apple voice at once, so a longer wait only lengthens a silence. No field rows yet: the page sends no preview url until the picker ships rendered voices. | `deck kind=ready elapsedMs lane=preview`, `deck kind=deadline lane=preview` and `audition kind=fallback reason=timeout` → `preview-load` |
+
+Two more provisional values are JS, not Swift, so the grep above does not list
+them. They are the route-resume reference's (`player/route-resume.js`,
+NE-38rj), generated into `EngineConstants.RouteResume` for NE-38rs and A-61:
+
+| Value | Constant | Provisional | Evidence it rests on | Settled by (rows → NE-38e verdict) |
+|---|---|---|---|---|
+| Route-resume loss age | `ROUTE_RESUME_MAX_LOST_SEC` | **24 h** | A day at work (#114, passed on M1) is about 9-10 h; a night parked is about 14 h. Measured on the wall clock, never uptime. | `route kind=back lostSec=` → `route-back` |
+| Bluetooth arm | `ROUTE_RESUME_BLUETOOTH_DEFAULT` | **off** | The founder's A2DP car sends its own play 7.4 s after connecting (2026-09-28 paste, e#83 → e#85), and AirPods are A2DP too. | the ms from `route kind=back` to the next `remote play` → `route-back` |
+
+NE-38rs ports them without a second tag: `RouteResume.maxLostSec` and
+`RouteResume.bluetoothDefault` read the generated constants, and the arm a
+build ships is `EngineConfig.routeResumeBluetooth`, which EngineBoot reads from
+the plist key `ForayEngineRouteResumeBluetooth` that
+`tools/mobile/inject-background-audio.mjs` writes from
+`mobile/ENGINE_DEFAULT.json`'s `ios.routeResumeBluetooth` (false). NE-38f
+turns the arm on by editing that one value. Two more values came with the
+port and are rules of the card, not field guesses: a route becomes known after
+**1 s** heard through it (`RouteResume.knownAfterMs`), and at most **8** are
+kept (`RouteResume.knownCap`).
+
+**The deadline class.** The core names a class on every load it issues. The
+deck maps the class to seconds (`AVDeck.Config.deadlineSec(for:)`):
+
+- The class is `DeckDeadlineClass` in `DeckVocabulary.swift`: `line` for a
+  narration item (`kind: "tts"`), and `clip` for anything else.
+- It rides on `DeckCommand.load` and `DeckCommand.prepare`, so a warm
+  (standby) line also gives up at a line's 8 s.
+- The deck's `attach`, `reuse`, `ready` and `deadline` rows (and its `no-url`
+  failure row) carry `class=`, so the two P-13 verdicts can split
+  time-to-ready by class.
+- A clip's behaviour does not change: its deadline is still 20 s.
+- The parity fixtures record a load only as `load:<item>@<start>` (the `url`,
+  the timing option and now the class are not recorded). So no JS change and
+  no re-record was needed. `record.mjs --check` is unchanged.
+
+**What the pastes must contain to settle each value** (for NE-38f; the
+drives' scripts already produce all of them):
+
+- For both P-13 values: at least one cold load of each class, with its
+  `deck kind=attach cold=` and `deck kind=ready elapsedMs` rows. Put the
+  lines on cellular (`access wwan>0`) as well as Wi-Fi, because the verdict
+  splits by network.
+- For the reuse limit: a pause that lasts more than 10 minutes and ends in a
+  play (to produce `cold=stale`). A pause shorter than 10 minutes that ends
+  in a car's play (to produce `reuse`).
+- For low background time: the locked-phone blocks, whose `grace` rows carry
+  `bgRemainingMs`.
+- For the pause hold: H-1 and H-1b run on the same build, each ending in one
+  Copy.
+- For the stall display: any stretch of driving on weak coverage. The
+  `time-control` rows say whether the lock screen's clock ever stood still
+  while the deck was playing.
+
+**Tests (CI-executed on the PR's head SHA):**
+
+- `AVDeckTests`:
+  - `testARenderedLineThatNeverLoadsHitsTheLineDeadlineAtEightSeconds`: a
+    line load on a never-answering asset arms one 8 s timer. The timer does
+    not fire at 7,999 ms. At 8,000 ms it writes `deck kind=deadline
+    class=line` and detaches the item. Virtual time.
+  - `testAClipLoadThatLandsAtNineteenSecondsDoesNotTimeOut`: a clip load is
+    ready with `elapsedMs >= 19000` and never times out.
+  - `testTheProvisionalDeadlinesAreTwentySecondsForAClipAndEightForALine`:
+    pins the values.
+- `DeckPairTests.testAPreparedLineWarmsUnderTheLineDeadlineClass`: a
+  prepared (standby) line loads under `.line`.
+- `ForayCatchUpTests`:
+  - `testEveryLoadNamesItsDeadlineClass`: covers a line's own load, a
+    rendered bridge's load, a clip's load and a clip's prepare.
+  - `testARenderedLinesDeadlineFallsBackToSpeechOnAFreshToken`: the 8 s
+    deadline is followed by the script, spoken on a fresh token, with
+    `narration kind=fallback reason=timeout`.
+
+## 13. Precise timing on real clip sources (M2 drive, 2026-10-01)
+
+**What happened.** Build 2026093002, cellular, 1.5x, the Foray
+`beyond-the-algorithm-engineering-production-ai-s-e6533b` (Practical AI clips
+via pscrb.fm → dts.podtrac.com → audio.transistor.fm). Every clip loads with
+`precise=y` (P-7), every episode with `precise=n` (a Volts episode was ready in
+1.76 s):
+
+| Clip (in-point / file) | File bytes (Content-Range total) | Result |
+|---|---|---|
+| Building Durable AI Agents, 1551.9 s / 2798 s | 44,818,279 | ready 7.8 s (duration step 4.2 s) |
+| Future of AI Infrastructure, 959.6 s / 3004 s | 48,106,607 | ready 11.2 s (duration step 7.1 s) |
+| Federated learning (part 2), 1427.7 s / 2725 s | 43,855,107 | deadline at 21 s, duration unknown; retry: duration 17.5 s, then deadline with **43,855,107 bytes read** and still not ready; third try ready in 20.2 s |
+
+The byte count of the failed retry IS the file's size to the byte. A precise
+MP3 load reads the whole file before it is ready.
+
+**The files are not what the first hypothesis said.** The guess was VBR with no
+usable TOC. `tools/audio/mp3-probe.mjs` (64 KB ranged GET + four 16 KB windows
+inside the file; `--scan` streams one file through memory and keeps nothing)
+says otherwise. All 11 clip sources of that Foray are **constant-bitrate**:
+
+- 9 Transistor files: CBR 128 kbit/s (one 192), each behind a LAME 3.100 or
+  Lavc **Info** frame (frames, bytes, a 100-entry TOC). ID3v2 tags are 44-288 KB.
+- 1 engineered.network file (Causality): CBR 64 kbit/s, no header frame, a 2.66 MB ID3v2 tag.
+- Every host honours Range (206). The redirect chain is 2-3 hops.
+- `--scan` of the failing file: 104,304 frames, every one 128 kbit/s, no resync, 2724.676 s.
+- `seek_map` describes the file a host delivered on the day it was probed. On a
+  host that stitches ads per request (`dai_suspected`), a stitched ad at another
+  bitrate would break "cbr". The Practical AI files show no stitching today: the
+  Content-Range total of the failing file is its Info frame's byte count plus its
+  ID3v2 and ID3v1 tags, to the byte. Re-run `--sources --write` with
+  `tools/foray/verify-source-audio.mjs`.
+
+**Every source in `data/segment-sources.json`, classified** (`--sources --write`,
+2026-10-01; the result is each row's `seek_map`): of 98 sources, **66 CBR**, **31 VBR with a Xing TOC**, **0 VBR without a TOC**, and 1 unclassified. By clip, 77 of the 99 clips in the seven committed Forays are on CBR sources: five Forays are all-CBR, `capital-types-1` is 19 CBR + 3 VBR, and `geology-plates-1` is all VBR. The only VBR
+sources are Geology Bites (anchor.fm / CloudFront) and one Squarespace file, and
+every one of them carries a Xing TOC. One source is an M4A (moov first), which
+the probe cannot classify and which keeps precise timing (an MP4 sample table
+makes precise cheap).
+
+**What precise timing costs, and buys, per file type.** Apple: "Getting the
+exact duration of an asset may require significant processing overhead. Using
+an approximate duration is typically a cheaper operation and sufficient for
+playback" (AVFoundation Programming Guide, *Using Assets*). An MP3 has no packet
+index, so "precise" means walking every frame header, over the network the whole
+file, whatever header the file carries. What approximate costs instead:
+
+| File type | Precise | Approximate landing (measured or modelled) |
+|---|---|---|
+| CBR, no header frame | whole-file read | exact to a frame. §7.3: 0 to -4.9 ms, the same as precise |
+| CBR behind an Info frame (every Practical AI source) | whole-file read (the drive) | **unmeasured on iOS.** By byte arithmetic it is within one 26 ms frame (`--scan`: -25 ms at 1427.7 s). If AVFoundation follows the Info TOC instead, the TOC is quantised to 1/256 of the file: modelled on these files' real TOCs, -1.5 s, +0.65 s and -3.7 s at the three drive in-points, and -16 to +10.5 s across the files |
+| VBR + Xing TOC (Geology Bites) | whole-file read | §7.3: -221 / +36 ms on a 90 s file. Modelled on a real 2103 s file with its TOC: -3.3, -3.1, -7.7, -4.2 s at 73, 600, 1200, 1800 s, always early (padding direction, but a sentence or two) |
+| VBR, no TOC | whole-file read | §7.3: -396 / -576 ms locally; Media3 (Android): 7.7-20 s early. No such source in the registry |
+
+**Data, not only time.** That Foray's 11 clips are 1,471 s of audio, about 23 MB
+at their bitrates. Precise timing downloads the 11 whole files: **490.5 MB** on
+cellular for one listen.
+
+**Lead time.** NE-45s prepares a clip at the start of the spoken line before it.
+In this Foray those lines are 15-60 words, about 4-15 s at the founder's 1.5x
+(most 4-7 s). Precise loads took 7.8 s, 11.2 s and 20+ s, so preparing earlier
+does not close the gap, and an approximate load (about 1.8 s) does.
+
+**What changed (staged OFF).** `EngineItem.preciseTiming(approximateCBR:)` is the
+one rule; `prepare` now carries the core's flag instead of DeckPair's hard-coded
+`true`; foray-queue.js carries `seek_map` onto the built item. The exemption is
+`EngineConfig.approximateCBRClips`, **off in the core and in EngineBoot**,
+because the Info-frame row above is the one cell nobody has measured on iOS, and
+its downside is a clip starting seconds off.
+
+**The row that decides it** (`InOutPointMeasurementTests
+.testWhetherAnApproximateSeekFollowsAnInfoFramesTOC`, every ios-kit run, job
+summary "NE-25a (3)", log prefix `NE-25a-info`). click-cbr.mp3's frames go
+behind a LAME-style Info frame, once with the TOC it should carry and once with
+every entry pushed 7/256 of the file later. Following the TOC lands the skewed
+file about +2.2 to +2.3 s late (modelled: 2238 / 2154 / 2314 ms at 19.65 / 49.65
+/ 69.65 s); byte arithmetic lands both files where click-cbr.mp3 lands. If
+approximate on the skewed file reads near 0 ms, turn the exemption on
+(`config.approximateCBRClips = true` in EngineBoot). If it reads near +2.3 s,
+leave it off and take the other route: start precise loads earlier (at the
+previous clip, not the line before), accept the data cost, or settle VBR/Info
+files server-side (a per-clip byte index).
+
+**Measured (ios-kit run 36903416379, 2026-10-01, `NE-25a-info` rows): byte
+arithmetic.** Approximate on `click-cbr-info-toc-skewed+7.mp3` landed
+`landingErrorSec` 0 / 0 (7e-15) / 0 at 19.65 / 49.65 / 69.65 s, the same as
+the correctly tagged file and nowhere near the modelled +2.2 to +2.3 s.
+AVFoundation ignores an Info frame's TOC on a CBR file. **The exemption is
+ON in EngineBoot from 2026-10-04** (`config.approximateCBRClips = true`); the
+core's default stays off, so the parity drivers and any other host are
+unchanged. Still to confirm on a device over a real CDN (DV-5): the drive
+that follows this build should show clip loads near the episodes' ~1.8 s.

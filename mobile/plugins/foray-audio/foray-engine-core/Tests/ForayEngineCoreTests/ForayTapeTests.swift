@@ -37,7 +37,7 @@ final class ForayTapeTests: XCTestCase {
 
     static func loads(_ out: [EngineCommand]) -> [String] {
         out.compactMap {
-            if case let .deck(.load(_, itemId, _, startSec, _)) = $0 { return "\(itemId)@\(JSWriter.numberToString(startSec))" }
+            if case let .deck(.load(_, itemId, _, startSec, _, _)) = $0 { return "\(itemId)@\(JSWriter.numberToString(startSec))" }
             return nil
         }
     }
@@ -183,6 +183,104 @@ final class ForayTapeTests: XCTestCase {
         XCTAssertFalse(late.contains(.deck(.play)), "a stale timer starts nothing")
     }
 
+    /// M3 review (2026-09-30): an episode's natural end opens the prefetch
+    /// window (NE-45s, from its duration), but a plain episode queue's next
+    /// WHOLE episode is never prepared on the standby: M1's continuation stays
+    /// a cold load at that episode's own resume position, as before NE-45s.
+    func testAnEpisodeQueuesWindowPreparesNoWholeEpisode() {
+        var host = Host(config: ForayTapeTests.tape)
+        host.send(.queue(.load(["a", "b"].map { EngineCoreTests.item($0) })))
+        host.send(.queue(.playIndex(0, startSec: nil, source: .tap)))
+        host.land()
+        host.confirm()
+        XCTAssertEqual(host.core.state.stateType, "playing")
+        let window = host.send(.deck(.prepareWindow(token: host.lastLoad ?? 0)))
+        XCTAssertFalse(window.contains { if case .deck(.prepare) = $0 { return true }; return false }, "\(window)")
+        XCTAssertNil(host.core.state.preparedItemId)
+    }
+
+    /// `load <item> precise=<flag>` / `prepare <item> precise=<flag>` for every
+    /// deck load and standby prepare.
+    static func precision(_ out: [EngineCommand]) -> [String] {
+        out.compactMap {
+            switch $0 {
+            case let .deck(.load(_, itemId, _, _, precise, _)): return "load \(itemId) precise=\(precise)"
+            case let .deck(.prepare(itemId, _, _, _, precise)): return "prepare \(itemId) precise=\(precise)"
+            default: return nil
+            }
+        }
+    }
+
+    /// P-7's CBR exemption (M2 drive, 2026-10-01): with
+    /// `approximateCBRClips` on, a clip whose source is measured CBR
+    /// (`seek_map: "cbr"`) loads WITHOUT precise timing, which on an MP3 reads
+    /// the whole file first; a VBR or unmeasured clip keeps it; and the warm
+    /// prepare asks for exactly what the item's own load would, so a promoted
+    /// CBR clip is not a precise asset after all.
+    /// MUTATION: keep `preciseTiming: bounds != nil` in `load`, or leave the
+    /// prepare's flag at its default.
+    func testWithTheExemptionOnACBRClipLoadsAndPreparesApproximate() throws {
+        let cbr = [JSONMember("seek_map", .string("cbr"))]
+        let vbr = [JSONMember("seek_map", .string("vbr-toc"))]
+        let on = EngineConfig(build: "test", forayTapeEnabled: true, approximateCBRClips: true)
+
+        var host = Host(config: on)
+        let first = host.send(try EngineCoreTests.command("playForay", ForayTapeTests.forayArgs(
+            [ForayTapeTests.clip(0, "a", 100, 200, cbr), ForayTapeTests.clip(1, "b", 300, 400, vbr)])))
+        XCTAssertEqual(ForayTapeTests.precision(first), ["load f1#0 precise=false"], "\(first)")
+        host.land()
+        host.confirm()
+        let window = host.send(.deck(.prepareWindow(token: host.lastLoad ?? 0)))
+        XCTAssertEqual(ForayTapeTests.precision(window), ["prepare f1#1 precise=true"], "\(window)")
+
+        var other = Host(config: on)
+        let unmeasured = other.send(try EngineCoreTests.command("playForay", ForayTapeTests.forayArgs(
+            [ForayTapeTests.clip(0, "a", 100, 200), ForayTapeTests.clip(1, "b", 300, 400, cbr)])))
+        XCTAssertEqual(ForayTapeTests.precision(unmeasured), ["load f1#0 precise=true"], "\(unmeasured)")
+        other.land()
+        other.confirm()
+        let warm = other.send(.deck(.prepareWindow(token: other.lastLoad ?? 0)))
+        XCTAssertEqual(ForayTapeTests.precision(warm), ["prepare f1#1 precise=false"], "\(warm)")
+    }
+
+    /// The exemption is OFF in the core (and in the shipping boot until §13's
+    /// Simulator row settles it): a measured CBR clip still loads and warms
+    /// precise, exactly as before. MUTATION: default `approximateCBRClips` to true.
+    func testWithTheExemptionOffACBRClipStaysPrecise() throws {
+        let cbr = [JSONMember("seek_map", .string("cbr"))]
+        XCTAssertFalse(EngineConfig().approximateCBRClips)
+        var host = Host(config: ForayTapeTests.tape)
+        let first = host.send(try EngineCoreTests.command("playForay", ForayTapeTests.forayArgs(
+            [ForayTapeTests.clip(0, "a", 100, 200, cbr), ForayTapeTests.clip(1, "b", 300, 400, cbr)])))
+        XCTAssertEqual(ForayTapeTests.precision(first), ["load f1#0 precise=true"], "\(first)")
+        host.land()
+        host.confirm()
+        let window = host.send(.deck(.prepareWindow(token: host.lastLoad ?? 0)))
+        XCTAssertEqual(ForayTapeTests.precision(window), ["prepare f1#1 precise=true"], "\(window)")
+    }
+
+    /// The rule itself, item by item: bounded, and not (exempt and measured
+    /// CBR). A whole episode is approximate whatever its source (P-7), and
+    /// only the exact measured value "cbr" relaxes a clip.
+    func testPreciseTimingIsBoundedAndNotExemptCBR() throws {
+        func item(_ extra: [JSONMember], bounded: Bool = true) throws -> EngineItem {
+            var members = [JSONMember("id", .string("x")), JSONMember("kind", .string("episode")),
+                           JSONMember("audio_url", .string("https://cdn.test/x.mp3"))]
+            if bounded { members += [JSONMember("start_sec", .number(100)), JSONMember("end_sec", .number(200))] }
+            return try XCTUnwrap(EngineItem(node: .object(members + extra)))
+        }
+        let map = { (value: String) in [JSONMember("seek_map", .string(value))] }
+        XCTAssertTrue(try item([]).preciseTiming(approximateCBR: true))
+        XCTAssertTrue(try item([JSONMember("seek_map", .null)]).preciseTiming(approximateCBR: true))
+        XCTAssertFalse(try item(map("cbr")).preciseTiming(approximateCBR: true))
+        XCTAssertTrue(try item(map("cbr")).preciseTiming(approximateCBR: false))
+        XCTAssertTrue(try item(map("vbr-toc")).preciseTiming(approximateCBR: true))
+        XCTAssertTrue(try item(map("vbr-notoc")).preciseTiming(approximateCBR: true))
+        XCTAssertTrue(try item(map("CBR")).preciseTiming(approximateCBR: true))
+        XCTAssertFalse(try item([], bounded: false).preciseTiming(approximateCBR: false))
+        XCTAssertFalse(try item(map("vbr-notoc"), bounded: false).preciseTiming(approximateCBR: true))
+    }
+
     /// Backgrounded, the seam holds a grace span from the out-point until the
     /// next clip is audible: `seam` when the standby deck was asked to prepare
     /// it, `prepare-miss` when not.
@@ -230,14 +328,18 @@ final class ForayTapeTests: XCTestCase {
         let hit = try XCTUnwrap(seam(.prepared(token: 0, hit: true, stages: [.attach, .duration, .readiness, .seek, .preroll, .ready])))
         XCTAssertTrue(hit.prepared)
         XCTAssertEqual(hit.stages, [.attach, .duration, .readiness, .seek, .preroll, .ready, .play])
+        XCTAssertEqual([hit.from, hit.to], [.clip, .clip], "NE-45s: the row names what the seam joins")
+        XCTAssertEqual(hit.prepare, .hit)
 
         let miss = try XCTUnwrap(seam(.prepared(token: 0, hit: false, stages: [.attach])))
         XCTAssertFalse(miss.prepared, "a prepare asked is not a prepare hit")
         XCTAssertEqual(miss.stages, [.attach, .play])
+        XCTAssertEqual(miss.prepare, .miss)
 
         let single = try XCTUnwrap(seam(nil))
         XCTAssertTrue(single.prepared, "one deck: the row keeps its pre-NE-32 meaning (the item was asked for)")
         XCTAssertEqual(single.stages, [.ready, .play])
+        XCTAssertEqual(single.prepare, .unprepared, "no standby deck said hit or miss: nothing was prepared")
 
         // A report about another load is dropped.
         let stale = try XCTUnwrap(seam(.prepared(token: -7, hit: false, stages: [.deadline])))

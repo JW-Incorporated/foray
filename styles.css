@@ -348,7 +348,7 @@ html, body {
    and fails on one that is neither here nor ≥44px by its own size, so the
    next new control cannot be missed the same way. */
 :where(
-  .topbar button, button.star, .play-btn, button.up-next, button.reorder, button.up-next-remove,
+  .topbar button, button.star, .play-btn, button.up-next, button.reorder, button.up-next-remove, button.up-next-clear,
   .fy-thumb, .fp-grab-zone .fp-close, .fp-rate, .fp-stop, .fp-openep,
   .voice-row-audition, .fy-chip,
   button.show-star, .fy-sheet-cancel, .fy-sheet-go, .interest-reset, .shell-notice button,
@@ -357,7 +357,7 @@ html, body {
   position: relative;
 }
 :where(
-  .topbar button, button.star, .play-btn, button.up-next, button.reorder, button.up-next-remove,
+  .topbar button, button.star, .play-btn, button.up-next, button.reorder, button.up-next-remove, button.up-next-clear,
   .fy-thumb, .fp-grab-zone .fp-close, .fp-rate, .fp-stop, .fp-openep,
   .voice-row-audition, .fy-chip,
   button.show-star, .fy-sheet-cancel, .fy-sheet-go, .interest-reset, .shell-notice button,
@@ -825,6 +825,25 @@ button.star {
 }
 button.star.on { color: var(--gold); }
 
+/* Share (#1071): the star's plain style at a full 44px of its own, so it needs
+   no hit-area entry. In a Suggested card it sits above the stretched link like
+   the star; the note it leaves ("Link copied", or the link to copy) too. */
+button.share-btn {
+  position: relative;
+  flex: none;
+  width: 44px; height: 44px;
+  padding: 10px;
+  background: none; border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+button.share-btn svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.page-head > button.share-btn { margin-left: auto; }
+.show-hero > button.share-btn { vertical-align: top; margin-right: 4px; }
+.mini-card > button.share-btn, .share-note { z-index: 1; }
+.share-note { position: relative; font-size: var(--fs-sm); color: var(--text-dim); }
+.share-input { display: block; width: 100%; margin-top: 4px; }
+
 /* ---------- starred shows (follow-lite) ---------- */
 
 button.show-star {
@@ -1243,6 +1262,14 @@ input[type="text"] {
 .ep-row .info, .pl-row .info { flex: 1; min-width: 0; }
 .ep-row .t, .pl-row .t { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 600; line-height: 1.3; }
 .ep-row .s, .pl-row .s { font-size: var(--fs-sm); color: var(--text-dim); margin-top: 2px; }
+/* The description snippet under a title (app.js `episodeRowSnippet`, founder
+   2026-10-03): two lines and an ellipsis, as Apple Podcasts shows it, so a long
+   publisher description never pushes the row's metadata off screen. */
+.ep-row .ep-hook {
+  font-size: var(--fs-sm); color: var(--text-dim); margin: 3px 0 0; line-height: 1.35;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  overflow-wrap: anywhere;
+}
 /* Where the listener is in the episode (app.js `rowProgress`, audit 2026-09-22):
    "NN min left" reads a step brighter than the metadata around it, because it is
    the one thing on the line about THEM; "Played" stays at the line's own tone. */
@@ -1365,6 +1392,22 @@ input[type="text"] {
 }
 .lib-more:active { color: var(--text); }
 
+/* ---------- Offline downloads (#29, PQ-18) ----------
+   The episode page's Download control sits on its own centred row under
+   `.ep-actions` (that row is already at its phone-width ceiling); the note a
+   refused download carries wraps under the button. Library's section reuses
+   the episode rows; its usage line and "Remove all" are the only new pieces.
+   Both buttons are `button.up-next`, so the 44px hit-area rule covers them. */
+.ep-download {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+  gap: 6px 12px;
+  margin: 12px 0 0;
+}
+.ep-download-btn[disabled] { opacity: 0.7; cursor: default; }
+.ep-download-note { flex: 1 1 100%; margin: 0; text-align: center; }
+.lib-downloads-usage { margin: 0 2px 8px; }
+button.downloads-remove-all { display: block; margin: 8px auto 0; }
+
 /* Save on a generated playlist's or a subject queue's page (founder,
    2026-09-25). A capsule like Follow, 44px tall by its own size. */
 .pl-save-wrap { margin: 4px 0 12px; }
@@ -1465,6 +1508,17 @@ button.reorder {
 }
 button.reorder:disabled { opacity: 0.35; cursor: default; }
 button.reorder:not(:disabled):active { transform: scale(0.94); }
+/* Play next (#762, PQ-02) sits in the arrows' group and shares their 40px
+   height, disabled look and hit area (it IS a button.reorder); it carries a
+   word, not a glyph, so it is a capsule as wide as "Next" rather than a circle. */
+button.reorder.playnext {
+  width: auto;
+  min-width: 40px;
+  padding: 0 12px;
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
 
 button.up-next-remove {
   flex: none;
@@ -1478,6 +1532,77 @@ button.up-next-remove {
   cursor: pointer;
   padding: 0;
 }
+/* Clear (#762, PQ-02): the Up Next page head's one action, pushed to its right
+   edge, in the ✕'s tokens — muted, not loud, because it empties the list. Only
+   drawn with two or more rows; the playing row survives it. */
+button.up-next-clear {
+  flex: none;
+  margin-left: auto;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+/* Drag to reorder (#762, PQ-04). The ⋮⋮ handle opens the arrows' group and IS
+   a button.reorder, so it has their 40px circle and their 44px hit area (the
+   tap-target rule above). `touch-action: none` on the handle alone: a finger
+   that lands there is asking to drag, so the browser must not take it as a
+   pan; everywhere else on the row the page still scrolls. While a row is
+   carried it is lifted over its neighbours, and the row it would land beside
+   has its hairline turn accent on the side it would land on (a border colour,
+   not a shadow: rows in a list sit flat, test/ui-tokens.test.js). Only
+   `transform` and colours change, so nothing reflows and nothing can push the
+   page sideways. */
+button.reorder.drag-handle {
+  cursor: grab;
+  touch-action: none;
+  letter-spacing: -0.2em;
+  color: var(--text-dim);
+}
+.up-next-row.is-dragging {
+  position: relative;
+  z-index: 2;
+  opacity: 0.85;
+  background: var(--surface-2);
+  touch-action: none;
+}
+.up-next-row.is-dragging button.reorder.drag-handle { cursor: grabbing; }
+.up-next-row.drop-before { border-top-color: var(--accent); }
+.up-next-row.drop-after { border-bottom-color: var(--accent); }
+/* Swipe left to remove (#762, PQ-06; app.js `bindUpNextSwipe`). The row's
+   text block keeps the vertical scroll for the browser (`pan-y`) and hands
+   horizontal travel to the swipe. While a finger carries the row it follows
+   with no easing (`.swiping`); let go short of the threshold and it springs
+   back on the row's own transform transition (stilled under Reduce Motion,
+   below). The "Remove" label waits just past the row's right edge and is
+   drawn only while a swipe is live, so it is revealed as the row slides left
+   and never widens the page otherwise (html/body clip horizontal overflow
+   too). Only `transform` moves, so nothing reflows. */
+.up-next-row { transition: transform 0.18s ease-out; }
+.up-next-row.swiping, .up-next-row.is-dragging { transition: none; }
+.up-next-row > .info { touch-action: pan-y; }
+.up-next-row .swipe-under {
+  display: none;
+  position: absolute;
+  top: 0; bottom: 0;
+  left: calc(100% + 8px);
+  width: 160px;
+  align-items: center;
+  padding-left: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+  color: var(--danger-text);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  pointer-events: none;
+}
+.up-next-row.swiping .swipe-under { display: flex; }
 
 /* ---------- in-app player (#25) ---------- */
 
@@ -2304,6 +2429,14 @@ body.fp-expanded { overflow: hidden; }
 }
 .ep-chapter-row:hover .ep-chapter-title,
 .ep-chapter-row:active .ep-chapter-title { color: var(--accent); }
+/* CH-1 (#1071): the publisher's chapter art, the approximate-times line and
+   the "All N chapters" disclosure past the first six rows. */
+.ep-chapter-img { flex: none; align-self: center; width: 40px; height: 40px; border-radius: var(--radius-sm); object-fit: cover; }
+.ep-chapters-note { margin: 0 0 4px; font-size: var(--fs-sm); color: var(--text-dim); }
+.ep-chapters-more > summary {
+  display: flex; align-items: center; min-height: 44px;
+  color: var(--accent); cursor: pointer; touch-action: manipulation;
+}
 /* A1.8 "More from this show" — same section-label language as .fy-slot h3. */
 .ep-more { margin: 24px 0 0; }
 .ep-more h3, .sh-results-head {
@@ -2436,6 +2569,10 @@ input[type="range"] { accent-color: var(--amber); }
 .fp-next, .fp-save { min-width: 52px; padding: 0 14px; }
 .fp-save[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
 .fp-upnext { white-space: nowrap; }
+/* Bookmark (#30, PQ-13) is Save's neighbour and wears Save's box; its
+   "Bookmarked ✓" is a 1.5 s confirmation, not a pressed state, so no
+   aria-pressed colour. Seven controls now; the row still wraps. */
+.fp-bookmark { min-width: 52px; padding: 0 14px; white-space: nowrap; }
 /* THE SECOND ROW IS ONE CONTROL TREATMENT (visual pass 1, 2026-09-23). It
    mixed a caption-size grey box, a danger box, a bare underlined link and a
    second Close beside the grab zone's ✕. Now: the boxed controls are the
@@ -3470,11 +3607,6 @@ body.fy-sheet-keeps-player.fp-open .fy-sheet .fy-panel {
   cursor: pointer;
 }
 .dd-status { margin: 12px 0 0; font-size: var(--fs-sm); color: var(--text); line-height: 1.45; }
-/* KV-R3: the voice probe's table and the soak's report keep their lines
-   (app.js runVoiceProbeOnce / runVoiceSoakOnce), with tabular figures, and
-   scroll sideways rather than wrap a row. The two face tokens only. */
-.dd-status.dd-status-report { white-space: pre; overflow-x: auto; font-size: var(--fs-2xs); line-height: 1.35; font-variant-numeric: tabular-nums; }
-.diag-listen { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
 
 /* ===========================================================================
    U-05: Search restyle + Playlists results section
@@ -3828,6 +3960,15 @@ body.ui-v2 button.up-next-remove {
   background: var(--surface2);
   color: var(--muted);
 }
+body.ui-v2 button.up-next-clear {
+  border-color: var(--line);
+  background: var(--surface2);
+  color: var(--muted);
+}
+body.ui-v2 button.reorder.drag-handle { color: var(--muted); }
+body.ui-v2 .up-next-row.is-dragging { background: var(--surface2); }
+body.ui-v2 .up-next-row.drop-before { border-top-color: var(--violet); }
+body.ui-v2 .up-next-row.drop-after { border-bottom-color: var(--violet); }
 
 /* ---------- Playlists index + detail (renderPlaylists/renderPlaylistDetail) ---------- */
 body.ui-v2 .show-ep-search input {
@@ -4154,6 +4295,7 @@ body.drawer-open { overflow: hidden; }
   .fy-strip,
   .fy-strip-bubble, .fy-strip-bubble__viewport > *,
   .fy-seg { transition: none; }
+  .up-next-row { transition: none; }
   .fy-panel { animation: none; }
   .play-btn[data-loading="1"], .fp-play[data-loading="1"], .fp-btn[data-loading="1"], .hv2-play[data-loading="1"] { animation: none; opacity: .6; }
 }

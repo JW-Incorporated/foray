@@ -8,11 +8,12 @@
       "title": "Lex Fridman Podcast",
       "apple_collection_id": 1434243584,
       "feed_url": "https://lexfridman.com/feed/podcast/",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/3e/e3/9c/3ee39c89-de08-47a6-7f3d-3849cef6d255/mza_16657851278549137484.png/600x600bb.jpg",
       "apple_genre": null,
       "episode_count": null,
       "editorial_note": "Marathon technical interviews with the actual scientists and founders building fusion reactors, AI, and everything adjacent.",
       "taxonomy_node_ids": [],
+      "label_scope": "general",
       "archetype_fit": [
         "deep-learn"
       ],
@@ -25,7 +26,7 @@
       "title": "Titans of Nuclear",
       "apple_collection_id": 1331598443,
       "feed_url": "https://rss.libsyn.com/shows/107828/destinations/585143.xml",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/8f/c0/fb/8fc0fb3a-89f7-cfc7-e596-2fd3988a255b/mza_435383747906350604.jpg/600x600bb.jpg",
       "apple_genre": null,
       "episode_count": null,
       "editorial_note": "The widest bench in fusion/fission podcasting -- a new reactor architecture or company nearly every episode.",
@@ -44,7 +45,7 @@
       "title": "omega tau",
       "apple_collection_id": 350159142,
       "feed_url": "https://omegataupodcast.net/show/en/feed/mp3/",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/45/79/ff/4579ffe8-ae75-a586-df5a-940e3b0b8ae7/mza_12776813321781247935.png/600x600bb.jpg",
       "apple_genre": null,
       "episode_count": null,
       "editorial_note": "The most technically dense engineering-tour podcast in English -- stellarators, magnets, superconductivity, no hand-holding.",
@@ -64,12 +65,13 @@
       "title": "CleanTechies Podcast",
       "apple_collection_id": 1555107027,
       "feed_url": "https://api.substack.com/feed/podcast/1541903.rss",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/30/a8/ad/30a8add4-53ad-7c34-1338-2ba77775cc8a/mza_1890398681110635913.jpg/600x600bb.jpg",
       "apple_genre": null,
       "episode_count": null,
       "editorial_note": "Shorter founder interviews across the clean-energy startup landscape, fusion included.",
       "taxonomy_node_ids": [
-        "engineering/energy-fusion"
+        "engineering/energy-grid",
+        "business/startups"
       ],
       "archetype_fit": [
         "stretch"
@@ -83,13 +85,14 @@
       "title": "Catalyst with Shayle Kann",
       "apple_collection_id": 1593204897,
       "feed_url": "https://feeds.megaphone.fm/catalyst",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts112/v4/85/b4/75/85b475a8-93d1-ccdf-be5e-3399f4b322b2/mza_4579948121520406325.jpeg/600x600bb.jpg",
       "apple_genre": null,
       "episode_count": null,
       "editorial_note": "Energy-transition analyst digs into the engineering and market mechanics of new power technologies.",
       "taxonomy_node_ids": [
         "engineering/energy-fusion"
       ],
+      "label_scope": "general",
       "archetype_fit": [
         "deep-learn"
       ],
@@ -102,12 +105,11 @@
       "title": "Lab to Market Leadership",
       "apple_collection_id": 1745548847,
       "feed_url": "https://rss.buzzsprout.com/2317730.rss",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/b7/61/cc/b761cc9f-7ad2-39bf-f055-214edfab8a9a/mza_9718301860875244049.jpg/600x600bb.jpg",
       "apple_genre": null,
       "episode_count": null,
       "editorial_note": "How deep-tech founders take a lab result to a company -- fusion and hard-tech leadership stories.",
       "taxonomy_node_ids": [
-        "engineering/energy-fusion",
         "business/startups"
       ],
       "archetype_fit": [
@@ -122,13 +124,14 @@
       "title": "CBC Ideas",
       "apple_collection_id": 151485663,
       "feed_url": "https://www.cbc.ca/podcasting/includes/ideas.xml",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/94/fe/a5/94fea51f-9e41-b60f-b5f2-3549407ef6fc/mza_4140352385670983274.jpg/600x600bb.jpg",
       "apple_genre": null,
       "episode_count": null,
       "editorial_note": "CBC's long-running ideas documentary strand -- occasionally lands on fusion, energy, and technology with a narrative, current-affairs voice.",
       "taxonomy_node_ids": [
         "engineering/energy-fusion"
       ],
+      "label_scope": "general",
       "archetype_fit": [
         "narrative"
       ],
@@ -141,7 +144,7 @@
       "title": "Stuff You Should Know",
       "apple_collection_id": 278981407,
       "feed_url": "https://www.omnycontent.com/d/playlist/e73c998e-6e60-432f-8610-ae210140c5b1/a91018a4-ea4f-4130-bf55-ae270180c327/44710ecc-10bb-48d1-93c7-ae270180c33e/podcast.rss",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/aa/82/91/aa82912f-23ee-6f6a-583c-a4e993164d0e/mza_12111158076643383507.jpg/600x600bb.jpg",
       "apple_genre": null,
       "episode_count": null,
       "editorial_note": "Reliable general-audience explainer show -- easy entry points into metallurgy, materials, and technology history topics.",
@@ -149,6 +152,7 @@
         "science/materials",
         "history/technology"
       ],
+      "label_scope": "general",
       "archetype_fit": [
         "stretch"
       ],
@@ -161,7 +165,7 @@
       "title": "Materialism: A Materials Science Podcast",
       "apple_collection_id": 1448663986,
       "feed_url": "https://pinecast.com/feed/materialism",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/14/4b/6a/144b6aa5-03ea-0e07-eb69-c80e069a52ae/mza_13610307441121266719.jpg/600x600bb.jpg",
       "apple_genre": null,
       "episode_count": null,
       "editorial_note": "The dedicated materials-science show -- history, commercialization, and characterization of the stuff things are made of.",
@@ -181,7 +185,7 @@
       "title": "Inside Chips (Semiconductor Engineering)",
       "apple_collection_id": 1809409412,
       "feed_url": "https://rss.libsyn.com/shows/575800/destinations/4986820.xml",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/dc/9a/bf/dc9abfbc-ce8b-094f-1a50-e9d2b4a69816/mza_15244253184536318128.png/600x600bb.jpg",
       "apple_genre": null,
       "episode_count": null,
       "editorial_note": "B2B semiconductor-fab panel talk -- precision process control that rhymes with reactor-grade manufacturing.",
@@ -201,7 +205,7 @@
       "title": "MTDCNC Podcast",
       "apple_collection_id": 1833238020,
       "feed_url": "https://anchor.fm/s/1083b9da0/podcast/rss",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/2f/c2/3b/2fc23bf0-4faa-2f41-a4bf-779df0f16e8d/mza_12518032609716077037.jpg/600x600bb.jpg",
       "apple_genre": null,
       "episode_count": null,
       "editorial_note": "UK precision-machining trade show -- interviews with the people who design, build, and operate CNC and aerospace-grade equipment.",
@@ -222,7 +226,7 @@
       "title": "Being an Engineer",
       "apple_collection_id": 1508222292,
       "feed_url": "https://rss.buzzsprout.com/995575.rss",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/f9/ea/7e/f9ea7e14-28a4-07e0-7727-ba24527dfb7c/mza_2694726557793121439.jpg/600x600bb.jpg",
       "apple_genre": null,
       "episode_count": null,
       "editorial_note": "Product-engineering war stories, CAD to tooling to production, on everything from medical devices to a coffee tamper.",
@@ -231,6 +235,7 @@
         "craft/diy-home",
         "business/careers"
       ],
+      "label_scope": "general",
       "archetype_fit": [
         "stretch"
       ],
@@ -243,7 +248,7 @@
       "title": "Fall of Civilizations Podcast",
       "apple_collection_id": 1449884495,
       "feed_url": "https://anchor.fm/s/101adcf44/podcast/rss",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/0a/06/85/0a0685c1-86d4-6f5d-27e4-75e1771d0bae/mza_3060333100547218575.jpg/600x600bb.jpg",
       "apple_genre": null,
       "episode_count": null,
       "editorial_note": "The benchmark long-form documentary history show -- multi-hour rise-and-fall sagas with real engineering and military detail.",
@@ -263,7 +268,7 @@
       "title": "The Rest Is History",
       "apple_collection_id": 1537788786,
       "feed_url": "https://feeds.megaphone.fm/GLT4787413333",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/bf/89/a5/bf89a586-3f77-bf37-7ba3-b75f1bca7bfa/mza_1664785978944494824.jpg/600x600bb.jpg",
       "apple_genre": null,
       "episode_count": null,
       "editorial_note": "Sandbrook and Holland's conversational history juggernaut -- broad chronological coverage, strong narrative pacing.",
@@ -271,6 +276,7 @@
         "history/technology",
         "history/military-ancient"
       ],
+      "label_scope": "general",
       "archetype_fit": [
         "narrative"
       ],
@@ -283,7 +289,7 @@
       "title": "Conan O'Brien Needs a Friend",
       "apple_collection_id": 1438054347,
       "feed_url": "https://feeds.simplecast.com/dHoohVNH",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/c6/02/8a/c6028ab7-bffd-db83-53e4-34a4ea9bef21/mza_16944101310108746053.jpg/600x600bb.jpg",
       "apple_genre": null,
       "episode_count": null,
       "editorial_note": "Conan's real-friendship-with-guests premise -- consistently the warmest, easiest hang in the catalog.",
@@ -302,7 +308,7 @@
       "title": "SmartLess",
       "apple_collection_id": 1521578868,
       "feed_url": "https://feeds.simplecast.com/hNaFxXpO",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/b1/93/5f/b1935f9f-35be-9144-e813-626bd8dabfb4/mza_4132654708551836825.jpg/600x600bb.jpg",
       "apple_genre": null,
       "episode_count": null,
       "editorial_note": "Bateman, Hayes, and Arnett's surprise-guest hang -- low pressure, high chemistry.",
@@ -321,7 +327,7 @@
       "title": "My Brother, My Brother and Me",
       "apple_collection_id": 367330921,
       "feed_url": "https://feeds.simplecast.com/wjQvYtdl",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/6e/a7/35/6ea7353b-0692-99b1-12a0-7b33fa475aa8/mza_13316954681377313409.jpg/600x600bb.jpg",
       "apple_genre": null,
       "episode_count": null,
       "editorial_note": "Three real brothers answering advice questions with pure absurdism -- zero stakes, guaranteed laughs.",
@@ -618,6 +624,7 @@
         "business/startups",
         "engineering/energy-fusion"
       ],
+      "label_scope": "general",
       "archetype_fit": [
         "deep-learn"
       ],
@@ -1161,6 +1168,7 @@
       "taxonomy_node_ids": [
         "architecture/infrastructure"
       ],
+      "label_scope": "general",
       "archetype_fit": [
         "deep-learn",
         "narrative"
@@ -1219,6 +1227,7 @@
       "taxonomy_node_ids": [
         "nature/animal-cognition"
       ],
+      "label_scope": "general",
       "archetype_fit": [
         "stretch",
         "deep-learn"
@@ -1358,6 +1367,7 @@
       "taxonomy_node_ids": [
         "computing/history"
       ],
+      "label_scope": "general",
       "archetype_fit": [
         "deep-learn"
       ],
@@ -1416,6 +1426,7 @@
       "taxonomy_node_ids": [
         "economics/markets"
       ],
+      "label_scope": "general",
       "archetype_fit": [
         "stretch",
         "deep-learn"
@@ -1889,6 +1900,7 @@
       "taxonomy_node_ids": [
         "science/storytelling"
       ],
+      "label_scope": "general",
       "archetype_fit": [
         "stretch",
         "narrative"
@@ -2264,6 +2276,7 @@
       "taxonomy_node_ids": [
         "medicine/neuroscience"
       ],
+      "label_scope": "general",
       "archetype_fit": [
         "deep-learn"
       ],
@@ -3031,7 +3044,7 @@
         "comfort"
       ],
       "cadence_hint": "weekly",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/67/02/d7/6702d7b4-5dff-4a0a-8e91-54be0a8a7660/mza_15418537704194950179.jpg/600x600bb.jpg",
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
@@ -3051,7 +3064,7 @@
         "deep-learn"
       ],
       "cadence_hint": "weekly",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/79/04/87/79048703-d88c-acc2-c319-a8f2534b9ae5/mza_15018160844227259170.jpg/600x600bb.jpg",
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
@@ -3072,7 +3085,7 @@
         "comfort"
       ],
       "cadence_hint": "weekly",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/82/14/44/8214441d-06f9-5beb-79d6-2c95ed1448cc/mza_2571811512276130369.jpg/600x600bb.jpg",
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
@@ -3091,7 +3104,7 @@
         "deep-learn"
       ],
       "cadence_hint": "ended",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/cf/5a/f0/cf5af016-6056-30f0-be09-f29351430893/mza_3453059785950812097.jpeg/600x600bb.jpg",
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
@@ -3111,7 +3124,7 @@
         "narrative"
       ],
       "cadence_hint": "biweekly",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/d3/23/3c/d3233ce4-e1e6-710c-141a-dad45b263c7d/mza_17331100152243008221.jpg/600x600bb.jpg",
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
@@ -3130,7 +3143,7 @@
         "deep-learn"
       ],
       "cadence_hint": "weekly",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/83/21/fa/8321fa07-c424-c95e-25f8-b99d952b074e/mza_11331013497668602482.jpeg/600x600bb.jpg",
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
@@ -3150,7 +3163,7 @@
         "deep-learn"
       ],
       "cadence_hint": "monthly",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/89/9a/d4/899ad444-4dc0-7a0c-e244-ed8f869d4f09/mza_4758067400065032137.jpg/600x600bb.jpg",
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
@@ -3169,7 +3182,7 @@
         "deep-learn"
       ],
       "cadence_hint": "weekly",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/7d/ed/21/7ded21c8-f97e-982f-dcae-cff69d126da2/mza_7834073134319015021.png/600x600bb.jpg",
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
@@ -3189,7 +3202,7 @@
         "comfort"
       ],
       "cadence_hint": "weekly",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/ab/66/a5/ab66a5f5-b52b-c70a-227b-0721bd9dc660/mza_13546984924981879479.jpg/600x600bb.jpg",
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
@@ -3208,7 +3221,7 @@
         "comfort"
       ],
       "cadence_hint": "weekly",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/7a/cd/f2/7acdf2b4-c0e2-4923-7930-f1b98f789008/mza_9514614093854378662.jpg/600x600bb.jpg",
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
@@ -3229,7 +3242,7 @@
         "deep-learn"
       ],
       "cadence_hint": "weekly",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/ce/43/fd/ce43fdee-824d-b97c-3642-959e971579c2/mza_9334100872530662650.jpg/600x600bb.jpg",
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
@@ -3250,7 +3263,7 @@
         "comfort"
       ],
       "cadence_hint": "weekly",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/de/93/f5/de93f5ba-6a68-c538-c6c5-77580d0db2f9/mza_15813436693341770060.jpg/600x600bb.jpg",
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
@@ -3720,7 +3733,7 @@
         "comfort"
       ],
       "cadence_hint": "weekly",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/f2/74/1f/f2741f77-1c20-b058-a845-f261c819fe80/mza_557469201745576820.png/600x600bb.jpg",
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
@@ -3740,7 +3753,7 @@
         "narrative"
       ],
       "cadence_hint": "weekly",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/93/d2/cb/93d2cb73-60f2-4b07-fea3-6f1af6287017/mza_2091129752091434879.png/600x600bb.jpg",
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
@@ -3761,7 +3774,7 @@
         "comfort"
       ],
       "cadence_hint": "weekly",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/16/39/63/1639632d-7ad2-d87b-d4f7-d0ec95eff386/mza_8915289722686017414.jpg/600x600bb.jpg",
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
@@ -3782,7 +3795,7 @@
         "stretch"
       ],
       "cadence_hint": "biweekly",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/e8/94/86/e8948649-c36e-a0d8-3dca-555d1410987e/mza_1316723170820495850.png/600x600bb.jpg",
       "episode_count": null,
       "explicit": true,
       "source": "itunes_verified"
@@ -3803,7 +3816,7 @@
         "comfort"
       ],
       "cadence_hint": "biweekly",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/04/57/3c/04573c66-db41-64d7-f93a-02c9508b6efc/mza_11979259119697604586.jpg/600x600bb.jpg",
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
@@ -3824,7 +3837,7 @@
         "comfort"
       ],
       "cadence_hint": "weekly",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/a7/f4/11/a7f411fa-7d05-708c-b9e6-fbb79f16687f/mza_5278700449379998361.jpg/600x600bb.jpg",
       "episode_count": null,
       "explicit": true,
       "source": "itunes_verified"
@@ -3845,7 +3858,7 @@
         "comfort"
       ],
       "cadence_hint": "weekly",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/ab/25/c8/ab25c89d-f0ff-b241-4432-1ef06521b765/mza_16562465962407518091.jpg/600x600bb.jpg",
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
@@ -3866,7 +3879,7 @@
         "comfort"
       ],
       "cadence_hint": "weekly",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/9f/80/bc/9f80bcc7-3890-b83d-825d-80bfce6540a1/mza_11092217466841030628.jpg/600x600bb.jpg",
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
@@ -3887,7 +3900,7 @@
         "comfort"
       ],
       "cadence_hint": "weekly",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/08/87/de/0887de16-2eb2-b99b-78b9-ca12fce8cf5d/mza_2798548197053957784.jpeg/600x600bb.jpg",
       "episode_count": null,
       "explicit": true,
       "source": "itunes_verified"
@@ -3907,7 +3920,7 @@
         "comfort"
       ],
       "cadence_hint": "weekly",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/25/04/1c/25041c54-a94b-4c84-3d79-129f8f0bdc27/mza_10132198868361967560.jpeg/600x600bb.jpg",
       "episode_count": null,
       "explicit": true,
       "source": "itunes_verified"
@@ -3928,7 +3941,7 @@
         "narrative"
       ],
       "cadence_hint": "ended",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/13/86/7f/13867f22-67b6-49d0-9b74-8eaa458aab0d/mza_10920335765348487691.jpg/600x600bb.jpg",
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
@@ -3948,7 +3961,7 @@
         "comfort"
       ],
       "cadence_hint": "ended",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts122/v4/a2/a3/43/a2a34350-9b6b-6ffe-6444-8d24974e9350/mza_12136493384835430246.jpeg/600x600bb.jpg",
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
@@ -3968,7 +3981,7 @@
         "deep-learn"
       ],
       "cadence_hint": "weekly",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/4c/b0/4a/4cb04a06-4e0a-d534-2a28-3f2fb37fa14e/mza_14610475686329584932.jpeg/600x600bb.jpg",
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
@@ -3988,7 +4001,7 @@
         "narrative"
       ],
       "cadence_hint": "weekly",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/06/40/0d/06400df3-052b-e503-1cd7-783cfe435d32/mza_2584487554373114557.jpg/600x600bb.jpg",
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
@@ -4008,7 +4021,7 @@
         "narrative"
       ],
       "cadence_hint": "weekly",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/54/38/74/543874b1-821b-9e11-6f5d-965d2f0c5245/mza_218851255204087494.jpg/600x600bb.jpg",
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
@@ -4029,7 +4042,7 @@
         "comfort"
       ],
       "cadence_hint": "biweekly",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/c2/4a/51/c24a5124-d015-8ca7-27f4-3985a345f5b0/mza_10525284149020137113.jpg/600x600bb.jpg",
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
@@ -4049,7 +4062,7 @@
         "narrative"
       ],
       "cadence_hint": "ended",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/01/2b/f6/012bf6cf-da73-11a8-4666-d65ad58dcea5/mza_1748774726906212092.jpg/600x600bb.jpg",
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
@@ -4069,7 +4082,7 @@
         "narrative"
       ],
       "cadence_hint": "weekly",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/aa/c8/c6/aac8c647-6073-0a38-cb68-47298fc73ab7/mza_990133593394875927.jpeg/600x600bb.jpg",
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
@@ -4090,7 +4103,7 @@
         "comfort"
       ],
       "cadence_hint": "ended",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/5b/a9/12/5ba9124a-eb6d-6fcc-bd8e-75de88b73517/mza_5106699898373276155.jpg/600x600bb.jpg",
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
@@ -4111,7 +4124,7 @@
         "narrative"
       ],
       "cadence_hint": "biweekly",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/ad/dd/64/addd64d2-c2b1-4ff2-aa5f-0f5cc723f92b/mza_10710679716941336906.jpeg/600x600bb.jpg",
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
@@ -4130,7 +4143,7 @@
         "deep-learn"
       ],
       "cadence_hint": "weekly",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/f5/a1/92/f5a192ba-e932-ca00-c014-6426d73931e1/mza_11459321327818220529.jpg/600x600bb.jpg",
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
@@ -4149,7 +4162,7 @@
         "deep-learn"
       ],
       "cadence_hint": "monthly",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts123/v4/d0/26/25/d0262588-a167-62f2-7bda-b3aac3ff060c/mza_4412767758174259078.jpg/600x600bb.jpg",
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
@@ -4169,7 +4182,7 @@
         "narrative"
       ],
       "cadence_hint": "weekly",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/3e/d8/f5/3ed8f5f4-4113-9049-ddf9-6900d2d2969d/mza_6863756797238193337.jpg/600x600bb.jpg",
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
@@ -4188,7 +4201,7 @@
         "deep-learn"
       ],
       "cadence_hint": "weekly",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/e1/e2/8e/e1e28ee7-c7ed-9a91-dbdf-0bac03b6fa38/mza_12090824434324250279.jpg/600x600bb.jpg",
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
@@ -4331,6 +4344,181 @@
       "cadence_hint": "ended",
       "explicit": false,
       "source": "itunes_verified"
+    },
+    {
+      "show_id": "the-bourbon-road",
+      "title": "The Bourbon Road",
+      "apple_collection_id": 1457878143,
+      "feed_url": "https://rss.libsyn.com/shows/172469/destinations/1159028.xml",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/3f/40/3b/3f403bd3-07d7-bec7-12f0-393277a8c5c3/mza_3239835081741539080.png/600x600bb.jpg",
+      "apple_genre": "Food",
+      "episode_count": 514,
+      "editorial_note": "Distillery visits and blind flights; distillers and blenders explain their own process.",
+      "taxonomy_node_ids": [
+        "food/drinks"
+      ],
+      "archetype_fit": [
+        "stretch"
+      ],
+      "cadence_hint": "weekly",
+      "explicit": false,
+      "source": "wave-279"
+    },
+    {
+      "show_id": "beersmith-podcast",
+      "title": "BeerSmith Home and Beer Brewing Podcast",
+      "apple_collection_id": 398500515,
+      "feed_url": "https://beersmith.com/content/feed/podcast/",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/dd/e1/83/dde18320-3859-6314-c84c-1ffa29922bf2/mza_6956310066618780573.png/600x600bb.jpg",
+      "apple_genre": "Hobbies",
+      "episode_count": 300,
+      "editorial_note": "Maltsters, yeast scientists and brewing authors on how beer is actually made.",
+      "taxonomy_node_ids": [
+        "food/fermentation",
+        "food/drinks"
+      ],
+      "archetype_fit": [
+        "deep-learn"
+      ],
+      "cadence_hint": "biweekly",
+      "explicit": false,
+      "source": "wave-279"
+    },
+    {
+      "show_id": "the-bourbon-life",
+      "title": "The Bourbon Life",
+      "apple_collection_id": 1498387060,
+      "feed_url": "https://thebourbonlife.libsyn.com/rss",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/ef/3c/ab/ef3cab95-8d5f-e26b-7765-612c3a645a75/mza_527499069065500089.jpg/600x600bb.jpg",
+      "apple_genre": "Food",
+      "episode_count": 105,
+      "editorial_note": "Interviews with master distillers, blenders and maturation leads across American whiskey.",
+      "taxonomy_node_ids": [
+        "food/drinks"
+      ],
+      "archetype_fit": [
+        "stretch"
+      ],
+      "cadence_hint": "weekly",
+      "explicit": false,
+      "source": "wave-279"
+    },
+    {
+      "show_id": "wine-talks-with-paul-k",
+      "title": "Wine Talks with Paul K.",
+      "apple_collection_id": 1617481013,
+      "feed_url": "https://rss.libsyn.com/shows/181523/destinations/1238996.xml",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/93/ca/ca/93caca00-d18d-8ca4-5b4b-225fe474c017/mza_8549991008830833869.jpg/600x600bb.jpg",
+      "apple_genre": "Food",
+      "episode_count": 528,
+      "editorial_note": "A wine-club owner interviews producers, importers and port houses about how wine gets made and sold.",
+      "taxonomy_node_ids": [
+        "food/drinks"
+      ],
+      "archetype_fit": [
+        "stretch"
+      ],
+      "cadence_hint": "weekly",
+      "explicit": false,
+      "source": "wave-279"
+    },
+    {
+      "show_id": "wine-for-normal-people",
+      "title": "Wine for Normal People",
+      "apple_collection_id": 413879919,
+      "feed_url": "https://rss.libsyn.com/shows/45638/destinations/1472927.xml",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/90/56/f3/9056f383-d3fb-b954-4909-7bedfddec06c/mza_1568762029983158170.jpg/600x600bb.jpg",
+      "apple_genre": "Food",
+      "episode_count": 92,
+      "editorial_note": "Plain-spoken wine education: grapes, regions, structure and the history behind them.",
+      "taxonomy_node_ids": [
+        "food/drinks"
+      ],
+      "archetype_fit": [
+        "deep-learn",
+        "comfort"
+      ],
+      "cadence_hint": "weekly",
+      "explicit": false,
+      "source": "wave-279"
+    },
+    {
+      "show_id": "wine-educate",
+      "title": "Wine Educate: Wine Lessons, Travel & WSET Study Prep",
+      "apple_collection_id": 1781687341,
+      "feed_url": "https://rss.libsyn.com/shows/556097/destinations/4803262.xml",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/ae/cd/b7/aecdb777-9a27-a54c-81de-684800f1e63b/mza_8559686797506846474.jpg/600x600bb.jpg",
+      "apple_genre": "Food",
+      "episode_count": 131,
+      "editorial_note": "WSET-style lessons on grapes, winemaking methods and appellation law.",
+      "taxonomy_node_ids": [
+        "food/drinks"
+      ],
+      "archetype_fit": [
+        "deep-learn"
+      ],
+      "cadence_hint": "weekly",
+      "explicit": false,
+      "source": "wave-279"
+    },
+    {
+      "show_id": "wine-enthusiast-podcast",
+      "title": "Wine Enthusiast Podcast",
+      "apple_collection_id": 1168716155,
+      "feed_url": "https://api.riverside.com/hosting/uUvr0IqJ.rss",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/fa/21/43/fa214372-8d82-30f7-9fea-e22c88e49f80/mza_5788364734232111071.png/600x600bb.jpg",
+      "apple_genre": "Food",
+      "episode_count": 229,
+      "editorial_note": "The magazine's editors report on wine and spirits, from orange wine to mezcal.",
+      "taxonomy_node_ids": [
+        "food/drinks"
+      ],
+      "archetype_fit": [
+        "stretch"
+      ],
+      "cadence_hint": null,
+      "explicit": false,
+      "source": "wave-279"
+    },
+    {
+      "show_id": "brew-strong",
+      "title": "The Brewing Network Presents |  Brew Strong",
+      "apple_collection_id": 288838352,
+      "feed_url": "https://feeds.megaphone.fm/brewstrong",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/5b/1d/ee/5b1deef3-549b-bc0a-5c54-1ab71195ac58/mza_9287330847818074238.jpg/600x600bb.jpg",
+      "apple_genre": "Food",
+      "episode_count": 361,
+      "editorial_note": "John Palmer and Jamil Zainasheff answer brewing questions on yeast, water and mashing.",
+      "taxonomy_node_ids": [
+        "food/fermentation",
+        "food/drinks"
+      ],
+      "archetype_fit": [
+        "deep-learn"
+      ],
+      "cadence_hint": null,
+      "explicit": false,
+      "source": "wave-279"
+    },
+    {
+      "show_id": "beer-in-front",
+      "title": "Beer In Front",
+      "apple_collection_id": 1500155339,
+      "feed_url": "https://www.spreaker.com/show/5704447/episodes/feed",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/71/06/be/7106be64-29ae-de13-d070-7c55a62acab7/mza_13393508569446909877.jpg/600x600bb.jpg",
+      "apple_genre": "Crafts",
+      "episode_count": 292,
+      "editorial_note": "A Chicago beer fan talks with maltsters, brewers and makers, then tastes what they make.",
+      "taxonomy_node_ids": [
+        "food/drinks"
+      ],
+      "archetype_fit": [
+        "stretch",
+        "comfort"
+      ],
+      "cadence_hint": "weekly",
+      "explicit": true,
+      "source": "wave-279"
     }
   ]
 }

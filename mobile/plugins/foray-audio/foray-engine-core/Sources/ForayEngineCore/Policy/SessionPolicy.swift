@@ -149,8 +149,16 @@ public enum SessionPolicy {
         /// `HOLD_POLICY_KINDS`, in order.
         public static let kinds = ["forever", "none", "until"]
 
-        /// `DEFAULT_HOLD_POLICY`.
-        public static let `default` = HoldPolicy.forever
+        /// `DEFAULT_HOLD_POLICY`. PROVISIONAL (OQ-12; card NE-38,
+        /// docs/ios-native-engine-measurements.md §12): `.forever`, the §9a
+        /// default, unchanged. The M1 car test (#114, build 2026092706) passed
+        /// under it: a day parked, and the car's play resumed 4a. The HA #108
+        /// baseline shows a held session is necessary but not sufficient, so
+        /// the Developer "Pause hold: none" arm (H-1b) stays. Settled by the
+        /// H-1 drive block's rows against the H-1b block's (the Copy header's
+        /// `hold=`, each car `remote play` and whether 4a resumed, its
+        /// `grace heldMs`), which go to the founder at G-5 (NE-38f).
+        public static let `default` = HoldPolicy.forever // MEASURE: verdict=G-5 (OQ-12, H-1 vs H-1b). Rows: hold= header, remote play, grace heldMs.
 
         /// `parseHoldPolicy(policy)`: `forever`, `none`, or `until:<m>` with m
         /// a positive whole number of at most six digits and nothing else

@@ -108,6 +108,24 @@ export const DRIFT_TOLERANCE_SEC = 30;
     delta — see the header. */
 export const AD_PAD_CEILING_SEC = 120;
 
+/** The one switch for ADR-0008's pad tier (DAI-07a). Every Foray path that
+    decides `allowAdPad` reads it — through `forayQueueOptions()` /
+    `forayResolveOptions()` in `foray-resolve.js` on the web — so turning the
+    pad on is one edit, here.
+
+    Founder ruling: docs/roadmap/README.md founder question 15 ("Ad pad before
+    the locate step", dai D5 / ADR-0008 open question 2) is RULED yes — the pad
+    ships before the locate step. It stays `false` anyway because that same
+    ruling says to flip it "once the probe data is on main", and no probe data
+    is on main until DAI-08 commits it; with no `ad_pad_sec` recorded, `true`
+    would change no outcome but would claim a measurement we do not have.
+    Flipping it is DAI-09's one-line PR (docs/roadmap/dai.md §3).
+
+    The native M2 `playForay` command's `allowAdPad` (player/engine-contract.js,
+    COMMAND_ARGS.playForay) must be sent from this constant too, so the app
+    and the web never disagree about whether a padded segment plays. */
+export const AD_PAD_SHIPPED = false;
+
 /**
  * Can we seek to this timestamp exactly?
  *
@@ -344,3 +362,9 @@ export function describeTimestamp(seconds, precision = EXACT) {
   const mins = Math.round(seconds / 60);
   return `around minute ${mins}`;
 }
+
+/* For app.js, a classic script that cannot import this module (CH-1, #1071):
+   the episode page's chapter times and timestamp links read the rule from
+   here rather than keeping a copy. Guarded, so node and the parity harness
+   import this file with no window. */
+if (typeof window !== "undefined") window.ForaySeekPolicy = { seekPrecision, formatTimestamp, describeTimestamp, FOREIGN, EXACT, APPROXIMATE };

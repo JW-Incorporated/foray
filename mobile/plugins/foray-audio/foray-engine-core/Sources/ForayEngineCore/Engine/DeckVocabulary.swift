@@ -30,7 +30,13 @@ public enum DeckCommand: Equatable, Sendable {
     /// resume cost no network round trip. `url` is nil only for an item with
     /// no audio of its own (a fixture's bare `$ep`, a spoken line), which the
     /// deck reports as a failed load.
-    case load(token: DeckToken, itemId: String, url: String?, startSec: Double, preciseTiming: Bool)
+    ///
+    /// `deadlineClass` (NE-38) is which P-13 deadline the load runs under:
+    /// the core names it from the item (`DeckDeadlineClass(item)`), and the
+    /// deck maps it to seconds (`AVDeck.Config.deadlineSec(for:)`). It
+    /// defaults to `.clip`, whose deadline is the one every load had before.
+    case load(token: DeckToken, itemId: String, url: String?, startSec: Double, preciseTiming: Bool,
+              deadlineClass: DeckDeadlineClass = .clip)
     /// Legal only after `.ready` for the current token. The core also emits it
     /// only with the audio session active (`SessionPolicy`'s audible-start
     /// invariant); the adapter's implicit-activation check is the backstop.
@@ -51,7 +57,44 @@ public enum DeckCommand: Equatable, Sendable {
     /// DeckPair that honours it is NE-32's, behind `deckPairEnabled`; a deck
     /// with no standby ignores it, and the seam then loads cold inside the
     /// beat, which is the audible seam either way.
-    case prepare(itemId: String, url: String?, startSec: Double)
+    /// `deadlineClass` as on `.load`: the standby deck's warm load runs
+    /// under the same deadline the item's own load would (NE-38).
+    /// `preciseTiming` as on `.load`: the core sends the item's own
+    /// (`EngineItem.preciseTiming(approximateCBR:)`), so a warm load is the
+    /// asset the item's load would make. A rendered line (unbounded) therefore
+    /// warms approximate, as it loads; a clip warms precise unless P-7's CBR
+    /// exemption is on and its source is CBR. It defaults to true, the deck's
+    /// only behaviour before the core named it.
+    case prepare(itemId: String, url: String?, startSec: Double, deadlineClass: DeckDeadlineClass = .clip,
+                 preciseTiming: Bool = true)
+}
+
+/// Which P-13 load deadline a load runs under (card NE-38;
+/// docs/native-engine-plan.md §14 Track M3, docs/ios-native-engine-measurements.md
+/// §12). The CORE names the class, because only the core knows what the item
+/// is; the DECK maps it to seconds, because the seconds are a property of
+/// AVFoundation and the network (`AVDeck.defaultLoadDeadlineSec`,
+/// `AVDeck.defaultLineLoadDeadlineSec`). The class also rides on the deck's
+/// `attach`, `reuse`, `ready` and `deadline` rows (`class=`), so NE-38e's
+/// `P13-clip` and `P13-line` verdicts can split time-to-ready by it.
+///
+/// WHY A LINE HAS ITS OWN. A rendered narration line (a `tts` item with a
+/// file, DECISIONS 2026-09-28) is a small file (about 160 KB), and one that
+/// fails is read aloud from its script (NE-37c), so waiting a clip's 20 s
+/// for it only lengthens a silence in the car. A clip is a slice of a large
+/// episode on a third-party host, whose cold first load has been measured at
+/// up to 19.6 s.
+public enum DeckDeadlineClass: String, Equatable, Sendable, CaseIterable {
+    /// An episode or a Foray clip: anything that is not a narration line.
+    case clip
+    /// A rendered narration line (`kind: "tts"`) played from its file.
+    case line
+
+    /// The class of the load of `item`: a narration item is a `line`, and
+    /// everything else is a `clip`. (A spoken line never reaches a deck.)
+    public init(_ item: EngineItem) {
+        self = item.kind == .tts ? .line : .clip
+    }
 }
 
 /// `timeControlStatus`, as the core reads it (P-14: waiting is `buffering`).
@@ -69,9 +112,15 @@ public enum DeckEvent: Equatable, Sendable {
     case ready(token: DeckToken, landedSec: Double, prerolled: Bool, elapsedMs: Int)
     /// An interrupted seek or an unfinished preroll; the deck retries itself.
     case notReady(token: DeckToken, attempt: Int, cause: String)
-    /// The load did not become ready inside its deadline (P-13).
-    case deadlineExceeded(token: DeckToken, afterMs: Int)
-    case failed(token: DeckToken, message: String)
+    /// The load did not become ready inside its deadline (P-13). `cause` is
+    /// the deck's reading of WHY (NE-39n): `timeout` unless its error log
+    /// shows a server status or no network by then.
+    case deadlineExceeded(token: DeckToken, afterMs: Int, cause: Vocabulary.NarrationFallbackCause = .timeout)
+    /// The item failed. `cause` is the deck's mapping of the failure (the
+    /// error's domain and code, its underlying one, and the error log's
+    /// status) to a closed token (NE-39n, AVDeck.fallbackCause); the core
+    /// writes it on a `narration kind=fallback` row and nowhere else.
+    case failed(token: DeckToken, message: String, cause: Vocabulary.NarrationFallbackCause = .other)
     /// A command the deck would not run (`play` before `.ready`).
     case refused(command: String, reason: String)
     case timeControl(token: DeckToken, status: DeckTimeControl, waitingReason: String?)
@@ -143,14 +192,20 @@ public struct EngineNow: Equatable, Sendable {
     /// the host at the moment the input is handled, as the deck's reading is:
     /// what `foray-tts.js`'s `state()` answers the JS manager.
     public var narrator: NarratorReading
+    /// The current output route, read by the host at the moment the input is
+    /// handled (NE-38rs): the route a `.playing` deck is heard through. Nil
+    /// when the host cannot say (the parity driver, most tests), and then no
+    /// route ever becomes known.
+    public var route: RoutePort?
 
     public init(wallMs: Double, monoMs: Double, deck: DeckReading = .idle, bgRemainingMs: Double? = nil,
-                narrator: NarratorReading = .unknown) {
+                narrator: NarratorReading = .unknown, route: RoutePort? = nil) {
         self.wallMs = wallMs
         self.monoMs = monoMs
         self.deck = deck
         self.bgRemainingMs = bgRemainingMs
         self.narrator = narrator
+        self.route = route
     }
 }
 

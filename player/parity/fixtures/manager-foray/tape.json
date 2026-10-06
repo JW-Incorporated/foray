@@ -1970,6 +1970,269 @@
       }
     },
     {
+      "id": "manager-foray/a-padded-dai-segment-inside-its-pad-plays-to-the-padded-stop",
+      "covers": [
+        "queue-manager::a padded DAI segment whose copy stays inside the pad plays with the PADDED out-point"
+      ],
+      "note": "ADR-0008's pad (DAI-17): the copy carries 60 s of ad load, past rung 3's tolerance but inside the 100 s pad, so it plays and the out-point is the authored stop plus the pad (310), never the authored 210.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "backend": { "durationById": { "foray-1#0": 2561 } }
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-dai",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly",
+                  "start_anchor": "so the thing about fire",
+                  "end_anchor": "and that is why it stuck",
+                  "reference_duration_sec": 2501,
+                  "ad_pad_sec": 100
+                }
+              ]
+            },
+            { "allowAdPad": true }
+          ]
+        },
+        { "checkpoint": "playing" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "playing",
+            "ops": ["load:foray-1#0@100", "rate:1", "outPoint:310", "play"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": ["load:foray-1#0@100", "rate:1", "outPoint:310", "play"]
+      }
+    },
+    {
+      "id": "manager-foray/a-padded-dai-segment-over-its-pad-is-skipped",
+      "covers": [
+        "queue-manager::a padded DAI segment whose copy carries more ad load than the pad is skipped at load"
+      ],
+      "note": "ADR-0008's pad is a bound (DAI-17): 200 s of ad load against a 100 s pad would land the stop early and truncate the payload, so the segment is skipped at load and never armed.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "backend": { "durationById": { "foray-1#0": 2701 } }
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-dai",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly",
+                  "start_anchor": "so the thing about fire",
+                  "end_anchor": "and that is why it stuck",
+                  "reference_duration_sec": 2501,
+                  "ad_pad_sec": 100
+                }
+              ]
+            },
+            { "allowAdPad": true }
+          ]
+        },
+        { "checkpoint": "ended" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "ended",
+            "ops": ["load:foray-1#0@100"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "ended"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "ended"
+          }
+        ],
+        "ops": ["load:foray-1#0@100"]
+      }
+    },
+    {
+      "id": "manager-foray/with-the-pad-off-a-padded-dai-segment-is-skipped",
+      "covers": [
+        "queue-manager::with the pad off, the same segment is skipped and the pad is never applied"
+      ],
+      "note": "No allowAdPad (the pad is off until D5, seek-policy.js AD_PAD_SHIPPED; DAI-17): the same 60 s drift is a plain rung-3 failure, the segment is skipped and the padded stop is never armed.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "backend": { "durationById": { "foray-1#0": 2561 } }
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-dai",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly",
+                  "start_anchor": "so the thing about fire",
+                  "end_anchor": "and that is why it stuck",
+                  "reference_duration_sec": 2501,
+                  "ad_pad_sec": 100
+                }
+              ]
+            }
+          ]
+        },
+        { "checkpoint": "ended" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "ended",
+            "ops": ["load:foray-1#0@100"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "ended"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "ended"
+          }
+        ],
+        "ops": ["load:foray-1#0@100"]
+      }
+    },
+    {
       "id": "manager-foray/a-start-without-an-end-is-not-a-segment",
       "covers": ["queue-manager::an item with a start but nothing to stop at is not a segment"],
       "note": "The ordinary saved-position path, and no boundary.",
@@ -3902,12 +4165,12 @@
               "outPoint:210",
               "play",
               "load:foray-1#1@400",
-              "pause"
+              "load:foray-1#1@400"
             ],
             "playhead": "foray-1#0",
             "rate": 1,
             "seamGapRemainingMs": 0,
-            "state": "idle",
+            "state": "ended",
             "timersLive": 0
           },
           {
@@ -3919,7 +4182,7 @@
             "playhead": "foray-1#0",
             "rate": 1,
             "seamGapRemainingMs": 0,
-            "state": "idle",
+            "state": "ended",
             "timersLive": 0
           }
         ],
@@ -3929,7 +4192,7 @@
           "outPoint:210",
           "play",
           "load:foray-1#1@400",
-          "pause"
+          "load:foray-1#1@400"
         ]
       }
     },

@@ -114,8 +114,9 @@ test("a docs-and-tests-only commit skips", () => {
 });
 
 test("the deploy stamp's modules build — they write bytes Vercel serves (issue #701)", () => {
-  /* deploy-manifest.json, data/forays-directory.json and sw.js's BUILD_ID are
-     written into dist/ by prepare-dist.mjs through these three modules; they
+  /* deploy-manifest.json, data/forays-directory.json, data/catalogue-directory.json
+     (issue #40) and sw.js's BUILD_ID are written into dist/ by prepare-dist.mjs
+     through these four modules; they
      are not committed any more, so a change to how they are computed reaches
      production ONLY through a build. The rest of tools/ci/ stays skippable.
      MUTATION: drop the STAMP_MODULES rescue from EXCEPTIONS — a change to the
@@ -123,6 +124,7 @@ test("the deploy stamp's modules build — they write bytes Vercel serves (issue
   assert.deepEqual(STAMP_MODULES, [
     "tools/ci/generate-manifest.mjs",
     "tools/ci/forays-directory.mjs",
+    "tools/ci/catalogue-directory.mjs",
     "tools/ci/crlf-guard.mjs",
   ]);
   for (const p of STAMP_MODULES) assert.equal(pathMatters(p), true, `${p} feeds the deploy stamp and must build`);

@@ -104,9 +104,13 @@ final class ForayEngine {
 
     /// Below this much background time at a begin, the `grace` row says
     /// `low=y` (plan §4.4: "if backgroundTimeRemaining is already small ...
-    /// that is written to the row"). // MEASURE: NE-38 sets it from the H-1
-    /// rows; 5 s is about one CDN load that goes wrong.
-    static let lowBackgroundRemainingMs: Double = 5_000
+    /// that is written to the row"). It decides nothing: it only labels the
+    /// row. PROVISIONAL (card NE-38; docs/ios-native-engine-measurements.md
+    /// §12): 5 s is about one CDN load that goes wrong (a warm load takes
+    /// 0.2-1.2 s, a cold one up to the 20 s P-13 deadline). Settled by the
+    /// `grace low=y` rows against each span's outcome (`grace kind=end
+    /// outcome=`, `heldMs`), NE-38e verdict `resume-latency`, NE-38f.
+    static let lowBackgroundRemainingMs: Double = 5_000 // MEASURE: verdict=resume-latency (NE-38e). Rows: grace low=y, grace kind=end outcome= heldMs.
 
     /// L28: the memory headroom a `grace kind=begin` row records, in MB
     /// (`os_proc_available_memory`). A seam so the XCTests are deterministic:
@@ -128,6 +132,9 @@ final class ForayEngine {
     /// the core with a different one is persisted, once.
     private var storedHoldPolicy: SessionPolicy.HoldPolicy
 
+    /// The known routes the store last heard (NE-38rs), persisted the same way.
+    private var storedKnownRoutes: [String]
+
     /// A stored `pauseHoldPolicy` (the Developer row, `engineSend
     /// setHoldPolicy`) outranks the config's: the config carries the build's
     /// default, the key carries what the founder chose on this phone.
@@ -136,6 +143,13 @@ final class ForayEngine {
         var config = config
         if let stored = seams.holdPolicy?.load() { config.holdPolicy = stored }
         storedHoldPolicy = config.holdPolicy
+        // NE-38rs: the install's salt and the routes our audio was heard
+        // through, from `ForayEngine.knownRoutes`; a new salt when there is
+        // none (it is written with the first known route).
+        let routes = seams.knownRoutes?.loadKnownRoutes()
+        config.routeSalt = routes?.salt ?? RouteResume.newSalt()
+        config.knownRoutes = routes?.keys ?? []
+        storedKnownRoutes = config.knownRoutes
         core = EngineCore(config: config, positions: positions)
     }
 
@@ -200,6 +214,10 @@ final class ForayEngine {
         seams.interlude?.onEnded = { [weak self] reason in
             MainActor.assumeIsolated { self?.receive(.interlude(.ended(reason: reason))) }
         }
+        // The voice preview's deck (NE-47): its load's answer and its end.
+        seams.preview?.onEvent = { [weak self] event in
+            MainActor.assumeIsolated { self?.receive(.preview(event)) }
+        }
         observations.append(seams.session.observe { [weak self] event in
             MainActor.assumeIsolated { self?.receive(.session(event)) }
         })
@@ -241,6 +259,8 @@ final class ForayEngine {
         graceSpan = nil
         seams.deck.onEvent = nil
         seams.deck.invalidate()
+        seams.preview?.onEvent = nil
+        seams.preview?.invalidate()
         seams.speaker.onFinish = nil
         seams.speaker.onNarratorEvent = nil
         // Nothing sounds past a teardown: the jingle and the silence node are
@@ -437,8 +457,26 @@ final class ForayEngine {
             failures += interpret(command)
         }
         persistHoldPolicyIfChanged()
+        persistKnownRoutesIfChanged()
+        if case let .command(.setRouteSharing(policy), _) = input { persistRouteSharing(policy) }
         if core.state.session == .relinquished { teardown() }
         return failures
+    }
+
+    /// NE-40, DV-8: the Developer route-sharing trial is the host's to keep
+    /// (the core decides nothing on it). Stored now, applied at the next
+    /// launch's boot, where the session owner sets its category; the row says
+    /// both what was chosen and what this launch is still running, so a Copy
+    /// taken before the restart cannot be misread as the trial.
+    private func persistRouteSharing(_ policy: EngineContract.RouteSharingPolicy) {
+        seams.routeSharing?.saveRouteSharing(policy)
+        let running: EngineContract.RouteSharingPolicy = core.config.routeSharingLongForm ? .longFormAudio : .standard
+        seams.output.diag(DiagEntry(kind: "session", fields: [
+            JSONMember("kind", .string("route-sharing")),
+            JSONMember("policy", .string(policy.rawValue)),
+            JSONMember("running", .string(running.rawValue)),
+            JSONMember("applies", .string("next-launch"))
+        ]))
     }
 
     /// `setHoldPolicy` is the core's to apply (`state.holdPolicy`) and the
@@ -455,6 +493,17 @@ final class ForayEngine {
         ]))
     }
 
+    /// NE-38rs: the core's known routes are the host's to keep, in the
+    /// private key, whenever a turn changed them (a route heard for a second,
+    /// a data deletion). An empty set removes the key, so a deletion leaves
+    /// nothing behind.
+    private func persistKnownRoutesIfChanged() {
+        let keys = core.state.knownRoutes.keys
+        guard keys != storedKnownRoutes else { return }
+        storedKnownRoutes = keys
+        seams.knownRoutes?.saveKnownRoutes(keys.isEmpty ? nil : RouteResume.Stored(salt: core.config.routeSalt, keys: keys))
+    }
+
     /// Both clocks and the deck's reading at the moment the input is handled
     /// (`DeckReading`: the core asks the deck at the moment it decides, as the
     /// JS asks its element).
@@ -463,7 +512,7 @@ final class ForayEngine {
     /// the `remote`, `resume` and `cold-play` rows it writes for this input.
     private func now() -> EngineNow {
         EngineNow(wallMs: seams.timing.wallMs, monoMs: seams.timing.monoMs, deck: seams.deck.reading,
-                  bgRemainingMs: backgroundRemainingMs())
+                  bgRemainingMs: backgroundRemainingMs(), route: seams.session.currentRoute)
     }
 
     /// `backgroundTimeRemaining` in whole milliseconds; nil in the foreground
@@ -514,6 +563,8 @@ final class ForayEngine {
             seams.output.writeRestore(record)
         case let .speak(text, voiceId):
             seams.speaker.speak(text: text, voiceId: voiceId)
+        case let .preview(deckCommand):
+            interpretPreview(deckCommand)
         case let .narration(command):
             // The narrating overlay's synthesiser: SpeechNarrator (NE-33), the
             // same one that speaks an audition. Its answers come back through
@@ -664,6 +715,20 @@ final class ForayEngine {
             let on = enabled.contains(command)
             if let previous, previous.contains(command) == on { continue }
             seams.remote.setEnabled(on, for: command)
+        }
+    }
+
+    // MARK: - The voice preview's deck (NE-47)
+
+    /// The preview deck plays what the core asks of it. With none wired, a
+    /// load is answered `.failed` after this turn (the inbox), so the core
+    /// speaks the line instead: an audition is never silent for want of a
+    /// deck.
+    private func interpretPreview(_ command: DeckCommand) {
+        if let preview = seams.preview {
+            preview.send(command)
+        } else if case let .load(token, _, _, _, _, _) = command {
+            handle(.preview(.failed(token: token, message: "no preview deck")))
         }
     }
 

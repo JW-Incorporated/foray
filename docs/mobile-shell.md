@@ -249,6 +249,21 @@ Android file in the no-backup directory, so the token is never in a phone backup
 while every other row still is. `tools/mobile/foray-vault.test.mjs` pins its
 source facts; `docs/durable-storage.md` has the web half.
 
+`foray-downloads` (PQ-21, issue #29) is the fourth plugin, declared the same way:
+offline episode downloads. Its iOS half (PQ-20) is a background `URLSession` writing
+into `Application Support/foray-downloads/`, excluded from backup; its Android half
+(PQ-22) is the system `DownloadManager`, which lands the file in the app's external
+files directory and has it moved on completion into the no-backup directory.
+`player/download-bridge.js` is the web half and `tools/mobile/foray-downloads.test.mjs`
+pins the native source facts. One generated-project edit comes with it:
+`tools/mobile/inject-background-audio.mjs` writes an
+`application(_:handleEventsForBackgroundURLSession:completionHandler:)` into the
+generated `AppDelegate.swift` that forwards to
+`ForayDownloadsPlugin.handleEventsForBackgroundURLSession`, so a download that
+finishes while the app is suspended is delivered then, not at the next launch.
+With the Android engine's JVM core, `mobile/package.json` now declares five local
+packages, four of them bridge plugins; `shell-invariants.test.mjs` pins the list.
+
 One mechanical consequence: `tools/ci/run-suites.mjs` hard-errors on a
 `package.json` that declares dependencies but no `test` script. `mobile/` is safe
 because the runner only scans `player/`, `test/` and `tools/` — but that is why
@@ -442,17 +457,25 @@ real join functions cannot tell from the whole show** (normally one item; per-sh
 independence in both functions is what makes it terminate). Costs nothing today: the
 slice is the same 622 items either way.
 
-**Not fetched, by design, for now.** Nothing in the shell re-fetches data from the
-network. `sw.js`'s network-first-for-data policy does not apply, because the
-service worker is not registered here at all (§2) — inside the shell, data is
-simply local files. And on iOS there is no service worker to apply: measured at
-`capacitor://localhost`, `hasServiceWorkerApi: false`
-(`docs/android-lock-screen.md` §10), so the web build's caching does not exist
-natively at all. **Fetching the tail of the catalogue instead of bundling it was
-considered and deliberately left to #40**: it needs the `connect-src` widening §2.3
-declined to add in advance, it needs a staleness story, and it does not fix the
-build break. The slice makes it an enhancement (freshness) rather than a
-requirement (an empty screen).
+**Ruled 2026-09-30 (DECISIONS #17): the first public store release ships with the
+catalogue frozen at build time.** The catalogue (the discover slice, `session.json`,
+taxonomy, item-tags and the semantic index) is bundled and nothing in the shell
+re-fetches it. `sw.js`'s network-first-for-data policy does not apply, because the
+service worker is not registered here at all (§2), and on iOS there is no service
+worker to apply: measured at `capacitor://localhost`, `hasServiceWorkerApi: false`
+(`docs/android-lock-screen.md` §10). Forays are the exception and already refresh
+from the live origin (FD-06, 2026-09-11), so **#40 does not gate release**, and
+`connect-src` needs no change because the data origin is already listed.
+
+- **Fast-follow, due before the first Spark nightly runs:** a *catalogue directory*
+  on the same pointer mechanism the Forays use (`generate-manifest.mjs` +
+  `player/foray-directory.js`), with #40's TTL and cached-fresh then bundled
+  precedence. #40 is narrowed to that plus verifying the auth-token storage path.
+- **While frozen: dispatch `release.yml` within 7 days of any merged nightly batch**,
+  so the shipped catalogue never trails the site by more than a week.
+
+The slice keeps the frozen catalogue an enhancement-in-waiting (freshness) rather
+than a requirement (an empty screen); it does not fix the build break by itself.
 
 **A cold first launch with no network shows a complete, working menu, 622 of the
 catalogue's 1,534 episodes, and cannot play audio.** The four cards, search, browse,

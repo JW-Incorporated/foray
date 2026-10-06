@@ -8,7 +8,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   PlayerQueueManager, NARRATION_RATE, narrationFallbackReason, audioHostOf, __resetInstanceForTests,
+  FORAY_CLIP_LOAD_ATTEMPTS, FORAY_CLIP_MAX_SILENCE_SEC,
 } from "./queue-manager.js";
+import { LOAD_SETTLE_TIMEOUT_HIDDEN_MS } from "./deck-policy.js";
 import { SINGLE_ITEM, PICKED_FIRST, CONTINUE_TAIL } from "./queue-strategy.js";
 import { forayRuntimeSec } from "./foray-queue.js";
 import { INTERLUDE_CEILING_SEC } from "./interlude.js";
@@ -288,13 +290,29 @@ test("a missing bridge asset never stalls the queue", async () => {
   assert.ok(backend.loads().includes("load:b"), "must advance past the broken bridge to the real item");
 });
 
-test("skipToNext steps over a bridge rather than playing it alone", async () => {
+/* NE-39n (2026-09-29): Next is the next item, a narration line included — the
+   page's `forayNext` (client.js, `play(index + 1)`, audit round 3 player-core-6)
+   and so the web lock screen always landed on the line, and the engine's own
+   Next (the car, the iPhone lock screen) now answers the same. This test used
+   to pin the opposite ("skipToNext steps over a bridge"). */
+test("skipToNext lands on a bridge: Next is the next item, a line included (NE-39n)", async () => {
   const { m, backend } = make({ strategy: PICKED_FIRST });
   m.setQueueFromPick(ep("a"), { others: [tts("bridge"), ep("b")] });
   await m.play(0);
   backend.calls.length = 0;
   await m.skipToNext();
+  assert.deepStrictEqual(backend.loads(), ["load:bridge"]);
+  assert.equal(m.currentIndex, 1);
+});
+
+test("skipToNext from a bridge lands on the item after it (NE-39n)", async () => {
+  const { m, backend } = make({ strategy: PICKED_FIRST });
+  m.setQueueFromPick(ep("a"), { others: [tts("bridge"), ep("b")] });
+  await m.play(1);
+  backend.calls.length = 0;
+  await m.skipToNext();
   assert.deepStrictEqual(backend.loads(), ["load:b"]);
+  assert.equal(m.currentIndex, 2);
 });
 
 /* ---------- interruption (corner case #11) ---------- */
@@ -1514,6 +1532,48 @@ test("a copy that reports no duration at all is skipped, not guessed at", async 
   assert.ok(log.some((t) => /reports no duration/.test(t)));
 });
 
+/* ---------- ADR-0008's pad, at load (DAI-17) ----------
+
+   The pad sits between rungs 3 and 4 (seek-policy.js `seekPrecision`): a DAI
+   copy whose duration has drifted past DRIFT_TOLERANCE_SEC may still play if
+   the Foray opted in (`allowAdPad`, DAI-07a's AD_PAD_SHIPPED switch) and this
+   copy's own ad load fits inside the source's `ad_pad_sec`. The pad extends the
+   STOP only (foray-queue.js: `end_sec = authoredEnd + appliedPad`), so a 100 s
+   pad on a 100-210 segment arms the out-point at 310. `fdai` declares a
+   reference copy of 2501 s, so a 2561 s copy carries 60 s of ad load (inside a
+   100 s pad, past the 30 s drift tolerance) and a 2701 s copy carries 200 s. */
+
+test("a padded DAI segment whose copy stays inside the pad plays with the PADDED out-point", async () => {
+  const { m, backend, log } = make({ backend: { durationById: { "foray-1#0": 2561 } } });
+  await m.playForay(foray([fdai({ ad_pad_sec: 100 })]), { resolveItem, allowAdPad: true });
+  assert.equal(m.state.type, "playing");
+  assert.ok(backend.calls.includes("outPoint:310"), `the stop carries the pad: ${backend.calls}`);
+  assert.ok(!backend.calls.includes("outPoint:210"), "never the authored stop, which would cut the payload short");
+  assert.ok(log.some((t) => /foray\.segment\.foray-1#0: padded/i.test(t)), `got ${log}`);
+});
+
+test("a padded DAI segment whose copy carries more ad load than the pad is skipped at load", async () => {
+  // The pad is a bound, and this copy exceeds it: the stop would land early
+  // and truncate the payload, so the honest answer is a skip (ADR-0008).
+  const { m, backend, log } = make({ backend: { durationById: { "foray-1#0": 2701 } } });
+  await m.playForay(foray([fdai({ ad_pad_sec: 100 })]), { resolveItem, allowAdPad: true });
+  assert.equal(m.state.type, "ended");
+  assert.ok(!backend.calls.includes("outPoint:310"), "the over-pad segment never became audible");
+  assert.ok(!backend.calls.includes("play"));
+  assert.ok(log.some((t) => /foray\.segment\.skipped\.atLoad foray-1#0: .*the pad bounds/.test(t)), `got ${log}`);
+});
+
+test("with the pad off, the same segment is skipped and the pad is never applied", async () => {
+  // allowAdPad omitted: the pad stays off until D5 (seek-policy.js
+  // AD_PAD_SHIPPED), so a 60 s drift is a plain rung-3 failure.
+  const { m, backend, log } = make({ backend: { durationById: { "foray-1#0": 2561 } } });
+  await m.playForay(foray([fdai({ ad_pad_sec: 100 })]), { resolveItem });
+  assert.equal(m.state.type, "ended");
+  assert.ok(!backend.calls.includes("outPoint:310"), "the pad is never applied");
+  assert.ok(!backend.calls.includes("play"));
+  assert.ok(log.some((t) => /foray\.segment\.skipped\.atLoad foray-1#0: .*not implemented/.test(t)), `got ${log}`);
+});
+
 /* ---------- refusals that must be loud ---------- */
 
 test("a backend with no out-point watch refuses the Foray instead of playing whole episodes", async () => {
@@ -1852,9 +1912,249 @@ test("a load that FAILS at a seam reports immediately — an error must not wait
   );
   h.backend.currentTime = 210;
   await h.backend.onItemEnded("outPoint");   // resolves without advancing the clock
-  assert.equal(h.m.state.type, "idle");
-  assert.ok(h.log.some((t) => /player\.error/.test(t)), `got ${h.log}`);
+  /* §16 (M2 drive 2026-10-01): a Foray clip that will not load is retried once
+     and then stepped over; it was the LAST clip, so the Foray ends. All of it
+     without the clock moving: neither the retry nor the step waits out the
+     beat. It used to stop here, idle, with the clip on the lock screen. */
+  assert.equal(h.m.state.type, "ended");
+  assert.deepEqual(h.backend.loads().filter((l) => l === "load:foray-1#1"), ["load:foray-1#1", "load:foray-1#1"],
+    `one retry, got ${h.backend.calls}`);
+  assert.ok(h.log.some((t) => /foray\.segment\.skipped\.atLoad foray-1#1/.test(t)), `got ${h.log}`);
+  assert.ok(!h.log.some((t) => /player\.error/.test(t)), `a Foray clip is stepped over, never an error: ${h.log}`);
   assert.equal(scheduler.live, 0);
+});
+
+/* ---------- §16: a Foray clip that will not load retries, then moves on ----------
+
+   The M2 car drive, 2026-10-01: the third clip's load passed its 20 s deadline,
+   the manager went idle, and the Foray sat silent with the clip on the lock
+   screen; each press of play then loaded it again from nothing. */
+
+/** A load that fails the first `failTimes[id]` times it is asked for `id`, as a
+    deadline does (the backend's own "did not settle" message). */
+class ClipLapseBackend extends FakeBackend {
+  constructor(opts = {}) {
+    super(opts);
+    this.failsLeft = new Map(Object.entries(opts.failTimes ?? {}));
+  }
+  async load(item, o) {
+    await super.load(item, o);
+    const left = this.failsLeft.get(item.id) ?? 0;
+    if (left > 0) {
+      this.failsLeft.set(item.id, left - 1);
+      throw new Error(`load of ${item.id} did not settle within 20000ms`);
+    }
+  }
+}
+
+/** Loads that wait for the test to land or fail them, oldest first, so a pause
+    can arrive while one is in flight. */
+class HeldBackend extends FakeBackend {
+  constructor(opts) { super(opts); this.held = []; }
+  load(item, o) {
+    super.load(item, o);
+    return new Promise((resolve, reject) => this.held.push({ id: item.id, resolve, reject }));
+  }
+  async land() { this.held.shift().resolve(); await tick(); }
+  async lapse() { this.held.shift().reject(new Error("load did not settle within 20000ms")); await tick(); }
+}
+
+const threeClips = () => foray([
+  fseg(), fseg({ item_id: "ep-other", start_sec: 400, end_sec: 500 }), fseg({ start_sec: 700, end_sec: 800 }),
+]);
+
+test("§16: a Foray clip whose load fails once is loaded again at the same in-point, and plays", async () => {
+  /* MUTATION: `FORAY_CLIP_LOAD_ATTEMPTS = 1` — the clip is stepped over on its
+     first failure and the third clip plays instead. */
+  const h = make({ backendClass: ClipLapseBackend, backend: { failTimes: { "foray-1#1": 1 } } });
+  await h.m.playForay(threeClips(), { resolveItem });
+  h.backend.currentTime = 210;
+  h.backend.calls.length = 0;
+  await h.backend.onItemEnded("outPoint");
+  await tick();
+  assert.deepEqual(h.backend.calls, ["load:foray-1#1@400", "load:foray-1#1@400", "rate:1", "outPoint:500", "play"]);
+  assert.equal(h.m.state.type, "playing");
+  assert.equal(h.m.currentIndex, 1);
+  assert.ok(h.log.some((t) => /^foray\.segment\.retry foray-1#1 attempt=2 reason=timeout$/.test(t)), `got ${h.log}`);
+  assert.ok(!h.log.some((t) => /skipped\.atLoad|player\.error/.test(t)), `got ${h.log}`);
+});
+
+test("§16: a Foray clip that fails twice is stepped over to the next item, never left idle", async () => {
+  /* MUTATION: make `_retryOrSkipClip` return false where it steps over — the
+     Foray goes idle on the clip, the car drive's bug. */
+  const h = make({ backend: { failLoadFor: ["foray-1#1"] } });
+  await h.m.playForay(threeClips(), { resolveItem });
+  h.backend.currentTime = 210;
+  h.backend.calls.length = 0;
+  await h.backend.onItemEnded("outPoint");
+  await tick();
+  assert.deepEqual(h.backend.calls,
+    ["load:foray-1#1@400", "load:foray-1#1@400", "load:foray-1#2@700", "rate:1", "outPoint:800", "play"]);
+  assert.equal(h.m.state.type, "playing");
+  assert.equal(h.m.currentIndex, 2);
+  assert.ok(h.log.some((t) => /^foray\.segment\.skipped\.atLoad foray-1#1: did not load in 2 attempts \(failed\)$/.test(t)),
+    `the page's line (client.js onTelemetry), got ${h.log}`);
+  assert.ok(!h.log.some((t) => /player\.error/.test(t)), `got ${h.log}`);
+});
+
+test("§16: a SECOND clip in a row that will not load stops the Foray instead of running through it", async () => {
+  /* The car in a dead zone: an offline load fails at once, so stepping over
+     every clip would end the Foray in seconds and mark it Played. Clip 2 fails
+     twice and is stepped over; clip 3 fails twice and STOPS (idle, on clip 3,
+     the page's error), with nothing after it loaded.
+     MUTATION (run 2026-10-04, red; so is deleting the guard): `FORAY_CLIP_LOAD_MAX_STEPS = 2` (clip 3 is stepped over too and
+     the Foray ends). */
+  const h = make({ backend: { failLoadFor: ["foray-1#1", "foray-1#2"] } });
+  await h.m.playForay(foray([fseg(), fseg({ item_id: "ep-other", start_sec: 400, end_sec: 500 }),
+    fseg({ start_sec: 700, end_sec: 800 }), fseg({ start_sec: 900, end_sec: 1000 })]), { resolveItem });
+  h.backend.currentTime = 210;
+  h.backend.calls.length = 0;
+  await h.backend.onItemEnded("outPoint");
+  await tick();
+  assert.deepEqual(h.backend.loads(), ["load:foray-1#1", "load:foray-1#1", "load:foray-1#2", "load:foray-1#2"],
+    `clip 4 is never reached: ${h.backend.calls}`);
+  assert.equal(h.m.state.type, "idle");
+  assert.equal(h.m.currentIndex, 2, "stopped on the second clip that failed");
+  assert.ok(h.log.some((t) => /^foray\.segment\.skipped\.atLoad foray-1#1:/.test(t)), `got ${h.log}`);
+  assert.ok(h.log.some((t) => /^foray\.segment\.notStepped foray-1#2: 1 clip\(s\) in a row/.test(t)), `got ${h.log}`);
+  assert.ok(h.log.some((t) => /player\.error/.test(t)), `the page's error: ${h.log}`);
+});
+
+test("§16: a clip that lands between two that will not load resets the run", async () => {
+  /* Clip 2 fails and is stepped over, clip 3 plays, clip 4 fails: that is two
+     slow files, not the network, so clip 4 is stepped over too (to the end).
+     MUTATION (run 2026-10-04, red): drop `this._clipLoadSteps = 0` where a clip lands (clip 4 stops
+     the Foray idle instead of ending it). */
+  const h = make({ backend: { failLoadFor: ["foray-1#1", "foray-1#3"] } });
+  await h.m.playForay(foray([fseg(), fseg({ item_id: "ep-other", start_sec: 400, end_sec: 500 }),
+    fseg({ start_sec: 700, end_sec: 800 }), fseg({ start_sec: 900, end_sec: 1000 })]), { resolveItem });
+  h.backend.currentTime = 210;
+  await h.backend.onItemEnded("outPoint");
+  await tick();
+  assert.equal(h.m.state.type, "playing");
+  assert.equal(h.m.currentIndex, 2, "clip 3 plays after clip 2 was stepped over");
+  h.backend.currentTime = 800;
+  await h.backend.onItemEnded("outPoint");
+  await tick();
+  assert.equal(h.m.state.type, "ended", `clip 4 was stepped over to the end: ${h.log}`);
+  assert.ok(!h.log.some((t) => /notStepped|player\.error/.test(t)), `got ${h.log}`);
+});
+
+test("§16: paused during a clip's load, a failed load is retried quietly and the play that follows finds it", async () => {
+  /* The car's own play/pause during the wait. The retry runs while paused
+     (nothing plays), lands, and the listener's play re-enters the clip at its
+     in-point. MUTATION: require `loadingItem` for the retry — the failure
+     stops the Foray (idle) instead. */
+  const h = make({ backendClass: HeldBackend });
+  const started = h.m.playForay(foray([fseg(), fseg({ item_id: "ep-other", start_sec: 400, end_sec: 500 })]), { resolveItem });
+  await tick();
+  await h.backend.land();
+  await started;
+  h.backend.currentTime = 210;
+  const seam = h.backend.onItemEnded("outPoint");
+  await tick();
+  await h.m.pause();
+  assert.equal(h.m.state.type, "interrupted");
+  h.backend.calls.length = 0;
+  await h.backend.lapse();
+  assert.deepEqual(h.backend.calls, ["load:foray-1#1@400"], "retried while paused");
+  assert.equal(h.m.state.type, "interrupted", "a retry never starts anything");
+  await h.backend.land();
+  await seam;
+  assert.ok(!h.backend.calls.includes("play"), `paused stays silent: ${h.backend.calls}`);
+  const resumed = h.m.resume();
+  await tick();
+  await h.backend.land();
+  await resumed;
+  assert.equal(h.m.state.type, "playing");
+  assert.equal(h.m.currentIndex, 1);
+  assert.deepEqual(h.backend.calls.slice(-4), ["load:foray-1#1@400", "rate:1", "outPoint:500", "play"]);
+});
+
+test("§16: paused during a clip's load, a retry that fails too stops as before (stepping on would start the next item)", async () => {
+  /* MUTATION: drop `if (!waiting) return false` — the paused Foray steps to
+     the next clip, which starts loading (and would play) behind a pause. */
+  const h = make({ backendClass: HeldBackend });
+  const started = h.m.playForay(threeClips(), { resolveItem });
+  await tick();
+  await h.backend.land();
+  await started;
+  h.backend.currentTime = 210;
+  const seam = h.backend.onItemEnded("outPoint");
+  await tick();
+  await h.m.pause();
+  await h.backend.lapse();
+  await h.backend.lapse();
+  await seam;
+  assert.equal(h.m.state.type, "idle");
+  assert.equal(h.m.currentIndex, 1, "still on the clip that failed");
+  assert.ok(h.log.some((t) => /player\.error/.test(t)), `got ${h.log}`);
+  assert.ok(!h.backend.calls.some((c) => c.startsWith("load:foray-1#2")), `nothing loads behind the pause: ${h.backend.calls}`);
+});
+
+test("§16: a retry of a jump into a clip loads at the jump, not the clip's start", async () => {
+  /* A jump 30 s into the second clip (`play(1, { startOffset })`, a Foray
+     scrub's load). That offset is ONE-SHOT, spent by the first load, so the
+     retry must carry it itself or it lands back at the clip's start.
+     MUTATION (run 2026-10-04, red): drop `this._startOffsetNext = startOffset`
+     in `_retryOrSkipClip` (the retry loads @400). */
+  const h = make({ backendClass: HeldBackend });
+  const started = h.m.playForay(threeClips(), { resolveItem });
+  await tick();
+  await h.backend.land();
+  await started;
+  h.backend.calls.length = 0;
+  const jumped = h.m.play(1, { startOffset: 430 });
+  await tick();
+  await h.backend.lapse();
+  await h.backend.land();
+  await jumped;
+  assert.deepEqual(h.backend.loads(), ["load:foray-1#1", "load:foray-1#1"], `got ${h.backend.calls}`);
+  assert.deepEqual(h.backend.calls.filter((c) => c.startsWith("load:")), ["load:foray-1#1@430", "load:foray-1#1@430"]);
+  assert.equal(h.m.state.type, "playing");
+  assert.equal(h.m.currentIndex, 1);
+});
+
+test("§16: the retry asks for the in-point the failed load asked for (a resume inside the clip)", async () => {
+  /* A listener paused 50 s into a clip; their play's load fails, and the
+     retry must land where they were, not back at the clip's start. This one
+     does not need the carried offset (the resume point is re-read from the
+     saved position), so it pins the outcome, not that line: the jump test
+     above is the one the mutation turns red (run 2026-10-04: dropping
+     `this._startOffsetNext = startOffset` left this test green). */
+  const h = make({ backendClass: HeldBackend });
+  const started = h.m.playForay(threeClips(), { resolveItem });
+  await tick();
+  await h.backend.land();
+  await started;
+  h.backend.currentTime = 150;
+  await h.m.pause();
+  h.backend.calls.length = 0;
+  const resumed = h.m.resume();
+  await tick();
+  await h.backend.lapse();
+  await h.backend.land();
+  await resumed;
+  assert.deepEqual(h.backend.calls, ["load:foray-1#0@150", "load:foray-1#0@150", "rate:1", "outPoint:210", "play"]);
+  assert.equal(h.m.state.type, "playing");
+});
+
+test("§16: a plain episode whose load fails is not retried (today's stop)", async () => {
+  /* MUTATION: drop the `!boundsOf(item)` guard — the episode loads twice. */
+  const h = make({ backend: { failLoadFor: ["a"] } });
+  h.m.loadQueue([ep("a"), ep("b")]);
+  await h.m.play(0);
+  await tick();
+  assert.equal(h.m.state.type, "idle");
+  assert.deepEqual(h.backend.loads(), ["load:a"]);
+  assert.ok(!h.log.some((t) => /foray\.segment/.test(t)), `got ${h.log}`);
+});
+
+test("§16: the Foray clip's silence bound is the attempts times the hidden-page deadline", () => {
+  /* The native half of the pin is engine-report.test.mjs (AVDeck's 20 s) and
+     AVDeckTests. MUTATION: `FORAY_CLIP_LOAD_ATTEMPTS = 3` without moving the bound. */
+  assert.equal(FORAY_CLIP_MAX_SILENCE_SEC, FORAY_CLIP_LOAD_ATTEMPTS * (LOAD_SETTLE_TIMEOUT_HIDDEN_MS / 1000));
+  assert.equal(FORAY_CLIP_LOAD_ATTEMPTS, 2);
 });
 
 /* ---------- supersession: the bug a synchronous fake cannot show ----------
@@ -2177,11 +2477,16 @@ function prefetching(opts = {}) {
   const log = [];
   const m = new PlayerQueueManager({
     backend, telemetry: (t) => log.push(t), scheduler,
-    seamGapSec: opts.seamGapSec, onSeamGapChange: opts.onSeamGapChange,
+    seamGapSec: opts.seamGapSec, onSeamGapChange: opts.onSeamGapChange, tts: opts.tts,
   });
   m.loadQueue(opts.queue ?? THREE.map((s) => ({ ...s })));
   return { m, backend, log, scheduler };
 }
+
+/** NE-45j's two kinds of line, as queue items: one with a rendered file, and
+    one with only a script for the synthesiser. */
+const renderedLine = (id = "line") => ({ id, kind: "tts", audio_url: `https://cdn.example/${id}.m4a`, script: "A line." });
+const spokenLine = (id = "line") => ({ id, kind: "tts", audio_url: null, script: "A line." });
 
 test("the window warms the next segment, at its own in-point", async () => {
   const { m, backend } = prefetching();
@@ -2213,25 +2518,94 @@ test("nothing is warmed on the last item — a Foray does not chain", async () =
   m.dispose();
 });
 
-test("a bridged seam is not warmed — narration is the marker and it is ours", async () => {
-  const queue = [THREE[0], tts("bridge"), THREE[1]].map((i) => ({ ...i }));
-  const { m, backend, log } = prefetching({ queue });
-  await m.play(0);
-  backend.openPrefetchWindow();
-  assert.deepStrictEqual(backend.prefetches(), []);
-  assert.ok(log.some((l) => /prefetch\.skipped/.test(l)));
-  m.dispose();
+test("a rendered line is warmed across its seam, whatever the beat; a spoken one has no file to warm", async () => {
+  /* NE-45j. The rule is deck-policy.js `warmsAcross`: the next item is
+     prepared when it has a FILE. A seam with a line in it gets no beat
+     (seam-gap.js), and until NE-45j that meant no warm either, so clip -> line
+     -> clip paid two cold loads. MUTATION: `warmsAcross` back to the beat rule
+     (tools/parity/mutations.json "warm-across") -> the rendered line is not
+     warmed. */
+  const rendered = prefetching({ queue: [THREE[0], renderedLine(), THREE[1]].map((i) => ({ ...i })) });
+  await rendered.m.play(0);
+  rendered.backend.openPrefetchWindow();
+  assert.deepStrictEqual(rendered.backend.prefetches(), ["prefetch:line@0"], "a rendered line starts at 0 of its own file");
+  rendered.m.dispose();
+
+  const spoken = prefetching({ queue: [THREE[0], spokenLine(), THREE[1]].map((i) => ({ ...i })) });
+  await spoken.m.play(0);
+  spoken.backend.openPrefetchWindow();
+  assert.deepStrictEqual(spoken.backend.prefetches(), [], "the synthesiser speaks it; there is nothing to fetch");
+  assert.ok(spoken.log.some((l) => /^prefetch\.skipped line: a spoken line has no file/.test(l)), spoken.log.join("\n"));
+  spoken.m.dispose();
 });
 
-test("warming follows the SAME rule as the beat, so the two cannot drift", async () => {
-  // Eligibility is `seamGapSec(...) > 0` — the one decision in seam-gap.js —
-  // rather than a second copy of "is this a segment-to-segment seam". Collapse
-  // the beat and warming goes with it, which is the observable proof they are
-  // one rule.
+test("warming does not follow the beat any more: with no beat at all the next clip is still warmed", async () => {
+  // NE-45j. It used to be `seamGapSec(...) > 0`, so collapsing the beat
+  // collapsed warming with it. The beat decides the SILENCE; whether the next
+  // file is ready when the silence ends is a separate question.
   const { m, backend } = prefetching({ seamGapSec: 0 });
   await m.play(0);
   backend.openPrefetchWindow();
-  assert.deepStrictEqual(backend.prefetches(), [], "no beat means no seam to cover");
+  assert.deepStrictEqual(backend.prefetches(), ["prefetch:s1@300"], "no beat, and the seam still loads warm");
+  m.dispose();
+});
+
+test("NE-45j: the clip after a SPOKEN line is warmed when the line starts — the deck is idle while it speaks", async () => {
+  const tts = fakeTts();
+  const { m, backend } = prefetching({ tts, queue: [THREE[0], spokenLine(), THREE[1]].map((i) => ({ ...i })) });
+  await m.play(0);
+  assert.deepStrictEqual(backend.prefetches(), [], "precondition: nothing is warmed before a window");
+  const ended = backend.onItemEnded(END_OUT_POINT);
+  await ended;
+  await tick();
+  assert.equal(m.state.type, "transitioning", "precondition: the line is speaking");
+  assert.equal(tts.calls.length, 1, "precondition: the line reached the synthesiser");
+  assert.deepStrictEqual(backend.prefetches(), ["prefetch:s1@300"], "warmed at the line's start, at the clip's own in-point");
+  m.dispose();
+});
+
+test("NE-45j: during a rendered line, the window warms the clip after it", async () => {
+  // A rendered line has no out-point; the deck opens its window from the
+  // file's duration (deck-policy.js `prefetchWindowOpens`), and what the
+  // boundary advances to is the clip after the line.
+  const { m, backend } = prefetching({ queue: [THREE[0], renderedLine(), THREE[1]].map((i) => ({ ...i })) });
+  await m.play(0);
+  const ended = backend.onItemEnded(END_OUT_POINT);
+  await ended;
+  await tick();
+  assert.equal(m.state.type, "transitioning", "precondition: the rendered line is playing");
+  assert.ok(backend.calls.includes("load:line@0"), `precondition: ${backend.calls}`);
+  backend.openPrefetchWindow();
+  assert.deepStrictEqual(backend.prefetches(), ["prefetch:s1@300"]);
+  m.dispose();
+});
+
+test("NE-45j: an episode left to its natural end warms the item after it too", async () => {
+  // No out-point, so no beat (seam-gap.js: an unbounded episode is not a
+  // seam) — and still a file to prepare before the file runs out.
+  const queue = [{ id: "whole", kind: "episode", rate: 1.0, audio_url: "https://cdn.example/w.mp3" }, THREE[1]].map((i) => ({ ...i }));
+  const { m, backend } = prefetching({ queue });
+  await m.play(0);
+  backend.openPrefetchWindow();
+  assert.deepStrictEqual(backend.prefetches(), ["prefetch:s1@300"]);
+  m.dispose();
+});
+
+test("NE-45j: a rendered line that fails WHILE SOUNDING warms the clip after it when speech takes over", async () => {
+  /* The line's file failed before its window opened, and that window never
+     will (the deck holding it failed), so the spoken fallback is a spoken
+     line's start like any other: the deck is idle while the synthesiser
+     speaks. MUTATION: delete the `_warmNextSegment("line-start")` in
+     `_speakInsteadMidLine` -> nothing is warmed and the clip loads cold. */
+  const tts = fakeTts();
+  const { m, backend } = prefetching({ tts, queue: [renderedLine(), THREE[1]].map((i) => ({ ...i })) });
+  await m.play(0);
+  assert.equal(tts.calls.length, 0, "precondition: the file is playing");
+  assert.deepStrictEqual(backend.prefetches(), [], "precondition: the line's window has not opened");
+  backend.onError("media error 2");
+  await tick();
+  assert.equal(tts.calls.length, 1, "precondition: the line is spoken instead");
+  assert.deepStrictEqual(backend.prefetches(), ["prefetch:s1@300"], "warmed as speech takes over, at the clip's own in-point");
   m.dispose();
 });
 
@@ -3519,6 +3893,47 @@ test("§14: a media error during the first line's load does not stop the player 
   assert.ok(log.includes(`narration.fallback reason=unsupported at=load item=nar-1 host=${N_HOST}`));
 });
 
+test("§16: a media error during a Foray clip's load (web lane) is retried, not reported idle first", async () => {
+  /* The §14 ordering trap, for a clip: html-audio-backend's persistent `error`
+     listener calls `onError` BEFORE the load rejects. Reported as `E.error`, the
+     player was idle by the time `_retryOrSkipClip` looked, so a web clip with a
+     media error stopped the Foray. Here the clip errors on BOTH attempts: one
+     retry, then the step to the next clip.
+     MUTATION THAT KILLS THIS (run 2026-10-04, red): delete the `_clipLoadInFlight` branch of
+     `_onBackendError` (idle, `player.error`, one load). */
+  const { m, backend, log } = make({
+    backendClass: FlakyBackend,
+    backend: { errors: { "foray-1#1": "load failed (code 4) for foray-1#1" }, errorEventFor: ["foray-1#1"] },
+  });
+  await m.playForay(foray([fseg(), fseg({ item_id: "ep-other", start_sec: 400, end_sec: 500 }),
+    fseg({ start_sec: 700, end_sec: 800 })]), { resolveItem });
+  backend.currentTime = 210;
+  backend.calls.length = 0;
+  await backend.onItemEnded("outPoint");
+  await tick();
+  assert.deepEqual(backend.loads(), ["load:foray-1#1", "load:foray-1#1", "load:foray-1#2"], `got ${backend.calls}`);
+  assert.equal(m.state.type, "playing", `not idle: ${log.join(" | ")}`);
+  assert.equal(m.currentIndex, 2);
+  assert.ok(log.some((l) => /^foray\.segment\.error\.leftToLoad foray-1#1/.test(l)), `got ${log}`);
+  assert.ok(!log.some((l) => /player\.error/.test(l)), `got ${log}`);
+});
+
+test("§16: a media error on a plain episode's load still stops the player (not a clip)", async () => {
+  /* MUTATION THAT KILLS THIS (run 2026-10-04, red): set `_clipLoadInFlight` for every backend load
+     (drop the `_isForayClip` test in `_loadRenderedOrCatch`) — the early report
+     is swallowed and `foray.segment.error.leftToLoad a` appears. */
+  const { m, backend, log } = make({
+    backendClass: FlakyBackend,
+    backend: { errors: { a: "load failed (code 4) for a" }, errorEventFor: ["a"] },
+  });
+  m.loadQueue([ep("a"), ep("b")]);
+  await m.play(0);
+  await tick();
+  assert.equal(m.state.type, "idle");
+  assert.deepEqual(backend.loads(), ["load:a"]);
+  assert.ok(!log.some((l) => /leftToLoad/.test(l)), `got ${log}`);
+});
+
 test("§14: jumping onto a line whose file fails speaks it (the jump case)", async () => {
   const tts = fakeTts();
   const { m, log } = make({
@@ -3854,16 +4269,18 @@ test("§15: nothing is warmed when the next item is a clip or a script-only line
   assert.deepEqual(warmsOf(backend), []);
 });
 
-test("§15: a skip past the warmed line cancels it, and the new next line is warmed", async () => {
+test("§15: a jump past the warmed line cancels it, and the new next line is warmed", async () => {
   const { m, backend } = make({ backendClass: WarmingBackend });
   await m.playForay(foray([
     fseg(), RLINE(), fseg({ start_sec: 400, end_sec: 500 }), RLINE({ id: "nar-2" }), fseg({ start_sec: 700, end_sec: 800 }),
   ]), { resolveItem });
-  await m.skipToNext(); // Next clip steps over the line to foray-1#2
+  // A jump past the line (Next lands ON the line since NE-39n, which is the
+  // "arriving at the warmed line" case below).
+  await m.play(2);
   assert.deepEqual(warmsOf(backend), ["warm:nar-1", "cancel:nar-1:load:foray-1#2", "warm:nar-2"]);
   assert.ok(
     backend.calls.indexOf("cancel:nar-1:load:foray-1#2") < backend.calls.indexOf("load:foray-1#2@400"),
-    "cancelled BEFORE the skip's own load asks for the media queue"
+    "cancelled BEFORE the jump's own load asks for the media queue"
   );
 });
 

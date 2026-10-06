@@ -2,63 +2,126 @@
 
 <!-- ha-format: 2 -->
 
-> **28 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **25 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
 
-## #130 🟡 [DECIDE] Apply the event-retention migration to the production Supabase project (~10 min)
-<!-- ha filed=2026-09-30 -->
+## #144 🟡 [DECIDE] Add the `founder-approved` label to PR #1087, so the 4a Lab build can run (~2 min)
+<!-- ha filed=2026-10-05 -->
 
-**Why:** The privacy policy promises event rows are deleted after 90 days and empty anonymous accounts are pruned. Nothing deletes anything until this migration runs on the live project.
-**Steps:**
-1. Open https://supabase.com/dashboard/project/qjdllvqdcgacvujhclny/sql/new
-2. Paste the whole file backend/migrations/supabase/0004_event_retention.sql from the foray repo, then click Run.
-3. Reply done, or paste the error text if Run failed.
-
-**Worked if:** `select jobname, active from cron.job where jobname like 'foray-prune-%';` returns 2 rows, both active = true.
-
-## #129 🟡 [DECIDE] Read the Supabase project's region and paste it here (~2 min)
-<!-- ha filed=2026-09-30 -->
-
-**Why:** The privacy policy must say where user data is stored, and the region is not in the repo. Without it the policy republish (HA #13 ruling) cannot finish.
-**Steps:**
-1. Open https://supabase.com/dashboard/project/qjdllvqdcgacvujhclny/settings/general
-2. Copy the value under Region (for example "East US (North Virginia)").
-3. Reply with that value.
-
-**Worked if:** you replied with the region, and the privacy policy section 3 names it.
-
-## #46 🔴 [BLOCKING] Nightly content has been stalled since 2026-09-14 — its Cloud routine is switched off (~5 min)
-<!-- ha filed=2026-09-13 kind=default -->
-
-**Why:** The original problem here — the two workflows not firing — is gone: both have run on schedule every day since 2026-09-13. They are red **on purpose**. The Cloud routine that turns each night's digest into a PR, `foray-nightly-enrich`, has been **disabled since its last run on 2026-09-13** (around the 2026-09-13 pause). So the 2026-09-14 digest (40 episodes) was never consumed, and every `nightly-refresh` run since has stopped at its overwrite guard (`OVERWRITE_WOULD_LOSE`) rather than throw those episodes away; `nightly-watch` then reports that run as failed. Nothing in the code is wrong and no secret is missing — this needs your decision, because turning the routine back on spends your Claude usage. Verified 2026-09-22 from the run logs of all eight failed runs and the routine's own state.
+**Why:** The "4a Lab" workflow only becomes runnable once it is on `main`. PR #1087 adds only that file and its tests, but it touches governed paths, so it cannot auto-merge without your label. Until then no lab build reaches either phone.
 
 **Steps:**
-1. Decide whether nightly content should resume. If yes, tell Claude "re-enable foray-nightly-enrich" (routine `trig_019yeYEFW8mZLHDXGQL3vD5x`), or switch it back on yourself in your claude.ai scheduled routines.
-2. Clear the stranded 2026-09-14 digest, one of two ways:
-   - **Accept losing those 40 episodes (quick):** Actions → `nightly-refresh` → Run workflow, tick **overwrite_unmerged_digest**. The next scan starts fresh.
-   - **Keep them:** tell Claude "recover the 2026-09-14 nightly digest". It re-cuts the scan back to the 14th and opens `nightly/2026-09-14-recovery`, which is the branch name the guard looks for.
+1. Open https://github.com/JW-Incorporated/foray/pull/1087 and check the checks are green.
+2. Right sidebar → **Labels** → choose `founder-approved`.
+3. Reply `done` here. The PR then merges; nothing builds until someone presses Run workflow.
 
-**Worked if:** the next scheduled `nightly-refresh` run is green, a `nightly/<date>` PR opens the same day, and `nightly-watch` is green that evening.
+**Worked if:** `.github/workflows/lab-build.yml` is on `main`, and Actions → **lab-build** shows a **Run workflow** button.
 
-**Spark note (2026-09-28):** under the Spark direction (`docs/DECISIONS.md` 2026-09-28) the nightly step moves to the Spark (Phase 5). Step 2, dropping or recovering the stranded 2026-09-14 digest, must be decided before the first Spark nightly runs, even if the routine stays off until then.
+## #141 🟡 [DECIDE] Approve four privacy-policy sentences for bookmarks, downloads and followed-show alerts (~5 min)
+<!-- ha filed=2026-10-04 kind=default -->
 
-## #128 🟡 [DECIDE] Drive a Foray in the car on the first TestFlight build after `engine/m2` merges (~2 drives)
-<!-- ha filed=2026-09-28 kind=default -->
+**Why:** The player-features plan (`docs/roadmap/player-features.md` §1, founder question 6) adds new rows to the privacy policy's §1 table of what stays on your phone. Changing a privacy-policy sentence needs your approval (`docs/roadmap/README.md` Q34), and these rows sit on a path that would otherwise merge without a review window. So each one is quoted below as written and waits here for your yes. Sentence 1 is in the bookmarks PR (branch `feat/w2-pq-12-14-bookmarks`, issue #30). Sentence 2, the downloads row, is already on `main`: it landed in commit 6ff25eda (PQ-16, #29) without an approval item, so it is quoted here too. Only the sentences not yet written are left for later PRs to append here: the PQ-23 §7 sentence on deleting downloaded audio (if it adds one) and the changed followed-shows row (PQ-27).
 
-**Why:** M2 moves Forays onto the iPhone's own player (clips, narration, jingle), as M1 did for episodes, which your car resumed on 2026-09-28. Only your car can show that a Foray survives seams, long pauses, calls and car buttons.
+Sentence 1, the new `cp_bookmarks` row in `docs/legal/privacy-policy.md` §1 (bookmarks stay on the device, with no new event type, under `docs/roadmap/README.md` Q19):
+
+> | `cp_bookmarks` | Bookmarks you set inside episodes — for each episode id, the second you marked, when you set it, an optional label you typed, and the episode's length at that moment (so a bookmark on an ad-stitched show can be shown as approximate if its copy changes). Set from the Now Playing sheet; listed on the episode page. Never sent, never synced | **No** |
+
+Sentence 2, the `cp_downloads` row in `docs/legal/privacy-policy.md` §1, already on `main` since 6ff25eda (PQ-16, #29):
+
+> | `cp_downloads` | Which episodes you downloaded for offline listening, each one's download state and size, the file's location on this device, the episode's length as downloaded, and your "download over cellular" setting. The audio files themselves sit in the app's own storage on the device (Application Support on iPhone, the app's files directory on Android), are never backed up, and are deleted by "Delete my data" and by removing the download | **No** |
 
 **Steps:**
-1. Use build **2026092903** (or later). TestFlight → 4a → Automatic Updates off.
-2. In the car, play a Foray with narration. Listen through at least two clip → narration → clip seams.
-3. Pause from the car. Leave it 10+ minutes (or park). Press the car's play.
-4. Take or make a phone call mid-Foray; hang up.
-5. Press skip-back 15 and skip-forward 30 from the car, once each.
-6. Check the car shows the title and a moving progress bar.
-7. Parked: Developer → Playback diagnostics → Copy; paste here with the route.
-8. If a Foray will not play or keeps stopping: Developer → Playback engine → Web, then restart 4a. Episodes and Forays go back to the web player. Say so here.
+1. Read the sentence(s) above.
+2. Reply `approved`, or say what to change. Claude makes the change on the PR that carries the sentence, or, for a sentence already on `main`, in a small follow-up PR.
 
-**Worked if:** every seam plays; after the pause and the call 4a resumes by itself or on one press; 15/30 move; title and progress bar show.
+**Worked if:** every sentence quoted here is approved or reworded, and the policy on `main` says the same thing.
+
+## #134 🟡 [DECIDE] G6 — Re-confirm D1's liveness/count/recency filter, and settle the language question
+<!-- ha filed=2026-10-04 kind=default -->
+
+**Why:** The shows pipeline's filter D1 shipped as a default (`dead != 1`, `episodeCount >= 3`, updated within 24 months), with the language column stored but never applied, pending "re-confirm with Joey's export in hand". `tools/shows/filter.mjs` (S-04a) names this open gate in its own header. Gate G6 of the shows-pipeline plan (`docs/roadmap/shows-search.md`); the plan gives it no default, so it is your call.
+
+**Steps:**
+1. Once G7 (Joey's export, #135) lands, ask Claude to run S-04's importer against it and produce fresh per-filter counts.
+2. Review those counts and confirm or adjust the liveness thresholds.
+3. Decide whether English becomes a catalogue-level filter (non-English shows leave the list entirely) or stays a tape-level concern only (ADR-0008 flags this as unsettled); see `docs/product/suggested-shows-requirements.md` §4.3.
+
+**Worked if:** a decision is recorded here and card S-17 (unclaimed) applies it.
+
+## #135 🟡 [DECIDE] G7 — Joey's PodcastIndex export: format, location, cadence (D3)
+<!-- ha filed=2026-10-04 kind=default -->
+
+**Why:** Every shows-pipeline card from S-04a on builds against the **public** PodcastIndex dump as a stand-in. The source is one config value (`DUMP_URL` in `tools/shows/config.mjs`), so swapping in Joey's own export is cheap once it exists. Nothing is blocked today, but G6 (#134) cannot be settled until this lands. Gate G7 of the shows-pipeline plan; no default, so it is a question for you and Joey.
+
+**Steps:**
+1. With Joey, decide the export's format (SQLite, CSV or Parquet, keeping the dump's column names), where it lands, and how often it refreshes. If Joey's corpus export (the corpus package, `docs/roadmap/corpus.md`) is meant to be this export, say that instead.
+2. Say which here.
+
+**Worked if:** card S-16 can start: swap the source URL and check the column contract.
+
+## #137 🟡 [DECIDE] Search listening test (P-07): five searches on your phone (~10 min)
+<!-- ha filed=2026-10-04 kind=default -->
+
+**Why:** The search deck (`docs/search-parity-plan.md`) ends with P-07. The question is not a number: it is whether you find the show you meant without thinking about it. Every search fix so far was measured by a machine; none has been judged on your phone. Each miss you find becomes a test case.
+
+**Steps:**
+1. Use the next TestFlight build after 2026093002 (ruled default). Claude writes its number here when it uploads; any later build is fine.
+2. Open the Shows page. Do five searches for shows you would actually look for, your choice. Type each one; do not paste.
+3. For each, note: what you typed, the show you meant, its position in the list (1 = top) or "not found", and whether you found it without thinking (yes or no).
+4. After the fifth: Developer → Playback diagnostics → Copy. (Each search writes one `search` line with timings and hit counts, never the words you typed, so the words come from your notes.)
+5. Paste your notes and the Copy here. Claude files them as `docs/field-records/<date>-search-p07.md` from `docs/field-records/TEMPLATE-search-p07.md` (or fill the template yourself).
+
+**Worked if:** the record has five rows. Every "no" becomes a `PARITY_CASES` or `SCAN_REACH_CASES` entry in `tools/search-probe.mjs` through a follow-up task.
+
+## #138 🟡 [DECIDE] Get a read-only key for the transcripts bucket from Joey, and put it in one file on the PC and on hermes-vm (~15 min, with Joey)
+<!-- ha filed=2026-10-04 kind=default -->
+
+**Why:** The corpus package (`docs/roadmap/corpus.md`, G-16) copies the transcript farm's bodies from the R2 bucket `foray-transcriptions` to the generation machine, so Forays can draw on every transcript the farm has made. Reading the bucket needs an S3 key pair. Ruled at the default (`docs/roadmap/README.md` question 3): Joey issues it with Object Read on that one bucket, and you keep it outside the repo. `data-local/.cf-token` is a Cloudflare API token, not an S3 pair, and does not work for this. The Spark gets its own token in #121; this one is for the PC and hermes-vm. Not urgent: the sync tool that reads it (corpus PKG-13) is not built yet.
+
+**Steps:**
+1. Joey: Cloudflare (the account that owns `foray-transcriptions`) → **R2** → **Manage R2 API Tokens** → **Create API token**. Name `foray-corpus-read`. Permissions **Object Read only**. **Apply to specific buckets only** → `foray-transcriptions`. Create, and pass Wyatt the Access Key ID, the Secret Access Key and the S3 endpoint (`https://<account id>.r2.cloudflarestorage.com`) through a password manager, not a chat.
+2. Wyatt, on the PC: in `C:\Users\wjduv\.foray` (made in #120; make it if it is missing), save a file named `r2-credentials` (Notepad: **Save as type** → **All files**, no `.txt`) with these four lines, your values after the first three `=` signs:
+   ```
+   R2_ACCESS_KEY_ID=
+   R2_SECRET_ACCESS_KEY=
+   R2_S3_ENDPOINT=
+   R2_BUCKET=foray-transcriptions
+   ```
+3. On hermes-vm: the same four lines in `~/.foray/r2-credentials`, then `chmod 600 ~/.foray/r2-credentials`.
+4. Do **not** paste the key into any chat, issue or PR. Reply `done` only.
+
+**Worked if:** once `tools/foraycorpus-export/sync-r2.mjs` lands, `node tools/foraycorpus-export/sync-r2.mjs --dry-run` on the PC prints `objects_seen` above 0 without asking you for anything.
+
+## #139 🟡 [DECIDE] Get hermes-vm ready to run the weekly corpus export (~20 min)
+<!-- ha filed=2026-10-04 kind=default -->
+
+**Why:** Ruled at the default (`docs/roadmap/README.md` question 2; corpus Q2, G-16): the corpus exporter runs weekly by cron on **hermes-vm** as the read-only database role `wyatt_readonly`, and publishes show and episode metadata (never transcript text) as GitHub Releases, with a pointer file committed by PR, the way the shows import already does. Not GitHub Actions with Tailscale. Only you place credentials on hermes-vm. Not urgent: the exporter (corpus PKG-08) and its publish step (PKG-32) are not built yet. The first live run (PKG-10) waits on steps 1–3.
+
+**Steps:**
+1. On hermes-vm, check that the `wyatt_readonly` role reaches `foraycorpus` (100.79.104.9, tailnet only), for example `psql "<connection string>" -c "select 1"` if `psql` is installed.
+2. Put that connection string in `~/.foray/foraycorpus.env` as one line, `FORAYCORPUS_DATABASE_URL=<connection string>`, then `chmod 600 ~/.foray/foraycorpus.env`.
+3. Run `gh auth login` on hermes-vm with a fine-grained token for `JW-Incorporated/foray` only: **Contents: Read and write** and **Pull requests: Read and write**, nothing else, 90 days. The export uses it to create the Release and open the pointer PR. Set a reminder to renew it.
+4. Later: when PKG-32 lands, Claude writes the exact cron line here and you add it with `crontab -e`.
+5. Reply `done` after steps 1–3. Do not paste the connection string or the token anywhere.
+
+**Worked if:** `gh auth status` on hermes-vm shows the token, and the first live dry run (corpus PKG-10) connects from hermes-vm without asking you for anything.
+
+## #130 🟡 [DECIDE] Drive the M3 test on the first TestFlight build after `engine/m3` merges (~2 drives)
+<!-- ha filed=2026-09-30 kind=default -->
+
+**Why:** M3 makes the car-resume rules final: 4a relaunching after iOS closed it (DV-7a), a car switched off and on, and the provisional timings. Only your car can show them; the pastes settle the values.
+
+**Steps:**
+1. Use build **2026100502** (or later; 2026100402 also works). It also shows "4a" as the album when there is none (#1007). It also carries the clip-load retry (#981), approximate loads for CBR clips (#980) and skip during narration (#979), so the M2 failures are re-tested here. TestFlight → 4a → Automatic Updates off.
+2. Follow `docs/native-engine-m3-drive-test.md`: step 0, then the 10-minute desk pre-flight.
+3. DV-7a: play, pause, Developer → Simulate system termination, then lock the phone (4a closes itself). Press the car's play.
+4. DV-7b: force-quit 4a from the app switcher, then press the car's play. Note who plays.
+5. Switch the car off while 4a plays; wait 10+ min; switch it on. Then pause in the app, off and on again.
+6. Battery: an hour native, an hour on Developer → Playback engine: Web (Settings → Battery).
+7. Parked, after each block: Developer → Playback diagnostics → Copy; paste here with the route.
+
+**Worked if:** after the simulated termination the car's play starts 4a (`launch=background`), and a paused 4a stays paused when the car comes back.
 
 ## #119 🔴 [BLOCKING] Create the public narration bucket `foray-narration` at `audio.jwlabs.ai` (~30 min)
 <!-- ha filed=2026-09-28 kind=default -->
@@ -144,16 +207,6 @@
 
 **Worked if:** the runbook's relay check on the Spark answers one test request.
 
-## #124 🟢 [UPGRADE] Note: R2 storage will pass the 10 GB free tier at about 650–700 Forays (~1 min)
-<!-- ha filed=2026-09-28 kind=default -->
-
-**Why:** You asked to be told before R2 costs money. Each Foray adds about 14 MB of narration (Heart + Echo), and old files are never deleted, because phones may still point at them. Past 10 GB it costs about $0.015 per GB a month: roughly $0.06 a month at 1,000 Forays and about $2 a month at 10,000. Downloads stay free.
-
-**Steps:**
-1. Reply `ok` to accept, or name the cap you want instead.
-
-**Worked if:** you replied.
-
 ## #125 🟡 [DECIDE] Approve the privacy-policy rewrite for streamed narration, when its PR opens (~15 min)
 <!-- ha filed=2026-09-28 kind=default -->
 
@@ -228,21 +281,11 @@
 1. Wait for the round-3 fix PR to merge. The migration is `backend/migrations/supabase/0003_rls_least_privilege.sql`.
 2. Supabase dashboard → the 4a project → **SQL editor**. Paste that file's contents, read it, and run it (or `supabase db push` if you use the CLI).
 3. Check it worked: **Table editor** shows RLS **enabled** on each table the migration names. As an anonymous user, the app still loads Home, and **Developer → Playback diagnostics** shows no `sync` or `events` errors.
-4. Reply `done` (or paste any SQL error) here.
+4. Also apply `backend/migrations/supabase/0005_content_reports.sql` the same way, once its PR (PH2-10, the `content_reports` table for the Report sheet) merges. It needs nothing else, so it can go in the same sitting. Check: **Table editor** shows `content_reports` with RLS **enabled** and three policies. (Note `0004_rls_shows_catalog.sql` is also unapplied: it waits for gate G2, after the portable 0017-0019, so leave it for that step.)
+5. Also apply `backend/migrations/supabase/0006_event_retention.sql` the same way, once its PR (#951, the 90-day retention job, founder ruling HA #13) merges. It needs only 0001-0003, so it can go in the same sitting. Until it runs, the privacy policy's 90-day retention paragraph stays a draft and nothing deletes an event row. Check: `select jobname, active from cron.job where jobname like 'foray-prune-%';` returns 2 rows, both `active = true`. Once it runs, #14 can be closed: the job removes the empty anonymous accounts.
+6. Reply `done` (or paste any SQL error) here.
 
-**Worked if:** RLS is on for every table the migration lists, the app still syncs events and interests, and Delete my data removes the `learning_cursor` rows (check in the Table editor after a test deletion).
-
-## #109 🟡 [DECIDE] Mirror the approved privacy wording in the store listings, if they carry it (~10 min)
-<!-- ha filed=2026-09-24 kind=default -->
-
-**Why:** You approved the privacy-policy reconciliation on 2026-09-24 ("Approved", round-2 finding `persist-3`), and PR #749 applies it to `docs/legal/privacy-policy.md` and `docs/legal/data-safety.md`. You update the store listings yourself, so any copy of these sentences in App Store Connect or the Play Console is still the old wording. None of the form ANSWERS changed; Search history is still "No" on both. Only the wording changed.
-
-**Steps:**
-1. Wherever the privacy policy is published or pasted for either store, use the new text. Three changes, all in `docs/legal/privacy-policy.md`: §5 now says `connect-src` names **three** origins (the app, Supabase, and our API on Vercel, which receives the Shows search text with your IP address and user-agent); §4.3 gains the paragraph naming **Vercel** as the processor that answers Shows searches ("4a does not log the query"); the `cp_diag` row lists the search, now-playing, remote-command and native-session rows.
-2. If the Play Data safety form or App Store Connect's App Privacy notes repeat the old "miss-only" sentence (a search that misses the local catalogue is looked up off-device), replace it with the sentence in `docs/legal/data-safety.md`'s two search-history rows: every settled Shows search is sent to 4a's API (Vercel) and is not logged as a search-history event.
-3. If neither store carries these sentences, reply `skip none carried`.
-
-**Worked if:** no store-facing text says "two origins" or "miss-only", and the published policy names Vercel.
+**Worked if:** RLS is on for every table the migration lists, the app still syncs events and interests, and Delete my data removes the `learning_cursor` rows (check in the Table editor after a test deletion). `content_reports` exists with RLS on. The two `foray-prune-%` cron jobs exist and are active.
 
 ## #44 🟡 [DECIDE] Add the founders as Play testers, so Play actually emails you (R-08)
 <!-- ha filed=2026-09-11 kind=default -->

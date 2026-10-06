@@ -68,6 +68,8 @@ Sources:
 
 None of the four exist in the current build — this is a known, named gap, not a discovered one, and it is a submission-blocking rejection risk the moment a phase-2 build reaches App Review. It is a phase-2 precondition, not a phase-1 action item: **do not build the moderation system now**, but do not schedule phase 2 without it either. Track it explicitly in `HUMAN-ACTIONS.md` (item added the day phase 2 is scheduled) rather than letting it live only in the engineering doc.
 
+**Ruled 2026-09-30 (DECISIONS #31) — sequencing.** All four exist before any non-founder-prompted Foray is hearable by anyone but its prompter. Interim: founder-only prompting, `hold` on catalogue Forays. Order: (1) developer contact now, sharing one address with the privacy contact, `help@jwlabs.ai`; (2) an output-side filter extending `backend/src/generation/safetyCheck.ts` before any non-founder prompt, even a private one; (3) report + block as one card before the first *shared* non-founder Foray. A private-to-prompter Foray is not UGC and may ship first. Engineering builds all four; it remains a phase-2 precondition, not scheduled work.
+
 Source: [App Review Guidelines §1.2 (User Generated Content) — Apple Developer](https://developer.apple.com/app-store/review/guidelines/#user-generated-content)
 
 **2026 rejection trends worth noting generically:** the fastest-growing rejection category is privacy (missing AI-data-sharing consent screens, missing `PrivacyInfo.xcprivacy` manifests for bundled third-party SDKs like Supabase's), plus incomplete/placeholder-content submissions. Both are process items, not architecture risks.
@@ -85,6 +87,14 @@ Sources:
 
 ## 3. AI-generated derivative text/audio (summaries, why-lines, TTS intros)
 
+> **Founder ruling, 2026-10-05.** Wyatt: *"delete this concept of legal
+> review prior to sharing AI generated content"*. The root concern, nasty
+> content, is handled during Foray generation (issue #126, re-scoped). This
+> section's risk analysis stands as analysis. It no longer requires a legal
+> review or a re-rating before generated text becomes visible outside the
+> account, such as through shared links. See `docs/DECISIONS.md`,
+> 2026-10-05.
+
 **Risk: LOW-MEDIUM today, rises if scope changes** — the personalized/short/private nature of the output is the thing keeping this low; each of those three properties is a lever that, if relaxed later, raises risk.
 
 The 2024-2026 case law gives an actual dividing line, not just vibes. In *Advance Local Media v. Cohere* (S.D.N.Y., 2025), the court held that "substitutive summaries" — non-verbatim outputs that nonetheless mirror the expressive structure and storytelling choices of the original — can plausibly infringe, denying Cohere's motion to dismiss. Contrast that with *CIR v. Microsoft* (April 2025), where a judge dismissed claims that Copilot's bullet-point "abridgments" of news articles infringed, because the reorganized, skeletal summaries weren't substantially similar to the originals. The U.S. Copyright Office's own report on RAG-style summarization says the use is "less likely to be transformative where the purpose is to generate outputs that summarize or provide abridged versions" of the source.
@@ -97,7 +107,7 @@ There's no bright-line word count in fair-use law — the "10%" and "300-word" r
 - **No verbatim quoting from show notes beyond a short phrase** (a handful of words) — paraphrase, don't lift sentences. A quoted line is a reproduction of the publisher's copyrighted description text, not just the underlying facts.
 - **Always frame around the listener's specific context**, not a generic recap of the episode — this is both the product's soul (per the brief) and the thing that keeps output on the "transformative" side of the Cohere/CIR line.
 - **Attribute** show and episode title/publisher in every intro.
-- **Don't build a public, browsable archive** of generated summaries — single-user-private consumption is a meaningfully different (lower-risk) posture than a public content surface, and this product is single-user by design today. Revisit hard if a future feature makes summaries visible outside the account that generated them (shared links, social features, marketing use of blurbs).
+- **Don't build a public, browsable archive** of generated summaries — single-user-private consumption is a meaningfully different (lower-risk) posture than a public content surface, and this product is single-user by design today.
 - Where Tier-2 transcript-based enrichment lands later, apply the same rules to transcript-derived text — don't let internal ranking text leak out as user-facing copy without going through the same length/paraphrase discipline.
 
 Sources:
@@ -169,10 +179,13 @@ Sources:
 
 ### Do before phase 2 is scheduled (any-user prompting)
 - [ ] Build the four Guideline 1.2 UGC-moderation requirements before any stranger-prompted Foray can reach another user: content filtering, a report-objectionable-content mechanism, a user-blocking mechanism, and published developer contact info (see Section 2). Confirm the corresponding `HUMAN-ACTIONS.md` item is filed and open before phase 2 work is scheduled, not after.
+  - [ ] Ruled 2026-09-30, in order: publish developer contact (`help@jwlabs.ai`, shared with the privacy contact) now.
+  - [ ] Output-side filter extending `backend/src/generation/safetyCheck.ts` before any non-founder prompt, even a private one.
+  - [ ] Report + block as one card before the first shared non-founder Foray.
+  - Until all four exist: founder-only prompting and `hold` on catalogue Forays. A private-to-prompter Foray is not UGC and may ship first.
 
 ### Do at monetization (multi-user, revenue)
 - [ ] Get a real (paid, attorney-assisted) trademark clearance search before formally registering "CommutePilot" as a mark.
 - [ ] Get an actual lawyer to review the privacy policy and terms of service, especially data export/delete flows if EU users are in scope.
 - [ ] Re-check CCPA thresholds annually against real user/revenue numbers (100K CA consumers/devices, ~$26.6M revenue, or 50%+ revenue from data sales).
-- [ ] Revisit Section 3's risk rating the moment generated summaries/why-lines become visible outside the account that generated them (shared links, social features, marketing use of blurbs) — the fair-use posture changes materially once output leaves single-user private use.
 - [ ] Treat any ad-adjacent feature request (even "skip the sponsor read," not full stripping) as a new legal-review trigger, not a routine feature — this is the constraint most likely to erode quietly through good intentions.

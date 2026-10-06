@@ -13,9 +13,9 @@ public struct FixtureFile {
     public let cases: [FixtureCase]
     /// The schema's `jsOnly` (plan §5.5 C-2): the file pins a JS rule that is
     /// deliberately never ported (the continuation hops, which the page
-    /// computes and the engine only walks). The suite skips such a family by
-    /// this flag, because no Swift card can owe its ids and record.mjs refuses
-    /// to write them into swift-pending.json.
+    /// computes and the engine only walks; since NE-39s, `manager-await`, the
+    /// JS manager's awaits). The suite skips such a family by this flag,
+    /// because no Swift port runs its ids.
     public let jsOnly: Bool
 
     public init(path: String, family: String, module: String?, cases: [FixtureCase], jsOnly: Bool = false) {
@@ -83,7 +83,13 @@ public struct FixtureCase {
 }
 
 /// Everything one parity run reads: the families (manifest.json), what each
-/// fixture file holds, what is owed (swift-pending.json), and the floors.
+/// fixture file holds, and the floors.
+///
+/// NOTHING IS OWED SINCE NE-39s (M3): `swift-pending.json` is deleted, so a
+/// JS rule change carries its Swift port in the same change, and `load`
+/// refuses a tree where the file has come back. `pending` stays as a book the
+/// harness tests fill in memory (so the stale-pending and not-ported rules
+/// keep a proof), and is empty on every real run.
 ///
 /// Held as plain data so a test can change ONE thing (move an id into
 /// pending, raise a floor, corrupt an expect) and prove the runner notices,
@@ -93,7 +99,8 @@ public struct ParityData {
     public var manifest: [String: [String]]
     /// family -> the files manifest.json lists for it, as read.
     public var fixtures: [String: [FixtureFile]]
-    /// case id -> the card that owes it, from swift-pending.json.
+    /// case id -> the card that owes it. Empty on a real run (NE-39s deleted
+    /// swift-pending.json); filled only by the harness tests.
     public var pending: [String: String]
     /// family -> minimum case count, from floors.json.
     public var floors: [String: Int]
@@ -108,6 +115,9 @@ public struct ParityData {
         self.floors = floors
         self.repoRoot = repoRoot
     }
+
+    /// The burn-down lists NE-39s deleted (plan §6.1); `load` refuses either.
+    public static let retiredBooks = ["swift-pending.json", "unported.json"]
 
     /// Read `player/parity/` (`parityDir`) in place.
     public static func load(parityDir: URL) throws -> ParityData {
@@ -140,10 +150,13 @@ public struct ParityData {
                 return try FixtureFile(path: rel, document: doc)
             }
         }
-        var pending: [String: String] = [:]
-        for (id, card) in try read("swift-pending.json").objectValue ?? [:] where !id.hasPrefix("//") {
-            pending[id] = card.stringValue ?? ""
+        // NE-39s: the burn-down lists are gone for good. One coming back
+        // would be owed work no gate reads, so the run refuses to start.
+        for retired in ParityData.retiredBooks
+        where FileManager.default.fileExists(atPath: parityDir.appendingPathComponent(retired).path) {
+            throw HarnessError("E_BAD_CASE", "\(retired) was deleted by NE-39s (M3): nothing may be owed, so a JS rule change carries its Swift port; delete the file")
         }
+        let pending: [String: String] = [:]
         var floors: [String: Int] = [:]
         for (family, n) in try read("floors.json")["families"]?.objectValue ?? [:] {
             if let count = n.numberValue { floors[family] = Int(count) }

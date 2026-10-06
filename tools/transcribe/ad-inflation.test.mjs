@@ -3,12 +3,13 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import {
+import { RANGED_GET_UNTRUSTED_HOSTS, rangedGetTrusted,
   parseContentRangeTotal, inflationRatio, classify, summariseShow,
   probeEpisode, selectTargets, isPlausibleAudioSize, isRetryableStatus,
   applyVerdicts, adFreeShows,
   AD_FREE_THRESHOLD, AD_FREE_FLOOR, MIN_PLAUSIBLE_BYTES, RETRYABLE_STATUS,
   UNDERSIZED_REASON, THIN_SAMPLE_REASON, MIN_SAMPLES_FOR_AD_FREE,
+  isComputedBitrateLength, suspectUndersizedSamples, summariseSamples, SUSPECT_REASON,
 } from './ad-inflation.mjs';
 import { AUDIO_UA, AUDIO_PROBE_HEADERS, MIN_HOST_INTERVAL_MS, resetHostGates, awaitHostSlot } from '../segments/politeness.mjs';
 import { AD_FREE_SHOWS } from '../segments/fetch-transcripts.mjs';
@@ -649,7 +650,19 @@ test('every committed verdict carries the evidence behind it', () => {
   assert.ok(measured.length >= 27, `only ${measured.length} shows carry a measurement`);
   for (const s of measured) {
     const m = s.ad_inflation;
-    assert.ok(['ad-free', 'injected', 'unknown'].includes(m.verdict), `${s.show}: bad verdict ${m.verdict}`);
+    assert.ok(['ad-free', 'injected', 'unknown', 'excess-audio'].includes(m.verdict), `${s.show}: bad verdict ${m.verdict}`);
+    // MUTATION: change `decode.source` in data/dai-classification.json away from
+    // data/decode-and-compare.json -- this test fails (run 2026-09-30).
+    // `excess-audio` is a DECODE's verdict (HA #24), not a ratio's: it must
+    // point at the ledger that holds the decode and carry its seconds.
+    if (m.verdict === 'excess-audio') {
+      assert.match(m.decode.source, /data\/decode-and-compare\.json/, `${s.show}: excess-audio with no decode pointer`);
+      for (const k of ['decoded_sec', 'declared_sec', 'transcript_end_sec']) {
+        assert.equal(typeof m.decode[k], 'number', `${s.show}: decode.${k}`);
+      }
+      assert.ok(m.decode.decoded_sec - m.decode.transcript_end_sec > 30, `${s.show}: not past the 30s outro allowance`);
+      continue;
+    }
     assert.ok(m.measured_at, `${s.show}: no measured_at`);
     assert.ok(Array.isArray(m.samples), `${s.show}: no samples array`);
     assert.equal(m.episodes_probed, m.samples.filter((x) => typeof x.ratio === 'number').length,
@@ -658,5 +671,70 @@ test('every committed verdict carries the evidence behind it', () => {
       assert.equal(typeof m.median_ratio, 'number', `${s.show}: a decided verdict with no ratio`);
       assert.equal(classify(m.median_ratio), m.verdict, `${s.show}: verdict does not follow from its own ratio`);
     }
+  }
+});
+
+/* Around the House (HA #24, 2026-09-30). Real numbers: the episode's declared
+   54,729,590 bytes over 2,280 s is 192,033 bps -- duration x a round 192 kbps --
+   while 41,493,310 bytes were delivered (0.758). The decode found +313 s.
+
+   MUTATION (1): delete the `isComputedBitrateLength(x)` clause in
+   `suspectUndersizedSamples` -- every undersized show turns suspect and the
+   "honest size mismatch" half fails. (2): make `summariseSamples` return
+   `summariseShow(...)` unchanged -- the suspect half fails. Both run.
+   The mismatch case is a real file size (not on a round bitrate), so a stale
+   `length` stays `unknown`, the milder reading. */
+const ATH = { declared_bytes: 54729590, delivered_bytes: 41493310, duration_sec: 2280, ratio: 0.758 };
+
+test('a declared length that is duration x a round bitrate is a computed placeholder', () => {
+  assert.equal(isComputedBitrateLength(ATH), true);
+  assert.equal(isComputedBitrateLength({ ...ATH, declared_bytes: 51890381 }), false); // 182 kbps, a real size
+  assert.equal(isComputedBitrateLength({ ...ATH, duration_sec: null }), false);        // never guess a duration
+  assert.equal(isComputedBitrateLength({ ...ATH, declared_bytes: null }), false);
+});
+
+test('undersized samples on a placeholder length make the show suspect, not unknown', () => {
+  const real = { declared_bytes: 51890381, delivered_bytes: 38000000, duration_sec: 2280, ratio: 0.732 };
+  assert.equal(summariseShow([0.758, 0.746, 0.691]).verdict, 'unknown');
+  const s = summariseSamples([ATH, { ...ATH, ratio: 0.746 }, { ...ATH, ratio: 0.691 }]);
+  assert.equal(s.verdict, 'suspect');
+  assert.equal(s.reason, SUSPECT_REASON);
+  assert.equal(s.median, 0.746);
+  // Not a placeholder: stays the milder unknown.
+  const u = summariseSamples([real, real, real]);
+  assert.equal(u.verdict, 'unknown');
+  assert.equal(u.reason, UNDERSIZED_REASON);
+  assert.equal(suspectUndersizedSamples([ATH, real, ATH]), 2);
+});
+
+test('suspect moves only the undersized unknown: injected and ad-free are untouched', () => {
+  // A placeholder-length sample inside a show whose median is clean or injected.
+  const clean = { declared_bytes: 54729590, duration_sec: 2280, ratio: 1.0 };
+  assert.equal(summariseSamples([clean, clean]).verdict, 'ad-free');
+  assert.equal(summariseSamples([ATH, { ...clean, ratio: 1.2 }, { ...clean, ratio: 1.3 }]).verdict, 'injected');
+});
+
+test('rangedGetTrusted admits an ordinary CDN host', () => {
+  // DAI-01. MUTATION: return false unconditionally -> red.
+  assert.equal(rangedGetTrusted('https://media.transistor.fm/a/b.mp3'), true);
+  assert.equal(rangedGetTrusted('www.buzzsprout.com'), true);
+});
+
+test('rangedGetTrusted refuses the flightcast origins, by URL, bare host, host:port and subdomain', () => {
+  // DAI-01 (HUMAN-ACTIONS #24). MUTATION: drop the endsWith branch -> the
+  // subdomain case goes red; empty RANGED_GET_UNTRUSTED_HOSTS -> all four red.
+  assert.deepEqual([...RANGED_GET_UNTRUSTED_HOSTS], ['atelier.flightcast.com', 'episode.flightcast.com']);
+  for (const u of ['https://episode.flightcast.com/x.mp3', 'atelier.flightcast.com', 'episode.flightcast.com:443', 'cdn.atelier.flightcast.com', 'HTTPS://Atelier.Flightcast.com/y']) {
+    assert.equal(rangedGetTrusted(u), false, u);
+  }
+  // A look-alike that merely contains the name is not the origin.
+  assert.equal(rangedGetTrusted('notatelier.flightcast.com.example.org'), true);
+});
+
+test('rangedGetTrusted refuses what it cannot name', () => {
+  // DAI-01. MUTATION: return true from the catch -> 'not a url ::' goes red;
+  // drop the hostname regex -> 'localhost' goes red.
+  for (const u of ['', '   ', null, undefined, 42, 'not a url ::', 'localhost', 'example.com.', 'http://[::1]/a']) {
+    assert.equal(rangedGetTrusted(u), false, String(u));
   }
 });

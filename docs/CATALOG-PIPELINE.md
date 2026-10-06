@@ -27,6 +27,34 @@ Keep it for the curated tier; build a programmatic harvester for breadth.
 
 ## Two-tier catalog architecture
 
+> **AMENDED, 2026-09-21 (S-04/S-04c/S-05, `4a-shows-pipeline-plan.md`).** A
+> **third** layer now sits over this table and is the one a listener
+> actually meets: the PodcastIndex-dump-derived shard index (4.7M+ rows,
+> `tools/shows/`, published as GitHub Release assets) plus its inert
+> Postgres twin (`shows_catalog`, S-09; migrations 0017–0019 merged in
+> #1045 on 2026-10-05, applied to no production database yet). Read the
+> table below as **"the
+> two tiers this repo hand-built before 2026-09"**, both of which are
+> still live and **not retired** — `data/catalog-breadth.json` remains a
+> real server-side dependency (`backend/src/catalog/breadthCatalog.ts`,
+> `api/shows/[show_id]/episodes.ts`, `api/episodes/search.ts` all still
+> read it directly, confirmed 2026-09-21) even though S-05 shipped the
+> client-side shard search that replaced the *client's* old breadth
+> round-trip. **The overlay model, not a three-tier stack, is the
+> mental model going forward:** the curated 220 (this table's left
+> column) are a `curated: true` overlay flag on rows in the new
+> universal shard/Postgres list (D8 of the S-12 decision record, which
+> is `docs/DECISIONS.md`'s 2026-10-05 entry) — Home/Forays/Playlists keep reading only the curated
+> overlay, exactly as this table's "Consumers" row already said. The
+> Apple-chart-harvested `data/catalog-breadth.json` file is a
+> **fourth, older, and now largely superseded** source
+> (19,787 US shows from Apple's charts, no PodcastIndex id; the
+> international file was retired on 2026-10-04, see "Breadth tier,
+> batch 2" below) that server
+> code still reads as a search/episode fallback; they are not marked
+> retired because nothing has replaced their specific server-side role
+> yet — that is a real follow-up, not done by this banner.
+
 | | Curated tier | Breadth tier |
 |---|---|---|
 | File | `data/catalog.json` + `data/discover.json` | `data/catalog-breadth.json` |
@@ -182,10 +210,20 @@ each source sits on a bare branch that has children — the defect
 `--baseline <snapshot>` prints before/after. Take a snapshot before any
 re-classification, because "did it work?" is otherwise unanswerable after the fact.
 
-## Breadth tier, batch 2 (international)
+## Breadth tier, batch 2 (international) — retired 2026-10-04
 
-`data/catalog-breadth-intl.json.gz` — 121,786 shows from 18 regional Apple top-chart
-sets (fr/de/jp/br/mx/es/it/in/nl/dk/se/za/no/gb/ie/au/nz/ca), zero overlap with the
-US batch, 99.4% with feed URLs. Stored gzipped (76MB raw exceeds repo limits);
-consumers: `zcat` / `zlib.gunzipSync`. Same schema as catalog-breadth.json with
-per-show `region`.
+The breadth tier is now **19,787 US shows** (`data/catalog-breadth.json`); the
+international file was retired on 2026-10-04 (founder ruling, catalogue Q4 "yes",
+`docs/roadmap/README.md` item 26; #560 item 6). It held 121,786 shows from 18
+regional Apple top-chart sets, gzipped, and no endpoint, tool or test read it.
+The file stays in git history if it is ever wanted back. To re-harvest instead,
+always pass `--out` with a path outside the repo, because without it the harvester
+overwrites `data/catalog-breadth.json`, the US file that server code reads:
+
+```
+node tools/harvest-catalog.mjs --regions fr,de,jp,br,mx,es,it,in,nl,dk,se,za,no,gb,ie,au,nz,ca \
+  --exclude data/catalog-breadth.json --out ../breadth-international.json
+```
+
+`--exclude` keeps the batch disjoint from the US file, as the retired file was.
+The output (~76 MB raw) is too large to commit uncompressed.

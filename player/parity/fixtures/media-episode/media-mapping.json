@@ -391,7 +391,8 @@
       "id": "media-episode/album-foray-title-and-counter",
       "covers": [
         "media-session::the Foray's title lives in album, with the part counter",
-        "media-session::a SEGMENT keeps Apple Podcasts parity untouched: title=episode, artist=show, album=foray+part"
+        "media-session::a SEGMENT keeps Apple Podcasts parity untouched: title=episode, artist=show, album=foray+part",
+        "media-session::an album that has a collection or a counter is unchanged by #1006"
       ],
       "call": "mediaMetadata",
       "args": [
@@ -505,10 +506,10 @@
       }
     },
     {
-      "id": "media-episode/zero-total-no-title-empty-album",
+      "id": "media-episode/zero-total-no-title-album-is-app-name",
       "covers": [
         "media-session::a zero total suppresses the counter — single-episode playback has no parts",
-        "media-session::single-episode play keeps an empty album (L-06)"
+        "media-session::no collection and no counter: album is the app's name, never empty (#1006)"
       ],
       "call": "mediaMetadata",
       "args": [
@@ -527,7 +528,63 @@
       ],
       "expect": {
         "return": {
-          "album": "",
+          "album": "4a",
+          "artist": "Origin Stories",
+          "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+          "title": "Episode 09: Did Cooking Make Us Human?"
+        }
+      }
+    },
+    {
+      "id": "media-episode/no-collection-album-is-app-name",
+      "covers": [
+        "media-session::no collection and no counter: album is the app's name, never empty (#1006)",
+        "media-session::#1006 leaves title and artist alone: 4a is still never a credit"
+      ],
+      "call": "mediaMetadata",
+      "args": [
+        {
+          "item": {
+            "kind": "episode",
+            "title": "Episode 09: Did Cooking Make Us Human?",
+            "show": "Origin Stories",
+            "start_sec": 10,
+            "end_sec": 120
+          }
+        }
+      ],
+      "expect": {
+        "return": {
+          "album": "4a",
+          "artist": "Origin Stories",
+          "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+          "title": "Episode 09: Did Cooking Make Us Human?"
+        }
+      }
+    },
+    {
+      "id": "media-episode/whitespace-foray-title-album-is-app-name",
+      "covers": [
+        "media-session::no collection and no counter: album is the app's name, never empty (#1006)"
+      ],
+      "call": "mediaMetadata",
+      "args": [
+        {
+          "item": {
+            "kind": "episode",
+            "title": "Episode 09: Did Cooking Make Us Human?",
+            "show": "Origin Stories",
+            "start_sec": 10,
+            "end_sec": 120
+          },
+          "forayTitle": "   ",
+          "index": 0,
+          "total": 0
+        }
+      ],
+      "expect": {
+        "return": {
+          "album": "4a",
           "artist": "Origin Stories",
           "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
           "title": "Episode 09: Did Cooking Make Us Human?"
@@ -537,7 +594,8 @@
     {
       "id": "media-episode/zero-total-with-title-album-is-title",
       "covers": [
-        "media-session::a zero total suppresses the counter — single-episode playback has no parts"
+        "media-session::a zero total suppresses the counter — single-episode playback has no parts",
+        "media-session::an album that has a collection or a counter is unchanged by #1006"
       ],
       "call": "mediaMetadata",
       "args": [
@@ -565,7 +623,10 @@
     },
     {
       "id": "media-episode/counter-without-title-is-a-sentence",
-      "covers": ["media-session::a counter with no Foray title still reads as a sentence"],
+      "covers": [
+        "media-session::a counter with no Foray title still reads as a sentence",
+        "media-session::an album that has a collection or a counter is unchanged by #1006"
+      ],
       "call": "mediaMetadata",
       "args": [
         {
@@ -641,7 +702,7 @@
       "args": [],
       "expect": {
         "return": {
-          "album": "",
+          "album": "4a",
           "artist": "",
           "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
           "title": "4a"
@@ -678,7 +739,7 @@
       "args": [{ "$undefined": true }],
       "expect": {
         "return": {
-          "album": "",
+          "album": "4a",
           "artist": "",
           "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
           "title": "4a"
@@ -694,7 +755,7 @@
       "args": [{}],
       "expect": {
         "return": {
-          "album": "",
+          "album": "4a",
           "artist": "",
           "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
           "title": "4a"
@@ -710,7 +771,7 @@
       "args": [{ "item": null }],
       "expect": {
         "return": {
-          "album": "",
+          "album": "4a",
           "artist": "",
           "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
           "title": "4a"
@@ -726,7 +787,7 @@
       "args": [{ "item": {} }],
       "expect": {
         "return": {
-          "album": "",
+          "album": "4a",
           "artist": "",
           "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
           "title": "4a"
@@ -742,7 +803,7 @@
       "args": [{ "item": { "kind": "tts" } }],
       "expect": {
         "return": {
-          "album": "",
+          "album": "4a",
           "artist": "",
           "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
           "title": "4a"
@@ -767,7 +828,7 @@
       ],
       "expect": {
         "return": {
-          "album": "",
+          "album": "4a",
           "artist": "Origin Stories",
           "artwork": [
             {
@@ -782,7 +843,9 @@
     },
     {
       "id": "media-episode/read-app-name",
-      "covers": [],
+      "covers": [
+        "media-session::no collection and no counter: album is the app's name, never empty (#1006)"
+      ],
       "read": "APP_NAME",
       "expect": { "value": "4a" }
     },
@@ -1107,7 +1170,7 @@
       "expect": {
         "return": {
           "metadata": {
-            "album": "",
+            "album": "4a",
             "artist": "Origin Stories",
             "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
             "title": "Episode 09: Did Cooking Make Us Human?"
@@ -1139,7 +1202,7 @@
       "expect": {
         "return": {
           "metadata": {
-            "album": "",
+            "album": "4a",
             "artist": "Origin Stories",
             "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
             "title": "Episode 09: Did Cooking Make Us Human?"
@@ -1172,7 +1235,7 @@
       "expect": {
         "return": {
           "metadata": {
-            "album": "",
+            "album": "4a",
             "artist": "Origin Stories",
             "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
             "title": "Episode 09: Did Cooking Make Us Human?"
@@ -1205,7 +1268,7 @@
       "expect": {
         "return": {
           "metadata": {
-            "album": "",
+            "album": "4a",
             "artist": "Origin Stories",
             "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
             "title": "Episode 09: Did Cooking Make Us Human?"
@@ -1239,7 +1302,7 @@
       "expect": {
         "return": {
           "metadata": {
-            "album": "",
+            "album": "4a",
             "artist": "Origin Stories",
             "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
             "title": "Episode 09: Did Cooking Make Us Human?"
@@ -1271,7 +1334,7 @@
       "expect": {
         "return": {
           "metadata": {
-            "album": "",
+            "album": "4a",
             "artist": "Origin Stories",
             "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
             "title": "Episode 09: Did Cooking Make Us Human?"
@@ -1325,7 +1388,7 @@
       "expect": {
         "return": {
           "metadata": {
-            "album": "",
+            "album": "4a",
             "artist": "",
             "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
             "title": "4a"
@@ -1345,7 +1408,7 @@
       "expect": {
         "return": {
           "metadata": {
-            "album": "",
+            "album": "4a",
             "artist": "",
             "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
             "title": "4a"

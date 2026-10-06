@@ -90,12 +90,27 @@ final class ParityFamilyTests: XCTestCase {
     func testManagerForayFamily() { assertParityFamily("manager-foray", requireRunner: true) }
     func testPrepareFamily() { assertParityFamily("prepare", requireRunner: true) }
 
+    /// Recorded by NE-45j, ported by NE-45s: the prepare family's seams with
+    /// a narration line in them (a rendered line is an ordinary deck item; the
+    /// clip after a spoken line is prepared at the line's start) and
+    /// `warmsAcross`. It must RUN, with nothing pending.
+    func testPrepareNarrationFamily() { assertParityFamily("prepare-narration", requireRunner: true) }
+
     /// Ported by NE-33: the default voice (the Samantha ruling) and the
     /// pronunciation lexicon's matcher (`SpeechRules`), and what reaches the
     /// synthesiser (1x, the chosen voice) through `EngineCore`. Each must RUN.
     func testDefaultVoiceFamily() { assertParityFamily("default-voice", requireRunner: true) }
     func testLexiconFamily() { assertParityFamily("lexicon", requireRunner: true) }
     func testSpeechRateFamily() { assertParityFamily("speech-rate", requireRunner: true) }
+
+    /// Ported by NE-38rs: route resume (founder Q5), the decision, the port
+    /// classes and keys, and the reducer's replays. It must RUN.
+    func testRouteResumeFamily() { assertParityFamily("route-resume", requireRunner: true) }
+
+    /// Recorded by NE-39j, ported by NE-39s: the rest of queue-manager (the
+    /// warming rules, the rate getter and its snap row, the position writer,
+    /// stop's silence, an unknown ref). It must RUN, with nothing owed.
+    func testManagerRemainderFamily() { assertParityFamily("manager-remainder", requireRunner: true) }
 
     /// Every family in manifest.json, including ones no method above names:
     /// every id executed or owed, no stale pending entry, no whole-tree

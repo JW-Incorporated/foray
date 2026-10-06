@@ -643,12 +643,16 @@ test("ci.yml still declares exactly its five jobs, and #38 added none", () => {
      Linux parity run, G-1a) and `ios-gate` (G-1b). The last two are MEANT to
      become required contexts, at G-1b's founder sitting — which is exactly why
      they are named here, where adding one is a reviewed diff, and why none of
-     them is named `backend` or `data-and-site`. */
+     them is named `backend` or `data-and-site`.
+
+     Raised from eight to nine by PKG-02 (S-09): the advisory `db` job
+     (Postgres service container), not a required check per
+     docs/roadmap/README.md Q30, and not named `backend` or `data-and-site`. */
   const jobs = block(CI, "jobs")
     .split(/\r?\n/)
     .filter((l) => /^ {2}[a-z][\w-]*:/.test(l))
     .map((l) => l.trim().replace(":", ""));
-  assert.deepEqual(jobs.sort(), ["api", "backend", "data-and-site", "engine-parity", "engine-paths", "ios-gate", "ios-kit", "playwright"]);
+  assert.deepEqual(jobs.sort(), ["api", "backend", "data-and-site", "db", "engine-parity", "engine-paths", "ios-gate", "ios-kit", "playwright"]);
 });
 
 /* ───────────────────────────── the cost claim ────────────────────────────── */

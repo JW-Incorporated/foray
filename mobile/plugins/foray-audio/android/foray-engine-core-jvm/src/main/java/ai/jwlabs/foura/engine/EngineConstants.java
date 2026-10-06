@@ -112,7 +112,7 @@ public final class EngineConstants {
         /** {@code CAPABILITIES} */
         public static final List<String> CAPABILITIES = Collections.unmodifiableList(Arrays.asList("episode", "continuation", "restore", "foray"));
         /** {@code COMMANDS} */
-        public static final List<String> COMMANDS = Collections.unmodifiableList(Arrays.asList("playEpisode", "playForay", "setContinuation", "play", "pause", "toggle", "next", "previous", "seekBy", "seekTo", "jump", "stop", "setRate", "setVoice", "setInterludeEnabled", "setPageVisible", "ackAdvances", "ackEvents", "restoreBar", "purge", "relinquish", "audition", "setModeOverride", "setHoldPolicy", "probeSession", "simulateTermination"));
+        public static final List<String> COMMANDS = Collections.unmodifiableList(Arrays.asList("playEpisode", "playForay", "setContinuation", "play", "pause", "toggle", "next", "previous", "seekBy", "seekTo", "jump", "stop", "setRate", "setVoice", "setInterludeEnabled", "setPageVisible", "ackAdvances", "ackEvents", "restoreBar", "purge", "relinquish", "audition", "setModeOverride", "setHoldPolicy", "probeSession", "simulateTermination", "setRouteSharing"));
         /** {@code CONTRACT_KINDS} */
         public static final List<String> CONTRACT_KINDS = Collections.unmodifiableList(Arrays.asList("helloRequest", "helloResponse", "sendRequest", "sendResponse", "readRequest", "rowsResponse", "diagnosticsResponse", "snapshot", "event"));
         /** {@code DEFAULT_HOLD_POLICY} */
@@ -133,6 +133,8 @@ public final class EngineConstants {
         public static final List<String> HOLD_POLICY_KINDS = Collections.unmodifiableList(Arrays.asList("forever", "none", "until"));
         /** {@code MODE_OVERRIDES} */
         public static final List<String> MODE_OVERRIDES = Collections.unmodifiableList(Arrays.asList("auto", "native", "web"));
+        /** {@code NARRATION_PUBLIC_BASE} */
+        public static final String NARRATION_PUBLIC_BASE = "https://audio.jwlabs.ai";
         /** {@code OWNED_PREFIXES} */
         public static final List<String> OWNED_PREFIXES = Collections.unmodifiableList(Arrays.asList("cp_pos:", "cp_foray:", "cp_last_episode"));
         /** {@code PAGE_MODES} */
@@ -149,6 +151,8 @@ public final class EngineConstants {
         public static final List<String> REFUSALS = Collections.unmodifiableList(Arrays.asList("not-loaded", "no-next", "no-previous", "ended", "refused-structure", "capability-off", "session-failed:cannot-interrupt-others", "session-failed:cannot-start-playing", "session-failed:other", "engine-busy", "relinquished", "unknown-cmd"));
         /** {@code RELINQUISH_CAPS} */
         public static final List<String> RELINQUISH_CAPS = Collections.unmodifiableList(Arrays.asList("episode", "continuation", "restore", "foray", "all"));
+        /** {@code ROUTE_SHARING_POLICIES} */
+        public static final List<String> ROUTE_SHARING_POLICIES = Collections.unmodifiableList(Arrays.asList("default", "longFormAudio"));
         /** {@code SESSION_ACTIONS} */
         public static final List<String> SESSION_ACTIONS = Collections.unmodifiableList(Arrays.asList("activate", "deactivate", "deactivate-notify", "reapply-category", "rebuild", "command-failed"));
         /** {@code SESSION_INPUTS} */
@@ -227,6 +231,19 @@ public final class EngineConstants {
         public static final double NARRATION_CHARS_PER_SEC = 17.0;
         /** {@code NARRATION_FALLBACK_SEC} */
         public static final double NARRATION_FALLBACK_SEC = 8.0;
+
+        /** {@code SEEK_MAP} */
+        public static final class SeekMap {
+            private SeekMap() {}
+
+            /** {@code SEEK_MAP.CBR} */
+            public static final String CBR = "cbr";
+            /** {@code SEEK_MAP.VBR_TOC} */
+            public static final String VBR_TOC = "vbr-toc";
+            /** {@code SEEK_MAP.VBR_NOTOC} */
+            public static final String VBR_NOTOC = "vbr-notoc";
+        }
+
         /** {@code SEGMENT} */
         public static final String SEGMENT = "segment";
     }
@@ -335,6 +352,12 @@ public final class EngineConstants {
     public static final class QueueManager {
         private QueueManager() {}
 
+        /** {@code FORAY_CLIP_LOAD_ATTEMPTS} */
+        public static final double FORAY_CLIP_LOAD_ATTEMPTS = 2.0;
+        /** {@code FORAY_CLIP_LOAD_MAX_STEPS} */
+        public static final double FORAY_CLIP_LOAD_MAX_STEPS = 1.0;
+        /** {@code FORAY_CLIP_MAX_SILENCE_SEC} */
+        public static final double FORAY_CLIP_MAX_SILENCE_SEC = 40.0;
         /** {@code NARRATION_DEADLINE_FACTOR} */
         public static final double NARRATION_DEADLINE_FACTOR = 1.5;
         /** {@code NARRATION_DEADLINE_MARGIN_SEC} */
@@ -365,6 +388,16 @@ public final class EngineConstants {
         public static final String TTS = "tts";
     }
 
+    /** {@code player/route-resume.js} */
+    public static final class RouteResume {
+        private RouteResume() {}
+
+        /** {@code ROUTE_RESUME_BLUETOOTH_DEFAULT} */
+        public static final boolean ROUTE_RESUME_BLUETOOTH_DEFAULT = false;
+        /** {@code ROUTE_RESUME_MAX_LOST_SEC} */
+        public static final double ROUTE_RESUME_MAX_LOST_SEC = 86400.0;
+    }
+
     /** {@code player/seam-gap.js} */
     public static final class SeamGap {
         private SeamGap() {}
@@ -383,6 +416,8 @@ public final class EngineConstants {
 
         /** {@code AD_PAD_CEILING_SEC} */
         public static final double AD_PAD_CEILING_SEC = 120.0;
+        /** {@code AD_PAD_SHIPPED} */
+        public static final boolean AD_PAD_SHIPPED = false;
         /** {@code APPROXIMATE} */
         public static final String APPROXIMATE = "approximate";
         /** {@code DRIFT_TOLERANCE_SEC} */

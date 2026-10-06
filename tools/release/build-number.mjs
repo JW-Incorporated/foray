@@ -115,7 +115,18 @@ export function runCli(argv, io = {}) {
     else {
       try {
         const doc = JSON.parse(trimmed);
-        runs = Array.isArray(doc) ? doc : (doc?.workflow_runs ?? []);
+        /* A SINGLE JSON LINE PARSES AS A WHOLE DOCUMENT. release.yml writes
+           one `{id, created_at}` line per run of the day, so the FIRST release
+           of a UTC day hands this a file holding exactly one object, which
+           JSON.parse accepts. Read as an envelope, it had no `workflow_runs`,
+           so the list came out EMPTY and every first-of-the-day release was
+           refused with "run N is not among release.yml's runs" (runs
+           36917371425 and 36945055191, 2026-10-01/02 — both blamed on listing
+           lag at the time). One run object is a one-run list. */
+        if (Array.isArray(doc)) runs = doc;
+        else if (Array.isArray(doc?.workflow_runs)) runs = doc.workflow_runs;
+        else if (doc && typeof doc === "object" && "id" in doc) runs = [doc];
+        else runs = [];
       } catch {
         runs = trimmed.split(/\r?\n/).filter(Boolean).map((l) => JSON.parse(l));
       }

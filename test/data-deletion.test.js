@@ -554,11 +554,37 @@ test("the shipped source names exactly the 22 cp_ key families the audit found",
      Same mechanism: this count failed first, then the policy check, until
      privacy-policy.md §1 got the row. (Both rows landed off 29 on parallel
      branches — main's audit round 2 and engine/m1's NE-13 — so the merge that
-     joined them reads 29 -> 30 -> 31.) */
+     joined them reads 29 -> 30 -> 31.)
+
+     31 -> 32 on 2026-09-30 (PQ-16, #29, docs/roadmap/player-features.md):
+     `cp_downloads`, the offline-downloads record (player/download-store.js):
+     per episode its state, byte count, file location on this device and the
+     length as downloaded, plus the "download over cellular" switch. ONE row,
+     not one per episode. The listener's position in a downloaded episode is
+     NOT in it — `cp_pos:` owns that and the eviction planner takes positions
+     as an argument. The audio files live in the app's own files directory;
+     PQ-18's Delete-my-data purge removes them and PQ-23 adds that sentence
+     to §7. Same mechanism: this count failed first, then the policy check,
+     until privacy-policy.md §1 got the row.
+
+     32 -> 33 on 2026-10-04: `cp_bookmarks`, bookmarks inside episodes (issue
+     #30, PQ-12..14, docs/roadmap/player-features.md). player/bookmarks.js owns
+     the key; app.js writes it through lsGet/lsSet when the Now Playing
+     sheet's Bookmark is pressed. Per episode id: the second marked, when, an
+     optional label, the episode's length then. Device-only — no event type,
+     never sent, never synced (roadmap README Q19). Same mechanism: this count
+     failed first, then the policy check, until privacy-policy.md §1 got the
+     row.
+
+     Still 33 on 2026-10-05: `cp_voice_probe` was retired with the on-device
+     Kokoro probe (founder ruling, issue #1076) — the switch and
+     `player/kokoro-probe.js` are gone — but it stays a family, the way
+     `cp_lastpick` did, because app.js's RETIRED_STORAGE_KEYS names it to
+     remove a copy left on an older device, and its policy row says Retired. */
   const families = [...keyFamiliesInSource().keys()].sort();
   assert.strictEqual(
-    families.length, 31,
-    `expected 31 cp_ key families, found ${families.length}:\n${families.join("\n")}`
+    families.length, 33,
+    `expected 33 cp_ key families, found ${families.length}:\n${families.join("\n")}`
   );
   assert.ok(families.includes("cp_foray:"), "the patterned Foray resume key must be found as a family");
   assert.ok(families.includes("cp_pos:"), "the patterned episode-position key must be found as a family");
@@ -2006,6 +2032,8 @@ function fakeEngine({ rows = {}, purgeOk = true } = {}) {
       ["ForayEngine.modeOverride", "native"], ["ForayEngine.strikes", "0"],
       ["ForayEngine.sentinel", "launch-1"], ["ForayEngine.stickyLegacyBuild", ""],
       ["ForayEngine.restore", '{"v":1,"mode":"episode"}'], ["ForayEngine.holdPolicy", "forever"],
+      ["ForayEngine.knownRoutes", '{"v":1,"salt":"00112233445566778899aabbccddeeff","keys":[]}'],
+      ["ForayEngine.routeSharing", "longFormAudio"],
       ["Application Support/foray-engine/diag.jsonl", "remote route=carAudio"],
     ]),
     async send(cmd) {

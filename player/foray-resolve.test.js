@@ -15,7 +15,9 @@ import {
   listableForays, findForay, foraysReferencingShow, hydrateForayItems, resolveForay, groupBySlot,
   segmentStarts, segmentAtElapsed, forayElapsed, fmtClock, fmtSpan, progressSegments,
   validateForayDocuments, VALIDATION_CODES, isGeneratedDraft, showIdFromSourceId, resolveCites,
+  forayQueueOptions, forayResolveOptions,
 } from "./foray-resolve.js";
+import { AD_PAD_SHIPPED } from "./seek-policy.js";
 /* The resume half of #40. Imported here rather than tested in
    foray-progress.test.js because `progressSegments` is the adapter between the
    two modules, and a narration bridge is exactly the case where the adapter's
@@ -209,6 +211,36 @@ test("hydrate fills timestamps from segments and the show from sources", () => {
   assert.equal(items[0].show, "A Show");
   assert.equal(items[0].duration_sec, 100);
   assert.equal(items[0].why, "why line");
+});
+
+/* DAI-05: the ad pad is measured per EPISODE (ADR-0008 decision 2), so the
+   stamper writes it on the segment-sources row, and hydrate is the one place it
+   can reach the queue from. */
+test("hydrate carries the source row's ad_pad_sec when the segment has none", () => {
+  const f = fixture({ sources: [src("ep-a", { ad_pad_sec: 99.5 })] });
+  const { items } = hydrateForayItems(f.foray, { segments: f.segments, sources: f.sources });
+  assert.equal(items[0].ad_pad_sec, 99.5);
+  assert.equal(items[1].ad_pad_sec, 99.5);
+});
+
+test("a segment-level ad_pad_sec wins over the source's", () => {
+  const f = fixture({
+    segments: [seg("s1", { ad_pad_sec: 40 }), seg("s2", { start_sec: 300, end_sec: 360 })],
+    sources: [src("ep-a", { ad_pad_sec: 99.5 })],
+  });
+  const { items } = hydrateForayItems(f.foray, { segments: f.segments, sources: f.sources });
+  assert.equal(items[0].ad_pad_sec, 40);
+  assert.equal(items[1].ad_pad_sec, 99.5);
+});
+
+test("a source pad hydrates by type: 0 stays 0, a string is null, NaN is null", () => {
+  const padOf = (ad_pad_sec) => {
+    const f = fixture({ items: [item("s1")], sources: [src("ep-a", { ad_pad_sec })] });
+    return hydrateForayItems(f.foray, { segments: f.segments, sources: f.sources }).items[0].ad_pad_sec;
+  };
+  assert.equal(padOf(0), 0);
+  assert.equal(padOf("7"), null);
+  assert.equal(padOf(NaN), null);
 });
 
 test("hydrate keeps the authored slot and label for the running order", () => {
@@ -815,3 +847,42 @@ test("a narration entry carries its resolved cites onto the running order", () =
   assert.equal(tape.cites, undefined, "a tape beat has no citations of its own — only narration does");
 });
 
+/* ---------- the pad switch's entry point (DAI-07a) ---------- */
+
+test("forayQueueOptions defaults allowAdPad to AD_PAD_SHIPPED and resolves items from the join", () => {
+  const r = resolved();
+  const opts = forayQueueOptions(r);
+  assert.equal(opts.allowAdPad, AD_PAD_SHIPPED);
+  assert.equal(opts.allowAdPad, false, "off until DAI-09 flips the switch");
+  assert.equal(opts.isLocalFile, false);
+  assert.equal(opts.resolveItem("ep-a").show, "A Show", "resolveItem reads resolved.sources");
+  assert.equal(opts.resolveItem("ep-nope"), null, "a miss is null, not undefined");
+  assert.equal(forayResolveOptions().allowAdPad, AD_PAD_SHIPPED);
+  assert.equal(forayQueueOptions(r, { isLocalFile: 1 }).isLocalFile, true);
+});
+
+test("an explicit allowAdPad wins over the switch", () => {
+  const r = resolved();
+  assert.equal(forayQueueOptions(r, { allowAdPad: true }).allowAdPad, true);
+  assert.equal(forayQueueOptions(r, { allowAdPad: false }).allowAdPad, false);
+  assert.equal(forayResolveOptions({ allowAdPad: true }).allowAdPad, true);
+  assert.equal(forayResolveOptions({ allowAdPad: false }).allowAdPad, false);
+  // Only a boolean overrides; anything else falls back to the switch.
+  assert.equal(forayResolveOptions({ allowAdPad: "yes" }).allowAdPad, AD_PAD_SHIPPED);
+  assert.equal(forayQueueOptions(r, { allowAdPad: null }).allowAdPad, AD_PAD_SHIPPED);
+});
+
+test("the padded join: with allowAdPad the queue item carries ad_pad_applied_sec, without it 0", () => {
+  const f = fixture({
+    items: [item("s1")],
+    segments: [seg("s1", { start_anchor: "the opening words", end_anchor: "the closing words" })],
+    sources: [src("ep-a", { dai_suspected: true, ad_pad_sec: 100 })],
+  });
+  const base = { segments: f.segments, sources: f.sources };
+  const on = resolveForay(f.foray, { ...base, ...forayResolveOptions({ allowAdPad: true }) });
+  assert.equal(on.playable[0].ad_pad_applied_sec, 100);
+  assert.equal(on.playable[0].end_sec, 300, "the pad extends the stop only");
+  const off = resolveForay(f.foray, { ...base, ...forayResolveOptions({}) });
+  assert.equal(off.playable[0].ad_pad_applied_sec, 0);
+  assert.equal(off.playable[0].end_sec, 200);
+});

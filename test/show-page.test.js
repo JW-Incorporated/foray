@@ -387,9 +387,16 @@ test("against the committed data, no show renders blank while its own artwork si
      entering the fallback. Only shows whose OWN artwork_url is null exercise
      the code this test is about — 53 of them today.
 
-     MUTATION: delete the pool-index lookup from showArtworkUrl() so it is just
-     `return show.artwork_url || null`. `rescued` drops to 0 and the 53 shows
-     land in `offenders`, reported by id. */
+     BACKFILLED (2026-10-05, #560 item 10). PR #1008 filled 52 of the 53 and
+     omega tau was the last, so the committed catalogue has no null left and
+     the real-data pass rescues nothing. Each show the pool has artwork for is
+     therefore ALSO checked as a copy with `artwork_url: null`. That is the
+     only way the fallback still gets entered, and it keeps the mutation
+     below killing.
+
+     MUTATION (run 2026-10-05): delete the pool-index lookup from
+     showArtworkUrl() so it is just `return show.artwork_url || null`. Every
+     stripped copy lands in `offenders`, reported by id. */
   const m = await mountBooted();
   const pool = m.state.discover.items;
 
@@ -401,14 +408,15 @@ test("against the committed data, no show renders blank while its own artwork si
     const resolved = m.ctx.showArtworkUrl(show);
     if (!resolved) offenders.push(show.show_id);
     else if (!show.artwork_url) rescued.push(show.show_id);
+    const stripped = m.ctx.showArtworkUrl({ ...show, artwork_url: null });
+    if (!stripped) offenders.push(`${show.show_id} (artwork_url stripped)`);
+    else rescued.push(`${show.show_id} (artwork_url stripped)`);
   }
 
   assert.deepStrictEqual(offenders, [],
     `these shows render a blank artwork tile although the discover pool carries artwork for them: ${offenders.join(", ")}`);
   assert.ok(rescued.length > 0,
-    "no show in the committed catalogue has a null artwork_url that the pool can fill, so " +
-    "nothing here exercised the fallback. If catalog.json was backfilled that is GOOD news — " +
-    "keep the implication above, which still holds, and drop this line.");
+    "no show in the committed catalogue has discover-pool artwork, so nothing here exercised the fallback");
 });
 
 test("every discover-pool episode for the show renders as a playable ep-row", async () => {
@@ -664,14 +672,20 @@ test("episodesForShow: a show with an id-matched title needs no alias and is una
 /* 4. data/catalog-client.json STAYS IN SYNC WITH data/catalog.json      */
 /* ==================================================================== */
 
-test("catalog-client.json is derived from catalog.json via the committed build script", () => {
+test("catalog-client.json is derived from catalog.json via the committed build script", async () => {
   /* Pins that the checked-in derived file is not stale — CI has no separate
      "regenerate and diff" step, so a hand-edited or out-of-date
      catalog-client.json would otherwise ship silently.
 
      MUTATION: edit data/catalog-client.json by hand after a catalog.json
      change without re-running the build script. This fails on the byte
-     comparison. */
+     comparison.
+
+     + label_scope (docs/roadmap/catalogue-personalization.md PKG-02): the
+     projection must carry it so Similar shows and the playlist generators
+     can refuse a general show's inherited label.
+     MUTATION: remove "label_scope" from CLIENT_SHOW_FIELDS. This fails on the
+     includes() assertion below. */
   const { execFileSync } = require("node:child_process");
   const out = execFileSync(
     process.execPath,
@@ -679,9 +693,12 @@ test("catalog-client.json is derived from catalog.json via the committed build s
     { cwd: ROOT, encoding: "utf8" },
   );
   assert.ok(out.includes("up to date"), out);
+  const { pathToFileURL } = require("node:url");
+  const { CLIENT_SHOW_FIELDS } = await import(pathToFileURL(path.join(ROOT, "tools", "build-catalog-client.mjs")).href);
+  assert.ok(CLIENT_SHOW_FIELDS.includes("label_scope"), "CLIENT_SHOW_FIELDS must project label_scope");
 });
 
-test("catalog-client.json carries exactly the six fields renderShow() reads, plus Family mode's show rating, for every show", () => {
+test("catalog-client.json carries exactly the six fields renderShow() reads, plus Family mode's show rating, label_scope, P-09's chart_rank and CH-1's dai, for every show", () => {
   /* The whitelist is the decision, so it is pinned literally — same pattern as
      playlist-durability.test.js's PLAYLIST_PART_FIELDS pin.
 
@@ -690,11 +707,37 @@ test("catalog-client.json carries exactly the six fields renderShow() reads, plu
      projected shape grows past what this test allows. */
   const client = readJson("data/catalog-client.json");
   /* + "explicit" (audit round 3, data-integrity-4): Family mode decides an
-     unrated episode by its show's catalogue rating (founder Q1 default). */
-  const expectedKeys = ["show_id", "title", "artwork_url", "editorial_note", "taxonomy_node_ids", "episode_count", "explicit"].sort();
+     unrated episode by its show's catalogue rating (founder Q1 default).
+     + "label_scope" (catalogue-personalization PKG-02): "general" marks a
+     broad show whose labels must not be inherited; null until PKG-03. */
+  const expectedKeys = [
+    "show_id", "title", "artwork_url", "editorial_note", "taxonomy_node_ids", "episode_count", "explicit", "label_scope",
+    "chart_rank", // P-09 / PKG-11b: curated Apple chart rank, read by popularityBand from PKG-13
+    "dai", // CH-1 (#1071): the show's DAI class, read by fullCatalogueRowToEpRowItem for chapter-time precision
+  ].sort();
   for (const show of client.shows) {
     assert.deepStrictEqual(Object.keys(show).sort(), expectedKeys, `show ${show.show_id} has an unexpected field set`);
   }
+});
+
+test("a curated show's DAI class rides from catalog-client.json onto its show-page episode rows (CH-1, #1071)", () => {
+  /* Real committed data: the class tools/build-catalog-client.mjs joined from
+     data/dai-classification.json reaches the item the episode page reads, so
+     a stitched show's chapter times read approximate.
+     MUTATION: drop `dai_suspected: show.dai === true,` from
+     fullCatalogueRowToEpRowItem — the stitched show's row reads clean; red.
+     MUTATION 2: join dai on `show?.show_id` in the builder and regenerate —
+     every show's dai is null, so neither fixture assumption holds; red. */
+  const client = readJson("data/catalog-client.json");
+  const stitched = client.shows.find((s) => s.dai === true);
+  const clean = client.shows.find((s) => s.dai === false);
+  assert.ok(stitched && clean, "fixture assumption: catalog-client.json carries both DAI classes");
+  const { ctx } = mount();
+  const ep = { guid: "g1", title: "T", audio_url: "https://cdn.example.com/a.mp3" };
+  const a = ctx.fullCatalogueRowToEpRowItem(stitched, ep);
+  const b = ctx.fullCatalogueRowToEpRowItem(clean, ep);
+  assert.deepStrictEqual([a.dai_suspected, a.dai_known], [true, true]);
+  assert.deepStrictEqual([b.dai_suspected, b.dai_known], [false, true]);
 });
 
 /* ==================================================================== */
@@ -934,6 +977,205 @@ test("renderShow renders no 'Similar shows' section when no other show overlaps"
   m.ctx.renderShow("lonely-show");
   const html = m.view();
   assert.ok(!html.includes("Similar shows"), "must not render an empty 'Similar shows' section");
+});
+
+/* PKG-03 (docs/roadmap/catalogue-personalization.md; founder ruling 24 in
+   docs/roadmap/README.md, catalogue Q2 "yes"): `label_scope: "general"` marks a
+   broad show whose taxonomy_node_ids describe a slice of its episodes, not the
+   show. Overlap on such a label is not similarity, in either direction. */
+
+test("similarShows returns [] for a general show", () => {
+  /* The general show shares BOTH its nodes with B, so without the guard it
+     would get B at the top of a "Similar shows" row — SYSK offered materials
+     science shows off a label 4 of its 30 discover episodes carry (2026-10-04).
+
+     MUTATION: drop `if (show?.label_scope === "general") return [];` from
+     similarShows. B comes back and the length assertion fails. */
+  const m = mount();
+  const G = { show_id: "show-g", taxonomy_node_ids: ["x", "y"], label_scope: "general" };
+  const B = { show_id: "show-b", taxonomy_node_ids: ["x", "y"] };
+  m.state.catalog = { shows: [G, B] };
+  /* Length, not deepStrictEqual against `[]`: the result is an Array from the
+     app's vm realm, which deepStrictEqual refuses to equate with this realm's. */
+  assert.strictEqual(m.ctx.similarShows(G).length, 0, "a general show must get no Similar shows");
+});
+
+test("similarShows never lists a general show as a candidate", () => {
+  /* G outranks C on shared nodes (2 against 1), so a filter that let it
+     through would put it FIRST — the most visible slot, for the least honest
+     match. C must still come back: refusing the general show is not refusing
+     the row.
+
+     MUTATION: drop `&& s.label_scope !== "general"` from the candidate filter.
+     G appears ahead of C and the exact-order assertion fails. */
+  const m = mount();
+  const A = { show_id: "show-a", taxonomy_node_ids: ["x", "y"] };
+  const G = { show_id: "show-g", taxonomy_node_ids: ["x", "y"], label_scope: "general" };
+  const C = { show_id: "show-c", taxonomy_node_ids: ["x"] };
+  m.state.catalog = { shows: [A, G, C] };
+  assert.deepStrictEqual(m.ctx.similarShows(A).map((s) => s.show_id), ["show-c"], "a general show must never be offered as similar");
+});
+
+test("catalog.json: every label_scope value is 'general' or absent", () => {
+  /* The marker is a closed vocabulary of one: app.js and the generators test
+     `=== "general"`, so any other spelling ("broad", "General", null written
+     in by hand) silently means NOT general and the show's labels get inherited
+     again. Absent is the only other legal state (PKG-03: "All others: no
+     field"). Also pins that the curation pass actually landed on main — zero
+     general shows would make every refusal above dead code on real data.
+
+     MUTATION: set one show's label_scope in data/catalog.json to "broad".
+     The per-show assertion fails naming that show. */
+  const catalog = readJson("data/catalog.json");
+  let general = 0;
+  for (const show of catalog.shows) {
+    if (!Object.prototype.hasOwnProperty.call(show, "label_scope")) continue;
+    assert.strictEqual(show.label_scope, "general", `${show.show_id}: label_scope must be "general" or absent`);
+    general++;
+  }
+  assert.ok(general > 0, "fixture assumption: PKG-03 marked at least one show general");
+});
+
+/* PKG-10 (docs/roadmap/catalogue-personalization.md §3, finishing #560 item 4):
+   breadth show pages get chips and Similar shows. Once the backend keeps a
+   breadth show's folded taxonomy nodes (PKG-09), two things must hold on the
+   client: a breadth row that carries nodes renders them like a curated show's,
+   and a show seeded from the loaded show index — which carries no nodes — is
+   upgraded to the API row instead of staying bare for the whole visit. */
+
+/** A non-booted mount with one curated show on `science` and nothing else, so
+    a breadth show on `science` has exactly one Similar show to find. */
+function mountWithScienceShow() {
+  const m = mount();
+  m.state.catalog = { shows: [{ show_id: "curated-sci", title: "Curated Science Show", artwork_url: null, taxonomy_node_ids: ["science"], editorial_note: null }] };
+  m.state.discover = { items: [] };
+  m.state.taxonomy = { nodes: [{ id: "science", label: "Science" }] };
+  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+  return m;
+}
+
+/** Answer `api/shows/search?id=` with `show`; every other request hangs, as an
+    un-booted mount's do. */
+function answerShowSearch(m, show) {
+  m.ctx.fetch = (url) => (String(url).includes("api/shows/search")
+    ? Promise.resolve({ ok: true, status: 200, json: async () => ({ show, degraded: false }) })
+    : new Promise(() => {}));
+}
+
+/** Seed the loaded show index with one breadth row, the shape decodeShowIndex
+    leaves in memory (a title and a tier, no taxonomy nodes). */
+function seedShowIndex(m, row) {
+  m.ctx.__row = row;
+  m.evalIn("showIndex = { keys: [], rows: [__row] }");
+}
+
+test("a breadth row in the cache with taxonomy_node_ids renders chips and a Similar shows section", () => {
+  /* The page reads nodes off whichever row showById answers; nothing about a
+     breadth show should stop them rendering once the row carries them.
+     MUTATION: make similarShows return [] for `show.tier === "breadth"`. The
+     Similar shows assertions fail. RUN: failed as named. */
+  const m = mountWithScienceShow();
+  m.state.breadthShowCache = {
+    "123": { show_id: "123", title: "Breadth Science Hour", artwork_url: null, editorial_note: null, taxonomy_node_ids: ["science"], tier: "breadth" },
+  };
+  m.ctx.renderShow("123");
+  const html = m.view();
+  assert.ok(html.includes('href="#/category/science"'), "the breadth show's taxonomy chip must render");
+  assert.ok(html.includes("Similar shows"), "the breadth show must get a Similar shows section");
+  assert.ok(html.includes(`href="#/show/curated-sci"`), "…linking to the curated show it overlaps");
+});
+
+test("an index-seeded show is upgraded when the API row carries nodes", async () => {
+  /* The index row paints the page at once with `taxonomy_node_ids: []`; the
+     API row then upgrades it, and the page is drawn again with chips and
+     Similar shows. The seeded title survives a row that lacks one, because the
+     row is merged over the seed rather than replacing it.
+     MUTATION: restore the early return — delete the `upgradeBreadthShowRow`
+     call from resolveMissingShow's index branch. The cache row keeps its empty
+     nodes and the chip assertion fails. RUN: failed as named. */
+  const m = mountWithScienceShow();
+  seedShowIndex(m, { show_id: "123", title: "Breadth Science Hour", tier: "breadth" });
+  answerShowSearch(m, { show_id: "123", artwork_url: null, taxonomy_node_ids: ["science"], tier: "breadth" });
+  m.ctx.location.hash = "#/show/123";
+
+  m.ctx.renderShow("123");
+  const seeded = m.view();
+  assert.ok(seeded.includes("Breadth Science Hour"), "the index row paints the page at once");
+  assert.ok(!seeded.includes('href="#/category/science"'), "fixture assumption: the seeded page has no chips");
+
+  const html = await settled(m);
+  const row = m.state.breadthShowCache["123"];
+  assert.strictEqual(row.taxonomy_node_ids.length, 1, "the cache row must carry the API row's nodes");
+  assert.strictEqual(row.taxonomy_node_ids[0], "science");
+  assert.strictEqual(row.title, "Breadth Science Hour", "the seed's title survives a row without one");
+  assert.ok(html.includes('href="#/category/science"'), "the upgraded page renders the chip");
+  assert.ok(html.includes("Similar shows"), "…and a Similar shows section");
+  assert.ok(html.includes("Breadth Science Hour"), "…still under the show's title");
+
+  /* …AND NOT WHEN THE LISTENER HAS LEFT. The same row arriving after the
+     listener moved on must not repaint the show over the page they are on
+     (the upgrade's `renderEpoch++` + renderShow would otherwise do exactly
+     that). Two departures, one per half of the guard: (a) the hash moved to
+     another route but nothing re-rendered yet, which only `onShowRoute`
+     sees; (b) the route is unchanged but a newer render superseded this one,
+     which only `isCurrentRender` sees.
+     MUTATION: delete the isCurrentRender/onShowRoute guard in
+     upgradeBreadthShowRow -> red ((a) fails first). MUTATION 2: drop only
+     `!onShowRoute(show_id)` -> (a) red. MUTATION 3: drop only
+     `!isCurrentRender()` -> (b) red. RUN: all three failed as named. */
+  for (const leave of [
+    { name: "(a) hash moved away", go: (mm) => { mm.ctx.location.hash = "#/shows"; } },
+    { name: "(b) newer render", go: (mm) => { mm.evalIn("renderEpoch++"); } },
+  ]) {
+    const mm = mountWithScienceShow();
+    seedShowIndex(mm, { show_id: "123", title: "Breadth Science Hour", tier: "breadth" });
+    let answer;
+    const pending = new Promise((r) => { answer = r; });
+    mm.ctx.fetch = (url) => (String(url).includes("api/shows/search")
+      ? pending
+      : new Promise(() => {}));
+    mm.ctx.location.hash = "#/show/123";
+    let renders = 0;
+    const realRenderShow = mm.ctx.renderShow;
+    mm.ctx.renderShow = (...args) => { renders++; return realRenderShow(...args); };
+    mm.ctx.renderShow("123");
+    const seededRenders = renders;
+    leave.go(mm);
+    mm.ctx.document.querySelector("#view").innerHTML = "<p>somewhere else</p>";
+    answer({ ok: true, status: 200, json: async () => ({ show: { show_id: "123", artwork_url: null, taxonomy_node_ids: ["science"], tier: "breadth" }, degraded: false }) });
+    const after = await settled(mm);
+    assert.strictEqual(renders, seededRenders, `${leave.name}: a row arriving after the listener left must not re-render the show`);
+    assert.ok(!after.includes("Similar shows") && !after.includes('href="#/category/science"'),
+      `${leave.name}: the left page must not be painted over with the upgraded show`);
+    assert.strictEqual(after, "<p>somewhere else</p>", `${leave.name}: the page the listener is on stays as it is`);
+  }
+});
+
+test("an API row without nodes leaves the seeded row and does not re-render", async () => {
+  /* Nothing on the page would change, so nothing is drawn again: a repaint
+     with the same content is a flicker, and it would restart the episode load.
+     The row's artwork is deliberately different from the seed's, so a merge
+     that slipped through is visible in the cache as well as in the count.
+     MUTATION: drop the `row.taxonomy_node_ids.length` guard. The row is merged
+     (the seed's null artwork is overwritten) and renderShow runs a second
+     time; both assertions fail. RUN: failed as named. */
+  const m = mountWithScienceShow();
+  seedShowIndex(m, { show_id: "123", title: "Breadth Science Hour", tier: "breadth" });
+  answerShowSearch(m, { show_id: "123", title: "Breadth Science Hour", artwork_url: "https://img.test/a.jpg", taxonomy_node_ids: [], tier: "breadth" });
+  m.ctx.location.hash = "#/show/123";
+  let renders = 0;
+  const realRenderShow = m.ctx.renderShow;
+  m.ctx.renderShow = (...args) => { renders++; return realRenderShow(...args); };
+
+  /* The first call re-enters once through resolveMissingShow's index seed, so
+     the count is read after it rather than assumed. */
+  m.ctx.renderShow("123");
+  const seededRenders = renders;
+  assert.ok(m.view().includes("Breadth Science Hour"), "fixture assumption: the index row painted the page");
+  await settled(m);
+  assert.strictEqual(renders, seededRenders, "a row without nodes must not re-render the page");
+  assert.strictEqual(m.state.breadthShowCache["123"].artwork_url, null, "the seeded row must be left as it was");
+  assert.ok(!m.view().includes("Similar shows"), "and the page still has no Similar shows");
 });
 
 test("catalog-client.json is measurably smaller than catalog.json (the gzip claim is real)", () => {

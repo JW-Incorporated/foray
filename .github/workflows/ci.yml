@@ -57,6 +57,84 @@ jobs:
       - run: npm run typecheck
       - run: npm test
 
+  db:
+    # S-09 (kanban t_f00c0a28), re-landed as PKG-02 (docs/roadmap/shows-search.md
+    # section 3): the Postgres path (migrations 0017-0019,
+    # tools/shows/load-postgres.mjs, tools/shows/search-shows.mjs) is inert
+    # in production without DATABASE_URL/SHOWS_DATABASE_URL (both this
+    # job's own steps and the `backend`/tools/shows test suites
+    # degrade to a documented no-op/skip when neither is set — see
+    # migrate.ts's own "degrades gracefully" contract and
+    # load-postgres.mjs's NO-OP path). This job is the one place either
+    # variable IS set, so it is the only CI job that actually exercises
+    # this code against a real database: applies every migration twice
+    # (idempotency), then re-runs the `backend` suite with its DB-gated
+    # tests live (showsPostgresLive.test.ts) and tools/shows's suite with
+    # its DB-gated tests live (shows-postgres-integration.test.mjs: the
+    # golden-query set, migrations-apply-twice, the 0019 rekey).
+    #
+    # NOT added to protect-main's required-checks list (`backend`,
+    # `data-and-site`): docs/roadmap/README.md founder question 30 rules
+    # "The new `db` CI job is not a required check yet." Same reasoning
+    # `api`/`ios-kit` document for themselves: promoting a job to required
+    # is a founder call, and this job runs and reports regardless.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: foray_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            tools/shows/package-lock.json
+      - name: install backend deps
+        working-directory: backend
+        run: npm ci
+      - name: apply migrations (0001-0019) twice — proves clean-twice idempotency
+        working-directory: backend
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/foray_ci
+        run: |
+          set -euo pipefail
+          npx tsx src/cli/migrate.ts
+          npx tsx src/cli/migrate.ts   # second pass: every file must report "skip", none may error
+      - name: backend tests against the live database (showsPostgresLive.test.ts + full suite)
+        working-directory: backend
+        # SHOWS_DATABASE_URL, not DATABASE_URL: userInterests.test.ts's
+        # createUserInterestsProvider suite asserts DATABASE_URL is ABSENT
+        # (it guards a not-yet-implemented PostgresUserInterestsProvider —
+        # a different card's future work). showsPostgresLive.test.ts checks
+        # SHOWS_DATABASE_URL || DATABASE_URL for exactly this reason, so this
+        # job exercises it without setting the variable that test depends
+        # on staying unset.
+        env:
+          SHOWS_DATABASE_URL: postgres://postgres:postgres@localhost:5432/foray_ci
+        run: npm test
+      - name: install tools/shows deps
+        working-directory: tools/shows
+        run: npm ci
+      - name: tools/shows tests against the live database (golden-query set, migration idempotency, rekey)
+        working-directory: tools/shows
+        env:
+          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/foray_ci
+        run: npm test
+
   api:
     # S-02 (kanban t_4bd3c0a3): api/package.json now declares dependencies
     # (pg, fast-xml-parser) and its own test script, so this mirrors the
@@ -110,8 +188,8 @@ jobs:
     # NE-06 (docs/native-engine-plan.md §6.8, G-1b). ONE place that answers
     # "did this event touch the native engine's inputs, or any Swift?", read by
     # the three jobs below that gate on it: `engine-parity` short-circuits
-    # when no engine path changed, `ios-kit` runs on a pr-hygiene dispatch only
-    # when a Swift path changed, and `ios-gate` waits for ios-kit only then.
+    # when no engine path changed, `ios-kit` runs only when a Swift or engine
+    # path changed, and `ios-gate` waits for ios-kit only then.
     # One classifier, so the three can never disagree about what changed.
     #
     # The logic is tools/ci/engine-ci.mjs (a DENIED path, tested in
@@ -148,20 +226,41 @@ jobs:
     # state machine + intent grammar tests can run on a CI Mac — the only
     # Mac this project currently has.
     #
-    # Skipped on `workflow_dispatch` UNLESS A SWIFT PATH CHANGED. The dispatch
-    # exists so pr-hygiene can re-report the REQUIRED checks on a PR head it
-    # just updated, and macOS runner minutes bill at 10x, so a content PR's
-    # auto-update still costs no Mac. But NE-06's required `ios-gate` reads
-    # this job's verdict on the SAME run, and a Swift PR's updated head would
-    # otherwise have no ios-kit at all: its gate would go red for want of a
-    # run, stranding the PR the dispatch exists to un-strand. A push or PR
-    # runs it normally, whatever changed.
+    # RUNS ONLY WHEN A SWIFT OR ENGINE PATH CHANGED, on every event
+    # (2026-10-04; until then push and pull_request ran it whatever changed,
+    # and only a dispatch skipped). WHY: this is a ~15-minute macOS job, and
+    # with a burst of PRs the macOS queue saturates. Measured 2026-10-04:
+    # release run 37228218257's dispatched ios-kit sat QUEUED for 40+ minutes
+    # behind content PRs' ios-kits, and release-checks refused the TestFlight.
+    # It is not a required check; the required `ios-gate` already encodes "no
+    # Swift path changed = nothing to wait for" and passes in seconds then, so
+    # a content PR's ios-kit was buying nothing but queue. SWIFT_PREFIXES
+    # (tools/ci/engine-ci.mjs) is meant to name every file this job reads —
+    # every SwiftPM manifest, the parity fixtures, mobile/'s lockfile, the web
+    # jingle InterludeSeamTests pins by hash, this file — and it spreads
+    # ENGINE_PREFIXES, so a parity change still gets its macOS host run beside
+    # engine-parity's Linux one. That makes the `engine != 'false'` clause
+    # below a safeguard with no effect today (engine=true implies swift=true);
+    # it matters only if SWIFT_PREFIXES is ever narrowed. ONE KNOWN READ IS
+    # LEFT OUT ON PURPOSE: the parity harness's `$foray` lookup and
+    # committedForays count read data/forays.json, and listing it would put
+    # this job on every Foray publish; npm test's NE-29s (player/parity/
+    # run.test.js, a required job) checks the same reads on every PR. The
+    # reasoning and the accepted residual are over SWIFT_PREFIXES.
+    #
+    # The changed-path list is `changedFiles` in engine-ci.mjs, and every "could
+    # not tell" there is "everything changed". A dispatch ON the default branch
+    # is "unknown" by design, so release-checks' dispatch on main (and anyone's
+    # manual run there) still runs this job IN FULL. A push to main that skipped
+    # it leaves a `skipped` check run on that SHA, which release-checks counts as
+    # missing and dispatches over (engine-ci.mjs releaseDispatchPlan).
     #
     # `!cancelled()` rather than a bare condition: without it a failed
-    # `engine-paths` would skip this job on push and pull_request too, and a
-    # skipped job looks like a pass. Only an explicit "false" skips it.
+    # `engine-paths` would skip this job, and a skipped job looks like a pass.
+    # A failed engine-paths leaves both outputs EMPTY, and empty is not
+    # 'false': only an explicit "false" from BOTH skips it.
     needs: engine-paths
-    if: ${{ !cancelled() && (github.event_name != 'workflow_dispatch' || needs.engine-paths.outputs.swift != 'false') }}
+    if: ${{ !cancelled() && (needs.engine-paths.outputs.swift != 'false' || needs.engine-paths.outputs.engine != 'false') }}
     runs-on: macos-latest
     timeout-minutes: 45
     steps:

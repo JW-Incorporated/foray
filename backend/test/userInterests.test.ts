@@ -153,9 +153,15 @@ describe("InMemoryUserInterestsProvider", () => {
 
 describe("createUserInterestsProvider", () => {
   it("returns an InMemoryUserInterestsProvider when DATABASE_URL is absent (repo .env is empty for this build)", () => {
-    expect(env.databaseUrl).toBeUndefined();
-    const provider = createUserInterestsProvider();
-    expect(provider).toBeInstanceOf(InMemoryUserInterestsProvider);
+    // Set the absence explicitly so the test does not depend on backend/.env (#798).
+    const original = env.databaseUrl;
+    env.databaseUrl = undefined;
+    try {
+      const provider = createUserInterestsProvider();
+      expect(provider).toBeInstanceOf(InMemoryUserInterestsProvider);
+    } finally {
+      env.databaseUrl = original;
+    }
   });
 
   it("throws a clear not-implemented error when DATABASE_URL is set (no PostgresUserInterestsProvider yet)", () => {
