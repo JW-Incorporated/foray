@@ -684,8 +684,11 @@ test("app.js keeps no copy of the record's rules: no key literal, no downloadsWi
      "failed" case. */
   const client = fs.readFileSync(path.join(ROOT, "player", "client.js"), "utf8").replace(/\r\n/g, "\n");
   const code = strip(client);
+  /* Two call sites: play()'s success line below, and the native lane's
+     `settleEngineLocalLoad` (on the engine's `playing` snapshot for a load
+     play() handed back still loading; test 11 runs it). Nowhere else. */
   const calls = code.match(/onPlayedFromFile\?\.\(/g) || [];
-  assert.strictEqual(calls.length, 1, "one call site");
+  assert.strictEqual(calls.length, 2, "two call sites");
   const fnBody = (head) => {
     const at = code.indexOf(head);
     assert.ok(at >= 0, head);
@@ -696,6 +699,7 @@ test("app.js keeps no copy of the record's rules: no key literal, no downloadsWi
     }
     throw new Error(`unbalanced ${head}`);
   };
+  assert.match(fnBody("function settleEngineLocalLoad(ev) {"), /onPlayedFromFile\?\.\(/, "the second is the engine's settle");
   assert.doesNotMatch(fnBody("function localSourceFor(item, opts) {"), /onPlayedFromFile/, "never in the mapper");
   assert.doesNotMatch(fnBody("function degradeLocalPlay() {"), /onPlayedFromFile/, "never on the degrade");
   const start = code.indexOf("if (!loadError && manager.state?.type !== \"idle\" && localAttempt === ticket) localAttempt = null;");
@@ -904,4 +908,126 @@ test("offline, a missing download is dropped: the record is missing, Up Next los
   assert.deepStrictEqual(on.queue(), [on.m.item.id, on.m.other.id], "online: Up Next untouched, the episode streams");
   assert.deepStrictEqual(on.plays, [], "app.js starts nothing: client.js's retry streams it");
   assert.ok(on.said().includes("Downloaded copy missing — streaming instead."));
+});
+
+/* The NATIVE lane (review of offline-missing-file). The shipping iOS default
+   is the native engine (mobile/ENGINE_DEFAULT.json: ios "native", with
+   "episode"), and there a missing file fails AFTER play() returns: the
+   facade's play() resolves when `playEpisode` is taken, the engine loads the
+   file afterwards, and the failure is an `error` event with code "load". */
+
+test("native lane: play() holds the downloaded copy's ticket while the engine is still loading it, and stamps nothing yet", () => {
+  /* The spend line, executed over each lane and state play() can return in.
+     MUTATION: delete the `if (engineMode === "native" && ... "loadingItem")
+     ticket = null;` hold — the ticket is spent on a load that has not
+     happened, the engine's later load error has nothing to degrade (no
+     stream online, no drop offline), and the missing file is stamped as
+     played; red on the native loadingItem case. */
+  const start = CLIENT_CODE.indexOf("if (engineMode === \"native\" && ticket && localAttempt === ticket");
+  const end = CLIENT_CODE.indexOf("if (loadError) throw loadError.err;");
+  assert.ok(start > 0 && end > start, "the hold precedes the spend, before the rethrow");
+  const snippet = CLIENT_CODE.slice(start, end);
+  const run = ({ engineMode, type, loadError = null }) => {
+    const T = { item: { id: "ep-1" }, opts: {} };
+    const heard = [];
+    const window = { forayDownloads: { onPlayedFromFile: (id) => heard.push(id) } };
+    const left = new Function("engineMode", "loadError", "manager", "localAttempt", "ticket", "item", "window",
+      `${snippet}\nreturn localAttempt;`)(engineMode, loadError, { state: { type } }, T, T, { id: "ep-1" }, window);
+    return { held: left === T, heard };
+  };
+  assert.deepStrictEqual(run({ engineMode: "native", type: "loadingItem" }), { held: true, heard: [] },
+    "native, still loading: the ticket waits for the engine's word, nothing stamped");
+  assert.deepStrictEqual(run({ engineMode: "native", type: "playing" }), { held: false, heard: ["ep-1"] },
+    "native, already playing by the reply: spent and stamped, as before");
+  assert.deepStrictEqual(run({ engineMode: "js", type: "loadingItem" }), { held: false, heard: ["ep-1"] },
+    "the JS lane settles its load inside play(): unchanged");
+  assert.deepStrictEqual(run({ engineMode: "native", type: "loadingItem", loadError: { err: new Error("x") } }).heard, [],
+    "a thrown play is never a hold, never a stamp");
+});
+
+test("native lane: the engine's load error over a held ticket streams online and drops offline; a playing snapshot spends it", async () => {
+  /* settleEngineLocalLoad + degradeLocalPlay, executed together over one
+     shared ticket, and onEngineEvent's call into them.
+     MUTATION: delete `settleEngineLocalLoad(ev);` from onEngineEvent — the
+     engine's load error reaches nothing: no earcon, no drop, no stream; red
+     on the wiring case.
+     MUTATION 2: drop the `(s.state !== "playing" && s.state !== "ended")`
+     test — the idle snapshot the engine sends JUST BEFORE its load error
+     spends the ticket, and the error then degrades nothing; red.
+     MUTATION 3: drop `if (ev.code !== "load") return;` — a hop the engine
+     walked (`chain-start`) drops or streams the episode on screen; red.
+     MUTATION 4: drop the `retry.then(...)` chain — a stream retry that fails
+     too is never painted; red on `reports`. */
+  const src = `${clientFn("function degradeLocalPlay() {")}\n${clientFn("function settleEngineLocalLoad(ev) {")}`;
+  const lane = ({ online, playOk = true, currentId = "ep-1" }) => {
+    const log = { missing: [], plays: [], lines: [], earcons: 0, stamped: [], reports: [] };
+    const window = { forayDownloads: {
+      onMissing: (...a) => log.missing.push(a),
+      onPlayedFromFile: (id) => log.stamped.push(id),
+    } };
+    const ForayPlayer = {
+      play: (item, opts) => { log.plays.push({ id: item.id, opts }); return Promise.resolve(playOk); },
+      reportPlayFailure: (e) => log.reports.push(e),
+    };
+    const api = new Function(
+      "current", "downloadStore", "browserOnline", "setPlayFailure", "EP_MISSING_OFFLINE",
+      "playEarcon", "window", "ForayPlayer",
+      `let localAttempt = { item: { id: "ep-1" }, opts: { why: "w" } };\n${src}\n` +
+      "return { settle: settleEngineLocalLoad, held: () => localAttempt !== null };",
+    )(
+      { id: currentId, isLocalFile: true }, STORE, () => online, (line) => log.lines.push(line), "OFFLINE-LINE",
+      () => { log.earcons++; }, window, ForayPlayer,
+    );
+    return { ...api, log };
+  };
+  const snap = (state, itemId = "ep-1") => ({ type: "snapshot", snapshot: { state, itemId } });
+  const loadError = { type: "error", code: "load", message: "decode" };
+
+  /* Still loading, then the idle snapshot that precedes the error: held. */
+  const off = lane({ online: false });
+  off.settle(snap("loadingItem"));
+  off.settle(snap("idle"));
+  off.settle({ type: "error", code: "chain-start" });
+  assert.strictEqual(off.held(), true, "loading, idle and a hop's error leave the ticket alone");
+  off.settle(loadError);
+  assert.deepStrictEqual(off.log.missing, [["ep-1", { offline: true }]], "offline: dropped, app.js advances Up Next");
+  assert.strictEqual(off.log.earcons, 1, "with the earcon");
+  assert.deepStrictEqual(off.log.lines, ["OFFLINE-LINE"]);
+  assert.deepStrictEqual(off.log.plays, [], "no stream with no network");
+  assert.deepStrictEqual(off.log.stamped, [], "a missing file is never stamped as played");
+  off.settle(loadError);
+  assert.strictEqual(off.log.earcons, 1, "spent: a second report degrades nothing");
+
+  const on = lane({ online: true, playOk: false });
+  on.settle(snap("idle"));
+  on.settle(loadError);
+  await settle();
+  assert.deepStrictEqual(on.log.missing, [["ep-1"]], "online: marked, streaming instead");
+  assert.deepStrictEqual(on.log.plays, [{ id: "ep-1", opts: { why: "w", noLocal: true } }], "streamed once, noLocal");
+  assert.strictEqual(on.log.earcons, 0);
+  assert.deepStrictEqual(on.log.reports, [null], "and a stream that fails too is painted");
+
+  const played = lane({ online: false });
+  played.settle(snap("playing", "ep-other"));
+  assert.strictEqual(played.held(), true, "another item's snapshot is not this load");
+  played.settle(snap("playing"));
+  assert.deepStrictEqual(played.log.stamped, ["ep-1"], "the file played: stamped once");
+  assert.strictEqual(played.held(), false, "and the ticket is spent");
+  played.settle(loadError);
+  assert.deepStrictEqual([played.log.missing, played.log.earcons], [[], 0], "a later failure about a file that played degrades nothing");
+
+  const moved = lane({ online: false, currentId: "ep-2" });
+  moved.settle(loadError);
+  assert.deepStrictEqual([moved.log.missing, moved.log.earcons, moved.log.plays], [[], 0, []], "the bar is on another episode: nothing");
+
+  /* The wiring: onEngineEvent hands every native event to the settle, and
+     none on the JS lane. */
+  const wire = (engineMode) => {
+    const seen = [];
+    new Function("engineMode", "settleEngineLocalLoad", `${clientFn("function onEngineEvent(ev) {")}\nonEngineEvent(${JSON.stringify(loadError)});`)(
+      engineMode, (ev) => seen.push(ev.type));
+    return seen;
+  };
+  assert.deepStrictEqual(wire("native"), ["error"], "native: the engine's load error reaches the settle");
+  assert.deepStrictEqual(wire("js"), [], "the JS lane settles inside play()");
 });
