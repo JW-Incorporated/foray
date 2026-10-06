@@ -13,7 +13,7 @@ Source of truth for a cleared session. Update on every deliverable.
 
 | Phase | Status | Notes |
 |---|---|---|
-| Kickoff (STATE.md + HUMAN-ACTIONS via doc-only PR to main) | in progress | |
+| Kickoff (STATE.md + HUMAN-ACTIONS via doc-only PR to main) | done | PR #1085 (auto-merges on green); HA #142 Apple lab setup, HA #143 Play lab setup |
 | 0a Eyes | not started | |
 | 0b Judge | not started | |
 | 0c Test classification | not started | |
@@ -27,6 +27,17 @@ Source of truth for a cleared session. Update on every deliverable.
 ## In flight
 
 (Workflow run IDs and what they are doing. Clear an entry when it finishes.)
+
+- **`wf_bab57673-e04` "redesign-2026-night-1"** — launched 2026-10-05 19:40 PDT.
+  Runs 0a Eyes, 0b Judge, 0c Tests, 0d Split, 0e Lab, 1 Research, then 2
+  Directions (5 Fable art directors: editorial, ambient, native-2026, tactile,
+  clarity), Rank, and the checkpoint package (artifacts + HUMAN-ACTIONS PR).
+  Its own git steps commit to the trunk and update this file as phases land.
+  Script: `C:\Users\Fourtys\.claude\projects\C--Users-Fourtys-Documents-Claude-Projects-foray--claude-worktrees-redesign-2026\feb4d3af-2e95-4551-b3cf-e583135ec9ff\workflows\scripts\redesign-2026-night-1-wf_bab57673-e04.js`.
+  If it died: relaunch with Workflow({scriptPath, resumeFromRunId: "wf_bab57673-e04"})
+  (cached agents return instantly; works only in the same session). In a new
+  session, check what is on disk and on origin (`redesign/p0-split`,
+  `redesign/p0-lab`, `docs/redesign-2026/*`) and relaunch only the missing parts.
 
 ## Blocked
 
