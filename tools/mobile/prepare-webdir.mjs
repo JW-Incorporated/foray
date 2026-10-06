@@ -374,21 +374,12 @@ export const SHELL_ONLY_FILES = [
     dest: "foray-type-scale.js",
     module: true,
   },
-  /* K-01's measurement passage (docs/bundled-voice-plan.md). NOT a script —
-     `shellScriptTags` filters this list to `.js`, so this entry is copied and
-     never injected — and it is here rather than fetched from `tools/` because
-     the bundle root IS the app's origin root: nothing under `tools/` exists
-     inside the shell, so a probe that fetched its own passage from the repo
-     path would 404 on the one host the measurement has to run on.
-
-     ~1.6 KB, which is the whole of this card's bundle cost. THE MODEL IS NOT
-     HERE AND MUST NEVER BE — see `assertNoModelWeights` above: 86 MB of
-     Kokoro weights against a 3 MB cap is not a budget conversation, it is a
-     different delivery mechanism (`tools/mobile/fetch-models.mjs`, K-06). */
-  {
-    src: "tools/mobile/kokoro-probe-passage.json",
-    dest: "kokoro-probe-passage.json",
-  },
+  /* K-01's measurement passage (`tools/mobile/kokoro-probe-passage.json`) used
+     to be copied here for the on-device Kokoro probe. The probe left the app
+     bundle on 2026-10-05 (founder ruling, issue #1076): narration renders
+     centrally (docs/DECISIONS.md 2026-09-28), so nothing in the shell fetches
+     the passage any more. The file stays in `tools/` for the local narration
+     tools (tools/narration/render-audition.py, bench-narration.py). */
 ];
 
 /** The `<script>` tags the bundle's `index.html` needs for `SHELL_ONLY_FILES`.

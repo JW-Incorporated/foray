@@ -2208,6 +2208,32 @@ test("REAL REPO: the sliced bundle, its budgets and the headroom that is left", 
          per-file budget of its own (PROJECTED_DATA, 138 KB), so its nightly growth
          no longer reaches this line unannounced. The Kokoro question #1039 left
          with the founder is untouched: the next feature-code red is still its. */
+      /* THE LEVER, PULLED: 2026-10-05, issue #1076. The founder answered the
+         Kokoro question #1039 left open — "Remove it (Recommended)" (ruling
+         recorded verbatim on #1076) — and the on-device Kokoro probe left the
+         bundle with every page hook that only existed to reach it. THIS LINE
+         DID NOT MOVE: it stays at #279's 2.8 MB and MAX_BYTES at 3 MB; the
+         freed bytes are headroom, not a reason to lower or raise anything.
+
+         RE-MEASURED 2026-10-05 (LF, minified, as CI measures it): main
+         (8d0b4300, with #279's df sidecar) is 2,782,882 B; the branch, merged
+         with it, is 2,705,091 B — 77,791 B freed. player/kokoro-probe.js
+         31,459 B and kokoro-probe-passage.json 34,794 B (66,253 B, the figure
+         #1039 named), plus the probe's page half:
+         app.js -8,393 (the Developer switch, its run/soak/arm/reset controls
+         and the report painter), player/client.js -2,416 (the probe import,
+         the passage loader, the boot-time kill report and the ForayPlayer
+         probe methods), player/tts-bridge.js -466 (kokoroProbe, onProbePass),
+         styles.css -206 (the report and Play-button rules), index.html -57
+         (the preload line). data/ is byte-identical (1,556,041 B on both).
+
+         WHAT IT BUYS: main alone sat 149.5 KB under 2.8 MB; the branch sits
+         225.5 KB under this 2.8 MB line and 430.3 KB under the 3 MB cap. At
+         main's trailing rate since 2026-10-04 (~86 KB in 17 h, most of it
+         catalogue data that assertion B and the per-file budgets speak for)
+         that is about two days of the same pace, so this is room, not a
+         cure: the next feature-code red has no Kokoro lever left and is a
+         fresh conversation with the founder. */
       r.total < 2.8 * 1024 * 1024,
       `the bundle is ${(r.total / 1024 / 1024).toFixed(2)} MB, leaving ` +
         `${((MAX_BYTES - r.total) / 1024).toFixed(0)} KB of headroom under the 3 MB cap`
@@ -3057,38 +3083,21 @@ test("K-06: the model extension list covers every shape weights arrive in", () =
   }
 });
 
-test("K-01: the probe passage ships into the shell and is not a script tag", () => {
-  /* The passage is the one thing this card adds to the bundle. It has to be at
-     the bundle ROOT because nothing under `tools/` exists inside the shell, and
-     it must NOT become a `<script src>`.
-     MUTATION: give the entry `module: true`, or move it out of
-     SHELL_ONLY_FILES — one of the two assertions goes red.
-
-     THE CEILING MOVED FROM 8 KB TO 48 KB ON 2026-09-12, and the reason is the
-     whole point of that day's PR: the passage was ~1.6 KB while `ids` was null
-     on all four lines, and filling it in added 1,334 phoneme ids. It is 24.4 KB
-     now. The ceiling is still a real tripwire — a fifth line, or a passage
-     pasted in from somewhere, moves it by another ~6 KB per line — and the web
-     bundle it lands in has ~540 KB of its 3.00 MB budget spare, so 48 KB costs
-     nothing that matters. */
-  const entry = SHELL_ONLY_FILES.find((f) => f.src.endsWith("kokoro-probe-passage.json"));
-  assert.ok(entry, "the probe passage must ship with the shell");
-  assert.equal(entry.dest, "kokoro-probe-passage.json", "at the bundle root, where the page fetches it");
-  assert.ok(!shellScriptTags().some((t) => t.includes("kokoro-probe-passage")), "a JSON file is not a script");
-  const bytes = fs.statSync(path.join(ROOT, entry.src)).size;
-  assert.ok(bytes < 48 * 1024, `the passage is ${bytes} B — if it grew past 48 KB something other than four phonemized lines got in`);
-});
-
-test("K-01: the page's two passage URLs match where the file actually lands", () => {
-  /* `client.js` tries the shell path first inside the shell and the repo path
-     first on the website — the same two-URL problem `tts-bridge.js`'s header
-     describes. A drift between those constants and this copy table is a 404 on
-     the one host the measurement has to run on.
-     MUTATION: change `dest` here without changing the constants. */
-  const client = fs.readFileSync(path.join(ROOT, "player/client.js"), "utf8");
-  const entry = SHELL_ONLY_FILES.find((f) => f.src.endsWith("kokoro-probe-passage.json"));
-  assert.ok(client.includes(`"${entry.dest}"`), "the shell URL must be the bundle destination");
-  assert.ok(client.includes(`"${entry.src}"`), "the site URL must be the repo path");
+test("#1076: the on-device Kokoro probe and its passage are not in the bundle", () => {
+  /* Founder ruling 2026-10-05 (issue #1076): "Remove it" — narration renders
+     centrally (docs/DECISIONS.md 2026-09-28), so `player/kokoro-probe.js`
+     (31,459 B minified) and `kokoro-probe-passage.json` (34,794 B) left the
+     shell, freeing the 66,253 B the headroom note above names. The passage
+     stays in `tools/mobile/` for the local narration tools; it is not copied.
+     MUTATION: put the `tools/mobile/kokoro-probe-passage.json` entry back in
+     SHELL_ONLY_FILES — red.
+     MUTATION: restore `player/kokoro-probe.js` — buildPlan copies every
+     shipped `player/*.js`, so it is in the plan again — red. */
+  assert.ok(!SHELL_ONLY_FILES.some((f) => /kokoro/i.test(f.src) || /kokoro/i.test(f.dest)),
+    "no Kokoro file is copied into the shell");
+  const plan = buildPlan(ROOT);
+  assert.ok(plan.includes("player/client.js"), "the plan is the real one");
+  assert.deepEqual(plan.filter((rel) => /kokoro/i.test(rel)), [], "no Kokoro file is in the copy plan");
 });
 
 test("seedCarries is exactly the negation of the one `isGeneratedDraft` (audit finding E)", () => {

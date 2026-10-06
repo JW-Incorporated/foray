@@ -11,6 +11,11 @@
 > gate in `test/release-gates.test.js` (espeak-ng stays server-side only). The platform voice stays
 > as the **fallback** for a file that fails to load.
 >
+> **Removed 2026-10-05:** K-01's page half — `player/kokoro-probe.js`, the bundled
+> `kokoro-probe-passage.json`, the `cp_voice_probe` drawer switch and the bridge delegates — left
+> the app bundle (founder ruling recorded on issue #1076). The plugin's native probe engines are
+> untouched; nothing in the app calls them.
+>
 > **Parked:** K-01 (phone measurement; `HUMAN-ACTIONS.md` #45 is withdrawn), K-04 (the on-device
 > engine), K-05 (the player speaks phonemes), K-08 (the accelerator provider). K-02's phonemizer is
 > reused by the render tool, but no `phonemes` go into `data/forays.json`. K-03, K-06 and K-07 are
