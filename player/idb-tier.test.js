@@ -23,7 +23,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { makeIdbTier, DB_NAME, DB_VERSION, STORE_NAME } from "./idb-tier.js";
+import { makeIdbTier, openDb, DB_NAME, DB_VERSION, STORE_NAME } from "./idb-tier.js";
 import { DurableStore, localStorageTier } from "./durable-store.js";
 
 /* ---------- the tier ---------- */
@@ -58,6 +58,34 @@ test("opening creates the object store keyed on `key`, once", async () => {
   await tier.write("cp_b", "2");
   assert.equal(factory.opens, 1, "the connection is memoised");
   assert.deepEqual(factory.db.stores.get(STORE_NAME).keyPath, "key");
+});
+
+test("CH-13: the kv store's options are exactly { keyPath: \"key\" } — no autoincrement", async () => {
+  /* `openDb` is shared with event-log.js, whose store autoincrements on `id`.
+     MUTATION: hardcode event-log's `{ keyPath: "id", autoIncrement: true }` in
+     the shared helper — this goes red (and so does the test above). */
+  const factory = new FakeFactory();
+  await makeIdbTier({ indexedDB: factory }).write("cp_a", "1");
+  assert.deepEqual(factory.db.storeOptions.get(STORE_NAME), { keyPath: "key" });
+});
+
+test("CH-13: openDb passes the store options through as given and never recreates an existing store", async () => {
+  /* The one open path for `foray` and event-log.js's `foray_events`.
+     MUTATION: drop the `contains()` guard — the second open throws on the
+     duplicate store (the fake refuses it below) and this goes red. */
+  const factory = new FakeFactory();
+  const options = { keyPath: "id", autoIncrement: true };
+  const db = await openDb(factory, "foray_events", 1, "events", options);
+  assert.deepEqual(db.storeOptions.get("events"), options);
+  factory._created = false;               // force a second upgrade on the same db
+  const createObjectStore = db.createObjectStore.bind(db);
+  db.createObjectStore = (name, o) => {
+    if (db.stores.has(name)) throw Object.assign(new Error(`${name} exists`), { name: "ConstraintError" });
+    return createObjectStore(name, o);
+  };
+  await openDb(factory, "foray_events", 1, "events", { keyPath: "other" });
+  assert.deepEqual(db.storeOptions.get("events"), options, "the first shape stands");
+  await assert.rejects(() => openDb(new FakeFactory({ blocked: true }), "x", 1, "s", {}), /indexedDB open blocked by another tab/);
 });
 
 test("a written row round-trips through readAll", async () => {
@@ -407,10 +435,14 @@ class FakeDb {
   constructor(factory) {
     this.factory = factory;
     this.stores = new Map();
+    this.storeOptions = new Map();
     this.objectStoreNames = { contains: (n) => this.stores.has(n) };
   }
-  createObjectStore(name, { keyPath }) {
-    this.stores.set(name, new FakeStore(keyPath));
+  createObjectStore(name, options = {}) {
+    /* The options exactly as passed (CH-13): `openDb` is shared with
+       event-log.js now, so the store shape is a parameter. */
+    this.storeOptions.set(name, { ...options });
+    this.stores.set(name, new FakeStore(options.keyPath));
     return this.stores.get(name);
   }
   transaction(names, mode) {
