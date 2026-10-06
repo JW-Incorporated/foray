@@ -145,6 +145,7 @@ import * as queueOrder from "./queue-order.js";
 import * as queueDrag from "./queue-drag.js";
 import * as tailFill from "./tail-fill.js";
 import * as bookmarks from "./bookmarks.js";
+import { createId3Reader } from "./id3-chapters.js";
 
 /* Continuous playback's rules (NE-13), for app.js: it decides what plays after
    an episode, and it is a classic script that cannot import them. Published at
@@ -168,6 +169,15 @@ window.forayQueueDrag = queueDrag;
    its lsGet/lsSet); this module only says what a row is, what is a duplicate
    and what the caps drop. Device-only: no event, never sent (roadmap Q3). */
 window.forayBookmarks = bookmarks;
+/* Chapters read from the MP3's own ID3 tag (#1071, founder: "Phone reads the
+   MP3"), for the episode page's chapter card (CH-1). The bridge, the online
+   flag and the downloads surface are read per call, not at module load: the
+   Capacitor bridge and app.js's `recordFor` can both arrive later. */
+window.ForayId3Chapters = createId3Reader({
+  getBridge: () => (typeof window !== "undefined" ? window.Capacitor ?? null : null),
+  isOnline: () => browserOnline(),
+  getDownloads: () => (typeof window !== "undefined" ? window.forayDownloads ?? null : null),
+});
 /* The transport's DECISIONS live in transport-policy.js as pure functions
    (NE-08), so the native engine can port them and be checked against them.
    This file gathers the state, asks, and acts; it keeps no copy of a rule. */
