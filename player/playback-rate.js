@@ -96,6 +96,8 @@
    `cp_` prefix per CLAUDE.md § Conventions: renaming these wipes user state.
 */
 
+import { isNum } from "./guards.js";
+
 /** localStorage key. The `cp_` prefix is legacy and load-bearing. */
 export const RATE_KEY = "cp_rate";
 
@@ -111,8 +113,6 @@ export const MAX_RATE = RATES[RATES.length - 1];
 
 /** The slowest stop. */
 export const MIN_RATE = RATES[0];
-
-const isNum = (n) => typeof n === "number" && Number.isFinite(n);
 
 /** Is this value exactly one of the stops? Strict: `isRate("1.5")` is false,
     because a string reaching `element.playbackRate` is a different bug and

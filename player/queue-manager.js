@@ -286,6 +286,7 @@ import { interludeEligible, describeInterlude, INTERLUDE_CEILING_SEC } from "./i
 import { interruptionResumeOffset } from "./transport-policy.js";
 import { warmsAcross } from "./deck-policy.js";
 import { REAL_SCHEDULER } from "./deadline.js";
+import { isNum } from "./guards.js";
 
 /** The periodic position write's cadence. Exported (NE-08) so the native
     engine's generated constants (NE-04) and its ResumeRules port read this
@@ -435,7 +436,6 @@ export const FORAY_CLIP_MAX_SILENCE_SEC = 40;
 export const FORAY_CLIP_LOAD_MAX_STEPS = 1;
 
 const nonEmptyStr = (s) => typeof s === "string" && s.trim().length > 0;
-const isNum = (n) => typeof n === "number" && Number.isFinite(n);
 
 /**
  * Why a rendered narration file failed, as one word from a fixed vocabulary

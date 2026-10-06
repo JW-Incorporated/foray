@@ -535,8 +535,9 @@ test("citations render as a sources list, with tape cites linking to the cited s
      A print cite links out when it has a URL and is plain text when it does
      not — the honest degrade, same as a show that does not join.
 
-     MUTATION: drop the `showById(...)` guard in citesHtml so a cite's show_id
-     is trusted unchecked — the unjoinable tape cite grows a dead link and the
+     MUTATION: drop the `showById(...)` guard in forayShowId (the one join
+     citesHtml shares with the credits since CH-39) so a cite's show_id is
+     trusted unchecked — the unjoinable tape cite grows a dead link and the
      last assertion fails. MUTATION 2: drop `safeUrl` on the print cite's href;
      the javascript: assertion fails. */
   const { ctx } = mount();
@@ -557,8 +558,13 @@ test("citations render as a sources list, with tape cites linking to the cited s
   assert.ok(html.includes("<li>Journal of Human Evolution</li>"),
     "a print cite with no URL is plain text, not an empty link");
   assert.ok(!html.includes("javascript:"), `an unsafe citation URL reached an href: ${html}`);
-  assert.ok(html.includes("<li>Satay? Okay! — E01</li>"),
-    "a cite whose show does not join the catalogue degrades to plain text like any other credit");
+  /* Plain text in the credit's own relinkable span since code-health CH-39
+     (A3-06): the span is what lets the show index, arriving after paint,
+     relink a cite the way it relinks a credit (test/foray-credits.test.js).
+     `.fy-credit` is `color: inherit`, so it still reads as the plain text it
+     was. */
+  assert.ok(html.includes('<li><span class="fy-credit" data-credit-show="Satay? Okay!">Satay? Okay!</span> — E01</li>'),
+    `a cite whose show does not join the catalogue degrades to plain text like any other credit, got: ${html}`);
 });
 
 test("a narration beat with no citations renders exactly as it does today — no heading, no empty list", () => {

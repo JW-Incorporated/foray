@@ -88,9 +88,9 @@ const PAGE_IDS = [
    only ever exercise the empty-library case — which is every test above, and
    is why they stayed green through this change. Values are given as objects
    and stringified here, exactly as lsSet would have left them. */
-function mount({ fetchImpl, online = true, storage = null } = {}) {
+function mount({ fetchImpl, online = true, storage = null, extraIds = [] } = {}) {
   const store = new Map(Object.entries(storage || {}).map(([k, v]) => [k, JSON.stringify(v)]));
-  const byId = new Map(PAGE_IDS.map((id) => {
+  const byId = new Map([...PAGE_IDS, ...extraIds].map((id) => {
     const el = makeEl("div");
     el.id = id;
     return [id, el];
@@ -1036,4 +1036,66 @@ test("CH-35 (A2-06): a saved episode with no session entry is painted from the l
   const code = APP_SRC.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:/"'`])\/\/[^\n]*/g, "$1");
   assert.strictEqual((code.match(/\b_localId:/g) || []).length, 1, "one producer of local rows");
   assert.match(code, /function localEpisodeRow\(id, snap\) \{[^]*?_localId: id,[^]*?_localSnapshot: snap,/, "and it carries the snapshot");
+});
+
+/* ==================================================================== */
+/* CH-39 (A3-14): Search results are a Foray surface                     */
+/* ==================================================================== */
+
+/** The Search page on `#/shows/q/<q>` with a Forays group painted from a
+    one-Foray set, and a directory whose refresh adopts `next`. `renders`
+    counts every fall-through to `renderCurrentPage`. */
+function searchWithForays(next) {
+  const m = mount({ extraIds: ["fy-search-results"] });
+  const foray = (title) => ({ id: "fa", status: "published", title, summary: "Eight ways to fund a company", slots: [] });
+  m.ctx.ForayPlayer = { listForays: (doc) => (doc?.forays || []).filter((f) => f.status === "published") };
+  m.state.catalog = { shows: [] };
+  m.state.forays = { forays: [foray("The types of capital")] };
+  m.state.segments = {};
+  m.state.segmentSources = {};
+  m.ctx.location.hash = "#/shows/q/capital";
+  m.byId.get("sh-input").value = "capital";
+  vm.runInContext("renderShowSearchResults('capital')", m.ctx);
+  const set = { forays: { forays: next(foray) }, segments: {}, sources: {} };
+  m.ctx.forayDirectory = { boot: async () => null, refresh: async () => ({ status: "adopted", set }) };
+  m.state.ready = true;
+  const counts = { renders: 0 };
+  m.ctx.renderCurrentPage = () => { counts.renders += 1; };
+  return { ...m, counts, box: () => m.byId.get("fy-search-results") };
+}
+
+test("characterization: the Search page's Forays group is painted from the Foray set the page held when the query ran", () => {
+  /* MUTATION: drop the `paintForaySearchResults(query, myToken)` call from
+     paintShowSearchLocal — the group never paints, red. */
+  const m = searchWithForays((f) => [f("The types of capital")]);
+  assert.strictEqual(m.box().hidden, false);
+  assert.ok(m.box().innerHTML.includes("The types of capital"), m.box().innerHTML);
+  assert.ok(m.box().innerHTML.includes('href="#/foray/fa"'));
+});
+
+test("A3-14: a directory refresh while Search results are up repaints the Forays group in place — the typed query and the page stay", async () => {
+  /* Was: `#/shows/q/` was not a Foray surface, so an adopted set left the
+     group on the OLD title until the next keystroke. MUTATION: drop the
+     `#/shows/q/` arm from isForaySurface — the old title stays, red.
+     MUTATION: keep the arm and drop repaintForaySurface's Search branch — it
+     falls through to renderCurrentPage (the whole page, the keyboard and the
+     field with it), `renders` is 1, red. */
+  const m = searchWithForays((f) => [f("The types of capital, revised")]);
+  assert.ok(m.box().innerHTML.includes("The types of capital<"), "fixture: the old title is painted");
+  await m.ctx.refreshForayDirectory("foreground");
+  assert.ok(m.box().innerHTML.includes("The types of capital, revised"), `the group took the new set: ${m.box().innerHTML}`);
+  assert.strictEqual(m.counts.renders, 0, "in place: the page was not re-rendered");
+  assert.strictEqual(m.byId.get("sh-input").value, "capital", "the typed query is untouched");
+  assert.strictEqual(m.ctx.location.hash, "#/shows/q/capital");
+});
+
+test("A3-14: a Foray the refresh withdrew leaves the Search group, rather than linking to 'That foray isn't available'", async () => {
+  /* MUTATION: as above, drop the `#/shows/q/` arm — the withdrawn Foray is
+     still linked, red. */
+  const m = searchWithForays(() => []);
+  assert.ok(m.box().innerHTML.includes('href="#/foray/fa"'), "fixture: linked before the refresh");
+  await m.ctx.refreshForayDirectory("foreground");
+  assert.strictEqual(m.box().hidden, true, "nothing matched any more, nothing painted");
+  assert.ok(!m.box().innerHTML.includes("#/foray/fa"));
+  assert.strictEqual(m.counts.renders, 0);
 });

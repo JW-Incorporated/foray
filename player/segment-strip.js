@@ -63,6 +63,7 @@
 import { itemRuntimeSec, runtimeIsEstimated } from "./foray-queue.js";
 import { isNarration, isJingle } from "./item-kind.js";
 import { segmentStarts, segmentAtElapsed, fmtClock, fmtSpan } from "./foray-resolve.js";
+import { isNum } from "./guards.js";
 
 /** How many show tones the palette holds. `styles.css` defines `--seg-c0` …
     `--seg-c7` for both themes, and every one of them is measured against the
@@ -149,7 +150,6 @@ export function stripFloorPlan(model, width, size = "md") {
   return step;
 }
 
-const isNum = (n) => typeof n === "number" && Number.isFinite(n);
 const nonEmpty = (s) => typeof s === "string" && s.trim().length > 0;
 const clamp01 = (n) => (isNum(n) ? Math.min(1, Math.max(0, n)) : 0);
 

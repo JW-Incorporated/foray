@@ -133,7 +133,6 @@ export const STATUS = Object.freeze({
     is left wide enough for a tagged one. Never prose, never a URL. */
 export const VERSION_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 
-const isNum = (n) => typeof n === "number" && Number.isFinite(n);
 const nonEmpty = (s) => typeof s === "string" && s.trim().length > 0;
 
 /* ---------- the pointer ---------- */
