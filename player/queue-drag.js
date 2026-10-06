@@ -60,7 +60,7 @@
 /** How far, in CSS px, the finger must travel from the press before the row
     follows it and the gesture claims the touch. Below this it is a tap on
     the handle (or jitter), the row does not move and a click may follow.
-    Smaller than `sheet-drag-dismiss.js`'s 8 because a handle is an explicit
+    Smaller than `sheet-drag-dismiss.js`'s lock because a handle is an explicit
     affordance — the finger is already saying "drag" by landing on it — and
     a list row is shorter than a sheet, so the first 6 px matter more. */
 export const HANDLE_LOCK_PX = 6;
@@ -223,7 +223,10 @@ export function autoscrollDelta(y, viewportHeight) {
  * own `touchmove` so the list under it cannot start a pan? Yes once the lock
  * has opened; before that the finger may still be a tap on the handle or the
  * start of a scroll, and the scroller keeps it. Same question, same name, as
- * `sheet-drag-dismiss.js`'s `claimsTouch`, so PQ-04 wires it the same way.
+ * `sheet-drag-dismiss.js`'s `claimsTouch`, so PQ-04 wires it the same way —
+ * but each is its own gesture's "does this finger belong to me" predicate
+ * over its own state (this one reads `claimed`, the sheet's reads
+ * `allowed`/`engaged`/`dy`), not one shared rule.
  */
 export function claimsTouch(state) {
   return !!(state && state.claimed);

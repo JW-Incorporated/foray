@@ -19,15 +19,21 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  SWIPE_LOCK_PX, REMOVE_DISTANCE_PX, REMOVE_VELOCITY_PX_PER_MS, FLICK_MIN_PX, RUBBER_BAND_PX,
-  startSwipe, moveSwipe, endSwipe, swipeOffset, releaseVelocity,
+  SWIPE_LOCK_PX, REMOVE_DISTANCE_PX, REMOVE_VELOCITY_PX_PER_MS, SWIPE_FLICK_MIN_PX, RUBBER_BAND_PX,
+  startSwipe, moveSwipe, endSwipe, swipeOffset,
 } from "./queue-swipe.js";
+import { releaseVelocity } from "./gesture-math.js";
 
 /** Replay a whole gesture: a press at (x0, y0), then `[x, y, t]` samples, then release. */
 function gesture(x0, y0, t0, samples) {
   let s = startSwipe(x0, y0, t0);
   for (const [x, y, t] of samples) s = moveSwipe(s, x, y, t);
   return { state: s, result: endSwipe(s), offset: swipeOffset(s) };
+}
+
+/** The leftward release speed of a swipe state, read the way endSwipe reads it. */
+function swipeVelocity(s) {
+  return releaseVelocity({ x: s.prevX, t: s.prevT }, { x: s.lastX, t: s.lastT }, "-x");
 }
 
 /* ---------- the direction lock ---------- */
@@ -102,24 +108,24 @@ test("the distance threshold is exact at 96 px", () => {
   assert.equal(REMOVE_DISTANCE_PX, 96);
   const slow = (d) => [[200 - 20, 100, 100], [200 - 60, 100, 500], [200 - d, 100, 2000]];
   const at = gesture(200, 100, 0, slow(96));
-  assert.ok(releaseVelocity(at.state) < REMOVE_VELOCITY_PX_PER_MS, "this is a drag, not a flick");
+  assert.ok(swipeVelocity(at.state) < REMOVE_VELOCITY_PX_PER_MS, "this is a drag, not a flick");
   assert.deepEqual(at.result, { remove: true, offsetPx: 96 });
   const short = gesture(200, 100, 0, slow(95));
   assert.deepEqual(short.result, { remove: false, offsetPx: 95 });
 });
 
-test("a flick short of the distance removes once it has moved FLICK_MIN_PX", () => {
+test("a flick short of the distance removes once it has moved SWIPE_FLICK_MIN_PX", () => {
   /* 40 px left, the last 25 px in 25 ms (1 px/ms): a throw-it-away.
      MUTATION: drop the velocity clause from endSwipe() — the 40 px release
      then reads `remove: false`. */
   assert.equal(REMOVE_VELOCITY_PX_PER_MS, 0.6);
-  assert.equal(FLICK_MIN_PX, 32);
+  assert.equal(SWIPE_FLICK_MIN_PX, 32);
   const flick = gesture(200, 100, 0, [[185, 100, 20], [160, 100, 45]]);
-  assert.equal(releaseVelocity(flick.state), 1);
+  assert.equal(swipeVelocity(flick.state), 1);
   assert.deepEqual(flick.result, { remove: true, offsetPx: 40 });
   /* The floor under it: the same speed over 20 px is a twitch, not a flick. */
   const twitch = gesture(200, 100, 0, [[190, 100, 10], [180, 100, 20]]);
-  assert.equal(releaseVelocity(twitch.state), 1);
+  assert.equal(swipeVelocity(twitch.state), 1);
   assert.deepEqual(twitch.result, { remove: false, offsetPx: 20 });
 });
 
@@ -136,7 +142,7 @@ test("a slow, short release springs back", () => {
     [145, 100, 60],
     [140, 100, 100],
   ]);
-  assert.equal(releaseVelocity(state), 0.125);
+  assert.equal(swipeVelocity(state), 0.125);
   assert.deepEqual(result, { remove: false, offsetPx: 60 });
 });
 
@@ -178,4 +184,45 @@ test("a rejected gesture reports remove:false whatever follows", () => {
      state — nothing resets it short of a new pointerdown. */
   assert.equal(swipeOffset(moveSwipe(state, 0, 130, 200)), 0);
   assert.equal(endSwipe(moveSwipe(state, 0, 130, 200)).remove, false);
+});
+
+/* ---------- release velocity: a fixed fixture on the swipe's own axis (CH-14) ---------- */
+
+test("CH-14: release velocity is the LEFTWARD speed between the last two samples, on x alone", () => {
+  /* Characterization pinned before releaseVelocity moved to
+     player/gesture-math.js, through the DECISION so it survives the move.
+     Fixture: prev (x 170, t 30) -> last (x 158, t 50): 12 px in dt 20 ms is
+     exactly 0.6 px/ms, the threshold, at dx 42 (past the 32 px flick floor,
+     short of the 96 px distance) — so the release removes only because the
+     velocity reads >= 0.6 to the last bit. One pixel less (11 px / 20 ms =
+     0.55) springs back. A 40 px vertical drift in the last sample of a
+     claimed swipe changes nothing: only x counts.
+     MUTATION: read the y axis (or flip the sign) in the velocity helper — the
+     drifting release then reads 0 and `remove` turns false. A zero dt still
+     reads 0: drop the `dt > 0` guard and the zero-dt release reads Infinity
+     and removes. */
+  assert.equal(SWIPE_LOCK_PX, 8);
+  assert.equal(REMOVE_VELOCITY_PX_PER_MS, 0.6);
+  const at = gesture(200, 100, 0, [[180, 100, 10], [170, 100, 30], [158, 100, 50]]);
+  assert.deepEqual(at.result, { remove: true, offsetPx: 42 });
+  const under = gesture(200, 100, 0, [[180, 100, 10], [170, 100, 30], [159, 100, 50]]);
+  assert.deepEqual(under.result, { remove: false, offsetPx: 41 });
+  const drift = gesture(200, 100, 0, [[180, 100, 10], [170, 100, 30], [158, 140, 50]]);
+  assert.deepEqual(drift.result, { remove: true, offsetPx: 42 });
+  const sameT = gesture(200, 100, 0, [[180, 100, 10], [150, 100, 10]]);
+  assert.deepEqual(sameT.result, { remove: false, offsetPx: 50 });
+});
+
+test("CH-14: the shared releaseVelocity reads the swipe's fixture leftward on x", () => {
+  /* The same fixture as above, straight into player/gesture-math.js: 12 px
+     leftward in dt 20 ms is 0.6 px/ms; the same samples read rightward are 0
+     (only forward travel counts); a y coordinate on the samples is ignored.
+     MUTATION: in gesture-math.js map "-x" to sign +1 — the leftward fixture
+     reads 0 and this fails (and the threshold release above stops removing). */
+  const prev = { x: 170, y: 100, t: 30 };
+  const last = { x: 158, y: 140, t: 50 };
+  assert.equal(releaseVelocity(prev, last, "-x"), 0.6);
+  assert.equal(releaseVelocity(prev, last, "+x"), 0);
+  assert.equal(releaseVelocity(prev, { ...last, t: 30 }, "-x"), 0);
+  assert.equal(releaseVelocity(null, last, "-x"), 0);
 });

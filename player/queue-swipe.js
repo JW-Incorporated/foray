@@ -31,16 +31,23 @@
  *     DECISION: the row is removed when it was dragged at least
  *     `REMOVE_DISTANCE_PX`, or flicked — still moving at
  *     `REMOVE_VELOCITY_PX_PER_MS` or faster over the last two samples AND past
- *     `FLICK_MIN_PX`, so a fast twitch during a tap can never count.
+ *     `SWIPE_FLICK_MIN_PX`, so a fast twitch during a tap can never count.
  *
  *  4. RUBBER-BAND. Past `RUBBER_BAND_PX` the painted offset grows at a third
  *     of the finger's speed, so a row cannot be flung off the screen and the
  *     listener feels the end of its travel.
+ *
+ * The release speed is `player/gesture-math.js`'s `releaseVelocity`, shared
+ * with the sheet's drag-to-dismiss. The thresholds below are this gesture's
+ * own: they are tuned for a list row and do not follow the sheet's.
  */
+
+import { releaseVelocity } from "./gesture-math.js";
 
 /** How far the finger must travel on one axis, in CSS px, before that axis
     wins the gesture. Under this it is a tap or a jitter and the row does not
-    move. The same 8 px as `sheet-drag-dismiss.js`'s `DIRECTION_LOCK_PX`. */
+    move. Tuned for this gesture, independently of `sheet-drag-dismiss.js`'s
+    `DIRECTION_LOCK_PX` and `queue-drag.js`'s `HANDLE_LOCK_PX`. */
 export const SWIPE_LOCK_PX = 8;
 
 /** How far left the row must be dragged, in CSS px, before letting go removes
@@ -51,11 +58,13 @@ export const REMOVE_DISTANCE_PX = 96;
 
 /** A FLICK removes it too, short of the distance above: releasing while still
     moving left at this speed (CSS px per ms — 0.6 is 600 px/s) is an
-    unambiguous throw-it-away. Paired with `FLICK_MIN_PX` below. */
+    unambiguous throw-it-away. Paired with `SWIPE_FLICK_MIN_PX` below. */
 export const REMOVE_VELOCITY_PX_PER_MS = 0.6;
 
-/** The floor under the flick rule. A flick must still have MOVED this far. */
-export const FLICK_MIN_PX = 32;
+/** The floor under the flick rule. A flick must still have MOVED this far.
+    Named for the swipe because the sheet has its own (`SHEET_FLICK_MIN_PX`),
+    with a different value. */
+export const SWIPE_FLICK_MIN_PX = 32;
 
 /** Past this leftward travel the painted offset is rubber-banded (see
     `swipeOffset`). The DECISION still reads the raw distance. */
@@ -140,21 +149,9 @@ export function moveSwipe(state, x, y, t) {
   return { ...state, claimed, dx, prevX: state.lastX, prevT: state.lastT, lastX: x, lastT: t };
 }
 
-/**
- * Leftward speed at the moment of release, in CSS px per ms, measured over
- * the last TWO samples rather than the whole gesture — "was it still moving
- * when they let go" is the question, and a slow drag out followed by a hold
- * must not read as a flick because it covered ground earlier.
- *
- * Returns 0 when the two samples share a timestamp or when the last movement
- * was rightward, so every caller gets a number it can compare.
- */
-export function releaseVelocity(state) {
-  if (!state) return 0;
-  const dt = state.lastT - state.prevT;
-  if (!(dt > 0)) return 0;
-  const v = (state.prevX - state.lastX) / dt;
-  return v > 0 ? v : 0;
+/** Leftward speed at release over the last two samples (see gesture-math.js). */
+function leftwardReleaseVelocity(state) {
+  return releaseVelocity({ x: state.prevX, t: state.prevT }, { x: state.lastX, t: state.lastT }, "-x");
 }
 
 /**
@@ -176,7 +173,7 @@ export function endSwipe(state) {
   }
   const offsetPx = state.dx;
   if (offsetPx >= REMOVE_DISTANCE_PX) return { remove: true, offsetPx };
-  if (offsetPx >= FLICK_MIN_PX && releaseVelocity(state) >= REMOVE_VELOCITY_PX_PER_MS) {
+  if (offsetPx >= SWIPE_FLICK_MIN_PX && leftwardReleaseVelocity(state) >= REMOVE_VELOCITY_PX_PER_MS) {
     return { remove: true, offsetPx };
   }
   return { remove: false, offsetPx };

@@ -270,7 +270,7 @@ const FLOORS = {
      far a thumb must travel, what counts as a flick, and the eligibility rule
      that keeps a scroll through a long episode description from throwing the
      sheet away. Every test names the mutation that kills it, and each was run. */
-  "player/sheet-drag-dismiss.test.js": 17, // audit round 2, L2 (2026-09-23): claimsTouch, who owns the finger (touch-2); 15 -> 17 //
+  "player/sheet-drag-dismiss.test.js": 20, // CH-14: release velocity pinned on the sheet's own axis, through the decision and through gesture-math.js; 17 -> 20 (the floor had trailed the true count by one) // audit round 2, L2 (2026-09-23): claimsTouch, who owns the finger (touch-2); 15 -> 17 //
   /* Drag an Up Next row by its handle to reorder it (#762). The third pure
      gesture module, floored like the two above it: the lock distance, the
      midpoint rule against the layout read at press time (including the
@@ -282,7 +282,7 @@ const FLOORS = {
      shape as the two above, floored for the same reason: the direction lock,
      the 96 px distance, the flick and the rule that a scroll can never become
      a removal ARE the product decision. Each test names its mutation. */
-  "player/queue-swipe.test.js": 8, // PQ-05 (#762)
+  "player/queue-swipe.test.js": 10, // CH-14: release velocity pinned on the swipe's own axis, through the decision and through gesture-math.js; 8 -> 10 // PQ-05 (#762)
   /* The other half of the same report: the sheet is WIRED, opens at the top,
      scrolls inside itself, and is a full-height overlay whose `[hidden]`
      attribute still hides it. A source-text suite (client.js builds DOM at
