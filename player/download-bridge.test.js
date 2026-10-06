@@ -121,9 +121,12 @@ test("a call that never answers resolves {ok:false, reason:\"timeout\"} at the 1
 test("the three plugin events are subscribed via addListener and forwarded as onEvent(name, payload)", () => {
   const { bridge, listeners } = fakeBridge();
   const seen = [];
-  createDownloadBridge({ bridge, onEvent: (name, payload) => seen.push([name, payload]) });
+  const dl = createDownloadBridge({ bridge, onEvent: (name, payload) => seen.push([name, payload]) });
   assert.deepEqual(DOWNLOAD_EVENTS, ["downloadProgress", "downloadDone", "downloadFailed"]);
   for (const name of DOWNLOAD_EVENTS) assert.ok(listeners.has(`ForayDownloads:${name}`), `${name} subscribed via addListener`);
+  // CH-12: addListener's own handle comes back, one per event, in DOWNLOAD_EVENTS order.
+  assert.equal(dl.handles.length, DOWNLOAD_EVENTS.length);
+  for (const h of dl.handles) assert.equal(typeof h?.remove, "function", "the addListener handle is returned");
   listeners.get("ForayDownloads:downloadProgress")({ id: "ep-1", bytes: 43, total: 100 });
   listeners.get("ForayDownloads:downloadDone")({ id: "ep-1", path: "/files/ep-1.mp3", bytes: 100 });
   listeners.get("ForayDownloads:downloadFailed")({ id: "ep-3", reason: "http", status: 403 });
@@ -132,27 +135,37 @@ test("the three plugin events are subscribed via addListener and forwarded as on
     ["downloadDone", { id: "ep-1", path: "/files/ep-1.mp3", bytes: 100 }],
     ["downloadFailed", { id: "ep-3", reason: "http", status: 403 }],
   ]);
+  dl.handles[1].remove();
+  assert.equal(listeners.has("ForayDownloads:downloadDone"), false, "handles[1] is downloadDone's own handle");
+  assert.equal(listeners.has("ForayDownloads:downloadProgress"), true);
   // A listener that throws does not break the wire.
   const noisy = fakeBridge();
   createDownloadBridge({ bridge: noisy.bridge, onEvent: () => { throw new Error("page bug"); } });
   assert.doesNotThrow(() => noisy.listeners.get("ForayDownloads:downloadDone")({ id: "x" }));
 });
 
-// Mutation: drop the `nativeCallback` fallback branch from `listen`.
+// Mutation: drop the `nativeCallback` fallback branch from native-engine.js's `listenTo` (the helper this file imports, CH-12).
 test("without addListener, events arrive through nativeCallback(plugin, \"addListener\", {eventName}, fn)", () => {
   const { bridge, listeners } = fakeBridge({ withAddListener: false });
   const seen = [];
   const dl = createDownloadBridge({ bridge, onEvent: (name, payload) => seen.push([name, payload]) });
   assert.ok(dl, "the bridge still exists without addListener");
   for (const name of DOWNLOAD_EVENTS) assert.ok(listeners.has(`ForayDownloads:${name}:cb`), `${name} subscribed via nativeCallback`);
+  assert.equal(listeners.size, DOWNLOAD_EVENTS.length, "nothing registered under any other plugin or event");
+  // CH-12: the thinner primitive has no handle to give back, so each is null.
+  assert.deepEqual(dl.handles, [null, null, null]);
   listeners.get("ForayDownloads:downloadDone:cb")({ id: "ep-1", path: "/files/ep-1.mp3", bytes: 7 });
   assert.deepEqual(seen, [["downloadDone", { id: "ep-1", path: "/files/ep-1.mp3", bytes: 7 }]]);
   // Neither path: still a usable bridge (the page can list() on resume).
   const bare = fakeBridge({ withAddListener: false, withNativeCallback: false });
-  assert.ok(createDownloadBridge({ bridge: bare.bridge, onEvent: () => {} }));
+  const bareDl = createDownloadBridge({ bridge: bare.bridge, onEvent: () => {} });
+  assert.ok(bareDl);
+  assert.deepEqual(bareDl.handles, [null, null, null]);
   // A throwing addListener is swallowed, not fatal.
   const hostile = { nativePromise: () => Promise.resolve({ ok: true }), addListener: () => { throw new Error("no"); } };
-  assert.ok(createDownloadBridge({ bridge: hostile }));
+  const hostileDl = createDownloadBridge({ bridge: hostile });
+  assert.ok(hostileDl);
+  assert.deepEqual(hostileDl.handles, [null, null, null]);
 });
 
 // Mutation: return `path` unconditionally from `fileSrc`.

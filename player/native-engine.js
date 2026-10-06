@@ -97,6 +97,28 @@ const REAL_SCHEDULER = Object.freeze({
   },
 });
 
+/** Subscribe `fn` to one plugin's event: `Capacitor.addListener(plugin,
+    eventName, fn)` when the bridge has it, else its thinner primitive
+    `nativeCallback(plugin, "addListener", { eventName }, fn)`, else nothing (a
+    page with no event path still works: this one reads on visible,
+    download-bridge.js can `list()` on resume). Returns whatever `addListener`
+    returns (a handle with `remove()` on a real bridge), or `null` when the
+    thinner primitive, no path, or a throw was all there was. Never throws.
+    The ONE copy: download-bridge.js imports it for ForayDownloads' three
+    events (code-health CH-12, P2-06 — it used to carry a copy of this body).
+    MUTATION TO BREAK THIS: hardcode `plugin` or `eventName` in either branch
+    and native-engine.test.js or download-bridge.test.js goes red. */
+export function listenTo(cap, plugin, eventName, fn) {
+  try {
+    if (typeof cap?.addListener === "function") return cap.addListener(plugin, eventName, fn);
+    if (typeof cap?.nativeCallback === "function") {
+      cap.nativeCallback(plugin, "addListener", { eventName }, fn);
+      return null;
+    }
+  } catch (_) { /* no event path is still a working page */ }
+  return null;
+}
+
 /** The bridge, from `window.Capacitor` or anything shaped like it. */
 function bridgeOf(capacitor) {
   const cap = capacitor ?? null;
@@ -113,16 +135,7 @@ function bridgeOf(capacitor) {
     platform,
     available,
     call: (method, payload) => Promise.resolve().then(() => cap.nativePromise(ENGINE_PLUGIN, method, payload)),
-    listen(fn) {
-      try {
-        if (typeof cap?.addListener === "function") return cap.addListener(ENGINE_PLUGIN, ENGINE_EVENT, fn);
-        if (typeof cap?.nativeCallback === "function") {
-          cap.nativeCallback(ENGINE_PLUGIN, "addListener", { eventName: ENGINE_EVENT }, fn);
-          return null;
-        }
-      } catch (_) { /* a page with no event path still works: it reads on visible */ }
-      return null;
-    },
+    listen: (fn) => listenTo(cap, ENGINE_PLUGIN, ENGINE_EVENT, fn),
   };
 }
 
