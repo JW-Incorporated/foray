@@ -2584,6 +2584,10 @@ input[type="range"] { accent-color: var(--amber); }
    "Bookmarked ✓" is a 1.5 s confirmation, not a pressed state, so no
    aria-pressed colour. Seven controls now; the row still wraps. */
 .fp-bookmark { min-width: 52px; padding: 0 14px; white-space: nowrap; }
+/* Share (#690, SH-2) is Bookmark's neighbour in the same 48px transport box
+   (over the 44px tap floor); "Link copied ✓" is a 1.5 s confirmation like
+   "Bookmarked ✓", so no pressed colour. Eight controls; the row wraps. */
+.fp-share { min-width: 52px; padding: 0 14px; white-space: nowrap; }
 /* THE SECOND ROW IS ONE CONTROL TREATMENT (visual pass 1, 2026-09-23). It
    mixed a caption-size grey box, a danger box, a bare underlined link and a
    second Close beside the grab zone's ✕. Now: the boxed controls are the
