@@ -2968,8 +2968,9 @@ test("CH-10: under the shipped option set the page's build and the manager's are
      no longer what keeps the bar on the right clip — it is here so that the day
      the two option sets are made to differ on purpose, whoever does it learns
      here that the page's running order will differ from the audio too.
-     MUTATION: `forayQueueOptions(resolved, { isLocalFile: false, allowAdPad: true })`
-     below, with a Foray in data/ whose DAI source carries a pad — red. */
+     MUTATION (run): `forayQueueOptions(resolved, { isLocalFile: true })` below —
+     red: data/ carries DAI sources, and a downloaded copy marks their items
+     `needs_drift_check: false` where the resolve marked them true. */
   const segments = indexSegments(LIVE.segments);
   const sources = indexSources(LIVE.sources);
   let compared = 0;
@@ -2980,4 +2981,63 @@ test("CH-10: under the shipped option set the page's build and the manager's are
     compared += 1;
   }
   assert.ok(compared > 0, "precondition: data/forays.json carries Forays");
+});
+
+test("CH-10: when the page's build and the manager's differ, the bar, the clock and the resume row follow the MANAGER's list", async (t) => {
+  /* P1-04's failure, made to happen: the page resolves with the ad pad allowed
+     (the DAI segment "sd" goes, its 600 s pad is over the ceiling) and plays
+     with the shipped default (it stays, as an approximate segment). The page's
+     list is [sa, sb, sc]; the manager's is [sa, sd, sb, sc]. Clip index 2 is
+     "sb" in the audio and "sc" in the page's list.
+
+     Before CH-10 the bar read "Show C · clip 3 of 3" over Show B's audio, the
+     clock fell back to the page's clip-3 start (200 s) because the playhead's
+     item id did not match the manager's, and no resume row was written at all
+     ("playhead-unknown"). Every one of those reads now goes through
+     `foray.playable`, which is `setQueueFromForay`'s own report.
+
+     MUTATIONS THAT KILL THIS (each run red): in player/client.js put
+     `foray.resolved.playable` back in `forayNowPlaying` (the bar line), in
+     `forayPlayhead`'s item lookup (the clock and the row), or put
+     `progressSegments(foray.resolved)` back in `forayProgressSegments` (the
+     row says "sc"); or drop `foray.playable = report.items` from `playForay`. */
+  const booted = await bootRealClient(t);
+  const { foraysDoc, segmentsDoc, sourcesDoc } = ch10Docs({ withDai: true });
+  const resolved = booted.client.resolve(foraysDoc, { id: "f-ch10", segmentsDoc, sourcesDoc, allowAdPad: true });
+  assert.deepEqual(resolved.playable.map((i) => i.source_item_id), ["ep-a", "ep-b", "ep-c"],
+    "precondition: the page's build dropped the over-ceiling pad segment");
+  const managerBuild = buildForayQueue(resolved.hydrated, forayQueueOptions(resolved, { isLocalFile: false }));
+  assert.deepEqual(managerBuild.items.map((i) => i.source_item_id), ["ep-a", "ep-d", "ep-b", "ep-c"],
+    "precondition: the manager's build (shipped default, no pad) keeps it");
+
+  const seen = await playTenSecondsInto(booted, resolved, 2, 500);
+  assert.equal(seen.src, "https://cdn.test/b.mp3", "precondition: clip index 2 of the manager's queue is Show B");
+  assert.equal(seen.status.index, 2);
+  assert.equal(seen.line, "Show B · clip 3 of 4", "the bar names the clip that is playing, counted in the queue that plays");
+  assert.ok(Math.abs(seen.status.elapsedSec - 210) < 0.5,
+    `the clock is sa + sd (200 s) plus 10 s into sb; got ${seen.status.elapsedSec}`);
+  assert.ok(seen.row, "a resume row was written — the playhead is known");
+  assert.equal(seen.row.segment_id, "sb", "the resume row names the segment the manager is playing");
+  assert.equal(seen.row.index, 2);
+  assert.ok(Math.abs(seen.row.into_sec - 10) < 0.5, `10 s into sb; got ${seen.row.into_sec}`);
+});
+
+test("CH-10: client.js indexes one list — no read of the page's build is left", () => {
+  /* The behavioural test above covers the three reads a listener can see in
+     one frame; this covers the rest of them (`setForayIndex`, `nudgeBy`, the
+     ›› disable, the lock screen's view, forayJump / Next / Previous / Seek),
+     which a revert of any single one would bring back.
+     MUTATION: restore any one `foray.resolved.playable` read in client.js, or
+     `progressSegments(foray.resolved)` — red; drop either
+     `foray.playable = report.items` — red. */
+  const client = fs.readFileSync(path.join(ROOT, "player/client.js"), "utf8");
+  const code = client.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`])\/\/.*$/gm, "$1");
+  assert.equal((code.match(/foray\.resolved\.playable/g) ?? []).length, 0,
+    "every clip lookup reads foray.playable, the list the manager loaded");
+  assert.doesNotMatch(code, /progressSegments\(foray\.resolved\)/,
+    "the resume row's segment ids come from the manager's list too");
+  const builds = (code.match(/manager\.setQueueFromForay\(/g) ?? []).length;
+  const kept = (code.match(/foray\.playable = report\.items;/g) ?? []).length;
+  assert.ok(builds >= 2, `precondition: playForay and attachForay build a queue; found ${builds}`);
+  assert.equal(kept, builds, "every Foray queue build is stored as foray.playable");
 });
