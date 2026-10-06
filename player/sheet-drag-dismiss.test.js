@@ -257,3 +257,27 @@ test("a finger moving UP, or a drag that started mid-scroll, never claims the to
   assert.equal(claimsTouch(mid), false, "not eligible: the body was scrolled");
   assert.equal(claimsTouch(null), false);
 });
+
+/* ---------- release velocity: a fixed fixture on the sheet's own axis (CH-14) ---------- */
+
+test("CH-14: release velocity is the DOWNWARD speed between the last two samples", () => {
+  /* Characterization pinned before releaseVelocity moved to
+     player/gesture-math.js, through the DECISION so it survives the move.
+     Fixture: prev (y 145, t 30) -> last (y 155, t 50): 10 px in dt 20 ms is
+     exactly 0.5 px/ms, the threshold, at dy 55 (past the 40 px flick floor,
+     short of the 120 px distance) — so the release closes the sheet only
+     because the velocity reads >= 0.5. One pixel less (9 / 20 = 0.45) springs
+     back, and a zero dt reads 0, not Infinity.
+     MUTATION: make the velocity helper read the x axis instead of y (swap the
+     axis) — the sheet's samples carry no x, the velocity reads 0 and the
+     threshold release stays open. Drop the `dt > 0` guard and the zero-dt
+     release dismisses. */
+  assert.equal(DIRECTION_LOCK_PX, 8);
+  assert.equal(DISMISS_VELOCITY_PX_PER_MS, 0.5);
+  const at = gesture(100, 0, { atTop: true }, [[130, 10], [145, 30], [155, 50]]);
+  assert.deepEqual(at.result, { dismiss: true, dy: 55 });
+  const under = gesture(100, 0, { atTop: true }, [[130, 10], [145, 30], [154, 50]]);
+  assert.deepEqual(under.result, { dismiss: false, dy: 54 });
+  const sameT = gesture(100, 0, { atTop: true }, [[130, 10], [160, 10]]);
+  assert.deepEqual(sameT.result, { dismiss: false, dy: 60 });
+});
