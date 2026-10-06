@@ -4,7 +4,7 @@
  * covered by the sanity runs in README.md ("Fidelity"), not by CI.
  *
  * Each test names the one-line mutation (in lib/fidelity.mjs) that makes it fail;
- * every one was applied, run and reverted when this file was written. Which suite
+ * every one was applied, run and reverted when this file was written. Tests 11-13 pin the silent-pass fixes (broken selector, bad app map, skipped-as-failure). Which suite
  * covers which mechanism: delta sign and union -> tests 1-2; one-sided regions and
  * the gate -> 3-5; screens.json shape and the shared-app-step bug -> 6-8; image
  * composition -> 9; report content -> 10. */
@@ -12,7 +12,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { PNG } from "pngjs";
 import {
-  boxDelta, summarizeMeasure, compareRegion, summarizeRegions, failingRegions,
+  boxDelta, summarizeMeasure, validateAppRefs, failingSkips, brokenRegions, compareRegion, summarizeRegions, failingRegions,
   parseScreens, planRun, selectorsFor, compareScreen, sideBySide, buildReport, renderMarkdown,
 } from "./lib/fidelity.mjs";
 
@@ -137,7 +137,7 @@ test("8. several screens sharing one app step are ALL planned (the Map must hold
 });
 
 test("9. side-by-side puts the prototype left, the app right, a grey gap between, and pads the shorter image", () => {
-  // MUTATION: in sideBySide, blit(b, a.width + gap) -> blit(b, a.width) (no gap), or swap the two blit calls.
+  // MUTATION: in sideBySide, blit(b, a.width + gap) -> blit(b, a.width) (no gap), or blit(a, 0); blit(b, a.width + gap) -> blit(b, 0); blit(a, b.width + gap) (swap which image is passed to which call).
   const solid = (w, h, rgb) => { const p = new PNG({ width: w, height: h }); for (let i = 0; i < w * h; i++) p.data.set([...rgb, 255], i * 4); return PNG.sync.write(p); };
   const out = PNG.sync.read(sideBySide(solid(4, 3, [255, 0, 0]), solid(2, 5, [0, 0, 255]), 3));
   assert.deepEqual([out.width, out.height], [4 + 3 + 2, 5]);
@@ -167,4 +167,46 @@ test("10. the report carries gate failures and one-sided regions into the markdo
   const gated = buildReport({ direction: "tactile", run: "r", against: "app", viewports: ["393x852"], screens: [screen], skipped: [], maxRegionDelta: 8 });
   assert.equal(gated.summary.failingRegions, 2);
   assert.match(renderMarkdown(gated), /## Gate failures[\s\S]*home @ 393x852, region header: delta 40px > 8px/);
+});
+
+test("11. a region that matched nothing on BOTH sides is a broken selector: flagged, reported, and a gate failure (an app-only null selector is not)", () => {
+  // MUTATION: in compareScreen, delete the `c.broken = true` line (or its bothSides check), or in failingRegions drop the `r.broken` branch.
+  const screen = parseScreens(good()).screens[0]; // regions: header (both selectors), rows (both), hero (app null)
+  const cmp = compareScreen(screen, {}, {});
+  assert.deepEqual(cmp.map((r) => [r.name, !!r.broken]), [["header", true], ["rows", true], ["hero", false]], "hero has no app selector, so empty is expected");
+  const s = { id: "home", viewport: "393x852", title: "t", prototypeRoute: "#/home", appRef: "x", pixel: null, regions: cmp, summary: summarizeRegions(cmp) };
+  assert.equal(brokenRegions([s]).length, 2);
+  const open = buildReport({ direction: "x", run: "r", against: "app", viewports: ["393x852"], screens: [s], skipped: [], maxRegionDelta: null });
+  assert.equal(open.summary.brokenRegions, 2, "reported even with no gate");
+  assert.match(renderMarkdown(open), /Broken regions[\s\S]*region header/);
+  assert.equal(failingRegions([s], null).length, 0);
+  assert.equal(failingRegions([s], 8).length, 2);
+  assert.equal(compareScreen(screen, {}, {}, () => true)[2].broken, true, "self mode: every region has a selector");
+});
+
+test("12. screens.json app refs are validated against the real states: a wrong state or step is named, not silently skipped", () => {
+  // MUTATION: in validateAppRefs, change `!steps.includes(s.app.step)` to `false`, or skip the unknown-state branch.
+  const known = { returning: ["home", "library"], player: ["now-playing"] };
+  assert.deepEqual(validateAppRefs(parseScreens(good()), known), [], "good() maps returning/home and player/now-playing");
+  const j = good();
+  j.screens.home.app.step = "hmoe";
+  j.screens["now-playing"].app.state = "plyer";
+  const p = validateAppRefs(parseScreens(j), known);
+  assert.equal(p.length, 2);
+  assert.match(p[0], /screen "home": state "returning" has no step "hmoe"/);
+  assert.match(p[1], /screen "now-playing": unknown app state "plyer"/);
+  assert.deepEqual(validateAppRefs(parseScreens(good()), { returning: ["home"], player: ["now-playing"] }), []);
+});
+
+test("13. a skip that is a fault (missing shot) fails the gate; a skip for 'no app equivalent' never does; without a gate nothing fails", () => {
+  // MUTATION: in failingSkips, drop the `.filter((k) => k.fault)` (no-app skips start failing) or the `maxRegionDelta == null` early return.
+  const skipped = [{ id: "settings", reason: "no app" }, { id: "home", viewport: "393x852", fault: true, reason: "app shot missing" }];
+  assert.deepEqual(failingSkips(skipped, null), []);
+  const f = failingSkips(skipped, 8);
+  assert.equal(f.length, 1);
+  assert.equal(f[0].screen, "home");
+  const r = buildReport({ direction: "x", run: "r", against: "app", viewports: ["393x852"], screens: [], skipped, maxRegionDelta: 8 });
+  assert.equal(r.summary.failingRegions, 1);
+  assert.match(renderMarkdown(r), /home @ 393x852, region -: skipped: app shot missing/);
+  assert.match(renderMarkdown(r), /- home: app shot missing \(FAULT\)/);
 });

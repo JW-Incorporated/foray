@@ -74,13 +74,21 @@ export function summarizeRegions(regions) {
   };
 }
 
-/** The optional gate. A region fails when its worst component exceeds the limit, or it exists on only one side. */
+/** Regions that matched nothing on either side although both sides name a selector: a typo, not an empty state. */
+export function brokenRegions(screens) {
+  const out = [];
+  for (const s of screens) for (const r of s.regions || []) if (r.broken) out.push({ screen: s.id, viewport: s.viewport, region: r.name, reason: "matched nothing on either side (check the selectors)" });
+  return out;
+}
+
+/** The optional gate. A region fails when its worst component exceeds the limit, it exists on only one side, or it matched nothing on either side (broken selector). */
 export function failingRegions(screens, maxRegionDelta) {
   if (maxRegionDelta == null) return [];
   const fails = [];
   for (const s of screens) {
     for (const r of s.regions || []) {
-      if (r.status === "both" && r.delta.max > maxRegionDelta) fails.push({ screen: s.id, viewport: s.viewport, region: r.name, reason: `delta ${r.delta.max}px > ${maxRegionDelta}px` });
+      if (r.broken) fails.push({ screen: s.id, viewport: s.viewport, region: r.name, reason: "matched nothing on either side" });
+      else if (r.status === "both" && r.delta.max > maxRegionDelta) fails.push({ screen: s.id, viewport: s.viewport, region: r.name, reason: `delta ${r.delta.max}px > ${maxRegionDelta}px` });
       else if (r.status === "prototype-only" || r.status === "app-only") fails.push({ screen: s.id, viewport: s.viewport, region: r.name, reason: r.status });
     }
   }
@@ -151,8 +159,30 @@ export function selectorsFor(screen, side) {
 }
 
 /** Compare a screen's two measurement sets ({name: {count, box, item}}) in the screen's region order. */
-export function compareScreen(screen, protoMeasures, appMeasures) {
-  return screen.regions.map((r) => compareRegion(r.name, protoMeasures && protoMeasures[r.name], appMeasures && appMeasures[r.name], r.mode));
+export function compareScreen(screen, protoMeasures, appMeasures, bothSides = (r) => r.app != null) {
+  return screen.regions.map((r) => {
+    const c = compareRegion(r.name, protoMeasures && protoMeasures[r.name], appMeasures && appMeasures[r.name], r.mode);
+    if (c.status === "neither" && bothSides(r)) c.broken = true;
+    return c;
+  });
+}
+
+/** Every app.state/app.step in screens.json must exist in lib/states.mjs. known: { state: [step labels] }. Returns problem strings. */
+export function validateAppRefs(parsed, known) {
+  const problems = [];
+  for (const s of parsed.screens) {
+    if (!s.app) continue;
+    const steps = known[s.app.state];
+    if (!steps) problems.push(`screen "${s.id}": unknown app state "${s.app.state}" (known: ${Object.keys(known).join(", ")})`);
+    else if (!steps.includes(s.app.step)) problems.push(`screen "${s.id}": state "${s.app.state}" has no step "${s.app.step}" (known: ${steps.join(", ")})`);
+  }
+  return problems;
+}
+
+/** Skips that are a fault (a shot that should exist is missing), as opposed to "no app equivalent yet". */
+export function failingSkips(skipped, maxRegionDelta) {
+  if (maxRegionDelta == null) return [];
+  return skipped.filter((k) => k.fault).map((k) => ({ screen: k.id, viewport: k.viewport || null, region: "-", reason: `skipped: ${k.reason}` }));
 }
 
 /* ---------- images ---------- */
@@ -181,7 +211,8 @@ const fmtBox = (b) => (b ? `${b.x},${b.y} ${b.w}x${b.h}` : "-");
 const fmtDelta = (d) => (d ? `${d.dx >= 0 ? "+" : ""}${d.dx}, ${d.dy >= 0 ? "+" : ""}${d.dy}, w ${d.dw >= 0 ? "+" : ""}${d.dw}, h ${d.dh >= 0 ? "+" : ""}${d.dh}` : "-");
 
 export function buildReport({ direction, run, against, viewports, screens, skipped, maxRegionDelta, errors }) {
-  const fails = failingRegions(screens, maxRegionDelta);
+  const fails = [...failingRegions(screens, maxRegionDelta), ...failingSkips(skipped, maxRegionDelta)];
+  const broken = brokenRegions(screens);
   const pcts = screens.map((s) => s.pixel && s.pixel.pct).filter((v) => typeof v === "number");
   return {
     direction, run, against, viewports,
@@ -192,8 +223,9 @@ export function buildReport({ direction, run, against, viewports, screens, skipp
       gated: maxRegionDelta != null,
       maxRegionDelta: maxRegionDelta ?? null,
       failingRegions: fails.length,
+      brokenRegions: broken.length,
     },
-    screens, skipped, failures: fails, errors: errors || [],
+    screens, skipped, failures: fails, broken, errors: errors || [],
   };
 }
 
@@ -218,13 +250,17 @@ export function renderMarkdown(report) {
       L.push(`| ${r.name} | ${r.status} | ${fmtBox(r.proto.box)} | ${fmtBox(r.app.box)} | ${r.delta ? fmtDelta(r.delta) : "-"} | ${r.proto.count}/${r.app.count} |`);
     }
   }
+  if (report.broken && report.broken.length) {
+    L.push("", "## Broken regions (matched nothing on either side)", "");
+    for (const f of report.broken) L.push(`- ${f.screen} @ ${f.viewport}, region ${f.region}`);
+  }
   if (report.skipped.length) {
     L.push("", "## Skipped", "");
-    for (const k of report.skipped) L.push(`- ${k.id}: ${k.reason}`);
+    for (const k of report.skipped) L.push(`- ${k.id}: ${k.reason}${k.fault ? " (FAULT)" : ""}`);
   }
   if (report.failures.length) {
     L.push("", "## Gate failures", "");
-    for (const f of report.failures) L.push(`- ${f.screen} @ ${f.viewport}, region ${f.region}: ${f.reason}`);
+    for (const f of report.failures) L.push(`- ${f.screen} @ ${f.viewport || "-"}, region ${f.region}: ${f.reason}`);
   }
   if (report.errors.length) {
     L.push("", "## Harness errors", "");

@@ -13,7 +13,9 @@
  *
  * --against self re-renders the PROTOTYPE as the "app" side (its own selectors): the sanity
  * check that identical input reads ~0. Nothing gates unless --max-region-delta is given.
- * Output (gitignored, never commit renders): data-local/redesign/fidelity/<run>/
+ * --root <dir> relocates the output base (default data-local/redesign; a build worktree has an
+ * empty data-local, so pass the trunk checkout's). screens.json is validated up front (exit 2).
+ * Output (gitignored, never commit renders): <root>/fidelity/<run>/
  *   report.json  report.md  shots/{prototype,app}/  side/  diff/
  * Exit: 0 ok, 1 gate failed or a walk failed, 2 usage.
  */
@@ -21,16 +23,18 @@ import path from "node:path";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { parseArgs, parseViewports } from "./lib/args.mjs";
 import { walk, repoRootFrom } from "./lib/walk.mjs";
+import { loadFixtures } from "./lib/seed.mjs";
+import { appStates } from "./lib/states.mjs";
 import { diffPng } from "./lib/diff.mjs";
 import {
-  parseScreens, planRun, selectorsFor, summarizeMeasure, compareScreen, summarizeRegions,
+  parseScreens, planRun, validateAppRefs, selectorsFor, summarizeMeasure, compareScreen, summarizeRegions,
   sideBySide, buildReport, renderMarkdown,
 } from "./lib/fidelity.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 const usage = () => {
   console.error("usage: fidelity.mjs --direction <slug> [--screens a,b] [--viewports WxH,...] [--against app|self]\n" +
-    "       [--max-region-delta px] [--run name] [--out dir] [--scheme dark|light] [--remote-images] [--pixel-threshold 0..1]");
+    "       [--max-region-delta px] [--run name] [--out dir] [--root dir] [--scheme dark|light] [--remote-images] [--pixel-threshold 0..1]");
   process.exit(2);
 };
 if (typeof args.direction !== "string" || !/^[A-Za-z0-9._-]+$/.test(args.direction)) usage();
@@ -50,11 +54,16 @@ try {
   parsed = parseScreens(JSON.parse(readFileSync(screensPath, "utf8")), path.relative(repoRoot, screensPath));
   plan = planRun(parsed, typeof args.screens === "string" ? args.screens.split(",").map((s) => s.trim()).filter(Boolean) : null);
 } catch (e) { console.error(String(e.message || e)); process.exit(2); }
+{
+  const known = Object.fromEntries(appStates(loadFixtures(repoRoot)).map((st) => [st.id, st.steps.map((x) => x.label)]));
+  const problems = validateAppRefs(parsed, known);
+  if (problems.length) { console.error(`${path.relative(repoRoot, screensPath)}: bad app mapping\n  ` + problems.join("\n  ")); process.exit(2); }
+}
 
 const viewports = parseViewports(args.viewports, "393x852");
 const run = typeof args.run === "string" ? args.run : `${args.direction}-${new Date().toISOString().replace(/[-:]/g, "").replace(/\..*/, "")}`;
 if (!/^[A-Za-z0-9._-]+$/.test(run) || run === "." || run === "..") usage();
-const out = path.resolve(typeof args.out === "string" ? args.out : path.join(repoRoot, "data-local", "redesign", "fidelity", run));
+const out = path.resolve(typeof args.out === "string" ? args.out : path.join(typeof args.root === "string" ? path.resolve(args.root) : path.join(repoRoot, "data-local", "redesign"), "fidelity", run));
 for (const d of ["shots/prototype", "shots/app", "side", "diff"]) mkdirSync(path.join(out, d), { recursive: true });
 const remoteImages = !!args["remote-images"];
 const scheme = typeof args.scheme === "string" ? args.scheme : "dark";
@@ -141,12 +150,12 @@ for (const s of comparable) {
     const key = `${s.id}|${vp.name}`;
     const p = shots.prototype.get(key);
     const a = shots.app.get(key);
-    if (!p || !a) { skipped.push({ id: s.id, reason: `${vp.name}: ${!p ? "prototype" : "app"} shot missing (see harness errors)` }); continue; }
+    if (!p || !a) { skipped.push({ id: s.id, viewport: vp.name, fault: true, reason: `${vp.name}: ${!p ? "prototype" : "app"} shot missing (see harness errors)` }); continue; }
     const d = diffPng(p.buf, a.buf, { pixelThreshold });
     const base = nameOf(s.id, vp.name);
     writeFileSync(path.join(out, "side", base), sideBySide(p.buf, a.buf));
     if (d.diff) writeFileSync(path.join(out, "diff", base), d.diff);
-    const regions = compareScreen(s, p.measures, a.measures);
+    const regions = compareScreen(s, p.measures, a.measures, against === "self" ? () => true : undefined);
     screensOut.push({
       id: s.id, title: s.title, viewport: vp.name, prototypeRoute: s.route,
       appRef: against === "self" ? `self ${s.route}` : `${s.app.state}/${s.app.step}`,

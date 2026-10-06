@@ -16,12 +16,23 @@ owner's; change them here if experience says so.
   from memory on legal/audio questions (CLAUDE.md "Research corpus").
 - Tooling is in `tools/ui-lab/` (`README.md`): `shoot.mjs`, `a11y.mjs`,
   `baseline.mjs`, `judge-set.mjs`, `fidelity.mjs`, and `gates.mjs` (hard-limit gates;
-  lands from branch `redesign/p0-gates`, with `gates-known-debt.json` as the
+  lands from branch `redesign/p0-gates` (CLI: `--target`, `--allow <debt json>`, `--states`, `--no-remote-images`), with `gates-known-debt.json` as the
   accepted-debt list; it is a required step below from the day it is on the trunk).
   One-time per checkout: `cd tools/ui-lab && npm install && npx playwright install chromium`.
 - Renders, judge sets and fidelity output live in `data-local/redesign/`
   (gitignored). **Never commit a screenshot or any third-party imagery, including
-  renders of a prototype's artwork** (public repo, `PLAN.md` "Hard limits").
+  renders of a prototype's artwork.** This is deliberately stricter than `PLAN.md`
+  (which allows our own renders): a prototype render contains third-party podcast
+  artwork, and the repo is public, so the rule is "no renders in git at all".
+- **The shared data root.** An agent's isolated worktree has its own empty
+  `data-local/`, so the baselines, `shots/today/` and judge refs recorded in the
+  trunk checkout are not there. Every command that reads or writes them takes
+  `--root <trunk checkout>\data-local\redesign`, i.e.
+  `--root C:\Users\Fourtys\Documents\Claude\Projects\foray\.claude\worktrees\redesign-2026\data-local\redesign`
+  (written `$ROOT` below): `baseline.mjs record|compare|list`, `judge-set.mjs`
+  and `fidelity.mjs`. `shoot.mjs` and `gates.mjs` write to `--out`/their default under
+  your own worktree; that is fine, nothing downstream needs those. Baselines are tied to
+  one machine's Chromium and fonts, which is another reason they live in one place.
 - Windows: Git Bash rewrites `#/...` arguments; use PowerShell or `MSYS_NO_PATHCONV=1`.
   `run-suites` shows CRLF-only failures on Windows; judge Linux CI, not the
   Windows count (`PROGRESS.md`).
@@ -40,16 +51,20 @@ owner's; change them here if experience says so.
   green and reaches TestFlight in about two hours. PRs, if any, target the
   direction branch.
 - Merge direction-branch work with a merge commit (keeps one screen = one
-  reviewable unit), then update the baseline (section 4, step 8).
+  reviewable unit), then update the rolling baseline (section 4, step 8).
 - Agents run in isolated worktrees. At most **20 concurrent agents** (`PLAN.md`
   owner decision 2); parallelise across screens only after Now Playing has set
   the pattern, and never put two agents on the same `ui/*.js` file.
 - `git add` explicit paths only; never `git restore`, `git checkout -- <file>`,
   `git clean`, `git reset --hard`, bare `git stash`. No blanket `git add -A` / `.`.
 - One agent owns one screen's files for the length of its loop. Shared files
-  (tokens, sprite, primitives, `index.html`, `lib/states.mjs`) change only in
-  Phase 3 tasks, or in a one-line follow-up PR to the direction branch that
-  says which screens it affects.
+  (tokens, sprite, primitives, `index.html`) change only in Phase 3 tasks, or in
+  a one-line follow-up PR to the direction branch that says which screens it
+  affects. **`tools/ui-lab/lib/states.mjs`:** Phase 3 owns its structure; a screen
+  agent may **append** the states and steps its own screen needs (a new entry in
+  `appStates()`, or new steps in a state block it added), never edit or reorder
+  existing ones. Appended blocks are what `screens.json` `app.state`/`app.step` point
+  at; `fidelity.mjs` refuses a map that names a step that does not exist.
 
 ## 2. Hard limits (a direction may not challenge these)
 
@@ -102,16 +117,18 @@ prototype: the prototype is the target, `BUILD-NOTES.md` the measurements.
    `tools/ui-lab/lib/states.mjs` on the direction branch. Then:
    ```
    node tools/ui-lab/shoot.mjs --target app --states gallery --no-remote-images --out data-local/redesign/shots/<direction>-gallery
-   node tools/ui-lab/gates.mjs --target app --states gallery        # must pass (flags as shoot.mjs; see its README section)
-   node tools/ui-lab/baseline.mjs record --name <direction>-gallery --target app --states gallery --no-remote-images
+   node tools/ui-lab/gates.mjs --target app --states gallery --allow tools/ui-lab/gates-known-debt.json --no-remote-images   # must exit 0
+   node tools/ui-lab/baseline.mjs record --name <direction>-gallery --root $ROOT --target app --states gallery --no-remote-images
    ```
    That baseline is the regression net for the foundation: from here on, an
-   unintended primitive change fails `baseline.mjs compare --name <direction>-gallery`.
+   unintended primitive change fails `baseline.mjs compare --name <direction>-gallery --root $ROOT`.
    Judge the gallery once against the direction's own prototype (section 4, step 5)
    before Phase 4 starts.
 
 Phase 3 exit: all suites green (`node tools/ci/run-suites.mjs`), gates green,
-gallery baseline recorded, `PROGRESS.md` updated.
+gallery baseline recorded, and the **rolling app baseline** recorded once over the
+whole app (`baseline.mjs record --name <direction>-app --root $ROOT --target app --no-remote-images`;
+section 4, step 8 keeps it current), `PROGRESS.md` updated.
 
 ## 4. Phase 4: the per-screen loop
 
@@ -132,35 +149,50 @@ For each screen, one agent, branch `redesign/p4-<direction>-<screen>`:
    only in the PR that adopts the ruling, and that PR says which ruling fell.
    Every new test names its one-line mutation and you run it. New suite =
    FLOORS line.
-3. **Gates.** `node tools/ui-lab/gates.mjs --target app` must pass with **no new
-   debt** against `tools/ui-lab/gates-known-debt.json`. Do not add to that file
-   to get green; a new entry is an orchestrator decision.
+3. **Gates.**
+   ```
+   node tools/ui-lab/gates.mjs --target app --allow tools/ui-lab/gates-known-debt.json --no-remote-images
+   ```
+   must exit 0: no violation outside the known-debt list (without `--allow` all
+   known debt counts as new and the exit is always 1; the list was recorded with
+   `--no-remote-images`, so keep that flag). Do not add to the list to get green; a
+   new entry, or `--write-allow`, is an orchestrator decision.
 4. **Shoot and pair.** For the screen's rows in `screens.json`:
    ```
-   node tools/ui-lab/fidelity.mjs --direction <direction> --screens <ids> --run <screen>-i<N>
+   node tools/ui-lab/fidelity.mjs --direction <direction> --screens <ids> --run <screen>-i<N> --root $ROOT
    ```
-   Open `data-local/redesign/fidelity/<run>/report.md` and the `side/*.png`
+   (Remote images are off by default; `--remote-images` opts in.) Open `$ROOT\fidelity\<run>\report.md` and the `side/*.png`
    (prototype | app). The report gives per-screen pixel diff (dominated by data
    and artwork, so read it only as "is it close at all") and per-region
    position/size deltas in px (header, hero art, rows, tab bar, primary control,
    mini player, scrubber). Fix every region delta above **4px** (**decision**) that
    the prototype does not explain. `--max-region-delta 4` turns that into an exit
-   code if a workflow wants it; fidelity is otherwise judged, not thresholded.
+   code if a workflow wants it (then a region over 4px, a region on one side only,
+   a region matching nothing on either side, or a screen skipped for a missing shot
+   all fail); fidelity is otherwise judged, not thresholded. A region listed under
+   "Broken regions" is a selector typo in `screens.json`: fix the map, it is not a
+   finding. A `screens.json` naming a state or step that does not exist exits 2.
    Sanity: `--against self` must read 0% on every screen.
 5. **Judge, pairwise, per `judge/protocol.md`.** Copy the two renders to neutral
-   `A.png`/`B.png` via `judge-set.mjs` (build a `pairs.json` for the screen;
+   `A.png`/`B.png` via `judge-set.mjs ... --root $ROOT` (build a `pairs.json` for the screen;
    `judge/hard-pairs.json` is the format); never hand a judge a path or the
-   `side/` image, which names the prototype. Both orders, different judges,
-   same screen/state/viewport, same rubric (`judge/rubric.md`):
+   `side/` image, which names the prototype. Same screen/state/viewport, same
+   rubric (`judge/rubric.md`):
    - **Fidelity pair:** implementation vs the prototype's render
-     (`fidelity` run, `shots/prototype/` vs `shots/app/`). Question: has the
+     (`$ROOT\fidelity\<run>\shots\prototype\` vs `shots\app\`). Question: has the
      build lost anything the prototype had? Pass: the prototype does not win.
    - **Is-it-better pair:** implementation vs today's app for the same screen
-     (`data-local/redesign/shots/today/`). Pass: the implementation wins.
-   - Iterations use two judges per order (a split adds a third). The pass that
-     accepts a screen uses three judges with both orders represented
-     (protocol "Judges per pair"). A 2-1 is a lean: accept, and record it in
-     the review. Order-following pairs are ties.
+     (`$ROOT\shots\today\`). Pass: the implementation wins.
+   - **Quick iterations (protocol "Judges per pair"): two judges total per pair.**
+     `judge-set.mjs` shows each pair in both orders, one judge per order, which is
+     exactly two verdicts. If they disagree (one A, one B), add a third.
+   - **The pass that accepts a screen: three judges.** Take the two verdicts
+     above and add a third fresh Opus judge on a neutral copy of one order's
+     `A.png`/`B.png` folder (copy one `j<k>/<nn>` folder from the set to a new
+     directory; pick the order by coin flip and note it in the run record). Map all
+     three back through `key.json`, majority per protocol "Aggregation": 2-0 or 3-0
+     is a win, a 2-1 is a lean (accept and record it in the review), a split with no
+     majority is a tie. Order-following pairs are ties.
    - Judges are Opus, fresh context, images and rubric only. Keep their
      `decisive_reasons`; they are the fix list.
 6. **Fix, then re-run steps 3 to 5.** Cap: **4 iterations** (**decision**). Past
@@ -173,18 +205,32 @@ For each screen, one agent, branch `redesign/p4-<direction>-<screen>`:
    (section 2), test discipline (section 5), classification, no stray files,
    no screenshots committed, no direct-to-main anything. Reviewer returns
    section 7's shape. Must-fix items go back to step 6 and count as an iteration.
-8. **Merge** into the direction branch (merge commit), then lock it:
+8. **Regression check, merge, re-lock.** Baselines are **rolling, one per
+   direction, not one per screen**: every baseline render shoots the whole app, so a
+   per-screen baseline would be broken by the next screen. There are two:
+   `<direction>-gallery` (the foundation) and `<direction>-app` (every state, every
+   viewport). Before merging, on the screen branch:
    ```
-   node tools/ui-lab/shoot.mjs --target app --out data-local/redesign/shots/<direction>-<screen> --no-remote-images
-   node tools/ui-lab/baseline.mjs record --name <direction>-<screen> --from data-local/redesign/shots/<direction>-<screen> [--force]
-   node tools/ui-lab/baseline.mjs compare --name <direction>-gallery   # foundation unchanged unless the PR meant it
+   node tools/ui-lab/baseline.mjs compare --name <direction>-gallery --root $ROOT
+   node tools/ui-lab/baseline.mjs compare --name <direction>-app --root $ROOT
    ```
-   Re-record a baseline only for a change the PR intended, never to silence a diff.
-   Record baselines with `--no-remote-images` and on one machine (they are tied to
-   its Chromium and fonts). Append one line to `PROGRESS.md`.
+   `compare` re-renders with the shoot args stored by `record` (read
+   `$ROOT\compare\<name>\report.md`; `diffs\` has the overlays). Diffs on the screen
+   you just built are expected; **a diff anywhere else is a regression** (fix it, or,
+   if the change is intended, say which screen and why in the PR). Then merge into the
+   direction branch (merge commit) and re-lock:
+   ```
+   node tools/ui-lab/baseline.mjs record --name <direction>-app --force --root $ROOT --target app --no-remote-images
+   node tools/ui-lab/baseline.mjs record --name <direction>-gallery --force --root $ROOT --target app --states gallery --no-remote-images   # only if the PR meant to change a primitive
+   ```
+   (`record` without `--from` renders with `shoot.mjs`; a baseline recorded with
+   `--from` cannot be re-rendered by `compare --name` alone, which exits 2.) Re-record
+   only for a change the PR intended, never to silence a diff. Baselines are tied to
+   one machine's Chromium and fonts. Append one line to `PROGRESS.md`.
 
-After the last screen: full `node tools/ci/run-suites.mjs`, `gates.mjs` on every
-state, `a11y.mjs` on every route/state, every baseline compared clean, then
+After the last screen: full `node tools/ci/run-suites.mjs`, `gates.mjs` (with
+`--allow` and `--no-remote-images`) on every state, `a11y.mjs` on every route/state,
+both baselines compared clean, then
 hand to Phase 5 (QA, perf budget, store screenshots and copy; no app icon).
 
 ## 5. Test discipline
@@ -218,11 +264,11 @@ hand to Phase 5 (QA, perf budget, store screenshots and copy; no app icon).
   (`ai.jwlabs.foura.lab`) for Wyatt's iPhone (TestFlight) and Joey's Android
   (Play internal, plus a debug APK). It is dispatch-only, accepts only
   `redesign/*` or `feature/redesign-2026*` refs, and must be dispatched from
-  `main`'s copy. **It is not on `main` yet** (PR #1087 waits for the owner's
-  `founder-approved`, HA #144); until it is, a build agent does not dispatch it.
-  Once it is merged, the **orchestrator** (not a build agent) dispatches:
-  `gh workflow run lab-build.yml -f ref=feature/redesign-2026-<direction> -f platforms=both`
-  when a direction reaches a milestone worth putting in hands (Now Playing
+  `main`'s copy (it is on `main` since #1087, 749a986b). Only the **orchestrator**
+  (never a build agent) dispatches it:
+  `gh workflow run lab-build.yml --ref main -f ref=feature/redesign-2026-<direction> -f platforms=both`
+  (`--ref main` is the workflow file's ref; the `ref` input is the branch to build and
+  must be `redesign/*` or `feature/redesign-2026*`), when a direction reaches a milestone worth putting in hands (Now Playing
   accepted; then each screen group). Do not dispatch `release.yml`.
 - Each lab build gets one `PROGRESS.md` line: ref, SHA, which screens are in it,
   what to try. Feedback from the devices goes in `HUMAN-ACTIONS.md` only if it
