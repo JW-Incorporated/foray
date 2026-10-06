@@ -60,6 +60,14 @@ than it is.
   code implements from `docs/roadmap/README.md` question 17
   (`docs/roadmap/player-features.md` §1 question 2). No founder has ruled on
   it. This script checks the default works; it does not settle it.
+- **Bookmark rows never switch to the approximate "Around minute N"
+  wording.** Drift detection has no observed duration yet: `app.js`
+  `bookmarkObservedSec` reads `ForayPlayer.observedDurationSec`, which is not
+  built, so it passes null and `seekPrecision` reports the listener's own
+  bookmark as exact on any copy. PQ-24's "streamed another day → roughly"
+  check (`docs/roadmap/player-features.md`) cannot be run until a later card
+  exposes the measured length.
+  Step 3's second half only records the two lengths.
 - **The iOS plugin writes no diagnostics row.** Developer → Playback
   diagnostics says nothing about downloads, so step 6 needs a proxy.
 
@@ -110,17 +118,22 @@ than it is.
    **1:07:30** and press **Bookmark** in the Now Playing sheet ("Bookmarked.").
    Open the episode's page.
    *Expected:* under **Bookmarks** the row reads **"At 1:07:3x"** (the exact
-   second you marked), not "Around minute 68". Tap it: playback jumps to that
-   second. Write down the episode's total length the player shows.
+   second you marked). Tap it: with no network, playback jumps to that second
+   and plays on. This offline seek is what step 3 judges. The "At" wording
+   alone does not tell a downloaded copy from a streamed one: a streamed
+   `dai_suspected` bookmark also reads "At" today (see "What this script does
+   not check"). Write down the episode's total length the player shows.
    Then, **on another day** (so the publisher can serve a different ad load):
    turn Airplane Mode off, tap **Downloaded ✓** on the episode's page to remove
    the download, play the episode streamed for 10 seconds, and open its page
-   again.
-   *Expected:* if the streamed copy's length differs from the downloaded one
-   by more than 30 seconds, the row reads **"Around minute 68"** (the
-   approximate wording; `player/seek-policy.js` `DRIFT_TOLERANCE_SEC = 30`).
-   If the two lengths are within 30 seconds, it still reads "At 1:07:3x", and
-   that is also correct. Write down both lengths either way.
+   again. Write down the streamed length next to the downloaded one.
+   *Record only, no pass or fail:* the row reads **"At 1:07:3x"** whatever the
+   streamed length is, because the episode page does not yet measure the
+   copy's length (`app.js` `bookmarkObservedSec` returns null;
+   `ForayPlayer.observedDurationSec` is not built). The two lengths are kept
+   for the later card that exposes the measured length, when a gap over 30
+   seconds (`player/seek-policy.js` `DRIFT_TOLERANCE_SEC = 30`) will switch the
+   row to "Around minute 68".
 
 4. **Missing-file degrade (#29: "delete a file behind the player, hit play, it
    degrades").** Needs precondition 4. Download the episode again and wait for
@@ -187,7 +200,7 @@ than it is.
 
 Steps 1, 2, 3, 5, 6 and 7 must pass on the build named in the record. Step 4
 passes, or is "not run" only for want of a development build. Its offline
-variant and the second half of step 3 are recorded, not judged on one
-wording. When every step is in the #29 comment, the device-check asks in #29
-can be ticked. #29 itself stays open while automatic download of picks and
-the offline earcon-and-advance path are unbuilt.
+variant and the second half of step 3 are recorded, not judged. When every
+step is in the #29 comment, the device-check asks in #29 can be ticked. #29
+itself stays open while automatic download of picks, the offline
+earcon-and-advance path and the bookmark drift reading are unbuilt.
