@@ -106,6 +106,30 @@ dialog img { display: block; width: auto; max-width: 100%; max-height: calc(96vh
 .btn.primary { background: var(--signal); border-color: var(--signal); color: var(--signal-ink); }
 .btn.danger { color: var(--wait); }
 
+/* ---- Why they won ---- */
+.why { display: grid; gap: 18px; max-width: 980px; }
+.why-head { display: grid; gap: 8px; }
+.why-head p { color: var(--ink-2); }
+.traits { display: flex; flex-wrap: wrap; gap: 6px; padding: 0; margin: 0; list-style: none; }
+.traits li { font-size: 14px; padding: 6px 12px; border: 1px solid var(--rule); border-radius: 999px; background: var(--sheet); }
+.why-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 12px; }
+.why-card { background: var(--sheet); border: 1px solid var(--rule); border-radius: 14px; padding: 14px 16px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.why-card.first { border-color: var(--good); }
+.why-card .row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.why-card h3 { font-size: 19px; }
+.why-card ul { margin: 0; padding-left: 18px; display: grid; gap: 8px; }
+.why-card li { line-height: 1.45; }
+.why-card .round { color: var(--ink-3); font-size: 13px; line-height: 1.4; }
+.why-card .lost { border-top: 1px solid var(--rule); padding-top: 10px; color: var(--ink-2); font-size: 14px; }
+.rest { display: grid; gap: 10px; }
+.rest dl { margin: 0; display: grid; gap: 10px; }
+.rest .item { background: var(--sheet); border: 1px solid var(--rule); border-radius: 12px; padding: 12px 14px; display: grid; gap: 4px; min-width: 0; }
+.rest dt { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-family: var(--f-display); font-weight: 700; font-size: 16px; }
+.rest dt .mono { font: 500 12px var(--f-mono); color: var(--ink-3); }
+.rest dd { margin: 0; color: var(--ink-2); font-size: 14px; line-height: 1.45; max-width: 75ch; }
+.limits { display: grid; gap: 6px; }
+.limits ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; color: var(--ink-2); font-size: 14px; max-width: 75ch; }
+
 /* ---- Pass the phone ---- */
 .vote { display: grid; gap: 18px; max-width: 760px; }
 .stage { background: var(--sheet); border: 1px solid var(--rule); border-radius: 16px; padding: 16px; display: grid; gap: 14px; }
@@ -154,6 +178,7 @@ textarea { width: 100%; min-height: 120px; font: 13px/1.4 var(--f-mono); color: 
 
   <div class="modes" role="tablist" aria-label="Mode">
     <button type="button" role="tab" id="tab-compare" aria-selected="true" aria-controls="view-compare">Compare</button>
+    <button type="button" role="tab" id="tab-why" aria-selected="false" aria-controls="view-why">Why they won</button>
     <button type="button" role="tab" id="tab-vote" aria-selected="false" aria-controls="view-vote">Pass the phone</button>
   </div>
 
@@ -164,6 +189,73 @@ textarea { width: 100%; min-height: 120px; font: 13px/1.4 var(--f-mono); color: 
       <label class="toggle"><input type="checkbox" id="show-today" checked> Show today's app</label>
     </div>
     <div id="screens" class="stack"></div>
+  </main>
+
+  <main id="view-why" role="tabpanel" aria-labelledby="tab-why" hidden>
+    <div class="why">
+      <div class="why-head">
+        <span class="label">From the judges' written reasons · 6 October 2026</span>
+        <h2>Why Tactile and Ambient won</h2>
+        <p>Every pair of designs was judged by four AI judges, two seeing it in each order. Their reasons kept coming back to the same four things:</p>
+        <ul class="traits">
+          <li>A look you'd recognise without a logo</li>
+          <li>One obvious thing to do on each screen</li>
+          <li>Text and buttons that are easy to read and tap</li>
+          <li>No visual glitches</li>
+        </ul>
+      </div>
+
+      <div class="why-grid">
+        <article class="why-card first">
+          <div class="row"><h3>Tactile</h3><span class="pill ready">20 of 20 votes</span></div>
+          <p class="round">Picked by every judge who saw it. Beat each other direction 4-0.</p>
+          <ul>
+            <li><b>One obvious thing per screen.</b> A big bold headline and one big red play button, so each screen's purpose is clear at a glance.</li>
+            <li><b>Its own personality.</b> Warm cream surfaces, raised buttons that look pressable, and chunky type. One judge called it a look "you would recognise without a logo."</li>
+            <li><b>The Foray bar means something.</b> Its coloured, labelled segment bar shows a Foray as several shows stitched together, the same way on every screen.</li>
+            <li><b>Easy to use.</b> Big text, big tap targets and strong contrast, which matters in a car.</li>
+            <li><b>Clean and consistent.</b> One button and card style everywhere, and nothing overlapping.</li>
+          </ul>
+        </article>
+
+        <article class="why-card">
+          <div class="row"><h3>Ambient</h3><span class="pill ready">15 of 20 votes</span></div>
+          <p class="round">Lost only to Tactile. Beat Editorial 3-1 and everything else 4-0.</p>
+          <ul>
+            <li><b>Warm and distinctive.</b> An amber glow and serif headlines on every screen. A judge said it "could not be mistaken for another app."</li>
+            <li><b>Artwork first.</b> Big podcast art gives each screen a focal point, with one amber play button as the main action.</li>
+            <li><b>Feels current.</b> Floating, glassy navigation and mini player read as very 2026.</li>
+          </ul>
+          <p class="lost"><b>Why it lost to Tactile:</b> its small, low-contrast grey text is harder to read, and it has a few overlaps, such as "FORAY" tags on top of Library artwork and the mini player covering cards. There is also an empty gap on the onboarding screen.</p>
+        </article>
+      </div>
+
+      <section class="rest" aria-labelledby="rest-h">
+        <h2 id="rest-h">Why the other three fell behind</h2>
+        <dl>
+          <div class="item">
+            <dt>Editorial <span class="mono">11 of 20</span></dt>
+            <dd>Judges often called its typography the best of all five. But text shows through its see-through tab bar and search box, the small print is tiny, and it "reads like a print page." Tied 2-2 with Native 2026.</dd>
+          </div>
+          <div class="item">
+            <dt>Native 2026 <span class="mono">10 of 20</span></dt>
+            <dd>Competent, but judges called it "a generic Apple Podcasts template," with nothing that makes it 4a. The search grid crowds the search box and artwork sits under the status bar.</dd>
+          </div>
+          <div class="item">
+            <dt>Clarity <span class="mono">4 of 20</span></dt>
+            <dd>The information is clear, but dense rows of small, similar-looking text make it feel flat and generic. Content also shows through below its tab bar.</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="limits" aria-labelledby="limits-h">
+        <h2 id="limits-h">What the vote can't tell you</h2>
+        <ul>
+          <li>The judges saw still screenshots only. Motion, springs and how a design feels in the hand were not part of the vote, so Tactile's springy buttons and Ambient's colours shifting with each episode's artwork went unjudged. Open the prototypes on a phone for that.</li>
+          <li>The judges score against a written rubric that favours identity, clear hierarchy, readability and polish. Your taste, and the people you pass the phone to, are the deciding vote. If Editorial's typography or Native 2026's familiarity wins you over, that is a fair pick.</li>
+        </ul>
+      </section>
+    </div>
   </main>
 
   <main id="view-vote" role="tabpanel" aria-labelledby="tab-vote" hidden>
@@ -448,12 +540,13 @@ textarea { width: 100%; min-height: 120px; font: 13px/1.4 var(--f-mono); color: 
     phase = 'start'; renderStage(); renderTally();
   }
 
+  var MODES = ['compare', 'why', 'vote'];
   function setMode(m) {
-    var vote = m === 'vote';
-    $('tab-compare').setAttribute('aria-selected', String(!vote));
-    $('tab-vote').setAttribute('aria-selected', String(vote));
-    $('view-compare').hidden = vote;
-    $('view-vote').hidden = !vote;
+    if (MODES.indexOf(m) < 0) m = 'compare';
+    MODES.forEach(function (k) {
+      $('tab-' + k).setAttribute('aria-selected', String(k === m));
+      $('view-' + k).hidden = k !== m;
+    });
     try { localStorage.setItem('cp_checkpoint_mode', m); } catch (e) { /* ignore */ }
   }
 
@@ -462,13 +555,13 @@ textarea { width: 100%; min-height: 120px; font: 13px/1.4 var(--f-mono); color: 
   $('zoom-close').addEventListener('click', closeZoom);
   $('zoom').addEventListener('close', function () { if (zoomReturn && zoomReturn.focus) zoomReturn.focus(); });
   $('zoom').addEventListener('click', function (e) { if (e.target === $('zoom')) closeZoom(); });
-  $('tab-compare').addEventListener('click', function () { setMode('compare'); });
-  $('tab-vote').addEventListener('click', function () { setMode('vote'); });
+  MODES.forEach(function (k) { $('tab-' + k).addEventListener('click', function () { setMode(k); }); });
   $('copy').addEventListener('click', copyResults);
   $('reset').addEventListener('click', resetTallies);
-  var start0 = location.hash === '#vote' ? 'vote' : null;
+  var fromHash = location.hash.replace('#', '');
+  var start0 = MODES.indexOf(fromHash) >= 0 ? fromHash : null;
   if (!start0) { try { start0 = localStorage.getItem('cp_checkpoint_mode'); } catch (e) { start0 = null; } }
-  setMode(start0 === 'vote' ? 'vote' : 'compare');
+  setMode(start0);
 })();
 </script>
 </body>
