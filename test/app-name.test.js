@@ -506,8 +506,8 @@ test("no note this app renders into #view capitalises the unit", () => {
   ].map((m) => m[1]);
   assert.equal(
     notes.length,
-    16,
-    `expected sixteen #view status notes, found ${notes.length}. More is fine -- ` +
+    17,
+    `expected seventeen #view status notes, found ${notes.length}. More is fine -- ` +
       "raise this count so the new one is covered. Fewer means a note was lost " +
       `or reshaped: ${notes.join(" | ")}`
   );

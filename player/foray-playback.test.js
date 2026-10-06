@@ -2295,8 +2295,10 @@ test("the page hands the RESOLVED Foray to the resume lookup, not just two numbe
   assert.ok(call, "renderForay never asked for a resume point");
   assert.equal(call.args[0], FORAY_ID);
   assert.equal(call.args[1].resolved, resolved);
-  assert.equal(call.args[1].totalSec, resolved.totalSec);
-  assert.equal(call.args[1].itemCount, resolved.playable.length);
+  /* CH-22 (A3-03): the runtime and the segment count are no longer passed
+     beside it — `forayResume` derives both from `resolved`, so two numbers
+     cannot disagree with the Foray they came from. */
+  assert.deepEqual(Object.keys(call.args[1]).sort(), ["includeFinished", "resolved"]);
 });
 
 test("a resume whose segment no longer exists still mounts an interactive page", async () => {
