@@ -211,8 +211,7 @@
    to, and guards every single call into the API individually.
 */
 
-import { TTS } from "./queue-state.js";
-import { JINGLE } from "./foray-queue.js";
+import { isNarration, isJingle } from "./item-kind.js";
 
 /** `navigator.mediaSession.playbackState` values, spelled once. */
 export const NONE = "none";
@@ -396,9 +395,11 @@ export function mediaMetadata({
      `data/` and every jingle in it had an empty `artist`, so the lock screen showed
      no credit for 1.5 s at every act boundary. A jingle is ours exactly as
      narration is — no publisher made it — so it is credited the same way and never
-     carries a show's artwork. */
-  const jingle = item?.kind === JINGLE;
-  const narration = item?.kind === TTS || jingle;
+     carries a show's artwork. The classifier is `item-kind.js`'s, the one the
+     Foray strip draws "ours" by (CH-11), so the lock screen and the strip
+     cannot disagree about whose audio this is. */
+  const jingle = isJingle(item);
+  const narration = isNarration(item) || isJingle(item);
 
   let title;
   let artist;

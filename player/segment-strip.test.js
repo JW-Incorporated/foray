@@ -52,10 +52,12 @@ import {
 import { itemRuntimeSec } from "./foray-queue.js";
 import {
   stripModel, stripSummary, stripTally, mountStrip, renderStrip, assignTones, toneSeed,
-  sourceKeyOf, isNarration, growOf, TONE_COUNT, NARRATOR_SOURCE, NARRATOR_NAME, SIZES,
+  sourceKeyOf, growOf, TONE_COUNT, NARRATOR_SOURCE, NARRATOR_NAME, SIZES,
   stripFloorPlan, STRIP_METRICS, STRIP_HAIRLINE_PX, FLOOR_BUDGET,
   segmentStripHtml, applyStripGrow,
 } from "./segment-strip.js";
+import { mediaMetadata } from "./media-session.js";
+import { isNarration } from "./item-kind.js";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const readJson = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
@@ -364,8 +366,8 @@ test("consecutive bridges are one capsule; a bridge never merges with a segment"
   assert.equal(narr[1].runEnd, true);
   assert.equal(model.segments[narr[0].index - 1].runEnd, true, "the segment before it closes");
   assert.equal(model.segments[narr[1].index + 1].runStart, true, "the segment after it opens");
-  /* MUTATION (killed): in sourceKeyOf, delete
-     `if (isNarration(item)) return NARRATOR_SOURCE;`. Each bridge then keys on
+  /* MUTATION (killed): in sourceKeyOf, delete `isNarration(item) ||` from
+     the narrator test. Each bridge then keys on
      its own asset URL, so two adjacent bridges become two capsules and
      `narr[0].runEnd` is true instead of false. */
 });
@@ -391,7 +393,7 @@ test("CH-11 characterization: a narrator item draws the narration hairline in bo
      `type: "narration"` on the authored entry; both are narration-class bars
      with no show tone, and the tape either side is a toned show capsule.
      MUTATION (killed): drop the `type === "narration"` clause from
-     `isNarration` — the authored entry is drawn as a toned segment and
+     `isNarration` (player/item-kind.js since CH-11) — the authored entry is drawn as a toned segment and
      `entryBars` loses its narration bar. */
   const r = withBridges("grilling-history-2", [2]);
   const built = renderedBarClasses(mount(r.playable).markup);
@@ -409,6 +411,72 @@ test("CH-11 characterization: a narrator item draws the narration hairline in bo
   const entryBars = renderedBarClasses(mount(entries).markup);
   assert.ok(entryBars[authored].includes("fy-seg--narration"), "the authored shape is narration-class too");
   assert.equal(stripTally(entries).bridges, 1);
+});
+
+/** The real running order with an AUTHORED jingle (`type: "jingle"`,
+    generation-architecture.md §4.8) spliced in before position `at`, resolved
+    through the real `buildForayQueue`, so the queue item is the `kind:
+    "jingle"` shape the player actually plays. No shipped Foray carries one
+    yet; one draft in data/forays.json does (P2-03). */
+function withJingle(id, at) {
+  const doc = realDoc(id);
+  const items = [...doc.items];
+  items.splice(at, 0, { type: "jingle", id: `jingle-${at}` });
+  return resolveDoc({ ...doc, items });
+}
+
+test("CH-11 (P2-03): an authored jingle is a narration-class hairline, never a nameless show's clip", () => {
+  /* Before item-kind.js the strip keyed a jingle on its asset URL: a toned
+     capsule of a show with no name, counted in `stripTally.clips`, so the
+     header's clip count disagreed with the credits (which hear no show there).
+     MUTATION (killed): in segment-strip.js `sourceKeyOf`, drop `isJingle(item)`
+     from the narrator test — the jingle bar wears `fy-tN`, `clips` rises by
+     one and the first assertion is red. */
+  const plain = real("grilling-history-2");
+  const r = withJingle("grilling-history-2", 2);
+  const at = r.playable.findIndex((i) => i.kind === "jingle");
+  assert.ok(at > 0 && at < r.playable.length - 1, "premise: the jingle sits between two segments");
+  const bars = renderedBarClasses(mount(r.playable).markup);
+  assert.ok(bars[at].includes("fy-seg--narration"), "a jingle draws as the narration hairline");
+  assert.deepEqual(bars[at].filter((c) => /^fy-t\d+$/.test(c)), [], "a jingle wears no show tone");
+  const tally = stripTally(r.playable);
+  assert.equal(tally.clips, stripTally(plain.playable).clips, "a jingle is not a clip");
+  assert.equal(tally.clips + tally.bridges, r.playable.length, "every item is still a clip or a bridge");
+  assert.deepEqual(stripModel(r.playable).shows, stripModel(plain.playable).shows);
+  // The authored shape (`resolved.entries`, which a card may hand over) agrees.
+  const entries = r.entries.filter((e) => e.playable);
+  const authored = entries.findIndex((e) => e.type === "jingle");
+  assert.ok(authored >= 0, "premise: the authored entry keeps `type: \"jingle\"`");
+  assert.equal(stripTally(entries).clips, tally.clips, "both shapes count the same clips");
+  // And the spoken position never calls it "an unnamed show".
+  const startOfJingle = segmentStarts(r.playable)[at];
+  const said = stripSummary(stripModel(r.playable, { elapsed: startOfJingle + 1 }));
+  assert.ok(!said.includes("an unnamed show"), said);
+});
+
+test("CH-11 (P2-03): the strip and the lock screen classify every item the same way, a jingle included", () => {
+  /* One classifier (player/item-kind.js) for "ours": the strip draws ours as
+     the narration hairline, media-session never puts a publisher's artwork on
+     ours. Walked over a real order carrying a jingle AND a bridge, so the two
+     modules must agree on all three kinds at once.
+     MUTATION (killed): in media-session.js `mediaMetadata`, drop
+     `|| isJingle(item)` from `narration` — the jingle wears the show's
+     artwork while the strip draws it as ours, and the assertion is red. */
+  const doc = realDoc("grilling-history-2");
+  const items = [...doc.items];
+  items.splice(3, 0, bridge("nar-x", doc.items[3].slot));
+  items.splice(2, 0, { type: "jingle", id: "jingle-2" });
+  const r = resolveDoc({ ...doc, items });
+  const kinds = new Set(r.playable.map((i) => i.kind));
+  assert.deepEqual([...kinds].sort(), ["episode", "jingle", "tts"], "premise: all three kinds are present");
+  const model = stripModel(r.playable);
+  const PUBLISHER = "https://publisher.test/square.jpg";
+  r.playable.forEach((item, i) => {
+    const stripSaysOurs = model.segments[i].kind === "narration";
+    const meta = mediaMetadata({ item, forayTitle: "F", showArtworkUrl: PUBLISHER });
+    const lockSaysOurs = meta.artwork.every((a) => a.src !== PUBLISHER);
+    assert.equal(lockSaysOurs, stripSaysOurs, `${item.kind} ${item.id}: strip and lock screen disagree`);
+  });
 });
 
 test("an item with no identifiable episode joins the capsule it is next to", () => {

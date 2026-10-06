@@ -36,7 +36,9 @@
    sized by `itemRuntimeSec` like everything else and floored at a visible
    minimum width in CSS, because a bridge that renders as nothing is a bridge
    the listener hears and cannot see. #287 landed the narration architecture and
-   these will grow; the strip must not treat them as seams in the tape.
+   these will grow; the strip must not treat them as seams in the tape. An
+   authored jingle is ours too and draws the same way (`player/item-kind.js`
+   decides what is ours, for this strip and the lock screen alike).
 
    ── What is pure and what touches the DOM ─────────────────────────────────
    `stripModel` is the whole element as data — widths, capsule boundaries,
@@ -58,6 +60,7 @@
 */
 
 import { itemRuntimeSec, runtimeIsEstimated } from "./foray-queue.js";
+import { isNarration, isJingle } from "./item-kind.js";
 import { segmentStarts, segmentAtElapsed, fmtClock, fmtSpan } from "./foray-resolve.js";
 
 /** How many show tones the palette holds. `styles.css` defines `--seg-c0` …
@@ -149,14 +152,6 @@ const isNum = (n) => typeof n === "number" && Number.isFinite(n);
 const nonEmpty = (s) => typeof s === "string" && s.trim().length > 0;
 const clamp01 = (n) => (isNum(n) ? Math.min(1, Math.max(0, n)) : 0);
 
-/** A narrator bridge, in either of the two shapes it travels in: `kind: "tts"`
-    on a built queue item, `type: "narration"` on an authored/hydrated one. Both
-    reach this element — the player page hands over `resolved.playable`, a card
-    may hand over `resolved.entries` — and a strip that recognised only one of
-    them would render the other as a silent segment of an unnamed show. */
-export function isNarration(item) {
-  return item?.kind === "tts" || item?.type === "narration";
-}
 
 /**
  * Which SOURCE EPISODE this item was cut from — the value the capsules group
@@ -170,7 +165,12 @@ export function isNarration(item) {
  * the last thing that is still per-episode.
  */
 export function sourceKeyOf(item) {
-  if (isNarration(item)) return NARRATOR_SOURCE;
+  /* OURS IS ONE SOURCE (CH-11, P2-03). A narrator bridge and an authored jingle
+     are both 4a's own audio, in either of the shapes they travel in
+     (`player/item-kind.js`): a strip that recognised only one would paint the
+     other as a toned clip of an unnamed show — keyed on its asset URL — and
+     count it in `stripTally.clips`. */
+  if (isNarration(item) || isJingle(item)) return NARRATOR_SOURCE;
   for (const k of [item?.source_item_id, item?.item_id, item?.audio_url]) {
     if (nonEmpty(k)) return k;
   }

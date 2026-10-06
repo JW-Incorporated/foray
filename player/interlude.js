@@ -53,6 +53,10 @@
    length, with the beat as the floor if the jingle stops short and
    `INTERLUDE_CEILING_SEC` as the ceiling if it never reports ending.
 
+   Whether a queue ITEM is an authored jingle, narration or tape is
+   `player/item-kind.js`'s question — the one classifier the strip and the
+   lock screen share (CH-11).
+
    ── Which backend this covers ─────────────────────────────────────────────
    The WebView path: `player/html-audio-backend.js` under the PWA and under
    the Capacitor shell that ships to TestFlight/Play (CLAUDE.md § Layout —
