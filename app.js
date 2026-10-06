@@ -3603,11 +3603,20 @@ const EPISODE_NAVIGATION = {
     if (!b) return null;
     const bm = b.addBookmark(BOOKMARK_STORE, { episodeId: id, sec, durationSec });
     if (bm) announce("Bookmarked.");
+    /* The episode page under the sheet lists it at once (CH-09b, PQ-15):
+       "Bookmarked." for a row no page showed was the write-only defect. */
+    if (bm) repaintBookmarks(id);
     return bm;
   },
   bookmarksFor(id) {
     const b = window.forayBookmarks;
     return b ? b.listBookmarks(BOOKMARK_STORE, id) : [];
+  },
+  /* The episode page's Remove (CH-09b, PQ-15): the module's rule through the
+     page's store, like addBookmark. True when a row went and the write took. */
+  removeBookmark(id, createdAt) {
+    const b = window.forayBookmarks;
+    return b ? b.removeBookmark(BOOKMARK_STORE, id, createdAt) : false;
   },
 };
 
@@ -12117,6 +12126,104 @@ function bindEpisodeSeeks(scope, item) {
   hydrateFeedChapters(scope, item);
 }
 
+/* ---------- the episode page's bookmarks (issue #30, PQ-15; code-health CH-09b) ----------
+
+   The listener's own marks on this episode, set from the Now Playing sheet
+   (EPISODE_NAVIGATION.addBookmark) and listed here, which is where the
+   privacy policy's `cp_bookmarks` row says they are. Before this the sheet
+   said "Bookmarked." for something no page showed (P2-02).
+
+   - Every rule is player/bookmarks.js's, published whole as
+     window.forayBookmarks: the list (bookmarksFor), the precision
+     (bookmarkPrecision: an OWN marker, exact unless a stitched copy's length
+     drifted past seek-policy's tolerance since it was set) and the words
+     (bookmarkLabel: "at 1:02:03" or "around minute 62"). No clock text is
+     made here, so a moved timeline is never claimed to the second.
+   - A row is a `data-ts` control, so a tap is bindEpisodeSeeks's
+     play-then-seek, the one path the chapters and timestamps already take.
+   - Remove goes through EPISODE_NAVIGATION.removeBookmark (the page's store).
+   - The section lives in a slot that is always rendered, so a bookmark made
+     with this page under the sheet, a Remove, or a late hydration repaints
+     just the list, the way repaintDownload repaints the download control.
+   No event is logged and no key is added: `cp_bookmarks` stays on the device. */
+function bookmarksSlotHtml(item) {
+  return `<div class="ep-bookmarks-slot" data-bookmarks-slot="${esc(item.id)}">${bookmarksHtml(item)}</div>`;
+}
+
+/** The length of the copy in hand, the other half of a bookmark's drift
+    test: the player's reading (`observedDurationSec`: the element's own, or
+    what it measured the last time this episode played), never the catalogue's
+    declared length. Null when the player cannot say. */
+function bookmarkObservedSec(id) {
+  try {
+    const sec = window.ForayPlayer?.observedDurationSec?.(id);
+    return typeof sec === "number" && Number.isFinite(sec) && sec > 0 ? sec : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function bookmarksHtml(item) {
+  const list = EPISODE_NAVIGATION.bookmarksFor(item.id);
+  if (!list.length) return "";
+  const b = window.forayBookmarks;
+  const observed = bookmarkObservedSec(item.id);
+  /* chapterPrecision's reading of the show: unclassified counts as stitched. */
+  const show = { dai_suspected: item.dai_suspected === true || item.dai_known === false };
+  const row = (bm) => {
+    let precision;
+    try { precision = b.bookmarkPrecision(show, bm, observed).precision; } catch (_) { precision = "approximate"; }
+    const said = b.bookmarkLabel(bm, precision);
+    const shown = bm.label ? said : said.charAt(0).toUpperCase() + said.slice(1);
+    const named = bm.label ? `, ${said}` : ` ${said}`;
+    return `<li><button type="button" class="ep-chapter-row ep-bookmark-row" data-ts="${esc(String(bm.sec))}" aria-label="${esc(`Play bookmark${named}`)}"><span class="ep-chapter-title">${esc(shown)}</span></button><button type="button" class="ep-bookmark-remove" data-bookmark-remove="${esc(bm.created_at)}" aria-label="${esc(`Remove bookmark${named}`)}">Remove</button></li>`;
+  };
+  return `<section class="ep-bookmarks">
+    <h3>Bookmarks</h3>
+    <ol class="ep-chapters-list ep-bookmarks-list">${list.map(row).join("")}</ol>
+  </section>`;
+}
+
+/** Repaint one episode's bookmark list where its page is on screen, and bind
+    what the repaint drew. A no-op on every other page. */
+function repaintBookmarks(id) {
+  const view = $("#view");
+  if (!view || typeof view.querySelectorAll !== "function") return;
+  view.querySelectorAll("[data-bookmarks-slot]").forEach(slot => {
+    if (!slot.dataset || slot.dataset.bookmarksSlot !== id) return;
+    const item = resolveEpisode(id);
+    if (!item) return;
+    slot.innerHTML = bookmarksHtml(item);
+    bindEpisodeSeeks(slot, item);
+    bindBookmarkRemove(slot, item);
+  });
+}
+
+/* Per element with the `_bound` guard, bindEpisodeSeeks's idiom: the
+   listeners die with the markup they belong to. A refused write (the store at
+   quota) removes nothing and says nothing; the list repaints from storage
+   either way, so it shows what is kept. Focus moves to the next row's Remove
+   (or the new last one), so clearing several is a run of taps in one place. */
+function bindBookmarkRemove(scope, item) {
+  scope.querySelectorAll("[data-bookmark-remove]").forEach(btn => {
+    if (btn._bound) return;
+    btn._bound = true;
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const createdAt = btn.dataset.bookmarkRemove;
+      const at = EPISODE_NAVIGATION.bookmarksFor(item.id).findIndex(bm => bm.created_at === createdAt);
+      const ok = EPISODE_NAVIGATION.removeBookmark(item.id, createdAt);
+      repaintBookmarks(item.id);
+      if (!ok) return;
+      announce("Bookmark removed.");
+      const left = $("#view")?.querySelectorAll?.("[data-bookmark-remove]") || [];
+      const next = left.length ? left[Math.min(Math.max(at, 0), left.length - 1)] : null;
+      try { next?.focus?.(); } catch (_) { /* focus is best-effort */ }
+    });
+  });
+}
+
 /* `t` is a timestamp link's offset in whole seconds (#30, see episodeDeepLink),
    or null. It adds the "Play from" button and nothing else: the page never
    starts playback on its own. */
@@ -12158,6 +12265,7 @@ function renderEpisode(id, { t = null } = {}) {
       <div class="ep-actions">${item.audio_url ? playBtn(item) : notPlayableNote()}${starBtn(item.id)}${upNextBtn(item.id, item)}${item.audio_url ? `<button type="button" class="up-next playnext" data-playnext="${esc(item.id)}" aria-label="Play next">Play next</button>` : ""}${shareBtn({ kind: "episode", id: item.id, item, title: item.title })}</div>
       ${item.audio_url ? "" : `<p class="note">${esc(NOT_PLAYABLE_WHY)}</p>`}
       ${downloadControlHtml(item)}
+      ${bookmarksSlotHtml(item)}
       ${episodeDescriptionSectionHtml(item)}
       ${episodeChaptersHtml(item)}
       ${moreFromShow(item)}
@@ -12168,6 +12276,10 @@ function renderEpisode(id, { t = null } = {}) {
   bindDownloads($("#view"));
   bindPlay($("#view"));
   bindEpisodeSeeks($("#view"), item);
+  bindBookmarkRemove($("#view"), item);
+  /* Painted before the durable store landed: the list repaints when it does,
+     so this device's bookmarks are not read as none. */
+  if (storageWaiting()) afterStorageSettles(() => repaintBookmarks(item.id));
 }
 
 /* The count printed here is `resolveParts(p).length` — the SAME call
