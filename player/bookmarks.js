@@ -41,6 +41,7 @@
 */
 
 import { seekPrecision, describeTimestamp, OWN } from "./seek-policy.js";
+import { isObj } from "./guards.js";
 
 export const KEY = "cp_bookmarks";
 export const PER_EPISODE_CAP = 50;
@@ -48,10 +49,8 @@ export const TOTAL_CAP = 500;
 /** Two marks this close on one episode are one mark. */
 export const DEDUPE_WINDOW_SEC = 5;
 
-const isPlainObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
-
 function validRow(row) {
-  return isPlainObject(row)
+  return isObj(row)
     && typeof row.sec === "number" && Number.isFinite(row.sec) && row.sec >= 0
     && typeof row.created_at === "string";
 }
@@ -83,7 +82,7 @@ export function readAll(store) {
 
 /** The stored value as rows: the rule `readAll` applies, for an edit too. */
 function normaliseAll(raw) {
-  if (!isPlainObject(raw)) return {};
+  if (!isObj(raw)) return {};
   const out = {};
   for (const [episodeId, rows] of Object.entries(raw)) {
     if (!Array.isArray(rows)) continue;

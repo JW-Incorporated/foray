@@ -58,6 +58,7 @@
 import { seamGapSec, isSegment, AUTO_ADVANCE } from "./seam-gap.js";
 import { interludeEligible, sameSourceEpisode } from "./interlude.js";
 import { JINGLE } from "./foray-queue.js";
+import { isNum, isObj } from "./guards.js";
 
 /** The token a refusal carries on the wire (engine-contract.js REASONS). */
 export const REFUSED_STRUCTURE = "refused-structure";
@@ -71,13 +72,11 @@ export const STRUCTURE_PROBLEMS = Object.freeze([
   "bad-bounds", "dai-unanchored", "no-reference", "silent-narration", "no-duration",
 ]);
 
-const isNum = (n) => typeof n === "number" && Number.isFinite(n);
 const nonEmpty = (s) => typeof s === "string" && s.trim().length > 0;
-const isPlain = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 
 /** Every problem one item has, in the header's order. */
 function itemProblems(item) {
-  if (!isPlain(item)) return ["not-an-object"];
+  if (!isObj(item)) return ["not-an-object"];
   const out = [];
   if (!nonEmpty(item.id)) out.push("no-id");
   if (!QUEUE_KINDS.includes(item.kind)) {
@@ -120,7 +119,7 @@ export function structuralCheck(items) {
     const seen = new Set();
     items.forEach((item, index) => {
       for (const code of itemProblems(item)) problems.push({ index, code });
-      if (isPlain(item) && nonEmpty(item.id)) {
+      if (isObj(item) && nonEmpty(item.id)) {
         if (seen.has(item.id)) problems.push({ index, code: "duplicate-id" });
         seen.add(item.id);
       }

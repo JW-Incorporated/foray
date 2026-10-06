@@ -54,16 +54,25 @@
  * PQ-28/PQ-29 mirror case for case) owns the write through `editStored`.
  * `rows` are `api/shows/[show_id]/episodes` rows, page 1 newest-first; the
  * order is not relied on — the max is computed.
+ *
+ * WHAT IS A RECORD (code-health CH-41, X1-16). A record or a row is a plain
+ * object: `isObj` from guards.js, the player's one rule, which refuses an
+ * ARRAY. This file's own guard used to let an array through, so an array
+ * carrying an `alerts: false` property read as "alerts off" and an array row
+ * with a `published_at` counted as new; both now read as absent, like null.
+ * No production caller reaches this module yet (PQ-26 wires it), so no stored
+ * record changes meaning.
  */
+
+import { isObj } from "./guards.js";
 
 export const CHECK_INTERVAL_MS = 6 * 3600 * 1000;
 
-const isObject = (v) => v != null && typeof v === "object";
 
 /** Rows with a usable `published_at`, in the order given. */
 function datedRows(rows) {
   return (Array.isArray(rows) ? rows : []).filter(
-    (r) => isObject(r) && typeof r.published_at === "string" && r.published_at !== ""
+    (r) => isObj(r) && typeof r.published_at === "string" && r.published_at !== ""
   );
 }
 
@@ -87,17 +96,17 @@ function latestOf(rows) {
 
 /** Alerts are on unless the listener turned them off for this show. */
 export function alertsOn(record) {
-  return !(isObject(record) && record.alerts === false);
+  return !(isObj(record) && record.alerts === false);
 }
 
 /** A copy of the record with the per-show switch set. */
 export function setAlerts(record, on) {
-  return { ...(isObject(record) ? record : {}), alerts: Boolean(on) };
+  return { ...(isObj(record) ? record : {}), alerts: Boolean(on) };
 }
 
 /** True when the show has never been checked, or the interval has elapsed. */
 export function dueForCheck(record, now) {
-  const checkedAt = isObject(record) ? record.checked_at : undefined;
+  const checkedAt = isObj(record) ? record.checked_at : undefined;
   if (!checkedAt) return true;
   const then = Date.parse(checkedAt);
   if (!Number.isFinite(then)) return true;
@@ -108,7 +117,7 @@ export function dueForCheck(record, now) {
 
 /** Rows published after the record's watermark. No watermark → nothing is new. */
 export function newSince(rows, record) {
-  const seen = isObject(record) ? record.seen_published_at : undefined;
+  const seen = isObj(record) ? record.seen_published_at : undefined;
   if (typeof seen !== "string" || seen === "") return [];
   return datedRows(rows).filter((r) => r.published_at > seen);
 }
@@ -116,7 +125,7 @@ export function newSince(rows, record) {
 /** The record after a feed check: stamped, the latest noted, the new counted,
  *  and the watermark seeded on a first check. */
 export function afterCheck(record, rows, now) {
-  const base = isObject(record) ? record : {};
+  const base = isObj(record) ? record : {};
   // Never backwards: a page that lost or reordered a row does not lower the latest.
   const latest = laterOf(latestOf(rows), base.latest_published_at);
   const hadWatermark = typeof base.seen_published_at === "string" && base.seen_published_at !== "";
@@ -136,7 +145,7 @@ export function afterCheck(record, rows, now) {
 
 /** The listener has seen the show: the watermark catches up and the badge clears. */
 export function markSeen(record) {
-  const base = isObject(record) ? record : {};
+  const base = isObj(record) ? record : {};
   return {
     ...base,
     unseen_count: 0,
@@ -148,7 +157,7 @@ export function markSeen(record) {
 /** The notification's two lines: the show over the newest episode. */
 export function alertText(record, newest) {
   return {
-    title: isObject(record) && typeof record.title === "string" ? record.title : "",
-    body: isObject(newest) && typeof newest.title === "string" ? newest.title : ""
+    title: isObj(record) && typeof record.title === "string" ? record.title : "",
+    body: isObj(newest) && typeof newest.title === "string" ? newest.title : ""
   };
 }
