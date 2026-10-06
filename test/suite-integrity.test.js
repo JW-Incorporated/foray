@@ -755,7 +755,7 @@ const FLOORS = {
      index-seeded breadth show is upgraded to its API row when that row carries
      nodes; and a row without nodes leaves the seeded page alone, no re-render.
      47 -> 50. */
-  "test/show-page.test.js": 51, // CH-1 (#1071): a curated show's DAI class rides from catalog-client.json onto its show-page episode rows; 50 -> 51
+  "test/show-page.test.js": 53, // CH-29 (A1-06/A1-12): a second TITLE_ALIASES entry reaches all five title joins; showEpisodeCountLabel's whole input grid unchanged; 51 -> 53 // CH-1 (#1071): a curated show's DAI class rides from catalog-client.json onto its show-page episode rows; 50 -> 51
   /* #560 item 8 (2026-10-04): the measurement for Similar shows. The mirror of
      app.js's similarShows is pinned to app.js's text and behaviour, the
      hand-reviewed eval set is checked against the catalogue (all 13 general
@@ -1129,7 +1129,7 @@ const FLOORS = {
      #276/show-pages shape: silently wrong is the failure mode, not a crash.
      Every test names its mutation; see the suite header for the full list
      of what each test pins. */
-  "test/up-next-queue.test.js": 28, // CH-01 (A1-01): a pool row with no audio_url gets no + Up Next and is refused by addToQueue/Play next so the walk plays every queued id, plus the playable-pool-row characterization; 26 -> 28 // PQ-02 (#762): Play next lands after the playing row, adds/refuses like addToQueue, Clear keeps the playing row, the controls render, the episode page's Play next; 20 -> 26 (exact: the 21st test had landed unfloored) // audit round 2, lane L3 (2026-09-23): the page is a live view of cp_queue, .is-current, the row mark, one unnamed sentence, no + Up Next on an archived part, addToQueue refuses the unplayable, the cap never prunes a queued key, fullPool memoised; 13 -> 20 //
+  "test/up-next-queue.test.js": 30, // CH-29 (A1-19): queueIds drops non-string ids; inDiscoverPool/hydrationPool build the pool on demand and never throw; 28 -> 30 // CH-01 (A1-01): a pool row with no audio_url gets no + Up Next and is refused by addToQueue/Play next so the walk plays every queued id, plus the playable-pool-row characterization; 26 -> 28 // PQ-02 (#762): Play next lands after the playing row, adds/refuses like addToQueue, Clear keeps the playing row, the controls render, the episode page's Play next; 20 -> 26 (exact: the 21st test had landed unfloored) // audit round 2, lane L3 (2026-09-23): the page is a live view of cp_queue, .is-current, the row mark, one unnamed sentence, no + Up Next on an archived part, addToQueue refuses the unplayable, the cap never prunes a queued key, fullPool memoised; 13 -> 20 //
   /* Library screen (#/library, `docs/ux/foray-mockup.jsx`'s LibraryScreen,
      kanban card t_a1e7a69c). Floored for the same reason up-next-queue is:
      the four sections' decay path (an aged-out saved/history id, an empty
