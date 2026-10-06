@@ -144,6 +144,27 @@ test("SINGLE_ITEM is the default and yields a one-episode queue", () => {
   assert.deepStrictEqual(q.map((i) => i.id), ["a"]);
 });
 
+/* CH-30 (docs/roadmap/code-health.md P1-09/P2-10): the one queue a pick builds,
+   and the telemetry row it reports. client.js passes `{ lastEpisodeItem }` as a
+   second argument for the native facade's sake; the JS manager must build the
+   pick and nothing else from it, and the diagnostic stage stays the word
+   `queue.built.single-item` the diagnostics stream has always carried.
+   MUTATION: emit `queue.built.pick.n=…` (renaming the token) -> red.
+   MUTATION: build `[picked, ...(context.others ?? [])]` -> red. */
+test("setQueueFromPick builds the one-item queue and reports it as queue.built.single-item", () => {
+  const { m, log } = make();
+  const q = m.setQueueFromPick(ep("a"), { others: [ep("b")], lastEpisodeItem: ep("a") });
+  assert.deepStrictEqual(q.map((i) => i.id), ["a"]);
+  assert.equal(m.queue, q, "the returned list is the manager's queue");
+  assert.equal(m.currentIndex, -1, "nothing is current until play()");
+  m.setQueueFromPick(null);
+  assert.deepStrictEqual(m.queue, [], "no pick, no queue");
+  assert.deepStrictEqual(log.filter((t) => t.startsWith("queue.built")), [
+    "queue.built.single-item.n=1",
+    "queue.built.single-item.n=0",
+  ]);
+});
+
 test("PICKED_FIRST puts the pick ahead of the other cards, without duplicating it", () => {
   const { m } = make({ strategy: PICKED_FIRST });
   const q = m.setQueueFromPick(ep("a"), { others: [ep("b"), ep("a"), ep("c")] });
