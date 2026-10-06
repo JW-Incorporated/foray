@@ -40,7 +40,16 @@ Recommendation: Build Tactile and Ambient. They are the top two (15/15 and 12/15
 
 (Agent/workflow and what it is doing. Clear an entry when it lands.)
 
-(Nothing in flight.)
+- **Polish-to-ready pass** (owner request 2026-10-06 06:25 PDT, workflow `wf_dfc8207d-359`,
+  launched ~06:35 PDT): ambient, editorial, native-2026, clarity get revise -> Fable
+  critique rounds from r4 until their art director says Ready (cap r6); then all six
+  re-ranked (4 Opus judges per pair, 2 per order, position-bias check); the comparison
+  page and changed prototypes republished to the SAME artifact URLs; its own git step
+  commits and updates this file. Why: the overnight run stopped every direction at a
+  fixed 3 rounds, so only Tactile was Ready and the comparison favoured polish.
+  If it died: relaunch with Workflow({scriptPath, resumeFromRunId: "wf_dfc8207d-359"}) in
+  the same session; in a new session, check critique-r4+.md / shots r4+ on disk and
+  rerun only the missing parts. Don't commit in the trunk worktree while it runs.
 
 Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40-22:40 PDT, 128 agents,
 0 errors) ran 0a-0e, 1, 2, Rank and the checkpoint package.
