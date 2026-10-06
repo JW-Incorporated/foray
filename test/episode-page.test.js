@@ -15,9 +15,10 @@ const assert = require("node:assert");
 const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
+const { readAppSource, runAppSource } = require("./helpers/app-source.js");
 
 const APP_PATH = path.join(__dirname, "..", "app.js");
-const SRC = fs.readFileSync(APP_PATH, "utf8");
+const SRC = readAppSource();
 
 /** A minimal element stub that records enough to assert on: innerHTML text,
     and query results scoped to whatever was written there. */
@@ -63,7 +64,7 @@ function loadApp() {
 
   vm.createContext(ctx);
   process.on("unhandledRejection", noop);
-  vm.runInContext(SRC, ctx, { filename: "app.js" });
+  runAppSource(SRC, ctx);
   ctx._view = viewEl;
   /* `state` is a top-level `const` in app.js (classic script), so unlike a
      function declaration it never becomes a property of the global object —

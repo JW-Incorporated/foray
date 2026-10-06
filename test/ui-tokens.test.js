@@ -13,6 +13,7 @@ const { test } = require("node:test");
 const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
+const { readAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
 const CSS = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");
@@ -228,7 +229,7 @@ function parseRules(css) {
 }
 
 const RULES = parseRules(CSS);
-const APP_JS = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+const APP_JS = readAppSource();
 const PLAYER_JS = fs.readdirSync(path.join(ROOT, "player"))
   .filter((f) => f.endsWith(".js") && !f.endsWith(".test.js"))
   .map((f) => fs.readFileSync(path.join(ROOT, "player", f), "utf8"))

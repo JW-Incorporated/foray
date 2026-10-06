@@ -87,6 +87,8 @@ import { ForayProgressStore, resumePoint, makeProgress, progressKey } from "./fo
 import { SEAM_GAP_SEC } from "./seam-gap.js";
 import { nextRate, normalizeRate, rateLabel, rateAriaLabel, RATES } from "./playback-rate.js";
 import { createDurableStore } from "./durable-store.js";
+import { createRequire as __cr } from "node:module";
+const { readAppSource, runAppSource } = __cr(import.meta.url)("../test/helpers/app-source.js");
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const readJson = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
@@ -860,7 +862,7 @@ test("a backend with no out-point watch refuses the Foray instead of playing who
    test/app-security.test.js loads it. `init()` parks at its first `fetch`, which
    never settles, so nothing renders until this file calls `renderForay` itself. */
 
-const APP_SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+const APP_SRC = readAppSource();
 
 /** Elements are identified by what app.js asks for, because that is the only
     identity the harness has. `attrs` become `dataset` entries. */
@@ -1188,7 +1190,7 @@ async function mountForayPage({
   ctx.window = ctx;
   ctx.globalThis = ctx;
   vm.createContext(ctx);
-  vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
+  runAppSource(APP_SRC, ctx);
 
   // `state` and `SearchEngine` are lexical consts in app.js, so they are not
   // properties of the context and have to be reached from inside it.
@@ -1946,7 +1948,7 @@ test("play() does not destructure its options in the signature — a null caller
   assert.doesNotMatch(client, /ForayPlayer\.play\([a-zA-Z.]+,\s*null\)/, "no caller may pass null again");
   /* Nor a bare string: a tag is not copy. KILLING MUTATION: put
      `play(item, "timestamp")` back in app.js's timestamp handler. */
-  const app = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+  const app = readAppSource();
   assert.doesNotMatch(app, /ForayPlayer\.play\([a-zA-Z.]+,\s*["'`]/, "no caller may pass a string as the why line");
 });
 

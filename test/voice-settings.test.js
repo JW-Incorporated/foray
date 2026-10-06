@@ -35,9 +35,10 @@ const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
+const { readAppSource, runAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const APP_SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+const APP_SRC = readAppSource();
 
 /** The real default rule, loaded once. `player/` is ESM; this file is CJS. */
 const loadDefaultVoice = (() => {
@@ -240,7 +241,7 @@ function mount({
   CURRENT_DOC = ctx.document;
   vm.createContext(ctx);
   process.on("unhandledRejection", () => {});
-  vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
+  runAppSource(APP_SRC, ctx);
 
   ctx.window.ForayPlayer = {
     listVoices: async (opts) => { listCalls.push(opts); return listVoicesResult; },

@@ -84,6 +84,8 @@ import path from "node:path";
 import vm from "node:vm";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { createRequire as __cr } from "node:module";
+const { readAppSource, runAppSource } = __cr(import.meta.url)("../../test/helpers/app-source.js");
 
 import {
   MAX_BYTES, MIN_DERIVED_DATA_FILES, PROJECTED_DATA, BUNDLED_ITEMS_PER_SHOW,
@@ -539,7 +541,7 @@ test("the bundled catalogue slice keeps every show, and both of the Foray joins"
 
 /* ─────────── 3. the service worker: off in the shell, on in the web ──────── */
 
-const APP_SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+const APP_SRC = readAppSource();
 
 /** Evaluate the REAL app.js the way a page does, and report whether it tried to
  *  register the service worker. `init()` suspends on its first await because
@@ -594,7 +596,7 @@ async function runAppShell({ capacitor = undefined, protocol = "https:", userAge
   ctx.window = ctx;
   ctx.globalThis = ctx;
   vm.createContext(ctx);
-  vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
+  runAppSource(APP_SRC, ctx);
   vm.runInContext("markFirstPagePainted();", ctx);
   await new Promise((r) => setTimeout(r, 5));
   return { registered, ctx };

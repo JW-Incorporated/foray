@@ -30,11 +30,13 @@ const { test } = require("node:test");
 const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
+const { readAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
 const MIG = path.join(ROOT, "backend/migrations");
 const SUPA = path.join(MIG, "supabase");
-const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
+const read = (rel) =>
+  rel === "app.js" ? readAppSource() : fs.readFileSync(path.join(ROOT, rel), "utf8");
 const sqlOnly = (src) => src.replace(/--[^\n]*/g, "");
 const sqlFiles = (dir) => fs.readdirSync(dir).filter((n) => n.endsWith(".sql")).sort();
 

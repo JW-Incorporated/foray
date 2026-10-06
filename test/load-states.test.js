@@ -36,13 +36,14 @@
  */
 
 const { test } = require("node:test");
+const { readAppSource, runAppSource } = require("./helpers/app-source.js");
 const assert = require("node:assert");
 const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
 
 const ROOT = path.join(__dirname, "..");
-const APP_SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+const APP_SRC = readAppSource();
 const SEARCH_SRC = fs.readFileSync(path.join(ROOT, "search-engine.js"), "utf8");
 
 process.on("unhandledRejection", () => {});
@@ -99,7 +100,7 @@ function mount({ hash = "#/", fetchImpl = () => new Promise(() => {}), bridge = 
   if (bridge) ctx.ForayPlayer = bridge;
   vm.createContext(ctx);
   vm.runInContext(SEARCH_SRC, ctx, { filename: "search-engine.js" });
-  vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
+  runAppSource(APP_SRC, ctx);
   const state = vm.runInContext("state", ctx);
   state.ready = true;
   state.session = { session_id: "s", builder: "t", episodes: {}, cards: [] };

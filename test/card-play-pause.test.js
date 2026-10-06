@@ -40,11 +40,12 @@ const assert = require("node:assert");
 const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
+const { readAppSource, runAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
 /* CRLF normalised on read, like every suite here — this repo is developed on
    Windows against a Unix-normalised tree. */
-const SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8").replace(/\r\n/g, "\n");
+const SRC = readAppSource().replace(/\r\n/g, "\n");
 
 const EPISODE = {
   id: "lex-353",
@@ -125,7 +126,7 @@ function loadApp({ current = null, playing = false } = {}) {
   };
   vm.createContext(ctx);
   process.on("unhandledRejection", noop);
-  vm.runInContext(SRC, ctx, { filename: "app.js" });
+  runAppSource(SRC, ctx);
   /* `state` is `const` at app.js's top level, so it lives in the SCRIPT's
      lexical scope and never reaches the context object — reading `ctx.state`
      gets undefined. Everything that needs it goes through `_run`, the same

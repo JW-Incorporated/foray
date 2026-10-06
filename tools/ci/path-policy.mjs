@@ -237,6 +237,9 @@ export const DENIED_PREFIXES = [
   // The privacy tripwire (S-08): the first step of both release jobs, and a
   // gate in its own right.
   "test/release-gates.test.js",
+  // Required by the gate above (Redesign 2026 phase 0d): it reads app.js plus
+  // ui/*.js through this helper, so it runs in the same signing job.
+  "test/helpers/app-source.js",
   // The narration uploader (2026-09-28, docs/plans/spark-central-narration-
   // assessment.md §3.5 "Path policy: add tools/spark/ (and the uploader)", ruling
   // D8). The founder runs it on the PC (and later the Spark) where it reads the
@@ -379,6 +382,10 @@ export const ALLOWED_PREFIXES = [
      so this changes nothing about them. */
   "mobile/",
   "app.js",
+  /* Redesign 2026 (branch feature/redesign-2026 only): app.js was split into a
+     core plus per-screen classic scripts under ui/. They are app code exactly as
+     app.js is, so they sit beside it. Not on main until the split is merged there. */
+  "ui/",
   "styles.css",
   "search-engine.js",
   "STATE.md",

@@ -1,0 +1,73 @@
+/* Load-order check over the NEW files. usage: node loadcheck.js <repoRoot> */
+const fs = require("fs");
+const path = require("path");
+const acorn = require("acorn");
+const walk = require("acorn-walk");
+const root = process.argv[2];
+const files = ["app.js", ...fs.readdirSync(path.join(root, "ui")).filter((f) => f.endsWith(".js") && f !== "boot.js").sort().map((f) => "ui/" + f), "ui/boot.js"];
+const order = Object.fromEntries(files.map((f, i) => [f, i]));
+const decl = {}; // name -> {file, kind, pos}
+const parsed = {};
+for (const f of files) {
+  const src = fs.readFileSync(path.join(root, f), "utf8");
+  const ast = acorn.parse(src, { ecmaVersion: "latest", sourceType: "script", locations: true });
+  parsed[f] = { src, ast };
+  for (const n of ast.body) {
+    if (n.type === "FunctionDeclaration") {
+      if (decl[n.id.name]) console.log("DUP", n.id.name, f, decl[n.id.name].file);
+      decl[n.id.name] = { file: f, kind: "fn", pos: n.start };
+    } else if (n.type === "VariableDeclaration") {
+      for (const d of n.declarations) {
+        const names = [];
+        (function pn(p) { if (!p) return; if (p.type === "Identifier") names.push(p.name); else if (p.type === "ObjectPattern") p.properties.forEach((q) => pn(q.value || q.argument)); else if (p.type === "ArrayPattern") p.elements.forEach(pn); else if (p.type === "AssignmentPattern") pn(p.left); else if (p.type === "RestElement") pn(p.argument); })(d.id);
+        for (const nm of names) {
+          if (decl[nm]) console.log("DUP", nm, f, decl[nm].file);
+          decl[nm] = { file: f, kind: n.kind, pos: n.start };
+        }
+      }
+    }
+  }
+}
+function idsOf(node, { skipFnDecl, skipAllFn }) {
+  const ids = [];
+  const visit = (n, parent, key) => {
+    if (!n || typeof n.type !== "string") return;
+    if (n.type === "FunctionDeclaration" && skipFnDecl) return;
+    if ((n.type === "ArrowFunctionExpression" || n.type === "FunctionExpression") && skipAllFn) return;
+    if (n.type === "Identifier") {
+      if (parent && parent.type === "MemberExpression" && key === "property" && !parent.computed) return;
+      if (parent && parent.type === "Property" && key === "key" && !parent.computed && !parent.shorthand) return;
+      if (parent && (parent.type === "MethodDefinition" || parent.type === "PropertyDefinition") && key === "key" && !parent.computed) return;
+      ids.push(n.name); return;
+    }
+    for (const k of Object.keys(n)) {
+      if (k === "type" || k === "start" || k === "end" || k === "loc") continue;
+      const v = n[k];
+      if (Array.isArray(v)) v.forEach((c) => visit(c, n, k)); else if (v && typeof v.type === "string") visit(v, n, k);
+    }
+  };
+  visit(node, null, null);
+  return ids;
+}
+let bad = 0;
+for (const f of files) {
+  const { ast, src } = parsed[f];
+  for (const n of ast.body) {
+    if (n.type === "FunctionDeclaration") continue; // bodies run later
+    const direct = new Set(idsOf(n, { skipFnDecl: true, skipAllFn: true }));
+    const closure = new Set(idsOf(n, { skipFnDecl: true, skipAllFn: false }));
+    for (const [set, label] of [[direct, "DIRECT"], [closure, "closure"]]) {
+      if (label === "closure") for (const d of direct) set.delete(d);
+      for (const id of set) {
+        const d = decl[id];
+        if (!d) continue;
+        const later = order[d.file] > order[f] || (d.file === f && d.pos > n.start && d.kind !== "fn");
+        if (later) {
+          bad++;
+          console.log(label, f + ":" + n.loc.start.line, "uses", id, "declared in", d.file, d.kind);
+        }
+      }
+    }
+  }
+}
+console.log("violations:", bad, "files:", files.length);

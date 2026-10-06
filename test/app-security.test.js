@@ -25,9 +25,10 @@ const assert = require("node:assert");
 const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
+const { readAppSource, runAppSource } = require("./helpers/app-source.js");
 
 const APP_PATH = path.join(__dirname, "..", "app.js");
-const SRC = fs.readFileSync(APP_PATH, "utf8");
+const SRC = readAppSource();
 
 /* ---------- harness ----------
    app.js is a classic browser script that calls init() at top level. init() is
@@ -73,7 +74,7 @@ function loadApp() {
   vm.createContext(ctx);
   // Unhandled rejection from the parked init() must not kill the test run.
   process.on("unhandledRejection", noop);
-  vm.runInContext(SRC, ctx, { filename: "app.js" });
+  runAppSource(SRC, ctx);
   return ctx;
 }
 

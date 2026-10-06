@@ -31,10 +31,12 @@ const assert = require("node:assert");
 const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
+const { readAppSource, runAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
-const APP_SRC = read("app.js");
+const read = (rel) =>
+  rel === "app.js" ? readAppSource().replace(/\r\n/g, "\n") : fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
+const APP_SRC = readAppSource();
 const CLIENT_SRC = read("player/client.js");
 const SEARCH_SRC = read("search-engine.js");
 
@@ -97,7 +99,7 @@ function mountApp({ seed = {}, buttons = [] } = {}) {
   ctx.globalThis = ctx;
   vm.createContext(ctx);
   vm.runInContext(SEARCH_SRC, ctx, { filename: "search-engine.js" });
-  vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
+  runAppSource(APP_SRC, ctx);
   const state = vm.runInContext("state", ctx);
   state.catalog = { shows: [{ show_id: "s-1", title: "Show One" }] };
   state.discover = { items: [] };

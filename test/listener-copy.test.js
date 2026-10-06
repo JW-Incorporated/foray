@@ -26,10 +26,12 @@ const assert = require("node:assert");
 const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
+const { readAppSource, runAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
-const APP_SRC = read("app.js");
+const read = (rel) =>
+  rel === "app.js" ? readAppSource().replace(/\r\n/g, "\n") : fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
+const APP_SRC = readAppSource();
 const SEARCH_SRC = read("search-engine.js");
 
 /* ------------------------------------------------------------------ */
@@ -259,7 +261,7 @@ function mountApp() {
   ctx.window = ctx; ctx.globalThis = ctx;
   vm.createContext(ctx);
   vm.runInContext(SEARCH_SRC, ctx, { filename: "search-engine.js" });
-  vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
+  runAppSource(APP_SRC, ctx);
   const state = vm.runInContext("state", ctx);
   state.catalog = { shows: [] }; state.discover = { items: [] }; state.taxonomy = { nodes: [] };
   state.session = { session_id: "s", builder: "t", episodes: {}, cards: [] }; state.cardSlots = [];
@@ -504,7 +506,7 @@ test("the server's learning job and the device agree on which down-vote reasons 
   const backend = fs.readFileSync(path.join(__dirname, "..", "backend", "src", "curation", "interestLearning.ts"), "utf8");
   const server = /export const TOPIC_DOWNVOTE_REASONS[^=]*=\s*\[([^\]]*)\]/.exec(backend);
   assert.ok(server, "interestLearning.ts declares TOPIC_DOWNVOTE_REASONS");
-  const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  const app = readAppSource();
   const client = /const TOPIC_REASONS = new Set\(\[([^\]]*)\]\)/.exec(app);
   assert.ok(client, "app.js declares TOPIC_REASONS");
   const list = (src) => [...src.matchAll(/"([^"]+)"/g)].map((m) => m[1]).sort();

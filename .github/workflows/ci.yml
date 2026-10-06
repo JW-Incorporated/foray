@@ -611,6 +611,7 @@ jobs:
       - name: Syntax-check site JS
         run: |
           node --check app.js
+          for f in ui/*.js; do node --check "$f"; done
           node --check search-engine.js
       - name: Test suites (all of them — discovered, not listed)
         # ONE step for every committed suite: player/, test/, and everything

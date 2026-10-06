@@ -43,9 +43,10 @@ const assert = require("node:assert");
 const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
+const { readAppSource, runAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const APP_SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+const APP_SRC = readAppSource();
 /* The narrator's one name, read from the module that owns it (p-foray-12).
    Read as text because this CommonJS harness loads app.js, not the ES module;
    the bridge stub below hands it over the way player/client.js does. */
@@ -138,7 +139,7 @@ function mount() {
   ctx.globalThis = ctx;
   vm.createContext(ctx);
   vm.runInContext(SEARCH_SRC, ctx, { filename: "search-engine.js" });
-  vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
+  runAppSource(APP_SRC, ctx);
   /* The clock comes from the ES-module bridge, which this harness does not
      load. Stubbed so the meta line has a duration beside the credit — the
      separator between them is part of what these tests read. */

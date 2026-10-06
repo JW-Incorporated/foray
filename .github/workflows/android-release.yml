@@ -449,6 +449,7 @@ jobs:
             'base/resources.pb' \
             'base/assets/public/index.html' \
             'base/assets/public/app.js' \
+            'base/assets/public/ui/boot.js' \
             'base/assets/capacitor.plugins.json'
           do
             grep -qxF "$needle" "$ART/aab-entries.txt" \

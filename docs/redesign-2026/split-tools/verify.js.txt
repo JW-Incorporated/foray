@@ -1,0 +1,27 @@
+/* Proves nothing was lost or duplicated: multiset of (leading trivia + node) text, original vs new files. */
+const fs = require("fs");
+const path = require("path");
+const acorn = require("acorn");
+const root = process.argv[2];
+const orig = fs.readFileSync(process.argv[3], "utf8").replace(/\r\n/g, "\n");
+function segs(src) {
+  const ast = acorn.parse(src, { ecmaVersion: "latest", sourceType: "script" });
+  const out = []; let prev = 0;
+  for (const n of ast.body) { out.push(src.slice(prev, n.end).trim()); prev = n.end; }
+  const tail = src.slice(prev).trim();
+  return { out, tail };
+}
+const o = segs(orig);
+const files = ["app.js", ...fs.readdirSync(path.join(root, "ui")).filter((f) => f.endsWith(".js")).map((f) => "ui/" + f)];
+const all = []; let tails = [];
+for (const f of files) {
+  let s = fs.readFileSync(path.join(root, f), "utf8").replace(/\r\n/g, "\n");
+  if (f !== "app.js") s = s.replace(/^\/\* ui\/[\w.-]+ — [\s\S]*?\*\/\n/, "");
+  const r = segs(s); all.push(...r.out); if (r.tail) tails.push(r.tail);
+}
+const count = (a) => a.reduce((m, x) => (m.set(x, (m.get(x) || 0) + 1), m), new Map());
+const A = count(o.out), B = count(all);
+let missing = 0, extra = 0;
+for (const [k, v] of A) if ((B.get(k) || 0) !== v) { missing++; console.log("MISMATCH", v, B.get(k) || 0, k.slice(0, 80).replace(/\n/g, " ")); }
+for (const [k, v] of B) if (!A.has(k)) { extra++; console.log("EXTRA", k.slice(0, 80)); }
+console.log("orig nodes", o.out.length, "new nodes", all.length, "mismatch", missing, "extra", extra, "orig tail", JSON.stringify(o.tail.slice(0, 40)), "new tails", tails.length);

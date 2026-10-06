@@ -49,6 +49,7 @@ const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
+const { readAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
 /* CRLF normalised on the way in, and it is load-bearing rather than tidy. Both
@@ -62,7 +63,7 @@ const ROOT = path.join(__dirname, "..");
 
    See .gitattributes for the same trap one layer down. */
 const read = (rel) =>
-  fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
+  rel === "app.js" ? readAppSource().replace(/\r\n/g, "\n") : fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
 
 const DOCS = ["docs/legal/privacy-policy.md", "docs/legal/data-safety.md"];
 
@@ -604,7 +605,7 @@ function allEventTypes() {
  * reason: a copy in the test lets the shipped thing drift.
  */
 function toEventRowFn() {
-  const src = read("app.js");
+  const src = readAppSource();
   const archetypes = /const SB_ARCHETYPES = new Set\(\[[^\]]*\]\);/.exec(src);
   const fn = /function toEventRow\([\s\S]*?\n\}/.exec(src);
   assert.ok(archetypes, "SB_ARCHETYPES could not be located in app.js");
@@ -646,7 +647,7 @@ function transmittedTypes() {
 
 /** Every `case` label the switch actually has, however it is spelled. */
 function caseLabelsInSource() {
-  const fn = /function toEventRow\([\s\S]*?\n\}/.exec(read("app.js"))[0];
+  const fn = /function toEventRow\([\s\S]*?\n\}/.exec(readAppSource())[0];
   return [...new Set([...fn.matchAll(/case\s+"([^"]+)"/g)].map((m) => m[1]))].sort();
 }
 
@@ -853,9 +854,9 @@ test("connect-src names exactly the app's own origin, Supabase, and the API", ()
   assert.ok(directive, "the CSP has no connect-src");
   const sources = directive[1].trim().split(/\s+/);
 
-  const sbUrl = /const SB_URL = "([^"]+)"/.exec(read("app.js"));
+  const sbUrl = /const SB_URL = "([^"]+)"/.exec(readAppSource());
   assert.ok(sbUrl, "app.js's SB_URL could not be located");
-  const apiOrigin = /const API_ORIGIN = "([^"]+)"/.exec(read("app.js"));
+  const apiOrigin = /const API_ORIGIN = "([^"]+)"/.exec(readAppSource());
   assert.ok(apiOrigin, "app.js's API_ORIGIN could not be located");
 
   assert.deepStrictEqual(
@@ -942,7 +943,7 @@ test("the two input length caps the documents quote are the shipped ones", () =>
 
      MUTATION THAT KILLS THIS: change `maxlength="200"` to `maxlength="500"` on
      `#fy-sheet-note` in app.js. Ran it — red. */
-  const src = read("app.js");
+  const src = readAppSource();
   const capOf = (id) => {
     const m = new RegExp(`id="${id}"[^>]*maxlength="(\\d+)"`).exec(src);
     assert.ok(m, `#${id} has no maxlength in app.js`);

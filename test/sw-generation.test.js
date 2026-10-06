@@ -56,10 +56,11 @@ const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
 const nodeCrypto = require("node:crypto");
+const { readAppSource, runAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
 const SW_SRC = fs.readFileSync(path.join(ROOT, "sw.js"), "utf8");
-const APP_SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+const APP_SRC = readAppSource();
 
 const ORIGIN = "https://jw-incorporated.github.io";
 const BASE = `${ORIGIN}/foray/`;
@@ -1519,7 +1520,7 @@ function loadPage({ stampedDeployId = null, metas = {} } = {}) {
   ctx.globalThis = ctx;
   ctx.self = ctx;
   vm.createContext(ctx);
-  vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
+  runAppSource(APP_SRC, ctx);
 
   assert.equal(messages.length, 1, "app.js must listen for the worker's messages");
   return {

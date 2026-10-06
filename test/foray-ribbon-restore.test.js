@@ -21,10 +21,11 @@ const assert = require("node:assert");
 const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
+const { readAppSource, runAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
 /* CRLF normalised on read — see jump-back-in-kinds.test.js for why. */
-const SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8").replace(/\r\n/g, "\n");
+const SRC = readAppSource().replace(/\r\n/g, "\n");
 
 const RESOLVED = { id: "f1", title: "A Foray", playable: [{ id: "s1" }], totalSec: 600 };
 
@@ -67,7 +68,7 @@ function loadApp(bridge) {
   ctx.ForayPlayer = bridge;
   vm.createContext(ctx);
   process.on("unhandledRejection", noop);
-  vm.runInContext(SRC, ctx, { filename: "app.js" });
+  runAppSource(SRC, ctx);
   vm.runInContext("state.forays = { forays: [] }; state.segments = {}; state.segmentSources = {};", ctx);
   return ctx;
 }

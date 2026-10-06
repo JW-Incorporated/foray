@@ -21,9 +21,11 @@ const { test } = require("node:test");
 const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
+const { readAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
+const read = (rel) =>
+  rel === "app.js" ? readAppSource() : fs.readFileSync(path.join(ROOT, rel), "utf8");
 const MIGRATION = "backend/migrations/supabase/0003_rls_least_privilege.sql";
 
 /** Comments stripped: app.js discusses these endpoints at length in prose. */
@@ -32,7 +34,7 @@ function codeOnly(src) {
 }
 const sqlOnly = (src) => src.replace(/--[^\n]*/g, "");
 
-const APP = codeOnly(read("app.js"));
+const APP = codeOnly(readAppSource());
 const SQL = sqlOnly(read(MIGRATION));
 
 const PER_USER_TABLES = [...APP.matchAll(/const SB_USER_TABLES = \[([\s\S]*?)\];/g)]

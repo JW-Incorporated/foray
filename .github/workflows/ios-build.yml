@@ -113,6 +113,7 @@ on:
       - "tools/mobile/**"
       - "index.html"
       - "app.js"
+      - "ui/**"
       - "player/**"
       # NE-06 (docs/native-engine-plan.md §6.8, G-1a): the native engine's
       # parity fixtures and their recorder are not what the shell is built

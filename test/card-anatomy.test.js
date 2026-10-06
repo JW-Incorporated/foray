@@ -41,9 +41,10 @@ const assert = require("node:assert");
 const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
+const { readAppSource, runAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const APP_SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8").replace(/\r\n/g, "\n");
+const APP_SRC = readAppSource().replace(/\r\n/g, "\n");
 const CSS = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8").replace(/\r\n/g, "\n");
 
 /* ---------- a minimal app.js loader (the jump-back-in-kinds shape) ---------- */
@@ -85,7 +86,7 @@ function loadApp() {
   ctx.ForayPlayer = { forayResumeList: () => [], lastEpisodeCard: () => null };
   vm.createContext(ctx);
   process.on("unhandledRejection", noop);
-  vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
+  runAppSource(APP_SRC, ctx);
   return (code) => vm.runInContext(code, ctx);
 }
 

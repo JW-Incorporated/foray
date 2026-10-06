@@ -52,9 +52,10 @@ const assert = require("node:assert");
 const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
+const { readAppSource, runAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const APP_SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+const APP_SRC = readAppSource();
 const readData = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
 
 const mods = (async () => ({ resolve: await import("../player/foray-resolve.js") }))();
@@ -261,7 +262,7 @@ async function mount({ seed = {}, hash = "#/forays", search = "", appSrc = APP_S
     canPlay: () => false, segmentAt: (items, at) => resolve.segmentAtElapsed(items, at),
   };
 
-  vm.runInContext(appSrc, ctx, { filename: "app.js" });
+  runAppSource(appSrc, ctx);
   ctx.window.ForayPlayer = bridge;
 
   for (let i = 0; i < 200 && !vm.runInContext("state.ready", ctx); i++) await tick();

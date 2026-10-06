@@ -96,7 +96,7 @@ test("A-04: it fires on the app's paths and its own file, by hand, and never on 
   const paths = [...on.matchAll(/^ {6}- "([^"]+)"$/gm)].map((m) => m[1]);
   assert.deepEqual(
     [...paths].sort(),
-    [".github/workflows/android-playback.yml", "app.js", "index.html", "mobile/**", "player/**", "search-engine.js", "styles.css", "tools/mobile/**"].sort()
+    [".github/workflows/android-playback.yml", "app.js", "index.html", "mobile/**", "player/**", "search-engine.js", "styles.css", "tools/mobile/**", "ui/**"].sort()
   );
   const smokePaths = [...block(SMK, "on").matchAll(/^ {6}- "([^"]+)"$/gm)].map((m) => m[1]);
   for (const p of paths.filter((x) => x !== PLAY_REL)) {

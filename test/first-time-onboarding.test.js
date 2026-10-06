@@ -25,9 +25,10 @@ const assert = require("node:assert");
 const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
+const { readAppSource, runAppSource } = require("./helpers/app-source.js");
 
 const APP_PATH = path.join(__dirname, "..", "app.js");
-const SRC = fs.readFileSync(APP_PATH, "utf8");
+const SRC = readAppSource();
 
 function loadApp() {
   const noop = () => {};
@@ -73,7 +74,7 @@ function loadApp() {
 
   vm.createContext(ctx);
   process.on("unhandledRejection", noop);
-  vm.runInContext(SRC, ctx, { filename: "app.js" });
+  runAppSource(SRC, ctx);
   ctx._view = viewEl;
   ctx._body = bodyEl;
   ctx._state = (code) => vm.runInContext(code, ctx);
@@ -141,7 +142,7 @@ test("skipping/completing the explainer both set cp_intro_dismissed (single flag
   // the SCRIM is bound to `park`, which writes no flag, and Escape /
   // navigation route through `park` too. MUTATION: bind the scrim to
   // `dismiss` again -> the count is 3 and the park assertion is red.
-  const body = require("node:fs").readFileSync(APP_PATH, "utf8");
+  const body = readAppSource();
   const start = body.indexOf("function showFirstTimeExplainerOnce(");
   const end = body.indexOf("\nfunction ", start + 10);
   const fn = body.slice(start, end);
@@ -343,7 +344,7 @@ function mount({ seed = {}, forayPlayer = null } = {}) {
   ctx.globalThis = ctx;
   if (forayPlayer) ctx.ForayPlayer = forayPlayer;
   vm.createContext(ctx);
-  vm.runInContext(SRC, ctx, { filename: "app.js" });
+  runAppSource(SRC, ctx);
 
   const evalIn = (src) => vm.runInContext(src, ctx);
   return { ctx, evalIn, store, body, byId, state: evalIn("state") };

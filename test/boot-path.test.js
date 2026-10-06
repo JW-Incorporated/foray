@@ -26,6 +26,7 @@
  */
 
 const { test } = require("node:test");
+const { readAppSource, runAppSource } = require("./helpers/app-source.js");
 const assert = require("node:assert");
 const vm = require("node:vm");
 const fs = require("node:fs");
@@ -33,9 +34,10 @@ const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 
 const ROOT = path.join(__dirname, "..");
-const APP_SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+const APP_SRC = readAppSource();
 const SEARCH_SRC = fs.readFileSync(path.join(ROOT, "search-engine.js"), "utf8");
-const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
+const read = (rel) =>
+  rel === "app.js" ? readAppSource() : fs.readFileSync(path.join(ROOT, rel), "utf8");
 
 process.on("unhandledRejection", () => {});
 
@@ -158,7 +160,7 @@ function mount({ fetchImpl = null, store = null, eventLog = null, storageWaitMs 
     assert.ok(APP_SRC.includes(decl), `app.js no longer declares \`${decl}\`; update mount()`);
     return APP_SRC.replace(decl, `let STORAGE_WAIT_MS = ${storageWaitMs};`);
   })();
-  vm.runInContext(appSrc, ctx, { filename: "app.js" });
+  runAppSource(appSrc, ctx);
   if (storageWaitMs != null) vm.runInContext(`STORAGE_WAIT_MS = ${storageWaitMs};`, ctx);
   if (ceilingMs != null) vm.runInContext(`STORAGE_SETTLE_CEILING_MS = ${ceilingMs};`, ctx);
   const state = vm.runInContext("state", ctx);

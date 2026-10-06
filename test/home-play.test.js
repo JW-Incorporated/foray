@@ -32,9 +32,10 @@ const assert = require("node:assert");
 const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
+const { readAppSource, runAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8").replace(/\r\n/g, "\n");
+const SRC = readAppSource().replace(/\r\n/g, "\n");
 const SEARCH_SRC = fs.readFileSync(path.join(ROOT, "search-engine.js"), "utf8");
 const FROZEN = path.join(ROOT, "tools/foray/fixtures/frozen/data");
 const readFrozen = (f) => JSON.parse(fs.readFileSync(path.join(FROZEN, f), "utf8"));
@@ -151,7 +152,7 @@ function loadApp(bridge, { pool = [EP(1), EP(2), EP(3)], cardSlots = null, playl
   ctx.ForayPlayer = bridge;
   vm.createContext(ctx);
   vm.runInContext(SEARCH_SRC, ctx, { filename: "search-engine.js" });
-  vm.runInContext(SRC, ctx, { filename: "app.js" });
+  runAppSource(SRC, ctx);
   ctx.__docs = {
     forays: forays ? readFrozen("forays.json") : null,
     segments: readFrozen("segments.json"), sources: readFrozen("segment-sources.json"),

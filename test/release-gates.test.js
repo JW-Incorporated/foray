@@ -69,9 +69,11 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const { readAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
+const read = (rel) =>
+  rel === "app.js" ? readAppSource() : fs.readFileSync(path.join(ROOT, rel), "utf8");
 
 const CLIENT_FILES = ["app.js", "search-engine.js"];
 const PRIVACY_DOC = "docs/legal/privacy-policy.md";

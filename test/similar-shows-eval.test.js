@@ -30,9 +30,11 @@ const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
+const { readAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
+const read = (rel) =>
+  rel === "app.js" ? readAppSource().replace(/\r\n/g, "\n") : fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
 const readJson = (rel) => JSON.parse(read(rel));
 const load = (rel) => import(pathToFileURL(path.join(ROOT, rel)).href);
 
@@ -74,7 +76,7 @@ const CEILING = {
  *  closing column-0 brace. Located independently of the mirror module so a
  *  broken extractor cannot make the comparison vacuously equal. */
 function appSimilarShowsSource() {
-  const src = read("app.js");
+  const src = readAppSource();
   const m = /^function similarShows\(show, limit = \d+\) \{\n[\s\S]*?\n\}\n/m.exec(src);
   assert.ok(m, "function similarShows(show, limit = N) could not be located in app.js");
   return m[0].trimEnd();
@@ -150,7 +152,7 @@ test("eval set: every id is a catalogue show, no seed lists itself, expected and
 test("eval set: k is similarShows' own default limit", () => {
   /* The eval scores the row the show page renders, so k must be the slot
      count app.js renders. MUTATION (run): set `"k": 5` in eval-set.json -> red. */
-  const m = /^function similarShows\(show, limit = (\d+)\)/m.exec(read("app.js"));
+  const m = /^function similarShows\(show, limit = (\d+)\)/m.exec(readAppSource());
   assert.ok(m);
   assert.strictEqual(readJson(EVAL_SET).k, Number(m[1]));
 });
