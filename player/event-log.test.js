@@ -23,6 +23,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { createEventLog, DB_NAME, DB_VERSION, STORE_NAME, DEFAULT_RETENTION } from "./event-log.js";
+import { errText } from "./durable-store.js";
 
 /* ---------- construction ---------- */
 
@@ -118,6 +119,18 @@ test("CH-13: an open blocked by another tab is a recorded fault naming the block
   const h = log.health();
   assert.equal(h.ok, false);
   assert.match(h.faults[0].error, /indexedDB open blocked by another tab/);
+});
+
+test("CH-13: a fault names the exception class, in the same words durable-store's health() uses", async () => {
+  /* event-log.js used its own errText, which kept only the message; it imports
+     durable-store.js's now, so the two health() records read alike.
+     MUTATION: put the message-only errText back in event-log.js — this goes red. */
+  const openError = Object.assign(new Error("access to the database was denied"), { name: "SecurityError" });
+  const log = createEventLog({ indexedDB: new FakeFactory({ openError }), scheduleFlush: () => {} });
+  log.append({ type: "picked", payload: {} });
+  await log.unsynced();
+  assert.equal(log.health().faults[0].error, "SecurityError: access to the database was denied");
+  assert.equal(errText(openError), log.health().faults[0].error, "one formatter, not two");
 });
 
 /* ---------- batching ---------- */

@@ -23,7 +23,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { makeIdbTier, DB_NAME, DB_VERSION, STORE_NAME } from "./idb-tier.js";
+import { makeIdbTier, openDb, DB_NAME, DB_VERSION, STORE_NAME } from "./idb-tier.js";
 import { DurableStore, localStorageTier } from "./durable-store.js";
 
 /* ---------- the tier ---------- */
@@ -67,6 +67,25 @@ test("CH-13: the kv store's options are exactly { keyPath: \"key\" } — no auto
   const factory = new FakeFactory();
   await makeIdbTier({ indexedDB: factory }).write("cp_a", "1");
   assert.deepEqual(factory.db.storeOptions.get(STORE_NAME), { keyPath: "key" });
+});
+
+test("CH-13: openDb passes the store options through as given and never recreates an existing store", async () => {
+  /* The one open path for `foray` and event-log.js's `foray_events`.
+     MUTATION: drop the `contains()` guard — the second open throws on the
+     duplicate store (the fake refuses it below) and this goes red. */
+  const factory = new FakeFactory();
+  const options = { keyPath: "id", autoIncrement: true };
+  const db = await openDb(factory, "foray_events", 1, "events", options);
+  assert.deepEqual(db.storeOptions.get("events"), options);
+  factory._created = false;               // force a second upgrade on the same db
+  const createObjectStore = db.createObjectStore.bind(db);
+  db.createObjectStore = (name, o) => {
+    if (db.stores.has(name)) throw Object.assign(new Error(`${name} exists`), { name: "ConstraintError" });
+    return createObjectStore(name, o);
+  };
+  await openDb(factory, "foray_events", 1, "events", { keyPath: "other" });
+  assert.deepEqual(db.storeOptions.get("events"), options, "the first shape stands");
+  await assert.rejects(() => openDb(new FakeFactory({ blocked: true }), "x", 1, "s", {}), /indexedDB open blocked by another tab/);
 });
 
 test("a written row round-trips through readAll", async () => {
