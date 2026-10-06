@@ -231,6 +231,21 @@ Add one paragraph per module as it lands.
   `--breadth` the manifest carries `computeOverlap`'s block, else `overlap:
   null`. Two corpus podcasts with one show key: the later one's file falls
   back to its `corpus_podcast_id`, with a warning on stderr.
+- **`rebuild-index.mjs`** (PKG-14): `node tools/foraycorpus-export/rebuild-index.mjs
+  [sync-r2 flags] [--offline]` syncs, then warms the transcript index for the
+  shows the sync left bodies for. It runs `sync-r2.mjs`'s exported
+  `runSync(argv)` in the same process (every flag except `--offline` is a
+  sync flag) and uses the state it returns. `warmArgsFor(state, { offline })`
+  gives one `--show <name>` pair for each `state.shows` directory with
+  `bodies > 0`. The name is the directory with its `-<10 hex>` hash stripped,
+  because that is the `showId` the warmer filters on
+  (`backend/src/generation/transcriptCorpus.ts`). The names are deduped and
+  sorted, and `--offline` is appended when it is set. One `node
+  tools/generation/warm-transcript-index.mjs` spawn takes them all, and its
+  exit code is passed through `exitCodeFor`. `--dry-run` prints the sync
+  summary and skips the warm. When no show has bodies the warm is skipped
+  with exit 0, because an empty `--show` list would make the warmer warm every
+  show on the machine.
 
 ## Usage
 
