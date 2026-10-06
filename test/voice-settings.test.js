@@ -175,6 +175,9 @@ const EXPECTED_ORDER = [
  * @param {Function} [opts.onSetVoice]  spy for `setNarrationVoice`.
  * @param {Function} [opts.onAudition]  spy for `auditionVoice`; return a
  *   promise resolving to the `speak()`-shaped result.
+ * @param {object} [opts.bridgeExtras]  more bridge members (since CH-38 the
+ *   real bridge also publishes `VOICE_LIST_LANG` and `qualityRank`; omitted
+ *   means an older client without them, which the page's fallbacks serve).
  */
 function mount({
   listVoicesResult = { ok: true, path: "native", voices: PHONE },
@@ -182,6 +185,7 @@ function mount({
   defaultVoice,
   onSetVoice = () => {},
   onAudition = async () => ({ ok: true }),
+  bridgeExtras = {},
 } = {}) {
   const setVoiceCalls = [];
   const auditionCalls = [];
@@ -249,6 +253,7 @@ function mount({
     auditionVoice: (text, id) => { auditionCalls.push({ text, id }); return onAudition(text, id); },
     lastVoiceFallback: () => null,
     ...(defaultVoice ? { defaultVoice } : {}),
+    ...bridgeExtras,
   };
   ctx.bindVoiceControl();
 
@@ -419,11 +424,16 @@ test("quality label comes from the plugin's own `quality` field, not re-derived"
 /* 3. the request covers every English locale                            */
 /* ==================================================================== */
 
-test("MUTATION GUARD: listVoices is asked for lang 'en', not 'en-US'", async () => {
-  // MUTATION: change `VOICE_LIST_LANG` back to "en-US". Both native halves
-  // match the exact locale FIRST AND ALONE, so Daniel/Karen/Moira/Tessa/
-  // Rishi would never come back while Samantha compact is installed — and
-  // it always is. This fails.
+test("MUTATION GUARD: listVoices is asked for player/default-voice.js's VOICE_LIST_LANG ('en', not 'en-US'), even from an older module", async () => {
+  // MUTATION: change app.js's fallback `VOICE_LIST_LANG` back to "en-US".
+  // Both native halves match the exact locale FIRST AND ALONE, so
+  // Daniel/Karen/Moira/Tessa/Rishi would never come back while Samantha
+  // compact is installed — and it always is. This fails. The bridge here is
+  // an older client's (no `VOICE_LIST_LANG` member), so what is asked is the
+  // page's own literal — compared against the module's export, not a second
+  // copy of "en" (code-health CH-38, A3-07).
+  const { VOICE_LIST_LANG } = await loadDefaultVoice();
+  assert.strictEqual(VOICE_LIST_LANG, "en", "the module's rule: a bare primary subtag");
   const { ui, listCalls } = mount();
   await ui.open.click();
   await tick();
@@ -431,7 +441,51 @@ test("MUTATION GUARD: listVoices is asked for lang 'en', not 'en-US'", async () 
   // Not deepStrictEqual: the object was built inside the vm context and has
   // that realm's Object.prototype, which strict comparison treats as a
   // different type.
-  assert.deepEqual({ ...listCalls[0] }, { lang: "en" });
+  assert.deepEqual({ ...listCalls[0] }, { lang: VOICE_LIST_LANG });
+});
+
+test("CH-38: the page reads VOICE_LIST_LANG and qualityRank from the player when it publishes them", async () => {
+  /* A3-07: app.js held its own copies with only a comment saying they
+     mirrored player/default-voice.js. The bridge publishes the module's own
+     now, and the page asks it first. Proven with values no fallback holds: a
+     lang of "xx", and a rank that prefers the compact tier.
+     MUTATION: ignore `player.VOICE_LIST_LANG` in voiceListLang -> red.
+     MUTATION 2: ignore `player.qualityRank` in voiceQualityRank -> red. */
+  const { ui, listCalls } = mount({
+    bridgeExtras: {
+      VOICE_LIST_LANG: "xx",
+      qualityRank: (q) => (String(q).toLowerCase() === "default" ? 9 : 0),
+    },
+  });
+  await ui.open.click();
+  await tick();
+  assert.deepEqual({ ...listCalls[0] }, { lang: "xx" });
+  const samantha = rowsOf(ui).find((r) => nameOf(r) === "Samantha");
+  assert.ok(subOf(samantha).includes("· default ·"), `the player's rank chose the tier: ${subOf(samantha)}`);
+});
+
+test("CH-38: the real bridge publishes default-voice.js's own VOICE_LIST_LANG and qualityRank", () => {
+  /* The bridge half of A3-07: player/client.js re-exports the module's
+     bindings rather than a copy. MUTATION: drop `qualityRank,` (or
+     `VOICE_LIST_LANG,`) from the ForayPlayer literal -> red. */
+  const client = fs.readFileSync(path.join(ROOT, "player", "client.js"), "utf8");
+  assert.match(client, /import \{[^}]*\bqualityRank\b[^}]*\bVOICE_LIST_LANG\b[^}]*\} from "\.\/default-voice\.js";/);
+  const literal = client.slice(client.indexOf("const ForayPlayer = {"), client.indexOf("\nwindow.ForayPlayer = ForayPlayer;"));
+  assert.ok(literal.length > 0, "fixture: the bridge literal was found");
+  assert.match(literal, /\n {2}VOICE_LIST_LANG,\n {2}qualityRank,\n/);
+});
+
+test("CH-38: the page's fallback quality rank equals player/default-voice.js's qualityRank, label by label", async () => {
+  /* The no-module fallback stays (an older cached module has no
+     `qualityRank`), so it is pinned to the module's rule. MUTATION: rank
+     "enhanced" 3 in app.js's fallback switch -> red. */
+  const { qualityRank } = await loadDefaultVoice();
+  const { ctx } = mount();
+  for (const label of ["premium", "very-high", "enhanced", "high", "default", "normal", "low", "very-low",
+    "unknown", "", null, undefined, "PREMIUM", "something-new"]) {
+    ctx.__label = label;
+    assert.strictEqual(vm.runInContext("voiceQualityRank(__label)", ctx), qualityRank(label), `label ${String(label)}`);
+  }
 });
 
 /* ==================================================================== */
