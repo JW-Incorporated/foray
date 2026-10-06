@@ -39,10 +39,12 @@ const assert = require("node:assert");
 const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
+const { readAppSource, runAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const APP_SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
-const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
+const APP_SRC = readAppSource();
+const read = (rel) =>
+  rel === "app.js" ? readAppSource() : fs.readFileSync(path.join(ROOT, rel), "utf8");
 
 /* ---------- the key families, derived from the code ---------- */
 
@@ -102,7 +104,7 @@ function keyFamiliesInPolicy() {
     (`RETIRED_STORAGE_KEYS`; audit round 3, data-integrity-8). A seeded one is
     gone after boot on every path, so "nothing was touched" excludes it. */
 const RETIRED_KEYS = new Set(
-  JSON.parse((/const RETIRED_STORAGE_KEYS = (\[[^\]]*\]);/.exec(read("app.js")) || [null, "[]"])[1])
+  JSON.parse((/const RETIRED_STORAGE_KEYS = (\[[^\]]*\]);/.exec(readAppSource()) || [null, "[]"])[1])
 );
 
 /** The `cp_` keys a fixture seeded, for "nothing was touched" assertions. */
@@ -390,7 +392,7 @@ async function mount({
   ctx.window = ctx;
   ctx.globalThis = ctx;
   vm.createContext(ctx);
-  vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
+  runAppSource(APP_SRC, ctx);
   if (playerBridge) ctx.window.ForayPlayer = playerBridge;
 
   // Hydration is what pulls the durable-only rows into memory; app.js awaits it
@@ -1522,7 +1524,7 @@ test("every store the app opens is in the deletion ledger, deleted or kept for a
     if (/\bsessionStorage\b/.test(src)) assert.ok(SESSION_LEDGER[rel], `${rel} stores state outside the ledger`);
   }
   /* The one tab-scoped write, and only that one: L1's `?foray=` entry mark. */
-  const sessionWrites = [...codeOnly(read("app.js")).matchAll(/sessionStorage\.setItem\(\s*([^,]+),/g)].map((m) => m[1].trim());
+  const sessionWrites = [...codeOnly(readAppSource()).matchAll(/sessionStorage\.setItem\(\s*([^,]+),/g)].map((m) => m[1].trim());
   assert.deepStrictEqual(sessionWrites, ["mark"], "app.js writes sessionStorage only for the ?foray= entry mark");
 });
 

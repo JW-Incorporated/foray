@@ -443,8 +443,9 @@ test("NATIVE: the voice preview goes through the engine — ForayTts.speak is ne
 });
 
 test("NATIVE: app.js paints 'Pause playback to preview' on engine-busy", async () => {
-  const { readFile } = await import("node:fs/promises");
-  const src = await readFile(new URL("../app.js", import.meta.url), "utf8");
+  const { createRequire } = await import("node:module");
+  const { readAppSource } = createRequire(import.meta.url)("../test/helpers/app-source.js");
+  const src = readAppSource();
   assert.match(src, /result\.reason === "engine-busy"\)\s*\{\s*paintVoiceNotice\("Pause playback to preview"\)/);
 });
 

@@ -26,9 +26,10 @@ const assert = require("node:assert");
 const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
+const { readAppSource, runAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+const SRC = readAppSource();
 const TAXONOMY = JSON.parse(fs.readFileSync(path.join(ROOT, "data", "taxonomy.json"), "utf8"));
 const PERSONAS = JSON.parse(fs.readFileSync(path.join(ROOT, "data", "personas.json"), "utf8"));
 
@@ -74,7 +75,7 @@ function loadApp() {
   ctx.window = ctx;
   ctx.globalThis = ctx;
   vm.createContext(ctx);
-  vm.runInContext(SRC, ctx, { filename: "app.js" });
+  runAppSource(SRC, ctx);
   const state = vm.runInContext("state", ctx);
   return { ctx, state, store };
 }

@@ -66,6 +66,8 @@ import { artworkUrlsByShow, collectionIdsByShow } from "../../player/foray-sourc
 /* The OTHER production join, ditto — this is the one the segment slice must be
    indistinguishable from (#327). */
 import { hydrateForayItems, indexSegments, indexSources } from "../../player/foray-resolve.js";
+import { createRequire as __cr } from "node:module";
+const { readAppSource } = __cr(import.meta.url)("../../test/helpers/app-source.js");
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..", "..");
@@ -73,7 +75,7 @@ const ROOT = path.resolve(HERE, "..", "..");
 /* ───────────────────────────── the derivation ───────────────────────────── */
 
 test("every fetchJson(data/...) call in the real app.js is derived", () => {
-  const src = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+  const src = readAppSource();
   const derived = runtimeDataFiles(src);
   /* Cross-checked against an independent count of the call sites, so this does
      not simply re-run the same regex and agree with itself. `fetchJson(` also
@@ -506,7 +508,7 @@ test("REAL REPO: the names a stack trace needs survive minification", () => {
      MUTATION (ran): `minifyIdentifiers: true` in `minify.mjs` — top-level names in
      a classic script survive that (they are globals), but the local names do not,
      and the second assertion fails. */
-  const source = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+  const source = readAppSource();
   const shipped = minifySource("app.js", source);
   const topLevel = [...source.matchAll(/^function ([A-Za-z_$][\w$]*)\(/gm)].map((m) => m[1]);
   assert.ok(topLevel.length > 100, `only ${topLevel.length} top-level functions found in app.js`);
@@ -2195,7 +2197,7 @@ test("REAL REPO: nothing in the app browses the segment pool — the slice's pre
      If a future change adds a segment browse surface — "clips from this episode", a
      segment search, a topic index over the pool — this test fails, and the right
      answer then is a top-up rule and a bigger budget, NOT deleting this. */
-  const app = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+  const app = readAppSource();
   const uses = app
     .split("\n")
     .map((line, i) => [i + 1, line])
@@ -2812,7 +2814,7 @@ test("S-03: the unpinned show index is named explicitly, bundled, and held to it
 
   const rel = "data/show-index.tsv";
   assert.ok(UNPINNED_DATA.some((f) => f.rel === rel), "the index must be named in UNPINNED_DATA");
-  assert.ok(!runtimeDataFiles(fs.readFileSync(path.join(ROOT, "app.js"), "utf8")).includes(rel),
+  assert.ok(!runtimeDataFiles(readAppSource()).includes(rel),
     "if the derivation CAN see it, app.js started pinning it and sw.js will 504 on it");
   assert.ok(buildPlan(ROOT).includes(rel), "the real bundle must carry the index");
   assert.deepEqual(unpinnedDataOverBudget(ROOT), [], "the committed index must be inside its own budget");

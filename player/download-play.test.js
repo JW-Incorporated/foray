@@ -30,9 +30,12 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createRequire as __cr } from "node:module";
+const { readAppSource } = __cr(import.meta.url)("../test/helpers/app-source.js");
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
-const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
+const read = (rel) =>
+  rel === "app.js" ? readAppSource().replace(/\r\n/g, "\n") : fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
 
 /** Comments and string literals stripped. Ported verbatim from
     now-playing-sheet.test.js (itself from episode-link.test.js), which

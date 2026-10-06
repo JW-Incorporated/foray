@@ -29,9 +29,10 @@ const assert = require("node:assert");
 const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
+const { readAppSource, runAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const APP_SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+const APP_SRC = readAppSource();
 const SEARCH_SRC = fs.readFileSync(path.join(ROOT, "search-engine.js"), "utf8");
 
 process.on("unhandledRejection", () => {});
@@ -131,7 +132,7 @@ function mount({ seed = {}, boot = false } = {}) {
   ctx.globalThis = ctx;
   vm.createContext(ctx);
   vm.runInContext(SEARCH_SRC, ctx, { filename: "search-engine.js" });
-  vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
+  runAppSource(APP_SRC, ctx);
 
   const evalIn = (src) => vm.runInContext(src, ctx);
   return {
@@ -181,7 +182,7 @@ test("\"Open in\" is gone, with the dead code it governed", async () => {
   assert.ok(!m.evalIn("drawerToggles.map(t => t.id)").includes("player-toggle"), "the switch is registered again");
   const index = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
   assert.ok(!/id="player-toggle"/.test(index), "index.html still carries the button");
-  const code = fs.readFileSync(path.join(ROOT, "app.js"), "utf8")
+  const code = readAppSource()
     .replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:/])\/\/[^\n]*/g, "$1");
   for (const dead of ["playerPref", "playLink", "appleLink", "cp_player\"", "player_pref"]) {
     assert.ok(!code.includes(dead), `${dead} is back in app.js`);
@@ -401,7 +402,7 @@ test("the retired ui-v2 flag leaves nothing behind, and the ui-v2 class stays", 
      MUTATION: re-add `function ui2On() { return true; }` and a branch on it.
      The source sweep goes red. MUTATION: drop `ui-v2` from `setBodyClass`.
      The class assertion goes red. */
-  const src = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+  const src = readAppSource();
   for (const dead of ["ui2On(", "bindUi2Control", "#ui2-toggle"]) {
     const hits = src.split(dead).length - 1;
     const inComments = dead === "ui2On(" ? 1 : dead === "bindUi2Control" ? 1 : 0;

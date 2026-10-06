@@ -40,6 +40,7 @@ const { test } = require("node:test");
 const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
+const { readAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
 const CSS = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8").replace(/\r\n/g, "\n");
@@ -169,7 +170,7 @@ function renderedButtons() {
   const keys = new Map();
   const add = (k, f) => keys.set(k, [...new Set([...(keys.get(k) || []), f])]);
   for (const f of MARKUP_FILES) {
-    const src = fs.readFileSync(path.join(ROOT, f), "utf8").replace(/\/\*[\s\S]*?\*\//g, " ");
+    const src = (f === "app.js" ? readAppSource() : fs.readFileSync(path.join(ROOT, f), "utf8")).replace(/\/\*[\s\S]*?\*\//g, " ");
     for (const m of src.matchAll(/<button\b([^>]*)>/g)) {
       const cls = /class="([^"$]*)/.exec(m[1]);
       const id = /\bid="([^"$]+)"/.exec(m[1]);
@@ -441,7 +442,7 @@ test("a held in-app link opens no web preview and no callout, in the shell or th
   assert.strictEqual(valueOf('a[href^="#/"]', "-webkit-touch-callout"), "none");
   assert.strictEqual(valueOf('a[href^="#/"]', "-webkit-user-select"), "none");
   /* Every stretched link really is an in-app route, so the rule reaches it. */
-  const app = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+  const app = readAppSource();
   for (const cls of ["mc-link", "ep-title-link", "hv2-jbi-link"]) {
     assert.match(app, new RegExp(`<a class="[^"]*\\b${cls}\\b[^"]*" href="#/`), `.${cls} is an <a href="#/…">`);
   }

@@ -30,9 +30,10 @@ const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
+const { readAppSource, runAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const APP_SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+const APP_SRC = readAppSource();
 const CLIENT_SRC = fs.readFileSync(path.join(ROOT, "player", "client.js"), "utf8");
 const SEARCH_SRC = fs.readFileSync(path.join(ROOT, "search-engine.js"), "utf8");
 
@@ -214,7 +215,7 @@ function mount() {
   ctx.globalThis = ctx;
   vm.createContext(ctx);
   vm.runInContext(SEARCH_SRC, ctx, { filename: "search-engine.js" });
-  vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
+  runAppSource(APP_SRC, ctx);
   /* init() is parked on its first fetch here, and since round 2 (nav-9) it
      leaves ☰ and ↻ disabled until it has bound them. These tests are about a
      booted page's focus, so the chrome is put in its booted state. */

@@ -69,10 +69,11 @@ const { test } = require("node:test");
 const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
+const { readAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
 const CSS = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");
-const APP = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+const APP = readAppSource();
 
 /* The two conditions that matter. 59px is an iPhone 16 Pro Max's top inset in
    portrait; 0px is every desktop browser, i.e. the condition under which all
@@ -633,7 +634,7 @@ test("Home v2's element does not inherit the retired `.home` one-screen floor th
 
      MUTATION: delete `min-height: 0;` from `body.ui-v2 .hv2-home`. This
      fails, naming `.home`'s floor. */
-  const APP = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  const APP = readAppSource();
   assert.ok(APP.includes('class="home hv2-home"'),
     "fixture assumption: Home v2 still carries both classes — if `.home` is gone from the markup, delete this test");
   const floor = valueOf(".home", "min-height");
@@ -675,7 +676,7 @@ test("a stretch card's bridge line is a row of its own under the card, not a fou
      .mini-card` -> the first assertion fails. Drop the `.mc-info` zero basis
      -> the third fails (and on a device the title jumps to a line of its own,
      because its max-content width is the whole unclamped title). */
-  const APP = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  const APP = readAppSource();
   assert.ok(APP.includes('</p></div>`;') && APP.includes("return card.replace("),
     "fixture assumption: the bridge is still injected inside the card's anchor — if it moved outside, this rule is moot");
   assert.strictEqual(valueOf("body.ui-v2 .hv2-suggested .mini-card", "flex-wrap"), "wrap",

@@ -189,6 +189,20 @@ function playerSources(root = ROOT) {
     .map((f) => path.join("player", f));
 }
 
+/* The per-screen classic scripts index.html loads after app.js (Redesign 2026,
+   phase 0d: app.js was split into a core plus `ui/*.js`). Derived from the
+   directory, like playerSources(), so a new screen file cannot be forgotten
+   here: a file that shipped to the page but not into the manifest would be the
+   one thing sw.js could not verify as part of the generation. Tests excluded. */
+function uiSources(root = ROOT) {
+  const dir = path.join(root, "ui");
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir)
+    .filter((f) => f.endsWith(".js") && !f.endsWith(".test.js"))
+    .sort()
+    .map((f) => path.join("ui", f));
+}
+
 /* The self-hosted brand faces styles.css's @font-face rules load (round-2
    audit, perf-5). Derived from the directory, like playerSources(), so a new
    face cannot be forgotten here. */
@@ -205,6 +219,7 @@ function fontSources(root = ROOT) {
 function listedFiles(root = ROOT) {
   const files = [
     ...SHELL,
+    ...uiSources(root),
     ...fontSources(root),
     ...playerSources(root),
     ...RUNTIME_DATA.map((f) => path.join("data", f)),
@@ -230,9 +245,11 @@ function stampInputs(root = ROOT) {
       ...Object.values(DIRECTORY_FILES),
       ...STAMP_MODULE_FILES,
       ":(glob)player/*.js",
+      ":(glob)ui/*.js",
       ":(glob)fonts/*.woff2",
     ]),
     ":(exclude,glob)player/*.test.js",
+    ":(exclude,glob)ui/*.test.js",
   ];
 }
 
@@ -609,6 +626,7 @@ export {
   readDeployMeta,
   listedFiles,
   playerSources,
+  uiSources,
   fontSources,
   isEntryScript,
   stampBuild,

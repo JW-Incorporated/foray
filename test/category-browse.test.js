@@ -35,9 +35,10 @@ const assert = require("node:assert");
 const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
+const { readAppSource, runAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const APP_SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+const APP_SRC = readAppSource();
 const SEARCH_SRC = fs.readFileSync(path.join(ROOT, "search-engine.js"), "utf8");
 const readJson = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
 
@@ -118,7 +119,7 @@ function mount({ seed = {}, boot = false } = {}) {
   ctx.globalThis = ctx;
   vm.createContext(ctx);
   vm.runInContext(SEARCH_SRC, ctx, { filename: "search-engine.js" });
-  vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
+  runAppSource(APP_SRC, ctx);
 
   const evalIn = (src) => vm.runInContext(src, ctx);
   return {
@@ -332,7 +333,7 @@ test("nothing renders a 'Browse all shows' link any more — the menu replaced i
 
      MUTATION: restore the `<a id="browse-all-link" ...>Browse all shows ›</a>`
      line to renderHome's template. Both assertions fail. */
-  const src = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+  const src = readAppSource();
   assert.ok(!/id="browse-all-link"/.test(src), "the browse-all-link element must be gone from app.js");
   assert.ok(!/Browse all shows\s*›/.test(src), "the rendered 'Browse all shows ›' label must be gone from app.js");
 });

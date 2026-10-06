@@ -1734,7 +1734,7 @@ test("A-02: the smoke fires on android-build.yml's path set, the two bundled roo
   const buildPaths = listed(block(WF, "on")).filter((p) => p !== WORKFLOW_REL);
   assert.deepEqual(
     [...buildPaths].sort(),
-    ["app.js", "index.html", "mobile/**", "player/**", "tools/mobile/**"],
+    ["app.js", "index.html", "mobile/**", "player/**", "tools/mobile/**", "ui/**"],
     "android-build.yml's product paths changed; re-read A-02 before following them"
   );
   for (const p of buildPaths) {
@@ -1761,7 +1761,7 @@ test("A-02: the smoke fires on android-build.yml's path set, the two bundled roo
   for (const wide of ["data/**", "docs/**", "backend/**", "**", "test/**"]) {
     assert.equal(smokePaths.includes(wide), false, `${wide} would boot an emulator for a content PR`);
   }
-  assert.equal(smokePaths.length, 12, `exactly the twelve paths above, found: ${JSON.stringify(smokePaths)}`);
+  assert.equal(smokePaths.length, 13, `exactly the thirteen paths above (twelve plus ui/**, Redesign 2026 phase 0d), found: ${JSON.stringify(smokePaths)}`);
 });
 
 test("A-02: android-release.yml calls the smoke on a dispatch only, hands it no secret, and never chains it", () => {

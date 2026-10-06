@@ -154,6 +154,22 @@ test("mobile/ auto-merges, but the signing scripts under tools/mobile/ still don
   assert.ok(DENIED_PREFIXES.includes("tools/mobile/wire-signing.mjs"));
 });
 
+test("ui/ (the per-screen scripts split out of app.js) is app code like app.js: allowlisted, not denied, not unlisted", () => {
+  /* Redesign 2026 phase 0d, branch feature/redesign-2026 only. app.js became a
+     core plus classic scripts under ui/; a PR that edits only one of them must
+     be judged exactly as an app.js-only PR is (auto-merge when green), not left
+     "unlisted" waiting for a human because the directory is new.
+
+     MUTATION: remove "ui/" from ALLOWED_PREFIXES -> `unlisted` is 1 and the
+     last assert fails. */
+  assert.ok(ALLOWED_PREFIXES.includes("ui/"));
+  const p = pathPolicy(["ui/home.js"]);
+  assert.equal(p.denied.length, 0, "a ui/ file must not be denied");
+  assert.equal(p.unlisted.length, 0, "a ui/ file must be allowlisted, not unlisted");
+  assert.equal(pathPolicy(["ui/home.js", "app.js"]).unlisted.length, 0, "alone or beside app.js, the same answer");
+  assert.equal(matchesPrefix("uix/home.js", "ui/"), false, "the prefix is a directory, not a name stem");
+});
+
 test("tools/release/ is denied: the release watchdog, the trigger and the upload retry all run with live power", () => {
   // 2026-09-22. watch-release.mjs decides from an `actions: write` job when a
   // release is dispatched and whether the release alarm is raised; upload-retry

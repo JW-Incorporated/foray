@@ -519,10 +519,31 @@ export function playerFiles(root = REPO_ROOT) {
     .map((f) => path.posix.join("player", f));
 }
 
+/** The per-screen classic scripts under `ui/` (Redesign 2026, phase 0d: app.js was
+ *  split into a core plus these). They are plain `<script src>` files that share
+ *  app.js's globals, so — like `player/` — "every non-test .js" is the whole set
+ *  and no bundler is needed. index.html's tag order is what runs them; this only
+ *  decides what ships. */
+export function uiFiles(root = REPO_ROOT) {
+  const dir = path.join(root, "ui");
+  if (!fs.existsSync(dir)) return [];
+  return fs
+    .readdirSync(dir)
+    .filter((f) => f.endsWith(".js") && !f.endsWith(".test.js"))
+    .sort()
+    .map((f) => path.posix.join("ui", f));
+}
+
+/** The text of every client script (`app.js` plus `ui/*.js`), for scans that ask
+ *  "does the app fetch X" — the fetches live in whichever file owns the screen. */
+export function appSourceText(root = REPO_ROOT) {
+  return ["app.js", ...uiFiles(root)].map((rel) => fs.readFileSync(path.join(root, rel), "utf8")).join("\n");
+}
+
 /** The full copy plan as repo-relative POSIX paths. Throws if the plan is not
  *  trustworthy — see MIN_DERIVED_DATA_FILES and the missing-file check. */
 export function buildPlan(root = REPO_ROOT) {
-  const appSrc = fs.readFileSync(path.join(root, "app.js"), "utf8");
+  const appSrc = appSourceText(root);
   const data = runtimeDataFiles(appSrc);
 
   if (data.length < MIN_DERIVED_DATA_FILES) {
@@ -534,7 +555,7 @@ export function buildPlan(root = REPO_ROOT) {
     );
   }
 
-  const plan = [...SHELL_FILES, ...playerFiles(root), ...data, ...unpinnedDataPlan(root)];
+  const plan = [...SHELL_FILES, ...uiFiles(root), ...playerFiles(root), ...data, ...unpinnedDataPlan(root)];
 
   const missing = plan.filter((rel) => !fs.existsSync(path.join(root, rel)));
   if (missing.length) {

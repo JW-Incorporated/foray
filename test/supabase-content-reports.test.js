@@ -49,11 +49,13 @@ const { test } = require("node:test");
 const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
+const { readAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
 const SUPA = "backend/migrations/supabase";
 const FILE = `${SUPA}/0005_content_reports.sql`;
-const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
+const read = (rel) =>
+  rel === "app.js" ? readAppSource() : fs.readFileSync(path.join(ROOT, rel), "utf8");
 const sqlOnly = (src) => src.replace(/--[^\n]*/g, "");
 const flat = (s) => s.replace(/\s+/g, " ");
 
@@ -126,7 +128,7 @@ test("insert-own and delete-own for authenticated; no update policy, no policy f
 test("select-own exists only for the filtered DELETE, and no client can read a report's contents", () => {
   /* The DELETE app.js sends filters on user_id, so Postgres applies SELECT
      policies to it: without select-own, Delete my data is a silent no-op. */
-  const app = read("app.js");
+  const app = readAppSource();
   assert.match(app, /\/rest\/v1\/\$\{table\}\?user_id=eq\./, "sbDeleteOwnRows filters on user_id; if that changed, re-derive this policy");
   const sel = policies().filter((p) => p.verb === "select");
   assert.strictEqual(sel.length, 1, "exactly one select policy");

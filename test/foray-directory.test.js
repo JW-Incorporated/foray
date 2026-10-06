@@ -39,13 +39,14 @@ const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
 const { webcrypto } = require("node:crypto");
+const { readAppSource, runAppSource } = require("./helpers/app-source.js");
 
 /* The seed the shell boots from is the committed data on disk, so the row's `n=` is read from
    there rather than pinned — a published Foray must not break this test (F-84 / PR #624). */
 const SEED_FORAY_COUNT = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "data", "forays.json"), "utf8")).forays.length;
 
 const ROOT = path.join(__dirname, "..");
-const APP_SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+const APP_SRC = readAppSource();
 const ORIGIN = "https://foray-web-seven.vercel.app";
 const POINTER = "data/forays-directory.json";
 
@@ -394,7 +395,7 @@ async function mount({
   };
   const harness = { ctx, body, document, location, fetched, pending, remote, tier, directory, log, pd, progressStore, backend, manager, bridge, playCalls };
 
-  vm.runInContext(appSrc, ctx, { filename: "app.js" });
+  runAppSource(appSrc, ctx);
   ctx.window.ForayPlayer = bridge;
   ctx.window.forayDirectory = directory;
   ctx.window.forayNoteDataSource = (f) => { pd.dataSource(f); return true; };

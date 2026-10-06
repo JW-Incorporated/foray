@@ -1,0 +1,52 @@
+/* usage: node codemod.js <repoRoot> */
+const fs = require("fs");
+const path = require("path");
+const root = process.argv[2];
+const dirs = ["test", "player", "tools", "backend/test"];
+const skip = /node_modules|test[\\/]playwright|test[\\/]helpers/;
+function* walk(d) {
+  for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+    const p = path.join(d, e.name);
+    if (skip.test(p)) continue;
+    if (e.isDirectory()) yield* walk(p);
+    else if (/\.(test\.)?(js|mjs|cjs)$/.test(e.name)) yield p;
+  }
+}
+const helperAbs = path.join(root, "test", "helpers", "app-source.js");
+let changed = [];
+for (const d of dirs) {
+  for (const file of walk(path.join(root, d))) {
+    let s = fs.readFileSync(file, "utf8");
+    if (!/app\.js/.test(s)) continue;
+    const o = s;
+    const usesRead = { v: false }, usesRun = { v: false };
+    // 1. direct reads
+    s = s.replace(/fs\.readFileSync\(\s*path\.join\(\s*(?:ROOT|__dirname,\s*"\.\."|REPO|REPO_ROOT)\s*(?:,\s*"\.\.")?\s*,\s*"app\.js"\s*\)\s*,\s*"utf8"\s*\)/g, () => { usesRead.v = true; return "readAppSource()"; });
+    s = s.replace(/fs\.readFileSync\(\s*APP_PATH\s*,\s*"utf8"\s*\)/g, () => { usesRead.v = true; return "readAppSource()"; });
+    // 2. read("app.js")
+    s = s.replace(/\bread\("app\.js"\)/g, () => { usesRead.v = true; return "readAppSource()"; });
+    // 3. vm run
+    s = s.replace(/vm\.runInContext\(\s*([A-Za-z_$][\w$]*)\s*,\s*([A-Za-z_$][\w$]*)\s*,\s*\{\s*filename:\s*"app\.js"\s*\}\s*\)/g, (_, a, b) => { usesRun.v = true; return `runAppSource(${a}, ${b})`; });
+    if (s === o) continue;
+    const names = [usesRead.v && "readAppSource", usesRun.v && "runAppSource"].filter(Boolean);
+    const esm = /\.mjs$/.test(file) || /^\s*import\s/m.test(s);
+    let rel = path.relative(path.dirname(file), helperAbs).replace(/\\/g, "/");
+    if (!rel.startsWith(".")) rel = "./" + rel;
+    let req;
+    if (esm) req = `import { createRequire as __cr } from "node:module";\nconst { ${names.join(", ")} } = __cr(import.meta.url)(${JSON.stringify(rel)});\n`;
+    else req = `const { ${names.join(", ")} } = require(${JSON.stringify(rel)});\n`;
+    // insert after the last top-of-file require/import line block: find the line index of the last contiguous `const x = require(...)` in first 80 lines
+    const lines = s.split("\n");
+    let last = -1;
+    for (let i = 0; i < Math.min(lines.length, 90); i++) {
+      if (/^(const|let|var)\s.*require\(|^import\s/.test(lines[i]) && /;\s*$/.test(lines[i])) last = i;
+    }
+    if (last < 0) { console.log("NO-ANCHOR", file); continue; }
+    lines.splice(last + 1, 0, req.trimEnd());
+    s = lines.join("\n");
+    fs.writeFileSync(file, s);
+    changed.push(path.relative(root, file));
+  }
+}
+console.log(changed.length, "files changed");
+fs.writeFileSync(path.join(path.dirname(process.argv[1]), "changed.txt"), changed.join("\n"));

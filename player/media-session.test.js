@@ -42,10 +42,13 @@ import {
 import { PlayerQueueManager, __resetInstanceForTests } from "./queue-manager.js";
 import { resolveForay, indexSegments, indexSources, findForay } from "./foray-resolve.js";
 import { artworkUrlsByShow } from "./foray-sources.js";
+import { createRequire as __cr } from "node:module";
+const { readAppSource } = __cr(import.meta.url)("../test/helpers/app-source.js");
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const readJson = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
-const readText = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
+const readText = (rel) =>
+  rel === "app.js" ? readAppSource().replace(/\r\n/g, "\n") : fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
 
 const APPLE = "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/ab/mza_124.jpg/600x600bb.jpg";
 

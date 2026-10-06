@@ -24,9 +24,10 @@ const assert = require("node:assert");
 const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
+const { readAppSource, runAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const APP_SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+const APP_SRC = readAppSource();
 const CSS = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");
 
 /* ---------- the smallest DOM that boots app.js (voice-probe-switch's) ---------- */
@@ -186,7 +187,7 @@ async function mount({ engine = null } = {}) {
   };
   ctx.window = ctx; ctx.self = ctx; ctx.globalThis = ctx;
   vm.createContext(ctx);
-  vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
+  runAppSource(APP_SRC, ctx);
   ctx.window.ForayPlayer = {
     resolve: () => null, listForays: () => [], foraysUsingShow: () => [],
     fmtClock: () => "0:00", fmtSpan: () => "0:00", itemLen: () => 1,

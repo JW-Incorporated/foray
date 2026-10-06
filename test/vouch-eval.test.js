@@ -33,9 +33,11 @@ const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
+const { readAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
+const read = (rel) =>
+  rel === "app.js" ? readAppSource().replace(/\r\n/g, "\n") : fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
 const readJson = (rel) => JSON.parse(read(rel));
 const load = (rel) => import(pathToFileURL(path.join(ROOT, rel)).href);
 
@@ -67,7 +69,7 @@ async function measured() {
  *  runner's extractor so a broken extractor cannot make the comparison
  *  vacuously equal. */
 function appFunction(name) {
-  const m = new RegExp(`^function ${name}\\(.*\\{\\n[\\s\\S]*?\\n\\}\\n`, "m").exec(read("app.js"));
+  const m = new RegExp(`^function ${name}\\(.*\\{\\n[\\s\\S]*?\\n\\}\\n`, "m").exec(readAppSource());
   assert.ok(m, `function ${name} could not be located in app.js`);
   return m[0];
 }

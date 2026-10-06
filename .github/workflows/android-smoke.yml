@@ -92,6 +92,7 @@ on:
       - "tools/mobile/**"
       - "index.html"
       - "app.js"
+      - "ui/**"
       - "player/**"
       # Beyond android-build.yml's set: both are in prepare-webdir.mjs's
       # SHELL_FILES, so they ship in the APK, and index.html loads them BEFORE

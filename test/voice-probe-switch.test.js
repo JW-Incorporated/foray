@@ -21,9 +21,10 @@ const assert = require("node:assert");
 const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
+const { readAppSource, runAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const APP_SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+const APP_SRC = readAppSource();
 const CLIENT_SRC = fs.readFileSync(path.join(ROOT, "player/client.js"), "utf8");
 const POLICY = fs.readFileSync(path.join(ROOT, "docs/legal/privacy-policy.md"), "utf8");
 
@@ -154,7 +155,7 @@ async function mount({ seed = {}, appSrc = APP_SRC, probe = null, noPlayer = fal
   };
   ctx.window = ctx; ctx.self = ctx; ctx.globalThis = ctx;
   vm.createContext(ctx);
-  vm.runInContext(appSrc, ctx, { filename: "app.js" });
+  runAppSource(appSrc, ctx);
   if (!noPlayer) {
     ctx.window.ForayPlayer = {
       resolve: () => null, listForays: () => [], foraysUsingShow: () => [],

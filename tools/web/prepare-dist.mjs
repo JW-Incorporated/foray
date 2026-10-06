@@ -99,6 +99,16 @@ function playerSources() {
     .map((f) => join("player", f));
 }
 
+/* The per-screen classic scripts index.html loads after app.js (Redesign 2026,
+   phase 0d). Derived from the directory, like playerSources(). Tests excluded. */
+function uiSources() {
+  const dir = join(ROOT, "ui");
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir)
+    .filter((f) => f.endsWith(".js") && !f.endsWith(".test.js"))
+    .map((f) => join("ui", f));
+}
+
 /* The brand faces (round-2 audit, perf-5): the Vercel dist shipped none, so
    the web deploy 404'd every @font-face and drew the fallback typeface for
    good. Derived from the directory, like playerSources(). */
@@ -136,7 +146,7 @@ mkdirSync(OUT, { recursive: true });
 const copied = [];
 const missing = [];
 
-for (const rel of [...SHELL, ...fontSources(), ...playerSources(), ...EXTRAS]) {
+for (const rel of [...SHELL, ...uiSources(), ...fontSources(), ...playerSources(), ...EXTRAS]) {
   const r = copy(rel);
   (r.missing ? missing : copied).push(r);
 }

@@ -143,6 +143,31 @@
 
 <script src="search-engine.js"></script>
 <script src="app.js"></script>
+<!-- app.js is the core (state, storage, data, routing, playback glue). The ui/ scripts are classic scripts that share its globals; ui/boot.js must stay last because it starts init(). Order and rationale: docs/redesign-2026/split-notes.md -->
+<script src="ui/browse.js"></script>
+<script src="ui/create.js"></script>
+<script src="ui/delete-data.js"></script>
+<script src="ui/diagnostics.js"></script>
+<script src="ui/downloads.js"></script>
+<script src="ui/drawer-dev.js"></script>
+<script src="ui/drawer.js"></script>
+<script src="ui/episode.js"></script>
+<script src="ui/foray-player.js"></script>
+<script src="ui/foray.js"></script>
+<script src="ui/forays.js"></script>
+<script src="ui/home.js"></script>
+<script src="ui/interests.js"></script>
+<script src="ui/library.js"></script>
+<script src="ui/onboarding.js"></script>
+<script src="ui/playlist.js"></script>
+<script src="ui/queue.js"></script>
+<script src="ui/rows.js"></script>
+<script src="ui/search.js"></script>
+<script src="ui/sheets.js"></script>
+<script src="ui/show.js"></script>
+<script src="ui/tabbar.js"></script>
+<script src="ui/voice-sheet.js"></script>
+<script src="ui/boot.js"></script>
 <!-- ES module; deferred by spec, so app.js checks window.ForayPlayer lazily on click. -->
 <script type="module" src="player/client.js"></script>
 </body>

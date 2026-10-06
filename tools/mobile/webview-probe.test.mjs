@@ -24,6 +24,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { createRequire as __cr } from "node:module";
+const { readAppSource } = __cr(import.meta.url)("../../test/helpers/app-source.js");
 import {
   EXPECTED_HOST,
   PROBE_EXPRESSION,
@@ -129,7 +131,7 @@ test("a view still holding the boot line is a FAILURE, not a launch", () => {
   assert.match(v.failures.join(" "), /still shows the boot line/);
   assert.equal(verdict({ ...HEALTHY, viewBooting: false }, opts).ok, true, "a rendered page is still a launch");
   /* And the marker the probe looks for is the one app.js actually paints. */
-  const app = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+  const app = readAppSource();
   assert.match(app, /const BOOT_LOADING_HTML = `<div class="page" data-boot-loading>/);
 });
 

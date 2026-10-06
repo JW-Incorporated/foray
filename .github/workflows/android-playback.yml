@@ -168,6 +168,7 @@ on:
       - "tools/mobile/**"
       - "index.html"
       - "app.js"
+      - "ui/**"
       - "player/**"
       - "search-engine.js"
       - "styles.css"

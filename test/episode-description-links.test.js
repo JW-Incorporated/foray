@@ -25,6 +25,7 @@ const assert = require("node:assert");
 const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
+const { readAppSource, runAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
 /* CRLF NORMALISED ON READ. This repo is developed on Windows against a
@@ -34,7 +35,7 @@ const ROOT = path.join(__dirname, "..");
    fail loudly, just find nothing — the first time a checkout landed with CRLF.
    Caught exactly that way: a `git stash` round trip rewrote the endings and this
    suite went red without a line of source changing. */
-const SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8").replace(/\r\n/g, "\n");
+const SRC = readAppSource().replace(/\r\n/g, "\n");
 
 function loadApp() {
   const noop = () => {};
@@ -73,7 +74,7 @@ function loadApp() {
   ctx.globalThis = ctx;
   vm.createContext(ctx);
   process.on("unhandledRejection", noop);
-  vm.runInContext(SRC, ctx, { filename: "app.js" });
+  runAppSource(SRC, ctx);
   return ctx;
 }
 

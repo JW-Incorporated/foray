@@ -31,10 +31,12 @@ const { test } = require("node:test");
 const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
+const { readAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
 const APP_NAME = "4a";
-const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
+const read = (rel) =>
+  rel === "app.js" ? readAppSource() : fs.readFileSync(path.join(ROOT, rel), "utf8");
 
 /* KILLED BY: reverting `<title>4a</title>` to `<title>Foray</title>`. */
 test("index.html <title> is the app name", () => {
@@ -415,7 +417,7 @@ test("the first-visit intro popup names the app", () => {
    ...". `test/sw-generation.test.js` matches /last saved copy/ and /updated in
    the background/ on these same two strings and passes either way. */
 test("both shell notices name the app", () => {
-  const src = read("app.js");
+  const src = readAppSource();
   for (const reason of ["stale-shell", "generation-changed"]) {
     const m = src.match(new RegExp(`"${reason}": "([^"]*)"`));
     assert.ok(m, `SHELL_NOTICE has no "${reason}" entry`);
@@ -498,7 +500,7 @@ test("both shell notices name the app", () => {
    tells "still loading" from "failed to load", and the failed one is its own
    statusPageHtml note with Reload 4a. */
 test("no note this app renders into #view capitalises the unit", () => {
-  const src = read("app.js");
+  const src = readAppSource();
   const notes = [
     ...src.matchAll(/innerHTML = `<div class="page"><p class="note">([^<]*)<\/p><\/div>`/g),
     ...src.matchAll(/statusPageHtml\(\{[^}]*?note: "([^"]*)"/g),
@@ -538,7 +540,7 @@ test("no note this app renders into #view capitalises the unit", () => {
    2026-09-22: "and reload" went — the note now carries a Try again that re-runs
    the boot, and "reload" was browser advice inside a native shell. */
 test("the load-failure page names the app", () => {
-  const m = read("app.js").match(
+  const m = readAppSource().match(
     /Couldn't load (.+?) — check your connection\./
   );
   assert.ok(m, "app.js's init() no longer has its load-failure note");
@@ -559,7 +561,7 @@ test("the load-failure page names the app", () => {
    no listener uses — and names what the control now also clears, the record of
    what was played. It still names the APP, which is what this pins. */
 test("the delete-data sheet names the app", () => {
-  const m = read("app.js").match(/"This device: everything (\S+) stored here/);
+  const m = readAppSource().match(/"This device: everything (\S+) stored here/);
   assert.ok(m, "DD_COVERS no longer has its 'This device: everything … stored here' line");
   assert.equal(m[1], APP_NAME);
 });
@@ -707,7 +709,7 @@ test("the mini-player's back link lowercases the unit", () => {
 
    KILLED BY: either "Foray" or "4a" in this span. Both were run. */
 test("the foray-row kicker labels the unit, lowercase, and never the app", () => {
-  const m = read("app.js").match(
+  const m = readAppSource().match(
     /<span class="fy-home-kicker">([^$<]*)\$\{/
   );
   assert.ok(m, "forayListHtml() no longer renders an .fy-home-kicker");

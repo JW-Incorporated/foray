@@ -37,11 +37,12 @@ const { test } = require("node:test");
 const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
+const { readAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
 const CSS = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");
 const INDEX = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
-const APP = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+const APP = readAppSource();
 const CAP_CONFIG = JSON.parse(fs.readFileSync(path.join(ROOT, "mobile", "capacitor.config.json"), "utf8"));
 
 /** The body of the first rule with exactly this selector text. Same approach as

@@ -11,9 +11,10 @@ const assert = require("node:assert");
 const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
+const { readAppSource, runAppSource } = require("./helpers/app-source.js");
 
 const APP_PATH = path.join(__dirname, "..", "app.js");
-const SRC = fs.readFileSync(APP_PATH, "utf8");
+const SRC = readAppSource();
 
 function loadApp() {
   const noop = () => {};
@@ -57,7 +58,7 @@ function loadApp() {
 
   vm.createContext(ctx);
   process.on("unhandledRejection", noop);
-  vm.runInContext(SRC, ctx, { filename: "app.js" });
+  runAppSource(SRC, ctx);
   ctx._view = viewEl;
   ctx._state = (code) => vm.runInContext(code, ctx);
   return ctx;

@@ -1,0 +1,138 @@
+/* One-shot splitter: app.js -> app.js (core) + ui/*.js.
+ * usage: node split.js <repoRoot> <origAppJs> [--write]
+ * Reads the ORIGINAL app.js from <origAppJs> (so it is re-runnable), writes into <repoRoot>.
+ */
+const fs = require("fs");
+const path = require("path");
+const acorn = require("acorn");
+
+const root = process.argv[2];
+const origPath = process.argv[3];
+const WRITE = process.argv.includes("--write");
+const src = fs.readFileSync(origPath, "utf8");
+const ast = acorn.parse(src, { ecmaVersion: "latest", sourceType: "script", locations: true });
+
+// start line of a top-level node -> file. Last entry with start <= line wins.
+const RANGES = [
+  [1, "core"],
+  [998, "ui/interests.js"],
+  [1091, "core"],
+  [4113, "ui/browse.js"],
+  [4857, "ui/show.js"],
+  [6181, "core"],
+  [6574, "ui/home.js"],
+  [6668, "ui/onboarding.js"],
+  [6970, "ui/sheets.js"],
+  [7553, "ui/onboarding.js"],
+  [7903, "ui/search.js"],
+  [10291, "ui/home.js"],
+  [10992, "ui/forays.js"],
+  [11063, "ui/rows.js"],
+  [11248, "ui/playlist.js"],
+  [11337, "ui/episode.js"],
+  [11803, "ui/queue.js"],
+  [12266, "ui/library.js"],
+  [12302, "ui/downloads.js"],
+  [12676, "ui/library.js"],
+  [12859, "ui/create.js"],
+  [13039, "ui/foray.js"],
+  [14093, "ui/foray-player.js"],
+  [15219, "ui/forays.js"],
+  [15414, "ui/drawer.js"],
+  [15544, "core"],
+  [15682, "ui/drawer.js"],
+  [15723, "ui/tabbar.js"],
+  [15839, "ui/drawer.js"],
+  [15960, "ui/drawer-dev.js"],
+  [16583, "ui/delete-data.js"],
+  [17290, "ui/voice-sheet.js"],
+  [17781, "ui/diagnostics.js"],
+  [18028, "core"],
+  [19879, "ui/boot.js"],
+  [19910, "core"],
+  [20026, "ui/boot.js"],
+];
+const NAME_OVERRIDES = { announce: "core" };
+function fileFor(line) {
+  let f = "core";
+  for (const [s, name] of RANGES) if (s <= line) f = name;
+  return f;
+}
+
+const TITLES = {
+  "ui/interests.js": "Interests page (#/interests): the slider rows and their bindings.",
+  "ui/browse.js": "Browse: the Shows index, category pages and the All Shows page.",
+  "ui/show.js": "Show page (#/show/<id>): episode fetching and caching, similar shows, renderShow.",
+  "ui/home.js": "Home (#/): greeting, Jump back in, Forays / Playlists / Suggested rails.",
+  "ui/onboarding.js": "First-run onboarding: subject picks, personas, the first-time explainer and intro popup.",
+  "ui/sheets.js": "Sheet infrastructure: openSheet / closeSheet, focus management, inert, slide motion, drag.",
+  "ui/search.js": "Search page (#/search): show, playlist, episode and Foray results; show-search caches.",
+  "ui/forays.js": "Forays directory (#/forays) and the Foray list, resume and ribbon rows.",
+  "ui/rows.js": "Shared episode-row components: epRow, archived and family-hidden rows, parts notes.",
+  "ui/playlist.js": "Playlist detail page (#/playlist/<id>).",
+  "ui/episode.js": "Episode page (#/episode/<id>): description, chapters, timestamp seeks.",
+  "ui/queue.js": "Up Next page (#/queue): rows, reorder, drag and swipe.",
+  "ui/library.js": "Library (#/library) and the Playlists list (#/playlists).",
+  "ui/downloads.js": "Downloads: the device store glue, controls, and the Library downloads section.",
+  "ui/create.js": "Create page (#/create): the build-a-playlist form.",
+  "ui/foray.js": "Foray page (#/foray/<id>): rows, feedback sheet, credits, sources, renderForay.",
+  "ui/foray-player.js": "Foray player surface: the segment strip, transport bindings, rate menu, paintForay.",
+  "ui/drawer.js": "Drawer: render, open/close, keyboard, action routing and the settings toggles.",
+  "ui/tabbar.js": "Tab bar: the four tabs and their active state.",
+  "ui/drawer-dev.js": "Drawer developer group: voice probe, engine override rows.",
+  "ui/delete-data.js": "Delete-my-data flow: remote and local deletion and its sheet.",
+  "ui/voice-sheet.js": "Voice picker sheet.",
+  "ui/diagnostics.js": "Diagnostics sheet and the drawer's delete/diagnostics control bindings.",
+  "ui/boot.js": "Boot: starts init() and registers the service worker. MUST load last.",
+};
+
+// build segments: [start incl. leading trivia, end]
+const segs = [];
+let prevEnd = 0;
+for (const n of ast.body) {
+  segs.push({ node: n, from: prevEnd, to: n.end, line: n.loc.start.line });
+  prevEnd = n.end;
+}
+const tailTrivia = src.slice(prevEnd);
+
+const out = {};
+for (const s of segs) {
+  s.file = (s.node.type === "FunctionDeclaration" && NAME_OVERRIDES[s.node.id.name]) || fileFor(s.line);
+  (out[s.file] = out[s.file] || []).push(s);
+}
+
+const nameOf = (n) =>
+  n.type === "FunctionDeclaration" ? n.id.name :
+  n.type === "VariableDeclaration" ? n.declarations.map((d) => d.id.name || "{}").join(",") : "##" + n.type;
+
+const report = {};
+for (const [file, list] of Object.entries(out)) {
+  report[file] = { nodes: list.length, lines: list.reduce((a, s) => a + (s.node.loc.end.line - s.node.loc.start.line + 1), 0) };
+}
+console.log(JSON.stringify(report, null, 1));
+
+// emit
+const files = {};
+for (const [file, list] of Object.entries(out)) {
+  let body = list.map((s) => src.slice(s.from, s.to)).join("");
+  if (file === "core") { body += tailTrivia; files[file] = body; continue; }
+  const header =
+    `/* ${file} — ${TITLES[file] || file}\n` +
+    `   A CLASSIC script like app.js, not a module: it shares app.js's globals and\n` +
+    `   is loaded by index.html after app.js, in the order listed in\n` +
+    `   docs/redesign-2026/split-notes.md. Nothing here may call into the app at load, so\n` +
+    `   ui/boot.js is what starts init(). */\n`;
+  // leading trivia of the first segment began right after the previous (different-file) node; keep it
+  files[file] = header + body.replace(/^\n+/, "\n") + "\n";
+}
+// moved-name manifest (for later checks)
+const manifest = {};
+for (const [file, list] of Object.entries(out)) manifest[file] = list.map((s) => nameOf(s.node));
+fs.writeFileSync(path.join(path.dirname(origPath), "split-manifest.json"), JSON.stringify(manifest, null, 1));
+if (WRITE) {
+  fs.mkdirSync(path.join(root, "ui"), { recursive: true });
+  for (const [file, body] of Object.entries(files)) {
+    fs.writeFileSync(path.join(root, file === "core" ? "app.js" : file), body);
+  }
+  console.log("written", Object.keys(files).length, "files");
+}

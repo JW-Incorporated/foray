@@ -39,9 +39,10 @@ const assert = require("node:assert");
 const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
+const { readAppSource, runAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const APP_SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+const APP_SRC = readAppSource();
 
 process.on("unhandledRejection", () => {});
 
@@ -278,7 +279,7 @@ function mount({ boot = false, capacitor = null } = {}) {
      App plugin's back button is modelled. */
   if (capacitor) ctx.Capacitor = capacitor;
   vm.createContext(ctx);
-  vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
+  runAppSource(APP_SRC, ctx);
   ctx.window.forayDiagnosticReport = () => "4a playback diagnostics — v1";
   ctx.window.forayDiagnosticClear = () => true;
   if (boot) {

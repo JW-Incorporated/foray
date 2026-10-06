@@ -29,9 +29,10 @@ const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
+const { readAppSource, runAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const APP_SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+const APP_SRC = readAppSource();
 
 process.on("unhandledRejection", () => {});
 
@@ -129,7 +130,7 @@ function mount({ hash = "#/" } = {}) {
   ctx.window = ctx;
   ctx.globalThis = ctx;
   vm.createContext(ctx);
-  vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
+  runAppSource(APP_SRC, ctx);
   const evalIn = (src) => vm.runInContext(src, ctx);
   evalIn(`state.ready = true;
     state.session = { session_id: 's', episodes: {}, cards: [], commute: {} };

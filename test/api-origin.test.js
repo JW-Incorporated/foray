@@ -22,11 +22,12 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { readFileSync } = require("node:fs");
 const { join } = require("node:path");
+const { readAppSource } = require("./helpers/app-source.js");
 
 const ROOT = join(__dirname, "..");
 const read = (rel) => readFileSync(join(ROOT, rel), "utf8");
 
-const APP = read("app.js");
+const APP = readAppSource();
 const INDEX = read("index.html");
 
 function apiOrigin() {

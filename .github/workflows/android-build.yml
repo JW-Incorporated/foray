@@ -108,6 +108,7 @@ on:
       - "tools/mobile/**"
       - "index.html"
       - "app.js"
+      - "ui/**"
       - "player/**"
       - ".github/workflows/android-build.yml"
 

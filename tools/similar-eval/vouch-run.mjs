@@ -54,6 +54,7 @@ import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { readAppText } from "../ci/app-files.mjs";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -238,7 +239,7 @@ export function measureRows({ catalog, eligibleIds, rows, limit, unsafeIds }) {
 export function runVouchEval(root = ROOT, { days = WINDOW_DAYS, start = WINDOW_START } = {}) {
   const catalog = readJson(CATALOG_PATH, root);
   const discover = readJson(DISCOVER_PATH, root);
-  const { showsWeVouchFor, familyAllows } = loadAppFunctions(readText(APP_PATH, root), catalog, discover);
+  const { showsWeVouchFor, familyAllows } = loadAppFunctions(readAppText(root), catalog, discover);
   /* The row's own default limit: vouchForHtml calls showsWeVouchFor() with
      no arguments, so the eval passes `undefined` and measures what renders. */
   const ids = (date) => Array.from(showsWeVouchFor(undefined, date), (s) => s.show_id);

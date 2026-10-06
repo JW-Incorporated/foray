@@ -17,12 +17,13 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const { pathToFileURL } = require("node:url");
+const { readAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
 const url = (rel) => pathToFileURL(path.join(ROOT, rel)).href;
 
 function appFmtChapterTime() {
-  const src = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+  const src = readAppSource();
   const m = /function fmtChapterTime\(seconds\) \{[\s\S]*?\n\}/.exec(src);
   assert.ok(m, "app.js still defines fmtChapterTime");
   const ctx = { Math, Number, String };
