@@ -266,6 +266,18 @@ test("(d) PUBLIC_WEB_ORIGIN is the one constant, on the API's own origin", () =>
   assert.ok(csp.includes(ORIGIN.replace(/\/$/, "")), "the same origin index.html's CSP already names");
 });
 
+test("(d) CH-23 (A1-17): app.js spells the origin once — PUBLIC_WEB_ORIGIN is derived from API_ORIGIN, not a second literal", () => {
+  /* Two literals meant a domain move edited one, and the pin above (not the
+     code) said so. MUTATION: write PUBLIC_WEB_ORIGIN as its own
+     "https://foray-web-seven.vercel.app/" literal again -> two; red. */
+  const code = APP_SRC.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/^\s*\/\/.*$/gm, " ");
+  const host = ORIGIN.replace(/^https:\/\//, "").replace(/\/$/, "");
+  const literals = code.match(new RegExp(`["'\`]https://${host.replace(/\./g, "\\.")}`, "g")) || [];
+  assert.strictEqual(literals.length, 1, `the origin is spelled ${literals.length} times in app.js's code`);
+  assert.match(code, /const API_ORIGIN = "https:\/\/foray-web-seven\.vercel\.app";/, "the one spelling is API_ORIGIN");
+  assert.match(code, /const PUBLIC_WEB_ORIGIN = API_ORIGIN \+ "\/";/, "and the share links' origin is derived from it");
+});
+
 /* (e) ------------------------------------------------------------------- */
 
 function sharedIdOf(url) {

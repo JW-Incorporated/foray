@@ -801,3 +801,17 @@ test("THE REAL init() registers the back handler with the shell", async () => {
   await mountBooted({ capacitor: { Plugins: { App: app } } });
   assert.strictEqual(typeof app.listeners.backButton, "function", "init() wired the shell's back button");
 });
+
+test("CH-23 (A3-15): window.ForayNav carries only what player/client.js calls; back stays the shell's, through bindHardwareBack", () => {
+  /* `handleBack` rode on window.ForayNav with no caller but this suite, which
+     reaches it through the vm harness (`m.ctx.handleBack`) like every other
+     app.js function. Public surface with no owner is where a second back order
+     grows. MUTATION: re-export `handleBack` on ForayNav -> the keys differ; red. */
+  const m = mount();
+  assert.deepStrictEqual(Object.keys(m.ctx.ForayNav).sort(), ["announce", "landOnPage"]);
+  assert.strictEqual(typeof m.ctx.handleBack, "function", "the back order itself stays, beside the ownership model");
+  /* And the two that stay are the two the module calls when it stops and closes. */
+  const client = fs.readFileSync(path.join(ROOT, "player", "client.js"), "utf8");
+  assert.ok(/window\.ForayNav\b/.test(client), "premise: player/client.js reads window.ForayNav");
+  for (const k of ["landOnPage", "announce"]) assert.ok(client.includes(`nav.${k}(`), `player/client.js calls ForayNav.${k}`);
+});

@@ -1245,21 +1245,36 @@ function playBtn(item, ctx) {
    branch (older comedy items predate per-episode ratings). */
 function familyMode() { return lsGet("cp_family", false); }
 
-/* ---------- U-02: the ui-v2 flag (docs/ui-transition-plan.md) ----------
+/* ---------- the one native-shell detector (issue #36; code-health CH-23) ----------
 
-   cp_ui_v2 gates the whole v2 surface (tab bar, and every screen U-03+
-   restyles): default OFF on the web, default ON for a native-shell build so
-   the app the founders actually carry shows the new look without a manual
-   toggle. There is no separate "TestFlight vs production" signal today
-   (R-01 stopped shipping PR builds to TestFlight, but there is no
-   store-production build yet either) -- isNativeShell() below duplicates
-   shouldRegisterServiceWorker's Capacitor detection (further down this
-   file) rather than sharing it, because that function answers a different
-   question (should the SW register) with an inverted return and this one
-   must be callable before that function's own definition site in source
-   order is guaranteed relevant. When a real production channel exists this
-   default should be revisited; until then "native shell" and "TestFlight"
-   are the same population. */
+   Is this page running inside the Capacitor shell rather than a browser? The
+   ONE answer in this file: the service worker (shouldRegisterServiceWorker),
+   the relaunch route, the boot's data-source row and chapter hydration all ask
+   here, so a new shell signal added below reaches every one of them. Two
+   copies with inverted returns used to exist; a signal added to one would
+   have registered sw.js inside a shell the rest of the file treats as native,
+   or the reverse (the #213/#220 class of bug).
+
+   Two signals, checked in SEPARATE `try` blocks on purpose. The origin goes
+   first because it cannot throw: on iOS the page is served from
+   `capacitor://localhost`. `window.Capacitor.isNativePlatform()` goes second —
+   the bridge is injected before page scripts, so it is normally the more
+   precise answer, but it is somebody else's object and calling into it can
+   throw (a bridge that is not ready, a plugin-proxy getter). Sharing one `try`
+   made the guard FAIL OPEN: a throwing bridge skipped the origin check too and
+   registered the worker inside the shell, which is the exact case the origin
+   check exists to cover. A throwing bridge is not a "yes"; the origin already
+   spoke.
+
+   Deliberately NOT a hostname check. Capacitor's Android default is
+   `https://localhost`, so testing for "localhost" would also treat anyone
+   serving the real site from a local dev server as the shell — a live web
+   behaviour broken to fix an app one.
+
+   Deliberately NOT a user-agent check either. Every real Foray listener is on a
+   phone, so UA-sniffing here would switch the offline shell off for essentially
+   the whole audience. `shell-invariants.test.mjs` asserts a mobile-web UA still
+   registers. */
 function isNativeShell(win = window) {
   try {
     const proto = (win && win.location && win.location.protocol) || "";
@@ -5525,8 +5540,12 @@ function forayRoutePath(id) {
    (resolveEpisode finds nothing else on a fresh device), else its show; a
    playlist only the recipient could not rebuild (their own playlist, a
    Suggested queue) is FROZEN into the link as title + catalogue ids. No event
-   is logged for a share. */
-const PUBLIC_WEB_ORIGIN = "https://foray-web-seven.vercel.app/";
+   is logged for a share.
+
+   Spelled FROM API_ORIGIN, not as a second literal of the same host (CH-23,
+   A1-17): a domain move edits one line. The trailing "/" is the share links'
+   root; API_ORIGIN carries none (apiUrl joins with one). */
+const PUBLIC_WEB_ORIGIN = API_ORIGIN + "/";
 const SHARED_PLAYLIST_PREFIX = "shared~";
 const SHARED_PLAYLIST_MAX = 50;
 
@@ -16190,7 +16209,9 @@ function bindHardwareBack(win = window) {
 }
 
 if (typeof window !== "undefined") {
-  window.ForayNav = { handleBack, landOnPage, announce };
+  /* What player/client.js calls when the player stops and closes. handleBack is
+     the shell's (bindHardwareBack), not public surface (CH-23). */
+  window.ForayNav = { landOnPage, announce };
 }
 
 /* ---------- THE DRAWER LEAVES WHEN IT IS USED (founder, 2026-09-23) ----------
@@ -18273,9 +18294,9 @@ function forayRouteId() {
 }
 
 /* `?foray=<id>` on the site root opens that Foray once, by rewriting the hash
-   in place. replaceState rather than assigning location.hash: assigning fires
-   hashchange and renders the page twice, and it would also put an entry in the
-   history that the back button bounces off.
+   in place. replaceHash (replaceState) rather than assigning location.hash:
+   assigning fires hashchange and renders the page twice, and it would also put
+   an entry in the history that the back button bounces off.
 
    After this the param does nothing but unlock — so the Foray page's back link
    reaches a real home screen, which then LISTS the unlocked draft. The first
@@ -18298,9 +18319,11 @@ function enterForayFromQuery() {
     if (window.sessionStorage && window.sessionStorage.getItem(mark)) return;
     if (window.sessionStorage) window.sessionStorage.setItem(mark, "1");
   } catch (_) { /* no session store: fall through and enter, as before */ }
-  try {
-    history.replaceState(history.state ?? null, "", `${location.pathname}${location.search}#/foray/${encodeURIComponent(id)}`);
-  } catch (_) { /* a hash we cannot write is a home screen, not a broken page */ }
+  /* Through replaceHash, like every in-place rewrite (CH-23): it keeps the
+     entry's state AND writes location.hash where replaceState does not, so
+     init()'s bare-hash line next cannot overwrite the entry with Home. A hash
+     we cannot write is a home screen, not a broken page. */
+  replaceHash(forayRouteHash(id));
 }
 
 /* Renders whichever page the current hash points at, WITHOUT touching the
@@ -19238,18 +19261,34 @@ function dataDeadlineMs(path) {
   return /(^|\/)session\.json$/.test(String(path)) ? BOOT_DEADLINE_MS : DATA_DEADLINE_MS;
 }
 
-async function fetchJson(path) {
+/* THE ONE FETCH SHAPE (code-health CH-23, A3-16): a `no-cache` GET of the URL
+   `urlOf()` builds, its parsed body when the answer is ok, and `null` for
+   anything else — a non-ok status, a throw, or `ms` passing with no answer, when
+   the request is aborted so the stalled socket is freed (see withDeadline). The
+   URL is built INSIDE the guard, as both fetchers always did: a builder that
+   throws (pinnedUrl over a pin that is not a string) is a failure, not a throw
+   out of init(). fetchJson and fetchApiJson were twins of this differing only in
+   URL and deadline, so the next fix to the abort or deadline would have landed in
+   one of them. They keep their names and their one-argument signatures:
+   tools/mobile/prepare-webdir.mjs derives the bundle's data files from each
+   fetchJson call's one quoted data/ path, by name (so this comment names no
+   call). */
+async function fetchJsonAt(urlOf, ms) {
   const ctl = typeof AbortController === "function" ? new AbortController() : null;
   const attempt = (async () => {
     try {
-      const res = await fetch(pinnedUrl(path), ctl ? { cache: "no-cache", signal: ctl.signal } : { cache: "no-cache" });
+      const res = await fetch(urlOf(), ctl ? { cache: "no-cache", signal: ctl.signal } : { cache: "no-cache" });
       return res.ok ? await res.json() : null;
     } catch (_) { return null; }
   })();
-  return withDeadline(attempt, dataDeadlineMs(path), () => {
+  return withDeadline(attempt, ms, () => {
     try { if (ctl) ctl.abort(); } catch (_) { /* nothing left to free */ }
     return null;
   });
+}
+
+async function fetchJson(path) {
+  return fetchJsonAt(() => pinnedUrl(path), dataDeadlineMs(path));
 }
 
 /* A3.1/Q3: a plain, unpinned fetch for /api/* backend endpoints — deliberately
@@ -19266,18 +19305,8 @@ async function fetchJson(path) {
    fetchJson, so callers don't need their own try/catch for a down or
    unreachable endpoint. */
 async function fetchApiJson(path) {
-  const ctl = typeof AbortController === "function" ? new AbortController() : null;
-  const attempt = (async () => {
-    try {
-      const res = await fetch(apiUrl(path), ctl ? { cache: "no-cache", signal: ctl.signal } : { cache: "no-cache" });
-      return res.ok ? await res.json() : null;
-    } catch (_) { return null; }
-  })();
-  /* A deadline, then the same `null` a failure gives (see withDeadline). */
-  return withDeadline(attempt, API_DEADLINE_MS, () => {
-    try { if (ctl) ctl.abort(); } catch (_) { /* nothing left to free */ }
-    return null;
-  });
+  /* A deadline, then the same `null` a failure gives (see fetchJsonAt). */
+  return fetchJsonAt(() => apiUrl(path), API_DEADLINE_MS);
 }
 
 /* NO REQUEST WAITS FOREVER (review 2026-09-23). A stalled socket — a captive
@@ -20120,38 +20149,13 @@ init();
    the cached copy of its own bundle after an app-store update replaced it, and
    the symptom is an app that ignores new versions with no error anywhere.
 
-   Two signals, and they are checked in SEPARATE `try` blocks on purpose. The
-   origin goes first because it cannot throw: on iOS the page is served from
-   `capacitor://localhost`. `window.Capacitor.isNativePlatform()` goes second —
-   the bridge is injected before page scripts, so it is normally the more precise
-   answer, but it is somebody else's object and calling into it can throw (a
-   bridge that is not ready, a plugin-proxy getter). Sharing one `try` made the
-   guard FAIL OPEN: a throwing bridge skipped the origin check too and registered
-   the worker inside the shell, which is the exact case the origin check exists
-   to cover.
-
-   Deliberately NOT a hostname check. Capacitor's Android default is
-   `https://localhost`, so testing for "localhost" would also disable the service
-   worker for anyone serving the real site from a local dev server — a live web
-   behaviour broken to fix an app one.
-
-   Deliberately NOT a user-agent check either. Every real Foray listener is on a
-   phone, so UA-sniffing here would switch the offline shell off for essentially
-   the whole audience. `shell-invariants.test.mjs` asserts a mobile-web UA still
-   registers. */
+   WHICH PAGES ARE "THE SHELL" IS NOT DECIDED HERE. isNativeShell() is the one
+   detector (its header has the two signals and why neither a hostname nor a
+   user agent is one); this function is its negation and nothing else, so a new
+   shell signal cannot reach the relaunch route and miss the worker, or the
+   reverse (code-health CH-23). */
 function shouldRegisterServiceWorker(win) {
-  try {
-    const proto = (win && win.location && win.location.protocol) || "";
-    if (proto === "capacitor:" || proto === "ionic:") return false;
-  } catch (_) { /* no location: treat as the web, and let the bridge check speak */ }
-  try {
-    const cap = win && win.Capacitor;
-    if (cap) {
-      if (typeof cap.isNativePlatform === "function") { if (cap.isNativePlatform()) return false; }
-      else if (cap.isNative) return false;
-    }
-  } catch (_) { /* a bridge that throws is not an answer; the origin already spoke */ }
-  return true;
+  return !isNativeShell(win);
 }
 
 /* ---------- the page's half of #233 ----------
@@ -20269,16 +20273,17 @@ if ("serviceWorker" in navigator && shouldRegisterServiceWorker(window)) {
     navigator.serviceWorker.addEventListener("message", (e) => {
       const msg = e && e.data;
       if (!msg || msg.source !== "foray-sw") return;
-      /* By the time this fires, `pinnedDeployId` is already set synchronously
-         (see the top of this file) if this load fell back at all — this
-         assignment is now a REDUNDANT confirmation, not the establishing
-         write, kept only as a safety net for a message that legitimately
-         arrives with a different id than the synchronous read found (there is
-         no such path today, but it costs nothing and a future one should not
-         have to remember this). A `deployId` of null (an unretained/unknown
-         generation on the worker's side) intentionally does not clear an
-         already-set pin — see sw.js's `handleData` fail-safe for the matching
-         reasoning.
+      /* The pin is WRITTEN ONCE (code-health CH-23, A3-15). By the time this
+         fires, `pinnedDeployId` is already set synchronously (see the top of
+         this file) if this load fell back at all, and a page keeps the
+         generation its code and its first data fetches came from: a message
+         naming a DIFFERENT id does not move it — that would pair this code
+         with another generation's data — it is recorded as a `pin-mismatch`
+         row instead (no such path exists today; the row is how one would be
+         seen). A page with no synchronous pin adopts the worker's id. A
+         `deployId` of null (an unretained/unknown generation on the worker's
+         side) intentionally does not clear an already-set pin — see sw.js's
+         `handleData` fail-safe for the matching reasoning.
 
          `pin: false` (round-3 audit, app-3-5) is a fallback of a file that does
          not read data (search-engine.js, a player module) while this app.js
@@ -20293,13 +20298,15 @@ if ("serviceWorker" in navigator && shouldRegisterServiceWorker(window)) {
          name its own deploy, is still told. */
       if (msg.reason === "generation-changed" && !pinnedDeployId && pageDeployId && msg.deployId === pageDeployId) return;
       const adoptsPin = msg.reason === "stale-shell" && msg.pin !== false;
-      if (adoptsPin && msg.deployId) pinnedDeployId = msg.deployId;
+      const mismatch = adoptsPin && !!msg.deployId && !!pinnedDeployId && msg.deployId !== pinnedDeployId;
+      if (adoptsPin && msg.deployId && !pinnedDeployId) pinnedDeployId = msg.deployId;
       /* FD-01: the web's pinned-generation path records the same fact the shell's
          boot row does — where the documents came from, and which deploy id. */
       if (adoptsPin) {
         const tag = `sw-cache@${pinnedDeployId || "unknown"}`;
         noteDataSource({
           phase: "stale-shell", source: "sw-cache", version: pinnedDeployId || "unknown",
+          ...(mismatch ? { status: "pin-mismatch" } : {}),
           files: { forays: tag, segments: tag, sources: tag },
         });
       }
