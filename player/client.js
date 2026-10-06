@@ -112,7 +112,7 @@ import {
 } from "./diagnostic-log.js";
 import { forayCredits, collectionIdsByShow, creditsSummary, artworkUrlsByShow } from "./foray-sources.js";
 import { createForayDirectory, DIRECTORY_DB_NAME } from "./foray-directory.js";
-import { mountStrip, stripModel, stripSummary, stripTally, segmentStripHtml, applyStripGrow, NARRATOR_NAME } from "./segment-strip.js";
+import { mountStrip, stripTally, segmentStripHtml, applyStripGrow, NARRATOR_NAME } from "./segment-strip.js";
 import {
   HOLD_MS, MOVE_TOLERANCE_PX, ZOOM_SCALE,
   startGesture, moveGesture, holdTimeoutGesture, endGesture, zoomOriginPercent, unzoomedStripX,
@@ -137,7 +137,7 @@ import {
   createMediaSession, mediaSessionView, SEEK_BACKWARD_SEC, SEEK_FORWARD_SEC,
 } from "./media-session.js";
 import {
-  readRate, writeRate, nextRate, normalizeRate, rateLabel, rateAriaLabel, RATES,
+  readRate, writeRate, normalizeRate, rateLabel, rateAriaLabel, RATES,
 } from "./playback-rate.js";
 import { pickDefaultVoice, VOICE_LIST_LANG } from "./default-voice.js";
 import * as continuation from "./continuation.js";
@@ -5120,11 +5120,6 @@ const ForayPlayer = {
     return mountStrip(el, items, { ...opts, document });
   },
 
-  /** The strip as data, for a caller that wants the numbers without the DOM —
-      and for the accessible sentence, which the Now Playing sheet (#133) will
-      want next to a strip it renders itself. */
-  stripModel,
-  stripSummary,
   /** The header's counts, from the strip's own model — see `stripTally`. */
   stripTally,
 
@@ -5218,9 +5213,10 @@ const ForayPlayer = {
   },
 
   /**
-   * Advance to the next speed and return it. Kept for a caller that wants a
-   * cycle; NO SHIPPED CONTROL CYCLES ANY MORE (#349 — both speed buttons open
-   * the picker, `openRatePicker` here and `openRateMenu` in app.js).
+   * Set a specific speed, snapped onto the ladder, and return it. What the
+   * picker's stops call (#349 — both speed buttons open the picker,
+   * `openRatePicker` here and `openRateMenu` in app.js), and what a settings row
+   * or a console would.
    *
    * Works with nothing playing: the value is stored and applied at the next boot,
    * so a listener can set the speed before pressing play. Not `async`, and that
@@ -5228,12 +5224,6 @@ const ForayPlayer = {
    * element synchronously, so a caller wrapping this in a guard gets a real
    * return value rather than a promise.
    */
-  cycleRate() {
-    return applyRate(nextRate(currentRate()));
-  },
-
-  /** Set a specific speed, snapped onto the ladder. What the picker's stops
-      call, and what a settings row or a console would. */
   setPlaybackRate(rate) {
     return applyRate(rate);
   },
@@ -5304,14 +5294,6 @@ const ForayPlayer = {
   /** Apply and persist a voice choice (V-01's `cp_voice`). */
   setNarrationVoice(id) {
     return applyVoice(id);
-  },
-
-  /** Did the most recently spoken narration item fall back from the chosen
-      voice to the plugin's own best-installed pick? `null` before anything
-      has spoken, or with nothing booted at all — a page reads this after an
-      `onChange`/Foray-status tick, never on its own poll. */
-  lastVoiceFallback() {
-    return manager ? manager.lastVoiceFallback : null;
   },
 
   /**
