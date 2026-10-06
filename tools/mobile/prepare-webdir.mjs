@@ -221,6 +221,9 @@ import { BUILD_STAMP_FILE, buildStampDoc } from "../../player/build-stamp.js";
    pointer it serves. Neither is a committed file any more — see
    `tools/ci/generate-manifest.mjs`'s header. */
 import { sourceStamp } from "../ci/generate-manifest.mjs";
+/* The "4a Lab" variant (Redesign 2026, phase 0e): off unless `prepare({ lab: true })`
+   or `FORAY_LAB=1`, and with it off nothing below differs from the real build. */
+import { LAB_FLAG_FILE, LAB_FLAG_SOURCE, injectLabFlag, assertLabFlagPresent } from "./lab-variant.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -1836,6 +1839,9 @@ export function prepare({
   /* `{ deployId, pointer }` from `sourceStamp`, or `{ deployId: null, reason }`.
      Injectable so a test can hand a fixture a stamp; defaults to the real one. */
   stamp = undefined,
+  /* The lab variant: carries `window.__FORAY_LAB__ = true` as a classic head
+     script (app.js then skips sign-up, refresh and event POSTs). Default off. */
+  lab = false,
 } = {}) {
   const absOut = path.resolve(root, out);
   assertSafeOut(absOut, root);
@@ -1916,6 +1922,12 @@ export function prepare({
   const injected = injectShellScripts(fs.readFileSync(indexAbs, "utf8"), shellOnly);
   if (injected.changed) fs.writeFileSync(indexAbs, injected.html);
   assertShellScriptsPresent(fs.readFileSync(indexAbs, "utf8"), shellOnly);
+  if (lab) {
+    putGenerated(LAB_FLAG_FILE, LAB_FLAG_SOURCE);
+    const labbed = injectLabFlag(fs.readFileSync(indexAbs, "utf8"));
+    if (labbed.changed) fs.writeFileSync(indexAbs, labbed.html);
+    assertLabFlagPresent(fs.readFileSync(indexAbs, "utf8"));
+  }
 
   /* THE SLICES, RE-READ, for the same reason and in the same place. */
   assertSlicesOnDisk(absOut, root, { seedPointer: webStamp && webStamp.pointer ? webStamp.pointer : null });
@@ -2014,7 +2026,9 @@ if (isMain) {
         );
       }
     } else {
-      const r = prepare({ out });
+      const lab = process.env.FORAY_LAB === "1";
+      const r = prepare({ out, lab });
+      if (lab) console.log("  LAB variant: window.__FORAY_LAB__ = true (no sign-up, no event sync)");
       console.log(`webDir ready: ${r.out}  (${r.files.length} files, ${fmt(r.total)} of ${fmt(r.maxBytes)})`);
       if (r.deployId && !r.seedPointerReason) console.log(`  web deploy id: ${r.deployId} (build-stamp.json and the seed's pointer)`);
       else if (r.deployId) console.warn(`  web deploy id: ${r.deployId} (build-stamp.json). WARNING: no seed pointer — ${r.seedPointerReason}`);

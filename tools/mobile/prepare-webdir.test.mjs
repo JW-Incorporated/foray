@@ -2918,3 +2918,35 @@ test("seedCarries is exactly the negation of the one `isGeneratedDraft` (audit f
   assert.equal(seedCarries({ id: "x", generated: true, status: "draft" }), false);
   assert.equal(seedCarries({ id: "x", generated: true, status: "published" }), true);
 });
+
+/* ───────────────── the "4a Lab" variant (Redesign 2026, phase 0e) ────────────
+   The flag is a generated classic script in the head; tools/mobile/lab-variant.mjs
+   owns the pieces and its own suite pins them. These two pin the WIRING: that
+   `prepare({ lab: true })` ships the flag, and that the default build does not
+   (the real app must stay identical to what it was). */
+
+test("lab: prepare({ lab: true }) ships foray-lab.js and a classic head script ahead of the body", () => {
+  /* MUTATION: drop the `if (lab)` block in prepare() -> no file, no tag (red);
+     or make the tag `type="module"` in lab-variant.mjs -> it is deferred past
+     app.js and `isLabBuild()` reads undefined at the first sign-up (red on the
+     exact-tag assertion). */
+  const fake = makeFakeRepo();
+  const r = prepare({ root: fake, out: "www", lab: true });
+  const flag = fs.readFileSync(path.join(fake, "www", "foray-lab.js"), "utf8");
+  assert.equal(flag, "window.__FORAY_LAB__ = true;\n");
+  const html = fs.readFileSync(path.join(fake, "www", "index.html"), "utf8");
+  assert.ok(html.includes('<script src="foray-lab.js"></script>'), "the flag tag is not in index.html");
+  assert.ok(html.indexOf("foray-lab.js") < html.indexOf("</head>"), "the flag tag is outside the head");
+  assert.ok(r.files.some((f) => f.rel === "foray-lab.js"), "the size report does not count the flag file");
+});
+
+test("lab: the default build carries no flag file and no flag tag", () => {
+  /* MUTATION: default `lab = true` in prepare()'s signature -> the real app would
+     ship the lab flag and stop syncing; this goes red. */
+  const fake = makeFakeRepo();
+  prepare({ root: fake, out: "www" });
+  assert.equal(fs.existsSync(path.join(fake, "www", "foray-lab.js")), false);
+  const html = fs.readFileSync(path.join(fake, "www", "index.html"), "utf8");
+  assert.ok(!html.includes("foray-lab"), "the real bundle mentions the lab flag");
+  assert.ok(!html.includes("__FORAY_LAB__"));
+});
