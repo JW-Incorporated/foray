@@ -1602,3 +1602,67 @@ test("search-9: the local passes and the dedup keys fold diacritics, so 'cafe' f
     [{ show_id: "555", title: "Café X", source: "apple" }]);
   assert.strictEqual(merged, null, "an Apple 'Café X' is the index's 'Cafe X', not a second row");
 });
+
+/* ---------- code-health CH-36: the app.js copies pinned to the engine ----------
+   app.js keeps its own `branchOf` and `normaliseShowTitle` rather than calling
+   search-engine.js at runtime, because 43 app.js harnesses (card-anatomy,
+   home-layout, generated-playlists, explicit-badge, ...) load app.js WITHOUT
+   search-engine.js and Home groups on `branchOf` in every one of them; a
+   `typeof SearchEngine` fallback would just be the duplicate again
+   (docs/roadmap/code-health.md §0.3 item 14). So the copies are pinned to the
+   engine here, in the one harness that loads both. */
+
+test("CH-36 (X1-09): app.js's branchOf files every item where the ranker's branchOf does", () => {
+  /* Home's subject grouping and search's branch filter must agree on which
+     branch an episode is in, or a subject card lands in a different branch
+     than search puts it in.
+     MUTATION: change the fallback in EITHER copy (`|| "other"` -> `|| "misc"`),
+     or split on ":" instead of "/" in either -> red. */
+  const m = mount();
+  const SE = m.evalIn("SearchEngine");
+  const appBranchOf = m.evalIn("branchOf");
+  assert.notStrictEqual(appBranchOf, SE.branchOf, "the premise: two copies, not one function seen twice");
+  const fixture = [
+    { topics: ["science/physics"] }, { topics: ["science/physics/quantum", "history"] },
+    { topics: ["comedy"] }, { topics: [] }, {}, { topics: [""] }, { topics: ["/orphan"] },
+    { topics: ["arts/"] }, { topics: [null] },
+  ];
+  for (const item of fixture) {
+    assert.strictEqual(appBranchOf(item), SE.branchOf(item), JSON.stringify(item));
+  }
+  assert.strictEqual(appBranchOf({ topics: ["science/physics"] }), "science");
+});
+
+test("CH-36 (X1-06): normaliseShowTitle is the engine's foldDiacritics plus the class collapse — a fold change cannot skip show dedup", () => {
+  /* app.js's expression is also pinned verbatim to api/_lib/appleShowSearch.ts
+     above, so it cannot simply call the engine; instead its FOLD half is
+     pinned to SearchEngine.foldDiacritics over titles that exercise every
+     step (NFKD compatibility letters, combining marks, case, non-ASCII
+     letters, punctuation runs).
+     MUTATION: drop `.normalize("NFKD")` from search-engine.js foldDiacritics,
+     or widen its combining-mark range -> the engine diverges, red. */
+  const m = mount();
+  const SE = m.evalIn("SearchEngine");
+  const norm = m.evalIn("normaliseShowTitle");
+  const composed = (t) => SE.foldDiacritics(t).replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  const fixture = [
+    "Café X", "Cafe X", "La Société", "𝐁𝟑𝟒𝐧’𝐬 𝐭𝐞𝐫𝐫𝐢𝐭𝐨𝐫𝐢𝐮𝐦", "Lex  Fridman Podcast!",
+    "99% Invisible", "伊藤洋一のRound Up World Now！", "Ñandú — Diario", "!!!", "", null,
+    "ÅNGSTRÖM: the Ⅻ files", "ﬁrst ﬂight",
+  ];
+  for (const t of fixture) assert.strictEqual(norm(t), composed(t), JSON.stringify(t));
+  assert.strictEqual(norm("Café X"), norm("Cafe X"), "'Café' and 'Cafe' dedup to one show");
+});
+
+test("CH-36 (A2-17): offline, the Episodes section asks nothing and reports the endpoint as not asked", () => {
+  /* The offline branch of renderEpisodeSearchResults: no request, the local
+     tier painted, no spinner. MUTATION: delete the offline early return ->
+     an api/episodes/search request, red. */
+  const m = mount({ onLine: false });
+  const before = m.apiCalls().filter((u) => u.includes("api/episodes/search")).length;
+  let reported = null;
+  m.ctx.__report = (ms, hits) => { reported = [ms, hits]; };
+  m.evalIn('renderEpisodeSearchResults("radiolab", showSearchToken, __report)');
+  assert.strictEqual(m.apiCalls().filter((u) => u.includes("api/episodes/search")).length, before, "no request offline");
+  assert.deepStrictEqual(reported, [null, null], "reported as not asked");
+});

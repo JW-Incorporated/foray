@@ -32,6 +32,9 @@
  *      tab's root (visual-6), an eyebrow on every search tier (visual-16), a
  *      two-line show row with its full name in `title=` (search-11), one
  *      silhouette on the Up Next row (visual-11).
+ *   9. HOME'S GROUPING RULES NEED NO SEARCH ENGINE (code-health CH-36): the
+ *      branch a subject card groups on and the per-show cap a generated
+ *      playlist keeps, on a page that never loaded search-engine.js.
  *
  * Every test names its killing mutation.
  */
@@ -575,4 +578,38 @@ test("an intro paragraph sits a section (20px) above the first card, not the row
   assert.match(APP_SRC, /<div class="show-hero">\s*\$\{showArt \? `<img class="show-art"[\s\S]*?\$\{showStarBtn\(show\.show_id\)\}\s*<p class="note show-follow-note">[\s\S]*?<\/div>/,
     "renderShow wraps art, Follow and the note in the hero");
   assert.match(APP_SRC, /<p class="note fy-about">/, "renderForays' intro carries the class the margin hangs on");
+});
+
+/* ==================================================================== */
+/* 9. Home's grouping rules, with no search engine on the page          */
+/* ==================================================================== */
+/* code-health CH-36 (X1-09, X1-19). This harness loads app.js WITHOUT
+   search-engine.js, as 43 app.js harnesses do, so these are also the proof
+   that Home's grouping never needs the ranker to be present. */
+
+test("Home's branch grouping files a 'science/physics' episode under 'science', and an untagged one under 'other'", () => {
+  /* The subject cards and Family mode's comedy rule both group on the first
+     topic's root. MUTATION: `t.split("/")[0] || "other"` -> `t || "other"` in
+     app.js's branchOf -> "science/physics", red. */
+  const evalIn = loadApp();
+  assert.strictEqual(evalIn("typeof SearchEngine"), "undefined", "the premise: no engine on this page");
+  const branch = (item) => evalIn(`branchOf(${JSON.stringify(item)})`);
+  assert.strictEqual(branch({ topics: ["science/physics", "history"] }), "science");
+  assert.strictEqual(branch({ topics: ["comedy"] }), "comedy");
+  assert.strictEqual(branch({ topics: [] }), "other");
+  assert.strictEqual(branch({}), "other");
+  assert.strictEqual(branch({ topics: ["/orphan"] }), "other", "an empty root is no branch");
+});
+
+test("a generated playlist holds at most two episodes of one show when no search engine is loaded", () => {
+  /* MUTATION: GENERATED_PER_SHOW_CAP = 2 -> 3 -> three of Show A, red. */
+  const evalIn = loadApp();
+  const items = [];
+  for (let i = 0; i < 5; i++) items.push({ id: `a${i}`, show: "Show A", release_date: `2026-09-0${i + 1}` });
+  for (let i = 0; i < 2; i++) items.push({ id: `b${i}`, show: "Show B", release_date: `2026-08-0${i + 1}` });
+  const picked = evalIn(`leafPlaylistItems(${JSON.stringify(items)}, { generalShowTitles: new Set() })`);
+  const perShow = {};
+  for (const it of picked) perShow[it.show] = (perShow[it.show] || 0) + 1;
+  assert.deepStrictEqual(perShow, { "Show A": 2, "Show B": 2 });
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(picked.map((it) => it.id))), ["a4", "a3", "b1", "b0"], "newest first within the cap"); // a vm-realm array has a foreign prototype
 });
