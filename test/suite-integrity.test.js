@@ -661,6 +661,10 @@ const FLOORS = {
      the ranker they claimed to describe. Every test in there was
      mutation-checked — see the suite header. */
   "test/search-matcher.test.js": 45, // audit round 3 integration: the real post-merge count, 31 -> 45 // round-3 audit, L4: an unparseable date is never recent (search-api-css-11); 30 -> 31 | accented queries tokenize whole and match either spelling (search-api-css-6 x2); 28 -> 30 | deep learning / story / marathon are content, funny history keeps its filter, deep sea + speed of light are not confident filler (search-api-css-1 x4); 24 -> 28 | constructor is a word and a typeless filter never throws (search-api-css-2 x2); 22 -> 24
+  /* search-engine.js export object vs app.js (code-health CH-16): every member app.js
+     names is exported and listed in the export comment, the two former orphans stay
+     private, and their two callers still work. */
+  "test/search-engine-exports.test.js": 5,
   /* The rich/sparse/empty tiering and the ranking prefix the narrow branch shows
      (#216). Floored because the battery cannot stand in for it: the disagreement
      it pins only reaches the page on a sparse or single-show query, and no query
