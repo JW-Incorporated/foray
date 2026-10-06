@@ -64,6 +64,7 @@ function lift(re, what) {
 const ARCHETYPES_SRC = lift(/const SB_ARCHETYPES = new Set\(\[[^\]]*\]\);/, "SB_ARCHETYPES");
 const TO_ROW_SRC = lift(/function toEventRow\([\s\S]*?\n\}/, "toEventRow");
 const SYNC_SRC = lift(/async function syncEventsOnce\([\s\S]*?\n\}/, "syncEventsOnce");
+const IS_LAB_SRC = lift(/function isLabBuild\(\) \{[\s\S]*?\n\}/, "isLabBuild");
 for (const [name, body] of [["toEventRow", TO_ROW_SRC], ["syncEventsOnce", SYNC_SRC]]) {
   /* Under-capture would not parse; over-capture would pull in a second
      declaration. Either way, fail loudly rather than test a fragment. */
@@ -185,7 +186,9 @@ async function syncHarness(rows) {
     ensureAnonSession: async () => ({ user_id: UID, access_token: "at-1" }),
     fetch: async (url, opts) => { posts.push({ url, body: opts.body }); return { ok: true, status: 201 }; },
   };
-  const syncEventsOnce = vm.runInNewContext(`${ARCHETYPES_SRC}\n${TO_ROW_SRC}\n${SYNC_SRC}\nsyncEventsOnce`, ctx);
+  /* `isLabBuild` is syncEventsOnce's first gate (Redesign 2026 phase 0e); the real
+     function, over a context with no `window.__FORAY_LAB__`, is the real build. */
+  const syncEventsOnce = vm.runInNewContext(`${IS_LAB_SRC}\n${ARCHETYPES_SRC}\n${TO_ROW_SRC}\n${SYNC_SRC}\nsyncEventsOnce`, ctx);
   return { queue, marks, posts, run: () => syncEventsOnce(0) };
 }
 

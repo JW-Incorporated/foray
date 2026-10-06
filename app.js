@@ -528,6 +528,20 @@ function flushBufferedEvents() {
 const SB_URL = "https://qjdllvqdcgacvujhclny.supabase.co";
 const SB_KEY = "sb_publishable_0T8hpKCC_857G31LlCh0WA_0Rp61B3J";
 
+/* LAB BUILDS NEVER WRITE TO PRODUCTION (Redesign 2026, docs/redesign-2026/PLAN.md).
+   The "4a Lab" app (ai.jwlabs.foura.lab, built by .github/workflows/lab-build.yml)
+   carries `window.__FORAY_LAB__ = true`, injected by tools/mobile/prepare-webdir.mjs
+   as a classic (non-module) head script so it runs BEFORE this file. In a lab build
+   there is no anonymous sign-up, no token refresh and no event POST: a redesign
+   being tried on a founder's phone must not mint users or rows in the live
+   Supabase project. Reads (the catalogue/search API GETs) are untouched. Read at
+   call time, not captured, so the one flag decides every call below. The real
+   build and the web never set it, so for them this is `false` and nothing here
+   changes. test/lab-flag.test.js pins the three gates. */
+function isLabBuild() {
+  return typeof window !== "undefined" && window.__FORAY_LAB__ === true;
+}
+
 /* WHERE `api/*` ACTUALLY LIVES, and why naming it here is not a style choice.
 
    Every `api/shows/*` and `api/episodes/*` call used to be a RELATIVE path. On
@@ -561,6 +575,7 @@ function apiUrl(path) {
     429, a 5xx, a timeout) looked the same -- and the second one signed the
     device up as a new user. `status` is 0 when no answer arrived at all. */
 async function sbAuth(path, body) {
+  if (isLabBuild()) return { ok: false, status: 0, body: null }; // lab: no auth call leaves the device
   try {
     const res = await fetch(SB_URL + path, {
       method: "POST",
@@ -623,6 +638,7 @@ function ensureAnonSession(epoch = deletionEpoch) {
 }
 
 async function ensureAnonSessionOnce(epoch) {
+  if (isLabBuild()) return null; // lab: never sign up, never refresh
   if (syncOutlived(epoch)) return null;
   const now = Math.floor(Date.now() / 1000);
   let s = lsGet("cp_sb_session", null);
@@ -761,6 +777,7 @@ function trySyncEvents() {
 
 async function syncEventsOnce(epoch) {
   const clearsAtStart = localClears;
+  if (isLabBuild()) return; // lab: events stay in the local queue, nothing is POSTed
   try {
     if (!window.forayEventLog || typeof window.forayEventLog.unsynced !== "function") return;
     flushBufferedEvents();

@@ -344,13 +344,20 @@ export function injectAndroid(res, { logo = DEFAULT_LOGO, icon = DEFAULT_ICON, c
 /* ----------------------------------------------------------------- main */
 const USAGE =
   "Usage: node tools/mobile/inject-splash.mjs ios <Splash.imageset> [--check]\n" +
-  "       node tools/mobile/inject-splash.mjs android <app/src/main/res> [--check]";
+  "       node tools/mobile/inject-splash.mjs android <app/src/main/res> [--check] [--icon <icon.png>]";
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
 if (isMain) {
   const argv = process.argv.slice(2);
-  let platform = null, dir = null, checkOnly = false;
-  for (const a of argv) {
+  let platform = null, dir = null, checkOnly = false, icon = DEFAULT_ICON;
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
     if (a === "--check") checkOnly = true;
+    else if (a === "--icon") {
+      /* The lab variant's LAB-badged master (tools/mobile/lab-variant.mjs). A flag is never a value. */
+      icon = argv[++i];
+      if (!icon || icon.startsWith("-")) { console.error(`--icon needs a path
+${USAGE}`); process.exit(2); }
+    }
     else if (a.startsWith("-")) { console.error(`Unknown argument: ${a}\n${USAGE}`); process.exit(2); }
     else if (platform === null) platform = a;
     else if (dir === null) dir = a;
@@ -358,7 +365,7 @@ if (isMain) {
   }
   if (!platform || !dir || !["ios", "android"].includes(platform)) { console.error(USAGE); process.exit(2); }
   try {
-    const r = platform === "ios" ? injectIos(dir, { checkOnly }) : injectAndroid(dir, { checkOnly });
+    const r = platform === "ios" ? injectIos(dir, { checkOnly }) : injectAndroid(dir, { checkOnly, icon });
     console.log(checkOnly
       ? `${dir}: ${r.files.length} files hold our splash${platform === "android" ? " and launcher icon" : ""}`
       : `${dir}: ${r.wrote.length ? `wrote ${r.wrote.join(", ")}` : `${r.files.length} files already matched`}`);
