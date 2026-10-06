@@ -60,6 +60,15 @@ test("opening creates the object store keyed on `key`, once", async () => {
   assert.deepEqual(factory.db.stores.get(STORE_NAME).keyPath, "key");
 });
 
+test("CH-13: the kv store's options are exactly { keyPath: \"key\" } — no autoincrement", async () => {
+  /* `openDb` is shared with event-log.js, whose store autoincrements on `id`.
+     MUTATION: hardcode event-log's `{ keyPath: "id", autoIncrement: true }` in
+     the shared helper — this goes red (and so does the test above). */
+  const factory = new FakeFactory();
+  await makeIdbTier({ indexedDB: factory }).write("cp_a", "1");
+  assert.deepEqual(factory.db.storeOptions.get(STORE_NAME), { keyPath: "key" });
+});
+
 test("a written row round-trips through readAll", async () => {
   const tier = makeIdbTier({ indexedDB: new FakeFactory() });
   await tier.write("cp_interests", '{"a":1}');
@@ -407,10 +416,14 @@ class FakeDb {
   constructor(factory) {
     this.factory = factory;
     this.stores = new Map();
+    this.storeOptions = new Map();
     this.objectStoreNames = { contains: (n) => this.stores.has(n) };
   }
-  createObjectStore(name, { keyPath }) {
-    this.stores.set(name, new FakeStore(keyPath));
+  createObjectStore(name, options = {}) {
+    /* The options exactly as passed (CH-13): `openDb` is shared with
+       event-log.js now, so the store shape is a parameter. */
+    this.storeOptions.set(name, { ...options });
+    this.stores.set(name, new FakeStore(options.keyPath));
     return this.stores.get(name);
   }
   transaction(names, mode) {

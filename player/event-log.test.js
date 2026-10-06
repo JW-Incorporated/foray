@@ -90,6 +90,36 @@ test("player-rest-2: after the browser closes the connection, rows still reach I
   assert.equal(factory.opens, 2, "reopened once");
 });
 
+/* ---------- the open path (CH-13: idb-tier.js's `openDb`, parameterised) ----------
+
+   event-log.js used to carry its own copy of idb-tier.js's `openDb`, differing
+   only in the store options. These two pin what the copy did, so the shared
+   helper is held to it.
+
+   MUTATIONS THAT KILL THESE: in idb-tier.js's `openDb`, hardcode
+   `{ keyPath: "key" }` instead of the passed options (the first goes red), or
+   drop the `onblocked` handler / change its message (the second goes red). */
+
+test("CH-13: the events store is created keyed on an autoincrementing `id`, and nothing else", async () => {
+  const factory = new FakeFactory();
+  const log = createEventLog({ indexedDB: factory, scheduleFlush: () => {} });
+  log.append({ type: "picked", payload: {} });
+  await log.unsynced();
+  assert.deepEqual(factory.db.storeOptions.get(STORE_NAME), { keyPath: "id", autoIncrement: true });
+  assert.deepEqual([...factory.db.stores.keys()], [STORE_NAME], "one store, the committed name");
+});
+
+test("CH-13: an open blocked by another tab is a recorded fault naming the block, and the row is kept", async () => {
+  const factory = new FakeFactory({ blocked: true });
+  const log = createEventLog({ indexedDB: factory, scheduleFlush: () => {} });
+  log.append({ type: "picked", payload: {} });
+  const rows = await log.unsynced();
+  assert.deepEqual(rows.map((r) => r.type), ["picked"], "the row falls back to the ring, not lost");
+  const h = log.health();
+  assert.equal(h.ok, false);
+  assert.match(h.faults[0].error, /indexedDB open blocked by another tab/);
+});
+
 /* ---------- batching ---------- */
 
 test("several append() calls in one tick schedule exactly one flush", () => {
@@ -823,10 +853,15 @@ class FakeDb {
   constructor(factory) {
     this.factory = factory;
     this.stores = new Map();
+    this.storeOptions = new Map();
     this.objectStoreNames = { contains: (n) => this.stores.has(n) };
   }
-  createObjectStore(name, { keyPath, autoIncrement } = {}) {
-    this.stores.set(name, new FakeStore(keyPath, autoIncrement));
+  createObjectStore(name, options = {}) {
+    /* The options object exactly as the module passed it (CH-13): idb-tier.js
+       owns the one `openDb`, so the store shape is a parameter now, and
+       swapping it for idb-tier's own `{ keyPath: "key" }` must show here. */
+    this.storeOptions.set(name, { ...options });
+    this.stores.set(name, new FakeStore(options.keyPath, options.autoIncrement));
     return this.stores.get(name);
   }
   transaction(names, mode) {
