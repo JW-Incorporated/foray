@@ -3111,8 +3111,17 @@ const CH34_SNAPSHOT_KEYS = [
 
 test("CH-34 characterization: the live Foray snapshot carries every key a page paints from", async (t) => {
   /* Pins today's live shape before the stop path is made to share it.
-     MUTATION (run): delete the `gap: manager?.inSeamGap === true,` line from
-     client.js's `forayStateSnapshot` — red (`gap` missing). */
+     MUTATION (run, at the characterization commit only): delete the
+     `gap: manager?.inSeamGap === true,` line from client.js's
+     `forayStateSnapshot` — red (`gap` missing). Since CH-34 the snapshot
+     spreads `emptyForaySnapshot`, whose `gap: false` keeps the key, so that
+     mutation is green now.
+     MUTATIONS (run, after CH-34): drop the `...emptyForaySnapshot(foray.resolved)`
+     spread from `forayStateSnapshot` — red (`forayId` and `totalSec` missing);
+     delete `totalSec: resolved.totalSec` from `emptyForaySnapshot` — red here
+     and in the stop test below. (Deleting `gap: false` from
+     `emptyForaySnapshot` is caught by the stop test only: the live snapshot
+     sets `gap` itself.) */
   const booted = await bootRealClient(t);
   const { foraysDoc, segmentsDoc, sourcesDoc } = ch10Docs();
   const resolved = booted.client.resolve(foraysDoc, { id: "f-ch10", segmentsDoc, sourcesDoc });

@@ -4243,7 +4243,9 @@ function ensureJsBooted() {
      is safe and keeps the sink defined once. */
   backend = new HtmlAudioBackend({ telemetry: onTelemetry });
   /* The interlude jingle (queue-manager.js §13, player/interlude.js). Its own
-     element, so the backend's two-element invariant is untouched; the ONE
+     element, so the backend's one-audible-element invariant is untouched (the
+     backend runs a single player element; a second exists only with
+     `prefetch: true`, which is parked, code-health P1-03); the ONE
      `cp_interlude` read lives here, beside `cp_rate`'s, for the same reason. */
   interlude = createInterludePlayer({ telemetry: onTelemetry });
   manager = new PlayerQueueManager({
