@@ -265,7 +265,7 @@ test("route() still closes the drawer on a hashchange-driven call", async () => 
 
 const SWITCH_IDS = [
   "family-toggle", "autoadvance-toggle",
-  "interlude-toggle", "drafts-toggle", "voice-probe-toggle",
+  "interlude-toggle", "drafts-toggle",
 ];
 
 test("the jingle between segments has a switch, and it writes the spelling player/interlude.js reads", async () => {
@@ -360,7 +360,7 @@ test("every switch in the drawer goes through the ONE helper, in reading order",
      which deepStrictEqual (rightly) refuses to call equal. */
   const registered = [...m.evalIn("drawerToggles.map(t => t.id)")];
   assert.deepStrictEqual(registered, SWITCH_IDS,
-    "all five, and in the order they read down the drawer");
+    "all four, and in the order they read down the drawer (the Voice engine probe switch left with #1076)");
 
   m.ctx.openDrawer(true);
   for (const id of SWITCH_IDS) {
@@ -420,13 +420,14 @@ test("the retired ui-v2 flag leaves nothing behind, and the ui-v2 class stays", 
 });
 
 test("the founder's tools sit in ONE collapsed Developer group, directly above Delete my data", async () => {
-  /* The persona audit read "Show draft Forays", "Voice engine probe" and
+  /* The persona audit read "Show draft Forays", "Voice engine probe" (gone
+     since 2026-10-05 with the Kokoro probe, issue #1076) and
      "Playback diagnostics" as the founder's debug switches shipped in every
      listener's Settings. Founder ruling R8 (2026-09-22): they stay reachable —
      he files field reports with them — but move into one collapsed "Developer"
      group at the bottom of Settings. No hidden unlock.
 
-     MUTATION THAT KILLS THIS: drop `{ into }` from either founder switch, or
+     MUTATION THAT KILLS THIS: drop `{ into }` from the founder switch, or
      append `#diag-open` to the drawer again — red, a founder tool is back
      among the listener's settings. */
   const m = await mountBooted();
@@ -438,12 +439,12 @@ test("the founder's tools sit in ONE collapsed Developer group, directly above D
   assert.strictEqual(group.children[0].tagName, "SUMMARY");
   assert.strictEqual(group.children[0].textContent, "Developer");
   assert.deepStrictEqual(group.children.slice(1).map((c) => c.id),
-    ["drafts-toggle", "voice-probe-toggle", "diag-open"]);
+    ["drafts-toggle", "diag-open"]);
 
   const top = drawer.children.map((c) => c.id).filter(Boolean);
   assert.deepStrictEqual(top.slice(-2), ["drawer-dev", "delete-data"],
     "the group is the bottom of Settings, and Delete my data stays the last item");
-  for (const id of ["drafts-toggle", "voice-probe-toggle", "diag-open"]) {
+  for (const id of ["drafts-toggle", "diag-open"]) {
     assert.ok(!top.includes(id), `${id} is loose among the listener's settings again`);
   }
   for (const id of ["interlude-toggle", "voice-open"]) {

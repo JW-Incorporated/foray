@@ -803,15 +803,19 @@ test("kokoroProbe: a rejection's code wins over its name, and neither is admitte
   assert.equal(probeErrorName({ code: "A".repeat(41) }), null, "40 characters at most");
 });
 
-test("kokoroProbe: the web half's error-name rule is the player's `nameOf`, written twice and held in step", async () => {
-  /* The two files cannot import each other (see PROBE_ENGINE). MUTATION:
-     loosen either regex. */
-  const { nameOf } = await import("../../player/kokoro-probe.js");
-  const probes = [
-    new TypeError("m"), { code: "UNIMPLEMENTED" }, { code: "x y", name: "Error" }, { name: "9lives" },
-    { code: "a".repeat(40) }, { code: "a".repeat(41) }, null, "str", { code: "has-hyphen" },
+test("kokoroProbe: the web half's error-name rule, pinned case by case", async () => {
+  /* This used to be held in step with `player/kokoro-probe.js`'s `nameOf`.
+     That module left the app bundle on 2026-10-05 (founder ruling, issue
+     #1076), so the rule it shared is pinned here on its own, with the
+     answers `nameOf` gave for the same inputs on the day it went.
+     MUTATION: loosen the regex (e.g. admit `-`, or 41 characters) — red. */
+  const cases = [
+    [new TypeError("m"), "TypeError"], [{ code: "UNIMPLEMENTED" }, "UNIMPLEMENTED"],
+    [{ code: "x y", name: "Error" }, "Error"], [{ name: "9lives" }, null],
+    [{ code: "a".repeat(40) }, "a".repeat(40)], [{ code: "a".repeat(41) }, null],
+    [null, null], ["str", null], [{ code: "has-hyphen" }, null],
   ];
-  for (const p of probes) assert.equal(probeErrorName(p), nameOf(p), JSON.stringify(p));
+  for (const [p, want] of cases) assert.equal(probeErrorName(p), want, JSON.stringify(p));
 });
 
 test("kokoroProbe: `speak()` is untouched by the probe engine", async () => {

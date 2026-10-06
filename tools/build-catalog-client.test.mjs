@@ -17,6 +17,8 @@ import { test } from "node:test";
 import assert from "node:assert";
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { CLIENT_SHOW_FIELDS, projectShow, buildCatalogClient } from "./build-catalog-client.mjs";
 
@@ -76,9 +78,53 @@ test("the committed data/catalog-client.json equals the builder's output", () =>
      rebuilt text no longer carries the committed chart_rank lines.
      MUTATION: hand-edit one chart_rank in data/catalog-client.json. This
      fails on the byte comparison. */
-  const built = buildCatalogClient(readJson("data/catalog.json"), readJson("data/catalog-breadth.json"));
+  const built = buildCatalogClient(readJson("data/catalog.json"), readJson("data/catalog-breadth.json"), readJson("data/dai-classification.json"));
   const text = JSON.stringify(built, null, 2) + "\n";
   const onDisk = fs.readFileSync(path.join(ROOT, "data", "catalog-client.json"), "utf8");
   assert.ok(text === onDisk, "data/catalog-client.json is stale — run: node tools/build-catalog-client.mjs");
   assert.ok(built.shows.some((s) => Number.isFinite(s.chart_rank) && s.chart_rank > 0), "at least one curated show carries a chart_rank");
+  assert.ok(built.shows.some((s) => s.dai === true) && built.shows.some((s) => s.dai === false), "the committed file carries both DAI classes");
+});
+
+test("dai is joined from data/dai-classification.json on String(apple_collection_id), null when unclassified (CH-1, #1071)", () => {
+  /* The classification is keyed by Apple collection id as a STRING, and the
+     curated catalogue carries the id as a number or a string. show-d's
+     show_id is itself a classification key, so a join on show_id answers
+     false for it where the right answer is null.
+
+     MUTATION: key the lookup on `show?.show_id` instead of
+     `String(show?.apple_collection_id)` — show-a/show-b come back null and
+     show-d false; red.
+     MUTATION 2: return `v ?? null` instead of booleans only — show-c's
+     "unknown" string leaks through; red. */
+  const catalog = {
+    version: 1,
+    shows: [
+      { show_id: "show-a", apple_collection_id: 111 },
+      { show_id: "show-b", apple_collection_id: "222" },
+      { show_id: "show-c", apple_collection_id: 333 },
+      { show_id: "444", apple_collection_id: 999 },
+    ],
+  };
+  const daiClass = { shows: { "111": { dai: true }, "222": { dai: false }, "333": { dai: "unknown" }, "444": { dai: false } } };
+  assert.ok(CLIENT_SHOW_FIELDS.includes("dai"), "CLIENT_SHOW_FIELDS must project dai");
+  assert.deepStrictEqual(
+    buildCatalogClient(catalog, null, daiClass).shows.map((s) => [s.show_id, s.dai]),
+    [["show-a", true], ["show-b", false], ["show-c", null], ["444", null]],
+  );
+  assert.ok(buildCatalogClient(catalog).shows.every((s) => s.dai === null), "no classification file: every dai is null");
+});
+
+test("--check exits non-zero on a stale file and zero on a fresh one", () => {
+  /* The committed file is derived, so the gate is the --check exit code.
+     MUTATION: change the stale branch's `process.exit(1)` to `process.exit(0)`
+     — the stale copy passes; red. */
+  const script = path.join(ROOT, "tools", "build-catalog-client.mjs");
+  const tmp = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "catclient-")), "catalog-client.json");
+  const run = () => spawnSync(process.execPath, [script, "--out", tmp, "--check"], { encoding: "utf8" });
+  const fresh = fs.readFileSync(path.join(ROOT, "data", "catalog-client.json"), "utf8");
+  fs.writeFileSync(tmp, fresh.replace(/"dai": (true|false)/, (m, v) => `"dai": ${v === "true" ? "false" : "true"}`));
+  assert.notStrictEqual(run().status, 0, "a drifted dai is flagged");
+  fs.writeFileSync(tmp, fresh);
+  assert.strictEqual(run().status, 0, "the committed file passes");
 });

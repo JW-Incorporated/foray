@@ -182,7 +182,12 @@ test("the allow-list reads prepare-webdir.mjs's REAL plan, so a new player file 
   assert.equal(releaseTier("app.js", real), "release");
   assert.equal(releaseTier("index.html", real), "release");
   assert.equal(releaseTier("player/client.js", real), "release");
-  assert.equal(releaseTier("tools/mobile/kokoro-probe-passage.json", real), "release", "a shell-only file");
+  /* Every shell-only source is in the set (MUTATION: drop bundleSet's
+     shellOnly loop -> red). The Kokoro probe passage was the one shell-only
+     file outside mobile/; it left the bundle on 2026-10-05 (issue #1076), so an
+     edit to it no longer cuts a release. */
+  assert.ok(SHELL_ONLY_FILES.length > 0 && SHELL_ONLY_FILES.every((f) => real.has(f.src)), "the shell-only sources are in the set");
+  assert.equal(releaseTier("tools/mobile/kokoro-probe-passage.json", real), null, "the probe passage is no longer shipped");
   assert.equal(releaseTier("sw.js", real), null, "excluded from the native bundle by prepare-webdir itself");
   assert.equal(releaseTier("data/discover.json", real), "seed");
   assert.equal(releaseTier("deploy-manifest.json", real), null);

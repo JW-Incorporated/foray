@@ -370,9 +370,9 @@ test("a settings switch keeps the drawer open (Joey, 2026-08-31, survives the ne
   const m = mount();
   m.menu.click();
   /* The switches that repaint the page (`repaint: true`) need the catalogue
-     loaded; the un-booted harness has none, so the three that flip in place
+     loaded; the un-booted harness has none, so the two that flip in place
      stand for all of them — every switch is built by the one `drawerToggle`. */
-  for (const id of ["#autoadvance-toggle", "#interlude-toggle", "#voice-probe-toggle"]) {
+  for (const id of ["#autoadvance-toggle", "#interlude-toggle"]) {
     const btn = m.$(id);
     assert.ok(btn, `${id} exists`);
     btn.click();

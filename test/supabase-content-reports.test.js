@@ -170,7 +170,8 @@ test("the apply step and the review query are written down where a founder will 
      step while it is open. When the founder replies `done` (or `skip`), the
      card leaves the open file for the ledger, so: an open #116 must still
      carry the steps; otherwise the ledger must record #116 as closed. Same
-     shape as the #45 test in test/voice-probe-switch.test.js. */
+     shape as the #45 test the voice-probe switch suite carried until the
+     Kokoro probe left the app (2026-10-05, issue #1076). */
   const ha = read("HUMAN-ACTIONS.md");
   const open = /^## #116 /m.exec(ha);
   if (open) {

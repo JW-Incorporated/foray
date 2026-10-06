@@ -130,10 +130,6 @@ import { createNativeFacades } from "./native-facades.js";
 import { engineDiagnosticReport, engineBridgePresent, pageEngineView } from "./engine-diagnostics.js";
 import { readBuildStamp, BUILD_STAMP_WAIT_MS } from "./build-stamp.js";
 import { createTtsBridge } from "./tts-bridge.js";
-import {
-  runKokoroProbe, formatProbeReport, probeVerdict, formatProbeTable, formatSoakReport, wavPasses, playProbeWav,
-  stopProbeSoak, readProbeKills, ackProbeKills, resetProbeSkips,
-} from "./kokoro-probe.js";
 import { createInterludePlayer, readInterludePref, writeInterludePref } from "./interlude.js";
 import { makeIdbTier } from "./idb-tier.js";
 import { createEventLog } from "./event-log.js";
@@ -150,6 +146,7 @@ import * as queueDrag from "./queue-drag.js";
 import * as tailFill from "./tail-fill.js";
 import * as bookmarks from "./bookmarks.js";
 import { bindIncomingLinks } from "./incoming-link.js";
+import { createId3Reader } from "./id3-chapters.js";
 
 /* Continuous playback's rules (NE-13), for app.js: it decides what plays after
    an episode, and it is a classic script that cannot import them. Published at
@@ -187,6 +184,15 @@ try {
     arrivedBare: typeof location !== "undefined" && (location.hash === "" || location.hash === "#"),
   });
 } catch (_) { /* a shell without the App plugin still plays; links open the browser as before */ }
+/* Chapters read from the MP3's own ID3 tag (#1071, founder: "Phone reads the
+   MP3"), for the episode page's chapter card (CH-1). The bridge, the online
+   flag and the downloads surface are read per call, not at module load: the
+   Capacitor bridge and app.js's `recordFor` can both arrive later. */
+window.ForayId3Chapters = createId3Reader({
+  getBridge: () => (typeof window !== "undefined" ? window.Capacitor ?? null : null),
+  isOnline: () => browserOnline(),
+  getDownloads: () => (typeof window !== "undefined" ? window.forayDownloads ?? null : null),
+});
 /* The transport's DECISIONS live in transport-policy.js as pure functions
    (NE-08), so the native engine can port them and be checked against them.
    This file gathers the state, asks, and acts; it keeps no copy of a rule. */
@@ -238,41 +244,6 @@ let ui = null;
     exactly one dynamic import either way. */
 const ttsBridge = createTtsBridge();
 
-/* K-01's passage, fetched lazily and memoised.
-
-   TWO URLS FOR THE SAME REASON `tts-bridge.js` HAS TWO (read that file's
-   header): the shell carries a flattened copy at the bundle root, put there by
-   `prepare-webdir.mjs`'s SHELL_ONLY_FILES table, while the website serves the
-   repo verbatim and so holds it at its `tools/` path. Tried in the right order
-   for the host rather than a fixed one, so the shell — the only host where the
-   measurement matters — never eats a 404 first.
-
-   A failed fetch resolves `null`, never throws: `runKokoroProbe` turns that
-   into `passage-missing`, which is a finding a founder can read. */
-let probePassage = null;
-export const PROBE_PASSAGE_SHELL_FIRST = Object.freeze([
-  "kokoro-probe-passage.json",
-  "tools/mobile/kokoro-probe-passage.json",
-]);
-export const PROBE_PASSAGE_SITE_FIRST = Object.freeze([
-  "tools/mobile/kokoro-probe-passage.json",
-  "kokoro-probe-passage.json",
-]);
-
-async function loadProbePassage(
-  fetchJson = (u) => fetch(u).then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status))))),
-  inShell = typeof window !== "undefined" && !!window.Capacitor,
-) {
-  if (probePassage) return probePassage;
-  const urls = inShell ? PROBE_PASSAGE_SHELL_FIRST : PROBE_PASSAGE_SITE_FIRST;
-  for (const u of urls) {
-    try {
-      const doc = await fetchJson(u);
-      if (doc && Array.isArray(doc.lines)) { probePassage = doc; return doc; }
-    } catch (_) { /* try the other host's path */ }
-  }
-  return null;
-}
 /** The lock screen / car / headphone surface (#27). Built once in
     `ensureBooted`, inert where `navigator.mediaSession` does not exist. */
 let media = null;
@@ -656,22 +627,6 @@ if (engineShell) {
    `storageReady` never rejects (every tier failure is caught into `health()`), but
    the catch is attached anyway. It resolves with whether hydration landed inside
    the bound — see `HYDRATE_WAIT_MS` — and the boot row records that. */
-/** Probe v3.1: write each unacknowledged kill report's rows, then ack them.
-    Never throws; a web page or an older shell has nothing to report. */
-async function recordVoiceProbeKills() {
-  try {
-    const status = await readProbeKills({ tts: ttsBridge });
-    const written = [];
-    for (const kill of status.kills) {
-      for (const record of kill.records) {
-        try { diag.voiceProbe(record, {}); } catch (_) { /* the instrument must never be the outage */ }
-      }
-      if (kill.id) written.push(kill.id);
-    }
-    if (written.length) await ackProbeKills({ tts: ttsBridge, ids: written });
-  } catch (_) { /* never the outage */ }
-}
-
 storageReady.then((hydrated) => {
   diag.boot({ hydrated: hydrated === true });
   if (hydrated !== true) {
@@ -688,14 +643,6 @@ storageReady.then((hydrated) => {
      it is a write into the durable record. Asynchronous, so it lands a moment
      after the boot row; never rejects. */
   recordBuildStamp();
-  /* PROBE v3.1: a voice-probe run 4a did NOT survive is reported HERE, at
-     the next launch, as its own `voiceProbe` row (`killed-app`) — plus the
-     rows of the passes that finished before it — whether or not the founder
-     ever taps the probe again. Build 2026092705 died twice on its first pass
-     and the paste held nothing; the old kill marker only surfaced inside a
-     later COMPLETED run. After hydration like every other write; the native
-     half forgets a report only once its rows are written (`killed-ack`). */
-  recordVoiceProbeKills();
   if (typeof document !== "undefined") {
     document.addEventListener("visibilitychange", () => diag.visibility(document.hidden === true));
   }
@@ -1482,6 +1429,14 @@ function setSheetDragOffset(px) {
 /* ---------- state -> DOM ---------- */
 
 let current = null;
+/* The downloaded copy this play is trying (PQ-19, #29): `{ item, opts }` — the
+   ORIGINAL item and the caller's options — while the play that chose the local
+   file is loading (or was refused by autoplay), else null: a load that settles
+   spends it. It is the missing-file degrade's single
+   use ticket: `degradeLocalPlay` takes it and nulls it before retrying, and
+   the retry is `noLocal`, so it can never set another. One failed file, one
+   fallback to streaming, never a loop. */
+let localAttempt = null;
 let scrubbing = false;
 /* A FOCUSED SLIDER IS FROZEN, BUT ITS NEXT STEP IS TAKEN FROM THE AUDIO (audit
    round 2 review of a11y-7). `paintPage` stops writing the value while the
@@ -2443,14 +2398,25 @@ function setNowPlaying(item, why) {
   // reliable for this listener (#22's corollary), so scrubbing is exact — but
   // any timestamp we might later show from chapters is not. Say nothing when
   // it's exact; say something plain when it isn't.
-  const { precision } = seekPrecision(item, { isLocalFile: false, source: OWN });
-  ui.note.textContent = precision === EXACT ? "" : "Timings on this show are approximate.";
-  ui.note.hidden = !ui.note.textContent;
+  paintSeekNote();
   /* Something else is current now, so neither the last item's failure nor its
      stall describes it. */
   buffering = false;
   setPlayFailure(null);
   render();
+}
+
+/* The scrub affordance `setNowPlaying` describes, painted.
+   THE FLAG IS THE CURRENT ITEM'S (PQ-19, #29). A downloaded file has a frozen
+   timeline, so `seekPrecision` answers exact for it whatever the feed does.
+   `play()` learns whether this play is the local file only AFTER
+   `setNowPlaying` has run (the source is chosen just before the queue is
+   set), so it marks `current` and calls this again — which is why the note
+   reads `current`, not an argument. */
+function paintSeekNote() {
+  const { precision } = seekPrecision(current, { isLocalFile: Boolean(current?.isLocalFile), source: OWN });
+  ui.note.textContent = precision === EXACT ? "" : "Timings on this show are approximate.";
+  ui.note.hidden = !ui.note.textContent;
 }
 
 /* ---------- the notes in the sheet (audit round 2, p-switcher-2) ----------
@@ -4384,6 +4350,40 @@ function wireMediaListeners() {
   }
 }
 
+/* ---------- playing the downloaded copy (PQ-19, #29) ---------- */
+
+/** The item the queue should carry for this play: `localPlayable(item, src)`
+    over `playSource(item, record, {platform})`, or the item itself — when the
+    caller said `noLocal`, when app.js has not published the downloads surface,
+    or when reading the record throws (a broken store is a stream, not a
+    refused play). `platform` is the build stamp's answer, then Capacitor's,
+    then "web" (which plays the bridge's `webSrc`, like Android). */
+function localSourceFor(item, opts) {
+  try {
+    const dl = window.forayDownloads;
+    if (opts?.noLocal || !dl?.store || typeof dl.recordFor !== "function") return item;
+    const platform = dl.platform || window.Capacitor?.getPlatform?.() || "web";
+    const src = dl.store.playSource(item, dl.recordFor(item.id), { platform });
+    return dl.store.localPlayable(item, src) || item;
+  } catch (_) {
+    return item;
+  }
+}
+
+/** The missing-file degrade: spend the one ticket `play()` left in
+    `localAttempt`, tell app.js the copy is gone (`onMissing` marks the record
+    and says "streaming instead"), and play the ORIGINAL item again with
+    `noLocal`. Null when there is no ticket — the retry already ran, or the
+    current play never chose a file — so nothing here can call itself twice. */
+function degradeLocalPlay() {
+  const attempt = localAttempt;
+  if (!attempt || current?.id !== attempt.item.id) return null;
+  localAttempt = null;
+  try { window.forayDownloads?.onMissing?.(attempt.item.id); } catch (_) { /* the record is app.js's; streaming is still owed */ }
+  const opts = attempt.opts && typeof attempt.opts === "object" ? attempt.opts : {};
+  return ForayPlayer.play(attempt.item, { ...opts, noLocal: true });
+}
+
 /* ---------- public surface ---------- */
 
 const ForayPlayer = {
@@ -4491,13 +4491,63 @@ const ForayPlayer = {
       const lastRec = makeLastEpisode(item);
       if (lastRec) writeLastEpisode(storage, lastRec);
     }
-    manager.setQueueFromPick(item);
+    /* THE DOWNLOADED COPY, WHEN THERE IS ONE (PQ-19, #29). `playSource` is the
+       rule (download-store.js): a `done` record with a path plays from the
+       file — a `file://` URL on iOS, the bridge's `webSrc` elsewhere — and
+       anything else is the item's own `audio_url`, so a download that is not
+       ready never breaks a play streaming would have served. `localPlayable`
+       is the item the QUEUE carries: the local URL in `audio_url`, the remote
+       one kept as `source_audio_url`, and `isLocalFile`; the same object when
+       the source is remote.
+       ONLY THE AUDIO GETS IT. `setNowPlaying` above and the pointer row keep
+       the ORIGINAL item — a ribbon restored tomorrow must point at the
+       episode, not at a file that may have been evicted since — and the native
+       facade is handed the original for its `lastEpisodeRow` for the same
+       reason. `current` takes only the flag, for the seek note.
+       Off the shell `window.forayDownloads.recordFor` answers null until
+       app.js fills it in, and `noLocal` is the missing-file retry below. */
+    const playable = localSourceFor(item, opts);
+    localAttempt = null;
+    let ticket = null;
+    if (playable !== item && playable.isLocalFile) {
+      ticket = localAttempt = { item, opts };
+      if (current === item) {
+        current = { ...item, isLocalFile: true };
+        paintSeekNote();
+      }
+    }
+    manager.setQueueFromPick(playable, { lastEpisodeItem: item });
+    let loadError = null;
     playsInFlight++;
     try {
       await manager.play(0, startOffset != null ? { startOffset } : undefined);
+    } catch (err) {
+      loadError = { err };
     } finally {
       playsInFlight--;
     }
+    /* THE FILE WAS NOT THERE (PQ-19). The OS can clear it, the listener can
+       free space, a restore can drop it: a local load that rejects, or lands
+       the manager in `idle` (`E.error`), is a missing file. Mark the record so
+       the episode page stops claiming the download, then stream — once.
+       AN AUTOPLAY REFUSAL IS NOT A MISSING FILE (review of PQ-19). A refused
+       element.play() (NotAllowedError: the iOS lost gesture, a chained advance
+       on a locked screen) also lands the manager in `idle`, and the telemetry
+       sink has painted EP_PLAY_HELD for it. Degrading then marked a good
+       download missing (`path: null`, so it left `usedBytes` and the cap while
+       the file stayed on disk) and retried outside the gesture, refused again.
+       The ticket is left unspent: the listener's next tap plays the file. */
+    if (current?.isLocalFile && current.id === item.id && (loadError || manager.state?.type === "idle") && playFailure !== EP_PLAY_HELD) {
+      const retried = degradeLocalPlay();
+      if (retried) return retried;
+    }
+    /* A LOAD THAT SETTLED IS SPENT (review of PQ-19). The ticket used to live
+       as long as the episode stayed current, so ANY later failure report about
+       it — a timestamp seek that threw, a chained advance — degraded a file
+       that had played. Only this call's own ticket is cleared: a newer play
+       that superseded this one owns `localAttempt` now. */
+    if (!loadError && manager.state?.type !== "idle" && localAttempt === ticket) localAttempt = null;
+    if (loadError) throw loadError.err;
     render();
     /* THE ANSWER, NOT THE ATTEMPT (audit 2026-09-22). This returned `true`
        whatever happened, so every caller's `if (!ok)` was dead code and a 404
@@ -4670,6 +4720,26 @@ const ForayPlayer = {
    * swallowed. `err` is read for its name only, for the autoplay split.
    */
   reportPlayFailure(err) {
+    /* A DOWNLOADED COPY THAT FAILED IS A STREAM, NOT AN ERROR (PQ-19, #29).
+       While the failing play is still the one that chose the local file, the
+       ticket is unspent: mark the copy missing and stream instead of painting
+       "could not load". The retry is `noLocal`, so a failure of THAT play
+       arrives here with no ticket and is painted below as usual.
+       NOT FOR AN AUTOPLAY REFUSAL (review of PQ-19): an `err` named
+       NotAllowedError, or a bare `null` after the sink painted EP_PLAY_HELD, is
+       the browser holding audio back, not a missing file. It is painted as
+       "Press play again" and the ticket stays for that next tap. */
+    let name = "";
+    try { name = String(err?.name ?? ""); } catch (_) { name = ""; }
+    const refused = /NotAllowedError/.test(name) || (err == null && playFailure === EP_PLAY_HELD);
+    const retry = current?.isLocalFile && !refused ? degradeLocalPlay() : null;
+    if (retry) {
+      retry.then(
+        (ok) => { if (!ok) ForayPlayer.reportPlayFailure(null); },
+        (e) => ForayPlayer.reportPlayFailure(e),
+      );
+      return;
+    }
     /* A REFUSAL WITH NO ERROR DOES NOT OVERWRITE ONE THAT SAID WHY (review
        2026-09-23). app.js calls this with `null` when `play()` answered false,
        and on the iOS lost-gesture path the telemetry sink has ALREADY painted
@@ -4678,8 +4748,6 @@ const ForayPlayer = {
        listener to check a connection nothing was wrong with. `setNowPlaying`
        clears the line for every new item, so what is here is this attempt. */
     if (err == null && playFailure) return;
-    let name = "";
-    try { name = String(err?.name ?? ""); } catch (_) { name = ""; }
     setPlayFailure(playFailureCopy(name));
   },
 
@@ -5228,107 +5296,6 @@ const ForayPlayer = {
     /* `audition` (audit round 3, mobile-native-2): the plugins echo it on
        `finished`, so a preview's end is never taken for narration's. */
     return ttsBridge.speak(text, { rate: NARRATION_RATE, voice: voiceId, audition: true });
-  },
-
-  /* ---------- K-01: the bundled-voice measurement ----------
-
-     `docs/bundled-voice-plan.md` K-01. Runs the probe passage through the
-     `kokoro-probe` engine, writes the numbers into the SAME field record the
-     founder already knows how to copy out, and returns the record so the
-     drawer can show it immediately.
-
-     THROUGH THE SHARED `ttsBridge`, exactly like `auditionVoice` and for the
-     same reason: resolving `foray-tts.js` a second time would give the probe a
-     different module instance from the one narration speaks through, and
-     "which build of the plugin answered?" is one of the questions the probe
-     exists to settle.
-
-     NOTHING ABOUT NARRATION IS TOUCHED. No manager, no queue, no `this._voice`
-     — a measurement that could change what the next narration item sounds like
-     would not be a measurement. */
-  async runVoiceProbe({ armCoreML = false } = {}) {
-    const passage = await loadProbePassage();
-    /* L34 (log-gaps 2026-09-26): whether 4a was playing when the probe
-       STARTED — a probe that shares the phone with a playing episode is not
-       measuring the same thing as one on a quiet phone. */
-    const playing = transportIsRunning();
-    /* KV-R3: the matrix — one `voiceProbe` row per pass x speed.
-       Recorded WHETHER OR NOT it succeeded. "This build has no model in it" is
-       the single most useful thing the first run can tell us, and a record
-       that only kept successes would answer every failed run with silence.
-       PROBE v3.1: each row is written AS ITS PASS ENDS (`onRecord`, from the
-       native `probePass` event), not when the whole matrix answers, so a pass
-       that kills 4a leaves every earlier pass's rows in the record.
-       `armCoreML` is the drawer's per-session "arm Core ML (may crash)"
-       switch: on iOS 26.4+ Core ML is refused without it. */
-    return runKokoroProbe({
-      tts: ttsBridge, passage, now: () => Date.now(), armCoreML: armCoreML === true,
-      onRecord: (record) => diag.voiceProbe(record, { playing }),
-    });
-  },
-
-  /* PROBE v3.1: "Reset skipped passes" — the passes that killed 4a run again
-     on the next probe. And the skip list itself, for the drawer's label. */
-  async resetVoiceProbeSkips() {
-    return resetProbeSkips({ tts: ttsBridge });
-  },
-  async voiceProbeStatus() {
-    const status = await readProbeKills({ tts: ttsBridge });
-    return { skipped: status.skipped, bnnsAffected: status.bnnsAffected };
-  },
-
-  /* KV-R3: THE SOAK — the best background-safe pass rendering the passage at
-     speed 1.5 in a loop for 30 minutes with the phone locked (docs/voice/
-     kokoro-speed-1.5x.md §5 item 9). Its own entry point rather than a flag on
-     `runVoiceProbe`, for the reason that one takes none: the page decides
-     what to OFFER. ONE `voiceSoak` row, written whatever the outcome — a
-     soak iOS ended is reported by the next run's `prevKilled*`. */
-  async runVoiceSoak() {
-    const passage = await loadProbePassage();
-    const playing = transportIsRunning();
-    const records = await runKokoroProbe({ tts: ttsBridge, passage, now: () => Date.now(), mode: "soak" });
-    for (const record of records) {
-      try { diag.voiceSoak(record, { playing }); } catch (_) { /* the instrument must never be the outage */ }
-    }
-    return records;
-  },
-
-  /* KV-R3 review: END THE SOAK EARLY. The native half answers at once; the
-     `runVoiceSoak` call above then resolves with the loops it finished and
-     writes its row as usual. */
-  async stopVoiceSoak() {
-    return stopProbeSoak({ tts: ttsBridge });
-  },
-
-  /** ONE pass's record as the several lines the drawer shows, plus K-01's
-      go/no-go verdict applied to it (the page calls this once per pass). Re-exported for the same reason
-      `defaultVoice` is: `app.js` is a classic script and must not carry a
-      second copy of a rule the record is judged by. `age` is `"newest"` or
-      `"oldest"` — which phone this is, which the founder says, because the
-      card's ceiling differs between them. */
-  formatVoiceProbe(record, age = "oldest") {
-    return { text: formatProbeReport(record), verdict: probeVerdict(record, age) };
-  },
-
-  /** KV-R3: the whole v3 run as the drawer's compact table and one 1.5x
-      verdict per pass (empty for a run with no v3 records), and the soak's
-      report. Re-exported for the reason `formatVoiceProbe` is. */
-  formatVoiceProbeTable(records) {
-    return formatProbeTable(records);
-  },
-  formatVoiceSoak(record) {
-    return formatSoakReport(record);
-  },
-
-  /** KV-R3: the passes the last run kept a speed-1.5 WAV for, and a play
-      for one of them — through the SAME `ttsBridge` the probe used, played
-      natively by pass name (the page's CSP admits no local media, and no
-      path crosses the bridge). */
-  voiceProbeWavPasses(records) {
-    return wavPasses(records);
-  },
-  async playVoiceProbeWav(pass) {
-    return playProbeWav({ tts: ttsBridge, pass });
   },
 
   /** Which segment `elapsedSec` lands in, and how far into it — re-exported so

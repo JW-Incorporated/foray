@@ -1,9 +1,11 @@
 /* The phoneme-to-id table, and the passage that was mapped through it.
  *
  * `docs/bundled-voice-plan.md` K-01/K-02. The ids in
- * `tools/mobile/kokoro-probe-passage.json` are the ONLY thing the phone ever
- * sees of our text — the whole deck's §4 design is that no grapheme-to-phoneme
- * code ships — so they are the one artefact in this repo whose wrongness would
+ * `tools/mobile/kokoro-probe-passage.json` were the ONLY thing the phone ever
+ * saw of our text (the on-device probe that read them left the app bundle on
+ * 2026-10-05, issue #1076; the local narration tools still read the
+ * passage) — the whole deck's §4 design is that no grapheme-to-phoneme code
+ * ships — so they are the one artefact in this repo whose wrongness would
  * be completely invisible at run time. A wrong id is not a crash and not
  * silence: it is a different phoneme, sung fluently, in a measurement a founder
  * then quotes.

@@ -2,11 +2,11 @@
 
 <!-- ha-format: 2 -->
 
-> **27 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **28 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
 
-## #142 🟡 [DECIDE] Turn on Associated Domains for the iPhone app, so shared links open in 4a (~10 min)
+## #145 🟡 [DECIDE] Turn on Associated Domains for the iPhone app, so shared links open in 4a (~10 min)
 <!-- ha filed=2026-10-05 kind=default -->
 
 **Why:** You asked for shared links to open straight in the app (#1071). The website half is done: `https://foray-web-seven.vercel.app/.well-known/apple-app-site-association` now names the app (Team `D9N628AFHS`, `ai.jwlabs.foura`). The app half needs one line in its entitlements, and Apple refuses to sign a build with that line until the capability is on for the App ID. So only you can flip it, and the line goes in after you do. Until then nothing changes: links open Safari as today.
@@ -20,10 +20,10 @@
 
 **Worked if:** the next TestFlight build signs, and tapping a `https://foray-web-seven.vercel.app/#/show/…` link in Messages or Notes opens 4a on that show.
 
-## #143 🟡 [DECIDE] Copy the Play App Signing fingerprint, so shared links open in the Android app (~5 min)
+## #146 🟡 [DECIDE] Copy the Play App Signing fingerprint, so shared links open in the Android app (~5 min)
 <!-- ha filed=2026-10-05 kind=default -->
 
-**Why:** Same feature as #142, for Android (#1071). The app already asks Android to open `https://foray-web-seven.vercel.app/` links. Android only agrees once the website publishes `/.well-known/assetlinks.json` with the fingerprint of the key Google signs the app with. Google holds that key (Play App Signing), so its fingerprint is only shown in Play Console. A fingerprint is public, not a secret. The upload key's fingerprint is already in the repo; this is the other one.
+**Why:** Same feature as #145, for Android (#1071). The app already asks Android to open `https://foray-web-seven.vercel.app/` links. Android only agrees once the website publishes `/.well-known/assetlinks.json` with the fingerprint of the key Google signs the app with. Google holds that key (Play App Signing), so its fingerprint is only shown in Play Console. A fingerprint is public, not a secret. The upload key's fingerprint is already in the repo; this is the other one.
 
 **Steps:**
 1. Play Console → **4a** → **Test and release** → **Setup** → **App integrity** → **App signing** tab.
@@ -32,10 +32,10 @@
 
 **Worked if:** on an Android phone with a Play build, tapping a `https://foray-web-seven.vercel.app/#/show/…` link opens 4a without asking which app to use.
 
-## #144 🟢 [UPGRADE] Optional, later: give share links your own address, such as `4a.jwlabs.ai` (~20 min)
+## #147 🟢 [UPGRADE] Optional, later: give share links your own address, such as `4a.jwlabs.ai` (~20 min)
 <!-- ha filed=2026-10-05 kind=default -->
 
-**Why:** Shared links use `foray-web-seven.vercel.app` for now (your answer on #1071). A custom domain reads better in a message and survives a move away from Vercel. Nothing waits on it. Once it is live, Claude changes one constant (`SHARE_ORIGIN` in `player/incoming-link.js`) and the two site files, and a #142-style entitlement line.
+**Why:** Shared links use `foray-web-seven.vercel.app` for now (your answer on #1071). A custom domain reads better in a message and survives a move away from Vercel. Nothing waits on it. Once it is live, Claude changes one constant (`SHARE_ORIGIN` in `player/incoming-link.js`) and the two site files, and a #145-style entitlement line.
 
 **Steps:**
 1. Pick the address (for example `4a.jwlabs.ai`).
@@ -43,6 +43,18 @@
 3. Reply with the address once Vercel shows **Valid Configuration**.
 
 **Worked if:** `https://<your address>/.well-known/apple-app-site-association` opens in a browser and shows the same text as the `foray-web-seven.vercel.app` one.
+
+## #144 🟡 [DECIDE] Add the `founder-approved` label to PR #1087, so the 4a Lab build can run (~2 min)
+<!-- ha filed=2026-10-05 -->
+
+**Why:** The "4a Lab" workflow only becomes runnable once it is on `main`. PR #1087 adds only that file and its tests, but it touches governed paths, so it cannot auto-merge without your label. Until then no lab build reaches either phone.
+
+**Steps:**
+1. Open https://github.com/JW-Incorporated/foray/pull/1087 and check the checks are green.
+2. Right sidebar → **Labels** → choose `founder-approved`.
+3. Reply `done` here. The PR then merges; nothing builds until someone presses Run workflow.
+
+**Worked if:** `.github/workflows/lab-build.yml` is on `main`, and Actions → **lab-build** shows a **Run workflow** button.
 
 ## #141 🟡 [DECIDE] Approve four privacy-policy sentences for bookmarks, downloads and followed-show alerts (~5 min)
 <!-- ha filed=2026-10-04 kind=default -->
