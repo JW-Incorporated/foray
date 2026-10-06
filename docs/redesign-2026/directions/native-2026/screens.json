@@ -1,0 +1,395 @@
+{
+  "_doc": "Screen map for tools/ui-lab/fidelity.mjs. screen id -> prototype route, and -> today's app state/step in tools/ui-lab/lib/states.mjs (app: null = no equivalent in today's app yet). Regions are CSS selectors per side, measured as bounding boxes (mode: first = first visible match, all = union + count). Add a screen by adding an entry; a region with app: null is reported as prototype-only.",
+  "direction": "native-2026",
+  "screens": {
+    "home": {
+      "title": "Today",
+      "prototype": {
+        "route": "#/home"
+      },
+      "app": {
+        "state": "returning",
+        "step": "home"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".navbar",
+          "app": ".topbar"
+        },
+        "hero": {
+          "prototype": ".hero",
+          "app": ".hv2-jbi-card"
+        },
+        "primary": {
+          "prototype": ".hero-actions .play, .hero .play",
+          "app": ".hv2-play"
+        },
+        "rows": {
+          "prototype": ".row, .rcard",
+          "app": ".mini-card",
+          "mode": "all"
+        },
+        "tabBar": {
+          "prototype": "#tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "mini": {
+      "title": "Today with mini player",
+      "prototype": {
+        "route": "#/mini"
+      },
+      "app": {
+        "state": "player",
+        "step": "mini-player-home"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".navbar",
+          "app": ".topbar"
+        },
+        "hero": {
+          "prototype": ".hero",
+          "app": ".hv2-jbi-card"
+        },
+        "primary": {
+          "prototype": ".hero-actions .play, .hero .play",
+          "app": ".hv2-play"
+        },
+        "rows": {
+          "prototype": ".row, .rcard",
+          "app": ".mini-card",
+          "mode": "all"
+        },
+        "mini": {
+          "prototype": ".mini",
+          "app": "#foray-player"
+        },
+        "tabBar": {
+          "prototype": "#tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "now-playing": {
+      "title": "Now Playing",
+      "prototype": {
+        "route": "#/now-playing"
+      },
+      "app": {
+        "state": "player",
+        "step": "now-playing"
+      },
+      "regions": {
+        "art": {
+          "prototype": ".np-art",
+          "app": ".fp-s-art"
+        },
+        "title": {
+          "prototype": ".np-title",
+          "app": ".fp-s-title"
+        },
+        "scrub": {
+          "prototype": ".np-scrub",
+          "app": ".fp-scrub"
+        },
+        "primary": {
+          "prototype": ".np .play",
+          "app": "#foray-player .fp-play"
+        },
+        "close": {
+          "prototype": ".np-head button",
+          "app": ".fp-sheet .fp-close, #foray-player .fp-close"
+        }
+      }
+    },
+    "search": {
+      "title": "Search",
+      "prototype": {
+        "route": "#/search"
+      },
+      "app": {
+        "state": "search",
+        "step": "search-idle"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".navbar",
+          "app": ".page-head"
+        },
+        "field": {
+          "prototype": "#sf",
+          "app": "#sh-compose"
+        },
+        "rows": {
+          "prototype": ".view > div > *",
+          "app": ".show-result",
+          "mode": "all"
+        },
+        "tabBar": {
+          "prototype": "#tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "library": {
+      "title": "Library",
+      "prototype": {
+        "route": "#/library"
+      },
+      "app": {
+        "state": "player",
+        "step": "mini-player-library"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".navbar",
+          "app": ".page-head"
+        },
+        "rows": {
+          "prototype": ".row, .qrow",
+          "app": ".ep-row",
+          "mode": "all"
+        },
+        "mini": {
+          "prototype": ".mini",
+          "app": "#foray-player"
+        },
+        "tabBar": {
+          "prototype": "#tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "foray": {
+      "title": "Foray detail",
+      "prototype": {
+        "route": "#/foray"
+      },
+      "app": {
+        "state": "returning",
+        "step": "foray"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".navbar",
+          "app": ".page-head"
+        },
+        "hero": {
+          "prototype": ".fd-hero",
+          "app": null
+        },
+        "primary": {
+          "prototype": ".fd .play",
+          "app": null
+        },
+        "tabBar": {
+          "prototype": "#tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "onboarding": {
+      "title": "Onboarding",
+      "prototype": {
+        "route": "#/onboarding"
+      },
+      "app": {
+        "state": "first-run",
+        "step": "intro-sheet"
+      },
+      "regions": {
+        "sheet": {
+          "prototype": ".onb",
+          "app": "#first-time-sheet"
+        },
+        "primary": {
+          "prototype": ".onb button",
+          "app": "#first-time-sheet button"
+        }
+      }
+    },
+    "home-first-run": {
+      "title": "Today, first run",
+      "prototype": {
+        "route": "#/home?state=first-run"
+      },
+      "app": {
+        "state": "empty",
+        "step": "home"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".navbar",
+          "app": ".topbar"
+        },
+        "hero": {
+          "prototype": ".hero",
+          "app": ".hv2-jbi-card"
+        },
+        "primary": {
+          "prototype": ".hero-actions .play, .hero .play",
+          "app": ".hv2-play"
+        },
+        "rows": {
+          "prototype": ".row, .rcard",
+          "app": ".mini-card",
+          "mode": "all"
+        },
+        "tabBar": {
+          "prototype": "#tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "library-up-next": {
+      "title": "Library, Up Next",
+      "prototype": {
+        "route": "#/library/upnext"
+      },
+      "app": {
+        "state": "player",
+        "step": "mini-player-up-next"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".navbar",
+          "app": ".page-head"
+        },
+        "rows": {
+          "prototype": ".row, .qrow",
+          "app": ".ep-row",
+          "mode": "all"
+        },
+        "mini": {
+          "prototype": ".mini",
+          "app": "#foray-player"
+        },
+        "tabBar": {
+          "prototype": "#tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "library-playlists": {
+      "title": "Library, Playlists",
+      "prototype": {
+        "route": "#/library/playlists"
+      },
+      "app": {
+        "state": "returning",
+        "step": "playlists"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".navbar",
+          "app": ".page-head"
+        },
+        "rows": {
+          "prototype": ".row, .qrow",
+          "app": ".ep-row",
+          "mode": "all"
+        },
+        "mini": {
+          "prototype": ".mini",
+          "app": "#foray-player"
+        },
+        "tabBar": {
+          "prototype": "#tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "library-forays": {
+      "title": "Library, Forays",
+      "prototype": {
+        "route": "#/library/forays"
+      },
+      "app": {
+        "state": "returning",
+        "step": "forays"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".navbar",
+          "app": ".page-head"
+        },
+        "rows": {
+          "prototype": ".row, .qrow",
+          "app": ".ep-row",
+          "mode": "all"
+        },
+        "mini": {
+          "prototype": ".mini",
+          "app": "#foray-player"
+        },
+        "tabBar": {
+          "prototype": "#tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "search-typing": {
+      "title": "Search, typing",
+      "prototype": {
+        "route": "#/search?state=typing"
+      },
+      "app": {
+        "state": "search",
+        "step": "search-results-history"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".navbar",
+          "app": ".page-head"
+        },
+        "field": {
+          "prototype": "#sf",
+          "app": "#sh-compose"
+        },
+        "rows": {
+          "prototype": ".view > div > *",
+          "app": ".show-result",
+          "mode": "all"
+        },
+        "tabBar": {
+          "prototype": "#tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "now-playing-episode": {
+      "title": "Now Playing, episode",
+      "prototype": {
+        "route": "#/now-playing?state=episode"
+      },
+      "app": {
+        "state": "player",
+        "step": "now-playing"
+      },
+      "regions": {
+        "art": {
+          "prototype": ".np-art",
+          "app": ".fp-s-art"
+        },
+        "title": {
+          "prototype": ".np-title",
+          "app": ".fp-s-title"
+        },
+        "scrub": {
+          "prototype": ".np-scrub",
+          "app": ".fp-scrub"
+        },
+        "primary": {
+          "prototype": ".np .play",
+          "app": "#foray-player .fp-play"
+        },
+        "close": {
+          "prototype": ".np-head button",
+          "app": ".fp-sheet .fp-close, #foray-player .fp-close"
+        }
+      }
+    }
+  }
+}

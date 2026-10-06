@@ -1,0 +1,248 @@
+{
+  "_doc": "Screen map for tools/ui-lab/fidelity.mjs. screen id -> prototype route, and -> today's app state/step in tools/ui-lab/lib/states.mjs (app: null = no equivalent in today's app yet). Regions are CSS selectors per side, measured as bounding boxes (mode: first = first visible match, all = union + count). Add a screen by adding an entry; a region with app: null is reported as prototype-only.",
+  "direction": "clarity",
+  "screens": {
+    "home": {
+      "title": "Today",
+      "prototype": {
+        "route": "#/home"
+      },
+      "app": {
+        "state": "returning",
+        "step": "home"
+      },
+      "regions": {
+        "header": {
+          "prototype": "#todayHdr",
+          "app": ".topbar"
+        },
+        "hero": {
+          "prototype": ".row--lead",
+          "app": ".hv2-jbi-card"
+        },
+        "primary": {
+          "prototype": ".row--lead .capsule",
+          "app": ".hv2-play"
+        },
+        "rows": {
+          "prototype": ".row",
+          "app": ".mini-card",
+          "mode": "all"
+        },
+        "tabBar": {
+          "prototype": ".tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "mini": {
+      "title": "Today with mini player",
+      "prototype": {
+        "route": "#/mini"
+      },
+      "app": {
+        "state": "player",
+        "step": "mini-player-home"
+      },
+      "regions": {
+        "header": {
+          "prototype": "#todayHdr",
+          "app": ".topbar"
+        },
+        "hero": {
+          "prototype": ".row--lead",
+          "app": ".hv2-jbi-card"
+        },
+        "primary": {
+          "prototype": ".row--lead .capsule",
+          "app": ".hv2-play"
+        },
+        "rows": {
+          "prototype": ".row",
+          "app": ".mini-card",
+          "mode": "all"
+        },
+        "mini": {
+          "prototype": "#mini",
+          "app": "#foray-player"
+        },
+        "tabBar": {
+          "prototype": ".tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "now-playing": {
+      "title": "Now Playing",
+      "prototype": {
+        "route": "#/now-playing"
+      },
+      "app": {
+        "state": "player",
+        "step": "now-playing"
+      },
+      "regions": {
+        "art": {
+          "prototype": ".np__art",
+          "app": ".fp-s-art"
+        },
+        "title": {
+          "prototype": ".np__title",
+          "app": ".fp-s-title"
+        },
+        "scrub": {
+          "prototype": "#scrub",
+          "app": ".fp-scrub"
+        },
+        "primary": {
+          "prototype": ".np .tplay",
+          "app": "#foray-player .fp-play"
+        },
+        "close": {
+          "prototype": ".np__close",
+          "app": ".fp-sheet .fp-close, #foray-player .fp-close"
+        }
+      }
+    },
+    "search": {
+      "title": "Find",
+      "prototype": {
+        "route": "#/search"
+      },
+      "app": {
+        "state": "search",
+        "step": "search-idle"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".hdr",
+          "app": ".page-head"
+        },
+        "field": {
+          "prototype": ".find-dock",
+          "app": "#sh-compose"
+        },
+        "rows": {
+          "prototype": ".row",
+          "app": ".show-result",
+          "mode": "all"
+        },
+        "tabBar": {
+          "prototype": ".tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "library": {
+      "title": "Library",
+      "prototype": {
+        "route": "#/library"
+      },
+      "app": {
+        "state": "player",
+        "step": "mini-player-library"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".hdr",
+          "app": ".page-head"
+        },
+        "rows": {
+          "prototype": ".row, .rowq",
+          "app": ".ep-row",
+          "mode": "all"
+        },
+        "mini": {
+          "prototype": "#mini",
+          "app": "#foray-player"
+        },
+        "tabBar": {
+          "prototype": ".tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "foray": {
+      "title": "Foray detail",
+      "prototype": {
+        "route": "#/foray"
+      },
+      "app": {
+        "state": "returning",
+        "step": "foray"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".hdr--fd",
+          "app": ".page-head"
+        },
+        "hero": {
+          "prototype": ".fd",
+          "app": null
+        },
+        "primary": {
+          "prototype": ".fd__actions button",
+          "app": null
+        },
+        "rows": {
+          "prototype": ".rowseg",
+          "app": null,
+          "mode": "all"
+        },
+        "tabBar": {
+          "prototype": ".tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "onboarding": {
+      "title": "Onboarding",
+      "prototype": {
+        "route": "#/onboarding"
+      },
+      "app": {
+        "state": "first-run",
+        "step": "intro-sheet"
+      },
+      "regions": {
+        "sheet": {
+          "prototype": ".ob",
+          "app": "#first-time-sheet"
+        },
+        "primary": {
+          "prototype": ".ob__cta button, .ob__cta a",
+          "app": "#first-time-sheet button"
+        }
+      }
+    },
+    "search-typed": {
+      "title": "Find, query in the route",
+      "prototype": {
+        "route": "#/search/history"
+      },
+      "app": {
+        "state": "search",
+        "step": "search-results-history"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".hdr",
+          "app": ".page-head"
+        },
+        "field": {
+          "prototype": ".find-dock",
+          "app": "#sh-compose"
+        },
+        "rows": {
+          "prototype": ".row",
+          "app": ".show-result",
+          "mode": "all"
+        },
+        "tabBar": {
+          "prototype": ".tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,339 @@
+{
+  "_doc": "Screen map for tools/ui-lab/fidelity.mjs. screen id -> prototype route, and -> today's app state/step in tools/ui-lab/lib/states.mjs (app: null = no equivalent in today's app yet). Regions are CSS selectors per side, measured as bounding boxes (mode: first = first visible match, all = union + count). Add a screen by adding an entry; a region with app: null is reported as prototype-only.",
+  "direction": "editorial",
+  "screens": {
+    "home": {
+      "title": "Today",
+      "prototype": {
+        "route": "#/home"
+      },
+      "app": {
+        "state": "returning",
+        "step": "home"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".masthead",
+          "app": ".topbar"
+        },
+        "hero": {
+          "prototype": ".lead",
+          "app": ".hv2-jbi-card"
+        },
+        "primary": {
+          "prototype": ".lead-link",
+          "app": ".hv2-play"
+        },
+        "rows": {
+          "prototype": ".row",
+          "app": ".mini-card",
+          "mode": "all"
+        },
+        "tabBar": {
+          "prototype": "#folio",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "mini": {
+      "title": "Today with ticker",
+      "prototype": {
+        "route": "#/mini"
+      },
+      "app": {
+        "state": "player",
+        "step": "mini-player-home"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".masthead",
+          "app": ".topbar"
+        },
+        "hero": {
+          "prototype": ".lead",
+          "app": ".hv2-jbi-card"
+        },
+        "primary": {
+          "prototype": ".lead-link",
+          "app": ".hv2-play"
+        },
+        "rows": {
+          "prototype": ".row",
+          "app": ".mini-card",
+          "mode": "all"
+        },
+        "mini": {
+          "prototype": "#ticker",
+          "app": "#foray-player"
+        },
+        "tabBar": {
+          "prototype": "#folio",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "now-playing": {
+      "title": "Now Playing",
+      "prototype": {
+        "route": "#/now-playing"
+      },
+      "app": {
+        "state": "player",
+        "step": "now-playing"
+      },
+      "regions": {
+        "art": {
+          "prototype": ".np-plate",
+          "app": ".fp-s-art"
+        },
+        "title": {
+          "prototype": ".np-titles",
+          "app": ".fp-s-title"
+        },
+        "scrub": {
+          "prototype": ".np-scrub",
+          "app": ".fp-scrub"
+        },
+        "primary": {
+          "prototype": ".np-transport .btn-play",
+          "app": "#foray-player .fp-play"
+        },
+        "close": {
+          "prototype": ".np-head button",
+          "app": ".fp-sheet .fp-close, #foray-player .fp-close"
+        }
+      }
+    },
+    "search": {
+      "title": "Find",
+      "prototype": {
+        "route": "#/search"
+      },
+      "app": {
+        "state": "search",
+        "step": "search-idle"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".page-title",
+          "app": ".page-head"
+        },
+        "field": {
+          "prototype": "#find-slot .find",
+          "app": "#sh-compose"
+        },
+        "rows": {
+          "prototype": ".row",
+          "app": ".show-result",
+          "mode": "all"
+        },
+        "tabBar": {
+          "prototype": "#folio",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "library": {
+      "title": "Library",
+      "prototype": {
+        "route": "#/library"
+      },
+      "app": {
+        "state": "player",
+        "step": "mini-player-library"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".page-title",
+          "app": ".page-head"
+        },
+        "rows": {
+          "prototype": ".row",
+          "app": ".ep-row",
+          "mode": "all"
+        },
+        "mini": {
+          "prototype": "#ticker",
+          "app": "#foray-player"
+        },
+        "tabBar": {
+          "prototype": "#folio",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "foray": {
+      "title": "Foray detail",
+      "prototype": {
+        "route": "#/foray"
+      },
+      "app": {
+        "state": "returning",
+        "step": "foray"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".nav-row",
+          "app": ".page-head"
+        },
+        "hero": {
+          "prototype": "#detail-plate-host",
+          "app": null
+        },
+        "primary": {
+          "prototype": ".detail-actions .btn-play",
+          "app": null
+        },
+        "rows": {
+          "prototype": ".contents li",
+          "app": null,
+          "mode": "all"
+        },
+        "tabBar": {
+          "prototype": "#folio",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "onboarding": {
+      "title": "Onboarding",
+      "prototype": {
+        "route": "#/onboarding"
+      },
+      "app": {
+        "state": "first-run",
+        "step": "intro-sheet"
+      },
+      "regions": {
+        "sheet": {
+          "prototype": ".onb-content",
+          "app": "#first-time-sheet"
+        },
+        "primary": {
+          "prototype": ".first-actions a",
+          "app": "#first-time-sheet button"
+        }
+      }
+    },
+    "library-up-next": {
+      "title": "Library, Up Next",
+      "prototype": {
+        "route": "#/library/up-next"
+      },
+      "app": {
+        "state": "player",
+        "step": "mini-player-up-next"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".page-title",
+          "app": ".page-head"
+        },
+        "rows": {
+          "prototype": ".row",
+          "app": ".ep-row",
+          "mode": "all"
+        },
+        "mini": {
+          "prototype": "#ticker",
+          "app": "#foray-player"
+        },
+        "tabBar": {
+          "prototype": "#folio",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "search-history": {
+      "title": "Find, query",
+      "prototype": {
+        "route": "#/search?q=history"
+      },
+      "app": {
+        "state": "search",
+        "step": "search-results-history"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".page-title",
+          "app": ".page-head"
+        },
+        "field": {
+          "prototype": "#find-slot .find",
+          "app": "#sh-compose"
+        },
+        "rows": {
+          "prototype": ".row",
+          "app": ".show-result",
+          "mode": "all"
+        },
+        "tabBar": {
+          "prototype": "#folio",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "now-playing-episode": {
+      "title": "Now Playing, episode",
+      "prototype": {
+        "route": "#/now-playing?np=episode"
+      },
+      "app": {
+        "state": "player",
+        "step": "now-playing"
+      },
+      "regions": {
+        "art": {
+          "prototype": ".np-plate",
+          "app": ".fp-s-art"
+        },
+        "title": {
+          "prototype": ".np-titles",
+          "app": ".fp-s-title"
+        },
+        "scrub": {
+          "prototype": ".np-scrub",
+          "app": ".fp-scrub"
+        },
+        "primary": {
+          "prototype": ".np-transport .btn-play",
+          "app": "#foray-player .fp-play"
+        },
+        "close": {
+          "prototype": ".np-head button",
+          "app": ".fp-sheet .fp-close, #foray-player .fp-close"
+        }
+      }
+    },
+    "colophon": {
+      "title": "Colophon sheet",
+      "prototype": {
+        "route": "#/colophon"
+      },
+      "app": null,
+      "regions": {
+        "header": {
+          "prototype": ".masthead",
+          "app": null
+        },
+        "hero": {
+          "prototype": ".lead",
+          "app": null
+        },
+        "primary": {
+          "prototype": ".lead-link",
+          "app": null
+        },
+        "rows": {
+          "prototype": ".row",
+          "app": null,
+          "mode": "all"
+        },
+        "tabBar": {
+          "prototype": "#folio",
+          "app": null
+        }
+      }
+    }
+  }
+}
