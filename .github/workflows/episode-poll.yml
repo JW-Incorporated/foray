@@ -1,0 +1,72 @@
+# PKG-09 (S-10): the episode poller's daily DRY RUN.
+#
+# WHAT IT RUNS. `tools/poll/poll-episodes.mjs --dry-run` (PKG-08), whose
+# header carries the reasoning. In one line: it composes the watchlist
+# (data/watchlist-seed.json + the weekly shows-index change index), picks what
+# a live run WOULD fetch, projects the weekly request count, and writes a
+# summary. It fetches NO feed. The only network reads are the three public
+# shows-index release assets (changed.json / id-map.json / top.json) that the
+# change index comes from, unauthenticated. It reads no secret and gates
+# nothing: a red run blocks no merge and no deploy.
+#
+# WHY A WORKFLOW AT ALL, WHEN IT CHANGES NOTHING. Founder gate G9 (watchlist
+# N and weekly request budget, target < 40,000 requests a week) is judged
+# against the projection this run prints. The workflow gives that number a
+# dated, downloadable home (the `poll-summary` artifact below) without anyone
+# running it by hand, until the live poller (PKG-10, BLOCKED on G1/G3) exists.
+#
+# NO npm install. poll-episodes.mjs and everything it imports
+# (tools/poll/*.mjs, tools/refresh/candidates.mjs, tools/shows/config.mjs,
+# tools/segments/politeness.mjs) import only `node:` builtins; the file's own
+# IMPORTS note says why it keeps away from the rest of tools/shows.
+#
+# EXIT CODES (poll-episodes.mjs's header): 0 dry run written; 1 bad arguments
+# or an unreadable seed; 3 live mode refused. A change index that is
+# unavailable, or a seed that is not committed yet, is exit 0 with the reason
+# in the summary, so this job goes red only for a real fault.
+#
+# NO THIRD-PARTY ACTIONS. Same rule as every other workflow in this repo (see
+# android-release.yml's header): every `uses:` here is `actions/*`.
+
+name: episode-poll
+
+on:
+  schedule:
+    # Daily until a DB exists; docs/roadmap/README.md Q6 proposed default,
+    # no founder ruling yet (docs/DECISIONS.md G9 words it the same way).
+    # 05:23 UTC, not :00, per shows-import.yml's note: GitHub delays
+    # top-of-hour cron under load. This job has no freshness race to protect,
+    # so the offset only keeps it out of that contention.
+    - cron: "23 5 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: episode-poll
+  cancel-in-progress: false
+
+# Read-only. A dry run proposes nothing and writes nothing to the repo.
+permissions:
+  contents: read
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Dry-run the episode poller (fetches no feed)
+        run: node tools/poll/poll-episodes.mjs --dry-run --out poll-summary.json
+
+      - name: Keep poll-summary.json
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: poll-summary
+          path: poll-summary.json
+          if-no-files-found: warn
+          retention-days: 14
