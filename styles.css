@@ -3971,11 +3971,6 @@ body.ui-v2 .up-next-row.drop-before { border-top-color: var(--violet); }
 body.ui-v2 .up-next-row.drop-after { border-bottom-color: var(--violet); }
 
 /* ---------- Playlists index + detail (renderPlaylists/renderPlaylistDetail) ---------- */
-body.ui-v2 .show-ep-search input {
-  border-color: var(--line);
-  background: var(--surface);
-  color: var(--text);
-}
 /* Create's build button in the v2 paint: violet, like the other authored
    primaries (audit 2026-09-22). The #pl-form half of this list went with the
    #/playlists builder (round-3 audit, search-api-css-10). */
