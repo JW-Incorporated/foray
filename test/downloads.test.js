@@ -244,6 +244,7 @@ function mount({ store = new Map(), capacitor = null, build = "37", order = null
     bridge: null,
     recordFor: () => null,
     onMissing: () => {},
+    onPlayedFromFile: () => {},
   };
   vm.createContext(ctx);
   vm.runInContext(SEARCH_SRC, ctx, { filename: "search-engine.js" });
@@ -539,6 +540,65 @@ test("a download that crosses the cap evicts least-recently played first, never 
   assert.deepStrictEqual(Object.keys(m.record().items).sort(), ["fresh", "listening"]);
 });
 
+/** Three finished, never-played downloads of 40 bytes under a 100-byte cap,
+    finished a (Oct 1) → b (Oct 2) → c (Oct 3), stored raw. */
+function seedThreeUnplayed(store) {
+  let v = STORE.normaliseDownloads({ settings: { capBytes: 100 } });
+  for (const [id, day] of [["a", "01"], ["b", "02"], ["c", "03"]]) {
+    v = STORE.applyProgress(v, { id, status: "done", path: `/d/${id}.bin`, bytes: 40, now: `2026-10-${day}T00:00:00Z` });
+  }
+  store.set("cp_downloads", JSON.stringify(v));
+}
+
+/** A player whose every stored position reads "played": nothing is protected. */
+const NOTHING_IN_PROGRESS = { episodeProgress: () => ({ state: "played", percent: 100, label: "Played" }) };
+
+test("cp_downloads is written through the durable store lsGet/lsSet use; saveDownloads(null) removes the row", async () => {
+  /* CH-02 characterization, then its one decision. The record has ONE writer
+     and it is the storage backend every other `cp_` key uses (DurableStore once
+     player/client.js publishes it), so "Delete my data" and the IndexedDB tier
+     see it.
+     MUTATION: make saveDownloads write through `localStorage` instead of
+     `storageBackend()` — the durable store never sees the write; red. */
+  const store = new Map();
+  const cap = makeCapacitor({});
+  const m = mount({ store, capacitor: cap, durable: true });
+  const writes = [];
+  const durableSet = m.ctx.forayStorage.setItem;
+  m.ctx.forayStorage.setItem = (k, v) => { writes.push(k); return durableSet(k, v); };
+  m.ctx.setDownloadsCellular(true);
+  assert.deepStrictEqual(writes, ["cp_downloads"], "the write went through the durable store");
+  assert.strictEqual(m.record().settings.cellular, true);
+  assert.strictEqual(m.ctx.downloadsCellularOn(), true, "and is read back through it");
+
+  /* Null: at origin/main saveDownloads normalised null into the EMPTY record
+     and wrote it, while the module's writeDownloads(null) removed the key —
+     two writers, two answers (P2-11). The card's ruling: null removes,
+     matching the module, because saveDownloads now IS the module's writer.
+     MUTATION 2: saveDownloads hands writeDownloads
+     `rules.normaliseDownloads(value)` — null becomes the empty record and the
+     key survives; red. */
+  assert.strictEqual(m.ctx.saveDownloads(null), true, "the store took the removal");
+  assert.strictEqual(store.has("cp_downloads"), false, "null removes the row");
+  assert.deepStrictEqual({ ...m.ctx.downloadsValue().items }, {}, "and it reads back as the empty record");
+});
+
+test("with no play recorded, eviction goes oldest-finished first", async () => {
+  /* CH-02 characterization of the bug's premise (P2-01): every row's
+     `last_played_at` is null, so least-recently-PLAYED degrades to
+     least-recently-FINISHED.
+     MUTATION: sort newest-first in evictionPlan — `c` goes; red. */
+  const store = new Map();
+  seedThreeUnplayed(store);
+  const cap = makeCapacitor({ remove: { ok: true } });
+  const m = mount({ store, capacitor: cap });
+  m.ctx.ForayPlayer = NOTHING_IN_PROGRESS;
+  const plan = await m.ctx.evictDownloads();
+  assert.deepStrictEqual([...plan], ["a"], "120 bytes over a 100-byte cap: the oldest finished goes");
+  assert.deepStrictEqual(Object.keys(m.record().items).sort(), ["b", "c"]);
+  assert.ok(Object.values(m.record().items).every((r) => r.last_played_at === null), "fixture premise: nothing played");
+});
+
 test("player/client.js publishes the real modules on window.forayDownloads, and the UA from the build stamp's string", () => {
   /* Source-text, because client.js builds DOM at import and cannot be loaded
      under node (player/now-playing-sheet.test.js says why). Every test above
@@ -556,10 +616,98 @@ test("player/client.js publishes the real modules on window.forayDownloads, and 
   assert.match(src, /import \{ createDownloadBridge, USER_AGENT, userAgentFor \} from "\.\/download-bridge\.js";/);
   const published = /window\.forayDownloads = \{([\s\S]*?)\n\};/.exec(src);
   assert.ok(published, "window.forayDownloads is published");
-  for (const field of ["store: downloadStore,", "createBridge: createDownloadBridge,", "USER_AGENT,", "recordFor:", "onMissing:"]) {
+  for (const field of ["store: downloadStore,", "createBridge: createDownloadBridge,", "USER_AGENT,", "recordFor:", "onMissing:", "onPlayedFromFile:"]) {
     assert.ok(published[1].includes(field), `window.forayDownloads carries ${field}`);
   }
   assert.match(src, /surface\.userAgent = userAgentFor\(stamp\.native \?\? stamp\.version\);/);
   assert.strictEqual((src.match(/\breadBuildStamp\(/g) || []).length, 1, "one build-stamp read, shared");
   assert.match(src, /noteDownloadsBuild\(stamp\)/, "the one read's answer reaches the downloads UA");
+});
+
+test("a download played from its file moves to the back of the eviction queue: the never-played one goes first", async () => {
+  /* CH-02 (P2-01, high): least-recently-PLAYED eviction never saw a play, so
+     the file listened to daily was the first evicted. `a` is the oldest
+     download and was played (player/client.js fires `onPlayedFromFile` where
+     the local load succeeded); `b` was never played.
+     MUTATION: delete bootDownloads' `surface.onPlayedFromFile = …` assignment
+     (revert the hook) — the stand-in no-op runs, `a` keeps a null
+     last_played_at and is evicted; red.
+     MUTATION 2: drop `if (next !== before)` — the row-less call below writes a
+     record over a purged device; red on the last assertion. */
+  const store = new Map();
+  seedThreeUnplayed(store);
+  const cap = makeCapacitor({ remove: { ok: true } });
+  const m = mount({ store, capacitor: cap });
+  m.ctx.ForayPlayer = NOTHING_IN_PROGRESS;
+  const t0 = Date.now();
+  m.ctx.forayDownloads.onPlayedFromFile("a");
+  const played = Date.parse(m.record().items.a.last_played_at);
+  assert.ok(played >= t0 && played <= Date.now(), "the play is stamped now");
+  assert.strictEqual(m.record().items.b.last_played_at, null, "only the played row moves");
+  const plan = await m.ctx.evictDownloads();
+  assert.deepStrictEqual([...plan], ["b"], "the never-played download goes before the one played today");
+  assert.deepStrictEqual(Object.keys(m.record().items).sort(), ["a", "c"]);
+
+  /* Idempotent and silent for an id with no row (removed, or purged). */
+  store.delete("cp_downloads");
+  m.ctx.forayDownloads.onPlayedFromFile("a");
+  assert.strictEqual(store.has("cp_downloads"), false, "no row, no write: a purge is not undone");
+});
+
+test("app.js keeps no copy of the record's rules: no key literal, no downloadsWithout; client.js stamps a play only on a successful local load", () => {
+  /* Source text, as test 10 reads client.js (it cannot load under node).
+     MUTATION: re-spell `lsGet("cp_downloads", null)` in downloadsValue — the
+     literal is back; red.
+     MUTATION 2: restore app.js's own `function downloadsWithout` — red. */
+  const strip = (src) => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`])\/\/.*$/gm, "$1");
+  const app = strip(APP_SRC);
+  assert.doesNotMatch(app, /["'`]cp_downloads["'`]/, "the key is the module's KEY, never re-spelled in app.js");
+  assert.doesNotMatch(app, /function downloadsWithout\b/, "the remove rule is download-store.js's removeRow");
+  assert.match(app, /rules\.readDownloads\(storageBackend\(\)\)/, "the one reader");
+  assert.match(app, /rules\.writeDownloads\(storageBackend\(\), value\)/, "the one writer");
+
+  /* The hook fires where play() spends its ticket on SUCCESS — executed, not
+     only read: the statements between the spend and the rethrow are lifted
+     out of client.js and run over each way a play can end.
+     MUTATION 3: move the `onPlayedFromFile` call into localSourceFor (the
+     mapper) — a file chosen and then found missing is stamped; red on the
+     placement asserts.
+     MUTATION 4: drop `else ticket = null;` — a local load that FAILED (and
+     fell back to the stream) stamps the missing file as played; red on the
+     "failed" case. */
+  const client = fs.readFileSync(path.join(ROOT, "player", "client.js"), "utf8").replace(/\r\n/g, "\n");
+  const code = strip(client);
+  const calls = code.match(/onPlayedFromFile\?\.\(/g) || [];
+  assert.strictEqual(calls.length, 1, "one call site");
+  const fnBody = (head) => {
+    const at = code.indexOf(head);
+    assert.ok(at >= 0, head);
+    let depth = 0;
+    for (let i = code.indexOf("{", at + head.length - 1); i < code.length; i++) {
+      if (code[i] === "{") depth++;
+      else if (code[i] === "}" && --depth === 0) return code.slice(at, i + 1);
+    }
+    throw new Error(`unbalanced ${head}`);
+  };
+  assert.doesNotMatch(fnBody("function localSourceFor(item, opts) {"), /onPlayedFromFile/, "never in the mapper");
+  assert.doesNotMatch(fnBody("function degradeLocalPlay() {"), /onPlayedFromFile/, "never on the degrade");
+  const start = code.indexOf("if (!loadError && manager.state?.type !== \"idle\" && localAttempt === ticket) localAttempt = null;");
+  const end = code.indexOf("if (loadError) throw loadError.err;");
+  assert.ok(start > 0 && end > start, "the success line precedes the rethrow");
+  const snippet = code.slice(start, end);
+  assert.match(snippet, /onPlayedFromFile/, "the hook sits between the ticket's spend and the rethrow");
+  const run = ({ loadError = null, type = "playing", localAttempt, ticket }) => {
+    const heard = [];
+    const window = { forayDownloads: { onPlayedFromFile: (id) => heard.push(id) } };
+    new Function("loadError", "manager", "localAttempt", "ticket", "item", "window", snippet)(
+      loadError, { state: { type } }, localAttempt, ticket, { id: "ep-1" }, window);
+    return heard;
+  };
+  const T = { item: { id: "ep-1" }, opts: {} };
+  assert.deepStrictEqual(run({ localAttempt: T, ticket: T }), ["ep-1"], "a local load that succeeded is a play");
+  assert.deepStrictEqual(run({ loadError: { err: new Error("404") }, localAttempt: T, ticket: T }), [], "failed, fell back to the stream");
+  assert.deepStrictEqual(run({ type: "idle", localAttempt: T, ticket: T }), [], "idle: a missing file, or an autoplay refusal");
+  assert.deepStrictEqual(run({ localAttempt: { item: { id: "ep-2" } }, ticket: T }), [], "superseded by a newer local play");
+  assert.deepStrictEqual(run({ localAttempt: null, ticket: T }), [], "superseded by a stream");
+  assert.deepStrictEqual(run({ localAttempt: null, ticket: null }), [], "a stream, or the noLocal retry after a missing file");
 });

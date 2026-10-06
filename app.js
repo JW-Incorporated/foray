@@ -12644,34 +12644,33 @@ function libSummaryRow(hashPath, title, sub) {
    never downloads — CORS, #29), and every surface here is drawn only when
    `state.downloadBridge` is non-null: an honest absence, not a disabled button.
 
-   `cp_downloads` is ONE row (download-store.js says why); it is read and
-   written through lsGet/lsSet like every other `cp_` key, so the durable store
-   and "Delete my data" see it. */
+   `cp_downloads` is ONE row (download-store.js says why), and it has ONE reader
+   and ONE writer: the store's own `readDownloads`/`writeDownloads`, handed the
+   backend lsGet/lsSet use (`storageBackend()`: DurableStore once the player
+   module has published it), so the durable tier and "Delete my data" see it
+   like every other `cp_` key. The key is the module's `KEY`; this block never
+   spells it (CH-02, P2-11/P2-19/X1-03). */
 
 function downloadRules() {
   const rules = window.forayDownloads && window.forayDownloads.store;
   return rules && typeof rules.normaliseDownloads === "function" ? rules : null;
 }
 
-/** The record, normalised by the store's own rule; the empty record (Wi-Fi only,
-    nothing downloaded) when the player module is not there to normalise it. */
+/** The record, read and normalised by the store's own rule; the empty record
+    (Wi-Fi only, nothing downloaded) when the player module is not there. */
 function downloadsValue() {
-  const raw = lsGet("cp_downloads", null);
   const rules = downloadRules();
-  if (rules) return rules.normaliseDownloads(raw);
+  if (rules) return rules.readDownloads(storageBackend());
   return { settings: { cellular: false }, items: {} };
 }
 
+/** Write the record through the store's `writeDownloads`: normalised, and
+    `null` REMOVES the row (the module's rule — this used to write the empty
+    record instead, a second answer from a second writer). No player module,
+    no rules, nothing written: an unnormalised record is not one to keep. */
 function saveDownloads(value) {
   const rules = downloadRules();
-  return lsSet("cp_downloads", rules ? rules.normaliseDownloads(value) : value);
-}
-
-/** The record without one episode's row: what Remove (and an eviction) leaves. */
-function downloadsWithout(value, id) {
-  const items = { ...value.items };
-  delete items[id];
-  return { ...value, items };
+  return rules ? rules.writeDownloads(storageBackend(), value) : false;
 }
 
 function downloadsCellularOn() { return downloadsValue().settings.cellular === true; }
@@ -12731,6 +12730,20 @@ function bootDownloads() {
     saveDownloads(rules.markMissing(downloadsValue(), id));
     announce("Downloaded copy missing — streaming instead.");
     repaintDownload(id);
+  };
+  /* The downloaded copy PLAYED (CH-02, P2-01): player/client.js fires this
+     where a local load succeeded, never where the file was merely chosen. It
+     moves the row to the back of the least-recently-played eviction queue.
+     Idempotent, and silent: an id with no row (removed, or purged by Delete my
+     data) is `markPlayed`'s identity, and identity writes nothing.
+     MUTATION: delete this assignment — test/downloads.test.js "a download
+     played from its file…" evicts the file listened to yesterday. */
+  surface.onPlayedFromFile = (id) => {
+    const rules = downloadRules();
+    if (!rules) return;
+    const before = downloadsValue();
+    const next = rules.markPlayed(before, id, Date.now());
+    if (next !== before) saveDownloads(next);
   };
   return bridge;
 }
@@ -12815,7 +12828,7 @@ async function evictDownloads() {
   const plan = rules.evictionPlan(value, positions);
   for (const id of plan) {
     const res = await bridge.remove({ id });
-    if (res && res.ok) saveDownloads(downloadsWithout(downloadsValue(), id));
+    if (res && res.ok) saveDownloads(rules.removeRow(downloadsValue(), id));
   }
   return plan;
 }
@@ -12939,7 +12952,8 @@ async function removeDownload(id) {
   if (!bridge || !id) return null;
   const res = await bridge.remove({ id });
   if (res && res.ok) {
-    saveDownloads(downloadsWithout(downloadsValue(), id));
+    const rules = downloadRules();
+    if (rules) saveDownloads(rules.removeRow(downloadsValue(), id));
     announce("Download removed.");
   } else {
     announce("Couldn't remove the download. Try again.");
