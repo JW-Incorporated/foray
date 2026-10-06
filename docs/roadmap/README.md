@@ -1,6 +1,6 @@
 # Roadmap hand-off plans (qwen / opus tagged)
 
-Nine packages, planned 2026-09-25 against `origin/main` (`ecb6bfa3` for most; each plan states its own baseline). Each plan was written by a planning agent, checked task by task by a hand-off-safety reviewer, and revised; the file here is the revised plan, unedited.
+Nine packages, planned 2026-09-25 against `origin/main` (`ecb6bfa3` for most; each plan states its own baseline), plus two added later: Android parity (2026-09-29) and Code health (2026-10-05, from the DHH-style review; it uses the same card shape with waves instead of a qwen/opus split as its primary axis). Each plan was written by a planning agent, checked task by task by a hand-off-safety reviewer, and revised; the file here is the revised plan, unedited.
 
 ## The founder's ask
 
@@ -40,6 +40,7 @@ Everything else is **qwen**. A qwen task has an exact change, named tests with t
 | Catalogue and personalization (#547 labels, breadth subjects, personas, ladders, events) | [catalogue-personalization.md](catalogue-personalization.md) | 22 | 8 | 14 | 9 / 13 / 0 | Human merges for `backend/src/` (PKG-09, PKG-18) and `docs/DECISIONS.md`. Founder: `label_scope`, breadth subjects, the intl file, the `card_shown` archetype. |
 | Listener-requested Forays and sharing (#690, #71, Guideline 1.2, Path B) | [listener-forays-sharing.md](listener-forays-sharing.md) | 25 | 15 | 10 | 7 / 18 / 0 | Sharing ships on its own. The generation service is built dark until the four Path B rulings (host, spend, review gate, CSP) and a public contact address. |
 | Android parity (A0 emulator tests + JS-lane fixes, A1 Media3 episodes, A2 native Forays, A3 Android Auto deferred) | [../plans/android-assessment.md](../plans/android-assessment.md) | 32 | 32 | 0 | 0 / 15 / 11 (+ 6 L) | Added 2026-09-29, after the nine packages above, and not written as a qwen hand-off: nearly every card is native, CI or device work, so treat all 32 as opus. Founder ruled 2026-09-29 (plan §6): A0, A1 and A2 start now in parallel with iOS M2; no device pass and no request to Joey until the Android native engine is fully operational (after A-42); no spend; A3 deferred. Device pass: HUMAN-ACTIONS #127, not issued yet. |
+| Code health from the DHH-style review (116 verified issues: duplicate/dead/inconsistent code, five corner-case bugs, Kokoro weights out of every shell build) | [code-health.md](code-health.md) | 43 | 17 | 26 | 2 / 21 / 20 | Added 2026-10-05 after a seven-reviewer, verifier-checked review of the code base at `cd410d29` (founder: "review the app code base as DHH would"). Eight waves of one-PR cards, each opened with characterization tests; no two cards in a wave share a file beyond two named `app.js`/`client.js` slots. Seven human-merge PRs (`.github/`, `index.html`, `api/`, native comment edits, one reducer mirror). Founder: four deferrals (probe code deletion, two-element handover park, `?v=` rule, nothing to spend). |
 | **Total** (the nine 2026-09-25 packages) | | **224** | **111** | **113** | **64 / 150 / 10** | |
 
 Sizes: XS under an hour, S under half a day, M under two days of agent work. The Android plan also uses L (more than two days); its sizes are its own estimates.
@@ -102,7 +103,7 @@ Each plan was written on its own, so an opus dispatcher must reconcile these ove
 - **The shows-import repair is in two packages.** ops OPS-01…03 and shows-search PKG-00 both fix the failing `shows-import.yml` run. Run OPS-01/OPS-02. PKG-00 is satisfied once the pointer is fresh; shows-search PKG-07 waits on it.
 - **`tools/build-catalog-client.mjs` and the `test/show-page.test.js` exact-key pin** are edited by catalogue PKG-02 (`label_scope`) and shows-search PKG-11b (`chart_rank`). Run them one after the other. Whichever lands second also adds its field to `expectedKeys`.
 - **Ad-pad data is modelled twice.** corpus PKG-16…22 (`data/dai-measurements.json`, `ad_pad_sec` on minted rows, a check-forays ceiling rule) overlaps dai DAI-02…09 (`data/ad-pad-probes.json`, stamped `ad_*` on segment-sources, check-forays `ad_*` invariants). Land the dai package's check-forays and hydration tasks first. An opus reviewer then rescopes corpus PKG-19…22 onto the same fields before they are dispatched.
-- **`app.js` is shared** by player-features, catalogue-personalization, listener-forays-sharing, kokoro-voice (KV-09/10) and dai (DAI-07b via `player/client.js`). Across packages, only one `app.js` task is in flight at a time, and each one rebases on the last merge.
+- **`app.js` is shared** by player-features, catalogue-personalization, listener-forays-sharing, kokoro-voice (KV-09/10), dai (DAI-07b via `player/client.js`) and code-health (26 of its 43 cards; two per wave in named, disjoint regions). Across packages, only one `app.js` task is in flight at a time, and each one rebases on the last merge.
 - **Legal counts are pinned.** `test/legal-citations.test.js` pins the privacy-policy and data-safety event-type totals, and `test/data-deletion.test.js` pins the `cp_` key-family count. Tasks that add a `logEvent` type or a `cp_` key are in player, catalogue and listener, and they must run one at a time. Each one recomputes the totals from the test's failure message, not from the number written in its plan.
 - **`backend/src/cli/generateForays.ts`** is edited by generation GEN-07/14/18, listener PH2-07/16 and corpus PKG-23/24. Serialize those edits.
 - **Suite floors.** Almost every code task adds or raises a line in `test/suite-integrity.test.js`. The conflicts are one line each; rebase and keep both lines.
@@ -115,7 +116,8 @@ Each plan was written on its own, so an opus dispatcher must reconcile these ove
 4. **Player features wave 1** (pure modules PQ-01/03/05/09/10/12/16/25), then the serial `app.js` chain. **kokoro-voice** KV-01…07 and KV-17 alongside, since they touch disjoint files.
 5. **Corpus scaffolding** PKG-01…09 and PKG-11…14 (qwen), then the opus field runs once the credentials exist.
 6. **Shows-search** PKG-01/03/05/11a/11b/12, then the governed halves (PKG-02/04), the poller dry-run (PKG-06…09) and the ranking rule (PKG-13).
-7. **Gated work last:** player native plugins (Wave 4 founder merges), kokoro native chains after HA #45, listener Path B service/client after the four rulings, corpus topic assignment and catalogue waves, and catalogue event plumbing (PKG-18/19).
+7. **Code health** (code-health.md) runs wave by wave alongside the above; its wave 1 (the five live bugs and two CI gaps) can start now, and its `app.js` cards take their turn in the one-`app.js`-PR-at-a-time queue.
+8. **Gated work last:** player native plugins (Wave 4 founder merges), kokoro native chains after HA #45, listener Path B service/client after the four rulings, corpus topic assignment and catalogue waves, and catalogue event plumbing (PKG-18/19).
 
 Within each package, follow the plan's own §4 sequencing; it names which tasks share files.
 
