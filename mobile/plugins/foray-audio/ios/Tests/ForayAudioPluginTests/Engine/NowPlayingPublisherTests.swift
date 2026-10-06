@@ -390,20 +390,34 @@ final class NowPlayingPublisherTests: XCTestCase {
         seams.nowPlaying = publisher
         let engine = ForayEngine(seams: seams, config: EngineConfig(build: "test", forayTapeEnabled: true))
         engine.start()
-        let line = try XCTUnwrap(EngineItem(node: .object([
+        // Through the contract's playForay, as the page sends it: only that
+        // sets the core's forayId, and without one mediaView describes an
+        // episode (the listener's rate, never the line's 1x). A spoken line
+        // needs its duration_sec to pass StructuralCheck.
+        let line: JSONNode = .object([
             JSONMember("id", .string("f1#0")), JSONMember("kind", .string("tts")),
             JSONMember("type", .string("narration")), JSONMember("script", .string("a line")),
-            JSONMember("audio_url", .null)
-        ])))
-        let clip = try XCTUnwrap(EngineItem(node: .object([
+            JSONMember("audio_url", .null), JSONMember("duration_sec", .number(4))
+        ])
+        let clip: JSONNode = .object([
             JSONMember("id", .string("f1#1")), JSONMember("kind", .string("episode")),
             JSONMember("audio_url", .string("https://cdn.test/b.mp3")),
             JSONMember("start_sec", .number(300)), JSONMember("end_sec", .number(400)),
             JSONMember("duration_sec", .number(3600))
-        ])))
-        engine.handle(.queue(.loadForay([line, clip], isLocalFile: false, allowAdPad: false)))
+        ])
+        let playForay = try EngineContract.SendRequest(contract: .object([
+            JSONMember("v", .number(1)), JSONMember("cmdSeq", .number(1)), JSONMember("cmd", .string("playForay")),
+            JSONMember("source", .string("tap")),
+            JSONMember("args", .object([
+                JSONMember("forayId", .string("f1")), JSONMember("title", .string("A Foray")),
+                JSONMember("items", .array([line, clip])), JSONMember("buildReport", .object([])),
+                JSONMember("isLocalFile", .bool(false)), JSONMember("allowAdPad", .bool(false)),
+                JSONMember("voiceId", .null)
+            ]))
+        ]))
         engine.handle(.queue(.setRate(1.5)))
-        engine.handle(.queue(.playIndex(0, startSec: nil, source: .tap)))
+        engine.handle(.command(playForay.command, source: playForay.source))
+        XCTAssertNotNil(engine.state.forayId, "the core is in a Foray, so mediaView takes its Foray branch")
         let seq = try XCTUnwrap(world.speaker.narrated.compactMap { command -> Int? in
             if case let .speak(seq, _, _, _) = command { return seq }
             return nil
