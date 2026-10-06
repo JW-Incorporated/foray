@@ -405,7 +405,7 @@ test("a render closes the sheets that live inside #view before their DOM goes", 
   m.ctx.closeSheetsWithin(m.view);
   assert.strictEqual(asked, 1, "the sheet is asked first, so its own cleanup runs");
   assert.strictEqual(m.ctx.openSheetCount(), 0, "and it is closed regardless — its DOM is about to go");
-  assert.match(APP_SRC, /fbTarget = null;[\s\S]{0,400}closeSheetsWithin\(\$\("#view"\)\);/,
+  assert.match(APP_SRC, /leaveForayPage\(\);[\s\S]{0,400}closeSheetsWithin\(\$\("#view"\)\);/,
     "renderCurrentPage must call it beside the other per-page resets");
 });
 

@@ -34,7 +34,7 @@ process.on("unhandledRejection", () => {});
 
 const FZ = "tools/foray/fixtures/frozen/data";
 const ID = "capital-types-1";   // published, 22 items, in the frozen fixture
-const readData = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
+const readFrozen = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
 
 const playerMods = (async () => ({
   resolve: await import("../player/foray-resolve.js"),
@@ -119,9 +119,9 @@ function mount({ hash, bridge }) {
   state.session = { session_id: "s", builder: "t", episodes: {}, cards: [] };
   state.discover = { items: [] };
   state.taxonomy = { nodes: [{ id: "science", label: "Science" }] };
-  state.forays = readData(`${FZ}/forays.json`);
-  state.segments = readData(`${FZ}/segments.json`);
-  state.segmentSources = readData(`${FZ}/segment-sources.json`);
+  state.forays = readFrozen(`${FZ}/forays.json`);
+  state.segments = readFrozen(`${FZ}/segments.json`);
+  state.segmentSources = readFrozen(`${FZ}/segment-sources.json`);
   return { ctx, state, view, fetched, html: () => view.innerHTML };
 }
 
