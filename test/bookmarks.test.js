@@ -36,8 +36,10 @@ const SEARCH_SRC = fs.readFileSync(path.join(ROOT, "search-engine.js"), "utf8");
 process.on("unhandledRejection", () => {});
 
 let BOOKMARKS = null;
+let RULES = null;
 before(async () => {
   BOOKMARKS = await import("../player/bookmarks.js");
+  RULES = await import("../player/continuation.js");
 });
 
 function makeEl(tag) {
@@ -65,7 +67,7 @@ const PAGE_IDS = [
   "banner-slot", "pl-form", "pl-input", "pl-note",
 ];
 
-function mount({ store = new Map(), bookmarks = BOOKMARKS } = {}) {
+function mount({ store = new Map(), bookmarks = BOOKMARKS, rules = RULES } = {}) {
   const byId = new Map(PAGE_IDS.map((id) => {
     const el = makeEl("div");
     el.id = id;
@@ -107,8 +109,10 @@ function mount({ store = new Map(), bookmarks = BOOKMARKS } = {}) {
   };
   ctx.window = ctx;
   ctx.globalThis = ctx;
-  /* player/client.js publishes the bookmark rules at module evaluation. */
+  /* player/client.js publishes the bookmark rules at module evaluation, and
+     the continuation rules (the engine watermark's planner) beside them. */
   ctx.forayBookmarks = bookmarks;
+  ctx.forayContinuation = rules;
   vm.createContext(ctx);
   vm.runInContext(SEARCH_SRC, ctx, { filename: "search-engine.js" });
   vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
@@ -117,6 +121,7 @@ function mount({ store = new Map(), bookmarks = BOOKMARKS } = {}) {
     ctx, evalIn, store, body, events,
     nav: evalIn("EPISODE_NAVIGATION"),
     raw: () => JSON.parse(store.get("cp_bookmarks") || "null"),
+    rows: (type) => events.filter((e) => e.type === type),
     status: () => body.children.find((k) => k && k.id === "a11y-status") || null,
   };
 }
@@ -195,4 +200,59 @@ test("a bookmark logs no event — it stays on the device (README Q19, no new ev
   m.nav.addBookmark("ep-1", 300, 600);
   m.nav.bookmarksFor("ep-1");
   assert.strictEqual(m.events.length, before, "no event row for a bookmark");
+});
+
+/* ==================================================================== */
+/* CH-09a: the starred-show follow and the engine watermark, pinned as    */
+/* they behave once storage has settled (characterization, A1-03/A1-04). */
+/* ==================================================================== */
+
+const SHOW = { show_id: "show-1", title: "A Show", artwork_url: "https://art.test/s.jpg" };
+
+/** The page with one show in its catalogue and one Follow button the
+    repaint can find, recording its text. */
+function mountWithShow(opts) {
+  const m = mount(opts);
+  m.evalIn("state").catalog = { shows: [SHOW] };
+  const btn = makeEl("button");
+  m.ctx.document.querySelectorAll = (sel) => (sel === '[data-show-star="show-1"]' ? [btn] : []);
+  return { ...m, btn };
+}
+
+test("a follow that is kept logs show_starred once and repaints Followed; the unfollow logs show_unstarred", () => {
+  /* Characterization (CH-09a): today's behaviour for a write that takes.
+     MUTATION: drop `logEvent("show_starred", ...)` from toggleShowStar -> no
+     row; red. MUTATION 2: drop the setToggleLabel repaint -> the button keeps
+     its old text; red. */
+  const m = mountWithShow();
+  m.ctx.toggleShowStar("show-1");
+  assert.strictEqual(m.rows("show_starred").length, 1, "one show_starred");
+  assert.strictEqual(JSON.stringify(m.rows("show_starred")[0].payload), JSON.stringify({ show_id: "show-1" }));
+  assert.ok(JSON.parse(m.store.get("cp_starred_shows"))["show-1"], "the follow is stored");
+  assert.strictEqual(m.btn.textContent, "✓ Followed");
+  m.ctx.toggleShowStar("show-1");
+  assert.strictEqual(m.rows("show_unstarred").length, 1, "one show_unstarred");
+  assert.deepStrictEqual(JSON.parse(m.store.get("cp_starred_shows")), {}, "the unfollow is stored");
+  assert.strictEqual(m.btn.textContent, "+ Follow");
+});
+
+function engineHop(planSeq, hopSeq, id) {
+  return {
+    planSeq, hopSeq, finishedId: "earlier", nextId: id, fromList: false, queueAfter: [],
+    item: { id, title: id, audio_url: `https://audio.test/${id}.mp3`, topics: [] }, lastEpisodeRow: null,
+  };
+}
+
+test("once settled, an engine hop and a position drain write one watermark that keeps both halves", () => {
+  /* Characterization (CH-09a): the watermark is written at once and each
+     writer moves only its own half. MUTATION: write `{ event: step.applied.event }`
+     in drainEngineEvents -> the advance half is lost; red. MUTATION 2: drop the
+     watermark write from applyEngineAdvance -> the second delivery logs a
+     second play_started; red. */
+  const m = mount();
+  assert.strictEqual(m.ctx.applyEngineAdvance(engineHop(5, 1, "ep-a")), true);
+  assert.strictEqual(m.ctx.applyEngineAdvance(engineHop(5, 1, "ep-a")), false, "the same hop again is a no-op");
+  assert.strictEqual(m.ctx.drainEngineEvents([{ seq: 3, kind: "position", episode_id: "ep-a", seconds: 60, duration: 600, at: 1 }]), 1);
+  assert.deepStrictEqual(JSON.parse(m.store.get("cp_engine_applied")), { advance: { planSeq: 5, hopSeq: 1 }, event: 3 });
+  assert.strictEqual(m.rows("play_started").length, 1);
 });
