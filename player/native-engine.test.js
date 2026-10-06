@@ -22,6 +22,7 @@ import assert from "node:assert/strict";
 
 import {
   createNativeEngine, HELLO_TIMEOUT_MS, BRIDGE_ERROR, snapshotOrder, isUnimplemented, ENGINE_PLUGIN,
+  ENGINE_EVENT, listenTo,
 } from "./native-engine.js";
 import { validateContract, contractSchemaDocument } from "./engine-contract.js";
 import { ReferenceEngine } from "./parity/reference-engine.js";
@@ -426,4 +427,29 @@ test("the client calls the plugin the Swift side registers, and engineHello is o
   const swift = fs.readFileSync(new URL("../mobile/plugins/foray-audio/ios/Sources/ForayAudioPlugin/ForayAudioPlugin.swift", import.meta.url), "utf8");
   assert.equal(/public\s+let\s+jsName\s*=\s*"([^"]+)"/.exec(swift)?.[1], ENGINE_PLUGIN);
   assert.match(swift, /CAPPluginMethod\(name:\s*"engineHello"/);
+
+  // CH-12: and it LISTENS on that plugin, for the "engine" event — through
+  // Capacitor.addListener when the bridge has it, else the thinner
+  // nativeCallback(plugin, "addListener", {eventName}, fn). download-bridge.js
+  // subscribes through the same helper; its suite pins the ForayDownloads side.
+  // MUTATION: hardcode either argument in the shared helper -> one side red.
+  const viaAdd = [];
+  const addCap = { addListener: (plugin, event, fn) => { viaAdd.push([plugin, event, typeof fn]); return { remove() {} }; } };
+  createNativeEngine({ capacitor: addCap, scheduler: manualScheduler() }).subscribe(() => {});
+  assert.deepStrictEqual(viaAdd, [["ForayAudio", "engine", "function"]]);
+  const viaCb = [];
+  const cbCap = { nativeCallback: (plugin, method, options, fn) => { viaCb.push([plugin, method, options, typeof fn]); } };
+  createNativeEngine({ capacitor: cbCap, scheduler: manualScheduler() }).subscribe(() => {});
+  assert.deepStrictEqual(viaCb, [["ForayAudio", "addListener", { eventName: "engine" }, "function"]]);
+  // The shared helper itself: addListener's handle back; null from the thinner
+  // primitive, from no path at all, and from a bridge that throws.
+  const handle = { remove() {} };
+  const fn = () => {};
+  assert.strictEqual(listenTo({ addListener: () => handle }, ENGINE_PLUGIN, ENGINE_EVENT, fn), handle);
+  const cbSeen = [];
+  assert.strictEqual(listenTo({ nativeCallback: (...a) => cbSeen.push(a) }, "ForayDownloads", "downloadDone", fn), null);
+  assert.deepStrictEqual(cbSeen, [["ForayDownloads", "addListener", { eventName: "downloadDone" }, fn]]);
+  assert.strictEqual(listenTo({}, ENGINE_PLUGIN, ENGINE_EVENT, fn), null);
+  assert.strictEqual(listenTo(null, ENGINE_PLUGIN, ENGINE_EVENT, fn), null);
+  assert.strictEqual(listenTo({ addListener: () => { throw new Error("no"); } }, ENGINE_PLUGIN, ENGINE_EVENT, fn), null);
 });
