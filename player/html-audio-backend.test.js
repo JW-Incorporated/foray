@@ -3293,3 +3293,22 @@ test("NE-45j: the web lane prepares nothing across a narration seam — prefetch
     m.dispose();
   }
 });
+
+/* ---------- CH-37 (P1-10, docs/roadmap/code-health.md): "audible?" is the backend's answer ---------- */
+
+test("CH-37 characterization: through the manager, a paused element is not audible and a playing one is (web lane)", async () => {
+  /* Today's contract, pinned before the getter moves into the backend: the
+     manager's `elementIsAudible` follows the element's own `paused` and
+     `ended`, in both directions. */
+  const { m, el } = wired();
+  m.setQueueFromPick(item("a", "https://cdn.example/a.mp3"));
+  await m.play(0);
+  el.paused = true;
+  el.ended = false;
+  assert.equal(m.elementIsAudible, false, "a paused element is not audible");
+  el.paused = false;
+  assert.equal(m.elementIsAudible, true, "a playing element is");
+  el.ended = true;
+  assert.equal(m.elementIsAudible, false, "an element that ran out is not, whatever `paused` says");
+  m.dispose();
+});

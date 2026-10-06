@@ -458,3 +458,17 @@ test("NE-35: the facade builds the Foray in JS and plays it with ONE playForay; 
   assert.equal(s.f.manager.forayArgs(), null, "an episode pick is not a Foray");
   s.done();
 });
+
+/* ---------- CH-37 (P1-10, docs/roadmap/code-health.md): "audible?" is the backend's answer ---------- */
+
+test("CH-37 characterization: a paused engine is not audible and a playing one is (native lane)", async () => {
+  /* Today's contract on the native side, pinned before the backend facade
+     grows its own `audible`: the manager facade answers from the snapshot,
+     and the backend facade's `paused` is its complement for a running deck. */
+  const s = await scripted({ ...SNAP.playing, durationSec: 3600 });
+  assert.equal(s.f.manager.elementIsAudible, true, "a playing engine is audible");
+  assert.equal(s.f.backend.paused, false);
+  await s.push({ state: "interrupted", running: false, wasPlaying: true, effectiveRate: 0 });
+  assert.equal(s.f.manager.elementIsAudible, false, "a paused engine is not");
+  assert.equal(s.f.backend.paused, true);
+});

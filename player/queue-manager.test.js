@@ -4460,3 +4460,22 @@ test("ยง15: pausing and resuming the clip before a warmed line keeps the warm โ€
   await m.resume();
   assert.deepEqual(warmsOf(backend), ["warm:nar-1", "warm:nar-1"], "asked again, never cancelled in between");
 });
+
+/* ---------- CH-37 (P1-10, docs/roadmap/code-health.md): "audible?" is the backend's answer ---------- */
+
+test("CH-37 characterization: elementIsAudible is false for a paused element and true for a playing one", async () => {
+  /* Pinned before the manager stops reading `paused` itself: a definite
+     `paused: false` that has not `ended` is audible; paused, or ended, is not;
+     and a synth line is never the element's sound. */
+  const { m, backend } = make();
+  m.setQueueFromPick(ep("a"));
+  await m.play(0);
+  backend.paused = true;
+  backend.ended = false;
+  assert.equal(m.elementIsAudible, false, "paused");
+  backend.paused = false;
+  assert.equal(m.elementIsAudible, true, "playing");
+  backend.ended = true;
+  assert.equal(m.elementIsAudible, false, "ran out");
+  m.dispose();
+});
