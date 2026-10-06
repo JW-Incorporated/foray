@@ -130,7 +130,7 @@ Written 2026-10-05 against `origin/main` @ `cd410d29`. Every path, function, lin
 - **Characterization first.** Every card's first commit adds the tests that pin today's behaviour (named in the card under "Characterization FIRST") and they pass against the unmodified code. Only then does the refactor land. A reviewer must be able to see the pin before the move.
 - **Mutations.** Every new test's comment names the one-line mutation that turns it red, and you run that mutation once before committing.
 - **Floors are minimums.** `test/suite-integrity.test.js` asserts `count >= floor`. A NEW suite needs a `FLOORS` entry with its top-level `test()` count in the same PR. When a suite grows by N, raise its floor by N and append `; <old> -> <new> // CH-xx: <what>` to that line's comment. When a card DELETES tests (CH-24, CH-26, CH-30, CH-34), set the floor to the exact new count and say so in the comment. Never delete a test to hit a number.
-- **Parity.** Any card touching `player/queue-state.js`, `queue-manager.js`, `html-audio-backend.js`, `deck-policy.js`, `foray-resolve.js`, `foray-progress.js`, `route-resume.js` or `locate-window.js` runs `node tools/parity/record.mjs --check` and reports it. Only CH-11b re-records a family (`queue-state`), per `player/parity/README.md`; a card whose `--check` moves a fixture it was not told to re-record has made a behaviour change and stops.
+- **Parity.** Any card touching `player/queue-state.js`, `queue-manager.js`, `html-audio-backend.js`, `deck-policy.js`, `foray-resolve.js`, `foray-progress.js`, `route-resume.js` or `locate-window.js` runs `node tools/parity/record.mjs --check` and reports it. No live card re-records a family (CH-11b, the only one that would have re-recorded `queue-state`, was dropped by [#1120](https://github.com/JW-Incorporated/foray/issues/1120)), per `player/parity/README.md`; a card whose `--check` moves a fixture it was not told to re-record has made a behaviour change and stops.
 - Never commit `deploy-manifest.json` or `data/forays-directory.json`. `sw.js` `BUILD_ID` stays the literal `"unstamped"`.
 - No new `logEvent("<type>")` strings and no new `cp_` key anywhere in this package (CH-09b reads `cp_bookmarks`, which exists). `test/data-deletion.test.js` and `test/legal-citations.test.js` must stay green untouched.
 - `app.js` is a classic script tested in `node:vm` harnesses; new page tests copy the harness of the suite named in the card. 38 of the 109 app.js harnesses do not load `search-engine.js`: never add a top-level `SearchEngine.` read to app.js.
@@ -255,7 +255,7 @@ Each card: the issues it closes (Appendix A), the exact change, files (the agent
 
 ### CH-11 · `player/item-kind.js`: strip and media-session classify a jingle the same way (qwen, S)
 
-**Issues:** P2-03 (the JS-classification half; the reducer half is CH-11b). **Latent inconsistency** — no shipped Foray carries `kind: jingle`; one draft does.
+**Issues:** P2-03 (the JS-classification half; the reducer half is CH-11b, dropped by [#1120](https://github.com/JW-Incorporated/foray/issues/1120)). **Latent inconsistency** — no shipped Foray carries `kind: jingle`; one draft does.
 
 **Exact change.** Create `player/item-kind.js` exporting `isNarration(item)` (`kind === TTS || type === "narration"`), `isJingle(item)`, `isTape(item)`, importing `TTS` from `./queue-state.js` (73) and `JINGLE` from `./foray-queue.js` (76). `queue-state.js` must NOT import item-kind (cycle); the reducer keeps its own constants. `segment-strip.js:157–159` imports `isNarration` (and stops spelling `"tts"`); 172–177/378–380 render a jingle as a narration-class hairline, not a show capsule; `stripSummary`/`stripTally` exclude it from clips. `media-session.js:400–401` uses `isNarration || isJingle`. `interlude.js` gets one sentence pointing at item-kind as the classifier. Note in item-kind.js that warming a jingle (`deck-policy.js:842 preparesNext`) is a separate decision, unchanged.
 
@@ -353,7 +353,7 @@ Each card: the issues it closes (Appendix A), the exact change, files (the agent
 
 **Tests.** Characterization FIRST: load with offset 600 resolves after canplay at 600; load with offset 0 resolves on canplay. New: a fake element fires `seeked` at currentTime 0 with readyState 3 BEFORE the offset seek lands; assert `load()` has not resolved, then it resolves once currentTime is near 600 (kills reverting `onSeeked`). **Mutation:** changing `SETTLE_NEAR_SEC` in deck-policy must move `load()`'s behaviour with it (one test parameterised on the constant). Run `--check` (no fixture moves). Bump floor from 129.
 
-### Wave 3 — Foray page, duration, load-error path, reducer mirror (8 cards; app.js slots: CH-22, CH-23; client.js slot: CH-26)
+### Wave 3 — Foray page, duration, load-error path, ~~reducer mirror~~ (7 live cards, CH-11b dropped per [#1120](https://github.com/JW-Incorporated/foray/issues/1120); app.js slots: CH-22, CH-23; client.js slot: CH-26)
 
 ### CH-11b · Reducer: a `JINGLE` item keeps 1x — JS, Swift and Java mirrors + the `queue-state` fixture (opus, M — human merge) — DROPPED
 
