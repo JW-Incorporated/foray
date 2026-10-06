@@ -1914,7 +1914,10 @@ function toggleShowStar(id) {
     if (had) delete out[id]; else out[id] = entry;
     return out;
   });
-  if (ok) logEvent(had ? "show_unstarred" : "show_starred", { show_id: id });
+  if (ok) {
+    if (had) logEvent("show_unstarred", { show_id: id });
+    else logEvent("show_starred", { show_id: id });
+  }
   document.querySelectorAll(`[data-show-star="${CSS.escape(id)}"]`).forEach(b => {
     setToggleLabel(b, isShowStarred(id), FOLLOW_TOGGLE);
     b.classList.toggle("on", isShowStarred(id));
