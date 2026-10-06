@@ -1958,7 +1958,11 @@ export function vaultErrText(err) {
   return cut === full ? full : `${cut} [vault detail withheld]`;
 }
 
-function errText(err) {
+/** An error as one line for a fault record: the exception class, then the
+    message (`QuotaExceededError: ...`), unless the message already starts with
+    it. Shared with `event-log.js` (CH-13), so both health() records read the
+    same way. */
+export function errText(err) {
   if (!err) return "unknown error";
   const name = err.name ? String(err.name) : "";
   const msg = err.message ? String(err.message) : String(err);

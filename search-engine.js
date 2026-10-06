@@ -2555,7 +2555,30 @@ function rankShardRows(query, rows) {
   return scored.map((s) => s.row);
 }
 
+/* WHO READS THIS OBJECT (code-health CH-16, X1-12). A member is exported
+   because something outside this file names it, and for no other reason —
+   an export is not by itself UI contract. Two members that had no reader
+   anywhere, `prettyConceptLabel` (suggestAdjacentTopics' label helper) and
+   `showIndexLowerBound` (prefixSearchShows' binary search), are private.
+
+   app.js (the page) reads 15 members, as `SearchEngine.<name>`, and only these:
+   `classifyResults`, `DEFAULT_CAP`, `foldDiacritics`, `interpretQuery`,
+   `parseShowIndex`, `prefixSearchShows`, `primeVocabulary`, `rankShardRows`,
+   `rankShows`, `scanShowIndex`, `searchShows`, `searchWithRelaxation`,
+   `shardKeyForQuery`, `STOPWORDS`, `suggestAdjacentTopics` (`DEFAULT_CAP` only
+   in the playlist-size arithmetic comment, not in code).
+   test/search-engine-exports.test.js holds this list to app.js.
+
+   Everything else is read by tests and tools that `require()` this file (the
+   many app.js harnesses load it into a vm only so the page can reach the 15). */
 const SearchEngine = {
+  /* The topic scorer, its tunables and the shared matcher: tools/test-search.mjs
+     (the quality battery) reads nearly all of them; test/search-*.test.js and
+     test/show-search*.test.js pin them by name; tools/mobile/prepare-webdir.test.mjs
+     pins prepare-webdir.mjs's restated tag-df matcher to the real `tagCount`/
+     `tagDF`/`SENSE_LOCKED_STEMS` (prepare-webdir.mjs itself never loads this
+     file, #279); tools/topic-coverage-report.mjs and
+     tools/validate-semantic-index.mjs read the vocabulary side. */
   STOPWORDS, GENERIC_WORDS, ALIASES, BROAD_DF_THRESHOLD,
   TAG_DF_TOO_BROAD, TAG_DF_COMMON, TAG_DF_RARE,
   STRONG_RATIO, RICH_MIN, DEFAULT_CAP, PER_SHOW_CAP, LISTENED_PENALTY, SENSE_LOCKED_STEMS,
@@ -2564,26 +2587,32 @@ const SearchEngine = {
   lemmaVariants,
   interpretQuery, passesFilters, scoreMatch, searchWithRelaxation, classifyResults, diversify,
   strongPrefix,
-  suggestAdjacentTopics, prettyConceptLabel,
+  suggestAdjacentTopics,
   searchShows,
-  /* S-04 / S-03 (docs/search-plan.md). Exported rather than private because
-     three other readers name these: test/show-search-ranking.test.js pins the
-     buckets by name, tools/build-show-index.mjs's reference scan compares
-     against `showMatchBucket`, and app.js chooses between the prefix pass and
-     the scan pass on the debounce tick. */
+  /* S-04 / S-03 (docs/search-plan.md): the show-match buckets, tiers and
+     comparator. app.js reads only `rankShows` from this group. The buckets and
+     tiers are pinned by name in test/show-search-ranking.test.js (and
+     test/show-index.test.js, test/show-search-shard.test.js,
+     test/show-search-fallthrough.test.js); tools/popularity-signal-probe.mjs
+     replays `showMatchBucket`/`showMatchTier`/`compareShowMatches`. */
   SHOW_MATCH_EXACT, SHOW_MATCH_PREFIX, SHOW_MATCH_WORD_START, SHOW_MATCH_SUBSTRING, SHOW_MATCH_NONE,
   SHOW_PRIOR_BANDS,
   SHOW_MATCH_UNMATCHED,
   SHOW_TIER_EXACT, SHOW_TIER_BOUNDARY, SHOW_TIER_SUBSTRING, SHOW_TIER_UNMATCHED, showMatchTier,
   showMatchBucket, isBreadthShow, popularityBand, compareShowMatches, rankShows,
-  /* The one fold, exported so tools/build-show-index.mjs sorts on the key
-     parseShowIndex will binary-search over, and app.js's Foray group matches
-     the way the show passes do (audit round 2, search-9 / p-foray-4). */
+  /* The one fold: tools/build-show-index.mjs sorts on it (the key
+     parseShowIndex binary-searches over), and app.js's Foray group matches the
+     way the show passes do (audit round 2, search-9 / p-foray-4). */
   foldDiacritics,
-  parseShowIndex, showIndexLowerBound, prefixSearchShows, scanShowIndex,
-  /* S-05 (4a-shows-pipeline-plan.md §3.2). Exported for app.js's shard fetch
-     integration and for test/show-search-shard.test.js and
-     test/offline-search.test.js. */
+  /* The client-side show index (S-03): app.js parses it and runs the prefix
+     pass per keystroke and the scan pass on the debounce tick; test/show-index.test.js,
+     test/show-search-fallthrough.test.js, test/show-search-reach.test.js and
+     tools/search-probe.mjs read them too. */
+  parseShowIndex, prefixSearchShows, scanShowIndex,
+  /* S-05 (4a-shows-pipeline-plan.md §3.2). app.js's shard fetch reads
+     `shardKeyForQuery` and `rankShardRows`; the other four are exported for
+     test/show-search-shard.test.js, which pins them against the shard builder
+     (`rankShardRows` is also read by test/offline-search.test.js). */
   shardQueryTokens, normalizeShardPrefixKey, longestShardToken, shardKeyForQuery,
   shardRowMatchesAllTokens, rankShardRows,
 };

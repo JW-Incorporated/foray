@@ -343,7 +343,7 @@ test("a playlist card says how far in you are, in the same reading as the playli
   const item = (id) => ({ id, title: `T ${id}`, show: "S", audio_url: `https://a.test/${id}.mp3`, topics: [] });
   app._state("state.discover = { items: [] }; state.session = { session_id: 's', builder: 't', episodes: {}, cards: [] }; state.itemIndex = {};");
   app._state("state.discover.items = " + JSON.stringify(["a", "b", "c", "d"].map(item)) + "; fullPool();");
-  app.savePlaylists([{
+  app.lsSet("cp_playlists", [{
     id: "pl-3", title: "Four", items: ["a", "b", "c", "d"].map((id) => app.playlistPart(item(id))),
     created: "2026-09-18T07:00:00.000Z", last_played_at: "2026-09-18T08:00:00.000Z",
   }]);
@@ -364,7 +364,7 @@ test("ROUND 2 review (honesty-7 x copy-13): a playlist card never says '0 of N p
   const item = (id) => ({ id, title: `T ${id}`, show: "S", audio_url: `https://a.test/${id}.mp3`, topics: [] });
   app._state("state.discover = { items: [] }; state.session = { session_id: 's', builder: 't', episodes: {}, cards: [] }; state.itemIndex = {};");
   app._state("state.discover.items = " + JSON.stringify(["a", "b", "c"].map(item)) + "; fullPool();");
-  app.savePlaylists([{
+  app.lsSet("cp_playlists", [{
     id: "pl-0", title: "Three", items: ["a", "b", "c"].map((id) => app.playlistPart(item(id))),
     created: "2026-09-18T07:00:00.000Z", last_played_at: "2026-09-18T08:00:00.000Z",
   }]);

@@ -100,14 +100,14 @@ const FLOORS = {
      `player/` whose deletion would be hardest to notice: everything keeps
      rendering, and a listener's place quietly stops surviving the week. */
   "player/durable-store.test.js": 137, // CH-04 (N1-01): a bridge whose isNativePlatform() answers false or throws is no native tier and defers nothing (characterization x2 + throw x2); 133 -> 137 // audit round 3 integration: the real post-merge count, 127 -> 133 // NE-23 (native-engine plan §4.6): single writer for the engine's rows on the iOS shell — iOS-only deferral and its client.js wiring, a stale mirror never reaches Preferences, replace-set on attach (and against a late read), a deleted row not resurrected, a refused write untouched and faulted, held writes, the release migration once (and mid-hydration, twice over), the ledger ghost, one-way relinquish, the sweep, native Delete my data; 112 tests -> 127, floor 107 -> 127 // persist-6, founder ruling 2026-09-24 "Option A": the device-only vault — the token goes to the vault and to no backed-up tier, other rows never enter it, the account is read back from it, an earlier build's copy is moved in and only then out (a refused or unread vault moves nothing, an unread tier keeps what it may hold), the vault wins, removal and purge reach it, canKeep, the breaker, the old ledger entry, health(), client.js wiring; 87 -> 107 // 2026-09-22 audit (theme J, R10): the native Preferences tier the header had promised since #40 — absent on the web, survives a WebView sweep, first word in hydration, owned keys only, purge reaches it, and client.js wires it; 81 -> 87 // 2026-09-22 audit (theme J): a key localStorage refused while IndexedDB took it is not reverted next launch, nor pushed down over the good copy — three keys, the mark clearing, a refused removal, the ledger as bookkeeping, purge, a corrupt ledger; 74 -> 81
-  "player/idb-tier.test.js": 27, // audit round 3 integration: the real post-merge count, 23 -> 27
+  "player/idb-tier.test.js": 29, // CH-13 (P2-14, docs/roadmap/code-health.md): the kv store is created exactly { keyPath: "key" } (characterization), and the exported openDb passes store options through, never recreates a store and rejects a blocked open; 27 -> 29 // audit round 3 integration: the real post-merge count, 23 -> 27
   /* New with M3 (kanban card t_c7199b13): the event queue moved off a
      synchronous `cp_events` localStorage rewrite into its own IndexedDB
      database. Covers append/flush never throwing, batching, the two id
      spaces (durable + fallback ring), and the two behaviours the design
      calls out by name — quota exhaustion (not lost, surfaced via health(),
      never thrown) and the 5,000-row retention cap. */
-  "player/event-log.test.js": 37, // audit round 3 integration: the real post-merge count, 36 -> 37 // 2026-09-22 audit (theme J, R11): purge() empties the buffer, the ring and IndexedDB and re-reads to prove it; a deaf store and a refused clear are failures, never throws. The suite already stood at 32 against 20, so this closes that slack too; 20 -> 36
+  "player/event-log.test.js": 40, // CH-13 (P2-14): the events store is { keyPath: "id", autoIncrement: true } and a blocked open is a named fault with the row kept (characterization x2), and a fault reads in durable-store's errText words; 37 -> 40 // audit round 3 integration: the real post-merge count, 36 -> 37 // 2026-09-22 audit (theme J, R11): purge() empties the buffer, the ring and IndexedDB and re-reads to prove it; a deaf store and a refused clear are failures, never throws. The suite already stood at 32 against 20, so this closes that slack too; 20 -> 36
   /* 83 -> 87 with #225: the page's two failure guards now reach the field record.
      Two of the four exist to keep the instrument from becoming the outage it was
      built to explain — one pins that the message is on screen BEFORE the record is
@@ -661,6 +661,10 @@ const FLOORS = {
      the ranker they claimed to describe. Every test in there was
      mutation-checked — see the suite header. */
   "test/search-matcher.test.js": 45, // audit round 3 integration: the real post-merge count, 31 -> 45 // round-3 audit, L4: an unparseable date is never recent (search-api-css-11); 30 -> 31 | accented queries tokenize whole and match either spelling (search-api-css-6 x2); 28 -> 30 | deep learning / story / marathon are content, funny history keeps its filter, deep sea + speed of light are not confident filler (search-api-css-1 x4); 24 -> 28 | constructor is a word and a typeless filter never throws (search-api-css-2 x2); 22 -> 24
+  /* search-engine.js export object vs app.js (code-health CH-16): every member app.js
+     names is exported and listed in the export comment, the two former orphans stay
+     private, and their two callers still work. */
+  "test/search-engine-exports.test.js": 5,
   /* The rich/sparse/empty tiering and the ranking prefix the narrow branch shows
      (#216). Floored because the battery cannot stand in for it: the disagreement
      it pins only reaches the page on a sparse or single-show query, and no query
@@ -709,7 +713,7 @@ const FLOORS = {
      playlist play (two tests — the positive case and that a non-playlist
      play never fabricates one), and searchWithRelaxation's `relaxed` signal
      being discarded by buildPlaylist instead of disclosed on the page. */
-  "test/playlist-durability.test.js": 40, // audit round 2, lane L3 (2026-09-23): 'N played' counts finished episodes only (honesty-6); 38 -> 39 // catalogue-personalization PKG-11 (#558 item 8, 2026-10-04): a playlist part stores release_date, so an archived part still shows its date; 39 -> 40 //
+  "test/playlist-durability.test.js": 41, // code-health CH-08 (A1-07/A1-09): savePlaylists gone, its slice test now pins PLAYLISTS_CAP as the one cap; a part the real builder stores carries no Apple ids; reads write nothing and the next edit writes the repair; 40 -> 41 // audit round 2, lane L3 (2026-09-23): 'N played' counts finished episodes only (honesty-6); 38 -> 39 // catalogue-personalization PKG-11 (#558 item 8, 2026-10-04): a playlist part stores release_date, so an archived part still shows its date; 39 -> 40 //
   /* #/show/:id, Stage 1 of docs/show-pages-plan.md. Floored because the join it
      guards (show_id first, title-alias fallback for Lingthusiasm) fails
      silently in exactly the way #276's playlist decay did: a dropped fallback
@@ -1095,7 +1099,7 @@ const FLOORS = {
      feed slowly stopped surprising anyone. Every test names its mutation;
      see the suite header. */
   "test/home-v2.test.js": 10, // founder, 2026-09-24: "Rename it 'Suggested'" — the card-slot heading; 9 -> 10 // F14 (2026-09-08): generated playlists are interest leaves, not card slots // F14 (2026-09-08): generated playlists are interest leaves, not card slots
-  "test/save-playlist.test.js": 21, // founder, 2026-09-25: "we should add a feature to save playlists" — save a generated playlist or a Suggested queue as your own: shape + provenance, subject, frozen copy, idempotence + no-navigate second tap, remove-and-resave, changed source not "Saved", the 50 cap said not applied x2 (Save; Create + no slice), own everywhere x2 (no duplicate card/result), Family Mode x2 (on-then-saved; saved-then-on leak), playable snapshot, playing it, the app-1-1 writer x5 (provisional, full at settle, exists at settle, remove and play-stamp while pending), Delete my data, copy rules; new suite
+  "test/save-playlist.test.js": 23, // code-health CH-08 (A1-02): one writer of cp_playlists -- a settled save answers saved with one playlist_saved (characterization), and a save queued behind hydration stays Saved when Home's onboarding reads the list first, and the flush is the one write; 21 -> 23 // founder, 2026-09-25: "we should add a feature to save playlists" — save a generated playlist or a Suggested queue as your own: shape + provenance, subject, frozen copy, idempotence + no-navigate second tap, remove-and-resave, changed source not "Saved", the 50 cap said not applied x2 (Save; Create + no slice), own everywhere x2 (no duplicate card/result), Family Mode x2 (on-then-saved; saved-then-on leak), playable snapshot, playing it, the app-1-1 writer x5 (provisional, full at settle, exists at settle, remove and play-stamp while pending), Delete my data, copy rules; new suite
   "test/home-play.test.js": 14, // founder, 2026-09-24: Home's one play button — each first-rail kind, passed-over rails, the empty case, loading / failure / superseded / isCurrent; new suite
   "test/home-v2-real-data.test.js": 5, // U-03 audit fix (2026-09-10): Home v2 over the committed data/*.json at insets 0/59; the Forays-for-you floor's documented fallback with one published Foray
   /* Starred shows (follow-lite), requirement A2.4 / Joey's Q2 answer.
@@ -1219,6 +1223,7 @@ const FLOORS = {
      bug shipped silently. Every test names the mutation that kills it. */
   "test/search-thin-anchor.test.js": 10,
   "test/search-plural-scaling.test.js": 4,
+  "test/engine-constants-pin.test.js": 3, // CH-15 (X1-04): the Swift engine's jingle, interlude and site-root URLs equal every JS spelling (foray-queue.js, interlude.js, download-bridge.js); new
   /* One generation per page load (#233). Floored because the thing it guards is
      invisible in the product: a mismatched code/data pair renders, it just
      renders the wrong program's reading of today's document. Every test in there
@@ -1227,7 +1232,7 @@ const FLOORS = {
      evidence that THIS suite pins its behaviour; with a floor 19 below the real
      count, an auto-merged `test/` change could thin it while the claim stayed
      green. Zero slack from here on, for the reason media-session has none. */
-  "test/sw-generation.test.js": 71, // round-3 audit, L4: generation-changed is not shown to a page already running that deploy, and still is to an older, pinned or unstamped one (app-3-3 x2); 69 -> 71 | an untagged data fallback pins the page and says so, a live one says nothing (perf-2 x2); 67 -> 69 | a fallback document tags its code, tagged code is served from its generation (or 504), only app.js carries the pin, pin:false is not adopted (app-3-5 x5); 62 -> 67 | ranged/media requests go straight to the network (app-3-7); 61 -> 62 | activate deletes only its own caches (app-3-4); 60 -> 61 | api/ is never intercepted, and activate scrubs old API bodies (app-3-2 x2); 58 -> 60 | a late answer keeps a TRACKED file verified and writes an UNTRACKED one, awaited not ticked (app-3-14); 57 -> 58 // audit round 2 (L5): no self-rewrite of a tracked file, validators for untracked (perf-6 x2), unchanged files copied not fetched + no-cache, bad copy refused (perf-4 x2), fonts cache-first (perf-5); 52 -> 57 // S-03 (2026-09-12): +1 — cachePut's untracked-path branch is load-bearing now that data/show-index.tsv uses it; 51 -> 52
+  "test/sw-generation.test.js": 74, // CH-15 (X1-18): escapeHtmlAttr is the full five-character table (> and ' escaped); 73 -> 74 // CH-15 (X1-18): the pin meta attribute escapes &, " and < in a deploy id (characterization); 71 -> 73 (exact: 72 were on disk) // round-3 audit, L4: generation-changed is not shown to a page already running that deploy, and still is to an older, pinned or unstamped one (app-3-3 x2); 69 -> 71 | an untagged data fallback pins the page and says so, a live one says nothing (perf-2 x2); 67 -> 69 | a fallback document tags its code, tagged code is served from its generation (or 504), only app.js carries the pin, pin:false is not adopted (app-3-5 x5); 62 -> 67 | ranged/media requests go straight to the network (app-3-7); 61 -> 62 | activate deletes only its own caches (app-3-4); 60 -> 61 | api/ is never intercepted, and activate scrubs old API bodies (app-3-2 x2); 58 -> 60 | a late answer keeps a TRACKED file verified and writes an UNTRACKED one, awaited not ticked (app-3-14); 57 -> 58 // audit round 2 (L5): no self-rewrite of a tracked file, validators for untracked (perf-6 x2), unchanged files copied not fetched + no-cache, bad copy refused (perf-4 x2), fonts cache-first (perf-5); 52 -> 57 // S-03 (2026-09-12): +1 — cachePut's untracked-path branch is load-bearing now that data/show-index.tsv uses it; 51 -> 52
   /* U-01 (docs/ui-transition-plan.md): the ui-v2 token scope. Four tests --
      the nine tokens' names+values, the "no raw hex leaks outside the block"
      mutation guard, the amber/violet consumption check, and the self-hosted
