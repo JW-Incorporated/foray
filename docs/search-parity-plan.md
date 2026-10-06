@@ -309,11 +309,12 @@ lacks the field, and nothing may assume it is present until a re-harvest runs
 (~12 min full, and it also refreshes a harvest dated 2026-07-09). **This does not
 unblock P-03b by itself; it is the prerequisite.**
 
-### P-03b · The author column in the index — **HELD, folded into P-04 — NOT BUILT, per P-04 DECIDED 2026-10-05**
+### P-03b · The author column in the index — **HELD, folded into P-04 — NOT BUILT, per P-04, proceeding on README Q30's proposed default (no founder ruling recorded) since 2026-10-05**
 > **2026-10-05:** the question this card handed to P-04 ("tail, or rows?") is
-> ruled: **rows**. The `chart_rank <= 100` cut stays and no author column is
-> added (`docs/roadmap/README.md` Q30). See *P-04 decision — DECIDED 2026-10-05* below.
-> The text that follows is kept as the measurement the ruling rests on.
+> answered, proceeding on README Q30's proposed default (no founder ruling
+> recorded): **rows**. The `chart_rank <= 100` cut stays and no author column is
+> added (`docs/roadmap/README.md` Q30). See *P-04 — proceeding on the Q30 proposed default* below.
+> The text that follows is kept as the measurement that default rests on.
 
 **Why held, measured rather than deferred on taste.**
 1. **It fails the build, not the budget.** 512 KB raw gate, 76.1 KB of headroom,
@@ -352,7 +353,7 @@ re-harvest lands, with no second edit.
 **Done when.** A directory row explains itself; curated rows (which have no
 author) render exactly as before. Pinned in `test/show-search-fallthrough.test.js`.
 
-### P-04 · Decide what the local index is for — **M · S — DECIDED 2026-10-05: keep the cut (see below)**
+### P-04 · Decide what the local index is for — **M · S — proceeding on README Q30's proposed default (no founder ruling recorded) since 2026-10-05: keep the cut (see below)**
 **Ask.** Once the directory answers every query (P-02), the local index stops
 being the catalogue and becomes the *instant* tier. Re-derive its cut from that
 job: it should hold what a listener is most likely to type, which is not
@@ -362,16 +363,18 @@ starred; a smaller cut that buys the author column. **This card is a measurement
 and a decision, not a foregone change** — it may conclude the current cut is
 right.
 
-### P-04 decision — DECIDED 2026-10-05
+### P-04 — proceeding on the Q30 proposed default
 
-**The ruling.** `docs/roadmap/README.md` Q30 (*Search ranking*, shows-search):
+**The proposed default (no founder ruling recorded), applied 2026-10-05.**
+`docs/roadmap/README.md` Q30 (*Search ranking*, shows-search):
 *"P-10: accept (option 3) unless coverage is at least 80% and `daily` would lead
 with no regressions. P-04: keep the `chart_rank ≤ 100` cut."* It is the README's
 proposed default for `docs/roadmap/shows-search.md` §1 Q5 and Q6, and the README
 says every task proceeds on the default unless a ruling overrides it;
 `docs/DECISIONS.md` has no entry on P-04 or P-10 (checked on `origin/main` @
 `2f24f6ef`). This section records it against the measurements, one question at
-a time, so nobody re-opens it without new numbers. Measurements below are on
+a time, so no agent re-opens it without new numbers; a founder ruling
+overrides it at any time. Measurements below are on
 `origin/main` @ `2f24f6ef` unless a source is named.
 
 **1. Tail or rows? — Rows. Keep the `chart_rank <= 100` cut; no author column.**
@@ -385,7 +388,7 @@ a time, so nobody re-opens it without new numbers. Measurements below are on
   headroom is **77,188 bytes (75.4 KB)** against **~189 KB** of author text
   (P-03b, measured 2026-09-12). Gzipped (`gzip -c`, default level) the file is
   207,354 bytes against S-03's 400 KB budget (`tools/build-show-index.mjs`).
-  Fitting the column means cutting shows, which is the trade this ruling
+  Fitting the column means cutting shows, which is the trade this default
   declines.
 - *It would make ranking worse if it fit.* P-03b's 20 host-name queries: target
   in the top 5 on **16/20** with no author bucket, **14/20** and **15/20** under
@@ -418,7 +421,7 @@ budget, the ranking result and the directory result still hold.
   a lexical rule, not a popularity signal, so it is compatible with accepting
   P-10 and does not re-open options 1 or 2.
 
-**3. P-10 — option 3, accept.** Source: PKG-12's
+**3. P-10 — option 3, accept (the Q30 proposed default).** Source: PKG-12's
 `docs/research/popularity-signal-probe-2026-10-04.json` (#1002).
 - *Coverage fails the 80 % bar by a factor of about 50.* Only **147** of
   **9,893** breadth rows have a `top.json` position: `pct_breadth` **1.49**.
@@ -430,7 +433,7 @@ budget, the ranking result and the directory result still hold.
   `daily` and `history`, and **true** for `money` and `american`. *The Daily*
   itself has no position (`top_position: null`), and none of the 15 same-tier
   rows above it has one, so the signal has nothing to compare. Both conditions
-  in the ruling fail, so option 3 applies.
+  in the Q30 default fail, so option 3 applies.
 - *The data is stale as well.* The probe read the pointer at
   `pointer_age_hours` **470.2** (release
   `shows-index-sat-12-sep-2026-23-24-31-gmt`, published 2026-09-15). This is
@@ -444,7 +447,7 @@ budget, the ranking result and the directory result still hold.
 
 What would re-open P-10: a re-run of the probe on a fresh pointer showing
 coverage **≥ 80 %** and `daily` leading with no regression on the other pinned
-queries, which is the ruling's own condition. Nothing short of that.
+queries, which is the Q30 default's own condition. Nothing short of that.
 
 ### P-05 · Episodes — **M · M — REWRITTEN 2026-09-12 after measurement, then built**
 
@@ -737,8 +740,9 @@ it is the fudge this deck's §0 is about.
 
 **Done when.** A founder or a measurement picks one. Until then this is a known,
 named, 1-query-in-30 gap and not a defect anybody needs to rediscover.
-**Picked 2026-10-05: option 3, accept** (`docs/roadmap/README.md` Q30; numbers in
-*P-04 decision — DECIDED 2026-10-05*).
+**Proceeding since 2026-10-05 on README Q30's proposed default (no founder ruling
+recorded): option 3, accept** (`docs/roadmap/README.md` Q30; numbers in
+*P-04 — proceeding on the Q30 proposed default*).
 
 ### P-07 · The listening test — **founder gate**
 **Ask.** Wyatt searches for five things he would actually search for, on the
@@ -781,9 +785,10 @@ already says it may conclude the current cut is right; the author column is a
 cut question, and putting it there means the founder sees one trade instead of
 two half-trades in different cards.
 **Overtaken 2026-10-05.** The "re-harvest first" order no longer applies.
-`docs/roadmap/README.md` Q30 ruled P-04 without waiting for the re-harvest (keep
-the `chart_rank <= 100` cut, no author column) and accepted P-10 (option 3), so
-P-04 is no longer open; see *P-04 decision — DECIDED 2026-10-05* in §4. The re-harvest
+P-04 and P-10 proceed on `docs/roadmap/README.md` Q30's proposed default (no
+founder ruling recorded) without waiting for the re-harvest: keep
+the `chart_rank <= 100` cut, no author column, and accept P-10 (option 3). So
+P-04 is no longer open to agents unless the founder rules otherwise; see *P-04 — proceeding on the Q30 proposed default* in §4. The re-harvest
 (PKG-14) is now a data refresh, not a gate on any decision in this deck.
 
 ## 6. Rules for the agents
