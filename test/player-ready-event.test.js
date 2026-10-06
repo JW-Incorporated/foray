@@ -175,3 +175,36 @@ test("characterization: playerBridge gives up at PLAYER_WAIT_MS with null and le
   assert.strictEqual(got, null, "gave up with no bridge");
   assert.strictEqual(m.listeners("forayplayer:ready"), before, "and stopped listening");
 });
+
+test("whenPlayerBridge with no bound outwaits any clock; with one it gives up as late, with no player", () => {
+  /* The helper's two modes, directly. MUTATION: arm the timer whatever
+     `timeoutMs` is (`setTimeout(finish, timeoutMs ?? PLAYER_WAIT_MS)`) -- the
+     unbounded wait answers null at 5 s, red. */
+  const m = mount({ hash: "#/library" });
+  const answers = [];
+  m.ctx.whenPlayerBridge((a) => answers.push(["unbounded", a.player, a.late]));
+  m.ctx.whenPlayerBridge((a) => answers.push(["bounded", a.player, a.late]), { timeoutMs: 5000 });
+  m.elapse(60000);
+  assert.deepStrictEqual(answers, [["bounded", null, true]], "only the bounded wait gives up");
+  const bridge = lateBridge();
+  m.ctx.ForayPlayer = bridge;
+  m.fire("forayplayer:ready");
+  assert.deepStrictEqual(answers, [["bounded", null, true], ["unbounded", bridge, true]], "the unbounded one answers when the module lands, late");
+});
+
+test("X1-20: client.js dispatches the one event name app.js listens for, and app.js spells it once", () => {
+  /* The name was a literal in seven places across two files with no pin; a
+     rename or typo on either side and every `once: true` listener waits
+     forever while the page sits in its loading state.
+     MUTATION: change client.js's `new Event("forayplayer:ready")` to
+     "forayplayer:readied" -- red. Or put the literal back in any app.js
+     listener -- the count is 2, red. */
+  const strip = (src) => src.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:/"'`])\/\/[^\n]*/g, "$1");
+  const dispatched = [...strip(CLIENT_SRC).matchAll(/window\.dispatchEvent\(new (?:Custom)?Event\("([^"]+)"/g)].map((x) => x[1]);
+  const constant = /const PLAYER_READY_EVENT = "([^"]+)";/.exec(APP_SRC);
+  assert.ok(constant, "app.js names the event once, as PLAYER_READY_EVENT");
+  assert.ok(dispatched.includes(constant[1]), `client.js dispatches ${constant[1]} (it dispatches: ${dispatched.join(", ")})`);
+  const appCode = strip(APP_SRC);
+  assert.strictEqual(appCode.split(`"${constant[1]}"`).length - 1, 1, "app.js code spells the literal only in the constant");
+  assert.ok(!appCode.includes(`'${constant[1]}'`) && !appCode.includes(`\`${constant[1]}\``), "in no other quoting either");
+});

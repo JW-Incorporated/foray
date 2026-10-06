@@ -555,7 +555,7 @@ test("a search paint never writes over the session snapshot of a real stored epi
      episode's artwork and topics with nulls. `rowsForIds` then rendered the
      degraded copy in Up Next and the Library for the rest of the session, and
      `toggleStar` wrote it into `cp_saved` at the next star toggle — at which
-     point it was on disk and `boostTopics` was being fed `[]`.
+     point it was on disk and `nudgeTopics` was being fed `[]`.
 
      THE ASSERTIONS ARE THE STORED RECORD, not the painted row, deliberately:
      a row that happened to render artwork while `itemIndex` rotted would be
@@ -580,7 +580,7 @@ test("a search paint never writes over the session snapshot of a real stored epi
 
   const after = m.state.itemIndex[ID];
   assert.strictEqual(after.artwork_url, rich.artwork_url, "the snapshot must keep its artwork through a search paint");
-  assert.deepStrictEqual(after.topics, rich.topics, "and its topics, which feed boostTopics on the next star");
+  assert.deepStrictEqual(after.topics, rich.topics, "and its topics, which feed nudgeTopics on the next star");
   assert.strictEqual(after.release_date, rich.release_date, "and its release date, which the row itself renders");
   assert.strictEqual(after.explicit, rich.explicit, "and its explicit flag, which the badge reads");
 
@@ -954,10 +954,9 @@ test("CH-28 characterization: the detail page's generated playlist IS Home's car
      whole object is the contract. The card slots hold two leaf episodes (one
      in `items`, one as `item`), so both readers' slot exclusion is exercised.
 
-     MUTATION: add `extra: 1` to the literal one reader builds (before the
-     change: in generatedPlaylists only; after it: in generatedPlaylistFor,
-     which both call, so instead drop the helper from one reader) -- red. Or
-     drop the `sl.item?.id` half of the slot-id set -- the id assertion is red. */
+     MUTATION: give Home's card a field the page lacks -- in generatedPlaylists,
+     `out.push({ ...generatedPlaylistFor(n, items), extra: 1 })` -- red. Or
+     drop the `sl.item?.id` half of slotItemIdSet -- the id assertion is red. */
   const items = ["Show A", "Show B", "Show C", "Show D", "Show E"].map((s, i) => ch28Item(s, 20 - i));
   const m = mountInterests();
   m.state.catalog = { shows: items.map((it, i) => ({ show_id: `s-${i}`, title: it.show, taxonomy_node_ids: [CH28_LEAF] })) };
@@ -983,4 +982,24 @@ test("CH-28: subjectLabel names a ROOT and answers any other id with the id itse
   assert.strictEqual(label("science"), "Science");
   assert.strictEqual(label(CH28_LEAF), CH28_LEAF, "a leaf is not a subject");
   assert.strictEqual(label("no-such-branch"), "no-such-branch");
+});
+
+test("CH-28: commitInterests saves and moves the re-score key exactly once per call, and nothing else in app.js moves it by hand", () => {
+  /* The one implementation of the commit (A1-18). The source half is the
+     guard against the seventh writer: `_interestsGen` is assigned in exactly
+     one place, bumpInterestsGen, which commitInterests calls.
+
+     MUTATION: call bumpInterestsGen twice in commitInterests -- the key moves
+     6 for 3 commits, red. MUTATION 2: write
+     `state._interestsGen = (state._interestsGen || 0) + 1;` back into any
+     writer -- the assignment count is 2, red. */
+  const m = mountInterests();
+  const before = ch28Gen(m);
+  const answers = [0, 1, 2].map(() => vm.runInContext("commitInterests()", m.ctx));
+  assert.strictEqual(ch28Gen(m) - before, 3, "one step per commit");
+  assert.deepStrictEqual(answers, [true, true, true], "and it answers saveInterests' result");
+  assert.ok(ch28Stored(m) && typeof ch28Stored(m)[CH28_LEAF] === "number", "the profile was written");
+  const code = APP_SRC.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:/"'`])\/\/[^\n]*/g, "$1");
+  assert.strictEqual((code.match(/_interestsGen\s*=[^=]/g) || []).length, 1, "only bumpInterestsGen assigns the key");
+  assert.match(code, /function bumpInterestsGen\(\) \{\s*state\._interestsGen = \(state\._interestsGen \|\| 0\) \+ 1;\s*\}/);
 });
