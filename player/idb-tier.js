@@ -79,7 +79,7 @@ export function makeIdbTier({
   const factory = factoryIn ?? (typeof indexedDB !== "undefined" ? indexedDB : null);
   if (!factory || typeof factory.open !== "function") return null;
 
-  const open = idbConnection(() => openDb(factory, dbName, version, storeName));
+  const open = idbConnection(() => openDb(factory, dbName, version, storeName, { keyPath: "key" }));
   const txOpts = { deadlineMs: txDeadlineMs };
 
   return {
@@ -115,14 +115,28 @@ export function makeIdbTier({
   };
 }
 
-function openDb(factory, name, version, storeName) {
+/**
+ * Open `name` at `version`, creating `storeName` with `storeOptions` on the
+ * first upgrade. The one open path for this module's `foray` database and for
+ * `event-log.js`'s `foray_events` (CH-13): the two differ only in the store's
+ * shape (`{ keyPath: "key" }` here, `{ keyPath: "id", autoIncrement: true }`
+ * there), so a fix to opening lands in both.
+ *
+ * @param {IDBFactory} factory
+ * @param {string} name
+ * @param {number} version
+ * @param {string} storeName
+ * @param {IDBObjectStoreParameters} storeOptions  passed to `createObjectStore` as is.
+ * @returns {Promise<IDBDatabase>}
+ */
+export function openDb(factory, name, version, storeName, storeOptions) {
   return new Promise((resolve, reject) => {
     let req;
     try { req = factory.open(name, version); } catch (err) { reject(err); return; }
     req.onupgradeneeded = () => {
       const db = req.result;
       try {
-        if (!db.objectStoreNames.contains(storeName)) db.createObjectStore(storeName, { keyPath: "key" });
+        if (!db.objectStoreNames.contains(storeName)) db.createObjectStore(storeName, storeOptions);
       } catch (err) { reject(err); }
     };
     req.onsuccess = () => resolve(req.result);

@@ -1517,10 +1517,11 @@ test("every store the app opens is in the deletion ledger, deleted or kept for a
       "(or the ledger names one the code no longer opens). Decide whether Delete " +
       `my data must clear it.\n  code:   ${inCode.join(", ")}\n  ledger: ${inLedger.join(", ")}`
   );
-  // Only two files may open IndexedDB at all; a third would name its database
-  // somewhere this scan cannot see.
+  // Only idb-tier.js may open IndexedDB at all; event-log.js opens foray_events
+  // through idb-tier's exported openDb (CH-13). A second opener would name its
+  // database somewhere this scan cannot see.
   const openers = shippedSources().filter((rel) => /\b(factory|indexedDB)\.open\(/.test(codeOnly(read(rel))));
-  assert.deepStrictEqual(openers.sort(), ["player/event-log.js", "player/idb-tier.js"]);
+  assert.deepStrictEqual(openers.sort(), ["player/idb-tier.js"]);
   // And nothing keeps listener state where neither enumeration looks.
   for (const rel of shippedSources()) {
     const src = codeOnly(read(rel));
