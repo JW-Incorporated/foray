@@ -823,3 +823,164 @@ test("states-7 / search-4: a DEGRADED episode reply is neither cached nor silent
   await flush();
   assert.strictEqual(calls, 2, "a degraded reply is not remembered as an answer");
 });
+
+/* ==================================================================== */
+/* CH-28 (docs/roadmap/code-health.md: A1-13, A1-14, A1-18): the small   */
+/* helpers the search and playlist builders lean on, each now ONE copy.  */
+/* Here because this harness is the one in this card's files that loads  */
+/* search-engine.js beside app.js, so buildPlaylist really scores.       */
+/* ==================================================================== */
+
+const CH28_LEAF = "science/physics";
+const CH28_TAXONOMY = { nodes: [
+  { id: "science", parent: null, label: "Science", weight: 0.2 },
+  { id: CH28_LEAF, parent: "science", label: "Physics", weight: 0.1 },
+] };
+
+/** A mounted app with a two-node taxonomy, its interests seeded from it, and
+    one persona over the root. */
+function mountInterests(opts = {}) {
+  const m = mount(opts);
+  m.state.taxonomy = CH28_TAXONOMY;
+  m.state.personas = { personas: [{ id: "p-sci", seed_confidence: 0.35, weights: [{ node_id: "science", weight: 1 }] }] };
+  vm.runInContext("loadInterests()", m.ctx);
+  return m;
+}
+
+/** The Interests page's controls for one node, bound by the real binder: the
+    slider for `id` and its reset button. `slide(v)` fires the slider's input
+    event; `reset()` presses the reset. */
+function interestControls(m, id) {
+  const on = {};
+  const input = {
+    _bound: false, dataset: { interestId: id }, value: "",
+    setAttribute() {}, closest: () => null,
+    addEventListener(type, fn) { (on[type] = on[type] || []).push(fn); },
+  };
+  const resetOn = {};
+  const reset = {
+    _bound: false, dataset: { interestReset: id },
+    addEventListener(type, fn) { (resetOn[type] = resetOn[type] || []).push(fn); },
+  };
+  const scope = {
+    querySelectorAll: (sel) => (sel === "[data-interest-id]" ? [input] : sel === "[data-interest-reset]" ? [reset] : []),
+  };
+  vm.runInContext("bindInterestsControls", m.ctx)(scope);
+  return {
+    slide(v) { input.value = String(v); for (const fn of on.input || []) fn(); },
+    reset() { for (const fn of resetOn.click || []) fn(); },
+  };
+}
+
+const ch28Gen = (m) => vm.runInContext("state._interestsGen || 0", m.ctx);
+const ch28Stored = (m) => vm.runInContext("lsGet('cp_interests', null)", m.ctx);
+
+test("CH-28 characterization: every interest writer saves the profile and moves the re-score key exactly once", () => {
+  /* The set -> save -> bump triple was repeated by six writers (A1-18); a
+     seventh that forgot the bump would let buildPlaylist serve a stale ranking
+     for the same query. This pins what each of them does: one write of
+     cp_interests carrying the new weight, one step of `_interestsGen`.
+
+     MUTATION: drop the bump from commitInterests (every writer below calls
+     it) -- every step is 0, red. Bump twice -- every step is 2, red. Or give
+     any one writer back an inline bump beside its commit -- that step is 2. */
+  const m = mountInterests();
+  const steps = [];
+  const step = (label, fn, check) => {
+    const before = ch28Gen(m);
+    fn();
+    steps.push([label, ch28Gen(m) - before]);
+    check(ch28Stored(m));
+  };
+  step("nudgeTopics", () => vm.runInContext(`nudgeTopics([${JSON.stringify(CH28_LEAF)}], 0.05)`, m.ctx),
+    (s) => assert.ok(s && Math.abs(s[CH28_LEAF] - 0.15) < 1e-9, `the nudge is saved: ${JSON.stringify(s)}`));
+  const controls = interestControls(m, CH28_LEAF);
+  step("slider", () => controls.slide(0.7), (s) => assert.strictEqual(s[CH28_LEAF], 0.7, "the slider value is saved"));
+  step("reset", () => controls.reset(), (s) => assert.strictEqual(s[CH28_LEAF], 0.1, "the reset restores the taxonomy weight"));
+  step("onboarding", () => vm.runInContext("applyOnboardingPicks(['science'])", m.ctx),
+    (s) => assert.ok(s.science > 0.2, "the onboarding lift is saved"));
+  step("persona", () => vm.runInContext("applyPersonaPick('p-sci')", m.ctx),
+    (s) => assert.ok(s.science > 0.4, "the persona lift is saved"));
+  assert.deepStrictEqual(steps, [["nudgeTopics", 1], ["slider", 1], ["reset", 1], ["onboarding", 1], ["persona", 1]]);
+});
+
+test("CH-28 characterization: a slider move re-scores the same query instead of serving the cached ranking", () => {
+  /* buildPlaylist's `searchCache` is keyed on [query, familyMode,
+     _interestsGen]; interestScore reads state.interests, so a slider move must
+     move the key. Counted on the scorer, the only thing that can tell "served
+     the old entry" from "happened to agree".
+
+     MUTATION: drop the commit from bindInterestsControls' `apply` (keep
+     setInterest only). The third build is served the pre-slide entry and the
+     scorer count stays at 1, red. */
+  const m = mountInterests();
+  const readJson = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
+  m.state.discover = readJson("data/discover.json");
+  m.state.itemTags = readJson("data/item-tags.json");
+  m.state.semantic = readJson("data/semantic-index.json");
+  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+  m.state.catalog = { shows: [] };
+  const SearchEngine = vm.runInContext("SearchEngine", m.ctx);
+  const real = SearchEngine.searchWithRelaxation;
+  let scored = 0;
+  SearchEngine.searchWithRelaxation = (...args) => { scored++; return real(...args); };
+  try {
+    vm.runInContext("buildPlaylist('meditation')", m.ctx);
+    vm.runInContext("buildPlaylist('meditation')", m.ctx);
+    assert.strictEqual(scored, 1, "fixture: the repeat is served from the cache");
+    interestControls(m, CH28_LEAF).slide(0.9);
+    vm.runInContext("buildPlaylist('meditation')", m.ctx);
+    assert.strictEqual(scored, 2, "the slider moved the key, so the query is scored again");
+  } finally {
+    SearchEngine.searchWithRelaxation = real;
+  }
+});
+
+/** One pool item on CH28_LEAF; a higher `day` is newer and sorts first. */
+function ch28Item(show, day) {
+  return {
+    id: `${show.toLowerCase().replace(/\s+/g, "-")}--ep-1`,
+    show, title: `${show} episode 1`,
+    release_date: `2026-05-${String(day).padStart(2, "0")}`,
+    duration_min: 40, explicit: false, topics: [CH28_LEAF], topics_source: "episode",
+  };
+}
+
+test("CH-28 characterization: the detail page's generated playlist IS Home's card, field for field", () => {
+  /* generatedPlaylists (Home) and generatedPlaylistById (the page a tap or a
+     reload opens) each built the slot-id set and the playlist literal (A1-13).
+     A field added to one literal only and `currentCopyOf` finds no copy, so
+     Save shows again on a playlist already saved. Deep-equal, not ids: the
+     whole object is the contract. The card slots hold two leaf episodes (one
+     in `items`, one as `item`), so both readers' slot exclusion is exercised.
+
+     MUTATION: add `extra: 1` to the literal one reader builds (before the
+     change: in generatedPlaylists only; after it: in generatedPlaylistFor,
+     which both call, so instead drop the helper from one reader) -- red. Or
+     drop the `sl.item?.id` half of the slot-id set -- the id assertion is red. */
+  const items = ["Show A", "Show B", "Show C", "Show D", "Show E"].map((s, i) => ch28Item(s, 20 - i));
+  const m = mountInterests();
+  m.state.catalog = { shows: items.map((it, i) => ({ show_id: `s-${i}`, title: it.show, taxonomy_node_ids: [CH28_LEAF] })) };
+  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+  m.state.discover = { items };
+  m.state.interests[CH28_LEAF] = 1;
+  m.state.cardSlots = [{ branch: "arts", items: [{ id: items[0].id }], item: { id: items[1].id } }];
+  const home = vm.runInContext("generatedPlaylists()", m.ctx).find((p) => p.id === `gen-${CH28_LEAF}`);
+  const page = vm.runInContext(`generatedPlaylistById(${JSON.stringify(`gen-${CH28_LEAF}`)})`, m.ctx);
+  assert.ok(home && page, "both resolve the leaf");
+  assert.deepStrictEqual(page, home);
+  assert.deepStrictEqual(Array.from(home.items, (it) => it.id), [items[2].id, items[3].id, items[4].id], "the slotted episodes are left out of both");
+});
+
+test("CH-28: subjectLabel names a ROOT and answers any other id with the id itself", () => {
+  /* subjectLabel reads through nodeById like every other taxonomy lookup
+     (A1-14). A subject is a root: a leaf id is not one, and keeps its id.
+
+     MUTATION: drop the `parent === null` check from subjectLabel -- the leaf
+     answers "Physics", red. */
+  const m = mountInterests();
+  const label = vm.runInContext("subjectLabel", m.ctx);
+  assert.strictEqual(label("science"), "Science");
+  assert.strictEqual(label(CH28_LEAF), CH28_LEAF, "a leaf is not a subject");
+  assert.strictEqual(label("no-such-branch"), "no-such-branch");
+});
