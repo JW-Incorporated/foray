@@ -364,3 +364,55 @@ test("(i) window.ForayChapters.forItem is exactly the list the page renders", as
   ]);
   assert.strictEqual(m.ctx.ForayChapters.precision(item), "exact");
 });
+
+/* ---------- CH-33: characterization, pinned before the change ---------- */
+
+const notesHtml = (html) => (/<details class="ep-description">[\s\S]*?<\/details>/.exec(html) || [""])[0];
+const rowsOf = (html) => [...html.matchAll(/<button type="button" class="ep-chapter-row" data-ts="(\d+)" aria-label="([^"]*)">(?:<img[^>]*>)?<span class="ep-chapter-time">([^<]*)<\/span><span class="ep-chapter-title">([^<]*)<\/span><\/button>/g)]
+  .map((r) => ({ ts: Number(r[1]), label: r[2], time: r[3], title: r[4] }));
+
+test("CH-33 characterization: feed chapters on a classified static show read exact, one row each", async () => {
+  /* Pinned before CH-33 moved the stamp text into one helper: the exact
+     branch keeps fmtChapterTime's clock. MUTATION: the exact branch prints
+     formatTimestamp(…, precision) for an approximate-looking precision — any
+     "~" here; red. */
+  const m = mount();
+  m.ctx.ForaySeekPolicy = await seekPolicy();
+  m.render(ep({ id: "exact3", dai_known: true, dai_suspected: false, chapters: [
+    { title: "Open", start_time_seconds: 0 }, { title: "Middle", start_time_seconds: 754 }, { title: "Late", start_time_seconds: 4092 },
+  ] }));
+  assert.deepStrictEqual(rowsOf(m.section()), [
+    { ts: 0, label: "Play from 0:00, Open", time: "0:00", title: "Open" },
+    { ts: 754, label: "Play from 12:34, Middle", time: "12:34", title: "Middle" },
+    { ts: 4092, label: "Play from 1:08:12, Late", time: "1:08:12", title: "Late" },
+  ]);
+  assert.doesNotMatch(m.section(), /ep-chapters-note/);
+});
+
+test("CH-33 characterization: a DAI show's notes-derived chapters read '~N min' with the approximate note", async () => {
+  const m = mount();
+  m.ctx.ForaySeekPolicy = await seekPolicy();
+  m.render(ep({ id: "dai-notes", dai_known: true, dai_suspected: true, duration_sec: 5400, chapters: null,
+    description: "0:00 Cold open\n1:08:12 The turn" }));
+  assert.deepStrictEqual(rowsOf(m.section()), [
+    { ts: 0, label: "Play from around minute 0, Cold open", time: "~0 min", title: "Cold open" },
+    { ts: 4092, label: "Play from around minute 68, The turn", time: "~68 min", title: "The turn" },
+  ]);
+  assert.match(m.section(), /<p class="ep-chapters-note">Times are approximate on this show\.<\/p>/);
+});
+
+test("CH-33 characterization: the podcast:chapters JSON request carries the shell's User-Agent", async () => {
+  /* The reader is the real player/id3-chapters.js one, built over the same
+     downloads surface client.js hands it, so this holds before CH-33 (app.js
+     read window.forayDownloads.userAgent itself) and after (it asks the
+     reader). MUTATION: send `headers: {}` in readDeviceChapters; red. */
+  const { createId3Reader } = await import(pathToFileURL(path.join(ROOT, "player", "id3-chapters.js")).href);
+  const seen = [];
+  const m = mount({ hash: "#/episode/ep-ua", native: async (_p, _m, opts) => { seen.push(opts.headers); return { status: 200, data: JSON_BODY }; } });
+  m.ctx.forayDownloads = { userAgent: "4a/1.2 (shell)" };
+  m.ctx.ForayId3Chapters = createId3Reader({ getBridge: () => m.ctx.Capacitor, getDownloads: () => m.ctx.forayDownloads });
+  m.render(ep({ id: "ep-ua", description: NOTES3, chapters_url: "https://pub.test/ch.json" }));
+  await ticks();
+  assert.deepStrictEqual(seen.map((h) => ({ ...h })), [{ "User-Agent": "4a/1.2 (shell)" }]);
+  assert.deepStrictEqual(titles(m.section()), ["Json one", "Json two"]);
+});
