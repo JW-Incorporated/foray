@@ -2058,7 +2058,8 @@ export class HtmlAudioBackend {
    * not model `paused` must read as NOT paused, so a caller that acts on this can
    * only ever be driven by a definite yes. The reconcile it feeds moves the
    * surface towards paused, and the cost of guessing wrong is a Foray stopped for
-   * no reason.
+   * no reason. A caller moving TOWARDS PLAYING must not read this at all: it
+   * asks `audible` below, whose default runs the other way (CH-37).
    *
    * `=== true` rather than truthiness is the narrower claim, and worth being
    * honest about: for a missing property the two agree (`!!undefined` is false
@@ -2079,6 +2080,22 @@ export class HtmlAudioBackend {
    * for exactly this reason. Positional, like `paused`: still true minutes later.
    */
   get ended() { return this.el?.ended === true; }
+
+  /**
+   * Whether sound is coming out of the element right now — the backend's own
+   * answer, so no caller has to compose it from `paused` (CH-37, P1-10).
+   *
+   * THE DEFAULT RUNS THE OTHER WAY FROM `paused`'s, and that is why this is a
+   * getter of its own rather than `!paused`. `paused` reads an unknown as NOT
+   * paused because the reconcile it feeds moves towards paused; this one feeds
+   * the moves towards PLAYING (`_reconcileTowardsPlaying`, the position timer,
+   * the forced pause on stop), so it must be driven by a definite yes only: an
+   * element that does not model `paused`, or one that ran out, is not audible.
+   * Composing it from `paused` turned an unknown into "audible" — an
+   * `interrupted` Foray flipping to `playing` on the next visibilitychange with
+   * nothing flowing, and the position writer stamping a stale clock.
+   */
+  get audible() { return this.el?.paused === false && this.el?.ended !== true; }
 
   get duration() {
     return deckDuration(this.el?.duration);

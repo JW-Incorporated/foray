@@ -1620,10 +1620,18 @@ export class PlayerQueueManager {
    * the previous item. `client.js` composes this with `isRunning()`, which is
    * already true for every state in which a synth item is audible, so the
    * composition is right and this getter never has to guess.
+   *
+   * THE BACKEND ANSWERS, AND ONLY A DEFINITE YES COUNTS (CH-37, P1-10). This
+   * used to compose `backend.paused === false`, but `paused` reads an unknown
+   * as "not paused" — the right default for the reconcile towards paused, and
+   * exactly the wrong one here: an element that never modelled `paused` came
+   * out audible. `backend.audible` owns the composition; a backend that does
+   * not answer it is not audible. `paused` stays for the towards-paused
+   * reconcile above.
    */
   get elementIsAudible() {
     if (this._disposed || this._loadedIsSynth) return false;
-    return this.backend?.paused === false && this.backend?.ended !== true;
+    return this.backend?.audible === true;
   }
 
   /** Every effect gets an explicit case. An unhandled one throws rather than

@@ -108,6 +108,9 @@ export class FakeBackend {
     this._releasePlay = null;
   }
   get calls() { return this.log.ops; }
+  /** HtmlAudioBackend's `audible` (CH-37), over this fake's `paused`/`ended`:
+      a definite yes only. The manager asks this, not `paused`. */
+  get audible() { return this.paused === false && this.ended !== true; }
   get duration() { return this.durationById[this._loadedId] ?? this._duration; }
   set duration(v) { this._duration = v; }
   async load(item, { startOffset = 0 } = {}) {
