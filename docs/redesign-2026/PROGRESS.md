@@ -39,6 +39,18 @@ Source of truth for a cleared session. Update on every deliverable.
   session, check what is on disk and on origin (`redesign/p0-split`,
   `redesign/p0-lab`, `docs/redesign-2026/*`) and relaunch only the missing parts.
 
+## Next actions (orchestrator)
+
+- **Lab dry run.** The owner's Apple and Play setup is done (HA #142, #143,
+  2026-10-05 19:45 PDT). As soon as `.github/workflows/lab-build.yml` is on main
+  (the Lab agent's PR into main, which needs the owner's `founder-approved`
+  label) AND `redesign/p0-lab` is merged into the trunk: dispatch
+  `gh workflow run lab-build.yml -f ref=feature/redesign-2026 -f platforms=both`
+  to ship today's design as "4a Lab" to Wyatt's iPhone and Joey's Android. That
+  proves the delivery path before the redesign lands. If Play refuses the first
+  upload of the new app, file one HUMAN-ACTIONS item with the AAB link and the
+  console clicks.
+
 ## Blocked
 
 (Item, reason, what would unblock it.)

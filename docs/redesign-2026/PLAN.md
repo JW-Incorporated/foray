@@ -46,6 +46,15 @@ that runs **beside** the current one, not instead of it.
   sign-ups and event rows to Supabase (`app.js` `/auth/v1/signup`,
   `/rest/v1/events`). Lab builds turn event sync and anonymous sign-up off.
   GET calls to the catalog/search API stay (read-only, harmless).
+- **Owner setup for the lab app is COMPLETE** (owner, in chat, 2026-10-05
+  19:45 PDT; HA #142 and #143). Apple: App ID `ai.jwlabs.foura.lab`, App Store
+  Connect app record "4a Lab", App Store profile in the repo secret
+  `IOS_LAB_PROVISIONING_PROFILE_BASE64`, API-key role checked, TestFlight
+  internal group `Founders` (Joey + Wyatt) with automatic distribution. Play:
+  app "4a Lab" created, internal-testing list with Joey, the CI service account
+  granted release-to-testing on it. Build against this setup; do not ask for it again.
+  If Play rejects the first API upload of a new app, file one HUMAN-ACTIONS item
+  carrying the AAB link and the three console clicks.
 - Exception, doc-only: one kickoff PR to main adds the STATE.md workstream entry
   and the HUMAN-ACTIONS items. It touches no app code.
 
