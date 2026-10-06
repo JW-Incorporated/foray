@@ -19,7 +19,7 @@ import assert from "node:assert/strict";
 import {
   KEY, DEFAULT_CAP_BYTES, STATUSES,
   readDownloads, writeDownloads, applyProgress, markPlayed, markMissing, removeRow,
-  evictionPlan, playSource, localPlayable, usageLine, reportFromEvent,
+  evictionPlan, playSource, readSource, localPlayable, usageLine, reportFromEvent,
 } from "./download-store.js";
 import { NEAR_END_SEC, MIN_RESUME_SEC } from "./position-store.js";
 
@@ -295,6 +295,42 @@ test("CH-27 characterization: playSource's gate is `done` with a non-empty path,
   for (const status of STATUSES.filter((s) => s !== "done")) {
     assert.deepEqual(playSource(item, { ...rec, status }, { platform: "android" }), remote, status);
   }
+});
+
+/* ---------- what the WebView reads (CH-27, P2-18) ---------- */
+
+test("readSource: a done file opens at bridge.fileSrc, else the stored webSrc; a file: URL and a throwing bridge are null", () => {
+  /* MUTATIONS: `record.webSrc ?? bridge.fileSrc(...)` -> the stale stored URL
+     wins and the first assert goes red; drop `!src.startsWith("file:")` -> the
+     file:// answers are returned; drop the try/catch -> the throwing bridge
+     throws out of readSource. */
+  const rec = { ...done(MB), path: "/data/files/e1.mp3", webSrc: "https://localhost/_capacitor_file_/old/e1.mp3" };
+  const bridge = { fileSrc: ({ path }) => `capacitor://localhost/_capacitor_file_${path}` };
+  assert.equal(readSource(rec, bridge), "capacitor://localhost/_capacitor_file_/data/files/e1.mp3");
+  assert.equal(readSource(rec, null), rec.webSrc, "no bridge: the stored webSrc");
+  assert.equal(readSource(rec, {}), rec.webSrc, "a bridge without fileSrc: the stored webSrc");
+  assert.equal(readSource({ ...rec, webSrc: null }, null), null, "nothing the WebView can open");
+  assert.equal(readSource({ ...rec, webSrc: "file:///data/files/e1.mp3" }, null), null, "file: refused");
+  assert.equal(readSource(rec, { fileSrc: () => "file:///data/files/e1.mp3" }), null, "file: from the bridge refused too");
+  assert.equal(readSource(rec, { fileSrc: () => { throw new Error("boom"); } }), null, "total");
+});
+
+test("readSource shares playSource's gate: a row the record reads back as missing opens nothing", () => {
+  /* The empty-path `done` row is what normaliseDownloads calls `missing`.
+     MUTATION: in readSource, replace `hasFile(record)` with the old inline
+     `record.status === "done" && typeof record.path === "string"` -> the
+     empty path yields a URL and this goes red. */
+  const bridge = { fileSrc: ({ path }) => `https://localhost/_capacitor_file_${path}` };
+  const item = { id: "e1", audio_url: "https://cdn/e1.mp3" };
+  const base = { ...done(MB), webSrc: "https://localhost/_capacitor_file_/files/e1.mp3" };
+  const rows = [base, { ...base, path: "" }, { ...base, path: null }, null,
+    ...STATUSES.filter((s) => s !== "done").map((status) => ({ ...base, status }))];
+  for (const rec of rows) {
+    const plays = playSource(item, rec, { platform: "android" }).isLocalFile;
+    assert.equal(readSource(rec, bridge) !== null, plays, JSON.stringify(rec));
+  }
+  assert.equal(readDownloads({ getItem: () => JSON.stringify({ items: { e1: { ...base, path: "" } } }) }).items.e1.status, "missing",
+    "premise: the record reads this row back as missing");
 });
 
 /* ---------- missing ---------- */
