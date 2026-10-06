@@ -355,8 +355,14 @@ export const VAULT_PLUGIN = "ForayVault";
     because the vault plugin copies the Preferences plugin's method shapes. */
 function nativeKvTier(bridge, plugin, name) {
   if (!bridge || typeof bridge.nativePromise !== "function") return null;
-  if (typeof bridge.isNativePlatform === "function" && !bridge.isNativePlatform()) return null;
-  if (typeof bridge.isPluginAvailable === "function" && !bridge.isPluginAvailable(plugin)) return null;
+  /* A bridge whose predicates throw is a bridge we cannot use: no tier, the
+     posture deferredPrefixesFor takes when getPlatform() throws. client.js
+     builds both tiers at module scope, so a throw here would be a player that
+     never loads (N1-01). */
+  try {
+    if (typeof bridge.isNativePlatform === "function" && !bridge.isNativePlatform()) return null;
+    if (typeof bridge.isPluginAvailable === "function" && !bridge.isPluginAvailable(plugin)) return null;
+  } catch (_) { return null; }
   const call = (method, options) => bridge.nativePromise(plugin, method, options);
   return {
     name,
@@ -449,16 +455,20 @@ export const EXTERNALLY_OWNED = "externally-owned";
  * HELLO_PLATFORMS): deferring there would hold back a migration nothing
  * releases. `getPlatform()`
  * is Capacitor's own answer ("ios" | "android" | "web"); a bridge without it is
- * an older shell that predates the engine, and defers nothing.
+ * an older shell that predates the engine, and defers nothing. So does a bridge
+ * whose `isNativePlatform()` or `getPlatform()` throws: client.js calls this
+ * at module scope, where a throw is a player that never loads (N1-01).
  *
  * @param {object|null} bridge  `window.Capacitor`, or a fake
  * @param {readonly string[]} prefixes  engine-contract.js's OWNED_PREFIXES
  */
 export function deferredPrefixesFor(bridge, prefixes) {
   if (!bridge || typeof bridge.getPlatform !== "function") return [];
-  if (typeof bridge.isNativePlatform === "function" && !bridge.isNativePlatform()) return [];
   let platform = null;
-  try { platform = bridge.getPlatform(); } catch (_) { return []; }
+  try {
+    if (typeof bridge.isNativePlatform === "function" && !bridge.isNativePlatform()) return [];
+    platform = bridge.getPlatform();
+  } catch (_) { return []; }
   return platform === "ios" && Array.isArray(prefixes) ? [...prefixes] : [];
 }
 

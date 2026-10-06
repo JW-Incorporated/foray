@@ -37,8 +37,10 @@
  * WHERE IT APPLIES. The iOS shell only (`capacitor.getPlatform() === "ios"`).
  * Android's WebView applies the system font scale itself (`textZoom`, untouched by
  * `mobile/capacitor.config.json`), and on macOS Safari `-apple-system-body`
- * resolves to 13px -- installing there would SHRINK the web. Same
- * `isNativePlatform` discipline as `foray-audio-shell.js`'s `shellApplies`.
+ * resolves to 13px -- installing there would SHRINK the web. `typeScaleApplies`
+ * also consults `isNativePlatform()` when the bridge has it (a bridge that says
+ * it is not native never applies), and every bridge call sits inside one try: a
+ * bridge that throws applies nothing.
  *
  * NO INLINE STYLE ATTRIBUTE, ever: the page's CSP has no `'unsafe-inline'` for
  * styles. Every write here goes through the CSSOM (`el.style.prop = …`), which the

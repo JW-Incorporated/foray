@@ -126,7 +126,14 @@ export function normaliseDownloads(raw) {
   };
 }
 
-/** Read the record, or the empty one. Never throws. */
+/** Read the record, or the empty one. Never throws.
+
+    `storage` is anything Storage-shaped (`getItem`/`setItem`/`removeItem` over
+    strings). On the web that is the backend app.js's lsGet/lsSet use —
+    DurableStore once player/client.js has published it — so this pair is the
+    ONE reader and writer of `cp_downloads` (CH-02, X1-03): app.js's
+    `downloadsValue`/`saveDownloads` are thin calls through it and never spell
+    the key. */
 export function readDownloads(storage) {
   if (!storage) return normaliseDownloads(null);
   try {
@@ -236,7 +243,16 @@ export function reportFromEvent(name, payload, { webSrc, now } = {}) {
 }
 
 /** The episode was played from its download: it moves to the back of the
-    eviction queue. An id with no record is a no-op (identity). */
+    eviction queue. An id with no record is a no-op (identity).
+
+    THE ONE CALLER (CH-02, P2-01). app.js's `window.forayDownloads.onPlayedFromFile`,
+    which player/client.js's `play()` fires where a LOCAL load succeeded — the
+    point it spends its `localAttempt` ticket on success. Not from `playSource`
+    or client.js's `localSourceFor`: they CHOOSE the file, and a chosen file can
+    be missing (the load fails, the record is marked `missing`, the play
+    streams). Stamping there would call an evicted file the freshest one. Until
+    this had a caller every `last_played_at` was null and the
+    least-recently-played cap evicted the file listened to daily first. */
 export function markPlayed(value, id, now) {
   const base = normaliseDownloads(value);
   const prev = base.items[id];
@@ -256,6 +272,18 @@ export function markMissing(value, id) {
     ...base,
     items: { ...base.items, [id]: { ...prev, status: "missing", path: null, reason: null } },
   };
+}
+
+/** The record without one episode's row: what Remove, Remove all's per-file
+    step and an eviction leave behind. The plugin deletes the FILE; this is the
+    record's half, and it lives here beside the other transitions rather than
+    in app.js (CH-02, P2-11). An id with no record is a no-op (identity). */
+export function removeRow(value, id) {
+  const base = normaliseDownloads(value);
+  if (!base.items[id]) return value;
+  const items = { ...base.items };
+  delete items[id];
+  return { ...base, items };
 }
 
 /* ---------- the cap ---------- */

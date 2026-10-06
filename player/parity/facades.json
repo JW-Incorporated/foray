@@ -8,6 +8,8 @@
     "AUDIT: the Foray page is handed the answer its press is decided by": "facade:native-facades::one authority: state, elementIsAudible and the media events all read the same snapshot",
     "AUDIT: the card's glyph comes from the same answer as the bar's": "facade:native-facades::one authority: state, elementIsAudible and the media events all read the same snapshot",
     "AUDIT: the steering wheel's next/previous appear when the page offers them, and not before": "facade:native-facades::next and previous are offered exactly when the engine says so, and not before the page's chain",
+    "CH-03: a timestamp tap in the #689 drift seeks and leaves the sound running, because isPlaying(id) and togglePlayback() read one authority": "facade:native-facades::one authority: state, elementIsAudible and the media events all read the same snapshot",
+    "CH-03: isPlaying(id) is true for the current episode while it plays, and false for any other id": "facade:native-facades::one authority: state, elementIsAudible and the media events all read the same snapshot",
     "REPORT 1 (invariant): nothing on the boot or visible path starts audio": "facade:native-facades::attach only READS: returning to the page sends no command, so it can never start audio",
     "REPORT 3 / #688: one press does what the listener meant when the belief is stale": "facade:native-facades::one authority: state, elementIsAudible and the media events all read the same snapshot",
     "REVIEW 2026-09-23: a speed that arrives AFTER the record's five-second bound still reaches the booted player": "facade:native-facades::a rate set at any moment reaches the engine, and the label reads it back before the engine answers",

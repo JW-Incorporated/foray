@@ -976,9 +976,11 @@ window.forayQueueSwipe = queueSwipe;
    (`download-bridge.js`). app.js owns the controls, the Library section, the
    cellular switch and the Delete-my-data purge; it builds the bridge in
    `init()` (null off the shell, so no control is drawn) and fills in `bridge`,
-   `recordFor` and `onMissing` below. Until it does, `recordFor` answers null
-   and `onMissing` does nothing, so a reader that arrives first (PQ-19's play
-   path) streams, which is what it would do with no download at all.
+   `recordFor`, `onMissing` and `onPlayedFromFile` below. Until it does,
+   `recordFor` answers null and the two hooks do nothing, so a reader that
+   arrives first (PQ-19's play path) streams, which is what it would do with no
+   download at all. `onPlayedFromFile(id)` is `markPlayed`'s one caller
+   (CH-02): `play()` fires it where a local load SUCCEEDED.
    `userAgent` starts as `USER_AGENT` (`4a/dev`) and becomes the real build
    once `recordBuildStamp` hears it; `platform` is that same answer's
    "ios" | "android" | null, for `playSource`. */
@@ -992,6 +994,7 @@ window.forayDownloads = {
   bridge: null,
   recordFor: () => null,
   onMissing: () => {},
+  onPlayedFromFile: () => {},
 };
 /** The build-stamp answer → the downloads UA and platform. A stamp with no
     native build and no version (the web, an older shell) leaves `4a/dev`. */
@@ -4547,6 +4550,18 @@ const ForayPlayer = {
        that had played. Only this call's own ticket is cleared: a newer play
        that superseded this one owns `localAttempt` now. */
     if (!loadError && manager.state?.type !== "idle" && localAttempt === ticket) localAttempt = null;
+    else ticket = null;
+    /* THE FILE PLAYED (CH-02, P2-01): the line above spent this call's ticket
+       on a successful LOCAL load, so app.js stamps `last_played_at` and the
+       row moves to the back of the least-recently-played eviction queue. Only
+       here: `localSourceFor` merely CHOOSES the file, and a chosen file that
+       turns out missing degrades to the stream (its retry is `noLocal`, so it
+       never holds a ticket) — stamping it would make an evicted file the
+       freshest. A failed, refused (EP_PLAY_HELD) or superseded load nulls the
+       ticket above and stamps nothing. A stream never had one. */
+    if (ticket) {
+      try { window.forayDownloads?.onPlayedFromFile?.(item.id); } catch (_) { /* the record is app.js's; the play already started */ }
+    }
     if (loadError) throw loadError.err;
     render();
     /* THE ANSWER, NOT THE ATTEMPT (audit 2026-09-22). This returned `true`
@@ -4831,8 +4846,22 @@ const ForayPlayer = {
     return rec;
   },
 
+  /**
+   * Is this episode current AND is the transport running — sound coming out
+   * as far as the bar, the card and the press are concerned?
+   *
+   * READS THE SAME PREDICATE AS `togglePlayback()` (`transportIsRunning()`),
+   * and that is the whole contract (CH-03, P1-01). app.js asks this and then
+   * toggles on a "no" — the Episode-notes stamp tap is `seekTo` then
+   * `if (!isPlaying(id)) togglePlayback()`, Home's ▶ the same without the
+   * seek. When this read the reducer's belief (`isPlaying()`), the #689 drift
+   * — the machine `interrupted`, the element audible — answered "not playing",
+   * the toggle then found the transport running and PAUSED, and the tap that
+   * meant "hear this part" stopped the audio. One authority, so a "no" here is
+   * always a press that starts.
+   */
   isPlaying(id) {
-    return isPlaying() && current?.id === id;
+    return transportIsRunning() && current?.id === id;
   },
 
   /**
@@ -4960,6 +4989,10 @@ const ForayPlayer = {
    * have to reimplement it — and deliberately NOT parameterised by id: a card
    * that is the current item toggles the player, and a card that is not should
    * be calling `play()`. `isCurrent` is how a caller tells those apart.
+   *
+   * Decides from `transportIsRunning()`, the same predicate `isPlaying(id)`
+   * answers from (CH-03): a caller that toggles on `!isPlaying(id)` is never
+   * handed a "stopped" by one authority and a pause by the other.
    */
   async togglePlayback() {
     await setRunning(!transportIsRunning());
