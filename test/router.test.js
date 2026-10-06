@@ -448,6 +448,12 @@ test("CH-23: fetchJson and fetchApiJson give up the same way: one no-cache reque
   const m = mount();
   const calls = [];
   m.ctx.AbortController = AbortController;
+  /* The deadline is the only thing left pending while the fetch stalls, and
+     mount()'s setTimeout is unref'd: on CI's Linux runner the event loop went
+     empty before the 5 ms deadline fired and node --test cancelled this test
+     and every one after it ("Promise resolution is still pending but the event
+     loop has already resolved"). A ref'd timer keeps the loop open until it fires. */
+  m.ctx.setTimeout = setTimeout;
   m.ctx.fetch = (url, init) => { calls.push({ url: String(url), init }); return new Promise(() => {}); };
   m.evalIn("DATA_DEADLINE_MS = 5; API_DEADLINE_MS = 5;");
   const data = await m.evalIn('fetchJson("data/forays.json")');
