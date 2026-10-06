@@ -85,7 +85,7 @@ import {
 } from "./foray-resolve.js";
 import { ForayProgressStore, resumePoint, makeProgress, progressKey } from "./foray-progress.js";
 import { SEAM_GAP_SEC } from "./seam-gap.js";
-import { nextRate, normalizeRate, rateLabel, rateAriaLabel, RATES } from "./playback-rate.js";
+import { normalizeRate, rateLabel, rateAriaLabel, RATES } from "./playback-rate.js";
 import { createDurableStore } from "./durable-store.js";
 import { buildForayQueue } from "./foray-queue.js";
 import { forayQueueOptions, forayResolveOptions } from "./foray-resolve.js";
@@ -1058,11 +1058,6 @@ function fakeBridge(resolved, { resume = null, startThrows = null, rate = 1 } = 
        with the page computing its own, which is the second opinion about copy this
        bridge exists to prevent. */
     playbackRate: () => liveRate,
-    cycleRate: () => {
-      calls.push({ name: "cycleRate", args: [] });
-      liveRate = nextRate(liveRate);
-      return liveRate;
-    },
     rateStops: () => {
       calls.push({ name: "rateStops", args: [] });
       return [...RATES];
@@ -2589,9 +2584,11 @@ test("tapping the speed button opens a picker instead of cycling directly", () =
      path is proven cheaply in tools/refresh or by hand — what this binding
      harness CAN prove is that the tap no longer mutates the rate directly).
 
-     MUTATION THAT KILLS THIS: put the old `player.cycleRate()` call back in the
-     click handler. The label would change to "1.25×" on the first tap and
-     `rateStops` would never appear in the call log. */
+     MUTATION THAT KILLS THIS: in app.js's `#fy-rate` click handler, replace
+     `openRateMenu(…)` with `paintRateButton(player, player.setPlaybackRate(1.25))`
+     — the old cycle-on-tap, now that `ForayPlayer.cycleRate` is gone (CH-26).
+     `setPlaybackRate` would appear in the call log, the label would change to
+     "1.25×" on the first tap, and `rateStops` would never be asked. */
   return mountForayPage().then(({ dom, bridge }) => {
     const btn = dom.el("fy-rate");
     assert.equal(btn.textContent, "1×");
@@ -2602,8 +2599,8 @@ test("tapping the speed button opens a picker instead of cycling directly", () =
         "opening the picker must ask the player for the ladder"
       );
       assert.ok(
-        !bridge.calls.some((c) => c.name === "cycleRate"),
-        "a tap on the button must no longer cycle the rate directly"
+        !bridge.calls.some((c) => c.name === "setPlaybackRate"),
+        "a tap on the button must no longer change the rate directly"
       );
       assert.equal(btn.textContent, "1×", "the label does not change until a stop is picked");
     });
@@ -3084,4 +3081,17 @@ test("CH-26: nothing shipped calls ForayPlayer.cycleRate, stripModel, stripSumma
   const client = fs.readFileSync(path.join(ROOT, "player/client.js"), "utf8");
   assert.match(client, /voiceFallback: manager \? manager\.lastVoiceFallback : null,/,
     "the snapshot keeps carrying the manager's lastVoiceFallback (parity)");
+});
+
+test("CH-26: window.ForayPlayer no longer publishes cycleRate, stripModel, stripSummary or lastVoiceFallback", () => {
+  /* The deletion itself. `voiceFallback` on the Foray snapshot is the one
+     reading of the manager's flag; the strip's model and sentence stay
+     `segment-strip.js` exports for whoever imports them; the rate moves through
+     `setPlaybackRate` from the picker.
+     MUTATION: put `lastVoiceFallback() { return manager ? manager.lastVoiceFallback : null; },`
+     (or `stripModel,`) back into the ForayPlayer literal — red. */
+  const members = forayPlayerMembers();
+  assert.ok(members.size > 40, `precondition: the reader sees the whole literal; saw ${members.size} members`);
+  assert.deepEqual(CH26_DEAD.filter((name) => members.has(name)), [],
+    "the four dead members are gone from the bridge");
 });
