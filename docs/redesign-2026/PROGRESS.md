@@ -40,21 +40,7 @@ Recommendation: Build Tactile and Ambient. They are the top two (15/15 and 12/15
 
 (Agent/workflow and what it is doing. Clear an entry when it lands.)
 
-- **Lab dry run** (today's design as "4a Lab" to TestFlight `Founders` and Play
-  internal), state at 2026-10-05 23:45 PDT:
-  - run 37423123667 (`-f platforms=both`, dispatched 23:19): guard + version green;
-    **android failed** in the identity read-back: `GRADLE=$(ls a b | head -1)` exits
-    2 under pipefail when only one build file exists. Fixed on the trunk
-    (448da129, merged a684a6c0) with a test that RUNS the step; both mutations red.
-    **ios still queued** for a macOS runner. It checks out the trunk when it starts,
-    so it builds with the fix in place (the iOS read-back was reviewed: sound).
-  - run 37424888622 (`-f platforms=android`, the re-run with the fix): waiting in
-    the `lab-build` concurrency group behind 37423123667.
-  - Next check: `gh run view <id> --repo JW-Incorporated/foray`. If Play refuses the
-    first upload of the new app, file one HUMAN-ACTIONS item with the AAB link and
-    the console clicks. If iOS fails, diagnose from the job log.
-    Background `gh run watch` loops were stopped by Claude Code for low memory on
-    this machine; check with one-off commands instead.
+(Nothing in flight.)
 
 Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40-22:40 PDT, 128 agents,
 0 errors) ran 0a-0e, 1, 2, Rank and the checkpoint package.
@@ -110,3 +96,4 @@ Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40-22:40 PDT, 128 agents
 - 2026-10-05/06 — Fidelity tool + build-loop runbook merged (redesign/p0-fidelity 9e97cf08): `tools/ui-lab/fidelity.mjs`, `screens.json` per direction, `docs/redesign-2026/build-loop.md`. ui-lab suites 55/55, suite-integrity 477/477.
 - 2026-10-05/06 — Phases 3-5 workflow staged: `docs/redesign-2026/workflows/build-directions.workflow.js` (c24d5e69), stub dry run clean.
 - 2026-10-05/06 — Lab dry run dispatched (PR #1087 merged 21:17 PDT, so lab-build.yml is on main). First Android attempt exposed a pipefail bug in the read-back step; fixed and tested (a684a6c0); re-run queued. Trunk CI 37424512769 green on all Linux jobs after the gates/fidelity merges.
+- 2026-10-06 — Lab dry run DELIVERED: iOS uploaded to TestFlight (run 37423123667, delivery 752b5524-1d15-44a4-b8e6-0209b87a879b); Android uploaded to the Play internal testing track (run 37424888622, with the read-back fix). The 4a Lab delivery path is proven for both platforms; no HUMAN-ACTIONS item needed.
