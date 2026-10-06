@@ -4,7 +4,9 @@
    makes two rows), swap `>` for `>=` on DRIFT_TOLERANCE_SEC in seek-policy
    (the 10-s drift test still passes, so the mutation to catch is `>` -> `<`:
    45 s reads EXACT and 10 s APPROXIMATE), or return the new row before
-   `write()` is consulted (the refused-write test gets a row, not null). */
+   `edit()` is consulted (the refused-write test gets a row, not null).
+   CH-09a: every write is an EDIT over the value it lands on; see the
+   hydrating-store test for the mutations that pins. */
 
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -14,13 +16,16 @@ import {
 } from "./bookmarks.js";
 import { EXACT, APPROXIMATE } from "./seek-policy.js";
 
-/** A store shaped like app.js's lsGet/lsSet: get(key, fallback), set(key, value) -> boolean. */
+/** A store shaped like app.js's storedValue/editStored once storage has
+    settled: get(key, fallback), edit(key, fallback, fn) -> boolean, the edit
+    applied at once over the stored value. */
 function memoryStore(initial = {}, { refuse = false } = {}) {
   const data = new Map(Object.entries(initial));
   const writes = [];
   return {
     get: (key, fallback) => (data.has(key) ? data.get(key) : fallback),
-    set: (key, value) => {
+    edit: (key, fallback, fn) => {
+      const value = fn(data.has(key) ? data.get(key) : fallback);
       writes.push([key, value]);
       if (refuse) return false;
       // Round-trip through JSON the way localStorage would, so a row that only
@@ -29,6 +34,26 @@ function memoryStore(initial = {}, { refuse = false } = {}) {
       return true;
     },
     writes,
+    raw: () => data.get(KEY),
+  };
+}
+
+/** editStored BEFORE storage has settled: an edit is queued, `get` answers the
+    unhydrated value with the queued edits applied, and `land(durable)` swaps
+    in the hydrated value and runs every queued edit over it, in order. */
+function hydratingStore(unhydrated = {}) {
+  const data = new Map(Object.entries(unhydrated));
+  const queued = [];
+  const view = (key, fallback) => queued.reduce((v, fn) => fn(v), data.has(key) ? data.get(key) : fallback);
+  return {
+    get: (key, fallback) => view(key, fallback),
+    edit: (key, fallback, fn) => { queued.push(fn); return true; },
+    land(durable) {
+      data.clear();
+      for (const [k, v] of Object.entries(durable)) data.set(k, JSON.parse(JSON.stringify(v)));
+      const value = queued.splice(0).reduce((v, fn) => fn(v), data.has(KEY) ? data.get(KEY) : {});
+      data.set(KEY, JSON.parse(JSON.stringify(value)));
+    },
     raw: () => data.get(KEY),
   };
 }
@@ -186,4 +211,38 @@ test("bookmarkLabel: the listener's label, else describeTimestamp for the precis
   assert.equal(bookmarkLabel({ ...bm, label: "" }, exact), "at 1:02:03", "an empty label falls back");
   // A bare precision string is accepted too.
   assert.equal(bookmarkLabel(bm, APPROXIMATE), "around minute 62");
+});
+
+test("a write is an edit over the value it lands on: a queued mark joins the hydrated rows and is deduped there (CH-09a)", () => {
+  /* Before storage settles app.js queues the edit and re-runs it over the
+     durable value (A1-03). MUTATION: build the new map from `readAll(store)`
+     (the page's view) inside the edit instead of from its argument -> the
+     hydrated ep-old row is lost; red. MUTATION 2: drop the near check from
+     placeRow (dedupe only against the view) -> the mark the durable list
+     already holds at 62 s gets a second row at 60 s; red. MUTATION 3: make
+     removeBookmark's edit ignore its argument and remove from
+     `readAll(store)` -> the ep3 mark queued before it is lost; red.
+     MUTATION 4: return the row without consulting edit()'s answer -> the
+     refused-write test above gets a row; red. */
+  const store = hydratingStore();
+  const fresh = addBookmark(store, { episodeId: "ep1", sec: 30, now: at(0) });
+  assert.ok(fresh, "a queued edit is taken");
+  assert.equal(addBookmark(store, { episodeId: "ep1", sec: 32, now: at(1) }).created_at, fresh.created_at,
+    "the view includes the queued mark, so a double tap is the same bookmark");
+  addBookmark(store, { episodeId: "ep2", sec: 60, now: at(2) });
+  const durableRow = { sec: 62, label: null, created_at: "2026-01-01T00:00:00.000Z", duration_sec: null };
+  const oldRow = { sec: 5, label: null, created_at: "2026-01-02T00:00:00.000Z", duration_sec: null };
+  store.land({ [KEY]: { ep2: [durableRow], "ep-old": [oldRow] } });
+  assert.deepEqual(store.raw(), {
+    "ep-old": [oldRow],
+    ep1: [{ ...fresh }],
+    ep2: [durableRow],
+  });
+
+  const removing = hydratingStore({ [KEY]: { ep1: [{ ...fresh }] } });
+  const added = addBookmark(removing, { episodeId: "ep3", sec: 7, now: at(3) });
+  assert.equal(removeBookmark(removing, "ep1", fresh.created_at), true);
+  removing.land({ [KEY]: { ep1: [{ ...fresh }], "ep-old": [oldRow] } });
+  assert.deepEqual(removing.raw(), { "ep-old": [oldRow], ep3: [{ ...added }] },
+    "the removal lands on the hydrated map with the edit queued before it applied");
 });

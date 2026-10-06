@@ -11,9 +11,19 @@
    ── Where the rows live ───────────────────────────────────────────────────
    One `cp_bookmarks` key, `{ [episodeId]: Bookmark[] }`, on the device only
    (roadmap Q19: no new event type, never sent, never synced). The store is
-   injected as `{ get(key, fallback), set(key, value) }` — app.js's
-   lsGet/lsSet or the durable store — and this module never touches
-   `localStorage` itself. `cp_` prefix: renaming wipes user state (CLAUDE.md).
+   injected as `{ get(key, fallback), edit(key, fallback, fn) }` — app.js's
+   storedValue/editStored — and this module never touches `localStorage`
+   itself. `cp_` prefix: renaming wipes user state (CLAUDE.md).
+
+   A WRITE IS AN EDIT, NOT A SET (code-health CH-09a, A1-03). `edit` hands
+   `fn` the stored value and keeps what it returns; before storage has
+   hydrated, app.js queues it and re-runs it over the SETTLED value, so a mark
+   made while IndexedDB is still slow lands beside the durable bookmarks
+   instead of writing `{thisOne}` over them. So every change below is a pure
+   function of the stored value (it may run more than once, over a value this
+   module has not seen), and the rules — dedupe and caps — are applied again
+   inside it. What `get` shows (the page's view, queued edits included)
+   decides only what the caller is told.
 
    ── The rules ─────────────────────────────────────────────────────────────
    - A row is `{ sec, label, created_at, duration_sec }`; `sec` is rounded to a
@@ -24,7 +34,7 @@
    - PER_EPISODE_CAP and TOTAL_CAP bound the key. Over either, the OLDEST
      `created_at` goes — per episode first, then overall — so a listener who
      marks a lot keeps what they marked most recently.
-   - A refused write (store.set returning false) adds nothing and returns
+   - A refused write (store.edit returning false) adds nothing and returns
      null; the caller decides what to tell the listener. Nothing throws on a
      corrupt key: rows that are not `{sec: finite >= 0, created_at: string}`
      are dropped on read.
@@ -68,6 +78,11 @@ const byCreated = (a, b) => (a.created_at < b.created_at ? -1 : a.created_at > b
 export function readAll(store) {
   let raw;
   try { raw = store.get(KEY, {}); } catch { raw = {}; }
+  return normaliseAll(raw);
+}
+
+/** The stored value as rows: the rule `readAll` applies, for an edit too. */
+function normaliseAll(raw) {
   if (!isPlainObject(raw)) return {};
   const out = {};
   for (const [episodeId, rows] of Object.entries(raw)) {
@@ -78,36 +93,23 @@ export function readAll(store) {
   return out;
 }
 
-function write(store, all) {
+/** Change the stored map by `fn` (normalised map -> map) through the
+    store's edit. False when the store refused it. */
+function edit(store, fn) {
   let ok;
-  try { ok = store.set(KEY, all); } catch { ok = false; }
+  try { ok = store.edit(KEY, {}, (raw) => fn(normaliseAll(raw))); } catch { ok = false; }
   return ok !== false;
 }
 
-/**
- * Mark a moment. Returns the row that now stands for it: the new one, or an
- * existing one within DEDUPE_WINDOW_SEC (nothing written then). Returns null
- * for a bad input or a refused write.
- * @param {{get:Function,set:Function}} store
- * @param {{episodeId:string, sec:number, durationSec?:number|null, label?:string|null, now?:number}} mark
- */
-export function addBookmark(store, { episodeId, sec, durationSec = null, label = null, now = Date.now() } = {}) {
-  if (!episodeId || typeof episodeId !== "string") return null;
-  if (typeof sec !== "number" || !Number.isFinite(sec) || sec < 0) return null;
+/** The mark within DEDUPE_WINDOW_SEC of `sec` among `rows`, if any. */
+const nearRow = (rows, sec) => rows.find((r) => Math.abs(r.sec - sec) <= DEDUPE_WINDOW_SEC);
 
-  const all = readAll(store);
+/** `all` with `row` added under `episodeId` and both caps applied -- or
+    unchanged when a mark within the dedupe window is already there. Mutates
+    and returns `all` (the edit's own fresh copy). */
+function placeRow(all, episodeId, row) {
   const rows = all[episodeId] || [];
-  const rounded = Math.round(sec);
-
-  const near = rows.find((r) => Math.abs(r.sec - rounded) <= DEDUPE_WINDOW_SEC);
-  if (near) return near;
-
-  const row = {
-    sec: rounded,
-    label: typeof label === "string" && label ? label : null,
-    created_at: new Date(now).toISOString(),
-    duration_sec: typeof durationSec === "number" && Number.isFinite(durationSec) ? durationSec : null,
-  };
+  if (nearRow(rows, row.sec)) return all;
 
   let next = [...rows, row].sort(bySec);
   // Per-episode cap: the oldest marks on THIS episode go first.
@@ -135,8 +137,35 @@ export function addBookmark(store, { episodeId, sec, durationSec = null, label =
     if (!all[victimEp].length) delete all[victimEp];
     total -= 1;
   }
+  return all;
+}
 
-  if (!write(store, all)) return null;
+/**
+ * Mark a moment. Returns the row that now stands for it: the new one, or an
+ * existing one within DEDUPE_WINDOW_SEC (nothing written then). Returns null
+ * for a bad input or a refused write. The dedupe answers from the page's view
+ * (`get`) and is applied again inside the edit, over the value it lands on.
+ * @param {{get:Function,edit:Function}} store
+ * @param {{episodeId:string, sec:number, durationSec?:number|null, label?:string|null, now?:number}} mark
+ */
+export function addBookmark(store, { episodeId, sec, durationSec = null, label = null, now = Date.now() } = {}) {
+  if (!episodeId || typeof episodeId !== "string") return null;
+  if (typeof sec !== "number" || !Number.isFinite(sec) || sec < 0) return null;
+
+  const rounded = Math.round(sec);
+  const near = nearRow(readAll(store)[episodeId] || [], rounded);
+  if (near) return near;
+
+  const row = {
+    sec: rounded,
+    label: typeof label === "string" && label ? label : null,
+    created_at: new Date(now).toISOString(),
+    duration_sec: typeof durationSec === "number" && Number.isFinite(durationSec) ? durationSec : null,
+  };
+
+  // A fresh copy per run: the edit may be re-run, and the total cap finds
+  // "the one just made" by identity.
+  if (!edit(store, (all) => placeRow(all, episodeId, { ...row }))) return null;
   return row;
 }
 
@@ -146,13 +175,13 @@ export function addBookmark(store, { episodeId, sec, durationSec = null, label =
  */
 export function removeBookmark(store, episodeId, createdAt) {
   if (!episodeId || typeof createdAt !== "string") return false;
-  const all = readAll(store);
-  const rows = all[episodeId];
-  if (!rows) return false;
-  const next = rows.filter((r) => r.created_at !== createdAt);
-  if (next.length === rows.length) return false;
-  if (next.length) all[episodeId] = next; else delete all[episodeId];
-  return write(store, all);
+  const rows = readAll(store)[episodeId];
+  if (!rows || !rows.some((r) => r.created_at === createdAt)) return false;
+  return edit(store, (all) => {
+    const next = (all[episodeId] || []).filter((r) => r.created_at !== createdAt);
+    if (next.length) all[episodeId] = next; else delete all[episodeId];
+    return all;
+  });
 }
 
 /** The episode's bookmarks, sorted by `sec`, as a copy the caller may mutate. */
