@@ -354,7 +354,7 @@ jobs:
           test -d ../plugins/foray-audio/android/src/main/java \
             || { echo "the plugin's Java sources are missing from the checkout — see mobile/.gitignore's anchoring note"; exit 1; }
 
-      - name: native unit tests — foray-audio, foray-tts, foray-vault (Robolectric — actually RUNS the plugin code)
+      - name: native unit tests — foray-audio, foray-tts, foray-vault, foray-downloads (JVM — actually RUNS the plugin code)
         # M5 (full-repo-review-report.md, 2026-08-31): everything above this step
         # proves the plugin's SOURCES survived regeneration and that the APK
         # compiles; nothing runs a line of `ForayAudioPlugin`,
@@ -369,12 +369,20 @@ jobs:
         # hand-written modules: `:foray-tts` (the `finished` event and the
         # utteranceId it carries on the done and error paths) and `:foray-vault`
         # (the token store's round-trip, corrupt-file recovery and the no-backup
-        # directory). One Gradle invocation, so the three share one configuration.
+        # directory). One Gradle invocation, so the modules share one configuration.
+        #
+        # CH-06 (docs/roadmap/code-health.md, N1-04) adds `:foray-downloads`:
+        # `DownloadRulesTest` (plain JUnit over `DownloadRules`, no Robolectric)
+        # pins the http(s)-only source filter, the sha256 file name, the 403 =
+        # unplayable-here mapping and the too-many-redirects reason iOS also
+        # uses. Until this step named it, tools/mobile/foray-downloads.test.mjs
+        # proved those tests EXIST, and nothing proved they pass.
         working-directory: mobile/android
         run: |
           set -euo pipefail
           if ! ./gradlew :foray-audio:testDebugUnitTest :foray-tts:testDebugUnitTest \
-              :foray-vault:testDebugUnitTest --continue --no-daemon --console=plain \
+              :foray-vault:testDebugUnitTest :foray-downloads:testDebugUnitTest \
+              --continue --no-daemon --console=plain \
               > "$ART/gradle-native-unit-test.log" 2>&1; then
             echo "::group::native unit test log tail"; tail -300 "$ART/gradle-native-unit-test.log"; echo "::endgroup::"
             exit 1
@@ -386,8 +394,8 @@ jobs:
           # case fails the step too: one `@Ignore` line would otherwise turn a
           # mutation-killing test green with the feature it guards deleted.
           # `--continue` above runs every module even when an earlier one fails,
-          # so one red run names all three modules' failures, not just the first.
-          for m in foray-audio foray-tts foray-vault; do
+          # so one red run names every module's failures, not just the first.
+          for m in foray-audio foray-tts foray-vault foray-downloads; do
             d="../plugins/$m/android/build/test-results/testDebugUnitTest"
             n=$(cat "$d"/TEST-*.xml 2>/dev/null | grep -c '<testcase ' || true)
             k=$(cat "$d"/TEST-*.xml 2>/dev/null | grep -c '<skipped' || true)

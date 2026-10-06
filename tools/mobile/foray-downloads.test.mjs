@@ -422,3 +422,55 @@ test("PQ-21: the shell declares the plugin, and the lockfile npm ci reads agrees
   assert.equal(own.name, "foray-downloads");
   assert.deepEqual(own.capacitor, { ios: { src: "ios" }, android: { src: "android" } });
 });
+
+/* ─────────── CH-06 (N1-04): CI RUNS the native rule tests ───────────
+ *
+ * The XCTests and JUnit tests pinned above by NAME prove only that the tests
+ * exist. What runs them is two workflow steps: ci.yml's ios-kit job (an
+ * `xcodebuild test` against an iOS Simulator, because the package links
+ * Capacitor, which ships iOS slices only) and android-build.yml's native
+ * unit-test step (Gradle's `:foray-downloads:testDebugUnitTest`, plus the
+ * report loop that fails a module that ran no test or skipped one). Delete
+ * either and `DownloadPolicy`'s redirect cap or the Java 403 mapping can be
+ * broken with CI green. YAML comment lines are stripped first: a comment
+ * naming a step is not a step. */
+
+const yamlCode = (src) => src.split("\n").filter((l) => !/^\s*#/.test(l)).join("\n");
+
+/** One top-level job of a workflow: from `  <name>:` to the next job key. */
+function workflowJob(src, name) {
+  const start = src.search(new RegExp(`^  ${name}:\\s*$`, "m"));
+  if (start < 0) return "";
+  const rest = src.slice(start + 1);
+  const next = rest.search(/^  [A-Za-z0-9_-]+:\s*$/m);
+  return next < 0 ? src.slice(start) : src.slice(start, start + 1 + next);
+}
+
+test("CI runs the native rule tests: ios-kit tests ForayDownloads on a Simulator, android-build runs and counts :foray-downloads", () => {
+  /* MUTATION: delete ci.yml's `swift test (foray-downloads, iOS Simulator)`
+     step -> DownloadPolicyTests.swift runs nowhere again. RUN.
+     MUTATION: `-scheme ForayDownload` -> xcodebuild finds no such scheme. RUN.
+     MUTATION: drop `:foray-downloads:testDebugUnitTest` from android-build.yml's
+     gradlew line -> DownloadRulesTest.java runs nowhere again. RUN.
+     MUTATION: drop foray-downloads from the JUnit report loop -> a lost
+     src/test directory reports NO-SOURCE and stays green. RUN. */
+  const ci = yamlCode(read(ROOT, ".github", "workflows", "ci.yml"));
+  const iosKit = workflowJob(ci, "ios-kit");
+  assert.ok(iosKit, "ci.yml keeps its ios-kit job");
+  const step = /- name: swift test \(foray-downloads, iOS Simulator\)\n([\s\S]*?)(?=\n      - |$)/.exec(iosKit)?.[1] ?? "";
+  assert.ok(step, "ios-kit has a `swift test (foray-downloads, iOS Simulator)` step");
+  assert.match(step, /working-directory: mobile\/plugins\/foray-downloads\n/);
+  const pkgName = /name: "([^"]+)"/.exec(code(read(PLUGIN, "Package.swift")))?.[1];
+  assert.equal(pkgName, "ForayDownloads");
+  assert.match(step, /xcodebuild test \\\n\s+-scheme ForayDownloads \\\n\s+-destination "platform=iOS Simulator,/,
+    "the step tests the package's own scheme on a Simulator");
+  assert.match(step, /Executed \[1-9\]/, "the step fails a run that executed no test");
+
+  const android = yamlCode(read(ROOT, ".github", "workflows", "android-build.yml"));
+  const gradle = /\.\/gradlew((?:[^\n]*\\\n)*[^\n]*)/.exec(
+    android.slice(android.indexOf(":foray-vault:testDebugUnitTest") - 200))?.[1] ?? "";
+  assert.match(gradle, /:foray-vault:testDebugUnitTest/, "the native unit-test gradlew line is found");
+  assert.match(gradle, /:foray-downloads:testDebugUnitTest/, "Gradle runs foray-downloads' JUnit tests");
+  const loop = /for m in ([^;\n]+); do\n\s+d="\.\.\/plugins\/\$m\/android\/build\/test-results\/testDebugUnitTest"/.exec(android)?.[1] ?? "";
+  assert.ok(loop.split(/\s+/).includes("foray-downloads"), `the report loop counts foray-downloads' test cases (loop: "${loop}")`);
+});
