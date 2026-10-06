@@ -28,6 +28,9 @@
    cross-checking a row against Apple's documentation should not have to
    translate. The generator refuses any other shape.
 
+   The module also spells the three shared rows' storage keys (end of file,
+   CH-31), for the same one-place reason.
+
    Pure data plus one pure function. No DOM, no storage, no imports. */
 
 /** Where a deck is in its load (plan §4.3's readiness-gated pipeline, and the
@@ -194,3 +197,32 @@ export function admitToken(set, token) {
   }
   return typeof token === "string" && VOCABULARY[set].includes(token) ? token : null;
 }
+
+/* ---------- the shared rows' storage keys (code-health CH-31, X1-10) ----------
+
+   The three `cp_` rows the native engine owns on iOS (engine-contract.js
+   OWNED_PREFIXES, plan §4.6), spelled ONCE. They are vocabulary in the same
+   sense as the sets above — strings the page and the engine must spell
+   identically — and they live here because this module is pure data with no
+   imports: engine-contract.js may import only this module (its header), and
+   foray-progress.js and episode-progress.js can read it without pulling in
+   anything else. Each owner re-exports its key under its own name
+   (`KEY_PREFIX`, `KEY`), which is what gen-constants.mjs derives the Swift
+   and Java constants from, so the generated files do not move.
+
+   `cp_` prefix: renaming any of these wipes user state (CLAUDE.md). They are
+   not in VOCABULARY: a row key is not a diagnostics token, and the generator
+   renders every VOCABULARY set as an enum. */
+
+/** One row per episode: `cp_pos:<id>`. position-store.js spells it in
+    `positionKey`; vocabulary-pins.test.js holds `positionKey("")` to this. */
+export const POSITION_KEY_PREFIX = "cp_pos:";
+
+/** One row per Foray: `cp_foray:<id>` (foray-progress.js KEY_PREFIX). The
+    trailing colon is load-bearing: without it the prefix would also claim
+    `cp_foray_feedback`, the thumbs store, which the engine never writes. */
+export const FORAY_PROGRESS_KEY_PREFIX = "cp_foray:";
+
+/** The single "last episode" pointer row (episode-progress.js KEY). One
+    whole key; nothing else starts with it. */
+export const LAST_EPISODE_KEY = "cp_last_episode";

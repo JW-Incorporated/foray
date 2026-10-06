@@ -44,10 +44,13 @@
    is closed; a closed set of KEYS is not.
 
    Pure: no DOM, no storage, no clock. The only import is the vocabulary, which
-   is pure data too. */
+   is pure data too — and which also spells the three owned rows' keys, so
+   OWNED_PREFIXES below names them without a second copy of the strings
+   (code-health CH-31). */
 
 import {
   SESSION_ERRORS, INTERRUPTION_REASONS, SOURCES, MODE_REASONS,
+  POSITION_KEY_PREFIX, FORAY_PROGRESS_KEY_PREFIX, LAST_EPISODE_KEY,
 } from "./engine-vocabulary.js";
 
 /* ====================================================================== */
@@ -76,7 +79,7 @@ export const PROTOCOL = 1;
  * DurableStore treat these keys as DEFERRED on the iOS shell from the moment it
  * is constructed; the Swift EngineStore writes exactly these rows.
  */
-export const OWNED_PREFIXES = Object.freeze(["cp_pos:", "cp_foray:", "cp_last_episode"]);
+export const OWNED_PREFIXES = Object.freeze([POSITION_KEY_PREFIX, FORAY_PROGRESS_KEY_PREFIX, LAST_EPISODE_KEY]);
 
 /** The three plugin methods (§5.1), iOS only. New commands never need a new
     CAPPluginMethod: they are `cmd` values inside engineSend. NE-20's
