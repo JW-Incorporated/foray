@@ -25,6 +25,14 @@
       "reason": "webview-only",
       "why": "client.js's page-side bookkeeping: which list foray.index is read from when the bar, the clock and the resume row name a clip. In native mode the engine owns the queue and reports the playing item itself (NE-35), so there is no second page-side list for it to index; nothing here is a rule the engine reimplements."
     },
+    "CH-26: nothing shipped calls ForayPlayer.cycleRate, stripModel, stripSummary or lastVoiceFallback": {
+      "reason": "webview-only",
+      "why": "Reads client.js's source for the members of the `window.ForayPlayer` literal and greps app.js, index.html and sw.js for callers: the page-side bridge's public surface (CH-26 deletes four members nothing called). The native engine has no window bridge; in native mode the page still talks to this same literal, so nothing here is a rule the engine reimplements."
+    },
+    "CH-26: window.ForayPlayer no longer publishes cycleRate, stripModel, stripSummary or lastVoiceFallback": {
+      "reason": "webview-only",
+      "why": "Reads client.js's source for the members of the `window.ForayPlayer` literal and greps app.js, index.html and sw.js for callers: the page-side bridge's public surface (CH-26 deletes four members nothing called). The native engine has no window bridge; in native mode the page still talks to this same literal, so nothing here is a rule the engine reimplements."
+    },
     "DELETING EVERYTHING leaves the page interactive, and resume works again after it": {
       "reason": "webview-only",
       "why": "The page's own storage tiers (window.forayStorage, localStorage, the durable IndexedDB/Preferences tier, quota handling) as app.js reads them. In native mode the engine owns cp_foray and friends (OWNED_PREFIXES) and the page adopts them (NE-23); these pin the web tiers."
