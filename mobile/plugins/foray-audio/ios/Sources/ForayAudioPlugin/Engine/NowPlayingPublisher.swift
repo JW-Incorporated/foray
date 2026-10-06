@@ -135,7 +135,7 @@ final class NowPlayingPublisher: NowPlayingWriting {
     /// loading); 1 when neither is usable (never 0, never NaN).
     static func defaultRate(entryRate: Double, listenRate: Double) -> Double {
         if entryRate.isFinite && entryRate > 0 { return entryRate }
-        return listenRate.isFinite && listenRate > 0 ? listenRate : 1
+        return 1 // MUTATION m2: entry rate only
     }
 
     /// The dictionary. `advancedBySec` moves the playhead on at the entry's
