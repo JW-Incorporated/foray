@@ -152,7 +152,6 @@ const isNum = (n) => typeof n === "number" && Number.isFinite(n);
 const nonEmpty = (s) => typeof s === "string" && s.trim().length > 0;
 const clamp01 = (n) => (isNum(n) ? Math.min(1, Math.max(0, n)) : 0);
 
-
 /**
  * Which SOURCE EPISODE this item was cut from — the value the capsules group
  * on, and therefore the definition of a seam.
