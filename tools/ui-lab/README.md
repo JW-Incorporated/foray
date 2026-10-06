@@ -39,6 +39,18 @@ node tools/ui-lab/a11y.mjs --target app --out data-local/redesign/a11y/today
 node tools/ui-lab/a11y.mjs --target url --url path/to/prototype.html --routes "#/,#/x" --out <dir>
 ```
 
+A blind pairwise judging set for the design judge (`docs/redesign-2026/judge/protocol.md`):
+
+```
+node tools/ui-lab/judge-set.mjs --pairs docs/redesign-2026/judge/hard-pairs.json \
+     --out data-local/redesign/judge-hard --judges 6
+```
+
+It copies each pair to neutral `j<k>/<nn>/A.png, B.png` folders, shows every pair
+in both orders to two different judges, never gives one judge two pairs of the
+same screen, can wrap a render in a marketing-style frame, and writes `key.json`
+(move it out of the folder before judges start).
+
 Options: `--states a,b` (app target), `--viewports 393x852,375x667` (shoot default
 `393x852,375x667,412x915`), `--css <file>`, `--full` (full-page captures instead
 of the viewport), `--no-remote-images` (flat grey placeholder for every https

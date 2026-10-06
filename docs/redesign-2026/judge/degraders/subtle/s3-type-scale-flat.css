@@ -1,0 +1,14 @@
+/* Hard-set degrader S3: flattened type scale, nothing else.
+   Today's scale runs 0.66 -> 1.3rem (ratio ~2.0); this compresses it to
+   0.76 -> 1.04rem (ratio ~1.37) so titles, body and meta sit close in size.
+   Families, weights, colours and spacing are untouched. Calibration only.
+   Injected with: node tools/ui-lab/shoot.mjs --target app --css <this file> */
+:root, body, body.ui-v2 {
+  --fs-2xs: 0.76rem !important;
+  --fs-xs: 0.8rem !important;
+  --fs-sm: 0.84rem !important;
+  --fs-md: 0.88rem !important;
+  --fs-lg: 0.92rem !important;
+  --fs-xl: 0.98rem !important;
+  --fs-2xl: 1.04rem !important;
+}

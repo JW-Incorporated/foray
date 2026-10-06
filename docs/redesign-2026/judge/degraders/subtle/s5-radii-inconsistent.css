@@ -1,0 +1,10 @@
+/* Hard-set degrader S5: inconsistent corner radii, nothing else.
+   Alternate cards/rows drop from 16px to 4px corners, alternate artwork from
+   8px to 2px, and some round controls become 6px squares. Colour, type and
+   spacing untouched. Calibration use only; never ship.
+   Injected with: node tools/ui-lab/shoot.mjs --target app --css <this file> */
+.show-result:nth-child(even), .ep-row:nth-child(even), .pl-row:nth-child(even),
+.hv2-jbi-card:nth-child(even), .hv2-foray-card:nth-child(even), .hv2-playlist-card:nth-child(even) { border-radius: 4px !important; }
+.show-result:nth-child(3n) .show-result-art, .mini-card:nth-child(even) img { border-radius: 2px !important; }
+.ep-row:nth-child(odd) .play-btn, .fp-btn:not(.fp-big) { border-radius: 6px !important; }
+.hv2-play { border-radius: 10px !important; }

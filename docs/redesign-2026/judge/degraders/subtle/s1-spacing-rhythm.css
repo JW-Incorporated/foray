@@ -1,0 +1,14 @@
+/* Hard-set degrader S1: broken spacing rhythm, nothing else.
+   Like items get uneven vertical gaps (2px / 18px alternating) and uneven
+   internal padding, and sheet blocks lose their even stacking. Type, colour,
+   radii and left edges are untouched. Calibration use only; never ship.
+   Injected with: node tools/ui-lab/shoot.mjs --target app --css <this file> */
+.show-result:nth-child(odd), .ep-row:nth-child(odd), .pl-row:nth-child(odd) { margin-bottom: 2px !important; padding-top: 7px !important; }
+.show-result:nth-child(even), .ep-row:nth-child(even), .pl-row:nth-child(even) { margin-bottom: 18px !important; padding-bottom: 17px !important; }
+.lib-section-head:nth-of-type(odd) { margin-top: 4px !important; }
+.lib-section-head:nth-of-type(even) { margin-top: 30px !important; }
+.page-head { margin-bottom: 2px !important; }
+.fp-s-title { margin-top: 26px !important; margin-bottom: 0 !important; }
+.fp-s-show { margin-top: 0 !important; margin-bottom: 16px !important; }
+.fp-s-why { margin-top: 0 !important; margin-bottom: 0 !important; }
+.fp-scrub { margin-top: 4px !important; }
