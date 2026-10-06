@@ -191,6 +191,20 @@ async function mountBooted(seed) {
   return m;
 }
 
+/** Put `list` in cp_playlists as a stored list looks (each record with its
+    `item_ids` mirror), straight into the store: a test's fixture is not one of
+    the app's writes. code-health CH-08 deleted the test-only savePlaylists
+    (and its hard-coded slice to 50); editPlaylists is the one writer. */
+function seedPlaylists(m, list) {
+  m.store.set("cp_playlists", JSON.stringify(list.map((p) => m.ctx.withMirror(p))));
+}
+
+/** The next real edit, with nothing to change: what writes a repaired list
+    now that a read never does (code-health CH-08, A1-02). */
+function nextEdit(m) {
+  return m.ctx.editPlaylists((list) => list);
+}
+
 /* ---------- a synthetic pool, in the discover.json shape ---------- */
 
 function poolItem(n, over = {}) {
@@ -353,12 +367,13 @@ test("REPRODUCED: the list's part count and the detail view's rows agree after a
 /* 2. WHAT A PLAYLIST PERSISTS                                          */
 /* ==================================================================== */
 
-test("a saved part carries exactly the eight whitelisted fields, and no more", () => {
+test("a saved part carries exactly the six whitelisted fields, and no more", () => {
   /* The whitelist is the decision, so it is pinned literally: a field added to
      the pool must not silently start costing 50 playlists' worth of storage,
-     and a field removed here must not silently stop rendering. Eight since
-     catalogue-personalization PKG-11 (#558 item 8) added `release_date`, which
-     archivedRow prints: `id` plus the seven PLAYLIST_PART_FIELDS.
+     and a field removed here must not silently stop rendering. Six since
+     code-health CH-08 (A1-09) dropped the two Apple ids no reader took from a
+     part: `id` plus the five PLAYLIST_PART_FIELDS (`release_date` joined in
+     catalogue-personalization PKG-11, #558 item 8, because archivedRow prints it).
 
      MUTATION 1: add `audio_url` to PLAYLIST_PART_FIELDS — fails here and again in
      the byte-budget test below. MUTATION 2: drop `title` — fails here, and the
@@ -366,28 +381,50 @@ test("a saved part carries exactly the eight whitelisted fields, and no more", (
   const m = mount();
   const part = m.ctx.playlistPart(poolItem(1));
   assert.deepStrictEqual(Object.keys(part).sort(), [
-    "apple_collection_id", "apple_track_id", "duration_min", "id", "release_date", "show", "title", "topics",
+    "duration_min", "id", "release_date", "show", "title", "topics",
   ]);
+});
+
+test("a playlist the real builder stores carries no Apple ids in any part (code-health CH-08, A1-09)", () => {
+  /* apple_collection_id / apple_track_id were whitelisted into every part for a
+     derivation (`id<collection>?i=<track>`) nothing performs, and no reader
+     takes either from a part: shareLinkFor's apple_episode_url fallback reads a
+     LIVE item. ~64 B a part in the localStorage tier, for nothing. Asserted on
+     what buildPlaylist actually WROTE, from a pool whose every item carries
+     both ids, so the projection cannot be bypassed by a fixture.
+     MUTATION: put "apple_collection_id" (or "apple_track_id") back in
+     PLAYLIST_PART_FIELDS -> every stored part carries it and this fails. */
+  const m = mount();
+  setPool(m, Array.from({ length: 12 }, (_, i) => poolItem(i + 1)));
+  m.ctx.fullPool();
+  m.state.semantic = { concepts: {} };
+  m.state.itemTags = {};
+  const built = m.ctx.buildPlaylist("physics");
+  assert.ok(built.playlist, `fixture assumption: the synthetic pool answers "physics": ${built.status}`);
+  const parts = m.playlistsRaw()[0].items;
+  assert.ok(parts.length > 0 && parts.every((x) => x.title), "fixture assumption: whole parts were stored");
+  const appleKeys = parts.flatMap((x) => Object.keys(x).filter((k) => k.startsWith("apple_")));
+  assert.deepStrictEqual(appleKeys, [], "no stored part carries an Apple id");
 });
 
 test("the fields that ROT or cost the most are deliberately not copied", () => {
   /* `audio_url` is the point: it is the most expensive field AND the only one
      whose staleness produces a play button that fails, which is worse than the
      link-out an absent one degrades to. `artwork_url` is never rendered by a row,
-     `apple_episode_url` is derivable from the two Apple ids that are kept,
-     and `hook` only reaches an in-app play.
+     nothing links out to Apple (`apple_episode_url`, and since code-health
+     CH-08 the two Apple ids too), and `hook` only reaches an in-app play.
 
      MUTATION: copy any of them into the part. This fails, by name. */
   const m = mount();
   const stored = JSON.stringify(m.ctx.playlistPart(poolItem(1)));
-  for (const field of ["audio_url", "artwork_url", "apple_episode_url", "hook", "duration_sec"]) {
+  for (const field of ["audio_url", "artwork_url", "apple_episode_url", "apple_collection_id", "apple_track_id", "hook", "duration_sec"]) {
     assert.ok(!stored.includes(field), `${field} must not be persisted per playlist`);
   }
 });
 
 test("a full store of 50 playlists stays inside its stated storage budget", () => {
-  /* The arithmetic from app.js's § header, asserted rather than claimed: ~298 B a
-     part, ~3.6 KB a playlist, ~178 KB for a full 50 against savePlaylists' cap
+  /* The arithmetic from app.js's § header, asserted rather than claimed: ~234 B a
+     part, ~3.0 KB a playlist, ~150 KB for a full 50 against PLAYLISTS_CAP
      and SearchEngine.DEFAULT_CAP's 10 picks. Measured on REAL catalogue rows, so
      the titles and show names are the real lengths.
 
@@ -396,7 +433,8 @@ test("a full store of 50 playlists stays inside its stated storage budget", () =
      the one number that moves if somebody widens the whitelist.
 
      MUTATION: add `audio_url` (182 B a part) or `artwork_url` (161 B) to
-     PLAYLIST_PART_FIELDS. Either blows the per-part ceiling and the total. */
+     PLAYLIST_PART_FIELDS. Either blows the per-part ceiling and the total. So
+     does putting the two Apple ids back (+64 B a part, code-health CH-08). */
   const m = mount();
   const cap = m.evalIn("SearchEngine.DEFAULT_CAP");
   assert.strictEqual(cap, 10, "the arithmetic below is stated against a 10-pick playlist");
@@ -409,12 +447,18 @@ test("a full store of 50 playlists stays inside its stated storage budget", () =
      2026-10-04 (catalogue-personalization PKG-11, #558 item 8): the mean ceiling
      moved 285 -> 310 B when `release_date` (28 B) joined the whitelist; measured
      297.6 B over 2,167 items. Adding `hook` still measures 395.9 B and goes red.
-     Max (496 B against 500), typical and worst were re-measured and still fit. */
+     Max (496 B against 500), typical and worst were re-measured and still fit.
+
+     2026-10-06 (code-health CH-08, A1-09): the two Apple ids left the
+     whitelist, so every ceiling came DOWN to stay tight: measured over 2,177
+     items the mean is 234.1 B (ceiling 245: `duration_sec` makes it 254, the
+     Apple ids 298), the largest part 433 B (ceiling 445), the typical 50
+     138.4 KB (ceiling 145) and the worst 50 235.9 KB (ceiling 245). */
   const real = readJson("data/discover.json").items;
   const sizes = real.map((it) => JSON.stringify(m.ctx.playlistPart(it)).length);
   const mean = sizes.reduce((a, b) => a + b, 0) / sizes.length;
-  assert.ok(mean < 310, `the mean part is ${mean.toFixed(0)} B against a documented 298; the budget is 310`);
-  assert.ok(Math.max(...sizes) < 500, `the largest part is ${Math.max(...sizes)} B; the budget is 500`);
+  assert.ok(mean < 245, `the mean part is ${mean.toFixed(0)} B against a documented 234; the budget is 245`);
+  assert.ok(Math.max(...sizes) < 445, `the largest part is ${Math.max(...sizes)} B; the budget is 445`);
 
   const playlistOf = (parts) => m.ctx.withMirror({
     id: "q1", query: "a query somebody typed", title: "A Query Somebody Typed",
@@ -422,17 +466,17 @@ test("a full store of 50 playlists stays inside its stated storage budget", () =
   });
   const fifty = (parts) => JSON.stringify(Array.from({ length: 50 }, () => playlistOf(parts))).length;
 
-  /* The typical full store: ~170 KB on the first ten rows, against the ~178 KB
+  /* The typical full store: ~138 KB on the first ten rows, against the ~150 KB
      app.js derives from the mean part. */
   const typical = fifty(real.slice(0, cap).map((it) => m.ctx.playlistPart(it)));
-  assert.ok(typical < 180 * 1024, `50 typical playlists are ${(typical / 1024).toFixed(0)} KB; the budget is 180 KB`);
+  assert.ok(typical < 145 * 1024, `50 typical playlists are ${(typical / 1024).toFixed(0)} KB; the budget is 145 KB`);
 
   /* And the true worst case: 50 playlists of the ten longest-titled episodes in the
-     catalogue. ~267 KB, which is the number to compare against a browser quota. */
+     catalogue. ~236 KB, which is the number to compare against a browser quota. */
   const longest = [...real].sort((a, b) =>
     JSON.stringify(m.ctx.playlistPart(b)).length - JSON.stringify(m.ctx.playlistPart(a)).length).slice(0, cap);
   const worst = fifty(longest.map((it) => m.ctx.playlistPart(it)));
-  assert.ok(worst < 270 * 1024, `the worst 50 are ${(worst / 1024).toFixed(0)} KB; the budget is 270 KB`);
+  assert.ok(worst < 245 * 1024, `the worst 50 are ${(worst / 1024).toFixed(0)} KB; the budget is 245 KB`);
 });
 
 test("the item_ids mirror tracks items on every write, so an older app.js cannot read a lie", () => {
@@ -441,11 +485,11 @@ test("the item_ids mirror tracks items on every write, so an older app.js cannot
      absence, blanking the view for the length of the update window. A mirror that
      could drift from `items` would be this same defect one level down.
 
-     MUTATION: drop `.map(withMirror)` from savePlaylists. The stale mirror
-     survives the write and this fails. */
+     MUTATION: drop `.map(withMirror)` from editPlaylists, the one writer. The
+     stale mirror the edit hands back survives the write and this fails. */
   const m = mount();
   const parts = [1, 2, 3].map((n) => m.ctx.playlistPart(poolItem(n)));
-  m.ctx.savePlaylists([{ id: "q1", title: "T", created: "2026-08-18T00:00:00.000Z", items: parts, item_ids: ["stale"] }]);
+  m.ctx.editPlaylists(() => [{ id: "q1", title: "T", created: "2026-08-18T00:00:00.000Z", items: parts, item_ids: ["stale"] }]);
   const [saved] = m.playlistsRaw();
   assert.deepStrictEqual(saved.item_ids, parts.map((p) => p.id));
 });
@@ -459,7 +503,7 @@ test("items is authoritative: a mirror that disagrees is repaired, not believed"
      both views print two.
 
      MUTATION 1: drop the mirror-disagreement branch from hydratePlaylistParts. The
-     stale mirror survives the read and this fails on the persisted value — and
+     stale mirror survives the read, and the next edit, and this fails — and
      with it, `p.item_ids.length` becomes a number no test can distinguish.
      MUTATION 2: make resolveParts read `item_ids` in preference to `items`. Both
      the count and the row count go to five (six tests fail).
@@ -481,7 +525,9 @@ test("items is authoritative: a mirror that disagrees is repaired, not believed"
   }]));
   const [p] = m.ctx.playlists();
   assert.deepStrictEqual([...p.item_ids], parts.map((x) => x.id), "the mirror must be corrected");
-  assert.deepStrictEqual([...m.playlistsRaw()[0].item_ids], parts.map((x) => x.id), "and the correction persisted");
+  /* A read never writes (code-health CH-08); the next edit carries the repair. */
+  nextEdit(m);
+  assert.deepStrictEqual([...m.playlistsRaw()[0].item_ids], parts.map((x) => x.id), "and the next edit persists the correction");
 
   /* ORDER, not just length. The ghost mirror above is longer, so a repair that only
      compared `length` would pass it — and order is the whole point of a mirror an
@@ -493,8 +539,7 @@ test("items is authoritative: a mirror that disagrees is repaired, not believed"
     id: "q1", title: "T", items: parts, item_ids: [parts[1].id, parts[0].id],
     created: "2026-08-18T00:00:00.000Z",
   }]));
-  swapped.ctx.playlists();
-  assert.deepStrictEqual([...swapped.playlistsRaw()[0].item_ids], parts.map((x) => x.id),
+  assert.deepStrictEqual([...swapped.ctx.playlists()[0].item_ids], parts.map((x) => x.id),
     "a same-length mirror in the wrong order must still be repaired");
   m.ctx.renderPlaylists();
   assert.ok(m.view().includes("2 episodes"), `the list must count items: ${/\d+ episodes?\b/.exec(m.view())}`);
@@ -502,17 +547,28 @@ test("items is authoritative: a mirror that disagrees is repaired, not believed"
   assert.strictEqual(rowCount(m.view()), 2);
 });
 
-test("savePlaylists still caps the store at 50 playlists", () => {
-  /* Unchanged behaviour, floored here because per-playlist growth multiplies
-     against it — the cap is now load-bearing for storage, not just for the list.
+test("PLAYLISTS_CAP is the one cap: the 50th build is kept and a 51st is refused", () => {
+  /* Floored here because per-playlist growth multiplies against it — the cap is
+     load-bearing for storage, not just for the list. Until code-health CH-08
+     (A1-07) a test-only savePlaylists sliced to a literal 50 beside
+     PLAYLISTS_CAP, so changing the constant left tests seeding a store the app
+     thought over-cap and passing anyway. Now the cap is said at the add and
+     stated once (save-playlist.test.js pins that nothing slices).
 
-     MUTATION: raise or remove the `.slice(0, 50)`. This fails. */
+     MUTATION: set PLAYLISTS_CAP to 51 (or 49). The 51st build is kept (or the
+     50th refused) and this fails. */
   const m = mount();
-  const many = Array.from({ length: 63 }, (_, i) => ({
+  setPool(m, Array.from({ length: 12 }, (_, i) => poolItem(i + 1)));
+  m.ctx.fullPool();
+  m.state.semantic = { concepts: {} };
+  m.state.itemTags = {};
+  seedPlaylists(m, Array.from({ length: 49 }, (_, i) => ({
     id: `q${i}`, title: `T${i}`, created: "2026-08-18T00:00:00.000Z", items: [m.ctx.playlistPart(poolItem(i))],
-  }));
-  m.ctx.savePlaylists(many);
+  })));
+  assert.ok(m.ctx.buildPlaylist("physics").playlist, "the 50th is built");
   assert.strictEqual(m.playlistsRaw().length, 50);
+  assert.strictEqual(m.ctx.buildPlaylist("physics").status, "full", "a 51st is refused");
+  assert.strictEqual(m.playlistsRaw().length, 50, "and nothing was added");
 });
 
 /* ==================================================================== */
@@ -525,7 +581,7 @@ function withArchivedPart(m, { extraStub = false, over = {} } = {}) {
   m.ctx.fullPool();
   const parts = items.map((it) => m.ctx.playlistPart(it));
   if (extraStub) parts.push({ id: "long-gone--episode" });
-  m.ctx.savePlaylists([{
+  seedPlaylists(m, [{
     id: "q1", query: "physics", title: "Physics", items: parts,
     created: "2026-08-18T00:00:00.000Z", last_played_at: null, sparse: false,
   }]);
@@ -564,7 +620,7 @@ test("a playlist part stores release_date, so an archived part still shows its d
   const items = setPool(m, [poolItem(1), poolItem(2, { release_date: "2024-03-07" })]);
   m.ctx.fullPool();
   const parts = items.map((it) => m.ctx.playlistPart(it));
-  m.ctx.savePlaylists([{
+  seedPlaylists(m, [{
     id: "q1", query: "physics", title: "Physics", items: parts,
     created: "2026-08-18T00:00:00.000Z", last_played_at: null, sparse: false,
   }]);
@@ -597,7 +653,7 @@ test("THE SECOND RENDER SAYS WHAT THE FIRST SAID — liveness is the pool, not t
   const m = mount();
   const items = setPool(m, [poolItem(1), poolItem(2)]);
   m.ctx.fullPool();
-  m.ctx.savePlaylists([{
+  seedPlaylists(m, [{
     id: "q1", query: "physics", title: "Physics", items: items.map((it) => m.ctx.playlistPart(it)),
     created: "2026-08-18T00:00:00.000Z", last_played_at: null, sparse: false,
   }]);
@@ -628,7 +684,7 @@ test("a rotated-out part does not become live for a DIFFERENT playlist that also
   const items = setPool(m, [poolItem(1), poolItem(2)]);
   m.ctx.fullPool();
   const parts = items.map((it) => m.ctx.playlistPart(it));
-  m.ctx.savePlaylists([
+  seedPlaylists(m, [
     { id: "qA", title: "A", items: parts, created: "2026-08-18T00:00:00.000Z" },
     { id: "qB", title: "B", items: [parts[1]], created: "2026-08-18T00:00:00.000Z" },
   ]);
@@ -685,8 +741,9 @@ test("a part with no snapshot behind it still holds its place, and links nowhere
      dropped, because a count that agrees with nothing is the whole defect.
 
      MUTATION 1: drop stubs from resolveParts — the row count falls to 2.
-     MUTATION 2: remove the `apple_collection_id` guard in archivedRow — the row
-     links to `.../idundefined`, and this fails on that string.
+     MUTATION 2 (retired): archivedRow's `apple_collection_id` guard went with
+     the external link on 2026-09-03, and parts stopped carrying Apple ids in
+     code-health CH-08; the `idundefined` assertion stays as a tripwire.
      MUTATION 3: give the unnamed row a star (drop the `named ?` guard). toggleStar
      has no snapshot to store for it, so the control would sit there doing nothing
      at all — a silent no-op is worse than an absent button, and this fails. */
@@ -739,7 +796,7 @@ test("the page says what happened, once, and says nothing when nothing is missin
   const m2 = mount();
   const items = setPool(m2, [poolItem(1), poolItem(2)]);
   m2.ctx.fullPool();
-  m2.ctx.savePlaylists([{
+  seedPlaylists(m2, [{
     id: "q1", title: "T", items: items.map((it) => m2.ctx.playlistPart(it)),
     created: "2026-08-18T00:00:00.000Z", last_played_at: null, sparse: false,
   }]);
@@ -882,7 +939,7 @@ test("the 'next' marker never lands on a part that cannot be opened in the app",
   const m = mount();
   const items = setPool(m, [poolItem(1), poolItem(2)]);
   m.ctx.fullPool();
-  m.ctx.savePlaylists([{
+  seedPlaylists(m, [{
     id: "q1", title: "T", items: items.map((it) => m.ctx.playlistPart(it)),
     created: "2026-08-18T00:00:00.000Z", last_played_at: null, sparse: false,
   }]);
@@ -988,16 +1045,27 @@ test("MIGRATION: an id that cannot be named anywhere stays a stub, keeps its pla
   assert.deepStrictEqual(p.item_ids, LEGACY.item_ids, "the mirror must still name every id");
 });
 
-test("MIGRATION: the result is written back, so it is paid for once", () => {
-  /* MUTATION: return `false` from hydratePlaylistParts (or drop the
-     `if (hydratePlaylistParts(p)) touched = true`). Storage keeps the legacy
-     shape, every read re-migrates, and this fails. */
+test("MIGRATION: a read writes nothing; the next edit writes the migrated list back", () => {
+  /* code-health CH-08 (A1-02): cp_playlists has ONE writer. A read used to
+     persist the migration itself, which raced editStored's flush at settle
+     (save-playlist.test.js pins that race). The read re-migrates instead, and
+     the next real edit writes it: editPlaylists hands its edit the list
+     backfillPlaylists repaired.
+     MUTATION 1: put back a read-path `lsSet("cp_playlists", all)` in
+     playlists() -> the first assertion fails.
+     MUTATION 2: hand editPlaylists' edit the raw stored list instead of
+     backfillPlaylists(v) -> the edit writes the legacy shape and the second
+     fails. */
   const m = mount({ seed: { cp_playlists: JSON.stringify([LEGACY]) } });
   setPool(m, [poolItem(1), poolItem(3)]);
   m.ctx.fullPool();
   m.ctx.playlists();
+  assert.ok(!Array.isArray(m.playlistsRaw()[0].items), "a read must not write the migration");
+  m.ctx.touchPlaylistPlayed(LEGACY.id);
   const [onDisk] = m.playlistsRaw();
-  assert.ok(Array.isArray(onDisk.items), "the migration was never persisted");
+  assert.ok(Array.isArray(onDisk.items), "the next edit never persisted the migration");
+  assert.strictEqual(onDisk.items[0].title, "Episode 1 of something", "with the parts the read recovered");
+  assert.ok(onDisk.last_played_at, "alongside the edit itself");
   assert.strictEqual(onDisk.items[0].title, "Episode 1 of something");
 });
 
@@ -1011,7 +1079,7 @@ test("MIGRATION: a fully snapshotted playlist is not rewritten on every read", (
   const m = mount();
   const items = setPool(m, [poolItem(1)]);
   m.ctx.fullPool();
-  m.ctx.savePlaylists([{
+  seedPlaylists(m, [{
     id: "q1", title: "T", items: items.map((it) => m.ctx.playlistPart(it)),
     created: "2026-08-18T00:00:00.000Z", last_played_at: null, sparse: false,
   }]);
@@ -1055,7 +1123,8 @@ test("HEALING: a stub upgrades itself the day the pool carries that episode agai
   m.ctx.fullPool();
   const [after] = m.ctx.playlists();
   assert.strictEqual(after.items[0].title, "Episode 1 of something", "the stub never healed");
-  assert.strictEqual(m.playlistsRaw()[0].items[0].title, "Episode 1 of something", "and it must be persisted");
+  nextEdit(m);
+  assert.strictEqual(m.playlistsRaw()[0].items[0].title, "Episode 1 of something", "and the next edit must persist it");
   assert.deepStrictEqual({ ...after.items[2] }, { id: "long-gone--episode" }, "the others stay stubs");
 });
 
@@ -1098,7 +1167,9 @@ test("A CORRUPT STORE COSTS ONE ROW, NOT THE WHOLE APP", () => {
      playlist and there is nothing in it to lose. */
   assert.strictEqual(all.length, 2, `the real playlists must survive: ${all.length}`);
   assert.deepStrictEqual(all.map((p) => p.id), ["q1", "q2"]);
-  assert.strictEqual(m.playlistsRaw().length, 2, "and the cleaned store is persisted");
+  assert.strictEqual(m.playlistsRaw().length, 3, "a read writes nothing (code-health CH-08)");
+  nextEdit(m);
+  assert.strictEqual(m.playlistsRaw().length, 2, "and the next edit persists the cleaned store");
   /* The rows still render, and the corrupt part is an unnameable row rather than a
      crash — count and contents still agree, which is the invariant. */
   m.ctx.renderPlaylistDetail("q1");
@@ -1107,8 +1178,9 @@ test("A CORRUPT STORE COSTS ONE ROW, NOT THE WHOLE APP", () => {
   m.ctx.renderPlaylists();
   assert.ok(m.view().includes("2 episodes") && m.view().includes("1 episode<"), "one count per playlist, and the one-item playlist is singular (it read \"1 parts\" until 2026-09-22)");
 
-  /* And the no-id row must be STABLE: read it repeatedly and the store is written
-     once, not once per read. */
+  /* And the no-id row must be STABLE: read it repeatedly and the store is not
+     written at all (a read never writes; before code-health CH-08 a mirror that
+     never settled rewrote the store on every read). */
   const before = m.writes.filter((k) => k === "cp_playlists").length;
   m.ctx.playlists();
   m.ctx.playlists();
@@ -1121,9 +1193,9 @@ test("a playlist the device refuses to store is reported, not navigated to", () 
   /* `lsSet` has returned a boolean since #40 and `buildPlaylist` was discarding it,
      so a store at quota produced a playlist the home screen navigated to and the
      detail view rendered as "Playlist not found." — a dead end with no
-     explanation. Reachable now that a full store is ~168 KB rather than ~33 KB.
+     explanation. Reachable now that a full store is ~150 KB rather than ~33 KB.
 
-     MUTATION: go back to ignoring savePlaylists' return value. `status` comes back
+     MUTATION: go back to ignoring editPlaylists' return value in buildPlaylist. `status` comes back
      `ok` and this fails. */
   const m = mount();
   const items = setPool(m, Array.from({ length: 12 }, (_, i) => poolItem(i + 1)));
@@ -1174,7 +1246,7 @@ test("one read parses cp_saved once, however many legacy playlists there are", (
 
   /* And a fully-hydrated store must not consult it at all — that is the fast path. */
   reads.length = 0;
-  m.ctx.savePlaylists([{
+  seedPlaylists(m, [{
     id: "q9", title: "T", items: [m.ctx.playlistPart(poolItem(1))], created: "2026-08-18T00:00:00.000Z",
   }]);
   reads.length = 0;
@@ -1204,7 +1276,9 @@ test("THE FIRST MIGRATION STILL WORKS: cp_quests becomes cp_playlists, with the 
   const [p] = m.ctx.playlists();
   assert.strictEqual(p.title, "Fusion", "the derived title is the first migration's job");
   assert.strictEqual(p.items[0].title, "Episode 1 of something", "and the second one runs on the same pass");
-  assert.ok(m.store.has("cp_playlists"), "the new key must be written");
+  assert.ok(!m.store.has("cp_playlists"), "a read writes nothing (code-health CH-08)");
+  nextEdit(m);
+  assert.strictEqual(m.playlistsRaw()[0].title, "Fusion", "the next edit writes the migrated list under the new key");
 });
 
 test("today's subject queue renders through the same one path as a saved playlist", () => {
@@ -1286,8 +1360,11 @@ test("playlists(): a record with neither `created` nor `last_played_at` gets `cr
   const [p] = m.ctx.playlists();
   assert.ok(p.created, "created must be backfilled, not left undefined");
   assert.ok(!Number.isNaN(Date.parse(p.created)), "the backfilled value must be a real ISO timestamp");
+  /* code-health CH-08: the read repairs, the next edit writes the repair. */
+  assert.ok(!JSON.parse(m.store.get("cp_playlists"))[0].created, "a read writes nothing");
+  m.ctx.touchPlaylistPlayed("q1");
   const stored = JSON.parse(m.store.get("cp_playlists"));
-  assert.ok(stored[0].created, "the backfill must be written back to storage, not just held in memory");
+  assert.ok(stored[0].created, "the backfill must be written back by the next edit, not just held in memory");
 });
 
 test("bindPlay: playing a playlist part with the in-app button sets last_played_at (#558 item 2)", async () => {
@@ -1306,7 +1383,7 @@ test("bindPlay: playing a playlist part with the in-app button sets last_played_
   const m = mount();
   const items = setPool(m, [poolItem(1)]);
   m.ctx.fullPool();
-  m.ctx.savePlaylists([{
+  seedPlaylists(m, [{
     id: "q1", title: "Physics", items: [m.ctx.playlistPart(items[0])],
     created: "2026-08-18T00:00:00.000Z", last_played_at: null, sparse: false,
   }]);
@@ -1408,7 +1485,7 @@ test("a playlist's 'N played' counts FINISHED episodes only — the rows' own wo
   };
   m.ctx.window.ForayPlayer = { episodeProgress: (id) => by[id] || { state: "unplayed", percent: null, label: null } };
   m.ctx.lsSet("cp_history", ["show-1--episode-1", "show-2--episode-2", "show-3--episode-3"]);
-  m.ctx.savePlaylists([{
+  seedPlaylists(m, [{
     id: "q1", title: "T", items: items.map((it) => m.ctx.playlistPart(it)),
     created: "2026-08-18T00:00:00.000Z", last_played_at: null, sparse: false,
   }]);
