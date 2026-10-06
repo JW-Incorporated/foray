@@ -44,6 +44,7 @@
 import {
   PROTOCOL, HELLO_PLATFORMS, helloRequest, decideMode, validateSnapshot, validateContract, extrapolate,
 } from "./engine-contract.js";
+import { REAL_SCHEDULER } from "./deadline.js";
 
 /** The Capacitor plugin the three methods live on (the existing ForayAudio,
     plan §4.1: MPRemoteCommandCenter and AVAudioSession are process-wide, so one
@@ -89,13 +90,6 @@ export function snapshotOrder(a, b) {
   if (am === bm) return 0;
   return am < bm ? -1 : 1;
 }
-
-const REAL_SCHEDULER = Object.freeze({
-  schedule(ms, fn) {
-    const h = setTimeout(fn, ms);
-    return () => clearTimeout(h);
-  },
-});
 
 /** Subscribe `fn` to one plugin's event: `Capacitor.addListener(plugin,
     eventName, fn)` when the bridge has it, else its thinner primitive

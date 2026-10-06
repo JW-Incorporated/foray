@@ -801,6 +801,10 @@
     }
   },
   "queue-manager": {
+    "CH-40 characterization: with no scheduler injected (or null), the manager's clock is the wall clock and its timers are real, cancellable setTimeouts": {
+      "reason": "js-module-shape",
+      "why": "The JS manager's default scheduler (deadline.js REAL_SCHEDULER: Date.now() and a cancellable setTimeout) when none is injected. The native engine has its own clock and timer seam (the late-timer and position-flush families), so there is no JS default scheduler for it to reimplement."
+    },
     "a backend with no out-point watch refuses the Foray instead of playing whole episodes": {
       "reason": "js-module-shape",
       "why": "A backend without an out-point watch (setOutPoint undefined), and the manager's refusal to hand it a bounded item. The native engine has one deck type and it always carries the three-layer out-point (outpoint and deck families), so there is no blind backend to refuse."

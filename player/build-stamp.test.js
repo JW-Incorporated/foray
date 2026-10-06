@@ -134,3 +134,60 @@ test("readBuildStamp carries the OS beside the build, from an injected user agen
   assert.equal(web.os, "14");
   assert.equal(web.platform, "android");
 });
+
+/* ---------- CH-40 characterization (code-health P2-05) ---------- */
+
+/** Run `body` with the global timers wrapped; answers the `ms` of every timer
+    still armed when it returns (a timer that fired or was cleared is gone). */
+async function liveTimersAfter(body) {
+  const realSet = globalThis.setTimeout;
+  const realClear = globalThis.clearTimeout;
+  const live = new Map();
+  globalThis.setTimeout = (fn, ms, ...args) => {
+    const h = realSet(() => { live.delete(h); fn(...args); }, ms);
+    live.set(h, ms);
+    return h;
+  };
+  globalThis.clearTimeout = (h) => { live.delete(h); return realClear(h); };
+  try { await body(); } finally { globalThis.setTimeout = realSet; globalThis.clearTimeout = realClear; }
+  return [...live.values()];
+}
+
+test("CH-40 characterization: an answered half leaves no live timer, a rejecting half reads null, and `Infinity` arms no bound at all", { timeout: 5000 }, async () => {
+  /* The contract build-stamp.js's deadline keeps: `null` on the clock (the two
+     tests above), the inner rejection PROPAGATES to the caller's own catch, so
+     a rejecting half is `null` too, and the timer is cleared the moment the
+     answer lands. A bound that is not a finite positive number is no bound.
+     KILLING MUTATIONS: drop the `.finally(...)` that clears the timer in
+     build-stamp.js's withinMs -> both 4321 ms bounds are still live; drop its
+     `!Number.isFinite(ms)` guard -> the Infinity read arms a timer. */
+  const BOUND = 4321;
+  const { fetchJson } = fetchFrom({ [BUILD_STAMP_FILE]: { deploy_id: "2b808ec9d50c5b98" } });
+  const capacitor = { nativePromise: async () => ({ build: "2026092326", version: "1.4.0" }) };
+  let stamp = null;
+  const live = await liveTimersAfter(async () => {
+    stamp = await readBuildStamp({ inShell: true, fetchJson, capacitor, timeoutMs: BOUND });
+  });
+  assert.equal(stamp.web, "2b808ec9d50c5b98");
+  assert.equal(stamp.native, "2026092326");
+  assert.deepEqual(live.filter((ms) => ms === BOUND), [], "both halves' bounds are cleared once they answer");
+
+  const rejecting = await readBuildStamp({
+    inShell: true,
+    fetchJson: () => Promise.reject(new Error("no stamp file")),
+    capacitor: { nativePromise: () => Promise.reject(new Error("no App plugin")) },
+    timeoutMs: BOUND,
+  });
+  assert.equal(rejecting.web, null);
+  assert.equal(rejecting.native, null);
+
+  let unbounded = null;
+  const armed = [];
+  const realSet = globalThis.setTimeout;
+  globalThis.setTimeout = (fn, ms, ...args) => { armed.push(ms); return realSet(fn, ms, ...args); };
+  try {
+    unbounded = await readBuildStamp({ inShell: true, fetchJson, capacitor, timeoutMs: Infinity });
+  } finally { globalThis.setTimeout = realSet; }
+  assert.equal(unbounded.native, "2026092326");
+  assert.deepEqual(armed, [], "Infinity is no bound, not an instant one");
+});

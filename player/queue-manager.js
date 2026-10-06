@@ -285,6 +285,7 @@ import { normalizeRate, isRate, DEFAULT_RATE } from "./playback-rate.js";
 import { interludeEligible, describeInterlude, INTERLUDE_CEILING_SEC } from "./interlude.js";
 import { interruptionResumeOffset } from "./transport-policy.js";
 import { warmsAcross } from "./deck-policy.js";
+import { REAL_SCHEDULER } from "./deadline.js";
 
 /** The periodic position write's cadence. Exported (NE-08) so the native
     engine's generated constants (NE-04) and its ResumeRules port read this
@@ -482,20 +483,11 @@ export function audioHostOf(url) {
   return /^[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?$/.test(host) ? host : null;
 }
 
-/** Wall clock for the seam beat. Injected so the suite drives the beat by hand
-    instead of sleeping: a test that asserts "2 s elapsed" is a test that goes
-    red when the box is busy, and this repo has already paid for that once
-    (#195, `player/html-audio-backend.test.js` under a transcription queue).
-    `schedule` returns its own cancel, so nothing here has to track timer ids. */
-const REAL_SCHEDULER = Object.freeze({
-  nowMs: () => Date.now(),
-  // Never unref'd: something awaits this. See LOAD_SETTLE_TIMEOUT_MS in
-  // html-audio-backend.js for the CI failure that lesson came from.
-  schedule: (ms, fn) => {
-    const t = setTimeout(fn, ms);
-    return () => clearTimeout(t);
-  },
-});
+/* The wall clock for the seam beat is deadline.js's REAL_SCHEDULER, injected
+   (`scheduler`) so the suite drives the beat by hand instead of sleeping: a
+   test that asserts "2 s elapsed" is a test that goes red when the box is
+   busy, and this repo has already paid for that once (#195,
+   `player/html-audio-backend.test.js` under a transcription queue). */
 
 /** Exactly one manager for the app's lifetime. Together with the reducer's own
     double-entry guard this is the two-layer defence against corner case #19

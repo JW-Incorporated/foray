@@ -98,7 +98,7 @@ test("a throwing bridge resolves {ok:false, reason} — never rejects", async ()
   assert.deepEqual(r2, { ok: false, reason: "busy" });
 });
 
-// Mutation: drop the `setTimeoutFn(...)` line from `call`.
+// Mutation: in `scheduler`, never call `setTimeoutFn` (`const timer = null`).
 test("a call that never answers resolves {ok:false, reason:\"timeout\"} at the 10 s deadline (injected timer)", async () => {
   const bridge = { nativePromise: () => new Promise(() => {}) };
   const timer = manualTimer();
@@ -209,8 +209,8 @@ test("USER_AGENT is `4a/<build> (+https://jw-incorporated.github.io/foray/)`, bu
 /* Integration review (2026-10-04): the deadline used to outlive the answer —
    every settled call left a ten-second timer behind (this very suite took
    10 s to exit because of it), and the page will `list()` on every resume.
-   MUTATION: drop the `clearTimeoutFn(timer)` line in `call` and the
-   `cleared` assertion fails. */
+   MUTATION: make `scheduler`'s cancel a no-op (drop its `clearTimeoutFn(timer)`)
+   and the `cleared` assertion fails. */
 test("an answered call clears its deadline; the timer is not left running", async () => {
   const pending = new Map();
   const cleared = [];
@@ -258,4 +258,39 @@ test("a resolved answer with no ok of its own reads as ok: true; an explicit ok:
   assert.deepEqual(list.items, [{ id: "e1" }]);
   assert.equal((await dl.usage()).ok, true);
   assert.deepEqual(await dl.cancel({ id: "x" }), { ok: false, reason: "unknown-id" });
+});
+
+/* CH-40 characterization (code-health P2-05). call()'s contract beyond the
+   deadline itself: a host whose timer cannot be armed still gets the plugin's
+   answer (no deadline, not a lost answer); a clear that throws is swallowed; a
+   null timer handle is never handed to clearTimeoutFn; and the timeout answer
+   is a fresh object per call.
+   MUTATIONS: drop the try around `scheduler.schedule` in deadline.js -> the
+   first usage() rejects; drop the try around `cancel()` in deadline.js's
+   `settle` -> the second never settles (the test's timeout is the red); drop
+   `timer != null` in this module's `scheduler` -> `cleared` holds a null. */
+test("CH-40 characterization: no timer, a throwing clear and a null handle all still deliver the answer; each timeout answer is its own object", { timeout: 5000 }, async () => {
+  const { bridge } = fakeBridge({ answer: { ok: true, bytes: 7 } });
+  const noTimer = createDownloadBridge({ bridge, setTimeoutFn: () => { throw new Error("no timers here"); } });
+  assert.deepEqual(await noTimer.usage(), { ok: true, bytes: 7 });
+  const badClear = createDownloadBridge({ bridge, setTimeoutFn: () => 1, clearTimeoutFn: () => { throw new Error("cannot clear"); } });
+  assert.deepEqual(await badClear.usage(), { ok: true, bytes: 7 });
+  const cleared = [];
+  const nullHandle = createDownloadBridge({ bridge, setTimeoutFn: () => null, clearTimeoutFn: (h) => cleared.push(h) });
+  assert.deepEqual(await nullHandle.usage(), { ok: true, bytes: 7 });
+  assert.deepEqual(cleared, [], "a null handle is not cleared");
+
+  const fires = [];
+  const hung = createDownloadBridge({
+    bridge: { nativePromise: () => new Promise(() => {}) },
+    setTimeoutFn: (fn) => { fires.push(fn); return fires.length; },
+    clearTimeoutFn: () => {},
+  });
+  const a = hung.list();
+  const b = hung.usage();
+  for (const fire of fires) fire();
+  const [ra, rb] = await Promise.all([a, b]);
+  assert.deepEqual(ra, { ok: false, reason: "timeout" });
+  assert.deepEqual(rb, { ok: false, reason: "timeout" });
+  assert.notStrictEqual(ra, rb, "a caller that edits its answer cannot edit another's");
 });

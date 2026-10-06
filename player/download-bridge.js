@@ -67,6 +67,7 @@
  * build-stamp read, and `USER_AGENT` is only the default, `4a/dev`. */
 
 import { listenTo } from "./native-engine.js";
+import { withinMs } from "./deadline.js";
 
 /** The plugin's registered name on both platforms (PQ-20 iOS, PQ-22 Android). */
 export const DOWNLOADS_PLUGIN = "ForayDownloads";
@@ -123,36 +124,38 @@ export const USER_AGENT = userAgentFor(null);
 export function createDownloadBridge({ bridge, onEvent, setTimeoutFn = setTimeout, clearTimeoutFn = clearTimeout } = {}) {
   if (typeof bridge?.nativePromise !== "function") return null;
 
-  /** One native call, raced against the deadline; resolves, never rejects.
-      MUTATION TO BREAK THE CLEAR: drop the `clearTimeoutFn(timer)` line and
-      `an answered call clears its deadline` fails. */
+  /* The injected timer pair as deadline.js's scheduler. A null handle is never
+     handed to `clearTimeoutFn`; a pair that throws is deadline.js's to absorb
+     (no timer: no deadline, never a lost answer). */
+  const scheduler = {
+    schedule(ms, fn) {
+      const timer = setTimeoutFn(fn, ms);
+      return () => { if (timer != null) clearTimeoutFn(timer); };
+    },
+  };
+
+  /** One native call, raced against the deadline (deadline.js); resolves, never
+      rejects: a rejection is mapped to `{ ok: false, reason }` before the race.
+      MUTATION TO BREAK THE CLEAR: drop the `clearTimeoutFn(timer)` call in
+      `scheduler` and `an answered call clears its deadline` fails. */
   function call(method, options) {
-    return new Promise((resolve) => {
-      let settled = false;
-      let timer = null;
-      const settle = (value) => {
-        if (settled) return;
-        settled = true;
-        try { if (timer != null) clearTimeoutFn(timer); } catch (_) { /* a timer we cannot clear only fires into a settled call */ }
-        resolve(value);
-      };
-      try {
-        timer = setTimeoutFn(() => settle({ ok: false, reason: "timeout" }), CALL_TIMEOUT_MS);
-      } catch (_) { /* a host with no timer still gets the plugin's answer */ }
+    return withinMs(
       Promise.resolve()
         .then(() => bridge.nativePromise(DOWNLOADS_PLUGIN, method, options))
         .then(
           /* A resolved nativePromise IS success (Capacitor rejects on error), so
              an answer with no `ok` of its own — a plugin that returns its rows or
              `{}` — reads as `ok: true`; one that says `ok: false` is believed. */
-          (result) => settle(
+          (result) => (
             result && typeof result === "object"
               ? (result.ok === undefined ? { ok: true, ...result } : result)
-              : { ok: true, result },
+              : { ok: true, result }
           ),
-          (err) => settle({ ok: false, reason: String(err?.message ?? err) }),
-        );
-    });
+          (err) => ({ ok: false, reason: String(err?.message ?? err) }),
+        ),
+      CALL_TIMEOUT_MS,
+      { fallback: { ok: false, reason: "timeout" }, scheduler },
+    );
   }
 
   const forward = typeof onEvent === "function" ? onEvent : () => {};

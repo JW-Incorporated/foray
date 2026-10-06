@@ -452,8 +452,8 @@ test("native: a rejected call is a silent [], not cached", async () => {
 });
 
 test("native: a call that never answers is [] at the deadline", async () => {
-  /* MUTATION: in read(), delete the setTimeout -> the hung call never
-     settles, the test's own race fires and this goes red. */
+  /* MUTATION: in read(), hand withinMs `Infinity` instead of `timeoutMs` ->
+     the hung call never settles, the test's own race fires and this goes red. */
   const hung = createId3Reader({ getBridge: () => ({ nativePromise: () => new Promise(() => {}) }), timeoutMs: 20 });
   const out = await Promise.race([hung.forUrl(URL_A), new Promise((res) => setTimeout(() => res("hung"), 500))]);
   assert.deepEqual(out, []);
@@ -552,4 +552,39 @@ test("CH-33: shellUserAgent() is the downloads surface's User-Agent, read per ca
   assert.deepEqual(bridge.asked.map((a) => a.opts.headers["User-Agent"]), ["4a/9.9 (+late)", "4a/9.9 (+late)"]);
   const throwing = createId3Reader({ getDownloads: () => { throw new Error("not yet"); } });
   assert.equal(throwing.shellUserAgent(), null);
+});
+
+/* ---------- CH-40 characterization (code-health P2-05) ---------- */
+
+/** Run `body` with the global timers wrapped; answers the `ms` of every timer
+    still armed when it returns (a timer that fired or was cleared is gone). */
+async function liveTimersAfter(body) {
+  const realSet = globalThis.setTimeout;
+  const realClear = globalThis.clearTimeout;
+  const live = new Map();
+  globalThis.setTimeout = (fn, ms, ...args) => {
+    const h = realSet(() => { live.delete(h); fn(...args); }, ms);
+    live.set(h, ms);
+    return h;
+  };
+  globalThis.clearTimeout = (h) => { live.delete(h); return realClear(h); };
+  try { await body(); } finally { globalThis.setTimeout = realSet; globalThis.clearTimeout = realClear; }
+  return [...live.values()];
+}
+
+test("CH-40 characterization: a read answered in time leaves no live deadline, and a transport that rejects is swallowed to [], never a throw", async () => {
+  /* read()'s contract: null on the clock (the test above), null on a
+     rejection, the bytes otherwise; the deadline is cleared on settle.
+     MUTATION: drop the `cancel()` in deadline.js's `settle` -> the
+     header's and the tag's 4321 ms deadlines are still live. */
+  const file = withAudio(basic(4));
+  const bridge = fakeBridge(file);
+  let got = null;
+  const live = await liveTimersAfter(async () => {
+    got = await createId3Reader({ getBridge: () => bridge, timeoutMs: 4321 }).forUrl(URL_A);
+  });
+  assert.deepEqual(got, BASIC);
+  assert.deepEqual(live.filter((ms) => ms === 4321), [], "both reads' deadlines are cleared");
+  const failing = fakeBridge(file, { fail: true });
+  assert.deepEqual(await createId3Reader({ getBridge: () => failing, timeoutMs: 4321 }).forUrl(URL_A), []);
 });

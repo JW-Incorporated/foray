@@ -48,6 +48,7 @@
  * is visible to a listener. */
 
 import { readSource } from "./download-store.js";
+import { withinMs } from "./deadline.js";
 
 export const MAX_TAG_BYTES = 1024 * 1024;
 export const MAX_CHAPTERS = 500;
@@ -334,11 +335,12 @@ export function createId3Reader({
     },
   };
 
-  /** One read of `want` bytes, raced against the deadline; null on any failure. */
-  const read = (get) => new Promise((resolve) => {
-    const t = setTimeout(() => resolve(null), timeoutMs);
-    Promise.resolve().then(get).then((b) => resolve(b instanceof Uint8Array || b === NO_RANGE ? b : null), () => resolve(null)).finally(() => clearTimeout(t));
-  });
+  /** One read of `want` bytes, raced against the deadline (deadline.js); null
+      on the clock and on any failure, the rejection swallowed here. */
+  const read = (get) => withinMs(
+    Promise.resolve().then(get).then((b) => (b instanceof Uint8Array || b === NO_RANGE ? b : null), () => null),
+    timeoutMs,
+  );
 
   /** Header, then tag, through `get(want)`; null when the transport failed. */
   async function chaptersVia(get) {

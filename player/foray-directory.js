@@ -84,6 +84,7 @@
 */
 
 import { validateForayDocuments } from "./foray-resolve.js";
+import { withinMs } from "./deadline.js";
 
 /** Where the pointer lives, relative to any origin that serves the site. */
 export const POINTER_PATH = "data/forays-directory.json";
@@ -529,24 +530,13 @@ export function createForayDirectory({
 
   /* ---- plumbing ---- */
 
-  async function fetchBytes(url, ms) {
+  /** One GET, bounded by `ms` (deadline.js): on the clock the request is
+      ABORTED and the answer is `{ ok: false, code: "timeout" }` (the abort's
+      own rejection lands a turn later and cannot replace it); never rejects.
+      The bound's timer is never unref'd — deadline.js's REAL_SCHEDULER says
+      why (PR #610's first CI run). */
+  function fetchBytes(url, ms) {
     const ctrl = typeof AbortController === "function" ? new AbortController() : null;
-    let timer = null;
-    /* The timer is NOT unref'd, and that is a finding rather than an oversight
-       (PR #610's first CI run). An unref'd timer cannot keep Node's event loop
-       alive, so when the only other pending work is the request that never
-       answers — exactly the case this timeout exists for — the loop drains, the
-       await is abandoned, and node:test cancels the test and every test after
-       it ("Promise resolution is still pending but the event loop has already
-       resolved"). Windows masked it with another live handle; Linux did not. A
-       browser has no `unref` anyway, and the timer is cleared in `finally` the
-       moment the race settles, so it can never outlive its own bound. */
-    const timeout = new Promise((resolve) => {
-      timer = setTimeout(() => {
-        try { ctrl?.abort(); } catch (_) { /* aborting is best-effort */ }
-        resolve({ ok: false, code: "timeout" });
-      }, ms);
-    });
     const request = (async () => {
       try {
         const res = await fetchFn(url, { cache: "no-cache", signal: ctrl ? ctrl.signal : undefined });
@@ -557,11 +547,10 @@ export function createForayDirectory({
         return { ok: false, code: "network" };
       }
     })();
-    try {
-      return await Promise.race([request, timeout]);
-    } finally {
-      if (timer) clearTimeout(timer);
-    }
+    return withinMs(request, ms, {
+      fallback: { ok: false, code: "timeout" },
+      onTimeout: () => ctrl?.abort(),
+    });
   }
 
   function safeValidate(docs) {
@@ -595,17 +584,10 @@ export function createForayDirectory({
 
 /* ---------- helpers ---------- */
 
-/** Race `promise` against `ms`, answering `fallback` on the clock. The timer is
-    deliberately NOT unref'd — see `fetchBytes` for the CI failure that taught
-    it — and is cleared as soon as either side settles. */
+/** `promise` within `ms`, answering `fallback` on the clock AND for a
+    rejection (deadline.js's `withinMs`, with the rejection swallowed here). */
 function bounded(promise, ms, fallback) {
-  let timer = null;
-  const timeout = new Promise((resolve) => {
-    timer = setTimeout(() => resolve(fallback), ms);
-  });
-  return Promise.race([promise.catch(() => fallback), timeout]).finally(() => {
-    if (timer) clearTimeout(timer);
-  });
+  return withinMs(promise.catch(() => fallback), ms, { fallback });
 }
 
 function parseJson(bytes) {

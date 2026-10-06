@@ -128,6 +128,7 @@ import { createNativeEngine } from "./native-engine.js";
 import { createNativeFacades } from "./native-facades.js";
 import { engineDiagnosticReport, engineBridgePresent, pageEngineView } from "./engine-diagnostics.js";
 import { readBuildStamp, BUILD_STAMP_WAIT_MS } from "./build-stamp.js";
+import { withinMs } from "./deadline.js";
 import { createTtsBridge } from "./tts-bridge.js";
 import { createInterludePlayer, readInterludePref, writeInterludePref } from "./interlude.js";
 import { makeIdbTier } from "./idb-tier.js";
@@ -507,10 +508,7 @@ const storageHydrated = storage.hydrate().catch(() => storage);
    lands so a healthy boot holds nothing open. */
 const HYDRATE_WAIT_MS = 5000;
 const HYDRATE_GIVE_UP_MS = 60_000;
-const storageReady = new Promise((resolve) => {
-  const timer = setTimeout(() => resolve(false), HYDRATE_WAIT_MS);
-  storageHydrated.then(() => { clearTimeout(timer); resolve(true); }, () => { clearTimeout(timer); resolve(true); });
-});
+const storageReady = withinMs(storageHydrated.then(() => true, () => true), HYDRATE_WAIT_MS, { fallback: false });
 
 /* A request, not a setting: Chromium may grant it silently, Firefox may prompt,
    Safari does not meaningfully honour it, and a refusal changes nothing about
@@ -3560,13 +3558,7 @@ async function forayVoiceId() {
   const stored = readVoice(storage);
   if (stored) return stored;
   if (sessionDefaultVoice) return sessionDefaultVoice;
-  let timer = null;
-  const bound = new Promise((resolve) => { timer = setTimeout(() => resolve(null), VOICE_LOOKUP_BOUND_MS); });
-  try {
-    return (await Promise.race([resolveDefaultVoice(), bound])) ?? null;
-  } finally {
-    clearTimeout(timer);
-  }
+  return (await withinMs(resolveDefaultVoice(), VOICE_LOOKUP_BOUND_MS)) ?? null;
 }
 
 /** Did the engine advertise `cap` in its hello (§5.1)? */

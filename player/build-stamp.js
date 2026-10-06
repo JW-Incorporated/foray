@@ -98,11 +98,20 @@ function defaultUserAgent() {
 export const BUILD_STAMP_WAIT_MS = 5000;
 
 /**
- * `promise`, or `null` once `ms` has passed — never a rejection. The timer is
+ * `promise`, or `null` once `ms` has passed. The clock never rejects; the inner
+ * promise's rejection propagates to the caller's own catch. The timer is
  * cleared when the answer lands, so a resolved read does not keep a process (or
  * a test) alive for the full bound. A non-finite `ms` means no bound at all.
+ *
+ * A LOCAL COPY of `player/deadline.js`'s `withinMs` with its default fallback,
+ * kept on purpose (code-health CH-40): this file runs in the release signing
+ * jobs (tools/mobile/prepare-webdir.mjs imports it; ACKNOWLEDGED_RELEASE_APP_CODE
+ * in tools/ci/path-policy.test.mjs), and deadline.js also carries the
+ * scheduler moved out of modules that are not on that list, so importing it
+ * would widen what those jobs execute. Exported only so deadline.test.js can
+ * pin the two equal case by case; import deadline.js's, not this one.
  */
-function withinMs(promise, ms) {
+export function withinMs(promise, ms) {
   if (!Number.isFinite(ms) || ms <= 0) return promise;
   let timer = null;
   const late = new Promise((resolve) => { timer = setTimeout(() => resolve(null), ms); });
