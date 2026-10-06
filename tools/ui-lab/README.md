@@ -109,6 +109,40 @@ remote artwork passes through to the live network, so a changed or slow CDN imag
 a diff your code did not cause. Baselines are also tied to the machine's Chromium
 and fonts; re-record after upgrading Playwright or on a different OS.
 
+## Fidelity: prototype vs implementation (`fidelity.mjs`)
+
+How close is the build to the direction's prototype? Each direction carries a screen
+map, `docs/redesign-2026/directions/<slug>/screens.json`: screen id -> the prototype route
+-> the app's state and step in `lib/states.mjs` (`"app": null` = no equivalent in today's
+app yet), plus per-region CSS selectors for each side (`"mode": "all"` = union of the
+matches plus their count; default is the first visible match).
+
+```
+node tools/ui-lab/fidelity.mjs --direction tactile [--screens home,now-playing] [--viewports 393x852]
+     [--run name] [--max-region-delta 4] [--against self] [--remote-images] [--scheme dark|light]
+```
+
+It shoots the prototype and the mapped app states through `lib/walk.mjs` (same viewport,
+frozen clock, seeded `Math.random`, no remote images unless `--remote-images`), then writes
+`data-local/redesign/fidelity/<run>/` (gitignored: renders are never committed):
+`side/<screen>__<vp>.png` (prototype left, app right), `diff/` (pixelmatch overlay),
+`shots/{prototype,app}/`, `report.json` and `report.md`. Per screen: a pixel-diff % (reuses
+`lib/diff.mjs`; dominated by content, so read it only as "close at all") and, per region, the
+position and size delta in CSS px (app minus prototype: dx, dy, dw, dh, plus count and
+first-item size for `all` regions). A region found on one side only is reported, not dropped.
+Regions are measured only if visible and inside the viewport. Screens with `app: null` are
+listed as skipped.
+
+Fidelity is judged, not thresholded: the exit code is 0 unless a walk failed. `--max-region-delta N`
+makes it a gate (a region over N px, or present on one side only, fails; exit 1).
+`--against self` re-renders the prototype as the "app" side: the sanity check that identical
+input reads 0.
+
+Sanity (2026-10-06, tactile, 393x852, no remote images): `--against self`, 19 screens, mean pixel
+diff 0% and every region delta 0; against today's app, 15 mapped screens, mean pixel diff about
+90%, with region deltas in the hundreds of px (Home hero 76.9px lower and 121px narrower, the
+primary key 329px higher). Pure logic is tested in `fidelity.test.mjs` (no browser; floored).
+
 ## What a run writes
 
 - `shots/<state>__<screen>__<WxH>.png` at deviceScaleFactor 2
