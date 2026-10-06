@@ -3273,6 +3273,10 @@ body.fy-sheet-keeps-player.fp-open .fy-sheet .fy-panel {
    (it inherited DM Sans under a Fraunces sheet title — visual pass 1). */
 .ft-value-prop h4 { margin: 0 0 6px; font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 600; }
 .ft-strip-wrap { margin-top: 12px; }
+/* The persona row (#70, PKG-14): the same `.fy-chip` pills in a wrapping
+   `.fy-chips` row, so five profiles fit at 320px; its lead line sits tight on
+   the row it introduces rather than a paragraph's gap above it. */
+.ft-personas-lead { margin-bottom: 8px; }
 .ft-typed-wrap { margin: 4px 0 14px; }
 .ft-typed-input {
   width: 100%;

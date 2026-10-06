@@ -8166,6 +8166,49 @@ function showFirstTimeExplainerOnce() {
       chips.append(chip);
     });
 
+    /* THE PERSONA PICK (#70; catalogue-personalization PKG-14). The five
+       directed listener profiles from data/personas.json, as single-select
+       pills above the subject chips — never the generalist, which is what a
+       Skip already leaves. A tap only lights a pill; nothing is written until
+       "Show my picks", which seeds the lit persona through applyPersonaPick()
+       as a DECAYING PRIOR (no persona key is stored; plays and thumbs wear the
+       lift away — test/personas-client.test.js). No event is logged: a
+       persona_picked type has no approved privacy row, so the pick stays as
+       local and as silent as a chip tap. No personas.json (a 404) means no
+       row at all, and the chips stand alone as before. */
+    const personaChoices = (state.personas?.personas || [])
+      .filter(p => p && p.id && p.label && p.id !== state.personas.default_persona_id);
+    let personaPicked = null;
+    let personaLead = null;
+    let personaRow = null;
+    if (personaChoices.length) {
+      personaLead = ddEl("p", "fy-sheet-sub ft-personas-lead", "Start from a listener like you, or pick subjects below.");
+      personaLead.id = "first-time-sheet-personas-lead";
+      personaRow = ddEl("div", "fy-chips ft-personas");
+      personaRow.id = "first-time-sheet-personas";
+      personaRow.setAttribute("role", "group");
+      personaRow.setAttribute("aria-labelledby", personaLead.id);
+      const pills = personaChoices.map(p => {
+        const pill = ddEl("button", "fy-chip ft-persona", p.label);
+        pill.type = "button";
+        pill.dataset.persona = p.id;
+        pill.setAttribute("aria-pressed", "false");
+        return pill;
+      });
+      pills.forEach(pill => {
+        pill.addEventListener("click", () => {
+          const id = pill.dataset.persona;
+          personaPicked = personaPicked === id ? null : id;
+          pills.forEach(other => {
+            const on = other.dataset.persona === personaPicked;
+            if (on) other.classList.add("on"); else other.classList.remove("on");
+            other.setAttribute("aria-pressed", on ? "true" : "false");
+          });
+        });
+      });
+      personaRow.append(...pills);
+    }
+
     const typedWrap = ddEl("div", "ft-typed-wrap");
     const typedInput = ddEl("input");
     typedInput.type = "text";
@@ -8196,7 +8239,7 @@ function showFirstTimeExplainerOnce() {
     go.id = "first-time-sheet-prefs-go";
     actions.append(skip, go);
 
-    body.append(title, sub, chips, typedWrap, actions);
+    body.append(title, sub, ...(personaRow ? [personaLead, personaRow] : []), chips, typedWrap, actions);
 
     skip.addEventListener("click", dismiss);
     go.addEventListener("click", () => {
@@ -8219,18 +8262,24 @@ function showFirstTimeExplainerOnce() {
         const chip = chips.querySelector(`[data-chip="${rootId}"]`);
         if (chip && !picked.has(rootId)) { picked.add(rootId); chip.classList.add("on"); chip.setAttribute("aria-pressed", "true"); }
       }
+      /* The lit persona first, then the chips (PKG-14), and only here — after
+         a typed miss has returned above, so a sheet that stays open has
+         written nothing. */
+      const personaRoots = personaPicked ? applyPersonaPick(personaPicked) : false;
       const applied = applyOnboardingPicks([...picked], typed);
+      const roots = [...new Set([...(applied || []), ...(personaRoots || [])])];
       dismiss();
       /* Only when something was actually written: an empty form is a Skip in
          all but name, and the Home already under the sheet is the right Home
-         for it. Otherwise re-deal and repaint, so the FIRST Home the listener
-         lands on ranks by their picks (U-09's acceptance line; see
-         redealAfterOnboardingPicks), with the picked subjects in the top-tier
-         slots (p-first-1). renderCurrentPage(), not route(): nothing about
-         the location changed, and route() is the back-stack's entry point
-         (#488). */
-      if (applied) {
-        redealAfterOnboardingPicks(applied);
+         for it. Otherwise re-deal ONCE and repaint, so the FIRST Home the
+         listener lands on ranks by their picks (U-09's acceptance line; see
+         redealAfterOnboardingPicks), with the picked subjects — the chips'
+         and the persona's together — in the top-tier slots (p-first-1),
+         ordered among themselves by buildCards()'s jittered weights as
+         before. renderCurrentPage(), not route(): nothing about the location
+         changed, and route() is the back-stack's entry point (#488). */
+      if (roots.length) {
+        redealAfterOnboardingPicks(roots);
         renderCurrentPage();
       }
     });
