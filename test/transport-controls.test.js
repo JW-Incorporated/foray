@@ -203,8 +203,22 @@ test("the Foray page's nudges call the bridge's nudge, start the Foray before it
     "an empty Foray disables the nudges with the rest");
   const steps = APP.slice(APP.indexOf("function forayNudgeSteps("), APP.indexOf("function bindForayTransport("));
   assert.match(steps, /player\.nudgeSteps\(\)/, "reads the bridge");
-  assert.match(steps, /return \{ back: 15, fwd: 30 \};/, "falls back to the documented pair for an older cached module");
+  assert.match(steps, /return \{ back: \d+, fwd: \d+ \};/, "falls back to a literal pair for an older cached module (pinned below)");
   assert.match(APP, /const nudge = forayNudgeSteps\(player\);\n\n  \$\("#view"\)\.innerHTML = `\n    <div class="page foray">/, "renderForay reads the steps before it paints");
+});
+
+test("CH-38: the Foray page's nudge fallback is media-session.js's SEEK_BACKWARD_SEC / SEEK_FORWARD_SEC", async () => {
+  /* A3-07: the fallback pair was pinned to the text "15/30", so a seek change
+     in player/media-session.js left bridge-current pages on the new pair and
+     the skew fallback on the old one, with this suite green. It is compared to
+     the module's exports now. MUTATION: change SEEK_FORWARD_SEC to 45 in
+     player/media-session.js -> red. */
+  const { SEEK_BACKWARD_SEC, SEEK_FORWARD_SEC } = await import(
+    require("node:url").pathToFileURL(path.join(ROOT, "player", "media-session.js")).href);
+  const steps = APP.slice(APP.indexOf("function forayNudgeSteps("), APP.indexOf("function bindForayTransport("));
+  const literal = /return \{ back: (\d+), fwd: (\d+) \};/.exec(steps);
+  assert.ok(literal, "fixture: the fallback is a literal pair");
+  assert.deepStrictEqual([Number(literal[1]), Number(literal[2])], [SEEK_BACKWARD_SEC, SEEK_FORWARD_SEC]);
 });
 
 /* ---------- the sheet's shape, after the review of visual pass 1 (2026-09-23) ---------- */
