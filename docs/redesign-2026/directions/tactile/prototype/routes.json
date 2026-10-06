@@ -1,0 +1,302 @@
+{
+ "_doc": "Route matrix for tools/ui-lab/shoot.mjs. Light = the route as written. Dark = prefix with ?theme=dark (index.html?theme=dark#/home).",
+ "routes": [
+  {
+   "route": "#/home",
+   "label": "Today",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "Hero, Also today, first rows"
+  },
+  {
+   "route": "#/mini",
+   "label": "Today with mini player",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "Mini docked on the deck"
+  },
+  {
+   "route": "#/now-playing",
+   "label": "Now Playing (foray)",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "Station tint, band scrubber, up-next cue"
+  },
+  {
+   "route": "#/search",
+   "label": "Find",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "Subject mosaic, followed shows"
+  },
+  {
+   "route": "#/library",
+   "label": "Yours (Up Next)",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "Queue rows, current row"
+  },
+  {
+   "route": "#/foray",
+   "label": "Foray detail",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "Band with station codes, pinned Play"
+  },
+  {
+   "route": "#/onboarding",
+   "label": "Onboarding",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "Live band demo"
+  },
+  {
+   "route": "#/home/first",
+   "label": "Today, first run",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "Wide-bets copy"
+  },
+  {
+   "route": "#/home/resume",
+   "label": "Today, resume",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "Resume card"
+  },
+  {
+   "route": "#/home/offline",
+   "label": "Today, offline",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "Needs a connection, downloaded tags"
+  },
+  {
+   "route": "#/home/loading",
+   "label": "Today, loading",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "Skeletons at exact heights"
+  },
+  {
+   "route": "#/home/also",
+   "label": "Today, Also today",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "Bridge card (signature 2)"
+  },
+  {
+   "route": "#/home/playlists",
+   "label": "Today, Playlists for you",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "Playlist cards"
+  },
+  {
+   "route": "#/home/ground",
+   "label": "Today, New ground",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "Gauge (signature 3)"
+  },
+  {
+   "route": "#/library/empty",
+   "label": "Yours, empty",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "Empty state"
+  },
+  {
+   "route": "#/library/upnext/open",
+   "label": "Yours, row menu open",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "Move up, Move down, Remove"
+  },
+  {
+   "route": "#/library/shows",
+   "label": "Yours, Shows",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "Art grid"
+  },
+  {
+   "route": "#/library/forays",
+   "label": "Yours, Forays",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "Band card"
+  },
+  {
+   "route": "#/foray/progress",
+   "label": "Foray, in progress",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "Needle in place, Resume at 12:40"
+  },
+  {
+   "route": "#/foray/done",
+   "label": "Foray, finished",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "Played, Start over"
+  },
+  {
+   "route": "#/foray/unnarrated",
+   "label": "Foray, no narration",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "No ticks"
+  },
+  {
+   "route": "#/foray/unavailable",
+   "label": "Foray, unavailable",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "Empty well, lifted needle"
+  },
+  {
+   "route": "#/foray/segments",
+   "label": "Foray, segments",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "Segments by slot"
+  },
+  {
+   "route": "#/now-playing/paused",
+   "label": "Now Playing, paused",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "Play glyph"
+  },
+  {
+   "route": "#/now-playing/buffering",
+   "label": "Now Playing, buffering",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "Pulsing needle"
+  },
+  {
+   "route": "#/now-playing/episode",
+   "label": "Now Playing, episode",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "Artwork tint, chapter ticks"
+  },
+  {
+   "route": "#/now-playing/more",
+   "label": "Now Playing, detail",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "Up next, segments, sources"
+  },
+  {
+   "route": "#/search/typing",
+   "label": "Find, typing",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "Live results for 'chern'"
+  },
+  {
+   "route": "#/search/none",
+   "label": "Find, no results",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "'fusion' with its subject tile"
+  },
+  {
+   "route": "#/search/mosaic",
+   "label": "Find, mosaic",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "Mosaic scrolled to top"
+  },
+  {
+   "route": "#/settings",
+   "label": "Settings sheet",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "Appearance and dials"
+  },
+  {
+   "route": "#/toast",
+   "label": "Yours with toast",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "Removed from Up Next, Undo"
+  },
+  {
+   "route": "#/onboarding/return",
+   "label": "Onboarding, returning",
+   "states": [
+    "light",
+    "dark"
+   ],
+   "note": "Static band, Play"
+  }
+ ]
+}

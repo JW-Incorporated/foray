@@ -1,0 +1,790 @@
+# Afterglow: build notes
+
+Everything a front-end builder needs to reproduce the "ambient" direction
+(`DIRECTION.md`) without the director. Read that file first for the intent;
+this one is the numbers. All values are CSS px at 1x. Hard limits from
+`../../PLAN.md` apply throughout: `esc()`/`safeUrl()`, no inline `style=` or
+`<script>`, `cp_` storage keys through the shim, 44px targets, one
+`prefers-reduced-motion` block, AA contrast, no third-party imagery committed.
+
+Prototype target: `docs/redesign-2026/directions/ambient/prototype/index.html`
+plus `afterglow.css`, `afterglow.js`, `icons.svg`. Real data from
+`data/catalog-client.json`, `data/discover.json`, `data/session.json`; artwork
+loaded from its published URL at runtime; fonts self-hosted from `fonts/`.
+
+## 1. Tokens
+
+Put every token on `:root`. The Dawn block overrides neutrals and Ember under
+`@media (prefers-color-scheme: light)` guarded by `:root:not([data-theme="dusk"])`,
+and again under `:root[data-theme="dawn"]`. The player (`.room`) never reads
+the scheme tokens for its backdrop; it reads Glow.
+
+### 1.1 Colour
+
+```
+/* Dusk (default) */
+--bg0: #14110F;        /* page */
+--bg1: #1D1916;        /* raised card, row */
+--bg2: #272220;        /* raised-on-raised: chips on a card, menu */
+--text: #F5EEE4;       /* 16.3:1 on bg0 */
+--text-2: #B9AFA3;     /* 8.7:1 on bg0, 7.3:1 on bg2 */
+--text-3: #9A9188;     /* 6.1:1 on bg0, 5.1:1 on bg2; captions only, never under 13px */
+--ember: #F0A64B;      /* listener's own; 9.2:1 on bg0 as text; ink on it = bg0 (9.2:1) */
+--lamp: #F3E7D3;       /* 4a authored; 15.4:1 on bg0; ink on it = bg0 */
+--rim: rgb(243 231 211 / 0.10);   /* 1px top highlight on Raised */
+--overlay: rgb(243 231 211 / 0.06); /* Raised fill over bg0 */
+--shadow-1: 0 1px 2px rgb(10 6 4 / 0.40);
+--shadow-2: 0 8px 24px rgb(10 6 4 / 0.35);
+--scrim-top: rgb(20 17 15 / 0.20);
+--scrim-bottom: rgb(20 17 15 / 0.82);
+--ok: #7FCB8E;         /* downloaded, done; 9.9:1 on bg0 */
+--warn: #E9B46A;       /* offline, unavailable; never alone, always with a glyph */
+
+/* Dawn */
+--bg0: #F7F2EB; --bg1: #FDFAF5; --bg2: #EFE8DF;
+--text: #1E1A17; --text-2: #5E564E; --text-3: #6B635A;   /* 15.5, 6.5, 5.3 on bg0; 4.9 lowest on bg2 */
+--ember: #8E520E;      /* 5.6:1 on bg0, 5.1:1 on bg2; ink on it = #FFFFFF (6.2:1) */
+--lamp: #FFFFFF;       /* narration bars on Dawn carry a 1px #E0D6C8 edge */
+--rim: rgb(255 255 255 / 0.80);
+--overlay: rgb(255 255 255 / 0.55);
+--shadow-1: 0 1px 2px rgb(60 40 20 / 0.10);
+--shadow-2: 0 8px 24px rgb(60 40 20 / 0.10);
+--scrim-top: rgb(20 17 15 / 0.20);          /* the Room is always dark-scrimmed */
+--scrim-bottom: rgb(20 17 15 / 0.82);
+
+/* Glow: dynamic, set by JS on <html> (app-wide) and on .room (player) */
+--glow: oklch(0.66 0.12 60);      /* default before any item plays: warm neutral */
+--glow-l: 0.66;                   /* clamped lightness, see 1.2 (raised from 0.62 after round 1) */
+--glow-veil: color-mix(in oklab, var(--bg0) 72%, var(--glow) 28%);   /* the Dock (round 1: 18% was invisible) */
+--glow-row:  color-mix(in oklab, var(--bg1) 82%, var(--glow) 18%);   /* the playing row */
+--glow-wash: color-mix(in oklab, var(--bg0) 60%, var(--glow) 40%);   /* Today top wash */
+--glow-room: color-mix(in oklab, var(--bg0) 85%, var(--glow) 15%);   /* the Room's base under the scrim */
+
+/* Segment colours: per show, derived (1.2); these are the fallback set */
+--seg-c0: #2A9D8F; --seg-c1: #E76F51; --seg-c2: #8E6FD8; --seg-c3: #4C8DF5;
+--seg-c4: #D9A441; --seg-c5: #5FB4C9; --seg-c6: #C46BAE; --seg-c7: #7BA05B;
+--seg-narration: var(--lamp);
+--seg-dim: 0.38;                  /* opacity of unplayed bars */
+```
+
+Register the dynamic colours so they animate:
+
+```
+@property --glow { syntax: '<color>'; inherits: true; initial-value: #8A6A4E; }
+```
+
+`color-mix(in oklab, …)` and `oklch()` are supported in current WKWebView and
+Android WebView (Chrome 111+ / Safari 16.4+). Ship a static fallback declared
+first (`--glow-veil: #221C19;`) for anything older.
+
+### 1.2 Glow and segment colour derivation (JS, `palette.js`)
+
+1. **Source order.** (a) `show.art.palette` from `catalog-client.json` if the
+   nightly refresh has written one (a `[h, c]` pair in OKLCH, computed in
+   `tools/refresh` from the artwork with a median-cut on a 32px thumbnail;
+   this is the primary path because publisher art usually lacks CORS headers,
+   which taints a canvas). (b) Runtime canvas extraction on the episode art,
+   `crossorigin="anonymous"`, in a `try`; on a `SecurityError` fall through.
+   (c) Hash hue: `h = (fnv1a(showId) % 360)`, `c = 0.10`.
+2. **Clamp.** Keep hue and chroma; set lightness: Dusk `L = 0.66`, Dawn
+   `L = 0.56`, chroma capped at `0.14`. Text never sits on Glow directly, so the
+   clamp exists for mood consistency, not contrast. Contrast is guaranteed by
+   the scrim and the mix percentages: at 28% in the Veil, 18% in a row and 15%
+   in the Room base the worst case (a pure chroma 0.14 colour at L 0.66 over
+   bg0) must still be darker than `#5A4A42` on Dusk and lighter than `#D9C7B8`
+   on Dawn; add the three Dusk pairs and the Dawn Veil pair to
+   `contrast-check.mjs`, re-run it, and record the worst case in its output
+   (round 1 was measured at 18/12 only).
+3. **Segment colours.** Per show in a foray, take the show's derived hue, set
+   `L = 0.70`, `C = 0.13` (Dusk) or `L = 0.52`, `C = 0.13` (Dawn). Sort the
+   shows by first appearance; if a show's hue is within 24 degrees of any
+   earlier show's, rotate it +30 degrees and re-check (max 3 rotations). Cache
+   the result per foray id in memory; cache per-show hue in
+   `cp_palette` (through the shim) as `{showId: [h, c]}`, max 400 entries.
+4. **Apply.** Set `--glow` on `document.documentElement` when the current item
+   changes and on `.room` when a foray segment changes. The `@property`
+   registration makes the transition `560ms` (token `--m-room`).
+
+### 1.3 Type
+
+```
+--font-display: 'Fraunces', Georgia, serif;
+--font-text: 'DM Sans', system-ui, sans-serif;
+
+--t-display: 500 32px/1.125 var(--font-display);  /* Now Playing title only; unitless leading so car posture scales both */
+--t-title:   500 26px/30px var(--font-display);   /* screen titles, foray names, the Today hero title */
+--t-headline:500 20px/1.2 var(--font-display);    /* card titles, section heads */
+--t-why:     italic 400 17px/24px var(--font-display);  /* why-lines, bridges */
+--t-body:    400 16px/24px var(--font-text);
+--t-label:   600 14px/1.3 var(--font-text);       /* buttons, tabs, chips, mini title, subject names */
+--t-caption: 500 13px/18px var(--font-text);      /* meta, times, eyebrows (uppercase, 0.06em) */
+```
+
+Fraunces: `font-variation-settings: 'SOFT' 100, 'WONK' 0; font-optical-sizing: auto;`.
+Numbers: `font-variant-numeric: tabular-nums` on `.time`, `.count`, `.dur`.
+Every size is also expressed in `rem` in the stylesheet (16px root) so Android
+font scale applies; the seven tokens above are the only sizes. Eyebrows are
+`--t-caption` uppercase with `letter-spacing: 0.06em`, in `--lamp` when 4a
+authored, `--text-3` otherwise. The wordmark is Fraunces italic 500, used once,
+in the Today header.
+
+Car posture multiplies `--t-display`, `--t-headline` and `--t-label` by 1.25 via
+a `[data-posture="car"]` block; nothing else changes size. Those three tokens
+carry unitless line-height for exactly this reason: round 1 scaled the size
+but not the leading and the title double-spaced.
+
+The wordmark is Fraunces italic 500 26px, used in the Today header and on
+onboarding.
+
+### 1.4 Space, radius, size
+
+```
+--s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 20px; --s-6: 24px; --s-8: 32px; --s-10: 40px; --s-12: 48px;
+--gutter: 16px;                 /* 375 */
+@media (min-width: 393px) { --gutter: 20px; }
+
+--r-xs: 4px;   /* strip bars, progress lines, badges */
+--r-sm: 8px;   /* artwork <= 56 */
+--r-md: 12px;  /* artwork 72-120, buttons, inputs */
+--r-lg: 16px;  /* cards, rows, hero collage, artwork 160+ */
+--r-xl: 24px;  /* sheets, Now Playing artwork */
+--r-pill: 999px;
+--r-round: 50%;
+
+--art-mini: 44px; --art-queue: 56px; --art-row: 72px; --art-tile: 104px; --art-foray: 120px; --art-hero: 160px;
+--row-episode: 96px; --row-queue: 64px; --row-show: 64px;      /* episode rows carry a two-line why-line */
+--tab-bar: 64px; --mini: 64px; --field: 52px;
+--tap: 44px;
+--safe-top: env(safe-area-inset-top, 0px); --safe-bottom: env(safe-area-inset-bottom, 0px);
+--chrome-bottom: calc(var(--tab-bar) + var(--safe-bottom) + 12px);   /* content padding when no mini */
+--chrome-bottom-mini: calc(var(--chrome-bottom) + var(--mini) + 8px);
+```
+
+### 1.5 Materials
+
+```
+.raised {            /* cards, rows, tiles */
+  background: linear-gradient(var(--overlay), var(--overlay)) var(--bg1);
+  box-shadow: inset 0 1px 0 var(--rim), var(--shadow-1), var(--shadow-2);
+  border-radius: var(--r-lg);
+}
+.veil {              /* the Dock and sheet headers: the only backdrop-filter */
+  background: var(--glow-veil);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  backdrop-filter: blur(20px) saturate(140%);
+  box-shadow: inset 0 1px 0 var(--rim), var(--shadow-2);
+}
+.dock {              /* one .veil holding, top to bottom: [field row 48, Discover only] [mini row 64, when playing] [tab row 64 / 36 receded] */
+  position: absolute; left: var(--gutter); right: var(--gutter); bottom: calc(var(--safe-bottom) + 12px);
+  border-radius: var(--r-xl); overflow: hidden;
+}
+.dock > * + * { box-shadow: inset 0 1px 0 var(--rim); }   /* rows divided by the rim, no gaps */
+.room {              /* Now Playing and Foray detail backdrop */
+  background: var(--glow-room);          /* never plain bg0: the lower half stays in the show's colour */
+  isolation: isolate;
+}
+.room::before {      /* the artwork, blurred, over the Glow gradient (the gradient is the fallback, not the Room) */
+  content: ''; position: absolute; inset: -12%;
+  background:
+    var(--room-art) center / cover,
+    radial-gradient(120% 55% at 50% 18%, color-mix(in oklab, var(--glow) 55%, transparent), transparent 75%);
+  filter: blur(64px) saturate(130%);
+  transform: scale(1.4);
+  opacity: 0.9;
+}
+.room::after {       /* the scrim; text sits only on the lower 55% */
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(180deg, var(--scrim-top) 0%, var(--scrim-top) 35%, var(--scrim-bottom) 55%, rgb(20 17 15 / 0.92) 100%);
+}
+```
+
+`--room-art` is set by JS as `url("…")` after `safeUrl()`; no inline
+`style=`, so set it with `el.style.setProperty('--room-art', …)` from script
+(CSP allows CSSOM writes; it forbids inline attributes).
+
+Fallbacks, all in one place:
+
+```
+@supports not (backdrop-filter: blur(1px)) { .veil { background: var(--bg1); } }
+@media (prefers-reduced-transparency: reduce) { .veil { backdrop-filter: none; background: var(--bg1); } }
+@media (prefers-contrast: more) {
+  .veil { backdrop-filter: none; background: var(--bg0); }
+  .room::before { opacity: 0.35; }
+  .raised { box-shadow: inset 0 0 0 1px var(--text-3); }
+}
+```
+
+Veil area budget: the Dock is the only blurred surface: tabs (64) + mini (64)
+= 128px, or on Discover field (48) + mini (64) + receded tabs (36) = 148px;
+a sheet header adds 56px only while a sheet is open. Never put `.veil` on a
+scrolling list item. Because the Dock is one surface, no content ever shows
+through a gap between the mini player and the tab bar (a round-1 defect).
+
+### 1.6 Motion
+
+```
+--m-micro: 160ms; --m-ui: 280ms; --m-sheet: 420ms; --m-room: 560ms;
+--e-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+--e-spring: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017, 1.077 20.4%, 1.121, 1.149 24.3%, 1.159, 1.163 27.8%, 1.154, 1.129 32.8%, 1.051 39.6%, 1.017 43.1%, 0.991, 0.977 51%, 0.974 53.8%, 0.975 57.1%, 0.997 69.8%, 1.003 76.9%, 1.001 85.5%, 1);
+--e-spring-soft: linear(0, 0.013, 0.05 2.5%, 0.2 5.6%, 0.56 11.2%, 0.86 16.8%, 0.98 20.4%, 1.03 24%, 1.045 27.6%, 1.04 31.2%, 1.02 36.8%, 1.004 42.4%, 0.996 48%, 0.998 58%, 1);
+```
+
+`--e-spring` has overshoot (use on the mini player snap, the strip draw-in,
+the Up Next add). `--e-spring-soft` is near-critical (sheets, the Room expand).
+Animate only `transform`, `opacity` and registered custom properties.
+
+Reduced motion, one block, nothing outside it:
+
+```
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 200ms !important; transition-property: opacity, color, background-color !important; }
+  .strip .bar { transition: none; }           /* fill steps */
+  .room::before { transition: none; }         /* no Room drift */
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}
+```
+
+## 2. Icons
+
+Phosphor Icons (MIT), Regular weight for inert, Fill for toggled states, 24px
+grid, `stroke: none` (Phosphor is filled paths at every weight). Build one
+sprite `icons.svg` with `<symbol id="i-…" viewBox="0 0 256 256">`, referenced
+as `<svg class="icon" aria-hidden="true"><use href="icons.svg#i-house"/></svg>`,
+`fill: currentColor`. Default size 24; 20 inside chips and captions; 28 in the
+tab bar; 32 for transport secondary; the play glyph is drawn at 36 inside the
+88px button and 24 inside the 48px mini button.
+
+Required symbols (Regular / Fill pairs where a toggle exists):
+
+| id | Phosphor name | use |
+|---|---|---|
+| i-house, i-house-fill | house | Today tab |
+| i-compass, i-compass-fill | compass | Discover tab |
+| i-books, i-books-fill | books | Library tab |
+| i-play, i-pause | custom (see below) | transport, mini, rows |
+| i-back15, i-fwd30 | custom | transport, mini, lock screen |
+| i-skip-next | skip-forward | Up Next peek, detail posture |
+| i-bookmark, i-bookmark-fill | bookmark-simple | save |
+| i-check-circle-fill | check-circle | followed, played |
+| i-download, i-download-fill | arrow-circle-down | downloaded state |
+| i-queue | list-plus | add to Up Next |
+| i-dots | dots-three | row menu |
+| i-chevron-left / -right / -down | caret-* | nav, disclosure |
+| i-magnifier | magnifying-glass | field |
+| i-x | x | clear field, dismiss toast |
+| i-share | share-network | share |
+| i-moon | moon | sleep timer |
+| i-gauge | gauge | speed |
+| i-sliders | sliders-horizontal | Tuning |
+| i-gear | gear-six | settings button on Today |
+| i-wifi-slash | wifi-slash | offline |
+| i-sparkle | sparkle | "4a picked this" eyebrow, Stretch pill |
+| i-car | car | car posture indicator |
+
+Custom glyphs (three), drawn on the same 256 grid, filled paths:
+
+- `i-play`: an equilateral triangle, corners rounded 12 units, optical centre
+  shifted +8 units right. `i-pause`: two bars 40 wide, gap 32, corners 12.
+- `i-back15` / `i-fwd30`: a 270 degree arc of stroke width 22 (expanded to a
+  fill) with an arrowhead at the open end (anticlockwise for back, clockwise
+  for forward), and the numeral "15" or "30" set in DM Sans 600 converted to
+  outlines, 84 units tall, centred. The lock screen uses the same artwork
+  rasterised to the media-session action icon sizes.
+
+No Unicode glyphs anywhere, including `…`: truncation is CSS `text-overflow`.
+
+## 3. Component inventory
+
+Every component below has one treatment. If a screen needs something not
+listed, add it here first.
+
+| Component | Anatomy | Sizes | States |
+|---|---|---|---|
+| **Dock** `.veil` | the one floating chrome surface: rows top to bottom are SearchField (Discover only), MiniPlayer (when something is loaded), TabBar; rows divided by a 1px `--rim` inset line, no gaps; 12px above safe bottom at `--gutter` inset, `--r-xl`, `overflow: hidden` | 64 (tabs) / 128 (tabs + mini) / 148 (Discover: field + mini + receded tabs) | hides while the field has focus except the field row; hidden in car posture; the 2px `--glow` progress line runs along the Dock's top edge, or along the mini row's top edge when the field is above it |
+| **TabBar** (Dock row) | 3 items, icon 28 over label `--t-caption`; active = Fill icon + `--text`; inert = `--text-2` | 64 tall, items 44+ wide | recedes to 36px (label hidden, icons 24) after 80px of downward scroll, returns on any upward scroll; always receded on Discover while the field row is present |
+| **MiniPlayer** (Dock row) | art 44 `--r-sm`; title `--t-label` 1 line; show `--t-caption` `--text-2`; Play 48 round Ember (ink bg0); Fwd30 44 `--text` | 64 tall | playing / paused (Fill vs Regular) / buffering (glyph opacity breathes 1.0→0.85, 900ms) / drag (follows finger, opens at 96px) |
+| **PlayButton** | round, Ember fill, `i-play`/`i-pause` in bg0 | 88 (Now Playing), 56 (hero, Foray detail), 48 (mini), 44 (rows: outlined `--text-2`, no fill) | pressed: scale 0.94 `--m-micro`; disabled: 40% opacity + `aria-disabled` |
+| **SkipButton** | `i-back15`/`i-fwd30`, `--text` | 56 target, 32 glyph (Now Playing); 44/24 (mini) | pressed scale 0.94 |
+| **Scrubber** | track 4px `--r-xs` on `rgb(255 255 255 / 0.18)`, fill `--lamp`; thumb 16px round `--lamp`, grows to 24 on drag; times `--t-caption` tabular under each end | hit area 44 tall, full width minus gutters | drag shows a 32px time bubble `.raised` above the thumb |
+| **Strip** (foray) | bars with 2px gaps, `--r-xs`; width proportional to runtime, min 6px; show bars in their segment colour; narration bars `--seg-narration` and 4px tall centred (thin lights); unplayed bars at `--seg-dim`; **current bar**: full opacity, 4px taller than its neighbours (all centre-aligned), fill `color-mix(in oklab, var(--c) 85%, var(--lamp))` growing left-to-right; **no ring, no outline** (a hairline) | 48 tall on Foray detail: a 24px bar row, 4px gap, a 20px thumb row with a `--r-xs` artwork thumb left-aligned under every bar 28px or wider, never overlapping a bar; 32 in Now Playing (bars 16, no thumbs); 12 in cards and tiles (bars 8, no thumbs) | draw-in (bars scale-x from 0 in sequence, 60ms stagger, `--e-spring`); each bar is a 44-tall `button` with `aria-label="Seek to <show>, <mm:ss>"` |
+| **EpisodeRow** `.raised` | art 72 `--r-md`; title `--t-headline` 2 lines; show `--t-caption` `--text-2`; why-line `--t-why` **2 lines** `--text-2`; meta row: duration tabular, dot, date; trailing Play 44 outlined (`flex: none`); a 4px Ember progress rim inside the art's bottom edge when started | 96 min height (grows with text), padding 12, gap 12 | playing (`--glow-row` background, Fill play glyph, "Playing" caption in `--lamp`); played (`i-check-circle-fill` `--text-3` before duration); downloaded (`i-download-fill` `--ok`); unavailable (art 50%, `i-wifi-slash` `--warn`, play disabled); pressed (background `--bg2`) |
+| **StretchCard** `.raised` | pill "Stretch" (`i-sparkle` + label, `--lamp` fill, ink bg0) top-left; two arts 56 `--r-sm` at the ends of a 2px `--lamp` line with a 6px round dot at its midpoint; bridge `--t-why` `--text`; then a row: text column (`flex: 1 1 auto; min-width: 0`) holding title `--t-headline` 2 lines and caption `show · duration · date` one line ellipsis, trailing Play 44 outlined (`flex: none; width: 44px; height: 44px`) | padding 16, line spans the width minus 2×56+24 | same as EpisodeRow. Round 1 shipped this with no title, a one-word-per-line caption and the Play button stretched full width; the flex rules above are the fix |
+| **ForayCard** `.raised` | collage 120 `--r-md` (2×2 of show arts, 2px gaps; 1, 2 or 3 shows per the no-crop rule in §10.5); eyebrow "Foray" `--lamp`; title `--t-headline`; "4 shows, 42 min" `--t-caption`; strip 12 tall | 2-up tiles 164 wide at 393; **never in a 3-up grid** (use ForayTile) | in progress (strip fill), finished (`i-check-circle-fill`) |
+| **ForayTile** | collage 104 `--r-md` with the 12-tall strip (bars 8) drawn along the collage's bottom edge inside its radius; a 16px Lamp pill "Foray" at the collage's top-left; name `--t-caption` 2 lines under | 3-up in the Library grid, same cell as ShowTile | in progress (strip fill), finished (`i-check-circle-fill` badge bottom-right, like followed) |
+| **HeroPick** | collage 160 `--r-lg` left; right column: eyebrow `--lamp` ("Today's foray" / "Today's picks"), title `--t-title` **4 lines max, never an ellipsis** (§10.6), meta caption, PlayButton 56; the why-line `--t-why` `--text-2` spans the full width under the pair, 2 lines | grid `160px 1fr`, gap 16; at 375 the collage is 136 | first run (hero = the first pick; the picks list then starts at the second pick and its count drops by one; copy per 4.1) |
+| **ShowTile** | art 104 `--r-md` grid cell with name `--t-caption` under, 2 lines, `overflow-wrap: normal; text-overflow: ellipsis` (never cut mid-word: round 1's 4-up clipped "Unexplainabl") | 3-up everywhere: 104 at 393, 96 at 375, 112 at 412; Lit art at 40px (§10.2) | followed (`i-check-circle-fill` Ember badge, 20, bottom-right of art) **only where the state varies**: Discover results and "Where this came from". Never in Library, where everything is followed (§10.7) |
+| **SubjectTile** `.raised` | Collage 56 `--r-sm` (2×2 of the subject's first four shows, 2px gaps) left; name `--t-label`; "5 shows" `--t-caption` `--text-2` | 2-up, 72 tall, padding 12, gap 12 | pressed |
+| **PlaylistTile** `.raised` | composite cover 2×2 of episode arts 120 `--r-md`; name `--t-headline`; "6 episodes, 2 hr 10 min" caption; "3 of 6 played" in Ember when started | 2-up | — |
+| **QueueRow** `.raised` | art 56 `--r-sm`; title `--t-label` 2 lines; show + remaining `--t-caption`; `i-dots` 44 trailing | 64 min | current: Fill play glyph 20 before the title, "Playing" caption `--lamp`, `--glow-row` bg; auto-added: eyebrow "4a added" `--lamp` + its reason line |
+| **SearchField** `.veil` | `i-magnifier` 20; input `--t-body`; `i-x` 44 when filled; placeholder "Search, or name a subject" | 52 tall, pill, docked above MiniPlayer/TabBar | focus: 2px `--lamp` ring outside (not inside); typing: a trailing "Make a playlist" chip appears once the text is 3+ chars and matches no show |
+| **Chip** | `--t-label`, pill, `--bg2` fill, `--text`; selected: `--lamp` fill, ink bg0 | 36 tall, 44 target via padding | — |
+| **Pill (eyebrow badge)** | `--t-caption` uppercase, `--lamp` fill, ink bg0; icon 16 optional | 22 tall | used for Stretch, Foray, 4a added |
+| **SectionHead** | `--t-headline` + optional trailing count `--t-caption` `--text-3`; optional one-line explainer `--t-body` `--text-2` under | margin-top 32, bottom 12 | — |
+| **Sheet** | `--r-xl` top corners, `.veil` header 56 with grabber 36×4 `--text-3` at top centre, title `--t-headline`, close `i-x` 44 right; body `--bg0` | partial 60% / full; drag to dismiss | focus trapped; returns to opener on close |
+| **Toast** `.raised` | `--t-label` + action "Undo" in Ember | 48, bottom 8 above MiniPlayer, 5s | — |
+| **Skeleton** | `--bg1` blocks with the component's radii; lamp sweep: `linear-gradient(90deg, transparent 0%, var(--overlay) 50%, transparent 100%)` at `background-size: 40% 100%`, position animated from -40% to 140% every 1.6s (both edges transparent: round 1's sweep had a hard left edge) | — | reduced motion: static |
+| **EmptyState** | one line `--t-body` `--text-2`, one button (outlined `--text`, pill, 44) | centred in the section, 32 padding | — |
+| **Collage** | 2×2 arts with 2px gaps inside one radius, `overflow: hidden`; 3 arts = 1 big left + 2 stacked right; 1 art = plain | per parent | lazy `loading="lazy"`, `decoding="async"` |
+
+Buttons: three styles only. **Primary** Ember fill, ink bg0, pill, `--t-label`,
+48 tall. **Secondary** outlined 1.5px `--text-2`, text `--text`, pill, 44.
+**Quiet** text-only `--t-label` `--ember`, 44 target. Icon buttons are 44
+round, no fill, `--text`. No other button exists; "Stop", "Saved ✓", boxed
+"Bookmark" and the orange outline all map onto these.
+
+## 4. Screens
+
+Column: `padding-inline: var(--gutter)`. Vertical rhythm: 32 between sections,
+12 between a head and its content, 8 between rows, 16 between cards. Content
+`padding-bottom: var(--chrome-bottom[-mini])`. Status bar is transparent
+(`StatusBar.setOverlaysWebView(true)`, light content on Dusk and the Room, dark
+on Dawn); screens pad `--safe-top + 8`.
+
+### 4.1 Today
+
+```
+[safe-top + 8]
+Header row (44): wordmark "4a" Fraunces italic 500 26px left; gear 44 right. Greeting caption under: "Monday, 5 October" --text-3.
+Wash: 48vh, position absolute, z -1, pointer-events none, behind header and hero:
+  background: radial-gradient(120% 70% at 22% 20%, var(--glow-wash) 0%, transparent 70%), linear-gradient(var(--glow-wash), var(--bg0));
+  The light comes from the collage (its centre is near 22%/20% of the wash). --glow here = the hero's first show.
+[20]
+HeroPick (3.x). First run copy: eyebrow "Today's picks", title = first pick title, why = its why-line, button "Play"; the picks list below then starts at the second pick. The first-run hero never cites "usual subjects".
+[32]
+"Keep listening" (only when something is mid-listen): one EpisodeRow, art with progress rim.
+[32]
+"Today's picks" + count: 4-6 EpisodeRows in a vertical list; one StretchCard in the list (never first, never last).
+[32]
+"Playlists for you": horizontal rail of PlaylistTiles, 2 visible + 24px peek, scroll-snap, 12 gap; the rail is the only horizontal scroller on the screen.
+[32]
+"Off your path", explainer "About a third of each day sits outside your usual subjects. This is today's third.": 2-3 EpisodeRows. Items here carry no Stretch pill (the section is the label).
+[chrome-bottom]
+```
+
+States: **returning** as above; **first run** no Keep listening, hero copy per
+above, "Off your path" still present; **mid-listen** Keep listening present
+and MiniPlayer docked; **stress** titles clamp at 2 lines in rows, 3 in the
+hero, never cut mid-word (`overflow-wrap: anywhere` is off; `-webkit-line-clamp`
+on); **offline** a 36px `.raised` banner under the header with `i-wifi-slash`
+and "Offline. Downloaded items play." and unplayable rows in the unavailable
+state; **loading** skeletons for hero + 4 rows, the wash stays at the default
+Glow.
+
+At 375: hero collage 136, gutter 16, rail tiles 156. At 412: as 393 with gutter
+20 and 2-up tiles 176.
+
+### 4.2 Now Playing (sheet over everything, `.room`)
+
+```
+[safe-top + 12]
+Grabber 36×4 centred; chevron-down 44 left; dots 44 right (menu: share, show page, sleep).
+[16]
+Artwork: --np-art square, --r-xl, shadow-2, centred. Foray: the collage.
+  --np-art: clamp(220px, calc(100vh - 520px), 320px) so a tall screen grows the art instead of leaving a band of nothing between the why-line and the strip (round 1 had ~95px of it at 393x852); 220 under 700px tall; 180 with a 3-line title (.np--long, JS measures once after layout).
+[20]
+Eyebrow slot, 18px, reserved so the title never jumps: holds only the transient --lamp caption "Now: <show>" for 3s after a segment change and for 3s after the sheet opens, then fades (280ms). Never a permanent line (round 1 showed the show name twice).
+Title --t-display, 3-line clamp, centred, --text.
+Show --t-body --text-2, 1 line. Foray: "4 shows · <current show>", which crossfades on each segment.
+Why-line --t-why --lamp, 2-line clamp.
+[24]
+Strip (foray, 32 tall) or Scrubber (episode). Times under: elapsed left, "-remaining" right, tabular.
+[20]
+Transport row: Back15 (56) — Play (88) — Fwd30 (56), gap 24, centred. Bottom of the Play button sits at >= 24px above the detail handle.
+[16]
+Detail handle: caption "More" + chevron-down, 44 tall, centred (scroll cue). The first viewport ends here.
+---- scroll ----
+Secondary row: Speed (shows "1x"), Sleep, Bookmark, Share as 44 icon buttons with captions, evenly spaced.
+Chapters / Segments list: QueueRow anatomy; foray segments show the show art, the show name, clip time range, and "Narration" rows in --lamp with no art.
+"Where this came from" (foray): ShowTiles 3-up with Follow.
+Show notes: --t-body, 4-line clamp + "More" quiet button; feed HTML through esc()/safeUrl(); timestamps as Chips that seek.
+Up Next peek: "Up next" head + one QueueRow with its reason line + "Up Next (5)" quiet button opening Library > Up Next.
+[safe-bottom + 24]
+```
+
+375×667 check (no safe-area in the harness; title 2 lines): 12+44+16+280+20+72+24+48+16+32+18+20+88+16+44 = 750. That overflows, so under `@media (max-height: 700px)` the artwork is 220 and the why-line clamps to 1 line: 12+44+16+220+20+72+24+24+16+32+18+20+88+16+44 = 666; with a 3-line title (`.np--long`) the artwork drops to 180: 662. Play and the detail handle stay on screen at 375×667 in every state; the builder asserts this in the harness.
+
+States: **episode** scrubber; **foray** strip plus segment list, the Room
+colour follows the segment, the show name under the title crossfades 280ms;
+**paused** Play shows `i-play`, Room `::before` opacity 0.7; **buffering**
+glyph breathes, scrubber fill at the buffered position in `--text-3` under
+the played fill; **offline/downloaded** `i-download-fill` `--ok` before the
+elapsed time; **end of item** next artwork enters from +100% x with
+`--e-spring-soft` 560ms as the old one exits to -24% and fades, Room
+crossfades, title swaps; **long title at 375** handled above; **max text
+size** everything in rem, artwork min 160, title max 3 lines at 1.3x then
+2 lines beyond.
+
+**Car posture** (`[data-posture="car"]` on `<html>`): Dock hidden, Now
+Playing opens automatically, secondary row, why-line and the "More" handle
+hidden, artwork 240 (200 under 700px tall), Play 112, skips 72, type ×1.25,
+show notes and chapters not rendered. Harness assertion: the Play button's
+bottom edge is at least 24px above the viewport bottom at 393x852 and
+375x667 (round 1 clipped it).
+
+**Skip glyphs**: `i-back15`/`i-fwd30` are drawn at 36 inside the 56 targets
+(round 1's ~28 was dwarfed by the 88 Play). Trigger: a car
+Bluetooth route observed (Native plugin; stubbed in the prototype by
+`?posture=car`), or long-press on the MiniPlayer (600ms) as the manual path;
+leaving: the route ends, or tap the `i-car` chip at the top.
+
+### 4.3 Mini player (a Dock row)
+
+The mini player is the row above the tab row inside the Dock (section 3):
+one Veil surface, one radius, a rim line between rows, no gap. Tapping
+anywhere except the two buttons opens Now Playing. Drag up: the sheet follows
+the finger from 0 (`translateY(100%)`) to the open state; past 96px of travel
+on release it springs open (`--e-spring`, 420ms) with one medium haptic;
+otherwise it springs back. Swipe down on the open sheet mirrors this. Swipe
+left/right on the mini bar does nothing (walking protection); dismissing
+playback is "Stop" in the dots menu, with an undo toast.
+
+`role="region" aria-label="Now playing: <title>, <show>"`; the progress line is
+`aria-hidden`.
+
+### 4.4 Discover
+
+```
+[safe-top + 8]
+Title "Discover" --t-title.
+[20]
+Subjects, grouped under five heads (Science & nature, People & society, Business & work, Arts & culture, Making & tech) as SectionHeads; each a 2-up grid of SubjectTiles. The taxonomy is internal: group names are the only labels, no taxonomy ids in copy. (Round 1 opened with "Shows you follow"; it duplicated Library's grid and pushed the subjects below the fold, so it is gone from Discover.)
+[chrome-bottom + dock rows]
+SearchField as the Dock's top row (48), above the MiniPlayer row and the receded (36) tab row.
+```
+
+Results: a "Make a playlist from '<q>'" Primary button sits at the bottom of
+the results list as well as under the no-result message (round 1 had it only
+in `noresults`).
+
+**Typing**: the list is replaced by results as it types (debounced 150ms).
+Groups: Shows (ShowTile rows: art 56, name, "12 episodes"), Episodes
+(EpisodeRow compact: art 56, no why-line), Playlists (PlaylistTile rows).
+A "Make a playlist from 'semiconductor supply chain'" Primary button sits at
+the bottom of results when the text is 3+ characters; it is the Create
+function. **No result**: EmptyState with "Nothing named '<q>'." plus, when a
+subject or group matches by substring, a second line "'<Subject>' is a subject,
+<n> shows." with that SubjectTile under it, so the message never contradicts
+visible content. **Keyboard open**: the field rides above the keyboard
+(`interactive-widget=resizes-content` in the viewport meta; the harness stubs
+this with `?kb=1` which pads the bottom by 300px); the TabBar and MiniPlayer
+hide while the field has focus.
+
+### 4.5 Library
+
+```
+[safe-top + 8]
+Title "Library" --t-title.
+[20]
+Grid: ForayTiles and followed ShowTiles mixed, 3-up (art 104 at 393, 96 at 375), forays first, every cell the same height. Max 9 then "All" quiet button.
+[32]
+"Saved" (count): EpisodeRows, max 5 + "All saved".
+"Playlists" (count): PlaylistTile rows.
+"Up Next" (count): QueueRows; the current row first; each row's dots menu: Move up, Move down, Remove, Play next. Remove shows a Toast with Undo. Played rows jump to the top (founder ruling kept) with a 280ms translate of the neighbours (insert-with-gap).
+"History": QueueRows without the menu, date caption.
+```
+
+Empty (first run): each section is a SectionHead + EmptyState with one line
+and one button ("Find shows" opens Discover; "See today's picks" opens
+Today); the grid's own line is "Nothing followed yet." A SectionHead shows
+no trailing count when its section is empty (round 1 showed the seed counts
+beside empty sections). No paragraphs, no quoted button labels.
+
+### 4.6 Foray detail (`.room` from the first show's art)
+
+```
+[safe-top + 8]
+chevron-left 44; dots 44 (share).
+[8]
+Collage 160 --r-lg centred (shows' arts).
+[16]
+Eyebrow "Foray · <subject>" --lamp, centred.
+Title --t-title, 3-line clamp, centred.
+Caption "4 shows · 42 min · narrated" (or "not narrated yet").
+[16]
+Strip 48 tall with thumbs; tapping a bar plays from there.
+[16]
+Primary button: "Play" / "Resume · 18 min left" / "Play again", 48, full width minus gutters (middle dot, not a comma). The resume state also shows the fill on the strip.
+[24]
+"Why 4a made this": --t-why, 3 lines max.
+[24]
+"Where this came from": ShowTiles 3-up with Follow badges, then the segment list (QueueRow anatomy, narration rows in --lamp).
+```
+
+**Unavailable**: collage at 50% with `i-wifi-slash` badge, strip still drawn,
+Primary button replaced by "Find similar" (opens Discover with the subject),
+one line: "This foray can't play right now. Its shows are below."
+**Un-narrated**: no narration bars; caption says "not narrated yet"; nothing
+else apologises.
+
+### 4.7 Onboarding (first launch)
+
+Full-screen `.room` whose `--room-art` cycles through four real show arts
+from `discover.json` (6s each, Room crossfade; reduced motion: static first
+art). Centre: a Strip at 48 tall drawing itself in over 1.2s, built from the
+first foray's segments. Below: title `--t-display` "Hear things outside your
+lane." and body `--t-body` `--text-2` "4a picks a few podcasts a day and says
+why. No account." Buttons stacked at the bottom above safe-bottom + 24:
+Primary "Show my picks", Secondary "Skip for now", both 48, gap 12. Tapping
+"Show my picks" runs transition 2 into Today (the strip collapses into the hero
+collage). Returning after skip: Today directly, no sheet; the intro is
+reachable from Settings as "What 4a does".
+
+## 5. Motion specs
+
+| Transition | Mechanism | Timing | Reduced motion |
+|---|---|---|---|
+| Mini → Now Playing | `view-transition-name: np-art` on the 44 art and the 280 art; `document.startViewTransition` when available, else FLIP on the art (translate+scale) while the sheet translates from 100% to 0; Veil tint: `.room` starts clipped to the mini bar's rect (`clip-path: inset(...)` round 24px) and expands to the full screen | 420ms `--e-spring-soft`; art 420ms; TabBar sinks 24px + fades 280ms | 200ms crossfade of sheet and art |
+| Now Playing → Mini | reverse, finger-tracked; release velocity > 0.5 px/ms closes | 420ms | crossfade |
+| Pick → play | the row's art clones into a fixed element, FLIPs to the mini art slot; `--glow` on `<html>` transitions | 560ms `--e-spring`; glow 560ms ease-out | art fades in place; glow still changes (colour only) |
+| Strip draw-in | each `.bar` `transform: scaleX(0)→1`, `transform-origin: left`, delay `index × 60ms` | 280ms each, `--e-spring` | all bars appear at once |
+| Segment change (in play) | `.room --glow` and `--room-art` crossfade (two stacked `::before` layers, the new one fades in); show-name line crossfades; a `--lamp` caption "Now: <show>" fades in for 3s then out | 560ms; caption 280ms in/out | step change, caption still shown |
+| Tab bar recede | `height 64→36`, label opacity 1→0, icon 28→24 on scroll down > 80px, any scroll up restores | 280ms `--e-out` | instant |
+| Up Next add | the tapped row's art flies to the Library tab icon (FLIP), the tab's count badge scales 1→1.3→1 | 420ms `--e-spring` | badge count updates only |
+| Queue reorder / remove | neighbours translateY by the row height with 8px gap | 280ms `--e-out` | instant |
+| Toggle fills (save, follow, download) | icon Regular → Fill via opacity cross of two `<use>`; scale 1→1.15→1 | 160ms | opacity only |
+| Sheet open/close | translateY, grabber drag, focus trap | 420ms `--e-spring-soft` | fade |
+| Skeleton sweep | background-position loop | 1600ms linear | static |
+| Buffering breathe | opacity 1→0.85→1 | 900ms, infinite | static at 0.9 |
+
+View Transitions: wrap in `if (document.startViewTransition)`; the FLIP path
+uses `element.animate()` with the same `linear()` easing string.
+
+## 6. Haptics map (Web+, `@capacitor/haptics`; no-op on the web)
+
+| Moment | Call |
+|---|---|
+| play / pause | `impact({ style: 'light' })` |
+| add to Up Next, save, follow | `impact({ style: 'light' })` |
+| scrubbing crosses a segment or chapter | `selectionChanged()` (throttled to once per boundary) |
+| mini drag passes open threshold | `impact({ style: 'medium' })` once per gesture |
+| bookmark set, download complete | `notification({ type: 'success' })` |
+| end of item handoff | none |
+
+## 7. Accessibility checklist (what the builder asserts)
+
+- Every text pair in `contrast-check.mjs` ≥ 4.5; the script runs in the
+  prototype's test.
+- Every interactive element ≥ 44×44, including strip bars (44 tall hit area
+  on 24px visuals) and the 16px scrubber thumb (44 hit area).
+- State never by colour alone: playing = Fill glyph + "Playing"; played =
+  check glyph; followed = check badge; stretch = pill with text; narration =
+  thin bar **and** "Narration" in the segment list; offline = glyph + text.
+- Mini player region label; Play/Pause `aria-pressed` with a live label;
+  scrubber `role="slider"` with `aria-valuetext` "12 min 30 of 48 min",
+  updated on change, not per second.
+- Sheets trap focus and return it; Escape and the close button both work.
+- Min text 13px; all sizes in rem; the 375×667 long-title layout keeps Play
+  on screen (harness assertion).
+- One `prefers-reduced-motion` block (section 1.6) covering every animation,
+  including View Transitions.
+- `prefers-contrast: more` and `prefers-reduced-transparency` handled in
+  section 1.5.
+
+## 8. Harness hooks (for `tools/ui-lab/`)
+
+Query parameters the prototype honours: `?screen=today|np|discover|library|foray|onboarding`,
+`?state=firstrun|returning|midlisten|stress|offline|loading|empty|typing|results|noresults|kb|paused|buffering|downloaded|ending|unavailable|unnarrated|finished`,
+`?theme=dusk|dawn`, `?posture=car`, `?mini=1`, `?textscale=1.3`, and
+`?scroll=<px>` (scrolls `.screen` after render, so the harness can shoot the
+lower sections: Stretch card, Playlists rail, Off your path, the segment
+list, the Now Playing detail posture). The seed clock is frozen by the
+harness; the prototype reads `Date` only for the greeting.
+
+`?state=ending` must render the handoff mid-flight: next artwork at 60% of
+its travel from the right, the current one at -24% x and 40% opacity, the
+Room half-crossfaded, the title already swapped, a `--lamp` caption "Up
+next". Round 1 rendered the default frame.
+
+Shooting the states: the harness takes a file path or an http URL and
+refuses a query string on a file path, so serve `prototype/` over http
+(any static server) and put the query on that URL. Under Git Bash, pass
+`--routes '#/home'` with `MSYS_NO_PATHCONV=1` or the hash is rewritten into
+a Windows path. The round-2 contact sheets must cover every state in
+`critique-r1.md` "What round 2 must shoot".
+
+## 9. Three risks and their mitigations, restated for the builder
+
+1. **CORS-tainted canvas.** Do not rely on runtime extraction. Read
+   `show.art.palette` first; the prototype ships a static `palettes.json`
+   computed once by a Node script in `prototype/tools/` from the artwork URLs
+   (that script is our code; the output is numbers, not images, so it can be
+   committed).
+2. **Blur cost on Android.** Only the three `.veil` surfaces blur; measure
+   scroll FPS on the Android lab build with the Veil on and off, and keep the
+   `@supports not` solid fallback one token away.
+3. **Contrast on tinted surfaces.** Text never sits on raw Glow or on the top
+   45% of the Room; the mix percentages and scrim stops in 1.1 and 1.5 are the
+   guarantee, so change them only with the contrast script re-run.
+
+## 10. Changed after round 2 (art director, 2026-10-05, see `critique-r2.md`)
+
+Values the round-3 builder implements. Each is also folded into the sections
+above where it contradicts them; where this section and an older line
+disagree, this section wins.
+
+### 10.1 Room scrim in pixels from the top (critique items 1, 3)
+
+`.room-bg::after` stops are pixel offsets, never percentages, so the eyebrow,
+title and caption always begin in the mid zone on every viewport height:
+
+```
+background: linear-gradient(180deg,
+  rgb(20 17 15 / 0.42) 0,                           /* head icons >= 3:1 on any art */
+  var(--scrim-top)  calc(var(--safe-top) + 56px),
+  var(--scrim-top)  calc(var(--safe-top) + 196px),  /* Foray: the collage's lower edge */
+  var(--scrim-mid)  calc(var(--safe-top) + 276px),  /* Foray: the eyebrow's y */
+  var(--scrim-low)  100%);
+```
+
+Now Playing has taller art, so its two middle stops are
+`calc(var(--safe-top) + 72px + var(--np-art))` and that plus 20px.
+`--scrim-mid` alpha rises from 0.82 to 0.86 inside its mix.
+
+**Dawn Room** (`[data-theme="dawn"] .foray-room, [data-theme="dawn"] .onb`
+and the `prefers-color-scheme: light` twins; **never `.np`**, which always
+uses the Dusk scrim):
+
+```
+--glow-room: color-mix(in oklab, var(--paper0) 80%, var(--glow) 20%);
+.layer.on { opacity: 0.55; }
+--scrim-top: rgb(247 242 235 / 0.10);
+--scrim-mid: color-mix(in oklab, rgb(247 242 235 / 0.86) 80%, var(--glow) 20%);
+--scrim-low: color-mix(in oklab, rgb(247 242 235 / 0.96) 80%, var(--glow) 20%);
+```
+
+Text on it: `--ink` / `--ink-2`; eyebrow and why-line `--lamp-text`
+(`#55391A`); raised rows are the Dawn raised material.
+
+`contrast-glow.mjs` gains four rows, printed with the rest: `Dusk Room at
+the eyebrow's y` (Lamp, `--text-2` over scrim-mid over Glow L 0.66 C 0.14,
+all hues), `Dusk Room head` (`--text` over 0.42 black over Glow), `Dawn Room
+at the eyebrow's y` (ink, ink-2 over the Dawn scrim-mid over Glow L 0.56),
+`Dusk Today hot spot 48/52` (`--text-2`, Lamp). Floors: 4.5:1 for text,
+3:1 for the head icons. If a sweep fails at any hue, raise that alpha until
+it passes and record the number here.
+
+### 10.2 Lit art, the fifth material (item 5)
+
+Every artwork 104px or larger: `box-shadow: var(--shadow-1), 0 0 var(--lit-r)
+calc(var(--lit-r) / -4) color-mix(in oklab, var(--art-glow) 55%,
+transparent)`. `--art-glow` is **that artwork's** palette colour (from
+`palettes.json`, clamped like Glow), set per element by script, not the
+screen's `--glow`. `--lit-r`: 40px at 104, 64px at 160, 96px at 280 and
+above. Dawn: 40% instead of 55%. The black shadows on `.np-art .swap > *`,
+`.hero-art`, `.foray-collage`, `.onb-arts .art` and `.ptile` are removed, not
+stacked. Dropped (not replaced) under `prefers-reduced-transparency` and
+`forced-colors: active`.
+
+### 10.3 Today hot spot (item 6)
+
+`.wash` gets a third layer on top: `radial-gradient(60% 34% at 22% 16%,
+color-mix(in oklab, var(--glow) 52%, transparent) 0%, transparent 100%)`;
+`24% 17%` at 375. If `--text-2` fails 4.5:1 on the hot-spot row of
+`contrast-glow.mjs`, cap the mix at 46%.
+
+### 10.4 Max text size in the glance posture (item 2)
+
+`html.big` (textscale >= 1.2): `--np-art: 160px` (as built); `.np-titles
+.why { display: none }`; `.np-eyebrow { height: 0 }`; the detail handle is
+the 24px chevron with no caption; transport row `margin-top: 12px`. Harness:
+`textscale=1.3` at 375x667 asserts the Play button's bottom edge >= 24px
+above the viewport bottom and the handle fully inside it. Hero title at
+`html.big`: `--t-headline` 20/24, 4 lines.
+
+### 10.5 Collages never crop a square (item 4)
+
+`.collage.c1`: the art. `.c2`: two full squares at 68% of the cell, first at
+top-left, second at bottom-right on top with `--shadow-1`. `.c3`: three
+squares at 58%, top-left, top-right, bottom-centre, the last on top. `.c4`:
+the 2x2 as built. Each square `--r-sm`; cell background `--bg1` (Dawn
+`--paper2`). Applies to ForayTile, ForayCard, HeroPick, PlaylistTile and
+SubjectTile alike.
+
+### 10.6 HeroPick title (item 12)
+
+`--t-title` 26/30, `clamp 4`, never an ellipsis. Four lines (120px) plus the
+18px eyebrow still fit beside the 160 collage; the Play row lands under the
+collage's bottom edge.
+
+### 10.7 Library followed badge (item 10)
+
+ShowTile shows the `i-check-circle-fill` badge only in Discover results and
+"Where this came from". In the Library grid it is not rendered.
+
+### 10.8 Foray detail strip sill; unavailable dims the Room (items 7, 9)
+
+Foray detail's 48px strip sits in a sill: `background: rgb(20 17 15 /
+0.22); padding: 10px 12px; border-radius: var(--r-lg)` (Dawn Room: `rgb(255
+255 255 / 0.35)`). Now Playing's strip has no sill. Current-bar fill is
+`color-mix(in oklab, var(--c) 78%, var(--lamp))` everywhere (was 85%).
+
+Unavailable foray: `.layer.on { opacity: 0.35 }`, `--glow-room` mixed at 8%
+(not 15%), the strip at 60% opacity, the collage at 50% as built.
+
+### 10.9 Dock bottom fade (item 19)
+
+A non-interactive element behind the Dock: `position: absolute; left: 0;
+right: 0; bottom: 0; height: calc(var(--safe-bottom) + 28px); background:
+linear-gradient(transparent, var(--bg0) 70%); pointer-events: none` (Dawn:
+`--paper0`). Hidden with the Dock in car posture.
+
+### 10.10 Now Playing surplus split (item 8)
+
+Art + eyebrow + titles + why-line live in `.np-mid { flex: 1 1 auto;
+min-height: 0; display: flex; flex-direction: column; justify-content:
+center }`; strip, transport and handle keep their fixed spacing below. At
+375x667 nothing changes.
+
+### 10.11 Library "Foray" pill (item 14)
+
+20 tall, `600 0.8125rem/20px`, uppercase, `letter-spacing: 0.06em`, padding
+0 8px, Lamp on `rgb(20 17 15 / 0.55)`.
+
+### 10.12 States round 3 must add (items 11, 16, 18)
+
+- `?state=np-segchange`: frozen at t+280ms after a segment boundary; the two
+  Room layers at 50/50; eyebrow caption "Now: The Bootstrapped Founder" lit;
+  outgoing bar full, incoming bar fill at 4%; show line under the title
+  mid-crossfade.
+- `?state=np-detail3`: the detail posture scrolled to its end, showing show
+  notes (4-line clamp + "More") and the Up Next peek; build them if missing.
+- Now Playing default shots are taken at open + 4s (or with `?eyebrow=off`)
+  so the transient caption is not scored as a permanent line.
+- Everything in `critique-r2.md` "What round 3 must shoot".
+
+## 11. Changed after round 3 (art director, 2026-10-05, see `critique-r3.md`)
+
+### 11.1 The Dock casts upward (item 2)
+
+`.page-glow`: absolute, full width, bottom 0, height 260px, z-index 0 (over
+`bg0`, under content and the Dock fade), `pointer-events: none`;
+`radial-gradient(90% 100% at 50% 100%, color-mix(in oklab, var(--glow) 14%,
+transparent) 0%, transparent 100%)`, Dawn 9%. Hidden under `np-open`,
+`no-chrome` and car posture. Present on every tab page; on Today it stacks
+under the hero wash. With the neutral `--glow` fallback (nothing playing) it is
+invisible by construction. New `contrast-glow.mjs` row: `--text-2` over 14%
+Glow over `bg0`, every hue.
+
+### 11.2 Onboarding composition (item 1)
+
+`.onb-mid` is `justify-content: flex-start; padding-top: 40px`; `.onb-arts`
+176px at every height (1.15 scale still at >= 800 tall); strip 24 under the
+sleeves, display title 28 under the strip; `.actions` stay bottom-anchored.
+The onboarding Room scrim uses its own pixel stops: head 0.52 to
+`safe-top + 72`, bright zone to `safe-top + 248`, mid at `safe-top + 272`,
+low at 100%. Same stops in Dawn with the Dawn scrim colours.
+
+### 11.3 Collage z-order (item 3)
+
+§10.5 positions stand; the first child is the complete square on top:
+`.c2` first at bottom-right, second at top-left; `.c3` first at bottom-centre,
+second top-left, third top-right (third above second). `.c4` unchanged.
+
+### 11.4 Small corrections (items 4 to 7)
+
+- Foray detail strip: the current bar grows upward only; thumbs row at
+  `--bt + --bh + 6px`.
+- Up Next peek: eyebrow "4a added" (Lamp), title, one meta line with the
+  duration once, then the item's why-line in `--t-why` clamped to two lines.
+- Car posture: title clamp 3 at >= 800px tall, 2 below.
+- `np-ending` state freezes at 85% travel.

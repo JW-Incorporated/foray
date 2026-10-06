@@ -20,9 +20,21 @@ Source of truth for a cleared session. Update on every deliverable.
 | 0d Split app.js | done | merged 2614fc29; see split-notes.md |
 | 0e Lab build path | merged into trunk (b74338a0) | owner setup complete |
 | 1 Research | done | docs/redesign-2026/research/, design-brief.md |
-| 2 Directions | not started | Fable art directors |
-| Checkpoint | — | owner picks |
+| 2 Directions | done | editorial r3, ambient r3, native-2026 r3, tactile r3, clarity r3 (docs/redesign-2026/directions/) |
+| Checkpoint | waiting for the owner | links below; owner picks |
 | 3–5 | — | after checkpoint |
+
+## Checkpoint (waiting for the owner)
+
+Artifacts:
+- [4a Redesign Checkpoint (compare + pass the phone)](https://claude.ai/artifact/56qxbdHQ9V5LYyR8r5qCyE)
+- [4a Redesign: Tactile](https://claude.ai/artifact/6N8mk5PZJc32D8shdHw7GK)
+- [4a Redesign: Ambient](https://claude.ai/artifact/SAQuPQZudiWo3y3eDViZiW)
+- [4a Redesign: Editorial](https://claude.ai/artifact/KJ216C5n7Yu927WKEVY6WD)
+- [4a Redesign: Native 2026](https://claude.ai/artifact/GnXudytwoQVx57t98wNwGc)
+- [4a Redesign: Clarity](https://claude.ai/artifact/1YAp1DjBVKMzZEgKpkW6UY)
+
+Recommendation: Build Tactile and Ambient. They are the top two (15/15 and 12/15 wins, each beat every other direction 3-0). Tactile is the only one the art director passed, and Ambient's gaps are small CSS fixes. They are two different bets, tactile keys versus artwork-lit, and they share the 3-tab, no-drawer IA. Editorial is the third choice. The judge is calibrated, but only for wide gaps.
 
 ## In flight
 
@@ -69,6 +81,8 @@ Source of truth for a cleared session. Update on every deliverable.
 ## Fable invocations
 
 (Date, phase, count, why. Owner-authorized 2026-10-05 for Phase 2 art direction.)
+
+- 2026-10-05/06, Phase 2 art direction, 20 Fable calls across 5 directors, owner-authorized.
 
 ## Log
 

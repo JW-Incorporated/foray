@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https: data:; font-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; media-src 'self' https:; base-uri 'none'; form-action 'none'">
+<meta name="color-scheme" content="light dark">
+<title>4a Edition, prototype</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="page"><main id="view" class="view" tabindex="-1" aria-live="polite"></main></div>
+<div id="find-slot"></div>
+<div id="ticker-slot"></div>
+<nav class="folio chrome" id="folio" aria-label="Sections">
+  <a href="#/home" data-tab="today"><svg class="ic ic-off" aria-hidden="true" focusable="false"><use href="#newspaper"/></svg><svg class="ic ic-on" aria-hidden="true" focusable="false"><use href="#newspaper-fill"/></svg><span>Today</span></a>
+  <a href="#/search" data-tab="browse"><svg class="ic ic-off" aria-hidden="true" focusable="false"><use href="#magnifying-glass"/></svg><svg class="ic ic-on" aria-hidden="true" focusable="false"><use href="#magnifying-glass-fill"/></svg><span>Browse</span></a>
+  <a href="#/library" data-tab="library"><svg class="ic ic-off" aria-hidden="true" focusable="false"><use href="#bookmarks-simple"/></svg><svg class="ic ic-on" aria-hidden="true" focusable="false"><use href="#bookmarks-simple-fill"/></svg><span>Library</span></a>
+</nav>
+<div id="sheets"></div>
+<div id="onb" class="onb"></div>
+<div class="toast-host" id="toasts" role="status" aria-live="polite"></div>
+<script src="icons.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
