@@ -354,7 +354,7 @@ const FLOORS = {
   /* CH-31 (P2-08, X1-10): diagnostic-log.js keeps no imports, so its copies
      of other modules' vocabularies (SESSION_ERRORS, DATA_FILE_KEYS,
      DATA_SOURCES) are held equal to their owners here. Zero slack. */
-  "player/vocabulary-pins.test.js": 3,
+  "player/vocabulary-pins.test.js": 4, // CH-31: the three engine-owned row keys spelled once, in engine-vocabulary.js; 3 -> 4
   /* NE-21: the page side of the native engine. native-engine.test.js is the
      client — the bounded handshake that relinquishes before the page may build
      audio, snapshot ordering and coalescing, validation, extrapolation.

@@ -16,14 +16,30 @@
    What drift costs is quiet: a token the owner adds and the copy lacks is
    DROPPED by `oneOf`, so the Copy report prints a failure with no reason, or
    a fourth data document with no outcome — the L13 gap the sets were added to
-   close. The pins read the real modules, never a retyped list. */
+   close. The pins read the real modules, never a retyped list.
+
+   The last test is the other half of the card: the three `cp_` rows the
+   native engine owns are spelled once, in engine-vocabulary.js, and
+   engine-contract.js, foray-progress.js and episode-progress.js import them
+   rather than restating the strings. */
 
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import * as diagnosticLog from "./diagnostic-log.js";
-import { SESSION_ERROR_DETAILS } from "./engine-vocabulary.js";
+import {
+  SESSION_ERROR_DETAILS, POSITION_KEY_PREFIX, FORAY_PROGRESS_KEY_PREFIX, LAST_EPISODE_KEY,
+} from "./engine-vocabulary.js";
 import * as forayDirectory from "./foray-directory.js";
 import { SOURCE as CATALOGUE_SOURCE } from "./catalogue-directory.js";
+import { OWNED_PREFIXES } from "./engine-contract.js";
+import { KEY_PREFIX as FORAY_KEY_PREFIX } from "./foray-progress.js";
+import { KEY as EPISODE_KEY } from "./episode-progress.js";
+import { positionKey } from "./position-store.js";
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 test("diagnostic-log's SESSION_ERRORS is engine-vocabulary's SESSION_ERROR_DETAILS, token for token and in order (P2-08, L13)", () => {
   /* A Swift card adds an AVAudioSession.ErrorCode token to engine-vocabulary
@@ -63,4 +79,34 @@ test("every source a directory reports is a source the `data` row admits (X1-10)
   }
   const notAdmitted = Object.entries(CATALOGUE_SOURCE).filter(([, v]) => !diagnosticLog.DATA_SOURCES.has(v)).map(([k]) => k);
   assert.deepEqual(notAdmitted, ["NONE"], "catalogue-directory SOURCE tokens outside DATA_SOURCES");
+});
+
+test("the three engine-owned row keys are spelled once, in engine-vocabulary.js, and the owners import them (X1-10)", () => {
+  /* engine-contract.js's OWNED_PREFIXES decides which rows DurableStore defers
+     on the iOS shell, and foray-progress.js / episode-progress.js write those
+     rows. Three literal copies of one string are how a respelling in one file
+     would leave the engine owning a row nobody writes (or the page clobbering
+     one the engine does). engine-contract.test.js pins the values; this pins
+     that there is one spelling to pin.
+     MUTATION (run): put `export const KEY_PREFIX = "cp_foray:";` back in
+     foray-progress.js -> red (the scan finds the literal); spell
+     OWNED_PREFIXES[2] as "cp_last_episode" in engine-contract.js -> red. */
+  assert.deepEqual([...OWNED_PREFIXES], [POSITION_KEY_PREFIX, FORAY_PROGRESS_KEY_PREFIX, LAST_EPISODE_KEY]);
+  assert.equal(FORAY_KEY_PREFIX, FORAY_PROGRESS_KEY_PREFIX);
+  assert.equal(EPISODE_KEY, LAST_EPISODE_KEY);
+  // position-store.js spells its family inside `positionKey` (not this card's
+  // file); the value is held equal here and in engine-contract.test.js.
+  assert.equal(positionKey(""), POSITION_KEY_PREFIX);
+
+  /* A key literal is the whole string, or the head of a template that builds
+     one (`cp_pos:${id}`); a complete example row such as the schema's
+     "cp_pos:ep-1" is data, not a second spelling of the prefix. */
+  const codeOnly = (src) => src.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:/])\/\/[^\n]*/g, "$1");
+  const literals = (file) => [...codeOnly(fs.readFileSync(path.join(HERE, file), "utf8"))
+    .matchAll(/["'`](cp_(?:pos:|foray:|last_episode))(?=["'`]|\$\{)/g)].map((m) => m[1]);
+  assert.deepEqual(literals("engine-vocabulary.js").sort(), ["cp_foray:", "cp_last_episode", "cp_pos:"],
+    "premise: engine-vocabulary.js spells each key once");
+  for (const file of ["engine-contract.js", "foray-progress.js", "episode-progress.js"]) {
+    assert.deepEqual(literals(file), [], `${file} restates an engine-owned row key instead of importing it`);
+  }
 });
