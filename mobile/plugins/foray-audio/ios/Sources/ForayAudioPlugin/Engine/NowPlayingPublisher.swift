@@ -134,7 +134,7 @@ final class NowPlayingPublisher: NowPlayingWriting {
     /// the listener's rate when it stands still (rate 0: paused, stalled,
     /// loading); 1 when neither is usable (never 0, never NaN).
     static func defaultRate(entryRate: Double, listenRate: Double) -> Double {
-        if entryRate.isFinite && entryRate > 0 { return entryRate }
+        // MUTATION m1: listener only
         return listenRate.isFinite && listenRate > 0 ? listenRate : 1
     }
 
