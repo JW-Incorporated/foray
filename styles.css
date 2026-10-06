@@ -2343,7 +2343,7 @@ body.fp-expanded { overflow: hidden; }
    2026-09-22, qa row 51); a section TITLE — "Forays for you", a Foray's
    running-order groups — is the other heading kind: display face, sentence
    case, `.hv2-title` / `.fy-slot h3`. */
-.ep-description h3, .ep-chapters h3 {
+.ep-description h3, .ep-chapters h3, .ep-bookmarks h3 {
   margin: 0 0 8px;
   font-family: var(--font-body);
   font-size: var(--fs-xs); font-weight: 700;
@@ -2436,6 +2436,17 @@ body.fp-expanded { overflow: hidden; }
 .ep-chapters-more > summary {
   display: flex; align-items: center; min-height: 44px;
   color: var(--accent); cursor: pointer; touch-action: manipulation;
+}
+/* CH-09b (PQ-15, #30): the episode page's bookmarks. Each row is a chapter
+   row (the same 44px play-then-seek button, the list's dividers) beside a
+   Remove text button; the jump button gives up the width Remove takes. The
+   slot around the section is empty, and takes no space, with no bookmarks. */
+.ep-bookmarks { margin: 20px 0 0; }
+.ep-bookmarks-list .ep-bookmark-row { flex: 1 1 auto; min-width: 0; }
+.ep-bookmark-remove {
+  flex: none; align-self: center; min-width: 44px; min-height: 44px; padding: 0 8px;
+  border: 0; background: none; color: var(--accent);
+  font: inherit; font-size: var(--fs-sm); cursor: pointer; touch-action: manipulation;
 }
 /* A1.8 "More from this show" — same section-label language as .fy-slot h3. */
 .ep-more { margin: 24px 0 0; }
