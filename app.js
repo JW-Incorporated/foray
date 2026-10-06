@@ -11388,10 +11388,13 @@ function renderForays() {
   }
 
   const list = forayCards();
+  /* Filter BEFORE any cap: Home's 6 is shared by every kind, so newer episodes
+     and playlists would crowd the Forays out of it and this page would show no
+     Jump back in at all. forayResumeRows() already caps the Forays at 3. */
   $("#view").innerHTML = `
     <div class="page">
       ${head}
-      ${jumpBackInV2Html(jumpBackInEntries().filter(e => e.kind === "foray"))}
+      ${jumpBackInV2Html(jumpBackInEntries(Infinity).filter(e => e.kind === "foray"))}
       ${list.length
         ? forayListHtml({ inSection: true })
         : `<p class="note">No forays right now — 4a puts these together by hand, so they arrive a few at a time.</p>`}

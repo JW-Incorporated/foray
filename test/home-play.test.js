@@ -503,3 +503,32 @@ test("CH-32: #/forays' Jump back in is Home's card for the same Foray, and only 
   assert.match(app.view.innerHTML, /<h2 class="hv2-title">Jump back in<\/h2>/, "under its own heading");
   assert.ok(!/fy-jbi/.test(app.view.innerHTML), "no second markup");
 });
+
+test("CH-32: #/forays' Jump back in keeps a part-played Foray however many newer playlists Home's rail holds", async () => {
+  /* Home's rail sorts every kind together and keeps 6; the Forays page filters
+     to Forays. Filtering AFTER that cap let newer entries crowd a Foray off the
+     page — six played playlists stamped after it, or one undated Foray behind
+     an episode and five playlists, and #/forays showed no Jump back in at all,
+     where main's forayResumeRows() always listed it.
+     MUTATION: call `jumpBackInEntries()` (the default cap of 6) in renderForays
+     instead of `jumpBackInEntries(Infinity)` -> the Foray is cut before the
+     filter, red. */
+  const playlists = Array.from({ length: 6 }, (_, i) => ({
+    id: `pl-${i}`, title: `List ${i}`, created: "2026-09-01T00:00:00Z",
+    last_played_at: `2026-09-2${i}T12:00:00Z`, items: [{ id: "ep-2" }],
+  }));
+  for (const updated_at of ["2026-09-01T00:00:00Z", undefined]) {
+    const bridge = await makeBridge({
+      resumeRows: [{ id: FORAY_ID, title: FORAY_TITLE, updated_at, percent: 40, label: "30 min left", finished: false, drift: "unverified" }],
+      lastEpisode: { ...EP(3), updated_at: "2026-09-22T00:00:00Z", percent: 30, label: "20 min left" },
+    });
+    const app = loadApp(bridge, { playlists, cardSlots: [subjectSlot([EP(2)])] });
+    app.ctx.renderHome();
+    assert.ok(!jumpBackInRows(app.view.innerHTML).some(([href]) => href === `#/foray/${FORAY_ID}`),
+      `fixture (updated_at ${updated_at}): Home's rail of 6 is full of newer entries, so the Foray is past its cut`);
+    app.ctx.location.hash = "#/forays";
+    app.ctx.renderForays();
+    assert.deepStrictEqual(jumpBackInRows(app.view.innerHTML).map(([href]) => href), [`#/foray/${FORAY_ID}`],
+      `the Forays page still lists the part-played Foray (updated_at ${updated_at})`);
+  }
+});
