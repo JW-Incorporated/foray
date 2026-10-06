@@ -278,90 +278,40 @@ work, gated on the fixture below actually passing on real devices. What changed 
 narrower: a Foray whose data already carries a narration `script` is now spoken by
 the player instead of failing to load.
 
-## K-01: the bundled-voice probe (`kokoroProbe`) — page half removed 2026-10-05 (#1076)
+## History: the K-01 bundled-voice probe (`kokoroProbe`), removed 2026-10
 
-`docs/bundled-voice-plan.md` K-01 — a **throwaway measurement path, not a product
-feature**, deleted in K-04's cutover. It answers one question: can this phone
-synthesize Kokoro fast enough, in little enough memory, with the screen locked.
+`docs/bundled-voice-plan.md` K-01 was a **throwaway measurement path, not a
+product feature**: a `kokoroProbe` plugin method, separate from `speak()` on
+purpose (a probe that fell down `speak()`'s native → Web Speech ladder would
+have timed the *system* voice and reported it as a Kokoro number), that
+synthesized a pre-phonemized passage with Kokoro on the phone and reported
+load times, real-time factor, peak memory and whether a locked screen kept it
+running. It grew to probe v3 (KV-R3): six passes per run on iOS, the
+seven-stage Core ML chain (`KokoroCoreMLEngine.swift`) against fp32 ONNX
+Runtime (`KokoroOrtProbeEngine.swift`/`.java`) at speeds 1.0 and 1.5, a
+30-minute soak, a crash ledger read at every launch (`ProbeLedger.swift`), and
+a pass-start row relayed into ForayAudio's diagnostics ring.
 
-**It is a separate call from `speak()`, and that is a safety decision rather than
-a stylistic one.** `speak()`'s documented contract is a ladder — native, then Web
-Speech, then an honest refusal — which is right for narration and catastrophic for
-a measurement: a probe that fell down that ladder would time the *system* voice and
-report it as a Kokoro number. So `kokoroProbe()` has no ladder under it, no Web
-Speech path, and exactly one answer when nothing is there: `ok: false` with a
-reason. **`speak()` is untouched by this card** — narration is spoken exactly as it
-was before it.
+**It is gone, in two steps, both on founder rulings recorded on issue #1076:**
 
-### The shape
+1. **2026-10-05, the page half** (#1082): narration renders centrally
+   (`docs/DECISIONS.md` 2026-09-28), so `player/kokoro-probe.js`, the bundled
+   passage, the drawer's "Voice engine probe" switch and the bridge's
+   `kokoroProbe`/`onProbePass` delegates left the app bundle.
+2. **2026-10-05, everything else** — "Remove it all", answering the
+   code-health review (`docs/roadmap/code-health.md` CH-20, N1-02/N1-03): the
+   web half's transport, both native `kokoroProbe` methods, the ONNX Runtime
+   and Core ML engines, the ProbeLedger boot-time file I/O, ForayAudio's
+   voice-probe row relay, ONNX Runtime from `Package.swift` and
+   `android/build.gradle`, and the Kokoro weights from every shell and release
+   build (they added ~400 MB to the iOS app and ~86 MB to the APK, and nothing
+   else read them).
 
-```js
-const out = await kokoroProbe({ passage });   // the parsed kokoro-probe-passage.json
-// { ok: true,  path: "native", model, provider, modelLoadColdMs, modelLoadWarmMs,
-//   synthColdMs, synthWarmMs, peakMemoryBytes, availableMemoryBytes,
-//   lockedScreenCompleted, lines }
-// { ok: false, path: "native", reason: "model-absent" | "engine-absent" | ... }
-```
-
-`player/kokoro-probe.js` owns the arithmetic (RTF, megabytes, the go/no-go rule);
-this plugin owns only the transport and the readings. The reason codes are a closed
-set shared with that file's `PROBE_REASONS` — a code invented on one side and not
-the other degrades to `refused`, which loses the diagnosis.
-
-### Probe v3 (KV-R3): Core ML vs ORT, speed 1.0 and 1.5, locked, soak
-
-`docs/voice/kokoro-speed-1.5x.md` §5. On iOS one run is six passes, in this
-interleaved order, each loading and releasing its own models: `ane`,
-`ort-cpu-t2`, `ane-cputail`, `ort-cpu-t3`, `cml-cpu`, `ort-cpu-t4`. The `ane*`
-and `cml-cpu` passes run the seven-stage Core ML chain
-(`KokoroCoreMLEngine.swift`, vendored from laishere/kokoro-coreml, iOS 17+;
-below 17 the pass answers `coreml-requires-ios17`); the `ort-cpu-t*` passes run
-fp32 ONNX Runtime at 2, 3 and 4 threads. Every chunk renders at Kokoro speed
-1.0 and 1.5, so the answer is `{ ok, passes: [one record per pass x speed] }`,
-each with the content-basis seconds (`contentWarmSec`: the same text at 1.0),
-CPU seconds, per-stage Core ML milliseconds and the screen samples
-(`bgChunks`, `lockedChunks`). The probe plays silent audio while it runs, so a
-locked phone keeps running it the way it keeps running narration.
-`KokoroProbeMatrix.swift` holds the loop and its pure arithmetic.
-
-Two more modes on the same method: `mode: "soak"` (the best lock-safe pass,
-speed 1.5, in a loop for 30 minutes; one record with a per-minute series) and
-`mode: "listen", pass` (play that pass's speed-1.5 WAV from the last run,
-natively — no path crosses the bridge).
-
-### It is inert on every build that ships today, in four independent ways
-
-1. **No ONNX Runtime dependency.** Neither `Package.swift` nor `android/build.gradle`
-   names it. That is a ~16 MB binary dependency whose build nobody in this repository
-   can verify — this plugin is compiled only by `ios-build.yml` / `android-release.yml`
-   — so adding an unbuilt dependency for a card whose own gate is a founder's phone
-   would risk those jobs for no measurement gained. K-04 adds it.
-2. **No weights.** `tools/mobile/fetch-models.mjs` pins them; the build step that
-   calls it is `.github/` and waits on the founder label (deck H3). Absent weights
-   answer `model-absent`.
-3. **An empty engine seam.** `ForayTtsPlugin.probeEngine` (Swift) and
-   `ForayTtsPlugin.probeEngine` (Java) are `nil`/`null`; K-04 fills them. Absent
-   engine answers `engine-absent`.
-4. **An unphonemized passage.** `tools/mobile/kokoro-probe-passage.json` carries
-   `ids: null` on every line, because nothing in this repository can run misaki.
-   That answers `passage-unphonemized`, and the page refuses before the bridge is
-   even touched.
-
-**None of the four reports a zero.** A probe that answered "RTF 0.00, peak 0 MB,
-locked screen fine" because nothing ran would be worse than one that refuses: the
-first gets pasted into a decision.
-
-### Reaching it from a phone: no longer possible (2026-10-05)
-
-**The page half of the probe is gone.** Founder ruling 2026-10-05 (issue #1076,
-recorded verbatim there): narration renders centrally (`docs/DECISIONS.md`
-2026-09-28), so `player/kokoro-probe.js`, the bundled
-`kokoro-probe-passage.json`, the drawer's "Voice engine probe" switch and the
-bridge's `kokoroProbe`/`onProbePass` delegates were removed from the app bundle.
-The plugin's own `kokoroProbe` method (web half and native engines) is still in
-the plugin; nothing in the app calls it. Until then it was Settings → **Voice
-engine probe: on** → **Run the voice engine probe**, writing a `voiceProbe` row
-into the Playback-diagnostics record (`HUMAN-ACTIONS.md` #45).
+What stays: `tools/mobile/fetch-models.mjs` and its pins (central narration's
+`render-narration.yml` runs `--check`, and `tools/narration/*.py` read the
+hashes), and `tools/mobile/kokoro-probe-passage.json`, which the local
+narration tools still read. Reviving on-device TTS would rebuild the probe
+from git history.
 
 ## What was NOT verified, stated plainly
 

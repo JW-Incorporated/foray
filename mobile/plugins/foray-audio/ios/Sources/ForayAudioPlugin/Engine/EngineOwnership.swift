@@ -490,17 +490,4 @@ final class EngineOwnership {
     private func row(_ kind: String, _ fields: [JSONMember]) {
         diag(DiagEntry(kind: kind, fields: fields))
     }
-
-    /// A voice-probe pass start relayed from ForayTts (probe v3.1,
-    /// `ForayAudioPlugin.relayVoiceProbeRows`): a `probe` row whose sub-kind
-    /// is the event (`probe voice-pass pass=ane order=5 run=…`). Every value
-    /// is a token or a number, and DiagGate admits it like any other row.
-    func voiceProbeRow(_ info: [AnyHashable: Any]) {
-        var fields = [JSONMember("kind", .string((info["event"] as? String) ?? "voice-pass"))]
-        if let pass = info["pass"] as? String { fields.append(JSONMember("pass", .string(pass))) }
-        if let order = info["order"] as? Int { fields.append(JSONMember("order", .number(Double(order)))) }
-        if let run = info["run"] as? Double { fields.append(JSONMember("run", .number(run))) }
-        if let stage = info["stage"] as? String { fields.append(JSONMember("stage", .string(stage))) }
-        row("probe", fields)
-    }
 }

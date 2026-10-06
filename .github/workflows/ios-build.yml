@@ -197,9 +197,10 @@ jobs:
           echo "DD_DEV=$RUNNER_TEMP/dd-dev" >> "$GITHUB_ENV"
           # ONE resolved SwiftPM tree for both builds, at a path this workflow
           # chooses rather than one Xcode derives from a hash of the project path.
-          # The MinimumOSVersion patch below has to find the downloaded
-          # onnxruntime.xcframework, and "wherever DerivedData put it" is not a
-          # location a build step can assert against.
+          # The MinimumOSVersion patch below has to find the downloaded binary
+          # xcframeworks (ONNX Runtime's, until CH-20; Capacitor's and Cordova's),
+          # and "wherever DerivedData put it" is not a location a build step can
+          # assert against.
           echo "SPM_DIR=$RUNNER_TEMP/ios-spm" >> "$GITHUB_ENV"
           mkdir -p "$RUNNER_TEMP/ios-ci"
           { sw_vers; xcodebuild -version; echo "sqlite3 $(sqlite3 --version)"; pod --version; } \
@@ -320,7 +321,7 @@ jobs:
         # Required Reason API that no PrivacyInfo.xcprivacy declares (ITMS-91053);
         # TestFlight only emails a warning, so a build can reach testers and still
         # be unsubmittable. `cap add ios` generates no manifest. This writes one
-        # (UserDefaults CA92.1, system boot time 35F9.1, file timestamp C617.1, and
+        # (UserDefaults CA92.1, system boot time 35F9.1, and
         # the collected data types of docs/legal/data-safety.md Part B) and adds it
         # to the app target's Copy Bundle Resources phase in project.pbxproj -- a
         # file the project does not reference never reaches App.app. Not a SwiftPM
@@ -397,6 +398,14 @@ jobs:
           ls -l "$SPLASHSET" | tee "$ART/splashset.txt"
 
       - name: Give the embedded ONNX Runtime framework the MinimumOSVersion Apple requires
+        # ONNX RUNTIME IS GONE SINCE CH-20 (founder ruling on issue #1076: the
+        # Kokoro probe, its only caller, left the app), so there is no thin
+        # plist left to patch today and `patch` reports every slice "already
+        # declares". The step and `verify` stay, under this name (the workflow
+        # tests pin it): Capacitor's and Cordova's xcframeworks are still
+        # embedded, and the next binary dependency with a thin plist should go
+        # red here rather than at `altool`.
+        #
         # THE STEP THAT WOULD HAVE SAVED RELEASE RUN 34739630705. That build
         # compiled, archived, exported — and died in `altool` with error 90360:
         # `App.app/Frameworks/onnxruntime.framework` has no `MinimumOSVersion`.

@@ -53,8 +53,9 @@ runs:
         echo "ART=$RUNNER_TEMP/ios-release" >> "$GITHUB_ENV"
         # A SwiftPM tree at a path this action chooses, rather than one Xcode
         # derives from a hash of the project path: the MinimumOSVersion patch
-        # below has to find the downloaded onnxruntime.xcframework, and "wherever
-        # DerivedData put it" is not a location a build step can assert against.
+        # below has to find the downloaded binary xcframeworks (ONNX Runtime's
+        # until CH-20; Capacitor's and Cordova's), and "wherever DerivedData put
+        # it" is not a location a build step can assert against.
         echo "SPM_DIR=$RUNNER_TEMP/ios-spm" >> "$GITHUB_ENV"
         mkdir -p "$RUNNER_TEMP/ios-release"
         { sw_vers; xcodebuild -version; } | tee "$RUNNER_TEMP/ios-release/toolchain.txt"
@@ -151,6 +152,14 @@ runs:
         node tools/mobile/inject-splash.mjs ios mobile/ios/App/App/Assets.xcassets/Splash.imageset --check
 
     - name: Give the embedded ONNX Runtime framework the MinimumOSVersion Apple requires
+      # ONNX RUNTIME IS GONE SINCE CH-20 (founder ruling on issue #1076: the
+      # Kokoro probe, its only caller, left the app), so there is no thin
+      # plist left to patch today and `patch` reports every slice "already
+      # declares". The step and `verify` stay, under this name (the workflow
+      # tests pin it): Capacitor's and Cordova's xcframeworks are still
+      # embedded, and the next binary dependency with a thin plist should go
+      # red here rather than at `altool`.
+      #
       # THIS IS THE PATH THAT FAILED. Release run 34739630705 (build 2026091315,
       # main @ ad732eb) archived and exported cleanly and then died in
       # `xcrun altool --upload-app`:

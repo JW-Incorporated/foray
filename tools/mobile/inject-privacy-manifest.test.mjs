@@ -203,7 +203,6 @@ test("the rendered manifest says exactly what this module declares", () => {
     [
       ["NSPrivacyAccessedAPICategoryUserDefaults", ["CA92.1"]],
       ["NSPrivacyAccessedAPICategorySystemBootTime", ["35F9.1"]],
-      ["NSPrivacyAccessedAPICategoryFileTimestamp", ["C617.1"]],
     ]
   );
   assert.deepEqual(

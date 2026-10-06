@@ -547,10 +547,10 @@ export function runPatch(root, minOS, { read = readPlistXml, insert = plutilInse
  *  Store Connect requires.
  *
  *  REFUSES A BUNDLE WITH NO EMBEDDED FRAMEWORKS, same reasoning as above: this
- *  app has embedded `onnxruntime.framework` since #675, so "found none" means the
- *  path is wrong, and a check that passes when it cannot find its subject is not
- *  a check. The day the embed is deliberately dropped, this line is the one to
- *  edit, in a diff that says why.
+ *  app embeds Capacitor's and Cordova's frameworks (and embedded
+ *  `onnxruntime.framework` from #675 until CH-20 removed it), so "found none"
+ *  means the path is wrong, and a check that passes when it cannot find its
+ *  subject is not a check.
  *
  *  `read` IS A SEAM, not a convenience: the default reads through `plutil`, which
  *  exists only on a Mac, and a guard nobody can test from this repo's own
@@ -573,8 +573,8 @@ export function runVerify(appDir, read = readPlistXml) {
   const frameworks = findFrameworkPlists(path.join(appDir, "Frameworks"));
   if (!frameworks.length) {
     throw new PlistError(
-      `${appDir} embeds no frameworks with an Info.plist. This app has embedded ` +
-        `onnxruntime.framework since #675, so this is far more likely a wrong path than a ` +
+      `${appDir} embeds no frameworks with an Info.plist. This app embeds Capacitor's and ` +
+        `Cordova's frameworks, so this is far more likely a wrong path than a ` +
         `changed build — and a check that cannot find its subject must not pass.`
     );
   }
