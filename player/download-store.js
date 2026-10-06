@@ -274,6 +274,29 @@ export function markMissing(value, id) {
   };
 }
 
+/* ---------- a missing file: stream, or drop and advance ---------- */
+
+/** The two answers `missingFileAction` gives. */
+export const MISSING_STREAM = "stream";
+export const MISSING_DROP = "drop";
+
+/**
+ * What the player does when the downloaded copy it chose turns out missing
+ * (#29: "Degrade per the spec: stream if network exists, else drop the item
+ * with an earcon and advance. Never a silent failure."; the voice/audio spec,
+ * docs/brief/04_VOICE_AUDIO_SPEC.md, says the same).
+ *
+ * `online` is the browser's own flag (`navigator.onLine`), or null when it
+ * cannot say. ONLY A POSITIVE "OFFLINE" DROPS. Unknown streams: that is what
+ * the player did before this rule existed, a stream that then fails says so on
+ * the bar, and dropping an episode the network could have served skips
+ * something the listener asked for on a guess. Total: anything but `false`
+ * is MISSING_STREAM.
+ */
+export function missingFileAction({ online } = {}) {
+  return online === false ? MISSING_DROP : MISSING_STREAM;
+}
+
 /** The record without one episode's row: what Remove, Remove all's per-file
     step and an eviction leave behind. The plugin deletes the FILE; this is the
     record's half, and it lives here beside the other transitions rather than

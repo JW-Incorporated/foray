@@ -29,6 +29,11 @@
  * 10. player/client.js publishes the real modules on `window.forayDownloads`
  *     (the object every test above stands in for), with the user agent built
  *     from the build stamp's string and no second stamp read.
+ * 11. A missing downloaded file with NO network (#29: "stream if network
+ *     exists, else drop the item with an earcon and advance"): the rule
+ *     (`missingFileAction`), client.js's degrade executed over each answer,
+ *     the earcon executed over a fake Web Audio, and app.js dropping the
+ *     episode from Up Next and playing the next by the natural end's rule.
  *
  * Tests 9 and 10 are beyond the plan's eight: 9 because eviction deletes a
  * listener's files, 10 because the stand-in would otherwise be unchecked.
@@ -62,9 +67,11 @@ process.on("unhandledRejection", () => {});
 
 let STORE = null;
 let BRIDGE = null;
+let CONTINUATION = null;
 before(async () => {
   STORE = await import("../player/download-store.js");
   BRIDGE = await import("../player/download-bridge.js");
+  CONTINUATION = await import("../player/continuation.js");
 });
 
 function makeEl(tag) {
@@ -677,8 +684,11 @@ test("app.js keeps no copy of the record's rules: no key literal, no downloadsWi
      "failed" case. */
   const client = fs.readFileSync(path.join(ROOT, "player", "client.js"), "utf8").replace(/\r\n/g, "\n");
   const code = strip(client);
+  /* Two call sites: play()'s success line below, and the native lane's
+     `settleEngineLocalLoad` (on the engine's `playing` snapshot for a load
+     play() handed back still loading; test 11 runs it). Nowhere else. */
   const calls = code.match(/onPlayedFromFile\?\.\(/g) || [];
-  assert.strictEqual(calls.length, 1, "one call site");
+  assert.strictEqual(calls.length, 2, "two call sites");
   const fnBody = (head) => {
     const at = code.indexOf(head);
     assert.ok(at >= 0, head);
@@ -689,6 +699,7 @@ test("app.js keeps no copy of the record's rules: no key literal, no downloadsWi
     }
     throw new Error(`unbalanced ${head}`);
   };
+  assert.match(fnBody("function settleEngineLocalLoad(ev) {"), /onPlayedFromFile\?\.\(/, "the second is the engine's settle");
   assert.doesNotMatch(fnBody("function localSourceFor(item, opts) {"), /onPlayedFromFile/, "never in the mapper");
   assert.doesNotMatch(fnBody("function degradeLocalPlay() {"), /onPlayedFromFile/, "never on the degrade");
   const start = code.indexOf("if (!loadError && manager.state?.type !== \"idle\" && localAttempt === ticket) localAttempt = null;");
@@ -710,4 +721,313 @@ test("app.js keeps no copy of the record's rules: no key literal, no downloadsWi
   assert.deepStrictEqual(run({ localAttempt: { item: { id: "ep-2" } }, ticket: T }), [], "superseded by a newer local play");
   assert.deepStrictEqual(run({ localAttempt: null, ticket: T }), [], "superseded by a stream");
   assert.deepStrictEqual(run({ localAttempt: null, ticket: null }), [], "a stream, or the noLocal retry after a missing file");
+});
+
+/* ==================================================================== */
+/* 11. OFFLINE, A MISSING FILE IS DROPPED WITH AN EARCON AND UP NEXT ADVANCES */
+/* ==================================================================== */
+
+/* client.js cannot load under node (test 10 says why), so its two pieces are
+   lifted out of the source text — comments stripped, code verbatim — and RUN
+   over fakes, the way the onPlayedFromFile placement test runs its snippet. */
+const CLIENT_CODE = fs.readFileSync(path.join(ROOT, "player", "client.js"), "utf8")
+  .replace(/\r\n/g, "\n")
+  .replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`])\/\/.*$/gm, "$1");
+function clientFn(head) {
+  const at = CLIENT_CODE.indexOf(head);
+  assert.ok(at >= 0, `client.js has ${head}`);
+  let depth = 0;
+  for (let i = CLIENT_CODE.indexOf("{", at + head.length - 1); i < CLIENT_CODE.length; i++) {
+    if (CLIENT_CODE[i] === "{") depth++;
+    else if (CLIENT_CODE[i] === "}" && --depth === 0) return CLIENT_CODE.slice(at, i + 1);
+  }
+  throw new Error(`unbalanced ${head}`);
+}
+
+test("missingFileAction: only a positive offline drops; online and unknown stream", () => {
+  /* MUTATION: `online !== true ? MISSING_DROP` — a browser that cannot say
+     (null) drops an episode the network could have served; red.
+     MUTATION 2: swap the two answers — online drops, offline streams; red. */
+  assert.strictEqual(STORE.missingFileAction({ online: false }), STORE.MISSING_DROP);
+  assert.strictEqual(STORE.missingFileAction({ online: true }), STORE.MISSING_STREAM);
+  assert.strictEqual(STORE.missingFileAction({ online: null }), STORE.MISSING_STREAM, "unknown is not offline");
+  assert.strictEqual(STORE.missingFileAction(), STORE.MISSING_STREAM, "total");
+  assert.notStrictEqual(STORE.MISSING_DROP, STORE.MISSING_STREAM);
+});
+
+test("client.js degrade: offline drops (bar line, earcon, onMissing offline, answers false); online streams once with noLocal", () => {
+  /* degradeLocalPlay, executed over each answer of browserOnline().
+     MUTATION: delete the `if (downloadStore.missingFileAction(...) ===
+     downloadStore.MISSING_DROP) { ... }` branch — offline streams again (the
+     retry that can only fail); red on the offline case.
+     MUTATION 2: drop `playEarcon();` from the branch — red on `earcons`.
+     MUTATION 3: drop `{ offline: true }` from the offline onMissing call —
+     app.js says "streaming instead" and never advances; red.
+     MUTATION 4: `return null;` instead of `return false;` in the branch —
+     play() falls through to its rethrow/"couldn't load"; red on the answer. */
+  const src = clientFn("function degradeLocalPlay() {");
+  const run = (online, { ticketFor = "ep-1" } = {}) => {
+    const log = { missing: [], plays: [], lines: [], earcons: 0 };
+    const window = { forayDownloads: { onMissing: (...a) => log.missing.push(a) } };
+    const ForayPlayer = { play: (item, opts) => { log.plays.push({ id: item.id, opts }); return Promise.resolve(true); } };
+    const answer = new Function(
+      "localAttempt", "current", "downloadStore", "browserOnline", "setPlayFailure", "EP_MISSING_OFFLINE",
+      "playEarcon", "window", "ForayPlayer",
+      `${src}\nreturn degradeLocalPlay();`,
+    )(
+      ticketFor ? { item: { id: ticketFor }, opts: { why: "w" } } : null, { id: "ep-1" }, STORE, () => online,
+      (line) => log.lines.push(line), "OFFLINE-LINE", () => { log.earcons++; }, window, ForayPlayer,
+    );
+    return { answer, ...log };
+  };
+
+  const off = run(false);
+  assert.strictEqual(off.answer, false, "offline: this item did not start, and play() answers false");
+  assert.deepStrictEqual(off.missing, [["ep-1", { offline: true }]], "app.js is told it was dropped offline");
+  assert.strictEqual(off.earcons, 1, "one earcon");
+  assert.deepStrictEqual(off.lines, ["OFFLINE-LINE"], "the bar says why nothing played");
+  assert.deepStrictEqual(off.plays, [], "no stream retry with no network");
+
+  for (const online of [true, null]) {
+    const on = run(online);
+    assert.ok(on.answer && typeof on.answer.then === "function", `online=${online}: the stream retry's promise`);
+    assert.deepStrictEqual(on.missing, [["ep-1"]], `online=${online}: marked, streaming instead`);
+    assert.deepStrictEqual(on.plays, [{ id: "ep-1", opts: { why: "w", noLocal: true } }], "streamed once, never the file again");
+    assert.strictEqual(on.earcons, 0, "no earcon when it streams");
+    assert.deepStrictEqual(on.lines, []);
+  }
+
+  const none = run(false, { ticketFor: null });
+  assert.strictEqual(none.answer, null, "no ticket, nothing to degrade");
+  assert.deepStrictEqual([none.missing, none.plays, none.earcons], [[], [], 0]);
+
+  /* The two callers. play() returns the drop's `false` rather than falling
+     through to the rethrow; reportPlayFailure chains nothing after a drop —
+     `current` may be the NEXT episode by then, loading its own file.
+     MUTATION 5: back to `if (retried) return retried;` in play(); red.
+     MUTATION 6: drop `if (retry === false) return;` from reportPlayFailure; red. */
+  assert.match(clientFn("async play(item, opts) {"), /const retried = degradeLocalPlay\(\);\s*if \(retried != null\) return retried;/);
+  const report = clientFn("reportPlayFailure(err) {");
+  const dropAt = report.indexOf("if (retry === false) return;");
+  assert.ok(dropAt > 0 && dropAt < report.indexOf("if (retry) {"), "a drop returns before the stream retry is chained");
+});
+
+test("the earcon: one short tone on Web Audio, the context reused, and silence (never a throw) without it", () => {
+  /* MUTATION: drop `tone.start(t0);` — the tone is built and never sounds; red.
+     MUTATION 2: drop `gain.connect(ac.destination);` — it sounds into nothing; red.
+     MUTATION 3: drop the try/catch around the body — a context that throws
+     takes the degrade (and Up Next's advance) down with it; red. */
+  const make = (window) => new Function("window", `let earconContext = null;\n${clientFn("function playEarcon() {")}\nreturn playEarcon;`)(window);
+  const made = [];
+  class FakeContext {
+    constructor() {
+      made.push(this);
+      this.state = "suspended";
+      this.resumed = 0;
+      this.currentTime = 5;
+      this.destination = { name: "speakers" };
+      this.tones = [];
+    }
+    resume() { this.resumed++; return Promise.resolve(); }
+    createGain() {
+      const ramps = [];
+      return { ramps, gain: { setValueAtTime: (v, t) => ramps.push([v, t]), exponentialRampToValueAtTime: (v, t) => ramps.push([v, t]) },
+        connect(to) { this.to = to; } };
+    }
+    createOscillator() {
+      const tone = { freqs: [], frequency: { setValueAtTime: (v, t) => tone.freqs.push([v, t]) },
+        connect(to) { this.to = to; }, start(t) { this.startAt = t; }, stop(t) { this.stopAt = t; } };
+      this.tones.push(tone);
+      return tone;
+    }
+  }
+  const earcon = make({ AudioContext: FakeContext });
+  assert.strictEqual(earcon(), true);
+  assert.strictEqual(earcon(), true);
+  assert.strictEqual(made.length, 1, "one context, reused");
+  const [ac] = made;
+  assert.ok(ac.resumed >= 1, "a suspended context is asked to resume");
+  assert.strictEqual(ac.tones.length, 2);
+  const [tone] = ac.tones;
+  assert.strictEqual(tone.startAt, 5, "starts now");
+  assert.ok(tone.stopAt > 5 && tone.stopAt - 5 < 1, "and is short (under a second)");
+  assert.strictEqual(tone.to.to, ac.destination, "through its gain to the speakers");
+
+  assert.strictEqual(make({ webkitAudioContext: FakeContext })(), true, "the prefixed constructor (older WebKit)");
+  assert.strictEqual(make({})(), false, "no Web Audio: silence");
+  assert.strictEqual(make({ AudioContext: class { constructor() { throw new Error("refused"); } } })(), false, "a refusing context: silence, not a throw");
+});
+
+test("offline, a missing download is dropped: the record is missing, Up Next loses it and the next one plays", async () => {
+  /* app.js's half: onMissing(id, { offline: true }) marks the row, says so,
+     and runs the natural end's rule, `advanceQueueOnEnded`.
+     MUTATION: drop the `advanceQueueOnEnded(id)` call in bootDownloads'
+     onMissing — the episode stays at the head of Up Next and nothing plays; red.
+     MUTATION 2: call `playNextAfter(id, "autoadvance")` instead — with
+     Continuous playback off the next episode plays anyway; red on that half.
+     MUTATION 3: advance on every onMissing (drop the `if (offline)`) — online,
+     the stream retry and the next episode both start; red on the online half. */
+  const setup = ({ autoadvance = true } = {}) => {
+    const store = new Map();
+    const m = mount({ store, capacitor: makeCapacitor({}) });
+    m.ctx.forayContinuation = CONTINUATION;
+    seedDone(store, m.item.id);
+    store.set("cp_queue", JSON.stringify([m.item.id, m.other.id]));
+    if (!autoadvance) store.set("cp_autoadvance", "false");
+    const plays = [];
+    m.ctx.ForayPlayer = {
+      play: async (item, opts) => { plays.push({ id: item.id, opts }); return true; },
+      onEpisodeEnded: () => () => {},
+      setEpisodeNavigation: () => true,
+      setContinuation() {},
+      currentEpisodeId: () => null,
+      isCurrent: () => true,
+    };
+    const said = () => m.ctx.document.body.children.map((c) => c.textContent).filter(Boolean);
+    return { m, store, plays, said, queue: () => JSON.parse(store.get("cp_queue") || "[]") };
+  };
+
+  const off = setup();
+  off.m.ctx.forayDownloads.onMissing(off.m.item.id, { offline: true });
+  await settle();
+  assert.strictEqual(off.m.record().items[off.m.item.id].status, "missing", "the row is marked");
+  assert.deepStrictEqual(off.queue(), [off.m.other.id], "the missing episode leaves Up Next");
+  assert.deepStrictEqual(off.plays.map((p) => p.id), [off.m.other.id], "and the next one plays");
+  assert.ok(off.said().includes("Downloaded copy missing, and no connection — skipped."), "the listener is told");
+
+  const still = setup({ autoadvance: false });
+  still.m.ctx.forayDownloads.onMissing(still.m.item.id, { offline: true });
+  await settle();
+  assert.deepStrictEqual(still.queue(), [still.m.other.id], "switch off: dropped all the same");
+  assert.deepStrictEqual(still.plays, [], "but nothing plays — the switch decides, as at an end");
+
+  const on = setup();
+  on.m.ctx.forayDownloads.onMissing(on.m.item.id);
+  await settle();
+  assert.strictEqual(on.m.record().items[on.m.item.id].status, "missing");
+  assert.deepStrictEqual(on.queue(), [on.m.item.id, on.m.other.id], "online: Up Next untouched, the episode streams");
+  assert.deepStrictEqual(on.plays, [], "app.js starts nothing: client.js's retry streams it");
+  assert.ok(on.said().includes("Downloaded copy missing — streaming instead."));
+});
+
+/* The NATIVE lane (review of offline-missing-file). The shipping iOS default
+   is the native engine (mobile/ENGINE_DEFAULT.json: ios "native", with
+   "episode"), and there a missing file fails AFTER play() returns: the
+   facade's play() resolves when `playEpisode` is taken, the engine loads the
+   file afterwards, and the failure is an `error` event with code "load". */
+
+test("native lane: play() holds the downloaded copy's ticket while the engine is still loading it, and stamps nothing yet", () => {
+  /* The spend line, executed over each lane and state play() can return in.
+     MUTATION: delete the `if (engineMode === "native" && ... "loadingItem")
+     ticket = null;` hold — the ticket is spent on a load that has not
+     happened, the engine's later load error has nothing to degrade (no
+     stream online, no drop offline), and the missing file is stamped as
+     played; red on the native loadingItem case. */
+  const start = CLIENT_CODE.indexOf("if (engineMode === \"native\" && ticket && localAttempt === ticket");
+  const end = CLIENT_CODE.indexOf("if (loadError) throw loadError.err;");
+  assert.ok(start > 0 && end > start, "the hold precedes the spend, before the rethrow");
+  const snippet = CLIENT_CODE.slice(start, end);
+  const run = ({ engineMode, type, loadError = null }) => {
+    const T = { item: { id: "ep-1" }, opts: {} };
+    const heard = [];
+    const window = { forayDownloads: { onPlayedFromFile: (id) => heard.push(id) } };
+    const left = new Function("engineMode", "loadError", "manager", "localAttempt", "ticket", "item", "window",
+      `${snippet}\nreturn localAttempt;`)(engineMode, loadError, { state: { type } }, T, T, { id: "ep-1" }, window);
+    return { held: left === T, heard };
+  };
+  assert.deepStrictEqual(run({ engineMode: "native", type: "loadingItem" }), { held: true, heard: [] },
+    "native, still loading: the ticket waits for the engine's word, nothing stamped");
+  assert.deepStrictEqual(run({ engineMode: "native", type: "playing" }), { held: false, heard: ["ep-1"] },
+    "native, already playing by the reply: spent and stamped, as before");
+  assert.deepStrictEqual(run({ engineMode: "js", type: "loadingItem" }), { held: false, heard: ["ep-1"] },
+    "the JS lane settles its load inside play(): unchanged");
+  assert.deepStrictEqual(run({ engineMode: "native", type: "loadingItem", loadError: { err: new Error("x") } }).heard, [],
+    "a thrown play is never a hold, never a stamp");
+});
+
+test("native lane: the engine's load error over a held ticket streams online and drops offline; a playing snapshot spends it", async () => {
+  /* settleEngineLocalLoad + degradeLocalPlay, executed together over one
+     shared ticket, and onEngineEvent's call into them.
+     MUTATION: delete `settleEngineLocalLoad(ev);` from onEngineEvent — the
+     engine's load error reaches nothing: no earcon, no drop, no stream; red
+     on the wiring case.
+     MUTATION 2: drop the `(s.state !== "playing" && s.state !== "ended")`
+     test — the idle snapshot the engine sends JUST BEFORE its load error
+     spends the ticket, and the error then degrades nothing; red.
+     MUTATION 3: drop `if (ev.code !== "load") return;` — a hop the engine
+     walked (`chain-start`) drops or streams the episode on screen; red.
+     MUTATION 4: drop the `retry.then(...)` chain — a stream retry that fails
+     too is never painted; red on `reports`. */
+  const src = `${clientFn("function degradeLocalPlay() {")}\n${clientFn("function settleEngineLocalLoad(ev) {")}`;
+  const lane = ({ online, playOk = true, currentId = "ep-1" }) => {
+    const log = { missing: [], plays: [], lines: [], earcons: 0, stamped: [], reports: [] };
+    const window = { forayDownloads: {
+      onMissing: (...a) => log.missing.push(a),
+      onPlayedFromFile: (id) => log.stamped.push(id),
+    } };
+    const ForayPlayer = {
+      play: (item, opts) => { log.plays.push({ id: item.id, opts }); return Promise.resolve(playOk); },
+      reportPlayFailure: (e) => log.reports.push(e),
+    };
+    const api = new Function(
+      "current", "downloadStore", "browserOnline", "setPlayFailure", "EP_MISSING_OFFLINE",
+      "playEarcon", "window", "ForayPlayer",
+      `let localAttempt = { item: { id: "ep-1" }, opts: { why: "w" } };\n${src}\n` +
+      "return { settle: settleEngineLocalLoad, held: () => localAttempt !== null };",
+    )(
+      { id: currentId, isLocalFile: true }, STORE, () => online, (line) => log.lines.push(line), "OFFLINE-LINE",
+      () => { log.earcons++; }, window, ForayPlayer,
+    );
+    return { ...api, log };
+  };
+  const snap = (state, itemId = "ep-1") => ({ type: "snapshot", snapshot: { state, itemId } });
+  const loadError = { type: "error", code: "load", message: "decode" };
+
+  /* Still loading, then the idle snapshot that precedes the error: held. */
+  const off = lane({ online: false });
+  off.settle(snap("loadingItem"));
+  off.settle(snap("idle"));
+  off.settle({ type: "error", code: "chain-start" });
+  assert.strictEqual(off.held(), true, "loading, idle and a hop's error leave the ticket alone");
+  off.settle(loadError);
+  assert.deepStrictEqual(off.log.missing, [["ep-1", { offline: true }]], "offline: dropped, app.js advances Up Next");
+  assert.strictEqual(off.log.earcons, 1, "with the earcon");
+  assert.deepStrictEqual(off.log.lines, ["OFFLINE-LINE"]);
+  assert.deepStrictEqual(off.log.plays, [], "no stream with no network");
+  assert.deepStrictEqual(off.log.stamped, [], "a missing file is never stamped as played");
+  off.settle(loadError);
+  assert.strictEqual(off.log.earcons, 1, "spent: a second report degrades nothing");
+
+  const on = lane({ online: true, playOk: false });
+  on.settle(snap("idle"));
+  on.settle(loadError);
+  await settle();
+  assert.deepStrictEqual(on.log.missing, [["ep-1"]], "online: marked, streaming instead");
+  assert.deepStrictEqual(on.log.plays, [{ id: "ep-1", opts: { why: "w", noLocal: true } }], "streamed once, noLocal");
+  assert.strictEqual(on.log.earcons, 0);
+  assert.deepStrictEqual(on.log.reports, [null], "and a stream that fails too is painted");
+
+  const played = lane({ online: false });
+  played.settle(snap("playing", "ep-other"));
+  assert.strictEqual(played.held(), true, "another item's snapshot is not this load");
+  played.settle(snap("playing"));
+  assert.deepStrictEqual(played.log.stamped, ["ep-1"], "the file played: stamped once");
+  assert.strictEqual(played.held(), false, "and the ticket is spent");
+  played.settle(loadError);
+  assert.deepStrictEqual([played.log.missing, played.log.earcons], [[], 0], "a later failure about a file that played degrades nothing");
+
+  const moved = lane({ online: false, currentId: "ep-2" });
+  moved.settle(loadError);
+  assert.deepStrictEqual([moved.log.missing, moved.log.earcons, moved.log.plays], [[], 0, []], "the bar is on another episode: nothing");
+
+  /* The wiring: onEngineEvent hands every native event to the settle, and
+     none on the JS lane. */
+  const wire = (engineMode) => {
+    const seen = [];
+    new Function("engineMode", "settleEngineLocalLoad", `${clientFn("function onEngineEvent(ev) {")}\nonEngineEvent(${JSON.stringify(loadError)});`)(
+      engineMode, (ev) => seen.push(ev.type));
+    return seen;
+  };
+  assert.deepStrictEqual(wire("native"), ["error"], "native: the engine's load error reaches the settle");
+  assert.deepStrictEqual(wire("js"), [], "the JS lane settles inside play()");
 });
