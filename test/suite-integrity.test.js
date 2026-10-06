@@ -1113,6 +1113,7 @@ const FLOORS = {
      record. Without a test the fallback is the one artwork call site nothing
      would notice losing. */
   "test/starred-shows.test.js": 9,
+  "test/supabase-event-retention.test.js": 6, // HA #13 (2026-09-30): supabase/0006 retention jobs pinned (renumbered from 0004) (90-day events, anonymous-shell guards, not client-callable)
   "test/supabase-rls-verbs.test.js": 7, // round-3 L6 (2026-09-25): backend-rest-4/-5, data-integrity-10 — supabase/0003's policies pinned against the PostgREST verbs app.js uses, both ways
   "test/supabase-rls-coverage.test.js": 3, // PR #1045 review (PKG-02, S-09): every portable table has Supabase RLS (supabase/0004 for shows_catalog/show_id_map); the G1/G2 coupling text cites Q6 and names 0004; new
   "test/supabase-content-reports.test.js": 7, // PH2-10: supabase/0005 content_reports (Guideline 1.2 reports): RLS on, insert-own + delete-own, select-own only for the filtered DELETE, user_id-only select grant, no update, note cap 280, review index, README + HUMAN-ACTIONS #116 apply step; new

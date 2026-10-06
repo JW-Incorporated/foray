@@ -247,7 +247,8 @@ drawn.
     no name, email, phone number or password, with its `app_users` row and all its
     events deleted, and the device's token discarded so the next event creates a
     **new** anonymous account. Removing the empty shell is a server-side job:
-    `HUMAN-ACTIONS.md` #14. It also cannot delete what the publisher CDNs and
+    the 90-day retention job in `supabase/0006_event_retention.sql` (which
+    retires `HUMAN-ACTIONS.md` #14) once it is applied. It also cannot delete what the publisher CDNs and
     ad-attribution prefixes already observed — see §A6; the control's own UI says
     so rather than implying otherwise.
   - Confirmation is a typed `DELETE`, so a stray tap cannot trigger it — relevant
@@ -497,8 +498,12 @@ is a fact the answers assume.
    not all been pushed: `0014` in the *portable* set is recorded as not applied in
    `docs/DECISIONS.md`. Different directory and different series — it says nothing
    about RLS directly.)
-3. **Retention.** No retention job exists; ADR-0005 anticipates one. Nothing in
-   the code deletes an event row, ever.
+3. **Retention.** Decided (HA #13): event rows are deleted 90 days after
+   recorded; empty anonymous accounts after 90 days. The job is
+   `backend/migrations/supabase/0006_event_retention.sql` and is **not applied
+   to production until the human action that applies it is done** — until then
+   nothing deletes an event row. The answers above are unchanged by it: a
+   retention period does not alter what is collected.
 4. **How many anonymous accounts already exist** — i.e. whether real user data is
    already in the table from development and testing. Not knowable from the repo.
 5. **Whether the events table has ever received a `note`.** Free text already

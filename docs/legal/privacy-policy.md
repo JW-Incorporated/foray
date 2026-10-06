@@ -355,9 +355,15 @@ agreement.
 > question is answered above; the agreement half is not recorded anywhere in the
 > repo and is not to be guessed.
 
-> TODO(founder): **how long event rows are retained.** ADR-0005 anticipates a
-> retention job pruning stale anonymous ids with no events; it is not built. The
-> policy cannot state a retention period until one is chosen.
+**How long we keep it (founder ruling, 2026-09-30).** Event rows are deleted
+90 days after they were recorded. What the app learns from them (your interests,
+playlists, listening positions and learned parameters) is kept as long as your
+account exists, and is removed by Delete my data (§7). An anonymous account that
+has no events and no linked sign-in is removed after 90 days of inactivity. A
+daily job does this (`backend/migrations/supabase/0006_event_retention.sql`).
+*Draft note: do not republish this paragraph until that migration has been
+applied to the live project (`HUMAN-ACTIONS.md`); until then no event row is
+deleted automatically.*
 
 ## 4. What your device contacts directly — and we never see
 
@@ -577,8 +583,9 @@ choice, and says plainly that the server rows remain.)
   deletion, with no rows attached to it. What the button does do is **cut the
   link**: your token and local id are deleted with everything else, so the app
   creates a **new** anonymous account the next time it needs one rather than
-  re-attaching you to the old one. We are pursuing a server-side path to remove
-  the empty account row as well.
+  re-attaching you to the old one. The empty account row is removed by the
+  daily retention job once it has had no events and no sign-in for 90 days
+  (§3).
 - **Anything the publisher and their measurement services already saw.** §4 is
   the detail: playing audio revealed your IP address and user-agent to the
   publisher's host and to any prefix services in front of it. **We never received
