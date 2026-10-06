@@ -472,11 +472,19 @@ test("no sheet writes the modal lock itself any more — they all go through the
   assert.strictEqual(count(APP_SRC, 'classList.add("fy-sheet-open")'), 0);
   assert.strictEqual(count(APP_SRC, 'classList.remove("fy-sheet-open")'), 0);
   assert.strictEqual(count(CLIENT_SRC, 'classList.add("fy-sheet-open")'), 1, "client.js: only the owner-less fallback");
-  for (const fn of ["showFirstTimeExplainerOnce", "showIntroPopupOnce", "openFeedbackSheet",
+  const fnBody = (fn) => new RegExp(`function ${fn}\\([^)]*\\) \\{[\\s\\S]*?\\n\\}`).exec(APP_SRC);
+  for (const fn of ["openOnboardingSheet", "openFeedbackSheet",
     "openRateMenu", "openDeleteSheet", "openVoiceSheet", "openDiagSheet"]) {
-    const body = new RegExp(`function ${fn}\\([^)]*\\) \\{[\\s\\S]*?\\n\\}`).exec(APP_SRC);
+    const body = fnBody(fn);
     assert.ok(body, `${fn} exists`);
     assert.match(body[0], /openSheet\(/, `${fn} must open through openSheet()`);
+  }
+  /* The two onboarding sheets open through their one builder (code-health
+     CH-38), which is pinned above. */
+  for (const fn of ["showFirstTimeExplainerOnce", "showIntroPopupOnce"]) {
+    const body = fnBody(fn);
+    assert.ok(body, `${fn} exists`);
+    assert.match(body[0], /openOnboardingSheet\(\{/, `${fn} must open through openOnboardingSheet()`);
   }
 });
 
@@ -861,8 +869,8 @@ test("ROUND 2 a11y-5: 'Get started' lands focus on the new step's title, so the 
 
 test("ROUND 2 p-first-4: a scrim tap PARKS the first-run sheet for the visit: it neither ends onboarding nor pops back up", () => {
   /* MUTATION 1: bind the scrim to `dismiss` -> the flag assertion is red.
-     MUTATION 2: drop `|| firstRunParked` from the on-screen check -> the sheet
-     re-mounts on Home's next render; red. */
+     MUTATION 2: drop `|| parkedOnboardingSheets.has(id)` from
+     onboardingSheetUp -> the sheet re-mounts on Home's next render; red. */
   const m = mount();
   assert.strictEqual(m.ctx.showFirstTimeExplainerOnce(), true);
   m.doc.body.querySelector("#first-time-sheet").querySelector(".fy-scrim").fire("click");
@@ -1235,5 +1243,26 @@ test("CH-38: each of the four sheet closers leaves its root hidden and the page 
     assert.strictEqual(root().hidden, true, `the ${name} sheet is hidden after its close`);
     assert.strictEqual(m.ctx.openSheetCount(), 0, `and the owner let go of it`);
     assert.ok(!inert(m.view), `and the page is reachable again after the ${name} sheet`);
+  }
+});
+
+test("CH-38: closeSheet is the one place a root is hidden; a root the owner does not hold is hidden too, and no closer hides again", () => {
+  /* A3-11: the four closers each wrote `.hidden = true` after closeSheet()
+     already had, which would hide a stack/DOM desync instead of surfacing it.
+     MUTATION: drop the not-found branch's `wrap.hidden = true` -> the first
+     assertion is red. MUTATION 2: restore any closer's
+     `<root>.hidden = true` after its closeSheet() -> the structural pin is red. */
+  const m = mount();
+  const s = sheet(m, "never-opened");
+  m.doc.body.appendChild(s.wrap);
+  assert.strictEqual(s.wrap.hidden, false, "fixture: shown, but never opened through the owner");
+  assert.strictEqual(m.ctx.closeSheet(s.wrap), false, "nothing the owner held was open");
+  assert.strictEqual(s.wrap.hidden, true, "and the root is hidden all the same");
+  assert.strictEqual(m.ctx.closeSheet(null), false, "a missing root is a no-op, not a throw");
+  for (const fn of ["closeFeedbackSheet", "closeDeleteSheet", "closeVoiceSheet", "closeDiagSheet"]) {
+    const body = new RegExp(`function ${fn}\\(\\) \\{[\\s\\S]*?\\n\\}`).exec(APP_SRC);
+    assert.ok(body, `${fn} exists`);
+    assert.match(body[0], /closeSheet\(/, `${fn} closes through the owner`);
+    assert.doesNotMatch(body[0], /\.hidden = true/, `${fn} leaves hiding to closeSheet()`);
   }
 });

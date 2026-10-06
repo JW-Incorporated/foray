@@ -138,7 +138,7 @@ import {
 import {
   readRate, writeRate, normalizeRate, rateLabel, rateAriaLabel, RATES,
 } from "./playback-rate.js";
-import { pickDefaultVoice, VOICE_LIST_LANG } from "./default-voice.js";
+import { pickDefaultVoice, qualityRank, VOICE_LIST_LANG } from "./default-voice.js";
 import * as continuation from "./continuation.js";
 import * as queueOrder from "./queue-order.js";
 import * as queueDrag from "./queue-drag.js";
@@ -5304,6 +5304,13 @@ const ForayPlayer = {
   defaultVoice(voices) {
     return pickDefaultVoice(voices);
   },
+
+  /** The `lang` the voice picker asks `listVoices()` for, and the quality rank
+      it compares two installs of one name by — `default-voice.js`'s own,
+      re-exported so app.js (a classic script) reads the player's constants
+      instead of holding a second copy (code-health CH-38, A3-07). */
+  VOICE_LIST_LANG,
+  qualityRank,
 
   /** Apply and persist a voice choice (V-01's `cp_voice`). */
   setNarrationVoice(id) {

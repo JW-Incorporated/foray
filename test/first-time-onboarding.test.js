@@ -147,9 +147,16 @@ test("skipping/completing the explainer both set cp_intro_dismissed (single flag
   const fn = body.slice(start, end);
   const dismissBindings = (fn.match(/addEventListener\("click", dismiss\)/g) || []).length;
   assert.strictEqual(dismissBindings, 2, "the two Skip buttons bind to the same dismiss() function");
-  assert.match(fn, /scrim\.addEventListener\("click", park\)/, "the scrim parks");
-  assert.match(fn, /onRequestClose: park/, "so do Escape and a navigation");
-  const park = /const park = \(\) => \{[\s\S]*?\};/.exec(fn);
+  assert.match(fn, /onDismiss: markIntroDismissed/, "whose persisted half is the never-again flag");
+  assert.match(body, /function markIntroDismissed\(\) \{\s*lsSet\("cp_intro_dismissed", true\);\s*\}/);
+  /* Code-health CH-38: park, the scrim and onRequestClose live in the one
+     onboarding sheet builder the explainer opens through. */
+  assert.match(fn, /openOnboardingSheet\(\{/, "the explainer opens through the shared builder");
+  const bStart = body.indexOf("function openOnboardingSheet(");
+  const builder = body.slice(bStart, body.indexOf("\nfunction ", bStart + 10));
+  assert.match(builder, /scrim\.addEventListener\("click", park\)/, "the scrim parks");
+  assert.match(builder, /onRequestClose: park/, "so do Escape and a navigation");
+  const park = /const park = \(\) => \{[\s\S]*?\};/.exec(builder);
   assert.ok(park, "park() exists");
   assert.doesNotMatch(park[0], /cp_intro_dismissed/, "and park() never writes the never-again flag");
 });

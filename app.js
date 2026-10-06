@@ -7770,10 +7770,15 @@ function bindPanelDrag(entry) {
 /** Close `wrap` if the owner holds it: lift what open did, hide it, hand focus
     back. Sheets above it close first — they were opened over it. Returns
     whether anything was open. `removeIfOwned` also removes the element (for
-    sheets built fresh on each open). */
+    sheets built fresh on each open). The ONE place a sheet's root is hidden on
+    close: no closer hides it again after this (code-health CH-38, A3-11). A
+    root the owner does not hold is still hidden, once, as belt-and-braces. */
 function closeSheet(wrap, { removeIfOwned = false } = {}) {
   const i = sheetStack.findIndex((s) => s.wrap === wrap);
-  if (i === -1) return false;
+  if (i === -1) {
+    if (wrap) wrap.hidden = true;
+    return false;
+  }
   while (sheetStack.length - 1 > i) closeSheet(sheetStack[sheetStack.length - 1].wrap);
   const [entry] = sheetStack.splice(i, 1);
   releaseInert(entry);
@@ -7910,23 +7915,47 @@ if (typeof window !== "undefined") {
    meanwhile, did nothing. The scrim, Escape, a navigation, hardware back and
    the drag the handle now answers are all "not now, for this visit":
    `cp_intro_dismissed` is written only by the two Skip buttons and the
-   Preferences step's primary — the considered presses. `firstRunParked` is
-   this-visit state, a sibling of the on-screen check above, and returns
-   `true` for the same reason that check does: the explainer owns the visit,
-   so the returning-user popup must not take its place. */
-let firstRunParked = false;
+   Preferences step's primary — the considered presses. A parked sheet is
+   this-visit state (`openOnboardingSheet` keeps it), a sibling of the
+   on-screen check, and returns `true` for the same reason that check does:
+   the explainer owns the visit, so the returning-user popup must not take its
+   place. */
+
 /* True only for the one re-render a finished "Delete my data" does (persist-2):
    Home repainted under the delete sheet must not open onboarding over the
    result. `deleteMyData` sets it around its `route()` and clears it after. */
 let onboardingHeld = false;
 
-function showFirstTimeExplainerOnce() {
-  if (!isGenuineFirstTimeUser()) return false;
-  if (lsGet("cp_intro_dismissed", false)) return false;
-  if ($("#first-time-sheet") || firstRunParked) return true;   // already on screen, or parked, this visit
+/** What the two onboarding sheets leave reachable: the player, so audio that
+    a shared Foray link started stays controllable under them (p-first-5). */
+const ONBOARDING_KEEPS_REACHABLE = ["#foray-player"];
 
+/** The onboarding sheets parked this visit, by sheet id. PER SHEET, on
+    purpose (code-health CH-38): a first-time listener who parks the explainer
+    can still be shown the intro popup this visit, and parking the popup does
+    not park the explainer — the two this-visit flags this Set replaced were
+    independent, and one shared flag would change that edge. */
+const parkedOnboardingSheets = new Set();
+
+/** Whether the onboarding sheet `id` owns this visit already: on screen, or
+    parked. The idempotency check both `…Once` functions run LAST, after their
+    semantic gates (see ORDER MATTERS above). */
+function onboardingSheetUp(id) {
+  return Boolean($(`#${id}`)) || parkedOnboardingSheets.has(id);
+}
+
+/** The one builder for the two onboarding sheets (the first-run explainer and
+    the intro popup). It owns everything a sheet-level rule touches — the
+    shell, the dialog semantics, park vs dismiss, the owner's open — so the
+    next such rule lands once; `buildPanel(panel, { dismiss, park })` adds
+    only the content, before the sheet opens. `dismiss` is the considered
+    press: `onDismiss` (the persisted never-again write), then close. `park`
+    is "not now, for this visit": the scrim, Escape, a navigation, hardware
+    back and the handle's drag all route to it, and it writes nothing
+    persistent. */
+function openOnboardingSheet({ id, buildPanel, onDismiss }) {
   const wrap = ddEl("div", "fy-sheet");
-  wrap.id = "first-time-sheet";
+  wrap.id = id;
 
   const scrim = ddEl("div", "fy-scrim");
   const panel = ddEl("div", "fy-panel");
@@ -7941,28 +7970,44 @@ function showFirstTimeExplainerOnce() {
   grab.setAttribute("aria-hidden", "true");
   panel.append(grab);
 
-  const body = ddEl("div", "ft-step-body");
-  panel.append(body);
-
   wrap.append(scrim, panel);
 
   const dismiss = () => {
-    lsSet("cp_intro_dismissed", true);
+    onDismiss();
     closeSheet(wrap, { removeIfOwned: true });
   };
   const park = () => {
-    firstRunParked = true;
+    parkedOnboardingSheets.add(id);
     closeSheet(wrap, { removeIfOwned: true });
   };
-  /* The player stays reachable (audit round 2, p-first-5): Home defers this
-     sheet while a Foray is sounding (`offerHomeOnboarding`), but a paused or
-     restored bar can still sit under it, and the mini bar's ▶ and ↺15 must not
-     go inert with the page. Reachable means ABOVE the scrim as well as out of
-     `inert`: `body.fy-sheet-keeps-player` lifts #foray-player over the z-70
+  buildPanel(panel, { dismiss, park });
+  /* The player stays reachable (audit round 2, p-first-5): Home defers these
+     sheets while a Foray is sounding (`offerHomeOnboarding`), but a paused or
+     restored bar can still sit under them, and the mini bar's ▶ and ↺15 must
+     not go inert with the page. Reachable means ABOVE the scrim as well as out
+     of `inert`: `body.fy-sheet-keeps-player` lifts #foray-player over the z-70
      sheet and lifts the panel off the bar (styles.css), or a tap on the bar
      landed on the scrim and only parked the sheet. */
   openSheet(wrap, { panel, onRequestClose: park, keepReachable: ONBOARDING_KEEPS_REACHABLE });
   scrim.addEventListener("click", park);
+  return { dismiss, park };
+}
+
+/** The persisted half of both onboarding sheets' `dismiss`. */
+function markIntroDismissed() {
+  lsSet("cp_intro_dismissed", true);
+}
+
+function showFirstTimeExplainerOnce() {
+  if (!isGenuineFirstTimeUser()) return false;
+  if (lsGet("cp_intro_dismissed", false)) return false;
+  if (onboardingSheetUp("first-time-sheet")) return true;   // already on screen, or parked, this visit
+
+  /* The step body, and the builder's panel and `dismiss`: set by
+     `buildPanel` below before any step renders or any button can be pressed. */
+  const body = ddEl("div", "ft-step-body");
+  let panel = null;
+  let dismiss = null;
 
   /* Live SegmentStrip illustration for the second value prop — reads off
      window.ForayPlayer exactly as forayCards()/renderForay() do (app.js is a
@@ -8156,7 +8201,16 @@ function showFirstTimeExplainerOnce() {
     });
   }
 
-  renderWelcome();
+  openOnboardingSheet({
+    id: "first-time-sheet",
+    onDismiss: markIntroDismissed,
+    buildPanel(sheetPanel, sheet) {
+      panel = sheetPanel;
+      dismiss = sheet.dismiss;
+      panel.append(body);
+      renderWelcome();
+    },
+  });
   return true;
 }
 
@@ -8177,69 +8231,47 @@ function showIntroPopupOnce() {
      persisted gate, never before it) as `showFirstTimeExplainerOnce` above.
      This one is reachable by RETURNING users, who are not
      `isGenuineFirstTimeUser()`, so it has only ever had the one flag between
-     it and a duplicate mount. `introParked` is the same this-visit state the
-     first-run sheet keeps. */
-  if ($("#intro-sheet") || introParked) return;
-  const wrap = ddEl("div", "fy-sheet");
-  wrap.id = "intro-sheet";
+     it and a duplicate mount. Parked is per sheet: the first-run sheet's park
+     does not park this one (`parkedOnboardingSheets`). */
+  if (onboardingSheetUp("intro-sheet")) return;
+  /* The same rule as the first-run sheet (p-first-4), kept by the builder:
+     only "Got it" is the considered press; everything else parks it for this
+     visit. */
+  openOnboardingSheet({
+    id: "intro-sheet",
+    onDismiss: markIntroDismissed,
+    buildPanel(panel, { dismiss }) {
+      const title = ddEl("h3", null, "4a picks podcast episodes for you");
+      title.id = "intro-sheet-title";
+      panel.setAttribute("aria-labelledby", "intro-sheet-title");
 
-  const scrim = ddEl("div", "fy-scrim");
-  const panel = ddEl("div", "fy-panel");
-  panel.setAttribute("role", "dialog");
-  // Not aria-modal, for the first-run sheet's reason: the player stays reachable.
-  panel.setAttribute("aria-modal", "false");
+      const sub = ddEl("p", "fy-sheet-sub",
+        /* It described the retired four-card Home ("Grouped into four topic
+           queues…"), so the first thing a returning listener read was about a
+           screen they were not looking at (audit 2026-09-22, persona row 23). It
+           describes the Home that ships, and it is where a listener who skipped
+           the first-run sheet learns what a foray is.
+           Review 2026-09-23: no "stitch clips" (the 2026-08-11 playback ruling —
+           see forayAbout), and only what Home renders: the stretch pick is in
+           Forays for you and Suggested (pickWithStretchFloor, the cardSlots
+           stretch role), not in Playlists, which are mostly the listener's own.
+           Audit round 2 (p-first-11): the Forays row has a stretch pick only when
+           the listed Forays span more than one subject, and with one published
+           Foray it cannot. The sentence asks the SAME pick Home renders
+           (foraysForYouPicks) instead of assuming. */
+        `A foray plays moments from several shows, straight from each show's own feed, one after another. Below them are your playlists and episodes picked for you. The episodes ${foraysForYouPicks()?.stretchIndex >= 0 ? "and the forays each " : ""}include one pick outside your usual subjects, on purpose.`);
 
-  const grab = ddEl("div", "fy-grab");
-  grab.setAttribute("aria-hidden", "true");
+      const actions = ddEl("div", "fy-sheet-actions");
+      const ok = ddEl("button", "fy-sheet-go", "Got it");
+      ok.type = "button";
+      ok.id = "intro-sheet-ok";
+      actions.append(ok);
 
-  const title = ddEl("h3", null, "4a picks podcast episodes for you");
-  title.id = "intro-sheet-title";
-  panel.setAttribute("aria-labelledby", "intro-sheet-title");
-
-  const sub = ddEl("p", "fy-sheet-sub",
-    /* It described the retired four-card Home ("Grouped into four topic
-       queues…"), so the first thing a returning listener read was about a
-       screen they were not looking at (audit 2026-09-22, persona row 23). It
-       describes the Home that ships, and it is where a listener who skipped
-       the first-run sheet learns what a foray is.
-       Review 2026-09-23: no "stitch clips" (the 2026-08-11 playback ruling —
-       see forayAbout), and only what Home renders: the stretch pick is in
-       Forays for you and Suggested (pickWithStretchFloor, the cardSlots
-       stretch role), not in Playlists, which are mostly the listener's own.
-       Audit round 2 (p-first-11): the Forays row has a stretch pick only when
-       the listed Forays span more than one subject, and with one published
-       Foray it cannot. The sentence asks the SAME pick Home renders
-       (foraysForYouPicks) instead of assuming. */
-    `A foray plays moments from several shows, straight from each show's own feed, one after another. Below them are your playlists and episodes picked for you. The episodes ${foraysForYouPicks()?.stretchIndex >= 0 ? "and the forays each " : ""}include one pick outside your usual subjects, on purpose.`);
-
-  const actions = ddEl("div", "fy-sheet-actions");
-  const ok = ddEl("button", "fy-sheet-go", "Got it");
-  ok.type = "button";
-  ok.id = "intro-sheet-ok";
-  actions.append(ok);
-
-  panel.append(grab, title, sub, actions);
-  wrap.append(scrim, panel);
-
-  const dismiss = () => {
-    lsSet("cp_intro_dismissed", true);
-    closeSheet(wrap, { removeIfOwned: true });
-  };
-  /* The same rule as the first-run sheet (p-first-4): only "Got it" is the
-     considered press; everything else parks it for this visit. */
-  const park = () => {
-    introParked = true;
-    closeSheet(wrap, { removeIfOwned: true });
-  };
-  openSheet(wrap, { panel, onRequestClose: park, keepReachable: ONBOARDING_KEEPS_REACHABLE });
-  scrim.addEventListener("click", park);
-  ok.addEventListener("click", dismiss);
+      panel.append(title, sub, actions);
+      ok.addEventListener("click", dismiss);
+    },
+  });
 }
-
-/** What the two onboarding sheets leave reachable: the player, so audio that
-    a shared Foray link started stays controllable under them (p-first-5). */
-const ONBOARDING_KEEPS_REACHABLE = ["#foray-player"];
-let introParked = false;
 
 /* One result row per matched show -- deliberately not epRow/miniCard: a show
    search result has no play control, duration, or star (it names a SHOW, not
@@ -14367,7 +14399,7 @@ function closeFeedbackSheet() {
   // submit, and a vote with no reason is the signal this sheet exists to avoid.
   fbTarget = null;
   const sheet = $("#fy-sheet");
-  if (sheet) { closeSheet(sheet); sheet.hidden = true; }
+  if (sheet) closeSheet(sheet);
 }
 
 /** A reason chip's selection, for the eye AND the ear. It was a class and a
@@ -15270,6 +15302,8 @@ const FY_START_FAILED = "That clip couldn't load. Check the connection, then pre
    going, and the honest report is that the button did not take. */
 const FY_TAP_FAILED = "That didn't register. Try it again, or restart 4a if it keeps happening.";
 
+/* One sentence for both places a voice fallback is said: the Foray page's
+   notice and the voice picker's Preview (code-health CH-38, A3-10). */
 const FY_VOICE_FALLBACK = "Your chosen voice isn't installed; using the best available.";
 
 function forayFailureCopy(signal) {
@@ -15410,8 +15444,9 @@ async function guardForayTap(run) {
 
 /** The ↺ / ↻ step sizes, from the player bridge so the Foray page, the Now
     Playing sheet and the mini bar name one number; the fallback is the same
-    pair player/media-session.js exports, for a page paired with an older
-    cached module. */
+    pair player/media-session.js exports (`SEEK_BACKWARD_SEC`/
+    `SEEK_FORWARD_SEC`, pinned equal by test/transport-controls.test.js), for a
+    page paired with an older cached module. */
 function forayNudgeSteps(player) {
   try {
     const s = player && typeof player.nudgeSteps === "function" ? player.nudgeSteps() : null;
@@ -17554,7 +17589,6 @@ function openDeleteSheet() {
 function closeDeleteSheet() {
   if (!ddUi || ddBusy) return;     // never vanish mid-delete
   closeSheet(ddUi.root);
-  ddUi.root.hidden = true;
   ddUi.input.value = "";
   syncDeleteCta();
 }
@@ -17766,15 +17800,29 @@ const VOICE_ALLOWLIST = Object.freeze([
     (en-AU), Moira, Tessa or Rishi while any en-US voice was installed — and
     Samantha compact always is. `"en"` matches no exact locale, so both
     halves widen to every `en-*` voice; the web shim's `languageMatches`
-    does the same by construction. Mirrors `player/default-voice.js`'s
-    `VOICE_LIST_LANG` (a classic script cannot import it). */
+    does the same by construction. `player/default-voice.js` owns it and the
+    bridge publishes it (`ForayPlayer.VOICE_LIST_LANG`, read by
+    `voiceListLang`); this literal is only the fallback for a page paired with
+    an older cached module (a classic script cannot import it), pinned equal
+    to the module's export by test/voice-settings.test.js. */
 const VOICE_LIST_LANG = "en";
 
-/** Quality rank for comparing the SAME NAME at several tiers — mirrors
-    `player/default-voice.js`'s `qualityRank` (same constraint: no import
-    from a classic script). Never used to relabel: the label shown is always
-    the plugin's own `quality` string. */
+/** The `lang` to ask `listVoices()` for: the player's own constant, else the
+    fallback above (code-health CH-38, A3-07). */
+function voiceListLang(player) {
+  const lang = player && player.VOICE_LIST_LANG;
+  return typeof lang === "string" && lang ? lang : VOICE_LIST_LANG;
+}
+
+/** Quality rank for comparing the SAME NAME at several tiers — the player's
+    `qualityRank` (`player/default-voice.js`, published on the bridge); the
+    switch below is only the fallback for a page paired with an older cached
+    module, pinned equal to the module's rule label by label by
+    test/voice-settings.test.js. Never used to relabel: the label shown is
+    always the plugin's own `quality` string. */
 function voiceQualityRank(quality) {
+  const player = window.ForayPlayer;
+  if (player && typeof player.qualityRank === "function") return player.qualityRank(quality);
   switch (String(quality || "").toLowerCase()) {
     case "premium": case "very-high": return 5;
     case "enhanced": case "high": return 4;
@@ -17830,7 +17878,7 @@ const VOICE_SETTINGS_PATH = "Settings \u2192 Accessibility \u2192 Spoken Content
 const AUDITION_LINE = "one, two, three, four, five, six, seven, eight, nine, ten.";
 
 let voiceUi = null;
-let voiceState = { voices: [], path: "none", loading: false, selected: null, auditioning: null, notice: "" };
+let voiceState = { voices: [], path: "none", loading: false, auditioning: null, returnToAudition: null };
 const VOICE_SHEET_SUB = "Pick which voice reads 4a's narration. Tap Preview to hear it count to ten, at the speed narration uses.";
 
 /** Quality label from `listVoices()`'s own `quality` field — never re-derived,
@@ -17988,7 +18036,6 @@ function paintVoiceList() {
   const ui = voiceSheet();
   const player = window.ForayPlayer;
   const selected = selectedVoiceId(player);
-  voiceState.selected = selected;
 
   const rows = [];
   let anyMissing = false;
@@ -18077,7 +18124,7 @@ async function refreshVoiceList() {
   voiceState.loading = true;
   paintVoiceList();
   try {
-    const out = await player.listVoices({ lang: VOICE_LIST_LANG });
+    const out = await player.listVoices({ lang: voiceListLang(player) });
     if (seq !== voiceRefreshSeq) return;
     voiceState.voices = (out && out.voices) || [];
     voiceState.path = (out && out.path) || "none";
@@ -18156,7 +18203,7 @@ async function auditionVoiceRow(id) {
          not (player/client.js auditionVoice), so pausing would not help. */
       paintVoiceNotice("Preview is unavailable while the narrator is on a line.");
     } else if (result && result.voiceFallback) {
-      paintVoiceNotice("Your chosen voice isn't installed; using the best available.");
+      paintVoiceNotice(FY_VOICE_FALLBACK);
     } else {
       paintVoiceNotice("");
     }
@@ -18181,7 +18228,6 @@ function openVoiceSheet() {
 function closeVoiceSheet() {
   if (!voiceUi) return;
   closeSheet(voiceUi.root);
-  voiceUi.root.hidden = true;
 }
 
 /** Appended to the drawer at startup, after the listener's switches and
@@ -18366,7 +18412,6 @@ function closeDiagSheet() {
   if (!diagUi) return;
   diagPaint++;
   closeSheet(diagUi.root);
-  diagUi.root.hidden = true;
 }
 
 /**
