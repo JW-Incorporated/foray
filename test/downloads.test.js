@@ -539,6 +539,61 @@ test("a download that crosses the cap evicts least-recently played first, never 
   assert.deepStrictEqual(Object.keys(m.record().items).sort(), ["fresh", "listening"]);
 });
 
+/** Three finished, never-played downloads of 40 bytes under a 100-byte cap,
+    finished a (Oct 1) → b (Oct 2) → c (Oct 3), stored raw. */
+function seedThreeUnplayed(store) {
+  let v = STORE.normaliseDownloads({ settings: { capBytes: 100 } });
+  for (const [id, day] of [["a", "01"], ["b", "02"], ["c", "03"]]) {
+    v = STORE.applyProgress(v, { id, status: "done", path: `/d/${id}.bin`, bytes: 40, now: `2026-10-${day}T00:00:00Z` });
+  }
+  store.set("cp_downloads", JSON.stringify(v));
+}
+
+/** A player whose every stored position reads "played": nothing is protected. */
+const NOTHING_IN_PROGRESS = { episodeProgress: () => ({ state: "played", percent: 100, label: "Played" }) };
+
+test("cp_downloads is written through the durable store lsGet/lsSet use; saveDownloads(null) removes the row", async () => {
+  /* CH-02 characterization, then its one decision. The record has ONE writer
+     and it is the storage backend every other `cp_` key uses (DurableStore once
+     player/client.js publishes it), so "Delete my data" and the IndexedDB tier
+     see it.
+     MUTATION: make saveDownloads write through `localStorage` instead of
+     `storageBackend()` — the durable store never sees the write; red. */
+  const store = new Map();
+  const cap = makeCapacitor({});
+  const m = mount({ store, capacitor: cap, durable: true });
+  const writes = [];
+  const durableSet = m.ctx.forayStorage.setItem;
+  m.ctx.forayStorage.setItem = (k, v) => { writes.push(k); return durableSet(k, v); };
+  m.ctx.setDownloadsCellular(true);
+  assert.deepStrictEqual(writes, ["cp_downloads"], "the write went through the durable store");
+  assert.strictEqual(m.record().settings.cellular, true);
+  assert.strictEqual(m.ctx.downloadsCellularOn(), true, "and is read back through it");
+
+  /* Null: today (origin/main) saveDownloads normalises null into the EMPTY
+     record and writes it, while the module's writeDownloads(null) removes the
+     key — two writers, two answers. */
+  m.ctx.saveDownloads(null);
+  assert.deepStrictEqual(m.record(), { settings: { cellular: false, capBytes: STORE.DEFAULT_CAP_BYTES }, items: {} },
+    "characterization: null is written as the empty record");
+});
+
+test("with no play recorded, eviction goes oldest-finished first", async () => {
+  /* CH-02 characterization of the bug's premise (P2-01): every row's
+     `last_played_at` is null, so least-recently-PLAYED degrades to
+     least-recently-FINISHED.
+     MUTATION: sort newest-first in evictionPlan — `c` goes; red. */
+  const store = new Map();
+  seedThreeUnplayed(store);
+  const cap = makeCapacitor({ remove: { ok: true } });
+  const m = mount({ store, capacitor: cap });
+  m.ctx.ForayPlayer = NOTHING_IN_PROGRESS;
+  const plan = await m.ctx.evictDownloads();
+  assert.deepStrictEqual([...plan], ["a"], "120 bytes over a 100-byte cap: the oldest finished goes");
+  assert.deepStrictEqual(Object.keys(m.record().items).sort(), ["b", "c"]);
+  assert.ok(Object.values(m.record().items).every((r) => r.last_played_at === null), "fixture premise: nothing played");
+});
+
 test("player/client.js publishes the real modules on window.forayDownloads, and the UA from the build stamp's string", () => {
   /* Source-text, because client.js builds DOM at import and cannot be loaded
      under node (player/now-playing-sheet.test.js says why). Every test above

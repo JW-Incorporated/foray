@@ -89,6 +89,23 @@ test("readDownloads normalises: junk statuses, non-object rows and bad settings 
   assert.deepEqual(readDownloads(store), v);
 });
 
+test("writeDownloads(null) removes the row; a store that refuses the write answers false, never a throw", () => {
+  /* CH-02 characterization: app.js's saveDownloads routes through this pair,
+     so the null and refusal semantics are pinned before it does.
+     MUTATION: delete `if (value === null) { storage.removeItem(KEY); return true; }`
+     — null is normalised to the empty record and written; the key survives. */
+  const store = fakeStorage();
+  writeDownloads(store, threeOverCap());
+  assert.ok(store.map.has(KEY), "fixture premise: the row is written");
+  assert.deepEqual(Object.keys(readDownloads(store).items), ["a", "b", "c"], "and round-trips");
+  assert.equal(writeDownloads(store, null), true);
+  assert.equal(store.map.has(KEY), false, "null removes the key, it does not write \"null\" or an empty record");
+  assert.deepEqual(readDownloads(store).items, {}, "and reads back as the empty record");
+  const refusing = { getItem: () => null, setItem: () => { throw new Error("QuotaExceededError"); }, removeItem: () => {} };
+  assert.equal(writeDownloads(refusing, threeOverCap()), false, "a quota throw is reported, not raised");
+  assert.equal(writeDownloads(null, threeOverCap()), false, "no store took it");
+});
+
 /* ---------- transitions ---------- */
 
 test("applyProgress: `done` without a path is refused (identity); with one it lands and clears a stale reason", () => {
