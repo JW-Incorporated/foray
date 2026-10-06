@@ -19,9 +19,16 @@ import Foundation
 /// ships, and a background launch that went healthy must never count as a
 /// crash (R18). Both are fixture cases.
 public enum EngineMode {
-    /// `ENGINE_MODES`: engineHello's `mode`. `legacy` is the lane iOS plays
-    /// through today (the JS player plus this plugin's Now Playing half), so
-    /// it is not spelled `js`.
+    /// ONE LANE, THREE NAMES. The three enums below spell the JS lane three
+    /// ways: `Mode.legacy` (engineHello), `BuildDefault.js` (Info.plist and
+    /// the page) and `Override.web` (the Developer setting). They are one
+    /// lane; the glossary is the "ONE LANE, THREE NAMES" paragraph beside
+    /// `ENGINE_MODES` in `player/engine-contract.js`. The raw values are wire
+    /// and plist values, so they are never renamed to match.
+    ///
+    /// `ENGINE_MODES`: engineHello's `mode`. `legacy` is the lane iOS played
+    /// through before the native engine (the JS player plus this plugin's
+    /// Now Playing half), so it is not spelled `js`.
     public enum Mode: String, CaseIterable, Sendable {
         case native
         case legacy

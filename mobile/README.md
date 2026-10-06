@@ -97,16 +97,29 @@ API-36 boots without reaching a usable framework. To settle anything about a
 
 ## The one line iOS needs, and the one line that would break everything
 
-**Add to `mobile/ios/App/App/Info.plist` the moment it is generated:**
+**The generated `mobile/ios/App/App/Info.plist` needs this key, and nobody types
+it:**
 
 ```xml
 <key>UIBackgroundModes</key>
 <array><string>audio</string></array>
 ```
 
-That is the *entire* iOS background-audio requirement — no plugin, no Swift, no
-audio-session code. WebKit sets the `AVAudioSession` category to `MediaPlayback`
-itself. Measured and sourced in `docs/research/mp1-background-audio.md` §7.
+`tools/mobile/inject-background-audio.mjs` writes it (`ios-build.yml` and the
+`ios-archive` action run it on every iOS build, then `--check`), together with
+the engine keys it derives from `mobile/ENGINE_DEFAULT.json`
+(`ForayEngineDefault`, `ForayEngineCapabilities`) and its `AppDelegate`
+lines. After a local `cap add ios`, run
+`node tools/mobile/inject-background-audio.mjs mobile/ios/App/App/Info.plist`.
+
+For the JS player that key is the whole requirement: WebKit sets the
+`AVAudioSession` category to `MediaPlayback` itself (measured and sourced in
+`docs/research/mp1-background-audio.md` §7). It is no longer the whole iOS
+audio story. `ENGINE_DEFAULT.json` puts iOS on the native engine (NE-27b), and
+that engine lives in `foray-audio`'s `ios/Sources/ForayAudioPlugin/Engine/`,
+where `AudioSessionOwner.swift` owns the audio session. In the JS lane the
+plugins' own session calls (foray-audio's and foray-tts's) are the owner, each
+guarded on `EngineModeFlag.sessionOwnedByEngine` so the two never overlap.
 
 **Never set the Cordova preference `KeepRunning` to `false`.** It makes Capacitor
 call `WebView.pauseTimers()`, which Android documents as process-global, and that

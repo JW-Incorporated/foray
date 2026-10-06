@@ -7,15 +7,13 @@ import Capacitor
 import ForayEngineCore
 import os
 
-/// The iOS half of `foray-audio`'s Now Playing / remote-command story (L-01).
+/// The Now Playing / remote-command plugin of `foray-audio`'s iOS half (L-01).
 ///
-/// UNLIKE `foray-tts`, this file is not `foray-audio`'s WHOLE iOS half -- there
-/// isn't one. The audio-keepalive service (`android/`) stays Android-only, per
-/// this plugin's `package.json` `"//no-ios"` note: WebKit already keeps a
-/// backgrounded `<audio>` element alive on iOS by itself. This file exists to
-/// answer exactly one gap `docs/ios-controls-and-voice-plan.md`'s M-01 measured
-/// (`docs/ios-lock-screen.md` §0): iOS has **no lock-screen or Control Center
-/// transport at all** in the shipping shell.
+/// The iOS half is this plugin AND the native playback engine under
+/// `Engine/`, which links `ForayEngineCore` and owns the audio session in
+/// native mode. This file answers the gap `docs/ios-controls-and-voice-plan.md`'s
+/// M-01 measured (`docs/ios-lock-screen.md` §0): before L-01 iOS had **no
+/// lock-screen or Control Center transport at all** in the shipping shell.
 ///
 /// ── THE CONTRACT IS THE ANDROID ONE, UNCHANGED ───────────────────────────────
 ///

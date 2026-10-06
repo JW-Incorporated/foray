@@ -114,10 +114,32 @@ export const REFUSALS = Object.freeze([
 /** engineRead's `what` (§5.1). */
 export const READ_KINDS = Object.freeze(["snapshot", "rows", "diagnostics"]);
 
+/* ONE LANE, THREE NAMES (code-health N1-08). The JS lane — the JS player in
+   the page, with foray-audio's legacy native half beside it (Now Playing on
+   iOS, the keepalive service on Android) — is spelled differently at each of
+   the three places that name it, and all three mean the same lane:
+
+     engineHello's `mode`            `legacy`  ENGINE_MODES below; Swift
+                                               EngineMode.Mode, Java
+                                               EngineHandshake.NOT_BUILT_MODE
+     ENGINE_DEFAULT.json / plist /   `js`      PAGE_MODES below; Swift
+       the page's decideMode                   EngineMode.BuildDefault,
+                                               inject-background-audio.mjs
+                                               ENGINE_DEFAULT_MODES
+     the Developer override          `web`     MODE_OVERRIDES below; Swift
+                                               EngineMode.Override
+
+   `native` is spelled the same at all three. The wire values are a protocol
+   (§5) and stay as they are: a rename would be a protocol change on both
+   natives, not a cleanup. So `legacy` is never written into
+   mobile/ENGINE_DEFAULT.json (the injector refuses it), and `js` is never an
+   engineHello answer. */
+
 /** The engine's answer to "who plays?" (engineHello's `mode`, §4.6). `legacy`
-    is the lane iOS plays through today — the JS player PLUS this plugin's Now
-    Playing half — which is why it is not spelled `js` (NE-01's stub answers
-    it). */
+    is the lane iOS played through before the native engine — the JS player
+    PLUS this plugin's Now Playing half — which is why it is not spelled `js`
+    (NE-01's stub answers it). The same lane as PAGE_MODES' `js` and
+    MODE_OVERRIDES' `web`: see ONE LANE, THREE NAMES above. */
 export const ENGINE_MODES = Object.freeze(["native", "legacy"]);
 
 /** The page's own answer (decideMode): drive the native engine, or run the JS

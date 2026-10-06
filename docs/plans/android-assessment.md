@@ -558,6 +558,17 @@ Rejected alternatives:
     pair as the platform session's custom actions, which is A04-F2 fixed for the native lane.
   - **Handed on.** Persisting the rows and the restore record is A-27's. The page's bridge is A-28's. Lifecycle
     inputs (background and foreground) come with A-28's page visibility.
+  - **It ships in release APKs ahead of the flip (recorded 2026-10-06, code-health N1-07).** The JVM core
+    (A-21..A-24, `foray-engine-core-jvm`), `ExoDeck` with `media3-exoplayer` (A-25) and `ForayPlaybackService`
+    (A-26) are foray-audio's `src/main` code and `implementation` dependencies, so every release build carries
+    them. On `main` nothing in a shipping build reaches them: the page's way in is A-28's bridge,
+    `mobile/ENGINE_DEFAULT.json` keeps `android: js` until A-31, and the only client is the debug build's
+    `EngineDriveReceiver` (`src/debug`). That is a roadmap pacing choice, recorded here so its cost is visible,
+    not a defect. **The size cost**, read from `android-build`'s `app-release-unsigned.apk` line on PR merge
+    previews against `main`: 137,612,368 bytes before A-21 (run 36536864682, #877), 137,710,730 with the JVM
+    core (run 36619671208, #893), 138,705,142 with ExoPlayer (run 36639468620, #898) and 138,705,710 with the
+    service (run 36653080360, #900). That is about 1.09 MB in all, about 0.99 MB of it ExoPlayer. Each preview
+    also carries whatever else `main` gained in between, so the steps are approximate.
 
 #### A-27 · Store, restore record, playback resumption, MediaButtonReceiver — **M**
 - **Depends on:** A-26.
@@ -575,6 +586,8 @@ Rejected alternatives:
   the iOS client, facades and relinquish path.
 - **Acceptance:** Node tests for the Android handshake. The emulator native leg logs `engine mode native` in the
   Copy paste.
+- **Note (code-health N1-07):** the engine this bridge reaches already ships in release APKs, unreachable until
+  this card lands. The size it costs is recorded under A-26's status.
 - **Device check:** none until A-31.
 
 #### A-29 · Ownership and fallback (a subset of NE-17) — **M**
