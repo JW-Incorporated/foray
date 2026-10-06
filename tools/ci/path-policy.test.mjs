@@ -306,6 +306,13 @@ const ACKNOWLEDGED_UNDENIED_GATES = {
   // what the ledger's reader (a person, once a week) is there to notice, and
   // the PR that neutered it would itself appear in the ledger it broke.
   "tools/audit/merge-audit.mjs": "read-only report, no secret, posts a comment",
+  // PKG-09 (S-10): episode-poll.yml runs the poller's --dry-run daily with
+  // `contents: read` only. It fetches no podcast feed (only the public
+  // shows-index release assets), reads no secret, writes nothing to the tree,
+  // and nothing waits on its result: its only output is an artifact a person
+  // reads for gate G9's request projection. A neutered copy could only make
+  // that advisory number wrong. Revisit when PKG-10's live poller lands.
+  "tools/poll/poll-episodes.mjs": "advisory daily dry-run; fetches no feed, reads no secret, gates nothing",
   // release.yml calls `marketing-version` (tag-name-vs-tracked-version check)
   // and `pair` (the MARKETING_VERSION/BUILD_NUMBER both stores ship). Unlike
   // release-ci.mjs (denied above), a neutered version.mjs cannot bypass the
