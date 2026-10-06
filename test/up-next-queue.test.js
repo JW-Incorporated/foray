@@ -883,3 +883,128 @@ test("inDiscoverPool and hydrationPool build the pool on demand when a session i
   assert.doesNotThrow(() => broken.ctx.inDiscoverPool("p-1"), "inDiscoverPool never throws");
   assert.doesNotThrow(() => broken.ctx.hydrationPool(), "hydrationPool never throws");
 });
+
+/* ==================================================================== */
+/* 11. CH-35 (docs/roadmap/code-health.md A2-01, A2-07, A2-19)           */
+/* ==================================================================== */
+
+/** [id, disabled] for every Play next control on the painted #/queue page. */
+function playNextControls(m) {
+  return [...m.view().matchAll(/<button type="button" class="reorder playnext" data-playnext="([^"]+)" (disabled)?/g)]
+    .map((x) => [x[1], !!x[2]]);
+}
+
+/** A queue whose bar is on `current` as far as the app's pointer
+    (`currentEpisodeId`) knows, and on `barOn` as far as `isCurrent` knows —
+    the two differ while the app's pointer lags the player. `unplayable` ids get
+    no playable snapshot, so their rows are `unnamed`. */
+function mountQueueLagging(ids, { current = null, barOn = current, unplayable = [] } = {}) {
+  const m = mount({ seed: { cp_queue: JSON.stringify(ids) } });
+  m.state.session = { session_id: "s", episodes: {}, cards: [] };
+  m.state.poolIds = new Set();
+  seedPlayable(m, ids.filter((id) => !unplayable.includes(id)));
+  m.ctx.window.ForayPlayer = { currentEpisodeId: () => current, isCurrent: (id) => id === barOn };
+  return m;
+}
+
+test("Play next is disabled on exactly the rows playNextOrder would not move, for every reachable row state (CH-35, A2-01, characterization)", () => {
+  /* The table the card names: the playing row, the row right after it, the
+     head with nothing playing, a mid-list row, a row 4a cannot play, a playing
+     id that is not in the list, AND the lag where `isCurrent` (the player) is
+     on a row the app's `currentPlayingId` pointer has not reached yet.
+     MUTATION (run, red): drop `isCurrent` from upNextRow's playNextDisabled ->
+     the "lag" row c is enabled and the lag case fails. MUTATION 2 (run, red):
+     drop `!playable` -> the unnamed row u is enabled. */
+  const cases = [
+    { name: "a playing", ids: ["a", "b", "c"], opts: { current: "a" }, want: [["a", true], ["b", true], ["c", false]] },
+    { name: "nothing playing", ids: ["a", "b", "c"], opts: {}, want: [["a", true], ["b", false], ["c", false]] },
+    { name: "b playing (mid-list)", ids: ["a", "b", "c"], opts: { current: "b" }, want: [["a", false], ["b", true], ["c", true]] },
+    { name: "c playing (last)", ids: ["a", "b", "c"], opts: { current: "c" }, want: [["a", false], ["b", false], ["c", true]] },
+    { name: "playing id not queued", ids: ["a", "b", "c"], opts: { current: "z" }, want: [["a", true], ["b", false], ["c", false]] },
+    { name: "lag: pointer on a, bar on c", ids: ["a", "b", "c"], opts: { current: "a", barOn: "c" }, want: [["a", true], ["b", true], ["c", true]] },
+    { name: "unplayable row", ids: ["a", "u", "c"], opts: { current: "c", unplayable: ["u"] }, want: [["a", false], ["u", true], ["c", true]] },
+  ];
+  for (const { name, ids, opts, want } of cases) {
+    const m = mountQueueLagging(ids, opts);
+    m.ctx.renderQueue();
+    assert.deepStrictEqual(playNextControls(m), want, name);
+  }
+});
+
+test("Play next's disabled state is the queue-order rule's answer, and no rules means disabled (CH-35, A2-01)", () => {
+  /* The row used to re-derive playNextOrder by hand; the two agreed for every
+     reachable state (the table above), and would have drifted the day the rule
+     changed — a button enabled whose tap moves nothing.
+     MUTATION (run, red): restore the hand-derived `id === cur || (curIdx >= 0 ?
+     ids[curIdx + 1] === id : idx === 0)` -> with a rule that never moves
+     anything, b and c are still enabled. MUTATION 2 (run, red): drop `!rules`
+     -> with no rules published, b and c are enabled though their tap
+     (`playNextInQueue`) does nothing. */
+  const frozen = mountQueueLagging(["a", "b", "c"], { current: "a" });
+  frozen.ctx.window.forayQueueOrder = { ...QUEUE_ORDER, playNextOrder: (ids) => ids };
+  frozen.ctx.renderQueue();
+  assert.deepStrictEqual(playNextControls(frozen), [["a", true], ["b", true], ["c", true]],
+    "a rule that moves nothing leaves nothing to press");
+
+  const none = mountQueueLagging(["a", "b", "c"], { current: "a" });
+  none.ctx.window.forayQueueOrder = undefined;
+  none.ctx.renderQueue();
+  assert.deepStrictEqual(playNextControls(none), [["a", true], ["b", true], ["c", true]],
+    "no queue-order rules (no player module): Play next would do nothing, so it is off");
+});
+
+test("the 'Played' / 'NN min left' chip is byte-identical on an episode row, the episode page and an Up Next row (CH-35, A2-07)", async () => {
+  /* Three copies of one template: a new progress state or attribute landing on
+     one of them would mark the same episode two ways.
+     MUTATION (run, red): add ` data-x="1"` to any one of the three templates
+     (or, after the change, edit the one helper's output on one caller) -> that
+     surface's chip differs from the others. */
+  const m = await mountBooted();
+  const [a, b] = readJson("data/discover.json").items.filter((it) => it.audio_url);
+  m.ctx.addToQueue(a.id);
+  m.ctx.addToQueue(b.id);
+  m.ctx.window.ForayPlayer = {
+    episodeProgress: (id) => (id === a.id
+      ? { state: "played", percent: 100, label: "Played" }
+      : { state: "in-progress", percent: 50, label: "20 min <left> & \"more\"" }),
+  };
+  const chip = (html, id) => {
+    const found = html.match(/<span class="ep-progress[^>]*>[^<]*<\/span>/g) || [];
+    assert.ok(found.length >= 1, `a chip is painted for ${id}`);
+    return found[0];
+  };
+  for (const it of [a, b]) {
+    const fromRow = chip(m.ctx.epRow(m.state.itemIndex[it.id], 0, "library-saved", -1), it.id);
+    m.ctx.renderEpisode(it.id);
+    const fromPage = chip(m.view(), it.id);
+    m.ctx.renderQueue();
+    const rows = m.view().split('<div class="ep-row up-next-row');
+    const fromQueue = chip(rows[it.id === a.id ? 1 : 2], it.id);
+    assert.strictEqual(fromPage, fromRow, `episode page and row agree for ${it.id}`);
+    assert.strictEqual(fromQueue, fromRow, `Up Next and row agree for ${it.id}`);
+  }
+  assert.strictEqual(m.ctx.epRow(m.state.itemIndex[a.id], 0, "library-saved", -1).match(/<span class="ep-progress[^>]*>[^<]*<\/span>/)[0],
+    '<span class="ep-progress is-played">Played</span>', "the played chip, exactly");
+  assert.strictEqual(m.ctx.epRow(m.state.itemIndex[b.id], 0, "library-saved", -1).match(/<span class="ep-progress[^>]*>[^<]*<\/span>/)[0],
+    '<span class="ep-progress">20 min &lt;left&gt; &amp; &quot;more&quot;</span>', "the in-progress chip, escaped, exactly");
+});
+
+test("Up Next's empty state is one sentence on #/queue and in Library (CH-35, A2-19, characterization)", () => {
+  /* MUTATION (run, red): reword either copy of the sentence -> the two
+     surfaces disagree. */
+  const SENTENCE = "Nothing in Up Next yet — add an episode from any row's \"+ Up Next\" button.";
+  const empty = () => {
+    const m = mount();
+    m.state.catalog = { shows: [] };
+    m.state.discover = { items: [] };
+    m.state.taxonomy = { nodes: [] };
+    m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+    return m;
+  };
+  const q = empty();
+  q.ctx.renderQueue();
+  assert.ok(q.view().includes(`<p class="note">${SENTENCE}</p>`), "#/queue empty");
+  const lib = empty();
+  lib.ctx.renderLibrary();
+  assert.ok(lib.view().includes(`<p class="note">${SENTENCE}</p>`), "Library's Up Next section empty");
+});
