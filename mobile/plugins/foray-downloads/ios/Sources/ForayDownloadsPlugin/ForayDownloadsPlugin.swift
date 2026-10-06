@@ -48,9 +48,10 @@ public class ForayDownloadsPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     /// The AppDelegate's `application(_:handleEventsForBackgroundURLSession:
-    /// completionHandler:)` forwards here once PQ-21's patch is in; returns
-    /// false for any other session's identifier. Until then nothing calls it,
-    /// and downloads still complete (see DownloadStore's header).
+    /// completionHandler:)` forwards here (the method PQ-21's
+    /// `tools/mobile/inject-background-audio.mjs` writes); returns false for
+    /// any other session's identifier. A shell without that method still
+    /// completes downloads (see DownloadStore's header).
     @objc public static func handleEventsForBackgroundURLSession(_ identifier: String,
                                                                  completionHandler: @escaping () -> Void) -> Bool {
         DownloadStore.shared.handleEventsForBackgroundURLSession(identifier: identifier,

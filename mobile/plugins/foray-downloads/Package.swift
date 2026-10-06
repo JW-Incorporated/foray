@@ -12,11 +12,11 @@ import PackageDescription
  * backups. The rules live in `DownloadPolicy.swift`, pure, so the test target
  * below checks them without a network.
  *
- * NOT YET COMPILED ANYWHERE. `mobile/package.json` does not declare this
- * plugin until PQ-21, so `ios-build.yml`'s `cap sync` does not fold it in, and
- * `ci.yml`'s `ios-kit` runs only the packages it names (foray-audio,
- * foray-tts). The test target runs once a `swift test (foray-downloads, iOS
- * Simulator)` step is added there, mirroring foray-tts's.
+ * WHERE IT IS COMPILED. `mobile/package.json` declares this plugin (PQ-21),
+ * so `ios-build.yml`'s `cap sync` folds it into the shell. The test target
+ * runs in `ci.yml`'s `ios-kit` job, in the `swift test (foray-downloads, iOS
+ * Simulator)` step beside foray-tts's (CH-06): the package links Capacitor,
+ * which ships iOS slices only, so a host `swift test` cannot build it.
  *
  * No third-party dependency: `CryptoKit` and `Foundation` are part of the OS,
  * and Capacitor is the same package every plugin here links.

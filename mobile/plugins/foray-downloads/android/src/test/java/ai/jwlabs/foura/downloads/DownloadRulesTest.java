@@ -13,8 +13,9 @@ import org.junit.Test;
  * PQ-22 (#29): {@link DownloadRules}, run. Plain JUnit — the rules class reads
  * no Android API but DownloadManager's compile-time {@code ERROR_*} ints — so it
  * needs no Robolectric and no device. Each test names the one-line mutation it
- * exists to catch. CI runs these once android-build.yml's unit-test step names
- * {@code :foray-downloads} (after PQ-21 declares the plugin).
+ * exists to catch. CI runs these: android-build.yml's native unit-test step
+ * names {@code :foray-downloads} (CH-06), and its report loop fails the step
+ * if this module ran no test case or skipped one.
  */
 public class DownloadRulesTest {
 

@@ -4,16 +4,17 @@
  * fetches an episode's audio into `Application Support/foray-downloads/`,
  * kept out of backups, with a JSON index beside the files.
  *
- * WHAT THIS CAN AND CANNOT PROVE, said plainly. No Swift toolchain runs here,
- * and until PQ-21 declares the plugin in mobile/package.json no CI job compiles
- * it either (`ios-build.yml` folds in only declared `file:` plugins; `ios-kit`
- * runs only the packages it names). The rules are in `DownloadPolicy.swift`,
- * pure, with XCTests in `DownloadPolicyTests.swift` that run once ios-kit gains
- * a foray-downloads step. So this suite pins the SOURCE facts the contract
- * rests on — the plugin name, method set and events the web half
- * (`player/download-bridge.js`) calls, the directory, the backup exclusion,
- * the cellular switch, the GET probe, the redirect cap, the 403 mapping — so
- * that deleting or weakening one of them fails CI today, uncompiled.
+ * WHAT THIS CAN AND CANNOT PROVE, said plainly. No Swift toolchain runs here.
+ * mobile/package.json declares the plugin (PQ-21), so `ios-build.yml`'s
+ * `cap sync` compiles it into the shell, and the rules — `DownloadPolicy.swift`,
+ * pure — are run by the XCTests in `DownloadPolicyTests.swift` in ci.yml's
+ * ios-kit job (CH-06; the last test below pins that step). That job is a
+ * macOS one and runs only when a Swift path changes. So this suite pins the
+ * SOURCE facts the contract rests on — the plugin name, method set and events
+ * the web half (`player/download-bridge.js`) calls, the directory, the backup
+ * exclusion, the cellular switch, the GET probe, the redirect cap, the 403
+ * mapping — so that deleting or weakening one of them fails on every run,
+ * with no toolchain.
  *
  * Every pattern is matched against CODE with comments stripped: the files
  * explain themselves at length, and a comment naming an API is not a call.
@@ -238,10 +239,12 @@ test("the package is a self-contained SwiftPM plugin with XCTests for each polic
 
 /* ─────────── PQ-22 (#29): the Android half — DownloadManager ───────────
  *
- * Same honesty as above, one platform over. No JDK runs in this suite, and
- * until PQ-21 declares the plugin in mobile/package.json `cap sync` never
- * includes `:foray-downloads`, so android-build.yml does not compile this Java
- * either. These pins hold the SOURCE facts: the name, the seven methods and
+ * Same honesty as above, one platform over. No JDK runs in this suite. Since
+ * PQ-21 declared the plugin, `cap sync` includes `:foray-downloads`, so
+ * android-build.yml compiles this Java and its native unit-test step runs
+ * `DownloadRulesTest` (CH-06; pinned by the last test below), but only on the
+ * pull requests its path filter selects. These pins hold the SOURCE facts
+ * on every run: the name, the seven methods and
  * three events against download-bridge.js, the Gradle/manifest/package
  * agreement, the destination (never internal storage handed to
  * DownloadManager; the finished file in the no-backup directory), the exported
@@ -421,4 +424,56 @@ test("PQ-21: the shell declares the plugin, and the lockfile npm ci reads agrees
   const own = JSON.parse(read(PLUGIN, "package.json"));
   assert.equal(own.name, "foray-downloads");
   assert.deepEqual(own.capacitor, { ios: { src: "ios" }, android: { src: "android" } });
+});
+
+/* ─────────── CH-06 (N1-04): CI RUNS the native rule tests ───────────
+ *
+ * The XCTests and JUnit tests pinned above by NAME prove only that the tests
+ * exist. What runs them is two workflow steps: ci.yml's ios-kit job (an
+ * `xcodebuild test` against an iOS Simulator, because the package links
+ * Capacitor, which ships iOS slices only) and android-build.yml's native
+ * unit-test step (Gradle's `:foray-downloads:testDebugUnitTest`, plus the
+ * report loop that fails a module that ran no test or skipped one). Delete
+ * either and `DownloadPolicy`'s redirect cap or the Java 403 mapping can be
+ * broken with CI green. YAML comment lines are stripped first: a comment
+ * naming a step is not a step. */
+
+const yamlCode = (src) => src.split("\n").filter((l) => !/^\s*#/.test(l)).join("\n");
+
+/** One top-level job of a workflow: from `  <name>:` to the next job key. */
+function workflowJob(src, name) {
+  const start = src.search(new RegExp(`^  ${name}:\\s*$`, "m"));
+  if (start < 0) return "";
+  const rest = src.slice(start + 1);
+  const next = rest.search(/^  [A-Za-z0-9_-]+:\s*$/m);
+  return next < 0 ? src.slice(start) : src.slice(start, start + 1 + next);
+}
+
+test("CI runs the native rule tests: ios-kit tests ForayDownloads on a Simulator, android-build runs and counts :foray-downloads", () => {
+  /* MUTATION: delete ci.yml's `swift test (foray-downloads, iOS Simulator)`
+     step -> DownloadPolicyTests.swift runs nowhere again. RUN.
+     MUTATION: `-scheme ForayDownload` -> xcodebuild finds no such scheme. RUN.
+     MUTATION: drop `:foray-downloads:testDebugUnitTest` from android-build.yml's
+     gradlew line -> DownloadRulesTest.java runs nowhere again. RUN.
+     MUTATION: drop foray-downloads from the JUnit report loop -> a lost
+     src/test directory reports NO-SOURCE and stays green. RUN. */
+  const ci = yamlCode(read(ROOT, ".github", "workflows", "ci.yml"));
+  const iosKit = workflowJob(ci, "ios-kit");
+  assert.ok(iosKit, "ci.yml keeps its ios-kit job");
+  const step = /- name: swift test \(foray-downloads, iOS Simulator\)\n([\s\S]*?)(?=\n      - |$)/.exec(iosKit)?.[1] ?? "";
+  assert.ok(step, "ios-kit has a `swift test (foray-downloads, iOS Simulator)` step");
+  assert.match(step, /working-directory: mobile\/plugins\/foray-downloads\n/);
+  const pkgName = /name: "([^"]+)"/.exec(code(read(PLUGIN, "Package.swift")))?.[1];
+  assert.equal(pkgName, "ForayDownloads");
+  assert.match(step, /xcodebuild test \\\n\s+-scheme ForayDownloads \\\n\s+-destination "platform=iOS Simulator,/,
+    "the step tests the package's own scheme on a Simulator");
+  assert.match(step, /Executed \[1-9\]/, "the step fails a run that executed no test");
+
+  const android = yamlCode(read(ROOT, ".github", "workflows", "android-build.yml"));
+  const gradle = /\.\/gradlew((?:[^\n]*\\\n)*[^\n]*)/.exec(
+    android.slice(android.indexOf(":foray-vault:testDebugUnitTest") - 200))?.[1] ?? "";
+  assert.match(gradle, /:foray-vault:testDebugUnitTest/, "the native unit-test gradlew line is found");
+  assert.match(gradle, /:foray-downloads:testDebugUnitTest/, "Gradle runs foray-downloads' JUnit tests");
+  const loop = /for m in ([^;\n]+); do\n\s+d="\.\.\/plugins\/\$m\/android\/build\/test-results\/testDebugUnitTest"/.exec(android)?.[1] ?? "";
+  assert.ok(loop.split(/\s+/).includes("foray-downloads"), `the report loop counts foray-downloads' test cases (loop: "${loop}")`);
 });
