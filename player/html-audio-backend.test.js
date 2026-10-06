@@ -477,7 +477,6 @@ test("loading a second item reuses the same element", async () => {
    against the real backend, with only the <audio> element faked. */
 
 import { PlayerQueueManager, __resetInstanceForTests } from "./queue-manager.js";
-import { PICKED_FIRST } from "./queue-strategy.js";
 import { INTERRUPTION_REWIND_SEC } from "./transport-policy.js";
 
 function wired(opts = {}) {
@@ -491,7 +490,6 @@ function wired(opts = {}) {
       save: (id, seconds) => saved.set(id, { seconds }),
       load: (id) => saved.get(id) ?? null,
     },
-    strategy: opts.strategy,
   });
   return { m, backend, el, saved };
 }
@@ -536,10 +534,11 @@ test("integration: end of a single-item queue stops cleanly, no autoplay chain",
 
 test("integration: a fast double-skip leaves exactly one source loaded", async () => {
   // The web form of corner case #19.
-  const { m, el } = wired({ strategy: PICKED_FIRST });
-  m.setQueueFromPick(item("a", "https://cdn.example/a.mp3"), {
-    others: [item("b", "https://cdn.example/b.mp3"), item("c", "https://cdn.example/c.mp3")],
-  });
+  const { m, el } = wired();
+  m.loadQueue([
+    item("a", "https://cdn.example/a.mp3"),
+    item("b", "https://cdn.example/b.mp3"), item("c", "https://cdn.example/c.mp3"),
+  ]);
   await m.play(0);
   await m.skipToNext();
   await m.skipToNext();

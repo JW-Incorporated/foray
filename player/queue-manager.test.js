@@ -11,7 +11,6 @@ import {
   FORAY_CLIP_LOAD_ATTEMPTS, FORAY_CLIP_MAX_SILENCE_SEC,
 } from "./queue-manager.js";
 import { LOAD_SETTLE_TIMEOUT_HIDDEN_MS } from "./deck-policy.js";
-import { SINGLE_ITEM, PICKED_FIRST, CONTINUE_TAIL } from "./queue-strategy.js";
 import { forayRuntimeSec } from "./foray-queue.js";
 import { INTERLUDE_CEILING_SEC } from "./interlude.js";
 import { INTERRUPTION_REWIND_SEC } from "./transport-policy.js";
@@ -127,7 +126,7 @@ function make(opts = {}) {
   const log = [];
   const scheduler = opts.scheduler ?? INSTANT_SCHEDULER;
   const m = new PlayerQueueManager({
-    backend, positionStore, telemetry: (t) => log.push(t), strategy: opts.strategy,
+    backend, positionStore, telemetry: (t) => log.push(t),
     scheduler, seamGapSec: opts.seamGapSec, onSeamGapChange: opts.onSeamGapChange,
     onNarrationTick: opts.onNarrationTick, onStateSettled: opts.onStateSettled,
     rate: opts.rate, tts: opts.tts, voice: opts.voice,
@@ -136,32 +135,27 @@ function make(opts = {}) {
   return { m, backend, saved, log, scheduler };
 }
 
-/* ---------- the blocking decision, made pluggable ---------- */
+/* ---------- queue construction ---------- */
 
-test("SINGLE_ITEM is the default and yields a one-episode queue", () => {
-  const { m } = make();
-  const q = m.setQueueFromPick(ep("a"), { others: [ep("b"), ep("c")] });
+/* CH-30 (docs/roadmap/code-health.md P1-09/P2-10): the one queue a pick builds,
+   and the telemetry row it reports. client.js passes `{ lastEpisodeItem }` as a
+   second argument for the native facade's sake; the JS manager must build the
+   pick and nothing else from it, and the diagnostic stage stays the word
+   `queue.built.single-item` the diagnostics stream has always carried.
+   MUTATION: emit `queue.built.pick.n=…` (renaming the token) -> red.
+   MUTATION: append the second argument's others (`[picked, ...(ctx?.others ?? [])]`) -> red. */
+test("setQueueFromPick builds the one-item queue and reports it as queue.built.single-item", () => {
+  const { m, log } = make();
+  const q = m.setQueueFromPick(ep("a"), { others: [ep("b")], lastEpisodeItem: ep("a") });
   assert.deepStrictEqual(q.map((i) => i.id), ["a"]);
-});
-
-test("PICKED_FIRST puts the pick ahead of the other cards, without duplicating it", () => {
-  const { m } = make({ strategy: PICKED_FIRST });
-  const q = m.setQueueFromPick(ep("a"), { others: [ep("b"), ep("a"), ep("c")] });
-  assert.deepStrictEqual(q.map((i) => i.id), ["a", "b", "c"]);
-});
-
-test("CONTINUE_TAIL appends the part-heard item", () => {
-  const { m } = make({ strategy: CONTINUE_TAIL });
-  const q = m.setQueueFromPick(ep("a"), { continueItem: ep("z") });
-  assert.deepStrictEqual(q.map((i) => i.id), ["a", "z"]);
-});
-
-test("a malformed strategy is rejected at construction, not at play time", () => {
-  __resetInstanceForTests();
-  assert.throws(
-    () => new PlayerQueueManager({ backend: new FakeBackend(), strategy: { name: "x" } }),
-    /queue strategy/
-  );
+  assert.equal(m.queue, q, "the returned list is the manager's queue");
+  assert.equal(m.currentIndex, -1, "nothing is current until play()");
+  m.setQueueFromPick(null);
+  assert.deepStrictEqual(m.queue, [], "no pick, no queue");
+  assert.deepStrictEqual(log.filter((t) => t.startsWith("queue.built")), [
+    "queue.built.single-item.n=1",
+    "queue.built.single-item.n=0",
+  ]);
 });
 
 /* ---------- single-instance invariant (corner case #19) ---------- */
@@ -209,8 +203,14 @@ test("the manager adds no macrotask between a settled load and play()", async ()
   assert.deepStrictEqual(playedWith, [true], "a macrotask between the load and play() strands every start");
 });
 
+/* The next two names predate CH-30, which deleted queue-strategy.js and its
+   SINGLE_ITEM / PICKED_FIRST builders. They are kept verbatim because the
+   manager-episode parity fixture names them in its covers[] (a renamed test
+   would move a recorded fixture). "SINGLE_ITEM" is now setQueueFromPick's
+   one-item queue; "PICKED_FIRST" is a multi-item queue set with loadQueue. */
 test("SINGLE_ITEM ends the session instead of chaining into another episode", async () => {
-  // CLAUDE.md product principle 1: no autoplay chains.
+  // The player's queue for a pick ends with the pick; continuing is the page's
+  // Up Next, a layer above (docs/DECISIONS.md 2026-09-14).
   const { m, backend } = make();
   m.setQueueFromPick(ep("a"), { others: [ep("b")] });
   await m.play(0);
@@ -221,8 +221,8 @@ test("SINGLE_ITEM ends the session instead of chaining into another episode", as
 });
 
 test("PICKED_FIRST advances to the next episode when one ends", async () => {
-  const { m, backend } = make({ strategy: PICKED_FIRST });
-  m.setQueueFromPick(ep("a"), { others: [ep("b")] });
+  const { m, backend } = make();
+  m.loadQueue([ep("a"), ep("b")]);
   await m.play(0);
   backend.calls.length = 0;
   await backend.onItemEnded();
@@ -232,8 +232,8 @@ test("PICKED_FIRST advances to the next episode when one ends", async () => {
 /* ---------- fast double-skip (corner case #19) ---------- */
 
 test("a fast double-skip loads only the final target", async () => {
-  const { m, backend } = make({ strategy: PICKED_FIRST });
-  m.setQueueFromPick(ep("a"), { others: [ep("b"), ep("c")] });
+  const { m, backend } = make();
+  m.loadQueue([ep("a"), ep("b"), ep("c")]);
   await m.play(0);
   backend.calls.length = 0;
 
@@ -251,8 +251,8 @@ test("a fast double-skip loads only the final target", async () => {
    superseded it (NE-14j's finding). The native engine takes each skip as one
    turn, and the manager-episode fixture that pins this is its contract. */
 test("a concurrent double-skip lands on the final target and starts it once", async () => {
-  const { m, backend } = make({ strategy: PICKED_FIRST });
-  m.setQueueFromPick(ep("a"), { others: [ep("b"), ep("c")] });
+  const { m, backend } = make();
+  m.loadQueue([ep("a"), ep("b"), ep("c")]);
   await m.play(0);
   backend.calls.length = 0;
 
@@ -268,8 +268,8 @@ test("a concurrent double-skip lands on the final target and starts it once", as
 /* ---------- bridge TTS (corner case #12) ---------- */
 
 test("an episode followed by a bridge enters transitioning and plays the bridge", async () => {
-  const { m, backend } = make({ strategy: PICKED_FIRST });
-  m.setQueueFromPick(ep("a"), { others: [tts("bridge"), ep("b")] });
+  const { m, backend } = make();
+  m.loadQueue([ep("a"), tts("bridge"), ep("b")]);
   await m.play(0);
   backend.calls.length = 0;
 
@@ -281,8 +281,8 @@ test("an episode followed by a bridge enters transitioning and plays the bridge"
 test("a missing bridge asset never stalls the queue", async () => {
   // Corner case #12's spirit: a missing transition line must not block
   // episode audio.
-  const { m, backend } = make({ strategy: PICKED_FIRST, backend: { failLoadFor: ["bridge"] } });
-  m.setQueueFromPick(ep("a"), { others: [tts("bridge"), ep("b")] });
+  const { m, backend } = make({ backend: { failLoadFor: ["bridge"] } });
+  m.loadQueue([ep("a"), tts("bridge"), ep("b")]);
   await m.play(0);
   backend.calls.length = 0;
 
@@ -296,8 +296,8 @@ test("a missing bridge asset never stalls the queue", async () => {
    Next (the car, the iPhone lock screen) now answers the same. This test used
    to pin the opposite ("skipToNext steps over a bridge"). */
 test("skipToNext lands on a bridge: Next is the next item, a line included (NE-39n)", async () => {
-  const { m, backend } = make({ strategy: PICKED_FIRST });
-  m.setQueueFromPick(ep("a"), { others: [tts("bridge"), ep("b")] });
+  const { m, backend } = make();
+  m.loadQueue([ep("a"), tts("bridge"), ep("b")]);
   await m.play(0);
   backend.calls.length = 0;
   await m.skipToNext();
@@ -306,8 +306,8 @@ test("skipToNext lands on a bridge: Next is the next item, a line included (NE-3
 });
 
 test("skipToNext from a bridge lands on the item after it (NE-39n)", async () => {
-  const { m, backend } = make({ strategy: PICKED_FIRST });
-  m.setQueueFromPick(ep("a"), { others: [tts("bridge"), ep("b")] });
+  const { m, backend } = make();
+  m.loadQueue([ep("a"), tts("bridge"), ep("b")]);
   await m.play(1);
   backend.calls.length = 0;
   await m.skipToNext();
@@ -444,9 +444,9 @@ test("cold launch prepares the asset AT the saved position, never seeking after 
 });
 
 test("a resumed episode reloads at its saved position; a fresh one starts at zero", async () => {
-  const { m, backend, saved } = make({ strategy: PICKED_FIRST });
+  const { m, backend, saved } = make();
   saved.set("b", { seconds: 900 });
-  m.setQueueFromPick(ep("a"), { others: [ep("b")] });
+  m.loadQueue([ep("a"), ep("b")]);
   await m.play(0);
   assert.ok(backend.calls.includes("load:a@0"), "unheard episode starts at zero");
   await m.skipToNext();
@@ -454,10 +454,10 @@ test("a resumed episode reloads at its saved position; a fresh one starts at zer
 });
 
 test("a TTS bridge always starts at zero, never resumes", async () => {
-  const { m, backend } = make({ strategy: PICKED_FIRST });
+  const { m, backend } = make();
   // A stale position on a one-line transition would be nonsense.
   m.positionStore.save("bridge", 5);
-  m.setQueueFromPick(ep("a"), { others: [tts("bridge"), ep("b")] });
+  m.loadQueue([ep("a"), tts("bridge"), ep("b")]);
   await m.play(0);
   backend.calls.length = 0;
   await backend.onItemEnded();
@@ -476,8 +476,8 @@ test("cold launch without autoplay restores position without making noise", asyn
 test("every effect the reducer can emit has a handler", async () => {
   // A silently-ignored effect is a stuck player, which is far harder to
   // diagnose later than a loud throw now.
-  const { m, backend } = make({ strategy: PICKED_FIRST });
-  m.setQueueFromPick(ep("a"), { others: [tts("bridge"), ep("b")] });
+  const { m, backend } = make();
+  m.loadQueue([ep("a"), tts("bridge"), ep("b")]);
   await assert.doesNotReject(async () => {
     await m.play(0);
     await m.seek(30, { precise: true });
@@ -605,9 +605,9 @@ test("ROUND 2 review: a play settling mid-skip-back does not wipe the skip's arm
 test("a skip saves the OUTGOING episode's position, never the incoming one's", async () => {
   // The bug this whole index split exists to prevent — and the one
   // PlayerQueueManager.swift still has.
-  const { m, backend, saved } = make({ strategy: PICKED_FIRST });
+  const { m, backend, saved } = make();
   saved.set("b", { seconds: 900 });
-  m.setQueueFromPick(ep("a"), { others: [ep("b")] });
+  m.loadQueue([ep("a"), ep("b")]);
   await m.play(0);
   backend.currentTime = 77;
 
@@ -617,8 +617,8 @@ test("a skip saves the OUTGOING episode's position, never the incoming one's", a
 });
 
 test("a fast double-skip advances two items, not one", async () => {
-  const { m, backend } = make({ strategy: PICKED_FIRST });
-  m.setQueueFromPick(ep("a"), { others: [ep("b"), ep("c")] });
+  const { m, backend } = make();
+  m.loadQueue([ep("a"), ep("b"), ep("c")]);
   await m.play(0);
   backend.calls.length = 0;
 
@@ -1788,8 +1788,8 @@ test("a bridged seam gets no beat — the narration is the marker", async () => 
 
 test("no beat between two ordinary episodes — a full episode ending is not an edit we made", async () => {
   const scheduler = manualScheduler();
-  const { m, backend } = make({ scheduler, strategy: PICKED_FIRST });
-  m.setQueueFromPick(ep("a"), { others: [ep("b")] });
+  const { m, backend } = make({ scheduler });
+  m.loadQueue([ep("a"), ep("b")]);
   await m.play(0);
   await backend.onItemEnded();
   assert.equal(m.inSeamGap, false);
@@ -3570,8 +3570,8 @@ function heldSpeakTts() {
 }
 
 async function intoHeldBridgeLoad() {
-  const { m, backend } = make({ strategy: PICKED_FIRST, backendClass: HeldLoadBackend, backend: { holdFor: ["bridge"] } });
-  m.setQueueFromPick(ep("a"), { others: [tts("bridge"), ep("b")] });
+  const { m, backend } = make({ backendClass: HeldLoadBackend, backend: { holdFor: ["bridge"] } });
+  m.loadQueue([ep("a"), tts("bridge"), ep("b")]);
   await m.play(0);
   backend.calls.length = 0;
   const ending = backend.onItemEnded();

@@ -781,18 +781,6 @@
     }
   },
   "queue-manager": {
-    "CONTINUE_TAIL appends the part-heard item": {
-      "reason": "js-module-shape",
-      "why": "queue-strategy.js builds the queue in the page; the engine is handed a built queue and the page's continuation hops (plan §3 A-1: the page owns decisions; §5.5), so there is no strategy for it to reimplement."
-    },
-    "PICKED_FIRST puts the pick ahead of the other cards, without duplicating it": {
-      "reason": "js-module-shape",
-      "why": "queue-strategy.js builds the queue in the page; the engine is handed a built queue and the page's continuation hops (plan §3 A-1: the page owns decisions; §5.5), so there is no strategy for it to reimplement."
-    },
-    "SINGLE_ITEM is the default and yields a one-episode queue": {
-      "reason": "js-module-shape",
-      "why": "queue-strategy.js builds the queue in the page; the engine is handed a built queue and the page's continuation hops (plan §3 A-1: the page owns decisions; §5.5), so there is no strategy for it to reimplement."
-    },
     "a backend with no out-point watch refuses the Foray instead of playing whole episodes": {
       "reason": "js-module-shape",
       "why": "A backend without an out-point watch (setOutPoint undefined), and the manager's refusal to hand it a bounded item. The native engine has one deck type and it always carries the three-layer out-point (outpoint and deck families), so there is no blind backend to refuse."
@@ -801,9 +789,9 @@
       "reason": "js-module-shape",
       "why": "A backend without an out-point watch (setOutPoint undefined), and the manager's refusal to hand it a bounded item. The native engine has one deck type and it always carries the three-layer out-point (outpoint and deck families), so there is no blind backend to refuse."
     },
-    "a malformed strategy is rejected at construction, not at play time": {
+    "setQueueFromPick builds the one-item queue and reports it as queue.built.single-item": {
       "reason": "js-module-shape",
-      "why": "queue-strategy.js builds the queue in the page; the engine is handed a built queue and the page's continuation hops (plan §3 A-1: the page owns decisions; §5.5), so there is no strategy for it to reimplement."
+      "why": "Pins the JS manager's own construction call and its diagnostic row: the native lane is handed the picked item in one playEpisode command (plan §3 A-1: the page owns decisions; §5.5), so there is no JS construction call or telemetry row for it to reimplement; the one-item episode session itself is fixtured in manager-episode."
     },
     "a second manager cannot be constructed while one is alive": {
       "reason": "js-module-shape",
