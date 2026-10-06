@@ -144,7 +144,7 @@ test("the three plugin events are subscribed via addListener and forwarded as on
   assert.doesNotThrow(() => noisy.listeners.get("ForayDownloads:downloadDone")({ id: "x" }));
 });
 
-// Mutation: drop the `nativeCallback` fallback branch from `listen`.
+// Mutation: drop the `nativeCallback` fallback branch from native-engine.js's `listenTo` (the helper this file imports, CH-12).
 test("without addListener, events arrive through nativeCallback(plugin, \"addListener\", {eventName}, fn)", () => {
   const { bridge, listeners } = fakeBridge({ withAddListener: false });
   const seen = [];
