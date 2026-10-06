@@ -40,19 +40,14 @@ Recommendation: Build Tactile and Ambient. They are the top two (15/15 and 12/15
 
 (Agent/workflow and what it is doing. Clear an entry when it lands.)
 
-- **Hard-limit gates** (agent, branch `redesign/p0-gates`, launched 2026-10-05 ~22:50 PDT):
-  `tools/ui-lab` gates for console errors, CSP violations, 44px tap targets,
-  reduced motion, horizontal overflow, sheet focus; run on today's app (this is
-  also the real-browser smoke of the 0d split). If it died: check the branch on
-  origin, relaunch only what is missing.
-- **Fidelity pairing + Phase 4 build-loop runbook** (agent, branch
-  `redesign/p0-fidelity`, launched 2026-10-05 ~22:50 PDT): prototype-vs-app
-  screen pairing in `tools/ui-lab`, `docs/redesign-2026/build-loop.md`.
-- **Checkpoint artifact check** (read-only agent): confirms the six artifacts
-  render (bundled artwork, no blocked hosts). Republish only if it finds breakage.
+- **Lab dry run** — `lab-build.yml` run 37423123667 (dispatched 2026-10-05 23:19 PDT,
+  `--ref main -f ref=feature/redesign-2026 -f platforms=both`): today's design as
+  "4a Lab" to TestFlight `Founders` and Play internal. Check its result; if Play
+  refuses the first upload of a new app, file one HUMAN-ACTIONS item with the AAB
+  link and the console clicks.
 
-Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40–22:40 PDT, 128 agents,
-0 errors) ran 0a–0e, 1, 2, Rank and the checkpoint package.
+Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40-22:40 PDT, 128 agents,
+0 errors) ran 0a-0e, 1, 2, Rank and the checkpoint package.
 
 ## Next actions (orchestrator)
 
@@ -78,10 +73,7 @@ Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40–22:40 PDT, 128 agen
 
 (Item, reason, what would unblock it.)
 
-- **Lab dry run.** `lab-build.yml` is not on main: PR #1087 (dispatch-only
-  workflow) carries `needs-founder` and waits for the owner's `founder-approved`
-  label (HA #144). `workflow_dispatch` needs the file on the default branch.
-  Unblocks when #1087 merges.
+- Nothing blocked. (Lab dry run unblocked 2026-10-05 21:17 PDT: PR #1087 merged, 749a986b.)
 
 ## Fable invocations
 
@@ -103,3 +95,7 @@ Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40–22:40 PDT, 128 agen
 - 2026-10-05/06 — Trunk verified green on Linux + macOS CI (run 37411460946): the Windows failures are CRLF-only.
 - 2026-10-05/06 — Judge skeptic review merged (redesign/p0-judge-skeptic adf5fb17): r1 pairs were answerable without taste; hard set 36/36 with both orders, 0/24 position-following; rubric + protocol fixed. Top-2 recommendation stands under the new protocol (3-0 sweeps across both orders); middle ranks are leans.
 - 2026-10-05/06 — Visual baselines merged (redesign/p0-baselines 51ebe347): `tools/ui-lab/baseline.mjs` record/compare/list, pixelThreshold 0, 138-shot double render 0 diffs, 16 tests, CI green (run 37414072294).
+- 2026-10-05/06 — Checkpoint artifacts verified (all six render: bundled artwork, no blocked hosts, routes navigate).
+- 2026-10-05/06 — Hard-limit gates merged (redesign/p0-gates 018db2c1): `tools/ui-lab/gates.mjs`, 8 gates; hit-tested tap targets, viewport-geometry overflow. Today's debt 119 (110 tap targets, 8 contrast, 1 overflow: stress/episode-token at 375px) in `gates-known-debt.json`. Real-browser smoke of the 0d split: 0 console/page errors, 0 CSP violations across 46 screens.
+- 2026-10-05/06 — Fidelity tool + build-loop runbook merged (redesign/p0-fidelity 9e97cf08): `tools/ui-lab/fidelity.mjs`, `screens.json` per direction, `docs/redesign-2026/build-loop.md`. ui-lab suites 55/55, suite-integrity 477/477.
+- 2026-10-05/06 — Phases 3-5 workflow staged: `docs/redesign-2026/workflows/build-directions.workflow.js` (c24d5e69), stub dry run clean.
