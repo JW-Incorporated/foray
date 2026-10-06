@@ -23,6 +23,7 @@ import {
   episodePercentDone, episodeRemainingLabel, episodeProgress,
 } from "./episode-progress.js";
 import { PositionStore, NEAR_END_SEC, MIN_RESUME_SEC } from "./position-store.js";
+import { MAX_AGE_H as FORAY_MAX_AGE_H } from "./foray-progress.js";
 
 /** A Storage-shaped fake that can also be made to fail, because a refused write
     is a path this module has an opinion about. */
@@ -141,6 +142,22 @@ test("a record older than the age limit is not offered", () => {
   assert.equal(lastEpisodeState(old, { positionSec: 60, now }).state, "none");
   const justInside = makeLastEpisode(EPISODE, { now: now - (MAX_AGE_H - 1) * 3.6e6 });
   assert.equal(lastEpisodeState(justInside, { positionSec: 60, now }).state, "resume");
+});
+
+test("the age limit is foray-progress's: a Foray and an episode leave Jump back in on the same day (CH-24, P2-17)", () => {
+  /* One rail holds both kinds of thing, so they must age out together. This
+     module used to restate foray-progress's thirty days by value, so tuning the
+     Foray window (say to 14 days) would have dropped Forays from "Jump back in"
+     a fortnight before episodes. Now the number is imported, and this pins both
+     the export and the behaviour at the Foray module's own boundary.
+     MUTATION: give episode-progress its own `export const MAX_AGE_H = 24 * 31;`
+     (or, before CH-24, set foray-progress's to `24 * 14`) and this goes red. */
+  assert.equal(MAX_AGE_H, FORAY_MAX_AGE_H);
+  const now = Date.parse("2026-09-18T10:00:00Z");
+  const past = makeLastEpisode(EPISODE, { now: now - (FORAY_MAX_AGE_H + 1) * 3.6e6 });
+  assert.equal(lastEpisodeState(past, { positionSec: 60, now }).state, "none");
+  const inside = makeLastEpisode(EPISODE, { now: now - (FORAY_MAX_AGE_H - 1) * 3.6e6 });
+  assert.equal(lastEpisodeState(inside, { positionSec: 60, now }).state, "resume");
 });
 
 test("a day old is comfortably inside the limit — the founder's own case", () => {

@@ -126,7 +126,7 @@ const FLOORS = {
   "player/download-store.test.js": 18, // PQ-16 (#29) // integration review (2026-10-04): the iPhone path is percent-encoded into its file:// URL (Application Support has a space; URL(string:) is nil for it on iOS 15/16), a late progress tick never un-finishes a done row, and reportFromEvent maps the bridge events onto record statuses; 13 -> 16 // CH-02: writeDownloads(null) removes and a refusing store is false (characterization), removeRow is the moved downloadsWithout; 16 -> 18
   "player/download-bridge.test.js": 12, // PQ-17 (#29) // integration review: a resolved answer without ok reads as ok: true; 9 -> 10 // integration review (2026-10-04): an answered call clears its deadline, and userAgentFor(build) replaces the never-set window.__forayBuild; 10 -> 12
   "player/download-play.test.js": 4, // PQ-19 (#29)
-  "player/episode-progress.test.js": 23, // 2026-09-22 audit theme L: `episodeProgress`, the one reading of a stored position (played / in-progress / sampled / unplayed) that Jump back in and the episode rows share, on position-store's own thresholds; 19 -> 23
+  "player/episode-progress.test.js": 24, // CH-24 (P2-17, docs/roadmap/code-health.md): the age limit is foray-progress's, so a Foray and an episode leave Jump back in on the same day (characterization); 23 -> 24 // 2026-09-22 audit theme L: `episodeProgress`, the one reading of a stored position (played / in-progress / sampled / unplayed) that Jump back in and the episode rows share, on position-store's own thresholds; 19 -> 23
   /* 2026-09-22 (audit L2, founder report 3): which build wrote a diagnostics
      record — the web deploy id on both hosts and the native build number in the
      shell, each from where only it is known. New suite. */
@@ -478,7 +478,7 @@ const FLOORS = {
      countLabel/playlistLengthLabel, joinMeta, fmtDate) and the surfaces that
      used to do each by hand — "1h 0m", "1 parts", "Show ·  · date", "Invalid
      Date". ZERO SLACK: every cell is the only one pinning its surface. */
-  "test/format-helpers.test.js": 18, // audit round 2 (L6): copy-2/15, honesty-1, copy-13, p-first-10, copy-10 — one duration dialect across four files, the year only when not this one, an episode's length is its seconds (and the pool is gated), no zero counts, plural agreement; 11 -> 18 // 2026-09-22: new
+  "test/format-helpers.test.js": 19, // CH-24 (P1-14/P2-07/X1-02): characterization -- fmtDur(m) is fmtSpan(m*60), fmtMinutes(m) is fmtDur(m), and the sec and zero rungs differ on purpose; 18 -> 19 // audit round 2 (L6): copy-2/15, honesty-1, copy-13, p-first-10, copy-10 — one duration dialect across four files, the year only when not this one, an episode's length is its seconds (and the pool is gated), no zero counts, plural agreement; 11 -> 18 // 2026-09-22: new
   /* Audit 2026-09-22, theme D: a control's text and its accessible name move
      together — the Save/Follow toggles, the play buttons and their player-side
      repaint, the Foray main button's four states, the running order's
