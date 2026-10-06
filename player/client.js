@@ -94,7 +94,6 @@ import {
   makeLastEpisode, writeLastEpisode, readLastEpisode, lastEpisodeState,
   episodeProgress,
 } from "./episode-progress.js";
-import { SINGLE_ITEM } from "./queue-strategy.js";
 import { seekPrecision, formatTimestamp, EXACT, OWN } from "./seek-policy.js";
 import { itemRuntimeSec } from "./foray-queue.js";
 import { TTS } from "./queue-state.js";
@@ -3146,7 +3145,7 @@ const forayMediaSurface = {
 /**
  * The page's answer to "what comes before and after this episode", or null.
  *
- * The player's queue is one item (`SINGLE_ITEM`) and knows nothing about Up
+ * The player's queue is one item (`setQueueFromPick`) and knows nothing about Up
  * Next — that list is app.js's. So the NEIGHBOURS are the page's to say, through
  * `ForayPlayer.setEpisodeNavigation({ next, previous })`. The old comment here
  * cited product principle 1 as "no autoplay chains"; the founder reversed that
@@ -4238,7 +4237,6 @@ function ensureJsBooted() {
   manager = new PlayerQueueManager({
     backend,
     positionStore: positions,
-    strategy: SINGLE_ITEM,
     interlude,
     interludeEnabled: readInterludePref(storage),
     /* The stored speed, as STATE. It reaches the element through the `setRate`
@@ -4425,7 +4423,7 @@ const ForayPlayer = {
     return Boolean(item && item.audio_url);
   },
 
-  /** Play one episode. SINGLE_ITEM strategy: the PLAYER's queue is this one
+  /** Play one episode. `setQueueFromPick`: the PLAYER's queue is this one
       episode. What plays after it is the page's Up Next, not this queue —
       continuous playback is wanted (CLAUDE.md principle 1, founder ruling
       2026-09-14), and app.js drives it through `onEpisodeEnded` and

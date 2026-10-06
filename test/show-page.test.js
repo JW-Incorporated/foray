@@ -111,7 +111,7 @@ function makeViewEl() {
   return el;
 }
 
-function mount({ seed = {}, boot = false } = {}) {
+function mount({ seed = {}, boot = false, src = APP_SRC } = {}) {
   const store = new Map(Object.entries(seed).map(([k, v]) => [k, String(v)]));
   const byId = new Map(PAGE_IDS.map((id) => {
     const el = id === "view" ? makeViewEl() : makeEl("div");
@@ -178,9 +178,9 @@ function mount({ seed = {}, boot = false } = {}) {
   ctx.globalThis = ctx;
   vm.createContext(ctx);
   vm.runInContext(SEARCH_SRC, ctx, { filename: "search-engine.js" });
-  vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
+  vm.runInContext(src, ctx, { filename: "app.js" });
 
-  const evalIn = (src) => vm.runInContext(src, ctx);
+  const evalIn = (code) => vm.runInContext(code, ctx);
   return {
     ctx, evalIn, store, body,
     state: evalIn("state"),
@@ -1590,4 +1590,154 @@ test("the forays footer never interleaves with the episode list above it", async
   const foraysSection = html.indexOf('class="show-forays"');
   assert.ok(episodeContainer >= 0, "the episode container must be in the template");
   assert.ok(foraysSection > episodeContainer, "the forays footer must come after the episode list, never interleaved");
+});
+
+/* ==================================================================== */
+/* CH-29 (code-health A1-06, A1-12): ONE TITLE JOIN, ONE PLURAL          */
+/* ==================================================================== */
+
+/** app.js with one more TITLE_ALIASES entry, spliced into the real table. */
+function withSecondAlias(long, short) {
+  const src = APP_SRC.replace(/^const TITLE_ALIASES = \{\r?\n/m, (head) => `${head}  ${JSON.stringify(long)}: ${JSON.stringify(short)},\n`);
+  assert.notStrictEqual(src, APP_SRC, "fixture: app.js's TITLE_ALIASES table was found and extended");
+  return src;
+}
+
+test("CH-29 (A1-06): a second TITLE_ALIASES entry reaches all five title joins — Family Mode, episodes, artwork, show-name links and Forays", () => {
+  /* The title -> catalogue-show join was written five times (catalogShowForItem,
+     episodesForShow, showArtworkUrl, showIdForShowName, foraysUsingShow), each
+     reading TITLE_ALIASES its own way. Today's one alias (Lingthusiasm) is
+     covered above; this injects a SECOND alias into a copy of app.js and asks
+     every join about it, so a site that answers from its own exact-title copy
+     instead of the shared index goes red the day a second alias is added.
+     MUTATIONS (each run, each red):
+       1. the index build: delete its TITLE_ALIASES loop -> catalogShowForItem,
+          familySafe and showIdForShowName fail.
+       2. episodesForShow: `new Set([show.title])` -> "lists both episodes" fails.
+       3. showArtworkUrl: look up `show.title` only -> the artwork assertions fail.
+       4. showIdForShowName: `shows.find((s) => s.title === name)?.show_id` -> the
+          show-name link and showIdForShowName assertions fail.
+       5. foraysUsingShow: `names = [show.title]` -> the Forays footer fails.
+       6. the index build: build once and never again (drop the
+          `catalogShowIndex.shows !== shows` rebuild) -> the replaced-catalogue
+          assertion answers from the old catalogue and fails. */
+  const LONG = "Second Alias Show - A subtitle the feed drops";
+  const SHORT = "Second Alias Show";
+  const m = mount({ src: withSecondAlias(LONG, SHORT), seed: { cp_family: "true" } });
+  seedForaysFixture(m);
+  const show = { show_id: "second-alias", title: LONG, artwork_url: null, explicit: false, taxonomy_node_ids: [], editorial_note: null };
+  m.state.catalog = {
+    shows: [show, { show_id: "other-show", title: "Other Show", artwork_url: null, explicit: false, taxonomy_node_ids: [], editorial_note: null }],
+  };
+  const items = [
+    { id: "sa-1", show: SHORT, title: "Second Alias One", audio_url: "https://x.test/1.mp3", artwork_url: "https://cdn.test/second-alias.jpg", release_date: "2026-01-02", topics: [] },
+    { id: "sa-2", show: SHORT, title: "Second Alias Two", audio_url: "https://x.test/2.mp3", release_date: "2026-01-01", topics: [] },
+    { id: "o-1", show: "Other Show", title: "Other One", audio_url: "https://x.test/3.mp3", artwork_url: "https://cdn.test/other.jpg", release_date: "2026-01-03", topics: [] },
+  ];
+  m.state.discover = { items };
+  m.state.segmentSources = { sources: [{ id: "ep-a", show: SHORT }, { id: "ep-b", show: "Other Show" }] };
+  m.ctx.location = { ...m.ctx.location, search: "" };
+
+  // 1. catalogShowForItem — Family Mode's join: an unrated episode under the
+  //    short name inherits its show's clean rating.
+  assert.strictEqual(m.ctx.catalogShowForItem({ show: SHORT })?.show_id, "second-alias", "catalogShowForItem joins the alias");
+  assert.strictEqual(m.ctx.familySafe(items[0]), true, "Family Mode reads the aliased show's rating");
+  // 2. episodesForShow
+  assert.deepStrictEqual(m.ctx.episodesForShow(show).map((e) => e.id), ["sa-1", "sa-2"], "episodesForShow lists both episodes, newest first, and nothing else");
+  // 3. showArtworkUrl
+  assert.strictEqual(m.ctx.showArtworkUrl(show), "https://cdn.test/second-alias.jpg", "showArtworkUrl finds the art under the alias");
+  // 4. showIdForShowName, and the link every row draws through it
+  assert.strictEqual(m.ctx.showIdForShowName(SHORT), "second-alias", "showIdForShowName joins the alias");
+  assert.ok(m.ctx.showNameLink(SHORT).includes('href="#/show/second-alias"'), "the row's show name links to the aliased show");
+  // 5. foraysUsingShow, through the page itself (which also draws 3's artwork)
+  m.ctx.renderShow("second-alias");
+  const html = m.view();
+  assert.ok(html.includes('href="#/foray/published-foray"'), "the Forays footer finds the Foray that credits the alias");
+  assert.ok(html.includes('class="show-art" src="https://cdn.test/second-alias.jpg"'), "the page draws the aliased artwork");
+
+  // 6. The index follows the catalogue it was built from.
+  m.state.catalog = { shows: [] };
+  assert.strictEqual(m.ctx.showIdForShowName(SHORT), null, "a replaced catalogue is re-indexed, never answered from the old one");
+  assert.strictEqual(m.ctx.catalogShowForItem({ show: SHORT }), null);
+});
+
+test("CH-29 (A1-06): a title two catalogue shows share joins to the FIRST of them, the same answer from every join", () => {
+  /* No shipped catalogue has a duplicate title (checked 2026-10-06: 229 shows,
+     229 titles), but the copies disagreed about one: showIdForShowName used
+     `.find()` (first wins) while catalogShowForItem's index overwrote (last
+     wins), so Family Mode could read one show's rating for a row whose link
+     opened the other. The one index keeps `.find()`'s answer.
+     MUTATION (run, red): drop the `!byTitle.has(s.title)` guard from the index
+     build -> catalogShowForItem answers "twin-b". */
+  const m = mount();
+  m.state.catalog = { shows: [{ show_id: "twin-a", title: "Twin Title" }, { show_id: "twin-b", title: "Twin Title" }] };
+  assert.strictEqual(m.ctx.catalogShowForItem({ show: "Twin Title" })?.show_id, "twin-a");
+  assert.strictEqual(m.ctx.showIdForShowName("Twin Title"), "twin-a");
+});
+
+/* Every combination of the inputs showEpisodeCountLabel reads, as one row per
+   combination with its output. */
+function countLabelGrid(label) {
+  const rows = [];
+  for (const loadState of ["loading", "loaded", "failed", "empty"])
+    for (const loadedCount of [0, 1, 2])
+      for (const familyHidden of [0, 1, 3])
+        for (const fullyLoaded of [true, false])
+          for (const curatedCount of [0, 1, 33])
+            for (const stale of [false, true]) {
+              const out = label({ loadedCount, familyHidden, fullyLoaded, curatedCount, stale, loadState });
+              rows.push(JSON.stringify([loadState, loadedCount, familyHidden, fullyLoaded, curatedCount, stale, out]));
+            }
+  return rows;
+}
+
+test("CH-29 (A1-12): showEpisodeCountLabel's outputs are unchanged across its whole input grid", () => {
+  /* Characterization: the signature lost two parameters it never read
+     (isBreadthTier, loadError) and its plurals moved onto countLabel; not one
+     output may move. The hash is of the 432-row grid above, captured from
+     app.js at 1b6624c6 (before CH-29); the named rows say what it means.
+     MUTATION (run, red): make the stale note read "couldn't refresh" without
+     "just now" -> the hash and the named stale row both fail. */
+  const m = mount();
+  const label = (args) => m.ctx.showEpisodeCountLabel(args);
+  const grid = countLabelGrid(label);
+  assert.strictEqual(grid.length, 432);
+  const hash = require("node:crypto").createHash("sha256").update(grid.join("\n")).digest("hex");
+  assert.strictEqual(hash, "fe1fc40f9945b146215d20289616bb277353da250c7ef8ac78ad25315761fb79", "the label grid moved");
+  const loaded = { loadState: "loaded", fullyLoaded: true, familyHidden: 0, stale: false };
+  assert.strictEqual(label({ ...loaded, loadedCount: 1, curatedCount: 0 }), "1 episode");
+  assert.strictEqual(label({ ...loaded, loadedCount: 2, curatedCount: 0 }), "2 episodes");
+  assert.strictEqual(label({ ...loaded, loadedCount: 0, curatedCount: 1 }), "1 episode in 4a's catalogue");
+  assert.strictEqual(label({ ...loaded, loadedCount: 0, curatedCount: 33 }), "33 episodes in 4a's catalogue");
+  assert.strictEqual(label({ ...loaded, loadedCount: 2, familyHidden: 1, stale: true, curatedCount: 0 }),
+    "2 episodes (1 hidden by Family mode) (showing the last saved list — couldn't refresh just now)");
+  assert.strictEqual(label({ ...loaded, fullyLoaded: false, loadedCount: 2, stale: true, curatedCount: 0 }),
+    "Showing the last saved list — couldn't refresh just now.");
+  assert.strictEqual(label({ ...loaded, loadState: "loading", loadedCount: 2, curatedCount: 33 }), "");
+});
+
+test("CH-29 (A1-12): the show page's plurals are countLabel's, not hand-rolled beside it", () => {
+  /* countLabel is the one plural (test/format-helpers.test.js holds its rule).
+     The count label and the failed-search note each wrote `n === 1 ? "" : "s"`
+     by hand, so the next plural copy change would land in countLabel and miss
+     them. Proved two ways: the label carries a stubbed countLabel's mark, and
+     renderShow's source holds no hand-rolled plural.
+     MUTATION (run, red): restore `${loadedCount} episode${loadedCount === 1 ? "" : "s"}`
+     in showEpisodeCountLabel -> the stub's mark is missing ("1 episode").
+     MUTATION 2 (run, red): restore the failed note's
+     `${matchCount} match${matchCount === 1 ? "" : "es"}` -> the source scan fails. */
+  const m = mount();
+  m.evalIn("countLabel = (n, one, many) => `<${n}|${one}|${many || ''}>`;");
+  const label = (args) => m.ctx.showEpisodeCountLabel({ familyHidden: 0, stale: false, loadState: "loaded", ...args });
+  assert.strictEqual(label({ loadedCount: 1, fullyLoaded: true, curatedCount: 0 }), "<1|episode|>");
+  assert.strictEqual(label({ loadedCount: 0, fullyLoaded: true, curatedCount: 1 }), "<1|episode|> in 4a's catalogue");
+
+  const body = (name) => {
+    const at = APP_SRC.indexOf(`\nfunction ${name}(`);
+    assert.ok(at >= 0, `app.js declares ${name}`);
+    return APP_SRC.slice(at, APP_SRC.indexOf("\n}\n", at));
+  };
+  for (const name of ["showEpisodeCountLabel", "renderShow"]) {
+    assert.ok(!/===\s*1\s*\?\s*""\s*:\s*"(s|es)"/.test(body(name)), `${name} hand-rolls a plural countLabel owns`);
+  }
 });

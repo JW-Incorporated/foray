@@ -12,7 +12,7 @@ Written 2026-10-05 against `origin/main` @ `cd410d29`. Every path, function, lin
 3. **A Fable scoper** grouped the 116 into cards — one agent, one PR each — ordered into waves so that no two cards in a wave touch the same file except the two permitted `app.js` / `player/client.js` slots per wave, which must edit named, disjoint functions. Every card opens with characterization tests that pin today's behaviour before anything moves, then adds tests whose named mutation goes red. Native (Swift/Java) touches are comment-only or mirrored with a parity fixture re-record, and compile only in CI. Four issues were deferred as founder/product rulings rather than engineering (§5).
 4. **A Fable critic** read the scoping against the code and returned 22 amendments (a wave-order violation, a file collision, a cache-name bump that would orphan a bucket on every device, a missing Java reducer mirror, an oversized card, a disguised behaviour change, a hook placed where a missing file would be stamped as played, and fifteen smaller corrections). **All 22 were checked against `cd410d29` and accepted; none were rejected.** They are listed in §0.3 so a reader can see what moved and why.
 
-**Result: 43 cards in 8 waves** (the scoper's 41, plus CH-09 split into CH-09a/CH-09b and CH-11 split into CH-11/CH-11b), 17 opus and 26 qwen, and 4 deferred rulings.
+**Result: 43 cards in 8 waves** (the scoper's 41, plus CH-09 split into CH-09a/CH-09b and CH-11 split into CH-11/CH-11b), 17 opus and 26 qwen, and 4 deferred rulings. **Update 2026-10-06: CH-11b is DROPPED** by founder ruling [#1120](https://github.com/JW-Incorporated/foray/issues/1120) (jingles keep the listener speed), leaving **42 live cards, 16 opus and 26 qwen**.
 
 ### 0.1 What this package deletes
 
@@ -61,7 +61,7 @@ Written 2026-10-05 against `origin/main` @ `cd410d29`. Every path, function, lin
 
 **Dependencies.**
 - None on the native-engine deck, the store launch or any credential. Nothing here spends.
-- **Governed / human-merge paths touched** (from `tools/ci/path-policy.mjs`): `.github/workflows/*` and `.github/actions/*` (CH-06, CH-20), `tools/ci/generate-manifest.mjs` (CH-07), `index.html` (CH-07, CH-30), `api/` (CH-17), and native sources under `mobile/plugins/*` (CH-06, CH-11b, CH-19: comment-only Swift/Java/Gradle edits, or the reducer mirror with its parity fixture). These PRs open with a TL;DR that says "human merge — governed path: <which>".
+- **Governed / human-merge paths touched** (from `tools/ci/path-policy.mjs`): `.github/workflows/*` and `.github/actions/*` (CH-06, CH-20), `tools/ci/generate-manifest.mjs` (CH-07), `index.html` (CH-07, CH-30), `api/` (CH-17), and native sources under `mobile/plugins/*` (CH-06, CH-19: comment-only Swift/Java/Gradle edits; CH-11b's reducer mirror with its parity fixture was dropped, [#1120](https://github.com/JW-Incorporated/foray/issues/1120)). These PRs open with a TL;DR that says "human merge — governed path: <which>".
 - `app.js` is shared with player-features, catalogue-personalization, listener-forays-sharing, kokoro-voice and dai (README). Across packages only one `app.js` PR is in flight at a time; within this package a wave may hold two `app.js` cards in named, disjoint regions, merged one after the other with a rebase between.
 - CI compiles the Swift and Java; there is no local Mac or Android toolchain. A card that edits native sources quotes its green `ios-kit` / `android-build` run in the PR.
 
@@ -71,7 +71,7 @@ Written 2026-10-05 against `origin/main` @ `cd410d29`. Every path, function, lin
 3. **The `?v=` immutable rule in `vercel.json` (X1-14)**: implement the versioned shell fetch or retire the rule? It fires on no request today; DECISIONS #606 calls the client "a cheap follow-up"; `test/vercel-headers.test.js` tests 3–4 pin it. *Default: leave it; log the decision in DECISIONS.md when the founder next edits it.* Either way the web must never send `?v=` while `sw.js` strips queries.
 4. **Device-chapter deadline (CH-33)**: `readDeviceChapters` moves from its own 8 s to the id3 module's `CALL_TIMEOUT_MS` = 10 s. *Default: yes — one rule.*
 5. **`#/forays` Jump back in (CH-32)**: the Forays page renders the Home card markup (Forays only, content rule unchanged) instead of its own `.fy-jbi-row`. *Default: yes.*
-6. **Authored jingle rate (CH-11b)**: a `kind: "jingle"` queue item plays at 1.0x like the interlude jingle, on all three engines. No shipped Foray carries the kind (one draft does). *Default: yes.*
+6. **Authored jingle rate (CH-11b)**: a `kind: "jingle"` queue item plays at 1.0x like the interlude jingle, on all three engines. No shipped Foray carries the kind (one draft does). *Default: yes.* **RULED 2026-10-06, [#1120](https://github.com/JW-Incorporated/foray/issues/1120): keep the listener's speed** ("Jingles follow your speed as they do today; I drop the card."). The default is overridden and CH-11b is DROPPED.
 7. **Bookmarks surface (CH-09b)**: land PQ-15 as the roadmap scoped it (list on the episode page, tap = play-then-seek, Remove), since the sheet already announces "Bookmarked." and the privacy policy already claims the list. *Default: yes.*
 
 ## 2. Task table
@@ -98,7 +98,7 @@ Written 2026-10-05 against `origin/main` @ `cd410d29`. Every path, function, lin
 | CH-19 | Mobile native comments tell the truth: lane names, iOS half, `routeChangeReason` pin | 2 | opus | Swift/Java/JSON comment edits; `docs/plans/` decision record | — | S |
 | CH-20 | Kokoro weights leave every shell build; probe comments become history | 2 | opus | `.github/` release workflows | CH-06 | M |
 | CH-21 | `HtmlAudioBackend.load()` uses deck-policy's `settledNear`/`warmOffset`; requires nearness on `seeked` | 2 | qwen | | — | S |
-| CH-11b | Reducer: a `JINGLE` item keeps 1x — JS, Swift and Java mirrors + the `queue-state` fixture | 3 | opus | Swift + Java reducer ports; parity re-record | CH-11 | M |
+| CH-11b | **DROPPED (founder ruling [#1120](https://github.com/JW-Incorporated/foray/issues/1120): jingles keep the listener speed).** ~~Reducer: a `JINGLE` item keeps 1x — JS, Swift and Java mirrors + the `queue-state` fixture~~ | 3 | opus | Swift + Java reducer ports; parity re-record | CH-11 | M |
 | CH-18 | Delete the duplicate `.show-ep-search input` CSS block | 3 | qwen | | CH-09a | XS |
 | CH-22 | Foray page lifecycle: one resolve call, one resume-point read, state cleared on leaving | 3 | opus | `renderForay` is the busiest function in the file | — | M |
 | CH-23 | One shell detector, one hash rewriter, one fetch shape, one origin literal, one pin write | 3 | qwen | | — | S |
@@ -122,7 +122,7 @@ Written 2026-10-05 against `origin/main` @ `cd410d29`. Every path, function, lin
 | CH-39 | Foray page: bridge capabilities visible, true skew comments, cites join like credits, Search is a Foray surface | 8 | qwen | | CH-22, CH-38 | M |
 | CH-41 | `player/guards.js` owns `isNum`/`isObj`; the two `clampIndex` contracts get different names | 8 | opus | repo-wide mechanical sweep across 14 modules | CH-40, CH-39, CH-37, CH-34, CH-31, CH-24, CH-11 | M |
 
-**43 cards: 17 opus (CH-02, 06, 07, 08, 11b, 17, 19, 20, 22, 25, 30, 32, 33, 36, 40, 41, 09b), 26 qwen; sizes 2 XS / 21 S / 20 M. Per wave: 1 → 7, 2 → 13, 3 → 8, 4 → 4, 5 → 3, 6 → 3, 7 → 2, 8 → 3. Human-merge PRs: CH-06, CH-07, CH-11b, CH-17, CH-19, CH-20, CH-30.**
+**43 cards scoped; 42 live after CH-11b was dropped ([#1120](https://github.com/JW-Incorporated/foray/issues/1120)): 16 opus (CH-02, 06, 07, 08, 17, 19, 20, 22, 25, 30, 32, 33, 36, 40, 41, 09b), 26 qwen; sizes 2 XS / 21 S / 19 M. Per wave: 1 → 7, 2 → 13, 3 → 7, 4 → 4, 5 → 3, 6 → 3, 7 → 2, 8 → 3. Human-merge PRs: CH-06, CH-07, CH-17, CH-19, CH-20, CH-30.**
 
 ## Standard conventions (every card applies these verbatim)
 
@@ -130,13 +130,13 @@ Written 2026-10-05 against `origin/main` @ `cd410d29`. Every path, function, lin
 - **Characterization first.** Every card's first commit adds the tests that pin today's behaviour (named in the card under "Characterization FIRST") and they pass against the unmodified code. Only then does the refactor land. A reviewer must be able to see the pin before the move.
 - **Mutations.** Every new test's comment names the one-line mutation that turns it red, and you run that mutation once before committing.
 - **Floors are minimums.** `test/suite-integrity.test.js` asserts `count >= floor`. A NEW suite needs a `FLOORS` entry with its top-level `test()` count in the same PR. When a suite grows by N, raise its floor by N and append `; <old> -> <new> // CH-xx: <what>` to that line's comment. When a card DELETES tests (CH-24, CH-26, CH-30, CH-34), set the floor to the exact new count and say so in the comment. Never delete a test to hit a number.
-- **Parity.** Any card touching `player/queue-state.js`, `queue-manager.js`, `html-audio-backend.js`, `deck-policy.js`, `foray-resolve.js`, `foray-progress.js`, `route-resume.js` or `locate-window.js` runs `node tools/parity/record.mjs --check` and reports it. Only CH-11b re-records a family (`queue-state`), per `player/parity/README.md`; a card whose `--check` moves a fixture it was not told to re-record has made a behaviour change and stops.
+- **Parity.** Any card touching `player/queue-state.js`, `queue-manager.js`, `html-audio-backend.js`, `deck-policy.js`, `foray-resolve.js`, `foray-progress.js`, `route-resume.js` or `locate-window.js` runs `node tools/parity/record.mjs --check` and reports it. No live card re-records a family (CH-11b, the only one that would have re-recorded `queue-state`, was dropped by [#1120](https://github.com/JW-Incorporated/foray/issues/1120)), per `player/parity/README.md`; a card whose `--check` moves a fixture it was not told to re-record has made a behaviour change and stops.
 - Never commit `deploy-manifest.json` or `data/forays-directory.json`. `sw.js` `BUILD_ID` stays the literal `"unstamped"`.
 - No new `logEvent("<type>")` strings and no new `cp_` key anywhere in this package (CH-09b reads `cp_bookmarks`, which exists). `test/data-deletion.test.js` and `test/legal-citations.test.js` must stay green untouched.
 - `app.js` is a classic script tested in `node:vm` harnesses; new page tests copy the harness of the suite named in the card. 38 of the 109 app.js harnesses do not load `search-engine.js`: never add a top-level `SearchEngine.` read to app.js.
 - One test process at a time: run `node --test <files>` sequentially; the CI-equivalent full run is `node tools/ci/run-suites.mjs` (once before the PR).
 - Commit messages end with the trailer lines your harness gives you (`Co-Authored-By:` + `Claude-Session:`). PR opened as DRAFT (`gh pr create --draft`), title `refactor(<area>): <card title> (CH-xx)`, body opens with a 1–2 sentence TL;DR then `---`, lists the issues closed by id, names every characterization test and every mutation run, quotes `--check` where required, and ends with `🤖 Generated with [Claude Code](https://claude.com/claude-code)` and the session URL line. Open the PR and STOP. Never label, never merge.
-- **Human-merge cards** (CH-06, 07, 11b, 17, 19, 20, 30): `node tools/ci/path-policy.mjs` reporting a governed path is expected; the TL;DR says "human merge — governed path: <which>".
+- **Human-merge cards** (CH-06, 07, 17, 19, 20, 30; CH-11b dropped, [#1120](https://github.com/JW-Incorporated/foray/issues/1120)): `node tools/ci/path-policy.mjs` reporting a governed path is expected; the TL;DR says "human merge — governed path: <which>".
 - **Stop and escalate if:** a cited symbol does not exist on `origin/main`; a characterization test fails against the UNMODIFIED code (the issue's premise is wrong — report, do not "fix" the test); `--check` moves a fixture the card did not name; or the card's region in `app.js`/`client.js` overlaps a change already merged this wave.
 
 ## 3. Cards
@@ -255,7 +255,7 @@ Each card: the issues it closes (Appendix A), the exact change, files (the agent
 
 ### CH-11 · `player/item-kind.js`: strip and media-session classify a jingle the same way (qwen, S)
 
-**Issues:** P2-03 (the JS-classification half; the reducer half is CH-11b). **Latent inconsistency** — no shipped Foray carries `kind: jingle`; one draft does.
+**Issues:** P2-03 (the JS-classification half; the reducer half is CH-11b, dropped by [#1120](https://github.com/JW-Incorporated/foray/issues/1120)). **Latent inconsistency** — no shipped Foray carries `kind: jingle`; one draft does.
 
 **Exact change.** Create `player/item-kind.js` exporting `isNarration(item)` (`kind === TTS || type === "narration"`), `isJingle(item)`, `isTape(item)`, importing `TTS` from `./queue-state.js` (73) and `JINGLE` from `./foray-queue.js` (76). `queue-state.js` must NOT import item-kind (cycle); the reducer keeps its own constants. `segment-strip.js:157–159` imports `isNarration` (and stops spelling `"tts"`); 172–177/378–380 render a jingle as a narration-class hairline, not a show capsule; `stripSummary`/`stripTally` exclude it from clips. `media-session.js:400–401` uses `isNarration || isJingle`. `interlude.js` gets one sentence pointing at item-kind as the classifier. Note in item-kind.js that warming a jingle (`deck-policy.js:842 preparesNext`) is a separate decision, unchanged.
 
@@ -353,9 +353,11 @@ Each card: the issues it closes (Appendix A), the exact change, files (the agent
 
 **Tests.** Characterization FIRST: load with offset 600 resolves after canplay at 600; load with offset 0 resolves on canplay. New: a fake element fires `seeked` at currentTime 0 with readyState 3 BEFORE the offset seek lands; assert `load()` has not resolved, then it resolves once currentTime is near 600 (kills reverting `onSeeked`). **Mutation:** changing `SETTLE_NEAR_SEC` in deck-policy must move `load()`'s behaviour with it (one test parameterised on the constant). Run `--check` (no fixture moves). Bump floor from 129.
 
-### Wave 3 — Foray page, duration, load-error path, reducer mirror (8 cards; app.js slots: CH-22, CH-23; client.js slot: CH-26)
+### Wave 3 — Foray page, duration, load-error path, ~~reducer mirror~~ (7 live cards, CH-11b dropped per [#1120](https://github.com/JW-Incorporated/foray/issues/1120); app.js slots: CH-22, CH-23; client.js slot: CH-26)
 
-### CH-11b · Reducer: a `JINGLE` item keeps 1x — JS, Swift and Java mirrors + the `queue-state` fixture (opus, M — human merge)
+### CH-11b · Reducer: a `JINGLE` item keeps 1x — JS, Swift and Java mirrors + the `queue-state` fixture (opus, M — human merge) — DROPPED
+
+**DROPPED 2026-10-06 by founder ruling [#1120](https://github.com/JW-Incorporated/foray/issues/1120): jingles keep the listener's playback speed** (today's behaviour in all three engines; narration stays at 1x). Founder question 6's 1x default is overridden. Do not implement the card below; it stays as the record of what was scoped. P2-03's rate half is closed by the ruling, not by a card.
 
 **Issues:** P2-03 (the rate half). **Rate decision, chosen here (founder Q6 default):** a jingle plays at 1.0x like `interlude.js`'s `INTERLUDE_RATE` (113–115 "Always").
 
@@ -601,7 +603,7 @@ Waves run in order; a wave starts when the previous wave's PRs are all merged an
 
 - **Wave 1** (7): CH-01, CH-02, CH-03, CH-04, CH-05, CH-06*, CH-07*. app.js: CH-01 (1875/3031/3083/3120/3786/2473/6596) and CH-02 (12644–12661). client.js: CH-02 (`localAttempt` success + `forayDownloads` publication) and CH-03 (`isPlaying` member).
 - **Wave 2** (13): CH-08, CH-09a, CH-10, CH-11, CH-12, CH-13, CH-14, CH-15, CH-16, CH-17*, CH-19*, CH-20*, CH-21. app.js: CH-08, CH-09a. client.js: CH-10.
-- **Wave 3** (8): CH-11b*, CH-18, CH-22, CH-23, CH-24, CH-25, CH-26, CH-27. app.js: CH-22, CH-23. client.js: CH-26.
+- **Wave 3** (7 live; CH-11b dropped, [#1120](https://github.com/JW-Incorporated/foray/issues/1120)): ~~CH-11b*~~, CH-18, CH-22, CH-23, CH-24, CH-25, CH-26, CH-27. app.js: CH-22, CH-23. client.js: CH-26.
 - **Wave 4** (4): CH-28, CH-29, CH-30*, CH-31. app.js: CH-28, CH-29. client.js: CH-30.
 - **Wave 5** (3): CH-32, CH-33, CH-34. app.js: CH-32, CH-33. client.js: CH-34.
 - **Wave 6** (3): CH-35, CH-36, CH-37. app.js: CH-35, CH-36.
@@ -775,7 +777,7 @@ Format: **id** · title — *severity · category · verdict* → card. **Where:
 
 **P2-02** · Bookmarks are write-only: PQ-15 never landed, so `bookmarksFor`, `removeBookmark`, `bookmarkPrecision`, `bookmarkLabel` have no callers and the privacy row describes a surface that does not exist — *high · dead-code · adjusted* → CH-09b. **Where:** player/bookmarks.js 143–156, 164–181; app.js 3564–3574; player/client.js 3867–3872; docs/roadmap/player-features.md 49, 301–309; docs/legal/privacy-policy.md (cp_bookmarks row). **Fails:** `cp_bookmarks` grows toward TOTAL_CAP 500 with no listener-visible effect while the sheet announces "Bookmarked." and the privacy policy says bookmarks are listed on the episode page.
 
-**P2-03** · An authored `jingle` queue item is classified three different ways: "ours" by media-session, "a segment from an unnamed show" by segment-strip, "rate follows listener" by queue-state while interlude.js pins the jingle to 1.0x — *medium · inconsistency · adjusted* → CH-11 (classification), CH-11b (rate). **Where:** player/segment-strip.js 157–159, 172–177, 378–380; player/media-session.js 400–401; player/foray-queue.js 344–356; player/queue-state.js 359; player/interlude.js 113–115; player/deck-policy.js 842; player/foray-structure.js 66; data/forays.json 1588 (a draft). **Fails:** enable drafts or let the generator publish a jingle-carrying Foray: at 2x the authored jingle plays at 2x while interlude jingles play at 1x; the strip paints it as a coloured clip of a nameless show; `stripTally.clips` and the credits disagree.
+**P2-03** · An authored `jingle` queue item is classified three different ways: "ours" by media-session, "a segment from an unnamed show" by segment-strip, "rate follows listener" by queue-state while interlude.js pins the jingle to 1.0x — *medium · inconsistency · adjusted* → CH-11 (classification), CH-11b (rate; CH-11b DROPPED — founder ruling [#1120](https://github.com/JW-Incorporated/foray/issues/1120): jingles keep the listener speed). **Where:** player/segment-strip.js 157–159, 172–177, 378–380; player/media-session.js 400–401; player/foray-queue.js 344–356; player/queue-state.js 359; player/interlude.js 113–115; player/deck-policy.js 842; player/foray-structure.js 66; data/forays.json 1588 (a draft). **Fails:** enable drafts or let the generator publish a jingle-carrying Foray: at 2x the authored jingle plays at 2x while interlude jingles play at 1x; the strip paints it as a coloured clip of a nameless show; `stripTally.clips` and the credits disagree.
 
 **P2-04** · Four modules nothing imports (catalogue-directory, show-alerts, locate-window, route-resume) ship and are modulepreloaded on every cold boot; index.html's comment that every module is imported by client.js is false — *medium · dead-code · confirmed* → CH-07. **Where:** index.html 65–70, 75, 99, 111, 116; tools/ci/generate-manifest.mjs 185–190; test/boot-path.test.js 246–256; the four modules' headers. **Fails:** every cold boot fetches four modules the page never executes (each a SW revalidation on the boot path) and Chromium logs "resource was preloaded but not used" for each. The mechanism guarantees the orphan count only grows.
 

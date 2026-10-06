@@ -185,6 +185,13 @@ function lsSet(key, value) {
 /* `let`, so a suite can shorten it (test/boot-path.test.js). */
 let STORAGE_WAIT_MS = 5000;
 
+/* The event player/client.js dispatches once it has published its bridges
+   (`window.ForayPlayer`, `window.forayStorage`, ...). Spelled ONCE on this side
+   (code-health CH-28, X1-20): a typo in one of seven literals would leave its
+   `once: true` listener waiting forever. test/player-ready-event.test.js pins
+   it to client.js's dispatch. */
+const PLAYER_READY_EVENT = "forayplayer:ready";
+
 /* HAVE THE DEFERRED MODULES RUN? (audit round 2 review of states-6 and
    races-4.) Per the HTML spec the parser sets `readyState` to "interactive"
    BEFORE it runs the deferred and module scripts, and DOMContentLoaded fires
@@ -223,7 +230,7 @@ function waitForStorage() {
   return new Promise(resolve => {
     let done = false;
     const finish = () => { if (!done) { done = true; resolve(window.forayStorage || null); } };
-    window.addEventListener("forayplayer:ready", finish, { once: true });
+    window.addEventListener(PLAYER_READY_EVENT, finish, { once: true });
     /* Every deferred module has run (or failed) once DOMContentLoaded has
        fired: either the store is here (handled above) or it is never arriving. */
     afterDeferredScripts(finish);
@@ -312,7 +319,7 @@ function settleWhenStoreArrives() {
   };
   if (deferredScriptsRan) { arrived(); return; }
   storageLate = true;
-  try { window.addEventListener("forayplayer:ready", arrived, { once: true }); } catch (_) { /* no events: DOMContentLoaded below */ }
+  try { window.addEventListener(PLAYER_READY_EVENT, arrived, { once: true }); } catch (_) { /* no events: DOMContentLoaded below */ }
   afterDeferredScripts(arrived);
   armStorageSettleCeiling();
 }
@@ -812,25 +819,22 @@ async function syncEventsOnce(epoch) {
 
 /* ---------- interests / topics ---------- */
 
-function leafNodes() {
-  return (state.taxonomy?.nodes || []).filter(n => n.parent !== null);
-}
-
 /* All taxonomy nodes, roots and leaves alike — the seeding/persistence set for
-   interests (see loadInterests's header comment: `leafNodes()` used to be the
-   seed set here too, which is the root-node bug this fixes). Kept distinct
-   from leafNodes() because callers that mean "just the leaves" (none today,
-   but the name invites it) must not silently start seeing roots. */
+   interests (see loadInterests's header comment: the leaves alone used to be
+   the seed set here, which is the root-node bug it fixes). */
 function taxonomyNodes() {
   return state.taxonomy?.nodes || [];
 }
 
+/** The ONE taxonomy lookup by id (code-health CH-28, A1-14): every reader that
+    needs a node by its id comes through here, so an id rule (an alias map, say)
+    lands once. */
 function nodeById(id) {
   return taxonomyNodes().find(n => n.id === id) || null;
 }
 
 /* Bug fix (kanban t_1cb3688a / docs/ui-transition-plan.md D6): this used to
-   iterate leafNodes() only, so a declared interest in a ROOT node (e.g.
+   iterate the leaf nodes only, so a declared interest in a ROOT node (e.g.
    `true-crime`) was never seeded into state.interests, and the very next
    saveInterests() call persisted an object that had silently dropped it —
    the listener's root-level pick vanished on reload with no error anywhere.
@@ -903,6 +907,29 @@ function saveInterests() {
   return lsSet("cp_interests", next);
 }
 
+/* THE RE-SCORE KEY (code-health CH-28, A1-18). buildPlaylist's `searchCache`
+   is keyed on [query, familyMode, _interestsGen]. interestScore (used as
+   searchWithRelaxation's zero-content-token rankFallback, e.g. a bare
+   "comedy"/"something short" query) reads state.interests, so the weights are
+   the one thing besides the query text and the family-mode flag that can
+   change what buildPlaylist should return for the exact same typed query.
+   Every change to them moves this key, or a rebuild silently serves a stale
+   ranking. `bumpInterestsGen` alone is for the two places that change the
+   weights WITHOUT writing them (a reset to defaults after "Delete my data",
+   and the re-seed when a late hydration lands); everything else commits. */
+function bumpInterestsGen() {
+  state._interestsGen = (state._interestsGen || 0) + 1;
+}
+
+/** The end of every interest write: persist the profile, then move the
+    re-score key. Six writers each repeated these two lines (A1-18); a seventh
+    that forgot the bump would rank against the old weights. */
+function commitInterests() {
+  const saved = saveInterests();
+  bumpInterestsGen();
+  return saved;
+}
+
 /* How much of a leaf's own nudge also moves its parent root. Stated here per
    the card's ask ("state the ratio"): a play/thumb on a leaf is signal about
    the parent subject too, just weaker than a direct signal on the parent
@@ -945,18 +972,10 @@ function nudgeTopics(topics, amount) {
   parentsToPropagate.forEach(parent => {
     setInterest(parent, Math.max(0, Math.min(1, state.interests[parent] + amount * PARENT_NUDGE_RATIO)));
   });
-  saveInterests();
-  /* Bumps the repeated-query cache key (see buildPlaylist's `searchCache`) so
-     a playlist rebuild after a pick/play/thumbs nudge re-scores instead of
-     silently serving a stale ranking. interestScore (used as
-     searchWithRelaxation's zero-content-token rankFallback, e.g. a bare
-     "comedy"/"something short" query) reads state.interests, so this is the
-     one thing besides the query text and family-mode flag that can change
-     what buildPlaylist should return for the exact same typed query. */
-  state._interestsGen = (state._interestsGen || 0) + 1;
+  /* Saves, and moves the repeated-query cache key so a playlist rebuild after
+     a pick/play/thumbs nudge re-scores (see commitInterests). */
+  commitInterests();
 }
-
-function boostTopics(topics, amount) { nudgeTopics(topics, amount); }
 
 /* ---------- interests page (#/interests, U-07 / docs/ui-transition-plan.md D6) ----------
 
@@ -1058,8 +1077,7 @@ function bindInterestsControls(scope) {
     const apply = () => {
       const v = Math.max(0, Math.min(1, Number(input.value)));
       setInterest(id, v);
-      saveInterests();
-      state._interestsGen = (state._interestsGen || 0) + 1;
+      commitInterests();
       input.setAttribute("aria-valuenow", String(v));
       input.setAttribute("aria-valuetext", `${Math.round(v * 100)}%`);
       const row = input.closest(".interest-row");
@@ -1080,8 +1098,7 @@ function bindInterestsControls(scope) {
       const node = nodeById(id);
       if (!node) return;
       setInterest(id, Math.max(0, node.weight));
-      saveInterests();
-      state._interestsGen = (state._interestsGen || 0) + 1;
+      commitInterests();
       renderInterests();
     });
   });
@@ -1241,8 +1258,10 @@ function playBtn(item, ctx) {
   return `<button class="play-btn" data-play="${esc(item.id)}"${ctx ? ` data-ctx="${esc(ctx)}"` : ""} data-title="${esc(item.title || "")}"${controlLabelAttr("▶", `Play ${item.title || "this episode"}`)}>▶</button>`;
 }
 
-/* Family mode (corner-case 28): hide explicit-rated episodes and the comedy
-   branch (older comedy items predate per-episode ratings). */
+/* Family mode (corner-case 28). The switch only; what it hides is
+   `familySafe`'s rule table (below), and that rule FAILS CLOSED: an episode
+   with no rating is hidden unless its catalogue show is rated clean and none of
+   that show's pool episodes is rated explicit. */
 function familyMode() { return lsGet("cp_family", false); }
 
 /* ---------- the one native-shell detector (issue #36; code-health CH-23) ----------
@@ -1555,38 +1574,76 @@ function familyAllows(item) {
   return !familyMode() || familySafe(item);
 }
 
-/* The catalogue record an episode belongs to: by show_id when it carries one,
-   else by title (and the one alias), the join episodesForShow uses. Indexed
-   once per loaded catalogue. */
+/* THE ONE TITLE -> CATALOGUE-SHOW JOIN (code-health CH-29, A1-06). An episode
+   names its show by a `show` string (discover.json and itemIndex never carry a
+   show_id), and five places asked which catalogue record that string means:
+   Family Mode (here), the show page's episode list (episodesForShow), its
+   artwork (showArtworkUrl), every row's show-name link (showIdForShowName) and
+   the show page's Forays footer (foraysUsingShow). Each read TITLE_ALIASES its
+   own way, so a second alias had five chances to be missed — and a miss is a
+   show page listing zero episodes while its rows link to it. They all answer
+   from this one index now, built once per loaded catalogue (keyed on the shows
+   ARRAY's identity, so a replaced catalogue is re-indexed, never answered from
+   the old one):
+     byId     show_id -> show;
+     byTitle  title -> show, plus each TITLE_ALIASES name -> its show (an alias
+              never shadows a real title). A title two shows share joins to the
+              FIRST, `.find()`'s answer, which showIdForShowName always gave
+              (the shipped catalogue has no duplicate title);
+     aliases  title -> the alias names that join to it, for the questions that
+              start from a show (catalogShowNames).
+   `catalogShowByTitle` and `catalogShowNames` are this function asked by name:
+   it stays the one place the index is built because tools/similar-eval/
+   vouch-run.mjs lifts it out of this file on its own (with TITLE_ALIASES and
+   catalogShowIndex) to run Family Mode's predicate. */
 let catalogShowIndex = null;
 function catalogShowForItem(item) {
   const shows = state.catalog?.shows;
   if (!Array.isArray(shows)) return null;
   if (!catalogShowIndex || catalogShowIndex.shows !== shows) {
-    const byId = new Map(), byTitle = new Map();
+    const byId = new Map(), byTitle = new Map(), aliases = new Map();
     for (const s of shows) {
       if (!s) continue;
       if (s.show_id) byId.set(s.show_id, s);
-      if (s.title) byTitle.set(s.title, s);
+      if (s.title && !byTitle.has(s.title)) byTitle.set(s.title, s);
     }
     for (const [title, alias] of Object.entries(TITLE_ALIASES)) {
-      if (byTitle.has(title) && !byTitle.has(alias)) byTitle.set(alias, byTitle.get(title));
+      if (!byTitle.has(title) || byTitle.has(alias)) continue;
+      byTitle.set(alias, byTitle.get(title));
+      aliases.set(title, [...(aliases.get(title) || []), alias]);
     }
-    catalogShowIndex = { shows, byId, byTitle };
+    catalogShowIndex = { shows, byId, byTitle, aliases };
   }
+  if (!item) return null;
   return (item.show_id && catalogShowIndex.byId.get(item.show_id))
     || (item.show && catalogShowIndex.byTitle.get(item.show))
     || null;
 }
 
-/* The visible half of the same flag Family Mode has quietly filtered on since
-   corner-case 28 (kanban card t_02c6bb0b): every mainstream podcast app shows
-   an "E" next to explicit content, and 4a never did, even though the
-   publisher's <itunes:explicit> flag was captured all along. Additive only —
-   Family Mode's `i.explicit !== true` filter above is untouched, this just
-   makes the same field visible when Family Mode is off. Strict `=== true`
-   because the field is tri-state (true/false/null) at both the episode and
-   show level; false and null both mean "no badge", not "unknown = flag it".
+/** The catalogue show a bare name joins to (exact title, then TITLE_ALIASES),
+    or null — the same join, for callers that hold a name and no row. */
+function catalogShowByTitle(title) {
+  return title ? catalogShowForItem({ show: title }) : null;
+}
+
+/** Every name that joins to `show`: its own title first, then the alias names
+    the index maps onto it. A show the catalogue does not hold (a breadth-tier
+    record) is known by its title alone. */
+function catalogShowNames(show) {
+  if (!show || !show.title) return [];
+  const aliases = catalogShowByTitle(show.title) ? catalogShowIndex.aliases.get(show.title) : null;
+  return aliases ? [show.title, ...aliases] : [show.title];
+}
+
+/* The visible half of the flag Family Mode filters on (corner-case 28, kanban
+   card t_02c6bb0b): every mainstream podcast app shows an "E" next to explicit
+   content, and 4a never did, even though the publisher's <itunes:explicit>
+   flag was captured all along. Additive only — it changes nothing Family Mode
+   hides. Strict `=== true` because the field is tri-state (true/false/null) at
+   both the episode and show level: for the BADGE, false and null both mean "no
+   badge", not "unknown = flag it". Family Mode reads null the other way — an
+   unrated episode is hidden unless its show is rated clean (`familySafe`'s rule
+   table above) — so a null here is not "safe", only "not marked".
 
    `role="img"`, because `aria-label` on a bare <span> is ignored by most
    screen readers (ARIA forbids it on the generic role), so VoiceOver read the
@@ -1628,7 +1685,17 @@ function headingName(head) {
    "185 min left". "1 hr" for an exact hour, never "1 hr 0 min" (49 episodes
    of the shipped pool are whole hours, and a subject card's summed runtime
    lands on one often). The colon clock (`fmtClock`) is for live playheads and
-   scrubbers only. Whole minutes: a fraction is rounded, not printed. */
+   scrubbers only.
+
+   Whole minutes, ON PURPOSE: a fraction is rounded, never printed, because a
+   row's length is a listing, not a measurement. Its rungs below the hour tail
+   differ from the player's on purpose too: an unknown length is "" here
+   (absence, not "0 min"), while the player's `fmtSpan` counts seconds under 90
+   ("60 sec": a Foray segment's length is a measurement of somebody else's
+   audio). The tail itself is player/duration.js's (`hoursMinutes`); this stays
+   a classic-script copy because it paints cards before the player module has
+   loaded, and test/format-helpers.test.js pins it word for word against that
+   module, rungs included (code-health CH-24, P1-14). */
 function fmtDur(min) {
   if (!min) return "";
   const n = Math.round(Number(min));
@@ -1842,7 +1909,7 @@ function toggleStar(id) {
     if (had) {
       logEvent("unsaved", { episode_id: id });
     } else {
-      boostTopics(entry.topics, 0.05);
+      nudgeTopics(entry.topics, 0.05);
       logEvent("saved", { episode_id: id, topics: entry.topics });
     }
   }
@@ -1963,9 +2030,9 @@ function bindShowStars(scope) {
 
 /* ---------- Starred Shows page (#/starred-shows) ----------
 
-   Reachable from the drawer, deliberately NOT on the home screen (Joey's
-   framing: "somewhat easily accessible" but distinct from home). Renders
-   exactly what cp_starred_shows holds -- no fetch, no ranking, no
+   Reachable from Library and the Shows page, deliberately NOT on the home
+   screen (Joey's framing: "somewhat easily accessible" but distinct from
+   home). Renders exactly what cp_starred_shows holds -- no fetch, no ranking, no
    algorithmic surfacing. An empty state is a real, renderable state, same
    convention as every other page in the app. Reuses showResultRow's visual
    language (artwork + title, no play/star/duration controls -- a show,
@@ -1982,9 +2049,11 @@ function starredShowRow(entry) {
   </a>`;
 }
 
-/* Back goes to #/shows: since 2026-09-03 this page is reached from the Shows
-   page (the drawer entry came off with the five-page menu), so the back
-   button returns there rather than to a home screen that no longer links here. */
+/* Back goes to #/library: Library is this page's parent — its Followed shows
+   section ends in "All N followed shows" here — so the back button returns
+   there rather than to a home screen that no longer links here. (The Shows
+   page also links here, with its "Followed shows" shortcut; Library is still
+   the page this one is the full list of.) */
 function renderStarredShows() {
   setBodyClass("view-page");
   const starred = Object.values(starredShowsMap())
@@ -2145,7 +2214,8 @@ let dealEpoch = 0;
 let lastDealRecorded = false;
 
 function subjectLabel(branch) {
-  return (state.taxonomy?.nodes || []).find(n => n.id === branch && n.parent === null)?.label || branch;
+  const n = nodeById(branch);
+  return (n && n.parent === null && n.label) || branch;
 }
 
 /* Subject queues are today's auto-built groupings (state.cardSlots), distinct
@@ -2247,11 +2317,31 @@ function leafPlaylistItems(candidates, { generalShowTitles }) {
   return out;
 }
 
+/* ONE SHAPE FOR A GENERATED PLAYLIST (code-health CH-28, A1-13). Home's card
+   (generatedPlaylists) and the page a tap or a reload opens
+   (generatedPlaylistById) each built the slot-id set and the playlist literal;
+   a field added to one literal only and `currentCopyOf` found no copy on the
+   other, so Save showed again on a playlist already saved. */
+
+/** Every episode id the card slots show, from a slot's `items` and its `item`. */
+function slotItemIdSet(slots) {
+  return new Set(slots.flatMap(sl => (sl.items || []).map(it => it.id)).concat(slots.map(sl => sl.item?.id)).filter(Boolean));
+}
+
+/** The generated playlist for taxonomy leaf `node` holding `items` (already
+    chosen by leafPlaylistItems). */
+function generatedPlaylistFor(node, items) {
+  return withMirror({
+    id: "gen-" + node.id, branch: node.id, title: node.label || node.id,
+    items: items.map(playlistPart), sparse: false, isSubject: false, isGenerated: true,
+  });
+}
+
 function generatedPlaylists() {
   const pool = poolFiltered();
   const slots = state.cardSlots || [];
   const slotBranches = new Set(slots.map(sl => sl.branch));
-  const slotItemIds = new Set(slots.flatMap(sl => (sl.items || []).map(it => it.id)).concat(slots.map(sl => sl.item?.id)).filter(Boolean));
+  const slotItemIds = slotItemIdSet(slots);
   const byTopic = new Map();
   for (const it of pool) {
     for (const t of (it.topics || [])) {
@@ -2269,10 +2359,7 @@ function generatedPlaylists() {
   for (const { n } of leaves) {
     const items = leafPlaylistItems(byTopic.get(n.id).filter(it => !slotItemIds.has(it.id)), { generalShowTitles });
     if (items.length < GENERATED_PLAYLIST_MIN) continue;
-    out.push(withMirror({
-      id: "gen-" + n.id, branch: n.id, title: n.label || n.id,
-      items: items.map(playlistPart), sparse: false, isSubject: false, isGenerated: true,
-    }));
+    out.push(generatedPlaylistFor(n, items));
     if (out.length >= GENERATED_PLAYLIST_COUNT) break;
   }
   return out;
@@ -2295,16 +2382,12 @@ function generatedPlaylistById(id) {
   const node = nodeById(m[1]);
   if (!node || node.parent === null) return null;
   const onLeaf = poolFiltered().filter(it => (it.topics || []).includes(node.id));
-  const slots = state.cardSlots || [];
-  const slotItemIds = new Set(slots.flatMap(sl => (sl.items || []).map(it => it.id)).concat(slots.map(sl => sl.item?.id)).filter(Boolean));
+  const slotItemIds = slotItemIdSet(state.cardSlots || []);
   const unslotted = onLeaf.filter(it => !slotItemIds.has(it.id));
   const items = leafPlaylistItems(unslotted.length >= GENERATED_PLAYLIST_MIN ? unslotted : onLeaf,
     { generalShowTitles: generalShowTitleSet() });
   if (items.length < GENERATED_PLAYLIST_MIN) return null;
-  return withMirror({
-    id: "gen-" + node.id, branch: node.id, title: node.label || node.id,
-    items: items.map(playlistPart), sparse: false, isSubject: false, isGenerated: true,
-  });
+  return generatedPlaylistFor(node, items);
 }
 
 /* U-05 (docs/ui-transition-plan.md D7): does one of the listener's OWN
@@ -2558,16 +2641,23 @@ function withMirror(p) {
   return Array.isArray(p.items) ? { ...p, item_ids: p.items.map(partId) } : p;
 }
 
+/* Build the pool if a session is loaded, and never throw: no catalogue yet is
+   a reason to answer from what is there, not a reason to lose a view. The one
+   copy of the rule hydrationPool and inDiscoverPool both need (code-health
+   CH-29, A1-19); fullPool is memoised, so a repeat call costs a slice. */
+function ensurePool() {
+  if (!state.session || !state.session.episodes) return;
+  try { fullPool(); } catch (_) { /* catalogue not really there yet */ }
+}
+
 /* The pool, for hydration. `state.itemIndex` is already full by the first
    render (init() calls buildCards() -> poolFiltered() -> fullPool() before
    route()), but `playlists()` is also reachable from the drawer and from
    touchPlaylistPlayed, so this does not assume that ordering. It builds the
-   pool only when nothing has yet, and never throws: no catalogue is a reason to
+   pool only when nothing has yet (ensurePool): no catalogue is a reason to
    leave a stub alone, not a reason to lose a view. */
 function hydrationPool() {
-  if (!Object.keys(state.itemIndex).length && state.session && state.session.episodes) {
-    try { fullPool(); } catch (_) { /* catalogue not really there yet */ }
-  }
+  if (!Object.keys(state.itemIndex).length) ensurePool();
   return state.itemIndex;
 }
 
@@ -2957,15 +3047,12 @@ function bindSavePlaylist(p) {
    names here (`cp_queue`, `queueIds`, `renderQueue`) are implementation detail
    and are fine to say "queue" — nothing here renders to the screen. */
 
-function queueIds() {
-  const ids = storedValue("cp_queue", []);
-  /* A non-string/empty entry cannot be resolved against itemIndex or savedMap
-     (both keyed by real episode ids), so it can only ever render as a
-     permanently-broken row — dropping it here is not data loss, it is the
-     same "nothing in it to lose" guard `playlists()` applies to a corrupt
-     entry (line ~810 above). */
-  return Array.isArray(ids) ? ids.filter(id => typeof id === "string" && id) : [];
-}
+/* A non-string/empty entry cannot be resolved against itemIndex or savedMap
+   (both keyed by real episode ids), so it can only ever render as a
+   permanently-broken row — dropping it is not data loss, it is the same
+   "nothing in it to lose" rule every stored id list reads through:
+   `stringList`, beside `plainObject` near the top of this file. */
+function queueIds() { return stringList(storedValue("cp_queue", [])); }
 
 /** THE ONE WRITER OF `cp_queue`, and the one place the two things that watch it
     are told. The car's skip may have appeared or gone; and the Up Next PAGE, if
@@ -3937,7 +4024,8 @@ function playlistRoute(p) {
    so the exact-title fallback below would miss it. TITLE_ALIASES exists for
    exactly that one show and is not expected to grow — a second alias is a sign
    the underlying assumption (title strings agree) needs revisiting, not that
-   this list needs a third line. */
+   this list needs a third line. Read in ONE place, catalogShowForItem's index;
+   every title join asks that index (code-health CH-29). */
 const TITLE_ALIASES = {
   "Lingthusiasm - A podcast that's enthusiastic about linguistics": "Lingthusiasm",
 };
@@ -4030,7 +4118,7 @@ function dateValue(dateStr) {
 function episodesForShow(show) {
   if (!show) return [];
   const pool = (state.discover?.items || []);
-  const wanted = new Set([show.title, TITLE_ALIASES[show.title]].filter(Boolean));
+  const wanted = new Set(catalogShowNames(show));
   /* familyAllows: a show page skipped Family Mode entirely (data-integrity-4). */
   return pool.filter(it => wanted.has(it.show) && familyAllows(it))
     .sort((a, b) => dateValue(b.release_date) - dateValue(a.release_date));
@@ -4072,10 +4160,11 @@ function episodesForShow(show) {
    answer for the previous fixture — a stale-cache bug that reads as a passing
    test. Identity comparison costs nothing and cannot get that wrong.
 
-   The join is episodesForShow's, restated as two lookups because a Set-per-
-   call is what made the one-liner expensive: exact title first, then the one
-   TITLE_ALIASES entry. If that list ever grows past its single documented
-   entry, both places have to learn about it.
+   The join is episodesForShow's — the names catalogShowNames gives (the
+   title, then each TITLE_ALIASES name that joins to it) — asked one Map lookup
+   per name, in that order, because a Set-per-call is what made the one-liner
+   expensive. A second alias reaches this through the shared index, with no
+   second place to teach (code-health CH-29).
 
    Backfilling catalog.json's 53 nulls is still the root fix. This is what
    makes the UI right in the meantime, and on the next show that harvests
@@ -4121,37 +4210,34 @@ function showArtworkUrl(show) {
       if (it.artwork_url && !_artByShowTitle.has(it.show)) _artByShowTitle.set(it.show, it.artwork_url);
     }
   }
-  return _artByShowTitle.get(show.title)
-    || _artByShowTitle.get(TITLE_ALIASES[show.title])
-    || null;
+  for (const name of catalogShowNames(show)) {
+    const art = _artByShowTitle.get(name);
+    if (art) return art;
+  }
+  return null;
 }
 
 /* ---------- show-name links (Stage 4 of docs/show-pages-plan.md) ----------
 
    epRow/archivedRow/renderEpisode only ever have an episode's `show` string
    (discover.json/itemIndex never carry show_id) — the reverse of
-   episodesForShow's join. Same two-step rule as Stage 1: match catalog.json's
-   `title` first, then TITLE_ALIASES for the one show (Lingthusiasm) whose
-   catalog title and discover `show` string disagree. Returns null (never
+   episodesForShow's join, asked of the same index (catalogShowByTitle):
+   catalog.json's `title` first, then TITLE_ALIASES for the one show (Lingthusiasm) whose
+   catalog title and discover `show` string disagree — one Map lookup, where
+   this used to scan every show for every row it linked. Returns null (never
    throws) when no show record matches, e.g. state.catalog not loaded yet or a
    show discover.json carries that catalog.json doesn't — the caller falls
    back to plain text, matching renderShow's own "absence is a real state, not
    an error" rule. */
 function showIdForShowName(showName) {
   if (!showName) return null;
-  const shows = state.catalog?.shows || [];
-  let s = shows.find(sh => sh.title === showName);
-  if (!s) {
-    const aliasedTitle = Object.keys(TITLE_ALIASES).find(k => TITLE_ALIASES[k] === showName);
-    if (aliasedTitle) s = shows.find(sh => sh.title === aliasedTitle);
-  }
   /* THEN THE SHOW INDEX (audit round 2, p-foray-2): the curated 220 is not the
      set of shows this app can open. Every show in the published Foray was a
      plain name with no page, while `data/show-index.tsv` — the 10,113 rows the
      Shows search already links through — carries some of them. Consulted only
      once it has loaded (it is never fetched for this); see showIndexIdForTitle
      for why the match is exact and unique. */
-  return s ? s.show_id : showIndexIdForTitle(showName);
+  return catalogShowByTitle(showName)?.show_id ?? showIndexIdForTitle(showName);
 }
 
 /* The show index as an EXACT, UNIQUE title -> id join. Exact because a fuzzy
@@ -4211,7 +4297,7 @@ function showNameLink(showName, showId = null) {
    tagged with. Same renderer, two populations, and only one of them joined.
    test/category-browse.test.js pins both halves. */
 function taxonomyChip(nodeId) {
-  const node = (state.taxonomy?.nodes || []).find(n => n.id === nodeId);
+  const node = nodeById(nodeId);
   const label = esc(node?.label || nodeId);
   return `<a class="fy-chip" href="#/category/${esc(encodeURIComponent(nodeId))}">${label}</a>`;
 }
@@ -4335,7 +4421,7 @@ function catalogShowsOrNull() {
    false claim as the empty-state sentence under it, so both wait on the
    catalogue having answered. */
 function renderCategory(nodeId) {
-  const node = (state.taxonomy?.nodes || []).find(n => n.id === nodeId);
+  const node = nodeById(nodeId);
   const label = node?.label || nodeId;
   if (catalogShowsOrNull() === null) { renderShowIndexPage(label, "", null); return; }
   const shows = showsForCategory(nodeId).slice().sort((a, b) => a.title.localeCompare(b.title));
@@ -4367,13 +4453,12 @@ function renderCategory(nodeId) {
    from Home to THIS page, and the menu's own "Shows" item is now that
    affordance. Nothing else in the app linked to it. */
 /* U-05 (docs/ui-transition-plan.md): every taxonomy ROOT, for a "browse
-   subjects" pill row on the Shows page (v2 only). Distinct from leafNodes()
-   above the same way taxonomyNodes() is -- a root has `parent === null` --
-   and this stays its own tiny helper rather than reusing subjectLabel's
-   inline find, because that one looks up ONE root by id and this needs all
-   of them, sorted for a stable pill order across renders. */
+   subjects" pill row on the Shows page (v2 only). A root has
+   `parent === null`; this stays its own tiny helper rather than reusing
+   nodeById, because that looks up ONE node by id and this needs all of the
+   roots, sorted for a stable pill order across renders. */
 function taxonomyRootNodes() {
-  return (state.taxonomy?.nodes || []).filter(n => n.parent === null).slice().sort((a, b) => a.label.localeCompare(b.label));
+  return taxonomyNodes().filter(n => n.parent === null).slice().sort((a, b) => a.label.localeCompare(b.label));
 }
 
 /* `decodeURIComponent` throws a URIError on a lone `%` — and a hash is
@@ -4438,7 +4523,7 @@ function safeDecode(s) {
    the router is pinned in test/category-browse.test.js rather than held
    together by a shared constant. */
 function browseTile(nodeId) {
-  const node = (state.taxonomy?.nodes || []).find(n => n.id === nodeId);
+  const node = nodeById(nodeId);
   const label = node?.label || nodeId;
   return `<a class="fy-chip" href="#/shows/q/${esc(encodeURIComponent(label))}">${esc(label)}</a>`;
 }
@@ -5306,7 +5391,7 @@ function similarShowsSection(show) {
 function foraysUsingShow(show) {
   if (!show || !window.ForayPlayer || typeof window.ForayPlayer.foraysUsingShow !== "function") return [];
   if (!state.forays) return [];
-  const names = [show.title, TITLE_ALIASES[show.title]].filter(Boolean);
+  const names = catalogShowNames(show);
   /* Same two-call shape as forayCards(): the published rows exactly as before,
      then the drafts the test-track switch admitted. */
   return withTestTrackDrafts(opts => window.ForayPlayer.foraysUsingShow(state.forays, names, {
@@ -5358,7 +5443,7 @@ function showForaysHtml(show) {
        refresh" is a failure the listener can act on (come back on a
        better connection); silence about it would be a
        different lie from the one we just deleted. */
-function showEpisodeCountLabel({ loadedCount, familyHidden = 0, fullyLoaded, curatedCount, isBreadthTier, stale, loadError, loadState }) {
+function showEpisodeCountLabel({ loadedCount, familyHidden = 0, fullyLoaded, curatedCount, stale, loadState }) {
   /* THE LOADING BRANCH MOVED IN HERE (issue #687). It used to be written by
      hand, inline, into renderShow's initial `innerHTML` — a second author for
      this one label, with its own phrasing, that the fetch's terminal paths
@@ -5405,14 +5490,12 @@ function showEpisodeCountLabel({ loadedCount, familyHidden = 0, fullyLoaded, cur
      (FAMILY_HIDES_NOTE), and one sentence per outcome means this says nothing. */
   if (loadedCount === 0 && familyHidden > 0) return "";
   if (loadedCount === 0) {
-    return curatedCount
-      ? `${curatedCount} episode${curatedCount === 1 ? "" : "s"} in 4a's catalogue`
-      : "";
+    return curatedCount ? `${countLabel(curatedCount, "episode")} in 4a's catalogue` : "";
   }
   const staleNote = stale ? " (showing the last saved list — couldn't refresh just now)" : "";
   const familyNote = familyHidden > 0 ? ` (${familyHidden} hidden by Family mode)` : "";
   if (fullyLoaded) {
-    return `${loadedCount} episode${loadedCount === 1 ? "" : "s"}${familyNote}${staleNote}`;
+    return `${countLabel(loadedCount, "episode")}${familyNote}${staleNote}`;
   }
   // Partial load: no count, because any count we could state here would
   // either hedge uselessly or claim a completeness we do not have.
@@ -5550,9 +5633,7 @@ const SHARED_PLAYLIST_PREFIX = "shared~";
 const SHARED_PLAYLIST_MAX = 50;
 
 function inDiscoverPool(id) {
-  if (state.session && state.session.episodes) {
-    try { fullPool(); } catch (_) { /* no catalogue yet: nothing is in it */ }
-  }
+  ensurePool();
   return typeof id === "string" && state.poolIds.has(id);
 }
 
@@ -5812,15 +5893,6 @@ function renderShow(show_id, initialQuery = "") {
   const curatedEps = episodesForShow(show);
   const ctx = "show-" + show.show_id;
   const chips = (show.taxonomy_node_ids || []).map(taxonomyChip).join("");
-  /* A3.1/Q3: a breadth-tier show (found via the full-catalogue search
-     endpoint, never curated) has zero discover-pool episodes by construction
-     — discover.json only ever holds the curated 220's hand-picked episodes.
-     That is not the same as "this show genuinely has none" (the curated-tier
-     empty state below), so it gets its own honest, non-alarming copy instead
-     of implying the show is empty. Stage 3b's async fetch below (kanban
-     t_567b570f) supersedes this once it resolves; until then this stays the
-     safe degrade for the curated-pool-only render. */
-  const isBreadthTier = show.tier === "breadth";
   const showArt = showArtworkUrl(show);
 
   const head = `
@@ -5923,7 +5995,6 @@ function renderShow(show_id, initialQuery = "") {
      than assumed. */
   let fullyLoaded = false;
   let anyStale = false;     // whether the list on screen came from a stale/degraded answer; the latest answer decides
-  let lastLoadError = null;
   /* WHAT STATE THE EPISODE CONTAINER IS ACTUALLY IN (issue #687). Four
      values, one of which used to be invisible to the code entirely:
 
@@ -6004,11 +6075,10 @@ function renderShow(show_id, initialQuery = "") {
      The breadth-tier distinction went with them. It was never a difference
      the listener could see or act on — it is a fact about which of our two
      ingestion paths found the show — and encoding it in the empty state is
-     how "4a's wider catalogue" ended up on a phone screen. `isBreadthTier`
-     is still handed to showEpisodeCountLabel — a tier-specific subtitle would
-     be composed there and nowhere else — but since the round-2 audit
-     (states-8) no outcome's copy reads it: the "…yet." variant it used to pick
-     went with the doubled empty-state sentence. */
+     how "4a's wider catalogue" ended up on a phone screen. Since the round-2
+     audit (states-8) no outcome's copy read the tier, so showEpisodeCountLabel
+     no longer takes it (code-health CH-29, A1-12): a tier-specific subtitle
+     would be composed there and nowhere else. */
   /* `failed` offers "Try again" rather than "Pull to refresh" (audit
      2026-09-22): there is no pull gesture on this page, and a failure the
      listener cannot act on from where they are standing is a dead end. The
@@ -6111,9 +6181,7 @@ function renderShow(show_id, initialQuery = "") {
       familyHidden: loaded.length - shownCount,
       fullyLoaded,
       curatedCount: curatedEps.length,
-      isBreadthTier,
       stale: anyStale,
-      loadError: loaded.length === 0 ? lastLoadError : null,
       loadState,
     });
   }
@@ -6169,7 +6237,7 @@ function renderShow(show_id, initialQuery = "") {
        `runSearch` that failed. */
     note.hidden = true;
     if (!failed) return;
-    failed.innerHTML = failedNoteHtml(`${matchCount} match${matchCount === 1 ? "" : "es"} — searching the ${loaded.length} loaded episodes only; the connection didn't answer for the rest.`);
+    failed.innerHTML = failedNoteHtml(`${countLabel(matchCount, "match", "matches")} — searching the ${loaded.length} loaded episodes only; the connection didn't answer for the rest.`);
     failed.hidden = false;
     bindRetry(failed, runSearch);
   }
@@ -6322,7 +6390,7 @@ function renderShow(show_id, initialQuery = "") {
      theme G). A retry that was a separate "reload" path would be a second
      author for the same outcome — the shape issue #687 removed from this page. */
   function loadEpisodes() {
-    fetchShowEpisodes(show.show_id).then(({ episodes, nextCursor: nc, stale, error, show: header }) => {
+    fetchShowEpisodes(show.show_id).then(({ episodes, nextCursor: nc, stale, show: header }) => {
       if (!stillMounted()) return; // navigated away before the fetch resolved
 
       /* THE DESCRIPTION FIRST, BEFORE ANY OUTCOME BRANCH (audit 2026-09-22). It
@@ -6350,7 +6418,6 @@ function renderShow(show_id, initialQuery = "") {
           paintCount();
           return;
         }
-        lastLoadError = error || "load failed";
         paintEpisodeOutcome("failed");
         return;
       }
@@ -6389,10 +6456,9 @@ function renderShow(show_id, initialQuery = "") {
   }
 
   /* "Try again" on the failed body: back to `loading` through the one writer,
-     then the same fetch. `lastLoadError` is cleared first so the subtitle does
-     not go on saying "couldn't" over a second attempt that is in flight. */
+     then the same fetch, so the body does not go on saying "couldn't" over a
+     second attempt that is in flight. */
   function retryEpisodes() {
-    lastLoadError = null;
     paintEpisodeOutcome("loading");
     loadEpisodes();
   }
@@ -6482,9 +6548,10 @@ function listenedShows() {
    that is otherwise fixed for the session -- state.discover/state.session are
    fetched once in init() and never reassigned, so the pool a query scores
    against cannot change mid-session; the one thing that visibly changes
-   without a page reload is `state.interests` (nudgeTopics, on every
-   pick/play/thumbs), which is why `state._interestsGen` is bumped there and
-   folded into this key. Deliberately CACHES BEFORE classifyResults, not
+   without a page reload is `state.interests` (nudgeTopics on every
+   pick/play/thumbs, the Interests sliders, onboarding and persona picks),
+   which is why every one of those writes goes through commitInterests, which
+   bumps `state._interestsGen`, and that is folded into this key. Deliberately CACHES BEFORE classifyResults, not
    after: classifyResults reads `listenedShows()`, which changes on every pick
    independent of the query -- caching past that point would serve a stale
    listened-show penalty. classifyResults itself is O(results), not
@@ -7056,8 +7123,7 @@ function applyOnboardingPicks(pickedRootIds, typedSubject) {
       setInterest(id, Math.max(0, Math.min(1, state.interests[id] + lift)));
     }
   });
-  saveInterests();
-  state._interestsGen = (state._interestsGen || 0) + 1;
+  commitInterests();
   const byId = new Map(taxonomyNodes().map(n => [n.id, n]));
   return [...new Set(ids.map(id => (byId.get(id)?.parent) || id))];
 }
@@ -7108,8 +7174,7 @@ function applyPersonaPick(id) {
     if (touched && !roots.includes(root)) roots.push(root);
   });
   if (!roots.length) return false;
-  saveInterests();
-  state._interestsGen = (state._interestsGen || 0) + 1;
+  commitInterests();
   return roots;
 }
 
@@ -13657,25 +13722,43 @@ function withTestTrackDrafts(listFn) {
    deploy shows a message instead of an empty page. */
 const PLAYER_WAIT_MS = 5000;
 
-function playerBridge() {
-  if (window.ForayPlayer) return Promise.resolve(window.ForayPlayer);
-  /* EACH WAIT CLEANS UP AFTER ITSELF (audit round 3, app-2-14). On the broken-
-     deploy path the event never fires, and every visit to #/forays, Library or
-     a Try again used to leave one listener and its closure attached for the
-     session: finish() resolved but removed nothing. */
-  return new Promise(resolve => {
-    let done = false;
-    let timer = null;
-    const finish = () => {
-      if (done) return;
-      done = true;
-      window.removeEventListener("forayplayer:ready", finish);
+/** THE ONE WAIT FOR THE PLAYER BRIDGE (code-health CH-28, A3-13). Calls
+    `fn({ player, late })`:
+      - at once, SYNCHRONOUSLY, with `late: false`, when the bridge is here;
+      - on PLAYER_READY_EVENT with `late: true` (the module arrived after this
+        asked), `player` being whatever it published, or null;
+      - after `timeoutMs` with whatever is there (null on a broken deploy) and
+        `late: true`, when a bound is given. `timeoutMs: null` waits for the
+        event however long it takes -- the boot restores do, on purpose: a
+        module landing at 7 s on a slow link must still restore the bar.
+    A callback and not a Promise because the present-bridge case is
+    synchronous at boot (the ribbon restore runs before the caller returns);
+    `playerBridge` wraps it in the Promise its callers await.
+    EACH WAIT CLEANS UP AFTER ITSELF (audit round 3, app-2-14): on the broken-
+    deploy path the event never fires, and every visit to #/forays, Library or
+    a Try again used to leave one listener and its closure attached for the
+    session. */
+function whenPlayerBridge(fn, { timeoutMs = null } = {}) {
+  if (window.ForayPlayer) { fn({ player: window.ForayPlayer, late: false }); return; }
+  let done = false;
+  let timer = null;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    if (timeoutMs != null) {
+      window.removeEventListener(PLAYER_READY_EVENT, finish);
       clearTimeout(timer);
-      resolve(window.ForayPlayer || null);
-    };
-    window.addEventListener("forayplayer:ready", finish, { once: true });
-    timer = setTimeout(finish, PLAYER_WAIT_MS);
-  });
+    }
+    fn({ player: window.ForayPlayer || null, late: true });
+  };
+  window.addEventListener(PLAYER_READY_EVENT, finish, { once: true });
+  if (timeoutMs != null) timer = setTimeout(finish, timeoutMs);
+}
+
+/** The bridge, or null once PLAYER_WAIT_MS has passed without it -- the wait
+    every click and page render uses. */
+function playerBridge() {
+  return new Promise(resolve => whenPlayerBridge(({ player }) => resolve(player), { timeoutMs: PLAYER_WAIT_MS }));
 }
 
 /* "STILL LOADING" IS NOT "FAILED TO LOAD" (audit round 2, states-6). A null
@@ -15901,8 +15984,8 @@ function restoreNowPlayingRibbon() {
     if (!pending) return go(late);
     Promise.resolve(p.whenEngineReady()).then(() => go(late), () => go(late));
   };
-  if (window.ForayPlayer) whenLaneKnown(false);
-  else window.addEventListener("forayplayer:ready", () => whenLaneKnown(true), { once: true });
+  /* Unbounded: a module that lands late still restores the bar (A3-13). */
+  whenPlayerBridge(({ late }) => whenLaneKnown(late));
 }
 
 /** The part-played Foray for the bar, when it is the most recent thing played —
@@ -16748,8 +16831,7 @@ function bindEngineDevRows() {
     const ready = p && typeof p.whenEngineReady === "function" ? p.whenEngineReady() : null;
     Promise.resolve(ready).then(syncEngineDevRows, syncEngineDevRows);
   };
-  if (window.ForayPlayer) whenLane();
-  else window.addEventListener("forayplayer:ready", whenLane, { once: true });
+  whenPlayerBridge(whenLane); // unbounded, like the ribbon restore
 }
 
 /* The Interests page (#/interests, U-07) is reachable from Settings, but
@@ -17450,7 +17532,7 @@ async function deleteMyData({ deviceOnly = false } = {}) {
     state.interests = {};
     interestsSetThisSession = new Set();
     loadInterests();
-    state._interestsGen = (state._interestsGen || 0) + 1;
+    bumpInterestsGen();
     leaveForayPage();
     /* And this is the one action the app does not log. `logEvent` writes
        `cp_events` and mints `cp_profile_id`, and the next sync would create a
@@ -19949,7 +20031,7 @@ async function init() {
   if (storageWaiting()) {
     afterStorageSettles(() => {
       loadInterests();
-      state._interestsGen = (state._interestsGen || 0) + 1;
+      bumpInterestsGen();
     });
   }
   buildCards();

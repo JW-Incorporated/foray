@@ -32,11 +32,14 @@
 import { NEAR_END_SEC, MIN_RESUME_SEC } from "./position-store.js";
 import { MAX_AGE_H, PLAYED_LABEL } from "./foray-progress.js";
 import { hoursMinutes } from "./duration.js";
+import { LAST_EPISODE_KEY } from "./engine-vocabulary.js";
 
 /** The single pointer row. `cp_` prefix: renaming wipes user state (CLAUDE.md).
     Deliberately NOT `cp_pos:*`-shaped — that namespace is one row per episode
-    and is owned by `position-store.js`. */
-export const KEY = "cp_last_episode";
+    and is owned by `position-store.js`. Spelled once, in engine-vocabulary.js,
+    beside the other two rows the native engine owns (code-health CH-31); this
+    name is the one callers and gen-constants read. */
+export const KEY = LAST_EPISODE_KEY;
 
 /** A pointer older than this stops being offered.
  *

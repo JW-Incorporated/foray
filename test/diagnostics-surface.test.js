@@ -546,7 +546,15 @@ test("the transmitted-row mapper has no case for anything diagnostic", () => {
   const mapper = src.slice(src.indexOf("function toEventRow"), src.indexOf("function trySyncEvents"));
   assert.ok(mapper.length > 200, "the mapper has to be found, or this test is about nothing");
   assert.ok(!/cp_diag|diagnostic/i.test(mapper), "toEventRow must know nothing about the record");
-  const sync = src.slice(src.indexOf("function trySyncEvents"), src.indexOf("function leafNodes"));
+  /* Ends at `function taxonomyNodes`, the first function of the interests
+     section after the sync (it was `leafNodes`, deleted by code-health CH-28).
+     The end has to be found and come AFTER the start: a missing boundary
+     slices to -1, almost the whole file, and this test reads a sync that is
+     not the sync. */
+  const syncStart = src.indexOf("function trySyncEvents");
+  const syncEnd = src.indexOf("function taxonomyNodes");
+  assert.ok(syncStart > 0 && syncEnd > syncStart, "the sync slice has both its boundaries");
+  const sync = src.slice(syncStart, syncEnd);
   assert.ok(sync.length > 200, "trySyncEvents has to be found");
   assert.ok(!/cp_diag|diagnostic/i.test(sync), "trySyncEvents must not read the record");
 });
