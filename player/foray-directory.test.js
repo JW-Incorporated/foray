@@ -702,3 +702,63 @@ test("L26: EVERY refresh outcome carries how long it took, which request it came
     assert.equal(refreshes[1].held, "v1", "the held set going into the second refresh");
   }
 });
+
+/* ==================================================================== */
+/* CH-40 characterization (code-health P2-05)                           */
+/* ==================================================================== */
+
+/** Run `body` with the global timers wrapped; answers the `ms` of every timer
+    still armed when it returns (a timer that fired or was cleared is gone). */
+async function liveTimersAfter(body) {
+  const realSet = globalThis.setTimeout;
+  const realClear = globalThis.clearTimeout;
+  const live = new Map();
+  globalThis.setTimeout = (fn, ms, ...args) => {
+    const h = realSet(() => { live.delete(h); fn(...args); }, ms);
+    live.set(h, ms);
+    return h;
+  };
+  globalThis.clearTimeout = (h) => { live.delete(h); return realClear(h); };
+  try { await body(); } finally { globalThis.setTimeout = realSet; globalThis.clearTimeout = realClear; }
+  return [...live.values()];
+}
+
+test("CH-40 characterization: a fetch past its bound is ABORTED and answers `timeout`, not the abort's own `network`; bounds that were met leave no live timer", async () => {
+  /* fetchBytes' contract: on the clock it aborts the request and answers
+     {ok:false, code:"timeout"}; the abort's rejection, which lands a turn
+     later, cannot replace that answer. Every bound (fetchBytes' and
+     `bounded`'s around the cache and local-pointer reads) is cleared the
+     moment its race settles.
+     MUTATIONS: drop `ctrl?.abort()` -> the pointer's signal is not aborted;
+     drop the `clearTimeout(timer)` in fetchBytes' finally (or `bounded`'s)
+     -> 4321 ms bounds are still live after an adopted refresh. */
+  const signals = new Map();
+  const abortable = (url, init) => {
+    const signal = init?.signal ?? null;
+    signals.set(String(url), signal);
+    return new Promise((_, reject) => {
+      signal?.addEventListener("abort", () => reject(Object.assign(new Error("aborted"), { name: "AbortError" })));
+    });
+  };
+  const { d } = make({ fetch: abortable, pointerTimeoutMs: 20, cacheWaitMs: 20 });
+  await d.boot({ seed: makeSet(1) });
+  const out = await d.refresh({ origin: ORIGIN });
+  assert.equal(out.status, STATUS.OFFLINE);
+  assert.equal(out.code, "timeout", "the clock's answer, not the abort's `network`");
+  assert.equal(signals.get(`${ORIGIN}/${POINTER_PATH}`)?.aborted, true, "the request past its bound was aborted");
+
+  const seed = makeSet(1);
+  const next = makeSet(1, { prefix: "n" });
+  const ptr = await pointerFor(next, "v2");
+  let adopted = null;
+  const live = await liveTimersAfter(async () => {
+    const { d: d2 } = make({
+      fetch: fakeFetch(remote(ptr, next)), cache: fakeTier(),
+      cacheWaitMs: 4321, pointerTimeoutMs: 4321, filesTimeoutMs: 4321,
+    });
+    await d2.boot({ seed });
+    adopted = await d2.refresh({ origin: ORIGIN });
+  });
+  assert.equal(adopted.status, STATUS.ADOPTED);
+  assert.deepEqual(live.filter((ms) => ms === 4321), [], "every bound that was met is cleared");
+});

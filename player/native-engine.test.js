@@ -453,3 +453,31 @@ test("the client calls the plugin the Swift side registers, and engineHello is o
   assert.strictEqual(listenTo(null, ENGINE_PLUGIN, ENGINE_EVENT, fn), null);
   assert.strictEqual(listenTo({ addListener: () => { throw new Error("no"); } }, ENGINE_PLUGIN, ENGINE_EVENT, fn), null);
 });
+
+/* ---------- CH-40 characterization (code-health P2-05) ---------- */
+
+test("CH-40 characterization: with no scheduler injected the hello bound is a REAL timer: it fires on the wall clock, and a hello answered in time clears it", { timeout: 5000 }, async () => {
+  /* The default scheduler's contract: `schedule(ms, fn)` arms setTimeout and
+     answers a cancel that clears it.
+     MUTATIONS: make the default scheduler's cancel a no-op -> the 4321 ms
+     bound is still live once native mode is decided; make its schedule never
+     arm -> the hung hello never resolves (the test's timeout is the red). */
+  const realSet = globalThis.setTimeout;
+  const realClear = globalThis.clearTimeout;
+  const live = new Map();
+  globalThis.setTimeout = (fn, ms, ...args) => {
+    const h = realSet(() => { live.delete(h); fn(...args); }, ms);
+    live.set(h, ms);
+    return h;
+  };
+  globalThis.clearTimeout = (h) => { live.delete(h); return realClear(h); };
+  let d = null;
+  try {
+    d = await createNativeEngine({ capacitor: fakeCapacitor({ hello: nativeHello() }), helloTimeoutMs: 4321 }).engineModeReady;
+  } finally { globalThis.setTimeout = realSet; globalThis.clearTimeout = realClear; }
+  assert.equal(d.mode, "native");
+  assert.deepEqual([...live.values()].filter((ms) => ms === 4321), [], "the hello bound is cleared once the hello answers");
+
+  const hung = await createNativeEngine({ capacitor: fakeCapacitor({ hello: "hang" }), helloTimeoutMs: 20 }).engineModeReady;
+  assert.equal(hung.mode, "js");
+});

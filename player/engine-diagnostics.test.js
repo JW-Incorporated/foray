@@ -570,3 +570,35 @@ test("no engine to ask (the web, Android): no bridge call, and the header says w
   const web = await engineDiagnosticReport({ record: () => pageRecord(1, () => T0), engine: null, capacitor: null });
   assert.match(web.split("\n")[2], /^engine=js reason=not-ios /);
 });
+
+test("CH-40 characterization: the read's bound is armed at timeoutMs and cancelled the moment the engine answers or rejects; an answer after the bound changes nothing", async () => {
+  /* readEngineDiagnostics' contract: `timeout` on the clock, `failed` for a
+     rejection (swallowed, never thrown), the ring otherwise; the scheduler's
+     cancel runs on every settle.
+     MUTATIONS: drop `cancel()` from `finish` -> `live` is 1 after an answered
+     read; arm the bound at a constant instead of `timeoutMs` -> still pending
+     at 1234 ms. */
+  const answeredSched = manualScheduler();
+  const answered = await readEngineDiagnostics({ engine: { read: async () => ({ rows: [] }) }, timeoutMs: 1234, scheduler: answeredSched });
+  assert.deepEqual(answered, { rows: [], readError: null });
+  assert.equal(answeredSched.live, 0, "an answered read leaves no live bound");
+
+  const rejectedSched = manualScheduler();
+  const rejected = await readEngineDiagnostics({ engine: { read: () => Promise.reject(new Error("gone")) }, timeoutMs: 1234, scheduler: rejectedSched });
+  assert.deepEqual(rejected, { rows: null, readError: "failed" });
+  assert.equal(rejectedSched.live, 0, "a rejected read leaves no live bound");
+
+  let release = null;
+  const lateSched = manualScheduler();
+  let out = null;
+  readEngineDiagnostics({ engine: { read: () => new Promise((r) => { release = r; }) }, timeoutMs: 1234, scheduler: lateSched })
+    .then((v) => { out = v; });
+  assert.equal(lateSched.live, 1, "one bound armed");
+  await lateSched.advance(1233);
+  assert.equal(out, null, "not before the bound");
+  await lateSched.advance(1);
+  assert.deepEqual(out, { rows: null, readError: "timeout" });
+  release({ rows: [] });
+  await new Promise((r) => setImmediate(r));
+  assert.deepEqual(out, { rows: null, readError: "timeout" }, "the late ring does not replace the timeout");
+});

@@ -259,3 +259,38 @@ test("a resolved answer with no ok of its own reads as ok: true; an explicit ok:
   assert.equal((await dl.usage()).ok, true);
   assert.deepEqual(await dl.cancel({ id: "x" }), { ok: false, reason: "unknown-id" });
 });
+
+/* CH-40 characterization (code-health P2-05). call()'s contract beyond the
+   deadline itself: a host whose timer cannot be armed still gets the plugin's
+   answer (no deadline, not a lost answer); a clear that throws is swallowed; a
+   null timer handle is never handed to clearTimeoutFn; and the timeout answer
+   is a fresh object per call.
+   MUTATIONS: drop the try around `setTimeoutFn(...)` -> the first usage()
+   rejects; drop the try around `clearTimeoutFn(timer)` -> the second never
+   settles (the test's timeout is the red); drop `timer != null` -> `cleared`
+   holds a null. */
+test("CH-40 characterization: no timer, a throwing clear and a null handle all still deliver the answer; each timeout answer is its own object", { timeout: 5000 }, async () => {
+  const { bridge } = fakeBridge({ answer: { ok: true, bytes: 7 } });
+  const noTimer = createDownloadBridge({ bridge, setTimeoutFn: () => { throw new Error("no timers here"); } });
+  assert.deepEqual(await noTimer.usage(), { ok: true, bytes: 7 });
+  const badClear = createDownloadBridge({ bridge, setTimeoutFn: () => 1, clearTimeoutFn: () => { throw new Error("cannot clear"); } });
+  assert.deepEqual(await badClear.usage(), { ok: true, bytes: 7 });
+  const cleared = [];
+  const nullHandle = createDownloadBridge({ bridge, setTimeoutFn: () => null, clearTimeoutFn: (h) => cleared.push(h) });
+  assert.deepEqual(await nullHandle.usage(), { ok: true, bytes: 7 });
+  assert.deepEqual(cleared, [], "a null handle is not cleared");
+
+  const fires = [];
+  const hung = createDownloadBridge({
+    bridge: { nativePromise: () => new Promise(() => {}) },
+    setTimeoutFn: (fn) => { fires.push(fn); return fires.length; },
+    clearTimeoutFn: () => {},
+  });
+  const a = hung.list();
+  const b = hung.usage();
+  for (const fire of fires) fire();
+  const [ra, rb] = await Promise.all([a, b]);
+  assert.deepEqual(ra, { ok: false, reason: "timeout" });
+  assert.deepEqual(rb, { ok: false, reason: "timeout" });
+  assert.notStrictEqual(ra, rb, "a caller that edits its answer cannot edit another's");
+});

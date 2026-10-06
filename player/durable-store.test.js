@@ -2354,3 +2354,30 @@ test("player-rest-4: DurableStore.keys(prefix) is the owned keys under that pref
   assert.deepEqual(store.keys("cp_foray:"), ["cp_foray:x"]);
   assert.deepEqual(store.keys().sort(), ["cp_foray:x", "cp_pos:a"]);
 });
+
+test("CH-40 characterization: a tier call past the op deadline REJECTS with a TimeoutError naming the tier and the bound, recorded as that tier's write fault; a purge past its own deadline names the bound", async () => {
+  /* `_timed`'s contract is a rejection, not a fallback value: the caller's
+     catch is what records the fault and feeds the circuit breaker.
+     `_queueSettled` is the other shape, `false` on the clock.
+     MUTATIONS: make `_timed` resolve null at the deadline (the resolve-null
+     shape the other bounded calls in player/ use) -> the hung write reads as a
+     success and no TimeoutError fault is recorded; resolve `_queueSettled`'s
+     deadline with `true` -> the purge reports no stuck queue. */
+  const { store, idb } = hungShell({ opDeadlineMs: 30 });
+  await store.hydrate();
+  store.setItem("cp_pos:ep1", "{}");
+  await new Promise((r) => setTimeout(r, 150));
+  const faults = store.health().faults;
+  const timedOut = faults.find((f) => f.tier === idb.name && /TimeoutError/.test(f.error));
+  assert.ok(timedOut, JSON.stringify(faults));
+  assert.equal(timedOut.op, "write");
+  assert.equal(timedOut.key, "cp_pos:ep1");
+  assert.equal(timedOut.error, `TimeoutError: ${idb.name} did not answer within 30 ms`);
+
+  const purging = hungShell({ opDeadlineMs: 0, purgeDeadlineMs: 50 }).store;
+  await purging.hydrate();
+  purging.setItem("cp_pos:ep1", "{}");
+  const out = await purging.purge();
+  assert.equal(out.ok, false);
+  assert.ok(out.unverified.some((u) => u.tier === "queue" && u.reason === "durable writes still pending after 50 ms"), JSON.stringify(out.unverified));
+});
