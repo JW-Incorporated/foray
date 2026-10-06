@@ -2,6 +2,52 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
+## 2026-10-06 — iOS native lane: Now Playing is rewritten every second while playing, and carries the listener's default rate
+
+**Founder report (Wyatt, 2026-10-06, verbatim):**
+
+> "The time progress bar is stuck at 0 on my car, even though it's playing on my phone"
+
+- **What changed in #817 (2026-09-25).** The native lane's `ForayEngine.publishSurface`
+  wrote `MPNowPlayingInfoCenter` only on a transition, a seek, or a playhead that
+  drifted over 1 s from the OS's extrapolation. In steady playback (1.5x, the deck
+  exactly where the OS extrapolates it) that is never, so the elapsed time a car was
+  sent stayed at its first value. The legacy lane it replaced rewrote the entry on
+  every report, and reports arrived about once a second while playing (the page's
+  4 Hz `timeupdate`, the shim's 1 s position floor). The native lane had also dropped
+  `MPNowPlayingInfoPropertyDefaultPlaybackRate`, which the legacy lane wrote from the
+  element's real rate (the same value as `PlaybackRate` while playing).
+- **Decision: legacy parity, 1 Hz, over Apple's guidance.** Apple says periodic
+  elapsed-time updates are not necessary because the system extrapolates. That holds
+  for Apple's own surfaces (lock screen, CarPlay). It does not hold for this car: a
+  plain-Bluetooth (AVRCP) head unit that failed in both native-era reports (2026-09-28
+  "the total and no position", 2026-10-06 stuck at 0) while the phone's clock was
+  right. The native lane now rewrites a running entry (rate above 0) every 1 s at the
+  deck's own playhead (`ForayEngine.nowPlayingRefreshSec`, a host-only heartbeat; the
+  core and the parity fixtures are unchanged). A paused, stalled or loading entry is
+  never refreshed, so a pause costs nothing and the p-car-8 stall rule holds. Every
+  entry carries `DefaultPlaybackRate` again: the entry's running rate while it is above
+  0, and the listener's rate only while it is 0 (paused, stalled, loading), so a
+  playing entry's rate and default never disagree (a spoken line at 1.5x carries 1 and
+  1, as the legacy lane's element rate did; a default of 1.5 over a 1x line would be
+  the very mismatch suspected of reading as a scan). Every rewrite of the same picture
+  reuses one `MPMediaItemArtwork` object so CarPlay does not refetch or flicker it.
+- **Not yet known:** which of the two gaps froze this car. A 1.0x drive on a build
+  without the fix would separate them; the fix ships both either way. If the 1 Hz
+  rewrites ever make a head unit re-read metadata visibly, the artwork-object reuse is
+  the first thing to check, and a slower cadence (2-5 s) is the fallback, at the cost
+  of a bar that steps 3-7.5 s at a time on a unit that does not extrapolate.
+- **Diagnostics:** seek and drift rewrites now write `nowplaying via=seek|drift` rows
+  (the 2026-10-06 paste read a skip with no row as a missing write; the write had
+  happened). The 1 s refreshes write no row and are counted into the next row's
+  `refreshes=`. `tools/mobile/engine-report.mjs` rate-latch does not read a `via=seek`
+  row's jump as the clock.
+- **Android and web need no change.** Media3 publishes position, update time and speed,
+  which Android's AVRCP target extrapolates; the web writes `setPositionState` on
+  every render.
+- **Docs changed to match:** `docs/ios-lock-screen.md` §3, `docs/native-engine-plan.md`
+  §4.5.
+
 ## 2026-10-05 — No legal review before sharing AI-generated content; #126 re-scoped to content safety in Foray generation
 
 **Founder ruling (Wyatt, 2026-10-05, in a Claude Code session, verbatim):**

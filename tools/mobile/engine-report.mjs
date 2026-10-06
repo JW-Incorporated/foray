@@ -712,7 +712,7 @@ export function m1Exit(parsed) {
  *   deck ready    token= reuse=y|n elapsedMs= marks={…} class=
  *   deck deadline token= afterMs= step= class= reuse= …the access fields
  *   deck access|stalled|failed token= … wwan=<media requests over cellular>
- *   nowplaying    … via= state= rate= elapsedSec= buffering= engineState= listenRate=
+ *   nowplaying    … via=metadata|state|rate|seek|drift|clear state= rate= elapsedSec= buffering= engineState= listenRate= refreshes=<quiet 1 s rewrites since the last row>
  *   deck time-control token= status=playing|waiting|paused reason= positionSec=  (#866)
  *   grace begin   reason= low=y|n bgRemainingMs=
  *   grace end|expired outcome= reason= heldMs=
@@ -949,7 +949,8 @@ function reuseVerdict(ri) {
  *     RATE_LATCH_MIN_ADVANCE_SEC (with buffering=y, at least half the span's
  *     wall time too, since an honest stall stands still) and no further than
  *     the span could play (a longer jump is a seek, which says nothing about
- *     the rate); or
+ *     the rate; a span that ends on a `via=seek` row is not judged by the
+ *     clock at all, since the jump is the listener's); or
  *   - the deck said so: its latest `deck time-control` row read
  *     status=playing for longer than RATE_LATCH_MAX_MS inside the span.
  * buffering=y is judged too, because it is the #866 latch itself: the core's
@@ -1004,7 +1005,10 @@ export function rateLatch(parsed) {
     let clockRan = false;
     if (next) {
       const a = num(r.f.elapsedSec);
-      const z = num(next.f.elapsedSec);
+      // A `via=seek` row (2026-10-06) is the listener's jump, not the clock:
+      // a car's +30 s skip inside a 20 s span at 1.5x would otherwise read as
+      // a clock that ran. Only the deck rule can judge such a span.
+      const z = next.f.via === "seek" ? null : num(next.f.elapsedSec);
       advanceSec = a != null && z != null ? Math.round((z - a) * 1000) / 1000 : null;
       const speed = Math.max(num(r.f.listenRate) ?? 1, 1);
       const floor = buffering ? Math.max(RATE_LATCH_MIN_ADVANCE_SEC, durationMs / 2000) : RATE_LATCH_MIN_ADVANCE_SEC;
