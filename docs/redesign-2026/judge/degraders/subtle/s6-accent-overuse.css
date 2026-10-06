@@ -1,0 +1,8 @@
+/* Hard-set degrader S6: accent overuse, nothing else.
+   The two accents (amber, violet) stop meaning anything: section labels and
+   page titles go amber, every meta/secondary line goes violet. Both stay
+   above AA, so this is a colour-discipline defect, not a contrast one.
+   Type, spacing and radii untouched. Calibration use only; never ship.
+   Injected with: node tools/ui-lab/shoot.mjs --target app --css <this file> */
+.lib-section-head, .sh-results-head, .hv2-title, .page-head h2, .fp-s-title { color: var(--amber) !important; }
+.s, .sub, .ep-hook, .hv2-jbi-sub, .hv2-foray-sub, .hv2-playlist-sub, .fp-s-show, .fp-s-why, .fp-now, .fp-left, .show-result-title, .q-num { color: var(--violet) !important; }

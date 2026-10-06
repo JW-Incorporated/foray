@@ -1,0 +1,12 @@
+/* Hard-set degrader S2: contrast lowered to just-AA, nothing else.
+   Secondary text (--muted) drops from 5.80:1 to 4.52:1 on --surface (4.95:1
+   on --bg, 4.02:1 on --surface2); primary text (--text) drops from 14.97:1
+   to 7.41:1 on --surface. Hue kept (mixed toward the surface colour). Still
+   passes AA for body text on the surfaces rows sit on; the defect is weaker
+   legibility and a flatter text/secondary step. Calibration use only.
+   Injected with: node tools/ui-lab/shoot.mjs --target app --css <this file> */
+body, body.ui-v2 {
+  --muted: #898094 !important;
+  --text-dim: #898094 !important;
+  --text: #afaaa9 !important;
+}

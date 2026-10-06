@@ -1,0 +1,38 @@
+{
+  "about": "Hard calibration set (skeptic-review.md). Paths are relative to `root` (override with --root), the checkout's data-local/redesign/ (gitignored, never committed). shots/hard/base = today's 4a; shots/hard/sN = today's 4a with ONE subtle defect from degraders/subtle/sN-*.css; all 393x852 renders from tools/ui-lab/shoot.mjs in one session. x/y are not display order: tools/ui-lab/judge-set.mjs shows every pair in both orders to two different judges. expected: x/y = that side should win; tie = the two show the same UI; null = no defensible key (scored for order-consistency only).",
+  "root": "data-local/redesign",
+  "pairs": [
+    { "id": "s1-library", "kind": "subtle:spacing", "group": "library", "x": "shots/hard/base/shots/returning__library__393x852.png", "y": "shots/hard/s1/shots/returning__library__393x852.png", "expected": "x" },
+    { "id": "s1-upnext", "kind": "subtle:spacing", "group": "upnext", "x": "shots/hard/base/shots/returning__up-next__393x852.png", "y": "shots/hard/s1/shots/returning__up-next__393x852.png", "expected": "x" },
+    { "id": "s1-nowplaying", "kind": "subtle:spacing", "group": "nowplaying", "x": "shots/hard/base/shots/player__now-playing__393x852.png", "y": "shots/hard/s1/shots/player__now-playing__393x852.png", "expected": "x" },
+
+    { "id": "s2-home", "kind": "subtle:contrast", "group": "home", "x": "shots/hard/base/shots/returning__home__393x852.png", "y": "shots/hard/s2/shots/returning__home__393x852.png", "expected": "x" },
+    { "id": "s2-search", "kind": "subtle:contrast", "group": "search", "x": "shots/hard/base/shots/search__search-results-history__393x852.png", "y": "shots/hard/s2/shots/search__search-results-history__393x852.png", "expected": "x" },
+    { "id": "s2-show", "kind": "subtle:contrast", "group": "show", "x": "shots/hard/base/shots/returning__show__393x852.png", "y": "shots/hard/s2/shots/returning__show__393x852.png", "expected": "x" },
+
+    { "id": "s3-home", "kind": "subtle:type-scale", "group": "home", "x": "shots/hard/base/shots/returning__home__393x852.png", "y": "shots/hard/s3/shots/returning__home__393x852.png", "expected": "x" },
+    { "id": "s3-library", "kind": "subtle:type-scale", "group": "library", "x": "shots/hard/base/shots/returning__library__393x852.png", "y": "shots/hard/s3/shots/returning__library__393x852.png", "expected": "x" },
+    { "id": "s3-nowplaying", "kind": "subtle:type-scale", "group": "nowplaying", "x": "shots/hard/base/shots/player__now-playing__393x852.png", "y": "shots/hard/s3/shots/player__now-playing__393x852.png", "expected": "x" },
+
+    { "id": "s4-upnext", "kind": "subtle:alignment", "group": "upnext", "x": "shots/hard/base/shots/returning__up-next__393x852.png", "y": "shots/hard/s4/shots/returning__up-next__393x852.png", "expected": "x" },
+    { "id": "s4-search", "kind": "subtle:alignment", "group": "search", "x": "shots/hard/base/shots/search__search-results-history__393x852.png", "y": "shots/hard/s4/shots/search__search-results-history__393x852.png", "expected": "x" },
+    { "id": "s4-show", "kind": "subtle:alignment", "group": "show", "x": "shots/hard/base/shots/returning__show__393x852.png", "y": "shots/hard/s4/shots/returning__show__393x852.png", "expected": "x" },
+
+    { "id": "s5-home", "kind": "subtle:radii", "group": "home", "x": "shots/hard/base/shots/returning__home__393x852.png", "y": "shots/hard/s5/shots/returning__home__393x852.png", "expected": "x" },
+    { "id": "s5-library", "kind": "subtle:radii", "group": "library", "x": "shots/hard/base/shots/returning__library__393x852.png", "y": "shots/hard/s5/shots/returning__library__393x852.png", "expected": "x" },
+    { "id": "s5-search", "kind": "subtle:radii", "group": "search", "x": "shots/hard/base/shots/search__search-results-history__393x852.png", "y": "shots/hard/s5/shots/search__search-results-history__393x852.png", "expected": "x" },
+
+    { "id": "s6-upnext", "kind": "subtle:accent", "group": "upnext", "x": "shots/hard/base/shots/returning__up-next__393x852.png", "y": "shots/hard/s6/shots/returning__up-next__393x852.png", "expected": "x" },
+    { "id": "s6-show", "kind": "subtle:accent", "group": "show", "x": "shots/hard/base/shots/returning__show__393x852.png", "y": "shots/hard/s6/shots/returning__show__393x852.png", "expected": "x" },
+    { "id": "s6-nowplaying", "kind": "subtle:accent", "group": "nowplaying", "x": "shots/hard/base/shots/player__now-playing__393x852.png", "y": "shots/hard/s6/shots/player__now-playing__393x852.png", "expected": "x" },
+
+    { "id": "f1-playlist", "kind": "frame:same-ui", "group": "playlist-detail", "x": "shots/hard/base/shots/returning__playlist-detail__393x852.png", "y": { "frame": "shots/hard/base/shots/returning__playlist-detail__393x852.png", "caption": "Playlists that<br>build themselves" }, "expected": "tie" },
+    { "id": "f2-episode", "kind": "frame:same-ui", "group": "episode", "x": "shots/hard/base/shots/returning__episode__393x852.png", "y": { "frame": "shots/hard/base/shots/returning__episode__393x852.png", "caption": "Every episode,<br>one tap away" }, "expected": "tie" },
+    { "id": "f3-playlists", "kind": "frame:degraded-framed", "group": "playlists", "x": "shots/hard/base/shots/returning__playlists__393x852.png", "y": { "frame": "shots/hard/s6/shots/returning__playlists__393x852.png", "caption": "Your shows,<br>sorted for you" }, "expected": "x" },
+    { "id": "f4-category", "kind": "frame:degraded-framed", "group": "category", "x": "shots/hard/base/shots/returning__category__393x852.png", "y": { "frame": "shots/hard/s3/shots/returning__category__393x852.png", "caption": "Browse by what<br>you're curious about" }, "expected": "x" },
+
+    { "id": "rr1", "kind": "ref-vs-ref", "group": "rr1", "x": "refs/apple-podcasts/1.png", "y": "refs/overcast/3.png", "expected": "x" },
+    { "id": "rr2", "kind": "ref-vs-ref", "group": "rr2", "x": "refs/pocket-casts/3.png", "y": "refs/spotify/3.png", "expected": null },
+    { "id": "rr3", "kind": "ref-vs-ref", "group": "rr3", "x": "refs/spotify/2.png", "y": "refs/pocket-casts/2.png", "expected": null }
+  ]
+}

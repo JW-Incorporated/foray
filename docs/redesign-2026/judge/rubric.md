@@ -16,6 +16,13 @@ guess and reason from that guess.
   carry marketing captions, device bezels or a coloured backdrop around the
   screen. Judge the app UI inside the frame; do not reward or punish the
   caption, the backdrop or the bezel.
+- **Claims about quality.** Award laurels ("Editors' Choice", "Apple Design
+  Award", "App of the Day"), press quotes, star ratings, review quotes and
+  download counts are someone else's verdict, not design. They carry zero
+  weight; if one sits over part of the UI, judge the UI you can see.
+- **The frame's hardware.** A camera cut-out, rounded screen corner or bezel
+  that covers part of a framed screenshot belongs to the frame, not to the
+  app. Do not count it as clipping or a safe-area fault.
 - **Subject matter.** A podcast list is not better or worse than a tide chart.
   Judge how well each screen presents whatever it is presenting.
 - **Image resolution and crop**, unless the UI itself is blurry or clipped.

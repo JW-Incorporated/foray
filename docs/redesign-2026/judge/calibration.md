@@ -19,6 +19,13 @@ repo). They are referenced here by path only.
 **Verdict: the rubric is calibrated and trusted for Phase 2 and later.** No
 misses, so the rubric is unchanged and no re-run is needed.
 
+> **Superseded as the trust bar (skeptic review, 2026-10-05).** Every round 1
+> pair could be decided without design judgement: by a marketing frame (two
+> with an Editors' Choice laurel or a five-star review quote) or by grossly
+> broken degraders. Round 2, the hard set of near-miss pairs, is what the
+> rubric's trust rests on now: 36 of 36 near-miss judgements correct, no
+> position bias, no frame halo. See `skeptic-review.md`.
+
 By kind:
 
 | Kind | Pairs | Expected side won |
