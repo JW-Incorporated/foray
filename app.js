@@ -1894,9 +1894,7 @@ function isShowStarred(id) { return id in starredShowsMap(); }
 function toggleShowStar(id) {
   const had = Boolean(starredShowsMap()[id]);
   let entry = null;
-  if (had) {
-    logEvent("show_unstarred", { show_id: id });
-  } else {
+  if (!had) {
     const show = showById(id);
     if (!show) return;
     entry = {
@@ -1905,13 +1903,18 @@ function toggleShowStar(id) {
       artwork_url: show.artwork_url || null,
       starred_at: new Date().toISOString(),
     };
-    logEvent("show_starred", { show_id: id });
   }
-  editStored("cp_starred_shows", {}, (m) => {
+  /* toggleStar's shape (code-health CH-09a, A1-04): the edit first, and the
+     event only for a change that was kept. Logged before the write and with
+     its answer ignored, a follow refused at quota was synced as
+     `show_starred` while the button below repainted from storage as not
+     followed. */
+  const ok = editStored("cp_starred_shows", {}, (m) => {
     const out = plainObject(m);
     if (had) delete out[id]; else out[id] = entry;
     return out;
   });
+  if (ok) logEvent(had ? "show_unstarred" : "show_starred", { show_id: id });
   document.querySelectorAll(`[data-show-star="${CSS.escape(id)}"]`).forEach(b => {
     setToggleLabel(b, isShowStarred(id), FOLLOW_TOGGLE);
     b.classList.toggle("on", isShowStarred(id));
@@ -3540,8 +3543,14 @@ const UP_NEXT_CTX = "upnext";
    The key (`cp_bookmarks`, bookmarks.js KEY) is that module's; the key
    inventory in test/data-deletion.test.js scans player/*.js and finds it
    there, and privacy-policy.md §1 has its row. "Delete my data" clears it by
-   prefix like every other `cp_` row. */
-const BOOKMARK_STORE = { get: lsGet, set: lsSet };
+   prefix like every other `cp_` row.
+   A WRITE IS AN EDIT (code-health CH-09a, A1-03): a raw lsGet/lsSet in the
+   window before hydration read `{}` and wrote `{thisOne}`, which the durable
+   store then kept over the listener's bookmarks for good. `editStored` queues
+   the module's edit and replays it over the settled value; `storedValue`
+   reads with the queued edits applied, so a double tap in the window is still
+   the same bookmark and the list shows the tap at once. */
+const BOOKMARK_STORE = { get: storedValue, edit: editStored };
 
 const EPISODE_NAVIGATION = {
   get next() {
@@ -3572,7 +3581,7 @@ const EPISODE_NAVIGATION = {
   /* Bookmarks inside episodes (#30, PQ-13). The sheet's Bookmark hands over
      the position it paints; the RULES (dedupe, caps, row shape) are
      player/bookmarks.js's, published as `window.forayBookmarks`, and the write
-     is the page's own lsGet/lsSet. Device-only (roadmap Q3): no logEvent, no
+     is the page's own editStored (BOOKMARK_STORE). Device-only (roadmap Q3): no logEvent, no
      sync. Null when the player module has not published the rules. */
   addBookmark(id, sec, durationSec) {
     const b = window.forayBookmarks;
@@ -3644,7 +3653,19 @@ function sendContinuation() {
    row: a crash in between costs one row, where the other order would repeat
    it on every attach until the engine's ack landed. The decisions (what is
    new, in what order, at what time) are `planAdvanceApply`/`planEventDrain`
-   in player/continuation.js; this only executes their steps. */
+   in player/continuation.js; this only executes their steps.
+
+   WRITTEN AS AN EDIT (code-health CH-09a, A1-03). A raw lsSet in the window
+   before hydration wrote the watermark as planned from `null` over the
+   durable one: its other half was lost and a higher advance rewritten low, so
+   a redelivered hop logged `play_started` twice. Each step is now an
+   `editStored` that re-plans THIS step over the stored value with the same
+   rules, so it only ever moves its own half forward: once settled that is
+   exactly `step.applied` (the plan was made from the stored value); before,
+   it is replayed over the durable watermark when hydration lands. The read is
+   `storedValue`, so a second delivery inside the window sees the queued step.
+   (A hop that only the durable watermark already covers is still applied once
+   in that window: the page cannot know it until hydration.) */
 const ENGINE_APPLIED_KEY = "cp_engine_applied";
 
 /** Apply one hop the engine played: Up Next as it stood after it, the chain
@@ -3654,9 +3675,9 @@ const ENGINE_APPLIED_KEY = "cp_engine_applied";
 function applyEngineAdvance(hop) {
   const rules = continuationRules();
   if (!rules) return false;
-  const { steps } = rules.planAdvanceApply(lsGet(ENGINE_APPLIED_KEY, null), [hop]);
+  const { steps } = rules.planAdvanceApply(storedValue(ENGINE_APPLIED_KEY, null), [hop]);
   for (const step of steps) {
-    lsSet(ENGINE_APPLIED_KEY, step.applied);
+    editStored(ENGINE_APPLIED_KEY, null, (v) => rules.planAdvanceApply(v, [step.hop]).applied);
     const h = step.hop;
     const id = h.nextId;
     /* The page handed the engine this item itself; seed it back the way
@@ -3688,10 +3709,11 @@ function applyEngineAdvance(hop) {
 function drainEngineEvents(events) {
   const rules = continuationRules();
   if (!rules) return 0;
-  const { steps } = rules.planEventDrain(lsGet(ENGINE_APPLIED_KEY, null), events);
+  const { steps } = rules.planEventDrain(storedValue(ENGINE_APPLIED_KEY, null), events);
   let logged = 0;
   for (const step of steps) {
-    lsSet(ENGINE_APPLIED_KEY, step.applied);
+    const seq = step.applied.event;
+    editStored(ENGINE_APPLIED_KEY, null, (v) => rules.planEventDrain(v, [{ seq }]).applied);
     if (!step.row) continue;
     logEvent(step.row.type, step.row.payload, { ts: step.row.ts });
     logged++;
