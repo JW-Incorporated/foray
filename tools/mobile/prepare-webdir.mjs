@@ -508,9 +508,14 @@ export function runtimeDataFiles(appSrc) {
 export const MIN_DERIVED_DATA_FILES = 6;
 
 /** Runtime modules under `player/`, excluding test suites. The player is a flat
- *  directory of ES modules that only import each other (verified: every
- *  `import` in `player/*.js` is a `./` sibling), so "every non-test .js" is the
- *  whole graph and no bundler is needed. `player/package.json` is not copied: it
+ *  directory of ES modules that only import each other (every `import` in a
+ *  runtime `player/*.js` is a `./` sibling, which tools/ci/generate-manifest.mjs
+ *  enforces), so no bundler is needed. "Every non-test .js" is a SUPERSET of the
+ *  graph, not the graph: modules nothing imports (parity references, unwired
+ *  rules) ride along here, while the web's preload, precache and dist list only
+ *  player/client.js's import closure (`playerSources`, CH-07). The shell copies
+ *  the superset so a module is never missing; it costs bytes, not a fetch, since
+ *  index.html preloads only the closure. `player/package.json` is not copied: it
  *  exists to mark the directory as ESM for Node, and module-ness in the browser
  *  comes from `<script type="module">`. */
 export function playerFiles(root = REPO_ROOT) {

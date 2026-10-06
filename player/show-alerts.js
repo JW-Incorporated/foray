@@ -1,6 +1,10 @@
 /* New-episode alerts for followed shows: the rules (PQ-25, issue #761;
  * docs/roadmap/player-features.md §3; README default Q20).
  *
+ * Not on the boot path yet (CH-07): nothing in the page imports this module
+ * until PQ-26 wires it, so the web neither modulepreloads, precaches nor
+ * deploys it — importing it from client.js is what puts it on all three.
+ *
  * WHY THIS EXISTS. Following a show (`cp_starred_shows`, written only by
  * app.js `toggleShowStar`) is today a marker and nothing more. Q20 adds one
  * promise to it: when a followed show publishes a new episode, the device

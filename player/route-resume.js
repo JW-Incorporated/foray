@@ -25,7 +25,9 @@
    fixture family. The web and Android JS lanes keep "a reconnect never
    resumes" (queue-manager.js corner case #13, player-core-10), so neither
    queue-manager.js nor client.js imports this file (route-resume.test.js pins
-   that).
+   that). Not on the boot path (CH-07): parity-only, so the web neither
+   modulepreloads, precaches nor deploys it; the `route-resume` parity family
+   reads it from disk.
 
    KEYS. `routeKey(portType, uid)` is the port type and the port's UID, never
    its name (two cars of one model share a name, and a name is a DiagGate
