@@ -334,7 +334,12 @@ function readDataJson(name) {
   return existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) : null;
 }
 
-async function main(argv) {
+/**
+ * The CLI run: parse argv, read credentials, build the show map from data/,
+ * sync. Returns syncR2's `{state, summary}`. Exported so rebuild-index.mjs
+ * (PKG-14) syncs in its own process and warms from the returned state.
+ */
+export async function runSync(argv) {
   const args = parseSyncArgs(argv);
   const creds = await loadR2Credentials();
   const client = await createR2Client(creds);
@@ -344,11 +349,11 @@ async function main(argv) {
     breadth: readDataJson("breadth-transcript-yield.json"),
   });
   if (collisions.length > 0) console.error(`sync-r2: ${collisions.length} show-map collision(s); first writer kept`);
-  await syncR2({ ...args, client, bucket: creds.bucket, showMap: map });
+  return syncR2({ ...args, client, bucket: creds.bucket, showMap: map });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main(process.argv.slice(2)).catch((e) => {
+  runSync(process.argv.slice(2)).catch((e) => {
     console.error("FATAL:", e?.message ?? e);
     process.exit(1);
   });
