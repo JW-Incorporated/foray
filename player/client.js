@@ -1198,6 +1198,9 @@ function buildUI() {
   sTitle.id = "fp-s-title";
   sheet.setAttribute("aria-labelledby", "fp-s-title");
   const sShow = el("p", "fp-s-show");
+  /* CH-4 (#690 / #1071): the chapter line and its previous/next pair, under
+     the title and show — built hidden by `buildSheetChapter` below. */
+  const { chapterBox, chapterLine, chapterPrev, chapterNext } = buildSheetChapter();
   const sWhy = el("p", "fp-s-why");
 
   const scrub = el("input", "fp-scrub");
@@ -1361,7 +1364,7 @@ function buildUI() {
   const sDescText = el("p", "ep-description-text");
   sDesc.append(sDescToggle, sDescText);
 
-  scroll.append(sArt, sTitle, sShow, sWhy, scrub, times, row, clips, row2, sErr, note, sDesc);
+  scroll.append(sArt, sTitle, sShow, chapterBox, sWhy, scrub, times, row, clips, row2, sErr, note, sDesc);
   sheet.append(grabZone, scroll);
   root.append(sheet, announce);
   document.body.append(root);
@@ -1369,6 +1372,7 @@ function buildUI() {
   return {
     root, bar, art, title, show, playBtn, skipBtn, closeBtn, fill, sheet,
     grabZone, scroll, sArt, sDesc, sDescText, clips, clipPrev, clipNext,
+    chapterBox, chapterLine, chapterPrev, chapterNext,
     sTitle, sShow, sWhy, scrub, tNow, tLeft, bigPlay, backBtn, fwdBtn,
     rateBtn, nextBtn, saveBtn, bookmarkBtn, queueLink, openLink, forayLink, stopBtn, info, note, err, sErr, announce,
     shareBtn,
@@ -2279,6 +2283,7 @@ function paintPage(running) {
   }
   syncCardButtons(loading);
   paintEpisodeSurface();
+  trackSheetChapter();
 }
 
 /**
@@ -2465,8 +2470,15 @@ function setNowPlaying(item, why) {
    set), so it marks `current` and calls this again — which is why the note
    reads `current`, not an argument. */
 function paintSeekNote() {
-  const { precision } = seekPrecision(current, { isLocalFile: Boolean(current?.isLocalFile), source: OWN });
-  ui.note.textContent = precision === EXACT ? "" : "Timings on this show are approximate.";
+  /* WITH CHAPTERS ON SCREEN THE NOTE IS ABOUT THEM (CH-4, #690). A chapter
+     stamp is FOREIGN — authored against the publisher's master — so its
+     precision is the page's one FOREIGN rule (`window.ForayChapters.precision`,
+     app.js chapterPrecision), and on a stitched show the note finally has
+     something true to say. Without chapters the playhead is the listener's
+     OWN, exact on their own copy, and the note stays as it was. */
+  loadSheetChapters();
+  const { precision } = sheetChapters ?? seekPrecision(current, { isLocalFile: Boolean(current?.isLocalFile), source: OWN });
+  ui.note.textContent = precision === EXACT ? "" : sheetChapters ? CHAPTER_TIMES_APPROXIMATE : "Timings on this show are approximate.";
   ui.note.hidden = !ui.note.textContent;
 }
 
@@ -2500,6 +2512,9 @@ function paintNotes(item) {
      dies. Token text goes in through `append(string)`, which the DOM turns
      into a text node itself. */
   ui.sDescText.textContent = "";
+  /* The old rows leave with the old notes; CH-4's highlight forgets them. */
+  sheetNoteRows = [];
+  markedNoteRow = null;
   if (!text) return;
   const notes = typeof window !== "undefined" ? window.ForayNotes : null;
   /* `lines` (the line-aware pass, with chapter rows) when the page offers it;
@@ -2524,6 +2539,7 @@ function paintNotes(item) {
         seekEpisodeTo(t.secs).catch(() => {});
       });
       ui.sDescText.append(row);
+      sheetNoteRows.push({ secs: t.secs, row });
       continue;
     }
     if (t.kind === "link" && /^https?:\/\//i.test(String(t.href || ""))) {
@@ -2547,6 +2563,171 @@ function paintNotes(item) {
       ui.sDescText.append(String(t.text ?? ""));
     }
   }
+}
+
+/* ---------- the chapter you are in (CH-4, #690 / #1071) ----------
+
+   The episode page lists the chapters (CH-1); the sheet says which one is
+   playing, steps between them, and lights the notes' row the clock is in.
+
+   ONE SOURCE. The list and its precision are read only through
+   `window.ForayChapters` (app.js: `forItem` is `episodeChapterList`, the very
+   list the page renders; `precision` is `chapterPrecision`, the one FOREIGN
+   rule), so the sheet and the page can never number different chapters. No
+   bridge (a harness, an older cached app.js), a throw, or fewer than two
+   chapters: nothing here changes anything — the box stays hidden, the notes'
+   rows stay unlit, and the seek note keeps its OWN reading.
+
+   NEVER INSIDE A FORAY (A1.5, Joey's Q5: "these are two different use cases").
+   A chapter is the publisher's structure for one episode; a Foray's clip is
+   4a's stitch across many. Its clip row is the navigation there, and
+   `seekEpisodeTo` refuses inside one anyway. A restored Foray (`forayId`, no
+   `foray` loaded yet) is a Foray too.
+
+   FOUR TIMES A SECOND, ONE WRITE PER CHAPTER. `render()`'s page paint calls
+   `trackSheetChapter`, a binary search over the starts; the line, the two
+   buttons and the lit row are written only when the index moves. */
+
+/* Previous within the first three seconds of a chapter is the one before it;
+   past that it is this chapter's start — every player's "back" rule. */
+const CHAPTER_RESTART_SEC = 3;
+const CHAPTER_TIMES_APPROXIMATE = "Chapter times on this show are approximate.";
+
+/** `{ list, precision }` while the chapter UI is live, `null` otherwise. */
+let sheetChapters = null;
+/** paintNotes' chapter rows, `{ secs, row }`, in the notes' (ascending) order. */
+let sheetNoteRows = [];
+let markedNoteRow = null;
+/* The indexes last painted; `null` means "nothing painted yet", so the first
+   tick after a load always paints (an index is a number, -1 included). */
+let shownChapter = null;
+let shownNoteRow = null;
+
+/** The chapter a clock is in: the last start at or before `t`, or -1 before
+    the first. A clock exactly on a start belongs to that chapter. */
+function chapterIndexAt(list, t) {
+  let lo = 0;
+  let hi = list.length - 1;
+  let at = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (list[mid].secs <= t) { at = mid; lo = mid + 1; } else hi = mid - 1;
+  }
+  return at;
+}
+
+/** Where Previous lands from `t`, or null when there is no chapter behind. */
+function previousChapterStart(list, t) {
+  const i = chapterIndexAt(list, t);
+  if (i < 0) return null;
+  return i === 0 || t - list[i].secs > CHAPTER_RESTART_SEC ? list[i].secs : list[i - 1].secs;
+}
+
+/** Where Next lands from `t`, or null on the last chapter. */
+function nextChapterStart(list, t) {
+  const i = chapterIndexAt(list, t) + 1;
+  return i < list.length ? list[i].secs : null;
+}
+
+/** The sheet's chapter box: the line and two 44px buttons, built hidden. */
+function buildSheetChapter() {
+  const chapterBox = el("div", "np-chapter");
+  chapterBox.hidden = true;
+  const chapterLine = el("p", "np-chapter-line");
+  const nav = el("div", "np-chapter-nav");
+  /* The guillemets are decoration; the name is the words (the clip row's rule). */
+  const chapterPrev = el("button", "np-chapter-btn np-chapter-prev", "‹ Previous chapter");
+  chapterPrev.type = "button";
+  chapterPrev.setAttribute("aria-label", "Previous chapter");
+  const chapterNext = el("button", "np-chapter-btn np-chapter-next", "Next chapter ›");
+  chapterNext.type = "button";
+  chapterNext.setAttribute("aria-label", "Next chapter");
+  chapterPrev.addEventListener("click", () => jumpChapter(previousChapterStart));
+  chapterNext.addEventListener("click", () => jumpChapter(nextChapterStart));
+  nav.append(chapterPrev, chapterNext);
+  chapterBox.append(chapterLine, nav);
+  return { chapterBox, chapterLine, chapterPrev, chapterNext };
+}
+
+/** A press of Previous or Next: through the one episode seek. */
+function jumpChapter(pick) {
+  if (!sheetChapters) return;
+  const target = pick(sheetChapters.list, episodePositionSec());
+  if (target == null) return;
+  seekEpisodeTo(target).catch(() => {});
+}
+
+/** Read `current`'s chapters through the bridge, and show or hide the box.
+    Paints nothing itself: the next `render()` tick does, from a clean slate. */
+function loadSheetChapters() {
+  if (markedNoteRow) unmarkNoteRow(markedNoteRow);
+  markedNoteRow = null;
+  sheetChapters = null;
+  shownChapter = null;
+  shownNoteRow = null;
+  const api = typeof window !== "undefined" ? window.ForayChapters : null;
+  if (current && !foray && !current.forayId && typeof api?.forItem === "function") {
+    let list = [];
+    try {
+      const got = api.forItem(current);
+      if (Array.isArray(got)) list = got.filter((c) => c && Number.isFinite(c.secs));
+    } catch (_) {
+      list = [];
+    }
+    if (list.length >= 2) {
+      /* A play this player knows is the downloaded file is exact whatever the
+         page can see (PQ-19 marks `current`); otherwise the page's rule, and a
+         throw there reads approximate — fail honest, never exact. */
+      let precision = null;
+      if (current.isLocalFile) precision = EXACT;
+      else {
+        try { precision = api.precision(current); } catch (_) { precision = null; }
+      }
+      sheetChapters = { list: list.slice().sort((a, b) => a.secs - b.secs), precision };
+    }
+  }
+  if (ui?.chapterBox) ui.chapterBox.hidden = !sheetChapters;
+}
+
+/** The tick: which chapter, which notes row — written only on a change. */
+function trackSheetChapter() {
+  if (!sheetChapters || !ui?.chapterBox) return;
+  const t = episodePositionSec();
+  const i = chapterIndexAt(sheetChapters.list, t);
+  if (i !== shownChapter) {
+    shownChapter = i;
+    paintSheetChapter(i);
+  }
+  const r = sheetNoteRows.length ? chapterIndexAt(sheetNoteRows, t) : -1;
+  if (r !== shownNoteRow) {
+    shownNoteRow = r;
+    if (markedNoteRow) unmarkNoteRow(markedNoteRow);
+    markedNoteRow = r >= 0 ? sheetNoteRows[r].row : null;
+    if (markedNoteRow) {
+      markedNoteRow.classList.add("is-current");
+      markedNoteRow.setAttribute("aria-current", "true");
+    }
+  }
+}
+
+function unmarkNoteRow(row) {
+  row.classList.remove("is-current");
+  row.removeAttribute("aria-current");
+}
+
+/** `Chapter N of M · title`, `~` first when the times are approximate. Before
+    the first chapter's start there is no line, and Previous has nowhere to go. */
+function paintSheetChapter(i) {
+  const { list, precision } = sheetChapters;
+  if (i < 0) {
+    ui.chapterLine.textContent = "";
+    ui.chapterLine.hidden = true;
+  } else {
+    ui.chapterLine.textContent = `${precision === EXACT ? "" : "~"}Chapter ${i + 1} of ${list.length} · ${list[i].title}`;
+    ui.chapterLine.hidden = false;
+  }
+  ui.chapterPrev.disabled = i < 0;
+  ui.chapterNext.disabled = i >= list.length - 1;
 }
 
 /* ---------- what the bar says when there is no sound ----------

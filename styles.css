@@ -2268,6 +2268,28 @@ body.fp-expanded { overflow: hidden; }
 .fp-s-title { font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 700; margin: 8px 0 2px; color: var(--text); }
 .fp-s-show { font-size: var(--fs-xs); color: var(--text-dim); margin: 0 0 8px; }
 .fp-s-why { font-size: var(--fs-sm); color: var(--text-dim); margin: 0 0 12px; }
+/* CH-4 (#690 / #1071): THE CHAPTER YOU ARE IN, under the title and show. One
+   line ("Chapter N of M · title", "~" first when the times are approximate)
+   and a previous/next pair at the tap floor, in the clip row's quiet text
+   look; client.js hides the box with fewer than two chapters and in a Foray.
+   The notes' chapter row the clock is in is lit in the accent, as a row that
+   is on. */
+.np-chapter { margin: 0 0 8px; }
+.np-chapter-line { margin: 0; font-size: var(--fs-sm); font-weight: 600; color: var(--text); }
+.np-chapter-nav { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.np-chapter-btn {
+  min-width: 44px; min-height: 44px; padding: 0 8px;
+  border: 0; background: none;
+  color: var(--text-dim);
+  font: inherit; font-size: var(--fs-sm); font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.np-chapter-btn:hover:not(:disabled), .np-chapter-btn:active:not(:disabled) { color: var(--text); }
+.np-chapter-btn:disabled { opacity: 0.45; cursor: default; }
+.np-chapter-btn:first-child { margin-left: -8px; }
+.np-chapter-btn:last-child { margin-right: -8px; }
+.fp-s-desc .ep-chapter-row.is-current .ep-chapter-title { color: var(--accent); font-weight: 600; }
 /* The publisher's own description inside the sheet. Same body-copy scale and
    the same `pre-line` handling as `.ep-description-text` on the episode page,
    because it is the same text — a second scale for one field is how two

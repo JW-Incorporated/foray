@@ -353,6 +353,7 @@ const NOT_CONTROLS = {
     "ui.sDescText", // the sheet's episode-notes paragraph inside its <details> (audit round 2, p-switcher-2)
     "ui.err", "ui.sErr", // the bar's and the sheet's status lines (L5 + L2, painted by paintStatus)
     "ui.announce", // the bar's sr-only live region, a sibling of its button (review 2026-09-23)
+    "ui.chapterLine", // CH-4 (#690): the sheet's "Chapter N of M · title" <p>, a status line; its buttons' text never changes
   ]),
 };
 const HELPERS = { "app.js": ["setControlLabel", "setStatusText"], "player/client.js": ["paintControl"] };
