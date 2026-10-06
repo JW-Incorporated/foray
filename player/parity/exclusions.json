@@ -9,6 +9,22 @@
       "reason": "dom-only",
       "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
     },
+    "CH-10 characterization: the bar, the clock and the resume row all name the clip at foray.index": {
+      "reason": "webview-only",
+      "why": "client.js's page-side bookkeeping: which list foray.index is read from when the bar, the clock and the resume row name a clip. In native mode the engine owns the queue and reports the playing item itself (NE-35), so there is no second page-side list for it to index; nothing here is a rule the engine reimplements."
+    },
+    "CH-10: client.js indexes one list — no read of the page's build is left": {
+      "reason": "text-pin",
+      "why": "It pins client.js's source: no `foray.resolved.playable` read is left. The engine has no client.js to pin."
+    },
+    "CH-10: under the shipped option set the page's build and the manager's are the same list, for every committed Foray": {
+      "reason": "js-module-shape",
+      "why": "Compares foray-resolve.js's two JS option helpers (forayResolveOptions for the page's resolve, forayQueueOptions for the manager's build) over data/forays.json. The engine builds a Foray's queue once, from the options setQueueFromForay hands it, and has no page-side resolve to agree with."
+    },
+    "CH-10: when the page's build and the manager's differ, the bar, the clock and the resume row follow the MANAGER's list": {
+      "reason": "webview-only",
+      "why": "client.js's page-side bookkeeping: which list foray.index is read from when the bar, the clock and the resume row name a clip. In native mode the engine owns the queue and reports the playing item itself (NE-35), so there is no second page-side list for it to index; nothing here is a rule the engine reimplements."
+    },
     "DELETING EVERYTHING leaves the page interactive, and resume works again after it": {
       "reason": "webview-only",
       "why": "The page's own storage tiers (window.forayStorage, localStorage, the durable IndexedDB/Preferences tier, quota handling) as app.js reads them. In native mode the engine owns cp_foray and friends (OWNED_PREFIXES) and the page adopts them (NE-23); these pin the web tiers."

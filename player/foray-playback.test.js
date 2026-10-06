@@ -87,6 +87,8 @@ import { ForayProgressStore, resumePoint, makeProgress, progressKey } from "./fo
 import { SEAM_GAP_SEC } from "./seam-gap.js";
 import { nextRate, normalizeRate, rateLabel, rateAriaLabel, RATES } from "./playback-rate.js";
 import { createDurableStore } from "./durable-store.js";
+import { buildForayQueue } from "./foray-queue.js";
+import { forayQueueOptions, forayResolveOptions } from "./foray-resolve.js";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const readJson = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
@@ -2717,4 +2719,325 @@ test("client.js sends both Foray paths through the seek-policy switch", async ()
   const againLine = client.split("\n").find((line) => line.includes("again = () => ForayPlayer.playForay("));
   assert.ok(againLine, "playForay's `again` re-entry closure moved or was renamed");
   assert.ok(againLine.includes("allowAdPad"), "the `again` re-entry must carry allowAdPad, or a lane switch drops it");
+});
+
+/* ==================================================================== */
+/* CH-10 (P1-04): ONE list behind the Foray, the one the manager loaded  */
+/* ==================================================================== */
+
+/* WHY THIS PART EXISTS. The page resolves a Foray once (`resolveForay`, which
+   builds the queue to learn what will play) and the manager builds it again at
+   play time (`setQueueFromForay`). Two builds, two lists, and every place in
+   client.js that turned `foray.index` into a clip used to read the PAGE's list
+   while the index counted the MANAGER's. Under the shipped options the two are
+   the same list, which is why nothing had gone wrong; the moment the two builds
+   are asked different questions (`allowAdPad` on one side, a downloaded copy's
+   `isLocalFile` on the other) one list loses a segment the other keeps, and the
+   bar names clip 7 while clip 8 plays, the clock subtracts the wrong in-point,
+   and the resume row is written for a segment nobody is hearing.
+
+   These tests boot the REAL player/client.js against a stub DOM and a fake
+   <audio>, the way player/transport-reconcile.test.js does (its part 3 is the
+   original of this harness, reduced to what a Foray's clip lookup needs). */
+
+class ClientAudio {
+  constructor() {
+    this.listeners = new Map();
+    this.calls = [];
+    this.src = "";
+    this.currentSrc = "";
+    this.currentTime = 0;
+    this.duration = 3600;
+    this.playbackRate = 1;
+    this.volume = 1;
+    this.preload = "none";
+    this.readyState = 0;
+    this.paused = true;
+    this.ended = false;
+    this.error = null;
+  }
+  addEventListener(t, fn) {
+    if (!this.listeners.has(t)) this.listeners.set(t, new Set());
+    this.listeners.get(t).add(fn);
+  }
+  removeEventListener(t, fn) { this.listeners.get(t)?.delete(fn); }
+  fire(t) { for (const fn of [...(this.listeners.get(t) ?? [])]) fn(); }
+  load() {
+    this.calls.push("load");
+    this.currentSrc = this.src;
+    this.currentTime = 0;
+    this.readyState = 0;
+    this.ended = false;
+    queueMicrotask(() => {
+      this.readyState = 1;
+      this.fire("loadedmetadata");
+      queueMicrotask(() => {
+        this.readyState = 4;
+        if (this.currentTime > 0) this.fire("seeked");
+        this.fire("canplay");
+      });
+    });
+  }
+  play() {
+    this.calls.push("play");
+    this.paused = false;
+    this.ended = false;
+    queueMicrotask(() => { if (!this.paused) this.fire("playing"); });
+    return Promise.resolve();
+  }
+  pause() {
+    this.calls.push("pause");
+    if (this.paused) return;
+    this.paused = true;
+    this.fire("pause");
+  }
+  removeAttribute(a) { this.calls.push(`removeAttribute:${a}`); this.src = ""; }
+}
+
+class StubNode {
+  constructor(tag) {
+    this.tagName = String(tag).toUpperCase();
+    this.children = [];
+    this.attrs = new Map();
+    this.listeners = new Map();
+    this.style = {};
+    this.dataset = {};
+    this.className = "";
+    this.textContent = "";
+    this.hidden = false;
+    this.classList = { add: () => {}, remove: () => {}, toggle: () => {}, contains: () => false };
+  }
+  append(...kids) { for (const k of kids) this.children.push(k); }
+  appendChild(k) { this.children.push(k); return k; }
+  setAttribute(k, v) { this.attrs.set(k, String(v)); }
+  getAttribute(k) { return this.attrs.has(k) ? this.attrs.get(k) : null; }
+  removeAttribute(k) { this.attrs.delete(k); }
+  addEventListener(t, fn) {
+    if (!this.listeners.has(t)) this.listeners.set(t, new Set());
+    this.listeners.get(t).add(fn);
+  }
+  removeEventListener(t, fn) { this.listeners.get(t)?.delete(fn); }
+}
+
+class StubStorage {
+  constructor() { this.map = new Map(); }
+  get length() { return this.map.size; }
+  key(i) { return [...this.map.keys()][i] ?? null; }
+  getItem(k) { return this.map.has(k) ? this.map.get(k) : null; }
+  setItem(k, v) { this.map.set(k, String(v)); }
+  removeItem(k) { this.map.delete(k); }
+}
+
+/** Boot the real client.js. A cache-busting specifier per boot, because the
+    module reads these globals at module scope and Node keeps one instance per
+    specifier; the globals are put back by `t.after`, so a red test cannot leave
+    the next one running against a stub it did not build. */
+let clientBootSeq = 0;
+async function bootRealClient(t) {
+  const audio = new ClientAudio();
+  const storage = new StubStorage();
+  const withListeners = (o) => ({
+    listeners: new Map(),
+    addEventListener(type, fn) {
+      if (!this.listeners.has(type)) this.listeners.set(type, new Set());
+      this.listeners.get(type).add(fn);
+    },
+    removeEventListener(type, fn) { this.listeners.get(type)?.delete(fn); },
+    ...o,
+  });
+  const doc = withListeners({
+    hidden: false,
+    activeElement: null,
+    body: new StubNode("body"),
+    createElement: (tag) => (String(tag).toLowerCase() === "audio" ? audio : new StubNode(tag)),
+    querySelectorAll: () => [],
+  });
+  const win = withListeners({ dispatchEvent: () => true });
+
+  const names = ["window", "document", "localStorage", "navigator", "Event", "Audio"];
+  const prev = new Map(names.map((n) => [n, Object.getOwnPropertyDescriptor(globalThis, n)]));
+  const set = (n, value) => Object.defineProperty(globalThis, n, { value, writable: true, configurable: true });
+  t.after(() => {
+    for (const [n, d] of prev) {
+      if (d) Object.defineProperty(globalThis, n, d);
+      else delete globalThis[n];
+    }
+  });
+  set("window", win);
+  set("document", doc);
+  set("localStorage", storage);
+  set("navigator", { storage: { persisted: async () => false } });
+  set("Event", class { constructor(type) { this.type = type; } });
+  set("Audio", function Audio() { return audio; });
+  __resetInstanceForTests();
+  const client = (await import(`./client.js?ch10=${++clientBootSeq}`)).default;
+  return { client, doc, audio, storage };
+}
+
+const tick = () => new Promise((r) => setTimeout(r, 0));
+
+function findClass(node, cls) {
+  if (node.className === cls) return node;
+  for (const k of node.children) { const hit = findClass(k, cls); if (hit) return hit; }
+  return null;
+}
+
+/** The three documents of a small Foray, in the shapes app.js hands the bridge.
+    `withDai` puts a DAI segment second whose episode carries a 600 s ad pad —
+    over ADR-0008's 120 s ceiling, so a build that allows the pad DROPS it
+    (LOCATE-REQUIRED) while a build that does not keeps it as an approximate
+    segment gated at load. That is the one-segment difference P1-04 is about. */
+function ch10Docs({ withDai = false } = {}) {
+  const seg = (id) => ({ type: "segment", slot: "one", label: id, role: "explanation", segment_id: id });
+  return {
+    foraysDoc: {
+      forays: [{
+        id: "f-ch10", kind: "deep-dive", title: "One list", status: "published",
+        slots: [{ id: "one", title: "Slot one" }],
+        items: [seg("sa"), ...(withDai ? [seg("sd")] : []), seg("sb"), seg("sc")],
+      }],
+    },
+    segmentsDoc: {
+      segments: [
+        { id: "sa", item_id: "ep-a", start_sec: 100, end_sec: 200, reference_duration_sec: 3600, why: "w", topic: "food/grilling-bbq", confidence: "high" },
+        { id: "sd", item_id: "ep-d", start_sec: 1000, end_sec: 1100, reference_duration_sec: 3600, why: "w", topic: "food/grilling-bbq", confidence: "high",
+          start_anchor: "and that is where it starts", end_anchor: "and that is where it ends" },
+        { id: "sb", item_id: "ep-b", start_sec: 500, end_sec: 600, reference_duration_sec: 3600, why: "w", topic: "food/grilling-bbq", confidence: "high" },
+        { id: "sc", item_id: "ep-c", start_sec: 300, end_sec: 400, reference_duration_sec: 3600, why: "w", topic: "food/grilling-bbq", confidence: "high" },
+      ],
+    },
+    sourcesDoc: {
+      sources: [
+        { id: "ep-a", show: "Show A", title: "Ep A", audio_url: "https://cdn.test/a.mp3", duration_sec: 3600, dai_suspected: false },
+        { id: "ep-d", show: "Show D", title: "Ep D", audio_url: "https://cdn.test/d.mp3", duration_sec: 3600, dai_suspected: true, ad_pad_sec: 600 },
+        { id: "ep-b", show: "Show B", title: "Ep B", audio_url: "https://cdn.test/b.mp3", duration_sec: 3600, dai_suspected: false },
+        { id: "ep-c", show: "Show C", title: "Ep C", audio_url: "https://cdn.test/c.mp3", duration_sec: 3600, dai_suspected: false },
+      ],
+    },
+  };
+}
+
+/** Play `resolved` from clip `startIndex`, then put the element 10 s into that
+    clip's slice and let one `timeupdate` drive the repaint (and with it the
+    resume-row write). Returns what the bar, the clock and the store say. */
+async function playTenSecondsInto(booted, resolved, startIndex, inPoint) {
+  const { client, doc, audio, storage } = booted;
+  await client.playForay(resolved, { startIndex });
+  await tick();
+  audio.currentTime = inPoint + 10;
+  audio.fire("timeupdate");
+  await tick();
+  const raw = storage.getItem(progressKey(resolved.id));
+  return {
+    line: findClass(doc.body, "fp-show").textContent,
+    status: client.forayStatus(),
+    row: raw ? JSON.parse(raw) : null,
+    src: audio.src,
+  };
+}
+
+test("CH-10 characterization: the bar, the clock and the resume row all name the clip at foray.index", async (t) => {
+  /* Today's behaviour under the shipped options, where the page's build and
+     the manager's agree: clip 2 of 3 (Show B, slice [500, 600] of its episode)
+     is the one the bar names, the clock is clip 1's 100 s plus the 10 s into
+     clip 2 (the in-point subtracted, not the 510 s of somebody else's
+     episode), and the resume row is anchored to segment "sb", 10 s in. Passes
+     before and after CH-10; it is the behaviour the change must keep. */
+  const booted = await bootRealClient(t);
+  const { foraysDoc, segmentsDoc, sourcesDoc } = ch10Docs();
+  const resolved = booted.client.resolve(foraysDoc, { id: "f-ch10", segmentsDoc, sourcesDoc });
+  assert.equal(resolved.playable.length, 3, "precondition: three clips, nothing dropped");
+
+  const seen = await playTenSecondsInto(booted, resolved, 1, 500);
+  assert.equal(seen.src, "https://cdn.test/b.mp3", "precondition: Show B's episode is the one loaded");
+  assert.equal(seen.status.index, 1);
+  assert.equal(seen.line, "Show B · clip 2 of 3", "the bar names the clip at foray.index");
+  assert.ok(Math.abs(seen.status.elapsedSec - 110) < 0.5,
+    `the clock is 100 s of clip 1 plus 10 s into clip 2; got ${seen.status.elapsedSec}`);
+  assert.ok(seen.row, "a resume row was written");
+  assert.equal(seen.row.segment_id, "sb", "the resume row names the segment playing");
+  assert.equal(seen.row.index, 1);
+  assert.ok(Math.abs(seen.row.into_sec - 10) < 0.5, `10 s into sb; got ${seen.row.into_sec}`);
+});
+
+test("CH-10: under the shipped option set the page's build and the manager's are the same list, for every committed Foray", () => {
+  /* The invariant P1-04 says nothing checked, documented: the bridge's
+     `resolve` (forayResolveOptions) and the manager's build (forayQueueOptions,
+     as `playForay` and `attachForay` call it) are deep-equal for every Foray in
+     data/. Since CH-10 client.js indexes only the manager's list, so this is
+     no longer what keeps the bar on the right clip — it is here so that the day
+     the two option sets are made to differ on purpose, whoever does it learns
+     here that the page's running order will differ from the audio too.
+     MUTATION (run): `forayQueueOptions(resolved, { isLocalFile: true })` below —
+     red: data/ carries DAI sources, and a downloaded copy marks their items
+     `needs_drift_check: false` where the resolve marked them true. */
+  const segments = indexSegments(LIVE.segments);
+  const sources = indexSources(LIVE.sources);
+  let compared = 0;
+  for (const doc of LIVE.forays.forays) {
+    const resolved = resolveForay(doc, { segments, sources, ...forayResolveOptions() });
+    const built = buildForayQueue(resolved.hydrated, forayQueueOptions(resolved, { isLocalFile: false }));
+    assert.deepEqual(built.items, resolved.playable, `${doc.id}: the two builds differ`);
+    compared += 1;
+  }
+  assert.ok(compared > 0, "precondition: data/forays.json carries Forays");
+});
+
+test("CH-10: when the page's build and the manager's differ, the bar, the clock and the resume row follow the MANAGER's list", async (t) => {
+  /* P1-04's failure, made to happen: the page resolves with the ad pad allowed
+     (the DAI segment "sd" goes, its 600 s pad is over the ceiling) and plays
+     with the shipped default (it stays, as an approximate segment). The page's
+     list is [sa, sb, sc]; the manager's is [sa, sd, sb, sc]. Clip index 2 is
+     "sb" in the audio and "sc" in the page's list.
+
+     Before CH-10 the bar read "Show C · clip 3 of 3" over Show B's audio, the
+     clock fell back to the page's clip-3 start (200 s) because the playhead's
+     item id did not match the manager's, and no resume row was written at all
+     ("playhead-unknown"). Every one of those reads now goes through
+     `foray.playable`, which is `setQueueFromForay`'s own report.
+
+     MUTATIONS THAT KILL THIS (each run red): in player/client.js put
+     `foray.resolved.playable` back in `forayNowPlaying` (the bar line), in
+     `forayPlayhead`'s item lookup (the clock and the row), or put
+     `progressSegments(foray.resolved)` back in `forayProgressSegments` (the
+     row says "sc"); or drop `foray.playable = report.items` from `playForay`. */
+  const booted = await bootRealClient(t);
+  const { foraysDoc, segmentsDoc, sourcesDoc } = ch10Docs({ withDai: true });
+  const resolved = booted.client.resolve(foraysDoc, { id: "f-ch10", segmentsDoc, sourcesDoc, allowAdPad: true });
+  assert.deepEqual(resolved.playable.map((i) => i.source_item_id), ["ep-a", "ep-b", "ep-c"],
+    "precondition: the page's build dropped the over-ceiling pad segment");
+  const managerBuild = buildForayQueue(resolved.hydrated, forayQueueOptions(resolved, { isLocalFile: false }));
+  assert.deepEqual(managerBuild.items.map((i) => i.source_item_id), ["ep-a", "ep-d", "ep-b", "ep-c"],
+    "precondition: the manager's build (shipped default, no pad) keeps it");
+
+  const seen = await playTenSecondsInto(booted, resolved, 2, 500);
+  assert.equal(seen.src, "https://cdn.test/b.mp3", "precondition: clip index 2 of the manager's queue is Show B");
+  assert.equal(seen.status.index, 2);
+  assert.equal(seen.line, "Show B · clip 3 of 4", "the bar names the clip that is playing, counted in the queue that plays");
+  assert.ok(Math.abs(seen.status.elapsedSec - 210) < 0.5,
+    `the clock is sa + sd (200 s) plus 10 s into sb; got ${seen.status.elapsedSec}`);
+  assert.ok(seen.row, "a resume row was written — the playhead is known");
+  assert.equal(seen.row.segment_id, "sb", "the resume row names the segment the manager is playing");
+  assert.equal(seen.row.index, 2);
+  assert.ok(Math.abs(seen.row.into_sec - 10) < 0.5, `10 s into sb; got ${seen.row.into_sec}`);
+});
+
+test("CH-10: client.js indexes one list — no read of the page's build is left", () => {
+  /* The behavioural test above covers the three reads a listener can see in
+     one frame; this covers the rest of them (`setForayIndex`, `nudgeBy`, the
+     ›› disable, the lock screen's view, forayJump / Next / Previous / Seek),
+     which a revert of any single one would bring back.
+     MUTATION: restore any one `foray.resolved.playable` read in client.js, or
+     `progressSegments(foray.resolved)` — red; drop either
+     `foray.playable = report.items` — red. */
+  const client = fs.readFileSync(path.join(ROOT, "player/client.js"), "utf8");
+  const code = client.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`])\/\/.*$/gm, "$1");
+  assert.equal((code.match(/foray\.resolved\.playable/g) ?? []).length, 0,
+    "every clip lookup reads foray.playable, the list the manager loaded");
+  assert.doesNotMatch(code, /progressSegments\(foray\.resolved\)/,
+    "the resume row's segment ids come from the manager's list too");
+  const builds = (code.match(/manager\.setQueueFromForay\(/g) ?? []).length;
+  const kept = (code.match(/foray\.playable = report\.items;/g) ?? []).length;
+  assert.ok(builds >= 2, `precondition: playForay and attachForay build a queue; found ${builds}`);
+  assert.equal(kept, builds, "every Foray queue build is stored as foray.playable");
 });

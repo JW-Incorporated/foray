@@ -1503,7 +1503,19 @@ function _announceEpisodeEndedIfNeeded() {
 }
 
 /** The Foray being played, or null for ordinary single-episode playback.
-    `{ resolved, index, onChange, error }`.
+    `{ resolved, playable, index, onChange, error }`.
+
+    `playable` IS THE QUEUE THE MANAGER LOADED, and every clip lookup by
+    `index` reads it (code-health CH-10, P1-04). `resolved.playable` is the
+    page's own build of the same Foray, made when it was resolved; the manager
+    builds it again in `setQueueFromForay`, and when the two builds are asked
+    different questions (`allowAdPad`, `isLocalFile`) one list drops a segment
+    the other keeps. Indexing the page's list with the manager's integer then
+    named clip 7 while clip 8 played, subtracted the wrong in-point and wrote
+    the resume row for the wrong segment. So the report `setQueueFromForay`
+    returns is kept here, once, by `playForay` and `attachForay`; it is empty
+    until that build has run. `resolved` stays for what only the resolve has:
+    the title, the runtime, the entries and the sources.
 
     `index` is the segment the LISTENER is on, which is not the same as the one
     the backend has finished loading — the same distinction the manager keeps as
@@ -1606,7 +1618,7 @@ function transportIsRunning() {
 function forayPlayhead() {
   if (!foray || foray.index < 0) return null;
   if (manager?.currentIndex !== foray.index) return null;
-  const item = foray.resolved.playable[foray.index];
+  const item = foray.playable[foray.index];
   if (!item || !item.id || manager?.playheadItemId !== item.id) return null;
   /* L-03: a script-only narration item is spoken through the on-device
      plugin, not loaded into `backend` — `backend.currentTime` at this
@@ -1620,11 +1632,11 @@ function forayPlayhead() {
   if (manager?.isNarrationPlayhead === true) {
     const t = manager.narrationElapsedSec;
     if (typeof t !== "number" || !Number.isFinite(t)) return null;
-    return forayElapsed(foray.resolved.playable, foray.index, t);
+    return forayElapsed(foray.playable, foray.index, t);
   }
   const t = backend?.currentTime;
   if (typeof t !== "number" || !Number.isFinite(t)) return null;
-  return forayElapsed(foray.resolved.playable, foray.index, t);
+  return forayElapsed(foray.playable, foray.index, t);
 }
 
 /** Where we are, in the Foray's own seconds — a number, always, because a clock
@@ -1635,7 +1647,7 @@ function forayPlayhead() {
     `forayPlayhead` for that, and only that. */
 function forayPosition() {
   if (!foray || foray.index < 0) return 0;
-  return forayPlayhead() ?? forayElapsed(foray.resolved.playable, foray.index, null);
+  return forayPlayhead() ?? forayElapsed(foray.playable, foray.index, null);
 }
 
 /**
@@ -1652,7 +1664,7 @@ function setForayIndex(index, { pending = true } = {}) {
   if (!foray) return;
   foray.index = index;
   foray.pendingFrom = pending ? (manager?.currentIndex ?? -1) : null;
-  const item = foray.resolved.playable[index];
+  const item = foray.playable[index];
   if (item) setNowPlaying(forayNowPlaying(item, index), item.why);
   else notifyForay();
 }
@@ -1735,7 +1747,7 @@ function forayNowPlaying(item, index) {
   return {
     id: item.id,
     title: foray.resolved.title || item.title || "",
-    show: foraySecondLine(foray.resolved.playable, index),
+    show: foraySecondLine(foray.playable, index),
     duration_sec: null,
     dai_suspected: Boolean(item.dai_suspected),
   };
@@ -1913,10 +1925,24 @@ function persistForayProgress({ force = false } = {}) {
 
 /** The live running order in the shape a stored row is reconciled against.
     Computed once per Foray, not once per tick: `render()` runs at 4 Hz and this
-    walks all 32 segments. */
+    walks all 32 segments.
+
+    Over `foray.playable`, the manager's list (CH-10): the resolve's `entries`
+    carry the authored `segment_id` but are joined to the RESOLVE's build by
+    `queueIndex`, so they are re-joined here by `ord` — the authored position
+    both builds carry on every item — to the queue that actually plays. Under
+    the shipped options the two joins are the same rows. */
 function forayProgressSegments() {
   if (!foray) return [];
-  if (!foray.segments) foray.segments = progressSegments(foray.resolved);
+  if (!foray.segments) {
+    const segmentIdByOrd = new Map((foray.resolved.entries ?? []).map((e) => [e?.ord, e?.segment_id ?? null]));
+    foray.segments = progressSegments({
+      playable: foray.playable,
+      entries: foray.playable.map((item, queueIndex) => ({
+        playable: true, queueIndex, segment_id: segmentIdByOrd.get(item?.ord) ?? null,
+      })),
+    });
+  }
   return foray.segments;
 }
 
@@ -2061,7 +2087,7 @@ function nudgeBy(offsetSec) {
      line does instead is `nudgeAction`'s (player-11): the synthesiser has no
      offset to seek to, so back re-speaks the line, forward skips it, and the
      live region says which. */
-  const playable = foray.resolved.playable;
+  const playable = foray.playable;
   const target = skipTarget({
     foray: true, positionSec: forayPosition(), offsetSec: offset, durationSec: foray.resolved.totalSec,
   });
@@ -2158,7 +2184,7 @@ function paintPage(running) {
      `forayNext` returns early there, so the button looked live and read "Next
      segment" to a screen reader while doing nothing at all. The listener's
      INTENT index, like the running order's highlight. */
-  ui.clipNext.disabled = Boolean(foray) && foray.index >= foray.resolved.playable.length - 1;
+  ui.clipNext.disabled = Boolean(foray) && foray.index >= foray.playable.length - 1;
   const glyph = running ? "❚❚" : "▶";
   paintControl(ui.playBtn, glyph, running ? "Pause" : "Play");
   paintControl(ui.bigPlay, glyph, running ? "Pause" : "Play");
@@ -3291,7 +3317,9 @@ function mediaViewFields() {
   const pending = !foray && restoredPending?.foray?.resolved ? restoredPending.foray.resolved : null;
   const live = foray ? foray.resolved : pending;
   if (live) {
-    const items = live.playable;
+    /* A live Foray's clips are the manager's list (CH-10); a restored one has
+       no queue built yet, so its resolve is the only running order there is. */
+    const items = foray ? foray.playable : live.playable;
     const position = foray ? forayPosition() : episodePositionSec();
     const index = foray
       ? (foray.index >= 0 ? foray.index : 0)
@@ -3500,11 +3528,12 @@ function engineHoldsForay() {
 function attachForay(resolved, { discoverDoc = null } = {}) {
   if (!ensureBooted()) return null;
   const s = engine.latest()?.snapshot;
-  foray = { resolved, index: -1, pendingFrom: null, onChange: forayWatcher, error: null };
+  foray = { resolved, playable: [], index: -1, pendingFrom: null, onChange: forayWatcher, error: null };
   setSkipButtonMode(true);
   artworkByShow = artworkUrlsByShow(discoverDoc);
   media.setActions(forayMediaSurface);
   const report = manager.setQueueFromForay(resolved.hydrated, forayQueueOptions(resolved, { isLocalFile: false }));
+  foray.playable = report.items;
   setForayIndex(clampIndex(Number.isInteger(s?.index) ? s.index : 0, report.items.length), { pending: false });
   render();
   return current;
@@ -5412,7 +5441,7 @@ const ForayPlayer = {
     /* `onChange ?? forayWatcher`: a Foray started from somewhere that is not
        its page (the restored mini bar, the lock screen) still reaches the page
        that asked to watch — see `watchForay`. */
-    foray = { resolved, index: -1, pendingFrom: null, onChange: onChange ?? forayWatcher, error: null };
+    foray = { resolved, playable: [], index: -1, pendingFrom: null, onChange: onChange ?? forayWatcher, error: null };
     setSkipButtonMode(true);
     // Once per Foray, not once per tick: this walks the whole discover pool.
     artworkByShow = artworkUrlsByShow(discoverDoc);
@@ -5423,6 +5452,10 @@ const ForayPlayer = {
        switch (AD_PAD_SHIPPED, unless the caller names allowAdPad) reaches the
        manager — and through it the native engine — on this path too. */
     const report = manager.setQueueFromForay(resolved.hydrated, forayQueueOptions(resolved, { isLocalFile: false, allowAdPad }));
+    /* The list every `foray.index` lookup reads from here on (CH-10): this
+       build, not the page's, so the bar, the clock and the resume row name
+       the clip the manager is playing. */
+    foray.playable = report.items;
 
     const at = Number.isFinite(startElapsedSec) && startElapsedSec > 0
       ? segmentAtElapsed(report.items, startElapsedSec)
@@ -5684,7 +5717,7 @@ const ForayPlayer = {
   async forayJump(index) {
     if (!foray) return;
     foray.error = null;
-    setForayIndex(clampIndex(index, foray.resolved.playable.length));
+    setForayIndex(clampIndex(index, foray.playable.length));
     /* Native: the facade's `play` inside a Foray IS `jump {index}` (NE-35). */
     await manager.play(foray.index);
     render();
@@ -5695,7 +5728,7 @@ const ForayPlayer = {
     /* `render()` disables "››" on the last segment (audit 2026-09-22), so this
        early return is the backstop for the lock screen's `nexttrack` rather
        than the button's only behaviour. */
-    const last = foray.resolved.playable.length - 1;
+    const last = foray.playable.length - 1;
     if (manager.currentIndex >= last) return;
     foray.error = null;
     const nextIndex = manager.currentIndex + 1;
@@ -5738,7 +5771,7 @@ const ForayPlayer = {
     const choice = previousAction({
       index,
       positionSec: forayPlayhead(),
-      segmentStartSec: segmentStarts(foray.resolved.playable)[index],
+      segmentStartSec: segmentStarts(foray.playable)[index],
     });
     if (choice === PREVIOUS.ITEM_BEFORE) {
       await moveForay(index - 1, () => manager.play(index - 1));
@@ -5761,12 +5794,12 @@ const ForayPlayer = {
       render();
       return;
     }
-    const at = segmentAtElapsed(foray.resolved.playable, elapsedSec);
+    const at = segmentAtElapsed(foray.playable, elapsedSec);
     /* Where it lands and whether it reloads are `scrubTarget`'s: a FINISHED
        Foray has nothing loaded to seek in, so a scrub back into the last
        segment reloads it like any other segment (audit 2026-09-22). */
     const scrub = scrubTarget({
-      at, item: at ? foray.resolved.playable[at.index] : null,
+      at, item: at ? foray.playable[at.index] : null,
       currentIndex: manager.currentIndex, stateType: manager.state?.type ?? null,
     });
     if (!scrub) return;

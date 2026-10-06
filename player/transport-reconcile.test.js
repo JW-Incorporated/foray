@@ -3853,13 +3853,16 @@ test("a release followed by a real change still seeks to the thumb (audit round 
 test("a Next clip tap that throws leaves the index where the audio is, and repaints (audit round 3, player-rest-5)", async (t) => {
   /* `setForayIndex` records `pendingFrom` and then paints; a throw after that
      used to leave the page waiting for a move that never came, with the
-     rejection unhandled. Driven here by a clip whose `why` cannot be read.
+     rejection unhandled. Driven here by a Foray whose title cannot be read
+     once it is playing: `setForayIndex` names the new clip with it. (It was a
+     clip whose `why` threw, set on `resolved.playable[1]`; since CH-10 the
+     page indexes the list the manager built, so that object is never read.)
      KILLING MUTATION: drop the catch in `moveForay` and the status stays on 1. */
   const { client, doc, restore } = await bootClient(t);
   const resolved = synthetic();
   await client.playForay(resolved, { startIndex: 0 });
   await settle();
-  Object.defineProperty(resolved.playable[1], "why", { get() { throw new TypeError("unreadable"); } });
+  Object.defineProperty(resolved, "title", { get() { throw new TypeError("unreadable"); } });
   const next = findWhere(doc.body, (n) => n.textContent === "Next clip ›");
   await next.click();                   // must not reject: the guard owns it
   await settle();
