@@ -15,7 +15,7 @@ Source of truth for a cleared session. Update on every deliverable.
 |---|---|---|
 | Kickoff (STATE.md + HUMAN-ACTIONS via doc-only PR to main) | done | PR #1085 (auto-merges on green); HA #142 Apple lab setup, HA #143 Play lab setup |
 | 0a Eyes | done | tools/ui-lab/ |
-| 0b Judge | done | calibrated, accuracy 100% |
+| 0b Judge | done, hardened | r1 100% was too easy (marketing frames, gross degraders); skeptic hard set 36/36 both orders, 0 position bias; protocol fixed (judge/skeptic-review.md) |
 | 0c Test classification | done | docs/redesign-2026/test-classification.md |
 | 0d Split app.js | done | merged 2614fc29; see split-notes.md |
 | 0e Lab build path | merged into trunk (b74338a0) | owner setup complete |
@@ -38,45 +38,46 @@ Recommendation: Build Tactile and Ambient. They are the top two (15/15 and 12/15
 
 ## In flight
 
-(Workflow run IDs and what they are doing. Clear an entry when it finishes.)
+(Agent/workflow and what it is doing. Clear an entry when it lands.)
 
-- **`wf_bab57673-e04` "redesign-2026-night-1"** — launched 2026-10-05 19:40 PDT.
-  Runs 0a Eyes, 0b Judge, 0c Tests, 0d Split, 0e Lab, 1 Research, then 2
-  Directions (5 Fable art directors: editorial, ambient, native-2026, tactile,
-  clarity), Rank, and the checkpoint package (artifacts + HUMAN-ACTIONS PR).
-  Its own git steps commit to the trunk and update this file as phases land.
-  Script: `C:\Users\Fourtys\.claude\projects\C--Users-Fourtys-Documents-Claude-Projects-foray--claude-worktrees-redesign-2026\feb4d3af-2e95-4551-b3cf-e583135ec9ff\workflows\scripts\redesign-2026-night-1-wf_bab57673-e04.js`.
-  If it died: relaunch with Workflow({scriptPath, resumeFromRunId: "wf_bab57673-e04"})
-  (cached agents return instantly; works only in the same session). In a new
-  session, check what is on disk and on origin (`redesign/p0-split`,
-  `redesign/p0-lab`, `docs/redesign-2026/*`) and relaunch only the missing parts.
+- **Hard-limit gates** (agent, branch `redesign/p0-gates`, launched 2026-10-05 ~22:50 PDT):
+  `tools/ui-lab` gates for console errors, CSP violations, 44px tap targets,
+  reduced motion, horizontal overflow, sheet focus; run on today's app (this is
+  also the real-browser smoke of the 0d split). If it died: check the branch on
+  origin, relaunch only what is missing.
+- **Fidelity pairing + Phase 4 build-loop runbook** (agent, branch
+  `redesign/p0-fidelity`, launched 2026-10-05 ~22:50 PDT): prototype-vs-app
+  screen pairing in `tools/ui-lab`, `docs/redesign-2026/build-loop.md`.
+- **Checkpoint artifact check** (read-only agent): confirms the six artifacts
+  render (bundled artwork, no blocked hosts). Republish only if it finds breakage.
+
+Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40–22:40 PDT, 128 agents,
+0 errors) ran 0a–0e, 1, 2, Rank and the checkpoint package.
 
 ## Next actions (orchestrator)
 
-- **Lab dry run.** The owner's Apple and Play setup is done (HA #142, #143,
-  2026-10-05 19:45 PDT). As soon as `.github/workflows/lab-build.yml` is on main
-  (the Lab agent's PR into main, which needs the owner's `founder-approved`
-  label) AND `redesign/p0-lab` is merged into the trunk: dispatch
+- **Lab dry run** — BLOCKED, see below. When unblocked: dispatch
   `gh workflow run lab-build.yml -f ref=feature/redesign-2026 -f platforms=both`
-  to ship today's design as "4a Lab" to Wyatt's iPhone and Joey's Android. That
-  proves the delivery path before the redesign lands. If Play refuses the first
-  upload of the new app, file one HUMAN-ACTIONS item with the AAB link and the
-  console clicks.
-
-- **Sanity-check the judge.** Calibration read 100% on the first round. Per
-  CLAUDE.md ("a metric that reads 1.000 on the first try is a bug until proven
-  otherwise"), have one skeptic agent confirm the calibration pairs were not
-  trivially easy before trusting the Phase 2 ranking.
-- **Confirm the 10 Windows CRLF test failures are environment-only.** Both merges
-  (split 2614fc29, lab b74338a0) were committed with the same 10 failures as the
-  pre-merge trunk. Verify on Linux, e.g. a CI run on a PR into the trunk, before
-  building on them.
+  to ship today's design as "4a Lab" to Wyatt's iPhone and Joey's Android. If
+  Play refuses the first upload of the new app, file one HUMAN-ACTIONS item with
+  the AAB link and the console clicks. The first run also checks the untested
+  iOS display-name/bundle-id read-back and the Android debug APK step.
+- After gates + fidelity land: draft the Phase 3/4 workflow script parameterised
+  by direction slug, so it launches the moment the owner picks.
 - `mobile/VERSION` shows as modified in the main worktree, but it is a
   line-ending-only (CRLF) change with no content diff. Leave it alone.
+- Windows `run-suites` failures (10 on the trunk, up to 27 in the split agent's
+  wider run) are CRLF/environment-only: the trunk is fully green on Linux and
+  macOS CI (run 37411460946, all 9 jobs). Judge Linux CI, not the Windows count.
 
 ## Blocked
 
 (Item, reason, what would unblock it.)
+
+- **Lab dry run.** `lab-build.yml` is not on main: PR #1087 (dispatch-only
+  workflow) carries `needs-founder` and waits for the owner's `founder-approved`
+  label (HA #144). `workflow_dispatch` needs the file on the default branch.
+  Unblocks when #1087 merges.
 
 ## Fable invocations
 
@@ -94,3 +95,7 @@ Recommendation: Build Tactile and Ambient. They are the top two (15/15 and 12/15
 - 2026-10-05/06 — 1 Research done: `docs/redesign-2026/research/` (7 notes) and `docs/redesign-2026/design-brief.md`.
 - 2026-10-05/06 — 0d Split app.js merged into trunk (2614fc29). node --check clean; run-suites had 10 Windows CRLF failures identical to the pre-merge trunk (not caused by the split).
 - 2026-10-05/06 — 0e Lab build path merged into trunk (b74338a0). node --check clean; run-suites had the same 10 Windows CRLF failures as the pre-merge trunk (identical set, diffed), none new.
+- 2026-10-05/06 — 2 Directions + checkpoint package committed (99e8f9a1). Ranking tactile 15/15, ambient 12/15, editorial 8, native-2026 7, clarity 3, today 0; every direction beats today 3/3. Six private artifacts published; HA #148 via PR #1090 (doc-only, auto-merges).
+- 2026-10-05/06 — Trunk verified green on Linux + macOS CI (run 37411460946): the Windows failures are CRLF-only.
+- 2026-10-05/06 — Judge skeptic review merged (redesign/p0-judge-skeptic adf5fb17): r1 pairs were answerable without taste; hard set 36/36 with both orders, 0/24 position-following; rubric + protocol fixed. Top-2 recommendation stands under the new protocol (3-0 sweeps across both orders); middle ranks are leans.
+- 2026-10-05/06 — Visual baselines merged (redesign/p0-baselines 51ebe347): `tools/ui-lab/baseline.mjs` record/compare/list, pixelThreshold 0, 138-shot double render 0 diffs, 16 tests, CI green (run 37414072294).
