@@ -191,6 +191,67 @@ test("the governance paths from the original workflow are all still denied", () 
   }
 });
 
+/* docs/legal/ (2026-10-05). README founder question 34 and the HUMAN-ACTIONS
+ * #125 convention say every new privacy-policy sentence is founder-approved
+ * before it merges; with `docs/` allowlisted, PRs #1083 and #1084 auto-merged
+ * new docs/legal/privacy-policy.md sentences before the founder saw them. */
+test("docs/legal/ is denied even though docs/ is allowed: every file in it, at any depth", () => {
+  // MUTATIONS this kills: (a) drop "docs/legal/" from DENIED_PREFIXES;
+  // (b) drop its trailing slash ("docs/legal" is then an exact-file entry that
+  // matches nothing real); (c) narrow it to "docs/legal/privacy-policy.md", which
+  // leaves the data-safety answers, the notices and the licence files unread.
+  assert.ok(ALLOWED_PREFIXES.includes("docs/"));
+  assert.ok(DENIED_PREFIXES.includes("docs/legal/"));
+  for (const f of [
+    "docs/legal/privacy-policy.md",
+    "docs/legal/data-safety.md",
+    "docs/legal/third-party-notices.md",
+    "docs/legal/licenses/FluidAudio-LICENSE",
+    "docs/legal/a-file-added-next-year.md",
+  ]) {
+    const p = pathPolicy([f]);
+    assert.equal(p.denied.length, 1, `${f} must be denied`);
+    assert.equal(p.denied[0].prefix, "docs/legal/", `${f} must be denied by docs/legal/`);
+    assert.equal(p.allowed.length, 0, `${f} must not also read as allowed`);
+  }
+});
+
+test("docs/legal/ did not widen to the rest of docs/", () => {
+  // MUTATION this kills: widening the entry to "docs/" (or anything that also
+  // swallows its neighbours) would put a founder merge on every docs PR.
+  for (const f of ["docs/roadmap/README.md", "docs/legal-review-notes.md", "docs/plans/legal/x.md"]) {
+    const p = pathPolicy([f]);
+    assert.equal(p.allowed.length, 1, `${f} must stay allowlisted`);
+    assert.equal(p.denied.length, 0, `${f} must not be denied`);
+  }
+});
+
+test("a docs/legal/privacy-policy.md change is UNAPPROVED without the label and APPROVED with it", () => {
+  // MUTATION this kills: drop "docs/legal/" from DENIED_PREFIXES — the change
+  // reads CLEAN and the enforcing check passes with no founder in the loop.
+  const files = ["docs/legal/privacy-policy.md"];
+  const bare = governedCheck({ files, enforce: true });
+  assert.equal(bare.verdict, "UNAPPROVED");
+  assert.equal(bare.exitCode, 1);
+  assert.deepEqual(bare.governed, [{ file: "docs/legal/privacy-policy.md", prefix: "docs/legal/" }]);
+  const ok = governedCheck({ files, labels: [APPROVAL_LABEL], enforce: true });
+  assert.equal(ok.verdict, "APPROVED");
+  assert.equal(ok.exitCode, 0);
+});
+
+test("THE #1083/#1084 REPRODUCTION: a feature PR adding a privacy-policy sentence is NOT armed", () => {
+  // The shape of both PRs: app code, its tests, and a new disclosure. Every
+  // path was allowlisted, so this armed and merged unread. MUTATION this kills:
+  // drop "docs/legal/" from DENIED_PREFIXES and the decision is ARMED again.
+  const d = automergeDecision({
+    files: ["app.js", "styles.css", "test/share-links.test.js", "docs/legal/privacy-policy.md"],
+  });
+  assert.equal(d.armed, false);
+  assert.equal(d.code, "DENIED_PATH");
+  assert.equal(d.needsFounder, true);
+  assert.match(d.reason, /docs\/legal\/privacy-policy\.md/);
+});
+
 /* Scripts `ci.yml` invokes directly ARE gates: a one-line `process.exit(0)` in
  * any of them neuters a check with no human in the loop, which is exactly what
  * the `tools/ci/` deny entry exists to prevent — one directory over. This test

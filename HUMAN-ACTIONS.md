@@ -210,7 +210,7 @@ Sentence 2, the `cp_downloads` row in `docs/legal/privacy-policy.md` §1, alread
 ## #125 🟡 [DECIDE] Approve the privacy-policy rewrite for streamed narration, when its PR opens (~15 min)
 <!-- ha filed=2026-09-28 kind=default -->
 
-**Why:** With narration at `audio.jwlabs.ai`, 4a runs a server in the audio path. The privacy policy and data-safety notes say today that there is none and that "we never see it", and they describe the phone's voice list. Those sentences become false and must be rewritten before rendered narration reaches listeners (Phase 2). Legal wording under `docs/` would auto-merge, so the PR carries `hold` and waits for you.
+**Why:** With narration at `audio.jwlabs.ai`, 4a runs a server in the audio path. The privacy policy and data-safety notes say today that there is none and that "we never see it", and they describe the phone's voice list. Those sentences become false and must be rewritten before rendered narration reaches listeners (Phase 2). Since 2026-10-05 `docs/legal/` is a governed path, so the PR never auto-merges and its `path-policy` check stays red until your `founder-approved` label is on it (it also carries `hold`).
 
 **Steps:**
 1. When Claude posts the PR link here, read the changed sentences in `docs/legal/privacy-policy.md`, `docs/legal/data-safety.md` and `docs/legal/third-party-notices.md`.
