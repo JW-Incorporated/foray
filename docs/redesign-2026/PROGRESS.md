@@ -62,8 +62,12 @@ Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40–22:40 PDT, 128 agen
   Play refuses the first upload of the new app, file one HUMAN-ACTIONS item with
   the AAB link and the console clicks. The first run also checks the untested
   iOS display-name/bundle-id read-back and the Android debug APK step.
-- After gates + fidelity land: draft the Phase 3/4 workflow script parameterised
-  by direction slug, so it launches the moment the owner picks.
+- **When the owner picks (HA #148):** launch phases 3-5 with
+  `Workflow({scriptPath: "<trunk>/docs/redesign-2026/workflows/build-directions.workflow.js", args: {directions: ["<slug>", "<slug>"]}})`.
+  It creates `feature/redesign-2026-<slug>` per direction, plans, builds the
+  foundation, loops screen by screen (gates, fidelity, both-order judges, review,
+  merge), dispatches lab builds, and runs QA. Dry-run with stub agents: clean.
+  Needs `redesign/p0-gates` and `redesign/p0-fidelity` (build-loop.md) merged first.
 - `mobile/VERSION` shows as modified in the main worktree, but it is a
   line-ending-only (CRLF) change with no content diff. Leave it alone.
 - Windows `run-suites` failures (10 on the trunk, up to 27 in the split agent's
