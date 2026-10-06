@@ -4814,24 +4814,6 @@ const ForayPlayer = {
     return episodeProgress({ duration_sec: knownEpisodeDurationSec(id, durationSec) }, stored?.seconds ?? null);
   },
 
-  /**
-   * How long the copy in hand is, for the episode page's bookmark list
-   * (code-health CH-09b, PQ-15): the element's own answer while it holds this
-   * episode, else the duration measured the last time it played
-   * (`measuredDurationSec`), else null. Never the catalogue's: a bookmark's
-   * precision asks whether THIS copy drifted from the one it was set on
-   * (player/bookmarks.js `bookmarkPrecision`), and the feed's declared length
-   * cannot answer that.
-   */
-  observedDurationSec(id) {
-    if (!id) return null;
-    if (current?.id === id && manager?.playheadItemId === id) {
-      const el = backend?.duration;
-      if (typeof el === "number" && Number.isFinite(el) && el > 0) return el;
-    }
-    return measuredDurationSec(id);
-  },
-
   restoreLastEpisode() {
     if (engineMode === null) return engineModeReady.then(() => ForayPlayer.restoreLastEpisode());
     if (current) return null; // something is already playing; never stomp it

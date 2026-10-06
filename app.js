@@ -12151,9 +12151,12 @@ function bookmarksSlotHtml(item) {
 }
 
 /** The length of the copy in hand, the other half of a bookmark's drift
-    test: the player's reading (`observedDurationSec`: the element's own, or
-    what it measured the last time this episode played), never the catalogue's
-    declared length. Null when the player cannot say. */
+    test: the player's reading (`observedDurationSec`), never the catalogue's
+    declared length. Null when the player cannot say, and today it never can:
+    PQ-15 leaves client.js alone and `episodeProgress` has no duration field,
+    so (its escalation) the page passes null and claims no drift. "Around
+    minute N" shows once a later card exposes the measured length as
+    ForayPlayer.observedDurationSec(id); nothing here changes then. */
 function bookmarkObservedSec(id) {
   try {
     const sec = window.ForayPlayer?.observedDurationSec?.(id);

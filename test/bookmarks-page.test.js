@@ -21,7 +21,13 @@
  *  g. A refused Remove removes nothing and says nothing.
  *  h. A bookmark made from the sheet over this page is listed at once.
  *  i. A page painted before the durable store landed lists them when it does.
- *  k. client.js's observedDurationSec is the copy in hand, never the catalogue.
+ *
+ * The player's half of (c)/(d), the length of the copy in hand, is not built
+ * here: PQ-15 says "Do not touch: client.js" and, since
+ * `ForayPlayer.episodeProgress` has no duration field, pass `null` (its
+ * escalation). Today ForayPlayer has no `observedDurationSec`, so the page
+ * reads null and claims no drift; the stubs below stand in for the member a
+ * later card exposes, and (c)/(d) pin what the page does once it exists.
  *
  * Every test names the one-line mutation that kills it, and each was run.
  *
@@ -203,7 +209,8 @@ test("(a) no bookmarks, or no bookmark rules published: no Bookmarks section, an
 });
 
 /** A ForayPlayer that records every way audio could start, and reports the
-    length of the copy in hand (client.js `observedDurationSec`). */
+    length of the copy in hand (`observedDurationSec`, a member a later card
+    adds to client.js; absent today, so the page reads null). */
 function recordingPlayer({ observed = null, current = false, loaded = true } = {}) {
   const rec = { plays: [], seeks: [], toggles: 0, asked: [] };
   rec.api = {
@@ -421,22 +428,4 @@ test("(i) a page painted while the durable store is still hydrating lists the bo
   store.land();
   m.evalIn("markStorageSettled()");
   assert.deepStrictEqual(rowsOf(m.section()).map((r) => r.ts), ["900"], "the durable bookmark is listed");
-});
-
-/* ---------- k: the player's half ---------- */
-
-test("(k) client.js's observedDurationSec is the copy in hand: the element's own, else the measured length, never the catalogue's", () => {
-  /* Source text, as player/download-play.test.js reads client.js (it builds
-     real DOM at import). MUTATION: make it
-     `return knownEpisodeDurationSec(id, current?.duration_sec);` -> the
-     catalogue's declared length answers a drift question; red. MUTATION 2:
-     delete the member -> app.js never sees a drift; red. */
-  const src = fs.readFileSync(path.join(ROOT, "player", "client.js"), "utf8").replace(/\r\n/g, "\n");
-  const m = /\n  observedDurationSec\(id\) \{\n([\s\S]*?)\n  \},\n/.exec(src);
-  assert.ok(m, "ForayPlayer.observedDurationSec(id) exists");
-  const code = m[1].replace(/\/\*[\s\S]*?\*\//g, "");
-  assert.match(code, /manager\?\.playheadItemId === id/, "the element answers only while it holds this episode");
-  assert.match(code, /backend\?\.duration/);
-  assert.match(code, /return measuredDurationSec\(id\);/, "else what the player measured");
-  assert.doesNotMatch(code, /duration_sec|knownEpisodeDurationSec|catalog/, "never the catalogue's number");
 });
