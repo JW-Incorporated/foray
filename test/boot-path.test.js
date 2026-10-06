@@ -828,8 +828,9 @@ test("app-1-1 (round-3 review, L1): a playlist built, a playlist played and a Fo
      playlist writers (build, remove, touch) and the Foray thumb still read the
      unhydrated store and lsSet over it, and property 2 kept that write over the
      durable list for good. MUTATION: make buildPlaylist call
-     savePlaylists([playlist, ...playlists()]) again (or setFeedback lsSet its
-     read-modify-write) -> the durable playlist (or vote) is gone. */
+     lsSet("cp_playlists", [playlist, ...playlists()]) again -- what the deleted
+     savePlaylists did (or setFeedback lsSet its read-modify-write) -> the
+     durable playlist (or vote) is gone. */
   const durable = { id: "p-durable", title: "Durable", query: "durable", created: "2026-09-01T00:00:00.000Z", items: [] };
   const other = { id: "p-other", title: "Other", query: "other", created: "2026-09-02T00:00:00.000Z", items: [] };
   const { store, tier } = await storeOver({

@@ -195,7 +195,7 @@ async function mountBooted(seed) {
 
 test("cp_queue is a new, separate key — adding to it never touches cp_playlists", async () => {
   /* MUTATION: change addToQueue to write into "cp_playlists" instead of
-     "cp_queue" (or to call savePlaylists). The cp_playlists-untouched
+     "cp_queue" (or to call editPlaylists). The cp_playlists-untouched
      assertion fails, and the cp_queue assertion fails too since nothing
      was ever written there. */
   const m = await mountBooted({ cp_playlists: "[]" });
