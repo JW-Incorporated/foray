@@ -106,3 +106,33 @@ test("characterization: a Foray played to the end is not put on the bar; the epi
   app.restoreNowPlayingRibbon();
   assert.deepStrictEqual(bridge.calls.filter(([k]) => k !== "forayResume" && k !== "resolve"), [["restoreLastEpisode"]]);
 });
+
+test("A3-01: a resolver that throws is 'no Foray', and the episode pointer restores", () => {
+  /* Was: the throw escaped restoreLastForayRibbon into the restore's catch, so
+     the bar restored nothing at all. MUTATION: give restoreLastForayRibbon its
+     own unguarded `player.resolve(...)` again — no restoreLastEpisode, red. */
+  const bridge = fakeBridge({ resolve: () => { throw new Error("malformed segments doc"); } });
+  const app = loadApp(bridge);
+  app.restoreNowPlayingRibbon();
+  assert.deepStrictEqual(bridge.calls, [["resolve", "f1"], ["restoreLastEpisode"]]);
+});
+
+test("A3-03: a point read that throws is 'no Foray', and the episode pointer restores", () => {
+  /* MUTATION: read the point with a bare `player.forayResume(...)` in
+     restoreLastForayRibbon again — the throw skips the episode, red. */
+  const bridge = fakeBridge({ forayResume: () => { throw new Error("corrupt progress row"); } });
+  const app = loadApp(bridge);
+  app.restoreNowPlayingRibbon();
+  assert.deepStrictEqual(bridge.calls.at(-1), ["restoreLastEpisode"]);
+  assert.ok(!bridge.calls.some(([k]) => k === "restoreForay"));
+});
+
+test("A3-03: the bar reads its point the way the Foray page does: the resolved Foray and includeFinished", () => {
+  /* One read for both surfaces, so the finished-vs-resume rule cannot change
+     in one and not the other. MUTATION: call `player.forayResume(id,
+     { resolved: r })` in restoreLastForayRibbon again — red. */
+  const bridge = fakeBridge();
+  const app = loadApp(bridge);
+  app.restoreNowPlayingRibbon();
+  assert.deepStrictEqual(bridge.calls.find(([k]) => k === "forayResume"), ["forayResume", "f1", "includeFinished,resolved"]);
+});

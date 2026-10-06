@@ -216,3 +216,112 @@ test("characterization: a start that fails leaves the page standing — the next
   assert.strictEqual(m.bridge.starts.length, 2);
   assert.strictEqual(m.bridge.starts[1].startElapsedSec, 600, "the retry resumes where the first press meant to");
 });
+
+/* ==================================================================== */
+/* A3-01: a resolver that throws is a failed load, with Try again        */
+/* ==================================================================== */
+
+test("A3-01: a resolve that throws paints 'Couldn't load forays right now.' with a Try again that re-fetches the Foray documents", async () => {
+  /* Was: the throw escaped renderForay and the page sat on "Loading…" with no
+     Try again. MUTATION: drop the try/catch around renderForay's resolve — the
+     page stays on "Loading…", red. */
+  const b = await forayBridge();
+  b.resolve = () => { throw new Error("malformed segments doc"); };
+  const m = mount({ hash: `#/foray/${ID}`, bridge: b });
+  m.ctx.renderCurrentPage();
+  await settle();
+  assert.match(m.html(), /Couldn't load forays right now\./, m.html().slice(0, 300));
+  assert.doesNotMatch(m.html(), /Loading…/);
+  assert.ok(m.view.querySelector(".back"), "with its way back");
+  const btn = m.view.querySelector("[data-retry]");
+  assert.ok(btn, "and Try again");
+  const before = m.fetched.length;
+  btn.click();
+  assert.ok(m.fetched.slice(before).some((u) => /data\/forays\.json/.test(u)), "wired to the Foray documents (retryForayDocs), not to a re-render");
+  assert.strictEqual(m.state.foray, null, "no Foray is on screen");
+});
+
+/* ==================================================================== */
+/* A3-03: one resume-point read                                          */
+/* ==================================================================== */
+
+test("A3-03: a resume-point read that throws opens the page with no offer, not a page stuck on 'Loading…'", async () => {
+  /* Was: refreshForayResume swallowed a throwing `forayResume` and renderForay
+     did not. MUTATION: drop the try/catch inside readForayPoint — renderForay
+     throws and the page stays on "Loading…", red. */
+  const b = await forayBridge();
+  b.forayResume = () => { throw new Error("corrupt progress row"); };
+  const m = mount({ hash: `#/foray/${ID}`, bridge: b });
+  m.ctx.renderCurrentPage();
+  await settle();
+  assert.match(m.html(), /id="fy-play"/, "the page rendered");
+  assert.doesNotMatch(m.html(), /id="fy-resume"/, "with no resume offer");
+  assert.strictEqual(m.state.forayResume, null);
+});
+
+test("A3-03: the page reads its point with the resolved Foray and includeFinished, and nothing else", async () => {
+  /* `totalSec` and `itemCount` were passed beside `resolved`, from which the
+     player derives both. MUTATION: pass `totalSec: 1` again — red. */
+  const b = await forayBridge();
+  const asked = [];
+  b.point = (opts) => { asked.push(opts); return PART; };
+  const m = mount({ hash: `#/foray/${ID}`, bridge: b });
+  m.ctx.renderCurrentPage();
+  await settle();
+  assert.strictEqual(asked.length, 1, "one read at render");
+  assert.deepStrictEqual(Object.keys(asked[0]).sort(), ["includeFinished", "resolved"]);
+  assert.strictEqual(asked[0].resolved, m.state.foray);
+  assert.strictEqual(asked[0].includeFinished, true);
+});
+
+test("A3-03: Start over logs the point the page holds NOW, not the one it rendered with", async () => {
+  /* Render on 10:00, play to the end, close the bar: the point reads finished
+     and the banner turns into Played / Play again. Pressing it logged
+     `from_sec: 600` from the bind-time `resume` parameter, a point that no
+     longer existed. MUTATION: restore `|| resume?.elapsedSec` (the parameter)
+     in the restart handler — from_sec 600, red. */
+  const m = await openForay(PART);
+  const onChange = m.bridge.watched.at(-1);
+  onChange({ forayId: ID, index: 20, playing: true, running: true, elapsedSec: 2990 });
+  m.bridge.point = DONE;
+  onChange({ forayId: ID, index: -1, playing: false, running: false, elapsedSec: 0 });
+  assert.strictEqual(m.state.forayResume, null, "premise: no resume point once played to the end");
+  m.view.querySelector("#fy-restart").click();
+  await settle();
+  const restart = m.bridge.events.find(([t]) => t === "foray_restart");
+  assert.ok(restart, "the restart is logged");
+  assert.strictEqual(restart[1].from_sec, 0);
+});
+
+/* ==================================================================== */
+/* A3-02: leaving the page clears its state                              */
+/* ==================================================================== */
+
+test("A3-02: after navigating Home, the Foray still in the bar cannot write the page's resume point", async () => {
+  /* Listener plays Foray A, goes Home, closes the bar: the page's callback
+     still ran paintForay, whose live->cold step re-read A's point into
+     `state.forayResume` with Home on screen. MUTATION: drop the
+     leaveForayPage() call from renderCurrentPage — state.foray is still A and
+     state.forayResume 30:00, red. */
+  const m = await openForay(PART);
+  const onChange = m.bridge.watched.at(-1);
+  onChange({ forayId: ID, index: 5, playing: true, running: true, elapsedSec: 1800 });
+  assert.strictEqual(m.state.forayPlaying, ID, "fixture: the page saw the Foray live");
+  await go(m, "#/");
+  m.bridge.point = { ...PART, elapsedSec: 1800, index: 5 };
+  onChange({ forayId: ID, index: -1, playing: false, running: false, elapsedSec: 0 });   // the bar is closed
+  assert.strictEqual(m.state.forayResume, null, "no resume point written while Home is on screen");
+  assert.strictEqual(m.state.foray, null, "no Foray is 'on screen'");
+  assert.strictEqual(m.state.forayPlaying, null);
+  assert.strictEqual(m.state.forayPainted, null);
+  assert.strictEqual(m.state.forayPaintedLive, null);
+});
+
+test("A3-02: leaving the page unhooks its callback from the live player", async () => {
+  /* MUTATION: drop `watchForay(null)` from leaveForayPage — the last callback
+     the player holds is still the Foray page's, red. */
+  const m = await openForay(PART);
+  assert.strictEqual(typeof m.bridge.watched.at(-1), "function", "fixture: the page hooked itself");
+  await go(m, "#/");
+  assert.strictEqual(m.bridge.watched.at(-1), null, "Home holds no Foray callback");
+});

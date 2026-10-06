@@ -82,6 +82,7 @@ const state = {
   forayResume: null,        // its stored resume point, or null — see paintForay
   forayPlaying: null,       // id of the Foray the player is inside, or null
   forayPainted: null,       // last segment index painted onto the running order
+  forayPaintedLive: null,   // which Foray the page last painted LIVE — see paintForay
   cardSlots: [],            // the four dealt suggestions
   itemIndex: {},            // id -> snapshot (a CACHE, never a membership test — see fullPool)
   poolIds: new Set(),       // ids the catalogue holds RIGHT NOW — rebuilt by fullPool
@@ -14271,13 +14272,22 @@ async function renderForay(id) {
 
   /* `forayViewOpts()` carries the `?foray=` unlock AND the test-track switch:
      a draft the switch listed must open and play through this same call, or
-     the list would advertise a page that answers "isn't available". */
-  const r = player.resolve(state.forays, {
-    id,
-    segmentsDoc: state.segments,
-    sourcesDoc: state.segmentSources,
-    ...forayViewOpts(),
-  });
+     the list would advertise a page that answers "isn't available". It is the
+     list surfaces' own call (`resolveForay`), so the page cannot open a Foray
+     by a rule the lists do not list it by.
+
+     A RESOLVER THAT THROWS IS A FAILED LOAD (code-health CH-22, A3-01). The
+     throw used to escape this function and leave the page on "Loading…" with
+     no Try again; it is the same documents failing as `!state.forays` above,
+     and it gets the same page and the same retry. */
+  let r;
+  try {
+    r = resolveForay(player, id);
+  } catch (_) {
+    $("#view").innerHTML = statusPageHtml({ title: "Foray", note: "Couldn't load forays right now.", back: "#/forays", retry: true });
+    bindRetry($("#view"), retryForayDocs);
+    return;
+  }
   // Same answer for "no such Foray" and "not published": a client that
   // distinguishes them announces the existence of unpublished work.
   if (!r) {
@@ -14328,14 +14338,12 @@ async function renderForay(id) {
      exactly like one never touched, no banner, no mark. It now says "Played"
      with a "Play again" beside it, the finished episode's word. Split here so
      `resume` keeps meaning "a place to start from", which a finished Foray is
-     not: its main button starts from the top, as before. */
-  const point = typeof player.forayResume === "function"
-    ? player.forayResume(r.id, { totalSec: r.totalSec, itemCount: r.playable.length, resolved: r, includeFinished: true })
-    : null;
-  const played = point && point.finished ? point : null;
-  const resume = played ? null : point;
+     not: its main button starts from the top, as before. The read and the
+     split are `readForayPoint`'s, shared with the live->cold re-read and the
+     now-playing bar. */
+  const { resume, played } = readForayPoint(player, r);
   state.forayResume = resume;
-  forayPaintedLive = null;
+  state.forayPaintedLive = null;
   /* The document changed under a stored position. Nothing user-facing — the
      resume already degraded correctly — but it is the one signal that says how
      often real listeners hit it, and #40 is explicit that a stale-data event must
@@ -14438,7 +14446,7 @@ async function renderForay(id) {
   if (played) sizeProgressBars($("#view"));
   bindFeedback(r);
   bindSourceLinks(r);
-  bindForayTransport(r, player, resume);
+  bindForayTransport(r, player);
   pageDidPaint();   // the real page is up: a clamped back-step restore can land now
   joinForayCreditsToShowIndex(r, player);
 }
@@ -15007,6 +15015,9 @@ async function guardForayStart(run) {
     return await run();
   } catch (err) {
     console.warn("[foray] start failed", err);
+    /* Only the LIVE half, not `leaveForayPage()`: the listener is still on this
+       page, and its Foray and resume point are what the next press retries
+       from (pinned in test/foray-page.test.js). */
     state.forayPlaying = null;
     state.forayPainted = null;
     /* THE PAINT FIRST AND THE RECORD LAST, but the record lands either way.
@@ -15069,7 +15080,7 @@ function forayNudgeSteps(player) {
   return { back: 15, fwd: 30 };
 }
 
-function bindForayTransport(r, player, resume = null) {
+function bindForayTransport(r, player) {
   const onChange = (s) => paintForay(s);
   const nudge = forayNudgeSteps(player);
 
@@ -15092,17 +15103,18 @@ function bindForayTransport(r, player, resume = null) {
   /* The main button, pressed cold. With a stored position that means RESUME —
      the whole point of the feature — and an explicit index (a row, the strip)
      always wins, because the listener just named a segment. */
-  /* FROM `state.forayResume`, NOT THE BIND-TIME `resume` (audit round 3,
+  /* FROM `state.forayResume`, NOT A BIND-TIME POINT (audit round 3,
      app-3-1). The closure was the point captured when the page rendered, so
      after play -> advance -> close the bar, Play restarted from that old point
      (or 0) and the player's next save overwrote the real one. paintForay
-     re-reads the stored point when this Foray goes from live to cold. */
+     re-reads the stored point when this Foray goes from live to cold. The
+     bind-time parameter itself is gone (code-health CH-22, A3-03): Start over
+     logged it after the point it named no longer existed. */
   const startOrResume = () => state.forayResume ? startAt(state.forayResume.elapsedSec) : start(0);
 
   $("#fy-restart")?.addEventListener("click", async () => {
     if (typeof player.clearForayResume === "function") player.clearForayResume(r.id);
-    logEvent("foray_restart", { foray_id: r.id, from_sec: Math.round(state.forayResume?.elapsedSec || resume?.elapsedSec || 0) });
-    resume = null;
+    logEvent("foray_restart", { foray_id: r.id, from_sec: Math.round(state.forayResume?.elapsedSec || 0) });
     state.forayResume = null;
     $("#fy-resume")?.remove();
     await start(0);
@@ -15331,9 +15343,28 @@ function openRateMenu(player, onChange) {
 /** The only thing that changes 4x a second. Deliberately not a re-render: the
     running order is 32 rows and rebuilding it would fight the scroll position
     and drop focus. */
-/** Which Foray the page last painted LIVE (app-3-1), so a cold tick can tell
-    "just stopped" from "never started". Reset by every renderForay. */
-let forayPaintedLive = null;
+/* Which Foray the page last painted LIVE (app-3-1), so a cold tick can tell
+   "just stopped" from "never started", is `state.forayPaintedLive`: reset by
+   every renderForay, and with the rest of the page's state by leaveForayPage. */
+
+/** A Foray's stored point, read ONE way (code-health CH-22, A3-03), split into
+    `resume` — a place to start from — and `played` — finished, which is not.
+    Read against the resolved running order with `includeFinished`, from which
+    the player derives the runtime and the segment count itself. A read that
+    throws (a corrupt progress row, an older module) is no point at all: the
+    Foray page opens with no offer rather than on "Loading…", and the bar falls
+    back to the episode. Shared by renderForay, the live->cold re-read below and
+    the now-playing bar, so the finished-vs-resume rule lives here only. */
+function readForayPoint(player, r) {
+  let point = null;
+  if (r && typeof player?.forayResume === "function") {
+    try {
+      point = player.forayResume(r.id, { resolved: r, includeFinished: true }) || null;
+    } catch (_) { point = null; }
+  }
+  const played = point && point.finished ? point : null;
+  return { resume: played ? null : point, played };
+}
 
 /** Re-read this Foray's stored resume point into `state.forayResume` and repaint
     the banner's words from it (app-3-1). A finished Foray has no resume point. */
@@ -15341,11 +15372,8 @@ function refreshForayResume() {
   const r = state.foray;
   const player = window.ForayPlayer;
   if (!r || !player || typeof player.forayResume !== "function") return;
-  let point = null;
-  try {
-    point = player.forayResume(r.id, { totalSec: r.totalSec, itemCount: (r.playable || []).length, resolved: r, includeFinished: true });
-  } catch (_) { point = null; }
-  state.forayResume = point && !point.finished ? point : null;
+  const { resume, played } = readForayPoint(player, r);
+  state.forayResume = resume;
   const at = $("#fy-resume .fy-resume-at");
   const left = $("#fy-resume .fy-resume-left");
   if (state.forayResume && typeof player.fmtClock === "function") {
@@ -15363,14 +15391,36 @@ function refreshForayResume() {
      point at all the banner goes. */
   const banner = $("#fy-resume");
   if (!banner) return;
-  if (point && point.finished) {
+  if (played) {
     banner.classList?.add("fy-played");
     if (at && typeof at.remove === "function") at.remove();
-    setStatusText(left, point.label || "Played");
+    setStatusText(left, played.label || "Played");
     setStatusText($("#fy-restart"), "Play again");
   } else if (typeof banner.remove === "function") {
     banner.remove();
   }
+}
+
+/** LEAVING THE FORAY PAGE CLEARS WHAT IT HELD (code-health CH-22, A3-02).
+    `state.foray*` and `fbTarget` describe the Foray page on screen; nothing
+    cleared them on navigation, so a Foray still playing in the bar kept
+    calling this page's paint after the listener went Home, and closing the
+    bar re-read its resume point into `state.forayResume` with Home on screen.
+    One list of what the page owns, cleared by every page change
+    (`renderCurrentPage`) and by Delete my data; the player stops calling the
+    page back (`watchForay(null)`) until a Foray page hooks itself again.
+    guardForayStart deliberately clears only the live half: its page stays. */
+function leaveForayPage() {
+  state.foray = null;
+  state.forayPlaying = null;
+  state.forayPainted = null;
+  state.forayResume = null;
+  state.forayPaintedLive = null;
+  fbTarget = null;
+  const player = window.ForayPlayer;
+  try {
+    if (typeof player?.watchForay === "function") player.watchForay(null);
+  } catch (_) { /* an older module that will not unhook still meets paintForay's `!state.foray` gate */ }
 }
 
 function paintForay(s) {
@@ -15404,9 +15454,9 @@ function paintForay(s) {
      point was read once, at render; after the listener played on and closed
      the bar, the cold page (clock, banner, and the Play the next press runs)
      fell back to that stale point, or to 0. */
-  if (live) forayPaintedLive = state.foray.id;
-  else if (forayPaintedLive === state.foray.id) {
-    forayPaintedLive = null;
+  if (live) state.forayPaintedLive = state.foray.id;
+  else if (state.forayPaintedLive === state.foray.id) {
+    state.forayPaintedLive = null;
     refreshForayResume();
   }
 
@@ -15593,12 +15643,23 @@ function resolveListedForay(id) {
   const player = window.ForayPlayer;
   if (!id || !state.forays || typeof player?.resolve !== "function") return null;
   try {
-    return player.resolve(state.forays, {
-      id, segmentsDoc: state.segments, sourcesDoc: state.segmentSources, ...forayViewOpts(),
-    }) || null;
+    return resolveForay(player, id);
   } catch (_) {
     return null;   // malformed segments/sources must not break a list
   }
+}
+
+/** THE ONE RESOLVE CALL (code-health CH-22, A3-01): the three Foray documents
+    and the `forayViewOpts()` gate, spelled once. Every reader of a Foray's
+    running order — the list surfaces and the now-playing bar through
+    `resolveListedForay`, the Foray page directly — comes through here, so none
+    can resolve a Foray by a rule of its own. It THROWS what the resolver
+    throws: `resolveListedForay` reads a throw as "no Foray"; the Foray page
+    reads it as a failed load and offers Try again. */
+function resolveForay(player, id) {
+  return player.resolve(state.forays, {
+    id, segmentsDoc: state.segments, sourcesDoc: state.segmentSources, ...forayViewOpts(),
+  }) || null;
 }
 
 function forayCards() {
@@ -15718,19 +15779,22 @@ function restoreNowPlayingRibbon() {
     the listener may not see resolves to null and is never advertised on the
     bar. The resume point is read with the resolved running order in hand, so a
     Foray whose segments moved resumes to the same audio (#40). Every step is
-    capability-checked: an older player module simply has no Foray ribbon. */
+    capability-checked: an older player module simply has no Foray ribbon.
+
+    Both reads are the page's shared ones (code-health CH-22): a resolver or a
+    point read that throws is "no Foray" here, so the caller's episode fallback
+    still runs — a bare call used to throw past it and the bar restored nothing.
+    A finished Foray is `played`, not `resume`, and is never put on the bar. */
 function restoreLastForayRibbon(player) {
   if (!player || typeof player.lastPlayedForay !== "function" || typeof player.restoreForay !== "function") return null;
   if (!state.forays) return null;
   const id = player.lastPlayedForay();
   if (!id) return null;
-  const r = player.resolve(state.forays, {
-    id, segmentsDoc: state.segments, sourcesDoc: state.segmentSources, ...forayViewOpts(),
-  });
+  const r = resolveListedForay(id);
   if (!r) return null;
-  const at = player.forayResume(id, { resolved: r });
-  if (!at) return null;
-  return player.restoreForay(r, { startElapsedSec: at.elapsedSec, discoverDoc: state.discover || null });
+  const { resume } = readForayPoint(player, r);
+  if (!resume) return null;
+  return player.restoreForay(r, { startElapsedSec: resume.elapsedSec, discoverDoc: state.discover || null });
 }
 
 /** True when the current route is the home screen — the only page whose content
@@ -17251,10 +17315,7 @@ async function deleteMyData({ deviceOnly = false } = {}) {
     interestsSetThisSession = new Set();
     loadInterests();
     state._interestsGen = (state._interestsGen || 0) + 1;
-    state.forayResume = null;
-    state.forayPlaying = null;
-    state.foray = null;
-    state.forayPainted = null;
+    leaveForayPage();
     /* And this is the one action the app does not log. `logEvent` writes
        `cp_events` and mints `cp_profile_id`, and the next sync would create a
        fresh anonymous account — telling our server about a deletion by starting a
@@ -18135,12 +18196,14 @@ function enterForayFromQuery() {
    split fixes. route() itself still closes the drawer, for real navigation. */
 function renderCurrentPage() {
   if (!state.ready) return;
-  /* Both of these belong to a page that is about to be replaced. The sheet's DOM
-     and listeners die with #view, so neither can act — but a stale entry left
-     pointing at a detached segment is the kind of thing that becomes a bug the
-     next time someone reuses the sheet. */
-  fbTarget = null;
-  state.forayResume = null;
+  /* The Foray page's state belongs to a page that is about to be replaced
+     (code-health CH-22, A3-02). The feedback sheet's DOM and listeners die with
+     #view, so a stale `fbTarget` cannot act — but an entry left pointing at a
+     detached segment is the kind of thing that becomes a bug the next time
+     someone reuses the sheet; and a Foray still playing in the bar kept calling
+     the old page's paint, which re-read its resume point into state with Home
+     on screen. renderForay sets all of it again when the next page is a Foray. */
+  leaveForayPage();
   /* And the sheets that live INSIDE #view (the Foray feedback sheet) go through
      the owner before their DOM does, so the modal lock and the `inert` they
      put on the page cannot outlive them (audit 2026-09-22). */
@@ -19283,12 +19346,7 @@ function foraySurfaceSignature() {
     }
     if (currentHash() === "#/library") return libraryForaysHtml();
     const id = forayRouteId();
-    if (id) {
-      const r = window.ForayPlayer?.resolve?.(state.forays, {
-        id, segmentsDoc: state.segments, sourcesDoc: state.segmentSources, ...forayViewOpts(),
-      });
-      return JSON.stringify(r ?? null);
-    }
+    if (id) return JSON.stringify(resolveListedForay(id));   // the page's own resolve (CH-22)
     return JSON.stringify(forayCards());
   } catch (_) {
     return null;   // cannot tell: treated as unchanged, which keeps the listener's page
