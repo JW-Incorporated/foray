@@ -1382,6 +1382,31 @@ test("VAULT: no vault on the web, on a non-native bridge, or on a build without 
   assert.equal(t.sync, false);
 });
 
+test("N1-01: a bridge that says it is not native is no native tier, even with every plugin present", () => {
+  /* Characterization (CH-04): the `isNativePlatform()` guard on its own, with
+     nativePromise and isPluginAvailable both saying yes, so nothing else in
+     nativeKvTier can be what answers null.
+     MUTATION: delete the `isNativePlatform` line in nativeKvTier -> both tiers
+     are built over a bridge that is not a shell, and this fails twice. */
+  const notNative = { ...shellBridge(), isNativePlatform: () => false };
+  assert.equal(preferencesTier(notNative), null);
+  assert.equal(vaultTier(notNative), null);
+});
+
+test("N1-01: a bridge whose isNativePlatform() or isPluginAvailable() throws is no native tier, not a throw", () => {
+  /* client.js builds both tiers at module scope, so a throw here escapes the
+     player's import and the page never loads. A broken bridge is a bridge we
+     cannot use: no tier, the same posture deferredPrefixesFor takes when
+     getPlatform() throws.
+     MUTATION: drop the try around the guards in nativeKvTier, or move the
+     isPluginAvailable line out of it -> this throws. */
+  const boom = () => { throw new Error("bridge not ready"); };
+  assert.equal(preferencesTier({ ...shellBridge(), isNativePlatform: boom }), null);
+  assert.equal(vaultTier({ ...shellBridge(), isNativePlatform: boom }), null);
+  assert.equal(preferencesTier({ ...shellBridge(), isPluginAvailable: boom }), null);
+  assert.equal(vaultTier({ ...shellBridge(), isPluginAvailable: boom }), null);
+});
+
 test("VAULT: in the shell the token is written to the vault and to NO backed-up tier", async () => {
   /* MUTATION: drop the `_confined` branch in setItem -> the token lands in
      localStorage, IndexedDB and Preferences, and this fails three ways. */
@@ -1856,6 +1881,26 @@ test("SINGLE WRITER: deferral is for the iOS shell only — not the web, not And
   assert.equal(web.ownership(), null, "a store nobody defers has no owner state at all");
   const ios = createDurableStore({ localStorage: new FakeLocal(), deferredPrefixes: OWNED_PREFIXES });
   assert.deepEqual(ios.ownership(), { state: OWNERSHIP_DEFERRED, prefixes: [...OWNED_PREFIXES] });
+});
+
+test("N1-01: a bridge that says it is not native defers nothing, even when getPlatform() says ios", () => {
+  /* Characterization (CH-04): the `isNativePlatform()` guard on its own — the
+     platform is "ios", so only that guard can be what answers [].
+     MUTATION: delete the `isNativePlatform` line in deferredPrefixesFor -> the
+     prefixes are deferred for a page that will never build the engine. */
+  const bridge = { getPlatform: () => "ios", isNativePlatform: () => false };
+  assert.deepEqual(deferredPrefixesFor(bridge, OWNED_PREFIXES), []);
+});
+
+test("N1-01: a bridge whose isNativePlatform() throws defers nothing, not a throw out of the import", () => {
+  /* client.js calls this at module scope (the store is built before anything
+     else), so a throw here is a player that does not load. app.js already
+     survives the same bridge; this is the same posture the getPlatform() call
+     below it takes.
+     MUTATION: drop the try around the isNativePlatform guard in
+     deferredPrefixesFor -> this throws. */
+  const bridge = { getPlatform: () => "ios", isNativePlatform() { throw new Error("bridge not ready"); } };
+  assert.deepEqual(deferredPrefixesFor(bridge, OWNED_PREFIXES), []);
 });
 
 test("SINGLE WRITER: the player defers the engine's rows from construction, and (no engine client yet) releases before hydrating", async () => {
