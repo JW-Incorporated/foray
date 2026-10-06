@@ -570,7 +570,8 @@ final class ScenarioWorld {
         case "loadQueue":
             feed(.queue(.load(try items(arg(0), "loadQueue's items"))))
         case "setQueueFromPick":
-            // The default strategy, SINGLE_ITEM: `picked ? [picked] : []`.
+            // queue-manager.js `setQueueFromPick`: the pick and nothing after it,
+            // `picked ? [picked] : []` (queue-strategy.js was deleted by CH-30).
             feed(.queue(.load(try items(.array([arg(0)]), "setQueueFromPick's item"))))
         case "play":
             // `play(index = 0, opts = {})`, `Number(opts?.startOffset)`.
