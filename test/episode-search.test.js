@@ -1003,3 +1003,37 @@ test("CH-28: commitInterests saves and moves the re-score key exactly once per c
   assert.strictEqual((code.match(/_interestsGen\s*=[^=]/g) || []).length, 1, "only bumpInterestsGen assigns the key");
   assert.match(code, /function bumpInterestsGen\(\) \{\s*state\._interestsGen = \(state\._interestsGen \|\| 0\) \+ 1;\s*\}/);
 });
+
+test("CH-35 (A2-06): a saved episode with no session entry is painted from the listener's whole snapshot, and every local row carries one", () => {
+  /* The local branch of `rowFor` used to fall back to an inline projection
+     (`ep._localSnapshot || { show, title, ... }`) that no producer could reach:
+     `localEpisodeRow` is the only place a `_localId` row is minted and it always
+     carries `_localSnapshot`. The fallback was the thin endpoint shape, so a
+     future producer that reached it would have written the artwork-blanking
+     defect 1 back under the listener's real id. It is gone; this pins both
+     halves of why that is safe.
+     MUTATION (run, red): register the endpoint projection instead of
+     `ep._localSnapshot` -> the artwork, topics and release date are lost.
+     MUTATION 2 (run, red): a second `_localId:` producer, or one without
+     `_localSnapshot` -> the source assertions fail. */
+  const ID = "lex-fridman-podcast--abc-123-guid";
+  /* No audio_url: `liveEpisode` seeds a PLAYABLE stored snapshot into the
+     session cache on its own, so only an unplayable one reaches `rowFor` with
+     nothing under its id — the path that registers `_localSnapshot`. */
+  const { audio_url: _drop, ...rich } = SHOW_PAGE_SAVED.cp_saved[ID];
+  const m = mount({ storage: { cp_saved: { [ID]: rich } } });
+  m.state.catalog = { shows: [] };
+  assert.strictEqual(m.state.itemIndex[ID], undefined, "saved in an earlier session: nothing in the session cache yet");
+
+  vm.runInContext("onShowSearchInput('neuralink')", m.ctx);
+
+  const after = m.state.itemIndex[ID];
+  assert.ok(after, "the paint registers the listener's snapshot so the star can find it");
+  assert.strictEqual(after.artwork_url, rich.artwork_url, "with its artwork");
+  assert.deepStrictEqual([...after.topics], rich.topics, "its topics");
+  assert.strictEqual(after.release_date, rich.release_date, "and its release date");
+
+  const code = APP_SRC.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:/"'`])\/\/[^\n]*/g, "$1");
+  assert.strictEqual((code.match(/\b_localId:/g) || []).length, 1, "one producer of local rows");
+  assert.match(code, /function localEpisodeRow\(id, snap\) \{[^]*?_localId: id,[^]*?_localSnapshot: snap,/, "and it carries the snapshot");
+});

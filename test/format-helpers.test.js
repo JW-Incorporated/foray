@@ -253,11 +253,20 @@ test("a one-episode playlist reads '1 episode' on the Playlists page, in Library
 });
 
 /* The playlist SEARCH row is a fourth surface, and it lives in a different
-   function 1,500 lines away from the other three.
-   MUTATION: restore `${resolveParts(p).length} parts` in its `row` template. */
+   function 1,500 lines away from the other three. Since CH-35 it is the
+   Playlists page's own row, `playlistRowHtml` (test/playlists-page.test.js
+   pins the two byte-identical).
+   MUTATION: restore `${resolveParts(p).length} parts` in playlistRowHtml's
+   default line, or give the search section its own row template again. */
 test("the playlist search row counts through the same helper", () => {
-  const body = APP_SRC.slice(APP_SRC.indexOf("const row = (p, generated) => `"), APP_SRC.indexOf("const row = (p, generated) => `") + 600);
-  assert.ok(body.includes("playlistLengthLabel(p)"), `the search row counts by hand: ${body}`);
+  const at = APP_SRC.indexOf("function playlistRowHtml(");
+  assert.ok(at > 0, "the one playlist row exists");
+  const row = APP_SRC.slice(at, at + 300);
+  assert.ok(row.includes("playlistLengthLabel(p)"), `the playlist row counts by hand: ${row}`);
+  const searchAt = APP_SRC.indexOf("function renderPlaylistSearchResults(");
+  const search = APP_SRC.slice(searchAt, APP_SRC.indexOf("\n}\n", searchAt));
+  assert.ok(/own\.map\(p => playlistRowHtml\(p\)\)/.test(search) && /generated\.map\(p => playlistRowHtml\(p,/.test(search),
+    "the search section prints the one playlist row");
   assert.ok(!/resolveParts\(p\)\.length\}\s*part/.test(APP_SRC), "no surface may count playlist parts by hand");
 });
 

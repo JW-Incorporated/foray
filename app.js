@@ -10057,20 +10057,13 @@ function renderPlaylistSearchResults(query, myToken, reportCtaMs = () => {}) {
     return;
   }
 
-  const row = (p, generated) => `
-    <a class="pl-row" href="#/${esc(playlistRoute(p))}">
-      <div class="info">
-        <div class="t">${esc(p.title)}${generated ? ` <span class="fy-badge fy-badge-generated">Generated for you</span>` : ""}</div>
-        <div class="s">${playlistLengthLabel(p)}</div>
-      </div>
-      <span class="chev">\u203a</span>
-    </a>`;
-
+  /* The Playlists page's own row (playlistRowHtml), so the "· played <date>"
+     suffix that page shows is here too (CH-35, A2-18: it had drifted off). */
   container.innerHTML = `<section class="ep-more fy-playlist-search">
     <h3>Playlists</h3>
     <div class="show-results">
-      ${own.map(p => row(p, false)).join("")}
-      ${generated.map(p => row(p, true)).join("")}
+      ${own.map(p => playlistRowHtml(p)).join("")}
+      ${generated.map(p => playlistRowHtml(p, { badge: GENERATED_BADGE_HTML })).join("")}
     </div>
   </section>`;
   container.hidden = false;
@@ -10417,16 +10410,11 @@ function paintEpisodeSearchResults(query, data, container, localEpisodes) {
      written is a FULL snapshot, never the endpoint's thinner projection. */
   const rowFor = (ep, i) => {
     if (ep._localId) {
-      const item = state.itemIndex[ep._localId] || snapshot(ep._localId, ep._localSnapshot || {
-        show: ep.show_title || ep.show_id,
-        show_id: ep.show_id || null,
-        title: ep.title,
-        hook: ep.description_text || "",
-        audio_url: ep.audio_url,
-        duration_min: ep.duration_seconds ? Math.round(ep.duration_seconds / 60) : null,
-        duration_sec: ep.duration_seconds ?? null,
-        topics: [],
-      });
+      /* `localEpisodeRow` is the one producer of `_localId` rows and always
+         carries `_localSnapshot`; the thin fallback literal that sat here was
+         unreachable, and reaching it would have been defect 1 again (CH-35,
+         A2-06). */
+      const item = state.itemIndex[ep._localId] || snapshot(ep._localId, ep._localSnapshot);
       return epRow(item, i, ctx, -1);
     }
     const id = `apple:${ep.show_id}:${ep.guid || (ep.title + "--" + i)}`;
@@ -11478,6 +11466,17 @@ function rowProgress(item) {
   try { return bridge.episodeProgress(item.id, durSec); } catch (_) { return null; }
 }
 
+/** The "Played" / "NN min left" chip, on every surface that marks an episode's
+    progress: epRow, the episode page and the Up Next row (CH-35, A2-07 — it was
+    written three times). Empty when the player has no mark for it, or for a
+    `null` item (an Up Next row 4a cannot play). */
+function progressChipHtml(item) {
+  const prog = item ? rowProgress(item) : null;
+  return prog && prog.label
+    ? `<span class="ep-progress${prog.state === "played" ? " is-played" : ""}">${esc(prog.label)}</span>`
+    : "";
+}
+
 /** Has the listener opened this episode? `cp_history` OR a stored position.
     History alone decayed: it is a 200-entry ring, so a playlist's "N played"
     silently fell as the listener started other episodes (audit 2026-09-22) —
@@ -11537,10 +11536,7 @@ function epRow(item, idx, ctx, nextIdx) {
   const inApp = playBtn(item, ctx);
   const unavailable = inApp ? "" : notPlayableNote();
   const dateStr = fmtDate(item.release_date);
-  const prog = rowProgress(item);
-  const progHtml = prog && prog.label
-    ? `<span class="ep-progress${prog.state === "played" ? " is-played" : ""}">${esc(prog.label)}</span>`
-    : "";
+  const progHtml = progressChipHtml(item);
   const snippet = episodeRowSnippet(item);
   return `<div class="ep-row">
     ${orderedRowCtx(ctx) ? `<span class="q-num ${idx === nextIdx ? "next" : ""}">${idx + 1}</span>` : ""}
@@ -12448,10 +12444,7 @@ function renderEpisode(id, { t = null } = {}) {
   const dateStr = fmtDate(item.release_date);
   /* The row's "Played" / "NN min left" follows the listener onto the page
      (audit round 2, honesty-5): it used to vanish on the way in. */
-  const prog = rowProgress(item);
-  const progHtml = prog && prog.label
-    ? `<span class="ep-progress${prog.state === "played" ? " is-played" : ""}">${esc(prog.label)}</span>`
-    : "";
+  const progHtml = progressChipHtml(item);
   $("#view").innerHTML = `
     <div class="page">
       <div class="page-head">
@@ -12502,6 +12495,9 @@ function renderEpisode(id, { t = null } = {}) {
    sit at their mobile-width ceiling. Play uses the existing single-episode
    playBtn/epRow-style playback; what plays after it is continuous playback's
    decision (§ continuous playback), and Up Next comes first there. */
+/* Up Next's empty state, one sentence on #/queue and in Library's Up Next
+   section (CH-35, A2-19). */
+const UP_NEXT_EMPTY_NOTE = `<p class="note">Nothing in Up Next yet — add an episode from any row's "+ Up Next" button.</p>`;
 function renderQueue() {
   setBodyClass("view-page");
   fullPool(); // populate itemIndex/poolIds so a live queued item can play in-app
@@ -12515,7 +12511,7 @@ function renderQueue() {
       </div>
       ${rows.length
         ? rows.map((r, i) => upNextRow(r, i, rows.length)).join("")
-        : `<p class="note">Nothing in Up Next yet — add an episode from any row's "+ Up Next" button.</p>`}
+        : UP_NEXT_EMPTY_NOTE}
     </div>`;
 
   bindPickLogging($("#view"));
@@ -12545,10 +12541,7 @@ function upNextRow(r, idx, total) {
   const title = named ? esc(item.title) : "Episode no longer available";
   /* The same "Played" / "NN min left" mark every other episode row carries
      (audit round 2, honesty-5): a half-finished queued episode looked fresh. */
-  const prog = playable ? rowProgress(item) : null;
-  const progHtml = prog && prog.label
-    ? `<span class="ep-progress${prog.state === "played" ? " is-played" : ""}">${esc(prog.label)}</span>`
-    : "";
+  const progHtml = progressChipHtml(playable ? item : null);
   /* One sentence for the unnamed state, and it is about THIS page (copy-9): it
      used to say "Removed from your history", on a page that is not History,
      about an id that is still right there in the list. */
@@ -12562,14 +12555,18 @@ function upNextRow(r, idx, total) {
      `noteQueuePlaybackMoved` when playback moves. */
   let isCurrent = false;
   try { isCurrent = !!window.ForayPlayer?.isCurrent?.(id); } catch (_) { /* no player yet */ }
-  /* Play next (#762, PQ-02) is disabled where it would change nothing: on the
-     playing row, on the row already right after it (or row 1 with nothing
-     playing) — `playNextOrder` returns the list unchanged for exactly those —
-     and on a row 4a cannot play, which `playNextInQueue` refuses. */
+  /* Play next (#762, PQ-02) is disabled where its tap would change nothing,
+     and the rule that says so is the one the tap runs (CH-35, A2-01): this
+     used to re-derive `playNextOrder` by hand — the playing row, the row right
+     after it, row 1 with nothing playing — and would have drifted the day the
+     rule changed. Also off on a row 4a cannot play (`playNextInQueue` refuses
+     it), with no queue-order rules (the tap does nothing), and on the row the
+     player says is current even while the app's `currentPlayingId` pointer
+     lags it: the two can differ for a moment, and the bar is on that row. */
   const ids = queueIds();
   const cur = currentPlayingId();
-  const curIdx = cur ? ids.indexOf(cur) : -1;
-  const playNextDisabled = !playable || isCurrent || id === cur || (curIdx >= 0 ? ids[curIdx + 1] === id : idx === 0);
+  const rules = queueOrderRules();
+  const playNextDisabled = !playable || isCurrent || !rules || rules.playNextOrder(ids, id, cur) === ids;
   return `<div class="ep-row up-next-row ${playable ? "" : "gone"}${isCurrent ? " is-current" : ""}"${isCurrent ? ' aria-current="true"' : ""}>
     <span class="q-num">${idx + 1}</span>
     <div class="info" data-swipe-id="${esc(id)}">
@@ -12927,8 +12924,9 @@ function bindUpNextSwipe(scope) {
 
      Saved     cp_saved   via savedMap()     — reuses epRow/archivedRow
      History   cp_history via pickedHistory()— reuses epRow/archivedRow
-     Playlists cp_playlists via playlists()  — reuses the same summary row
-                                                renderPlaylists() prints, capped
+     Playlists cp_playlists via playlists()  — the playlist row renderPlaylists()
+                                                prints (playlistRowHtml), with
+                                                the length alone, capped
      Up Next   cp_queue   via queueIds()     — same treatment as playlists,
                                                 for the reason below
 
@@ -12945,11 +12943,8 @@ function bindUpNextSwipe(scope) {
    defer to.
 
    Every link on this page is in-app: episode rows resolve through
-   epRow/archivedRow (which already only ever link within 4a or, for a part
-   with no in-app audio, out to the episode's own listening app — the same
-   fallback every other row in the app already uses, never a new one), and
-   the Playlists/Up Next summaries link to their own in-app pages. Nothing
-   here introduces a new external link-out.
+   epRow/archivedRow, and the Playlists/Up Next summaries link to their own
+   in-app pages. Nothing here introduces a new external link-out.
 
    History is newest-first (`pickedHistory()` appends, so the raw array is
    oldest-first) and capped at the same 20 rows for the same reason renderHome
@@ -12965,14 +12960,34 @@ function bindUpNextSwipe(scope) {
    for links that can carry an attacker-controlled scheme; an in-app hash
    route built from this module's own constant strings and `playlists()`/
    `queueIds()` ids, which esc() already escapes, is not one). */
-function libSummaryRow(hashPath, title, sub) {
+function libSummaryRow(hashPath, title, sub, badgeHtml = "") {
   return `<a class="pl-row" href="#${esc(hashPath)}">
     <div class="info">
-      <div class="t">${esc(title)}</div>
+      <div class="t">${esc(title)}${badgeHtml}</div>
       <div class="s">${esc(sub)}</div>
     </div>
     <span class="chev">›</span>
   </a>`;
+}
+
+/* ONE PLAYLIST ROW (CH-35, A2-18). `#/playlists`, Search's Playlists section
+   and Library's summary each wrote their own `.pl-row`, and Search's — whose
+   header says a playlist opened there is indistinguishable from one opened
+   from the Playlists page — had lost the "· played <date>" suffix. All three
+   are this, on libSummaryRow's shell. `sub` defaults to the Playlists page's
+   line (length, then when it was last played); Library passes the length
+   alone, its summary being the short one. `badge` is markup appended to the
+   title (the "Generated for you" badge in Search). */
+const GENERATED_BADGE_HTML = ` <span class="fy-badge fy-badge-generated">Generated for you</span>`;
+function playlistRowHtml(p, { badge = "", sub = joinMeta(playlistLengthLabel(p), playedOnLabel(p.last_played_at)) } = {}) {
+  return libSummaryRow(`/${playlistRoute(p)}`, p.title, sub, badge);
+}
+
+/** Repaint Library when it is the page on screen, and only then — what a
+    download landing, a download removed, or the player module arriving late
+    each did by hand (CH-35, A2-19). */
+function repaintLibraryIfShown() {
+  if (currentHash() === "#/library") renderCurrentPage();
 }
 
 /* ---------- offline downloads (#29, docs/roadmap/player-features.md PQ-18) ----------
@@ -13132,7 +13147,7 @@ function onDownloadEvent(name, payload) {
     announce("Downloaded.");
     /* The cap is checked when it can have been crossed: a file just landed. */
     evictDownloads().finally(() => {
-      if (currentHash() === "#/library") renderCurrentPage();
+      repaintLibraryIfShown();
     });
   }
 }
@@ -13312,7 +13327,7 @@ async function removeDownload(id) {
     announce("Couldn't remove the download. Try again.");
   }
   repaintDownload(id);
-  if (currentHash() === "#/library") renderCurrentPage();
+  repaintLibraryIfShown();
   return res;
 }
 
@@ -13327,7 +13342,7 @@ async function removeAllDownloads() {
   } else {
     announce("Couldn't remove the downloads. Try again.");
   }
-  if (currentHash() === "#/library") renderCurrentPage();
+  repaintLibraryIfShown();
   return res;
 }
 
@@ -13474,8 +13489,7 @@ function renderLibrary() {
       : `<p class="note">No listening history yet — episodes you play show up here.</p>`;
 
   const playlistsHtml = allPlaylists.length
-    ? allPlaylists.slice(0, 5).map(p =>
-        libSummaryRow(`/${playlistRoute(p)}`, p.title, playlistLengthLabel(p))).join("")
+    ? allPlaylists.slice(0, 5).map(p => playlistRowHtml(p, { sub: playlistLengthLabel(p) })).join("")
       + (allPlaylists.length > 5 ? `<a class="lib-more" href="#/playlists">All ${allPlaylists.length} playlists ›</a>` : "")
     /* It said "build one from the home screen", and the builder left Home on
        2026-09-03 — the note named the one screen certain not to have it. It
@@ -13484,7 +13498,7 @@ function renderLibrary() {
 
   const queueHtml = queued.length
     ? libSummaryRow("/queue", "Up Next", `${queued.length} queued`)
-    : `<p class="note">Nothing in Up Next yet — add an episode from any row's "+ Up Next" button.</p>`;
+    : UP_NEXT_EMPTY_NOTE;
 
   $("#view").innerHTML = `
     <div class="page">
@@ -13513,7 +13527,7 @@ function renderLibrary() {
   if (!window.ForayPlayer && state.forays) {
     const isCurrentRender = renderToken();
     playerBridge().then(player => {
-      if (player && isCurrentRender() && currentHash() === "#/library") renderCurrentPage();
+      if (player && isCurrentRender()) repaintLibraryIfShown();
     });
   }
 }
@@ -13532,14 +13546,7 @@ function renderPlaylists() {
         <div><h2>Playlists</h2>${all.length ? `<p class="sub">${countLabel(all.length, "playlist")}</p>` : ""}</div>
       </div>
       <a class="page-link-row" href="#/create">Build a playlist ›</a>
-      ${all.length ? all.map(p => `
-        <a class="pl-row" href="#/${esc(playlistRoute(p))}">
-          <div class="info">
-            <div class="t">${esc(p.title)}</div>
-            <div class="s">${joinMeta(playlistLengthLabel(p), playedOnLabel(p.last_played_at))}</div>
-          </div>
-          <span class="chev">›</span>
-        </a>`).join("")
+      ${all.length ? all.map(p => playlistRowHtml(p)).join("")
       : `<p class="note">No playlists yet — <a href="#/create">build one on the Create tab</a>.</p>`}
     </div>`;
 }
@@ -13551,10 +13558,10 @@ function renderPlaylists() {
    Foray half permanently disabled: "Foray generation stays out of the UI for
    now" (D8) -- the pipeline exists, its key and segment pool don't, and a
    toggle that silently did nothing would be worse than one that says so.
-   Playlist mode is NOT a new builder: it is today's buildPlaylist() (the same
-   function #/playlists' form calls), reached through the new chrome, so a
-   playlist built from here and one built from the old Playlists page produce
-   byte-identical cp_playlists entries (the card's acceptance line).
+   Playlist mode is NOT a new builder: it is buildPlaylist(), the one builder
+   (#/playlists' own form was removed 2026-09-23 — see the note above
+   `bindPickLogging`), reached through this page's chrome; the Search CTA hands
+   off to this same form rather than building anything itself.
 
    The mockup's ~20/~40/~75 minute LENGTH picker is Foray-specific (it sizes a
    stitched run of segments) and has no meaning for a playlist of whole
@@ -13566,7 +13573,8 @@ function renderPlaylists() {
    synchronous work with no intermediate stages to report, so this reuses only
    the honest part of that shape -- a "Building…" transient long enough for
    the browser to paint before the synchronous call blocks the main thread
-   (the same bindPlaylistFormSubmit fix, same reason) -- and then either opens
+   (`whenSearchDataReady` runs the build on a later task, after the search
+   documents are in) -- and then either opens
    the built playlist (the mockup's "done" destination) or shows why not. No
    invented step list, because inventing one here would be exactly the kind of
    promise D8 forbids: a progress bar for work that is not actually happening
@@ -13585,15 +13593,12 @@ function createToggleHtml() {
   <p class="note cr-foray-note" id="cr-foray-note">Custom Forays aren't available yet — you can still build a playlist below.</p>`;
 }
 
-/** Loading-state guard around #cr-form's submit -- the same shape as
-    bindPlaylistFormSubmit (see that function's header for why the
-    setTimeout(0) is load-bearing) because this calls the exact same
-    buildPlaylist(), just from the new screen's form. Kept as a separate
-    function rather than a shared one because the two forms' DOM (note
-    element id, disabled-label text) differ enough that forcing a shared
-    signature would need extra parameters for no real reuse -- U-02's own
-    history (two `#pl-form` mounts sharing one handler) is the caution here:
-    that ended with only one of the two mounts still using it. */
+/** #cr-form's submit: the one place a playlist is built (the Create page's
+    form and its suggestion pills end here; the Search CTA prefills the form).
+    It paints "Building…" first and runs buildPlaylist() through
+    `whenSearchDataReady`, which waits for the search documents (or their
+    failure) and then defers one task, so the pending state gets a frame to
+    paint before the synchronous scan blocks the main thread. */
 /* ONE BUILD AT A TIME (review 2026-09-23). The suggestion pills call the
    submit handler directly, so the disabled Build button never had a say: on a
    cold boot the build waits for the search data, a tap looked like nothing,
