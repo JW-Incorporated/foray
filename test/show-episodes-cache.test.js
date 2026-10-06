@@ -297,10 +297,17 @@ test("a failed refresh behind a good cached list changes nothing on screen", () 
      now" in the SUBTITLE — the moment that sentence becomes true — but it still
      returns before the list is touched and before the error is recorded, which
      is this test's claim. Indentation moved two spaces with `loadEpisodes()`. */
+  /* 2026-10-06 (code-health CH-29, A1-12): the `lastLoadError` string went, since
+     nothing read it once showEpisodeCountLabel stopped taking `loadError`. The
+     failure is now recorded only by `paintEpisodeOutcome("failed")`, so that
+     call is the anchor, and the early return must come before it. The anchor
+     must also exist, so a rename fails here instead of comparing against -1. */
   const body = /if \(episodes === null\) \{[\s\S]*?\n      \}/.exec(SRC)[0];
   assert.match(body, /if \(cached && cached\.episodes\.length\) \{\s*anyStale = true;\s*paintCount\(\);\s*return;\s*\}/);
-  assert.ok(body.indexOf("return;") < body.indexOf("lastLoadError"),
-    "the early return must come before the error is recorded");
+  const failedIdx = body.indexOf('paintEpisodeOutcome("failed")');
+  assert.ok(failedIdx >= 0, 'the failed branch must still record the failure through paintEpisodeOutcome("failed")');
+  assert.ok(body.indexOf("return;") < failedIdx,
+    "the early return must come before the failure is recorded");
 });
 
 test("an empty refresh behind a good cached list is also survivable", () => {
