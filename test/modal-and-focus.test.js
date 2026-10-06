@@ -1191,6 +1191,12 @@ test("CH-38: the intro popup parks on the scrim and Escape, and only 'Got it' wr
   assert.strictEqual(m.doc.body.querySelector("#intro-sheet"), null, "Escape closed it");
   assert.strictEqual(m.store.get("cp_intro_dismissed"), undefined, "without ending onboarding");
 
+  const tapped = mount();
+  tapped.ctx.showIntroPopupOnce();
+  tapped.doc.body.querySelector("#intro-sheet").querySelector(".fy-scrim").fire("click");
+  assert.strictEqual(tapped.doc.body.querySelector("#intro-sheet"), null, "a scrim tap closed it");
+  assert.strictEqual(tapped.store.get("cp_intro_dismissed"), undefined, "and only parked it");
+
   const fresh = mount();
   fresh.ctx.showIntroPopupOnce();
   fresh.doc.body.querySelector("#intro-sheet-ok").fire("click");
