@@ -1867,12 +1867,13 @@ function upNextBtn(id, item = null) {
   /* NO BUTTON FOR WHAT addToQueue REFUSES (audit round 2 review of
      p-impatient-10). The refusal moved into addToQueue, but epRow and the
      episode page still drew "+ Up Next" beside "Not available to play", and a
-     tap turned it "✓ Up Next" while nothing was added. `liveEpisode` is the
-     same definition addToQueue checks, so the button and the refusal agree;
-     a row builder that holds the item passes it, and a row whose own item
-     carries audio keeps its button (bindUpNext paints from the queue either
-     way, so a refusal is never shown as a success). */
-  if (!on && !(item && item.audio_url) && !liveEpisode(id)) return "";
+     tap turned it "✓ Up Next" while nothing was added. `isPlayableId` is the
+     same rule addToQueue checks (and continuous playback walks by), so the
+     button and the refusal agree — a pool row with no `audio_url` included
+     (CH-01); a row builder that holds the item passes it, and a row whose own
+     item carries audio keeps its button (bindUpNext paints from the queue
+     either way, so a refusal is never shown as a success). */
+  if (!on && !(item && item.audio_url) && !isPlayableId(id)) return "";
   const { text, attr } = toggleMarkup(on, UP_NEXT_TOGGLE);
   return `<button class="up-next ${on ? "on" : ""}" data-upnext="${esc(id)}"${attr}>${text}</button>`;
 }
@@ -2470,8 +2471,9 @@ function prettyTitle(query) {
 
    `audio_url` is both the most expensive field and the only one that ROTS. A
    copied enclosure URL that has since moved renders a play button that fails,
-   which is strictly worse than the link-out an absent one already degrades to
-   (see playBtn) — so in-app playback comes from the live pool only, never from a
+   which is strictly worse than the honest "Not available to play" an absent one
+   already degrades to (see playBtn: no `audio_url`, no button, no Up Next, no
+   link out of 4a) — so in-app playback comes from the live pool only, never from a
    playlist. `artwork_url` is 161 B that epRow never renders. `apple_episode_url`
    is derivable from the two Apple ids that are kept (`id<collection>?i=<track>`),
    and nothing links out to Apple any more anyway. `hook` feeds the player's why-line, which only a live part
@@ -3018,23 +3020,28 @@ function isQueued(id) { return !!id && queueIds().includes(id); }
 /* Idempotent by design: tapping "+ Up Next" twice on the same row (a slow
    network re-render, a double-tap) must not duplicate the entry — the plan's
    UI never offers a way to remove a duplicate, so silently de-duping here is
-   the only place that can hold that invariant. */
+   the only place that can hold that invariant. True only when the id was
+   added: a refusal, or an id already queued, is false. */
 function addToQueue(id) {
-  if (!id) return;
+  if (!id) return false;
   /* ONLY WHAT 4a CAN PLAY (audit round 2, p-impatient-10). An aged-out playlist
      part's row already says "Not available to play"; accepting it here turned
      the button "✓ Up Next", listed the row on #/queue as "not available right
      now" with no ▶, and continuous playback then passed over it without a word
-     — a false success from three places at once. `liveEpisode` is the one
-     definition of playable (section header above), so the refusal cannot
-     disagree with the row. */
-  if (!liveEpisode(id)) return;
+     — a false success from three places at once. `isPlayableId` is the one
+     definition of playable (see its header), the same rule continuous
+     playback walks by, so the refusal cannot disagree with the row or the
+     walk. Bare `liveEpisode` was the gate until CH-01 (A1-01): it answers for
+     a pool row with no `audio_url`, which the walk then skipped — the queue
+     said N and N−1 played. */
+  if (!isPlayableId(id)) return false;
   const ids = queueIds();
-  if (ids.includes(id)) return;
+  if (ids.includes(id)) return false;
   saveQueueIds(ids.concat(id));
   /* After the id is in the list, so the prune inside keeps this snapshot. */
   rememberEpisode(id);
   logEvent("queued", { episode_id: id });
+  return true;
 }
 
 function removeFromQueue(id) {
@@ -3077,10 +3084,10 @@ function currentPlayingId() {
 
 /** Put `id` directly after the playing row (at the head with nothing playing),
     adding it when it was not queued. Refuses what 4a cannot play — the same
-    `liveEpisode` gate `addToQueue` holds. True only when the list changed:
+    `isPlayableId` gate `addToQueue` holds. True only when the list changed:
     `playNextOrder` returns the SAME array when the row is already there. */
 function playNextInQueue(id) {
-  if (!id || !liveEpisode(id)) return false;
+  if (!id || !isPlayableId(id)) return false;
   const rules = queueOrderRules();
   if (!rules) return false;
   const before = queueIds();
@@ -3117,10 +3124,12 @@ function clearQueue() {
    continuous playback stopped dead at the first one, and "Open episode" on the
    restored bar said "Episode not found" about the audio in your ears.
 
-   The rule now: an episode is LIVE when the pool holds it (unchanged — a pool
-   row keeps its link-out behaviour even without audio) or when we hold a
-   snapshot of it that carries an `audio_url`. That is the question every one
-   of those sites was actually asking: "can 4a play this".
+   The rule now: an episode is LIVE when the pool holds it (a pool row is live
+   even without audio, so it can still be named and drawn — it renders "Not
+   available to play", with no Up Next button and no link out of 4a, since
+   PLAYABLE is live plus an `audio_url`: isPlayableId) or when we hold a
+   snapshot of it that carries an `audio_url`. That is the question every one of those sites
+   was actually asking: "can 4a play this".
 
    #276 STILL HOLDS, and this is why the test is `audio_url` rather than "is in
    `state.itemIndex`". `itemIndex` is a cache that `renderPlaylistDetail` seeds
@@ -3366,6 +3375,10 @@ function setPlayList(ids, playedId = null) {
   refreshEpisodeNavigation();
 }
 
+/* THE playability rule: live (see liveEpisode) AND carrying an `audio_url`.
+   Continuous playback walks by it (continuationState's `isPlayable`), and the
+   Up Next gates — addToQueue, playNextInQueue, upNextBtn — ask it too, so
+   nothing is queued that the walk would skip (CH-01, A1-01). */
 function isPlayableId(id) { return Boolean(liveEpisode(id)?.audio_url); }
 
 /* ---------- the Up Next model (founder question 9, audit round 2) ----------
@@ -3784,7 +3797,8 @@ function startChained(nextId, ctx, { fromTail = false } = {}) {
 
      live       the pool has it: full row, artwork, in-app play.
      archived   the pool does not, but the saved part names it: the row renders
-                from the part and links out. "Label, never exclude" (#226) is the
+                from the part as "Not available to play" — no play, no Up Next,
+                no link out of 4a (archivedRow). "Label, never exclude" (#226) is the
                 catalogue rule written FOR playlists — shows useless for Forays
                 are kept because playlists want them — so dropping a part the app
                 can still describe works against the reason it is there.
@@ -6593,8 +6607,8 @@ function bindPlay(scope) {
     if (btn._bound) return;
     btn._bound = true;
     btn.addEventListener("click", async (e) => {
-      // The button sits inside the card's <a>; without this the link-out fires
-      // and the browser navigates away mid-play.
+      // The button may sit inside a card's <a> (an in-app route); without this
+      // the tap also follows that link and navigates away mid-play.
       e.preventDefault();
       e.stopPropagation();
       const id = btn.dataset.play;
@@ -12630,34 +12644,33 @@ function libSummaryRow(hashPath, title, sub) {
    never downloads — CORS, #29), and every surface here is drawn only when
    `state.downloadBridge` is non-null: an honest absence, not a disabled button.
 
-   `cp_downloads` is ONE row (download-store.js says why); it is read and
-   written through lsGet/lsSet like every other `cp_` key, so the durable store
-   and "Delete my data" see it. */
+   `cp_downloads` is ONE row (download-store.js says why), and it has ONE reader
+   and ONE writer: the store's own `readDownloads`/`writeDownloads`, handed the
+   backend lsGet/lsSet use (`storageBackend()`: DurableStore once the player
+   module has published it), so the durable tier and "Delete my data" see it
+   like every other `cp_` key. The key is the module's `KEY`; this block never
+   spells it (CH-02, P2-11/P2-19/X1-03). */
 
 function downloadRules() {
   const rules = window.forayDownloads && window.forayDownloads.store;
   return rules && typeof rules.normaliseDownloads === "function" ? rules : null;
 }
 
-/** The record, normalised by the store's own rule; the empty record (Wi-Fi only,
-    nothing downloaded) when the player module is not there to normalise it. */
+/** The record, read and normalised by the store's own rule; the empty record
+    (Wi-Fi only, nothing downloaded) when the player module is not there. */
 function downloadsValue() {
-  const raw = lsGet("cp_downloads", null);
   const rules = downloadRules();
-  if (rules) return rules.normaliseDownloads(raw);
+  if (rules) return rules.readDownloads(storageBackend());
   return { settings: { cellular: false }, items: {} };
 }
 
+/** Write the record through the store's `writeDownloads`: normalised, and
+    `null` REMOVES the row (the module's rule — this used to write the empty
+    record instead, a second answer from a second writer). No player module,
+    no rules, nothing written: an unnormalised record is not one to keep. */
 function saveDownloads(value) {
   const rules = downloadRules();
-  return lsSet("cp_downloads", rules ? rules.normaliseDownloads(value) : value);
-}
-
-/** The record without one episode's row: what Remove (and an eviction) leaves. */
-function downloadsWithout(value, id) {
-  const items = { ...value.items };
-  delete items[id];
-  return { ...value, items };
+  return rules ? rules.writeDownloads(storageBackend(), value) : false;
 }
 
 function downloadsCellularOn() { return downloadsValue().settings.cellular === true; }
@@ -12717,6 +12730,20 @@ function bootDownloads() {
     saveDownloads(rules.markMissing(downloadsValue(), id));
     announce("Downloaded copy missing — streaming instead.");
     repaintDownload(id);
+  };
+  /* The downloaded copy PLAYED (CH-02, P2-01): player/client.js fires this
+     where a local load succeeded, never where the file was merely chosen. It
+     moves the row to the back of the least-recently-played eviction queue.
+     Idempotent, and silent: an id with no row (removed, or purged by Delete my
+     data) is `markPlayed`'s identity, and identity writes nothing.
+     MUTATION: delete this assignment — test/downloads.test.js "a download
+     played from its file…" evicts the file listened to yesterday. */
+  surface.onPlayedFromFile = (id) => {
+    const rules = downloadRules();
+    if (!rules) return;
+    const before = downloadsValue();
+    const next = rules.markPlayed(before, id, Date.now());
+    if (next !== before) saveDownloads(next);
   };
   return bridge;
 }
@@ -12801,7 +12828,7 @@ async function evictDownloads() {
   const plan = rules.evictionPlan(value, positions);
   for (const id of plan) {
     const res = await bridge.remove({ id });
-    if (res && res.ok) saveDownloads(downloadsWithout(downloadsValue(), id));
+    if (res && res.ok) saveDownloads(rules.removeRow(downloadsValue(), id));
   }
   return plan;
 }
@@ -12925,7 +12952,8 @@ async function removeDownload(id) {
   if (!bridge || !id) return null;
   const res = await bridge.remove({ id });
   if (res && res.ok) {
-    saveDownloads(downloadsWithout(downloadsValue(), id));
+    const rules = downloadRules();
+    if (rules) saveDownloads(rules.removeRow(downloadsValue(), id));
     announce("Download removed.");
   } else {
     announce("Couldn't remove the download. Try again.");

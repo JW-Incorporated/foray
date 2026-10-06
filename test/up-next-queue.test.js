@@ -248,7 +248,7 @@ test("archivedRow offers no '+ Up Next': the row already says it cannot play (au
 test("ROUND 2 review (p-impatient-10): no '+ Up Next' beside 'Not available to play', and a refused add never paints '✓ Up Next'", () => {
   /* epRow and the episode page still drew the button for an item with no
      audio, and bindUpNext painted "✓ Up Next" whatever addToQueue did.
-     MUTATIONS: drop the `liveEpisode` gate from upNextBtn -> the silent row
+     MUTATIONS: drop the `isPlayableId` gate from upNextBtn -> the silent row
      offers the button; paint `true` in bindUpNext -> the label lies. */
   const m = mount();
   m.state.poolIds = new Set();
@@ -279,9 +279,9 @@ test("ROUND 2 review (p-impatient-10): no '+ Up Next' beside 'Not available to p
 
 test("addToQueue refuses an episode 4a cannot play (audit round 2, p-impatient-10)", () => {
   /* The button turned "✓ Up Next" for an id with no playable snapshot, and the
-     Up Next page then listed it as "not available right now". `liveEpisode` is
+     Up Next page then listed it as "not available right now". `isPlayableId` is
      the one definition of playable, so the refusal and the row agree.
-     MUTATION: drop `if (!liveEpisode(id)) return;` from addToQueue -> the ghost
+     MUTATION: drop `if (!isPlayableId(id)) return false;` from addToQueue -> the ghost
      and the silent part land in cp_queue. */
   const m = mount();
   m.ctx.addToQueue("never-seen-anywhere");
@@ -667,7 +667,7 @@ test("Play next from a row lands the episode right after the playing one (PQ-02,
 });
 
 test("Play next on an unqueued playable episode adds it, and refuses an unplayable one (PQ-02, #762)", () => {
-  /* MUTATION (run, red): drop `!liveEpisode(id)` from playNextInQueue's first
+  /* MUTATION (run, red): drop `!isPlayableId(id)` from playNextInQueue's first
      line -> "z-unplayable" lands in cp_queue and the last assertion fails. */
   const m = mountQueue(["a"], "a");
   m.state.itemIndex.z = { id: "z", title: "Z", show: "S", audio_url: "https://x.test/z.mp3", topics: [] };
@@ -733,4 +733,92 @@ test("#/episode renders Play next beside + Up Next, and its click goes through p
   pn.onClick(CLICK);
   assert.deepStrictEqual(m.queueRaw(), ["x", item.id, "y"], "the episode plays right after the one playing");
   assert.ok(upBtn.painted.includes("✓ Up Next"), `its + Up Next is painted from the queue: ${upBtn.painted.join(" ")}`);
+});
+
+/* ==================================================================== */
+/* 11. UP NEXT REFUSES POOL ROWS 4a CANNOT PLAY (CH-01, A1-01)           */
+/* ==================================================================== */
+
+/* The pool rows with no `audio_url` (8 of 2177 in data/discover.json: members-
+   only and video-only items tools/refresh/backfill-audio.mjs could not resolve).
+   `liveEpisode` answers for a pool row whatever its audio, while the walk asks
+   `isPlayableId` (liveEpisode + audio_url, via continuationState) — so the
+   gate used to accept what the walk then skipped. The tests above that seed a
+   silent item all EMPTY `state.poolIds`; these keep it in the pool. */
+function silentPoolRow(m) {
+  const silent = readJson("data/discover.json").items.find((it) => !it.audio_url);
+  assert.ok(silent, "fixture assumption: discover.json carries a pool row with no audio_url");
+  assert.ok(m.state.poolIds.has(silent.id), "precondition: the silent row is IN the pool");
+  assert.ok(m.ctx.liveEpisode(silent.id), "precondition: liveEpisode answers for it (the pool rule)");
+  return silent;
+}
+
+/** Plays the queue head and lets continuous playback run (no tail in this
+    harness: no window.forayTailFill), returning every id the walk played. */
+function walkQueue(m) {
+  const head = m.ctx.queueIds()[0];
+  if (!head) return [];
+  const played = [head];
+  for (let i = 0; i < 20; i++) {
+    const step = m.ctx.nextAfterEnded(played[played.length - 1]);
+    if (!step.nextId || step.fromTail) break;
+    played.push(step.nextId);
+  }
+  return played;
+}
+
+test("a pool row with no audio_url gets no '+ Up Next', is refused by addToQueue and Play next, and the walk plays every queued id (CH-01, A1-01)", async () => {
+  /* MUTATION (run, red): revert addToQueue's gate to `if (!liveEpisode(id))`
+     -> the silent pool row lands in cp_queue and "the silent pool row is
+     refused" goes red (left unchecked, the walk would then play 2 of 3
+     queued ids). MUTATION 2 (run, red): revert upNextBtn's gate to
+     `!liveEpisode(id)` -> the button is drawn beside "Not available to play".
+     MUTATION 3 (run, red): revert playNextInQueue's gate to `!liveEpisode(id)`
+     -> "Play next refuses it too" goes red. MUTATION 4 (run, red): drop the
+     `audio_url` check from isPlayableId -> every gate admits the silent row
+     and the first upNextBtn assertion goes red. */
+  const m = await mountBooted();
+  const silent = silentPoolRow(m);
+  const [a, b] = readJson("data/discover.json").items.filter((it) => it.audio_url);
+
+  assert.strictEqual(m.ctx.upNextBtn(silent.id), "", "no Up Next control for a row 4a cannot play");
+  assert.strictEqual(m.ctx.upNextBtn(silent.id, silent), "", "…with or without the row's own item in hand");
+  const row = m.ctx.epRow(silent, 0, "show-x");
+  assert.ok(row.includes("Not available to play"), "epRow says it cannot play (notPlayableNote)");
+  assert.ok(!row.includes("data-upnext"), "and epRow offers no Up Next control");
+  m.ctx.renderEpisode(silent.id);
+  const page = m.view();
+  assert.ok(page.includes("Not available to play"), "the episode page says it cannot play");
+  /* Scoped to this id: "More from this show" below lists the show's other,
+     playable episodes, each with its own control. */
+  assert.ok(!page.includes(`data-upnext="${m.ctx.esc(silent.id)}"`), "and the episode page offers no Up Next control for it");
+
+  assert.strictEqual(m.ctx.addToQueue(a.id), true, "a playable pool row is added");
+  assert.strictEqual(m.ctx.addToQueue(silent.id), false, "the silent pool row is refused");
+  assert.strictEqual(m.ctx.addToQueue(b.id), true);
+  assert.deepStrictEqual(m.queueRaw(), [a.id, b.id], "cp_queue holds only what 4a can play");
+  assert.strictEqual(m.ctx.playNextInQueue(silent.id), false, "Play next refuses it too");
+  assert.deepStrictEqual(m.queueRaw(), [a.id, b.id], "cp_queue unchanged by the refusal");
+
+  const queued = m.ctx.queueIds().length;
+  assert.deepStrictEqual(walkQueue(m), [a.id, b.id], "the walk plays the queue in order");
+  assert.strictEqual(queued, 2, "queue count equals walk count");
+});
+
+test("a pool row WITH audio_url still queues, and the walk plays every queued id (CH-01, characterization)", async () => {
+  /* Pins today's good path so the tightening above cannot over-reach.
+     MUTATION (run, red): gate addToQueue on `state.itemIndex[id]?.audio_url &&
+     !state.poolIds.has(id)` (refuse pool rows outright) -> nothing is queued.
+     MUTATION 2 (run, red): make continuationState's isPlayable `() => false`
+     -> the walk stops after the head and plays 1 of 3. */
+  const m = await mountBooted();
+  const pool = readJson("data/discover.json").items.filter((it) => it.audio_url && m.state.poolIds.has(it.id)).slice(0, 3);
+  assert.strictEqual(pool.length, 3, "fixture assumption: three playable pool rows");
+  for (const it of pool) {
+    assert.ok(m.ctx.upNextBtn(it.id).includes(`data-upnext="${m.ctx.esc(it.id)}"`), "a playable pool row offers Up Next");
+    m.ctx.addToQueue(it.id);
+  }
+  const ids = pool.map((it) => it.id);
+  assert.deepStrictEqual(m.queueRaw(), ids, "every playable pool row is queued, in order");
+  assert.deepStrictEqual(walkQueue(m), ids, "and the walk plays every queued id");
 });
