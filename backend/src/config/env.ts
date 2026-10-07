@@ -2,6 +2,7 @@ import * as path from "path";
 import * as fs from "fs";
 import * as dotenv from "dotenv";
 import { z } from "zod";
+import { DEFAULT_FEED_USER_AGENT } from "../feeds/userAgent";
 
 /**
  * Central env access. Loads the repo-root `.env` (one level up from backend/)
@@ -164,7 +165,7 @@ export const env: Env = {
   dailyBudgetUsd: readBoundedNumber("DAILY_BUDGET_USD", DEFAULT_DAILY_BUDGET_USD, dailyBudgetSchema),
   episodeBudgetUsd: readNumber("EPISODE_BUDGET_USD", DEFAULT_EPISODE_BUDGET_USD),
   databaseUrl: readString("DATABASE_URL"),
-  userAgent: "Foray/0.1 (personal podcast client; contact wjduvall@gmail.com)",
+  userAgent: DEFAULT_FEED_USER_AGENT,
   get anthropicDryRun(): boolean {
     return this.anthropicApiKey === undefined;
   },
