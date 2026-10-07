@@ -4,8 +4,8 @@
  * The watchdog's whole value is that it goes red BEFORE loadChangeIndex()'s
  * ceiling is crossed, so the suite proves both edges of the alarm, every way a
  * pointer can be unusable, and that the alarm stays below the ceiling defined
- * in tools/refresh/candidates.mjs (pinned by reading that file's text, so a
- * change there is a visible decision here).
+ * in tools/refresh/candidates.mjs (imported from there and pinned by value, so
+ * a change there is a visible decision here).
  *
  * Every test names the one-line mutation that makes it fail. All were run.
  */
@@ -19,6 +19,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 import { CEILING_HOURS, DEFAULT_POINTER, THRESHOLD_HOURS, pointerVerdict, run } from "./watch-pointer.mjs";
+import { MAX_INDEX_AGE_HOURS, loadChangeIndex } from "../refresh/candidates.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..", "..");
@@ -112,14 +113,23 @@ test("with no --pointer it reads the real data/shows-index-pointer.json", () => 
   assert.equal(r.code, 0, r.line);
 });
 
-// Mutation: candidates.mjs's default changed from `24 * 9`, or THRESHOLD_HOURS raised to >= 216 -> fails.
-test("the alarm stays below loadChangeIndex's ceiling (text pin on tools/refresh/candidates.mjs)", () => {
-  const src = fs.readFileSync(path.join(ROOT, "tools", "refresh", "candidates.mjs"), "utf8");
-  const m = src.match(/export async function loadChangeIndex\(\{[^}]*\bmaxAgeHours = (\d+) \* (\d+)\b/);
-  assert.ok(m, "loadChangeIndex's default maxAgeHours is no longer written as `A * B` -- re-pin it here");
-  const ceiling = Number(m[1]) * Number(m[2]);
+// Mutation: candidates.mjs's MAX_INDEX_AGE_HOURS changed from `24 * 9`, loadChangeIndex's
+// default retyped as a literal other than it (e.g. `maxAgeHours = 24 * 10`), CEILING_HOURS
+// retyped as a literal instead of the import, or THRESHOLD_HOURS raised to >= 216 -> fails.
+test("the alarm stays below loadChangeIndex's ceiling (imported from tools/refresh/candidates.mjs)", async () => {
+  /* CH2-14 (T1-14): an import equality, not a regex over the source text. The
+     ceiling is candidates.mjs's exported MAX_INDEX_AGE_HOURS; the pointer
+     probes below prove loadChangeIndex's DEFAULT really is that number, which
+     the import alone could not. */
+  const ceiling = MAX_INDEX_AGE_HOURS;
   assert.equal(ceiling, 216, "loadChangeIndex's ceiling moved; re-derive THRESHOLD_HOURS deliberately");
   assert.equal(CEILING_HOURS, ceiling);
+  const pointerPath = tmpPointer(healthy);
+  const noFetch = async () => { throw new Error("probe: past the staleness check"); };
+  const stale = await loadChangeIndex({ pointerPath, fetchImpl: noFetch, now: Date.parse(at(ceiling + 0.5)) });
+  assert.match(stale.reason, new RegExp(`^pointer is stale: .*\\(ceiling ${ceiling}h\\)$`));
+  const fresh = await loadChangeIndex({ pointerPath, fetchImpl: noFetch, now: Date.parse(at(ceiling - 0.5)) });
+  assert.equal(fresh.reason, "fetch error: probe: past the staleness check");
   assert.ok(THRESHOLD_HOURS < ceiling, `alarm ${THRESHOLD_HOURS}h must be below the ${ceiling}h ceiling`);
   assert.ok(ceiling - THRESHOLD_HOURS >= 24, "shows-pointer-watch runs daily: the margin must be at least one day");
 });

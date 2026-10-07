@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { BANNED, COMMUTE_FRAMING, INTERNAL_VOCABULARY, demotedNames, houseStyleTitle, titleStyleProblems, toListenerWords, wordCount } from "../src/copy/rules";
+import { BANNED, COMMUTE_FRAMING, INTERNAL_VOCABULARY, MAX_HOOK_WORDS, MAX_TAGS, MIN_TAGS, TAG_RE, demotedNames, houseStyleTitle, titleStyleProblems, toListenerWords, wordCount } from "../src/copy/rules";
 
 /**
  * Golden copy rules — the editorial standards from 03_CURATION_SPEC.md and
@@ -123,7 +123,7 @@ describe("discover hooks", () => {
     for (const item of discover.items) {
       if (!item.hook) failures.push(`${item.id}: missing hook`);
       else {
-        if (wordCount(item.hook) > 16) failures.push(`${item.id}: too long (${wordCount(item.hook)}w): "${item.hook}"`);
+        if (wordCount(item.hook) > MAX_HOOK_WORDS) failures.push(`${item.id}: too long (${wordCount(item.hook)}w): "${item.hook}"`);
         for (const rx of BANNED) {
           if (rx.test(item.hook)) failures.push(`${item.id}: banned ${rx}: "${item.hook}"`);
         }
@@ -137,6 +137,31 @@ describe("discover hooks", () => {
       (i: { hook: string; title: string }) => i.hook.trim().toLowerCase() === i.title.trim().toLowerCase()
     );
     expect(lazy.map((i: { id: string }) => i.id)).toEqual([]);
+  });
+
+  /**
+   * CH2-14 (T1-14): the hook cap and the tag bounds this gate and
+   * tools/refresh/merge.mjs's nightly preflight enforce are ONE set of numbers,
+   * exported from rules.js. merge.mjs used to retype them as literals, so a cap
+   * raised here left the nightly refusing hooks this gate passed.
+   * tools/refresh/merge.test.mjs pins the same four cases through the real
+   * merge.mjs, so a change to any limit has to be made — and seen — in both.
+   *
+   * MUTATION: MAX_HOOK_WORDS = 17 (or MIN_TAGS = 4, MAX_TAGS = 13, or an `i`
+   * flag on TAG_RE) in rules.js -> red here AND in merge.test.mjs.
+   */
+  it("the shared limits refuse a 17-word hook, 4 tags, 13 tags and a Bad_Tag", () => {
+    const words = (n: number) => Array.from({ length: n }, (_, i) => `word${i + 1}`).join(" ");
+    const tags = (n: number) => Array.from({ length: n }, (_, i) => `tag-${i + 1}`);
+    const tagsOk = (list: string[]) => list.length >= MIN_TAGS && list.length <= MAX_TAGS && list.every((t) => TAG_RE.test(t));
+
+    expect(wordCount(words(17)) > MAX_HOOK_WORDS).toBe(true);
+    expect(wordCount(words(16)) > MAX_HOOK_WORDS).toBe(false);
+    expect(tagsOk(tags(4))).toBe(false);
+    expect(tagsOk(tags(13))).toBe(false);
+    expect(tagsOk([...tags(4), "Bad_Tag"])).toBe(false);
+    expect(tagsOk(tags(5))).toBe(true);
+    expect(tagsOk(tags(12))).toBe(true);
   });
 });
 
