@@ -30,8 +30,12 @@ import {
   SHELL,
   RUNTIME_DATA,
   GENERATED,
+  computeManifest,
   fontSources,
+  listedFiles,
   playerSources,
+  runtimeData,
+  runtimeDataFiles as gmRuntimeDataFiles,
 } from "./generate-manifest.mjs";
 import { SHELL_FILES, runtimeDataFiles } from "../mobile/prepare-webdir.mjs";
 
@@ -110,4 +114,43 @@ test("app.js's fetchJson scan is inside RUNTIME_DATA, and the only data shipped 
   assert.ok(scanned.length >= 6, "premise: the scan still finds app.js's fetches");
   for (const f of scanned) assert.ok(RUNTIME_DATA.includes(f), `app.js fetches data/${f}, which RUNTIME_DATA does not list`);
   assert.deepEqual(RUNTIME_DATA.filter((f) => !scanned.includes(f)).sort(), SHIPPED_UNFETCHED);
+});
+
+test("a fetchJson app.js adds joins the deploy id without a list edit, and RUNTIME_DATA stays the floor", () => {
+  /* T2-03 (b): the native bundle picked a new fetch up by scan while the
+     deploy id ignored it and prepare-dist 404'd it. Now the web's data list is
+     runtimeData(): RUNTIME_DATA plus the scan. KILLED BY: listedFiles reading
+     RUNTIME_DATA alone again (data/new.json is unlisted and its bytes do not
+     move the id), or runtimeData dropping RUNTIME_DATA (a stub app.js that
+     fetches nothing would list no session.json). */
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ship-lists-derive-"));
+  const put = (rel, body) => {
+    fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
+    fs.writeFileSync(path.join(dir, rel), body);
+  };
+  try {
+    for (const rel of SHELL) put(rel, `/* ${rel} */\n`);
+    put("player/client.js", "export const x = 1;\n");
+    for (const f of RUNTIME_DATA) put(`data/${f}`, "{}\n");
+    const listed = () => listedFiles(dir).map(posix);
+
+    assert.deepEqual(runtimeData(dir), RUNTIME_DATA, "a stub app.js that fetches nothing still ships the whole floor");
+
+    put("app.js", 'const n = await fetchJson("data/new.json");\n');
+    put("data/new.json", '{"v":1}\n');
+    assert.deepEqual(runtimeData(dir), [...RUNTIME_DATA, "new.json"]);
+    assert.ok(listed().includes("data/new.json"), "the new fetch is a listed (hashed, precached, copied) file");
+    const before = computeManifest(dir);
+    assert.ok("data/new.json" in before.files);
+    put("data/new.json", '{"v":2}\n');
+    assert.notEqual(computeManifest(dir).deploy_id, before.deploy_id, "its bytes move the deploy id");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("prepare-webdir reads app.js with generate-manifest's scanner, not a copy", () => {
+  /* One scanner for both deploys. KILLED BY: a private runtimeDataFiles in
+     prepare-webdir.mjs again (a different function object). */
+  assert.equal(runtimeDataFiles, gmRuntimeDataFiles);
 });
