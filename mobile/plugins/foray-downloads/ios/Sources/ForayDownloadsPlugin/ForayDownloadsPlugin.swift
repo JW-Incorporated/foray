@@ -15,7 +15,10 @@ import Capacitor
 ///   fileSrc({ id } | { path })                      -> { path, exists }
 ///
 /// and three events, `downloadProgress {id, bytes, total}`, `downloadDone {id,
-/// path, bytes}` and `downloadFailed {id, reason, status}`. A row's `path` is
+/// path, bytes}` and `downloadFailed {id, reason, status}`, plus one for the
+/// diagnostics record, `downloadAttempt {reqHost, finalHost, status,
+/// expected, received, outcome, at}` (#29; `DownloadPolicy.attemptPayload`,
+/// hosts only). A row's `path` is
 /// the file's absolute path TODAY: iOS moves the app's container when it
 /// updates or restores the app, so the page should take paths from `list()`
 /// rather than keep one forever. The page turns a path into a `file://` URL

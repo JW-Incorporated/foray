@@ -251,4 +251,66 @@ final class DownloadPolicyTests: XCTestCase {
         XCTAssertEqual(DownloadIndex.decode(Data("[1,2]".utf8)), DownloadIndex())
         XCTAssertEqual(DownloadIndex.decode(nil), DownloadIndex())
     }
+
+    // MARK: the attempt row (#29, 29-part)
+
+    /// **The attempt payload carries HOSTS, never URLs**: the enclosure's
+    /// path and query (where a listener token can sit) never leave the
+    /// plugin; the keys are the ones `player/download-bridge.js` takes.
+    /// MUTATION: `"reqHost": nullable(requested?.absoluteString)` in
+    /// `attemptPayload` -> the reqHost assertion fails.
+    func testTheAttemptPayloadCarriesHostsOnly() {
+        let landed = URL(string: "https://Traffic.Megaphone.fm:443/ABC123.mp3?updated=1&token=secret")!
+        let p = DownloadPolicy.attemptPayload(requested: enclosure, landed: landed, status: 200,
+                                              expected: 52_428_800, received: 52_428_800,
+                                              outcome: DownloadPolicy.outcomeDone, at: 1_759_700_000_000)
+        XCTAssertEqual(DownloadPolicy.eventAttempt, "downloadAttempt")
+        XCTAssertEqual(Set(p.keys), Set(["reqHost", "finalHost", "status", "expected", "received", "outcome", "at"]))
+        XCTAssertEqual(p["reqHost"] as? String, "dts.podtrac.com")
+        XCTAssertEqual(p["finalHost"] as? String, "traffic.megaphone.fm")
+        XCTAssertEqual(p["status"] as? Int, 200)
+        XCTAssertEqual(p["expected"] as? Int64, 52_428_800)
+        XCTAssertEqual(p["received"] as? Int64, 52_428_800)
+        XCTAssertEqual(p["outcome"] as? String, "done")
+        XCTAssertEqual(p["at"] as? Double, 1_759_700_000_000)
+        for case let text as String in p.values {
+            XCTAssertFalse(text.contains("/"), text)
+            XCTAssertFalse(text.contains("?"), text)
+            XCTAssertFalse(text.contains(":"), text)
+        }
+    }
+
+    /// **What an attempt does not know is null, never zero**: no response,
+    /// no status, no announced length (URLSession's -1).
+    /// MUTATION: `"expected": expected` unconditionally -> -1 is reported as
+    /// a length.
+    func testAnAttemptWithNoAnswerReportsNullsNotZeros() {
+        let p = DownloadPolicy.attemptPayload(requested: enclosure, landed: nil, status: nil, expected: -1,
+                                              received: -5, outcome: DownloadPolicy.outcomeNetwork, at: 1)
+        XCTAssertEqual(p["reqHost"] as? String, "dts.podtrac.com")
+        XCTAssertTrue(p["finalHost"] is NSNull)
+        XCTAssertTrue(p["status"] is NSNull)
+        XCTAssertTrue(p["expected"] is NSNull)
+        XCTAssertEqual(p["received"] as? Int64, 0)
+        XCTAssertNil(DownloadPolicy.hostOf(nil))
+        XCTAssertNil(DownloadPolicy.hostOf(URL(string: "file:///etc/hosts")))
+    }
+
+    /// **Each failure reason ends an attempt in exactly one outcome**, from
+    /// the six words `player/diagnostic-log.js`'s `DOWNLOAD_OUTCOMES` admits.
+    /// MUTATION: map `reasonTooManyRedirects` to `outcomeRefusedStatus` ->
+    /// the first assertion fails.
+    func testEachFailureReasonEndsInOneOutcome() {
+        XCTAssertEqual(DownloadPolicy.outcome(forReason: DownloadPolicy.reasonTooManyRedirects), "refused-redirect")
+        XCTAssertEqual(DownloadPolicy.outcome(forReason: DownloadPolicy.reasonBadRedirect), "refused-redirect")
+        XCTAssertEqual(DownloadPolicy.outcome(forReason: DownloadPolicy.reasonUnplayableHere), "refused-status")
+        XCTAssertEqual(DownloadPolicy.outcome(forReason: "http 404"), "refused-status")
+        XCTAssertEqual(DownloadPolicy.outcome(forReason: DownloadPolicy.reasonNotSaved), "not-saved")
+        XCTAssertEqual(DownloadPolicy.outcome(forReason: DownloadPolicy.reasonCancelled), "cancelled")
+        XCTAssertEqual(DownloadPolicy.outcome(forReason: "network -1009"), "network")
+        let all: Set<String> = [DownloadPolicy.outcomeDone, DownloadPolicy.outcomeRefusedStatus,
+                                DownloadPolicy.outcomeRefusedRedirect, DownloadPolicy.outcomeNetwork,
+                                DownloadPolicy.outcomeNotSaved, DownloadPolicy.outcomeCancelled]
+        XCTAssertEqual(all, ["done", "refused-status", "refused-redirect", "network", "not-saved", "cancelled"])
+    }
 }

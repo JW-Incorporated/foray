@@ -35,7 +35,7 @@ import {
   dataTokenOf, dataVersionOf, dataFileTagOf, dataIdOf, DATA_PHASES, DATA_SOURCES,
   nowPlayingFieldOf, NOWPLAYING_FIELD_MAX, NOWPLAYING_VIA, SESSION_KINDS, SESSION_PRODUCERS,
   TRANSPORT_SOURCES, TRANSPORT_ACTIONS, REMOTE_COMMANDS, REMOTE_ORIGINS,
-  NARRATION_FALLBACK_REASONS, NARRATION_FALLBACK_AT, audioHostTokenOf,
+  NARRATION_FALLBACK_REASONS, NARRATION_FALLBACK_AT, audioHostTokenOf, DOWNLOAD_OUTCOMES,
 } from "./diagnostic-log.js";
 /* The REAL store for the held-write tests below: whether a row written before a
    slow hydration overwrites the durable ring is a fact about `DurableStore`'s
@@ -2951,4 +2951,84 @@ test("A-09: every row SessionMonitor.java writes is admitted and printed with it
   const text = formatDiagnosticReport(log.read(), null, { tzOffsetMin: 0 });
   assert.match(text, /sessionActivated 1 \(1 failed\)/);
   assert.match(text, /focusChange 2/);
+});
+
+/* ---------- #29: a download attempt is a session row (29-part) ----------
+
+   `DownloadStore.swift` raises one `downloadAttempt` per download attempt and
+   `download-bridge.js` re-broadcasts it as a `foray:session` row from the
+   `downloads` producer. What the device check (docs/downloads-device-check.md
+   step 6) reads off it: the host asked for, the host the bytes came from, the
+   HTTP status, the byte counts and the outcome. HOSTS ONLY: the enclosure
+   URL's path and query never reach the record. */
+
+test("#29: a download attempt keeps two HOSTS, the status, the byte counts and a closed outcome", () => {
+  /* MUTATION: drop "downloadAttempt" from SESSION_KINDS -> the row is
+     refused and this is null. MUTATION: admit `reqHost` with `asText` instead
+     of `audioHostTokenOf` -> the URL below is stored and the first
+     `undefined` assertion fails. */
+  const { diag, log, clock: c } = mk();
+  c.set(AT_1032);
+  const e = diag.sessionEvent({
+    kind: "downloadAttempt", producer: "downloads", reason: "done", at: AT_1032 - 4,
+    reqHost: "dts.podtrac.com", finalHost: "traffic.megaphone.fm", status: 200,
+    expected: 52_428_800, received: 52_428_800,
+  });
+  assert.ok(e, "downloadAttempt is a session kind");
+  assert.equal(e.producer, "downloads");
+  assert.equal(e.reason, "done");
+  assert.equal(e.reqHost, "dts.podtrac.com");
+  assert.equal(e.finalHost, "traffic.megaphone.fm");
+  assert.equal(e.status, 200);
+  assert.equal(e.expected, 52_428_800);
+  assert.equal(e.received, 52_428_800);
+  assert.equal(e.lagMs, 4);
+  const urlish = diag.sessionEvent({
+    kind: "downloadAttempt", producer: "downloads", reason: "done",
+    reqHost: "https://dts.podtrac.com/redirect.mp3/x?token=abc", finalHost: "Traffic.Megaphone.fm:443",
+    status: 99, expected: -1, received: 1.5,
+  });
+  assert.equal(urlish.reqHost, undefined, "a URL is not a host and is left off");
+  assert.equal(urlish.finalHost, undefined, "nor is a host with a port or capitals");
+  assert.equal(urlish.status, undefined, "an HTTP status is 100-599");
+  assert.equal(urlish.expected, undefined, "an unknown length is absent, never -1");
+  assert.equal(urlish.received, undefined, "a byte count is a whole number");
+  assert.equal(log.read().entries.length, 2);
+});
+
+test("#29: a download outcome comes from its closed set, and the download fields stay off every other kind", () => {
+  /* MUTATION: admit the outcome with `dataTokenOf` alone -> "page-wrote-this"
+     is stored. MUTATION: attach the download fields to every session kind ->
+     the `background` row carries `reqHost`. */
+  const { diag } = mk();
+  assert.deepEqual([...DOWNLOAD_OUTCOMES].sort(),
+    ["cancelled", "done", "network", "not-saved", "refused-redirect", "refused-status"]);
+  for (const o of DOWNLOAD_OUTCOMES) {
+    assert.equal(diag.sessionEvent({ kind: "downloadAttempt", producer: "downloads", reason: o }).reason, o);
+  }
+  assert.equal(diag.sessionEvent({ kind: "downloadAttempt", producer: "downloads", reason: "page-wrote-this" }).reason, "");
+  const bg = diag.sessionEvent({ kind: "background", reason: "did-enter", reqHost: "a.example", status: 200, received: 4 });
+  assert.equal(bg.reqHost, undefined);
+  assert.equal(bg.status, undefined);
+  assert.equal(bg.received, undefined);
+  assert.ok(SESSION_PRODUCERS.has("downloads"));
+});
+
+test("#29: a download attempt prints as one line a device check can read", () => {
+  /* MUTATION: drop the `req=` part from the session line -> the line changes.
+     The header counts it beside the other session kinds. */
+  const { diag, log, clock: c } = mk();
+  c.set(AT_1032);
+  diag.sessionEvent({
+    kind: "downloadAttempt", producer: "downloads", reason: "done", at: AT_1032 - 4,
+    reqHost: "dts.podtrac.com", finalHost: "traffic.megaphone.fm", status: 200,
+    expected: 52_428_800, received: 52_428_800,
+  });
+  assert.equal(lineOf(log, "session").replace(/^#\d+\s+\S+ /, ""),
+    "session    downloads downloadAttempt (done) req=dts.podtrac.com final=traffic.megaphone.fm http=200 bytes 52428800/52428800  lag 4ms  hidden=n");
+  diag.sessionEvent({ kind: "downloadAttempt", producer: "downloads", reason: "refused-status", at: AT_1032, reqHost: "dts.podtrac.com", status: 403, received: 0 });
+  assert.equal(lineOf(log, "session").replace(/^#\d+\s+\S+ /, ""),
+    "session    downloads downloadAttempt (refused-status) req=dts.podtrac.com final=? http=403 bytes 0/?  lag 0ms  hidden=n");
+  const text = formatDiagnosticReport(log.read(), null, { tzOffsetMin: 0 });
+  assert.match(text, /downloadAttempt 2 \(1 failed\)/);
 });
