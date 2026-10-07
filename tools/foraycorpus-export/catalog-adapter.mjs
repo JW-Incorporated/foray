@@ -24,8 +24,9 @@
       order, wins (`skipped_duplicate_apple_id`).
 
    Row shape. BREADTH_KEYS are the 20 keys of the committed
-   data/catalog-breadth.json's rows, in its order, pinned by a test that
-   reads the live file (so a field the harvester adds turns that test red
+   data/catalog-breadth.json's rows, in its order: tools/harvest-merge.mjs's
+   ROW_KEYS plus `taxonomy_node_ids`, derived rather than re-typed (CH2-15,
+   T1-21), and pinned by a test that reads the live file (so a field the harvester adds turns that test red
    instead of vanishing from a corpus catalogue, the #1148 class). The plan
    lists 17. The other three are `taxonomy_node_ids` (added by
    tools/refresh/fold-breadth-topics.mjs, read by breadthCatalog.ts),
@@ -73,33 +74,15 @@ import { dirname, join, relative, resolve, isAbsolute } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 
+import { ROW_KEYS } from "../harvest-merge.mjs";
 import { normalizeFeedUrl } from "../shows/identity.mjs";
 import { EXPORT_OUT_DIR, ROOT } from "./config.mjs";
 import { readShowsJsonl } from "./overlap.mjs";
 
-/** The committed data/catalog-breadth.json's 20 row keys, in the file's order (pinned by a test that reads it). */
-export const BREADTH_KEYS = Object.freeze([
-  "apple_collection_id",
-  "title",
-  "feed_url",
-  "artwork_url",
-  "apple_genre",
-  "apple_genre_ids",
-  "artist_name",
-  "episode_count",
-  "explicit",
-  "chart_genre_id",
-  "chart_genre_name",
-  "chart_rank",
-  "last_charted_at",
-  "in_curated",
-  "podcastindex_id",
-  "tier",
-  "region",
-  "harvest_source",
-  "harvested_at",
-  "taxonomy_node_ids",
-]);
+/** The committed data/catalog-breadth.json's 20 row keys, in the file's order:
+    the harvester's ROW_KEYS, then the topics tools/refresh/fold-breadth-topics.mjs
+    folds in (pinned to the live file by a test that reads it). */
+export const BREADTH_KEYS = Object.freeze([...ROW_KEYS, "taxonomy_node_ids"]);
 export const ADDITIVE_KEYS = Object.freeze(["timed_transcript_episodes", "audio_episodes"]);
 export const DEFAULT_OUT = join(EXPORT_OUT_DIR, "catalog-breadth-corpus.json");
 

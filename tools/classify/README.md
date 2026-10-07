@@ -145,22 +145,29 @@ never has write access to those files).
 ## Running locally
 
 ```sh
-# 1. Prepare a batch (deterministic, keyless — safe to run repeatedly while testing)
-node tools/classify/prepare-batch.mjs --batch-size 10 --mode fresh
+# 1. Prepare a batch (deterministic, keyless). It records in_flight reservations
+#    in the progress file, which defaults to the COMMITTED data/classify-progress.json
+#    — so while testing, give it a scratch path:
+PROGRESS_PATH=data-local/classify-progress.json \
+  node tools/classify/prepare-batch.mjs --batch-size 10 --mode fresh
 
 # 2. A classification agent (or a human, for a smoke test) authors
 #    data-local/classify-results-<batch_id>.json from the printed batch path
 
-# 3. Merge
-node tools/classify/merge-results.mjs \
+# 3. Merge (same scratch progress path as step 1)
+PROGRESS_PATH=data-local/classify-progress.json \
+  node tools/classify/merge-results.mjs \
   --batch data-local/classify-batch-<batch_id>.json \
   --results data-local/classify-results-<batch_id>.json
 ```
 
-Local runs default to `data-local/classify-progress.json` (gitignored,
-safe to delete and start over). **Real cron routine runs must override
-this** — see Path overrides below — so progress survives between
-ephemeral routine invocations.
+Both scripts default to the tracked `data/classify-progress.json` — the one
+state file the six cloud shard routines share through git, so progress
+survives between ephemeral routine invocations. (Until CH2-13 the default was
+the gitignored `data-local/` copy and the routines had to override it; a run
+that forgot kept private state.) For a throwaway local experiment, point
+`PROGRESS_PATH` (or `--progress`) at a scratch file so you do not dirty the
+committed one.
 
 ## Path overrides
 
@@ -169,7 +176,7 @@ convention:
 
 | Env | Default | Set by |
 |-----|---------|--------|
-| `PROGRESS_PATH` | `data-local/classify-progress.json` | Real cron runs: `data/classify-progress.json` (tracked, committed each batch so state survives across runs) |
+| `PROGRESS_PATH` | `data/classify-progress.json` (tracked, committed each batch so state survives across runs; resolved by `labels.mjs` `classifyProgressPath`) | Local experiments only — a scratch path |
 | `BATCH_INPUT_PATH` | `data-local/classify-batch-<batch_id>.json` | Rarely overridden — `prepare-batch.mjs` derives a fresh path per run |
 | `BREADTH_CLASSIFICATION_PATH` | `data/breadth-classification.json` | Rarely overridden — tests only |
 | `TAXONOMY_PATH` | `data/taxonomy.json` | Rarely overridden — tests only |

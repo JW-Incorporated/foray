@@ -27,7 +27,8 @@
                        already-ambiguous slice).
 
    Progress is tracked in a small JSON state file (default
-   data-local/classify-progress.json) so successive runs don't repeat work
+   data/classify-progress.json, the committed file the six shard routines
+   share — labels.mjs classifyProgressPath) so successive runs don't repeat work
    and don't get stuck retrying a permanently-dead feed forever:
      - `in_flight`: ids reserved by an unmerged batch (reclaimed after a
        stale window, in case a batch is abandoned before merge-results.mjs
@@ -54,9 +55,9 @@
        [--out PATH] [--progress PATH]
 
    Env overrides (mirrors tools/refresh/'s cloud-path-split convention):
-     PROGRESS_PATH      progress/state file      (default data-local/classify-progress.json)
+     PROGRESS_PATH      progress/state file      (default data/classify-progress.json)
      BATCH_INPUT_PATH   batch output path         (default data-local/classify-batch-<id>.json)
-     CATALOG_BREADTH_PATH, BREADTH_CLASSIFICATION_PATH, GENRE_MAP_PATH — data file overrides,
+     CATALOG_BREADTH_PATH, BREADTH_CLASSIFICATION_PATH, GENRE_MAP_PATH, TAXONOMY_PATH — data file overrides,
        rarely needed outside tests. */
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
@@ -64,7 +65,14 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import { createRequire } from "node:module";
 import { randomUUID } from "node:crypto";
-import { parseShard, transcriptLabelsFromXml, emptyTranscriptLabels, LABEL_SCHEMA_VERSION } from "./labels.mjs";
+import {
+  parseShard,
+  transcriptLabelsFromXml,
+  emptyTranscriptLabels,
+  LABEL_SCHEMA_VERSION,
+  genreTopicPrior,
+  classifyProgressPath
+} from "./labels.mjs";
 import { selectFreshCandidates, selectEscalateCandidates } from "./select.mjs";
 import { UA } from "../segments/politeness.mjs";
 import { readResponseCapped } from "../refresh/fetch-limits.mjs";
@@ -73,9 +81,9 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 const FETCH_TIMEOUT_MS = 15_000;
 const THROTTLE_MS = 1500; // between feed requests — different hosts per show, so lighter than scan.mjs's single-host throttle
-const RETRY_COOLDOWN_MS = 6 * 3600_000; // 6h between retry attempts on the same failed feed
 const STALE_IN_FLIGHT_MS = 12 * 3600_000; // reclaim a batch nobody merged within 12h
-const NEW_PIPELINE_SOURCE_PREFIX = "classify-agent-";
+// The retry cooldown and the "already reclassified" source prefix are select.mjs's
+// (it is their only reader); this file kept dead copies of both until CH2-13.
 
 export function parseArgs(argv) {
   /* A flag present with no value is NOT the same as an absent flag, and
@@ -125,6 +133,7 @@ function envPath(name, def) {
 const CATALOG_BREADTH_PATH = envPath("CATALOG_BREADTH_PATH", ["data", "catalog-breadth.json"]);
 const BREADTH_CLASSIFICATION_PATH = envPath("BREADTH_CLASSIFICATION_PATH", ["data", "breadth-classification.json"]);
 const GENRE_MAP_PATH = envPath("GENRE_MAP_PATH", ["data", "genre-taxonomy-map.json"]);
+const TAXONOMY_PATH = envPath("TAXONOMY_PATH", ["data", "taxonomy.json"]);
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -150,21 +159,17 @@ function reclaimStaleInFlight(progress, now) {
   }
 }
 
-// --- Genre-map Tier-0 prior (mirrors tools/classify-breadth.mjs's logic,
-// kept in sync deliberately rather than importing that script, since this
-// one only needs the single-show lookup, not the whole-catalog batch pass).
-const CONF_ORDER = { high: 3, medium: 2, low: 1 };
-function tier0Prior(show, gmap) {
-  const topics = new Set();
-  let confidence = "high";
-  for (const g of [show.apple_genre, show.chart_genre_name]) {
-    if (!g) continue;
-    const m = gmap[g];
-    if (!m) continue;
-    m.topics.forEach((t) => topics.add(t));
-    if (CONF_ORDER[m.confidence] < CONF_ORDER[confidence]) confidence = m.confidence;
-  }
-  return { topics: [...topics], confidence: topics.size ? confidence : "low" };
+/* --- Genre-map Tier-0 prior. The rule is labels.mjs genreTopicPrior, the same
+   function tools/classify-breadth.mjs runs (this used to be a hand-synced copy
+   that never checked the taxonomy — CH2-13, T1-07). A map topic that is not a
+   taxonomy node is never handed to the agent; it is added to `staleTopics` so
+   main() can list it on the batch (`stale_map_topics`) and warn. A show with
+   no surviving topic keeps this file's no-topic shape,
+   `{ topics: [], confidence: "low" }`. */
+export function tier0Prior(show, gmap, taxonomyIds, staleTopics = new Set()) {
+  const prior = genreTopicPrior(show, gmap, taxonomyIds);
+  for (const t of prior.staleTopics) staleTopics.add(t);
+  return { topics: prior.topics, confidence: prior.confidence };
 }
 
 // --- RSS fetch + extraction (Tier 0.5). Never throws — degrades to a
@@ -300,6 +305,28 @@ export function batchShowFrom(show, tier0, signal, priorResult = null, transcrip
   };
 }
 
+/* The batch INPUT document. Pure, and exported so prepare-batch.test.mjs can pin
+   that the stale map topics reach the file merge-results.mjs and the runner read.
+   `stale_map_topics` is always present (sorted, often empty), so "none" is
+   stated rather than implied by absence. */
+export function batchDocument({ batchId, mode, now, shard, shows, staleMapTopics = [] }) {
+  return {
+    batch_id: batchId,
+    mode,
+    tier: mode === "escalate" ? 2 : 1,
+    generated_at: new Date(now).toISOString(),
+    taxonomy_path: "data/taxonomy.json",
+    genre_map_path: "data/genre-taxonomy-map.json",
+    label_schema_version: LABEL_SCHEMA_VERSION,
+    shard: shard ?? null, // which slice this run took, so a batch file explains itself later
+    // Genre-map topics that are not taxonomy nodes, dropped from every tier0_prior
+    // in this batch. Non-empty means data/genre-taxonomy-map.json needs fixing
+    // (tools/classify-breadth.mjs refuses to run until it is).
+    stale_map_topics: [...staleMapTopics].sort(),
+    shows
+  };
+}
+
 /** Tier-2 only: fetches + truncates a transcript body already known to exist (free — ADR-0004). */
 async function fetchTranscriptExcerpt(url) {
   try {
@@ -339,7 +366,7 @@ async function main() {
   const now = Date.now();
   const batchId = `${args.mode}-${new Date(now).toISOString().slice(0, 10)}-${randomUUID().slice(0, 8)}`;
 
-  const progressPath = args.progressOverride ? resolvePath(process.cwd(), args.progressOverride) : envPath("PROGRESS_PATH", ["data-local", "classify-progress.json"]);
+  const progressPath = classifyProgressPath(ROOT, { flag: args.progressOverride });
   const outPath = args.outOverride ? resolvePath(process.cwd(), args.outOverride) : envPath("BATCH_INPUT_PATH", ["data-local", `classify-batch-${batchId}.json`]);
 
   const catalog = readJson(CATALOG_BREADTH_PATH);
@@ -347,6 +374,8 @@ async function main() {
     ? readJson(BREADTH_CLASSIFICATION_PATH)
     : { version: 1, entries: {} };
   const gmap = readJson(GENRE_MAP_PATH).map;
+  const taxonomyIds = new Set(readJson(TAXONOMY_PATH).nodes.map((n) => n.id));
+  const staleMapTopics = new Set();
   const progress = loadProgress(progressPath);
   reclaimStaleInFlight(progress, now);
 
@@ -395,7 +424,7 @@ async function main() {
       delete progress.failed_fetch[id];
     }
 
-    const tier0 = tier0Prior(show, gmap);
+    const tier0 = tier0Prior(show, gmap, taxonomyIds, staleMapTopics);
 
     let transcriptExcerpts = [];
     if (args.mode === "escalate" && signal.transcriptUrls?.length) {
@@ -418,19 +447,15 @@ async function main() {
     return;
   }
 
-  const batch = {
-    batch_id: batchId,
-    mode: args.mode,
-    tier: args.mode === "escalate" ? 2 : 1,
-    generated_at: new Date(now).toISOString(),
-    taxonomy_path: "data/taxonomy.json",
-    genre_map_path: "data/genre-taxonomy-map.json",
-    label_schema_version: LABEL_SCHEMA_VERSION,
-    shard: args.shard ?? null, // which slice this run took, so a batch file explains itself later
-    shows: batchShows
-  };
+  const batch = batchDocument({ batchId, mode: args.mode, now, shard: args.shard, shows: batchShows, staleMapTopics });
   writeFileSync(outPath, JSON.stringify(batch, null, 2) + "\n");
 
+  if (batch.stale_map_topics.length) {
+    console.warn(
+      `STALE GENRE MAP: data/genre-taxonomy-map.json names topics that are not taxonomy nodes; ` +
+        `dropped from every tier0_prior in this batch: ${batch.stale_map_topics.join(", ")}`
+    );
+  }
   console.log(
     `fetched ${fetchOk} ok, ${fetchFailed} skipped-for-retry, ${fetchDegraded} degraded (attempts exhausted); ${batchShows.length} show(s) -> ${outPath}`
   );

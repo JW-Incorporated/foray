@@ -173,14 +173,23 @@ classify PRs conflict by construction, because `merge-results.mjs` rewrites
 
 | Routine | Cron (UTC) | Argument |
 |---|---|---|
-| `foray-classify-shard0` | `10 0,8,16 * * *` | `--shard 0/6 --batch-size 60 --mode fresh --progress data/classify-progress.json` |
-| `foray-classify-shard1` | `50 0,8,16 * * *` | `--shard 1/6 --batch-size 60 --mode fresh --progress data/classify-progress.json` |
-| `foray-classify-shard2` | `10 2,10,18 * * *` | `--shard 2/6 --batch-size 60 --mode fresh --progress data/classify-progress.json` |
-| `foray-classify-shard3` | `50 2,10,18 * * *` | `--shard 3/6 --batch-size 60 --mode fresh --progress data/classify-progress.json` |
-| `foray-classify-shard4` | `10 4,12,20 * * *` | `--shard 4/6 --batch-size 60 --mode fresh --progress data/classify-progress.json` |
-| `foray-classify-shard5` | `50 4,12,20 * * *` | `--shard 5/6 --batch-size 60 --mode fresh --progress data/classify-progress.json` |
+| `foray-classify-shard0` | `10 0,8,16 * * *` | `--shard 0/6 --batch-size 60 --mode fresh` |
+| `foray-classify-shard1` | `50 0,8,16 * * *` | `--shard 1/6 --batch-size 60 --mode fresh` |
+| `foray-classify-shard2` | `10 2,10,18 * * *` | `--shard 2/6 --batch-size 60 --mode fresh` |
+| `foray-classify-shard3` | `50 2,10,18 * * *` | `--shard 3/6 --batch-size 60 --mode fresh` |
+| `foray-classify-shard4` | `10 4,12,20 * * *` | `--shard 4/6 --batch-size 60 --mode fresh` |
+| `foray-classify-shard5` | `50 4,12,20 * * *` | `--shard 5/6 --batch-size 60 --mode fresh` |
 
-Three things about that table that are easy to get wrong:
+Four things about that table that are easy to get wrong:
+
+- **No `--progress` flag is needed.** Since CH2-13 (docs/roadmap/code-health-2.md)
+  both `prepare-batch.mjs` and `merge-results.mjs` default to the committed
+  `data/classify-progress.json`, the one state file the six shards share through
+  git. The default used to be the gitignored `data-local/` copy, so a run that
+  left the flag off kept private `failed_fetch` cooldowns and `in_flight`
+  reservations the other routines never saw. A routine that still passes
+  `--progress data/classify-progress.json` is passing the default and is
+  unaffected; do not point it anywhere else.
 
 - **`--shard` is 0-indexed. `6/6` is invalid** and, as of this change, exits
   with an error. It used to fail *open* — a malformed value silently ran the
