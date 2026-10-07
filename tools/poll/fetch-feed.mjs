@@ -32,10 +32,12 @@
    Result shape: { status, notModified, body, etag, lastModified, error? }. */
 
 import { Buffer } from "node:buffer";
+import { UA } from "../segments/politeness.mjs";
 
 export const MAX_FEED_BYTES = 20 * 1024 * 1024; // 20 MB
 export const DEFAULT_TIMEOUT_MS = 15_000;
-export const DEFAULT_FEED_USER_AGENT = "Foray/0.1 (personal podcast client; contact wjduvall@gmail.com)";
+// The one tools/ User-Agent (#316): imported, never spelled out here.
+export const DEFAULT_FEED_USER_AGENT = UA;
 
 async function readBodyCapped(res, maxBytes, controller) {
   const body = res.body;
