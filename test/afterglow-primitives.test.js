@@ -20,6 +20,7 @@ function markupContext({ search = "?gallery=1", lab = false } = {}) {
     location: { search },
     esc: (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char])),
     safeUrl: (value) => typeof value === "string" && (/^https?:\/\//.test(value) || /^ui\/icons\.svg#i-[a-z0-9-]+$/.test(value)) ? value : "#",
+    artUrl: (value) => value,
     isLabBuild: () => lab,
   });
   vm.runInContext(read("ui/icons.js"), ctx);

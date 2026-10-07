@@ -947,4 +947,12 @@ additional shots are the gallery and its open sheet at three viewports.
    distribution list. Each mutation was restored before the green run.
 7. **Phase 4 boundary.** No existing screen calls a primitive. Screens adopt this system
    one at a time, with the gallery baseline guarding unintended foundation changes.
+8. **Native bundle alarm.** The complete minified bundle is 2.88 MB and remains below
+   the independent 3 MB hard cap. The legacy-growth alarm stays unchanged at 2.85 MB;
+   `prepare-webdir.test.mjs` subtracts only the measured foundation files from that
+   quantity and gives `primitives.css`, `primitives.js` and `gallery.js` tight 20/15/9 KB
+   per-file ceilings. Removing the CSS carve-out was run as the named mutation and
+   restored the red 2.85 MB alarm. Artwork primitives also reserve their intrinsic
+   square and request a 3x CDN rendition before the final `safeUrl()` gate; the root
+   boot-path image census pins that no small tile fetches the 600px original.
 

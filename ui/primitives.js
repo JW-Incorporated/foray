@@ -54,7 +54,7 @@ function agArtwork({ name = "Artwork", src = "", size = 72, tone = "amber", stat
   const colour = agChoice(tone, AG_TONES, "amber");
   const artState = agChoice(state, ["default", "dim", "lit"], "default");
   const image = src
-    ? `<img src="${esc(safeUrl(src))}" alt="" loading="lazy" decoding="async">`
+    ? `<img src="${esc(safeUrl(artUrl(src, px * 3)))}" alt="" loading="lazy" decoding="async" width="${esc(px)}" height="${esc(px)}">`
     : `<span class="ag-art-mono" aria-hidden="true">${esc(String(name || "?").trim().charAt(0).toUpperCase() || "?")}</span>`;
   const badgeMarkup = badge ? `<span class="ag-art-badge">${agIcon(badge, 20)}</span>` : "";
   const lit = artState === "lit" || px >= 104;
