@@ -424,7 +424,7 @@ click-t
 
 **Steps:**
 1. Open Play Console -> your app (4a) -> Grow -> Store presence -> Main store listing.
-2. App name: type 4a. Full description: paste docs/store/play/full-description.txt (2202 chars, plain text).
+2. App name: type 4a. Full description: paste docs/store/play/full-description.txt (2946 chars, plain text). Rewritten in wave 16 (2026-10-07, issue #42): the 2202-char text described the retired four-card Home; the new one describes the shipped app (Forays, Home's rails, Up Next with Continuous playback, downloads, Family mode). The four screenshots are still the 2026-08-25 ones and are stale; a recut is a separate follow-up (docs/store/play/README.md §6).
 3. Short description: paste docs/store/play/short-description.txt (71 chars). New in wave 15: "Forays: one subject across many shows, plus new episodes picked for you" (replaces the "stitched" line).
 4. App icon: upload docs/store/play/app-icon-512.png (512x512, 32-bit with alpha) -- NOT the repo-root icon-512.png, which Play rejects.
 5. Feature graphic: upload docs/store/play/feature-graphic.png (1024x500).

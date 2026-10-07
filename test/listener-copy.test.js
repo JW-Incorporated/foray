@@ -252,16 +252,14 @@ function descriptionSurfaces() {
   ];
 }
 
-/* A KNOWN GAP, NOT AN EXEMPTION FROM THE RULE. The Play full description
-   (2202 characters of store copy) still describes the retired four-card Home
-   from its first sentence ("puts them into four topic queues") to its
-   "FOUR, NOT FOREVER" heading. Rewriting it is a separate copy job, outside the
-   manifest-description card. Each row here must still FIRE — the next test
-   fails the moment the full description stops matching, so the row is deleted
-   in the same change that fixes the copy and cannot outlive it. */
-const KNOWN_STALE = [
-  [`${STORE_DIR}/full-description.txt`, "four topic queues"],
-];
+/* A KNOWN GAP, NOT AN EXEMPTION FROM THE RULE. A row here is a published
+   description that still matches a STALE row, written down so the gap is
+   visible rather than silently tolerated. Each row must still FIRE — the next
+   test fails the moment its surface stops matching, so a row is deleted in the
+   same change that fixes the copy and cannot outlive it. Empty since wave 16
+   (2026-10-07): the Play full description's "four topic queues" row went with
+   the rewrite that matched it to the shipped app (issue #42). */
+const KNOWN_STALE = [];
 
 /* MUTATIONS THAT KILL THIS: restore "stitched" in index.html's meta description
    or og:description; revert manifest.json's description to "Four topic queues,

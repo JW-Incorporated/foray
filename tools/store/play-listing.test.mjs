@@ -692,6 +692,97 @@ test("the full description names the publisher", () => {
   assert.match(copy("full-description.txt"), /JW Labs LLC/);
 });
 
+/* THE LISTING DESCRIBED AN APP THAT NO LONGER EXISTS (issue #42; wave 16,
+   2026-10-07). Written for the 2026-08-25 build, the full description promised
+   four topic cards on one screen, a hand-off to Apple Podcasts and Pocket
+   Casts, "no autoplay chain" and audio that always needed a connection. Every
+   one of those was false against main for weeks, and nothing objected: the
+   checks above are about the SHAPE of a claim (length, scale, company size),
+   not whether the app still does it. These are the retired claims by name,
+   each with the change that retired it, so a later edit cannot quietly bring
+   one back.
+   MUTATION THAT KILLS THIS: restore origin/main's 2026-08-25 description
+   (`git show 15897ad7:docs/store/play/full-description.txt`); it fails on
+   the four-card row first. */
+test("the full description claims nothing the shipped app has retired", () => {
+  const retired = [
+    [/\bfour (topic )?(cards|queues)\b/i, "the four-card Home was replaced by Home's rails (docs/ux/README.md, HomeScreen)"],
+    [/\b(apple podcasts|pocket casts)\b/i, "the hand-off to another podcast app was deleted (app.js, product rule 2026-09-02: every episode plays in 4a)"],
+    [/\bno autoplay\b/i, "continuous playback is on by default (docs/DECISIONS.md, 2026-09-14)"],
+    [/\b(playing|play) audio (still )?needs a connection\b/i, "downloaded episodes play offline (#29, player/download-store.js)"],
+  ];
+  const s = copy("full-description.txt");
+  for (const [re, why] of retired) {
+    assert.ok(!re.test(s), `full-description.txt still claims ${re}: ${why}`);
+  }
+});
+
+/* EVERY CONTROL THE LISTING NAMES IS ONE THE APP DRAWS. The description tells
+   a listener to look for things by their in-app names ("Turn Continuous
+   playback off in the menu"); a renamed switch makes that sentence a dead end,
+   and the old copy's "Star an episode" outlived the star's rename to Save for
+   exactly this reason. Each row is [the name as the listing says it, the
+   literal app.js or index.html draws it with — the drawing call itself, not
+   the bare string, because these files quote their own labels in comments and
+   a comment would keep a renamed control's row green]. A row is ONLY for a name the
+   listing uses: if the copy stops naming a control, delete its row with it.
+   MUTATIONS THAT KILL THIS: change "Continuous playback" to "Autoplay" in
+   full-description.txt (the listing half); change the drawerToggle label
+   "Continuous playback" in app.js (the app half). */
+test("every control the full description names is one the app draws, under that name", () => {
+  const app = text("app.js") + text("index.html");
+  const named = [
+    ["Forays for you", '<h2 class="hv2-title">Forays for you</h2>'],
+    ["Jump back in", '<h2 class="hv2-title">Jump back in</h2>'],
+    ["Playlists for you", '<h2 class="hv2-title">Playlists for you</h2>'],
+    ["Suggested", '<h2 class="hv2-title">Suggested</h2>'],
+    ["Stretch", '<span class="mc-stretch">Stretch</span>'],
+    ["Forays page in the menu", '<a class="drawer-section" href="#/forays">Forays</a>'],
+    ["On Create", 'label: "Create"'],
+    ["Play next", ">Play next</button>"],
+    ["Up Next", 'libSection("Up Next"'],
+    ["Continuous playback", 'drawerToggle("autoadvance-toggle", "Continuous playback"'],
+    ["Download over cellular", 'drawerToggle("downloads-cellular-toggle", "Download over cellular"'],
+    ["Tap Download", 'btn("Download", { action: "enqueue" })'],
+    ["Follow a show", 'offText: "+ Follow"'],
+    ["Family mode", 'drawerToggle("family-toggle", "Family mode"'],
+    ["Delete my data", 'ddEl("button", "drawer-item as-btn dd-open", "Delete my data")'],
+  ];
+  const s = copy("full-description.txt");
+  for (const [said, drawn] of named) {
+    assert.ok(s.toLowerCase().includes(said.toLowerCase()), `full-description.txt no longer says "${said}": delete its row here if that was deliberate`);
+    assert.ok(app.includes(drawn), `full-description.txt says "${said}", but the app no longer draws ${drawn}`);
+  }
+});
+
+/* A STRETCH PICK ON "FORAYS FOR YOU" IS DATA, NOT A FEATURE (review of 42-part,
+   wave 16). foraysForYouPicks() in app.js runs pickWithStretchFloor() over the
+   listed Forays' topic roots: the stretch slot draws only from a root outside
+   the top max(1, ceil(60%)) of roots, so it needs at least three distinct roots
+   to exist. With two published Forays (business, engineering) both roots are
+   "top" and stretchIndex is -1 — the row shows no Stretch pick, and the app's
+   own intro sheet already makes that half of its sentence conditional
+   (p-first-11). A listing cannot be conditional, so while the published set
+   cannot produce one, no sentence of the copy may put Stretch on that row.
+   The threshold is recomputed here exactly as pickWithStretchFloor() does; the
+   visibility rule is the player's own listableForays(), for a visitor with no
+   unlocks and no test track.
+   MUTATION THAT KILLS THIS: put "Forays for you and Suggested each keep a place
+   for a pick marked Stretch" back in full-description.txt. */
+test("the full description puts Stretch on Forays for you only when the published Forays can produce one", async () => {
+  const { listableForays } = await import("../../player/foray-resolve.js");
+  const roots = new Set(listableForays(JSON.parse(text("data/forays.json")))
+    .map((f) => (f.topic || "other").split("/")[0]));
+  const n = roots.size;
+  const stretchPossible = n > Math.max(1, Math.ceil(n * 0.6));
+  if (stretchPossible) return;
+  const sentences = copy("full-description.txt").split(/(?<=[.!?:])\s+|\n+/);
+  for (const s of sentences) {
+    assert.ok(!(/forays for you/i.test(s) && /stretch/i.test(s)),
+      `full-description.txt says "${s}", but the ${n} published Foray topic root(s) leave Forays for you with no Stretch pick`);
+  }
+});
+
 /* ---------- the package, as a package ---------- */
 
 test("README.md names every asset in the directory", () => {
