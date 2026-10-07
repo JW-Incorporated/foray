@@ -283,3 +283,53 @@ describe("ingestShowFeed round-3 hardening", () => {
     expect(failureBackoffMs(2, 1000)).toBe(1000);
   });
 });
+
+/* CH2-01 (B2-10) characterization: what a caller is told on the paths that
+   fall back to "is there a cache". Pinned BEFORE episodeCount is removed and
+   the full episode read behind it becomes a one-row hasEpisodes() probe, so
+   status and error must read identically on both sides of that change.
+   Each case names the one-line mutation in ingestShowFeed.ts it kills. */
+describe("ingestShowFeed: status and error on the cache-fallback paths (CH2-01 characterization)", () => {
+  const T0 = new Date("2026-03-01T00:00:00.000Z").getTime();
+  const URL = "https://example.com/feed.xml";
+  const http500 = () =>
+    vi.fn().mockResolvedValue({
+      status: 500,
+      ok: false,
+      headers: { get: () => null },
+      text: async () => ""
+    } as unknown as Response);
+  const said = (r: { status: string; error?: string }) => ({ status: r.status, error: r.error });
+
+  it("a failed fetch, then the back-off window, with a cache: cached_stale with the fetch error both times", async () => {
+    // MUTATION: backing-off branch `const error = "feed failing; backing off"` (ignore prior.last_error) -> red.
+    const store = new InMemoryShowEpisodesStore();
+    await ingestShowFeed("show-a", URL, store, { fetchImpl: mockFetchOk(FEED_TWO_EPS), now: () => T0, ttlMs: 60_000 });
+    const failing = http500();
+    const failedAt = T0 + 120_000;
+    const failed = await ingestShowFeed("show-a", URL, store, { fetchImpl: failing, now: () => failedAt, ttlMs: 60_000 });
+    expect(said(failed)).toEqual({ status: "cached_stale", error: "HTTP 500" });
+    const during = await ingestShowFeed("show-a", URL, store, { fetchImpl: failing, now: () => failedAt + 60_000 });
+    expect(failing).toHaveBeenCalledTimes(1);
+    expect(said(during)).toEqual({ status: "cached_stale", error: "HTTP 500" });
+  });
+
+  it("a failed fetch, then the back-off window, with nothing cached: no_cache_error with the fetch error both times", async () => {
+    // MUTATION: backing-off branch answers cached_stale without asking whether a cache exists -> red.
+    const store = new InMemoryShowEpisodesStore();
+    const failing = http500();
+    const failed = await ingestShowFeed("show-a", URL, store, { fetchImpl: failing, now: () => T0 });
+    expect(said(failed)).toEqual({ status: "no_cache_error", error: "HTTP 500" });
+    const during = await ingestShowFeed("show-a", URL, store, { fetchImpl: failing, now: () => T0 + 60_000 });
+    expect(failing).toHaveBeenCalledTimes(1);
+    expect(said(during)).toEqual({ status: "no_cache_error", error: "HTTP 500" });
+  });
+
+  it("an ingest (store) failure with nothing cached: no_cache_error naming the failure", async () => {
+    // MUTATION: drop the "ingest failed: " prefix from the parse/store failure's error -> red.
+    const store = new InMemoryShowEpisodesStore();
+    vi.spyOn(store, "upsertEpisodes").mockRejectedValueOnce(new Error("disk full"));
+    const result = await ingestShowFeed("show-a", URL, store, { fetchImpl: mockFetchOk(FEED_TWO_EPS), now: () => T0 });
+    expect(said(result)).toEqual({ status: "no_cache_error", error: "ingest failed: disk full" });
+  });
+});

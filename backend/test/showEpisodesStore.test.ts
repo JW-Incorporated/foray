@@ -176,3 +176,27 @@ describe("PostgresShowEpisodesStore after the 0019 rekey (legacy_show_id)", () =
     expect(state?.show_id).toBe("show-a");
   });
 });
+
+/* CH2-01 (B2-01): what a re-ingest does to a row's chapters. Ingest now writes
+   the feed's inline psc:chapters, so a feed that later drops its chapters block
+   must clear them in BOTH stores; the Postgres upsert used to coalesce the old
+   value back in (a "lazy fetch" that never existed). */
+describe("chapters on a re-upsert (CH2-01)", () => {
+  const squash = (sql: string) => sql.replace(/\s+/g, " ");
+  const marker = [{ title: "Intro", start_time_seconds: 0 }];
+
+  it("PIN (main today): the Postgres upsert coalesces chapters, keeping the old ones when the new row has none", () => {
+    // MUTATION: change the upsert to `chapters = excluded.chapters` -> red (this pin flips in the fix commit).
+    const sql = squash(buildEpisodeUpsert([ep()]).sql);
+    expect(sql).toContain("chapters = coalesce(excluded.chapters, catalog_show_episodes.chapters)");
+  });
+
+  it("InMemory: a re-upsert whose row has no chapters clears the stored ones", async () => {
+    // MUTATION: InMemory upsertEpisodes keeps `chapters: ep.chapters ?? existing.chapters` -> red.
+    const store = new InMemoryShowEpisodesStore();
+    await store.upsertEpisodes([ep({ guid: "g1", chapters: marker })]);
+    expect((await store.episodesForShow("show-a"))[0]!.chapters).toEqual(marker);
+    await store.upsertEpisodes([ep({ guid: "g1", chapters: null })]);
+    expect((await store.episodesForShow("show-a"))[0]!.chapters).toBeNull();
+  });
+});
