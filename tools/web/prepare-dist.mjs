@@ -49,6 +49,7 @@ const SHELL = [
   "app.js",
   "search-engine.js",
   "styles.css",
+  "ui/tokens.css", // Redesign 2026 (ambient): the Afterglow design tokens, linked after styles.css
   "sw.js",
   "manifest.json",
   "icon-180.png",

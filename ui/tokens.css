@@ -1,0 +1,432 @@
+/* ===========================================================================
+   AFTERGLOW design tokens (Redesign 2026, direction "ambient", phase 3 step 1).
+
+   Source of truth: docs/redesign-2026/directions/ambient/BUILD-PLAN.md §1.1 and
+   BUILD-NOTES.md §1, §10 to §12 (where they disagree the later section wins, and
+   the round-4 prototype's afterglow.css settles anything the notes leave open).
+   Tests: test/afterglow-tokens.test.js (parametrised over this file).
+
+   THIS FILE ADDS THE SYSTEM; IT CHANGES NO SCREEN. styles.css still draws every
+   page of today's app, pinned by test/ui-tokens.test.js and the other KEEP suites,
+   and the screens adopt this file one at a time in phase 4. So three rules keep
+   the app pixel-identical to the trunk baseline while both live in the page:
+
+   1. Every NEW token has a new name. A token whose name styles.css already
+      declares (`--text`, `--gutter`, `--seg-c0..7`, `--seg-narration`) is NEVER
+      declared on `:root`: it is declared on the scope selector `.ag, .room` only,
+      so no legacy rule can read the new value. The scheme blocks carry the
+      Afterglow ink as `--ag-text` and the scope copies it into `--text`; the
+      gutter likewise comes in as `--ag-gutter`. test/afterglow-tokens.test.js
+      computes the collision set from styles.css, so a name added there later
+      cannot slip through. `--font-display` is not redeclared at all: the legacy
+      `"Fraunces", var(--serif)` already names the same face.
+   2. Nothing here styles an element today's markup emits. The classes below
+      (.ag .raised .veil .dock .dock-fade .dock-cast .room .lit-* .t-* .eyebrow
+      .clamp1..4) are new and unused until a screen opts in; `.ag` is the scope
+      root a screen (or a gallery panel) wears to read the new neutrals.
+   3. The reduced-motion block at the foot is scoped to `:root`, `.ag` and `.room`
+      subtrees, so it cannot stop or re-time a legacy transition. styles.css
+      keeps its own block until the last legacy screen is gone; that block and
+      this one then become one (phase 4 exit), and ui-tokens' "Reduce Motion is
+      one block" test keeps guarding each file meanwhile.
+
+   THEMES. Dusk is the default and the root value. Dawn follows
+   `prefers-color-scheme: light` (guarded so an explicit data-theme="dusk" wins)
+   and an explicit data-theme="dawn". `data-theme` may sit on <html> (the in-app
+   override, written from cp_theme through the storage shim) or on any element
+   that is its own scheme root: a gallery panel, or Now Playing's Room, which is
+   pinned to Dusk with data-theme="dusk" and so reads #14110F-derived neutrals in
+   both passes. A scheme root must also wear `.ag` or `.room` (the scope), because
+   a custom property resolves where it is declared.
+
+   Overturned by this file, named so the PRs that adopt it can say so
+   (docs/redesign-2026/test-classification.md §0): DARK-ONLY (Dusk + Dawn), and
+   "violet = 4a authored" (Lamp instead). The legacy tests that pin both stay
+   true until a screen adopts the system, and are rewritten in the PR that does.
+   =========================================================================== */
+
+/* Glow: the current item's artwork colour. Registered, so a change of Glow
+   animates over --m-room (the transition on :root and .room below). The
+   initial-value is also the fallback where oklch() is unknown: an invalid
+   declaration of a registered property is dropped, and the initial value stands. */
+@property --glow { syntax: '<color>'; inherits: true; initial-value: #8A6A4E; }
+
+/* ---------------------------------------------------------------------------
+   1. Structure: type, space, radius, size, motion. Scheme-independent, :root.
+   --------------------------------------------------------------------------- */
+:root {
+  /* TYPE: seven styles and nothing else, every size in rem so the Android font
+     scale applies. display, headline and label carry UNITLESS leading so the car
+     posture (x1.25) scales size and leading together. Fraunces runs
+     'SOFT' 100, 'WONK' 0 and optical sizing auto (the .t-* classes set those:
+     font-variation-settings cannot ride in a `font` shorthand). */
+  --font-text: 'DM Sans', system-ui, sans-serif;
+  --t-display: 500 2rem/1.125 var(--font-display);       /* 32px: Now Playing title, hero */
+  --t-title: 500 1.625rem/1.875rem var(--font-display);  /* 26px/30: screen titles, foray names */
+  --t-headline: 500 1.25rem/1.2 var(--font-display);     /* 20px: card titles, section heads */
+  --t-why: italic 400 1.0625rem/1.5rem var(--font-display); /* 17px/24: why-lines, bridges */
+  --t-body: 400 1rem/1.5rem var(--font-text);            /* 16px/24 */
+  --t-label: 600 0.875rem/1.3 var(--font-text);          /* 14px: buttons, tabs, chips */
+  --t-caption: 500 0.8125rem/1.125rem var(--font-text);  /* 13px/18: meta, times, eyebrows */
+
+  /* SPACE: 4px base. */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 20px; --s-6: 24px;
+  --s-8: 32px; --s-10: 40px; --s-12: 48px;
+  --ag-gutter: 16px;            /* 16 at 375, 20 from 393; .ag exposes it as --gutter */
+
+  /* RADIUS */
+  --r-xs: 4px;     /* strip bars, progress lines, badges */
+  --r-sm: 8px;     /* artwork <= 56 */
+  --r-md: 12px;    /* artwork 72-120, buttons, inputs */
+  --r-lg: 16px;    /* cards, rows, hero collage, artwork 160+ */
+  --r-xl: 24px;    /* sheets, the Dock, Now Playing artwork */
+  --r-pill: 999px;
+  --r-round: 50%;
+
+  /* SIZE */
+  --art-mini: 44px; --art-queue: 56px; --art-row: 72px; --art-tile: 104px; --art-foray: 120px; --art-hero: 160px;
+  --row-episode: 96px; --row-queue: 64px; --row-show: 64px;   /* episode rows carry a two-line why-line */
+  --tab-bar: 64px; --mini: 64px; --field: 52px;
+  --tap: 44px;
+  --dock-inset: 12px;           /* the Dock floats this far above the safe area */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --chrome-bottom: calc(var(--tab-bar) + var(--safe-bottom) + var(--dock-inset));     /* content padding, nothing playing */
+  --chrome-bottom-mini: calc(var(--chrome-bottom) + var(--mini) + 8px);               /* content padding, a mini player */
+  --z-dock-fade: 19; --z-dock: 20;
+
+  /* MOTION: transform, opacity and registered properties only. */
+  --m-micro: 160ms;   /* toggles, fills */
+  --m-ui: 280ms;      /* rows, chips, the tab recede */
+  --m-sheet: 420ms;   /* sheets, mini to Now Playing */
+  --m-room: 560ms;    /* the Room, any Glow change */
+  --e-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* overshoot: the mini snap, the strip draw-in, the Up Next add */
+  --e-spring: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017, 1.077 20.4%, 1.121, 1.149 24.3%, 1.159, 1.163 27.8%, 1.154, 1.129 32.8%, 1.051 39.6%, 1.017 43.1%, 0.991, 0.977 51%, 0.974 53.8%, 0.975 57.1%, 0.997 69.8%, 1.003 76.9%, 1.001 85.5%, 1);
+  /* near-critical: sheets, the Room expand */
+  --e-spring-soft: linear(0, 0.013, 0.05 2.5%, 0.2 5.6%, 0.56 11.2%, 0.86 16.8%, 0.98 20.4%, 1.03 24%, 1.045 27.6%, 1.04 31.2%, 1.02 36.8%, 1.004 42.4%, 0.996 48%, 0.998 58%, 1);
+
+  /* The segment strip's unplayed bars. (--seg-c0..7 and --seg-narration share
+     names with styles.css and live on the scope below.) */
+  --seg-dim: 0.38;
+
+  /* Glow is app-wide on <html>; JS writes it. Dusk's default is a warm neutral and
+     Dawn's block below restates it at the Dawn lightness. */
+  --glow: oklch(0.66 0.12 60);
+  transition: --glow var(--m-room) var(--e-out);
+}
+@media (min-width: 393px) { :root { --ag-gutter: 20px; } }
+
+/* CAR POSTURE: display, headline and label x1.25; nothing else changes size. */
+[data-posture="car"] {
+  --t-display: 500 2.5rem/1.125 var(--font-display);
+  --t-headline: 500 1.5625rem/1.2 var(--font-display);
+  --t-label: 600 1.09375rem/1.3 var(--font-text);
+}
+
+/* ---------------------------------------------------------------------------
+   2. Colour. Dusk (default), then Dawn twice (media query, explicit attribute).
+      The two Dawn blocks must stay declaration-identical (tested).
+   --------------------------------------------------------------------------- */
+:root, [data-theme="dusk"] {
+  --bg0: #14110F; --bg1: #1D1916; --bg2: #272220;          /* page, raised card or row, raised-on-raised */
+  --ag-text: #F5EEE4; --text-2: #B9AFA3; --text-3: #9A9188; /* text-3: captions only, never under 13px */
+  --ember: #F0A64B; --ember-ink: #14110F;                  /* the listener's own marks: saved, followed, progress */
+  --lamp: #F3E7D3; --lamp-ink: #14110F; --lamp-text: #F3E7D3; /* what 4a authored: narration, Stretch, "4a picked this" */
+  --lamp-edge: transparent;                                /* Dawn draws a 1px edge on white narration bars */
+  --rim: rgb(243 231 211 / 0.10);                          /* the 1px top highlight on Raised */
+  --overlay: rgb(243 231 211 / 0.06);                      /* Raised fill over bg0 */
+  --shadow-1: 0 1px 2px rgb(10 6 4 / 0.40);
+  --shadow-2: 0 8px 24px rgb(10 6 4 / 0.35);
+  --ok: #7FCB8E; --warn: #E9B46A;                          /* never alone: always with a glyph */
+  --track: rgb(255 255 255 / 0.18);
+  --on-wash-2: #E2D9CD;                                    /* secondary text on Today's hot spot: text-2 measures 3.8:1 there */
+  --collage-bg: var(--bg1);                                /* a collage cell; squares sit on it, never cropped */
+  --sill: rgb(20 17 15 / 0.22);                            /* Foray detail's strip sill */
+  --scrim-head: rgb(20 17 15 / 0.52);                      /* head icons >= 3:1 on any art, pure white included */
+  --scrim-top: rgb(20 17 15 / 0.20);
+  --scrim-mid-base: rgb(20 17 15 / 0.86);
+  --scrim-low-base: rgb(20 17 15 / 0.92);
+  /* How much of the artwork's colour each tinted material carries (BUILD-NOTES §1.5, §10, §11). */
+  --mix-veil: 28%; --mix-row: 18%; --mix-wash: 40%; --mix-room: 15%; --mix-scrim: 24%;
+  --cast-mix: 14%;                                         /* the Dock's upward light */
+  --lit-mix: 55%;                                          /* Lit art's glow: the artwork's own colour */
+  --room-art-opacity: 0.9;
+  --glow-l: 0.66;                                          /* the clamped Glow lightness the palette script writes */
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dusk"]) {
+    --bg0: #F7F2EB; --bg1: #FDFAF5; --bg2: #EFE8DF;
+    --ag-text: #1E1A17; --text-2: #5E564E; --text-3: #6B635A;
+    --ember: #8E520E; --ember-ink: #FFFFFF;
+    --lamp: #FFFFFF; --lamp-ink: #1E1A17; --lamp-text: #55391A;
+    --lamp-edge: #E0D6C8;
+    --rim: rgb(255 255 255 / 0.80);
+    --overlay: rgb(255 255 255 / 0.55);
+    --shadow-1: 0 1px 2px rgb(60 40 20 / 0.10);
+    --shadow-2: 0 8px 24px rgb(60 40 20 / 0.10);
+    --ok: #2A7541; --warn: #8A5A12;
+    --track: rgb(30 26 23 / 0.14);
+    --on-wash-2: var(--ag-text);
+    --collage-bg: var(--bg2);
+    --sill: rgb(255 255 255 / 0.35);
+    --scrim-head: rgb(247 242 235 / 0.55);
+    --scrim-top: rgb(247 242 235 / 0.10);
+    --scrim-mid-base: rgb(247 242 235 / 0.92);
+    --scrim-low-base: rgb(247 242 235 / 0.96);
+    --mix-veil: 24%; --mix-row: 18%; --mix-wash: 40%; --mix-room: 20%; --mix-scrim: 20%;
+    --cast-mix: 9%;
+    --lit-mix: 40%;
+    --room-art-opacity: 0.55;
+    --glow-l: 0.56;
+    --glow: oklch(0.56 0.12 60);
+  }
+}
+[data-theme="dawn"] {
+  --bg0: #F7F2EB; --bg1: #FDFAF5; --bg2: #EFE8DF;
+  --ag-text: #1E1A17; --text-2: #5E564E; --text-3: #6B635A;
+  --ember: #8E520E; --ember-ink: #FFFFFF;
+  --lamp: #FFFFFF; --lamp-ink: #1E1A17; --lamp-text: #55391A;
+  --lamp-edge: #E0D6C8;
+  --rim: rgb(255 255 255 / 0.80);
+  --overlay: rgb(255 255 255 / 0.55);
+  --shadow-1: 0 1px 2px rgb(60 40 20 / 0.10);
+  --shadow-2: 0 8px 24px rgb(60 40 20 / 0.10);
+  --ok: #2A7541; --warn: #8A5A12;
+  --track: rgb(30 26 23 / 0.14);
+  --on-wash-2: var(--ag-text);
+  --collage-bg: var(--bg2);
+  --sill: rgb(255 255 255 / 0.35);
+  --scrim-head: rgb(247 242 235 / 0.55);
+  --scrim-top: rgb(247 242 235 / 0.10);
+  --scrim-mid-base: rgb(247 242 235 / 0.92);
+  --scrim-low-base: rgb(247 242 235 / 0.96);
+  --mix-veil: 24%; --mix-row: 18%; --mix-wash: 40%; --mix-room: 20%; --mix-scrim: 20%;
+  --cast-mix: 9%;
+  --lit-mix: 40%;
+  --room-art-opacity: 0.55;
+  --glow-l: 0.56;
+}
+/* Dawn's default Glow lives on the root only: a themed panel must keep inheriting
+   the live Glow that script writes on <html>, never reset it. */
+:root[data-theme="dawn"] { --glow: oklch(0.56 0.12 60); }
+
+/* Now Playing pins Dusk (data-theme="dusk" on its .room) and reads these two
+   neutrals one step brighter than the page's, because text-2 sits on artwork, not
+   on bg0 (prototype .np; measured in test/afterglow-tokens.test.js). */
+.room[data-theme="dusk"] { --text-2: #C9BFB3; --text-3: #B0A79D; }
+
+/* ---------------------------------------------------------------------------
+   3. Glow-derived tokens. A custom property resolves where it is declared, so
+      every element that can carry its own Glow or scheme redeclares them.
+      Percentages are tokens (section 2) so the formula is written once.
+      Worst-case contrast of text on each: test/afterglow-tokens.test.js.
+      The formulas sit INSIDE @supports: a custom property never falls back on
+      a value it cannot parse (it only goes invalid where it is read), so a
+      "fallback declared first" would be overridden by the very line it guards.
+      Where color-mix is unknown the second block's static values stand instead.
+   --------------------------------------------------------------------------- */
+@supports (color: color-mix(in oklab, red, blue)) {
+  :root, [data-theme], .ag, .room {
+    --glow-veil: color-mix(in oklab, var(--bg0), var(--glow) var(--mix-veil));   /* the Dock, sheet headers */
+    --glow-row: color-mix(in oklab, var(--bg1), var(--glow) var(--mix-row));     /* the playing row */
+    --glow-wash: color-mix(in oklab, var(--bg0), var(--glow) var(--mix-wash));   /* Today's top wash */
+    --glow-room: color-mix(in oklab, var(--bg0), var(--glow) var(--mix-room));   /* the Room's base under the scrim */
+    --scrim-mid: color-mix(in oklab, var(--scrim-mid-base), var(--glow) var(--mix-scrim));  /* the lower half is never neutral */
+    --scrim-low: color-mix(in oklab, var(--scrim-low-base), var(--glow) var(--mix-scrim));
+  }
+}
+
+/* Static values for engines without color-mix: each is the mix above at that
+   scheme's default Glow (tested), so the chrome is tinted, not broken. */
+@supports not (color: color-mix(in oklab, red, blue)) {
+  :root, [data-theme="dusk"] {
+    --glow-veil: #402D1D; --glow-row: #382A1E; --glow-wash: #553A23; --glow-room: #2B2017;
+    --scrim-mid: rgb(62 44 29 / 0.894); --scrim-low: rgb(60 42 28 / 0.939);
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dusk"]) {
+      --glow-veil: #E5CFBB; --glow-row: #EEDECF; --glow-wash: #D9B79B; --glow-room: #E8D4C3;
+      --scrim-mid: rgb(231 210 192 / 0.936); --scrim-low: rgb(232 211 193 / 0.968);
+    }
+  }
+  [data-theme="dawn"] {
+    --glow-veil: #E5CFBB; --glow-row: #EEDECF; --glow-wash: #D9B79B; --glow-room: #E8D4C3;
+    --scrim-mid: rgb(231 210 192 / 0.936); --scrim-low: rgb(232 211 193 / 0.968);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   4. The scope. A screen (or a gallery panel) wears .ag; Now Playing and the
+      other Rooms wear .room. This is the only place a name styles.css also
+      declares gets its Afterglow value.
+   --------------------------------------------------------------------------- */
+.ag, .room {
+  --text: var(--ag-text);
+  --gutter: var(--ag-gutter);
+  --seg-c0: #2A9D8F; --seg-c1: #E76F51; --seg-c2: #8E6FD8; --seg-c3: #4C8DF5;
+  --seg-c4: #D9A441; --seg-c5: #5FB4C9; --seg-c6: #C46BAE; --seg-c7: #7BA05B;
+  --seg-narration: var(--lamp);
+}
+.ag {
+  background: var(--bg0);
+  color: var(--text);
+  font: var(--t-body);
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dusk"]) .ag:not([data-theme="dusk"]) { color-scheme: light; }
+}
+[data-theme="dawn"] .ag:not([data-theme]), .ag[data-theme="dawn"] { color-scheme: light; }
+
+/* ---------------------------------------------------------------------------
+   5. Type styles and helpers (classes only read tokens).
+   --------------------------------------------------------------------------- */
+.t-display { font: var(--t-display); }
+.t-title { font: var(--t-title); }
+.t-headline { font: var(--t-headline); }
+.t-why { font: var(--t-why); }
+.t-body { font: var(--t-body); }
+.t-label { font: var(--t-label); }
+.t-caption { font: var(--t-caption); }
+.t-display, .t-title, .t-headline, .t-why {
+  font-variation-settings: 'SOFT' 100, 'WONK' 0;
+  font-optical-sizing: auto;
+}
+/* Eyebrow: the caption style, uppercase, in Lamp when 4a authored it, text-3 otherwise. */
+.eyebrow { font: var(--t-caption); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3); }
+.eyebrow.lamp { color: var(--lamp-text); }
+.num, .time, .count, .dur { font-variant-numeric: tabular-nums; }
+/* Clamps: a title never ends in an ellipsis beside empty space unless it asks for one. */
+.clamp1, .clamp2, .clamp3, .clamp4 { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: normal; }
+.clamp1 { -webkit-line-clamp: 1; line-clamp: 1; }
+.clamp2 { -webkit-line-clamp: 2; line-clamp: 2; }
+.clamp3 { -webkit-line-clamp: 3; line-clamp: 3; }
+.clamp4 { -webkit-line-clamp: 4; line-clamp: 4; }
+
+/* ---------------------------------------------------------------------------
+   6. Materials: five, lit from above. Depth comes from light, never a hairline.
+   --------------------------------------------------------------------------- */
+/* Raised: cards and rows. */
+.raised {
+  background: linear-gradient(var(--overlay), var(--overlay)) var(--bg1);
+  box-shadow: inset 0 1px 0 var(--rim), var(--shadow-1), var(--shadow-2);
+  border-radius: var(--r-lg);
+}
+/* Veil: the only glass. The Dock and sheet headers, never a scrolling item. */
+.veil {
+  background: var(--glow-veil);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  backdrop-filter: blur(20px) saturate(140%);
+  box-shadow: inset 0 1px 0 var(--rim), var(--shadow-2);
+}
+/* Dock: one Veil holding, top to bottom, [field row 48, Discover only] [mini row 64] [tab row 64, 36 receded]. */
+.dock {
+  position: absolute; left: var(--gutter); right: var(--gutter); bottom: calc(var(--safe-bottom) + var(--dock-inset));
+  z-index: var(--z-dock);
+  display: flex; flex-direction: column;
+  border-radius: var(--r-xl); overflow: hidden;
+}
+.dock > :not([hidden]) ~ :not([hidden]) { box-shadow: inset 0 1px 0 var(--rim); }   /* rows divided by the rim, never a gap */
+/* Content runs under the Dock and fades to bg behind it, solid from 12px above the
+   Dock's bottom edge, so the Dock's rounded edge never slices a line of text. */
+.dock-fade {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: var(--z-dock-fade); pointer-events: none;
+  height: calc(var(--safe-bottom) + var(--dock-inset) + 44px);
+  background: linear-gradient(transparent 0, var(--bg0) 32px);
+}
+/* The Dock casts upward: a Glow radial rising from the Dock's top edge lights the page
+   the playing item is on. Nothing plays: data-state="idle", nothing to cast. */
+.dock-cast {
+  position: absolute; left: 0; right: 0; z-index: 0; pointer-events: none; height: 260px;
+  bottom: calc(var(--safe-bottom) + var(--dock-inset) + var(--dock-h, var(--tab-bar)) - 24px);
+  background: radial-gradient(90% 100% at 50% 100%, color-mix(in oklab, var(--glow) var(--cast-mix), transparent) 0%, transparent 100%);
+}
+.dock-cast[data-state="idle"], [data-posture="car"] .dock-cast, [data-posture="car"] .dock-fade, [data-posture="car"] .dock { display: none; }
+/* Room: Now Playing, Foray detail, onboarding. A Glow-tinted base, the artwork blurred
+   under a scrim whose stops are PIXELS from the top, so every line of text starts in the
+   mid zone whatever the screen height (--rs1/--rs2: Foray detail's 196/276; Now Playing
+   and onboarding set their own). --room-art is written by script as url("...") after
+   safeUrl() with el.style.setProperty (CSSOM is allowed under the CSP; an inline style
+   attribute is not). It is `none` until then, which leaves the Glow gradient as the look. */
+.room {
+  --room-art: none;
+  --rs1: calc(var(--safe-top) + 196px);
+  --rs2: calc(var(--safe-top) + 276px);
+  position: relative; isolation: isolate; overflow: hidden;
+  background: var(--glow-room);
+  transition: --glow var(--m-room) var(--e-out);
+}
+.room::before {
+  content: ''; position: absolute; inset: -12%; z-index: -2;
+  background: var(--room-art) center / cover;
+  filter: blur(64px) saturate(130%);
+  transform: scale(1.4);
+  opacity: var(--room-art-opacity);
+}
+.room::after {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(180deg,
+    var(--scrim-head) 0,
+    var(--scrim-top) calc(var(--safe-top) + 56px),
+    var(--scrim-top) var(--rs1),
+    var(--scrim-mid) var(--rs2),
+    var(--scrim-low) 100%);
+}
+@supports (color: color-mix(in oklab, red, blue)) {
+  .room::before {
+    background:
+      var(--room-art) center / cover,
+      radial-gradient(120% 55% at 50% 18%, color-mix(in oklab, var(--glow) 55%, transparent), transparent 75%);
+  }
+}
+/* Lit art, the fifth material: artwork of 104px or more casts its OWN colour, never a
+   black shadow. --art-glow is that artwork's palette colour, written per element by
+   script; --lit-r is 40 at 104, 64 at 160, 96 at 280 and above. */
+.lit-art {
+  box-shadow: var(--shadow-1), 0 0 var(--lit-r, 40px) calc(var(--lit-r, 40px) / -4) color-mix(in oklab, var(--art-glow, var(--glow)) var(--lit-mix), transparent);
+}
+.lit-40 { --lit-r: 40px; }
+.lit-64 { --lit-r: 64px; }
+.lit-96 { --lit-r: 96px; }
+
+/* ---------------------------------------------------------------------------
+   7. Material fallbacks, all in one place.
+   --------------------------------------------------------------------------- */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .veil { background: var(--bg1); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .veil { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--bg1); }
+  .lit-art { box-shadow: var(--shadow-1); }
+}
+@media (prefers-contrast: more) {
+  .veil { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--bg0); }
+  .room::before { opacity: 0.35; }
+  .raised { box-shadow: inset 0 0 0 1px var(--text-3); }
+}
+@media (forced-colors: active) {
+  .lit-art { box-shadow: none; }
+}
+
+/* ---------------------------------------------------------------------------
+   8. REDUCED MOTION: ONE BLOCK, EVERY TRANSITION AND ANIMATION IN THIS FILE.
+      Every transition or animation a later screen adds is added here, in the
+      same PR (test/afterglow-tokens.test.js fails on one that is not covered).
+      A movement becomes a 200ms crossfade of opacity and colour; keyframes run
+      for 1ms and stop; the Room stops drifting; View Transitions do not animate.
+      Scoped to :root and the .ag / .room subtrees on purpose (rule 3 above).
+      It sits LAST so it out-ranks every rule it covers.
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  :root, .ag, .ag *, .ag *::before, .ag *::after, .room, .room *, .room::before, .room::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 200ms !important;
+    transition-delay: 0s !important;
+    transition-property: opacity, color, background-color !important;
+  }
+  .room::before { transition: none !important; }
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}

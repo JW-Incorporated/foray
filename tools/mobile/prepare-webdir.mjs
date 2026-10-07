@@ -265,6 +265,10 @@ export const SHELL_FILES = [
   "app.js",
   "search-engine.js",
   "styles.css",
+  /* Redesign 2026 (ambient): the Afterglow design tokens, linked after styles.css. A stylesheet,
+     so it is minified like styles.css; uiFiles() is the scripts only (appSourceText scans them
+     as JS), which is why this is listed here and not derived. */
+  "ui/tokens.css",
   "manifest.json",
   "icon-180.png",
   "icon-512.png",
