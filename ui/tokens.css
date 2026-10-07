@@ -460,5 +460,7 @@
     transition-property: opacity, color, background-color !important;
   }
   .room::before { transition: none !important; }
+  /* Buffering's breathe collapses to 1ms and snaps back to 1; hold it at 0.9 so the cue stays (BUILD-NOTES §5). */
+  .ag .ag-mini-player.is-buffering .ag-btn-play .icon { opacity: .9; }
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
 }
