@@ -406,6 +406,8 @@ test("review: the gate scan reads the composite actions as well as the workflows
      composite's own scripts vanish from the scan. */
   const found = allGateScripts();
   assert.ok([...found.get("tools/mobile/ios-embedded-frameworks.mjs") ?? []].includes(".github/actions/ios-archive/action.yml"));
+  // The inject sequence's composite (CH2-16) is scanned too.
+  assert.ok([...found.get("tools/mobile/inject-app-icon.mjs") ?? []].includes(".github/actions/ios-prepare/action.yml"));
   assert.ok(found.has("tools/release/upload-retry.mjs"), "upload-retry.mjs is run only by the ios-archive composite");
 });
 
@@ -1388,11 +1390,23 @@ function signingJobExecutables() {
     }
   }
   const texts = [];
+  // Composites are followed TRANSITIVELY: a composite may `uses:` another
+  // (CH2-16: ios-archive runs the inject sequence through ios-prepare), and a
+  // walk that read one level deep would be blind to every script in the inner
+  // one while it runs in the job that holds the signing secrets.
+  const seenActions = new Set();
+  const followActions = (text) => {
+    for (const m of text.matchAll(/uses:\s*\.\/(\.github\/actions\/[\w-]+)/g)) {
+      if (seenActions.has(m[1])) continue;
+      seenActions.add(m[1]);
+      const inner = fs.readFileSync(path.join(REPO, m[1], "action.yml"), "utf8");
+      texts.push(inner);
+      followActions(inner);
+    }
+  };
   for (const { job } of jobs) {
     texts.push(job);
-    for (const m of job.matchAll(/uses:\s*\.\/(\.github\/actions\/[\w-]+)/g)) {
-      texts.push(fs.readFileSync(path.join(REPO, m[1], "action.yml"), "utf8"));
-    }
+    followActions(job);
   }
   for (const text of texts) {
     for (const chunk of stripComments(text).split(/\n(?=\s*- (?:name|uses|run):)/)) {
@@ -1437,6 +1451,9 @@ test("review: every file a signing job executes is DENIED (or is app code, liste
     "mobile/package.json",
     "test/release-gates.test.js",
     "tools/release/upload-retry.mjs",
+    // Reached only through ios-archive -> ios-prepare (CH2-16): a nested
+    // composite. MUTATION: read composites one level deep -> red here.
+    "tools/mobile/inject-app-icon.mjs",
   ]) {
     assert.ok(files.has(expected), `the walk no longer reaches ${expected}: it has gone blind somewhere`);
   }
