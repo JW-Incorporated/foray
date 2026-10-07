@@ -2741,6 +2741,48 @@ function paintSheetChapter(i) {
   ui.chapterNext.disabled = i >= list.length - 1;
 }
 
+/* THE CHAPTER ON THE LOCK SCREEN (CH-5, #1071; founder 2026-10-05: chapters,
+   "see Apple Podcasts for an example how it is done there"). The JS lane only:
+   the web/PWA lock screen and the Android JS lane, through `mediaViewFields`
+   (its EPISODE object hands this `current`). Native mode never gets here
+   (`syncMediaSession` returns first), and the protocol is unchanged.
+
+   The item the OS view is built from, for the chapter the clock is in: a
+   SHALLOW COPY whose title is the chapter (`~` first when the chapter times are
+   approximate, the sheet line's rule above) and whose show is "<episode> ·
+   <show>", so `mediaMetadata` produces title = chapter, artist = episode and
+   show, album = APP_NAME (#1006) with no change to its signature or its output
+   for any other input. `current` itself is never touched.
+
+   `item` UNCHANGED whenever any of this fails: no chapters (fewer than two, no
+   bridge, a throwing bridge — `loadSheetChapters` left `sheetChapters` null),
+   a Foray loaded or restored (`forayId`), or a clock before the first start.
+
+   One OS write per chapter change: the strings are fixed inside a chapter, so
+   the bridge dedupe (`createMediaSession`, keyed on title/artist/album/artwork)
+   swallows the 4 Hz render. On Android each write re-pushes artwork through the
+   shim (#1124); once per chapter is the accepted cost.
+
+   FRESH WITHOUT THE SHEET: `sheetChapters` is (re)loaded by `paintSeekNote`,
+   which `setNowPlaying` runs on every item change and `play()` runs again once
+   the local file is known, whether or not the sheet was ever opened (its DOM
+   is built at boot). The index is computed here from the clock, not read from
+   `shownChapter`, which only the sheet paint advances.
+
+   THE LAYOUT IS A PROPOSAL, not a ruling: Apple Podcasts on current iOS is
+   reported to put chapter ARTWORK, not the chapter title, on the lock screen,
+   so the founder confirms this layout on a device. */
+function chapterMediaItem(item) {
+  if (!sheetChapters || foray || !item || item.forayId) return item;
+  const { list, precision } = sheetChapters;
+  const i = chapterIndexAt(list, episodePositionSec());
+  if (i < 0) return item;
+  const chapter = String(list[i].title ?? "").trim();
+  if (!chapter) return item;
+  const show = [item.title, item.show].map((s) => String(s ?? "").trim()).filter(Boolean).join(" · ");
+  return { ...item, title: `${precision === EXACT ? "" : "~"}${chapter}`, show };
+}
+
 /* ---------- what the bar says when there is no sound ----------
 
    Audit 2026-09-22, two silences the transport did not explain:
@@ -3634,7 +3676,7 @@ function mediaViewFields() {
   }
 
   return {
-    item: current,
+    item: chapterMediaItem(current),
     forayTitle: "",
     foray: false,
     index: 0,
