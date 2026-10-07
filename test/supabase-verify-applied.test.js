@@ -27,7 +27,9 @@
  *   - rename the kind 'policy_absent' to 'policy_gone' in one row only -> test 4;
  *   - break one row so the row parser cannot read it (drop its closing paren)
  *     -> tests 1 and 4;
- *   - drop the "Which migrations are applied?" section from the README -> test 5.
+ *   - drop the "Which migrations are applied?" section from the README -> test 5;
+ *   - drop step 0 from HUMAN-ACTIONS #116, or renumber it to 1 -> test 6;
+ *   - drop `verify-applied.sql` from #116's **Worked if:** line -> test 6.
  */
 
 const { test } = require("node:test");
@@ -153,4 +155,18 @@ test("the README tells a founder to paste it, and lists it apart from the migrat
   assert.match(readme, /`applied` is `yes`, `partial` or `no`/);
   assert.match(readme, /read-only/i);
   assert.doesNotMatch(readme, /\| `verify-applied\.sql` \|/, "not a row of the migration table: it is not applied");
+});
+
+test("HUMAN-ACTIONS #116 starts with the verify-applied.sql paste as step 0", () => {
+  const ha = read("HUMAN-ACTIONS.md");
+  const section = /^## #116 [^\n]*\n([\s\S]*?)(?=^## #\d+ )/m.exec(ha);
+  assert.ok(section, "the HUMAN-ACTIONS #116 section");
+  const steps = /\*\*Steps:\*\*\n(\d+)\. ([^\n]*)/.exec(section[1]);
+  assert.ok(steps, "#116 has a numbered Steps list");
+  assert.strictEqual(steps[1], "0", "the paste comes before anything is applied: step 0");
+  assert.match(steps[2], /SQL editor\*\*: paste `backend\/migrations\/supabase\/verify-applied\.sql`/);
+  assert.match(steps[2], /read-only/);
+  const worked = /^\*\*Worked if:\*\* ([^\n]*)/m.exec(section[1]);
+  assert.ok(worked, "#116 has a Worked if line");
+  assert.match(worked[1], /`verify-applied\.sql` reads `yes`/);
 });

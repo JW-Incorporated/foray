@@ -1138,7 +1138,7 @@ const FLOORS = {
   "test/supabase-rls-verbs.test.js": 7, // round-3 L6 (2026-09-25): backend-rest-4/-5, data-integrity-10 — supabase/0003's policies pinned against the PostgREST verbs app.js uses, both ways
   "test/supabase-rls-coverage.test.js": 3, // PR #1045 review (PKG-02, S-09): every portable table has Supabase RLS (supabase/0004 for shows_catalog/show_id_map); the G1/G2 coupling text cites Q6 and names 0004; new
   "test/supabase-content-reports.test.js": 7, // PH2-10: supabase/0005 content_reports (Guideline 1.2 reports): RLS on, insert-own + delete-own, select-own only for the filtered DELETE, user_id-only select grant, no update, note cap 280, review index, README + HUMAN-ACTIONS #116 apply step; new
-  "test/supabase-verify-applied.test.js": 5, // #116/#798: supabase/verify-applied.sql checks every table, policy, RLS switch, trigger, function, revoke, index, extension and cron job 0001-0006 and the portable 0014/0015 create, one row per migration, and stays one read-only SELECT; README paste step; new
+  "test/supabase-verify-applied.test.js": 6, // #116/#798: supabase/verify-applied.sql checks every table, policy, RLS switch, trigger, function, revoke, index, extension and cron job 0001-0006 and the portable 0014/0015 create, one row per migration, and stays one read-only SELECT; README paste step; new
   /* "Up Next" listening queue, Stage 1 of docs/listening-queue-plan.md
      (kanban card t_f4da81f5). Floored because the queue's own decay path
      (an id ageing out of the pool, or the queue emptying) is exactly the
