@@ -200,6 +200,7 @@ and `html[data-theme="dark"]` override it (the setting lives under
   --line:       #E2D8C6;   /* 1px contact lines only */
   --rubber:     #2A2520;   /* keycap body for "black key" variants */
   --rubber-lip: #15110E;
+  --on-rubber:  #F7F0E4;
 
   --persimmon:      #C93F14;   /* listener's own */
   --persimmon-lip:  #8E2B0C;
@@ -237,6 +238,7 @@ and `html[data-theme="dark"]` override it (the setting lives under
   --line:       #332B24;
   --rubber:     #3A332C;   /* r2: #2E2822 sank into the sheet under the tint */
   --rubber-lip: #120E0B;
+  --on-rubber:  #F4ECDF;   /* paper is dark here; rubber text follows the light ink */
 
   --persimmon:      #FF6A3A;
   --persimmon-lip:  #B8431E;
@@ -267,6 +269,7 @@ components, large text (≥ 24px / ≥ 19px bold) or icons, where 3:1 applies.
 | ink on card | 16.4:1 | 14.1:1 |
 | ink-2 on paper | 6.3:1 | 9.4:1 |
 | ink-3 on paper | 4.8:1 | 5.3:1 |
+| on-rubber on rubber | 13.4:1 | 10.6:1 |
 | on-persimmon on persimmon | 5.0:1 | 5.9:1 |
 | on-ultramarine on ultramarine | 7.5:1 | 6.9:1 |
 | persimmon on paper (UI) | 4.4:1 | 6.4:1 |
@@ -394,7 +397,7 @@ transport keys) on a 3px lip.
   `lg` 56, `xl` 80 (Play in Now Playing), `glance` 96.
 - Variants: `persimmon` (fill `--persimmon`, lip `--persimmon-lip`, text
   `--on-persimmon`), `ultramarine`, `rubber` (fill `--rubber`, lip
-  `--rubber-lip`, text `--paper`), `paper` (fill `--card`, lip `--line`,
+  `--rubber-lip`, text `--on-rubber`), `paper` (fill `--card`, lip `--line`,
   text `--ink`; the secondary button).
 - Build: `position: relative; transform: translateY(0)`; `::after` is the
   lip (`height: var(--lip)`, same radius, positioned below). On

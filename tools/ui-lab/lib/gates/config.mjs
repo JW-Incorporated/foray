@@ -44,5 +44,6 @@ export const CONSOLE_COVERED_ELSEWHERE = [
 export const SHEET_OPENERS = [
   { dialog: ".fp-sheet", opener: ".fp-info", close: ".fp-close" },
   { dialog: "#first-time-sheet", opener: null, close: "#first-time-sheet-skip" },
+  { dialog: "#gallery-sheet", opener: "#gallery-sheet-open", close: "#gallery-sheet-close" }, // guarded Tactile foundation gallery
   { dialog: "#gx-sheet", opener: "#gx-open", close: "#gx-close" }, // fixtures/gates-fixture.html
 ];
