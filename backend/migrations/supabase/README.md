@@ -21,6 +21,31 @@ test before any real user data lands (ADR-0005 → Risks).
 | `0005_content_reports.sql` | PH2-10: the `content_reports` table behind the Report sheet (App Store Guideline 1.2). RLS: insert-own, select-own, delete-own for `authenticated`; no update policy; column grants so a client may insert only `user_id, target_kind, target_id, reasons, note` and select only `user_id`, so no client can read a report. Needs only 0001-0002, so it can be applied alone. Pinned by `test/supabase-content-reports.test.js`. **Not applied to production** (HUMAN-ACTIONS #116). |
 | `0006_event_retention.sql` | Founder ruling HA #13 (retention): enables `pg_cron` and schedules two daily jobs by name. `foray-prune-events-90d` deletes `events` rows whose server-stamped `ts` is over 90 days old; `foray-prune-anon-shells-90d` removes anonymous `auth.users` rows (plus their `app_users`/`learning_cursor` rows) that are over 90 days idle with no events, no linked identity and no derived state (this retires HA #14). Both functions are `SECURITY DEFINER`, pinned `search_path`, revoked from `anon`/`authenticated`. Idempotent; rollback in the file header. Pinned by `test/supabase-event-retention.test.js`. Needs only 0001-0003, so it does not wait for 0004 or 0005. **Not applied to production** (HUMAN-ACTIONS #116). |
 
+## Which migrations are applied? (`verify-applied.sql`)
+
+Run this before applying anything (HUMAN-ACTIONS #116) and again after, and to
+answer issue #798's question about the portable 0014/0015. Supabase dashboard →
+the 4a project → **SQL editor**: paste `verify-applied.sql`, run it. It is
+read-only: one `SELECT` over the catalog (`information_schema`, `pg_class`,
+`pg_policies`, `pg_trigger`, `pg_proc`, `pg_constraint`, `pg_extension`, and
+`cron.job` when pg_cron is installed), so it is safe on production and safe to
+re-run. It is not a migration and has no number, so it is not in the table
+above.
+
+It returns one row per migration (`0014_persona_seed_source.sql`,
+`0015_learning_cursor.sql` and every `supabase/` file): `applied` is `yes`,
+`partial` or `no`, `checks_passed` counts the objects found (`9/9`), and
+`missing` names each table, policy, RLS switch, trigger, function, revoke,
+index, extension or cron job that is not there. `partial` means a file stopped
+part way or was edited after it ran: re-running that file (they are all
+idempotent) is the usual fix. `0004` reads `no` with "(table missing)" until
+gate G2 creates the portable 0017-0019 tables. Paste the result into #116 when
+you reply there.
+
+`test/supabase-verify-applied.test.js` fails CI if a migration creates
+something the script does not check, if a new numbered file lands with no rows
+in it, or if the script ever contains a statement that writes.
+
 ## `content_reports` (0005): apply, review, delete
 
 **Apply.** Supabase dashboard → the 4a project → **SQL editor**: paste
