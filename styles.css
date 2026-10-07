@@ -4493,6 +4493,21 @@ body.drawer-open { overflow: hidden; }
 .readout    { font: var(--w-readout) var(--t-readout)/var(--lh-readout) var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
 .readout-lg { font: var(--w-readout) var(--t-readout-lg)/var(--lh-readout-lg) var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 
+/* ICON SPRITE (task "sprite", BUILD-PLAN.md section 1.5). The sprite in index.html
+   is 0x0 and absolutely positioned: it adds no box to any screen. `.i` is the
+   one icon size (24px, optical size matched to Phosphor Bold on the 256 grid and
+   to the custom marks on the 24 grid); the sm / lg modifiers are the only other
+   sizes, and a primitive that needs more sets its own in its own rule. Icons
+   take the colour of the text they sit in. No transition lives here: the tab
+   icon's Bold-to-Fill cross-fade is the tab bar's, and joins the one
+   reduced-motion block when that task adds it. `.knob-groove` is the groove of
+   the rotary mark: it draws in the keycap's own fill so it reads as cut into the disc. */
+.sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+.i { width: 24px; height: 24px; flex: none; fill: currentColor; }
+.i--sm { width: 20px; height: 20px; }
+.i--lg { width: 32px; height: 32px; }
+.knob-groove { stroke: var(--k-fill, var(--card)); }
+
 /* ---------- REDUCE MOTION: ONE BLOCK, EVERY TRANSITION (audit round 2, a11y-9) ----------
    Three strip rules honoured the setting and nothing else did: the Now Playing
    sheet still slid back over 220ms after a partial drag, the notes chevron
