@@ -23,11 +23,13 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import crypto from "node:crypto";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import {
   PINS, MODELS_DIR, pinProblems, unfilled, verifyBuffer, verifyOnDisk,
-  digest, ensureIgnored, fillPinCommand, bundledPins, bundledBytes, BUNDLE_PLATFORMS,
+  digest, ensureIgnored, fillPinCommand, FETCH_ATTEMPTS, bundledPins, bundledBytes, BUNDLE_PLATFORMS,
 } from "./fetch-models.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -241,6 +243,133 @@ test("a pin with an implicit bundle value is refused", () => {
   assert.throws(() => bundledPins(), /unknown platform/);
   assert.throws(() => bundledPins("web"), /unknown platform/);
   assert.deepEqual([...BUNDLE_PLATFORMS], ["ios", "android"]);
+});
+
+/* ---------- the text the narration tools parse ---------- */
+
+/* `render-audition.py`, `render-foray.py` and `bench-narration.py` do not
+   import this module: each regexes the model and voice pins out of the FILE
+   TEXT (`read_pins`), so the hashes live in one table. These are their
+   patterns, ported verbatim (the audition reads q8f16 by name; the other two
+   read every `kokoro-v1_0-*.onnx` model pin). */
+const PY_MODEL_RE = /name: "(kokoro-v1_0-[a-z0-9]+\.onnx)",\s*url: "([^"]+)",\s*sha256: "([0-9a-f]{64})",\s*bytes: (\d+)/g;
+const PY_VOICE_RE = /\["([a-z]{2}_[a-z]+)", "([0-9a-f]{64})", (\d+)\]/g;
+
+test("the pin text the python parsers regex is exactly what it was, and agrees with PINS", () => {
+  /* The parsers read only the spans these regexes match, so the spans are
+     hashed: any edit inside one (a field slipped between `url` and `sha256`,
+     `bytes` moved above `sha256`, a voice tuple changed) is red here before
+     it is a python `ValueError` at render time, and an edit OUTSIDE them
+     (CH2-23 deleting the `bundle` fields) provably leaves them alone.
+     MUTATION (RUN, red, restored): move `bytes` above `sha256` in the q8f16
+     pin — the model regex finds one pin, not two. MUTATION (RUN, red,
+     restored): change one character of a voice's sha256 in the tuple list —
+     the parsed voices and the span hash both move. */
+  const src = fs.readFileSync(path.join(HERE, "fetch-models.mjs"), "utf8");
+  const models = [...src.matchAll(PY_MODEL_RE)];
+  const voices = [...src.matchAll(PY_VOICE_RE)];
+  assert.deepEqual(models.map((m) => ({ name: m[1], url: m[2], sha256: m[3], bytes: Number(m[4]) })),
+    PINS.filter((p) => p.kind === "model").map(({ name, url, sha256, bytes }) => ({ name, url, sha256, bytes })),
+    "every model pin is visible to the python parsers, in table order");
+  assert.deepEqual(voices.map((m) => ({ name: `${m[1]}.bin`, sha256: m[2], bytes: Number(m[3]) })),
+    PINS.filter((p) => p.kind === "voice").map(({ name, sha256, bytes }) => ({ name, sha256, bytes })),
+    "every voice pin is visible to the python parsers, in table order");
+  const spans = [...models, ...voices].map((m) => m[0]).join("\n");
+  assert.equal(crypto.createHash("sha256").update(spans).digest("hex"),
+    "ed4761ff87467ed09a735138027edeb2e8f5ef5dbfbdaf6d5ccb878f3db87636",
+    "the text the narration tools parse changed — rerun their read_pins before updating this hash");
+});
+
+/* ---------- the CLI, over a fixture root ---------- */
+
+/** A throwaway repo root holding a COPY of this script, so `REPO_ROOT` (the
+    script's `../..`) is the fixture and nothing touches this repo's
+    `mobile/models/`. The copy's retry backoff is zeroed so a refused fetch
+    takes milliseconds, and `fetch` is replaced by a preload that records each
+    URL and answers per `FAKE_FETCH`: "404", or "short" (a 200 with a 5-byte
+    body). Nothing in this suite reaches the network. */
+function fixtureRoot() {
+  const root = tmp();
+  const dir = path.join(root, "tools", "mobile");
+  fs.mkdirSync(dir, { recursive: true });
+  const src = fs.readFileSync(path.join(HERE, "fetch-models.mjs"), "utf8");
+  const fast = src.replace("const FETCH_BACKOFF_MS = 10_000;", "const FETCH_BACKOFF_MS = 0;");
+  assert.notEqual(fast, src, "the fixture zeroes the retry backoff");
+  fs.writeFileSync(path.join(dir, "fetch-models.mjs"), fast);
+  const log = path.join(root, "fetched.log");
+  const preload = path.join(root, "fake-fetch.mjs");
+  fs.writeFileSync(preload, [
+    `import fs from "node:fs";`,
+    `globalThis.fetch = async (url) => {`,
+    `  fs.appendFileSync(${JSON.stringify(log)}, url + "\\n");`,
+    `  return process.env.FAKE_FETCH === "short" ? new Response("short") : new Response("", { status: 404 });`,
+    `};`,
+  ].join("\n"));
+  const run = (args, fake = "404") => {
+    const r = spawnSync(process.execPath, ["--import", pathToFileURL(preload).href, path.join(dir, "fetch-models.mjs"), ...args],
+      { encoding: "utf8", env: { ...process.env, FAKE_FETCH: fake }, timeout: 60_000 });
+    const fetched = fs.existsSync(log) ? fs.readFileSync(log, "utf8").split("\n").filter(Boolean) : [];
+    fs.rmSync(log, { force: true });
+    return { ...r, fetched };
+  };
+  return { root, run };
+}
+
+test("CLI --check: the pin table's verdict, no download, exit 0", () => {
+  /* What render-narration.yml runs. MUTATION (RUN, red, restored): make
+     `--check` fall through to the fetch path — the fake records requests. */
+  const { run } = fixtureRoot();
+  const r = run(["--check"]);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stdout.split("\n")[0], `${PINS.length} pins, all well-formed.`);
+  assert.ok(!/carry no sha256/.test(r.stdout), "every pin is filled");
+  assert.deepEqual(r.fetched, [], "--check downloads nothing");
+});
+
+test("CLI --verify: a fixture with nothing fetched names every pin and exits 1", () => {
+  /* MUTATION (RUN, red, restored): treat a missing file as ok in
+     `verifyOnDisk` — no "not fetched" lines. MUTATION: let `--verify` exit 0
+     whatever `verifyOnDisk` says. */
+  const { root, run } = fixtureRoot();
+  fs.mkdirSync(path.join(root, MODELS_DIR), { recursive: true });
+  fs.writeFileSync(path.join(root, MODELS_DIR, "af_heart.bin"), "short");
+  const r = run(["--verify"]);
+  assert.equal(r.status, 1);
+  assert.deepEqual(r.fetched, [], "--verify downloads nothing");
+  const lines = r.stderr.split("\n").map((l) => l.trim()).filter(Boolean);
+  assert.equal(lines.length, PINS.length, r.stderr);
+  assert.ok(lines.includes("af_heart.bin: 5 bytes, pinned 522240"), "a wrong file is named with its length");
+  for (const p of PINS.filter((x) => x.name !== "af_heart.bin")) assert.ok(lines.includes(`${p.name}: not fetched`), p.name);
+  assert.ok(fs.existsSync(path.join(root, MODELS_DIR, ".gitignore")), "--verify writes the ignore file first");
+});
+
+test("CLI --fetch: every pin, FETCH_ATTEMPTS tries each, and a bad body is never written", () => {
+  /* Bare `--fetch` (also the no-argument default) is a workstation's fetch of
+     every pin. MUTATION (RUN, red, restored): write the body before
+     `verifyBuffer` accepts it — the short file lands on disk. MUTATION: one
+     attempt instead of FETCH_ATTEMPTS — the request count drops. */
+  const { root, run } = fixtureRoot();
+  for (const fake of ["404", "short"]) {
+    const r = run(["--fetch"], fake);
+    assert.equal(r.status, 1, `${fake}: a refused pin fails the run`);
+    assert.deepEqual(r.fetched, PINS.flatMap((p) => Array(FETCH_ATTEMPTS).fill(p.url)), `${fake}: every pin, in order, retried`);
+    assert.match(r.stderr, fake === "404" ? /kokoro-v1_0-q8f16\.onnx: HTTP 404\r?\n/ : /af_heart\.bin: 5 bytes, pinned 522240\r?\n/);
+    assert.deepEqual(fs.readdirSync(path.join(root, MODELS_DIR)), [".gitignore"], `${fake}: nothing unverified reaches disk`);
+  }
+  assert.equal(run([]).fetched.length, PINS.length * FETCH_ATTEMPTS, "no argument means --fetch");
+});
+
+test("CLI --fetch <platform>: today fetches what that platform bundles, which is nothing", () => {
+  /* CHARACTERIZATION of the platform argument CH2-23 deletes. */
+  const { run } = fixtureRoot();
+  for (const platform of ["ios", "android"]) {
+    const r = run(["--fetch", platform]);
+    assert.equal(r.status, 0, r.stderr);
+    assert.deepEqual(r.fetched, []);
+  }
+  const web = run(["--fetch", "web"]);
+  assert.equal(web.status, 2);
+  assert.deepEqual(web.fetched, []);
 });
 
 /* ---------- the directory ---------- */

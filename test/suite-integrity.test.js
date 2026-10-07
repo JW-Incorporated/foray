@@ -1414,7 +1414,7 @@ const FLOORS = {
      changed", the parity family table, ios-gate's success-only verdict, and
      release refusal on a red engine-parity or ios-kit. Every test names its
      mutation; each was run. Zero slack: these become required checks. */
-  "tools/ci/engine-ci.test.mjs": 41, // 2026-10-04 (ios-kit path gate, review): +1 -- the web jingle InterludeSeamTests pins is a Swift path, data/forays.json deliberately is not; 40 -> 41 // 2026-10-04 (ios-kit path gate): +2 -- a skipped newest run counts as missing for the dispatch plan; the verdict waits on a skipped run, refuses after the grace, and ships only the replacement's success; 38 -> 40 // 2026-10-04: +3 -- release-checks dispatches ci.yml on an auto-merged tip with no checks, never over an existing run, only from the default branch at the released SHA; 35 -> 38
+  "tools/ci/engine-ci.test.mjs": 42, // CH2-23 characterization (2026-10-07): +1 -- release-checks' GETs and its ci.yml dispatch POST, recorded by a local server, carry the same Authorization, Accept and X-GitHub-Api-Version; 41 -> 42 // 2026-10-04 (ios-kit path gate, review): +1 -- the web jingle InterludeSeamTests pins is a Swift path, data/forays.json deliberately is not; 40 -> 41 // 2026-10-04 (ios-kit path gate): +2 -- a skipped newest run counts as missing for the dispatch plan; the verdict waits on a skipped run, refuses after the grace, and ships only the replacement's success; 38 -> 40 // 2026-10-04: +3 -- release-checks dispatches ci.yml on an auto-merged tip with no checks, never over an existing run, only from the default branch at the released SHA; 35 -> 38
   /* The deck-drift rule (machinery audit finding 6). Decks whose PRs edit the
      deck in the same commit had a 0% false-claim rate; the drift is all in the
      ones where the marker floats free of the merge, and it runs both ways — one
@@ -1687,7 +1687,7 @@ const FLOORS = {
      this file" and "our app executes whatever is now at that URL" is one hash
      comparison, and the load-bearing test here is that an UNPINNED entry never
      verifies however right the bytes are. Zero slack. */
-  "tools/mobile/fetch-models.test.mjs": 19, // KV-R2 (2026-09-26): fp32 is bundled on iOS only and q8f16 on Android only; `bundle` is per platform and never implicit; 18 -> 19 // K-01 (2026-09-12): the pins are FILLED, and `bundle` decides what reaches a phone; 16 -> 18
+  "tools/mobile/fetch-models.test.mjs": 24, // CH2-23 characterization (2026-10-07): +5 -- the pin-text spans the python narration parsers regex are hashed and agree with PINS; the CLI over a fixture root with a fake fetch: --check (verdict, no download), --verify (every pin named, exit 1), --fetch (every pin x FETCH_ATTEMPTS, nothing unverified on disk), --fetch <platform> as it is today; 19 -> 24 // KV-R2 (2026-09-26): fp32 is bundled on iOS only and q8f16 on Android only; `bundle` is per platform and never implicit; 18 -> 19 // K-01 (2026-09-12): the pins are FILLED, and `bundle` decides what reaches a phone; 16 -> 18
   /* The weights-into-the-app step. New with the filled pins (2026-09-12): the
      failure it guards is a build that fetched 82 MB correctly and put it where
      the app does not look — green, uploaded, and answering `model-absent` to a

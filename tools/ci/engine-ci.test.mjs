@@ -641,6 +641,71 @@ test("CLI: release-checks against an unreachable API refuses (exit 1) at the tim
   assert.match(stdout, /::error::release-checks: refusing to cut an iOS TestFlight/);
 });
 
+test("CLI: release-checks' GETs and its ci.yml dispatch POST carry the same GitHub headers", async () => {
+  /* The one write this file makes (release-checks dispatching ci.yml on an
+     auto-merged tip of main) and its reads go to the same API with the same
+     token, so they must send the same Authorization, Accept and API version.
+     A local server stands in for GitHub and records every request; the run
+     then refuses at once (timeout and grace 0), which is the existing
+     "missing checks refuse" path.
+     MUTATION (RUN, red, restored): bump "X-GitHub-Api-Version" in only one of
+     the two request builders — the POST's headers stop matching the GETs'. */
+  const http = await import("node:http");
+  const { execFile } = await import("node:child_process");
+  const sha = "abcdef1234567";
+  const seen = [];
+  const server = http.createServer((req, res) => {
+    let body = "";
+    req.on("data", (c) => { body += c; });
+    req.on("end", () => {
+      seen.push({ method: req.method, url: req.url, headers: req.headers, body });
+      res.setHeader("content-type", "application/json");
+      if (req.method === "POST") { res.statusCode = 204; res.end(); return; }
+      if (req.url === "/repos/o/r/commits/main") { res.end(JSON.stringify({ sha: `${sha}${"0".repeat(27)}` })); return; }
+      res.end(JSON.stringify({ check_runs: [] }));
+    });
+  });
+  await new Promise((r) => server.listen(0, "127.0.0.1", r));
+  try {
+    const { code, stdout } = await new Promise((resolve) => {
+      execFile(process.execPath, [SCRIPT, "release-checks", sha], {
+        encoding: "utf8",
+        timeout: 30_000,
+        env: {
+          ...process.env,
+          GITHUB_TOKEN: "tok-123",
+          GH_TOKEN: "",
+          GITHUB_REPOSITORY: "o/r",
+          GITHUB_API_URL: `http://127.0.0.1:${server.address().port}`,
+          DEFAULT_BRANCH: "main",
+          REF_NAME: "main",
+          RELEASE_CHECKS_TIMEOUT_MIN: "0",
+          RELEASE_CHECKS_MISSING_GRACE_MIN: "0",
+        },
+      }, (err, out) => resolve({ code: err ? err.code : 0, stdout: out }));
+    });
+    /* The refusal is the verdict. The exit code is 1 on the Linux runners; on
+       Windows Node, process.exit after a fetch can abort in libuv
+       (`!(handle->flags & UV_HANDLE_CLOSING)`, 0xC0000409) once the verdict
+       is printed, so only "not a pass" is asserted of the code. */
+    assert.notEqual(code, 0, "missing checks still refuse after the dispatch");
+    assert.match(stdout, /dispatching ci\.yml on main/);
+    assert.match(stdout, /::error::release-checks: refusing to cut an iOS TestFlight/);
+    const posts = seen.filter((r) => r.method === "POST");
+    const gets = seen.filter((r) => r.method === "GET");
+    assert.equal(posts.length, 1, "exactly one dispatch");
+    assert.equal(posts[0].url, "/repos/o/r/actions/workflows/ci.yml/dispatches");
+    assert.deepEqual(JSON.parse(posts[0].body), { ref: "main" });
+    assert.equal(posts[0].headers["content-type"], "application/json");
+    assert.ok(gets.length >= 3, "the head lookup and both required checks");
+    const github = (h) => ({ authorization: h.authorization, accept: h.accept, version: h["x-github-api-version"] });
+    const want = { authorization: "Bearer tok-123", accept: "application/vnd.github+json", version: "2022-11-28" };
+    for (const r of [...gets, ...posts]) assert.deepEqual(github(r.headers), want, `${r.method} ${r.url}`);
+  } finally {
+    server.close();
+  }
+});
+
 test("CLI: ios-gate with SWIFT_CHANGED=false passes with no token and no network", () => {
   const out = execFileSync(process.execPath, [SCRIPT, "ios-gate"], {
     encoding: "utf8",
