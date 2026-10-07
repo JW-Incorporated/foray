@@ -295,7 +295,9 @@ test("a loading control swaps its glyph for the spinner instead of crowding both
   assert.match(run(ctx, 'agButton({ label: "Save", variant: "primary", state: "loading" })'), /class="ag-spinner"[^<]*<\/span><span>Save<\/span>/);
 });
 
-test("the spinner fills the 24px glyph slot, so a control does not change width when it starts loading", () => {
+test("the spinner fills the 24px glyph slot, so an icon or play control does not change width when it starts loading", () => {
+  /* Scope: a glyph-bearing control swaps glyph for spinner at the same size. A text-only
+     button has no glyph to replace, so it gains the spinner and may widen (Codex round-5 nit). */
   /* MUTATION (run red): change `.ag .ag-spinner { width: var(--s-6); height: var(--s-6);` back to `--s-4`. */
   assert.match(CSS, /\.ag \.ag-spinner \{ width: var\(--s-6\); height: var\(--s-6\);/);
   assert.match(read("ui/tokens.css"), /--s-6: 24px;/);
@@ -311,6 +313,24 @@ test("a buffering MiniPlayer keeps its Play glyph breathing and marks the group 
   assert.match(html, /ag-btn-play[^>]*>\s*<svg class="icon[^"]*"[^>]*><use href="ui\/icons\.svg#i-play"/);
   assert.doesNotMatch(run(markupContext(), 'agMiniPlayer({ state: "playing" })'), /aria-busy/);
   assert.match(CSS, /\.ag \.ag-mini-player\.is-buffering \.ag-btn-play \.icon \{ animation: ag-breathe/);
+});
+
+test("under Reduce Motion the buffering glyph holds at 0.9 instead of snapping back to full", () => {
+  /* BUILD-NOTES §5 motion table: Buffering breathe, reduced = "static at 0.9". The one reduce
+     block cuts every animation to 1ms x1 with no fill, so without this rule the glyph ends at 1
+     and a Reduce Motion listener sees no buffering cue at all (Codex review, round 5).
+     MUTATION (run red): delete `.ag .ag-mini-player.is-buffering .ag-btn-play .icon { opacity: .9; }` from ui/tokens.css. */
+  const tokens = read("ui/tokens.css").replace(/\/\*[\s\S]*?\*\//g, "");
+  const start = tokens.indexOf("@media (prefers-reduced-motion: reduce)");
+  assert.ok(start >= 0, "the reduce block exists");
+  let depth = 0, end = start;
+  for (let i = tokens.indexOf("{", start); i < tokens.length; i++) {
+    if (tokens[i] === "{") depth++;
+    if (tokens[i] === "}" && --depth === 0) { end = i; break; }
+  }
+  const block = tokens.slice(start, end);
+  assert.match(block, /\.ag \.ag-mini-player\.is-buffering \.ag-btn-play \.icon \{ opacity: \.9; \}/, "the static buffering opacity lives inside the reduce block");
+  assert.match(CSS, /\.ag \.ag-mini-player\.is-buffering \.ag-btn-play \.icon \{ animation: ag-breathe/, "and targets the element the breathe animates");
 });
 
 test("a disabled chip is visibly disabled, not only announced", () => {
