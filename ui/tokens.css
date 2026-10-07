@@ -88,6 +88,7 @@
   --row-episode: 96px; --row-queue: 64px; --row-show: 64px;   /* episode rows carry a two-line why-line */
   --tab-bar: 64px; --mini: 64px; --field: 52px;
   --tap: 44px;
+  --icon-sm: 20px; --icon: 24px; --icon-tab: 28px; --icon-lg: 32px; --icon-play: 36px;   /* chips and captions / default / tab bar / transport secondary / inside the 88 Play and 56 skips */
   --dock-inset: 12px;           /* the Dock floats this far above the safe area */
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -389,6 +390,37 @@
 .lit-40 { --lit-r: 40px; }
 .lit-64 { --lit-r: 64px; }
 .lit-96 { --lit-r: 96px; }
+
+/* ---------------------------------------------------------------------------
+   6b. Icons. One sprite (ui/icons.svg), referenced by <use>, painted by
+       currentColor: `<svg class="icon icon-28" aria-hidden="true"><use href=
+       "ui/icons.svg#i-house"/></svg>`, built by agIcon() in ui/icons.js. The size is
+       a class (strict CSP: no inline style) that moves one token; 24 is the default.
+       A 24px glyph sits on the 24px grid of a Phosphor Regular drawing; the
+       transport glyphs are 36 inside the 88 Play and the 56 skips, 24 inside the 48
+       mini Play. `stroke: none`: every symbol is filled paths, so a forced-colours
+       mode recolours it through currentColor like text.
+   --------------------------------------------------------------------------- */
+.ag .icon, .room .icon {
+  width: var(--icon-size, var(--icon));
+  height: var(--icon-size, var(--icon));
+  flex: none;
+  fill: currentColor;
+  stroke: none;
+  vertical-align: middle;
+  pointer-events: none;      /* the control owns the tap, never the glyph */
+}
+.ag .icon-20, .room .icon-20 { --icon-size: var(--icon-sm); }
+.ag .icon-28, .room .icon-28 { --icon-size: var(--icon-tab); }
+.ag .icon-32, .room .icon-32 { --icon-size: var(--icon-lg); }
+.ag .icon-36, .room .icon-36 { --icon-size: var(--icon-play); }
+
+/* The sprite's gallery section (agIconGallery() in ui/icons.js): a name under each glyph. */
+.ag .ag-icon-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: var(--s-4); }
+.ag .ag-icon-cell { display: flex; flex-direction: column; align-items: center; gap: var(--s-2); color: var(--text); }
+.ag .ag-icon-cell.ag-icon-sizes { grid-column: 1 / -1; }
+.ag .ag-icon-row { display: flex; align-items: center; gap: var(--s-2); }
+.ag .ag-icon-name { font: var(--t-caption); color: var(--text-3); }
 
 /* ---------------------------------------------------------------------------
    7. Material fallbacks, all in one place.
