@@ -100,3 +100,35 @@ test("the gallery sheet has an explicit gate opener and close control", () => {
   assert.match(config, /dialog: "#gallery-sheet", opener: "#gallery-sheet-open", close: "#gallery-sheet-close"/);
   assert.match(states, /label: "cream-sheet-open"[\s\S]*openGallerySheet/);
 });
+
+test("a resting toast and its Undo are out of focus, pointer and the accessibility tree", () => {
+  /* Review blocker (p3-primitives, second look): the resting toast was hidden
+     only by opacity, so its Undo stayed tabbable, clickable and announced.
+     MUTATION: drop the `(d.show ? "" : " inert")` term in tactileToast -> the
+     resting markup assertion fails.
+     MUTATION 2: delete `visibility: hidden;` from `.toast` -> the CSS half fails.
+     MUTATION 3: delete `toast.setAttribute("inert", "")` in tactileSetToast ->
+     hiding a shown toast leaves it interactive and the helper half fails. */
+  const p = load();
+  const resting = p.tactileToast({ text: "Removed from Up Next", action: "Undo" });
+  const shown = p.tactileToast({ text: "Saved for later", action: "Undo", show: true });
+  assert.match(resting, /^<div class="toast" role="status" inert>/, "the resting toast is inert");
+  assert.match(resting, /<button type="button" class="textbtn [^"]*"[^>]*>Undo<\/button>/, "fixture premise: Undo is rendered inside it");
+  assert.match(shown, /^<div class="toast is-visible" role="status">/, "a shown toast is not inert");
+  assert.doesNotMatch(shown, /\binert\b/);
+
+  assert.match(rule(".toast"), /(?:^|;)\s*visibility:\s*hidden/, "CSS keeps a resting toast out of hit-testing and the tab order");
+  assert.match(rule(".toast.is-visible"), /visibility:\s*visible/);
+  assert.match(rule(".toast"), /transition:[^;]*visibility var\(--d-quick\) linear/, "visibility stays on for the whole fade-out");
+
+  const attrs = new Set(["inert"]);
+  const classes = new Set();
+  const el = {
+    classList: { toggle(name, on) { if (on) classes.add(name); else classes.delete(name); } },
+    setAttribute(name) { attrs.add(name); }, removeAttribute(name) { attrs.delete(name); },
+  };
+  p.tactileSetToast(el, true);
+  assert.ok(classes.has("is-visible") && !attrs.has("inert"), "showing removes inert with the class");
+  p.tactileSetToast(el, false);
+  assert.ok(!classes.has("is-visible") && attrs.has("inert"), "hiding restores inert with the class");
+});

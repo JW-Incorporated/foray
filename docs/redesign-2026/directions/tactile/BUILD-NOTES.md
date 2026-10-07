@@ -368,6 +368,7 @@ with any spring-to-linear tool if tuned on device:
   --spring-sheet: linear(0, 0.01 2%, 0.07 6%, 0.24 13%, 0.52 22%, 0.78 32%, 0.95 42%, 1.03 52%, 1.04 60%, 1.02 70%, 1 82%, 1);
   --ease-quick: cubic-bezier(.2,.8,.2,1);
   --d-snap: 220ms; --d-settle: 320ms; --d-sheet: 480ms; --d-quick: 160ms; --d-draw: 280ms;
+  --d-buffer: 1000ms; --d-skeleton: 1200ms; /* buffering pulse, skeleton shimmer (stilled, not collapsed, under reduced motion) */
 }
 @media (prefers-reduced-motion: reduce) {
   :root { --d-snap: 1ms; --d-settle: 1ms; --d-sheet: 1ms; --d-draw: 1ms; --d-quick: 120ms;
@@ -439,6 +440,15 @@ Playing) inside a well.
   with `x`/`width` proportional to its runtime over the total. Gap between
   rects 2 units (never below 1px rendered). Minimum rendered width per
   segment 3px; if narrower, merge visually but keep the data.
+  **Build (Phase 3 primitives, review follow-up):** a bar under its minimum
+  is pinned at it and the other bars share the remaining width in runtime
+  proportion (repeated until stable), so bars never overlap, the last one
+  ends at 1000, and every segment stays individually drawn. Only when the
+  minima alone exceed the width are all bars scaled down evenly. Because
+  bars are then not exactly runtime-proportional, progress, the needle and
+  the scrubber's pointer map through the drawn bars (`tactileBandLayout`,
+  `tactileBandX`, `tactileBandFraction` in `ui/primitives.js`), so a time at
+  a segment boundary always lands in the gap between those two bars.
 - Colours: `fill: var(--seg-cN)` with `N = hash(showId) % 8`, stable across
   the app. Narration items: `fill: var(--seg-narration)` with a diagonal
   hatch pattern (3px lines, 3px gaps, 45°) so narration reads without

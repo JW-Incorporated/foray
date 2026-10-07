@@ -18,20 +18,37 @@ var TACTILE_ICON_IDS = new Set([
   "band", "needle", "bridge", "narration", "knob",
 ]);
 
-function tactileIcon(id, size) {
-  var name = TACTILE_ICON_IDS.has(id) ? id : "ph-radio";
-  var cls = size === "sm" ? " i--sm" : size === "lg" ? " i--lg" : "";
-  return '<svg class="i' + cls + '" aria-hidden="true" focusable="false"><use href="' + esc(safeUrl("#" + name)) + '"></use></svg>';
+/* Sprite references are same-document fragments. safeUrl() deliberately refuses
+ * those (it is the http(s) gate, and ui/downloads.js reads its "#" answer as
+ * "not a URL"), so icon hrefs never go through it. tactileSpriteRef is the only
+ * builder of an icon sprite href: it can only answer "#" + an id from the closed list
+ * above, so no caller string ever reaches the attribute. */
+function tactileSpriteRef(id) {
+  return "#" + (TACTILE_ICON_IDS.has(id) ? id : "ph-radio");
 }
 
+function tactileIcon(id, size) {
+  var cls = size === "sm" ? " i--sm" : size === "lg" ? " i--lg" : "";
+  return '<svg class="i' + cls + '" aria-hidden="true" focusable="false"><use href="' + esc(tactileSpriteRef(id)) + '"></use></svg>';
+}
+
+/* Drawn size of each frame in CSS px (the --art-* tokens; hero is --key-xl +
+ * --s-4). The image asks Apple's CDN for 3x that (artUrl, as rowArtImg does),
+ * never the 600px original, and reserves its box. */
+var TACTILE_ART_PX = { row: 56, queue: 48, mini: 44, disc: 40, hero: 96 };
+
+/* Artwork is decorative by default: every caller in the system sits beside the
+ * title it would repeat, so `alt=""` keeps screen readers from reading it twice.
+ * A caller whose artwork stands alone passes `alt` explicitly. */
 function tactileArtFrame(data) {
   var d = data || {};
   var size = ["row", "queue", "mini", "disc", "hero"].includes(d.size) ? d.size : "row";
   var shape = d.round ? " art-frame--round" : "";
   var state = d.loading ? " is-loading" : d.offline ? " is-offline" : "";
-  var label = d.alt || d.title || "Podcast artwork";
+  var label = typeof d.alt === "string" ? d.alt : "";
+  var px = TACTILE_ART_PX[size];
   var image = d.url
-    ? '<img src="' + esc(safeUrl(d.url)) + '" alt="' + esc(label) + '">'
+    ? '<img src="' + esc(safeUrl(artUrl(d.url, px * 3))) + '" alt="' + esc(label) + '" loading="lazy" decoding="async" width="' + px + '" height="' + px + '">'
     : '<span class="art-frame__initials" aria-hidden="true">' + esc(d.initials || "4a") + "</span>";
   return '<span class="art-frame art-frame--' + esc(size) + shape + state + '"' + (d.loading ? ' aria-busy="true"' : "") + ">" + image + "</span>";
 }
@@ -132,32 +149,103 @@ function tactileBandRuns(segments, widths) {
   return runs;
 }
 
+function tactileBandSegments(input) {
+  return (Array.isArray(input) ? input : []).map(function (segment, index) {
+    var s = segment || {};
+    return {
+      showId: String(s.showId || (s.narration ? "narration" : "show-" + index)),
+      show: String(s.show || (s.narration ? "4a narration" : "Show")),
+      duration: Math.max(1, Number(s.duration) || 1),
+      narration: Boolean(s.narration),
+    };
+  });
+}
+
+/* Band geometry in the 0-1000 viewBox. Bars sit 2 units apart, in order, and
+ * the last one ends at 1000. Each bar gets its runtime share of the width the
+ * gaps leave, but never less than its rendered minimum (3px; 8px for hatched
+ * narration outside the mini and line bands). A bar under its minimum is
+ * pinned at it and the others share what is left in runtime proportion,
+ * repeated until nothing else falls under (so pinning can never push a later
+ * bar past the end or under a neighbour). When the minima alone cannot fit (a
+ * band of hundreds of clips on a narrow render) every bar is scaled down evenly
+ * from its minimum: still ordered, still inside the box; that is the one case a
+ * bar renders under its minimum. Each box carries the runtime fractions it
+ * covers (`from`, `to`) so progress maps onto the bars, not onto raw runtime. */
+function tactileBandLayout(segments, renderWidth, kind) {
+  var n = segments.length;
+  if (!n) return [];
+  var gap = 2;
+  var width = Math.max(1, Number(renderWidth) || 345);
+  var available = Math.max(0, 1000 - gap * (n - 1));
+  var mins = segments.map(function (segment) {
+    return (segment.narration && kind !== "mini" && kind !== "line" ? 8 : 3) / width * 1000;
+  });
+  var minSum = mins.reduce(function (sum, m) { return sum + m; }, 0);
+  var widths;
+  if (minSum >= available) {
+    widths = mins.map(function (m) { return m * available / minSum; });
+  } else {
+    var pinned = mins.map(function () { return false; });
+    var changed = true;
+    while (changed) {
+      var free = available;
+      var freeTime = 0;
+      segments.forEach(function (segment, i) { if (pinned[i]) free -= mins[i]; else freeTime += segment.duration; });
+      widths = segments.map(function (segment, i) { return pinned[i] ? mins[i] : segment.duration / freeTime * free; });
+      changed = false;
+      widths.forEach(function (w, i) { if (!pinned[i] && w < mins[i]) { pinned[i] = true; changed = true; } });
+    }
+  }
+  var total = segments.reduce(function (sum, segment) { return sum + segment.duration; }, 0);
+  var cursor = 0;
+  var elapsed = 0;
+  return segments.map(function (segment, i) {
+    var box = { x: cursor, width: widths[i], from: elapsed / total, to: (elapsed + segment.duration) / total };
+    cursor += widths[i] + gap;
+    elapsed += segment.duration;
+    return box;
+  });
+}
+
+/* Runtime fraction (0-1) -> viewBox x on the laid-out bars. */
+function tactileBandX(boxes, fraction) {
+  var f = Math.max(0, Math.min(1, Number(fraction) || 0));
+  if (!boxes.length) return f * 1000;
+  for (var i = 0; i < boxes.length; i += 1) {
+    var box = boxes[i];
+    if (f <= box.to || i === boxes.length - 1) {
+      var span = box.to - box.from;
+      return box.x + (span > 0 ? Math.max(0, Math.min(1, (f - box.from) / span)) : 1) * box.width;
+    }
+  }
+  return 1000;
+}
+
+/* viewBox x -> runtime fraction; a point in a gap reads as the end of the bar before it. */
+function tactileBandFraction(boxes, x) {
+  var v = Math.max(0, Math.min(1000, Number(x) || 0));
+  if (!boxes.length) return v / 1000;
+  for (var i = 0; i < boxes.length; i += 1) {
+    var box = boxes[i];
+    var next = boxes[i + 1];
+    if (!next || v < next.x) {
+      return box.from + Math.max(0, Math.min(1, box.width > 0 ? (v - box.x) / box.width : 1)) * (box.to - box.from);
+    }
+  }
+  return 1;
+}
+
 function tactileBand(data) {
   var d = data || {};
   var kind = ["mini", "detail", "scrub", "line"].includes(d.kind) ? d.kind : "mini";
-  var input = Array.isArray(d.segments) ? d.segments : [];
-  var segments = input.map(function (segment, index) {
-    return {
-      showId: String(segment.showId || (segment.narration ? "narration" : "show-" + index)),
-      show: String(segment.show || (segment.narration ? "4a narration" : "Show")),
-      duration: Math.max(1, Number(segment.duration) || 1),
-      narration: Boolean(segment.narration),
-    };
-  });
+  var segments = tactileBandSegments(d.segments);
   var total = segments.reduce(function (sum, segment) { return sum + segment.duration; }, 0) || 1;
   var renderWidth = Math.max(1, Number(d.renderWidth) || 345);
-  var gap = 2;
-  var cursor = 0;
-  var widths = segments.map(function (segment) {
-    var raw = segment.duration / total * 1000;
-    var minPx = segment.narration && kind !== "mini" && kind !== "line" ? 8 : 3;
-    var width = Math.max(minPx / renderWidth * 1000, raw - gap);
-    var out = { x: cursor, width: Math.min(width, Math.max(0, 1000 - cursor)) };
-    cursor += raw;
-    return out;
-  });
+  var widths = tactileBandLayout(segments, renderWidth, kind);
   var id = String(d.id || "dial-band").replace(/[^A-Za-z0-9_-]/g, "-");
   var progress = Math.max(0, Math.min(1, Number(d.progress) || 0));
+  var progressX = tactileBandX(widths, progress);
   var current = Math.max(0, Math.min(segments.length - 1, Number(d.currentIndex) || 0));
   var codes = new Map();
   segments.forEach(function (segment) {
@@ -189,21 +277,21 @@ function tactileBand(data) {
     : ' aria-label="' + esc(d.label || "Foray band with " + codes.size + " stations") + '"';
   return '<svg class="band band--' + esc(kind) + (d.buffering ? " band--buffering" : "") + '" data-draw="true" role="' + role + '"' + aria + ' viewBox="0 0 1000 60" preserveAspectRatio="none">' +
     '<defs><pattern id="' + esc(id) + '-hatch" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="12" class="t-band__hatch"></rect></pattern>' +
-    '<clipPath id="' + esc(id) + '-progress"><rect class="band__progress" x="0" y="0" width="' + (progress * 1000).toFixed(2) + '" height="60"></rect></clipPath></defs>' +
+    '<clipPath id="' + esc(id) + '-progress"><rect class="band__progress" x="0" y="0" width="' + progressX.toFixed(2) + '" height="60"></rect></clipPath></defs>' +
     '<g class="band__draw"><g class="t-band__base">' + bars + '</g><g class="t-band__fill" clip-path="url(#' + esc(id) + '-progress)">' + bars + "</g>" + labels +
-    '<g class="needle" transform="translate(' + (progress * 1000).toFixed(2) + ' 0)"><rect x="-1" y="3" width="2" height="39" rx="1"></rect><circle cx="0" cy="3" r="4"></circle></g></g></svg>';
+    '<g class="needle" transform="translate(' + progressX.toFixed(2) + ' 0)"><rect x="-1" y="3" width="2" height="39" rx="1"></rect><circle cx="0" cy="3" r="4"></circle></g></g></svg>';
 }
 
 function tactileWireScrubber(scrubber, data) {
   if (!scrubber || scrubber.getAttribute("role") !== "slider") return function () {};
   var d = data || {};
   var total = Math.max(1, Number(d.totalSeconds || scrubber.getAttribute("aria-valuemax")) || 1);
-  var segments = Array.isArray(d.segments) ? d.segments : [];
-  var segmentTotal = segments.reduce(function (sum, segment) { return sum + Math.max(0, Number(segment.duration) || 0); }, 0);
+  var segments = tactileBandSegments(d.segments);
+  var segmentTotal = segments.reduce(function (sum, segment) { return sum + segment.duration; }, 0);
   var boundaries = [0];
   var elapsed = 0;
   segments.forEach(function (segment) {
-    elapsed += Math.max(0, Number(segment.duration) || 0);
+    elapsed += segment.duration;
     boundaries.push(segmentTotal ? elapsed / segmentTotal * total : 0);
   });
   if (boundaries[boundaries.length - 1] !== total) boundaries.push(total);
@@ -211,13 +299,23 @@ function tactileWireScrubber(scrubber, data) {
   var needle = scrubber.querySelector(".needle");
   var dragging = false;
 
+  /* The bars are laid out with minimum widths (tactileBandLayout), so the
+     needle and the pointer map through the same boxes the band drew, never
+     through raw runtime: a needle at a boundary sits in the gap between bars. */
+  function measure() {
+    var rect = scrubber.getBoundingClientRect ? scrubber.getBoundingClientRect() : null;
+    return rect && rect.width > 0 ? rect : null;
+  }
+  function layout(rect) {
+    return tactileBandLayout(segments, rect ? rect.width : Number(d.renderWidth) || 345, "scrub");
+  }
   function clamp(value) { return Math.max(0, Math.min(total, Math.round(Number(value) || 0))); }
   function valueText(value) {
     return typeof d.formatValue === "function" ? d.formatValue(value) : value + " seconds of " + Math.round(total) + " seconds";
   }
   function setValue(next, source, commit) {
     var value = clamp(next);
-    var x = value / total * 1000;
+    var x = tactileBandX(layout(measure()), value / total);
     scrubber.setAttribute("aria-valuenow", String(value));
     scrubber.setAttribute("aria-valuetext", valueText(value));
     if (progressRect) progressRect.setAttribute("width", x.toFixed(2));
@@ -226,20 +324,24 @@ function tactileWireScrubber(scrubber, data) {
     if (commit && typeof d.onChange === "function") d.onChange(value, source);
     return value;
   }
+  function pointerUnits(event, rect) { return (event.clientX - rect.left) / rect.width * 1000; }
   function pointerValue(event) {
-    var rect = scrubber.getBoundingClientRect();
-    if (!rect || rect.width <= 0) return Number(scrubber.getAttribute("aria-valuenow")) || 0;
-    return (event.clientX - rect.left) / rect.width * total;
+    var rect = measure();
+    if (!rect) return Number(scrubber.getAttribute("aria-valuenow")) || 0;
+    return tactileBandFraction(layout(rect), pointerUnits(event, rect)) * total;
   }
   function snappedPointerValue(event) {
-    var rect = scrubber.getBoundingClientRect();
-    var value = pointerValue(event);
-    if (!rect || rect.width <= 0) return value;
-    var threshold = 12 / rect.width * total;
-    var closest = boundaries.reduce(function (match, boundary) {
-      return Math.abs(boundary - value) < Math.abs(match - value) ? boundary : match;
-    }, boundaries[0]);
-    return Math.abs(closest - value) <= threshold ? closest : value;
+    var rect = measure();
+    if (!rect) return pointerValue(event);
+    var boxes = layout(rect);
+    var units = pointerUnits(event, rect);
+    var best = null;
+    var bestPx = Infinity;
+    boundaries.forEach(function (boundary) {
+      var px = Math.abs(tactileBandX(boxes, boundary / total) - units) / 1000 * rect.width;
+      if (px < bestPx) { bestPx = px; best = boundary; }
+    });
+    return bestPx <= 12 ? best : tactileBandFraction(boxes, units) * total;
   }
   function pointerDown(event) {
     dragging = true;
@@ -304,7 +406,7 @@ function tactileWireScrubber(scrubber, data) {
 
 function tactileGauge(data) {
   var d = data || {};
-  return '<figure class="gauge" role="img" aria-label="' + esc(d.label || "About one in three picks is new ground") + '"><figcaption><span class="heading">' + esc(d.title || "New ground") + '</span><span class="readout">' + esc(d.readout || "1 in 3") + '</span></figcaption><div class="gauge__well" aria-hidden="true"><span class="gauge__fill"></span><span class="gauge__needle"></span></div><p>' + esc(d.copy || "About a third of today’s episodes sit outside your usual subjects. 4a keeps it that way.") + "</p></figure>";
+  return '<figure class="gauge" role="img" aria-label="' + esc(d.label || "About one in three picks is new ground") + '"><figcaption><span class="heading">' + esc(d.title || "New ground") + '</span><span class="readout">' + esc(d.readout || "1 in 3") + '</span></figcaption><div class="gauge__well" aria-hidden="true"><span class="gauge__fill"></span><span class="gauge__needle"></span></div><p>' + esc(d.copy || "About a third of today sits outside your usual subjects. 4a keeps it that way.") + "</p></figure>";
 }
 
 function tactileDisplayName(name) {
@@ -428,7 +530,18 @@ function tactileEmpty(data) {
   return '<section class="empty"><svg aria-hidden="true" viewBox="0 0 96 96"><rect x="18" y="26" width="60" height="46" rx="12"></rect><path d="M30 42h36M34 54h12M54 54h8"></path><circle cx="38" cy="66" r="3"></circle><circle cx="62" cy="66" r="3"></circle><path d="M34 26c2-9 26-9 28 0"></path></svg><p>' + esc(d.copy || "Nothing here yet. Follow a show and it lands here.") + "</p>" + tactileKeycap({ size: "md", variant: "persimmon", text: d.action || "Find a show", label: d.action || "Find a show" }) + "</section>";
 }
 
+/* A resting toast is invisible, so its Undo must be unreachable too: it renders
+ * `inert` (no focus, no pointer, out of the accessibility tree) and the CSS
+ * adds `visibility: hidden`. Screens show and hide it with tactileSetToast,
+ * which moves the class and the inert flag together, never one without the other. */
 function tactileToast(data) {
   var d = data || {};
-  return '<div class="toast' + (d.show ? " is-visible" : "") + '" role="status"><span>' + esc(d.text || "Removed from Up Next") + "</span>" + tactileTextButton({ text: d.action || "Undo" }) + "</div>";
+  return '<div class="toast' + (d.show ? " is-visible" : "") + '" role="status"' + (d.show ? "" : " inert") + '><span>' + esc(d.text || "Removed from Up Next") + "</span>" + tactileTextButton({ text: d.action || "Undo" }) + "</div>";
+}
+
+function tactileSetToast(toast, visible) {
+  if (!toast) return;
+  toast.classList.toggle("is-visible", Boolean(visible));
+  if (visible) toast.removeAttribute("inert");
+  else toast.setAttribute("inert", "");
 }

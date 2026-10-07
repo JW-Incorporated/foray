@@ -453,7 +453,7 @@ const FLOORS = {
   "test/api-origin.test.js": 5,
   "test/clock-formatters.test.js": 2, // audit round 3, arch-drift-10 (2026-09-25): the episode, Foray and chapter clocks share one floored rule
   "test/jingle-duration.test.js": 1, // audit round 3, arch-drift-4 (2026-09-25): the generator's jingle length is the player's, which is the interlude file's
-  "test/app-security.test.js": 26,
+  "test/app-security.test.js": 27,
   "test/app-split.test.js": 7, // Redesign 2026 phase 0d: app.js split into a core + ui/*.js — load order, no duplicate declarations, every shipping path lists the files; each test names its mutation
   "test/app-surface-round3.test.js": 23, // round-3 completeness sweep: app-2-6 a changed or withdrawn thumbs vote is logged with the vote it replaces (the suite stood at 22 unfloored); 20 -> 23 // audit round 3 (2026-09-25, lane L2): the app-surface fixes with no better-fitting suite (app-2-14/15, app-1-15/16, app-2-1/2/3/5/6/7/8/9/10/11/12/13, app-3-1, data-integrity-8), each test naming its id and the mutation that kills it; zero slack; new
   "test/episode-page.test.js": 8,
@@ -575,7 +575,7 @@ const FLOORS = {
      in progress, and client.js's published surface. Each test is one deleted
      line from a download that goes to the wrong URL, a device called clear
      with files on it, or a half-heard episode deleted. */
-  "test/downloads.test.js": 10, // PQ-18 (#29): the plan's 8 + eviction wiring + client.js's window.forayDownloads pin
+  "test/downloads.test.js": 11, // PQ-18 (#29): the plan's 8 + eviction wiring + client.js's window.forayDownloads pin; a non-http(s) enclosure (a "#" fragment) never reaches the plugin
   "test/lab-flag.test.js": 5, // Redesign 2026 phase 0e: a lab build (window.__FORAY_LAB__ === true) never signs up, refreshes or POSTs events -- three layers (sbAuth, ensureAnonSessionOnce, syncEventsOnce), each with a lab-off twin that proves the fixture reaches the network, plus "only boolean true" and "app source never sets it"
   "test/event-sync-mapping.test.js": 5, // PKG-17 (docs/roadmap/catalogue-personalization.md): exact wire rows for picked (contract archetype or null), saved, thumbs (no node -> null, episode_slug absent not null), session_shown -> session_built, and a local-only-only batch marked synced with no POST; the Not-sent -> null and per-chunk cases live in legal-citations and data-deletion (app-1-10)
   /** The field record's surface (#264) — see the note beside the two `player/`
@@ -1250,13 +1250,13 @@ const FLOORS = {
      re-own everything a colour-scheme query can change, check the JS-written
      claim, and resolve the cascade for "Delete everything" to the danger
      token. */
-  "test/ui-tokens-dial.test.js": 14, // Redesign 2026 Phase 3 tokens (Tactile): faces, token tables, both schemes, AA contrast, the name rule, one reduced-motion block
+  "test/ui-tokens-dial.test.js": 15, // Redesign 2026 Phase 3 tokens (Tactile): faces, token tables, both schemes, AA contrast, the name rule, one reduced-motion block; every duration is a :root motion token
   "test/tactile-icons.test.js": 9, // Redesign 2026 Phase 3 icon sprite (Tactile): the 41 ids once each, an inert 0x0 sprite first in body, the families and knob anatomy, every <use> and icon <svg>, the guarded gallery and its harness state, the .i CSS; scanners prove their teeth on fixtures/mutations
   "test/tactile-keycap.test.js": 4, // Redesign 2026 Phase 3 primitives (Tactile): key sizes/variants, lip and press, disabled/loading/offline/focus states, escaped non-nested controls
-  "test/tactile-band.test.js": 5, // Redesign 2026 Phase 3 primitives (Tactile): proportional bars, run labels and 24px gate, progress clip, scrub ARIA, narration hatch
-  "test/tactile-rows.test.js": 5, // Redesign 2026 Phase 3 primitives (Tactile): row heights, one trailing key, meta action/wrap, short show names, safe artwork URLs
+  "test/tactile-band.test.js": 11, // Redesign 2026 Phase 3 primitives (Tactile): proportional bars, run labels and 24px gate, progress clip, scrub ARIA, narration hatch; review follow-up: non-overlapping minimum-width layout (interior, trailing, over-full), progress and scrubber mapped through the drawn bars
+  "test/tactile-rows.test.js": 9, // Redesign 2026 Phase 3 primitives (Tactile): row heights, one trailing key, meta action/wrap, short show names, safe artwork URLs; bridge metadata, skeleton anatomy, decorative artwork alt, 3x CDN artwork sizes
   "test/tactile-deck.test.js": 5, // Redesign 2026 Phase 3 primitives (Tactile): three-tab deck, conditional badge, collapsed state, mini landmark and sibling controls, gallery coverage
-  "test/tactile-sheet.test.js": 4, // Redesign 2026 Phase 3 primitives (Tactile): modal anatomy, focus in/trap/restore, material/motion, gallery gate scenario
+  "test/tactile-sheet.test.js": 5, // Redesign 2026 Phase 3 primitives (Tactile): modal anatomy, focus in/trap/restore, material/motion, gallery gate scenario; resting toast inert and visibility-hidden
   "test/ui-tokens.test.js": 38, // audit round 3 integration: the real post-merge count, 37 -> 38 // round-2 sweep (2026-09-23): a control marked loading has a look and Reduce Motion stills it (p-impatient-4); the current Up Next row is drawn (p-impatient-6); 35 -> 37 | audit round 2 (2026-09-23): one rule per role — no C1 bytes, amber ranges, one field, one section-title step, row titles 600, one gutter, flat rows, no branch dot, the search ring, one reduce-motion block, amber min-left, one wordmark on Home, the episode head; 22 -> 35 | earlier: review of visual pass 1 (2026-09-23): the resting star is --muted, one colour-scheme + one focus ring, note links are authored, violet primaries are never on the card radius, row/card titles are the display face; 17 -> 22 // visual pass 1 (2026-09-23): the radius, type and elevation families are enforced like the palette; the two heading kinds; one wordmark; 11 -> 17 // 2026-09-23 audit sweep (qa row 79): --faint paints no text or live control; --muted is readable on every surface; the --faint utility has no user; 8 -> 11
   /* 2026-09-23 audit sweep: docs/audit/status.tsv has one row per finding under its own title, refuted/deliberate verdicts are kept, and the README table agrees. */
   "test/audit-status.test.js": 9, // round-3 completeness sweep (2026-09-25): the round-3 ledger gets the same three promises, with the README counting L7's own-PR rows separately; 6 -> 9 // round-2 sweep (2026-09-23): the round-2 ledger gets the same three promises (one row per finding, verdicts kept, README counts agree); 3 -> 6
