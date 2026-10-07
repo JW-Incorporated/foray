@@ -399,7 +399,12 @@ test("REVIEW: the returning-listener popup claims a stretch pick only where Home
     episodes: /miniCardV2/.test(body("suggestedHtml")) && /role !== "stretch"/.test(body("miniCardV2")),
   };
   assert.deepStrictEqual(hasStretch, { forays: true, playlists: false, episodes: true }, "fixture: where the stretch picks live");
-  const popup = literals(APP_SRC).map((l) => l.text).find((t) => /outside your usual subjects/.test(t));
+  /* The popup is the literal that makes the per-section claim ("include one
+     pick"), not merely the first one with the phrase: the Tactile gauge
+     primitive (ui/primitives.js, loaded before ui/onboarding.js) carries the
+     direction's own "About a third of today sits outside your usual subjects",
+     which is the exploration-floor readout, not this claim. */
+  const popup = literals(APP_SRC).map((l) => l.text).find((t) => /outside your usual subjects/.test(t) && /include one pick/.test(t));
   assert.ok(popup, "the popup sentence exists");
   const claim = popup.split(/(?<=\.)\s+/).find((sentence) => /outside your usual subjects/.test(sentence));
   /* Audit round 2 (p-first-11): the Forays row has a stretch pick only when the

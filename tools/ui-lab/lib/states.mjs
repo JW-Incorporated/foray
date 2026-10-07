@@ -56,8 +56,16 @@ async function typeSearch(page, text) {
 }
 
 async function showGallerySection(page, selector) {
-  await page.locator(selector).scrollIntoViewIfNeeded();
+  const openSheet = page.locator("#gallery-sheet:not([hidden])");
+  if (await openSheet.count()) await page.locator("#gallery-sheet-close").click();
+  await page.locator(selector).evaluate((el) => el.scrollIntoView({ block: "start", inline: "nearest" }));
   await wait(page, 200);
+}
+
+async function openGallerySheet(page) {
+  await page.locator("#gallery-sheet-open").click();
+  await page.waitForSelector("#gallery-sheet:not([hidden])", { timeout: 10000 });
+  await wait(page, 300);
 }
 
 /** Routes every seeded profile can show. `fx` supplies real ids. */
@@ -158,10 +166,20 @@ export function appStates(fx) {
     },
     {
       id: "gallery",
-      description: "Tactile foundation gallery: the inline icon family in the primary Cream scheme.",
+      description: "Tactile foundation gallery: every primitive and state in Cream and Bakelite, plus the icon family.",
       seed: "dismissed",
       steps: [
-        { label: "icons-bold", route: "?gallery=1#/gallery", ready: ".gallery-icons" },
+        { label: "type-and-contrast", route: "?gallery=1#/gallery", ready: ".gallery-type" },
+        { label: "cream-controls", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-light-controls") },
+        { label: "cream-surfaces", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-light-surfaces") },
+        { label: "cream-rows", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-light-rows") },
+        { label: "cream-navigation", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-light-navigation") },
+        { label: "cream-sheet-open", route: "#/gallery", run: (page) => openGallerySheet(page) },
+        { label: "bakelite-controls", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-dark-controls") },
+        { label: "bakelite-surfaces", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-dark-surfaces") },
+        { label: "bakelite-rows", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-dark-rows") },
+        { label: "bakelite-navigation", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-dark-navigation") },
+        { label: "icons-bold", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-bold-title") },
         { label: "icons-fill", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-fill-title") },
         { label: "icons-custom", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-custom-title") },
       ],

@@ -352,6 +352,27 @@ test("Download enqueues the ORIGINAL audio_url with the build's user agent, Wi-F
   assert.strictEqual(rowAtEnqueue.items[m.item.id].source_url, m.item.audio_url);
 });
 
+test("an enclosure that is not an http(s) URL (a \"#\" fragment) never reaches the queue or the plugin", async () => {
+  /* startDownload's scheme gate is `/^https?:/i` on safeUrl's answer. safeUrl
+     passes an icon sprite fragment ("#ph-play") through verbatim (every <use
+     href> goes through it), so the old gate, `safeUrl(url) === "#"`, would
+     have enqueued "#ph-play" (third review of redesign/tactile-p3-primitives).
+     MUTATION: put the gate back to `if (safeUrl(url) === "#") return null;`
+     -> "#ph-play" is enqueued and this fails.
+     MUTATION 2: delete the gate line -> every entry below is enqueued. */
+  const cap = makeCapacitor({ enqueue: { ok: true } });
+  const m = mount({ capacitor: cap });
+  assert.ok(m.state.downloadBridge, "fixture premise: the shell has a bridge");
+  for (const bad of ["#ph-play", "#knob", "#ep-1", "#/library", "javascript:alert(1)"]) {
+    m.item.audio_url = bad;
+    const res = await m.ctx.startDownload(m.item.id);
+    await settle();
+    assert.strictEqual(res, null, `${bad} is refused`);
+  }
+  assert.ok(!cap.calls.some((c) => c.method === "enqueue"), "the plugin was never asked");
+  assert.ok(!m.record()?.items?.[m.item.id], "no queued row was written");
+});
+
 test("a downloadProgress event repaints the control in place: Downloading 43%, disabled", async () => {
   /* MUTATION: delete `repaintDownload(report.id);` in onDownloadEvent — the
      record says 43% and the page still says "Download queued".
