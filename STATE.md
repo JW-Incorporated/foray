@@ -7,6 +7,11 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-10-07 — DAI-08: ADR-0008 pad probes (`docs/roadmap/dai.md` DAI-08), day 1 of 2
+
+- **Branch:** `data/ad-pad-probes-r1`. **Owned:** `data/ad-pad-probes.json`, `data/segment-sources.json` (the day-2 stamp). Other sessions: do not write either file, and do not run `probe-ad-pad.mjs` or `stamp-ad-pad.mjs`, until this entry moves to completed.
+- **Day 1:** one `probe-ad-pad.mjs --all` pass (2-byte ranged GETs through the politeness gate). **Day 2** (rerun, then `stamp-ad-pad.mjs` + `--check`) may start no earlier than 24 h after day 1 finished; the PR body has the exact time.
+
 ### 2026-10-05 — Redesign 2026: ground-up UI redesign, built beside the current app
 
 - **Branches:** trunk `feature/redesign-2026`; work branches `redesign/*`. **Worktree:** `.claude/worktrees/redesign-2026`. **Plan:** `docs/redesign-2026/PLAN.md` on the trunk.
