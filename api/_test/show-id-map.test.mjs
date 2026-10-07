@@ -38,15 +38,15 @@ async function withThrowingFetch(run) {
 
 test("the committed pointer names no id-map: the premise of a catalogue-only map", () => {
   /* If someone teaches tools/shows/publish-release.mjs:buildPointer to write
-     an id_map_url, this goes red first and points at the shape pin below. */
+     an id-map URL, this goes red first and points at the shape pin below. */
   assert.ok(POINTER.shards_published, "premise: main carries a published shows-index pointer");
-  assert.equal("id_map_url" in POINTER, false);
+  assert.deepEqual(Object.keys(POINTER).filter((k) => /id.?map/i.test(k)), [], "the pointer names no id-map asset");
 });
 
 test("the map is built from the two committed catalogue files", async () => {
   await withThrowingFetch(async () => {
     const map = await loadShowIdMap();
-    assert.equal(map.source, "catalog-fallback");
+    assert.equal(map.source, "catalog");
 
     const curated = CATALOG.shows.find((s) => s.show_id && typeof s.apple_collection_id === "number");
     assert.equal(map.byCollectionId.get(curated.apple_collection_id), curated.show_id, "a curated show maps to its slug");
@@ -60,14 +60,14 @@ test("the map is built from the two committed catalogue files", async () => {
 });
 
 test("loading the map makes no network call, and a throwing fetch cannot fail it", async () => {
-  /* MUTATION: re-add a fetch of the pointer's id_map_url to loadShowIdMap
-     (`await fetch(pointer.id_map_url)`) — the stub records the call and
-     throws, and this goes red. Passing a throwing `fetchImpl` too covers the
-     caller-supplied path api/episodes/search.ts uses. */
+  /* MUTATION: re-add a fetch of the pointer's id-map URL to loadShowIdMap
+     (`await fetch(pointer.<id-map url>)`) — the stub records the call and
+     throws, and this goes red. The first call hands the same stub in as
+     `fetchImpl`, the way api/episodes/search.ts passes `fetch`; the second
+     passes nothing, so either way of reaching the network is recorded. */
   await withThrowingFetch(async (calls) => {
-    const throwing = async () => { throw new Error("no network"); };
-    const first = await loadShowIdMap({ fetchImpl: throwing });
-    const again = await loadShowIdMap({ fetchImpl: throwing });
+    const first = await loadShowIdMap({ fetchImpl: globalThis.fetch });
+    const again = await loadShowIdMap();
     assert.ok(first.byCollectionId.size > 0);
     assert.equal(again, first, "memoised per warm instance");
     assert.deepEqual(calls, []);
@@ -79,7 +79,7 @@ test("the released id-map.json is slug -> pi_id, not an Apple collectionId -> sh
      PodcastIndex id. Read as collectionId -> show_id it has no numeric key
      and no string value, so it maps nothing (the deleted release reader
      answered `map: null, failed: true` and retried every 10 minutes). This
-     records the mismatch so nobody wires `id_map_url` into showIdMap. */
+     records the mismatch so nobody wires the release id-map into showIdMap. */
   const curated = [
     { show_id: "the-daily", feed_url: "https://feeds.example.test/daily.xml", apple_collection_id: 1200361736 },
     { show_id: "huberman-lab", feed_url: "https://feeds.example.test/huberman.xml", apple_collection_id: 1545953110 },
