@@ -154,7 +154,7 @@ function reclaimStaleInFlight(progress, now) {
 // kept in sync deliberately rather than importing that script, since this
 // one only needs the single-show lookup, not the whole-catalog batch pass).
 const CONF_ORDER = { high: 3, medium: 2, low: 1 };
-function tier0Prior(show, gmap) {
+export function tier0Prior(show, gmap) {
   const topics = new Set();
   let confidence = "high";
   for (const g of [show.apple_genre, show.chart_genre_name]) {
