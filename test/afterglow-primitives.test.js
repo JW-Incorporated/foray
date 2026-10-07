@@ -163,6 +163,10 @@ test("sheet behavior moves focus in, traps it, closes on Escape and restores the
   assert.match(GALLERY, /event\.key === "Escape"[^\n]*agGalleryCloseSheet/);
   assert.match(GALLERY, /agGallerySheetOpener\.focus\(\)/);
   assert.match(GALLERY, /child\.inert = true/);
+  const gateConfig = read("tools/ui-lab/lib/gates/config.mjs");
+  for (const theme of ["dusk", "dawn"]) {
+    assert.match(gateConfig, new RegExp(`#ag-gallery-${theme}-sheet[^\n]+#ag-gallery-${theme}-sheet-open`));
+  }
 });
 
 test("the page, service worker, web dist, native bundle and UI lab all carry the gallery system", () => {
@@ -177,4 +181,25 @@ test("the page, service worker, web dist, native bundle and UI lab all carry the
   }
   const states = read("tools/ui-lab/lib/states.mjs");
   assert.match(states, /id: "gallery"[\s\S]*route: "\?gallery=1#\/gallery"[\s\S]*ready: "\.ag-gallery"/);
+});
+
+test("the gallery baseline visits every visual plate in both schemes", () => {
+  /* MUTATION (run red): delete `step("cards-tiles", ...)` from galleryCaptureSteps(). */
+  const html = run(markupContext(), "agGalleryMarkup()");
+  const states = read("tools/ui-lab/lib/states.mjs");
+  const sections = ["glow", "buttons", "controls", "artwork", "rows", "cards", "navigation", "feedback", "icons"];
+  const plates = [
+    "glow", "buttons-top", "buttons-lower", "controls-top", "controls-lower", "artwork",
+    "rows-default", "rows-active", "rows-edge", "rows-queue", "cards-hero", "cards-stretch-top",
+    "cards-stretch-lower", "cards-foray", "cards-tiles", "navigation", "feedback", "icons", "icon-sizes", "sheet-open",
+  ];
+  for (const theme of ["dusk", "dawn"]) {
+    assert.ok(html.includes(`id="ag-gallery-${theme}-scheme"`), `${theme} panel`);
+    for (const section of sections) assert.ok(html.includes(`id="ag-gallery-${theme}-${section}"`), `${theme} ${section} section`);
+  }
+  for (const plate of plates.filter((name) => name !== "sheet-open")) {
+    assert.ok(states.includes(`step("${plate}"`), `${plate} baseline plate`);
+  }
+  assert.ok(states.includes('label: `${theme}-sheet-open`'), "sheet-open baseline plate");
+  assert.match(states, /\.\.\.galleryCaptureSteps\("dusk"\)[\s\S]*\.\.\.galleryCaptureSteps\("dawn"\)/);
 });

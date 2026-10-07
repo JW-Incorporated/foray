@@ -11,8 +11,8 @@ function agGalleryState(label, markup) {
   return `<div class="ag-gallery-state"><small>${esc(label)}</small>${markup}</div>`;
 }
 
-function agGallerySection(title, body, classes = "") {
-  return `<section class="ag-gallery-section ${esc(classes)}"><h3 class="t-headline">${esc(title)}</h3>${body}</section>`;
+function agGallerySection(id, title, body, classes = "") {
+  return `<section class="ag-gallery-section ${esc(classes)}" id="${esc(id)}"><h3 class="t-headline">${esc(title)}</h3>${body}</section>`;
 }
 
 function agGalleryButtons() {
@@ -47,8 +47,8 @@ function agGalleryCards() {
   return `<div class="ag-gallery-stack">${agHeroPick()}<div class="ag-gallery-grid">${["default", "pressed", "focus", "disabled", "loading"].map((state) => agGalleryState(`stretch ${state}`, agStretchCard({ state }))).join("")}${agForayCard()}${agForayCard({ compact: true })}${agForayCard({ compact: true, finished: true })}${agShowTile()}${agShowTile({ followed: true })}${agSubjectTile()}${agPlaylistTile()}</div></div>`;
 }
 
-function agGalleryFeedback() {
-  return `<div class="ag-gallery-stack">${agGalleryState("toast", agToast())}${agGalleryState("skeleton row", agSkeleton("row"))}${agGalleryState("skeleton art", agSkeleton("art"))}${agGalleryState("empty", agEmptyState())}<div class="ag-gallery-sheet-stage">${agGalleryState("sheet default", agSheet({ preview: true }))}${agGalleryState("sheet drag", agSheet({ preview: true, state: "drag" }))}</div><button class="ag-btn ag-btn-secondary" type="button" data-ag-open-sheet="">Open sheet</button></div>`;
+function agGalleryFeedback(theme) {
+  return `<div class="ag-gallery-stack">${agGalleryState("toast", agToast())}${agGalleryState("skeleton row", agSkeleton("row"))}${agGalleryState("skeleton art", agSkeleton("art"))}${agGalleryState("empty", agEmptyState())}<div class="ag-gallery-sheet-stage">${agGalleryState("sheet default", agSheet({ preview: true }))}${agGalleryState("sheet drag", agSheet({ preview: true, state: "drag" }))}</div><button class="ag-btn ag-btn-secondary" id="${esc(`ag-gallery-${theme}-sheet-open`)}" type="button" data-ag-open-sheet="">Open sheet</button></div>`;
 }
 
 function agGalleryGlowSwatches() {
@@ -59,7 +59,8 @@ function agGalleryGlowSwatches() {
 function agGalleryPanel(theme) {
   const isDawn = theme === "dawn";
   const rowsTitle = "Rows · every state";
-  return `<article class="ag ag-gallery-scheme" data-theme="${esc(theme)}"><h2 class="ag-gallery-title t-title">${esc(isDawn ? "Dawn" : "Dusk")}<span>${esc(isDawn ? "paper room" : "warm room")}</span></h2>${agGallerySection("Glow range", agGalleryGlowSwatches())}${agGallerySection("Buttons · every state", agGalleryButtons())}${agGallerySection("Controls", agGalleryControls())}${agGallerySection("Artwork and collages", agGalleryArtwork())}${agGallerySection(rowsTitle, agGalleryRows())}${agGallerySection("Cards and tiles", agGalleryCards())}${agGallerySection("Dock and tab bar", `<div class="ag-gallery-stack">${agDock({ active: "today", label: theme + " Today navigation" })}${agDock({ active: "discover", withField: true, receded: true, label: theme + " Discover navigation" })}${agMiniPlayer({ state: "paused" })}${agMiniPlayer({ state: "buffering" })}${agMiniPlayer({ state: "drag" })}</div>`)}${agGallerySection("Sheets, toast, loading and empty", agGalleryFeedback())}${agIconGallery()}${agSheet({ open: false })}</article>`;
+  const id = (name) => `ag-gallery-${theme}-${name}`;
+  return `<article class="ag ag-gallery-scheme" id="${esc(id("scheme"))}" data-theme="${esc(theme)}"><h2 class="ag-gallery-title t-title">${esc(isDawn ? "Dawn" : "Dusk")}<span>${esc(isDawn ? "paper room" : "warm room")}</span></h2>${agGallerySection(id("glow"), "Glow range", agGalleryGlowSwatches())}${agGallerySection(id("buttons"), "Buttons · every state", agGalleryButtons())}${agGallerySection(id("controls"), "Controls", agGalleryControls())}${agGallerySection(id("artwork"), "Artwork and collages", agGalleryArtwork())}${agGallerySection(id("rows"), rowsTitle, agGalleryRows())}${agGallerySection(id("cards"), "Cards and tiles", agGalleryCards())}${agGallerySection(id("navigation"), "Dock and tab bar", `<div class="ag-gallery-stack">${agDock({ active: "today", label: theme + " Today navigation" })}${agDock({ active: "discover", withField: true, receded: true, label: theme + " Discover navigation" })}${agMiniPlayer({ state: "paused" })}${agMiniPlayer({ state: "buffering" })}${agMiniPlayer({ state: "drag" })}</div>`)}${agGallerySection(id("feedback"), "Sheets, toast, loading and empty", agGalleryFeedback(theme))}${agIconGallery(id("icons"))}${agSheet({ open: false, id: id("sheet") })}</article>`;
 }
 
 function agGalleryMarkup() {

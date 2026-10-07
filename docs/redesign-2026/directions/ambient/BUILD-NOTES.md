@@ -907,8 +907,8 @@ baseline compares 138 of 138 shots identical, gates exit 0 with 0 new.
 The component system now exists without a Phase 4 screen adopting it. `ui/primitives.js`
 returns inert, escaped markup; `ui/primitives.css` is wholly scoped below `.ag`; and the
 lab-only `#/gallery` route displays Dusk and Dawn plus a separately captured live-sheet
-state. The 138 pre-existing `trunk-app` shots compare at zero changed pixels; the six
-additional shots are the gallery and its open sheet at three viewports.
+state for each scheme. The 138 pre-existing `trunk-app` shots compare at zero changed
+pixels; 41 stable capture plates at three viewports make the 123-shot gallery baseline.
 
 1. **Inventory.** The gallery covers Primary, Secondary, Quiet, Icon, Play (44/48/56/88)
    and Skip controls; chips, pills, SectionHead, search, scrubber and the three Strip
@@ -923,31 +923,34 @@ additional shots are the gallery and its open sheet at three viewports.
    range slider with a 44px input target; its value, clocks and `aria-valuetext` move
    together. Duplicate gallery landmarks are disambiguated, and Skeleton announces Loading
    without putting ARIA on a generic span.
-3. **Sheet behavior.** The decorative preview is not a dialog. The live sheet is a direct
-   child of its scheme panel, moves focus to its close button, makes siblings inert, traps
-   Tab with `a[href]` (not SVG `<use href>`), closes on Escape or the visible control, and
-   restores the opener. The gates trace the live dialog rather than accepting static source.
+3. **Sheet behavior.** The decorative preview is not a dialog. Each scheme's live sheet is
+   a direct child of its panel, has a stable dialog/opener id for the gate, moves focus to
+   its close button, makes siblings inert, traps Tab with `a[href]` (not SVG `<use href>`),
+   closes on Escape or the visible control, and restores the opener. The gates trace both
+   live dialogs rather than accepting static source.
 4. **Shipping and isolation.** `ui/primitives.css` is explicit in the service-worker, web
    and native shell lists; the two JS files follow `ui/icons.js` and precede `ui/boot.js`.
    `galleryAllowed()` requires `window.__FORAY_LAB__` or `?gallery=1`. The token isolation
    census excludes only `icons.js`, `primitives.js` and `gallery.js`; screen-bearing files
    still fail if they emit a new-system class before Phase 4.
-5. **Verification.** Gallery gates: 2 screens, zero new violations in all eight gates, one
-   live sheet traced. Axe is clean for the gallery except the existing owner decision that
+5. **Verification.** Gallery gates: 41 screens, zero new violations in all eight gates, two
+   live sheets traced. Axe is clean for the gallery except the existing owner decision that
    disables viewport zoom. Dusk and Dawn were shot explicitly. Visual review against the
    final Ambient r4 prototype kept its warm room, Fraunces hierarchy, Ember controls, Lit
-   art and compact density. Baselines: `ambient-gallery` 6 shots; rolling `ambient-app`
-   144 shots. The primary background remains token `--bg0` (`#14110F`).
+   art and compact density. Baselines: `ambient-gallery` 123 shots, fresh compare 123/123
+   identical; rolling `ambient-app` 261 shots. The primary background remains token
+   `--bg0` (`#14110F`), with the Dawn panel sampled at `#F7F2EB`.
    The one full Windows runner reached the runbook's known CRLF-only root red and
    exposed a real mobile asset-budget red from the first slider implementation.
    The compact native-range implementation plus the documented 16 KB ceiling fixed
    that: targeted mobile bundle verification passes 87/87. Corpus passed 285/285,
    foraycorpus-export 69/69, shows 117/117 (+6 skipped), and UI lab 55/55. All
    change-targeted root suites pass.
-6. **Executed mutations.** The suite now has eleven tests. The review follow-up was run red
+6. **Executed mutations.** The suite now has twelve tests. The review follow-up was run red
    by literally replacing `safeUrl(artUrl(src, px * 3))` with `safeUrl(src)`, omitting
    `pressed: playing`, restoring the broad `.p0 { width: 0 }` rule, changing the native
-   scrubber input from `range` to `text`, and deleting the gallery's scrubber-drag entry.
+   scrubber input from `range` to `text`, deleting the gallery's scrubber-drag entry, and
+   deleting the `cards-tiles` capture plate from the gallery harness.
    The existing disabled semantics, 44px target, single reduced-motion owner, route guard,
    sheet focus and shipping-list mutations remain pinned. Every mutation was restored.
 7. **Phase 4 boundary.** No existing screen calls a primitive. Screens adopt this system

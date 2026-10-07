@@ -222,10 +222,10 @@ function agDock({ active = "today", withField = false, receded = false, label = 
   return `<section class="ag-dock-preview dock veil">${withField ? agSearchField({ state: "focus" }) : ""}${agMiniPlayer({ state: "playing" })}${agTabBar({ active, receded, label })}</section>`;
 }
 
-function agSheet({ title = "Settings", open = true, preview = false, state = "default" } = {}) {
+function agSheet({ title = "Settings", open = true, preview = false, state = "default", id = "" } = {}) {
   const sheetState = agChoice(state, ["default", "drag"], "default");
   const classes = `ag-sheet is-${sheetState}${open ? " is-open" : ""}${preview ? " is-preview" : ""}`;
-  return `<div class="${esc(classes)}" data-ag-primitive="sheet"${preview ? "" : ` role="dialog" aria-modal="true" aria-label="${esc(title)}" data-ag-live-sheet=""`}${open ? "" : " hidden"}><header class="ag-sheet-head veil"><span class="ag-grabber" aria-hidden="true"></span><h2 class="t-headline">${esc(title)}</h2>${agButton({ label: "Close", variant: "icon", icon: "x" })}</header><div class="ag-sheet-body"><div class="ag-menu-row">${agIcon("sliders", 24)}<span>Tuning</span></div><div class="ag-menu-row">${agIcon("moon", 24)}<span>Appearance</span></div><div class="ag-menu-row">${agIcon("share", 24)}<span>Share</span></div></div></div>`;
+  return `<div class="${esc(classes)}"${id ? ` id="${esc(id)}"` : ""} data-ag-primitive="sheet"${preview ? "" : ` role="dialog" aria-modal="true" aria-label="${esc(title)}" data-ag-live-sheet=""`}${open ? "" : " hidden"}><header class="ag-sheet-head veil"><span class="ag-grabber" aria-hidden="true"></span><h2 class="t-headline">${esc(title)}</h2>${agButton({ label: "Close", variant: "icon", icon: "x" })}</header><div class="ag-sheet-body"><div class="ag-menu-row">${agIcon("sliders", 24)}<span>Tuning</span></div><div class="ag-menu-row">${agIcon("moon", 24)}<span>Appearance</span></div><div class="ag-menu-row">${agIcon("share", 24)}<span>Share</span></div></div></div>`;
 }
 
 function agToast({ action = true } = {}) {

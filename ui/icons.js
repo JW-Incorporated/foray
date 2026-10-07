@@ -62,14 +62,14 @@ function agIcon(name, size) {
  *  `#/gallery`): every symbol at 24 with its name, then the Regular / Fill pairs side by
  *  side and the transport glyphs at each size they are used. Pure markup, no handlers;
  *  names come from AG_ICON_NAMES and pass through esc() all the same. */
-function agIconGallery() {
+function agIconGallery(id = "") {
   const cell = (n) =>
     '<li class="ag-icon-cell">' + agIcon(n) + '<span class="ag-icon-name">' + esc("i-" + n) + "</span></li>";
   const sizes = (n) =>
     '<li class="ag-icon-cell ag-icon-sizes"><span class="ag-icon-row">' + AG_ICON_SIZES.map((s) => agIcon(n, s)).join("") +
     '</span><span class="ag-icon-name">' + esc("i-" + n) + "</span></li>";
   return (
-    '<section class="ag-icons">' +
+    '<section class="ag-icons"' + (id ? ' id="' + esc(id) + '"' : "") + '>' +
     '<h2 class="ag-icons-title">Icons</h2>' +
     '<ul class="ag-icon-grid">' + AG_ICON_NAMES.map(cell).join("") + "</ul>" +
     '<h3 class="ag-icons-title">Sizes</h3>' +
