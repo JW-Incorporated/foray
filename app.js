@@ -8486,7 +8486,11 @@ function seededShuffle(arr, seed) {
   let s = seed >>> 0;
   for (let i = a.length - 1; i > 0; i--) {
     s = (Math.imul(s, 1103515245) + 12345) >>> 0;
-    const j = s % (i + 1);
+    /* The HIGH 16 bits pick the swap (#560, the vouch eval's (b)): the low
+       bits of a power-of-two-modulus LCG repeat on short cycles, and
+       `s % (i + 1)` gave the first tenth of show_ids 23.2% of the year's
+       slots, not ~10%. */
+    const j = (s >>> 16) % (i + 1);
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;

@@ -22,7 +22,9 @@
  *     runners' blocks cannot overwrite each other.
  *
  * Every value MEASURED 2026-10-05 against origin/main 919f925d
- * (node tools/similar-eval/vouch-run.mjs --json). Every test names the
+ * (node tools/similar-eval/vouch-run.mjs --json), and re-measured 2026-10-06
+ * against d75f456c with the Family Mode filter and the high-bit swap (the
+ * 560-part card). Every test names the
  * mutation that kills it (CLAUDE.md: a green test is not evidence until you
  * have broken it); each was run on 2026-10-05, app.js and data restored after.
  *
@@ -44,25 +46,29 @@ const VOUCH = "tools/similar-eval/vouch-run.mjs";
 const SIMILAR = "tools/similar-eval/run.mjs";
 const CATALOG = "data/catalog-client.json";
 
+/* Re-measured 2026-10-06 after seededShuffle took its swap from the LCG's
+   high bits (#560): the (b) and (e) values below moved with the rotation. */
 const FLOOR = {
   surfaced: 229, // every eligible show appears at least once in 2026 (Family Mode OFF)
-  minAppearances: 1, // our-fake-history, strict-scrutiny, the-worlds-best-construction-podcast
-  meanDistinctBranches: 7.956, // 7.9561 top-level branches per 8-slot row
+  minAppearances: 2, // physiology-endurance-running (was 1 with the low-bit swap)
+  /* 7.9452 since the high-bit swap (was 7.9561): the new rotation changes
+     which shows share a row, and the mean moved by 0.011 of a branch. */
+  meanDistinctBranches: 7.945,
 };
 const CEILING = {
-  maxAppearances: 38, // advent-of-computing, amicus-dahlia-lithwick, ams-on-the-air (even rotation: 12.75)
-  firstDecileShare: 0.232, // 0.2315 of slots go to the first 23 show_ids (even rotation: ~0.100)
+  maxAppearances: 24, // planetary-radio, sigma-nutrition-radio (even rotation: 12.75; was 38 with the low-bit swap)
+  firstDecileShare: 0.097, // 0.0969 of slots go to the first 23 show_ids (even rotation: ~0.100; was 0.2315)
   familySlots: 0, // (d) was 573 (19.6% of 2,920 slots) before the 2026-10-06 filter
   familyDays: 0, // (d) was 296 days with at least one show Family Mode hides
-  scopeSlots: 205, // (e) 7.0% of 2,920 slots
-  scopeDays: 152, // (e) days with at least one label_scope "general" show
+  scopeSlots: 169, // (e) 5.8% of 2,920 slots (was 205 with the low-bit swap)
+  scopeDays: 141, // (e) days with at least one label_scope "general" show (was 152)
 };
 
 /* (d) with Family Mode ON, measured 2026-10-06 after the familyAllows filter. */
 const FAMILY_ON = {
   rejected: 39, // 17 comedy, 14 unrated, 8 rated explicit
   eligible: 190, // 229 - 39
-  surfaced: 189, // of 190 (ologies-with-alie-ward never: the low-bit skew)
+  surfaced: 190, // all of them (189 with the low-bit swap: ologies-with-alie-ward never)
 };
 
 let cache = null;
@@ -183,9 +189,9 @@ test("(a) the eligible set is the whole curated catalogue: all 229 shows carry a
   assert.strictEqual(r.eligible, r.catalogueShows, `${r.catalogueShows - r.eligible} shows fell out of the vouch row's eligible set`);
 });
 
-test(`(b) rotation: ${FLOOR.surfaced} of 229 shows surface in the year, each at least ${FLOOR.minAppearances} day`, async () => {
-  /* MUTATION (run): in app.js seededShuffle, `const j = s % (i + 1)` ->
-     `const j = i` (no shuffle: the same first eight show_ids every day)
+test(`(b) rotation: ${FLOOR.surfaced} of 229 shows surface in the year, each on at least ${FLOOR.minAppearances} days`, async () => {
+  /* MUTATION (run): in app.js seededShuffle, `const j = (s >>> 16) % (i + 1)`
+     -> `const j = i` (no shuffle: the same first eight show_ids every day)
      -> red (8 surfaced). */
   const { coverage } = await measured();
   assert.ok(coverage.surfaced >= FLOOR.surfaced, `${coverage.surfaced} shows surfaced; floor ${FLOOR.surfaced}. Never: ${coverage.never.join(", ")}`);
@@ -193,8 +199,11 @@ test(`(b) rotation: ${FLOOR.surfaced} of 229 shows surface in the year, each at 
 });
 
 test(`(b) skew: no show on more than ${CEILING.maxAppearances} days, the first tenth of show_ids at most ${CEILING.firstDecileShare} of slots`, async () => {
-  /* Ceilings on a measured DEFECT (the LCG's low bits favour early show_ids;
-     see the research note), so a fix passes and a worse skew does not.
+  /* Ceilings at the measured values since the 2026-10-06 fix: the swap now
+     comes from the LCG's high bits; the low bits favoured early show_ids
+     (23.2% of slots to the first tenth; see the research note).
+     MUTATION (run 2026-10-06): app.js seededShuffle, restore
+     `const j = s % (i + 1)` -> red (max 38 days; first-tenth share 0.2315).
      MUTATION (run): app.js showsWeVouchFor `limit = 8` -> `limit = 12`
      -> red on the max (more slots, more days per show). */
   const { coverage } = await measured();
@@ -266,7 +275,9 @@ test(`(d) Family Mode ON: every row is still limit distinct allowed shows, the s
      loses no slots and stays one set per UTC day for every visitor.
      MUTATION (run 2026-10-06): app.js showsWeVouchFor, filter after the cut
      (`seededShuffle(shows, ...).slice(0, limit).filter(familyAllows)`)
-     -> red (short rows). */
+     -> red (short rows).
+     MUTATION (run 2026-10-06): app.js seededShuffle, restore
+     `const j = s % (i + 1)` -> red (189 of 190 surface). */
   const { familyOn, family, catalogueShows } = await measured();
   assert.strictEqual(familyOn.limit, 8);
   assert.strictEqual(familyOn.eligible, catalogueShows - family.catalogueShows, "ON eligible = catalogue minus the rejected set");
