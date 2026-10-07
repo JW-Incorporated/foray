@@ -55,15 +55,19 @@ test("a source that does not hash to the pin is refused and nothing is written; 
 });
 
 test("both iOS build paths inject the jingle after the project is generated, and check it", () => {
-  /* MUTATION: drop either line from ios-build.yml or the ios-archive action
-     (the release path, which is the one that failed), or run it before
-     `cap add ios`, which rewrites public/. */
+  /* CH2-16: both paths run the inject sequence through ONE composite,
+     .github/actions/ios-prepare, which carries the two lines.
+     MUTATION: drop either line from ios-prepare, drop the ios-prepare use from
+     ios-build.yml or the ios-archive action (the release path, which is the
+     one that failed), or run it before `cap add ios`, which rewrites public/. */
   assert.equal(DEFAULT_DEST, "mobile/ios/App/App/public");
+  const prepare = fs.readFileSync(path.join(REPO_ROOT, ".github/actions/ios-prepare/action.yml"), "utf8");
+  assert.ok(prepare.includes("node tools/mobile/inject-interlude.mjs mobile/ios/App/App/public\n"), "ios-prepare does not inject the jingle");
+  assert.ok(prepare.includes("node tools/mobile/inject-interlude.mjs mobile/ios/App/App/public --check"), "ios-prepare does not check the jingle");
   for (const rel of [".github/workflows/ios-build.yml", ".github/actions/ios-archive/action.yml"]) {
     const src = fs.readFileSync(path.join(REPO_ROOT, rel), "utf8");
-    const at = src.indexOf("node tools/mobile/inject-interlude.mjs mobile/ios/App/App/public\n");
-    assert.ok(at > 0, `${rel} does not inject the jingle`);
-    assert.ok(src.includes("node tools/mobile/inject-interlude.mjs mobile/ios/App/App/public --check"), `${rel} does not check the jingle`);
+    const at = src.indexOf("uses: ./.github/actions/ios-prepare");
+    assert.ok(at > 0, `${rel} does not run ios-prepare, so it does not inject the jingle`);
     const gen = src.indexOf("npm run add:ios 2>&1");
     assert.ok(gen > 0 && gen < at, `${rel}: the jingle must be injected after the iOS project is generated`);
   }

@@ -41,6 +41,21 @@ const WORKFLOW_REL = ".github/workflows/ios-build.yml";
 const WF = fs.readFileSync(path.join(ROOT, WORKFLOW_REL), "utf8");
 const YML = code(WF);
 const CI = fs.readFileSync(path.join(ROOT, ".github/workflows/ci.yml"), "utf8");
+/* CH2-16: the inject sequence (every edit `cap add ios` does not make, the
+   scaffold guard, the container detection, the MinimumOSVersion patch) lives in
+   ONE composite that this workflow and the release archive both run. The pins
+   on those steps read it there. */
+const PREPARE_REL = ".github/actions/ios-prepare/action.yml";
+const PREP = fs.readFileSync(path.join(ROOT, PREPARE_REL), "utf8");
+const ARCHIVE_REL = ".github/actions/ios-archive/action.yml";
+
+/** One step of a COMPOSITE action, whose steps sit at 4-space indent rather
+ *  than a workflow job's 6 (`step()` would return null for every lookup). */
+function actionStep(src, nameFragment) {
+  const chunks = src.split(/\n(?= {4}- (?:name|uses):)/).filter((c) => /^\s*- (?:name|uses):/.test(c));
+  return chunks.find((c) => c.includes(nameFragment)) ?? null;
+}
+const prepStep = (nameFragment) => actionStep(PREP, nameFragment);
 
 /** Every `xcodebuild` COMMAND in the workflow, as one line each. The generic
  *  half — and the comment about the log-filename defect that shaped it — is
@@ -277,13 +292,14 @@ test("xcodebuild is pointed at a DETECTED container, not a hardcoded workspace",
      Every Capacitor guide, and HUMAN-ACTIONS.md #16 as originally written, assumes
      a CocoaPods workspace. Hardcoding `-workspace` gave xcodebuild a path that did
      not exist. */
-  assert.match(WF, /node tools\/mobile\/ios-ci\.mjs xcode-container/);
+  assert.match(PREP, /node tools\/mobile\/ios-ci\.mjs xcode-container "\$IOS_DIR"/);
   /* `-version` prints, and `-exportArchive` reads an archive rather than a
-     container — neither takes one. Everything that COMPILES must. */
-  const needsContainer = xcodebuildInvocations(WF).filter(
+     container — neither takes one. Everything that COMPILES must, here and in
+     the inject composite this job runs (its resolve and settings read). */
+  const needsContainer = [...xcodebuildInvocations(WF), ...xcodebuildInvocations(PREP)].filter(
     (c) => !/-version|-exportArchive/.test(c)
   );
-  assert.ok(needsContainer.length >= 2, `expected 2 container-taking invocations, found ${needsContainer.length}`);
+  assert.ok(needsContainer.length >= 4, `expected 4 container-taking invocations, found ${needsContainer.length}`);
   for (const c of needsContainer) {
     assert.match(
       c,
@@ -568,20 +584,25 @@ test("the plist injection goes through the tested script, not through sed or Pli
   /* A `sed -i` or a bare PlistBuddy write would be untestable from this machine,
      and a silent no-op there produces an app that builds, installs, and stops
      playing the moment the screen locks. */
-  assert.match(WF, /node tools\/mobile\/inject-background-audio\.mjs "\$INFO_PLIST"/);
-  assert.equal(/sed -i[^\n]*Info\.plist/.test(WF), false, "the plist must not be edited with sed");
+  const s = prepStep("Add UIBackgroundModes") ?? "";
+  assert.match(s, /node tools\/mobile\/inject-background-audio\.mjs "\$INFO_PLIST"/);
+  for (const src of [WF, PREP]) {
+    assert.equal(/sed -i[^\n]*Info\.plist/.test(src), false, "the plist must not be edited with sed");
+  }
   /* PlistBuddy is present, but only to READ — Apple's own parser as a second
-     opinion on our output. */
-  assert.match(WF, /PlistBuddy -c "Print :UIBackgroundModes"/);
-  assert.match(WF, /plutil -lint "\$INFO_PLIST"/);
+     opinion on our output, and the grep makes its answer a verdict. */
+  assert.match(s, /PlistBuddy -c "Print :UIBackgroundModes"/);
+  assert.match(s, /grep -q "audio" "\$ART\/uibackgroundmodes\.txt"/, "PlistBuddy prints the modes and nothing checks them");
+  assert.match(s, /plutil -lint "\$INFO_PLIST"/);
 });
 
 test("the generated project is checked against the SwiftUI scaffold's directory", () => {
   /* #209's invariant 2, verified against reality rather than against config: on a
      runner the `cap add` has actually happened, so the collision can be checked
      rather than reasoned about. */
-  assert.match(WF, /ios\/App\/App\.xcodeproj/);
-  assert.match(WF, /ios\/ForayKit\/Package\.swift/);
+  const s = prepStep("did NOT land on the SwiftUI scaffold") ?? "";
+  assert.match(s, /ios\/App\/App\.xcodeproj/);
+  assert.match(s, /ios\/ForayKit\/Package\.swift/);
 });
 
 /* ─────────────────── R-05: signing/TestFlight are gone, not gated ────────── */
@@ -826,7 +847,7 @@ test("the encryption declaration is injected by the tested script and read back 
      MUTATION: drop `--encryption false` from the injection line -> fails on the
      first assertion. Replace the PlistBuddy line with a `grep` of the plist ->
      fails on the second. RUN. */
-  const s = step(WF, "Declare no non-exempt encryption") ?? "";
+  const s = prepStep("Declare no non-exempt encryption") ?? "";
   assert.ok(s, "the encryption step is gone");
   assert.match(s, /node tools\/mobile\/inject-background-audio\.mjs "\$INFO_PLIST" --encryption false/);
   assert.match(s, /PlistBuddy -c "Print :ITSAppUsesNonExemptEncryption"/,
@@ -850,8 +871,9 @@ test("the app icon is injected by the tested script, not copied to a guessed fil
      ships green.
      MUTATION: replace the two `node tools/mobile/inject-app-icon.mjs` lines with
      that `cp` -> fails on the first assertion and on the `--check` one. RUN. */
-  const s = step(WF, "Put the REAL app icon") ?? "";
+  const s = prepStep("Put the REAL app icon") ?? "";
   assert.ok(s, "the app-icon step is gone");
+  assert.match(s, /test -d "\$APPICONSET"/, "a missing catalog must fail by name, before the script runs");
   assert.match(s, /node tools\/mobile\/inject-app-icon\.mjs "\$APPICONSET"/);
   assert.match(s, /node tools\/mobile\/inject-app-icon\.mjs "\$APPICONSET" --check/,
     "the write is never re-read");
@@ -882,21 +904,24 @@ test("`APPICONSET` is inside the generated project, derived rather than retyped"
   /* A path pointing at a directory `cap add ios` did not generate makes
      `inject-app-icon.mjs` fail loudly (it refuses a directory with no
      Contents.json), which is the right outcome — but only if the path is wrong in
-     an obvious way. This pins it against $IOS_DIR, the same job env the rest of the
-     workflow addresses the generated project with, so the two cannot drift into
-     naming different checkouts.
+     an obvious way. This pins it against $IOS_DIR, the one variable the inject
+     composite addresses the generated project with, so the two cannot drift into
+     naming different checkouts. CH2-16: the paths are written once, in
+     ios-prepare's first step, and no longer in this workflow's job env.
      MUTATION: change APPICONSET to `ios/App/App/Assets.xcassets/AppIcon.appiconset`
      (the SwiftUI scaffold, which this workflow asserts Capacitor must never
      generate into) -> fails. RUN. */
-  const iosDir = /^\s*IOS_DIR:\s*(\S+)\s*$/m.exec(WF)?.[1];
-  const appIconSet = /^\s*APPICONSET:\s*(\S+)\s*$/m.exec(WF)?.[1];
-  assert.ok(iosDir, "the workflow no longer sets IOS_DIR");
-  assert.ok(appIconSet, "the workflow no longer sets APPICONSET, but the icon step is given $APPICONSET");
+  const iosDir = /^\s*IOS_DIR=(\S+)\s*$/m.exec(PREP)?.[1];
+  const appIconSet = /echo "APPICONSET=([^"]+)"/.exec(PREP)?.[1];
+  assert.equal(iosDir, "mobile/ios", "ios-prepare no longer sets IOS_DIR to the generated shell");
+  assert.ok(appIconSet, "ios-prepare no longer sets APPICONSET, but the icon step is given $APPICONSET");
   assert.ok(
-    appIconSet.startsWith(`${iosDir}/`),
-    `APPICONSET is ${appIconSet}, which is not inside IOS_DIR (${iosDir})`
+    appIconSet.startsWith("$IOS_DIR/"),
+    `APPICONSET is ${appIconSet}, which is not derived from IOS_DIR (${iosDir})`
   );
   assert.match(appIconSet, /Assets\.xcassets\/AppIcon\.appiconset$/);
+  assert.equal(/^\s*(IOS_DIR|INFO_PLIST|APPICONSET|SPLASHSET):/m.test(YML), false,
+    "the project paths are ios-prepare's; a second copy in this job's env can disagree with it");
 });
 
 test("both generated-project edits happen AFTER `cap add ios` and BEFORE any build", () => {
@@ -906,23 +931,26 @@ test("both generated-project edits happen AFTER `cap add ios` and BEFORE any bui
      exist. A build before the edits compiles the placeholder icon and a plist with
      no background mode and no encryption declaration, and every check stays green.
      Nothing in this file pinned the order until now.
-     MUTATION: move either edit step below "Build for the iOS Simulator" -> fails,
-     naming which one. RUN. */
-  const at = (fragment) => {
-    const i = WF.indexOf(`- name: ${fragment}`);
-    assert.ok(i > 0, `step not found: ${fragment}`);
+     CH2-16: the edits are ONE `uses:` step now (ios-prepare), so the order is
+     that step's place in this job, and the edits' presence in the composite.
+     MUTATION: move the ios-prepare step below "Build for the iOS Simulator" ->
+     fails. RUN. */
+  const at = (marker) => {
+    const i = WF.indexOf(marker);
+    assert.ok(i > 0, `not found: ${marker}`);
     return i;
   };
-  const generate = at("Build the webDir and generate the iOS project");
-  const build = at("Build for the iOS Simulator");
+  const generate = at("- name: Build the webDir and generate the iOS project");
+  const prepare = at("uses: ./.github/actions/ios-prepare");
+  assert.ok(prepare > generate, "ios-prepare runs before the project it edits is generated");
+  assert.ok(prepare < at("- name: Build for the iOS Simulator"), "ios-prepare runs after the build that would have used it");
   for (const edit of [
     "Add UIBackgroundModes -> audio",
     "Declare no non-exempt encryption",
     "Put the REAL app icon",
     "Put the REAL splash screen",
   ]) {
-    assert.ok(at(edit) > generate, `"${edit}" runs before the project it edits is generated`);
-    assert.ok(at(edit) < build, `"${edit}" runs after the build that would have used it`);
+    assert.ok(prepStep(edit), `"${edit}" is missing from ios-prepare`);
   }
 });
 
@@ -958,17 +986,20 @@ test("the MinimumOSVersion patch runs after the project is generated and BEFORE 
      The patch has to land on the RESOLVED SwiftPM artifact before anything is
      compiled or signed, because Xcode embeds that plist verbatim and then signs
      the bundle around it — a patch after the build would break the seal.
-     MUTATION: move the step below the simulator build -> both builds embed the
-     unpatched slice and this fails. RUN. */
-  const at = (fragment) => {
-    const i = WF.indexOf(`- name: ${fragment}`);
-    assert.ok(i > 0, `step not found: ${fragment}`);
+     CH2-16: the patch is ios-prepare's last step, so it runs where that
+     composite runs in this job.
+     MUTATION: move the ios-prepare step below the simulator build -> both
+     builds embed the unpatched slice and this fails. RUN. */
+  const at = (marker) => {
+    const i = WF.indexOf(marker);
+    assert.ok(i > 0, `not found: ${marker}`);
     return i;
   };
-  const patch = at("Give the embedded ONNX Runtime framework the MinimumOSVersion");
-  assert.ok(patch > at("Build the webDir and generate the iOS project"), "the patch runs before the project exists");
-  assert.ok(patch < at("Build for the iOS Simulator"), "the patch runs after a build that would have embedded the unpatched slice");
-  assert.ok(patch < at("Build for a real device"), "the patch runs after the device build");
+  assert.ok(prepStep("Give the embedded ONNX Runtime framework the MinimumOSVersion"), "ios-prepare no longer patches");
+  const patch = at("uses: ./.github/actions/ios-prepare");
+  assert.ok(patch > at("- name: Build the webDir and generate the iOS project"), "the patch runs before the project exists");
+  assert.ok(patch < at("- name: Build for the iOS Simulator"), "the patch runs after a build that would have embedded the unpatched slice");
+  assert.ok(patch < at("- name: Build for a real device"), "the patch runs after the device build");
 });
 
 test("the patch and BOTH builds share one resolved SwiftPM directory", () => {
@@ -977,9 +1008,9 @@ test("the patch and BOTH builds share one resolved SwiftPM directory", () => {
      unpatched onnxruntime.xcframework — while the patch step still reports
      success against the directory nothing reads. Green, and the upload still
      fails. */
-  const s = step(WF, "Give the embedded ONNX Runtime framework the MinimumOSVersion") ?? "";
+  const s = prepStep("Give the embedded ONNX Runtime framework the MinimumOSVersion") ?? "";
   assert.match(s, /-resolvePackageDependencies/, "package resolution never runs, so there is nothing to patch");
-  const clones = xcodebuildInvocations(WF).filter((c) => !/-version/.test(c));
+  const clones = [...xcodebuildInvocations(PREP), ...xcodebuildInvocations(WF)].filter((c) => !/-version/.test(c));
   assert.ok(clones.length >= 4, `expected the resolve, the settings read and two builds, found ${clones.length}`);
   for (const c of clones) {
     assert.match(c, /-clonedSourcePackagesDirPath "\$SPM_DIR"/,
@@ -992,7 +1023,7 @@ test("the deployment target is READ off the project, never written into the work
      moves, and then it is a framework that claims to need a newer system than the
      app embedding it — which Apple rejects, and which the verify step is written to
      catch. Read it instead. MUTATION: `--min-os 15.0` -> fails here. */
-  const s = commandsOnly(step(WF, "Give the embedded ONNX Runtime framework the MinimumOSVersion") ?? "");
+  const s = commandsOnly(prepStep("Give the embedded ONNX Runtime framework the MinimumOSVersion") ?? "");
   assert.match(s, /IPHONEOS_DEPLOYMENT_TARGET/, "the deployment target is not read from the project");
   assert.match(s, /--min-os "\$MIN_OS"/, "the patch is handed something other than the value just read");
   assert.equal(/--min-os \d/.test(s), false, "a literal version is hardcoded into the patch step");
@@ -1026,11 +1057,13 @@ test("NE-17: the plist step still runs the injector bare and then --check, which
      neither names another source of truth.
      MUTATION: drop the bare invocation, drop the `--check` line, or add
      `--engine-default` to either -> red. */
-  const s = code(step(WF, "Add UIBackgroundModes") ?? "");
+  const s = code(prepStep("Add UIBackgroundModes") ?? "");
   assert.ok(s, "the plist step is gone");
   assert.match(s, /^\s*node tools\/mobile\/inject-background-audio\.mjs "\$INFO_PLIST"\s*$/m, "the bare write is gone");
   assert.match(s, /^\s*node tools\/mobile\/inject-background-audio\.mjs "\$INFO_PLIST" --check\s*$/m, "the read-back is gone");
-  assert.doesNotMatch(YML, /--engine-default/, "the build must read the committed mobile/ENGINE_DEFAULT.json");
+  for (const src of [YML, code(PREP)]) {
+    assert.doesNotMatch(src, /--engine-default/, "the build must read the committed mobile/ENGINE_DEFAULT.json");
+  }
 });
 
 test("ci-release-12: no iOS path runs `npm install` under mobile/ — both install from the committed lockfile", () => {
@@ -1154,4 +1187,71 @@ test("NE-36: the gate's shell actually exits 1 on `fail` and 0 on everything els
     const r = runWith({ NATIVE_VERDICT: v, NATIVE_FAILED: "", LEGACY_SMOKE: "pinned" });
     assert.equal(r.status, 0, `verdict "${v}" failed the job: ${r.stdout}${r.stderr}`);
   }
+});
+
+/* ───────── CH2-16 (T2-01): the iOS inject sequence exists ONCE ───────── */
+
+/* The nine steps that edit or inspect the generated project between `cap add
+   ios` and the first build. Until CH2-16 they lived inline here AND as a hand
+   copy in .github/actions/ios-archive, and the copies had drifted: the
+   PlistBuddy reads, the `grep -qx false`, both `test -d` and both
+   `python3 -m json.tool` existed only on this PR path, so the build that
+   reaches TestFlight ran the weaker checks. A characterization test (the nine
+   steps' commands, comments stripped, compared across the two files) was red
+   on main for exactly that reason before the move. */
+const INJECT_STEPS = [
+  "Put the seam jingle in the app",
+  "Which Xcode container did Capacitor generate?",
+  "Assert the generated project did NOT land on the SwiftUI scaffold",
+  "Add UIBackgroundModes -> audio",
+  "Declare no non-exempt encryption",
+  "Add the privacy manifest",
+  "Put the REAL app icon",
+  "Put the REAL splash screen",
+  "Give the embedded ONNX Runtime framework the MinimumOSVersion",
+];
+
+test("CH2-16: both iOS build paths run the inject sequence through ios-prepare, and neither carries a copy of it", () => {
+  /* MUTATION: re-add an inline inject step to ios-build.yml (or to the release
+     composite) — e.g. `node tools/mobile/inject-splash.mjs ios "$SPLASHSET"` in
+     its own step — or drop the `uses:` from either -> red, naming the file.
+     RUN. */
+  const archive = fs.readFileSync(path.join(ROOT, ARCHIVE_REL), "utf8");
+  for (const [name, src] of [[WORKFLOW_REL, WF], [ARCHIVE_REL, archive]]) {
+    const body = code(src);
+    assert.equal(body.match(/uses: \.\/\.github\/actions\/ios-prepare\s*$/gm)?.length ?? 0, 1,
+      `${name} must run the inject sequence through ./.github/actions/ios-prepare, once`);
+    /* The built bundle's / the archive's `--bundle` READ-BACK is each path's
+       own, after its own build; every inject WRITE is ios-prepare's. */
+    assert.doesNotMatch(body, /node tools\/mobile\/inject-[\w-]+\.mjs (?!--bundle\b)/, `${name} carries an inline inject- step again`);
+    assert.doesNotMatch(body, /ios-embedded-frameworks\.mjs patch|ios-ci\.mjs xcode-container/,
+      `${name} carries an inline copy of an ios-prepare step`);
+    for (const stepName of INJECT_STEPS) {
+      assert.equal(body.includes(`- name: ${stepName}`), false, `${name} carries "${stepName}" again`);
+    }
+  }
+  for (const stepName of INJECT_STEPS) {
+    assert.equal(PREP.split(`- name: ${stepName}`).length - 1, 1, `ios-prepare must carry "${stepName}" exactly once`);
+  }
+});
+
+test("CH2-16: ios-prepare carries the PR path's second opinions, holds no secret, and checks its caller's contract", () => {
+  /* The checks that existed only on the PR path are now what the TestFlight
+     archive runs too. The icon's and the encryption key's are pinned by their
+     own tests above; these are the splash catalog's, plus the contract.
+     MUTATION: drop `test -d "$SPLASHSET"` or the splash `json.tool` read, give
+     ios-prepare an `inputs:` block or a `secrets.` read, or drop the
+     `${SPM_DIR:?…}` guard -> red. RUN. */
+  const splash = prepStep("Put the REAL splash screen") ?? "";
+  assert.match(splash, /test -d "\$SPLASHSET"/, "a missing splash catalog must fail by name");
+  assert.match(splash, /python3 -m json\.tool "\$SPLASHSET\/Contents\.json"/, "nothing but our own parser reads the splash manifest");
+  assert.match(splash, /node tools\/mobile\/inject-splash\.mjs ios "\$SPLASHSET" --check/, "the splash write is never re-read");
+  const body = code(PREP);
+  assert.doesNotMatch(body, /^inputs:/m, "ios-prepare takes no input: nothing a caller passes can reach the edits");
+  assert.doesNotMatch(body, /secrets\.|inputs\./, "ios-prepare reads no secret; the signing steps stay in ios-archive");
+  const contract = prepStep("check the caller's contract") ?? "";
+  assert.match(contract, /\$\{ART:\?/, "an unset ART must fail by name");
+  assert.match(contract, /\$\{SPM_DIR:\?/, "an unset SPM_DIR must fail by name, not patch a tree no build reads");
+  assert.ok(PREP.indexOf("check the caller's contract") < PREP.indexOf("- name: Put the seam jingle"),
+    "the contract is checked before the first edit");
 });

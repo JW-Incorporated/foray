@@ -1,10 +1,12 @@
 name: "ios-archive"
 description: >-
   Build, sign (if configured) and upload the iOS shell to TestFlight, using a
-  version pair supplied by the caller rather than $(run_number). Factored out
-  of ios-build.yml for R-03 (docs/release-lockstep-plan.md) so release.yml and
-  the PR-time CI job share one implementation instead of two copies drifting.
-  DOES NOT run the simulator/out-point/seam probes — those are ios-build.yml's
+  version pair supplied by the caller rather than $(run_number). Split out of
+  ios-build.yml for R-03 (docs/release-lockstep-plan.md). What this action and
+  the PR-time CI job (ios-build.yml) share is exactly the inject sequence, in
+  .github/actions/ios-prepare, which both run (CH2-16); installing, generating
+  the project, signing, archiving, exporting and uploading are this action's
+  alone. DOES NOT run the simulator/out-point/seam probes — those are ios-build.yml's
   CI concern (see its own header), not release.yml's; a release run's job is
   to ship a build, not to re-measure background-audio behaviour on every tag.
   Callers must `actions/checkout` before invoking this action.
@@ -78,137 +80,15 @@ runs:
         set -euo pipefail
         npm run add:ios 2>&1 | tee "$ART/cap-add-ios.log"
 
-    - name: Put the seam jingle in the app (NE-34)
-      # NOT a SwiftPM resource: a `resources:` on a plugin target makes a
-      # resource-bundle target, and this action's signed archive fails on it
-      # ("ForayAudio_ForayAudioPlugin does not support provisioning profiles",
-      # release run 36535801479). Copied into the public/ folder reference
-      # instead; see the script's header.
-      shell: bash
-      run: |
-        set -euo pipefail
-        node tools/mobile/inject-interlude.mjs mobile/ios/App/App/public
-        node tools/mobile/inject-interlude.mjs mobile/ios/App/App/public --check
-
-    - name: Which Xcode container did Capacitor generate?
-      id: xc
-      shell: bash
-      run: |
-        set -euo pipefail
-        node tools/mobile/ios-ci.mjs xcode-container mobile/ios | tee "$ART/xcode-container.txt"
-        sed -n 's/^xc_flag=/XC_FLAG=/p; s/^xc_path=/XC_PATH=/p; s/^xc_toolchain=/XC_TOOLCHAIN=/p' \
-          "$ART/xcode-container.txt" >> "$GITHUB_ENV"
-
-    - name: Assert the generated project did NOT land on the SwiftUI scaffold
-      shell: bash
-      run: |
-        set -euo pipefail
-        for bad in ios/App/App ios/App/Podfile ios/App/App.xcodeproj ios/capacitor.config.json; do
-          if [ -e "$bad" ]; then echo "Capacitor generated into the SwiftUI scaffold: $bad"; exit 1; fi
-        done
-        test -f ios/ForayKit/Package.swift
-
-    - name: Add UIBackgroundModes -> audio, and have Apple's parser check it
-      shell: bash
-      run: |
-        set -euo pipefail
-        node tools/mobile/inject-background-audio.mjs mobile/ios/App/App/Info.plist
-        plutil -lint mobile/ios/App/App/Info.plist
-        node tools/mobile/inject-background-audio.mjs mobile/ios/App/App/Info.plist --check
-
-    - name: Declare no non-exempt encryption, and have Apple's parser check it
-      shell: bash
-      run: |
-        set -euo pipefail
-        node tools/mobile/inject-background-audio.mjs mobile/ios/App/App/Info.plist --encryption false
-        plutil -lint mobile/ios/App/App/Info.plist
-        node tools/mobile/inject-background-audio.mjs mobile/ios/App/App/Info.plist --check --encryption false
-
-    - name: Add the privacy manifest (Required Reason APIs), and have Apple's parser check it
-      # Issue #948: THIS is the path App Store review sees. A binary that uses a
-      # Required Reason API without a declaring PrivacyInfo.xcprivacy is rejected
-      # at submission (ITMS-91053); TestFlight only warns. Same step as
-      # ios-build.yml's; the evidence is in tools/mobile/inject-privacy-manifest.mjs.
-      shell: bash
-      run: |
-        set -euo pipefail
-        node tools/mobile/inject-privacy-manifest.mjs mobile/ios/App
-        plutil -lint mobile/ios/App/App/PrivacyInfo.xcprivacy
-        plutil -lint mobile/ios/App/App.xcodeproj/project.pbxproj
-        node tools/mobile/inject-privacy-manifest.mjs mobile/ios/App --check
-
-    - name: Put the REAL app icon in the generated asset catalog
-      shell: bash
-      run: |
-        set -euo pipefail
-        node tools/mobile/inject-app-icon.mjs mobile/ios/App/App/Assets.xcassets/AppIcon.appiconset
-        node tools/mobile/inject-app-icon.mjs mobile/ios/App/App/Assets.xcassets/AppIcon.appiconset --check
-
-    - name: Put the REAL splash screen in the generated asset catalog
-      shell: bash
-      run: |
-        set -euo pipefail
-        node tools/mobile/inject-splash.mjs ios mobile/ios/App/App/Assets.xcassets/Splash.imageset
-        node tools/mobile/inject-splash.mjs ios mobile/ios/App/App/Assets.xcassets/Splash.imageset --check
-
-    - name: Give the embedded ONNX Runtime framework the MinimumOSVersion Apple requires
-      # ONNX RUNTIME IS GONE SINCE CH-20 (founder ruling on issue #1076: the
-      # Kokoro probe, its only caller, left the app), so there is no thin
-      # plist left to patch today and `patch` reports every slice "already
-      # declares". The step and `verify` stay, under this name (the workflow
-      # tests pin it): Capacitor's and Cordova's xcframeworks are still
-      # embedded, and the next binary dependency with a thin plist should go
-      # red here rather than at `altool`.
-      #
-      # THIS IS THE PATH THAT FAILED. Release run 34739630705 (build 2026091315,
-      # main @ ad732eb) archived and exported cleanly and then died in
-      # `xcrun altool --upload-app`:
-      #
-      #   Missing Info.plist value. A value for the key 'MinimumOSVersion' in
-      #   bundle App.app/Frameworks/onnxruntime.framework is required. (90360)
-      #
-      # The key is absent from Microsoft's own xcframework slice — see
-      # `tools/mobile/ios-embedded-frameworks.mjs` for the evidence, for why
-      # patching a binary dependency's metadata is a WORKAROUND, and for the two
-      # things that would remove it.
-      #
-      # `ios-build.yml` runs the same step, and running it there is not enough:
-      # that workflow builds but never archives and never uploads, so it was
-      # green for this defect all the way to Apple. The founder's TestFlight
-      # artifact comes from HERE.
-      #
-      # BEFORE the archive, deliberately: nothing is signed yet, so Xcode embeds
-      # an already-correct plist and signs it itself. Patching the archive would
-      # break the framework's seal and the app's with it.
-      shell: bash
-      run: |
-        set -euo pipefail
-        xcodebuild "$XC_FLAG" "$XC_PATH" -scheme App \
-          -clonedSourcePackagesDirPath "$SPM_DIR" \
-          -resolvePackageDependencies > "$ART/spm-resolve.log" 2>&1 \
-          || { tail -50 "$ART/spm-resolve.log"; exit 1; }
-        # Read the deployment target off the project rather than hardcoding it: a
-        # framework may declare an OLDER floor than the app but never a newer one,
-        # and the verify step below asserts exactly that relationship.
-        xcodebuild "$XC_FLAG" "$XC_PATH" -scheme App -configuration Release \
-          -sdk iphoneos -clonedSourcePackagesDirPath "$SPM_DIR" \
-          -showBuildSettings > "$ART/build-settings.txt" 2>/dev/null
-        # `head -1` takes the scheme's own target, which xcodebuild prints first.
-        # If that ever stops being true the value lands too HIGH and the verify
-        # step below says so by name — it is not a silent wrong answer.
-        MIN_OS=$(sed -n 's/^ *IPHONEOS_DEPLOYMENT_TARGET = //p' "$ART/build-settings.txt" | head -1)
-        test -n "$MIN_OS"
-        echo "IPHONEOS_DEPLOYMENT_TARGET is $MIN_OS"
-        # The failure mode worth printing for: the patcher REFUSES to report
-        # success when it found nothing to patch, and the only reason that
-        # happens is the resolved artifact not being where we pointed it. Print
-        # the tree so the next reader can see where Xcode actually put it.
-        node tools/mobile/ios-embedded-frameworks.mjs patch "$SPM_DIR" --min-os "$MIN_OS" \
-          | tee "$ART/framework-plist-patch.txt" \
-          || { echo "::group::$SPM_DIR"; find "$SPM_DIR" -maxdepth 4 -type d; echo "::endgroup::"; exit 1; }
-        # Apple's own parser on our output, the second opinion every other plist
-        # edit in this action gets.
-        find "$SPM_DIR" -name Info.plist -path "*.framework/*" -print0 | xargs -0 -n1 plutil -lint
+    - name: The iOS inject sequence, shared with ios-build.yml
+      # EVERY edit `cap add ios` does not make, the SwiftUI-scaffold guard, the
+      # Xcode container detection and the MinimumOSVersion patch live in ONE
+      # composite that ios-build.yml runs on every PR (CH2-16, T2-01). Until
+      # then this file carried a hand copy that had lost the PR path's second
+      # opinions (PlistBuddy, json.tool, test -d), so the TestFlight archive ran
+      # the weaker checks. Needs ART and SPM_DIR from the toolchain step above;
+      # leaves XC_FLAG, XC_PATH and the project paths in $GITHUB_ENV.
+      uses: ./.github/actions/ios-prepare
 
     - name: Is signing configured?
       id: signing
