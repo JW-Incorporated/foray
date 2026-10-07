@@ -1428,7 +1428,11 @@ const FLOORS = {
   // ruling made mechanical — of everything floored in this file it is the one
   // whose deletion would be hardest to notice and most expensive to discover,
   // because the thing it guards is an absence.
+  /* CH2-13: labels.mjs genreTopicPrior (the one genre->topics rule prepare-batch and classify-breadth share) and classifyProgressPath (the committed data/classify-progress.json default). */
+  "tools/classify/labels.test.mjs": 10,
   "tools/classify/no-exclusion.test.mjs": 25,
+  /* CH2-13 (docs/roadmap/code-health-2.md): the Tier-0 genre prior each batch entry carries — characterization of the map lookup, the confidence min and the no-topic shape (4); the prior never carries a non-taxonomy topic and the batch lists the ones it dropped (T1-07), select.mjs alone declares the cooldown/prefix constants (T1-17), and both scripts resolve progress through labels.mjs (T1-09, one declaration run per script); 4 -> 10 declared. */
+  "tools/classify/prepare-batch.test.mjs": 10,
   "tools/classify/reconcile-shards.test.mjs": 75,
   /* Guards the metric the whole classification effort is judged on. Its per-item
      ("fully root-only") number is the one that maps to product behaviour; the
