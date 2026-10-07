@@ -15,31 +15,53 @@
    1. `itunes_id` present (a decimal integer, number or string; pg returns
       int8 as a string). The api joins on `apple_collection_id`, so a row
       without one is useless here (`skipped_no_apple_id`).
-   2. Both rights flags false (`skipped_rights`). Founder ruling 31,
-      docs/roadmap/README.md (corpus Q3): shows with `itunes:block` or
+   2. Both rights flags false (`skipped_rights`). Default 31,
+      docs/roadmap/README.md (corpus Q3; a proposed default the tasks
+      proceed on, not a founder ruling): shows with `itunes:block` or
       `podcast:locked` are excluded from the app catalogue.
    3. `language` starting `en` (any case) or null/blank (`skipped_language`).
    4. One row per apple id; the first, in buildShows' corpus_podcast_id
       order, wins (`skipped_duplicate_apple_id`).
 
-   Row shape. These are the 18 keys of a data/catalog-breadth.json row, in
-   its order. The plan lists 17. The 18th, `taxonomy_node_ids`, was added by
-   tools/refresh/fold-breadth-topics.mjs and is read by breadthCatalog.ts,
-   so it is copied from the old breadth row with the same
-   apple_collection_id, else []. After them come two additive fields,
-   `timed_transcript_episodes` and `audio_episodes`.
-   `chart_genre_id` / `chart_genre_name` / `chart_rank` are copied from the old
-   row too, else null. The roadmap's G-15 card keeps chart_rank as a prior
-   from the old harvest: the corpus has no charts.
+   Row shape. BREADTH_KEYS are the 20 keys of the committed
+   data/catalog-breadth.json's rows, in its order, pinned by a test that
+   reads the live file (so a field the harvester adds turns that test red
+   instead of vanishing from a corpus catalogue, the #1148 class). The plan
+   lists 17. The other three are `taxonomy_node_ids` (added by
+   tools/refresh/fold-breadth-topics.mjs, read by breadthCatalog.ts),
+   `artist_name` (P-03a) and `last_charted_at` (#1149). After them come two
+   additive fields, `timed_transcript_episodes` and `audio_episodes`.
+   Copied from the old breadth row with the same apple_collection_id, else
+   the default in brackets: `apple_genre_ids` ([]), `artist_name` (null),
+   `chart_genre_id` / `chart_genre_name` / `chart_rank` (null),
+   `last_charted_at` (null), `taxonomy_node_ids` ([]). The roadmap's G-15
+   card keeps chart_rank as a prior from the old harvest: the corpus has no
+   charts. `artist_name` is never the corpus `author`: PKG-03 scrubs that
+   field, and it is not Apple's artistName.
    `apple_collection_id` is a number, as in the old file.
    `in_curated` is true only when `foray_show_id` is a data/catalog.json
    show_id. buildShows falls back to String(itunes_id) when no catalog feed
    matches, and catalog show_ids are slugs, so that fallback never counts.
 
+   UNION with the old file (PR #1149's rule, docs/CATALOG-PIPELINE.md
+   "Re-harvests keep shows that left the charts"): after the corpus rows,
+   every old row whose apple id was not emitted is appended unchanged, in the
+   old file's order, so a corpus catalogue is a superset of the committed
+   file and no search result, show page, shared #/show/<id> link or topic is
+   lost. The one exception: an old row whose apple id the corpus skipped for
+   rights (rule 2) is withheld, since the corpus says that show is blocked
+   or locked. tools/harvest-merge.mjs's mergeBreadthHarvest is not reused:
+   it is a chart merge (it nulls chart_rank on every kept row and stamps
+   last_charted_at on every refreshed one), and the corpus is not a chart.
+
    Report: {rows, skipped_no_apple_id, skipped_rights, skipped_language,
-   skipped_duplicate_apple_id, new_vs_old, dropped_vs_old,
-   feed_url_changed}. The last three compare apple ids with the old file,
-   and feed URLs under normalizeFeedUrl (tools/shows/identity.mjs, imported).
+   skipped_duplicate_apple_id, new_vs_old, kept_from_old,
+   withheld_from_old, feed_url_changed}. `rows` counts every emitted row,
+   kept ones included. new_vs_old counts corpus rows with no old row;
+   kept_from_old the old rows appended (it replaces the earlier
+   `dropped_vs_old`: those rows are no longer dropped); withheld_from_old the
+   rights-flagged old rows left out; feed_url_changed compares feed URLs
+   under normalizeFeedUrl (tools/shows/identity.mjs, imported).
 
    CLI: node tools/foraycorpus-export/catalog-adapter.mjs --shows
    <shows.jsonl> [--breadth data/catalog-breadth.json] [--catalog
@@ -55,7 +77,7 @@ import { normalizeFeedUrl } from "../shows/identity.mjs";
 import { EXPORT_OUT_DIR, ROOT } from "./config.mjs";
 import { readShowsJsonl } from "./overlap.mjs";
 
-/** data/catalog-breadth.json's 18 row keys, in the file's order. */
+/** The committed data/catalog-breadth.json's 20 row keys, in the file's order (pinned by a test that reads it). */
 export const BREADTH_KEYS = Object.freeze([
   "apple_collection_id",
   "title",
@@ -63,11 +85,13 @@ export const BREADTH_KEYS = Object.freeze([
   "artwork_url",
   "apple_genre",
   "apple_genre_ids",
+  "artist_name",
   "episode_count",
   "explicit",
   "chart_genre_id",
   "chart_genre_name",
   "chart_rank",
+  "last_charted_at",
   "in_curated",
   "podcastindex_id",
   "tier",
@@ -133,11 +157,13 @@ export function catalogAdapter(showRows, { breadthOld, catalog, harvestedAt = ne
     skipped_language: 0,
     skipped_duplicate_apple_id: 0,
     new_vs_old: 0,
-    dropped_vs_old: 0,
+    kept_from_old: 0,
+    withheld_from_old: 0,
     feed_url_changed: 0,
   };
   const shows = [];
   const emitted = new Set();
+  const rightsFlagged = new Set();
   for (const row of showRows ?? []) {
     const id = appleIdOf(row?.itunes_id);
     if (id === null) {
@@ -146,6 +172,7 @@ export function catalogAdapter(showRows, { breadthOld, catalog, harvestedAt = ne
     }
     if (row.rights?.itunes_block !== false || row.rights?.podcast_locked !== false) {
       report.skipped_rights += 1;
+      rightsFlagged.add(id);
       continue;
     }
     if (!isEnglishOrUnknown(row.language)) {
@@ -168,12 +195,14 @@ export function catalogAdapter(showRows, { breadthOld, catalog, harvestedAt = ne
       feed_url: row.feed_url ?? null,
       artwork_url: row.image_url ?? null,
       apple_genre: row.categories?.[0]?.category ?? capitalise(row.pi_categories?.[0]) ?? null,
-      apple_genre_ids: [],
+      apple_genre_ids: Array.isArray(old?.apple_genre_ids) ? [...old.apple_genre_ids] : [],
+      artist_name: old?.artist_name ?? null,
       episode_count: row.episodes_total ?? null,
       explicit: row.explicit ?? null,
       chart_genre_id: old?.chart_genre_id ?? null,
       chart_genre_name: old?.chart_genre_name ?? null,
       chart_rank: old?.chart_rank ?? null,
+      last_charted_at: old?.last_charted_at ?? null,
       in_curated: row.foray_show_id != null && curatedIds.has(String(row.foray_show_id)),
       podcastindex_id: row.podcastindex_feed_id ?? null,
       tier: "breadth",
@@ -185,7 +214,18 @@ export function catalogAdapter(showRows, { breadthOld, catalog, harvestedAt = ne
       audio_episodes: row.audio_episodes ?? 0,
     });
   }
-  for (const id of oldById.keys()) if (!emitted.has(id)) report.dropped_vs_old += 1;
+  /* UNION: every old row the corpus did not emit, unchanged (a copy), in the
+     old file's order; a rights-flagged one is withheld instead. */
+  for (const [id, old] of oldById) {
+    if (emitted.has(id)) continue;
+    if (rightsFlagged.has(id)) {
+      report.withheld_from_old += 1;
+      continue;
+    }
+    emitted.add(id);
+    shows.push(structuredClone(old));
+    report.kept_from_old += 1;
+  }
   report.rows = shows.length;
   return { shows, report };
 }

@@ -204,16 +204,30 @@ Add one paragraph per module as it lands.
   `data/catalog-breadth.json`-shaped rows and returns `{ shows, report }`.
   Rows are skipped, and counted, when they have no `itunes_id`
   (`skipped_no_apple_id`), when either rights flag is set (`skipped_rights`,
-  founder ruling 31 in `docs/roadmap/README.md`), when `language` is neither
-  `en*` nor null (`skipped_language`), or when they repeat an apple id. A row
-  carries the old file's 18 keys: the plan's 17 plus `taxonomy_node_ids`,
-  which `breadthCatalog.ts` reads. Then come the additive
-  `timed_transcript_episodes` and `audio_episodes`. The chart fields and
-  `taxonomy_node_ids` are copied from the old breadth row with the same
-  `apple_collection_id`, else null and `[]`. `in_curated` is true only when
-  `foray_show_id` is a `data/catalog.json` `show_id`, so the numeric
-  `String(itunes_id)` fallback never counts. The report adds `new_vs_old`,
-  `dropped_vs_old` and `feed_url_changed`. The CLI (`--shows <shows.jsonl>
+  default 31 in `docs/roadmap/README.md`, a proposed default the tasks proceed
+  on, not a founder ruling), when `language` is neither `en*` nor null
+  (`skipped_language`), or when they repeat an apple id. A row carries the
+  committed file's 20 keys in its order (`BREADTH_KEYS`, pinned by a test that
+  reads the live `data/catalog-breadth.json`): the plan's 17 plus
+  `taxonomy_node_ids`, which `breadthCatalog.ts` reads, `artist_name` (P-03a)
+  and `last_charted_at` (#1149). Then come the additive
+  `timed_transcript_episodes` and `audio_episodes`. `apple_genre_ids`,
+  `artist_name`, the chart fields, `last_charted_at` and `taxonomy_node_ids`
+  are copied from the old breadth row with the same `apple_collection_id`,
+  else `[]`, null and `[]` as fitting; `artist_name` never comes from the
+  corpus `author` (PKG-03 scrubs it, and it is not Apple's artistName).
+  `in_curated` is true only when `foray_show_id` is a `data/catalog.json`
+  `show_id`, so the numeric `String(itunes_id)` fallback never counts. The
+  output is a UNION with the old file (PR #1149's rule): after the corpus rows
+  comes every old row whose apple id was not emitted, unchanged, so a corpus
+  catalogue is a superset of the committed file. The one exception is an old
+  row whose show the corpus flags for rights: it is withheld. The report adds
+  `new_vs_old`, `kept_from_old` (the old rows appended; it replaces
+  `dropped_vs_old`, since those rows are no longer dropped),
+  `withheld_from_old` and `feed_url_changed`, and `rows` counts kept rows too.
+  `tools/harvest-merge.mjs`'s `mergeBreadthHarvest` is not reused: it is a
+  chart merge (it nulls `chart_rank` on kept rows and stamps `last_charted_at`
+  on refreshed ones), and the corpus has no charts. The CLI (`--shows <shows.jsonl>
   [--breadth] [--catalog] [--out] [--harvested-at]`) writes the envelope
   minified to `data-local/corpus-export/catalog-breadth-corpus.json` and
   refuses an `--out` under `data/`.

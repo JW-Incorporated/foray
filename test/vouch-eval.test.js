@@ -10,18 +10,21 @@
  *     rows. The harness's one shortcut (no session) is pinned as equivalent.
  *  2. The aggregation's arithmetic, on a hand-computed fixture, and the
  *     extractor refuses to measure a stand-in.
- *  3. The measured gates. (a) the eligible set is the whole curated catalogue
- *     (229 shows, all with an editorial_note). (b) rotation coverage over
- *     229, and the skew toward early show_ids, as ceilings. (c) row integrity.
- *     (d) Family Mode violations and (e) label_scope leakage are CEILINGS on
- *     the measured counts, never zero: showsWeVouchFor applies neither filter
- *     and this PR does not change app.js. A Family Mode filter (the routed
- *     card) drops (d) and its ceiling comes down in the same PR.
+ *  3. The measured gates. The runner measures the row twice: (a), (b), (c)
+ *     and (e) with Family Mode OFF, (d) with it ON. (a) the eligible set is
+ *     the whole curated catalogue (229 shows, all with an editorial_note).
+ *     (b) rotation coverage over 229, and the skew toward early show_ids, as
+ *     ceilings. (c) row integrity. (d) Family Mode violations are ZERO since
+ *     showsWeVouchFor filters with familyAllows (2026-10-06, #560), and the
+ *     ON row still fills every slot. (e) label_scope leakage stays a CEILING
+ *     on the measured count: the row applies no label_scope filter.
  *  4. The committed report's block is what the runner produces, and the two
  *     runners' blocks cannot overwrite each other.
  *
  * Every value MEASURED 2026-10-05 against origin/main 919f925d
- * (node tools/similar-eval/vouch-run.mjs --json). Every test names the
+ * (node tools/similar-eval/vouch-run.mjs --json), and re-measured 2026-10-06
+ * against d75f456c with the Family Mode filter and the high-bit swap (the
+ * 560-part card). Every test names the
  * mutation that kills it (CLAUDE.md: a green test is not evidence until you
  * have broken it); each was run on 2026-10-05, app.js and data restored after.
  *
@@ -43,18 +46,29 @@ const VOUCH = "tools/similar-eval/vouch-run.mjs";
 const SIMILAR = "tools/similar-eval/run.mjs";
 const CATALOG = "data/catalog-client.json";
 
+/* Re-measured 2026-10-06 after seededShuffle took its swap from the LCG's
+   high bits (#560): the (b) and (e) values below moved with the rotation. */
 const FLOOR = {
-  surfaced: 229, // every eligible show appears at least once in 2026
-  minAppearances: 1, // our-fake-history, strict-scrutiny, the-worlds-best-construction-podcast
-  meanDistinctBranches: 7.956, // 7.9561 top-level branches per 8-slot row
+  surfaced: 229, // every eligible show appears at least once in 2026 (Family Mode OFF)
+  minAppearances: 2, // physiology-endurance-running (was 1 with the low-bit swap)
+  /* 7.9452 since the high-bit swap (was 7.9561): the new rotation changes
+     which shows share a row, and the mean moved by 0.011 of a branch. */
+  meanDistinctBranches: 7.945,
 };
 const CEILING = {
-  maxAppearances: 38, // advent-of-computing, amicus-dahlia-lithwick, ams-on-the-air (even rotation: 12.75)
-  firstDecileShare: 0.232, // 0.2315 of slots go to the first 23 show_ids (even rotation: ~0.100)
-  familySlots: 573, // (d) 19.6% of 2,920 slots
-  familyDays: 296, // (d) days with at least one show Family Mode would hide
-  scopeSlots: 205, // (e) 7.0% of 2,920 slots
-  scopeDays: 152, // (e) days with at least one label_scope "general" show
+  maxAppearances: 24, // planetary-radio, sigma-nutrition-radio (even rotation: 12.75; was 38 with the low-bit swap)
+  firstDecileShare: 0.097, // 0.0969 of slots go to the first 23 show_ids (even rotation: ~0.100; was 0.2315)
+  familySlots: 0, // (d) was 573 (19.6% of 2,920 slots) before the 2026-10-06 filter
+  familyDays: 0, // (d) was 296 days with at least one show Family Mode hides
+  scopeSlots: 169, // (e) 5.8% of 2,920 slots (was 205 with the low-bit swap)
+  scopeDays: 141, // (e) days with at least one label_scope "general" show (was 152)
+};
+
+/* (d) with Family Mode ON, measured 2026-10-06 after the familyAllows filter. */
+const FAMILY_ON = {
+  rejected: 39, // 17 comedy, 14 unrated, 8 rated explicit
+  eligible: 190, // 229 - 39
+  surfaced: 190, // all of them (189 with the low-bit swap: ologies-with-alie-ward never)
 };
 
 let cache = null;
@@ -72,22 +86,40 @@ function appFunction(name) {
   return m[0];
 }
 
-test("the measured rows are app.js's own showsWeVouchFor, day by day", async () => {
-  /* MUTATION (run): in vouch-run.mjs runVouchEval, call
+test("the measured rows are app.js's own showsWeVouchFor, day by day, in both Family Mode settings", async () => {
+  /* OFF: app.js's own familyAllows with familyMode() false. ON: a
+     familyAllows that rejects exactly the runner's (d) set, which the
+     "(d) the Family Mode predicate measured is app.js's" test below ties to
+     app.js's rule.
+     MUTATION (run): in vouch-run.mjs runMode, call
      `showsWeVouchFor(7, date)` instead of `showsWeVouchFor(undefined, date)`
-     -> red on 2026-01-01 (7 shows, app.js renders 8). */
-  const { rows, window } = await measured();
+     -> red on 2026-01-01 (7 shows, app.js renders 8).
+     MUTATION (run 2026-10-06): in vouch-run.mjs runVouchEval, build the ON
+     run from `offFns` -> red (the ON rows hold rejected shows). */
+  const { rows, familyRows, window, family } = await measured();
   const catalog = readJson(CATALOG);
-  const ctx = vm.createContext({ state: { catalog } });
-  const fn = vm.runInContext(
-    `${appFunction("dayOfYearSeed")}\n${appFunction("seededShuffle")}\n${appFunction("showsWeVouchFor")}\nshowsWeVouchFor;`,
-    ctx
-  );
+  const unsafe = new Set(family.catalogueIds);
+  const row = (familyOn) => {
+    const ctx = vm.createContext({ state: { catalog }, unsafe });
+    const allows = familyOn
+      ? "function familyAllows(s) { return !unsafe.has(s.show_id); }"
+      : `function familyMode() { return false; }\n${appFunction("familyAllows")}`;
+    return vm.runInContext(
+      `${allows}\n${appFunction("dayOfYearSeed")}\n${appFunction("seededShuffle")}\n${appFunction("showsWeVouchFor")}\nshowsWeVouchFor;`,
+      ctx
+    );
+  };
   assert.strictEqual(window.days, 365);
-  assert.strictEqual(rows.length, 365);
-  for (const row of rows) {
-    const want = Array.from(fn(undefined, new Date(`${row.date}T00:00:00Z`)), (s) => s.show_id);
-    assert.deepStrictEqual(row.ids, want, `row for ${row.date}`);
+  assert.ok(unsafe.size > 0, "the ON comparison needs a non-empty rejected set");
+  for (const [label, measuredRows, fn] of [
+    ["Family Mode OFF", rows, row(false)],
+    ["Family Mode ON", familyRows, row(true)],
+  ]) {
+    assert.strictEqual(measuredRows.length, 365, label);
+    for (const r of measuredRows) {
+      const want = Array.from(fn(undefined, new Date(`${r.date}T00:00:00Z`)), (s) => s.show_id);
+      assert.deepStrictEqual(r.ids, want, `${label}: row for ${r.date}`);
+    }
   }
 });
 
@@ -157,9 +189,9 @@ test("(a) the eligible set is the whole curated catalogue: all 229 shows carry a
   assert.strictEqual(r.eligible, r.catalogueShows, `${r.catalogueShows - r.eligible} shows fell out of the vouch row's eligible set`);
 });
 
-test(`(b) rotation: ${FLOOR.surfaced} of 229 shows surface in the year, each at least ${FLOOR.minAppearances} day`, async () => {
-  /* MUTATION (run): in app.js seededShuffle, `const j = s % (i + 1)` ->
-     `const j = i` (no shuffle: the same first eight show_ids every day)
+test(`(b) rotation: ${FLOOR.surfaced} of 229 shows surface in the year, each on at least ${FLOOR.minAppearances} days`, async () => {
+  /* MUTATION (run): in app.js seededShuffle, `const j = (s >>> 16) % (i + 1)`
+     -> `const j = i` (no shuffle: the same first eight show_ids every day)
      -> red (8 surfaced). */
   const { coverage } = await measured();
   assert.ok(coverage.surfaced >= FLOOR.surfaced, `${coverage.surfaced} shows surfaced; floor ${FLOOR.surfaced}. Never: ${coverage.never.join(", ")}`);
@@ -167,8 +199,11 @@ test(`(b) rotation: ${FLOOR.surfaced} of 229 shows surface in the year, each at 
 });
 
 test(`(b) skew: no show on more than ${CEILING.maxAppearances} days, the first tenth of show_ids at most ${CEILING.firstDecileShare} of slots`, async () => {
-  /* Ceilings on a measured DEFECT (the LCG's low bits favour early show_ids;
-     see the research note), so a fix passes and a worse skew does not.
+  /* Ceilings at the measured values since the 2026-10-06 fix: the swap now
+     comes from the LCG's high bits; the low bits favoured early show_ids
+     (23.2% of slots to the first tenth; see the research note).
+     MUTATION (run 2026-10-06): app.js seededShuffle, restore
+     `const j = s % (i + 1)` -> red (max 38 days; first-tenth share 0.2315).
      MUTATION (run): app.js showsWeVouchFor `limit = 8` -> `limit = 12`
      -> red on the max (more slots, more days per show). */
   const { coverage } = await measured();
@@ -205,8 +240,9 @@ test(`(c) a row spans at least ${FLOOR.meanDistinctBranches} top-level branches 
 test("(d) the Family Mode predicate measured is app.js's: every explicit-rated and every comedy show is rejected", async () => {
   /* Guards the HARNESS: (d) is only meaningful if familyAllows runs with
      Family Mode ON.
-     MUTATION (run): in vouch-run.mjs loadAppFunctions, make the stub
-     `function familyMode() { return false; }` -> red (nothing rejected). */
+     MUTATION (run 2026-10-06): in vouch-run.mjs loadAppFunctions, make the
+     stub `function familyMode() { return false; }` whatever the option
+     -> red (nothing rejected). */
   const { family } = await measured();
   const catalog = readJson(CATALOG);
   const rejected = new Set(family.catalogueIds);
@@ -221,16 +257,36 @@ test("(d) the Family Mode predicate measured is app.js's: every explicit-rated a
   assert.strictEqual(byReason, family.catalogueShows, "every rejected show has a reason");
 });
 
-test(`(d) ceiling: Family Mode violations at most ${CEILING.familySlots} slots on ${CEILING.familyDays} days (not zero: the row has no Family Mode filter)`, async () => {
-  /* A CEILING, never a zero pin: showsWeVouchFor applies no Family Mode
-     filter (routed as its own app.js card). Lower it when that card lands.
-     MUTATION (run): app.js showsWeVouchFor `limit = 8` -> `limit = 12`
-     -> red. MUTATION (run): delete `if (item.explicit === false) return true;`
-     from app.js familySafe (clean-rated shows then fall through to the
-     unrated rule and are rejected) -> red. */
+test(`(d) Family Mode ON: ${CEILING.familySlots} violations on ${CEILING.familyDays} days, every one of the ${FAMILY_ON.rejected} rejected shows kept out`, async () => {
+  /* Zero since 2026-10-06 (#560): showsWeVouchFor filters with familyAllows,
+     the same predicate the runner counts with. Before it, 573 slots on 296
+     days.
+     MUTATION (run 2026-10-06): drop `.filter(familyAllows)` from app.js
+     showsWeVouchFor -> red (573 slots on 296 days). */
   const { family } = await measured();
-  assert.ok(family.slots <= CEILING.familySlots, `${family.slots} Family Mode violations; ceiling ${CEILING.familySlots}`);
-  assert.ok(family.daysWithAny <= CEILING.familyDays, `${family.daysWithAny} days with a violation; ceiling ${CEILING.familyDays}`);
+  assert.strictEqual(family.catalogueShows, FAMILY_ON.rejected, "the rejected set moved; re-measure (d)");
+  assert.strictEqual(family.slots, CEILING.familySlots, `${family.slots} Family Mode violations`);
+  assert.strictEqual(family.daysWithAny, CEILING.familyDays, `${family.daysWithAny} days with a violation`);
+  assert.strictEqual(family.distinctShown, 0);
+});
+
+test(`(d) Family Mode ON: every row is still limit distinct allowed shows, the same all day, over ${FAMILY_ON.eligible} eligible shows`, async () => {
+  /* The filter runs BEFORE the sort and the shuffle, so a Family Mode row
+     loses no slots and stays one set per UTC day for every visitor.
+     MUTATION (run 2026-10-06): app.js showsWeVouchFor, filter after the cut
+     (`seededShuffle(shows, ...).slice(0, limit).filter(familyAllows)`)
+     -> red (short rows).
+     MUTATION (run 2026-10-06): app.js seededShuffle, restore
+     `const j = s % (i + 1)` -> red (189 of 190 surface). */
+  const { familyOn, family, catalogueShows } = await measured();
+  assert.strictEqual(familyOn.limit, 8);
+  assert.strictEqual(familyOn.eligible, catalogueShows - family.catalogueShows, "ON eligible = catalogue minus the rejected set");
+  assert.strictEqual(familyOn.eligible, FAMILY_ON.eligible);
+  assert.deepStrictEqual(familyOn.integrity.shortRows, [], "short rows with Family Mode on");
+  assert.deepStrictEqual(familyOn.integrity.duplicateRows, [], "rows with a show twice");
+  assert.deepStrictEqual(familyOn.integrity.ineligibleRows, [], "rows with an ineligible show");
+  assert.deepStrictEqual(familyOn.integrity.unstableDays, [], "days whose 00:00 and 23:59 UTC rows differ");
+  assert.ok(familyOn.coverage.surfaced >= FAMILY_ON.surfaced, `${familyOn.coverage.surfaced} shows surfaced; floor ${FAMILY_ON.surfaced}`);
 });
 
 test(`(e) ceiling: label_scope "general" shows fill at most ${CEILING.scopeSlots} slots on ${CEILING.scopeDays} days`, async () => {
@@ -243,8 +299,8 @@ test(`(e) ceiling: label_scope "general" shows fill at most ${CEILING.scopeSlots
 });
 
 test("the committed report's vouch block is what the runner produces", async () => {
-  /* MUTATION (run): change `573 (19.6%)` to `500 (19.6%)` in the report's
-     vouch block -> red. */
+  /* MUTATION (run 2026-10-06): change `0 (0.0%), on 0 of 365 days` to
+     `1 (0.0%), on 0 of 365 days` in the report's vouch block -> red. */
   const { reportIsCurrent, REPORT_PATH } = await load(VOUCH);
   assert.ok(reportIsCurrent(ROOT), `${REPORT_PATH} vouch block is stale -- run node ${VOUCH}`);
 });
