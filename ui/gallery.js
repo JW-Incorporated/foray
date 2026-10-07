@@ -6,11 +6,84 @@
  * primitives here without putting review fixtures on listener screens.
  *
  * This is a classic script and shares app.js's globals. Nothing here runs until
- * renderCurrentPage() selects the guarded route.
+ * renderCurrentPage() selects the guarded route. Listener screens do not call a
+ * primitive until their Phase 4 adoption branch.
  */
 
 function galleryEnabled() {
   return isLabBuild() || new URLSearchParams(location.search).get("gallery") === "1";
+}
+
+function galleryBandSegments() {
+  return [
+    { showId: "origin", show: "Origin Stories", duration: 420 },
+    { showId: "narration", show: "4a narration", duration: 36, narration: true },
+    { showId: "bbq", show: "BBQ Radio Network", duration: 260 },
+    { showId: "narration", show: "4a narration", duration: 28, narration: true },
+    { showId: "bbq", show: "BBQ Radio Network", duration: 210 },
+    { showId: "moreish", show: "The Moreish Podcast", duration: 330 },
+  ];
+}
+
+function galleryControls(scheme) {
+  var dark = scheme === "dark";
+  return '<section class="gallery-block" id="gallery-' + esc(scheme) + '-controls" aria-labelledby="gallery-' + esc(scheme) + '-controls-title"><h3 class="heading" id="gallery-' + esc(scheme) + '-controls-title">Controls and states</h3>' +
+    '<div class="gallery-state-grid">' +
+    '<div><span class="gallery-label">Default</span>' + tactileKeycap({ variant: "persimmon", text: "Play", icon: "ph-play-fill", label: "Play" }) + '</div>' +
+    '<div><span class="gallery-label">Pressed</span>' + tactileKeycap({ variant: "rubber", text: "Skip", icon: "skip-30", label: "Skip", pressed: true }) + '</div>' +
+    '<div><span class="gallery-label">Focus</span>' + tactileKeycap({ variant: "ultramarine", text: "Make", icon: "ph-sparkle", label: "Make", focus: true }) + '</div>' +
+    '<div><span class="gallery-label">Disabled</span>' + tactileKeycap({ variant: "paper", text: "Saved", icon: "ph-bookmark-simple", label: "Saved", disabled: true }) + '</div>' +
+    '<div><span class="gallery-label">Loading</span>' + tactileKeycap({ variant: "paper", text: "Loading", label: "Loading", loading: true }) + '</div>' +
+    '<div><span class="gallery-label">Offline</span>' + tactileKeycap({ variant: "paper", text: "Needs a connection", label: "Needs a connection", offline: true }) + '</div>' +
+    '</div><div class="gallery-size-row">' +
+    tactileKeycap({ size: "sm", variant: "paper", icon: "ph-bookmark-simple", label: "Small key" }) +
+    tactileKeycap({ size: "md", variant: "paper", text: "Medium", label: "Medium key" }) +
+    tactileKeycap({ size: "lg", variant: "persimmon", text: "Large", label: "Large key" }) +
+    tactileKeycap({ size: "xl", variant: "persimmon", round: true, icon: "ph-play-fill", label: "Extra large play" }) +
+    '</div><div class="gallery-state-row">' +
+    tactileTextButton({ text: "Just show me" }) + tactileTextButton({ text: "Focused", focus: true }) + tactileTextButton({ text: "Unavailable", disabled: true }) +
+    '</div><div class="gallery-state-row">' +
+    tactileChip({ text: "Forays" }) + tactileChip({ text: "Shows", selected: true }) + tactileChip({ text: "Up Next", count: 4 }) + tactileChip({ text: "Focus", focus: true }) + tactileChip({ text: "Loading", loading: true }) + tactileChip({ text: "Disabled", disabled: true }) +
+    '</div><div class="gallery-state-row">' +
+    tactileTag({ kind: "stretch", text: "Stretch" }) + tactileTag({ kind: "narration", text: "4a narration" }) + tactileTag({ kind: "downloaded", text: "Downloaded" }) + tactileTag({ kind: "played", text: "Played" }) + tactileTag({ kind: "playing", text: "Playing" }) +
+    '</div><div class="gallery-state-row gallery-art-row">' +
+    tactileArtFrame({ size: "row", initials: "OS", title: "Origin Stories" }) + tactileArtFrame({ size: "queue", initials: "BR", title: "BBQ Radio Network" }) + tactileArtFrame({ size: "mini", initials: "MP", title: "The Moreish Podcast" }) + tactileArtFrame({ size: "disc", initials: "4a", title: "4a", round: true }) + tactileArtFrame({ size: "row", initials: "LO", title: "Loading artwork", loading: true }) + tactileArtFrame({ size: "row", initials: "OF", title: "Offline artwork", offline: true }) +
+    '</div>' + (dark ? "" : '<p class="gallery-note">The 44px key is the floor; the larger keys are transport roles.</p>') + '</section>';
+}
+
+function gallerySurfaces(scheme) {
+  var id = "gallery-" + scheme + "-surfaces";
+  return '<section class="gallery-block" id="' + esc(id) + '" aria-labelledby="' + esc(id) + '-title"><h3 class="heading" id="' + esc(id) + '-title">Cards, wells, bands, and feedback</h3><div class="gallery-two">' +
+    tactileCard({ eyebrow: "Card", title: "Raised enamel", copy: "One radius and one shadow carry grouped content." }) +
+    tactileCard({ eyebrow: "Hero", title: "A bigger stage", copy: "The hero keeps the same material with more room.", hero: true }) +
+    tactileWell({ text: "Inset well · 12:40" }) + tactileCard({ eyebrow: "Loading", title: "Stable geometry", copy: "The state keeps its final footprint.", loading: true }) +
+    '</div><div class="gallery-band-stack"><span class="gallery-label">Mini band</span>' + tactileBand({ id: id + "-mini", kind: "mini", segments: galleryBandSegments(), progress: .43, currentIndex: 2, renderWidth: 329 }) + '<span class="gallery-label">Detail band · one code per run</span>' + tactileBand({ id: id + "-detail", kind: "detail", segments: galleryBandSegments(), progress: .43, currentIndex: 2, renderWidth: 329 }) + '<span class="gallery-label">Scrubber · slider</span>' + tactileBand({ id: id + "-scrub", kind: "scrub", segments: galleryBandSegments(), progress: .43, currentIndex: 2, totalSeconds: 1284, valueText: "9 minutes 12 of 21 minutes 24, BBQ Radio Network", renderWidth: 329 }) + '</div>' +
+    tactileGauge({}) + tactileBridgeCard({ sentence: "Machining shapes parts; language shapes meaning through the same steady pressure.", knownTitle: "Machining", knownInitials: "MA", title: "How words wear into new forms", show: "Lingthusiasm", duration: "35 min", initials: "LW" }) +
+    '<div class="gallery-two">' + tactileToast({ text: "Removed from Up Next", action: "Undo" }) + tactileToast({ text: "Saved for later", action: "Undo", show: true }) + '</div><div class="gallery-two">' + tactileSkeleton("row") + tactileSkeleton("hero") + '</div>' + tactileEmpty({ copy: "Nothing here yet. Follow a show and it lands here.", action: "Find a show" }) + '</section>';
+}
+
+function galleryRows(scheme) {
+  var id = "gallery-" + scheme + "-rows";
+  return '<section class="gallery-block" id="' + esc(id) + '" aria-labelledby="' + esc(id) + '-title"><h3 class="heading" id="' + esc(id) + '-title">Rows and tiles</h3><div class="gallery-rows">' +
+    tactileShowRow({ name: "Origin Stories", meta: "12 episodes", initials: "OS", following: true }) +
+    tactileEpisodeRow({ title: "A machine can teach a language", show: "Lingthusiasm - A podcast that's enthusiastic about linguistics", duration: "35 min", initials: "LI", why: "A familiar craft opens onto how words change.", downloaded: true }) +
+    tactileEpisodeRow({ title: "A second episode waits nearby", show: "Design Matters | Debbie Millman", duration: "42 min", initials: "DM", queued: true }) +
+    tactileEpisodeRow({ title: "Loading episode", show: "Show", duration: "35 min", initials: "LO", loading: true }) +
+    tactileQueueRow({ position: 2, title: "The next station", show: "The Moreish Podcast", remaining: "28 min", initials: "MP" }) +
+    tactileQueueRow({ current: true, title: "The station playing now", remaining: "18 min left", initials: "BR" }) +
+    '</div><div class="gallery-tiles">' + tactileTile({ size: "s", name: "Language", count: "14 shows", initials: "LA" }) + tactileTile({ size: "s", name: "Machines", count: "9 shows", initials: "MA", focus: true }) + tactileTile({ size: "m", name: "Design and materials", count: "11 shows", initials: "DM" }) + tactileTile({ size: "l", name: "Ideas that cross the dial", count: "18 shows", initials: "ID" }) + '</div></section>';
+}
+
+function galleryNavigation(scheme) {
+  var id = "gallery-" + scheme + "-navigation";
+  return '<section class="gallery-block" id="' + esc(id) + '" aria-labelledby="' + esc(id) + '-title"><h3 class="heading" id="' + esc(id) + '-title">Deck, sheet, and rotary control</h3><div class="gallery-decks">' +
+    tactileTabBar({ active: "today", count: 4, mini: { title: "A machine can teach a language", show: "Lingthusiasm", initials: "LI" } }) +
+    tactileTabBar({ active: "yours", count: 4, collapsed: true }) +
+    '</div>' + tactileRotary({ label: "Playback speed", value: "1.0×" }) + tactileSheet({ id: id + "-preview", closeId: id + "-preview-close", title: "Sheet", copy: "Focus enters the container and every gesture has a button.", primary: "Done", secondary: "Not now", preview: true }) + '</section>';
+}
+
+function galleryScheme(scheme, label) {
+  return '<section class="gallery-scheme gallery-scheme--' + esc(scheme) + '" id="gallery-' + esc(scheme) + '" aria-labelledby="gallery-' + esc(scheme) + '-title"><header class="gallery-scheme__head"><p class="readout">' + esc(label) + '</p><h2 class="display" id="gallery-' + esc(scheme) + '-title">Every primitive, every state</h2></header>' + galleryControls(scheme) + gallerySurfaces(scheme) + galleryRows(scheme) + galleryNavigation(scheme) + '</section>';
 }
 
 function renderGallery() {
@@ -19,9 +92,24 @@ function renderGallery() {
     <main class="gallery" aria-labelledby="gallery-title">
       <header class="gallery-head">
         <p class="readout">Tactile foundation</p>
-        <h1 class="display-xl" id="gallery-title">Icon family</h1>
-        <p class="gallery-copy">Phosphor Bold, active fills, and seven marks share one optical size.</p>
+        <h1 class="display-xl" id="gallery-title">Controls built for a thumb</h1>
+        <p class="gallery-copy">Cream enamel, Bakelite, radio bands, and keycaps share one measured system.</p>
       </header>
+      <section class="gallery-type" id="gallery-type" aria-labelledby="gallery-type-title">
+        <h2 class="heading" id="gallery-type-title">Type and contrast</h2>
+        <p class="display-xl">Today</p>
+        <p class="display">Podcasts, lined up around you.</p>
+        <p class="title">Small pressures change a machine over time</p>
+        <p class="heading">Also today</p>
+        <p class="gallery-body-lg">A familiar craft opens onto how words change.</p>
+        <p>Body text stays readable at the smallest listening size.</p>
+        <p class="gallery-label">Label · 13/16 · 700</p>
+        <p class="gallery-micro">Micro · 12/16 · 600</p>
+        <p class="readout-lg">12:40</p>
+        <p class="readout">about 22 min · 4 shows</p>
+        <div class="gallery-contrast"><span>Ink on paper</span><span>Secondary ink</span><span>Persimmon key</span><span>Ultramarine key</span></div>
+      </section>
+      ` + galleryScheme("light", "Cream · primary") + galleryScheme("dark", "Bakelite · optional") + `
       <section aria-labelledby="gallery-bold-title">
         <h2 class="heading" id="gallery-bold-title">Phosphor Bold</h2>
         <ul class="gallery-icons" role="list">
@@ -78,5 +166,18 @@ function renderGallery() {
           <li><svg class="i" aria-hidden="true"><use href="#knob"></use></svg><span>knob</span></li>
         </ul>
       </section>
+      ` + tactileSheet({ id: "gallery-sheet", closeId: "gallery-sheet-close", title: "Tactile sheet", copy: "Focus starts on this sheet, remains here, and returns to its opener.", primary: "Apply", secondary: "Not now" }) + `
     </main>`;
+  var open = document.createElement("button");
+  open.type = "button";
+  open.id = "gallery-sheet-open";
+  open.className = "keycap keycap--md keycap--ultramarine gallery-sheet-open";
+  open.setAttribute("aria-label", "Open sheet specimen");
+  open.innerHTML = tactileIcon("ph-caret-down") + '<span class="keycap__label">Open sheet specimen</span>';
+  var navigation = $("#gallery-light-navigation");
+  if (navigation) navigation.insertBefore(open, navigation.querySelector(".sheet--preview"));
+  tactileWireSheet(open, $("#gallery-sheet"));
+  document.querySelectorAll(".band--scrub").forEach(function (scrubber) {
+    tactileWireScrubber(scrubber, { segments: galleryBandSegments(), totalSeconds: 1284 });
+  });
 }

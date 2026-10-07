@@ -106,9 +106,17 @@ function valueOf(sel, prop) {
   }
   return v;
 }
+const PX_TOKENS = new Map();
+for (const m of CSS.matchAll(/(--[A-Za-z0-9-]+)\s*:\s*(-?\d+(?:\.\d+)?)px\b/g)) PX_TOKENS.set(m[1], Number(m[2]));
 const px = (v) => {
-  const m = /^(-?\d+(?:\.\d+)?)px$/.exec(String(v || "").trim());
-  return m ? Number(m[1]) : null;
+  const value = String(v || "").trim();
+  const m = /^(-?\d+(?:\.\d+)?)px$/.exec(value);
+  if (m) return Number(m[1]);
+  const token = /^var\((--[A-Za-z0-9-]+)\)$/.exec(value);
+  if (token && PX_TOKENS.has(token[1])) return PX_TOKENS.get(token[1]);
+  const expanded = value.replace(/var\((--[A-Za-z0-9-]+)\)/g, (_, name) => PX_TOKENS.has(name) ? String(PX_TOKENS.get(name)) : "?");
+  const sum = /^calc\((-?\d+(?:\.\d+)?)\s*\+\s*(-?\d+(?:\.\d+)?)\)$/.exec(expanded);
+  return sum ? Number(sum[1]) + Number(sum[2]) : null;
 };
 
 /* ---------- the hit-area rule ---------- */
@@ -187,6 +195,15 @@ function renderedButtons() {
    its own declarations and wider than 44 by construction — `why` says how.
    `inline`: a text-flow control, with the reason it is allowed to be. */
 const BUTTONS = {
+  ".keycap": { size: [".keycap"] },
+  ".textbtn": { size: [".textbtn"] },
+  ".chip": { rule: ".chip" },
+  ".row__queue": { size: [".row__queue"] },
+  ".iconbtn": { size: [".iconbtn"] },
+  ".tile": { size: [".tile"] },
+  ".mini__body": { tall: ".mini__body", why: "flex: 1 — the mini player's whole artwork and title body" },
+  ".tab": { size: [".tab"] },
+  ".rotary__tick": { size: [".rotary__tick"] },
   "#menu-btn": { rule: ".topbar button" },
   "#refresh-btn": { rule: ".topbar button" },
   "#sh-dismiss": { size: ["#sh-dismiss"] },
