@@ -1,6 +1,7 @@
 // Stub dry run of build-directions.workflow.js: fake agent() keyed on label.
 import fs from 'node:fs'
 const src = fs.readFileSync(process.argv[2], 'utf8').replace('export const meta', 'const meta')
+const DEAD = process.env.STUB_DEAD === '1'
 const calls = []
 const counters = {}
 const plan = d => ({ foundation: d, screens: [{ id: 's1', name: 'screen one', acceptance: ['a'] }, { id: 's2', name: 'screen two', acceptance: ['b'] }, { id: 's1-x', name: 'screen one variant', acceptance: ['c'] }] })
@@ -8,13 +9,14 @@ async function agent(prompt, o) {
   const l = o.label; calls.push(l); counters[l.split(':')[0]] = (counters[l.split(':')[0]] || 0) + 1
   if (l.startsWith('baseline')) return { ok: true, summary: 'ok' }
   if (l.startsWith('plan:')) { if (!l.endsWith('from-file')) throw new Error('re-planned with Fable: ' + l); return plan(l.split(':')[1]) }
+  if (l.startsWith('build:') && DEAD && l.startsWith('build:ambient:s')) return null
   if (l.startsWith('build:')) return l.includes('p3-tokens') ? { ok: true, alreadyMerged: true, summary: 'already merged' } : { ok: true, sha: 'x', summary: 'built' }
   if (l.startsWith('check:')) return { hardPass: true, testsPass: true, gatesPass: true, summary: 'ok', implShot: 'i.png', protoShot: 'p.png', todayShot: 't.png', sideBySide: 'sbs.png' }
   if (l.startsWith('fidelity:')) return l.includes('tactile:s2') ? null : { faithful: true, deviations: [] } // tactile s2: fidelity never comes back
   if (l.startsWith('judge:')) return { winner: l.endsWith(':a') ? 'FIRST' : 'SECOND', reasons: 'r' }
   if (l.startsWith('review:')) {
     if (l.endsWith(':opus')) return { verdict: 'merge', blocking: [], nits: [] }
-    if (l.includes('ambient-s1#')) return { verdict: 'fix', blocking: ['CODEX_REVIEW_FAILED: boom'], nits: [] } // -> Opus fallback
+    if (l.includes('ambient-s1#')) return { verdict: 'fix', blocking: ['CODEX_REVIEW_INCOMPLETE: forced'], nits: [] } // -> Opus fallback
     const n = calls.filter(c => c.startsWith('review:') && c.split('#')[0] === l.split('#')[0] && !c.endsWith(':opus')).length
     if (l.includes('tactile-s1#')) return n < 3 ? { verdict: 'fix', blocking: ['bug ' + n], nits: [] } : { verdict: 'merge', blocking: [], nits: [] } // merges on round 3
     if (l.includes('ambient-s2')) return { verdict: 'fix', blocking: ['never fixed'], nits: [] } // 3 rounds, not merged
@@ -31,6 +33,12 @@ const fn = new Function('args', 'agent', 'parallel', 'pipeline', 'phase', 'log',
 const out = await fn({ directions: ['tactile', 'ambient'], plansFile: 'plans.json' }, agent, parallel, pipeline, () => {}, m => logs.push(m))
 const byId = (d, id) => out.results.find(r => r && r.direction === d)[id === 'p3' ? 'foundation' : 'screens']
 const scr = d => Object.fromEntries(byId(d, 's').map(s => [s.id, s]))
+if (DEAD) {
+  const amb = out.results.find(r => r && r.direction === 'ambient')
+  const dc = [['dead direction stops after 3 implementer deaths', amb.stopped === true && amb.screens.length === 3], ['dead direction skips QA and final lab', !calls.some(c => c.startsWith('qa:ambient') || c === 'lab:ambient:final')], ['live direction still runs QA', calls.some(c => c.startsWith('qa:tactile'))]]
+  for (const [n, ok] of dc) console.log(ok ? 'ok  ' : 'FAIL', n)
+  process.exit(dc.every(c => c[1]) ? 0 : 1)
+}
 const t = scr('tactile'), a = scr('ambient')
 const ix = l => calls.indexOf(l)
 const checks = [

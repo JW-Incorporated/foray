@@ -63,7 +63,7 @@ const review = (d, work, what) => {
   const brief = `${COMMON}\nCode-review origin/${work} against origin/${dirBranch(d)} (git fetch origin; git diff origin/${dirBranch(d)}...origin/${work}), read-only: do not commit or push. ${what}. Blocking = a hard-limit breach (security/CSP/esc/safeUrl, cp_ keys, a11y, copy rules, product principles), a correctness bug, a test that pins nothing (apply its named mutation in a scratch copy and run it), a behaviour change to the current app outside the lab/redesign path, or committed images. Everything else is a nit. verdict=merge only with zero blocking items. Run only the suites the diff touches; summarise command output instead of echoing it.`
   return agent(`You hand one code review to Codex and return its verdict. Do not review anything yourself.\n1. You are in an isolated git worktree; note its absolute path (pwd -W). Create the directory ${dir}.\n2. Write this JSON Schema, exactly, to ${dir}\\schema.json: ${JSON.stringify({ ...REVIEW, additionalProperties: false, required: ['verdict', 'blocking', 'nits'] })}\n3. Write the review brief between the markers below, verbatim, to ${dir}\\brief.md.\n4. With the Bash tool and run_in_background: true, run: codex exec -m gpt-5.6-sol -c model_reasoning_effort="high" -C "<your worktree path>" --output-schema "${dir.replace(/\\/g, '/')}/schema.json" -o "${dir.replace(/\\/g, '/')}/verdict.json" - < "${dir.replace(/\\/g, '/')}/brief.md" > "${dir.replace(/\\/g, '/')}/codex.log" 2>&1\n   It takes 10-30 minutes. Wait for its completion notification; never use foreground sleep and never start a second Codex run while one is running.\n5. When it has exited, read ${dir}\\verdict.json and return exactly its verdict, blocking and nits. If Codex exited non-zero or verdict.json is missing or invalid, run step 4 once more; if it fails again, return verdict "fix" with blocking ["CODEX_REVIEW_FAILED: <one-line reason from codex.log>"].\n----- BRIEF START -----\n${brief}\n----- BRIEF END -----`, { label: `review:${d}:${work}#${n}`, phase: 'Screens', schema: REVIEW, model: 'sonnet', effort: 'low', isolation: 'worktree' })
     .then(rv => {
-      const failed = !rv || (rv.blocking || []).some(b => /^CODEX_REVIEW_FAILED/.test(b))
+      const failed = !rv || (rv.blocking || []).some(b => /^CODEX_REVIEW_/.test(b))
       if (!failed) return rv
       log(`review ${d}/${work}#${n}: Codex review failed (${rv ? rv.blocking.join('; ') : 'wrapper died'}), Opus reviews instead`)
       return agent(brief.replace('Run only the suites', 'Scratch copies go under C:\\Users\\Fourtys\\.claude\\jobs. Run only the suites'), { label: `review:${d}:${work}#${n}:opus`, phase: 'Screens', schema: REVIEW, model: 'opus', effort: 'high' })
@@ -76,7 +76,7 @@ const review = (d, work, what) => {
 async function buildUnit(d, unit, kind, phaseName, taste = true) {
   const work = `redesign/${d}-${unit.id}`
   const tag = `${d}:${unit.id}`
-  let impl = await agent(`${COMMON}\nFIRST: git fetch origin; if \`git log origin/${dirBranch(d)} --merges --oneline --grep "Merge ${work} into"\` prints anything, this unit is already merged: do nothing else and return ok=true, alreadyMerged=true, summary "already merged".\n${inWorktree(d, work)}\nDirection: ${d} (docs/redesign-2026/directions/${d}/DIRECTION.md, prototype in prototype/, screens.json). Build ${kind} "${unit.name}" per build-loop.md. Acceptance criteria:\n- ${unit.acceptance.join('\n- ')}\nRun the targeted tests and gates yourself before pushing. Return branch and sha.`, { label: `build:${tag}`, phase: phaseName, schema: STATUS, model: 'opus', effort: 'high', isolation: 'worktree' })
+  let impl = await agent(`${COMMON}\nFIRST: git fetch origin; if \`git log origin/${dirBranch(d)} --merges --oneline --grep "Merge ${work} into"\` prints anything, this unit is already merged: do nothing else and return ok=true, alreadyMerged=true, summary "already merged".\n${inWorktree(d, work)}\nDirection: ${d} (docs/redesign-2026/directions/${d}/DIRECTION.md, prototype in prototype/, screens.json). Build ${kind} "${unit.name}" per build-loop.md. Acceptance criteria:\n- ${unit.acceptance.join('\n- ')}\nRun the targeted tests and gates yourself before pushing. Return branch and sha.`, { label: `build:${tag}`, phase: phaseName, schema: STATUS, model: 'sonnet', effort: 'high', isolation: 'worktree' })
   if (impl && impl.alreadyMerged) { log(`${tag}: already merged, skipped`); return { id: unit.id, merged: true, skipped: true } }
   if (!impl || !impl.ok) return { id: unit.id, merged: false, reason: 'implementer failed', detail: impl && impl.summary }
   let last = null
@@ -108,14 +108,14 @@ async function buildUnit(d, unit, kind, phaseName, taste = true) {
       !faithful && 'Fidelity deviations: ' + fid.deviations.join('; '),
       !beatsToday && 'Judges did not prefer it over today in both orders: ' + better.map(b => b.reasons).join(' | '),
     ].filter(Boolean).join('\n')
-    impl = await agent(`${COMMON}\nYou are in an isolated git worktree. git fetch origin && git checkout -B ${work} origin/${work} , and git merge origin/${dirBranch(d)} into it if it is behind (other screens merge meanwhile; resolve conflicts keeping both sides). Fix ${kind} "${unit.name}" of direction ${d} (iteration ${it + 1} of ${MAX_ITERS}). Findings to address:\n${feedback}\nRe-run the targeted tests and gates, commit, push ${work}. Return the new sha.`, { label: `fix:${tag}:it${it + 1}`, phase: phaseName, schema: STATUS, model: 'opus', effort: 'high', isolation: 'worktree' }) || impl
+    impl = await agent(`${COMMON}\nYou are in an isolated git worktree. git fetch origin && git checkout -B ${work} origin/${work} , and git merge origin/${dirBranch(d)} into it if it is behind (other screens merge meanwhile; resolve conflicts keeping both sides). Fix ${kind} "${unit.name}" of direction ${d} (iteration ${it + 1} of ${MAX_ITERS}). Findings to address:\n${feedback}\nRe-run the targeted tests and gates, commit, push ${work}. Return the new sha.`, { label: `fix:${tag}:it${it + 1}`, phase: phaseName, schema: STATUS, model: 'sonnet', effort: 'high', isolation: 'worktree' }) || impl
   }
   if (!last || !last.hardPass) return { id: unit.id, merged: false, reason: 'hard checks failing after ' + MAX_ITERS + ' iterations', detail: last && last.chk && last.chk.summary }
   // Up to 3 Codex reviews with an Opus fix between each (overnight, one fix round left 4 of 8
   // foundation units blocked on items a second fix would have closed).
   let rv = await review(d, work, `It builds ${kind} "${unit.name}" for direction ${d}`)
   for (let round = 2; round <= 3 && rv && rv.verdict === 'fix'; round++) {
-    await agent(`${COMMON}\nYou are in an isolated git worktree. git fetch origin && git checkout -B ${work} origin/${work} . Fix these blocking review items (each one, with a test that fails without the fix), re-run the targeted tests and gates, commit, push ${work}:\n- ${rv.blocking.join('\n- ')}`, { label: `fix:${tag}:review${round - 1}`, phase: phaseName, schema: STATUS, model: 'opus', effort: 'high', isolation: 'worktree' })
+    await agent(`${COMMON}\nYou are in an isolated git worktree. git fetch origin && git checkout -B ${work} origin/${work} . Fix these blocking review items (each one, with a test that fails without the fix), re-run the targeted tests and gates, commit, push ${work}:\n- ${rv.blocking.join('\n- ')}`, { label: `fix:${tag}:review${round - 1}`, phase: phaseName, schema: STATUS, model: 'sonnet', effort: 'high', isolation: 'worktree' })
     rv = await review(d, work, `Review round ${round}, after fixes for: ${rv.blocking.join(' | ').slice(0, 1500)}. It builds ${kind} "${unit.name}" for direction ${d}`)
   }
   if (!rv || rv.verdict !== 'merge') return { id: unit.id, merged: false, reason: 'review blocking', detail: rv ? rv.blocking : 'reviewer died' }
@@ -193,11 +193,13 @@ const results = await pipeline(DIRS,
     await parallel(Array.from({ length: SCREEN_CONC }, () => worker))
     if (dead >= 3) log(`${d}: stopped after 3 implementer deaths in a row; ${queue.length} screens not started: ${queue.map(s => s.id).join(', ')}`)
     await progress(`${d}: Phase 4 screens ${screens.filter(r => r.merged).length}/${screens.length} merged; escalated: ${screens.filter(r => r.escalated).map(r => r.id).join(', ') || 'none'}`)
-    return { ...prev, screens }
+    return { ...prev, screens, stopped: dead >= 3, notStarted: queue.map(s => s.id) }
   },
-  // QA + final lab build
+  // QA + final lab build (skipped when the screens stopped early: QA of a half-built
+  // direction, with agents that cannot run, reports a vacuous "0 issues")
   async (prev, d) => {
     if (!prev) return null
+    if (prev.stopped) { log(`${d}: QA and final lab build skipped, screens stopped early`); return { direction: d, branch: dirBranch(d), foundation: prev.found, screens: prev.screens, stopped: true, notStarted: prev.notStarted, qa: null } }
     const lenses = ['security and CSP (esc/safeUrl, inline style, javascript:, cp_ keys)', 'accessibility (focus in sheets, 44px, reduced motion, contrast, screen reader labels)', 'behaviour parity with the current app (playback, queue, offline, onboarding, search) and the product principles', 'performance budget per build-loop.md (bundle size, first paint, long tasks on a mid-range phone profile)']
     const found = await parallel(lenses.map((lens, i) => () => agent(`${COMMON}\nAdversarial QA of origin/${dirBranch(d)} through the lens: ${lens}. Read-only (scratch in C:\\Users\\Fourtys\\.claude\\jobs). Use the harness (tools/ui-lab) and the test suites. Report only issues you reproduced, with repro steps.`, { label: `qa:${d}:${i}`, phase: 'QA', schema: QA, model: 'opus', effort: 'high' })))
     const issues = found.filter(Boolean).flatMap(f => f.issues).filter(x => /block|high|critical/i.test(x.severity))
