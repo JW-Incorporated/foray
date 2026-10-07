@@ -64,6 +64,19 @@ export const LOOKUP_BATCH = 150;
 /** A usable chart position: a finite number > 0 (the same test every consumer applies). */
 export const isChartRank = (raw) => raw !== null && raw !== undefined && Number.isFinite(Number(raw)) && Number(raw) > 0;
 
+/** The breadth rank join both builders read (tools/build-show-index.mjs,
+    tools/build-catalog-client.mjs): String(apple_collection_id) -> the usable
+    rank as a number. Every row counts, `in_curated` or not — the curated
+    shows' twins ARE the in_curated rows. `breadth` null joins nothing. One
+    join, so the TSV and the client JSON cannot disagree about a rank. */
+export function rankByAppleId(breadth) {
+  const ranks = new Map();
+  for (const row of breadth?.shows ?? []) {
+    if (isChartRank(row?.chart_rank)) ranks.set(String(row?.apple_collection_id), Number(row.chart_rank));
+  }
+  return ranks;
+}
+
 /** `row` with its keys in canonical order: ROW_KEYS first, then the rest as they were. */
 export function canonicalRow(row) {
   const out = {};

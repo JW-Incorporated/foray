@@ -18,7 +18,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   ROW_KEYS, LOOKUP_BATCH, canonicalRow, mergeBreadthHarvest, rowsMissingArtist,
-  backfillArtistNames, writeMergedHarvest,
+  backfillArtistNames, writeMergedHarvest, rankByAppleId,
 } from "./harvest-merge.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -146,6 +146,32 @@ test("rows come out in one canonical key order whichever path wrote them", () =>
   }
   assert.deepStrictEqual(Object.keys(canonicalRow({ z: 1, chart_rank: 2, apple_collection_id: 3 })),
     ["apple_collection_id", "chart_rank", "z"]);
+});
+
+test("rankByAppleId: only a usable chart rank joins — null, 0, NaN and -1 do not, \"12\" joins as 12", () => {
+  /* CH2-15 (T1-13, docs/roadmap/code-health-2.md): the ONE "usable chart
+     rank" join both builders read (tools/build-show-index.mjs for
+     data/show-index.tsv, tools/build-catalog-client.mjs for
+     data/catalog-client.json). Since 2026-10-07 `chart_rank: null` is a
+     first-class state (6,632 kept off-chart rows), so the null/0 boundary is
+     the one a tweak would move. The same fixture is pinned in both builder
+     suites. Keys are String(apple_collection_id); every row counts,
+     `in_curated` or not (the curated twins ARE the in_curated rows).
+
+     MUTATION: in isChartRank, `Number(raw) > 0` -> `Number(raw) >= 0`. The 0
+     row joins and this fails (and so do both builders' pins: one edit).
+     MUTATION: drop the `Number(...)` on the stored value. "12" is stored as a
+     string and this fails. */
+  const breadth = { shows: [
+    { apple_collection_id: 101, chart_rank: null },
+    { apple_collection_id: 102, chart_rank: 0 },
+    { apple_collection_id: 103, chart_rank: "12" },
+    { apple_collection_id: 104, chart_rank: NaN },
+    { apple_collection_id: 105, chart_rank: -1 },
+    { apple_collection_id: 106, chart_rank: 7, in_curated: true },
+  ] };
+  assert.deepStrictEqual([...rankByAppleId(breadth)], [["103", 12], ["106", 7]]);
+  assert.deepStrictEqual([...rankByAppleId(null)], [], "no breadth file joins nothing");
 });
 
 test("the document head is the fresh harvest's; a malformed previous file is refused", () => {
