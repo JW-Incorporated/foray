@@ -1439,7 +1439,7 @@ const FLOORS = {
      data/breadth-classification.json from scratch until 2026-08; running that
      version today would delete 19,278 agent rows and leave valid JSON and a
      green CI behind it. This suite is the reason that cannot come back. */
-  "tools/classify-breadth.test.mjs": 30, // breadth-genre-topics (2026-10-07): a run keeps top-level fields another layer owns (merge-results' label_schema_version) in their on-disk order; 29 -> 30
+  "tools/classify-breadth.test.mjs": 31, // breadth-genre-topics (2026-10-07): a run keeps top-level fields another layer owns (merge-results' label_schema_version) in their on-disk order; 29 -> 30. CLASSIFY-BREADTH-KEEP-TOPLEVEL (2026-10-07): an UNKNOWN top-level key survives too, and --dry-run leaves the file byte-identical; 30 -> 31
   /* S-01 (docs/search-plan.md, kanban t_46366383): the measurement machinery
      for the search probe (median/p95, timing wrapper, "skipped not failed"
      network contract, the report validator) -- driven by fakes and an
