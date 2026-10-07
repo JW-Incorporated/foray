@@ -2507,7 +2507,7 @@ const BACKEND_FLOORS = {
   /* #703: the warm pass's feed parsing, which is what decides whether a
      reconciled episode comes out SEARCHABLE only or also MINTABLE — a duration
      read as 58 rather than 3501 makes an episode rank and then yield nothing. */
-  "test/warmTranscriptIndex.test.ts": 20, // round-3 L6 (2026-09-25): backend-rest-8/-14: --show merges the corpus digest; bounded, expiring feed cache; 13 -> 20
+  "test/warmTranscriptIndex.test.ts": 27, // round-3 L6 (2026-09-25): backend-rest-8/-14: --show merges the corpus digest; bounded, expiring feed cache; 13 -> 20 // CH2-06 (2026-10-07): digest-row characterization + sweep-transcripts guid parity pins; 20 -> 27
   /* Generation pipeline §4.0-4.1 (kanban card t_825eee4c): §3's input
      schema, `author_id` required and carried from day one per §1.3. */
   "test/generationRequest.test.ts": 5,

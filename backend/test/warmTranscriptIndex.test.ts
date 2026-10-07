@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import {
+  corpusDigestRow,
   FEED_CACHE_MAX_AGE_MS,
   loadFeed,
   mergeCorpusRows,
@@ -218,5 +219,145 @@ describe("loadFeed — bounded fetch, expiring cache (backend-rest-14)", () => {
     expect(fetchImpl).not.toHaveBeenCalled();
     const failing = vi.fn().mockRejectedValue(new Error("network down"));
     expect([...(await loadFeed("show-a", "https://e.com/feed", false, { cacheDir: dir, fetchImpl: failing })).keys()]).toEqual(["g1"]);
+  });
+});
+
+/* CH2-06 (B2-05): the warm pass reads feeds through `feeds/parser.ts`, the
+   project's one RSS parser, instead of a private regex parser, duration parser
+   and entity decoder. These pins go through `loadFeed` (offline, from a seeded
+   cache) and `corpusDigestRow`, which is exactly the path a body takes on its
+   way into corpus-digest.json, so they hold whichever parser sits underneath. */
+describe("the digest row a feed produces (CH2-06)", () => {
+  let dir = "";
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-warmrow-"));
+  });
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+  /** The feed as `loadFeed` reads it from the cache, never the network. */
+  const episodesOf = async (xml: string) => {
+    fs.writeFileSync(path.join(dir, "show-a.xml"), xml);
+    return loadFeed("show-a", null, true, { cacheDir: dir });
+  };
+  const rss = (items: string) =>
+    `<?xml version="1.0"?><rss xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"><channel><title>Show level title, which is not an episode title</title>${items}</channel></rss>`;
+  const item = (fields: { title?: string; guid?: string; enclosure?: string; duration?: string }) =>
+    "<item>" +
+    (fields.title !== undefined ? `<title>${fields.title}</title>` : "") +
+    (fields.guid !== undefined ? `<guid isPermaLink="false">${fields.guid}</guid>` : "") +
+    (fields.enclosure !== undefined ? `<enclosure url="${fields.enclosure}" length="1" type="audio/mpeg"/>` : "") +
+    (fields.duration !== undefined ? `<itunes:duration>${fields.duration}</itunes:duration>` : "") +
+    "</item>";
+  const body = (guid: string) => ({ guid, cues: 12 });
+
+  it("a plain title, a CDATA-wrapped guid and an hh:mm:ss duration make a complete, mintable row", async () => {
+    /* MUTATION THAT KILLS THIS: drop the title, the enclosure (or its &amp;
+       decoding) or the hh:mm:ss arithmetic from the feed parse — the row loses
+       a field, or stops being mintable, with no error anywhere. */
+    const feed = await episodesOf(
+      rss(
+        item({
+          title: "Ep 7: The Long Way Round",
+          guid: "<![CDATA[a1b2c3-cdata-guid]]>",
+          enclosure: "https://traffic.example.com/ep7.mp3?t=1&amp;src=rss",
+          duration: "01:02:34"
+        })
+      )
+    );
+    expect([...feed.keys()]).toEqual(["a1b2c3-cdata-guid"]);
+    expect(corpusDigestRow("show-a", "Show A", body("a1b2c3-cdata-guid"), feed.get("a1b2c3-cdata-guid"))).toEqual({
+      row: {
+        show_id: "show-a",
+        show_title: "Show A",
+        guid: "a1b2c3-cdata-guid",
+        title: "Ep 7: The Long Way Round",
+        cues: 12,
+        enclosure_url: "https://traffic.example.com/ep7.mp3?t=1&src=rss",
+        feed_duration_sec: 3754
+      },
+      mintable: true
+    });
+  });
+
+  it("reads mm:ss and bare seconds, takes the ITEM's title and finds the enclosure url wherever the attribute sits", async () => {
+    /* MUTATION THAT KILLS THIS: read "58:21" as 58 (an episode that ranks and
+       then yields nothing past 58 s), or take the channel's title. */
+    const feed = await episodesOf(
+      rss(
+        `<item><title><![CDATA[Ep 1: Cholera & the Broad Street pump]]></title><guid>g1</guid>` +
+          `<enclosure type="audio/mpeg" url="https://example.com/one.mp3"/><itunes:duration>58:21</itunes:duration></item>` +
+          item({ title: "Ep 2", guid: "g2", enclosure: "https://example.com/two.mp3", duration: "3501" })
+      )
+    );
+    expect(feed.get("g1")).toEqual({
+      guid: "g1",
+      title: "Ep 1: Cholera & the Broad Street pump",
+      enclosureUrl: "https://example.com/one.mp3",
+      durationSec: 3501
+    });
+    expect(feed.get("g2")?.durationSec).toBe(3501);
+  });
+
+  it("drops an item with no guid rather than inventing a row nothing can join to, and reads nothing from a non-feed", async () => {
+    /* MUTATION THAT KILLS THIS: key a guid-less item on "" or on its position
+       — a phantom episode in the searchable archive. */
+    const feed = await episodesOf(
+      rss(item({ title: "No guid, so no row", enclosure: "https://example.com/three.mp3", duration: "60" }) + item({ title: "Kept", guid: "g9" }))
+    );
+    expect([...feed.keys()]).toEqual(["g9"]);
+    expect((await episodesOf("not xml at all")).size).toBe(0);
+    expect((await episodesOf("")).size).toBe(0);
+  });
+
+  it("a body the feed does not carry is searchable only, titled by its guid", () => {
+    /* MUTATION THAT KILLS THIS: invent a title, or count a row with no feed
+       metadata as mintable. */
+    expect(corpusDigestRow("show-a", "Show A", body("orphan"), undefined)).toEqual({
+      row: { show_id: "show-a", show_title: "Show A", guid: "orphan", title: "orphan", cues: 12 },
+      mintable: false
+    });
+  });
+
+  it("a duration of 0 or junk never writes feed_duration_sec and never counts mintable", async () => {
+    /* MUTATION THAT KILLS THIS: let a 0 or unparseable duration through as a
+       number — mintSegmentSource would take it as real and refuse later. */
+    const feed = await episodesOf(
+      rss(
+        item({ title: "Zero", guid: "z", enclosure: "https://e.com/z.mp3", duration: "0" }) +
+          item({ title: "Junk", guid: "j", enclosure: "https://e.com/j.mp3", duration: "unknown" })
+      )
+    );
+    for (const guid of ["z", "j"]) {
+      const { row, mintable } = corpusDigestRow("show-a", "Show A", body(guid), feed.get(guid));
+      expect(row.feed_duration_sec).toBeUndefined();
+      expect(row.enclosure_url).toBe(`https://e.com/${guid}.mp3`);
+      expect(mintable).toBe(false);
+    }
+  });
+
+  it("an item with no <title> is never given an invented one, and is not mintable", async () => {
+    /* MUTATION THAT KILLS THIS: take the shared parser's "(untitled item #N)"
+       placeholder as the episode's title — the Foray would carry a made-up
+       episode name and the row would count as mintable. */
+    const feed = await episodesOf(rss(item({ guid: "nt", enclosure: "https://e.com/nt.mp3", duration: "600" })));
+    const { row, mintable } = corpusDigestRow("show-a", "Show A", body("nt"), feed.get("nt"));
+    expect(row.title).toBe("");
+    expect(mintable).toBe(false);
+  });
+
+  it("the join key is byte-equal to the guid tools/segments/sweep-transcripts.mjs extracts (CDATA, padded CDATA, &amp;, plain)", async () => {
+    /* The digest row joins a body on disk by guid, and the body's guid was
+       read by sweep-transcripts' regex parser. MUTATION THAT KILLS THIS: a
+       guid rule change in either parser (stop stripping CDATA, stop trimming,
+       stop decoding &amp;) silently turns every row of a show searchable-only. */
+    const guids = ["<![CDATA[a1b2c3-cdata-guid]]>", "<![CDATA[  padded-cdata  ]]>", "https://example.com/?p=1&amp;q=2", "plain-guid-123"];
+    const xml = rss(guids.map((g, i) => item({ title: `T${i}`, guid: g, enclosure: `https://e.com/${i}.mp3` })).join(""));
+    const sweep = (await import("../../tools/segments/sweep-transcripts.mjs")) as {
+      parseFeed: (xml: string) => { episodes: Array<{ guid: string }> };
+    };
+    const swept = sweep.parseFeed(xml).episodes.map((e) => e.guid);
+    expect(swept).toEqual(["a1b2c3-cdata-guid", "padded-cdata", "https://example.com/?p=1&q=2", "plain-guid-123"]);
+    expect([...(await episodesOf(xml)).keys()]).toEqual(swept);
   });
 });

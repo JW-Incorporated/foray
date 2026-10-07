@@ -303,6 +303,34 @@ function claimKey(showId: string, keyWithoutExtension: string): string {
   return `${String(showId).toLowerCase()}/${String(keyWithoutExtension).toLowerCase()}`;
 }
 
+/**
+ * One corpus-digest row: a body on disk joined to its feed episode, if the
+ * feed had one. MINTABLE means `audioSourceLookup.mintSegmentSource` will
+ * accept it — a title, an enclosure and a positive duration; anything less is
+ * SEARCHABLE only, which is what `--offline` produces for every row.
+ */
+export function corpusDigestRow(
+  showId: string,
+  showTitle: string,
+  body: { guid: string; cues: number },
+  episode: FeedEpisode | undefined
+): { row: TranscriptDigestEntry; mintable: boolean } {
+  const row: TranscriptDigestEntry = {
+    show_id: showId,
+    show_title: showTitle,
+    guid: body.guid,
+    /* A row with no title cannot mint tape, and an INVENTED title would be
+       worse than none: `mintSegmentSource` would accept it and the Foray
+       would carry a made-up episode name. The guid is the honest fallback —
+       it is what the archive already calls this episode. */
+    title: episode?.title ?? body.guid,
+    cues: body.cues
+  };
+  if (episode?.enclosureUrl) row.enclosure_url = episode.enclosureUrl;
+  if (episode?.durationSec) row.feed_duration_sec = episode.durationSec;
+  return { row, mintable: Boolean(episode?.title && episode.enclosureUrl && episode.durationSec) };
+}
+
 export interface ReconcileResult {
   rows: TranscriptDigestEntry[];
   perShow: Array<{ showId: string; added: number; mintable: number; searchableOnly: number }>;
@@ -372,22 +400,9 @@ export async function reconcileCorpus(options: { offline: boolean; onlyShows: st
     });
     let mintable = 0;
     for (const body of pending) {
-      const episode = feed.get(body.guid);
-      const row: TranscriptDigestEntry = {
-        show_id: show.showId,
-        show_title: meta?.title ?? show.showId,
-        guid: body.guid,
-        /* A row with no title cannot mint tape, and an INVENTED title would be
-           worse than none: `mintSegmentSource` would accept it and the Foray
-           would carry a made-up episode name. The guid is the honest fallback —
-           it is what the archive already calls this episode. */
-        title: episode?.title ?? body.guid,
-        cues: body.cues
-      };
-      if (episode?.enclosureUrl) row.enclosure_url = episode.enclosureUrl;
-      if (episode?.durationSec) row.feed_duration_sec = episode.durationSec;
-      if (episode?.title && episode.enclosureUrl && episode.durationSec) mintable += 1;
-      rows.push(row);
+      const joined = corpusDigestRow(show.showId, meta?.title ?? show.showId, body, feed.get(body.guid));
+      if (joined.mintable) mintable += 1;
+      rows.push(joined.row);
     }
     perShow.push({ showId: show.showId, added: pending.length, mintable, searchableOnly: pending.length - mintable });
   }
