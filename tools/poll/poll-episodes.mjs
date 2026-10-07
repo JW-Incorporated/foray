@@ -36,20 +36,23 @@
    file, or the committed one is broken, and a silent empty run would hide it.
 
    EXIT CODES:
-     0  dry run written; or no --dry-run and no database configured
+     0  dry run written; or no --dry-run and no database configured (a blank
+        or whitespace-only URL is not configured)
      1  bad arguments, or an unreadable seed (see DEGRADING)
      3  no --dry-run but a database URL is set: live mode is PKG-10, which is
         BLOCKED on gates G1/G3, so it refuses without touching the network.
 
-   IMPORTS. Nothing from tools/shows directly: that module tree pulls
-   pg-copy-streams and node:sqlite at import time and would break the root
-   `node --test` group. tools/refresh/candidates.mjs only reads
-   tools/shows/config.mjs (paths and a user-agent string). */
+   IMPORTS. From tools/shows, only tools/shows/config.mjs (the shared
+   DATABASE_URL resolver; tools/refresh/candidates.mjs reads its paths and
+   user-agent string). The rest of that module tree pulls pg-copy-streams and
+   node:sqlite at import time and would break the root `node --test` group;
+   config.mjs stays light (poll-episodes.test.mjs walks its import graph). */
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { loadChangeIndex } from "../refresh/candidates.mjs";
+import { DATABASE_URL_VARS, resolveDatabaseUrl } from "../shows/config.mjs";
 import { buildWatchlist, summarize } from "./watchlist.mjs";
 import { selectDue, weeklyProjection } from "./select-due.mjs";
 
@@ -57,12 +60,9 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", ".
 export const DEFAULT_SEED = path.join(ROOT, "data", "watchlist-seed.json");
 export const TARGET_REQUESTS_PER_WEEK = 40000;
 
-export const DATABASE_URL_VARS = ["SHOWS_DATABASE_URL", "DATABASE_URL"];
-
-export function resolveDatabaseUrl(env = process.env) {
-  for (const v of DATABASE_URL_VARS) if (env[v]) return { url: env[v], varName: v };
-  return { url: null, varName: null };
-}
+/* One resolver for every shows-pipeline CLI (CH2-12): load-postgres.mjs's
+   rule, whitespace is unset. Re-exported for this module's callers. */
+export { DATABASE_URL_VARS, resolveDatabaseUrl };
 
 /* G1 (#131) and G3 (#133) were SKIPPED for now and live in
    HUMAN-ACTIONS-DONE.md; HUMAN-ACTIONS.md is where they come back when PKG-10
