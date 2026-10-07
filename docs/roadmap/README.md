@@ -102,7 +102,14 @@ Each plan was written on its own, so an opus dispatcher must reconcile these ove
 - **HUMAN-ACTIONS ids collide.** Several plans hard-code the "next free" id (#117, #119, #120, #121, #119–#124). Main already uses #117 and #118. **Ignore the numbers in the plans.** Re-derive the next free id when each task starts (the command is in shows-search's conventions block) and cite items by title.
 - **The shows-import repair is in two packages.** ops OPS-01…03 and shows-search PKG-00 both fix the failing `shows-import.yml` run. Run OPS-01/OPS-02. PKG-00 is satisfied once the pointer is fresh; shows-search PKG-07 waits on it.
 - **`tools/build-catalog-client.mjs` and the `test/show-page.test.js` exact-key pin** are edited by catalogue PKG-02 (`label_scope`) and shows-search PKG-11b (`chart_rank`). Run them one after the other. Whichever lands second also adds its field to `expectedKeys`.
-- **Ad-pad data is modelled twice.** corpus PKG-16…22 (`data/dai-measurements.json`, `ad_pad_sec` on minted rows, a check-forays ceiling rule) overlaps dai DAI-02…09 (`data/ad-pad-probes.json`, stamped `ad_*` on segment-sources, check-forays `ad_*` invariants). Land the dai package's check-forays and hydration tasks first. An opus reviewer then rescopes corpus PKG-19…22 onto the same fields before they are dispatched.
+- **Ad-pad data was modelled twice — rescoped (2026-10-06).** Corpus PKG-16…22 (`data/dai-measurements.json`, `ad_pad_sec` on minted rows, a check-forays ceiling rule) overlapped dai DAI-02…09 (`data/ad-pad-probes.json`, stamped `ad_*` on segment-sources, check-forays `ad_*` invariants). corpus.md now builds on the dai package's fields:
+  - PKG-16 is a thin tier wrapper over `tools/segments/ad-pad.mjs`.
+  - PKG-17 keeps only the G-19 sampler and probes through `tools/segments/probe-ad-pad.mjs`.
+  - PKG-19 and PKG-20 are dropped, because DAI-08's ledger covers the measured tape.
+  - PKG-21 is generation work and out of scope.
+  - PKG-22 is done by #1022.
+
+  The dai package still owns the ad-pad data model.
 - **`app.js` is shared** by player-features, catalogue-personalization, listener-forays-sharing, kokoro-voice (KV-09/10), dai (DAI-07b via `player/client.js`) and code-health (26 of its 43 cards; two per wave in named, disjoint regions). Across packages, only one `app.js` task is in flight at a time, and each one rebases on the last merge.
 - **Legal counts are pinned.** `test/legal-citations.test.js` pins the privacy-policy and data-safety event-type totals, and `test/data-deletion.test.js` pins the `cp_` key-family count. Tasks that add a `logEvent` type or a `cp_` key are in player, catalogue and listener, and they must run one at a time. Each one recomputes the totals from the test's failure message, not from the number written in its plan.
 - **`backend/src/cli/generateForays.ts`** is edited by generation GEN-07/14/18, listener PH2-07/16 and corpus PKG-23/24. Serialize those edits.

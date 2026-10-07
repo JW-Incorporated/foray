@@ -272,6 +272,66 @@ Add one paragraph per module as it lands.
   `createRequire(backend/package.json).resolve("tsx/cli")` exactly as the warm
   launcher does. The child's exit code goes through `exitCodeFor`, so a pass
   ended by a signal is never 0.
+- **`publish-release.mjs`** (PKG-32): `node tools/foraycorpus-export/publish-release.mjs
+  [--version-dir <dir>] [--catalogue <file>] [--pointer <file>] [--dry-run]`
+  publishes one export version as a GitHub Release tagged
+  `corpusTagFor(export_version)` (`corpus-export-` plus `tools/shows`' slug
+  rule, so `2026-10-06T12:00:00.000Z` is `corpus-export-2026-10-06t12-00-00-000z`).
+  The release carries exactly three assets, `ASSET_NAMES`: the version
+  directory's `manifest.json` as it is, `shows.jsonl.gz`, and
+  `catalog-breadth-corpus.json.gz` (the adapter's output). The gzip files are
+  staged in a tmp directory, never in the version directory, whose manifest
+  lists its own files. `export_version` is read from `manifest.json`, never
+  parsed out of the directory name. The version directory defaults to the one
+  `latest.json` names, and the catalogue to the adapter's default output: the
+  module does not rebuild it, so the caller must run the adapter on this
+  version first (`weekly.mjs` does). `releaseState` and `publishRelease` are
+  imported from `tools/shows/publish-release.mjs`, so a published release is
+  left alone, an absent one becomes a draft, a draft gets only its missing
+  assets, and then it is published. The pointer
+  `data/corpus-catalogue-pointer.json` (`{version: 1, export_version,
+  release_tag, asset_base_url, manifest_url, catalogue_url, shows_url,
+  published_at, counts}`, every URL from `assetBaseUrlFor(tag)`) is written
+  tmp + rename, and left alone when it already names the tag. The module never
+  commits, pushes or opens a PR: it returns and prints the `gh pr create
+  --draft` command for the branch `corpus-pointer/<tag>`. `--dry-run` makes no
+  `gh` call and writes no pointer.
+- **`wave-candidates.mjs`** (PKG-35): `node tools/foraycorpus-export/wave-candidates.mjs
+  [--shows <shows.jsonl>] [--out <json>] [--md <report>]` builds the #279
+  drinks-wave candidate list. `drinksFilter` matches breadth titles against
+  `DRINK_WORDS` as whole words, after `splitCamel` splits camelCase titles
+  (so "WhiskyCast" matches), and `gin` never matches "Imagine". `buildWave` joins each match to what the
+  repo knows: `in_curated` and `curated_show_id` are computed from
+  `data/catalog.json` (normalised feed URL or Apple id), never read from the
+  stale breadth flag, so the seven shows PR #289 curated show as already
+  curated. `dai_prior` and `dai_measured` come from
+  `data/dai-classification.json`, `timed_transcript_episodes` from a corpus
+  `shows.jsonl` row else `data/breadth-transcript-yield.json` else null, and
+  `english` is null unless a `shows.jsonl` row matches. Rows sort DAI-free
+  first, then unknown, then DAI, then by timed episodes, then title; `score`
+  encodes the first two keys. `renderReport` writes the Markdown report
+  (`docs/curation/wave-drinks-candidates-2026-09.md`). The module labels and
+  never writes `data/`; applying the wave is PKG-36.
+- **`weekly.mjs`** (HA-139, HUMAN-ACTIONS #139): the weekly cron wrapper
+  hermes-vm runs. `runWeekly` does four steps, each only after the one before
+  succeeded. (1) `runExport` in this process (`--source pg` by default, with
+  `--breadth data/catalog-breadth.json`). (2) The `catalog-adapter.mjs` CLI,
+  spawned with `--shows <the version directory step 1 returned>/shows.jsonl`
+  and `--harvested-at <export_version>`, so the catalogue is never a stale file
+  from an earlier run. (3) `publishCorpus`. (4) Only when the pointer changed:
+  `git fetch origin main`, `git switch --no-track -c corpus-pointer/<tag>
+  origin/main`, `git add -- data/corpus-catalogue-pointer.json` (nothing else
+  is ever added), a check that the staged set is exactly that path (anything
+  else, or nothing, is refused before the commit), `git commit` with the
+  attribution trailers (`COMMIT_TRAILERS`), `git push -u origin <branch>`, and
+  publishCorpus's own PR command through `sh -c`. It then switches back to the
+  branch the run started on, even after a failure, so next week's `git pull
+  --ff-only` runs on main. A failed export publishes nothing. `--dry-run`
+  exports and adapts into a tmp directory (the delta chain in
+  `data-local/corpus-export/` is untouched), runs `publishCorpus` with
+  `dryRun`, makes no `git`, `gh` or `sh` call and removes the tmp directory.
+  `exec`, `now`, `log` and `fs` are injected, and the tests run the real
+  export and adapter on the synthetic fixture with `gh`, `git` and `sh` faked.
 
 ## Usage
 
@@ -319,3 +379,26 @@ A rerun over an unchanged corpus reports `delta_added=0 delta_changed=0` and
 writes a byte-identical `shows.jsonl`. A run that fails before `latest.json` is
 written leaves `latest.json` and `state.json` where they were, and leaves no
 version directory behind.
+
+## Weekly run (hermes-vm)
+
+HUMAN-ACTIONS #139 sets the host up: the read-only connection string in
+`~/.foray/foraycorpus.env`, `gh` logged in with Contents and Pull requests
+write on this repo only, and `gh auth setup-git`. The crontab line (Mondays
+06:00, host time):
+
+```
+0 6 * * 1 cd ~/foray && git pull --ff-only && npm ci --prefix tools/foraycorpus-export && set -a && . ~/.foray/foraycorpus.env && set +a && node tools/foraycorpus-export/weekly.mjs >> ~/.foray/corpus-export.log 2>&1
+```
+
+Cron runs with a minimal `PATH` (`/usr/bin:/bin` on most systems): if
+`command -v node npm gh` shows any of them elsewhere (nvm, `/usr/local/bin`),
+put a `PATH=...` line naming those directories at the top of the crontab.
+
+To check the chain without publishing, load the env the same way and run
+`node tools/foraycorpus-export/weekly.mjs --dry-run`: it reads the database,
+builds and adapts a full export in a tmp directory, prints the tag, the
+pointer and the PR command, and makes no `gh` or `git` call. A real run ends
+its log with `POINTER_PR: <url>` (a draft PR from `corpus-pointer/<tag>`
+that changes only `data/corpus-catalogue-pointer.json`), or with `SKIP:` when
+the pointer already names the release.
