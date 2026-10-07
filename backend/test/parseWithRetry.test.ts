@@ -207,7 +207,9 @@ describe("parseWithRetry — every reask closure meters its own spend (coordinat
     // Structural sanity: fail loudly if the scan itself found nothing,
     // rather than passing trivially because the regex stopped matching a
     // future rename of `reask` (e.g. to `reAsk` or `retryOnce`).
-    expect(reaskClosuresFound).toBeGreaterThanOrEqual(10);
+    // 9 since CH2-08 folded AnthropicEnricher's two re-ask closures into
+    // its one askJson helper.
+    expect(reaskClosuresFound).toBeGreaterThanOrEqual(9);
     expect(offenders).toEqual([]);
   });
 });

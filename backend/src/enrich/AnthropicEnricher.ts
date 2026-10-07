@@ -116,21 +116,23 @@ export class AnthropicEnricher implements Enricher {
     opts: { operation: string; label: string; maxTokens: number; outTokenEstimate: number; episodeId: string },
     ctx: EnrichContext
   ): Promise<T> {
-    const meter = (inputText: string) =>
-      this.budgetGuard.checkAndRecord({
-        userId: ctx.userId,
-        operation: opts.operation,
-        provider: this.providerName,
-        model: MODEL,
-        estimatedUsd: roughTokenEstimate(inputText) * USD_PER_INPUT_TOKEN + opts.outTokenEstimate * USD_PER_OUTPUT_TOKEN,
-        episodeId: opts.episodeId,
-        sessionId: ctx.sessionId
-      });
+    // The spend row for a call that sends `inputText`. Both calls below pass
+    // it to this.budgetGuard.checkAndRecord themselves, so each `reask`
+    // closure meters its own spend in plain sight (parseWithRetry.test.ts).
+    const spend = (inputText: string) => ({
+      userId: ctx.userId,
+      operation: opts.operation,
+      provider: this.providerName,
+      model: MODEL,
+      estimatedUsd: roughTokenEstimate(inputText) * USD_PER_INPUT_TOKEN + opts.outTokenEstimate * USD_PER_OUTPUT_TOKEN,
+      episodeId: opts.episodeId,
+      sessionId: ctx.sessionId
+    });
 
     // pre-call budget check with a conservative estimate; keeps the guard
     // structurally impossible to bypass even though it can't know the real
     // cost until the response comes back.
-    await meter(prompt);
+    await this.budgetGuard.checkAndRecord(spend(prompt));
 
     // Note: this build's pinned @anthropic-ai/sdk version predates
     // `output_config.format` (server-enforced structured outputs) in its
@@ -153,7 +155,7 @@ export class AnthropicEnricher implements Enricher {
       // The re-ask is its own real API call — it re-sends the whole prompt
       // plus the bad reply, so it is its own metered spend, gated the same
       // way as the original call (see parseWithRetry.ts's BUDGET note).
-      await meter(prompt + textBlock.text + reaskLine);
+      await this.budgetGuard.checkAndRecord(spend(prompt + textBlock.text + reaskLine));
 
       const retryResponse = await this.client.messages.create({
         model: MODEL,
