@@ -31,6 +31,7 @@ import {
   latestActionsRun,
   releaseChecksVerdict,
   releaseDispatchPlan,
+  github,
   RELEASE_REQUIRED_CHECKS,
 } from "./engine-ci.mjs";
 
@@ -639,6 +640,36 @@ test("CLI: release-checks against an unreachable API refuses (exit 1) at the tim
   }
   assert.equal(status, 1);
   assert.match(stdout, /::error::release-checks: refusing to cut an iOS TestFlight/);
+});
+
+test("github(): get and post share one header object; a non-2xx is thrown, never returned", async () => {
+  /* T2-17: the getter and the poster used to build these headers twice.
+     MUTATION (RUN, red, restored): give `post` its own literal headers
+     without Authorization — the post's headers stop matching. MUTATION (RUN,
+     red, restored): drop the `!res.ok` throw in `post` — a refused dispatch
+     reads as sent. */
+  const calls = [];
+  const answer = { status: 200 };
+  const fakeFetch = async (url, init) => {
+    calls.push({ url, init });
+    return { ok: answer.status < 300, status: answer.status, json: async () => ({ hello: 1 }) };
+  };
+  const { get, post } = github({ GITHUB_TOKEN: "", GH_TOKEN: "gh-tok", GITHUB_API_URL: "http://api.test" }, fakeFetch);
+  assert.deepEqual(await get("/a"), { hello: 1 });
+  await post("/b", { ref: "main" });
+  const want = { Authorization: "Bearer gh-tok", Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" };
+  assert.equal(calls[0].url, "http://api.test/a");
+  assert.deepEqual(calls[0].init.headers, want);
+  assert.equal(calls[1].url, "http://api.test/b");
+  assert.equal(calls[1].init.method, "POST");
+  assert.deepEqual(calls[1].init.headers, { ...want, "Content-Type": "application/json" });
+  assert.equal(calls[1].init.body, '{"ref":"main"}');
+  answer.status = 422;
+  await assert.rejects(get("/c"), /GET \/c -> 422/);
+  await assert.rejects(post("/d", {}), /POST \/d -> 422/);
+  assert.throws(() => github({}, fakeFetch), /GITHUB_TOKEN is not set/);
+  await github({ GITHUB_TOKEN: "t" }, async (url) => { calls.push({ url }); return { ok: true, json: async () => null }; }).get("/e");
+  assert.equal(calls.at(-1).url, "https://api.github.com/e", "the public API is the default");
 });
 
 test("CLI: release-checks' GETs and its ci.yml dispatch POST carry the same GitHub headers", async () => {
