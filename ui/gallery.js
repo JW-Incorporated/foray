@@ -77,8 +77,13 @@ function galleryRows(scheme) {
 function galleryNavigation(scheme) {
   var id = "gallery-" + scheme + "-navigation";
   return '<section class="gallery-block" id="' + esc(id) + '" aria-labelledby="' + esc(id) + '-title"><h3 class="heading" id="' + esc(id) + '-title">Deck, sheet, and rotary control</h3><div class="gallery-decks">' +
-    tactileTabBar({ active: "today", count: 4, mini: { title: "A machine can teach a language", show: "Lingthusiasm", initials: "LI" } }) +
-    tactileTabBar({ active: "yours", count: 4, collapsed: true }) +
+    /* Each deck sits in a .gallery-device frame (layout containment), so the
+       specimen is the real fixed, inset, safe-area deck rather than a copy
+       laid out in normal flow. First a foray (its colours in the mini's 3px
+       line), then a single episode (one persimmon line), then collapsed. */
+    '<div class="gallery-device">' + tactileTabBar({ active: "today", count: 4, mini: { title: "A machine can teach a language", show: "Lingthusiasm", initials: "LI", segments: galleryBandSegments(), progress: .43 } }) + "</div>" +
+    '<div class="gallery-device">' + tactileTabBar({ active: "find", mini: { title: "Why bridges sing in the wind", show: "Origin Stories", initials: "OS", playing: true, progress: .6 } }) + "</div>" +
+    '<div class="gallery-device gallery-device--bare">' + tactileTabBar({ active: "yours", count: 4, collapsed: true }) + "</div>" +
     '</div>' + tactileRotary({ label: "Playback speed", value: "1.0×" }) + tactileSheet({ id: id + "-preview", closeId: id + "-preview-close", title: "Sheet", copy: "Focus enters the container and every gesture has a button.", primary: "Done", secondary: "Not now", preview: true }) + '</section>';
 }
 

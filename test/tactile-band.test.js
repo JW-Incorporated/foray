@@ -174,6 +174,52 @@ test("narration is hatched outside mini mode and mini has no station labels", ()
   assert.match(rule(".band--mini"), /height:\s*var\(--s-2\)/);
 });
 
+test("the mini band and the mini player's line draw narration as a solid tick, not a hatch", () => {
+  /* BUILD-NOTES 3.6: in the 8px mini band (and the 3px line) a narration item
+     is a solid ultramarine tick, min 3px, no hatch; r1 read 4px hatched
+     slivers as rendering artifacts.
+     MUTATION: make `var hatch = kind !== "mini" && !line;` read `var hatch = true;`
+     -> the mini and line narration rects carry the hatch URL and this fails. */
+  for (const kind of ["mini", "line"]) {
+    const html = p.tactileBand({ id: "tick-" + kind, kind, segments });
+    const narration = [...html.matchAll(/<rect class="t-band__bar t-band__bar--narration[^"]*"[^>]*>/g)].map((m) => m[0]);
+    assert.ok(narration.length >= 2, `${kind}: fixture premise, narration is drawn`);
+    for (const rect of narration) {
+      assert.doesNotMatch(rect, /fill="url\(/, `${kind}: narration is not hatched`);
+      assert.match(rect, /t-band__bar--tick/, `${kind}: narration takes the solid tick fill`);
+    }
+  }
+  assert.match(rule(".t-band__bar--tick"), /fill:\s*var\(--dial-seg-narration\)/);
+});
+
+test("bands rendered without an id never share their pattern or clip-path ids", () => {
+  /* A url(#id) reference resolves to the FIRST element in the document with
+     that id. Two bands sharing a default id would both hatch and clip through
+     the first band's definitions, so the second would show the first one's
+     progress. Assert on the raw markup of two default bands on one page, and
+     resolve each band's clip-path reference the way a document would (first
+     match in the combined markup).
+     MUTATION: in tactileBand replace `tactileBandAutoId()` with `"dial-band"`
+     -> the ids collide and band two's clip resolves to band one's 10%. */
+  const a = p.tactileBand({ kind: "detail", segments, progress: 0.1 });
+  const b = p.tactileBand({ kind: "detail", segments, progress: 0.9 });
+  const page = a + b;
+  const defs = [...page.matchAll(/<(?:pattern|clipPath) id="([^"]+)"/g)].map((m) => m[1]);
+  assert.strictEqual(defs.length, 4, "two patterns and two clip paths");
+  assert.strictEqual(new Set(defs).size, 4, "every definition id is unique on the page: " + defs.join(", "));
+  for (const band of [a, b]) {
+    const clipRef = /clip-path="url\(#([^)]+)\)"/.exec(band)[1];
+    const own = /<clipPath id="([^"]+)"><rect class="band__progress"[^>]*width="([\d.]+)"/.exec(band);
+    assert.strictEqual(clipRef, own[1], "a band clips through its own clip path");
+    const resolved = new RegExp('<clipPath id="' + clipRef + '"><rect class="band__progress"[^>]*width="([\\d.]+)"').exec(page)[1];
+    assert.strictEqual(resolved, own[2], "the document resolves the reference to this band's own progress");
+    for (const fill of band.matchAll(/fill="url\(#([^)]+)\)"/g)) {
+      assert.ok(band.includes('<pattern id="' + fill[1] + '"'), "a band hatches through its own pattern");
+    }
+  }
+  assert.notStrictEqual(/width="([\d.]+)" height="60"><\/rect><\/clipPath>/.exec(a)[1], /width="([\d.]+)" height="60"><\/rect><\/clipPath>/.exec(b)[1], "fixture premise: the two bands' progress differs");
+});
+
 function scrubberFixture(value = 30, max = 100) {
   const attrs = new Map([["role", "slider"], ["aria-valuemin", "0"], ["aria-valuemax", String(max)], ["aria-valuenow", String(value)]]);
   const listeners = {};

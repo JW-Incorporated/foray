@@ -112,6 +112,27 @@ test("the sprite carries exactly the 41 prototype ids, each once", () => {
   assert.strictEqual(syms.length, (SPRITE.text.match(/<symbol\b/g) || []).length, "every <symbol> parsed (none unclosed)");
 });
 
+test("safeUrl's fragment allow-list (app.js SPRITE_IDS) is exactly the sprite, and a rendered icon's href survives it", () => {
+  /* Every icon <use href> goes through safeUrl, which passes "#" + an id in
+     SPRITE_IDS and answers "#" otherwise. A list that drifts from the sprite
+     either draws empty icons (an id missing) or widens the gate (an id the
+     sprite does not have).
+     MUTATION: delete "knob" from SPRITE_IDS in app.js -> the set comparison
+     fails, and tactileIcon("knob") renders href="#ph-radio".
+     MUTATION 2: delete the SPRITE_IDS line in safeUrl -> the rendered href is
+     "#" and the last assertions fail. */
+  const m = /^const SPRITE_IDS = new Set\(\[([\s\S]*?)\]\);$/m.exec(read("app.js"));
+  assert.ok(m, "app.js declares SPRITE_IDS at top level");
+  const listed = [...m[1].matchAll(/"([^"]+)"/g)].map((x) => x[1]);
+  assert.strictEqual(new Set(listed).size, listed.length, "SPRITE_IDS repeats an id");
+  assert.deepStrictEqual([...listed].sort(), [...IDS].sort());
+  const { load } = require("./helpers/tactile-primitives.js");
+  const p = load();
+  assert.match(p.tactileIcon("knob"), /<use href="#knob"><\/use>/);
+  assert.match(p.tactileIcon("ph-play-fill", "lg"), /<use href="#ph-play-fill"><\/use>/);
+  assert.match(p.tactileIcon('x" onload="alert(1)'), /<use href="#ph-radio"><\/use>/, "an unknown id falls back to a drawn glyph");
+});
+
 test("no other element in the page takes a sprite id, and no script emits one", () => {
   // MUTATION: add `<div id="band"></div>` to index.html, or `id="needle"` to a template in ui/*.js.
   const rest = html.slice(0, SPRITE.start) + html.slice(SPRITE.end);

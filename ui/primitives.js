@@ -2,34 +2,21 @@
  *
  * Real app renderers, intentionally unused by listener screens until their
  * Phase 4 adoption branches. The guarded component gallery is the only caller
- * in Phase 3. Every caller-supplied string is escaped here; artwork is the one
- * URL-bearing primitive and always passes through safeUrl().
+ * in Phase 3. Every caller-supplied string is escaped here, and every href/src
+ * (artwork, and each icon's sprite href) passes through safeUrl().
  */
 
-var TACTILE_ICON_IDS = new Set([
-  "ph-play", "ph-pause", "ph-sun-horizon", "ph-magnifying-glass", "ph-bookmarks",
-  "ph-caret-down", "ph-arrow-left", "ph-dots-three", "ph-plus", "ph-check",
-  "ph-check-circle", "ph-cloud-slash", "ph-bookmark-simple", "ph-list-plus",
-  "ph-timer", "ph-share-network", "ph-x", "ph-arrow-up", "ph-arrow-down",
-  "ph-trash", "ph-radio", "ph-speaker-high", "ph-moon", "ph-sun",
-  "ph-list-bullets", "ph-shuffle", "ph-sparkle", "ph-play-fill", "ph-pause-fill",
-  "ph-sun-horizon-fill", "ph-magnifying-glass-fill", "ph-bookmarks-fill",
-  "ph-bookmark-simple-fill", "ph-check-circle-fill", "skip-15", "skip-30",
-  "band", "needle", "bridge", "narration", "knob",
-]);
-
-/* Sprite references are same-document fragments. safeUrl() deliberately refuses
- * those (it is the http(s) gate, and ui/downloads.js reads its "#" answer as
- * "not a URL"), so icon hrefs never go through it. tactileSpriteRef is the only
- * builder of an icon sprite href: it can only answer "#" + an id from the closed list
- * above, so no caller string ever reaches the attribute. */
+/* An icon's sprite href. safeUrl() is the gate, as for every href: it passes
+ * "#" + a symbol id from the sprite (app.js SPRITE_IDS) and answers "#" for any
+ * other fragment. This only maps an unknown id to the radio glyph first, so a
+ * typo still draws an icon instead of an empty box. */
 function tactileSpriteRef(id) {
-  return "#" + (TACTILE_ICON_IDS.has(id) ? id : "ph-radio");
+  return "#" + (SPRITE_IDS.has(id) ? id : "ph-radio");
 }
 
 function tactileIcon(id, size) {
   var cls = size === "sm" ? " i--sm" : size === "lg" ? " i--lg" : "";
-  return '<svg class="i' + cls + '" aria-hidden="true" focusable="false"><use href="' + esc(tactileSpriteRef(id)) + '"></use></svg>';
+  return '<svg class="i' + cls + '" aria-hidden="true" focusable="false"><use href="' + esc(safeUrl(tactileSpriteRef(id))) + '"></use></svg>';
 }
 
 /* Drawn size of each frame in CSS px (the --art-* tokens; hero is --key-xl +
@@ -236,14 +223,34 @@ function tactileBandFraction(boxes, x) {
   return 1;
 }
 
+/* A band's <pattern> and <clipPath> ids are document-global, and a url(#id)
+ * reference resolves to the FIRST element with that id. A band rendered
+ * without an id therefore gets a fresh one per render: a shared default would
+ * make every later band hatch and clip through the first band's definitions
+ * (its progress, not their own). A caller-supplied id is the caller's to keep
+ * unique on the page. */
+var tactileBandSerial = 0;
+function tactileBandAutoId() {
+  tactileBandSerial += 1;
+  return "dial-band-" + tactileBandSerial;
+}
+
 function tactileBand(data) {
   var d = data || {};
   var kind = ["mini", "detail", "scrub", "line"].includes(d.kind) ? d.kind : "mini";
   var segments = tactileBandSegments(d.segments);
+  /* The mini player's 3px line (BUILD-NOTES 3.12) carries the foray's colours,
+     or one persimmon bar for a single episode, which has no segments. */
+  var episode = kind === "line" && !segments.length;
+  if (episode) segments = [{ showId: "episode", show: "Episode", duration: 1, narration: false }];
+  var line = kind === "line";
+  /* Narration is hatched where it is wide enough to read (detail, scrub); in
+     the 8px mini band and the 3px line it is a solid ultramarine tick (3.6). */
+  var hatch = kind !== "mini" && !line;
   var total = segments.reduce(function (sum, segment) { return sum + segment.duration; }, 0) || 1;
   var renderWidth = Math.max(1, Number(d.renderWidth) || 345);
   var widths = tactileBandLayout(segments, renderWidth, kind);
-  var id = String(d.id || "dial-band").replace(/[^A-Za-z0-9_-]/g, "-");
+  var id = d.id ? String(d.id).replace(/[^A-Za-z0-9_-]/g, "-") : tactileBandAutoId();
   var progress = Math.max(0, Math.min(1, Number(d.progress) || 0));
   var progressX = tactileBandX(widths, progress);
   var current = Math.max(0, Math.min(segments.length - 1, Number(d.currentIndex) || 0));
@@ -261,8 +268,11 @@ function tactileBand(data) {
   });
   var bars = widths.map(function (box, index) {
     var segment = segments[index];
-    var cls = segment.narration ? "t-band__bar t-band__bar--narration" : "t-band__bar t-band__bar--c" + tactileHash(segment.showId);
-    return '<rect class="' + cls + '"' + (segment.narration ? ' fill="url(#' + esc(id) + '-hatch)"' : "") + ' data-segment-index="' + index + '" x="' + box.x.toFixed(2) + '" y="8" width="' + box.width.toFixed(2) + '" height="28" rx="2"></rect>';
+    var cls = episode ? "t-band__bar t-band__bar--episode"
+      : segment.narration ? "t-band__bar t-band__bar--narration" + (hatch ? "" : " t-band__bar--tick")
+      : "t-band__bar t-band__bar--c" + tactileHash(segment.showId);
+    var shape = line ? '" y="0" width="' + box.width.toFixed(2) + '" height="60" rx="0"' : '" y="8" width="' + box.width.toFixed(2) + '" height="28" rx="2"';
+    return '<rect class="' + cls + '"' + (segment.narration && hatch ? ' fill="url(#' + esc(id) + '-hatch)"' : "") + ' data-segment-index="' + index + '" x="' + box.x.toFixed(2) + shape + "></rect>";
   }).join("");
   var labels = kind === "mini" || kind === "line" ? "" : tactileBandRuns(segments, widths).map(function (run) {
     var widthPx = (run.right - run.x) / 1000 * renderWidth;
@@ -272,14 +282,16 @@ function tactileBand(data) {
   }).join("");
   var role = kind === "scrub" ? "slider" : "img";
   var valueText = d.valueText || Math.round(progress * (Number(d.totalSeconds) || total)) + " seconds of " + Math.round(Number(d.totalSeconds) || total) + " seconds, " + (segments[current] ? segments[current].show : "4a");
-  var aria = role === "slider"
+  /* The line is decoration on the mini player, whose region label names what
+     is playing; it is hidden from assistive tech, as in the prototype. */
+  var aria = line ? ' aria-hidden="true" focusable="false"' : role === "slider"
     ? ' tabindex="0" aria-valuemin="0" aria-valuemax="' + Math.round(Number(d.totalSeconds) || total) + '" aria-valuenow="' + Math.round(progress * (Number(d.totalSeconds) || total)) + '" aria-valuetext="' + esc(valueText) + '"'
     : ' aria-label="' + esc(d.label || "Foray band with " + codes.size + " stations") + '"';
-  return '<svg class="band band--' + esc(kind) + (d.buffering ? " band--buffering" : "") + '" data-draw="true" role="' + role + '"' + aria + ' viewBox="0 0 1000 60" preserveAspectRatio="none">' +
+  return '<svg class="band band--' + esc(kind) + (d.buffering ? " band--buffering" : "") + '"' + (line ? "" : ' data-draw="true" role="' + role + '"') + aria + ' viewBox="0 0 1000 60" preserveAspectRatio="none">' +
     '<defs><pattern id="' + esc(id) + '-hatch" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="12" class="t-band__hatch"></rect></pattern>' +
     '<clipPath id="' + esc(id) + '-progress"><rect class="band__progress" x="0" y="0" width="' + progressX.toFixed(2) + '" height="60"></rect></clipPath></defs>' +
-    '<g class="band__draw"><g class="t-band__base">' + bars + '</g><g class="t-band__fill" clip-path="url(#' + esc(id) + '-progress)">' + bars + "</g>" + labels +
-    '<g class="needle" transform="translate(' + progressX.toFixed(2) + ' 0)"><rect x="-1" y="3" width="2" height="39" rx="1"></rect><circle cx="0" cy="3" r="4"></circle></g></g></svg>';
+    '<g class="' + (line ? "band__layers" : "band__draw") + '"><g class="t-band__base">' + bars + '</g><g class="t-band__fill" clip-path="url(#' + esc(id) + '-progress)">' + bars + "</g>" + labels +
+    (line ? "" : '<g class="needle" transform="translate(' + progressX.toFixed(2) + ' 0)"><rect x="-1" y="3" width="2" height="39" rx="1"></rect><circle cx="0" cy="3" r="4"></circle></g>') + "</g></svg>";
 }
 
 function tactileWireScrubber(scrubber, data) {
@@ -446,9 +458,17 @@ function tactileTile(data) {
   return '<button type="button" class="tile tile--' + esc(size) + (d.focus ? " is-focus" : "") + '"><span class="tile__art">' + tactileArtFrame({ size: size === "l" ? "hero" : "row", initials: d.initials || "FM", title: d.name }) + '</span><span><strong class="tile__name">' + esc(d.name || "Subject") + '</strong><span class="readout">' + esc(d.count || "14 shows") + "</span></span></button>";
 }
 
+/* The 3px progress line along the mini's top edge (BUILD-NOTES 3.12): the
+ * foray's colours when `segments` is given, one persimmon bar for a single
+ * episode otherwise. It is the line that stretches into the Now Playing scrub
+ * band when the deck opens. Its drawn width at 375: the deck sits 16px in from
+ * each side and the line 22px in from the deck's. */
+var TACTILE_MINI_LINE_PX = 299;
+
 function tactileMiniPlayer(data) {
   var d = data || {};
-  return '<section class="mini" role="region" aria-label="' + esc("Now playing: " + (d.title || "Episode") + ", " + (d.show || "Show")) + '"><button type="button" class="mini__body" aria-label="Open Now Playing">' + tactileArtFrame({ size: "mini", title: d.title, initials: d.initials || "NP" }) + '<span class="mini__text"><strong>' + esc(d.title || "Episode title") + '</strong><span>' + esc(d.show || "Show") + "</span></span></button>" + tactileKeycap({ size: "md", variant: "persimmon", round: true, icon: d.playing ? "ph-pause-fill" : "ph-play-fill", label: d.playing ? "Pause" : "Play" }) + tactileKeycap({ size: "sm", variant: "paper", icon: "skip-30", label: "Forward 30 seconds" }) + "</section>";
+  var progressLine = tactileBand({ kind: "line", segments: d.segments, progress: d.progress, renderWidth: d.lineWidth || TACTILE_MINI_LINE_PX });
+  return '<section class="mini" role="region" aria-label="' + esc("Now playing: " + (d.title || "Episode") + ", " + (d.show || "Show")) + '">' + progressLine + '<button type="button" class="mini__body" aria-label="Open Now Playing">' + tactileArtFrame({ size: "mini", title: d.title, initials: d.initials || "NP" }) + '<span class="mini__text"><strong>' + esc(d.title || "Episode title") + '</strong><span>' + esc(d.show || "Show") + "</span></span></button>" + tactileKeycap({ size: "md", variant: "persimmon", round: true, icon: d.playing ? "ph-pause-fill" : "ph-play-fill", label: d.playing ? "Pause" : "Play" }) + tactileKeycap({ size: "sm", variant: "paper", icon: "skip-30", label: "Forward 30 seconds" }) + "</section>";
 }
 
 function tactileTabBar(data) {

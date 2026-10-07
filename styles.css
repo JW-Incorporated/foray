@@ -4612,6 +4612,10 @@ body.drawer-open { overflow: hidden; }
 .band--scrub[data-scrubbing="true"] { cursor: grabbing; }
 .band--scrub[data-scrubbing="true"] .needle { transition: none; }
 .band--line { height: calc(var(--s-1) * .75); }
+/* An <svg> is a replaced element: with `width: auto` it takes its intrinsic
+   size (3px tall at 1000:60 is 50px wide) instead of stretching between
+   left and right, so the width is stated. */
+.mini > .band--line { position: absolute; top: 0; left: calc(var(--s-5) + var(--s-1) / 2); width: calc(100% - 2 * (var(--s-5) + var(--s-1) / 2)); pointer-events: none; }
 .band__draw { transform-origin: left; animation: tactile-draw var(--d-draw) var(--ease-draw) both; }
 .t-band__base { opacity: .4; }
 .t-band__bar--c0 { fill: var(--dial-seg-c0); } .t-band__bar--c1 { fill: var(--dial-seg-c1); }
@@ -4619,6 +4623,8 @@ body.drawer-open { overflow: hidden; }
 .t-band__bar--c4 { fill: var(--dial-seg-c4); } .t-band__bar--c5 { fill: var(--dial-seg-c5); }
 .t-band__bar--c6 { fill: var(--dial-seg-c6); } .t-band__bar--c7 { fill: var(--dial-seg-c7); }
 .t-band__hatch { fill: var(--dial-seg-narration); }
+.t-band__bar--tick { fill: var(--dial-seg-narration); }
+.t-band__bar--episode { fill: var(--persimmon); }
 .t-band__code { fill: var(--ink-2); font: 700 var(--t-micro) var(--font-mono); }
 .t-band__code.is-current { fill: var(--ink); font-weight: 800; }
 .needle { fill: var(--ink); transition: transform var(--d-settle) var(--spring-settle), opacity var(--d-quick) var(--ease-quick); }
@@ -4679,7 +4685,11 @@ body.drawer-open { overflow: hidden; }
 .tile__name { font-family: var(--dial-font-display); font-size: var(--t-body-lg); line-height: var(--lh-body-lg); font-weight: var(--w-heading); letter-spacing: var(--tracking-heading); }
 .tile--l .tile__name { font-size: var(--t-title); line-height: var(--lh-title); font-weight: var(--w-title); }
 
-.deck { width: 100%; overflow: hidden; border-radius: var(--r-lg); background: var(--deck-tint); -webkit-backdrop-filter: var(--deck-blur); backdrop-filter: var(--deck-blur); box-shadow: var(--shadow-deck); color: var(--ink); }
+/* Fixed to the bottom, inset 16px, floating 12px above the home indicator
+   (BUILD-NOTES 3.11). The gallery shows it inside .gallery-device, whose
+   layout containment makes the frame the deck's containing block, so the
+   specimen is this exact rule rather than a normal-flow stand-in. */
+.deck { position: fixed; z-index: 25; left: calc(env(safe-area-inset-left, 0px) + var(--s-4)); right: calc(env(safe-area-inset-right, 0px) + var(--s-4)); bottom: calc(var(--safe-b) + var(--s-3)); overflow: hidden; border-radius: var(--r-lg); background: var(--deck-tint); -webkit-backdrop-filter: var(--deck-blur); backdrop-filter: var(--deck-blur); box-shadow: var(--shadow-deck); color: var(--ink); }
 .deck__separator { height: calc(var(--s-1) / 4); margin: 0 var(--s-3); background: var(--dial-line); }
 .mini { position: relative; height: var(--mini-h); display: flex; align-items: center; gap: var(--s-2); padding: 0 calc(var(--s-2) + var(--s-1) / 2); }
 .mini__body { flex: 1; min-width: 0; min-height: var(--tap); display: flex; align-items: center; gap: var(--s-3); padding: 0; border-radius: calc(var(--r-sm) + var(--s-1)); background: transparent; color: var(--ink); text-align: left; }
@@ -4829,6 +4839,8 @@ body.ui-v2.view-gallery { background: var(--paper); color: var(--ink); font: var
 .gallery-rows { display: grid; gap: var(--s-2); border-radius: var(--r-md); background: var(--card); box-shadow: var(--shadow-card); }
 .gallery-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3); margin-top: var(--s-4); }
 .gallery-decks { display: grid; gap: var(--s-4); }
+.gallery-device { position: relative; contain: layout; height: calc(var(--mini-h) + var(--deck-h) + var(--s-12)); border-radius: var(--r-lg); background: var(--paper-2); }
+.gallery-device--bare { height: calc(var(--key) + var(--s-12)); }
 .gallery-decks + .rotary { margin-top: var(--s-5); }
 .sheet--preview { position: relative; z-index: auto; left: auto; right: auto; bottom: auto; display: block; max-height: none; margin-top: var(--s-5); padding-bottom: var(--s-5); transform: none; }
 .gallery-sheet-open { margin-top: var(--s-5); }

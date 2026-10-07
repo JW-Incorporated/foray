@@ -16,7 +16,14 @@ function lift(name) {
   if (!m) throw new Error(`app.js no longer declares ${name}() at top level`);
   return m[0];
 }
-const GUARDS = lift("esc") + "\n" + lift("safeUrl") + "\n" + lift("artUrl") + "\n";
+/* safeUrl's one fragment exception reads app.js's SPRITE_IDS, so the set is
+   lifted too (as `var`, so tests can read it off the context). */
+function liftSpriteIds() {
+  const m = /^const SPRITE_IDS = (new Set\(\[[\s\S]*?\]\));$/m.exec(APP);
+  if (!m) throw new Error("app.js no longer declares SPRITE_IDS at top level");
+  return "var SPRITE_IDS = " + m[1] + ";";
+}
+const GUARDS = liftSpriteIds() + "\n" + lift("esc") + "\n" + lift("safeUrl") + "\n" + lift("artUrl") + "\n";
 
 function load(extra = {}) {
   const context = vm.createContext({ URL, Set, Map, Math, Number, String, Array, Boolean, ...extra });
@@ -25,13 +32,17 @@ function load(extra = {}) {
   return context;
 }
 
+/* Comments are stripped first: a comment between two rules would otherwise be
+   read as part of the next rule's selector, hiding that rule from rule(). */
+const CSS_RULES = CSS.replace(/\/\*[\s\S]*?\*\//g, "");
+
 function rule(selector) {
   const bodies = [];
-  for (const match of CSS.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+  for (const match of CSS_RULES.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     const selectors = match[1].split(",").map((part) => part.trim());
     if (selectors.includes(selector)) bodies.push(match[2]);
   }
   return bodies.join("\n");
 }
 
-module.exports = { ROOT, SOURCE, CSS, load, rule };
+module.exports = { ROOT, SOURCE, CSS, CSS_RULES, load, rule };

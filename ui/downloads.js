@@ -295,7 +295,10 @@ async function startDownload(id) {
   const item = id ? resolveEpisode(id) : null;
   if (!rules || !bridge || !item || !item.audio_url) return null;
   const url = item.isLocalFile && item.source_audio_url ? item.source_audio_url : item.audio_url;
-  if (safeUrl(url) === "#") return null;
+  /* http(s) only, tested on safeUrl's answer rather than on its "#" refusal:
+     safeUrl also passes an icon sprite fragment ("#ph-play") through, and
+     that is not a file the phone can fetch. */
+  if (!/^https?:/i.test(safeUrl(url))) return null;
   const surface = window.forayDownloads || {};
   const userAgent = typeof surface.userAgent === "string" ? surface.userAgent : surface.USER_AGENT;
   const allowCellular = downloadsCellularOn();
