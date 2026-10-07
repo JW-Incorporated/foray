@@ -541,7 +541,7 @@ body.route-foray::after { height: calc(var(--deck-total) + var(--safe-b) + 132px
 /* P1-1 hero density */
 .hero { gap: 0; }
 .hero > :first-child { margin: 0; }
-.hero .display { margin-top: 10px; font-size: clamp(1.75rem, 7.2vw, 2rem); line-height: 1.125; }
+.hero .display { margin-top: 10px; font-size: clamp(1.75rem, 7.2vw, 2rem); line-height: 1.2; } /* Big Shoulders hero line height, critique-r6 P1.4 */
 .hero .hero__first { margin-top: 10px; }
 .hero .band-wrap { margin-top: 12px; }
 .hero .hero__meta { margin-top: 10px; }

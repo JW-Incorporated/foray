@@ -30,9 +30,9 @@ const OUT = join(ROOT, 'data-local/redesign/checkpoint');
 export const DIRECTIONS = ['tactile', 'ambient', 'editorial', 'native-2026', 'clarity'];
 // Each direction's final critique round: the round its art director passed it
 // at (polish-to-ready pass, 2026-10-06). The checkpoint shows these renders.
-// Tactile is r7: the owner's second header-font round (Archivo -> Anybody,
-// provisional; Archivo stays the fallback), 2026-10-06.
-export const ROUNDS = { tactile: 'r7', ambient: 'r4', editorial: 'r4', 'native-2026': 'r5', clarity: 'r4' };
+// Tactile is r8: Big Shoulders, the owner's final header-font decision (Anybody,
+// Dela and Archivo dropped), 2026-10-06.
+export const ROUNDS = { tactile: 'r8', ambient: 'r4', editorial: 'r4', 'native-2026': 'r5', clarity: 'r4' };
 export const SCREENS = ['home', 'now-playing', 'foray', 'search', 'library', 'mini', 'onboarding'];
 const TODAY_LABEL = {
   home: 'returning__home', 'now-playing': 'player__now-playing', foray: 'returning__foray',
