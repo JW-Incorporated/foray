@@ -56,14 +56,15 @@ than it is.
   code implements from `docs/roadmap/README.md` question 17
   (`docs/roadmap/player-features.md` §1 question 2). No founder has ruled on
   it. This script checks the default works; it does not settle it.
-- **Bookmark rows never switch to the approximate "Around minute N"
-  wording.** Drift detection has no observed duration yet: `app.js`
-  `bookmarkObservedSec` reads `ForayPlayer.observedDurationSec`, which is not
-  built, so it passes null and `seekPrecision` reports the listener's own
-  bookmark as exact on any copy. PQ-24's "streamed another day → roughly"
-  check (`docs/roadmap/player-features.md`) cannot be run until a later card
-  exposes the measured length.
-  Step 3's second half only records the two lengths.
+- **The bookmark drift reading is the copy that played last, not a fresh
+  measurement.** `app.js` `bookmarkObservedSec` reads
+  `ForayPlayer.observedDurationSec` (built 2026-10-06, card
+  bookmark-observed-duration): the length the player measured the last time
+  the episode played, as stored beside its position. It is null until the
+  episode has played on this device, and then no drift is claimed. Opening the
+  page of a copy that has not played yet shows the previous copy's reading.
+  On a build from before that card, step 3's second half can only record the
+  two lengths.
 - **The iOS plugin writes no diagnostics row.** Developer → Playback
   diagnostics says nothing about downloads, so step 6 needs a proxy.
 
@@ -116,20 +117,24 @@ than it is.
    *Expected:* under **Bookmarks** the row reads **"At 1:07:3x"** (the exact
    second you marked). Tap it: with no network, playback jumps to that second
    and plays on. This offline seek is what step 3 judges. The "At" wording
-   alone does not tell a downloaded copy from a streamed one: a streamed
-   `dai_suspected` bookmark also reads "At" today (see "What this script does
-   not check"). Write down the episode's total length the player shows.
+   alone does not tell a downloaded copy from a streamed one: a streamed copy
+   of the same length also reads "At". Write down the episode's total length
+   the player shows.
    Then, **on another day** (so the publisher can serve a different ad load):
    turn Airplane Mode off, tap **Downloaded ✓** on the episode's page to remove
-   the download, play the episode streamed for 10 seconds, and open its page
-   again. Write down the streamed length next to the downloaded one.
-   *Record only, no pass or fail:* the row reads **"At 1:07:3x"** whatever the
-   streamed length is, because the episode page does not yet measure the
-   copy's length (`app.js` `bookmarkObservedSec` returns null;
-   `ForayPlayer.observedDurationSec` is not built). The two lengths are kept
-   for the later card that exposes the measured length, when a gap over 30
-   seconds (`player/seek-policy.js` `DRIFT_TOLERANCE_SEC = 30`) will switch the
-   row to "Around minute 68".
+   the download, play the episode streamed for 10 seconds, **pause**, and open
+   its page again. Write down the streamed length next to the downloaded one.
+   *Expected:* when the two lengths differ by more than 30 seconds
+   (`player/seek-policy.js` `DRIFT_TOLERANCE_SEC = 30`), the row reads
+   **"Around minute 68"**: the player measured a copy that moved since the
+   mark, so the mark is no longer claimed to the second. When they differ by
+   30 seconds or less, it still reads **"At 1:07:3x"**. The wording comes from
+   `ForayPlayer.observedDurationSec`, the length stored with the position
+   when the episode last played, so the 10 seconds of streamed play come
+   first. On a build from before 2026-10-06 (no
+   `ForayPlayer.observedDurationSec`) the row reads "At 1:07:3x" whatever the
+   lengths are: record the two lengths and mark this half "not run (build
+   predates the drift reading)".
 
 4. **Missing-file degrade (#29: "delete a file behind the player, hit play, it
    degrades").** Needs precondition 4. Download the episode again and wait for
@@ -211,7 +216,7 @@ than it is.
 
 Steps 1, 2, 3, 5, 6 and 7 must pass on the build named in the record. Step 4,
 online and offline, passes, or is "not run" only for want of a development
-build. The second half of step 3 is recorded, not judged. When every step is
-in the #29 comment, the device-check asks in #29 can be ticked. #29 itself
-stays open while automatic download of picks and the bookmark drift reading
-are unbuilt.
+build. The second half of step 3 is judged on a build with
+`ForayPlayer.observedDurationSec`, and recorded as "not run" on an older one.
+When every step is in the #29 comment, the device-check asks in #29 can be
+ticked. #29 itself stays open while automatic download of picks is unbuilt.
