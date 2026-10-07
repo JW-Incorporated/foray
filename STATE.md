@@ -16,6 +16,12 @@ docs/. Completed workstreams move to their plan doc's retro section.
 - **Lab app:** `ai.jwlabs.foura.lab` / "4a Lab", installed beside the real app; lab builds never write to production. Store setup: HUMAN-ACTIONS #142 (Apple), #143 (Google Play).
 - **Rule for other sessions:** never open a PR into main from redesign work.
 
+### 2026-10-06 — `health/ch-dai-12-part`: DAI-12, locate-step feasibility on one SYSK episode — harness, anchors and window plan done; ASR numbers PENDING
+
+- **Owned:** `docs/curation/locate-step-feasibility-2026-09.md` and `tools/transcribe/locate-feasibility.mjs` (a throwaway tool, not a suite; run-suites does not discover it). Card: `docs/roadmap/dai.md` §DAI-12.
+- **Done:** one SYSK episode ("Rope, yeah ROPE!", guid `7ed1fbda…`) and three verbatim anchors at 10/50/90 % of program time, checked against the publisher transcript. The anchors' JSON lives in the doc. The window plan: 734 s per anchor, 5.87 MB at 64 kbps and 11.74 MB at 128 kbps; both bitrates are ASSUMED and no probe was sent. The Q6 cellular reading is a PROPOSAL, not a ruling.
+- **Not measured:** time-to-locate and hit/miss per anchor. The PC has no `whisper-cli` and no `ffmpeg`, there is no Mac, and no SYSK audio was downloaded. The doc's §6 is the runbook: download the episode, `--check`, `--audio`, fill the table, delete the audio. Whoever runs it should do so when no other agent and no DAI-08 probe round are active.
+
 ### 2026-10-04 — corpus supply package (`docs/roadmap/corpus.md`, G-03, G-10…G-16, G-19)
 
 foray-db / transcript farm → R2 → foray. Owned paths: `tools/foraycorpus-export/**`, `data/dai-measurements.json`, `data/episode-topics.json`, `data/corpus-catalogue-pointer.json`. Other sessions route around them; the shared files are one `FLOORS` line each in `test/suite-integrity.test.js` and a paragraph each in `tools/foraycorpus-export/README.md`. On main today: nothing yet (PKG-01, the package scaffold, is PR #1001).
