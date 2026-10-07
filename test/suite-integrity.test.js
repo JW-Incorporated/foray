@@ -3001,7 +3001,12 @@ const BACKEND_FLOORS = {
      window as the holding document, the run-5 Frame text accepted end to
      end, and — pinned as unchanged — a source-less page that states a fact
      is still refused. One named mutation per test. */
-  "test/frameTapeSource.test.ts": 24,
+  "test/frameTapeSource.test.ts": 23, // CH2-07 (B1-13): the transcriptArchiveLookup re-export identity test is gone with the re-export; parity lives in anchorTextParity.test.ts; 24 -> 23
+  /* CH2-07 (B1-13): types/anchorText.ts's canonicalizeForAnchorMatch is a
+     CommonJS mirror of tools/segments/merge-segments.mjs's canonical(); the two
+     are compared on apostrophe variants, punctuation, NFKC and whitespace, and
+     today's canonical form is pinned on both. */
+  "test/anchorTextParity.test.ts": 2,
   /* F-82 (generation run 6): a connective page cites the adjacent tape it
      restates. A page holds the windows of BOTH segments beside it in play
      order (across slot edges), the prefetch stage keys on them so the hit
@@ -3082,7 +3087,7 @@ const BACKEND_FLOORS = {
      sentence quoted; the verifier re-checks only what changed; F-88's ground
      reaches the act; the validator's zero-source rules are act-scoped.
      One named mutation per test. */
-  "test/actNarration.test.ts": 54, // round-3 audit (L5-generation): gen-8 Q-09's show memory is computed across acts and reaches every act; 52 -> 54
+  "test/actNarration.test.ts": 55, // CH2-07 (B1-09): every MODE_CHAR_BANDS band and the 17 chars/s rate pinned to check-narration.mjs; 54 -> 55
   /* Generator vocabulary (2026-09-24). Wyatt, on the audit's persona 65 (the
      narrator says "this act", "Act one", "two acts back" aloud): "Accept the
      ones that are currently there; update our foray generation scripting to
