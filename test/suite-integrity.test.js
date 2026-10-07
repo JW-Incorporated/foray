@@ -1429,6 +1429,8 @@ const FLOORS = {
   // whose deletion would be hardest to notice and most expensive to discover,
   // because the thing it guards is an absence.
   "tools/classify/no-exclusion.test.mjs": 25,
+  /* CH2-13 (docs/roadmap/code-health-2.md): the Tier-0 genre prior each batch entry carries — characterization of the map lookup, the confidence min and the no-topic shape. */
+  "tools/classify/prepare-batch.test.mjs": 4,
   "tools/classify/reconcile-shards.test.mjs": 75,
   /* Guards the metric the whole classification effort is judged on. Its per-item
      ("fully root-only") number is the one that maps to product behaviour; the
