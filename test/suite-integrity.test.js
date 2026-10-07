@@ -770,7 +770,7 @@ const FLOORS = {
      recall@6, hit rate, coverage and must-not violations are floored at the
      values measured on main after PKG-07. A test deleted here is a ranking
      change that can make suggestions worse with every check green. */
-  "test/similar-shows-eval.test.js": 12, // #560 item 8: new -- Similar-shows eval set, mirror pin, measured floors
+  "test/similar-shows-eval.test.js": 13, // #547 residue (2026-10-06): no catalogue row offers a label_scope "general" show, on the real catalogue (the curated must-not ceiling stopped catching a lost candidate filter once cbc-ideas left the fusion label); 12 -> 13 // #560 item 8: new -- Similar-shows eval set, mirror pin, measured floors
   "test/vouch-eval.test.js": 15, // #560 560-part (2026-10-06): the row now applies Family Mode, so the eval runs both modes; (d) pinned at zero and the ON row's integrity gated; 14 -> 15 // #560 item 8, showsWeVouchFor half: new -- the row is app.js's own, rotation floors, Family Mode and label_scope ceilings (measured, not zero)
   /* Founder reports, 2026-09-13. The "Show more episodes" control came out of
      the show page, so show-page-pagination.test.js was RE-POINTED rather than
