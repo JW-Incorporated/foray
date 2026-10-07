@@ -11,7 +11,6 @@ import {
 } from "../src/generation/tapeExtent";
 import {
   ABSOLUTE_MIN_TAPE_SEGMENT_SEC,
-  canonicalizeForAnchorMatch,
   cutWindowToSegment,
   indexCues,
   MAX_TAPE_SEGMENT_SEC,
@@ -24,6 +23,7 @@ import {
   type TapeWindow,
   type TranscriptCue
 } from "../src/generation/transcriptArchiveLookup";
+import { canonicalizeForAnchorMatch } from "../src/types/anchorText";
 
 /**
  * Q-01: a clip starts and ends at thought boundaries and runs while the
