@@ -137,12 +137,12 @@ test("the cut drops breadth rows ranked worse than max-rank, and never drops a c
 });
 
 test("a breadth row with no usable chart_rank is dropped rather than guessed at", () => {
-  /* chart_rank is present on all 19,787 committed breadth rows (measured,
-     docs/search-plan.md §1.1). A missing one therefore means the harvest shape
-     changed, and the honest answer is to leave the row out rather than invent
-     a band for it — search-engine.js's `popularityBand` would file it last
-     anyway, but a silently reshaped harvest should be visible as a row-count
-     drop, not absorbed.
+  /* Since 2026-10-07 a null chart_rank is normal: a show that left every
+     chart is kept by the re-harvest merge (tools/harvest-merge.mjs) with
+     `chart_rank: null`. It is past the cut by definition, so the client index
+     leaves it out rather than invent a band for it (search-engine.js's
+     `popularityBand` would file it last anyway); the server search still
+     serves it.
 
      MUTATION: treat a non-finite rank as 0 and keep the row. The length
      assertion goes to 3 and this fails. */

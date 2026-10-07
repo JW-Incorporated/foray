@@ -224,9 +224,14 @@ export function mergeShowIndexRows(curated, breadth, { maxRank = BUILD_MAX_RANK 
     if (show?.in_curated) continue; // already carried by the curated row above
     if (show?.apple_collection_id === undefined || show?.apple_collection_id === null) continue;
     const rank = Number(show?.chart_rank);
-    /* An unranked breadth row is dropped, not kept at the bottom: `chart_rank`
-       is present on all 19,787 rows today (measured), so a missing one means
-       the harvest shape changed and this script should not guess. */
+    /* An unranked breadth row is dropped, not kept at the bottom. Since
+       2026-10-07 a null `chart_rank` is an expected state: a re-harvest keeps a
+       show that left every chart (tools/harvest-merge.mjs) with
+       `chart_rank: null` + `last_charted_at`, and 6,632 such rows are
+       committed. They are past THE CUT by definition — the server search
+       (`backend/src/catalog/breadthCatalog.ts`) still serves them and their
+       show pages — so the client index leaves them out rather than guess a
+       band for them. */
     if (!Number.isFinite(rank) || rank <= 0 || rank > maxRank) continue;
     const id = sanitizeCell(show.apple_collection_id);
     const title = sanitizeCell(show?.title);
