@@ -19,10 +19,18 @@
      0  wrote the seed, or --check found it up to date
      1  --check found it stale or missing; or a refusal (fewer than 200 rows,
         over 60 KB, id-map.json values that are not numbers)
-     2  loadChangeIndex() returned ok:false — the reason is printed and NOTHING
-        is written. This is by design while the release has no baseline: a
-        seed built without the id-map would mark every curated show unmapped.
-        Do not "fix" it by widening maxAgeHours.
+     2  the change index or the id-map is unavailable — the reason is printed
+        and NOTHING is written: a stale or unreadable pointer, a bad asset
+        shape, a fetch/HTTP error. A seed built without the id-map would mark
+        every curated show unmapped. Do not "fix" it by widening maxAgeHours.
+
+   No-baseline fallback (PKG-07-part): when loadChangeIndex() fails ONLY
+   because changed.json has no baseline (or is the pre-baseline bare array),
+   the pointer has already passed its 216 h freshness check and id-map.json is
+   still good — the seed never reads changed.json anyway (buildSeed blanks the
+   diff). So the builder reads the pointer, fetches <asset_base_url>/id-map.json
+   alone, validates it (the same badIds refusal, exit 1), and builds the seed
+   from it, saying so on stderr. Every other ok:false reason still exits 2.
 
    Never wire --check into CI: the seed is pinned to one release's id-map, and
    a weekly release that maps one more show would turn every PR red. It is a
@@ -77,6 +85,46 @@ function comparable(seed) {
   return JSON.stringify(rest);
 }
 
+/** The two loadChangeIndex() reasons that mean "fresh release, no diff yet".
+    Matched on the reason text because loadChangeIndex() (tools/refresh/
+    candidates.mjs, import-only here) returns no reason code. */
+const NO_BASELINE_REASONS = [/^changed\.json has no baseline\b/, /^changed\.json is a bare array\b/];
+export function isNoBaselineReason(reason) {
+  return typeof reason === "string" && NO_BASELINE_REASONS.some((re) => re.test(reason));
+}
+
+/** Fallback for a no-baseline release: id-map.json only, from the pointer's
+    asset_base_url. Returns { ok:true, idMap } or { ok:false, reason }; never
+    throws. Values are NOT checked here: run()'s badIds refusal (exit 1)
+    covers them for both paths. */
+export async function loadIdMapOnly({ pointerPath, fetchImpl = globalThis.fetch }) {
+  let pointer;
+  try {
+    pointer = JSON.parse(readFileSync(pointerPath, "utf8"));
+  } catch (e) {
+    return { ok: false, reason: `pointer unreadable (${pointerPath}): ${e.message}` };
+  }
+  const base = pointer && pointer.asset_base_url;
+  if (!base) return { ok: false, reason: "pointer has no asset_base_url" };
+  let res;
+  try {
+    res = await fetchImpl(`${base}/id-map.json`);
+  } catch (e) {
+    return { ok: false, reason: `id-map.json fetch error: ${e.message}` };
+  }
+  if (!res || !res.ok) return { ok: false, reason: `id-map.json fetch failed: HTTP ${res?.status}` };
+  let idMap;
+  try {
+    idMap = await res.json();
+  } catch (e) {
+    return { ok: false, reason: `id-map.json did not parse as JSON: ${e.message}` };
+  }
+  if (typeof idMap !== "object" || idMap === null || Array.isArray(idMap)) {
+    return { ok: false, reason: "unexpected asset shape (expected id-map.json object)" };
+  }
+  return { ok: true, idMap };
+}
+
 function readPointerTag(pointerPath) {
   try {
     return JSON.parse(readFileSync(pointerPath, "utf8")).release_tag ?? null;
@@ -87,10 +135,12 @@ function readPointerTag(pointerPath) {
 
 /** Testable body of the CLI. Returns the exit code; never calls process.exit.
     `loadIndex` is injectable so a test can hand it a fake ok:false / ok:true
-    index without a network or a pointer file. */
+    index without a network or a pointer file; `fetchImpl` is used only by the
+    no-baseline id-map fallback, so tests never touch the network. */
 export async function run({
   argv = [],
   loadIndex = loadChangeIndex,
+  fetchImpl = globalThis.fetch,
   catalogPath = DEFAULT_CATALOG,
   nowMs = Date.now(),
   log = console.log,
@@ -105,11 +155,23 @@ export async function run({
   }
   const rel = path.relative(ROOT, opts.outPath) || opts.outPath;
 
-  const changeIndex = await loadIndex({ pointerPath: opts.pointerPath });
+  let changeIndex = await loadIndex({ pointerPath: opts.pointerPath });
   if (!changeIndex || changeIndex.ok !== true) {
-    err(`build-watchlist-seed: change index unavailable: ${changeIndex?.reason ?? "no result"}`);
-    err(`build-watchlist-seed: wrote nothing (exit 2). The seed needs a release with a baseline (docs/roadmap/shows-search.md, PKG-07).`);
-    return 2;
+    const reason = changeIndex?.reason ?? "no result";
+    if (!isNoBaselineReason(reason)) {
+      err(`build-watchlist-seed: change index unavailable: ${reason}`);
+      err(`build-watchlist-seed: wrote nothing (exit 2). The seed needs a fresh release pointer (docs/roadmap/shows-search.md, PKG-07).`);
+      return 2;
+    }
+    const only = await loadIdMapOnly({ pointerPath: opts.pointerPath, fetchImpl });
+    if (!only.ok) {
+      err(`build-watchlist-seed: change index unavailable: ${reason}`);
+      err(`build-watchlist-seed: id-map fallback failed: ${only.reason}`);
+      err(`build-watchlist-seed: wrote nothing (exit 2).`);
+      return 2;
+    }
+    err(`build-watchlist-seed: ${reason}; building the seed from id-map.json only (the seed never reads changed.json).`);
+    changeIndex = { ok: true, changedIds: new Set(), idMap: only.idMap, topRows: [] };
   }
   const badIds = Object.entries(changeIndex.idMap ?? {}).filter(([, v]) => typeof v !== "number" || !Number.isFinite(v));
   if (badIds.length) {
