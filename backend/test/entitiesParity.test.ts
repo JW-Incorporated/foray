@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
+import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import { decodeEntities as decodeLive } from "../src/feeds/html";
 import { parseFeed } from "../src/feeds/parser";
@@ -81,12 +83,40 @@ describe("one entity table, one code-point rule (CH2-09)", () => {
     /* MUTATION: re-add a local `{ amp: "&", ... }` map to either file -> red. */
     const live = fs.readFileSync(path.join(BACKEND, "src", "feeds", "html.ts"), "utf8");
     const catalogue = fs.readFileSync(path.join(ROOT, "tools", "refresh", "entities.mjs"), "utf8");
-    expect(live).toMatch(/^import \w+ from "\.\/entitiesTable\.json";$/m);
+    expect(live).toMatch(/^import \* as \w+ from "\.\/entitiesTable\.json";$/m);
     expect(catalogue).toContain("backend/src/feeds/entitiesTable.json");
     for (const src of [live, catalogue]) {
       expect(src).not.toMatch(/\b(?:amp|hellip|eacute)\s*:\s*["']/);
     }
   });
+});
+
+describe("html.ts survives the deployed function's CommonJS compile (S-02 class)", () => {
+  it("loads and decodes when transpiled to CommonJS with or without esModuleInterop", async () => {
+    /* MUTATION: `import ENTITY_TABLE from "./entitiesTable.json"` (a default
+       import) -> without interop it reads require(...).default, undefined,
+       and the module throws at load: every api/ function would 500. */
+    const ts = await import("typescript");
+    const src = fs.readFileSync(path.join(BACKEND, "src", "feeds", "html.ts"), "utf8");
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ch2-09-"));
+    try {
+      fs.copyFileSync(path.join(BACKEND, "src", "feeds", "entitiesTable.json"), path.join(dir, "entitiesTable.json"));
+      for (const esModuleInterop of [true, false]) {
+        const js = ts.transpileModule(src, {
+          compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop }
+        }).outputText;
+        const file = path.join(dir, `html-${esModuleInterop}.js`);
+        fs.writeFileSync(file, js);
+        const load = createRequire(file);
+        const mod = load(file) as { decodeEntities: (s: string) => string };
+        expect(mod.decodeEntities("Caf&eacute; &amp;#038; Co &default;"), `esModuleInterop=${esModuleInterop}`).toBe(
+          "Café & Co &default;"
+        );
+      }
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }, 60_000); // importing the TypeScript compiler alone can take most of the 10 s default on a cold runner
 });
 
 describe("the live parser shows what data/ carries (B1-05)", () => {
