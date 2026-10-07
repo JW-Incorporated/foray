@@ -17559,6 +17559,58 @@ function ensureInterestsDrawerLink() {
   }
 }
 
+/* ---------- Contact 4a + Privacy policy (UGC gate, step 1) ----------
+
+   Apple Guideline 1.2 asks for "published developer contact information", and
+   docs/curation/ugc-moderation-runbook.md §5 asks for the address in the app's
+   Settings too, "so a listener can find it without leaving 4a". The address
+   and the policy URL are HA #13's (docs/DECISIONS.md, "Privacy-policy facts
+   and choices"): help@jwlabs.ai, and jwlabs.ai/4a/privacy/, the URL the store
+   listings name (docs/store/play/README.md §8).
+
+   Two drawer ITEMS under "Settings", appended in JS for the reason
+   `ensureInterestsDrawerLink` states (index.html's drawer is outside the
+   auto-merge path). Not drawer SECTIONS: the five destinations stay five
+   (test/home-information-architecture.test.js). `init()` binds them after the
+   listener's settings and before the Developer group, so "Delete my data"
+   stays the drawer's last item.
+
+   THE HREFS. Both are fixed constants, never data. The mailto goes through
+   esc() only, never safeUrl(): safeUrl admits http/https and would turn it
+   into "#". The policy URL goes through the app's usual esc(safeUrl(…)). Both
+   are assigned as properties, so no markup is parsed and nothing inline
+   reaches the strict CSP. The address is in the label as well as the link: a
+   phone with no mail app does nothing on a mailto tap, and the listener can
+   still read and copy it.
+
+   IN THE SHELL. Neither is our origin, so Capacitor hands the navigation to
+   the OS (the mail app; Safari or the default browser), the same path the
+   show links' `target="_blank"` take. The drawer closes first, by
+   `onDrawerAction`'s rule. Bound once: remembered on the drawer, like the
+   Developer group, so a lookup that cannot see appended nodes never builds a
+   second pair. */
+const CONTACT_ADDRESS = "help@jwlabs.ai";
+const CONTACT_MAILTO = "mailto:" + CONTACT_ADDRESS;
+const PRIVACY_POLICY_URL = "https://jwlabs.ai/4a/privacy/";
+
+function bindContactPrivacyLinks() {
+  const drawer = $("#drawer");
+  if (!drawer || drawer._contactPrivacyAdded) return;
+  drawer._contactPrivacyAdded = true;
+
+  const contact = ddEl("a", "drawer-item drawer-wrap", `Contact 4a: ${CONTACT_ADDRESS}`);
+  contact.id = "drawer-contact";
+  contact.href = esc(CONTACT_MAILTO);
+  drawer.appendChild(contact);
+
+  const privacy = ddEl("a", "drawer-item", "Privacy policy");
+  privacy.id = "drawer-privacy";
+  privacy.href = esc(safeUrl(PRIVACY_POLICY_URL));
+  privacy.target = "_blank";
+  privacy.rel = "noopener";
+  drawer.appendChild(privacy);
+}
+
 /* ---------- delete my data (#42) ----------
 
    WHY THIS EXISTS
@@ -20878,6 +20930,9 @@ async function init() {
   /* Narration voice (V-01): a listener setting, so it stays with the switches
      above rather than inside the Developer group below (2026-09-22 audit, R8). */
   bindVoiceControl();
+  /* Contact 4a and the privacy policy (UGC gate step 1): still Settings, still
+     above the Developer group and "Delete my data" — see their header. */
+  bindContactPrivacyLinks();
   /* The Developer group (R8): the founder's switch, then the field
      record's surface (#264), all inside one collapsed disclosure. Deliberately
      ABOVE the control below: "Delete my data" must stay the drawer's last item,

@@ -644,7 +644,7 @@ const FLOORS = {
      and pins the gesture findings (the strip's vertical flick, the scrubber's
      touch-action, the double home-indicator inset, Stop vs Close, hover vs
      playing). Sixteen tests, each mutation-checked red. */
-  "test/tap-targets.test.js": 22, // audit round 2 (2026-09-23): the rendered-<button> census, the whole ep-row stretched link, the show-link hit box, the half-leading stamp, the static strip pans, no link preview; 18 -> 22 | earlier: visual pass 1 (2026-09-23): the mini bar's ↺15 and the clip rows' text buttons join the measured list; 16 -> 18 (two sweep tests had landed unfloored)
+  "test/tap-targets.test.js": 23, // contact-privacy-in-app (UGC gate step 1): the two drawer link-outs (Contact 4a, Privacy policy) are .drawer-item (44px); 22 -> 23 | audit round 2 (2026-09-23): the rendered-<button> census, the whole ep-row stretched link, the show-link hit box, the half-leading stamp, the static strip pans, no link preview; 18 -> 22 | earlier: visual pass 1 (2026-09-23): the mini bar's ↺15 and the clip rows' text buttons join the measured list; 16 -> 18 (two sweep tests had landed unfloored)
   /* Theme E of the same audit: ONE owner for "a modal is open" — focus in and
      back, `inert`, Tab trap, Escape, one instance, the body lock derived from
      what is open (the back-gesture scroll-lock leak) — plus focus and the
@@ -1103,7 +1103,7 @@ const FLOORS = {
      clutter one "just one more row" at a time, and a suite that can be
      deleted in an auto-merged PR guards nothing. Every test names its
      mutation; see the suite header. */
-  "test/home-information-architecture.test.js": 11, // audit round 2 (2026-09-23, lane L4): #/playlists is the list with one door to Create's builder (p-first-6, founder question 4 default), and 'Followed shows ›' is drawn only when a show is followed (p-first-12); 10 -> 11 // // U-11 cutover (2026-09-06, kanban t_a3f01c8a): the v1/flag-off "foray list renders on #/forays and not on Home" + "Jump back in moved" tests were retired — Home always renders Home v2 now, which intentionally DOES show a "Jump back in" row (covered by test/home-v2.test.js); the ".home renders banner+cards4 and nothing else" test was rewritten to pin Home v2's shape instead. 12 -> 10
+  "test/home-information-architecture.test.js": 13, // contact-privacy-in-app (UGC gate step 1): Contact 4a + Privacy policy under Settings, exact hrefs, once each (idempotent), init() order; 11 -> 13 | audit round 2 (2026-09-23, lane L4): #/playlists is the list with one door to Create's builder (p-first-6, founder question 4 default), and 'Followed shows ›' is drawn only when a show is followed (p-first-12); 10 -> 11 // // U-11 cutover (2026-09-06, kanban t_a3f01c8a): the v1/flag-off "foray list renders on #/forays and not on Home" + "Jump back in moved" tests were retired — Home always renders Home v2 now, which intentionally DOES show a "Jump back in" row (covered by test/home-v2.test.js); the ".home renders banner+cards4 and nothing else" test was rewritten to pin Home v2's shape instead. 12 -> 10
 
   /* U-03 (docs/ui-transition-plan.md, kanban t_6e8343b6): Home v2's four
      sections plus the greeting, behind cp_ui_v2, with the exploration floor

@@ -27,6 +27,9 @@
  *     foray list each render on exactly one destination page and not on Home.
  *  6. "Jump back in" moved to #/forays with the list it visually belongs to.
  *  7. The menu carries exactly the five named destinations, in order.
+ *  7b. Settings carries the contact address and the privacy policy, as drawer
+ *     items (not destinations), once each, between the listener's settings
+ *     and the Developer group.
  *  8. route() dispatches #/forays, the one new address.
  *  9. "Up Next" is backed by real state (cp_queue) — the menu slot is a page
  *     over a real queue, not a slot filled to match a list.
@@ -321,6 +324,98 @@ test("the menu lists exactly the five named destinations, in the founder's order
     ["Forays", "#/forays"],
     ["Up Next", "#/queue"],
   ], "the drawer's top-level destinations must be exactly these five, in this order");
+});
+
+/* ==================================================================== */
+/* 7b. CONTACT AND PRIVACY POLICY, UNDER SETTINGS (UGC gate step 1)      */
+/* ==================================================================== */
+
+/* docs/curation/ugc-moderation-runbook.md §5: "show the address in the app's
+   Settings as well, so a listener can find it without leaving 4a" (Apple
+   Guideline 1.2, "published developer contact"). The address and the policy
+   URL are HA #13's (docs/DECISIONS.md, "Privacy-policy facts and choices").
+   These are drawer ITEMS under the "Settings" label, appended in JS — not
+   drawer SECTIONS — so the five-destination list above must stay exactly as
+   it is, and it is still read off index.html. */
+const CONTACT_HREF = "mailto:help@jwlabs.ai";
+const PRIVACY_HREF = "https://jwlabs.ai/4a/privacy/";
+
+/** The drawer's direct children that are links-out to `href`. */
+const drawerLinksTo = (m, href) =>
+  m.byId.get("drawer").children.filter((k) => k.tagName === "A" && k.href === href);
+
+test("Settings carries 'Contact 4a' (the mailto) and 'Privacy policy' (the policy URL), once each, across re-renders", () => {
+  /* EXACT hrefs, because a near miss is the failure that looks fine: a typo
+     in the address mails nobody, and the policy URL is the one the store
+     listings name (docs/store/play/README.md §8; 200 on 2026-10-06).
+     The mailto is a fixed constant and never goes through safeUrl(), which
+     would turn it into "#" (it admits http/https only).
+     Bound twice with a renderDrawer() between, because the defect this kind
+     of control ships is the SECOND render (CLAUDE.md, #276): every
+     `openDrawer(true)` re-renders the drawer.
+     MUTATIONS, each run and red:
+       - CONTACT_ADDRESS = "help@jwlabs.dev" in app.js -> red, the mailto
+         count is 0;
+       - delete the `drawer.appendChild(privacy)` line -> red, the privacy
+         count is 0;
+       - delete the `drawer._contactPrivacyAdded = true` guard line -> red,
+         each link is there twice;
+       - `safeUrl(CONTACT_MAILTO)` for the mailto -> red, its href is "#". */
+  const m = quietMount();
+  m.ctx.bindContactPrivacyLinks();
+  m.ctx.renderDrawer();
+  m.ctx.bindContactPrivacyLinks();
+
+  const contact = drawerLinksTo(m, CONTACT_HREF);
+  const privacy = drawerLinksTo(m, PRIVACY_HREF);
+  assert.strictEqual(contact.length, 1, "exactly one Contact link, with the exact mailto");
+  assert.strictEqual(privacy.length, 1, "exactly one Privacy policy link, with the exact URL");
+
+  /* The address is SHOWN, not only linked: a phone with no mail app does
+     nothing on a mailto tap, and the runbook's point is that a listener can
+     find the address without leaving 4a. */
+  assert.strictEqual(contact[0].textContent, "Contact 4a: help@jwlabs.ai");
+  assert.strictEqual(privacy[0].textContent, "Privacy policy");
+  for (const a of [contact[0], privacy[0]]) {
+    assert.match(a.className, /(^| )drawer-item( |$)/, "a drawer item, so it gets .drawer-item's 44px (test/tap-targets.test.js)");
+    assert.doesNotMatch(a.className, /drawer-section/, "an item under Settings, not a sixth destination");
+  }
+  /* Off our origin, like every show link: a new browsing context, and the
+     opener cut. In the Capacitor shell a navigation away from the app's own
+     origin is handed to the OS (Safari / the mail app), as the show links'
+     `target="_blank"` already are. MUTATION: drop the `privacy.rel` line ->
+     red. */
+  assert.strictEqual(privacy[0].target, "_blank");
+  assert.match(String(privacy[0].rel), /\bnoopener\b/);
+});
+
+test("Contact and Privacy policy sit below the listener's settings and above the Developer group and 'Delete my data'", () => {
+  /* The brief's placement, read off init()'s binding order, which IS the
+     drawer's order: every one of these appends to #drawer. Delete my data
+     stays last (bindDeleteControl's rule) and the founder's Developer group
+     stays directly above it.
+     MUTATION: move `bindContactPrivacyLinks();` below `bindDeleteControl();`
+     in init() -> red; above `bindDrawerToggles();` -> red. */
+  const initSrc = APP_SRC.slice(APP_SRC.indexOf("bindDrawerChrome();"));
+  const at = (call) => {
+    const i = initSrc.indexOf(`\n  ${call}();`);
+    assert.ok(i !== -1, `init() must call ${call}()`);
+    return i;
+  };
+  const order = ["bindDrawerToggles", "bindVoiceControl", "bindContactPrivacyLinks", "bindDeveloperToggles", "bindDeleteControl"];
+  const positions = order.map(at);
+  assert.deepStrictEqual([...positions].sort((a, b) => a - b), positions, `init() must bind, in order: ${order.join(" → ")}`);
+
+  /* And the DOM agrees: built after the voice row and before the group. */
+  const m = quietMount();
+  m.ctx.bindContactPrivacyLinks();
+  m.ctx.bindDeveloperToggles();
+  const kids = m.byId.get("drawer").children;
+  const iContact = kids.findIndex((k) => k.href === CONTACT_HREF);
+  const iPrivacy = kids.findIndex((k) => k.href === PRIVACY_HREF);
+  const iDev = kids.findIndex((k) => k.id === "drawer-dev");
+  assert.ok(iContact !== -1 && iPrivacy === iContact + 1 && iDev > iPrivacy,
+    `Contact, then Privacy policy, then the Developer group (got ${iContact}, ${iPrivacy}, ${iDev})`);
 });
 
 test("route() dispatches #/forays to renderForays, matching the #/playlists pattern", () => {
