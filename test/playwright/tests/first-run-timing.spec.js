@@ -60,7 +60,15 @@
  * through `testInfo.attach` (they land in the HTML report written when `CI`
  * is set; the CI job does not upload that report yet, see README.md) and
  * prints one `[first-run-timing]` line with the measured milliseconds, so the
- * numbers are readable in the job log itself.
+ * numbers are readable in the job log itself. A probe that times out (no
+ * playable control, or a sheet button that never showed) attaches a
+ * screenshot and a JSON dump of what it saw, and rethrows with that dump in
+ * the error message: for each candidate its rect, `disabled`, and the
+ * outerHTML of what `elementFromPoint` returns at its centre, plus `scrollY`
+ * and every open `.fy-sheet`. MUTATION: replace the `throw await diagnosed(...)`
+ * in `playableCardAt` with `throw err` and run test 2 under its `dismiss();`
+ * mutation -> the red run is a bare "Timeout 95000ms exceeded" with no
+ * `[first-run-timing] playable-timeout` dump naming the covering scrim.
  */
 import { test, expect } from "@playwright/test";
 import { startSiteServer } from "../lib/site-server.mjs";
@@ -108,33 +116,122 @@ async function firstPaintMs(page) {
   return handle.jsonValue();
 }
 
+/* How often the two probes below sample the page. An interval, not
+   `polling: "raf"`: a rAF-polled wait depends on Chromium delivering frames
+   to the page, and one full-file run sat on a fully rendered, hit-testable
+   Home for ~90 s without the probe ever reporting it (the error-context
+   snapshot showed the Home ▶ ready; a rerun measured 6.3 s). Each sample is
+   still taken INSIDE the page with `performance.now()`, so the clock stays the
+   page's own; the interval only adds up to POLL_MS of sampling lag. */
+const POLL_MS = 50;
+
 /** Waits until some playable control on Home is visible and is what a tap at
     its centre lands on, and returns that moment on the page's clock — sampled
-    inside the page, at the frame the condition first held. */
-async function playableCardAt(page, timeout) {
-  const handle = await page.waitForFunction((sel) => {
-    for (const el of document.querySelectorAll(sel)) {
-      if (el.disabled || el.getClientRects().length === 0) continue;
-      const r = el.getBoundingClientRect();
-      const x = r.left + r.width / 2;
-      const y = r.top + r.height / 2;
-      if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) continue;
-      const at = document.elementFromPoint(x, y);
-      if (at && (at === el || el.contains(at))) return performance.now();
-    }
-    return null;
-  }, PLAYABLE, { timeout, polling: "raf" });
-  return handle.jsonValue();
+    inside the page, at the first poll the condition held. On a timeout it
+    attaches what the probe saw (see `diagnosePlayable`) and rethrows with
+    that summary in the message, so a red run says WHY nothing was playable. */
+async function playableCardAt(page, timeout, testInfo) {
+  try {
+    const handle = await page.waitForFunction((sel) => {
+      for (const el of document.querySelectorAll(sel)) {
+        if (el.disabled || el.getClientRects().length === 0) continue;
+        const r = el.getBoundingClientRect();
+        const x = r.left + r.width / 2;
+        const y = r.top + r.height / 2;
+        if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) continue;
+        const at = document.elementFromPoint(x, y);
+        if (at && (at === el || el.contains(at))) return performance.now();
+      }
+      return null;
+    }, PLAYABLE, { timeout, polling: POLL_MS });
+    return await handle.jsonValue();
+  } catch (err) {
+    throw await diagnosed(page, testInfo, "playable-timeout", err, diagnosePlayable);
+  }
 }
 
 /** Waits until the control `sel` is on screen and returns that moment on the
     page's clock (the same clock as first paint), for the record's breakdown. */
-async function shownAt(page, sel, timeout) {
-  const handle = await page.waitForFunction((s) => {
+async function shownAt(page, sel, timeout, testInfo) {
+  try {
+    const handle = await page.waitForFunction((s) => {
+      const el = document.querySelector(s);
+      return el && el.getClientRects().length > 0 ? performance.now() : null;
+    }, sel, { timeout, polling: POLL_MS });
+    return await handle.jsonValue();
+  } catch (err) {
+    throw await diagnosed(page, testInfo, "shown-timeout", err, (p) => diagnoseShown(p, sel));
+  }
+}
+
+/** Runs in the page: every PLAYABLE candidate with its rect, `disabled`, the
+    point a tap would land on and the outerHTML of what `elementFromPoint`
+    returns there, plus the scroll position and every open (not `hidden`) `.fy-sheet`. */
+function diagnosePlayable(page) {
+  return page.evaluate((sel) => {
+    const html = (el, n = 400) => (el ? el.outerHTML.slice(0, n) : null);
+    const candidates = [...document.querySelectorAll(sel)].map((el) => {
+      const r = el.getBoundingClientRect();
+      const x = r.left + r.width / 2;
+      const y = r.top + r.height / 2;
+      const inViewport = x >= 0 && y >= 0 && x < innerWidth && y < innerHeight;
+      const at = inViewport ? document.elementFromPoint(x, y) : null;
+      return {
+        html: html(el, 200),
+        rect: { left: r.left, top: r.top, width: r.width, height: r.height },
+        rendered: el.getClientRects().length > 0,
+        disabled: !!el.disabled,
+        centre: { x, y, inViewport },
+        hitIsSelf: !!at && (at === el || el.contains(at)),
+        elementFromPoint: html(at),
+      };
+    });
+    return {
+      now: performance.now(),
+      visibilityState: document.visibilityState,
+      viewport: { innerWidth, innerHeight },
+      scrollY,
+      candidateCount: candidates.length,
+      candidates,
+      openSheets: [...document.querySelectorAll(".fy-sheet:not([hidden])")].map((el) => ({ sheet: el.closest("[id]")?.id || null, html: html(el, 300) })),
+    };
+  }, PLAYABLE);
+}
+
+/** Runs in the page: whether `sel` exists and is rendered, and any open sheet. */
+function diagnoseShown(page, sel) {
+  return page.evaluate((s) => {
     const el = document.querySelector(s);
-    return el && el.getClientRects().length > 0 ? performance.now() : null;
-  }, sel, { timeout, polling: "raf" });
-  return handle.jsonValue();
+    return {
+      now: performance.now(),
+      visibilityState: document.visibilityState,
+      selector: s,
+      present: !!el,
+      rendered: !!el && el.getClientRects().length > 0,
+      html: el ? el.outerHTML.slice(0, 400) : null,
+      openSheets: [...document.querySelectorAll(".fy-sheet:not([hidden])")].map((e) => e.closest("[id]")?.id || e.className),
+    };
+  }, sel);
+}
+
+/** On a probe timeout: attaches a screenshot and the probe's JSON dump to the
+    report, and returns an Error carrying that dump (the CI job does not
+    upload the report yet, so the job log must say why on its own). A page
+    that cannot be inspected any more still rethrows the original error. */
+async function diagnosed(page, testInfo, name, err, diagnose) {
+  let dump;
+  try {
+    dump = await diagnose(page);
+  } catch (diagErr) {
+    dump = { diagnosisFailed: String(diagErr && diagErr.message || diagErr) };
+  }
+  if (testInfo) {
+    try { await shot(page, testInfo, `${name}.png`); } catch { /* page gone */ }
+    await testInfo.attach(`${name}.json`, { body: JSON.stringify(dump, null, 2), contentType: "application/json" });
+  }
+  const wrapped = new Error(`${err.message}\n[first-run-timing] ${name}: ${JSON.stringify(dump)}`);
+  wrapped.cause = err;
+  return wrapped;
 }
 
 /** One screenshot into the report. */
@@ -157,11 +254,11 @@ test("skip path: a fresh profile reaches a playable card within 10 s of first pa
   await page.goto(site.baseUrl);
   const paint = await firstPaintMs(page);
 
-  const sheet = await shownAt(page, "#first-time-sheet-skip", SKIP_BOUND_MS);
+  const sheet = await shownAt(page, "#first-time-sheet-skip", SKIP_BOUND_MS, testInfo);
   await shot(page, testInfo, "1-welcome-sheet");
   await page.locator("#first-time-sheet-skip").click();
 
-  const ready = await playableCardAt(page, SKIP_BOUND_MS + 5_000);
+  const ready = await playableCardAt(page, SKIP_BOUND_MS + 5_000, testInfo);
   await expect(page.locator("#first-time-sheet")).toHaveCount(0);
   await expect(page.locator("#intro-sheet")).toHaveCount(0);
   await shot(page, testInfo, "2-home-after-skip");
@@ -176,7 +273,7 @@ test("persona path: a fresh profile picks a persona and reaches a playable card 
   await page.goto(site.baseUrl);
   const paint = await firstPaintMs(page);
 
-  const sheet = await shownAt(page, "#first-time-sheet-go", PERSONA_BOUND_MS);
+  const sheet = await shownAt(page, "#first-time-sheet-go", PERSONA_BOUND_MS, testInfo);
   await shot(page, testInfo, "1-welcome-sheet");
   await page.locator("#first-time-sheet-go").click();
 
@@ -192,7 +289,7 @@ test("persona path: a fresh profile picks a persona and reaches a playable card 
   await shot(page, testInfo, "2-persona-picked");
   await page.locator("#first-time-sheet-prefs-go").click();
 
-  const ready = await playableCardAt(page, PERSONA_BOUND_MS + 5_000);
+  const ready = await playableCardAt(page, PERSONA_BOUND_MS + 5_000, testInfo);
   await expect(page.locator("#first-time-sheet")).toHaveCount(0);
   await expect(page.locator("#intro-sheet")).toHaveCount(0);
   await shot(page, testInfo, "3-home-after-persona");
@@ -232,7 +329,7 @@ test("returning listener: a context carrying the dismissed flag never sees the f
 
     await expect(page2.locator("#first-time-sheet"), "a returning listener was shown the first-time sheet again").toHaveCount(0);
     await expect(page2.locator("#intro-sheet"), "a returning listener was shown the intro popup").toHaveCount(0);
-    await playableCardAt(page2, 10_000);
+    await playableCardAt(page2, 10_000, testInfo);
   } finally {
     await second.close();
   }

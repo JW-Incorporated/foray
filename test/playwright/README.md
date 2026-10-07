@@ -66,6 +66,16 @@ it does, the log line is the evidence a reviewer can link to. Run locally to
 see the screenshots: `npx playwright test tests/first-run-timing.spec.js --reporter=html`,
 then `npx playwright show-report`.
 
+A probe that times out does not fail as a bare timeout: it attaches
+`playable-timeout.png` / `playable-timeout.json` (or `shown-timeout.*`) and
+puts the same JSON in the error message, so the job log says what covered
+the card. The dump lists every `[data-home-play]` / `[data-play]` candidate
+with its rect, `disabled`, and the outerHTML that `elementFromPoint` returns
+at its centre, plus `scrollY` and every open `.fy-sheet`. The probes poll every
+50 ms rather than on `requestAnimationFrame`. One full-file run sat on a
+ready Home for about 90 s under rAF polling without the probe reporting it.
+The sample is still `performance.now()` inside the page.
+
 **Load sensitivity.** The skip bound is real time on a shared machine. A
 single-worker local run measured 2-8 s first paint to playable, and most of
 that was the boot before the sheet appears. A box saturated by other work can
