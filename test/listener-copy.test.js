@@ -218,6 +218,104 @@ test("no string that outlived its cause is back in the app's copy", () => {
 });
 
 /* ------------------------------------------------------------------ */
+/* The app's one-line description, wherever it is published            */
+/* ------------------------------------------------------------------ */
+
+/* WHY THIS EXISTS. The line that describes 4a lives on four surfaces outside
+   app.js, and the STALE scan above never read any of them: manifest.json still
+   said "Four topic queues, picked for you every day" (the retired four-card
+   Home, and a daily claim) while index.html's meta description and og:description
+   and the Play short description said "Podcast playlists stitched across shows"
+   (the 2026-08-11 playback ruling's banned word). Both drifted in plain sight.
+   Now the same STALE rows read the published lines, and the three short
+   surfaces must say the same thing. */
+const STORE_DIR = "docs/store/play";
+const metaContent = (html, attr, key) => {
+  const m = new RegExp(`<meta\\s+${attr}="${key}"\\s+content="([^"]*)"\\s*>`).exec(html);
+  assert.ok(m, `index.html has no <meta ${attr}="${key}">`);
+  return m[1];
+};
+const storeCopy = (name) => read(`${STORE_DIR}/${name}`).replace(/\n+$/, "");
+
+/* Every published description, as [surface, text]. Only the CONTENT of each
+   meta tag is read, never the HTML comments around it, which quote old copy on
+   purpose. */
+function descriptionSurfaces() {
+  const html = read("index.html");
+  const head = html.slice(0, html.indexOf("</head>"));
+  return [
+    ["index.html meta description", metaContent(head, "name", "description")],
+    ["index.html og:description", metaContent(head, "property", "og:description")],
+    ["manifest.json description", JSON.parse(read("manifest.json")).description],
+    [`${STORE_DIR}/short-description.txt`, storeCopy("short-description.txt")],
+    [`${STORE_DIR}/full-description.txt`, storeCopy("full-description.txt")],
+  ];
+}
+
+/* A KNOWN GAP, NOT AN EXEMPTION FROM THE RULE. The Play full description
+   (2202 characters of store copy) still describes the retired four-card Home
+   from its first sentence ("puts them into four topic queues") to its
+   "FOUR, NOT FOREVER" heading. Rewriting it is a separate copy job, outside the
+   manifest-description card. Each row here must still FIRE — the next test
+   fails the moment the full description stops matching, so the row is deleted
+   in the same change that fixes the copy and cannot outlive it. */
+const KNOWN_STALE = [
+  [`${STORE_DIR}/full-description.txt`, "four topic queues"],
+];
+
+/* MUTATIONS THAT KILL THIS: restore "stitched" in index.html's meta description
+   or og:description; revert manifest.json's description to "Four topic queues,
+   picked for you every day"; put "stitched" back in short-description.txt. Each
+   fails by surface and row name. */
+test("no published description carries a string that outlived its cause", () => {
+  const failures = [];
+  for (const [surface, text] of descriptionSurfaces()) {
+    for (const [what, re, why] of STALE) {
+      if (!re.test(text)) continue;
+      if (KNOWN_STALE.some(([s, w]) => s === surface && w === what)) continue;
+      failures.push(`${surface}: ${what}: ${why}`);
+    }
+  }
+  assert.deepStrictEqual(failures, []);
+});
+
+/* MUTATION THAT KILLS THIS: rewrite full-description.txt's first sentence
+   without "four topic queues" and leave its KNOWN_STALE row in place. */
+test("every known-stale description row still matches, so it is deleted when the copy is fixed", () => {
+  const surfaces = new Map(descriptionSurfaces());
+  for (const [surface, what] of KNOWN_STALE) {
+    const row = STALE.find(([w]) => w === what);
+    assert.ok(row, `KNOWN_STALE names "${what}", which is not a STALE row`);
+    assert.ok(surfaces.has(surface), `KNOWN_STALE names "${surface}", which is not a description surface`);
+    assert.match(surfaces.get(surface), row[1], `${surface} no longer says "${what}": delete its KNOWN_STALE row`);
+  }
+});
+
+/* ONE LINE, FOUR PLACES. The Play short field is the tightest (80 characters),
+   so it sets the line, and the meta description, og:description and the PWA
+   manifest repeat it verbatim. The 2026-08-11 playback ruling (docs/DECISIONS.md)
+   bans copy implying 4a produces a new audio file, so "stitch" and "clip" are
+   out of this line entirely, not only in the STALE row's narrower shapes; the
+   copy rules (backend/src/copy/rules.js) apply as everywhere else.
+   MUTATIONS THAT KILL THIS: revert manifest.json's description alone; change
+   og:description alone; add "clips" to all four; grow the line past 80. */
+test("the meta description, og:description, the manifest and the Play short description say one line", () => {
+  const { BANNED, INTERNAL_VOCABULARY } = require("../backend/src/copy/rules.js");
+  const lines = descriptionSurfaces().filter(([surface]) => !surface.endsWith("full-description.txt"));
+  const [, line] = lines.find(([surface]) => surface.endsWith("short-description.txt"));
+  for (const [surface, text] of lines) {
+    assert.strictEqual(text, line, `${surface} says something other than the Play short description`);
+  }
+  assert.ok(line.length > 0 && line.length <= 80, `the line is ${line.length} characters; Play's short field takes 80`);
+  assert.doesNotMatch(line, /[\r\n]/, "the line is one line");
+  assert.doesNotMatch(line, /stitch|\bclip/i, "the 2026-08-11 playback ruling: no stitching or clipping");
+  assert.doesNotMatch(line, /\b(we|us|our)\b/i, "the app speaks as 4a, never as 'we'");
+  for (const re of [...BANNED, ...INTERNAL_VOCABULARY]) {
+    assert.doesNotMatch(line, re, `banned copy in the description: ${re}`);
+  }
+});
+
+/* ------------------------------------------------------------------ */
 /* Behaviour behind the copy                                           */
 /* ------------------------------------------------------------------ */
 
