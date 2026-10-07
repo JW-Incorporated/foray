@@ -87,14 +87,15 @@ test("a failed release is retried after the retry window, not pinned for the ins
   });
 });
 
-test("no id_map_url means no fetch and nothing to retry", async () => {
-  await withPointer({ version: "x" }, async () => {
-    let calls = 0;
-    const fetchImpl = async () => { calls += 1; throw new Error("never"); };
-    let t = 0;
-    await loadShowIdMap({ fetchImpl, now: () => t });
-    t += RELEASE_RETRY_MS * 3;
-    await loadShowIdMap({ fetchImpl, now: () => t });
-    assert.equal(calls, 0);
+test("the real id-map.json shape (slug -> pi_id) maps nothing: the release reader keeps the catalogue", async () => {
+  /* Characterization before CH2-02 deletes this reader: the asset the
+     pipeline actually publishes is not an Apple-id map, so wiring it would
+     only buy a failed fetch every RELEASE_RETRY_MS. The surviving shape pin
+     is in show-id-map.test.mjs. */
+  await withPointer(POINTER, async () => {
+    const fetchImpl = async () => new Response(JSON.stringify({ "the-daily": 5001, "huberman-lab": 5002 }), { status: 200 });
+    const map = await loadShowIdMap({ fetchImpl });
+    assert.equal(map.source, "catalog-fallback");
+    assert.ok(map.byCollectionId.size > 1000);
   });
 });
