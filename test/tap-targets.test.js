@@ -43,7 +43,9 @@ const path = require("node:path");
 const { readAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const CSS = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8").replace(/\r\n/g, "\n");
+const CSS = ["styles.css", "ui/primitives.css"]
+  .map((rel) => fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n"))
+  .join("\n");
 
 /** Every style rule with its at-rule context, comments removed (a comment
     ABOUT a rule must never satisfy an assertion about the rule). */
@@ -107,6 +109,7 @@ function valueOf(sel, prop) {
   return v;
 }
 const px = (v) => {
+  if (String(v || "").trim() === "var(--tap)") return 44;
   const m = /^(-?\d+(?:\.\d+)?)px$/.exec(String(v || "").trim());
   return m ? Number(m[1]) : null;
 };
@@ -217,6 +220,10 @@ const BUTTONS = {
   ".fy-sheet-go": { rule: ".fy-sheet-go" },
   ".fy-thumb": { rule: ".fy-thumb" },
   ".interest-reset": { rule: ".interest-reset" },
+  ".ag-btn": { size: [".ag .ag-btn"] },
+  ".ag-chip": { tall: ".ag .ag-chip", why: "a labelled pill with inline padding" },
+  ".ag-strip-bar": { tall: ".ag .ag-strip-bar", why: "a flexible bar that fills the strip's width" },
+  ".ag-tab": { tall: ".ag .ag-tab", why: "a tab that flexes across one third of the tab bar" },
   ".hv2-play": { tall: "body.ui-v2 .hv2-play", why: "Home's one play button (founder, 2026-09-24): a labelled capsule, \"▶ Play <title>\", 48px tall with 16/20px side padding" },
   ".play-btn": { rule: ".play-btn" },
   ".pl-save": { tall: "button.pl-save", why: "a labelled capsule (\"Save to my playlists\" / \"✓ Saved\") with 16px side padding" },

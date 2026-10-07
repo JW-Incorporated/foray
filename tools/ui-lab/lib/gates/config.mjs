@@ -44,5 +44,7 @@ export const CONSOLE_COVERED_ELSEWHERE = [
 export const SHEET_OPENERS = [
   { dialog: ".fp-sheet", opener: ".fp-info", close: ".fp-close" },
   { dialog: "#first-time-sheet", opener: null, close: "#first-time-sheet-skip" },
+  { dialog: "#ag-gallery-dusk-sheet", opener: "#ag-gallery-dusk-sheet-open", close: "#ag-gallery-dusk-sheet .ag-sheet-head button" },
+  { dialog: "#ag-gallery-dawn-sheet", opener: "#ag-gallery-dawn-sheet-open", close: "#ag-gallery-dawn-sheet .ag-sheet-head button" },
   { dialog: "#gx-sheet", opener: "#gx-open", close: "#gx-close" }, // fixtures/gates-fixture.html
 ];

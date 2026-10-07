@@ -852,3 +852,124 @@ own header is the long form; `test/afterglow-tokens.test.js` pins every number h
 6. **Not in this PR, by the build plan's order:** the icon sprite, primitives
    and gallery (the next three tasks), `data/palettes.json` and its loader (the
    palette script lands with Now Playing, which is its first reader).
+
+## 14. As built: phase 3, icons (`redesign/ambient-p3-icons`, `ui/icons.svg`, `ui/icons.js`)
+
+The sprite, its helper and the `.icon` rules. No screen changed: the trunk-app
+baseline compares 138 of 138 shots identical, gates exit 0 with 0 new.
+`test/afterglow-icons.test.js` pins every number here.
+
+1. **Location.** `ui/icons.svg` (not the repo root: `vercel.json` already revalidates
+   `/ui/(.*)`, so the sprite never goes stale behind a cached shell), listed in the
+   three shell lists beside `ui/tokens.css`. Referenced as `href="ui/icons.svg#i-house"`;
+   routes are hash-based so the document base never moves. `ui/icons.js` is a new
+   classic script loaded after `ui/home.js`; it runs nothing at the top level.
+2. **Generated, not hand-edited.** `node tools/icons/build-sprite.mjs` writes it
+   (`--check` verifies); a test fails if the file is not what the script writes. The 33
+   Phosphor (MIT) paths are taken as they stand from the prototype's sprite; the four
+   transport glyphs are drawn by the script. Complete Phosphor MIT and DM Sans OFL 1.1
+   notices live in `ui/icons-LICENSES.txt`; the web dist, service-worker generation and
+   native webDir all ship that human-readable surface beside the sprite, and
+   `docs/legal/third-party-notices.md` records both dependencies.
+3. **The prototype's four custom glyphs were not copied.** They used strokes and a
+   `<text>` numeral. `<text>` in an externally referenced sprite does not see the page's
+   `@font-face`, so it would draw in a fallback face, and the notes above ask for filled
+   paths. Rebuilt as fills: play is an equilateral triangle (circumradius 104, corners
+   rounded 12, centroid at x=136 = the +8 optical shift; it is larger than the prototype's
+   26-wide stroked triangle because that stroke added 13 on every side); pause is two 40
+   bars 32 apart; back-15 and forward-30 are a 270 degree ring (radius 84, stroke 22
+   expanded, round caps), a rounded arrowhead (the prototype's, offset by its 4 stroke
+   and rounded to 4), and the numerals as **DM Sans outlines at wght 600, opsz 14** (the
+   text optical size: the glyphs are drawn at 36px or less), font-size 84, figure 59 high,
+   centred on the ring. Forward is the exact mirror of back. The outlines come from
+   `tools/icons/extract-numerals.py` (fontTools, one-off) into the committed
+   `tools/icons/dm-sans-600-numerals.json`; CI needs neither.
+4. **Helper.** `agIcon(name, size)` returns `<svg class="icon icon-28" aria-hidden="true"
+   focusable="false"><use href="ui/icons.svg#i-house"></use></svg>`; sizes 20/24/28/32/36
+   are classes (strict CSP), a name or size outside the lists returns `""` rather than
+   markup. `safeUrl()` accepts this one anchored relative-asset form
+   (`ui/icons.svg#i-...`) and rejects other relative URLs; the helper writes
+   `esc(safeUrl(...))` so the same invariant as every other href/src holds.
+   `agIconGallery()` renders every symbol with its name and the Sizes row; the gallery
+   task mounts it under `#/gallery`.
+5. **CSS** (`ui/tokens.css` section 6b): five size tokens (`--icon-sm 20`, `--icon 24`,
+   `--icon-tab 28`, `--icon-lg 32`, `--icon-play 36`), `.ag .icon, .room .icon` with
+   `fill: currentColor`, `stroke: none`, `flex: none`, `pointer-events: none` (the
+   control owns the tap). Scoped like every other rule in the file, so no legacy screen
+   changes. `test/afterglow-tokens.test.js`'s "nothing today's markup emits" scan now
+   skips `ui/icons.js` only, since the helper emits the classes the file styles.
+6. **Not in this PR:** replacing any Unicode glyph in a screen (Phase 4, screen by screen),
+   the gallery route itself, the 3:1 non-text contrast check of a glyph on its control
+   (each screen's own pass).
+
+## 15. As built: phase 3, primitives and gallery (`redesign/ambient-p3-primitives`)
+
+The component system now exists without a Phase 4 screen adopting it. `ui/primitives.js`
+returns inert, escaped markup; `ui/primitives.css` is wholly scoped below `.ag`; and the
+lab-only `#/gallery` route displays Dusk and Dawn plus a separately captured live-sheet
+state for each scheme. The 138 pre-existing `trunk-app` shots compare at zero changed
+pixels; 41 stable capture plates at three viewports make the 123-shot gallery baseline.
+
+1. **Inventory.** The gallery covers Primary, Secondary, Quiet, Icon, Play (44/48/56/88)
+   and Skip controls; chips, pills, SectionHead, search, scrubber and the three Strip
+   scales; every artwork size and Collage c1-c4; EpisodeRow and QueueRow states;
+   StretchCard, ForayCard/Tile, HeroPick, ShowTile, SubjectTile and PlaylistTile; Dock,
+   TabBar and MiniPlayer; Sheet, Toast, Skeleton and EmptyState. Card strips are static;
+   player/detail strips use real 44px seek buttons.
+2. **States and semantics.** Default, pressed, focus, disabled and loading treatments are
+   visible in both schemes; scrubber, MiniPlayer and Sheet also show drag. Pressed controls
+   use an inset treatment instead of shrinking their hit rectangle. Disabled cards keep
+   full text contrast. Artwork and Glow swatches are named images. The scrubber is a native
+   range slider with a 44px input target; its value, clocks and `aria-valuetext` move
+   together. Duplicate gallery landmarks are disambiguated, and Skeleton announces Loading
+   without putting ARIA on a generic span.
+3. **Sheet behavior.** The decorative preview is not a dialog. Each scheme's live sheet is
+   a direct child of its panel, has a stable dialog/opener id for the gate, moves focus to
+   its close button, makes siblings inert, traps Tab with `a[href]` (not SVG `<use href>`),
+   closes on Escape or the visible control, and restores the opener. The gates trace both
+   live dialogs rather than accepting static source.
+4. **Shipping and isolation.** `ui/primitives.css` is explicit in the service-worker, web
+   and native shell lists; the two JS files follow `ui/icons.js` and precede `ui/boot.js`.
+   `galleryAllowed()` requires `window.__FORAY_LAB__` or `?gallery=1`. The token isolation
+   census excludes only `icons.js`, `primitives.js` and `gallery.js`; screen-bearing files
+   still fail if they emit a new-system class before Phase 4.
+5. **Verification.** Gallery gates: 41 screens, zero new violations in all eight gates, two
+   live sheets traced. Axe is clean for the gallery except the existing owner decision that
+   disables viewport zoom. Dusk and Dawn were shot explicitly. Visual review against the
+   final Ambient r4 prototype kept its warm room, Fraunces hierarchy, Ember controls, Lit
+   art and compact density. Baselines: `ambient-gallery` 123 shots, fresh compare 123/123
+   identical; rolling `ambient-app` 261 shots. The primary background remains token
+   `--bg0` (`#14110F`), with the Dawn panel sampled at `#F7F2EB`.
+   The one full Windows runner reached the runbook's known CRLF-only root red and
+   exposed a real mobile asset-budget red from the first slider implementation.
+   The compact native-range implementation plus the documented 16 KB ceiling fixed
+   that: targeted mobile bundle verification passes 87/87. Corpus passed 285/285,
+   foraycorpus-export 69/69, shows 117/117 (+6 skipped), and UI lab 55/55. All
+   change-targeted root suites pass.
+6. **Executed mutations.** The suite now has sixteen tests. The review follow-up was run red
+   by literally replacing `safeUrl(artUrl(src, px * 3))` with `safeUrl(src)`, omitting
+   `pressed: playing`, restoring the broad `.p0 { width: 0 }` rule, changing the native
+   scrubber input from `range` to `text`, deleting the gallery's scrubber-drag entry, and
+   deleting the `cards-tiles` capture plate from the gallery harness.
+   The existing disabled semantics, 44px target, single reduced-motion owner, route guard,
+   sheet focus and shipping-list mutations remain pinned. Every mutation was restored.
+7. **Phase 4 boundary.** No existing screen calls a primitive. Screens adopt this system
+   one at a time, with the gallery baseline guarding unintended foundation changes.
+8. **Native bundle alarm.** The complete minified bundle is 2.88 MB and remains below
+   the independent 3 MB hard cap. The legacy-growth alarm stays unchanged at 2.85 MB;
+   `prepare-webdir.test.mjs` subtracts only the measured foundation files from that
+   quantity and gives `primitives.css`, `primitives.js` and `gallery.js` tight 20/16/9 KB
+   per-file ceilings. The JavaScript ceiling rose by 1 KB for the accessible slider binder;
+   after the blocking-review corrections its measured minified size is 16,375 bytes, still
+   within the 16 KB ceiling. Removing the CSS carve-out was run as the named mutation and
+   restored the red 2.85 MB alarm. Artwork primitives also reserve their intrinsic
+   square and request a 3x CDN rendition before the final `safeUrl()` gate; the root
+   boot-path image census pins that no small tile fetches the 600px original.
+9. **Blocking-review corrections.** The detail Strip now carries its separate 20px
+   thumbnail row, and its current 24px show bar is exactly `--s-1` taller, bottom-anchored
+   so it grows upward. Row Play at 44px is the outlined, unfilled treatment; larger Play
+   controls remain Ember-filled. A current QueueRow exposes the visible "Playing" caption
+   beside its filled glyph. SubjectTile accepts `default` / `pressed`, and the gallery
+   records both in Dusk and Dawn. Four focused tests name mutations that ran red against
+   removal of each correction.
+

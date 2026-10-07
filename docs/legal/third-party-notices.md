@@ -3,23 +3,24 @@
 Software and data distributed inside the 4a app (`mobile/`), and the licence
 each one is distributed under.
 
-**Why this file exists.** Apache-2.0 §4(d) requires that a distributed work
-carry the notices of the Apache-licensed material it includes. Until this deck,
-everything in the app was either first-party or a platform framework, so there
-was nothing to reproduce. `docs/bundled-voice-plan.md` changes that: the
-bundled narration voice is somebody else's weights and somebody else's
-inference runtime, shipped inside our binary.
+**Why this file exists.** Apache-2.0 §4(d), MIT's notice condition and OFL
+1.1's redistribution conditions require the applicable notices to travel with
+the material the app distributes. The bundled narration stack, icon paths and
+font-derived numeral outlines are all somebody else's work shipped inside the
+app, so each is recorded here and its complete required text ships with it.
 
 **Scope.** This file covers what is DISTRIBUTED, not what is used to build.
 Build-time tooling (Capacitor's CLI, Node, Gradle, Xcode) is not listed; a
 library or a data file that ends up inside the `.ipa` or the `.aab` is.
 
-**The entries below are authoritative for a build that has run
-`tools/mobile/fetch-models.mjs`.** That script's `PINS` table is the machine-
+**The model and voice entries below are authoritative for a build that has run
+`tools/mobile/fetch-models.mjs`.** That script's `PINS` table is their machine-
 readable source: every pin carries a `licence` and an https `source`, and
 `test/release-gates.test.js` fails the build if a pin records a licence that is
 not Apache-2.0 or MIT — the deck's §11 non-goal ("any voice whose licence is
-not Apache/MIT") as a check rather than a sentence.
+not Apache/MIT") as a check rather than a sentence. The Phosphor and DM Sans
+entries apply whenever `ui/icons.svg` ships; `test/afterglow-icons.test.js`
+pins their complete notices and every shipping list.
 
 ---
 
@@ -107,6 +108,27 @@ not Apache/MIT") as a check rather than a sentence.
 - **Status in this build:** constructed on demand when a founder taps the
   voice probe (iOS 17 and later), and never reached from the narration path,
   exactly like the ONNX Runtime engine above.
+
+## Phosphor Icons — the app icon sprite
+
+- **What:** thirty-three Phosphor Regular/Fill SVG paths distributed inside
+  `ui/icons.svg`.
+- **Licence:** MIT
+- **Source:** https://github.com/phosphor-icons/react
+- **Notice:** Copyright (c) 2020 Phosphor Icons. The complete MIT notice ships
+  beside the sprite in `ui/icons-LICENSES.txt` and is copied into both web and
+  native app bundles.
+
+## DM Sans — numeral outlines in transport icons
+
+- **What:** the "15" and "30" outlines inside the back/forward transport
+  symbols in `ui/icons.svg`, derived from DM Sans at weight 600, optical size
+  14. The self-hosted DM Sans face used by the app is the same OFL family.
+- **Licence:** SIL Open Font License 1.1
+- **Source:** https://github.com/google/fonts/tree/main/ofl/dmsans
+- **Notice:** Copyright 2014 The DM Sans Project Authors. The complete OFL 1.1
+  notice ships beside the sprite in `ui/icons-LICENSES.txt` and is copied into
+  both web and native app bundles.
 
 ## What is deliberately NOT here
 

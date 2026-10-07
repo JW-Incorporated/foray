@@ -9,6 +9,7 @@
  * #/shows/q/<label> , #/show/<id> , #/episode/<id>[?t=N] , #/category/<id> ,
  * #/playlists , #/playlist/<id> , #/subject/<id> , #/create , #/forays ,
  * #/foray/<id> , #/queue , #/library , #/starred-shows , #/interests.
+ * The lab-only #/gallery route requires ?gallery=1 (or window.__FORAY_LAB__).
  * #/subject/<id> is generated from a live search result and has no stable seed,
  * so it is not shot; everything else is.
  */
@@ -55,6 +56,63 @@ async function typeSearch(page, text) {
   await wait(page, 1800);
 }
 
+async function showGalleryTarget(page, selector) {
+  const open = page.locator(`[data-ag-live-sheet]:not([hidden])`);
+  if (await open.count()) {
+    await page.keyboard.press("Escape");
+    await wait(page, 100);
+  }
+  const target = page.locator(selector).first();
+  await target.waitFor({ state: "visible", timeout: 10000 });
+  await target.evaluate((node) => node.scrollIntoView({ block: "start", inline: "nearest" }));
+  await wait(page, 200);
+}
+
+async function openGallerySheet(page, theme) {
+  const open = page.locator(`[data-ag-live-sheet]:not([hidden])`);
+  if (await open.count()) await page.keyboard.press("Escape");
+  const panel = page.locator(`#ag-gallery-${theme}-scheme`);
+  await panel.locator("[data-ag-open-sheet]").click();
+  await page.waitForSelector(`#ag-gallery-${theme}-scheme [data-ag-live-sheet]:not([hidden])`, { timeout: 10000 });
+  await wait(page, 200);
+}
+
+function galleryCaptureSteps(theme) {
+  const section = (name) => `#ag-gallery-${theme}-${name}`;
+  const step = (label, selector) => ({
+    label: `${theme}-${label}`,
+    route: "#/gallery",
+    run: (page) => showGalleryTarget(page, selector),
+  });
+  return [
+    step("glow", section("glow")),
+    step("buttons-top", `${section("buttons")} .ag-gallery-states:nth-child(1)`),
+    step("buttons-lower", `${section("buttons")} .ag-gallery-states:nth-child(4)`),
+    step("controls-top", `${section("controls")} .ag-gallery-states:nth-child(1)`),
+    step("controls-lower", `${section("controls")} .ag-scrubber`),
+    step("artwork", section("artwork")),
+    step("rows-default", `${section("rows")} .ag-gallery-state:nth-child(1)`),
+    step("rows-active", `${section("rows")} .ag-gallery-state:nth-child(4)`),
+    step("rows-edge", `${section("rows")} .ag-gallery-state:nth-child(7)`),
+    step("rows-queue", `${section("rows")} .ag-gallery-state:nth-child(9)`),
+    step("cards-hero", `${section("cards")} .ag-hero-pick`),
+    step("cards-stretch-top", `${section("cards")} .ag-gallery-state:nth-child(1)`),
+    step("cards-stretch-lower", `${section("cards")} .ag-gallery-state:nth-child(4)`),
+    step("cards-foray", `${section("cards")} .ag-foray-card`),
+    step("cards-tiles", `${section("cards")} .ag-show-tile`),
+    step("navigation", section("navigation")),
+    step("feedback", section("feedback")),
+    step("icons", section("icons")),
+    step("icon-sizes", `${section("icons")} h3.ag-icons-title`),
+    {
+      label: `${theme}-sheet-open`,
+      route: "#/gallery",
+      run: (page) => openGallerySheet(page, theme),
+      ready: `#ag-gallery-${theme}-scheme [data-ag-live-sheet]:not([hidden])`,
+    },
+  ];
+}
+
 /** Routes every seeded profile can show. `fx` supplies real ids. */
 function coreRoutes(fx, { entities }) {
   const ep = fx.items[0].id;
@@ -93,6 +151,16 @@ function coreRoutes(fx, { entities }) {
 export function appStates(fx) {
   const ep0 = fx.items[0].id;
   return [
+    {
+      id: "gallery",
+      description: "Afterglow primitives in every state, shown in Dusk and Dawn.",
+      seed: "dismissed",
+      steps: [
+        { label: "dusk-overview", route: "?gallery=1#/gallery", ready: ".ag-gallery" },
+        ...galleryCaptureSteps("dusk"),
+        ...galleryCaptureSteps("dawn"),
+      ],
+    },
     {
       id: "first-run",
       description: "Brand-new profile: the onboarding explainer sheet over Home.",
