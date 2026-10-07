@@ -120,11 +120,10 @@ describe("known real-world quirks captured in the fixture corpus", () => {
 });
 
 /**
- * `<podcast:transcript>` has two consumers that want different formats:
- * Tier-1 enrichment wants prose (`transcriptUrl`, text/plain first), and
- * segment anchoring (ADR 0007) wants a timeline (`timedTranscriptUrl`).
- * The fixture corpus carries no transcript tags at all, so these cases are
- * built inline. Real feeds publish ~2.9 transcript tags per show, so the
+ * `<podcast:transcript>` is read for segment anchoring (ADR 0007), which wants
+ * a timeline (`timedTranscriptUrl`). The Tier-1 prose pick (`transcriptUrl`,
+ * text/plain first) had no reader and was deleted (CH2-03). The fixture
+ * corpus carries no transcript tags at all, so these cases are built inline. Real feeds publish ~2.9 transcript tags per show, so the
  * multi-tag combinations below are the common case, not the exotic one.
  */
 function feedWithTranscripts(tags: string): string {
@@ -156,44 +155,21 @@ const SUBRIP = '      <podcast:transcript url="https://example.com/t.subrip" typ
 const JSON_T = '      <podcast:transcript url="https://example.com/t.json" type="application/json" />';
 
 describe("transcript format preference", () => {
-  describe("transcriptUrl (Tier-1 enrichment) — behaviour must be unchanged", () => {
-    it("prefers text/plain over every timed format, however they are ordered", () => {
-      expect(firstEpisode([VTT, SRT, PLAIN, JSON_T].join("\n")).transcriptUrl).toBe("https://example.com/t.txt");
-      expect(firstEpisode([PLAIN, VTT].join("\n")).transcriptUrl).toBe("https://example.com/t.txt");
-    });
-
-    it("falls back to application/json when there is no text/plain", () => {
-      expect(firstEpisode([VTT, SRT, JSON_T].join("\n")).transcriptUrl).toBe("https://example.com/t.json");
-    });
-
-    it("falls back to the first tag when neither text/plain nor application/json is offered", () => {
-      expect(firstEpisode([SRT, VTT].join("\n")).transcriptUrl).toBe("https://example.com/t.srt");
-      expect(firstEpisode(HTML).transcriptUrl).toBe("https://example.com/t.html");
-    });
-
-    it("is null when the episode publishes no transcript at all", () => {
-      expect(firstEpisode("").transcriptUrl).toBeNull();
-    });
-  });
-
   describe("timedTranscriptUrl / timedTranscriptType (segment anchoring)", () => {
     it("only-plain: no timed transcript exists, so both fields are null", () => {
       const ep = firstEpisode(PLAIN);
-      expect(ep.transcriptUrl).toBe("https://example.com/t.txt");
       expect(ep.timedTranscriptUrl).toBeNull();
       expect(ep.timedTranscriptType).toBeNull();
     });
 
-    it("only-vtt: picks it, and enrichment falls back to the same tag", () => {
+    it("only-vtt: picks it", () => {
       const ep = firstEpisode(VTT);
       expect(ep.timedTranscriptUrl).toBe("https://example.com/t.vtt");
       expect(ep.timedTranscriptType).toBe("text/vtt");
-      expect(ep.transcriptUrl).toBe("https://example.com/t.vtt");
     });
 
-    it("both-plain-and-vtt: the two consumers diverge — this is the bug this field fixes", () => {
+    it("both-plain-and-vtt: the prose tag listed first never displaces the vtt", () => {
       const ep = firstEpisode([PLAIN, VTT].join("\n"));
-      expect(ep.transcriptUrl).toBe("https://example.com/t.txt");
       expect(ep.timedTranscriptUrl).toBe("https://example.com/t.vtt");
       expect(ep.timedTranscriptType).toBe("text/vtt");
     });
@@ -240,7 +216,6 @@ describe("transcript format preference", () => {
 
     it("tolerates a missing type attribute — no throw, no false match", () => {
       const ep = firstEpisode('      <podcast:transcript url="https://example.com/t.unknown" />');
-      expect(ep.transcriptUrl).toBe("https://example.com/t.unknown"); // first-tag fallback, unchanged
       expect(ep.timedTranscriptUrl).toBeNull();
       expect(ep.timedTranscriptType).toBeNull();
     });
@@ -282,39 +257,6 @@ describe("transcript format preference", () => {
       expect(ep.timedTranscriptType).toBeNull();
     });
 
-  });
-
-  it("transcriptUrl is unchanged for every subset and ordering of the six real-world formats", () => {
-    // The regression guard for this change: replays the pre-change selection
-    // rule (text/plain, then application/json, then first tag) over every
-    // subset and permutation of the formats real feeds publish, and asserts
-    // the parser still agrees with it exactly. 1,957 combinations.
-    const all = [PLAIN, HTML, VTT, SRT, SUBRIP, JSON_T];
-    const urlOf = (tag: string) => tag.match(/url="([^"]+)"/)![1];
-    const typeOf = (tag: string) => tag.match(/type="([^"]+)"/)![1];
-    const legacyPick = (tags: string[]) =>
-      tags.find((t) => typeOf(t) === "text/plain") ??
-      tags.find((t) => typeOf(t) === "application/json") ??
-      tags[0] ??
-      null;
-
-    const permutations = (tags: string[]): string[][] => {
-      if (tags.length <= 1) return [tags];
-      return tags.flatMap((t, i) =>
-        permutations([...tags.slice(0, i), ...tags.slice(i + 1)]).map((rest) => [t, ...rest])
-      );
-    };
-
-    let checked = 0;
-    for (let mask = 0; mask < 1 << all.length; mask++) {
-      const subset = all.filter((_, i) => mask & (1 << i));
-      for (const order of permutations(subset)) {
-        const expected = legacyPick(order);
-        expect(firstEpisode(order.join("\n")).transcriptUrl).toBe(expected === null ? null : urlOf(expected));
-        checked++;
-      }
-    }
-    expect(checked).toBe(1957);
   });
 
   it("every fixture-corpus episode exposes both transcript fields as string-or-null", () => {
@@ -403,6 +345,43 @@ describe("security regression: GHSA-8r6m-32jq-jx6q (fast-xml-parser DOCTYPE/enti
 });
 
 
+/* CH2-03: the parsed shape is exactly what callers read (feedCache slim(),
+   the episodes and search handlers, liveEpisodeId, ingestShowFeed). */
+describe("ParsedFeed / ParsedEpisode shape (CH2-03)", () => {
+  it("returns only the fields something reads: no Tier-1 transcriptUrl and none of the nine unread fields (B1-11)", () => {
+    /* CH2-03 (B1-06, B1-11). MUTATION: put `transcriptUrl` (or `explicit`,
+       `guidIsPermalink`, `newFeedUrl`, ...) back on the returned object — the
+       key lists stop matching and this goes red. */
+    const feed = parseFeed(
+      feedWithTranscripts([PLAIN, VTT].join("\n")).replace(
+        "<title>Transcript Fixtures</title>",
+        "<title>T</title><link>https://example.com</link><language>en</language><itunes:explicit>yes</itunes:explicit>"
+      )
+    );
+    expect(Object.keys(feed).sort()).toEqual(["descriptionText", "episodes", "image", "title", "warnings"]);
+    expect(Object.keys(feed.episodes[0]!).sort()).toEqual([
+      "chaptersUrl",
+      "descriptionHtml",
+      "descriptionText",
+      "duration",
+      "enclosureType",
+      "enclosureUrl",
+      "episodeNumber",
+      "guid",
+      "inlineChapters",
+      "publishedAt",
+      "seasonNumber",
+      "timedTranscriptType",
+      "timedTranscriptUrl",
+      "title",
+      "warnings"
+    ]);
+    for (const xml of ["<not-xml", "<rss></rss>"]) {
+      expect(Object.keys(parseFeed(xml)).sort(), xml).toEqual(["descriptionText", "episodes", "image", "title", "warnings"]);
+    }
+  });
+});
+
 /* CH2-03 characterization: `warnings` is the one diagnostic field with a
    reader (`backend/src/cli/ingestFixtures.ts` counts feed- and item-level
    warnings), so trimming the unread ParsedEpisode/ParsedFeed fields must not
@@ -410,7 +389,7 @@ describe("security regression: GHSA-8r6m-32jq-jx6q (fast-xml-parser DOCTYPE/enti
    deleted `enclosureLengthBytes` and `isVideo`. */
 describe("parseFeed warnings (read by ingestFixtures)", () => {
   it("a malformed item carries every item-level warning, and the feed records the validation issue", () => {
-    /* MUTATION: delete the `enclosureLengthRaw === "0"` warning (or the
+    /* MUTATION: delete the `length === "0"` warning (or the
        video/* one) along with the field it sat beside — this goes red. */
     const feed = parseFeed(
       `<rss><channel><title>x</title>` +

@@ -4,21 +4,15 @@ import { decodeEntities, sanitizeHtmlToText } from "./html";
 
 export interface ParsedEpisode {
   guid: string | null;
-  guidIsPermalink: boolean;
   title: string;
   descriptionHtml: string | null;
   descriptionText: string;
   enclosureUrl: string | null;
-  enclosureLengthBytes: number | null;
   enclosureType: string | null;
-  isVideo: boolean;
   duration: NormalizedDuration;
   publishedAt: string | null; // ISO 8601, null if unparseable
-  publishedAtRaw: string | null;
-  explicit: boolean | null;
   seasonNumber: number | null;
   episodeNumber: number | null;
-  transcriptUrl: string | null;
   timedTranscriptUrl: string | null;
   timedTranscriptType: string | null;
   chaptersUrl: string | null;
@@ -53,11 +47,7 @@ export const MAX_INLINE_CHAPTERS = 500;
 export interface ParsedFeed {
   title: string;
   descriptionText: string;
-  link: string | null;
-  language: string | null;
   image: string | null;
-  explicit: boolean | null;
-  newFeedUrl: string | null; // <itunes:new-feed-url> — corner case 4
   episodes: ParsedEpisode[];
   warnings: string[];
 }
@@ -221,14 +211,6 @@ function parsePubDate(raw: string | null): { iso: string | null; warning?: strin
   return { iso: d.toISOString() };
 }
 
-function parseExplicit(raw: string | null): boolean | null {
-  if (raw === null) return null;
-  const v = raw.trim().toLowerCase();
-  if (["yes", "true", "explicit"].includes(v)) return true;
-  if (["no", "false", "clean"].includes(v)) return false;
-  return null; // treat as hint-missing, corner case 6
-}
-
 const xmlParser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: "@_",
@@ -244,9 +226,7 @@ const xmlParser = new XMLParser({
       "rss.channel.item.enclosure",
       "rss.channel.item.podcast:transcript",
       "rss.channel.item.psc:chapters",
-      "rss.channel.item.psc:chapters.psc:chapter",
-      "rss.channel.item.itunes:category",
-      "rss.channel.itunes:category"
+      "rss.channel.item.psc:chapters.psc:chapter"
     ].includes(jpath)
 });
 
@@ -271,11 +251,7 @@ export function parseFeed(xmlBody: string): ParsedFeed {
     return {
       title: "",
       descriptionText: "",
-      link: null,
-      language: null,
       image: null,
-      explicit: null,
-      newFeedUrl: null,
       episodes: [],
       warnings: [`fatal parse error: ${(err as Error).message}`]
     };
@@ -290,11 +266,7 @@ export function parseFeed(xmlBody: string): ParsedFeed {
     return {
       title: "",
       descriptionText: "",
-      link: null,
-      language: null,
       image: null,
-      explicit: null,
-      newFeedUrl: null,
       episodes: [],
       warnings
     };
@@ -302,10 +274,6 @@ export function parseFeed(xmlBody: string): ParsedFeed {
 
   const title = decodeEntities(textOf(channel.title) ?? "");
   const descriptionRaw = textOf(channel.description) ?? "";
-  const link = textOf(channel.link);
-  const language = textOf(channel.language);
-  const explicit = parseExplicit(textOf(channel["itunes:explicit"]));
-  const newFeedUrl = textOf(channel["itunes:new-feed-url"]);
 
   let image: string | null;
   if (isPlainObject(channel.image)) {
@@ -336,11 +304,7 @@ export function parseFeed(xmlBody: string): ParsedFeed {
   return {
     title,
     descriptionText: sanitizeHtmlToText(descriptionRaw),
-    link,
-    language,
     image,
-    explicit,
-    newFeedUrl,
     episodes,
     warnings
   };
@@ -354,16 +318,12 @@ function parseItem(rawItem: unknown, idx: number): ParsedEpisode {
   if (textOf(item.title) === null) warnings.push("missing title");
 
   let guid: string | null = null;
-  let guidIsPermalink = false;
   if (isPlainObject(item.guid)) {
     guid = textOf(item.guid) || null;
-    const isPermalinkAttr = attrOf(item.guid, "isPermaLink");
-    guidIsPermalink = isPermalinkAttr !== "false"; // default true per RSS spec
   } else if (typeof item.guid === "string") {
     // An empty <guid></guid> means "no guid", not the identity "": every
     // such episode would otherwise collide on (show_id, "").
     guid = item.guid.trim() || null;
-    guidIsPermalink = true;
   }
   if (!guid) warnings.push("missing guid — identity relies on composite key");
 
@@ -374,15 +334,13 @@ function parseItem(rawItem: unknown, idx: number): ParsedEpisode {
   // enclosure: normally singular; some malformed feeds emit multiple, take first.
   const enclosureRaw = firstOf(item.enclosure as unknown);
   const enclosureUrl = attrOf(enclosureRaw, "url");
-  const enclosureLengthRaw = attrOf(enclosureRaw, "length");
-  const enclosureLengthBytes =
-    enclosureLengthRaw !== null && /^\d+$/.test(enclosureLengthRaw) ? parseInt(enclosureLengthRaw, 10) : null;
-  if (enclosureLengthRaw === "0") warnings.push("enclosure length=0 (corner case 6)");
+  if (attrOf(enclosureRaw, "length") === "0") warnings.push("enclosure length=0 (corner case 6)");
   const enclosureType = attrOf(enclosureRaw, "type");
   if (!enclosureUrl) warnings.push("missing enclosure url — item unplayable");
 
-  const isVideo = enclosureType !== null && enclosureType.toLowerCase().startsWith("video/");
-  if (isVideo) warnings.push('enclosure type is video/* in what is presumably an "audio" feed (corner case 6)');
+  if (enclosureType !== null && enclosureType.toLowerCase().startsWith("video/")) {
+    warnings.push('enclosure type is video/* in what is presumably an "audio" feed (corner case 6)');
+  }
 
   const durationRaw = textOf(item["itunes:duration"]);
   const duration = normalizeDuration(durationRaw);
@@ -390,36 +348,24 @@ function parseItem(rawItem: unknown, idx: number): ParsedEpisode {
     warnings.push(`duration unresolved: ${duration.reasonIfNull ?? "unknown"} (raw="${duration.raw ?? ""}")`);
   }
 
-  const pubDateRaw = textOf(item.pubDate);
-  const { iso: publishedAt, warning: pubWarning } = parsePubDate(pubDateRaw);
+  const { iso: publishedAt, warning: pubWarning } = parsePubDate(textOf(item.pubDate));
   if (pubWarning) warnings.push(pubWarning);
-
-  const explicit = parseExplicit(textOf(item["itunes:explicit"]));
 
   const seasonRaw = textOf(item["itunes:season"]);
   const seasonNumber = seasonRaw !== null && /^\d+$/.test(seasonRaw) ? parseInt(seasonRaw, 10) : null;
   const episodeRaw = textOf(item["itunes:episode"]);
   const episodeNumber = episodeRaw !== null && /^\d+$/.test(episodeRaw) ? parseInt(episodeRaw, 10) : null;
 
-  // podcasting-2.0 tags
+  // podcasting-2.0 tags. Shows publish ~2.9 transcript tags each; the pick is
+  // the first TIMED one in format-preference order (a segment boundary needs a
+  // timeline), compared by normalised type so a charset parameter or odd case
+  // does not hide a vtt.
   const transcriptsRaw = item["podcast:transcript"];
   const transcriptList: unknown[] = Array.isArray(transcriptsRaw)
     ? transcriptsRaw
     : transcriptsRaw
       ? [transcriptsRaw]
       : [];
-  const preferredTranscript =
-    transcriptList.find((t) => attrOf(t, "type") === "text/plain") ??
-    transcriptList.find((t) => attrOf(t, "type") === "application/json") ??
-    transcriptList[0] ??
-    null;
-  const transcriptUrl = preferredTranscript ? attrOf(preferredTranscript, "url") : null;
-
-  // Second, independent pick for segmentation. `transcriptUrl` above prefers
-  // text/plain because Tier-1 enrichment only asks "what is this episode
-  // about"; a segment boundary needs a timeline, so it cannot reuse that
-  // choice. Shows publish ~2.9 transcript tags each, so the two consumers
-  // genuinely disagree often — hence a second field rather than a reorder.
   let timedTranscript: unknown = null;
   for (const type of TIMED_TRANSCRIPT_TYPES) {
     timedTranscript = transcriptList.find((t) => normalizeMimeType(attrOf(t, "type")) === type) ?? null;
@@ -435,21 +381,15 @@ function parseItem(rawItem: unknown, idx: number): ParsedEpisode {
 
   return {
     guid,
-    guidIsPermalink,
     title,
     descriptionHtml: descriptionRaw || null,
     descriptionText,
     enclosureUrl,
-    enclosureLengthBytes,
     enclosureType,
-    isVideo,
     duration,
     publishedAt,
-    publishedAtRaw: pubDateRaw,
-    explicit,
     seasonNumber,
     episodeNumber,
-    transcriptUrl,
     timedTranscriptUrl,
     timedTranscriptType,
     chaptersUrl,
