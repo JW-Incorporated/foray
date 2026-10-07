@@ -18,6 +18,42 @@ export const GenerationRequestSchema = z.object({
 });
 export type GenerationRequest = z.infer<typeof GenerationRequestSchema>;
 
+/**
+ * The `author_id` both generation CLIs (`generate-foray`, `generate-forays`)
+ * record when no flag names one (CH2-25 / B2-14). It is the key `BudgetGuard`
+ * sums the daily spend by, so the two must agree or one founder's spend is
+ * split across two users. "founder-1" is the batch driver's long-standing
+ * default — the CLI that spends — so its key does not move.
+ */
+export const DEFAULT_AUTHOR_ID = "founder-1";
+
+/** The flag both generation CLIs read the author id from. */
+export const AUTHOR_ID_FLAG = "--author-id";
+
+/** `generate-forays`' old spelling, kept as an alias for one release so an
+ * existing script does not silently change user. Remove it after that. */
+export const DEPRECATED_AUTHOR_FLAG = "--author";
+
+/**
+ * Reads the author id from a generation CLI's argv: `--author-id` wins, then
+ * the deprecated `--author` (with a one-line warning), then
+ * `DEFAULT_AUTHOR_ID`. A flag given with no value counts as absent.
+ */
+export function readAuthorIdFlag(argv: readonly string[], warn: (line: string) => void = (line) => console.error(line)): string {
+  const get = (flag: string): string | undefined => {
+    const i = argv.indexOf(flag);
+    return i >= 0 ? argv[i + 1] : undefined;
+  };
+  const authorId = get(AUTHOR_ID_FLAG);
+  if (authorId !== undefined) return authorId;
+  const legacy = get(DEPRECATED_AUTHOR_FLAG);
+  if (legacy !== undefined) {
+    warn(`${DEPRECATED_AUTHOR_FLAG} is deprecated and will be removed; use ${AUTHOR_ID_FLAG} ${legacy}`);
+    return legacy;
+  }
+  return DEFAULT_AUTHOR_ID;
+}
+
 /** §4.1's three forbidden categories, verbatim from the doc. */
 export const SAFETY_CATEGORIES = [
   "sexual-content-minors",

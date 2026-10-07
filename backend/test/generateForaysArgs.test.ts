@@ -1,11 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { parseArgs, candidateFilename, mergeReportEntries, readPriorReportEntries } from "../src/cli/generateForays";
 import { parseArgs as parseSingleArgs } from "../src/cli/generateForay";
 import { BudgetGuard } from "../src/cost/budgetGuard";
-import { defaultCostEventSink } from "../src/cost/costEvents";
+import { defaultCostEventSink, InMemoryCostEventSink } from "../src/cost/costEvents";
+import { DEFAULT_AUTHOR_ID, readAuthorIdFlag } from "../src/types/generation";
 
 /**
  * F-04 / intervention I-01: "Set `DAILY_BUDGET_USD=1000 EPISODE_BUDGET_USD=1000`
@@ -153,19 +154,54 @@ describe("report.json is merged across re-runs", () => {
   });
 });
 
-/* CH2-25 / B2-14: the two generation CLIs default to different author ids and
-   spell the flag two ways, and `author_id` is the key `BudgetGuard` sums the
-   daily spend by. Characterization of today's behaviour. */
+/* CH2-25 / B2-14: the two generation CLIs used to default to different author
+   ids ("founder" and "founder-1") and spell the flag two ways (`--author-id`
+   and `--author`), and `author_id` is the key `BudgetGuard` sums the daily
+   spend by. Both now read one flag and default to one constant. */
 describe("author id flag and default (B2-14)", () => {
-  it("generate-forays defaults to founder-1 and reads --author", () => {
-    expect(parseArgs(["--prompts", "p.json"]).authorId).toBe("founder-1");
-    expect(parseArgs(["--prompts", "p.json", "--author", "joey"]).authorId).toBe("joey");
-    expect(parseArgs(["--prompts", "p.json", "--author-id", "joey"]).authorId).toBe("founder-1");
+  const BATCH = ["--prompts", "p.json"];
+  const SINGLE = ["--prompt", "Mercury", "--duration", "short"];
+  const quiet = () => vi.spyOn(console, "error").mockImplementation(() => {});
+  afterEach(() => vi.restoreAllMocks());
+
+  /* MUTATION: put a literal back in either CLI (`?? "founder"` in
+     generateForay.ts, or `?? "founder-1"` with a different value in
+     generateForays.ts) -- that CLI's default leaves DEFAULT_AUTHOR_ID. */
+  it("both CLIs default to the one shared constant", () => {
+    expect(DEFAULT_AUTHOR_ID).toBe("founder-1");
+    expect(parseArgs(BATCH).authorId).toBe(DEFAULT_AUTHOR_ID);
+    expect(parseSingleArgs(SINGLE).authorId).toBe(DEFAULT_AUTHOR_ID);
   });
 
-  it("generate-foray defaults to founder and reads --author-id", () => {
-    expect(parseSingleArgs(["--prompt", "Mercury", "--duration", "short"]).authorId).toBe("founder");
-    expect(parseSingleArgs(["--prompt", "Mercury", "--duration", "short", "--author-id", "joey"]).authorId).toBe("joey");
-    expect(parseSingleArgs(["--prompt", "Mercury", "--duration", "short", "--author", "joey"]).authorId).toBe("founder");
+  it("both CLIs read --author-id", () => {
+    expect(parseArgs([...BATCH, "--author-id", "joey"]).authorId).toBe("joey");
+    expect(parseSingleArgs([...SINGLE, "--author-id", "joey"]).authorId).toBe("joey");
+  });
+
+  /* MUTATION: drop the `--author` alias from readAuthorIdFlag -- an existing
+     `generate-forays --author joey` script silently records as founder-1. */
+  it("both CLIs still take --author for one release, with a deprecation line", () => {
+    const err = quiet();
+    expect(parseArgs([...BATCH, "--author", "joey"]).authorId).toBe("joey");
+    expect(parseSingleArgs([...SINGLE, "--author", "joey"]).authorId).toBe("joey");
+    expect(err).toHaveBeenCalledTimes(2);
+    expect(String(err.mock.calls[0]![0])).toMatch(/--author is deprecated.*--author-id joey/);
+  });
+
+  it("--author-id wins over --author, and neither warns when --author-id is given", () => {
+    const err = quiet();
+    expect(readAuthorIdFlag(["--author", "old", "--author-id", "new"])).toBe("new");
+    expect(readAuthorIdFlag(["--author-id"])).toBe(DEFAULT_AUTHOR_ID);
+    expect(err).not.toHaveBeenCalled();
+  });
+
+  it("with no flag, both CLIs record into BudgetGuard under one userId", async () => {
+    const sink = new InMemoryCostEventSink();
+    const guard = new BudgetGuard(sink, 1000, 1000);
+    for (const userId of [parseArgs(BATCH).authorId, parseSingleArgs(SINGLE).authorId]) {
+      await guard.checkAndRecord({ userId, operation: "voice_intent", provider: "stub", estimatedUsd: 0.5 });
+    }
+    expect(new Set((await sink.all()).map((e) => e.userId))).toEqual(new Set([DEFAULT_AUTHOR_ID]));
+    expect(await guard.spentToday(DEFAULT_AUTHOR_ID)).toBe(1);
   });
 });

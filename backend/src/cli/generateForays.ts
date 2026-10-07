@@ -10,7 +10,7 @@ import { FileTranscriptTextIndex, type TranscriptTextIndex } from "../generation
 import { checkpointFingerprint } from "../generation/checkpoint";
 import { getUsageTotals } from "../generation/usageTracking";
 import { FileCheckpointStore } from "./checkpointStore";
-import type { GenerationRequest } from "../types/generation";
+import { readAuthorIdFlag, type GenerationRequest } from "../types/generation";
 import type { PartialCandidate } from "../generation/partialCandidate";
 import type { VeracityMetrics } from "../generation/veracityMetrics";
 import type { PublishRecord } from "./publishForay";
@@ -73,7 +73,10 @@ import { BudgetStopError, defaultBudgetGuard } from "../cost/budgetGuard";
  *                              [--duration short|medium|long] [--limit N]
  *                              [--budget-usd N] [--no-resume] [--dry-run]
  *                              [--max-resumes N] [--continue-on-refused-partial]
- *                              [--notify <command>]
+ *                              [--notify <command>] [--author-id <id>]
+ *   (author_id defaults to `DEFAULT_AUTHOR_ID` in types/generation.ts, the
+ *   same default `generate-foray` uses; `--author` still works for one
+ *   release and prints a deprecation line)
  *
  * `prompts.json` is either a JSON array of strings, or of
  * `{ prompt, duration?, topic? }` objects when a prompt needs its taxonomy node
@@ -143,7 +146,7 @@ export function parseArgs(argv: string[], envVars: NodeJS.ProcessEnv = process.e
     duration: d === "short" || d === "medium" || d === "long" ? d : "short",
     limit: Number.isFinite(limit) && limit > 0 ? limit : null,
     dryRun: argv.includes("--dry-run"),
-    authorId: get("--author") ?? "founder-1",
+    authorId: readAuthorIdFlag(argv),
     budgetUsd: Number.isFinite(budget) && budget > 0 ? budget : null,
     noResume: argv.includes("--no-resume"),
     maxResumes: Number.isInteger(maxResumes) && maxResumes >= 0 ? maxResumes : DEFAULT_MAX_RESUMES,
@@ -780,7 +783,7 @@ async function main(): Promise<void> {
     console.error(
       "Usage: npm run generate-forays -- --prompts prompts.json [--out DIR] " +
         "[--duration short|medium|long] [--limit N] [--budget-usd N] [--no-resume] [--dry-run] " +
-        "[--max-resumes N] [--continue-on-refused-partial] [--notify <command>]"
+        "[--max-resumes N] [--continue-on-refused-partial] [--notify <command>] [--author-id <id>]"
     );
     process.exitCode = 1;
     return;
