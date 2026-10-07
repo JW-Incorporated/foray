@@ -861,6 +861,26 @@ button.show-star {
 }
 button.show-star.on { color: var(--gold); border-color: var(--gold); }
 
+/* The per-show new-episode switch (PQ-26) wears Follow's capsule, under the
+   Follow note (class "show-star alerts-toggle"); hidden while the show is not
+   followed, which `.show-hero .show-star`'s inline-block would otherwise
+   override. */
+.show-hero button.alerts-toggle[hidden] { display: none; }
+.show-hero .alerts-toggle { margin-top: 10px; }
+
+/* "N new" on a followed show's row (Library, #/starred-shows). */
+.show-new-badge {
+  flex: none;
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 /* THE ONE TEXT FIELD (audit round 2, visual-8). Playlists' and Create's
    fields were 52px at the card radius, the in-show search 48px, and the three
    sheet fields (first-run's typed subject, the feedback note, Delete-my-data's

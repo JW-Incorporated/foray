@@ -293,15 +293,16 @@ test("CH-07 (P2-04): the modules nothing imports are NOT on the boot list, and s
   /* The list was a directory walk, so catalogue-directory, show-alerts,
      locate-window and route-resume (and foray-structure, a parity reference) —
      imported by no page code — were modulepreloaded and precached on every
-     cold boot. It is client.js's import closure now. MUTATION: put the
-     `readdirSync(player)` walk back in playerSources — all five are listed
-     again and this goes red (perf-1 too, until index.html follows). */
+     cold boot. It is client.js's import closure now. show-alerts left this
+     list when PQ-26 (#761) imported it from client.js (window.forayShowAlerts):
+     it is on the boot list, preloaded and precached, by that import. MUTATION:
+     put the `readdirSync(player)` walk back in playerSources — all four are
+     listed again and this goes red (perf-1 too, until index.html follows). */
   const { playerSources } = await import(pathToFileURL(path.join(ROOT, "tools/ci/generate-manifest.mjs")).href);
   const listed = playerSources().map((p) => p.split(path.sep).join("/"));
   const graph = new Set(clientImportGraph());
   for (const rel of [
     "player/catalogue-directory.js",
-    "player/show-alerts.js",
     "player/locate-window.js",
     "player/route-resume.js",
     "player/foray-structure.js",

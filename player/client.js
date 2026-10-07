@@ -146,6 +146,7 @@ import * as queueOrder from "./queue-order.js";
 import * as queueDrag from "./queue-drag.js";
 import * as tailFill from "./tail-fill.js";
 import * as bookmarks from "./bookmarks.js";
+import * as showAlerts from "./show-alerts.js";
 import { bindIncomingLinks } from "./incoming-link.js";
 import { createId3Reader } from "./id3-chapters.js";
 
@@ -171,6 +172,11 @@ window.forayQueueDrag = queueDrag;
    its lsGet/lsSet); this module only says what a row is, what is a duplicate
    and what the caps drop. Device-only: no event, never sent (roadmap Q3). */
 window.forayBookmarks = bookmarks;
+/* New episodes of followed shows (#761, PQ-25/PQ-26), for app.js the same way:
+   the page owns the `cp_starred_shows` write (saveStarredShows), the check and
+   the "N new" badge; this module only says when a show is due, what is new and
+   where the watermark moves. No notification is posted from here. */
+window.forayShowAlerts = showAlerts;
 /* Shared links that open the app (#1071): Capacitor's `appUrlOpen` hands over
    https://foray-web-seven.vercel.app/#/<route>, and its hash becomes the page's
    hash, which app.js's router renders like any in-app link (see

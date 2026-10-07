@@ -1132,7 +1132,7 @@ const FLOORS = {
      harvested without one, and the row now resolves through the live show
      record. Without a test the fallback is the one artwork call site nothing
      would notice losing. */
-  "test/starred-shows.test.js": 9,
+  "test/starred-shows.test.js": 15, // PQ-26 (#761): a check writes the count past the watermark and leaves a failed check untouched, a fresh follow seeds with no badge, the row prints "2 new", the show page clears it, the switch writes alerts:false and the check skips alerts-off and keyless pi: shows, six oldest-first; set exact: 9 -> 15
   "test/supabase-event-retention.test.js": 6, // HA #13 (2026-09-30): supabase/0006 retention jobs pinned (renumbered from 0004) (90-day events, anonymous-shell guards, not client-callable)
   "test/supabase-rls-verbs.test.js": 7, // round-3 L6 (2026-09-25): backend-rest-4/-5, data-integrity-10 — supabase/0003's policies pinned against the PostgREST verbs app.js uses, both ways
   "test/supabase-rls-coverage.test.js": 3, // PR #1045 review (PKG-02, S-09): every portable table has Supabase RLS (supabase/0004 for shows_catalog/show_id_map); the G1/G2 coupling text cites Q6 and names 0004; new
@@ -1151,7 +1151,7 @@ const FLOORS = {
      Also pins that Playlists/Up Next stay LINKED summaries rather than
      embedded row lists, and that no interpolated href on the page bypasses
      the in-app hash-route/safeUrl composition every other page uses. */
-  "test/library-screen.test.js": 20, // audit round 2, lane L3 (2026-09-23): History is last-played order (honesty-3); 17 -> 20 // // 2026-09-22: Forays and Followed shows are Library sections, one name for #/shows, the ↻ refreshes in place; 11 -> 17 (L1's in-place Up Next reorder cell went at integration: L3's afterQueueMove fixes the same finding and is pinned in test/modal-and-focus.test.js)
+  "test/library-screen.test.js": 21, // PQ-26 (#761): Followed shows prints each show's "N new" and totals them in its title; 20 -> 21 // audit round 2, lane L3 (2026-09-23): History is last-played order (honesty-3); 17 -> 20 // // 2026-09-22: Forays and Followed shows are Library sections, one name for #/shows, the ↻ refreshes in place; 11 -> 17 (L1's in-place Up Next reorder cell went at integration: L3's afterQueueMove fixes the same finding and is pinned in test/modal-and-focus.test.js)
   /* Settings drawer stays open on toggle (Joey, 2026-08-31, t_0c09d83a): the
      three toggles' click handlers, plus the two real-navigation regression
      guards. */
