@@ -371,7 +371,7 @@ describe("searchBreadthShows — the four buckets and the popularity prior", () 
        "the first curated entry's chart_rank is null", the old rule written as a
        test. A curated entry now carries its breadth twin's rank, joined on
        `apple_collection_id`, so the pin names one of each over the real files:
-       *Dan Carlin's Hardcore History* (chart 14 in History) and *Ancient
+       *Dan Carlin's Hardcore History* (ranked in History) and *Ancient
        History Fangirl* (no breadth row at all - P-09's measured loser).
 
        MUTATION: re-add `rank` to the returned row, or drop `chart_rank` from
@@ -385,7 +385,21 @@ describe("searchBreadthShows — the four buckets and the popularity prior", () 
     const ranked = entries.find((e) => e.tier === "breadth" && e.chart_rank !== null);
     expect(typeof ranked?.chart_rank).toBe("number");
     const curated = (id: string) => entries.find((e) => e.tier === "curated" && e.show_id === id);
-    expect(curated("hardcore-history")?.chart_rank).toBe(14);
+    /* THE PIN IS THE JOIN, NOT THE NUMBER (PKG-14, 2026-10-07). This line
+       read `.toBe(14)`, the July harvest's value; the re-harvest moved Hardcore
+       History to chart 11 in History and the pin went red on a fixture
+       assumption while the rule was untouched. The twin's rank is now read
+       from the same committed breadth file the join reads, so a re-harvest
+       cannot rot it, and the reverted-to-null mutation above still fails
+       (the twin's rank is asserted to be a number first). */
+    const ROOT = path.resolve(__dirname, "..", "..");
+    const readData = (f: string) => JSON.parse(fs.readFileSync(path.join(ROOT, "data", f), "utf8"));
+    const hhAppleId = readData("catalog.json").shows.find(
+      (s: { show_id: string }) => s.show_id === "hardcore-history")?.apple_collection_id;
+    const hhTwinRank = readData("catalog-breadth.json").shows.find(
+      (s: { apple_collection_id: number }) => s.apple_collection_id === hhAppleId)?.chart_rank;
+    expect(Number.isFinite(hhTwinRank), "fixture assumption: Hardcore History has a ranked breadth twin").toBe(true);
+    expect(curated("hardcore-history")?.chart_rank).toBe(hhTwinRank);
     expect(curated("ancient-history-fangirl")?.chart_rank).toBe(null);
   });
 
