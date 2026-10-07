@@ -245,14 +245,23 @@ test("only an allowlisted fusion-specific show passes engineering/energy-fusion 
 
      Two halves: (1) no discover item outside the allowlist wears the leaf with
      `topics_source: "show"`; (2) no catalog row outside the allowlist carries
-     the leaf, unless it is general (merge.mjs then refuses an episode that has
-     no topic of its own, PKG-05a). Without (2), the next nightly episode of
-     such a show would inherit the leaf again.
+     the leaf. Without (2), the next nightly episode of such a show would
+     inherit the leaf again.
+     (2) once exempted `label_scope: "general"` rows, because merge.mjs refuses
+     an episode of a general show that has no topic of its own (PKG-05a). That
+     left the wrong "Fusion & energy systems" chip on the show pages of CBC
+     Ideas, Catalyst with Shayle Kann and TechSurge (#547, closing comment's
+     "known residue"): the chip is the show label itself. Their labels were
+     re-derived from each show's own episode topics in data/discover.json, so
+     the exemption is gone and a general show is held to the same rule.
      KILLED BY (run 2026-10-05): (1) setting
      cleantechies-podcast--291-building-physical-infrastructure-at-the back to
      `"topics": ["engineering/energy-fusion"], "topics_source": "show"` in
      data/discover.json; (2) putting `engineering/energy-fusion` back in
-     CleanTechies Podcast's `taxonomy_node_ids` in data/catalog.json. */
+     CleanTechies Podcast's `taxonomy_node_ids` in data/catalog.json.
+     KILLED BY (run 2026-10-06, #547 show-label residue): putting
+     `engineering/energy-fusion` back in cbc-ideas's `taxonomy_node_ids` in
+     data/catalog.json (a general show; red only without the old exemption). */
   const FUSION = "engineering/energy-fusion";
   const FUSION_SPECIFIC_SHOWS = new Set(["Titans of Nuclear", "omega tau"]);
   const shows = read("catalog.json").shows;
@@ -264,7 +273,7 @@ test("only an allowlisted fusion-specific show passes engineering/energy-fusion 
     .filter((i) => (i.topics || []).includes(FUSION) && i.topics_source === "show" && !FUSION_SPECIFIC_SHOWS.has(i.show))
     .map((i) => `inherited — ${i.show}: ${i.id}`);
   const labelled = shows
-    .filter((s) => (s.taxonomy_node_ids || []).includes(FUSION) && !FUSION_SPECIFIC_SHOWS.has(s.title) && s.label_scope !== "general")
+    .filter((s) => (s.taxonomy_node_ids || []).includes(FUSION) && !FUSION_SPECIFIC_SHOWS.has(s.title))
     .map((s) => `show label — ${s.show_id}`);
   const bad = [...inherited, ...labelled];
   assert.deepEqual(bad, [], report(bad));

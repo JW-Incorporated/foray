@@ -5970,10 +5970,14 @@ function shareLinkFor(target) {
     const p = t.playlist || playlistForId(t.id);
     if (!p) return null;
     if (p.isGenerated) return { url: PUBLIC_WEB_ORIGIN + "#/" + playlistRoute({ id: p.id }), text: p.title || "" };
-    const e = [...new Set(playlistSpine(p).map(partId).filter(inDiscoverPool))].slice(0, SHARED_PLAYLIST_MAX);
+    const parts = playlistSpine(p).map(partId).filter(Boolean);
+    const e = [...new Set(parts.filter(inDiscoverPool))].slice(0, SHARED_PLAYLIST_MAX);
     if (!e.length) return null;
     const id = SHARED_PLAYLIST_PREFIX + b64url(JSON.stringify({ t: String(p.title || ""), e }));
-    return { url: PUBLIC_WEB_ORIGIN + "#/" + playlistRoute({ id }), text: p.title || "" };
+    /* `shared` of `total` (SH-PL-BREADTH part 1): what the link carries out of
+       the playlist's distinct parts, the total never capped, so shareTo can
+       say honestly what a recipient will find. url and text are unchanged. */
+    return { url: PUBLIC_WEB_ORIGIN + "#/" + playlistRoute({ id }), text: p.title || "", shared: e.length, total: new Set(parts).size };
   }
   if (t.kind === "foray") {
     const f = (state.forays?.forays || []).find(x => x && x.id === t.id);
@@ -6008,26 +6012,38 @@ function shareNote(anchor, msg, url = "") {
   if (input) { input.focus(); input.select(); } else if (note) setTimeout(() => note.remove(), 4000);
 }
 
+/** "3 of 8 episodes" when a frozen playlist link carries fewer episodes than
+    the playlist holds (shareLinkFor's `shared` and `total`), else "": a link
+    that left nothing out has nothing to own up to. */
+function shareCount(link) {
+  const { shared, total } = link || {};
+  return Number.isInteger(shared) && Number.isInteger(total) && shared < total ? `${shared} of ${total} episodes` : "";
+}
+
 /** Deliver a link: the native share plugin, the Web Share sheet, the
     clipboard, then the link on screen. A cancel ends it — it is not a failure
-    to fall back from. */
+    to fall back from. Every other outcome says how much of a playlist the
+    link holds when it is not all of it (SH-PL-BREADTH part 1); a cancel says
+    nothing. */
 async function shareTo(link, anchor = null) {
   if (!link) return "none";
   const data = { title: link.text, text: link.text, url: link.url };
+  const count = shareCount(link);
+  const sharedNote = () => { if (count) shareNote(anchor, `${count} ${link.shared === 1 ? "is" : "are"} in the link`); };
   const cancelled = (e) => !!e && (e.name === "AbortError" || /cancel/i.test(String(e.message || "")));
   const plugin = window.Capacitor?.Plugins?.Share;
   if (plugin && typeof plugin.share === "function") {
-    try { await plugin.share(data); return "shared"; } catch (e) { if (cancelled(e)) return "cancelled"; }
+    try { await plugin.share(data); sharedNote(); return "shared"; } catch (e) { if (cancelled(e)) return "cancelled"; }
   }
   if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
-    try { await navigator.share(data); return "shared"; } catch (e) { if (e && e.name === "AbortError") return "cancelled"; }
+    try { await navigator.share(data); sharedNote(); return "shared"; } catch (e) { if (e && e.name === "AbortError") return "cancelled"; }
   }
   try {
     await navigator.clipboard.writeText(link.url);
-    shareNote(anchor, "Link copied");
+    shareNote(anchor, count ? `Link copied · ${count}` : "Link copied");
     return "copied";
   } catch (_) { /* no clipboard, or refused: show the link */ }
-  shareNote(anchor, "Copy this link", link.url);
+  shareNote(anchor, count ? `Copy this link · ${count}` : "Copy this link", link.url);
   return "manual";
 }
 
@@ -17543,6 +17559,58 @@ function ensureInterestsDrawerLink() {
   }
 }
 
+/* ---------- Contact 4a + Privacy policy (UGC gate, step 1) ----------
+
+   Apple Guideline 1.2 asks for "published developer contact information", and
+   docs/curation/ugc-moderation-runbook.md §5 asks for the address in the app's
+   Settings too, "so a listener can find it without leaving 4a". The address
+   and the policy URL are HA #13's (docs/DECISIONS.md, "Privacy-policy facts
+   and choices"): help@jwlabs.ai, and jwlabs.ai/4a/privacy/, the URL the store
+   listings name (docs/store/play/README.md §8).
+
+   Two drawer ITEMS under "Settings", appended in JS for the reason
+   `ensureInterestsDrawerLink` states (index.html's drawer is outside the
+   auto-merge path). Not drawer SECTIONS: the five destinations stay five
+   (test/home-information-architecture.test.js). `init()` binds them after the
+   listener's settings and before the Developer group, so "Delete my data"
+   stays the drawer's last item.
+
+   THE HREFS. Both are fixed constants, never data. The mailto goes through
+   esc() only, never safeUrl(): safeUrl admits http/https and would turn it
+   into "#". The policy URL goes through the app's usual esc(safeUrl(…)). Both
+   are assigned as properties, so no markup is parsed and nothing inline
+   reaches the strict CSP. The address is in the label as well as the link: a
+   phone with no mail app does nothing on a mailto tap, and the listener can
+   still read and copy it.
+
+   IN THE SHELL. Neither is our origin, so Capacitor hands the navigation to
+   the OS (the mail app; Safari or the default browser), the same path the
+   show links' `target="_blank"` take. The drawer closes first, by
+   `onDrawerAction`'s rule. Bound once: remembered on the drawer, like the
+   Developer group, so a lookup that cannot see appended nodes never builds a
+   second pair. */
+const CONTACT_ADDRESS = "help@jwlabs.ai";
+const CONTACT_MAILTO = "mailto:" + CONTACT_ADDRESS;
+const PRIVACY_POLICY_URL = "https://jwlabs.ai/4a/privacy/";
+
+function bindContactPrivacyLinks() {
+  const drawer = $("#drawer");
+  if (!drawer || drawer._contactPrivacyAdded) return;
+  drawer._contactPrivacyAdded = true;
+
+  const contact = ddEl("a", "drawer-item drawer-wrap", `Contact 4a: ${CONTACT_ADDRESS}`);
+  contact.id = "drawer-contact";
+  contact.href = esc(CONTACT_MAILTO);
+  drawer.appendChild(contact);
+
+  const privacy = ddEl("a", "drawer-item", "Privacy policy");
+  privacy.id = "drawer-privacy";
+  privacy.href = esc(safeUrl(PRIVACY_POLICY_URL));
+  privacy.target = "_blank";
+  privacy.rel = "noopener";
+  drawer.appendChild(privacy);
+}
+
 /* ---------- delete my data (#42) ----------
 
    WHY THIS EXISTS
@@ -20862,6 +20930,9 @@ async function init() {
   /* Narration voice (V-01): a listener setting, so it stays with the switches
      above rather than inside the Developer group below (2026-09-22 audit, R8). */
   bindVoiceControl();
+  /* Contact 4a and the privacy policy (UGC gate step 1): still Settings, still
+     above the Developer group and "Delete my data" — see their header. */
+  bindContactPrivacyLinks();
   /* The Developer group (R8): the founder's switch, then the field
      record's surface (#264), all inside one collapsed disclosure. Deliberately
      ABOVE the control below: "Delete my data" must stay the drawer's last item,

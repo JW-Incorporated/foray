@@ -293,6 +293,24 @@ const MEASURED_CONTROLS = [
   ".fy-chip",
 ];
 
+test("the drawer's two link-outs, Contact 4a and Privacy policy, are .drawer-item rows: 44px tall by their own class", () => {
+  /* The walker above reads <button>s, and these are <a>s (a mailto and the
+     policy URL, in Settings — test/home-information-architecture.test.js pins
+     their hrefs and place). So the class they reach 44 by is pinned here.
+     MUTATIONS, each run and red:
+       - build either with `ddEl("a", "drawer-link", …)` in app.js -> red;
+       - `.drawer-item { min-height: 40px }` -> red. */
+  const app = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+  const start = app.indexOf("function bindContactPrivacyLinks(");
+  assert.ok(start !== -1, "app.js builds the two links in bindContactPrivacyLinks()");
+  const body = app.slice(start, app.indexOf("\n}\n", start));
+  const built = [...body.matchAll(/ddEl\("a", "([^"]*)"/g)].map((m) => m[1]);
+  assert.strictEqual(built.length, 2, "two links: Contact 4a and Privacy policy");
+  for (const cls of built) assert.match(cls, /(^| )drawer-item( |$)/, `"${cls}" must carry .drawer-item`);
+  assert.ok(px(valueOf(".drawer-item", "min-height")) >= 44, ".drawer-item is 44px tall by its own min-height");
+  assert.strictEqual(valueOf(".drawer-item", "display"), "block", "…and the drawer's full width, by display: block");
+});
+
 test("every control the audit measured has a 44px hit area, by size or by the rule", () => {
   /* THE TEST THAT WOULD HAVE CAUGHT THE SIZE FINDINGS. MUTATION: remove
      `button.reorder` from the hit-area rule's list (both halves) -> fails

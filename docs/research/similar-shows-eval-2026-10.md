@@ -550,7 +550,7 @@ Window: 2026-01-01 to 2026-12-31 (365 UTC days), 8 slots a day (showsWeVouchFor'
 | (b) slots taken by the first 23 shows in show_id order (a tenth of the eligible set) | 9.7% |
 | (c) rows that are not 8 distinct eligible shows | 0 |
 | (c) days whose 00:00 and 23:59 UTC rows differ | 0 |
-| (c) top-level branches per row: mean / min; most slots one branch takes | 7.945 / 4; 4 |
+| (c) top-level branches per row: mean / min; most slots one branch takes | 7.989 / 4; 4 |
 | (d) Family Mode violations: slots filled by a show familyAllows rejects | 0 (0.0%), on 0 of 365 days, at most 0 in one row |
 | (d) catalogue shows familyAllows rejects / of them surfaced with Family Mode ON | 39 / 0 |
 | (d) Family Mode ON: eligible shows / surfaced at least once | 190 / 190 (1.000) |

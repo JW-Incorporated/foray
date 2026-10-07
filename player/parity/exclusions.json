@@ -559,6 +559,10 @@
       "reason": "js-module-shape",
       "why": "Text scan: both mediaViewFields branches pass `buffering`; the mapping's stall rule is fixtured in media-episode (position-stall-reports-rate-zero); native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
     },
+    "CH-5 (#1071): the EPISODE object hands the OS the chapter item; the Foray branch never does": {
+      "reason": "js-module-shape",
+      "why": "Text scan: mediaViewFields' single-episode object passes `chapterMediaItem(current)` and the Foray branch does not; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), and mediaMetadata and the media-episode fixtures are unchanged, so there is no rule here for the engine to reimplement."
+    },
     "a throw does not poison the dedupe — the next identical render retries": {
       "reason": "webview-only",
       "why": "The WebView bridge's dedupe key stamped only on a successful write. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."

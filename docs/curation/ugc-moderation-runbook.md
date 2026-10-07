@@ -33,7 +33,7 @@ The four pieces, and the 2026-09-30 ruling on their order (HA #31, now in
 
 | # | Guideline 1.2 piece | 4a's mechanism | Status | Must exist before |
 |---|---|---|---|---|
-| 1 | Published developer contact | `help@jwlabs.ai` (§5) | Live on jwlabs.ai and in policy §9; not shown in the app | already due ("now") |
+| 1 | Published developer contact | `help@jwlabs.ai` (§5) | Live on jwlabs.ai, in policy §9 and in the app's menu (Settings: "Contact 4a", beside "Privacy policy") | already due ("now") |
 | 2 | Content filtering | `checkSafety` on the prompt (live); an output-side filter extending `safetyCheck.ts` (planned); founder review of anything published (live) (§1) | partial | **any non-founder prompt, even a private one** |
 | 3 | Report objectionable content | report sheet → `content_reports` → daily review (§2) | planned | **the first shared non-founder Foray** |
 | 4 | Block abusive users | `blocked_authors`, enforced where a job enters the queue (§4) | planned | **the first shared non-founder Foray** (one card with 3) |
@@ -307,8 +307,11 @@ The card "UGC gate, step 1 (contact)" is done when the address resolves from
 the support page, the App Store listing and the privacy policy. The store
 listings' contact fields live in the developer accounts, not in this repo
 (`docs/store/play/README.md`, "Contact details"), so a founder confirms them.
-**Recommendation:** show the address in the app's Settings as well, so a
-listener can find it without leaving 4a. Apple's wording is "easily reach you".
+**In the app's menu.** The drawer's Settings section shows the address
+("Contact 4a: help@jwlabs.ai", a `mailto:`) and a "Privacy policy" link to
+`https://jwlabs.ai/4a/privacy/`, so a listener can find both without leaving
+4a. Apple's wording is "easily reach you". (`app.js:bindContactPrivacyLinks()`;
+`test/home-information-architecture.test.js` pins the hrefs and the place.)
 The PH2 plan (HUMAN-ACTIONS #120) assumed a mailbox the founder had yet to
 create. HA #13 answered that, and today's #120 is an unrelated Spark item.
 
@@ -337,7 +340,8 @@ through which one listener can reach another, so there is nothing for a
 listener-side block to block.
 
 **Published contact.** `help@jwlabs.ai` appears in the privacy policy, on
-jwlabs.ai and in the store listings, and (recommended) in Settings.
+jwlabs.ai and in the store listings, and in the app's menu under Settings,
+beside a link to the privacy policy.
 
 **What is not claimed.** Today the report sheet, the block table, the
 output-side filter and the on-demand queue are planned, not shipped. This is

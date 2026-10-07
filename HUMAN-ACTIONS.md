@@ -15,8 +15,9 @@
 1. Install the first TestFlight build containing #1073 (`3a9dfefa`), or any later one, and turn TestFlight's Automatic Updates off for 4a.
 2. Run `docs/downloads-device-check.md` step by step (steps 0 to 7). Step 3's second half needs a second day. Step 4 needs a Mac with Xcode and a development build, and step 6 needs Proxyman or Charles. Mark a step "not run" if you lack those.
 3. Post one comment on issue #29 with pass, fail or not run for each step and the build number from Developer → Playback diagnostics → Copy. Add a Copy for any fail.
+4. Also, while the phone is out: `docs/share-device-check.md` (~10 min). Nobody has tapped Share on a phone yet (#71). It needs a build at or after `292af726` (#1146), newer than step 1's, so install the latest TestFlight build first. Post its table as one comment on issue #71. Shared links opening in Safari, not 4a, is expected until #145.
 
-**Worked if:** issue #29 has a comment with a result for all eight steps on a named build, and steps 1, 2, 3, 5, 6 and 7 pass.
+**Worked if:** issue #29 has a comment with a result for all eight steps on a named build, and steps 1, 2, 3, 5, 6 and 7 pass. If you ran step 4, issue #71 has its table.
 
 ## #148 🟡 [DECIDE] Pick which 4a redesign directions to build (~15 min)
 <!-- ha filed=2026-10-05 kind=default -->

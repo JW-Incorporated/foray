@@ -1674,6 +1674,22 @@ test("a stall reaches the OS view from both branches (p-car-8)", () => {
   assert.equal((fn[0].match(/\n\s+buffering,\n/g) ?? []).length, 2, "both the Foray branch and the single-episode branch hand the flag over");
 });
 
+test("CH-5 (#1071): the EPISODE object hands the OS the chapter item; the Foray branch never does", () => {
+  /* KILLING MUTATION: `item: chapterMediaItem(current)` -> `item: current` in
+     the single-episode object — the lock screen never names a chapter again
+     (player/now-playing-sheet.test.js CH-5 runs the behaviour; this pins the
+     wiring). MUTATION: move the call into the `if (live)` block -> a Foray
+     clip is retitled as some episode chapter; red. */
+  const fn = /function mediaViewFields\(\)[\s\S]*?\n\}/.exec(CLIENT_CODE);
+  assert.ok(fn, "player/client.js must define mediaViewFields");
+  const block = forayViewBlock();
+  assert.ok(block, "mediaViewFields must have a foray branch");
+  const after = fn[0].slice(fn[0].indexOf(block) + block.length);
+  assert.match(after, /return \{\s*item: chapterMediaItem\(current\),/);
+  assert.doesNotMatch(block, /chapterMediaItem/);
+  assert.match(CLIENT_CODE, /\nfunction chapterMediaItem\(item\) \{/, "the helper lives outside mediaViewFields");
+});
+
 test("the backend really does read the element for `rate` — the other half of #242's honesty", () => {
   /* The test above pins WHICH getter `client.js` calls; this pins what that getter
      answers with. Split because each is one edit from its opposite and neither
