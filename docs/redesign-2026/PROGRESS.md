@@ -22,7 +22,7 @@ Source of truth for a cleared session. Update on every deliverable.
 | 1 Research | done | docs/redesign-2026/research/, design-brief.md |
 | 2 Directions | done | editorial r3, ambient r3, native-2026 r3, tactile r3, clarity r3 (docs/redesign-2026/directions/) |
 | Checkpoint | **picked: Tactile + Ambient** (owner, 2026-10-06 18:17 PDT) | one condition: replace Tactile's "cartoonish" header/title font first; Phase 3 starts once the owner approves the new font |
-| 3–5 | — | after checkpoint |
+| 3–5 | **running** (`wf_7ee4833f-b81`, from 2026-10-06 ~21:05 PDT) | Tactile + Ambient; see In flight |
 
 ## Checkpoint (decided 2026-10-06: Tactile + Ambient, pending Tactile's font)
 
@@ -48,16 +48,16 @@ through Editorial's tab bar. Detail: `checkpoint/README.md`.
 
 (Agent/workflow and what it is doing. Clear an entry when it lands.)
 
-(Nothing in flight.) **Ready to launch phases 3-5** for Tactile + Ambient, exactly as in
-`docs/redesign-2026/RESTART.md` step 4 (the args include a Tactile prep step). Owner chose
-Tactile's header font: **Big Shoulders** (2026-10-06 20:55 PDT), recorded at the top of
-tactile's DIRECTION.md and BUILD-NOTES.md; the prep step makes it the prototype default,
-removes the "Aa" switcher and the dropped fonts, and republishes the Tactile artifact.
-The build workflow was hardened for an unattended night (foundation adds the system
-without changing screens, shared-component changes are not regressions, Fable art
-director for plan + fidelity calls, already-merged units are skipped on relaunch);
-stub dry run clean.
-Open Phase 3 item from the r5 critique: Tactile band codes double at 412px (per-bar label gate).
+- **Phases 3-5 build, `wf_7ee4833f-b81`** (launched 2026-10-06 ~21:05 PDT, night 2).
+  `build-directions.workflow.js` with `directions: ["tactile", "ambient"]` plus the
+  Tactile prep step (Big Shoulders made the prototype default, "Aa" switcher and
+  dropped fonts removed, r8 re-shoot, Tactile artifact republished in place). Per
+  direction: creates `feature/redesign-2026-<dir>`, plans (Fable), builds the
+  foundation, loops screen by screen (gates, fidelity, both-order judges, review,
+  merge), dispatches lab builds, runs QA. **If it dies:** relaunch exactly as in
+  `RESTART.md` step 4; units already merged into a direction branch are skipped.
+  Open Phase 3 item from the r5 critique: Tactile band codes double at 412px
+  (per-bar label gate).
 
 Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40-22:40 PDT, 128 agents,
 0 errors) ran 0a-0e, 1, 2, Rank and the checkpoint package.
