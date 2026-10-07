@@ -22,7 +22,7 @@ Source of truth for a cleared session. Update on every deliverable.
 | 1 Research | done | docs/redesign-2026/research/, design-brief.md |
 | 2 Directions | done | editorial r3, ambient r3, native-2026 r3, tactile r3, clarity r3 (docs/redesign-2026/directions/) |
 | Checkpoint | **picked: Tactile + Ambient** (owner, 2026-10-06 18:17 PDT) | one condition: replace Tactile's "cartoonish" header/title font first; Phase 3 starts once the owner approves the new font |
-| 3–5 | **running** on Claude again (`wf_8c930d5d-182`, from 2026-10-07 06:40 PDT; Codex reviews) | foundation 5/8 merged (tactile tokens+icons, ambient 3/4); screens 0/35; see In flight |
+| 3–5 | **running** on Claude again (`wf_8c930d5d-182`, from 2026-10-07 06:40 PDT; Codex reviews) | foundation 7/8 merged (tactile 4/4, ambient 3/4); screens 0/35; see In flight |
 
 ## Checkpoint (decided 2026-10-06: Tactile + Ambient, pending Tactile's font)
 
@@ -147,3 +147,4 @@ Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40-22:40 PDT, 128 agents
 - 2026-10-07 — ambient: Phase 3 foundation 2/4 merged into feature/redesign-2026-ambient
 - 2026-10-07 06:40 PDT — Overnight Codex driver result: foundation 4/8 merged in total (tactile tokens+icons, ambient tokens+gallery), 4 blocked at Codex review, 0 screens; 1 Fable call, all verdicts by Claude (none Codex-judged or UNJUDGED). Owner: switch back to full Claude, spend the last ~8% weekly before the 16:00 reset, keep Codex for code reviews. Driver stopped; ambient now-playing WIP saved (86d27a06); workflow reworked (77a8fa81: Opus builds, Codex reviews x3 with Opus fallback, 4 screens in flight per direction by family, resume pushed work branches, UNJUDGED flag, plans from file; stub harness 10/10, three mutations caught) and launched as `wf_8c930d5d-182`.
 - 2026-10-07 — ambient: Phase 3 foundation 3/4 merged into feature/redesign-2026-ambient
+- 2026-10-07 — tactile: Phase 3 foundation 4/4 merged into feature/redesign-2026-tactile
