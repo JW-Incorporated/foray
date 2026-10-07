@@ -191,3 +191,39 @@ jobs:
             --pulls recent-pulls.json \
             --pulls nightly-pulls.json \
             --discover data/discover.json
+
+  # The shows-index pointer, watched for the same kind of absence. The weekly
+  # shows-import (Sun 06:07 UTC) failed on 2026-09-06, 09-13, 09-20, 09-27 and
+  # 10-04 with nobody noticing. A failed import RUN already shows red; this
+  # catches a pointer that never reaches main for ANY reason — a stranded
+  # pointer PR, red CI on it, an approval nobody gives, a schedule that does
+  # not fire, an idempotent skip. Red when data/shows-index-pointer.json is
+  # over 192h old: one daily run of margin under loadChangeIndex's 216h
+  # ceiling (tools/refresh/candidates.mjs). The reasoning and the pin live in
+  # tools/shows/watch-pointer.mjs and its suite. No dependencies, no network,
+  # nothing written; uses only the workflow-level read permissions above.
+  shows-index-pointer-fresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Is the shows-index pointer about to go stale?
+        env:
+          # The job's own built-in token (no secret), read-only via the
+          # workflow-level `actions: read` above.
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          if node tools/shows/watch-pointer.mjs; then exit 0; fi
+          # Context only, never the verdict: the last few shows-import runs,
+          # so the red says whether the import itself failed or succeeded
+          # without its pointer reaching main.
+          echo "Recent shows-import runs:" >&2
+          gh run list --repo "$REPO" --workflow shows-import.yml --limit 3 \
+            --json createdAt,event,status,conclusion,url \
+            --jq '.[] | "\(.createdAt) \(.event) \(.status)/\(.conclusion // "-") \(.url)"' >&2 || true
+          exit 1
