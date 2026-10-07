@@ -2336,6 +2336,8 @@ const FLOORS = {
   "tools/poll/select-due.test.mjs": 6, // PKG-06 (S-10): new -- due-set selection (dead, not-due, caps, order, bad URL, budget untouched) + the G9 weekly projection
   "tools/poll/watchlist.test.mjs": 13, // PKG-07 (S-10): new -- watchlist assembly (curated, unmapped, changed top-N, tiers, 90-day expiry, seed size) + the seed builder (exit 2 on a stale pointer, curated-only seed, --check); PKG-07-part +3: no-baseline id-map-only fallback (writes seed, non-numeric refused, HTTP error exits 2)
   "tools/poll/poll-episodes.test.mjs": 7, // PKG-08 (S-10): new -- poll-episodes dry-run CLI (no-DB exit 0 naming G1/G3, DB set refuses exit 3, env var order, summary shape + fetched 0, seed-alone on a failed change index, the 40,000 target line, absent/missing/malformed seed)
+  "tools/poll/fetch-feed.test.mjs": 6, // PKG-10-part (S-10): new -- conditional-GET port of backend/src/feeds/conditionalGet.ts (constants + UA pinned to the TS as text, conditional headers, 304 keeps validators, declared and streamed oversize, thrown fetch and timeout keep validators)
+  "tools/poll/poll-cycle.test.mjs": 5, // PKG-10-part (S-10): new -- no-DB poll cycle over an in-memory store on a 50-feed loopback fixture with a fake clock (200 stores ETag then 304 reschedules, 5x500 -> backoff -> weekly, 410 dead at once and 404 at day 30 not 29, perHostCap, oversize keeps validators)
 };
 
 test("no suite is floored twice", () => {
