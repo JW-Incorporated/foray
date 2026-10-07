@@ -2456,6 +2456,7 @@ const BACKEND_FLOORS = {
      over-cap values at startup instead of silently substituting the
      default, and leaves a genuinely unset variable on its fallback. */
   "test/env.test.ts": 11,
+  "test/eventStore.test.ts": 5, // CH2-05 (docs/roadmap/code-health-2.md, B2-12) characterization: in-memory fetchPage drops rows at exactly afterTs with a null afterId and sorts minted ids lexically; new
   "test/events.test.ts": 17, // round-3 completeness sweep: app-2-6 thumbs accepts "cleared" and keeps `replaces`; 15 -> 17
   "test/html.test.ts": 12, // round-3 L6 (2026-09-25): backend-rest-1/-9/-11: range-checked, NUL-dropping, prototype-safe decodeEntities; 8 -> 12
   "test/interestLearning.test.ts": 38, // round-3 completeness sweep: app-2-6 a changed or withdrawn thumbs vote undoes the one it replaces; 35 -> 38 // round-3 L6 (2026-09-25): backend-rest-17: card_ignored fires once per threshold, running per-topic streak; 30 -> 35
@@ -2463,7 +2464,7 @@ const BACKEND_FLOORS = {
   "test/ladderBuilder.test.ts": 13,
   "test/ladderIntegrity.test.ts": 11,
   "test/ladderProgress.test.ts": 8,
-  "test/learningJob.test.ts": 9, // round-3 L6 (2026-09-25): backend-rest-2/-3: microsecond cursor, malformed rows skipped past, transaction, per-user failure isolation; 4 -> 9
+  "test/learningJob.test.ts": 11, // CH2-05 (B2-17) characterization: one run reads one page (batchSize + 5 events leave the cursor at row batchSize); 9 -> 11 (the suite already stood at 10) // round-3 L6 (2026-09-25): backend-rest-2/-3: microsecond cursor, malformed rows skipped past, transaction, per-user failure isolation; 4 -> 9
   /* Anthropic provider error-path coverage (kanban card t_550d289f): the
      shared parseWithRetry/parseLastJsonBlock helper extracted from the 5
      real Anthropic provider classes' identical private copies. */

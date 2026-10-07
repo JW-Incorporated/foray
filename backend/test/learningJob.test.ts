@@ -86,6 +86,27 @@ describe("runLearningJobForUser — end to end over in-memory stores", () => {
     expect(auditRepo.all()).toHaveLength(2);
   });
 
+  /* CH2-05 (B2-17) CHARACTERIZATION: one run reads exactly one page, so a
+     user with batchSize + 5 unprocessed events is left 5 behind. */
+  it("one run reads one page: batchSize + 5 events leave the cursor at row batchSize", async () => {
+    const batchSize = 10;
+    const ids: string[] = [];
+    for (let i = 0; i < batchSize + 5; i++) {
+      const row = await eventStore.record({
+        user_id: USER,
+        ts: new Date(Date.UTC(2026, 8, 1, 12, 0, i)).toISOString(),
+        type: "saved",
+        payload: { episode_slug: `e${i}`, topics: [FUSION] }
+      });
+      ids.push(row.id);
+    }
+    const first = await runLearningJobForUser(USER, { eventStore, cursorStore, applyDeps }, batchSize);
+    expect(first.eventsProcessed).toBe(batchSize);
+    expect((await cursorStore.get(USER))?.lastEventId).toBe(ids[batchSize - 1]);
+    const second = await runLearningJobForUser(USER, { eventStore, cursorStore, applyDeps }, batchSize);
+    expect(second.eventsProcessed).toBe(5);
+  });
+
   it("returns an empty result for a user with no events at all", async () => {
     const result = await runLearningJobForUser("no-such-user-yet", { eventStore, cursorStore, applyDeps });
     expect(result.eventsProcessed).toBe(0);
