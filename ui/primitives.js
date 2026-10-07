@@ -27,11 +27,12 @@ function tactileIcon(id, size) {
 function tactileArtFrame(data) {
   var d = data || {};
   var size = ["row", "queue", "mini", "disc", "hero"].includes(d.size) ? d.size : "row";
+  var fetchPixels = { row: 168, queue: 144, mini: 132, disc: 120, hero: 288 }[size];
   var shape = d.round ? " art-frame--round" : "";
   var state = d.loading ? " is-loading" : d.offline ? " is-offline" : "";
   var label = d.alt || d.title || "Podcast artwork";
   var image = d.url
-    ? '<img src="' + esc(safeUrl(d.url)) + '" alt="' + esc(label) + '">'
+    ? '<img src="' + esc(safeUrl(typeof artUrl === "function" ? artUrl(d.url, fetchPixels) : d.url)) + '" alt="' + esc(label) + '">'
     : '<span class="art-frame__initials" aria-hidden="true">' + esc(d.initials || "4a") + "</span>";
   return '<span class="art-frame art-frame--' + esc(size) + shape + state + '"' + (d.loading ? ' aria-busy="true"' : "") + ">" + image + "</span>";
 }

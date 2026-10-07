@@ -47,6 +47,8 @@ const read = (rel) =>
   rel === "app.js" ? readAppSource().replace(/\r\n/g, "\n") : fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
 
 const CLIENT = read("player/client.js");
+const NOW_PLAYING = read("ui/now-playing.js");
+const MINI = read("ui/mini.js");
 const CSS = read("styles.css");
 
 /** Comments and string literals stripped. Ported from episode-link.test.js,
@@ -64,6 +66,8 @@ function codeOnly(src) {
 }
 const CODE = codeOnly(CLIENT);
 const FLAT = CODE.replace(/\s+/g, " ");
+const NP_CODE = codeOnly(NOW_PLAYING);
+const NP_FLAT = NP_CODE.replace(/\s+/g, " ");
 
 /** Comments stripped, STRING LITERALS KEPT. Half of the wiring this file has
     to assert on IS a string — an event name, a module specifier, a class
@@ -78,6 +82,9 @@ function commentsStripped(src) {
 }
 const TEXT = commentsStripped(CLIENT);
 const FLAT_TEXT = TEXT.replace(/\s+/g, " ");
+const NP_TEXT = commentsStripped(NOW_PLAYING);
+const NP_FLAT_TEXT = NP_TEXT.replace(/\s+/g, " ");
+const MINI_TEXT = commentsStripped(MINI).replace(/\s+/g, " ");
 
 /** styles.css with its comments removed, so a rule cannot be "found" in prose
     about it — the same trap codeOnly closes on the JS side. */
@@ -119,16 +126,15 @@ test("opening the sheet resets its scroller, and does so AFTER the unhide", () =
 /* 2. THE ARTWORK IS FIRST                                              */
 /* ==================================================================== */
 
-test("the sheet's scroller starts with the artwork, then the title", () => {
-  /* "starting at the top with the 'album artwork'". MUTATION: reorder the
-     append to `scroll.append(sTitle, sArt, ...)`. This fails. */
-  assert.match(
-    FLAT,
-    /scroll\.append\(sArt, sTitle, sShow, sWhy,/,
-    "the scroller's first child must be the artwork element"
-  );
+test("the redesigned sheet starts with the artwork hero, then the title block", () => {
+  /* REWRITE-ON-PURPOSE, Tactile Now Playing: the hero wrapper is the shared
+     element. MUTATION: append `copy` before `hero` -> red. */
+  assert.match(NP_FLAT, /artWrap\.append\(parts\.sArt\); hero\.append\(artWrap\);/);
+  assert.match(NP_FLAT, /copy\.append\(parts\.sTitle, parts\.sShow, chips, parts\.sWhy\);/);
+  assert.match(NP_FLAT, /top\.append\(hero, copy, bandSection\);/);
+  assert.match(NP_FLAT, /parts\.scroll\.replaceChildren\(top, more\);/);
   assert.match(CODE, /const sArt = el\(/, "the sheet must build its own artwork element");
-  assert.match(CODE, /ui\.sArt\.src = item\.artwork_url;/, "and fill it from the item's artwork");
+  assert.match(CODE, /ui\.sArt\.src = artworkUrl;/, "and fill it only from the safe artwork URL");
 });
 
 test("the sheet's notes are the episode page's notes, built as nodes from the one tokeniser — never from an HTML string", () => {
@@ -193,27 +199,13 @@ test("the sheet itself is a full-height overlay, and the [hidden] attribute stil
   assert.match(CSS_RULES, /\.fp-sheet\[hidden\]\s*\{\s*display:\s*none;?\s*\}/);
 });
 
-test("the sheet stops under the topbar, so the ☰ is still reachable while it is open", () => {
-  /* U-12 / F17 is a standing invariant: the menu button lives in the topbar
-     and must be reachable at EVERY moment, including while this sheet is
-     expanded — the z-index ledger in styles.css says so in as many words. The
-     sheet paints inside #foray-player's stacking context (60), far above the
-     topbar (20), so `inset: 0` swallows the ☰ completely.
-     THIS IS NOT HYPOTHETICAL: the first draft of this change shipped
-     `inset: 0` and test/playwright/drawer-and-close.spec.js failed on it in
-     CI, naming `.fp-grab-zone` as the element intercepting the click on
-     `#menu-btn`. It is also the wrong look — an iOS sheet stops short of the
-     top, and that sliver is the affordance that says "drag me down".
-     MUTATION: change the `top` declaration back to `inset: 0`. This fails,
-     and so does the Playwright suite. */
-  const sheet = /\.fp-sheet \{[^}]*\}/.exec(CSS_RULES);
-  assert.ok(sheet, ".fp-sheet must have a rule of its own");
-  assert.doesNotMatch(sheet[0], /inset:\s*0/, "the sheet must not be full-bleed");
-  assert.match(
-    sheet[0],
-    /top:\s*calc\(var\(--topbar-h\) \+ env\(safe-area-inset-top\)\)/,
-    "the sheet's top edge must be the bottom of the topbar, inset included"
-  );
+test("the Tactile Now Playing sheet is full-bleed and owns the background", () => {
+  /* REWRITE-ON-PURPOSE: owner ruling requires aria-modal full-screen Now
+     Playing. MUTATION: remove `inset: 0` from `.fp-sheet.np` -> red. */
+  const sheet = /\.fp-sheet\.np \{[^}]*\}/.exec(CSS_RULES);
+  assert.ok(sheet, ".fp-sheet.np must have a rule of its own");
+  assert.match(sheet[0], /inset:\s*0/);
+  assert.match(sheet[0], /height:\s*100dvh/);
 });
 
 test("no body padding is reserved for the expanded sheet any more", () => {
@@ -318,7 +310,7 @@ test("the ✕ lives in the sheet's grab row, not on the mini bar it would now hi
   assert.doesNotMatch(FLAT_TEXT, /bar\.append\([^)]*closeBtn/);
   /* Unchanged from U-13, and asserted here because this is the change that
      could have quietly dropped it: the control still only COLLAPSES. */
-  assert.match(TEXT, /ui\.closeBtn\.addEventListener\("click", \(\) => setExpanded\(false\)\)/);
+  assert.match(TEXT, /ui\.closeBtn\.addEventListener\("click", \(\) => requestExpanded\(false\)\)/);
 });
 
 test("the grab zone can receive a vertical drag at all", () => {
@@ -379,16 +371,14 @@ test("the Now Playing sheet is a named, modal dialog", () => {
      focus move, so a screen reader kept exploring the hidden page behind it.
      MUTATION: delete `sheet.setAttribute("role", "dialog")` -> red. */
   assert.match(TEXT, /sheet\.setAttribute\("role", "dialog"\)/);
-  /* NOT aria-modal (review 2026-09-23): the ☰ and the drawer stay reachable, and
-     aria-modal="true" hides them from VoiceOver/TalkBack swipe navigation.
-     `inert` on the rest is what makes it modal. MUTATION: put
-     `sheet.setAttribute("aria-modal", "true")` back -> red. */
-  assert.doesNotMatch(TEXT, /sheet\.setAttribute\("aria-modal"/);
+  /* REWRITE-ON-PURPOSE: full-screen Tactile Now Playing is a modal. MUTATION:
+     remove aria-modal from ui/now-playing.js -> red. */
+  assert.match(NP_TEXT, /sheet\.setAttribute\("aria-modal", "true"\)/);
   assert.match(TEXT, /sheet\.setAttribute\("aria-labelledby", "fp-s-title"\)/);
   assert.match(TEXT, /sTitle\.id = "fp-s-title"/, "the name must point at an element that exists");
 });
 
-test("opening and closing go through app.js's sheet owner, with the topbar left reachable", () => {
+test("opening and closing go through the sheet owner, with the background inert", () => {
   /* The owner is what moves focus in and back, makes the page inert, binds
      Escape and derives the body lock (test/modal-and-focus.test.js exercises
      it for real). This pins that the Now Playing sheet USES it, and that the
@@ -401,8 +391,9 @@ test("opening and closing go through app.js's sheet owner, with the topbar left 
   assert.ok(fn, "setExpanded must exist");
   const body = fn[0];
   assert.match(body, /owner\.openSheet\(ui\.sheet, \{/);
-  assert.match(body, /keepReachable: \[[^\]]*"\.topbar"[^\]]*"#drawer"/);
-  assert.match(body, /onRequestClose: \(\) => setExpanded\(false\)/, "Escape and navigation collapse through the same path");
+  assert.match(body, /keepReachable: \["\.fp-announce"\]/);
+  assert.match(body, /onRequestClose: \(\) => requestExpanded\(false\)/, "Escape and navigation use the interruptible transition path");
+  assert.match(body, /ui\.bigPlay\.focus\(\{ preventScroll: true \}\)/, "focus lands on Play");
   assert.ok(body.indexOf("owner.closeSheet(ui.sheet)") < body.indexOf("ui.sheet.hidden = !open;"),
     "closing must release the owner before the sheet hides");
   assert.match(TEXT, /window\.ForaySheets/, "the owner is read from app.js's published bridge");
@@ -417,38 +408,25 @@ test("Stop, pressed from inside the sheet, releases the owner too", () => {
 });
 
 test("tapping the mini bar's artwork opens the player, like the title beside it", () => {
-  /* The 40px artwork was an inert <img>. MUTATION: delete the `ui.art`
-     click listener -> red. */
-  assert.match(FLAT_TEXT, /ui\.art\.addEventListener\("click", \(\) => setExpanded\(ui\.sheet\.hidden\)\)/);
+  /* REWRITE-ON-PURPOSE: the art is inside the one mini body button. MUTATION:
+     move it back beside `info` -> red. */
+  assert.match(MINI_TEXT, /parts\.info\.insertBefore\(parts\.art, parts\.info\.firstChild\)/);
+  assert.match(FLAT_TEXT, /ui\.info\.addEventListener\("click", \(\) => requestExpanded\(ui\.sheet\.hidden\)\)/);
 });
 
-test("Stop leads the sheet's second row, alone at the danger end; the ✕ is the one Close", () => {
-  /* Stop used to sit in the middle of the row beside an identical grey Close.
-     The row is space-between, so first is as far from the rest as the row
-     allows; and there is no second Close any more (visual pass 1, 2026-09-23:
-     the grab zone's ✕ and the handle are the sheet's ways out).
-     MUTATION: restore `row2.append(rateBtn, openLink, forayLink, stopBtn)`,
-     or `el("button", "fp-collapse", "Close")` -> red. */
-  const m = /row2\.append\(([^)]*)\)/.exec(CODE);
-  assert.ok(m);
-  const order = m[1].split(",").map((x) => x.trim());
-  assert.strictEqual(order[0], "stopBtn", "Stop first");
-  assert.ok(!order.includes("collapse"), "no Close button in the row");
+test("the secondary row is speed, sleep, bookmark and Up Next; Collapse is the one close", () => {
+  /* REWRITE-ON-PURPOSE: Tactile secondary transport. MUTATION: move Bookmark
+     out of replaceChildren -> red. */
+  assert.match(NP_FLAT, /parts\.row2\.replaceChildren\(parts\.rateBtn, sleepBtn, parts\.bookmarkBtn, parts\.queueLink\)/);
   assert.doesNotMatch(FLAT, /ui\.collapse/, "nothing is wired to one");
-  assert.match(FLAT_TEXT, /ui\.closeBtn\.addEventListener\("click", \(\) => setExpanded\(false\)\)/, "the ✕ collapses the sheet");
+  assert.match(FLAT_TEXT, /ui\.closeBtn\.addEventListener\("click", \(\) => requestExpanded\(false\)\)/, "Collapse closes the sheet");
 });
 
-test("PQ-13 (#30): Bookmark sits in the sheet's second row directly after Save, built as a transport box", () => {
+test("PQ-13 (#30): Bookmark sits in the Tactile secondary row", () => {
   /* Both are "keep this"; Stop still leads (the test above).
      MUTATION: remove `bookmarkBtn` from the `row2.append(...)` list -> the
      button is built and wired but never on screen; red. */
-  const m = /row2\.append\(([^)]*)\)/.exec(CODE);
-  assert.ok(m);
-  const order = m[1].split(",").map((x) => x.trim());
-  assert.strictEqual(order[0], "stopBtn", "Stop still leads");
-  const save = order.indexOf("saveBtn");
-  assert.ok(save > 0, "Save is in the row");
-  assert.strictEqual(order[save + 1], "bookmarkBtn", "Bookmark directly after Save");
+  assert.match(NP_FLAT, /parts\.row2\.replaceChildren\(parts\.rateBtn, sleepBtn, parts\.bookmarkBtn, parts\.queueLink\)/);
   assert.match(FLAT_TEXT, /const bookmarkBtn = el\("button", "fp-btn fp-bookmark", "Bookmark"\)/);
   assert.match(FLAT_TEXT, /ui\.bookmarkBtn\.hidden = !\(showEpisode && typeof nav\?\.addBookmark === "function"\)/,
     "hidden on a Foray and on a page with no addBookmark, as Save is");
@@ -551,7 +529,7 @@ test("ROUND 2 touch-8: the sheet slides in on open and finishes its slide on clo
   assert.match(FLAT_TEXT, /owner\.slideIn\(ui\.sheet, "--fp-sheet-dy", h, "fp-sheet-dragging"\)/);
   assert.match(FLAT_TEXT, /ui\.sheet\.classList\.remove\("fp-sheet-dragging"\); const started = owner\.slideOut/,
     "the release transition applies from wherever the drag left it");
-  assert.match(CSS_RULES, /@media \(prefers-reduced-motion: reduce\) \{[^}]*\.fp-sheet:not\(\.fp-sheet-dragging\)[^}]*transition:\s*none/);
+  assert.match(CSS_RULES, /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?--d-sheet:\s*1ms/);
 });
 
 test("ROUND 2 touch-4: every .fy-panel can move — the transform, the release transition, the entrance — and the gesture is bridged for the owner", () => {
@@ -562,7 +540,7 @@ test("ROUND 2 touch-4: every .fy-panel can move — the transform, the release t
   assert.match(CSS_RULES, /\.fy-panel \{[^}]*transform:\s*translateY\(var\(--fy-panel-dy, 0px\)\)/);
   assert.match(CSS_RULES, /\.fy-panel:not\(\.fy-panel-dragging\) \{\s*transition: transform \.22s ease;?\s*\}/);
   assert.match(CSS_RULES, /@keyframes fy-panel-in/);
-  assert.match(CSS_RULES, /@media \(prefers-reduced-motion: reduce\) \{[^}]*\.fy-panel:not\(\.fy-panel-dragging\)[^}]*transition:\s*none/);
+  assert.match(CSS_RULES, /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\.fy-panel:not\(\.fy-panel-dragging\)[\s\S]*?transition:\s*none/);
   assert.match(FLAT_TEXT, /sheetDrag: \{ start: startDrag, move: moveDrag, end: endDrag, offset: dragOffset, claimsTouch, \}/);
 });
 
@@ -571,4 +549,56 @@ test("ROUND 2 nav-5: the drawer's lock and its scrim's touch-action live beside 
   assert.match(CSS_RULES, /body\.drawer-open \{\s*overflow:\s*hidden;?\s*\}/);
   assert.match(CSS_RULES, /#drawer \{[^}]*overscroll-behavior:\s*contain/);
   assert.match(CSS_RULES, /#drawer-overlay \{[^}]*touch-action:\s*none/);
+});
+
+test("Tactile tint follows the current enamel and raises its scrim when contrast falls below AA", () => {
+  /* MUTATION: change `< 4.5` to `< 3` in dialApplyNowPlayingTint -> red. */
+  assert.match(NP_TEXT, /dialContrast\(ink, mixed\(defaultAlpha\)\) < 4\.5 \? \.9 : defaultAlpha/);
+  assert.match(NP_TEXT, /sheet\.style\.setProperty\("--np-tint", tint\)/);
+  assert.match(NP_TEXT, /canvas\.width = canvas\.height = 32/);
+  assert.match(NP_TEXT, /oklch\.c < \.07/);
+  assert.match(NP_TEXT, /Math\.max\(\.1, oklch\.c\)/);
+});
+
+test("Tactile hero and transport preserve the ruled phone geometry", () => {
+  /* MUTATIONS: change the 280px hero width or the 80px Play override -> red. */
+  assert.match(CSS_RULES, /\.np__art \{[^}]*width:\s*280px;[^}]*height:\s*280px/);
+  assert.match(CSS_RULES, /@media \(max-height: 740px\)[\s\S]*?\.np__art \{ width: 200px; height: 200px; \}/);
+  assert.match(CSS_RULES, /\.np\.np--three-title \.np__art \{ width: 160px; height: 160px; \}/);
+  assert.match(CSS_RULES, /\.np \.transport \{[^}]*gap:\s*var\(--s-6\)/);
+  assert.match(CSS_RULES, /\.np \.transport \.fp-big \{[^}]*width:\s*var\(--key-xl\)[^}]*height:\s*var\(--key-xl\)/);
+  assert.match(CSS_RULES, /\.np \.transport \.fp-prev,[^{]*\.np \.transport \.fp-next \{[^}]*width:\s*var\(--key-lg\)[^}]*height:\s*var\(--key-lg\)/);
+  assert.match(NP_FLAT_TEXT, /parts\.row\.classList\.add\("transport"\)/);
+});
+
+test("Tactile scrubber keeps its 56px band, snapping and spoken show-aware clock", () => {
+  /* MUTATION: change the 12px snap threshold -> red. */
+  assert.match(CSS_RULES, /\.np__range \{[^}]*height:\s*var\(--key-lg\)/);
+  assert.match(FLAT_TEXT, /const threshold = dur \* 12 \/ width/);
+  assert.match(TEXT, /dialSpokenClock\(pos\).*dialSpokenClock\(dur\)/s);
+  assert.match(FLAT_TEXT, /"ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"/);
+});
+
+test("Tactile Foray chips keep the station and narration provenance together", () => {
+  /* MUTATION: append only `chip` in dialPaintChip -> red. */
+  assert.match(NP_FLAT_TEXT, /parts\.chips\.append\(chip, narration\)/);
+  assert.match(NP_FLAT_TEXT, /"4a narration"/);
+});
+
+test("Tactile detail remains below a sticky dock and exposes seekable 56 and 48px rows", () => {
+  /* MUTATION: remove `top.append(dock)` -> red and the dock falls below detail. */
+  assert.match(NP_FLAT, /top\.append\(dock\); parts\.scroll\.classList/);
+  assert.match(CSS_RULES, /\.np__top \{[^}]*min-height:\s*calc\(100% - 176px - var\(--safe-b\)\)/);
+  assert.match(CSS_RULES, /\.np__dock \{[^}]*position:\s*sticky[^}]*bottom:\s*calc\(var\(--safe-b\) \+ var\(--s-4\)\)/);
+  assert.match(CSS_RULES, /\.np \.segrow \{[^}]*min-height:\s*56px/);
+  assert.match(CSS_RULES, /\.np__chapter \{[^}]*min-height:\s*48px/);
+});
+
+test("Tactile open uses a shared artwork transition with reduced-motion and WAAPI fallback", () => {
+  /* MUTATION: delete `target.animate` from the fallback -> red. */
+  assert.match(CSS_RULES, /view-transition-name:\s*np-art/);
+  assert.match(NP_TEXT, /document\.startViewTransition/);
+  assert.match(NP_TEXT, /typeof target\.animate !== "function"/);
+  assert.match(NP_TEXT, /duration: 480/);
+  assert.match(NP_TEXT, /prefers-reduced-motion: reduce/);
 });
