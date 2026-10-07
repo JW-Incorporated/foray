@@ -149,35 +149,29 @@ Sentence 4, added to §4.3's Vercel paragraph (the same PR also points `data-saf
 ## #138 🟡 [DECIDE] Get a read-only key for the transcripts bucket from Joey, and put it in one file on the PC and on hermes-vm (~15 min, with Joey)
 <!-- ha filed=2026-10-04 kind=default -->
 
-**Why:** The corpus package (`docs/roadmap/corpus.md`, G-16) copies the transcript farm's bodies from the R2 bucket `foray-transcriptions` to the generation machine, so Forays can draw on every transcript the farm has made. Reading the bucket needs an S3 key pair. No founder ruling is recorded; this proceeds on the proposed default of `docs/roadmap/README.md` question 3, which a founder ruling overrides at any time: Joey issues it with Object Read on that one bucket, and you keep it outside the repo. `data-local/.cf-token` is a Cloudflare API token, not an S3 pair, and does not work for this. The Spark gets its own token in #121; this one is for the PC and hermes-vm. Not urgent: the sync tool that reads it (corpus PKG-13) is not built yet.
+**Why:** `tools/foraycorpus-export/sync-r2.mjs` is on main and copies the farm's transcripts from R2 `foray-transcriptions`; its first live run (PKG-15) needs a read-only S3 key. Proposed default, `docs/roadmap/README.md` Q3, not a ruling.
 
 **Steps:**
-1. Joey: Cloudflare (the account that owns `foray-transcriptions`) → **R2** → **Manage R2 API Tokens** → **Create API token**. Name `foray-corpus-read`. Permissions **Object Read only**. **Apply to specific buckets only** → `foray-transcriptions`. Create, and pass Wyatt the Access Key ID, the Secret Access Key and the S3 endpoint (`https://<account id>.r2.cloudflarestorage.com`) through a password manager, not a chat.
-2. Wyatt, on the PC: in `C:\Users\wjduv\.foray` (made in #120; make it if it is missing), save a file named `r2-credentials` (Notepad: **Save as type** → **All files**, no `.txt`) with these four lines, your values after the first three `=` signs:
-   ```
-   R2_ACCESS_KEY_ID=
-   R2_SECRET_ACCESS_KEY=
-   R2_S3_ENDPOINT=
-   R2_BUCKET=foray-transcriptions
-   ```
+1. Joey: Cloudflare → **R2** → **Manage R2 API Tokens** → **Create API token**: name `foray-corpus-read`, **Object Read only**, bucket `foray-transcriptions` only. Send Wyatt the key ID, secret and S3 endpoint by password manager.
+2. Wyatt, PC: save `C:\Users\wjduv\.foray\r2-credentials` (no `.txt`) with `R2_ACCESS_KEY_ID=`, `R2_SECRET_ACCESS_KEY=`, `R2_S3_ENDPOINT=` (values after `=`) and `R2_BUCKET=foray-transcriptions`, one per line.
 3. On hermes-vm: the same four lines in `~/.foray/r2-credentials`, then `chmod 600 ~/.foray/r2-credentials`.
-4. Do **not** paste the key into any chat, issue or PR. Reply `done` only.
+4. Never paste the key into a chat, issue or PR. Reply `done` only.
 
-**Worked if:** once `tools/foraycorpus-export/sync-r2.mjs` lands, `node tools/foraycorpus-export/sync-r2.mjs --dry-run` on the PC prints `objects_seen` above 0 without asking you for anything.
+**Worked if:** on the PC, `node tools/foraycorpus-export/sync-r2.mjs --dry-run` prints `objects_seen` above 0 without asking for anything.
 
 ## #139 🟡 [DECIDE] Get hermes-vm ready to run the weekly corpus export (~20 min)
 <!-- ha filed=2026-10-04 kind=default -->
 
-**Why:** No founder ruling is recorded; this proceeds on the proposed default of `docs/roadmap/README.md` question 2 (corpus Q2, G-16), which a founder ruling overrides at any time: the corpus exporter runs weekly by cron on **hermes-vm** as the read-only database role `wyatt_readonly`, and publishes show and episode metadata (never transcript text) as GitHub Releases, with a pointer file committed by PR, the way the shows import already does. Not GitHub Actions with Tailscale. Only you place credentials on hermes-vm. Not urgent: the exporter (corpus PKG-08) and its publish step (PKG-32) are not built yet. The first live run (PKG-10) waits on steps 1–3.
+**Why:** The exporter and its weekly wrapper `tools/foraycorpus-export/weekly.mjs` are on main and need this host. Proposed default, `docs/roadmap/README.md` Q2, not a ruling: weekly cron as `wyatt_readonly`, Releases plus a pointer PR.
 
 **Steps:**
-1. On hermes-vm, check that the `wyatt_readonly` role reaches `foraycorpus` (100.79.104.9, tailnet only), for example `psql "<connection string>" -c "select 1"` if `psql` is installed.
-2. Put that connection string in `~/.foray/foraycorpus.env` as one line, `FORAYCORPUS_DATABASE_URL=<connection string>`, then `chmod 600 ~/.foray/foraycorpus.env`.
-3. Run `gh auth login` on hermes-vm with a fine-grained token for `JW-Incorporated/foray` only: **Contents: Read and write** and **Pull requests: Read and write**, nothing else, 90 days. The export uses it to create the Release and open the pointer PR. Set a reminder to renew it.
-4. Later: when PKG-32 lands, Claude writes the exact cron line here and you add it with `crontab -e`.
-5. Reply `done` after steps 1–3. Do not paste the connection string or the token anywhere.
+1. On hermes-vm, check `wyatt_readonly` reaches `foraycorpus` (100.79.104.9, tailnet): `psql "<connection string>" -c "select 1"`.
+2. Put `FORAYCORPUS_DATABASE_URL=<connection string>` as the one line of `~/.foray/foraycorpus.env`, then `chmod 600 ~/.foray/foraycorpus.env`.
+3. `gh auth login`, token for `JW-Incorporated/foray` only (Contents + Pull requests: Read and write, 90 days), then `gh auth setup-git`; set git's global `user.name`/`user.email` if unset.
+4. Clone the repo to `~/foray`, run `crontab -e` and add: `0 6 * * 1 cd ~/foray && git pull --ff-only && npm ci --prefix tools/foraycorpus-export && set -a && . ~/.foray/foraycorpus.env && set +a && node tools/foraycorpus-export/weekly.mjs >> ~/.foray/corpus-export.log 2>&1`
+5. Reply `done`. Do not paste the connection string or the token anywhere.
 
-**Worked if:** `gh auth status` on hermes-vm shows the token, and the first live dry run (corpus PKG-10) connects from hermes-vm without asking you for anything.
+**Worked if:** after the next Monday 06:00, `~/.foray/corpus-export.log` ends with a `POINTER_PR:` line naming a draft PR.
 
 ## #130 🟡 [DECIDE] Drive the M3 test on the first TestFlight build after `engine/m3` merges (~2 drives)
 <!-- ha filed=2026-09-30 kind=default -->
