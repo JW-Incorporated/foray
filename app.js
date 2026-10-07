@@ -4288,12 +4288,15 @@ function showIndexIdForTitle(title) {
    checked resolves (api/episodes/search.ts drops any hit that does not) — so
    that is the link, and the title join stays the fallback for rows that never
    had an id (the curated pool). */
-function showNameLink(showName, showId = null) {
+/* `key` is a `pi:` show's shard key (`/k/<key>`, see showRoutePath), for a
+   caller that knows one: without it a fresh device cannot open that show
+   (resolveMissingShow). */
+function showNameLink(showName, showId = null, key = "") {
   const label = esc(showName || "");
   const id = showId || showIdForShowName(showName);
   /* Through showRoutePath (showRouteHash without its #), which encodes (audit round 3, app-1-16): the router
      decodes the segment, so an id carrying `%`, `/` or `#` misrouted from here. */
-  return id ? `<a class="show-link" href="#${esc(showRoutePath(id))}">${label}</a>` : label;
+  return id ? `<a class="show-link" href="#${esc(showRoutePath(id, "", key))}">${label}</a>` : label;
 }
 
 /* A3.2 — tapping a chip goes to "shows in this category" (renderCategory),
@@ -5262,12 +5265,14 @@ function bindShowPrefetch() {
   }, { passive: true });
 }
 
-async function fetchShowEpisodes(show_id, cursor) {
+/* `key` is a `pi:` show's shard key when the caller has one the show record
+   cannot give (a shared link's `/k/`); see fetchShowEpisodesUncached. */
+async function fetchShowEpisodes(show_id, cursor, key = "") {
   if (!cursor) {
     const live = showEpisodesInFlight.get(show_id);
     if (live) return live;
   }
-  const p = fetchShowEpisodesUncached(show_id, cursor);
+  const p = fetchShowEpisodesUncached(show_id, cursor, key);
   if (!cursor) {
     showEpisodesInFlight.set(show_id, p);
     /* Cleared however it settles. A rejected promise left in the map would make
@@ -5277,10 +5282,18 @@ async function fetchShowEpisodes(show_id, cursor) {
   return p;
 }
 
-async function fetchShowEpisodesUncached(show_id, cursor) {
+async function fetchShowEpisodesUncached(show_id, cursor, key = "") {
   try {
     const path = `api/shows/${encodeURIComponent(show_id)}/episodes`;
-    const url = cursor ? `${path}?cursor=${encodeURIComponent(cursor)}` : path;
+    /* A `pi:` show is found by the endpoint only in the shard its row lives
+       in, so the request names it: `?k=` (pi-episodes-cold-open; api/shows/
+       [show_id]/episodes.ts resolvePiShow). The caller's key, else the one the
+       show record gives (shardKeyForShow, the same key a share link carries).
+       No key: asked without one, and the endpoint's 404 is the failure the
+       page already shows. */
+    const k = String(show_id).startsWith("pi:") ? (key || shardKeyForShow(showById(show_id))) : "";
+    const query = [k ? `k=${encodeURIComponent(k)}` : "", cursor ? `cursor=${encodeURIComponent(cursor)}` : ""].filter(Boolean).join("&");
+    const url = query ? `${path}?${query}` : path;
     /* `cache: "no-cache"` is gone. It forced a full revalidation round trip on
        every single call — the HTTP cache was never allowed to answer, so the
        endpoint's own `Cache-Control` could not help either. `"default"` lets a
@@ -5683,6 +5696,38 @@ function playlistForId(id) {
   return playlistById(id) || subjectQueueById(id) || generatedPlaylistById(id) || sharedPlaylistFromId(id);
 }
 
+/** The shard a `pi:` show's row is filed under, as a share link names it:
+    the key the shard pass would fetch for the show's own title, else its
+    author (one of the prefixes tools/shows/shard-build.mjs files the row
+    under), or "" when neither gives one. One derivation for the show link,
+    the episode link and the episodes request (fetchShowEpisodesUncached). */
+function shardKeyForShow(show) {
+  if (!show) return "";
+  return SearchEngine.shardKeyForQuery(show.title) || SearchEngine.shardKeyForQuery(show.artist_name) || "";
+}
+
+/** A `/k/<key>` a share link could have produced: shardKeyForQuery answers
+    its own key for "ab" or "a_" and null for "", "__" and anything else. */
+function isShareShardKey(key) {
+  return !!key && SearchEngine.shardKeyForQuery(key) === key;
+}
+
+/** `/episode/<id>`, plus `/k/<key>` for an episode of a `pi:` show
+    (pi-episodes-cold-open): the shard its show's row lives in, which a fresh
+    device needs to ask for that show's episodes. A PATH segment, as on the
+    show route, because the `?` query is the timestamp link's (`?t=`). */
+function episodeRoutePath(id, key = "") {
+  return `/episode/${encodeURIComponent(id)}${key ? "/k/" + encodeURIComponent(key) : ""}`;
+}
+
+/** An episode route's segment (still encoded) as `{ id, key }`, both
+    decoded. Every producer encodes the id, so a raw `/k/` can only be the
+    key's segment; a segment with any other raw `/` is all id, as before. */
+function parseEpisodeSeg(seg) {
+  const m = /^([^/]+)\/k\/([^/]+)$/.exec(String(seg || ""));
+  return m ? { id: safeDecode(m[1]), key: safeDecode(m[2]) } : { id: safeDecode(seg), key: "" };
+}
+
 /** `{ url, text }` for a share target, or null when the recipient could not
     open it. target: { kind: "show"|"episode"|"playlist"|"foray", id, item?, playlist? }.
     `text` is the item's own title (and show) only — never a hook or summary. */
@@ -5697,7 +5742,7 @@ function shareLinkFor(target) {
        fetch for the show's own title (or author), one of the prefixes
        tools/shows/shard-build.mjs files the row under. pod.link (data/
        app-links.json's derivable aggregator) only when no key can be derived. */
-    const key = SearchEngine.shardKeyForQuery(s.title) || SearchEngine.shardKeyForQuery(s.artist_name);
+    const key = shardKeyForShow(s);
     if (key) return { url: PUBLIC_WEB_ORIGIN + "#" + showRoutePath(t.id, "", key), text: s.title || "" };
     const apple = String(s.apple_collection_id ?? "");
     return /^\d+$/.test(apple) ? { url: "https://pod.link/" + apple, text: s.title || "" } : null;
@@ -5706,14 +5751,24 @@ function shareLinkFor(target) {
     const item = t.item || state.itemIndex[t.id] || resolveEpisode(t.id);
     if (!item || !item.id) return null;
     const text = item.show ? `${item.title} · ${item.show}` : String(item.title || "");
-    if (inDiscoverPool(item.id)) return { url: PUBLIC_WEB_ORIGIN + "#/episode/" + encodeURIComponent(item.id), text };
+    if (inDiscoverPool(item.id)) return { url: PUBLIC_WEB_ORIGIN + "#" + episodeRoutePath(item.id), text };
     /* A breadth episode's id names its show (`<show>--<guid>`, `apple:<show>:
        <guid>`), so a fresh device pages that show's episodes for it
-       (resolveMissingEpisode). Not a `pi:` show: its episodes endpoint does not
-       answer one yet. Only an id that does not parse falls back below. */
+       (resolveMissingEpisode). An episode of a `pi:` show (`pi:<n>--<guid>`)
+       also names the shard its show's row is filed under, `/k/<key>`, because
+       the episodes endpoint finds a `pi:` show only through it
+       (pi-episodes-cold-open): shardKeyForShow of the show record, else of the
+       episode's show title, which is the row's own title. With no key, an id
+       that does not parse, or a `pi:` item whose id names another show, the
+       fallbacks below. */
     const { show_id: idShow, guid } = localEpisodeIdentity(item.id);
-    if (idShow && guid && !idShow.startsWith("pi:") && !String(item.show_id || "").startsWith("pi:")) {
-      return { url: PUBLIC_WEB_ORIGIN + "#/episode/" + encodeURIComponent(item.id), text };
+    const itemShowPi = String(item.show_id || "").startsWith("pi:");
+    if (idShow && guid && !idShow.startsWith("pi:") && !itemShowPi) {
+      return { url: PUBLIC_WEB_ORIGIN + "#" + episodeRoutePath(item.id), text };
+    }
+    if (idShow && guid && /^pi:\d+$/.test(idShow) && (!item.show_id || item.show_id === idShow)) {
+      const key = shardKeyForShow(showById(idShow) || { title: item.show });
+      if (key) return { url: PUBLIC_WEB_ORIGIN + "#" + episodeRoutePath(item.id, key), text };
     }
     const sid = item.show_id || showIdForShowName(item.show);
     if (sid && !String(sid).startsWith("pi:")) return { url: PUBLIC_WEB_ORIGIN + "#" + showRoutePath(sid), text };
@@ -5830,7 +5885,7 @@ function resolveMissingShow(show_id) {
   if (pi) {
     const key = parseShowRoute()?.key || "";
     const n = show_id.slice(3);
-    if (!/^\d+$/.test(n) || SearchEngine.shardKeyForQuery(key) !== key) {
+    if (!/^\d+$/.test(n) || !isShareShardKey(key)) {
       if (view) view.innerHTML = statusPageHtml({ title: "Show", note: "Show not found. Search for it again to open it.", back: "#/shows" });
       return;
     }
@@ -12548,22 +12603,29 @@ function bindBookmarkRemove(scope, item) {
    and share work as they do from the show page. Never a blank page: Loading,
    then the episode, "not found" with its show, or a failure with Try again;
    and a late answer never repaints another page (render token + the route it
-   was asked on). A `pi:` show's episodes are not served yet
-   (api/shows/[show_id]/episodes.ts), so that id, like one that does not
-   parse, is "not found" at once with no request. The ‹ on every state (audit
-   2026-09-22): these pages are reached through stale or shared links. */
+   was asked on). An episode of a `pi:` show (`pi:<n>--<guid>`) is paged the
+   same way (pi-episodes-cold-open): the endpoint finds that show only in the
+   shard its row lives in, so the request names it: the link's `/k/<key>`
+   (shareLinkFor, parseEpisodeSeg), else the key the show record gives
+   (shardKeyForShow), and a miss links to the show with the same key so it
+   cold-opens too. A `pi:` id with no key or not `pi:<digits>`, like one that
+   does not parse, is "not found" at once with no request. The ‹ on every
+   state (audit 2026-09-22): these pages are reached through stale or shared
+   links. */
 const COLD_EPISODE_PAGES = 3;
 
-function resolveMissingEpisode(id, t) {
+function resolveMissingEpisode(id, t, key = "") {
   const { show_id, guid } = localEpisodeIdentity(id);
+  const pi = !!show_id && show_id.startsWith("pi:");
+  const k = pi ? (isShareShardKey(key) ? key : shardKeyForShow(showById(show_id))) : "";
   const paint = (html, retry = false) => {
     const v = $("#view");
     if (!v) return;
     v.innerHTML = html;
-    if (retry) bindRetry(v, () => renderEpisode(id, { t }));
+    if (retry) bindRetry(v, () => renderEpisode(id, { t, key }));
   };
   const failed = () => paint(statusPageHtml({ title: "Episode", note: "Couldn't load this episode.", retry: true }), true);
-  if (!show_id || !guid || show_id.startsWith("pi:")) { paint(statusPageHtml({ title: "Episode", note: "Episode not found." })); return; }
+  if (!show_id || !guid || (pi && (!/^pi:\d+$/.test(show_id) || !k))) { paint(statusPageHtml({ title: "Episode", note: "Episode not found." })); return; }
   const want = `${show_id}--${guid}`;
   paint(statusPageHtml({ title: "Episode", note: "Loading episode…" }));
   const isCurrentRender = renderToken();
@@ -12572,7 +12634,7 @@ function resolveMissingEpisode(id, t) {
   (async () => {
     let cursor = null;
     for (let page = 0; page < COLD_EPISODE_PAGES; page++) {
-      const r = await fetchShowEpisodes(show_id, cursor);
+      const r = await fetchShowEpisodes(show_id, cursor, k);
       if (!stillHere()) return;
       /* A feed the endpoint could not read is not an empty show: its no-DB
          path answers 200 `degraded` with `episodes: []` and the error, which
@@ -12584,24 +12646,39 @@ function resolveMissingEpisode(id, t) {
         const show = showById(show_id) || { show_id, title: r.show?.title || "", artwork_url: r.show?.image || null };
         const row = fullCatalogueRowToEpRowItem({ ...show, show_id }, ep);
         if (row.id !== id) snapshot(id, row); // the `apple:` spelling of the same episode
-        if (resolveEpisode(id)) { renderEpisode(id, { t }); return; }
+        if (resolveEpisode(id)) { renderEpisode(id, { t, key: k }); return; }
         break;
       }
       cursor = r.nextCursor;
       if (!cursor) break;
     }
-    paint(statusPageHtml({ title: "Episode", note: `Episode not found. <a class="show-link" href="#${esc(showRoutePath(show_id))}">Open the show</a>` }));
+    paint(statusPageHtml({ title: "Episode", note: `Episode not found. <a class="show-link" href="#${esc(showRoutePath(show_id, "", k))}">Open the show</a>` }));
   })().catch(() => { if (stillHere()) failed(); });
+}
+
+/* The shard key an episode page's show link carries when its show is a `pi:`
+   one (pi-episodes-cold-open): a fresh device opens that show only through
+   `/k/<key>` (resolveMissingShow), and a cold-opened episode's show is in no
+   cache, so a bare `#/show/pi:<n>` would be "Show not found." The show
+   record's key, else the link's own key (the shard the episode was just found
+   through), else the one the episode's show title gives (shareLinkFor's
+   derivation). "" for any other show, whose link is unchanged. */
+function episodeShowKey(item, key = "") {
+  const sid = String(item?.show_id || "");
+  if (!sid.startsWith("pi:")) return "";
+  return shardKeyForShow(showById(sid)) || (isShareShardKey(key) ? key : "") || shardKeyForShow({ title: item.show });
 }
 
 /* `t` is a timestamp link's offset in whole seconds (#30, see episodeDeepLink),
    or null. It adds the "Play from" button and nothing else: the page never
-   starts playback on its own. */
-function renderEpisode(id, { t = null } = {}) {
+   starts playback on its own. `key` is a `pi:` episode link's shard key
+   (parseEpisodeSeg): what a missing episode is asked with, and what the
+   page's show link carries (episodeShowKey). */
+function renderEpisode(id, { t = null, key = "" } = {}) {
   setBodyClass("view-page");
   const item = resolveEpisode(id);
   if (!item) {
-    resolveMissingEpisode(id, t);
+    resolveMissingEpisode(id, t, key);
     return;
   }
   // populate itemIndex/poolIds so "more from this show" rows can play in-app;
@@ -12614,13 +12691,14 @@ function renderEpisode(id, { t = null } = {}) {
   /* The row's "Played" / "NN min left" follows the listener onto the page
      (audit round 2, honesty-5): it used to vanish on the way in. */
   const progHtml = progressChipHtml(item);
+  const showKey = episodeShowKey(item, key);
   $("#view").innerHTML = `
     <div class="page">
       <div class="page-head">
         <a class="back" href="#/">‹</a>
         <div>
           <h2 class="fp-s-title">${esc(item.title)}${explicitBadge(item.explicit)}</h2>
-          <p class="fp-s-show">${joinMeta(item.show ? showNameLink(item.show, item.show_id) : "", fmtDur(episodeMinutes(item)), esc(dateStr), progHtml)}</p>
+          <p class="fp-s-show">${joinMeta(item.show ? showNameLink(item.show, item.show_id, showKey) : "", fmtDur(episodeMinutes(item)), esc(dateStr), progHtml)}</p>
         </div>
       </div>
       ${item.artwork_url ? `<img class="ep-art" src="${esc(safeUrl(item.artwork_url))}" alt="" decoding="async" width="600" height="600">` : ""}
@@ -18873,7 +18951,10 @@ function renderCurrentPage() {
   /* A timestamp link (#30) first: `h` is already canonical (currentHash), so
      this is `#/episode/<id>?t=N` — the line below would read `<id>?t=N` as
      the id. */
-  else if ((m = episodeDeepLink(h))) renderEpisode(safeDecode(m.seg), { t: m.t });
+  else if ((m = episodeDeepLink(h))) { const r = parseEpisodeSeg(m.seg); renderEpisode(r.id, { t: m.t, key: r.key }); }
+  /* A `pi:` episode link's `/k/<key>` is its own segment (parseEpisodeSeg);
+     every other episode route goes the way it always has, on the next line. */
+  else if ((m = /^#\/episode\/(.+)$/.exec(h)) && parseEpisodeSeg(m[1]).key) { const r = parseEpisodeSeg(m[1]); renderEpisode(r.id, { key: r.key }); }
   else if ((m = /^#\/episode\/(.+)$/.exec(h))) renderEpisode(safeDecode(m[1]));
   else if ((m = parseShowRoute(h))) renderShow(m.id, m.query);
   else if ((m = /^#\/category\/(.+)$/.exec(h))) renderCategory(safeDecode(m[1]));
