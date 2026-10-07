@@ -4268,8 +4268,14 @@ body.drawer-open { overflow: hidden; }
    under the OS query AND under `[data-theme="dark"]`, the second a verbatim
    copy of the first (test/ui-tokens-dial.test.js pins that they are equal).
    `cp_theme` (system | light | dark) writes the `data-theme` attribute through
-   the storage shim; "system" removes it. `color-scheme: light dark` is declared
-   per scheme so UA-painted surfaces follow whichever is active.
+   the storage shim; "system" removes it. NO `color-scheme` is declared in this
+   section on purpose: index.html ships `<meta name="color-scheme" content="dark">`,
+   and that meta only applies while the root's computed color-scheme is `normal`,
+   so a root-level declaration here would turn the viewport scrollbar and every
+   UA surface light for a user whose OS is set to light, on a dark page. The PR
+   that drops the dark-only meta and first paints Cream on a screen adds
+   `color-scheme` per scheme (light dark / light / dark) in the same change, and
+   test/ui-tokens.test.js ("dark is declared ...") is updated with it.
 
    NAME RULE. A Dial token whose name a legacy token already owns ships as
    `--dial-<name>`, so declaring it cannot move a live screen: `--line`
@@ -4297,8 +4303,6 @@ body.drawer-open { overflow: hidden; }
 @property --np-tint { syntax: "<color>"; inherits: true; initial-value: #F7F0E4; }
 
 :root {
-  color-scheme: light dark;
-
   --dial-font-display: "DialDisplay", system-ui, sans-serif;  /* display, title, heading: Big Shoulders; no wdth axis, so every width token is 100% */
   --font-text: "DialText", system-ui, sans-serif;
   --font-mono: "Azeret", ui-monospace, monospace;
@@ -4409,7 +4413,6 @@ body.drawer-open { overflow: hidden; }
    explicit override. Keep the two bodies identical. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    color-scheme: dark;
     --paper:      #17130F;
     --paper-2:    #1F1A15;
     --card:       #241E18;
@@ -4442,9 +4445,7 @@ body.drawer-open { overflow: hidden; }
     --well-inset: inset 0 2px 4px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
   }
 }
-:root[data-theme="light"] { color-scheme: light; }
 :root[data-theme="dark"] {
-  color-scheme: dark;
   --paper:      #17130F;
   --paper-2:    #1F1A15;
   --card:       #241E18;

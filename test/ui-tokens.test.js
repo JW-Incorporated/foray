@@ -604,6 +604,17 @@ test("dark is declared, not just painted: one colour-scheme, one authored focus 
   assert.match(html, /<meta name="color-scheme" content="dark">/, "index.html declares the one scheme the sheet ships");
   assert.doesNotMatch(html, /content="dark light"|content="light dark"/);
   assert.strictEqual(lastOn("body.ui-v2", "color-scheme"), "dark", "the v2 scope tells the UA the same");
+  /* The whole sheet, Dial section included (RULES hides it). The meta only applies while the root's
+     computed color-scheme is `normal`, so ANY color-scheme on :root / html -- or on a :root scheme block --
+     other than `dark` makes an OS set to light paint a light root (viewport scrollbar, UA surfaces) under
+     the dark #151119 page. MUTATION: re-add `:root { color-scheme: light dark; }` anywhere in styles.css
+     (the Dial section's :root was the live case) -> red here. */
+  const rootSchemes = parseRules(CSS)
+    .filter((r) => !r.at)
+    .filter((r) => r.selectors.some((s) => /^(:root|html)\b/.test(s)))
+    .flatMap((r) => r.decls.filter((d) => d.prop === "color-scheme").map((d) => ({ sel: r.selectors.join(","), v: d.value })));
+  assert.deepStrictEqual(rootSchemes.filter((x) => x.v !== "dark"), [],
+    "no root-level color-scheme other than dark may land while index.html's meta is dark-only");
   assert.match(lastOn(":focus-visible", "outline") || "", /^2px solid var\(--amber\)$/, "the ring is ours, in the listener's colour");
   assert.strictEqual(lastOn(":focus-visible", "outline-offset"), "2px");
 });

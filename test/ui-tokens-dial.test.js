@@ -62,7 +62,7 @@ function declsOf(rules, selector, atRule) {
 const CREAM = declsOf(DIAL, ":root");
 const BAKELITE_OS = declsOf(DIAL, ':root:not([data-theme="light"])', "prefers-color-scheme: dark");
 const BAKELITE_ATTR = declsOf(DIAL, ':root[data-theme="dark"]');
-const LIGHT_ATTR = declsOf(DIAL, ':root[data-theme="light"]');
+const LIGHT_ATTR = declsOf(DIAL, ':root[data-theme="light"]');  /* must stay empty: see the color-scheme test */
 
 /* ------------------------------------------------------------------ fonts */
 
@@ -142,7 +142,6 @@ test("DialText is Bricolage instanced to wght 500-700, width pinned, renamed; Az
 /* The spec, written out independently of styles.css. Source: BUILD-PLAN 1.1-1.4,
    BUILD-NOTES 2.1-2.5, with two measured corrections (see BUILD-PLAN 1.8). */
 const STRUCTURAL = {
-  "color-scheme": "light dark",
   "--dial-font-display": '"DialDisplay", system-ui, sans-serif',
   "--font-text": '"DialText", system-ui, sans-serif',
   "--font-mono": '"Azeret", ui-monospace, monospace',
@@ -195,7 +194,6 @@ const CREAM_SCHEME = {
 };
 
 const BAKELITE_SCHEME = {
-  "color-scheme": "dark",
   "--paper": "#17130F", "--paper-2": "#1F1A15", "--card": "#241E18",
   "--ink": "#F4ECDF", "--ink-2": "#BDB2A3", "--ink-3": "#948979",
   "--dial-line": "#332B24", "--rubber": "#3A332C", "--rubber-lip": "#120E0B",
@@ -228,8 +226,20 @@ test("Bakelite redeclares exactly the scheme-dependent tokens, under the OS quer
   assert.deepStrictEqual(sorted(toObj(BAKELITE_OS)), sorted(BAKELITE_SCHEME), "the OS-dark block");
   assert.deepStrictEqual(sorted(toObj(BAKELITE_ATTR)), sorted(BAKELITE_SCHEME), "the [data-theme=dark] block, identical");
   assert.strictEqual(DIAL.filter((r) => r.selectors.includes(':root:not([data-theme="light"])')).length, 1);
-  assert.deepStrictEqual(toObj(LIGHT_ATTR), { "color-scheme": "light" },
-    "[data-theme=light] pins the UA scheme; its colours are the :root Cream values");
+  assert.deepStrictEqual(toObj(LIGHT_ATTR), {},
+    "[data-theme=light] declares nothing: its colours are the :root Cream values");
+});
+
+test("the Dial section declares no color-scheme anywhere (index.html's dark-only meta must keep applying)", () => {
+  /* index.html ships <meta name="color-scheme" content="dark">, which only takes effect while the root's
+     computed color-scheme is `normal`. A `color-scheme` on :root (or on a :root scheme block) makes the
+     viewport scrollbar and every UA surface follow the OS instead: light on the dark #151119 page.
+     The PR that drops the meta and paints Cream on a screen adds it back, with this test.
+     MUTATION: add `color-scheme: light dark;` to the Dial `:root` (or `color-scheme: dark;` to either
+     Bakelite block) -> red here, and the whole-sheet guard in test/ui-tokens.test.js goes red too. */
+  const hits = DIAL.filter((r) => !r.at && r.decls.some((d) => d.prop === "color-scheme"))
+    .map((r) => r.selectors.join(", "));
+  assert.deepStrictEqual(hits, []);
 });
 
 test("every literal colour Cream declares is re-owned by Bakelite (a scheme cannot leak a value into the other)", () => {
