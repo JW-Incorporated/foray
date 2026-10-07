@@ -11,13 +11,15 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { CLIPS, GATES, PKG, SHOW } from "./android-playback.mjs";
+import { CLIPS, GATES, JS_LANE, PKG, SHOW } from "./android-playback.mjs";
+import { pressDone } from "./adb.mjs";
 import {
   ASSET_BASE,
   DOZE_QUEUE,
   DUMP_PREFIX,
   EPISODE_QUEUE,
   LONG_QUEUE,
+  NATIVE_LANE,
   RECEIVER_COMPONENT,
   SCENARIOS,
   SERVICE,
@@ -203,4 +205,68 @@ test("A-26: small helpers and the CLI", () => {
   assert.equal(parseArgs(["play", "--art", "d"]).art, "d");
   assert.throws(() => parseArgs(["seams", "--art", "d"]), /first argument/);
   assert.throws(() => parseArgs(["play"]), /--art/);
+});
+
+/* ───────────── CH2-20: one copy of the device helpers (adb.mjs), two lanes ───────────── */
+
+test("CH2-20: a press is judged by one predicate, through each lane's view of its state", () => {
+  /* One table, both lanes: the native engine's fields as they are, and the same moment as
+     the page reports it (`state.foray`, the clock as `elapsedSec`). Where the lanes differ
+     the row says so: the engine counts a play only once ExoPlayer sounds and a rewind only
+     on the item it started on; the page has no item id and no ExoPlayer flag.
+     MUTATION (run): NATIVE_LANE.press.sameItem -> `() => true` -> the "other item" row goes
+     red; JS_LANE.press.settled without `!a.loading` -> the "still loading" row goes red;
+     pressDone's next without `?? -2` -> the "no before" row is true for index -1. */
+  const asPage = (s) => s && { foray: { running: s.running, loading: s.loading ?? false, index: s.index, elapsedSec: s.positionSec } };
+  const before = S({ positionSec: 30 });
+  const rows = [
+    // [kind, after, native, page, why]
+    ["pause", S({ running: false, exoPlaying: false, positionSec: 30 }), true, true, "paused"],
+    ["pause", S({ positionSec: 31 }), false, false, "still running"],
+    ["play", S({ positionSec: 30 }), true, true, "sounding"],
+    ["play", S({ exoPlaying: false, positionSec: 30 }), false, true, "engine running, ExoPlayer not yet"],
+    ["next", S({ index: 1, item: "a26-1", positionSec: 0.4 }), true, true, "the next item, playing"],
+    ["next", S({ index: 2, item: "a26-2", positionSec: 0.4 }), false, false, "skipped two"],
+    ["next", S({ index: 1, item: "a26-1", positionSec: 0 }), false, true, "the engine's clock has not moved"],
+    ["next", S({ index: 1, item: "a26-1", positionSec: 0.4, loading: true }), true, false, "still loading"],
+    ["previous", S({ positionSec: 2 }), true, true, "rewound"],
+    ["previous", S({ positionSec: 29.5 }), false, false, "less than previousMinRewindSec"],
+    ["previous", S({ item: "a26-other", positionSec: 2 }), false, true, "rewound onto another item"],
+    ["previous", S({ running: false, positionSec: 2 }), false, false, "rewound but stopped"],
+    ["previous", null, false, false, "no state"],
+  ];
+  for (const [kind, after, native, page, why] of rows) {
+    assert.equal(pressDone(kind, before, NATIVE_LANE.press, GATES.previousMinRewindSec)(after), native, `native ${kind}: ${why}`);
+    assert.equal(pressDone(kind, asPage(before), JS_LANE.press, GATES.previousMinRewindSec)(asPage(after)), page, `page ${kind}: ${why}`);
+  }
+  assert.equal(pressDone("next", null, NATIVE_LANE.press, 1)(S({ index: -1, positionSec: 1 })), true, "no before: the next of index -2");
+  assert.equal(pressDone("previous", null, NATIVE_LANE.press, 1)(S({ positionSec: 1 })), false, "no before: nothing to rewind from");
+  assert.equal(NATIVE_LANE.isPaused(S({ running: false })), true);
+  assert.equal(NATIVE_LANE.isPaused(null), false);
+  assert.equal(JS_LANE.isPaused({ episodePlaying: false }), true);
+});
+
+test("CH2-20: neither lane keeps its own copy of the device helpers", () => {
+  /* The acceptance's `comm -12` over the two runners' top-level declarations: what both
+     declare is only each lane's own scenarios, verdicts and CLI, never a helper adb.mjs owns.
+     MUTATION (run): paste `async function dumpUi(ctx, name) {…}` back into
+     android-native-playback.mjs -> listed here. */
+  const src = (f) => fs.readFileSync(path.join(ROOT, "tools", "mobile", f), "utf8");
+  const declared = (text) => new Set([...text.matchAll(/^(?:export )?(?:async )?(?:function|const|let) (\w+)/gm)].map((m) => m[1]));
+  const js = declared(src("android-playback.mjs"));
+  const native = declared(src("android-native-playback.mjs"));
+  const shared = ["adb", "sleep", "num", "pidOf", "killLine", "pngInfo", "PKG", "pressDone",
+    "shell", "save", "dumpTo", "wakeAndUnlock", "killReason", "waitFor", "window2", "dumpUi", "readShade", "helperLog"];
+  for (const name of shared) {
+    assert.equal(js.has(name), false, `android-playback.mjs declares its own ${name}`);
+    assert.equal(native.has(name), false, `android-native-playback.mjs declares its own ${name}`);
+  }
+  const both = [...js].filter((n) => native.has(n)).sort();
+  assert.deepEqual(both, ["RUNNERS", "SCENARIOS", "SERVICE", "background", "call", "collect", "doze", "ensureRunning", "focus",
+    "focusPhase", "main", "notification", "parseArgs", "play", "prepare", "press", "summary", "summaryMarkdown", "transport",
+    "verdictBackground", "verdictCall", "verdictDoze", "verdictFocus", "verdictNotification", "verdictPlay", "verdictPress"],
+    "each lane's own scenarios, verdicts and CLI: a new shared name is a helper that belongs in adb.mjs");
+  for (const text of [src("android-playback.mjs"), src("android-native-playback.mjs")]) {
+    assert.match(text, /\} = ?\n? *device\(\{ lane: (JS|NATIVE)_LANE, gates: GATES, helperTag: HELPER_TAG \}\);/);
+  }
 });
