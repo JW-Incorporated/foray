@@ -4,7 +4,7 @@
 lawyer (see §9).** Each remaining `TODO(founder)` below is a fact only a founder
 can supply. Do not publish this to a store listing with any of them unresolved.
 
-Last updated: 2026-10-05 (the effective date is the "Last updated" date of the
+Last updated: 2026-10-06 (the effective date is the "Last updated" date of the
 republished page at https://jwlabs.ai/4a/privacy/) · Applies to: the **4a** web app
 (https://jw-incorporated.github.io/foray/) and the iOS/Android app built from the
 same code. The app was formerly Foray. That is why the word is still in this URL
@@ -137,7 +137,7 @@ The app also asks the browser to mark its storage as persistent
 | `cp_bookmarks` | Bookmarks you set inside episodes — for each episode id, the second you marked, when you set it, an optional label you typed, and the episode's length at that moment (so a bookmark on an ad-stitched show can be shown as approximate if its copy changes). Set from the Now Playing sheet; listed on the episode page. Never sent, never synced | **No** |
 | `cp_episode_snaps` | A copy of the details of each episode in your Up Next list and your recent history — title, show name, length, publish date, artwork and audio addresses, topic ids and the first couple of sentences of its description — so those lists can still show and play an episode after the app reloads, including episodes from outside 4a's own catalogue. An episode is dropped from it once neither list names it any more | **No** |
 | `cp_shard_shows` | The last 50 shows from the wider podcast directory whose page you opened — title, publisher name and artwork address — so a link to one of them still opens after the app reloads | **No** |
-| `cp_starred_shows` | A per-device map of shows you followed from a show page (the Follow button; the key keeps its older "starred" name) — a lightweight favorite, separate from episode saves (`cp_saved`). No notifications, no auto-download, following a show never adds its new episodes anywhere, and never changes what 4a surfaces to you elsewhere | **No** |
+| `cp_starred_shows` | A per-device map of shows you followed from a show page (the Follow button; the key keeps its older "starred" name) — a lightweight favorite, separate from episode saves (`cp_saved`). For each show it also keeps whether new-episode alerts are on (on unless you turn them off on the show's page), when 4a last checked the show for new episodes, the newest publish date that check found, the newest one you have seen, and how many are new. New episodes are marked in your Library on this device only; there is no phone notification. The check asks our API for the show's latest episodes (§4.3). No auto-download, following a show never adds its new episodes anywhere, and never changes what 4a surfaces to you elsewhere | **No** |
 | `cp_recent_branches` | Which topic branches you recently came from | **No** |
 | `cp_foray:<id>` | Where you are inside a given foray, and which segment you were in. In the iOS app, written by the native audio player when it is the one playing (see below) | **No** |
 | `cp_pos:<id>` | Your position in seconds inside an individual episode. In the iOS app, written by the native audio player when it is the one playing (see below) | **No** |
@@ -468,7 +468,11 @@ catalogue are bundled, so this does not apply there.
 
 Shows searches are answered by 4a's API, hosted on **Vercel**, which acts as our
 processor: it sees the query text and the request metadata of each search, and
-4a does not log the query.
+4a does not log the query. Opening a show's page, and the check for new episodes
+of the shows you follow (`app.js:checkFollowedShows()`, at most once every six
+hours per show, while 4a is open), ask the same API for that show's latest
+episodes: the request carries the show's id and the usual request metadata, and
+nothing about you.
 
 ## 5. What 4a does not do
 

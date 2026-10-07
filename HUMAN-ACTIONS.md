@@ -84,7 +84,7 @@
 ## #141 🟡 [DECIDE] Approve four privacy-policy sentences for bookmarks, downloads and followed-show alerts (~5 min)
 <!-- ha filed=2026-10-04 kind=default -->
 
-**Why:** The player-features plan (`docs/roadmap/player-features.md` §1, founder question 6) adds new rows to the privacy policy's §1 table of what stays on your phone. Changing a privacy-policy sentence needs your approval (`docs/roadmap/README.md` Q34), and these rows sit on a path that would otherwise merge without a review window. So each one is quoted below as written and waits here for your yes. Sentence 1 is in the bookmarks PR (branch `feat/w2-pq-12-14-bookmarks`, issue #30). Sentence 2, the downloads row, is already on `main`: it landed in commit 6ff25eda (PQ-16, #29) without an approval item, so it is quoted here too. Only the sentences not yet written are left for later PRs to append here: the PQ-23 §7 sentence on deleting downloaded audio (if it adds one) and the changed followed-shows row (PQ-27).
+**Why:** The player-features plan (`docs/roadmap/player-features.md` §1, founder question 6) adds new rows to the privacy policy's §1 table of what stays on your phone. Changing a privacy-policy sentence needs your approval (`docs/roadmap/README.md` Q34), and these rows sit on a path that would otherwise merge without a review window. So each one is quoted below as written and waits here for your yes. Sentence 1 is in the bookmarks PR (branch `feat/w2-pq-12-14-bookmarks`, issue #30). Sentence 2, the downloads row, is already on `main`: it landed in commit 6ff25eda (PQ-16, #29) without an approval item, so it is quoted here too. Sentences 3 and 4 are in the followed-shows PR (branch `health/ch-pq-26-27`, PQ-26/27, issue #761). Only the PQ-23 §7 sentence on deleting downloaded audio (if it adds one) is left for a later PR to append here.
 
 Sentence 1, the new `cp_bookmarks` row in `docs/legal/privacy-policy.md` §1 (bookmarks stay on the device, with no new event type, under `docs/roadmap/README.md` Q19):
 
@@ -93,6 +93,14 @@ Sentence 1, the new `cp_bookmarks` row in `docs/legal/privacy-policy.md` §1 (bo
 Sentence 2, the `cp_downloads` row in `docs/legal/privacy-policy.md` §1, already on `main` since 6ff25eda (PQ-16, #29):
 
 > | `cp_downloads` | Which episodes you downloaded for offline listening, each one's download state and size, the file's location on this device, the episode's length as downloaded, and your "download over cellular" setting. The audio files themselves sit in the app's own storage on the device (Application Support on iPhone, the app's files directory on Android), are never backed up, and are deleted by "Delete my data" and by removing the download | **No** |
+
+Sentence 3, the changed `cp_starred_shows` row in §1 (it said "No notifications"; followed shows now get an "N new" mark in Library, and no phone notification):
+
+> | `cp_starred_shows` | A per-device map of shows you followed from a show page (the Follow button; the key keeps its older "starred" name) — a lightweight favorite, separate from episode saves (`cp_saved`). For each show it also keeps whether new-episode alerts are on (on unless you turn them off on the show's page), when 4a last checked the show for new episodes, the newest publish date that check found, the newest one you have seen, and how many are new. New episodes are marked in your Library on this device only; there is no phone notification. The check asks our API for the show's latest episodes (§4.3). No auto-download, following a show never adds its new episodes anywhere, and never changes what 4a surfaces to you elsewhere | **No** |
+
+Sentence 4, added to §4.3's Vercel paragraph (the same PR also points `data-safety.md`'s "§2 states it" at §4.3, where it is now true):
+
+> Opening a show's page, and the check for new episodes of the shows you follow (`app.js:checkFollowedShows()`, at most once every six hours per show, while 4a is open), ask the same API for that show's latest episodes: the request carries the show's id and the usual request metadata, and nothing about you.
 
 **Steps:**
 1. Read the sentence(s) above.

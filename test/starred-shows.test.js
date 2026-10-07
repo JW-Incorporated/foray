@@ -4,11 +4,15 @@
  * Kanban card: Build: starred shows (follow-lite) + dedicated Starred
  * Shows page.
  *
- * Deliberately NOT subscribe semantics -- no notifications, no
- * auto-download, no algorithmic surfacing. A lightweight per-device
- * marker, mirroring the existing episode star (`cp_saved`) pattern
- * exactly, keyed on show_id under its own storage key (`cp_starred_shows`)
- * so it never collides with episode stars.
+ * Deliberately NOT subscribe semantics -- nothing queued, no
+ * auto-download, no algorithmic surfacing, and no phone (OS) notification.
+ * A per-device marker, mirroring the existing episode star (`cp_saved`)
+ * pattern, keyed on show_id under its own storage key (`cp_starred_shows`)
+ * so it never collides with episode stars. Since PQ-26 (#761) a followed
+ * show is CHECKED for new episodes (the show page's own episodes request,
+ * at most every six hours) and its row is marked "N new" until the show's
+ * page is opened; a per-show switch turns that off. The mark is the whole
+ * of it: nothing is added to Up Next or anywhere else.
  *
  * WHAT THIS PROVES, in order:
  *  1. toggleShowStar/isShowStarred round-trip through cp_starred_shows,
@@ -26,6 +30,12 @@
  *     top-level drawer entry (the menu is five named pages since 2026-09-03).
  *  7. Starring a show never touches cp_saved (the episode star store) --
  *     the two features share a pattern, not a storage key.
+ *  8. PQ-26 (#761): checkFollowedShows writes what show-alerts.js says (a
+ *     count past the watermark, a seeded watermark on a first check), leaves
+ *     a failed check untouched, skips alerts-off and unplaceable pi: shows
+ *     and takes at most six, oldest check first; the row prints "N new";
+ *     opening the show page clears it; the show page's switch writes
+ *     `alerts: false`.
  *
  * Every test names the mutation that kills it, per CLAUDE.md "a green test
  * is not evidence until you have broken it".
@@ -71,7 +81,7 @@ const PAGE_IDS = [
   "sh-note", "sh-results",
 ];
 
-function mount({ seed = {} } = {}) {
+function mount({ seed = {}, fetch = () => new Promise(() => {}) } = {}) {
   const store = new Map(Object.entries(seed).map(([k, v]) => [k, String(v)]));
   const byId = new Map(PAGE_IDS.map((id) => {
     const el = makeEl("div");
@@ -99,7 +109,7 @@ function mount({ seed = {} } = {}) {
 
   const ctx = {
     console: { ...console, warn() {}, error() {} },
-    fetch: () => new Promise(() => {}),
+    fetch,
     localStorage: {
       get length() { return store.size; },
       key: (i) => [...store.keys()][i] ?? null,
@@ -207,10 +217,10 @@ test("renderShow includes an unstarred showStarBtn by default, and starring upda
   assert.ok(html.includes("✓ Followed"), "followed label must read '✓ Followed'");
 });
 
-test("REVIEW: the show page says, beside Follow, that following delivers no new episodes", () => {
-  /* Apple's Follow promises new episodes; 4a's is a bookmark. The only line
-     saying so was on #/starred-shows, which the tap never shows, so a switcher
-     would wait for episodes that never come. MUTATION: drop the
+test("REVIEW: the show page says, beside Follow, that following queues nothing and sends no notification", () => {
+  /* Apple's Follow delivers new episodes; 4a's marks them and no more. The
+     only line saying so was on #/starred-shows, which the tap never shows, so
+     a switcher would wait for episodes that never come. MUTATION: drop the
      `show-follow-note` paragraph from renderShow's template. */
   const m = mount();
   m.state.catalog = { shows: [{ show_id: "s-2", title: "Show Two", artwork_url: null }] };
@@ -222,15 +232,21 @@ test("REVIEW: the show page says, beside Follow, that following delivers no new 
   const btnAt = html.indexOf('data-show-star="s-2"');
   const noteAt = html.indexOf("show-follow-note");
   assert.ok(btnAt > 0 && noteAt > btnAt, "the note sits right after the Follow button");
-  /* Said as what Follow IS (audit round 2, copy-14): new episodes stay on the
-     show's page and nothing is queued. MUTATION: restore "4a doesn't add its
-     new episodes anywhere" — the bug-report wording. */
-  assert.match(html.slice(noteAt, noteAt + 240), /New episodes stay on the show(&#39;|')s page; nothing is queued for you\./);
+  /* Said as what Follow IS (audit round 2, copy-14), and since PQ-26 what the
+     "N new" mark is not: nothing is queued, and no phone notification.
+     MUTATION: restore "4a doesn't add its new episodes anywhere" — the
+     bug-report wording; or drop the notification clause from FOLLOW_NOTE. */
+  assert.match(html.slice(noteAt, noteAt + 260), /marked when it has new episodes\. Nothing is queued for you, and 4a sends no phone notifications\./);
   assert.doesNotMatch(html, /doesn(&#39;|')t add its new episodes anywhere/);
   const policy = require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "docs/legal/privacy-policy.md"), "utf8");
   const row = policy.split("\n").find((l) => l.startsWith("| `cp_starred_shows`"));
   assert.match(row, /followed from a show page/, "the policy names the control the listener actually taps");
   assert.match(row, /never adds its new episodes anywhere/);
+  /* PQ-27: the row says the mark is not a phone notification and points at
+     the §4.3 sentence saying what the check sends. MUTATION: put "No
+     notifications" back as the row's whole account of alerts. */
+  assert.match(row, /no phone notification/);
+  assert.match(row, /§4\.3/);
 });
 
 /* ==================================================================== */
@@ -393,4 +409,149 @@ test("starring a show never writes to cp_saved (the episode-star store)", () => 
   m.state.catalog = { shows: [{ show_id: "s-3", title: "Show Three", artwork_url: null }] };
   m.ctx.toggleShowStar("s-3");
   assert.strictEqual(m.store.get("cp_saved"), undefined, "starring a show must not touch cp_saved");
+});
+
+/* ==================================================================== */
+/* 8. NEW EPISODES OF FOLLOWED SHOWS (PQ-26, #761)                        */
+/* ==================================================================== */
+
+const { pathToFileURL } = require("node:url");
+const showAlertsModule = () => import(pathToFileURL(path.join(ROOT, "player/show-alerts.js")).href);
+
+/** A fetch that answers `api/shows/<id>/episodes` from `pages` (id → rows, or
+    a number for an HTTP failure) and records every show id it was asked for. */
+function episodesFetch(pages) {
+  const asked = [];
+  const fn = (url) => {
+    const m = /api\/shows\/([^/?]+)\/episodes/.exec(String(url));
+    if (!m) return new Promise(() => {});
+    const id = decodeURIComponent(m[1]);
+    asked.push(id);
+    const page = pages[id];
+    if (typeof page === "number") return Promise.resolve({ ok: false, status: page, json: async () => ({}) });
+    return Promise.resolve({ ok: true, status: 200, json: async () => ({ episodes: page || [], next_cursor: null }) });
+  };
+  return { fn, asked };
+}
+
+const OLD_CHECK = "2026-09-01T00:00:00.000Z";
+const followed = (id, extra = {}) => ({ show_id: id, title: `Show ${id}`, artwork_url: null, starred_at: OLD_CHECK, ...extra });
+const storedShows = (m) => JSON.parse(m.store.get("cp_starred_shows"));
+
+test("PQ-26: a check that finds two newer episodes writes unseen_count 2; a failed check leaves its record untouched", async () => {
+  /* MUTATION: drop the updateFollowedShow(...) save in checkFollowedShows —
+     the count is computed and thrown away, and `unseen_count` stays 0.
+     MUTATION 2: treat `episodes: null` as an empty page (`res.episodes || []`)
+     — the failed show is stamped `checked_at` and stops being due for six
+     hours without having been checked, and the untouched assertion fails. */
+  const watermarked = followed("s-a", { checked_at: OLD_CHECK, seen_published_at: "2026-09-10T00:00:00Z", latest_published_at: "2026-09-10T00:00:00Z", unseen_count: 0 });
+  const failing = followed("s-b", { checked_at: OLD_CHECK, seen_published_at: "2026-09-10T00:00:00Z" });
+  const { fn, asked } = episodesFetch({
+    "s-a": [
+      { title: "Newest", published_at: "2026-09-20T00:00:00Z" },
+      { title: "Newer", published_at: "2026-09-15T00:00:00Z" },
+      { title: "Seen", published_at: "2026-09-10T00:00:00Z" },
+    ],
+    "s-b": 503,
+  });
+  const m = mount({ fetch: fn, seed: { cp_starred_shows: JSON.stringify({ "s-a": watermarked, "s-b": failing }) } });
+  m.ctx.forayShowAlerts = await showAlertsModule();
+  const written = await m.ctx.checkFollowedShows();
+  assert.deepStrictEqual(asked.slice().sort(), ["s-a", "s-b"], "both due shows are asked");
+  assert.strictEqual(written, 1, "only the answered check is written");
+  const after = storedShows(m);
+  assert.strictEqual(after["s-a"].unseen_count, 2);
+  assert.strictEqual(after["s-a"].latest_published_at, "2026-09-20T00:00:00Z");
+  assert.strictEqual(after["s-a"].seen_published_at, "2026-09-10T00:00:00Z", "the watermark waits for the listener");
+  assert.notStrictEqual(after["s-a"].checked_at, OLD_CHECK, "the check is stamped");
+  assert.deepStrictEqual(after["s-b"], failing, "a failed check changes nothing");
+});
+
+test("PQ-26: a fresh follow is checked at once, seeds its watermark and shows no badge", async () => {
+  /* Following is not a backlog of every episode the show ever published.
+     MUTATION: drop `checkFollowedShows()` from toggleShowStar — nothing seeds
+     the watermark and `seen_published_at` is absent. MUTATION 2: render the
+     badge on `n >= 0` in starredShowRow — "0 new" appears. */
+  const { fn } = episodesFetch({ "s-f": [{ title: "Back catalogue", published_at: "2026-09-20T00:00:00Z" }] });
+  const m = mount({ fetch: fn });
+  m.state.catalog = { shows: [{ show_id: "s-f", title: "Fresh Show", artwork_url: null }] };
+  m.ctx.forayShowAlerts = await showAlertsModule();
+  m.ctx.toggleShowStar("s-f");
+  await m.evalIn("followedCheckInFlight");
+  const rec = storedShows(m)["s-f"];
+  assert.strictEqual(rec.seen_published_at, "2026-09-20T00:00:00Z", "the first check seeds the watermark to the newest row");
+  assert.strictEqual(rec.unseen_count, 0);
+  m.ctx.renderStarredShows();
+  assert.doesNotMatch(m.view(), /show-new-badge/);
+});
+
+test("PQ-26: a followed show with new episodes is marked \"2 new\" on #/starred-shows", () => {
+  /* MUTATION: drop the badge span from starredShowRow. */
+  const m = mount({ seed: { cp_starred_shows: JSON.stringify({
+    "s-n": followed("s-n", { unseen_count: 2 }),
+    "s-q": followed("s-q", { unseen_count: 0 }),
+  }) } });
+  m.state.catalog = { shows: [] };
+  m.ctx.renderStarredShows();
+  const html = m.view();
+  assert.match(html, /<span class="show-new-badge" aria-label="2 new episodes">2 new<\/span>/);
+  assert.strictEqual((html.match(/show-new-badge/g) || []).length, 1, "a show with nothing new carries no badge");
+});
+
+test("PQ-26: opening a followed show's page clears its badge", async () => {
+  /* MUTATION: drop `markFollowedShowSeen(show.show_id)` from renderShow — the
+     count stays 2 and the watermark stays behind. */
+  const m = mount({ seed: { cp_starred_shows: JSON.stringify({
+    "s-o": followed("s-o", { checked_at: OLD_CHECK, seen_published_at: "2026-09-10T00:00:00Z", latest_published_at: "2026-09-20T00:00:00Z", unseen_count: 2 }),
+  }) } });
+  m.state.catalog = { shows: [{ show_id: "s-o", title: "Show s-o", artwork_url: null }] };
+  m.state.discover = { items: [] };
+  m.state.taxonomy = { nodes: [] };
+  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+  m.ctx.forayShowAlerts = await showAlertsModule();
+  m.ctx.renderShow("s-o");
+  const rec = storedShows(m)["s-o"];
+  assert.strictEqual(rec.unseen_count, 0);
+  assert.strictEqual(rec.seen_published_at, "2026-09-20T00:00:00Z");
+  m.ctx.renderStarredShows();
+  assert.doesNotMatch(m.view(), /show-new-badge/);
+});
+
+test("PQ-26: the show page's switch writes alerts:false, and a later check skips that show", async () => {
+  /* MUTATION: drop `rules.alertsOn(r) &&` from checkFollowedShows' filter —
+     the switched-off show is asked again. MUTATION 2: drop `.slice(0,
+     FOLLOWED_CHECK_CAP)` — every due show is asked in one call. MUTATION 3:
+     drop the `pi:` shard-key filter — a pi: show with no shard key is asked
+     without one (a 404 by construction). MUTATION 4: drop the setAlerts
+     save in toggleShowAlerts — the record keeps alerts on. */
+  const others = {};
+  for (let i = 1; i <= 7; i++) others[`s-${i}`] = followed(`s-${i}`, { checked_at: `2026-08-0${i}T00:00:00.000Z` });
+  const { fn, asked } = episodesFetch({});
+  const m = mount({ fetch: fn, seed: { cp_starred_shows: JSON.stringify({
+    "s-x": followed("s-x"),
+    /* A followed pi: show is found through its own follow record
+       (rememberedShardShow), so its key comes from the title it was followed
+       under; a title that yields no shard key is the case left to skip. */
+    "pi:404": followed("pi:404", { title: "!!" }),
+    ...others,
+  }) } });
+  m.state.catalog = { shows: [{ show_id: "s-x", title: "Show s-x", artwork_url: null }] };
+  m.state.discover = { items: [] };
+  m.state.taxonomy = { nodes: [] };
+  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+  m.ctx.forayShowAlerts = await showAlertsModule();
+  m.ctx.renderShow("s-x");
+  assert.match(m.view(), /<button type="button" class="show-star alerts-toggle on" data-show-alerts="s-x" aria-pressed="true">New-episode alerts: on<\/button>/,
+    "a followed show's page carries the switch, on");
+  m.ctx.toggleShowAlerts("s-x");
+  assert.strictEqual(storedShows(m)["s-x"].alerts, false, "the switch writes alerts:false on the follow record");
+  m.ctx.renderShow("s-x");
+  assert.match(m.view(), /aria-pressed="false">New-episode alerts: off</);
+
+  asked.length = 0; // the show page's own episodes request is not the check
+  await m.evalIn("followedCheckInFlight");
+  await m.ctx.checkFollowedShows({ force: true });
+  assert.ok(!asked.includes("s-x"), "a show with alerts off is never checked");
+  assert.ok(!asked.includes("pi:404"), "a pi: show with no shard key is skipped");
+  assert.deepStrictEqual(asked, ["s-1", "s-2", "s-3", "s-4", "s-5", "s-6"], "at most six per call, oldest check first");
 });
