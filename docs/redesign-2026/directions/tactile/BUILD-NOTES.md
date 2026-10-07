@@ -1,5 +1,11 @@
 # Dial: build notes
 
+> **Owner decision (final, 2026-10-06 20:55 PDT): display and title face = Big
+> Shoulders**, with the Big Shoulders review-candidate values in §1. Drop
+> Anybody, Dela Gothic One and Archivo (fonts, tokens, @font-face) and the
+> review-only font switcher (`prototype/font-preview.*`). Body stays Bricolage.
+> Shoot with `--scheme light` (cream is primary; dark is a secondary check).
+
 Everything a front-end builder needs to reproduce the "Dial" direction
 without the art director. Read `DIRECTION.md` first for the point of view;
 this file is the measurements. Where a number here and a sentence there

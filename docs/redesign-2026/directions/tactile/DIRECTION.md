@@ -1,5 +1,14 @@
 # Direction: Dial
 
+> **Owner decisions (final, 2026-10-06).** Tactile is one of the two directions
+> being built (with Ambient). **The display and title face is Big Shoulders**
+> (owner, 20:55 PDT), the round-2 review candidate: use its token values from
+> BUILD-NOTES.md §1. Anybody, Dela Gothic One and Archivo are dropped, and the
+> review-only "Aa" font switcher is removed before Phase 3. Body text stays
+> Bricolage Grotesque at text sizes. Light (cream) is the primary scheme; the
+> dark palette stays as an option. Where this note and older text below
+> disagree, this note wins.
+
 **Thesis.** 4a as a beautifully made little radio: every foray is a band on
 the dial, every pick is a station, and every control is something you can
 press. Logo covered, you know it by the band (a coloured, stitched timeline

@@ -11,7 +11,9 @@ export const meta = {
   ],
 }
 
-// args: { directions: ['tactile', 'ambient'], maxIters?: 4, skipScreens?: [] }
+// args: { directions: ['tactile', 'ambient'], maxIters?: 4, skipScreens?: [], prep?: [{ direction, instruction }] }
+// prep runs first, one agent each, and must commit+push to the trunk; a failed prep stops the run.
+// Relaunch in a NEW session is safe: a unit already merged into its direction branch is skipped.
 // Every agent follows docs/redesign-2026/build-loop.md; this script only fixes
 // order, gating and who merges what. Resume: same args -> cached prefix.
 const DIRS = (args && args.directions) || []
@@ -22,11 +24,15 @@ const ROOT = `${WT}\\data-local\\redesign`
 const TRUNK = 'feature/redesign-2026'
 const dirBranch = d => `${TRUNK}-${d}`
 
-const COMMON = `You work on the 4a Redesign 2026 effort in the foray repo. Before anything else read, in the trunk checkout ${WT}: docs/redesign-2026/PLAN.md and docs/redesign-2026/build-loop.md, and follow build-loop.md exactly (it names every command, flag and path; pass --root ${ROOT} where it says so, because your own worktree's data-local/ is empty). Rules that bite: never push to main, never open a PR into main, never push v* tags, never dispatch release.yml/pages.yml/android-release.yml; git add explicit paths only; never git restore / checkout -- / clean / reset --hard / bare stash; never commit screenshots or podcast artwork (renders stay under ${ROOT}); every interpolation via esc(), every href/src via safeUrl(), strict CSP (no inline style=/script), localStorage only via the shim with cp_ keys; 44px tap targets, one reduced-motion block, WCAG AA; copy rules (why <=18 words, hooks <=16, banned words, no we/us/our, "subject" not "topic"); a new test names and runs its mutation, a new suite gets a floor in test/suite-integrity.test.js. Don't ask questions: decide, write it down, keep going.`
+const COMMON = `You work on the 4a Redesign 2026 effort in the foray repo. Before anything else read, in the trunk checkout ${WT}: docs/redesign-2026/PLAN.md and docs/redesign-2026/build-loop.md, and follow build-loop.md exactly (it names every command, flag and path; pass --root ${ROOT} where it says so, because your own worktree's data-local/ is empty). Rules that bite: never push to main, never open a PR into main, never push v* tags, never dispatch release.yml/pages.yml/android-release.yml; git add explicit paths only; never git restore / checkout -- / clean / reset --hard / bare stash; never commit screenshots or podcast artwork (renders stay under ${ROOT}); every interpolation via esc(), every href/src via safeUrl(), strict CSP (no inline style=/script), localStorage only via the shim with cp_ keys; 44px tap targets, one reduced-motion block, WCAG AA; copy rules (why <=18 words, hooks <=16, banned words, no we/us/our, "subject" not "topic"); a new test names and runs its mutation, a new suite gets a floor in test/suite-integrity.test.js. Owner decisions recorded at the top of a direction's DIRECTION.md are final. Shoot every direction in its primary colour scheme with an explicit --scheme (build-loop.md). The owner is asleep: you and the direction's art director make every decision. Don't ask questions: decide, write it down, keep going.`
 
 const inWorktree = (d, work) => `You are in an isolated git worktree. Run: git fetch origin && git checkout -B ${work} origin/${dirBranch(d)} . Commit there and push with git push -u origin ${work} (force-push only this work branch if you must redo it). Never commit to ${dirBranch(d)} directly.`
 
-const STATUS = { type: 'object', properties: { ok: { type: 'boolean' }, branch: { type: 'string' }, sha: { type: 'string' }, summary: { type: 'string' }, notes: { type: 'array', items: { type: 'string' } } }, required: ['ok', 'summary'] }
+let FABLE = 0
+// Art-director calls go to Fable; if Fable fails, Opus takes the same prompt.
+const ad = (prompt, o) => agent(prompt, { ...o, model: 'fable' }).then(r => { if (r) { FABLE++; return r } return agent(prompt, { ...o, label: o.label + ':opus', model: 'opus' }) })
+
+const STATUS = { type: 'object', properties: { ok: { type: 'boolean' }, alreadyMerged: { type: 'boolean' }, branch: { type: 'string' }, sha: { type: 'string' }, summary: { type: 'string' }, notes: { type: 'array', items: { type: 'string' } } }, required: ['ok', 'summary'] }
 const PLAN = { type: 'object', properties: { screens: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, name: { type: 'string' }, acceptance: { type: 'array', items: { type: 'string' } } }, required: ['id', 'name', 'acceptance'] } }, foundation: { type: 'string' } }, required: ['screens', 'foundation'] }
 const CHECK = { type: 'object', properties: { hardPass: { type: 'boolean' }, testsPass: { type: 'boolean' }, gatesPass: { type: 'boolean' }, newDebt: { type: 'array', items: { type: 'string' } }, baselineRegressions: { type: 'array', items: { type: 'string' } }, fidelity: { type: 'string' }, implShot: { type: 'string' }, protoShot: { type: 'string' }, todayShot: { type: 'string' }, sideBySide: { type: 'string' }, summary: { type: 'string' } }, required: ['hardPass', 'testsPass', 'gatesPass', 'summary'] }
 const VERDICT = { type: 'object', properties: { winner: { type: 'string', enum: ['FIRST', 'SECOND', 'TIE'] }, confidence: { type: 'integer' }, reasons: { type: 'string' } }, required: ['winner', 'reasons'] }
@@ -51,14 +57,15 @@ const review = (d, work, what) => agent(`${COMMON}\nCode-review origin/${work} a
 async function buildUnit(d, unit, kind, phaseName, taste = true) {
   const work = `redesign/${d}-${unit.id}`
   const tag = `${d}:${unit.id}`
-  let impl = await agent(`${COMMON}\n${inWorktree(d, work)}\nDirection: ${d} (docs/redesign-2026/directions/${d}/DIRECTION.md, prototype in prototype/, screens.json). Build ${kind} "${unit.name}" per build-loop.md. Acceptance criteria:\n- ${unit.acceptance.join('\n- ')}\nRun the targeted tests and gates yourself before pushing. Return branch and sha.`, { label: `build:${tag}`, phase: phaseName, schema: STATUS, model: 'sonnet', effort: 'high', isolation: 'worktree' })
+  let impl = await agent(`${COMMON}\nFIRST: git fetch origin; if \`git log origin/${dirBranch(d)} --merges --oneline --grep "Merge ${work} into"\` prints anything, this unit is already merged: do nothing else and return ok=true, alreadyMerged=true, summary "already merged".\n${inWorktree(d, work)}\nDirection: ${d} (docs/redesign-2026/directions/${d}/DIRECTION.md, prototype in prototype/, screens.json). Build ${kind} "${unit.name}" per build-loop.md. Acceptance criteria:\n- ${unit.acceptance.join('\n- ')}\nRun the targeted tests and gates yourself before pushing. Return branch and sha.`, { label: `build:${tag}`, phase: phaseName, schema: STATUS, model: 'sonnet', effort: 'high', isolation: 'worktree' })
+  if (impl && impl.alreadyMerged) { log(`${tag}: already merged, skipped`); return { id: unit.id, merged: true, skipped: true } }
   if (!impl || !impl.ok) return { id: unit.id, merged: false, reason: 'implementer failed', detail: impl && impl.summary }
   let last = null
   for (let it = 1; it <= MAX_ITERS; it++) {
-    const chk = await agent(`${COMMON}\nVerify origin/${work} (head ${impl.sha || 'latest'}) for ${kind} "${unit.name}" of direction ${d}, read-only except data-local renders. In an isolated worktree: git fetch origin && git checkout --detach origin/${work}. Run, per build-loop.md: the test suites the change touches, gates.mjs with the known-debt allow list (new debt = any violation not in it), baseline compare (rolling app + gallery: diffs outside "${unit.name}" are regressions), and fidelity.mjs for this screen against the prototype. Save renders under ${ROOT}\\loop\\${d}\\${unit.id}\\it${it}\\ and return absolute paths to the implementation shot, the prototype shot, today's app shot of the same screen (if today has one) and the fidelity side-by-side. hardPass = tests pass AND no new gate debt AND no baseline regressions.`, { label: `check:${tag}:it${it}`, phase: phaseName, schema: CHECK, model: 'sonnet', effort: 'medium', isolation: 'worktree' })
+    const chk = await agent(`${COMMON}\nVerify origin/${work} (head ${impl.sha || 'latest'}) for ${kind} "${unit.name}" of direction ${d}, read-only except data-local renders. In an isolated worktree: git fetch origin && git checkout --detach origin/${work}. Run, per build-loop.md: the test suites the change touches, gates.mjs with the known-debt allow list (new debt = any violation not in it), baseline compare (rolling app + gallery): diffs outside "${unit.name}" are regressions UNLESS they come from shared components this unit deliberately changed per its acceptance criteria or the direction's BUILD-PLAN.md (e.g. tab bar, mini player, tokens); list those as intended in the summary, never as baselineRegressions, and fidelity.mjs for this screen against the prototype. Save renders under ${ROOT}\\loop\\${d}\\${unit.id}\\it${it}\\ and return absolute paths to the implementation shot, the prototype shot, today's app shot of the same screen (if today has one) and the fidelity side-by-side. hardPass = tests pass AND no new gate debt AND no baseline regressions.`, { label: `check:${tag}:it${it}`, phase: phaseName, schema: CHECK, model: 'sonnet', effort: 'medium', isolation: 'worktree' })
     if (!chk) { last = { it, error: 'checker died' }; break }
     const judges = []
-    if (taste && chk.sideBySide) judges.push(agent(`You are a design-fidelity critic. Read ${WT}\\docs\\redesign-2026\\judge\\rubric.md and docs/redesign-2026/directions/${d}/DIRECTION.md in ${WT}. Look at the side-by-side ${chk.sideBySide} (left = the direction's prototype, right = the implementation), and the full shots ${chk.protoShot || ''} and ${chk.implShot || ''} with the Read tool. List only deviations that change the design's intent or quality (type, spacing rhythm, colour, hierarchy, motion cues, iconography, imagery treatment); real-data differences (titles, artwork) are not deviations. faithful=false if any such deviation exists. Do not modify files.`, { label: `fidelity:${tag}:it${it}`, phase: phaseName, schema: FIDELITY, model: 'opus', effort: 'medium' }))
+    if (taste && chk.sideBySide) judges.push(ad(`You are the art director for direction ${d}, checking that the build realises your design. Read ${WT}\\docs\\redesign-2026\\judge\\rubric.md and docs/redesign-2026/directions/${d}/DIRECTION.md in ${WT}. Look at the side-by-side ${chk.sideBySide} (left = the direction's prototype, right = the implementation), and the full shots ${chk.protoShot || ''} and ${chk.implShot || ''} with the Read tool. List only deviations that change the design's intent or quality (type, spacing rhythm, colour, hierarchy, motion cues, iconography, imagery treatment); real-data differences (titles, artwork) are not deviations. faithful=false if any such deviation exists. Do not modify files.`, { label: `fidelity:${tag}:it${it}`, phase: phaseName, schema: FIDELITY, effort: 'medium' }))
     if (taste && chk.implShot && chk.todayShot) {
       const vs = (first, second, j) => agent(`You are a design judge. Read the rubric at ${WT}\\docs\\redesign-2026\\judge\\rubric.md and follow ${WT}\\docs\\redesign-2026\\judge\\protocol.md. Compare two screens of the same app (FIRST = ${first}, SECOND = ${second}; use the Read tool). Judge the design as a whole. Return FIRST, SECOND or TIE, confidence 1-5, and the 2-3 decisive reasons in at most 50 words. Do not modify files.`, { label: `judge:${tag}:it${it}:${j}`, phase: phaseName, schema: VERDICT, model: 'opus', effort: 'medium' })
       judges.push(vs(chk.implShot, chk.todayShot, 'a').then(v => v && { better: v.winner === 'FIRST', reasons: v.reasons }))
@@ -95,8 +102,8 @@ async function buildUnit(d, unit, kind, phaseName, taste = true) {
 
 const FOUNDATION = [
   { id: 'p3-tokens', name: 'design tokens including motion tokens and the single reduced-motion block' },
-  { id: 'p3-icons', name: 'SVG icon sprite replacing Unicode glyph icons, CSP-safe <use> references' },
-  { id: 'p3-primitives', name: 'primitives (buttons, rows, cards, sheets, tab bar, artwork frame) on the tokens' },
+  { id: 'p3-icons', name: 'SVG icon sprite (CSP-safe <use> references) shown in the gallery; screens swap their Unicode glyphs for it in Phase 4' },
+  { id: 'p3-primitives', name: 'primitives (buttons, rows, cards, sheets, tab bar, artwork frame) on the tokens, shown in the gallery; screens adopt them in Phase 4' },
   { id: 'p3-gallery', name: 'component gallery at #/gallery behind the lab flag, recorded as the gallery baseline' },
 ]
 
@@ -105,15 +112,21 @@ const FOUNDATION = [
 phase('Plan')
 await agent(`${COMMON}\nIn the trunk checkout ${WT} (do not modify tracked files), run node tools/ui-lab/baseline.mjs list --root ${ROOT}. If no baseline named trunk-app exists, record one of the trunk's current app per build-loop.md (record --name trunk-app --target app --no-remote-images --root ${ROOT}). Return ok=true when it exists.`, { label: 'baseline:trunk-app', phase: 'Plan', schema: STATUS, model: 'sonnet', effort: 'low' })
 
+for (const pr of ((args && args.prep) || [])) {
+  const r = await agent(`${COMMON}\nThis is an assigned task from the orchestrator. ${pr.instruction}\nWhen done, commit with explicit paths only and push the trunk ${TRUNK} (git pull --ff-only first). Return ok=true only if it is pushed.`, { label: `prep:${pr.direction}`, phase: 'Plan', schema: STATUS, model: 'sonnet', effort: 'high' })
+  if (!r || !r.ok) throw new Error(`prep for ${pr.direction} failed: ${r ? r.summary : 'agent died'}`)
+  log(`prep ${pr.direction}: ${r.summary}`)
+}
+
 const results = await pipeline(DIRS,
   // Plan
-  d => agent(`${COMMON}\nCreate branch ${dirBranch(d)} from origin/${TRUNK} if it does not exist on origin (in an isolated worktree: git fetch origin; git push origin origin/${TRUNK}:refs/heads/${dirBranch(d)}). Then read docs/redesign-2026/directions/${d}/ (DIRECTION.md, BUILD-NOTES.md, critique-r3.md, screens.json, the prototype) and build-loop.md, and write docs/redesign-2026/directions/${d}/BUILD-PLAN.md on a work branch redesign/${d}-plan off ${dirBranch(d)}: the foundation decisions specific to ${d} (token values, type, motion, icon list) and the ordered screen list, Now Playing first, each with 3-6 testable acceptance criteria drawn from the prototype. Push the work branch, then merge it into ${dirBranch(d)} yourself (doc-only) and push. Return the same screen list. Skip screens with no app state today only if build-loop.md says so; otherwise include them and say they need a new state.`, { label: `plan:${d}`, phase: 'Plan', schema: PLAN, model: 'opus', effort: 'high', isolation: 'worktree' }),
+  d => ad(`${COMMON}\nYou are the art director for direction ${d}. Create branch ${dirBranch(d)} from origin/${TRUNK} if it does not exist on origin (in an isolated worktree: git fetch origin; git push origin origin/${TRUNK}:refs/heads/${dirBranch(d)}). Then read docs/redesign-2026/directions/${d}/ (DIRECTION.md, BUILD-NOTES.md, critique-r3.md, screens.json, the prototype) and build-loop.md, and write docs/redesign-2026/directions/${d}/BUILD-PLAN.md on a work branch redesign/${d}-plan off ${dirBranch(d)}: the foundation decisions specific to ${d} (token values, type, motion, icon list) and the ordered screen list, Now Playing first, each with 3-6 testable acceptance criteria drawn from the prototype. Push the work branch, then merge it into ${dirBranch(d)} yourself (doc-only) and push. Return the same screen list. Skip screens with no app state today only if build-loop.md says so; otherwise include them and say they need a new state.`, { label: `plan:${d}`, phase: 'Plan', schema: PLAN, effort: 'high', isolation: 'worktree' }),
   // Foundation, sequential within a direction
   async (plan, d) => {
     if (!plan) return null
     const found = []
     for (const f of FOUNDATION) {
-      const unit = { ...f, acceptance: [`Matches the ${d} decisions in docs/redesign-2026/directions/${d}/BUILD-PLAN.md`, 'Current app (no lab/redesign flag) is pixel-identical: baseline compare against the trunk app baseline is clean', 'All suites the change touches pass; new tests carry executed mutations'] }
+      const unit = { ...f, acceptance: [`Matches the ${d} decisions in docs/redesign-2026/directions/${d}/BUILD-PLAN.md`, 'Screens are not changed yet: the foundation adds the system and the gallery, and the app screens stay pixel-identical to the trunk-app baseline (they adopt the system screen by screen in Phase 4)', 'All suites the change touches pass; new tests carry executed mutations'] }
       found.push(await buildUnit(d, unit, 'the foundation step', 'Foundation', false))
     }
     await progress(`${d}: Phase 3 foundation ${found.filter(r => r.merged).length}/${FOUNDATION.length} merged into ${dirBranch(d)}`)
@@ -152,4 +165,4 @@ const results = await pipeline(DIRS,
 )
 
 await trunkChain
-return { results }
+return { results, fableCalls: FABLE }

@@ -48,12 +48,15 @@ through Editorial's tab bar. Detail: `checkpoint/README.md`.
 
 (Agent/workflow and what it is doing. Clear an entry when it lands.)
 
-(Nothing in flight.) **Waiting for the owner to choose Tactile's header font**: Anybody,
-Big Shoulders, Dela Gothic One (fun picks, round 2; default Anybody) or the fallback Archivo
-(done 2026-10-06, round 7). When chosen: set the chosen face in tactile's
-DIRECTION.md/BUILD-NOTES.md if it is not the default, note that Phase 3 must drop the review-only
-"Aa" switcher, then launch phases 3-5:
-`Workflow({scriptPath: "<trunk>/docs/redesign-2026/workflows/build-directions.workflow.js", args: {directions: ["tactile", "ambient"]}})`.
+(Nothing in flight.) **Ready to launch phases 3-5** for Tactile + Ambient, exactly as in
+`docs/redesign-2026/RESTART.md` step 4 (the args include a Tactile prep step). Owner chose
+Tactile's header font: **Big Shoulders** (2026-10-06 20:55 PDT), recorded at the top of
+tactile's DIRECTION.md and BUILD-NOTES.md; the prep step makes it the prototype default,
+removes the "Aa" switcher and the dropped fonts, and republishes the Tactile artifact.
+The build workflow was hardened for an unattended night (foundation adds the system
+without changing screens, shared-component changes are not regressions, Fable art
+director for plan + fidelity calls, already-merged units are skipped on relaunch);
+stub dry run clean.
 Open Phase 3 item from the r5 critique: Tactile band codes double at 412px (per-bar label gate).
 
 Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40-22:40 PDT, 128 agents,

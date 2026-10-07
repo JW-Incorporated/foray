@@ -20,7 +20,8 @@ that runs **beside** the current one, not instead of it.
    him. Free/OFL fonts only.
 4. **App icon is out of scope.** Lab builds use today's icon with a LAB badge.
 5. **Mac CI minutes: fine, as needed.**
-6. **Fable 5.1 for the art directors** (Phase 2 only). Logged in PROGRESS.md.
+6. **Fable 5.1 for the art directors** (Phase 2; extended to phases 3-5 for
+   art-director calls by the owner on 2026-10-06). Logged in PROGRESS.md.
 7. **Devices:** Joey = Android phone, Wyatt = iPhone. **iPad out of scope.**
 8. **One checkpoint**, after Phase 2: the owner picks the directions to build
    (2 recommended).
@@ -30,6 +31,10 @@ that runs **beside** the current one, not instead of it.
 10. **Token-efficient.** The orchestrating session keeps a small context;
     agents do the reading and building and return short summaries.
 11. **The current app must not be affected** (see Isolation).
+12. **Checkpoint decided** (owner, 2026-10-06): build **Tactile** and **Ambient**.
+    Tactile's display and title face is **Big Shoulders** (20:55 PDT); its dark
+    palette stays as an option. From here on, every decision is the orchestrator's
+    or the direction's art director's (Fable): the owner is not consulted overnight.
 
 ## Isolation — the current app stays untouched
 
