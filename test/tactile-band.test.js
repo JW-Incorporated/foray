@@ -65,12 +65,20 @@ test("progress uses a clip path and scrub exposes the raw accessible value", () 
 });
 
 test("narration is hatched outside mini mode and mini has no station labels", () => {
-  // MUTATION: remove the hatch fill URL from narration rects -> the detail assertion fails.
+  // MUTATION: remove the hatch path from the pattern -> the authored-tick assertion fails.
   const detail = p.tactileBand({ id: "hatched", kind: "detail", segments });
   const mini = p.tactileBand({ id: "mini", kind: "mini", segments });
   assert.match(detail, /t-band__bar--narration" fill="url\(#hatched-hatch\)"/);
+  assert.match(detail, /class="t-band__hatch-bg"/);
+  assert.match(detail, /M-3 12L9 0M9 12L21 0M21 12L33 0" class="t-band__hatch"/);
   assert.doesNotMatch(mini, /t-band__code/);
   assert.match(rule(".band--mini"), /height:\s*var\(--s-2\)/);
+});
+
+test("the scrub needle has a filled cap standing above the well", () => {
+  // MUTATION: move the needle circle back to `cy="3"` -> its cap sits inside the well and this test fails.
+  const html = p.tactileBand({ id: "needle-cap", kind: "scrub", segments, progress: .5 });
+  assert.match(html, /class="needle"[^>]*><rect x="-1" y="-3" width="2" height="45"[^>]*><\/rect><circle cx="0" cy="-3" r="5"><\/circle>/);
 });
 
 function scrubberFixture(value = 30) {

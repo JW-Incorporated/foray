@@ -560,6 +560,12 @@ test("Tactile tint follows the current enamel and raises its scrim when contrast
   assert.match(NP_TEXT, /Math\.max\(\.1, oklch\.c\)/);
 });
 
+test("an earlier artwork sample cannot overwrite the active Foray station tint", () => {
+  /* MUTATION: remove `parts.tintRequest === tintRequest` -> red because a late episode promise can repaint the Foray mauve. */
+  assert.match(NP_FLAT_TEXT, /var tintRequest = \(parts\.tintRequest \|\| 0\) \+ 1/);
+  assert.match(NP_FLAT_TEXT, /if \(parts\.tintRequest === tintRequest && !parts\.sheet\.classList\.contains\("np--foray"\)\) dialApplyNowPlayingTint/);
+});
+
 test("Tactile hero and transport preserve the ruled phone geometry", () => {
   /* MUTATIONS: change the 280px hero width or the 80px Play override -> red. */
   assert.match(CSS_RULES, /\.np__art \{[^}]*width:\s*280px;[^}]*height:\s*280px/);
@@ -567,7 +573,7 @@ test("Tactile hero and transport preserve the ruled phone geometry", () => {
   assert.match(CSS_RULES, /\.np\.np--three-title \.np__art \{ width: 160px; height: 160px; \}/);
   assert.match(CSS_RULES, /\.np \.transport \{[^}]*gap:\s*var\(--s-6\)/);
   assert.match(CSS_RULES, /\.np \.transport \.fp-big \{[^}]*width:\s*var\(--key-xl\)[^}]*height:\s*var\(--key-xl\)/);
-  assert.match(CSS_RULES, /\.np \.transport \.fp-prev,[^{]*\.np \.transport \.fp-next \{[^}]*width:\s*var\(--key-lg\)[^}]*height:\s*var\(--key-lg\)/);
+  assert.match(CSS_RULES, /\.np \.transport \.keycap--lg \{[^}]*width:\s*var\(--key-lg\)[^}]*height:\s*var\(--key-lg\)/);
   assert.match(NP_FLAT_TEXT, /parts\.row\.classList\.add\("transport"\)/);
 });
 
@@ -579,19 +585,45 @@ test("Tactile scrubber keeps its 56px band, snapping and spoken show-aware clock
   assert.match(FLAT_TEXT, /"ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"/);
 });
 
-test("Tactile Foray chips keep the station and narration provenance together", () => {
-  /* MUTATION: append only `chip` in dialPaintChip -> red. */
-  assert.match(NP_FLAT_TEXT, /parts\.chips\.append\(chip, narration\)/);
-  assert.match(NP_FLAT_TEXT, /"4a narration"/);
+test("Tactile Foray provenance shows the station or narration under the needle, never both", () => {
+  /* MUTATION: delete the `return` after appending the narration chip -> red because both chips can render. */
+  assert.match(NP_TEXT, /parts\.chips\.append\(narration\);\s*return;\s*}/);
+  assert.doesNotMatch(NP_FLAT_TEXT, /parts\.chips\.append\(chip, narration\)/);
+  assert.match(NP_FLAT_TEXT, /var station = dialCurrentStation\(d\); var fallback = dialStationToken/);
 });
 
-test("Tactile detail remains below a sticky dock and exposes seekable 56 and 48px rows", () => {
-  /* MUTATION: remove `top.append(dock)` -> red and the dock falls below detail. */
-  assert.match(NP_FLAT, /top\.append\(dock\); parts\.scroll\.classList/);
+test("Tactile detail scrolls beneath a bottom-pinned dock and keeps seekable 56 and 48px rows", () => {
+  /* MUTATION: change `.np__dock` from `position: absolute` to `position: sticky` -> red and Play returns to the scroll flow. */
+  assert.match(NP_FLAT, /sheet\.replaceChildren\(bg, parts\.grabZone, parts\.scroll, dock\)/);
   assert.match(CSS_RULES, /\.np__top \{[^}]*min-height:\s*calc\(100% - 176px - var\(--safe-b\)\)/);
-  assert.match(CSS_RULES, /\.np__dock \{[^}]*position:\s*sticky[^}]*bottom:\s*calc\(var\(--safe-b\) \+ var\(--s-4\)\)/);
+  assert.match(CSS_RULES, /\.np__dock \{[^}]*position:\s*absolute[^}]*bottom:\s*calc\(var\(--safe-b\) \+ var\(--s-1\)\)/);
+  assert.match(CSS_RULES, /\.np__dock::before \{[^}]*linear-gradient\(to bottom, transparent, var\(--paper\) 58%\)/);
   assert.match(CSS_RULES, /\.np \.segrow \{[^}]*min-height:\s*56px/);
   assert.match(CSS_RULES, /\.np__chapter \{[^}]*min-height:\s*48px/);
+});
+
+test("Tactile transport uses circular 56/80/56 keys with an attached darker lip and custom skip marks", () => {
+  /* MUTATION: remove the explicit `width: var(--key-lg)` override -> red and legacy padding squashes the skip keys. */
+  assert.match(CSS_RULES, /\.np \.transport \.keycap--lg \{\s*box-sizing:\s*border-box;\s*width:\s*var\(--key-lg\)[^}]*height:\s*var\(--key-lg\)[^}]*padding:\s*0/);
+  assert.match(CSS_RULES, /\.np \.transport \.keycap::after \{[^}]*inset:\s*0[^}]*border-radius:\s*inherit[^}]*translateY\(var\(--lip\)\)/);
+  assert.match(NP_FLAT_TEXT, /parts\.backBtn\.innerHTML = dialNpIcon\("skip-15", "lg"\)/);
+  assert.match(NP_FLAT_TEXT, /parts\.fwdBtn\.innerHTML = dialNpIcon\("skip-30", "lg"\)/);
+});
+
+test("Tactile readout, band labels, chips and grabber use the ruled high-contrast materials", () => {
+  /* MUTATION: change `.np__read .readout-lg` from `var(--ink)` to `var(--ink-2)` -> red. */
+  assert.match(CSS_RULES, /\.np__read \.readout-lg \{[^}]*color:\s*var\(--ink\)/);
+  assert.match(CSS_RULES, /\.np__band \.t-band__code \{[^}]*var\(--w-label\) var\(--t-label\) var\(--font-text\)/);
+  assert.match(CSS_RULES, /\.fp-sheet\.np \.rotary-chip \{[^}]*background:\s*var\(--card\)[^}]*box-shadow:\s*none/);
+  assert.match(CSS_RULES, /\.fp-sheet\.np \.np__head \.fy-grab \{[^}]*background:\s*var\(--ink-3\)/);
+});
+
+test("Tactile Up Next is an artwork-led card whose URL passes through safeUrl", () => {
+  /* MUTATION: remove `artwork: next.artwork` from the model -> red before the card can paint published artwork. */
+  assert.match(FLAT_TEXT, /next: next \? \{[^}]*artwork: next\.artwork/);
+  assert.match(NP_FLAT_TEXT, /var artworkUrl = dialSafeImageUrl\(model\.next\.artwork\)/);
+  assert.match(NP_FLAT_TEXT, /nextHost\.append\(nextArt, nextBody, nextTime\)/);
+  assert.match(CSS_RULES, /\.np__up-next-card \{[^}]*grid-template-columns:\s*var\(--art-row\) minmax\(0, 1fr\) auto/);
 });
 
 test("Tactile open uses a shared artwork transition with reduced-motion and WAAPI fallback", () => {

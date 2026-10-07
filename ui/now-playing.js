@@ -90,10 +90,10 @@ function dialBuildNowPlaying(parts) {
   var sleepBtn = dialNpEl("button", "fp-sleep rotary-chip");
   sleepBtn.type = "button";
   sleepBtn.setAttribute("aria-label", "Sleep timer, off");
-  sleepBtn.innerHTML = dialNpIcon("ph-timer", "sm") + '<span>Sleep · <span class="readout">Off</span></span>';
+  sleepBtn.innerHTML = '<span>Sleep · <span class="readout">Off</span></span>';
 
   parts.rateBtn.className = "fp-rate rotary-chip";
-  parts.rateBtn.innerHTML = dialNpIcon("knob", "sm") + '<span class="readout">1.0×</span>';
+  parts.rateBtn.innerHTML = '<span class="readout">1.0×</span>';
   parts.bookmarkBtn.className = "fp-btn fp-bookmark keycap keycap--sm keycap--paper";
   parts.bookmarkBtn.innerHTML = dialNpIcon("ph-bookmark-simple");
   parts.queueLink.className = "fp-openep fp-upnext keycap keycap--sm keycap--paper";
@@ -123,10 +123,9 @@ function dialBuildNowPlaying(parts) {
 
   var dock = dialNpEl("div", "np__dock");
   dock.append(parts.row, parts.row2);
-  top.append(dock);
   parts.scroll.classList.add("np__scroll");
   parts.scroll.replaceChildren(top, more);
-  sheet.replaceChildren(bg, parts.grabZone, parts.scroll);
+  sheet.replaceChildren(bg, parts.grabZone, parts.scroll, dock);
   return { bg: bg, top: top, artWrap: artWrap, chips: chips, bandVisual: bandVisual, bubble: bubble, sleepBtn: sleepBtn, upNext: upNext, segments: segments, origin: origin, chapters: chapters, notes: notes, legacy: legacy, dock: dock };
 }
 
@@ -260,23 +259,38 @@ function dialStationToken(index) {
   return typeof getComputedStyle === "function" ? getComputedStyle(document.documentElement).getPropertyValue(name).trim() : "";
 }
 
+function dialCurrentStation(model) {
+  var segments = model && Array.isArray(model.segments) ? model.segments : [];
+  var index = Math.max(0, Math.min(segments.length - 1, Number(model && model.currentIndex) || 0));
+  var current = segments[index];
+  if (!current || !current.narration) return current || null;
+  for (var before = index - 1; before >= 0; before -= 1) {
+    if (!segments[before].narration) return segments[before];
+  }
+  return segments.find(function (item) { return !item.narration; }) || null;
+}
+
 function dialPaintChip(parts, model) {
   if (!parts.chips) return;
   parts.chips.textContent = "";
   if (!model.foray) return;
   var segment = model.segments[model.currentIndex] || model.segments[0];
   if (!segment) return;
-  var station = segment.narration ? model.segments.find(function (item) { return !item.narration; }) : segment;
+  if (segment.narration) {
+    var narration = dialNpEl("span", "tag tag--narration");
+    narration.innerHTML = dialNpIcon("narration", "sm");
+    narration.append(dialNpEl("span", "", "4a narration"));
+    parts.chips.append(narration);
+    return;
+  }
+  var station = dialCurrentStation(model);
   if (!station) return;
   var chip = dialNpEl("span", "tag tag--station");
   var swatch = dialNpEl("i", "np__swatch");
   swatch.classList.add("t-band__bar--c" + station.colorIndex);
   var code = dialNpEl("b", "np__station-code readout", station.code);
   chip.append(swatch, code, document.createTextNode(station.show));
-  var narration = dialNpEl("span", "tag tag--narration");
-  narration.innerHTML = dialNpIcon("narration", "sm");
-  narration.append(dialNpEl("span", "", "4a narration"));
-  parts.chips.append(chip, narration);
+  parts.chips.append(chip);
 }
 
 function dialPaintDetails(parts, model) {
@@ -286,10 +300,24 @@ function dialPaintDetails(parts, model) {
   var nextHost = parts.upNext.querySelector(".np__up-next-card");
   nextHost.textContent = "";
   if (model.next) {
+    var nextArt = dialNpEl("span", "np__up-next-art");
+    var artworkUrl = dialSafeImageUrl(model.next.artwork);
+    if (artworkUrl) {
+      var image = dialNpEl("img", "");
+      image.alt = "";
+      image.decoding = "async";
+      image.src = artworkUrl;
+      nextArt.append(image);
+    } else {
+      var initials = String(model.next.show || "4a").replace(/[^A-Za-z0-9 ]/g, " ").trim().split(/\s+/).slice(0, 2).map(function (word) { return word.charAt(0); }).join("").toUpperCase();
+      nextArt.append(dialNpEl("span", "", initials || "4a"));
+    }
+    var nextBody = dialNpEl("span", "np__up-next-body");
     var nextTitle = dialNpEl("h3", "np__detail-title", model.next.title || model.next.show);
     var nextWhy = dialNpEl("p", "np__detail-copy", model.next.why || "Continues this foray.");
     var nextTime = dialNpEl("span", "readout", model.next.duration || "");
-    nextHost.append(nextTitle, nextWhy, nextTime);
+    nextBody.append(nextTitle, nextWhy);
+    nextHost.append(nextArt, nextBody, nextTime);
   } else {
     nextHost.append(dialNpEl("p", "np__empty-detail", "Nothing queued."));
   }
@@ -353,6 +381,8 @@ function dialPaintDetails(parts, model) {
 function dialPaintNowPlaying(parts, model) {
   if (!parts || !parts.bandVisual) return;
   var d = model || {};
+  var tintRequest = (parts.tintRequest || 0) + 1;
+  parts.tintRequest = tintRequest;
   parts.sheet.classList.toggle("np--foray", Boolean(d.foray));
   parts.sheet.classList.toggle("np--buffering", Boolean(d.buffering));
   if (d.show && parts.sShow.textContent !== d.show) parts.sShow.textContent = d.show;
@@ -387,10 +417,12 @@ function dialPaintNowPlaying(parts, model) {
   }
   dialPaintChip(parts, d);
   dialPaintDetails(parts, d);
-  var segment = (d.segments || [])[d.currentIndex || 0];
-  var fallback = dialStationToken(segment ? segment.colorIndex : 0);
+  var station = dialCurrentStation(d);
+  var fallback = dialStationToken(station ? station.colorIndex : 0);
   if (d.foray) dialApplyNowPlayingTint(parts.sheet, fallback);
-  else dialExtractArtworkTint(d.artwork, d.showId, fallback).then(function (tint) { dialApplyNowPlayingTint(parts.sheet, tint); });
+  else dialExtractArtworkTint(d.artwork, d.showId, fallback).then(function (tint) {
+    if (parts.tintRequest === tintRequest && !parts.sheet.classList.contains("np--foray")) dialApplyNowPlayingTint(parts.sheet, tint);
+  });
   var nextFrame = typeof requestAnimationFrame === "function" ? requestAnimationFrame : function (fn) { fn(); };
   nextFrame(function () {
     var lh = parseFloat(getComputedStyle(parts.sTitle).lineHeight) || 30;
@@ -402,7 +434,7 @@ function dialPaintNowPlayingRate(button, rate) {
   if (!button) return;
   var value = Number(rate);
   var text = Number.isFinite(value) ? value.toFixed(1) + "×" : "1.0×";
-  button.innerHTML = dialNpIcon("knob", "sm") + '<span class="readout">' + esc(text) + "</span>";
+  button.innerHTML = '<span class="readout">' + esc(text) + "</span>";
 }
 
 function dialPreviewNowPlaying(parts, model) {

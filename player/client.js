@@ -1831,6 +1831,7 @@ function dialForaySegments(resolved, currentIndex) {
     const narration = item.kind === TTS;
     const show = narration ? "4a narration" : (entry.show || item.show || "Show");
     const showId = narration ? `narration-${index}` : (entry.show_id || entry.source_id || item.source_item_id || show);
+    const source = item?.source_item_id ? resolved.sources?.get(item.source_item_id) : null;
     const colorIndex = narration ? priorColour : dialStationIndex(showId);
     if (!narration) priorColour = colorIndex;
     return {
@@ -1838,6 +1839,7 @@ function dialForaySegments(resolved, currentIndex) {
       duration: itemRuntimeSec(item), start: starts[index] || 0, current: index === currentIndex,
       why: entry.why || item.why || "",
       title: entry.episode_title || item.title || show,
+      artwork: narration ? "" : (source?.artwork_url || source?.image_url || artworkByShow.get(show) || ""),
       slot: entry.slot ?? null,
     };
   });
@@ -1883,7 +1885,7 @@ function dialNowPlayingModel(pos, dur, running, loading) {
   return {
     foray: true, currentIndex, position: pos, duration: dur, running, buffering: loading,
     artwork: current?.artwork_url || "", showId: here.showId, show: here.show, queueCount, segments, slots, origins,
-    next: next ? { title: next.title, show: next.show, why: next.why, duration: fmtSpan(next.duration) } : null,
+    next: next ? { title: next.title, show: next.show, why: next.why, duration: fmtSpan(next.duration), artwork: next.artwork } : null,
     valueText: `${dialSpokenClock(pos)} of ${dialSpokenClock(dur)}, ${here.show || "4a narration"}`,
     detailKey: `foray:${resolved.id}:${currentIndex}`,
   };

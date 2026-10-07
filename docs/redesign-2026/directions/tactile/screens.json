@@ -92,7 +92,7 @@
         },
         "scrub": {
           "prototype": ".band--scrub",
-          "app": ".np__band"
+          "app": ".np__band-well"
         },
         "primary": {
           "prototype": ".transport .keycap--persimmon",
