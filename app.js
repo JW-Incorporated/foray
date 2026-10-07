@@ -8681,7 +8681,11 @@ function seededShuffle(arr, seed) {
   let s = seed >>> 0;
   for (let i = a.length - 1; i > 0; i--) {
     s = (Math.imul(s, 1103515245) + 12345) >>> 0;
-    const j = s % (i + 1);
+    /* The HIGH 16 bits pick the swap (#560, the vouch eval's (b)): the low
+       bits of a power-of-two-modulus LCG repeat on short cycles, and
+       `s % (i + 1)` gave the first tenth of show_ids 23.2% of the year's
+       slots, not ~10%. */
+    const j = (s >>> 16) % (i + 1);
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
@@ -8690,6 +8694,13 @@ function seededShuffle(arr, seed) {
 function showsWeVouchFor(limit = 8, now = new Date()) {
   const shows = (state.catalog?.shows || [])
     .filter(s => s.editorial_note && s.editorial_note.trim())
+    /* FAMILY MODE BEFORE THE SORT AND THE SHUFFLE (#560, the vouch eval's
+       (d)): the row filled 573 of 2026's 2,920 slots, on 296 days, with shows
+       Family Mode hides. Filtering here, not after the slice, keeps all
+       `limit` slots full and the same set for every visitor in each mode. The
+       ONE rule: familyAllows, which tools/similar-eval/vouch-run.mjs also uses
+       to count violations, so its zero measures exactly this filter. */
+    .filter(familyAllows)
     .slice()
     /* CODEPOINT order, not localeCompare (audit round 3, app-2-9): with no
        locale argument that collates in the DEVICE's locale, and under lt, et,
