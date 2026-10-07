@@ -14,6 +14,7 @@ const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
 const { readAppSource } = require("./helpers/app-source.js");
+const { splitDialSection } = require("./helpers/dial-css.js");
 
 const ROOT = path.join(__dirname, "..");
 const CSS = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");
@@ -228,7 +229,11 @@ function parseRules(css) {
   return rules;
 }
 
-const RULES = parseRules(CSS);
+/* The Dial (Tactile) foundation layer is judged by test/ui-tokens-dial.test.js. No live rule reads it
+   yet, so the ownership checks below see the sheet without that section: a legacy rule that starts
+   reading a Dial token is a screen adopting the system early, and should fail here until its PR
+   retires the legacy pin. */
+const RULES = parseRules(splitDialSection(CSS).legacy);
 const APP_JS = readAppSource();
 const PLAYER_JS = fs.readdirSync(path.join(ROOT, "player"))
   .filter((f) => f.endsWith(".js") && !f.endsWith(".test.js"))
@@ -599,6 +604,17 @@ test("dark is declared, not just painted: one colour-scheme, one authored focus 
   assert.match(html, /<meta name="color-scheme" content="dark">/, "index.html declares the one scheme the sheet ships");
   assert.doesNotMatch(html, /content="dark light"|content="light dark"/);
   assert.strictEqual(lastOn("body.ui-v2", "color-scheme"), "dark", "the v2 scope tells the UA the same");
+  /* The whole sheet, Dial section included (RULES hides it). The meta only applies while the root's
+     computed color-scheme is `normal`, so ANY color-scheme on :root / html -- or on a :root scheme block --
+     other than `dark` makes an OS set to light paint a light root (viewport scrollbar, UA surfaces) under
+     the dark #151119 page. MUTATION: re-add `:root { color-scheme: light dark; }` anywhere in styles.css
+     (the Dial section's :root was the live case) -> red here. */
+  const rootSchemes = parseRules(CSS)
+    .filter((r) => !r.at)
+    .filter((r) => r.selectors.some((s) => /^(:root|html)\b/.test(s)))
+    .flatMap((r) => r.decls.filter((d) => d.prop === "color-scheme").map((d) => ({ sel: r.selectors.join(","), v: d.value })));
+  assert.deepStrictEqual(rootSchemes.filter((x) => x.v !== "dark"), [],
+    "no root-level color-scheme other than dark may land while index.html's meta is dark-only");
   assert.match(lastOn(":focus-visible", "outline") || "", /^2px solid var\(--amber\)$/, "the ring is ours, in the listener's colour");
   assert.strictEqual(lastOn(":focus-visible", "outline-offset"), "2px");
 });

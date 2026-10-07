@@ -239,6 +239,86 @@ and a `PROGRESS.md` line.
 
 ---
 
+### 1.8 Tokens as built (`redesign/tactile-p3-tokens`)
+
+What the first foundation task actually shipped, and the calls it made where
+this plan met the live repo. Where this section and 1.1-1.4 differ, this
+section wins.
+
+- **Where it lives.** One section of `styles.css`, headed `DIAL (TACTILE)
+  FOUNDATION TOKENS`, immediately above the reduce-motion block (which stays
+  last). Three faces in `fonts/` built by `tools/fonts/build-dial-fonts.py`
+  (`dial-display-latin.woff2` 34.8 KB, `dial-text-latin.woff2` 58.4 KB,
+  `azeret-mono-latin.woff2` 26.2 KB; the plan's budgets were 60/80/26),
+  notices in `fonts/LICENSES.md`. Wired into `tools/ci/crlf-guard.mjs`
+  (`BINARY_LISTED`); the deploy manifest and the web dist derive the font list from
+  the directory. **Not added to the mobile bundle's `SHELL_FILES` yet**: no live rule
+  paints with them so a browser never requests them, and their 119 KB would push the
+  bundle over its 2.85 MB alarm (`prepare-webdir.test.mjs` assertion A, 2.93 MB
+  with them). The first adopting screen's PR lists them there and retires legacy
+  faces to make room. No `<link
+  rel=preload>` yet: nothing paints with them until a screen adopts the system.
+  The upstream `OFL.txt` of Big Shoulders and Bricolage Grotesque reserve no
+  font name (checked 2026-10-06); the renames hold either way.
+- **The re-cut is verified in the bytes.** `test/ui-tokens-dial.test.js` reads
+  the shipped WOFF2 (Node's zlib has brotli) and asserts hhea, OS/2 typo and
+  win metrics are 84% / 24% of the em, the axes are wght 700-800 + opsz 10-72
+  (display) and wght 500-700 + opsz, no wdth (text), and the family names.
+- **Name rule: twelve tokens ship as `--dial-<name>`.** The live sheet owns
+  `--line`, `--font-display`, `--seg-c0..7` and `--seg-narration`, and every
+  page is `body.ui-v2`. Declaring the BUILD-NOTES names would either repaint
+  the app (`--font-display`) or be dead under the legacy owner (`--seg-c*`,
+  `--line`). So: `--dial-line`, `--dial-font-display`, `--dial-seg-c0..7`,
+  `--dial-seg-narration`. **Phase 4 agents porting prototype CSS rename those
+  three families as they port** (`var(--line)` -> `var(--dial-line)`,
+  `var(--font-display)` -> `var(--dial-font-display)`, `var(--seg-cN)` ->
+  `var(--dial-seg-cN)`); every other name is verbatim. When the last screen
+  that reads a legacy name is gone, drop the prefix with one rename. The test
+  fails on any new collision and on any gratuitous prefix. `--gutter` (16) is
+  the plan's value and already on the legacy `:root`, so it is not declared a
+  second time. The plan's `--draw-band` easing is `--ease-draw` here (the
+  prototype's name).
+- **Screens are untouched.** No live rule reads a Dial token and no live
+  markup emits a Dial class (`.display-xl`, `.display`, `.title`, `.heading`,
+  `.readout`, `.readout-lg` are new names). Verified: `baseline.mjs compare
+  --name trunk-app` (138 shots, dark, the recorded baseline) 138 same, 0 differ;
+  the same set shot `--scheme light` before and after: 138 same, 0 differ.
+  Because of that, the legacy half of `test/ui-tokens.test.js` still describes
+  what the app paints and **is not deleted**: its ownership checks now judge the
+  sheet without the Dial section (a legacy rule that reads a Dial token is a
+  screen adopting early and fails there). The rulings this plan lists as
+  falling with the tokens PR (U-01 dark-only, palette and type, card anatomy)
+  therefore fall **in the PR of each screen that adopts the system**, which
+  retires the legacy pin for the token it stops reading; the Dial scheme tests
+  are the new guarantee. Not done here, because they change live behaviour and
+  not pixels: restoring `user-scalable=yes` and the `zoomEnabled` shell setting
+  (the **no-zoom** ruling; it is a whole-shell switch, so it lands with the
+  first screen that flips the shell, Now Playing), and the `cp_theme` storage
+  key with its Settings control (it adds a `cp_` key that `data-deletion` and
+  `engine-contract` inventory; it lands with the settings screen). The token
+  layer already honours `data-theme` on `<html>`.
+- **Open item for the first screen PR (Now Playing).** During Phase 4 the shell
+  is `body.ui-v2` (dark, Fraunces) until the last screen adopts, so the first
+  adopting screen decides the page-level switch that lets a Dial screen own its
+  own `background`/`color` inside that shell (a scope class on its root that
+  paints `var(--paper)` / `var(--ink)`). It is not decided here.
+- **Two measured corrections to the BUILD-NOTES colour table** (the test
+  computes every ratio from the declared hex; the table's rounded figures were
+  not all true). Cream `--ink-3` `#6F675D` -> `#6C645A` (it was 4.49:1 on
+  `--paper-2`, under AA for the secondary text that sits on wells and bands;
+  now 4.70:1, 5.14:1 on paper). Cream `--dial-seg-c3` mustard `#B8860B` ->
+  `#A67A08` (2.63:1 on the well, under the 3:1 the table claimed for every
+  enamel; now 3.14:1, still mustard). Bakelite is untouched; every other pair
+  clears its threshold as written.
+- **What the motion test guarantees.** One `prefers-reduced-motion` block in
+  the whole sheet, last; it carries the plan's rules verbatim; every
+  `transition`/`animation` in the sheet either reads only `--d-*` durations (the
+  block collapses them) or is stilled by name in the block. The Dial layer has
+  no transition of its own yet, so that half cannot fail on today's data; it is
+  there for the keycap, band, sheet and needle tasks.
+
+---
+
 ## 2. Screen list (Phase 4), in build order
 
 Order per `build-loop.md` section 4: Now Playing first, then Today, Find,
