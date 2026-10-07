@@ -156,6 +156,10 @@ const SHELL = [
   "app.js",
   "search-engine.js",
   "styles.css",
+  /* Redesign 2026 (ambient): the Afterglow design tokens, a stylesheet index.html links
+     after styles.css. Listed by name rather than derived from ui/: uiSources() is the
+     scripts, and a stylesheet in the generation must be there on purpose. */
+  "ui/tokens.css",
   "manifest.json",
   "icon-180.png",
   "icon-512.png",

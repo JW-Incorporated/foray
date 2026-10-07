@@ -810,3 +810,45 @@ rendered opacity above 0.02, every tab page, both schemes, 375x667 and 393x852.
 three `t-caption name clamp2` spans in `afterglow.js` become `clamp3`. Assert:
 no `.name` on Library or "Where this came from" has `scrollHeight >
 clientHeight` at 375 or 393; tile row gap never under 16px.
+
+## 13. As built: phase 3, tokens (`redesign/ambient-p3-tokens`, `ui/tokens.css`)
+
+Where the build departs from the lines above, or fills a gap in them. The file's
+own header is the long form; `test/afterglow-tokens.test.js` pins every number here.
+
+1. **Location and scope.** One new stylesheet, `ui/tokens.css`, linked after
+   `styles.css` and listed in the three shell lists (`generate-manifest`,
+   `prepare-dist`, `prepare-webdir`). It changes no screen: the trunk-app
+   baseline compares 138 of 138 shots identical. Screens adopt the system by
+   wearing **`.ag`** (any scope root, including a gallery panel); a Room wears
+   **`.room`**. Names `styles.css` already declares (`--text`, `--gutter`,
+   `--seg-c0..7`, `--seg-narration`) are declared only on `.ag, .room`; the
+   scheme blocks carry the ink as `--ag-text` and the gutter as `--ag-gutter`.
+   When the last legacy screen is gone, `.ag` is hoisted to `:root` and the
+   mirrors go.
+2. **Themes.** `data-theme` is read on `<html>` or on any scope root; Now
+   Playing's Room is `data-theme="dusk"`, so it reads Dusk in both passes.
+   `.room[data-theme="dusk"]` reads `--text-2: #C9BFB3` and `--text-3: #B0A79D`
+   (the prototype's Room neutrals, one step brighter than the page's).
+3. **Derived Glow tokens are formulas over tokens**: `--mix-veil` 28% (Dawn 24%),
+   `--mix-row` 18%, `--mix-wash` 40%, `--mix-room` 15% (Dawn 20%), `--mix-scrim`
+   24% (Dawn 20%), `--cast-mix` 14% (Dawn 9%), `--lit-mix` 55% (Dawn 40%). Dawn's
+   Veil is 76/24, not the plan table's 72/28: ink-2 measured 4.48:1 at 72/28.
+   The formulas sit inside `@supports (color: color-mix(...))` and the static
+   values for older engines inside `@supports not`, because a custom property
+   never falls back on a value it cannot parse.
+4. **Dawn `--ok` / `--warn`** are `#2A7541` / `#8A5A12`, not "same as Dusk" (the
+   plan table): `#7FCB8E` is 1.9:1 on paper. `#2A7541` rather than the
+   prototype's `#2E7D45`, which is 4.18:1 on `--bg2`.
+5. **Reduced motion.** One block, scoped to `:root`, `.ag` and `.room` subtrees
+   (not `*`), so it cannot re-time or re-enable a legacy transition;
+   `styles.css` keeps its own block until the last screen adopts. **Open for
+   the first screen that animates under `.ag`:** `gates.mjs`'s reduced-motion
+   gate counts any transition over 1ms as motion, and this block's 200ms
+   crossfade is over 1ms. It records nothing today (no `.ag` element
+   transitions in a baseline state); the first screen whose reduced-motion
+   state changes opacity will need either the gate's `MIN_MOTION_MS` ruling or a
+   state that does not trigger it. That is an orchestrator decision.
+6. **Not in this PR, by the build plan's order:** the icon sprite, primitives
+   and gallery (the next three tasks), `data/palettes.json` and its loader (the
+   palette script lands with Now Playing, which is its first reader).
