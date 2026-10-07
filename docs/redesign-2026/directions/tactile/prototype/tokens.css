@@ -1,9 +1,10 @@
 /* Dial tokens. Source of truth: ../BUILD-NOTES.md sections 1-2. Every colour,
    duration and easing is a token; components never hard-code them. */
 
-@font-face { font-family: "Plex"; src: url(fonts/ibm-plex-sans-latin.woff2) format("woff2"); font-weight: 100 700; font-stretch: 85% 100%; font-display: swap; } /* review candidate, see font-preview.js */
-@font-face { font-family: "Instrument"; src: url(fonts/instrument-sans-latin.woff2) format("woff2"); font-weight: 400 700; font-stretch: 75% 100%; font-display: swap; } /* review candidate, see font-preview.js */
-@font-face { font-family: "Archivo"; src: url(fonts/archivo-latin.woff2) format("woff2"); font-weight: 100 900; font-stretch: 62% 125%; font-display: swap; }
+@font-face { font-family: "Anybody"; src: url(fonts/anybody-latin.woff2) format("woff2"); font-weight: 100 900; font-stretch: 50% 150%; font-display: swap; }
+@font-face { font-family: "Dela"; src: url(fonts/dela-gothic-one-latin.woff2) format("woff2"); font-weight: 400; font-display: swap; ascent-override: 84%; descent-override: 28%; } /* review candidate, see font-preview.js; r7 (critique-r6 P1.2): centre the ink in the line box */
+@font-face { font-family: "BigShoulders"; src: url(fonts/big-shoulders-latin.woff2) format("woff2"); font-weight: 100 900; font-display: swap; ascent-override: 84%; descent-override: 24%; } /* review candidate, see font-preview.js; r7 (critique-r6 P1.2): centre the ink in the line box */
+@font-face { font-family: "Archivo"; src: url(fonts/archivo-latin.woff2) format("woff2"); font-weight: 100 900; font-stretch: 62% 125%; font-display: swap; } /* the owner's fallback, see font-preview.js */
 @font-face { font-family: "Bricolage"; src: url(fonts/bricolage-grotesque-latin.woff2) format("woff2"); font-weight: 200 800; font-stretch: 75% 100%; font-display: swap; }
 @font-face { font-family: "Azeret"; src: url(fonts/azeret-mono-latin.woff2) format("woff2"); font-weight: 100 900; font-display: swap; }
 
@@ -12,14 +13,17 @@
 :root {
   color-scheme: light dark;
 
-  --font-display: "Archivo", system-ui, sans-serif;   /* display, title, heading (2026-10-06: replaced Bricolage at 800/90%) */
+  --font-display: "Anybody", system-ui, sans-serif;   /* display, title, heading (2026-10-06 round 2: Anybody replaces Archivo, which replaced Bricolage at 800/90%) */
   --font-text: "Bricolage", system-ui, sans-serif;
   --font-mono: "Azeret", ui-monospace, monospace;
 
-  --t-display-xl: 2.5rem;    --lh-display-xl: 2.75rem; --w-display: 700; --wd-display: 92%; --tracking-display: -0.02em;
+  --t-display-xl: 2.5rem;    --lh-display-xl: 2.75rem; --w-display: 700; --wd-display: 90%; --tracking-display: -0.01em;
   --t-display:    2rem;      --lh-display:    2.25rem;
-  --t-title:      1.5rem;    --lh-title:      1.75rem; --w-title:   650; --wd-title:   94%; --tracking-title:   -0.015em;
-  --t-heading:    1.25rem;   --lh-heading:    1.5rem;  --w-heading: 650; --wd-heading: 96%; --tracking-heading: -0.01em;
+  --t-title:      1.5rem;    --lh-title:      1.75rem; --w-title:   650; --wd-title:   92%; --tracking-title:   -0.005em;
+  --t-heading:    1.25rem;   --lh-heading:    1.5rem;  --w-heading: 650; --wd-heading: 94%; --tracking-heading: 0;
+  /* r7 (critique-r6 P1.1): the three one-word screen titles only (Today, Find, Yours) run at Anybody's extended cut */
+  --wd-screen: 110%; --tracking-screen: 0.005em;
+
   --t-body-lg:    1.0625rem; --lh-body-lg:    1.5rem;
   --t-body:       0.9375rem; --lh-body:       1.3125rem;
   --t-label:      0.8125rem; --lh-label:      1rem;
@@ -139,6 +143,9 @@
 }
 
 /* REVIEW ONLY (remove before Phase 3, with font-preview.js/.css): display-face candidates. font-preview.js sets
-   data-display-font on <html>; the attribute selector outranks :root, so only the three display-role tokens move. */
-:root[data-display-font="plex"] { --font-display: "Plex", system-ui, sans-serif; --w-display: 700; --wd-display: 92%; --tracking-display: -0.02em; --w-title: 650; --wd-title: 94%; --tracking-title: -0.015em; --w-heading: 650; --wd-heading: 96%; --tracking-heading: -0.01em; }
-:root[data-display-font="instrument"] { --font-display: "Instrument", system-ui, sans-serif; --w-display: 700; --wd-display: 92%; --tracking-display: -0.025em; --w-title: 700; --wd-title: 95%; --tracking-title: -0.015em; --w-heading: 700; --wd-heading: 96%; --tracking-heading: -0.01em; }
+   data-display-font on <html>; the attribute selector outranks :root, so only the display-role tokens move. Anybody is the default (no attribute). r7 values: critique-r6 P1.3 / P1.4. */
+:root[data-display-font="dela"] { --font-display: "Dela", system-ui, sans-serif; --w-display: 400; --wd-display: 100%; --tracking-display: 0; --w-title: 400; --wd-title: 100%; --tracking-title: 0; --w-heading: 400; --wd-heading: 100%; --tracking-heading: 0; --wd-screen: 100%; --tracking-screen: 0; --t-display-xl: 2.25rem; --lh-display-xl: 2.625rem; --t-display: 1.75rem; --lh-display: 2.0625rem; --t-title: 1.375rem; --lh-title: 1.625rem; --t-heading: 1.125rem; --lh-heading: 1.375rem; } /* one weight (black); width 100 because the file has no wdth axis */
+:root[data-display-font="bigshoulders"] { --font-display: "BigShoulders", system-ui, sans-serif; --w-display: 800; --wd-display: 100%; --tracking-display: 0.005em; --w-title: 750; --wd-title: 100%; --tracking-title: 0.01em; --w-heading: 750; --wd-heading: 100%; --tracking-heading: 0.01em; --wd-screen: 100%; --tracking-screen: 0.005em; --t-display-xl: 2.75rem; --lh-display-xl: 3rem; --t-display: 2.25rem; --lh-display: 2.5rem; --t-title: 1.625rem; --lh-title: 1.875rem; --t-heading: 1.375rem; --lh-heading: 1.625rem; } /* opsz axis 10-72 follows font-size automatically; 800 is a switcher-only exception to the 700 ceiling (critique-r6 P1.4) */
+:root[data-display-font="archivo"] { --font-display: "Archivo", system-ui, sans-serif; --w-display: 700; --wd-display: 92%; --tracking-display: -0.02em; --w-title: 650; --wd-title: 94%; --tracking-title: -0.015em; --w-heading: 650; --wd-heading: 96%; --tracking-heading: -0.01em; --wd-screen: 92%; --tracking-screen: -0.02em; } /* the owner's fallback (r5 values, unchanged; screen titles stay at the display width) */
+:root[data-display-font="dela"] .hero .display { font-size: clamp(1.5rem, 6.4vw, 1.75rem); line-height: 1.16; } /* BUILD-NOTES 1.1: Dela at the Anybody scale overflows the hero clamp */
+:root[data-display-font="bigshoulders"] .hero .display { line-height: 1.2; } /* critique-r6 P1.4 */

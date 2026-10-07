@@ -38,10 +38,31 @@ fixture; taps inside the app keep state (it uses `history.pushState`).
 ## Post-pick change (2026-10-06): display face
 
 The owner picked Tactile with one objection, the "cartoonish" headers.
-Display, title and heading now set Archivo (`fonts/archivo-latin.woff2`,
-OFL, Google Fonts Latin slice; 700/92% display, 650/94% title, 650/96%
-heading, tokens in `tokens.css`). Bricolage stays for every text-size role,
-Azeret for readouts. Renders: `data-local/redesign/shots/tactile/r4/`.
+Round 1 set display, title and heading in Archivo (700/92% display,
+650/94% title, 650/96% heading; renders `data-local/redesign/shots/tactile/r4/`,
+`r5/`). Round 2, the same evening, the owner called Archivo, Plex and
+Instrument "a little plain" and asked for a fun face that is not
+Bricolage. Display, title and heading now set **Anybody**
+(`fonts/anybody-latin.woff2`, OFL, Google Fonts Latin slice; 700/90%
+display, 650/92% title, 650/94% heading, tokens in `tokens.css`).
+Bricolage stays for every text-size role, Azeret for readouts. Renders:
+`data-local/redesign/shots/tactile/r6/` (Anybody, Cream, all seven routes)
+and `r6-fonts/<face>/` (Anybody, Big Shoulders, Dela Gothic One and
+Archivo, Cream, Home / Now Playing / Foray detail). The r6 shoot held no
+Bakelite render; the art director's own Bakelite check of Anybody is in
+`r6-fonts/_ad/dark-anybody__*.png`. The reasoning and the measurements are
+in `../DIRECTION.md` (Typography, round-2 note and r6 verdict),
+`../BUILD-NOTES.md` 1.1 and `../critique-r6.md`, whose P1 list is the
+round-7 brief (screen titles at width 110; clamp padding, tracking and
+scale for the alternates).
+
+### Round 7 (`../critique-r6.md` P1.1-P1.4, applied)
+
+- Screen titles (`.top__title .display-xl`: Today, Find, Yours) take `--wd-screen: 110%` / `--tracking-screen: 0.005em`; the Foray detail `h1.clamp4` stays at width 90. Big Shoulders and Dela set the token to 100% (no `wdth` axis), Archivo to its r5 92%.
+- Metric overrides on the Dela and Big Shoulders `@font-face` rules (`ascent-override` 84%, `descent-override` 28% / 24%) stop clamped titles clipping descenders. WebKit ignores them: Phase 3 re-cuts the font metrics if either face is picked.
+- Dela: display tracking 0, line heights 42 / 33, hero line-height 1.16. Big Shoulders: 800 / 750 / 750 at 44 / 36 / 26 / 22 with its own line heights, hero line-height 1.2 (800 is a switcher-only exception to the 700 ceiling).
+- Band station codes are built per run of adjacent same-show bars (`critique-r5.md`), so `BR BR` / `BC BC` no longer doubles at 412.
+- Renders (all `--scheme light`, Cream `#F7F0E4`): `data-local/redesign/shots/tactile/r7/` (seven routes) and `r7-fonts/<anybody|big-shoulders|dela-gothic-one|archivo>/` (Home, Now Playing, Foray detail, Yours). Shoot with `?review=off` (and `&font=<id>`) through a local static server; the shooter rejects `file:///` URLs.
 
 ### Round 5 (type round, `../critique-r4.md` P1)
 
@@ -53,23 +74,29 @@ Azeret for readouts. Renders: `data-local/redesign/shots/tactile/r4/`.
 ### REVIEW TOOL: font switcher (remove before Phase 3)
 
 A floating "Aa" button (44px, top centre, accessible name "Font preview. ...")
-cycles the display/title/heading face between Archivo, IBM Plex Sans and
-Instrument Sans, and a small toast names the current family. Text and mono
-roles never change. The choice persists in `localStorage` (`cp_display_font_preview`,
-try/catch) so it survives a reload on a phone. Files: `font-preview.js`,
+cycles the display/title/heading face between Anybody (the round-2 pick),
+Big Shoulders, Dela Gothic One and Archivo (the owner's fallback), and a
+small toast names the current family. Text and mono roles never change.
+The choice persists in `localStorage` (`cp_display_font_preview`, try/catch)
+so it survives a reload on a phone. Files: `font-preview.js`,
 `font-preview.css`, the two tags in `index.html`, the "REVIEW ONLY" block at
-the end of `tokens.css`, the Plex and Instrument `@font-face` lines and
-`fonts/ibm-plex-sans-latin.woff2`, `fonts/instrument-sans-latin.woff2`. It
-sets `data-display-font` on `<html>` (CSP-safe: no inline script or style).
-`?font=plex|instrument|archivo` forces a face; `?review=off` (or
+the end of `tokens.css`, and the `@font-face` lines plus `fonts/*.woff2` of
+the faces the owner does not pick (`dela-gothic-one-latin`,
+`big-shoulders-latin`, `archivo-latin`, or `anybody-latin`). It sets
+`data-display-font` on `<html>` (CSP-safe: no inline script or style).
+`?font=anybody|bigshoulders|dela|archivo` forces a face; `?review=off` (or
 `<html data-review="off">`) hides the control, which is how renders stay clean
 (the shooter passes a `--css` file hiding `.fp-btn, .fp-toast` instead).
-To remove it: delete those pieces; nothing else references them.
+To remove it: delete those pieces; nothing else references them. IBM Plex
+Sans and Instrument Sans left the prototype in round 2.
 
-Pairing note: body stays Bricolage at text sizes. Its open shapes sit well
-beside Archivo's flat terminals at 15-17px; the cartoon read came only from
-the 800 weight, 90% width, curled `y` and hooked `g` at 32-40px. Plex sets the
-Today hero in three lines at 393 wide where Archivo and Instrument keep two.
+Pairing note: body stays Bricolage at text sizes. Its square counters and
+open shapes sit beside Anybody's at 15-17px as one wide-grotesque family;
+the cartoon read came only from the 800 weight, curled `y` and hooked `g`
+at 32-40px. Measured at 393: Anybody sets the Today hero in three lines
+(card bottom 537px, inside the ≤ 540 rule), Big Shoulders and Archivo in
+two; Dela Gothic One overflows the three-line clamp at the current scale
+and needs the smaller display scale listed in `../BUILD-NOTES.md` 1.1.
 
 ## Round 3 changes worth knowing
 
@@ -130,6 +157,6 @@ where supported. The reduced-motion block is the single one in `tokens.css`.
 
 ## Licences
 
-Fonts: Archivo, Bricolage Grotesque and Azeret Mono, plus the review-only
-IBM Plex Sans and Instrument Sans, all OFL 1.1, Latin subset, from Google
-Fonts. Icons: Phosphor Icons (MIT), Bold and Fill, plus custom marks.
+Fonts: Anybody, Bricolage Grotesque and Azeret Mono, plus the review-only
+Dela Gothic One, Big Shoulders and Archivo, all OFL 1.1, Latin subset, from
+Google Fonts. Icons: Phosphor Icons (MIT), Bold and Fill, plus custom marks.

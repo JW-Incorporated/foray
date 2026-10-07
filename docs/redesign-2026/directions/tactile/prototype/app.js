@@ -220,7 +220,18 @@
       TL.items.forEach(function (it, ix) {
         bars += it.type === "narration" ? '<i class="bar bar--n" data-v="--l:' + it.l.toFixed(3) + ";--w:" + it.w.toFixed(3) + '"></i>'
           : '<i class="bar c' + it.ci + '" data-v="--l:' + it.l.toFixed(3) + ";--w:" + it.w.toFixed(3) + '"></i>';
-        if (it.type === "segment" && it.w / 100 * W >= 24) labels += '<span data-ix="' + ix + '" data-v="--l:' + (it.l + it.w / 2).toFixed(3) + '">' + esc(codeFor(it.show_id, FSH[it.show_id].name)) + "</span>";
+      });
+      /* r7 (critique-r5 band-codes note): one code per RUN of adjacent bars from one show, narration does not break a run */
+      var runs = [];
+      TL.items.forEach(function (it, ix) {
+        if (it.type !== "segment") return;
+        var last = runs[runs.length - 1];
+        if (last && last.show === it.show_id) { last.r = it.l + it.w; last.b = ix; }
+        else runs.push({ show: it.show_id, l: it.l, r: it.l + it.w, a: ix, b: ix });
+      });
+      runs.forEach(function (ru) {
+        if ((ru.r - ru.l) / 100 * W < 24) return;
+        labels += '<span data-a="' + ru.a + '" data-b="' + ru.b + '" data-v="--l:' + ((ru.l + ru.r) / 2).toFixed(3) + '">' + esc(codeFor(ru.show, FSH[ru.show].name)) + "</span>";
       });
     } else {
       key = "e:" + model;
@@ -526,7 +537,7 @@
       if (x < 0.002) b.setAttribute("data-idle", ""); else b.removeAttribute("data-idle");
       if (key === "f" || key === "demo") { /* the station under the needle gets the heavier label */
         var pos = posFor(key), ci = pos > 0 ? idxAt(pos) : -1;
-        $$(".band__labels span", b).forEach(function (sp) { sp.classList.toggle("is-cur", +sp.dataset.ix === ci); });
+        $$(".band__labels span", b).forEach(function (sp) { sp.classList.toggle("is-cur", ci >= +sp.dataset.a && ci <= +sp.dataset.b); });
       }
     });
   }

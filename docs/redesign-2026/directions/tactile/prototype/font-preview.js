@@ -1,21 +1,23 @@
 /* REVIEW TOOL ONLY. Remove before Phase 3 (delete this file, font-preview.css,
    their two tags in index.html, the "REVIEW ONLY" block at the end of tokens.css,
-   and the Plex and Instrument @font-face lines plus fonts/ibm-plex-sans-latin.woff2
-   and fonts/instrument-sans-latin.woff2).
+   and the @font-face lines and fonts/*.woff2 of whichever faces the owner did
+   not pick).
 
    What it does: a floating "Aa" button cycles the display/title/heading face
-   between Archivo (the art director's pick), IBM Plex Sans and Instrument Sans
-   by setting data-display-font on <html>; tokens.css swaps --font-display and
-   its weight/width/tracking tokens. Text and mono roles never change.
+   between Anybody (the art director's round-2 pick), Big Shoulders, Dela Gothic
+   One and Archivo (the owner's fallback) by setting data-display-font on
+   <html>; tokens.css swaps --font-display and its weight/width/tracking tokens.
+   Text and mono roles never change.
    Persists in localStorage under cp_display_font_preview (try/catch).
    CSP-safe: no inline script or style, classes and attributes only.
    Hidden for screenshots with ?review=off, or <html data-review="off">.
-   ?font=archivo|plex|instrument forces a face (used by the shooter). */
+   ?font=anybody|bigshoulders|dela|archivo forces a face (used by the shooter). */
 (function () {
   var FACES = [
-    { id: "archivo", name: "Archivo" },
-    { id: "plex", name: "IBM Plex Sans" },
-    { id: "instrument", name: "Instrument Sans" }
+    { id: "anybody", name: "Anybody" },
+    { id: "bigshoulders", name: "Big Shoulders" },
+    { id: "dela", name: "Dela Gothic One" },
+    { id: "archivo", name: "Archivo" }
   ];
   var KEY = "cp_display_font_preview";
   var root = document.documentElement;
@@ -25,7 +27,7 @@
   function write(v) { try { localStorage.setItem(KEY, v); } catch (e) { /* private window */ } }
 
   var q = (location.search || "");
-  var qf = q.match(/[?&]font=(archivo|plex|instrument)/);
+  var qf = q.match(/[?&]font=(anybody|bigshoulders|dela|archivo)/);
   var qOff = /[?&]review=off/.test(q);
   var cur = find(qf ? qf[1] : read());
   if (cur < 0) cur = 0;

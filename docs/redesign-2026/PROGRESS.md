@@ -48,11 +48,11 @@ through Editorial's tab bar. Detail: `checkpoint/README.md`.
 
 (Agent/workflow and what it is doing. Clear an entry when it lands.)
 
-(Nothing in flight.) **Waiting for the owner to approve Tactile's header font** (done
-2026-10-06 18:50 PDT, a73de878: Archivo in the prototype; IBM Plex Sans and Instrument
-Sans selectable with the review-only "Aa" switcher). When approved: set the approved face
-in tactile's DIRECTION.md/BUILD-NOTES.md if it is not Archivo, note that Phase 3 must drop
-the switcher, then launch phases 3-5:
+(Nothing in flight.) **Waiting for the owner to choose Tactile's header font**: Anybody,
+Big Shoulders, Dela Gothic One (fun picks, round 2; default Anybody) or the fallback Archivo
+(done 2026-10-06, round 7). When chosen: set the chosen face in tactile's
+DIRECTION.md/BUILD-NOTES.md if it is not the default, note that Phase 3 must drop the review-only
+"Aa" switcher, then launch phases 3-5:
 `Workflow({scriptPath: "<trunk>/docs/redesign-2026/workflows/build-directions.workflow.js", args: {directions: ["tactile", "ambient"]}})`.
 Open Phase 3 item from the r5 critique: Tactile band codes double at 412px (per-bar label gate).
 
@@ -91,6 +91,7 @@ Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40-22:40 PDT, 128 agents
 
 - 2026-10-05/06, Phase 2 art direction, 20 Fable calls across 5 directors, owner-authorized.
 - 2026-10-06, Tactile font change, 3 Fable calls, owner-requested.
+- 2026-10-06, Tactile font round 2, 3 Fable calls, owner-requested.
 - 2026-10-06, Phase 2 polish-to-ready, 5 Fable calls (ambient r4, editorial r4, clarity r4, native-2026 r4+r5), owner-requested.
 
 ## Log
@@ -115,3 +116,4 @@ Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40-22:40 PDT, 128 agents
 - 2026-10-06 — Lab dry run DELIVERED: iOS uploaded to TestFlight (run 37423123667, delivery 752b5524-1d15-44a4-b8e6-0209b87a879b); Android uploaded to the Play internal testing track (run 37424888622, with the read-back fix). The 4a Lab delivery path is proven for both platforms; no HUMAN-ACTIONS item needed.
 - 2026-10-06 — Polish-to-ready pass (owner request, workflow wf_dfc8207d-359, 76 agents, 0 errors): ambient r4, editorial r4, native-2026 r5, clarity r4 all Ready; re-ranked six entrants, 4 judges per pair in both orders: tactile 20, ambient 15, editorial 11, native-2026 10, clarity 4, today 0; position-following 10%. Recommendation unchanged (Tactile + Ambient). Comparison page and four prototypes republished to the same URLs (version 2). Why it was needed: the overnight run capped every direction at a fixed 3 rounds instead of polishing to Ready.
 - 2026-10-06 — Tactile header font (owner feedback 'cartoonish'): Bricolage display/title replaced by Archivo (alternates IBM Plex Sans, Instrument Sans), round 5, art director Ready; review-only font switcher in the prototype; Tactile prototype and comparison page republished in place. Waiting for the owner to approve the font before Phase 3.
+- 2026-10-06 — Tactile header font round 2 (owner: round-1 faces too plain; keep the original fun intent, not Bricolage; Archivo is the fallback; dark mode stays): fun picks Anybody, Big Shoulders, Dela Gothic One, default Anybody, round 7, art director Ready; Tactile prototype and comparison page republished in place.

@@ -39,6 +39,7 @@ img { display: block; }
 .readout-lg { font: 500 var(--t-readout-lg)/var(--lh-readout-lg) var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 .muted { color: var(--ink-2); }
 .faint { color: var(--ink-3); }
+.top__title .display-xl { font-stretch: var(--wd-screen); letter-spacing: var(--tracking-screen); } /* r7 (critique-r6 P1.1): the three one-word screen titles only; the Foray detail h1.clamp4 is a sentence and keeps --wd-display */
 .clamp1, .clamp2, .clamp3, .clamp4 { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
 .clamp1 { -webkit-line-clamp: 1; line-clamp: 1; }
 .clamp2 { -webkit-line-clamp: 2; line-clamp: 2; }

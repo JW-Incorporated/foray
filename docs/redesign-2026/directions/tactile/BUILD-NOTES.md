@@ -23,59 +23,72 @@ Self-hosted variable WOFF2, Latin subset, `font-display: swap`:
 
 | Family | Role | File | Axes | Licence |
 |---|---|---|---|---|
-| Archivo | display, title, heading | `fonts/archivo-latin.woff2` | wght 100-900, wdth 62-125 | OFL 1.1 |
+| Anybody (provisional, round 2) | display, title, heading | `fonts/anybody-latin.woff2` | wght 100-900, wdth 50-150 | OFL 1.1 |
 | Bricolage Grotesque | text (body, rows, labels, keycaps, chips, tags) | `fonts/bricolage-grotesque-latin.woff2` | wght 200-800, wdth 75-100, opsz 12-96 | OFL 1.1 |
 | Azeret Mono | readouts | `fonts/azeret-mono-latin.woff2` | wght 100-900 | OFL 1.1 |
 
 All three are on Google Fonts under the OFL; download the variable files
 (Latin subset; the prototype's copies are the Google Fonts `/* latin */`
 slices) and host them locally (the CSP is `font-src 'self'`). Sizes as
-shipped: Archivo 90 KB, Bricolage 132 KB, Azeret 26 KB, about 250 KB. To
-get back under 180 KB at build time, instance Bricolage to the only values
+shipped: Anybody 57 KB, Bricolage 132 KB, Azeret 26 KB, about 215 KB. To
+get under 160 KB at build time, instance Bricolage to the only values
 the app uses (wght 500-700, wdth 100, opsz at text sizes; it is never set
-above 700 or below 100% width any more) and Archivo to wdth 90-100 /
-wght 600-700; `fonttools varLib.instancer` does both and the text roles do
-not change.
+above 700 or below 100% width any more) and Anybody to wdth 88-112 /
+wght 600-700 (the screen titles use 110, 2.1); `fonttools
+varLib.instancer` does both and the text roles do not change.
 
-**2026-10-06.** Archivo replaces Bricolage for the three large roles after
-the owner's "cartoonish" verdict on the r3 headers (`DIRECTION.md`,
-Typography). Bricolage stays for every text-size role. No text or display
-role uses weight 800 or `font-stretch: 90%` any more (the mono station code
-under the needle keeps its 800, 3.6).
+**2026-10-06, round 1.** Archivo replaced Bricolage for the three large
+roles after the owner's "cartoonish" verdict on the r3 headers
+(`DIRECTION.md`, Typography). **Round 2, same day:** the owner found
+Archivo, Plex and Instrument "a little plain" and asked for a fun face
+that is not Bricolage; Anybody is the provisional display face, Archivo is
+his named fallback, and the other two picks are review candidates (1.1).
+Bricolage stays for every text-size role. No text or display role uses
+weight 800 any more (the mono station code under the needle keeps its
+800, 3.6); width 90 is back, but on Anybody, whose width axis is its
+character rather than a squeeze.
 
 ```css
-@font-face { font-family: "Archivo"; src: url(fonts/archivo-latin.woff2) format("woff2"); font-weight: 100 900; font-stretch: 62% 125%; font-display: swap; }
+@font-face { font-family: "Anybody"; src: url(fonts/anybody-latin.woff2) format("woff2"); font-weight: 100 900; font-stretch: 50% 150%; font-display: swap; }
 @font-face { font-family: "Bricolage"; src: url(fonts/bricolage-grotesque-latin.woff2) format("woff2"); font-weight: 200 800; font-stretch: 75% 100%; font-display: swap; }
 @font-face { font-family: "Azeret"; src: url(fonts/azeret-mono-latin.woff2) format("woff2"); font-weight: 100 900; font-display: swap; }
 ```
 
-Fallback stacks: `"Archivo", system-ui, sans-serif`, `"Bricolage",
+Fallback stacks: `"Anybody", system-ui, sans-serif`, `"Bricolage",
 system-ui, sans-serif` and `"Azeret", ui-monospace, monospace`. The
 `font-stretch` range in each `@font-face` must cover the widths the tokens
 ask for, or the browser silently renders width 100.
 
-### 1.1 Review candidates for the display face
+### 1.1 Review candidates for the display face (round 2)
 
-Two alternates were trialled on the real screens beside Archivo
-(`data-local/redesign/font-trial/`, gitignored; rows 1-3 of the specimen).
-Either is a drop-in: swap the file and these token values, nothing else
-moves. Both are OFL on Google Fonts with a width axis.
+Thirty-seven OFL families went onto the real strings
+(`data-local/redesign/font-trial-r2/`, gitignored); the three that
+survived went onto the real screens in both schemes at 375/393/412
+(`data-local/redesign/shots/tactile/r6-fonts/<face>/`, contact sheets
+first). Each is a drop-in: swap the file and these token values, nothing
+else moves. All are OFL on Google Fonts. The prototype carries all four
+behind the review switcher (`?font=anybody|bigshoulders|dela|archivo`).
 
-| Candidate | File (Google Fonts, Latin) | `--font-display` | display (xl and 32) | title 24 | heading 20 | Character |
+| Candidate | File (Google Fonts, Latin) | `--font-display` | display (xl and 32) | title 24 | heading 20 | Character and measurements |
 |---|---|---|---|---|---|---|
-| **Archivo** (chosen) | `Archivo:wdth,wght@62..125,100..900` | `"Archivo"` | 700 / 92% / -0.02em | 650 / 94% / -0.015em | 650 / 96% / -0.01em | 19th-century American grotesque; label-plate warmth; same line breaks as r3 |
-| IBM Plex Sans | `IBM+Plex+Sans:wdth,wght@85..100,100..700` | `"Plex"` | 700 / 92% / -0.02em | 650 / 94% / -0.015em | 650 / 96% / -0.01em | Engineered, typewriter-descended; a touch stiffer, the most "instrument panel" of the three; weight tops out at 700 |
-| Instrument Sans | `Instrument+Sans:wdth,wght@75..100,400..700` | `"Instrument"` | 700 / 92% / -0.025em | 700 / 95% / -0.015em | 700 / 96% / -0.01em | Cleaner and cooler; closest to a neutral grotesque without being generic; weight tops out at 700, so title and heading sit at 700 |
+| **Anybody** (provisional) | `Anybody:wdth,wght@50..150,100..900` | `"Anybody"` | 700 / 90% / -0.01em; **screen titles 110% / 0.005em** (r7, 2.1) | 650 / 92% / -0.005em | 650 / 94% / 0 | 1970s wide American grotesque; hi-fi fascia, cassette label. Hero 3/3/3 lines, bottom 537/537/542; Now Playing 2, onboarding 2, Foray detail 4, nothing truncates or clips; holds in Bakelite (`r6-fonts/_ad/dark-anybody__*`). Screen titles one line at 375: "Today" 143px, "Find" 96 |
+| Big Shoulders | `Big+Shoulders:opsz,wght@10..72,100..900` | `"BigShoulders"` | **r7:** 800 / 100% / 0.005em, `--t-display-xl` 2.75rem/3rem, `--t-display` 2.25rem/2.5rem, hero clamp unchanged at line-height 1.2 | **r7:** 750 / 100% / 0.01em, `--t-title` 1.625rem/1.875rem | **r7:** 750 / 100% / 0.01em, `--t-heading` 1.375rem/1.625rem | Chicago sign-painter's gothic, condensed, crafted; opsz follows font-size (live in the shipped file; no `font-stretch` axis, so width tokens read 100%). At the r6 sizes (750/700/700, 40/32/24/20) it carried a third less mass than Anybody ("Today" 88px to 112) and its oversized font ascent dropped the Foray detail descender out of the line box; r7 sizes it up and centres the ink (`ascent-override: 84%; descent-override: 24%`, 2.1). Measured r7 at 375/393/412: "Today" 98.5px, hero 3/2/2 lines (bottom 547/514/517), Now Playing 2 at 26px, Foray detail 4/3/3 at 44, nothing clipped. 800 is a switcher-only exception to the 700 ceiling (that ceiling was Bricolage's curl, which this face lacks); if the owner picks it, rewrite the ceiling for it. Nearest the "plain" edge; can read sporty |
+| Dela Gothic One | `Dela+Gothic+One` | `"Dela"` | 400 / 100% / **0** (r7; was -0.01em), `--t-display-xl` 2.25rem/**2.625rem**, `--t-display` 1.75rem/**2.0625rem**, hero `clamp(1.5rem, 6.4vw, 1.75rem)` at line-height **1.16** | 400 / 100% / 0, `--t-title` 1.375rem/1.625rem | 400 / 100% / 0, `--t-heading` 1.125rem/1.375rem | 1970s Japanese hi-fi lettering, one black weight, the loudest fun. At the Anybody scale it overflows the hero clamp at every width and puts Now Playing on 3 lines, hence the smaller scale. Its font ascent is 1.17em against 0.85em of ink, so every clamped title clipped its descenders 6px in r6: `ascent-override: 84%; descent-override: 28%` (2.1). r7 measured at 375/393/412: hero 3 lines (gap 26/30/35, bottom 523/528/532), Foray detail 4 (gap 49/67/86), Now Playing 2 (fits by 0.8px at 375), nothing clipped |
+| Archivo (owner's fallback) | `Archivo:wdth,wght@62..125,100..900` | `"Archivo"` | 700 / 92% / -0.02em | 650 / 94% / -0.015em | 650 / 96% / -0.01em | r5 values, unchanged: hero 3/2/2, bottom 537/506/509, Foray detail 3, nothing clips (`critique-r5.md`); the screen-title width in 2.1 does not apply to it |
 
-Line heights are unchanged for all three (44 / 36 / 28 / 24): x-heights
-are within 2% of each other and every r3 title kept its line count.
-
-**r5 verdict (2026-10-06, `critique-r5.md`): Archivo, final.** Measured in
-the prototype at 375/393/412 in both schemes: hero 3/2/2 lines with no
-single-word last line, onboarding and Now Playing 2 lines everywhere,
-Foray detail 3. Plex costs the hero a line at 393; Instrument flattens the
-title-to-row step. The switcher ships in the owner's review build only;
-Phase 3 removes it and the two alternate files (critique-r5 P3).
+Line heights are unchanged for Anybody and Archivo (44 / 36 / 28 / 24);
+Big Shoulders takes its own in r7 (44 / 40 / 28 / 24 at 44 / 36 / 26 /
+22px). IBM Plex Sans and Instrument Sans (round 1) are out of the
+prototype and this table; the owner called them plain alongside Archivo.
+The switcher ships in the owner's review build only; Phase 3 removes it
+and the files of whichever faces the owner did not pick. Round-7 values
+above (`critique-r6.md` P1) are applied in the prototype and re-measured
+on the shipped files in `critique-r7.md`: every number in the table holds,
+120 clamp-strip diffs are clean in all four faces at 375/393/412, and the
+r7 renders (`data-local/redesign/shots/tactile/r7/`, `r7-fonts/`) show
+this state. **The type is closed from the art director's side**; the
+owner's pick at the switcher decides which P3 item in `critique-r7.md`
+Phase 3 applies.
 
 ## 2. CSS tokens
 
@@ -83,15 +96,15 @@ Phase 3 removes it and the two alternate files (critique-r5 P3).
 
 ```css
 :root {
-  --font-display: "Archivo", system-ui, sans-serif;   /* display, title, heading */
+  --font-display: "Anybody", system-ui, sans-serif;   /* display, title, heading */
   --font-text:    "Bricolage", system-ui, sans-serif; /* everything else */
   --font-mono:    "Azeret", ui-monospace, monospace;  /* readouts */
 
   /* size / line-height / weight / width / tracking */
-  --t-display-xl: 2.5rem;   --lh-display-xl: 2.75rem; --w-display: 700; --wd-display: 92%; --tracking-display: -0.02em;
+  --t-display-xl: 2.5rem;   --lh-display-xl: 2.75rem; --w-display: 700; --wd-display: 90%; --tracking-display: -0.01em;
   --t-display:    2rem;     --lh-display:    2.25rem; /* same weight, width and tracking as display-xl */
-  --t-title:      1.5rem;   --lh-title:      1.75rem; --w-title:   650; --wd-title:   94%; --tracking-title:   -0.015em;
-  --t-heading:    1.25rem;  --lh-heading:    1.5rem;  --w-heading: 650; --wd-heading: 96%; --tracking-heading: -0.01em;
+  --t-title:      1.5rem;   --lh-title:      1.75rem; --w-title:   650; --wd-title:   92%; --tracking-title:   -0.005em;
+  --t-heading:    1.25rem;  --lh-heading:    1.5rem;  --w-heading: 650; --wd-heading: 94%; --tracking-heading: 0;
   --t-body-lg:    1.0625rem;--lh-body-lg:    1.5rem;  --w-body:    500;
   --t-body:       0.9375rem;--lh-body:       1.3125rem;
   --t-label:      0.8125rem;--lh-label:      1rem;    --w-label:   700;
@@ -100,8 +113,41 @@ Phase 3 removes it and the two alternate files (critique-r5 P3).
   --t-readout:    0.8125rem;--lh-readout:    1rem;
 
   --tracking-label: 0;
+
+  /* r7 (critique-r6 P1.1) */
+  --wd-screen: 110%; --tracking-screen: 0.005em;  /* the three one-word screen titles only */
 }
+.top__title .display-xl { font-stretch: var(--wd-screen); letter-spacing: var(--tracking-screen); }
+
+/* r7 (critique-r6 P1.2), review candidates only: centre the ink inside the line box */
+@font-face { font-family: "Dela"; src: url(fonts/dela-gothic-one-latin.woff2) format("woff2"); font-weight: 400; font-display: swap; ascent-override: 84%; descent-override: 28%; }
+@font-face { font-family: "BigShoulders"; src: url(fonts/big-shoulders-latin.woff2) format("woff2"); font-weight: 100 900; font-display: swap; ascent-override: 84%; descent-override: 24%; }
 ```
+
+**Screen titles run wide (r7).** "Today", "Find" and "Yours" are the only
+display-xl strings that are one word with room beside the knob, and they
+take Anybody at width 110 (the extended fascia cut; measured one line at
+375: "Today" 143px, "Find" 96px). The Foray detail `h1.display-xl.clamp4`
+is a sentence and stays at `--wd-display` 90: at 100 the fixture hero
+already costs a line. In the alternates' switcher blocks `--wd-screen`
+is set to that face's display width (Big Shoulders and Dela have no
+`wdth`; Archivo keeps 92).
+
+**Clamped titles never clip ink (r7).** Dela's font ascent is 1.17em
+against 0.85em of ink and Big Shoulders' 0.98em against 0.82em, so the
+baseline sits low in the line box and `overflow: hidden` on a clamped
+title cut the descenders of "history" (6px at Dela 36/40, 2–5px at Big
+Shoulders 40–44/44). Padding the clamp box paints the next line's cap
+tops when a title truncates, and the line height Dela would need (1.44em)
+breaks the ≤ 540 hero rule, so the fix is the metric override above plus
+the line heights in 1.1; measured clean top and bottom on every clamped
+title at 375/393/412. **WebKit does not implement `ascent-override` /
+`descent-override`** (Chromium 87+ and Firefox 89+ do): the fix holds on
+the owner's Android phone and in the renders, not on the iPhone founder's
+build. If the owner picks either face, Phase 3 re-cuts the file's
+`hhea`/`OS/2` ascent and descent to those values with `fonttools` and
+renames the family per the OFL's Reserved Font Name clause. Anybody
+(content area 1.05em) and Archivo (1.075em) need nothing.
 
 Role classes (`.display-xl`, `.display`, `.title`, `.heading`) set
 `font-family: var(--font-display)` plus their own weight, width and
@@ -116,14 +162,19 @@ and 412; balance never adds a line, so the hero height rule is safe). `body` is
 `500 var(--t-body)/var(--lh-body) var(--font-text)` at width 100%, and no
 text-size role ever changes family or width. The display and title weights
 (700, 650) are the heaviest any text or display role gets: Bricolage's 800
-and the 90% width are retired, since that pairing was the "cartoonish" read.
+is retired, since 800 with that face's curled `y` and hooked `g` was the
+"cartoonish" read. Width 90 is back on Anybody only; its width axis runs
+50-150 and 90 is a normal cut of it, not a squeeze.
 Readouts (`--font-mono`) always set `font-variant-numeric: tabular-nums`.
 No `text-transform: uppercase` anywhere. Titles clamp with `-webkit-line-clamp`
 (2 lines in rows, 3 in Now Playing, 4 on Foray detail), never a fixed height.
 The hero title's `clamp(1.75rem, 7.2vw, 2rem)` (4.1) is unchanged; in
-Archivo the r3 fixture title fits two lines at 393 where Bricolage needed
-three, so the hero bottom moves up about 32px and the ≤ 540px rule gains
-margin rather than losing it.
+Anybody the r3 fixture title takes three lines at 375, 393 and 412, and
+since the title clamps at three lines the hero bottom is bounded at 537px
+at 393 (542 at 412), inside the ≤ 540px rule with 3px to spare. If a build
+needs that margin back, `--wd-display: 88%` is the relief valve; below
+88 Anybody starts losing the width that is its character. (Archivo's
+two-line hero sat at 506.)
 
 ### 2.2 Colour
 

@@ -16,25 +16,27 @@ the copy.
 
 ## Typography (OFL only, self-hosted)
 
-- **Archivo** (OFL 1.1, variable: weight 100-900, width 62-125) for
-  display, title and heading: every screen title, hero and episode title,
-  section heading, every Find tile name (r4: the large tile alone was
-  Archivo and the rest Bricolage, two faces on one screen) and the
-  onboarding brand. It is a
-  grotesque cut from late-nineteenth-century American jobbing type, which
-  is the lettering on a tape-deck label or a dial's station plate: flat
-  terminals, a straight-tailed `y`, a plain `g`, no bounce. Display runs
-  width 92 at weight 700; title 94/650; heading 96/650. The slight
-  condensing keeps the dense, chunky rhythm the direction had.
+- **Anybody** (OFL 1.1, variable: weight 100-900, width 50-150;
+  provisional, round 2) for display, title and heading: every screen title,
+  hero and episode title, section heading, every Find tile name (r4: the
+  large tile alone was in the display face and the rest Bricolage, two faces
+  on one screen) and the onboarding brand. It is a wide, heavy American
+  grotesque of the 1970s kind, the lettering on a hi-fi fascia or a
+  cassette-deck label: flat-topped `t`, squared counters, a straight-tailed
+  `y`, a plain single-storey `g`, flat terminals, no bounce. The width axis
+  is what makes it Tactile's: display runs width 90 at weight 700; title
+  92/650; heading 94/650. At 90 it keeps the chunky rhythm the direction
+  had without the curl that made r3 a cartoon. **Archivo** (OFL 1.1) is the
+  owner's named fallback and keeps its r5 tokens in BUILD-NOTES 1.1.
 - **Bricolage Grotesque** (OFL 1.1, variable) for text: body, rows, labels,
   keycaps, chips, tags. At 15-17px its quirks are texture, not a voice, and
-  its open shapes pair with Archivo (same grotesque skeleton, close
-  x-height) so the two read as one family at a glance.
+  its open shapes pair with Anybody (both wide grotesques with square
+  counters and a close x-height) so the two read as one family at a glance.
 - **Azeret Mono** (OFL 1.1) for readouts only: clock, durations, counts,
   date. Tabular by nature, so the counter never jitters.
 
-Scale (size/line, weight, width): display-xl 40/44 700 w92, display 32/36
-700 w92, title 24/28 650 w94, heading 20/24 650 w96 (all Archivo); body-lg
+Scale (size/line, weight, width): display-xl 40/44 700 w90, display 32/36
+700 w90, title 24/28 650 w92, heading 20/24 650 w94 (all Anybody); body-lg
 17/24 500, body 15/21 500, label 13/16 700, micro 12/16 600 (Bricolage);
 readout-lg 28/32 mono, readout 13/16 mono. Body never below 15px,
 everything in `rem`, no all-caps labels.
@@ -59,11 +61,88 @@ confirmed it in both schemes (`critique-r4.md`): Archivo stays primary,
 Plex costs the hero a line and reads instrument-panel, Instrument loses the
 label-plate character and flattens the title-to-row step. Sentence-length
 display lines balance (`text-wrap: balance`), so no headline ends on a
-single word. **r5 closed the question** (`critique-r5.md`, measured in both
-schemes at 375/393/412): Archivo is final, the alternates stay in the
-prototype only as the owner's review switcher, and no further type round
-is planned. What remains for Phase 3 is removing the switcher and
-instancing the fonts.
+single word. r5 called it closed (`critique-r5.md`, measured in both
+schemes at 375/393/412: Archivo final, the alternates in the prototype
+only as the owner's review switcher). The owner reopened it the same
+evening; see the next note.
+
+**2026-10-06, round 2 (owner, 19:22 PDT).** "All three of those fonts are
+a little plain. Have the art director maintain their original thinking
+with a fun font but just not that particular one they originally picked.
+If we don't find one I like this round, we'll go with Archivo." Also:
+"Having a dark mode option is fine", so Bakelite stays. He is right about
+round 1: Archivo, Plex and Instrument fixed the cartoon by removing the
+voice. The original thinking was a radio, and a radio's lettering is not
+neutral; it is the wide, heavy grotesque on a 1970s hi-fi fascia, the
+condensed gothic on a station's signage, the black type on a tape label.
+So this round looked only at faces with that kind of personality and
+threw out anything bubbly, bouncy or rounded-novelty before testing.
+Thirty-seven OFL families went onto Tactile's real strings at display and
+title size (`data-local/redesign/font-trial-r2/`, gitignored), then the
+three finalists onto the real screens in both schemes at 375/393/412
+(`data-local/redesign/shots/tactile/r6-fonts/`). Out, and why: too wide
+(Unbounded, Krona One, Syne, Michroma: four-line heroes and a sci-fi
+read), too thin or dashboard (Darker Grotesque, Teko, Agdasima, Sofia
+Sans Condensed, Yanone Kaffeesatz), still plain (Work Sans, Libre
+Franklin, Chivo, Gabarito, Funnel Display, Epilogue, Zilla Slab, Kanit,
+Viga), cartoon-adjacent (Caprasimo, Changa One, Passion One, Rowdies,
+Alfa Slab One, Tilt Warp), editorial (Hepta Slab, Rokkitt, Sansita),
+jersey or newsprint (Jockey One, Francois One, Jaro), broken at display
+size (Boldonse). Three stayed, best first:
+
+1. **Anybody**, provisional display face from this note on. The
+   personality is in the width axis, so it can be tuned instead of
+   argued with: 90 at display, 92 at title, 94 at heading. Measured on
+   the fixture: hero 3/3/3 lines at 375/393/412 with the card bottom at
+   537/537/542 (the title clamps at three lines, so 537 is the ceiling at
+   393, inside the ≤ 540 rule); Now Playing 2 lines, onboarding 2, Foray
+   detail 4 with no truncation. Holds in Bakelite.
+2. **Big Shoulders** (the 2024 variable family with the opsz axis): the
+   Chicago sign-painter's gothic, condensed and crafted. Everything fits
+   with room (hero 2 lines, bottom 506; Foray detail 3). The risk is the
+   other edge: condensed gothics read sporty, and it sits nearest the
+   "plain" verdict of the three.
+3. **Dela Gothic One**: the loudest fun, a heavy gothic that reads as
+   1970s Japanese hi-fi lettering. One weight only, and at the current
+   scale it overflows the hero clamp at every width (28px at 393 still
+   truncates "a much longer…") and pushes Now Playing to three lines; it
+   needs the smaller display scale in BUILD-NOTES 1.1 and is third for
+   that reason, not for its character.
+
+Archivo stays in the prototype switcher as the owner's fallback. Bricolage
+stays for text sizes: Anybody and Bricolage share the wide-grotesque
+skeleton and the pairing reads as one family in the r6 renders, so no
+body change. Weight 800 stays retired; 700 at display is the heaviest
+anything gets. Plex and Instrument are gone from the prototype.
+
+**r6 verdict (`critique-r6.md`, measured in Cream at 375/393/412 and in
+Bakelite at 393).** Anybody stays; the ranking above holds; one more
+round. r6 was a family swap at the r5 tokens, and the width axis that
+won Anybody the trial sits at 90 everywhere, the narrow end of its own
+character. The three one-word screen titles ("Today", "Find", "Yours")
+have the room to let it run: at **width 110** they become the extended
+fascia lettering this section describes, one line beside the knob at
+375, and the sentence-length titles stay at 90 so no line count moves.
+That is the r7 change for Anybody. The other r7 items are for the
+switcher: Dela and Big Shoulders ship with oversized font ascents that
+drop their descenders out of the clamped titles (fixed by metric
+overrides in the prototype; WebKit lacks them, so a pick of either face
+means re-cutting the file in Phase 3), Dela's display tracking is too
+tight, and Big Shoulders needs its own larger scale to carry the same
+mass as Anybody; each alternate must lose or win on its character on
+the owner's phone, not on a defect. Values in BUILD-NOTES 1.1 and 2.1.
+
+**r7 verdict (`critique-r7.md`, measured on the shipped prototype in Cream
+at 375/393/412 and in Bakelite at 393): closed.** Anybody stays, at the r7
+tokens. The screen titles at width 110 are the fascia nameplate this
+section describes ("Today" 143px, "Yours" 148, "Find" 96, one line at 375,
+cap centre 0.5px off the knob's), the hero, Foray detail and Now Playing
+line counts are unchanged from r6, and all 120 clamp-strip diffs across
+the four faces are clean, so each alternate now stands on its character.
+No P1 remains; one further tune (headings at width 100) was trialled and
+rejected as invisible. Ranking unchanged: Anybody, Big Shoulders, Dela
+Gothic One, then Archivo as the owner's fallback. The owner picks at the
+switcher; Phase 3 applies `critique-r7.md` P3 for that face.
 
 Overturns Fraunces + DM Sans: a serif voice reads editorial; a radio reads
 grotesque.

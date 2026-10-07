@@ -30,16 +30,19 @@ const OUT = join(ROOT, 'data-local/redesign/checkpoint');
 export const DIRECTIONS = ['tactile', 'ambient', 'editorial', 'native-2026', 'clarity'];
 // Each direction's final critique round: the round its art director passed it
 // at (polish-to-ready pass, 2026-10-06). The checkpoint shows these renders.
-// Tactile is r5: the owner's header-font change (Bricolage -> Archivo), 2026-10-06.
-export const ROUNDS = { tactile: 'r5', ambient: 'r4', editorial: 'r4', 'native-2026': 'r5', clarity: 'r4' };
+// Tactile is r7: the owner's second header-font round (Archivo -> Anybody,
+// provisional; Archivo stays the fallback), 2026-10-06.
+export const ROUNDS = { tactile: 'r7', ambient: 'r4', editorial: 'r4', 'native-2026': 'r5', clarity: 'r4' };
 export const SCREENS = ['home', 'now-playing', 'foray', 'search', 'library', 'mini', 'onboarding'];
 const TODAY_LABEL = {
   home: 'returning__home', 'now-playing': 'player__now-playing', foray: 'returning__foray',
   search: 'returning__search', library: 'returning__library', mini: 'player__mini-player-home',
   onboarding: 'first-run__intro-sheet',
 };
-// Tactile header-font candidates (r5-fonts), shown side by side on the page.
-export const TACTILE_FONTS = ['archivo', 'ibm-plex-sans', 'instrument-sans'];
+// Tactile header-font candidates (round 2 of the font pass, rendered in r7-fonts),
+// shown side by side on the page: three fun picks, then Archivo as the fallback.
+export const TACTILE_FONTS = ['anybody', 'big-shoulders', 'dela-gothic-one', 'archivo'];
+const FONT_ROUND = 'r7-fonts';
 const FONT_SCREENS = ['home', 'now-playing', 'foray'];
 const TITLES = { tactile: 'Tactile', ambient: 'Ambient', editorial: 'Editorial', 'native-2026': 'Native 2026', clarity: 'Clarity' };
 const VIEWPORT = '393x852';
@@ -75,10 +78,12 @@ function copyShots() {
       else missing.push(relative(ROOT, src));
     }
   }
+  // Faces from an earlier round must not linger: publishCompare() copies all of shots/.
+  rmSync(join(OUT, 'shots', 'tactile-fonts'), { recursive: true, force: true });
   for (const face of TACTILE_FONTS) {
     mkdirSync(join(OUT, 'shots', 'tactile-fonts', face), { recursive: true });
     for (const s of FONT_SCREENS) {
-      const src = join(SHOTS, 'tactile/r5-fonts', face, 'shots', `default__${s}__${VIEWPORT}.png`);
+      const src = join(SHOTS, 'tactile', FONT_ROUND, face, 'shots', `default__${s}__${VIEWPORT}.png`);
       if (existsSync(src)) copyFileSync(src, join(OUT, 'shots', 'tactile-fonts', face, `${s}.png`));
       else missing.push(relative(ROOT, src));
     }

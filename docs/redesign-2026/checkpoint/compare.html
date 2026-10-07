@@ -87,7 +87,7 @@ header.top p.process { color: var(--ink); font-weight: 500; }
 .dir .open { font-size: 14px; font-weight: 600; }
 .dir .change { color: var(--ink); font-size: 13px; line-height: 1.4; font-weight: 500; }
 
-/* Tactile header-font options: three small reels, one per face. */
+/* Tactile header-font options, round 2: one small reel per face. */
 .fonts { background: var(--sheet); border: 1px solid var(--rule); border-radius: 14px; padding: 14px 16px; display: grid; gap: 12px; min-width: 0; }
 .fonts > header { display: grid; gap: 4px; }
 .fonts > header p { color: var(--ink-2); font-size: 14px; }
@@ -96,6 +96,9 @@ header.top p.process { color: var(--ink); font-weight: 500; }
 .face .row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .face h3 { font-size: 16px; }
 .face .pill { color: var(--signal); }
+.face .pill.fallback { color: var(--ink-2); }
+.face .pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.face .character { color: var(--ink-2); font-size: 14px; line-height: 1.4; }
 .face .reel { gap: 8px; padding-bottom: 6px; }
 .face figure.shot { flex: 1 1 0; min-width: 96px; }
 .face .shot button { border-radius: 12px; }
@@ -188,7 +191,7 @@ textarea { width: 100%; min-height: 120px; font: 13px/1.4 var(--f-mono); color: 
     <span class="label">4a Redesign 2026 · Phase 2 checkpoint</span>
     <h1>Five directions, side by side</h1>
     <p>Final-round renders of the hero screens at 393 × 852, ranked by the judges' pairwise wins. Today's app is the baseline on the right. Tap any screen to see it larger.</p>
-    <p class="process">All five directions went through the same polish-to-ready process: critique and revise until the art director passed it, capped at round 6. Every one passed. Polished and re-judged on 6 October 2026. The ranking was judged with Tactile's previous header font; its new font, Archivo, came after.</p>
+    <p class="process">All five directions went through the same polish-to-ready process: critique and revise until the art director passed it, capped at round 6. Every one passed. Polished and re-judged on 6 October 2026. The ranking was judged with Tactile's original header font; its second font round, below, came after.</p>
   </header>
 
   <div class="modes" role="tablist" aria-label="Mode">
@@ -201,7 +204,7 @@ textarea { width: 100%; min-height: 120px; font: 13px/1.4 var(--f-mono); color: 
     <div class="legend" id="legend"></div>
     <section class="fonts" aria-labelledby="fonts-h">
       <header>
-        <h2 id="fonts-h">Tactile header font: three options</h2>
+        <h2 id="fonts-h">Tactile header font: round 2</h2>
         <p>Open the Tactile prototype and tap Aa to switch fonts live.</p>
       </header>
       <div class="faces" id="faces"></div>
@@ -313,9 +316,9 @@ textarea { width: 100%; min-height: 120px; font: 13px/1.4 var(--f-mono); color: 
   // without a pass and shows neutral, never as pending work.
   var MAX_WINS = 20;
   var DIRS = [
-    { slug: 'tactile', name: 'Tactile', code: 'Dial', wins: 20, round: 5, verdict: 'Ready', state: 'ready',
+    { slug: 'tactile', name: 'Tactile', code: 'Dial', wins: 20, round: 7, verdict: 'Ready', state: 'ready',
       thesis: 'A well-made little radio: forays are bands on a dial, controls are keys you press.',
-      change: "Header font changed to Archivo at the owner's request, 6 October.",
+      change: "Header font: Anybody (provisional), chosen 6 October at the owner's request",
       artifact: 'https://claude.ai/artifact/6N8mk5PZJc32D8shdHw7GK' },
     { slug: 'ambient', name: 'Ambient', code: 'Afterglow', wins: 15, round: 4, verdict: 'Ready', state: 'ready',
       thesis: 'The artwork is the light source; the room changes colour as a foray moves between shows.',
@@ -331,11 +334,17 @@ textarea { width: 100%; min-height: 120px; font: 13px/1.4 var(--f-mono); color: 
       artifact: 'https://claude.ai/artifact/1YAp1DjBVKMzZEgKpkW6UY' }
   ];
   var TODAY = { slug: 'today', name: "Today's app", code: 'baseline', wins: 0, verdict: 'Baseline', base: true, thesis: 'The current 4a, for reference.' };
-  // Tactile header-font candidates, rendered on the same three screens.
+  // Tactile header-font candidates, round 2, rendered on the same three screens:
+  // the three fun picks first, then Archivo, the owner's fallback.
   var FACES = [
-    { slug: 'archivo', name: 'Archivo', current: true },
-    { slug: 'ibm-plex-sans', name: 'IBM Plex Sans' },
-    { slug: 'instrument-sans', name: 'Instrument Sans' }
+    { slug: 'anybody', name: 'Anybody', current: true,
+      character: 'Wide, heavy 1970s American grotesque: hi-fi fascia and cassette-label lettering, flat-topped t, squared counters, straight y. Width axis tunes it.' },
+    { slug: 'big-shoulders', name: 'Big Shoulders',
+      character: "Chicago sign-painter's condensed gothic with optical sizes: radio-station signage, crafted and lively; fits every title with room." },
+    { slug: 'dela-gothic-one', name: 'Dela Gothic One',
+      character: 'Heavy single-weight gothic like 1970s Japanese hi-fi lettering; the loudest fun, needs a smaller display scale to fit.' },
+    { slug: 'archivo', name: 'Archivo', fallback: true,
+      character: "The owner's fallback if none of the three fun picks wins: a sturdy, plain grotesque." }
   ];
   var FACE_SCREENS = [{ id: 'home', name: 'Home' }, { id: 'now-playing', name: 'Now Playing' }, { id: 'foray', name: 'Foray' }];
   var SCREENS = [
@@ -406,7 +415,11 @@ textarea { width: 100%; min-height: 120px; font: 13px/1.4 var(--f-mono); color: 
         reel.appendChild(el('figure', { cls: 'shot', role: 'listitem' }, [b, el('figcaption', null, [el('span', { text: s.name })])]));
       });
       host.appendChild(el('div', { cls: 'face' }, [
-        el('div', { cls: 'row' }, [el('h3', { text: f.name }), f.current ? el('span', { cls: 'pill', text: 'In the prototype now' }) : null]),
+        el('div', { cls: 'row' }, [el('h3', { text: f.name }), el('div', { cls: 'pills' }, [
+          f.fallback ? el('span', { cls: 'pill fallback', text: 'Fallback' }) : null,
+          f.current ? el('span', { cls: 'pill', text: 'In the prototype now' }) : null
+        ])]),
+        f.character ? el('p', { cls: 'character', text: f.character }) : null,
         reel
       ]));
     });
