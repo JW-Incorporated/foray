@@ -15,10 +15,26 @@ small: delegate reading, building and verifying to agents and workflows.
 
 ## Day 3 (from 2026-10-07 06:40 PDT): back on Claude, Codex reviews
 
-The overnight Codex driver was too slow (about 4 units in 7 hours) and is stopped. The build runs
-as Claude workflow `wf_8c930d5d-182` (`build-directions.workflow.js` @ 77a8fa81, args in
-`PAUSE.md`): Opus builds, Codex reviews, 4 screens in flight per direction. **`PAUSE.md` at the
-worktree root is the current resume procedure; follow it first.** The section below is history.
+The overnight Codex driver was too slow (about 4 units in 7 hours) and is stopped; never run it
+beside the workflow. The build runs as a Claude workflow: Sonnet builds and fixes, Codex
+reviews (thin Claude agent -> `codex exec`, up to 3 rounds, Opus if Codex fails), Fable/Opus
+judge, 4 screens in flight per direction (one per screen family), merges one at a time.
+Runs: `wf_8c930d5d-182` (06:40-09:19, died on the weekly limit: foundation to 7/8), then
+**`wf_d90d5c98-c0e`** (from 16:10 PDT, script @ 197aff46). Launch / relaunch (same args every
+time; merged units are skipped by git, interrupted units continue from their pushed branch):
+
+```
+Workflow({ scriptPath: "<worktree>\\docs\\redesign-2026\\workflows\\build-directions.workflow.js",
+  args: { directions: ["tactile", "ambient"], screenConcurrency: 4, maxIters: 4,
+    plansFile: "<worktree>\\data-local\\redesign\\codex-driver\\plans.json" } })
+```
+
+On resume: `git pull --ff-only`; if the run is still going (same session: `/workflows`; new
+session: its `journal.jsonl` under this project's `subagents/workflows/<run id>/` is still
+growing), wait for its notification. If it died, relaunch as above; if it dies twice at one
+screen, add it to `args.skipScreens` and record it under **Blocked** in PROGRESS.md. When it
+finishes, do step 6 below. Check `build-directions.stub.mjs` (plain and `STUB_DEAD=1`) after any
+script edit. The section below is history.
 
 ## Night 2, continued (from 2026-10-06 23:00 PDT): the build runs on Codex
 
