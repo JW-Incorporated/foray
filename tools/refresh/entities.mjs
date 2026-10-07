@@ -15,52 +15,46 @@
  * that genuinely contains an ampersand stores "&", and `esc()` renders it.
  */
 
-const NAMED = {
-  amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ",
-  ndash: "–", mdash: "—", hellip: "…",
-  lsquo: "‘", rsquo: "’", ldquo: "“", rdquo: "”",
-  laquo: "«", raquo: "»", copy: "©", reg: "®", trade: "™",
-  deg: "°", middot: "·", bull: "•", euro: "€", pound: "£",
-  agrave: "à", aacute: "á", acirc: "â", auml: "ä", atilde: "ã", aring: "å",
-  egrave: "è", eacute: "é", ecirc: "ê", euml: "ë",
-  igrave: "ì", iacute: "í", icirc: "î", iuml: "ï",
-  ograve: "ò", oacute: "ó", ocirc: "ô", ouml: "ö", otilde: "õ", oslash: "ø",
-  ugrave: "ù", uacute: "ú", ucirc: "û", uuml: "ü",
-  yacute: "ý", yuml: "ÿ", ntilde: "ñ", ccedil: "ç", szlig: "ß",
-  Agrave: "À", Aacute: "Á", Acirc: "Â", Auml: "Ä", Atilde: "Ã", Aring: "Å",
-  Egrave: "È", Eacute: "É", Ecirc: "Ê", Euml: "Ë",
-  Igrave: "Ì", Iacute: "Í", Icirc: "Î", Iuml: "Ï",
-  Ograve: "Ò", Oacute: "Ó", Ocirc: "Ô", Ouml: "Ö", Otilde: "Õ", Oslash: "Ø",
-  Ugrave: "Ù", Uacute: "Ú", Ucirc: "Û", Uuml: "Ü",
-  Yacute: "Ý", Ntilde: "Ñ", Ccedil: "Ç",
-};
+import { readFileSync } from "node:fs";
+
+/* The named entities: ONE table, shared with backend/src/feeds/html.ts (the
+   live API's decoder), so a title decodes the same in data/ and on the live
+   episode list (CH2-09, docs/roadmap/code-health-2.md B1-05). html.ts imports
+   it statically so Vercel bundles it; tools run from the repo checkout, so
+   this side reads it beside the module. backend/test/entitiesParity.test.ts
+   holds the two decoders to backend/fixtures/entities.json. */
+const NAMED = JSON.parse(readFileSync(new URL("../../backend/src/feeds/entitiesTable.json", import.meta.url), "utf8"));
 
 /** Matches every entity this module knows: numeric (decimal or hex) and the
-    named set above. Exported so the data test and the decoder read ONE
-    definition of "an entity" — a name added to NAMED is caught by both. */
-export const ENTITY_RE = new RegExp(`&(?:#(\\d{1,7})|#[xX]([0-9a-fA-F]{1,6})|(${Object.keys(NAMED).join("|")}));`, "g");
+    shared named table. Exported so the data test and the decoder read ONE
+    definition of "an entity" — a name added to the table is caught by both. */
+export const ENTITY_RE = new RegExp(`&(?:#(\\d+)|#[xX]([0-9a-fA-F]+)|(${Object.keys(NAMED).join("|")}));`, "g");
 
-/** One code point, or null when the number is not a scalar value. Control
-    characters (the `&#13;` a feed leaves inside a blurb) become a space rather
-    than a raw CR/LF: nothing in data/ is prose that wants a line break. */
+/** U+FFFD, the Unicode replacement character. */
+const REPLACEMENT_CHARACTER = "�";
+
+/** One code point — the code-point rule html.ts's decodeCodePoint shares.
+    A number that is not a Unicode scalar value (a surrogate, or above
+    U+10FFFF) becomes U+FFFD, so no entity survives into data/. A control
+    character (the `&#13;` a feed leaves inside a blurb; C0 and C1 alike)
+    becomes a space rather than a raw CR/LF: nothing in data/ is prose that
+    wants a line break. */
 function fromCodePoint(n) {
-  if (!Number.isInteger(n) || n < 0 || n > 0x10ffff) return null;
-  if (n >= 0xd800 && n <= 0xdfff) return null;
+  if (!Number.isInteger(n) || n > 0x10ffff || (n >= 0xd800 && n <= 0xdfff)) return REPLACEMENT_CHARACTER;
   if (n < 0x20 || (n >= 0x7f && n < 0xa0)) return " ";
   return String.fromCodePoint(n);
 }
 
-/** Decode the entities in `s`. Runs until the text is fixed, so a
-    double-encoded "&amp;#038;" also comes out as "&". Anything that is not an
-    entity this module knows is left exactly as it was. */
+/** Decode the entities in `s`. Runs until the text is fixed (at most 4
+    passes), so a double-encoded "&amp;#038;" also comes out as "&". Anything
+    that is not an entity this module knows is left exactly as it was. */
 export function decodeEntities(s) {
   if (s == null) return s;
   let text = String(s);
   for (let pass = 0; pass < 4; pass++) {
     const next = text.replace(ENTITY_RE, (m, dec, hex, name) => {
       if (name) return NAMED[name];
-      const ch = fromCodePoint(parseInt(dec ?? hex, dec ? 10 : 16));
-      return ch == null ? m : ch;
+      return fromCodePoint(dec !== undefined ? parseInt(dec, 10) : parseInt(hex, 16));
     });
     if (next === text) break;
     text = next;
