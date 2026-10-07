@@ -128,3 +128,43 @@ test("run spends no request on a row already probed inside the gap", async () =>
   assert.deepEqual(r.tooSoon, [{ item_id: "dai-ok", last: "2026-10-04T00:00:00.000Z" }]);
   assert.equal(r.ledger.probes.length, 1);
 });
+
+test("run with dryRun sends nothing: the probe is never called", async () => {
+  // MUTATION: drop the `if (dryRun)` branch in run's loop (call probeRow under a
+  // dry run, as before #1150's day-1 disclosure) -> the throwing fake throws.
+  const probe = async () => {
+    throw new Error("a dry run sent a request");
+  };
+  const ledger = emptyLedger();
+  const lines = [];
+  const r = await run({ sourcesDoc, ledger, all: true, dryRun: true, probe, now: at("2026-10-04T12:00:00Z"), log: (l) => lines.push(l) });
+  assert.equal(r.ledger, ledger);
+  assert.deepEqual(r.appended, []);
+  assert.deepEqual(r.failed, []);
+  assert.deepEqual(r.wouldProbe, [
+    { item_id: "dai-ok", host: "pscrb.fm" },
+    { item_id: "clean", host: "media.transistor.fm" },
+  ]);
+  assert.ok(lines.includes("would probe dai-ok host=pscrb.fm"));
+  assert.ok(lines.includes("would probe clean host=media.transistor.fm"));
+  assert.equal(ledger.probes.length, 0);
+});
+
+test("a dry run prints the request count: selected minus too soon", async () => {
+  // MUTATION: test dryRun BEFORE the gap check in run's loop -> dai-ok is
+  // counted as a request, the count is 2 and no "too soon" line is printed.
+  let calls = 0;
+  const probe = async (...a) => { calls++; return delivered()(...a); };
+  const ledger = { ...emptyLedger(), probes: [{ item_id: "dai-ok", probed_at: "2026-10-04T00:00:00.000Z", method: "ranged-get" }] };
+  const lines = [];
+  const r = await run({ sourcesDoc, ledger, all: true, dryRun: true, probe, now: at("2026-10-04T10:00:00Z"), log: (l) => lines.push(l) });
+  const selected = selectRows(sourcesDoc, { all: true }).rows.length;
+  assert.equal(selected, 2);
+  assert.deepEqual(r.tooSoon, [{ item_id: "dai-ok", last: "2026-10-04T00:00:00.000Z" }]);
+  assert.ok(lines.includes("too soon dai-ok (last 2026-10-04T00:00:00.000Z)"));
+  const summary = lines.find((l) => l.startsWith("dry run: "));
+  const printed = Number(/^dry run: (\d+) requests would be sent/.exec(summary)?.[1]);
+  assert.equal(printed, selected - r.tooSoon.length);
+  assert.equal(printed, 1);
+  assert.equal(calls, 0);
+});
