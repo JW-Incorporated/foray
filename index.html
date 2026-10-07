@@ -116,9 +116,9 @@
      One inline sprite, 41 symbols, referenced as <svg class="i" aria-hidden="true"><use href="#id"/></svg>.
      Phosphor Icons (MIT): Bold at 24px, Fill only for the active tab and toggled states; the seven
      custom marks sit on the same 24 grid. Inline, same document: no network request, nothing for the
-     CSP to allow, no inline style. NO LIVE SCREEN REFERENCES IT YET: it is 0x0 and absolutely
-     positioned, so every screen stays pixel-identical; screens swap their Unicode glyphs for it in
-     Phase 4. test/tactile-icons.test.js pins the id set and every <use> in the app. -->
+     CSP to allow, no inline style. NO LISTENER SCREEN REFERENCES IT YET: the guarded component
+     gallery shows the family, while listener screens stay pixel-identical until they swap their
+     Unicode glyphs in Phase 4. test/tactile-icons.test.js pins the id set and every <use> in the app. -->
 <svg class="sprite" xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true" focusable="false">
 <symbol id="ph-play" viewBox="0 0 256 256"><path d="M234.49,111.07,90.41,22.94A20,20,0,0,0,60,39.87V216.13a20,20,0,0,0,30.41,16.93l144.08-88.13a19.82,19.82,0,0,0,0-33.86ZM84,208.85V47.15L216.16,128Z"/></symbol>
 <symbol id="ph-pause" viewBox="0 0 256 256"><path d="M200,28H160a20,20,0,0,0-20,20V208a20,20,0,0,0,20,20h40a20,20,0,0,0,20-20V48A20,20,0,0,0,200,28Zm-4,176H164V52h32ZM96,28H56A20,20,0,0,0,36,48V208a20,20,0,0,0,20,20H96a20,20,0,0,0,20-20V48A20,20,0,0,0,96,28ZM92,204H60V52H92Z"/></symbol>
@@ -207,6 +207,7 @@
 <script src="ui/foray-player.js"></script>
 <script src="ui/foray.js"></script>
 <script src="ui/forays.js"></script>
+<script src="ui/gallery.js"></script>
 <script src="ui/home.js"></script>
 <script src="ui/interests.js"></script>
 <script src="ui/library.js"></script>

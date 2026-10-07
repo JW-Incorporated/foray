@@ -4508,6 +4508,27 @@ body.drawer-open { overflow: hidden; }
 .i--lg { width: 32px; height: 32px; }
 .knob-groove { stroke: var(--k-fill, var(--card)); }
 
+/* COMPONENT GALLERY. Development-only markup behind the guarded #/gallery
+   route. It starts with the icon family in task 2; later foundation tasks add
+   primitives to this same page. No production screen inherits these rules. */
+body.ui-v2.view-gallery { background: var(--paper); color: var(--ink); font: var(--w-body) var(--t-body)/var(--lh-body) var(--font-text); }
+.view-gallery > .topbar,
+.view-gallery > #drawer-overlay,
+.view-gallery > #drawer,
+.view-gallery > #tab-bar { display: none; }
+.view-gallery #view { padding: 0; }
+.gallery { width: min(100%, 42rem); margin: 0 auto; padding: calc(var(--safe-t) + var(--s-4)) var(--gutter) calc(var(--safe-b) + var(--s-6)); }
+.gallery-head { margin-bottom: var(--s-6); }
+.gallery-head .readout { color: var(--ultramarine); margin: 0 0 var(--s-1); }
+.gallery-head .display-xl { color: var(--ink); margin: 0; }
+.gallery-copy { color: var(--ink-2); font-size: var(--t-body-lg); line-height: var(--lh-body-lg); margin: var(--s-2) 0 0; }
+.gallery section + section { margin-top: var(--s-6); }
+.gallery .heading { color: var(--ink); margin: 0 0 var(--s-3); }
+.gallery-icons { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-2); list-style: none; margin: 0; padding: 0; }
+.gallery-icons li { min-width: 0; min-height: var(--key-lg); display: grid; place-items: center; align-content: center; gap: var(--s-1); padding: var(--s-2) var(--s-1); border-radius: var(--r-sm); background: var(--card); box-shadow: var(--shadow-card); color: var(--ink); }
+.gallery-icons span { max-width: 100%; overflow-wrap: anywhere; color: var(--ink-2); font: var(--w-micro) var(--t-micro)/var(--lh-micro) var(--font-text); text-align: center; }
+.gallery-icons--custom li { color: var(--persimmon); }
+
 /* ---------- REDUCE MOTION: ONE BLOCK, EVERY TRANSITION (audit round 2, a11y-9) ----------
    Three strip rules honoured the setting and nothing else did: the Now Playing
    sheet still slid back over 220ms after a partial drag, the notes chevron

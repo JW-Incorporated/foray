@@ -4662,6 +4662,7 @@ function renderCurrentPage() {
   else if (h === "#/library") renderLibrary();
   else if (h === "#/starred-shows") renderStarredShows();
   else if (h === "#/interests") renderInterests();
+  else if (h === "#/gallery" && galleryEnabled()) renderGallery();
   else renderHome();
   publishRenderedPageHead();
   /* Called AFTER the page paints, not before: renderTabBar() reads

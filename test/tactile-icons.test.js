@@ -16,11 +16,10 @@
  *     (`aria-hidden="true"`), the label living on the button;
  *   - the CSS that sizes and hides it.
  *
- * What it does NOT pin: any screen. No live screen references the sprite yet
- * (they swap their Unicode glyphs for it in Phase 4), so the use-scanner below
- * passes on an app with zero `<use>`; its teeth are proven on fixtures in the
- * "scanner" test, which is what keeps it from being a vacuous green. That
- * property, and nothing about today's markup, is deliberate.
+ * What it does NOT pin: any listener screen. The development-only component
+ * gallery shows the family; listener screens swap their Unicode glyphs for it
+ * in Phase 4. The use-scanner's teeth are also proven on wrong fixtures, so a
+ * live app with only valid references cannot make the scanner vacuous.
  *
  * MUTATIONS (each run and seen red; the one-line edit is in each test's comment).
  */
@@ -29,6 +28,7 @@ const { test } = require("node:test");
 const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
+const vm = require("node:vm");
 const { appFiles } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
@@ -212,6 +212,39 @@ test("every <use> in the app points into the set; every icon <svg> is decorative
   assert.deepStrictEqual(iconViolations('<svg class="i" aria-hidden="true"><use href="#ph-play"/></svg>', "ui/x.js", IDS, dynamicOk), []);
   assert.deepStrictEqual(iconViolations('<svg class="i i--sm" aria-hidden="true" focusable="false"><use href="#knob"/></svg>', "ui/x.js", IDS, dynamicOk), []);
   assert.deepStrictEqual(iconViolations('<svg class="i" aria-hidden="true"><use href="#${esc(id)}"/></svg>', "ui/primitives.js", IDS, dynamicOk), []);
+});
+
+test("the guarded gallery displays every sprite symbol exactly once", () => {
+  // MUTATION: delete the `<use href="#knob">` gallery item: the gallery id set no longer matches the sprite.
+  const gallery = read("ui/gallery.js");
+  const uses = [...gallery.matchAll(/<use\b[^>]*\bhref="#([^"]+)"[^>]*>/g)].map((m) => m[1]);
+  assert.deepStrictEqual([...uses].sort(), [...IDS].sort());
+  assert.strictEqual(new Set(uses).size, IDS.length, "the gallery repeats an icon instead of showing the full family");
+  assert.match(read("app.js"), /h === "#\/gallery" && galleryEnabled\(\)/, "the router must guard the gallery");
+  assert.match(read("tools/ui-lab/lib/states.mjs"), /id: "gallery"[\s\S]*route: "\?gallery=1#\/gallery"/, "the UI lab must be able to shoot the guarded route");
+  for (const label of ["icons-bold", "icons-fill", "icons-custom"]) {
+    assert.match(read("tools/ui-lab/lib/states.mjs"), new RegExp(`label: "${label}"`), `the baseline must cover ${label}`);
+  }
+});
+
+test("only a boolean Lab flag or the explicit gallery query enables the route", () => {
+  // MUTATION: change `window.__FORAY_LAB__ === true` in app.js to `Boolean(window.__FORAY_LAB__)`: the stray-string case turns red.
+  // MUTATION: change the gallery query comparison from `=== "1"` to truthiness: `?gallery=0` turns red.
+  const app = read("app.js");
+  const gallery = read("ui/gallery.js");
+  const isLab = /function isLabBuild\(\) \{[\s\S]*?\n\}/.exec(app)[0];
+  const enabled = /function galleryEnabled\(\) \{[\s\S]*?\n\}/.exec(gallery)[0];
+  const run = (lab, search) => vm.runInNewContext(`${isLab}\n${enabled}\ngalleryEnabled()`, {
+    window: lab === undefined ? {} : { __FORAY_LAB__: lab },
+    location: { search },
+    URLSearchParams,
+  });
+  assert.strictEqual(run(true, ""), true);
+  assert.strictEqual(run(false, "?gallery=1"), true);
+  assert.strictEqual(run(undefined, "?gallery=1"), true);
+  assert.strictEqual(run(false, ""), false);
+  assert.strictEqual(run("true", ""), false);
+  assert.strictEqual(run(false, "?gallery=0"), false);
 });
 
 test("the CSS: one icon size, colour from the text, the knob groove cut in the keycap fill", () => {
