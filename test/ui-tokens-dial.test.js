@@ -425,7 +425,7 @@ test("every animation and transition in the sheet is stilled by the block or run
   }
   const onTokens = (v) => {
     const times = v.match(/(?:^|[\s,])[\d.]+m?s\b/g);
-    return !times && /var\(--d-(?:snap|settle|sheet|quick|draw)\)/.test(v);
+    return !times && /var\(--d-(?:snap|settle|sheet|quick|draw|buffer|skeleton)\)/.test(v);
   };
   const loose = [];
   for (const r of ALL) {

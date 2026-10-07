@@ -99,6 +99,7 @@ Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40-22:40 PDT, 128 agents
 
 ## Log
 
+- 2026-10-07 — Tactile Phase 3 task 3 (primitives) on `redesign/tactile-p3-primitives`: token-driven keys, chips, tags, artwork, cards, bands, gauges, rows, tiles, mini player, three-tab deck, modal sheet, rotary, skeleton, empty state, toast, and bridge land in `ui/primitives.js`, demonstrated in stacked Cream/Bakelite gallery sections. Five focused suites carry floors and each ran its named mutation red. Gallery gates are clean across 13 states; shared `tactile-gallery` (39 shots) and rolling `tactile-app` (177 shots) baselines were recorded with explicit `--scheme light`. Listener screens remain untouched: `trunk-app` comparison found 138/138 identical at zero tolerance, with only the 39 gallery captures added.
 - 2026-10-05 — Plan approved by the owner in session; trunk branch created from
   `main` @ 3a9dfefa; PLAN/PROGRESS/RESTART written.
 - 2026-10-05/06 — 0a Eyes done: screenshot + a11y harness at `tools/ui-lab/`.
