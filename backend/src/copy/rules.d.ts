@@ -14,5 +14,8 @@ export declare function houseStyleTitle(title: string): string;
 export declare function wordCount(text: string): number;
 export declare const MAX_WHY_LINE_WORDS: number;
 export declare const MAX_HOOK_WORDS: number;
+export declare const MIN_TAGS: number;
+export declare const MAX_TAGS: number;
+export declare const TAG_RE: RegExp;
 export declare const MAX_DISPLAY_TITLE_WORDS: number;
 export declare const MAX_BLURB_WORDS: number;

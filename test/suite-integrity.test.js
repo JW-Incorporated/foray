@@ -2069,6 +2069,7 @@ const FLOORS = {
      stay green. Each test names its own mutation. */
   "tools/refresh/fold-breadth-topics.test.mjs": 6, // breadth-genre-topics (2026-10-07): REAL DATA ratchet, every catalog-breadth row has a breadth-classification entry (the #1149 newcomers sat at [] with nothing red); 5 -> 6 // PKG-08 (2026-10-04): breadth-classification topics folded into data/catalog-breadth.json as taxonomy_node_ids (high/medium and not needs_review only, unknown nodes dropped), --check byte-stable, and a REAL DATA pin that every row carries the array and every id resolves; new, zero slack
   "tools/refresh/merge-topics.test.mjs": 23, // audit round 2 (L6), honesty-1: merge writes duration_min from duration_sec when it has them (the suite already stood at 17 against 16, so this closes that slack too); 16 -> 18. PKG-01 (2026-10-04): +3, topicSource and merge writing topics_source + an always-present explicit key; 18 -> 21. catalogue-PKG-05a (2026-10-04): +2, a general show's episode without its own topics is refused with TOPICS_REQUIRED_GENERAL and one with an override merges with topics_source 'episode'; 21 -> 23
+  "tools/refresh/merge.test.mjs": 9, // CH2-14 (docs/roadmap/code-health-2.md, T1-14 + T1-22): merge.mjs spawned for exit codes and stdout bytes (nothing-to-merge x2, N added, the four copy refusals, the legal edges), MERGE_SUMMARY round-trips and parses the real stdout, the copy limits are rules.js's at their edges, and importing merge.mjs merges nothing (the entry guard); new, zero slack
   /* PKG-01 (#547, #560 §6.3): the one-shot that stamped topics_source and an
      always-present explicit key onto every discover item merged before
      merge.mjs wrote them. Runs the real script against a temp fixture; each
@@ -2108,7 +2109,7 @@ const FLOORS = {
      third staged file, a PR on red tests). 16 is the true count at landing
      (15 at OPS-14, +1 prompt-shape test from OPS-17);
      each test names the mutation that kills it. */
-  "tools/refresh/nightly-runner.test.mjs": 17, // OPS-17 review: +1 -- the live prompt steps match finish (no stale "step 7", restore after TESTS_FAILED, GIT_FAILED stops); 16 -> 17
+  "tools/refresh/nightly-runner.test.mjs": 19, // CH2-14 (T1-22): +2 -- merge's summary round-trips through MERGE_SUMMARY (the hand-written `ADDED N items.` fakes are built with merge's formatter now), and a merge with neither summary line is MERGE_UNPARSED before any git; 17 -> 19 // OPS-17 review: +1 -- the live prompt steps match finish (no stale "step 7", restore after TESTS_FAILED, GIT_FAILED stops); 16 -> 17
   /* S-01's other half: proves the actual bash in nightly-refresh.yml's
      "Publish digest to refresh-digest branch" step, not a JS reimplementation
      of it. Extracts the real `run:` block, shims `gh`/`jq`, and round-trips a
@@ -2449,7 +2450,7 @@ const BACKEND_FLOORS = {
   "test/buildCorpusTerms.test.ts": 4, // PKG-26 (docs/roadmap/corpus.md §3): corpus df table + per-episode top-k tf-idf terms — rare beats common, alpha ties, k cap, df drops singletons
   "test/candidateExtractor.test.ts": 8,
   "test/conditionalGet.test.ts": 9,
-  "test/copyRules.test.ts": 16, // round-3 L6 (2026-09-25): backend-rest-18: Act Two / Act Three caught, statute spans left alone; 12 -> 16 // title house style (2026-09-24, qa 146): refused shapes, no false positives on names/acronyms/quoted works, houseStyleTitle never lowercases; 6 -> 12 (9 on disk before it) // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 5 -> 6. L8 (2026-09-22): Foray titles/summaries/slot titles against BANNED + INTERNAL_VOCABULARY, and its no-false-positive twin; 3 -> 5
+  "test/copyRules.test.ts": 18, // CH2-14 (T1-14): +1 -- the shared MAX_HOOK_WORDS / MIN_TAGS / MAX_TAGS / TAG_RE refuse a 17-word hook, 4 tags, 13 tags and a Bad_Tag; the suite stood at 17 against 16, so the floor is set exact: 16 -> 18 // round-3 L6 (2026-09-25): backend-rest-18: Act Two / Act Three caught, statute spans left alone; 12 -> 16 // title house style (2026-09-24, qa 146): refused shapes, no false positives on names/acronyms/quoted works, houseStyleTitle never lowercases; 6 -> 12 (9 on disk before it) // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 5 -> 6. L8 (2026-09-22): Foray titles/summaries/slot titles against BANNED + INTERNAL_VOCABULARY, and its no-false-positive twin; 3 -> 5
   "test/createEnricher.test.ts": 1,
   /* Generation pipeline §4.0-4.1 (kanban card t_825eee4c). */
   "test/createPromptUnderstander.test.ts": 1,
