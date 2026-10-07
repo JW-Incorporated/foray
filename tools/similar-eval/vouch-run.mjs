@@ -15,14 +15,20 @@
      (c) row integrity    every row is `limit` distinct eligible shows, and the
                           same set all day (00:00 and 23:59 UTC agree); plus
                           the top-level taxonomy branches each row spans
-     (d) Family Mode      slots filled by a show `familyAllows` rejects with
-                          Family Mode ON. showsWeVouchFor applies NO Family
-                          Mode filter, so this is not zero; it is recorded as
-                          measured, and test/vouch-eval.test.js holds it as a
-                          ceiling
-     (e) label_scope      slots filled by a `label_scope: "general"` show,
-                          measured the same way (showsWeVouchFor applies no
-                          label_scope filter either)
+     (d) Family Mode      slots filled by a show `familyAllows` rejects, in
+                          the row a listener with Family Mode ON sees.
+                          showsWeVouchFor filters with familyAllows (since
+                          2026-10-06, #560), so this is 0; plus that row's own
+                          eligible set, coverage and integrity (every slot
+                          still fills)
+     (e) label_scope      slots filled by a `label_scope: "general"` show
+                          (showsWeVouchFor applies no label_scope filter)
+
+   TWO RUNS, ONE PER MODE. (a), (b), (c) and (e) are measured with Family
+   Mode OFF, the row most listeners see, over the whole curated catalogue;
+   (d) is measured with it ON. One run cannot carry both: with the filter in
+   place the ON row's eligible set is only the shows familyAllows passes, so
+   coverage of the catalogue is a question for the OFF run.
 
    THE FUNCTIONS ARE app.js's OWN TEXT, NOT A MIRROR. Each declaration named in
    APP_DECLARATIONS is lifted out of app.js at run time and evaluated in a vm
@@ -38,8 +44,9 @@
                      data/session.json's episodes carry no `explicit` key;
                      test/vouch-eval.test.js pins that, so the shortcut
                      cannot quietly diverge.
-     familyMode()    returns true: (d) is "what a listener with Family Mode
-                     ON would see", which is the question the metric asks.
+     familyMode()    returns false for the OFF run and true for the ON run;
+                     the rejected set is always read with it true, since
+                     (d) asks "what does Family Mode hide".
 
      node tools/similar-eval/vouch-run.mjs          rewrite the generated block
      node tools/similar-eval/vouch-run.mjs --check  exit 1 if the committed block is stale
@@ -113,12 +120,13 @@ export function extractDeclaration(src, kind, name) {
   return m[0];
 }
 
-/** The vm-evaluated app.js functions, bound to `catalog` / `discover`. */
-export function loadAppFunctions(appSource, catalog, discover) {
+/** The vm-evaluated app.js functions, bound to `catalog` / `discover`, with
+ *  Family Mode ON or OFF (`familyMode`, default ON). */
+export function loadAppFunctions(appSource, catalog, discover, { familyMode = true } = {}) {
   const body = APP_DECLARATIONS.map(([kind, name]) => extractDeclaration(appSource, kind, name)).join("\n");
   const ctx = vm.createContext({ state: { catalog, discover, session: null } });
   return vm.runInContext(
-    `function familyMode() { return true; }\n${body}\n({ showsWeVouchFor, familyAllows });`,
+    `function familyMode() { return ${familyMode === true}; }\n${body}\n({ showsWeVouchFor, familyAllows });`,
     ctx
   );
 }
@@ -234,11 +242,9 @@ export function measureRows({ catalog, eligibleIds, rows, limit, unsafeIds }) {
   };
 }
 
-/** Load the committed inputs and measure the shipped row over the window. */
-export function runVouchEval(root = ROOT, { days = WINDOW_DAYS, start = WINDOW_START } = {}) {
-  const catalog = readJson(CATALOG_PATH, root);
-  const discover = readJson(DISCOVER_PATH, root);
-  const { showsWeVouchFor, familyAllows } = loadAppFunctions(readText(APP_PATH, root), catalog, discover);
+/** The row over the window, in one Family Mode setting: its rows, its
+ *  eligible set and its slot count, all read off the row itself. */
+function runMode({ showsWeVouchFor }, catalog, days, start) {
   /* The row's own default limit: vouchForHtml calls showsWeVouchFor() with
      no arguments, so the eval passes `undefined` and measures what renders. */
   const ids = (date) => Array.from(showsWeVouchFor(undefined, date), (s) => s.show_id);
@@ -249,11 +255,49 @@ export function runVouchEval(root = ROOT, { days = WINDOW_DAYS, start = WINDOW_S
     rows.push({ date: isoDay(date), ids: ids(date), lateIds: ids(late) });
   }
   /* Eligibility is read off the row itself, not re-implemented: a limit as
-     large as the catalogue returns every show that passes its filter. */
+     large as the catalogue returns every show that passes its filters. */
   const eligibleIds = Array.from(showsWeVouchFor(catalog.shows.length + 1, windowDay(0, start)), (s) => s.show_id).sort();
   const limit = Array.from(showsWeVouchFor(undefined, windowDay(0, start))).length;
-  const unsafeIds = catalog.shows.filter((s) => !familyAllows(s)).map((s) => s.show_id);
-  const result = measureRows({ catalog, eligibleIds, rows, limit, unsafeIds });
+  return { rows, eligibleIds, limit };
+}
+
+/** Load the committed inputs and measure the shipped row over the window,
+ *  once with Family Mode OFF ((a)-(c), (e)) and once with it ON ((d)). */
+export function runVouchEval(root = ROOT, { days = WINDOW_DAYS, start = WINDOW_START } = {}) {
+  const catalog = readJson(CATALOG_PATH, root);
+  const discover = readJson(DISCOVER_PATH, root);
+  const src = readText(APP_PATH, root);
+  const offFns = loadAppFunctions(src, catalog, discover, { familyMode: false });
+  const onFns = loadAppFunctions(src, catalog, discover, { familyMode: true });
+  const unsafeIds = catalog.shows.filter((s) => !onFns.familyAllows(s)).map((s) => s.show_id);
+  const off = runMode(offFns, catalog, days, start);
+  const on = runMode(onFns, catalog, days, start);
+  const result = measureRows({ catalog, eligibleIds: off.eligibleIds, rows: off.rows, limit: off.limit, unsafeIds });
+  const fm = measureRows({ catalog, eligibleIds: on.eligibleIds, rows: on.rows, limit: on.limit, unsafeIds });
+  /* (d): the rejected shows are the catalogue's (the OFF run's pool); the
+     violations are what the ON row actually shows. */
+  result.family = {
+    ...result.family,
+    slots: fm.family.slots,
+    slotShare: fm.family.slotShare,
+    daysWithAny: fm.family.daysWithAny,
+    maxInOneRow: fm.family.maxInOneRow,
+    distinctShown: fm.family.distinctShown,
+  };
+  const { appearances: onAppearances, ...onCoverage } = fm.coverage;
+  result.familyOn = {
+    limit: fm.limit,
+    eligible: fm.eligible,
+    coverage: onCoverage,
+    appearances: onAppearances,
+    integrity: fm.integrity,
+    branches: fm.branches,
+    /* Per rejected show, the days the ON row showed it anyway (read off
+       the rows: the ON coverage counts only its own eligible set). */
+    unsafeDays: Object.fromEntries(
+      result.family.catalogueIds.map((id) => [id, on.rows.filter((row) => row.ids.includes(id)).length])
+    ),
+  };
   const byId = new Map(catalog.shows.map((s) => [s.show_id, s]));
   result.family.byReason = {};
   for (const id of result.family.catalogueIds) {
@@ -261,7 +305,8 @@ export function runVouchEval(root = ROOT, { days = WINDOW_DAYS, start = WINDOW_S
     result.family.byReason[r] = (result.family.byReason[r] || 0) + 1;
   }
   result.window = { start, days, end: isoDay(windowDay(days - 1, start)) };
-  result.rows = rows.map(({ date, ids: dayIds }) => ({ date, ids: dayIds }));
+  result.rows = off.rows.map(({ date, ids: dayIds }) => ({ date, ids: dayIds }));
+  result.familyRows = on.rows.map(({ date, ids: dayIds }) => ({ date, ids: dayIds }));
   return result;
 }
 
@@ -274,8 +319,9 @@ export function renderSection(r, catalog) {
   const byId = new Map(catalog.shows.map((s) => [s.show_id, s]));
   const out = [];
   out.push(
-    `Window: ${r.window.start} to ${r.window.end} (${r.days} UTC days), ${r.limit} slots a day (showsWeVouchFor's default limit), ${r.days * r.limit} slots in all. Family Mode is evaluated ON, through app.js's own \`familyAllows\`.`
+    `Window: ${r.window.start} to ${r.window.end} (${r.days} UTC days), ${r.limit} slots a day (showsWeVouchFor's default limit), ${r.days * r.limit} slots in all. Two runs: (a), (b), (c) and (e) with Family Mode OFF, (d) with it ON, through app.js's own \`familyAllows\`.`
   );
+  const on = r.familyOn;
   out.push("");
   out.push("| Metric | Measured |");
   out.push("|---|---|");
@@ -297,22 +343,29 @@ export function renderSection(r, catalog) {
   out.push(
     `| (d) Family Mode violations: slots filled by a show familyAllows rejects | ${r.family.slots} (${pct(r.family.slotShare)}), on ${r.family.daysWithAny} of ${r.days} days, at most ${r.family.maxInOneRow} in one row |`
   );
-  out.push(`| (d) catalogue shows familyAllows rejects / of them surfaced | ${r.family.catalogueShows} / ${r.family.distinctShown} |`);
+  out.push(`| (d) catalogue shows familyAllows rejects / of them surfaced with Family Mode ON | ${r.family.catalogueShows} / ${r.family.distinctShown} |`);
+  out.push(`| (d) Family Mode ON: eligible shows / surfaced at least once | ${on.eligible} / ${on.coverage.surfaced} (${f3(on.coverage.ratio)}) |`);
+  out.push(
+    `| (d) Family Mode ON: appearances per show, min / median / max (expected ${on.coverage.expected === null ? "n/a" : on.coverage.expected.toFixed(2)}); first ${on.coverage.firstDecileShows} shows' share | ${on.coverage.min} / ${on.coverage.median} / ${on.coverage.max}; ${pct(on.coverage.firstDecileShare)} |`
+  );
+  out.push(
+    `| (d) Family Mode ON: rows that are not ${on.limit} distinct eligible shows; days whose 00:00 and 23:59 UTC rows differ | ${on.integrity.shortRows.length + on.integrity.duplicateRows.length + on.integrity.ineligibleRows.length}; ${on.integrity.unstableDays.length} |`
+  );
   out.push(
     `| (e) label_scope leakage: slots filled by a \`label_scope: "general"\` show | ${r.scope.slots} (${pct(r.scope.slotShare)}), on ${r.scope.daysWithAny} of ${r.days} days, at most ${r.scope.maxInOneRow} in one row |`
   );
   out.push(`| (e) \`label_scope: "general"\` shows / of them surfaced | ${r.scope.catalogueShows} / ${r.scope.distinctShown} |`);
   out.push("");
-  out.push("### (d) The shows Family Mode would hide, and how often the row shows them");
+  out.push("### (d) The shows Family Mode hides, and how often each row shows them");
   out.push("");
   const reasons = Object.entries(r.family.byReason).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
   out.push(`By familySafe's reason: ${reasons.map(([k, v]) => `${k} ${v}`).join(", ")}.`);
   out.push("");
-  out.push("| Show | Reason | `explicit` | Days in the row |");
-  out.push("|---|---|:-:|---:|");
+  out.push("| Show | Reason | `explicit` | Days in the row, Family Mode OFF | Days, Family Mode ON |");
+  out.push("|---|---|:-:|---:|---:|");
   for (const id of r.family.catalogueIds) {
     const s = byId.get(id);
-    out.push(`| \`${id}\` | ${familyReason(s)} | ${String(s.explicit)} | ${r.coverage.appearances[id]} |`);
+    out.push(`| \`${id}\` | ${familyReason(s)} | ${String(s.explicit)} | ${r.coverage.appearances[id]} | ${on.unsafeDays[id]} |`);
   }
   out.push("");
   out.push('### (e) The `label_scope: "general"` shows, and how often the row shows them');
@@ -332,9 +385,12 @@ export function renderSection(r, catalog) {
   out.push("");
   out.push("### The first seven rows of the window");
   out.push("");
-  out.push("| Day | Shows |");
-  out.push("|---|---|");
-  for (const row of r.rows.slice(0, 7)) out.push(`| ${row.date} | ${list(row.ids)} |`);
+  out.push("| Day | Family Mode | Shows |");
+  out.push("|---|---|---|");
+  r.rows.slice(0, 7).forEach((row, i) => {
+    out.push(`| ${row.date} | off | ${list(row.ids)} |`);
+    out.push(`| ${row.date} | on | ${list(r.familyRows[i].ids)} |`);
+  });
   return out.join("\n");
 }
 
@@ -363,8 +419,9 @@ export function reportIsCurrent(root = ROOT) {
 function main(argv) {
   if (argv.includes("--json")) {
     const r = runVouchEval();
-    const { rows, ...rest } = r;
+    const { rows, familyRows, ...rest } = r;
     delete rest.coverage.appearances;
+    delete rest.familyOn.appearances;
     console.log(JSON.stringify(rest, null, 2));
     return 0;
   }
