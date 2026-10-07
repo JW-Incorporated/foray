@@ -2,9 +2,62 @@
 
 <!-- ha-format: 2 -->
 
-> **30 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **31 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
+
+## #150 🟡 [DECIDE] Approve privacy-policy sentences for `card_shown` and observed `finished`/`skipped_at`, and say yes or no to a `"top"` archetype (~10 min)
+<!-- ha filed=2026-10-07 kind=default -->
+
+**Why:** The catalogue package (`docs/roadmap/catalogue-personalization.md` §PKG-18 and §PKG-19) makes three more event types leave the phone: `card_shown` (a Home card was dealt to you) and, from the in-app player, `finished` and `skipped_at`. Each is a new kind of data sent to our database, so the privacy policy (`docs/legal/privacy-policy.md`) and the store audit (`docs/legal/data-safety.md`) have to say so in the same PR, and changing a privacy-policy sentence needs your approval (`docs/roadmap/README.md` Q34). The sentences are quoted below as they would land. Nothing is changed yet: neither PR exists, and this item edits no file under `docs/legal/`. The contract for all three already exists in `backend/src/types/events.ts` (`EventTypeSchema`, `CardShownPayloadSchema`, `SkippedAtPayloadSchema`, `FinishedPayloadSchema`) and `docs/curation/events-client-integration-spec.md` §1.2 and §4. The first-run events (`onboarding_seen`, `interests_seeded`, `persona_picked`, `onboarding_skipped`) are not here; they are already with you under #70.
+
+The counts below are computed the way `test/legal-citations.test.js` computes them, on `main` at `43446c00` (2026-10-07): the app records **23** event types (every `logEvent("…")` literal in `app.js` plus every `forayLogEvent("…")` in `player/client.js`) and **4** are transmitted (`picked`, `saved`, `thumbs`, `session_shown`). The plan's own numbers are older; do not use them. All three new types are transmitted, so the local-only count stays at nineteen whatever order the two PRs land in.
+
+Sentence 1, a new row in `docs/legal/privacy-policy.md` §2's **Sent** table (PKG-18):
+
+> | `card_shown` | Episode slug, its topic ids, and which Home slot the card was dealt into (`top` or `stretch`). Logged once per card each time Home deals a new set, not on every redraw. It records that the card was put in front of you, not that you looked at it or tapped it |
+
+Sentence 1 also makes two existing sentences untrue, so the same PR rewrites them. Policy §2, the note on `picked`'s context label (today: "filtered against a five-value allowlist … It does not reveal which recommendation archetype you were shown"):
+
+> - The **context label** is filtered against a six-value allowlist (`app.js:SB_ARCHETYPES`), but the only values `picked` ever produces are `continue` — you resumed something — or a subject/playlist label that the filter discards. So in practice this field is `"continue"` or empty. The Home slot a card was dealt into is sent separately, by `card_shown` (`top` or `stretch`).
+
+And `docs/legal/data-safety.md` A2, the **App activity — App interactions** row's last sentence (today: "… so it is `"continue"` or null in practice — it does not report which recommendation archetype you saw."):
+
+> … so it is `"continue"` or null in practice. `card_shown` does report the Home slot a card was dealt into (`top` or `stretch`).
+
+Sentence 2, two new rows in the same **Sent** table (PKG-19). `finished` is sent only when 4a's own player saw the episode end; `skipped_at` only when you switch to a different episode before 85% of the current one has played. Neither is ever sent for a Foray clip:
+
+> | `finished` | Episode slug, its topic ids, how much of it had played (`percent_complete`, 1 for an episode that ran to its end) and `source: "observed"` — 4a's own player saw it end. On iPhone with Continuous playback on, an episode that runs out and moves to the next one sends no `finished` row |
+> | `skipped_at` | Episode slug, its topic ids, how many seconds of it had played when you switched to a different episode (`elapsed_seconds`) and its length (`duration_seconds`). Sent only when you switch before 85% of it has played. Not sent when the iPhone player moves on without the app (Continuous playback, or "next" from a car or the lock screen at the end of Up Next) |
+
+Sentence 3, the count sentences. Which numbers apply depends on which PR lands first; each PR writes the row that matches `main` when it merges:
+
+| State of `main` | `privacy-policy.md` §2 (bold sentence, ~line 230) | `data-safety.md` fact 2 (~line 44) | `data-safety.md` (~line 46) |
+|---|---|---|---|
+| Today (`43446c00`) | Nineteen of the twenty-three event types the app records never leave the device. | Exactly 4 of 23 event types are transmitted | the four `case` arms |
+| PKG-18 merged, PKG-19 not | **Nineteen of the twenty-four event types the app records never leave the device.** | **Exactly 5 of 24 event types are transmitted** | the five `case` arms |
+| PKG-19 merged, PKG-18 not | **Nineteen of the twenty-five event types the app records never leave the device.** | **Exactly 6 of 25 event types are transmitted** | the six `case` arms |
+| Both merged | **Nineteen of the twenty-six event types the app records never leave the device.** | **Exactly 7 of 26 event types are transmitted** | the seven `case` arms |
+
+Three more places list the transmitted events by name, and they are already wrong today: they name `finished`, which `toEventRow` does not send. The policy's summary bullet (~line 37, today "**Five kinds of event are sent to our database**: which episode you picked, which you finished, …"); `data-safety.md` A2 **App interactions** (~line 96, "The five transmitted events are interactions: picked, finished, saved, thumbs, session shown"); and Apple's **Usage Data — Product Interaction** and **Other Usage Data** rows (~lines 305 and 307, "picked / finished / saved / thumbs / session shown" and "the five mapped types"). Proposed, once both PRs have merged:
+
+> - **Seven kinds of event are sent to our database**: which episode you picked, which Home cards were shown to you, which episodes 4a's player saw you finish or switch away from part-way, which you saved, your thumbs up/down feedback (including any note you type), and the fact that a session was shown to you. They are stored against an anonymous account that contains no name, email or phone number.
+
+> The seven transmitted events are interactions: picked, card shown, finished, skipped, saved, thumbs, session shown (`app.js:toEventRow()`).
+
+> picked / card shown / finished / skipped / saved / thumbs / session shown (`app.js:toEventRow()`). … Nothing beyond the seven mapped types.
+
+If only PKG-18 has merged, the same three read "Five kinds" / "five" and name card shown instead of finished and skipped. Whichever PR merges first also fixes today's `finished` overstatement.
+
+Sentence 4, a separate yes or no (catalogue Q6): add `"top"` to `ArchetypeSlotSchema` (`backend/src/types/events.ts:44`, today `"deep-learn"`, `"stretch"`, `"narrative"`, `"comfort"`, `"continue"`). Home deals by role `top`/`stretch`, and the contract accepts only those five archetypes, so without `"top"` a top-slot `card_shown` has no valid archetype. The proposed default is `docs/roadmap/README.md` item 28, which is a PROPOSAL, not a ruling. No migration is involved: `events.archetype` is unconstrained `text` (`backend/migrations/0009_events.sql:20`); the check in `0008_session_items.sql:12` is on a different table. If you say no, PKG-18 can send only the `stretch` card, and Sentence 1 changes to say so.
+
+For whoever builds PKG-18/19 (not part of the approval): `test/legal-citations.test.js` classifies a type as sent by calling `toEventRow` with one fixed payload (`FAT_PAYLOAD`), which has no `archetype`, `percent_complete`, `source`, `elapsed_seconds` or `duration_seconds`. A mapping that requires those fields will be classified local-only unless that payload gains them. Its number-word table also stops at `twenty-four`; `twenty-five` and `twenty-six` need adding.
+
+**Steps:**
+1. Read Sentences 1 to 3 and decide Sentence 4.
+2. Reply `approved` (Sentences 1–3) plus `top: yes` or `top: no`, or say what to change. Claude puts the approved wording in the PKG-18 and PKG-19 PRs.
+
+**Worked if:** each sentence above is approved or reworded, Sentence 4 has a yes or no, and when PKG-18 and PKG-19 merge, `docs/legal/` on `main` says what was approved here.
 
 ## #149 🟢 [UPGRADE] On a phone, check the download manager against the #29 acceptance list (~20 min)
 <!-- ha filed=2026-10-06 kind=default -->
