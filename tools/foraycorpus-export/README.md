@@ -272,6 +272,16 @@ Add one paragraph per module as it lands.
   `createRequire(backend/package.json).resolve("tsx/cli")` exactly as the warm
   launcher does. The child's exit code goes through `exitCodeFor`, so a pass
   ended by a signal is never 0.
+- **`topics.mjs`** (PKG-29): `node tools/foraycorpus-export/topics.mjs --terms
+  data-local/transcripts/episode-terms.jsonl --df data-local/transcripts/corpus-df.json
+  [--tau <n>] [--sample <n>] [--write]` reads `build-terms.mjs`'s output and
+  computes a `terms[]` list for every `data/taxonomy.json` node, plus each
+  episode's topics by cosine against those lists. An episode below τ gets
+  `[]`, never its show's label. With `--write` it edits only the taxonomy's
+  `terms` and writes `data/episode-topics.json`. Its numbers come from
+  `topic-constants.mjs` (PKG-28), which is **PROVISIONAL**: τ has no value
+  yet and `--write` is refused, so for now it runs only as a dry run with
+  `--tau`. `--sample` prints episodes for hand-checking.
 - **`publish-release.mjs`** (PKG-32): `node tools/foraycorpus-export/publish-release.mjs
   [--version-dir <dir>] [--catalogue <file>] [--pointer <file>] [--dry-run]`
   publishes one export version as a GitHub Release tagged
