@@ -55,6 +55,11 @@ async function typeSearch(page, text) {
   await wait(page, 1800);
 }
 
+async function showGallerySection(page, selector) {
+  await page.locator(selector).scrollIntoViewIfNeeded();
+  await wait(page, 200);
+}
+
 /** Routes every seeded profile can show. `fx` supplies real ids. */
 function coreRoutes(fx, { entities }) {
   const ep = fx.items[0].id;
@@ -149,6 +154,16 @@ export function appStates(fx) {
         { label: "episode-token", route: "#/episode/uilab-stress-2" },
         { label: "mini-player", route: "#/library", run: (page) => startPlayback(page, "uilab-stress-1") },
         { label: "now-playing", route: "#/library", run: (page) => openNowPlaying(page) },
+      ],
+    },
+    {
+      id: "gallery",
+      description: "Tactile foundation gallery: the inline icon family in the primary Cream scheme.",
+      seed: "dismissed",
+      steps: [
+        { label: "icons-bold", route: "?gallery=1#/gallery", ready: ".gallery-icons" },
+        { label: "icons-fill", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-fill-title") },
+        { label: "icons-custom", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-custom-title") },
       ],
     },
   ];
