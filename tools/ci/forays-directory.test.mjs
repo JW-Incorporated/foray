@@ -108,7 +108,7 @@ const WHEN = new Date("2026-09-10T12:00:00.000Z");
 test("the pointer carries version, built_at, and the three files with their real bytes and sha256", () => {
   /* The contract FD-03 reads. Every number is measured from the bytes on disk,
      not copied from anywhere else.
-     KILLED BY: `bytes[key] = 0;` in buildPointer — or dropping the
+     KILLED BY: `bytes[key] = 0;` in makeDirectoryPointer's build — or dropping the
      `sha256[key] =` line. */
   withTree(dataTree, (dir) => {
     const p = buildPointer(dir, ID, WHEN);
@@ -130,7 +130,7 @@ test("the pointer carries version, built_at, and the three files with their real
 });
 
 test("a directory file missing on disk is a thrown error, not a pointer with a hole in it", () => {
-  /* KILLED BY: deleting the `if (!existsSync(abs)) throw` in buildPointer —
+  /* KILLED BY: deleting the `if (!existsSync(abs)) throw` in makeDirectoryPointer's build —
      readFileSync then throws ENOENT with no mention of what was listed. */
   withTree(dataTree, (dir) => {
     rmSync(path.join(dir, DIRECTORY_FILES.segments));
@@ -140,7 +140,7 @@ test("a directory file missing on disk is a thrown error, not a pointer with a h
 
 test("pointerText is the exact bytes written, LF-terminated", () => {
   /* The manifest hashes these bytes; the writer and the text helper must agree.
-     KILLED BY: `+ "\n"` -> `""` in pointerText. */
+     KILLED BY: `+ "\n"` -> `""` in makeDirectoryPointer's text. */
   withTree(dataTree, (dir) => {
     writeP(dir, ID, WHEN);
     const onDisk = readFileSync(path.join(dir, POINTER_PATH), "utf8");
@@ -183,15 +183,15 @@ test("a freshly written pointer has no problems", () => {
 });
 
 test("a missing pointer is a problem that names the file", () => {
-  /* KILLED BY: `return { pointer: null, error: null }` for the missing case in
-     readPointer — pointerProblems then reports "not a JSON object" at best. */
+  /* KILLED BY: deleting the `if (!existsSync(abs)) return [`${pointerPath} is
+     missing`]` in makeDirectoryPointer's problems — it then reports "is not valid JSON: ENOENT". */
   withTree(dataTree, (dir) => {
     assert.deepEqual(pointerProblems(dir, ID), ["data/forays-directory.json is missing"]);
   });
 });
 
 test("a pointer that is not JSON, or not an object, is a problem rather than a crash", () => {
-  /* KILLED BY: removing the try/catch around JSON.parse in readPointer. */
+  /* KILLED BY: removing the try/catch around JSON.parse in makeDirectoryPointer's problems. */
   withTree(dataTree, (dir) => {
     put(dir, POINTER_PATH, "{not json");
     assert.match(pointerProblems(dir, ID)[0], /not valid JSON/);
@@ -226,7 +226,7 @@ test("a file that changed size after the pointer was written is caught by bytes 
 
 test("a same-size edit is caught by sha256 alone — bytes is a hint, not the check", () => {
   /* A Foray id retyped, a URL with one character changed: same length, wrong
-     content. KILLED BY: `if (got !== want)` -> `if (false)` in pointerProblems. */
+     content. KILLED BY: `if (got !== want)` -> `if (false)` in makeDirectoryPointer's problems. */
   withTree(dataTree, (dir) => {
     writeP(dir, ID, WHEN);
     put(dir, DIRECTORY_FILES.sources, SOURCES.replace("a.mp3", "b.mp3"));
@@ -528,8 +528,8 @@ test("CLI: a data file changed after stamping turns --verify red, naming the poi
 });
 
 test("CLI: a pointer whose version was hand-edited turns --verify red even though every file matches", () => {
-  /* KILLED BY: `pointer.version !== deployId` -> `false` in pointerProblems
-     (the manifest entry would still catch the changed pointer bytes, but on the
+  /* KILLED BY: `pointer.version !== deployId` -> `false` in makeDirectoryPointer's
+     problems (the manifest entry would still catch the changed pointer bytes, but on the
      wrong message — this asserts the version line). */
   withTree(cliTree, (dir) => {
     assert.equal(run(dir, ["--stamp", "."]).status, 0);
@@ -543,8 +543,8 @@ test("CLI: a pointer whose version was hand-edited turns --verify red even thoug
 
 test("CLI: a stamped tree with its pointer deleted turns --verify red", () => {
   /* The phones read the pointer from the live origin; a deploy without one is a
-     phone that never updates. KILLED BY: `if (error) return [error];` ->
-     `return [];` in pointerProblems. */
+     phone that never updates. KILLED BY: `return [`${pointerPath} is missing`]`
+     -> `return []` in makeDirectoryPointer's problems. */
   withTree(cliTree, (dir) => {
     assert.equal(run(dir, ["--stamp", "."]).status, 0);
     rmSync(path.join(dir, POINTER_PATH));

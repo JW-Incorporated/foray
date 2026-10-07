@@ -93,7 +93,7 @@ const WHEN = new Date("2026-10-05T03:00:00.000Z");
 
 test("the catalogue pointer carries version, built_at, and the five files with their real bytes and sha256", () => {
   /* The contract the shell will read; every number measured from disk.
-     KILLED BY: `bytes[key] = 0;` in buildCataloguePointer, or dropping the
+     KILLED BY: `bytes[key] = 0;` in makeDirectoryPointer's build, or dropping the
      `sha256[key] =` line. */
   withTree(dataTree, (dir) => {
     const p = buildCataloguePointer(dir, ID, WHEN);
@@ -111,7 +111,7 @@ test("the catalogue pointer carries version, built_at, and the five files with t
 
 test("a catalogue file missing on disk is a thrown error naming it, not a pointer with a hole", () => {
   /* KILLED BY: deleting the `if (!existsSync(abs)) throw` in
-     buildCataloguePointer — readFileSync then throws a bare ENOENT. */
+     makeDirectoryPointer's build — readFileSync then throws a bare ENOENT. */
   withTree(dataTree, (dir) => {
     rmSync(path.join(dir, CATALOGUE_FILES.semanticIndex));
     assert.throws(() => buildCataloguePointer(dir, ID, WHEN), /catalogue-directory: listed file is missing on disk: data\/semantic-index\.json/);
@@ -153,7 +153,7 @@ test("writer and reader agree: one path, the same five keys in order, and a writ
 
 test("a current catalogue pointer has no problems; one for another deploy is named", () => {
   /* KILLED BY: dropping the `pointer.version !== deployId` comparison in
-     cataloguePointerProblems. */
+     makeDirectoryPointer's problems (forays-directory.mjs). */
   withTree(dataTree, (dir) => {
     writeP(dir, ID, WHEN);
     assert.deepEqual(cataloguePointerProblems(dir, ID), []);
@@ -166,7 +166,7 @@ test("a current catalogue pointer has no problems; one for another deploy is nam
 test("a catalogue file edited after stamping is named by its sha256, even at the same size", () => {
   /* The torn deploy: a step that rewrote a file after the stamp. Same-size edit,
      so only the digest can see it. KILLED BY: dropping the `got !== want`
-     comparison in cataloguePointerProblems. */
+     comparison in makeDirectoryPointer's problems. */
   withTree(dataTree, (dir) => {
     writeP(dir, ID, WHEN);
     put(dir, CATALOGUE_FILES.session, BODIES.session.replace("cards", "carts"));

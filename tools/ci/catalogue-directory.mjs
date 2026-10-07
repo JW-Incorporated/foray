@@ -60,9 +60,7 @@
  * checkout, CRLF or not.
  */
 
-import { readFileSync, existsSync, statSync } from "node:fs";
-import { createHash } from "node:crypto";
-import path from "node:path";
+import { makeDirectoryPointer } from "./forays-directory.mjs";
 
 export const CATALOGUE_POINTER_PATH = "data/catalogue-directory.json";
 
@@ -77,34 +75,15 @@ export const CATALOGUE_FILES = Object.freeze({
   semanticIndex: "data/semantic-index.json",
 });
 
-const HEX64 = /^[0-9a-f]{64}$/;
-
-function sha256Hex(buf) {
-  return createHash("sha256").update(buf).digest("hex");
-}
+/* The Foray pointer's own writer and checker over this table (code-health
+   CH2-22): one implementation, so a fix to the validator lands in both. */
+const catalogue = makeDirectoryPointer(CATALOGUE_FILES, "catalogue-directory", CATALOGUE_POINTER_PATH);
 
 /** The catalogue pointer for the five files as they are on disk under `root`. */
-export function buildCataloguePointer(root, deployId, now = new Date()) {
-  const files = {};
-  const bytes = {};
-  const sha256 = {};
-  for (const [key, rel] of Object.entries(CATALOGUE_FILES)) {
-    const abs = path.join(root, rel);
-    if (!existsSync(abs)) {
-      throw new Error(`catalogue-directory: listed file is missing on disk: ${rel}`);
-    }
-    const buf = readFileSync(abs);
-    files[key] = rel;
-    bytes[key] = buf.length;
-    sha256[key] = sha256Hex(buf);
-  }
-  return { version: deployId, built_at: now.toISOString(), files, bytes, sha256 };
-}
+export const buildCataloguePointer = catalogue.build;
 
 /** The exact bytes a build writes for a catalogue pointer object. */
-export function cataloguePointerText(pointer) {
-  return JSON.stringify(pointer, null, 2) + "\n";
-}
+export const cataloguePointerText = catalogue.text;
 
 /**
  * Everything wrong with the catalogue pointer on disk under `root` (a BUILT
@@ -112,56 +91,4 @@ export function cataloguePointerText(pointer) {
  * `generate-manifest.mjs`'s `stampedProblems` prints each line and the build
  * fails on any.
  */
-export function cataloguePointerProblems(root, deployId) {
-  const abs = path.join(root, CATALOGUE_POINTER_PATH);
-  if (!existsSync(abs)) return [`${CATALOGUE_POINTER_PATH} is missing`];
-  let pointer;
-  try {
-    pointer = JSON.parse(readFileSync(abs, "utf8"));
-  } catch (err) {
-    return [`${CATALOGUE_POINTER_PATH} is not valid JSON: ${err.message}`];
-  }
-  if (!pointer || typeof pointer !== "object" || Array.isArray(pointer)) {
-    return [`${CATALOGUE_POINTER_PATH} is not a JSON object`];
-  }
-  const problems = [];
-  if (pointer.version !== deployId) {
-    problems.push(`version is ${JSON.stringify(pointer.version)} but the tree computes to deploy_id ${deployId}`);
-  }
-  if (typeof pointer.built_at !== "string" || Number.isNaN(Date.parse(pointer.built_at))) {
-    problems.push(`built_at is not an ISO-8601 timestamp: ${JSON.stringify(pointer.built_at)}`);
-  }
-  const sections = { files: pointer.files, bytes: pointer.bytes, sha256: pointer.sha256 };
-  for (const [name, section] of Object.entries(sections)) {
-    if (!section || typeof section !== "object") {
-      problems.push(`${name} is missing`);
-      continue;
-    }
-    const extra = Object.keys(section).filter((k) => !(k in CATALOGUE_FILES));
-    if (extra.length) problems.push(`${name} names unknown entries: ${extra.join(", ")}`);
-  }
-  for (const [key, rel] of Object.entries(CATALOGUE_FILES)) {
-    if (pointer.files && pointer.files[key] !== rel) {
-      problems.push(`files.${key} is ${JSON.stringify(pointer.files && pointer.files[key])}, expected "${rel}"`);
-    }
-    const fileAbs = path.join(root, rel);
-    if (!existsSync(fileAbs)) {
-      problems.push(`${rel} is missing on disk`);
-      continue;
-    }
-    const size = statSync(fileAbs).size;
-    if (pointer.bytes && pointer.bytes[key] !== size) {
-      problems.push(`bytes.${key} is ${JSON.stringify(pointer.bytes[key])} but ${rel} is ${size} bytes on disk`);
-    }
-    const want = pointer.sha256 && pointer.sha256[key];
-    if (typeof want !== "string" || !HEX64.test(want)) {
-      problems.push(`sha256.${key} is not a 64-hex sha256: ${JSON.stringify(want)}`);
-    } else {
-      const got = sha256Hex(readFileSync(fileAbs));
-      if (got !== want) {
-        problems.push(`sha256.${key} is ${want.slice(0, 12)}… but ${rel} hashes to ${got.slice(0, 12)}… on disk`);
-      }
-    }
-  }
-  return problems;
-}
+export const cataloguePointerProblems = catalogue.problems;
