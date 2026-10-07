@@ -315,6 +315,26 @@ test("the meta description, og:description, the manifest and the Play short desc
   }
 });
 
+/* THE FOUNDER PASTES WHAT THE CHECKLIST SAYS. HUMAN-ACTIONS #26 tells the
+   founder to paste each Play description and quotes its length; when the line
+   changes and the count does not, the instructions no longer match the file
+   (the 'stitched' line was 73 characters, the Forays line is 71). Every
+   "<name>-description.txt (N chars" mention must give the file's real length.
+   Once #26 closes and leaves the open file there is nothing to check.
+   MUTATION THAT KILLS THIS: put "(73 chars)" back on short-description.txt in
+   HUMAN-ACTIONS.md, or change short-description.txt without updating the count. */
+test("HUMAN-ACTIONS.md quotes each Play description's real length", () => {
+  const ha = read("HUMAN-ACTIONS.md");
+  const mentions = [...ha.matchAll(/\b(short|full)-description\.txt \((\d+) chars\b/g)];
+  for (const [, name, count] of mentions) {
+    const text = storeCopy(`${name}-description.txt`);
+    assert.strictEqual(
+      Number(count), [...text].length,
+      `HUMAN-ACTIONS.md says ${name}-description.txt is ${count} chars; it is ${[...text].length}`,
+    );
+  }
+});
+
 /* ------------------------------------------------------------------ */
 /* Behaviour behind the copy                                           */
 /* ------------------------------------------------------------------ */
