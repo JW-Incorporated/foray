@@ -72,8 +72,11 @@ jobs:
       - name: Is the corpus catalogue fresh?
         env:
           POINTER: data/corpus-catalogue-pointer.json
-          # corpus.md §PKG-34. One number; the verdict below reads only this.
-          STALE_AFTER_HOURS: "48"
+          # corpus.md §PKG-34 said 48 h, written for a daily export. The proposed
+          # cadence is weekly (README Q2 / HA #139), so 48 h would be red ~5 days in
+          # 7. 192 h = one weekly export plus a day of slack. One number; the
+          # verdict below reads only this.
+          STALE_AFTER_HOURS: "192"
           REPO: ${{ github.repository }}
         run: |
           node --input-type=module <<'EOF'
