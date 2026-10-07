@@ -65,6 +65,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { topLevelKeys, block, prose, step, code, invocationsOf } from "./workflow-yaml.mjs";
 
@@ -1120,6 +1122,135 @@ test("R-05: android-release.yml is the PR-time check and the by-hand exception p
   assert.match(p, /release\.yml/, "android-release.yml's own header must name release.yml as the upload path");
   assert.match(p, /exception path/i, "android-release.yml's own header must call its by-hand button the exception path");
   assert.match(p, /never uploads to a store/i, "android-release.yml's own header must say it never uploads to a store");
+});
+
+/* ───── CH2-17: the by-hand button ships through the release composite ─────
+ *
+ * docs/roadmap/code-health-2.md, card CH2-17 (T2-02, T2-10). Until this card
+ * the bundle job here was a hand-kept copy of `.github/actions/android-bundle`
+ * with two drifts: it never ran `inject-splash.mjs`, so the founder's by-hand
+ * `.aab` carried Capacitor's PLACEHOLDER splash and launcher icon (the
+ * 2026-09-03 TestFlight icon incident class), and its versionCode was typed
+ * into a dispatch box (R-02's documented leftover). The job now calls the
+ * composite `release.yml` ships through, with the version pair derived by
+ * `tools/mobile/version.mjs` in a secret-free `version` job, so the one
+ * implementation is the one both paths run. The pins below read the bundle
+ * job TOGETHER WITH the composite it calls, because that is what executes.
+ */
+
+const BUNDLE_ACTION_REL = ".github/actions/android-bundle/action.yml";
+const BUN = fs.readFileSync(path.join(ROOT, BUNDLE_ACTION_REL), "utf8");
+
+/** One composite step, comments stripped. A composite's steps sit at four
+ *  spaces and `step()` splits at six (a workflow's), so the file is indented
+ *  by two first; the steps themselves are unchanged. */
+function bundleActionStepCode(nameFragment) {
+  const s = step(BUN.replace(/^/gm, "  "), nameFragment);
+  return s === null ? null : code(s);
+}
+
+/** One job of android-release.yml, comments and blanks skipped. */
+function releaseJob(name) {
+  return block(REL, name, 2);
+}
+
+/** What the bundle job EXECUTES: its own code plus every local composite it
+ *  `uses:`, which is where the build steps live. */
+function bundleJobExecutes() {
+  const job = releaseJob("android-bundle");
+  assert.ok(job, "android-release.yml has no android-bundle job");
+  const parts = [code(job)];
+  for (const m of code(job).matchAll(/uses:\s*\.\/(\.github\/actions\/[\w-]+)/g)) {
+    parts.push(code(fs.readFileSync(path.join(ROOT, m[1], "action.yml"), "utf8")));
+  }
+  return parts.join("\n");
+}
+
+test("CH2-17: the by-hand bundle injects the REAL splash and launcher icon, and checks the bytes", () => {
+  /* MUTATION: re-add an inline `./gradlew bundleRelease` step without the
+     composite (the pre-CH2-17 file) -> fails, on the inject pin and on the
+     one-implementation pin.
+     MUTATION: delete the `--check` line from the composite's splash step ->
+     fails: the bytes are then written and never compared, the same
+     "green, plausible, not doing the job" shape as an unread signing status.
+     THE FOUNDER'S EXCEPTION PATH IS STILL A SUBMISSION PATH. `cap add android`
+     generates Capacitor's placeholder drawables and launcher icons, and only
+     `inject-splash.mjs` replaces them; a bundle that skips it is signed,
+     lint-clean, green, and shows users the Capacitor logo. */
+  const runs = bundleJobExecutes();
+  assert.match(
+    runs,
+    /node tools\/mobile\/inject-splash\.mjs android \S+\n/,
+    "the bundle job must write the real splash and launcher icon into the generated project"
+  );
+  assert.match(
+    runs,
+    /node tools\/mobile\/inject-splash\.mjs android \S+ --check/,
+    "and re-read them with --check, so a write that did not land fails the job"
+  );
+  /* ONE IMPLEMENTATION. The splash omission was drift between two copies of
+     the same steps; the composite is the copy release.yml ships through, so
+     this file calls it and carries no build of its own. */
+  assert.match(
+    code(releaseJob("android-bundle")),
+    /uses: \.\/\.github\/actions\/android-bundle$/m,
+    "the bundle job must call the android-bundle composite release.yml ships through"
+  );
+  assert.deepEqual(gradlewInvocations(RYML), [], "android-release.yml must not carry its own Gradle build beside the composite");
+});
+
+test("CH2-17: the version pair is DERIVED by version.mjs in a secret-free job, never typed into a dispatch box", () => {
+  /* MUTATION: put back `FORAY_VERSION_CODE: ${{ inputs.version_code }}` -> fails.
+     MUTATION: hand the composite `build_number: "1"` -> fails.
+     R-02: "Never a manual versionCode input again." Play permanently refuses a
+     versionCode it has accepted, and a typed `1.0.0` in the code box failed
+     twenty-five minutes into a build. The pair now comes from version.mjs, as
+     release.yml's does — computed in a job that holds no signing secret,
+     because version.mjs sits on an ALLOWED path and the signing-job walk in
+     tools/ci/path-policy.test.mjs forbids running it beside the key. */
+  const dispatch = block(block(REL, "on"), "workflow_dispatch", 2);
+  assert.equal(dispatch === null || dispatch.trim() === "", true, `the dispatch button takes no inputs; found: ${dispatch}`);
+  assert.equal(/inputs\.version_(code|name)/.test(RYML), false, "no version is read from a dispatch input");
+  assert.equal(/FORAY_VERSION_(CODE|NAME)\s*:/.test(RYML), false, "the composite sets the Gradle version env, not this file");
+  const version = releaseJob("version");
+  assert.ok(version, "android-release.yml has no version job");
+  assert.match(code(version), /node tools\/mobile\/version\.mjs pair --run-of-day "\$RUN_OF_DAY" --now "\$CREATED_AT"/);
+  assert.match(code(version), /node tools\/release\/build-number\.mjs run-of-day/, "the slot is counted, never wrapped or guessed");
+  assert.equal(/secrets\./.test(code(version)), false, "the version job runs ALLOWED-path code, so it must hold no secret");
+  const bundle = code(releaseJob("android-bundle"));
+  assert.match(bundle, /^ {4}needs: version$/m, "the bundle job reads the pair from the version job");
+  assert.match(bundle, /marketing_version: \$\{\{ needs\.version\.outputs\.marketing_version \}\}/);
+  assert.match(bundle, /build_number: \$\{\{ needs\.version\.outputs\.build_number \}\}/);
+});
+
+test("CH2-17: the composite's Play credential is an explicit empty string, and play-gate reads '' as absent, not as a failure", () => {
+  /* MUTATION: make `play-gate` exit 1 on `absent` (or count '' as present) ->
+     fails: the founder's button would go red, or try to upload.
+     MUTATION: pass `play_service_account_json: ${{ vars.PLAY }}` -> fails.
+     The composite declares the input `required: true`, so this file passes ''
+     explicitly; R-05 keeps release.yml the ONE path to Play, so that '' is
+     the whole of this file's Play configuration. */
+  assert.match(
+    code(releaseJob("android-bundle")),
+    /^ {10}play_service_account_json: ''$/m,
+    "android-release.yml hands the composite an empty Play credential, literally"
+  );
+  const out = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "play-gate-")), "out");
+  fs.writeFileSync(out, "");
+  const r = spawnSync(process.execPath, [path.join(ROOT, "tools/mobile/release-ci.mjs"), "play-gate"], {
+    env: { ...process.env, PLAY_SERVICE_ACCOUNT_JSON: "", GITHUB_OUTPUT: out },
+    encoding: "utf8",
+  });
+  assert.equal(r.status, 0, `play-gate with '' must skip loudly, not fail the step: ${r.stderr}`);
+  const lines = fs.readFileSync(out, "utf8").split(/\r?\n/);
+  assert.ok(lines.includes("ready=false"), `play-gate with '' must report ready=false; wrote ${JSON.stringify(lines)}`);
+  assert.ok(lines.includes("state=absent"), "and call the state absent, not partial");
+  /* And the composite's Play upload is gated on exactly that output. */
+  assert.match(
+    bundleActionStepCode("Upload the signed .aab to the Play internal testing track"),
+    /if: steps\.play_gate\.outputs\.ready == 'true'/,
+    "the composite's Play upload must be gated on play-gate's ready output"
+  );
 });
 
 /* ─────────────────────────── the key, and the blast radius ─────────────────── */
