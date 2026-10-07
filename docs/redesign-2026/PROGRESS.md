@@ -136,3 +136,4 @@ Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40-22:40 PDT, 128 agents
 - 2026-10-07 — ambient/p3-icons: NOT merged (review blocking), iterations 1, judged by none
 - 2026-10-07 — tactile/p3-icons: merged, iterations 2, judged by none
 - 2026-10-07 — tactile/p3-primitives: NOT merged (review blocking), iterations 1, judged by none
+- 2026-10-07 — ambient/p3-primitives: NOT merged (review blocking), iterations 2, judged by none
