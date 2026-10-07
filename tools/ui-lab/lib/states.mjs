@@ -43,6 +43,24 @@ async function openNowPlaying(page) {
   await wait(page, 700);
 }
 
+async function openForayNowPlaying(page) {
+  await page.evaluate(async () => {
+    await window.ForayPlayer.stopForDataDeletion();
+    const [foraysDoc, segmentsDoc, sourcesDoc, discoverDoc] = await Promise.all([
+      fetch("data/forays.json").then((response) => response.json()),
+      fetch("data/segments.json").then((response) => response.json()),
+      fetch("data/segment-sources.json").then((response) => response.json()),
+      fetch("data/discover.json").then((response) => response.json()),
+    ]);
+    const id = "capital-types-1";
+    const resolved = window.ForayPlayer.resolve(foraysDoc, { id, segmentsDoc, sourcesDoc, showDrafts: true });
+    if (!resolved) throw new Error("uilab: Tactile Now Playing foray did not resolve");
+    window.ForayPlayer.restoreForay(resolved, { startElapsedSec: 760, discoverDoc });
+  });
+  await page.waitForSelector("#foray-player", { state: "visible", timeout: 10000 });
+  await openNowPlaying(page);
+}
+
 async function closeNowPlaying(page) {
   const close = page.locator(".fp-close");
   if (await close.count()) await close.first().click().catch(() => {});
@@ -143,7 +161,7 @@ export function appStates(fx) {
         { label: "mini-player-home", route: "#/", run: (page) => startPlayback(page, ep0) },
         { label: "mini-player-library", route: "#/library" },
         { label: "mini-player-up-next", route: "#/queue" },
-        { label: "now-playing", route: "#/library", run: (page) => openNowPlaying(page) },
+        { label: "now-playing", route: "#/library", run: (page) => openForayNowPlaying(page) },
         { label: "now-playing-closed", route: "#/library", run: (page) => closeNowPlaying(page) },
       ],
     },

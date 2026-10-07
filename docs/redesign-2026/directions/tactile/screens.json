@@ -84,23 +84,23 @@
       "regions": {
         "art": {
           "prototype": ".np__art",
-          "app": ".fp-s-art"
+          "app": ".np__art"
         },
         "title": {
           "prototype": ".np__text",
-          "app": ".fp-s-title"
+          "app": ".np__text"
         },
         "scrub": {
           "prototype": ".band--scrub",
-          "app": ".fp-scrub"
+          "app": ".np__band-well"
         },
         "primary": {
-          "prototype": ".transport .keycap",
-          "app": "#foray-player .fp-play"
+          "prototype": ".transport .keycap--persimmon",
+          "app": ".np .fp-big"
         },
         "close": {
           "prototype": ".np__collapse",
-          "app": ".fp-sheet .fp-close, #foray-player .fp-close"
+          "app": ".np__collapse"
         }
       }
     },
