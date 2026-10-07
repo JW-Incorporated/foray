@@ -8,6 +8,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as episodesModule from "../shows/[show_id]/episodes.ts";
 import { sharedFeedReader } from "../_lib/feedCache.ts";
+import { ingestShowFeed } from "../../backend/src/catalog/ingestShowFeed.ts";
+import { InMemoryShowEpisodesStore } from "../../backend/src/catalog/showEpisodesStore.ts";
 
 const handler = typeof episodesModule.default === "function" ? episodesModule.default : episodesModule.default.default;
 const { LIST_RESPONSE_KEYS, _setDbSessionForTests } = episodesModule;
@@ -15,6 +17,15 @@ const SHOW = "lex-fridman-podcast";
 
 const FEED = `<?xml version="1.0"?><rss version="2.0"><channel><title>Lex</title><description>About</description>
 <item><title>One</title><guid>g1</guid><enclosure url="https://cdn.example.com/1.mp3" type="audio/mpeg" length="1"/><pubDate>Mon, 01 Jan 2026 00:00:00 GMT</pubDate></item>
+</channel></rss>`;
+
+/* One chaptered item (inline psc:chapters, out of order, plus a podcast:chapters
+   JSON pointer) and one plain item. */
+const CHAPTERED_FEED = `<?xml version="1.0"?><rss version="2.0" xmlns:psc="http://podlove.org/simple-chapters" xmlns:podcast="https://podcastindex.org/namespace/1.0"><channel><title>Lex</title><description>About</description>
+<item><title>Chaptered</title><guid>c1</guid><enclosure url="https://cdn.example.com/c.mp3" type="audio/mpeg" length="1"/><pubDate>Tue, 02 Jan 2026 00:00:00 GMT</pubDate>
+<podcast:chapters url="https://cdn.example.com/c.json" type="application/json+chapters"/>
+<psc:chapters version="1.2"><psc:chapter start="00:10:00" title="Later" href="https://example.com/later"/><psc:chapter start="00:00:00.000" title=" Intro "/></psc:chapters></item>
+<item><title>Plain</title><guid>p1</guid><enclosure url="https://cdn.example.com/p.mp3" type="audio/mpeg" length="1"/><pubDate>Mon, 01 Jan 2026 00:00:00 GMT</pubDate></item>
 </channel></rss>`;
 
 function mockRes() {
@@ -134,15 +145,10 @@ test("a database it cannot reach degrades to the live branch, never a 500", asyn
 });
 
 test("the live branch passes a feed's inline psc:chapters through as `chapters`, sorted, beside chapters_url (#1071)", async () => {
-  /* MUTATION: put `chapters: null` back in toLiveEpisode (episodes.ts) — the
-     chaptered row comes back with chapters null and this goes red. */
-  const feed = `<?xml version="1.0"?><rss version="2.0" xmlns:psc="http://podlove.org/simple-chapters" xmlns:podcast="https://podcastindex.org/namespace/1.0"><channel><title>Lex</title><description>About</description>
-<item><title>Chaptered</title><guid>c1</guid><enclosure url="https://cdn.example.com/c.mp3" type="audio/mpeg" length="1"/><pubDate>Tue, 02 Jan 2026 00:00:00 GMT</pubDate>
-<podcast:chapters url="https://cdn.example.com/c.json" type="application/json+chapters"/>
-<psc:chapters version="1.2"><psc:chapter start="00:10:00" title="Later" href="https://example.com/later"/><psc:chapter start="00:00:00.000" title=" Intro "/></psc:chapters></item>
-<item><title>Plain</title><guid>p1</guid><enclosure url="https://cdn.example.com/p.mp3" type="audio/mpeg" length="1"/><pubDate>Mon, 01 Jan 2026 00:00:00 GMT</pubDate></item>
-</channel></rss>`;
-  await withEnv({ databaseUrl: null, feed }, async () => {
+  /* MUTATION: put `chapters: null` back in toCatalogEpisode (ingestShowFeed.ts,
+     the one mapper both branches use since CH2-01) — the chaptered row comes
+     back with chapters null and this goes red. */
+  await withEnv({ databaseUrl: null, feed: CHAPTERED_FEED }, async () => {
     const res = mockRes();
     await handler({ method: "GET", query: { show_id: SHOW }, headers: {} }, res);
     assert.equal(res.body.source, "live");
@@ -155,5 +161,35 @@ test("the live branch passes a feed's inline psc:chapters through as `chapters`,
     assert.equal(byTitle.Chaptered.chapters_url, "https://cdn.example.com/c.json", "the JSON pointer still flows");
     assert.equal(byTitle.Plain.chapters, null, "no psc block -> chapters null, never []");
     assert.equal(byTitle.Plain.chapters_url, null);
+  });
+});
+
+test("the DB branch, ingesting the same chaptered feed through the real store, serves the rows it stored (CH2-01, B1-01)", async () => {
+  /* The DB branch's session is built exactly as realDbSession builds it, over
+     an in-memory store instead of Postgres: refresh = ingestShowFeed, episodes
+     = the store's read. So the row served is the row ingestShowFeed's mapper
+     wrote.
+     Pinned on main as `chapters: null` (B1-01: the DB mapper hardcoded it, so
+     a feed the live branch served WITH chapters lost them once DATABASE_URL
+     was set); flipped by CH2-01 to the same array the live branch serves.
+     MUTATION: put `chapters: null` back in toCatalogEpisode -> red. */
+  const store = new InMemoryShowEpisodesStore();
+  const session = async () => ({
+    refresh: (showId, feedUrl) => ingestShowFeed(showId, feedUrl, store),
+    episodes: (showId) => store.episodesForShow(showId),
+    end: async () => {},
+  });
+  await withEnv({ databaseUrl: "postgres://fake", session, feed: CHAPTERED_FEED }, async () => {
+    const res = mockRes();
+    await handler({ method: "GET", query: { show_id: SHOW }, headers: {} }, res);
+    assert.equal(res.body.source, "db");
+    assertListShape(res.body, "db-chapters");
+    const byTitle = Object.fromEntries(res.body.episodes.map((e) => [e.title, e]));
+    assert.deepEqual(byTitle.Chaptered.chapters, [
+      { title: "Intro", start_time_seconds: 0 },
+      { title: "Later", start_time_seconds: 600, url: "https://example.com/later" },
+    ], "the DB branch serves the inline chapters the live branch serves");
+    assert.equal(byTitle.Chaptered.chapters_url, "https://cdn.example.com/c.json", "the JSON pointer flows on the DB branch too");
+    assert.equal(byTitle.Plain.chapters, null);
   });
 });
