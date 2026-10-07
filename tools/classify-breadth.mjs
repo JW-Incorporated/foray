@@ -35,6 +35,7 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
+import { genreTopicPrior } from "./classify/labels.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
@@ -71,7 +72,6 @@ const priorEntries = prior.entries || {};
    entries for shows outside this input catalog) survive by construction. */
 const entries = { ...priorEntries };
 
-const CONF_ORDER = { high: 3, medium: 2, low: 1 };
 const unmappedGenres = new Set();
 /* A genre-map topic that is not a taxonomy node used to be dropped in silence,
    so a renamed/removed node un-classified shows with no signal at all — the
@@ -97,18 +97,15 @@ for (const s of cat.shows) {
     continue;
   }
 
-  const topics = new Set();
-  let conf = "high";
-  for (const g of [s.apple_genre, s.chart_genre_name]) {
-    if (!g) continue;
-    const m = gmap[g];
-    if (!m) { unmappedGenres.add(g); continue; }
-    m.topics.forEach((t) => { if (taxonomy.has(t)) topics.add(t); else staleMapTopics.add(t); });
-    if (CONF_ORDER[m.confidence] < CONF_ORDER[conf]) conf = m.confidence;
-  }
-  if (!topics.size) { noTopics++; continue; }
+  /* The genre->topics rule is labels.mjs genreTopicPrior — the same function
+     prepare-batch.mjs uses for each batch entry's tier0_prior (CH2-13; it was a
+     hand-synced copy that had drifted). */
+  const prior = genreTopicPrior(s, gmap, taxonomy);
+  prior.unmappedGenres.forEach((g) => unmappedGenres.add(g));
+  prior.staleTopics.forEach((t) => staleMapTopics.add(t));
+  if (!prior.topics.length) { noTopics++; continue; }
 
-  const next = { topics: [...topics], confidence: conf, source: BASE_SOURCE };
+  const next = { topics: prior.topics, confidence: prior.confidence, source: BASE_SOURCE };
 
   /* Note the test is on `existing`, not on `existingSource`: an entry with no
      `source` field at all is still somebody's work, and the whole point of the
