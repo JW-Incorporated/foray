@@ -14,6 +14,7 @@ const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
 const { readAppSource } = require("./helpers/app-source.js");
+const { splitDialSection } = require("./helpers/dial-css.js");
 
 const ROOT = path.join(__dirname, "..");
 const CSS = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");
@@ -228,7 +229,11 @@ function parseRules(css) {
   return rules;
 }
 
-const RULES = parseRules(CSS);
+/* The Dial (Tactile) foundation layer is judged by test/ui-tokens-dial.test.js. No live rule reads it
+   yet, so the ownership checks below see the sheet without that section: a legacy rule that starts
+   reading a Dial token is a screen adopting the system early, and should fail here until its PR
+   retires the legacy pin. */
+const RULES = parseRules(splitDialSection(CSS).legacy);
 const APP_JS = readAppSource();
 const PLAYER_JS = fs.readdirSync(path.join(ROOT, "player"))
   .filter((f) => f.endsWith(".js") && !f.endsWith(".test.js"))

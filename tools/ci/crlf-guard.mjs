@@ -50,6 +50,8 @@ export const BINARY_LISTED = new Set([
 ` byte pairs: without these the guard refused every
      manifest run, on Linux CI as much as on Windows. */
   "fonts/dm-sans-variable.woff2", "fonts/fraunces-italic-variable.woff2", "fonts/fraunces-variable.woff2",
+  /* The Dial (Tactile) faces, tools/fonts/build-dial-fonts.py. */
+  "fonts/azeret-mono-latin.woff2", "fonts/dial-display-latin.woff2", "fonts/dial-text-latin.woff2",
 ]);
 
 /**

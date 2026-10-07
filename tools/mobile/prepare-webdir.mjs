@@ -277,6 +277,13 @@ export const SHELL_FILES = [
   "fonts/fraunces-variable.woff2",
   "fonts/fraunces-italic-variable.woff2",
   "fonts/dm-sans-variable.woff2",
+  /* Redesign 2026, Dial (Tactile): styles.css declares three more faces
+     (fonts/dial-display-latin.woff2, dial-text-latin.woff2, azeret-mono-latin.woff2)
+     that NO live rule paints with yet, so a browser never requests them and the
+     shell cannot 404 one. They are deliberately NOT listed here: together they are
+     119 KB, and this bundle is only a few tens of KB under its 2.85 MB alarm (prepare-webdir.test.mjs
+     assertion A). List them in the PR of the first screen that adopts the system,
+     and retire the legacy faces above as the last legacy screen goes. */
 ];
 
 /** Never in the bundle, whatever else changes. See the header. */

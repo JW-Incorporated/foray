@@ -4252,6 +4252,246 @@ body.drawer-open { overflow: hidden; }
   to   { transform: translateY(var(--fy-panel-dy, 0px)); }
 }
 
+/* ===========================================================================
+   DIAL (TACTILE) FOUNDATION TOKENS - Redesign 2026, Phase 3, task "tokens".
+   docs/redesign-2026/directions/tactile/BUILD-PLAN.md sections 1.1-1.4,
+   measurements in BUILD-NOTES.md section 2.
+
+   THIS BLOCK ADDS THE SYSTEM; NO LIVE SCREEN READS IT YET. Every screen still
+   paints from the `body.ui-v2` palette above and stays pixel-identical to the
+   trunk-app baseline; a screen adopts these tokens when its Phase 4 loop
+   rebuilds it, and retires the legacy token it stops reading in the same PR.
+   Nothing here selects `body`, an element, or a class the live markup emits
+   (the role classes below are new names), so declaring it moves no pixel.
+
+   SCHEMES. Two authored schemes: Cream (light) on `:root`, Bakelite (dark)
+   under the OS query AND under `[data-theme="dark"]`, the second a verbatim
+   copy of the first (test/ui-tokens-dial.test.js pins that they are equal).
+   `cp_theme` (system | light | dark) writes the `data-theme` attribute through
+   the storage shim; "system" removes it. `color-scheme: light dark` is declared
+   per scheme so UA-painted surfaces follow whichever is active.
+
+   NAME RULE. A Dial token whose name a legacy token already owns ships as
+   `--dial-<name>`, so declaring it cannot move a live screen: `--line`
+   (--dial-line), `--font-display` (--dial-font-display), `--seg-c0..7` and
+   `--seg-narration` (--dial-seg-*). Everything else keeps the BUILD-NOTES name.
+   When the screens that read the legacy name are gone, drop the prefix with
+   one rename. The ownership test fails on a Dial token that collides with a
+   legacy-owned name, so the rule cannot rot.
+
+   REDUCED MOTION is the ONE block at the bottom of this file; this section
+   declares no media query for it. Every animation or transition a later task
+   adds goes into that block in the same change. */
+
+/* Latin subset, self-hosted (font-src 'self'). The three files are built by
+   tools/fonts/build-dial-fonts.py. "DialDisplay" is Big Shoulders re-cut so the
+   ink sits centred in the line box on WebKit too (hhea ascent 84% / descent
+   24%); ascent-override stays as well for engines that read it. Re-cut and
+   instanced files are renamed (OFL Modified Version); Azeret is untouched.
+   fonts/LICENSES.md carries the notices. */
+@font-face { font-family: "DialDisplay"; src: url("fonts/dial-display-latin.woff2") format("woff2"); font-weight: 700 800; font-display: swap; ascent-override: 84%; descent-override: 24%; }
+@font-face { font-family: "DialText"; src: url("fonts/dial-text-latin.woff2") format("woff2"); font-weight: 500 700; font-display: swap; }
+@font-face { font-family: "Azeret"; src: url("fonts/azeret-mono-latin.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+
+/* The Now Playing tint, registered so it cross-fades as a colour. */
+@property --np-tint { syntax: "<color>"; inherits: true; initial-value: #F7F0E4; }
+
+:root {
+  color-scheme: light dark;
+
+  --dial-font-display: "DialDisplay", system-ui, sans-serif;  /* display, title, heading: Big Shoulders; no wdth axis, so every width token is 100% */
+  --font-text: "DialText", system-ui, sans-serif;
+  --font-mono: "Azeret", ui-monospace, monospace;
+
+  /* TYPE: size / line-height / weight / width / tracking (BUILD-NOTES 2.1, r7 values).
+     The weight ceiling is 800 on the display face and 700 on the text face. */
+  --t-display-xl: 2.75rem;  --lh-display-xl: 3rem;     --w-display: 800; --wd-display: 100%; --tracking-display: 0.005em;
+  --t-display:    2.25rem;  --lh-display:    2.5rem;
+  --t-title:      1.625rem; --lh-title:      1.875rem; --w-title:   750; --wd-title:   100%; --tracking-title:   0.01em;
+  --t-heading:    1.375rem; --lh-heading:    1.625rem; --w-heading: 750; --wd-heading: 100%; --tracking-heading: 0.01em;
+  --wd-screen:    100%;     --tracking-screen: 0.005em;   /* the three one-word screen titles: "Today", "Find", "Yours" */
+  --t-body-lg:    1.0625rem; --lh-body-lg:   1.5rem;   --w-body:  500;
+  --t-body:       0.9375rem; --lh-body:      1.3125rem;
+  --t-label:      0.8125rem; --lh-label:     1rem;     --w-label: 700;  --tracking-label: 0;
+  --t-micro:      0.75rem;   --lh-micro:     1rem;     --w-micro: 600;
+  --t-readout-lg: 1.75rem;   --lh-readout-lg: 2rem;    --w-readout: 500;
+  --t-readout:    0.8125rem; --lh-readout:   1rem;
+
+  /* COLOUR, Cream (BUILD-NOTES 2.2). Persimmon is the listener's own (play,
+     saved, chosen, followed); ultramarine is what 4a authored (narration,
+     bridges, the floor). Never both on one control. */
+  --paper:      #F7F0E4;
+  --paper-2:    #EFE6D6;   /* section bands, inset wells */
+  --card:       #FFFDF8;
+  --ink:        #1E1A16;
+  --ink-2:      #5C544B;
+  --ink-3:      #6C645A;   /* BUILD-NOTES had #6F675D: 4.49:1 on --paper-2, under AA; BUILD-PLAN 1.8 */
+  --dial-line:  #E2D8C6;   /* 1px contact lines only */
+  --rubber:     #2A2520;   /* keycap body for the "black key" variants */
+  --rubber-lip: #15110E;
+
+  --persimmon:        #C93F14;
+  --persimmon-lip:    #8E2B0C;
+  --persimmon-soft:   #F6D9CD;   /* tints, selected rows */
+  --ultramarine:      #2B45C8;
+  --ultramarine-lip:  #1C2F8F;
+  --ultramarine-soft: #D9DEF7;
+  --good:       #1F7A3E;         /* downloaded, offline-ready */
+  --warn:       #9A5B00;         /* needs a connection */
+
+  --on-persimmon:   #FFFFFF;
+  --on-ultramarine: #FFFFFF;
+
+  /* Segment enamels: stable per show, index = hash(show id) % 8. */
+  --dial-seg-c0: #1E8C7E;  /* teal */
+  --dial-seg-c1: #C93F14;  /* persimmon */
+  --dial-seg-c2: #2B45C8;  /* ultramarine */
+  --dial-seg-c3: #A67A08;  /* mustard; BUILD-NOTES had #B8860B, 2.63:1 on the well, under the 3:1 bars need (BUILD-PLAN 1.8) */
+  --dial-seg-c4: #7A3E8F;  /* plum */
+  --dial-seg-c5: #4F7F2E;  /* moss */
+  --dial-seg-c6: #2E7FB8;  /* sky */
+  --dial-seg-c7: #B5406E;  /* rose */
+  --dial-seg-narration: var(--ultramarine);
+
+  --scrim-np: rgba(247, 240, 228, 0.78);   /* paper scrim over the Now Playing artwork tint */
+
+  /* SPACE, RADIUS, SIZE (BUILD-NOTES 2.3). `--gutter` (16, all viewports) is
+     the legacy token above, same value; it is not declared a second time. */
+  --s-1: 4px;  --s-2: 8px;  --s-3: 12px; --s-4: 16px; --s-5: 20px;
+  --s-6: 24px; --s-8: 32px; --s-10: 40px; --s-12: 48px;
+  --gap: 12px;
+  --r-sm: 8px;      /* chips, tags, small keycaps */
+  --r-md: 14px;     /* cards, keycaps, rows */
+  --r-lg: 22px;     /* hero cards, sheets, deck */
+  --r-pill: 999px;
+  --tap: 44px;
+  --key: 48px;  --key-lg: 56px;  --key-xl: 80px;  --key-glance: 96px;
+  --row-show: 56px; --row-queue: 64px; --row-episode: 72px;
+  --art-row: 56px; --art-queue: 48px; --art-mini: 44px; --art-disc: 40px;
+  --deck-h: 64px;  --mini-h: 64px;
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+
+  /* MATERIAL (BUILD-NOTES 2.4): paper (0), card (1), keycap (2), well (inset),
+     deck (3). backdrop-filter goes on exactly three things: the deck, the Now
+     Playing header while scrolled, and modal sheets. */
+  --shadow-card:
+    0 1px 0 rgba(30, 26, 22, 0.06),
+    0 8px 24px -12px rgba(30, 26, 22, 0.25);
+  --shadow-deck:
+    0 1px 0 rgba(30, 26, 22, 0.08),
+    0 16px 40px -16px rgba(30, 26, 22, 0.35);
+  --well-inset:
+    inset 0 2px 4px rgba(30, 26, 22, 0.12),
+    inset 0 0 0 1px rgba(30, 26, 22, 0.06);
+  --lip: 3px;               /* keycap lower lip at rest */
+  --lip-pressed: 1px;
+  --deck-tint: color-mix(in srgb, var(--card) 84%, transparent);
+  --deck-blur: blur(20px) saturate(1.3);
+
+  /* MOTION (BUILD-NOTES 2.5). Springs are `linear()` curves (mass 1, so they
+     can be regenerated from stiffness/damping if tuned on a device):
+     snap 500/28, settle 300/34, sheet 180/22. Only `transform` and `opacity`
+     animate; the keycap lip moves as a pseudo-element's `transform: scaleY`. */
+  --spring-snap: linear(0, 0.01 2%, 0.06 4.4%, 0.25 9%, 0.56 14.5%, 0.84 20%, 1.02 26%, 1.08 31%, 1.07 36%, 1.03 44%, 1 52%, 0.99 60%, 1 70%, 1);
+  --spring-settle: linear(0, 0.02 3%, 0.11 8%, 0.32 15%, 0.58 24%, 0.78 33%, 0.9 43%, 0.96 55%, 0.99 70%, 1 85%, 1);
+  --spring-sheet: linear(0, 0.01 2%, 0.07 6%, 0.24 13%, 0.52 22%, 0.78 32%, 0.95 42%, 1.03 52%, 1.04 60%, 1.02 70%, 1 82%, 1);
+  --ease-quick: cubic-bezier(.2, .8, .2, 1);
+  --ease-draw: cubic-bezier(.4, 0, .2, 1);
+  --d-snap: 220ms;     /* keycap release, chip toggle, badge tick */
+  --d-settle: 320ms;   /* tab indicator, detents, list gaps, needle snap */
+  --d-sheet: 480ms;    /* Now Playing open/close, modal sheets */
+  --d-quick: 160ms;    /* fades, colour, opacity */
+  --d-draw: 280ms;     /* band draw-in */
+}
+
+/* BAKELITE (dark). The same declarations twice: the OS preference, and the
+   explicit override. Keep the two bodies identical. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper:      #17130F;
+    --paper-2:    #1F1A15;
+    --card:       #241E18;
+    --ink:        #F4ECDF;
+    --ink-2:      #BDB2A3;
+    --ink-3:      #948979;
+    --dial-line:  #332B24;
+    --rubber:     #3A332C;   /* #2E2822 sank into the sheet under the tint (r2) */
+    --rubber-lip: #120E0B;
+
+    --persimmon:        #FF6A3A;
+    --persimmon-lip:    #B8431E;
+    --persimmon-soft:   #4A2A1E;
+    --ultramarine:      #8EA0FF;
+    --ultramarine-lip:  #5566C8;
+    --ultramarine-soft: #26305A;
+    --good:       #5CC57A;
+    --warn:       #E0A14A;
+
+    --on-persimmon:   #1E1A16;
+    --on-ultramarine: #1E1A16;
+
+    --dial-seg-c0: #3FB9A8; --dial-seg-c1: #FF6A3A; --dial-seg-c2: #8EA0FF; --dial-seg-c3: #E0B33A;
+    --dial-seg-c4: #B57BCB; --dial-seg-c5: #7FB85A; --dial-seg-c6: #5FAEE6; --dial-seg-c7: #E06A98;
+
+    --scrim-np: rgba(23, 19, 15, 0.72);
+
+    --shadow-card: 0 1px 0 rgba(0, 0, 0, 0.4), 0 8px 24px -12px rgba(0, 0, 0, 0.6);
+    --shadow-deck: 0 1px 0 rgba(0, 0, 0, 0.5), 0 16px 40px -16px rgba(0, 0, 0, 0.7);
+    --well-inset: inset 0 2px 4px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  }
+}
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper:      #17130F;
+  --paper-2:    #1F1A15;
+  --card:       #241E18;
+  --ink:        #F4ECDF;
+  --ink-2:      #BDB2A3;
+  --ink-3:      #948979;
+  --dial-line:  #332B24;
+  --rubber:     #3A332C;
+  --rubber-lip: #120E0B;
+
+  --persimmon:        #FF6A3A;
+  --persimmon-lip:    #B8431E;
+  --persimmon-soft:   #4A2A1E;
+  --ultramarine:      #8EA0FF;
+  --ultramarine-lip:  #5566C8;
+  --ultramarine-soft: #26305A;
+  --good:       #5CC57A;
+  --warn:       #E0A14A;
+
+  --on-persimmon:   #1E1A16;
+  --on-ultramarine: #1E1A16;
+
+  --dial-seg-c0: #3FB9A8; --dial-seg-c1: #FF6A3A; --dial-seg-c2: #8EA0FF; --dial-seg-c3: #E0B33A;
+  --dial-seg-c4: #B57BCB; --dial-seg-c5: #7FB85A; --dial-seg-c6: #5FAEE6; --dial-seg-c7: #E06A98;
+
+  --scrim-np: rgba(23, 19, 15, 0.72);
+
+  --shadow-card: 0 1px 0 rgba(0, 0, 0, 0.4), 0 8px 24px -12px rgba(0, 0, 0, 0.6);
+  --shadow-deck: 0 1px 0 rgba(0, 0, 0, 0.5), 0 16px 40px -16px rgba(0, 0, 0, 0.7);
+  --well-inset: inset 0 2px 4px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+/* The deck's tint falls back to solid card where translucency is off or unsupported. */
+@media (prefers-reduced-transparency: reduce) { :root { --deck-tint: var(--card); --deck-blur: none; } }
+@supports not (backdrop-filter: blur(1px)) { :root { --deck-tint: var(--card); } }
+
+/* TYPE ROLES. New class names (nothing in the live markup carries them). Each
+   sets the family and its own weight / width / tracking tokens; sentence-length
+   display lines add `text-wrap: balance` where they are built. No role is
+   uppercase. Readouts are tabular. */
+.display-xl { font-family: var(--dial-font-display); font-size: var(--t-display-xl); line-height: var(--lh-display-xl); font-weight: var(--w-display); font-stretch: var(--wd-display); letter-spacing: var(--tracking-display); }
+.display    { font-family: var(--dial-font-display); font-size: var(--t-display);    line-height: var(--lh-display);    font-weight: var(--w-display); font-stretch: var(--wd-display); letter-spacing: var(--tracking-display); }
+.title      { font-family: var(--dial-font-display); font-size: var(--t-title);      line-height: var(--lh-title);      font-weight: var(--w-title);   font-stretch: var(--wd-title);   letter-spacing: var(--tracking-title); }
+.heading    { font-family: var(--dial-font-display); font-size: var(--t-heading);    line-height: var(--lh-heading);    font-weight: var(--w-heading); font-stretch: var(--wd-heading); letter-spacing: var(--tracking-heading); }
+.readout    { font: var(--w-readout) var(--t-readout)/var(--lh-readout) var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.readout-lg { font: var(--w-readout) var(--t-readout-lg)/var(--lh-readout-lg) var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+
 /* ---------- REDUCE MOTION: ONE BLOCK, EVERY TRANSITION (audit round 2, a11y-9) ----------
    Three strip rules honoured the setting and nothing else did: the Now Playing
    sheet still slid back over 220ms after a partial drag, the notes chevron
@@ -4263,6 +4503,15 @@ body.drawer-open { overflow: hidden; }
    fill's width tween is listed too: under this setting the bar steps with the
    clock instead of gliding, which reads the same and moves less.) */
 @media (prefers-reduced-motion: reduce) {
+  /* Dial (Tactile) motion: the tokens collapse here and every duration reads them. */
+  :root {
+    --d-snap: 1ms; --d-settle: 1ms; --d-sheet: 1ms; --d-draw: 1ms; --d-quick: 120ms;
+    --spring-snap: linear(0, 1); --spring-settle: linear(0, 1); --spring-sheet: linear(0, 1);
+  }
+  .keycap:active { transform: none; }
+  .band[data-draw] { stroke-dashoffset: 0; animation: none; }
+  .sheet { transition-property: opacity; }
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation-duration: 1ms; }
   .drawer-dev > summary::after,
   .mini-card,
   .page-head,
