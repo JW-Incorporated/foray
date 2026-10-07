@@ -211,6 +211,82 @@ test("a missing, unparseable, non-object or undated pointer is a problem, never 
   });
 });
 
+// ------------------------------- byte-for-byte (code-health CH2-22, T2-06) --
+
+/* The catalogue pointer is built and checked by the SAME implementation as the
+   Foray pointer (`makeDirectoryPointer` in forays-directory.mjs). These pin its
+   output for the catalogue table byte for byte, as it was before the copy in
+   this module was deleted; forays-directory.test.mjs pins the Foray table. */
+
+test("CHARACTERIZATION: the exact catalogue pointer bytes, and the exact error for a missing listed file", () => {
+  /* KILLED BY: `+ "\n"` -> `""` in makeDirectoryPointer's text, or passing
+     "forays-directory" as catalogue-directory.mjs's label. */
+  withTree(dataTree, (dir) => {
+    assert.equal(
+      cataloguePointerText(buildCataloguePointer(dir, ID, WHEN)),
+      "{\n" +
+        '  "version": "0123456789abcdef",\n' +
+        '  "built_at": "2026-10-05T03:00:00.000Z",\n' +
+        '  "files": {\n' +
+        '    "discover": "data/discover.json",\n' +
+        '    "session": "data/session.json",\n' +
+        '    "taxonomy": "data/taxonomy.json",\n' +
+        '    "itemTags": "data/item-tags.json",\n' +
+        '    "semanticIndex": "data/semantic-index.json"\n' +
+        "  },\n" +
+        '  "bytes": {\n' +
+        '    "discover": 24,\n' +
+        '    "session": 13,\n' +
+        '    "taxonomy": 13,\n' +
+        '    "itemTags": 14,\n' +
+        '    "semanticIndex": 15\n' +
+        "  },\n" +
+        '  "sha256": {\n' +
+        '    "discover": "085f08a895a677b6ebefcd8241a63e422633c135341dd6d2273b98dd95db7d76",\n' +
+        '    "session": "36a7aa3b38b6af1ef276fdf4a55359f227a260eada614a4b7db0977372c14e42",\n' +
+        '    "taxonomy": "ac08ce34ba4f8123618661bef2425f7028ffb9ac740578a3ee88684d2523fee8",\n' +
+        '    "itemTags": "24d2bdcc127b5977d85bdeb73db93b64d84a2a0751660fdd953662b43d9a6f6f",\n' +
+        '    "semanticIndex": "e172ee052119a09a0e8f2fdb5113c6b89ca771b603039544ff02ea34195f0f4b"\n' +
+        "  }\n" +
+        "}\n"
+    );
+    rmSync(path.join(dir, CATALOGUE_FILES.discover));
+    assert.throws(() => buildCataloguePointer(dir, ID, WHEN), {
+      message: "catalogue-directory: listed file is missing on disk: data/discover.json",
+    });
+  });
+});
+
+test("CHARACTERIZATION: every catalogue problem line, in order, word for word", () => {
+  /* One torn tree that trips every check at once, against the catalogue's own
+     pointer path and table. KILLED BY: `…` -> `...` in the shared
+     sha256-mismatch line, or the catalogue module handing the factory
+     POINTER_PATH instead of CATALOGUE_POINTER_PATH. */
+  withTree(dataTree, (dir) => {
+    const p = buildCataloguePointer(dir, ID, WHEN);
+    p.built_at = "soon";
+    p.files.taxonomy = "data/elsewhere.json";
+    p.sha256.forays = "0".repeat(64);
+    p.sha256.discover = "abc";
+    delete p.bytes;
+    put(dir, CATALOGUE_POINTER_PATH, cataloguePointerText(p));
+    put(dir, CATALOGUE_FILES.session, BODIES.session.replace("cards", "carts"));
+    rmSync(path.join(dir, CATALOGUE_FILES.semanticIndex));
+    assert.deepEqual(cataloguePointerProblems(dir, "fedcba9876543210"), [
+      'version is "0123456789abcdef" but the tree computes to deploy_id fedcba9876543210',
+      'built_at is not an ISO-8601 timestamp: "soon"',
+      "bytes is missing",
+      "sha256 names unknown entries: forays",
+      'sha256.discover is not a 64-hex sha256: "abc"',
+      "sha256.session is 36a7aa3b38b6… but data/session.json hashes to 865bea7400d7… on disk",
+      'files.taxonomy is "data/elsewhere.json", expected "data/taxonomy.json"',
+      "data/semantic-index.json is missing on disk",
+    ]);
+    rmSync(path.join(dir, CATALOGUE_POINTER_PATH));
+    assert.deepEqual(cataloguePointerProblems(dir, ID), ["data/catalogue-directory.json is missing"]);
+  });
+});
+
 // ------------------------------------------------ the generator, real repo --
 
 test("REAL REPO: the pointer is a generated file — in GENERATED, ignored by .gitignore, and not tracked (#701)", () => {

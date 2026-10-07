@@ -266,6 +266,76 @@ test("a directory file missing on disk is reported once per file, not as a crash
   });
 });
 
+// ------------------------------- byte-for-byte (code-health CH2-22, T2-06) --
+
+/* The Foray and catalogue pointers are built and checked by ONE implementation
+   (`makeDirectoryPointer`). These two tests pin what it writes and every line it
+   reports, byte for byte, as they were before the two copies were unified —
+   catalogue-directory.test.mjs pins the same for the catalogue table. */
+
+test("CHARACTERIZATION: the exact pointer bytes, and the exact error for a missing listed file", () => {
+  /* KILLED BY: `JSON.stringify(pointer, null, 2)` -> `(pointer, null, 1)` in
+     makeDirectoryPointer's text, or `${label}:` dropped from build's throw. */
+  withTree(dataTree, (dir) => {
+    assert.equal(
+      pointerText(buildPointer(dir, ID, WHEN)),
+      "{\n" +
+        '  "version": "0123456789abcdef",\n' +
+        '  "built_at": "2026-09-10T12:00:00.000Z",\n' +
+        '  "files": {\n' +
+        '    "forays": "data/forays.json",\n' +
+        '    "segments": "data/segments.json",\n' +
+        '    "sources": "data/segment-sources.json"\n' +
+        "  },\n" +
+        '  "bytes": {\n' +
+        '    "forays": 40,\n' +
+        '    "segments": 46,\n' +
+        '    "sources": 64\n' +
+        "  },\n" +
+        '  "sha256": {\n' +
+        '    "forays": "9f1388dccaeeac255ec4c089591b2012da731a7440dc4003567e64e4d8fb65e9",\n' +
+        '    "segments": "69c9565e77106089a75f5a7d699f6ea8e67337a48d24b3437c6e5fe73c8340b2",\n' +
+        '    "sources": "5b45999016309adb78deedba215a3aa343ff9122507dd2282d0a8d0c2ab5e4eb"\n' +
+        "  }\n" +
+        "}\n"
+    );
+    rmSync(path.join(dir, DIRECTORY_FILES.segments));
+    assert.throws(() => buildPointer(dir, ID, WHEN), {
+      message: "forays-directory: listed file is missing on disk: data/segments.json",
+    });
+  });
+});
+
+test("CHARACTERIZATION: every problem line, in order, word for word (12-char sha prefixes, bytes, missing file)", () => {
+  /* One torn tree that trips every check at once. KILLED BY: `.slice(0, 12)` ->
+     `.slice(0, 8)` in the sha256-mismatch line, `bytes on disk` -> `bytes`, or
+     `is missing on disk` -> `is missing` — in the ONE problems() both pointers use. */
+  withTree(dataTree, (dir) => {
+    const p = buildPointer(dir, ID, WHEN);
+    p.built_at = "yesterday";
+    p.files.forays = "data/forays-v2.json";
+    p.bytes.extra = 1;
+    p.sha256.sources = "sha256:" + p.sha256.sources;
+    put(dir, POINTER_PATH, pointerText(p));
+    put(dir, DIRECTORY_FILES.segments, SEGMENTS + '{"appended":true}\n');
+    rmSync(path.join(dir, DIRECTORY_FILES.forays));
+    assert.deepEqual(pointerProblems(dir, "fedcba9876543210"), [
+      'version is "0123456789abcdef" but the tree computes to deploy_id fedcba9876543210',
+      'built_at is not an ISO-8601 timestamp: "yesterday"',
+      "bytes names unknown entries: extra",
+      'files.forays is "data/forays-v2.json", expected "data/forays.json"',
+      "data/forays.json is missing on disk",
+      "bytes.segments is 46 but data/segments.json is 64 bytes on disk",
+      "sha256.segments is 69c9565e7710… but data/segments.json hashes to 2ec2fab3f145… on disk",
+      'sha256.sources is not a 64-hex sha256: "sha256:5b45999016309adb78deedba215a3aa343ff9122507dd2282d0a8d0c2ab5e4eb"',
+    ]);
+    put(dir, POINTER_PATH, "{not json");
+    assert.match(pointerProblems(dir, ID)[0], /^data\/forays-directory\.json is not valid JSON: /);
+    put(dir, POINTER_PATH, "null");
+    assert.deepEqual(pointerProblems(dir, ID), ["data/forays-directory.json is not a JSON object"]);
+  });
+});
+
 // ------------------------------------------------ built_at: the phone's order --
 
 /* `core.autocrlf=false` is not incidental: the developer machines this runs on
