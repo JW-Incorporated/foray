@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 import { decodeEntities, hasEntity, ENTITY_RE } from "./entities.mjs";
 
 test("the three shapes the catalogue actually carried decode to their characters", () => {
-  /* MUTATION: drop the `#(\d{1,7})` branch of ENTITY_RE -> "&#038;" survives. */
+  /* MUTATION: drop the `#(\d+)` branch of ENTITY_RE -> "&#038;" survives. */
   assert.equal(decodeEntities("Vibe Coding &#038; Linux"), "Vibe Coding & Linux");
   assert.equal(decodeEntities("Fedor &#038; Football"), "Fedor & Football");
   assert.equal(decodeEntities("Kola: The World&#39;s Deepest Hole"), "Kola: The World's Deepest Hole");
@@ -39,8 +39,15 @@ test("text that is not an entity is left exactly as it was", () => {
   }
   assert.equal(decodeEntities(null), null);
   assert.equal(decodeEntities(undefined), undefined);
-  assert.equal(decodeEntities("&#1114112;"), "&#1114112;", "beyond U+10FFFF is not a code point");
-  assert.equal(decodeEntities("&#55296;"), "&#55296;", "a lone surrogate is not a code point");
+});
+
+test("a number that is not a code point becomes U+FFFD, the rule html.ts shares (CH2-09)", () => {
+  /* MUTATION: leave a non-scalar reference as written (the pre-CH2-09 rule) ->
+     "&#1114112;" survives into data/ and test/data-entities.test.js goes red on it. */
+  assert.equal(decodeEntities("&#1114112;"), "�", "beyond U+10FFFF is not a code point");
+  assert.equal(decodeEntities("&#55296;"), "�", "a lone surrogate is not a code point");
+  assert.equal(decodeEntities("Bad &#99999999; title"), "Bad � title", "an eight-digit reference is still a reference");
+  assert.equal(hasEntity("&#99999999;"), true);
 });
 
 test("hasEntity and ENTITY_RE agree with the decoder on what counts", () => {

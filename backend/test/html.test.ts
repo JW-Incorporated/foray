@@ -59,13 +59,18 @@ describe("decodeEntities hardening (round 3)", () => {
     expect(() => sanitizeHtmlToText("<p>&#99999999;</p>")).not.toThrow();
   });
 
-  it("still decodes every valid reference, including the top of the range", () => {
-    expect(decodeEntities("&#038; &#x26; &#x10FFFF; &#9; &#10;")).toBe("& & \u{10FFFF} \t \n");
+  /* CH2-09 (docs/roadmap/code-health-2.md B1-05): one code-point rule with
+     tools/refresh/entities.mjs, the catalogue's decoder — a tab/LF/CR
+     reference becomes a space there, so it does here. */
+  it("still decodes every valid reference, including the top of the range; tab and LF references become a space", () => {
+    /* MUTATION: return String.fromCodePoint(code) for code < 0x20 -> "\t" and "\n" come back. */
+    expect(decodeEntities("&#038; &#x26; &#x10FFFF; &#9; &#10;")).toBe("& & \u{10FFFF}    ");
   });
 
-  it("drops NUL and C0 controls other than tab/LF/CR (backend-rest-9: Postgres rejects 0x00)", () => {
-    expect(decodeEntities("a&#0;b&#x0;c&#1;d&#x1F;e")).toBe("abcde");
-    expect(sanitizeHtmlToText("a&#0;b")).toBe("ab");
+  it("turns NUL and C0 control references into a space; raw NULs are still dropped (backend-rest-9: Postgres rejects 0x00)", () => {
+    /* MUTATION: map a C0 control reference to "" (the pre-CH2-09 rule) -> "abcde". */
+    expect(decodeEntities("a&#0;b&#x0;c&#1;d&#x1F;e")).toBe("a b c d e");
+    expect(sanitizeHtmlToText("a&#0;b")).toBe("a b");
     expect(sanitizeHtmlToText("raw\u0000nul")).toBe("rawnul");
     expect(sanitizeHtmlToText("a&#0;b")).not.toContain("\u0000");
   });
