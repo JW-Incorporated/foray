@@ -2460,14 +2460,15 @@ const BACKEND_FLOORS = {
      over-cap values at startup instead of silently substituting the
      default, and leaves a genuinely unset variable on its fallback. */
   "test/env.test.ts": 11,
+  "test/eventStore.test.ts": 5, // CH2-05 (docs/roadmap/code-health-2.md, B2-12): in-memory fetchPage includes rows at exactly afterTs with a null afterId (Postgres's rule, live-DB half in the db job) and minted ids sort in insertion order; new
   "test/events.test.ts": 17, // round-3 completeness sweep: app-2-6 thumbs accepts "cleared" and keeps `replaces`; 15 -> 17
   "test/html.test.ts": 12, // round-3 L6 (2026-09-25): backend-rest-1/-9/-11: range-checked, NUL-dropping, prototype-safe decodeEntities; 8 -> 12
-  "test/interestLearning.test.ts": 38, // round-3 completeness sweep: app-2-6 a changed or withdrawn thumbs vote undoes the one it replaces; 35 -> 38 // round-3 L6 (2026-09-25): backend-rest-17: card_ignored fires once per threshold, running per-topic streak; 30 -> 35
+  "test/interestLearning.test.ts": 40, // CH2-05 (B2-15): INTEREST_REASONS and UserTaxonomyRow.source are pinned to the last migration's CHECKs, persona_seed the named SQL-only reason; 38 -> 40 // round-3 completeness sweep: app-2-6 a changed or withdrawn thumbs vote undoes the one it replaces; 35 -> 38 // round-3 L6 (2026-09-25): backend-rest-17: card_ignored fires once per threshold, running per-topic streak; 30 -> 35
   "test/itunes.test.ts": 3,
   "test/ladderBuilder.test.ts": 13,
   "test/ladderIntegrity.test.ts": 11,
   "test/ladderProgress.test.ts": 8,
-  "test/learningJob.test.ts": 9, // round-3 L6 (2026-09-25): backend-rest-2/-3: microsecond cursor, malformed rows skipped past, transaction, per-user failure isolation; 4 -> 9
+  "test/learningJob.test.ts": 13, // CH2-05 (B2-17): one run pages to the end (batchSize + 5 and a 3,500-event backlog caught up in one run) and a card_ignored streak split at the page boundary fires; 11 -> 13 // CH2-05 (B2-17) characterization: one run reads one page (batchSize + 5 events leave the cursor at row batchSize); 9 -> 11 (the suite already stood at 10) // round-3 L6 (2026-09-25): backend-rest-2/-3: microsecond cursor, malformed rows skipped past, transaction, per-user failure isolation; 4 -> 9
   /* Anthropic provider error-path coverage (kanban card t_550d289f): the
      shared parseWithRetry/parseLastJsonBlock helper extracted from the 5
      real Anthropic provider classes' identical private copies. */
