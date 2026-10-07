@@ -304,7 +304,10 @@ test("every selector in the file is a new name: nothing today's markup emits or 
       for (const m of s.matchAll(/\.([A-Za-z][\w-]*)/g)) classes.add(m[1]);
     }
   }
-  const emitted = [read("app.js"), read("index.html"), ...fs.readdirSync(path.join(ROOT, "ui")).filter((f) => f.endsWith(".js")).map((f) => read(`ui/${f}`)),
+  /* ui/icons.js is the one exception: it is the NEW system's own helper (phase 3 step 2) and emits the
+     `.icon` / `.ag-icon-*` classes this file styles, on purpose, through agIcon() that no legacy screen calls.
+     Every other ui/*.js still counts. MUTATION: put `class="icon"` in app.js or any other ui/*.js template -> red. */
+  const emitted = [read("app.js"), read("index.html"), ...fs.readdirSync(path.join(ROOT, "ui")).filter((f) => f.endsWith(".js") && f !== "icons.js").map((f) => read(`ui/${f}`)),
     ...fs.readdirSync(path.join(ROOT, "player")).filter((f) => f.endsWith(".js") && !f.endsWith(".test.js")).map((f) => read(`player/${f}`))].join("\n");
   const legacy = new Set(STYLE_RULES.flatMap((r) => r.selectors.flatMap((s) => [...s.matchAll(/\.([A-Za-z][\w-]*)/g)].map((m) => m[1]))));
   for (const c of classes) {

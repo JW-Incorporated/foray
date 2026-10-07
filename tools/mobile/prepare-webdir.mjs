@@ -269,6 +269,9 @@ export const SHELL_FILES = [
      so it is minified like styles.css; uiFiles() is the scripts only (appSourceText scans them
      as JS), which is why this is listed here and not derived. */
   "ui/tokens.css",
+  /* Redesign 2026 (ambient): the icon sprite. An SVG: not JS or CSS, so copy() ships it byte for byte
+     (the dispatch falls through to copy for anything else). */
+  "ui/icons.svg",
   "manifest.json",
   "icon-180.png",
   "icon-512.png",

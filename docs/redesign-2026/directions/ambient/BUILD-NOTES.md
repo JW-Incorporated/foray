@@ -852,3 +852,48 @@ own header is the long form; `test/afterglow-tokens.test.js` pins every number h
 6. **Not in this PR, by the build plan's order:** the icon sprite, primitives
    and gallery (the next three tasks), `data/palettes.json` and its loader (the
    palette script lands with Now Playing, which is its first reader).
+
+## 14. As built: phase 3, icons (`redesign/ambient-p3-icons`, `ui/icons.svg`, `ui/icons.js`)
+
+The sprite, its helper and the `.icon` rules. No screen changed: the trunk-app
+baseline compares 138 of 138 shots identical, gates exit 0 with 0 new.
+`test/afterglow-icons.test.js` pins every number here.
+
+1. **Location.** `ui/icons.svg` (not the repo root: `vercel.json` already revalidates
+   `/ui/(.*)`, so the sprite never goes stale behind a cached shell), listed in the
+   three shell lists beside `ui/tokens.css`. Referenced as `href="ui/icons.svg#i-house"`;
+   routes are hash-based so the document base never moves. `ui/icons.js` is a new
+   classic script loaded after `ui/home.js`; it runs nothing at the top level.
+2. **Generated, not hand-edited.** `node tools/icons/build-sprite.mjs` writes it
+   (`--check` verifies); a test fails if the file is not what the script writes. The 33
+   Phosphor (MIT) paths are taken as they stand from the prototype's sprite; the four
+   transport glyphs are drawn by the script.
+3. **The prototype's four custom glyphs were not copied.** They used strokes and a
+   `<text>` numeral. `<text>` in an externally referenced sprite does not see the page's
+   `@font-face`, so it would draw in a fallback face, and the notes above ask for filled
+   paths. Rebuilt as fills: play is an equilateral triangle (circumradius 104, corners
+   rounded 12, centroid at x=136 = the +8 optical shift; it is larger than the prototype's
+   26-wide stroked triangle because that stroke added 13 on every side); pause is two 40
+   bars 32 apart; back-15 and forward-30 are a 270 degree ring (radius 84, stroke 22
+   expanded, round caps), a rounded arrowhead (the prototype's, offset by its 4 stroke
+   and rounded to 4), and the numerals as **DM Sans outlines at wght 600, opsz 14** (the
+   text optical size: the glyphs are drawn at 36px or less), font-size 84, figure 59 high,
+   centred on the ring. Forward is the exact mirror of back. The outlines come from
+   `tools/icons/extract-numerals.py` (fontTools, one-off) into the committed
+   `tools/icons/dm-sans-600-numerals.json`; CI needs neither.
+4. **Helper.** `agIcon(name, size)` returns `<svg class="icon icon-28" aria-hidden="true"
+   focusable="false"><use href="ui/icons.svg#i-house"></use></svg>`; sizes 20/24/28/32/36
+   are classes (strict CSP), a name or size outside the lists returns `""` rather than
+   markup. `safeUrl()` is not used on the href: it passes only http(s) and the path is a
+   constant plus an allow-listed name. `agIconGallery()` renders every symbol with its
+   name and the Sizes row; the gallery task mounts it under `#/gallery`.
+5. **CSS** (`ui/tokens.css` section 6b): five size tokens (`--icon-sm 20`, `--icon 24`,
+   `--icon-tab 28`, `--icon-lg 32`, `--icon-play 36`), `.ag .icon, .room .icon` with
+   `fill: currentColor`, `stroke: none`, `flex: none`, `pointer-events: none` (the
+   control owns the tap). Scoped like every other rule in the file, so no legacy screen
+   changes. `test/afterglow-tokens.test.js`'s "nothing today's markup emits" scan now
+   skips `ui/icons.js` only, since the helper emits the classes the file styles.
+6. **Not in this PR:** replacing any Unicode glyph in a screen (Phase 4, screen by screen),
+   the gallery route itself, the 3:1 non-text contrast check of a glyph on its control
+   (each screen's own pass).
+
