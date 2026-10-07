@@ -278,3 +278,34 @@ test("only an allowlisted fusion-specific show passes engineering/energy-fusion 
   const bad = [...inherited, ...labelled];
   assert.deepEqual(bad, [], report(bad));
 });
+
+/* EPISODE TOPICS (PKG-29, docs/roadmap/corpus.md §3). data/episode-topics.json
+ * is written by tools/foraycorpus-export/topics.mjs in its own data PR, after
+ * PKG-28 sets the rule's numbers and PKG-30 reads it. Until that file exists
+ * both tests SKIP rather than pass, so they add nothing to the floor; the data
+ * PR removes the skip branch and raises the floor by 2.
+ *
+ * KILLED BY (run 2026-10-07, against a local, uncommitted
+ * data/episode-topics.json that passes both tests): (1) adding the node id
+ * "science/not-a-node" to one episode's topics; (2) adding "nope" to
+ * general_shows. */
+const EPISODE_TOPICS = path.join(DATA, "episode-topics.json");
+const EPISODE_TOPICS_ABSENT = "data/episode-topics.json not yet published (PKG-29 data PR)";
+
+test("every node id in data/episode-topics.json exists in the taxonomy", (t) => {
+  if (!fs.existsSync(EPISODE_TOPICS)) return t.skip(EPISODE_TOPICS_ABSENT);
+  const { episodes } = read("episode-topics.json");
+  const bad = [];
+  for (const [key, { topics }] of Object.entries(episodes)) {
+    for (const id of topics) if (!nodeIds.has(id)) bad.push(`${key}: ${id}`);
+  }
+  assert.deepEqual(bad, [], report(bad));
+});
+
+test("every general show in data/episode-topics.json is a catalog or breadth show", (t) => {
+  if (!fs.existsSync(EPISODE_TOPICS)) return t.skip(EPISODE_TOPICS_ABSENT);
+  const known = new Set(read("catalog.json").shows.map((s) => s.show_id));
+  for (const s of read("catalog-breadth.json").shows) known.add(String(s.apple_collection_id));
+  const bad = read("episode-topics.json").general_shows.filter((id) => !known.has(id));
+  assert.deepEqual(bad, [], report(bad));
+});
