@@ -204,7 +204,8 @@ export function buildSprite() {
     `     Phosphor Icons (https://phosphoricons.com), MIT License, Copyright (c) 2020 Phosphor Icons.\n` +
     `     The four transport glyphs (i-play, i-pause, i-back15, i-fwd30) are drawn in the build\n` +
     `     script; their numerals are outlines of DM Sans (SIL OFL 1.1). Filled paths only, painted\n` +
-    `     by currentColor. Referenced as <svg class="icon"><use href="ui/icons.svg#i-house"/></svg>. -->\n` +
+    `     by currentColor. Complete notices ship beside this file in ui/icons-LICENSES.txt.\n` +
+    `     Referenced as <svg class="icon"><use href="ui/icons.svg#i-house"/></svg>. -->\n` +
     `<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true">\n` +
     lines.join("\n") + "\n</svg>\n"
   );

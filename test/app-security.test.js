@@ -134,6 +134,19 @@ test("safeUrl passes through http and https unchanged", () => {
   assert.strictEqual(app.safeUrl("http://example.com/"), "http://example.com/");
 });
 
+test("safeUrl allows only the icon sprite's exact same-origin asset reference", () => {
+  /* MUTATION: delete safeUrl()'s anchored ui/icons.svg allowance -> the valid reference
+     becomes "#"; loosen it to a general relative-URL allowance -> one of the lookalikes passes. */
+  assert.strictEqual(app.safeUrl("ui/icons.svg#i-house"), "ui/icons.svg#i-house");
+  for (const bad of [
+    "ui/icons.svg", "/ui/icons.svg#i-house", "../ui/icons.svg#i-house",
+    "ui/icons.svg#house", "ui/icons.svg#i-house?next=https://evil.example/",
+    "ui/icons.svg#i-house/../../x", "ui\\icons.svg#i-house",
+  ]) {
+    assert.strictEqual(app.safeUrl(bad), "#", `${bad} is not the exact sprite reference form`);
+  }
+});
+
 test("safeUrl rejects every scheme that can execute", () => {
   for (const bad of [
     "javascript:alert(1)",

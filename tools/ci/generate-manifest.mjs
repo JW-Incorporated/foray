@@ -163,6 +163,10 @@ const SHELL = [
   /* Redesign 2026 (ambient): the icon sprite ui/icons.svg, fetched by every `<use href>` agIcon() writes.
      Not a script, so uiSources() does not see it; listed by name for the same reason as tokens.css. */
   "ui/icons.svg",
+  /* Complete MIT/OFL notices for the Phosphor paths and DM Sans numeral outlines
+     distributed in ui/icons.svg. Kept beside the asset so the web and native shell
+     expose the same human-readable licence surface. */
+  "ui/icons-LICENSES.txt",
   "manifest.json",
   "icon-180.png",
   "icon-512.png",

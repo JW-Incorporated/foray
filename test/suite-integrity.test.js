@@ -453,7 +453,7 @@ const FLOORS = {
   "test/api-origin.test.js": 5,
   "test/clock-formatters.test.js": 2, // audit round 3, arch-drift-10 (2026-09-25): the episode, Foray and chapter clocks share one floored rule
   "test/jingle-duration.test.js": 1, // audit round 3, arch-drift-4 (2026-09-25): the generator's jingle length is the player's, which is the interlude file's
-  "test/app-security.test.js": 26,
+  "test/app-security.test.js": 27,
   "test/app-split.test.js": 7, // Redesign 2026 phase 0d: app.js split into a core + ui/*.js — load order, no duplicate declarations, every shipping path lists the files; each test names its mutation
   "test/afterglow-tokens.test.js": 19, // Redesign 2026 phase 3 (ambient), ui/tokens.css: Dusk/Dawn values, structure tokens, the collision rule (a styles.css token name is declared only on .ag/.room), AA over every pair, Glow worst cases pinned per hue, fallbacks, materials, ONE reduced-motion block, shipping wiring; every test names its mutation and each was run and killed it (39 mutations, PR description)
   "test/afterglow-icons.test.js": 18, // Redesign 2026 phase 3 (ambient), ui/icons.svg + ui/icons.js: the 37 plan symbols in order, filled paths only (no text, stroke, fixed colour), the file equals tools/icons/build-sprite.mjs output, custom glyph geometry (numerals are outlines inside the ring, forward is the mirror of back, play centroid +8, pause bars), agIcon returns "" for any unknown name or size, call-site names exist in the sprite, size classes move the five size tokens, `.icon` is currentColor and .ag/.room scoped, the shell ships the sprite; every test names its mutation and each was run and killed it (PR description)

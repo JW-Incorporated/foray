@@ -867,7 +867,10 @@ baseline compares 138 of 138 shots identical, gates exit 0 with 0 new.
 2. **Generated, not hand-edited.** `node tools/icons/build-sprite.mjs` writes it
    (`--check` verifies); a test fails if the file is not what the script writes. The 33
    Phosphor (MIT) paths are taken as they stand from the prototype's sprite; the four
-   transport glyphs are drawn by the script.
+   transport glyphs are drawn by the script. Complete Phosphor MIT and DM Sans OFL 1.1
+   notices live in `ui/icons-LICENSES.txt`; the web dist, service-worker generation and
+   native webDir all ship that human-readable surface beside the sprite, and
+   `docs/legal/third-party-notices.md` records both dependencies.
 3. **The prototype's four custom glyphs were not copied.** They used strokes and a
    `<text>` numeral. `<text>` in an externally referenced sprite does not see the page's
    `@font-face`, so it would draw in a fallback face, and the notes above ask for filled
@@ -884,9 +887,11 @@ baseline compares 138 of 138 shots identical, gates exit 0 with 0 new.
 4. **Helper.** `agIcon(name, size)` returns `<svg class="icon icon-28" aria-hidden="true"
    focusable="false"><use href="ui/icons.svg#i-house"></use></svg>`; sizes 20/24/28/32/36
    are classes (strict CSP), a name or size outside the lists returns `""` rather than
-   markup. `safeUrl()` is not used on the href: it passes only http(s) and the path is a
-   constant plus an allow-listed name. `agIconGallery()` renders every symbol with its
-   name and the Sizes row; the gallery task mounts it under `#/gallery`.
+   markup. `safeUrl()` accepts this one anchored relative-asset form
+   (`ui/icons.svg#i-...`) and rejects other relative URLs; the helper writes
+   `esc(safeUrl(...))` so the same invariant as every other href/src holds.
+   `agIconGallery()` renders every symbol with its name and the Sizes row; the gallery
+   task mounts it under `#/gallery`.
 5. **CSS** (`ui/tokens.css` section 6b): five size tokens (`--icon-sm 20`, `--icon 24`,
    `--icon-tab 28`, `--icon-lg 32`, `--icon-play 36`), `.ag .icon, .room .icon` with
    `fill: currentColor`, `stroke: none`, `flex: none`, `pointer-events: none` (the

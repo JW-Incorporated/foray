@@ -46,16 +46,16 @@ const AG_ICON_SIZES = [20, 24, 28, 32, 36];
 /** The markup for one icon: `<svg class="icon icon-28" aria-hidden="true" focusable="false">
  *  <use href="ui/icons.svg#i-house"></use></svg>`. `name` is without the `i-` prefix.
  *  A name not in the sprite, or a size not in AG_ICON_SIZES, returns "" (nothing is drawn),
- *  so a bad argument can never put a caller-chosen string into a `href` or a class. That
- *  allow-list is the guard on the href; safeUrl() is not used because it passes only
- *  http(s) and would turn this same-origin, constant path into "#". */
+ *  so a bad argument can never put a caller-chosen string into a `href` or a class. The
+ *  allow-list constrains the fragment; safeUrl() constrains the relative sprite path; esc()
+ *  protects the attribute context. */
 function agIcon(name, size) {
   if (!AG_ICON_NAMES.includes(name)) return "";
   const px = size === undefined ? 24 : size;
   if (!AG_ICON_SIZES.includes(px)) return "";
   const cls = px === 24 ? "icon" : "icon icon-" + px;
   return '<svg class="' + cls + '" aria-hidden="true" focusable="false"><use href="' +
-    AG_ICON_SPRITE + "#i-" + name + '"></use></svg>';
+    esc(safeUrl(AG_ICON_SPRITE + "#i-" + name)) + '"></use></svg>';
 }
 
 /** The sprite's own section of the component gallery (build-loop 3 step 4 mounts it under

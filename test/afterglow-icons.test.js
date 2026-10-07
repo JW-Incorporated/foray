@@ -31,6 +31,7 @@
 
 const { test } = require("node:test");
 const assert = require("node:assert");
+const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
@@ -38,6 +39,7 @@ const { pathToFileURL } = require("node:url");
 
 const ROOT = path.join(__dirname, "..");
 const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
+const sha256 = (text) => crypto.createHash("sha256").update(text).digest("hex");
 
 /* The plan's list, spelled out here independently of ui/icons.js and the build script, so
    a change to either is a change to a number this file states. BUILD-PLAN 1.2. */
@@ -131,12 +133,40 @@ test("the root carries no script, no handler, no external reference, and is hidd
   assert.doesNotMatch(noComments, /<script|<style|<image|<foreignObject|<use\b|\son[a-z]+\s*=|href\s*=|javascript:/i);
 });
 
-test("the licence line for Phosphor (MIT) and DM Sans (OFL) travels with the sprite", () => {
-  /* MUTATION: delete the header comment from ui/icons.svg (or from build-sprite.mjs's output) -> red. */
+test("complete Phosphor and DM Sans notices travel beside the sprite", () => {
+  /* MUTATION: delete the MIT redistribution condition or OFL condition 2 from
+     ui/icons-LICENSES.txt -> the corresponding complete-section hash is red. Removing the
+     sprite pointer or either repository notice entry is also red. */
   const head = SPRITE.slice(0, SPRITE.indexOf("<svg"));
   assert.match(head, /Phosphor Icons/);
   assert.match(head, /MIT License/);
   assert.match(head, /SIL OFL/);
+  assert.match(head, /ui\/icons-LICENSES\.txt/);
+  const notices = read("ui/icons-LICENSES.txt");
+  const marker = "\n\nDM Sans\n-------\n";
+  assert.strictEqual(notices.split(marker).length, 2, "one Phosphor section and one DM Sans section");
+  const [phosphorNotice, dmSansNotice] = notices.split(marker);
+  assert.strictEqual(
+    sha256(phosphorNotice),
+    "c11b2089a27bde6ddd4138bc6bd15dc591a27567b3b74d7d4cfd03e46215a0bc",
+    "the complete Phosphor MIT notice is present",
+  );
+  assert.strictEqual(
+    sha256(dmSansNotice),
+    "d395e72876b0d3d4a61a89df86bf26538d54547d4dcdf6cd9ce0bd3a77d7ad3b",
+    "the complete DM Sans SIL OFL 1.1 notice is present",
+  );
+  assert.match(phosphorNotice, /Copyright \(c\) 2020 Phosphor Icons/);
+  assert.match(phosphorNotice, /Permission is hereby granted, free of charge/);
+  assert.match(phosphorNotice, /THE SOFTWARE IS PROVIDED "AS IS"/);
+  assert.match(dmSansNotice, /Copyright 2014 The DM Sans Project Authors/);
+  assert.match(dmSansNotice, /SIL OPEN FONT LICENSE Version 1\.1 - 26 February 2007/);
+  assert.match(dmSansNotice, /5\) The Font Software, modified or unmodified/);
+  assert.match(dmSansNotice, /THE FONT SOFTWARE IS PROVIDED "AS IS"/);
+  const repoNotices = read("docs/legal/third-party-notices.md");
+  for (const name of ["Phosphor Icons", "DM Sans", "ui/icons-LICENSES.txt"]) {
+    assert.ok(repoNotices.includes(name), `repository notice names ${name}`);
+  }
 });
 
 test("the file on disk is what tools/icons/build-sprite.mjs writes", async () => {
@@ -230,7 +260,9 @@ test("roundedPolygon and offsetPolygon: the geometry helpers the custom glyphs s
 function loadHelper() {
   const esc = /function esc\(s\) \{[\s\S]*?\n\}/.exec(read("app.js"));
   assert.ok(esc, "esc() is lifted from app.js, the real one");
-  const src = esc[0] + "\n" + read("ui/icons.js") + "\n;({ agIcon, agIconGallery, AG_ICON_NAMES, AG_ICON_SIZES, AG_ICON_SPRITE })";
+  const safeUrl = /function safeUrl\(u\) \{[\s\S]*?\n\}/.exec(read("app.js"));
+  assert.ok(safeUrl, "safeUrl() is lifted from app.js, the real one");
+  const src = esc[0] + "\n" + safeUrl[0] + "\n" + read("ui/icons.js") + "\n;({ agIcon, agIconGallery, AG_ICON_NAMES, AG_ICON_SIZES, AG_ICON_SPRITE })";
   return vm.runInNewContext(src, {}, { filename: "ui/icons.js" });
 }
 
@@ -242,10 +274,11 @@ test("the helper's names are the sprite's ids, in the same order, and its sprite
   assert.ok(fs.existsSync(path.join(ROOT, h.AG_ICON_SPRITE)), "the path the helper writes is a file in the repo");
 });
 
-test("agIcon writes a use-reference to the sprite, aria-hidden, with the size as a class", () => {
-  /* MUTATION: drop aria-hidden="true", write a style="width:.." instead of the class, or point the href at
-     "icons.svg#" -> red on the exact string. */
+test("agIcon writes an escaped safeUrl use-reference, aria-hidden, with the size as a class", () => {
+  /* MUTATION: remove either esc() or safeUrl() from the href expression, drop aria-hidden="true",
+     write a style="width:.." instead of the class, or point at "icons.svg#" -> red. */
   const h = loadHelper();
+  assert.match(read("ui/icons.js"), /esc\(safeUrl\(AG_ICON_SPRITE \+ "#i-" \+ name\)\)/);
   assert.strictEqual(h.agIcon("house"), '<svg class="icon" aria-hidden="true" focusable="false"><use href="ui/icons.svg#i-house"></use></svg>');
   assert.strictEqual(h.agIcon("house", 28), '<svg class="icon icon-28" aria-hidden="true" focusable="false"><use href="ui/icons.svg#i-house"></use></svg>');
   assert.strictEqual(h.agIcon("play", 24), h.agIcon("play"));
@@ -351,17 +384,20 @@ test("`.icon` is currentColor, unstroked, fixed-size, and scoped to .ag / .room 
 /* --------------------------------------------------------------------- wiring */
 
 test("the shell ships the sprite: manifest, web dist and Capacitor webDir, with the same no-cache header as ui/", async () => {
-  /* MUTATION: remove "ui/icons.svg" from SHELL in tools/ci/generate-manifest.mjs or tools/web/prepare-dist.mjs, or
-     from SHELL_FILES in tools/mobile/prepare-webdir.mjs, or drop the <script src="ui/icons.js"> tag -> red. */
+  /* MUTATION: remove "ui/icons.svg" or "ui/icons-LICENSES.txt" from a shell list, or
+     drop the <script src="ui/icons.js"> tag -> red. */
   const shell = (rel, re) => {
     const m = re.exec(read(rel));
     assert.ok(m, `${rel}: list found`);
     return m[1];
   };
   assert.match(shell("tools/ci/generate-manifest.mjs", /const SHELL = \[([\s\S]*?)\n\];/), /"ui\/icons\.svg"/, "generate-manifest SHELL");
+  assert.match(shell("tools/ci/generate-manifest.mjs", /const SHELL = \[([\s\S]*?)\n\];/), /"ui\/icons-LICENSES\.txt"/, "generate-manifest notice");
   assert.match(shell("tools/web/prepare-dist.mjs", /const SHELL = \[([\s\S]*?)\n\];/), /"ui\/icons\.svg"/, "prepare-dist SHELL");
+  assert.match(shell("tools/web/prepare-dist.mjs", /const SHELL = \[([\s\S]*?)\n\];/), /"ui\/icons-LICENSES\.txt"/, "prepare-dist notice");
   const pw = await import(pathToFileURL(path.join(ROOT, "tools", "mobile", "prepare-webdir.mjs")).href);
   assert.ok(pw.SHELL_FILES.includes("ui/icons.svg"), "prepare-webdir SHELL_FILES");
+  assert.ok(pw.SHELL_FILES.includes("ui/icons-LICENSES.txt"), "prepare-webdir ships complete notices");
   assert.match(read("index.html"), /<script src="ui\/icons\.js"><\/script>/);
   const vercel = JSON.parse(read("vercel.json"));
   assert.ok(vercel.headers.some((h) => h.source === "/ui/(.*)" && /must-revalidate/.test(JSON.stringify(h.headers))), "ui/* revalidates, the sprite included");

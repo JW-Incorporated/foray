@@ -272,6 +272,9 @@ export const SHELL_FILES = [
   /* Redesign 2026 (ambient): the icon sprite. An SVG: not JS or CSS, so copy() ships it byte for byte
      (the dispatch falls through to copy for anything else). */
   "ui/icons.svg",
+  /* Complete MIT/OFL notices for the paths above. Plain text falls through to copy(),
+     so the native bundle carries the same human-readable surface as the web build. */
+  "ui/icons-LICENSES.txt",
   "manifest.json",
   "icon-180.png",
   "icon-512.png",
