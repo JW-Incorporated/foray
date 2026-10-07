@@ -63,6 +63,41 @@ test("play buttons expose the pressed state that matches their play or pause act
   assert.match(run(ctx, "agPlayButton({ playing: false })"), /aria-label="Play"[^>]*aria-pressed="false"/);
 });
 
+test("the 44px row play button is outlined and unfilled", () => {
+  /* MUTATION (run red): delete the `.ag-btn-play.ag-btn-size-44` override. */
+  const html = run(markupContext(), "agPlayButton({ size: 44 })");
+  assert.match(html, /class="ag-btn ag-btn-play ag-btn-size-44/);
+  assert.match(CSS, /\.ag \.ag-btn-play\.ag-btn-size-44 \{[^}]*width: var\(--tap\);[^}]*height: var\(--tap\);[^}]*background: transparent;[^}]*box-shadow: inset/s);
+});
+
+test("current queue rows expose a visible Playing caption", () => {
+  /* MUTATION (run red): replace the current-row `Playing` caption with an empty string. */
+  const current = run(markupContext(), 'agQueueRow({ state: "current" })');
+  assert.match(current, /<span class="ag-row-state">Playing<\/span>/);
+  assert.match(current, /<p class="t-label clamp2">[\s\S]*?play-fill[\s\S]*?Cooling factories/);
+  assert.strictEqual((current.match(/Playing/g) || []).length, 1);
+});
+
+test("detail strips render thumbnails and grow the current bar upward by four pixels", () => {
+  /* MUTATION (run red): remove `ag-strip-thumbs` from the detail-strip markup. */
+  const detail = run(markupContext(), 'agStrip({ size: "detail", current: 4 })');
+  assert.match(detail, /class="ag-strip-thumbs"/);
+  assert.match(CSS, /\.ag \.ag-strip-detail \.ag-strip-bar:not\(\.ag-tone-narration\)::after \{[^}]*width: var\(--s-5\);[^}]*height: var\(--s-5\);[^}]*background:/s);
+  assert.match(CSS, /\.ag \.ag-strip-detail \.ag-strip-bar \{[^}]*align-items: flex-end/s);
+  assert.match(CSS, /\.ag \.ag-strip-detail \.ag-strip-visual \{ height: var\(--s-6\); \}/);
+  assert.match(CSS, /\.ag \.ag-strip-detail \.ag-strip-bar\.is-current > \.ag-strip-visual \{ height: calc\(var\(--s-6\) \+ var\(--s-1\)\); \}/);
+  assert.doesNotMatch(CSS, /\.ag-strip-bar\.is-current[^}]*scaleY/);
+});
+
+test("SubjectTile exposes default and pressed states in the gallery", () => {
+  /* MUTATION (run red): remove `agSubjectTile({ state: "pressed" })` from agGalleryCards(). */
+  const ctx = markupContext();
+  assert.match(run(ctx, 'agSubjectTile({ state: "pressed" })'), /ag-subject-tile raised is-pressed/);
+  const gallery = run(ctx, "agGalleryMarkup()");
+  assert.strictEqual((gallery.match(/<small>subject pressed<\/small><article class="ag-subject-tile raised is-pressed"/g) || []).length, 2, "pressed SubjectTile appears in Dusk and Dawn");
+  assert.match(CSS, /\.ag \.ag-subject-tile\.is-pressed \{[^}]*background: var\(--bg2\);[^}]*box-shadow: inset/s);
+});
+
 test("scrubber markup reports its value-derived time and keeps the zero thumb at full width", () => {
   /* MUTATION (run red): change `.ag .ag-scrubber.p0` to `.ag .p0` and add `width: 0`. */
   const ctx = markupContext();

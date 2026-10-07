@@ -946,7 +946,7 @@ pixels; 41 stable capture plates at three viewports make the 123-shot gallery ba
    that: targeted mobile bundle verification passes 87/87. Corpus passed 285/285,
    foraycorpus-export 69/69, shows 117/117 (+6 skipped), and UI lab 55/55. All
    change-targeted root suites pass.
-6. **Executed mutations.** The suite now has twelve tests. The review follow-up was run red
+6. **Executed mutations.** The suite now has sixteen tests. The review follow-up was run red
    by literally replacing `safeUrl(artUrl(src, px * 3))` with `safeUrl(src)`, omitting
    `pressed: playing`, restoring the broad `.p0 { width: 0 }` rule, changing the native
    scrubber input from `range` to `text`, deleting the gallery's scrubber-drag entry, and
@@ -960,8 +960,16 @@ pixels; 41 stable capture plates at three viewports make the 123-shot gallery ba
    `prepare-webdir.test.mjs` subtracts only the measured foundation files from that
    quantity and gives `primitives.css`, `primitives.js` and `gallery.js` tight 20/16/9 KB
    per-file ceilings. The JavaScript ceiling rose by 1 KB for the accessible slider binder;
-   its measured minified size is 15.6 KB. Removing the CSS carve-out was run as the named mutation and
+   after the blocking-review corrections its measured minified size is 16,375 bytes, still
+   within the 16 KB ceiling. Removing the CSS carve-out was run as the named mutation and
    restored the red 2.85 MB alarm. Artwork primitives also reserve their intrinsic
    square and request a 3x CDN rendition before the final `safeUrl()` gate; the root
    boot-path image census pins that no small tile fetches the 600px original.
+9. **Blocking-review corrections.** The detail Strip now carries its separate 20px
+   thumbnail row, and its current 24px show bar is exactly `--s-1` taller, bottom-anchored
+   so it grows upward. Row Play at 44px is the outlined, unfilled treatment; larger Play
+   controls remain Ember-filled. A current QueueRow exposes the visible "Playing" caption
+   beside its filled glyph. SubjectTile accepts `default` / `pressed`, and the gallery
+   records both in Dusk and Dawn. Four focused tests name mutations that ran red against
+   removal of each correction.
 

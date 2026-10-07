@@ -98,20 +98,24 @@ function agQueueRow({ title = "Cooling factories without wasting water", show = 
   if (rowState === "narration") {
     return `<article class="ag-queue-row raised is-narration"><span class="ag-narration-bar" aria-hidden="true"></span><div><p class="t-label">${esc(title)}</p><p class="t-caption">Narration</p></div></article>`;
   }
-  return `<article class="ag-queue-row raised is-${esc(rowState)}">${agArtwork({ name: show, size: 56, tone: "blue" })}<div class="ag-row-copy">${rowState === "added" ? '<span class="eyebrow lamp">4a added</span>' : ""}<p class="t-label clamp2">${rowState === "current" ? agIcon("play-fill", 20) : ""}${esc(title)}</p><p class="t-caption">${esc(show)} · ${esc(meta)}</p>${reason ? `<p class="t-why clamp2">${esc(reason)}</p>` : ""}</div>${agButton({ label: "More", variant: "icon", icon: "dots" })}</article>`;
+  const currentIcon = rowState === "current" ? agIcon("play-fill", 20) : "";
+  const currentCaption = rowState === "current" ? '<span class="ag-row-state">Playing</span>' : "";
+  return `<article class="ag-queue-row raised is-${esc(rowState)}">${agArtwork({ name: show, size: 56, tone: "blue" })}<div class="ag-row-copy">${rowState === "added" ? '<span class="eyebrow lamp">4a added</span>' : ""}<p class="t-label clamp2">${currentIcon}${esc(title)}</p><p class="t-caption ag-row-meta">${currentCaption}<span>${esc(show)} · ${esc(meta)}</span></p>${reason ? `<p class="t-why clamp2">${esc(reason)}</p>` : ""}</div>${agButton({ label: "More", variant: "icon", icon: "dots" })}</article>`;
 }
 
 function agStrip({ size = "card", current = 1 } = {}) {
   const stripSize = agChoice(size, ["card", "player", "detail"], "card");
-  const bars = [
+  const segments = [
     ["Science Vs", "teal", "w3"], ["4a narration", "narration", "w1"], ["Planet Money", "coral", "w4"],
     ["4a narration", "narration", "w1"], ["99% Invisible", "violet", "w2"],
-  ].map((bar, index) => {
+  ];
+  const bars = segments.map((bar, index) => {
     const modifiers = "ag-tone-" + bar[1] + " " + bar[2] + (index === current ? " is-current" : "");
-    if (stripSize === "card") return `<span class="ag-strip-bar ${esc(modifiers)}" aria-hidden="true"><span aria-hidden="true"></span></span>`;
-    return `<button class="ag-strip-bar ${esc(modifiers)}" type="button" aria-label="${esc(`Seek to ${bar[0]}, ${index * 8}:00`)}"><span aria-hidden="true"></span></button>`;
+    if (stripSize === "card") return `<span class="ag-strip-bar ${esc(modifiers)}" aria-hidden="true"><span class="ag-strip-visual"></span></span>`;
+    return `<button class="ag-strip-bar ${esc(modifiers)}" type="button" aria-label="${esc(`Seek to ${bar[0]}, ${index * 8}:00`)}"><span class="ag-strip-visual"></span></button>`;
   }).join("");
-  return `<div class="ag-strip ag-strip-${esc(stripSize)}">${bars}</div>`;
+  const thumbnails = stripSize === "detail" ? '<span class="ag-strip-thumbs" aria-hidden="true"></span>' : "";
+  return `<div class="ag-strip ag-strip-${esc(stripSize)}">${bars}${thumbnails}</div>`;
 }
 
 function agScrubberValue(value) {
@@ -189,8 +193,8 @@ function agShowTile({ followed = false } = {}) {
   return `<article class="ag-show-tile">${agArtwork({ name: "Unexplainable", size: 104, tone: "blue", badge: followed ? "check-circle-fill" : "" })}<h4 class="t-caption clamp3">${esc("Unexplainable questions from science")}</h4></article>`;
 }
 
-function agSubjectTile() {
-  return `<article class="ag-subject-tile raised">${agCollage([{ name: "S", tone: "teal" }, { name: "P", tone: "coral" }, { name: "O", tone: "blue" }, { name: "H", tone: "gold" }], { size: 56 })}<div><h4 class="t-label">${esc("Science & nature")}</h4><p class="t-caption">5 shows</p></div></article>`;
+function agSubjectTile({ state } = {}) {
+  return `<article class="ag-subject-tile raised is-${esc(state === "pressed" ? "pressed" : "default")}">${agCollage([{ name: "S", tone: "teal" }, { name: "P", tone: "coral" }, { name: "O", tone: "blue" }, { name: "H", tone: "gold" }], { size: 56 })}<div><h4 class="t-label">Science &amp; nature</h4><p class="t-caption">5 shows</p></div></article>`;
 }
 
 function agPlaylistTile() {

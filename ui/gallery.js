@@ -44,7 +44,7 @@ function agGalleryRows() {
 }
 
 function agGalleryCards() {
-  return `<div class="ag-gallery-stack">${agHeroPick()}<div class="ag-gallery-grid">${["default", "pressed", "focus", "disabled", "loading"].map((state) => agGalleryState(`stretch ${state}`, agStretchCard({ state }))).join("")}${agForayCard()}${agForayCard({ compact: true })}${agForayCard({ compact: true, finished: true })}${agShowTile()}${agShowTile({ followed: true })}${agSubjectTile()}${agPlaylistTile()}</div></div>`;
+  return `<div class="ag-gallery-stack">${agHeroPick()}<div class="ag-gallery-grid">${["default", "pressed", "focus", "disabled", "loading"].map((state) => agGalleryState(`stretch ${state}`, agStretchCard({ state }))).join("")}${agForayCard()}${agForayCard({ compact: true })}${agForayCard({ compact: true, finished: true })}${agShowTile()}${agShowTile({ followed: true })}${agGalleryState("subject default", agSubjectTile())}${agGalleryState("subject pressed", agSubjectTile({ state: "pressed" }))}${agPlaylistTile()}</div></div>`;
 }
 
 function agGalleryFeedback(theme) {
