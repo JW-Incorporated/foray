@@ -21,10 +21,10 @@ Source of truth for a cleared session. Update on every deliverable.
 | 0e Lab build path | merged into trunk (b74338a0) | owner setup complete |
 | 1 Research | done | docs/redesign-2026/research/, design-brief.md |
 | 2 Directions | done | editorial r3, ambient r3, native-2026 r3, tactile r3, clarity r3 (docs/redesign-2026/directions/) |
-| Checkpoint | waiting for the owner | links below; owner picks |
+| Checkpoint | **picked: Tactile + Ambient** (owner, 2026-10-06 18:17 PDT) | one condition: replace Tactile's "cartoonish" header/title font first; Phase 3 starts once the owner approves the new font |
 | 3–5 | — | after checkpoint |
 
-## Checkpoint (waiting for the owner)
+## Checkpoint (decided 2026-10-06: Tactile + Ambient, pending Tactile's font)
 
 Artifacts:
 - [4a Redesign Checkpoint (compare + pass the phone)](https://claude.ai/artifact/56qxbdHQ9V5LYyR8r5qCyE)
@@ -48,7 +48,14 @@ through Editorial's tab bar. Detail: `checkpoint/README.md`.
 
 (Agent/workflow and what it is doing. Clear an entry when it lands.)
 
-(Nothing in flight.)
+- **Tactile header font** (owner request 2026-10-06 18:17 PDT, workflow `wf_180a6531-f95`):
+  Fable art director replaces Bricolage for display/title with an OFL face plus two
+  alternates; builder swaps it in and adds a review-only "Aa" font switcher (remove
+  before Phase 3); critique (one fix round max); Tactile prototype and comparison page
+  republished in place (with a three-font side by side); its git step commits and logs
+  here. Then: owner approves a font, and phases 3-5 launch via
+  `docs/redesign-2026/workflows/build-directions.workflow.js` with
+  `args: {directions: ["tactile", "ambient"]}`.
 
 Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40-22:40 PDT, 128 agents,
 0 errors) ran 0a-0e, 1, 2, Rank and the checkpoint package.
