@@ -319,3 +319,19 @@ test("the text report marks each check PASS / FAIL / ???? and ends with the verd
   assert.match(text, /FAIL {2}c: z/);
   assert.match(text, /UNDETERMINED/);
 });
+
+// Mutation killed: dropping (or renaming away from) the "Check:" pointer line in
+// HUMAN-ACTIONS #115. Without it the founder and whoever holds #822 never learn
+// this check exists, which is the whole point of the card.
+test("HUMAN-ACTIONS #115 points at this check and gates PR #822 on it", () => {
+  const ha = fs.readFileSync(path.join(ROOT, "HUMAN-ACTIONS.md"), "utf8");
+  const start = ha.search(/^## #115 /m);
+  assert.ok(start >= 0, "HUMAN-ACTIONS.md has a ## #115 section");
+  const rest = ha.slice(start + 1);
+  const next = rest.search(/^## #/m);
+  const section = next < 0 ? rest : rest.slice(0, next);
+  const line = section.split("\n").find((l) => l.includes("node tools/ops/release-env-check.mjs"));
+  assert.ok(line, "HA #115 names `node tools/ops/release-env-check.mjs`");
+  assert.match(line, /#822/, "the pointer line gates PR #822");
+  assert.match(line, /READY/, "the pointer line says what passing looks like");
+});

@@ -2329,7 +2329,7 @@ const FLOORS = {
      may merge; merged early, every release goes unsigned. Floored at its full
      count: each test is one decision (or the read-only / names-only promise)
      that a deletion would let slip to a false READY. */
-  "tools/ops/release-env-check.test.mjs": 18, // 115-part: new -- env exists, policy exactly main + v*, signing secrets env-level and gone from repo level, active v* tag ruleset restricting creation; unreadable is exit 2, never READY
+  "tools/ops/release-env-check.test.mjs": 19, // 115-part: new -- HA #115 pointer line gating #822, env exists, policy exactly main + v*, signing secrets env-level and gone from repo level, active v* tag ruleset restricting creation; unreadable is exit 2, never READY
   "tools/poll/tiers.test.mjs": 9, // PKG-05 (S-10): new -- cadence tiers (seed, correction, success/failure, dead)
   "tools/poll/politeness.test.mjs": 4, // PKG-06 (S-10): new -- per-host politeness port, constants pinned to backend/src/feeds/politeness.ts
   "tools/poll/select-due.test.mjs": 6, // PKG-06 (S-10): new -- due-set selection (dead, not-due, caps, order, bad URL, budget untouched) + the G9 weekly projection
