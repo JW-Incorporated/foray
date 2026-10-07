@@ -917,10 +917,12 @@ additional shots are the gallery and its open sheet at three viewports.
    TabBar and MiniPlayer; Sheet, Toast, Skeleton and EmptyState. Card strips are static;
    player/detail strips use real 44px seek buttons.
 2. **States and semantics.** Default, pressed, focus, disabled and loading treatments are
-   visible in both schemes. Pressed controls use an inset treatment instead of shrinking
-   their hit rectangle. Disabled cards keep full text contrast. Artwork and Glow swatches
-   are named images, the scrubber is a named slider, duplicate gallery landmarks are
-   disambiguated, and Skeleton announces Loading without putting ARIA on a generic span.
+   visible in both schemes; scrubber, MiniPlayer and Sheet also show drag. Pressed controls
+   use an inset treatment instead of shrinking their hit rectangle. Disabled cards keep
+   full text contrast. Artwork and Glow swatches are named images. The scrubber is a native
+   range slider with a 44px input target; its value, clocks and `aria-valuetext` move
+   together. Duplicate gallery landmarks are disambiguated, and Skeleton announces Loading
+   without putting ARIA on a generic span.
 3. **Sheet behavior.** The decorative preview is not a dialog. The live sheet is a direct
    child of its scheme panel, moves focus to its close button, makes siblings inert, traps
    Tab with `a[href]` (not SVG `<use href>`), closes on Escape or the visible control, and
@@ -936,22 +938,26 @@ additional shots are the gallery and its open sheet at three viewports.
    final Ambient r4 prototype kept its warm room, Fraunces hierarchy, Ember controls, Lit
    art and compact density. Baselines: `ambient-gallery` 6 shots; rolling `ambient-app`
    144 shots. The primary background remains token `--bg0` (`#14110F`).
-   The one full Windows runner reached the runbook's known CRLF-only root/mobile
-   reds; after installing the package dependencies omitted by `--skip-install`,
-   corpus passed 285/285, foraycorpus-export 69/69, shows 117/117 (+6 skipped),
-   and UI lab 55/55. All change-targeted root suites pass.
-6. **Executed mutations.** Each of the eight new tests was run red by deleting disabled
-   semantics; bypassing `safeUrl()` at artwork `src`; renaming the Rows gallery heading;
-   shrinking Chip to 36px; adding a second reduced-motion block; making the gallery route
-   unconditional; deleting initial sheet focus; and removing primitives CSS from the web
-   distribution list. Each mutation was restored before the green run.
+   The one full Windows runner reached the runbook's known CRLF-only root red and
+   exposed a real mobile asset-budget red from the first slider implementation.
+   The compact native-range implementation plus the documented 16 KB ceiling fixed
+   that: targeted mobile bundle verification passes 87/87. Corpus passed 285/285,
+   foraycorpus-export 69/69, shows 117/117 (+6 skipped), and UI lab 55/55. All
+   change-targeted root suites pass.
+6. **Executed mutations.** The suite now has eleven tests. The review follow-up was run red
+   by literally replacing `safeUrl(artUrl(src, px * 3))` with `safeUrl(src)`, omitting
+   `pressed: playing`, restoring the broad `.p0 { width: 0 }` rule, changing the native
+   scrubber input from `range` to `text`, and deleting the gallery's scrubber-drag entry.
+   The existing disabled semantics, 44px target, single reduced-motion owner, route guard,
+   sheet focus and shipping-list mutations remain pinned. Every mutation was restored.
 7. **Phase 4 boundary.** No existing screen calls a primitive. Screens adopt this system
    one at a time, with the gallery baseline guarding unintended foundation changes.
 8. **Native bundle alarm.** The complete minified bundle is 2.88 MB and remains below
    the independent 3 MB hard cap. The legacy-growth alarm stays unchanged at 2.85 MB;
    `prepare-webdir.test.mjs` subtracts only the measured foundation files from that
-   quantity and gives `primitives.css`, `primitives.js` and `gallery.js` tight 20/15/9 KB
-   per-file ceilings. Removing the CSS carve-out was run as the named mutation and
+   quantity and gives `primitives.css`, `primitives.js` and `gallery.js` tight 20/16/9 KB
+   per-file ceilings. The JavaScript ceiling rose by 1 KB for the accessible slider binder;
+   its measured minified size is 15.6 KB. Removing the CSS carve-out was run as the named mutation and
    restored the red 2.85 MB alarm. Artwork primitives also reserve their intrinsic
    square and request a 3x CDN rendition before the final `safeUrl()` gate; the root
    boot-path image census pins that no small tile fetches the 600px original.

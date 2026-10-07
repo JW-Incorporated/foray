@@ -20,7 +20,7 @@ function agAttrs(entries) {
     .map((entry) => ` ${esc(entry[0])}="${esc(entry[1] === true ? "" : entry[1])}"`).join("");
 }
 
-function agButton({ label, variant = "secondary", state = "default", icon = "", size = 24, controlSize = 44, pressed = false } = {}) {
+function agButton({ label, variant = "secondary", state = "default", icon = "", size = 24, controlSize = 44, pressed = null } = {}) {
   const v = agChoice(variant, AG_BUTTON_VARIANTS, "secondary");
   const s = agChoice(state, AG_STATES, "default");
   const iconMarkup = icon ? agIcon(icon, size) : "";
@@ -30,7 +30,7 @@ function agButton({ label, variant = "secondary", state = "default", icon = "", 
   return `<button class="ag-btn ag-btn-${esc(v)} ag-btn-size-${esc(agChoice(Number(controlSize), AG_CONTROL_SIZES, 44))} is-${esc(s)}"${agAttrs([
     ["type", "button"],
     ["aria-label", v === "icon" || v === "play" ? (label || "Action") : null],
-    ["aria-pressed", pressed ? "true" : null],
+    ["aria-pressed", typeof pressed === "boolean" ? String(pressed) : null],
     ["aria-disabled", disabled ? "true" : null],
     ["aria-busy", busy ? "true" : null],
     ["disabled", disabled ? true : null],
@@ -40,7 +40,7 @@ function agButton({ label, variant = "secondary", state = "default", icon = "", 
 function agPlayButton({ label = "Play", size = 48, state = "default", playing = false } = {}) {
   const px = agChoice(Number(size), AG_CONTROL_SIZES, 48);
   const glyphSize = px === 88 ? 36 : px === 56 ? 32 : 24;
-  return agButton({ label: playing ? "Pause" : label, variant: "play", icon: playing ? "pause" : "play", size: glyphSize, controlSize: px, state });
+  return agButton({ label: playing ? "Pause" : label, variant: "play", icon: playing ? "pause" : "play", size: glyphSize, controlSize: px, state, pressed: playing });
 }
 
 function agSkipButton({ direction = "forward", size = 56, state = "default" } = {}) {
@@ -114,9 +114,55 @@ function agStrip({ size = "card", current = 1 } = {}) {
   return `<div class="ag-strip ag-strip-${esc(stripSize)}">${bars}</div>`;
 }
 
-function agScrubber({ value = 42 } = {}) {
-  const progress = agChoice(Math.round(Number(value) / 25) * 25, [0, 25, 50, 75, 100], 50);
-  return `<div class="ag-scrubber" role="slider" tabindex="0" aria-label="Playback position" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${esc(value)}" aria-valuetext="${esc("12 min 30 of 48 min")}"><span class="ag-scrub-track"><span class="ag-scrub-fill p${esc(progress)}"></span><span class="ag-scrub-thumb p${esc(progress)}"></span></span><span class="time">12:30</span><span class="time">-35:30</span></div>`;
+function agScrubberValue(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.min(100, Math.max(0, Math.round(number))) : 0;
+}
+
+function agScrubberTime(seconds, spoken = false) {
+  const whole = Math.max(0, Math.round(Number(seconds) || 0));
+  const remainder = whole % 60;
+  return spoken ? `${Math.floor(whole / 60)} min${remainder ? ` ${remainder} sec` : ""}`
+    : `${Math.floor(whole / 60)}:${String(remainder).padStart(2, "0")}`;
+}
+
+function agSetScrubberValue(input) {
+  if (!input) return;
+  const scrubber = input.parentElement;
+  const next = agScrubberValue(input.value);
+  const duration = Math.max(0, Math.round(Number(scrubber.dataset.agDuration) || 0));
+  const elapsed = Math.round(duration * next / 100);
+  const remaining = Math.max(0, duration - elapsed);
+  input.value = String(next);
+  input.setAttribute("aria-valuetext", `${agScrubberTime(elapsed, true)} of ${agScrubberTime(duration, true)}`);
+  scrubber.style.setProperty("--ag-scrub-progress", `${next}%`);
+  const times = scrubber.querySelectorAll(".time");
+  if (times[0]) times[0].textContent = agScrubberTime(elapsed);
+  if (times[1]) times[1].textContent = `-${agScrubberTime(remaining)}`;
+}
+
+function agScrubberInput(event) {
+  const input = event.target && event.target.closest ? event.target.closest("input.ag-scrub-input") : null;
+  if (input) agSetScrubberValue(input);
+}
+
+function bindAgPrimitives(root) {
+  if (!root) return;
+  root.querySelectorAll("input.ag-scrub-input").forEach(agSetScrubberValue);
+  if (root.dataset.agPrimitivesBound === "true") return;
+  root.dataset.agPrimitivesBound = "true";
+  root.addEventListener("input", agScrubberInput);
+}
+
+function agScrubber({ value = 42, duration = 2880, state = "default" } = {}) {
+  const current = agScrubberValue(value);
+  const total = Math.max(0, Math.round(Number(duration) || 0));
+  const elapsed = Math.round(total * current / 100);
+  const remaining = Math.max(0, total - elapsed);
+  const progress = agChoice(Math.round(current / 25) * 25, [0, 25, 50, 75, 100], 0);
+  const scrubState = agChoice(state, ["default", "drag"], "default");
+  const bubble = scrubState === "drag" ? `<span class="ag-scrub-bubble raised" aria-hidden="true">${esc(agScrubberTime(elapsed))}</span>` : "";
+  return `<div class="ag-scrubber p${esc(progress)} is-${esc(scrubState)}" data-ag-primitive="scrubber" data-ag-duration="${esc(total)}"><input class="ag-scrub-input" type="range" role="slider" min="0" max="100" step="1" value="${esc(current)}" aria-label="Playback position" aria-valuetext="${esc(`${agScrubberTime(elapsed, true)} of ${agScrubberTime(total, true)}`)}"><span class="ag-scrub-track"><span class="ag-scrub-fill"></span><span class="ag-scrub-thumb"></span>${bubble}</span><span class="time">${esc(agScrubberTime(elapsed))}</span><span class="time">-${esc(agScrubberTime(remaining))}</span></div>`;
 }
 
 function agStretchCard({ state = "default" } = {}) {
@@ -167,17 +213,19 @@ function agTabBar({ active = "today", receded = false, label = "Primary" } = {})
 }
 
 function agMiniPlayer({ state = "playing" } = {}) {
-  const playing = state === "playing";
-  return `<div class="ag-mini-player is-${esc(state)}" role="group" aria-label="Now playing: Cooling the world without wasting water, The Indicator"><span class="ag-mini-progress" aria-hidden="true"></span>${agArtwork({ name: "The Indicator", size: 44, tone: "blue" })}<div class="ag-mini-copy"><p class="t-label clamp1">${esc("Cooling the world without wasting water")}</p><p class="t-caption clamp1">${esc("The Indicator")}</p></div>${agPlayButton({ size: 48, state: state === "buffering" ? "loading" : "default", playing })}${agSkipButton({ size: 44 })}</div>`;
+  const miniState = agChoice(state, ["playing", "paused", "buffering", "drag"], "playing");
+  const playing = miniState === "playing" || miniState === "drag";
+  return `<div class="ag-mini-player is-${esc(miniState)}" data-ag-primitive="mini-player" role="group" aria-label="Now playing: Cooling the world without wasting water, The Indicator"><span class="ag-mini-progress" aria-hidden="true"></span>${agArtwork({ name: "The Indicator", size: 44, tone: "blue" })}<div class="ag-mini-copy"><p class="t-label clamp1">${esc("Cooling the world without wasting water")}</p><p class="t-caption clamp1">${esc("The Indicator")}</p></div>${agPlayButton({ size: 48, state: miniState === "buffering" ? "loading" : "default", playing })}${agSkipButton({ size: 44 })}</div>`;
 }
 
 function agDock({ active = "today", withField = false, receded = false, label = "Primary" } = {}) {
   return `<section class="ag-dock-preview dock veil">${withField ? agSearchField({ state: "focus" }) : ""}${agMiniPlayer({ state: "playing" })}${agTabBar({ active, receded, label })}</section>`;
 }
 
-function agSheet({ title = "Settings", open = true, preview = false } = {}) {
-  const classes = `ag-sheet${open ? " is-open" : ""}${preview ? " is-preview" : ""}`;
-  return `<div class="${esc(classes)}"${preview ? "" : ` role="dialog" aria-modal="true" aria-label="${esc(title)}" data-ag-live-sheet=""`}${open ? "" : " hidden"}><header class="ag-sheet-head veil"><span class="ag-grabber" aria-hidden="true"></span><h2 class="t-headline">${esc(title)}</h2>${agButton({ label: "Close", variant: "icon", icon: "x" })}</header><div class="ag-sheet-body"><div class="ag-menu-row">${agIcon("sliders", 24)}<span>Tuning</span></div><div class="ag-menu-row">${agIcon("moon", 24)}<span>Appearance</span></div><div class="ag-menu-row">${agIcon("share", 24)}<span>Share</span></div></div></div>`;
+function agSheet({ title = "Settings", open = true, preview = false, state = "default" } = {}) {
+  const sheetState = agChoice(state, ["default", "drag"], "default");
+  const classes = `ag-sheet is-${sheetState}${open ? " is-open" : ""}${preview ? " is-preview" : ""}`;
+  return `<div class="${esc(classes)}" data-ag-primitive="sheet"${preview ? "" : ` role="dialog" aria-modal="true" aria-label="${esc(title)}" data-ag-live-sheet=""`}${open ? "" : " hidden"}><header class="ag-sheet-head veil"><span class="ag-grabber" aria-hidden="true"></span><h2 class="t-headline">${esc(title)}</h2>${agButton({ label: "Close", variant: "icon", icon: "x" })}</header><div class="ag-sheet-body"><div class="ag-menu-row">${agIcon("sliders", 24)}<span>Tuning</span></div><div class="ag-menu-row">${agIcon("moon", 24)}<span>Appearance</span></div><div class="ag-menu-row">${agIcon("share", 24)}<span>Share</span></div></div></div>`;
 }
 
 function agToast({ action = true } = {}) {

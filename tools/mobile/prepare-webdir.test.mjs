@@ -79,7 +79,7 @@ const ROOT = path.resolve(HERE, "..", "..");
    The complete bundle still has to clear MAX_BYTES in the independent cap test. */
 const AMBIENT_PRIMITIVES_ASSETS = Object.freeze([
   { rel: "ui/primitives.css", maxBytes: 20 * 1024 },
-  { rel: "ui/primitives.js", maxBytes: 15 * 1024 },
+  { rel: "ui/primitives.js", maxBytes: 16 * 1024 },
   { rel: "ui/gallery.js", maxBytes: 9 * 1024 },
 ]);
 
