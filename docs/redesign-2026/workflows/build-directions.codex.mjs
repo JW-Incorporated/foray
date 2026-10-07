@@ -58,6 +58,7 @@ function usage() {
   return [
     'Usage:',
     '  node docs/redesign-2026/workflows/build-directions.codex.mjs run --directions tactile,ambient [--skip-screens id,id] [--max-iters 4] [--dry-run]',
+    '  node docs/redesign-2026/workflows/build-directions.codex.mjs rejudge --directions tactile,ambient [--dry-run]',
     '  node docs/redesign-2026/workflows/build-directions.codex.mjs status',
     '  node docs/redesign-2026/workflows/build-directions.codex.mjs selftest-worktree',
   ].join('\n')
@@ -257,6 +258,10 @@ function createState(args) {
   }
 }
 
+function isRejudgeCandidate(unit) {
+  return !!unit && unit.phase === 'Screens' && unit.merged && !unit.rejudged && (unit.unjudged || unit.engines?.includes('codex'))
+}
+
 class Driver {
   constructor(args, options = {}) {
     this.args = args
@@ -281,6 +286,7 @@ class Driver {
     this.transcript = []
     this.reviewCounts = new Map()
     this.lockOwned = false
+    this.rejudgeStop = null
   }
 
   async initialise() {
@@ -309,7 +315,7 @@ class Driver {
   }
 
   async acquireLock() {
-    const body = JSON.stringify({ pid: process.pid, startedAt: iso() }, null, 2) + '\n'
+    const body = JSON.stringify({ pid: process.pid, command: this.args.command, startedAt: iso() }, null, 2) + '\n'
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const handle = await fs.open(this.lockPath, 'wx')
@@ -320,7 +326,7 @@ class Driver {
       } catch (error) {
         if (error.code !== 'EEXIST') throw error
         const existing = await this.readJson(this.lockPath)
-        if (existing && pidAlive(existing.pid)) throw new Error(`driver already running as PID ${existing.pid} (started ${existing.startedAt})`)
+        if (existing && pidAlive(existing.pid)) throw new Error(`driver ${existing.command || 'run'} already running as PID ${existing.pid} (started ${existing.startedAt})`)
         if (existing) await this.log(`taking over stale lock from PID ${existing.pid}`)
         await fs.unlink(this.lockPath).catch(unlinkError => { if (unlinkError.code !== 'ENOENT') throw unlinkError })
       }
@@ -514,13 +520,15 @@ class Driver {
     return !this.state.claudeDownUntil || Date.now() >= Date.parse(this.state.claudeDownUntil)
   }
 
-  async markClaudeDown(reason) {
+  async markClaudeDown(reason, claudeOnly = false) {
     this.state.claudeDownUntil = new Date(Date.now() + CLAUDE_COOLDOWN_MS).toISOString()
     await this.persist()
-    await this.log(`Claude unavailable (${reason}); using Codex until ${this.state.claudeDownUntil}`)
+    await this.log(claudeOnly
+      ? `Claude unavailable (${reason}); rejudge requires Claude and should be rerun later`
+      : `Claude unavailable (${reason}); using Codex until ${this.state.claudeDownUntil}`)
   }
 
-  async judgment({ label, direction, unitId, prompt, schema, images, fidelity = false }) {
+  async judgment({ label, direction, unitId, prompt, schema, images, fidelity = false, claudeOnly = false }) {
     if (this.claudeAvailable()) {
       if (fidelity) {
         const fable = await this.claudeCall({ label: `${label}:fable`, direction, unitId, prompt, schema, model: FABLE_MODEL })
@@ -532,17 +540,27 @@ class Driver {
         await this.log(`${label}: Fable failed (${fable?.reason || 'unknown'}); trying Opus`)
         const opus = await this.claudeCall({ label: `${label}:opus`, direction, unitId, prompt, schema, model: 'opus' })
         if (opus?.ok) return { value: opus.value, engine: 'claude-opus' }
-        await this.markClaudeDown(opus?.reason || fable?.reason || 'invalid response')
+        await this.markClaudeDown(opus?.reason || fable?.reason || 'invalid response', claudeOnly)
       } else {
         const opus = await this.claudeCall({ label: `${label}:opus`, direction, unitId, prompt, schema, model: 'opus' })
         if (opus?.ok) return { value: opus.value, engine: 'claude-opus' }
-        await this.markClaudeDown(opus?.reason || 'invalid response')
+        await this.markClaudeDown(opus?.reason || 'invalid response', claudeOnly)
       }
     } else {
-      await this.log(`${label}: Claude cooling down; using Codex`)
+      await this.log(claudeOnly
+        ? `${label}: Claude cooling down; rejudge requires Claude and should be rerun later`
+        : `${label}: Claude cooling down; using Codex`)
     }
+    if (claudeOnly) return null
     const value = await this.codexStep({ label: `${label}:codex`, direction, unitId, prompt: `${prompt}\nReturn only the requested JSON object.`, schema, effort: 'high', timeoutMs: 60 * 60 * 1000, baseRef: dirBranch(direction), images })
     return value ? { value, engine: 'codex' } : null
+  }
+
+  async stopRejudge(reason) {
+    if (!this.rejudgeStop) {
+      this.rejudgeStop = { at: iso(), reason }
+      await this.log(`rejudge stopping cleanly: ${reason}; rerun later`)
+    }
   }
 
   async mergedOnDirection(d, work) {
@@ -571,6 +589,19 @@ class Driver {
   }
 
   async recordUnit(d, result) {
+    const previous = this.state.directions[d].units[result.id]
+    if (result.skipped && previous) {
+      result = {
+        ...previous,
+        ...result,
+        acceptance: previous.acceptance || result.acceptance,
+        iterations: previous.iterations || result.iterations,
+        engines: previous.engines || result.engines,
+        verdicts: previous.verdicts || result.verdicts,
+        unjudged: previous.unjudged || result.unjudged,
+        rejudged: previous.rejudged,
+      }
+    }
     this.state.directions[d].units[result.id] = result
     await this.persist()
     const outcome = result.skipped ? 'skipped' : result.merged ? 'merged' : `NOT merged (${result.reason})`
@@ -648,9 +679,9 @@ class Driver {
     return verified
   }
 
-  async buildUnit(d, unit, kind, phaseName, taste = true) {
-    const work = `redesign/${d}-${unit.id}`
-    const base = { id: unit.id, name: unit.name, phase: phaseName, engines: [], iterations: 0, unjudged: false, escalated: false }
+  async buildUnit(d, unit, kind, phaseName, taste = true, options = {}) {
+    const work = options.work || `redesign/${d}-${unit.id}`
+    const base = { id: unit.id, name: unit.name, acceptance: unit.acceptance, phase: phaseName, engines: [], iterations: 0, unjudged: false, escalated: false }
     try {
       if (await this.mergedOnDirection(d, work)) {
         this.state.directions[d].consecutiveImplementNulls = 0
@@ -691,12 +722,12 @@ class Driver {
       const requested = []
       if (taste && chk.sideBySide) {
         const prompt = `You are the art director for direction ${d}, checking that the build realises your design. Read ${WT}\\docs\\redesign-2026\\judge\\rubric.md and docs/redesign-2026/directions/${d}/DIRECTION.md in ${WT}. Look at the side-by-side ${chk.sideBySide} (left = the direction's prototype, right = the implementation), and the full shots ${chk.protoShot || ''} and ${chk.implShot || ''}. List only deviations that change the design's intent or quality (type, spacing rhythm, colour, hierarchy, motion cues, iconography, imagery treatment); real-data differences (titles, artwork) are not deviations. faithful=false if any such deviation exists. Do not modify files.`
-        requested.push(this.judgment({ label: `fidelity-${d}-${unit.id}-it${it}`, direction: d, unitId: unit.id, prompt, schema: FIDELITY, images: [chk.sideBySide, chk.protoShot, chk.implShot], fidelity: true }).then(r => r && { ...r, kind: 'fidelity', order: null }))
+        requested.push(this.judgment({ label: `fidelity-${d}-${unit.id}-it${it}`, direction: d, unitId: unit.id, prompt, schema: FIDELITY, images: [chk.sideBySide, chk.protoShot, chk.implShot], fidelity: true, claudeOnly: options.claudeOnly }).then(r => r && { ...r, kind: 'fidelity', order: null }))
       }
       if (taste && chk.implShot && chk.todayShot) {
         const compare = (first, second, order) => {
           const prompt = `You are a design judge. Read the rubric at ${WT}\\docs\\redesign-2026\\judge\\rubric.md and follow ${WT}\\docs\\redesign-2026\\judge\\protocol.md. Compare two screens of the same app (FIRST = ${first}, SECOND = ${second}). Judge the design as a whole. Return FIRST, SECOND or TIE, confidence 1-5, and the 2-3 decisive reasons in at most 50 words. Do not modify files.`
-          return this.judgment({ label: `judge-${d}-${unit.id}-it${it}-${order}`, direction: d, unitId: unit.id, prompt, schema: VERDICT, images: [first, second] }).then(r => r && { ...r, kind: 'better', order, better: r.value.winner === (order === 'a' ? 'FIRST' : 'SECOND') })
+          return this.judgment({ label: `judge-${d}-${unit.id}-it${it}-${order}`, direction: d, unitId: unit.id, prompt, schema: VERDICT, images: [first, second], claudeOnly: options.claudeOnly }).then(r => r && { ...r, kind: 'better', order, better: r.value.winner === (order === 'a' ? 'FIRST' : 'SECOND') })
         }
         requested.push(compare(chk.implShot, chk.todayShot, 'a'))
         requested.push(compare(chk.todayShot, chk.implShot, 'b'))
@@ -711,6 +742,13 @@ class Driver {
       const unjudged = requested.length > judgments.length
       everUnjudged ||= unjudged
       if (unjudged) await this.log(`${d}/${unit.id} iteration ${it}: UNJUDGED (${requested.length - judgments.length} requested verdict(s) unavailable)`)
+      if (options.claudeOnly && requested.length !== 3) {
+        return { ...base, merged: false, reason: 'rejudge checker did not produce all required shots', iterations: it, engines: [...new Set(allEngines)], verdicts: allVerdicts, resumed: resume }
+      }
+      if (options.claudeOnly && unjudged) {
+        await this.stopRejudge(`Claude verdict unavailable during ${d}/${unit.id}`)
+        return { ...base, merged: false, reason: 'Claude unavailable; rerun rejudge later', iterations: it, engines: [...new Set(allEngines)], verdicts: allVerdicts, unjudged: true, claudeUnavailable: true, resumed: resume }
+      }
       const faithful = !fid || fid.value.faithful
       const beatsToday = better.length === 0 || better.every(x => x.better)
       last = { it, hardPass: chk.hardPass, faithful, beatsToday, unjudged, chk, fid: fid?.value, better }
@@ -810,6 +848,126 @@ class Driver {
     await this.dispatchLab(d, 'final')
     await this.progress(`${d}: Phase 5 QA ${issues.length} high-severity issues, fixes ${qaFix ? (qaFix.merged ? 'merged' : 'not merged') : 'not needed'}; final lab build dispatched`)
     return { direction: d, branch: dirBranch(d), foundation: found, screens, qa: { high: issues.length, fixes: qaFix } }
+  }
+
+  async recordRejudged(d, candidate, engines, result) {
+    candidate.rejudged = { 'at-iteration': candidate.iterations || 0, engines: [...new Set(engines)], result }
+    this.state.directions[d].units[candidate.id] = candidate
+    await this.persist()
+  }
+
+  async rejudgeCandidate(d, candidate, screen) {
+    const id = candidate.id
+    const chk = await this.codexStep({
+      label: `rejudge-check-${d}-${id}`, direction: d, unitId: id, schema: CHECK, effort: 'medium', timeoutMs: 60 * 60 * 1000, baseRef: dirBranch(d),
+      prompt: `Verify the already-merged screen "${candidate.name}" of direction ${d} on origin/${dirBranch(d)}, read-only except data-local renders. In this isolated worktree: git fetch origin && git checkout --detach origin/${dirBranch(d)}. Run the same check step as buildUnit per build-loop.md: targeted tests, gates.mjs with the known-debt allow list, rolling baseline compare, and fidelity.mjs for this screen against the prototype. Save the implementation, prototype, today's app, and side-by-side shots under ${this.root}\\loop\\${d}\\${id}\\rejudge\\ and return their absolute paths. hardPass = tests pass AND no new gate debt AND no baseline regressions.`,
+    })
+    if (!chk?.sideBySide || !chk.implShot || !chk.protoShot || !chk.todayShot) {
+      const result = { id, result: 'check-failed', remaining: true }
+      await this.log(`${d}/${id}: rejudge check did not produce all four required shots`)
+      await this.progress(`${d}/${id}: rejudge check failed; candidate remains`)
+      return result
+    }
+
+    const fidelityPrompt = `You are the art director for direction ${d}, checking that the merged build realises your design. Read ${WT}\\docs\\redesign-2026\\judge\\rubric.md and docs/redesign-2026/directions/${d}/DIRECTION.md in ${WT}. Look at the side-by-side ${chk.sideBySide} (left = the direction's prototype, right = the implementation), and the full shots ${chk.protoShot} and ${chk.implShot}. List only deviations that change the design's intent or quality (type, spacing rhythm, colour, hierarchy, motion cues, iconography, imagery treatment); real-data differences are not deviations. faithful=false if any such deviation exists. Do not modify files.`
+    const fidelity = await this.judgment({ label: `rejudge-fidelity-${d}-${id}`, direction: d, unitId: id, prompt: fidelityPrompt, schema: FIDELITY, images: [chk.sideBySide, chk.protoShot, chk.implShot], fidelity: true, claudeOnly: true })
+    if (!fidelity) {
+      await this.stopRejudge(`Claude fidelity verdict unavailable during ${d}/${id}`)
+      await this.progress(`${d}/${id}: rejudge deferred because Claude is unavailable; rerun later`)
+      return { id, result: 'deferred', remaining: true, claudeUnavailable: true }
+    }
+
+    const compare = async (first, second, order) => {
+      const prompt = `You are a design judge. Read the rubric at ${WT}\\docs\\redesign-2026\\judge\\rubric.md and follow ${WT}\\docs\\redesign-2026\\judge\\protocol.md. Compare two screens of the same app (FIRST = ${first}, SECOND = ${second}). Judge the design as a whole. Return FIRST, SECOND or TIE, confidence 1-5, and the 2-3 decisive reasons in at most 50 words. Do not modify files.`
+      const verdict = await this.judgment({ label: `rejudge-judge-${d}-${id}-${order}`, direction: d, unitId: id, prompt, schema: VERDICT, images: [first, second], claudeOnly: true })
+      return verdict && { ...verdict, better: verdict.value.winner === (order === 'a' ? 'FIRST' : 'SECOND'), order }
+    }
+    const first = await compare(chk.implShot, chk.todayShot, 'a')
+    if (!first) {
+      await this.stopRejudge(`Claude beats-today verdict unavailable during ${d}/${id}`)
+      await this.progress(`${d}/${id}: rejudge deferred because Claude is unavailable; rerun later`)
+      return { id, result: 'deferred', remaining: true, claudeUnavailable: true }
+    }
+    const second = await compare(chk.todayShot, chk.implShot, 'b')
+    if (!second) {
+      await this.stopRejudge(`Claude beats-today verdict unavailable during ${d}/${id}`)
+      await this.progress(`${d}/${id}: rejudge deferred because Claude is unavailable; rerun later`)
+      return { id, result: 'deferred', remaining: true, claudeUnavailable: true }
+    }
+
+    const engines = [fidelity.engine, first.engine, second.engine]
+    const faithful = fidelity.value.faithful
+    const beatsToday = first.better && second.better
+    if (faithful && beatsToday) {
+      await this.recordRejudged(d, candidate, engines, 'pass')
+      await this.progress(`${d}/${id}: Claude rejudge pass; engines ${[...new Set(engines)].join('+')}`)
+      return { id, result: 'pass', engines: [...new Set(engines)] }
+    }
+
+    const findings = [
+      !faithful && `Claude fidelity deviations: ${(fidelity.value.deviations || []).join('; ')}`,
+      !first.better && `Claude judge (implementation first) did not prefer the redesign: ${first.value.reasons}`,
+      !second.better && `Claude judge (today first) did not prefer the redesign: ${second.value.reasons}`,
+    ].filter(Boolean)
+    const acceptance = [...(screen?.acceptance || candidate.acceptance || []), ...findings]
+    const followUp = await this.buildUnit(d, {
+      id: `${id}-rejudge`,
+      name: `${candidate.name} Claude rejudge follow-up`,
+      acceptance,
+    }, 'the screen', 'Screens', true, { work: `redesign/${d}-${id}-rejudge`, claudeOnly: true })
+    const combinedEngines = [...new Set([...engines, ...(followUp.engines || [])])]
+    if (followUp.claudeUnavailable) {
+      await this.progress(`${d}/${id}: rejudge follow-up deferred because Claude is unavailable; rerun later`)
+      return { id, result: 'deferred', remaining: true, claudeUnavailable: true, followUp }
+    }
+    if (followUp.merged) {
+      await this.recordRejudged(d, candidate, combinedEngines, 'follow-up-merged')
+      await this.progress(`${d}/${id}: Claude rejudge failed; follow-up ${followUp.skipped ? 'already ' : ''}merged as redesign/${d}-${id}-rejudge`)
+      return { id, result: 'follow-up-merged', engines: combinedEngines, followUp }
+    }
+    await this.progress(`${d}/${id}: Claude rejudge failed; follow-up NOT merged (${followUp.reason}); candidate remains`)
+    return { id, result: 'follow-up-failed', remaining: true, engines: combinedEngines, followUp }
+  }
+
+  async rejudgeDirection(d, plan) {
+    const units = this.state.directions[d]?.units || {}
+    const candidates = Object.values(units).filter(isRejudgeCandidate)
+    const results = []
+    for (const candidate of candidates) {
+      if (this.rejudgeStop) break
+      const screen = plan?.screens?.find(x => x.id === candidate.id)
+      results.push(await this.rejudgeCandidate(d, candidate, screen))
+    }
+    const remaining = Object.values(units).filter(isRejudgeCandidate).length
+    await this.progress(`${d}: rejudge summary ${results.filter(x => !x.remaining).length}/${candidates.length} completed; ${remaining} candidate(s) remaining${this.rejudgeStop ? '; stopped cleanly for Claude availability' : ''}`)
+    return { direction: d, candidates: candidates.length, results, remaining, stopped: !!this.rejudgeStop }
+  }
+
+  async rejudge() {
+    await this.initialise()
+    try {
+      await this.log(`rejudge start: directions=${this.args.directions.join(',')}${this.dry ? ' DRY-RUN' : ''}`)
+      const plans = this.fake ? this.fake.plans : await this.loadPlans()
+      const results = await Promise.all(this.args.directions.map(async d => {
+        try { return await this.rejudgeDirection(d, plans[d]) }
+        catch (error) {
+          const remaining = Object.values(this.state.directions[d]?.units || {}).filter(isRejudgeCandidate).length
+          await this.log(`${d}: rejudge crashed: ${error.stack || error.message}`)
+          await this.progress(`${d}: rejudge summary crashed (${error.message}); ${remaining} candidate(s) remaining`)
+          return { direction: d, error: error.message, remaining }
+        }
+      }))
+      await this.trunkChain
+      const summary = { rejudge: true, results, stopped: !!this.rejudgeStop, stopReason: this.rejudgeStop?.reason || null }
+      await fs.writeFile(path.join(this.driverDir, 'rejudge-summary.json'), JSON.stringify(summary, null, 2) + '\n')
+      this.state.completedAt = iso()
+      await this.persist()
+      await this.log(`rejudge complete: ${results.reduce((n, x) => n + (x.results || []).filter(r => !r.remaining).length, 0)} completed, ${results.reduce((n, x) => n + (x.remaining || 0), 0)} remaining${this.rejudgeStop ? '; rerun later' : ''}`)
+      return summary
+    } finally {
+      await this.stopKeepAwake()
+      await this.releaseLock()
+    }
   }
 
   async run() {
@@ -919,6 +1077,56 @@ class DryFake {
   }
 }
 
+class RejudgeDryFake {
+  constructor(plans) {
+    this.plans = plans
+    this.progressLines = []
+    this.calls = []
+    this.claudeCalls = []
+    this.merges = new Set()
+  }
+
+  async git() { return { code: 0, stdout: '', stderr: '' } }
+  async mergedOnDirection(d, work) { return this.merges.has(`${d}:${work}`) }
+  async resumableWork() { return false }
+  async verifyMerge(d, work) { return this.merges.has(`${d}:${work}`) }
+
+  async codexAttempt({ step, attempt, prompt, schema }) {
+    this.calls.push({ label: step.label, attempt, prompt })
+    const label = step.label
+    let value = null
+    if (label.startsWith('rejudge-check-') || label.startsWith('check-')) {
+      value = { hardPass: true, testsPass: true, gatesPass: true, newDebt: [], baselineRegressions: [], summary: 'clean', implShot: 'impl.png', protoShot: 'proto.png', todayShot: 'today.png', sideBySide: 'side.png' }
+    } else if (label.startsWith('implement-') || label.startsWith('fix-')) {
+      value = { ok: true, summary: 'implemented', branch: 'dry', sha: 'deadbeef' }
+    } else if (label.startsWith('review-')) {
+      value = { verdict: 'merge', blocking: [], nits: [] }
+    } else if (label.startsWith('merge-')) {
+      const match = label.match(/^merge-([^-]+)-(.+)$/)
+      if (match) this.merges.add(`${match[1]}:redesign/${match[1]}-${match[2]}`)
+      value = { ok: true, summary: 'merged' }
+    } else if (label.includes(':codex')) {
+      value = schema === FIDELITY
+        ? { faithful: true, deviations: [] }
+        : { winner: label.includes('-b:') ? 'SECOND' : 'FIRST', confidence: 5, reasons: 'mutant Codex fallback' }
+    }
+    if (value === null) return { ok: false, reason: attempt === 1 ? 'scripted failure' : 'scripted terminal failure' }
+    const error = validate(value, schema)
+    return error ? { ok: false, reason: error } : { ok: true, value }
+  }
+
+  async claudeCall({ step, model }) {
+    this.claudeCalls.push({ label: step.label, model })
+    const label = step.label
+    if (label.includes('rejudge-fidelity-ambient-outage')) return { ok: false, reason: 'scripted Claude outage' }
+    if (label.includes('rejudge-fidelity-tactile-unjudged-fail')) return { ok: true, value: { faithful: false, deviations: ['spacing rhythm misses the prototype'] } }
+    if (label.includes('rejudge-judge-tactile-unjudged-fail-a')) return { ok: true, value: { winner: 'SECOND', confidence: 4, reasons: 'today has stronger hierarchy' } }
+    if (label.includes('rejudge-judge-tactile-unjudged-fail-b')) return { ok: true, value: { winner: 'FIRST', confidence: 4, reasons: 'today has stronger hierarchy' } }
+    if (label.includes('fidelity-')) return { ok: true, value: { faithful: true, deviations: [] } }
+    return { ok: true, value: { winner: label.includes('-b:') ? 'SECOND' : 'FIRST', confidence: 5, reasons: `scripted ${model} verdict` } }
+  }
+}
+
 function assertDry(condition, message, assertions) {
   if (!condition) throw new Error(`DRY-RUN ASSERTION FAILED: ${message}`)
   assertions.push(message)
@@ -968,6 +1176,79 @@ async function dryRun(args) {
   }
 }
 
+async function dryRunRejudge(args) {
+  const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'foray-codex-rejudge-dry-'))
+  const assertions = []
+  const writeState = async (root, directions, units) => {
+    const dryArgs = { ...args, command: 'rejudge', directions, dryRun: true }
+    const state = createState(dryArgs)
+    for (const d of directions) state.directions[d].units = units[d]
+    const driverDir = path.join(root, 'codex-driver')
+    await fs.mkdir(driverDir, { recursive: true })
+    await fs.writeFile(path.join(driverDir, 'state.json'), JSON.stringify(state, null, 2) + '\n')
+    return dryArgs
+  }
+  try {
+    const successRoot = path.join(temp, 'success', 'redesign')
+    const successPlans = { tactile: { foundation: 'dry', screens: [
+      { id: 'codex-pass', name: 'Codex judged pass', acceptance: ['preserve the deliberate hierarchy'] },
+      { id: 'unjudged-fail', name: 'Unjudged failure', acceptance: ['match the prototype rhythm'] },
+    ] } }
+    const successArgs = await writeState(successRoot, ['tactile'], { tactile: {
+      'codex-pass': { id: 'codex-pass', name: 'Codex judged pass', phase: 'Screens', merged: true, iterations: 2, engines: ['codex'], unjudged: false },
+      'unjudged-fail': { id: 'unjudged-fail', name: 'Unjudged failure', phase: 'Screens', merged: true, iterations: 3, engines: [], unjudged: true },
+      foundation: { id: 'foundation', name: 'Foundation', phase: 'Foundation', merged: true, engines: ['codex'], unjudged: true },
+      qa: { id: 'p5-qa-fixes', name: 'QA fixes', phase: 'QA', merged: true, engines: ['codex'], unjudged: true },
+      done: { id: 'done', name: 'Already rejudged', phase: 'Screens', merged: true, engines: ['codex'], unjudged: false, rejudged: { 'at-iteration': 1, engines: ['claude-opus'], result: 'pass' } },
+    } })
+    const successFake = new RejudgeDryFake(successPlans)
+    const successDriver = new Driver(successArgs, { root: successRoot, fake: successFake })
+    const success = await successDriver.rejudge()
+    const successState = successDriver.state.directions.tactile.units
+    assertDry(success.results[0].candidates === 2, 'rejudge selects only merged taste screens with Codex or UNJUDGED verdicts that lack rejudged state', assertions)
+    assertDry(successState['codex-pass'].rejudged?.result === 'pass' && successState['codex-pass'].rejudged['at-iteration'] === 2, 'a Codex-judged screen that passes gets a persisted Claude rejudged pass', assertions)
+    assertDry(successState['codex-pass'].rejudged.engines.includes('claude-fable') && successState['codex-pass'].rejudged.engines.includes('claude-opus') && successState['codex-pass'].rejudged.engines.every(x => x.startsWith('claude-')), 'persisted rejudge engines record Fable fidelity and Opus comparisons with no Codex engine', assertions)
+    assertDry(successState['unjudged-fail'].rejudged?.result === 'follow-up-merged' && successFake.merges.has('tactile:redesign/tactile-unjudged-fail-rejudge'), 'an UNJUDGED screen that fails gets its rejudge follow-up merged and recorded', assertions)
+    assertDry(successFake.calls.some(x => x.label === 'rejudge-check-tactile-codex-pass' && x.prompt.includes('origin/feature/redesign-2026-tactile') && x.prompt.includes('\\rejudge\\')), 'rejudge check uses the merged direction branch and rejudge render directory', assertions)
+    assertDry(successFake.calls.some(x => x.label === 'implement-tactile-unjudged-fail-rejudge' && x.prompt.includes('spacing rhythm misses the prototype') && x.prompt.includes('today has stronger hierarchy')), 'follow-up acceptance combines the original criteria with every Claude finding', assertions)
+    assertDry(!successFake.calls.some(x => x.label.includes(':codex')), 'successful rejudge verdicts use Claude only', assertions)
+    assertDry(successFake.progressLines.filter(x => /^tactile\/(codex-pass|unjudged-fail):/.test(x)).length === 2 && successFake.progressLines.some(x => x.startsWith('tactile: rejudge summary')), 'rejudge writes one progress result per candidate and one direction summary', assertions)
+
+    const outageRoot = path.join(temp, 'outage', 'redesign')
+    const outagePlans = { ambient: { foundation: 'dry', screens: [
+      { id: 'first-pass', name: 'First pass', acceptance: ['pass'] },
+      { id: 'outage', name: 'Claude outage', acceptance: ['wait for Claude'] },
+      { id: 'remaining', name: 'Remaining candidate', acceptance: ['remain queued'] },
+    ] } }
+    const outageArgs = await writeState(outageRoot, ['ambient'], { ambient: Object.fromEntries(outagePlans.ambient.screens.map((screen, index) => [screen.id, { ...screen, phase: 'Screens', merged: true, iterations: index + 1, engines: ['codex'], unjudged: false }])) })
+    const outageFake = new RejudgeDryFake(outagePlans)
+    const outageDriver = new Driver(outageArgs, { root: outageRoot, fake: outageFake })
+    const outage = await outageDriver.rejudge()
+    assertDry(outage.stopped && outage.results[0].remaining === 2 && outageDriver.state.directions.ambient.units['first-pass'].rejudged?.result === 'pass', 'Claude unavailable mid-run stops cleanly and reports the current and later candidates remaining', assertions)
+    assertDry(counts(outageDriver.state.directions.ambient).rejudgeRemaining === 2, 'status counting reports the two rejudge candidates still remaining', assertions)
+    assertDry(!outageFake.calls.some(x => x.label.includes(':codex')) && outageDriver.transcript.some(x => x.includes('should be rerun later')), 'Claude unavailability never falls back to Codex and logs that rejudge should be rerun', assertions)
+
+    const lockRoot = path.join(temp, 'lock', 'redesign')
+    const holderArgs = { ...args, command: 'run', directions: ['tactile'], dryRun: true }
+    const holder = new Driver(holderArgs, { root: lockRoot })
+    await holder.initialise()
+    let contention = null
+    try {
+      const contender = new Driver({ ...holderArgs, command: 'rejudge' }, { root: lockRoot })
+      try { await contender.initialise() } catch (error) { contention = error }
+    } finally {
+      await holder.releaseLock()
+    }
+    assertDry(contention?.message.includes('driver run already running'), 'rejudge refuses the shared lock while a live run holds it', assertions)
+    console.log(`REJUDGE DRY-RUN PASS: ${assertions.length} scenario assertions; ${successFake.calls.length + outageFake.calls.length} Codex attempts; ${successFake.claudeCalls.length + outageFake.claudeCalls.length} Claude calls`)
+    return { success, outage }
+  } finally {
+    const resolved = path.resolve(temp)
+    if (!resolved.startsWith(path.resolve(os.tmpdir()) + path.sep)) throw new Error(`refusing to remove unexpected temp path: ${resolved}`)
+    await fs.rm(resolved, { recursive: true })
+  }
+}
+
 function counts(direction) {
   const units = Object.values(direction?.units || {})
   return {
@@ -976,6 +1257,7 @@ function counts(direction) {
     notMerged: units.filter(x => !x.merged).length,
     unjudged: units.filter(x => x.unjudged).length,
     codexJudged: units.filter(x => x.engines?.includes('codex')).length,
+    rejudgeRemaining: units.filter(isRejudgeCandidate).length,
   }
 }
 
@@ -984,7 +1266,7 @@ async function status() {
   const read = async name => { try { return JSON.parse(await fs.readFile(path.join(dir, name), 'utf8')) } catch { return null } }
   const lock = await read('driver.lock')
   const state = await read('state.json')
-  console.log(`Lock: ${lock ? `PID ${lock.pid}, ${pidAlive(lock.pid) ? 'alive' : 'stale'}, started ${lock.startedAt}` : 'none'}`)
+  console.log(`Lock: ${lock ? `${lock.command || 'run'} PID ${lock.pid}, ${pidAlive(lock.pid) ? 'alive' : 'stale'}, started ${lock.startedAt}` : 'none'}`)
   if (!state) console.log('State: none')
   else {
     const active = Object.values(state.currentSteps || {})
@@ -993,7 +1275,7 @@ async function status() {
       const current = Object.values(value.currentSteps || {})
       console.log(`${d}: ${current.length ? current.map(x => `${x.label} (since ${x.startedAt}, worktree ${x.worktree || 'none'})`).join('; ') : 'idle'}`)
       const c = counts(value)
-      console.log(`  merged=${c.merged} skipped=${c.skipped} not-merged=${c.notMerged} unjudged=${c.unjudged} codex-judged=${c.codexJudged}${value.blocked ? ' BLOCKED' : ''}`)
+      console.log(`  merged=${c.merged} skipped=${c.skipped} not-merged=${c.notMerged} unjudged=${c.unjudged} codex-judged=${c.codexJudged} rejudge-remaining=${c.rejudgeRemaining}${value.blocked ? ' BLOCKED' : ''}`)
     }
     console.log(`Claude down-until: ${state.claudeDownUntil || 'not down'}`)
     console.log(`Fable successful calls: ${state.fableCount || 0}`)
@@ -1065,9 +1347,9 @@ async function main() {
   if (args.command === 'smoke-codex') return smokeCodex()
   if (args.command === 'smoke-claude') return smokeClaude()
   if (args.command === 'selftest-worktree') return selftestWorktree()
-  if (args.command !== 'run') { console.log(usage()); if (args.command !== 'help') process.exitCode = 2; return }
+  if (!['run', 'rejudge'].includes(args.command)) { console.log(usage()); if (args.command !== 'help') process.exitCode = 2; return }
   if (!args.dryRun && !args.directions.length) throw new Error('--directions is required')
-  if (args.dryRun) return dryRun(args)
+  if (args.dryRun) return args.command === 'rejudge' ? dryRunRejudge(args) : dryRun(args)
   const driver = new Driver(args)
   const shutdown = async signal => {
     await driver.log(`received ${signal}; stopping active process trees`)
@@ -1078,7 +1360,8 @@ async function main() {
   }
   process.once('SIGINT', () => { shutdown('SIGINT') })
   process.once('SIGTERM', () => { shutdown('SIGTERM') })
-  await driver.run()
+  if (args.command === 'rejudge') await driver.rejudge()
+  else await driver.run()
 }
 
 main().catch(error => { console.error(error.stack || error.message); process.exitCode = 1 })

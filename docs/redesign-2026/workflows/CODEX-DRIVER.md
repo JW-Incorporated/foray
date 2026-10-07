@@ -13,6 +13,37 @@ in-process fakes and an OS temporary directory; it performs no git/network/gh
 mutation and asserts the resume, failure, review, judge fallback, lab, QA, and
 blocking paths.
 
+## Claude re-judging
+
+After Claude usage is available again, re-judge every merged taste screen that
+was judged by Codex or left UNJUDGED:
+
+```powershell
+node docs/redesign-2026/workflows/build-directions.codex.mjs rejudge --directions tactile,ambient
+```
+
+`rejudge` shares `driver.lock` with `run`, so only one can touch direction
+branches at a time. Directions run in parallel; candidates within a direction
+run sequentially. Each candidate is checked from the merged direction branch
+and rendered under `data-local/redesign/loop/<direction>/<screen>/rejudge/`.
+Fidelity uses Fable with Opus as its Claude fallback, and both orderings of the
+beats-today comparison use Opus. Re-judging never falls back to Codex. If
+Claude is unavailable, the command stops cleanly, leaves the current and later
+candidates pending, and can be rerun after usage resets.
+
+A Claude pass is recorded on the original state unit as `rejudged`. A failure
+creates `redesign/<direction>-<screen>-rejudge` with the screen's original
+acceptance criteria plus Claude's findings, then runs the normal implement,
+check, Claude-judge, fix, review, and merge loop. Relaunch is safe: the normal
+merge-message check recognizes an already merged follow-up.
+
+The rejudge dry run covers a direct pass, a failed UNJUDGED screen whose
+follow-up merges, a mid-run Claude outage, and contention with a live `run`:
+
+```powershell
+node docs/redesign-2026/workflows/build-directions.codex.mjs rejudge --directions tactile,ambient --dry-run
+```
+
 ## Status, resume, and stop
 
 Status is read-only:
@@ -21,9 +52,10 @@ Status is read-only:
 node docs/redesign-2026/workflows/build-directions.codex.mjs status
 ```
 
-It shows the lock PID and liveness, current worktree-backed steps, per-direction
-counts, Claude cooldown, successful Fable count, lab URLs, and the last 15 log
-lines. Detailed state and step artifacts live under
+It shows the lock owner, PID and liveness, current worktree-backed steps,
+per-direction counts including rejudge candidates remaining, Claude cooldown,
+successful Fable count, lab URLs, and the last 15 log lines. Detailed state and
+step artifacts live under
 `data-local/redesign/codex-driver/` (`state.json`, `summary.json`, `run.log`, and
 `steps/`). On real runs, step worktrees use short names under `~/fw`
 (`C:\Users\<user>\fw` on Windows) to leave enough path length for the deepest
