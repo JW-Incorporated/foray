@@ -213,7 +213,7 @@ if (staleMapTopics.size) {
    `topics` — so this loop should be unreachable. It is a belt-and-braces
    assertion that a future edit has not broken that property, not the mechanism
    that guarantees it. Keep it: the failure it catches is silent, and an
-   unreachable check that costs one pass over 19,787 keys is a bargain. */
+   unreachable check that costs one pass over 26,340 keys is a bargain. */
 const lost = Object.keys(priorEntries).filter(
   (id) => (priorEntries[id].topics || []).length > 0 && !(entries[id]?.topics || []).length
 );

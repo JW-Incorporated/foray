@@ -4,8 +4,8 @@
    Run: node --test tools/refresh/fold-breadth-topics.test.mjs
 
    Four fixture tests (a temp dir, three shows, `entries` as an OBJECT keyed by
-   the collection id as a string — the real file's shape) and one REAL DATA
-   test over the committed catalogue. Each test names the one-line mutation
+   the collection id as a string — the real file's shape) and two REAL DATA
+   tests over the committed catalogue. Each test names the one-line mutation
    that turns it red. The floor for this suite lives in
    test/suite-integrity.test.js. */
 
@@ -144,4 +144,27 @@ test("REAL DATA: every taxonomy_node_ids in data/catalog-breadth.json resolves",
   assert.deepEqual(missing, [], `rows without taxonomy_node_ids (run fold-breadth-topics.mjs): ${head(missing)}`);
   assert.deepEqual(bad, [], `unknown taxonomy ids: ${head(bad)}`);
   assert.ok(labelled > 0, "no breadth row carries a topic — the fold has not run");
+});
+
+/* REAL DATA, the ratchet the 2026-10-07 re-harvest needed (breadth-genre-topics).
+   The fold gives `[]` to a row with no classification entry, and the test above
+   accepts `[]`, so #1149's 6,553 chart newcomers sat with no subject and nothing
+   went red. Every committed breadth row must have an entry in
+   data/breadth-classification.json; a newcomer gets its genre-map base-layer row
+   from `node tools/classify-breadth.mjs --in data/catalog-breadth.json`, step 0 of
+   docs/CATALOG-PIPELINE.md "After a harvest". A `[]` is still allowed: that is an
+   entry the fold's rule declines (low confidence, needs_review), not a gap.
+   MUTATION: in a local copy of data/breadth-classification.json delete one
+   entry whose id is in the catalogue (red: row without a classification entry). */
+test("REAL DATA: every data/catalog-breadth.json row has a breadth-classification entry", () => {
+  const { entries } = JSON.parse(readFileSync(join(ROOT, "data", "breadth-classification.json"), "utf8"));
+  const { shows } = JSON.parse(readFileSync(join(ROOT, "data", "catalog-breadth.json"), "utf8"));
+  const unclassified = shows.map((s) => String(s.apple_collection_id)).filter((id) => !Object.hasOwn(entries, id));
+  const head = unclassified.slice(0, 10).join(", ") + (unclassified.length > 10 ? ` … and ${unclassified.length - 10} more` : "");
+  assert.deepEqual(
+    unclassified,
+    [],
+    `${unclassified.length} breadth row(s) without a classification entry ` +
+      `(run node tools/classify-breadth.mjs --in data/catalog-breadth.json, then the fold): ${head}`
+  );
 });
