@@ -293,6 +293,11 @@ const ACKNOWLEDGED_UNDENIED_GATES = {
   "tools/refresh/watch-nightly.mjs": "nightly data-refresh pipeline; contents:write, no auto-merge decision at stake",
   "tools/refresh/scan.mjs": "nightly data-refresh pipeline; contents:write, no auto-merge decision at stake",
   "tools/refresh/resolve.mjs": "nightly data-refresh pipeline; contents:write, no auto-merge decision at stake",
+  // pointer-freshness-watch: the only job of shows-pointer-watch.yml (its own
+  // workflow, because nightly-watch.yml is manually disabled). Read-only
+  // (contents/actions read), no secret, writes nothing; a neutered copy can
+  // only hide a stale-pointer alarm, never change what merges or ships.
+  "tools/shows/watch-pointer.mjs": "read-only absence watchdog in shows-pointer-watch.yml; no secret, writes nothing, no auto-merge decision at stake",
   // Re-invokes THIS policy (decide/check) from automerge-nightly.yml and
   // path-policy.yml — it cannot expose itself, it IS the gate under test.
   "tools/ci/path-policy.mjs": "the policy script itself; already covered by tools/ci/ in DENIED_PREFIXES",
