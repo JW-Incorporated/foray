@@ -13,6 +13,19 @@ small: delegate reading, building and verifying to agents and workflows.
 
 ---
 
+## Night 2, continued (from 2026-10-06 23:00 PDT): the build runs on Codex
+
+**If `PAUSE.md` exists at the worktree root, follow it first; it outranks this file.**
+Claude's weekly usage ran low (91% at 22:31 PDT, resets 2026-10-07 16:00 PDT), so the Claude
+workflow below (`wf_7ee4833f-b81`) was stopped after merging `p3-tokens` in both directions, and
+phases 3-5 continue in a detached **Codex build driver**:
+`docs/redesign-2026/workflows/build-directions.codex.mjs` (`run` / `status` / `rejudge`; how it
+works and how to relaunch it: `docs/redesign-2026/workflows/CODEX-DRIVER.md`). It is
+interchangeable with the workflow (same branches, same `Merge redesign/<dir>-<unit>` commits, so
+merged units are skipped by either). Steps 3-7 below are superseded by the driver while it runs:
+never run the driver and the workflow at the same time. Lean on Codex for build work; keep
+Claude for taste and orchestration.
+
 ## Night 2 (from 2026-10-06): build Tactile and Ambient (phases 3-5)
 
 The owner picked **Tactile and Ambient** and approved Tactile's header font,

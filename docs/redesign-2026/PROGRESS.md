@@ -22,7 +22,7 @@ Source of truth for a cleared session. Update on every deliverable.
 | 1 Research | done | docs/redesign-2026/research/, design-brief.md |
 | 2 Directions | done | editorial r3, ambient r3, native-2026 r3, tactile r3, clarity r3 (docs/redesign-2026/directions/) |
 | Checkpoint | **picked: Tactile + Ambient** (owner, 2026-10-06 18:17 PDT) | one condition: replace Tactile's "cartoonish" header/title font first; Phase 3 starts once the owner approves the new font |
-| 3–5 | **running** (`wf_7ee4833f-b81`, from 2026-10-06 ~21:05 PDT) | Tactile + Ambient; see In flight |
+| 3–5 | **running** on the Codex build driver (from 2026-10-06 23:00 PDT; Claude workflow `wf_7ee4833f-b81` stopped at 22:40) | Tactile + Ambient; plans done, `p3-tokens` merged in both; see In flight |
 
 ## Checkpoint (decided 2026-10-06: Tactile + Ambient, pending Tactile's font)
 
@@ -48,16 +48,22 @@ through Editorial's tab bar. Detail: `checkpoint/README.md`.
 
 (Agent/workflow and what it is doing. Clear an entry when it lands.)
 
-- **Phases 3-5 build, `wf_7ee4833f-b81`** (launched 2026-10-06 ~21:05 PDT, night 2).
-  `build-directions.workflow.js` with `directions: ["tactile", "ambient"]` plus the
-  Tactile prep step (Big Shoulders made the prototype default, "Aa" switcher and
-  dropped fonts removed, r8 re-shoot, Tactile artifact republished in place). Per
-  direction: creates `feature/redesign-2026-<dir>`, plans (Fable), builds the
-  foundation, loops screen by screen (gates, fidelity, both-order judges, review,
-  merge), dispatches lab builds, runs QA. **If it dies:** relaunch exactly as in
-  `RESTART.md` step 4; units already merged into a direction branch are skipped.
-  Open Phase 3 item from the r5 critique: Tactile band codes double at 412px
+- **Phases 3-5 build, Codex build driver, PID 30772** (detached, launched 2026-10-06
+  23:00 PDT). `node docs/redesign-2026/workflows/build-directions.codex.mjs run
+  --directions tactile,ambient --max-iters 4`: Codex (`gpt-5.6-sol`) does every
+  implement/check/fix/review/merge/QA step; Claude (`claude -p`) does the taste calls
+  (Fable fidelity, Opus judges in both orders) and Codex judges, labelled per verdict,
+  when Claude is out. Check it with `... status`; state in
+  `data-local/redesign/codex-driver/`; relaunch, rejudge and the post-reset steps are in
+  `PAUSE.md` (worktree root) and `docs/redesign-2026/workflows/CODEX-DRIVER.md`.
+  Resuming from: `p3-tokens` merged in both directions; `p3-icons` built, unmerged.
+- Open Phase 3 item from the r5 critique: Tactile band codes double at 412px
   (per-bar label gate).
+
+Stopped: `wf_7ee4833f-b81` (Claude workflow, 21:05-22:40 PDT): baseline, Tactile prep
+(Big Shoulders, artifact republished), both BUILD-PLANs (Fable), `p3-tokens` merged in
+both directions (tactile 45f848ee, ambient de82b662). Stopped to save Claude's last
+weekly usage for taste calls; the driver continues from its branches.
 
 Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40-22:40 PDT, 128 agents,
 0 errors) ran 0a-0e, 1, 2, Rank and the checkpoint package.
@@ -96,6 +102,7 @@ Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40-22:40 PDT, 128 agents
 - 2026-10-06, Tactile font change, 3 Fable calls, owner-requested.
 - 2026-10-06, Tactile font round 2, 3 Fable calls, owner-requested.
 - 2026-10-06, Phase 2 polish-to-ready, 5 Fable calls (ambient r4, editorial r4, clarity r4, native-2026 r4+r5), owner-requested.
+- 2026-10-06, Phase 3 plan, 2 Fable calls (tactile and ambient BUILD-PLAN.md, workflow `wf_7ee4833f-b81`), owner-authorized for phases 3-5. From 23:00 the Codex driver counts its own Fable calls (`status` -> "Fable successful calls"); add them here when it finishes.
 
 ## Log
 
@@ -123,3 +130,4 @@ Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40-22:40 PDT, 128 agents
 - 2026-10-06 — Tactile font decision applied (owner pick, Big Shoulders, 20:55 PDT): `prototype/tokens.css` now sets display/title/heading in Big Shoulders at the BUILD-NOTES 1.1 r7 values (800/750/750, 44/36/26/22px, hero line-height 1.2 moved into `app.css`); Anybody, Dela and Archivo WOFF2/@font-face/tokens and `font-preview.js/.css` deleted; prototype README rewritten; `build-checkpoint.mjs` ROUNDS tactile -> r8. Re-shot `--scheme light` to `data-local/redesign/shots/tactile/r8` (21 shots, 0 errors, Home background pixel #F7F0E4 confirmed with pngjs); Tactile artifact https://claude.ai/artifact/6N8mk5PZJc32D8shdHw7GK republished in place (v4, fonts inlined, font-preview files removed, title kept). Open: Phase 3 still re-cuts the Big Shoulders hhea/OS2 metrics for WebKit.
 - 2026-10-07 — tactile/p3-tokens: skipped, iterations 0, judged by none
 - 2026-10-07 — tactile/p3-icons: NOT merged (implementer failed), iterations 0, judged by none
+- 2026-10-06 23:00 PDT — Claude weekly usage at 91% (resets 2026-10-07 16:00): owner asked to lean on Codex and make the run resumable. Claude workflow `wf_7ee4833f-b81` stopped (p3-tokens merged in both directions); phases 3-5 moved to the Codex build driver `build-directions.codex.mjs` (1838677f, fixed 9013ec3f: short worktree root `C:\Users\Fourtys\fw`, serialised trunk git), dry run 15/15 with mutations, relaunched detached as PID 30772. The two 2026-10-07 lines above (p3-tokens skipped, p3-icons NOT merged) come from the first launch at 22:54, aborted after 10 s on a Windows long-path failure; p3-icons is not failed, the driver resumes it. Resume instructions: `PAUSE.md` (worktree root); resume prompt scheduled for 16:07 PDT in this session.
