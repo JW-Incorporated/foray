@@ -3032,3 +3032,32 @@ test("#29: a download attempt prints as one line a device check can read", () =>
   const text = formatDiagnosticReport(log.read(), null, { tzOffsetMin: 0 });
   assert.match(text, /downloadAttempt 2 \(1 failed\)/);
 });
+
+test("#29 + L24: a download row never explains a stop -- sinceSession skips it", () => {
+  /* L24's sinceSession points whoever triages a pause the page did not make
+     at an audio-session event (a route change, an interruption). A download
+     finishing is neither, and the player never acts on one.
+     MUTATION: measure sinceSessionMs from the newest `session` row of any
+     kind -> the first stop reads 2000ms, the second carries a number. */
+  const store = fakeStore();
+  const c = clock(AT_1032);
+  const log = new DiagnosticLog({ storage: store, now: c.now });
+  const diag = new PlayerDiagnostics({ log, now: c.now, getState: () => ({ state: "playing", item: "seg-12" }) });
+  diag.sessionEvent({ kind: "routeChange", reason: "new-device", at: c.now() });
+  c.tick(5000);
+  diag.sessionEvent({ kind: "downloadAttempt", producer: "downloads", reason: "done", at: c.now(), reqHost: "dts.podtrac.com", status: 200 });
+  c.tick(2000);
+  diag.note("audio.pausedUnexpectedly t=494.4 rs=4 ns=2 err=0");
+  const stop = () => log.read().entries.filter((e) => e.type === "stop").at(-1);
+  assert.equal(stop().sinceSessionMs, 7000, "measured from the route change, not the download");
+  assert.match(lineOf(log, "stop"), /sinceSession 7000ms/);
+  /* With only a download row in the ring, the stop has no session to point at. */
+  const only = mk();
+  only.clock.set(AT_1032);
+  only.diag.sessionEvent({ kind: "downloadAttempt", producer: "downloads", reason: "done", at: AT_1032 });
+  only.clock.tick(2000);
+  only.diag.note("audio.pausedUnexpectedly t=1 rs=4 ns=2 err=0");
+  const lone = only.log.read().entries.filter((e) => e.type === "stop").at(-1);
+  assert.equal(lone.sinceSessionMs, null);
+  assert.doesNotMatch(lineOf(only.log, "stop"), /sinceSession/);
+});

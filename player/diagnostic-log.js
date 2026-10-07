@@ -1204,23 +1204,28 @@ export class PlayerDiagnostics {
     try { s = this._getState(); } catch (_) { s = null; }
     const o = s && typeof s === "object" ? s : {};
     const stateText = asText(o.state).trim();
-    const since = (type) => {
-      const wall = this._newestWall(type);
+    const since = (type, keep) => {
+      const wall = this._newestWall(type, keep);
       return wall == null ? null : Math.max(0, this._now() - wall);
     };
     return {
       state: /^[A-Za-z][A-Za-z0-9-]{0,31}$/.test(stateText) ? stateText : null,
       item: dataIdOf(o.item),
       sinceRemoteMs: since("remote"),
-      sinceSessionMs: since("session"),
+      /* #29: a `downloadAttempt` is a `session` row the player never acts on
+         (see SESSION_KINDS) -- a download finishing does not explain a pause,
+         so it never stands in for the route change or interruption this
+         points at. */
+      sinceSessionMs: since("session", (e) => e.kind !== "downloadAttempt"),
     };
   }
 
-  /** The page clock of the newest ring entry of `type`, or null. */
-  _newestWall(type) {
+  /** The page clock of the newest ring entry of `type` that `keep` (when
+      given) accepts, or null. */
+  _newestWall(type, keep) {
     const entries = this.log.entries;
     for (let i = entries.length - 1; i >= 0; i--) {
-      if (entries[i].type === type) return entries[i].wall;
+      if (entries[i].type === type && (!keep || keep(entries[i]))) return entries[i].wall;
     }
     return null;
   }
