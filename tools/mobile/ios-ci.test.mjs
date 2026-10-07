@@ -194,6 +194,24 @@ test("signing-gate CLI: absent exits 0 and partial exits 1, writing state / read
   assert.match(partial.stderr, /HALF configured: 1 of 7/);
 });
 
+test("ios-ci with no subcommand (or an unknown one) prints a usage line naming every subcommand the header documents, and exits 2 (CH2-21, T2-13)", () => {
+  /* The usage line is generated from the dispatch table, so it cannot fall
+     behind it again (it had listed five of eight).
+     MUTATION: hand-write the usage line again with a subcommand left out, or
+     drop a command from the table -> the set below differs from the header's. */
+  const src = fs.readFileSync(path.join(HERE, "ios-ci.mjs"), "utf8");
+  const header = src.slice(0, src.indexOf("*/"));
+  const documented = [...header.matchAll(/^ \*\s+node tools\/mobile\/ios-ci\.mjs ([a-z-]+)/gm)].map((m) => m[1]);
+  assert.equal(documented.length, 8, documented.join(","));
+  for (const args of [[], ["no-such-command"], ["toString"]]) {
+    const r = spawnSync(process.execPath, [path.join(HERE, "ios-ci.mjs"), ...args], { encoding: "utf8" });
+    assert.equal(r.status, 2, `${JSON.stringify(args)}: ${r.stderr}`);
+    const m = r.stderr.match(/^Usage: node tools\/mobile\/ios-ci\.mjs <([a-z|-]+)> \[args\]$/m);
+    assert.ok(m, r.stderr);
+    assert.deepEqual(m[1].split("|").sort(), [...documented].sort());
+  }
+});
+
 test("the secret list has no duplicates and names no value", () => {
   assert.equal(new Set(SIGNING_SECRETS).size, SIGNING_SECRETS.length);
   for (const name of SIGNING_SECRETS) {

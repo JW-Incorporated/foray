@@ -10,6 +10,8 @@ import { fileURLToPath } from "node:url";
 import {
   DEFAULT_REPO, EXIT, SIGNING_SECRETS, evaluate, formatReport, gatherFacts, main, parseArgs,
 } from "./release-env-check.mjs";
+import { SIGNING_SECRETS as IOS_SIGNING_SECRETS } from "../mobile/ios-ci.mjs";
+import { ANDROID_SECRETS, PLAY_SECRETS } from "../mobile/release-ci.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const REPO = "o/r";
@@ -325,6 +327,18 @@ test("SIGNING_SECRETS is the eleven names in sorted order, frozen (CH2-21 charac
     "PLAY_SERVICE_ACCOUNT_JSON",
   ]);
   assert.ok(Object.isFrozen(SIGNING_SECRETS));
+});
+
+test("SIGNING_SECRETS is the gates' own lists, not a third copy (CH2-21, T2-20)", () => {
+  /* MUTATION: type the eleven names out here again and rename one in a gate
+     (ios-ci's SIGNING_SECRETS, release-ci's ANDROID_SECRETS / PLAY_SECRETS) ->
+     the union below differs. With the import, adding a secret to a gate's list
+     without release.yml reading it turns the drift guard above red instead. */
+  assert.deepEqual(
+    [...SIGNING_SECRETS],
+    [...ANDROID_SECRETS, ...IOS_SIGNING_SECRETS, ...PLAY_SECRETS].sort(),
+  );
+  assert.equal(new Set(SIGNING_SECRETS).size, SIGNING_SECRETS.length, "a name is in two gates' lists");
 });
 
 test("the text report marks each check PASS / FAIL / ???? and ends with the verdict", () => {

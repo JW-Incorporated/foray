@@ -13,7 +13,12 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { playReadiness, releaseGuard, isAncestorOfMain, PLAY_SECRETS } from "./release-ci.mjs";
+import fs from "node:fs";
+import {
+  playReadiness, releaseGuard, isAncestorOfMain, PLAY_SECRETS, ANDROID_SECRETS, PLAY_READINESS_MESSAGES,
+} from "./release-ci.mjs";
+import { signingReadiness, SIGNING_SECRETS, SIGNING_READINESS_MESSAGES } from "./ios-ci.mjs";
+import { readiness } from "../release/readiness.mjs";
 
 /* ────────────────────────────── playReadiness ─────────────────────────────── */
 
@@ -49,11 +54,17 @@ test("playReadiness: absent state's message names the human gates", () => {
 test("playReadiness: partial is structurally unreachable with one secret, but the branch exists", () => {
   /* MUTATION TARGET: if PLAY_SECRETS ever grows a second entry, this proves
      the partial branch already works rather than being dead code that only
-     gets discovered broken the day it's needed. */
-  const present = ["PLAY_SERVICE_ACCOUNT_JSON", "SOME_FUTURE_SECRET"];
-  const missing = present.filter((k) => k !== "PLAY_SERVICE_ACCOUNT_JSON");
-  const state = missing.length === 0 ? "ready" : missing.length === present.length ? "absent" : "partial";
-  assert.equal(state, "partial");
+     gets discovered broken the day it's needed. Since CH2-21 it runs the real
+     rule with the Play gate's own words (it used to recompute the state
+     inline and so tested nothing). */
+  const r = readiness([...PLAY_SECRETS, "SOME_FUTURE_SECRET"], { PLAY_SERVICE_ACCOUNT_JSON: "{}" }, PLAY_READINESS_MESSAGES);
+  assert.equal(r.state, "partial");
+  assert.equal(r.ready, false);
+  assert.equal(
+    r.message,
+    "Play upload is HALF configured: 1 of 2 secrets are set and SOME_FUTURE_SECRET is missing. " +
+      "Failing rather than skipping, because a skipped upload on a green run is invisible."
+  );
 });
 
 /* ───────────────────────────── releaseGuard ────────────────────────────────── */
@@ -184,4 +195,80 @@ test("play-gate CLI: prints state / ready / missing, the message on stderr, and 
   assert.equal(ready.status, 0);
   assert.equal(ready.stdout, "state=ready\nready=true\nmissing=\n");
   assert.equal(ready.stderr.trim(), PLAY_READY_MESSAGE);
+});
+
+/* ───────────── CH2-21: one readiness() for both gates (T2-11) ─────────────── */
+
+const MSG = Object.freeze({ ready: "R", absent: "A", subject: "Thing" });
+
+test("readiness: ready / absent / partial, missing named in the list's order, is/are agreement", () => {
+  /* MUTATION: flip the "is"/"are" agreement, or report missing in env order
+     instead of list order -> red. */
+  const names = ["A_KEY", "B_KEY", "C_KEY"];
+  assert.deepEqual(readiness(names, { A_KEY: "1", B_KEY: "2", C_KEY: "3" }, MSG), {
+    state: "ready", ready: true, present: names, missing: [], message: "R",
+  });
+  assert.deepEqual(readiness(names, undefined, MSG), {
+    state: "absent", ready: false, present: [], missing: names, message: "A",
+  });
+  const one = readiness(names, { C_KEY: "3", A_KEY: "1" }, MSG);
+  assert.equal(one.state, "partial");
+  assert.deepEqual(one.present, ["A_KEY", "C_KEY"]);
+  assert.equal(
+    one.message,
+    "Thing is HALF configured: 2 of 3 secrets are set and B_KEY is missing. Failing rather than " +
+      "skipping, because a skipped upload on a green run is invisible."
+  );
+  assert.match(readiness(names, { B_KEY: "2" }, MSG).message, /1 of 3 secrets are set and A_KEY, C_KEY are missing\./);
+});
+
+test("readiness: only a string with a non-space character counts as present", () => {
+  /* MUTATION: drop the trim (or the typeof check) -> a blank or non-string
+     secret reads as set, and seven blank secrets read as "ready". */
+  for (const blank of ["", " ", "\t\n", undefined, null, 0, 1, {}, true]) {
+    assert.equal(readiness(["K"], { K: blank }, MSG).state, "absent", JSON.stringify(blank));
+  }
+  assert.equal(readiness(["K"], { K: " v " }, MSG).state, "ready");
+});
+
+test("both gates ARE readiness(): the same answer for the same env, with their own words", () => {
+  /* MUTATION: give either gate its own copy of the rule again with any
+     difference (a trim, an order, a state) -> its answers part from
+     readiness()'s on one of these envs. */
+  const envs = [
+    {},
+    Object.fromEntries([...SIGNING_SECRETS, ...PLAY_SECRETS].map((k) => [k, "x"])),
+    { APPLE_TEAM_ID: "T", PLAY_SERVICE_ACCOUNT_JSON: "  " },
+    { IOS_DIST_CERT_P12_BASE64: "p12", APP_STORE_CONNECT_KEY_ID: "\n", PLAY_SERVICE_ACCOUNT_JSON: "{}" },
+  ];
+  for (const env of envs) {
+    assert.deepEqual(playReadiness(env), readiness(PLAY_SECRETS, env, PLAY_READINESS_MESSAGES));
+    assert.deepEqual(signingReadiness(env), readiness(SIGNING_SECRETS, env, SIGNING_READINESS_MESSAGES));
+  }
+});
+
+test("neither gate keeps its own copy of the rule or its partial wording", () => {
+  /* MUTATION: paste the old inline loop (or the HALF-configured sentence) back
+     into ios-ci.mjs or release-ci.mjs -> red. The partial wording lives once,
+     in tools/release/readiness.mjs. */
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const shared = fs.readFileSync(path.join(here, "..", "release", "readiness.mjs"), "utf8");
+  assert.match(shared, /HALF configured/);
+  for (const f of ["ios-ci.mjs", "release-ci.mjs"]) {
+    const src = fs.readFileSync(path.join(here, f), "utf8");
+    assert.doesNotMatch(src, /HALF configured/, `${f} spells the partial message itself`);
+    assert.doesNotMatch(src, /missing\.length === 0 \? "ready"/, `${f} decides the state itself`);
+    assert.match(src, /from "\.\.\/release\/readiness\.mjs"/, `${f} does not import the shared rule`);
+  }
+});
+
+test("ANDROID_SECRETS is the keystore trio release.yml hands android-bundle, frozen", () => {
+  /* MUTATION: drop or rename one -> red here, and release-env-check (which
+     builds its list from this one) misses it. */
+  assert.deepEqual([...ANDROID_SECRETS], ["ANDROID_KEYSTORE_B64", "ANDROID_KEYSTORE_PASSWORD", "ANDROID_KEY_ALIAS"]);
+  assert.ok(Object.isFrozen(ANDROID_SECRETS));
+  assert.ok(Object.isFrozen(PLAY_SECRETS));
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const yml = fs.readFileSync(path.join(here, "..", "..", ".github", "workflows", "release.yml"), "utf8");
+  for (const name of ANDROID_SECRETS) assert.match(yml, new RegExp(`secrets\\.${name}\\b`), name);
 });
