@@ -179,7 +179,7 @@ const STRUCTURAL = {
 const CREAM_SCHEME = {
   "--paper": "#F7F0E4", "--paper-2": "#EFE6D6", "--card": "#FFFDF8",
   "--ink": "#1E1A16", "--ink-2": "#5C544B", "--ink-3": "#6C645A",
-  "--dial-line": "#E2D8C6", "--rubber": "#2A2520", "--rubber-lip": "#15110E",
+  "--dial-line": "#E2D8C6", "--rubber": "#2A2520", "--rubber-lip": "#15110E", "--on-rubber": "#F7F0E4",
   "--persimmon": "#C93F14", "--persimmon-lip": "#8E2B0C", "--persimmon-soft": "#F6D9CD",
   "--ultramarine": "#2B45C8", "--ultramarine-lip": "#1C2F8F", "--ultramarine-soft": "#D9DEF7",
   "--good": "#1F7A3E", "--warn": "#9A5B00",
@@ -196,7 +196,7 @@ const CREAM_SCHEME = {
 const BAKELITE_SCHEME = {
   "--paper": "#17130F", "--paper-2": "#1F1A15", "--card": "#241E18",
   "--ink": "#F4ECDF", "--ink-2": "#BDB2A3", "--ink-3": "#948979",
-  "--dial-line": "#332B24", "--rubber": "#3A332C", "--rubber-lip": "#120E0B",
+  "--dial-line": "#332B24", "--rubber": "#3A332C", "--rubber-lip": "#120E0B", "--on-rubber": "#F4ECDF",
   "--persimmon": "#FF6A3A", "--persimmon-lip": "#B8431E", "--persimmon-soft": "#4A2A1E",
   "--ultramarine": "#8EA0FF", "--ultramarine-lip": "#5566C8", "--ultramarine-soft": "#26305A",
   "--good": "#5CC57A", "--warn": "#E0A14A",
@@ -290,7 +290,7 @@ const PAIRS = [
   ["--ink", "--paper", 4.5], ["--ink", "--card", 4.5], ["--ink", "--paper-2", 4.5],
   ["--ink-2", "--paper", 4.5], ["--ink-2", "--card", 4.5], ["--ink-2", "--paper-2", 4.5],
   ["--ink-3", "--paper", 4.5], ["--ink-3", "--card", 4.5], ["--ink-3", "--paper-2", 4.5],
-  ["--on-persimmon", "--persimmon", 4.5], ["--on-ultramarine", "--ultramarine", 4.5],
+  ["--on-rubber", "--rubber", 4.5], ["--on-persimmon", "--persimmon", 4.5], ["--on-ultramarine", "--ultramarine", 4.5],
   ["--persimmon", "--paper", 3], ["--persimmon", "--card", 3], ["--persimmon", "--paper-2", 3],
   ["--ultramarine", "--paper", 4.5], ["--ultramarine", "--card", 4.5],
   ["--good", "--paper", 4.5], ["--warn", "--paper", 4.5],
@@ -299,7 +299,8 @@ const PAIRS = [
 
 for (const [scheme, tokens] of [["Cream", { ...toObj(CREAM) }], ["Bakelite", { ...toObj(CREAM), ...toObj(BAKELITE_OS) }]]) {
   test(`WCAG AA, ${scheme}: every text and UI pair clears its threshold`, () => {
-    /* MUTATION: `--ink-3` -> #8A8278 puts the Cream rows under 4.5 (and
+    /* MUTATION: `--on-rubber` -> #17130F makes Bakelite's rubber key 1.49:1;
+       `--ink-3` -> #8A8278 puts the Cream rows under 4.5 (and
        `--dial-seg-c3` -> #B8860B, the notes' original mustard, fails the well
        row at 2.63:1: the table in BUILD-NOTES overstated it). */
     const fails = [];

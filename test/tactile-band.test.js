@@ -3,7 +3,9 @@
 "use strict";
 const { test } = require("node:test");
 const assert = require("node:assert");
-const { load, rule } = require("./helpers/tactile-primitives.js");
+const { load, rule, ROOT } = require("./helpers/tactile-primitives.js");
+const fs = require("node:fs");
+const path = require("node:path");
 
 const p = load();
 const segments = [
@@ -69,4 +71,74 @@ test("narration is hatched outside mini mode and mini has no station labels", ()
   assert.match(detail, /t-band__bar--narration" fill="url\(#hatched-hatch\)"/);
   assert.doesNotMatch(mini, /t-band__code/);
   assert.match(rule(".band--mini"), /height:\s*var\(--s-2\)/);
+});
+
+function scrubberFixture(value = 30) {
+  const attrs = new Map([["role", "slider"], ["aria-valuemin", "0"], ["aria-valuemax", "100"], ["aria-valuenow", String(value)]]);
+  const listeners = {};
+  const progress = { attrs: {}, setAttribute(name, next) { this.attrs[name] = next; } };
+  const needle = { attrs: {}, setAttribute(name, next) { this.attrs[name] = next; } };
+  return {
+    attrs, listeners, progress, needle,
+    getAttribute(name) { return attrs.get(name) ?? null; },
+    setAttribute(name, next) { attrs.set(name, String(next)); },
+    removeAttribute(name) { attrs.delete(name); },
+    addEventListener(type, fn) { listeners[type] = fn; },
+    removeEventListener(type) { delete listeners[type]; },
+    querySelector(selector) { return selector === ".band__progress" ? progress : selector === ".needle" ? needle : null; },
+    getBoundingClientRect() { return { left: 10, width: 100 }; },
+    setPointerCapture(id) { this.captured = id; },
+    releasePointerCapture(id) { this.released = id; },
+  };
+}
+
+test("scrubber pointer input tracks the well and publishes its changed value", () => {
+  // MUTATION: delete the pointerdown listener registration -> the first call is missing and this test fails.
+  const scrubber = scrubberFixture();
+  const inputs = [];
+  const changes = [];
+  p.tactileWireScrubber(scrubber, {
+    totalSeconds: 100,
+    segments: [{ duration: 20 }, { duration: 30 }, { duration: 50 }],
+    onInput(value, source) { inputs.push([value, source]); },
+    onChange(value, source) { changes.push([value, source]); },
+  });
+  let prevented = false;
+  scrubber.listeners.pointerdown({ clientX: 60, pointerId: 7, preventDefault() { prevented = true; } });
+  assert.ok(prevented);
+  assert.strictEqual(scrubber.attrs.get("aria-valuenow"), "50");
+  assert.strictEqual(scrubber.progress.attrs.width, "500.00");
+  assert.strictEqual(scrubber.needle.attrs.transform, "translate(500.00 0)");
+  scrubber.listeners.pointermove({ clientX: 90, pointerId: 7, preventDefault() {} });
+  assert.strictEqual(scrubber.attrs.get("aria-valuenow"), "80");
+  scrubber.listeners.pointerup({ clientX: 57, pointerId: 7, preventDefault() {} });
+  assert.strictEqual(scrubber.attrs.get("aria-valuenow"), "50", "release snaps to a boundary within 12px");
+  assert.deepStrictEqual(inputs, [[50, "pointer"], [80, "pointer"], [50, "pointer"]]);
+  assert.deepStrictEqual(changes, [[50, "pointer"]], "release commits one seek");
+  assert.strictEqual(scrubber.captured, 7);
+  assert.strictEqual(scrubber.released, 7);
+});
+
+test("scrubber keyboard input seeks by time, by segment, and to both ends", () => {
+  // MUTATION: change ArrowUp to add 30 seconds instead of choosing `nextBoundary` -> 50 becomes 75.
+  const scrubber = scrubberFixture(30);
+  p.tactileWireScrubber(scrubber, { totalSeconds: 100, segments: [{ duration: 20 }, { duration: 30 }, { duration: 50 }] });
+  function key(value) {
+    let prevented = false;
+    scrubber.listeners.keydown({ key: value, preventDefault() { prevented = true; } });
+    assert.ok(prevented, `${value} is handled`);
+    return Number(scrubber.attrs.get("aria-valuenow"));
+  }
+  assert.strictEqual(key("ArrowRight"), 60, "right seeks 30 seconds");
+  assert.strictEqual(key("ArrowLeft"), 45, "left seeks 15 seconds");
+  assert.strictEqual(key("ArrowUp"), 50, "up seeks to the next segment boundary");
+  assert.strictEqual(key("ArrowDown"), 20, "down seeks to the previous segment boundary");
+  assert.strictEqual(key("End"), 100);
+  assert.strictEqual(key("Home"), 0);
+});
+
+test("the gallery wires every rendered scrubber instead of shipping an inert slider", () => {
+  // MUTATION: remove the tactileWireScrubber call from renderGallery -> this test fails.
+  const gallery = fs.readFileSync(path.join(ROOT, "ui", "gallery.js"), "utf8");
+  assert.match(gallery, /querySelectorAll\("\.band--scrub"\)[\s\S]*tactileWireScrubber\(scrubber/);
 });

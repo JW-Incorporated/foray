@@ -46,3 +46,34 @@ test("artwork URLs pass through safeUrl and unsafe sources never reach markup", 
   assert.doesNotMatch(bad, /javascript:/);
   assert.match(good, /src="https:\/\/example\.com\/a\.png"/);
 });
+
+test("the bridge carries adoption-ready metadata, Up Next, and one Play keycap", () => {
+  // MUTATION: delete the bridge__details block -> show, duration, and Up Next all disappear and this test fails.
+  const html = p.tactileBridgeCard({ title: "Words wear into new forms", show: "Lingthusiasm - A podcast", duration: "35 min" });
+  assert.match(html, /class="bridge__show">Lingthusiasm<\/span>/);
+  assert.match(html, /class="readout">35 min<\/span>/);
+  assert.match(html, /class="row__queue"[^>]*aria-label="Add to Up Next: Words wear into new forms"/);
+  assert.match(html, />Up Next<\/span>/);
+  assert.strictEqual((html.match(/class="keycap\b/g) || []).length, 1, "one Play keycap");
+  assert.match(html, /aria-label="Play Words wear into new forms"/);
+});
+
+test("skeletons expose the final hero, row, and playlist anatomy as separate shapes", () => {
+  // MUTATION: replace the three skel__title spans with one span -> the title-line count fails.
+  const hero = p.tactileSkeleton("hero");
+  const title = /<div class="skel__title">([\s\S]*?)<\/div>/.exec(hero)[1];
+  const discs = /<span class="skel__discs">([\s\S]*?)<\/span><span class="skel__shape skel__readout">/.exec(hero)[1];
+  const why = /<div class="skel__why">([\s\S]*?)<\/div>/.exec(hero)[1];
+  assert.strictEqual((title.match(/skel__shape/g) || []).length, 3, "three independent title lines");
+  assert.strictEqual((discs.match(/skel__shape/g) || []).length, 3, "three overlapping discs");
+  assert.strictEqual((why.match(/skel__shape/g) || []).length, 2, "two why-lines");
+  for (const part of ["skel__eyebrow", "skel__band", "skel__readout", "skel__primary", "skel__secondary"]) assert.match(hero, new RegExp(part));
+  const row = p.tactileSkeleton("row");
+  assert.match(row, /skel__row-art/);
+  assert.match(row, /skel__row-meta/);
+  assert.match(row, /skel__row-control/);
+  const card = p.tactileSkeleton("card");
+  assert.match(card, /skel__card-art/);
+  assert.strictEqual((/<div class="skel__card-lines">([\s\S]*?)<\/div>/.exec(card)[1].match(/skel__shape/g) || []).length, 2);
+  assert.match(rule(".skel__title > span"), /height:\s*calc\(var\(--s-6\) \+ var\(--s-1\)\)/);
+});

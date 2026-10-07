@@ -58,7 +58,7 @@ function gallerySurfaces(scheme) {
     tactileCard({ eyebrow: "Hero", title: "A bigger stage", copy: "The hero keeps the same material with more room.", hero: true }) +
     tactileWell({ text: "Inset well · 12:40" }) + tactileCard({ eyebrow: "Loading", title: "Stable geometry", copy: "The state keeps its final footprint.", loading: true }) +
     '</div><div class="gallery-band-stack"><span class="gallery-label">Mini band</span>' + tactileBand({ id: id + "-mini", kind: "mini", segments: galleryBandSegments(), progress: .43, currentIndex: 2, renderWidth: 329 }) + '<span class="gallery-label">Detail band · one code per run</span>' + tactileBand({ id: id + "-detail", kind: "detail", segments: galleryBandSegments(), progress: .43, currentIndex: 2, renderWidth: 329 }) + '<span class="gallery-label">Scrubber · slider</span>' + tactileBand({ id: id + "-scrub", kind: "scrub", segments: galleryBandSegments(), progress: .43, currentIndex: 2, totalSeconds: 1284, valueText: "9 minutes 12 of 21 minutes 24, BBQ Radio Network", renderWidth: 329 }) + '</div>' +
-    tactileGauge({}) + tactileBridgeCard({ sentence: "Machining shapes parts; language shapes meaning through the same steady pressure.", knownTitle: "Machining", knownInitials: "MA", title: "How words wear into new forms", initials: "LW" }) +
+    tactileGauge({}) + tactileBridgeCard({ sentence: "Machining shapes parts; language shapes meaning through the same steady pressure.", knownTitle: "Machining", knownInitials: "MA", title: "How words wear into new forms", show: "Lingthusiasm", duration: "35 min", initials: "LW" }) +
     '<div class="gallery-two">' + tactileToast({ text: "Removed from Up Next", action: "Undo" }) + tactileToast({ text: "Saved for later", action: "Undo", show: true }) + '</div><div class="gallery-two">' + tactileSkeleton("row") + tactileSkeleton("hero") + '</div>' + tactileEmpty({ copy: "Nothing here yet. Follow a show and it lands here.", action: "Find a show" }) + '</section>';
 }
 
@@ -177,4 +177,7 @@ function renderGallery() {
   var navigation = $("#gallery-light-navigation");
   if (navigation) navigation.insertBefore(open, navigation.querySelector(".sheet--preview"));
   tactileWireSheet(open, $("#gallery-sheet"));
+  document.querySelectorAll(".band--scrub").forEach(function (scrubber) {
+    tactileWireScrubber(scrubber, { segments: galleryBandSegments(), totalSeconds: 1284 });
+  });
 }

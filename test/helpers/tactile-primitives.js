@@ -12,6 +12,7 @@ function esc(s) {
 }
 
 function safeUrl(u) {
+  if (typeof u === "string" && /^#[A-Za-z0-9/][A-Za-z0-9_.:/?&=%-]*$/.test(u)) return u;
   try {
     const parsed = new URL(u);
     if (parsed.protocol === "https:" || parsed.protocol === "http:") return u;

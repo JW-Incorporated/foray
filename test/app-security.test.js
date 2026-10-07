@@ -134,6 +134,12 @@ test("safeUrl passes through http and https unchanged", () => {
   assert.strictEqual(app.safeUrl("http://example.com/"), "http://example.com/");
 });
 
+test("safeUrl allows a same-document fragment without opening another URL scheme", () => {
+  // MUTATION: delete the leading-fragment branch in safeUrl -> the sprite reference collapses to "#".
+  assert.strictEqual(app.safeUrl("#ph-play"), "#ph-play");
+  assert.strictEqual(app.safeUrl("#/library"), "#/library");
+});
+
 test("safeUrl rejects every scheme that can execute", () => {
   for (const bad of [
     "javascript:alert(1)",
@@ -164,10 +170,14 @@ test("safeUrl does not attempt to sanitise — it either allows or replaces", ()
     The page has a strict CSP — no inline styles/scripts."
    Enforced by nothing until now. */
 
-test("every interpolated href and src passes through safeUrl", () => {
-  const attrs = SRC.match(/\b(?:href|src)\s*=\s*"\$\{[^}]*\}/g) || [];
-  assert.ok(attrs.length > 0, "expected at least one interpolated href/src to guard");
-  const unguarded = attrs.filter((a) => !a.includes("safeUrl("));
+test("every template or classic-script concatenated href and src passes through safeUrl", () => {
+  /* MUTATION: replace `esc(safeUrl("#" + name))` in tactileIcon with
+     `esc(name)` -> the concatenated <use href> is reported here. */
+  const templates = SRC.match(/\b(?:href|src)\s*=\s*"\$\{[^}]*\}/g) || [];
+  const concatenated = SRC.match(/\b(?:href|src)=["'][^"'`\n]*(?:'|")\s*\+\s*[^+\n]+/g) || [];
+  assert.ok(templates.length > 0, "expected at least one template href/src to guard");
+  assert.ok(concatenated.length > 0, "expected at least one classic-script concatenated href/src to guard");
+  const unguarded = [...templates, ...concatenated].filter((a) => !a.includes("safeUrl("));
   assert.deepStrictEqual(
     unguarded, [],
     "these href/src interpolations bypass safeUrl():\n" + unguarded.join("\n")

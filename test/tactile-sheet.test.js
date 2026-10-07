@@ -16,8 +16,12 @@ test("sheet markup is modal, labelled, focusable at its container, and hidden at
 });
 
 test("open moves focus to the sheet, traps Tab, Escape closes, and focus returns", () => {
-  // MUTATION: change `sheet.focus()` in open() to `first.focus()` -> the container-focus assertion fails.
-  const doc = { activeElement: null };
+  // MUTATION: delete the `document.activeElement === sheet` trap branch -> Shift+Tab escapes to BODY.
+  const doc = {
+    activeElement: null, listeners: {},
+    addEventListener(type, fn) { this.listeners[type] = fn; },
+    removeEventListener(type) { delete this.listeners[type]; },
+  };
   function el(name) {
     return {
       name, hidden: false, attrs: new Set(), listeners: {}, parentElement: null, children: [],
@@ -32,10 +36,12 @@ test("open moves focus to the sheet, traps Tab, Escape closes, and focus returns
   const first = el("first");
   const last = el("last");
   const content = el("content");
+  const outside = el("body");
   const sheet = el("sheet");
   sheet.hidden = true;
   sheet.querySelector = () => close;
   sheet.querySelectorAll = () => [first, last];
+  sheet.contains = (candidate) => [close, first, last].includes(candidate);
   const parent = { children: [content, sheet] };
   sheet.parentElement = parent;
   const p = load({ document: doc });
@@ -44,8 +50,31 @@ test("open moves focus to the sheet, traps Tab, Escape closes, and focus returns
   assert.strictEqual(sheet.hidden, false);
   assert.strictEqual(doc.activeElement, sheet, "focus starts on the sheet container");
   assert.ok(content.attrs.has("inert"), "background sibling is inert");
-  doc.activeElement = last;
+
   let prevented = false;
+  sheet.listeners.keydown({ key: "Tab", shiftKey: false, preventDefault() { prevented = true; } });
+  assert.ok(prevented);
+  assert.strictEqual(doc.activeElement, first, "forward Tab from the container enters at the first control");
+
+  doc.activeElement = sheet;
+  prevented = false;
+  sheet.listeners.keydown({ key: "Tab", shiftKey: true, preventDefault() { prevented = true; } });
+  assert.ok(prevented);
+  assert.strictEqual(doc.activeElement, last, "Shift+Tab from the container wraps to the last control");
+
+  doc.activeElement = outside;
+  sheet.listeners.keydown({ key: "Tab", shiftKey: false, preventDefault() {} });
+  assert.strictEqual(doc.activeElement, first, "an outside focus is recovered in the forward direction");
+  doc.activeElement = outside;
+  sheet.listeners.keydown({ key: "Tab", shiftKey: true, preventDefault() {} });
+  assert.strictEqual(doc.activeElement, last, "an outside focus is recovered in the reverse direction");
+
+  doc.activeElement = outside;
+  doc.listeners.focusin({ target: outside });
+  assert.strictEqual(doc.activeElement, first, "programmatic focus outside the open modal is contained");
+
+  doc.activeElement = last;
+  prevented = false;
   sheet.listeners.keydown({ key: "Tab", shiftKey: false, preventDefault() { prevented = true; } });
   assert.ok(prevented);
   assert.strictEqual(doc.activeElement, first, "forward Tab wraps inside");
@@ -53,6 +82,7 @@ test("open moves focus to the sheet, traps Tab, Escape closes, and focus returns
   assert.strictEqual(sheet.hidden, true);
   assert.strictEqual(doc.activeElement, opener, "focus returns to the opener");
   assert.ok(!content.attrs.has("inert"));
+  assert.strictEqual(doc.listeners.focusin, undefined, "the document focus guard is removed on close");
 });
 
 test("the sheet uses the deck material, one motion token, and a static gallery preview", () => {

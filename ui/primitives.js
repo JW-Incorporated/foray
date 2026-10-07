@@ -21,7 +21,7 @@ var TACTILE_ICON_IDS = new Set([
 function tactileIcon(id, size) {
   var name = TACTILE_ICON_IDS.has(id) ? id : "ph-radio";
   var cls = size === "sm" ? " i--sm" : size === "lg" ? " i--lg" : "";
-  return '<svg class="i' + cls + '" aria-hidden="true" focusable="false"><use href="#' + esc(name) + '"></use></svg>';
+  return '<svg class="i' + cls + '" aria-hidden="true" focusable="false"><use href="' + esc(safeUrl("#" + name)) + '"></use></svg>';
 }
 
 function tactileArtFrame(data) {
@@ -189,9 +189,117 @@ function tactileBand(data) {
     : ' aria-label="' + esc(d.label || "Foray band with " + codes.size + " stations") + '"';
   return '<svg class="band band--' + esc(kind) + (d.buffering ? " band--buffering" : "") + '" data-draw="true" role="' + role + '"' + aria + ' viewBox="0 0 1000 60" preserveAspectRatio="none">' +
     '<defs><pattern id="' + esc(id) + '-hatch" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="12" class="t-band__hatch"></rect></pattern>' +
-    '<clipPath id="' + esc(id) + '-progress"><rect x="0" y="0" width="' + (progress * 1000).toFixed(2) + '" height="60"></rect></clipPath></defs>' +
+    '<clipPath id="' + esc(id) + '-progress"><rect class="band__progress" x="0" y="0" width="' + (progress * 1000).toFixed(2) + '" height="60"></rect></clipPath></defs>' +
     '<g class="band__draw"><g class="t-band__base">' + bars + '</g><g class="t-band__fill" clip-path="url(#' + esc(id) + '-progress)">' + bars + "</g>" + labels +
     '<g class="needle" transform="translate(' + (progress * 1000).toFixed(2) + ' 0)"><rect x="-1" y="3" width="2" height="39" rx="1"></rect><circle cx="0" cy="3" r="4"></circle></g></g></svg>';
+}
+
+function tactileWireScrubber(scrubber, data) {
+  if (!scrubber || scrubber.getAttribute("role") !== "slider") return function () {};
+  var d = data || {};
+  var total = Math.max(1, Number(d.totalSeconds || scrubber.getAttribute("aria-valuemax")) || 1);
+  var segments = Array.isArray(d.segments) ? d.segments : [];
+  var segmentTotal = segments.reduce(function (sum, segment) { return sum + Math.max(0, Number(segment.duration) || 0); }, 0);
+  var boundaries = [0];
+  var elapsed = 0;
+  segments.forEach(function (segment) {
+    elapsed += Math.max(0, Number(segment.duration) || 0);
+    boundaries.push(segmentTotal ? elapsed / segmentTotal * total : 0);
+  });
+  if (boundaries[boundaries.length - 1] !== total) boundaries.push(total);
+  var progressRect = scrubber.querySelector(".band__progress");
+  var needle = scrubber.querySelector(".needle");
+  var dragging = false;
+
+  function clamp(value) { return Math.max(0, Math.min(total, Math.round(Number(value) || 0))); }
+  function valueText(value) {
+    return typeof d.formatValue === "function" ? d.formatValue(value) : value + " seconds of " + Math.round(total) + " seconds";
+  }
+  function setValue(next, source, commit) {
+    var value = clamp(next);
+    var x = value / total * 1000;
+    scrubber.setAttribute("aria-valuenow", String(value));
+    scrubber.setAttribute("aria-valuetext", valueText(value));
+    if (progressRect) progressRect.setAttribute("width", x.toFixed(2));
+    if (needle) needle.setAttribute("transform", "translate(" + x.toFixed(2) + " 0)");
+    if (typeof d.onInput === "function") d.onInput(value, source);
+    if (commit && typeof d.onChange === "function") d.onChange(value, source);
+    return value;
+  }
+  function pointerValue(event) {
+    var rect = scrubber.getBoundingClientRect();
+    if (!rect || rect.width <= 0) return Number(scrubber.getAttribute("aria-valuenow")) || 0;
+    return (event.clientX - rect.left) / rect.width * total;
+  }
+  function snappedPointerValue(event) {
+    var rect = scrubber.getBoundingClientRect();
+    var value = pointerValue(event);
+    if (!rect || rect.width <= 0) return value;
+    var threshold = 12 / rect.width * total;
+    var closest = boundaries.reduce(function (match, boundary) {
+      return Math.abs(boundary - value) < Math.abs(match - value) ? boundary : match;
+    }, boundaries[0]);
+    return Math.abs(closest - value) <= threshold ? closest : value;
+  }
+  function pointerDown(event) {
+    dragging = true;
+    scrubber.setAttribute("data-scrubbing", "true");
+    if (scrubber.setPointerCapture && event.pointerId !== undefined) scrubber.setPointerCapture(event.pointerId);
+    setValue(pointerValue(event), "pointer", false);
+    event.preventDefault();
+  }
+  function pointerMove(event) {
+    if (!dragging) return;
+    setValue(pointerValue(event), "pointer", false);
+    event.preventDefault();
+  }
+  function pointerUp(event) {
+    if (!dragging) return;
+    dragging = false;
+    scrubber.removeAttribute("data-scrubbing");
+    if (scrubber.releasePointerCapture && event.pointerId !== undefined) scrubber.releasePointerCapture(event.pointerId);
+    setValue(snappedPointerValue(event), "pointer", true);
+  }
+  function pointerCancel(event) {
+    if (!dragging) return;
+    dragging = false;
+    scrubber.removeAttribute("data-scrubbing");
+    if (scrubber.releasePointerCapture && event.pointerId !== undefined) scrubber.releasePointerCapture(event.pointerId);
+  }
+  function previousBoundary(value) {
+    for (var i = boundaries.length - 1; i >= 0; i -= 1) if (boundaries[i] < value - 0.5) return boundaries[i];
+    return 0;
+  }
+  function nextBoundary(value) {
+    for (var i = 0; i < boundaries.length; i += 1) if (boundaries[i] > value + 0.5) return boundaries[i];
+    return total;
+  }
+  function keyDown(event) {
+    var value = Number(scrubber.getAttribute("aria-valuenow")) || 0;
+    var next = null;
+    if (event.key === "ArrowLeft") next = value - 15;
+    else if (event.key === "ArrowRight") next = value + 30;
+    else if (event.key === "ArrowDown") next = previousBoundary(value);
+    else if (event.key === "ArrowUp") next = nextBoundary(value);
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = total;
+    if (next === null) return;
+    event.preventDefault();
+    setValue(next, "keyboard", true);
+  }
+
+  scrubber.addEventListener("pointerdown", pointerDown);
+  scrubber.addEventListener("pointermove", pointerMove);
+  scrubber.addEventListener("pointerup", pointerUp);
+  scrubber.addEventListener("pointercancel", pointerCancel);
+  scrubber.addEventListener("keydown", keyDown);
+  return function () {
+    scrubber.removeEventListener("pointerdown", pointerDown);
+    scrubber.removeEventListener("pointermove", pointerMove);
+    scrubber.removeEventListener("pointerup", pointerUp);
+    scrubber.removeEventListener("pointercancel", pointerCancel);
+    scrubber.removeEventListener("keydown", keyDown);
+  };
 }
 
 function tactileGauge(data) {
@@ -226,7 +334,8 @@ function tactileQueueRow(data) {
 
 function tactileBridgeCard(data) {
   var d = data || {};
-  return '<article class="card bridge" data-draw="true"><p class="bridge__sentence">' + esc(d.sentence || "Machining and language both reveal change through small repeated pressures.") + '</p><div class="bridge__arc">' + tactileArtFrame({ size: "queue", title: d.knownTitle, initials: d.knownInitials || "KN" }) + '<svg aria-hidden="true" viewBox="0 0 100 48" preserveAspectRatio="none"><path class="bridge__path" d="M2 30 C22 -6 78 -6 98 20"></path><circle cx="2" cy="30" r="3"></circle><circle cx="98" cy="20" r="3"></circle></svg>' + tactileArtFrame({ size: "row", title: d.title, initials: d.initials || "ST" }) + '</div><div class="bridge__meta">' + tactileTag({ kind: "stretch", text: "Stretch" }) + '<strong>' + esc(d.title || "A stretch pick") + "</strong></div></article>";
+  var title = d.title || "A stretch pick";
+  return '<article class="card bridge" data-draw="true"><p class="bridge__sentence">' + esc(d.sentence || "Machining and language both reveal change through small repeated pressures.") + '</p><div class="bridge__arc">' + tactileArtFrame({ size: "queue", title: d.knownTitle, initials: d.knownInitials || "KN" }) + '<svg aria-hidden="true" viewBox="0 0 100 48" preserveAspectRatio="none"><path class="bridge__path" d="M2 30 C22 -6 78 -6 98 20"></path><circle cx="2" cy="30" r="3"></circle><circle cx="98" cy="20" r="3"></circle></svg>' + tactileArtFrame({ size: "row", title: title, initials: d.initials || "ST" }) + '</div><div class="bridge__meta"><div class="bridge__copy">' + tactileTag({ kind: "stretch", text: "Stretch" }) + '<strong class="bridge__title">' + esc(title) + '</strong><div class="bridge__details"><span class="bridge__show">' + esc(tactileDisplayName(d.show)) + '</span><span class="readout">' + esc(d.duration || "35 min") + '</span><button type="button" class="row__queue" aria-label="' + esc((d.queued ? "Queued: " : "Add to Up Next: ") + title) + '">' + tactileIcon(d.queued ? "ph-check" : "ph-plus", "sm") + '<span>' + esc(d.queued ? "Queued" : "Up Next") + '</span></button></div></div><div class="bridge__play">' + tactileKeycap({ size: "sm", variant: "persimmon", round: true, icon: "ph-play-fill", label: "Play " + title }) + "</div></div></article>";
 }
 
 function tactileTile(data) {
@@ -266,8 +375,15 @@ function tactileWireSheet(opener, sheet) {
   var close = sheet.querySelector(".sheet__close");
   var siblings = Array.from(sheet.parentElement ? sheet.parentElement.children : []).filter(function (el) { return el !== sheet; });
   function focusables() { return Array.from(sheet.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])')); }
+  function inside(el) { return el === sheet || Boolean(el && sheet.contains && sheet.contains(el)); }
+  function containFocus(event) {
+    if (sheet.hidden || inside(event.target)) return;
+    var items = focusables();
+    (items[0] || sheet).focus();
+  }
   function shut() {
     sheet.hidden = true;
+    if (document.removeEventListener) document.removeEventListener("focusin", containFocus);
     siblings.forEach(function (el) { el.removeAttribute("inert"); });
     opener.focus();
   }
@@ -275,6 +391,7 @@ function tactileWireSheet(opener, sheet) {
     siblings.forEach(function (el) { el.setAttribute("inert", ""); });
     sheet.hidden = false;
     sheet.focus();
+    if (document.addEventListener) document.addEventListener("focusin", containFocus);
   }
   function keys(event) {
     if (event.key === "Escape") { event.preventDefault(); shut(); return; }
@@ -283,7 +400,8 @@ function tactileWireSheet(opener, sheet) {
     if (!items.length) { event.preventDefault(); sheet.focus(); return; }
     var first = items[0];
     var last = items[items.length - 1];
-    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    if (document.activeElement === sheet || !inside(document.activeElement)) { event.preventDefault(); (event.shiftKey ? last : first).focus(); }
+    else if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
     else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
   }
   opener.addEventListener("click", open);
@@ -300,7 +418,9 @@ function tactileRotary(data) {
 
 function tactileSkeleton(kind) {
   var type = ["hero", "row", "card"].includes(kind) ? kind : "row";
-  return '<div class="skel skel--' + esc(type) + '" aria-busy="true" aria-label="Loading"><span></span><span></span><span></span><span></span><span></span></div>';
+  if (type === "hero") return '<div class="skel skel--hero" aria-busy="true" aria-label="Loading"><span class="skel__shape skel__eyebrow"></span><div class="skel__title"><span class="skel__shape"></span><span class="skel__shape"></span><span class="skel__shape"></span></div><span class="skel__shape skel__band"></span><div class="skel__meta"><span class="skel__discs"><span class="skel__shape"></span><span class="skel__shape"></span><span class="skel__shape"></span></span><span class="skel__shape skel__readout"></span></div><div class="skel__why"><span class="skel__shape"></span><span class="skel__shape"></span></div><div class="skel__actions"><span class="skel__shape skel__primary"></span><span class="skel__shape skel__secondary"></span></div></div>';
+  if (type === "card") return '<div class="skel skel--card" aria-busy="true" aria-label="Loading"><span class="skel__shape skel__card-art"></span><div class="skel__card-lines"><span class="skel__shape"></span><span class="skel__shape"></span></div></div>';
+  return '<div class="skel skel--row" aria-busy="true" aria-label="Loading"><span class="skel__shape skel__row-art"></span><div class="skel__row-lines"><span class="skel__shape"></span><span class="skel__shape"></span><span class="skel__shape skel__row-meta"></span></div><span class="skel__shape skel__row-control"></span></div>';
 }
 
 function tactileEmpty(data) {
