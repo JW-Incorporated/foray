@@ -1,7 +1,7 @@
 {
   "name": "4a",
   "short_name": "4a",
-  "description": "Four topic queues, picked for you every day — one is deliberately different.",
+  "description": "Forays: one subject across many shows, plus new episodes picked for you",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#151119",
