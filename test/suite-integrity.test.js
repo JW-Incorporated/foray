@@ -2486,7 +2486,7 @@ const BACKEND_FLOORS = {
   "test/parserItemIsolation.test.ts": 1, // round-3 L6 (2026-09-25): backend-rest-1 — a throwing item is a warning, the feed still parses
   "test/personas.test.ts": 6,
   "test/podcastIndex.test.ts": 3,
-  "test/politeness.test.ts": 9,
+  "test/politeness.test.ts": 12, // CH2-26 (2026-10-07): hostSuggestsDai reads tools/refresh/dai-hosts.json -- omny.fm flagged, every JSON host and its subdomains flagged, a lookalike refused; 9 -> 12
   "test/poolIntegrity.test.ts": 6,
   /* Generation pipeline §4.0-4.1 (kanban card t_825eee4c): §9.4's ruling
      ("prompts are discarded") enforced structurally — this suite scans the
@@ -2501,7 +2501,7 @@ const BACKEND_FLOORS = {
   "test/property/duration.property.test.ts": 5,
   "test/property/html.property.test.ts": 4,
   "test/property/interestWeight.property.test.ts": 3,
-  "test/redirect.test.ts": 6,
+  "test/redirect.test.ts": 8, // CH2-26 (2026-10-07): resolveRedirectChain sends DEFAULT_FEED_USER_AGENT by default and the caller's userAgent when passed (no config/env import); 6 -> 8
   "test/scoring.test.ts": 17,
   "test/sessionBuilder.test.ts": 23, // #72 R17 provenance: signals name real matched taxonomy nodes, persona only when it weighted a match, recency/depth/fatigue follow the score log, stretch = wildcard + bridge, builder stamped; 15 -> 23 // round-3 L6 (2026-09-25): backend-rest-15/-16: the dedup log names the survivor; an unparseable date is neutral; 12 -> 15
   /* #72 (R17): the REAL data/session.json parsed with SessionDocSchema — a card
