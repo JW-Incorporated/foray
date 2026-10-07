@@ -52,8 +52,12 @@ const FLOOR = {
   surfaced: 229, // every eligible show appears at least once in 2026 (Family Mode OFF)
   minAppearances: 2, // physiology-endurance-running (was 1 with the low-bit swap)
   /* 7.9452 since the high-bit swap (was 7.9561): the new rotation changes
-     which shows share a row, and the mean moved by 0.011 of a branch. */
-  meanDistinctBranches: 7.945,
+     which shows share a row, and the mean moved by 0.011 of a branch.
+     7.9890 since the #547 show-label residue (2026-10-06): CBC Ideas,
+     Catalyst and TechSurge no longer all sit on the engineering branch
+     (now philosophy+nature, engineering, business+computing), so fewer rows
+     double up on it. Raised to the measured value, not lowered. */
+  meanDistinctBranches: 7.989,
 };
 const CEILING = {
   maxAppearances: 24, // planetary-radio, sigma-nutrition-radio (even rotation: 12.75; was 38 with the low-bit swap)
