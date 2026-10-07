@@ -33,6 +33,14 @@ owner's; change them here if experience says so.
   and `fidelity.mjs`. `shoot.mjs` and `gates.mjs` write to `--out`/their default under
   your own worktree; that is fine, nothing downstream needs those. Baselines are tied to
   one machine's Chromium and fonts, which is another reason they live in one place.
+- **Always pass `--scheme` to `shoot.mjs` for a direction's renders.** Shoot every
+  direction in its primary scheme explicitly: `--scheme light` for Tactile and any
+  light-first direction, `--scheme dark` for a dark-first one. A direction with both
+  palettes also gets one pass in the other scheme as a secondary check. Never rely on
+  the harness default (dark, chosen for today's dark-only app): the round-5 Tactile
+  font pass was shot without the flag and the comparison page showed the wrong palette.
+  Before publishing renders, sample a background pixel and confirm it matches the
+  direction's primary background token.
 - Windows: Git Bash rewrites `#/...` arguments; use PowerShell or `MSYS_NO_PATHCONV=1`.
   `run-suites` shows CRLF-only failures on Windows; judge Linux CI, not the
   Windows count (`PROGRESS.md`).

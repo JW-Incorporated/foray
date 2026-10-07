@@ -938,3 +938,5 @@ do not add extra calls to compensate.
 "Subject", never "topic". 4a speaks as 4a. No "fascinating", "deep dive",
 "delve", "explores". Durations read "45 min / 1 hr 5 min"; the colon clock
 is for the counter and scrubber only.
+
+Tactile renders are shot with `--scheme light` (its primary scheme is the cream paper `#F7F0E4`; the harness default is dark). Do a dark-scheme pass only as a secondary check.
