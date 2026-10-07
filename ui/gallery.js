@@ -25,6 +25,48 @@ function galleryBandSegments() {
   ];
 }
 
+function galleryContrastPairs(scheme) {
+  var ratios = scheme === "dark"
+    ? ["15.76", "14.06", "8.85", "5.38", "6.07", "7.10", "10.60", "6.49", "7.59", "8.56", "8.24", "5.47"]
+    : ["15.26", "17.01", "6.56", "5.14", "4.99", "7.53", "13.40", "4.41", "6.65", "4.74", "4.79", "3.14"];
+  var pairs = [
+    { id: "ink-paper", label: "Ink on paper", ratio: ratios[0] },
+    { id: "ink-card", label: "Ink on card", ratio: ratios[1] },
+    { id: "ink-2-paper", label: "Secondary ink on paper", ratio: ratios[2] },
+    { id: "ink-3-paper", label: "Tertiary ink on paper", ratio: ratios[3] },
+    { id: "on-persimmon", label: "Key text on persimmon", ratio: ratios[4] },
+    { id: "on-ultramarine", label: "Key text on ultramarine", ratio: ratios[5] },
+    { id: "on-rubber", label: "Key text on rubber", ratio: ratios[6] },
+    { id: "persimmon-paper", label: "Persimmon on paper · UI", ratio: ratios[7] },
+    { id: "ultramarine-paper", label: "Ultramarine on paper", ratio: ratios[8] },
+    { id: "good-paper", label: "Ready on paper", ratio: ratios[9] },
+    { id: "warn-paper", label: "Warning on paper", ratio: ratios[10] },
+    { id: "segment-enamels", label: "Station enamels on well · UI", ratio: ratios[11] },
+  ];
+  return pairs.map(function (pair) {
+    var enamels = pair.id === "segment-enamels"
+      ? '<span class="gallery-contrast__segments" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>'
+      : "";
+    return '<li class="gallery-contrast__pair gallery-contrast__pair--' + esc(pair.id) + '" data-pair="' + esc(pair.id) + '">' + enamels + '<span>' + esc(pair.label) + '</span><strong class="readout">' + esc(pair.id === "segment-enamels" ? "≥ " : "") + esc(pair.ratio) + ':1</strong></li>';
+  }).join("");
+}
+
+function galleryTypeAndContrast(scheme, label) {
+  var id = "gallery-" + scheme + "-type";
+  return '<section class="gallery-scheme gallery-scheme--' + esc(scheme) + '" id="' + esc(id) + '" aria-labelledby="' + esc(id) + '-title"><div class="gallery-type"><p class="readout">' + esc(label) + '</p><h2 class="heading" id="' + esc(id) + '-title">Type and contrast</h2>' +
+    '<p class="display-xl" data-type-role="display-xl">Today</p>' +
+    '<p class="display" data-type-role="display">' + esc("Podcasts, lined up around you.") + '</p>' +
+    '<p class="title" data-type-role="title">Barbecue: eight stories from a much longer history</p>' +
+    '<p class="heading" data-type-role="heading">Also today</p>' +
+    '<p class="gallery-body-lg" data-type-role="body-lg">A familiar craft opens onto how words change.</p>' +
+    '<p data-type-role="body">Body text stays readable at the smallest listening size.</p>' +
+    '<p class="gallery-label" data-type-role="label">Label · 13/16 · 700</p>' +
+    '<p class="gallery-micro" data-type-role="micro">Micro · 12/16 · 600</p>' +
+    '<p class="readout-lg" data-type-role="readout-lg">12:40</p>' +
+    '<p class="readout" data-type-role="readout">about 22 min · 4 shows</p>' +
+    '<ul class="gallery-contrast" aria-label="' + esc(label) + ' contrast table">' + galleryContrastPairs(scheme) + '</ul></div></section>';
+}
+
 function galleryControls(scheme) {
   var dark = scheme === "dark";
   return '<section class="gallery-block" id="gallery-' + esc(scheme) + '-controls" aria-labelledby="gallery-' + esc(scheme) + '-controls-title"><h3 class="heading" id="gallery-' + esc(scheme) + '-controls-title">Controls and states</h3>' +
@@ -57,9 +99,9 @@ function gallerySurfaces(scheme) {
     tactileCard({ eyebrow: "Card", title: "Raised enamel", copy: "One radius and one shadow carry grouped content." }) +
     tactileCard({ eyebrow: "Hero", title: "A bigger stage", copy: "The hero keeps the same material with more room.", hero: true }) +
     tactileWell({ text: "Inset well · 12:40" }) + tactileCard({ eyebrow: "Loading", title: "Stable geometry", copy: "The state keeps its final footprint.", loading: true }) +
-    '</div><div class="gallery-band-stack"><span class="gallery-label">Mini band</span>' + tactileBand({ id: id + "-mini", kind: "mini", segments: galleryBandSegments(), progress: .43, currentIndex: 2, renderWidth: 329 }) + '<span class="gallery-label">Detail band · one code per run</span>' + tactileBand({ id: id + "-detail", kind: "detail", segments: galleryBandSegments(), progress: .43, currentIndex: 2, renderWidth: 329 }) + '<span class="gallery-label">Scrubber · slider</span>' + tactileBand({ id: id + "-scrub", kind: "scrub", segments: galleryBandSegments(), progress: .43, currentIndex: 2, totalSeconds: 1284, valueText: "9 minutes 12 of 21 minutes 24, BBQ Radio Network", renderWidth: 329 }) + '</div>' +
+    '</div><div class="gallery-band-stack" id="' + esc(id) + '-band-states"><span class="gallery-label">Line band · mini player</span>' + tactileBand({ id: id + "-line", kind: "line", segments: galleryBandSegments(), progress: .43, currentIndex: 2, renderWidth: 329 }) + '<span class="gallery-label">Mini band</span>' + tactileBand({ id: id + "-mini", kind: "mini", segments: galleryBandSegments(), progress: .43, currentIndex: 2, renderWidth: 329 }) + '<span class="gallery-label">Detail band · one code per run</span>' + tactileBand({ id: id + "-detail", kind: "detail", segments: galleryBandSegments(), progress: .43, currentIndex: 2, renderWidth: 329 }) + '<span class="gallery-label">Scrubber · slider</span>' + tactileBand({ id: id + "-scrub", kind: "scrub", segments: galleryBandSegments(), progress: .43, currentIndex: 2, totalSeconds: 1284, valueText: "9 minutes 12 of 21 minutes 24, BBQ Radio Network", renderWidth: 329 }) + '<span class="gallery-label">Buffering scrubber · pulsing needle</span>' + tactileBand({ id: id + "-buffering", kind: "scrub", segments: galleryBandSegments(), progress: .43, currentIndex: 2, totalSeconds: 1284, valueText: "Buffering at 9 minutes 12", renderWidth: 329, buffering: true }) + '</div>' +
     tactileGauge({}) + tactileBridgeCard({ sentence: "Machining shapes parts; language shapes meaning through the same steady pressure.", knownTitle: "Machining", knownInitials: "MA", title: "How words wear into new forms", show: "Lingthusiasm", duration: "35 min", initials: "LW" }) +
-    '<div class="gallery-two">' + tactileToast({ text: "Removed from Up Next", action: "Undo" }) + tactileToast({ text: "Saved for later", action: "Undo", show: true }) + '</div><div class="gallery-two">' + tactileSkeleton("row") + tactileSkeleton("hero") + '</div>' + tactileEmpty({ copy: "Nothing here yet. Follow a show and it lands here.", action: "Find a show" }) + '</section>';
+    '<div class="gallery-two">' + tactileToast({ text: "Removed from Up Next", action: "Undo" }) + tactileToast({ text: "Saved for later", action: "Undo", show: true }) + '</div><div class="gallery-two gallery-skeletons" id="' + esc(id) + '-skeletons">' + tactileSkeleton("row") + tactileSkeleton("hero") + tactileSkeleton("card") + '</div>' + tactileEmpty({ copy: "Nothing here yet. Follow a show and it lands here.", action: "Find a show" }) + '</section>';
 }
 
 function galleryRows(scheme) {
@@ -82,7 +124,7 @@ function galleryNavigation(scheme) {
        laid out in normal flow. First a foray (its colours in the mini's 3px
        line), then a single episode (one persimmon line), then collapsed. */
     '<div class="gallery-device">' + tactileTabBar({ active: "today", count: 4, mini: { title: "A machine can teach a language", show: "Lingthusiasm", initials: "LI", segments: galleryBandSegments(), progress: .43 } }) + "</div>" +
-    '<div class="gallery-device">' + tactileTabBar({ active: "find", mini: { title: "Why bridges sing in the wind", show: "Origin Stories", initials: "OS", playing: true, progress: .6 } }) + "</div>" +
+    '<div id="' + esc(id) + '-playing-mini"><div class="gallery-device">' + tactileTabBar({ active: "find", mini: { title: "Why bridges sing in the wind", show: "Origin Stories", initials: "OS", playing: true, progress: .6 } }) + "</div></div>" +
     '<div class="gallery-device gallery-device--bare">' + tactileTabBar({ active: "yours", count: 4, collapsed: true }) + "</div>" +
     '</div>' + tactileRotary({ label: "Playback speed", value: "1.0×" }) + tactileSheet({ id: id + "-preview", closeId: id + "-preview-close", title: "Sheet", copy: "Focus enters the container and every gesture has a button.", primary: "Done", secondary: "Not now", preview: true }) + '</section>';
 }
@@ -100,21 +142,7 @@ function renderGallery() {
         <h1 class="display-xl" id="gallery-title">Controls built for a thumb</h1>
         <p class="gallery-copy">Cream enamel, Bakelite, radio bands, and keycaps share one measured system.</p>
       </header>
-      <section class="gallery-type" id="gallery-type" aria-labelledby="gallery-type-title">
-        <h2 class="heading" id="gallery-type-title">Type and contrast</h2>
-        <p class="display-xl">Today</p>
-        <p class="display">Podcasts, lined up around you.</p>
-        <p class="title">Small pressures change a machine over time</p>
-        <p class="heading">Also today</p>
-        <p class="gallery-body-lg">A familiar craft opens onto how words change.</p>
-        <p>Body text stays readable at the smallest listening size.</p>
-        <p class="gallery-label">Label · 13/16 · 700</p>
-        <p class="gallery-micro">Micro · 12/16 · 600</p>
-        <p class="readout-lg">12:40</p>
-        <p class="readout">about 22 min · 4 shows</p>
-        <div class="gallery-contrast"><span>Ink on paper</span><span>Secondary ink</span><span>Persimmon key</span><span>Ultramarine key</span></div>
-      </section>
-      ` + galleryScheme("light", "Cream · primary") + galleryScheme("dark", "Bakelite · optional") + `
+      ` + galleryTypeAndContrast("light", "Cream · primary") + galleryScheme("light", "Cream · primary") + galleryTypeAndContrast("dark", "Bakelite · optional") + galleryScheme("dark", "Bakelite · optional") + `
       <section aria-labelledby="gallery-bold-title">
         <h2 class="heading" id="gallery-bold-title">Phosphor Bold</h2>
         <ul class="gallery-icons" role="list">

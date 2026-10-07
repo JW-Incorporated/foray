@@ -55,14 +55,25 @@ async function typeSearch(page, text) {
   await wait(page, 1800);
 }
 
-async function showGallerySection(page, selector) {
+async function setGalleryTheme(page, scheme) {
+  await page.evaluate((value) => { document.documentElement.dataset.theme = value; }, scheme);
+}
+
+async function showGallerySection(page, selector, scheme) {
   const openSheet = page.locator("#gallery-sheet:not([hidden])");
   if (await openSheet.count()) await page.locator("#gallery-sheet-close").click();
+  await setGalleryTheme(page, scheme);
   await page.locator(selector).evaluate((el) => el.scrollIntoView({ block: "start", inline: "nearest" }));
   await wait(page, 200);
 }
 
-async function openGallerySheet(page) {
+async function openGallerySheet(page, scheme) {
+  await setGalleryTheme(page, scheme);
+  await page.evaluate((value) => {
+    const opener = document.querySelector("#gallery-sheet-open");
+    const preview = document.querySelector(`#gallery-${value}-navigation .sheet--preview`);
+    if (opener && preview && preview.parentElement) preview.parentElement.insertBefore(opener, preview);
+  }, scheme);
   await page.locator("#gallery-sheet-open").click();
   await page.waitForSelector("#gallery-sheet:not([hidden])", { timeout: 10000 });
   await wait(page, 300);
@@ -169,19 +180,27 @@ export function appStates(fx) {
       description: "Tactile foundation gallery: every primitive and state in Cream and Bakelite, plus the icon family.",
       seed: "dismissed",
       steps: [
-        { label: "type-and-contrast", route: "?gallery=1#/gallery", ready: ".gallery-type" },
-        { label: "cream-controls", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-light-controls") },
-        { label: "cream-surfaces", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-light-surfaces") },
-        { label: "cream-rows", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-light-rows") },
-        { label: "cream-navigation", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-light-navigation") },
-        { label: "cream-sheet-open", route: "#/gallery", run: (page) => openGallerySheet(page) },
-        { label: "bakelite-controls", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-dark-controls") },
-        { label: "bakelite-surfaces", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-dark-surfaces") },
-        { label: "bakelite-rows", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-dark-rows") },
-        { label: "bakelite-navigation", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-dark-navigation") },
-        { label: "icons-bold", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-bold-title") },
-        { label: "icons-fill", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-fill-title") },
-        { label: "icons-custom", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-custom-title") },
+        { label: "cream-type-and-contrast", route: "?gallery=1#/gallery", ready: "#gallery-light-type" },
+        { label: "cream-controls", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-light-controls", "light") },
+        { label: "cream-surfaces", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-light-surfaces", "light") },
+        { label: "cream-band-states", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-light-surfaces-band-states", "light") },
+        { label: "cream-skeletons", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-light-surfaces-skeletons", "light") },
+        { label: "cream-rows", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-light-rows", "light") },
+        { label: "cream-navigation", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-light-navigation", "light") },
+        { label: "cream-playing-mini", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-light-navigation-playing-mini", "light") },
+        { label: "cream-sheet-open", route: "#/gallery", run: (page) => openGallerySheet(page, "light") },
+        { label: "bakelite-type-and-contrast", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-dark-type", "dark") },
+        { label: "bakelite-controls", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-dark-controls", "dark") },
+        { label: "bakelite-surfaces", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-dark-surfaces", "dark") },
+        { label: "bakelite-band-states", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-dark-surfaces-band-states", "dark") },
+        { label: "bakelite-skeletons", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-dark-surfaces-skeletons", "dark") },
+        { label: "bakelite-rows", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-dark-rows", "dark") },
+        { label: "bakelite-navigation", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-dark-navigation", "dark") },
+        { label: "bakelite-playing-mini", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-dark-navigation-playing-mini", "dark") },
+        { label: "bakelite-sheet-open", route: "#/gallery", run: (page) => openGallerySheet(page, "dark") },
+        { label: "icons-bold", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-bold-title", "light") },
+        { label: "icons-fill", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-fill-title", "light") },
+        { label: "icons-custom", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-custom-title", "light") },
       ],
     },
   ];
