@@ -227,7 +227,8 @@ test("the pin text the python parsers regex is exactly what it was, and agrees w
      pin — the model regex finds one pin, not two. MUTATION (RUN, red,
      restored): change one character of a voice's sha256 in the tuple list —
      the parsed voices and the span hash both move. */
-  const src = fs.readFileSync(path.join(HERE, "fetch-models.mjs"), "utf8");
+  // LF-normalised so the span hash is the same on a Windows (autocrlf) checkout as in CI.
+  const src = fs.readFileSync(path.join(HERE, "fetch-models.mjs"), "utf8").replace(/\r\n/g, "\n");
   const models = [...src.matchAll(PY_MODEL_RE)];
   const voices = [...src.matchAll(PY_VOICE_RE)];
   assert.deepEqual(models.map((m) => ({ name: m[1], url: m[2], sha256: m[3], bytes: Number(m[4]) })),
