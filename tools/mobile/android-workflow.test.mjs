@@ -105,6 +105,39 @@ const SMOKE_REL = ".github/workflows/android-smoke.yml";
 const SMK = fs.readFileSync(path.join(ROOT, SMOKE_REL), "utf8");
 const SYML = code(SMK);
 
+/* THE COMPOSITE THE BUNDLE JOB CALLS (CH2-17). Since android-release.yml
+   ships through `.github/actions/android-bundle`, the build, key and log
+   pins below read the composite: that is the code the bundle job executes.
+   `BYML` is it with comments stripped, for the same reason as `RYML`. */
+const BUNDLE_ACTION_REL = ".github/actions/android-bundle/action.yml";
+const BUN = fs.readFileSync(path.join(ROOT, BUNDLE_ACTION_REL), "utf8");
+const BYML = code(BUN);
+
+/** One composite step, comments stripped. A composite's steps sit at four
+ *  spaces and `step()` splits at six (a workflow's), so the file is indented
+ *  by two first; the steps themselves are unchanged. */
+function bundleActionStepCode(nameFragment) {
+  const s = step(BUN.replace(/^/gm, "  "), nameFragment);
+  return s === null ? null : code(s);
+}
+
+/** One job of android-release.yml, comments and blanks skipped. */
+function releaseJob(name) {
+  return block(REL, name, 2);
+}
+
+/** What the bundle job EXECUTES: its own code plus every local composite it
+ *  `uses:`, which is where the build steps live. */
+function bundleJobExecutes() {
+  const job = releaseJob("android-bundle");
+  assert.ok(job, "android-release.yml has no android-bundle job");
+  const parts = [code(job)];
+  for (const m of code(job).matchAll(/uses:\s*\.\/(\.github\/actions\/[\w-]+)/g)) {
+    parts.push(code(fs.readFileSync(path.join(ROOT, m[1], "action.yml"), "utf8")));
+  }
+  return parts.join("\n");
+}
+
 /** Every `./gradlew` COMMAND in the workflow, one joined line each. */
 function gradlewInvocations(src) {
   return invocationsOf(src, "./gradlew");
@@ -813,8 +846,10 @@ test("android-release.yml exists and has the same five top-level keys", () => {
   assert.match(REL, /^name: android-release$/m);
 });
 
-test("it declares exactly two jobs, and neither is named like a required check", () => {
+test("it declares exactly three jobs, and none is named like a required check", () => {
   /* MUTATION: rename `android-smoke:` to `data-and-site:` -> fails.
+     CH2-17 added `version`, the secret-free job that derives the pair the
+     bundle job is built with.
      `protect-main` matches required contexts BY NAME, so a job called `backend`,
      `data-and-site` or `path-policy` in ANY workflow reports against the real
      required check. A 40-minute emulator boot answering for `data-and-site`
@@ -824,7 +859,7 @@ test("it declares exactly two jobs, and neither is named like a required check",
     .split(/\r?\n/)
     .filter((l) => /^ {2}[a-z][\w-]*:/.test(l))
     .map((l) => l.trim().replace(":", ""));
-  assert.deepEqual(names, ["android-bundle", "android-smoke"]);
+  assert.deepEqual(names, ["version", "android-bundle", "android-smoke"]);
   for (const required of ["backend", "data-and-site", "path-policy", "ios-kit"]) {
     assert.equal(names.includes(required), false, `a job named ${required} collides with a required check`);
   }
@@ -839,11 +874,17 @@ test("the emulator job cannot gate the artefact — the two jobs are independent
      chained in either direction, a flaked AVD stops the founder getting a
      bundle — which is the "a flaky required check is worse than no check"
      failure one level down from `required`. */
-  assert.equal(
-    /^\s*needs:/m.test(RYML),
-    false,
-    "neither job may depend on the other: a flaky emulator must never block the release bundle"
+  /* CH2-17: the bundle job now `needs: version` — the derived version pair,
+     from a job with no emulator and no flake surface — and that is the ONLY
+     edge in the file. MUTATION: `needs: [version, android-smoke]` on the
+     bundle job -> fails. */
+  const needs = [...RYML.matchAll(/^\s*needs:\s*(.+)$/gm)].map((m) => m[1].trim());
+  assert.deepEqual(
+    needs,
+    ["version"],
+    "neither the bundle nor the smoke may depend on the other: a flaky emulator must never block the release bundle"
   );
+  assert.match(code(releaseJob("android-bundle")), /^ {4}needs: version$/m, "and the one edge is the bundle's, on the version pair");
 });
 
 test("both jobs run on Linux and both have a timeout", () => {
@@ -857,10 +898,11 @@ test("both jobs run on Linux and both have a timeout", () => {
      launch there. MUTATION: delete `timeout-minutes:` from android-smoke.yml's
      job -> fails (zero, not one). */
   const count = (src, re) => (src.match(re) ?? []).length;
-  assert.equal(count(REL, /^ {4}runs-on: ubuntu-latest$/gm), 1, "the bundle job must be on ubuntu-latest");
+  /* CH2-17: two here now — the `version` job and the bundle. */
+  assert.equal(count(REL, /^ {4}runs-on: ubuntu-latest$/gm), 2, "the version and bundle jobs must be on ubuntu-latest");
   assert.equal(count(SMK, /^ {4}runs-on: ubuntu-latest$/gm), 1, "the smoke job must be on ubuntu-latest");
   assert.equal(/runs-on: macos/.test(RYML + SYML), false, "an Android build on macOS costs 10x and learns nothing");
-  assert.equal(count(REL, /^ {4}timeout-minutes: \d+$/gm), 1, "the bundle job needs a timeout");
+  assert.equal(count(REL, /^ {4}timeout-minutes: \d+$/gm), 2, "the version and bundle jobs each need a timeout");
   assert.equal(count(SMK, /^ {4}timeout-minutes: \d+$/gm), 1, "the smoke job needs a timeout");
 });
 
@@ -934,7 +976,15 @@ test("every action is GitHub's own — including for the emulator, where it is t
       .map((l) => l.replace(/^(- )?uses:\s*/, ""));
   const uses = usesOf(REL);
   const local = uses.filter((u) => u.startsWith("./"));
-  assert.deepEqual(local, ["./.github/workflows/android-smoke.yml"], "the only local call is the smoke workflow");
+  /* CH2-17: and the android-bundle composite, which release.yml ships
+     through. Its one third-party step, the SHA-pinned Play upload, is gated on
+     a credential this file passes as '' (pinned in the CH2-17 section), so it
+     never executes here. */
+  assert.deepEqual(
+    local,
+    ["./.github/actions/android-bundle", "./.github/workflows/android-smoke.yml"],
+    "the only local calls are the release composite and the smoke workflow"
+  );
   const actions = [...uses.filter((u) => !u.startsWith("./")), ...usesOf(SMK)];
   assert.ok(actions.length >= 8, `expected at least eight actions across the two jobs, found ${actions.length}`);
   for (const u of actions) {
@@ -942,7 +992,14 @@ test("every action is GitHub's own — including for the emulator, where it is t
   }
 });
 
-/* ───────────────────── the bundle, which is the whole point ────────────────── */
+/* ───────────────────── the bundle, which is the whole point ──────────────────
+ *
+ * SINCE CH2-17 THE BUILD, KEY AND LOG PINS READ THE COMPOSITE (`BUN`), because
+ * android-release.yml's bundle job calls `.github/actions/android-bundle` and
+ * that is where those steps execute; the CH2-17 section pins the call itself.
+ * Each MUTATION below is now applied to the composite. The structure check,
+ * the signer pin, the summary and the upload stay in android-release.yml and
+ * still read it. */
 
 test("`bundleRelease` is INVOKED — not assembleRelease, and not merely mentioned", () => {
   /* MUTATION: change `bundleRelease` to `assembleRelease` -> fails.
@@ -951,7 +1008,7 @@ test("`bundleRelease` is INVOKED — not assembleRelease, and not merely mention
      bundle task is a different task with a different output directory. Asserted
      against real `./gradlew` invocations rather than file text, so the word in a
      comment cannot satisfy it. */
-  const calls = gradlewInvocations(REL);
+  const calls = gradlewInvocations(BUN);
   assert.ok(
     calls.some((c) => /gradlew bundleRelease\b/.test(c)),
     `no bundleRelease invocation; found: ${JSON.stringify(calls)}`
@@ -973,7 +1030,7 @@ test("the release lint gate cannot be skipped silently here either", () => {
      excluded on the command line, switched off by a `lint { checkReleaseBuilds
      false }` a future template adds, or renamed by AGP — and the build prints
      BUILD SUCCESSFUL in all three. */
-  const s = releaseStepCode("bundleRelease — the .aab");
+  const s = bundleActionStepCode("bundleRelease — the .aab");
   assert.ok(s, "no bundleRelease step");
   assert.match(
     s,
@@ -990,11 +1047,11 @@ test("the gradle exit code is captured directly, never read from `$?` after a pi
      fails. This repo has produced false-green reports in both directions from
      exactly that. The build here writes to a file and the status is taken from
      the command itself. */
-  const s = releaseStepCode("bundleRelease — the .aab");
+  const s = bundleActionStepCode("bundleRelease — the .aab");
   assert.match(s, /GRADLE_STATUS=\$\?/, "the build's status must be captured immediately");
   assert.match(s, /if \[ "\$GRADLE_STATUS" -ne 0 \]/, "and it must be what decides the step");
   assert.equal(
-    /gradlew bundleRelease[^\n]*\|\s*tee/.test(RYML),
+    /gradlew bundleRelease[^\n]*\|\s*tee/.test(BYML),
     false,
     "piping the build into tee makes $? the exit code of tee"
   );
@@ -1042,10 +1099,17 @@ test("the bundle artifact is uploaded, from exactly the report directory", () =>
   /* MUTATION: change the path to `${{ runner.temp }}` -> fails, and this one is
      not a tidiness point — see the keystore test below, which is the same
      assertion from the other side. RUNNER_TEMP holds whatever every other step
-     left there, and on this job that includes a decoded signing key. */
+     left there, and on this job that includes a decoded signing key.
+     CH2-17: the report directory is the composite's, and the upload overwrites
+     the bare .aab the composite already uploaded under the same name, so the
+     one `foray-android-release` artifact carries the bundle AND its evidence.
+     MUTATION: delete `overwrite: true` -> fails (and on GitHub, the upload
+     would 409 against the composite's artifact). */
   const upload = step(REL, "Upload the bundle and everything this run learned");
   assert.ok(upload, "the .aab is built and never uploaded — nobody can download it");
-  assert.match(upload, /path: \$\{\{ runner\.temp \}\}\/android-release\s*$/m);
+  assert.match(upload, /path: \$\{\{ runner\.temp \}\}\/android-bundle-release\s*$/m);
+  assert.match(upload, /^ {10}name: foray-android-release$/m, "the artifact docs/android-release.md tells the founder to download");
+  assert.match(code(upload), /^ {10}overwrite: true$/m, "the composite already uploaded an artifact by that name");
   assert.match(upload, /^ {8}if: always\(\)$/m, "a failed run's Gradle log is the most useful thing in it");
   assert.match(
     upload,
@@ -1137,34 +1201,6 @@ test("R-05: android-release.yml is the PR-time check and the by-hand exception p
  * implementation is the one both paths run. The pins below read the bundle
  * job TOGETHER WITH the composite it calls, because that is what executes.
  */
-
-const BUNDLE_ACTION_REL = ".github/actions/android-bundle/action.yml";
-const BUN = fs.readFileSync(path.join(ROOT, BUNDLE_ACTION_REL), "utf8");
-
-/** One composite step, comments stripped. A composite's steps sit at four
- *  spaces and `step()` splits at six (a workflow's), so the file is indented
- *  by two first; the steps themselves are unchanged. */
-function bundleActionStepCode(nameFragment) {
-  const s = step(BUN.replace(/^/gm, "  "), nameFragment);
-  return s === null ? null : code(s);
-}
-
-/** One job of android-release.yml, comments and blanks skipped. */
-function releaseJob(name) {
-  return block(REL, name, 2);
-}
-
-/** What the bundle job EXECUTES: its own code plus every local composite it
- *  `uses:`, which is where the build steps live. */
-function bundleJobExecutes() {
-  const job = releaseJob("android-bundle");
-  assert.ok(job, "android-release.yml has no android-bundle job");
-  const parts = [code(job)];
-  for (const m of code(job).matchAll(/uses:\s*\.\/(\.github\/actions\/[\w-]+)/g)) {
-    parts.push(code(fs.readFileSync(path.join(ROOT, m[1], "action.yml"), "utf8")));
-  }
-  return parts.join("\n");
-}
 
 test("CH2-17: the by-hand bundle injects the REAL splash and launcher icon, and checks the bytes", () => {
   /* MUTATION: re-add an inline `./gradlew bundleRelease` step without the
@@ -1266,8 +1302,12 @@ test("the decoded keystore is written OUTSIDE the directory that gets uploaded",
      THE FIRST VERSION OF THIS TEST WAS VACUOUS: it asserted the two paths were
      "different strings", which is true of `…/android-release` and
      `…/android-release/keys`. It now requires the key directory not to be a
-     child of the uploaded one, which is the property that matters. */
-  const s = releaseStepCode("Toolchain versions");
+     child of the uploaded one, which is the property that matters.
+     CH2-17: both directories are now set by the composite's first step and the
+     upload is android-release.yml's, so this reads one and the other. MUTATION:
+     change the composite's `KEYDIR=$RUNNER_TEMP/android-release-keys` to
+     `KEYDIR=$RUNNER_TEMP/android-bundle-release/keys` -> fails. */
+  const s = bundleActionStepCode("Toolchain versions");
   assert.ok(s, "no toolchain step");
   const art = /ART=\$RUNNER_TEMP\/([\w-]+)/.exec(s);
   const key = /KEYDIR=\$RUNNER_TEMP\/([\w-]+)/.exec(s);
@@ -1280,8 +1320,16 @@ test("the decoded keystore is written OUTSIDE the directory that gets uploaded",
   );
   const upload = step(REL, "Upload the bundle and everything this run learned");
   assert.ok(
-    upload.includes(`/${art[1]}`),
+    code(upload).includes(`path: \${{ runner.temp }}/${art[1]}\n`),
     "the upload path and the report directory must be the same one, or this test is checking nothing"
+  );
+  /* And the outside check of the shred defaults to the SAME key directory,
+     so a run that failed before the composite exported KEYDIR still checks
+     the right place. MUTATION: default it to `$RUNNER_TEMP/android-keys`
+     (the pre-CH2-17 path) -> fails. */
+  assert.ok(
+    code(step(REL, "Shred the upload key")).includes(`KEYDIR="\${KEYDIR:-$RUNNER_TEMP/${key[1]}}"`),
+    `the shred check must default to the composite's key directory, ${key[1]}`
   );
 });
 
@@ -1296,6 +1344,13 @@ test("the key is shredded in a step that runs even when the build failed", () =>
   assert.match(s, /^ {8}if: always\(\)$/m, "the shred must run on failure too");
   assert.match(code(s), /shred -u|rm -rf/, "the shred step must actually delete something");
   assert.match(code(s), /test ! -e "\$KEYDIR"/, "and it must verify the directory is gone rather than assume it");
+  /* CH2-17: the composite decodes the key, so it shreds it too, also on
+     failure; the step above is the check from outside. MUTATION: delete
+     `if: always()` from the composite's shred step -> fails. */
+  const inner = step(BUN.replace(/^/gm, "  "), "Shred the upload key");
+  assert.ok(inner, "the composite does not remove the keystore it decodes");
+  assert.match(inner, /^ {8}if: always\(\)$/m, "the composite's shred must run on failure too");
+  assert.match(code(inner), /shred -u/, "and actually shred");
 });
 
 test("exactly three secrets, by the names the founder is populating", () => {
@@ -1328,11 +1383,11 @@ test("no secret ever reaches a Gradle command line", () => {
      command — none of which GitHub's log masking touches, because none of them
      is the workflow log. The values are read by `System.getenv` in
      `mobile/gradle/foray-signing.gradle` instead. */
-  for (const c of gradlewInvocations(REL)) {
+  for (const c of gradlewInvocations(BUN)) {
     assert.equal(/\s-P/.test(c), false, `${c} passes a Gradle property — secrets must arrive by environment only`);
   }
   assert.equal(
-    /signingReport/.test(RYML),
+    /signingReport/.test(RYML + BYML),
     false,
     "`signingReport` prints signing configuration by design — it must not run in a job that holds a key"
   );
@@ -1346,7 +1401,7 @@ test("a Gradle log that contains the password is destroyed rather than uploaded"
      protects nothing about the copy in the zip. AGP does not print the password
      today; a `--stacktrace` added in a hurry, or a keystore error that echoes
      its inputs, is one commit away. */
-  const s = releaseStepCode("bundleRelease — the .aab");
+  const s = bundleActionStepCode("bundleRelease — the .aab");
   assert.match(s, /grep -qF "\$FORAY_KEYSTORE_PASSWORD" "\$LOG"/, "the log must be searched for the password");
   assert.match(s, /rm -f "\$LOG"/, "and destroyed if it is in there");
   /* ORDER, NOT JUST PRESENCE. Scrubbing after the failure branch has already
@@ -1374,7 +1429,7 @@ test("an unscanned build log cannot reach the uploaded directory by ANY path", (
      until it has been read, which is the same structural argument that puts
      $KEYDIR beside $ART rather than inside it — and this test is the pair of the
      keystore one above. */
-  const s = releaseStepCode("bundleRelease — the .aab");
+  const s = bundleActionStepCode("bundleRelease — the .aab");
   assert.match(s, /LOG="\$RUNNER_TEMP\/gradle-bundleRelease\.log"/, "the build log must be written outside $ART");
   assert.match(s, /gradlew bundleRelease [^\n]*> "\$LOG" 2>&1/, "and the build must write to it");
   assert.match(s, /cp "\$LOG" "\$ART\/gradle-bundleRelease\.log"/, "it enters $ART by an explicit copy");
@@ -1403,7 +1458,7 @@ test("Gradle's own view of whether it was keyed is READ, not merely recorded", (
      variable or an include that stops being applied separates them. The
      signature step catches that after the build; this catches it before, which
      on a 25-minute compile is the difference between a diagnosis and a wait. */
-  const s = releaseStepCode("bundleRelease — the .aab");
+  const s = bundleActionStepCode("bundleRelease — the .aab");
   assert.match(s, /grep -q 'FORAY_SIGNING_STATUS=keyed' "\$ART\/signing-status\.txt"/);
   assertOrder(
     s,
@@ -1425,7 +1480,7 @@ test("every pipeline whose failure has a diagnostic can actually reach it", () =
   const launch = smokeStepCode("Install the app and start it");
   assert.match(launch, /adb install -r -g "\$APK"[^\n]*\|\| true/, "adb install exits non-zero on failure");
   assert.match(launch, /am start -W -n "\$PKG\/\.MainActivity"[^\n]*\|\| true/, "adb shell forwards am's status");
-  const key = releaseStepCode("Materialise the upload key");
+  const key = bundleActionStepCode("Materialise the upload key");
   assert.match(key, /if ! printf '%s' "\$KEYSTORE_B64" \| base64 --decode/, "invalid base64 must reach its own message");
   /* And the crash report, where SIGPIPE from `head` would otherwise abort the
      step with the log group left open and the verdict line unprinted. */
@@ -1450,7 +1505,7 @@ test("both signing outcomes are VERIFIED, and neither is assumed", () => {
   assert.ok(s, "no step reads the signature");
   assert.match(s, /jarsigner -verify/, "a bundle carries a JAR signature, so jarsigner is the right tool");
   assert.equal(
-    /apksigner/.test(RYML),
+    /apksigner/.test(RYML + BYML),
     false,
     "apksigner reads APK signature schemes — on an .aab it answers the wrong question"
   );
