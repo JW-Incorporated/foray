@@ -148,9 +148,11 @@ describe("discover hooks", () => {
    * merge.mjs, so a change to any limit has to be made — and seen — in both.
    *
    * MUTATION: MAX_HOOK_WORDS = 17 (or MIN_TAGS = 4, MAX_TAGS = 13, or an `i`
-   * flag on TAG_RE) in rules.js -> red here AND in merge.test.mjs.
+   * flag on TAG_RE) in rules.js -> red here AND in merge.test.mjs. The `i`
+   * flag is killed by "BadTag" (case alone); "Bad_Tag" fails on the
+   * underscore with or without it.
    */
-  it("the shared limits refuse a 17-word hook, 4 tags, 13 tags and a Bad_Tag", () => {
+  it("the shared limits refuse a 17-word hook, 4 tags, 13 tags, a Bad_Tag and a BadTag", () => {
     const words = (n: number) => Array.from({ length: n }, (_, i) => `word${i + 1}`).join(" ");
     const tags = (n: number) => Array.from({ length: n }, (_, i) => `tag-${i + 1}`);
     const tagsOk = (list: string[]) => list.length >= MIN_TAGS && list.length <= MAX_TAGS && list.every((t) => TAG_RE.test(t));
@@ -160,6 +162,7 @@ describe("discover hooks", () => {
     expect(tagsOk(tags(4))).toBe(false);
     expect(tagsOk(tags(13))).toBe(false);
     expect(tagsOk([...tags(4), "Bad_Tag"])).toBe(false);
+    expect(tagsOk([...tags(4), "BadTag"])).toBe(false);
     expect(tagsOk(tags(5))).toBe(true);
     expect(tagsOk(tags(12))).toBe(true);
   });

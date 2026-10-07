@@ -115,7 +115,8 @@ test("with no --pointer it reads the real data/shows-index-pointer.json", () => 
 
 // Mutation: candidates.mjs's MAX_INDEX_AGE_HOURS changed from `24 * 9`, loadChangeIndex's
 // default retyped as a literal other than it (e.g. `maxAgeHours = 24 * 10`), CEILING_HOURS
-// retyped as a literal instead of the import, or THRESHOLD_HOURS raised to >= 216 -> fails.
+// retyped as a literal other than 216, or THRESHOLD_HOURS raised to >= 216 -> fails. (No test
+// can tell `CEILING_HOURS = 216` from the import; only a different value is visible.)
 test("the alarm stays below loadChangeIndex's ceiling (imported from tools/refresh/candidates.mjs)", async () => {
   /* CH2-14 (T1-14): an import equality, not a regex over the source text. The
      ceiling is candidates.mjs's exported MAX_INDEX_AGE_HOURS; the pointer

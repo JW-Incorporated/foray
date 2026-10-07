@@ -151,9 +151,10 @@ function refused(edits, resolved = Object.keys(edits).map((id) => ep(id))) {
   return r.stderr;
 }
 
-test("a 17-word hook, a 4-tag item, a 13-tag item and a Bad_Tag are each refused with exit 1", () => {
+test("a 17-word hook, a 4-tag item, a 13-tag item and a Bad_Tag / BadTag are each refused with exit 1", () => {
   /* KILLED BY: `> 16` -> `> 17` on the hook check, `< 5` -> `< 4` or
-     `> 12` -> `> 13` on the tag check, or loosening the tag pattern to `/i`.
+     `> 12` -> `> 13` on the tag check, or loosening the tag pattern to `/i`
+     ("BadTag" then passes; "Bad_Tag" fails on the underscore either way).
      The exact stderr bytes are the characterization: the messages kept their
      text when the numbers became rules.js's. */
   assert.equal(
@@ -169,8 +170,8 @@ test("a 17-word hook, a 4-tag item, a 13-tag item and a Bad_Tag are each refused
     "COPY RULE FAILURES:\nmany: 13 tags (need 5-12)\n"
   );
   assert.equal(
-    refused({ bad: edit({ tags: [...tagList(4), "Bad_Tag"] }) }),
-    'COPY RULE FAILURES:\nbad: bad tag "Bad_Tag"\n'
+    refused({ bad: edit({ tags: [...tagList(4), "Bad_Tag", "BadTag"] }) }),
+    'COPY RULE FAILURES:\nbad: bad tag "Bad_Tag"\nbad: bad tag "BadTag"\n'
   );
 });
 
@@ -223,7 +224,7 @@ test("merge's copy limits ARE rules.js's: the shared cap and bounds, at their ed
      MAX_HOOK_WORDS raised to 17): typing `> 16` back into merge.mjs — a
      17-word hook the gate now passes is refused here. Likewise `< 5` / `> 12`
      against a moved MIN_TAGS / MAX_TAGS, and a private tag pattern against
-     TAG_RE. */
+     TAG_RE. An `i` flag on TAG_RE itself is killed by "BadTag". */
   const ok = runMerge({
     resolved: [ep("h"), ep("lo"), ep("hi")],
     edits: {
@@ -239,7 +240,7 @@ test("merge's copy limits ARE rules.js's: the shared cap and bounds, at their ed
     h: edit({ hook: words(MAX_HOOK_WORDS + 1) }),
     lo: edit({ tags: tagList(MIN_TAGS - 1) }),
     hi: edit({ tags: tagList(MAX_TAGS + 1) }),
-    bad: edit({ tags: [...tagList(MIN_TAGS - 1), "Bad_Tag"] }),
+    bad: edit({ tags: [...tagList(MIN_TAGS - 2), "Bad_Tag", "BadTag"] }),
   });
   assert.equal(
     err,
@@ -247,9 +248,11 @@ test("merge's copy limits ARE rules.js's: the shared cap and bounds, at their ed
       `h: hook ${MAX_HOOK_WORDS + 1}w > ${MAX_HOOK_WORDS}\n` +
       `lo: ${MIN_TAGS - 1} tags (need ${MIN_TAGS}-${MAX_TAGS})\n` +
       `hi: ${MAX_TAGS + 1} tags (need ${MIN_TAGS}-${MAX_TAGS})\n` +
-      'bad: bad tag "Bad_Tag"\n'
+      'bad: bad tag "Bad_Tag"\n' +
+      'bad: bad tag "BadTag"\n'
   );
   assert.equal(TAG_RE.test("Bad_Tag"), false);
+  assert.equal(TAG_RE.test("BadTag"), false, "TAG_RE is case-sensitive: an `i` flag lets BadTag through");
 });
 
 test("importing merge.mjs merges nothing: the body runs only under the entry guard", () => {
