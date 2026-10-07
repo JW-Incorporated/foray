@@ -134,10 +134,35 @@ test("safeUrl passes through http and https unchanged", () => {
   assert.strictEqual(app.safeUrl("http://example.com/"), "http://example.com/");
 });
 
-test("safeUrl allows a same-document fragment without opening another URL scheme", () => {
-  // MUTATION: delete the leading-fragment branch in safeUrl -> the sprite reference collapses to "#".
+test("safeUrl passes exactly the icon sprite's own fragments and refuses every other fragment", () => {
+  /* Icon <use href>s go through safeUrl like every other href (third review of
+     redesign/tactile-p3-primitives: a second, non-safeUrl guard for sprite
+     refs was a breach of the hard limit). So safeUrl passes "#" + a symbol id
+     from app.js SPRITE_IDS, verbatim, and nothing else that starts with "#":
+     not an in-app route, not an element id, not an unknown or hostile id.
+     ui/downloads.js no longer reads "#" as its only refusal (it tests for
+     http(s); test/downloads.test.js pins that).
+     MUTATION: delete the SPRITE_IDS line from safeUrl -> "#ph-play" comes back
+     "#" and the first assertion fails (and every icon would draw nothing).
+     MUTATION 2: widen it to `if (/^#[A-Za-z0-9/]/.test(u)) return u;` -> the
+     refusals below fail. */
   assert.strictEqual(app.safeUrl("#ph-play"), "#ph-play");
-  assert.strictEqual(app.safeUrl("#/library"), "#/library");
+  assert.strictEqual(app.safeUrl("#knob"), "#knob");
+  for (const bad of ["#/library", "#ep-1", "#ph-nope", "#PH-PLAY", "#ph-play ", '#ph-play" onload="x', "##ph-play", "#"]) {
+    assert.strictEqual(app.safeUrl(bad), "#", `${bad} is not a sprite symbol`);
+  }
+});
+
+test("tactileSpriteRef only ever answers a fragment for an id in the sprite list", () => {
+  /* Maps an icon id to its fragment before safeUrl gates it; an unknown id
+     falls back to the radio glyph rather than an empty icon.
+     MUTATION: return `"#" + id` unconditionally in tactileSpriteRef -> the
+     hostile ids come back verbatim and this fails. */
+  assert.strictEqual(app.tactileSpriteRef("ph-play"), "#ph-play");
+  assert.strictEqual(app.tactileSpriteRef("knob"), "#knob");
+  for (const bad of ['x" onload="alert(1)', "javascript:alert(1)", "/library", "", null, undefined, "ph-nope"]) {
+    assert.strictEqual(app.tactileSpriteRef(bad), "#ph-radio", `${bad} falls back to the known radio glyph`);
+  }
 });
 
 test("safeUrl rejects every scheme that can execute", () => {
@@ -171,13 +196,19 @@ test("safeUrl does not attempt to sanitise — it either allows or replaces", ()
    Enforced by nothing until now. */
 
 test("every template or classic-script concatenated href and src passes through safeUrl", () => {
-  /* MUTATION: replace `esc(safeUrl("#" + name))` in tactileIcon with
-     `esc(name)` -> the concatenated <use href> is reported here. */
+  /* No exemptions: an icon sprite <use href> goes through safeUrl too (third
+     review of redesign/tactile-p3-primitives removed the tactileSpriteRef
+     exemption this scan used to carry).
+     MUTATION: replace `esc(safeUrl(tactileSpriteRef(id)))` in tactileIcon with
+     `esc(tactileSpriteRef(id))` -> the concatenated <use href> is reported here.
+     MUTATION 2: replace `esc(safeUrl(artUrl(d.url, px * 3)))` in tactileArtFrame with
+     `esc(artUrl(d.url, px * 3))` -> the concatenated <img src> is reported here. */
   const templates = SRC.match(/\b(?:href|src)\s*=\s*"\$\{[^}]*\}/g) || [];
   const concatenated = SRC.match(/\b(?:href|src)=["'][^"'`\n]*(?:'|")\s*\+\s*[^+\n]+/g) || [];
   assert.ok(templates.length > 0, "expected at least one template href/src to guard");
   assert.ok(concatenated.length > 0, "expected at least one classic-script concatenated href/src to guard");
-  const unguarded = [...templates, ...concatenated].filter((a) => !a.includes("safeUrl("));
+  const guarded = (a) => a.includes("safeUrl(");
+  const unguarded = [...templates, ...concatenated].filter((a) => !guarded(a));
   assert.deepStrictEqual(
     unguarded, [],
     "these href/src interpolations bypass safeUrl():\n" + unguarded.join("\n")

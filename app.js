@@ -100,8 +100,27 @@ function esc(s) {
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
+/* The inline icon sprite's <symbol> ids (index.html; test/tactile-icons.test.js
+   pins that this list and the sprite agree). The one same-document reference
+   safeUrl lets through is "#" + one of these, exactly: an icon's sprite href
+   goes through safeUrl like every other href, and a fragment can carry no
+   scheme. Every other fragment ("#/library", "#ep-1", "#ph-nope") still
+   answers "#". Callers that need a fetchable URL test for http(s) themselves
+   (ui/downloads.js) rather than reading "#" as the only refusal. */
+const SPRITE_IDS = new Set([
+  "ph-play", "ph-pause", "ph-sun-horizon", "ph-magnifying-glass", "ph-bookmarks",
+  "ph-caret-down", "ph-arrow-left", "ph-dots-three", "ph-plus", "ph-check",
+  "ph-check-circle", "ph-cloud-slash", "ph-bookmark-simple", "ph-list-plus",
+  "ph-timer", "ph-share-network", "ph-x", "ph-arrow-up", "ph-arrow-down",
+  "ph-trash", "ph-radio", "ph-speaker-high", "ph-moon", "ph-sun",
+  "ph-list-bullets", "ph-shuffle", "ph-sparkle", "ph-play-fill", "ph-pause-fill",
+  "ph-sun-horizon-fill", "ph-magnifying-glass-fill", "ph-bookmarks-fill",
+  "ph-bookmark-simple-fill", "ph-check-circle-fill", "skip-15", "skip-30",
+  "band", "needle", "bridge", "narration", "knob",
+]);
+
 function safeUrl(u) {
-  if (typeof u === "string" && /^#[A-Za-z0-9/][A-Za-z0-9_.:/?&=%-]*$/.test(u)) return u;
+  if (typeof u === "string" && u.charAt(0) === "#" && SPRITE_IDS.has(u.slice(1))) return u;
   try {
     const p = new URL(u);
     if (p.protocol === "https:" || p.protocol === "http:") return u;

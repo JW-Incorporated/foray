@@ -174,6 +174,7 @@ const STRUCTURAL = {
   "--spring-sheet": "linear(0, 0.01 2%, 0.07 6%, 0.24 13%, 0.52 22%, 0.78 32%, 0.95 42%, 1.03 52%, 1.04 60%, 1.02 70%, 1 82%, 1)",
   "--ease-quick": "cubic-bezier(.2, .8, .2, 1)", "--ease-draw": "cubic-bezier(.4, 0, .2, 1)",
   "--d-snap": "220ms", "--d-settle": "320ms", "--d-sheet": "480ms", "--d-quick": "160ms", "--d-draw": "280ms",
+  "--d-buffer": "1000ms", "--d-skeleton": "1200ms",
 };
 
 const CREAM_SCHEME = {
@@ -447,4 +448,23 @@ test("every animation and transition in the sheet is stilled by the block or run
     }
   }
   assert.deepStrictEqual(dialLiteral, [], "Dial rules take durations from tokens, never literals");
+});
+
+test("every Dial duration is declared once, as a motion token on :root", () => {
+  /* Review nit (p3-primitives, second look): the buffering pulse and skeleton
+     shimmer each set their own `--d-*: 1000ms` inside the component rule. A
+     duration is a token decision, so it lives in the :root MOTION block beside
+     the others, and components only read it.
+     MUTATION: put `--d-buffer: 1000ms;` back into `.band--buffering .needle`
+     -> red naming that selector. */
+  const local = [];
+  for (const r of DIAL) {
+    if (r.at || (r.atRules || []).some(isReduce)) continue;
+    if ((r.selectors || []).every((s) => s.startsWith(":root"))) continue;
+    for (const d of r.decls || []) {
+      if (/(?:^|[\s,(])[\d.]+m?s\b/.test(d.value)) local.push(`${(r.selectors || []).join(", ")} { ${d.prop}: ${d.value} }`);
+    }
+  }
+  assert.deepStrictEqual(local, [], "a component rule declares its own duration");
+  for (const k of ["--d-buffer", "--d-skeleton"]) assert.ok(CREAM.has(k), `${k} is a :root motion token`);
 });
