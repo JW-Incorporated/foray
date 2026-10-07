@@ -762,7 +762,7 @@ const FLOORS = {
      index-seeded breadth show is upgraded to its API row when that row carries
      nodes; and a row without nodes leaves the seeded page alone, no re-render.
      47 -> 50. */
-  "test/show-page.test.js": 55, // CH-29 (A1-06/A1-12): a second TITLE_ALIASES entry reaches all five title joins; a shared title joins to the first show everywhere; showEpisodeCountLabel's whole input grid unchanged and its plurals are countLabel's; 51 -> 55 // CH-1 (#1071): a curated show's DAI class rides from catalog-client.json onto its show-page episode rows; 50 -> 51
+  "test/show-page.test.js": 56, // #560 560-part (2026-10-06): the vouch row applies Family Mode before the shuffle and still fills every slot; 55 -> 56 // CH-29 (A1-06/A1-12): a second TITLE_ALIASES entry reaches all five title joins; a shared title joins to the first show everywhere; showEpisodeCountLabel's whole input grid unchanged and its plurals are countLabel's; 51 -> 55 // CH-1 (#1071): a curated show's DAI class rides from catalog-client.json onto its show-page episode rows; 50 -> 51
   /* #560 item 8 (2026-10-04): the measurement for Similar shows. The mirror of
      app.js's similarShows is pinned to app.js's text and behaviour, the
      hand-reviewed eval set is checked against the catalogue (all 13 general
@@ -771,7 +771,7 @@ const FLOORS = {
      values measured on main after PKG-07. A test deleted here is a ranking
      change that can make suggestions worse with every check green. */
   "test/similar-shows-eval.test.js": 12, // #560 item 8: new -- Similar-shows eval set, mirror pin, measured floors
-  "test/vouch-eval.test.js": 14, // #560 item 8, showsWeVouchFor half: new -- the row is app.js's own, rotation floors, Family Mode and label_scope ceilings (measured, not zero)
+  "test/vouch-eval.test.js": 15, // #560 560-part (2026-10-06): the row now applies Family Mode, so the eval runs both modes; (d) pinned at zero and the ON row's integrity gated; 14 -> 15 // #560 item 8, showsWeVouchFor half: new -- the row is app.js's own, rotation floors, Family Mode and label_scope ceilings (measured, not zero)
   /* Founder reports, 2026-09-13. The "Show more episodes" control came out of
      the show page, so show-page-pagination.test.js was RE-POINTED rather than
      shrunk — same five tests, now pinning the absence of the control, the
