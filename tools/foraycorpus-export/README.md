@@ -260,6 +260,18 @@ Add one paragraph per module as it lands.
   summary and skips the warm. When no show has bodies the warm is skipped
   with exit 0, because an empty `--show` list would make the warmer warm every
   show on the machine.
+- **`build-terms.mjs`** (PKG-27): `node tools/foraycorpus-export/build-terms.mjs
+  [--show <id>] [--normalized <dir>] [--out <dir>]` runs
+  `backend/src/cli/buildCorpusTerms.ts` (PKG-26), which writes the corpus-wide
+  `data-local/transcripts/corpus-df.json` and the per-episode top-k terms in
+  `data-local/transcripts/episode-terms.jsonl`. It is a clone of
+  `tools/generation/warm-transcript-index.mjs`: `TERMS_ENTRY` names the entry
+  relative to `backend/`, `termsArgs(argv)` passes every flag through as a
+  copy in the same order (the launcher has no flags of its own), and it
+  spawns `node <tsx> <entry>` from `backend/`, resolving `tsx` with
+  `createRequire(backend/package.json).resolve("tsx/cli")` exactly as the warm
+  launcher does. The child's exit code goes through `exitCodeFor`, so a pass
+  ended by a signal is never 0.
 
 ## Usage
 

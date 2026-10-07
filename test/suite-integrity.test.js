@@ -2204,6 +2204,7 @@ const FLOORS = {
   "tools/foraycorpus-export/export.test.mjs": 5, // PKG-08 (docs/roadmap/corpus.md): export CLI end to end on the synthetic fixture (English show + episode counts, a rerun is a new version with 0/0 delta and byte-identical shows.jsonl, one appended higher asset id -> 1 changed, --dry-run leaves outRoot absent, latest.json names the newest Windows-safe version directory)
   "tools/foraycorpus-export/rebuild-index.test.mjs": 3, // PKG-14 (docs/roadmap/corpus.md): sync-then-warm launcher (one --show pair per synced show with bodies, 10-hex hash stripped to the warmer's showId, deduped + sorted, none when no show has bodies; --offline passthrough; the spawned warm-transcript-index.mjs launcher exists)
   "tools/foraycorpus-export/publish-release.test.mjs": 5, // PKG-32 (docs/roadmap/corpus.md): corpus catalogue release + pointer on a fake gh (published release -> no release create, exactly the three assets uploaded, pointer URLs from assetBaseUrlFor(tag), --dry-run writes nothing outside tmp, gzip round-trips)
+  "tools/foraycorpus-export/build-terms.test.mjs": 3, // PKG-27 (docs/roadmap/corpus.md): corpus-terms launcher (TERMS_ENTRY src/cli/buildCorpusTerms.ts exists under backend/ and is .ts, termsArgs passes every argument through unchanged and in order, termsArgs returns a copy)
   /* The breadth prioritiser and its yield report (#114). Floored for the same
      reason politeness.test.mjs is, and the reason is not hypothetical here
      either: the first draft of `rank-breadth.mjs` had a seed hash that produced
