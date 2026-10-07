@@ -2163,6 +2163,7 @@ const FLOORS = {
   "tools/shows/import-dump.test.mjs": 12, // #1033: +4 changed.json baseline (snapshot round-trip, download reaches buildChanged, failed download -> baseline:false, never {}); 8 -> 12 // audit round 3 integration: the real post-merge count, 5 -> 8
   "tools/shows/shard-build.test.mjs": 15, // audit round 3 (L8): +1, changed.json baseline; 14 -> 15
   "tools/shows/state.test.mjs": 6,
+  "tools/shows/watch-pointer.test.mjs": 12, // pointer-freshness-watch: absence watchdog, red >192h (below candidates.mjs 216h ceiling); +1 pins its own daily read-only workflow (shows-pointer-watch.yml), 11 -> 12
   /* S-04b: GitHub Release publishing + the run-then-publish orchestration
      (kanban t_3a896057), gated on S-04a above. publish-release.test.mjs
      unit-tests each piece (tag sanitization, the fail-closed idempotency
