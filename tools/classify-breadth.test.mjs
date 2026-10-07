@@ -399,3 +399,20 @@ test("keeps the refinement pipeline's provenance instead of signing over it", ()
   assert.equal(out.provenance.last_batch_tier, 1);
   assert.equal(out.provenance.base_layer.produced_by, "classify-breadth.mjs");
 });
+
+test("keeps top-level fields another layer owns, in place (label_schema_version)", () => {
+  // merge-results.mjs writes `label_schema_version` at the top level of the file.
+  // Until 2026-10 this script rebuilt the top level from four named keys, so the
+  // first genre-map run after a classify-agent merge silently dropped it.
+  const classification = {
+    version: 1,
+    built_at: "2026-09-09T08:19:28.364Z",
+    provenance: { produced_by: "tools/classify/merge-results.mjs" },
+    entries: { 1: { topics: ["space"], confidence: "high", source: "genre-map" } },
+    label_schema_version: 1,
+  };
+  const { res, out } = run({ shows: [show(1, "Astronomy")], classification });
+  assert.equal(res.status, 0, res.stderr);
+  assert.equal(out.label_schema_version, 1, "merge-results' label schema version must survive");
+  assert.deepEqual(Object.keys(out), ["version", "built_at", "provenance", "entries", "label_schema_version"], "key order is kept, so the diff stays minimal");
+});

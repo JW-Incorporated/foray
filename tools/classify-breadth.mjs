@@ -226,8 +226,12 @@ if (lost.length) {
 /* Provenance is per-layer, and merged rather than replaced. merge-results.mjs
    records `last_batch_id`/`last_batch_tier` here; this script must not sign
    over the top of a file whose best entries it just refused to touch (19,278 of
-   them as of the #205 shard merge). */
+   them as of the #205 shard merge). The same goes for the top level: `...prior`
+   first keeps any field another layer owns (merge-results.mjs writes
+   `label_schema_version`) and keeps the keys in their on-disk order, so a run
+   rewrites only what it names below. */
 const doc = {
+  ...prior,
   version: prior.version || 1,
   built_at: new Date().toISOString(),
   provenance: {
