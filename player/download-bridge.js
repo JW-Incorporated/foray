@@ -52,6 +52,20 @@
  * `reportFromEvent(name, payload)` turns it into the record status
  * `applyProgress` keys on (`downloadFailed`'s own `status` is the HTTP one).
  *
+ * THE FOURTH EVENT IS FOR THE RECORD, NOT THE PAGE (#29, 29-part). The iOS
+ * plugin also emits `downloadAttempt { reqHost, finalHost, status, expected,
+ * received, outcome, at }`, once per download attempt: the HOST asked for
+ * (the episode's original `audio_url`), the host the last response came from
+ * after redirects, its HTTP status, the bytes announced and received, and how
+ * it ended. It is not a record status, so it never reaches `onEvent`. It goes
+ * to the diagnostics record instead, as a `foray:session` event on `window`
+ * (`ATTEMPT_DOM_EVENT`) — the channel `player/client.js` already feeds into
+ * `diag.sessionEvent` for the audio plugin's M-03 rows — with kind
+ * `downloadAttempt` and producer `downloads`. `player/diagnostic-log.js`
+ * admits each field by its closed set or shape (hosts by
+ * `audioHostTokenOf`: never a path or a query) and drops the rest. The
+ * device check (docs/downloads-device-check.md step 6) reads that row.
+ *
  * THE USER AGENT. Downloads leave the WebView, so the request would otherwise
  * carry whatever `URLSession`/`DownloadManager` sends by default. The plugin
  * is told to send `4a/<build> (+https://jw-incorporated.github.io/foray/)`: a
@@ -77,6 +91,43 @@ export const CALL_TIMEOUT_MS = 10_000;
 
 /** The three events the plugin emits, forwarded by name to `onEvent`. */
 export const DOWNLOAD_EVENTS = Object.freeze(["downloadProgress", "downloadDone", "downloadFailed"]);
+
+/** The diagnostics event (#29, 29-part): one per download attempt, iOS only
+    for now (Android's half waits for its native engine, D-A3). Kept OUT of
+    `DOWNLOAD_EVENTS`, which are the record-status events `onEvent` gets. */
+export const DOWNLOAD_ATTEMPT_EVENT = "downloadAttempt";
+
+/** The window event the attempt is re-broadcast as: the `SESSION_DOM_EVENT`
+    of `mobile/plugins/foray-audio/web/foray-media-session.js`, which
+    `player/client.js` hands to `diag.sessionEvent`. */
+export const ATTEMPT_DOM_EVENT = "foray:session";
+
+/** The `foray:session` detail for one `downloadAttempt` payload. The six
+    fields are TAKEN, never spread, and `kind` and `producer` are forced:
+    `foray:session` also reaches client.js's `onNativeSession`, which pauses
+    on a `routeChange`, so a payload that could name its own kind could pause
+    playback. The outcome travels as `reason`, the field a session row's
+    header counts. Values are passed as they came: judging them is
+    diagnostic-log.js's, beside the record (`DOWNLOAD_OUTCOMES`,
+    `audioHostTokenOf`), so there is one answer to "what may be stored".
+    MUTATION TO BREAK THIS: return `{ ...p, kind: "downloadAttempt",
+    producer: "downloads" }` and `the attempt detail TAKES its six fields`
+    fails. */
+export function attemptSessionDetail(payload) {
+  const p = payload && typeof payload === "object" ? payload : {};
+  const v = (x) => (x === undefined ? null : x);
+  return {
+    kind: "downloadAttempt",
+    producer: "downloads",
+    reason: v(p.outcome),
+    at: v(p.at),
+    reqHost: v(p.reqHost),
+    finalHost: v(p.finalHost),
+    status: v(p.status),
+    expected: v(p.expected),
+    received: v(p.received),
+  };
+}
 
 /** The page the UA points a curious host at. */
 export const SITE_URL = "https://jw-incorporated.github.io/foray/";
@@ -111,6 +162,9 @@ export const USER_AGENT = userAgentFor(null);
  * @param {Function} [args.clearTimeoutFn] its pair: the deadline is cleared
  *        the moment the plugin answers, so a call that settled in 40 ms does
  *        not hold a ten-second timer (one per `list()` on every resume)
+ * @param {object|null} [args.win]        where `downloadAttempt` is
+ *        re-broadcast as `foray:session` (`globalThis`, the page's `window`);
+ *        injected so a test can read what was dispatched
  * @returns {null | {
  *   enqueue(opts: {id: string, url: string, userAgent: string, allowCellular: boolean}): Promise<object>,
  *   cancel(opts: {id: string}): Promise<object>,
@@ -121,7 +175,9 @@ export const USER_AGENT = userAgentFor(null);
  *   fileSrc(opts: {path: string}): string,
  * }}
  */
-export function createDownloadBridge({ bridge, onEvent, setTimeoutFn = setTimeout, clearTimeoutFn = clearTimeout } = {}) {
+export function createDownloadBridge({
+  bridge, onEvent, setTimeoutFn = setTimeout, clearTimeoutFn = clearTimeout, win = globalThis,
+} = {}) {
   if (typeof bridge?.nativePromise !== "function") return null;
 
   /* The injected timer pair as deadline.js's scheduler. A null handle is never
@@ -162,6 +218,15 @@ export function createDownloadBridge({ bridge, onEvent, setTimeoutFn = setTimeou
   const handles = DOWNLOAD_EVENTS.map((name) => listenTo(bridge, DOWNLOADS_PLUGIN, name, (payload) => {
     try { forward(name, payload ?? {}); } catch (_) { /* a listener's bug is not the wire's */ }
   }));
+  /* #29: the attempt row goes to the record, never to `onEvent`. No window,
+     or one that throws, is a missing row: diagnostics never break a download. */
+  const attemptHandle = listenTo(bridge, DOWNLOADS_PLUGIN, DOWNLOAD_ATTEMPT_EVENT, (payload) => {
+    try {
+      const Ctor = win?.CustomEvent;
+      if (typeof Ctor !== "function" || typeof win.dispatchEvent !== "function") return;
+      win.dispatchEvent(new Ctor(ATTEMPT_DOM_EVENT, { detail: attemptSessionDetail(payload) }));
+    } catch (_) { /* the record is best-effort */ }
+  });
 
   return {
     enqueue: ({ id, url, userAgent, allowCellular } = {}) => call("enqueue", { id, url, userAgent, allowCellular }),
@@ -181,7 +246,9 @@ export function createDownloadBridge({ bridge, onEvent, setTimeoutFn = setTimeou
       } catch (_) { /* fall through to the raw path */ }
       return path;
     },
-    /** The `addListener` handles, for a page that tears the bridge down. */
+    /** The `addListener` handles, for a page that tears the bridge down:
+        one per `DOWNLOAD_EVENTS` entry, in order, and the attempt event's. */
     handles,
+    attemptHandle,
   };
 }

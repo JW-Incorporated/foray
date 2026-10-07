@@ -36,12 +36,17 @@ These are preconditions, not steps for the founder.
    for a TestFlight build. Without one, step 4 is recorded as "not run (no
    development build)" and the missing-file path stays proven by unit tests
    only.
-5. **For step 6: a proxy that can read HTTPS.** Proxyman or Charles on a Mac,
-   with the phone's Wi-Fi proxy pointed at it and the proxy's root certificate
-   installed and trusted on the phone (Settings → General → About →
-   Certificate Trust Settings). Proxyman's iPhone app also works without a Mac.
-   SSL proxying must be on for the podcast's hosts, or only the host name is
-   shown.
+5. **For step 6: the episode's enclosure URL, and optionally a proxy.** Step 6
+   reads the download's diagnostics row (29-part, 2026-10-06), so it needs only
+   the `url` in the `<enclosure>` of the show's RSS feed for the episode you
+   download there. A build from before 29-part writes no such row; on one,
+   step 6 needs the proxy. The proxy is also the optional deeper check: it
+   shows the request headers and every redirect hop, which the row does not.
+   Proxyman or Charles on a Mac, with the phone's Wi-Fi proxy pointed at it and
+   the proxy's root certificate installed and trusted on the phone (Settings →
+   General → About → Certificate Trust Settings). Proxyman's iPhone app also
+   works without a Mac. SSL proxying must be on for the podcast's hosts, or
+   only the host name is shown.
 
 ## What this script does not check, because it is not built
 
@@ -65,8 +70,16 @@ than it is.
   page of a copy that has not played yet shows the previous copy's reading.
   On a build from before that card, step 3's second half can only record the
   two lengths.
-- **The iOS plugin writes no diagnostics row.** Developer → Playback
-  diagnostics says nothing about downloads, so step 6 needs a proxy.
+- **The download's diagnostics row has host names, not addresses.** Each
+  download attempt adds one `downloadAttempt` row to Developer → Playback
+  diagnostics (built 2026-10-06, card 29-part): the host the app asked
+  (`req=`), the host the audio came from after redirects (`final=`), the HTTP
+  status, the bytes and how it ended. It never holds a path, a query or the
+  hops in between, and it cannot show the request headers (`Range`,
+  `User-Agent`); those are proven by the plugin's unit tests
+  (`DownloadPolicyTests.swift`), and only the optional proxy shows them on the
+  phone. Android writes no such row yet: its half waits for the Android native
+  engine (D-A3).
 
 ## Rules for every step
 
@@ -182,17 +195,33 @@ than it is.
    moves to **Downloading NN%** and finishes. Remove that download afterwards.
 
 6. **The download uses the original URL (#29: "checked by inspecting the real
-   request").** Needs precondition 5. With the proxy recording, tap
-   **Download** on an episode not yet downloaded.
-   *Expected, in the proxy:* the first request for the audio is a `GET` of the
-   episode's **original enclosure URL**, the `url` in the `<enclosure>` of the
-   show's RSS feed, measurement prefixes (for example Podtrac or Chartable)
-   included. It carries `Range: bytes=0-0` (the plugin's one-byte probe) and a
+   request").** Needs precondition 5. Menu → **Developer** → **Playback
+   diagnostics** → **Clear**, then tap **Download** on an episode not yet
+   downloaded and wait for **Downloaded ✓**. Open **Playback diagnostics**
+   again and **Copy**.
+   *Expected, in the copy:* one row like
+   `session    downloads downloadAttempt (done) req=dts.podtrac.com final=traffic.megaphone.fm http=200 bytes 52428800/52428800`.
+   - `req=` is the **host of the episode's original enclosure URL**, the `url`
+     in the `<enclosure>` of the show's RSS feed, measurement prefix (for
+     example Podtrac or Chartable) included: the host the app asked first.
+   - `final=` is the host the audio came from after the redirects; it differs
+     from `req=` whenever the feed's URL redirects, and that is fine.
+   - Neither is a 4a address (`foray-web-seven.vercel.app`, `*.jwlabs.ai`,
+     Supabase).
+   - It ends `(done)` with `http=` 200 or 206, and the two byte counts are
+     equal (or the second reads `?`: the host sent no length).
+   Write down `req=` and the feed's enclosure URL side by side. A row ending
+   in anything else (`refused-status`, `refused-redirect`, `network`,
+   `not-saved`) is a fail of step 6: paste the row into the comment. No row at
+   all on a build with 29-part is a fail too.
+   *Optional, with a proxy (and on a build without the row, required):* the
+   first request for the audio is a `GET` of the full original enclosure URL.
+   It carries `Range: bytes=0-0` (the plugin's one-byte probe) and a
    `User-Agent` starting `4a/`. Any redirects follow from that host. A second
    `GET` with no `Range` header, the transfer itself, fetches the URL the
    probe was redirected to, with the same `User-Agent`. No audio request goes
-   to a 4a address (`foray-web-seven.vercel.app`, `*.jwlabs.ai`, Supabase).
-   Write down the first URL and the feed's enclosure URL side by side.
+   to a 4a address. Write down the first URL and the feed's enclosure URL side
+   by side.
 
 7. **The Library's usage line matches the phone (#29: "Settings usage matches
    reality").** With two or three episodes downloaded, read Library →

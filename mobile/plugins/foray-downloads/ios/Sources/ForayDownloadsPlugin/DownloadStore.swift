@@ -25,6 +25,15 @@ import Foundation
 /// is finishing (and emitting `downloadDone`) while the app stays in the
 /// background, and telling iOS when that work is done.
 ///
+/// THE ATTEMPT ROW (#29, 29-part). Every attempt that ends -- the probe
+/// refusing, or the transfer finishing, failing or being cancelled -- emits
+/// one `downloadAttempt` (`emitAttempt`): the requested host (the row's
+/// original `url`), the host the last response came from, its status, the
+/// bytes announced and received, and the outcome. An unreachable probe is
+/// not an end: its transfer is, and that emits. A download the listener
+/// REMOVED emits nothing (its row went first, as for `downloadFailed`), so
+/// "Delete my data" does not write diagnostics behind itself.
+///
 /// THREADING. Every read and write of `index` happens on `queue`; the session
 /// delegates run on `delegateQueue`, a serial queue whose callbacks hop onto
 /// `queue` the same way. Events are handed to `emit` as they happen.
@@ -334,16 +343,22 @@ final class DownloadStore: NSObject {
     private func probeFinished(id: String, outcome: Probe.Outcome, userAgent: String?, allowCellular: Bool, original: URL) {
         var target: URL?
         var failure: (reason: String, status: Int?)?
+        // Where the refused probe got to, for the attempt row only:
+        // `downloadFailed` keeps the status it always carried.
+        var reached: (url: URL?, status: Int?) = (nil, nil)
         queue.sync {
             guard probes.removeValue(forKey: id) != nil, index.items[id]?.status == "queued" else { return }
             switch outcome {
             case .landed(let url, let status):
                 switch DownloadPolicy.probeVerdict(status: status) {
                 case .proceed: target = url
-                case .refuse(let reason): failure = (reason, status)
+                case .refuse(let reason):
+                    failure = (reason, status)
+                    reached = (url, status)
                 }
-            case .refused(let reason):
+            case .refused(let reason, let last, let status):
                 failure = (reason, nil)
+                reached = (last, status)
             case .unreachable:
                 target = original
             }
@@ -355,6 +370,8 @@ final class DownloadStore: NSObject {
         }
         if let f = failure {
             emit?(DownloadPolicy.eventFailed, DownloadPolicy.failedPayload(id: id, reason: f.reason, status: f.status))
+            emitAttempt(requested: original, landed: reached.url, status: reached.status, expected: -1, received: 0,
+                        outcome: DownloadPolicy.outcome(forReason: f.reason))
             return
         }
         guard let url = target else { return }
@@ -414,10 +431,20 @@ extension DownloadStore: URLSessionDownloadDelegate {
             try? FileManager.default.removeItem(at: location)
             return
         }
-        let status = (downloadTask.response as? HTTPURLResponse)?.statusCode ?? 0
+        let httpStatus = (downloadTask.response as? HTTPURLResponse)?.statusCode
+        let status = httpStatus ?? 0
+        // The attempt row (#29): asked of the row's original URL, answered by
+        // wherever the background session's redirects ended.
+        let attempt = { (outcome: String) in
+            self.emitAttempt(requested: URL(string: record.url),
+                             landed: downloadTask.response?.url ?? downloadTask.currentRequest?.url,
+                             status: httpStatus, expected: downloadTask.countOfBytesExpectedToReceive,
+                             received: downloadTask.countOfBytesReceived, outcome: outcome)
+        }
         if case .refuse(let reason) = DownloadPolicy.completionVerdict(status: status) {
             try? FileManager.default.removeItem(at: location)
             fail(id: id, reason: reason, status: status)
+            attempt(DownloadPolicy.outcome(forReason: reason))
             return
         }
         let dest = fileURL(record.file)
@@ -428,6 +455,7 @@ extension DownloadStore: URLSessionDownloadDelegate {
             try? excludeFromBackup(dest)
         } catch {
             fail(id: id, reason: DownloadPolicy.reasonNotSaved, status: nil)
+            attempt(DownloadPolicy.outcomeNotSaved)
             return
         }
         // Bytes come from the task's own count: no file attribute is read.
@@ -448,12 +476,23 @@ extension DownloadStore: URLSessionDownloadDelegate {
             return
         }
         emit?(DownloadPolicy.eventDone, DownloadPolicy.donePayload(id: id, path: dest.path, bytes: bytes))
+        attempt(DownloadPolicy.outcomeDone)
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         guard let error = error, let id = task.taskDescription, !id.isEmpty else { return }
+        let cancelled = (error as? URLError)?.code == .cancelled
+        // The attempt row (#29), for a row that still exists: a removed
+        // download (its row went first) is described by nobody.
+        let requested: URL? = queue.sync { loadIfNeeded(); return index.items[id].flatMap { URL(string: $0.url) } }
+        if let requested = requested {
+            emitAttempt(requested: requested, landed: task.response?.url ?? task.currentRequest?.url,
+                        status: (task.response as? HTTPURLResponse)?.statusCode,
+                        expected: task.countOfBytesExpectedToReceive, received: task.countOfBytesReceived,
+                        outcome: cancelled ? DownloadPolicy.outcomeCancelled : DownloadPolicy.outcomeNetwork)
+        }
         // A cancel or remove already settled the row and said so.
-        if (error as? URLError)?.code == .cancelled { return }
+        if cancelled { return }
         let code = (error as NSError).code
         fail(id: id, reason: "network \(code)", status: nil)
     }
@@ -465,6 +504,16 @@ extension DownloadStore: URLSessionDownloadDelegate {
             return h
         }
         if let handler = handler { DispatchQueue.main.async(execute: handler) }
+    }
+
+    /// One `downloadAttempt` (#29, 29-part): hosts only, built by
+    /// `DownloadPolicy.attemptPayload`, stamped with this clock in epoch ms.
+    private func emitAttempt(requested: URL?, landed: URL?, status: Int?, expected: Int64, received: Int64,
+                             outcome: String) {
+        emit?(DownloadPolicy.eventAttempt,
+              DownloadPolicy.attemptPayload(requested: requested, landed: landed, status: status, expected: expected,
+                                            received: received, outcome: outcome,
+                                            at: Date().timeIntervalSince1970 * 1000))
     }
 
     private func fail(id: String, reason: String, status: Int?) {
@@ -491,8 +540,10 @@ final class Probe: NSObject, URLSessionDataDelegate {
     enum Outcome {
         /// The chain ended at `url` with HTTP `status`.
         case landed(url: URL, status: Int)
-        /// The policy refused the chain (too many redirects, a bad hop).
-        case refused(reason: String)
+        /// The policy refused the chain (too many redirects, a bad hop);
+        /// `last` and `status` are the response that asked for the refused
+        /// hop, for the attempt row.
+        case refused(reason: String, last: URL?, status: Int?)
         /// No HTTP answer at all: offline, or no allowed network.
         case unreachable
     }
@@ -535,7 +586,7 @@ final class Probe: NSObject, URLSessionDataDelegate {
         case .follow:
             completionHandler(DownloadPolicy.redirected(request, userAgent: userAgent, allowCellular: allowCellular))
         case .refuse(let reason):
-            outcome = .refused(reason: reason)
+            outcome = .refused(reason: reason, last: response.url ?? task.currentRequest?.url, status: response.statusCode)
             completionHandler(nil)
             task.cancel()
         }
