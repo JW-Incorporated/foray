@@ -48,14 +48,13 @@ through Editorial's tab bar. Detail: `checkpoint/README.md`.
 
 (Agent/workflow and what it is doing. Clear an entry when it lands.)
 
-- **Tactile header font** (owner request 2026-10-06 18:17 PDT, workflow `wf_180a6531-f95`):
-  Fable art director replaces Bricolage for display/title with an OFL face plus two
-  alternates; builder swaps it in and adds a review-only "Aa" font switcher (remove
-  before Phase 3); critique (one fix round max); Tactile prototype and comparison page
-  republished in place (with a three-font side by side); its git step commits and logs
-  here. Then: owner approves a font, and phases 3-5 launch via
-  `docs/redesign-2026/workflows/build-directions.workflow.js` with
-  `args: {directions: ["tactile", "ambient"]}`.
+(Nothing in flight.) **Waiting for the owner to approve Tactile's header font** (done
+2026-10-06 18:50 PDT, a73de878: Archivo in the prototype; IBM Plex Sans and Instrument
+Sans selectable with the review-only "Aa" switcher). When approved: set the approved face
+in tactile's DIRECTION.md/BUILD-NOTES.md if it is not Archivo, note that Phase 3 must drop
+the switcher, then launch phases 3-5:
+`Workflow({scriptPath: "<trunk>/docs/redesign-2026/workflows/build-directions.workflow.js", args: {directions: ["tactile", "ambient"]}})`.
+Open Phase 3 item from the r5 critique: Tactile band codes double at 412px (per-bar label gate).
 
 Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40-22:40 PDT, 128 agents,
 0 errors) ran 0a-0e, 1, 2, Rank and the checkpoint package.
