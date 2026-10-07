@@ -6,10 +6,10 @@ Planned 2026-09-25 against `origin/main` 0b2b8f92; revised 2026-09-25 after revi
 
 **Goal.** Forays stop drawing tape from one PC's folder and one show per topic. Joey's corpus (`foraycorpus`, PostgreSQL on the tailnet) becomes the source of *what exists*; the R2 bucket `foray-transcriptions` (already written by the transcript farm in foray's own layout, and soon by foray-db's publisher/Apple engine per #831) becomes the source of *transcript bodies*; foray gains (a) an exporter that turns the corpus into versioned catalogue artifacts, (b) a sync that mirrors R2 into `data-local/transcripts/` and rebuilds the searchable index, (c) per-episode ad-load tiers the pipeline and `check-forays` enforce, (d) per-episode topic terms so episodes never inherit a show label, and (e) an app catalogue derived from the corpus.
 
-**Done when.** (1) `node tools/foraycorpus-export/export.mjs --source jsonl:<fixture>` reproduces `counts.json` exactly and a second run emits an empty delta; a live dry run from hermes-vm lands within ±2 % of the corpus brief's 2026-09-10 figures. (2) `node tools/foraycorpus-export/sync-r2.mjs` followed by `node tools/generation/warm-transcript-index.mjs` makes every R2 body searchable on the generation machine, with a written count the run-start guard checks. (3) `data/dai-measurements.json` carries N ≥ 2 probes per curated-catalogue episode with audio; SYSK reads `locate-required`; Gastropod's spread reproduces ADR-0008's 33.4 s; `mintSegmentSource` refuses `locate-required` tape and `check-forays` refuses a source row the player would skip. (4) All 194 taxonomy nodes carry `terms[]`, `data/episode-topics.json` exists, and the resolver resolves the run-2 prompt from corpus terms alone. (5) `api/shows/search` answers from a corpus-derived artifact through a pointer. (6) #279 and #73 have candidate lists and applied waves; #578/#831 have status comments.
+**Done when.** (1) `node tools/foraycorpus-export/export.mjs --source jsonl:<fixture>` reproduces `counts.json` exactly and a second run emits an empty delta; a live dry run from hermes-vm lands within ±2 % of the corpus brief's 2026-09-10 figures. (2) `node tools/foraycorpus-export/sync-r2.mjs` followed by `node tools/generation/warm-transcript-index.mjs` makes every R2 body searchable on the generation machine, with a written count the run-start guard checks. (3) *Rescoped 2026-10-06.* The per-episode ad-load data is the dai package's ledger, `data/ad-pad-probes.json` (DAI-08). The G-19 sample doc reports tier shares through PKG-16's `episodeTier`. `check-forays` refuses a source row the player would skip (#1022, done). The curated-catalogue measurement (`data/dai-measurements.json`, SYSK `locate-required`) is dropped, and `mintSegmentSource`'s tier gate is generation and out of scope (PKG-19/20/21). Gastropod's 33.4 s spread is pinned by `tools/segments/ad-pad.test.mjs`. (4) All 194 taxonomy nodes carry `terms[]`, `data/episode-topics.json` exists, and the resolver resolves the run-2 prompt from corpus terms alone. (5) `api/shows/search` answers from a corpus-derived artifact through a pointer. (6) #279 and #73 have candidate lists and applied waves; #578/#831 have status comments.
 
 **Dependencies.**
-- *Other packages:* none hard. G-00/generation code is on main. The native-engine decks (M2–M4) are untouched. G-40 (ad-pad tier in the player) already consumes `ad_pad_sec` (`player/foray-queue.js:379-381`), so PKG-21's `ad_pad_sec` on minted rows is readable by the web player today.
+- *Other packages:* none hard. G-00/generation code is on main. The native-engine decks (M2–M4) are untouched. G-40 (ad-pad tier in the player) already consumes `ad_pad_sec` (`player/foray-queue.js:379-381`), so PKG-21's `ad_pad_sec` on minted rows is readable by the web player today. (PKG-21 is generation and out of scope since 2026-10-06; the ad-pad data model is the dai package's, `docs/roadmap/dai.md` DAI-02…09.)
 - *Founder decisions:* Q1–Q5 below. D10 is largely answered (Apple transcripts WILL be harvested, DECISIONS 2026-09-25; bodies already sit in a private bucket).
 - *Credentials:* a read-only R2 S3 key pair for `foray-transcriptions` (Q1); `wyatt_readonly` on `foraycorpus` at 100.79.104.9 (exists, tailnet-only); `gh` auth on the export host for release publishing. Nothing new in GitHub Actions secrets.
 - *Devices/hosts:* hermes-vm 100.96.16.99 (tailnet) for the live export and the DAI probes; the founder's generation PC for the first sync (it holds today's `data-local/`).
@@ -20,7 +20,7 @@ Planned 2026-09-25 against `origin/main` 0b2b8f92; revised 2026-09-25 after revi
 - **Q1 — R2 read credential.** foray needs an S3-API key pair (Access Key ID + Secret) scoped *Object Read* on bucket `foray-transcriptions`. Default: Joey issues it from the Cloudflare account that owns the bucket; Wyatt stores it OUTSIDE the tree (`~/.foray/r2-credentials`, same key names the farm reads: `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_S3_ENDPOINT`, `R2_BUCKET`) on the generation PC and hermes-vm. The existing `data-local/.cf-token` is a Cloudflare API token, not an S3 pair, and is not used.
 - **Q2 — Export host and publish target (D2).** Default: the exporter runs weekly by cron on hermes-vm as `wyatt_readonly`; catalogue artifacts (show/episode metadata only, no transcript text) publish as GitHub Releases with a committed pointer, exactly like `tools/shows/` (keyless read, `gh` write); transcript bodies stay in R2. No Actions+Tailscale.
 - **Q3 — Rights flags (D10 remainder).** Default: shows whose feed carries `itunes:block` or `podcast:locked` are exported with the flag and EXCLUDED from the app catalogue adapter and from sourcing until a ruling says otherwise; Apple-sourced bodies are used (2026-09-25 ruling).
-- **Q4 — Outbound probes.** The DAI work sends ~2 × (500 + ~8,000) two-byte ranged GETs to publisher CDNs from hermes-vm/the PC under `ForayBot` at ≥ 1.2 s per host. Zero spend, but it is foray traffic against hosts Joey's crawler has paused. Default: go, from hermes-vm, never concurrently with the crawler's IP.
+- **Q4 — Outbound probes.** The DAI work sends ~2 × 500 two-byte ranged GETs (the G-19 sample, plus one feed request per sampled show; the ~8,000-episode catalogue run, PKG-19/20, was dropped 2026-10-06) to publisher CDNs from hermes-vm/the PC under `ForayBot` at ≥ 1.2 s per host. Zero spend, but it is foray traffic against hosts Joey's crawler has paused. Default: go, from hermes-vm, never concurrently with the crawler's IP.
 - **Q5 — The two catalogue waves change the curated tier (#279 drinks ~80–440 shows, #73 true-crime to 80–100 + computing).** Default: agents prepare candidate lists and PRs; the founder's review is the PR itself; Joey's open "comedy that fits" definition stays out of scope.
 
 ## 2. Task table
@@ -42,13 +42,13 @@ Planned 2026-09-25 against `origin/main` 0b2b8f92; revised 2026-09-25 after revi
 | PKG-13 | `sync-r2.mjs`: mirror R2 into `data-local/transcripts/` | qwen | — | PKG-11, PKG-12 | S |
 | PKG-14 | `rebuild-index.mjs`: sync then warm launcher | qwen | — | PKG-13 | XS |
 | PKG-15 | First live sync + warm on the generation PC; sync doc | opus | credentials, field diagnosis on the PC | PKG-14, Q1 | S |
-| PKG-16 | `dai-tier.mjs`: pure per-episode tiering | qwen | — | PKG-01 | S |
-| PKG-17 | `probe-runner.mjs` + `dai-sample.mjs`: G-19 stratified sample + probe runner | qwen | — | PKG-16 | S |
+| PKG-16 | `dai-tier.mjs`: thin per-episode tier wrapper over `tools/segments/ad-pad.mjs` (rescoped 2026-10-06) | qwen | — | PKG-01 | XS |
+| PKG-17 | `dai-sample.mjs`: G-19 stratified sampler only; probes go through `tools/segments/probe-ad-pad.mjs` (rescoped 2026-10-06) | qwen | — | PKG-16 | S |
 | PKG-18 | Run the G-19 sample over two days; shares doc | opus | outbound egress/politeness, interpreting results | PKG-17, PKG-10, Q4 | S |
-| PKG-19 | `dai-measure.mjs`: curated-catalogue probes → `data/dai-measurements.json` + derive | qwen | — | PKG-17 | S |
-| PKG-20 | Run dai-measure twice ≥ 24 h apart; commit data; verify SYSK/Gastropod | opus | egress, field verification, data judgement | PKG-19, Q4 | S |
-| PKG-21 | Tier gate + `ad_pad_sec` in `audioSourceLookup.ts` | opus | `backend/src/` is DENIED | PKG-20 (data), PKG-16 (shape) | S |
-| PKG-22 | `check-forays`: `ad_pad_sec` shape + locate-required refusal | qwen | — | PKG-16 | S |
+| PKG-19 | ~~`dai-measure.mjs`~~ dropped 2026-10-06: DAI-08's ledger covers the measured tape | — | — | — | — |
+| PKG-20 | ~~Run dai-measure twice~~ dropped 2026-10-06 with PKG-19 (the run is DAI-08) | — | — | — | — |
+| PKG-21 | Tier gate + `ad_pad_sec` in `audioSourceLookup.ts` — generation, out of scope (2026-10-06) | opus | `backend/src/` is DENIED | — | S |
+| PKG-22 | `check-forays`: `ad_pad_sec` shape + locate-required refusal — done by #1022 (DAI-06) | — | — | — | S |
 | PKG-23 | Run-start integrity guard against the sync state | opus | `backend/src/` DENIED | PKG-13, PKG-03 | S |
 | PKG-24 | Cache-through R2 cue provider (optional) | opus | `backend/src/` DENIED, cross-cutting seam | PKG-11, PKG-13 | S |
 | PKG-25 | Floor recalibration on the run-2 fixture with corpus df | opus | diagnosis from records, backend tests | PKG-26, PKG-15 | S |
@@ -61,7 +61,7 @@ Planned 2026-09-25 against `origin/main` 0b2b8f92; revised 2026-09-25 after revi
 | PKG-32 | `publish-release.mjs`: corpus artifacts as a GitHub Release + pointer | qwen | — | PKG-06, PKG-31 | S |
 | PKG-33 | `api/shows/search` + `breadthCatalog` read through the pointer | opus | `api/` needs a human merge click; `backend/src/` DENIED | PKG-32 | S |
 | PKG-34 | `corpus-freshness.yml` advisory workflow | opus | `.github/` DENIED | PKG-32 | XS |
-| PKG-35 | #279 drinks-wave candidate list + report | qwen | — | PKG-04 (optional), PKG-19 | S |
+| PKG-35 | #279 drinks-wave candidate list + report | qwen | — | PKG-04 (optional); `dai_measured` reads `ad-inflation.mjs`'s verdicts (PKG-19 dropped) | S |
 | PKG-36 | #279 apply wave to `data/catalog.json`; re-score the alcohol spine | opus | product judgement on the curated tier | PKG-35, #275 merged | S |
 | PKG-37 | #73 true-crime / computing candidate lists (`node-wave.mjs`) | qwen | — | PKG-35 | S |
 | PKG-38 | #73 select, add, classify; non-DAI share | opus | product judgement, LLM classification pass | PKG-37 | S |
@@ -267,61 +267,146 @@ Planned 2026-09-25 against `origin/main` 0b2b8f92; revised 2026-09-25 after revi
 **Stop and escalate if:** the bucket listing shows a layout other than the documented one; the sha256 metadata is absent on most objects (then PKG-13's size fallback is doing the work — say so).
 **Definition of done:** doc merged; DRAFT PR `docs(corpus-export): first R2 sync on the generation machine (PKG-15)`.
 
-### PKG-16 · `dai-tier.mjs` — qwen · S
+### PKG-16 · `dai-tier.mjs` — thin per-episode tier wrapper over the dai package — qwen · XS
+**Rescoped 2026-10-06 (roadmap wave 16, PKG-16-part).** The original card wrote ADR-0008's pad arithmetic a second time: its own `bytesPerSec`, its own `probeDeltaSec`, a 30 s `PAD_MARGIN_SEC`, and a ceiling imported from `player/seek-policy.js`. The dai package has since landed the one implementation. `tools/segments/ad-pad.mjs` (DAI-02, #988) provides `probeDeltaSec` and `padFromProbes`: pad = `max(0, delta_max) + spread`, and the tier is checked against `ANCHOR_TIME_TOLERANCE_SEC`. `rangedGetTrusted` lives in `tools/transcribe/ad-inflation.mjs` (DAI-01, #986). This card now only maps that result onto G-12's per-episode tier vocabulary. It has no pad arithmetic of its own. It adds no 30 s margin: ADR-0008's margin is the observed spread, which `padFromProbes` already adds. It has no ceiling of its own.
 **Executor:** qwen.
-**Context:** `docs/adr/0008-ad-tolerance-and-timestamp-precision.md:214-252` (the two tiers; pad = `delta_max` + margin ≤ 120 s) and `:86-90` (the Gastropod arithmetic: `534,574 × 8 ÷ 128,200 = 33.4 s` — NOTE 128,200 there is BITS per second, i.e. 128.2 kbps = 16,025 bytes/s; the `× 8` converts bytes to bits), `tools/transcribe/ad-inflation.mjs:85-125` (`inflationRatio`, `AD_FREE_THRESHOLD 1.01`, `AD_FREE_FLOOR 0.99`), `:149-170` (`classify`, `MIN_SAMPLES_FOR_AD_FREE 2`), `player/seek-policy.js:109` (`AD_PAD_CEILING_SEC = 120`, pure ESM, no browser globals — verified), roadmap `:553-586` (G-12 field names: `delta_max_sec`, `spread_sec`, `n_probes`, `pad_sec`, `tier`).
-**Exact change:**
-1. `dai-tier.mjs` exporting `PAD_MARGIN_SEC = 30`, `PAD_CEILING_SEC` imported from `../../player/seek-policy.js` (`AD_PAD_CEILING_SEC`), `TIERS = Object.freeze(["ad-free","paddable","locate-required","unmeasured","unmeasurable"])`, `bytesPerSec({declared_bytes, feed_duration_sec})` → `declared_bytes / feed_duration_sec` (BYTES per second) or null when either is not > 0, `probeDeltaSec(probe, ctx)` → `(probe.delivered_bytes − ctx.declared_bytes) / bytesPerSec(ctx)` (null when no bitrate), `tierFor({probes, declared_bytes, feed_duration_sec})` → `{n_probes, delta_max_sec, spread_sec, pad_sec, tier, ratios}` with: `probes` filtered to `status 206 && delivered_bytes > 0`; `n_probes < 2` → `unmeasured` (all numbers null); `bytesPerSec` null (declared 0/null, e.g. Megaphone `length="0"`, or no duration) → `unmeasurable`; every ratio in `[AD_FREE_FLOOR, AD_FREE_THRESHOLD)` → `ad-free` with `delta_max_sec` = max delta (may be ≤ 0), `pad_sec 0`; else `delta_max_sec = max(delta_i)`, `spread_sec = max(delta_i) − min(delta_i)`, `pad_sec = round(delta_max_sec + PAD_MARGIN_SEC)`, tier `paddable` if `pad_sec ≤ PAD_CEILING_SEC` else `locate-required`. All seconds rounded to 0.1.
-2. `dai-tier.test.mjs` (7): (a) Gastropod: `feed_duration_sec: 3600`, `declared_bytes: 57_690_000` (= 16,025 B/s × 3,600 s), probes `delivered_bytes` = `57_690_000 + 2_000_000` and `57_690_000 + 2_534_574` (both well above the ad-free band) → `spread_sec 33.4`; the test comment states that the ADR's 128,200 is bits/s and that this fixture encodes 16,025 bytes/s (mutation: multiply `bytesPerSec` by 8 → spread 4.2); (b) one probe → `unmeasured`; (c) declared 0 → `unmeasurable`; (d) two probes at ratio 1.000 → `ad-free`, `pad_sec 0`; (e) delta_max 90 → `paddable` (pad 120), delta_max 90.5 → `locate-required` (mutation: `<`); (f) `PAD_CEILING_SEC === 120` and the source of `dai-tier.mjs` contains the import specifier `player/seek-policy.js` (read the file; mutation: hardcode 120 locally); (g) a 404 probe is ignored (mutation: count it). Floor (7).
-**Commands:** `npm test --prefix tools/foraycorpus-export -- dai-tier.test.mjs` → 7 pass.
-**Do not touch:** `player/`, `tools/transcribe/` (imports only).
-**Stop and escalate if:** `player/seek-policy.js` cannot be imported from Node (report the error verbatim).
-**Definition of done:** DRAFT PR `feat(corpus-export): per-episode DAI tiering (PKG-16)`.
+**Context:**
+- `tools/segments/ad-pad.mjs`. Read the whole file; its header says what is refused and why.
+  - `probeDeltaSec(probe, referenceDurationSec)` returns `{delta_sec}` or `{unusable}`.
+  - `padFromProbes(probes, {referenceDurationSec})` returns `{refused, n?}`, or `{n, delta_max_sec, delta_min_sec, spread_sec, pad_sec, tier: "PADDABLE"|"LOCATE-REQUIRED", method, measured_at, unusable}`.
+  - It THROWS on a non-positive reference and on mixed `item_id`s.
+- `tools/segments/ad-pad.test.mjs`: the fixture style and the Gastropod decode probes.
+- `data/ad-pad-probes.json`: its `notes` give the probe-row schema.
+- `tools/transcribe/ad-inflation.mjs`: `rangedGetTrusted(urlOrHost)`, `RANGED_GET_UNTRUSTED_HOSTS` and `MIN_PLAUSIBLE_BYTES`.
+- `tools/segments/merge-segments.mjs`: `ANCHOR_TIME_TOLERANCE_SEC`.
+- Roadmap G-12 (`docs/curation/foray-to-spec-roadmap.md` §G-12): the tier is one of {ad-free, paddable, locate-required, unmeasured, unmeasurable}, and `length="0"` is unmeasurable, never guessed.
 
-### PKG-17 · `probe-runner.mjs` + `dai-sample.mjs` (G-19) — qwen · S
-**Executor:** qwen.
-**Context:** roadmap `:470-483` (G-19: ~500 episodes from the timed+audio set, stratified by feed host and show size, two 2-byte GETs ≥ 24 h apart, HEAD lies), `tools/transcribe/ad-inflation.mjs:221-262` (`probeEpisode(url, declaredBytes, {fetchImpl, gate, sleep, now, …})`) and `:262-336` (the exact return keys `{ratio, delivered_bytes, status, error, …}`), `:195-202` (timeouts/retry), `tools/segments/politeness.mjs:142-152` (`AUDIO_PROBE_HEADERS`, `MIN_HOST_INTERVAL_MS`), PKG-05 episode rows (`audio.url`, `audio.declared_bytes` null in the corpus today), PKG-16.
 **Exact change:**
-1. `probe-runner.mjs` (shared by PKG-17 and PKG-19; created HERE) exporting `runProbes(picks, stateFile, { fetchImpl, now, minAgeMs = 24 * 3600 * 1000, sleep })`: state = `{version:1, picks:{[pickKey]: {…pick, probes:[{at, status, delivered_bytes, ratio, error}]}}}` with `pickKey = "<show_key>|<guid>"`; for each pick, append a probe from `probeEpisode(pick.audio_url, pick.declared_bytes ?? null, {fetchImpl, now, sleep, …})` ONLY if the last probe for that key is ≥ `minAgeMs` old or absent; persist the state file after every probe (tmp+rename); resume on rerun; return `{attempted, skipped_recent, errors}`. `readProbeState(file)` returns the default when absent.
-2. `dai-sample.mjs` exporting `stratifiedSample(episodeRowsByShow, { n = 500, seed = 20260925 })`: frame = rows with `transcript.timed && audio`; strata = `hostOf(audio.url)` × show-size bucket (`1-4`, `5-19`, `20-99`, `100+` timed+audio episodes); allocation: (i) largest-remainder proportional allocation of `n` over strata; (ii) within a stratum pick at most 3 per show, deterministic PRNG (mulberry32 on `seed`); (iii) if a stratum cannot fill its quota under the cap, its shortfall is re-allocated over the strata that still have capped-available rows by one more largest-remainder pass, repeated until no shortfall or no capacity; `frame_capped` = the total number of rows pickable under the ≤ 3-per-show cap; result `{frame_size, frame_capped, strata:[{host, bucket, frame, quota, picked}], picks:[{show_key, guid, audio_url, declared_bytes, feed_duration_sec}]}` with `picks.length === min(n, frame_capped)`.
-3. `report(state)`: per pick `tierFor` (PKG-16) — when `declared_bytes` is null the ratio is undefined, so ALSO compute the declared-free classes: `stable` (two 206 probes with equal `delivered_bytes`), `varying` with `spread_sec` from `bytesPerSec ≈ min(delivered)/feed_duration_sec`, `paddable-candidate` (`spread_sec + PAD_MARGIN_SEC ≤ PAD_CEILING_SEC`), `locate-required` (above), `unmeasurable` (no duration or < 2 usable probes). Output `{N, sampling_frame, shares:{ad-free, paddable, locate-required, unmeasured, unmeasurable, stable, varying}, by_host:[…]}`. CLI: `--sample <episodes dir> --out sample.json`, `--probe --state <file>`, `--report --state <file> --out <json>`.
-4. `probe-runner.test.mjs` (3): (a) a second `runProbes` within 24 h issues zero fetches (fake `fetchImpl` counter; mutation: drop the age check); (b) the state file is rewritten after each probe (count writes via a spy on the tmp+rename helper or by reading between two fakes; mutation: write once at the end); (c) a rerun after a simulated crash (state with one pick probed, one not) probes only the unprobed pick (mutation: ignore existing state). `dai-sample.test.mjs` (5): (a) sampling is deterministic for a seed and ≤ 3 per show (mutation: `Math.random`); (b) with a fixture where one stratum has only 2 pickable rows and quota 5, `picks.length === min(n, frame_capped)` and the shortfall lands in other strata (mutation: floor without remainders, or skip the re-allocation); (c) two equal 206 probes → `stable`; probes 1,282,000 bytes apart at 128,200 B/s-equivalent (`min(delivered) = 128,200 × feed_duration_sec`) → `varying` `spread_sec 10.0` (mutation: use max instead of min for the bitrate); (d) the report's shares sum to N; (e) `hostOf` strips `www.` and lowercases (mutation: raw hostname). Floors: probe-runner (3), dai-sample (5).
-**Commands:** `npm test --prefix tools/foraycorpus-export -- probe-runner.test.mjs` → 3 pass; `-- dai-sample.test.mjs` → 5 pass.
-**Do not touch:** no real fetch in tests; `tools/transcribe/` imports only.
-**Stop and escalate if:** `probeEpisode` throws (rather than returning `ratio null` + `error`) when `declaredBytes` is `null` (read `:262-336`; report the exact behaviour in the PR and wrap only if it throws).
-**Definition of done:** DRAFT PR `feat(corpus-export): probe runner and G-19 DAI tier sampler (PKG-17)`.
+1. Create `tools/foraycorpus-export/dai-tier.mjs`. It exports `TIERS = Object.freeze(["ad-free","paddable","locate-required","unmeasured","unmeasurable"])` and `episodeTier(probes, { referenceDurationSec })`, which returns `{tier, reason, n, delta_max_sec, spread_sec, pad_sec, method, measured_at, hosts}`. It imports `padFromProbes` and `probeDeltaSec` from `../segments/ad-pad.mjs`, and `rangedGetTrusted` from `../transcribe/ad-inflation.mjs`. It does no arithmetic on bytes or seconds. The rules, in order:
+   - If `referenceDurationSec` is not a finite number > 0, the tier is `unmeasurable` with reason `"no reference duration"`. Check this BEFORE calling `padFromProbes`, which throws on it.
+   - `hosts` lists the distinct `host` of the ranged-get probes, each as `{host, trusted: rangedGetTrusted(host)}`. PKG-17's by-host table reads it.
+   - If `padFromProbes` refuses with `"ranged-get on an untrusted host"` or `"undersized"`, the tier is `unmeasurable` with that reason.
+   - If it refuses with `"n<2"`: the tier is `unmeasurable` with reason `"no denominator"` when at least one probe exists and `probeDeltaSec` returns `{unusable: "no denominator"}` for EVERY probe. That is Megaphone's `length="0"`, or a declared length nobody captured. Otherwise the tier is `unmeasured` with reason `"n<2"`.
+   - `PADDABLE` with `pad_sec === 0` maps to `ad-free`, any other `PADDABLE` to `paddable`, and `LOCATE-REQUIRED` to `locate-required`. The reason is null.
+   - The numbers are copied through from `padFromProbes`, and are null on every refusal.
+2. Create `dai-tier.test.mjs` with 8 tests. Build fixtures the way `tools/segments/ad-pad.test.mjs` does: one `item_id`, an ISO `probed_at`, a trusted host such as `traffic.example.com`, and sizes ≥ `MIN_PLAUSIBLE_BYTES`. Each test names the mutation it kills:
+   - (a) Gastropod: decode probes of 2,466.1 s and 2,432.7 s on a reference of 2,400 → `paddable`, `spread_sec 33.4`, `pad_sec 99.5`, and every number deep-equals `padFromProbes`'s for the same input. Mutation: add a 30 s margin in the wrapper (→ 129.5, `locate-required`).
+   - (b) A pad of exactly `ANCHOR_TIME_TOLERANCE_SEC` → `paddable`; 0.1 s over → `locate-required`. Assert against the imported constant. Mutation: re-threshold in the wrapper with `<`.
+   - (c) Two ranged-get probes that each deliver exactly the declared length → `ad-free`, `pad_sec 0`. Mutation: map every PADDABLE to `paddable`.
+   - (d) One usable probe → `unmeasured`, reason `"n<2"`. Mutation: map every `n<2` to `unmeasurable`.
+   - (e) Two ranged-get probes with `declared_bytes: 0` → `unmeasurable`, reason `"no denominator"`. Mutation: map every `n<2` to `unmeasured`.
+   - (f) Two probes from `atelier.flightcast.com` → `unmeasurable`, reason `"ranged-get on an untrusted host"`, and `hosts[0].trusted === false`. Mutation: `trusted: true`.
+   - (g) Deltas below the undersized floor → `unmeasurable`, reason `"undersized"`. Mutation: map undersized to `unmeasured`.
+   - (h) `referenceDurationSec: null` → `unmeasurable`, reason `"no reference duration"`, and nothing throws. Mutation: drop the guard, so `padFromProbes` throws.
+
+   Add a floor of 8.
+**Commands:**
+- `npm test --prefix tools/foraycorpus-export -- dai-tier.test.mjs` → 8 pass.
+- `node --test tools/segments/ad-pad.test.mjs` → unchanged.
+- `node --test "test/suite-integrity.test.js"`.
+
+**Do not touch:** `tools/segments/` and `tools/transcribe/` (imports only). Do not import from `player/` at all.
+**Stop and escalate if:**
+- `ad-pad.mjs`'s refusal strings differ from the three named above. Read the file, map what is there, and report it.
+- Importing `../segments/ad-pad.mjs` fails under the package's `node --test`. Report the error verbatim; do not copy the arithmetic.
+
+**Definition of done:** DRAFT PR `feat(corpus-export): per-episode DAI tier over the ad-pad ledger (PKG-16)`.
+
+### PKG-17 · `dai-sample.mjs` — the G-19 stratified sampler only — qwen · S
+**Rescoped 2026-10-06.** The original card also built two things that are now dropped:
+- `probe-runner.mjs`: a second probe loop with its own state file and its own 24 h age check. `tools/segments/probe-ad-pad.mjs` (DAI-04, #990; `--dry-run` fixed in #1151) is the collector, and `data/ad-pad-probes.json`'s rows are the ledger shape.
+- A report with no declared length that sorted episodes into `stable` and `varying` from a bitrate guessed from `min(delivered)`. PKG-16 is the only tiering.
+
+What stays is G-19's sampler, which nothing else provides.
+**Executor:** qwen.
+**Context:**
+- Roadmap G-19 (`docs/curation/foray-to-spec-roadmap.md`): about 500 episodes from the timed+audio set, stratified by feed host and show size, with two 2-byte GETs ≥ 24 h apart (HEAD lies).
+- `tools/segments/probe-ad-pad.mjs`. Read the header.
+  - `selectRows(sourcesDoc, {ids, all})` reads `sources[].id`, `audio_url` and `audio_bytes`.
+  - `run` refuses a second probe of an item inside `--min-gap-hours`.
+  - The CLI takes the worklist path from `SEGMENT_SOURCES` and the ledger path from `AD_PAD_LEDGER`, and writes the ledger once, at the end of a run.
+- `data/ad-pad-probes.json`: the ledger file shape `{version, notes, probes}`.
+- `tools/segments/backfill-audio-bytes.mjs` `planBackfill`: the rows in scope are those with `dai_suspected === true` and a matching `id` prefix. It joins by `audio_url`, then by `episode_guid`, and respects a row's `feed_url`.
+- PKG-05 episode rows (`audio.url`, `duration_sec`): `audio.declared_bytes` is null in the corpus today (#578 ask 6).
+- PKG-04 `shows.jsonl` (`feed_url`) and PKG-16.
+
+**Exact change:**
+1. `dai-sample.mjs` exports `stratifiedSample(episodeRowsByShow, { n = 500, seed = 20260925 })`, as originally specified:
+   - The frame is the rows with `transcript.timed && audio`.
+   - The strata are `hostOf(audio.url)` × a show-size bucket (`1-4`, `5-19`, `20-99`, `100+` timed+audio episodes).
+   - Allocation: (i) largest-remainder proportional allocation of `n` over the strata; (ii) at most 3 picks per show within a stratum, from a deterministic PRNG (mulberry32 on `seed`); (iii) any shortfall is re-allocated by further largest-remainder passes until there is no shortfall or no capacity.
+   - `frame_capped` is the number of rows that can be picked under the cap.
+   - The result is `{frame_size, frame_capped, strata:[{host, bucket, frame, quota, picked}], picks:[{show_key, guid, audio_url, declared_bytes, feed_duration_sec}]}`, with `picks.length === min(n, frame_capped)`.
+   - `hostOf` lowercases the hostname and strips `www.`.
+2. `toWorklist(sample, { feedUrlByShow })` returns a probe worklist shaped like `sources`: `{version: 1, notes, sources: [{id: "<show_key>|<guid>", show_key, episode_guid, audio_url, audio_bytes?, duration_sec, feed_url, dai_suspected: true}]}`.
+   - `audio_bytes` is present only when `declared_bytes > 0`.
+   - `feed_url` comes from the show's `shows.jsonl` row, or is null.
+   - It is a worklist, not catalogue data. Every row gets `dai_suspected: true` because `backfill-audio-bytes.mjs` selects rows on that field; `notes` says so.
+   - `emptyLedger()` returns `{version: 1, notes, probes: []}`, with the same keys as `data/ad-pad-probes.json`.
+3. `report(worklist, ledger)`:
+   - For each worklist row it calls `episodeTier(groupProbesByItem(ledger).get(row.id) ?? [], { referenceDurationSec: row.duration_sec })` (PKG-16; `groupProbesByItem` comes from `tools/segments/ad-pad.mjs`).
+   - A row without `audio_bytes` was never probed and counts as `unmeasurable` / `"no denominator"`.
+   - The output is `{N, sampling_frame: {frame_size, frame_capped}, shares: {ad-free, paddable, locate-required, unmeasured, unmeasurable}, reasons: {...}, by_host: [{host, trusted, n, shares}], rows: [{id, host, tier, reason, pad_sec}], notes}`.
+   - `notes` states the caveat that the reference duration is the feed's `itunes:duration`, not a transcript's timed length.
+4. CLI:
+   - `--sample <episodes dir> --shows <shows.jsonl> --worklist <out.json> --ledger <out.json>` writes the worklist, and writes `emptyLedger()` only when the ledger file does not exist.
+   - `--report --worklist <file> --ledger <file> --out <json>` writes the report.
+   - This file makes no network request. Probing is `SEGMENT_SOURCES=<worklist> AD_PAD_LEDGER=<ledger> node tools/segments/probe-ad-pad.mjs --all`.
+5. `dai-sample.test.mjs` has 6 tests:
+   - (a) Sampling is deterministic for a seed and picks ≤ 3 per show. Mutation: `Math.random`.
+   - (b) With one stratum holding 2 pickable rows and a quota of 5, `picks.length === min(n, frame_capped)` and the shortfall lands in other strata. Mutation: skip the re-allocation.
+   - (c) `hostOf` strips `www.` and lowercases. Mutation: return the raw hostname.
+   - (d) The worklist works with the real collector: `selectRows(toWorklist(sample), {all: true})` from `tools/segments/probe-ad-pad.mjs` selects the rows that have a declared length and skips the rest with `"no audio_bytes"`. Mutation: write the field as `declared_bytes`.
+   - (e) The shares sum to N, and an unprobed row counts as `unmeasurable`. Mutation: leave unprobed rows out of N.
+   - (f) A ledger carrying the Gastropod decode probes for one row reports that row `paddable` with `pad_sec 99.5`. Mutation: tier the row without reading the ledger.
+
+   Add a floor of 6.
+**Commands:** `npm test --prefix tools/foraycorpus-export -- dai-sample.test.mjs` → 6 pass; `node --test "test/suite-integrity.test.js"`.
+**Do not touch:** `tools/segments/` and `tools/transcribe/` (imports only). No real fetch in tests. No probe loop, state file or age check in this package.
+**Stop and escalate if:** `probe-ad-pad.mjs`'s `selectRows` needs a field the worklist cannot carry. Report it; do not fork the collector.
+**Definition of done:** DRAFT PR `feat(corpus-export): G-19 stratified DAI sample over the ad-pad collector (PKG-17)`.
 
 ### PKG-18 · Run the G-19 sample — opus · S
 **Executor:** opus. Why: outbound traffic to publisher CDNs (Q4), politeness with Joey's crawler, interpretation.
 **Context:** roadmap `:470-483`, `:513-536` (politeness: the crawler's egress vs ours), PKG-17, PKG-10's export output on hermes-vm.
-**Exact change:** on hermes-vm: `dai-sample.mjs --sample /var/lib/foray-corpus-export/<version>/episodes --out sample.json`; `--probe` day 1; `--probe` day 2 (≥ 24 h); `--report`. Commit `docs/curation/dai-sample-2026-09.json` and `docs/curation/dai-sample-2026-09.md` with N, the frame (`frame_size`, `frame_capped`), the shares, by-host table, and the sentence answering §1.2's "playable tape supply" row; propose G-11's backfill order (ad-free/stable hosts first). Add a line in `docs/curation/foray-to-spec-roadmap.md` §1.2 row "Playable tape supply after DAI tier" pointing to the doc (docs/ is allowed).
+**Exact change (commands rescoped 2026-10-06 onto PKG-17's worklist and the dai package's collector):** on hermes-vm, in order. Use absolute paths for the worklist and the ledger: `probe-ad-pad.mjs` resolves `SEGMENT_SOURCES` and `AD_PAD_LEDGER` against the repo root, not against the current directory.
+1. Build the worklist: `node tools/foraycorpus-export/dai-sample.mjs --sample /var/lib/foray-corpus-export/<version>/episodes --shows <shows.jsonl> --worklist g19-worklist.json --ledger g19-ledger.json`.
+2. Fill in the declared lengths. For each sampled show whose picks lack `audio_bytes`, run `node tools/segments/backfill-audio-bytes.mjs --sources g19-worklist.json --feed <feed_url> --show "<show_key>|"`. That is one feed request per show, through the host gate. A `length="0"` stays absent and reads as `unmeasurable`.
+3. Day 1: run `SEGMENT_SOURCES=g19-worklist.json AD_PAD_LEDGER=g19-ledger.json node tools/segments/probe-ad-pad.mjs --all`. Run it with `--dry-run` first: that sends nothing and prints the request count.
+4. Day 2 (≥ 24 h later): run the same command again. The collector refuses an item probed inside the gap.
+5. Run `--report --worklist g19-worklist.json --ledger g19-ledger.json --out <json>`.
+
+Then commit `docs/curation/dai-sample-2026-09.json` and `docs/curation/dai-sample-2026-09.md` with N, the frame (`frame_size`, `frame_capped`), the shares, by-host table, and the sentence answering §1.2's "playable tape supply" row; propose G-11's backfill order (ad-free/stable hosts first). Add a line in `docs/curation/foray-to-spec-roadmap.md` §1.2 row "Playable tape supply after DAI tier" pointing to the doc (docs/ is allowed).
 **Commands:** as above; `node --test "test/suite-integrity.test.js"` (deck-claims: run `node tools/ci/deck-claims.mjs` if it checks that deck — read `tools/ci/deck-claims.mjs:1-40` first; do not edit it).
 **Do not touch:** `tools/ci/`.
 **Stop and escalate if:** any host returns 429 twice (stop that host, note it); the crawler's IP is the same egress (do not run).
 **Definition of done:** the two docs merged; DRAFT PR `docs(corpus): G-19 DAI tier sample (PKG-18)`.
 
-### PKG-19 · `dai-measure.mjs` (G-12 curated-catalogue slice) — qwen · S
-**Executor:** qwen.
-**Context:** roadmap `:553-586` (G-12: per-episode artifact `data/dai-measurements.json`; `data/dai-classification.json` is DERIVED, its readers stay), `data/transcript-availability.json` (`shows[]`: `show_id, apple_collection_id, title, feed_url, dai_suspected, enclosure_host`; nested `episodes[]`: `guid, title, enclosure_url, enclosure_bytes, duration_sec, transcript_url, transcript_type, has_timestamps`) — this is the ONLY committed episode-level artifact; `data/breadth-transcript-yield.json` is show-rows-only (verified: its `policy` field says so) and is OUT OF SCOPE here — breadth episodes get measured only once an episode-level breadth artifact exists (the corpus export's `episodes/*.jsonl` lacks `enclosure_bytes` today), `tools/transcribe/ad-inflation.mjs:379-405` (`applyVerdicts(classification, results, {measuredAt})` writes `shows[apple_id].ad_inflation`), `:170-193` (`summariseShow`), `tools/refresh/dai.mjs:131` (`resolveChain` — for `resolved_host`; NOT called in tests), PKG-16, PKG-17's `probe-runner.mjs` (import `runProbes`/`readProbeState`; do not modify it).
-**Exact change:**
-1. `dai-measure.mjs` exporting `selectCatalogueTargets({availability, perShow = Infinity})` → picks every episode with an `https:` `enclosure_url` and `has_timestamps === true`, carrying `show_key: show_id, show_id, apple_collection_id, show_title, guid, audio_url, declared_bytes: enclosure_bytes, feed_duration_sec: duration_sec`; probing via `runProbes` from `probe-runner.mjs` (no probe loop in this file); `buildMeasurements(state, { builtAt })` → `data/dai-measurements.json` = `{version:1, built_at, method:"2-byte ranged GET, N ≥ 2 ≥ 24 h apart; tools/foraycorpus-export/dai-measure.mjs (ADR-0008)", pad_margin_sec:30, pad_ceiling_sec:120, scope:"data/transcript-availability.json (curated)", episodes:{ "<show_id>|<guid>": {show_id, apple_collection_id, guid, audio_url, resolved_host, declared_bytes, feed_duration_sec, probes:[{at, status, delivered_bytes, ratio}], n_probes, delta_max_sec, spread_sec, pad_sec, tier} } }` with keys sorted; `built_at` = the newest probe `at` (NOT now) so a rebuild with no new probes is byte-identical.
-2. `deriveShowVerdicts(measurements)` → per `apple_collection_id`: `{verdict: "ad-free"|"injected"|"unknown", median, n, samples}` via `summariseShow(ratios)` where ratios come only from probes with a numeric ratio; `--derive` applies them to `data/dai-classification.json` through `applyVerdicts` with `measuredAt = measurements.built_at` and writes the file with `JSON.stringify(x, null, 2) + "\n"` (the file's existing style) — `dai`/`reason` untouched (that is `classify-dai.mjs`'s).
-3. `dai-measure.test.mjs` (5): (a) targets exclude episodes without timestamps and `http:` enclosures (mutation: drop the https check); (b) a fixture state with two probes yields a `locate-required` row for a `+10 min` SYSK-like delta (declared 60,000,000 B, duration 3,000 s → 20,000 B/s; probes +12,000,000 and +12,100,000 bytes → `delta_max_sec 605.0`; mutation: swap min/max); (c) `built_at` equals the newest probe time and two builds from the same state are byte-identical (mutation: `new Date()`); (d) derive writes `ad_inflation.measured_at === built_at` and leaves `dai` untouched (mutation: set `dai`); (e) keys sorted. Floor (5).
-**Commands:** `npm test --prefix tools/foraycorpus-export -- dai-measure.test.mjs` → 5; `-- probe-runner.test.mjs` still 3; `-- dai-sample.test.mjs` still 5.
-**Do not touch:** `tools/refresh/classify-dai.mjs` (unchanged: derived data flows through `applyVerdicts`), `tools/ci/`, `probe-runner.mjs`, `dai-sample.mjs`.
-**Stop and escalate if:** `applyVerdicts`'s result shape expects fields (`undersized_samples`, `note`) you cannot compute — pass them through from `summariseShow` and report; `runProbes`'s state shape does not carry `feed_duration_sec` (PKG-17 must add it; do not fork the runner).
-**Definition of done:** DRAFT PR `feat(corpus-export): per-episode DAI measurements and derived show verdicts (PKG-19)`.
+### PKG-19 · `dai-measure.mjs` (G-12 curated-catalogue slice) — dropped 2026-10-06
+**Decision: dropped, not rescoped. DAI-08's ledger covers every episode a pad is used for.** Checked on `origin/main` ce93b02b:
+- **A per-episode pad is read in one place only:** the stamped `ad_*` fields on `data/segment-sources.json` rows. They are written only by `tools/segments/stamp-ad-pad.mjs` (DAI-03), hydrated by foray-resolve (DAI-05), and enforced by check-forays (#1022). Those rows are the tape that Forays play. DAI-08 (`docs/roadmap/dai.md`) probes them into `data/ad-pad-probes.json`. All 33 `dai_suspected` rows have carried a feed-declared denominator since #1028.
+- **The per-show half of this card already exists.** The card also derived per-show `ad_inflation` verdicts into `data/dai-classification.json`. `tools/transcribe/ad-inflation.mjs`'s own scan already writes those through `applyVerdicts`: 27 shows carry one on main. `tools/foraycorpus-export/wave-candidates.mjs` (PKG-35) reads its `dai_measured` column from there.
+- **The per-episode tier has no consumer in scope.** For catalogue episodes that are not source rows, the only consumer was PKG-21 (generation minting), which is out of scope. A catalogue ledger now would cost about 2 × 8,000 requests for evidence nothing reads.
+- **G-12's checks.** The Gastropod check is already pinned by `tools/segments/ad-pad.test.mjs` ("the pad reproduces ADR-0008's Gastropod arithmetic": spread 33.4 s, pad 99.5 s). The SYSK `locate-required` check waits with PKG-21, because SYSK is not a source row.
 
-### PKG-20 · Run dai-measure twice; commit the data — opus · S
-**Executor:** opus. Why: egress (Q4), field verification against ADR-0008's numbers, judging anomalies.
-**Context:** roadmap `:577-585` (Done-when: SYSK `locate-required` N ≥ 2; Gastropod reproduces 33.4 s; derive byte-stable; CI DAI invariant passes), `.github/workflows/ci.yml:403-541` (data-and-site: the "DAI flags" invariant — read which files it checks), PKG-19.
-**Exact change:** run `--probe` on day 1 and day 2 from hermes-vm (or the PC), `--build`, `--derive`; commit `data/dai-measurements.json` and the changed `data/dai-classification.json`; run `node tools/refresh/classify-dai.mjs --reclassify` afterwards to prove `dai/reason` are unchanged (byte-diff); record SYSK's and Gastropod's rows in the PR body; run `node tools/foraycorpus-export/dai-measure.mjs --build` twice and `git diff --stat` shows nothing. Note episodes with `length="0"` (unmeasurable) count.
-**Commands:** as above; `node tools/ci/run-suites.mjs` (full) before the PR since `data/` changed.
-**Do not touch:** `tools/refresh/` code.
-**Stop and escalate if:** Gastropod's spread is not within 33.4 ± 5 s (check first that the fixture bitrate arithmetic in PKG-16 test (a) matches: bytes/s = declared ÷ duration, no ×8); more than 20 % of probes error.
-**Definition of done:** data committed; DRAFT PR `data(dai): per-episode ad-load measurements, first two probes (PKG-20)`.
+**If PKG-19 is revived** (PKG-21 or a successor comes back into scope):
+- **Ledger.** Measure the curated catalogue into the SAME ledger schema as `data/ad-pad-probes.json`. A row is either `{item_id, probed_at, method: "ranged-get", host, status, attempts, declared_bytes, delivered_bytes}` or `{item_id, probed_at, method: "decode", decoded_duration_sec}`, with `item_id = "<show_id>|<guid>"`. Keep it in its OWN file, not `data/ad-pad-probes.json`, because `stamp-ad-pad.mjs` reports every ledger `item_id` that has no source row.
+- **Tools.** Collect with `probe-ad-pad.mjs` over a worklist shaped like `sources` (PKG-17's `toWorklist` shape) through `SEGMENT_SOURCES`/`AD_PAD_LEDGER`, and tier with PKG-16's `episodeTier`. Do not add a new probe runner.
+- **The declared length is not in the availability file.** `data/transcript-availability.json`'s episode rows carry `guid, enclosure_url, title, pub_date, duration_sec, transcript_url, transcript_type, has_timestamps, transcript_types, chapters_url`. None carries `enclosure_bytes` (0 of 8,250 rows), so this card's original context line was wrong. The denominator must come from one of two places:
+  - the feed's `<enclosure length>` at probe time (`backfill-audio-bytes.mjs` / `tools/refresh/enclosure.mjs` `enclosureLengthBytes`). `length="0"`, or no length at all, means no denominator and reads as `unmeasurable`;
+  - a `decode` probe, which needs no denominator.
 
-### PKG-21 · Tier gate + `ad_pad_sec` in `audioSourceLookup.ts` — opus · S
+  A ranged GET's `Content-Range` total is the delivered length, never the declared one.
+
+### PKG-20 · Run dai-measure twice; commit the data — dropped 2026-10-06 with PKG-19
+Its run is DAI-08's (`docs/roadmap/dai.md`): two ranged-GET rounds ≥ 24 h apart over the DAI source rows, stamped through `stamp-ad-pad.mjs`. The per-show verdicts it would have refreshed come from `tools/transcribe/ad-inflation.mjs`'s own scan, through `applyVerdicts`, unchanged. Nothing to dispatch.
+
+### PKG-21 · Tier gate + `ad_pad_sec` in `audioSourceLookup.ts` — opus · S — generation, out of scope
+**Out of scope (2026-10-06).** This is Foray generation work (`backend/src/generation/`), and this roadmap pass does not dispatch generation work. The card is kept for the record but NOT rescoped. If generation work resumes, rewrite it before dispatch:
+- `data/dai-measurements.json` is no longer planned (PKG-19 was dropped). The per-episode tier comes from PKG-16's `episodeTier` over a ledger in `data/ad-pad-probes.json`'s schema.
+- A minted row's pad uses the dai package's stamped `ad_*` fields, not a bare `ad_pad_sec` sized with a 30 s margin.
+- The published-Foray refusal already lives in check-forays (#1022), so the "do not touch check-forays (PKG-22)" line below no longer applies.
+
 **Executor:** opus. Why: `backend/src/` is DENIED.
 **Context:** `backend/src/generation/audioSourceLookup.ts:46-59` (`MintedSegmentSource`), `:107-141` (`loadShowAudioMeta`), `:144-152` (`createDigestAudioSourceResolver`), `:172-205` (`mintSegmentSource`), `backend/src/generation/sourceBeats.ts:1736-1738` (a null resolver result passes the candidate over), `backend/test/audioSourceLookup.test.ts:1-40`, `player/foray-queue.js:379-402` (consumes `ad_pad_sec` on a segment; `dai_suspected` gate), PKG-19's file shape, `tools/foray/check-forays.mjs:289-303` (`ACCEPTED_SHAPES`), `test/suite-integrity.test.js:2547` (`mintedSegmentRow.test.ts` floor 24) and `:2592` (`audioSourceLookup.test.ts` floor 9).
 **Exact change:** add `loadEpisodeTiers(root)` reading `data/dai-measurements.json` (absent → empty Map) keyed `"<show_id>|<guid>"`; extend `mintSegmentSource(entry, itemId, showMeta, tiers?)`: look up the tier; `locate-required` → return null; `paddable` → add `ad_pad_sec: pad_sec` to the row; `ad-free`/`unmeasured`/`unmeasurable`/absent → unchanged (the host prior `dai_suspected` still applies). Thread `tiers` through `createDigestAudioSourceResolver` (cache with the meta map). Tests in `audioSourceLookup.test.ts` (+3): locate-required → null (mutation: ignore the tier); paddable → `ad_pad_sec 95` (mutation: drop the field); absent measurements → identical to before (mutation: return null when the file is missing). Also the minted source-row zod schema (`backend/src/types/tapeSourcing.ts` — find the source-row schema `finalizeForay.ts`/`mintedSegmentRow` use): allow optional `ad_pad_sec` number ≥ 0 with one test in `backend/test/mintedSegmentRow.test.ts` (a row with `ad_pad_sec: 95` passes, `ad_pad_sec: -1` fails; mutation: drop the field from the schema). Floors: `BACKEND_FLOORS` `test/audioSourceLookup.test.ts` 9→12 and `test/mintedSegmentRow.test.ts` 24→25.
@@ -330,14 +415,19 @@ Planned 2026-09-25 against `origin/main` 0b2b8f92; revised 2026-09-25 after revi
 **Stop and escalate if:** `sourceBeats` needs a reason string for a refused candidate that the current null contract cannot carry (add nothing; note it for a follow-up).
 **Definition of done:** DRAFT PR `feat(generation): per-episode DAI tier gates minted tape (PKG-21)`.
 
-### PKG-22 · `check-forays`: `ad_pad_sec` shape + locate-required refusal — qwen · S
-**Executor:** qwen.
-**Context:** `tools/foray/check-forays.mjs:43-84` (its imports: it ALREADY imports sibling ESM — `../../backend/src/copy/rules.js` at `:51`, `../segments/merge-segments.mjs` at `:77`, `./check-narration.mjs` at `:84` — so adding one more import is in keeping), `:289-303` (`ACCEPTED_SHAPES`), `:650-690` (segment-sources validation: `duration_sec`, `audio_url`, `dai_suspected`), `:629` (`checkForays(files)`), `:1644` (`loadFiles(root)`), `tools/foray/check-forays.test.mjs:1-80` (how `--root` fixtures are built), `tools/foray/fixtures/boundary/data/segment-sources.json`, `player/seek-policy.js:109` (`AD_PAD_CEILING_SEC`; pure ESM, no browser globals — verified), `player/foray-queue.js:379-381` (a DAI segment with `ad_pad_sec` above the ceiling is SKIPPED by the player), `test/suite-integrity.test.js:1364` (`check-forays.test.mjs` floor is 168).
-**Exact change:** import `AD_PAD_CEILING_SEC` from `../../player/seek-policy.js`. In the segment-sources loop add: if `s.ad_pad_sec !== undefined && s.ad_pad_sec !== null` then it must be a finite number ≥ 0 (else `err`); if `s.dai_suspected === true && typeof s.ad_pad_sec === "number" && s.ad_pad_sec > AD_PAD_CEILING_SEC` → `err(\`segment-sources "${s.id}": ad_pad_sec ${n} exceeds the player's ${AD_PAD_CEILING_SEC} s ceiling — a published Foray would skip this tape (ADR-0008 locate-required)\`)`. Tests in `check-forays.test.mjs` (+4) using a tmp copy of the boundary fixture: a row with `ad_pad_sec: 121` + `dai_suspected: true` fails with the message (mutation: `>=` off-by-one at 120 passes); `ad_pad_sec: 120` passes; `ad_pad_sec: "x"` fails; `ad_pad_sec: 200` with `dai_suspected:false` passes with no error (the pad only matters where the host injects; mutation: drop the `dai_suspected` guard). Floor 168→172. Verify the frozen fixture still passes (`node tools/foray/check-forays.mjs --root tools/foray/fixtures/frozen`).
-**Commands:** `node --test tools/foray/check-forays.test.mjs` → 172 pass; `node tools/foray/check-forays.mjs` (live data) green; `cd backend && npm test -- test/finalizeForay.test.ts` (it dynamically imports `check-forays.mjs` at `finalizeForay.ts:578`) green; `node --test "test/suite-integrity.test.js"`.
-**Do not touch:** `data/`, `backend/`, `player/`.
-**Stop and escalate if:** `cd backend && npm test -- test/finalizeForay.test.ts` fails after the import is added (report the error; do not inline the constant).
-**Definition of done:** DRAFT PR `feat(check-forays): refuse tape the player would skip (PKG-22)`.
+### PKG-22 · `check-forays`: `ad_pad_sec` shape + locate-required refusal — done by #1022
+**Done 2026-10-05 by #1022** (`feat(foray): check-forays refuses a malformed ad pad and a LOCATE-REQUIRED source in a published Foray (DAI-06)`). It covers both of this card's rules (a well-formed pad, and no tape the player would skip) on the dai package's fields:
+- **Pad shape.** check-forays validates the stamped `ad_*` fields on segment-sources:
+  - `ad_pad_sec` is a finite number ≥ 0;
+  - a positive pad needs `ad_delta_probes` ≥ 2, plus `ad_delta_sec` and `ad_delta_spread_sec`, and must equal `max(0, ad_delta_sec) + ad_delta_spread_sec`;
+  - `ad_tier` must match the pad, measured against `ANCHOR_TIME_TOLERANCE_SEC`.
+- **Skipped tape.** It refuses a published Foray item that draws on a `LOCATE-REQUIRED` source.
+
+Two parts of the original card are not needed:
+- the `AD_PAD_CEILING_SEC` import from `player/seek-policy.js`: `ad_tier` carries the ceiling;
+- the ceiling check guarded by `dai_suspected`.
+
+Nothing to dispatch.
 
 ### PKG-23 · Run-start integrity guard — opus · S
 **Executor:** opus. Why: `backend/src/`.
@@ -475,21 +565,21 @@ Planned 2026-09-25 against `origin/main` 0b2b8f92; revised 2026-09-25 after revi
 ### PKG-40 · #578 / #831 status comments — opus · XS
 **Executor:** opus. Why: reads foray-db and judges what is answered.
 **Context:** #578's six asks; #831; foray-db `docs/TRANSCRIPT_INTEGRATION_HANDOFF.md`, `src/forays_corpus/acquisition/r2_registrar.py` docstring (the `show_id` rule, `transcript_publications`), `alembic/versions/0030_transcript_publications.py`, PKG-15's sync doc, PKG-03's SCHEMA.md.
-**Exact change:** comment on #578 mapping each ask to the current state (1: bodies in R2 + foray index — done on foray's side by PKG-13/26; 2: PKG-29/30; 3: PKG-19/20 on foray's side, corpus still lacks `declared_byte_length`; 4: exporter rows carry guid+enclosure+itunes id — PKG-05; 5: pending; 6: still open — enclosure/length capture), and ask Joey for the `show_id` rule foray-db will use for publisher/Apple bodies (foray assumes foray `show_id`; the farm uses PI feed id — PKG-12 handles both). Comment on #831 that the label landed (PR #832), the rights question is answered by the 2026-09-25 ruling, and close it.
+**Exact change:** comment on #578 mapping each ask to the current state (1: bodies in R2 + foray index — done on foray's side by PKG-13/26; 2: PKG-29/30; 3: DAI-08's pad ledger on foray's side (PKG-19/20 dropped 2026-10-06), corpus still lacks `declared_byte_length`; 4: exporter rows carry guid+enclosure+itunes id — PKG-05; 5: pending; 6: still open — enclosure/length capture), and ask Joey for the `show_id` rule foray-db will use for publisher/Apple bodies (foray assumes foray `show_id`; the farm uses PI feed id — PKG-12 handles both). Comment on #831 that the label landed (PR #832), the rights question is answered by the 2026-09-25 ruling, and close it.
 **Definition of done:** the two comments posted; #831 closed.
 
 ## 4. Sequencing
 
-**Wave 1 (parallel, no shared files):** PKG-01 → then in parallel PKG-02, PKG-11, PKG-12, PKG-16, PKG-39. (PKG-02/11/12/16 each create their own modules; they share only `config.mjs`, which PKG-01 finalised, and each adds its own FLOORS line — merge conflicts there are one-line, resolve by keeping both.)
+**Wave 1 (parallel, no shared files):** PKG-01 → then in parallel PKG-02, PKG-11, PKG-12, PKG-16, PKG-39. (PKG-16 is the thin `dai-tier.mjs` wrapper over `tools/segments/ad-pad.mjs`, rescoped 2026-10-06. PKG-02/11/12/16 each create their own modules; they share only `config.mjs`, which PKG-01 finalised, and each adds its own FLOORS line — merge conflicts there are one-line, resolve by keeping both.)
 
-**Wave 2 (parallel):** PKG-04, PKG-05, PKG-07, PKG-09 (all on PKG-02, which now owns `mimes.mjs`, so 04 and 05 are independent of each other); PKG-13 (on 11+12); PKG-17 (on 16; creates `probe-runner.mjs`); PKG-22 (on 16, touches `tools/foray/` only); PKG-03 (opus; needs DB; may correct PKG-02's ASSUMED lists and, if PKG-07 has merged, its `SQL` map — if PKG-03 and PKG-07 are in flight together, PKG-03 posts the corrected lists on PKG-07's PR instead).
+**Wave 2 (parallel):** PKG-04, PKG-05, PKG-07, PKG-09 (all on PKG-02, which now owns `mimes.mjs`, so 04 and 05 are independent of each other); PKG-13 (on 11+12); PKG-17 (on 16; creates `dai-sample.mjs` only, with no probe runner: probes go through `tools/segments/probe-ad-pad.mjs`, rescoped 2026-10-06); PKG-22 is done (#1022), nothing to dispatch; PKG-03 (opus; needs DB; may correct PKG-02's ASSUMED lists and, if PKG-07 has merged, its `SQL` map — if PKG-03 and PKG-07 are in flight together, PKG-03 posts the corrected lists on PKG-07's PR instead).
 
-**Wave 3:** PKG-06 (on 4+5) → PKG-08 (on 6+7) → PKG-10 (opus, hermes-vm). PKG-19 (on 17 — strictly after 17 merges; it imports `probe-runner.mjs` and never edits it). In parallel: PKG-14 (on 13) → PKG-15 (opus, needs Q1); PKG-18 (opus, on 17 + 10's export output); PKG-20 (opus, on 19).
+**Wave 3:** PKG-06 (on 4+5) → PKG-08 (on 6+7) → PKG-10 (opus, hermes-vm). (PKG-19 and PKG-20 were dropped 2026-10-06.) In parallel: PKG-14 (on 13) → PKG-15 (opus, needs Q1); PKG-18 (opus, on 17 + 10's export output + Q4).
 
-**Wave 4 (opus, backend):** PKG-21 (after 20's data), PKG-23 (after 13 + 03), PKG-26 (after 15), PKG-24 (any time after 13; optional). Qwen in parallel: PKG-27 (after 26), PKG-31 (after 04), PKG-35 → PKG-37 (37 strictly after 35 merges; 37 creates its own `node-wave.mjs` + test and does not edit 35's files).
+**Wave 4 (opus, backend):** PKG-21 is generation and out of scope (2026-10-06). PKG-23 (after 13 + 03), PKG-26 (after 15), PKG-24 (any time after 13; optional). Qwen in parallel: PKG-27 (after 26), PKG-31 (after 04), PKG-35 → PKG-37 (37 strictly after 35 merges; 37 creates its own `node-wave.mjs` + test and does not edit 35's files).
 
 **Wave 5:** PKG-28 (opus) → PKG-29 (qwen, code only; its integrity tests skip until the data PR) → PKG-30 (opus) → the data write PR (removes the skips, bumps `data-topic-integrity` +2); PKG-25 (opus, after 26 + 15); PKG-32 (qwen, after 06 + 31) → PKG-33 (opus, human merge) and PKG-34 (opus).
 
 **Wave 6:** PKG-36 (after 35 and #275), PKG-38 (after 37), PKG-40 (after 15).
 
-Files no two parallel tasks touch: each task owns distinct new modules (the review-driven rule: PKG-02 owns `mimes.mjs`; PKG-17 owns `probe-runner.mjs`; PKG-35 owns `wave-candidates.mjs`; PKG-37 owns `node-wave.mjs`); the shared touch points are `test/suite-integrity.test.js` (one line per suite — trivial conflicts), `tools/foraycorpus-export/README.md` (append-only, one paragraph per module), and `package.json` (PKG-01 only). Backend tasks (21, 23, 24, 25, 26, 30) each touch different `backend/src` files: 21 `audioSourceLookup.ts` + `types/tapeSourcing.ts`; 23 `archiveIntegrity.ts` + `cli/generateForays.ts`; 24 `transcriptArchiveLookup.ts` (visibility + new provider) + a one-line selection in `cli/generateForays.ts` (so 23 and 24 must not run concurrently — run 23 first); 25 `transcriptTextIndex.ts`; 26 `cli/buildCorpusTerms.ts`; 30 `resolveTopic.ts`. PKG-33 alone touches `api/` and `vercel.json`.
+Files no two parallel tasks touch: each task owns distinct new modules (the review-driven rule: PKG-02 owns `mimes.mjs`; PKG-17 owns `dai-sample.mjs`; PKG-35 owns `wave-candidates.mjs`; PKG-37 owns `node-wave.mjs`); the shared touch points are `test/suite-integrity.test.js` (one line per suite — trivial conflicts), `tools/foraycorpus-export/README.md` (append-only, one paragraph per module), and `package.json` (PKG-01 only). Backend tasks (21, 23, 24, 25, 26, 30) each touch different `backend/src` files: 21 `audioSourceLookup.ts` + `types/tapeSourcing.ts` (out of scope since 2026-10-06); 23 `archiveIntegrity.ts` + `cli/generateForays.ts`; 24 `transcriptArchiveLookup.ts` (visibility + new provider) + a one-line selection in `cli/generateForays.ts` (so 23 and 24 must not run concurrently — run 23 first); 25 `transcriptTextIndex.ts`; 26 `cli/buildCorpusTerms.ts`; 30 `resolveTopic.ts`. PKG-33 alone touches `api/` and `vercel.json`.
