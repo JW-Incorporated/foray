@@ -178,6 +178,19 @@ export async function lookupEpisodes(collectionId, { fetchImpl = fetch, sleep = 
   return { ok: false, error: error || "no answer" };
 }
 
+/** The episode's `explicit` tri-state (CH2-10): `true` = explicit, `false` =
+    rated clean, `null` = unrated -- the contract merge.mjs and
+    backfill-provenance.mjs write and Family Mode reads (it applies the show's
+    own rating only to `null`). iTunes' contentAdvisoryRating decides when it
+    says Explicit or Clean; otherwise the feed's `<itunes:explicit>` (scan's
+    `explicit_hint`) can raise the flag but never rate an episode clean. */
+export function explicitRating(contentAdvisoryRating, explicitHint) {
+  const rating = String(contentAdvisoryRating || "").toLowerCase();
+  if (rating === "explicit") return true;
+  if (rating === "clean") return false;
+  return explicitHint ? true : null;
+}
+
 /** The pure resolve pass. `lookup(collectionId)` returns what lookupEpisodes
     returns. Returns the digest's arrays plus the retry list. */
 export async function resolveEpisodes({ pending, discover, session, taxonomy, lookup }) {
@@ -310,7 +323,7 @@ export async function resolveEpisodes({ pending, discover, session, taxonomy, lo
       audio_bytes: ep.audio_bytes ?? null,
       artwork_url: ep.artwork_url || track.artworkUrl600 || null,
       topics: validTopics,
-      explicit: (track.contentAdvisoryRating || "").toLowerCase() === "explicit",
+      explicit: explicitRating(track.contentAdvisoryRating, ep.explicit_hint),
       _description: ep.description,
     });
   }
