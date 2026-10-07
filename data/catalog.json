@@ -90,7 +90,7 @@
       "episode_count": null,
       "editorial_note": "Energy-transition analyst digs into the engineering and market mechanics of new power technologies.",
       "taxonomy_node_ids": [
-        "engineering/energy-fusion"
+        "engineering/energy-grid"
       ],
       "label_scope": "general",
       "archetype_fit": [
@@ -129,7 +129,8 @@
       "episode_count": null,
       "editorial_note": "CBC's long-running ideas documentary strand -- occasionally lands on fusion, energy, and technology with a narrative, current-affairs voice.",
       "taxonomy_node_ids": [
-        "engineering/energy-fusion"
+        "philosophy/ideas",
+        "nature/earth-science"
       ],
       "label_scope": "general",
       "archetype_fit": [
@@ -622,7 +623,7 @@
       "editorial_note": "VC-hosted show on frontier technology -- AI, robotics, and the energy/hard-science startups behind them.",
       "taxonomy_node_ids": [
         "business/startups",
-        "engineering/energy-fusion"
+        "computing"
       ],
       "label_scope": "general",
       "archetype_fit": [

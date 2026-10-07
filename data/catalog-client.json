@@ -63,7 +63,7 @@
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts112/v4/85/b4/75/85b475a8-93d1-ccdf-be5e-3399f4b322b2/mza_4579948121520406325.jpeg/600x600bb.jpg",
       "editorial_note": "Energy-transition analyst digs into the engineering and market mechanics of new power technologies.",
       "taxonomy_node_ids": [
-        "engineering/energy-fusion"
+        "engineering/energy-grid"
       ],
       "episode_count": null,
       "explicit": null,
@@ -91,7 +91,8 @@
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/94/fe/a5/94fea51f-9e41-b60f-b5f2-3549407ef6fc/mza_4140352385670983274.jpg/600x600bb.jpg",
       "editorial_note": "CBC's long-running ideas documentary strand -- occasionally lands on fusion, energy, and technology with a narrative, current-affairs voice.",
       "taxonomy_node_ids": [
-        "engineering/energy-fusion"
+        "philosophy/ideas",
+        "nature/earth-science"
       ],
       "episode_count": null,
       "explicit": null,
@@ -449,7 +450,7 @@
       "editorial_note": "VC-hosted show on frontier technology -- AI, robotics, and the energy/hard-science startups behind them.",
       "taxonomy_node_ids": [
         "business/startups",
-        "engineering/energy-fusion"
+        "computing"
       ],
       "episode_count": 37,
       "explicit": false,
