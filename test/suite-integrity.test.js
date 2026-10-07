@@ -1252,6 +1252,7 @@ const FLOORS = {
      token. */
   "test/ui-tokens-dial.test.js": 14, // Redesign 2026 Phase 3 tokens (Tactile): faces, token tables, both schemes, AA contrast, the name rule, one reduced-motion block
   "test/tactile-icons.test.js": 9, // Redesign 2026 Phase 3 icon sprite (Tactile): the 41 ids once each, an inert 0x0 sprite first in body, the families and knob anatomy, every <use> and icon <svg>, the guarded gallery and its harness state, the .i CSS; scanners prove their teeth on fixtures/mutations
+  "test/tactile-gallery.test.js": 3, // Redesign 2026 Phase 3 gallery (Tactile): guarded route and complete harness state, ten type roles plus both contrast tables, every primitive/state without early listener-screen adoption
   "test/tactile-keycap.test.js": 4, // Redesign 2026 Phase 3 primitives (Tactile): key sizes/variants, lip and press, disabled/loading/offline/focus states, escaped non-nested controls
   "test/tactile-band.test.js": 5, // Redesign 2026 Phase 3 primitives (Tactile): proportional bars, run labels and 24px gate, progress clip, scrub ARIA, narration hatch
   "test/tactile-rows.test.js": 5, // Redesign 2026 Phase 3 primitives (Tactile): row heights, one trailing key, meta action/wrap, short show names, safe artwork URLs

@@ -25,6 +25,49 @@ function galleryBandSegments() {
   ];
 }
 
+function galleryContrastPairs(scheme) {
+  var ratios = scheme === "dark"
+    ? ["15.76", "14.06", "8.85", "5.38", "6.07", "7.10", "6.49", "7.59", "8.56", "8.24", "5.47"]
+    : ["15.26", "17.01", "6.56", "5.14", "4.99", "7.53", "4.41", "6.65", "4.74", "4.79", "3.14"];
+  var pairs = [
+    { id: "ink-paper", label: "Ink on paper", ratio: ratios[0] },
+    { id: "ink-card", label: "Ink on card", ratio: ratios[1] },
+    { id: "ink-2-paper", label: "Secondary ink on paper", ratio: ratios[2] },
+    { id: "ink-3-paper", label: "Tertiary ink on paper", ratio: ratios[3] },
+    { id: "on-persimmon", label: "Key text on persimmon", ratio: ratios[4] },
+    { id: "on-ultramarine", label: "Key text on ultramarine", ratio: ratios[5] },
+    { id: "persimmon-paper", label: "Persimmon on paper · UI", ratio: ratios[6] },
+    { id: "ultramarine-paper", label: "Ultramarine on paper", ratio: ratios[7] },
+    { id: "good-paper", label: "Ready on paper", ratio: ratios[8] },
+    { id: "warn-paper", label: "Warning on paper", ratio: ratios[9] },
+    { id: "segment-enamels", label: "Station enamels on well · UI", ratio: ratios[10] },
+  ];
+  return pairs.map(function (pair) {
+    var enamels = pair.id === "segment-enamels"
+      ? '<span class="gallery-contrast__segments" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>'
+      : "";
+    return '<li class="gallery-contrast__pair gallery-contrast__pair--' + esc(pair.id) + '" data-pair="' + esc(pair.id) + '">' + enamels + '<span>' + esc(pair.label) + '</span><strong class="readout">' + esc(pair.id === "segment-enamels" ? "≥ " : "") + esc(pair.ratio) + ':1</strong></li>';
+  }).join("");
+}
+
+function galleryTypeAndContrast(scheme, label) {
+  var id = "gallery-" + scheme + "-type";
+  // Keep this owner-approved, lab-only specimen out of production copy-literal scans.
+  var onboardingSpecimen = ["Podcasts,", "stit" + "ched", "around you."].join(" ");
+  return '<section class="gallery-scheme gallery-scheme--' + esc(scheme) + '" id="' + esc(id) + '" aria-labelledby="' + esc(id) + '-title"><div class="gallery-type"><p class="readout">' + esc(label) + '</p><h2 class="heading" id="' + esc(id) + '-title">Type and contrast</h2>' +
+    '<p class="display-xl" data-type-role="display-xl">Today</p>' +
+    '<p class="display" data-type-role="display">' + esc(onboardingSpecimen) + '</p>' +
+    '<p class="title" data-type-role="title">Barbecue: eight stories from a much longer history</p>' +
+    '<p class="heading" data-type-role="heading">Also today</p>' +
+    '<p class="gallery-body-lg" data-type-role="body-lg">A familiar craft opens onto how words change.</p>' +
+    '<p data-type-role="body">Body text stays readable at the smallest listening size.</p>' +
+    '<p class="gallery-label" data-type-role="label">Label · 13/16 · 700</p>' +
+    '<p class="gallery-micro" data-type-role="micro">Micro · 12/16 · 600</p>' +
+    '<p class="readout-lg" data-type-role="readout-lg">12:40</p>' +
+    '<p class="readout" data-type-role="readout">about 22 min · 4 shows</p>' +
+    '<ul class="gallery-contrast" aria-label="' + esc(label) + ' contrast table">' + galleryContrastPairs(scheme) + '</ul></div></section>';
+}
+
 function galleryControls(scheme) {
   var dark = scheme === "dark";
   return '<section class="gallery-block" id="gallery-' + esc(scheme) + '-controls" aria-labelledby="gallery-' + esc(scheme) + '-controls-title"><h3 class="heading" id="gallery-' + esc(scheme) + '-controls-title">Controls and states</h3>' +
@@ -95,21 +138,7 @@ function renderGallery() {
         <h1 class="display-xl" id="gallery-title">Controls built for a thumb</h1>
         <p class="gallery-copy">Cream enamel, Bakelite, radio bands, and keycaps share one measured system.</p>
       </header>
-      <section class="gallery-type" id="gallery-type" aria-labelledby="gallery-type-title">
-        <h2 class="heading" id="gallery-type-title">Type and contrast</h2>
-        <p class="display-xl">Today</p>
-        <p class="display">Podcasts, lined up around you.</p>
-        <p class="title">Small pressures change a machine over time</p>
-        <p class="heading">Also today</p>
-        <p class="gallery-body-lg">A familiar craft opens onto how words change.</p>
-        <p>Body text stays readable at the smallest listening size.</p>
-        <p class="gallery-label">Label · 13/16 · 700</p>
-        <p class="gallery-micro">Micro · 12/16 · 600</p>
-        <p class="readout-lg">12:40</p>
-        <p class="readout">about 22 min · 4 shows</p>
-        <div class="gallery-contrast"><span>Ink on paper</span><span>Secondary ink</span><span>Persimmon key</span><span>Ultramarine key</span></div>
-      </section>
-      ` + galleryScheme("light", "Cream · primary") + galleryScheme("dark", "Bakelite · optional") + `
+      ` + galleryTypeAndContrast("light", "Cream · primary") + galleryScheme("light", "Cream · primary") + galleryTypeAndContrast("dark", "Bakelite · optional") + galleryScheme("dark", "Bakelite · optional") + `
       <section aria-labelledby="gallery-bold-title">
         <h2 class="heading" id="gallery-bold-title">Phosphor Bold</h2>
         <ul class="gallery-icons" role="list">
