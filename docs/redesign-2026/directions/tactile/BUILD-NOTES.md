@@ -368,6 +368,7 @@ with any spring-to-linear tool if tuned on device:
   --spring-sheet: linear(0, 0.01 2%, 0.07 6%, 0.24 13%, 0.52 22%, 0.78 32%, 0.95 42%, 1.03 52%, 1.04 60%, 1.02 70%, 1 82%, 1);
   --ease-quick: cubic-bezier(.2,.8,.2,1);
   --d-snap: 220ms; --d-settle: 320ms; --d-sheet: 480ms; --d-quick: 160ms; --d-draw: 280ms;
+  --d-buffer: 1000ms; --d-skeleton: 1200ms; /* buffering pulse, skeleton shimmer (stilled, not collapsed, under reduced motion) */
 }
 @media (prefers-reduced-motion: reduce) {
   :root { --d-snap: 1ms; --d-settle: 1ms; --d-sheet: 1ms; --d-draw: 1ms; --d-quick: 120ms;
@@ -439,6 +440,19 @@ Playing) inside a well.
   with `x`/`width` proportional to its runtime over the total. Gap between
   rects 2 units (never below 1px rendered). Minimum rendered width per
   segment 3px; if narrower, merge visually but keep the data.
+  **Build (Phase 3 primitives, review follow-up):** a bar under its minimum
+  is pinned at it and the other bars share the remaining width in runtime
+  proportion (repeated until stable), so bars never overlap, the last one
+  ends at 1000, and every segment stays individually drawn. Only when the
+  minima alone exceed the width are all bars scaled down evenly. Because
+  bars are then not exactly runtime-proportional, progress, the needle and
+  the scrubber's pointer map through the drawn bars (`tactileBandLayout`,
+  `tactileBandX`, `tactileBandFraction` in `ui/primitives.js`), so a time at
+  a segment boundary always lands in the gap between those two bars.
+  A band rendered without an `id` gets a fresh `dial-band-N` on each render.
+  Its hatch `<pattern>` and progress `<clipPath>` ids are document-global, and
+  `url(#…)` resolves to the first element with that id, so a shared default
+  made every later band clip to the first band's progress (third review).
 - Colours: `fill: var(--seg-cN)` with `N = hash(showId) % 8`, stable across
   the app. Narration items: `fill: var(--seg-narration)` with a diagonal
   hatch pattern (3px lines, 3px gaps, 45°) so narration reads without
@@ -592,6 +606,12 @@ Two stacked parts:
   to 48px; returns on any scroll-up. Scroll-driven behind `@supports`, else
   a scroll listener with a 100ms throttle.
 - Content padding-bottom: `calc(var(--deck-h) + var(--mini-h, 0px) + var(--safe-b) + 24px)`.
+- **Build (Phase 3 primitives, third review):** `.deck` carries the fixed
+  position itself. Left and right are 16px plus `env(safe-area-inset-left/right)`
+  (zero in portrait), so landscape notches are covered too. The gallery shows
+  each deck inside a `.gallery-device` frame with `contain: layout`, which makes
+  the frame the containing block for the real fixed rule. No rule may
+  re-position `.deck` (`test/tactile-deck.test.js`).
 
 ### 3.12 Mini player (`.mini`)
 64px: artwork 44 `--r-sm` at 10px inset, title 15/700 (1 line, ellipsis),
@@ -602,6 +622,14 @@ button that opens Now Playing; the keycaps are siblings, never overlapped.
 Swipe-down on the body with > 60px travel dismisses (stops playback) with
 a rigid haptic and a 5s undo toast; horizontal swipes do nothing.
 `role="region" aria-label="Now playing: {title}, {show}"`.
+**Build (Phase 3 primitives, third review):** `tactileMiniPlayer` renders the
+line as `tactileBand({ kind: "line" })`, the mini's first child, absolute at
+the top edge and 22px in from each side (the prototype's inset). It shows the
+foray's bars when `segments` is passed, otherwise one persimmon bar. The bars
+are full height with no needle and no draw-in, and narration is a solid tick.
+The line is `aria-hidden`, because the region label already names what is
+playing. The width is stated rather than `auto`: an absolutely positioned SVG
+with `width: auto` takes its intrinsic size, which is 50px at 3px tall.
 
 ### 3.13 Now Playing sheet (`.np`)
 A full-height sheet over the app (see 4.2). Grabber 36x5 `--line` at the

@@ -229,8 +229,13 @@ reduced-motion block, AA contrast).
 `#/gallery` under `window.__FORAY_LAB__` or `?gallery=1`, never reachable in
 production; every primitive in every state, both schemes stacked (Cream then
 Bakelite via `data-theme`), plus a type specimen (the ten roles on real
-strings: "Today", the r7 fixture hero title, "Podcasts, stitched around
-you.") and the contrast table rendered as text on swatch. Add the `gallery`
+strings: "Today", the r7 fixture hero title, "Podcasts, lined up around
+you.") and the contrast table rendered as text on swatch. (**Hard-limit
+override, 2026-10-07:** the direction's "Podcasts, stitched around you." is
+refused by the stitching rule in `test/listener-copy.test.js`, the
+2026-08-11 playback ruling and product principle 3, which no direction may
+challenge; "lined up" is the specimen and the onboarding headline in 4.x.
+`test/tactile-gallery.test.js` scans the rendered gallery for it.) Add the `gallery`
 state to `tools/ui-lab/lib/states.mjs`, then shoot, gate, record
 `tactile-gallery`, judge it once against the prototype's `#/home` and
 `#/now-playing` (fidelity pair only), and record the rolling `tactile-app`
@@ -713,7 +718,7 @@ both pairs.
    a needle loop at 8% per second (both named in the reduced-motion block,
    off there), and the mono counter in the readout row **under the band**
    ("8:52 / 22:10 · 6 shows", the running part `--ink`), never top-right.
-2. Headline `display` 2.25rem "Podcasts, stitched around you." balanced, 2
+2. Headline `display` 2.25rem "Podcasts, lined up around you." (not "stitched": hard limit, see 1.7) balanced, 2
    lines at 375/393/412 with no lone last word; sub body-lg "4a picks real
    shows each day and lines up the best parts into one listen." (15 words).
 3. Keycap `lg` 56 full width persimmon "Play today's foray" starts playback

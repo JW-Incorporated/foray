@@ -1,5 +1,5 @@
 /* Tactile Phase 3 component gallery. Each test names the one-line mutation
- * used to prove it can fail; all three mutations were executed before push. */
+ * used to prove it can fail; all four mutations were executed before push. */
 "use strict";
 const { test } = require("node:test");
 const assert = require("node:assert");
@@ -46,7 +46,7 @@ test("both authored schemes show all ten type roles and every contrast-table pai
     assert.deepStrictEqual([...html.matchAll(/data-pair="([^"]+)"/g)].map((match) => match[1]), expectedPairs);
     assert.deepStrictEqual([...html.matchAll(/(?:≥ )?([0-9]+\.[0-9]+):1<\/strong>/g)].map((match) => match[1]), ratios);
     assert.match(html, /Today/);
-    assert.match(html, /Podcasts, stitched around you\./);
+    assert.match(html, /Podcasts, lined up around you\./);
     assert.match(html, /Barbecue: eight stories from a much longer history/);
     assert.strictEqual((html.match(/:1<\/strong>/g) || []).length, 12);
   }
@@ -68,4 +68,35 @@ test("the gallery covers every primitive and state without adopting them on list
   }
   const adopters = fs.readdirSync(path.join(ROOT, "ui")).filter((name) => name.endsWith(".js") && !["gallery.js", "primitives.js"].includes(name)).filter((name) => /\btactile[A-Z]/.test(fs.readFileSync(path.join(ROOT, "ui", name), "utf8")));
   assert.deepStrictEqual(adopters, [], "Phase 4, not the foundation, adopts primitives on listener screens");
+});
+
+test("the gallery's rendered copy obeys the listener copy rules, however the source spells it", () => {
+  /* Review blocker (2026-10-07): the display specimen once rebuilt
+     "Podcasts, stit" + "ched around you." from fragments, so listener-copy's
+     literal scan never saw the banned word. This judges the rendered output,
+     which no concatenation can hide from: the visible text plus every
+     aria-label, in both schemes.
+     MUTATION: restore `["Podcasts,", "stit" + "ched", "around you."].join(" ")`
+     as the display specimen -> the stitching rule fails here. */
+  const gallery = loadGallery();
+  const banned = [
+    ["stitching", /stitch/i],
+    ["fascinating", /fascinating/i],
+    ["deep dive", /deep[ -]dive/i],
+    ["delve", /\bdelve/i],
+    ["explores", /\bexplores\b/i],
+    ["we/us/our", /\b(?:we|us|our)\b/i],
+    ["topic, not subject", /\btopics?\b/i],
+  ];
+  const failures = [];
+  for (const [scheme, label] of [["light", "Cream · primary"], ["dark", "Bakelite · optional"]]) {
+    const html = gallery.galleryTypeAndContrast(scheme, label) + gallery.galleryScheme(scheme, label);
+    const labels = [...html.matchAll(/aria-label="([^"]*)"/g)].map((match) => match[1]);
+    const copy = html.replace(/<[^>]+>/g, " ") + " " + labels.join(" ");
+    for (const [what, re] of banned) if (re.test(copy)) failures.push(`${scheme}: ${what}`);
+    // Fixture premise (checked after the rules, so the mutation fails on its rule): the display specimen is in the scanned copy.
+    if (!/Podcasts, (?:lined up|stitched) around you\./.test(copy)) failures.push(`${scheme}: display specimen missing from the scanned copy`);
+  }
+  assert.deepStrictEqual(failures, []);
+  assert.doesNotMatch(gallerySource, /copy-literal scans/, "no comment explaining how to slip past the copy scan");
 });

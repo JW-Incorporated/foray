@@ -53,11 +53,9 @@ function galleryContrastPairs(scheme) {
 
 function galleryTypeAndContrast(scheme, label) {
   var id = "gallery-" + scheme + "-type";
-  // Keep this owner-approved, lab-only specimen out of production copy-literal scans.
-  var onboardingSpecimen = ["Podcasts,", "stit" + "ched", "around you."].join(" ");
   return '<section class="gallery-scheme gallery-scheme--' + esc(scheme) + '" id="' + esc(id) + '" aria-labelledby="' + esc(id) + '-title"><div class="gallery-type"><p class="readout">' + esc(label) + '</p><h2 class="heading" id="' + esc(id) + '-title">Type and contrast</h2>' +
     '<p class="display-xl" data-type-role="display-xl">Today</p>' +
-    '<p class="display" data-type-role="display">' + esc(onboardingSpecimen) + '</p>' +
+    '<p class="display" data-type-role="display">' + esc("Podcasts, lined up around you.") + '</p>' +
     '<p class="title" data-type-role="title">Barbecue: eight stories from a much longer history</p>' +
     '<p class="heading" data-type-role="heading">Also today</p>' +
     '<p class="gallery-body-lg" data-type-role="body-lg">A familiar craft opens onto how words change.</p>' +
@@ -121,9 +119,13 @@ function galleryRows(scheme) {
 function galleryNavigation(scheme) {
   var id = "gallery-" + scheme + "-navigation";
   return '<section class="gallery-block" id="' + esc(id) + '" aria-labelledby="' + esc(id) + '-title"><h3 class="heading" id="' + esc(id) + '-title">Deck, sheet, and rotary control</h3><div class="gallery-decks">' +
-    tactileTabBar({ active: "today", count: 4, mini: { title: "A machine can teach a language", show: "Lingthusiasm", initials: "LI" } }) +
-    '<div id="' + esc(id) + '-playing-mini">' + tactileTabBar({ active: "find", count: 4, mini: { title: "The station playing now", show: "BBQ Radio Network", initials: "BR", playing: true } }) + '</div>' +
-    tactileTabBar({ active: "yours", count: 4, collapsed: true }) +
+    /* Each deck sits in a .gallery-device frame (layout containment), so the
+       specimen is the real fixed, inset, safe-area deck rather than a copy
+       laid out in normal flow. First a foray (its colours in the mini's 3px
+       line), then a single episode (one persimmon line), then collapsed. */
+    '<div class="gallery-device">' + tactileTabBar({ active: "today", count: 4, mini: { title: "A machine can teach a language", show: "Lingthusiasm", initials: "LI", segments: galleryBandSegments(), progress: .43 } }) + "</div>" +
+    '<div id="' + esc(id) + '-playing-mini"><div class="gallery-device">' + tactileTabBar({ active: "find", mini: { title: "Why bridges sing in the wind", show: "Origin Stories", initials: "OS", playing: true, progress: .6 } }) + "</div></div>" +
+    '<div class="gallery-device gallery-device--bare">' + tactileTabBar({ active: "yours", count: 4, collapsed: true }) + "</div>" +
     '</div>' + tactileRotary({ label: "Playback speed", value: "1.0×" }) + tactileSheet({ id: id + "-preview", closeId: id + "-preview-close", title: "Sheet", copy: "Focus enters the container and every gesture has a button.", primary: "Done", secondary: "Not now", preview: true }) + '</section>';
 }
 

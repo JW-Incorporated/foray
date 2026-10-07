@@ -4408,6 +4408,8 @@ body.drawer-open { overflow: hidden; }
   --d-sheet: 480ms;    /* Now Playing open/close, modal sheets */
   --d-quick: 160ms;    /* fades, colour, opacity */
   --d-draw: 280ms;     /* band draw-in */
+  --d-buffer: 1000ms;  /* buffering needle pulse, one way (BUILD-NOTES: 1s) */
+  --d-skeleton: 1200ms; /* skeleton shimmer, one way (BUILD-NOTES: 1.2s) */
 }
 
 /* BAKELITE (dark). The same declarations twice: the OS preference, and the
@@ -4610,6 +4612,10 @@ body.drawer-open { overflow: hidden; }
 .band--scrub[data-scrubbing="true"] { cursor: grabbing; }
 .band--scrub[data-scrubbing="true"] .needle { transition: none; }
 .band--line { height: calc(var(--s-1) * .75); }
+/* An <svg> is a replaced element: with `width: auto` it takes its intrinsic
+   size (3px tall at 1000:60 is 50px wide) instead of stretching between
+   left and right, so the width is stated. */
+.mini > .band--line { position: absolute; top: 0; left: calc(var(--s-5) + var(--s-1) / 2); width: calc(100% - 2 * (var(--s-5) + var(--s-1) / 2)); pointer-events: none; }
 .band__draw { transform-origin: left; animation: tactile-draw var(--d-draw) var(--ease-draw) both; }
 .t-band__base { opacity: .4; }
 .t-band__bar--c0 { fill: var(--dial-seg-c0); } .t-band__bar--c1 { fill: var(--dial-seg-c1); }
@@ -4617,10 +4623,12 @@ body.drawer-open { overflow: hidden; }
 .t-band__bar--c4 { fill: var(--dial-seg-c4); } .t-band__bar--c5 { fill: var(--dial-seg-c5); }
 .t-band__bar--c6 { fill: var(--dial-seg-c6); } .t-band__bar--c7 { fill: var(--dial-seg-c7); }
 .t-band__hatch { fill: var(--dial-seg-narration); }
+.t-band__bar--tick { fill: var(--dial-seg-narration); }
+.t-band__bar--episode { fill: var(--persimmon); }
 .t-band__code { fill: var(--ink-2); font: 700 var(--t-micro) var(--font-mono); }
 .t-band__code.is-current { fill: var(--ink); font-weight: 800; }
 .needle { fill: var(--ink); transition: transform var(--d-settle) var(--spring-settle), opacity var(--d-quick) var(--ease-quick); }
-.band--buffering .needle { --d-buffer: 1000ms; animation: tactile-pulse var(--d-buffer) var(--ease-quick) infinite alternate; }
+.band--buffering .needle { animation: tactile-pulse var(--d-buffer) var(--ease-quick) infinite alternate; }
 
 .gauge { margin: 0; padding: var(--s-4); border-radius: var(--r-md); background: var(--card); box-shadow: var(--shadow-card); }
 .gauge figcaption { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); }
@@ -4677,7 +4685,11 @@ body.drawer-open { overflow: hidden; }
 .tile__name { font-family: var(--dial-font-display); font-size: var(--t-body-lg); line-height: var(--lh-body-lg); font-weight: var(--w-heading); letter-spacing: var(--tracking-heading); }
 .tile--l .tile__name { font-size: var(--t-title); line-height: var(--lh-title); font-weight: var(--w-title); }
 
-.deck { width: 100%; overflow: hidden; border-radius: var(--r-lg); background: var(--deck-tint); -webkit-backdrop-filter: var(--deck-blur); backdrop-filter: var(--deck-blur); box-shadow: var(--shadow-deck); color: var(--ink); }
+/* Fixed to the bottom, inset 16px, floating 12px above the home indicator
+   (BUILD-NOTES 3.11). The gallery shows it inside .gallery-device, whose
+   layout containment makes the frame the deck's containing block, so the
+   specimen is this exact rule rather than a normal-flow stand-in. */
+.deck { position: fixed; z-index: 25; left: calc(env(safe-area-inset-left, 0px) + var(--s-4)); right: calc(env(safe-area-inset-right, 0px) + var(--s-4)); bottom: calc(var(--safe-b) + var(--s-3)); overflow: hidden; border-radius: var(--r-lg); background: var(--deck-tint); -webkit-backdrop-filter: var(--deck-blur); backdrop-filter: var(--deck-blur); box-shadow: var(--shadow-deck); color: var(--ink); }
 .deck__separator { height: calc(var(--s-1) / 4); margin: 0 var(--s-3); background: var(--dial-line); }
 .mini { position: relative; height: var(--mini-h); display: flex; align-items: center; gap: var(--s-2); padding: 0 calc(var(--s-2) + var(--s-1) / 2); }
 .mini__body { flex: 1; min-width: 0; min-height: var(--tap); display: flex; align-items: center; gap: var(--s-3); padding: 0; border-radius: calc(var(--r-sm) + var(--s-1)); background: transparent; color: var(--ink); text-align: left; }
@@ -4709,7 +4721,7 @@ body.drawer-open { overflow: hidden; }
 .rotary__tick { min-width: var(--tap); height: var(--key-lg); }
 .rotary__track button[aria-checked="true"] { color: var(--on-persimmon); background: var(--persimmon); border-radius: var(--r-sm); }
 
-.skel { --d-skeleton: 1200ms; padding: var(--s-4); border-radius: var(--r-md); background: var(--paper-2); animation: tactile-shimmer var(--d-skeleton) var(--ease-quick) infinite alternate; }
+.skel { padding: var(--s-4); border-radius: var(--r-md); background: var(--paper-2); animation: tactile-shimmer var(--d-skeleton) var(--ease-quick) infinite alternate; }
 .skel__shape { display: block; border-radius: var(--r-sm); background: var(--dial-line); }
 .skel--row { min-height: var(--row-episode); display: grid; grid-template-columns: var(--art-row) minmax(0, 1fr) var(--tap); align-items: center; gap: var(--s-3); padding: var(--s-2); }
 .skel__row-art { width: var(--art-row); height: var(--art-row); }
@@ -4749,8 +4761,8 @@ body.drawer-open { overflow: hidden; }
 .empty { display: flex; flex-direction: column; align-items: center; gap: var(--s-4); padding: var(--s-6) 0; color: var(--ink); text-align: center; }
 .empty > svg { width: var(--key-glance); height: var(--key-glance); fill: none; stroke: var(--ink-2); stroke-width: calc(var(--s-1) / 2); stroke-linecap: round; stroke-linejoin: round; }
 .empty p { max-width: 26rem; margin: 0; }
-.toast { min-height: var(--key); display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding: 0 var(--s-4); border-radius: var(--r-md); background: var(--card); box-shadow: var(--shadow-deck); color: var(--ink); opacity: 0; transform: translateY(var(--s-3)); transition: transform var(--d-settle) var(--spring-settle), opacity var(--d-quick) var(--ease-quick); }
-.toast.is-visible { opacity: 1; transform: translateY(0); }
+.toast { min-height: var(--key); display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding: 0 var(--s-4); border-radius: var(--r-md); background: var(--card); box-shadow: var(--shadow-deck); color: var(--ink); opacity: 0; visibility: hidden; transform: translateY(var(--s-3)); transition: transform var(--d-settle) var(--spring-settle), opacity var(--d-quick) var(--ease-quick), visibility var(--d-quick) linear; }
+.toast.is-visible { opacity: 1; visibility: visible; transform: translateY(0); }
 
 @keyframes tactile-draw { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @keyframes tactile-arc { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
@@ -4845,8 +4857,9 @@ body.ui-v2.view-gallery { background: var(--paper); color: var(--ink); font: var
 .gallery-band-stack + .gauge, .gallery-block > .bridge, .gallery-block > .gallery-two + .empty { margin-top: var(--s-4); }
 .gallery-rows { display: grid; gap: var(--s-2); border-radius: var(--r-md); background: var(--card); box-shadow: var(--shadow-card); }
 .gallery-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3); margin-top: var(--s-4); }
-.gallery-decks { min-width: 0; display: grid; gap: var(--s-4); }
-.gallery-decks > *, .gallery-decks .deck { min-width: 0; max-width: 100%; }
+.gallery-decks { display: grid; gap: var(--s-4); }
+.gallery-device { position: relative; contain: layout; height: calc(var(--mini-h) + var(--deck-h) + var(--s-12)); border-radius: var(--r-lg); background: var(--paper-2); }
+.gallery-device--bare { height: calc(var(--key) + var(--s-12)); }
 .gallery-decks + .rotary { margin-top: var(--s-5); }
 .sheet--preview { position: relative; z-index: auto; left: auto; right: auto; bottom: auto; display: block; max-height: none; margin-top: var(--s-5); padding-bottom: var(--s-5); transform: none; }
 .gallery-sheet-open { margin-top: var(--s-5); }
