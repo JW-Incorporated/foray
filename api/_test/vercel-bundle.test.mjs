@@ -5,7 +5,7 @@
 // Several `api/**` handlers read files under `data/` off disk at runtime via
 // a repo-root-relative `readFileSync`/`path.join()` call (`findRepoRoot()` +
 // `loadShowIndex()` in `api/shows/[show_id]/episodes.ts`; `loadShowMeta()` in
-// `api/episodes/search.ts`; `loadCatalogFallback()`/`tryLoadReleaseIdMap()` in
+// `api/episodes/search.ts`; `loadCatalogFallback()` in
 // `api/_lib/showIdMap.ts`; `readJson()` in
 // `backend/src/catalog/breadthCatalog.ts`, reached transitively from
 // `api/shows/search.ts`). Vercel's bundler does NOT include a file that's
@@ -15,10 +15,11 @@
 //
 // The suite this replaced hardcoded a `TARGETS` list of exactly two files
 // (`api/shows/[show_id]/episodes.ts`, `api/shows/search.ts`) and passed —
-// which is why it never caught that `api/episodes/**` (added later) reads
-// the same catalog files and `data/shows-index-pointer.json` besides, none
-// of it covered by vercel.json's `functions["api/shows/**/*.ts"]` key at
-// all. That's issue #560 item 1: the id-map ends up empty in production,
+// which is why it never caught that `api/episodes/**` (added later) read
+// the same catalog files (and, at the time, `data/shows-index-pointer.json`
+// besides; today only `api/_lib/showsIndexRelease.ts`, reached from
+// `api/shows/**`, reads the pointer), none of it covered by vercel.json's
+// `functions["api/shows/**/*.ts"]` key at all. That's issue #560 item 1: the id-map ends up empty in production,
 // every Apple search hit gets silently dropped, and the endpoint still
 // returns 200 with an innocuous-looking empty result — "fails green".
 //

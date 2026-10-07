@@ -26,6 +26,7 @@ import { fileURLToPath } from "node:url";
 import {
   BUILD_MAX_RANK, sanitizeCell, mergeShowIndexRows, formatShowIndex, buildShowIndex,
 } from "./build-show-index.mjs";
+import { rankByAppleId } from "./harvest-merge.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const readJson = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
@@ -87,7 +88,7 @@ test("a curated row carries its breadth twin's chart_rank joined on apple_collec
      the mixed types below. Ranking is unchanged: `popularityBand` returns 0
      for every curated row until PKG-13.
 
-     MUTATION: replace `rankByAppleId.get(String(show?.apple_collection_id)) ?? null`
+     MUTATION: replace `rankOf.get(String(show?.apple_collection_id)) ?? null`
      with `null` (drop the Map lookup). "Twinned Show" reads null and this goes
      red. */
   const rows = mergeShowIndexRows(
@@ -100,6 +101,41 @@ test("a curated row carries its breadth twin's chart_rank joined on apple_collec
   assert.strictEqual(rows.find((r) => r.id === "twinned-show").chart_rank, 14);
   assert.strictEqual(rows.find((r) => r.id === "lonely-show").chart_rank, null);
   assert.ok(!rows.some((r) => r.id === "555"), "the twin itself still does not ship as a breadth row");
+});
+
+test("CH2-15: the curated chart_rank join over null, 0, \"12\", NaN, -1 and a ranked twin keeps only \"12\" and the ranked twin", () => {
+  /* T1-13 (docs/roadmap/code-health-2.md): "a usable chart rank" is ONE join,
+     tools/harvest-merge.mjs's rankByAppleId, shared with
+     tools/build-catalog-client.mjs. The same six-row fixture is pinned in
+     tools/harvest-merge.test.mjs (the helper) and
+     tools/build-catalog-client.test.mjs (the other builder), so the TSV and
+     the client JSON cannot disagree about which rank is usable. Every twin is
+     `in_curated: true`, so only the curated rows ship and their chart_rank
+     column IS the join's output.
+
+     MUTATION: in harvest-merge.mjs's isChartRank, `Number(raw) > 0` ->
+     `Number(raw) >= 0`. The 0 twin maps to 0 and this fails.
+     MUTATION: build the curated rank from the raw `row.chart_rank` instead of
+     rankByAppleId. "12" ships as a string, null/NaN/-1/0 ship as values, and
+     this fails. */
+  const ids = [101, 102, 103, 104, 105, 106];
+  const breadth = { shows: [
+    bre(101, "T101", null, { in_curated: true }),
+    bre(102, "T102", 0, { in_curated: true }),
+    bre(103, "T103", "12", { in_curated: true }),
+    bre(104, "T104", NaN, { in_curated: true }),
+    bre(105, "T105", -1, { in_curated: true }),
+    bre(106, "T106", 7, { in_curated: true }),
+  ] };
+  const curated = { shows: [...ids, 107].map((id) => ({ show_id: `s${id}`, title: `S${id}`, apple_collection_id: id })) };
+  const rows = mergeShowIndexRows(curated, breadth);
+  const ranked = Object.fromEntries(rows.filter((r) => r.chart_rank !== null).map((r) => [r.id, r.chart_rank]));
+  assert.deepStrictEqual(ranked, { s103: 12, s106: 7 });
+  assert.strictEqual(rows.length, 7, "every curated row ships, ranked or not; no twin ships as breadth");
+  const shared = rankByAppleId(breadth);
+  for (const r of rows) {
+    assert.strictEqual(r.chart_rank, shared.get(r.id.slice(1)) ?? null, `${r.id}: the builder's rank is the shared join's`);
+  }
 });
 
 test("the cut drops breadth rows ranked worse than max-rank, and never drops a curated row", () => {

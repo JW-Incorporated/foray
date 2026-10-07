@@ -33,7 +33,7 @@ import {
   computePagesDropped,
   computeUnverifiedPages
 } from "../src/generation/veracityMetrics";
-import { MODE_CHAR_BANDS, TAPE_SOURCE_MODES, disclosureTemplate, negativeRecordSentence, tapeDocIdFor, validateNarratedBeat, type NarratedBeat } from "../src/types/narration";
+import { MODE_CHAR_BANDS, NARRATION_CHARS_PER_SEC, TAPE_SOURCE_MODES, scriptSeconds, disclosureTemplate, negativeRecordSentence, tapeDocIdFor, validateNarratedBeat, type NarratedBeat } from "../src/types/narration";
 import { narratorStructureLeaks } from "../src/copy/narratorStructure";
 import { validateSmoothedSeam } from "../src/generation/smoothSeam";
 import type { EvidenceBeat, EvidenceDoc, EvidenceGatherer, EvidencePack } from "../src/generation/gatherEvidence";
@@ -636,6 +636,28 @@ describe("actSeams — the plan and the Intro rules", () => {
     const checker = (await import("../../tools/foray/check-narration.mjs")) as { MODE_CHAR_BANDS: Record<string, [number, number]> };
     expect(checker.MODE_CHAR_BANDS.intro).toEqual(MODE_CHAR_BANDS.Intro);
     expect(Object.keys(checker.MODE_CHAR_BANDS).sort()).toEqual(Object.keys(MODE_CHAR_BANDS).map((m) => m.toLowerCase()).sort());
+  });
+
+  it("every MODE_CHAR_BANDS band and the 17 chars/s planning rate equal check-narration.mjs's — the generator and the publish gate share one table", async () => {
+    /* CH2-07 (B1-09). `types/narration.ts` mirrors check-narration.mjs's
+       table rather than importing it (ESM tools script vs CommonJS backend),
+       so this is the pin that keeps the mirror honest.
+       MUTATION THAT KILLS THIS: change Hinge's band (say [50, 135] to
+       [50, 140]) or the rate 17 in EITHER file — the generator then writes
+       pages the publish gate refuses, and every other test still passes. */
+    const checker = (await import("../../tools/foray/check-narration.mjs")) as {
+      MODE_CHAR_BANDS: Record<string, [number, number]>;
+      NARRATION_CHARS_PER_SEC: number;
+      scriptSeconds: (chars: number) => number;
+    };
+    const backendLowercased = Object.fromEntries(Object.entries(MODE_CHAR_BANDS).map(([mode, band]) => [mode.toLowerCase(), band]));
+    expect(backendLowercased).toEqual(checker.MODE_CHAR_BANDS);
+    expect(Object.keys(MODE_CHAR_BANDS)).toHaveLength(7);
+    expect(NARRATION_CHARS_PER_SEC).toBe(checker.NARRATION_CHARS_PER_SEC);
+    expect(NARRATION_CHARS_PER_SEC).toBe(17);
+    /* `scriptSeconds` is the rate's one consumer on each side; both round to
+       the millisecond, so one script's length is one duration everywhere. */
+    for (const chars of [0, 1, 50, 135, 260, 1870, 2551]) expect(scriptSeconds(chars)).toBe(checker.scriptSeconds(chars));
   });
 });
 

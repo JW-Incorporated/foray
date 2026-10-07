@@ -1364,8 +1364,8 @@ const FLOORS = {
      run the REAL CLI on a synthetic LF tree (--stamp shares the Foray pointer's
      version and built_at and leaves the manifest alone; --verify and --check go
      red by name). Zero slack; every named mutation was run and killed. */
-  "tools/ci/catalogue-directory.test.mjs": 15,
-  "tools/ci/forays-directory.test.mjs": 35, // PR #795 review finding 1 (2026-09-24): the seed never outranks the live pointer (mobile-only HEAD, shallow clone, every input is a Vercel path); 32 -> 35
+  "tools/ci/catalogue-directory.test.mjs": 17, // code-health CH2-22 (T2-06): +2 characterization pins of the catalogue pointer text and every problem line, byte for byte, now that it shares makeDirectoryPointer with the Foray pointer; 15 -> 17
+  "tools/ci/forays-directory.test.mjs": 37, // PR #795 review finding 1 (2026-09-24): the seed never outranks the live pointer (mobile-only HEAD, shallow clone, every input is a Vercel path); 32 -> 35. Code-health CH2-22 (T2-06): +2 characterization pins of the Foray pointer text and every problem line from the one makeDirectoryPointer; 35 -> 37
   /* +12 (machinery audit, 2026-09-12): the checks-missing self-heal had three
      holes — sweep-only, keyed on `pr.updatedAt` (which this workflow's own label
      writes reset), and firing only when ALL required checks were missing — plus
@@ -1428,7 +1428,11 @@ const FLOORS = {
   // ruling made mechanical — of everything floored in this file it is the one
   // whose deletion would be hardest to notice and most expensive to discover,
   // because the thing it guards is an absence.
+  /* CH2-13: labels.mjs genreTopicPrior (the one genre->topics rule prepare-batch and classify-breadth share) and classifyProgressPath (the committed data/classify-progress.json default). */
+  "tools/classify/labels.test.mjs": 10,
   "tools/classify/no-exclusion.test.mjs": 25,
+  /* CH2-13 (docs/roadmap/code-health-2.md): the Tier-0 genre prior each batch entry carries — characterization of the map lookup, the confidence min and the no-topic shape (4); the prior never carries a non-taxonomy topic and the batch lists the ones it dropped (T1-07), select.mjs alone declares the cooldown/prefix constants (T1-17), and both scripts resolve progress through labels.mjs (T1-09, one declaration run per script); 4 -> 10 declared. */
+  "tools/classify/prepare-batch.test.mjs": 10,
   "tools/classify/reconcile-shards.test.mjs": 75,
   /* Guards the metric the whole classification effort is judged on. Its per-item
      ("fully root-only") number is the one that maps to product behaviour; the
@@ -1455,9 +1459,9 @@ const FLOORS = {
      test/show-index.test.js, pins the same file from the CLIENT side; both are
      needed because the sort order is a contract between two files and either
      side can break it alone. */
-  "tools/harvest-merge.test.mjs": 13, // 2026-10-07: a breadth re-harvest UNIONS with the file it replaces (#1148 dropped 6,632 off-chart shows) - dropped show kept / its rank nulled + last_charted_at / its topics kept / new show added / still-charting show refreshed, in_curated recomputed, canonical key order, artist_name backfill, the harvester wiring, and a REAL DATA floor; new, zero slack
-  "tools/build-show-index.test.mjs": 10, // PKG-11a (docs/roadmap/shows-search.md, 2026-10-04): +1 — a curated row carries its breadth twin's chart_rank joined on apple_collection_id, and null without a twin; 9 -> 10
-  "tools/build-catalog-client.test.mjs": 4, // CH-1 (#1071): dai joined on String(apple_collection_id), null when unclassified, and --check flags drift; 2 -> 4 // PKG-11b (P-09): the curated chart_rank breadth join (rank or null) and the committed data/catalog-client.json equals the builder's output
+  "tools/harvest-merge.test.mjs": 14, // 2026-10-07: a breadth re-harvest UNIONS with the file it replaces (#1148 dropped 6,632 off-chart shows) - dropped show kept / its rank nulled + last_charted_at / its topics kept / new show added / still-charting show refreshed, in_curated recomputed, canonical key order, artist_name backfill, the harvester wiring, and a REAL DATA floor; new, zero slack // CH2-15 (docs/roadmap/code-health-2.md): +1 - rankByAppleId, the ONE usable-chart-rank join both builders read (null/0/NaN/-1 out, "12" in as 12); 13 -> 14
+  "tools/build-show-index.test.mjs": 11, // PKG-11a (docs/roadmap/shows-search.md, 2026-10-04): +1 — a curated row carries its breadth twin's chart_rank joined on apple_collection_id, and null without a twin; 9 -> 10 // CH2-15: +1 — the curated rank over the shared null/0/"12"/NaN/-1 fixture equals harvest-merge.rankByAppleId; 10 -> 11
+  "tools/build-catalog-client.test.mjs": 5, // CH2-15: +1 — chart_rank over the shared null/0/"12"/NaN/-1 fixture equals harvest-merge.rankByAppleId; 4 -> 5 // CH-1 (#1071): dai joined on String(apple_collection_id), null when unclassified, and --check flags drift; 2 -> 4 // PKG-11b (P-09): the curated chart_rank breadth join (rank or null) and the committed data/catalog-client.json equals the builder's output
   "tools/popularity-signal-probe.test.mjs": 6, // PKG-12 (P-10, docs/roadmap/shows-search.md): the top.json position probe — the String() join for breadth and curated rows, would_lead_by_top_position, the validator, the pi_id-order flag, one polite GET for top.json alone, the 5xx retry
   /* The Windows entrypoint-guard class (machinery audit finding 3). A main-
      module check written as ``import.meta.url === `file://${process.argv[1]}` ``
@@ -1747,9 +1751,9 @@ const FLOORS = {
      marker that stops matching what altool prints fails SILENTLY -- an
      unclassified failure still retries, so nothing ever goes red. A deleted cell
      would read as coverage of a list that had quietly stopped discriminating. */
-  "tools/release/upload-retry.test.mjs": 14, // 2026-09-22: new -- which store-upload failures are worth trying again
+  "tools/release/upload-retry.test.mjs": 15, // CH2-21 (T2-14): the classify CLI line at every attempt, the line the composite evals, now decided by shouldRetry(); 14 -> 15 // 2026-09-22: new -- which store-upload failures are worth trying again
   "tools/release/build-number.test.mjs": 12, // 2026-10-04: +1 -- the first release of a UTC day (a one-line runs file) is run-of-day 1, not refused; 11 -> 12 // ci-release-4 (round-3 audit): new -- the run-of-day is a count of today's runs, floored above what an earlier run of the day used, and refuses past 99 instead of wrapping
-  "tools/release/watch-release.test.mjs": 45, // round-3 review: +1 -- a bot-merged head (no ci.yml run, so no required checks) still dispatches; 44 -> 45 // round-3 L7: +6 -- ci-release-6 (main judged by its REQUIRED checks, not ci.yml's whole run) and ci-release-9 (separate concurrency groups, pinned in the existing workflow test); 38 -> 44 // 2026-09-22: new -- the release watchdog + trigger (reliability plan pieces 2 and 3), replayed against the real 00:28 partial failure; 2026-09-23: +2, G2 replays the real 09-06 summary log ("not reached" is unknown, the job decides); +1, the Fetch step executed against an expired (404) summary log
+  "tools/release/watch-release.test.mjs": 46, // CH2-16 review (2026-10-07): +1 -- every local composite release.yml reaches, nested ones included (ios-archive -> ios-prepare), is a release trigger; 45 -> 46 // round-3 review: +1 -- a bot-merged head (no ci.yml run, so no required checks) still dispatches; 44 -> 45 // round-3 L7: +6 -- ci-release-6 (main judged by its REQUIRED checks, not ci.yml's whole run) and ci-release-9 (separate concurrency groups, pinned in the existing workflow test); 38 -> 44 // 2026-09-22: new -- the release watchdog + trigger (reliability plan pieces 2 and 3), replayed against the real 00:28 partial failure; 2026-09-23: +2, G2 replays the real 09-06 summary log ("not reached" is unknown, the job decides); +1, the Fetch step executed against an expired (404) summary log
   "tools/mobile/foray-media-session.test.mjs": 102, // round-2 sweep (2026-09-23): a network stall reaches native as `stalled` (p-car-8), a finished ordinary episode keeps the service (native-1); 100 -> 102 audit round 2, lane L3 (2026-09-23): onPlayingChange on the transition only, wired to the shell; the track pair is not mirrored (p-impatient-3); 98 -> 100 // // review 2026-09-23: a WebKit-door press and an Android Media3 action are recorded under the record's dashed command (remoteCommandFor at the one seam); 95 -> 98 // founder 2026-09-23 (fix/founder-reports-2026-09-23): a BEHAVING fake WebKit reads what its own Now Playing entry would show (the "4a / unknown / unknown" state on main); the severing mutation test inverted; one press through two doors is applied once (both orders, the third copy, the window's end, a same-surface double tap, Android untouched); a WebKit-delivered press is a foray:remote row; inspect().tee; 88 -> 95 // 2026-09-23 founder report ("On the lock screen, it's 10s in both directions"): the iOS takeover mirrors the page's handlers, metadata and playbackState onto WebKit's own session — never seekto — so a press on WebKit's client reaches the page; wrap-mode reaches the prototype without looping; a refused mirror costs nothing; uninstall takes it all back. The suite stood at 81 against 80; 80 -> 88 // 2026-09-22: `sends` cannot be read in the turn of the write, against the REAL default scheduler; 79 -> 80 // M-03 (2026-09-12): the session event reaches the page; 75 -> 79
   /* iOS on a runner (#38). These four are the only tests in the repo that can be
      run for a macOS-only feature by someone with no Mac, which makes their
@@ -1814,7 +1818,7 @@ const FLOORS = {
      inject-app-icon: byte-level --check, refuse a half fix. Floored exact. */
   "tools/mobile/inject-splash.test.mjs": 19,
   "tools/mobile/inject-background-audio.test.mjs": 59, // NE-38rs: +1 -- routeResumeBluetooth is a plist boolean written only when the block names it. NE-24: +4 -- the AppDelegate cold path (the import and ForayEngineColdPath.bootIfNeeded() as the first statement of didFinishLaunching, byte-identical elsewhere; idempotent, half-patched refused; exactly one didFinishLaunching, @main or @UIApplicationMain; the CLI patches beside the plist, --check quotes it, a missing AppDelegate fails with the plist untouched) // NE-17: +9 -- ForayEngineDefault / ForayEngineCapabilities from mobile/ENGINE_DEFAULT.json (committed js; absent reads js; written at the root, replaced not refused, byte-identical elsewhere; strict parse; the re-read is a real function; the CLI writes on every edit and --check prints ForayEngineDefault=js); 55 -> 59 // PQ-21 (#29): +4 -- the AppDelegate gains handleEventsForBackgroundURLSession forwarding to ForayDownloadsPlugin's own static entry point (exact lines, byte-identical elsewhere); idempotent, half-patched or hand-written refused; placed in the type that declares didFinishLaunching, not a later extension; the CLI writes it with the cold path and --check quotes it
-  "tools/mobile/ios-ci.test.mjs": 152, // NE-36 (2026-09-25): +15, the lane seeding, the staged native pass, native-rows, and the native verdict and its report section; 137 -> 152 // founder 2026-09-23: section 3d reads taken-over-severed for a live object taken over with no tee onto WebKit's MediaSession — the state that shipped as "4a / unknown / unknown"; 136 -> 137 // +7: L-02 takeover verdict + reached needle (2026-09-10); +4: M-03 session needle (2026-09-12)
+  "tools/mobile/ios-ci.test.mjs": 158, // CH2-21 (T2-11/T2-13): characterization of signingReadiness's messages, the seven names and the signing-gate CLI, and the usage line names all eight subcommands; the suite stood at 154, so 152 -> 158 // NE-36 (2026-09-25): +15, the lane seeding, the staged native pass, native-rows, and the native verdict and its report section; 137 -> 152 // founder 2026-09-23: section 3d reads taken-over-severed for a live object taken over with no tee onto WebKit's MediaSession — the state that shipped as "4a / unknown / unknown"; 136 -> 137 // +7: L-02 takeover verdict + reached needle (2026-09-10); +4: M-03 session needle (2026-09-12)
   /* The embedded-framework plist rules (2026-09-13). Release run 34739630705
      archived, exported, and was REJECTED by App Store Connect: the ONNX Runtime
      xcframework Microsoft ships carries no `MinimumOSVersion`, which altool
@@ -1861,7 +1865,7 @@ const FLOORS = {
      `via=seek` nowplaying row as the listener's jump (not the clock) while a
      `via=drift` row still counts, and `refreshes=` parsing. */
   "tools/mobile/engine-report.test.mjs": 46,
-  "tools/mobile/ios-workflow.test.mjs": 46, // ci-release-12 (round-3 audit): +1 -- no npm install under mobile/ on either iOS path; 45 -> 46 // NE-17: +1 -- the plist step keeps the bare injector run and its --check, which carry ForayEngineDefault, with no --engine-default override // NE-06: +1 -- the parity fixtures and recorder are negated out of the path filter, below the patterns they narrow // +4 (2026-09-13): the MinimumOSVersion patch runs before both builds, off one resolved SwiftPM tree, with the deployment target READ not written, and the built device bundle is read back
+  "tools/mobile/ios-workflow.test.mjs": 52, // CH2-16 (2026-10-07, docs/roadmap/code-health-2.md T2-01): +2 -- both iOS build paths run the inject sequence through .github/actions/ios-prepare and neither carries an inline copy; ios-prepare carries the PR path's second opinions (splash test -d + json.tool), reads no secret or input, and checks its ART/SPM_DIR contract first; the file stood at 50 against 46, so the floor is set exact: 46 -> 52 // ci-release-12 (round-3 audit): +1 -- no npm install under mobile/ on either iOS path; 45 -> 46 // NE-17: +1 -- the plist step keeps the bare injector run and its --check, which carry ForayEngineDefault, with no --engine-default override // NE-06: +1 -- the parity fixtures and recorder are negated out of the path filter, below the patterns they narrow // +4 (2026-09-13): the MinimumOSVersion patch runs before both builds, off one resolved SwiftPM tree, with the deployment target READ not written, and the built device bundle is read back
 
   "tools/mobile/probe/install-probe.test.mjs": 50, // NE-36 (2026-09-25): the native phase, its audio base, its page and its Foray; 39 -> 50
   /* The one-shot that gets a newly curated show's back catalogue into the pipeline
@@ -1982,10 +1986,10 @@ const FLOORS = {
   "tools/narration/render-foray.test.mjs": 19, // review: an encoded line over -1 dBTP true peak is re-encoded with a lower ceiling, bounded, never accepted; 18 -> 19 // content-hash key (deterministic, moves with every audio input, not with ids or rejects), per-voice unchanged detection, one peak-capped linear gain and whole-AAC-frame lines, the manifest entry and document, the D2/D5 profile, the pins from fetch-models.mjs and Echo's recorded pin, the D2 speed refusal, @drafts = narrated drafts only (synthetic catalogue, so no publish can break it), the no-narration and unknown-id refusals, --smoke's two shortest lines, --check and --report through the real CLI, and the no-credentials workflow
   "tools/narration/stamp-narration.test.mjs": 9, // review: after a script edit every voice the line carries is re-stamped together, or nothing is; 8 -> 9 // Heart flat / Echo voices / render.{profile,script_sha,lexicon_sha}, runtime_sec restated by Heart's delta and check-forays agreeing, idempotence, the stale-script refusal with nothing written, the published-Foray refusal, the https-base rule, the profile refusal, and the real CLI twice
   "tools/narration/upload-narration.test.mjs": 6, // refuses under CI (CI and GITHUB_ACTIONS, dry run included), the dry run reads no credentials, a file that differs from its manifest is refused, credentials only from the env file and never printed, only foray-narration is writable, and --immutable + headers with the secret only in rclone's environment
-  "tools/mobile/android-playback.test.mjs": 35, // A-05 (+14): the interlude jingle is taken out of a seam before the A-15 line (run 36562447644), the four A-05 fixture Forays resolve through the join with rendered lines at a05/, the focus stack reads run 36551857323's real dumpsys audio, the button route / call state / focused window parsers, seam statistics count a never-audible seam as the worst (D-A4), and each verdict (f)-(l) fails on what it gates and only that, the ring read and the speech instrument run in a fake page. A-04 (docs/plans/android-assessment.md): the playback scenarios' fixture resolves through the player's own join, the dumpsys parsers read A-03's real API 34 output, and each verdict (a)-(e) fails on each thing the card names, a dead process carries ActivityManager's reason, a known product defect excuses only the failure it names, and the real API 34 shade dump reads as A04-F2; new
-  "tools/mobile/android-native-playback.test.mjs": 12, // A-26 (docs/plans/android-assessment.md): the native-mode leg's runner -- the names it uses are the Java's (service, receiver, dump prefix), the queues are the APK's click tracks as assets, the dump and am-broadcast parsers read what the platform prints (escaped or not), and each verdict (a)-(d), (g), (h), (i) fails on what it gates; new
+  "tools/mobile/android-playback.test.mjs": 40, // CH2-20 (+5): the device helpers both lanes share (tools/mobile/adb.mjs) pinned with a fake adb -- dumpUi's two attempts a second apart, helperLog's filter, wakeAndUnlock's two shell calls and killReason's pid guard, waitFor's 500 ms poll and window2 over a sync or async lane read, readShade's paused fallback through the lane; 35 -> 40 // A-05 (+14): the interlude jingle is taken out of a seam before the A-15 line (run 36562447644), the four A-05 fixture Forays resolve through the join with rendered lines at a05/, the focus stack reads run 36551857323's real dumpsys audio, the button route / call state / focused window parsers, seam statistics count a never-audible seam as the worst (D-A4), and each verdict (f)-(l) fails on what it gates and only that, the ring read and the speech instrument run in a fake page. A-04 (docs/plans/android-assessment.md): the playback scenarios' fixture resolves through the player's own join, the dumpsys parsers read A-03's real API 34 output, and each verdict (a)-(e) fails on each thing the card names, a dead process carries ActivityManager's reason, a known product defect excuses only the failure it names, and the real API 34 shade dump reads as A04-F2; new
+  "tools/mobile/android-native-playback.test.mjs": 14, // CH2-20 (+2): one press predicate judged through both lanes' views on one table, and neither runner declares its own copy of an adb.mjs helper; 12 -> 14 // A-26 (docs/plans/android-assessment.md): the native-mode leg's runner -- the names it uses are the Java's (service, receiver, dump prefix), the queues are the APK's click tracks as assets, the dump and am-broadcast parsers read what the platform prints (escaped or not), and each verdict (a)-(d), (g), (h), (i) fails on what it gates; new
   "tools/mobile/android-playback-workflow.test.mjs": 14, // A-26 (+1): a third, native-engine leg runs (a)-(d), (g), (h), (i) through android-native-playback.mjs, every one gated, and none of the JS lane's; 13 -> 14 // A-05 (+2): the narration fixtures are made at the render profile's encode under the runner's names and checked in the APK, and the focus helper is built from its committed source without Gradle into the evidence directory. A-06 (+2): two matrix legs, API 34 (the smoke image, fast) and API 36, each proving its device is its API level and uploading under its own name. A-04: android-playback.yml is advisory, secretless and store-free, its boot is android-smoke.yml's step for step plus the click tracks, and every scenario is its own unsilenceable step, and gms.persistent's first-boot restart is waited out before the install; 9 -> 13
-  "tools/mobile/android-workflow.test.mjs": 69, // A-22: the JVM parity step reads the report and requires a flipped fixture value to turn the runner red; the suite already stood at 68 against 67, so this closes that slack too; 67 -> 69 // A-02 (docs/plans/android-assessment.md): the emulator smoke moved to android-smoke.yml on android-build.yml's path set plus the release pipeline's four; android-release.yml calls it on a dispatch only with no secrets; it reads no secret and never uploads to a store; its concurrency group is not its caller's; 62 -> 67
+  "tools/mobile/android-workflow.test.mjs": 72, // CH2-17 (docs/roadmap/code-health-2.md): android-release.yml builds through the android-bundle composite, so the by-hand .aab injects the real splash and launcher icon (--check), takes its version pair from version.mjs in a secret-free version job, and hands the composite an empty Play credential that play-gate reads as absent; 69 -> 72 // A-22: the JVM parity step reads the report and requires a flipped fixture value to turn the runner red; the suite already stood at 68 against 67, so this closes that slack too; 67 -> 69 // A-02 (docs/plans/android-assessment.md): the emulator smoke moved to android-smoke.yml on android-build.yml's path set plus the release pipeline's four; android-release.yml calls it on a dispatch only with no secrets; it reads no secret and never uploads to a store; its concurrency group is not its caller's; 62 -> 67
   /* Wiring the signing config into a project nobody commits. ZERO SLACK.
      `mobile/android/` is regenerated on every build, so the only evidence the
      release signing config ever reaches Gradle is that this script ran and its
@@ -2010,7 +2014,7 @@ const FLOORS = {
      invariant suite that pins it and the two composite actions it factors
      shared build steps into. Registered the same day both suites were
      written, per R-02's own precedent for this map. */
-  "tools/mobile/release-ci.test.mjs": 15,
+  "tools/mobile/release-ci.test.mjs": 22, // CH2-21 (docs/roadmap/code-health-2.md T2-11/T2-20): characterization of the Play gate (four env cases with the shipped messages, the play-gate CLI), the shared readiness() rule (states and wording, what counts as present), both gates answer as readiness() and keep no copy, the Android keystore trio; the fake partial test now runs the real rule; 15 -> 22
   "tools/mobile/release-workflow.test.mjs": 41, // OPS-04: +1 -- ios and android refuse a re-run (run_attempt != 1) as their first step, before checkout; 40 -> 41 // 2026-10-04 (ios-kit path gate): +1 -- ios-checks waits 120 minutes (RELEASE_CHECKS_TIMEOUT_MIN) inside a 130-minute job, grace at its default; 39 -> 40 // 2026-10-04: +1 -- ios-checks holds actions: write and passes REF_NAME/DEFAULT_BRANCH for the ci.yml dispatch; 38 -> 39 // round-3 review: +3 -- no secret-holding step writes under $ART, each signing step holds only its own credentials, and altool's log reaches $ART only as a redacted copy from a secret-free step; 35 -> 38 // ci-release-13 (round-3 audit): +2 -- the release composite uploads its logs dir always, and nothing secret is written under it; 33 -> 35 // NE-17: +1 -- the release archive keeps the bare injector run and its --check (ForayEngineDefault), with no --engine-default override // NE-06: +3 -- ios needs ios-checks (release-checks on github.sha via env), ios-checks is guarded and reads checks on Linux, and the summary names a refusal // +4 (2026-09-13): the release composite is a THIRD build path — it patches the ONNX Runtime plist before archiving, archives from the patched tree, and reads the archive back before export/upload
 
   /* The launch verdict (the `android-smoke` job's brain). ZERO SLACK. This is the
@@ -2065,6 +2069,7 @@ const FLOORS = {
      stay green. Each test names its own mutation. */
   "tools/refresh/fold-breadth-topics.test.mjs": 6, // breadth-genre-topics (2026-10-07): REAL DATA ratchet, every catalog-breadth row has a breadth-classification entry (the #1149 newcomers sat at [] with nothing red); 5 -> 6 // PKG-08 (2026-10-04): breadth-classification topics folded into data/catalog-breadth.json as taxonomy_node_ids (high/medium and not needs_review only, unknown nodes dropped), --check byte-stable, and a REAL DATA pin that every row carries the array and every id resolves; new, zero slack
   "tools/refresh/merge-topics.test.mjs": 23, // audit round 2 (L6), honesty-1: merge writes duration_min from duration_sec when it has them (the suite already stood at 17 against 16, so this closes that slack too); 16 -> 18. PKG-01 (2026-10-04): +3, topicSource and merge writing topics_source + an always-present explicit key; 18 -> 21. catalogue-PKG-05a (2026-10-04): +2, a general show's episode without its own topics is refused with TOPICS_REQUIRED_GENERAL and one with an override merges with topics_source 'episode'; 21 -> 23
+  "tools/refresh/merge.test.mjs": 9, // CH2-14 (docs/roadmap/code-health-2.md, T1-14 + T1-22): merge.mjs spawned for exit codes and stdout bytes (nothing-to-merge x2, N added, the four copy refusals, the legal edges), MERGE_SUMMARY round-trips and parses the real stdout, the copy limits are rules.js's at their edges, and importing merge.mjs merges nothing (the entry guard); new, zero slack
   /* PKG-01 (#547, #560 §6.3): the one-shot that stamped topics_source and an
      always-present explicit key onto every discover item merged before
      merge.mjs wrote them. Runs the real script against a temp fixture; each
@@ -2104,7 +2109,7 @@ const FLOORS = {
      third staged file, a PR on red tests). 16 is the true count at landing
      (15 at OPS-14, +1 prompt-shape test from OPS-17);
      each test names the mutation that kills it. */
-  "tools/refresh/nightly-runner.test.mjs": 17, // OPS-17 review: +1 -- the live prompt steps match finish (no stale "step 7", restore after TESTS_FAILED, GIT_FAILED stops); 16 -> 17
+  "tools/refresh/nightly-runner.test.mjs": 19, // CH2-14 (T1-22): +2 -- merge's summary round-trips through MERGE_SUMMARY (the hand-written `ADDED N items.` fakes are built with merge's formatter now), and a merge with neither summary line is MERGE_UNPARSED before any git; 17 -> 19 // OPS-17 review: +1 -- the live prompt steps match finish (no stale "step 7", restore after TESTS_FAILED, GIT_FAILED stops); 16 -> 17
   /* S-01's other half: proves the actual bash in nightly-refresh.yml's
      "Publish digest to refresh-digest branch" step, not a JS reimplementation
      of it. Extracts the real `run:` block, shims `gh`/`jq`, and round-trips a
@@ -2169,7 +2174,7 @@ const FLOORS = {
   "tools/shows/dedupe.test.mjs": 11, // audit round 3 (L8): +2, Unicode dedupe key; 9 -> 11
   "tools/shows/filter.test.mjs": 11,
   "tools/shows/identity.test.mjs": 2,
-  "tools/shows/import-dump.test.mjs": 12, // #1033: +4 changed.json baseline (snapshot round-trip, download reaches buildChanged, failed download -> baseline:false, never {}); 8 -> 12 // audit round 3 integration: the real post-merge count, 5 -> 8
+  "tools/shows/import-dump.test.mjs": 14, // CH2-12: +2 (under-ceiling warn via the shared checkMissingMapping, streamed checksumFile + source pin); 12 -> 14 // #1033: +4 changed.json baseline (snapshot round-trip, download reaches buildChanged, failed download -> baseline:false, never {}); 8 -> 12 // audit round 3 integration: the real post-merge count, 5 -> 8
   "tools/shows/shard-build.test.mjs": 15, // audit round 3 (L8): +1, changed.json baseline; 14 -> 15
   "tools/shows/state.test.mjs": 6,
   "tools/shows/watch-pointer.test.mjs": 12, // pointer-freshness-watch: absence watchdog, red >192h (below candidates.mjs 216h ceiling); +1 pins its own daily read-only workflow (shows-pointer-watch.yml), 11 -> 12
@@ -2194,9 +2199,9 @@ const FLOORS = {
      REAL node subprocess (no fake exec anywhere) to prove the forwarding
      actually reaches the child's argv. */
   "tools/shows/run-and-publish-execargv.test.mjs": 1,
-  "tools/shows/load-postgres.test.mjs": 11, // PKG-01 (S-09 tools half): pure-function halves of the Postgres loader, incl. main's { baseline, changed } shape
+  "tools/shows/load-postgres.test.mjs": 15, // CH2-12: +4 (whitespace URL unset via config.mjs's one resolver, empty table -> null baseline, CLI --dry-run baseline:false without connecting, streamed-checksum source pin); 11 -> 15 // PKG-01 (S-09 tools half): pure-function halves of the Postgres loader, incl. main's { baseline, changed } shape
   "tools/shows/search-shows.test.mjs": 7, // PKG-01: FTS/trgm query builders
-  "tools/shows/shows-postgres-integration.test.mjs": 8, // PKG-01: real-Postgres acceptance; skips without TEST_DATABASE_URL
+  "tools/shows/shows-postgres-integration.test.mjs": 10, // PKG-01: real-Postgres acceptance; skips without TEST_DATABASE_URL; 8 -> 10 // CH2-01: 0021 index EXPLAIN, chapters overwrite in Postgres
   "tools/foraycorpus-export/config.test.mjs": 4, // PKG-01 (docs/roadmap/corpus.md): corpus-export package scaffold, config + identity scan
   "tools/foraycorpus-export/mimes.test.mjs": 3, // PKG-02 (docs/roadmap/corpus.md): transcript mime classifier (timed/plain/other, superset of TIMED_TRANSCRIPT_TYPES)
   "tools/foraycorpus-export/row-source.test.mjs": 5, // PKG-02 (docs/roadmap/corpus.md): JSONL row source over the synthetic fixture, counts.json recount
@@ -2339,12 +2344,12 @@ const FLOORS = {
      may merge; merged early, every release goes unsigned. Floored at its full
      count: each test is one decision (or the read-only / names-only promise)
      that a deletion would let slip to a false READY. */
-  "tools/ops/release-env-check.test.mjs": 19, // 115-part: new -- HA #115 pointer line gating #822, env exists, policy exactly main + v*, signing secrets env-level and gone from repo level, active v* tag ruleset restricting creation; unreadable is exit 2, never READY
+  "tools/ops/release-env-check.test.mjs": 21, // CH2-21 (T2-20): the eleven names sorted and frozen (characterization), built from the gates' own lists; 19 -> 21 // 115-part: new -- HA #115 pointer line gating #822, env exists, policy exactly main + v*, signing secrets env-level and gone from repo level, active v* tag ruleset restricting creation; unreadable is exit 2, never READY
   "tools/poll/tiers.test.mjs": 9, // PKG-05 (S-10): new -- cadence tiers (seed, correction, success/failure, dead)
   "tools/poll/politeness.test.mjs": 4, // PKG-06 (S-10): new -- per-host politeness port, constants pinned to backend/src/feeds/politeness.ts
   "tools/poll/select-due.test.mjs": 6, // PKG-06 (S-10): new -- due-set selection (dead, not-due, caps, order, bad URL, budget untouched) + the G9 weekly projection
   "tools/poll/watchlist.test.mjs": 13, // PKG-07 (S-10): new -- watchlist assembly (curated, unmapped, changed top-N, tiers, 90-day expiry, seed size) + the seed builder (exit 2 on a stale pointer, curated-only seed, --check); PKG-07-part +3: no-baseline id-map-only fallback (writes seed, non-numeric refused, HTTP error exits 2)
-  "tools/poll/poll-episodes.test.mjs": 7, // PKG-08 (S-10): new -- poll-episodes dry-run CLI (no-DB exit 0 naming G1/G3, DB set refuses exit 3, env var order, summary shape + fetched 0, seed-alone on a failed change index, the 40,000 target line, absent/missing/malformed seed)
+  "tools/poll/poll-episodes.test.mjs": 9, // CH2-12: +2 (whitespace DATABASE_URL is unset: exit 0 not LIVE_REFUSAL, config.mjs import graph stays light); 7 -> 9 // PKG-08 (S-10): new -- poll-episodes dry-run CLI (no-DB exit 0 naming G1/G3, DB set refuses exit 3, env var order, summary shape + fetched 0, seed-alone on a failed change index, the 40,000 target line, absent/missing/malformed seed)
   "tools/poll/fetch-feed.test.mjs": 6, // PKG-10-part (S-10): new -- conditional-GET port of backend/src/feeds/conditionalGet.ts (constants + UA pinned to the TS as text, conditional headers, 304 keeps validators, declared and streamed oversize, thrown fetch and timeout keep validators)
   "tools/poll/poll-cycle.test.mjs": 5, // PKG-10-part (S-10): new -- no-DB poll cycle over an in-memory store on a 50-feed loopback fixture with a fake clock (200 stores ETag then 304 reschedules, 5x500 -> backoff -> weekly, 410 dead at once and 404 at day 30 not 29, perHostCap, oversize keeps validators)
 };
@@ -2433,7 +2438,7 @@ const BACKEND_FLOORS = {
   /* +2 (WS-C): the §4.4 side of F-38 — the prompt asks for a beat `kind`
      and the parser accepts one, while a reply that omits it still parses. */
   "test/AnthropicDeepenActBuilder.test.ts": 9,
-  "test/AnthropicEnricher.test.ts": 10,
+  "test/AnthropicEnricher.test.ts": 13, // CH2-08 (B2-18, docs/roadmap/code-health-2.md): the re-ask characterization, run for classifyTier1 and generateWhyLine -- one re-ask of [prompt, bad reply, re-ask line], metered under the method's operation with its max_tokens and output estimate, and a text-less re-ask reply throws; 10 -> 13
   "test/AnthropicExternalResearcher.test.ts": 13, // round-3 audit (L5-generation): gen-1 web-search answers read after the tool result, split answers joined, pause_turn continued, retrieval never re-asks; 9 -> 13
   "test/AnthropicPromptUnderstander.test.ts": 13, // generator title style (2026-09-24, qa 146): the prompt asks for sentence case; one case-only re-ask for a Title Case title; no re-ask for a period; 10 -> 13 // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 9 -> 10
   /* Raised from 8 by WS-L (F-63): what actually reaches the model — the quoted
@@ -2445,7 +2450,7 @@ const BACKEND_FLOORS = {
   "test/buildCorpusTerms.test.ts": 4, // PKG-26 (docs/roadmap/corpus.md §3): corpus df table + per-episode top-k tf-idf terms — rare beats common, alpha ties, k cap, df drops singletons
   "test/candidateExtractor.test.ts": 8,
   "test/conditionalGet.test.ts": 9,
-  "test/copyRules.test.ts": 16, // round-3 L6 (2026-09-25): backend-rest-18: Act Two / Act Three caught, statute spans left alone; 12 -> 16 // title house style (2026-09-24, qa 146): refused shapes, no false positives on names/acronyms/quoted works, houseStyleTitle never lowercases; 6 -> 12 (9 on disk before it) // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 5 -> 6. L8 (2026-09-22): Foray titles/summaries/slot titles against BANNED + INTERNAL_VOCABULARY, and its no-false-positive twin; 3 -> 5
+  "test/copyRules.test.ts": 18, // CH2-14 (T1-14): +1 -- the shared MAX_HOOK_WORDS / MIN_TAGS / MAX_TAGS / TAG_RE refuse a 17-word hook, 4 tags, 13 tags and a Bad_Tag; the suite stood at 17 against 16, so the floor is set exact: 16 -> 18 // round-3 L6 (2026-09-25): backend-rest-18: Act Two / Act Three caught, statute spans left alone; 12 -> 16 // title house style (2026-09-24, qa 146): refused shapes, no false positives on names/acronyms/quoted works, houseStyleTitle never lowercases; 6 -> 12 (9 on disk before it) // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 5 -> 6. L8 (2026-09-22): Foray titles/summaries/slot titles against BANNED + INTERNAL_VOCABULARY, and its no-false-positive twin; 3 -> 5
   "test/createEnricher.test.ts": 1,
   /* Generation pipeline §4.0-4.1 (kanban card t_825eee4c). */
   "test/createPromptUnderstander.test.ts": 1,
@@ -2456,15 +2461,16 @@ const BACKEND_FLOORS = {
      over-cap values at startup instead of silently substituting the
      default, and leaves a genuinely unset variable on its fallback. */
   "test/env.test.ts": 11,
+  "test/eventStore.test.ts": 5, // CH2-05 (docs/roadmap/code-health-2.md, B2-12): in-memory fetchPage includes rows at exactly afterTs with a null afterId (Postgres's rule, live-DB half in the db job) and minted ids sort in insertion order; new
   "test/events.test.ts": 17, // round-3 completeness sweep: app-2-6 thumbs accepts "cleared" and keeps `replaces`; 15 -> 17
   "test/html.test.ts": 12, // round-3 L6 (2026-09-25): backend-rest-1/-9/-11: range-checked, NUL-dropping, prototype-safe decodeEntities; 8 -> 12
   "test/entitiesParity.test.ts": 7, // CH2-09 (docs/roadmap/code-health-2.md, B1-05): html.ts and tools/refresh/entities.mjs agree over backend/fixtures/entities.json, every shared-table name decodes the same, neither module carries its own name map, html.ts loads when compiled to CommonJS with or without esModuleInterop, and the live parser shows "Café" and a CDATA "&amp;#038;" as data/ does; new
-  "test/interestLearning.test.ts": 38, // round-3 completeness sweep: app-2-6 a changed or withdrawn thumbs vote undoes the one it replaces; 35 -> 38 // round-3 L6 (2026-09-25): backend-rest-17: card_ignored fires once per threshold, running per-topic streak; 30 -> 35
+  "test/interestLearning.test.ts": 40, // CH2-05 (B2-15): INTEREST_REASONS and UserTaxonomyRow.source are pinned to the last migration's CHECKs, persona_seed the named SQL-only reason; 38 -> 40 // round-3 completeness sweep: app-2-6 a changed or withdrawn thumbs vote undoes the one it replaces; 35 -> 38 // round-3 L6 (2026-09-25): backend-rest-17: card_ignored fires once per threshold, running per-topic streak; 30 -> 35
   "test/itunes.test.ts": 3,
   "test/ladderBuilder.test.ts": 13,
   "test/ladderIntegrity.test.ts": 11,
   "test/ladderProgress.test.ts": 8,
-  "test/learningJob.test.ts": 9, // round-3 L6 (2026-09-25): backend-rest-2/-3: microsecond cursor, malformed rows skipped past, transaction, per-user failure isolation; 4 -> 9
+  "test/learningJob.test.ts": 13, // CH2-05 (B2-17): one run pages to the end (batchSize + 5 and a 3,500-event backlog caught up in one run) and a card_ignored streak split at the page boundary fires; 11 -> 13 // CH2-05 (B2-17) characterization: one run reads one page (batchSize + 5 events leave the cursor at row batchSize); 9 -> 11 (the suite already stood at 10) // round-3 L6 (2026-09-25): backend-rest-2/-3: microsecond cursor, malformed rows skipped past, transaction, per-user failure isolation; 4 -> 9
   /* Anthropic provider error-path coverage (kanban card t_550d289f): the
      shared parseWithRetry/parseLastJsonBlock helper extracted from the 5
      real Anthropic provider classes' identical private copies. */
@@ -2477,7 +2483,7 @@ const BACKEND_FLOORS = {
      takes down a written Foray after the writer has spent its tokens. */
   "test/phonemize.test.ts": 15, // round-3 audit (L5-generation): gen-16 the phonemizer says why it produced nothing (ENOENT, exit+stderr), 64 MB buffer, phonemizedSummary; 12 -> 15
   "test/parseWithRetry.test.ts": 17,
-  "test/parser.test.ts": 43, // #1071 chapters-psc-inline: psc:chapters (Podlove Simple Chapters) parse into sorted inline chapters -- the omegatau fixture, sort, NPT accepted and refused, dropped starts/null when empty, href/image protocols, the 500 cap; 36 -> 43 // round-3 L6 (2026-09-25): backend-rest-1/-10: parseFeed never throws on out-of-range entities; an empty guid is null; 29 -> 36
+  "test/parser.test.ts": 41, // CH2-03 (2026-10-07): the unread Tier-1 transcriptUrl pick was deleted, so its 4-test describe and the 1,957-ordering replay go (-5); pins added for the normalised timed pick, the parsed shape and the warnings ingestFixtures reads (+3); 43 -> 41 // #1071 chapters-psc-inline: psc:chapters (Podlove Simple Chapters) parse into sorted inline chapters -- the omegatau fixture, sort, NPT accepted and refused, dropped starts/null when empty, href/image protocols, the 500 cap; 36 -> 43 // round-3 L6 (2026-09-25): backend-rest-1/-10: parseFeed never throws on out-of-range entities; an empty guid is null; 29 -> 36
   "test/parserItemIsolation.test.ts": 1, // round-3 L6 (2026-09-25): backend-rest-1 — a throwing item is a warning, the feed still parses
   "test/personas.test.ts": 6,
   "test/podcastIndex.test.ts": 3,
@@ -2508,7 +2514,7 @@ const BACKEND_FLOORS = {
   /* #703: the warm pass's feed parsing, which is what decides whether a
      reconciled episode comes out SEARCHABLE only or also MINTABLE — a duration
      read as 58 rather than 3501 makes an episode rank and then yield nothing. */
-  "test/warmTranscriptIndex.test.ts": 20, // round-3 L6 (2026-09-25): backend-rest-8/-14: --show merges the corpus digest; bounded, expiring feed cache; 13 -> 20
+  "test/warmTranscriptIndex.test.ts": 20, // round-3 L6 (2026-09-25): backend-rest-8/-14: --show merges the corpus digest; bounded, expiring feed cache; 13 -> 20 // CH2-06 (2026-10-07): +7 digest-row/guid-parity pins and +2 RED pins (&#038; title, 12:75 duration), -9 deleted with the private parseFeedEpisodes/parseDuration they tested; 20 -> 27 -> 20
   /* Generation pipeline §4.0-4.1 (kanban card t_825eee4c): §3's input
      schema, `author_id` required and carried from day one per §1.3. */
   "test/generationRequest.test.ts": 5,
@@ -2757,7 +2763,7 @@ const BACKEND_FLOORS = {
   /* Stage 3b (kanban t_567b570f, docs/show-pages-plan.md §Stage 3): shared
      catalogue store CRUD (scoping by show_id, upsert-not-duplicate on
      (show_id, guid), published_at ordering, feed-state round-trip). */
-  "test/showEpisodesStore.test.ts": 11, // PKG-02 (S-09): every statement names legacy_show_id after the 0019 rekey (batched upsert; reads, feed-state upsert); 9 -> 11 // round-3 L6 (2026-09-25): backend-rest-9: one batched upsert in a transaction, rollback, dedup by guid; 5 -> 9
+  "test/showEpisodesStore.test.ts": 15, // PKG-02 (S-09): every statement names legacy_show_id after the 0019 rekey (batched upsert; reads, feed-state upsert); 9 -> 11 // round-3 L6 (2026-09-25): backend-rest-9: one batched upsert in a transaction, rollback, dedup by guid; 5 -> 9; 11 -> 13 // CH2-01: re-upsert chapters (coalesce pin, InMemory clears); 13 -> 15 // CH2-01: hasEpisodes (InMemory, Postgres select 1 limit 1)
   "test/showsPostgresLive.test.ts": 3, // PKG-02 (S-09): live-Postgres acceptance; every case skips without SHOWS_DATABASE_URL||DATABASE_URL
   /* Stage 3b end to end: fetches+parses+upserts through the real parser,
      proves the chapters JSON body is never dereferenced during ingestion
@@ -2765,7 +2771,7 @@ const BACKEND_FLOORS = {
      never-blank-page degrade contract (cached_stale / no_cache_error) on a
      feed fetch failure — plus that a missing enclosure never fabricates an
      audio_url. */
-  "test/ingestShowFeed.test.ts": 13, // round-3 L6 (2026-09-25): backend-rest-9/-10/-12: never throws, stable guid-less identity, failure backoff; 8 -> 13
+  "test/ingestShowFeed.test.ts": 18, // round-3 L6 (2026-09-25): backend-rest-9/-10/-12: never throws, stable guid-less identity, failure backoff; 8 -> 13; 13 -> 16 // CH2-01: status/error pinned on the cache-fallback paths; 16 -> 18 // CH2-01: inline chapters stored and overwritten; no list read on any path
   /* §4.8 end to end (kanban card t_7f410ffc): within-act stitching rules
      (silence bridge, jingle marks cuts, measured cadence, coverage
      hard-gate), the forward-only cross-act continuity Builder (§6.2),
@@ -3002,7 +3008,12 @@ const BACKEND_FLOORS = {
      window as the holding document, the run-5 Frame text accepted end to
      end, and — pinned as unchanged — a source-less page that states a fact
      is still refused. One named mutation per test. */
-  "test/frameTapeSource.test.ts": 24,
+  "test/frameTapeSource.test.ts": 23, // CH2-07 (B1-13): the transcriptArchiveLookup re-export identity test is gone with the re-export; parity lives in anchorTextParity.test.ts; 24 -> 23
+  /* CH2-07 (B1-13): types/anchorText.ts's canonicalizeForAnchorMatch is a
+     CommonJS mirror of tools/segments/merge-segments.mjs's canonical(); the two
+     are compared on apostrophe variants, punctuation, NFKC and whitespace, and
+     today's canonical form is pinned on both. */
+  "test/anchorTextParity.test.ts": 2,
   /* F-82 (generation run 6): a connective page cites the adjacent tape it
      restates. A page holds the windows of BOTH segments beside it in play
      order (across slot edges), the prefetch stage keys on them so the hit
@@ -3083,7 +3094,7 @@ const BACKEND_FLOORS = {
      sentence quoted; the verifier re-checks only what changed; F-88's ground
      reaches the act; the validator's zero-source rules are act-scoped.
      One named mutation per test. */
-  "test/actNarration.test.ts": 54, // round-3 audit (L5-generation): gen-8 Q-09's show memory is computed across acts and reaches every act; 52 -> 54
+  "test/actNarration.test.ts": 55, // CH2-07 (B1-09): every MODE_CHAR_BANDS band and the 17 chars/s rate pinned to check-narration.mjs; 54 -> 55
   /* Generator vocabulary (2026-09-24). Wyatt, on the audit's persona 65 (the
      narrator says "this act", "Act one", "two acts back" aloud): "Accept the
      ones that are currently there; update our foray generation scripting to

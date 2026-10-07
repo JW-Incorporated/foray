@@ -183,11 +183,10 @@ do not know with what.
 > Play some other way — see G3 in `docs/release-lockstep-plan.md` for the
 > one-time first-ever-upload case, which is always manual regardless).
 
-1. Actions → **android-release** → **Run workflow**.
-2. Fill in **version_code** and **version_name**.
-3. Wait ~25 minutes for `android-bundle`.
-4. Open the run, scroll to **Artifacts**, download **`foray-android-release`**.
-5. Unzip it. The file to submit is **`foray-release.aab`**.
+1. Actions → **android-release** → **Run workflow**. There is nothing to fill in.
+2. Wait ~25 minutes for `android-bundle`.
+3. Open the run, scroll to **Artifacts**, download **`foray-android-release`**.
+4. Unzip it. The file to submit is **`foray-release.aab`**.
 
 The same zip carries the evidence: `aab-entries.txt` (every entry in the
 bundle), `aab-capacitor.plugins.json`, `signer-cert.txt`, `jarsigner.txt`, and
@@ -200,13 +199,15 @@ Capacitor's template hardcodes `versionCode 1` into `mobile/android/app/build.gr
 edit to it does not survive. **Play permanently refuses a versionCode it has
 already accepted.**
 
-So the workflow takes it as an input and `mobile/gradle/foray-signing.gradle`
-applies it. Leave it blank and you get `1`, which is correct exactly once.
-Thereafter: increment it, every single time, even for a build that replaces a
-rejected one.
+So nobody types it (CH2-17). The workflow's `version` job derives it the way
+`release.yml` does — `YYYYMMDDnn` from `tools/mobile/version.mjs`, with `nn`
+counted across that day's `release.yml` and `android-release` runs — and
+`mobile/gradle/foray-signing.gradle` applies it. The bundle is built by the same
+`.github/actions/android-bundle` composite `release.yml` uses, so it also carries
+the real splash screen and launcher icon. The run summary prints the pair.
 
-`version_name` is the string users see (`1.0.0`). It has no uniqueness rule and
-can repeat.
+The versionName (the string users see, `1.0.0`) comes from `mobile/VERSION`. It
+has no uniqueness rule and can repeat.
 
 ### 3.2 Play App Signing
 

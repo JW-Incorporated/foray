@@ -96,28 +96,126 @@ export function deployIdFrom(files) {
   return sha256Hex(lines).slice(0, 16);
 }
 
-/** The pointer for the three files as they are on disk under `root`. */
-export function buildPointer(root, deployId, now = new Date()) {
-  const files = {};
-  const bytes = {};
-  const sha256 = {};
-  for (const [key, rel] of Object.entries(DIRECTORY_FILES)) {
-    const abs = path.join(root, rel);
-    if (!existsSync(abs)) {
-      throw new Error(`forays-directory: listed file is missing on disk: ${rel}`);
+/**
+ * ONE pointer writer and checker, for any `{ key: "repo/path" }` table
+ * (code-health CH2-22, T2-06). The Foray pointer below and the catalogue
+ * pointer (`catalogue-directory.mjs`) are the same contract over different
+ * files; they used to be two copies of this code, so a fix to the validator
+ * could land in one and not the other. Now each module is its table plus one
+ * call.
+ *
+ * It lives HERE, not in a module of its own, because a new module the stamp
+ * imports is a new stamp input: it would have to join `generate-manifest.mjs`'s
+ * STAMP_MODULE_FILES and `vercel-should-build.mjs`'s STAMP_MODULES (or a change
+ * to it would never deploy), and every scratch tree that copies the stamp
+ * modules. This file is already on all of them.
+ *
+ *   files       the table; order is the order in the written pointer
+ *   label       prefixes `build`'s thrown error ("forays-directory: ...")
+ *   pointerPath where the pointer sits in a built tree
+ *
+ * -> { build(root, deployId, now), text(pointer), problems(root, deployId) }
+ *   build     the pointer for the files as they are on disk under `root`;
+ *             throws naming a listed file that is missing
+ *   text      the exact bytes a build writes for a pointer object
+ *   problems  everything wrong with the pointer on disk under `root` (a BUILT
+ *             tree) for the deploy id that tree computes to; empty means current.
+ *             Each string is one operator-facing line; `generate-manifest.mjs`'s
+ *             `stampedProblems` prints them all and the build fails on any.
+ */
+export function makeDirectoryPointer(files, label, pointerPath) {
+  function build(root, deployId, now = new Date()) {
+    const listed = {};
+    const bytes = {};
+    const sha256 = {};
+    for (const [key, rel] of Object.entries(files)) {
+      const abs = path.join(root, rel);
+      if (!existsSync(abs)) {
+        throw new Error(`${label}: listed file is missing on disk: ${rel}`);
+      }
+      const buf = readFileSync(abs);
+      listed[key] = rel;
+      bytes[key] = buf.length;
+      sha256[key] = sha256Hex(buf);
     }
-    const buf = readFileSync(abs);
-    files[key] = rel;
-    bytes[key] = buf.length;
-    sha256[key] = sha256Hex(buf);
+    return { version: deployId, built_at: now.toISOString(), files: listed, bytes, sha256 };
   }
-  return { version: deployId, built_at: now.toISOString(), files, bytes, sha256 };
+
+  function text(pointer) {
+    return JSON.stringify(pointer, null, 2) + "\n";
+  }
+
+  function problems(root, deployId) {
+    const abs = path.join(root, pointerPath);
+    if (!existsSync(abs)) return [`${pointerPath} is missing`];
+    let pointer;
+    try {
+      pointer = JSON.parse(readFileSync(abs, "utf8"));
+    } catch (err) {
+      return [`${pointerPath} is not valid JSON: ${err.message}`];
+    }
+    if (!pointer || typeof pointer !== "object" || Array.isArray(pointer)) {
+      return [`${pointerPath} is not a JSON object`];
+    }
+    const out = [];
+    if (pointer.version !== deployId) {
+      out.push(`version is ${JSON.stringify(pointer.version)} but the tree computes to deploy_id ${deployId}`);
+    }
+    if (typeof pointer.built_at !== "string" || Number.isNaN(Date.parse(pointer.built_at))) {
+      out.push(`built_at is not an ISO-8601 timestamp: ${JSON.stringify(pointer.built_at)}`);
+    }
+    const sections = { files: pointer.files, bytes: pointer.bytes, sha256: pointer.sha256 };
+    for (const [name, section] of Object.entries(sections)) {
+      if (!section || typeof section !== "object") {
+        out.push(`${name} is missing`);
+        continue;
+      }
+      const extra = Object.keys(section).filter((k) => !(k in files));
+      if (extra.length) out.push(`${name} names unknown entries: ${extra.join(", ")}`);
+    }
+    for (const [key, rel] of Object.entries(files)) {
+      if (pointer.files && pointer.files[key] !== rel) {
+        out.push(`files.${key} is ${JSON.stringify(pointer.files && pointer.files[key])}, expected "${rel}"`);
+      }
+      const fileAbs = path.join(root, rel);
+      if (!existsSync(fileAbs)) {
+        out.push(`${rel} is missing on disk`);
+        continue;
+      }
+      const size = statSync(fileAbs).size;
+      if (pointer.bytes && pointer.bytes[key] !== size) {
+        out.push(`bytes.${key} is ${JSON.stringify(pointer.bytes[key])} but ${rel} is ${size} bytes on disk`);
+      }
+      const want = pointer.sha256 && pointer.sha256[key];
+      if (typeof want !== "string" || !HEX64.test(want)) {
+        out.push(`sha256.${key} is not a 64-hex sha256: ${JSON.stringify(want)}`);
+      } else {
+        const got = sha256Hex(readFileSync(fileAbs));
+        if (got !== want) {
+          out.push(`sha256.${key} is ${want.slice(0, 12)}… but ${rel} hashes to ${got.slice(0, 12)}… on disk`);
+        }
+      }
+    }
+    return out;
+  }
+
+  return Object.freeze({ build, text, problems });
 }
 
+const forays = makeDirectoryPointer(DIRECTORY_FILES, "forays-directory", POINTER_PATH);
+
+/** The pointer for the three files as they are on disk under `root`. */
+export const buildPointer = forays.build;
+
 /** The exact bytes a build writes for a pointer object (`generate-manifest.mjs`'s `stampBuild`). */
-export function pointerText(pointer) {
-  return JSON.stringify(pointer, null, 2) + "\n";
-}
+export const pointerText = forays.text;
+
+/**
+ * Everything wrong with the Foray pointer on disk under `root` (a BUILT tree —
+ * `dist/` or a stamped Pages checkout) for the deploy id that tree computes to.
+ * Empty means it is current.
+ */
+export const pointerProblems = forays.problems;
 
 /** `git <args>` in `root`, trimmed stdout, or null on any failure. */
 function gitOut(root, args) {
@@ -125,16 +223,6 @@ function gitOut(root, args) {
     return execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
   } catch (_) {
     return null;
-  }
-}
-
-function readPointer(root) {
-  const abs = path.join(root, POINTER_PATH);
-  if (!existsSync(abs)) return { pointer: null, error: `${POINTER_PATH} is missing` };
-  try {
-    return { pointer: JSON.parse(readFileSync(abs, "utf8")), error: null };
-  } catch (err) {
-    return { pointer: null, error: `${POINTER_PATH} is not valid JSON: ${err.message}` };
   }
 }
 
@@ -211,59 +299,4 @@ function isShallowBoundary(root, sha) {
   } catch (_) {
     return true;
   }
-}
-
-/**
- * Everything wrong with the pointer on disk under `root` (a BUILT tree — `dist/`
- * or a stamped Pages checkout) for the deploy id that tree computes to. Empty
- * means it is current. Each string is one operator-facing line;
- * `generate-manifest.mjs`'s `stampedProblems` prints them all and the build
- * fails on any.
- */
-export function pointerProblems(root, deployId) {
-  const { pointer, error } = readPointer(root);
-  if (error) return [error];
-  const problems = [];
-  if (!pointer || typeof pointer !== "object" || Array.isArray(pointer)) {
-    return [`${POINTER_PATH} is not a JSON object`];
-  }
-  if (pointer.version !== deployId) {
-    problems.push(`version is ${JSON.stringify(pointer.version)} but the tree computes to deploy_id ${deployId}`);
-  }
-  if (typeof pointer.built_at !== "string" || Number.isNaN(Date.parse(pointer.built_at))) {
-    problems.push(`built_at is not an ISO-8601 timestamp: ${JSON.stringify(pointer.built_at)}`);
-  }
-  const sections = { files: pointer.files, bytes: pointer.bytes, sha256: pointer.sha256 };
-  for (const [name, section] of Object.entries(sections)) {
-    if (!section || typeof section !== "object") {
-      problems.push(`${name} is missing`);
-      continue;
-    }
-    const extra = Object.keys(section).filter((k) => !(k in DIRECTORY_FILES));
-    if (extra.length) problems.push(`${name} names unknown entries: ${extra.join(", ")}`);
-  }
-  for (const [key, rel] of Object.entries(DIRECTORY_FILES)) {
-    if (pointer.files && pointer.files[key] !== rel) {
-      problems.push(`files.${key} is ${JSON.stringify(pointer.files && pointer.files[key])}, expected "${rel}"`);
-    }
-    const abs = path.join(root, rel);
-    if (!existsSync(abs)) {
-      problems.push(`${rel} is missing on disk`);
-      continue;
-    }
-    const size = statSync(abs).size;
-    if (pointer.bytes && pointer.bytes[key] !== size) {
-      problems.push(`bytes.${key} is ${JSON.stringify(pointer.bytes[key])} but ${rel} is ${size} bytes on disk`);
-    }
-    const want = pointer.sha256 && pointer.sha256[key];
-    if (typeof want !== "string" || !HEX64.test(want)) {
-      problems.push(`sha256.${key} is not a 64-hex sha256: ${JSON.stringify(want)}`);
-    } else {
-      const got = sha256Hex(readFileSync(abs));
-      if (got !== want) {
-        problems.push(`sha256.${key} is ${want.slice(0, 12)}… but ${rel} hashes to ${got.slice(0, 12)}… on disk`);
-      }
-    }
-  }
-  return problems;
 }

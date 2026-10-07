@@ -1,9 +1,8 @@
 import { Client } from "pg";
 import { readFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
-import { ingestShowFeed } from "../../../backend/src/catalog/ingestShowFeed";
+import { ingestShowFeed, toCatalogEpisode } from "../../../backend/src/catalog/ingestShowFeed";
 import { PostgresShowEpisodesStore, type CatalogShowEpisode } from "../../../backend/src/catalog/showEpisodesStore";
-import { type ParsedEpisode } from "../../../backend/src/feeds/parser";
 import { applyCors } from "../../_lib/cors";
 import { firstParam } from "../../_lib/params";
 import { decodeCursor, paginate } from "../../_lib/episodeCursor";
@@ -221,14 +220,6 @@ interface ApiResponse {
 
 const PAGE_SIZE = 100;
 
-/** Maps a freshly-parsed feed episode to the same shape the DB path returns.
- * `chapters` carries the chapters the feed published INLINE (Podlove Simple
- * Chapters, `psc:chapters` — parser.ts `inlineChapters`), sorted by start, or
- * null when the item has none. A podcasting-2.0 `podcast:chapters` JSON file
- * is still never fetched here: only its pointer, `chapters_url`, is returned,
- * and the body is fetched separately per-episode (#1071). A missing enclosure
- * never fabricates an audio_url — dropped, matching ingestShowFeed's own
- * toCatalogEpisode rule. */
 /**
  * The row as the LIST is served: everything except `description_html`.
  *
@@ -261,25 +252,6 @@ const PAGE_SIZE = 100;
 function toListRow(ep: CatalogShowEpisode) {
   const { description_html: _dropped, ...rest } = ep;
   return rest;
-}
-
-function toLiveEpisode(showId: string, ep: ParsedEpisode, idx: number): CatalogShowEpisode | null {
-  if (!ep.enclosureUrl) return null;
-  const guid = liveEpisodeGuid(ep, idx);
-  return {
-    show_id: showId,
-    guid,
-    title: ep.title,
-    description_html: ep.descriptionHtml,
-    description_text: ep.descriptionText || null,
-    published_at: ep.publishedAt,
-    duration_seconds: ep.duration.seconds,
-    audio_url: ep.enclosureUrl,
-    season_number: ep.seasonNumber,
-    episode_number: ep.episodeNumber,
-    chapters_url: ep.chaptersUrl,
-    chapters: ep.inlineChapters ?? null
-  };
 }
 
 export default async function handler(req: ApiRequest, res: ApiResponse): Promise<void> {
@@ -408,7 +380,7 @@ async function serveLive(
 
   const parsed = feed.parsed;
   const episodes = parsed.episodes
-    .map((ep, idx) => toLiveEpisode(showId, ep, idx))
+    .map((ep, idx) => toCatalogEpisode(showId, ep, liveEpisodeGuid(ep, idx)))
     .filter((ep): ep is CatalogShowEpisode => ep !== null);
 
   const { page, nextCursor } = paginate(episodes, cursor, PAGE_SIZE);

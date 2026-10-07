@@ -29,7 +29,13 @@ export interface CatalogShowEpisode {
   season_number: number | null;
   episode_number: number | null;
   chapters_url: string | null;
-  chapters: ChapterMarker[] | null; // populated lazily — see backend/src/catalog/ingestShowFeed.ts
+  /* The feed's INLINE chapters (psc:chapters), written by every ingest and
+     overwritten by the next one (ingestShowFeed.ts toCatalogEpisode); null
+     when the item has none. Nothing fetches chapters "lazily": 0016's column
+     comment ("populated only once a listener opens the episode page (lazy
+     fetch)") describes a path that was never built; 0016 is applied, so the
+     correction lives here (CH2-01). */
+  chapters: ChapterMarker[] | null;
 }
 
 export interface ShowFeedState {
@@ -46,6 +52,10 @@ export interface ShowFeedState {
 export interface ShowEpisodesStore {
   /** Episodes for a show, published-date descending — the show page's read path. */
   episodesForShow(showId: string): Promise<CatalogShowEpisode[]>;
+
+  /** Whether any episode is stored for the show: the "is there a cache to
+   *  fall back to" question ingest asks on a failure, without reading the list. */
+  hasEpisodes(showId: string): Promise<boolean>;
 
   /** Upserts a full ingested batch for one show (identity: show_id + guid). */
   upsertEpisodes(episodes: CatalogShowEpisode[]): Promise<void>;
@@ -72,6 +82,11 @@ export class InMemoryShowEpisodesStore implements ShowEpisodesStore {
         const bt = b.published_at ? new Date(b.published_at).getTime() : -Infinity;
         return bt - at;
       });
+  }
+
+  async hasEpisodes(showId: string): Promise<boolean> {
+    for (const e of this.episodes.values()) if (e.show_id === showId) return true;
+    return false;
   }
 
   async upsertEpisodes(episodes: CatalogShowEpisode[]): Promise<void> {
@@ -104,6 +119,16 @@ export class PostgresShowEpisodesStore implements ShowEpisodesStore {
   // path keeps working unchanged after that migration — this class is
   // NOT rewired to pi_id by S-09; that is a future card's job once the
   // show-page feature itself moves off curated show_id slugs.
+  //
+  // Two corrections to the applied 0019, which must not be edited (CH2-01,
+  // B2-09): its ACCEPTANCE line names backend/test/shows-rekey.test.ts,
+  // which does not exist; the rekey acceptance test is
+  // tools/shows/shows-postgres-integration.test.mjs ("rekey (0019)
+  // preserves a seeded 0016 row set", line 129). And 0019 dropped 0016's
+  // idx_cse_show_published, the only index serving episodesForShow's
+  // `where legacy_show_id = $1 order by published_at desc nulls last`;
+  // 0021_cse_legacy_show_published_index.sql restores it on the renamed
+  // column (the same integration suite EXPLAINs this query against it).
 
   async episodesForShow(showId: string): Promise<CatalogShowEpisode[]> {
     const result = await this.client.query(
@@ -115,6 +140,14 @@ export class PostgresShowEpisodesStore implements ShowEpisodesStore {
       [showId]
     );
     return result.rows.map(rowToEpisode);
+  }
+
+  async hasEpisodes(showId: string): Promise<boolean> {
+    const result = await this.client.query(
+      `select 1 from catalog_show_episodes where legacy_show_id = $1 limit 1`,
+      [showId]
+    );
+    return result.rows.length > 0;
   }
 
   /**
@@ -232,8 +265,8 @@ export function buildEpisodeUpsert(episodes: CatalogShowEpisode[]): { sql: strin
        season_number = excluded.season_number,
        episode_number = excluded.episode_number,
        chapters_url = excluded.chapters_url,
-       -- never overwrite a lazily-fetched chapters body with null on a re-ingest
-       chapters = coalesce(excluded.chapters, catalog_show_episodes.chapters),
+       -- overwritten, never coalesced: a feed that drops its psc:chapters clears them, as InMemory does (CH2-01)
+       chapters = excluded.chapters,
        updated_at = now()`;
   return { sql, params };
 }

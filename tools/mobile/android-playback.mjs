@@ -63,15 +63,18 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { PKG, adb, device, num, pidOf, pngInfo, sleep } from "./adb.mjs";
 import { evaluate, expectedTitle, listTargets, pickPage, probe as launchProbe } from "./webview-probe.mjs";
 import { LOAD_SETTLE_TIMEOUT_MS } from "../../player/deck-policy.js";
 import { DIAG_KEY } from "../../player/diagnostic-log.js";
 import { INTERLUDE_ASSET_PATH } from "../../player/interlude.js";
 import { NARRATION_DEADLINE_FACTOR, NARRATION_DEADLINE_MARGIN_SEC } from "../../player/queue-manager.js";
 
-export const PKG = "ai.jwlabs.foura";
+/* The device plumbing (one adb call, the pid, the kill line, the PNG header) is
+ * `adb.mjs`'s, shared with the native lane; re-exported so this module's surface
+ * is what it was. */
+export { PKG, adb, killLine, pidOf, pngInfo } from "./adb.mjs";
 /** `PlaybackKeepAliveService`, as `dumpsys activity services` names it. */
 export const SERVICE = "PlaybackKeepAliveService";
 /** `ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK`. */
@@ -616,14 +619,6 @@ export function mediaControls(nodes, { title, artist }) {
   };
 }
 
-/** PNG signature and IHDR size, or null. */
-export function pngInfo(buf) {
-  if (!buf || buf.length < 24) return null;
-  const sig = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
-  if (!sig.every((b, i) => buf[i] === b)) return null;
-  return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20), bytes: buf.length };
-}
-
 /* ─────────────────────── A-05: parsers ─────────────────────── */
 
 /** The audio focus stack from `dumpsys audio`, bottom first: the platform
@@ -793,8 +788,6 @@ export function a15Trigger(stats) {
 }
 
 /* ───────────────────────────── verdicts ───────────────────────────── */
-
-const num = (n) => typeof n === "number" && Number.isFinite(n);
 
 /** (a) one clip plays, in a foreground service, published to the system. */
 export function verdictPlay({ started, first, last, service, sessions, expected = { title: CLIPS[0].title, artist: SHOW } }) {
@@ -1123,37 +1116,24 @@ export function verdictBack({ left, presses, pidBefore, pidAfter, first, last, s
 
 /* ─────────────────────────── the live half ─────────────────────────── */
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/** How the shared device helpers (`adb.mjs`) read THIS lane: the page's state
+ *  over DevTools, a shade pause by the media session, and a press read off
+ *  `state.foray`. */
+export const JS_LANE = Object.freeze({
+  read: (ctx) => state(ctx),
+  pauseForShade: () => shell("cmd", "media_session", "dispatch", "pause"),
+  isPaused: (x) => x.episodePlaying === false,
+  press: Object.freeze({
+    view: (s) => s?.foray,
+    resumed: (a) => a.running === true,
+    settled: (a) => a.running === true && !a.loading,
+    position: (a) => a.elapsedSec,
+    sameItem: () => true,
+  }),
+});
 
-/** One adb call, bounded. Never throws: the caller reads `status`. */
-export function adb(args, { binary = false, timeoutMs = 60000 } = {}) {
-  const r = spawnSync("adb", args, {
-    encoding: binary ? "buffer" : "utf8",
-    timeout: timeoutMs,
-    maxBuffer: 64 * 1024 * 1024,
-  });
-  return { status: r.status, stdout: r.stdout ?? (binary ? Buffer.alloc(0) : ""), stderr: String(r.stderr ?? ""), error: r.error ? String(r.error.message) : null };
-}
-
-const shell = (...args) => adb(["shell", ...args]).stdout;
-
-export function pidOf(pkg = PKG) {
-  return String(shell("pidof", pkg)).trim().split(/\s+/)[0] || null;
-}
-
-/** What ActivityManager said when it ended our process, from the system log:
- *  the `Killing <pid>:<pkg> (adj …): <reason>` line, or its `has died` line. */
-export function killLine(log, pid, pkg = PKG) {
-  const lines = String(log ?? "").split(/\r?\n/);
-  const hit =
-    lines.find((l) => l.includes(`Killing ${pid}:${pkg}/`)) ??
-    lines.find((l) => /has died/.test(l) && l.includes(`${pkg} (pid ${pid})`));
-  return hit ? hit.replace(/^.*?ActivityManager: /, "").trim() : null;
-}
-
-function killReason(pid, pkg) {
-  return pid ? killLine(adb(["logcat", "-d", "-b", "system"]).stdout, pid, pkg) : null;
-}
+const { shell, save, dumpTo, wakeAndUnlock, killReason, waitFor, window2, dumpUi, readShade, helperLog, pressDone } =
+  device({ lane: JS_LANE, gates: GATES, helperTag: HELPER_TAG });
 
 /** Forward the page's DevTools socket (found, not name-assumed, as in
  *  `android-smoke.yml`) and return the page target. */
@@ -1198,22 +1178,6 @@ async function page(ctx, expression, { gesture = false, timeoutMs = 30000 } = {}
 
 const state = (ctx) => page(ctx, STATE_EXPRESSION);
 
-async function waitFor(ctx, pred, timeoutMs) {
-  const deadline = Date.now() + timeoutMs;
-  let s = await state(ctx);
-  while (!pred(s) && Date.now() < deadline) {
-    await sleep(500);
-    s = await state(ctx);
-  }
-  return s;
-}
-
-function save(ctx, name, content) {
-  const file = path.join(ctx.art, name);
-  fs.writeFileSync(file, content);
-  return name;
-}
-
 function readRunState(ctx) {
   try {
     return JSON.parse(fs.readFileSync(path.join(ctx.art, "playback-state.json"), "utf8"));
@@ -1224,11 +1188,6 @@ function readRunState(ctx) {
 
 function writeRunState(ctx, patch) {
   fs.writeFileSync(path.join(ctx.art, "playback-state.json"), JSON.stringify({ ...readRunState(ctx), ...patch }, null, 2));
-}
-
-function wakeAndUnlock() {
-  shell("input", "keyevent", "KEYCODE_WAKEUP");
-  shell("wm", "dismiss-keyguard");
 }
 
 /* ───────────────────────────── scenarios ───────────────────────────── */
@@ -1355,18 +1314,6 @@ export const PRESSES = Object.freeze([
   { route: "keyevent", kind: "previous", args: ["input", "keyevent", "KEYCODE_MEDIA_PREVIOUS"] },
 ]);
 
-function pressDone(kind, before) {
-  return (s) => {
-    const a = s?.foray;
-    if (!a) return false;
-    if (kind === "pause") return a.running === false;
-    if (kind === "play") return a.running === true;
-    if (kind === "next") return a.index === (before?.foray?.index ?? -2) + 1 && a.running === true && !a.loading;
-    return num(a.elapsedSec) && num(before?.foray?.elapsedSec) && a.elapsedSec <= before.foray.elapsedSec - GATES.previousMinRewindSec
-      && a.running === true && !a.loading;
-  };
-}
-
 /** (c) Every transport press, by both routes, reaches the page.
  *
  *  Run with the app in the BACKGROUND (Home, screen on), which is where a lock
@@ -1444,44 +1391,6 @@ async function ensureRunning(ctx, { notLast = false } = {}) {
   await page(ctx, jumpExpression(to), { gesture: true });
   s = await waitFor(ctx, (x) => ready(x) && x.foray.index === to, 15000);
   return s;
-}
-
-async function dumpUi(ctx, name) {
-  const attempts = [];
-  for (let i = 0; i < 2; i += 1) {
-    const r = adb(["shell", "uiautomator", "dump", "/sdcard/window_dump.xml"], { timeoutMs: 45000 });
-    const said = `${r.stdout}${r.stderr}`.trim();
-    attempts.push(said.slice(0, 200));
-    if (/dumped to/i.test(said)) {
-      const xml = shell("cat", "/sdcard/window_dump.xml");
-      save(ctx, name, xml);
-      return { xml, attempts };
-    }
-    await sleep(1000);
-  }
-  return { xml: null, attempts };
-}
-
-/** Read one shade layout. A PLAYING media panel animates its progress bar and
- *  `uiautomator dump` refuses a screen that never goes idle ("could not get
- *  idle state", every time on run 36549143331), so the fallback reads it paused
- *  and resumes: the play button is then where pause will be. */
-async function readShade(ctx, how, log) {
-  shell("cmd", "statusbar", how);
-  await sleep(2500);
-  const shot = adb(["exec-out", "screencap", "-p"], { binary: true });
-  if (pngInfo(shot.stdout)) save(ctx, `d-shade-${how}.png`, shot.stdout);
-  let dump = await dumpUi(ctx, `d-window-${how}.xml`);
-  log.push({ how, dump: dump.attempts });
-  let paused = false;
-  if (!dump.xml) {
-    shell("cmd", "media_session", "dispatch", "pause");
-    await waitFor(ctx, (x) => x.episodePlaying === false, GATES.pressTimeoutMs);
-    dump = await dumpUi(ctx, `d-window-${how}-paused.xml`);
-    log.push({ how, pausedDump: dump.attempts });
-    paused = true;
-  }
-  return { how, paused, xml: dump.xml };
 }
 
 /** (d) The shade's media controls: our title, our show, the 15/30 pair, and a
@@ -1599,20 +1508,6 @@ async function startFixture(ctx, fx) {
   const started = await page(ctx, startForayExpression(fx, fx.id), { gesture: true, timeoutMs: 45000 });
   const s = await waitFor(ctx, (x) => x.foray && x.foray.running && !x.foray.loading && x.element && !x.element.paused && x.element.t > 0, 15000);
   return { started, s };
-}
-
-/** Two page reads `windowMs` apart. */
-async function window2(ctx) {
-  const a = await state(ctx);
-  await sleep(GATES.windowMs);
-  const b = await state(ctx);
-  return [a, b];
-}
-
-function dumpTo(ctx, name, ...args) {
-  const out = shell(...args);
-  save(ctx, name, out);
-  return out;
 }
 
 /** (f) Hidden seam timing, RECORDED. A seven-item Foray (clip, rendered line,
@@ -1735,13 +1630,6 @@ async function doze(ctx) {
     shell("dumpsys", "battery", "reset");
     shell("am", "set-standby-bucket", ctx.pkg, "active");
   }
-}
-
-function helperLog() {
-  return String(adb(["logcat", "-d", "-s", HELPER_TAG]).stdout)
-    .split(/\r?\n/)
-    .filter((l) => l.includes(HELPER_TAG) && /mode=|focusChange=/.test(l))
-    .map((l) => l.replace(/^.*?A05Focus\s*:\s*/, "").trim());
 }
 
 /** (h) Audio focus, RECORDED. The focus stack while we play, then the helper

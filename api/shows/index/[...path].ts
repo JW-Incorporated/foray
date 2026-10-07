@@ -26,16 +26,17 @@ export {
  * matching S-05's own rule that a `connect-src` widening lands with the code
  * that needs it, never in advance.
  *
- * WHERE THE RELEASE LIVES: `data/shows-index-pointer.json`, written by
+ * WHERE THE RELEASE LIVES: `data/shows-index-pointer.json`, committed by
  * S-04b's `tools/shows/run-and-publish.mjs` (`asset_base_url`, a stable
- * `.../releases/download/<tag>` URL — see `tools/shows/publish-release.mjs`).
- * That pipeline is currently failing closed on `SHARD_TOO_LARGE` (the p95
- * shard-size budget in `tools/shows/config.mjs`), so no pointer is committed
- * yet — this endpoint answers 404 `{ available: false }` in that case, the
- * same "absence is a real state, never a 500" rule every other endpoint in
- * this directory follows (see `api/shows/search.ts`'s degraded branch). That
- * is a separate, tracked bug in S-04a/b's own files (see this card's Fable
- * ruling), not something this proxy works around.
+ * `.../releases/download/<tag>` URL — see `tools/shows/publish-release.mjs`;
+ * shards on the `shard_releases` batch releases). A pointer has been on
+ * `main` since 2026-09-15 (#720), re-pointed 2026-10-05 (#1012) with
+ * `shards_published: true`. So a 404 `{ available: false }` from this
+ * endpoint is no longer the steady state: it means the pointer was removed,
+ * or the shard key falls outside every `shard_releases` range — an incident
+ * to look at, still answered as 404 rather than a 500 under the "absence is
+ * a real state" rule every endpoint here follows (see `api/shows/search.ts`'s
+ * degraded branch).
  *
  * AN ALLOWLISTING PROXY, NOT AN OPEN ONE — the whole reason this file is
  * more than three lines. `req.query.path` is client-controlled, so every
