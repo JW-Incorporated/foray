@@ -168,6 +168,41 @@ test("families: Phosphor on the 256 grid, custom marks on the 24 grid with round
   }
 });
 
+test("the vendored Phosphor glyphs carry the complete upstream MIT notice", () => {
+  // MUTATION: delete `Copyright (c) 2023 Phosphor Icons` from Phosphor-Icons-LICENSE; this test must fail.
+  const license = read("docs/legal/licenses/Phosphor-Icons-LICENSE").trim();
+  const upstream = [
+    "MIT License",
+    "",
+    "Copyright (c) 2023 Phosphor Icons",
+    "",
+    "Permission is hereby granted, free of charge, to any person obtaining a copy",
+    'of this software and associated documentation files (the "Software"), to deal',
+    "in the Software without restriction, including without limitation the rights",
+    "to use, copy, modify, merge, publish, distribute, sublicense, and/or sell",
+    "copies of the Software, and to permit persons to whom the Software is",
+    "furnished to do so, subject to the following conditions:",
+    "",
+    "The above copyright notice and this permission notice shall be included in all",
+    "copies or substantial portions of the Software.",
+    "",
+    'THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR',
+    "IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,",
+    "FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE",
+    "AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER",
+    "LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,",
+    "OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE",
+    "SOFTWARE.",
+  ].join("\n");
+  assert.strictEqual(license, upstream, "the committed licence must match phosphor-icons/core LICENSE");
+
+  const notices = read("docs/legal/third-party-notices.md");
+  assert.match(notices, /## Phosphor Icons — application icon glyphs/);
+  assert.match(notices, /\*\*Licence:\*\* MIT/);
+  assert.match(notices, /Copyright \(c\) 2023 Phosphor Icons/);
+  assert.match(notices, /docs\/legal\/licenses\/Phosphor-Icons-LICENSE/);
+});
+
 test("knob keeps its anatomy and nothing sits above the disc", () => {
   // MUTATION: add <circle cx="12" cy="2" r="1"/> (a pointer dot above the disc) to the knob symbol; or move the disc to cy="12".
   const knob = symbolsOf(SPRITE.text).find((s) => s.id === "knob");

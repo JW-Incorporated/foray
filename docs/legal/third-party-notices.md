@@ -23,6 +23,19 @@ not Apache/MIT") as a check rather than a sentence.
 
 ---
 
+## Phosphor Icons — application icon glyphs
+
+- **What:** 34 Bold and Fill SVG glyphs vendored into the inline icon sprite
+  in `index.html`. The seven custom marks in that sprite are first-party and
+  are not part of Phosphor Icons.
+- **Licence:** MIT
+- **Source:** https://github.com/phosphor-icons/core
+- **Notice:** Copyright (c) 2023 Phosphor Icons. The complete MIT licence,
+  including the required copyright and permission notice, is reproduced in
+  `docs/legal/licenses/Phosphor-Icons-LICENSE`.
+
+---
+
 ## Kokoro-82M — the narration voice model
 
 - **What:** an 82-million-parameter neural text-to-speech model. The weights
