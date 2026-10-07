@@ -333,6 +333,15 @@ const ACKNOWLEDGED_UNDENIED_GATES = {
   // to a bad build, not an unread security-relevant change. Found while fixing
   // PR #501's gate scan (kanban t_5458c0a2).
   "tools/mobile/version.mjs": "no auth/secret bypass; worst case is a mislabeled version or a failed (red) upload, not a silent bad deploy",
+  // 948-part (#948): ios-build.yml lists every privacy manifest in the BUILT
+  // App.app and fails on a bundled Required Reason plugin no manifest covers.
+  // That workflow holds no secret, signs nothing and is not a required check,
+  // and the script only reads the bundle after the build. The coverage that
+  // matters today (@capacitor/preferences' UserDefaults) is independently
+  // asserted by the DENIED inject-privacy-manifest.mjs --bundle, in this same
+  // workflow and in the release composite, so a neutered copy could only lose
+  // the report and the stale-class guard, not ship an undeclared API.
+  "tools/mobile/privacy-manifest-report.mjs": "read-only post-build report in the unsigned ios-build.yml; the coverage it checks is re-asserted by denied inject-privacy-manifest.mjs --bundle",
   // ios-ci.mjs, inject-background-audio.mjs and ios-embedded-frameworks.mjs
   // were acknowledged here as "no secret" until the round-3 review showed all
   // three run inside the release composite that holds the p12 and the App Store

@@ -561,6 +561,21 @@ jobs:
           node tools/mobile/inject-privacy-manifest.mjs --bundle "$APP" | tee "$ART/privacy-manifest-bundle.txt"
           cp "$APP/PrivacyInfo.xcprivacy" "$ART/built-PrivacyInfo.xcprivacy"
 
+      - name: List every privacy manifest in the BUILT bundle, and fail on an uncovered plugin
+        # #948's aggregate half, without a Mac: one row per bundle in the
+        # arm64/Release App.app (the app, each framework and resource bundle),
+        # whether it carries a PrivacyInfo.xcprivacy, and which Required Reason
+        # API types it declares. Red when a bundled plugin known to call one
+        # (@capacitor/preferences: UserDefaults) is covered by neither its own
+        # manifest nor the app target's. `--mobile mobile` makes a stale plugin
+        # class name a failure instead of a silent "not bundled". Xcode's
+        # Generate Privacy Report stays the human step #948 is open for.
+        run: |
+          set -euo pipefail
+          node tools/mobile/privacy-manifest-report.mjs \
+            "$DD_DEV/Build/Products/Release-iphoneos/App.app" --mobile mobile \
+            | tee "$ART/privacy-manifest-report.txt"
+
       # ── the two measurements ────────────────────────────────────────────────
 
       - name: Choose and boot a simulator
