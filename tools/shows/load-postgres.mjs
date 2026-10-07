@@ -22,29 +22,20 @@
    hand-downloaded/extracted sqlite db stands in for a real network fetch,
    so this file's own tests and CI's `db` job never touch the real 1.8GB
    dump either. */
-import { readFile } from "node:fs/promises";
-import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { from as copyFrom } from "pg-copy-streams";
 import { Readable } from "node:stream";
 import { pipeline as streamPipeline } from "node:stream/promises";
 
-import { CATALOG_PATH, MAX_UNMAPPED_CURATED_FRACTION } from "./config.mjs";
+import {
+  DATABASE_URL_VARS, checkMissingMapping, checksumFile, loadCuratedShows, resolveDatabaseUrl,
+} from "./config.mjs";
 import { runPipeline } from "./import-dump.mjs";
 
-export const SHOWS_DATABASE_URL_VARS = ["SHOWS_DATABASE_URL", "DATABASE_URL"];
-
-/** Reads the first configured DB URL env var that is actually set — the
-    card's own "checks for DATABASE_URL/SHOWS_DATABASE_URL" language, with
-    SHOWS_DATABASE_URL taking priority so this pipeline can point at a
-    different Postgres than the main backend's without a global env change. */
-export function resolveDatabaseUrl(env = process.env) {
-  for (const name of SHOWS_DATABASE_URL_VARS) {
-    const v = env[name];
-    if (v && v.trim()) return { url: v.trim(), varName: name };
-  }
-  return { url: null, varName: null };
-}
+/* The resolver (whitespace is unset) and the unmapped-curated guard are
+   config.mjs's, shared with import-dump.mjs and tools/poll/poll-episodes.mjs
+   (CH2-12); re-exported because this module's callers import them here. */
+export { DATABASE_URL_VARS as SHOWS_DATABASE_URL_VARS, checkMissingMapping, resolveDatabaseUrl };
 
 /** One row shaped for the `shows_catalog` staging COPY — plain values,
     tab-delimited-safe (COPY's own text format escapes tabs/newlines/`\`
@@ -285,11 +276,18 @@ export async function backfillLegacyShowIdKeys(client) {
     upserts the current run's values, so it reflects the PREVIOUS run's
     state, not the one about to be written. Returns a plain object keyed by
     pi_id (string, matching Postgres's bigint-as-string return shape) to
-    epoch seconds, the same unit `buildChanged`/`newestItemPubdate` use. */
+    epoch seconds, the same unit `buildChanged`/`newestItemPubdate` use.
+
+    ZERO ROWS IS NO BASELINE: `null`, never `{}` (CH2-12, T1-08). An empty
+    shows_catalog (the first live load) has nothing to diff against, and
+    `buildChanged` reads `{}` as "every row is new", the value
+    import-dump.mjs's parseNewestSnapshot rejects for the same reason. With
+    `null`, changed is `{ baseline: false, changed: null }`. */
 export async function fetchPreviousNewest(client) {
   const result = await client.query(
     `select pi_id, newest_item_at from shows_catalog where newest_item_at is not null`
   );
+  if (result.rows.length === 0) return null;
   const previousNewest = {};
   for (const row of result.rows) {
     previousNewest[String(row.pi_id)] = Math.floor(new Date(row.newest_item_at).getTime() / 1000);
@@ -354,43 +352,6 @@ export function sizingReport(rows, { exportVersion }) {
   };
 }
 
-async function loadCuratedShows() {
-  const raw = JSON.parse(await readFile(CATALOG_PATH, "utf8"));
-  const shows = Array.isArray(raw) ? raw : raw.shows;
-  if (!Array.isArray(shows)) throw new Error(`${CATALOG_PATH} did not parse to an array or {shows:[...]}`);
-  return shows;
-}
-
-/** Fail-closed on an incomplete id-map, mirroring import-dump.mjs's
-    `writeBuildOutput` guard (fresh-context review finding, 2026-09-15:
-    `runPipeline` alone does not enforce this — the check lives in
-    `writeBuildOutput`, which this loader never calls — so this file was
-    silently able to commit a dump missing most curated shows straight to
-    Postgres and print LOAD_COMPLETE). Throws ImportError-shaped so the
-    caller's existing FATAL/exit-1 handling in `main()` covers it without a
-    special case. */
-export function checkMissingMapping(result) {
-  const curatedTotal = result.curatedTotal ?? (result.missing.length + Object.keys(result.idMap).length);
-  const unmappedFraction = curatedTotal > 0 ? result.missing.length / curatedTotal : 0;
-  if (unmappedFraction > MAX_UNMAPPED_CURATED_FRACTION) {
-    const err = new Error(
-      `${result.missing.length} of ${curatedTotal} curated show(s) did not resolve to a pi_id ` +
-        `(${(unmappedFraction * 100).toFixed(1)}%, over the ${(MAX_UNMAPPED_CURATED_FRACTION * 100).toFixed(0)}% ceiling) — ` +
-        `refusing to load into Postgres: ` +
-        result.missing.map((m) => `${m.show_id} (${m.title})`).join(", ")
-    );
-    err.code = "ID_MAP_INCOMPLETE";
-    throw err;
-  }
-  if (result.missing.length > 0) {
-    console.warn(
-      `WARN: ${result.missing.length} of ${curatedTotal} curated show(s) are not in this dump ` +
-        `(under the ${(MAX_UNMAPPED_CURATED_FRACTION * 100).toFixed(0)}% ceiling, loading continues): ` +
-        result.missing.map((m) => `${m.show_id} (${m.title})`).join(", ")
-    );
-  }
-}
-
 async function main() {
   const argv = process.argv.slice(2);
   const get = (flag) => { const i = argv.indexOf(flag); return i >= 0 ? argv[i + 1] : null; };
@@ -414,15 +375,19 @@ async function main() {
 
   const curatedShows = await loadCuratedShows();
 
-  const { Client } = await import("pg");
-  const client = new Client({ connectionString: databaseUrl });
-  await client.connect();
+  // A dry run reads no baseline and writes nothing, so it never connects.
+  let client = null;
+  if (!dryRun) {
+    const { Client } = await import("pg");
+    client = new Client({ connectionString: databaseUrl });
+    await client.connect();
+  }
   try {
     // Real previous-release baseline for changed.json's diff, read BEFORE
-    // this run's values overwrite them — see fetchPreviousNewest's own doc
-    // comment for why this replaced the always-empty {} that used to go
-    // into runPipeline here.
-    const previousNewest = dryRun ? {} : await fetchPreviousNewest(client);
+    // this run's values overwrite them. A dry run has none: `null` (baseline
+    // false), never the `{}` that flags every row (CH2-12, T1-08); see
+    // fetchPreviousNewest's own doc comment.
+    const previousNewest = dryRun ? null : await fetchPreviousNewest(client);
 
     const { DatabaseSync } = await import("node:sqlite");
     const db = new DatabaseSync(dumpFileArg, { readOnly: true });
@@ -435,8 +400,9 @@ async function main() {
 
     checkMissingMapping(result);
 
-    const bytes = await readFile(dumpFileArg);
-    const exportVersion = get("--export-version") || `local:${createHash("sha256").update(bytes).digest("hex").slice(0, 12)}`;
+    // Streamed (config.mjs's checksumFile): the real dump is over
+    // fs/promises' 2GiB whole-file cap, so reading it whole crashed here (T1-03).
+    const exportVersion = get("--export-version") || `local:${(await checksumFile(dumpFileArg)).slice(0, 12)}`;
 
     const curatedIds = new Set(Object.values(result.idMap));
     const catalogRows = result.canonical.map((row) => toCatalogRow(row, { curatedIds, exportVersion }));
@@ -445,7 +411,10 @@ async function main() {
 
     console.log(`parsed ${result.canonical.length} canonical rows (export_version ${exportVersion})`);
     console.log(`sizing report: ${JSON.stringify(sizing)}`);
-    console.log(`changed_in_dump: ${changedReasons.length} row(s) flagged: ${JSON.stringify(changedReasons)}`);
+    console.log(
+      `changed_in_dump: baseline:${result.changed?.baseline === true}, ` +
+      `${changedReasons.length} row(s) flagged: ${JSON.stringify(changedReasons)}`
+    );
 
     if (dryRun) {
       console.log("DRY_RUN: not writing to Postgres");
@@ -465,7 +434,7 @@ async function main() {
       `${backfillResult.feed_state_backfilled} feed-state row(s)`
     );
   } finally {
-    await client.end();
+    await client?.end();
   }
 
   console.log("LOAD_COMPLETE");
