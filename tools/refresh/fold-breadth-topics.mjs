@@ -3,8 +3,9 @@
    data/catalog.json row does (catalogue-personalization plan PKG-08, §6.4,
    founder Q3 default: "breadth shows get subjects").
 
-   WHY THIS EXISTS. `data/breadth-classification.json` has classified all
-   19,787 breadth shows since 2026-07, but the classification never reached the
+   WHY THIS EXISTS. `data/breadth-classification.json` covers every
+   breadth show (19,787 since 2026-07; 26,340 since the 2026-10-07
+   re-harvest's newcomers got genre-map rows), but the classification never reached the
    catalogue row: `catalog-breadth.json` carried genre and chart rank only, so a
    breadth show page had no chips and no Similar shows. This script is the one
    writer of that field. The backend half (stop zeroing the field in
@@ -25,7 +26,10 @@
 
    RE-RUN AFTER A HARVEST. `tools/harvest-catalog.mjs` rebuilds this file from
    Apple and does not know the field; run this script after it (the REAL DATA
-   test in fold-breadth-topics.test.mjs fails until you do).
+   test in fold-breadth-topics.test.mjs fails until you do). Run
+   `node tools/classify-breadth.mjs --in data/catalog-breadth.json` BEFORE it,
+   so a chart newcomer has a classification entry to fold rather than `[]` (the
+   second REAL DATA test fails until you do).
 
    Usage:
      node tools/refresh/fold-breadth-topics.mjs           # fold and write

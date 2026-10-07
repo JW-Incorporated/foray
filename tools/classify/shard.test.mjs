@@ -135,8 +135,23 @@ test("Number(id) % 6 is badly unbalanced over the shows that remain — the defe
      The re-harvest added 6,553 chart newcomers that no pass has seen (no entry
      at all); they are spread evenly over the residues (measured 1.046x), so
      counting them would test the harvest, not the shard order. Of the ~509
-     reconciliation leftovers, 55 are still in the catalogue. */
-  const leftover = remaining.filter((s) => classification.entries[String(s.apple_collection_id)]);
+     reconciliation leftovers, 55 are still in the catalogue.
+
+     NOT A genre-map ROW EITHER (breadth-genre-topics, 2026-10-07). Those 6,553
+     newcomers then got genre-map base-layer entries (tools/classify-breadth.mjs),
+     so "has an entry" stopped meaning "worked over": every catalogue row now has
+     one, the leftover became the whole 6,663-row remainder, and its spread fell
+     to 1.056x — the even harvest again, not the shard order. A genre-map row is
+     the deterministic $0 prior that no fleet pass wrote, so it says nothing about
+     the order the fleet drained the lanes in; only an overlay the fleet left in
+     place does. That narrows the leftover to the 33 llm-title-genre rows (5.0x),
+     below the 100-row bar, so this half reports a diagnostic. (Before the
+     newcomers were classified it measured 110 rows, 33 overlay + 77 genre-map, at
+     7.40x; the 77 cannot be told apart from the newcomers by any field.) */
+  const leftover = remaining.filter((s) => {
+    const e = classification.entries[String(s.apple_collection_id)];
+    return e && e.source !== "genre-map";
+  });
   if (leftover.length >= 100) {
     const live = histogram(leftover, (id) => Number(id) % SHARDS);
     assert.ok(spread(live) > 1.5, `live modulo spread ${spread(live).toFixed(3)}: ${live.join(", ")}`);

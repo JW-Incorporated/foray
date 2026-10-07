@@ -1439,7 +1439,7 @@ const FLOORS = {
      data/breadth-classification.json from scratch until 2026-08; running that
      version today would delete 19,278 agent rows and leave valid JSON and a
      green CI behind it. This suite is the reason that cannot come back. */
-  "tools/classify-breadth.test.mjs": 29,
+  "tools/classify-breadth.test.mjs": 30, // breadth-genre-topics (2026-10-07): a run keeps top-level fields another layer owns (merge-results' label_schema_version) in their on-disk order; 29 -> 30
   /* S-01 (docs/search-plan.md, kanban t_46366383): the measurement machinery
      for the search probe (median/p95, timing wrapper, "skipped not failed"
      network contract, the report validator) -- driven by fakes and an
@@ -2054,7 +2054,7 @@ const FLOORS = {
      All 19 mutations run against it were killed, and two false-alarm probes
      (a comment-only edit to scan.mjs; one new nightly episode) were confirmed to
      stay green. Each test names its own mutation. */
-  "tools/refresh/fold-breadth-topics.test.mjs": 5, // PKG-08 (2026-10-04): breadth-classification topics folded into data/catalog-breadth.json as taxonomy_node_ids (high/medium and not needs_review only, unknown nodes dropped), --check byte-stable, and a REAL DATA pin that every row carries the array and every id resolves; new, zero slack
+  "tools/refresh/fold-breadth-topics.test.mjs": 6, // breadth-genre-topics (2026-10-07): REAL DATA ratchet, every catalog-breadth row has a breadth-classification entry (the #1149 newcomers sat at [] with nothing red); 5 -> 6 // PKG-08 (2026-10-04): breadth-classification topics folded into data/catalog-breadth.json as taxonomy_node_ids (high/medium and not needs_review only, unknown nodes dropped), --check byte-stable, and a REAL DATA pin that every row carries the array and every id resolves; new, zero slack
   "tools/refresh/merge-topics.test.mjs": 23, // audit round 2 (L6), honesty-1: merge writes duration_min from duration_sec when it has them (the suite already stood at 17 against 16, so this closes that slack too); 16 -> 18. PKG-01 (2026-10-04): +3, topicSource and merge writing topics_source + an always-present explicit key; 18 -> 21. catalogue-PKG-05a (2026-10-04): +2, a general show's episode without its own topics is refused with TOPICS_REQUIRED_GENERAL and one with an override merges with topics_source 'episode'; 21 -> 23
   /* PKG-01 (#547, #560 §6.3): the one-shot that stamped topics_source and an
      always-present explicit key onto every discover item merged before

@@ -188,3 +188,43 @@ server-side: the 6,632 shows are back in `api/shows/search` (banded UNRANKED, th
 worst popularity band) and their breadth show pages resolve
 again. Tests: `tools/harvest-merge.test.mjs` (13; each names its mutation,
 including a REAL DATA floor of 26,340 rows — the union is monotone).
+
+## Amended 2026-10-07: the 6,553 newcomers get genre-map topics
+
+The other follow-up above ("a classify pass over the 6,553 new shows") is done
+at the base layer: `node tools/classify-breadth.mjs --in data/catalog-breadth.json`
+gave every newcomer a deterministic genre-map entry from its Apple genre
+(`data/genre-taxonomy-map.json`). No LLM, no key, no Qwen, $0 — the base layer
+reads only the genre already in the row. Then `fold-breadth-topics.mjs` folded
+them into the catalogue. It is a prior, not a judgement (ADR-0006, "prior,
+never final"): a later `classify-agent-*` pass overrides each row by layer
+precedence (`docs/CATALOG-PIPELINE.md` § "Classification layers and
+precedence"), and `tools/classify/select.mjs` now ranks these rows (1) above
+never-classified ones (0) in the classify-agent queue.
+
+| measure | before | after |
+|---|---|---|
+| `data/breadth-classification.json` entries | 19,787 | **26,340** (+6,553, all `source: "genre-map"`; 0 changed, 77 genre-map rows unchanged; `classify-agent-tier1` 19,677 and `llm-title-genre` 33 untouched) |
+| newcomer confidence | — | high 5,035 / medium 1,129 / low 389 (0 with no mappable genre) |
+| catalogue rows with topics (`taxonomy_node_ids` non-empty) | 16,736 | **22,900** (+6,164 = the high + medium newcomers) |
+| rows folding to `[]` | 9,604 | **3,440** (the 389 low newcomers stay `[]` by the fold's rule) |
+| fold `unknown_id` / `dropped_nodes` | 6,553 / 0 | **0 / 0** |
+| fully root-only items (`tools/classify/root-dumping-report.mjs`, per item) | 5,259 of 19,787 | 7,003 of 26,340 (1,744 of the newcomers carry no child node) |
+| `data/show-index.tsv`, `data/catalog-client.json` | — | `--check` clean, byte-identical (no topic column; the client joins only `chart_rank` from breadth) |
+| mobile bundle (`prepare-webdir.mjs --out`) | 2,738,785 B | 2,738,785 B (delta 0; the breadth files are server-side only) |
+
+The listener-visible effect is server-side: `backend/src/catalog/breadthCatalog.ts`
+already serves `taxonomy_node_ids` (PKG-09 #1016, PKG-10 #1029), so about 6,164
+breadth show pages gain subject chips and Similar shows with no code change.
+
+Two tests moved. `tools/classify/reconcile-shards.test.mjs`'s exact entry
+floor is 26,340, and the reconciliation record's baseline is pinned to its own
+constant (19,787, the 2026-08-17 event) instead of the live floor.
+`tools/classify/shard.test.mjs`'s live leftover now excludes genre-map rows:
+with every catalogue row carrying an entry, "has an entry" no longer meant
+"the fleet worked it over", and the whole 6,663-row remainder measured 1.056x.
+The 33 `llm-title-genre` rows that remain sit under the 100-row bar, so that
+half reports a diagnostic. (After the union it was live on 110 rows at 7.40x.)
+`tools/refresh/fold-breadth-topics.test.mjs` gained the ratchet that would have
+caught the gap: every breadth row has a classification entry. "After a harvest"
+in `docs/CATALOG-PIPELINE.md` now starts with this step.

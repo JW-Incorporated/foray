@@ -6,7 +6,9 @@
  * (.github/workflows/ci.yml) validates topic ids for `discover.json` ONLY.
  * Three other files carry node ids and were checked by nothing:
  *
- *   - data/breadth-classification.json  19,787 shows, ~24k topic references
+ *   - data/breadth-classification.json  26,340 shows, ~45k topic references
+ *                                       (19,787 until the 2026-10-07 re-harvest
+ *                                       newcomers got genre-map rows)
  *   - data/top-topics.json              155 topics -> node mappings
  *   - data/genre-taxonomy-map.json      110 Apple genres -> node mappings
  *
