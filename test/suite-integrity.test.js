@@ -1836,6 +1836,13 @@ const FLOORS = {
      pbxproj, and four REAL REPO tests tie the declarations to the plugin Swift,
      their cited call sites, and data-safety.md B2/B4. Floored exact. */
   "tools/mobile/inject-privacy-manifest.test.mjs": 31,
+  /* 948-part (#948 without a Mac): tools/mobile/privacy-manifest-report.mjs
+     lists every PrivacyInfo.xcprivacy in the built App.app and fails when a
+     bundled Required Reason plugin (@capacitor/preferences) is covered by no
+     manifest — the table, the coverage rule both ways, packageClassList and the
+     --mobile stale-class guard, the CLI's exit codes, one REAL REPO tie to
+     mobile/package.json, and the ios-build.yml step. Floored exact. */
+  "tools/mobile/privacy-manifest-report.test.mjs": 18,
   /* NE-26r (docs/native-engine-plan.md §7, §10): tools/mobile/engine-report.mjs,
      a Copy paste (or the ring file) to the DV-1..DV-13 verdict table — every
      verdict's pass, fail and no-data paths, an evicted early seam flagged
