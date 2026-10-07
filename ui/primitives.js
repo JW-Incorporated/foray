@@ -94,7 +94,7 @@ function agEpisodeRow({
 } = {}) {
   const rowState = agChoice(state, ["default", "pressed", "focus", "playing", "played", "downloaded", "unavailable", "loading"], "default");
   const line = AG_ROW_LINES[rowState];
-  const stateLine = line ? `<span class="ag-row-state${line[0]}">${agIcon(line[1], 20)}${line[2]}</span>` : "";
+  const stateLine = line ? `<span class="ag-row-state${esc(line[0])}">${agIcon(line[1], 20)}${esc(line[2])}</span>` : "";
   /* Loading keeps the copy at full contrast; the Play control carries the spinner and aria-busy. */
   return `<article class="ag-episode-row raised is-${esc(rowState)}">${agArtwork({ name: show, size: 72, tone, state: rowState === "unavailable" ? "dim" : "default" })}<div class="ag-row-copy"><h4 class="t-headline clamp2">${esc(title)}</h4><p class="t-caption clamp1">${esc(show)}</p><p class="t-why clamp2">${esc(why)}</p><p class="t-caption ag-row-meta">${stateLine}<span>${esc(meta)}</span></p></div>${agButton({ label: rowState === "playing" ? "Pause" : "Play", variant: "icon", icon: rowState === "playing" ? "pause" : "play", state: AG_BUSY[rowState] })}</article>`;
 }

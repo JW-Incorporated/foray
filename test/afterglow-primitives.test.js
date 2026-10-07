@@ -264,6 +264,27 @@ test("a loading row or card keeps its copy and shows the spinner on its own Play
   assert.match(run(ctx, 'agStretchCard({ state: "<x>" })'), /class="ag-stretch-card raised is-default"/, "an unknown card state falls back to default");
 });
 
+test("an EpisodeRow state line sends its class modifier and caption through esc()", () => {
+  /* Hard limit: every interpolation goes through esc(), even a value from a constant table
+     (Codex review, ambient p3-primitives round 4). The recording esc() sees each value spliced.
+     MUTATION (run red): change `${esc(line[0])}` to `${line[0]}` in agEpisodeRow().
+     MUTATION (run red): change `${esc(line[2])}` to `${line[2]}` in agEpisodeRow(). */
+  const ctx = markupContext();
+  const realEsc = ctx.esc;
+  const seen = [];
+  ctx.esc = (value) => { seen.push(value); return realEsc(value); };
+  const lines = run(ctx, "AG_ROW_LINES");
+  assert.deepStrictEqual(Object.keys(lines).sort(), ["downloaded", "played", "playing", "unavailable"]);
+  for (const [state, [modifier, , caption]] of Object.entries(lines)) {
+    seen.length = 0;
+    const html = run(ctx, `agEpisodeRow({ state: ${JSON.stringify(state)} })`);
+    assert.ok(html.includes(`<span class="ag-row-state${modifier}">`), `${state}: state line rendered`);
+    assert.ok(seen.includes(modifier), `${state}: modifier ${JSON.stringify(modifier)} went through esc()`);
+    assert.ok(seen.includes(caption), `${state}: caption ${JSON.stringify(caption)} went through esc()`);
+  }
+  ctx.esc = realEsc;
+});
+
 test("a loading control swaps its glyph for the spinner instead of crowding both into one circle", () => {
   /* MUTATION (run red): restore `>${iconMarkup}${text}${busy ? '<span class="ag-spinner" ...>' : ""}` in agButton(). */
   const ctx = markupContext();
