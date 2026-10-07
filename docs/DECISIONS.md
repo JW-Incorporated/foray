@@ -2,6 +2,78 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
+## 2026-10-07 — Catalogue labels: what shipped for `label_scope: "general"`, breadth-show topics and the international breadth file (catalogue-personalization PKG-22)
+
+This entry records merged code only, with its PRs. The roadmap items it names
+(`docs/roadmap/README.md`, "Founder questions (deduplicated, with proposed
+defaults)", items 23-29) are proposed defaults. Naming one here does not make
+it a founder ruling, and this entry records no ruling.
+
+**`label_scope: "general"` (#1021, #1035, #1041, #1043).**
+
+- 13 broad shows in `data/catalog.json` carry `label_scope: "general"`, and
+  `data/catalog-client.json` carries the field (#1021). Their
+  `taxonomy_node_ids` are unchanged. The marker means the show's label
+  describes the show, not each episode, so nothing inherits it:
+  - Similar shows: `similarShows` returns `[]` for a general show and never
+    offers one as a candidate (`app.js`, #1021).
+  - Generated playlists: `leafPlaylistItems` drops an item whose
+    `topics_source` is `"show"` when its show is general (`app.js`, #1041).
+  - The nightly merge: `episodeTopics` (`tools/refresh/topics.mjs`) throws
+    `TopicError("TOPICS_REQUIRED_GENERAL")` for a general show's episode that
+    has no topics of its own, and `tools/refresh/merge.mjs` runs that check in
+    preflight, so the whole run is refused before anything is written (#1035).
+    The nightly prompt (`docs/agents/runner-prompts/foray-nightly.md`) makes
+    `topics` required for those episodes and says deleting the key is not a
+    fallback (#1043).
+- Basis: the proposed default for catalogue Q2 (README item 24). The bodies of
+  #1021, #1035 and #1043 call item 24 a "founder ruling"; no founder message
+  or issue is cited for it, so this ledger records it as the default the PRs
+  proceeded on.
+
+**Breadth shows carry classified topics (#997, #1016).**
+
+- `tools/refresh/fold-breadth-topics.mjs` gives every row of
+  `data/catalog-breadth.json` a `taxonomy_node_ids` array from
+  `data/breadth-classification.json`: the entry's topics (deduplicated, unknown
+  taxonomy ids dropped) when `confidence` is not `"low"` and `needs_review` is
+  not `true`, otherwise `[]`. `--check` exits 1 when a run would change the
+  file. At #997: 16,736 rows folded, 3,051 empty.
+- #1016 (`backend/src/catalog/breadthCatalog.ts`, a DENIED path) stopped
+  `loadBreadthCatalog()` overwriting those arrays with `[]`
+  (`show.taxonomy_node_ids ?? []`). It merged 2026-10-05 with the
+  `founder-approved` label. #1029 then let the breadth show page use the API
+  row, so its subject chips and Similar shows render.
+- Basis: the proposed default for catalogue Q3 (README item 25), plus the
+  `founder-approved` merge of #1016.
+
+**The international breadth file is retired (#1025).**
+
+- `data/catalog-breadth-intl.json.gz` (13.8 MB, 121,786 shows across 18
+  regions) was read by no endpoint, tool or test. #1025 deleted it, dropped it
+  from the pipeline-input list in `tools/mobile/prepare-webdir.test.mjs`, and
+  corrected the living docs (`docs/CATALOG-PIPELINE.md`,
+  `docs/curation/catalogue-broadening.md`,
+  `docs/product/suggested-shows-requirements.md`), which now say the harvested
+  breadth catalogue is US-only. `docs/CATALOG-PIPELINE.md` gives the re-harvest
+  command; the file also stays in git history. Dated docs, `docs/adr/0006` and
+  the older entries in this file still describe the file as it was.
+- Basis: the proposed default for catalogue Q4 (README item 26).
+
+**Still open (proposals, not rulings; founder questions go to #1163).**
+
+- **Q1, Family Mode and unrated episodes** (README item 23). The proposal is to
+  confirm the rule #835 shipped: an episode marked explicit or filed under
+  comedy is hidden, an unrated one inherits its show's rating and is otherwise
+  hidden (`familySafe()` in `app.js`). The rule is live; the founder has not
+  confirmed it.
+- **Q6, the `card_shown` archetype** (README item 28). The proposal is to add
+  `"top"` to `ArchetypeSlotSchema`. Not shipped: `backend/src/types/events.ts`
+  still lists five archetypes.
+- **Q7, the `fusion-101` ladder** (README item 29). The proposal is to keep it
+  draft until the relabel pass lands. `data/ladders.json` still has it at
+  `"status": "draft"`.
+
 ## 2026-10-06 — iOS native lane: Now Playing is rewritten every second while playing, and carries the listener's default rate
 
 **Founder report (Wyatt, 2026-10-06, verbatim):**
@@ -1650,6 +1722,7 @@ Preferences suite from platform backups (Q6) and the privacy-policy wording
 
 - **Issue #123 resolved: the floor kept, the four-section shape adopted.** Wyatt's brief (docs/ui-transition-plan.md, D1) replaces the flag-off four-card Home with five sections behind `cp_ui_v2` — greeting, Jump back in, Forays for you, Playlists for you, Episodes for you — and settles #123's open question (whether Home's ~30% exploration floor survives the redesign) by keeping it: "Forays for you" and "Episodes for you" **each** reserve at least one visibly-labelled Stretch slot, with a required bridge line stating why the pick is being suggested (never a taste-match reason like the ordinary row reasons elsewhere on the card). A single `pickWithStretchFloor()` helper in `app.js` reproduces `buildCards()`'s existing top-60%-of-branches-by-interest tiering so the flag-off Home and the new Episodes for you section can never quietly disagree about what counts as a stretch pick.
 - **"Playlists for you" (D5) needed no new backend.** The generated half of that section is `state.cardSlots` — the same subject-queue mechanism `buildCards()` already produces for the flag-off Home — rendered as playlist cards instead of mini-cards, badged "Generated for you." The listener's own recent playlists (`cp_playlists`) render first, unbadged.
+  - *Correction (2026-10-07):* the generated half is no longer `state.cardSlots`. Since F14 (#535) it is the listener's strongest taxonomy leaves filled from the pool, and since #1041 `generatedPlaylists()` and `generatedPlaylistById()` both take each leaf's list from `leafPlaylistItems` (`app.js`): newest first, at most two per show, no item that only inherits a general show's label.
 - **"Shared with you" and "Build your own" are explicitly not built** (D10/D8) — out of scope for this card, not stubbed or hidden behind a disabled control.
 - **Flag-off Home is untouched.** `renderHome()` now dispatches to `renderHomeV2()` only when `ui2On()` is true; every existing pin in `test/home-layout.test.js`/`test/home-information-architecture.test.js` for the four-card layout still holds byte-for-byte, per the card's "rewrite, not delete" instruction — both files gained new assertions for the flag-on shape alongside their existing ones rather than being replaced.
 
