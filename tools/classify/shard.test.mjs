@@ -127,12 +127,21 @@ test("Number(id) % 6 is badly unbalanced over the shows that remain — the defe
       `is unnecessary.`
   );
   /* And it is worse, not better, on the live remainder after reconciliation:
-     shard 2 is the branch furthest behind, so residue 2 dominates what is left. */
-  if (remaining.length >= 100) {
-    const live = histogram(remaining, (id) => Number(id) % SHARDS);
+     shard 2 is the branch furthest behind, so residue 2 dominates what is left.
+
+     THE LEFTOVER, NOT THE WHOLE REMAINDER (PKG-14 re-harvest, 2026-10-07). The
+     claim is about shows the fleet WORKED OVER in ascending-id shard order and
+     left behind, i.e. rows that have a classification entry but no agent one.
+     The re-harvest added 6,553 chart newcomers that no pass has seen (no entry
+     at all); they are spread evenly over the residues (measured 1.046x), so
+     counting them would test the harvest, not the shard order. Of the ~509
+     reconciliation leftovers, 55 are still in the catalogue. */
+  const leftover = remaining.filter((s) => classification.entries[String(s.apple_collection_id)]);
+  if (leftover.length >= 100) {
+    const live = histogram(leftover, (id) => Number(id) % SHARDS);
     assert.ok(spread(live) > 1.5, `live modulo spread ${spread(live).toFixed(3)}: ${live.join(", ")}`);
   } else {
-    t.diagnostic(`only ${remaining.length} shows remain; the live half of this check is not measurable`);
+    t.diagnostic(`only ${leftover.length} worked-over shows remain; the live half of this check is not measurable`);
   }
 });
 

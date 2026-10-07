@@ -10,7 +10,7 @@
       "episode_count": null,
       "explicit": null,
       "label_scope": "general",
-      "chart_rank": 10,
+      "chart_rank": 9,
       "dai": false
     },
     {
@@ -39,7 +39,7 @@
       "episode_count": null,
       "explicit": null,
       "label_scope": null,
-      "chart_rank": 88,
+      "chart_rank": null,
       "dai": false
     },
     {
@@ -68,7 +68,7 @@
       "episode_count": null,
       "explicit": null,
       "label_scope": "general",
-      "chart_rank": 115,
+      "chart_rank": 62,
       "dai": true
     },
     {
@@ -111,7 +111,7 @@
       "episode_count": null,
       "explicit": null,
       "label_scope": "general",
-      "chart_rank": 2,
+      "chart_rank": 5,
       "dai": true
     },
     {
@@ -125,7 +125,7 @@
       "episode_count": null,
       "explicit": null,
       "label_scope": null,
-      "chart_rank": 6,
+      "chart_rank": 5,
       "dai": false
     },
     {
@@ -185,7 +185,7 @@
       "episode_count": null,
       "explicit": null,
       "label_scope": null,
-      "chart_rank": 48,
+      "chart_rank": 35,
       "dai": true
     },
     {
@@ -214,7 +214,7 @@
       "episode_count": null,
       "explicit": null,
       "label_scope": null,
-      "chart_rank": 9,
+      "chart_rank": 8,
       "dai": true
     },
     {
@@ -242,7 +242,7 @@
       "episode_count": null,
       "explicit": null,
       "label_scope": null,
-      "chart_rank": 40,
+      "chart_rank": 43,
       "dai": true
     },
     {
@@ -256,7 +256,7 @@
       "episode_count": 530,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 144,
+      "chart_rank": null,
       "dai": false
     },
     {
@@ -312,7 +312,7 @@
       "episode_count": 100,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 31,
+      "chart_rank": 16,
       "dai": true
     },
     {
@@ -326,7 +326,7 @@
       "episode_count": 12,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 14,
+      "chart_rank": 11,
       "dai": false
     },
     {
@@ -340,7 +340,7 @@
       "episode_count": 743,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 4,
+      "chart_rank": 8,
       "dai": true
     },
     {
@@ -411,7 +411,7 @@
       "episode_count": 215,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 2,
+      "chart_rank": 3,
       "dai": true
     },
     {
@@ -425,7 +425,7 @@
       "episode_count": 448,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 16,
+      "chart_rank": 20,
       "dai": true
     },
     {
@@ -439,7 +439,7 @@
       "episode_count": 1442,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 53,
+      "chart_rank": 73,
       "dai": false
     },
     {
@@ -468,7 +468,7 @@
       "episode_count": 1478,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 45,
+      "chart_rank": 51,
       "dai": false
     },
     {
@@ -482,7 +482,7 @@
       "episode_count": 115,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 113,
+      "chart_rank": 148,
       "dai": false
     },
     {
@@ -496,7 +496,7 @@
       "episode_count": 542,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 61,
+      "chart_rank": 56,
       "dai": false
     },
     {
@@ -510,7 +510,7 @@
       "episode_count": 49,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 186,
+      "chart_rank": null,
       "dai": true
     },
     {
@@ -538,7 +538,7 @@
       "episode_count": 100,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 69,
+      "chart_rank": null,
       "dai": false
     },
     {
@@ -552,7 +552,7 @@
       "episode_count": 1242,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 87,
+      "chart_rank": 184,
       "dai": true
     },
     {
@@ -566,7 +566,7 @@
       "episode_count": 620,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 18,
+      "chart_rank": 15,
       "dai": true
     },
     {
@@ -580,7 +580,7 @@
       "episode_count": 386,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 25,
+      "chart_rank": 19,
       "dai": false
     },
     {
@@ -594,7 +594,7 @@
       "episode_count": 72,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 2,
+      "chart_rank": 1,
       "dai": true
     },
     {
@@ -608,7 +608,7 @@
       "episode_count": 399,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 7,
+      "chart_rank": 8,
       "dai": false
     },
     {
@@ -636,7 +636,7 @@
       "episode_count": 291,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 4,
+      "chart_rank": 10,
       "dai": true
     },
     {
@@ -650,7 +650,7 @@
       "episode_count": 1846,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 74,
+      "chart_rank": 166,
       "dai": false
     },
     {
@@ -678,7 +678,7 @@
       "episode_count": 335,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 17,
+      "chart_rank": 76,
       "dai": true
     },
     {
@@ -692,7 +692,7 @@
       "episode_count": 293,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 19,
+      "chart_rank": 18,
       "dai": true
     },
     {
@@ -720,7 +720,7 @@
       "episode_count": 117,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null,
+      "chart_rank": 134,
       "dai": false
     },
     {
@@ -734,7 +734,7 @@
       "episode_count": 251,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 171,
+      "chart_rank": 127,
       "dai": true
     },
     {
@@ -762,7 +762,7 @@
       "episode_count": 300,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 63,
+      "chart_rank": 122,
       "dai": false
     },
     {
@@ -804,7 +804,7 @@
       "episode_count": 369,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 12,
+      "chart_rank": 19,
       "dai": true
     },
     {
@@ -818,7 +818,7 @@
       "episode_count": 542,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 17,
+      "chart_rank": 6,
       "dai": true
     },
     {
@@ -832,7 +832,7 @@
       "episode_count": 96,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 7,
+      "chart_rank": 11,
       "dai": false
     },
     {
@@ -860,7 +860,7 @@
       "episode_count": 196,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 28,
+      "chart_rank": 17,
       "dai": true
     },
     {
@@ -888,7 +888,7 @@
       "episode_count": 519,
       "explicit": false,
       "label_scope": "general",
-      "chart_rank": 4,
+      "chart_rank": 7,
       "dai": true
     },
     {
@@ -902,7 +902,7 @@
       "episode_count": 752,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 118,
+      "chart_rank": 143,
       "dai": true
     },
     {
@@ -916,7 +916,7 @@
       "episode_count": 337,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 30,
+      "chart_rank": 31,
       "dai": true
     },
     {
@@ -930,7 +930,7 @@
       "episode_count": 251,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 62,
+      "chart_rank": 59,
       "dai": true
     },
     {
@@ -944,7 +944,7 @@
       "episode_count": 1346,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 56,
+      "chart_rank": 109,
       "dai": true
     },
     {
@@ -972,7 +972,7 @@
       "episode_count": 118,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 30,
+      "chart_rank": 50,
       "dai": false
     },
     {
@@ -986,7 +986,7 @@
       "episode_count": 105,
       "explicit": false,
       "label_scope": "general",
-      "chart_rank": 18,
+      "chart_rank": 20,
       "dai": true
     },
     {
@@ -1000,7 +1000,7 @@
       "episode_count": 659,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 20,
+      "chart_rank": 19,
       "dai": true
     },
     {
@@ -1014,7 +1014,7 @@
       "episode_count": 1243,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 13,
+      "chart_rank": 8,
       "dai": true
     },
     {
@@ -1028,7 +1028,7 @@
       "episode_count": 985,
       "explicit": false,
       "label_scope": "general",
-      "chart_rank": 4,
+      "chart_rank": 5,
       "dai": true
     },
     {
@@ -1042,7 +1042,7 @@
       "episode_count": 696,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 1,
+      "chart_rank": 2,
       "dai": true
     },
     {
@@ -1056,7 +1056,7 @@
       "episode_count": 340,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 10,
+      "chart_rank": 14,
       "dai": true
     },
     {
@@ -1070,7 +1070,7 @@
       "episode_count": 114,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 14,
+      "chart_rank": 5,
       "dai": true
     },
     {
@@ -1084,7 +1084,7 @@
       "episode_count": 290,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 12,
+      "chart_rank": 8,
       "dai": true
     },
     {
@@ -1098,7 +1098,7 @@
       "episode_count": 125,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 5,
+      "chart_rank": 11,
       "dai": false
     },
     {
@@ -1126,7 +1126,7 @@
       "episode_count": 261,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 26,
+      "chart_rank": 37,
       "dai": true
     },
     {
@@ -1182,7 +1182,7 @@
       "episode_count": 366,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 40,
+      "chart_rank": 26,
       "dai": true
     },
     {
@@ -1196,7 +1196,7 @@
       "episode_count": 933,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 99,
+      "chart_rank": 177,
       "dai": true
     },
     {
@@ -1210,7 +1210,7 @@
       "episode_count": 431,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 113,
+      "chart_rank": 156,
       "dai": false
     },
     {
@@ -1224,7 +1224,7 @@
       "episode_count": 578,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 9,
+      "chart_rank": 17,
       "dai": true
     },
     {
@@ -1266,7 +1266,7 @@
       "episode_count": 876,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 24,
+      "chart_rank": 20,
       "dai": false
     },
     {
@@ -1280,7 +1280,7 @@
       "episode_count": 406,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 44,
+      "chart_rank": 28,
       "dai": false
     },
     {
@@ -1309,7 +1309,7 @@
       "episode_count": 101,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 124,
+      "chart_rank": null,
       "dai": false
     },
     {
@@ -1324,7 +1324,7 @@
       "episode_count": 429,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 45,
+      "chart_rank": 71,
       "dai": false
     },
     {
@@ -1352,7 +1352,7 @@
       "episode_count": 337,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 18,
+      "chart_rank": 16,
       "dai": true
     },
     {
@@ -1366,7 +1366,7 @@
       "episode_count": 292,
       "explicit": false,
       "label_scope": "general",
-      "chart_rank": 4,
+      "chart_rank": 5,
       "dai": true
     },
     {
@@ -1380,7 +1380,7 @@
       "episode_count": 849,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 39,
+      "chart_rank": 44,
       "dai": true
     },
     {
@@ -1394,7 +1394,7 @@
       "episode_count": 723,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 7,
+      "chart_rank": 9,
       "dai": true
     },
     {
@@ -1408,7 +1408,7 @@
       "episode_count": 713,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 26,
+      "chart_rank": 30,
       "dai": true
     },
     {
@@ -1422,7 +1422,7 @@
       "episode_count": 1006,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 29,
+      "chart_rank": 52,
       "dai": true
     },
     {
@@ -1436,7 +1436,7 @@
       "episode_count": 228,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 100,
+      "chart_rank": 99,
       "dai": true
     },
     {
@@ -1450,7 +1450,7 @@
       "episode_count": 643,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 87,
+      "chart_rank": 120,
       "dai": true
     },
     {
@@ -1478,7 +1478,7 @@
       "episode_count": 600,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 30,
+      "chart_rank": 19,
       "dai": true
     },
     {
@@ -1492,7 +1492,7 @@
       "episode_count": 807,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 117,
+      "chart_rank": 73,
       "dai": false
     },
     {
@@ -1506,7 +1506,7 @@
       "episode_count": 72,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 29,
+      "chart_rank": 31,
       "dai": false
     },
     {
@@ -1534,7 +1534,7 @@
       "episode_count": 179,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 26,
+      "chart_rank": 52,
       "dai": true
     },
     {
@@ -1562,7 +1562,7 @@
       "episode_count": 340,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 55,
+      "chart_rank": 75,
       "dai": false
     },
     {
@@ -1590,7 +1590,7 @@
       "episode_count": 96,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 124,
+      "chart_rank": null,
       "dai": false
     },
     {
@@ -1604,7 +1604,7 @@
       "episode_count": 391,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 144,
+      "chart_rank": 128,
       "dai": false
     },
     {
@@ -1646,7 +1646,7 @@
       "episode_count": 179,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 47,
+      "chart_rank": 34,
       "dai": true
     },
     {
@@ -1660,7 +1660,7 @@
       "episode_count": 446,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 5,
+      "chart_rank": 6,
       "dai": false
     },
     {
@@ -1702,7 +1702,7 @@
       "episode_count": 408,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 2,
+      "chart_rank": 4,
       "dai": true
     },
     {
@@ -1716,7 +1716,7 @@
       "episode_count": 490,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 56,
+      "chart_rank": 40,
       "dai": false
     },
     {
@@ -1758,7 +1758,7 @@
       "episode_count": 766,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 22,
+      "chart_rank": 29,
       "dai": true
     },
     {
@@ -1772,7 +1772,7 @@
       "episode_count": 378,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 10,
+      "chart_rank": 12,
       "dai": true
     },
     {
@@ -1786,7 +1786,7 @@
       "episode_count": 244,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 105,
+      "chart_rank": 118,
       "dai": false
     },
     {
@@ -1828,7 +1828,7 @@
       "episode_count": 316,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 34,
+      "chart_rank": 86,
       "dai": true
     },
     {
@@ -1842,7 +1842,7 @@
       "episode_count": 432,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 50,
+      "chart_rank": 24,
       "dai": true
     },
     {
@@ -1870,7 +1870,7 @@
       "episode_count": 653,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 3,
+      "chart_rank": 8,
       "dai": false
     },
     {
@@ -1884,7 +1884,7 @@
       "episode_count": 308,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 108,
+      "chart_rank": null,
       "dai": true
     },
     {
@@ -1912,7 +1912,7 @@
       "episode_count": 227,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 61,
+      "chart_rank": 22,
       "dai": true
     },
     {
@@ -1926,7 +1926,7 @@
       "episode_count": 107,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 5,
+      "chart_rank": 3,
       "dai": true
     },
     {
@@ -1954,7 +1954,7 @@
       "episode_count": 291,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 58,
+      "chart_rank": 30,
       "dai": false
     },
     {
@@ -1968,7 +1968,7 @@
       "episode_count": 52,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 51,
+      "chart_rank": 49,
       "dai": false
     },
     {
@@ -1982,7 +1982,7 @@
       "episode_count": 120,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 199,
+      "chart_rank": 75,
       "dai": false
     },
     {
@@ -2024,7 +2024,7 @@
       "episode_count": 110,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 56,
+      "chart_rank": 189,
       "dai": false
     },
     {
@@ -2066,7 +2066,7 @@
       "episode_count": 166,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": null,
+      "chart_rank": 174,
       "dai": false
     },
     {
@@ -2094,7 +2094,7 @@
       "episode_count": 100,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 113,
+      "chart_rank": 117,
       "dai": true
     },
     {
@@ -2108,7 +2108,7 @@
       "episode_count": 618,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 83,
+      "chart_rank": 161,
       "dai": true
     },
     {
@@ -2122,7 +2122,7 @@
       "episode_count": 364,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 56,
+      "chart_rank": 42,
       "dai": true
     },
     {
@@ -2136,7 +2136,7 @@
       "episode_count": 789,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 97,
+      "chart_rank": 127,
       "dai": true
     },
     {
@@ -2179,7 +2179,7 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 59,
+      "chart_rank": 58,
       "dai": true
     },
     {
@@ -2194,7 +2194,7 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 6,
+      "chart_rank": 4,
       "dai": false
     },
     {
@@ -2223,7 +2223,7 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 12,
+      "chart_rank": 11,
       "dai": true
     },
     {
@@ -2237,7 +2237,7 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 24,
+      "chart_rank": 32,
       "dai": true
     },
     {
@@ -2266,7 +2266,7 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 8,
+      "chart_rank": 10,
       "dai": false
     },
     {
@@ -2280,7 +2280,7 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 53,
+      "chart_rank": 49,
       "dai": false
     },
     {
@@ -2295,7 +2295,7 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 2,
+      "chart_rank": 1,
       "dai": true
     },
     {
@@ -2309,7 +2309,7 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 46,
+      "chart_rank": 67,
       "dai": true
     },
     {
@@ -2324,7 +2324,7 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 2,
+      "chart_rank": 1,
       "dai": true
     },
     {
@@ -2339,7 +2339,7 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 15,
+      "chart_rank": 2,
       "dai": true
     },
     {
@@ -2367,7 +2367,7 @@
       "episode_count": 598,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 10,
+      "chart_rank": 22,
       "dai": true
     },
     {
@@ -2381,7 +2381,7 @@
       "episode_count": 554,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 5,
+      "chart_rank": 1,
       "dai": true
     },
     {
@@ -2395,7 +2395,7 @@
       "episode_count": 1226,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 148,
+      "chart_rank": 169,
       "dai": true
     },
     {
@@ -2410,7 +2410,7 @@
       "episode_count": 566,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 22,
+      "chart_rank": 33,
       "dai": true
     },
     {
@@ -2424,7 +2424,7 @@
       "episode_count": 162,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 72,
+      "chart_rank": 84,
       "dai": true
     },
     {
@@ -2438,7 +2438,7 @@
       "episode_count": 333,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 70,
+      "chart_rank": 27,
       "dai": true
     },
     {
@@ -2453,7 +2453,7 @@
       "episode_count": 378,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 29,
+      "chart_rank": 32,
       "dai": true
     },
     {
@@ -2467,7 +2467,7 @@
       "episode_count": 251,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 20,
+      "chart_rank": 28,
       "dai": true
     },
     {
@@ -2481,7 +2481,7 @@
       "episode_count": 775,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 12,
+      "chart_rank": 13,
       "dai": true
     },
     {
@@ -2496,7 +2496,7 @@
       "episode_count": 253,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 22,
+      "chart_rank": 23,
       "dai": true
     },
     {
@@ -2511,7 +2511,7 @@
       "episode_count": 470,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 34,
+      "chart_rank": 29,
       "dai": true
     },
     {
@@ -2526,7 +2526,7 @@
       "episode_count": 125,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 17,
+      "chart_rank": 14,
       "dai": true
     },
     {
@@ -2541,7 +2541,7 @@
       "episode_count": 454,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 130,
+      "chart_rank": null,
       "dai": false
     },
     {
@@ -2556,7 +2556,7 @@
       "episode_count": 799,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 10,
+      "chart_rank": 7,
       "dai": false
     },
     {
@@ -2570,7 +2570,7 @@
       "episode_count": 499,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 26,
+      "chart_rank": 25,
       "dai": true
     },
     {
@@ -2599,7 +2599,7 @@
       "episode_count": 70,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 67,
+      "chart_rank": 5,
       "dai": true
     },
     {
@@ -2628,7 +2628,7 @@
       "episode_count": 879,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 3,
+      "chart_rank": 4,
       "dai": true
     },
     {
@@ -2658,7 +2658,7 @@
       "episode_count": 286,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 148,
+      "chart_rank": 150,
       "dai": true
     },
     {
@@ -2673,7 +2673,7 @@
       "episode_count": 134,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 29,
+      "chart_rank": 58,
       "dai": true
     },
     {
@@ -2703,7 +2703,7 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 5,
+      "chart_rank": 4,
       "dai": true
     },
     {
@@ -2733,7 +2733,7 @@
       "episode_count": null,
       "explicit": true,
       "label_scope": null,
-      "chart_rank": 15,
+      "chart_rank": 33,
       "dai": true
     },
     {
@@ -2763,7 +2763,7 @@
       "episode_count": null,
       "explicit": true,
       "label_scope": null,
-      "chart_rank": 2,
+      "chart_rank": 1,
       "dai": true
     },
     {
@@ -2778,7 +2778,7 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 8,
+      "chart_rank": 11,
       "dai": true
     },
     {
@@ -2793,7 +2793,7 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 51,
+      "chart_rank": 26,
       "dai": true
     },
     {
@@ -2808,7 +2808,7 @@
       "episode_count": null,
       "explicit": true,
       "label_scope": null,
-      "chart_rank": 33,
+      "chart_rank": 94,
       "dai": true
     },
     {
@@ -2823,7 +2823,7 @@
       "episode_count": null,
       "explicit": true,
       "label_scope": null,
-      "chart_rank": 4,
+      "chart_rank": 7,
       "dai": true
     },
     {
@@ -2867,7 +2867,7 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 1,
+      "chart_rank": 3,
       "dai": true
     },
     {
@@ -2881,7 +2881,7 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 6,
+      "chart_rank": 12,
       "dai": true
     },
     {
@@ -2895,7 +2895,7 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 2,
+      "chart_rank": 6,
       "dai": true
     },
     {
@@ -2910,7 +2910,7 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 3,
+      "chart_rank": 2,
       "dai": true
     },
     {
@@ -2925,7 +2925,7 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 2,
+      "chart_rank": 3,
       "dai": true
     },
     {
@@ -2940,7 +2940,7 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 2,
+      "chart_rank": 3,
       "dai": true
     },
     {
@@ -2955,7 +2955,7 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 13,
+      "chart_rank": 7,
       "dai": true
     },
     {
@@ -2970,7 +2970,7 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 6,
+      "chart_rank": 3,
       "dai": true
     },
     {
@@ -2984,7 +2984,7 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 4,
+      "chart_rank": 2,
       "dai": true
     },
     {
@@ -3012,7 +3012,7 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 35,
+      "chart_rank": 40,
       "dai": true
     },
     {
@@ -3026,7 +3026,7 @@
       "episode_count": null,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 25,
+      "chart_rank": 20,
       "dai": true
     },
     {
@@ -3041,7 +3041,7 @@
       "episode_count": 978,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 131,
+      "chart_rank": 162,
       "dai": false
     },
     {
@@ -3055,7 +3055,7 @@
       "episode_count": 1176,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 118,
+      "chart_rank": 79,
       "dai": false
     },
     {
@@ -3069,7 +3069,7 @@
       "episode_count": 505,
       "explicit": true,
       "label_scope": null,
-      "chart_rank": 69,
+      "chart_rank": 51,
       "dai": true
     },
     {
@@ -3084,7 +3084,7 @@
       "episode_count": 224,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 109,
+      "chart_rank": 71,
       "dai": false
     },
     {
@@ -3099,7 +3099,7 @@
       "episode_count": 514,
       "explicit": true,
       "label_scope": null,
-      "chart_rank": 196,
+      "chart_rank": null,
       "dai": false
     },
     {
@@ -3113,7 +3113,7 @@
       "episode_count": 1207,
       "explicit": true,
       "label_scope": null,
-      "chart_rank": 20,
+      "chart_rank": 25,
       "dai": true
     },
     {
@@ -3127,7 +3127,7 @@
       "episode_count": 47,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 80,
+      "chart_rank": 56,
       "dai": false
     },
     {
@@ -3141,7 +3141,7 @@
       "episode_count": 514,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 116,
+      "chart_rank": 93,
       "dai": false
     },
     {
@@ -3156,7 +3156,7 @@
       "episode_count": 300,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 131,
+      "chart_rank": 122,
       "dai": false
     },
     {
@@ -3170,7 +3170,7 @@
       "episode_count": 105,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 143,
+      "chart_rank": 78,
       "dai": false
     },
     {
@@ -3184,7 +3184,7 @@
       "episode_count": 528,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 200,
+      "chart_rank": null,
       "dai": false
     },
     {
@@ -3198,7 +3198,7 @@
       "episode_count": 92,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 36,
+      "chart_rank": 30,
       "dai": false
     },
     {
@@ -3212,7 +3212,7 @@
       "episode_count": 131,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 58,
+      "chart_rank": 48,
       "dai": false
     },
     {
@@ -3226,7 +3226,7 @@
       "episode_count": 229,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 66,
+      "chart_rank": 73,
       "dai": false
     },
     {
@@ -3241,7 +3241,7 @@
       "episode_count": 361,
       "explicit": false,
       "label_scope": null,
-      "chart_rank": 188,
+      "chart_rank": null,
       "dai": true
     },
     {
@@ -3255,7 +3255,7 @@
       "episode_count": 292,
       "explicit": true,
       "label_scope": null,
-      "chart_rank": 111,
+      "chart_rank": 117,
       "dai": true
     }
   ]

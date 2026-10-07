@@ -106,6 +106,9 @@ to curated by simply appearing in catalog.json — no migration.
    (`api/shows/appleShowSearch.ts:146`) a field it had discarded at harvest.
    **Every row committed before 2026-09-12 lacks it** — the field arrives on the
    next re-harvest, not retroactively, and nothing may assume it is present.
+   That re-harvest ran 2026-10-07 (PKG-14): 19,708 of 19,708 rows carry a
+   non-empty `artist_name` (`docs/research/reharvest-2026-10-07.md`); a row
+   written by any other path (e.g. the corpus adapter) still may not.
    It is Apple's **publisher** field, not a host field: measured over 20 ids from
    the committed index it is the person for *Joe Rogan* and *Alex Cooper* and the
    network for *WNYC Studios*, *Scicomm Media*, *iHeartPodcasts*. Rule 5 still
@@ -116,12 +119,22 @@ to curated by simply appearing in catalog.json — no migration.
 
 Pipeline: Apple podcast genre tree (`itunes.apple.com/.../ws/genres?id=26`, ~110
 subgenres) → per-genre top-200 charts (legacy RSS JSON) → dedupe collectionIds →
-batched `lookup` calls (200 ids/request) for authoritative metadata (feedUrl, title,
+batched `lookup` calls (150 ids/request, `LOOKUP_BATCH`) for authoritative metadata (feedUrl, title,
 artwork, trackCount, explicitness, genres) → `data/catalog-breadth.json`.
 
 Politeness: ≥3s between requests, honest User-Agent, ~170 total requests ≈ 10–12
-minutes per full harvest. Expected yield: 110 genres × 200 ≈ 22k chart rows →
-~9–13k unique shows (charts overlap heavily at the top).
+minutes per full harvest. (Measured 2026-10-07, PKG-14: **243 requests** — 1 genre
+tree + 110 charts + 132 lookups — in **14 m 16 s** wall, smallest gap between
+request starts 3.28 s, every response 200; `docs/research/reharvest-2026-10-07.md`.) Expected yield: 110 genres × 200 ≈ 22k chart rows →
+~9–13k unique shows (charts overlap heavily at the top). (Measured: 19,708 unique on
+2026-10-07, 19,787 on 2026-07-09 — the estimate was low.)
+
+**After a harvest, in this order:** `node tools/refresh/fold-breadth-topics.mjs`
+(the harvester rebuilds every row and does not know `taxonomy_node_ids`; the fold
+re-adds it, and its REAL DATA test is red until you do), then
+`node tools/build-show-index.mjs` and `node tools/build-catalog-client.mjs`. A
+show that entered the charts since `data/breadth-classification.json` was last
+built folds to `[]` — an honest "no subject" — until a classify pass covers it.
 
 ## What stays out of scope at breadth scale (deliberately)
 
