@@ -1428,7 +1428,11 @@ const FLOORS = {
   // ruling made mechanical — of everything floored in this file it is the one
   // whose deletion would be hardest to notice and most expensive to discover,
   // because the thing it guards is an absence.
+  /* CH2-13: labels.mjs genreTopicPrior (the one genre->topics rule prepare-batch and classify-breadth share) and classifyProgressPath (the committed data/classify-progress.json default). */
+  "tools/classify/labels.test.mjs": 10,
   "tools/classify/no-exclusion.test.mjs": 25,
+  /* CH2-13 (docs/roadmap/code-health-2.md): the Tier-0 genre prior each batch entry carries — characterization of the map lookup, the confidence min and the no-topic shape (4); the prior never carries a non-taxonomy topic and the batch lists the ones it dropped (T1-07), select.mjs alone declares the cooldown/prefix constants (T1-17), and both scripts resolve progress through labels.mjs (T1-09, one declaration run per script); 4 -> 10 declared. */
+  "tools/classify/prepare-batch.test.mjs": 10,
   "tools/classify/reconcile-shards.test.mjs": 75,
   /* Guards the metric the whole classification effort is judged on. Its per-item
      ("fully root-only") number is the one that maps to product behaviour; the
@@ -1455,9 +1459,9 @@ const FLOORS = {
      test/show-index.test.js, pins the same file from the CLIENT side; both are
      needed because the sort order is a contract between two files and either
      side can break it alone. */
-  "tools/harvest-merge.test.mjs": 13, // 2026-10-07: a breadth re-harvest UNIONS with the file it replaces (#1148 dropped 6,632 off-chart shows) - dropped show kept / its rank nulled + last_charted_at / its topics kept / new show added / still-charting show refreshed, in_curated recomputed, canonical key order, artist_name backfill, the harvester wiring, and a REAL DATA floor; new, zero slack
-  "tools/build-show-index.test.mjs": 10, // PKG-11a (docs/roadmap/shows-search.md, 2026-10-04): +1 — a curated row carries its breadth twin's chart_rank joined on apple_collection_id, and null without a twin; 9 -> 10
-  "tools/build-catalog-client.test.mjs": 4, // CH-1 (#1071): dai joined on String(apple_collection_id), null when unclassified, and --check flags drift; 2 -> 4 // PKG-11b (P-09): the curated chart_rank breadth join (rank or null) and the committed data/catalog-client.json equals the builder's output
+  "tools/harvest-merge.test.mjs": 14, // 2026-10-07: a breadth re-harvest UNIONS with the file it replaces (#1148 dropped 6,632 off-chart shows) - dropped show kept / its rank nulled + last_charted_at / its topics kept / new show added / still-charting show refreshed, in_curated recomputed, canonical key order, artist_name backfill, the harvester wiring, and a REAL DATA floor; new, zero slack // CH2-15 (docs/roadmap/code-health-2.md): +1 - rankByAppleId, the ONE usable-chart-rank join both builders read (null/0/NaN/-1 out, "12" in as 12); 13 -> 14
+  "tools/build-show-index.test.mjs": 11, // PKG-11a (docs/roadmap/shows-search.md, 2026-10-04): +1 — a curated row carries its breadth twin's chart_rank joined on apple_collection_id, and null without a twin; 9 -> 10 // CH2-15: +1 — the curated rank over the shared null/0/"12"/NaN/-1 fixture equals harvest-merge.rankByAppleId; 10 -> 11
+  "tools/build-catalog-client.test.mjs": 5, // CH2-15: +1 — chart_rank over the shared null/0/"12"/NaN/-1 fixture equals harvest-merge.rankByAppleId; 4 -> 5 // CH-1 (#1071): dai joined on String(apple_collection_id), null when unclassified, and --check flags drift; 2 -> 4 // PKG-11b (P-09): the curated chart_rank breadth join (rank or null) and the committed data/catalog-client.json equals the builder's output
   "tools/popularity-signal-probe.test.mjs": 6, // PKG-12 (P-10, docs/roadmap/shows-search.md): the top.json position probe — the String() join for breadth and curated rows, would_lead_by_top_position, the validator, the pi_id-order flag, one polite GET for top.json alone, the 5xx retry
   /* The Windows entrypoint-guard class (machinery audit finding 3). A main-
      module check written as ``import.meta.url === `file://${process.argv[1]}` ``
