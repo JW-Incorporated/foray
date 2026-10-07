@@ -2325,6 +2325,12 @@ const FLOORS = {
      head not on main -- or a proof that the dry run mutates nothing. A test
      deleted here is a keep-* that could become a remove. */
   "tools/dev/worktree-gc.test.mjs": 27, // OPS-12 review (2026-10-04): +8 -- keep-unpushed (tip not in the merged head), the CLI asks git for containment, fork PRs ignored, prototype-named branches, locked trees, strays found from the main tree not cwd, a refused branch -D or prune exits 1, --repo without a value; 19 -> 27
+  /* The release-environment readiness check (HUMAN-ACTIONS #115, PR #822). It
+     is the only thing that says, from outside the admin settings, whether #822
+     may merge; merged early, every release goes unsigned. Floored at its full
+     count: each test is one decision (or the read-only / names-only promise)
+     that a deletion would let slip to a false READY. */
+  "tools/ops/release-env-check.test.mjs": 19, // 115-part: new -- HA #115 pointer line gating #822, env exists, policy exactly main + v*, signing secrets env-level and gone from repo level, active v* tag ruleset restricting creation; unreadable is exit 2, never READY
   "tools/poll/tiers.test.mjs": 9, // PKG-05 (S-10): new -- cadence tiers (seed, correction, success/failure, dead)
   "tools/poll/politeness.test.mjs": 4, // PKG-06 (S-10): new -- per-host politeness port, constants pinned to backend/src/feeds/politeness.ts
   "tools/poll/select-due.test.mjs": 6, // PKG-06 (S-10): new -- due-set selection (dead, not-due, caps, order, bad URL, budget untouched) + the G9 weekly projection
