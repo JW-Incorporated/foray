@@ -2437,7 +2437,7 @@ const BACKEND_FLOORS = {
   /* +2 (WS-C): the §4.4 side of F-38 — the prompt asks for a beat `kind`
      and the parser accepts one, while a reply that omits it still parses. */
   "test/AnthropicDeepenActBuilder.test.ts": 9,
-  "test/AnthropicEnricher.test.ts": 10,
+  "test/AnthropicEnricher.test.ts": 13, // CH2-08 (B2-18, docs/roadmap/code-health-2.md): the re-ask characterization, run for classifyTier1 and generateWhyLine -- one re-ask of [prompt, bad reply, re-ask line], metered under the method's operation with its max_tokens and output estimate, and a text-less re-ask reply throws; 10 -> 13
   "test/AnthropicExternalResearcher.test.ts": 13, // round-3 audit (L5-generation): gen-1 web-search answers read after the tool result, split answers joined, pause_turn continued, retrieval never re-asks; 9 -> 13
   "test/AnthropicPromptUnderstander.test.ts": 13, // generator title style (2026-09-24, qa 146): the prompt asks for sentence case; one case-only re-ask for a Title Case title; no re-ask for a period; 10 -> 13 // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 9 -> 10
   /* Raised from 8 by WS-L (F-63): what actually reaches the model — the quoted
