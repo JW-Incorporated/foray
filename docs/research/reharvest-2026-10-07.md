@@ -141,3 +141,50 @@ header still says the breadth catalogue has no author field — true of the
 client files, no longer of `data/catalog-breadth.json`; a classify pass over
 the 6,553 new shows; and whether a re-harvest should keep shows that left the
 charts rather than drop them.
+
+## Amended 2026-10-07: the dropped shows are back (re-harvests now union)
+
+The follow-up question above ("whether a re-harvest should keep shows that left
+the charts") is answered yes, and fixed forward in the same day's next PR:
+`tools/harvest-catalog.mjs` now ends in `writeMergedHarvest`
+(`tools/harvest-merge.mjs`), which UNIONS the harvest with the file it would
+have replaced. Still-charting shows get the fresh row; shows that left every
+chart keep their row with `chart_rank: null` and a new `last_charted_at`
+(when last seen charting) and keep their topics; new shows are added; nothing
+is dropped. `--replace` is the explicit opt-out. Rule and tables:
+`docs/CATALOG-PIPELINE.md` § "Re-harvests keep shows that left the charts".
+
+The committed file was rebuilt as the union of the pre-#1148 file and #1148's,
+with the new merge: `node tools/harvest-merge.mjs --prev <#1148^ file> --fresh
+<#1148 file> --out data/catalog-breadth.json --backfill-artist`, then
+`fold-breadth-topics.mjs` → `build-show-index.mjs` → `build-catalog-client.mjs`
+(the order above).
+
+| measure | after #1148 | after the union |
+|---|---|---|
+| breadth rows | 19,708 | **26,340** (13,155 refreshed + 6,553 added + 6,632 kept off-chart) |
+| rows with a `chart_rank` | 19,708 | 19,708 (the kept rows are `null`) |
+| rows with `last_charted_at` | — | 26,340 (kept rows: 2026-07-09, their July `harvested_at`) |
+| rows with topics (`taxonomy_node_ids` non-empty) | 11,145 | **16,736** (the July coverage; the 6,553 newcomers still fold `[]` until a classify pass) |
+| `artist_name` non-empty | 19,708 | 26,234; 106 `null` |
+| `in_curated` | 164 | 175 (the 11 curated shows whose twin left the charts have it back, unranked) |
+| `data/catalog-breadth.json` bytes | 13,903,015 | 19,813,601 (server-side only; not in the web or mobile bundle) |
+| `data/show-index.tsv` rows / gzip -9 | 10,069 / 205,019 | unchanged, byte-identical (kept rows are past the `chart_rank <= 100` cut) |
+| `data/catalog-client.json` | 133,990 B | unchanged, byte-identical (a curated row still takes only a RANKED twin's rank) |
+| mobile bundle (`prepare-webdir.mjs --out`, bytes on disk) | 2,738,785 | **2,738,785** (alarm 2.8 MB not fired) |
+
+Apple: the kept July rows predate P-03a and had no `artist_name` key, so the
+merge looked those 6,632 ids up — **45 `lookup` requests**, 150 ids each,
+2026-10-07 01:27:16 → 01:29:48 UTC, smallest gap between request starts
+3.20 s, 0 retries, 0 failed batches. 6,526 came back with a name; 106 ids are
+no longer returned by Apple at all (`artist_name: null`, row kept — whether to
+prune shows Apple has withdrawn is a separate decision). No genre or chart
+feed was re-fetched; the chart data is #1148's.
+
+Because the client index, the client catalogue and the bundle are
+byte-identical, the four pinned queries cannot move and did not
+(`test/show-search-ranking.test.js`). What changed for a listener is
+server-side: the 6,632 shows are back in `api/shows/search` (banded UNRANKED, the
+worst popularity band) and their breadth show pages resolve
+again. Tests: `tools/harvest-merge.test.mjs` (13; each names its mutation,
+including a REAL DATA floor of 26,340 rows — the union is monotone).

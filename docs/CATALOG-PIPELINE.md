@@ -79,7 +79,10 @@ to curated by simply appearing in catalog.json — no migration.
    `apple_genre`). Mapping to our taxonomy happens downstream and can be re-run;
    never bake a lossy mapping into the harvest.
 4. **Provenance + refresh**: `harvest_source`, `harvested_at`, `region` on every
-   entry; the script is idempotent and re-runnable (re-harvest = new file, diffable).
+   entry; the script is idempotent and re-runnable. **A re-harvest is a union, not a
+   new file** (since 2026-10-07; see "Re-harvests keep shows that left the charts"
+   below): a show that falls off every chart keeps its row, with `chart_rank: null`
+   and `last_charted_at`.
 5. **Client isolation**: the web client never fetches the breadth file (it is
    12.5MB as committed, and show-level only). No client change ships with the
    harvest.
@@ -135,6 +138,44 @@ re-adds it, and its REAL DATA test is red until you do), then
 `node tools/build-show-index.mjs` and `node tools/build-catalog-client.mjs`. A
 show that entered the charts since `data/breadth-classification.json` was last
 built folds to `[]` — an honest "no subject" — until a classify pass covers it.
+
+### Re-harvests keep shows that left the charts (since 2026-10-07)
+
+The harvester only sees what charts **today**, and until 2026-10-07 it wrote that
+set over the committed file. The PKG-14 re-harvest (#1148) therefore dropped the
+**6,632** shows that had left every US top-200 since July, and with them their
+server-search row, their breadth show page (a shared `#/show/<apple id>` link
+cold-opens to it) and their topics (16,736 → 11,145 rows with subjects). Falling
+off a chart says a show is less popular this quarter, not that it stopped existing.
+
+So the harvester's last step (`writeMergedHarvest` in `tools/harvest-merge.mjs`)
+**unions** the harvest with the file at `--out`:
+
+| show is | its row after the re-harvest |
+|---|---|
+| still charting | the harvest's fresh row (rank, `artist_name`, title, feed, artwork, episode count, …); `last_charted_at` = this harvest; any field the harvest does not write (`taxonomy_node_ids`) carried from the old row |
+| off every chart now | the old row kept as is, with **`chart_rank: null`** and **`last_charted_at`** = when it was last seen charting (its old `last_charted_at`, else its old `harvested_at` if it carried a rank); `chart_genre_id`/`chart_genre_name` name the chart it was last on; `harvested_at` stays the last metadata fetch; topics kept |
+| new to the charts | added |
+
+`in_curated` is recomputed on every row against today's `data/catalog.json`.
+Nothing is ever removed by a re-harvest; pruning long-gone shows is a deliberate,
+separate decision, and `--replace` restores the old replace-the-file behaviour for
+it. A kept row with no `artist_name` key at all (harvested before P-03a) gets that
+one field from Apple `lookup`, 150 ids per request at ≥ 3 s, inside the same run;
+`null` means Apple no longer returns the id. An existing `--out` file that does
+not parse is fatal, never "no previous file".
+
+Every consumer already reads a null rank as UNRANKED (the worst band):
+`backend/src/catalog/breadthCatalog.ts` serves the row and its show page;
+`tools/build-show-index.mjs` leaves it out of the client index (it is past the
+`chart_rank <= 100` cut by definition), so the index and its gz budget do not grow.
+
+The 2026-10-07 repair (`node tools/harvest-merge.mjs --prev <pre-#1148 file>
+--fresh <#1148 file> --out data/catalog-breadth.json --backfill-artist`, then the
+fold, index and client builds): 19,708 → **26,340** rows (19,708 charting +
+6,632 kept), 45 `lookup` requests (smallest gap 3.20 s, 0 failures) for the kept
+rows' `artist_name` (6,526 filled, 106 ids Apple no longer returns), topics on
+16,736 rows again. Tests: `tools/harvest-merge.test.mjs`.
 
 ## What stays out of scope at breadth scale (deliberately)
 
@@ -225,13 +266,15 @@ re-classification, because "did it work?" is otherwise unanswerable after the fa
 
 ## Breadth tier, batch 2 (international) — retired 2026-10-04
 
-The breadth tier is now **19,787 US shows** (`data/catalog-breadth.json`); the
+The breadth tier is now **19,787 US shows** (`data/catalog-breadth.json`; 26,340
+since the 2026-10-07 union, of which 19,708 chart); the
 international file was retired on 2026-10-04 (founder ruling, catalogue Q4 "yes",
 `docs/roadmap/README.md` item 26; #560 item 6). It held 121,786 shows from 18
 regional Apple top-chart sets, gzipped, and no endpoint, tool or test read it.
 The file stays in git history if it is ever wanted back. To re-harvest instead,
 always pass `--out` with a path outside the repo, because without it the harvester
-overwrites `data/catalog-breadth.json`, the US file that server code reads:
+writes into `data/catalog-breadth.json`, the US file that server code reads (it
+merges into whatever file `--out` names, so point it at a fresh path):
 
 ```
 node tools/harvest-catalog.mjs --regions fr,de,jp,br,mx,es,it,in,nl,dk,se,za,no,gb,ie,au,nz,ca \

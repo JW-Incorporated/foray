@@ -1453,6 +1453,7 @@ const FLOORS = {
      test/show-index.test.js, pins the same file from the CLIENT side; both are
      needed because the sort order is a contract between two files and either
      side can break it alone. */
+  "tools/harvest-merge.test.mjs": 13, // 2026-10-07: a breadth re-harvest UNIONS with the file it replaces (#1148 dropped 6,632 off-chart shows) - dropped show kept / its rank nulled + last_charted_at / its topics kept / new show added / still-charting show refreshed, in_curated recomputed, canonical key order, artist_name backfill, the harvester wiring, and a REAL DATA floor; new, zero slack
   "tools/build-show-index.test.mjs": 10, // PKG-11a (docs/roadmap/shows-search.md, 2026-10-04): +1 — a curated row carries its breadth twin's chart_rank joined on apple_collection_id, and null without a twin; 9 -> 10
   "tools/build-catalog-client.test.mjs": 4, // CH-1 (#1071): dai joined on String(apple_collection_id), null when unclassified, and --check flags drift; 2 -> 4 // PKG-11b (P-09): the curated chart_rank breadth join (rank or null) and the committed data/catalog-client.json equals the builder's output
   "tools/popularity-signal-probe.test.mjs": 6, // PKG-12 (P-10, docs/roadmap/shows-search.md): the top.json position probe — the String() join for breadth and curated rows, would_lead_by_top_position, the validator, the pi_id-order flag, one polite GET for top.json alone, the 5xx retry

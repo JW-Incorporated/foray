@@ -2,13 +2,21 @@
    Apple genre tree -> per-genre top charts -> batched lookups ->
    data/catalog-breadth.json. Idempotent; re-run to refresh.
 
-   Usage: node tools/harvest-catalog.mjs [--genres N] [--out path]
-     --genres N   limit to first N subgenres (smoke testing)               */
+   A RE-HARVEST UNIONS WITH THE FILE IT WRITES (tools/harvest-merge.mjs, since
+   2026-10-07): shows still charting get fresh rows, shows that left every
+   chart keep theirs with `chart_rank: null` and `last_charted_at`, new shows
+   are added. Nothing is dropped. #1148 replaced the file and lost 6,632 shows.
+
+   Usage: node tools/harvest-catalog.mjs [--genres N] [--out path] [--replace]
+     --genres N   limit to first N subgenres (smoke testing)
+     --replace    write only this harvest's shows (the pre-2026-10-07
+                  behaviour) instead of merging into the existing --out file */
 
 import { writeFileSync, readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { UA } from "./segments/politeness.mjs";
+import { writeMergedHarvest } from "./harvest-merge.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const THROTTLE_MS = 3000;
@@ -19,6 +27,7 @@ const args = process.argv.slice(2);
 const genreLimit = args.includes("--genres") ? Number(args[args.indexOf("--genres") + 1]) : Infinity;
 const REGIONS = (args.includes("--regions") ? args[args.indexOf("--regions") + 1] : "us").split(",");
 const outPath = args.includes("--out") ? args[args.indexOf("--out") + 1] : join(ROOT, "data", "catalog-breadth.json");
+const replace = args.includes("--replace");
 // --exclude a,b: breadth files whose collectionIds are skipped (saves lookup
 // calls and keeps harvest batches disjoint)
 const excludeIds = new Set();
@@ -126,6 +135,7 @@ async function main() {
     const batch = ids.slice(i, i + LOOKUP_BATCH);
     try {
       const data = await fetchJson(`https://itunes.apple.com/lookup?id=${batch.join(",")}&entity=podcast`);
+      const harvestedAt = new Date().toISOString();
       for (const r of data.results || []) {
         if (r.kind !== "podcast" || !r.collectionId) continue;
         const chart = chartRows.get(r.collectionId) || {};
@@ -160,12 +170,13 @@ async function main() {
           chart_genre_id: chart.genreId ?? null,
           chart_genre_name: chart.genreName ?? null,
           chart_rank: chart.rank ?? null,
+          last_charted_at: chart.rank ? harvestedAt : null, // every row here came off a chart this run
           in_curated: curated.has(r.collectionId),
           podcastindex_id: null,
           tier: "breadth",
           region: chart.region ?? REGIONS[0],
           harvest_source: "apple-top-charts",
-          harvested_at: new Date().toISOString(),
+          harvested_at: harvestedAt,
         });
       }
       console.log(`   ${Math.min(i + LOOKUP_BATCH, ids.length)}/${ids.length} looked up (${shows.length} kept)`);
@@ -181,7 +192,7 @@ async function main() {
   const seen = new Set();
   const unique = shows.filter(s => !seen.has(s.apple_collection_id) && seen.add(s.apple_collection_id));
 
-  const doc = {
+  const harvest = {
     version: 1,
     built_at: new Date().toISOString(),
     regions: REGIONS,
@@ -189,9 +200,12 @@ async function main() {
     genre_count: genres.length,
     shows: unique,
   };
-  writeFileSync(outPath, JSON.stringify(doc) + "\n");
+
+  /* Union with the file being replaced (unless --replace). The rule and the
+     write live in tools/harvest-merge.mjs, where they are tested. */
+  const doc = await writeMergedHarvest(harvest, { outPath, replace, curatedIds: curated, fetchJson });
   try { writeFileSync(CKPT, "{}"); } catch (_) {}
-  console.log(`WROTE ${outPath}: ${unique.length} shows (${unique.filter(s => s.feed_url).length} with feed URLs, ${unique.filter(s => s.in_curated).length} overlap curated tier)`);
+  console.log(`WROTE ${outPath}: ${doc.shows.length} shows (${unique.length} charting now, ${doc.shows.filter(s => s.feed_url).length} with feed URLs, ${doc.shows.filter(s => s.in_curated).length} overlap curated tier)`);
   console.log("HARVEST_COMPLETE");
 }
 
