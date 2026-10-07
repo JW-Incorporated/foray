@@ -46,10 +46,9 @@ earlier Claude workflow `wf_7ee4833f-b81`, now stopped); `p3-icons` built on
 3. **Re-judge with Claude** what Codex judged overnight:
    `node docs/redesign-2026/workflows/build-directions.codex.mjs rejudge --directions tactile,ambient`
    (detached like step 2). It re-judges every merged screen whose verdicts include `codex` or
-   that is UNJUDGED, with Claude only, and builds a fix unit for each one Claude rejects. If the
-   `rejudge` subcommand does not exist yet (it was being added on 2026-10-06; check
-   `CODEX-DRIVER.md`), dispatch Codex with the brief in
-   `docs/redesign-2026/workflows/briefs/rejudge.md` first.
+   that is UNJUDGED, with Claude only, and builds a fix unit for each one Claude rejects
+   (`fbd5b95d`, dry run 12/12). It shares the driver's lock, so it refuses while `run` is alive;
+   if Claude is unavailable it stops cleanly and lists what is left, so just rerun it later.
 4. **Verify and report** (RESTART.md step 6): one agent checks both direction branches carry the
    merged units; `gh workflow run ci.yml --ref feature/redesign-2026-<dir>` for each direction,
    report the Linux jobs; `gh run list --workflow lab-build.yml` for the lab builds the driver
