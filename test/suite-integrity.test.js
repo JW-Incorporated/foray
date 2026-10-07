@@ -2824,7 +2824,10 @@ const BACKEND_FLOORS = {
      and ranked curated > unranked curated > breadth in the comparator. The
      curated `chart_rank === null` pin is re-argued in place and the
      agreement test gains "history"/"science". */
-  "test/breadthCatalog.test.ts": 22,
+  /* RAISED 22 -> 23 by code-health-2 CH2-24 (B1-14): the curated-twin and
+     breadth chart-rank join is pinned equal to tools/harvest-merge.mjs's
+     rankByAppleId over a fixture with null, 0, "12", "NaN", -1 and 7. */
+  "test/breadthCatalog.test.ts": 23,
   /* §4.9 end to end (kanban card t_0b1729d6): finalizeForay() validates
      a candidate against the real check-forays.mjs/check-narration.mjs
      and only returns a writable record on a clean pass; stageTiming.ts
