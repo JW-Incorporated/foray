@@ -209,3 +209,39 @@ test("retries round-trip through the scan state and are re-emitted by scan", () 
   assert.match(scan, /const pending = retryItems\(state, knownTitles\);/);
   assert.match(scan, /state_path: resolvePath\(STATE_PATH\)/);
 });
+
+/* ------------------------------------------------- the explicit tri-state */
+
+/* CH2-10 (T1-01, docs/roadmap/code-health-2.md): `explicit` is a tri-state --
+   true = explicit, false = rated clean, null = unrated (the merge.mjs and
+   backfill-provenance.mjs contract; Family Mode applies the show-level fallback
+   only to null). iTunes' contentAdvisoryRating decides when it is present; when
+   it is absent the feed's own <itunes:explicit> (scan's explicit_hint) can only
+   raise the flag, never clear it. */
+const resolveOne = async (trackOver, epOver) => {
+  const lookup = async () => ({ ok: true, eps: [track({ trackId: 500, episodeGuid: "g-new", ...trackOver })] });
+  const out = await resolveEpisodes({ ...pool(), pending: { episodes: [ep(epOver)] }, lookup });
+  assert.equal(out.resolved.length, 1);
+  return out.resolved[0];
+};
+
+/* Characterization: the two ratings iTunes states map as they always did. */
+test("an iTunes rating of Explicit resolves explicit: true and Clean resolves explicit: false", async () => {
+  assert.equal((await resolveOne({ contentAdvisoryRating: "Explicit" })).explicit, true);
+  assert.equal((await resolveOne({ contentAdvisoryRating: "Clean" })).explicit, false);
+  assert.equal((await resolveOne({ contentAdvisoryRating: "Clean" }, { explicit_hint: true })).explicit, false, "a stated rating wins over the feed hint");
+});
+
+/* MUTATION: revert to the bare boolean
+   (`(track.contentAdvisoryRating || "").toLowerCase() === "explicit"`) -- the
+   feed's `yes` is lost and the episode reads as rated clean. */
+test("no iTunes rating and a feed that says <itunes:explicit>yes resolves explicit: true", async () => {
+  assert.equal((await resolveOne({}, { explicit_hint: true })).explicit, true);
+});
+
+/* MUTATION: the same revert -- an unrated episode becomes `false` (rated clean)
+   and Family Mode never consults the show-level fallback. */
+test("no iTunes rating and no feed hint resolves explicit: null (unrated), never false", async () => {
+  assert.equal((await resolveOne({})).explicit, null);
+  assert.equal((await resolveOne({}, { explicit_hint: false })).explicit, null);
+});
