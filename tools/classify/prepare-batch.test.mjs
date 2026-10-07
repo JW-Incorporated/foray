@@ -17,7 +17,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { tier0Prior } from "./prepare-batch.mjs";
+import { tier0Prior, batchDocument } from "./prepare-batch.mjs";
+import { LABEL_SCHEMA_VERSION } from "./labels.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -59,3 +60,82 @@ test("a show with no mapped genre keeps prepare-batch's no-topic shape", () => {
 test("a missing chart genre falls back to apple_genre alone", () => {
   assert.deepEqual(tier0Prior(show("Food", null), GMAP, TAXONOMY), { topics: ["food"], confidence: "high" });
 });
+
+/* ---------- T1-07: the drift this card closes ---------- */
+
+/* Mutation killed: drop the taxonomy filter in labels.mjs genreTopicPrior
+   (`if (taxonomyIds.has(t)) topics.add(t)` -> `topics.add(t)`). This test and
+   classify-breadth.test.mjs's "fails loudly ... non-taxonomy node" go red
+   together, because there is one function. */
+test("tier0_prior never contains a topic absent from the taxonomy", () => {
+  assert.deepEqual(tier0Prior(show("Grilling"), GMAP, TAXONOMY), { topics: ["food"], confidence: "high" });
+});
+
+test("a show whose only mapped topic is stale gets the no-topic shape, not the dead id", () => {
+  assert.deepEqual(tier0Prior(show("Barbecue"), GMAP, TAXONOMY), { topics: [], confidence: "low" });
+});
+
+/* Mutation killed: drop `for (const t of prior.staleTopics) staleTopics.add(t)`
+   from tier0Prior, or the `stale_map_topics` line from batchDocument — the dead
+   id then vanishes without a trace, which is how T1-07 stayed invisible. */
+test("the stale map topics it dropped reach the batch document, sorted and de-duplicated", () => {
+  const stale = new Set();
+  tier0Prior(show("Grilling"), GMAP, TAXONOMY, stale);
+  tier0Prior(show("Barbecue", "Astronomy"), GMAP, TAXONOMY, stale);
+  tier0Prior(show("Food"), GMAP, TAXONOMY, stale);
+  const doc = batchDocument({ batchId: "fresh-x", mode: "fresh", now: 0, shard: "0/6", shows: [], staleMapTopics: stale });
+  assert.deepEqual(doc.stale_map_topics, ["food/grilling-bbq"]);
+});
+
+test("the batch document keeps its existing fields and states 'no stale topics' as []", () => {
+  const doc = batchDocument({ batchId: "escalate-x", mode: "escalate", now: Date.UTC(2026, 9, 7), shard: null, shows: [{ a: 1 }] });
+  assert.deepEqual(doc, {
+    batch_id: "escalate-x",
+    mode: "escalate",
+    tier: 2,
+    generated_at: "2026-10-07T00:00:00.000Z",
+    taxonomy_path: "data/taxonomy.json",
+    genre_map_path: "data/genre-taxonomy-map.json",
+    label_schema_version: LABEL_SCHEMA_VERSION,
+    shard: null,
+    stale_map_topics: [],
+    shows: [{ a: 1 }]
+  });
+  assert.equal(batchDocument({ batchId: "f", mode: "fresh", now: 0, shard: "2/6", shows: [] }).tier, 1);
+});
+
+/* ---------- T1-17: dead copies of select.mjs's constants ---------- */
+
+/** Source with comments removed, so the note explaining the deletion does not count. */
+const code = (file) =>
+  readFileSync(join(HERE, file), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/^\s*\/\/.*$/gm, " ");
+
+/* Mutation killed: restore `const RETRY_COOLDOWN_MS = 6 * 3600_000;` (or the
+   prefix) in prepare-batch.mjs. select.mjs owns both; a second copy is the one
+   the next cooldown tweak edits while nothing reads it. */
+test("RETRY_COOLDOWN_MS and NEW_PIPELINE_SOURCE_PREFIX are declared only in select.mjs", () => {
+  for (const name of ["RETRY_COOLDOWN_MS", "NEW_PIPELINE_SOURCE_PREFIX"]) {
+    const decl = new RegExp(`\\b(const|let|var)\\s+${name}\\b`);
+    assert.ok(!decl.test(code("prepare-batch.mjs")), `prepare-batch.mjs declares its own ${name}`);
+    assert.ok(decl.test(code("select.mjs")), `select.mjs no longer declares ${name}; update this pin`);
+  }
+});
+
+/* ---------- T1-09: one committed progress path ---------- */
+
+/* The resolver's behaviour is pinned in labels.test.mjs. These pins hold that
+   both scripts USE it, since neither main() can be run with PROGRESS_PATH unset
+   without writing the real data/classify-progress.json.
+   Mutation killed: put back
+   `envPath("PROGRESS_PATH", ["data-local", "classify-progress.json"])` in either
+   script. */
+for (const file of ["prepare-batch.mjs", "merge-results.mjs"]) {
+  test(`${file} resolves the progress path through labels.mjs classifyProgressPath, never data-local`, () => {
+    const src = code(file);
+    assert.match(src, /classifyProgressPath\(ROOT\b/, `${file} must call classifyProgressPath(ROOT, ...)`);
+    assert.ok(!/classify-progress/.test(src), `${file} names a classify-progress path of its own`);
+    assert.ok(!/["']PROGRESS_PATH["']/.test(src), `${file} reads PROGRESS_PATH itself instead of through the resolver`);
+  });
+}
