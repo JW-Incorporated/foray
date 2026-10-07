@@ -1133,13 +1133,13 @@ function buildUI() {
   /* THE BAR'S SECOND CONTROL (audit 2026-09-22, persona 10). The bar carried
      one ▶ and every other transport action cost a full-screen sheet — four
      interactions to hear a missed sentence again. Apple's mini bar is play +
-     one skip; ours is play + back 15 s, the nudge the persona asked for by
-     name and the one that matters in a car. One control, not two, so a 390px
+     one skip; ours is play + forward 30 s (Tactile BUILD-NOTES 3.12; it was
+     back 15 s before Redesign 2026, and the sheet keeps both). One control, not two, so a 390px
      bar keeps its title line. Inside a Foray it nudges on the Foray clock
      (`nudgeBy`), never previous clip — see persona 58 in the sheet below. */
-  const skipBtn = el("button", "fp-skip", `↺ ${SEEK_BACK}`);
+  const skipBtn = el("button", "fp-skip", `${SEEK_FWD} ↻`);
   skipBtn.type = "button";
-  skipBtn.setAttribute("aria-label", `Back ${SEEK_BACK} seconds`);
+  skipBtn.setAttribute("aria-label", `Forward ${SEEK_FWD} seconds`);
 
   /* U-13 (founder feedback F18): this ✕ used to call `stopAndClose()`, and its
      label said so. Closing the Now Playing screen to go and use the app therefore
@@ -2435,7 +2435,7 @@ function paintScrubPreview() {
   const at = (Number(ui.scrub.value) / 1000) * (dur || 0);
   /* Keep the visible preview live, but reserve the slider's spoken value for
      the committed change so assistive technology is not flooded mid-drag. */
-  paintClocks(at, dur, false);
+  paintClocks(at, dur, !window.DialNowPlaying);
   if (window.DialNowPlaying) {
     const item = foray ? segmentAtElapsed(foray.resolved.playable, at) : null;
     window.DialNowPlaying.preview(ui, {

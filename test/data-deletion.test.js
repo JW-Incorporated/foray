@@ -576,11 +576,18 @@ test("the shipped source names exactly the 22 cp_ key families the audit found",
      optional label, the episode's length then. Device-only — no event type,
      never sent, never synced (roadmap README Q19). Same mechanism: this count
      failed first, then the policy check, until privacy-policy.md §1 got the
-     row. */
+     row.
+
+     33 -> 34 on 2026-10-07 (Redesign 2026, Tactile Now Playing):
+     `cp_art_tint:<show>`, the tint the sheet derives from a show's artwork
+     (ui/now-playing.js, BUILD-NOTES 7), stored with a hash of the artwork URL
+     so it is recomputed only when the image changes. Derived on the device,
+     never sent. Same mechanism: this count failed first, then the policy
+     check, until privacy-policy.md §1 got the row. */
   const families = [...keyFamiliesInSource().keys()].sort();
   assert.strictEqual(
-    families.length, 33,
-    `expected 33 cp_ key families, found ${families.length}:\n${families.join("\n")}`
+    families.length, 34,
+    `expected 34 cp_ key families, found ${families.length}:\n${families.join("\n")}`
   );
   assert.ok(families.includes("cp_foray:"), "the patterned Foray resume key must be found as a family");
   assert.ok(families.includes("cp_pos:"), "the patterned episode-position key must be found as a family");

@@ -2711,20 +2711,26 @@ test("VISUAL PASS: inside a Foray the sheet's ↺15 nudges within the clip — i
 });
 
 test("VISUAL PASS: the mini bar's ↺15 is the same nudge, for an episode and for a Foray", async (t) => {
-  /* KILLING MUTATION: drop `skipBtn` from `bar.append(...)`, or point its
-     handler at `forayPrevious`. */
+  /* RULING THAT FELL (Redesign 2026, Tactile, BUILD-NOTES 3.12): the mini's
+     side key is now the 30-forward keycap, not ↺15, so the nudge it shares
+     with the sheet is `nudgeBy(SEEK_FWD)`. What this test pins is unchanged:
+     the key is a time nudge, never forayPrevious/forayNext (which would
+     restart or skip a clip).
+     KILLING MUTATION: drop `skipBtn` from `bar.append(...)`, or point its
+     handler at `forayPrevious`/`forayNext` -> the index changes or the clock
+     does not move 30 s. */
   const { client, doc, audio, restore } = await bootClient(t);
   await client.playForay(synthetic(), { startIndex: 0 });
   await settle();
   const skip = find(doc.body, "fp-skip");
   assert.ok(skip, "the bar carries a skip control");
-  assert.equal(skip.getAttribute("aria-label"), "Back 15 seconds");
+  assert.equal(skip.getAttribute("aria-label"), "Forward 30 seconds");
   audio.currentTime = 150;
   audio.fire("timeupdate");
   await settle();
   await skip.click();
   await settle();
-  assert.ok(Math.abs(audio.currentTime - 135) < 0.01, `Foray: landed at ${audio.currentTime}s`);
+  assert.ok(Math.abs(audio.currentTime - 180) < 0.01, `Foray: landed at ${audio.currentTime}s, 30 s on`);
   assert.equal(client.forayStatus().index, 0);
   restore();
 });
