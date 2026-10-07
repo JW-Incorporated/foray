@@ -22,7 +22,7 @@ Source of truth for a cleared session. Update on every deliverable.
 | 1 Research | done | docs/redesign-2026/research/, design-brief.md |
 | 2 Directions | done | editorial r3, ambient r3, native-2026 r3, tactile r3, clarity r3 (docs/redesign-2026/directions/) |
 | Checkpoint | **picked: Tactile + Ambient** (owner, 2026-10-06 18:17 PDT) | one condition: replace Tactile's "cartoonish" header/title font first; Phase 3 starts once the owner approves the new font |
-| 3–5 | **running** on the Codex build driver (from 2026-10-06 23:00 PDT; Claude workflow `wf_7ee4833f-b81` stopped at 22:40) | Tactile + Ambient; plans done, `p3-tokens` merged in both; see In flight |
+| 3–5 | **running** on Claude again (`wf_8c930d5d-182`, from 2026-10-07 06:40 PDT; Codex reviews) | foundation 4/8 merged (tactile tokens+icons, ambient tokens+gallery); screens 0/35; see In flight |
 
 ## Checkpoint (decided 2026-10-06: Tactile + Ambient, pending Tactile's font)
 
@@ -48,17 +48,21 @@ through Editorial's tab bar. Detail: `checkpoint/README.md`.
 
 (Agent/workflow and what it is doing. Clear an entry when it lands.)
 
-- **Phases 3-5 build, Codex build driver, PID 30772** (detached, launched 2026-10-06
-  23:00 PDT). `node docs/redesign-2026/workflows/build-directions.codex.mjs run
-  --directions tactile,ambient --max-iters 4`: Codex (`gpt-5.6-sol`) does every
-  implement/check/fix/review/merge/QA step; Claude (`claude -p`) does the taste calls
-  (Fable fidelity, Opus judges in both orders) and Codex judges, labelled per verdict,
-  when Claude is out. Check it with `... status`; state in
-  `data-local/redesign/codex-driver/`; relaunch, rejudge and the post-reset steps are in
-  `PAUSE.md` (worktree root) and `docs/redesign-2026/workflows/CODEX-DRIVER.md`.
-  Resuming from: `p3-tokens` merged in both directions; `p3-icons` built, unmerged.
+- **Phases 3-5 build, Claude workflow `wf_8c930d5d-182`** (launched 2026-10-07 06:40 PDT,
+  `build-directions.workflow.js` @ 77a8fa81, args in `PAUSE.md`). Opus builds and fixes;
+  Codex reviews (up to 3 rounds, Opus if Codex fails); Fable/Opus judge; 4 screens in
+  flight per direction, one per screen family; merges serialised; resumes pushed work
+  branches. **If it dies:** `PAUSE.md` (worktree root) step 3.
 - Open Phase 3 item from the r5 critique: Tactile band codes double at 412px
   (per-bar label gate).
+
+Stopped: Codex build driver PID 30772 (2026-10-06 23:00 to 2026-10-07 06:20 PDT): merged
+tactile p3-icons and ambient p3-gallery; tactile p3-primitives, p3-gallery and ambient
+p3-icons, p3-primitives ended blocked by the Codex review after one fix round (real
+hard-rule findings: a global safeUrl change reaching the download queue, gallery copy
+evading the listener-copy gate, an un-escaped interpolation, AA contrast); both Now
+Playing screens in progress (pushed). Too slow (Codex steps 10-60 min each, one screen at
+a time), so the build went back to Claude.
 
 Stopped: `wf_7ee4833f-b81` (Claude workflow, 21:05-22:40 PDT): baseline, Tactile prep
 (Big Shoulders, artifact republished), both BUILD-PLANs (Fable), `p3-tokens` merged in
@@ -141,3 +145,4 @@ Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40-22:40 PDT, 128 agents
 - 2026-10-07 — tactile: Phase 3 foundation 2/4 merged into feature/redesign-2026-tactile
 - 2026-10-07 — ambient/p3-gallery: merged, iterations 1, judged by none
 - 2026-10-07 — ambient: Phase 3 foundation 2/4 merged into feature/redesign-2026-ambient
+- 2026-10-07 06:40 PDT — Overnight Codex driver result: foundation 4/8 merged in total (tactile tokens+icons, ambient tokens+gallery), 4 blocked at Codex review, 0 screens; 1 Fable call, all verdicts by Claude (none Codex-judged or UNJUDGED). Owner: switch back to full Claude, spend the last ~8% weekly before the 16:00 reset, keep Codex for code reviews. Driver stopped; ambient now-playing WIP saved (86d27a06); workflow reworked (77a8fa81: Opus builds, Codex reviews x3 with Opus fallback, 4 screens in flight per direction by family, resume pushed work branches, UNJUDGED flag, plans from file; stub harness 10/10, three mutations caught) and launched as `wf_8c930d5d-182`.

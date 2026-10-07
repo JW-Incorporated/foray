@@ -1,74 +1,57 @@
-# PAUSE — Redesign 2026, night 2 (written 2026-10-06 ~23:15 PDT)
+# PAUSE — Redesign 2026, day of 2026-10-07 (rewritten 06:40 PDT)
 
-Claude's weekly usage was at 91% and runs out overnight; it resets **2026-10-07 16:00 PDT**.
-The build was moved onto Codex so it keeps going without Claude. Assume you remember nothing:
-everything you need is here and in git. **Trust git and the driver's `status` over this file.**
+Claude's weekly usage had ~8% left at 06:18 PDT and resets **2026-10-07 16:00 PDT**; the owner
+asked to spend it on the build before then, back on Claude, with Codex doing the code reviews.
+If it runs out first, the workflow's agents die and the build stops until the reset. Assume you
+remember nothing. **Trust git and the workflow journal over this file.**
 
 ## Where
 
 - Worktree: `C:\Users\Fourtys\Documents\Claude\Projects\foray\.claude\worktrees\redesign-2026`,
-  trunk branch `feature/redesign-2026`. `mobile/VERSION` shows modified: line endings only, leave it.
+  trunk `feature/redesign-2026`. `mobile/VERSION` shows modified: line endings only, leave it.
 - Direction branches: `feature/redesign-2026-tactile`, `feature/redesign-2026-ambient`.
 - Rules: `docs/redesign-2026/PLAN.md`. Progress board: `docs/redesign-2026/PROGRESS.md`.
 
-## What is running (or ran)
+## What is running
 
-**The Codex build driver**, a detached Node process (not a Claude workflow):
-`docs/redesign-2026/workflows/build-directions.codex.mjs` (how it works:
-`docs/redesign-2026/workflows/CODEX-DRIVER.md`). It runs phases 3-5 for both directions with
-`codex exec` for every implement/check/fix/review/merge/QA step, and `claude -p` for the taste
-calls (Fable art-director fidelity, Opus beats-today judges, both orders) while Claude has usage;
-when Claude fails it marks Claude down for 30 min and uses a Codex judge instead, recording the
-engine per verdict. It keeps the PC awake while it runs. State: `data-local/redesign/codex-driver/`
-(`state.json`, `run.log`, `driver.lock` with the PID, `steps/`); step worktrees under
-`C:\Users\Fourtys\fw\`.
+Claude workflow **`wf_8c930d5d-182`** (launched 06:40 PDT from this worktree's
+`docs/redesign-2026/workflows/build-directions.workflow.js`, commit 77a8fa81) with args
+`{"directions":["tactile","ambient"],"plansFile":"<worktree>\\data-local\\redesign\\codex-driver\\plans.json","screenConcurrency":4,"maxIters":4}`.
+Opus builds and fixes; Codex (`codex exec`, via a thin Claude agent) does every code review, up
+to 3 rounds, Opus if Codex fails; Fable/Opus judge taste. Foundation first (sequential), then
+screens, 4 in flight per direction, one at a time per screen family; merges serialised.
 
-Position when this file was written: foundation `p3-tokens` merged in both directions (by the
-earlier Claude workflow `wf_7ee4833f-b81`, now stopped); `p3-icons` built on
-`redesign/<d>-p3-icons` but not merged (the driver resumes it); then `p3-primitives`,
-`p3-gallery`, the screens (tactile 19, ambient 16, order in
-`data-local/redesign/codex-driver/plans.json`), QA, lab builds.
+Position at launch: merged = tactile p3-tokens, p3-icons; ambient p3-tokens, p3-gallery. Not
+merged (Codex review blocking items recorded in `data-local/redesign/codex-driver/state.json`,
+which the builders read): tactile p3-primitives, p3-gallery; ambient p3-icons, p3-primitives.
+Work in progress pushed: `redesign/tactile-now-playing`, `redesign/ambient-now-playing`
+(86d27a06). The overnight Codex driver (`build-directions.codex.mjs`) is STOPPED; do not start
+it while the workflow runs.
 
 ## On resume, in order
 
-1. `cd` to the worktree, `git pull --ff-only`.
-2. `node docs/redesign-2026/workflows/build-directions.codex.mjs status`
-   - **Lock PID alive:** the driver is still building. Do not start another driver or the Claude
-     workflow. It returns to Claude judges by itself after the reset. Go to step 4 only when it
-     has finished; meanwhile you may do step 5's read-only checks.
-   - **Lock PID dead and the run log does not end with `driver complete`:** it died. Relaunch it
-     detached (PowerShell), same command; merged units are skipped by git, an interrupted unit
-     continues from its pushed work branch:
-     `Start-Process node -ArgumentList 'docs/redesign-2026/workflows/build-directions.codex.mjs','run','--directions','tactile,ambient','--max-iters','4' -WorkingDirectory <worktree> -WindowStyle Hidden -RedirectStandardOutput <worktree>\data-local\redesign\codex-driver\driver.out.log -RedirectStandardError <worktree>\data-local\redesign\codex-driver\driver.err.log`
-     If it dies twice at the same unit, relaunch with `--skip-screens <id>` and record that
-     screen under **Blocked** in PROGRESS.md.
-   - **Finished:** go to step 3.
-3. **Re-judge with Claude** what Codex judged overnight:
-   `node docs/redesign-2026/workflows/build-directions.codex.mjs rejudge --directions tactile,ambient`
-   (detached like step 2). It re-judges every merged screen whose verdicts include `codex` or
-   that is UNJUDGED, with Claude only, and builds a fix unit for each one Claude rejects
-   (`fbd5b95d`, dry run 12/12). It shares the driver's lock, so it refuses while `run` is alive;
-   if Claude is unavailable it stops cleanly and lists what is left, so just rerun it later.
-4. **Verify and report** (RESTART.md step 6): one agent checks both direction branches carry the
-   merged units; `gh workflow run ci.yml --ref feature/redesign-2026-<dir>` for each direction,
-   report the Linux jobs; `gh run list --workflow lab-build.yml` for the lab builds the driver
-   dispatched. Update PROGRESS.md (phase rows 3-5, a log line per direction with merged /
-   escalated / UNJUDGED / not-merged units, Fable count from `status`), commit, push, short report
-   to the owner. Name every unit that was not merged and why.
-5. Delete this file (commit the deletion) once each step above is genuinely picked up.
+1. `git pull --ff-only` in the worktree.
+2. **Is `wf_8c930d5d-182` still running?** (Same session: `/workflows`. New session: look at
+   `C:\Users\Fourtys\.claude\projects\C--Users-Fourtys-Documents-Claude-Projects-foray--claude-worktrees-redesign-2026\8653d92e-a2a3-451e-9d2c-93f0c4b7a9f6\subagents\workflows\wf_8c930d5d-182\journal.jsonl`;
+   if its last lines are recent, it is alive.) If it is running, wait for its notification.
+3. **If it died** (usage ran out, or the session closed): relaunch the same workflow with the
+   same args (above). Merged units are skipped by git; an interrupted unit continues from its
+   pushed work branch. If it dies twice at one screen, add that id to `args.skipScreens` and
+   record it under **Blocked** in PROGRESS.md.
+4. **When it finishes:** RESTART.md step 6 (verify branches, `gh workflow run ci.yml --ref
+   feature/redesign-2026-<dir>` per direction, lab-build runs, PROGRESS.md update, report to the
+   owner naming every unit not merged and why, and any UNJUDGED unit for a Claude re-judge).
+5. Delete this file (commit the deletion) once the build is finished or genuinely picked up.
 
-## Standing rules (unchanged)
+## Standing rules
 
 Never push to `main`, never open a PR into `main`, never push `v*` tags, never dispatch
 `release.yml`, `pages.yml` or `android-release.yml`; `lab-build.yml` only with `--ref main -f
 ref=feature/redesign-2026-<dir>`. `git add` explicit paths only; never `git restore` /
-`checkout --` / `clean` / `reset --hard` / bare `git stash`. No paid tools. Fable is authorized for
-art-director calls in phases 3-5; log the count. Lean on Codex (`codex exec`, explicit `-m
-gpt-5.6-sol` and effort per dispatch; `gpt-5.3-codex-spark` is NOT available on this account) for
-build work; keep Claude for taste and orchestration.
+`checkout --` / `clean` / `reset --hard` / bare `git stash`. No paid tools. Fable is authorized
+for art-director calls in phases 3-5; log the count. Codex: `gpt-5.6-sol` with explicit effort
+(`gpt-5.3-codex-spark` is not available on this account).
 
-## Session-local extra
-
-A one-shot resume prompt was scheduled in the 2026-10-06 night session for 2026-10-07 16:07 PDT
-(CronCreate job `576e2399`). It dies if that session closed. Either way: this file is in the repo;
-say "resume" in a new session opened in the worktree and follow it.
+A one-shot resume prompt is scheduled in the 2026-10-06 night session for 16:07 PDT (CronCreate
+`576e2399`); it dies with that session. Either way, say "resume" in a new session opened in the
+worktree and follow this file.

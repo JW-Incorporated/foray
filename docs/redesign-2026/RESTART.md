@@ -13,6 +13,13 @@ small: delegate reading, building and verifying to agents and workflows.
 
 ---
 
+## Day 3 (from 2026-10-07 06:40 PDT): back on Claude, Codex reviews
+
+The overnight Codex driver was too slow (about 4 units in 7 hours) and is stopped. The build runs
+as Claude workflow `wf_8c930d5d-182` (`build-directions.workflow.js` @ 77a8fa81, args in
+`PAUSE.md`): Opus builds, Codex reviews, 4 screens in flight per direction. **`PAUSE.md` at the
+worktree root is the current resume procedure; follow it first.** The section below is history.
+
 ## Night 2, continued (from 2026-10-06 23:00 PDT): the build runs on Codex
 
 **If `PAUSE.md` exists at the worktree root, follow it first; it outranks this file.**
