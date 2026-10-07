@@ -25,7 +25,11 @@ It shows the lock PID and liveness, current worktree-backed steps, per-direction
 counts, Claude cooldown, successful Fable count, lab URLs, and the last 15 log
 lines. Detailed state and step artifacts live under
 `data-local/redesign/codex-driver/` (`state.json`, `summary.json`, `run.log`, and
-`steps/`).
+`steps/`). On real runs, step worktrees use short names under `~/fw`
+(`C:\Users\<user>\fw` on Windows) to leave enough path length for the deepest
+Android sources. Dry runs keep their fake worktrees inside the OS temporary
+directory. Both `status` and `run.log` show the full worktree path for each
+active step.
 
 To resume after a crash or reboot, run the same `run` command. A live lock is
 refused; a stale lock is taken over. The driver checks merge commits on the

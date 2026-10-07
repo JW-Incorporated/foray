@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url'
 const SCRIPT = fileURLToPath(import.meta.url)
 const WT = path.resolve(path.dirname(SCRIPT), '..', '..', '..')
 const REAL_ROOT = path.join(WT, 'data-local', 'redesign')
+const REAL_WORKTREES = path.join(os.homedir(), 'fw')
 const TRUNK = 'feature/redesign-2026'
 const REPO = 'JW-Incorporated/foray'
 const DRIVER_VERSION = 1
@@ -58,6 +59,7 @@ function usage() {
     'Usage:',
     '  node docs/redesign-2026/workflows/build-directions.codex.mjs run --directions tactile,ambient [--skip-screens id,id] [--max-iters 4] [--dry-run]',
     '  node docs/redesign-2026/workflows/build-directions.codex.mjs status',
+    '  node docs/redesign-2026/workflows/build-directions.codex.mjs selftest-worktree',
   ].join('\n')
 }
 
@@ -145,6 +147,29 @@ function spawnPortable(command, args, options) {
   return spawn(command, args, options)
 }
 
+class AsyncMutex {
+  constructor() {
+    this.tail = Promise.resolve()
+  }
+
+  async runExclusive(action) {
+    let release
+    const turn = new Promise(resolve => { release = resolve })
+    const previous = this.tail
+    this.tail = previous.then(() => turn, () => turn)
+    await previous
+    try { return await action() } finally { release() }
+  }
+}
+
+function samePath(a, b) {
+  const normalize = value => {
+    const resolved = path.resolve(value)
+    return process.platform === 'win32' ? resolved.toLowerCase() : resolved
+  }
+  return normalize(a) === normalize(b)
+}
+
 async function killTree(pid) {
   if (!pid) return
   if (process.platform === 'win32') {
@@ -224,6 +249,7 @@ function createState(args) {
     updatedAt: iso(),
     completedAt: null,
     args: { directions: args.directions, skipScreens: args.skipScreens, maxIters: args.maxIters },
+    currentSteps: {},
     directions: Object.fromEntries(args.directions.map(d => [d, { currentSteps: {}, units: {}, blocked: null, consecutiveImplementNulls: 0 }])),
     claudeDownUntil: null,
     fableCount: 0,
@@ -238,7 +264,7 @@ class Driver {
     this.root = options.root || REAL_ROOT
     this.driverDir = path.join(this.root, 'codex-driver')
     this.stepsDir = path.join(this.driverDir, 'steps')
-    this.worktreesDir = path.join(this.driverDir, 'wt')
+    this.worktreesDir = this.dry ? path.join(this.driverDir, 'wt') : REAL_WORKTREES
     this.statePath = path.join(this.driverDir, 'state.json')
     this.logPath = path.join(this.driverDir, 'run.log')
     this.lockPath = path.join(this.driverDir, 'driver.lock')
@@ -248,6 +274,7 @@ class Driver {
     this.seq = 0
     this.writeChain = Promise.resolve()
     this.trunkChain = Promise.resolve()
+    this.trunkGitMutex = new AsyncMutex()
     this.keepAwake = null
     this.activeChildren = new Set()
     this.fake = options.fake || null
@@ -266,6 +293,7 @@ class Driver {
       this.state.startedAt = iso()
       this.state.completedAt = null
       this.state.args = { directions: this.args.directions, skipScreens: this.args.skipScreens, maxIters: this.args.maxIters }
+      this.state.currentSteps = {}
       for (const d of this.args.directions) {
         this.state.directions[d] ||= { currentSteps: {}, units: {}, blocked: null, consecutiveImplementNulls: 0 }
         this.state.directions[d].currentSteps = {}
@@ -348,31 +376,46 @@ class Driver {
   }
 
   async setCurrent(step, worktree = null) {
-    if (!step.direction || !this.state.directions[step.direction]) return
-    this.state.directions[step.direction].currentSteps[step.seq] = { label: step.label, startedAt: iso(), worktree }
+    const current = { label: step.label, direction: step.direction || null, startedAt: iso(), worktree }
+    this.state.currentSteps[step.seq] = current
+    if (step.direction && this.state.directions[step.direction]) this.state.directions[step.direction].currentSteps[step.seq] = current
     await this.persist()
   }
 
   async clearCurrent(step) {
-    if (!step.direction || !this.state.directions[step.direction]) return
-    delete this.state.directions[step.direction].currentSteps[step.seq]
+    delete this.state.currentSteps[step.seq]
+    if (step.direction && this.state.directions[step.direction]) delete this.state.directions[step.direction].currentSteps[step.seq]
     await this.persist()
   }
 
   async git(args, options = {}) {
-    if (this.fake) return this.fake.git(args, options)
-    return capture('git', args, { cwd: options.cwd || WT, allowFailure: options.allowFailure, timeoutMs: options.timeoutMs })
+    const cwd = options.cwd || WT
+    const invoke = () => this.fake
+      ? this.fake.git(args, { ...options, cwd })
+      : capture('git', args, { cwd, allowFailure: options.allowFailure, timeoutMs: options.timeoutMs })
+    if (samePath(cwd, WT) && !options.trunkLockHeld) return this.withTrunkGitLock(invoke)
+    return invoke()
+  }
+
+  withTrunkGitLock(action) {
+    return this.trunkGitMutex.runExclusive(action)
   }
 
   async createWorktree(step, baseRef) {
-    const d = safeLabel(step.direction || 'global')
-    const u = safeLabel(step.unitId || 'unit')
-    const worktree = path.join(this.worktreesDir, `${String(step.seq).padStart(4, '0')}-${d}-${u}-${safeLabel(step.label)}`)
-    if (this.fake) { await fs.mkdir(worktree, { recursive: true }); return worktree }
+    await fs.mkdir(this.worktreesDir, { recursive: true })
+    const seq = String(step.seq).padStart(4, '0')
+    const tag = safeLabel(step.label).slice(0, Math.max(1, 24 - seq.length - 1))
+    const worktree = path.join(this.worktreesDir, `${seq}-${tag}`)
+    if (this.fake) {
+      await fs.mkdir(worktree, { recursive: true })
+      await this.log(`${step.label}: worktree ${worktree}`)
+      return worktree
+    }
     const fetched = await this.git(['fetch', 'origin'], { allowFailure: true })
     if (fetched.code !== 0) throw new Error(`git fetch origin failed before worktree creation: ${fetched.stderr || fetched.stdout}`)
-    const result = await this.git(['worktree', 'add', '--detach', worktree, `origin/${baseRef}`], { allowFailure: true })
+    const result = await this.git(['-c', 'core.longpaths=true', 'worktree', 'add', '--detach', worktree, `origin/${baseRef}`], { allowFailure: true })
     if (result.code !== 0) throw new Error(`git worktree add failed: ${result.stderr || result.stdout}`)
+    await this.log(`${step.label}: worktree ${worktree}`)
     return worktree
   }
 
@@ -544,21 +587,26 @@ class Driver {
 
   async writeProgress(line) {
     if (this.fake) { this.fake.progressLines.push(line); return }
-    const rel = 'docs/redesign-2026/PROGRESS.md'
-    const file = path.join(WT, ...rel.split('/'))
-    await this.git(['pull', '--ff-only'], { cwd: WT })
-    const text = await fs.readFile(file, 'utf8')
-    if (text.lastIndexOf('## Log') < 0) throw new Error('PROGRESS.md has no ## Log section')
-    const prefix = text.endsWith('\n') ? '' : '\n'
-    await fs.writeFile(file, `${text}${prefix}- ${new Date().toISOString().slice(0, 10)} — ${line}\n`)
-    await this.git(['add', rel], { cwd: WT })
-    await this.git(['commit', '-m', `docs: log redesign driver progress (${safeLabel(line).slice(0, 48)})`], { cwd: WT })
-    let pushed = await this.git(['push', 'origin', TRUNK], { cwd: WT, allowFailure: true })
-    if (pushed.code !== 0) {
-      await this.git(['pull', '--rebase'], { cwd: WT })
-      pushed = await this.git(['push', 'origin', TRUNK], { cwd: WT, allowFailure: true })
-      if (pushed.code !== 0) throw new Error(`push rejected after one rebase: ${pushed.stderr || pushed.stdout}`)
-    }
+    return this.withTrunkGitLock(async () => {
+      const rel = 'docs/redesign-2026/PROGRESS.md'
+      const file = path.join(WT, ...rel.split('/'))
+      const git = (args, options = {}) => this.git(args, { ...options, cwd: WT, trunkLockHeld: true })
+      await git(['fetch', 'origin', TRUNK])
+      await git(['merge', '--ff-only', `origin/${TRUNK}`])
+      const text = await fs.readFile(file, 'utf8')
+      if (text.lastIndexOf('## Log') < 0) throw new Error('PROGRESS.md has no ## Log section')
+      const prefix = text.endsWith('\n') ? '' : '\n'
+      await fs.writeFile(file, `${text}${prefix}- ${new Date().toISOString().slice(0, 10)} — ${line}\n`)
+      await git(['add', rel])
+      await git(['commit', '-m', `docs: log redesign driver progress (${safeLabel(line).slice(0, 48)})`])
+      let pushed = await git(['push', 'origin', TRUNK], { allowFailure: true })
+      if (pushed.code !== 0) {
+        await git(['fetch', 'origin', TRUNK])
+        await git(['rebase', `origin/${TRUNK}`])
+        pushed = await git(['push', 'origin', TRUNK], { allowFailure: true })
+        if (pushed.code !== 0) throw new Error(`push rejected after one rebase: ${pushed.stderr || pushed.stdout}`)
+      }
+    })
   }
 
   async ensureBaseline() {
@@ -814,9 +862,16 @@ class DryFake {
     this.reviewCalls = new Map()
     this.labCalls = []
     this.claudeCalls = []
+    this.gitEvents = []
   }
 
-  async git() { return { code: 0, stdout: '', stderr: '' } }
+  async git(args) {
+    const command = args.join(' ')
+    this.gitEvents.push(`enter ${command}`)
+    await sleep(5)
+    this.gitEvents.push(`exit ${command}`)
+    return { code: 0, stdout: '', stderr: '' }
+  }
   async mergedOnDirection(d, work) { return d === 'tactile' && work.endsWith('-p3-tokens') }
   async resumableWork(d, work) { return d === 'tactile' && work.endsWith('-p3-icons') }
   async verifyMerge(d, work) { return this.merges.has(`${d}:${work}`) }
@@ -896,6 +951,14 @@ async function dryRun(args) {
     assertDry(ambient.blocked && ambient.screens.length === 3 && ambient.screens.every(x => x.implementNull), 'three consecutive implement nulls block only that direction', assertions)
     assertDry(!tactile.blocked, 'the other direction continues after its peer is blocked', assertions)
     assertDry(fake.progressLines.some(x => x.includes('UNJUDGED')) && fake.progressLines.some(x => x.includes('BLOCKED')), 'progress records UNJUDGED and BLOCKED outcomes', assertions)
+    fake.gitEvents = []
+    const gitSequence = name => driver.withTrunkGitLock(async () => {
+      await driver.git([`dry-${name}-1`], { cwd: WT, trunkLockHeld: true })
+      await driver.git([`dry-${name}-2`], { cwd: WT, trunkLockHeld: true })
+    })
+    await Promise.all([gitSequence('sequence-a'), gitSequence('sequence-b')])
+    const entered = fake.gitEvents.filter(event => event.startsWith('enter ')).map(event => event.match(/sequence-[ab]/)?.[0])
+    assertDry(entered.join(',') === 'sequence-a,sequence-a,sequence-b,sequence-b' || entered.join(',') === 'sequence-b,sequence-b,sequence-a,sequence-a', 'concurrent trunk git sequences never interleave', assertions)
     console.log(`DRY-RUN PASS: ${assertions.length} scenario assertions; ${fake.calls.length} Codex attempts; ${fake.claudeCalls.length} Claude calls; ${fake.labCalls.length} lab dispatches`)
     return summary
   } finally {
@@ -924,6 +987,8 @@ async function status() {
   console.log(`Lock: ${lock ? `PID ${lock.pid}, ${pidAlive(lock.pid) ? 'alive' : 'stale'}, started ${lock.startedAt}` : 'none'}`)
   if (!state) console.log('State: none')
   else {
+    const active = Object.values(state.currentSteps || {})
+    console.log(`Current steps: ${active.length ? active.map(x => `${x.label} (${x.direction || 'global'}, since ${x.startedAt}, worktree ${x.worktree || 'none'})`).join('; ') : 'none'}`)
     for (const [d, value] of Object.entries(state.directions || {})) {
       const current = Object.values(value.currentSteps || {})
       console.log(`${d}: ${current.length ? current.map(x => `${x.label} (since ${x.startedAt}, worktree ${x.worktree || 'none'})`).join('; ') : 'idle'}`)
@@ -967,11 +1032,39 @@ async function smokeClaude() {
   }
 }
 
+async function selftestWorktree() {
+  const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'foray-worktree-selftest-'))
+  const args = { directions: [], skipScreens: [], maxIters: 1, dryRun: false }
+  const driver = new Driver(args, { root: path.join(temp, 'redesign') })
+  driver.seq = 1000 + Math.floor(Date.now() / 1000) % 8000
+  const step = await driver.createStep('selftest-worktree', null, 'selftest', 'Worktree path self-test.', STATUS)
+  let worktree = null
+  try {
+    worktree = await driver.createWorktree(step, TRUNK)
+    const deep = path.join(worktree, 'mobile', 'plugins', 'foray-audio', 'android', 'foray-engine-core-jvm', 'src', 'main', 'java', 'ai', 'jwlabs', 'foura', 'engine')
+    const stat = await fs.stat(deep)
+    if (!stat.isDirectory()) throw new Error(`deep path is not a directory: ${deep}`)
+    await driver.cleanupWorktree(worktree)
+    try {
+      await fs.access(worktree)
+      throw new Error(`clean worktree still exists after removal: ${worktree}`)
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error
+    }
+    console.log(JSON.stringify({ selftest: 'worktree', ok: true, worktree, deepPath: deep, removedWithoutForce: true }))
+  } finally {
+    const resolved = path.resolve(temp)
+    if (!resolved.startsWith(path.resolve(os.tmpdir()) + path.sep)) throw new Error(`refusing to remove unexpected temp path: ${resolved}`)
+    await fs.rm(resolved, { recursive: true })
+  }
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2))
   if (args.command === 'status') return status()
   if (args.command === 'smoke-codex') return smokeCodex()
   if (args.command === 'smoke-claude') return smokeClaude()
+  if (args.command === 'selftest-worktree') return selftestWorktree()
   if (args.command !== 'run') { console.log(usage()); if (args.command !== 'help') process.exitCode = 2; return }
   if (!args.dryRun && !args.directions.length) throw new Error('--directions is required')
   if (args.dryRun) return dryRun(args)
