@@ -469,10 +469,10 @@ catalogue are bundled, so this does not apply there.
 Shows searches are answered by 4a's API, hosted on **Vercel**, which acts as our
 processor: it sees the query text and the request metadata of each search, and
 4a does not log the query. Opening a show's page, and the check for new episodes
-of the shows you follow (`app.js:checkFollowedShows()`, at most once every six
-hours per show, while 4a is open), ask the same API for that show's latest
-episodes: the request carries the show's id and the usual request metadata, and
-nothing about you.
+of the shows you follow (`app.js:checkFollowedShows()`, while 4a is open, at most
+once every six hours per show; a check that failed is tried again the next time
+4a is opened), ask the same API for that show's latest episodes: the request
+carries the show's id and the usual request metadata, and nothing about you.
 
 ## 5. What 4a does not do
 

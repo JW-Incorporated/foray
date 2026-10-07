@@ -1873,9 +1873,13 @@ const FOLLOW_TOGGLE = { offText: "+ Follow", onText: "✓ Followed", offLabel: "
    "4a doesn't add its new episodes anywhere" read like a bug report.
    SINCE PQ-26 (#761) a followed show is checked for new episodes and its row
    is MARKED ("2 new", see checkFollowedShows) — so the note says that, and
-   says the two things the mark is not: nothing is queued, and there is no
-   phone notification (privacy policy, the `cp_starred_shows` row). */
-const FOLLOW_NOTE = "Following keeps a show one tap away in your Library, marked when it has new episodes. Nothing is queued for you, and 4a sends no phone notifications.";
+   says the two things the mark is not: nothing is queued, and no phone
+   notification is sent about the new episodes (privacy policy, the
+   `cp_starred_shows` row). SCOPED TO NEW EPISODES (review 2026-10-06): it
+   used to say "4a sends no phone notifications", which is false on Android —
+   the foray-audio plugin's PlaybackKeepAliveService posts a media
+   notification whenever audio plays. */
+const FOLLOW_NOTE = "Following keeps a show one tap away in your Library, marked when it has new episodes. Nothing is queued for you, and no phone notification is sent about them.";
 const UP_NEXT_TOGGLE = { offText: "+ Up Next", onText: "✓ Up Next", offLabel: "Add to Up Next", onLabel: "In Up Next" };
 /* Keeping a playlist 4a made (founder, 2026-09-25: "we should add a feature to
    save playlists"). Once saved the control reads "Saved" and is a state, not an
@@ -1982,8 +1986,9 @@ function upNextBtn(id, item = null) {
 
    WHAT FOLLOWING DOES FETCH (PQ-26, #761; README default Q20). A followed
    show is checked for new episodes — `checkFollowedShows` below asks the
-   same `api/shows/<id>/episodes` the show's page asks, at most every six
-   hours per show — and its row is MARKED "N new" in Library and on
+   same `api/shows/<id>/episodes` the show's page asks, while 4a is open, at
+   most once every six hours per show; a check that failed is tried again the
+   next time 4a is opened (privacy policy §4.3) — and its row is MARKED "N new" in Library and on
    #/starred-shows until the listener opens the show's page. The rules (what is
    new, when a check is due, the watermark) are `player/show-alerts.js`'s,
    published by player/client.js as `window.forayShowAlerts`; what lives here
@@ -2026,6 +2031,12 @@ function newEpisodeCount(entry) {
 
 const FOLLOWED_CHECK_CAP = 6;
 let followedCheckInFlight = null;
+/* show_id → when this session's last check of it FAILED. Session only, never
+   stored: a failed check leaves the record untouched (rule 1), so by its
+   record the show stays due, and without this every Library open and every
+   return to the foreground would send its id again. A fresh follow clears its
+   entry (toggleShowStar) so its seeding check is not held back. */
+const followedCheckFailedAt = new Map();
 
 /** Check the followed shows that are due for new episodes: alerts on, never
     checked or checked at least six hours ago (`force` skips the clock), oldest
@@ -2033,7 +2044,11 @@ let followedCheckInFlight = null;
     caller is a render or a listener, and none awaits it. Resolves to how many
     records it rewrote.
     - A failed fetch (`fetchShowEpisodes` resolves `{ episodes: null }`; it
-      never throws) leaves the record untouched, so the show stays due.
+      never throws), or the endpoint's degraded 200 (`{ episodes: [], error }`:
+      a feed it could not read — the failure renderEpisode also refuses),
+      leaves the record untouched, so the show stays due by its record. This
+      session waits CHECK_INTERVAL_MS before asking it again
+      (followedCheckFailedAt); the next session asks at once.
     - A `pi:` show is asked for by its shard key, which only the show record in
       memory can give (shardKeyForShow); a followed `pi:` show this session has
       not seen is skipped rather than asked without one (a 404 by
@@ -2046,20 +2061,22 @@ function checkFollowedShows({ force = false } = {}) {
   const now = Date.now();
   const due = Object.values(starredShowsMap())
     .filter((r) => r && typeof r === "object" && typeof r.show_id === "string" && r.show_id)
-    .filter((r) => rules.alertsOn(r) && (force || rules.dueForCheck(r, now)))
+    .filter((r) => rules.alertsOn(r) && (force || (rules.dueForCheck(r, now) && !failedRecently(r.show_id, now, rules))))
     .filter((r) => !r.show_id.startsWith("pi:") || shardKeyForShow(showById(r.show_id)))
     .sort((a, b) => String(a.checked_at || "").localeCompare(String(b.checked_at || "")))
     .slice(0, FOLLOWED_CHECK_CAP);
   if (!due.length) return Promise.resolve(0);
   let badgeChanged = false;
+  const failed = (r) => { followedCheckFailedAt.set(r.show_id, Date.now()); return false; };
   const one = (r) => fetchShowEpisodes(r.show_id).then((res) => {
-    if (!res || !Array.isArray(res.episodes)) return false;
+    if (!res || !Array.isArray(res.episodes) || (res.error && !res.episodes.length)) return failed(r);
+    followedCheckFailedAt.delete(r.show_id);
     return updateFollowedShow(r.show_id, (rec) => {
       const next = rules.afterCheck(rec, res.episodes, Date.now());
       if (newEpisodeCount(next) !== newEpisodeCount(rec)) badgeChanged = true;
       return next;
     });
-  }, () => false);
+  }, () => failed(r));
   const run = Promise.all(due.map(one)).then((written) => {
     if (badgeChanged) repaintFollowedIfShown();
     return written.filter(Boolean).length;
@@ -2068,6 +2085,13 @@ function checkFollowedShows({ force = false } = {}) {
   const clear = () => { if (followedCheckInFlight === run) followedCheckInFlight = null; };
   run.then(clear, clear);
   return run;
+}
+
+/** Whether this session's last check of `id` failed less than the check
+    interval ago (followedCheckFailedAt). */
+function failedRecently(id, now, rules) {
+  const at = followedCheckFailedAt.get(id);
+  return at !== undefined && now - at < rules.CHECK_INTERVAL_MS;
 }
 
 /** Library and #/starred-shows are the two pages that print the badge. */
@@ -2120,8 +2144,9 @@ function toggleShowStar(id) {
   paintShowAlertsBtns(id);
   /* A fresh follow is due at once: its first check seeds the watermark, so
      what the show publishes from now on is what reads as new (show-alerts.js:
-     a first check reports 0). */
-  if (ok && !had) checkFollowedShows();
+     a first check reports 0). A failure remembered from before an unfollow
+     does not hold it back. */
+  if (ok && !had) { followedCheckFailedAt.delete(id); checkFollowedShows(); }
 }
 
 /* Text label, not a bare glyph like starBtn -- this button sits alone in a

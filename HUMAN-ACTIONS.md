@@ -100,7 +100,7 @@ Sentence 3, the changed `cp_starred_shows` row in §1 (it said "No notifications
 
 Sentence 4, added to §4.3's Vercel paragraph (the same PR also points `data-safety.md`'s "§2 states it" at §4.3, where it is now true):
 
-> Opening a show's page, and the check for new episodes of the shows you follow (`app.js:checkFollowedShows()`, at most once every six hours per show, while 4a is open), ask the same API for that show's latest episodes: the request carries the show's id and the usual request metadata, and nothing about you.
+> Opening a show's page, and the check for new episodes of the shows you follow (`app.js:checkFollowedShows()`, while 4a is open, at most once every six hours per show; a check that failed is tried again the next time 4a is opened), ask the same API for that show's latest episodes: the request carries the show's id and the usual request metadata, and nothing about you.
 
 **Steps:**
 1. Read the sentence(s) above.

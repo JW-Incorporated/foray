@@ -234,9 +234,15 @@ test("REVIEW: the show page says, beside Follow, that following queues nothing a
   assert.ok(btnAt > 0 && noteAt > btnAt, "the note sits right after the Follow button");
   /* Said as what Follow IS (audit round 2, copy-14), and since PQ-26 what the
      "N new" mark is not: nothing is queued, and no phone notification.
+     The notification clause is about new episodes only: 4a does post a phone
+     notification on Android while audio plays (the foray-audio plugin's
+     PlaybackKeepAliveService media notification), so an app-wide "4a sends no
+     phone notifications" was false.
      MUTATION: restore "4a doesn't add its new episodes anywhere" — the
-     bug-report wording; or drop the notification clause from FOLLOW_NOTE. */
-  assert.match(html.slice(noteAt, noteAt + 260), /marked when it has new episodes\. Nothing is queued for you, and 4a sends no phone notifications\./);
+     bug-report wording; or drop the notification clause from FOLLOW_NOTE; or
+     put back the app-wide "4a sends no phone notifications". */
+  assert.match(html.slice(noteAt, noteAt + 260), /marked when it has new episodes\. Nothing is queued for you, and no phone notification is sent about them\./);
+  assert.doesNotMatch(html, /sends no phone notifications/, "the denial is scoped to new episodes, not the whole app");
   assert.doesNotMatch(html, /doesn(&#39;|')t add its new episodes anywhere/);
   const policy = require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "docs/legal/privacy-policy.md"), "utf8");
   const row = policy.split("\n").find((l) => l.startsWith("| `cp_starred_shows`"));
@@ -418,8 +424,9 @@ test("starring a show never writes to cp_saved (the episode-star store)", () => 
 const { pathToFileURL } = require("node:url");
 const showAlertsModule = () => import(pathToFileURL(path.join(ROOT, "player/show-alerts.js")).href);
 
-/** A fetch that answers `api/shows/<id>/episodes` from `pages` (id → rows, or
-    a number for an HTTP failure) and records every show id it was asked for. */
+/** A fetch that answers `api/shows/<id>/episodes` from `pages` (id → rows, a
+    number for an HTTP failure, or a plain object sent as the 200 body as is —
+    the endpoint's degraded answer) and records every show id it was asked for. */
 function episodesFetch(pages) {
   const asked = [];
   const fn = (url) => {
@@ -429,6 +436,7 @@ function episodesFetch(pages) {
     asked.push(id);
     const page = pages[id];
     if (typeof page === "number") return Promise.resolve({ ok: false, status: page, json: async () => ({}) });
+    if (page && typeof page === "object" && !Array.isArray(page)) return Promise.resolve({ ok: true, status: 200, json: async () => page });
     return Promise.resolve({ ok: true, status: 200, json: async () => ({ episodes: page || [], next_cursor: null }) });
   };
   return { fn, asked };
@@ -443,9 +451,22 @@ test("PQ-26: a check that finds two newer episodes writes unseen_count 2; a fail
      the count is computed and thrown away, and `unseen_count` stays 0.
      MUTATION 2: treat `episodes: null` as an empty page (`res.episodes || []`)
      — the failed show is stamped `checked_at` and stops being due for six
-     hours without having been checked, and the untouched assertion fails. */
+     hours without having been checked, and the untouched assertion fails.
+     MUTATION 3: drop the `res.error && !res.episodes.length` clause from
+     checkFollowedShows' failure guard — the endpoint's degraded 200 (`{
+     episodes: [], degraded: true, error }`, a feed it could not read) reads as
+     "nothing published", s-c's "2 new" badge is wiped and `checked_at` is
+     stamped: `written` becomes 2 and s-c's record changes.
+     MUTATION 4: drop `followedCheckFailedAt.set(...)` (or the filter that
+     reads it) — the second call asks s-b and s-c again at once, so every
+     Library open and every return to the foreground re-sends a failing show's
+     id, and the "not asked again" assertion fails.
+     MUTATION 5: drop `followedCheckFailedAt.delete(id)` from toggleShowStar —
+     a show unfollowed and followed again is held back by the old failure and
+     its seeding check is never sent. */
   const watermarked = followed("s-a", { checked_at: OLD_CHECK, seen_published_at: "2026-09-10T00:00:00Z", latest_published_at: "2026-09-10T00:00:00Z", unseen_count: 0 });
   const failing = followed("s-b", { checked_at: OLD_CHECK, seen_published_at: "2026-09-10T00:00:00Z" });
+  const degraded = followed("s-c", { checked_at: OLD_CHECK, seen_published_at: "2026-09-10T00:00:00Z", latest_published_at: "2026-09-20T00:00:00Z", unseen_count: 2 });
   const { fn, asked } = episodesFetch({
     "s-a": [
       { title: "Newest", published_at: "2026-09-20T00:00:00Z" },
@@ -453,11 +474,12 @@ test("PQ-26: a check that finds two newer episodes writes unseen_count 2; a fail
       { title: "Seen", published_at: "2026-09-10T00:00:00Z" },
     ],
     "s-b": 503,
+    "s-c": { episodes: [], next_cursor: null, degraded: true, stale: false, error: "feed unavailable" },
   });
-  const m = mount({ fetch: fn, seed: { cp_starred_shows: JSON.stringify({ "s-a": watermarked, "s-b": failing }) } });
+  const m = mount({ fetch: fn, seed: { cp_starred_shows: JSON.stringify({ "s-a": watermarked, "s-b": failing, "s-c": degraded }) } });
   m.ctx.forayShowAlerts = await showAlertsModule();
   const written = await m.ctx.checkFollowedShows();
-  assert.deepStrictEqual(asked.slice().sort(), ["s-a", "s-b"], "both due shows are asked");
+  assert.deepStrictEqual(asked.slice().sort(), ["s-a", "s-b", "s-c"], "every due show is asked");
   assert.strictEqual(written, 1, "only the answered check is written");
   const after = storedShows(m);
   assert.strictEqual(after["s-a"].unseen_count, 2);
@@ -465,6 +487,19 @@ test("PQ-26: a check that finds two newer episodes writes unseen_count 2; a fail
   assert.strictEqual(after["s-a"].seen_published_at, "2026-09-10T00:00:00Z", "the watermark waits for the listener");
   assert.notStrictEqual(after["s-a"].checked_at, OLD_CHECK, "the check is stamped");
   assert.deepStrictEqual(after["s-b"], failing, "a failed check changes nothing");
+  assert.deepStrictEqual(after["s-c"], degraded, "a degraded 200 with no episodes is a failure: the badge and the clock stay as they were");
+  /* A failed show stays due by its record (rule 1), so without a session
+     clock every Library open and every foreground would ask for it again. */
+  asked.length = 0;
+  assert.strictEqual(await m.ctx.checkFollowedShows(), 0);
+  assert.deepStrictEqual(asked, [], "a show whose check just failed is not asked again within six hours in the same session");
+  /* A fresh follow is checked at once, even of a show whose check failed
+     before it was unfollowed. */
+  m.state.catalog = { shows: [{ show_id: "s-b", title: "Show s-b", artwork_url: null }] };
+  m.ctx.toggleShowStar("s-b");
+  m.ctx.toggleShowStar("s-b");
+  await m.evalIn("followedCheckInFlight");
+  assert.deepStrictEqual(asked, ["s-b"], "following again sends the seeding check");
 });
 
 test("PQ-26: a fresh follow is checked at once, seeds its watermark and shows no badge", async () => {
