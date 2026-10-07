@@ -289,6 +289,57 @@ test("agIcon writes an escaped safeUrl use-reference, aria-hidden, with the size
   }
 });
 
+/* esc() lifted from app.js and renamed, behind a spy that records every value the helper escapes. Same real
+   esc() and safeUrl() as loadHelper(); only the recording is added, so the output is unchanged. */
+function loadHelperSpyingOnEsc() {
+  const esc = /function esc\(s\) \{[\s\S]*?\n\}/.exec(read("app.js"));
+  const safeUrl = /function safeUrl\(u\) \{[\s\S]*?\n\}/.exec(read("app.js"));
+  assert.ok(esc && safeUrl, "esc() and safeUrl() are lifted from app.js, the real ones");
+  const src =
+    esc[0].replace("function esc(", "function __realEsc(") + "\n" +
+    "const __escaped = [];\nfunction esc(s) { __escaped.push(String(s)); return __realEsc(s); }\n" +
+    safeUrl[0] + "\n" + read("ui/icons.js") + "\n;({ agIcon, __escaped })";
+  return vm.runInNewContext(src, {}, { filename: "ui/icons.js" });
+}
+
+test("agIcon passes its class through esc(), not only its href (every interpolation, review blocker)", () => {
+  /* MUTATION: in ui/icons.js write `'<svg class="' + cls + '"` instead of `esc(cls)` -> red (the spy never
+     sees the class, for any size). The class comes from an allow-list, so the output cannot show the
+     difference; the spy is what makes the escaping observable. */
+  const h = loadHelperSpyingOnEsc();
+  for (const [size, cls] of [[undefined, "icon"], [20, "icon icon-20"], [28, "icon icon-28"], [36, "icon icon-36"]]) {
+    h.__escaped.length = 0;
+    const out = h.agIcon("house", size);
+    assert.ok(out.startsWith(`<svg class="${cls}"`), `size ${size} renders class ${cls}`);
+    assert.ok(Array.from(h.__escaped).includes(cls), `the class "${cls}" went through esc() (escaped: ${JSON.stringify(Array.from(h.__escaped))})`);
+    assert.ok(Array.from(h.__escaped).includes("ui/icons.svg#i-house"), "the href went through esc() too");
+  }
+});
+
+/* Every `="' + x` attribute splice and every `="${x}"` template splice in a source must open with esc(. */
+function unescapedAttrSplices(src) {
+  const bad = [];
+  for (const m of src.matchAll(/="'\s*\+\s*([^\s'"+]+)/g)) if (!m[1].startsWith("esc(")) bad.push(m[1]);
+  for (const m of src.matchAll(/="\$\{\s*([^\s}]+)/g)) if (!m[1].startsWith("esc(")) bad.push(m[1]);
+  return bad;
+}
+
+test("scanner: unescapedAttrSplices flags a bare attribute splice and passes escaped ones", () => {
+  /* MUTATION: drop the `!` in either loop's esc test, or delete the template-literal loop -> red.
+     (Harness audit for the next test: the scanner is run on source that IS wrong.) */
+  assert.deepStrictEqual(unescapedAttrSplices(`'<svg class="' + cls + '"'`), ["cls"]);
+  assert.deepStrictEqual(unescapedAttrSplices("`<a id=\"${id}\">`"), ["id"]);
+  assert.deepStrictEqual(unescapedAttrSplices(`'<svg class="' + esc(cls) + '"' + ' id="' + esc(id) + '"'`), []);
+  assert.deepStrictEqual(unescapedAttrSplices("`<a id=\"${esc(id)}\">`"), []);
+});
+
+test("ui/icons.js splices nothing into an attribute without esc()", () => {
+  /* MUTATION: replace `esc(cls)` with `cls`, or `esc(id)` in agIconGallery with `id` -> red. */
+  const src = read("ui/icons.js");
+  assert.ok((src.match(/="'\s*\+/g) || []).length >= 3, "the scan sees the helper's class, href and id splices (not vacuous)");
+  assert.deepStrictEqual(unescapedAttrSplices(src), []);
+});
+
 test("agIcon returns nothing for a name or size it does not know, so no caller string reaches the markup", () => {
   /* MUTATION: delete the `AG_ICON_NAMES.includes(name)` guard -> the injection strings below render; delete the
      size guard -> `agIcon("house", 99)` renders a class nobody styles. */
