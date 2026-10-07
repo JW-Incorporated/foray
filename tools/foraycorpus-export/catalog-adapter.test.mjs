@@ -1,8 +1,10 @@
 /* PKG-31 (docs/roadmap/corpus.md): breadth-shaped catalogue from the corpus.
    Input rows are stubs with catalogue.mjs buildShows' row shape; the old
-   breadth rows carry data/catalog-breadth.json's 18 keys with invented
-   values. The suite never reads or writes data/: the CLI test writes its
-   inputs and output to a tmp dir. No network, no database, no credential. */
+   breadth rows carry data/catalog-breadth.json's 20 keys with invented
+   values. The suite never writes data/: the CLI test writes its inputs and
+   output to a tmp dir. One test READS the committed data/catalog-breadth.json
+   to pin BREADTH_KEYS to the live key order. No network, no database, no
+   credential. */
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
@@ -14,6 +16,7 @@ import { fileURLToPath } from "node:url";
 import { ADDITIVE_KEYS, BREADTH_KEYS, catalogAdapter } from "./catalog-adapter.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
+const LIVE_BREADTH = join(HERE, "..", "..", "data", "catalog-breadth.json");
 const CLI = join(HERE, "catalog-adapter.mjs");
 const HARVESTED_AT = "2026-10-05T00:00:00.000Z";
 
@@ -43,7 +46,7 @@ function showRow(overrides) {
   };
 }
 
-/** A data/catalog-breadth.json row (all 18 keys) with invented values. */
+/** A data/catalog-breadth.json row (all 20 keys, in the live order) with invented values. */
 function oldBreadthRow(overrides) {
   return {
     apple_collection_id: 111,
@@ -52,11 +55,13 @@ function oldBreadthRow(overrides) {
     artwork_url: "https://breadth.example/art.jpg",
     apple_genre: "Technology",
     apple_genre_ids: ["1318", "26"],
+    artist_name: "Synthetic Studios",
     episode_count: 10,
     explicit: false,
     chart_genre_id: "1318",
     chart_genre_name: "Technology",
     chart_rank: 7,
+    last_charted_at: "2026-07-09T00:00:00.000Z",
     in_curated: false,
     podcastindex_id: null,
     tier: "breadth",
@@ -70,7 +75,8 @@ function oldBreadthRow(overrides) {
 
 const breadthDoc = (shows) => ({ version: 1, built_at: "2026-07-09T00:00:00.000Z", region: "us", source: "synthetic", genre_count: 1, shows });
 
-/* (1) Founder ruling 31 (docs/roadmap/README.md, corpus Q3): a blocked show
+/* (1) Default 31 (docs/roadmap/README.md, corpus Q3; a proposed default the
+   tasks proceed on, not a founder ruling): a blocked show
    and a locked show are left out and counted under skipped_rights. A row
    with no itunes_id is counted under skipped_no_apple_id, and a non-English
    one under skipped_language. A null language passes.
@@ -102,8 +108,8 @@ test("blocked and locked shows are skipped and counted; no apple id and non-Engl
 /* (2) chart_genre_id / chart_genre_name / chart_rank and taxonomy_node_ids
    come from the old breadth row with the same apple_collection_id (pg's
    string "111" joins the file's number 111). A show the old harvest never
-   had gets nulls and []. The diff counts the new show, the dropped old one
-   and the changed feed URL.
+   had gets nulls and []. The diff counts the new show, the old one the
+   corpus lacks (kept, see test 7) and the changed feed URL.
    Mutation that turns this red: in catalogAdapter change
    `chart_rank: old?.chart_rank ?? null` to `chart_rank: old?.chart_rank ?? 0`
    (a show with no chart history gets rank 0, which outranks #1). */
@@ -119,14 +125,14 @@ test("chart fields and taxonomy_node_ids come from the old breadth row, else nul
       harvestedAt: HARVESTED_AT,
     },
   );
-  const [known, fresh] = shows;
+  const [known, fresh] = shows.filter((s) => s.harvest_source === "foraycorpus");
   assert.deepEqual(
     [known.chart_genre_id, known.chart_genre_name, known.chart_rank, known.taxonomy_node_ids],
     ["1318", "Technology", 7, ["technology/software"]],
   );
   assert.deepEqual([fresh.chart_genre_id, fresh.chart_genre_name, fresh.chart_rank, fresh.taxonomy_node_ids], [null, null, null, []]);
   assert.deepEqual(
-    [report.new_vs_old, report.dropped_vs_old, report.feed_url_changed],
+    [report.new_vs_old, report.kept_from_old, report.feed_url_changed],
     [1, 1, 1],
   );
 });
@@ -156,17 +162,18 @@ test("in_curated is true only for catalog show_ids, never for the numeric fallba
   );
 });
 
-/* (4) The row's key set is the old file's 18 keys (the plan's 17 plus
-   taxonomy_node_ids, which breadthCatalog.ts reads) plus the two additive
-   fields. Every value is a JSON value, so nothing vanishes on stringify. The
+/* (4) The row's key set is the old file's 20 keys (the plan's 17, plus
+   taxonomy_node_ids, which breadthCatalog.ts reads, and artist_name /
+   last_charted_at, which the harvester writes since P-03a / #1149) plus the
+   two additive fields. Every value is a JSON value, so nothing vanishes on stringify. The
    expected set is written out here, not taken from BREADTH_KEYS.
    Mutation that turns this red: rename `chart_genre_name:` to
    `chart_genre:` in the emitted row. */
-test("output keys are the old row's 18 keys plus timed_transcript_episodes and audio_episodes", () => {
+test("output keys are the old row's 20 keys plus timed_transcript_episodes and audio_episodes", () => {
   const old = oldBreadthRow({});
   const { shows } = catalogAdapter([showRow({})], { breadthOld: breadthDoc([old]), catalog: { shows: [] }, harvestedAt: HARVESTED_AT });
   const expected = [...Object.keys(old), "timed_transcript_episodes", "audio_episodes"].sort();
-  assert.equal(Object.keys(old).length, 18);
+  assert.equal(Object.keys(old).length, 20);
   assert.deepEqual(Object.keys(shows[0]).sort(), expected);
   assert.deepEqual(Object.keys(JSON.parse(JSON.stringify(shows[0]))).sort(), expected);
   assert.deepEqual([...BREADTH_KEYS, ...ADDITIVE_KEYS].sort(), expected);
@@ -211,4 +218,68 @@ test("CLI output is minified, parses, and an --out under data/ is refused", () =
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+/* (6) BREADTH_KEYS is pinned to the LIVE file, not to the plan: it
+   deep-equals the key order of the committed data/catalog-breadth.json's
+   first row, so the next field the harvester adds turns this red here
+   instead of silently vanishing from a corpus catalogue (#1148 class).
+   Mutation that turns this red: delete "artist_name" from BREADTH_KEYS. */
+test("BREADTH_KEYS is the key order of the committed data/catalog-breadth.json's first row", () => {
+  const live = JSON.parse(readFileSync(LIVE_BREADTH, "utf8"));
+  assert.ok(Array.isArray(live.shows) && live.shows.length > 0, "the committed breadth file has rows");
+  assert.deepEqual([...BREADTH_KEYS], Object.keys(live.shows[0]));
+  const { shows } = catalogAdapter([showRow({})], { breadthOld: breadthDoc([oldBreadthRow({})]), catalog: { shows: [] }, harvestedAt: HARVESTED_AT });
+  assert.deepEqual(Object.keys(shows[0]), [...Object.keys(live.shows[0]), ...ADDITIVE_KEYS], "emitted in the live order");
+});
+
+/* (7) UNION (PR #1149 semantics, docs/CATALOG-PIPELINE.md "Re-harvests keep
+   shows that left the charts"): after the corpus rows, every old row whose
+   apple id was not emitted is appended unchanged, so a corpus catalogue is a
+   superset of the committed file and no search result, show page or shared
+   #/show/<id> link is lost. The one exception is a show the corpus itself
+   flags (default 31): its old row is withheld and counted, not re-added.
+   Mutation that turns this red: delete the loop that appends the old rows
+   (888 and 999 vanish, kept_from_old stays 0). Also red: drop the
+   rightsFlagged check (222 comes back), or push `old` itself instead of a
+   structuredClone (the caller's object is aliased). */
+test("old rows the corpus did not emit are appended unchanged; a rights-flagged show is withheld", () => {
+  const old888 = oldBreadthRow({ apple_collection_id: 888, title: "Left the corpus", chart_rank: 3 });
+  const old999 = oldBreadthRow({ apple_collection_id: 999, title: "Non-English in the corpus", taxonomy_node_ids: [] });
+  const old222 = oldBreadthRow({ apple_collection_id: 222, title: "Blocked in the corpus" });
+  const { shows, report } = catalogAdapter(
+    [
+      showRow({ corpus_podcast_id: "p-1", itunes_id: "111" }),
+      showRow({ corpus_podcast_id: "p-2", itunes_id: "222", rights: { itunes_block: true, podcast_locked: false } }),
+      showRow({ corpus_podcast_id: "p-9", itunes_id: "999", language: "de" }),
+    ],
+    { breadthOld: breadthDoc([oldBreadthRow({ apple_collection_id: 111 }), old888, old222, old999]), catalog: { shows: [] }, harvestedAt: HARVESTED_AT },
+  );
+  assert.deepEqual(
+    shows.map((s) => s.apple_collection_id),
+    [111, 888, 999],
+  );
+  assert.deepEqual(shows[1], old888, "kept unchanged");
+  assert.deepEqual(shows[2], old999, "kept unchanged");
+  assert.notEqual(shows[1], old888, "a copy, not the caller's object");
+  assert.deepEqual([report.rows, report.kept_from_old, report.withheld_from_old], [3, 2, 1]);
+});
+
+/* (8) artist_name, last_charted_at and apple_genre_ids come from the old row
+   with the same apple_collection_id (never from the corpus `author`, which
+   PKG-03 scrubs and which is not Apple's artistName); a show the old file
+   never had gets null / null / [].
+   Mutation that turns this red: emit `apple_genre_ids: []` unconditionally
+   (the old row's ["1318", "26"] is lost). */
+test("artist_name, last_charted_at and apple_genre_ids are copied from the old row, else null, null, []", () => {
+  const { shows } = catalogAdapter(
+    [showRow({ corpus_podcast_id: "p-1", itunes_id: "111", author: "Scrubbed corpus author" }), showRow({ corpus_podcast_id: "p-2", itunes_id: "777" })],
+    { breadthOld: breadthDoc([oldBreadthRow({ apple_collection_id: 111 })]), catalog: { shows: [] }, harvestedAt: HARVESTED_AT },
+  );
+  const [known, fresh] = shows;
+  assert.deepEqual(
+    [known.artist_name, known.last_charted_at, known.apple_genre_ids],
+    ["Synthetic Studios", "2026-07-09T00:00:00.000Z", ["1318", "26"]],
+  );
+  assert.deepEqual([fresh.artist_name, fresh.last_charted_at, fresh.apple_genre_ids], [null, null, []]);
 });
