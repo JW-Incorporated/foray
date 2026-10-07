@@ -308,6 +308,25 @@ test("SIGNING_SECRETS is exactly the set of secrets release.yml reads (drift gua
   assert.deepEqual([...read].sort(), [...SIGNING_SECRETS].sort());
 });
 
+test("SIGNING_SECRETS is the eleven names in sorted order, frozen (CH2-21 characterization)", () => {
+  /* MUTATION: build the list without sorting, or drop the freeze -> red. The
+     order is the order a missing secret is named in the report. */
+  assert.deepEqual([...SIGNING_SECRETS], [
+    "ANDROID_KEYSTORE_B64",
+    "ANDROID_KEYSTORE_PASSWORD",
+    "ANDROID_KEY_ALIAS",
+    "APPLE_TEAM_ID",
+    "APP_STORE_CONNECT_ISSUER_ID",
+    "APP_STORE_CONNECT_KEY_ID",
+    "APP_STORE_CONNECT_PRIVATE_KEY_BASE64",
+    "IOS_DIST_CERT_P12_BASE64",
+    "IOS_DIST_CERT_PASSWORD",
+    "IOS_PROVISIONING_PROFILE_BASE64",
+    "PLAY_SERVICE_ACCOUNT_JSON",
+  ]);
+  assert.ok(Object.isFrozen(SIGNING_SECRETS));
+});
+
 test("the text report marks each check PASS / FAIL / ???? and ends with the verdict", () => {
   /* MUTATION: print "PASS" for an unknown (null) check -> fails. */
   const text = formatReport({

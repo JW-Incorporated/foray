@@ -124,6 +124,76 @@ test("unrelated environment variables cannot make signing look ready", () => {
   assert.equal(r.state, "absent");
 });
 
+test("signingReadiness over {all present, none, one missing, whitespace-only}: ready / absent / partial / absent, with the shipped messages (CH2-21 characterization)", () => {
+  /* MUTATION: reword any of the three messages in the shared readiness() (or
+     its "is"/"are" agreement) -> the exact strings below go red. These are the
+     lines a founder reads in the ios-archive job summary. */
+  assert.deepEqual(signingReadiness(allSecrets()), {
+    state: "ready", ready: true, present: [...SIGNING_SECRETS], missing: [],
+    message: "All 7 signing secrets present — archiving and uploading to TestFlight.",
+  });
+  const absentMessage =
+    "No signing secrets set, so the TestFlight upload is skipped. The unsigned build " +
+    "above still ran, and that is the designed behaviour — see HUMAN-ACTIONS.md #19.";
+  assert.deepEqual(signingReadiness({}), {
+    state: "absent", ready: false, present: [], missing: [...SIGNING_SECRETS], message: absentMessage,
+  });
+  const blanks = Object.fromEntries(SIGNING_SECRETS.map((k) => [k, " \t"]));
+  assert.deepEqual(signingReadiness(blanks), signingReadiness({}));
+
+  const oneMissing = allSecrets();
+  delete oneMissing.APPLE_TEAM_ID;
+  assert.equal(
+    signingReadiness(oneMissing).message,
+    "Signing is HALF configured: 6 of 7 secrets are set and APPLE_TEAM_ID is missing. Failing " +
+      "rather than skipping, because a skipped upload on a green run is invisible."
+  );
+  const twoMissing = { ...oneMissing, IOS_DIST_CERT_PASSWORD: "" };
+  const r = signingReadiness(twoMissing);
+  assert.equal(r.state, "partial");
+  assert.deepEqual(r.missing, ["IOS_DIST_CERT_PASSWORD", "APPLE_TEAM_ID"]);
+  assert.equal(
+    r.message,
+    "Signing is HALF configured: 5 of 7 secrets are set and IOS_DIST_CERT_PASSWORD, APPLE_TEAM_ID are " +
+      "missing. Failing rather than skipping, because a skipped upload on a green run is invisible."
+  );
+});
+
+test("the iOS signing secrets are exactly the seven App Store Connect names, in the order the gate reports them (CH2-21 characterization)", () => {
+  /* MUTATION: drop or rename one -> red here AND in release-env-check, which
+     now imports this list instead of keeping its own copy. */
+  assert.deepEqual(SIGNING_SECRETS, [
+    "IOS_DIST_CERT_P12_BASE64",
+    "IOS_DIST_CERT_PASSWORD",
+    "IOS_PROVISIONING_PROFILE_BASE64",
+    "APPLE_TEAM_ID",
+    "APP_STORE_CONNECT_KEY_ID",
+    "APP_STORE_CONNECT_ISSUER_ID",
+    "APP_STORE_CONNECT_PRIVATE_KEY_BASE64",
+  ]);
+});
+
+test("signing-gate CLI: absent exits 0 and partial exits 1, writing state / ready / missing (CH2-21 characterization)", () => {
+  /* MUTATION: let `partial` exit 0 -> a half-configured signing setup would
+     skip the upload on a green run, the exact failure the gate exists for. */
+  const run = (secrets) => {
+    const env = { ...process.env };
+    delete env.GITHUB_OUTPUT;
+    for (const k of SIGNING_SECRETS) delete env[k];
+    return spawnSync(process.execPath, [path.join(HERE, "ios-ci.mjs"), "signing-gate"], {
+      env: { ...env, ...secrets }, encoding: "utf8",
+    });
+  };
+  const absent = run({});
+  assert.equal(absent.status, 0);
+  assert.equal(absent.stdout, `state=absent\nready=false\nmissing=${SIGNING_SECRETS.join(",")}\n`);
+  assert.match(absent.stderr, /HUMAN-ACTIONS\.md #19/);
+  const partial = run({ APPLE_TEAM_ID: "T" });
+  assert.equal(partial.status, 1);
+  assert.match(partial.stdout, /^state=partial\nready=false\nmissing=IOS_DIST_CERT_P12_BASE64,/);
+  assert.match(partial.stderr, /HALF configured: 1 of 7/);
+});
+
 test("the secret list has no duplicates and names no value", () => {
   assert.equal(new Set(SIGNING_SECRETS).size, SIGNING_SECRETS.length);
   for (const name of SIGNING_SECRETS) {

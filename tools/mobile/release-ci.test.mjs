@@ -10,6 +10,9 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { playReadiness, releaseGuard, isAncestorOfMain, PLAY_SECRETS } from "./release-ci.mjs";
 
 /* ────────────────────────────── playReadiness ─────────────────────────────── */
@@ -134,4 +137,51 @@ test("isAncestorOfMain: the real command name and flags are used, not a guessed 
   assert.equal(calls[0][0], "merge-base");
   assert.equal(calls[0][1], "--is-ancestor");
   assert.equal(calls[0][3], "origin/main");
+});
+
+/* ───────────── CH2-21 characterization: the Play gate as it ships ─────────── */
+
+const RELEASE_CI = path.join(path.dirname(fileURLToPath(import.meta.url)), "release-ci.mjs");
+
+const PLAY_READY_MESSAGE =
+  "PLAY_SERVICE_ACCOUNT_JSON present — uploading the signed .aab to the Play internal testing track.";
+const PLAY_ABSENT_MESSAGE =
+  "PLAY_SERVICE_ACCOUNT_JSON is not set, so the Play upload is skipped. The signed .aab still " +
+  "ships as a build artifact. Set up G2 (service account) and G3 (first manual upload) in " +
+  "HUMAN-ACTIONS.md to unblock this — see docs/release-lockstep-plan.md.";
+
+test("playReadiness over {all present, none, one missing, whitespace-only}: ready / absent / absent / absent, with the shipped messages (CH2-21 characterization)", () => {
+  /* MUTATION: reword either message in the shared readiness() table (or let the
+     shared function trim differently) -> the exact strings below go red. With
+     one Play secret, "one missing" IS "none", so it lands on absent. */
+  const all = playReadiness({ PLAY_SERVICE_ACCOUNT_JSON: "{}" });
+  assert.deepEqual(all, {
+    state: "ready", ready: true, present: ["PLAY_SERVICE_ACCOUNT_JSON"], missing: [], message: PLAY_READY_MESSAGE,
+  });
+  for (const env of [{}, { OTHER: "x" }, { PLAY_SERVICE_ACCOUNT_JSON: " \t\n" }, { PLAY_SERVICE_ACCOUNT_JSON: "" }]) {
+    assert.deepEqual(playReadiness(env), {
+      state: "absent", ready: false, present: [], missing: ["PLAY_SERVICE_ACCOUNT_JSON"], message: PLAY_ABSENT_MESSAGE,
+    }, JSON.stringify(env));
+  }
+  /* A non-string value (a number, an object) is not a secret either. */
+  assert.equal(playReadiness({ PLAY_SERVICE_ACCOUNT_JSON: 1 }).state, "absent");
+});
+
+test("play-gate CLI: prints state / ready / missing, the message on stderr, and exits 0 for absent and ready (CH2-21 characterization)", () => {
+  /* MUTATION: make the CLI exit 1 on `absent` (or drop a GITHUB_OUTPUT line)
+     -> android-bundle's play_gate step would fail every release today. */
+  const run = (extra) => {
+    const env = { ...process.env, ...extra };
+    delete env.GITHUB_OUTPUT;
+    if (!("PLAY_SERVICE_ACCOUNT_JSON" in extra)) delete env.PLAY_SERVICE_ACCOUNT_JSON;
+    return spawnSync(process.execPath, [RELEASE_CI, "play-gate"], { env, encoding: "utf8" });
+  };
+  const absent = run({});
+  assert.equal(absent.status, 0);
+  assert.equal(absent.stdout, "state=absent\nready=false\nmissing=PLAY_SERVICE_ACCOUNT_JSON\n");
+  assert.equal(absent.stderr.trim(), PLAY_ABSENT_MESSAGE);
+  const ready = run({ PLAY_SERVICE_ACCOUNT_JSON: "{}" });
+  assert.equal(ready.status, 0);
+  assert.equal(ready.stdout, "state=ready\nready=true\nmissing=\n");
+  assert.equal(ready.stderr.trim(), PLAY_READY_MESSAGE);
 });
