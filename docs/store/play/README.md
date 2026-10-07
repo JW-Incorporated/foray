@@ -28,11 +28,11 @@ Paste the whole of **`short-description.txt`** — one line, 71 characters:
 ## 3. Full description
 
 Field: **Full description** (4000 characters max).
-Paste the whole of **`full-description.txt`** — 2956 characters.
+Paste the whole of **`full-description.txt`** — 2946 characters.
 
 **Rewritten 2026-10-07 (wave 16, issue #42)** to describe the app main ships:
-Home's rails (Play, Jump back in, Forays for you, Playlists for you, Suggested,
-with the Stretch slot), Forays, Create, in-app playback with chapters, Up Next
+Home's rails (Play, Jump back in, Forays for you, Playlists for you, and
+Suggested with its Stretch slot), Forays, Create, in-app playback with chapters, Up Next
 and Continuous playback (and the switch that turns it off), manual downloads
 that wait for Wi-Fi, Save and Follow as the app words them, Share, Family mode
 as `familySafe()` implements it, and "No account. No ads." The 2202-character
@@ -40,8 +40,13 @@ version described the retired four-card Home, a hand-off to Apple Podcasts,
 "no autoplay chain" and audio that always needed a connection — all false
 against main. Every privacy sentence in it was checked against
 `docs/legal/privacy-policy.md` (the short version, §3 and §7); nothing new is
-claimed there. `tools/store/play-listing.test.mjs` now fails if a retired
-claim comes back, or if a control the copy names by its in-app label stops
+claimed there. Stretch is claimed for Suggested only: Forays for you draws a
+Stretch pick only from a topic outside its top 60%, and the two published
+Forays (business, engineering) are both top, so that row has none — the
+intro sheet makes the same claim conditional (p-first-11), and a listing
+cannot. `tools/store/play-listing.test.mjs` now fails if a retired
+claim comes back, if Stretch is put on Forays for you while the published
+Forays cannot produce one, or if a control the copy names by its in-app label stops
 existing under that label.
 
 Paste it as plain text. Play strips formatting, and the ALL-CAPS lines in the

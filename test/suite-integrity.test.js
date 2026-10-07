@@ -2272,7 +2272,7 @@ const FLOORS = {
      exactly like a copy-paste error someone would "fix". Play requires an alpha
      channel and the App Store rejects one, so the inversion is the whole
      point. */
-  "tools/store/play-listing.test.mjs": 23, // 42-part (wave 16): the full description claims nothing the app retired, and every control it names the app still draws under that name; 21 -> 23
+  "tools/store/play-listing.test.mjs": 24, // 42-part review: Stretch is not claimed for Forays for you while the published Forays cannot produce one; 23 -> 24 // 42-part (wave 16): the full description claims nothing the app retired, and every control it names the app still draws under that name; 21 -> 23
   "tools/transcribe/fetch-audio.test.mjs": 72, // audit round 3 integration: the real post-merge count, 70 -> 72 // audit round 3 (L8): +5, resume identity, stall timer, overrun cleanup, perHost-2 gap; 65 -> 70 // NE-25a: the click-track exemption covers only descriptor-named, hash-matching files under 1 MB; 64 -> 65
   /* ADR-0008's decode-and-compare: the instrument the cheap ones defer to.
      Floored because everything expensive about it — the download, the PyAV

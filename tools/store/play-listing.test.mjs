@@ -755,6 +755,34 @@ test("every control the full description names is one the app draws, under that 
   }
 });
 
+/* A STRETCH PICK ON "FORAYS FOR YOU" IS DATA, NOT A FEATURE (review of 42-part,
+   wave 16). foraysForYouPicks() in app.js runs pickWithStretchFloor() over the
+   listed Forays' topic roots: the stretch slot draws only from a root outside
+   the top max(1, ceil(60%)) of roots, so it needs at least three distinct roots
+   to exist. With two published Forays (business, engineering) both roots are
+   "top" and stretchIndex is -1 — the row shows no Stretch pick, and the app's
+   own intro sheet already makes that half of its sentence conditional
+   (p-first-11). A listing cannot be conditional, so while the published set
+   cannot produce one, no sentence of the copy may put Stretch on that row.
+   The threshold is recomputed here exactly as pickWithStretchFloor() does; the
+   visibility rule is the player's own listableForays(), for a visitor with no
+   unlocks and no test track.
+   MUTATION THAT KILLS THIS: put "Forays for you and Suggested each keep a place
+   for a pick marked Stretch" back in full-description.txt. */
+test("the full description puts Stretch on Forays for you only when the published Forays can produce one", async () => {
+  const { listableForays } = await import("../../player/foray-resolve.js");
+  const roots = new Set(listableForays(JSON.parse(text("data/forays.json")))
+    .map((f) => (f.topic || "other").split("/")[0]));
+  const n = roots.size;
+  const stretchPossible = n > Math.max(1, Math.ceil(n * 0.6));
+  if (stretchPossible) return;
+  const sentences = copy("full-description.txt").split(/(?<=[.!?:])\s+|\n+/);
+  for (const s of sentences) {
+    assert.ok(!(/forays for you/i.test(s) && /stretch/i.test(s)),
+      `full-description.txt says "${s}", but the ${n} published Foray topic root(s) leave Forays for you with no Stretch pick`);
+  }
+});
+
 /* ---------- the package, as a package ---------- */
 
 test("README.md names every asset in the directory", () => {

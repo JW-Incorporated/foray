@@ -4,7 +4,7 @@ FORAYS: ONE SUBJECT, MANY SHOWS
 A Foray takes one subject and plays moments from several podcasts about it, one after another, each straight from that show's own feed. Find them under Forays for you on Home, or on the Forays page in the menu. 4a puts each Foray together by hand, so they arrive a few at a time.
 
 HOME
-Open 4a and there is a Play button ready to go, then Jump back in for whatever you left partway, Forays for you, Playlists for you, and Suggested episodes. Forays for you and Suggested each keep a place for a pick marked Stretch: something outside your usual subjects, with a line saying why it is there.
+Open 4a and there is a Play button ready to go, then Jump back in for whatever you left partway, Forays for you, Playlists for you, and Suggested episodes. Suggested keeps a place for a pick marked Stretch: something outside your usual subjects, with a line saying why it is there.
 
 BUILD A PLAYLIST
 Not seeing what you want? On Create, name a subject (the semiconductor supply chain, the Roman empire) and 4a builds a playlist for it from across its catalogue. Save the ones worth keeping. Search finds shows and episodes.
@@ -16,7 +16,7 @@ UP NEXT, AND THEN MORE
 Add episodes to Up Next, or tap Play next to put one at the front. When an episode ends, 4a keeps going: the rest of Up Next, then the rest of the list you started from, then more episodes that fit what you listen to. Would rather it stopped? Turn Continuous playback off in the menu.
 
 DOWNLOADS FOR OFFLINE LISTENING
-Tap Download on an episode's page to keep it on your phone and play it with no signal. You choose every download; 4a never downloads anything on its own. Downloads wait for Wi-Fi unless you turn on Download over cellular, and you can remove one, or all of them, from your Library.
+Tap Download on an episode's page to keep it on your phone and play it with no signal. You choose every download; 4a never downloads anything on its own. Downloads wait for Wi-Fi unless you turn on Download over cellular, and you can remove one from its page, or all of them from your Library.
 
 SAVE AND FOLLOW
 Tap the star to save an episode to your Library, and 4a leans a little further toward that subject next time. Follow a show to keep it one tap away in your Library, marked when it has new episodes. Following queues nothing and sends no phone notification.
