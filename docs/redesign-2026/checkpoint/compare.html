@@ -85,6 +85,21 @@ header.top p.process { color: var(--ink); font-weight: 500; }
 .pill.capped { color: var(--ink-2); }
 .pill.base { color: var(--ink-3); }
 .dir .open { font-size: 14px; font-weight: 600; }
+.dir .change { color: var(--ink); font-size: 13px; line-height: 1.4; font-weight: 500; }
+
+/* Tactile header-font options: three small reels, one per face. */
+.fonts { background: var(--sheet); border: 1px solid var(--rule); border-radius: 14px; padding: 14px 16px; display: grid; gap: 12px; min-width: 0; }
+.fonts > header { display: grid; gap: 4px; }
+.fonts > header p { color: var(--ink-2); font-size: 14px; }
+.faces { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 14px 18px; }
+.face { display: grid; gap: 8px; min-width: 0; align-content: start; }
+.face .row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.face h3 { font-size: 16px; }
+.face .pill { color: var(--signal); }
+.face .reel { gap: 8px; padding-bottom: 6px; }
+.face figure.shot { flex: 1 1 0; min-width: 96px; }
+.face .shot button { border-radius: 12px; }
+.face .shot figcaption { font-size: 13px; }
 
 section.screen { display: grid; gap: 10px; scroll-margin-top: 12px; }
 section.screen header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
@@ -173,7 +188,7 @@ textarea { width: 100%; min-height: 120px; font: 13px/1.4 var(--f-mono); color: 
     <span class="label">4a Redesign 2026 · Phase 2 checkpoint</span>
     <h1>Five directions, side by side</h1>
     <p>Final-round renders of the hero screens at 393 × 852, ranked by the judges' pairwise wins. Today's app is the baseline on the right. Tap any screen to see it larger.</p>
-    <p class="process">All five directions went through the same polish-to-ready process: critique and revise until the art director passed it, capped at round 6. Every one passed. Polished and re-judged on 6 October 2026.</p>
+    <p class="process">All five directions went through the same polish-to-ready process: critique and revise until the art director passed it, capped at round 6. Every one passed. Polished and re-judged on 6 October 2026. The ranking was judged with Tactile's previous header font; its new font, Archivo, came after.</p>
   </header>
 
   <div class="modes" role="tablist" aria-label="Mode">
@@ -184,6 +199,13 @@ textarea { width: 100%; min-height: 120px; font: 13px/1.4 var(--f-mono); color: 
 
   <main id="view-compare" role="tabpanel" aria-labelledby="tab-compare" class="stack">
     <div class="legend" id="legend"></div>
+    <section class="fonts" aria-labelledby="fonts-h">
+      <header>
+        <h2 id="fonts-h">Tactile header font: three options</h2>
+        <p>Open the Tactile prototype and tap Aa to switch fonts live.</p>
+      </header>
+      <div class="faces" id="faces"></div>
+    </section>
     <div class="strip">
       <nav class="chips" id="jump" aria-label="Jump to screen"></nav>
       <label class="toggle"><input type="checkbox" id="show-today" checked> Show today's app</label>
@@ -291,8 +313,9 @@ textarea { width: 100%; min-height: 120px; font: 13px/1.4 var(--f-mono); color: 
   // without a pass and shows neutral, never as pending work.
   var MAX_WINS = 20;
   var DIRS = [
-    { slug: 'tactile', name: 'Tactile', code: 'Dial', wins: 20, round: 3, verdict: 'Ready', state: 'ready',
+    { slug: 'tactile', name: 'Tactile', code: 'Dial', wins: 20, round: 5, verdict: 'Ready', state: 'ready',
       thesis: 'A well-made little radio: forays are bands on a dial, controls are keys you press.',
+      change: "Header font changed to Archivo at the owner's request, 6 October.",
       artifact: 'https://claude.ai/artifact/6N8mk5PZJc32D8shdHw7GK' },
     { slug: 'ambient', name: 'Ambient', code: 'Afterglow', wins: 15, round: 4, verdict: 'Ready', state: 'ready',
       thesis: 'The artwork is the light source; the room changes colour as a foray moves between shows.',
@@ -308,6 +331,13 @@ textarea { width: 100%; min-height: 120px; font: 13px/1.4 var(--f-mono); color: 
       artifact: 'https://claude.ai/artifact/1YAp1DjBVKMzZEgKpkW6UY' }
   ];
   var TODAY = { slug: 'today', name: "Today's app", code: 'baseline', wins: 0, verdict: 'Baseline', base: true, thesis: 'The current 4a, for reference.' };
+  // Tactile header-font candidates, rendered on the same three screens.
+  var FACES = [
+    { slug: 'archivo', name: 'Archivo', current: true },
+    { slug: 'ibm-plex-sans', name: 'IBM Plex Sans' },
+    { slug: 'instrument-sans', name: 'Instrument Sans' }
+  ];
+  var FACE_SCREENS = [{ id: 'home', name: 'Home' }, { id: 'now-playing', name: 'Now Playing' }, { id: 'foray', name: 'Foray' }];
   var SCREENS = [
     { id: 'home', name: 'Home', note: 'The first screen after launch.' },
     { id: 'now-playing', name: 'Now Playing', note: 'Full player, foray in progress.' },
@@ -358,7 +388,26 @@ textarea { width: 100%; min-height: 120px; font: 13px/1.4 var(--f-mono); color: 
         el('h3', { text: d.name + ' · ' + d.code }),
         el('p', { cls: 'thesis', text: d.thesis }),
         el('p', { cls: 'round', text: d.state === 'ready' ? 'Art director passed it at round ' + d.round + '.' : 'Shown as it stood at round ' + d.round + '.' }),
+        d.change ? el('p', { cls: 'change', text: d.change }) : null,
         href ? el('a', { cls: 'open', href: href, target: '_blank', rel: 'noopener', text: 'Open the prototype' }) : null
+      ]));
+    });
+  }
+  function renderFaces() {
+    var host = $('faces');
+    FACES.forEach(function (f) {
+      var reel = el('div', { cls: 'reel', role: 'list' });
+      FACE_SCREENS.forEach(function (s) {
+        var src = BASE + 'tactile-fonts/' + f.slug + '/' + s.id + '.png', label = 'Tactile in ' + f.name + ', ' + s.name;
+        var b = el('button', { type: 'button', 'aria-label': 'Enlarge ' + label }, [
+          el('img', { src: src, alt: label, loading: 'lazy', width: '393', height: '852' })
+        ]);
+        b.addEventListener('click', function () { showZoom('Tactile · ' + f.name + ' · ' + s.name, src, label); });
+        reel.appendChild(el('figure', { cls: 'shot', role: 'listitem' }, [b, el('figcaption', null, [el('span', { text: s.name })])]));
+      });
+      host.appendChild(el('div', { cls: 'face' }, [
+        el('div', { cls: 'row' }, [el('h3', { text: f.name }), f.current ? el('span', { cls: 'pill', text: 'In the prototype now' }) : null]),
+        reel
       ]));
     });
   }
@@ -385,11 +434,12 @@ textarea { width: 100%; min-height: 120px; font: 13px/1.4 var(--f-mono); color: 
     Array.prototype.forEach.call(document.querySelectorAll('.shot.is-today'), function (f) { f.hidden = !on; });
   }
   var zoomReturn = null;
-  function openZoom(d, s) {
+  function openZoom(d, s) { showZoom(d.name + ' · ' + s.name, shot(d.slug, s.id), d.name + ', ' + s.name); }
+  function showZoom(title, src, alt) {
     zoomReturn = document.activeElement;
-    $('zoom-title').textContent = d.name + ' · ' + s.name;
-    $('zoom-img').src = shot(d.slug, s.id);
-    $('zoom-img').alt = d.name + ', ' + s.name;
+    $('zoom-title').textContent = title;
+    $('zoom-img').src = src;
+    $('zoom-img').alt = alt;
     var dlg = $('zoom');
     if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
     $('zoom-close').focus();
@@ -550,7 +600,7 @@ textarea { width: 100%; min-height: 120px; font: 13px/1.4 var(--f-mono); color: 
     try { localStorage.setItem('cp_checkpoint_mode', m); } catch (e) { /* ignore */ }
   }
 
-  renderLegend(); renderScreens(); renderStage(); renderTally();
+  renderLegend(); renderFaces(); renderScreens(); renderStage(); renderTally();
   $('show-today').addEventListener('change', applyToday);
   $('zoom-close').addEventListener('click', closeZoom);
   $('zoom').addEventListener('close', function () { if (zoomReturn && zoomReturn.focus) zoomReturn.focus(); });

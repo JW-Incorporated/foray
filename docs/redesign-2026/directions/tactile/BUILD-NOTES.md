@@ -21,21 +21,61 @@ Capacitor plugin; **Native** = out of scope unless the owner asks.
 
 Self-hosted variable WOFF2, Latin subset, `font-display: swap`:
 
-| Family | File | Axes | Licence |
-|---|---|---|---|
-| Bricolage Grotesque | `fonts/bricolage-grotesque-latin.woff2` | wght 200-800, wdth 75-100, opsz 12-96 | OFL 1.1 |
-| Azeret Mono | `fonts/azeret-mono-latin.woff2` | wght 100-900 | OFL 1.1 |
+| Family | Role | File | Axes | Licence |
+|---|---|---|---|---|
+| Archivo | display, title, heading | `fonts/archivo-latin.woff2` | wght 100-900, wdth 62-125 | OFL 1.1 |
+| Bricolage Grotesque | text (body, rows, labels, keycaps, chips, tags) | `fonts/bricolage-grotesque-latin.woff2` | wght 200-800, wdth 75-100, opsz 12-96 | OFL 1.1 |
+| Azeret Mono | readouts | `fonts/azeret-mono-latin.woff2` | wght 100-900 | OFL 1.1 |
 
-Both are on Google Fonts under the OFL; download the variable files and
-subset locally (the CSP is `font-src 'self'`). Budget: about 180 KB total.
+All three are on Google Fonts under the OFL; download the variable files
+(Latin subset; the prototype's copies are the Google Fonts `/* latin */`
+slices) and host them locally (the CSP is `font-src 'self'`). Sizes as
+shipped: Archivo 90 KB, Bricolage 132 KB, Azeret 26 KB, about 250 KB. To
+get back under 180 KB at build time, instance Bricolage to the only values
+the app uses (wght 500-700, wdth 100, opsz at text sizes; it is never set
+above 700 or below 100% width any more) and Archivo to wdth 90-100 /
+wght 600-700; `fonttools varLib.instancer` does both and the text roles do
+not change.
+
+**2026-10-06.** Archivo replaces Bricolage for the three large roles after
+the owner's "cartoonish" verdict on the r3 headers (`DIRECTION.md`,
+Typography). Bricolage stays for every text-size role. No text or display
+role uses weight 800 or `font-stretch: 90%` any more (the mono station code
+under the needle keeps its 800, 3.6).
 
 ```css
+@font-face { font-family: "Archivo"; src: url(fonts/archivo-latin.woff2) format("woff2"); font-weight: 100 900; font-stretch: 62% 125%; font-display: swap; }
 @font-face { font-family: "Bricolage"; src: url(fonts/bricolage-grotesque-latin.woff2) format("woff2"); font-weight: 200 800; font-stretch: 75% 100%; font-display: swap; }
 @font-face { font-family: "Azeret"; src: url(fonts/azeret-mono-latin.woff2) format("woff2"); font-weight: 100 900; font-display: swap; }
 ```
 
-Fallback stacks: `"Bricolage", system-ui, sans-serif` and
-`"Azeret", ui-monospace, monospace`.
+Fallback stacks: `"Archivo", system-ui, sans-serif`, `"Bricolage",
+system-ui, sans-serif` and `"Azeret", ui-monospace, monospace`. The
+`font-stretch` range in each `@font-face` must cover the widths the tokens
+ask for, or the browser silently renders width 100.
+
+### 1.1 Review candidates for the display face
+
+Two alternates were trialled on the real screens beside Archivo
+(`data-local/redesign/font-trial/`, gitignored; rows 1-3 of the specimen).
+Either is a drop-in: swap the file and these token values, nothing else
+moves. Both are OFL on Google Fonts with a width axis.
+
+| Candidate | File (Google Fonts, Latin) | `--font-display` | display (xl and 32) | title 24 | heading 20 | Character |
+|---|---|---|---|---|---|---|
+| **Archivo** (chosen) | `Archivo:wdth,wght@62..125,100..900` | `"Archivo"` | 700 / 92% / -0.02em | 650 / 94% / -0.015em | 650 / 96% / -0.01em | 19th-century American grotesque; label-plate warmth; same line breaks as r3 |
+| IBM Plex Sans | `IBM+Plex+Sans:wdth,wght@85..100,100..700` | `"Plex"` | 700 / 92% / -0.02em | 650 / 94% / -0.015em | 650 / 96% / -0.01em | Engineered, typewriter-descended; a touch stiffer, the most "instrument panel" of the three; weight tops out at 700 |
+| Instrument Sans | `Instrument+Sans:wdth,wght@75..100,400..700` | `"Instrument"` | 700 / 92% / -0.025em | 700 / 95% / -0.015em | 700 / 96% / -0.01em | Cleaner and cooler; closest to a neutral grotesque without being generic; weight tops out at 700, so title and heading sit at 700 |
+
+Line heights are unchanged for all three (44 / 36 / 28 / 24): x-heights
+are within 2% of each other and every r3 title kept its line count.
+
+**r5 verdict (2026-10-06, `critique-r5.md`): Archivo, final.** Measured in
+the prototype at 375/393/412 in both schemes: hero 3/2/2 lines with no
+single-word last line, onboarding and Now Playing 2 lines everywhere,
+Foray detail 3. Plex costs the hero a line at 393; Instrument flattens the
+title-to-row step. The switcher ships in the owner's review build only;
+Phase 3 removes it and the two alternate files (critique-r5 P3).
 
 ## 2. CSS tokens
 
@@ -43,30 +83,47 @@ Fallback stacks: `"Bricolage", system-ui, sans-serif` and
 
 ```css
 :root {
-  --font-text: "Bricolage", system-ui, sans-serif;
-  --font-mono: "Azeret", ui-monospace, monospace;
+  --font-display: "Archivo", system-ui, sans-serif;   /* display, title, heading */
+  --font-text:    "Bricolage", system-ui, sans-serif; /* everything else */
+  --font-mono:    "Azeret", ui-monospace, monospace;  /* readouts */
 
-  /* size / line-height / weight / width */
-  --t-display-xl: 2.5rem;   --lh-display-xl: 2.75rem; --w-display-xl: 800; --wd-display: 90;
-  --t-display:    2rem;     --lh-display:    2.25rem; --w-display:    800;
-  --t-title:      1.5rem;   --lh-title:      1.75rem; --w-title:      700;
-  --t-heading:    1.25rem;  --lh-heading:    1.5rem;  --w-heading:    700;
-  --t-body-lg:    1.0625rem;--lh-body-lg:    1.5rem;  --w-body:       500;
+  /* size / line-height / weight / width / tracking */
+  --t-display-xl: 2.5rem;   --lh-display-xl: 2.75rem; --w-display: 700; --wd-display: 92%; --tracking-display: -0.02em;
+  --t-display:    2rem;     --lh-display:    2.25rem; /* same weight, width and tracking as display-xl */
+  --t-title:      1.5rem;   --lh-title:      1.75rem; --w-title:   650; --wd-title:   94%; --tracking-title:   -0.015em;
+  --t-heading:    1.25rem;  --lh-heading:    1.5rem;  --w-heading: 650; --wd-heading: 96%; --tracking-heading: -0.01em;
+  --t-body-lg:    1.0625rem;--lh-body-lg:    1.5rem;  --w-body:    500;
   --t-body:       0.9375rem;--lh-body:       1.3125rem;
-  --t-label:      0.8125rem;--lh-label:      1rem;    --w-label:      700;
-  --t-micro:      0.75rem;  --lh-micro:      1rem;    --w-micro:      600;
-  --t-readout-lg: 1.75rem;  --lh-readout-lg: 2rem;    --w-readout:    500;
+  --t-label:      0.8125rem;--lh-label:      1rem;    --w-label:   700;
+  --t-micro:      0.75rem;  --lh-micro:      1rem;    --w-micro:   600;
+  --t-readout-lg: 1.75rem;  --lh-readout-lg: 2rem;    --w-readout: 500;
   --t-readout:    0.8125rem;--lh-readout:    1rem;
 
-  --tracking-display: -0.02em;
   --tracking-label: 0;
 }
 ```
 
-Rules: display and title set `font-stretch: 90%`; everything else 100%.
+Role classes (`.display-xl`, `.display`, `.title`, `.heading`) set
+`font-family: var(--font-display)` plus their own weight, width and
+tracking tokens; the large Find tile name (`.tile--l .tile__name`) takes the
+title role, every other tile name (`.tile__name`) the heading role at 17/24
+(r4: the l tile was Archivo and the m/s tiles Bricolage 17/700, two faces
+40px apart on one screen), and the onboarding brand mark the heading role.
+Display roles that carry a sentence (`.hero .display`, `.onb__copy .display`,
+the Foray detail `h1.clamp4`, `.np__text .title`) set `text-wrap: balance`
+(r4: "Podcasts, stitched around / you." left its last word alone at 393
+and 412; balance never adds a line, so the hero height rule is safe). `body` is
+`500 var(--t-body)/var(--lh-body) var(--font-text)` at width 100%, and no
+text-size role ever changes family or width. The display and title weights
+(700, 650) are the heaviest any text or display role gets: Bricolage's 800
+and the 90% width are retired, since that pairing was the "cartoonish" read.
 Readouts (`--font-mono`) always set `font-variant-numeric: tabular-nums`.
 No `text-transform: uppercase` anywhere. Titles clamp with `-webkit-line-clamp`
 (2 lines in rows, 3 in Now Playing, 4 on Foray detail), never a fixed height.
+The hero title's `clamp(1.75rem, 7.2vw, 2rem)` (4.1) is unchanged; in
+Archivo the r3 fixture title fits two lines at 393 where Bricolage needed
+three, so the hero bottom moves up about 32px and the ≤ 540px rule gains
+margin rather than losing it.
 
 ### 2.2 Colour
 
@@ -347,7 +404,13 @@ Playing) inside a well.
   Network `BR`, The Moreish Podcast `MP`.) The same code appears in the
   credits list (24px code-in-swatch, as `.segrow .sw`) and the Now Playing
   show chip, so the code is the key. r1 used single initials; four shows in
-  one real foray shared "B".
+  one real foray shared "B". **Build the run, not the bar:** the r5
+  prototype's `bandHTML()` still gates a label per segment on that one bar
+  being ≥ 24px, which happens to look right at 375/393 and doubles `BR BR`
+  / `BC BC` at 412 on both the scrub and the detail band (the owner's phone
+  width). Group adjacent same-show segments first, test the run's combined
+  width, label once at the run's centre, and mark the current run by index
+  range; the exact code is in `critique-r5.md`.
 - Progress: played portion of each rect at full fill; unplayed at 40%
   opacity. Implemented as two layers: a full-opacity copy clipped with a
   `<clipPath>` whose width follows `--band-progress` (0-1).
@@ -441,7 +504,9 @@ names neither is not a bridge.
 Find's idle state. Three sizes on a 2-column grid with 12px gap: `s` 1x1
 (about 170x120), `m` 2x1, `l` 2x2. Fill `--card`, `--shadow-card`, `--r-md`.
 Content: a composite of 2-4 show artworks (40px discs overlapping by 12px),
-the subject name 17/700, show count readout (the whole readout mono 13
+the subject name in the display face at 17/24, weight 650, width 96%,
+tracking -0.01em (the heading role's settings at 17px; `l` takes the title
+role, 2.1), show count readout (the whole readout mono 13
 `--ink-2`, one space: `14 shows`, never a mono digit beside a Bricolage
 noun). `l`: 2x2 collage of 88 right, text column vertically centred beside
 it (`min-height: 196`). `m`: one row, `min-height: 120`, discs left, name +

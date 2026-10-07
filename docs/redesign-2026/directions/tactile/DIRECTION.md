@@ -16,16 +16,54 @@ the copy.
 
 ## Typography (OFL only, self-hosted)
 
-- **Bricolage Grotesque** (OFL 1.1, variable: weight, width, optical size)
-  for everything. Display sizes run width 90 at weight 800 for the chunky
-  feel; body stays width 100.
+- **Archivo** (OFL 1.1, variable: weight 100-900, width 62-125) for
+  display, title and heading: every screen title, hero and episode title,
+  section heading, every Find tile name (r4: the large tile alone was
+  Archivo and the rest Bricolage, two faces on one screen) and the
+  onboarding brand. It is a
+  grotesque cut from late-nineteenth-century American jobbing type, which
+  is the lettering on a tape-deck label or a dial's station plate: flat
+  terminals, a straight-tailed `y`, a plain `g`, no bounce. Display runs
+  width 92 at weight 700; title 94/650; heading 96/650. The slight
+  condensing keeps the dense, chunky rhythm the direction had.
+- **Bricolage Grotesque** (OFL 1.1, variable) for text: body, rows, labels,
+  keycaps, chips, tags. At 15-17px its quirks are texture, not a voice, and
+  its open shapes pair with Archivo (same grotesque skeleton, close
+  x-height) so the two read as one family at a glance.
 - **Azeret Mono** (OFL 1.1) for readouts only: clock, durations, counts,
   date. Tabular by nature, so the counter never jitters.
 
-Scale (size/line, weight): display-xl 40/44 800, display 32/36 800, title
-24/28 700, heading 20/24 700, body-lg 17/24 500, body 15/21 500, label
-13/16 700, micro 12/16 600, readout-lg 28/32 mono, readout 13/16 mono.
-Body never below 15px, everything in `rem`, no all-caps labels.
+Scale (size/line, weight, width): display-xl 40/44 700 w92, display 32/36
+700 w92, title 24/28 650 w94, heading 20/24 650 w96 (all Archivo); body-lg
+17/24 500, body 15/21 500, label 13/16 700, micro 12/16 600 (Bricolage);
+readout-lg 28/32 mono, readout 13/16 mono. Body never below 15px,
+everything in `rem`, no all-caps labels.
+
+**2026-10-06, after the owner's pick.** The owner chose Tactile and Ambient
+to build, with one objection to Tactile: "the font choice used for the
+headers and titles. It's sort of cartoonish." He was right, and the cause
+is specific: Bricolage at weight 800 and width 90 has a curled `y`, a
+hooked single-storey `g` and a bubble `a`, and at 32-40px those three
+letters are a cartoon. The fix is a different face for the three large
+roles, not a different Tactile: Archivo at 700/92 keeps the same line
+breaks on every title in the r3 renders (the hero even gains a line at
+393) with letterforms that look machine-cut. Trialled against IBM Plex
+Sans, Instrument Sans, Chivo, Schibsted Grotesk, Saira and Barlow on the
+real screens (`data-local/redesign/shots/tactile/r4/`, contact sheet
+first); Saira went dashboard-gamer, Chivo and Schibsted went wide and
+editorial (three lines where two fit), Barlow has softened corners, Plex
+and Instrument are the two review candidates in BUILD-NOTES. Bricolage
+stays for text sizes, where the pairing holds. Weight 800 is gone from the
+app entirely: 700 at display is the heaviest anything gets. The r4 renders
+confirmed it in both schemes (`critique-r4.md`): Archivo stays primary,
+Plex costs the hero a line and reads instrument-panel, Instrument loses the
+label-plate character and flattens the title-to-row step. Sentence-length
+display lines balance (`text-wrap: balance`), so no headline ends on a
+single word. **r5 closed the question** (`critique-r5.md`, measured in both
+schemes at 375/393/412): Archivo is final, the alternates stay in the
+prototype only as the owner's review switcher, and no further type round
+is planned. What remains for Phase 3 is removing the switcher and
+instancing the fonts.
 
 Overturns Fraunces + DM Sans: a serif voice reads editorial; a radio reads
 grotesque.

@@ -1,6 +1,9 @@
 /* Dial tokens. Source of truth: ../BUILD-NOTES.md sections 1-2. Every colour,
    duration and easing is a token; components never hard-code them. */
 
+@font-face { font-family: "Plex"; src: url(fonts/ibm-plex-sans-latin.woff2) format("woff2"); font-weight: 100 700; font-stretch: 85% 100%; font-display: swap; } /* review candidate, see font-preview.js */
+@font-face { font-family: "Instrument"; src: url(fonts/instrument-sans-latin.woff2) format("woff2"); font-weight: 400 700; font-stretch: 75% 100%; font-display: swap; } /* review candidate, see font-preview.js */
+@font-face { font-family: "Archivo"; src: url(fonts/archivo-latin.woff2) format("woff2"); font-weight: 100 900; font-stretch: 62% 125%; font-display: swap; }
 @font-face { font-family: "Bricolage"; src: url(fonts/bricolage-grotesque-latin.woff2) format("woff2"); font-weight: 200 800; font-stretch: 75% 100%; font-display: swap; }
 @font-face { font-family: "Azeret"; src: url(fonts/azeret-mono-latin.woff2) format("woff2"); font-weight: 100 900; font-display: swap; }
 
@@ -9,20 +12,20 @@
 :root {
   color-scheme: light dark;
 
+  --font-display: "Archivo", system-ui, sans-serif;   /* display, title, heading (2026-10-06: replaced Bricolage at 800/90%) */
   --font-text: "Bricolage", system-ui, sans-serif;
   --font-mono: "Azeret", ui-monospace, monospace;
 
-  --t-display-xl: 2.5rem;    --lh-display-xl: 2.75rem;
+  --t-display-xl: 2.5rem;    --lh-display-xl: 2.75rem; --w-display: 700; --wd-display: 92%; --tracking-display: -0.02em;
   --t-display:    2rem;      --lh-display:    2.25rem;
-  --t-title:      1.5rem;    --lh-title:      1.75rem;
-  --t-heading:    1.25rem;   --lh-heading:    1.5rem;
+  --t-title:      1.5rem;    --lh-title:      1.75rem; --w-title:   650; --wd-title:   94%; --tracking-title:   -0.015em;
+  --t-heading:    1.25rem;   --lh-heading:    1.5rem;  --w-heading: 650; --wd-heading: 96%; --tracking-heading: -0.01em;
   --t-body-lg:    1.0625rem; --lh-body-lg:    1.5rem;
   --t-body:       0.9375rem; --lh-body:       1.3125rem;
   --t-label:      0.8125rem; --lh-label:      1rem;
   --t-micro:      0.75rem;   --lh-micro:      1rem;
   --t-readout-lg: 1.75rem;   --lh-readout-lg: 2rem;
   --t-readout:    0.8125rem; --lh-readout:    1rem;
-  --tracking-display: -0.02em;
 
   /* Cream (light) */
   --paper:      #F7F0E4;
@@ -134,3 +137,8 @@
   .skel, .band--buffering .needle, .is-loading .card, .is-loading .row--episode, .is-loading .pcard { animation: none; }
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation-duration: 1ms; }
 }
+
+/* REVIEW ONLY (remove before Phase 3, with font-preview.js/.css): display-face candidates. font-preview.js sets
+   data-display-font on <html>; the attribute selector outranks :root, so only the three display-role tokens move. */
+:root[data-display-font="plex"] { --font-display: "Plex", system-ui, sans-serif; --w-display: 700; --wd-display: 92%; --tracking-display: -0.02em; --w-title: 650; --wd-title: 94%; --tracking-title: -0.015em; --w-heading: 650; --wd-heading: 96%; --tracking-heading: -0.01em; }
+:root[data-display-font="instrument"] { --font-display: "Instrument", system-ui, sans-serif; --w-display: 700; --wd-display: 92%; --tracking-display: -0.025em; --w-title: 700; --wd-title: 95%; --tracking-title: -0.015em; --w-heading: 700; --wd-heading: 96%; --tracking-heading: -0.01em; }

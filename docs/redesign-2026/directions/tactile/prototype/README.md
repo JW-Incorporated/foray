@@ -35,6 +35,42 @@ fixture; taps inside the app keep state (it uses `history.pushState`).
 - `data.js` carries the same content as `data.json` so the page works from
   `file://` (fetch is blocked there).
 
+## Post-pick change (2026-10-06): display face
+
+The owner picked Tactile with one objection, the "cartoonish" headers.
+Display, title and heading now set Archivo (`fonts/archivo-latin.woff2`,
+OFL, Google Fonts Latin slice; 700/92% display, 650/94% title, 650/96%
+heading, tokens in `tokens.css`). Bricolage stays for every text-size role,
+Azeret for readouts. Renders: `data-local/redesign/shots/tactile/r4/`.
+
+### Round 5 (type round, `../critique-r4.md` P1)
+
+- `text-wrap: balance` on `.onb__copy .display`, `.hero .display`, `h1.clamp4`: onboarding reads "Podcasts, stitched / around you." and the 375px hero has no one-word last line.
+- `.tile__name` takes the display face at heading weight (Find tile names are one role); the large tile keeps the title role.
+- `.fp-toast` centres with `left/right: 16px; width: fit-content; margin-inline: auto` and stays on one line at every width (checked at 375: 198 x 32).
+- Renders: `data-local/redesign/shots/tactile/r5/` (Bakelite), `r5-cream/`, `r5-fonts/<face>/` (Home, Now Playing, Foray detail per candidate). The switcher is hidden in all of them by `r5-fonts/_css/*.css` (`.fp-btn,.fp-toast{display:none}`); the owner build keeps it in.
+
+### REVIEW TOOL: font switcher (remove before Phase 3)
+
+A floating "Aa" button (44px, top centre, accessible name "Font preview. ...")
+cycles the display/title/heading face between Archivo, IBM Plex Sans and
+Instrument Sans, and a small toast names the current family. Text and mono
+roles never change. The choice persists in `localStorage` (`cp_display_font_preview`,
+try/catch) so it survives a reload on a phone. Files: `font-preview.js`,
+`font-preview.css`, the two tags in `index.html`, the "REVIEW ONLY" block at
+the end of `tokens.css`, the Plex and Instrument `@font-face` lines and
+`fonts/ibm-plex-sans-latin.woff2`, `fonts/instrument-sans-latin.woff2`. It
+sets `data-display-font` on `<html>` (CSP-safe: no inline script or style).
+`?font=plex|instrument|archivo` forces a face; `?review=off` (or
+`<html data-review="off">`) hides the control, which is how renders stay clean
+(the shooter passes a `--css` file hiding `.fp-btn, .fp-toast` instead).
+To remove it: delete those pieces; nothing else references them.
+
+Pairing note: body stays Bricolage at text sizes. Its open shapes sit well
+beside Archivo's flat terminals at 15-17px; the cartoon read came only from
+the 800 weight, 90% width, curled `y` and hooked `g` at 32-40px. Plex sets the
+Today hero in three lines at 393 wide where Archivo and Instrument keep two.
+
 ## Round 3 changes worth knowing
 
 - Bridge card: the arc has a dot at both ends (HTML dots over an SVG path in a
@@ -94,5 +130,6 @@ where supported. The reduced-motion block is the single one in `tokens.css`.
 
 ## Licences
 
-Fonts: Bricolage Grotesque and Azeret Mono, OFL 1.1, Latin subset, from Google
+Fonts: Archivo, Bricolage Grotesque and Azeret Mono, plus the review-only
+IBM Plex Sans and Instrument Sans, all OFL 1.1, Latin subset, from Google
 Fonts. Icons: Phosphor Icons (MIT), Bold and Fill, plus custom marks.
