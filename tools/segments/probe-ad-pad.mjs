@@ -28,6 +28,13 @@
    (pscrb.fm is a tracking prefix) can end on another CDN, which this probe
    does not observe.
 
+   --dry-run SENDS NOTHING. It selects the rows and applies the gap against
+   the existing ledger exactly as a real run would, then prints
+   `would probe <id> host=<host>` per row it would ask, the too-soon and
+   skipped rows, and the number of requests a real run would spend. It never
+   calls the probe and never writes the ledger. (Until this was fixed a dry run
+   probed every row and only skipped the write: 104 GETs on DAI-08 day 1.)
+
    Run (manual, on the PC, never in CI):
      node tools/segments/probe-ad-pad.mjs [--id ID ...] [--all] [--min-gap-hours N] [--dry-run]
    Paths: AD_PAD_LEDGER (default data/ad-pad-probes.json), SEGMENT_SOURCES
@@ -108,7 +115,9 @@ export function appendProbes(ledger, probes, { minGapHours = 24 } = {}) {
 }
 
 /** Probe the selected rows one at a time and append the evidence. With
-    `dryRun` the returned ledger is the input object, untouched. */
+    `dryRun` nothing is sent: `probe` is never called, each row a real run
+    would probe is logged and returned in `wouldProbe`, `appended` is empty and
+    the returned ledger is the input object, untouched. */
 export async function run({
   sourcesDoc,
   ledger,
@@ -127,11 +136,18 @@ export async function run({
   const fresh = [];
   const tooSoon = [];
   const failed = [];
+  const wouldProbe = [];
   for (const row of rows) {
     const last = probeInsideGap([...existing, ...fresh], row.id, now().toISOString(), minGapHours);
     if (last != null) {
       tooSoon.push({ item_id: row.id, last });
       log(`too soon ${row.id} (last ${last})`);
+      continue;
+    }
+    if (dryRun) {
+      const host = new URL(row.audio_url).hostname;
+      wouldProbe.push({ item_id: row.id, host });
+      log(`would probe ${row.id} host=${host}`);
       continue;
     }
     let result = null;
@@ -148,18 +164,24 @@ export async function run({
     log(`probed ${row.id} ${ledgerRow.delivered_bytes}/${ledgerRow.declared_bytes} host=${ledgerRow.host}${mark}`);
   }
 
+  if (dryRun) {
+    log(
+      `dry run: ${wouldProbe.length} requests would be sent, ${tooSoon.length} too soon, ${skipped.length} skipped` +
+        " (nothing sent, ledger not written)",
+    );
+    return { ledger, appended: [], tooSoon, skipped, failed, wouldProbe };
+  }
+
   const merged = appendProbes(ledger, fresh, { minGapHours });
   tooSoon.push(...merged.tooSoon);
-  log(
-    `${merged.appended.length} probed, ${tooSoon.length} too soon, ${skipped.length} skipped, ${failed.length} failed` +
-      (dryRun ? " (dry run: ledger not written)" : ""),
-  );
+  log(`${merged.appended.length} probed, ${tooSoon.length} too soon, ${skipped.length} skipped, ${failed.length} failed`);
   return {
-    ledger: dryRun ? ledger : merged.ledger,
+    ledger: merged.ledger,
     appended: merged.appended,
     tooSoon,
     skipped,
     failed,
+    wouldProbe,
   };
 }
 
