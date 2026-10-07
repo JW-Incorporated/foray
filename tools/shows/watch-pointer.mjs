@@ -23,8 +23,8 @@
  * loadChangeIndex() already refuses.
  *
  * WHY 192 h
- * It is loadChangeIndex()'s 216 h ceiling minus one day. `nightly-watch.yml`
- * runs once a day, so a 24 h margin is the smallest one that guarantees at
+ * It is loadChangeIndex()'s 216 h ceiling minus one day.
+ * `.github/workflows/shows-pointer-watch.yml` runs it once a day, so a 24 h margin is the smallest one that guarantees at
  * least one red run BEFORE the ceiling is crossed. A healthy week does not get
  * near it: a weekly import publishing on time leaves a pointer about 7 days
  * old the evening before the next one lands. The ceiling itself is

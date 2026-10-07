@@ -1,0 +1,80 @@
+# The shows-index pointer, watched for an absence.
+#
+# WHY THIS IS ITS OWN WORKFLOW
+# This job was first written as a second job inside nightly-watch.yml. That
+# workflow is switched off in GitHub (`disabled_manually`, 2026-09-30, together
+# with nightly-refresh under the HA #46 ruling), so a job added there would
+# never run. This workflow is standalone on purpose: it does not depend on the
+# nightly being on, and turning the nightly back on (or leaving it off) does
+# not change it.
+#
+# WHAT IT WATCHES
+# The weekly shows-import (Sun 06:07 UTC) failed on 2026-09-06, 09-13, 09-20,
+# 09-27 and 10-04 with nobody noticing. A failed import RUN already shows red;
+# this catches a pointer that never reaches main for ANY reason — a stranded
+# pointer PR, red CI on it, an approval nobody gives, a schedule that does not
+# fire, an idempotent skip. Red when data/shows-index-pointer.json is over 192h
+# old: one daily run of margin under loadChangeIndex's 216h ceiling
+# (tools/refresh/candidates.mjs). The reasoning and the pin live in
+# tools/shows/watch-pointer.mjs and its suite, which also pins that this
+# workflow runs daily (the 24h margin assumes it).
+#
+# WHAT IT DOES NOT DO
+# No dependencies, no network for the verdict, nothing written, no secret. It
+# does not re-run the import, touch the pointer, open an issue or page anyone:
+# a red scheduled run in the workflow list is the whole output.
+#
+# COST
+# One ubuntu-latest job a day, well under a minute (checkout + one node
+# script). The repo is public, so standard GitHub-hosted runner minutes are
+# free.
+
+name: shows-pointer-watch
+
+on:
+  schedule:
+    # 14:23 UTC daily. Off :00 per the Swift2 convention (top-of-hour cron is
+    # where GitHub's scheduling contention lives). The time of day does not
+    # matter to the verdict; only the daily cadence does.
+    - cron: "23 14 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: shows-pointer-watch
+  cancel-in-progress: false
+
+# Read-only, both of them. A watchdog that can change the thing it watches is
+# not a watchdog.
+permissions:
+  contents: read
+  # `gh run list --workflow shows-import.yml` (context on a red run only)
+  # needs this to read run conclusions. Still read-only.
+  actions: read
+
+jobs:
+  shows-index-pointer-fresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Is the shows-index pointer about to go stale?
+        env:
+          # The job's own built-in token (no secret), read-only via the
+          # workflow-level permissions above.
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          if node tools/shows/watch-pointer.mjs; then exit 0; fi
+          # Context only, never the verdict: the last few shows-import runs,
+          # so the red says whether the import itself failed or succeeded
+          # without its pointer reaching main.
+          echo "Recent shows-import runs:" >&2
+          gh run list --repo "$REPO" --workflow shows-import.yml --limit 3 \
+            --json createdAt,event,status,conclusion,url \
+            --jq '.[] | "\(.createdAt) \(.event) \(.status)/\(.conclusion // "-") \(.url)"' >&2 || true
+          exit 1

@@ -121,11 +121,28 @@ test("the alarm stays below loadChangeIndex's ceiling (text pin on tools/refresh
   assert.equal(ceiling, 216, "loadChangeIndex's ceiling moved; re-derive THRESHOLD_HOURS deliberately");
   assert.equal(CEILING_HOURS, ceiling);
   assert.ok(THRESHOLD_HOURS < ceiling, `alarm ${THRESHOLD_HOURS}h must be below the ${ceiling}h ceiling`);
-  assert.ok(ceiling - THRESHOLD_HOURS >= 24, "nightly-watch runs daily: the margin must be at least one day");
+  assert.ok(ceiling - THRESHOLD_HOURS >= 24, "shows-pointer-watch runs daily: the margin must be at least one day");
 });
 
 // Mutation: drop the `stale at` clause from the red line -> fails.
 test("the red line says when the pointer actually goes stale", () => {
   const v = pointerVerdict({ pointerText: healthy, now: Date.parse(at(200)) });
   assert.match(v.line, /stale at 2026-10-13T23:32:30\.065Z/);
+});
+
+// Mutation: move the job back into nightly-watch.yml (manually disabled, so it
+// would never run), make the cron less than daily, or widen the token -> fails.
+test("the watchdog runs daily in its own read-only workflow, not in the disabled nightly-watch.yml", () => {
+  const wf = path.join(ROOT, ".github", "workflows");
+  const yml = fs.readFileSync(path.join(wf, "shows-pointer-watch.yml"), "utf8");
+  assert.match(yml, /^\s+run: \|\n\s+if node tools\/shows\/watch-pointer\.mjs; then exit 0; fi$/m);
+  const cron = yml.match(/^\s+- cron: "(\d+) (\d+) \* \* \*"$/m);
+  assert.ok(cron, "shows-pointer-watch.yml must run every day (the 24h margin assumes it)");
+  assert.notEqual(cron[1], "0", "keep the cron off :00");
+  const perms = yml.match(/^permissions:\n((?:[ #].*\n|\n)*)/m);
+  assert.ok(perms, "no top-level permissions block");
+  const scopes = [...perms[1].matchAll(/^ {2}([\w-]+): (\w+)/gm)].map((m) => `${m[1]}: ${m[2]}`);
+  assert.deepStrictEqual(scopes, ["contents: read", "actions: read"]);
+  assert.doesNotMatch(yml, /secrets\./, "the watchdog holds no secret");
+  assert.doesNotMatch(fs.readFileSync(path.join(wf, "nightly-watch.yml"), "utf8"), /watch-pointer/);
 });
