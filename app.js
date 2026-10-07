@@ -2206,7 +2206,7 @@ function paintShowAlertsBtns(id) {
     b.hidden = !rec;
     b.classList.toggle("on", on);
     b.setAttribute("aria-pressed", String(on));
-    b.textContent = showAlertsLabel(on);
+    setControlLabel(b, showAlertsLabel(on));
   });
 }
 
