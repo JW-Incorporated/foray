@@ -101,3 +101,38 @@ describe("DAILY_BUDGET_USD parsing", () => {
     }
   });
 });
+
+/* CH2-04 characterization (code-health-2 B2-03): EPISODE_BUDGET_USD is read by
+   a different, LENIENT rule than DAILY_BUDGET_USD. These two pins record that
+   behaviour as it stands, so the switch to the bounded schema is visible as a
+   flip rather than as new tests appearing beside an untested old rule. */
+async function loadEnvWithEpisode(value: string | undefined) {
+  vi.resetModules();
+  delete process.env.DAILY_BUDGET_USD;
+  if (value === undefined) {
+    delete process.env.EPISODE_BUDGET_USD;
+  } else {
+    process.env.EPISODE_BUDGET_USD = value;
+  }
+  return import("../src/config/env");
+}
+
+describe("EPISODE_BUDGET_USD parsing (characterization, CH2-04)", () => {
+  beforeEach(() => {
+    process.env = { ...ORIGINAL_ENV };
+  });
+
+  afterEach(() => {
+    process.env = { ...ORIGINAL_ENV };
+  });
+
+  it("today: a negative value is accepted as-is, so every metered Foray call would throw", async () => {
+    const { env } = await loadEnvWithEpisode("-1");
+    expect(env.episodeBudgetUsd).toBe(-1);
+  });
+
+  it("today: a typo ('1O') silently becomes the $10 default", async () => {
+    const { env } = await loadEnvWithEpisode("1O");
+    expect(env.episodeBudgetUsd).toBe(10);
+  });
+});

@@ -2441,7 +2441,7 @@ const BACKEND_FLOORS = {
      neither when it does not, and the seed the reply carries back. */
   "test/AnthropicSpineBuilder.test.ts": 18, // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 11 -> 18 (17 on disk before it)
   "test/archetypes.test.ts": 7,
-  "test/budgetGuard.test.ts": 11, // round-3 L6 (2026-09-25): backend-rest-13: check-and-record serialised under concurrency; 6 -> 11
+  "test/budgetGuard.test.ts": 13, // round-3 L6 (2026-09-25): backend-rest-13: check-and-record serialised under concurrency; 6 -> 11; 11 -> 13 // CH2-04: per-process pins (N calls stop at the cap; a fresh guard starts at 0)
   "test/buildCorpusTerms.test.ts": 4, // PKG-26 (docs/roadmap/corpus.md §3): corpus df table + per-episode top-k tf-idf terms — rare beats common, alpha ties, k cap, df drops singletons
   "test/candidateExtractor.test.ts": 8,
   "test/conditionalGet.test.ts": 9,
@@ -2455,7 +2455,7 @@ const BACKEND_FLOORS = {
   /* DAILY_BUDGET_USD env parsing (L5): rejects negative / NaN / empty /
      over-cap values at startup instead of silently substituting the
      default, and leaves a genuinely unset variable on its fallback. */
-  "test/env.test.ts": 11,
+  "test/env.test.ts": 13, // 11 -> 13 // CH2-04: EPISODE_BUDGET_USD lenient-parse characterization (-1 kept, 1O -> default)
   "test/events.test.ts": 17, // round-3 completeness sweep: app-2-6 thumbs accepts "cleared" and keeps `replaces`; 15 -> 17
   "test/html.test.ts": 12, // round-3 L6 (2026-09-25): backend-rest-1/-9/-11: range-checked, NUL-dropping, prototype-safe decodeEntities; 8 -> 12
   "test/interestLearning.test.ts": 38, // round-3 completeness sweep: app-2-6 a changed or withdrawn thumbs vote undoes the one it replaces; 35 -> 38 // round-3 L6 (2026-09-25): backend-rest-17: card_ignored fires once per threshold, running per-topic streak; 30 -> 35

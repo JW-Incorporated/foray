@@ -173,3 +173,44 @@ describe("BudgetGuard under concurrency", () => {
     await expect(call(0.3)).resolves.toBeDefined();
   });
 });
+
+/* CH2-04 characterization (code-health-2 B2-02): the cap lives in this
+   process. The sink is in memory and nothing persists it, so a guard counts
+   only what was recorded through it. Both pins survive the change: they are
+   the truth the rename to RUN_BUDGET_USD makes the name match. */
+describe("BudgetGuard is per-process (CH2-04)", () => {
+  it("spend summed across N calls in one process stops at the cap", async () => {
+    const guard = new BudgetGuard(new InMemoryCostEventSink(), 1.0);
+    let recorded = 0;
+    let refused = 0;
+    for (let i = 0; i < 10; i++) {
+      try {
+        await guard.checkAndRecord({ userId: "u1", operation: "narrate", provider: "anthropic", estimatedUsd: 0.3 });
+        recorded++;
+      } catch (err) {
+        expect(err).toBeInstanceOf(BudgetExceededError);
+        refused++;
+      }
+    }
+    /* MUTATION THAT KILLS THIS: drop the cap comparison in checkAndRecordNow
+       — all ten calls record. */
+    expect(recorded).toBe(3);
+    expect(refused).toBe(7);
+  });
+
+  it("a fresh guard over a fresh sink starts at 0: a second process does not share the first one's cap", async () => {
+    const first = new BudgetGuard(new InMemoryCostEventSink(), 1.0);
+    await first.checkAndRecord({ userId: "u1", operation: "narrate", provider: "anthropic", estimatedUsd: 0.9 });
+    await expect(
+      first.checkAndRecord({ userId: "u1", operation: "narrate", provider: "anthropic", estimatedUsd: 0.2 })
+    ).rejects.toThrow(BudgetExceededError);
+
+    /* What a second `npm run generate-forays` sees: nothing the first one
+       spent. This documents the per-process truth; it is not a mutation
+       target (a shared sink would be a new feature, see docs/DECISIONS.md). */
+    const second = new BudgetGuard(new InMemoryCostEventSink(), 1.0);
+    await expect(
+      second.checkAndRecord({ userId: "u1", operation: "narrate", provider: "anthropic", estimatedUsd: 0.9 })
+    ).resolves.toBeDefined();
+  });
+});
