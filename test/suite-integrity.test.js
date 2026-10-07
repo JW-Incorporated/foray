@@ -2458,6 +2458,7 @@ const BACKEND_FLOORS = {
   "test/env.test.ts": 11,
   "test/events.test.ts": 17, // round-3 completeness sweep: app-2-6 thumbs accepts "cleared" and keeps `replaces`; 15 -> 17
   "test/html.test.ts": 12, // round-3 L6 (2026-09-25): backend-rest-1/-9/-11: range-checked, NUL-dropping, prototype-safe decodeEntities; 8 -> 12
+  "test/entitiesParity.test.ts": 6, // CH2-09 (docs/roadmap/code-health-2.md, B1-05): html.ts and tools/refresh/entities.mjs agree over backend/fixtures/entities.json, every shared-table name decodes the same, neither module carries its own name map, and the live parser shows "Café" and a CDATA "&amp;#038;" as data/ does; new
   "test/interestLearning.test.ts": 38, // round-3 completeness sweep: app-2-6 a changed or withdrawn thumbs vote undoes the one it replaces; 35 -> 38 // round-3 L6 (2026-09-25): backend-rest-17: card_ignored fires once per threshold, running per-topic streak; 30 -> 35
   "test/itunes.test.ts": 3,
   "test/ladderBuilder.test.ts": 13,
