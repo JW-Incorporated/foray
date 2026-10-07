@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { parseArgs, candidateFilename, mergeReportEntries, readPriorReportEntries } from "../src/cli/generateForays";
+import { parseArgs as parseSingleArgs } from "../src/cli/generateForay";
 import { BudgetGuard } from "../src/cost/budgetGuard";
 import { defaultCostEventSink } from "../src/cost/costEvents";
 
@@ -149,5 +150,22 @@ describe("report.json is merged across re-runs", () => {
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+/* CH2-25 / B2-14: the two generation CLIs default to different author ids and
+   spell the flag two ways, and `author_id` is the key `BudgetGuard` sums the
+   daily spend by. Characterization of today's behaviour. */
+describe("author id flag and default (B2-14)", () => {
+  it("generate-forays defaults to founder-1 and reads --author", () => {
+    expect(parseArgs(["--prompts", "p.json"]).authorId).toBe("founder-1");
+    expect(parseArgs(["--prompts", "p.json", "--author", "joey"]).authorId).toBe("joey");
+    expect(parseArgs(["--prompts", "p.json", "--author-id", "joey"]).authorId).toBe("founder-1");
+  });
+
+  it("generate-foray defaults to founder and reads --author-id", () => {
+    expect(parseSingleArgs(["--prompt", "Mercury", "--duration", "short"]).authorId).toBe("founder");
+    expect(parseSingleArgs(["--prompt", "Mercury", "--duration", "short", "--author-id", "joey"]).authorId).toBe("joey");
+    expect(parseSingleArgs(["--prompt", "Mercury", "--duration", "short", "--author", "joey"]).authorId).toBe("founder");
   });
 });

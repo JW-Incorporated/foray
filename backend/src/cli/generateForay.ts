@@ -43,13 +43,13 @@ import { understandPrompt } from "../generation/understandPrompt";
  * anything it calls (§9.4's ruling; see backend/test/promptNoPersistence.test.ts).
  */
 
-interface CliArgs {
+export interface CliArgs {
   prompt: string | null;
   duration: "short" | "medium" | "long" | null;
   authorId: string;
 }
 
-function parseArgs(argv: string[]): CliArgs {
+export function parseArgs(argv: string[]): CliArgs {
   const get = (flag: string): string | undefined => {
     const idx = argv.indexOf(flag);
     return idx >= 0 ? argv[idx + 1] : undefined;
@@ -109,7 +109,11 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((err) => {
-  console.error(err instanceof Error ? err.message : err);
-  process.exitCode = 1;
-});
+/* Only run when invoked as a script, so a test can import `parseArgs` without
+   starting a run — the same guard `generateForays.ts` uses. */
+if (require.main === module) {
+  main().catch((err) => {
+    console.error(err instanceof Error ? err.message : err);
+    process.exitCode = 1;
+  });
+}
