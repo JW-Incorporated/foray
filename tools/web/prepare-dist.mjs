@@ -50,6 +50,8 @@ const SHELL = [
   "search-engine.js",
   "styles.css",
   "ui/tokens.css", // Redesign 2026 (ambient): the Afterglow design tokens, linked after styles.css
+  "ui/icons.svg", // Redesign 2026 (ambient): the icon sprite every `<use href>` fetches
+  "ui/icons-LICENSES.txt", // complete MIT/OFL notices for the paths shipped in the sprite
   "sw.js",
   "manifest.json",
   "icon-180.png",

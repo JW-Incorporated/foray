@@ -101,6 +101,10 @@ function esc(s) {
 }
 
 function safeUrl(u) {
+  /* External SVG sprites are loaded through a relative, same-origin URL. Keep this
+     allowance deliberately narrower than "relative URL": no leading slash, traversal,
+     query or encoded separator can turn it into another resource or origin. */
+  if (typeof u === "string" && /^ui\/icons\.svg#i-[a-z0-9-]+$/.test(u)) return u;
   try {
     const p = new URL(u);
     if (p.protocol === "https:" || p.protocol === "http:") return u;
