@@ -14,7 +14,7 @@ import {
   KEY, PER_EPISODE_CAP, TOTAL_CAP, DEDUPE_WINDOW_SEC,
   readAll, addBookmark, removeBookmark, listBookmarks, bookmarkPrecision, bookmarkLabel,
 } from "./bookmarks.js";
-import { EXACT, APPROXIMATE } from "./seek-policy.js";
+import { EXACT, APPROXIMATE, DRIFT_TOLERANCE_SEC } from "./seek-policy.js";
 
 /** A store shaped like app.js's storedValue/editStored once storage has
     settled: get(key, fallback), edit(key, fallback, fn) -> boolean, the edit
@@ -245,4 +245,81 @@ test("a write is an edit over the value it lands on: a queued mark joins the hyd
   removing.land({ [KEY]: { ep1: [{ ...fresh }], "ep-old": [oldRow] } });
   assert.deepEqual(removing.raw(), { "ep-old": [oldRow], ep3: [{ ...added }] },
     "the removal lands on the hydrated map with the edit queued before it applied");
+});
+
+/* ---- the length of the copy in hand: ForayPlayer.observedDurationSec ----
+
+   app.js's bookmarkObservedSec asks the REAL player for the length of the
+   copy in hand, and before this card nothing answered, so no drift was ever
+   seen and a moved timeline was still claimed to the second. The answer is
+   the duration PositionStore recorded beside the position (the media
+   element's own reading), or null; never the catalogue's duration_sec.
+
+   The real player/client.js is imported over a stub localStorage seeded
+   BEFORE the import (its durable store reads storage into memory when the
+   module loads), with a cache-busting query so each test gets a fresh
+   module. `cp_last_episode` carries the catalogue's 3600 s for the same
+   episode: it is the one place client.js can see a catalogue duration for an
+   id without a booted player, so a reading that leaned on the catalogue
+   would answer from it. */
+
+let clientSeq = 0;
+async function clientOver(rows) {
+  const data = new Map(Object.entries(rows));
+  const ls = {
+    get length() { return data.size; },
+    key: (i) => [...data.keys()][i] ?? null,
+    getItem: (k) => (data.has(k) ? data.get(k) : null),
+    setItem: (k, v) => { data.set(k, String(v)); },
+    removeItem: (k) => { data.delete(k); },
+  };
+  const names = ["window", "document", "localStorage", "navigator"];
+  const prev = new Map(names.map((n) => [n, Object.getOwnPropertyDescriptor(globalThis, n)]));
+  const set = (n, value) => Object.defineProperty(globalThis, n, { value, writable: true, configurable: true });
+  set("localStorage", ls);
+  set("window", { addEventListener() {}, removeEventListener() {}, dispatchEvent: () => true });
+  set("document", { hidden: false, addEventListener() {}, removeEventListener() {}, querySelectorAll: () => [] });
+  set("navigator", {});
+  try {
+    return (await import(`./client.js?observed=${++clientSeq}`)).default;
+  } finally {
+    for (const [n, d] of prev) {
+      if (d) Object.defineProperty(globalThis, n, d);
+      else delete globalThis[n];
+    }
+  }
+}
+
+const posRow = (seconds, duration) => JSON.stringify({ seconds, duration, updated_at: "2026-10-01T10:00:00.000Z", source: "local" });
+const LAST_EP = JSON.stringify({ id: "ep-1", title: "Ep", show: "Show", audio_url: "https://x.test/a.mp3", duration_sec: 3600 });
+
+test(`observedDurationSec: a stored position measured more than ${DRIFT_TOLERANCE_SEC} s off the bookmark's length makes the mark approximate, 'around minute 62'`, async () => {
+  /* The bookmark was set on a 3600 s copy; the copy that played since
+     measured 3645 s (45 s of ad load), the catalogue still says 3600.
+     MUTATION (run): make ForayPlayer.observedDurationSec return the
+     catalogue's duration (`return readLastEpisode(storage)?.duration_sec ??
+     null;`) -> 3600, no drift, "at 1:02:03"; red. MUTATION 2 (run):
+     `return null;` -> no reading, "at 1:02:03"; red. */
+  const client = await clientOver({ "cp_pos:ep-1": posRow(1800, 3645), cp_last_episode: LAST_EP });
+  assert.equal(typeof client.observedDurationSec, "function", "the member app.js's bookmarkObservedSec asks for exists");
+  const observed = client.observedDurationSec("ep-1");
+  assert.equal(observed, 3645, "the length the player measured, not the catalogue's 3600");
+  const bm = { sec: 3723, label: null, created_at: "2026-10-01T09:00:00.000Z", duration_sec: 3600 };
+  const verdict = bookmarkPrecision({ dai_suspected: true }, bm, observed);
+  assert.equal(verdict.precision, APPROXIMATE);
+  assert.equal(bookmarkLabel(bm, verdict), "around minute 62");
+  const inside = await clientOver({ "cp_pos:ep-1": posRow(1800, 3610) });
+  assert.equal(bookmarkPrecision({ dai_suspected: true }, bm, inside.observedDurationSec("ep-1")).precision, EXACT,
+    "10 s of drift is the same copy: at 1:02:03");
+});
+
+test("observedDurationSec is null when nothing was measured: no stored position, or one stored without a duration; never the catalogue's", async () => {
+  /* MUTATION (run): `return knownEpisodeDurationSec(id,
+     readLastEpisode(storage)?.duration_sec);` (measured first, catalogue
+     second) -> 3600 for an episode the player never measured; red. */
+  const client = await clientOver({ cp_last_episode: LAST_EP, "cp_pos:ep-2": posRow(60, null) });
+  assert.equal(client.observedDurationSec("ep-1"), null, "no stored position: the catalogue's 3600 is not a reading");
+  assert.equal(client.observedDurationSec("ep-2"), null, "a position with no measured length");
+  assert.equal(client.observedDurationSec("ep-none"), null);
+  assert.equal(client.observedDurationSec(""), null);
 });
