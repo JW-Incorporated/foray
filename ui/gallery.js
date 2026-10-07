@@ -27,8 +27,8 @@ function galleryBandSegments() {
 
 function galleryContrastPairs(scheme) {
   var ratios = scheme === "dark"
-    ? ["15.76", "14.06", "8.85", "5.38", "6.07", "7.10", "6.49", "7.59", "8.56", "8.24", "5.47"]
-    : ["15.26", "17.01", "6.56", "5.14", "4.99", "7.53", "4.41", "6.65", "4.74", "4.79", "3.14"];
+    ? ["15.76", "14.06", "8.85", "5.38", "6.07", "7.10", "10.60", "6.49", "7.59", "8.56", "8.24", "5.47"]
+    : ["15.26", "17.01", "6.56", "5.14", "4.99", "7.53", "13.40", "4.41", "6.65", "4.74", "4.79", "3.14"];
   var pairs = [
     { id: "ink-paper", label: "Ink on paper", ratio: ratios[0] },
     { id: "ink-card", label: "Ink on card", ratio: ratios[1] },
@@ -36,11 +36,12 @@ function galleryContrastPairs(scheme) {
     { id: "ink-3-paper", label: "Tertiary ink on paper", ratio: ratios[3] },
     { id: "on-persimmon", label: "Key text on persimmon", ratio: ratios[4] },
     { id: "on-ultramarine", label: "Key text on ultramarine", ratio: ratios[5] },
-    { id: "persimmon-paper", label: "Persimmon on paper · UI", ratio: ratios[6] },
-    { id: "ultramarine-paper", label: "Ultramarine on paper", ratio: ratios[7] },
-    { id: "good-paper", label: "Ready on paper", ratio: ratios[8] },
-    { id: "warn-paper", label: "Warning on paper", ratio: ratios[9] },
-    { id: "segment-enamels", label: "Station enamels on well · UI", ratio: ratios[10] },
+    { id: "on-rubber", label: "Key text on rubber", ratio: ratios[6] },
+    { id: "persimmon-paper", label: "Persimmon on paper · UI", ratio: ratios[7] },
+    { id: "ultramarine-paper", label: "Ultramarine on paper", ratio: ratios[8] },
+    { id: "good-paper", label: "Ready on paper", ratio: ratios[9] },
+    { id: "warn-paper", label: "Warning on paper", ratio: ratios[10] },
+    { id: "segment-enamels", label: "Station enamels on well · UI", ratio: ratios[11] },
   ];
   return pairs.map(function (pair) {
     var enamels = pair.id === "segment-enamels"
@@ -100,9 +101,9 @@ function gallerySurfaces(scheme) {
     tactileCard({ eyebrow: "Card", title: "Raised enamel", copy: "One radius and one shadow carry grouped content." }) +
     tactileCard({ eyebrow: "Hero", title: "A bigger stage", copy: "The hero keeps the same material with more room.", hero: true }) +
     tactileWell({ text: "Inset well · 12:40" }) + tactileCard({ eyebrow: "Loading", title: "Stable geometry", copy: "The state keeps its final footprint.", loading: true }) +
-    '</div><div class="gallery-band-stack"><span class="gallery-label">Mini band</span>' + tactileBand({ id: id + "-mini", kind: "mini", segments: galleryBandSegments(), progress: .43, currentIndex: 2, renderWidth: 329 }) + '<span class="gallery-label">Detail band · one code per run</span>' + tactileBand({ id: id + "-detail", kind: "detail", segments: galleryBandSegments(), progress: .43, currentIndex: 2, renderWidth: 329 }) + '<span class="gallery-label">Scrubber · slider</span>' + tactileBand({ id: id + "-scrub", kind: "scrub", segments: galleryBandSegments(), progress: .43, currentIndex: 2, totalSeconds: 1284, valueText: "9 minutes 12 of 21 minutes 24, BBQ Radio Network", renderWidth: 329 }) + '</div>' +
+    '</div><div class="gallery-band-stack" id="' + esc(id) + '-band-states"><span class="gallery-label">Line band · mini player</span>' + tactileBand({ id: id + "-line", kind: "line", segments: galleryBandSegments(), progress: .43, currentIndex: 2, renderWidth: 329 }) + '<span class="gallery-label">Mini band</span>' + tactileBand({ id: id + "-mini", kind: "mini", segments: galleryBandSegments(), progress: .43, currentIndex: 2, renderWidth: 329 }) + '<span class="gallery-label">Detail band · one code per run</span>' + tactileBand({ id: id + "-detail", kind: "detail", segments: galleryBandSegments(), progress: .43, currentIndex: 2, renderWidth: 329 }) + '<span class="gallery-label">Scrubber · slider</span>' + tactileBand({ id: id + "-scrub", kind: "scrub", segments: galleryBandSegments(), progress: .43, currentIndex: 2, totalSeconds: 1284, valueText: "9 minutes 12 of 21 minutes 24, BBQ Radio Network", renderWidth: 329 }) + '<span class="gallery-label">Buffering scrubber · pulsing needle</span>' + tactileBand({ id: id + "-buffering", kind: "scrub", segments: galleryBandSegments(), progress: .43, currentIndex: 2, totalSeconds: 1284, valueText: "Buffering at 9 minutes 12", renderWidth: 329, buffering: true }) + '</div>' +
     tactileGauge({}) + tactileBridgeCard({ sentence: "Machining shapes parts; language shapes meaning through the same steady pressure.", knownTitle: "Machining", knownInitials: "MA", title: "How words wear into new forms", show: "Lingthusiasm", duration: "35 min", initials: "LW" }) +
-    '<div class="gallery-two">' + tactileToast({ text: "Removed from Up Next", action: "Undo" }) + tactileToast({ text: "Saved for later", action: "Undo", show: true }) + '</div><div class="gallery-two">' + tactileSkeleton("row") + tactileSkeleton("hero") + '</div>' + tactileEmpty({ copy: "Nothing here yet. Follow a show and it lands here.", action: "Find a show" }) + '</section>';
+    '<div class="gallery-two">' + tactileToast({ text: "Removed from Up Next", action: "Undo" }) + tactileToast({ text: "Saved for later", action: "Undo", show: true }) + '</div><div class="gallery-two gallery-skeletons" id="' + esc(id) + '-skeletons">' + tactileSkeleton("row") + tactileSkeleton("hero") + tactileSkeleton("card") + '</div>' + tactileEmpty({ copy: "Nothing here yet. Follow a show and it lands here.", action: "Find a show" }) + '</section>';
 }
 
 function galleryRows(scheme) {
@@ -121,6 +122,7 @@ function galleryNavigation(scheme) {
   var id = "gallery-" + scheme + "-navigation";
   return '<section class="gallery-block" id="' + esc(id) + '" aria-labelledby="' + esc(id) + '-title"><h3 class="heading" id="' + esc(id) + '-title">Deck, sheet, and rotary control</h3><div class="gallery-decks">' +
     tactileTabBar({ active: "today", count: 4, mini: { title: "A machine can teach a language", show: "Lingthusiasm", initials: "LI" } }) +
+    '<div id="' + esc(id) + '-playing-mini">' + tactileTabBar({ active: "find", count: 4, mini: { title: "The station playing now", show: "BBQ Radio Network", initials: "BR", playing: true } }) + '</div>' +
     tactileTabBar({ active: "yours", count: 4, collapsed: true }) +
     '</div>' + tactileRotary({ label: "Playback speed", value: "1.0×" }) + tactileSheet({ id: id + "-preview", closeId: id + "-preview-close", title: "Sheet", copy: "Focus enters the container and every gesture has a button.", primary: "Done", secondary: "Not now", preview: true }) + '</section>';
 }
