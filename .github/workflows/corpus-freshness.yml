@@ -1,0 +1,128 @@
+# Is the corpus catalogue fresh? (PKG-34, docs/roadmap/corpus.md §3.)
+#
+# WHAT IT WATCHES
+# The weekly corpus export (tools/foraycorpus-export/weekly.mjs, HUMAN-ACTIONS
+# #139) publishes a GitHub Release and opens a PR that moves
+# data/corpus-catalogue-pointer.json (PKG-32's shape: `manifest_url`,
+# `release_tag`, `export_version`, …). This job reads that pointer, fetches the
+# manifest it names and goes red when the manifest's `built_at` is more than
+# STALE_AFTER_HOURS old, which happens when the export stops running, a run
+# publishes nothing, or the pointer PR never merges.
+#
+# NO POINTER YET IS NOT A FAILURE
+# Until the first export lands (HUMAN-ACTIONS #138/#139), the pointer file does
+# not exist. That is the expected state today, so the job reports
+# "no pointer yet" and exits 0. A watchdog that is red from birth teaches
+# everyone to ignore it.
+#
+# A FAILED READ IS NOT A VERDICT
+# A manifest that cannot be fetched or has no parseable `built_at` fails the
+# job with a message that says "could not tell", never "stale". Only a
+# manifest_url under this repository's own Releases is fetched.
+#
+# ADVISORY, AND WHAT IT DELIBERATELY DOES NOT DO
+# This is not a required check and must never become one: a stale catalogue
+# is a reason to look, not a reason to block a merge. It has no dependencies,
+# no secret and a read-only token. It changes nothing, re-runs nothing, and
+# opens no issue: that would need `issues: write`, and its output is a red
+# scheduled run in the workflow list, the same as shows-pointer-watch.yml.
+#
+# TRIGGERS
+# Daily on a schedule, by hand, and on a PR that changes the pointer or this
+# file. On a pointer PR the check shows whether the new pointer is itself
+# fresh.
+#
+# COST
+# One ubuntu-latest job a day (plus one per pointer PR), well under a minute:
+# checkout, one node script, one HTTPS GET. The repo is public, so standard
+# GitHub-hosted runner minutes are free.
+
+name: corpus-freshness
+
+on:
+  schedule:
+    # 07:17 UTC daily. Off :00 per the Swift2 convention (top-of-hour cron is
+    # where GitHub's scheduling contention lives).
+    - cron: "17 7 * * *"
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - data/corpus-catalogue-pointer.json
+      - .github/workflows/corpus-freshness.yml
+
+concurrency:
+  group: corpus-freshness-${{ github.ref }}
+  cancel-in-progress: true
+
+# Read-only. A watchdog that can change the thing it watches is not a watchdog.
+permissions:
+  contents: read
+
+jobs:
+  corpus-catalogue-fresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Is the corpus catalogue fresh?
+        env:
+          POINTER: data/corpus-catalogue-pointer.json
+          # corpus.md §PKG-34. One number; the verdict below reads only this.
+          STALE_AFTER_HOURS: "48"
+          REPO: ${{ github.repository }}
+        run: |
+          node --input-type=module <<'EOF'
+          import { appendFileSync, existsSync, readFileSync } from "node:fs";
+
+          const { POINTER, REPO, GITHUB_STEP_SUMMARY } = process.env;
+          const STALE_AFTER_HOURS = Number(process.env.STALE_AFTER_HOURS);
+          const summary = (line) => { if (GITHUB_STEP_SUMMARY) appendFileSync(GITHUB_STEP_SUMMARY, `${line}\n`); };
+          const cannotTell = (why) => {
+            console.log(`::error title=corpus-freshness could not tell::${why} This is not a verdict about the catalogue.`);
+            summary(`**Could not tell:** ${why}`);
+            process.exit(1);
+          };
+
+          if (!existsSync(POINTER)) {
+            console.log(`::notice title=corpus-freshness::no pointer yet (${POINTER} is absent; the first corpus export has not landed)`);
+            summary(`No pointer yet: \`${POINTER}\` is absent, so there is no corpus catalogue to check.`);
+            process.exit(0);
+          }
+
+          let pointer;
+          try { pointer = JSON.parse(readFileSync(POINTER, "utf8")); } catch (e) { cannotTell(`${POINTER} is not JSON (${e.message}).`); }
+          const url = pointer?.manifest_url;
+          const allowed = `https://github.com/${REPO}/releases/download/`;
+          if (typeof url !== "string" || !url.startsWith(allowed)) cannotTell(`manifest_url is not under ${allowed}: ${JSON.stringify(url)}.`);
+
+          let manifest;
+          for (let attempt = 1, delay = 5; ; attempt++, delay *= 3) {
+            try {
+              const res = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(30000) });
+              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              manifest = await res.json();
+              break;
+            } catch (e) {
+              if (attempt >= 3) cannotTell(`fetching ${url} failed after ${attempt} attempts (${e.message}).`);
+              console.log(`attempt ${attempt} failed (${e.message}), retrying in ${delay}s`);
+              await new Promise((r) => setTimeout(r, delay * 1000));
+            }
+          }
+
+          const builtMs = Date.parse(manifest?.built_at);
+          if (!Number.isFinite(builtMs)) cannotTell(`the manifest at ${url} has no parseable built_at (${JSON.stringify(manifest?.built_at)}).`);
+          const ageHours = (Date.now() - builtMs) / 3_600_000;
+          const what = `export ${manifest.export_version ?? pointer.export_version ?? "?"} (release ${pointer.release_tag ?? "?"}) was built at ${manifest.built_at}, ${ageHours.toFixed(1)} h ago`;
+          if (ageHours > STALE_AFTER_HOURS) {
+            console.log(`::error title=Corpus catalogue is stale::${what}; the limit is ${STALE_AFTER_HOURS} h.`);
+            summary(`**Corpus catalogue is stale:** ${what}; the limit is ${STALE_AFTER_HOURS} h.`);
+            process.exit(1);
+          }
+          console.log(`fresh: ${what} (limit ${STALE_AFTER_HOURS} h)`);
+          summary(`Fresh: ${what} (limit ${STALE_AFTER_HOURS} h).`);
+          EOF
