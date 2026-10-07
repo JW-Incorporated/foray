@@ -145,8 +145,9 @@ test("a database it cannot reach degrades to the live branch, never a 500", asyn
 });
 
 test("the live branch passes a feed's inline psc:chapters through as `chapters`, sorted, beside chapters_url (#1071)", async () => {
-  /* MUTATION: put `chapters: null` back in toLiveEpisode (episodes.ts) — the
-     chaptered row comes back with chapters null and this goes red. */
+  /* MUTATION: put `chapters: null` back in toCatalogEpisode (ingestShowFeed.ts,
+     the one mapper both branches use since CH2-01) — the chaptered row comes
+     back with chapters null and this goes red. */
   await withEnv({ databaseUrl: null, feed: CHAPTERED_FEED }, async () => {
     const res = mockRes();
     await handler({ method: "GET", query: { show_id: SHOW }, headers: {} }, res);
@@ -168,10 +169,10 @@ test("the DB branch, ingesting the same chaptered feed through the real store, s
      an in-memory store instead of Postgres: refresh = ingestShowFeed, episodes
      = the store's read. So the row served is the row ingestShowFeed's mapper
      wrote.
-     PIN (main today, B1-01): the DB mapper hardcodes `chapters: null`, so a
-     feed the live branch serves WITH chapters is served without them once
-     DATABASE_URL is set. This assertion flips to the chapter array in the fix.
-     MUTATION: make ingestShowFeed's mapper carry `ep.inlineChapters ?? null` -> red. */
+     Pinned on main as `chapters: null` (B1-01: the DB mapper hardcoded it, so
+     a feed the live branch served WITH chapters lost them once DATABASE_URL
+     was set); flipped by CH2-01 to the same array the live branch serves.
+     MUTATION: put `chapters: null` back in toCatalogEpisode -> red. */
   const store = new InMemoryShowEpisodesStore();
   const session = async () => ({
     refresh: (showId, feedUrl) => ingestShowFeed(showId, feedUrl, store),
@@ -184,7 +185,10 @@ test("the DB branch, ingesting the same chaptered feed through the real store, s
     assert.equal(res.body.source, "db");
     assertListShape(res.body, "db-chapters");
     const byTitle = Object.fromEntries(res.body.episodes.map((e) => [e.title, e]));
-    assert.equal(byTitle.Chaptered.chapters, null, "PIN: the DB mapper drops inline chapters today");
+    assert.deepEqual(byTitle.Chaptered.chapters, [
+      { title: "Intro", start_time_seconds: 0 },
+      { title: "Later", start_time_seconds: 600, url: "https://example.com/later" },
+    ], "the DB branch serves the inline chapters the live branch serves");
     assert.equal(byTitle.Chaptered.chapters_url, "https://cdn.example.com/c.json", "the JSON pointer flows on the DB branch too");
     assert.equal(byTitle.Plain.chapters, null);
   });

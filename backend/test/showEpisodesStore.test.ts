@@ -185,10 +185,12 @@ describe("chapters on a re-upsert (CH2-01)", () => {
   const squash = (sql: string) => sql.replace(/\s+/g, " ");
   const marker = [{ title: "Intro", start_time_seconds: 0 }];
 
-  it("PIN (main today): the Postgres upsert coalesces chapters, keeping the old ones when the new row has none", () => {
-    // MUTATION: change the upsert to `chapters = excluded.chapters` -> red (this pin flips in the fix commit).
+  it("the Postgres upsert overwrites chapters, never coalescing the old ones back in (flipped from the main-today pin)", () => {
+    // MUTATION: restore `chapters = coalesce(excluded.chapters, catalog_show_episodes.chapters)` -> red.
+    // Real Postgres agrees: tools/shows/shows-postgres-integration.test.mjs runs this upsert twice.
     const sql = squash(buildEpisodeUpsert([ep()]).sql);
-    expect(sql).toContain("chapters = coalesce(excluded.chapters, catalog_show_episodes.chapters)");
+    expect(sql).toContain("chapters = excluded.chapters,");
+    expect(sql).not.toMatch(/coalesce\(excluded\.chapters/);
   });
 
   it("InMemory: a re-upsert whose row has no chapters clears the stored ones", async () => {
@@ -198,5 +200,35 @@ describe("chapters on a re-upsert (CH2-01)", () => {
     expect((await store.episodesForShow("show-a"))[0]!.chapters).toEqual(marker);
     await store.upsertEpisodes([ep({ guid: "g1", chapters: null })]);
     expect((await store.episodesForShow("show-a"))[0]!.chapters).toBeNull();
+  });
+});
+
+/* CH2-01 (B2-10): "is there a cache" is a one-row probe, not a list read. */
+describe("hasEpisodes (CH2-01)", () => {
+  it("InMemory: true only for a show with a stored episode", async () => {
+    // MUTATION: InMemory hasEpisodes answers `this.episodes.size > 0` (no show_id filter) -> red.
+    const store = new InMemoryShowEpisodesStore();
+    expect(await store.hasEpisodes("show-a")).toBe(false);
+    await store.upsertEpisodes([ep({ show_id: "show-b", guid: "g1" })]);
+    expect(await store.hasEpisodes("show-a")).toBe(false);
+    expect(await store.hasEpisodes("show-b")).toBe(true);
+  });
+
+  it("Postgres: one `select 1 ... limit 1` on legacy_show_id, answered by whether a row came back", async () => {
+    // MUTATION: drop `limit 1` from the Postgres hasEpisodes query -> red.
+    const sqls: Array<{ sql: string; params?: unknown[] }> = [];
+    let rows: unknown[] = [];
+    const client = {
+      query: async (sql: string, params?: unknown[]) => {
+        sqls.push({ sql, params });
+        return { rows };
+      }
+    };
+    const store = new PostgresShowEpisodesStore(client as unknown as Client);
+    expect(await store.hasEpisodes("show-a")).toBe(false);
+    rows = [{ "?column?": 1 }];
+    expect(await store.hasEpisodes("show-a")).toBe(true);
+    expect(sqls[0]!.sql.replace(/\s+/g, " ")).toBe("select 1 from catalog_show_episodes where legacy_show_id = $1 limit 1");
+    expect(sqls[0]!.params).toEqual(["show-a"]);
   });
 });

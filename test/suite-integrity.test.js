@@ -2196,7 +2196,7 @@ const FLOORS = {
   "tools/shows/run-and-publish-execargv.test.mjs": 1,
   "tools/shows/load-postgres.test.mjs": 11, // PKG-01 (S-09 tools half): pure-function halves of the Postgres loader, incl. main's { baseline, changed } shape
   "tools/shows/search-shows.test.mjs": 7, // PKG-01: FTS/trgm query builders
-  "tools/shows/shows-postgres-integration.test.mjs": 8, // PKG-01: real-Postgres acceptance; skips without TEST_DATABASE_URL
+  "tools/shows/shows-postgres-integration.test.mjs": 10, // PKG-01: real-Postgres acceptance; skips without TEST_DATABASE_URL; 8 -> 10 // CH2-01: 0021 index EXPLAIN, chapters overwrite in Postgres
   "tools/foraycorpus-export/config.test.mjs": 4, // PKG-01 (docs/roadmap/corpus.md): corpus-export package scaffold, config + identity scan
   "tools/foraycorpus-export/mimes.test.mjs": 3, // PKG-02 (docs/roadmap/corpus.md): transcript mime classifier (timed/plain/other, superset of TIMED_TRANSCRIPT_TYPES)
   "tools/foraycorpus-export/row-source.test.mjs": 5, // PKG-02 (docs/roadmap/corpus.md): JSONL row source over the synthetic fixture, counts.json recount
@@ -2756,7 +2756,7 @@ const BACKEND_FLOORS = {
   /* Stage 3b (kanban t_567b570f, docs/show-pages-plan.md §Stage 3): shared
      catalogue store CRUD (scoping by show_id, upsert-not-duplicate on
      (show_id, guid), published_at ordering, feed-state round-trip). */
-  "test/showEpisodesStore.test.ts": 13, // PKG-02 (S-09): every statement names legacy_show_id after the 0019 rekey (batched upsert; reads, feed-state upsert); 9 -> 11 // round-3 L6 (2026-09-25): backend-rest-9: one batched upsert in a transaction, rollback, dedup by guid; 5 -> 9; 11 -> 13 // CH2-01: re-upsert chapters (coalesce pin, InMemory clears)
+  "test/showEpisodesStore.test.ts": 15, // PKG-02 (S-09): every statement names legacy_show_id after the 0019 rekey (batched upsert; reads, feed-state upsert); 9 -> 11 // round-3 L6 (2026-09-25): backend-rest-9: one batched upsert in a transaction, rollback, dedup by guid; 5 -> 9; 11 -> 13 // CH2-01: re-upsert chapters (coalesce pin, InMemory clears); 13 -> 15 // CH2-01: hasEpisodes (InMemory, Postgres select 1 limit 1)
   "test/showsPostgresLive.test.ts": 3, // PKG-02 (S-09): live-Postgres acceptance; every case skips without SHOWS_DATABASE_URL||DATABASE_URL
   /* Stage 3b end to end: fetches+parses+upserts through the real parser,
      proves the chapters JSON body is never dereferenced during ingestion
@@ -2764,7 +2764,7 @@ const BACKEND_FLOORS = {
      never-blank-page degrade contract (cached_stale / no_cache_error) on a
      feed fetch failure — plus that a missing enclosure never fabricates an
      audio_url. */
-  "test/ingestShowFeed.test.ts": 16, // round-3 L6 (2026-09-25): backend-rest-9/-10/-12: never throws, stable guid-less identity, failure backoff; 8 -> 13; 13 -> 16 // CH2-01: status/error pinned on the cache-fallback paths
+  "test/ingestShowFeed.test.ts": 18, // round-3 L6 (2026-09-25): backend-rest-9/-10/-12: never throws, stable guid-less identity, failure backoff; 8 -> 13; 13 -> 16 // CH2-01: status/error pinned on the cache-fallback paths; 16 -> 18 // CH2-01: inline chapters stored and overwritten; no list read on any path
   /* §4.8 end to end (kanban card t_7f410ffc): within-act stitching rules
      (silence bridge, jingle marks cuts, measured cadence, coverage
      hard-gate), the forward-only cross-act continuity Builder (§6.2),
