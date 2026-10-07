@@ -218,6 +218,97 @@ test("the page, service worker, web dist, native bundle and UI lab all carry the
   assert.match(states, /id: "gallery"[\s\S]*route: "\?gallery=1#\/gallery"[\s\S]*ready: "\.ag-gallery"/);
 });
 
+/* Every `opacity` below 1 in primitives.css, outside @keyframes, as { selector, value }.
+   Raw scan of the whole stylesheet (comments stripped), including rules nested in @media. */
+function translucentRules(css) {
+  const flat = css.replace(/\/\*[\s\S]*?\*\//g, "").replace(/@keyframes[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, "");
+  const out = [];
+  for (const rule of flat.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    for (const decl of rule[2].matchAll(/(?:^|;)\s*opacity:\s*([0-9.]+)/g)) {
+      if (Number(decl[1]) < 1) out.push({ selector: rule[1].trim(), value: Number(decl[1]) });
+    }
+  }
+  return out;
+}
+
+test("no primitive state dims real text: translucency is reserved for disabled controls and non-text parts", () => {
+  /* Review blocker (ambient p3-primitives it2): `.is-loading .ag-row-copy { opacity: .55 }` and
+     `.ag-stretch-card.is-loading { opacity: .7 }` composited text-2 to 3.15:1 (Dusk) and 2.51:1
+     (Dawn), under AA. Disabled controls are exempt from WCAG 1.4.3; artwork, strip bars and the
+     invisible native range input carry no text.
+     MUTATION (run red): re-add `.ag .ag-episode-row.is-loading .ag-row-copy { opacity: .55; }`.
+     MUTATION (run red): re-add `.ag .ag-stretch-card.is-loading { opacity: .7; }`. */
+  const allowed = /is-disabled|:disabled|\.ag-art\.is-dim|\.ag-strip-visual|\.ag-scrub-input/;
+  const rules = translucentRules(CSS);
+  assert.ok(rules.length >= 4, "the scan sees the known translucent rules (disabled, dim art, strip, range input)");
+  for (const { selector, value } of rules) {
+    for (const part of selector.split(",")) {
+      assert.match(part.trim(), allowed, `opacity ${value} on "${part.trim()}" dims real text`);
+    }
+  }
+  assert.ok(translucentRules(".ag .x.is-loading .ag-row-copy { opacity: .55; }").length === 1, "the scanner itself finds a dimmed loading rule");
+});
+
+test("a loading row or card keeps its copy and shows the spinner on its own Play control", () => {
+  /* MUTATION (run red): change `state: AG_BUSY[rowState]` to `state: "default"` in agEpisodeRow(). */
+  const ctx = markupContext();
+  for (const code of ['agEpisodeRow({ state: "loading" })', 'agStretchCard({ state: "loading" })']) {
+    const html = run(ctx, code);
+    const button = html.match(/<button[^>]*>[\s\S]*?<\/button>/g).pop();
+    assert.match(button, /aria-busy="true"/, `${code} Play control is busy`);
+    assert.match(button, /class="ag-spinner"/, `${code} Play control spins`);
+    assert.doesNotMatch(button, /disabled/, `${code} Play control stays enabled`);
+  }
+  assert.match(run(ctx, 'agEpisodeRow({ state: "unavailable" })'), /aria-disabled="true"/);
+  assert.match(run(ctx, 'agStretchCard({ state: "disabled" })'), /aria-disabled="true"/);
+  assert.match(run(ctx, 'agStretchCard({ state: "<x>" })'), /class="ag-stretch-card raised is-default"/, "an unknown card state falls back to default");
+});
+
+test("a loading control swaps its glyph for the spinner instead of crowding both into one circle", () => {
+  /* MUTATION (run red): restore `>${iconMarkup}${text}${busy ? '<span class="ag-spinner" ...>' : ""}` in agButton(). */
+  const ctx = markupContext();
+  const icon = run(ctx, 'agButton({ label: "Share", variant: "icon", icon: "share", state: "loading" })');
+  assert.match(icon, /class="ag-spinner"/);
+  assert.doesNotMatch(icon, /<svg class="icon/, "no glyph beside the spinner in a 44px circle");
+  assert.match(run(ctx, 'agButton({ label: "Share", variant: "icon", icon: "share" })'), /<svg class="icon/);
+  assert.match(run(ctx, 'agButton({ label: "Save", variant: "primary", state: "loading" })'), /class="ag-spinner"[^<]*<\/span><span>Save<\/span>/);
+});
+
+test("the spinner fills the 24px glyph slot, so a control does not change width when it starts loading", () => {
+  /* MUTATION (run red): change `.ag .ag-spinner { width: var(--s-6); height: var(--s-6);` back to `--s-4`. */
+  assert.match(CSS, /\.ag \.ag-spinner \{ width: var\(--s-6\); height: var\(--s-6\);/);
+  assert.match(read("ui/tokens.css"), /--s-6: 24px;/);
+  assert.match(read("ui/icons.js"), /size === undefined \? 24 : size/, "the default glyph the spinner replaces is 24px");
+});
+
+test("a buffering MiniPlayer keeps its Play glyph breathing and marks the group busy", () => {
+  /* BUILD-NOTES §3: buffering = glyph opacity breathes 1.0 -> 0.85; no spinner.
+     MUTATION (run red): pass `state: miniState === "buffering" ? "loading" : "default"` to agPlayButton() again. */
+  const html = run(markupContext(), 'agMiniPlayer({ state: "buffering" })');
+  assert.match(html, /class="ag-mini-player is-buffering"[^>]*aria-busy="true"/);
+  assert.doesNotMatch(html, /ag-spinner/);
+  assert.match(html, /ag-btn-play[^>]*>\s*<svg class="icon[^"]*"[^>]*><use href="ui\/icons\.svg#i-play"/);
+  assert.doesNotMatch(run(markupContext(), 'agMiniPlayer({ state: "playing" })'), /aria-busy/);
+  assert.match(CSS, /\.ag \.ag-mini-player\.is-buffering \.ag-btn-play \.icon \{ animation: ag-breathe/);
+});
+
+test("a disabled chip is visibly disabled, not only announced", () => {
+  /* BUILD-PLAN 1.3: disabled = 40% + aria-disabled. The gallery's disabled chip used to render
+     identical to the default one.
+     MUTATION (run red): delete `.ag .ag-chip:disabled { opacity: .4; }`. */
+  assert.match(run(markupContext(), 'agChip("Science", { disabled: true })'), /aria-disabled="true" disabled/);
+  assert.match(CSS, /\.ag \.ag-chip:disabled \{ opacity: \.4; \}/);
+});
+
+test("primitive and gallery sources carry no mojibake", () => {
+  /* The HeroPick caption shipped as "4 shows Â· 42 min" (a UTF-8 middle dot read as Latin-1).
+     MUTATION (run red): put `Â·` back in agHeroPick()'s caption. */
+  for (const [name, text] of [["ui/primitives.js", PRIMITIVES], ["ui/gallery.js", GALLERY], ["ui/primitives.css", CSS]]) {
+    assert.doesNotMatch(text, /Â|â€|Ã/, `${name} has a double-encoded character`);
+  }
+  assert.match(run(markupContext(), "agHeroPick()"), /<p class="t-caption">4 shows · 42 min<\/p>/);
+});
+
 test("the gallery baseline visits every visual plate in both schemes", () => {
   /* MUTATION (run red): delete `step("cards-tiles", ...)` from galleryCaptureSteps(). */
   const html = run(markupContext(), "agGalleryMarkup()");
