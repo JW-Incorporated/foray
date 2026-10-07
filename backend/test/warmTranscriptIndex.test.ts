@@ -7,14 +7,12 @@ import {
   FEED_CACHE_MAX_AGE_MS,
   loadFeed,
   mergeCorpusRows,
-  parseDuration,
-  parseFeedEpisodes,
   parseWarmArgs,
   readCorpusDigestRows
 } from "../src/cli/warmTranscriptIndex";
 
 /**
- * Issue #703 — the warm pass's own parsing, which is what decides whether a
+ * Issue #703 — the warm pass's feed join, which is what decides whether a
  * reconciled episode is SEARCHABLE only or also MINTABLE.
  *
  * Why this matters more than it looks: a body on disk knows its show and its
@@ -24,94 +22,32 @@ import {
  * from `This Podcast Will Kill You` and one that can only read about it. The
  * feed is where all three come from.
  *
+ * The feed is read by `feeds/parser.ts`, the project's one RSS parser
+ * (CH2-06); the pins for it live in the "digest row" block at the end, which
+ * goes through `loadFeed` and `corpusDigestRow` — the path a body takes into
+ * corpus-digest.json.
+ *
  * KILLING MUTATIONS THIS SUITE CATCHES:
  *
- *  1. `parseFeedEpisodes` losing the enclosure URL, the title or the guid — any
+ *  1. The feed parse losing the enclosure URL, the title or the guid — any
  *     one of which silently downgrades every episode of a show to
  *     searchable-only, with no error anywhere.
  *  2. It accepting an item with no guid, which would produce a digest row that
  *     can never be joined to a body and therefore a phantom episode in the
  *     searchable archive.
- *  3. `parseDuration` reading "58:21" as 58 — the published form most feeds
- *     use. A duration of 58 seconds makes §4.5 refuse every window past that
- *     mark as `past-duration`, so the episode indexes, ranks, and then yields
+ *  3. A duration of "58:21" read as 58 — the published form most feeds use.
+ *     A duration of 58 seconds makes §4.5 refuse every window past that mark
+ *     as `past-duration`, so the episode indexes, ranks, and then yields
  *     nothing, which is the hardest failure of all to read.
- *  4. `parseDuration` returning 0 rather than null for junk, which
- *     `mintSegmentSource` would take as a real duration and refuse later.
+ *  4. A 0 or junk duration written as a real one, which `mintSegmentSource`
+ *     would take as a real duration and refuse later.
  *  5. `parseWarmArgs` silently ignoring `--show`, turning a targeted warm of one
  *     show into a full 449 MB pass on a 16 GB machine with other agents on it.
+ *  6. The private regex parser, duration parser or entity decoder coming back
+ *     (CH2-06): `Rockets &#038; Rails` stored literally, `12:75` mintable.
+ *  7. A guid rule change in this parse or in sweep-transcripts.mjs's, which
+ *     breaks the body join.
  */
-describe("parseFeedEpisodes takes the three fields a body file does not have", () => {
-  const FEED = `<?xml version="1.0"?><rss><channel>
-    <title>Show level title, which is not an episode title</title>
-    <item>
-      <title><![CDATA[Ep 1: Cholera & the Broad Street pump]]></title>
-      <guid isPermaLink="false">d5981d2b-6850-4830-bc2a-b4b201569e3e</guid>
-      <enclosure url="https://traffic.omny.fm/d/clips/one.mp3?t=1" length="1" type="audio/mpeg"/>
-      <itunes:duration>3501</itunes:duration>
-    </item>
-    <item>
-      <title>Ep 2: Semmelweis</title>
-      <guid>https://example.com/p/2</guid>
-      <enclosure type="audio/mpeg" url="https://example.com/two.mp3"/>
-      <itunes:duration>58:21</itunes:duration>
-    </item>
-    <item>
-      <title>No guid, so no row</title>
-      <enclosure url="https://example.com/three.mp3"/>
-    </item>
-  </channel></rss>`;
-
-  it("reads guid, episode title, enclosure and duration for every item that has a guid", () => {
-    const episodes = parseFeedEpisodes(FEED);
-    expect(episodes).toHaveLength(2);
-    expect(episodes[0]).toEqual({
-      guid: "d5981d2b-6850-4830-bc2a-b4b201569e3e",
-      title: "Ep 1: Cholera & the Broad Street pump",
-      enclosureUrl: "https://traffic.omny.fm/d/clips/one.mp3?t=1",
-      durationSec: 3501
-    });
-  });
-
-  it("finds the enclosure url wherever the attribute sits, not only first", () => {
-    expect(parseFeedEpisodes(FEED)[1]?.enclosureUrl).toBe("https://example.com/two.mp3");
-  });
-
-  it("takes the ITEM's title, never the channel's", () => {
-    expect(parseFeedEpisodes(FEED)[0]?.title).not.toContain("Show level title");
-  });
-
-  it("drops an item with no guid rather than inventing a row nothing can join to", () => {
-    expect(parseFeedEpisodes(FEED).map((e) => e.title)).not.toContain("No guid, so no row");
-  });
-
-  it("returns nothing for a feed that is not one, instead of throwing mid-warm", () => {
-    expect(parseFeedEpisodes("not xml at all")).toEqual([]);
-    expect(parseFeedEpisodes("")).toEqual([]);
-  });
-});
-
-describe("parseDuration understands the three forms podcasts publish", () => {
-  it("reads bare seconds", () => {
-    expect(parseDuration("3501")).toBe(3501);
-  });
-
-  it("reads mm:ss as minutes, not as its first number", () => {
-    expect(parseDuration("58:21")).toBe(3501);
-  });
-
-  it("reads hh:mm:ss", () => {
-    expect(parseDuration("01:02:34")).toBe(3754);
-  });
-
-  it("returns null — never 0 — for junk, so a row stays honestly unmintable", () => {
-    expect(parseDuration("unknown")).toBeNull();
-    expect(parseDuration("0")).toBeNull();
-    expect(parseDuration("-5")).toBeNull();
-    expect(parseDuration(null)).toBeNull();
-  });
-});
-
 describe("parseWarmArgs", () => {
   it("collects every --show so a targeted warm stays targeted", () => {
     expect(parseWarmArgs(["--show", "a", "--show", "b"]).shows).toEqual(["a", "b"]);
@@ -359,5 +295,26 @@ describe("the digest row a feed produces (CH2-06)", () => {
     const swept = sweep.parseFeed(xml).episodes.map((e) => e.guid);
     expect(swept).toEqual(["a1b2c3-cdata-guid", "padded-cdata", "https://example.com/?p=1&q=2", "plain-guid-123"]);
     expect([...(await episodesOf(xml)).keys()]).toEqual(swept);
+  });
+
+  it("an entity-encoded title is decoded the way every other feed reader here decodes it (Rockets &#038; Rails)", async () => {
+    /* RED before CH2-06: the private decodeXml knew five named entities and
+       stored `Rockets &#038; Rails` literally in corpus-digest.json, from where
+       it rode into the published Foray's segment source. MUTATION THAT KILLS
+       THIS: put the private decoder back. */
+    const feed = await episodesOf(rss(item({ title: "Rockets &#038; Rails", guid: "rr", enclosure: "https://e.com/rr.mp3", duration: "1200" })));
+    expect(corpusDigestRow("show-a", "Show A", body("rr"), feed.get("rr")).row.title).toBe("Rockets & Rails");
+  });
+
+  it("an out-of-range duration (12:75) is unresolved, so the row is searchable only", async () => {
+    /* RED before CH2-06: the private parseDuration read `12:75` as 795 s and
+       counted the row mintable. `feeds/duration.ts` calls it garbage
+       (out-of-range-component). MUTATION THAT KILLS THIS: put the private
+       duration parser back. */
+    const feed = await episodesOf(rss(item({ title: "Bad clock", guid: "bc", enclosure: "https://e.com/bc.mp3", duration: "12:75" })));
+    expect(feed.get("bc")?.durationSec).toBeNull();
+    const { row, mintable } = corpusDigestRow("show-a", "Show A", body("bc"), feed.get("bc"));
+    expect(row.feed_duration_sec).toBeUndefined();
+    expect(mintable).toBe(false);
   });
 });

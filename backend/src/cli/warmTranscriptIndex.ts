@@ -3,6 +3,7 @@ import * as path from "path";
 import { FileTranscriptCueProvider, loadTranscriptArchive, type TranscriptDigestEntry } from "../generation/transcriptArchiveLookup";
 import { corpusCoverage, corpusCoverageLine, corpusSafeKey, scanNormalizedCorpus } from "../generation/transcriptCorpus";
 import { fetchFeedConditional } from "../feeds/conditionalGet";
+import { parseFeed } from "../feeds/parser";
 import { FileTranscriptTextIndex } from "../generation/transcriptTextIndex";
 
 /**
@@ -95,56 +96,31 @@ export interface FeedEpisode {
 }
 
 /**
- * The feed, parsed with two regexes and no XML library.
+ * The feed's episodes that have a guid, through `feeds/parser.ts` — the
+ * project's ONE RSS parser, duration rule (`feeds/duration.ts`) and entity
+ * decoder (`feeds/html.ts`). CH2-06 (B2-05): this file used to carry its own
+ * regex parser, duration parser and five-entity decoder, which stored
+ * `Rockets &#038; Rails` literally and counted `12:75` mintable at 795 s.
  *
- * DELIBERATELY SHALLOW. We need exactly guid, title, enclosure url and
- * duration, from feeds that are already known to be well-formed enough for
- * `tools/refresh-feeds.mjs` to have catalogued them. A parser that understands
- * more would be more to keep right; a row this misses simply stays
- * searchable-only, which is the same outcome as `--offline` and is reported the
- * same way.
+ * An item with no guid is dropped: a row keyed on nothing can never be joined
+ * to a body. An item with no `<title>` keeps the empty title it always had
+ * here, never the shared parser's `(untitled item #N)` placeholder — an
+ * invented title would make the row mintable and put a made-up episode name in
+ * a Foray. The join key must stay byte-equal to the guid
+ * `tools/segments/sweep-transcripts.mjs` reads; the suite pins that parity.
  */
-export function parseFeedEpisodes(xml: string): FeedEpisode[] {
+function feedEpisodes(xml: string): FeedEpisode[] {
   const out: FeedEpisode[] = [];
-  for (const chunk of String(xml).split(/<item[\s>]/).slice(1)) {
-    const guid = firstGroup(chunk, /<guid[^>]*>([\s\S]*?)<\/guid>/);
-    if (!guid) continue;
-    const title = firstGroup(chunk, /<title[^>]*>([\s\S]*?)<\/title>/) ?? "";
-    const enclosureUrl = firstGroup(chunk, /<enclosure[^>]*\surl="([^"]+)"/);
+  for (const episode of parseFeed(xml).episodes) {
+    if (!episode.guid) continue;
     out.push({
-      guid: decodeXml(guid),
-      title: decodeXml(title),
-      enclosureUrl: enclosureUrl ? decodeXml(enclosureUrl) : null,
-      durationSec: parseDuration(firstGroup(chunk, /<itunes:duration[^>]*>([\s\S]*?)<\/itunes:duration>/))
+      guid: episode.guid,
+      title: episode.warnings.includes("missing title") ? "" : episode.title,
+      enclosureUrl: episode.enclosureUrl,
+      durationSec: episode.duration.seconds
     });
   }
   return out;
-}
-
-function firstGroup(text: string, re: RegExp): string | null {
-  const m = text.match(re);
-  if (!m || typeof m[1] !== "string") return null;
-  const value = m[1].replace(/^\s*<!\[CDATA\[/, "").replace(/\]\]>\s*$/, "").trim();
-  return value.length > 0 ? value : null;
-}
-
-function decodeXml(text: string): string {
-  return text
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#0?39;|&apos;/g, "'")
-    .replace(/&amp;/g, "&");
-}
-
-/** `3501`, `58:21` and `01:02:34` are all durations podcasts publish. */
-export function parseDuration(text: string | null): number | null {
-  if (!text) return null;
-  const parts = text.split(":").map((p) => Number(p.trim()));
-  if (parts.some((n) => !Number.isFinite(n) || n < 0)) return null;
-  let seconds = 0;
-  for (const part of parts) seconds = seconds * 60 + part;
-  return seconds > 0 ? seconds : null;
 }
 
 /** `<show_id>-<10 hex>` is the directory; `<show_id>` is what a digest row says. */
@@ -215,7 +191,7 @@ export async function loadFeed(
 
   const index = (text: string | null) => {
     const byGuid = new Map<string, FeedEpisode>();
-    if (text) for (const episode of parseFeedEpisodes(text)) byGuid.set(episode.guid, episode);
+    if (text) for (const episode of feedEpisodes(text)) byGuid.set(episode.guid, episode);
     return byGuid;
   };
   let byGuid = index(xml);
