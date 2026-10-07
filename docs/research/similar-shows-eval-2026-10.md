@@ -459,7 +459,11 @@ It lifts each function it needs out of `app.js` when it runs
 reports this block stale, and `test/vouch-eval.test.js` says whether the
 floors and ceilings still hold. The harness supplies only `state.catalog`
 (`data/catalog-client.json`), `state.discover` (`data/discover.json`), no
-session, and `familyMode()` returning true.
+session, and a `familyMode()` stub. Since 2026-10-06 it runs the row twice:
+(a), (b), (c) and (e) with Family Mode OFF, the row most listeners see, over
+the whole curated catalogue; (d) with Family Mode ON. One run cannot carry
+both, because the ON row's eligible set is only the shows `familyAllows`
+passes (190 of 229), so a coverage floor over 229 belongs to the OFF run.
 
 **What the numbers say:**
 
@@ -483,13 +487,16 @@ session, and `familyMode()` returning true.
 - **(c) The row works as its comment promises.** Every day gives 8 distinct
   eligible shows, and the 00:00 and 23:59 UTC rows always match. A row spans
   about 8 top-level branches on average and never fewer than 5.
-- **(d) Family Mode is not applied to this row.** `showsWeVouchFor` has no
-  Family Mode filter. With Family Mode on, `familyAllows` rejects 39 of the
-  229 shows when given a show row: 17 comedy shows, 8 rated explicit and 14
-  unrated (`explicit: null`, not comedy). The row shows at least one of them
-  on most days of the year. The test holds this count as a **ceiling**, not
-  as a zero. Applying Family Mode here is an `app.js` change and is routed
-  as its own card (below).
+- **(d) Family Mode was not applied to this row; it is now.** On
+  2026-10-05 `showsWeVouchFor` had no Family Mode filter. With Family Mode
+  on, `familyAllows` rejects 39 of the 229 shows when given a show row: 17
+  comedy shows, 8 rated explicit and 14 unrated (`explicit: null`, not
+  comedy). The row showed them in 573 of the year's 2,920 slots (19.6%), on
+  296 of 365 days. Since 2026-10-06 `showsWeVouchFor` filters with
+  `familyAllows` before the codepoint sort and the seeded shuffle, so the ON
+  row shows none of them (0 slots, 0 days), every row still fills its 8
+  slots, and each mode keeps one set per UTC day for every visitor. The test
+  pins (d) at zero.
 - **(e) `label_scope: "general"` shows appear too.** The row applies no
   `label_scope` filter either, so all 13 general shows surface during the
   year. For an editorial row this is arguably fine. The PKG-03 rule is about
@@ -497,15 +504,18 @@ session, and `familyMode()` returning true.
   is recorded as a ceiling all the same, so a change in how the row draws
   shows is visible.
 
-**Routed, not fixed here:** "the vouch row ignores Family Mode" is a new
-`app.js` card. It is blocked on bundle headroom (`issue-279-df-sidecar`). The
-rule it would apply is the one `familySafe` already enforces elsewhere
-(founder question 23 in `docs/roadmap/README.md`: confirm the rule #835
-shipped). The rotation skew in (b) belongs on the same card, since both
-are edits to `showsWeVouchFor` and `seededShuffle`.
+**Fixed (2026-10-06, the 560-part card):** "the vouch row ignores Family
+Mode" was routed here as its own `app.js` card, blocked on bundle headroom
+(`issue-279-df-sidecar`, since merged as #1075). `showsWeVouchFor` now
+applies `familyAllows`, the rule `familySafe` already enforces elsewhere; the
+rule itself is unchanged (founder question 23 in `docs/roadmap/README.md`
+asks only to confirm the rule #835 shipped). The runner counts violations
+with that same `familyAllows`, so the zero in (d) measures exactly what the
+filter enforces.
 
 **Floors and ceilings (`test/vouch-eval.test.js`).** All values were measured
-on 2026-10-05 against `origin/main` at `919f925d`. Each test names the mutation
+on 2026-10-05 against `origin/main` at `919f925d`; the (d) rows were re-measured on
+2026-10-06 against `d75f456c` with the Family Mode filter. Each test names the mutation
 that turns it red; every mutation was run.
 
 | Metric | Gate | Mutation that turns it red |
@@ -515,16 +525,16 @@ that turns it red; every mutation was run.
 | (b) skew | max ≤ 38 days; first-tenth share ≤ 0.232 | `showsWeVouchFor` `limit = 8` → `limit = 12` |
 | (c) integrity | 0 bad rows, 0 unstable days | `dayOfYearSeed` `.slice(0, 10)` → `.slice(0, 13)`; the swap → `a[i] = a[j]` |
 | (c) branches | mean ≥ 7.956 a row | `limit = 8` → `limit = 4` |
-| (d) Family Mode | ≤ 573 slots, ≤ 296 days | `limit = 8` → `limit = 12`; drop `familySafe`'s `explicit === false` early return |
+| (d) Family Mode ON | 0 slots, 0 days; 39 rejected | drop `.filter(familyAllows)` from `showsWeVouchFor` |
+| (d) Family Mode ON row | 190 eligible, 0 bad rows, 0 unstable days | filter after the cut: `.slice(0, limit).filter(familyAllows)` |
 | (e) label_scope | ≤ 205 slots, ≤ 152 days | `limit = 8` → `limit = 12` |
 
 **To change the row:** edit `app.js`, run
 `node tools/similar-eval/vouch-run.mjs`, read the regenerated block, and move
-any gate the change earned. A Family Mode filter will drop (d) toward 0, and
-its ceiling should come down in the same PR.
+any gate the change earned.
 
 <!-- BEGIN GENERATED: node tools/similar-eval/vouch-run.mjs -->
-Window: 2026-01-01 to 2026-12-31 (365 UTC days), 8 slots a day (showsWeVouchFor's default limit), 2920 slots in all. Family Mode is evaluated ON, through app.js's own `familyAllows`.
+Window: 2026-01-01 to 2026-12-31 (365 UTC days), 8 slots a day (showsWeVouchFor's default limit), 2920 slots in all. Two runs: (a), (b), (c) and (e) with Family Mode OFF, (d) with it ON, through app.js's own `familyAllows`.
 
 | Metric | Measured |
 |---|---|
@@ -535,56 +545,59 @@ Window: 2026-01-01 to 2026-12-31 (365 UTC days), 8 slots a day (showsWeVouchFor'
 | (c) rows that are not 8 distinct eligible shows | 0 |
 | (c) days whose 00:00 and 23:59 UTC rows differ | 0 |
 | (c) top-level branches per row: mean / min; most slots one branch takes | 7.956 / 5; 4 |
-| (d) Family Mode violations: slots filled by a show familyAllows rejects | 573 (19.6%), on 296 of 365 days, at most 6 in one row |
-| (d) catalogue shows familyAllows rejects / of them surfaced | 39 / 39 |
+| (d) Family Mode violations: slots filled by a show familyAllows rejects | 0 (0.0%), on 0 of 365 days, at most 0 in one row |
+| (d) catalogue shows familyAllows rejects / of them surfaced with Family Mode ON | 39 / 0 |
+| (d) Family Mode ON: eligible shows / surfaced at least once | 190 / 189 (0.995) |
+| (d) Family Mode ON: appearances per show, min / median / max (expected 15.37); first 19 shows' share | 0 / 13 / 52; 23.2% |
+| (d) Family Mode ON: rows that are not 8 distinct eligible shows; days whose 00:00 and 23:59 UTC rows differ | 0; 0 |
 | (e) label_scope leakage: slots filled by a `label_scope: "general"` show | 205 (7.0%), on 152 of 365 days, at most 4 in one row |
 | (e) `label_scope: "general"` shows / of them surfaced | 13 / 13 |
 
-### (d) The shows Family Mode would hide, and how often the row shows them
+### (d) The shows Family Mode hides, and how often each row shows them
 
 By familySafe's reason: comedy branch 17, unrated 14, rated explicit 8.
 
-| Show | Reason | `explicit` | Days in the row |
-|---|---|:-:|---:|
-| `2-bears-1-cave` | comedy branch | false | 31 |
-| `armchair-expert` | comedy branch | false | 25 |
-| `bad-friends` | comedy branch | false | 29 |
-| `beer-in-front` | rated explicit | true | 28 |
-| `being-an-engineer` | unrated | null | 26 |
-| `bourbon-pursuit` | rated explicit | true | 15 |
-| `call-her-daddy` | comedy branch | false | 18 |
-| `catalyst-shayle-kann` | unrated | null | 27 |
-| `cbc-ideas` | unrated | null | 18 |
-| `cider-chat` | rated explicit | true | 11 |
-| `cleantechies-podcast` | unrated | null | 11 |
-| `comedy-bang-bang` | comedy branch | false | 13 |
-| `conan-obrien-needs-a-friend` | comedy branch | null | 8 |
-| `ear-hustle` | rated explicit | true | 9 |
-| `fall-of-civilizations` | unrated | null | 15 |
-| `fly-on-the-wall` | comedy branch | false | 10 |
-| `good-hang-amy-poehler` | comedy branch | false | 25 |
-| `handsome` | comedy branch | false | 15 |
-| `heavyweight` | rated explicit | true | 15 |
-| `how-did-this-get-made` | comedy branch | false | 16 |
-| `ill-drink-to-that-wine-talk` | rated explicit | true | 22 |
-| `inside-chips` | unrated | null | 13 |
-| `kill-tony` | comedy branch | false | 20 |
-| `lab-to-market-leadership` | unrated | null | 7 |
-| `las-culturistas` | comedy branch | false | 7 |
-| `lex-fridman-podcast` | unrated | null | 18 |
-| `materialism-podcast` | unrated | null | 2 |
-| `modern-love` | rated explicit | true | 10 |
-| `mtdcnc-podcast` | unrated | null | 12 |
-| `my-brother-my-brother-and-me` | comedy branch | null | 2 |
-| `omega-tau` | unrated | null | 13 |
-| `smartless` | comedy branch | null | 7 |
-| `stuff-you-should-know` | unrated | null | 11 |
-| `the-rest-is-history` | unrated | null | 11 |
-| `this-past-weekend-theo-von` | comedy branch | false | 6 |
-| `titans-of-nuclear` | unrated | null | 7 |
-| `we-can-do-hard-things` | rated explicit | true | 7 |
-| `working-it-out-birbiglia` | comedy branch | false | 15 |
-| `wtf-marc-maron` | comedy branch | false | 18 |
+| Show | Reason | `explicit` | Days in the row, Family Mode OFF | Days, Family Mode ON |
+|---|---|:-:|---:|---:|
+| `2-bears-1-cave` | comedy branch | false | 31 | 0 |
+| `armchair-expert` | comedy branch | false | 25 | 0 |
+| `bad-friends` | comedy branch | false | 29 | 0 |
+| `beer-in-front` | rated explicit | true | 28 | 0 |
+| `being-an-engineer` | unrated | null | 26 | 0 |
+| `bourbon-pursuit` | rated explicit | true | 15 | 0 |
+| `call-her-daddy` | comedy branch | false | 18 | 0 |
+| `catalyst-shayle-kann` | unrated | null | 27 | 0 |
+| `cbc-ideas` | unrated | null | 18 | 0 |
+| `cider-chat` | rated explicit | true | 11 | 0 |
+| `cleantechies-podcast` | unrated | null | 11 | 0 |
+| `comedy-bang-bang` | comedy branch | false | 13 | 0 |
+| `conan-obrien-needs-a-friend` | comedy branch | null | 8 | 0 |
+| `ear-hustle` | rated explicit | true | 9 | 0 |
+| `fall-of-civilizations` | unrated | null | 15 | 0 |
+| `fly-on-the-wall` | comedy branch | false | 10 | 0 |
+| `good-hang-amy-poehler` | comedy branch | false | 25 | 0 |
+| `handsome` | comedy branch | false | 15 | 0 |
+| `heavyweight` | rated explicit | true | 15 | 0 |
+| `how-did-this-get-made` | comedy branch | false | 16 | 0 |
+| `ill-drink-to-that-wine-talk` | rated explicit | true | 22 | 0 |
+| `inside-chips` | unrated | null | 13 | 0 |
+| `kill-tony` | comedy branch | false | 20 | 0 |
+| `lab-to-market-leadership` | unrated | null | 7 | 0 |
+| `las-culturistas` | comedy branch | false | 7 | 0 |
+| `lex-fridman-podcast` | unrated | null | 18 | 0 |
+| `materialism-podcast` | unrated | null | 2 | 0 |
+| `modern-love` | rated explicit | true | 10 | 0 |
+| `mtdcnc-podcast` | unrated | null | 12 | 0 |
+| `my-brother-my-brother-and-me` | comedy branch | null | 2 | 0 |
+| `omega-tau` | unrated | null | 13 | 0 |
+| `smartless` | comedy branch | null | 7 | 0 |
+| `stuff-you-should-know` | unrated | null | 11 | 0 |
+| `the-rest-is-history` | unrated | null | 11 | 0 |
+| `this-past-weekend-theo-von` | comedy branch | false | 6 | 0 |
+| `titans-of-nuclear` | unrated | null | 7 | 0 |
+| `we-can-do-hard-things` | rated explicit | true | 7 | 0 |
+| `working-it-out-birbiglia` | comedy branch | false | 15 | 0 |
+| `wtf-marc-maron` | comedy branch | false | 18 | 0 |
 
 ### (e) The `label_scope: "general"` shows, and how often the row shows them
 
@@ -614,13 +627,20 @@ By familySafe's reason: comedy branch 17, unrated 14, rated explicit 8.
 
 ### The first seven rows of the window
 
-| Day | Shows |
-|---|---|
-| 2026-01-01 | `5-4-podcast`, `aria-code`, `the-rest-is-history`, `the-cinematography-podcast`, `song-exploder`, `the-ancients`, `happiness-lab`, `fall-of-civilizations` |
-| 2026-01-02 | `zoe-science-nutrition`, `corecursive`, `2-bears-1-cave`, `ask-lisa-parenting`, `we-have-ways-of-making-you-talk`, `bad-friends`, `aria-code`, `cleantechies-podcast` |
-| 2026-01-03 | `ten-percent-happier`, `gastropod`, `lab-to-market-leadership`, `the-moth`, `maritime-history-podcast`, `bourbon-pursuit`, `comedy-bang-bang`, `tiny-matters` |
-| 2026-01-04 | `ams-on-the-air`, `unexplainable`, `shipwrecks-and-sea-dogs`, `inside-chips`, `aria-code`, `foundmyfitness`, `the-race-f1-podcast`, `armchair-expert` |
-| 2026-01-05 | `tuned-in-hpa`, `storm-front-freaks`, `distillations`, `luthier-on-luthier`, `shop-talk-live`, `dear-prudence`, `the-cinematography-podcast`, `the-sound-aquatic` |
-| 2026-01-06 | `ill-drink-to-that-wine-talk`, `the-dirt-podcast`, `folklore-and-fiction`, `inside-chips`, `serial`, `common-descent`, `wtf-marc-maron`, `odd-lots` |
-| 2026-01-07 | `weather-geeks`, `fly-on-the-wall`, `omega-tau`, `distillations`, `dear-prudence`, `ancient-history-fangirl`, `mtdcnc-podcast`, `welcome-to-night-vale` |
+| Day | Family Mode | Shows |
+|---|---|---|
+| 2026-01-01 | off | `5-4-podcast`, `aria-code`, `the-rest-is-history`, `the-cinematography-podcast`, `song-exploder`, `the-ancients`, `happiness-lab`, `fall-of-civilizations` |
+| 2026-01-01 | on | `science-vs`, `common-descent`, `ancient-history-fangirl`, `ask-lisa-parenting`, `shipwrecks-and-sea-dogs`, `odd-lots`, `amicus-dahlia-lithwick`, `dear-prudence` |
+| 2026-01-02 | off | `zoe-science-nutrition`, `corecursive`, `2-bears-1-cave`, `ask-lisa-parenting`, `we-have-ways-of-making-you-talk`, `bad-friends`, `aria-code`, `cleantechies-podcast` |
+| 2026-01-02 | on | `99-percent-invisible`, `piano-tech-radio-hour`, `storycorps`, `switched-on-pop`, `morbid`, `the-allusionist`, `music-history-monday`, `business-of-machining` |
+| 2026-01-03 | off | `ten-percent-happier`, `gastropod`, `lab-to-market-leadership`, `the-moth`, `maritime-history-podcast`, `bourbon-pursuit`, `comedy-bang-bang`, `tiny-matters` |
+| 2026-01-03 | on | `ancient-history-fangirl`, `the-cinematography-podcast`, `brady-heywood-podcast`, `black-box-down`, `my-favorite-theorem`, `basic-brewing-radio`, `good-inside-dr-becky`, `philosophy-bites` |
+| 2026-01-04 | off | `ams-on-the-air`, `unexplainable`, `shipwrecks-and-sea-dogs`, `inside-chips`, `aria-code`, `foundmyfitness`, `the-race-f1-podcast`, `armchair-expert` |
+| 2026-01-04 | on | `huberman-lab`, `amicus-dahlia-lithwick`, `spycast`, `alpinist`, `zoe-science-nutrition`, `science-for-sport-podcast`, `causality-engineered-network`, `beersmith-podcast` |
+| 2026-01-05 | off | `tuned-in-hpa`, `storm-front-freaks`, `distillations`, `luthier-on-luthier`, `shop-talk-live`, `dear-prudence`, `the-cinematography-podcast`, `the-sound-aquatic` |
+| 2026-01-05 | on | `this-american-life`, `the-race-f1-podcast`, `foundmyfitness`, `ancient-history-fangirl`, `unexplainable`, `shipwrecks-and-sea-dogs`, `ask-lisa-parenting`, `chemistry-world-podcast` |
+| 2026-01-06 | off | `ill-drink-to-that-wine-talk`, `the-dirt-podcast`, `folklore-and-fiction`, `inside-chips`, `serial`, `common-descent`, `wtf-marc-maron`, `odd-lots` |
+| 2026-01-06 | on | `folklore-and-fiction`, `acquired`, `the-engineering-history-podcast`, `the-ancients`, `our-fake-history`, `aria-code`, `design-matters`, `how-i-built-this` |
+| 2026-01-07 | off | `weather-geeks`, `fly-on-the-wall`, `omega-tau`, `distillations`, `dear-prudence`, `ancient-history-fangirl`, `mtdcnc-podcast`, `welcome-to-night-vale` |
+| 2026-01-07 | on | `5-4-podcast`, `amicus-dahlia-lithwick`, `philosophy-bites`, `basic-brewing-radio`, `death-sex-money`, `you-are-not-so-smart`, `advent-of-computing`, `casefile-true-crime` |
 <!-- END GENERATED: vouch-run.mjs -->

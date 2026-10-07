@@ -8495,6 +8495,13 @@ function seededShuffle(arr, seed) {
 function showsWeVouchFor(limit = 8, now = new Date()) {
   const shows = (state.catalog?.shows || [])
     .filter(s => s.editorial_note && s.editorial_note.trim())
+    /* FAMILY MODE BEFORE THE SORT AND THE SHUFFLE (#560, the vouch eval's
+       (d)): the row filled 573 of 2026's 2,920 slots, on 296 days, with shows
+       Family Mode hides. Filtering here, not after the slice, keeps all
+       `limit` slots full and the same set for every visitor in each mode. The
+       ONE rule: familyAllows, which tools/similar-eval/vouch-run.mjs also uses
+       to count violations, so its zero measures exactly this filter. */
+    .filter(familyAllows)
     .slice()
     /* CODEPOINT order, not localeCompare (audit round 3, app-2-9): with no
        locale argument that collates in the DEVICE's locale, and under lt, et,
