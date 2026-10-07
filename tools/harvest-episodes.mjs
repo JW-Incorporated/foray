@@ -11,6 +11,7 @@ import { createRequire } from "node:module";
 import { gzipSync } from "node:zlib";
 import { UA } from "./segments/politeness.mjs";
 import { durationMinutes } from "./refresh/enclosure.mjs";
+import { fetchFeedCapped } from "./refresh/fetch-limits.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 // reuse the backend's battle-tested lenient XML parser
@@ -28,11 +29,11 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 async function fetchText(url, attempt = 1) {
   await sleep(THROTTLE_MS);
   try {
-    const res = await fetch(url, { headers: { "User-Agent": UA }, redirect: "follow" });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.text();
+    // Capped and timed (code-health-2 T1-05): a timeout takes the same retry
+    // ladder as a network error; an oversize body is final, not retried.
+    return await fetchFeedCapped(url, { headers: { "User-Agent": UA } });
   } catch (e) {
-    if (attempt >= 3) throw e;
+    if (attempt >= 3 || e.code === "TOO_LARGE") throw e;
     await sleep(THROTTLE_MS * Math.pow(2, attempt));
     return fetchText(url, attempt + 1);
   }

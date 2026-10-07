@@ -33,6 +33,7 @@ import { audioFieldsFrom, hostOf, normalizeAudioUrl } from "./enclosure.mjs";
 import { UA, NIGHTLY_UA } from "../segments/politeness.mjs";
 import { minutesFromSeconds } from "../check-durations.mjs";
 import { prepareSessionPatch } from "./session-patch.mjs";
+import { fetchFeedCapped } from "./fetch-limits.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const backendRequire = createRequire(join(ROOT, "backend", "package.json"));
@@ -162,9 +163,9 @@ for (const [cid, items] of shows) {
   let entries = [];
   let feedError = null;
   try {
-    const res = await fetch(show.feed_url, { headers: { "User-Agent": UA }, redirect: "follow" });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const doc = parser.parse(await res.text());
+    // Capped and timed (code-health-2 T1-05): one hung or endless publisher
+    // must not hang or OOM a 220-feed run that holds every resolution in memory.
+    const doc = parser.parse(await fetchFeedCapped(show.feed_url, { headers: { "User-Agent": UA } }));
     let raw = doc?.rss?.channel?.item || [];
     if (!Array.isArray(raw)) raw = [raw];
     entries = raw.map((it) => {

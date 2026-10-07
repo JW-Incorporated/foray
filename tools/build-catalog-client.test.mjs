@@ -21,6 +21,7 @@ import os from "node:os";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { CLIENT_SHOW_FIELDS, projectShow, buildCatalogClient } from "./build-catalog-client.mjs";
+import { rankByAppleId } from "./harvest-merge.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const readJson = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
@@ -65,6 +66,33 @@ test("projectShow/buildCatalogClient emit chart_rank from the breadth join and n
   for (const s of unjoined.shows) {
     assert.ok(Object.prototype.hasOwnProperty.call(s, "chart_rank"), `${s.show_id} must carry chart_rank`);
     assert.strictEqual(s.chart_rank, null, `${s.show_id}: no breadth, so chart_rank is null`);
+  }
+});
+
+test("CH2-15: the chart_rank join over null, 0, \"12\", NaN, -1 and a ranked twin keeps only \"12\" and the ranked twin", () => {
+  /* T1-13 (docs/roadmap/code-health-2.md): "a usable chart rank" is ONE join,
+     tools/harvest-merge.mjs's rankByAppleId, shared with
+     tools/build-show-index.mjs. The same six-row fixture is pinned in
+     tools/harvest-merge.test.mjs (the helper) and tools/build-show-index.test.mjs
+     (the other builder), so the client JSON and the TSV cannot disagree about
+     which rank is usable.
+
+     MUTATION: in harvest-merge.mjs's isChartRank, `Number(raw) > 0` ->
+     `Number(raw) >= 0`. The 0 twin maps to 0 and this fails.
+     MUTATION: project the raw `row.chart_rank` instead of rankByAppleId's.
+     "12" comes back a string and this fails. */
+  const ids = [101, 102, 103, 104, 105, 106];
+  const breadth = { shows: [null, 0, "12", NaN, -1, 7].map((chart_rank, i) =>
+    ({ apple_collection_id: ids[i], title: `T${ids[i]}`, chart_rank, in_curated: true })) };
+  const catalog = { version: 1, shows: [...ids, 107].map((id) => ({ show_id: `s${id}`, title: `S${id}`, apple_collection_id: id })) };
+  const out = buildCatalogClient(catalog, breadth);
+  assert.deepStrictEqual(
+    out.shows.map((s) => [s.show_id, s.chart_rank]),
+    [["s101", null], ["s102", null], ["s103", 12], ["s104", null], ["s105", null], ["s106", 7], ["s107", null]],
+  );
+  const shared = rankByAppleId(breadth);
+  for (const s of out.shows) {
+    assert.strictEqual(s.chart_rank, shared.get(s.show_id.slice(1)) ?? null, `${s.show_id}: the builder's rank is the shared join's`);
   }
 });
 

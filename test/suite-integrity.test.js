@@ -1428,7 +1428,11 @@ const FLOORS = {
   // ruling made mechanical — of everything floored in this file it is the one
   // whose deletion would be hardest to notice and most expensive to discover,
   // because the thing it guards is an absence.
+  /* CH2-13: labels.mjs genreTopicPrior (the one genre->topics rule prepare-batch and classify-breadth share) and classifyProgressPath (the committed data/classify-progress.json default). */
+  "tools/classify/labels.test.mjs": 10,
   "tools/classify/no-exclusion.test.mjs": 25,
+  /* CH2-13 (docs/roadmap/code-health-2.md): the Tier-0 genre prior each batch entry carries — characterization of the map lookup, the confidence min and the no-topic shape (4); the prior never carries a non-taxonomy topic and the batch lists the ones it dropped (T1-07), select.mjs alone declares the cooldown/prefix constants (T1-17), and both scripts resolve progress through labels.mjs (T1-09, one declaration run per script); 4 -> 10 declared. */
+  "tools/classify/prepare-batch.test.mjs": 10,
   "tools/classify/reconcile-shards.test.mjs": 75,
   /* Guards the metric the whole classification effort is judged on. Its per-item
      ("fully root-only") number is the one that maps to product behaviour; the
@@ -1455,9 +1459,9 @@ const FLOORS = {
      test/show-index.test.js, pins the same file from the CLIENT side; both are
      needed because the sort order is a contract between two files and either
      side can break it alone. */
-  "tools/harvest-merge.test.mjs": 13, // 2026-10-07: a breadth re-harvest UNIONS with the file it replaces (#1148 dropped 6,632 off-chart shows) - dropped show kept / its rank nulled + last_charted_at / its topics kept / new show added / still-charting show refreshed, in_curated recomputed, canonical key order, artist_name backfill, the harvester wiring, and a REAL DATA floor; new, zero slack
-  "tools/build-show-index.test.mjs": 10, // PKG-11a (docs/roadmap/shows-search.md, 2026-10-04): +1 — a curated row carries its breadth twin's chart_rank joined on apple_collection_id, and null without a twin; 9 -> 10
-  "tools/build-catalog-client.test.mjs": 4, // CH-1 (#1071): dai joined on String(apple_collection_id), null when unclassified, and --check flags drift; 2 -> 4 // PKG-11b (P-09): the curated chart_rank breadth join (rank or null) and the committed data/catalog-client.json equals the builder's output
+  "tools/harvest-merge.test.mjs": 14, // 2026-10-07: a breadth re-harvest UNIONS with the file it replaces (#1148 dropped 6,632 off-chart shows) - dropped show kept / its rank nulled + last_charted_at / its topics kept / new show added / still-charting show refreshed, in_curated recomputed, canonical key order, artist_name backfill, the harvester wiring, and a REAL DATA floor; new, zero slack // CH2-15 (docs/roadmap/code-health-2.md): +1 - rankByAppleId, the ONE usable-chart-rank join both builders read (null/0/NaN/-1 out, "12" in as 12); 13 -> 14
+  "tools/build-show-index.test.mjs": 11, // PKG-11a (docs/roadmap/shows-search.md, 2026-10-04): +1 — a curated row carries its breadth twin's chart_rank joined on apple_collection_id, and null without a twin; 9 -> 10 // CH2-15: +1 — the curated rank over the shared null/0/"12"/NaN/-1 fixture equals harvest-merge.rankByAppleId; 10 -> 11
+  "tools/build-catalog-client.test.mjs": 5, // CH2-15: +1 — chart_rank over the shared null/0/"12"/NaN/-1 fixture equals harvest-merge.rankByAppleId; 4 -> 5 // CH-1 (#1071): dai joined on String(apple_collection_id), null when unclassified, and --check flags drift; 2 -> 4 // PKG-11b (P-09): the curated chart_rank breadth join (rank or null) and the committed data/catalog-client.json equals the builder's output
   "tools/popularity-signal-probe.test.mjs": 6, // PKG-12 (P-10, docs/roadmap/shows-search.md): the top.json position probe — the String() join for breadth and curated rows, would_lead_by_top_position, the validator, the pi_id-order flag, one polite GET for top.json alone, the 5xx retry
   /* The Windows entrypoint-guard class (machinery audit finding 3). A main-
      module check written as ``import.meta.url === `file://${process.argv[1]}` ``
@@ -2170,7 +2174,7 @@ const FLOORS = {
   "tools/shows/dedupe.test.mjs": 11, // audit round 3 (L8): +2, Unicode dedupe key; 9 -> 11
   "tools/shows/filter.test.mjs": 11,
   "tools/shows/identity.test.mjs": 2,
-  "tools/shows/import-dump.test.mjs": 12, // #1033: +4 changed.json baseline (snapshot round-trip, download reaches buildChanged, failed download -> baseline:false, never {}); 8 -> 12 // audit round 3 integration: the real post-merge count, 5 -> 8
+  "tools/shows/import-dump.test.mjs": 14, // CH2-12: +2 (under-ceiling warn via the shared checkMissingMapping, streamed checksumFile + source pin); 12 -> 14 // #1033: +4 changed.json baseline (snapshot round-trip, download reaches buildChanged, failed download -> baseline:false, never {}); 8 -> 12 // audit round 3 integration: the real post-merge count, 5 -> 8
   "tools/shows/shard-build.test.mjs": 15, // audit round 3 (L8): +1, changed.json baseline; 14 -> 15
   "tools/shows/state.test.mjs": 6,
   "tools/shows/watch-pointer.test.mjs": 12, // pointer-freshness-watch: absence watchdog, red >192h (below candidates.mjs 216h ceiling); +1 pins its own daily read-only workflow (shows-pointer-watch.yml), 11 -> 12
@@ -2195,7 +2199,7 @@ const FLOORS = {
      REAL node subprocess (no fake exec anywhere) to prove the forwarding
      actually reaches the child's argv. */
   "tools/shows/run-and-publish-execargv.test.mjs": 1,
-  "tools/shows/load-postgres.test.mjs": 11, // PKG-01 (S-09 tools half): pure-function halves of the Postgres loader, incl. main's { baseline, changed } shape
+  "tools/shows/load-postgres.test.mjs": 15, // CH2-12: +4 (whitespace URL unset via config.mjs's one resolver, empty table -> null baseline, CLI --dry-run baseline:false without connecting, streamed-checksum source pin); 11 -> 15 // PKG-01 (S-09 tools half): pure-function halves of the Postgres loader, incl. main's { baseline, changed } shape
   "tools/shows/search-shows.test.mjs": 7, // PKG-01: FTS/trgm query builders
   "tools/shows/shows-postgres-integration.test.mjs": 8, // PKG-01: real-Postgres acceptance; skips without TEST_DATABASE_URL
   "tools/foraycorpus-export/config.test.mjs": 4, // PKG-01 (docs/roadmap/corpus.md): corpus-export package scaffold, config + identity scan
@@ -2345,7 +2349,7 @@ const FLOORS = {
   "tools/poll/politeness.test.mjs": 4, // PKG-06 (S-10): new -- per-host politeness port, constants pinned to backend/src/feeds/politeness.ts
   "tools/poll/select-due.test.mjs": 6, // PKG-06 (S-10): new -- due-set selection (dead, not-due, caps, order, bad URL, budget untouched) + the G9 weekly projection
   "tools/poll/watchlist.test.mjs": 13, // PKG-07 (S-10): new -- watchlist assembly (curated, unmapped, changed top-N, tiers, 90-day expiry, seed size) + the seed builder (exit 2 on a stale pointer, curated-only seed, --check); PKG-07-part +3: no-baseline id-map-only fallback (writes seed, non-numeric refused, HTTP error exits 2)
-  "tools/poll/poll-episodes.test.mjs": 7, // PKG-08 (S-10): new -- poll-episodes dry-run CLI (no-DB exit 0 naming G1/G3, DB set refuses exit 3, env var order, summary shape + fetched 0, seed-alone on a failed change index, the 40,000 target line, absent/missing/malformed seed)
+  "tools/poll/poll-episodes.test.mjs": 9, // CH2-12: +2 (whitespace DATABASE_URL is unset: exit 0 not LIVE_REFUSAL, config.mjs import graph stays light); 7 -> 9 // PKG-08 (S-10): new -- poll-episodes dry-run CLI (no-DB exit 0 naming G1/G3, DB set refuses exit 3, env var order, summary shape + fetched 0, seed-alone on a failed change index, the 40,000 target line, absent/missing/malformed seed)
   "tools/poll/fetch-feed.test.mjs": 6, // PKG-10-part (S-10): new -- conditional-GET port of backend/src/feeds/conditionalGet.ts (constants + UA pinned to the TS as text, conditional headers, 304 keeps validators, declared and streamed oversize, thrown fetch and timeout keep validators)
   "tools/poll/poll-cycle.test.mjs": 5, // PKG-10-part (S-10): new -- no-DB poll cycle over an in-memory store on a 50-feed loopback fixture with a fake clock (200 stores ETag then 304 reschedules, 5x500 -> backoff -> weekly, 410 dead at once and 404 at day 30 not 29, perHostCap, oversize keeps validators)
 };
