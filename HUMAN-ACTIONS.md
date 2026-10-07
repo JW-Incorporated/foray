@@ -338,6 +338,8 @@ Sentence 4, added to §4.3's Vercel paragraph (the same PR also points `data-saf
 
 **Worked if:** `gh secret list` no longer shows the signing and upload secrets at repo level, `gh api repos/JW-Incorporated/foray/environments/release` exists, and the next release run (with `environment: release`) uploads to both stores.
 
+**Check:** `node tools/ops/release-env-check.mjs` (read-only; needs an admin `gh` token) prints READY and exits 0 only when steps 1-3 are all done. Do not merge PR #822 until it does (exit 1 = not done yet, exit 2 = could not read a setting).
+
 ## #116 🟡 [DECIDE] Apply the round-3 Supabase security migration to the production project (~10 min)
 <!-- ha filed=2026-09-25 kind=default -->
 
