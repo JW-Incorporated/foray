@@ -160,6 +160,8 @@ const SHELL = [
      after styles.css. Listed by name rather than derived from ui/: uiSources() is the
      scripts, and a stylesheet in the generation must be there on purpose. */
   "ui/tokens.css",
+  /* Redesign 2026 (ambient): token-only primitive treatments, scoped under .ag. */
+  "ui/primitives.css",
   /* Redesign 2026 (ambient): the icon sprite ui/icons.svg, fetched by every `<use href>` agIcon() writes.
      Not a script, so uiSources() does not see it; listed by name for the same reason as tokens.css. */
   "ui/icons.svg",

@@ -66,10 +66,10 @@ function agIconGallery() {
   const cell = (n) =>
     '<li class="ag-icon-cell">' + agIcon(n) + '<span class="ag-icon-name">' + esc("i-" + n) + "</span></li>";
   const sizes = (n) =>
-    '<li class="ag-icon-cell"><span class="ag-icon-row">' + AG_ICON_SIZES.map((s) => agIcon(n, s)).join("") +
+    '<li class="ag-icon-cell ag-icon-sizes"><span class="ag-icon-row">' + AG_ICON_SIZES.map((s) => agIcon(n, s)).join("") +
     '</span><span class="ag-icon-name">' + esc("i-" + n) + "</span></li>";
   return (
-    '<section class="ag-icons" aria-label="Icons">' +
+    '<section class="ag-icons">' +
     '<h2 class="ag-icons-title">Icons</h2>' +
     '<ul class="ag-icon-grid">' + AG_ICON_NAMES.map(cell).join("") + "</ul>" +
     '<h3 class="ag-icons-title">Sizes</h3>' +

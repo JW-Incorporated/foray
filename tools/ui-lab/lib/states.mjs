@@ -9,6 +9,7 @@
  * #/shows/q/<label> , #/show/<id> , #/episode/<id>[?t=N] , #/category/<id> ,
  * #/playlists , #/playlist/<id> , #/subject/<id> , #/create , #/forays ,
  * #/foray/<id> , #/queue , #/library , #/starred-shows , #/interests.
+ * The lab-only #/gallery route requires ?gallery=1 (or window.__FORAY_LAB__).
  * #/subject/<id> is generated from a live search result and has no stable seed,
  * so it is not shot; everything else is.
  */
@@ -93,6 +94,15 @@ function coreRoutes(fx, { entities }) {
 export function appStates(fx) {
   const ep0 = fx.items[0].id;
   return [
+    {
+      id: "gallery",
+      description: "Afterglow primitives in every state, shown in Dusk and Dawn.",
+      seed: "dismissed",
+      steps: [
+        { label: "gallery", route: "?gallery=1#/gallery", ready: ".ag-gallery" },
+        { label: "sheet-open", route: "#/gallery", run: (page) => page.locator("[data-ag-open-sheet]").first().click(), ready: "[data-ag-live-sheet]:not([hidden])" },
+      ],
+    },
     {
       id: "first-run",
       description: "Brand-new profile: the onboarding explainer sheet over Home.",
