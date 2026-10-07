@@ -1288,6 +1288,49 @@ test("showsWeVouchFor's base order is show_id-sorted before shuffling, independe
   assert.deepStrictEqual(forward, backward, "catalog array order must not change the sampled result");
 });
 
+test("Family Mode: showsWeVouchFor drops every show familyAllows rejects BEFORE the shuffle, so all slots still fill", () => {
+  /* #560 (the vouch eval's (d)): the row ignored Family Mode and showed
+     explicit-rated, comedy and unrated shows to a listener who had turned it
+     on. The filter runs before the codepoint sort and the seeded shuffle, so
+     each mode keeps one set per UTC day for every visitor and a full row.
+     Three rejections, one per familySafe reason: rated explicit, a comedy
+     taxonomy node, and no rating at all.
+     MUTATION (run 2026-10-06): drop `.filter(familyAllows)` from
+     showsWeVouchFor -> red (an unsafe show in the row).
+     MUTATION (run 2026-10-06): filter after the cut instead,
+     `seededShuffle(shows, ...).slice(0, limit).filter(familyAllows)` -> red
+     (short rows, and the picks are not the safe set's own shuffle). */
+  const unsafe = new Set(["show-01", "show-04", "show-07"]);
+  const catalog = () => ({
+    shows: Array.from({ length: 12 }, (_, i) => {
+      const id = `show-${String(i).padStart(2, "0")}`;
+      const s = { show_id: id, title: `Vouch ${i}`, editorial_note: `Note ${i}.`, explicit: false, taxonomy_node_ids: ["science/physics"] };
+      if (id === "show-01") s.explicit = true;
+      if (id === "show-04") s.taxonomy_node_ids = ["comedy/standup"];
+      if (id === "show-07") delete s.explicit;
+      return s;
+    }),
+  });
+  const on = mount({ seed: { cp_family: "true" } });
+  const off = mount();
+  on.state.catalog = catalog();
+  off.state.catalog = catalog();
+  assert.strictEqual(on.ctx.familyMode(), true);
+  assert.strictEqual(off.ctx.familyMode(), false);
+  const safe = on.state.catalog.shows.filter((s) => !unsafe.has(s.show_id)).map((s) => ({ show_id: s.show_id }));
+  const seenOff = new Set();
+  for (let d = 0; d < 30; d++) {
+    const now = new Date(Date.UTC(2026, 0, 1 + d));
+    const picks = Array.from(on.ctx.showsWeVouchFor(8, now), (s) => s.show_id);
+    assert.strictEqual(picks.length, 8, `a full row with Family Mode on (${now.toISOString().slice(0, 10)})`);
+    assert.deepStrictEqual(picks.filter((id) => unsafe.has(id)), [], "Family Mode let a rejected show into the row");
+    const expected = Array.from(on.ctx.seededShuffle(safe, on.ctx.dayOfYearSeed(now)).slice(0, 8), (s) => s.show_id);
+    assert.deepStrictEqual(picks, expected, "the Family Mode row is the safe set's own seeded shuffle");
+    for (const s of off.ctx.showsWeVouchFor(8, now)) seenOff.add(s.show_id);
+  }
+  assert.deepStrictEqual([...unsafe].filter((id) => !seenOff.has(id)), [], "with Family Mode off every show stays eligible (the fixture is live)");
+});
+
 test("vouchForHtml renders the 'Shows 4a vouches for' heading and a real link for every sampled show", async () => {
   /* End-to-end through vouchForHtml itself, against real committed data, not
      just showsWeVouchFor() in isolation — proves the section is actually

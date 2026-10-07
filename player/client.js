@@ -5200,6 +5200,23 @@ const ForayPlayer = {
     return episodeProgress({ duration_sec: knownEpisodeDurationSec(id, durationSec) }, stored?.seconds ?? null);
   },
 
+  /**
+   * The length of the copy in hand, for a bookmark's drift test (issue #30;
+   * app.js `bookmarkObservedSec`): the duration the player MEASURED off the
+   * media element the last time this episode played, as `PositionStore`
+   * recorded it beside the position, or null when nothing was measured.
+   * Never the catalogue's `duration_sec` (so not `knownEpisodeDurationSec`,
+   * which falls back to it): the catalogue's number is the one the bookmark
+   * was likely set against, and comparing it with itself would claim an
+   * ad-stitched copy that moved by minutes is still exact to the second.
+   * Native: the engine's `cp_pos` rows carry the deck's measured duration
+   * (`Rows.position(..., deck.durationSec, ...)` in both engine cores), so
+   * the same reading holds once the deck has reported one.
+   */
+  observedDurationSec(id) {
+    return measuredDurationSec(id);
+  },
+
   restoreLastEpisode() {
     if (engineMode === null) return engineModeReady.then(() => ForayPlayer.restoreLastEpisode());
     if (current) return null; // something is already playing; never stomp it

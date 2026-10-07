@@ -711,20 +711,40 @@ test("with no durable store published, the control says so instead of claiming s
 
 /* ================= 3. the server rows ================= */
 
+/** Every table the schema creates with a `user_id` column, across BOTH
+    migration directories: backend/migrations/*.sql and
+    backend/migrations/supabase/*.sql. The supabase/ directory was once skipped,
+    and its `public.`-qualified names never matched the pattern, so
+    content_reports (supabase/0005, user_id) escaped the ledger unseen. */
+function schemaTablesWithUserId() {
+  const withUserId = [];
+  for (const sub of ["backend/migrations", "backend/migrations/supabase"]) {
+    for (const f of fs.readdirSync(path.join(ROOT, sub)).filter((n) => n.endsWith(".sql")).sort()) {
+      const sql = read(`${sub}/${f}`).replace(/--[^\n]*/g, "");
+      for (const m of sql.matchAll(/create table if not exists\s+(?:public\.)?([a-z_]+)\s*\(([\s\S]*?)\n\);/g)) {
+        if (/^\s*user_id\s/m.test(m[2])) withUserId.push(m[1]);
+      }
+    }
+  }
+  return withUserId;
+}
+
+/** Per-user tables that no shipped code writes yet, so there is no row of
+    this listener's for Delete my data to reach. An entry lasts only while that
+    stays true: the test below goes red the moment shipped code names the table,
+    which forces it into SB_USER_TABLES (and the DELETE count) instead. */
+const NO_CLIENT_WRITER_YET = {
+  content_reports: "supabase/0005 holds a listener's own reports, but no client files one yet",
+};
+
 test("the table list is every table with a user_id column, across ALL migrations", () => {
   /* Enumerated from the schema itself, not from one migration's list (round-3
      audit, data-integrity-10): 0001's RLS array had no `learning_cursor`, so a
      per-user row survived every "successful" deletion and nothing noticed. Every
-     `create table` in backend/migrations/*.sql with a `user_id` column must be
-     in app.js's SB_USER_TABLES, or in SERVICE_ROLE_ONLY below with a reason. */
-  const dir = path.join(ROOT, "backend", "migrations");
-  const withUserId = [];
-  for (const f of fs.readdirSync(dir).filter((n) => n.endsWith(".sql")).sort()) {
-    const sql = read(`backend/migrations/${f}`).replace(/--[^\n]*/g, "");
-    for (const m of sql.matchAll(/create table if not exists\s+([a-z_]+)\s*\(([\s\S]*?)\n\);/g)) {
-      if (/^\s*user_id\s/m.test(m[2])) withUserId.push(m[1]);
-    }
-  }
+     `create table` in backend/migrations/*.sql or backend/migrations/supabase/*.sql
+     with a `user_id` column must be in app.js's SB_USER_TABLES, or in
+     SERVICE_ROLE_ONLY or NO_CLIENT_WRITER_YET with a reason. */
+  const withUserId = schemaTablesWithUserId();
   /* Offline-pipeline tables: their user_id is the pipeline operator's, never a
      listener's auth.uid(), no client path writes them, and supabase/0003 makes
      them deny-all. Deleting from them with a listener's token would be a 204
@@ -735,12 +755,37 @@ test("the table list is every table with a user_id column, across ALL migrations
   assert.ok(withUserId.includes("learning_cursor") && withUserId.includes("events"), "the schema scan found nothing");
   assert.deepStrictEqual(
     [...inApp].sort(),
-    withUserId.filter((t) => !SERVICE_ROLE_ONLY.includes(t)).sort(),
+    withUserId.filter((t) => !SERVICE_ROLE_ONLY.includes(t) && !(t in NO_CLIENT_WRITER_YET)).sort(),
     "app.js's SB_USER_TABLES and the schema disagree about which tables hold " +
       "per-user rows. A table in the schema and not in app.js is data a " +
       "deletion silently leaves behind."
   );
   assert.strictEqual(inApp[inApp.length - 1], "app_users", "app_users goes last: everything else keys to it");
+});
+
+test("a per-user table exempted for having no client writer is in the schema, and no shipped code names it", () => {
+  /* Mutations this kills (both run, both red):
+     - drop "backend/migrations/supabase" from schemaTablesWithUserId's scan ->
+       content_reports is never found, so the exemption is never exercised;
+     - add a 'content_reports' literal to app.js -> a client now writes the
+       table, so it must leave this list for SB_USER_TABLES and the ledger. */
+  const withUserId = schemaTablesWithUserId();
+  const shipped = shippedSources();
+  assert.ok(shipped.includes("app.js"), "the shipped-source list lost app.js");
+  for (const [table, reason] of Object.entries(NO_CLIENT_WRITER_YET)) {
+    assert.ok(
+      withUserId.includes(table),
+      `${table} is exempted (${reason}) but the schema scan never found it: ` +
+        "the exemption is stale, or the scan stopped reading backend/migrations/supabase/"
+    );
+    for (const rel of shipped) {
+      assert.ok(
+        !codeOnly(read(rel)).includes(table),
+        `${rel} now names ${table}, so a client writes per-user rows there: move it out of ` +
+          "NO_CLIENT_WRITER_YET into app.js's SB_USER_TABLES so Delete my data reaches them"
+      );
+    }
+  }
 });
 
 test("one authenticated DELETE per table, filtered to this account's own uid", async () => {
