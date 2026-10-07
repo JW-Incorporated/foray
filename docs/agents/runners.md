@@ -22,6 +22,7 @@ changes a runner.
 | **foray-classify-shard0–5** | Claude Cloud routines (6) | Every 8h, staggered 40 min apart — see below | Sonnet | Wyatt's account | `runner-prompts/classify-batch.md` | live — **push to `reclassify-<N>`, open NO PR** (see below) |
 | **nightly-watch** | GitHub Actions (`.github/workflows/nightly-watch.yml`) | Daily 21:40 UTC | — (deterministic) | Actions minutes | workflow file → `tools/refresh/watch-nightly.mjs` | off — the workflow is merged and ran daily; disabled 2026-09-30 together with nightly-refresh (HA #46 ruling) so the red runs stop; re-enable it with nightly-refresh when the Spark takes the nightly (Phase 5), steps in `STATE.md` |
 | **merge-audit** | GitHub Actions (`.github/workflows/merge-audit.yml`) | Weekly, Monday 07:17 UTC | — (deterministic) | Actions minutes | workflow file → `tools/audit/merge-audit.mjs` | live — one comment per run on issue #129; a failed run comments too |
+| **shows-pointer-watch** | GitHub Actions (`.github/workflows/shows-pointer-watch.yml`) | Daily 14:23 UTC | — (deterministic) | Actions minutes (free, public repo) | workflow file → `tools/shows/watch-pointer.mjs` | live once merged — red when `data/shows-index-pointer.json` is over 192 h old; standalone, NOT part of the disabled nightly-watch |
 
 > ### `nightly-watch` exists because a green workflow list is not evidence (issue #290)
 >

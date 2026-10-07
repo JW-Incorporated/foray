@@ -5970,10 +5970,14 @@ function shareLinkFor(target) {
     const p = t.playlist || playlistForId(t.id);
     if (!p) return null;
     if (p.isGenerated) return { url: PUBLIC_WEB_ORIGIN + "#/" + playlistRoute({ id: p.id }), text: p.title || "" };
-    const e = [...new Set(playlistSpine(p).map(partId).filter(inDiscoverPool))].slice(0, SHARED_PLAYLIST_MAX);
+    const parts = playlistSpine(p).map(partId).filter(Boolean);
+    const e = [...new Set(parts.filter(inDiscoverPool))].slice(0, SHARED_PLAYLIST_MAX);
     if (!e.length) return null;
     const id = SHARED_PLAYLIST_PREFIX + b64url(JSON.stringify({ t: String(p.title || ""), e }));
-    return { url: PUBLIC_WEB_ORIGIN + "#/" + playlistRoute({ id }), text: p.title || "" };
+    /* `shared` of `total` (SH-PL-BREADTH part 1): what the link carries out of
+       the playlist's distinct parts, the total never capped, so shareTo can
+       say honestly what a recipient will find. url and text are unchanged. */
+    return { url: PUBLIC_WEB_ORIGIN + "#/" + playlistRoute({ id }), text: p.title || "", shared: e.length, total: new Set(parts).size };
   }
   if (t.kind === "foray") {
     const f = (state.forays?.forays || []).find(x => x && x.id === t.id);
@@ -6008,26 +6012,38 @@ function shareNote(anchor, msg, url = "") {
   if (input) { input.focus(); input.select(); } else if (note) setTimeout(() => note.remove(), 4000);
 }
 
+/** "3 of 8 episodes" when a frozen playlist link carries fewer episodes than
+    the playlist holds (shareLinkFor's `shared` and `total`), else "": a link
+    that left nothing out has nothing to own up to. */
+function shareCount(link) {
+  const { shared, total } = link || {};
+  return Number.isInteger(shared) && Number.isInteger(total) && shared < total ? `${shared} of ${total} episodes` : "";
+}
+
 /** Deliver a link: the native share plugin, the Web Share sheet, the
     clipboard, then the link on screen. A cancel ends it — it is not a failure
-    to fall back from. */
+    to fall back from. Every other outcome says how much of a playlist the
+    link holds when it is not all of it (SH-PL-BREADTH part 1); a cancel says
+    nothing. */
 async function shareTo(link, anchor = null) {
   if (!link) return "none";
   const data = { title: link.text, text: link.text, url: link.url };
+  const count = shareCount(link);
+  const sharedNote = () => { if (count) shareNote(anchor, `${count} ${link.shared === 1 ? "is" : "are"} in the link`); };
   const cancelled = (e) => !!e && (e.name === "AbortError" || /cancel/i.test(String(e.message || "")));
   const plugin = window.Capacitor?.Plugins?.Share;
   if (plugin && typeof plugin.share === "function") {
-    try { await plugin.share(data); return "shared"; } catch (e) { if (cancelled(e)) return "cancelled"; }
+    try { await plugin.share(data); sharedNote(); return "shared"; } catch (e) { if (cancelled(e)) return "cancelled"; }
   }
   if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
-    try { await navigator.share(data); return "shared"; } catch (e) { if (e && e.name === "AbortError") return "cancelled"; }
+    try { await navigator.share(data); sharedNote(); return "shared"; } catch (e) { if (e && e.name === "AbortError") return "cancelled"; }
   }
   try {
     await navigator.clipboard.writeText(link.url);
-    shareNote(anchor, "Link copied");
+    shareNote(anchor, count ? `Link copied · ${count}` : "Link copied");
     return "copied";
   } catch (_) { /* no clipboard, or refused: show the link */ }
-  shareNote(anchor, "Copy this link", link.url);
+  shareNote(anchor, count ? `Copy this link · ${count}` : "Copy this link", link.url);
   return "manual";
 }
 
