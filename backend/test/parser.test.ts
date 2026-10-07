@@ -264,6 +264,18 @@ describe("transcript format preference", () => {
       expect(ep.timedTranscriptType).toBe("text/vtt"); // normalized, not the raw attribute
     });
 
+    it("ranks by the normalised type: `text/vtt; charset=utf-8` and `Text/VTT` still outrank an srt listed first", () => {
+      /* CH2-03 characterization (B2-16). MUTATION: compare the raw attribute
+         (`attrOf(t, "type") === type`) instead of `normalizeMimeType(...)` in
+         the timed pick — neither vtt tag matches, the srt wins, and this goes
+         red. */
+      for (const raw of ["text/vtt; charset=utf-8", "Text/VTT"]) {
+        const ep = firstEpisode([SRT, `      <podcast:transcript url="https://example.com/p.vtt" type="${raw}" />`].join("\n"));
+        expect(ep.timedTranscriptUrl, raw).toBe("https://example.com/p.vtt");
+        expect(ep.timedTranscriptType, raw).toBe("text/vtt");
+      }
+    });
+
     it("a timed tag with no url is reported as absent rather than as a fetchable pair", () => {
       const ep = firstEpisode(['      <podcast:transcript type="text/vtt" />', PLAIN].join("\n"));
       expect(ep.timedTranscriptUrl).toBeNull();
@@ -390,6 +402,36 @@ describe("security regression: GHSA-8r6m-32jq-jx6q (fast-xml-parser DOCTYPE/enti
   });
 });
 
+
+/* CH2-03 characterization: `warnings` is the one diagnostic field with a
+   reader (`backend/src/cli/ingestFixtures.ts` counts feed- and item-level
+   warnings), so trimming the unread ParsedEpisode/ParsedFeed fields must not
+   lose a single message — including the two that were computed beside the
+   deleted `enclosureLengthBytes` and `isVideo`. */
+describe("parseFeed warnings (read by ingestFixtures)", () => {
+  it("a malformed item carries every item-level warning, and the feed records the validation issue", () => {
+    /* MUTATION: delete the `enclosureLengthRaw === "0"` warning (or the
+       video/* one) along with the field it sat beside — this goes red. */
+    const feed = parseFeed(
+      `<rss><channel><title>x</title>` +
+        `<item><enclosure url="https://example.com/v.mp4" length="0" type="Video/MP4"/>` +
+        `<pubDate>not a date</pubDate></item>` +
+        `<item><title>No enclosure</title><guid>g2</guid><itunes:duration>12:00</itunes:duration></item>` +
+        `</channel>`
+    );
+    expect(feed.warnings.join(" ")).toMatch(/xml validation issue/);
+    expect(feed.episodes).toHaveLength(2);
+    const [bad, unplayable] = feed.episodes;
+    const w = bad!.warnings.join(" | ");
+    expect(w).toContain("missing title");
+    expect(w).toContain("missing guid");
+    expect(w).toContain("enclosure length=0 (corner case 6)");
+    expect(w).toContain("enclosure type is video/*");
+    expect(w).toContain("duration unresolved");
+    expect(w).toContain('unparseable pubDate: "not a date"');
+    expect(unplayable!.warnings).toEqual(["missing enclosure url — item unplayable"]);
+  });
+});
 
 /* Round-3 audit, lane L6 (backend-rest-1 / -10): parseFeed never throws, and
    an empty guid is "no guid", never the identity "". */
