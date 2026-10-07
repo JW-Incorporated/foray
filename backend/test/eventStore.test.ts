@@ -23,9 +23,9 @@ const saved = (id: string, ts: string, user = USER) => ({
 
 describe("InMemoryEventStore.fetchPage", () => {
   /* Ids the store mints itself: a 12-digit zero-padded counter, so string
-     order is insertion order past nine events in one millisecond.
-     CHARACTERIZATION (today): `evt-10-` sorts before `evt-9-`, so a page of
-     100 same-ts events comes back out of insertion order. */
+     order is insertion order past nine events in one millisecond (Postgres
+     orders its uuids by value, never as `evt-10-` < `evt-9-`).
+     MUTATION: drop the padStart in nextId -- red. */
   it("minted ids sort in insertion order, even past a digit boundary", async () => {
     const store = new InMemoryEventStore();
     const recorded: string[] = [];
@@ -33,17 +33,18 @@ describe("InMemoryEventStore.fetchPage", () => {
       recorded.push((await store.record({ user_id: USER, ts: T1, type: "saved", payload: { episode_slug: `e${i}`, topics: [] } })).id);
     }
     const page = await store.fetchPage(USER, null, null, 1000);
-    expect(page.events.map((e) => e.id)).not.toEqual(recorded);
+    expect(page.events.map((e) => e.id)).toEqual(recorded);
   });
 
-  /* CHARACTERIZATION (today): with afterTs set and afterId null, the
-     in-memory store DROPS the rows at exactly afterTs; Postgres includes
-     them (`id > coalesce($3, min-uuid)`). */
-  it("afterTs set, afterId null: rows at exactly afterTs (today: dropped)", async () => {
+  /* With afterTs set and afterId null, Postgres includes the rows at exactly
+     afterTs (`id > coalesce($3, min-uuid)`); the in-memory store used to
+     drop them. The live-database block below asserts the same ids.
+     MUTATION: restore `afterId !== null && e.id > afterId` -- red. */
+  it("afterTs set, afterId null: rows at exactly afterTs are included, as in Postgres", async () => {
     const store = new InMemoryEventStore();
     for (const row of [saved(uuid(1), T0), saved(uuid(3), T1), saved(uuid(2), T1), saved(uuid(4), T2)]) await store.record(row);
     const page = await store.fetchPage(USER, T1, null, 1000);
-    expect(page.events.map((e) => e.id)).toEqual([uuid(4)]);
+    expect(page.events.map((e) => e.id)).toEqual([uuid(2), uuid(3), uuid(4)]);
   });
 
   it("afterTs and afterId set: ties at afterTs break on id", async () => {
@@ -73,7 +74,7 @@ const databaseUrl = process.env.SHOWS_DATABASE_URL || process.env.DATABASE_URL;
 const describeIfDb = databaseUrl ? describe : describe.skip;
 
 describeIfDb("PostgresEventStore.fetchPage against a live Postgres (db CI job)", () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- pg's Client is loaded lazily; this block only runs with a database.
+  // pg's Client is loaded lazily; this block only runs with a database.
   let client: any;
   const user = randomUUID();
   const rows = [saved(uuid(1), T0, user), saved(uuid(3), T1, user), saved(uuid(2), T1, user), saved(uuid(4), T2, user)];
