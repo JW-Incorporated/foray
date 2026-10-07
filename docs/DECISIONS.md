@@ -2,6 +2,50 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
+## 2026-10-07 — Budget caps are per-process; the daily tier is renamed RUN; no Postgres cost sink until a multi-process generator exists (code-health-2 CH2-04)
+
+**What the code had.** `BudgetGuard` (`backend/src/cost/budgetGuard.ts`) summed
+spend per user since local midnight against `DAILY_BUDGET_USD`, but the only
+cost sink is `InMemoryCostEventSink`: spend lives in the process and dies with
+it. Nothing writes the `cost_events` table (migration 0010), and its FK columns
+cannot hold the ids the code records. So the "daily" cap was a per-process cap
+with a misleading name: a batch that hit $25 at 14:00 could be re-run in a fresh
+process and spend another $25, and two parallel processes each got the full
+budget (code-health-2 B2-02). The batch driver even slept until local midnight
+on a "daily" stop, waiting for a reset a new process would have had at once.
+
+**Recorded (engineering change, CH2-04).** The "no Postgres sink now" half is the
+proposed default of code-health-2 founder question 4
+(`docs/roadmap/code-health-2.md` §1), not a founder ruling; the question stays
+open there, and this entry records what the code does until it is answered.
+
+- The cap is what it already was: per process. `DAILY_BUDGET_USD` is renamed
+  `RUN_BUDGET_USD` (default $25, the same bounded schema: finite, ≥ 0, ≤ 1000)
+  and means the total this process may spend, summed over every event it
+  recorded, across users. There is no day window and no midnight sleep: a
+  run-cap stop in `npm run generate-forays` ends the batch with a line naming
+  `RUN_BUDGET_USD` and the number of prompts not attempted.
+- Setting the old `DAILY_BUDGET_USD` fails startup with a message naming the
+  rename (never the value). No workflow, routine or tool set it; `.env.example`
+  and the teaching docs now say `RUN_BUDGET_USD`. An operator's own `.env` that
+  still sets it fails loudly instead of being silently ignored.
+- `EPISODE_BUDGET_USD` (per Foray) is read through the same bounded schema; a
+  negative or malformed value fails startup instead of being kept or replaced
+  by the default (B2-03).
+- The tier cutoff is deleted (B2-06): no production operation was ever
+  tier-prefixed, so every call already got the full cap. Every operation gets
+  the full run cap; the operation name is a label for the log only.
+- **No Postgres cost sink is built until a multi-process generator exists.**
+  One process runs a batch today; a shared sink would add a database write to
+  every metered call to protect against a deployment that does not exist. When
+  generation runs as more than one process (or a service), that is the trigger
+  to build one, and the `cost_events` table's shape is revisited then. The
+  table's own fate (keep or drop) is routed with the B2-08 schema ruling
+  (`docs/roadmap/code-health-2.md` §5), not decided here.
+
+**Reversal cost.** Low in code (one guard, one sink); the operator-facing part
+is the variable name, which is why the old name fails loudly.
+
 ## 2026-10-07 — Catalogue labels: what shipped for `label_scope: "general"`, breadth-show topics and the international breadth file (catalogue-personalization PKG-22)
 
 This entry records merged code only, with its PRs. The roadmap items it names

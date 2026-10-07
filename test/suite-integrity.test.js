@@ -2441,7 +2441,7 @@ const BACKEND_FLOORS = {
      neither when it does not, and the seed the reply carries back. */
   "test/AnthropicSpineBuilder.test.ts": 18, // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 11 -> 18 (17 on disk before it)
   "test/archetypes.test.ts": 7,
-  "test/budgetGuard.test.ts": 13, // round-3 L6 (2026-09-25): backend-rest-13: check-and-record serialised under concurrency; 6 -> 11; 11 -> 13 // CH2-04: per-process pins (N calls stop at the cap; a fresh guard starts at 0)
+  "test/budgetGuard.test.ts": 12, // round-3 L6 (2026-09-25): backend-rest-13: check-and-record serialised under concurrency; 6 -> 11; 11 -> 13 // CH2-04: per-process pins (N calls stop at the cap; a fresh guard starts at 0); 13 -> 12 // CH2-04: tier cutoff deleted (tier2/tier0 cases removed, exact), "every operation gets the full run cap" added
   "test/buildCorpusTerms.test.ts": 4, // PKG-26 (docs/roadmap/corpus.md §3): corpus df table + per-episode top-k tf-idf terms — rare beats common, alpha ties, k cap, df drops singletons
   "test/candidateExtractor.test.ts": 8,
   "test/conditionalGet.test.ts": 9,
@@ -2452,10 +2452,11 @@ const BACKEND_FLOORS = {
   "test/dataSchemaCompliance.test.ts": 8,
   "test/dedup.test.ts": 20, // round-3 L6 (2026-09-25): backend-rest-22: non-Latin titles normalise, dedup and key distinctly; 17 -> 20
   "test/duration.test.ts": 12,
-  /* DAILY_BUDGET_USD env parsing (L5): rejects negative / NaN / empty /
-     over-cap values at startup instead of silently substituting the
-     default, and leaves a genuinely unset variable on its fallback. */
-  "test/env.test.ts": 13, // 11 -> 13 // CH2-04: EPISODE_BUDGET_USD lenient-parse characterization (-1 kept, 1O -> default)
+  /* RUN_BUDGET_USD (was DAILY_BUDGET_USD) and EPISODE_BUDGET_USD env parsing
+     (L5, CH2-04): rejects negative / NaN / empty / over-cap values at startup
+     instead of silently substituting the default, leaves a genuinely unset
+     variable on its fallback, and refuses the old DAILY name. */
+  "test/env.test.ts": 24, // 11 -> 13 // CH2-04: EPISODE_BUDGET_USD lenient-parse characterization (-1 kept, 1O -> default); 13 -> 24 // CH2-04: EPISODE mirrors the bounded RUN cases (the two pins flip), DAILY rename refused, envPresenceSummary carries the episode cap
   "test/events.test.ts": 17, // round-3 completeness sweep: app-2-6 thumbs accepts "cleared" and keeps `replaces`; 15 -> 17
   "test/html.test.ts": 12, // round-3 L6 (2026-09-25): backend-rest-1/-9/-11: range-checked, NUL-dropping, prototype-safe decodeEntities; 8 -> 12
   "test/interestLearning.test.ts": 38, // round-3 completeness sweep: app-2-6 a changed or withdrawn thumbs vote undoes the one it replaces; 35 -> 38 // round-3 L6 (2026-09-25): backend-rest-17: card_ignored fires once per threshold, running per-topic streak; 30 -> 35
@@ -2868,7 +2869,7 @@ const BACKEND_FLOORS = {
      counts. */
   "test/spineSeeding.test.ts": 6,
   /* G-30: self-resuming runs, abort on a refused partial, notification hook, id suffixing. */
-  "test/generateForaysHandsFree.test.ts": 20,
+  "test/generateForaysHandsFree.test.ts": 21, // 20 -> 21 // CH2-04: a run-cap stop ends the batch (generateQueue)
   /* +1 audit finding E (2026-09-12): this package's `isGeneratedDraft` agrees
      with player/foray-resolve.js over the whole truth table; 8 -> 9. */
   "test/finalizeForay.test.ts": 10, // round-3 audit (L5-generation): gen-12 a duplicate id is a validation error, not a throw; 9 -> 10

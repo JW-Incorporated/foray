@@ -28,41 +28,30 @@ if (fs.existsSync(BACKEND_LOCAL_ENV)) {
   dotenv.config({ path: BACKEND_LOCAL_ENV, override: true });
 }
 
-function readString(name: string): string | undefined {
-  const v = process.env[name];
+/** Reads a variable, trimmed; empty or whitespace-only counts as unset.
+ * Exported so `models.ts` reads its overrides by the same rule (`source` is
+ * there for its pure resolvers, which a test drives without the process). */
+export function readString(name: string, source: NodeJS.ProcessEnv = process.env): string | undefined {
+  const v = source[name];
   if (v === undefined) return undefined;
   const trimmed = v.trim();
   return trimmed.length === 0 ? undefined : trimmed;
 }
 
-/* Unvalidated numeric read with a silent fallback. This branch had removed
- * it (readBoundedNumber replaced its only caller), but main added a new one
- * for EPISODE_BUDGET_USD while this PR was open, so it is restored verbatim
- * rather than either side being changed. EPISODE_BUDGET_USD therefore still
- * has exactly the lenient parsing this PR fixes for DAILY_BUDGET_USD — a
- * deliberate scope boundary, not an oversight: picking its upper bound is a
- * spend-control call, not a merge decision. Follow-up, not this PR. */
-function readNumber(name: string, fallback: number): number {
-  const raw = readString(name);
-  if (raw === undefined) return fallback;
-  const n = Number(raw);
-  return Number.isFinite(n) ? n : fallback;
-}
-
 /**
- * Upper bound for DAILY_BUDGET_USD. This is a spend-control cap, not a
- * technical limit — anything above this is almost certainly a typo (e.g. a
- * missing decimal point) and must fail startup rather than silently letting
- * every paid operation run unmetered.
+ * Upper bound for both budget variables (RUN_BUDGET_USD, EPISODE_BUDGET_USD).
+ * This is a spend-control cap, not a technical limit — anything above this is
+ * almost certainly a typo (e.g. a missing decimal point) and must fail startup
+ * rather than silently letting every paid operation run unmetered.
  */
-const MAX_DAILY_BUDGET_USD = 1000;
+const MAX_BUDGET_USD = 1000;
 
 /**
  * WHAT ONE MEDIUM FORAY COSTS, and therefore what these two defaults have to
  * be (generation run 2026-09-09, finding F-04 / intervention I-01).
  *
- * `DAILY_BUDGET_USD` defaulted to $2.00 — a number chosen for the ENRICHMENT
- * pipeline (tier-1 Haiku classification of feed episodes) before the §4
+ * The process cap (then `DAILY_BUDGET_USD`, now `RUN_BUDGET_USD`) defaulted
+ * to $2.00 — a number chosen for the ENRICHMENT pipeline (tier-1 Haiku classification of feed episodes) before the §4
  * generation pipeline existed. Run 1 could only be started at all by setting
  * `DAILY_BUDGET_USD=1000 EPISODE_BUDGET_USD=1000` in the environment; on the
  * shipped default the guard would have halted the run inside Act 1, and the
@@ -96,21 +85,43 @@ const MAX_DAILY_BUDGET_USD = 1000;
  * ~$5-10/Foray phase-1 range, and ~3x the estimate above, which is the
  * headroom a retry-heavy Foray needs before a human should be told to look.
  *
- * `DAILY_BUDGET_USD` becomes $25.00 — two-and-a-half Forays at the per-Foray
- * ceiling, leaving room for the enrichment pipeline's own tier-1/tier-2 spend
- * on the same day. It MUST be at least the per-Foray ceiling: generation calls
- * are not tier-prefixed, so `BudgetGuard` scores them tier 1, whose cutoff is
- * the full daily budget; a daily cap below the episode cap would make the
- * episode cap unreachable and stop every run at the daily one instead.
+ * `RUN_BUDGET_USD` is $25.00 — two-and-a-half Forays at the per-Foray ceiling.
+ * It MUST be at least the per-Foray ceiling: every metered call is compared
+ * against the whole run budget, so a run cap below the episode cap would make
+ * the episode cap unreachable and stop every run at the run cap instead.
+ *
+ * WHAT "RUN" MEANS (CH2-04, docs/DECISIONS.md 2026-10-07). It is the total
+ * THIS PROCESS may spend. The cost sink is in memory and nothing persists it,
+ * so there is no day window to reset and no second process to share with: a
+ * re-run in a fresh process starts at $0 again. The variable used to be called
+ * `DAILY_BUDGET_USD`, which promised a per-day cap the code never had.
  */
-const DEFAULT_DAILY_BUDGET_USD = 25.0;
+const DEFAULT_RUN_BUDGET_USD = 25.0;
 const DEFAULT_EPISODE_BUDGET_USD = 10.0;
 
-const dailyBudgetSchema = z
-  .number({ invalid_type_error: "DAILY_BUDGET_USD" })
-  .finite({ message: "DAILY_BUDGET_USD" })
-  .nonnegative({ message: "DAILY_BUDGET_USD" })
-  .max(MAX_DAILY_BUDGET_USD, { message: "DAILY_BUDGET_USD" });
+/** The one schema both budget variables are read through; `name` labels the
+ * zod issues (the thrown error names the variable separately, never the value). */
+function budgetSchema(name: string): z.ZodNumber {
+  return z
+    .number({ invalid_type_error: name })
+    .finite({ message: name })
+    .nonnegative({ message: name })
+    .max(MAX_BUDGET_USD, { message: name });
+}
+
+/**
+ * The variable `RUN_BUDGET_USD` replaced. Set, it fails startup naming the
+ * rename instead of being ignored: an operator who wrote a per-day number in
+ * their .env must learn that it never was one, not have it silently dropped.
+ */
+function refuseRenamedDailyBudget(): void {
+  if (process.env.DAILY_BUDGET_USD !== undefined) {
+    throw new Error(
+      "DAILY_BUDGET_USD was renamed to RUN_BUDGET_USD: the cap is what one process may spend, not a per-day budget " +
+        "(docs/DECISIONS.md 2026-10-07). Rename it in your .env."
+    );
+  }
+}
 
 /**
  * Reads a required, schema-validated numeric budget/spend-control value.
@@ -139,7 +150,9 @@ export interface Env {
   anthropicApiKey: string | undefined;
   podcastIndexApiKey: string | undefined;
   podcastIndexApiSecret: string | undefined;
-  dailyBudgetUsd: number;
+  /** What this process may spend in total (`RUN_BUDGET_USD`). Per-process by
+   * design — see the defaults note above. */
+  runBudgetUsd: number;
   /**
    * Per-Foray (per-generation-episode) spend ceiling (docs/curation/
    * generation-architecture.md §9.2, founder decision 2026-08-31: "Set
@@ -157,12 +170,14 @@ export interface Env {
   readonly podcastIndexDryRun: boolean;
 }
 
+refuseRenamedDailyBudget();
+
 export const env: Env = {
   anthropicApiKey: readString("ANTHROPIC_API_KEY"),
   podcastIndexApiKey: readString("PODCASTINDEX_API_KEY"),
   podcastIndexApiSecret: readString("PODCASTINDEX_API_SECRET"),
-  dailyBudgetUsd: readBoundedNumber("DAILY_BUDGET_USD", DEFAULT_DAILY_BUDGET_USD, dailyBudgetSchema),
-  episodeBudgetUsd: readNumber("EPISODE_BUDGET_USD", DEFAULT_EPISODE_BUDGET_USD),
+  runBudgetUsd: readBoundedNumber("RUN_BUDGET_USD", DEFAULT_RUN_BUDGET_USD, budgetSchema("RUN_BUDGET_USD")),
+  episodeBudgetUsd: readBoundedNumber("EPISODE_BUDGET_USD", DEFAULT_EPISODE_BUDGET_USD, budgetSchema("EPISODE_BUDGET_USD")),
   databaseUrl: readString("DATABASE_URL"),
   userAgent: "Foray/0.1 (personal podcast client; contact wjduvall@gmail.com)",
   get anthropicDryRun(): boolean {
@@ -180,6 +195,7 @@ export function envPresenceSummary(): Record<string, boolean | number> {
     podcastIndexKeyPresent: env.podcastIndexApiKey !== undefined,
     podcastIndexSecretPresent: env.podcastIndexApiSecret !== undefined,
     databaseUrlPresent: env.databaseUrl !== undefined,
-    dailyBudgetUsd: env.dailyBudgetUsd
+    runBudgetUsd: env.runBudgetUsd,
+    episodeBudgetUsd: env.episodeBudgetUsd
   };
 }

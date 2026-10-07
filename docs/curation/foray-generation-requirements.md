@@ -2930,7 +2930,7 @@ budget: two budget checks that can disagree is worse than one.
 
 | Cap | Env var | Default | Enforced |
 |---|---|---|---|
-| Daily, per user | `DAILY_BUDGET_USD` | **$25.00** | always |
+| Per run (everything this process may spend) | `RUN_BUDGET_USD` | **$25.00** | always |
 | Per Foray, per generation run | `EPISODE_BUDGET_USD` | **$10.00** | **only when the caller passes a `sessionId`** — which the batch driver now does |
 
 **The per-Foray cap is live in the batch path** (was §8.10, F-54).
@@ -2941,11 +2941,15 @@ value: one id per Foray, stable across a resume, and already the name a human re
 when a run stops. Before this branch nothing set it, so in the only path that
 generates anything a runaway Foray was bounded by the daily cap alone.
 
-`checkAndRecord` computes the tier from the operation name prefix
-(`tier0`/`tier1`/`tier2`); **no generation operation is tier-prefixed**, so they
-all score **tier 1**, whose cutoff fraction is **1.0** — the full daily budget.
-The daily check is `spentToday + estimatedUsd > dailyBudgetUsd × 1.0` →
-`BudgetExceededError`. The episode check, when a `sessionId` is present, is
+**Both caps are per process** (CH2-04, `docs/DECISIONS.md` 2026-10-07). The cost
+sink is in memory, so a second `generate-forays` process starts at $0: the cap was
+once named `DAILY_BUDGET_USD`, but it never had a day window that survived the
+process, and the name now says what it is. Setting the old name fails startup.
+Every operation gets the full run cap (the old tier cutoff, which no generation
+operation ever triggered, is deleted). The run check is
+`spentThisRun + estimatedUsd > runBudgetUsd` → `BudgetExceededError`, where
+`spentThisRun` is everything this process has recorded, across users. The
+episode check, when a `sessionId` is present, is
 `spentThisSession + estimatedUsd > episodeBudgetUsd` →
 `EpisodeBudgetExceededError`.
 
@@ -2973,32 +2977,32 @@ the target is met); and it bills `max_tokens` rather than tokens produced, exact
 as the guard does, so real spend lands well under it.
 
 `EPISODE_BUDGET_USD = $10.00` is the top of §9.2's founder-approved ~$5–10/Foray
-phase-1 range and ~3× the estimate. `DAILY_BUDGET_USD = $25.00` is two and a half
-Forays at the per-Foray ceiling plus room for the enrichment pipeline. It **must**
-be at least the per-Foray ceiling, or the episode cap would be unreachable and
-every run would stop at the daily one instead.
+phase-1 range and ~3× the estimate. `RUN_BUDGET_USD = $25.00` is two and a half
+Forays at the per-Foray ceiling. It **must** be at least the per-Foray ceiling, or
+the episode cap would be unreachable and every run would stop at the run one
+instead.
 
-**Validation.** `DAILY_BUDGET_USD` is schema-checked (finite, non-negative, ≤
-`MAX_DAILY_BUDGET_USD = 1000`) and a present-but-malformed value **fails startup**
-with a message naming only the variable, never the value. `EPISODE_BUDGET_USD`
-still uses the lenient `readNumber` fallback — a deliberate, documented scope
-boundary, not an oversight.
+**Validation.** `RUN_BUDGET_USD` and `EPISODE_BUDGET_USD` go through one bounded
+schema (finite, non-negative, ≤ `MAX_BUDGET_USD = 1000`), and a present-but-malformed
+value of either **fails startup** with a message naming only the variable, never
+the value. (`EPISODE_BUDGET_USD` used to fall back leniently: `-1` was kept, so
+every metered call threw; `1O` silently became $10.)
 
 **`--budget-usd N`** (`generateForays.ts`) calls
-`defaultBudgetGuard.setCaps({dailyUsd: N, episodeUsd: N})` for the process. Both
-move together because generation calls score tier 1, so raising only the per-Foray
-cap would just move the stop to the daily one. `setCaps` ignores a non-finite or
+`defaultBudgetGuard.setCaps({runUsd: N, episodeUsd: N})` for the process. Both
+move together because every metered call also counts against the run cap, so
+raising only the per-Foray cap would just move the stop to the run one. `setCaps` ignores a non-finite or
 negative value — it can raise or lower a declared ceiling, never remove one.
 
 **`BudgetStopError`** is thrown by `runPipeline.ts:timed`, not by the guard. The
-guard's own message ("Daily budget exceeded for tier 1: spent $1.9970 + attempted
+guard's own message ("Run budget exceeded (RUN_BUDGET_USD): spent $1.9970 + attempted
 $0.0240 > cap $2.0000") is true, unactionable and stage-blind — it reads
 identically whether it stopped the spine call or beat 23 of 31. `BudgetStopError`
-adds the stage name, the spend so far, the cap, the scope (`daily` | `per-foray`),
+adds the stage name, the spend so far, the cap, the scope (`run` | `per-foray`),
 and the resume hint:
 
 ```text
-Budget stop in stage "narrate:2": the daily cap of $25.00 was reached (spent $24.9970; this call would have added $0.0240). Everything finished so far is checkpointed under "<key>", so a re-run restarts at this stage. Raise the cap with --budget-usd (or DAILY_BUDGET_USD) and re-run.
+Budget stop in stage "narrate:2": the run cap of $25.00 was reached (spent $24.9970; this call would have added $0.0240). Everything finished so far is checkpointed under "<key>", so a re-run restarts at this stage. Raise the cap with --budget-usd (or RUN_BUDGET_USD) and re-run.
 ```
 
 `findBudgetError(err)` walks the `cause` chain up to 8 levels (bounded, so a cause
@@ -3741,11 +3745,14 @@ any re-run did before; the difference is that nobody has to type it.
 Everything else — a bug, a bad fixture — is still one `ERROR` line and no
 retry: repeating a deterministic failure three times is three times the cost.
 
-**Budget window (manual step 26).** A *daily* `BudgetStopError` counts as
-resumable: the driver sleeps until the next local midnight plus a minute (the
-window `BudgetGuard` sums against) and resumes. A *per-Foray* stop is not — the
-same Foray would trip it again — and ends the prompt with reason `budget-stop`.
-Raising a cap stays a decision, not a retry.
+**Budget stops (manual step 26).** No budget stop is resumable. A *per-Foray*
+stop ends the prompt with reason `budget-stop` — the same Foray would trip it
+again — and the batch goes on to the next prompt. A *run* stop also ends the
+prompt with `budget-stop`, and then ends the batch with a `STOP RUN_BUDGET_USD
+spent` line naming how many prompts were not attempted: the run cap is the whole
+process's budget, so there is no window to sleep through (the driver used to
+sleep until local midnight here, for a reset the in-memory cap never had —
+CH2-04). Raising a cap stays a decision, not a retry.
 
 **Refused partial (manual step 10).** WS-D2 already validates every act's
 partial candidate with `check-forays`. By default a refused act now ends the
@@ -3839,8 +3846,8 @@ never logged; `envPresenceSummary()` reports booleans only.
 | Variable | Default | Effect |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | unset | **The one switch between stub and live.** Unset → every `create*()` returns a Stub, `$0`, no network. Set → the Anthropic builders. |
-| `DAILY_BUDGET_USD` | `25.00` | Daily per-user cap. Schema-validated: finite, ≥ 0, ≤ 1000; a present-but-malformed value **fails startup**. |
-| `EPISODE_BUDGET_USD` | `10.00` | Per-Foray cap — enforced only when a caller passes a `sessionId`, which the batch driver **now does** (the checkpoint key; §4.1). Leniently parsed. |
+| `RUN_BUDGET_USD` | `25.00` | Everything this process may spend (per process, not per day; was `DAILY_BUDGET_USD`, which now **fails startup** naming the rename). Schema-validated: finite, ≥ 0, ≤ 1000; a present-but-malformed value **fails startup**. |
+| `EPISODE_BUDGET_USD` | `10.00` | Per-Foray cap — enforced only when a caller passes a `sessionId`, which the batch driver **now does** (the checkpoint key; §4.1). Same bounded schema as `RUN_BUDGET_USD`. |
 | `NARRATION_ACT_CONCURRENCY` | `4` | G-32: how many acts §4.7 narrates at once (every slot of every in-flight act is itself in flight). `1` restores acts in series; the throttle for a key that returns 429s. Stitch and continuity (§4.8) run one act at a time in act order regardless. Read at call time by `writeNarration.ts`, not by `env.ts`; a present-but-malformed value **throws**, naming the variable only. `report.json` records the value as `narrationConcurrency` beside one `narrate:<i>` timing per act (`narrationActs`). |
 | `SPINE_STRUCTURAL_REASKS` | `1` | F-86: how many times §4.3's builder is re-asked, with the structural gate's violations named, before a refused spine fails the run (§3.3.4). `0` restores fail-on-first. Read at call time by `buildSpine.ts`, not by `env.ts`; a present-but-malformed value **throws**, naming the variable only. Each re-ask is a whole metered Opus call; `report.json` records them as `spineReasks`. |
 | `FORAY_MODEL_OPUS` | `claude-opus-5` | Override the id a tier resolves to. |
@@ -4050,8 +4057,8 @@ passes a `sessionId`, and `generateForays.ts` never set one, so in the only path
 that generates anything a runaway Foray was bounded by the daily cap alone
 (**F-54**). `generateOneCandidate` now passes `sessionId: checkpointKey` — one id
 per Foray, stable across a resume, already the name a human reads when a run stops
-(§4.1). `--budget-usd` still re-caps both ceilings together, because generation
-calls score tier 1.
+(§4.1). `--budget-usd` still re-caps both ceilings together, because every
+metered call also counts against the run cap.
 
 ### 8.11 F-57 — the ±15 % runtime tolerance is not implemented
 

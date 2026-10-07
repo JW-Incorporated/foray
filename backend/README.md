@@ -27,7 +27,7 @@ npm install
 Environment is read from the **repo-root** `.env` (one level up from
 `backend/`), which already exists in this repo (see `.env.example` for the
 documented keys: `ANTHROPIC_API_KEY`, `PODCASTINDEX_API_KEY`,
-`PODCASTINDEX_API_SECRET`, `DAILY_BUDGET_USD`). Every key is optional —
+`PODCASTINDEX_API_SECRET`, `RUN_BUDGET_USD`, `EPISODE_BUDGET_USD`). Every key is optional —
 absence is handled explicitly everywhere (`src/config/env.ts`), not treated
 as a startup error. An optional `backend/.env.local` can override the
 repo-root file for local-only experimentation (gitignored).
@@ -113,8 +113,10 @@ npm run build-session -- --taxonomy path/to/other-taxonomy.json
   injected fetch stubs).
 - Podcast Index client (HMAC-style auth header construction implemented;
   runs in dry-run mode without credentials, which this repo has).
-- Cost metering + budget guard, including the tier-aware cutoff (Tier 2
-  cuts off before Tier 1, per corner case 33).
+- Cost metering + budget guard: two per-process caps, `RUN_BUDGET_USD` (all
+  this process may spend, every operation alike) and `EPISODE_BUDGET_USD` (one
+  Foray). The sink is in memory, so a new process starts at $0
+  (`docs/DECISIONS.md` 2026-10-07).
 - `StubEnricher`: deterministic (hash-derived, not random) fake
   classification and why-line generation — same input always produces the
   same output, so pipeline tests are reproducible without a real LLM.
