@@ -24,7 +24,11 @@
  *   (h) the share text never carries a hook;
  *   (i) delivery order: native plugin, Web Share, clipboard, the link on screen,
  *       and a cancel ends it;
- *   (j) no event is logged for a share.
+ *   (j) no event is logged for a share;
+ *   (l) SH-PL-BREADTH part 1: a frozen playlist link reports `shared` of
+ *       `total` (total never capped), and every non-cancel outcome (native
+ *       plugin, Web Share, clipboard, on-screen link) says "N of M" when the
+ *       link left episodes out; nothing when it left none out or on a cancel.
  * The spec's (k), an appUrlOpen router, belongs to the universal-links
  * groundwork card (orchestrator amendment 4) and is not built here.
  *
@@ -467,6 +471,32 @@ test("(e) a Suggested subject queue freezes too, and 60 catalogue ids give 50", 
   assert.ok(subject.url.includes("#/playlist/shared~") && !subject.url.includes("subject"), subject.url);
 });
 
+test("(e) a frozen playlist link says how many of the playlist's episodes it carries; url and text are unchanged", () => {
+  /* SH-PL-BREADTH part 1. `shared` and `total` are extra fields: url and text
+     still feed ForayShare and shareTo's data exactly as before.
+     MUTATION: cap total too (`total: Math.min(total, SHARED_PLAYLIST_MAX)`)
+     -> 60 parts read "50 of 50". MUTATION: count total after the pool filter
+     (`total: e.length`) -> the gone part is not counted, 2 of 2.
+     MUTATION: count duplicates or null parts in total -> 4 of 5 / 2 of 4. */
+  const m = appMount({}, 60);
+  const big = { id: "q1", title: "Big", items: Array.from({ length: 60 }, (_, i) => ({ id: "p" + (i + 1) })) };
+  const out = link(m, { kind: "playlist", playlist: big });
+  assert.strictEqual(out.shared, 50);
+  assert.strictEqual(out.total, 60, "the total is never capped at 50");
+  assert.deepStrictEqual(Object.keys(out).sort(), ["shared", "text", "total", "url"]);
+
+  const mixed = { id: "q2", title: "Mixed", items: [{ id: "p2" }, { id: "gone-1" }, { id: "p2" }, null, { title: "no id" }, { id: "p1" }] };
+  const m2 = link(m, { kind: "playlist", playlist: mixed });
+  assert.strictEqual(m2.shared, 2);
+  assert.strictEqual(m2.total, 3, "distinct non-null part ids: p2, gone-1, p1");
+  assert.strictEqual(m2.text, "Mixed");
+  const payload = JSON.parse(Buffer.from(sharedIdOf(m2.url).slice(7), "base64url").toString("utf8"));
+  assert.deepStrictEqual(payload, { t: "Mixed", e: ["p2", "p1"] }, "the link itself is today's payload");
+
+  const show = link(m, { kind: "show", id: "founders" });
+  assert.deepStrictEqual(Object.keys(show).sort(), ["text", "url"], "only a frozen playlist reports a count");
+});
+
 test("(e) a generated playlist keeps its own route", () => {
   /* MUTATION: freeze generated playlists too -> the gen- route is lost. */
   const m = appMount();
@@ -569,6 +599,76 @@ test("(i) any other Web Share failure falls to the clipboard, then to the link o
   assert.strictEqual(await m.ctx.shareTo(LINK, anchor2), "manual");
   assert.match(notes[1], /Copy this link<input class="share-input" readonly value="https:\/\/foray-web-seven\.vercel\.app\/#\/show\/x"/);
   assert.ok(selected, "the link is pre-selected");
+});
+
+/* (l) SH-PL-BREADTH part 1: an honest "N of M" note ---------------------- */
+
+/** A listener's playlist of `ids` and a mounted app holding it; clicking its
+    share button (the delegated path) with the given delivery returns the
+    notes written beside the button and the outcome's calls. */
+async function clickPlaylistShare(ids, deliveryOpts) {
+  const own = { id: "q1690000000001", title: "Mix", query: "mix", created: "2026-09-01T00:00:00.000Z",
+    items: ids.map((id) => ({ id, title: "Episode " + id, show: "Founders" })), item_ids: ids, last_played_at: null, sparse: false };
+  const m = appMount({ seed: { cp_playlists: JSON.stringify([own]) } });
+  const calls = delivery(m, deliveryOpts);
+  const notes = [];
+  const btn = { dataset: { share: "playlist", shareId: own.id }, nextElementSibling: null, insertAdjacentHTML: (_w, html) => { notes.push(html); } };
+  m.ctx.onShareClick({ target: { closest: () => btn }, preventDefault() {}, stopPropagation() {} });
+  for (let i = 0; i < 3; i++) await new Promise((r) => setImmediate(r));
+  return { notes, calls };
+}
+const DROPPING = ["p1", "gone-1", "p2", "gone-2", "p3"]; // 3 of 5 open on a fresh device
+
+test("(l) the share sheet paths say how many episodes are in the link: the native plugin and Web Share", async () => {
+  /* MUTATION: show the count only on "copied" (drop the shareNote after
+     `await plugin.share(data)`) -> the plugin path writes no note.
+     MUTATION: drop it after `await navigator.share(data)` -> Web Share writes
+     no note. */
+  const plugin = await clickPlaylistShare(DROPPING, { plugin: () => {}, share: () => {}, clipboard: () => {} });
+  assert.deepStrictEqual(plugin.calls, ["plugin"]);
+  assert.strictEqual(plugin.notes.length, 1, "the plugin path says what the link holds");
+  assert.match(plugin.notes[0], /3 of 5 episodes are in the link/);
+
+  const web = await clickPlaylistShare(DROPPING, { share: () => {}, clipboard: () => {} });
+  assert.deepStrictEqual(web.calls, ["share"]);
+  assert.strictEqual(web.notes.length, 1, "the Web Share path says what the link holds");
+  assert.match(web.notes[0], /3 of 5 episodes are in the link/);
+  assert.ok(!/<input/.test(web.notes[0]), "a plain note, not the last-resort field");
+
+  const one = await clickPlaylistShare(["p1", "gone-1"], { share: () => {} });
+  assert.match(one.notes[0], /1 of 2 episodes is in the link/);
+});
+
+test("(l) the clipboard and on-screen paths fold the count into their own note", async () => {
+  /* MUTATION: drop the count from "Link copied" -> the clipboard note says
+     nothing of the 2 left out. MUTATION: drop it from "Copy this link" -> the
+     last resort says nothing either. */
+  const copied = await clickPlaylistShare(DROPPING, { clipboard: () => {} });
+  assert.strictEqual(copied.notes.length, 1, "one note, not a second one over it");
+  assert.match(copied.notes[0], /Link copied · 3 of 5 episodes/);
+
+  const manual = await clickPlaylistShare(DROPPING, { clipboard: () => { throw new Error("denied"); } });
+  assert.strictEqual(manual.notes.length, 1);
+  assert.match(manual.notes[0], /Copy this link · 3 of 5 episodes<input class="share-input" readonly value="https:\/\/foray-web-seven\.vercel\.app\/#\/playlist\/shared~/);
+});
+
+test("(l) no note when nothing was left out, and none on a cancel", async () => {
+  /* MUTATION: drop the `shared < total` guard -> "3 of 3 episodes are in the
+     link" after a share that lost nothing. MUTATION: write the note before
+     the share resolves, or on the cancel return -> a cancelled sheet leaves a
+     note. */
+  const whole = await clickPlaylistShare(["p1", "p2", "p3"], { plugin: () => {}, clipboard: () => {} });
+  assert.deepStrictEqual(whole.notes, [], "the link holds every episode: nothing to say");
+  const wholeCopied = await clickPlaylistShare(["p1", "p2", "p3"], { clipboard: () => {} });
+  assert.strictEqual(wholeCopied.notes.length, 1);
+  assert.match(wholeCopied.notes[0], />Link copied</, "today's note, unchanged");
+
+  const cancelPlugin = await clickPlaylistShare(DROPPING, { plugin: () => { throw new Error("Share canceled"); }, clipboard: () => {} });
+  assert.deepStrictEqual(cancelPlugin.calls, ["plugin"]);
+  assert.deepStrictEqual(cancelPlugin.notes, [], "a cancelled plugin sheet says nothing");
+  const cancelWeb = await clickPlaylistShare(DROPPING, { share: () => { const e = new Error("x"); e.name = "AbortError"; throw e; }, clipboard: () => {} });
+  assert.deepStrictEqual(cancelWeb.calls, ["share"]);
+  assert.deepStrictEqual(cancelWeb.notes, [], "a cancelled Web Share sheet says nothing");
 });
 
 /* (j) ------------------------------------------------------------------- */
