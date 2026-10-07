@@ -3463,6 +3463,12 @@ const EPISODE_NAVIGATION = {
      sleep timer parked). Read by player/client.js's row2 paint; the page owns
      Up Next and the stars, the player owns the sheet. */
   get upNextCount() { return queueIds().length; },
+  get nextItem() {
+    const cur = window.ForayPlayer?.currentEpisodeId?.();
+    const id = cur ? planAfterEnded(cur).nextId : queueIds()[0];
+    const item = id ? episode(id) : null;
+    return item ? { ...item, why: whyFor(id, item) || item.hook || "" } : null;
+  },
   isSaved(id) { return isSaved(id); },
   toggleSaved(id) { toggleStar(id); return isSaved(id); },
   /* Bookmarks inside episodes (#30, PQ-13). The sheet's Bookmark hands over

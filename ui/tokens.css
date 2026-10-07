@@ -460,5 +460,9 @@
     transition-property: opacity, color, background-color !important;
   }
   .room::before { transition: none !important; }
+  .ag .ag-np-room-layer { transition-duration: 200ms !important; transition-property: opacity !important; }
+  .ag .ag-np-strip-fill { transition: none !important; }
+  .ag .ag-np-art-out, .ag .ag-np-art-in { animation: none !important; transition: opacity 200ms !important; transform: none !important; }
+  .ag .ag-np { transform: none !important; transition: opacity 200ms !important; }
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
 }

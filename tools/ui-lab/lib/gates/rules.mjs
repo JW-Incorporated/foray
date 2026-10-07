@@ -4,7 +4,7 @@
  * A violation is { gate, screen, id, detail, count }. `screen` is
  * "<state>/<label>"; `id` is stable across runs (a selector or a normalised
  * message), because the known-debt list matches on gate + screen + id. */
-import { MIN_TAP_PX, TAP_TOLERANCE_PX, TAP_EXEMPTIONS, MIN_MOTION_MS, IGNORED_FAILED_REQUESTS, CONSOLE_COVERED_ELSEWHERE } from "./config.mjs";
+import { MIN_TAP_PX, TAP_TOLERANCE_PX, TAP_EXEMPTIONS, MIN_MOTION_MS, MAX_REDUCED_CROSSFADE_MS, IGNORED_FAILED_REQUESTS, CONSOLE_COVERED_ELSEWHERE } from "./config.mjs";
 
 export const GATES = ["errors", "requests", "csp", "tap-targets", "reduced-motion", "overflow", "sheet-focus", "contrast"];
 
@@ -87,6 +87,8 @@ export function evaluateReducedMotion(screen, recs, { minMs = MIN_MOTION_MS } = 
   const out = [];
   for (const r of recs) {
     if (!(r.duration > minMs)) continue;
+    const crossfade = r.kind === "transition" && ["opacity", "color", "background-color"].includes(r.name);
+    if (crossfade && r.duration <= MAX_REDUCED_CROSSFADE_MS) continue;
     out.push(v("reduced-motion", screen, `${r.kind}:${r.name || "?"}:${r.selector}`, `${r.kind} ${r.name || ""} ${Math.round(r.duration)}ms on ${r.selector}`));
   }
   return dedupe(out);

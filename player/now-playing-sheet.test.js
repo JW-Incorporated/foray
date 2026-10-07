@@ -128,7 +128,8 @@ test("the sheet's scroller starts with the artwork, then the title", () => {
     "the scroller's first child must be the artwork element"
   );
   assert.match(CODE, /const sArt = el\(/, "the sheet must build its own artwork element");
-  assert.match(CODE, /ui\.sArt\.src = item\.artwork_url;/, "and fill it from the item's artwork");
+  assert.match(CODE, /window\.safeUrl\(item\.artwork_url\)/, "the item's artwork crosses the URL gate");
+  assert.match(CODE, /ui\.sArt\.src = artUrl;/, "and the gated URL fills the sheet artwork");
 });
 
 test("the sheet's notes are the episode page's notes, built as nodes from the one tokeniser — never from an HTML string", () => {
@@ -419,7 +420,9 @@ test("Stop, pressed from inside the sheet, releases the owner too", () => {
 test("tapping the mini bar's artwork opens the player, like the title beside it", () => {
   /* The 40px artwork was an inert <img>. MUTATION: delete the `ui.art`
      click listener -> red. */
-  assert.match(FLAT_TEXT, /ui\.art\.addEventListener\("click", \(\) => setExpanded\(ui\.sheet\.hidden\)\)/);
+  assert.match(FLAT_TEXT, /const toggleExpandedFromMini = \(\) => \{/);
+  assert.match(FLAT_TEXT, /ui\.info\.addEventListener\("click", toggleExpandedFromMini\)/);
+  assert.match(FLAT_TEXT, /ui\.art\.addEventListener\("click", toggleExpandedFromMini\)/);
 });
 
 test("Stop leads the sheet's second row, alone at the danger end; the ✕ is the one Close", () => {
