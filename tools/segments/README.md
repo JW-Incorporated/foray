@@ -715,6 +715,22 @@ its refusals leave the row exactly as it was:
 - An undersized delivery (`undersized`) and a row with no `duration_sec` are
   refused too.
 
+The ledger is collected by `probe-ad-pad.mjs`: one 2-byte ranged GET per
+selected row, at most one per episode per `--min-gap-hours` (default 24).
+
+```bash
+node tools/segments/probe-ad-pad.mjs --dry-run  # sends nothing: the rows a real run would probe, and the request count
+node tools/segments/probe-ad-pad.mjs            # probe every dai_suspected row with audio_bytes, append to the ledger
+node tools/segments/probe-ad-pad.mjs --id ID    # one row (repeatable); --all takes every row with audio_bytes
+```
+
+**`probe-ad-pad.mjs --dry-run` sends nothing.** It selects the rows and
+applies the gap against the existing ledger exactly as a real run would, then
+prints `would probe <id> host=<host>` per row, the too-soon and skipped rows,
+and `dry run: N requests would be sent`. It never calls the probe and never
+writes the ledger. Until this was fixed a dry run probed every selected row and
+only skipped the write, which cost 104 GETs on DAI-08 day 1 (#1150).
+
 **`stamp-ad-pad.mjs` is the only writer** of these seven fields.
 
 ```bash
