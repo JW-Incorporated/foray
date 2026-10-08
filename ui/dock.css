@@ -84,8 +84,10 @@ body.ui-v2.sh-compose #view { padding-bottom: 0; }
   bottom: calc(var(--kb-inset, 0px) + var(--safe-bottom) + var(--dock-inset));
 }
 .dock-layer .dock [hidden] { display: none !important; }
-/* Standing in the first-run sheet's way would hide the playback controls it keeps reachable. */
-body.fy-sheet-keeps-player .dock-layer { z-index: 71; }
+/* The first-run explainer used to keep the PLAYER reachable over its scrim (ONBOARDING_KEEPS_REACHABLE names
+   #foray-player, which holds only the sheet now). The Dock stays under the scrim and inert like the tab bar
+   always was: it is one surface, so keeping the mini row live would leave the tabs live behind the dialog (a tab
+   navigation dismisses onboarding for good). Nothing plays on a first visit; the Onboarding unit decides. */
 
 /* The fade and the cast belong to the PAGE'S colour, see --dock-page-bg above. */
 .dock-layer .dock-fade { background: linear-gradient(transparent 0, var(--dock-page-bg) 32px); }

@@ -1019,7 +1019,8 @@ Discover field, the mini player and the tab row. Rulings that fell (the PR says 
 create-page, category-browse, search-field-bottom rewritten on purpose, each naming it) and **"mini bar = ▶ + ↺15"**
 (transport-controls, tap-targets, transport-reconcile: the mini row is Play 48 Ember + Fwd30 44).
 
-1. **Markup.** `#dock-layer` (fixed, z 55, the old tab bar's rung; `body.fy-sheet-keeps-player` lifts it to 71) holds
+1. **Markup.** `#dock-layer` (fixed, z 55, the old tab bar's rung; under every sheet and inert behind one, the first-run explainer
+   included: it used to keep the player reachable, and a one-surface Dock cannot keep the mini row live without the tabs) holds
    `.dock-fade` and `#dock.dock.veil`; `#dock` holds `#dock-field` / `#dock-mini` / `#tab-bar` (ids and `.tab-btn`
    kept: the harness waits on them). `#dock-cast` is a body child with `z-index: -1`, behind the page's content. Rows
    are hidden with the `hidden` attribute only (tokens.css draws the rim between non-hidden siblings; a row hidden by
