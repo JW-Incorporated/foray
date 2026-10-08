@@ -886,7 +886,7 @@ test("yoursFlip puts a moved row back with translateY and releases it; an unmove
 /* 11. THE KNOB, THE ROUTE, THE LEGACY PAGE                              */
 /* ==================================================================== */
 
-test("the knob is a 44px paper keycap that opens the drawer and says it controls it", async () => {
+test("the knob is a 44px paper keycap that opens the Settings sheet and says it controls it", async () => {
   /* MUTATION 1: bind nothing - the click assertion fails.
      MUTATION 2: label it "Menu" - the name assertion fails (the prototype's is
      "Settings and dials").
@@ -897,15 +897,53 @@ test("the knob is a 44px paper keycap that opens the drawer and says it controls
   const knob = one(m, "#yours-knob");
   assert.ok(knob.classList.contains("keycap--sm") && knob.classList.contains("keycap--paper"));
   assert.strictEqual(knob.getAttribute("aria-label"), "Settings and dials");
-  assert.strictEqual(knob.getAttribute("aria-controls"), "drawer");
+  assert.strictEqual(knob.getAttribute("aria-controls"), "settings-sheet");
   const calls = [];
-  m.ctx.openDrawer = (open) => calls.push(open);
+  const drawers = [];
+  m.ctx.openSettingsSheet = (opener) => calls.push(opener);
+  m.ctx.openDrawer = (open) => drawers.push(open);
   knob._on.get("click")[0]();
-  assert.deepStrictEqual(calls, [true]);
+  assert.deepStrictEqual(calls, [knob], "Tactile settings: the knob opens the Settings sheet from itself");
+  assert.deepStrictEqual(drawers, [], "not the drawer (its More settings key does)");
   assert.strictEqual(knob.querySelector("use").getAttribute("href"), "#knob");
   assert.strictEqual(one(m, "h2").textContent, "Yours");
   assert.strictEqual(one(m, "h2").className, "display-xl", "display-xl on one line");
   assert.strictEqual(one(m, "h2").getAttribute("aria-level"), "1", "the page's level-one heading: the topbar's h1 is hidden here, and pageHeading() still finds an h2");
+});
+
+test("Settings > More settings > Escape on the drawer gives focus back to the Yours knob, not <body>", async () => {
+  /* The Yours page hides the topbar's menu button, so the drawer's opener there
+     is the knob. menuOpener() only knew #today-knob and #menu-btn, so Escape
+     focused a hidden control and focus fell to <body>; the MutationObserver in
+     bindYoursKnob could not repair it because the drawer link still held focus
+     when the observer ran.
+     MUTATION 1: put `const knob = $("#today-knob");` back in menuOpener()
+     (ui/drawer.js, drop `|| $("#yours-knob")`) - the opener and the focus
+     assertions fail.
+     MUTATION 2: make Escape call openDrawer(false) without toMenu - the focus
+     assertion fails.
+     HARNESS NOTE: menu-btn is a flat element whose focus() does nothing, which is
+     what a display:none control does; the knob's focus() records itself. */
+  const m = await mountBooted();
+  m.ctx.renderLibrary();
+  const knob = one(m, "#yours-knob");
+  assert.ok(knob, "fixture assumption: the Yours knob is on the page");
+  assert.strictEqual(m.evalIn("menuOpener()"), knob, "on Yours the drawer's opener is the knob, not the hidden menu button");
+  m.ctx.openSettingsSheet(knob);
+  assert.ok(m.body.querySelector("#settings-sheet"), "fixture assumption: the Settings sheet opened");
+  /* More settings: the sheet shuts and the drawer opens (its handler). */
+  const more = m.body.querySelector("#settings-more");
+  more._on.get("click")[0]();
+  assert.ok(m.evalIn("drawerIsOpen()"), "More settings opens the drawer");
+  assert.strictEqual(knob.getAttribute("aria-expanded"), "true", "the knob says it controls the open drawer");
+  const link = new El("a");
+  m.doc.activeElement = link;                       // the drawer's first link holds focus, as it does in the browser
+  let prevented = 0;
+  m.ctx.onDrawerKeydown({ key: "Escape", preventDefault() { prevented++; } });
+  assert.strictEqual(prevented, 1);
+  assert.ok(!m.evalIn("drawerIsOpen()"), "Escape closed the drawer");
+  assert.strictEqual(m.doc.activeElement, knob, "and focus is on the Yours knob");
+  assert.strictEqual(knob.getAttribute("aria-expanded"), "false");
 });
 
 test("the page marks itself view-yours, repaints through repaintQueuePage on #/library, and leaves #/queue's own page alone", async () => {

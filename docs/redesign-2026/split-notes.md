@@ -34,6 +34,7 @@ binds one screen moved to `ui/*.js`, loaded by `index.html` with plain
 | `ui/queue.js` | Up Next page: rows, reorder, drag, swipe |
 | `ui/rows.js` | Shared episode-row components (`epRow`, archived / hidden rows) |
 | `ui/search.js` | Search page: show / playlist / episode / Foray results and show-search caches |
+| `ui/settings.js` | Settings sheet (Tactile): Appearance, Dials, the exploration-floor sentence; the knob's target |
 | `ui/sheets.js` | Sheet infrastructure: `openSheet`, focus, inert, slide motion, drag |
 | `ui/show.js` | Show page: episode fetch + cache, similar shows, `renderShow` |
 | `ui/tabbar.js` | Tab bar |

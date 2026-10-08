@@ -711,28 +711,44 @@
       "prototype": {
         "route": "#/settings"
       },
-      "app": null,
+      "app": {
+        "state": "returning",
+        "step": "settings-sheet"
+      },
       "regions": {
         "header": {
           "prototype": ".top",
-          "app": null
-        },
-        "hero": {
-          "prototype": ".hero",
-          "app": null
-        },
-        "primary": {
-          "prototype": ".hero__keys .keycap",
-          "app": null
+          "app": ".today-top"
         },
         "rows": {
           "prototype": ".row",
-          "app": null,
+          "app": ".today .row-episode",
           "mode": "all"
         },
-        "tabBar": {
-          "prototype": "#tabs",
-          "app": null
+        "sheet": {
+          "prototype": "#sheet",
+          "app": "#settings-sheet"
+        },
+        "sheetHeader": {
+          "prototype": "#sheet .sect__head",
+          "app": "#settings-sheet > header"
+        },
+        "sheetTitle": {
+          "prototype": "#sheet .title",
+          "app": "#settings-sheet .title"
+        },
+        "appearance": {
+          "prototype": "#sheet .seg",
+          "app": "#settings-sheet .settings-seg"
+        },
+        "dials": {
+          "prototype": "#sheet .knobtrack",
+          "app": "#settings-sheet .knobtrack",
+          "mode": "all"
+        },
+        "caption": {
+          "prototype": "#sheet .dialrow > .micro",
+          "app": "#settings-sheet .settings-floor"
         }
       }
     },

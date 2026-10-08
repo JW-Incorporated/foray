@@ -264,24 +264,26 @@ test("with Today on screen the knob is the drawer's opener: it carries aria-expa
   assert.match(APP_SRC, /returnFocus: opts\.returnFocus \|\| \(fromDrawer \? menuOpener\(\) : null\)/, "and so does a sheet opened from the drawer");
 });
 
-test("bindTodayKnob names what the knob controls and opens the drawer", () => {
-  /* MUTATION: drop `knob.setAttribute("aria-controls", "drawer")` -> red;
-     toggle with `openDrawer(true)` only -> the second press does not close. */
+test("bindTodayKnob names what the knob controls and opens the Settings sheet", () => {
+  /* Tactile `settings`: the knob opened the drawer until the Settings sheet
+     (ui/settings.js) landed; the sheet's "More settings" hands over to the drawer.
+     MUTATION: drop `knob.setAttribute("aria-controls", "settings-sheet")` -> red;
+     put `openDrawer(!drawerIsOpen())` back as the click handler -> the call
+     assertion fails (the drawer would open, the sheet never). */
   const m = mount();
-  m.byId.get("drawer").hidden = true;          // the stub's elements start unhidden: a closed drawer is hidden
   const attrs = {};
   const handlers = {};
   const knob = { setAttribute: (k, v) => { attrs[k] = String(v); }, addEventListener: (t, f) => { handlers[t] = f; } };
   m.ctx.bindTodayKnob({ querySelector: (sel) => (sel === "#today-knob" ? knob : null) });
-  assert.strictEqual(attrs["aria-controls"], "drawer");
+  assert.strictEqual(attrs["aria-controls"], "settings-sheet");
   assert.strictEqual(attrs["aria-expanded"], "false");
-  const calls = [];
-  m.ctx.openDrawer = (v) => { calls.push(v); };
-  m.evalIn("drawerIsOpen = () => false");
+  const sheets = [];
+  const drawers = [];
+  m.ctx.openSettingsSheet = (opener) => { sheets.push(opener); };
+  m.ctx.openDrawer = (v) => { drawers.push(v); };
   handlers.click();
-  m.evalIn("drawerIsOpen = () => true");
-  handlers.click();
-  assert.deepStrictEqual(calls, [true, false], "press opens, press again closes");
+  assert.deepStrictEqual(sheets, [knob], "the press opens the Settings sheet from the knob");
+  assert.deepStrictEqual(drawers, [], "and not the drawer");
 });
 
 /* ==================================================================== */

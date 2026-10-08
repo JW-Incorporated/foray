@@ -718,6 +718,40 @@ and is empty at the detent; the sheet-level line "4a's setting is the
 centre detent" (label 13/500 `--ink-2`, not micro) says the rest. On open, focus the sheet container (`tabindex=-1`),
 never the first button; focus rings on `:focus-visible` only.
 
+**As built (`ui/settings.js`, group G).** Decisions the notes left open:
+the sheet floats 8px in from each edge on the shared `.sheet` material (the
+prototype's, not the bottom-docked gallery sheet's); Appearance is Cream /
+Bakelite / Auto, the prototype's order and words (iteration 2 reversed the
+first build's System-first reorder: the label and the position of the default
+are design copy and hierarchy), with Auto, stored as `"system"`, last and
+selected by default, and it removes `html[data-theme]`, since the token layer
+knows only `light` and `dark`; **there is no grabber** (iteration 2: the
+prototype's sheet has none, the title row is the prototype's 44px
+`.sect__head` on one baseline with the `<h2>`'s UA margin reset, and the
+sheet's top, title, Appearance, dials and caption measure within 0px of the
+prototype at 393x852; close is Escape, the scrim and Done); the floor sentence
+is the prototype's caption (micro 12/600, one line, not balanced); the harness
+turns two dials (+2 and -1, the prototype's sample) before the knob is
+pressed, because every readout is empty at the detent; `cp_theme` is applied at the top of
+`init()` and again after storage hydration (a head script would have to read
+`localStorage` around the shim, which the security census forbids, so a
+Bakelite user can see one Cream frame before init on a cold load). A dial is
+eleven positions with 4a's setting at 5 whatever the subject's weight: below
+the detent the dial spans 0 to that weight, above it that weight to 1, so the
+detent writes exactly 4a's value and the whole 0..1 range stays reachable
+(`settingsDialPosition` / `settingsDialValue`). Two dials (the prototype shows two; a third made the sheet 100px taller than the prototype): the roots the
+listener has moved first, then the roots 4a weights highest. At the detent the
+needle sits on top of the detent tick (the same x), so the tick is seen at
+every value but that one, where the needle is the mark. The knob's drawer is
+not gone: the sheet's "More settings" hands over to it, because Family mode,
+Continuous playback, the voice picker and Delete my data live there and the
+topbar's menu button is hidden on Today and Yours. The prototype did not show
+that key, so iteration 2 **adds it to the prototype** (`prototype/app.js`
+`openSettings`, `settings-more`; `app.css` `.settings-more`) rather than leave
+an element the reference does not carry: a "More settings" text button under
+the caption, the same 44px row in both, so the fidelity pair compares like
+with like. In the prototype it closes the sheet and toasts what the menu holds.
+
 Prototype routes for the shoot: every screen exposes its states as hash
 sub-routes (`#/home/first`, `#/home/resume`, `#/home/offline`,
 `#/home/loading`, `#/home/also`, `#/home/ground`, `#/library/empty`,

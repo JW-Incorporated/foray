@@ -6156,9 +6156,10 @@ function bootLoadingHtml() {
     and a tap on one before `state.ready` only changes the address that the first
     route() then reads. */
 let bootChromeUndo = null;
-/** The knob on the boot skeleton is a real key, but the drawer it opens is bound
-    only after the first route. A press before then is remembered here and
-    answered by settleBootKnob() once the drawer is wired, never dropped. */
+/** The knob on the boot skeleton is a real key, but the sheet it opens is bound
+    only after the first route (it reads the taxonomy, and its Done hands over
+    to the drawer). A press before then is remembered here and answered by
+    settleBootKnob() once the drawer is wired, never dropped. */
 let bootKnobPressed = false;
 function paintBootLoading(view) {
   const html = bootLoadingHtml();
@@ -6174,11 +6175,12 @@ function paintBootLoading(view) {
 }
 
 /** Answer a knob press made on the boot skeleton: called once, right after the
-    drawer's handlers are bound. The loaded Today has its own knob by then. */
+    drawer's handlers are bound. The loaded Today has its own knob by then, and
+    it is the one focus goes back to. */
 function settleBootKnob() {
   if (!bootKnobPressed) return;
   bootKnobPressed = false;
-  try { openDrawer(true); } catch (_) { /* a stub document: nothing to open */ }
+  try { openSettingsSheet($("#today-knob")); } catch (_) { /* a stub document: nothing to open */ }
 }
 
 /** A boot that FAILED leaves the skeleton's chrome behind it: the failure note
@@ -6221,6 +6223,9 @@ async function init() {
      index.html without it still gets the dark design from this line on. */
   try { document.body.classList.add("ui-v2"); } catch (_) { /* a stub document */ }
   setBootChrome(false);
+  /* The listener's Appearance choice (ui/settings.js, `cp_theme`) is on <html>
+     before anything below paints, and again once the durable tier has landed. */
+  if (typeof applyStoredTheme === "function") applyStoredTheme();
   const storageP = storageReady();
   const sessionP = fetchJson("data/session.json");
   /* Every one of these may come back null (fetchJson swallows a 404 and a
@@ -6331,6 +6336,7 @@ async function init() {
 
   /* The one wait on hydration, bounded at five seconds (see storageReady). */
   await storageP;
+  if (typeof applyStoredTheme === "function") applyStoredTheme();
   loadInterests();
   /* Hydration that overran the bound re-seeds every weight this session has
      not moved, so Home's next deal ranks by the listener's own profile rather
@@ -6338,6 +6344,7 @@ async function init() {
   if (storageWaiting()) {
     afterStorageSettles(() => {
       loadInterests();
+      if (typeof applyStoredTheme === "function") applyStoredTheme();
       state._interestsGen = (state._interestsGen || 0) + 1;
     });
   }

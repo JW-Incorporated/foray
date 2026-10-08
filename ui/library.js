@@ -702,18 +702,16 @@ function bindYoursChips(strip) {
   });
 }
 
-/** The knob opens the drawer (Settings, until the Settings screen lands) like
-    the topbar's ☰, which this page hides. The drawer hands focus back to the ☰
-    when it closes, and a hidden ☰ cannot take it, so the knob takes it. */
+/** The knob opens the Settings sheet (ui/settings.js), whose "More settings"
+    hands over to the drawer, which the topbar's ☰ would open and this page
+    hides. The drawer hands focus back to the ☰ when it closes, and a hidden ☰
+    cannot take it, so the knob takes it (the watcher below). */
 function bindYoursKnob(knob) {
   if (!knob || knob._bound) return;
   knob._bound = true;
-  knob.setAttribute("aria-controls", "drawer");
+  knob.setAttribute("aria-controls", "settings-sheet");
   knob.setAttribute("aria-expanded", "false");
-  knob.addEventListener("click", () => {
-    openDrawer(!drawerIsOpen());
-    knob.setAttribute("aria-expanded", drawerIsOpen() ? "true" : "false");
-  });
+  knob.addEventListener("click", () => openSettingsSheet(knob));
   /* One watcher at a time: the page is painted again for many reasons, and each
      paint makes a new knob. The old watcher is let go with the old knob. */
   const drawer = $("#drawer");
@@ -721,7 +719,6 @@ function bindYoursKnob(knob) {
   if (drawer && typeof MutationObserver === "function") {
     yoursDrawerWatch = new MutationObserver(() => {
       if (knob.isConnected === false) { if (yoursDrawerWatch) yoursDrawerWatch.disconnect(); yoursDrawerWatch = null; return; }
-      knob.setAttribute("aria-expanded", drawerIsOpen() ? "true" : "false");
       if (!drawerIsOpen() && (!document.activeElement || document.activeElement === document.body)) focusQuietly(knob);
     });
     yoursDrawerWatch.observe(drawer, { attributes: true, attributeFilter: ["hidden"] });

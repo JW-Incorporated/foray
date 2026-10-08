@@ -873,7 +873,8 @@
       [["light", "Cream"], ["dark", "Bakelite"], ["auto", "Auto"]].map(function (o) { return '<button type="button" role="radio" data-act="theme" data-v="' + o[0] + '" aria-checked="' + (th === o[0]) + '">' + o[1] + "</button>"; }).join("") + "</div></div>" +
       '<div class="dialrow"><div class="dialrow__top"><span class="label">Dials</span><span class="micro muted">4a’s setting is the centre detent</span></div>' +
       [["Engineering", 7], ["History", 4]].map(function (d) { var n = d[0], v = d[1]; return '<div class="dialrow__top"><span class="body">' + n + '</span><span class="readout muted" data-dial-read>' + (v === 5 ? "" : (v > 5 ? "+" : "\u2212") + Math.abs(v - 5)) + '</span></div><label class="well knobtrack" data-v="--g:' + (v / 10).toFixed(2) + '"><span class="sr">' + n + '</span><input type="range" min="0" max="10" step="1" value="' + v + '" aria-valuetext="' + (v === 5 ? "4a’s setting" : (v > 5 ? "plus " : "minus ") + Math.abs(v - 5)) + '"><i class="dial__detent"></i><i class="dial__fill"></i><i class="dial__needle"></i></label>'; }).join("") +
-      '<p class="micro muted">The exploration floor stays at about a third. It is not a dial.</p></div>';
+      '<p class="micro muted">The exploration floor stays at about a third. It is not a dial.</p></div>' +
+      '<button type="button" class="textbtn settings-more" data-act="settings-more">More settings</button>';
     hydrate(sh); $("#scrim").classList.add("show"); sh.classList.add("show"); sh.setAttribute("tabindex", "-1"); try { sh.focus({ preventScroll: true }); } catch (e) { sh.focus(); }
   }
   var dialLast = {};
@@ -1024,6 +1025,7 @@
       case "to-upnext": S.libTab = "upnext"; go("#/library"); break;
       case "settings": openSettings(); break;
       case "settings-close": closeSettings(); break;
+      case "settings-more": closeSettings(); toast("The menu opens here in the app: Family mode, Continuous playback, the voice, Delete my data."); break;
       case "theme": setTheme(b.dataset.v); $$("[data-act=theme]").forEach(function (x) { x.setAttribute("aria-checked", x === b); }); break;
       case "follow": if (S.followed.has(id)) S.followed.delete(id); else S.followed.add(id); haptic(); b.setAttribute("aria-pressed", S.followed.has(id)); b.innerHTML = S.followed.has(id) ? icon("ph-check") + "Following" : "Follow"; break;
       case "subject": { var sj = D.subjects.filter(function (s) { return s.id === id; })[0]; var q = $("#q"); q.value = sj.name; S.q = sj.name; $("#qclear").hidden = false; $("#results").innerHTML = resultsHTML(); hydrate($("#results")); break; }

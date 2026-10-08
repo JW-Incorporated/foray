@@ -5732,6 +5732,65 @@ body.fp-expanded .fdet-pin { transform: translateY(240%); }   /* the sheet owns 
    text button (a 4px gap and a lip). At 12 the key rode 8px high on a 852px screen. */
 .onb__actions { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: var(--s-2); }
 .onb__actions .keycap { margin-bottom: var(--lip); }   /* the lip draws below the box; the gap is measured from it */
+/* SETTINGS (Tactile group G, screen "settings"; docs/redesign-2026/directions/
+   tactile/BUILD-PLAN.md 2.19, BUILD-NOTES 4, ui/settings.js). The knob's sheet:
+   the shared `.sheet` shell, floated the way the prototype floats it (8px in from
+   each edge, all four corners round), a segmented control in a well, and the
+   Dials. Nothing here transitions or animates (a dial is direct manipulation:
+   the fill and the needle follow the thumb with no easing), so nothing joins the
+   one reduced-motion block; the sheet's blur is the shared `--deck-blur`, which
+   `prefers-reduced-transparency` already turns opaque. */
+.settings-scrim { position: fixed; inset: 0; z-index: 99; background: color-mix(in srgb, var(--ink) 40%, transparent); }
+.sheet.settings-sheet {
+  left: calc(env(safe-area-inset-left, 0px) + var(--s-2)); right: calc(env(safe-area-inset-right, 0px) + var(--s-2));
+  bottom: calc(var(--safe-b) + var(--s-2)); max-width: 640px; margin: 0 auto;
+  display: flex; flex-direction: column; gap: var(--s-4); overflow: hidden;
+  padding: var(--s-5) var(--s-4) var(--s-4); border-radius: var(--r-lg);
+}
+.settings-sheet p { margin: 0; }
+/* The title is an <h2>: without this its UA margin (0.83em, about 22px each side) turned a 44px header into 73px and floated "Settings" away from "Appearance". */
+.settings-sheet header .title { margin: 0; }
+/* The prototype's .sect__head sits the title and Done on one baseline (the title lands 3.5px under the header's top), not on one centre line. */
+.sheet.settings-sheet > header { align-items: baseline; }
+/* The scroller's own 4px (cancelled by the negative margin) is where a focus ring's 2px offset and 2px line live; without it the scroller clips the ring at the well's ends. */
+.settings-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: var(--s-4); padding: var(--s-1); margin: calc(-1 * var(--s-1)); }
+.settings-group { display: flex; flex-direction: column; gap: var(--s-2); }
+.settings-group__top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); }
+.settings-label { margin: 0; font: var(--w-label) var(--t-label)/var(--lh-label) var(--font-text); color: var(--ink); }
+/* "4a's setting is the centre detent": label size at 500, not micro. */
+.settings-note { font: var(--w-body) var(--t-label)/var(--lh-label) var(--font-text); color: var(--ink-2); text-wrap: balance; }
+/* The floor sentence is the prototype's caption: micro size and weight (12/600, the label-vs-body step the direction uses for captions), one line at 375 and up, never balanced into a narrow measure. */
+.settings-note.settings-floor { font: var(--w-micro) var(--t-micro)/var(--lh-micro) var(--font-text); text-wrap: wrap; }
+/* The text button's own 12px side padding is hit area, not indent: the word lines up with the sheet's text. */
+.settings-more { align-self: flex-start; margin-left: calc(-1 * var(--s-3)); }
+
+.settings-seg { padding: var(--s-1); gap: var(--s-1); border-radius: var(--r-md); }
+.settings-seg__opt { appearance: none; border: 0; margin: 0; font: inherit; cursor: pointer; flex: 1; min-width: var(--tap); min-height: var(--tap); padding: 0 var(--s-2); display: flex; align-items: center; justify-content: center; border-radius: calc(var(--r-sm) + var(--s-1) / 2); background: transparent; color: var(--ink-2); font-weight: var(--w-label); }
+.settings-seg__opt[aria-checked="true"] { background: var(--card); color: var(--ink); box-shadow: var(--shadow-card); }
+.settings-seg__opt:focus-visible { outline: calc(var(--s-1) / 2) solid var(--ultramarine); outline-offset: calc(var(--s-1) / 2); }
+
+.settings-dial { display: flex; flex-direction: column; gap: var(--s-2); }
+.settings-dial__top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); }
+.settings-dial__name { font: var(--w-body) var(--t-body)/var(--lh-body) var(--font-text); color: var(--ink); }
+.settings-dial__read { min-height: var(--s-4); color: var(--ink-2); }
+
+/* The dial. The well is 44px; the fill is 16px tall inside it, 4px from each end, so a full
+   dial and an empty one both leave the well's edge visible. The needle's stem runs 14px
+   above the well (an 8px cap, then 6px of stem) and its left follows the same
+   (100% - 8px) travel as the fill, 4px in, which is the travel of the hidden
+   input's 8px thumb: a tap on the well lands the needle under the finger. */
+.knobtrack { position: relative; isolation: isolate; height: var(--tap); margin-top: var(--s-3); padding: 0; border-radius: var(--r-sm); overflow: visible; }
+.knobtrack__input { position: absolute; inset: 0; z-index: 3; width: 100%; height: 100%; margin: 0; padding: 0; opacity: 0; cursor: pointer; -webkit-appearance: none; appearance: none; background: transparent; touch-action: pan-y; }
+.knobtrack__input::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: var(--s-2); height: var(--tap); border: 0; }
+.knobtrack__input::-moz-range-thumb { width: var(--s-2); height: var(--tap); border: 0; }
+.knobtrack:has(.knobtrack__input:focus-visible) { outline: calc(var(--s-1) / 2) solid var(--ultramarine); outline-offset: calc(var(--s-1) / 2); }
+.knobtrack__fill { position: absolute; z-index: 0; left: var(--s-1); top: calc((var(--tap) - var(--s-4)) / 2); height: var(--s-4); width: calc(var(--g, .5) * (100% - var(--s-2))); border-radius: calc(var(--s-1) / 2); background: var(--persimmon); pointer-events: none; }
+/* Drawn AFTER the fill and above it (r3 put it behind, so every dial above centre lost it):
+   --ink-3 on the well, --on-persimmon at 70% where the fill runs under it. */
+.knobtrack__detent { position: absolute; z-index: 1; left: 50%; top: calc((var(--tap) - var(--s-4)) / 2); width: calc(var(--s-1) / 2); height: var(--s-4); margin-left: calc(var(--s-1) / -4); border-radius: calc(var(--s-1) / 4); background: var(--ink-3); pointer-events: none; }
+.knobtrack[data-over="true"] .knobtrack__detent { background: color-mix(in srgb, var(--on-persimmon) 70%, transparent); }
+.knobtrack__needle { position: absolute; z-index: 2; top: calc(-1 * (var(--s-3) + var(--s-1) / 2)); bottom: 0; width: calc(var(--s-1) / 2); margin-left: calc(var(--s-1) / -4); left: calc(var(--g, .5) * (100% - var(--s-2)) + var(--s-1)); border-radius: calc(var(--s-1) / 4); background: var(--ink); pointer-events: none; }
+.knobtrack__needle::before { content: ""; position: absolute; top: 0; left: calc(-1 * var(--s-1) / 2 - var(--s-1) / 4); width: var(--s-2); height: var(--s-2); border-radius: 50%; background: var(--ink); }
 
 /* ---------- REDUCE MOTION: ONE BLOCK, EVERY TRANSITION (audit round 2, a11y-9) ----------
    Three strip rules honoured the setting and nothing else did: the Now Playing
