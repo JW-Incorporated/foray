@@ -108,9 +108,11 @@ const AMBIENT_PRIMITIVES_ASSETS = Object.freeze([
   /* Iteration 4 added the Dock block (the warm Veil, the mini's Ember Play, the fade; 12.4 KB measured minified): ceiling 10 to 14 KB, a bounded step that ui/dock.css retires when the Dock unit lands. RETIRED by the Dock unit: the block went to ui/dock.css, ceiling back to 10 KB. */
   { rel: "ui/foray-detail.css", maxBytes: 10 * 1024 },
   { rel: "ui/foray.js", maxBytes: 32 * 1024 },
-  /* Phase 4, Episode page: the screen's stylesheet (it carries the Dock block Foray detail's carries, which the Dock unit retires,
-     and the Library tab's count badge). Measured minified, 2026-10-08: 8.8 KB; the ceiling leaves about 1 KB of headroom. */
-  { rel: "ui/episode.css", maxBytes: 10 * 1024 },
+  /* Phase 4, Episode page: the screen's stylesheet (and the Library tab's count badge); the stopgap Dock block went to ui/dock.css with the Dock unit.
+     Measured minified, 2026-10-08: 6.6 KB (6762 B); the 8 KB ceiling keeps the 0.75 floor (6144 B) readable. */
+  { rel: "ui/episode.css", maxBytes: 8 * 1024 },
+  /* ui/episode.js, which the screen rewrote (the Room, the actions row, the notes, the chapters; 7.8 KB before, 19.1 KB minified now, 2026-10-08). Budgeted here for the reason home.js and foray.js are: the 2.85 MB legacy line is not to be re-baselined, and this is a bounded feature step that put the legacy bundle 1.9 KB over it. Ceiling 24 KB keeps the 0.75 floor (18 KB) readable. */
+  { rel: "ui/episode.js", maxBytes: 24 * 1024 },
 ]);
 
 /* ───────────────────────────── the derivation ───────────────────────────── */
