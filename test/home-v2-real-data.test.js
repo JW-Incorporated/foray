@@ -234,17 +234,28 @@ function declOf(selector, prop) {
   return last;
 }
 
-/** Pixels for a length expression at a given safe-area inset: `var(--tab-bar-h)`
-    from :root, `env(safe-area-inset-bottom[, 0])` = the inset, `calc(a + b)`
-    summed. Any term it does not recognise is a failure, never a guess. */
+/** Pixels for a length expression at a given safe-area inset: `var(--x)` from
+    the last `:root` or `body.ui-v2` block that declares it (the Tactile deck's
+    tokens: `--deck-h`, `--s-3`, `--safe-b`, `--tab-row-h`...),
+    `env(safe-area-inset-bottom[, 0px])` = the inset, `calc(a + b)` summed. Any
+    term it does not recognise is a failure, never a guess. */
 function pxAt(expr, inset) {
-  const tabH = /--tab-bar-h:\s*([\d.]+)px/.exec(CSS);
-  assert.ok(tabH, "styles.css defines --tab-bar-h");
-  const e = expr
-    .replace(/var\(--tab-bar-h\)/g, `${tabH[1]}px`)
-    .replace(/env\(safe-area-inset-bottom(?:,\s*0)?\)/g, `${inset}px`);
-  const inner = (/^calc\((.*)\)$/.exec(e.trim()) || [null, e])[1];
-  return inner.split("+").reduce((sum, term) => {
+  const blocks = [...CSS.matchAll(/(?:^|\n)(?::root|body\.ui-v2)\s*\{([^}]*)\}/g)].map((b) => b[1]);
+  let e = expr;
+  for (let i = 0; i < 10 && /var\(/.test(e); i++) {
+    e = e.replace(/var\((--[\w-]+)\)/g, (_m, name) => {
+      let found = null;
+      for (const b of blocks) {
+        const d = new RegExp(`(?:^|;|\\n)\\s*${name}\\s*:\\s*([^;]+);`).exec(b);
+        if (d) found = d[1].trim();
+      }
+      assert.ok(found, `styles.css declares ${name} on :root or body.ui-v2`);
+      return found;
+    });
+    e = e.replace(/env\(safe-area-inset-bottom(?:,\s*0(?:px)?)?\)/g, `${inset}px`);
+  }
+  e = e.replace(/calc\(/g, "(").replace(/[()]/g, "");
+  return e.split("+").reduce((sum, term) => {
     const px = /^\s*(-?[\d.]+)px\s*$/.exec(term);
     assert.ok(px, `unrecognised term "${term}" in "${expr}" — extend pxAt() rather than let it guess`);
     return sum + Number(px[1]);
@@ -255,9 +266,9 @@ test("at inset 0 and at inset 59 px the same sections render, and the stylesheet
   /* The render is inset-independent by construction (app.js never reads an
      inset), so the section assertion is the same markup twice; what differs
      per inset is the geometry the committed stylesheet resolves to.
-     MUTATION: change `body.ui-v2`'s padding-bottom to a bare `56px` (drop
-     env(safe-area-inset-bottom)) -> at inset 59 the reservation is 56 and the
-     bar is 115; this fails by 59px. At inset 0 both are 56 and it passes —
+     MUTATION: change `body.ui-v2`'s padding-bottom to a bare `88px` (drop
+     var(--safe-b)) -> at inset 59 the reservation is 88 and the deck's top is
+     135; this fails by 47px. At inset 0 both are 56 and it passes —
      which is why both insets are asserted. */
   const m = await mountReal();
   m.ctx.renderHome();
@@ -265,7 +276,9 @@ test("at inset 0 and at inset 59 px the same sections render, and the stylesheet
   for (const inset of [0, 59]) {
     for (const cls of SECTIONS) assert.ok(html.includes(cls), `inset ${inset}px: ${cls} must render`);
     const reserved = pxAt(declOf("body.ui-v2", "padding-bottom"), inset);
-    const bar = pxAt(declOf(".tab-bar", "height"), inset);
+    /* The Tactile deck floats (Phase 4 group A `mini`): what the content must
+       clear is its TOP edge, its bottom offset (inset + 12) plus its height. */
+    const bar = pxAt(declOf("body.ui-v2 .tab-bar", "bottom"), inset) + pxAt(declOf("body.ui-v2 .tab-bar", "height"), inset);
     assert.ok(bar > inset, `inset ${inset}px: the bar's own box (${bar}px) must exceed the inset it pads`);
     assert.ok(reserved >= bar,
       `inset ${inset}px: Home reserves ${reserved}px under its content but the tab bar is ${bar}px tall — the last section would sit under the bar`);

@@ -273,7 +273,7 @@ test("the compose bar is emitted FIRST, ahead of the results and the browse furn
   assert.ok(compose !== -1, "fixture assumption: the bar rendered");
   assert.ok(compose < html.indexOf('id="sh-results"'), "the field comes before the results it fills");
   assert.ok(compose < html.indexOf('id="sh-browse"'), "…and before the browse furniture");
-  assert.ok(compose < html.indexOf("show-index"), "…and before the A–Z list");
+  assert.ok(!html.includes("show-index"), "…and the Find page has no A–Z list for it to lead (tactile `search`: a fixed mosaic, no 220-row index)");
 });
 
 test("the bar lives inside #view, so the next page render disposes of it", () => {
@@ -797,15 +797,25 @@ test("the companion button is absent when idle and present once the field is liv
      which also lets the pill span the whole row.
      MUTATION: change the dismiss line to `dismiss.hidden = false`. The button
      then shows on an untouched page and the first assertion fails. RUN:
-     failed as named. */
+     failed as named.
+
+     TACTILE `search` (BUILD-PLAN 2.9): the 44px clear key is hidden until there
+     is TEXT. It used to arrive on focus as well; an empty focused field has
+     nothing to clear, and the key would sit in the pill doing nothing.
+     MUTATION 2: restore `hide` as the predicate (`dismiss.hidden = !hide`). The
+     focus-only assertion goes red. */
   const m = mount();
   m.ctx.renderAllShows();
   const dismiss = m.byId.get("sh-dismiss");
   assert.strictEqual(dismiss.hidden, true, "nothing to dismiss on a resting page");
   m.input.dispatch("focus");
-  assert.strictEqual(dismiss.hidden, false, "…and it arrives with the keyboard");
-  m.input.dispatch("blur");
-  assert.strictEqual(dismiss.hidden, true, "…and leaves again on a blur with an empty field");
+  assert.strictEqual(dismiss.hidden, true, "…and focus alone gives it nothing to clear");
+  m.input.value = "radio";
+  m.input.dispatch("input");
+  assert.strictEqual(dismiss.hidden, false, "…it arrives with the first character");
+  m.input.value = "";
+  m.input.dispatch("input");
+  assert.strictEqual(dismiss.hidden, true, "…and leaves again when the text is gone");
 });
 
 test("the companion button follows the SAME predicate as the browse furniture, inverted", () => {

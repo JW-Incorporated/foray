@@ -1276,17 +1276,18 @@ test("vouchForHtml renders the 'Shows 4a vouches for' heading and a real link fo
      playable item, same rule similarShowsSection and the shows-search
      results already follow).
 
-     RENDERED BY THE SHOWS PAGE, not Home, since 2026-09-03 — the founder
-     asked for this row off the home screen and onto #/shows (his item 1). The
-     placement test below pins both halves of that move.
+     NO SURFACE RENDERS IT TODAY. It was on the Shows page from 2026-09-03 (the
+     founder asked for it off Home and onto #/shows, his item 1) until tactile
+     `search` (2026-10-07), whose Find screen ends on the "More subjects" key
+     (BUILD-PLAN 2.9). The function is called directly here; the placement test
+     below pins that Home and Find both stay free of it.
 
-     MUTATION: delete the `${vouchForHtml()}` line from renderAllShows's
-     `above` block. The heading and href assertions both fail. */
+     MUTATION: return "" from vouchForHtml. The heading and href assertions
+     both fail. */
   const m = await mountBooted();
   const shows = m.ctx.showsWeVouchFor();
   assert.ok(shows.length > 0, "fixture assumption: the real 220-show catalogue must have editorially-noted shows");
-  m.ctx.renderAllShows();
-  const html = m.view();
+  const html = m.ctx.vouchForHtml();
   assert.ok(html.includes("Shows 4a vouches for"), "must render the 'Shows 4a vouches for' heading");
   for (const s of shows) {
     assert.ok(html.includes(`href="#/show/${encodeURIComponent(s.show_id)}"`), `must link to ${s.show_id}`);
@@ -1332,7 +1333,7 @@ test("vouchForHtml's row is separate from the topic cards and forays, per the B1
   assert.ok(!html.includes('class="fy-home-row'), "must not render as foray rows");
 });
 
-test("the vouch row renders on the Shows page and nowhere on Home, so it cannot starve the four cards", async () => {
+test("the vouch row renders on neither Home nor Find, so it cannot starve the four cards", async () => {
   /* The #433 regression, pinned — now by removing its cause rather than
      working around it.
 
@@ -1368,9 +1369,10 @@ test("the vouch row renders on the Shows page and nowhere on Home, so it cannot 
      absence assertions are unchanged and still the point of this test.
 
      MUTATION: add `${vouchForHtml()}` back inside renderHomeV2's template.
-     The "must not appear on Home" assertions fail. MUTATION 2: delete
-     `${vouchForHtml()}` from renderAllShows's `above` block. The
-     Shows-page assertion fails. */
+     The "must not appear on Home" assertions fail. MUTATION 2: add
+     `${vouchForHtml()}` back to renderAllShows's #sh-browse block. The Find
+     assertion fails. (Until tactile `search`, 2026-10-07, the Shows page was
+     where the row lived and this asserted it was there.) */
   const m = await mountBooted();
   assert.ok(
     m.ctx.showsWeVouchFor().length > 0,
@@ -1379,8 +1381,8 @@ test("the vouch row renders on the Shows page and nowhere on Home, so it cannot 
 
   m.ctx.renderAllShows();
   assert.ok(
-    m.view().includes('class="ep-more fy-vouch"'),
-    "the vouch row must render on the Shows page"
+    !m.view().includes("fy-vouch"),
+    "the Find page ends on its mosaic and does not render the vouch row"
   );
 
   m.ctx.renderHome();

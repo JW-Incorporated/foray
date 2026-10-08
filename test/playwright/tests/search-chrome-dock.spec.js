@@ -109,7 +109,13 @@ test("a re-render with the keyboard up does not move the pill — the measuremen
      the wholesale `document.body.className =` it used to perform is the
      defect — so this is the narrowest possible way to reproduce a render
      without also changing the page underneath it. */
-  await page.evaluate(() => window.setBodyClass("view-page"));
+  await page.evaluate(() => {
+    window.setBodyClass("view-page");
+    /* What renderAllShows does straight after it, for the Tactile Find surface:
+       `view-find` is not persistent (the next page's setBodyClass must clear it),
+       so the page that owns it puts it back, exactly as it does `sh-compose`. */
+    document.body.classList.add("view-find");
+  });
 
   const after = await pillGap(page);
   const moved = Math.abs(after - before);
@@ -135,12 +141,15 @@ test("focusing the field takes the tab bar away and its height with it", async (
 
   await expect(page.locator("#tab-bar")).toBeHidden();
   const focusedGap = await pillGap(page);
-  /* `--sh-gap` is 10px. With the bar gone there is nothing else down there on
-     this viewport (no player, and Chromium reports a zero safe-area inset),
-     so the pill must sit exactly one gap off the floor — not one gap plus a
-     reservation for a bar that is no longer on screen. */
-  expect(focusedGap).toBe(10);
-  expect(idleGap - focusedGap, "the pill should give back exactly the bar's height, no more").toBe(tabBarH);
+  /* Tactile Find: the pill floats `--s-3` (12px) off whatever is under it, and
+     the deck floats 12px off the floor too, so idle the pill sits at deck + 24.
+     With the deck gone there is nothing else down there on this viewport (no
+     player, and Chromium reports a zero safe-area inset), so the pill must sit
+     exactly 12px off the floor, not 12 plus a reservation for a bar that is no
+     longer on screen. (Before tactile `search` the gap was `--sh-gap`, 10px,
+     and the bar sat flush with the floor.) */
+  expect(focusedGap).toBe(12);
+  expect(idleGap - focusedGap, "the pill should give back the deck's height and the 12px under it, no more").toBe(tabBarH + 12);
 
   /* And back again on blur, because a listener reading results needs the
      app's navigation. */

@@ -107,18 +107,24 @@ test("the seek pair and the speed box are one object on the Foray page and in No
 
 /* ---------- the mini bar ---------- */
 
-test("the mini bar carries ▶ and a back-15 nudge, in that order, and nothing else", () => {
-  /* MUTATION: `bar.append(art, info, playBtn)` (the one-control bar)
-     -> red. MUTATION 2: add `fwdBtn` to the bar -> the third assertion names
-     the crowding. (The live region is no longer on the bar — audit round 2,
-     a11y-2: it is a sibling of the bar and the sheet, so expanding Now
-     Playing cannot make it inert; player/now-playing-sheet.test.js pins it.) */
-  assert.match(CODE, /const skipBtn = el\("button", "fp-skip", `↺ \$\{SEEK_BACK\}`\);/);
-  assert.match(CODE, /skipBtn\.setAttribute\("aria-label", `Back \$\{SEEK_BACK\} seconds`\);/);
-  assert.match(CODE, /bar\.append\(art, info, skipBtn, playBtn\);/, "art · title · ↺15 · ▶");
+test("the mini bar carries ▶ and a 30-forward nudge, and nothing else", () => {
+  /* REWRITTEN ON PURPOSE (Redesign 2026, Tactile `mini`, BUILD-PLAN 2.4): the
+     Dial mini is Play 48 + the 30-FORWARD keycap 44, where the old bar had
+     back 15. The ruling that fell is the mini's transport pair; what stays
+     guaranteed is two controls, not three, and a label that says what the
+     click does (the glyph, the aria-label and the handler agree).
+     MUTATION: `bar.append(art, info, playBtn)` (the one-control bar) -> red.
+     MUTATION 2: add `fwdBtn` to the bar -> the third assertion names the
+     crowding. MUTATION 3: point the handler back at `nudgeBy(-SEEK_BACK)` -> red.
+     (The live region is no longer on the bar — audit round 2, a11y-2: it is a
+     sibling of the bar and the sheet, so expanding Now Playing cannot make it
+     inert; player/now-playing-sheet.test.js pins it.) */
+  assert.match(CODE, /const skipBtn = el\("button", "fp-skip", \x60\$\{SEEK_FWD\} ↻\x60\);/);
+  assert.match(CODE, /skipBtn\.setAttribute\("aria-label", \x60Forward \$\{SEEK_FWD\} seconds\x60\);/);
+  assert.match(CODE, /bar\.append\(art, info, skipBtn, playBtn\);/, "art · title · +30 · ▶ (ui/mini.js puts ▶ first)");
   const appended = /bar\.append\(([^)]*)\)/.exec(CODE)[1].split(",").map((s) => s.trim());
   assert.deepStrictEqual(appended.filter((n) => /Btn$/.test(n)), ["skipBtn", "playBtn"], "two controls on the bar, not three");
-  assert.match(CODE, /ui\.skipBtn\.addEventListener\("click", \(\) => nudgeBy\(-SEEK_BACK\)\);/);
+  assert.match(CODE, /ui\.skipBtn\.addEventListener\("click", \(\) => \{[^}]*nudgeBy\(SEEK_FWD\);/);
 });
 
 test("the bar's skip is a 44px borderless glyph beside the filled ▶", () => {
@@ -138,8 +144,14 @@ test("the sheet's ↺15 / 30↻ never repaint as ‹‹ / ›› and always call
      `foray ? ForayPlayer.forayPrevious() : seekEpisodeBy(-SEEK_BACK)` back in
      the handler -> red. */
   assert.doesNotMatch(CODE, /"‹‹"|"››"/, "no glyph swap anywhere in the module");
-  assert.match(CODE, /ui\.backBtn\.addEventListener\("click", \(\) => nudgeBy\(-SEEK_BACK\)\);/);
-  assert.match(CODE, /ui\.fwdBtn\.addEventListener\("click", \(\) => nudgeBy\(SEEK_FWD\)\);/);
+  /* Tactile adds ONE haptic tick ahead of the nudge (R-class rewrite: the old
+     pin was the bare `() => nudgeBy(..)`; the ruling that fell is only "the
+     handler body is exactly the nudge"). It must still end in the one nudge and
+     nothing else may sit in the body. MUTATION: replace the body with
+     `foray ? ForayPlayer.forayPrevious() : seekEpisodeBy(-SEEK_BACK)` -> red. */
+  const HAPTIC = String.raw`(?:window\.DialNowPlaying\?\.haptic\?\.\("light"\); )?`;
+  assert.match(CODE, new RegExp(String.raw`ui\.backBtn\.addEventListener\("click", \(\) => \{ ${HAPTIC}nudgeBy\(-SEEK_BACK\); \}\);`));
+  assert.match(CODE, new RegExp(String.raw`ui\.fwdBtn\.addEventListener\("click", \(\) => \{ ${HAPTIC}nudgeBy\(SEEK_FWD\); \}\);`));
   const mode = CODE.slice(CODE.indexOf("function setSkipButtonMode("), CODE.indexOf("window.ForayPlayer = ForayPlayer;"));
   assert.match(mode, /ui\.clips\.hidden = !isForay;/, "the clip row is what a Foray switches on");
   assert.match(mode, /paintControl\(ui\.backBtn, `↺ \$\{SEEK_BACK\}`, `Back \$\{SEEK_BACK\} seconds`\);/);
@@ -244,7 +256,12 @@ test("the sheet's second row is one treatment: 48px transport boxes, a quiet tex
      (#30) sit between the speed and the two navigation links, ⏭ and Save in the transport family's plain
      `.fp-btn` box so they are at the same tap floor. */
   assert.match(CODE, /row2\.append\(stopBtn, rateBtn, nextBtn, saveBtn, bookmarkBtn, queueLink, openLink, forayLink\);/, "Stop leads the row, alone at the danger end");
-  assert.match(CODE, /ui\.closeBtn\.addEventListener\("click", \(\) => setExpanded\(false\)\);/, "the ✕ is the way out");
+  /* R-class rewrite: the ✕ now goes through `requestExpanded` (the Now Playing
+     art-to-sheet transition wraps `setExpanded`). It must still reach
+     `setExpanded(open)` with no transition present. MUTATION: drop the `else
+     setExpanded(open)` branch of requestExpanded -> the second assert goes red. */
+  assert.match(CODE, /ui\.closeBtn\.addEventListener\("click", \(\) => requestExpanded\(false\)\);/, "the ✕ is the way out");
+  assert.match(CODE, /requestExpanded = \(open\) => \{[^]*?\} else setExpanded\(open\);\s*\};/, "…and without the transition it is setExpanded itself");
   assert.strictEqual(valueOf(".fp-collapse", "color"), null, "and its rule is gone");
 });
 
