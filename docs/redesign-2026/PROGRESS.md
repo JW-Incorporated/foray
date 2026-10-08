@@ -22,7 +22,7 @@ Source of truth for a cleared session. Update on every deliverable.
 | 1 Research | done | docs/redesign-2026/research/, design-brief.md |
 | 2 Directions | done | editorial r3, ambient r3, native-2026 r3, tactile r3, clarity r3 (docs/redesign-2026/directions/) |
 | Checkpoint | **picked: Tactile + Ambient** (owner, 2026-10-06 18:17 PDT) | one condition: replace Tactile's "cartoonish" header/title font first; Phase 3 starts once the owner approves the new font |
-| 3–5 | **running** (`wf_d90d5c98-c0e`, from 2026-10-07 16:10 PDT; Sonnet builds, Codex reviews) | foundation 8/8 merged (tactile 4/4, ambient 4/4); screens 0/35; see In flight |
+| 3–5 | **running** (`wf_d90d5c98-c0e`, from 2026-10-07 16:10 PDT; Sonnet builds, Codex reviews) | foundation 8/8 merged (tactile 4/4, ambient 4/4); screens tactile 13/19 (escalated: mini), ambient not yet logged; see In flight |
 
 ## Checkpoint (decided 2026-10-06: Tactile + Ambient, pending Tactile's font)
 
@@ -151,3 +151,4 @@ Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40-22:40 PDT, 128 agents
 - 2026-10-07 — tactile: Phase 3 foundation 4/4 merged into feature/redesign-2026-tactile
 - 2026-10-07 16:10 PDT — Run `wf_8c930d5d-182` (06:40-09:19) died on the weekly limit: merged tactile p3-primitives + p3-gallery (tactile foundation 4/4) and ambient p3-icons (foundation 7/8 overall); ambient p3-primitives' Codex review was cut off by the limit (not a verdict); its 12 screen starts, QA and lab steps all failed on the limit (its "0 high QA issues" is vacuous, not a result). 58 agents, 6.3M subagent tokens. After the 16:00 reset: workflow fixed (197aff46: any CODEX_REVIEW_* failure -> Opus review, QA/lab skipped when screens stop, builders back to Sonnet now that the last-8% push is over; stub 13/13, both fixes mutation-tested) and relaunched as `wf_d90d5c98-c0e`. PAUSE.md retired; resume steps now in RESTART.md "Day 3".
 - 2026-10-07 — ambient: Phase 3 foundation 4/4 merged into feature/redesign-2026-ambient
+- 2026-10-08 — tactile: Phase 4 screens 13/19 merged; escalated: mini
