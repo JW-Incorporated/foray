@@ -525,19 +525,19 @@ test("the mini player is Ember, DM Sans and lit by a 2px Glow line — not viole
      .fp-fill rule (the line is the playing item's light, Glow, not the listener's Ember); (d) height 3px in the
      .fp-progress rule; (e) delete the .fp-progress rule (the legacy 3px navy track returns). Harness audit: this reads
      the shipped stylesheet, not a copy of the rule, and the rules sit behind an id so stylesheet order cannot rescue them. */
-  const play = primRule("body.ui-v2 #foray-player .fp-play");
+  const play = primRule("body.ag-discover #foray-player .fp-play");
   assert.ok(play, "the Ember Play rule exists");
   assert.match(play, /background:\s*var\(--ember\)/);
   assert.match(play, /color:\s*var\(--ember-ink\)/, "and its glyph is the ink that clears AA on Ember");
   assert.ok(!/violet/.test(play), "no violet");
   assert.match(play, /width:\s*calc\(var\(--tap\)\s*\+\s*var\(--s-1\)\)/, "48 across: the direction's Play, above the 44 floor");
-  const title = primRule("body.ui-v2 #foray-player .fp-title");
+  const title = primRule("body.ag-discover #foray-player .fp-title");
   assert.match(title, /font:\s*var\(--t-label\)/, "the title is the Label style (DM Sans 14/600)");
   assert.ok(!/display|headline|title\b/.test(title.replace(/--t-label/g, "")), "and never a Fraunces style");
-  const prog = primRule("body.ui-v2 #foray-player .fp-progress");
+  const prog = primRule("body.ag-discover #foray-player .fp-progress");
   assert.match(prog, /height:\s*calc\(var\(--s-1\)\s*\/\s*2\)/, "2px: half the 4 step");
   assert.match(prog, /background:\s*transparent/, "the track draws nothing; only the line does");
-  const fill = primRule("body.ui-v2 #foray-player .fp-fill");
+  const fill = primRule("body.ag-discover #foray-player .fp-fill");
   assert.match(fill, /background:\s*var\(--glow\)/, "the line is Glow");
   const skip = primRule("body.ui-v2 #foray-player .fp-skip .fp-skip-glyph");
   assert.match(skip, /width:\s*var\(--icon-tab\)/, "the forward-30 glyph is drawn at the 28 tab-bar icon size inside its 44 target");
@@ -548,12 +548,12 @@ test("the tab bar's glyphs are sized from the sprite tokens and the current tab 
      the `.icon` rule -> the legacy 22px rule would size an SVG that is no longer an inline path, and the sprite glyph
      would fall back to the UA's 300x150 default svg box, which this assertion's width catches. The Fill-versus-Regular
      swap is test/tab-bar.test.js's subject (it needs the app's own renderTabBar). */
-  const cur = primRule('body.ui-v2 .tab-bar .tab-btn[aria-current="page"]');
+  const cur = primRule('body.ag-discover .tab-bar .tab-btn[aria-current="page"]');
   assert.ok(cur, "the current-tab rule exists");
   assert.match(cur, /color:\s*var\(--lamp-text\)/);
-  assert.match(primRule("body.ui-v2 .tab-bar .tab-btn"), /color:\s*var\(--text-2\)/, "an inert tab is text-2, not the legacy lavender");
+  assert.match(primRule("body.ag-discover .tab-bar .tab-btn"), /color:\s*var\(--text-2\)/, "an inert tab is text-2, not the legacy lavender");
   assert.ok(!/ember|amber|accent/.test(cur), "Ember is the listener's own marks, not where they are");
-  const icon = primRule("body.ui-v2 .tab-bar .tab-btn .icon");
+  const icon = primRule("body.ag-discover .tab-bar .tab-btn .icon");
   assert.match(icon, /width:\s*var\(--icon-tab\)/);
   assert.match(icon, /height:\s*var\(--icon-tab\)/);
   assert.match(icon, /fill:\s*currentColor/, "the glyph takes the tab's colour");
@@ -565,11 +565,23 @@ test("the mini row keeps the prototype's rhythm: 44 art, 12 gaps, abutting 48 Pl
      Play drifts 12px left); (c) change the .fp-bar right padding to var(--s-3) (forward-30 no longer 30 from the edge); (d) drop
      `position: absolute` from the .fp-progress rule (the row is 66 tall, not 64). Harness audit: reads the shipped stylesheet; the
      measured positions were checked against the prototype's own boxes in the browser (all deltas 0 at 393). */
-  const bar = primRule("body.ui-v2 #foray-player .fp-bar");
+  const bar = primRule("body.ag-discover #foray-player .fp-bar");
   assert.ok(bar, "the mini row rule exists");
   assert.match(bar, /gap:\s*var\(--s-3\)/, "12 between art, title column and the controls");
   assert.match(bar, /padding:\s*var\(--s-2\)\s+var\(--s-2\)\s+var\(--s-2\)\s+calc\(var\(--s-2\)\s*\+\s*var\(--s-1\)\s*\/\s*2\)/, "8 right (forward-30 centres 30 from the edge), 10 left");
-  assert.match(primRule("body.ui-v2 #foray-player .fp-art"), /width:\s*var\(--art-mini\)/, "the 44 art tile");
-  assert.match(primRule("body.ui-v2 #foray-player .fp-skip"), /margin-left:\s*calc\(var\(--s-3\)\s*\*\s*-1\)/, "pulled flush against the Play");
-  assert.match(primRule("body.ui-v2 #foray-player .fp-progress"), /position:\s*absolute/, "the line does not take a row of its own");
+  assert.match(primRule("body.ag-discover #foray-player .fp-art"), /width:\s*var\(--art-mini\)/, "the 44 art tile");
+  assert.match(primRule("body.ag-discover #foray-player .fp-skip"), /margin-left:\s*calc\(var\(--s-3\)\s*\*\s*-1\)/, "pulled flush against the Play");
+  assert.match(primRule("body.ag-discover #foray-player .fp-progress"), /position:\s*absolute/, "the line does not take a row of its own");
+});
+
+test("Discover's Dock rules are scoped to Discover: no global rule restyles the tab bar or the mini on another page", () => {
+  /* WHY: iteration 3 wrote these rules as `body.ui-v2 ...`, so they moved the tab bar and the mini on every page the
+     trunk had already accepted (the ambient-app baseline: 140 shots differ). Today and Foray detail scope their own
+     Dock to `body.view-home` / `body.view-foray-detail`; the Dock unit lifts the rules to global when it lands.
+     MUTATION: turn any `body.ag-discover #foray-player` or `body.ag-discover .tab-bar` rule in ui/primitives.css
+     back into `body.ui-v2 ...` -> red. The one global Dock rule is the forward-30 glyph's size (client.js draws that
+     glyph on every page), and it is allowed by name. Harness audit: this reads the shipped stylesheet, not a copy. */
+  const css = fs.readFileSync(path.join(ROOT, "ui", "primitives.css"), "utf8");
+  const globals = [...css.matchAll(/^body\.ui-v2 (#foray-player|\.tab-bar)[^{]*\{/gm)].map((m) => m[0].trim());
+  assert.deepStrictEqual(globals, ["body.ui-v2 #foray-player .fp-skip .fp-skip-glyph {"], `unscoped Dock rules: ${JSON.stringify(globals)}`);
 });

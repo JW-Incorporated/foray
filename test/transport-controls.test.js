@@ -140,8 +140,8 @@ test("the bar's skip is a 44px borderless glyph beside the filled ▶", () => {
      MUTATION: put `var(--violet)` back in the `#foray-player .fp-play` rule of ui/primitives.css -> red. */
   const PRIM = fs.readFileSync(path.join(ROOT, "ui/primitives.css"), "utf8");
   const rule = (sel) => { const m = new RegExp(sel.replace(/[.#]/g, "\\$&") + "\\s*\\{([^}]*)\\}").exec(PRIM); return m ? m[1] : ""; };
-  assert.match(rule("body.ui-v2 #foray-player .fp-play"), /background:\s*var\(--ember\)/, "▶ is the filled Ember circle");
-  assert.ok(!/violet/.test(rule("body.ui-v2 #foray-player .fp-play")), "and no violet");
+  assert.match(rule("body.ag-discover #foray-player .fp-play"), /background:\s*var\(--ember\)/, "▶ is the filled Ember circle");
+  assert.ok(!/violet/.test(rule("body.ag-discover #foray-player .fp-play")), "and no violet");
 });
 
 /* ---------- the sheet ---------- */
