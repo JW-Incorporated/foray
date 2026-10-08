@@ -256,6 +256,12 @@
     },
     {
       "gate": "tap-targets",
+      "screen": "offline/foray",
+      "id": "header.topbar > h1 > a.wordmark 24x24",
+      "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
+    },
+    {
+      "gate": "tap-targets",
       "screen": "player/mini-player-library",
       "id": "header.topbar > h1 > a.wordmark 24x24",
       "detail": "24.1x25, 16/25 samples in the 44px square miss it \"4a\""
