@@ -335,8 +335,8 @@ test("switch off (the default): the listed set is exactly the published set, and
 
   h.route("#/");
   const home = h.view();
-  assert.ok(home.includes("hv2-forays"), "Home has its Forays section");
-  assert.ok(!home.includes("hv2-draft-tag"), "no draft tag on Home");
+  assert.ok(home.includes("today-hero"), "Home has its Foray, the hero");
+  assert.ok(!home.includes("draft"), "no draft tag on Home");
   assert.ok(!home.includes("Showing draft Forays"), "no test-track notice on Home");
   for (const f of DRAFTS) assert.ok(!home.includes(f.title), `${f.id} must not be named on Home`);
 
@@ -371,7 +371,7 @@ test("switch off is byte-identical to an app with no switch at all, on every sur
   const b = await paint({ seed: { cp_show_drafts: false } });
   const c = await paint({ appSrc: stubbed });
   const d = await paint({ legacyBridge: true });
-  assert.ok(a.home.includes("hv2-forays") && a.forays.includes("fy-home-row"), "the renders are not empty");
+  assert.ok(a.home.includes("today-hero") && a.forays.includes("fy-home-row"), "the renders are not empty");
   assert.deepStrictEqual(b, a, "key stored as false = key absent");
   assert.deepStrictEqual(c, a, "the switch off = no switch in the source");
   assert.deepStrictEqual(d, a, "the switch off = a bridge that cannot see it");
@@ -401,28 +401,22 @@ test("switch on: #/forays lists every draft with the draft kicker — published 
   for (let i = 1; i < genPos.length; i++) assert.ok(genPos[i - 1] < genPos[i], "generated drafts are newest first");
 });
 
-test("switch on: Home lists every draft as a badged card after the ordinary picks, and carries the notice", async () => {
-  /* M6: drop `${testTrackNoticeHtml()}` from renderHomeV2 — the notice
-     assertion goes red. Drop `${drafts.map(...)}` from foraysForYouHtml — the
-     card assertions go red. */
+test("switch on: Home carries the notice and points at the drafts; its hero is still a published Foray", async () => {
+  /* Today (Redesign 2026) draws one Foray, not a rail, so the drafts the switch
+     admits are listed on #/forays (the test above) and Home says so. The ruling
+     that fell is "Home section order and content" (U-03): Home no longer lists
+     every draft as a badged card.
+     M6: drop `${testTrackNoticeHtml()}` from renderHomeV2 - the notice
+     assertion goes red. M7: let todayForayPick start from the drafts instead of
+     the published picks - a draft is the hero and the last assertions go red. */
   const h = await mount({ seed: ON, hash: "#/" });
   const home = h.view();
-  assert.ok(home.includes('class="hv2-test-track note">Showing draft Forays — test track</p>'), "the one-line notice");
-  assert.ok(home.indexOf("Showing draft Forays") < home.indexOf("hv2-forays"), "the notice is above the Forays section");
-  const cards = home.split('class="hv2-foray-card').slice(1);
-  assert.strictEqual(cards.length, HOME_PICKS + DRAFTS.length, "the published picks, then every draft");
-  for (const card of cards.slice(0, HOME_PICKS)) {
-    assert.ok(PUBLISHED_IDS.some((id) => card.includes(`href="#/foray/${id}"`)) && !card.includes("hv2-draft-tag"),
-      "the published picks come first and are unbadged");
-  }
-  for (const f of DRAFTS) {
-    const card = cards.find((c) => c.includes(`href="#/foray/${f.id}"`));
-    assert.ok(card, `${f.id} has a card`);
-    assert.ok(card.includes('<span class="hv2-draft-tag">draft</span>'), `${f.id} is badged draft`);
-  }
-  const genPos = GENERATED_NEWEST_FIRST.map((id) => home.indexOf(`href="#/foray/${id}"`));
-  for (let i = 1; i < genPos.length; i++) assert.ok(genPos[i - 1] < genPos[i], "generated drafts are newest first on Home too");
-  assert.ok(!home.includes("hv2-bridge\">undefined"), "no stretch bridge leaked onto a draft card");
+  assert.match(home, /<p class="today-notice note">Showing draft Forays — test track\. <a href="#\/forays">See them under Forays<\/a>\.<\/p>/, "the one-line notice, with its link");
+  assert.ok(home.indexOf("Showing draft Forays") < home.indexOf("today-hero"), "the notice is above the hero");
+  const key = /data-home-play="([^"]+)"/.exec(home.slice(home.indexOf("today-hero")));
+  assert.ok(key, "the hero has its Play key");
+  assert.ok(PUBLISHED_IDS.includes(key[1]), `the hero is a published Foray, not ${key[1]}`);
+  for (const f of DRAFTS) assert.ok(!home.includes(`href="#/foray/${f.id}"`), `${f.id} is listed under Forays, not drawn on Home`);
 });
 
 test("switch on: a show page's Foray rows name a draft that draws on the show, with the draft marker", async () => {

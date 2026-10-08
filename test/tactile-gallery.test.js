@@ -71,15 +71,16 @@ test("the gallery covers every primitive and state without adopting them on list
   const PHASE_4_ADOPTERS = ["browse.js"];
   const adopters = fs.readdirSync(path.join(ROOT, "ui")).filter((name) => name.endsWith(".js") && !["gallery.js", "primitives.js"].includes(name)).filter((name) => /\btactile[A-Z]/.test(fs.readFileSync(path.join(ROOT, "ui", name), "utf8")));
   /* Phase 4 adopts them one screen group at a time, so the set of adopters is an
-     explicit list that grows only with a screen that landed: group A is Now
+     explicit list that grows only with a screen that landed: Today (home.js), group A is Now
      Playing (now-playing.js) and the mini deck (mini.js, tabbar.js). A screen
      that adopts early, or a file that reaches for a primitive it should not,
      is a new name here and fails.
-     MUTATION: make ui/home.js call tactileKeycap() -> "home.js" appears and this fails. */
+     MUTATION: make ui/search.js call tactileKeycap() -> "search.js" appears and this fails (likewise ui/home.js: "home.js" appears). */
   /* Group C `search-typing` adds search.js: the Find results draw their Play keys,
      the closing "Make a playlist" key and the episode art through the primitives
-     (tactileKeycap/tactileIcon/tactileArtFrame), as browse.js's idle page does. */
-  assert.deepStrictEqual(adopters, ["browse.js", "mini.js", "now-playing.js", "search.js", "tabbar.js"], "Phase 4, not the foundation, adopts primitives on listener screens, one landed group at a time");
+     (tactileKeycap/tactileIcon/tactileArtFrame), as browse.js's idle page does.
+     Group `home` adds home.js likewise. */
+  assert.deepStrictEqual(adopters, ["browse.js", "home.js", "mini.js", "now-playing.js", "search.js", "tabbar.js"], "Phase 4, not the foundation, adopts primitives on listener screens, one landed group at a time");
 });
 
 test("the gallery's rendered copy obeys the listener copy rules, however the source spells it", () => {

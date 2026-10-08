@@ -391,7 +391,7 @@ a[href^="#/"] {
    a grey box on the link's text inside a card that is already darkening — so
    it goes, there and only there; test/tap-targets.test.js holds each of these
    to an authored press. */
-.mc-link, .ep-row .ep-title-link, .pl-row, .page-link-row, .drawer-item, .drawer-section {
+.ep-row .ep-title-link, .pl-row, .page-link-row, .drawer-item, .drawer-section {
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -425,7 +425,7 @@ a[href^="#/"] {
    not a control and never a Tab stop, so a keyboard user loses nothing: the
    ring returns on the first real control they Tab to. */
 .page-head h2[tabindex="-1"]:focus,
-.hv2-greeting[tabindex="-1"]:focus,
+.today-title[tabindex="-1"]:focus,
 #view[tabindex="-1"]:focus { outline: none; }
 /* THE ONE FOCUS RING (visual pass 1, 2026-09-23). Left to the browser, the
    ring is `outline: auto` in the UA's per-scheme colours — white on a phone set
@@ -514,21 +514,8 @@ a[href^="#/"] {
 @media (max-width: 360px) {
   .topbar-tag { display: none; }
 }
-/* ONE WORDMARK ON HOME (audit round 2, p-first-8). Home's greeting draws the
-   brand ("Good morning 4a", the same Fraunces italic at the same size), so the
-   bar's copy stacked ~50px above it read as a mistake, and made the greeting
-   look addressed to "4a". On Home the bar keeps its tagline — the line that
-   says what this app is — and leaves the mark to the greeting; every other
-   page, where there is no greeting, keeps it. */
-body.view-home .topbar h1 .wordmark { display: none; }
-/* …EXCEPT WHERE THE TAGLINE IS GONE TOO (audit round 2 review). At 360px and
-   below the tagline is hidden (the rule above this one), which covers the
-   common 360dp Android phones; with the mark hidden as well Home's <h1> was
-   empty — a blank bar between ☰ and ↻, and an empty level-1 heading to a
-   screen reader. There the bar keeps its mark. */
-@media (max-width: 360px) {
-  body.view-home .topbar h1 .wordmark { display: inline; }
-}
+/* (The "one wordmark on Home" rules lived here until Today: the topbar is hidden
+   on Home now, so it draws neither a tagline nor a mark there.) */
 .topbar button {
   /* 42px to look at — the bar's content box is 43px (44 less its hairline),
      which test/home-layout.test.js pins — and 44px to hit, through the
@@ -670,46 +657,6 @@ body.view-home .topbar h1 .wordmark { display: none; }
 /* ---------- home: one screen, and only one screen ---------- */
 #view { padding-top: calc(var(--topbar-h) + env(safe-area-inset-top)); }
 
-.home {
-  /* Static 100vh fallback first, then `svh` (small viewport height — the
-     height with the browser's toolbar fully expanded, i.e. the smallest it
-     ever reports). `dvh` was here before and tracked the browser chrome
-     live: during iOS Safari's rubber-band overscroll bounce the reported
-     dynamic viewport height jitters as the gesture plays out, and since
-     the retired `.cards4` grid and its `.mini-card`s derived their size from `.home`'s height via
-     `flex: 1`, that jitter visibly stretched and shrank the cards while
-     scrolling (#reported 2026-08-31, introduced by #359's bounce
-     restore). `svh` stays fixed regardless of toolbar/overscroll state, so
-     `.home` — and everything sized from it — no longer recomputes mid-bounce.
-
-     `min-height`, not `height`, and that is the fix for the second half of
-     "everything is on top of each other". A FIXED height here means the column
-     has a hard budget: `.cards4` is its only `flex: 1` child, so every other
-     child is `flex: none` and takes its space off the top. A returning user
-     with a continue banner and three "Jump back in" rows (both optional, both
-     ordinary) crushed `.cards4` from 454px to 63.8px and each of the four
-     cards to 26px — measured, at 440x956. That is the exact failure #433/#458
-     hit from a different sibling, and moving one offender below the fold
-     (#458's `.home-below`, since removed) only ever fixes that one offender; the container was the
-     bug. With `min-height` the column still fills exactly one screen in the
-     common case, and when it genuinely cannot, the page grows and scrolls
-     (body scroll is already live — see the `overflow: hidden` note above)
-     instead of destroying the cards. */
-  min-height: calc(100vh - var(--topbar-h) - env(safe-area-inset-top));
-  min-height: calc(100svh - var(--topbar-h) - env(safe-area-inset-top));
-  /* Contain the rubber-band bounce here so it doesn't chain into resizing
-     this element's flex children — the page (body) still bounces normally
-     (#359's fix stays intact, no `overflow: hidden` above), only the visual
-     stretch effect on the cards themselves is suppressed. */
-  overscroll-behavior-y: contain;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
-  max-width: 680px;
-  margin: 0 auto;
-}
-
 /* `.cards4`, the retired flag-off four-card grid, is gone with its floor
    (round-3 audit, search-api-css-10): renderHome() always renders Home v2,
    which never emits it (test/home-information-architecture.test.js pins that). */
@@ -723,96 +670,6 @@ body.view-home .topbar h1 .wordmark { display: none; }
 
 /* ---------- first-run intro popup ---------- */
 
-.mini-card {
-  display: flex; align-items: center; gap: 14px;
-  /* A CARD, NOT A LINK (audit 2026-09-22, qa row 78). It was an <a> with the
-     star <button> nested inside it — a screen reader read "link, Education,
-     …, Save", and the star only avoided following the link through a JS
-     preventDefault. Now the subject title is the one real <a>, stretched over
-     the card by its ::after, and the star is a sibling lifted above it. */
-  position: relative;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
-  padding: 12px 14px;
-  text-decoration: none;
-  color: var(--text);
-  min-height: 0;
-  overflow: hidden;
-  transition: transform .12s ease;
-  /* NO BRANCH DOT (audit round 2, visual-3). The kicker used to open with a
-     7px dot meant to encode the subject: ten of 39 branches had a colour (raw
-     v1-era hexes outside the palette) and the other 29 — 42% of the pool — all
-     fell to violet, so the dot said nothing, and on a Stretch card it sat 6px
-     before the violet tag and read as its bullet. The title names the subject
-     and the tag carries Stretch; ui-tokens.test.js keeps the dot gone.
-     (data-branch stays on the card: the first-run tests read it.) */
-}
-.mini-card:active { background: var(--surface-2); transform: scale(0.99); }
-.mini-card img, .art-ph {
-  width: 56px; height: 56px;
-  border-radius: var(--radius-sm);
-  flex: none;
-  background: var(--surface-2);
-  object-fit: cover;
-  box-shadow: var(--shadow-sm);
-}
-.mc-info { flex: 1; min-width: 0; }
-.mc-kicker {
-  display: flex; align-items: center; gap: 6px;
-  margin: 0 0 2px;
-  font-size: var(--fs-2xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-dim);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.mc-stretch {
-  display: inline-block;
-  padding: 1px 7px;
-  border-radius: var(--radius-xs);
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--accent, #4c9aff);
-  /* ONE TINT for every tag (visual pass 1): 18% of the tag's own colour, the
-     same mix Home's draft/Stretch tags and both kickers read. */
-  background: color-mix(in srgb, currentColor 18%, transparent);
-}
-.mc-info h3 {
-  margin: 2px 0;
-  /* The same title step the rails' cards use — this card was the last v1
-     survivor on Home, Georgia 1.2rem beside Fraunces 0.95rem (qa row 43). */
-  font-family: var(--font-display);
-  font-size: var(--fs-lg);
-  font-weight: 600;
-  line-height: 1.25;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.mc-hook {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--text-dim);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-@media (max-height: 660px) {
-  .mc-hook { -webkit-line-clamp: 1; }
-}
-/* The stretched link and the control above it. `.mc-link` is the subject
-   title; its ::after is the card's whole face. The star keeps its own
-   `position: relative` from the tap-target rule and only needs to sit above. */
-.mc-link { color: inherit; text-decoration: none; }
-.mc-link::after { content: ""; position: absolute; inset: 0; }
-.mini-card > button.star { z-index: 1; }
 
 button.star {
   flex: none;
@@ -1614,7 +1471,7 @@ button.reorder.drag-handle {
    the impatient thumb tapped again. The glyph stays ▶
    (persona 15: never say playing before audio exists); the button breathes
    instead. Under Reduce Motion it holds still, dimmed (the block at the end). */
-.play-btn[data-loading="1"], .fp-play[data-loading="1"], .fp-btn[data-loading="1"], .hv2-play[data-loading="1"] {
+.play-btn[data-loading="1"], .fp-play[data-loading="1"], .fp-btn[data-loading="1"] {
   animation: fy-loading-breathe .9s ease-in-out infinite alternate;
 }
 @keyframes fy-loading-breathe {
@@ -4010,195 +3867,6 @@ body.ui-v2 .lib-section-head { color: var(--muted); }
 body.ui-v2 .lib-more { color: var(--muted); }
 body.ui-v2 .lib-more:active { color: var(--text); }
 
-/* ---------- U-03: Home v2 (docs/ui-transition-plan.md, kanban t_6e8343b6) ----------
-
-   Scoped entirely to `body.ui-v2 .hv2-*` — the flag-off four-card `.home`
-   above is untouched, same discipline U-01/U-02 already keep. Sections are
-   ordinary flex-column children (unlike `.cards4`'s fixed grid): Home v2 is
-   allowed to scroll, per the mockup, so there is no equivalent of the
-   flag-off floor/crush bug this file's BUG 4 comment documents — `.hv2-home`
-   declares no `height`/`min-height` FLOOR, so there is no fixed budget for
-   a sibling to fight over in the first place.
-
-   `min-height: 0` IS NOT A FLOOR, IT IS THE ABSENCE OF ONE. renderHomeV2's
-   container is `class="home hv2-home"`, so it also matched the retired
-   one-screen `.home` rule above and inherited its `100svh` floor — on top of
-   the tab-bar (and mini-bar) reservation `body.ui-v2` already pads. Home
-   therefore ALWAYS scrolled by the tab bar's height into bare background
-   (~152px while something played), because its content box was a whole
-   viewport before the reservation was added (audit 2026-09-22). This resets
-   the inherited floor; `test/home-layout.test.js` pins that the element's
-   EFFECTIVE min-height is none, not only that this rule declares none. */
-body.ui-v2 .hv2-home {
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  padding: 8px 0 calc(16px + env(safe-area-inset-bottom));
-  max-width: 680px;
-  margin: 0 auto;
-}
-body.ui-v2 .hv2-greeting {
-  display: flex; align-items: baseline; gap: 8px;
-  padding: 4px var(--gutter) 0;
-}
-body.ui-v2 .hv2-greeting-word { color: var(--muted); font-size: var(--fs-md); font-family: var(--font-body); }
-body.ui-v2 .hv2-greeting-brand {
-  font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: var(--fs-2xl); color: var(--text);
-}
-/* HOME'S ONE PLAY BUTTON (founder, 2026-09-24): under the greeting, a capsule
-   that names what it plays. The title truncates to one line so a long Foray
-   name never pushes the button to two rows; the full name is the button's
-   accessible name. 48px tall: above the 44px floor every button meets. */
-body.ui-v2 .hv2-play-row { padding: 0 var(--gutter); }
-body.ui-v2 .hv2-play {
-  display: inline-flex; align-items: center; gap: 8px;
-  max-width: 100%; min-height: 48px; padding: 0 20px 0 16px;
-  border: 0; border-radius: var(--radius-pill);
-  background: var(--accent); color: #fff;
-  font: inherit; font-size: var(--fs-md); font-weight: 600;
-  cursor: pointer;
-}
-body.ui-v2 .hv2-play-glyph { flex: none; font-size: var(--fs-md); line-height: 1; }
-body.ui-v2 .hv2-play-text { flex: none; }
-body.ui-v2 .hv2-play-title {
-  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  font-weight: 400; opacity: .9;
-}
-body.ui-v2 .hv2-title {
-  margin: 0; padding: 0 var(--gutter);
-  font-family: var(--font-display); font-weight: 600; font-size: var(--fs-xl); color: var(--text);
-}
-body.ui-v2 .hv2-section { display: flex; flex-direction: column; gap: 8px; }
-/* Horizontal rails (Jump back in, Forays for you, Playlists for you) share one
-   scroller pattern; Suggested uses `.hv2-cards` (a vertical stack)
-   instead, since epRow-shaped rows read as a list, not a shelf. */
-body.ui-v2 .hv2-hscroll {
-  display: flex; gap: 12px; overflow-x: auto;
-  padding: 0 var(--gutter) 4px;
-  scroll-snap-type: x proximity;
-  /* The snapport ignores the scroller's own padding, so without this the
-     first card's `scroll-snap-align: start` rests at x=0 — flush to the
-     viewport, corner clipped, 14px off its own section title — the moment
-     Chrome re-snaps after layout (fonts, cards arriving). Same value as the
-     inline padding, so a snapped card lands where an unsnapped one sits
-     (visual pass 1, 2026-09-23; test/home-layout.test.js pins the pair). */
-  scroll-padding-inline: var(--gutter);
-}
-body.ui-v2 .hv2-cards { display: flex; flex-direction: column; gap: 8px; padding: 0 var(--gutter); }
-
-body.ui-v2 .hv2-jbi-card, body.ui-v2 .hv2-foray-card, body.ui-v2 .hv2-playlist-card {
-  flex: none;
-  position: relative;
-  scroll-snap-align: start;
-  display: flex; flex-direction: column; gap: 4px;
-  width: 240px; min-width: 240px;
-  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
-  padding: 14px;
-  text-decoration: none; color: var(--text);
-}
-/* The tag shape (Stretch / draft / the Foray kicker), in amber because it
-   marks the listener's own material — one badge language (visual pass 1). */
-body.ui-v2 .hv2-jbi-kicker {
-  align-self: flex-start;
-  padding: 1px 7px;
-  border-radius: var(--radius-xs);
-  font-size: var(--fs-2xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
-  color: var(--amber);
-  background: color-mix(in srgb, currentColor 18%, transparent);
-}
-body.ui-v2 .hv2-jbi-title, body.ui-v2 .hv2-foray-title, body.ui-v2 .hv2-playlist-title {
-  font-family: var(--font-display); font-weight: 600; font-size: var(--fs-lg); color: var(--text);
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-}
-body.ui-v2 .hv2-jbi-sub, body.ui-v2 .hv2-jbi-left, body.ui-v2 .hv2-playlist-sub, body.ui-v2 .hv2-foray-sub {
-  font-size: var(--fs-sm); color: var(--muted);
-}
-/* "N min left" is the listener's own progress: amber and bold, the way it
-   reads on the Forays index (`.fy-jbi-left`) and a Foray's resume line
-   (`.fy-resume-left`). Home's card was the one place it went grey and
-   regular — the same number for the same Foray in two voices (round 2,
-   honesty-8; qa 55's gold-to-amber remap missed this class). */
-body.ui-v2 .hv2-jbi-left { color: var(--amber); font-weight: 700; }
-body.ui-v2 .hv2-jbi-card .fy-bar { margin-top: 4px; }
-/* The Jump back in card is a <div> whose title is the one real <a>, stretched
-   over the card; the play button is a sibling above it (qa row 78 — it was a
-   <button> inside the card's <a>). */
-body.ui-v2 .hv2-jbi-link { color: inherit; text-decoration: none; }
-body.ui-v2 .hv2-jbi-link::after { content: ""; position: absolute; inset: 0; }
-body.ui-v2 .hv2-jbi-card > .play-btn { z-index: 1; }
-
-/* The stretch label and its required bridge line (D1's copy rule: a stretch
-   pick must always state WHY it's being suggested). `.hv2-bridge` is the one
-   thing that must NEVER appear without `.hv2-stretch-tag` alongside it on the
-   same card, and vice versa — both are written by the same caller
-   (forayCardV2Html/miniCardV2) so they can't drift apart independently, and
-   test/home-v2.test.js pins that pairing directly. */
-body.ui-v2 .hv2-stretch { border-color: var(--violet); }
-body.ui-v2 .hv2-stretch-tag {
-  align-self: flex-start;
-  padding: 1px 7px;
-  border-radius: var(--radius-xs);
-  font-size: var(--fs-2xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
-  color: var(--violet);
-  background: color-mix(in srgb, var(--violet) 18%, transparent);
-}
-body.ui-v2 .hv2-bridge {
-  margin: 2px 0 0;
-  font-size: var(--fs-sm); font-style: italic; color: var(--muted);
-}
-
-body.ui-v2 .hv2-forays .fy-strip { margin-top: 2px; }
-
-body.ui-v2 .hv2-generated-badge {
-  align-self: flex-start;
-  padding: 1px 7px;
-  border-radius: var(--radius-xs);
-  font-size: var(--fs-2xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
-  /* VIOLET, not amber: "Generated for you" means 4a assembled it, which is
-     violet's half of #127's split — and the same badge in Search results
-     (`.fy-badge-generated`) was already violet. Amber told the listener this
-     was THEIR material (audit 2026-09-22). The shape still differs from the
-     Search badge; that is a taste call left to the founders. */
-  color: var(--violet);
-  background: color-mix(in srgb, var(--violet) 18%, transparent);
-}
-
-/* The test track ("Show draft Forays", app.js § showDraftsOn): a draft card
-   Home lists only while the founder's switch is on carries the same small
-   tag shape as Stretch, in the draft colour the Forays page and show pages
-   already use (`.fy-home-kicker`/`.show-forays-draft` under ui-v2 are violet),
-   and Home carries a one-line notice above the fold while the switch is on. */
-body.ui-v2 .hv2-draft-tag {
-  align-self: flex-start;
-  padding: 1px 7px;
-  border-radius: var(--radius-xs);
-  font-size: var(--fs-2xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
-  color: var(--violet);
-  background: color-mix(in srgb, var(--violet) 18%, transparent);
-}
-body.ui-v2 .hv2-test-track {
-  margin: 0 0 8px;
-  font-size: var(--fs-sm); font-weight: 600; color: var(--violet);
-}
-
-/* Suggested reuses miniCard()'s own `.mini-card` markup and rules
-   unchanged (miniCardV2() wraps it rather than forking it) — only the
-   section container and the appended `.hv2-bridge` line are new here.
-
-   THE BRIDGE LINE IS A ROW OF ITS OWN. miniCardV2() appends it inside the
-   `.mini-card` anchor, which is a single-line flex ROW — so it became a fourth
-   item beside the star: a narrow italic column squeezed to the right of the
-   card, stealing width from a title that then clipped (audit 2026-09-22). The
-   Foray card's identical line works only because that card is a column. So the
-   row wraps, the bridge takes the full width of the second line, and
-   `.mc-info` gets a zero basis so wrapping can never push IT onto a line of its
-   own (its max-content width is the whole unclamped title). Cards without a
-   bridge are three items that always fit, so for them nothing changes. */
-body.ui-v2 .hv2-suggested .mini-card { min-height: 0; flex-wrap: wrap; row-gap: 4px; }
-body.ui-v2 .hv2-suggested .mini-card > .mc-info { flex-basis: 0; }
-body.ui-v2 .hv2-suggested .mini-card > .hv2-bridge { flex-basis: 100%; }
 
 /* The publisher's own show description (founder, 2026-09-21). Body copy, not a
    `.note`: it is the show speaking for itself and should read like prose.
@@ -4532,17 +4200,29 @@ body.drawer-open { overflow: hidden; }
   --k-fill: var(--card); --k-lip: var(--dial-line); --k-ink: var(--ink);
   position: relative; isolation: isolate; display: inline-flex; align-items: center; justify-content: center;
   gap: var(--s-2); min-width: var(--key); height: var(--key); padding: 0 var(--s-5);
-  border: 0; border-radius: var(--r-md); background: var(--k-fill); color: var(--k-ink);
+  border: 0; border-radius: var(--r-md); background: transparent; color: var(--k-ink);
   font: var(--w-label) var(--t-body)/var(--lh-body) var(--font-text);
   transform: translateY(0); transition: transform var(--d-snap) var(--spring-snap);
 }
-.keycap::after {
-  content: ""; position: absolute; z-index: -1; left: 0; right: 0; bottom: calc(-1 * var(--lip));
-  height: var(--lip); border-radius: 0 0 var(--r-md) var(--r-md); background: var(--k-lip);
-  transform: scaleY(1); transform-origin: bottom; transition: transform var(--d-snap) var(--spring-snap);
+/* THE KEY IS TWO SOLIDS OF ONE SILHOUETTE (BUILD-NOTES 3.1). The face (::before) fills
+   the box; the lip (::after) is the same box stretched down by --lip, behind the face,
+   with the key's own radius, so the darker tone shows only as a lower edge that follows
+   the circle or the 14px corners. It is never a separate bar under the control: a flat
+   strip below a rounded face reads as a stray underline, not a key. The element's own
+   background stays clear so the lip can sit behind its face. */
+.keycap::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--k-fill);
 }
+.keycap::after {
+  content: ""; position: absolute; z-index: -2; left: 0; right: 0; top: 0; bottom: calc(-1 * var(--lip));
+  border-radius: inherit; background: var(--k-lip);
+  transform: translateY(0); transition: transform var(--d-snap) var(--spring-snap);
+}
+/* Pressed: the face drops 2px and the lip counter-translates, so its base stays put
+   and the visible lip goes 3px to 1px. */
 .keycap:active:not(:disabled), .keycap[data-pressed="true"] { transform: translateY(calc(var(--s-1) / 2)); }
-.keycap:active:not(:disabled)::after, .keycap[data-pressed="true"]::after { transform: scaleY(.3334); }
+.keycap:active:not(:disabled)::after, .keycap[data-pressed="true"]::after { transform: translateY(calc(var(--s-1) / -2)); }
+.keycap--paper::before { box-shadow: inset 0 0 0 calc(var(--s-1) / 4) var(--dial-line); }   /* a paper key keeps its edge on a card */
 .keycap:focus-visible, .keycap.is-focus,
 .textbtn:focus-visible, .textbtn.is-focus,
 .chip:focus-visible, .chip.is-focus,
@@ -4562,7 +4242,6 @@ body.drawer-open { overflow: hidden; }
 .keycap--xl { min-width: var(--key-xl); width: var(--key-xl); height: var(--key-xl); padding: 0; }
 .keycap--glance { min-width: var(--key-glance); width: var(--key-glance); height: var(--key-glance); padding: 0; }
 .keycap--round { border-radius: var(--r-pill); }
-.keycap--round::after { border-radius: 0 0 var(--r-pill) var(--r-pill); }
 .keycap--wide { width: 100%; }
 .keycap__readout { color: inherit; opacity: .85; }
 .keycap:disabled, .keycap--blocked { --k-fill: var(--paper-2); --k-lip: var(--dial-line); --k-ink: var(--ink-3); cursor: not-allowed; transform: none; }
@@ -4636,18 +4315,27 @@ body.drawer-open { overflow: hidden; }
 .gauge figcaption { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); }
 .gauge__well { position: relative; height: var(--s-6); margin-top: var(--s-3); padding: var(--s-1); border-radius: var(--r-sm); background: var(--paper-2); box-shadow: var(--well-inset); }
 .gauge__well::before { content: ""; position: absolute; inset: var(--s-1); border-radius: calc(var(--s-1) / 2); background: var(--dial-line); }
-.gauge__fill { position: absolute; left: var(--s-1); top: var(--s-1); bottom: var(--s-1); width: calc((100% - var(--s-2)) / 3); border-radius: calc(var(--s-1) / 2); background: repeating-linear-gradient(45deg, var(--ultramarine) 0 var(--s-1), var(--ultramarine-soft) var(--s-1) calc(var(--s-1) * 2)); }
-.gauge__needle { position: absolute; left: calc((100% - var(--s-2)) / 3 + var(--s-1)); top: calc(-1 * var(--s-3)); bottom: 0; width: calc(var(--s-1) / 2); background: var(--ink); }
+.gauge__fill { position: absolute; left: var(--s-1); top: var(--s-1); bottom: var(--s-1); width: calc((100% - var(--s-2)) / 3); border-radius: calc(var(--s-1) / 2); background: repeating-linear-gradient(45deg, var(--ultramarine) 0 calc(var(--s-1) * .75), var(--ultramarine-soft) calc(var(--s-1) * .75) calc(var(--s-1) * 1.5)); }   /* the narration hatch: 3px lines, 3px gaps (BUILD-NOTES 3.7) */
+.gauge__needle { position: absolute; left: calc((100% - var(--s-2)) / 3 + var(--s-1)); top: calc(-1 * (var(--s-2) + var(--s-1) / 2)); bottom: 0; width: calc(var(--s-1) / 2); background: var(--ink); }
 .gauge__needle::before { content: ""; position: absolute; top: 0; left: calc(-1 * var(--s-1)); width: var(--s-2); height: var(--s-2); border-radius: 50%; background: var(--ink); }
 .gauge p { margin: var(--s-1) 0 0; color: var(--ink-2); font-size: var(--t-label); line-height: var(--lh-label); }
 
 .bridge { display: grid; gap: var(--s-3); }
 .bridge__sentence { margin: 0; font-size: var(--t-body-lg); line-height: var(--lh-body-lg); font-weight: 600; }
-.bridge__arc { display: grid; grid-template-columns: var(--art-queue) minmax(0, 1fr) var(--art-row); align-items: center; gap: var(--s-1); }
-.bridge__arc svg { width: 100%; height: var(--art-queue); overflow: visible; }
+.bridge__arc { display: grid; grid-template-columns: var(--art-queue) minmax(0, 1fr) calc(var(--art-row) + var(--s-4)); align-items: center; gap: var(--s-1); }
+/* BUILD-NOTES 3.8: known artwork 48 (--r-sm), the arc, stretch artwork 72 (--r-md). */
+.bridge__arc > .art-frame:last-child { --art-size: calc(var(--art-row) + var(--s-4)); border-radius: var(--r-md); }
+/* The arc is stretched to the gap between the two artworks, so its dots are not
+   circles in that stretched box: they are two real circles placed over it at
+   (2,30) and (98,20) of the 100x48 grid, and the arc keeps its 1-unit dash so it draws in once (pathLength). */
+.bridge__line { position: relative; display: block; height: var(--art-queue); margin: 0 calc(-1 * var(--s-1) / 2); }
+.bridge__line svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .bridge__arc path { fill: none; stroke: var(--ultramarine); stroke-width: calc(var(--s-1) * .625); stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 0; }
-.bridge__arc circle { fill: var(--ultramarine); }
+.bridge__dot { position: absolute; width: calc(var(--s-1) * 1.5); height: calc(var(--s-1) * 1.5); border-radius: 50%; background: var(--ultramarine); transform: translate(-50%, -50%); }
+.bridge__dot--a { left: 2%; top: calc(30 / 48 * 100%); }
+.bridge__dot--b { left: 98%; top: calc(20 / 48 * 100%); }
 .bridge[data-draw] .bridge__path { animation: tactile-arc var(--d-draw) var(--ease-draw) both; }
+.bridge[data-draw] .bridge__dot--b { animation: tactile-dot var(--d-snap) var(--spring-snap) both; animation-delay: var(--d-draw); }
 .bridge__meta { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: var(--s-3); }
 .bridge__copy { min-width: 0; display: grid; justify-items: start; gap: var(--s-1); }
 .bridge__title { max-width: 100%; display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: var(--t-body); line-height: var(--lh-body); }
@@ -4662,8 +4350,15 @@ body.drawer-open { overflow: hidden; }
 .row-queue { min-height: var(--row-queue); padding-top: var(--s-1); padding-bottom: var(--s-1); }
 .row__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: calc(var(--s-1) / 2); }
 .row__title { margin: 0; display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: var(--t-body); line-height: var(--lh-body); font-weight: var(--w-label); }
+/* The meta line (BUILD-NOTES 3.9, with the prototype's final rule): one line, the
+   show name shrinks and ellipsises first, and the facts (length, downloaded mark,
+   + Up Next) travel as ONE group that never shrinks. A row with a downloaded mark
+   at 393 and under wraps (below), the facts together on a line of their own, never
+   the action alone. BUILD-NOTES' `min-width: 112px` on the name is not kept: with
+   a long length ("1 hr 4 min") it pushed the line over the key beside it. */
 .row__meta { margin: 0; min-width: 0; display: flex; align-items: center; gap: calc(var(--s-1) + var(--s-1) / 2); color: var(--ink-2); font-size: var(--t-label); line-height: var(--lh-label); }
-.row__show { min-width: 112px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row__show { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row__facts { flex: none; display: inline-flex; align-items: center; gap: calc(var(--s-1) + var(--s-1) / 2); }
 .row__why { grid-column: 2 / -1; margin: 0; font-size: var(--t-body); line-height: var(--lh-body); }
 .row__end { flex: none; }
 .row__queue { min-width: var(--tap); min-height: var(--tap); display: inline-flex; align-items: center; justify-content: center; gap: var(--s-1); padding: 0; background: transparent; color: var(--ink-2); font: var(--w-label) var(--t-label)/var(--lh-label) var(--font-text); }
@@ -4919,6 +4614,7 @@ body.ui-v2.kb-open::after { display: none; }
 
 @keyframes tactile-draw { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @keyframes tactile-arc { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes tactile-dot { from { opacity: 0; scale: .3; } to { opacity: 1; scale: 1; } }
 @keyframes tactile-pulse { from { opacity: .4; } to { opacity: 1; } }
 @keyframes tactile-shimmer { from { opacity: .58; } to { opacity: 1; } }
 
@@ -5553,6 +5249,124 @@ body.ui-v2 .fp-sheet.np .fp-openep { color: var(--ink); }
   .gallery-state-grid .keycap__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
 
+/* TODAY (Tactile Home, screen "home"; docs/redesign-2026/directions/tactile/
+   BUILD-NOTES.md 4.1, prototype/app.css the target). Everything here hangs on
+   `.today*` or on `body.view-home`, so no other page moves: the legacy topbar is
+   hidden on Today (the title row and its knob replace it), and the legacy tab
+   bar is restyled as the Dial deck on Today only until the Find and Yours
+   screens adopt it (the three-tab IA is theirs, not this screen's). Colours,
+   sizes and durations are tokens; the only literals are the ones the spec states
+   as pixels (the 2px focus ring, the 14px of hit area around "+ Up Next"). */
+body.ui-v2.view-home {
+  --tab-bar-h: calc(var(--deck-h) + var(--s-3));   /* the deck and its 12px float: where the mini player docks and what Today reserves */
+  background: var(--paper);
+  color: var(--ink);
+  font: var(--w-body) var(--t-body)/var(--lh-body) var(--font-text);
+  -webkit-font-smoothing: antialiased;
+}
+body.view-home .topbar { display: none; }
+body.view-home #view { padding-top: 0; }
+/* The fade under the floating deck, so rows do not show in the gap beside it. */
+body.view-home::after { content: ""; position: fixed; z-index: 19; left: 0; right: 0; bottom: 0; height: calc(var(--deck-h) + var(--safe-b) + var(--s-12) + var(--s-2)); pointer-events: none; background: linear-gradient(to top, var(--paper) 56%, transparent); }
+
+.today { display: flex; flex-direction: column; gap: var(--s-8); max-width: 680px; margin: 0 auto; padding: calc(var(--safe-t) + var(--s-6) + var(--s-1)) var(--gutter) var(--s-6); }
+.today h1, .today h2, .today h3, .today p { margin: 0; }
+.today a { color: inherit; text-decoration: none; }
+.today a:focus-visible { outline: calc(var(--s-1) / 2) solid var(--ultramarine); outline-offset: calc(var(--s-1) / 2); border-radius: calc(var(--s-1) * 1.5); }
+.today-sect { display: flex; flex-direction: column; gap: var(--gap); }
+.today-rows { display: flex; flex-direction: column; gap: var(--gap); }
+.today-notice { color: var(--ink-2); }
+.today-notice a { text-decoration: underline; }
+.today .readout { word-spacing: -0.2em; }   /* the mono space is 0.6em wide; "about 22 min" reads as one readout */
+.today-hero .t-band__base { opacity: 1; }   /* the hero band is a foray not yet played: full enamel, no progress layer */
+
+/* header: the title, the date 8px below it, the knob at the right */
+.today-top { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s-3); }
+.today-top__title { display: flex; flex-direction: column; gap: var(--s-2); padding-top: calc(var(--s-1) / 2); }
+.today-top__title .display-xl { font-stretch: var(--wd-screen); letter-spacing: var(--tracking-screen); }
+.today-top__date { color: var(--ink-2); }
+/* The knob is the primitive's own small key: 44 tall and the icon plus its 12px side
+   padding wide (48), as in the prototype; it is not squeezed to a 44px square. */
+.today-top .keycap, .today-hero__keys .keycap, .today-resume__key .keycap { margin-bottom: var(--lip); }
+
+/* hero: eyebrow 10 title 12 band 10 meta 12 why 16 keys */
+.today-hero { display: flex; flex-direction: column; }
+.today .today-hero__title { margin-top: calc(var(--s-2) + var(--s-1) / 2); font-size: clamp(1.75rem, 7.2vw, 2rem); line-height: 1.2; text-wrap: balance; }
+/* The title is the card's one link (the card is not a link), so it clamps and
+   centres on the link itself: a one-line title is still a 44px target (the hard
+   limit beats the 10px rhythm for that one case). */
+.today .today-hero__link { display: -webkit-box; -webkit-box-orient: vertical; -webkit-box-pack: center; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; min-height: var(--tap); }
+.today-hero__band { display: block; min-height: 0; margin-top: var(--s-3); padding: var(--s-1) calc(var(--s-1) * 1.5); border-radius: var(--r-pill); }
+.today-hero__meta { margin-top: calc(var(--s-2) + var(--s-1) / 2); display: flex; align-items: center; gap: var(--s-3); }
+.today-hero__discs { display: inline-flex; align-items: center; }
+.today-hero__discs .art-frame { box-shadow: 0 0 0 calc(var(--s-1) / 2) var(--card); }
+.today-hero__discs .art-frame + .art-frame { margin-left: calc(-1 * var(--s-3)); }
+.today-hero__facts { color: var(--ink-2); }
+.today .today-hero__why { margin-top: var(--s-3); font-size: var(--t-body-lg); line-height: var(--lh-body-lg); font-weight: var(--w-body); }
+.today-hero__keys { margin-top: var(--s-4); display: flex; align-items: center; gap: var(--s-4); }
+.today-hero__keys .keycap--xl .i { width: calc(var(--s-8) + var(--s-1)); height: calc(var(--s-8) + var(--s-1)); }
+.today-hero__details { text-decoration: none; }
+
+/* resume: a card of one listen, named, with the mini player's own 48 key */
+.today-resume { position: relative; display: flex; align-items: stretch; gap: calc(var(--s-3) + var(--s-1) / 2); padding: var(--s-4); }   /* positioned: the title link's ::after (inset 0) is laid out against THIS card, not the viewport */
+.today-resume .art-frame { --art-size: var(--key-xl); border-radius: var(--r-sm); }
+.today-resume__body { flex: 1; min-width: 0; min-height: var(--key-xl); display: flex; flex-direction: column; justify-content: space-between; gap: var(--s-1); }
+.today-resume__tag { display: flex; align-items: center; min-width: 0; }
+.today-resume .tag--playing { background: var(--persimmon-soft); color: var(--ink); }   /* 12px text needs 4.5:1: --persimmon on the soft fill is 3.74 in Cream and 4.49 in Bakelite; --ink is 12.95 / 10.91 */
+.today-resume__title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; font-size: var(--t-body); line-height: var(--lh-body); font-weight: var(--w-label); }
+.today-resume__link::after { content: ""; position: absolute; inset: 0; border-radius: var(--r-md); }
+.today-resume__link:focus-visible { outline: none; }
+.today-resume__link:focus-visible::after { outline: calc(var(--s-1) / 2) solid var(--ultramarine); outline-offset: calc(var(--s-1) / -2); }
+.today-resume__line { display: flex; align-items: center; gap: var(--s-3); }
+.today-resume__left { flex: none; color: var(--ink-2); }
+.today-resume__key { flex: none; align-self: flex-end; position: relative; z-index: 1; }
+.today-resume__key .keycap { width: var(--key); padding: 0; }   /* the mini player's own round 48 key, not a 64px pill */
+.today-prog { display: block; flex: 1; min-width: 0; min-height: 0; height: var(--s-1); padding: 0; border-radius: calc(var(--s-1) / 2); overflow: hidden; }
+.today-prog__fill { display: block; height: 100%; border-radius: calc(var(--s-1) / 2); background: var(--persimmon); }
+
+/* also today: the shared row and bridge primitives, on paper, with engine hooks */
+.today .row-episode { position: relative; padding: 0; column-gap: var(--s-3); row-gap: var(--s-2); }
+.today .row-episode .row__why { margin-top: 0; }
+.today .row__body { gap: calc(var(--s-1) / 2); }
+.today .row__title { text-wrap: balance; }   /* two even lines make a narrower link, so its 44px square stays off the "+ Up Next" beside the meta line */
+.today .bridge { position: relative; }
+.row__link::after { content: ""; position: absolute; inset: 0; border-radius: var(--r-md); }
+.row__link:focus-visible { outline: none; }
+.row__link:focus-visible::after { outline: calc(var(--s-1) / 2) solid var(--ultramarine); outline-offset: calc(var(--s-1) / 2); }
+.today .row-episode .keycap, .today .bridge .keycap, .today .row__queue { position: relative; z-index: 1; }
+.today .row-episode .row__end .keycap { margin-bottom: var(--lip); }
+.today .row__queue { min-width: 0; min-height: 0; margin: calc(-1 * var(--s-1)) 0 calc(-1 * var(--s-1)) var(--s-1); padding: var(--s-1) 0; flex: none;   /* 24px by its own box (WCAG 2.5.8) without a taller meta line: the padding and the negative margin cancel */ transition: color var(--d-quick) var(--ease-quick); }
+.today .row__queue::before { content: ""; position: absolute; inset: -10px 0; }   /* the 24px box plus 10 above and below: a 44px target, without growing the meta line */
+.today .row__queue:active { color: var(--ink); }
+
+
+/* the engine's own states, drawn by CSS: play/pause on [data-playing], Up Next on .on/.is-fresh */
+.keycap[data-ctl-icons] .i--swap { display: none; }
+.keycap[data-ctl-icons][data-playing="1"] .i--swap { display: block; }
+.keycap[data-ctl-icons][data-playing="1"] .i:not(.i--swap) { display: none; }
+.keycap[data-loading="1"] .i { animation: tactile-pulse var(--d-sheet) var(--ease-quick) infinite alternate; }
+.row__queue[data-ctl-icons] .i--swap, .row__queue-fresh, .row__queue-on { display: none; }
+.row__queue.on .i:not(.i--swap) { display: none; }
+.row__queue.on .i--swap { display: block; }
+.row__queue.on .row__queue-off { display: none; }
+.row__queue.on .row__queue-on { display: inline; }
+.row__queue.on.is-fresh .row__queue-on { display: none; }
+.row__queue.on.is-fresh .row__queue-fresh { display: inline; }
+.row__queue.is-fresh { color: var(--good); }
+
+/* playlists for you: two to a row, a 2x2 composite, a 4px well */
+.today-pgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap); }
+.today-pcard { min-width: 0; display: flex; flex-direction: column; gap: calc(var(--s-2) + var(--s-1) / 2); padding: var(--s-3); border-radius: var(--r-md); background: var(--card); box-shadow: var(--shadow-card); transition: transform var(--d-snap) var(--spring-snap); }
+.today-pcard:active { transform: scale(.98); }
+.today-collage { width: 100%; aspect-ratio: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: calc(var(--s-1) / 2); overflow: hidden; border-radius: var(--r-sm); background: var(--paper-2); }
+.today-collage--one, .today-collage--empty { grid-template-columns: minmax(0, 1fr); }
+.today-collage .art-frame { --art-size: 100%; border-radius: 0; box-shadow: none; }
+.today-pcard__name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; font-size: var(--t-body); line-height: var(--lh-body); font-weight: var(--w-label); }
+.today-pcard__meta { color: var(--ink-2); }
+.today-pcard .today-prog { flex: none; }
+.today-pcard__badge { align-self: flex-start; }
+.today .gauge { margin: 0; }
+
 /* ---------- REDUCE MOTION: ONE BLOCK, EVERY TRANSITION (audit round 2, a11y-9) ----------
    Three strip rules honoured the setting and nothing else did: the Now Playing
    sheet still slid back over 220ms after a partial drag, the notes chevron
@@ -5570,6 +5384,9 @@ body.ui-v2 .fp-sheet.np .fp-openep { color: var(--ink); }
     --spring-snap: linear(0, 1); --spring-settle: linear(0, 1); --spring-sheet: linear(0, 1);
   }
   .keycap:active { transform: none; }
+  .keycap:active:not(:disabled), .keycap[data-pressed="true"],
+  .keycap:active:not(:disabled)::after, .keycap[data-pressed="true"]::after { transform: none; }
+  .keycap:active:not(:disabled)::before, .keycap[data-pressed="true"]::before { filter: brightness(.92); }   /* the key recolours instead of dropping */
   .band[data-draw] { stroke-dashoffset: 0; animation: none; }
   .sheet { transition-property: opacity; transition-duration: var(--d-quick); }
   .keycap,
@@ -5579,6 +5396,8 @@ body.ui-v2 .fp-sheet.np .fp-openep { color: var(--ink); }
   .needle,
   .iconbtn,
   .tile,
+  .today-pcard,
+  .today .row__queue,
   .tab__label,
   .tab__indicator,
   .toast,
@@ -5592,16 +5411,17 @@ body.ui-v2 .fp-sheet.np .fp-openep { color: var(--ink); }
   body.ui-v2 #foray-player.dial-mini,
   body.ui-v2 #foray-player.dial-mini > .fp-bar { transition: none; }
   .keycap.is-loading .i,
+  .keycap[data-loading="1"] .i,
   .chip.is-loading,
   .art-frame.is-loading,
   .band__draw,
   .band--buffering .needle,
   .np__needle.is-buffering,
   .bridge[data-draw] .bridge__path,
+  .bridge[data-draw] .bridge__dot--b,
   .skel { animation: none; }
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation-duration: 1ms; }
   .drawer-dev > summary::after,
-  .mini-card,
   .page-head,
   .fp-fill,
   .fp-sheet:not(.fp-sheet-dragging),
@@ -5612,5 +5432,5 @@ body.ui-v2 .fp-sheet.np .fp-openep { color: var(--ink); }
   .fy-seg { transition: none; }
   .up-next-row { transition: none; }
   .fy-panel { animation: none; }
-  .play-btn[data-loading="1"], .fp-play[data-loading="1"], .fp-btn[data-loading="1"], .hv2-play[data-loading="1"] { animation: none; opacity: .6; }
+  .play-btn[data-loading="1"], .fp-play[data-loading="1"], .fp-btn[data-loading="1"] { animation: none; opacity: .6; }
 }

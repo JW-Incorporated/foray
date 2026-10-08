@@ -1081,7 +1081,10 @@ function paintControl(btn, text, label) {
     if (name && btn.getAttribute("aria-label") !== name) btn.setAttribute("aria-label", name);
     return;
   }
-  if (text != null && btn.textContent !== text) btn.textContent = text;
+  /* data-ctl-icons: the control draws its own state with sprite icons that CSS
+     swaps on data-playing, so no text glyph is ever written into it; only its
+     name changes. The same guard is in app.js's setControlLabel. */
+  if (text != null && !(btn.hasAttribute && btn.hasAttribute("data-ctl-icons")) && btn.textContent !== text) btn.textContent = text;
   /* Compared before it is written, like the text (audit round 2, perf-7): this
      runs for every `[data-play]` button on the page at 4 Hz, and an attribute
      rewritten to its own value is still a mutation some screen readers

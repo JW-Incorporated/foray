@@ -68,10 +68,19 @@ function drawerIsOpen() {
   return !!(drawer && !drawer.hidden);
 }
 
+/** The control that opens the drawer, and gets focus back from it. Today's knob
+    (`#today-knob`, Tactile) IS the menu button while Home is on screen: the
+    topbar's ☰ is hidden there, and focus handed to a hidden control is lost.
+    Every other page keeps the ☰. */
+function menuOpener() {
+  const knob = $("#today-knob");
+  return knob || $("#menu-btn");
+}
+
 function openDrawer(open, { toMenu = false } = {}) {
   const drawer = $("#drawer");
   const overlay = $("#drawer-overlay");
-  const menu = $("#menu-btn");
+  const menu = menuOpener();
   const was = !!(drawer && !drawer.hidden);
   drawer.hidden = !open;
   overlay.hidden = !open;
