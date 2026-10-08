@@ -20,14 +20,17 @@ export const TAP_EXEMPTIONS = {
   selectors: [
     {
       id: "div.ag-np-progress > div.ag-np-strip > button.ag-np-strip-button",
-      reason: "A proportional Foray timeline may contain dozens of bars; the direction explicitly requires 44px height rather than 44px width.",
+      heightFloor: true,
+      reason: "A proportional Foray timeline bar is exempt from the 44px WIDTH only (the direction fixes it at 44px tall, and the gate still enforces that height). Each bar has a full-size equivalent target: its segment QueueRow in the detail posture seeks to the same second.",
     },
     {
       id: "div.ag-np-progress > div.ag-np-strip > button.ag-np-strip-button.is-current",
+      heightFloor: true,
       reason: "Current is the same 44px-tall proportional Foray seek target.",
     },
     {
       id: "div.ag-np-progress > div.ag-np-strip > button.ag-np-strip-button.is-past",
+      heightFloor: true,
       reason: "Past is the same 44px-tall proportional Foray seek target.",
     },
   ],

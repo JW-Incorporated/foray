@@ -100,6 +100,13 @@ function agNpShow(item) {
   return item?.show || item?.show_title || (item?.kind === "tts" ? "4a narration" : "Unknown show");
 }
 
+/* The catalogue show a source belongs to: its own id when the catalogue knows it, else the title join the Foray page uses. */
+function agNpShowId(item) {
+  if (!item || item.kind === "tts") return null;
+  if (item.show_id && typeof showById === "function" && showById(item.show_id)) return item.show_id;
+  return typeof showIdForShowName === "function" ? showIdForShowName(item.show || item.show_title) : null;
+}
+
 function agNpArt(item) {
   return item?.artwork_url || item?.artworkUrl || item?.image || "";
 }
@@ -209,7 +216,9 @@ function agNpAdopt(ui) {
 
   /* The More handle and the dots both bring the detail posture up and park focus on its first control. */
   const openDetail = () => {
-    detail.scrollIntoView({ behavior: "smooth", block: "start" });
+    /* A programmatic scroll ignores the CSS reduced-motion block, so Reduce Motion is read here. */
+    const reduce = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    detail.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
     ui.rateBtn.focus({ preventScroll: true });
   };
   detailHandle.addEventListener("click", openDetail);
@@ -229,7 +238,11 @@ function agNpAdopt(ui) {
   });
   ui.resetSleep = () => { sleepMinutes = 0; paintSleep(); };
   shareBtn.addEventListener("click", async () => {
-    const url = safeUrl(location.href);
+    /* The timestamp link (#/episode/<id>?t=N) on the published site, never the shell's own origin; with nothing
+       playing to name, the page address. */
+    const target = typeof ui.shareTarget === "function" ? ui.shareTarget() : null;
+    const base = typeof FORAY_SHARE_BASE === "string" ? FORAY_SHARE_BASE : `${location.origin}${location.pathname}`;
+    const url = safeUrl(target && typeof episodeDeepLinkHash === "function" ? base + episodeDeepLinkHash(target) : location.href);
     try {
       if (navigator.share) await navigator.share({ title: ui.sTitle.textContent, url });
       else if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(url);
@@ -459,13 +472,17 @@ function agNpPaintDetails(ui, items, onSeek, model) {
     const name = agNpEl("p", "t-caption clamp3", show);
     const follow = agNpEl("button", "ag-np-follow t-label", "Follow");
     follow.type = "button";
-    follow.setAttribute("aria-pressed", "false");
-    setControlLabel(follow, "Follow", `Follow ${show}`);
-    follow.addEventListener("click", () => {
-      const on = follow.getAttribute("aria-pressed") !== "true";
+    /* Follow is the one record the Library reads (cp_starred_shows, through toggleShowStar), never a label of its own:
+       the label and aria-pressed are repainted from that stored state on every paint and after every tap. */
+    const showId = agNpShowId(item);
+    const paintFollow = () => {
+      const on = Boolean(showId) && isShowStarred(showId);
       follow.setAttribute("aria-pressed", on ? "true" : "false");
       setControlLabel(follow, on ? "Following" : "Follow", on ? `Following ${show}` : `Follow ${show}`);
-    });
+    };
+    paintFollow();
+    if (showId) follow.addEventListener("click", () => { toggleShowStar(showId); paintFollow(); });
+    else follow.disabled = true;
     tile.append(art, name, follow);
     grid.append(tile);
   });

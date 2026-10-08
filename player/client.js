@@ -4051,6 +4051,14 @@ function bind() {
   /* Sleep timer (Afterglow's detail posture): the screen file cycles the minutes, this owns the clock and the
      pause. It only pauses; it never seeks, stops the Foray or touches the queue. */
   if (ui.ag) {
+    /* Share sends a timestamp link: the episode now playing and the second it is at, the pair a Bookmark records.
+       The screen file builds the address with app.js's episodeDeepLinkHash; this only knows what is playing. */
+    ui.shareTarget = () => {
+      const seg = ForayPlayer.currentEpisodeId();
+      if (!seg) return null;
+      const pos = Number(episodePositionSec());
+      return { seg, t: Number.isFinite(pos) && pos > 0 ? Math.floor(pos) : null };
+    };
     let sleepTimer = 0;
     ui.requestSleep = (minutes) => {
       clearTimeout(sleepTimer);

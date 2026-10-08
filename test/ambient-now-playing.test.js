@@ -150,3 +150,22 @@ test("a Foray's Room is its blurred collage, the sleeve casts a halo of its own 
   assert.match(css, /\.ag-np-strip-button\[data-join-prev\] \{ margin-left: -2px; \}/);
   assert.match(css, /\[data-join-prev\] \.ag-np-strip-bar \{ border-top-left-radius: 0; border-bottom-left-radius: 0; \}/);
 });
+
+test("review round 1: Follow is the Library's record, Share is a timestamp link, the detail scroll honours Reduce Motion, the timeline exemption is width-only", () => {
+  const gates = read("tools/ui-lab/lib/gates/config.mjs");
+  const rules = read("tools/ui-lab/lib/gates/rules.mjs");
+  /* MUTATION: replace `toggleShowStar(showId)` in the Follow click handler with a local aria-pressed flip -> red (Following and the Library disagree). */
+  assert.match(ui, /follow\.addEventListener\("click", \(\) => \{ toggleShowStar\(showId\); paintFollow\(\); \}\)/);
+  assert.match(ui, /const on = Boolean\(showId\) && isShowStarred\(showId\);/, "the label is read back from cp_starred_shows, never held locally");
+  assert.doesNotMatch(ui, /getAttribute\("aria-pressed"\) !== "true"/, "no local toggle of aria-pressed survives");
+  /* MUTATION: put `safeUrl(location.href)` back as the only argument of the Share handler's url -> red (it shares the page, not the moment). */
+  assert.match(ui, /episodeDeepLinkHash\(target\)/);
+  assert.doesNotMatch(ui, /const url = safeUrl\(location\.href\);/);
+  assert.match(client, /ui\.shareTarget = \(\) => \{[\s\S]*?ForayPlayer\.currentEpisodeId\(\)[\s\S]*?episodePositionSec\(\)/, "the player says what is playing and where, as Bookmark does");
+  /* MUTATION: change `behavior: reduce ? "auto" : "smooth"` back to `behavior: "smooth"` -> red. */
+  assert.match(ui, /prefers-reduced-motion: reduce\)"\)\.matches/);
+  assert.match(ui, /behavior: reduce \? "auto" : "smooth"/);
+  /* MUTATION: delete `heightFloor: true` from one timeline selector in gates/config.mjs -> red (tools/ui-lab/gates.test.mjs pins the rule itself). */
+  assert.equal((gates.match(/heightFloor: true/g) || []).length, 3, "all three timeline selectors keep the height floor");
+  assert.match(rules, /!s\.heightFloor \|\| e\.h \+ tol >= min/);
+});

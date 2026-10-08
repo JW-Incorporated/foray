@@ -73,6 +73,10 @@ test("tap target: only an <a> inside running text is exempt (WCAG 2.5.8 inline)"
   assert.deepEqual(evaluateTapTargets("s/a", els).map((x) => x.id.split(" ")[0]).sort(), ["inline-button", "lone-link"]);
   const dense = el({ selector: "div.ag-np-progress > div.ag-np-strip > button.ag-np-strip-button", tag: "button", w: 12, h: 44, hits: grid(20) });
   assert.equal(evaluateTapTargets("s/a", [dense]).length, 0, "the direction's explicitly 44px-tall proportional timeline is exempt by selector");
+  /* MUTATION: in evaluateTapTargets drop `(!s.heightFloor || e.h + tol >= min)` -> the 30px-tall bar below is exempt and this fails.
+     The timeline exemption is for WIDTH only; a bar that is also short is a real miss. */
+  const shortBar = el({ selector: "div.ag-np-progress > div.ag-np-strip > button.ag-np-strip-button", tag: "button", w: 12, h: 30, hits: grid(20) });
+  assert.equal(evaluateTapTargets("s/a", [shortBar]).length, 1, "a timeline bar shorter than 44px is not exempt");
   /* and the exemption is switchable, so it is a decision, not an accident */
   assert.equal(evaluateTapTargets("s/a", els, { exemptions: { ...TAP_EXEMPTIONS, inlineTextLinks: false } }).length, 3);
 });

@@ -18,12 +18,12 @@ Written by the build agent (branch `redesign/ambient-now-playing`). Calls made w
 8. **Up Next's eyebrow says "4a added" only when 4a wrote a reason for the pick;** otherwise "In your queue", with no invented why-line.
 9. **The mini bar is untouched.** The player root no longer wears `.ag`, so nothing outside the sheet changed: `baseline.mjs compare --name ambient-app` shows the only differences on `player/now-playing` and `stress/now-playing` (the screen itself) plus the 21 new `ambient-now-playing` shots; `ambient-gallery` compares clean (123 of 123).
 10. **Reduce Motion:** no shared element, no slide; the sheet crossfades in over 200ms (a class for one frame, then the opacity transition in the one reduced-motion block). Closing under Reduce Motion is still instant (the existing sheet owner never animates it).
-11. **Follow** in "Where this came from" toggles on screen only: the app has no show-follow store yet (Library owns it).
+11. **Follow** in "Where this came from" is the Library's record: it calls `toggleShowStar` (cp_starred_shows) and repaints from `isShowStarred` (superseded the screen-only toggle, review round 1).
 
 ## Open for the Dock and Library builders
 
 - The mini bar's 44px art, Glow veil and Ember play (BUILD-NOTES 4.3) are not built here. The shared-element move already works from today's 40px art in both the View Transition and the FLIP path.
-- Share sends the page address; a timestamp link needs an episode URL the app does not have.
+- Share sends the timestamp link `#/episode/<id>?t=N` on the published site (app.js `episodeDeepLinkHash`; the player supplies the id and second through `ui.shareTarget`), falling back to the page address when nothing is playing.
 
 ## Iteration 2 (fidelity findings: Room, strip, lit art)
 
@@ -33,3 +33,12 @@ Calls made without the owner or the art director in the loop.
 2. **Lit art is a lamp.** The glow colour now lives on the art box (`--art-glow` on `.ag-np-art-swap`, so the collage and an episode sleeve both read it; before, only the hidden single-art `img` carried it). At 280px the cast is two rings in that colour plus a decorative `.ag-np-halo`, a second blurred copy of the sleeve behind it, so the Foray's own purple, cyan and orange spill past the edge. Off under `prefers-reduced-transparency` and `forced-colors`, `aria-hidden`, no pointer events.
 3. **The strip.** Neighbouring cuts from one show touch (`data-join-prev` / `data-join-next`, square inner corners, no gap) so bars read as lanterns, not 24 equal chips. A data attribute, not a class: `gates.mjs` keys the 44px-height tap exemption on the class list. Bars were already sized by runtime and the narration bar already Lamp and 4px; the harness Foray (`data/forays.json`) has no narration items and twenty-two cuts of 73 to 260 seconds from seven shows, so the render is what that data gives. What looked like "unplayed colours desaturated" was the 0:00 shot: nothing is past, and unplayed is the 0.38 token as in the prototype. The `now-playing-foray` step now seeks to 15 minutes (the prototype is shot mid-play), so past bars show at full colour and the current one fills.
 4. **Not done here:** the three-judge pairwise pass (no fresh judge agents in this loop); the primary-control region delta (-12px at 393x852) and the episode art delta (-36px, a three-line fixture title) are unchanged.
+
+## Review round 1 (Codex verdict: fix, four blocking)
+
+1. **Timeline bars and the 44px target.** The direction fixes each bar at 44px TALL; a proportional strip cannot also be 44px wide. The gate exemption is now width-only (`heightFloor: true` in `gates/config.mjs`, enforced in `rules.mjs`), so a bar shorter than 44px is a real miss, and each bar has a full-size equivalent target: its segment QueueRow in the detail posture seeks to the same second (WCAG 2.5.8 equivalent-target). Mutation named and run in `tools/ui-lab/gates.test.mjs`.
+2. **Follow** calls `toggleShowStar` and reads back `isShowStarred` (Library and sheet agree). A source whose show cannot be resolved to a catalogue id renders Follow disabled rather than faking a state.
+3. **Share** sends `episodeDeepLinkHash({seg, t})` on the published base, from `ui.shareTarget` in `player/client.js` (the pair Bookmark records).
+4. **More handle scroll** reads `prefers-reduced-motion` and scrolls with `auto` instead of `smooth`.
+
+Still open (unchanged): the three-judge pairwise pass and the two fidelity deltas listed under Iteration 2.
