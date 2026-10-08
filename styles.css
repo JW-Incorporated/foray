@@ -4282,6 +4282,8 @@ body.drawer-open { overflow: hidden; }
 .art-frame--disc { --art-size: var(--art-disc); }
 .art-frame--hero { --art-size: calc(var(--key-xl) + var(--s-4)); border-radius: var(--r-md); }
 .art-frame--round { border-radius: 50%; }
+/* A subject tile: the known end of a first-run bridge, which has no artwork yet. Ink on the soft fill is the Stretch tag's own pair. */
+.art-frame--subject { background: var(--ultramarine-soft); color: var(--ultramarine); }
 .art-frame.is-loading { animation: tactile-pulse var(--d-sheet) var(--ease-quick) infinite alternate; }
 .art-frame.is-loading .art-frame__initials { visibility: hidden; }
 .art-frame.is-offline::after { content: ""; position: absolute; inset: 0; background: color-mix(in srgb, var(--paper-2) 72%, transparent); }

@@ -310,7 +310,9 @@ test("THE FLOOR over real data: Also today carries a visible Stretch tag with it
     assert.ok(/class="tag tag--stretch"/.test(also), `run ${i}: Also today must carry a visible Stretch tag over the real pool`);
     const sentence = /class="bridge__sentence">([^<]*)</.exec(also);
     assert.ok(sentence, `run ${i}: the stretch pick must carry its bridge sentence`);
-    assert.match(sentence[1], /outside your usual/i, `run ${i}: and it says why`);
+    /* A fresh profile is a first run: no usual subjects to be outside of, so the sentence
+       says the bet is deliberate instead (test/today-first-run.test.js). */
+    assert.match(sentence[1], /wide bet, on purpose/i, `run ${i}: and it says why`);
     assert.ok(sentence[1].trim().split(/\s+/).length <= 16, `run ${i}: within 16 words: ${sentence[1]}`);
     const stretchSlots = m.state.cardSlots.filter((sl) => sl.role === "stretch");
     assert.strictEqual(stretchSlots.length, 1, `run ${i}: exactly one of the four slots is the stretch pick`);
