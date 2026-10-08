@@ -544,7 +544,7 @@ test("the key's geometry and its fade, read from the stylesheet", () => {
   assert.strictEqual(decl(".fdet-pin .keycap__label").font, "700 var(--t-body-lg)/1 var(--font-text)");
   const read = decl(".fdet-pin .keycap__readout");
   assert.strictEqual(read.color, "var(--on-persimmon)");
-  assert.strictEqual(read.opacity, ".85", "the readout at 85% of --on-persimmon");
+  assert.strictEqual(read.opacity, "1", "the readout is not faded: the contrast test below holds the number");
   const pin = decl(".fdet-pin");
   assert.strictEqual(pin.position, "fixed");
   assert.strictEqual(pin.bottom, "calc(var(--foray-dock) + var(--s-4))", "right-aligned at deck + 16");
@@ -679,6 +679,71 @@ test("the stylesheet block reads tokens only, adds no !important, and its one tr
   const reduced = CSS.slice(CSS.indexOf("@media (prefers-reduced-motion: reduce)"));
   assert.match(reduced, /\.fdet-pin,/, "named in the one reduced-motion block");
   assert.strictEqual((CSS.match(/@media \(prefers-reduced-motion: reduce\)/g) || []).length, 1, "which is the only one");
+});
+
+/* ---------------------------------------------------------------- contrast (WCAG AA, both schemes) */
+
+const hexRgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+const lin = (v) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+const lum = (rgb) => 0.2126 * lin(rgb[0]) + 0.7152 * lin(rgb[1]) + 0.0722 * lin(rgb[2]);
+const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+/** `fg` at `alpha` over `bg`, as the browser composites it. */
+const over = (fg, bg, alpha) => fg.map((c, i) => c * alpha + bg[i] * (1 - alpha));
+/** The token values of each shipped scheme, read from the stylesheet (the Cream block, then both
+    Bakelite blocks, which must agree). */
+function schemeTokens() {
+  const light = decl(":root", []);
+  const darkOverride = decl(':root[data-theme="dark"]');
+  const darkMedia = decl(':root:not([data-theme="light"])', ["@media (prefers-color-scheme: dark)"]);
+  for (const k of ["--paper", "--ink", "--ink-2", "--persimmon", "--on-persimmon"]) {
+    assert.strictEqual(darkMedia[k], darkOverride[k], `the two dark blocks agree on ${k}`);
+  }
+  return { Cream: light, Bakelite: darkOverride };
+}
+
+test("the pinned key's readout is AA text on the persimmon key, in both schemes", () => {
+  /* The readout is 13px/500 mono: normal-size text, so 4.5:1. White at the primitive's .85 over
+     Cream's #C93F14 is 4.01:1; axe cannot see it because the key's fill is painted on a z-index:-1
+     ::before. This reads the OPACITY the pin actually declares and composites it, so any fade that
+     drops a scheme under 4.5 fails here.
+     MUTATION: `.fdet-pin .keycap__readout { opacity: .85 }` -> red naming Cream at 4.01; deleting the
+     declaration -> red on the first assertion (the primitive's .85 would show through). */
+  const pinOpacity = decl(".fdet-pin .keycap__readout").opacity;
+  assert.ok(pinOpacity !== undefined, "the pin states its own opacity: the primitive's .85 would otherwise win");
+  const alpha = Number(pinOpacity);
+  assert.ok(alpha > 0 && alpha <= 1, `opacity ${pinOpacity} is a number`);
+  const schemes = schemeTokens();
+  for (const [scheme, t] of Object.entries(schemes)) {
+    const fill = hexRgb(t["--persimmon"]);
+    const r = ratio(over(hexRgb(t["--on-persimmon"]), fill, alpha), fill);
+    assert.ok(r >= 4.5, `${scheme}: the readout is ${r.toFixed(2)}:1 on the key (needs 4.5)`);
+  }
+  /* Harness check: the arithmetic reproduces the reviewer's measurements, or it measures nothing. */
+  const cream = schemes.Cream;
+  const fill = hexRgb(cream["--persimmon"]);
+  assert.ok(Math.abs(ratio(over(hexRgb(cream["--on-persimmon"]), fill, 0.85), fill) - 4.01) < 0.02, "Cream at .85 reads 4.01:1");
+  assert.ok(Math.abs(ratio(hexRgb(cream["--on-persimmon"]), fill) - 4.99) < 0.02, "Cream at 1 reads 4.99:1");
+});
+
+test("a clip that cannot play keeps its text at full ink; only the swatch fades", () => {
+  /* The row is a plain div, not a disabled control, so the show name and why-line are information and
+     the inactive-component exemption does not apply: --ink at 60% over Cream's paper is 4.36:1 and
+     the --ink-2 sub-line at 60% is 2.70:1. The state is told in words (`.fdet-seg__out`).
+     MUTATION: `.fdet-seg.is-out .fdet-seg__row { opacity: .6 }` back -> red on the first assertion;
+     `.fdet-seg.is-out { opacity: .6 }` -> red on the second. */
+  assert.strictEqual(decl(".fdet-seg.is-out .fdet-seg__row").opacity, undefined, "no dimming on the row that holds the text");
+  assert.strictEqual(decl(".fdet-seg.is-out .fdet-sw").opacity, ".6", "the aria-hidden swatch is what fades");
+  assert.ok(!rules.some((r) => r.selectors && r.selectors.includes(".fdet-seg.is-out") && r.decls.some((d) => d.prop === "opacity")), "nor the clip as a whole");
+  for (const [scheme, t] of Object.entries(schemeTokens())) {
+    const paper = hexRgb(t["--paper"]);
+    assert.ok(ratio(hexRgb(t["--ink"]), paper) >= 4.5, `${scheme}: the show name is AA on paper`);
+    assert.ok(ratio(hexRgb(t["--ink-2"]), paper) >= 4.5, `${scheme}: the sub-line and the plain-words line are AA on paper`);
+  }
+  /* Nothing else re-dims the row's text through the clip's own classes. */
+  for (const sel of [".fdet-seg__text", ".fdet-seg .row__title", ".fdet-seg__sub", ".fdet-seg__out", "body.view-foray .fdet-seg__out"]) {
+    const o = rules.filter((r) => r.selectors && r.selectors.includes(sel)).flatMap((r) => r.decls).find((d) => d.prop === "opacity");
+    assert.strictEqual(o, undefined, `${sel} carries no opacity`);
+  }
 });
 
 test("targets: clip rows and votes reach 44px, the keys are the primitives' own", () => {

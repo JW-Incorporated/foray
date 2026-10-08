@@ -5622,7 +5622,8 @@ body.view-foray .fdet .fy-draft { padding: 0; border: 0; border-radius: 0; backg
 .fdet-state { display: none; flex: none; color: var(--persimmon); }
 .fdet-seg .segrow.is-playing .fdet-state { display: inline-flex; }
 .fdet-seg .segrow.is-played .row__title, .fdet-seg .segrow.is-played .fdet-seg__len { color: var(--ink-2); }
-.fdet-seg.is-out .fdet-seg__row { min-height: 56px; opacity: .6; }
+.fdet-seg.is-out .fdet-seg__row { min-height: 56px; }   /* no row-wide dimming: the show name and why-line are information on a div, not a disabled control, so they keep full --ink / --ink-2 (AA); the state is the plain-words line below plus the dimmed swatch */
+.fdet-seg.is-out .fdet-sw { opacity: .6; }   /* the swatch is decoration (aria-hidden), so dimming it is the only fade the row takes */
 body.view-foray .fdet-seg__out { margin-left: calc(24px + var(--s-3)); color: var(--ink-2); }   /* out-ranks the legacy `body.ui-v2 .fy-out` amber: persimmon text on paper is not AA */
 .fdet-seg .fy-script-wrap { margin: 0 0 var(--s-2) calc(24px + var(--s-3)); }
 .fdet-seg .fy-script { font: var(--w-body) var(--t-label)/var(--lh-body) var(--font-text); color: var(--ink-2); }
@@ -5664,7 +5665,7 @@ body.fp-expanded .fdet-pin { transform: translateY(240%); }   /* the sheet owns 
 .fdet-pin .keycap--pin { height: 56px; min-width: 0; padding: 0 var(--s-5) 0 14px; gap: var(--s-2); }
 .fdet-pin .keycap--pin .i { width: 28px; height: 28px; }
 .fdet-pin .keycap__label { font: 700 var(--t-body-lg)/1 var(--font-text); }
-.fdet-pin .keycap__readout { color: var(--on-persimmon); opacity: .85; line-height: 1; }
+.fdet-pin .keycap__readout { color: var(--on-persimmon); opacity: 1; line-height: 1; }   /* 13px/500 mono is normal-size text: --on-persimmon at the primitive's .85 over --persimmon is 4.01:1 in Cream, under AA */
 .fdet-pin .keycap__readout[hidden] { display: none; }
 
 /* unavailable: the way out is two keys */
