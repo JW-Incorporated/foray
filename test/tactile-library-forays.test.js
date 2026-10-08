@@ -266,6 +266,9 @@ test("sheet rules: title 700 at the 17px step clamped to two lines, 44px link an
   assert.match(link, /-webkit-line-clamp: 2/);
   assert.match(link, /min-height: var\(--tap\)/);
   assert.match(CSS, /\.keycap--sm \{ min-width: var\(--tap\); height: var\(--tap\);/, "the sm key is the 44px target");
+  /* MUTATION 4: delete the `.yours-foray__foot .keycap--sm` rule - the key falls back to 44x44
+     (48 wide by padding), 16px narrower than the prototype's, and this is red. */
+  assert.match(CSS, /\.yours-foray__foot \.keycap--sm \{ min-width: calc\(var\(--key\) \+ var\(--s-4\)\); height: var\(--key\); \}/, "the key keeps the prototype's 64x48 footprint, never under the 44px target");
   assert.match(CSS, /\.yours-foray:not\(\.is-part\) \.t-band__base \{ opacity: 1; \}/);
   assert.match(CSS, /\.t-band__base \{ opacity: \.4; \}/, "and the primitive keeps its 40% for what is left of a part-played one");
   assert.ok(!/\.yours-foray[^{]*\{[^}]*(transition|animation)/.test(CSS), "no transition or animation added (the one reduced-motion block needs no new name)");

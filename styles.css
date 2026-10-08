@@ -5379,6 +5379,7 @@ body.fp-open:not(.mini-dismissed) .yours-toast { bottom: calc(var(--safe-b) + va
 .yours-foray__foot { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); }
 .yours-foray__readout { min-width: 0; color: var(--ink-2); }
 .yours-foray__foot .keycap { flex: none; margin-bottom: var(--lip); }
+.yours-foray__foot .keycap--sm { min-width: calc(var(--key) + var(--s-4)); height: var(--key); }   /* the sm key at the prototype's 64x48 footprint for this card (fidelity i1: 48x44 read 16px narrow); still a 44px-or-more target */
 
 /* TODAY (Tactile Home, screen "home"; docs/redesign-2026/directions/tactile/
    BUILD-NOTES.md 4.1, prototype/app.css the target). Everything here hangs on
