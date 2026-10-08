@@ -146,6 +146,31 @@ test("the 24px label gate is applied to the whole run, not either bar", () => {
   assert.strictEqual((html.match(/>SS<\/text>/g) || []).length, 0, "a truly narrow run stays unlabelled");
 });
 
+test("a run under 24px keeps its station code when two letters fit between its neighbours' codes", () => {
+  /* The first runs of a 7-show foray are 13 and 19px wide; with no code beside them
+     colour was the only thing naming the show. Wide runs claim their codes first, a
+     narrow one takes a code only if it clears its neighbours (centres 16px apart) and
+     is at least 8px wide, left to right.
+     MUTATION 1: make tactileBandLabelRuns return only the wide runs -> the two fitting
+     narrow codes (BF, YC) disappear and the first assertion fails.
+     MUTATION 2: drop the `fits(run)` collision test (`if (wide || true)`) -> the crowded
+     pair loses its gap and the pitch assertion fails. */
+  const shows = [
+    { showId: "bf", show: "Bootstrapped Founder", duration: 40 },
+    { showId: "yc", show: "Y Combinator", duration: 55 },
+    { showId: "ss", show: "Startups Stories", duration: 300 },
+    { showId: "bg", show: "Big Show", duration: 600 },
+    { showId: "t1", show: "Tiny One", duration: 35 },
+    { showId: "t2", show: "Tiny Two", duration: 35 },
+  ];
+  const html = p.tactileBand({ id: "narrow", kind: "scrub", segments: shows, renderWidth: 345 });
+  const labels = [...html.matchAll(/class="t-band__code[^"]*" data-run-start="(\d+)"[^>]*>([^<]+)</g)].map((m) => `${m[1]}:${m[2]}`);
+  assert.deepStrictEqual(labels.slice(0, 4), ["0:BF", "1:YC", "2:SS", "3:BS"], "the narrow runs read, in order, beside the wide ones");
+  const xs = [...html.matchAll(/class="t-band__code[^"]*"[^>]*x="([\d.]+)"/g)].map((m) => Number(m[1]) * 345 / 1000);
+  xs.slice(1).forEach((x, i) => assert.ok(x - xs[i] >= 16 - 1e-6, `codes ${i} and ${i + 1} are ${x - xs[i]}px apart, under the 16px pitch`));
+  assert.deepStrictEqual(labels.slice(4), ["4:TO"], "two 11px runs side by side cannot both clear the pitch: the first reads, the second stays code-less");
+});
+
 test("progress uses a clip path on the drawn bars and scrub exposes the raw accessible value", () => {
   /* 43% of runtime is exactly the end of the first narration tick (400 + 30 of
      1000 s). The bars are laid out with minimum widths, so that instant must
@@ -190,6 +215,34 @@ test("the mini band and the mini player's line draw narration as a solid tick, n
     }
   }
   assert.match(rule(".t-band__bar--tick"), /fill:\s*var\(--dial-seg-narration\)/);
+});
+
+test("mini and line narration stays a short tick however long it runs", () => {
+  /* The offline home fixture: one show plus long narration beats, 60px wide each
+     when proportional, which read as a second bar rather than ticks between stations.
+     MUTATION: in tactileBandLayout make every `maxs` entry Infinity -> the narration
+     boxes come out far wider than 4px and the cap assertions fail. The layout must
+     still end at 1000 and keep a gap between neighbours. */
+  const w = 345;
+  const longNarration = [
+    { showId: "n", narration: true, duration: 300 },
+    { showId: "bbq", show: "BBQ Radio Network", duration: 400 },
+    { showId: "n", narration: true, duration: 300 },
+    { showId: "n", narration: true, duration: 300 },
+    { showId: "bbq", show: "BBQ Radio Network", duration: 700 },
+  ];
+  for (const kind of ["mini", "line"]) {
+    const input = p.tactileBandSegments(longNarration);
+    const boxes = p.tactileBandLayout(input, w, kind);
+    boxes.forEach((box, i) => {
+      if (input[i].narration) assert.ok(box.width <= 4 / w * 1000 + 0.01, `${kind}: narration ${i} is a tick (${(box.width * w / 1000).toFixed(1)}px)`);
+    });
+    const last = boxes[boxes.length - 1];
+    assert.ok(Math.abs(last.x + last.width - 1000) < 0.01, `${kind}: the last bar still ends at 1000`);
+    for (let i = 1; i < boxes.length; i++) assert.ok(boxes[i].x > boxes[i - 1].x + boxes[i - 1].width, `${kind}: a gap between bars ${i - 1} and ${i}`);
+  }
+  const detail = p.tactileBandLayout(p.tactileBandSegments(longNarration), w, "detail");
+  assert.ok(detail[0].width > 4 / w * 1000 * 3, "detail narration stays proportional (hatched, wide enough to read)");
 });
 
 test("bands rendered without an id never share their pattern or clip-path ids", () => {

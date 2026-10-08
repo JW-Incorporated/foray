@@ -56,7 +56,10 @@ function tactileKeycap(data) {
   if (d.offline) cls += " keycap--blocked";
   var disabled = d.disabled || d.loading || d.offline;
   var icon = d.offline ? "ph-cloud-slash" : d.loading ? "ph-radio" : d.icon;
-  var text = d.offline ? (d.text || "Needs a connection") : d.text;
+  /* `iconOnly` is the round or row key that has no room for the sentence: it keeps the
+   * cloud-slash and names itself ("Needs a connection: <what>") through `label`, and the
+   * sentence is drawn once beside it by tactileNeedsLine. */
+  var text = d.offline ? (d.iconOnly ? "" : (d.text || "Needs a connection")) : d.text;
   var iconSize = size === "xl" || size === "glance" ? "lg" : "";
   /* Opt-in hooks for a screen that wires the key to the app's own engines.
    * `data` becomes data-* attributes (names are checked, values escaped).
@@ -107,7 +110,11 @@ function tactileTag(data) {
   var d = data || {};
   var kind = ["stretch", "narration", "downloaded", "played", "playing"].includes(d.kind) ? d.kind : "played";
   var icons = { stretch: "bridge", narration: "narration", downloaded: "ph-check-circle", played: "ph-check", playing: "needle" };
-  return '<span class="tag tag--' + esc(kind) + '">' + tactileIcon(icons[kind], "sm") + '<span>' + esc(d.text || kind) + "</span></span>";
+  /* The downloaded mark names itself in both forms: the check-circle alone while online
+   * (`iconOnly`; the word is the aria-label), the word beside it while offline, where
+   * "what is on this device" is the point of the screen. */
+  if (kind === "downloaded" && d.iconOnly) return '<span class="tag tag--downloaded tag--icon" role="img" aria-label="Downloaded">' + tactileIcon(icons.downloaded, "sm") + "</span>";
+  return '<span class="tag tag--' + esc(kind) + '"' + (kind === "downloaded" ? ' role="img" aria-label="Downloaded"' : "") + ">" + tactileIcon(icons[kind], "sm") + '<span>' + esc(d.text || kind) + "</span></span>";
 }
 
 function tactileCard(data) {
@@ -201,6 +208,41 @@ function tactileBandRuns(segments, widths) {
   return runs;
 }
 
+/* Which runs carry a station code (BUILD-NOTES 3.6: one code per run). A run of
+ * at least 24px rendered always does. A narrower run still does when its two
+ * letters fit under it without touching a neighbour's code, because colour must
+ * never be the only thing that says which show a short run is (the first two
+ * runs of a 7-show foray are 13 and 19px wide): runs are tried left to right
+ * after the wide ones have claimed their room, two labels' centres stay at least
+ * CODE_PX + CODE_GAP_PX apart, and a run narrower than MIN_RUN_PX (a bar too
+ * thin to read as the thing the letters sit under) keeps only its aria-label. A
+ * code may overhang the band's own edge by EDGE_PX: the well round the band has
+ * 10px of padding, so the first run's code stays inside the well. */
+var TACTILE_CODE_PX = 14;
+var TACTILE_CODE_GAP_PX = 2;
+var TACTILE_CODE_MIN_RUN_PX = 8;
+var TACTILE_CODE_FULL_RUN_PX = 24;
+var TACTILE_CODE_EDGE_PX = 8;
+
+function tactileBandLabelRuns(runs, renderWidth) {
+  var px = 1 / 1000 * renderWidth;
+  var pitch = TACTILE_CODE_PX + TACTILE_CODE_GAP_PX;
+  var placed = [];
+  function fits(run) {
+    var centre = (run.x + run.right) / 2 * px;
+    if (centre - TACTILE_CODE_PX / 2 < -TACTILE_CODE_EDGE_PX || centre + TACTILE_CODE_PX / 2 > renderWidth + TACTILE_CODE_EDGE_PX) return false;
+    return placed.every(function (other) { return Math.abs((other.x + other.right) / 2 * px - centre) >= pitch; });
+  }
+  [true, false].forEach(function (wide) {
+    runs.forEach(function (run) {
+      var widthPx = (run.right - run.x) * px;
+      if (wide ? widthPx < TACTILE_CODE_FULL_RUN_PX : widthPx >= TACTILE_CODE_FULL_RUN_PX || widthPx < TACTILE_CODE_MIN_RUN_PX) return;
+      if (wide || fits(run)) placed.push(run);
+    });
+  });
+  return runs.filter(function (run) { return placed.indexOf(run) >= 0; });
+}
+
 function tactileBandSegments(input) {
   return (Array.isArray(input) ? input : []).map(function (segment, index) {
     var s = segment || {};
@@ -235,6 +277,17 @@ function tactileBandLayout(segments, renderWidth, kind) {
   var mins = segments.map(function (segment) {
     return (segment.narration && kind !== "mini" && kind !== "line" ? 8 : 3) / width * 1000;
   });
+  /* Narration in the tick kinds (mini, line) is a SHORT tick between station bars
+     whatever its runtime: capped at 4px rendered, the surplus going to the stations,
+     so a long narrated stretch never reads as a second wide bar (the stations-on-a-dial
+     read). Only when a station bar exists to take the surplus; an all-narration band
+     keeps proportional widths so the last bar still ends at 1000.
+     MUTATION: make `maxs` all Infinity -> the long-narration test fails. */
+  var tickKind = kind === "mini" || kind === "line";
+  var hasStation = segments.some(function (segment) { return !segment.narration; });
+  var maxs = segments.map(function (segment) {
+    return tickKind && hasStation && segment.narration ? 4 / width * 1000 : Infinity;
+  });
   var minSum = mins.reduce(function (sum, m) { return sum + m; }, 0);
   var gap = [Math.max(2, 2000 / width), Math.max(2, 1000 / width), 2].find(function (g, i, all) {
     return i === all.length - 1 || minSum + g * (n - 1) <= 1000;
@@ -245,14 +298,19 @@ function tactileBandLayout(segments, renderWidth, kind) {
     widths = mins.map(function (m) { return m * available / minSum; });
   } else {
     var pinned = mins.map(function () { return false; });
+    var pinW = mins.slice();
     var changed = true;
     while (changed) {
       var free = available;
       var freeTime = 0;
-      segments.forEach(function (segment, i) { if (pinned[i]) free -= mins[i]; else freeTime += segment.duration; });
-      widths = segments.map(function (segment, i) { return pinned[i] ? mins[i] : segment.duration / freeTime * free; });
+      segments.forEach(function (segment, i) { if (pinned[i]) free -= pinW[i]; else freeTime += segment.duration; });
+      widths = segments.map(function (segment, i) { return pinned[i] ? pinW[i] : segment.duration / freeTime * free; });
       changed = false;
-      widths.forEach(function (w, i) { if (!pinned[i] && w < mins[i]) { pinned[i] = true; changed = true; } });
+      widths.forEach(function (w, i) {
+        if (pinned[i]) return;
+        if (w < mins[i]) { pinned[i] = true; pinW[i] = mins[i]; changed = true; }
+        else if (w > maxs[i]) { pinned[i] = true; pinW[i] = maxs[i]; changed = true; }
+      });
     }
   }
   var total = segments.reduce(function (sum, segment) { return sum + segment.duration; }, 0);
@@ -352,9 +410,7 @@ function tactileBand(data) {
       : '" y="' + barY + '" width="' + box.width.toFixed(2) + '" height="' + barH + '" rx="' + rx.toFixed(2) + '" ry="' + ry.toFixed(2) + '"';
     return '<rect class="' + cls + '"' + (segment.narration && hatch ? ' fill="url(#' + esc(id) + '-hatch)"' : "") + ' data-segment-index="' + index + '" x="' + box.x.toFixed(2) + shape + "></rect>";
   }).join("");
-  var labels = kind === "mini" || kind === "line" ? "" : tactileBandRuns(segments, widths).map(function (run) {
-    var widthPx = (run.right - run.x) / 1000 * renderWidth;
-    if (widthPx < 24) return "";
+  var labels = kind === "mini" || kind === "line" ? "" : tactileBandLabelRuns(tactileBandRuns(segments, widths), renderWidth).map(function (run) {
     var isCurrent = current >= run.start && current <= run.end;
     var centre = ((run.x + run.right) / 2).toFixed(2);
     /* Detail codes are counter-scaled on x so a glyph is 13px wide and 13px tall, not
@@ -536,6 +592,10 @@ function tactileDisplayName(name) {
 function tactilePlayKey(d, title) {
   var live = Boolean(d.id) && d.playable !== false;
   if (d.id && !live) return "";
+  /* OFFLINE (BUILD-NOTES 3.1): a pick that is not on this device takes the blocked
+   * key: paper-2 fill, line lip, ink-3 cloud-slash, disabled, no engine hooks (a
+   * press can start nothing), named for what it would have played. */
+  if (d.blocked) return tactileKeycap({ size: "sm", variant: "paper", offline: true, iconOnly: true, label: "Needs a connection: " + title });
   return tactileKeycap({
     /* The prototype's row key is the 44px rounded key (a 48x44 plate), not a
        round one: `round` makes a 48x44 key an oval. */
@@ -554,6 +614,20 @@ function tactileQueueAction(d, title) {
   return `<button type="button" class="row__queue${d.queued ? " on" : ""}" data-upnext="${esc(d.id)}" data-ctl-icons aria-label="${esc(d.queued ? "In Up Next" : "Add to Up Next: " + title)}">` +
     tactileIcon("ph-plus", "sm") + tactileIcon("ph-check", "sm", "i--swap") +
     '<span class="row__queue-off">Up Next</span><span class="row__queue-fresh">Queued</span><span class="row__queue-on">In Up Next</span></button>';
+}
+
+/* The sentence the blocked keys share, drawn once under the row or card they sit on. */
+function tactileNeedsLine() {
+  return '<p class="needs">' + tactileIcon("ph-cloud-slash") + "<span>Needs a connection</span></p>";
+}
+
+/* The downloaded mark on a row's meta line: absent when the episode is not on the
+ * device; the check-circle alone for `downloadedMark: "icon"` (online), the word beside
+ * it otherwise. A caller that only says `downloaded: true` (the gallery) gets the word,
+ * as it always has. */
+function tactileDownloadedMark(d) {
+  if (!d.downloaded) return "";
+  return tactileTag({ kind: "downloaded", text: "Downloaded", iconOnly: d.downloadedMark === "icon" });
 }
 
 /* A length the caller does not know is "" and draws nothing; only an ABSENT
@@ -583,8 +657,8 @@ function tactileEpisodeRow(data) {
   return '<article class="row-episode' + (d.loading ? " is-loading" : "") + '"' + tactileBranchAttr(d) + (d.loading ? ' aria-busy="true"' : "") + ">" +
     tactileArtFrame({ size: "row", title: d.title, url: d.artwork, initials: d.initials, loading: d.loading }) +
     '<div class="row__body"><h3 class="row__title">' + tactileTitleLink(d, title) + '</h3><div class="row__meta"><span class="row__show">' + esc(tactileDisplayName(d.show)) + '</span><span class="row__facts">' + tactileReadout(d.duration) +
-    (d.downloaded ? tactileTag({ kind: "downloaded", text: "Downloaded" }) : "") +
-    tactileQueueAction(d, d.title || "episode") + "</span></div></div>" +
+    tactileDownloadedMark(d) +
+    tactileQueueAction(d, d.title || "episode") + "</span></div>" + (d.blocked ? tactileNeedsLine() : "") + "</div>" +
     '<div class="row__end">' + (d.id ? tactilePlayKey(d, d.title || "episode") : tactileKeycap({ size: "sm", variant: "persimmon", round: true, icon: "ph-play-fill", label: "Play " + (d.title || "episode") })) + "</div>" +
     /* The why-line is the grid's own third row, spanning the text column and the
        key's (`grid-column: 2 / -1`), as in the prototype; inside the body it wrapped at

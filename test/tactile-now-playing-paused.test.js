@@ -1,0 +1,348 @@
+/* Tactile Phase 4 group A `now-playing-paused` (BUILD-PLAN 2.2): the sheet
+ * when the listener has pressed pause, and the buffering stall.
+ *
+ * ui/now-playing.js is run for real in a vm with a small element model that
+ * logs every write; the helpers that need a browser (tint sampling, computed
+ * style) are the file's own guards, which answer "nothing" without one.
+ *
+ * Every test names the one-line mutation that turns it red; each was run.
+ *   Suite map: this file pins the paint half (glyph, label, needle, stall
+ *   class), the elapsed "…" and the harness step. The gradient, geometry and
+ *   reduced-motion enumeration are test/ui-tokens-dial.test.js's.
+ */
+"use strict";
+const { test } = require("node:test");
+const assert = require("node:assert");
+const fs = require("node:fs");
+const path = require("node:path");
+const vm = require("node:vm");
+const { load, rule, ROOT, CSS } = require("./helpers/tactile-primitives.js");
+
+const NP_SRC = fs.readFileSync(path.join(ROOT, "ui", "now-playing.js"), "utf8").replace(/\r\n/g, "\n");
+const CLIENT = fs.readFileSync(path.join(ROOT, "player", "client.js"), "utf8").replace(/\r\n/g, "\n");
+const STATES = fs.readFileSync(path.join(ROOT, "tools", "ui-lab", "lib", "states.mjs"), "utf8").replace(/\r\n/g, "\n");
+
+/* An element that records every write made to it, so "identical outside the
+   Play keycap" is a comparison of two logs and not a list of the writes the
+   test author thought of. */
+class El {
+  constructor(name) {
+    this.name = name;
+    this.log = [];
+    this.attrs = {};
+    this.dataset = {};
+    this.clientWidth = 345;
+    this.textContent = "";
+    this._html = "";
+    const self = this;
+    this.classes = new Set();
+    this.classList = {
+      toggle: (c, on) => { const next = on === undefined ? !self.classes.has(c) : Boolean(on); if (next) self.classes.add(c); else self.classes.delete(c); self.log.push(["class", c, next]); return next; },
+      add: (c) => { self.classes.add(c); self.log.push(["class", c, true]); },
+      remove: (c) => { self.classes.delete(c); self.log.push(["class", c, false]); },
+      contains: (c) => self.classes.has(c),
+    };
+    this.style = { setProperty: (k, v) => self.log.push(["css", k, String(v)]) };
+  }
+  get innerHTML() { return this._html; }
+  set innerHTML(v) { this._html = String(v); this.log.push(["html", this._html]); }
+  setAttribute(k, v) { this.attrs[k] = String(v); this.log.push(["attr", k, String(v)]); }
+  getAttribute(k) { return Object.prototype.hasOwnProperty.call(this.attrs, k) ? this.attrs[k] : null; }
+  removeAttribute(k) { delete this.attrs[k]; this.log.push(["rm", k]); }
+  replaceChildren(...k) { this.log.push(["children", k.map(String).join("|")]); }
+  querySelector() { return null; }
+  querySelectorAll() { return []; }
+}
+
+function build() {
+  const ctx = load({
+    window: null,
+    document: { documentElement: { dataset: {} } },
+    getComputedStyle: () => ({ lineHeight: "30px", getPropertyValue: () => "" }),
+  });
+  ctx.window = ctx;
+  vm.runInContext(NP_SRC, ctx, { filename: "ui/now-playing.js" });
+  const parts = {
+    sheet: new El("sheet"), sShow: new El("sShow"), sTitle: new El("sTitle"), bigPlay: new El("bigPlay"),
+    bandSvg: new El("bandSvg"), bandVisual: new El("bandVisual"), bandNeedle: new El("bandNeedle"),
+    scrub: new El("scrub"), tNow: new El("tNow"), tLeft: new El("tLeft"),
+    moreKey: "",
+  };
+  return { ctx, parts };
+}
+
+/* The model client.js builds, minus the part under test. */
+function model(over) {
+  return { foray: true, running: true, buffering: false, position: 760, duration: 3000, currentIndex: 0, segments: [], detailKey: "", ...over };
+}
+
+function paint(over) {
+  const { ctx, parts } = build();
+  ctx.DialNowPlaying.paint(parts, model(over));
+  return parts;
+}
+
+const outsideKeycap = (parts) => Object.fromEntries(
+  Object.entries(parts).filter(([k, v]) => v instanceof El && k !== "bigPlay").map(([k, v]) => [k, { log: v.log, attrs: v.attrs, classes: [...v.classes].sort(), html: v._html }]),
+);
+
+test("a paused sheet shows the play glyph, the label Play, and no needle animation or stall class", () => {
+  /* MUTATION: in dialPaintNowPlaying write `d.running ? "ph-play-fill" : "ph-pause-fill"`
+     (glyphs swapped) -> the glyph, the label pair and the inverse all fail. */
+  const paused = paint({ running: false });
+  assert.strictEqual(paused.bigPlay.dataset.icon, "ph-play-fill");
+  assert.match(paused.bigPlay._html, /ph-play-fill/);
+  assert.doesNotMatch(paused.bigPlay._html, /ph-pause-fill/);
+  assert.strictEqual(paused.bigPlay.attrs["aria-label"], "Play");
+  assert.ok(!paused.bandNeedle.classes.has("is-buffering"), "no animation hook on the needle");
+  assert.ok(!paused.sheet.classes.has("np--buffering"));
+  /* The inverse: the playing sheet is the pause glyph, so the test above is
+     not satisfied by a painter that ignores `running`. */
+  const playing = paint({ running: true });
+  assert.strictEqual(playing.bigPlay.dataset.icon, "ph-pause-fill");
+  assert.strictEqual(playing.bigPlay.attrs["aria-label"], "Pause");
+});
+
+test("paused and playing paint every other element identically, and neither touches the elapsed readout", () => {
+  /* MUTATION: add `parts.sheet.classList.toggle("np--paused", !d.running);` to
+     dialPaintNowPlaying -> the sheet's log differs between the two paints and
+     this test names `sheet`. The harness reads the whole log of every part, not
+     a hand-picked list, so a new write anywhere outside the keycap fails it. */
+  const playing = paint({ running: true });
+  const paused = paint({ running: false });
+  assert.deepStrictEqual(outsideKeycap(paused), outsideKeycap(playing));
+  assert.deepStrictEqual(paused.tNow.log, [], "the readout is not this painter's: a pause keeps the value client.js wrote");
+  assert.notDeepStrictEqual(paused.bigPlay.log, playing.bigPlay.log, "fixture premise: the keycap IS where they differ");
+});
+
+test("buffering pulses the needle and marks the sheet; stopping clears both", () => {
+  /* MUTATION: delete the `parts.bandNeedle.classList.toggle("is-buffering", ...)`
+     line -> the needle half fails; delete the `np--buffering` toggle -> the sheet half fails. */
+  const { ctx, parts } = build();
+  ctx.DialNowPlaying.paint(parts, model({ buffering: true }));
+  assert.ok(parts.bandNeedle.classes.has("is-buffering"));
+  assert.ok(parts.sheet.classes.has("np--buffering"));
+  ctx.DialNowPlaying.paint(parts, model({ buffering: false }));
+  assert.ok(!parts.bandNeedle.classes.has("is-buffering"), "the same needle element is released, not left pulsing");
+  assert.ok(!parts.sheet.classes.has("np--buffering"));
+});
+
+test("the needle pulse is opacity 1 to 0.4 over the 1s token, only while buffering, and Reduce Motion stills it", () => {
+  /* MUTATION 1: change `to { opacity: .4; }` in @keyframes np-needle-pulse to .6 -> red.
+     MUTATION 2: delete `.np__needle.is-buffering,` from the reduced-motion block -> red.
+     MUTATION 3: add `animation: np-needle-pulse ...` to plain `.np__needle` -> the paused half is red. */
+  assert.match(CSS, /--d-buffer:\s*1000ms/, "the pulse duration is the 1s motion token");
+  assert.match(CSS, /@keyframes np-needle-pulse\s*\{\s*from\s*\{\s*opacity:\s*1;?\s*\}\s*to\s*\{\s*opacity:\s*\.4;?\s*\}\s*\}/, "the keyframes run opacity 1 to .4");
+  const pulse = rule(".np__needle.is-buffering");
+  assert.match(pulse, /animation:\s*np-needle-pulse var\(--d-buffer\)/);
+  assert.match(pulse, /infinite alternate/);
+  assert.doesNotMatch(rule(".np__needle"), /animation/, "a paused needle has no animation");
+  const start = CSS.indexOf("@media (prefers-reduced-motion: reduce)");
+  assert.ok(start > 0 && CSS.indexOf("@media (prefers-reduced-motion", start + 10) === -1, "exactly one reduced-motion block");
+  const block = CSS.slice(start);
+  const stilled = /([^{}]*)\{\s*animation:\s*none;?\s*\}/g;
+  const selectors = [];
+  for (const m of block.matchAll(stilled)) selectors.push(...m[1].split(",").map((s) => s.trim()));
+  assert.ok(selectors.includes(".np__needle.is-buffering"), "the one block names the needle pulse");
+});
+
+/* paintClocks, lifted from the player's own source and run with the three
+   formatters stubbed to fixed strings: the branch under test is `stalled`. */
+function clocks() {
+  const start = CLIENT.indexOf("function paintClocks(");
+  const end = CLIENT.indexOf("\n}\n", start);
+  assert.ok(start > 0 && end > start, "client.js still declares paintClocks()");
+  const ui = { tNow: new El("tNow"), tLeft: new El("tLeft"), scrub: new El("scrub") };
+  ui.tNow.textContent = "";
+  Object.defineProperty(ui.tNow, "textContent", { get() { return this._t || ""; }, set(v) { this._t = v; this.log.push(["text", v]); } });
+  Object.defineProperty(ui.tLeft, "textContent", { get() { return this._t || ""; }, set(v) { this._t = v; } });
+  const ctx = vm.createContext({
+    ui, foray: { index: 0, resolved: { estimated: false, playable: [{ show: "Odd Lots" }] } }, window: { DialNowPlaying: {} },
+    fmtClock: () => "12:40", formatTimestamp: () => "12:40", remainingClock: () => "-38:42",
+    dialSpokenClock: () => "12 minutes 40", EXACT: 1, Math,
+  });
+  vm.runInContext(CLIENT.slice(start, end + 2), ctx, { filename: "player/client.js (paintClocks)" });
+  return { ctx, ui };
+}
+
+test("a stalled sheet reads an ellipsis for elapsed and keeps the real countdown; a paused one keeps its value", () => {
+  /* MUTATION: change `stalled ? "…" : now` to `now` in paintClocks -> the stalled half is red.
+     MUTATION 2: show the ellipsis whenever the transport is not running (use
+     `!running`) -> the paused half is red, which is the point of pinning it. */
+  const { ctx, ui } = clocks();
+  ctx.paintClocks(760, 3000, true, null, true);
+  assert.strictEqual(ui.tNow.textContent, "…");
+  assert.strictEqual(ui.tLeft.textContent, "-38:42", "only the elapsed readout is replaced");
+  ctx.paintClocks(760, 3000, true, null, false);
+  assert.strictEqual(ui.tNow.textContent, "12:40", "stopping the stall restores the value");
+  const paused = clocks();
+  paused.ctx.paintClocks(760, 3000, true, null);
+  assert.strictEqual(paused.ui.tNow.textContent, "12:40", "a paused sheet (no stall) keeps its elapsed value, no ellipsis");
+});
+
+test("the sheet's stall is the first load OR a mid-play stall, the same boolean drives needle and readout, and a drag preview never stalls", () => {
+  /* MUTATION 1: change one `buffering: loading || buffering` back to `buffering: loading`
+     -> the model pin is red (a `waiting` stall would leave the needle still, as it did).
+     MUTATION 2: drop `Boolean(window.DialNowPlaying) && Boolean(dialModel?.buffering)` from the
+     render() call -> the readout pin is red.
+     MUTATION 3: pass a stall from the drag-preview paintClocks(at, dur) call -> the preview pin is red. */
+  assert.strictEqual((CLIENT.match(/running, buffering: loading \|\| buffering,/g) || []).length, 2, "episode and foray models both carry the stall");
+  assert.doesNotMatch(CLIENT, /running, buffering: loading,/);
+  assert.match(CLIENT, /paintClocks\(pos, dur, !held, window\.DialNowPlaying \? dialModel\?\.valueText : null, Boolean\(window\.DialNowPlaying\) && Boolean\(dialModel\?\.buffering\)\);/);
+  const preview = [...CLIENT.matchAll(/paintClocks\(at, dur\);/g)];
+  assert.strictEqual(preview.length, 1, "the drag preview calls paintClocks with the real position");
+});
+
+test("the harness reaches the paused sheet by pressing Play once the sheet is open, and the screen map points at it", () => {
+  /* MUTATION 1: point screens.json's now-playing-paused row back at "now-playing" -> red.
+     MUTATION 2: rename the step label in states.mjs -> red (fidelity.mjs would exit 2 on it too).
+     MUTATION 3: drop the second `.fp-big` click -> the step never reaches Play and the ready selector times out. */
+  const step = /\{ label: "now-playing-paused", route: "#\/library", run: \(page\) => pausedForayNowPlaying\(page\), ready: '#foray-player \.fp-play\[aria-label="Play"\]' \}/;
+  assert.match(STATES, step);
+  const player = STATES.slice(STATES.indexOf('id: "player"'), STATES.indexOf('id: "search"'));
+  assert.ok(player.indexOf('label: "now-playing-closed"') < player.indexOf('label: "now-playing-paused"'), "appended after the existing steps, none reordered");
+  const fn = /async function pausedForayNowPlaying[\s\S]*?\n\}/.exec(STATES)[0];
+  assert.strictEqual((fn.match(/await big\.click\(\)/g) || []).length, 2, "one press starts it, one press pauses it");
+  assert.match(fn, /fp-big\[aria-label="Play"\]/);
+  const map = JSON.parse(fs.readFileSync(path.join(ROOT, "docs", "redesign-2026", "directions", "tactile", "screens.json"), "utf8"));
+  assert.deepStrictEqual(map.screens["now-playing-paused"].app, { state: "player", step: "now-playing-paused" });
+  assert.strictEqual(map.screens["now-playing"].app.step, "now-playing", "the playing row is untouched");
+});
+
+test("a started foray's why-line stays out of the sheet's layout but not out of the accessibility tree", () => {
+  /* The real paused and playing sheets carry a why-line (the player sets one on
+     start); the prototype's head is title, show, chips. Without this the band
+     sits 44px lower than the prototype and than the restored sheet.
+     MUTATION 1: put `margin: 0; font-size: var(--t-body);` back (drop the clip) -> red.
+     MUTATION 2: swap the rule for `display: none` -> red (a screen reader would lose the line). */
+  const why = rule(".np .np__text .np__why");
+  assert.match(why, /position:\s*absolute/);
+  assert.match(why, /clip-path:\s*inset\(50%\)/);
+  assert.match(why, /overflow:\s*hidden/);
+  assert.doesNotMatch(why, /display:\s*none/);
+});
+
+test("the Play keycap's drawn glyph survives the player's repaint: it is a dial-owned control, so paintControl writes only its name", () => {
+  /* Found in the browser, not by a test: the live key showed a text "▶" because
+     paintControl rewrote its text at 4 Hz and dialPaintNowPlaying redraws only
+     when the icon id changes.
+     MUTATION 1: remove `parts.bigPlay,` from the dialOwnGlyph list in ui/now-playing.js -> the
+     build pin is red.
+     MUTATION 2: delete the `dialOwned === "1"` early return in paintControl -> the behaviour half is red. */
+  assert.match(NP_SRC, /\[parts\.backBtn, parts\.bigPlay, parts\.fwdBtn, parts\.rateBtn, parts\.bookmarkBtn, parts\.queueLink\]\.forEach\(dialOwnGlyph\);/);
+  const start = CLIENT.indexOf("function paintControl(");
+  const end = CLIENT.indexOf("\n}\n", start);
+  assert.ok(start > 0 && end > start, "client.js still declares paintControl()");
+  const ctx = vm.createContext({});
+  vm.runInContext(CLIENT.slice(start, end + 2), ctx, { filename: "player/client.js (paintControl)" });
+  const key = new El("bigPlay");
+  key.dataset.dialOwned = "1";
+  key.innerHTML = '<svg class="i i--lg"><use href="#ph-play-fill"></use></svg>';
+  let textWrites = 0;
+  Object.defineProperty(key, "textContent", { get() { return ""; }, set() { textWrites += 1; } });
+  ctx.paintControl(key, "▶", "Play");
+  assert.strictEqual(textWrites, 0, "no text written over the drawn glyph");
+  assert.match(key.innerHTML, /ph-play-fill/);
+  assert.strictEqual(key.getAttribute("aria-label"), "Play");
+  /* The control's inverse: an unowned control still gets its text, so the
+     assertion above is not satisfied by a paintControl that writes nothing. */
+  const plain = new El("playBtn");
+  let plainText = null;
+  Object.defineProperty(plain, "textContent", { get() { return ""; }, set(v) { plainText = v; } });
+  ctx.paintControl(plain, "▶", "Play");
+  assert.strictEqual(plainText, "▶");
+});
+
+test("the previous/next clip buttons a started foray shows read in --ink-2 on the tint, hover in --ink", () => {
+  /* The contrast gate first met them in the paused step (a restored sheet hides
+     the row): --muted on the mustard tint was 3.43:1 at 13px.
+     MUTATION 1: delete the `body.ui-v2 .fp-sheet.np .fp-clip` rule -> red.
+     MUTATION 2: set it back to `var(--muted)` -> red. */
+  assert.match(rule("body.ui-v2 .fp-sheet.np .fp-clip"), /color:\s*var\(--ink-2\)/);
+  assert.match(rule("body.ui-v2 .fp-sheet.np .fp-clip:hover:not(:disabled)"), /color:\s*var\(--ink\)/);
+});
+
+test("the needle stands on the bar the show chip names, even when the time is exactly a segment boundary", () => {
+  /* A foray restored or advanced to a segment sits exactly at its start. The
+     primitive maps a boundary time to the END of the earlier bar, so the chip read
+     the new show (YC) while the needle stood on the old show's (SS) bar.
+     MUTATION: make dialBandX ignore its third argument (`return x;`) -> the clamped
+     needle falls back to the earlier bar's right edge and the first assertion fails.
+     The inverse (no index given) keeps the primitive's own answer, so the clamp is not
+     what moved the unrelated callers. */
+  const { ctx } = build();
+  const shows = [{ showId: "a", show: "A Show", duration: 100 }, { showId: "b", show: "B Show", duration: 100 }, { showId: "c", show: "C Show", duration: 100 }];
+  const boxes = ctx.tactileBandLayout(ctx.tactileBandSegments(shows), 345, "scrub");
+  const edgeOfFirst = boxes[0].x + boxes[0].width;
+  assert.ok(boxes[1].x > edgeOfFirst, "fixture premise: there is a gap between bars 0 and 1");
+  assert.ok(ctx.dialBandX(boxes, 1 / 3, 1) >= boxes[1].x - 1e-9, "at the boundary the needle is on the second bar the chip names");
+  assert.ok(Math.abs(ctx.dialBandX(boxes, 1 / 3) - edgeOfFirst) < 1e-6, "no index: the primitive's answer, the earlier bar's edge");
+  assert.ok(ctx.dialBandX(boxes, 1 / 3 + 0.2, 1) <= boxes[1].x + boxes[1].width + 1e-9, "a late index cannot pull the needle past its own bar");
+  /* End to end through the paint: the --x the sheet writes. */
+  const boundary = paint({ position: 1000, duration: 3000, currentIndex: 1, segments: shows.map((s, i) => ({ ...s, colorIndex: i })) });
+  const x = Number(boundary.bandNeedle.log.filter((e) => e[0] === "css" && e[1] === "--x").pop()[2]) * 1000;
+  assert.ok(x >= boxes[1].x - 1, `the painted needle (${x}) is on bar 1 (from ${boxes[1].x})`);
+});
+
+test("the transport keeps the prototype's 68/80/68 key widths and the Up next heading its 607px top block", () => {
+  /* Measured against the prototype at 393x852: the skip keys are 68 wide (the 56px
+     key with 20px side padding), and the block above "Up next" ends at 607px, so the
+     heading's first card peeks into the dock's fade.
+     MUTATION 1: put `width: var(--key-lg)` back on `.np .transport .keycap--lg` -> red.
+     MUTATION 2: set `.np__top` min-height back to `calc(100% - 176px ...)` -> red
+     (that put the heading 14px low and the card under opaque paper). */
+  const lg = rule(".np .transport .keycap--lg");
+  assert.match(lg, /width:\s*calc\(var\(--key-lg\) \+ var\(--s-3\)\)/);
+  assert.doesNotMatch(lg, /[^-]width:\s*var\(--key-lg\)/);
+  assert.match(rule(".np__top"), /min-height:\s*calc\(100% - 189px - var\(--safe-b\)\)/);
+  assert.match(rule(".np__dock::before"), /inset:\s*-14px 0/);
+});
+
+test("the Up next opener is a quiet round chip, so the second row reads one key (bookmark) and three chips", () => {
+  /* The prototype draws the opener as `.iconbtn` (44px, round, on the card, a 1px ring,
+     no lip); DIRECTION: keys are for what changes playback or the collection, a menu
+     opener is quiet. It was built as a keycap, which made the row two keys plus two chips.
+     MUTATION 1: put "keycap keycap--sm keycap--paper" back on `parts.queueLink.className`
+     -> red. MUTATION 2: drop `rotary-chip` from that className -> red.
+     MUTATION 3: delete `width: var(--tap)` from `.np .fp-upnext` -> red (the chip would
+     stretch to the glyph plus the chip's side padding, off the prototype's 44). */
+  const line = /parts\.queueLink\.className = "([^"]*)";/.exec(NP_SRC);
+  assert.ok(line, "the opener's className is assigned in one place");
+  const classes = line[1].split(/\s+/);
+  assert.ok(classes.includes("fp-upnext") && classes.includes("rotary-chip"), "round chip: " + line[1]);
+  assert.ok(!classes.some((c) => c.startsWith("keycap")), "no keycap class on the opener: " + line[1]);
+  const keys = [...NP_SRC.matchAll(/parts\.(\w+)\.className = "[^"]*\bkeycap\b/g)].map((m) => m[1]);
+  assert.deepStrictEqual(keys.filter((k) => ["rateBtn", "bookmarkBtn", "queueLink"].includes(k)), ["bookmarkBtn"]);
+  const chip = rule(".np .fp-upnext");
+  assert.match(chip, /[^-]width:\s*var\(--tap\)/);
+  assert.match(chip, /padding:\s*0;/);
+});
+
+test("the Up next card's art tile is top-aligned so it sits in the part of the card the dock fade leaves visible", () => {
+  /* A tall body (title, why-line) centred the 56px tile lower, under the keys and the
+     paper fade: the slot read as empty at 393x852 though the tile was drawn.
+     MUTATION: set `.np__up-next-card` back to `align-items: center` -> red. */
+  const card = rule(".np__up-next-card");
+  assert.match(card, /align-items:\s*start/);
+  assert.doesNotMatch(card, /align-items:\s*center/);
+});
+
+test("the harness foray carries no narration, so its band is bars only; a narrated foray in the same data hatches", () => {
+  /* The hatch is the 'authored by 4a' mark, so its absence from the paused render had to
+     be checked against the data, not assumed: capital-types-1 (the step's foray) is 22
+     show segments and no narration item, while the published how-ai-actually-gets-built
+     foray carries 39. The sheet draws its band through tactileBand's non-mini path, which
+     hatches narration (test/tactile-band.test.js pins that half: the hatch fill URL on
+     every narration rect). If a narrated fixture ever replaces capital-types-1 this test
+     goes red and the render deviation is real, not data.
+     MUTATION 1: add one non-segment item to capital-types-1 in data/forays.json -> red.
+     MUTATION 2: change `kind: "scrub"` to `kind: "mini"` in the sheet's band paint -> red. */
+  const doc = JSON.parse(fs.readFileSync(path.join(ROOT, "data", "forays.json"), "utf8"));
+  const list = Array.isArray(doc) ? doc : doc.forays;
+  const byId = new Map(list.map((f) => [f.id, f]));
+  const narrations = (f) => f.items.filter((i) => i.type !== "segment").length;
+  assert.match(STATES, /const id = "capital-types-1";/);
+  assert.strictEqual(narrations(byId.get("capital-types-1")), 0, "the harness foray has no narration");
+  assert.ok(narrations(byId.get("how-ai-actually-gets-built-3b83e1")) > 0, "a narrated foray exists to show the hatch");
+  assert.match(NP_SRC, /tactileBand\(\{[^}]*kind:\s*"scrub"/);
+});
