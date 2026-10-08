@@ -109,6 +109,25 @@ async function removeQueueRow(page, n) {
   await wait(page, 500);
 }
 
+/** Yours > Shows: press the Shows chip and wait for the grid. A chip press only
+    moves `hidden`, so the panel is already in the document; it is visible once
+    the press has landed. */
+async function openYoursShows(page) {
+  await page.waitForSelector('[data-yours-chip="shows"]', { state: "visible", timeout: 15000 });
+  await page.locator('[data-yours-chip="shows"]').click();
+  await page.waitForSelector("#yours-panel-shows .shows-tile", { state: "visible", timeout: 10000 });
+  await wait(page, 500);
+}
+
+/** Yours > Shows with the first tile's ⋯ pressed: Unfollow revealed over its art. */
+async function openYoursShowActions(page) {
+  await openYoursShows(page);
+  const tile = page.locator("#yours-panel-shows .shows-tile").first();
+  if (!(await tile.locator(".shows-tile__actions:not([hidden])").count())) await tile.locator(".shows-tile__more").click();
+  await tile.locator(".shows-tile__actions:not([hidden])").waitFor({ state: "visible", timeout: 10000 });
+  await wait(page, 400);
+}
+
 async function typeSearch(page, text) {
   await page.waitForSelector("#sh-input", { timeout: 15000 });
   await page.fill("#sh-input", text);
@@ -215,7 +234,12 @@ export function appStates(fx) {
       id: "returning",
       description: "Returning user: saved episodes, Up Next, playlists, starred shows, history.",
       seed: "returning",
-      steps: coreRoutes(fx, { entities: true }),
+      steps: [
+        ...coreRoutes(fx, { entities: true }),
+        /* Yours, Shows (tactile `library-shows`, BUILD-PLAN 2.14): the Shows chip pressed, then the first tile's ⋯ open. */
+        { label: "yours-shows", route: "#/library", run: (page) => openYoursShows(page) },
+        { label: "yours-shows-actions", route: "#/library", run: (page) => openYoursShowActions(page) },
+      ],
     },
     {
       id: "player",

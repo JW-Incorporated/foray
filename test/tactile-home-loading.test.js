@@ -212,7 +212,9 @@ test("the shimmer is opacity only at 1.2s, and the one reduced-motion block stil
   const blocks = CSS.match(/@media \(prefers-reduced-motion: reduce\)/g) || [];
   assert.strictEqual(blocks.length, 1, "exactly one reduced-motion block");
   const block = CSS.slice(CSS.indexOf("@media (prefers-reduced-motion: reduce)"));
-  assert.match(block, /\.skel \{ animation: none; \}/);
+  /* `.skel` shares the `animation: none` rule with the other stilled animations (the library unit put
+     `.yours-qtools` after it in one list), so it is "the selector that ends the list" or alone. */
+  assert.match(block, /\.skel(?:,\s*[^{}]*)? \{ animation: none; \}/);
   /* Today's overrides add no motion of their own. */
   for (const m of CSS_RULES.matchAll(/([^{}]*\.today--loading[^{}]*)\{([^{}]*)\}/g)) {
     assert.doesNotMatch(m[2], /animation|transition/, `${m[1].trim()} adds no motion`);
