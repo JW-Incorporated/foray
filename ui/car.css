@@ -44,9 +44,20 @@
    own colour at --lit-mix) instead of now-playing.css's tight 0.6r ring at mix + 25% beside a 1.6r one, whose bright
    edge read as a neon rim at 240. Hue is data and unchanged; only intensity and hardness move. The two accessibility
    drops are restated because this selector outranks the ones in now-playing.css. */
-[data-posture="car"] .ag-np.fp-sheet .ag-np-art-swap > .lit-art { box-shadow: var(--shadow-1), 0 0 var(--lit-r) calc(var(--lit-r) / -4) color-mix(in oklab, var(--art-glow, var(--glow)) var(--lit-mix), transparent); }
-@media (prefers-reduced-transparency: reduce) { [data-posture="car"] .ag-np.fp-sheet .ag-np-art-swap > .lit-art { box-shadow: var(--shadow-1); } }
+[data-posture="car"] .ag-np.fp-sheet .ag-np-art-swap > .lit-art { box-shadow: 0 0 var(--lit-r) calc(var(--lit-r) / -4) color-mix(in oklab, var(--art-glow, var(--glow)) var(--lit-mix), transparent); }
+@media (prefers-reduced-transparency: reduce) { [data-posture="car"] .ag-np.fp-sheet .ag-np-art-swap > .lit-art { box-shadow: none; } }
 @media (forced-colors: active) { [data-posture="car"] .ag-np.fp-sheet .ag-np-art-swap > .lit-art { box-shadow: none; } }
+
+/* Iteration 3 (fidelity): the 240 sleeve carries NO dark shadow. tokens.css's --shadow-1 is a black 1px/2px drop that
+   drew a thin dark rim under the art, against DIRECTION Materials ("104px or more casts its own colour, never a black
+   shadow"); the cast above is the art's colour only, and reduced transparency drops it to nothing rather than to the black
+   rim. The grabber is lifted from text-3 at 70% to text-2 at full strength: on the Glow-tinted top of the Room it sat
+   a few percent off the backdrop, so the dismiss affordance the prototype shows plainly was nearly invisible; it also sits at
+   the prototype's -6px of the head, not 0. The rim the first iteration-3 render still showed was not a shadow: styles.css gives
+   `.fp-s-art` a 1px `--line` border, and the sleeve is that element, so a 2-device-pixel dark edge ran round it. A lit sleeve
+   has no edge at all (DIRECTION Materials). */
+[data-posture="car"] .ag-np.fp-sheet .ag-np-head .fy-grab { top: -6px; background: var(--text-2); opacity: 1; }
+[data-posture="car"] .ag-np.fp-sheet .ag-np-art-swap > .lit-art { border: 0; }
 
 /* The title clamps to two lines, three when the screen is tall enough that a third line costs nothing: at 393x852 a
    two-line clamp put an ellipsis beside empty Room (critique round 3). */

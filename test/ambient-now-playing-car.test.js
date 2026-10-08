@@ -149,8 +149,14 @@ test("the car's artwork holds its step when paused and its lit-art cast is one s
   assert.match(css, /\[data-posture="car"\] \.ag-np\.is-paused\.fp-sheet \.ag-np-art-swap > img:not\(\.ag-np-art-out\):not\(\.ag-np-art-in\),\s*\[data-posture="car"\] \.ag-np\.is-paused\.fp-sheet \.ag-np-collage,\s*\[data-posture="car"\] \.ag-np\.is-paused\.fp-sheet \.ag-np-halo \{ transform: none; \}/);
   const cast = css.match(/\.ag-np-art-swap > \.lit-art \{ box-shadow: ([^;]*); \}/);
   assert.ok(cast, "car.css restates the lit-art cast");
-  assert.strictEqual(cast[1], "var(--shadow-1), 0 0 var(--lit-r) calc(var(--lit-r) / -4) color-mix(in oklab, var(--art-glow, var(--glow)) var(--lit-mix), transparent)", "one ring, the art's colour at the token's mix, no second ring and no mix boost");
-  assert.match(css, /@media \(prefers-reduced-transparency: reduce\) \{ \[data-posture="car"\][^}]*box-shadow: var\(--shadow-1\); \} \}/, "dropped under reduced transparency");
+  assert.strictEqual(cast[1], "0 0 var(--lit-r) calc(var(--lit-r) / -4) color-mix(in oklab, var(--art-glow, var(--glow)) var(--lit-mix), transparent)", "one ring, the art's colour at the token's mix, no second ring, no mix boost and no black drop (iteration 3)");
+  /* MUTATION (iteration 3): put `var(--shadow-1), ` back at the front of the cast -> red (the thin dark rim under the sleeve returns).
+     MUTATION: change the grabber rule to `var(--text-3)` / `opacity: .7` -> red (the dismiss handle sinks into the Glow-tinted Room). */
+  assert.doesNotMatch(cast[1], /shadow/, "no black shadow token in the car's lit-art cast");
+  assert.match(css, /\[data-posture="car"\] \.ag-np\.fp-sheet \.ag-np-head \.fy-grab \{ top: -6px; background: var\(--text-2\); opacity: 1; \}/, "the grabber is lifted above the Room and sits at the prototype's -6px");
+  /* MUTATION: delete the `border: 0` rule -> red (styles.css's 1px --line border on .fp-s-art draws a dark edge round the lit sleeve). */
+  assert.match(css, /\.ag-np-art-swap > \.lit-art \{ border: 0; \}/, "the lit sleeve has no border: its edge is its own colour");
+  assert.match(css, /@media \(prefers-reduced-transparency: reduce\) \{ \[data-posture="car"\][^}]*box-shadow: none; \} \}/, "dropped under reduced transparency, to nothing rather than a black rim");
   assert.match(css, /@media \(forced-colors: active\) \{ \[data-posture="car"\][^}]*box-shadow: none; \} \}/, "dropped under forced colours");
 });
 
