@@ -214,6 +214,13 @@
 @keyframes ag-sweep { to { background-position: 170% 0; } }
 .ag .ag-empty { padding: var(--s-8); display: flex; flex-direction: column; align-items: center; gap: var(--s-3); text-align: center; color: var(--text-2); }
 .ag .ag-empty p { margin: 0; }
+/* NotFoundPage: the EmptyState centred in the room above the Dock (#view already reserves the Dock's height). */
+.ag.ag-not-found { min-height: 60vh; display: flex; align-items: center; justify-content: center; padding-inline: var(--gutter); }
+.ag.ag-not-found .ag-empty { max-width: 100%; padding-inline: 0; }
+.ag.ag-not-found .ag-empty p { font: var(--t-body); overflow-wrap: anywhere; }
+/* The line is the page's landing target (tabindex -1, set by landOnPage), not a control: no ring on it, as for every other page heading. */
+.ag.ag-not-found [data-page-heading]:focus { outline: none; }
+.ag.ag-not-found a.ag-btn { text-decoration: none; }
 
 /* Gallery-only composition. It is never rendered without .ag and cannot style a screen. */
 .gallery-page { overflow: auto; background: var(--bg0); }

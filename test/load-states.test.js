@@ -203,13 +203,14 @@ test("a category page counts nothing until the catalogue has answered", async ()
 /* a missing show                                                        */
 /* ==================================================================== */
 
-test("an unknown episode page has a ‹ back link", () => {
-  /* MUTATION: restore the bare `<div class="page"><p class="note">Episode not
-     found.</p></div>`. No `a.back`, and this goes red. */
+test("an unknown episode page has a way out: the Today button", () => {
+  /* RULING THAT FELL (Redesign 2026, ambient not-found): the ‹ went with the page head; the Secondary button to Today is
+     the way out. MUTATION: restore the bare `<div class="page"><p class="note">Episode not found.</p></div>`. No Today
+     link, and this goes red. */
   const m = mount({ hash: "#/episode/nope" });
   m.ctx.renderCurrentPage();
-  assert.match(m.html(), /Episode not found\./);
-  assert.ok(m.view.querySelector("a.back") || m.view.querySelector(".back"), `no way back: ${m.html()}`);
+  assert.match(m.html(), /Nothing here any more\./);
+  assert.ok(m.view.querySelector('a.ag-btn[href="#/"]'), `no way out: ${m.html()}`);
 });
 
 test("a show lookup that FAILED says so and retries; a genuine miss still says 'Show not found.'", async () => {
