@@ -360,9 +360,12 @@ test("a tag says what its section does not: no FORAY under 'Forays'", () => {
      REDESIGN 2026 (ambient, Forays list): THIS RULING FELL for the Forays page itself. Its list is two-up ForayCards, and a
      ForayCard's anatomy (BUILD-NOTES 3) carries the eyebrow "Foray" in Lamp on every card, published or not, so the card
      states what it is where a bare title would not. The rule still holds for the rows that remain: Search's Forays group
-     renders through forayRowsHtml, and that is what this test pins. */
+     renders through ui/search.js's discoverForayRow (see below); this test pins the rows that remain. */
   const run = loadApp();
-  assert.match(APP_SRC, /forayRowsHtml\(hits, \{ inSection: true \}\)/, "Search's Forays group sits under its own heading");
+  /* The trunk's Discover rebuild moved Search's Forays group onto its own row (ui/search.js discoverForayRow: a Lamp eyebrow
+     and the shared sub-line, no draft tag because only published Forays match), so forayRowsHtml now serves the rows test
+     below and nothing else. MUTATION: rename discoverForayRow, or drop its `draftTag: false` -> red. */
+  assert.match(APP_SRC, /function discoverForayRow\(f, progress\)[\s\S]{0,300}forayListSubLabel\(f, progress, \{ draftTag: false \}\)/, "Search's Forays group renders through its own row, sub-line without a draft tag");
   assert.doesNotMatch(APP_SRC.slice(APP_SRC.indexOf("function renderForays(")), /forayListHtml\(\{ inSection: true \}\)/, "the Forays page no longer renders rows");
   const pub = { id: "f1", title: "A Foray", status: "published" };
   const draft = { id: "f2", title: "A draft", status: "draft" };
