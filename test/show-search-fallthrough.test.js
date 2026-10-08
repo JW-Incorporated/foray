@@ -101,7 +101,7 @@ const PAGE_IDS = [
   "player-toggle", "menu-btn", "refresh-btn", "banner-slot", "pl-form",
   "pl-input", "pl-note", "sh-form", "sh-input", "sh-note", "sh-results",
   "ep-search-results", "pl-search-results", "sh-partial-note", "sh-offline-note",
-  "sh-empty-offer", "fy-search-results",
+  "sh-empty-offer", "fy-search-results", "sh-empty", "sh-make",
 ];
 
 const SHOWS = [
@@ -972,7 +972,7 @@ test("an Apple row whose title only adds a SUBTITLE collapses into the catalogue
     m.input.value = curated.split(/[:(]/)[0].trim();
     m.byId.get("sh-form").fire("submit");
     await sleep(30);
-    const rows = (m.results().innerHTML.match(/class="show-result"/g) || []).length;
+    const rows = (m.results().innerHTML.match(/class="dsc-row dsc-show raised"/g) || []).length;   // Discover's show row (Redesign 2026)
     assert.strictEqual(rows, 1, `"${curated}" and "${apple}" are one podcast and must render one row, got ${rows}`);
   }
 });
@@ -1075,7 +1075,7 @@ test("the show index landing mid-query MERGES into the painted list instead of r
 
 /** The titles painted into #sh-results, in order. */
 const paintedTitles = (m) =>
-  [...m.results().innerHTML.matchAll(/class="show-result-title">([^<]*)</g)].map((x) => x[1]);
+  [...m.results().innerHTML.matchAll(/<span class="t-label clamp2">([^<]*)</g)].map((x) => x[1]);   // Discover's row title (Redesign 2026)
 
 test("a later pass never reorders what is already painted — it only appends beneath it", async () => {
   /* THE CASE THAT FORCES THE RULE, not a case that merely tolerates it: the
@@ -1132,7 +1132,7 @@ test("the rows a pass adds are ranked among THEMSELVES, so appending is not arri
     `the appended block must be ranked, not in arrival order: ${JSON.stringify(painted)}`);
 });
 
-test("the empty-state note names no catalogue of ours — it says nothing matched", async () => {
+test("the empty page names no catalogue of ours — it says nothing matched", async () => {
   /* Founder, 2026-09-13: "there is every now and then messages that say 'no
      shows in 4a's catalogue.' Get rid of that, just give some standard 'no
      results' response or something, don't blame it on 4a."
@@ -1141,18 +1141,27 @@ test("the empty-state note names no catalogue of ours — it says nothing matche
      as well, so an empty list does not mean "not in OUR catalogue", it means
      nothing matched anywhere.
 
-     MUTATION: restore `No shows match "${query}" in 4a's catalogue.` in
-     paintShowResults. The second assertion goes red. */
+     REDESIGN 2026 moved the sentence from the status note to the EmptyState
+     (`paintDiscoverEmpty`), painted once every group has answered, and the status
+     note is gone with it; the rule is unchanged.
+
+     MUTATION: put `in 4a's catalogue` in paintDiscoverEmpty's first line. The
+     second assertion goes red. MUTATION 2: paint it before every group has
+     answered (drop the `answersOwed` gate) -> the "searching" assertion fails. */
   const m = mount();
   m.input.value = "zzz-nothing-matches-this-zzz";
   m.byId.get("sh-form").fire("submit");
+  assert.strictEqual(m.byId.get("sh-empty").hidden, true, "while the passes are still owed it is a searching page, not an empty one");
+  assert.match(m.note().textContent, /^Searching for “zzz-nothing-matches-this-zzz”…$/, "and says only that");
   await sleep(40);
 
-  assert.strictEqual(m.note().hidden, false, "an empty result still gets an honest note, not silence");
-  assert.ok(m.note().textContent.includes("zzz-nothing-matches-this-zzz"),
-    `the note must name the query rather than generic filler: ${m.note().textContent}`);
-  assert.ok(!/4a/.test(m.note().textContent),
-    `the note must not name our own catalogue as the reason: ${m.note().textContent}`);
+  const empty = m.byId.get("sh-empty");
+  assert.strictEqual(empty.hidden, false, "an empty result still gets an honest line, not silence");
+  assert.ok(empty.innerHTML.includes("Nothing named “zzz-nothing-matches-this-zzz”."),
+    `the line must name the query rather than generic filler: ${empty.innerHTML}`);
+  assert.ok(!/4a/.test(empty.innerHTML),
+    `the line must not name our own catalogue as the reason: ${empty.innerHTML}`);
+  assert.strictEqual(m.note().hidden, true, "and the searching line is gone");
 });
 
 /* ==================================================================== */
@@ -1321,10 +1330,10 @@ test("search-1: a painted index row takes the catalogue's artwork IN PLACE — s
   assert.ok(html.includes("Deep History Hour"), "the index row is on the page");
   assert.ok(html.includes("https://art/deep.jpg"), `the catalogue's artwork reached the painted row: ${html}`);
   assert.ok(html.includes("Some Publisher"), "and its byline");
-  assert.ok(!html.includes("show-result-art-blank"), "no blank square is left for a show the catalogue drew");
+  assert.ok(!html.includes("ag-art-mono"), "no blank square (the lettered placeholder) is left for a show the catalogue drew");
   /* Counted as a row's VISIBLE title: each row also carries its full name in
      `title=` since search-11 (the visible one is clamped to two lines). */
-  assert.strictEqual((html.match(/class="show-result-title">Deep History Hour</g) || []).length, 1, "upgraded in place, not appended as a second row");
+  assert.strictEqual((html.match(/<span class="t-label clamp2">Deep History Hour</g) || []).length, 1, "upgraded in place, not appended as a second row");
   const painted = m.evalIn("showSearchPainted.rows");
   assert.strictEqual(painted[0].show_id, "1000001", "the row keeps its position (#684) and its id");
 });
@@ -1524,7 +1533,7 @@ test("p-foray-4: typing a Foray's own subject finds the Foray — a Forays group
   assert.strictEqual(box.hidden, false, "the Forays group paints on the keystroke");
   assert.ok(box.innerHTML.includes('href="#/foray/capital-types-1"'), `the Foray is linked: ${box.innerHTML}`);
   assert.ok(box.innerHTML.includes(m.ctx.esc(published.title)));
-  assert.ok(box.innerHTML.includes("<h3>Forays</h3>"), "under its own heading");
+  assert.ok(box.innerHTML.includes('<h3 class="t-headline">Forays</h3>'), "under its own heading");
 
   m.type("wrong default");                            // a running-order slot title, not in the title or summary
   assert.strictEqual(box.hidden, false, "slot titles count too");
@@ -1538,21 +1547,39 @@ test("p-foray-4: typing a Foray's own subject finds the Foray — a Forays group
   assert.strictEqual(box.innerHTML, "");
 });
 
-test("ROUND 2 review (p-foray-4 / visual-9 / p-foray-8): a Foray found in Search is the SAME row as on #/forays — no FORAY tag under 'Forays', and its length line", () => {
+test("ROUND 2 review (p-foray-4 / visual-9 / p-foray-8): a Foray found in Search says no FORAY under 'Forays' and carries its length line, in Discover's own row", () => {
   /* The group hand-copied the old row: a published hit wore a FORAY kicker
      right under its own <h3>Forays</h3> and had no length/progress line.
-     MUTATION: put the hand-written row template back in
-     paintForaySearchResults -> the kicker is back and the rows differ; red. */
+
+     REDESIGN 2026 (Discover) CHANGED THE ROW, and names the ruling that fell: "a
+     Foray found in Search is the SAME row as on #/forays, byte for byte"
+     (`forayRowsHtml`). That guarantee held two surfaces to one builder; Discover's
+     four result kinds now share ONE anatomy (a Raised row, art 56, a label, one
+     caption: `discoverForayRow`) and #/forays keeps its own list until the
+     forays-list screen (BUILD-PLAN 14) adopts the ForayCard. What survives, and is
+     pinned: no kicker restating the heading on a published hit (a draft says
+     "Draft", which the heading does not), and the same length/progress line the
+     list shows (`forayListSubLabel`).
+
+     MUTATION: put `<span class="eyebrow lamp">Foray</span>` on every row in
+     discoverForayRow -> the kicker assertion fails. MUTATION 2: drop the `sub`
+     line -> the length assertion fails. */
   const m = mount({ forays: FROZEN_FORAYS });
   m.type("capital");
   const box = m.byId.get("fy-search-results");
   const html = box.innerHTML;
   assert.ok(html.includes('href="#/foray/capital-types-1"'), "precondition: the published Foray is found");
-  assert.ok(!html.includes("fy-home-kicker"), `a published row does not restate the heading: ${html}`);
+  assert.ok(!html.includes("fy-home-kicker") && !html.includes("eyebrow"), `a published row does not restate the heading: ${html}`);
   const published = FROZEN_FORAYS.find((f) => f.id === "capital-types-1");
-  const listRow = m.evalIn("forayRowsHtml")([published], { inSection: true });
-  assert.ok(html.includes(listRow.trim()), "the row is the #/forays list's own row, byte for byte");
-  assert.match(m.evalIn("forayListHtml").toString(), /forayRowsHtml\(/, "and #/forays renders through the same builder");
+  /* The player module (which resolves a Foray's running order for its length) is not in this harness, so the list's own
+     label builder is given a fixed answer: what is pinned is that the row prints WHATEVER that builder says. */
+  const sub = "about 43 min · 50 clips";
+  m.ctx.forayListSubLabel = () => sub;
+  m.type("wrong default");
+  m.type("capital");
+  const html2 = m.byId.get("fy-search-results").innerHTML;
+  assert.ok(html2.includes(m.ctx.esc(sub)), `the row carries the list's own length line (${sub})`);
+  assert.match(m.evalIn("forayListHtml").toString(), /forayRowsHtml\(/, "and #/forays still renders through its own builder");
 });
 
 test("copy-8: every quoted query goes through the one typographic pair — no straight-quoted interpolation is left in a listener string", () => {
@@ -1563,11 +1590,14 @@ test("copy-8: every quoted query goes through the one typographic pair — no st
   assert.deepStrictEqual(straight, [], `a listener string quotes an interpolation with straight quotes: ${JSON.stringify(straight)}`);
   assert.match(APP_SRC, /function quoteQuery\(text\) \{\s*return `\\u201c\$\{text\}\\u201d`;/, "the helper is the one place the pair lives");
   for (const site of [
-    "No shows found for ${quoteQuery(query)}.",
+    /* "No shows found for ..." and "Create a playlist about ..." left with Redesign 2026 (Discover's EmptyState and its
+       Make-a-playlist button say the same things in the direction's words, through the same helper); "Starts with …" left with
+       the old Home hook (ui/home.js is Today now and writes no such line). */
+    "Nothing named ${quoteQuery(query)}.",
     "Searching for ${quoteQuery(query)}…",
     "No episodes match ${quoteQuery(esc(searchQuery.trim()))}.",
     "Not much on ${quoteQuery(query)} yet",
-    "Create a playlist about ${quoteQuery(esc(query))}",
+    "Make a playlist from ${quoteQuery(q)}",
   ]) assert.ok(APP_SRC.includes(site), `site must use the helper: ${site}`);
   const m = mount();
   assert.strictEqual(m.evalIn("quoteQuery")("x"), "\u201cx\u201d");

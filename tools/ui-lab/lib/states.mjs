@@ -116,6 +116,37 @@ async function typeSearch(page, text) {
   await wait(page, 1800);
 }
 
+/** Steps of one state share ONE page and a step whose route is the current hash does not navigate, so
+    a step that wants the IDLE Discover after a typed one leaves the page and comes back: the router
+    re-renders `#/shows` with an empty field and drops `kb-open` (setBodyClass writes the class list
+    whole); the `--kb-inset` a previous step wrote on <html> is cleared by hand. */
+async function freshDiscover(page) {
+  await page.evaluate(() => {
+    document.documentElement.style.removeProperty("--kb-inset");
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    location.hash = "#/library";
+  });
+  await wait(page, 500);
+  await page.evaluate(() => { location.hash = "#/shows"; });
+  await page.waitForSelector("#sh-input", { timeout: 15000 });
+  await wait(page, 500);
+}
+
+/** Discover with the field focused over a keyboard. A headless browser has no soft keyboard, so the
+    inset a real one would leave is written the way installKeyboardChrome writes it (`--kb-inset` on
+    <html>, `kb-open` on <body>) once the field has focus: the field rides 300px up, the bars yield. */
+async function focusSearchOverKeyboard(page) {
+  await freshDiscover(page);
+  await page.waitForSelector("#sh-input", { timeout: 15000 });
+  await page.focus("#sh-input");
+  await wait(page, 300);
+  await page.evaluate(() => {
+    document.documentElement.style.setProperty("--kb-inset", "300px");
+    document.body.classList.add("kb-open");
+  });
+  await wait(page, 300);
+}
+
 async function showGalleryTarget(page, selector) {
   const open = page.locator(`[data-ag-live-sheet]:not([hidden])`);
   if (await open.count()) {
@@ -352,6 +383,20 @@ export function appStates(fx) {
         { label: "episode-token", route: "#/episode/uilab-stress-2" },
         { label: "mini-player", route: "#/library", run: (page) => startPlayback(page, "uilab-stress-1") },
         { label: "now-playing", route: "#/library", run: (page) => openNowPlaying(page) },
+      ],
+    },
+    {
+      id: "discover",
+      description: "Discover (ambient): typing, a settled result list, the empty page with and without a subject, the field focused over a keyboard, and the idle page under a mini player.",
+      seed: "returning",
+      steps: [
+        { label: "discover-typing", route: "#/shows", run: (page) => typeSearch(page, "ma") },
+        { label: "discover-results", route: "#/shows", run: (page) => typeSearch(page, "money") },
+        { label: "discover-no-results", route: "#/shows", run: (page) => typeSearch(page, "zzqxjv") },
+        { label: "discover-no-results-subject", route: "#/shows", run: (page) => typeSearch(page, "craft & ma") },
+        { label: "discover-mini", route: "#/shows", run: async (page) => { await freshDiscover(page); await startPlayback(page, ep0); } },
+        { label: "discover-kb", route: "#/shows", run: (page) => focusSearchOverKeyboard(page) },
+        { label: "discover-results-groups", route: "#/shows", run: (page) => typeSearch(page, "history") },
       ],
     },
     {

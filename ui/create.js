@@ -94,33 +94,35 @@ function createFailureNote(result, query) {
         : `Not much on ${quoteQuery(query)} yet — try different words.`;
 }
 
-/** DISCOVER'S "CREATE A PLAYLIST ABOUT X" BUTTON (Redesign 2026, ambient, the
-    Dock: three tabs, Create folded into Discover's field). It used to hand the
-    query to the Create page's form and navigate there; `#/create` now lands on
-    Discover, so the build runs from the page that asked. The same builder, the
-    same one-build-at-a-time flag and the same result handling as the form
-    below - a build that finishes after the listener left Discover opens
-    nothing, exactly as the form's rule (audit round 2, races-3). A failure is
-    said in Discover's own status line. */
+/** DISCOVER'S "MAKE A PLAYLIST FROM X" BUTTON (Redesign 2026, ambient, the Dock:
+    three tabs, Create folded into Discover's field). It used to hand the query to
+    the Create page's form and navigate there; `#/create` now lands on Discover, so
+    the build runs from the page that asked. THE ONE DISCOVER BUILD: one
+    in-flight flag (`createBuildPending`), one `playlist_built` event, one failure
+    line (`createFailureNote`, said under the button in `#sh-make-note`), one pending
+    painter (`paintMakePending`, ui/search.js). A build that finishes after the
+    listener left Discover opens nothing and writes nothing, exactly as the form's
+    rule (audit round 2, races-3); the playlist is saved either way. */
 function buildPlaylistFromDiscover(query, btn) {
   if (createBuildPending || !query) return;
   createBuildPending = true;
-  const idle = btn ? btn.textContent : "";
-  if (btn) { btn.disabled = true; setControlLabel(btn, "Building…", null); }
+  const staleNote = $("#sh-make-note");
+  if (staleNote) staleNote.hidden = true;
+  paintMakePending(true, btn);
   whenSearchDataReady(() => {
     try {
       const result = buildPlaylist(query);
-      logEvent("playlist_built", { query, status: result.status, found: result.playlist ? result.playlist.items.length : 0, source: "create" });
+      logEvent("playlist_built", { query, status: result.status, found: result.playlist ? result.playlist.items.length : 0, source: "discover" });
       const onDiscover = /^#\/shows($|\/)/.test(currentHash());
       if (result.status === "ok" || result.status === "sparse") {
         if (onDiscover) location.hash = "#/" + playlistRoute(result.playlist);
       } else if (onDiscover) {
-        const note = $("#sh-note");
-        if (note) { note.textContent = createFailureNote(result, query); note.hidden = false; }
+        const note = $("#sh-make-note"); // the live page's note, never one captured before the wait
+        if (note) { setStatusText(note, createFailureNote(result, query)); note.hidden = false; }
       }
     } finally {
       createBuildPending = false;
-      if (btn && btn.isConnected) { btn.disabled = false; setControlLabel(btn, idle, null); }
+      paintMakePending(false, btn && btn.isConnected ? btn : undefined);
     }
   });
 }
@@ -206,14 +208,6 @@ function renderCreate() {
       if (form) bindCreateFormSubmit({ preventDefault() {}, currentTarget: form });
     });
   });
-  /* A Search CTA's hand-off (app-2-11): prefilled and submitted through the
-     same path, now that the form exists. Consumed once. */
-  if (pendingCreateQuery !== null) {
-    const query = pendingCreateQuery;
-    pendingCreateQuery = null;
-    const form = $("#cr-form");
-    const input = $("#cr-input");
-    if (input) input.value = query;
-    if (form && !createBuildPending) bindCreateFormSubmit({ preventDefault() {}, currentTarget: form });
-  }
+  /* There is no Search-to-Create hand-off any more (app-2-11's module-state query is gone): Discover's
+     "Make a playlist from ..." button runs `buildPlaylistFromDiscover` itself, from the page the listener is on. */
 }

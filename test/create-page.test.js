@@ -192,7 +192,7 @@ function parseInto(container, html) {
 const PAGE_IDS = [
   "view", "drawer", "drawer-overlay", "drawer-playlists", "family-toggle",
   "player-toggle", "autoadvance-toggle", "menu-btn", "refresh-btn", "banner-slot",
-  "sh-form", "sh-input", "sh-note", "sh-results", "ep-search-results",
+  "sh-form", "sh-input", "sh-note", "sh-make-note", "sh-results", "ep-search-results",
   "pl-form", "pl-input", "pl-note",
   "fy-sheet-note", "fy-scrim", "fy-sheet-cancel", "fy-sheet-go",
   "fy-play", "fy-next", "fy-prev", "fy-back", "fy-fwd", "fy-strip",
@@ -585,9 +585,19 @@ test("races-3: an empty result after a wait writes the note on the LIVE Create p
    ran under test; the races-3 tests above exercise the same rule through #cr-form, a page
    no route renders any more (the #271 pattern in CLAUDE.md). These call the REAL function,
    with a real search-data wait in front of it (holdSearchData), on Discover and off it. */
+const IDLE_LABEL = "Make a playlist from “physics”";
 function discoverButton() {
+  /* The real button is `<button data-make-playlist="physics"><svg/><span>Make a playlist from “physics”</span></button>`;
+     the harness has no parser, so the span is a child element of its own: paintMakePending writes the SPAN, which is
+     what keeps the sparkle icon. MUTATION: write the label to the button itself (`btn.textContent = ...`) -> the
+     label assertions below fail, because the span is never written. */
   const btn = makeEl("button");
-  btn.textContent = "Create a playlist about physics";
+  btn.setAttribute("data-make-playlist", "physics");
+  const label = makeEl("span");
+  label.textContent = IDLE_LABEL;
+  btn.append(label);
+  btn.querySelector = (sel) => (sel === "span" ? label : null);
+  btn._label = label;
   btn.isConnected = true;
   return btn;
 }
@@ -605,7 +615,8 @@ test("Discover's build, listener still on Discover: it opens the saved playlist,
   m.evalIn("buildPlaylistFromDiscover")("physics", btn);
   assert.strictEqual(m.evalIn("createBuildPending"), true, "the one-build flag is set while the data is awaited");
   assert.strictEqual(btn.disabled, true, "the button is disabled while building");
-  assert.strictEqual(btn.textContent, "Building\u2026", "and says so");
+  assert.strictEqual(btn._label.textContent, "Building\u2026", "and says so, in the span (the icon beside it survives)");
+  assert.strictEqual(btn.getAttribute("aria-busy"), "true", "and is busy for assistive technology");
   m.evalIn("buildPlaylistFromDiscover")("physics", btn);   // a second tap while waiting
   await arrive();
   const saved = JSON.parse(m.ctx.localStorage.getItem("cp_playlists") || "[]");
@@ -613,7 +624,8 @@ test("Discover's build, listener still on Discover: it opens the saved playlist,
   assert.strictEqual(m.ctx.location.hash, "#/playlist/" + saved[0].id, "Discover is the page on screen, so the build opens");
   assert.strictEqual(m.evalIn("createBuildPending"), false);
   assert.strictEqual(btn.disabled, false, "the button is usable again");
-  assert.strictEqual(btn.textContent, "Create a playlist about physics", "and has its own label back");
+  assert.strictEqual(btn._label.textContent, IDLE_LABEL, "and has its own label back");
+  assert.strictEqual(btn.getAttribute("aria-busy"), null, "no longer busy");
 });
 
 test("Discover's build, listener has left Discover: the playlist is saved and nobody is moved (races-3, on the live path)", async () => {
@@ -632,7 +644,7 @@ test("Discover's build, listener has left Discover: the playlist is saved and no
   assert.strictEqual(saved.length, 1, "the playlist is still built and saved");
   assert.strictEqual(m.ctx.location.hash, "#/", "but the listener stays where they went");
   assert.strictEqual(m.evalIn("createBuildPending"), false, "the flag clears");
-  assert.strictEqual(btn.textContent, "Create a playlist about physics", "and the button label is restored");
+  assert.strictEqual(btn._label.textContent, IDLE_LABEL, "and the button label is restored");
 });
 
 test("Discover's build opens a sparse result too, and stays put off Discover", async () => {
@@ -650,10 +662,10 @@ test("Discover's build opens a sparse result too, and stays put off Discover", a
   }
 });
 
-test("Discover's build, empty/full/unsaved: the failure line lands in #sh-note on Discover, and nowhere off it", async () => {
+test("Discover's build, empty/full/unsaved: the failure line lands in #sh-make-note on Discover, and nowhere off it", async () => {
   /* MUTATION: delete the `note.textContent = createFailureNote(...)` line -> every on-Discover row
      goes red; change `else if (onDiscover)` to a bare `else` -> the off-Discover rows go red
-     (#sh-note exists in this harness's page whichever route is current); delete `note.hidden = false`
+     (#sh-make-note exists in this harness's page whichever route is current); delete `note.hidden = false`
      -> the hidden assertion goes red. */
   const cases = [
     ["empty", { suggestions: [] }, /Not much on \u201czzz\u201d yet \u2014 try different words\./],
@@ -668,7 +680,7 @@ test("Discover's build, empty/full/unsaved: the failure line lands in #sh-note o
       m.ctx.buildPlaylist = () => ({ status, ...extra });
       const arrive = holdSearchData(m);
       m.ctx.location.hash = onDiscover ? "#/shows" : "#/";
-      const noteEl = m.ctx.document.querySelector("#sh-note");
+      const noteEl = m.ctx.document.querySelector("#sh-make-note");
       noteEl.hidden = true; noteEl.textContent = "";
       const btn = discoverButton();
       m.evalIn("buildPlaylistFromDiscover")("zzz", btn);
@@ -682,7 +694,7 @@ test("Discover's build, empty/full/unsaved: the failure line lands in #sh-note o
       }
       assert.strictEqual(m.ctx.location.hash, onDiscover ? "#/shows" : "#/", `${label}: nobody navigates`);
       assert.strictEqual(m.evalIn("createBuildPending"), false, `${label}: the flag clears`);
-      assert.strictEqual(btn.textContent, "Create a playlist about physics", `${label}: the label is restored`);
+      assert.strictEqual(btn._label.textContent, IDLE_LABEL, `${label}: the label is restored`);
     }
   }
 });
@@ -702,5 +714,5 @@ test("Discover's build ignores an empty query and a tap while another build is p
   const other = discoverButton();
   m.evalIn("buildPlaylistFromDiscover")("physics", other);
   assert.strictEqual(other.disabled, false, "a second button is left alone while a build is pending");
-  assert.strictEqual(other.textContent, "Create a playlist about physics");
+  assert.strictEqual(other._label.textContent, IDLE_LABEL);
 });
