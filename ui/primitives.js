@@ -34,7 +34,7 @@ var TACTILE_ART_PX = { row: 56, queue: 48, mini: 44, disc: 40, hero: 96 };
 function tactileArtFrame(data) {
   var d = data || {};
   var size = ["row", "queue", "mini", "disc", "hero"].includes(d.size) ? d.size : "row";
-  var shape = d.round ? " art-frame--round" : "";
+  var shape = (d.round ? " art-frame--round" : "") + (d.subject ? " art-frame--subject" : "");
   var state = d.loading ? " is-loading" : d.offline ? " is-offline" : "";
   var label = typeof d.alt === "string" ? d.alt : "";
   var px = TACTILE_ART_PX[size];
@@ -583,7 +583,7 @@ function tactileQueueRow(data) {
 function tactileBridgeCard(data) {
   var d = data || {};
   var title = d.title || "A stretch pick";
-  return '<article class="card bridge" data-draw="true"' + tactileBranchAttr(d) + '><p class="bridge__sentence">' + esc(d.sentence || "Machining and language both reveal change through small repeated pressures.") + '</p><div class="bridge__arc">' + tactileArtFrame({ size: "queue", title: d.knownTitle, url: d.knownArtwork, initials: d.knownInitials || "KN" }) + '<span class="bridge__line"><svg aria-hidden="true" viewBox="0 0 100 48" preserveAspectRatio="none"><path class="bridge__path" pathLength="1" d="M2 30 C22 -6 78 -6 98 20"></path></svg><i class="bridge__dot bridge__dot--a"></i><i class="bridge__dot bridge__dot--b"></i></span>' + tactileArtFrame({ size: "row", title: title, url: d.artwork, initials: d.initials || "ST" }) + '</div><div class="bridge__meta"><div class="bridge__copy">' + tactileTag({ kind: "stretch", text: "Stretch" }) + '<strong class="bridge__title">' + tactileTitleLink(d, title) + '</strong><div class="bridge__details"><span class="bridge__show">' + esc(tactileDisplayName(d.show)) + '</span><span class="row__facts">' + tactileReadout(d.duration) + tactileQueueAction(d, title) + '</span></div></div><div class="bridge__play">' + (d.id ? tactilePlayKey(d, title) : tactileKeycap({ size: "sm", variant: "persimmon", round: true, icon: "ph-play-fill", label: "Play " + title })) + "</div></div></article>";
+  return '<article class="card bridge" data-draw="true"' + tactileBranchAttr(d) + '><p class="bridge__sentence">' + esc(d.sentence || "Machining and language both reveal change through small repeated pressures.") + '</p><div class="bridge__arc">' + tactileArtFrame({ size: "queue", title: d.knownTitle, url: d.knownArtwork, initials: d.knownInitials || "KN", subject: Boolean(d.knownSubject) }) + '<span class="bridge__line"><svg aria-hidden="true" viewBox="0 0 100 48" preserveAspectRatio="none"><path class="bridge__path" pathLength="1" d="M2 30 C22 -6 78 -6 98 20"></path></svg><i class="bridge__dot bridge__dot--a"></i><i class="bridge__dot bridge__dot--b"></i></span>' + tactileArtFrame({ size: "row", title: title, url: d.artwork, initials: d.initials || "ST" }) + '</div><div class="bridge__meta"><div class="bridge__copy">' + tactileTag({ kind: "stretch", text: "Stretch" }) + '<strong class="bridge__title">' + tactileTitleLink(d, title) + '</strong><div class="bridge__details"><span class="bridge__show">' + esc(tactileDisplayName(d.show)) + '</span><span class="row__facts">' + tactileReadout(d.duration) + tactileQueueAction(d, title) + '</span></div></div><div class="bridge__play">' + (d.id ? tactilePlayKey(d, title) : tactileKeycap({ size: "sm", variant: "persimmon", round: true, icon: "ph-play-fill", label: "Play " + title })) + "</div></div></article>";
 }
 
 function tactileTile(data) {
