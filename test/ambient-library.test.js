@@ -646,55 +646,29 @@ test("every tile casts its own palette colour: --art-glow is written from the ti
   assert.match(read("ui/tokens.css"), /\.lit-art \{\s*box-shadow: var\(--shadow-1\), 0 0 var\(--lit-r, 40px\)[^;]*var\(--art-glow, var\(--glow\)\)/, "and the token paints that colour, not a black shadow");
 });
 
-test("the Dock's cast is drawn only while the bar is up, and idle when nothing plays", async () => {
-  /* MUTATION 1: make libCastHtml always answer "playing" -> the idle assertion is red.
-     MUTATION 2: drop the `:not([data-state="idle"])` guard or the `body.fp-open` prefix in library.css -> the CSS
-     assertion is red. MUTATION 3: set `display: block` on `.ag .lb-cast` -> the hidden-by-default assertion is red. */
+test("Library draws no Dock of its own: the Dock owns the Veil, the fade and the cast, and Library hands it the page colour and the Glow", async () => {
+  /* Iteration 3: the stopgap Dock (a floating Veil on .tab-bar and #foray-player, a body::after fade, an .lb-cast element) is
+     retired now that `redesign/ambient-dock` has merged; ui/dock.css owns all of it, and the stopgap's cool Veil and back-15
+     text glyph were the findings against it.
+     MUTATION 1: put a `lb-cast` element back into renderLibrary -> the no-element assertion is red.
+     MUTATION 2: re-add any `body.view-library .tab-bar` or `#foray-player` rule to library.css -> the no-override assertion is red.
+     MUTATION 3: delete `--dock-page-bg: var(--bg0)` from `body.view-library` -> the Dock would fade to the legacy page colour; red.
+     MUTATION 4: delete the root-Glow write in libSyncCast -> the Dock keeps the last page's tint; the script assertion is red.
+     MUTATION 5: move ui/library.css above ui/dock.css in index.html -> the order assertion is red. */
   const m = await mount({ bridge: realBridge() });
   m.ctx.renderLibrary();
-  assert.match(m.view(), /<div class="dock-cast lb-cast" data-state="idle" aria-hidden="true"><\/div>/, "nothing plays: idle");
-  m.ctx.document.body.classList.contains = (c) => c === "fp-open";
-  m.ctx.renderLibrary();
-  assert.match(m.view(), /<div class="dock-cast lb-cast" data-state="playing" aria-hidden="true"><\/div>/, "the bar is up: playing");
-  assert.match(LIB_CSS, /\.ag \.lb-cast \{[^}]*display: none;/, "hidden unless the bar is up");
-  assert.match(LIB_CSS, /body\.fp-open \.ag \.lb-cast:not\(\[data-state="idle"\]\) \{ display: block;/, "shown only under body.fp-open and not idle");
-  assert.match(read("ui/tokens.css"), /\.dock-cast\[data-state="idle"\][^{]*\{[^}]*display: none/, "and the token's own idle state hides it");
+  assert.ok(!/lb-cast|lb-fade|dock-cast/.test(m.view()), "the page draws no cast or fade element: the Dock's layer owns them");
+  const css = LIB_CSS.replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.ok(!/\.tab-bar|#foray-player|\.lb-cast|\.dock-cast|body\.view-library::after/.test(css), "and no rule for the tab bar, the mini, a cast or a body fade");
+  assert.match(css, /body\.view-library \{[^}]*--dock-page-bg: var\(--bg0\);/, "the Dock fades to this page's own ground");
 });
 
-test("the Dock on Library is one floating warm Veil with an Ember Play, and content fades to the ground behind it, never sliced", async () => {
-  /* Iteration 5 (judges: a full-bleed violet bar, violet play, and Saved sliced by the bar's hard edge). The Dock screen
-     (`redesign/ambient-dock`) owns the real Dock; until it merges, Library wears the same stopgap Today and Foray detail do.
-     MUTATION 1: take `.lb-fade` back into libCastHtml (the old hard-edged fade element) -> the no-element assertion is red.
-     MUTATION 2: drop `body.view-library::after`'s `pointer-events: none` -> the last row's links stop taking taps; red.
-     MUTATION 3: end the fade's gradient in `transparent` instead of `var(--bg0)` -> the row under the Dock still shows; red.
-     MUTATION 4: swap `var(--ember)` for `var(--violet)` on `.fp-play` -> the Ember assertion is red.
-     MUTATION 5: swap `var(--glow-veil)` for `var(--bg1)` on `.tab-bar` -> the warm-Veil assertion is red.
-     MUTATION 6: drop the `left: var(--ag-gutter); right: var(--ag-gutter)` inset -> the floating-inset assertion is red.
-     MUTATION 7: delete the root-Glow write in libSyncCast -> the Dock keeps the last page's tint; the script assertion is red. */
-  const m = await mount({ bridge: realBridge() });
-  m.ctx.renderLibrary();
-  assert.ok(!/lb-fade/.test(m.view()), "the page draws no fade element of its own: the Dock's fade is a pseudo-element");
-  assert.ok(!/lb-fade/.test(LIB_CSS.replace(/\/\*[\s\S]*?\*\//g, "")), "and no stylesheet rule for one");
-  const fade = /body\.view-library::after \{([^}]*)\}/.exec(LIB_CSS);
-  assert.ok(fade, "a fade rule on the body");
-  assert.match(fade[1], /position: fixed;[^}]*bottom: 0;/, "it runs to the screen's bottom edge");
-  assert.match(fade[1], /pointer-events: none;/, "taps pass through to the row beneath");
-  assert.match(fade[1], /background: linear-gradient\(transparent 0, var\(--bg0\) var\(--s-8\)\)/, "it dissolves into the page's ground, solid under the Dock");
-  assert.match(fade[1], /height: calc\(var\(--lb-dock-h\) \+ var\(--s-8\)\)/, "it rises 32 above the Dock's top row");
-  assert.match(LIB_CSS, /body\.view-library\.fp-open \{ --lb-dock-h: calc\([^}]*var\(--mini\)/, "and rides up over the mini row when it is up");
-  const tabs = /body\.view-library \.tab-bar \{([^}]*)\}/.exec(LIB_CSS);
-  assert.ok(tabs, "a tab bar rule");
-  assert.match(tabs[1], /left: var\(--ag-gutter\); right: var\(--ag-gutter\); bottom: var\(--dock-lift\);/, "inset and floating, 12 above the safe area");
-  assert.match(tabs[1], /border-radius: var\(--r-xl\)/, "rounded");
-  assert.match(tabs[1], /background: var\(--glow-veil\);/, "the Glow-tinted Veil, never the legacy violet-black surface");
-  const mini = /body\.view-library\.ui-v2\.fp-open #foray-player \{([^}]*)\}/.exec(LIB_CSS);
-  assert.ok(mini, "a mini player rule");
-  assert.match(mini[1], /background: var\(--glow-veil\);/, "the mini is the same Veil, one surface with the tab row");
-  assert.match(mini[1], /bottom: calc\(var\(--dock-lift\) \+ var\(--tab-bar\)\);/, "sitting directly on the tab row: no gap");
-  assert.match(LIB_CSS, /body\.view-library\.ui-v2 #foray-player \.fp-play \{[^}]*background: var\(--ember\)/, "Play is Ember");
-  assert.ok(!/body\.view-library[^{]*\{[^}]*var\(--violet\)/.test(LIB_CSS), "no violet anywhere on the page's Dock");
-  assert.match(LIB_CSS, /body\.view-library \.tab-bar \.tab-btn\[aria-current="page"\] \{ color: var\(--lamp-text\); \}/, "the active tab is the Lamp, not violet");
+test("Library writes the playing item's Glow where the Dock reads it, and its stylesheet loads after the Dock's", () => {
+  /* MUTATION 4: delete the root-Glow write in libSyncCast -> the script assertion is red.
+     MUTATION 5: move ui/library.css above ui/dock.css in index.html -> the order assertion is red. */
   assert.match(read("ui/library.js"), /agSetGlow\(document\.documentElement, item\.show\)/, "the playing item's Glow is written on the root, where the Dock reads it");
+  const links = [...read("index.html").matchAll(/<link rel="stylesheet" href="([^"]+)">/g)].map((x) => x[1]);
+  assert.ok(links.indexOf("ui/dock.css") >= 0 && links.indexOf("ui/dock.css") < links.indexOf("ui/library.css"), "dock.css is linked before library.css");
 });
 
 test("the foray strip is evenly rounded bars on a dark sill, the pill is the small one, and the grid's All trailer is indented 28", () => {

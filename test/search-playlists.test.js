@@ -427,13 +427,14 @@ test("the CTA does NOT appear when the topic scorer is empty — the build it of
   assert.strictEqual(pl.innerHTML, "", "and the pending line is gone once the scan answered");
 });
 
-test("tapping the CTA does not itself create a playlist — it hands off to Create's own form", async () => {
-  /* MUTATION: call buildPlaylist(query) directly from the CTA's click
-     handler instead of navigating + resubmitting #cr-form. D8/the card's
-     scope line requires exactly one playlist-creation code path
-     (bindCreateFormSubmit, since #/playlists' builder left in round 2); a
-     second one defeats that. And: navigate to "#/playlists" again — the page
-     with no builder — and the hash assertion goes red.
+test("tapping the CTA does not itself create a playlist — it hands the query to Discover's one build path", async () => {
+  /* RULING THAT FELL: "four tabs + drawer" - the Create tab folded into Discover, so the CTA no longer
+     navigates to a Create page and resubmits #cr-form; it calls buildPlaylistFromDiscover (ui/create.js),
+     which waits for the search data and then runs the SAME buildPlaylist() the Create form calls.
+     MUTATION: call buildPlaylist(query) directly from the CTA's click handler -> `asked` stays empty
+     and cp_playlists is written inside the click, red. Restore `location.hash = "#/create"` -> the
+     hash assertion goes red. D8/the card's scope line still requires exactly one playlist-creation
+     path; a second one defeats that.
 
      The container's innerHTML is a raw HTML string in this harness (no real
      parser), so bindCreatePlaylistCta's own querySelector('[data-create-playlist]')
@@ -467,10 +468,14 @@ test("tapping the CTA does not itself create a playlist — it hands off to Crea
   pl.children.push(btnStub);
 
   const before = (m.store.get("cp_playlists") || "[]");
+  const hashBefore = m.ctx.location.hash;
+  const asked = [];
+  m.ctx.buildPlaylistFromDiscover = (query, btn) => { asked.push([query, btn]); };
   m.evalIn("bindCreatePlaylistCta")(pl);
   btnStub.dispatchEvent({ type: "click" });
 
-  assert.strictEqual(m.ctx.location.hash, "#/create", "must navigate to the Create page rather than build in place");
+  assert.deepStrictEqual(asked, [["meditation", btnStub]], "must hand the typed query, and its own button, to the one build path");
+  assert.strictEqual(m.ctx.location.hash, hashBefore, "must not navigate anywhere: there is no Create page to hand off to");
   assert.strictEqual(m.store.get("cp_playlists") || "[]", before, "must not write a new playlist synchronously from the CTA's own click handler");
 });
 

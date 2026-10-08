@@ -934,10 +934,12 @@ function find(node, cls) {
   return null;
 }
 
-/** The transport's own words, which is what the founder was reading. */
+/** The transport's own words, which is what the founder was reading. The mini bar's Play is two sprite
+    glyphs in the Dock now (Redesign 2026, ambient), one shown at a time: `data-running` is the flag
+    ui/dock.css reads to pick the glyph, so it is what the bar "says" - "❚❚" while running, "▶" otherwise. */
 const transport = (doc) => {
   const btn = find(doc.body, "fp-play");
-  return { glyph: btn.textContent, label: btn.getAttribute("aria-label"), press: () => btn.click() };
+  return { glyph: btn.dataset.running === "1" ? "❚❚" : "▶", label: btn.getAttribute("aria-label"), press: () => btn.click() };
 };
 
 test("THE FOUNDER'S PRESS: after a stop the page never saw, the transport says Play", async (t) => {
@@ -1666,10 +1668,10 @@ function findWhere(node, pred) {
 }
 const labelled = (prefix) => (n) => String(n.getAttribute?.("aria-label") ?? "").startsWith(prefix);
 const sheet = (doc) => ({
-  /* The mini bar's ↺15 (`.fp-skip`, visual pass 1) is labelled the same way
-     and sits earlier in the tree; the sheet's own is the `.fp-btn`. */
+  /* The mini bar's skip (`.fp-skip`: forward 30 since the Dock, back 15 before) is labelled the same
+     way and sits earlier in the tree; the sheet's own are the `.fp-btn`s. */
   back: findWhere(doc.body, (n) => n.className === "fp-btn" && labelled("Back ")(n)),
-  fwd: findWhere(doc.body, labelled("Forward ")),
+  fwd: findWhere(doc.body, (n) => n.className === "fp-btn" && labelled("Forward ")(n)),
   scrub: find(doc.body, "fp-scrub"),
   fill: find(doc.body, "fp-fill"),
   left: find(doc.body, "fp-left"),
@@ -2710,22 +2712,25 @@ test("VISUAL PASS: inside a Foray the sheet's ↺15 nudges within the clip — i
   restore();
 });
 
-test("VISUAL PASS: the mini bar's ↺15 is the same nudge, for an episode and for a Foray", async (t) => {
-  /* KILLING MUTATION: drop `skipBtn` from `bar.append(...)`, or point its
-     handler at `forayPrevious`. */
+test("VISUAL PASS: the mini bar's forward 30 is the same nudge, for an episode and for a Foray", async (t) => {
+  /* RULING THAT FELL: "mini bar = ▶ + ↺15" (the Afterglow Dock's mini row is Play 48 + Fwd30 44;
+     test-classification.md, transport-controls, R). The sheet keeps both nudges. What is held is that the
+     bar's skip is THE nudge - `nudgeBy`, the sheet's own - inside a Foray as well as on an episode.
+     KILLING MUTATION: drop `skipBtn` from `bar.append(...)`, point its handler at `forayNext`, or at
+     `nudgeBy(-SEEK_BACK)` (it lands 135, not 180). */
   const { client, doc, audio, restore } = await bootClient(t);
   await client.playForay(synthetic(), { startIndex: 0 });
   await settle();
   const skip = find(doc.body, "fp-skip");
   assert.ok(skip, "the bar carries a skip control");
-  assert.equal(skip.getAttribute("aria-label"), "Back 15 seconds");
+  assert.equal(skip.getAttribute("aria-label"), "Forward 30 seconds");
   audio.currentTime = 150;
   audio.fire("timeupdate");
   await settle();
   await skip.click();
   await settle();
-  assert.ok(Math.abs(audio.currentTime - 135) < 0.01, `Foray: landed at ${audio.currentTime}s`);
-  assert.equal(client.forayStatus().index, 0);
+  assert.ok(Math.abs(audio.currentTime - 180) < 0.01, `Foray: landed at ${audio.currentTime}s: 30 s on, inside the clip (100-200), not the next clip`);
+  assert.equal(client.forayStatus().index, 0, "still the same clip");
   restore();
 });
 
@@ -3924,5 +3929,183 @@ test("a voice Preview never cuts off the narrator's line, playing or paused (rou
   const paused = await client.auditionVoice("one, two, three", null);
   assert.equal(paused.reason, "narration-loaded");
   assert.deepEqual(speech.queue, ["The narrator's line."]);
+  restore();
+});
+
+/* ==================================================================== */
+/* part 12 - the Dock's mini row (Redesign 2026, ambient, screen "dock") */
+/* ==================================================================== */
+
+/* The mini bar is a row of the Dock (ui/tabbar.js, ui/dock.css). player/client.js still builds it - with
+   the player's state - and hands it over; these tests boot the real module and drive the real handlers:
+   the hand-off, the region label, the glyph flag, the whole-row tap, the 600ms long press into car posture
+   and the one click it swallows. The stub has no event path, so `dispatchPath` runs a bar's listeners in
+   registration order and stops when one calls stopPropagation - which is what a capture listener on the bar
+   does to a click bound on a child. A device is still what confirms the touch feel; the wiring is here. */
+
+function dispatchPath(nodes, type, ev) {
+  ev.stopPropagation = () => { ev.stopped = true; };
+  ev.preventDefault = ev.preventDefault ?? (() => { ev.prevented = true; });
+  for (const node of nodes) {
+    for (const fn of [...(node.listeners.get(type) ?? [])]) {
+      if (ev.stopped) return ev;
+      fn(ev);
+    }
+  }
+  return ev;
+}
+
+/** A node that answers `closest(sel)` as the real DOM does for one of the bar's two buttons. */
+function insideControl(node, cls) {
+  node.closest = (sel) => (sel.split(",").map((s) => s.trim()).includes(`.${cls}`) ? node : null);
+  return node;
+}
+
+/** `setTimeout`/`clearTimeout` with the 600ms hold's timers captured instead of run; everything else is real. */
+function captureHoldTimers(t) {
+  const timers = new Map();
+  let seq = 0;
+  const realSet = globalThis.setTimeout;
+  const realClear = globalThis.clearTimeout;
+  globalThis.setTimeout = (fn, ms) => { if (ms === 600) { timers.set(++seq, fn); return seq; } return realSet(fn, ms); };
+  globalThis.clearTimeout = (id) => { if (timers.has(id)) timers.delete(id); else realClear(id); };
+  t.after(() => { globalThis.setTimeout = realSet; globalThis.clearTimeout = realClear; });
+  return timers;
+}
+
+test("DOCK: the player hands its bar to the Dock's mini row, and tells the Dock when it starts and stops", async (t) => {
+  /* KILLING MUTATION: `root.append(progress, bar)` unconditionally in buildUI (a second bar, in the root)
+     -> the bar is found in the root and the hand-off assertion goes red; drop `globalThis.syncDock?.()`
+     from setNowPlaying or from stopAndClose -> the matching call count goes red. */
+  const mounted = [];
+  const syncs = [];
+  globalThis.dockMountMini = (progress, bar) => { mounted.push([progress, bar]); return true; };
+  globalThis.syncDock = () => syncs.push(1);
+  t.after(() => { delete globalThis.dockMountMini; delete globalThis.syncDock; });
+  const { client, doc, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+  assert.equal(mounted.length, 1, "the Dock took the bar once");
+  assert.equal(mounted[0][0].className, "fp-progress");
+  assert.equal(mounted[0][1].className, "fp-bar");
+  const root = find(doc.body, "fp");
+  assert.equal(find(root, "fp-bar"), null, "and the player's own root no longer holds a copy");
+  assert.ok(find(root, "fp-sheet"), "while the sheet is still the root's");
+  const afterPlay = syncs.length;
+  assert.ok(afterPlay >= 1, "starting playback told the Dock (its mini row follows body.fp-open)");
+  await find(root, "fp-stop").click();
+  await settle();
+  assert.ok(syncs.length > afterPlay, "stopping told it again");
+  restore();
+});
+
+test("DOCK: without a Dock the bar stays in the player's root, in front of the sheet, as it always was", async (t) => {
+  /* KILLING MUTATION: drop the `if (!docked) root.append(progress, bar)` fallback -> a document with no Dock
+     (this suite loads no app.js) loses the bar entirely; every transport test above would have failed
+     first, and this is the explicit statement of it. */
+  const { doc, client, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+  const root = find(doc.body, "fp");
+  assert.deepEqual(root.children.slice(0, 2).map((c) => c.className), ["fp-progress", "fp-bar"], "progress, bar, then the sheet");
+  assert.equal(root.children[2].className, "fp-sheet");
+  restore();
+});
+
+test("DOCK: the bar is a region named 'Now playing: <title>, <show>', and its Play carries a glyph flag", async (t) => {
+  /* KILLING MUTATION: drop the `ui.bar.setAttribute("aria-label", ...)` line in paintInfoLabel -> the region
+     keeps its static name; drop the `dataset.running` write in paintPage -> the flag never reaches "1" and
+     the Pause glyph is never shown (ui/dock.css). The two glyphs are sprite references, not text. */
+  const { client, doc, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+  const bar = find(doc.body, "fp-bar");
+  assert.equal(bar.getAttribute("role"), "region");
+  assert.match(bar.getAttribute("aria-label"), /^Now playing: .+, Show A$/, bar.getAttribute("aria-label"));
+  const play = find(doc.body, "fp-play");
+  assert.deepEqual(play.children.map((c) => c.className), ["icon fp-glyph-play", "icon fp-glyph-pause"], "two glyphs, both in the DOM");
+  assert.equal(play.textContent, "", "and no text glyph stands in for an icon");
+  assert.equal(play.dataset.running, "1", "playing: the flag names Pause");
+  transport(doc).press();
+  await settle();
+  assert.equal(play.dataset.running, "0", "paused: it names Play again");
+  restore();
+});
+
+test("DOCK: a tap on the rest of the mini row opens Now Playing; the two buttons keep their own jobs", async (t) => {
+  /* KILLING MUTATION: drop the bar's click listener -> the second assertion goes red; drop its
+     `inBarControl(t)` guard -> a tap on Play also opens the sheet and the first goes red. */
+  const { client, doc, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+  const bar = find(doc.body, "fp-bar");
+  const sheet = find(doc.body, "fp-sheet");
+  sheet.style.setProperty = () => {};   // the stub has no CSSOM; opening the sheet writes its drag offset
+  sheet.style.removeProperty = () => {};
+  assert.equal(sheet.hidden, true, "precondition: the sheet is closed");
+  dispatchPath([bar], "click", { target: insideControl({}, "fp-play") });
+  assert.equal(sheet.hidden, true, "a tap that lands on Play is Play's, not the row's");
+  dispatchPath([bar], "click", { target: bar });
+  assert.equal(sheet.hidden, false, "a tap on the rest of the row opens Now Playing");
+  restore();
+});
+
+test("DOCK: a 600ms hold on the mini row enters car posture and opens Now Playing; collapsing the sheet ends it", async (t) => {
+  /* KILLING MUTATION: change CAR_PRESS_MS to 300 or 1200 -> no 600ms timer is armed and the first
+     assertion goes red; delete the `data-posture` write -> the posture assertion goes red; delete the
+     `removeAttribute` in setExpanded's closed branch -> posture outlives the sheet it opened; drop the
+     capture listener -> the click that ends the hold toggles the sheet shut again. */
+  const { client, doc, restore } = await bootClient(t);
+  doc.documentElement = new Node("html");
+  const timers = captureHoldTimers(t);
+  await client.play(episodeItem());
+  await settle();
+  const bar = find(doc.body, "fp-bar");
+  const sheet = find(doc.body, "fp-sheet");
+  sheet.style.setProperty = () => {};   // the stub has no CSSOM; opening the sheet writes its drag offset
+  sheet.style.removeProperty = () => {};
+  dispatchPath([bar], "pointerdown", { target: bar, button: 0, clientX: 10, clientY: 10 });
+  assert.equal(timers.size, 1, "a press on the row arms exactly one 600ms timer");
+  assert.equal(doc.documentElement.getAttribute("data-posture"), null, "and nothing happens before it fires");
+  [...timers.values()][0]();
+  timers.clear();
+  assert.equal(doc.documentElement.getAttribute("data-posture"), "car", "the hold enters car posture");
+  assert.equal(sheet.hidden, false, "and Now Playing opens by itself");
+  const info = find(doc.body, "fp-info");
+  const click = dispatchPath([bar, info], "click", { target: info });
+  assert.equal(click.stopped, true, "the click that ends the hold is swallowed before the title button can toggle the sheet shut");
+  assert.equal(sheet.hidden, false, "so the sheet the hold opened is still open");
+  await find(doc.body, "fp-close").click();
+  await settle();
+  assert.equal(sheet.hidden, true);
+  assert.equal(doc.documentElement.getAttribute("data-posture"), null, "collapsing the sheet ends car posture");
+  restore();
+});
+
+test("DOCK: releasing early, sliding away, or pressing a button never starts the hold", async (t) => {
+  /* KILLING MUTATION: drop `cancelCarPress` from the pointerup/cancel/leave loop -> an early release still
+     leaves a timer; drop the slop check in pointermove -> a drag still does; drop the `inBarControl`
+     guard in pointerdown -> pressing Play arms the timer. */
+  const { client, doc, restore } = await bootClient(t);
+  doc.documentElement = new Node("html");
+  const timers = captureHoldTimers(t);
+  await client.play(episodeItem());
+  await settle();
+  const bar = find(doc.body, "fp-bar");
+  const down = (target) => dispatchPath([bar], "pointerdown", { target, button: 0, clientX: 10, clientY: 10 });
+  down(bar);
+  dispatchPath([bar], "pointerup", {});
+  assert.equal(timers.size, 0, "an early release disarms it");
+  down(bar);
+  dispatchPath([bar], "pointermove", { clientX: 10, clientY: 40 });
+  assert.equal(timers.size, 0, "a 30px slide disarms it (a scroll or a swipe, not a hold)");
+  down(bar);
+  dispatchPath([bar], "pointermove", { clientX: 14, clientY: 12 });
+  assert.equal(timers.size, 1, "a finger's jitter inside 10px does not");
+  dispatchPath([bar], "pointerleave", {});
+  assert.equal(timers.size, 0, "leaving the row disarms it");
+  down(insideControl({}, "fp-play"));
+  assert.equal(timers.size, 0, "pressing Play never starts a hold");
+  assert.equal(doc.documentElement.getAttribute("data-posture"), null);
   restore();
 });

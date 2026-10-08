@@ -64,7 +64,7 @@
         },
         "mini": {
           "prototype": ".mini",
-          "app": "#foray-player"
+          "app": "#dock-mini"
         },
         "tabBar": {
           "prototype": ".tabbar",
@@ -830,6 +830,82 @@
         "mini": {
           "prototype": ".mini",
           "app": null
+        },
+        "tabBar": {
+          "prototype": ".tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "dock-discover": {
+      "title": "Dock: Discover with the field row over the mini player and the receded tab row",
+      "prototype": {
+        "route": "?mini=1#/search"
+      },
+      "app": {
+        "state": "dock",
+        "step": "dock-discover"
+      },
+      "regions": {
+        "dock": {
+          "prototype": ".dock",
+          "app": "#dock"
+        },
+        "field": {
+          "prototype": ".dock-field",
+          "app": "#dock-field"
+        },
+        "mini": {
+          "prototype": ".mini",
+          "app": "#dock-mini"
+        },
+        "tabBar": {
+          "prototype": ".tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "dock-receded": {
+      "title": "Dock: Today scrolled 120px, the tab row receded under the mini player",
+      "prototype": {
+        "route": "?mini=1&scroll=120#/home"
+      },
+      "app": {
+        "state": "dock",
+        "step": "dock-receded"
+      },
+      "regions": {
+        "dock": {
+          "prototype": ".dock",
+          "app": "#dock"
+        },
+        "mini": {
+          "prototype": ".mini",
+          "app": "#dock-mini"
+        },
+        "tabBar": {
+          "prototype": ".tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "dock-playing": {
+      "title": "Dock: Today with audio running, the mini row's pause glyph and its moving 2px Glow progress line",
+      "prototype": {
+        "route": "?mini=1#/home"
+      },
+      "app": {
+        "state": "dock",
+        "step": "dock-playing"
+      },
+      "regions": {
+        "dock": {
+          "prototype": ".dock",
+          "app": "#dock"
+        },
+        "mini": {
+          "prototype": ".mini",
+          "app": "#dock-mini"
         },
         "tabBar": {
           "prototype": ".tabbar",

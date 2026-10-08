@@ -386,7 +386,9 @@ function updateShowBrowseVisibility() {
      vanished — the founder's report is a pill that MOVES, so fixing it by
      introducing one more way for it to move would be a poor trade. One class
      switches the visibility and the arithmetic together, which is the only
-     reason they cannot disagree. */
+     reason they cannot disagree. (Since the Dock the "arithmetic" is the Dock's
+     own, ui/dock.css: `sh-searching` hides the mini row and the tab row, and the
+     field row is what is left standing, on the same class.) */
   document.body.classList.toggle("sh-searching", showSearchFieldFocused);
 }
 
@@ -498,11 +500,12 @@ function renderAllShows(initialQuery = "") {
 
      The leading magnifier is kept: it is what tells you the pill is a search
      field rather than a compose box. */
-  /* ONE NAME PER DESTINATION (audit 2026-09-22): the tab bar calls this page
-     Search, so its heading does too — it was "Shows" here and in the drawer. The
-     field searches shows, episodes and playlists, so the placeholder says more
-     than "shows by name". */
-  renderShowIndexPage("Search", "", shows, `
+  /* ONE NAME PER DESTINATION (audit 2026-09-22): the tab bar's name wins, so the
+     page's heading is the tab's - "Shows", then "Search", now "Discover" (Redesign
+     2026, ambient, the Dock: the tab was renamed and Create folded into this
+     page's field). The field searches shows, episodes and playlists, so the
+     placeholder says more than "shows by name". */
+  renderShowIndexPage("Discover", "", shows, `
       <div id="sh-compose">
         <form id="sh-form" role="search" autocomplete="off">
           <svg class="sh-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>

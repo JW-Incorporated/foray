@@ -15,7 +15,7 @@
 
 /* The page. Library draws its own title, so the legacy top bar steps aside here, and the page paints Dusk's bg0
    rather than the legacy plum. */
-body.view-library { background: var(--bg0); }
+body.view-library { background: var(--bg0); --dock-page-bg: var(--bg0); }   /* the Dock (ui/dock.css) fades to the page's own colour */
 body.view-library .topbar { display: none; }
 body.view-library #view { padding-top: 0; }
 
@@ -42,82 +42,6 @@ body.view-library #view { padding-top: 0; }
 .ag.lb-page :where(h2, h3, h4, p) { margin: 0; }
 .ag.lb-page a:not(.ag-btn) { color: inherit; text-decoration: none; }
 .ag.lb-page a.ag-btn { text-decoration: none; }
-
-/* The Dock's upward light: a Glow radial rising from the bottom edge, behind the content, present while the bar is
-   up (the stylesheet shows it only under body.fp-open, and the script sets data-state so a render says the same)
-   and absent when nothing plays. Position fixed: the legacy bar is the Dock here. The Glow is the playing item's,
-   written on the page root by script. */
-.ag .lb-cast { position: fixed; z-index: 0; display: none; bottom: calc(var(--safe-bottom) + var(--tab-bar-h, 56px) - var(--s-6)); }
-body.fp-open .ag .lb-cast:not([data-state="idle"]) { display: block; bottom: calc(var(--safe-bottom) + var(--tab-bar-h, 56px) + var(--mini) - var(--s-6)); }
-
-/* ---------------------------------------------------------------------------------------------
-   The Dock on Library (DIRECTION.md "Materials": one floating Veil, never a third hue; the Today block in ui/today.css and
-   the Foray detail block are the pattern). The legacy `#tab-bar` and `#foray-player` stay the elements (the player wires
-   them) and take the Dock's anatomy on this page: inset by the gutter, 12px above the safe area, `--r-xl` corners, the
-   Glow-tinted Veil (bg0 mixed with the playing item's colour, warm when the art is, never the legacy violet-black slab),
-   a rim between the rows and no gap. The tab bar is on <body>, outside `.ag`, so it reads the :root tokens
-   (`--ag-gutter`); the script writes the playing item's Glow on the root too (libSyncCast), which is what tints the Veil.
-   The active tab is the Fill glyph in Lamp, the mini's Play is Ember (never violet), its title DM Sans. Nothing here
-   transitions or animates. The Dock screen (`redesign/ambient-dock`) generalises this and retires the block. */
-body.view-library {
-  --dock-lift: calc(env(safe-area-inset-bottom, 0px) + var(--dock-inset));
-  --tab-bar-h: calc(var(--tab-bar) + var(--dock-inset));
-  --fp-bar-h: var(--mini);
-  --lb-dock-h: calc(var(--dock-lift) + var(--tab-bar));
-}
-body.view-library.fp-open { --lb-dock-h: calc(var(--dock-lift) + var(--tab-bar) + var(--mini)); }
-body.view-library .tab-bar {
-  left: var(--ag-gutter); right: var(--ag-gutter); bottom: var(--dock-lift);
-  height: var(--tab-bar); padding: 0 var(--s-1);
-  border: 0; border-radius: var(--r-xl); overflow: hidden;
-  background: var(--glow-veil);
-  -webkit-backdrop-filter: blur(20px) saturate(140%); backdrop-filter: blur(20px) saturate(140%);
-  box-shadow: inset 0 1px 0 var(--rim), var(--shadow-2);
-}
-body.view-library .tab-btn {
-  min-width: var(--tap); min-height: var(--tap); gap: 0; border-radius: var(--r-lg);
-  color: var(--text-2); font: 600 0.8125rem/1.125rem var(--font-text);
-}
-body.view-library .tab-btn svg { width: var(--icon-tab); height: var(--icon-tab); }
-body.view-library .tab-bar .tab-btn[aria-current="page"] { color: var(--lamp-text); }
-body.view-library .tab-btn:focus-visible { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) * -1); }
-/* Something is loaded: the mini is the Dock's top row, the tab row keeps the bottom corners, a rim divides them. Its progress
-   line is 2px of Glow on the Veil (the legacy navy track is clear). */
-body.view-library.fp-open .tab-bar { border-radius: 0 0 var(--r-xl) var(--r-xl); }
-body.view-library.ui-v2.fp-open #foray-player {
-  left: var(--ag-gutter); right: var(--ag-gutter); bottom: calc(var(--dock-lift) + var(--tab-bar));
-  border: 0; border-radius: var(--r-xl) var(--r-xl) 0 0;
-  background: var(--glow-veil);
-  -webkit-backdrop-filter: blur(20px) saturate(140%); backdrop-filter: blur(20px) saturate(140%);
-  box-shadow: inset 0 1px 0 var(--rim), inset 0 -1px 0 var(--rim);
-}
-/* The collapsed mini clips its progress line to the Dock's rounded top. Expanded (Now Playing), the bar sheds its blur: a
-   backdrop-filter makes it the containing block of the fixed `.fp-sheet`, which would shrink the sheet to the bar's box. */
-body.view-library.ui-v2.fp-open:not(.fp-expanded) #foray-player { overflow: hidden; }
-body.view-library.ui-v2.fp-open.fp-expanded #foray-player { -webkit-backdrop-filter: none; backdrop-filter: none; }
-body.view-library #foray-player .fp-title { font: var(--t-label); color: var(--text); }
-body.view-library #foray-player .fp-show { color: var(--text-2); }
-body.view-library #foray-player .fp-progress { background: transparent; }
-body.view-library #foray-player .fp-fill { background: var(--glow); }
-body.view-library.ui-v2 #foray-player .fp-play { background: var(--ember); border-color: var(--ember); color: var(--ember-ink); }
-/* Content runs under the Dock and fades to bg behind it: solid from 32px above the Dock's top row to the screen edge, so a
-   Saved row is dimmed under the Dock and never sliced by its edge (DIRECTION, Materials; BUILD-NOTES 10.9 / 12.1). It
-   tracks the Dock's height. */
-body.view-library::after {
-  content: ''; position: fixed; left: 0; right: 0; bottom: 0; z-index: 54; pointer-events: none;
-  height: calc(var(--lb-dock-h) + var(--s-8));
-  background: linear-gradient(transparent 0, var(--bg0) var(--s-8));
-}
-/* The same material fallbacks `.veil` carries (ui/tokens.css section 7). */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  body.view-library .tab-bar, body.view-library.ui-v2.fp-open #foray-player { background: var(--bg1); }
-}
-@media (prefers-reduced-transparency: reduce) {
-  body.view-library .tab-bar, body.view-library.ui-v2.fp-open #foray-player { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--bg1); }
-}
-@media (prefers-contrast: more) {
-  body.view-library .tab-bar, body.view-library.ui-v2.fp-open #foray-player { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--bg0); }
-}
 
 /* Title: Fraunces 26/30 at the top, a 44 tall row. */
 .ag .lb-head { min-height: var(--tap); display: flex; align-items: center; margin-top: var(--s-2); }
@@ -218,11 +142,11 @@ body.view-library::after {
    neither focusable nor read. */
 .ag .lb-toast {
   position: fixed; left: var(--gutter); right: var(--gutter); z-index: 65; min-height: 48px;
-  bottom: calc(var(--safe-bottom) + var(--tab-bar-h, 56px) + var(--s-2));
+  bottom: calc(var(--chrome-bottom) + var(--s-2));
   opacity: 0; visibility: hidden; transform: translateY(var(--s-3));
   transition: opacity var(--m-ui) var(--e-out), transform var(--m-ui) var(--e-out), visibility 0s linear var(--m-ui);
 }
-body.fp-open .ag .lb-toast { bottom: calc(var(--safe-bottom) + var(--tab-bar-h, 56px) + var(--mini) + var(--s-2)); }
+body.fp-open .ag .lb-toast { bottom: calc(var(--chrome-bottom) + var(--mini) + var(--s-2)); }
 .ag .lb-toast.is-open { opacity: 1; visibility: visible; transform: none; transition: opacity var(--m-ui) var(--e-out), transform var(--m-ui) var(--e-out), visibility 0s; }
 
 /* The row menu: a sheet over the page (the legacy sheet frame, the Afterglow ground). */

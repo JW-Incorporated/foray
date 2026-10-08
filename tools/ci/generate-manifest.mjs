@@ -162,6 +162,8 @@ const SHELL = [
   "ui/tokens.css",
   /* Redesign 2026 (ambient): token-only primitive treatments, scoped under .ag. */
   "ui/primitives.css",
+  /* Redesign 2026 (ambient): the Dock (tabs, mini player, Discover's field), a stylesheet index.html links after primitives.css. */
+  "ui/dock.css",
   /* Redesign 2026 (ambient): Library, a screen on the system. A stylesheet, so listed by name. */
   "ui/library.css",
   /* Redesign 2026 (ambient): Today, the first screen on the system. A stylesheet, so listed by name. */

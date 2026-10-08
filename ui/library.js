@@ -557,11 +557,6 @@ function libHistoryHtml(rows, hidden) {
 
 /* ---------- the page ---------- */
 
-function libCastHtml() {
-  const on = libBarOpen() || !!libCurrentId();
-  return `<div class="dock-cast lb-cast" data-state="${on ? "playing" : "idle"}" aria-hidden="true"></div>`;
-}
-
 function libToastHtml() {
   return `<div class="raised ag-toast lb-toast" role="status" aria-live="polite" data-lb-toast><span class="t-label" data-lb-toast-text></span><button type="button" class="ag-btn ag-btn-quiet" data-lb-undo>Undo</button></div>`;
 }
@@ -581,7 +576,6 @@ function renderLibrary() {
   libUi.currentId = libCurrentId();
   $("#view").innerHTML = `
     <div class="ag lb-page is-settling">
-      ${libCastHtml()}
       <header class="lb-head"><h2 class="t-title" tabindex="-1">Library</h2></header>
       ${libGridHtml()}
       ${libSavedHtml(savedRows, allSavedRows.length - savedRows.length)}
@@ -643,15 +637,14 @@ function libSettle(scope) {
   else release();
 }
 
-/** The Dock's upward light (BUILD-NOTES 11.1): shown while the bar is up, tinted by what plays, absent otherwise. */
+/** The Glow the Dock and the page read: the playing item's. The Dock (ui/dock.css, #dock-cast) owns its upward light and its
+    Veil; this page writes only the Glow, on its own root (the playing row's ground, --glow-row) and on <html>. */
 function libSyncCast() {
   const view = $("#view");
   const page = view && typeof view.querySelector === "function" ? view.querySelector(".lb-page") : null;
-  const cast = page ? page.querySelector(".lb-cast") : null;
-  if (!cast) return;
+  if (!page) return;
   const cur = libCurrentId();
   const on = libBarOpen() || !!cur;
-  if (cast.getAttribute("data-state") !== (on ? "playing" : "idle")) cast.setAttribute("data-state", on ? "playing" : "idle");
   if (!on) return;
   /* The page's Glow is the playing item's: the cast and the playing row's ground (--glow-row) both read it. */
   const item = cur ? (state.itemIndex[cur] || storedEpisode(cur)) : null;
@@ -936,7 +929,7 @@ function renderPlaylists() {
         <a class="back" href="#/">‹</a>
         <div><h2>Playlists</h2>${all.length ? `<p class="sub">${countLabel(all.length, "playlist")}</p>` : ""}</div>
       </div>
-      <a class="page-link-row" href="#/create">Build a playlist ›</a>
+      <a class="page-link-row" href="#/shows">Build a playlist ›</a>
       ${all.length ? all.map(p => `
         <a class="pl-row" href="#/${esc(playlistRoute(p))}">
           <div class="info">
@@ -945,6 +938,6 @@ function renderPlaylists() {
           </div>
           <span class="chev">›</span>
         </a>`).join("")
-      : `<p class="note">No playlists yet — <a href="#/create">build one on the Create tab</a>.</p>`}
+      : `<p class="note">No playlists yet — <a href="#/shows">build one from Discover</a>.</p>`}
     </div>`;
 }

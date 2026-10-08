@@ -16,7 +16,7 @@
    block already covers. A second block would be a second owner (test/afterglow-tokens.test.js, "ONE block"). */
 
 /* The page. The Room is the top of the page, so the legacy bar steps aside (as on Today) and the page paints bg0. */
-body.view-show { background: var(--bg0); }
+body.view-show { background: var(--bg0); --dock-page-bg: var(--bg0); }
 body.view-show .topbar { display: none; }
 body.view-show #view { padding-top: 0; }
 
