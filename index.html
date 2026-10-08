@@ -114,6 +114,10 @@
 <link rel="stylesheet" href="ui/today.css">
 <!-- AFTERGLOW onboarding: the first-run Room that replaced the Welcome sheet; every selector is `.ob-*` under `.ob-room`. -->
 <link rel="stylesheet" href="ui/onboarding.css">
+<!-- AFTERGLOW Foray detail (#/foray/<id>), the second screen on the system: every selector is `.ag .fd-*` or a legacy `fy-*` element it restyles inside `.ag.fd`. -->
+<link rel="stylesheet" href="ui/foray-detail.css">
+<!-- AFTERGLOW Settings, Tuning and About, and the gear's Sheet: every selector is `.ag .st-*` (or the Sheet's own `.st-*`), new names only. -->
+<link rel="stylesheet" href="ui/settings.css">
 <!-- AFTERGLOW show page: the Room and the EpisodeRow list; every selector is `.sh-*` under `.ag` / `.room`. -->
 <link rel="stylesheet" href="ui/show.css">
 <link rel="icon" href="icon-180.png" type="image/png">
@@ -124,32 +128,15 @@
      "Loading 4a…" on warm off-white before cutting to the dark design. -->
 <body class="ui-v2">
 <header class="topbar">
-  <button id="menu-btn" aria-label="Menu">☰</button>
+  <button id="menu-btn" aria-label="Settings"><svg class="topbar-glyph" aria-hidden="true" focusable="false"><use href="ui/icons.svg#i-gear"></use></svg></button>
   <h1><a class="wordmark" href="#/">4a</a> <span class="topbar-tag">a daily podcast picker</span></h1>
   <button id="refresh-btn" aria-label="Refresh this page">↻</button>
 </header>
 
-<div id="drawer-overlay" hidden></div>
-<nav id="drawer" hidden>
-  <!-- The five destinations, in the founder's own order (2026-09-03). Home is
-       the four subject cards and nothing else; everything that used to sit
-       under them has one of the four pages below as its home. Keep this list
-       to five: test/home-information-architecture.test.js pins it, because
-       the clutter this replaced accumulated one "just one more row" at a time.
-       "Starred Shows" is NOT dropped — it is a Library section (2026-09-22).
-       ONE NAME PER DESTINATION (2026-09-22): #/shows is "Search" here because
-       that is the tab bar's name for it; the tab bar's names win. (Ambient Dock: "Today" and "Discover".) -->
-  <a class="drawer-section" href="#/">Today</a>
-  <a class="drawer-section" href="#/shows">Discover</a>
-  <a class="drawer-section" href="#/playlists">Playlists</a>
-  <a class="drawer-section" href="#/forays">Forays</a>
-  <a class="drawer-section" href="#/queue">Up Next</a>
-  <div id="drawer-playlists"></div>
-  <div class="drawer-section-label">Settings</div>
-  <button class="drawer-item as-btn" id="family-toggle"></button>
-  <button class="drawer-item as-btn" id="autoadvance-toggle"></button>
-  <button class="drawer-item as-btn" id="intro-replay" type="button">What 4a does</button>
-</nav>
+<!-- NO DRAWER (Redesign 2026, ambient; DIRECTION.md "Information architecture"). The slide-in panel is gone from the
+     DOM: its destinations are the three tabs, and its switches, Developer group and "Delete my data" are the
+     Settings page (#/settings), reached from the gear above or Today's own gear. ui/settings.js builds the gear's
+     Sheet when it is opened and the page's controls into one host it parks in <body>. -->
 
 <main id="view"></main>
 
@@ -161,8 +148,6 @@
 <script src="ui/delete-data.js"></script>
 <script src="ui/diagnostics.js"></script>
 <script src="ui/downloads.js"></script>
-<script src="ui/drawer-dev.js"></script>
-<script src="ui/drawer.js"></script>
 <script src="ui/episode.js"></script>
 <script src="ui/foray-player.js"></script>
 <script src="ui/foray.js"></script>
@@ -179,6 +164,8 @@
 <script src="ui/queue.js"></script>
 <script src="ui/rows.js"></script>
 <script src="ui/search.js"></script>
+<script src="ui/settings-dev.js"></script>
+<script src="ui/settings.js"></script>
 <script src="ui/sheets.js"></script>
 <script src="ui/show.js"></script>
 <script src="ui/tabbar.js"></script>

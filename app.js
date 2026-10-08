@@ -4480,19 +4480,18 @@ function sameHashTap(a, e) {
 
 /* ---------- HARDWARE BACK (audit round 2, nav-2) ----------
 
-   Android's back was the raw WebView back: with the drawer or the Now
-   Playing sheet open it closed the overlay AND stepped the page underneath
-   (the drawer and the sheets push no history entry, so the step was a real
+   Android's back was the raw WebView back: with the Now Playing sheet (or
+   any sheet) open it closed the overlay AND stepped the page underneath
+   (the sheets push no history entry, so the step was a real
    one), and on a first page it left the app with the sheet still up. Every
    Android app treats back as "dismiss the top-most thing"; this is that
-   ordering, in one place, beside the ownership model the drawer and the
-   sheets already follow: the drawer (it sits over everything), then the top
-   sheet through its own close (Escape's path — a sheet may decline), then one
-   step of the app's own history, else leave the app. iOS has no back button
+   ordering, in one place, beside the ownership model the sheets follow: the
+   top sheet through its own close (Escape's path — a sheet may decline), then one
+   step of the app's own history, else leave the app. (The drawer that used to
+   sit above the sheets in this order is gone; the gear's Sheet is a sheet.) iOS has no back button
    and registers the same listener harmlessly. `docs/DECISIONS.md` 2026-09-23
    records the order. */
 function handleBack() {
-  if (drawerIsOpen()) { openDrawer(false, { toMenu: true }); return "drawer"; }
   if (openSheetCount() > 0) {
     sheetStack[sheetStack.length - 1].requestClose();
     return "sheet";
@@ -4615,6 +4614,9 @@ function enterForayFromQuery() {
    split fixes. route() itself still closes the drawer, for real navigation. */
 function renderCurrentPage() {
   if (!state.ready) return;
+  /* The Settings page's controls live in one host that is moved into the page and back (ui/settings.js). Parked
+     BEFORE #view is rewritten, or the rewrite would take the host with it. */
+  parkSettingsHost();
   /* Both of these belong to a page that is about to be replaced. The sheet's DOM
      and listeners die with #view, so neither can act — but a stale entry left
      pointing at a detached segment is the kind of thing that becomes a bug the
@@ -4690,6 +4692,8 @@ function renderCurrentPage() {
   else if (h === "#/library") renderLibrary();
   else if (h === "#/starred-shows") renderStarredShows();
   else if (h === "#/interests") renderInterests();
+  else if (h === "#/settings") renderSettings();
+  else if (h === "#/about") renderAbout();
   else if (h === "#/gallery" && galleryAllowed()) renderGallery();
   else renderHome();
   publishRenderedPageHead();
@@ -4761,7 +4765,6 @@ function route() {
   /* To the top first, THEN render: the new page is laid out with the viewport
      already where it is going rather than painted and yanked. */
   scrollPageTo(0);
-  openDrawer(false);
   /* A NAVIGATION closes whatever modal was up — a back gesture over a sheet
      used to leave it stranded over a different page (the speed menu, the
      delete sheet) — through each sheet's own close, so a sheet that must not
@@ -4815,8 +4818,10 @@ function route() {
 function pageHeading(view) {
   if (!view || typeof view.querySelector !== "function") return null;
   /* `.sh-head` is the Redesign 2026 show page's heading (it has no `.page-head`: its Room is not a sticky bar). */
-  const box = view.querySelector(".page-head") || view.querySelector(".sh-head");
-  return (box && box.querySelector("h2")) || null;
+  const box = view.querySelector(".page-head") || view.querySelector(".st-head") || view.querySelector(".sh-head");
+  /* A legacy page head titles itself with an h2 (the top bar owns the h1); a Settings page head IS the page's h1. A page that draws
+     its own header (the ambient Foray detail) names itself with `data-page-heading` on its title. */
+  return (box && (box.querySelector("h2") || box.querySelector("h1"))) || view.querySelector("[data-page-heading]") || null;
 }
 
 /* A NAVIGATION WHOSE NAME HAS NOT BEEN SAID YET (audit round 2, races-6). A
@@ -4842,8 +4847,7 @@ function landOnPage({ navigated = false } = {}) {
   try { document.title = name ? `${name} · 4a` : "4a"; } catch (_) { /* a stub document */ }
   const owed = navigated || (announceOwedFor !== null && announceOwedFor === renderedHash);
   const active = document.activeElement;
-  const lost = !active || active === document.body || active.isConnected === false
-    || !!(typeof active.closest === "function" && active.closest("#drawer"));
+  const lost = !active || active === document.body || active.isConnected === false;
   if (lost) {
     const greeting = home && view && typeof view.querySelector === "function" ? view.querySelector(".td-wordmark") : null;
     const target = head || greeting || view;
@@ -6203,10 +6207,12 @@ async function init() {
      screen whatever route the listener types. */
   try {
   await waitForStorage();
+  /* The room the listener chose (Dusk, Dawn, or follow the phone), before the first route paints it. */
+  applyStoredTheme();
   /* Offline downloads (#29, PQ-18): the bridge comes from player/client.js,
      which `waitForStorage` has just waited for, and is null off the shell.
      Before the first route, so a cold open on an episode page draws its
-     Download control, and before `bindDrawerToggles` below, which appends the
+     Download control, and before `bindSettingSwitches` below, which appends the
      cellular switch only when there is a bridge. */
   bootDownloads();
   const directory = forayDirectoryBridge();
@@ -6244,6 +6250,7 @@ async function init() {
      than the taxonomy defaults (races-4). */
   if (storageWaiting()) {
     afterStorageSettles(() => {
+      applyStoredTheme();
       loadInterests();
       state._interestsGen = (state._interestsGen || 0) + 1;
     });
@@ -6347,16 +6354,16 @@ async function init() {
     refreshEpisodeNavigation();
   });
 
-  bindDrawerChrome();
+  bindSettingsChrome();
   /* Android's back button, ordered like every other overlay close — see
      `handleBack`. A no-op on the web and on iOS. */
   bindHardwareBack();
   $("#view").addEventListener("click", onBackClick);
   $("#view").addEventListener("click", onForayScriptClick);   // once — see its header
-  /* The listener's settings switches, in one call — see `bindDrawerToggles`.
+  /* The listener's settings switches, in one call — see `bindSettingSwitches`.
      They land ABOVE everything bound below, so "Delete my data" stays last where
      a scrolled thumb expects it. */
-  bindDrawerToggles();
+  bindSettingSwitches();
   /* Narration voice (V-01): a listener setting, so it stays with the switches
      above rather than inside the Developer group below (2026-09-22 audit, R8). */
   bindVoiceControl();

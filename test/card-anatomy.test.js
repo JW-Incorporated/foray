@@ -378,27 +378,26 @@ test("the Interests page names a lone root once: its card, with no heading resta
   const root = { id: "adventure", label: "Adventure", parent: null, weight: 0.5 };
   const leaf = { id: "adventure/climbing", label: "Climbing", parent: "adventure", weight: 0.2 };
   const lone = run(`interestGroupHtml(${JSON.stringify({ root, rows: [root] })})`);
-  assert.doesNotMatch(lone, /interest-group-label/, "a lone root: the card names itself");
+  assert.doesNotMatch(lone, /st-group-label/, "a lone root: the row names itself");
   assert.strictEqual((lone.match(/Adventure/g) || []).length >= 1, true);
   const grouped = run(`interestGroupHtml(${JSON.stringify({ root, rows: [root, leaf] })})`);
-  assert.match(grouped, /<h3 class="interest-group-label">Adventure<\/h3>/, "a root with a sub-topic keeps the heading that gathers them");
+  assert.match(grouped, /<h3 class="st-group-label t-headline">Adventure<\/h3>/, "a root with a sub-subject keeps the heading that gathers them");
 });
 
-test("a credits row ends in its ↗, so the links make one straight right-hand column", () => {
-  /* Round 2, visual-7: the ↗ was the MIDDLE child of a space-between row, so it
-     sat halfway through whatever width each show name left. MUTATION: put the
-     `.fy-src-out` link back between the name and the count -> red. */
+test("a came-from tile is the art, then the name to three lines, and a show with no page opens its Apple page", () => {
+  /* Ambient Foray detail (Redesign 2026) replaced the credits row (name, count, arrow) with a three-up tile:
+     the card-anatomy ruling that fell is "a credits row ends in its arrow". The tile's face is one link, the
+     art above the name; a show the catalogue has no page for opens its Apple Podcasts page, says so in its
+     accessible name, and has no Follow (there is nothing to bookmark).
+     MUTATIONS: clamp3 -> clamp2 on the name: red. Drop target/rel from the external face: red. Put a
+     data-fd-follow button on a show with no catalogue record: red. */
   const run = loadApp();
-  run(`showNameLink = (s) => s;`);
-  const html = run(`foraySourcesHtml({}, {
-    forayCredits: () => ({ summary: "2 shows", credits: [{ show: "A Show", link: "https://podcasts.apple.com/x", clips: 2, seconds: 300, episodes: [] }] }),
-    fmtSpan: () => "5m",
+  const html = run(`forayCameFromHtml({ shows: ["A Show"], entries: [{ show: "A Show" }] }, {
+    forayCredits: () => ({ summary: "1 show", credits: [{ show: "A Show", link: "https://podcasts.apple.com/x", linkKind: "apple-show", clips: 2, seconds: 300, episodes: [] }] }),
   })`);
-  const head = /<div class="fy-src-head">([\s\S]*?)<\/div>/.exec(html)[1];
-  const order = ["fy-src-show", "fy-src-meta", "fy-src-out"].map((c) => head.indexOf(`class="${c}"`));
-  assert.ok(order.every((i) => i >= 0) && order[0] < order[1] && order[1] < order[2], `name, count, ↗ — got ${order}`);
-  assert.strictEqual(valueOf(".fy-src-show", "flex"), "1 1 auto", "the name takes the free width");
-  assert.notStrictEqual(valueOf(".fy-src-head", "justify-content"), "space-between", "nothing is spread into the middle");
+  assert.match(html, /<a class="fd-tile-face" href="https:\/\/podcasts\.apple\.com\/x" target="_blank" rel="noopener"[^>]*aria-label="Open A Show on Apple Podcasts"><span class="fd-tile-art"[\s\S]*?<span class="t-caption name clamp3">A Show<\/span><\/a>/, html);
+  assert.ok(html.indexOf('class="fd-tile-art"') < html.indexOf('class="t-caption name clamp3"'), "the art, then the name");
+  assert.doesNotMatch(html, /data-fd-follow/, "a show with no catalogue page cannot be followed");
 });
 
 test("a tab's root page has no ‹; a page you were sent to keeps one", () => {
@@ -415,9 +414,12 @@ test("a tab's root page has no ‹; a page you were sent to keeps one", () => {
   assert.match(body("renderShowIndexPage"), /\$\{tabRoot \? "" : `<a class="back" href="#\/">‹<\/a>`\}/, "the shared template omits it on request");
   assert.match(body("renderAllShows"), /`, \{ tabRoot: true \}\);/, "Search asks");
   assert.doesNotMatch(body("renderCategory"), /tabRoot/, "a category page is pushed: it keeps its ‹");
-  for (const fn of ["renderPlaylists", "renderQueue", "renderForays", "renderInterests"]) {
+  for (const fn of ["renderPlaylists", "renderQueue", "renderForays"]) {
     assert.match(body(fn), /class="back"/, `${fn} is pushed from a tab and keeps its ‹`);
   }
+  /* Tuning, Settings and About (Redesign 2026) share one head, stHeadHtml, whose Back chevron is the history-aware a.back. */
+  assert.match(body("renderInterests"), /stPageHtml\(/, "Tuning is a Settings page: it wears the shared head");
+  assert.match(body("stHeadHtml"), /<a class="back st-back /, "the shared head keeps its ‹ (a.back, the history-aware one)");
 });
 
 test("search's shows tier wears the eyebrow its Episodes and Playlists tiers do, only while it has rows", () => {
