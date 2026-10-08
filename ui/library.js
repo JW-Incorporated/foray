@@ -62,10 +62,63 @@ function libSummaryRow(hashPath, title, sub) {
    into Library, no new tab"; audit personas 32 and 50). The tab bar lit Library
    for #/forays and every Foray page while Library listed no Forays, and the only
    way to the shows a listener followed was a row inside the Search page's browse
-   furniture, hidden the moment the field was focused. Both are LINKED, capped at
-   five like Playlists, and open their real page for the rest — the "browse here,
-   act there" split the header above describes. */
-const LIBRARY_SECTION_CAP = 5;
+   furniture, hidden the moment the field was focused. Both are Yours panels now,
+   and both list everything (the Forays and Shows panels below), not five. */
+
+/* THE FORAYS PANEL (tactile `library-forays`, BUILD-PLAN 2.13, BUILD-NOTES 4.5).
+   Every Foray this listener may see, one card each, in the Forays list's own
+   order. It was five summary rows ending in "All N forays", linking to #/forays;
+   the cards ARE the whole list, so that link is gone (the route still resolves).
+
+   RULING THAT FELL: "Yours' Forays is a capped summary of five rows that opens
+   #/forays" (the Library section of test/foray-surfaces.test.js).
+
+   A CARD is not a link (the Today hero's rule): the title is its one link and
+   Play is the key beside the readout, siblings, each at least 44px. Between them
+   is the Foray's own band at the 8px `mini` size, drawn from the same strip model
+   Today's hero uses (`todayHeroModel`), so a Foray is the same object on both
+   screens: a bar per clip coloured by its show, narration as solid ultramarine
+   ticks. The readout under it is "about 22 min · 4 shows", then how far the
+   listener is ("12 min left", "Played"), the one place that is said; a draft
+   says "draft" first.
+
+   RESUME is on the band itself: the bars the listener has played are full, the
+   rest sit at 40%, and the needle stands where they stopped (the primitive's
+   `progress`). A Foray not started, or finished, draws no needle and no fill: a
+   finished one is "Played" in words, and a full band with a needle parked at its
+   end would read as one more start line. Play is `[data-home-play]`, the press
+   Today's keys use (`bindHomePlay`): the Foray is resolved at the press and
+   handed to the player. */
+function yoursForayProgress() {
+  /* Every listed Foray's place, finished ones included, uncapped (honesty-12). */
+  return new Map(forayResumeRows({ limit: Infinity, includeFinished: true }).map(p => [p.id, p]));
+}
+
+/** The band's inner width, for its bars' minimum-width arithmetic only: the
+    viewport less the 16px gutters, the card's 16px padding and the well's own. */
+function yoursForayBandWidth() {
+  const vw = Math.max(280, Math.min(Number(window.innerWidth) || 393, 680));
+  return vw - 2 * 16 - 2 * 16 - 2 * 6;
+}
+
+function yoursForayCardHtml(f, place) {
+  const r = resolveListedForay(f.id);
+  const hero = r && Array.isArray(r.playable) && r.playable.length ? todayHeroModel({ foray: f, r }) : null;
+  const title = f.title || f.id;
+  const part = place && !place.finished && Number(place.percent) > 0 ? Math.min(1, Number(place.percent) / 100) : 0;
+  const readout = joinMeta(f.status !== "published" ? "draft" : "", hero ? hero.facts : "", place ? place.label : "");
+  const band = hero
+    ? `<div class="well yours-foray__band">${tactileBand({ kind: "mini", segments: hero.segments, renderWidth: yoursForayBandWidth(), label: hero.bandLabel, progress: part })}</div>`
+    : "";
+  const key = hero
+    ? tactileKeycap({ size: "sm", variant: "persimmon", round: true, icon: "ph-play-fill", label: `${part ? "Resume" : "Play"} ${title}`, data: { "home-play": f.id } })
+    : "";
+  return `<article class="card yours-foray${part ? " is-part" : ""}">
+    <h3 class="yours-foray__title"><a class="yours-foray__link" href="${esc(safeUrl("#" + forayRoutePath(f.id)))}">${esc(title)}</a></h3>
+    ${band}
+    <div class="yours-foray__foot"><span class="readout yours-foray__readout">${esc(readout)}</span>${key}</div>
+  </article>`;
+}
 
 function libraryForaysHtml() {
   /* The player module lists Forays; until it has loaded, the count is unknown,
@@ -73,11 +126,8 @@ function libraryForaysHtml() {
   if (!state.forays || !window.ForayPlayer) return libSummaryRow("/forays", "All forays", "");
   const list = forayCards();
   if (!list.length) return `<p class="note">No forays to show yet.</p>`;
-  const progress = forayProgressLabels();
-  return list.slice(0, LIBRARY_SECTION_CAP).map(f =>
-    libSummaryRow(`/foray/${encodeURIComponent(f.id)}`, f.title || f.id,
-      forayListSubLabel(f, progress))).join("")
-    + (list.length > LIBRARY_SECTION_CAP ? `<a class="lib-more" href="#/forays">All ${list.length} forays ›</a>` : "");
+  const progress = yoursForayProgress();
+  return `<div class="yours-forays">${list.map(f => yoursForayCardHtml(f, progress.get(f.id))).join("")}</div>`;
 }
 
 /* THE SHOWS PANEL (tactile `library-shows`, BUILD-PLAN 2.14, BUILD-NOTES 4.5).
@@ -1045,6 +1095,7 @@ function renderLibrary(chip) {
   bindUpNext($("#view"));
   bindDownloads($("#view"));
   bindPlay($("#view"));
+  bindHomePlay($("#yours-panel-forays"));
 
   /* A COLD OPEN BEFORE THE PLAYER MODULE (review 2026-09-23). The Forays
      section can only list once the player module is up, and the forayCards() header

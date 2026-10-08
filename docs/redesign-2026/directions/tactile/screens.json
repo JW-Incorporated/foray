@@ -560,21 +560,37 @@
       },
       "app": {
         "state": "returning",
-        "step": "forays"
+        "step": "yours-forays"
       },
       "regions": {
         "header": {
           "prototype": ".top",
           "app": ".page-head"
         },
-        "rows": {
-          "prototype": ".row",
-          "app": ".ep-row",
+        "primary": {
+          "prototype": ".top .keycap",
+          "app": "#yours-knob"
+        },
+        "chips": {
+          "prototype": ".strip[role=\"tablist\"] .chip",
+          "app": "#yours-chips .chip",
           "mode": "all"
         },
-        "mini": {
-          "prototype": "#mini",
-          "app": "#foray-player"
+        "card": {
+          "prototype": "#libbody .card",
+          "app": ".yours-foray"
+        },
+        "title": {
+          "prototype": "#libbody .card .h17",
+          "app": ".yours-foray__title"
+        },
+        "band": {
+          "prototype": "#libbody .card .band-wrap",
+          "app": ".yours-foray__band"
+        },
+        "play": {
+          "prototype": "#libbody .card .keycap",
+          "app": ".yours-foray .keycap"
         },
         "tabBar": {
           "prototype": "#tabs",
