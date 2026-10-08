@@ -344,7 +344,12 @@ test("route() dispatches #/starred-shows to renderStarredShows, matching #/playl
 /* 6. REACHABILITY — FROM THE SHOWS PAGE, NOT THE DRAWER                 */
 /* ==================================================================== */
 
-test("#/starred-shows is reachable from the Shows page and is no longer a drawer entry", () => {
+test("#/starred-shows is reachable from Library (Redesign 2026: no longer from Discover) and is no longer a drawer entry", () => {
+  /* REDESIGN 2026 (ambient, Discover): the Followed-shows shortcut left the Shows page (it is "Discover" now);
+     Library owns the followed shows and its "All N followed shows" link is the way to #/starred-shows
+     (BUILD-NOTES 4.4). The ruling that fell: "the Shows page carries the shortcut" (2026-09-03). The original
+     reasoning below still describes the drawer half, which is unchanged.
+     MUTATION: drop the `lib-more` link from libraryFollowedHtml -> the first assertion fails. */
   /* Was: "the drawer nav carries a link to #/starred-shows". The founder
      named the menu's five pages on 2026-09-03 (Home, Shows, Playlists,
      Forays, Up Next) and Starred Shows is not one of them, so the drawer
@@ -370,11 +375,15 @@ test("#/starred-shows is reachable from the Shows page and is no longer a drawer
   m.state.discover = { items: [] };
   m.state.taxonomy = { nodes: [] };
   m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
-  m.ctx.renderAllShows();
+  const many = {};
+  for (let i = 0; i < 6; i++) many[`show-${i}`] = { show_id: `show-${i}`, title: `Show ${i}`, starred_at: `2026-09-0${i + 1}T00:00:00Z` };
+  m.ctx.localStorage.setItem("cp_starred_shows", JSON.stringify(many));
   assert.ok(
-    m.view().includes('href="#/starred-shows"'),
-    "the Shows page must carry a reachable link to #/starred-shows"
+    m.ctx.libraryFollowedHtml().includes('href="#/starred-shows"'),
+    "Library must carry a reachable link to #/starred-shows once the followed shows outgrow its section"
   );
+  m.ctx.renderAllShows();
+  assert.ok(!m.view().includes('href="#/starred-shows"'), "…and Discover must not");
   assert.doesNotMatch(
     INDEX_HTML,
     /<nav id="drawer"[^]*?href="#\/starred-shows"[^]*?<\/nav>/,

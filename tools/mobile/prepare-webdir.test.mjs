@@ -78,8 +78,11 @@ const ROOT = path.resolve(HERE, "..", "..");
    so that alarm remains at 2.85 MB instead of being re-baselined a seventh time.
    The complete bundle still has to clear MAX_BYTES in the independent cap test. */
 const AMBIENT_PRIMITIVES_ASSETS = Object.freeze([
-  { rel: "ui/primitives.css", maxBytes: 20 * 1024 },
-  { rel: "ui/primitives.js", maxBytes: 16 * 1024 },
+  /* 20 -> 26 KB (Redesign 2026, ambient screen 4, Discover): the screen's CSS (the subject grid, the field's chrome, the
+     four result rows, the empty page and the Make button) is appended to this sheet, 24.0 KB shipped. The 0.75 floor
+     below still holds the number honest; the next screen that appends here moves it again, in its own PR. */
+  { rel: "ui/primitives.css", maxBytes: 26 * 1024 },
+  { rel: "ui/primitives.js", maxBytes: 18 * 1024 },   // 16 -> 18 KB (screen 4): agSubjectTile / agEmptyState / agCollage take real data, 16.5 KB shipped
   { rel: "ui/gallery.js", maxBytes: 9 * 1024 },
 ]);
 

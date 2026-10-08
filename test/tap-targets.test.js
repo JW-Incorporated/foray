@@ -192,7 +192,8 @@ function renderedButtons() {
 const BUTTONS = {
   "#menu-btn": { rule: ".topbar button" },
   "#refresh-btn": { rule: ".topbar button" },
-  "#sh-dismiss": { size: ["#sh-dismiss"] },
+  /* "#sh-dismiss" left this list with Discover (Redesign 2026): the x is an `.ag-btn-icon` now, keyed `.ag-btn` below, whose
+     44x44 is `.ag .ag-btn-icon`. MUTATION: set `.ag .ag-btn-icon { width: 40px }` -> red. */
   "#shell-notice-reload": { rule: ".shell-notice button" },
   "#shell-notice-dismiss": { rule: ".shell-notice button" },
   ".cr-toggle-btn": { tall: ".cr-toggle-btn", why: "flex: 1 — half of Create's toggle row" },

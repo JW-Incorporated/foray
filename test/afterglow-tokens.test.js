@@ -307,7 +307,11 @@ test("every selector in the file is a new name: nothing today's markup emits or 
   /* The phase-3 system files are the deliberate exceptions: icons.js, primitives.js and gallery.js emit
      only the new `.ag` subtree while legacy screens remain unchanged. Every screen-bearing ui/*.js still
      counts. MUTATION: put `class="icon"` in app.js or any other screen template -> red. */
-  const systemFiles = new Set(["icons.js", "primitives.js", "gallery.js"]);
+  /* A Phase 4 screen that has ADOPTED the system emits `.ag` and the primitives' own classes by design (that is
+     what adopting is), so it joins the exceptions in the PR that adopts it, one entry per screen file:
+       browse.js, search.js, create.js: Discover (ambient screen 4).
+     MUTATION: put `class="icon"` in app.js or in a screen file NOT listed here -> red. */
+  const systemFiles = new Set(["icons.js", "primitives.js", "gallery.js", "browse.js", "search.js", "create.js"]);
   const emitted = [read("app.js"), read("index.html"), ...fs.readdirSync(path.join(ROOT, "ui")).filter((f) => f.endsWith(".js") && !systemFiles.has(f)).map((f) => read(`ui/${f}`)),
     ...fs.readdirSync(path.join(ROOT, "player")).filter((f) => f.endsWith(".js") && !f.endsWith(".test.js")).map((f) => read(`player/${f}`))].join("\n");
   const legacy = new Set(STYLE_RULES.flatMap((r) => r.selectors.flatMap((s) => [...s.matchAll(/\.([A-Za-z][\w-]*)/g)].map((m) => m[1]))));

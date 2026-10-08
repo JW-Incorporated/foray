@@ -82,6 +82,44 @@ function paintCreatePending(pending) {
   setControlLabel(btn, pending ? "Building…" : "Build", null);
 }
 
+/** What a build that did not make a playlist says, in one wording for both doors to it: #/create's
+    note and Discover's "Make a playlist" note. */
+function playlistBuildFailureText(result, query) {
+  return result.status === "unsaved"
+    ? "That playlist could not be saved — this device has no storage space left. Removing a playlist you have finished with frees enough for a new one."
+    : result.status === "full"
+      ? `You have ${PLAYLISTS_CAP} playlists, the most 4a keeps. Remove one to build another.`
+      : result.suggestions.length
+        ? `Not much on ${quoteQuery(query)} yet — try ${result.suggestions.map(s => s.label).join(", ")} instead.`
+        : `Not much on ${quoteQuery(query)} yet — try different words.`;
+}
+
+/** THE ONE PLAYLIST BUILD (Redesign 2026): #/create's form and Discover's "Make a playlist from ..."
+    button both end here, so there is exactly one creation path, one in-flight flag and one event.
+    It waits for the search documents (a cold start can take seconds), builds with today's
+    buildPlaylist(), logs `playlist_built` (a LOCAL event: it falls to toEventRow's default and is
+    never sent, and a lab build sends no event at all, test/lab-flag.test.js), and hands the result
+    to `onResult` while the pending flag is still set. `source` names the door in the event payload.
+    Returns false, and does nothing, when a build is already on its way. */
+function runPlaylistBuild(query, source, onResult) {
+  if (createBuildPending) return false;
+  createBuildPending = true;
+  paintCreatePending(true);
+  paintMakePending(true);
+  whenSearchDataReady(() => {
+    try {
+      const result = buildPlaylist(query);
+      logEvent("playlist_built", { query, status: result.status, found: result.playlist ? result.playlist.items.length : 0, source });
+      onResult(result);
+    } finally {
+      createBuildPending = false;
+      paintCreatePending(false);
+      paintMakePending(false);
+    }
+  });
+  return true;
+}
+
 function bindCreateFormSubmit(e) {
   e.preventDefault();
   if (createBuildPending) return;
@@ -89,42 +127,27 @@ function bindCreateFormSubmit(e) {
   const input = form.querySelector("input[type='text']");
   const query = input.value.trim();
   if (!query) return;
-  createBuildPending = true;
-  paintCreatePending(true);
   const staleNote = $("#cr-note");
   if (staleNote) staleNote.hidden = true;
-  whenSearchDataReady(() => {
-    try {
-      const result = buildPlaylist(query);
-      logEvent("playlist_built", { query, status: result.status, found: result.playlist ? result.playlist.items.length : 0, source: "create" });
-      /* ONLY IF CREATE IS STILL THE PAGE ON SCREEN (audit round 2, races-3).
-         The wait above can outlast the listener's patience; a build that
-         finished while they were on Home or in a show yanked them to the new
-         playlist from wherever they were. The playlist is already saved
-         either way — Library and #/playlists list it — so a listener who
-         moved on loses nothing but the jump. The route is the test, not the
-         render token: a listener who left and CAME BACK to Create is looking
-         at "Building…" (painted from the flag above) and expects the result
-         to land. */
-      const onCreate = currentHash() === "#/create";
-      if (result.status === "ok" || result.status === "sparse") {
-        if (onCreate) location.hash = "#/" + playlistRoute(result.playlist);
-      } else if (onCreate) {
-        const note = $("#cr-note"); // the live page's note, never the one captured before the wait
-        if (note) {
-          note.textContent = result.status === "unsaved"
-            ? "That playlist could not be saved — this device has no storage space left. Removing a playlist you have finished with frees enough for a new one."
-            : result.status === "full"
-              ? `You have ${PLAYLISTS_CAP} playlists, the most 4a keeps. Remove one to build another.`
-              : result.suggestions.length
-              ? `Not much on ${quoteQuery(query)} yet — try ${result.suggestions.map(s => s.label).join(", ")} instead.`
-              : `Not much on ${quoteQuery(query)} yet — try different words.`;
-          note.hidden = false;
-        }
+  runPlaylistBuild(query, "create", (result) => {
+    /* ONLY IF CREATE IS STILL THE PAGE ON SCREEN (audit round 2, races-3).
+       The wait above can outlast the listener's patience; a build that
+       finished while they were on Home or in a show yanked them to the new
+       playlist from wherever they were. The playlist is already saved
+       either way — Library and #/playlists list it — so a listener who
+       moved on loses nothing but the jump. The route is the test, not the
+       render token: a listener who left and CAME BACK to Create is looking
+       at "Building…" (painted from the flag above) and expects the result
+       to land. */
+    const onCreate = currentHash() === "#/create";
+    if (result.status === "ok" || result.status === "sparse") {
+      if (onCreate) location.hash = "#/" + playlistRoute(result.playlist);
+    } else if (onCreate) {
+      const note = $("#cr-note"); // the live page's note, never the one captured before the wait
+      if (note) {
+        note.textContent = playlistBuildFailureText(result, query);
+        note.hidden = false;
       }
-    } finally {
-      createBuildPending = false;
-      paintCreatePending(false);
     }
   });
 }
@@ -167,14 +190,7 @@ function renderCreate() {
       if (form) bindCreateFormSubmit({ preventDefault() {}, currentTarget: form });
     });
   });
-  /* A Search CTA's hand-off (app-2-11): prefilled and submitted through the
-     same path, now that the form exists. Consumed once. */
-  if (pendingCreateQuery !== null) {
-    const query = pendingCreateQuery;
-    pendingCreateQuery = null;
-    const form = $("#cr-form");
-    const input = $("#cr-input");
-    if (input) input.value = query;
-    if (form && !createBuildPending) bindCreateFormSubmit({ preventDefault() {}, currentTarget: form });
-  }
+  /* There is no Search-to-Create hand-off any more (app-2-11's module-state query is gone):
+     Discover's "Make a playlist from ..." button runs `runPlaylistBuild` itself, from the page the
+     listener is on. */
 }

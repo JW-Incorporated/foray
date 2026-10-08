@@ -249,3 +249,95 @@
   .ag .ag-hero-pick { grid-template-columns: calc(var(--art-hero) - var(--s-6)) minmax(0, 1fr); }
   .ag .ag-hero-pick > .ag-collage { width: calc(var(--art-hero) - var(--s-6)); height: calc(var(--art-hero) - var(--s-6)); }
 }
+
+/* ============================================================================
+   Discover (Redesign 2026, ambient, screen 4): the page is `.ag.disc`, wearing the scheme; its
+   field is `#sh-compose` (positioned by styles.css's `--sh-dock` arithmetic, which is unchanged).
+   Every selector is scoped below .ag or names the Discover body class; every motion is the one
+   block in ui/tokens.css (nothing here transitions or animates).
+   ============================================================================ */
+body.ag-discover { background: var(--bg0); color: var(--ag-text); }
+/* The legacy top bar (a drawer, a refresh) is not drawn here: the direction has no drawer, and the
+   title sits at safe-top + 8 (BUILD-NOTES 4.4). Its two jobs move to Today's gear. */
+body.ag-discover .topbar { display: none; }
+body.ag-discover #view { padding-top: 0; }
+/* The keyboard owns the bottom edge while the field has focus: the tab bar already yields
+   (`body.sh-searching .tab-bar`), and so does the mini player; the sheet cannot be open then. */
+body.sh-searching #foray-player { display: none; }
+body.sh-searching #sh-compose { --sh-fp: 0px; }
+
+.ag.disc {
+  padding: calc(var(--safe-top) + var(--s-2)) var(--gutter) var(--s-6);
+  background: transparent;
+}
+body.ui-v2 .ag.disc .page-head {
+  position: static; transform: none; will-change: auto;
+  min-height: var(--tap); margin: 0; padding: 0; background: transparent; border: 0;
+}
+body.ui-v2 .ag.disc .page-head { margin-top: var(--s-2); }   /* the title sits 16 from the top: safe-top + 8 of page, 8 of its own (the prototype's measured 16) */
+.ag.disc .page-head h2 { margin: 0; font: var(--t-title); font-variation-settings: 'SOFT' 100, 'WONK' 0; font-optical-sizing: auto; color: var(--text); }
+
+/* Idle: five heads of two-up SubjectTiles. The first head sits 16 under the title; every other head
+   keeps the primitive's 32. A full-width odd tile steps its name up to the headline style. */
+.ag #sh-browse > .dsc-group:first-of-type > .ag-section-head { margin-top: var(--s-4); }
+.ag .dsc-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3); }
+.ag .dsc-grid > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+.ag .dsc-grid > :last-child:nth-child(odd) .t-label { font: var(--t-headline); font-variation-settings: 'SOFT' 100, 'WONK' 0; font-optical-sizing: auto; }
+.ag a.ag-subject-tile { color: var(--text); text-decoration: none; min-width: 0; }
+.ag a.ag-subject-tile:active { background: var(--bg2); box-shadow: inset 0 0 0 var(--s-1) var(--overlay); }
+.ag a.ag-subject-tile:focus-visible { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) / 2); }
+.ag .ag-subject-tile > div { min-width: 0; }
+/* A subject name never ends in an ellipsis. The text column beside a 56 collage is 86px at 393 and 77 at 375, and
+   "Relationships" (13 characters of the label style) is wider than that: the long words carry a soft hyphen at their
+   syllable (DISCOVER_SOFT_BREAKS in ui/browse.js), and a word nobody has marked breaks anywhere rather than cut. */
+.ag .ag-subject-tile .t-label { overflow-wrap: anywhere; word-break: normal; hyphens: manual; }
+.ag .ag-subject-tile .count { display: block; }
+.ag .dsc-empty-tile .ag-subject-tile { text-align: left; }
+
+/* The field: the Dock's top row. 52 pill on the Veil, 16 in from the page gutter. */
+.ag.disc #sh-compose { left: var(--gutter); right: var(--gutter); display: block; }
+.ag.disc #sh-compose .ag-search-field { padding-right: var(--s-1); }
+.ag.disc #sh-compose .ag-search-field:focus-within { box-shadow: inset 0 1px 0 var(--rim), var(--shadow-2); outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: 0; }
+.ag.disc #sh-compose .ag-search-field input { appearance: none; padding: 0; }
+.ag.disc #sh-compose .ag-btn[hidden] { display: none; }
+
+/* Results. One anatomy for all four kinds: a Raised row, art 56, a label, one caption. */
+.ag.disc .note { color: var(--text-2); font: var(--t-caption); margin: var(--s-4) 0 0; }
+.ag.disc .sh-results-head { margin: var(--s-6) 0 var(--s-3); font: var(--t-headline); font-variation-settings: 'SOFT' 100, 'WONK' 0; font-optical-sizing: auto; letter-spacing: normal; text-transform: none; color: var(--text); }
+.ag .dsc-list { display: flex; flex-direction: column; gap: var(--s-2); }
+.ag .dsc-row {
+  min-height: var(--row-queue); padding: var(--s-2) var(--s-3) var(--s-2) var(--s-2);
+  display: grid; grid-template-columns: var(--art-queue) minmax(0, 1fr); align-items: center; gap: var(--s-3);
+  color: var(--text); text-decoration: none;
+}
+.ag .dsc-row-link { min-width: 0; display: grid; grid-template-columns: var(--art-queue) minmax(0, 1fr); align-items: center; gap: var(--s-3); color: inherit; text-decoration: none; }
+.ag .dsc-ep { grid-template-columns: minmax(0, 1fr) var(--tap); padding-right: var(--s-2); }
+.ag .dsc-copy { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ag .dsc-copy .t-label { color: var(--text); overflow-wrap: normal; word-break: normal; hyphens: none; }
+.ag .dsc-meta { color: var(--text-2); overflow-wrap: anywhere; }
+.ag .dsc-gen { color: var(--lamp-text); }
+.ag .dsc-aside { margin: var(--s-2) 0 0; color: var(--text-3); }
+.ag .dsc-row:active { background: var(--bg2); }
+.ag .dsc-row:focus-visible, .ag .dsc-row-link:focus-visible { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) / 2); }
+/* The episode row's one play control: the app's own `.play-btn` (the player repaints its glyph and
+   its label), drawn as the outlined 44 control. */
+.ag .dsc-ep .play-btn { width: var(--tap); height: var(--tap); border: 0; background: transparent; color: var(--text); box-shadow: inset 0 0 0 calc(var(--s-1) * .375) var(--text-2); font-size: var(--s-4); }
+.ag .dsc-ep .play-btn[data-playing="1"] { background: var(--ember); color: var(--ember-ink); box-shadow: none; }
+.ag .dsc-ep .not-playable { grid-column: 2; color: var(--text-3); font: var(--t-caption); }
+.ag .dsc-more { margin-top: var(--s-2); }
+/* Result groups sit 24 apart (the idle heads' 32 is for a page of nothing but heads). */
+.ag.disc #fy-search-results .ag-section-head, .ag.disc #ep-search-results .ag-section-head, .ag.disc #pl-search-results .ag-section-head { margin-top: var(--s-6); }
+
+/* The empty page: the EmptyState primitive's lines, then the subject's own tile at full width. */
+.ag .dsc-empty .ag-empty { padding: var(--s-5) 0; }
+.ag .dsc-empty .ag-empty p { font: var(--t-body); color: var(--text-2); margin: 0; }
+.ag .dsc-empty-tile { width: 100%; display: flex; }
+.ag .dsc-empty-tile .ag-subject-tile { width: fit-content; max-width: 100%; }
+
+/* "Make a playlist from <q>": the Primary button, full width, below every kind of result. */
+.ag .dsc-make { margin-top: var(--s-6); }
+.ag .dsc-make-btn { width: 100%; white-space: normal; text-align: center; overflow-wrap: anywhere; padding-block: var(--s-3); }
+.ag .dsc-make .note { text-align: center; }
+
+/* The idle page must clear the floating field, the tab bar and the mini player. */
+body.sh-compose.ag-discover #view { padding-bottom: calc(var(--sh-compose-h) + var(--s-4)); }

@@ -1285,8 +1285,8 @@ test("vouchForHtml renders the 'Shows 4a vouches for' heading and a real link fo
   const m = await mountBooted();
   const shows = m.ctx.showsWeVouchFor();
   assert.ok(shows.length > 0, "fixture assumption: the real 220-show catalogue must have editorially-noted shows");
-  m.ctx.renderAllShows();
-  const html = m.view();
+  /* Rendered by vouchForHtml itself: Discover no longer places it (Redesign 2026, see the placement test below). */
+  const html = m.ctx.vouchForHtml();
   assert.ok(html.includes("Shows 4a vouches for"), "must render the 'Shows 4a vouches for' heading");
   for (const s of shows) {
     assert.ok(html.includes(`href="#/show/${encodeURIComponent(s.show_id)}"`), `must link to ${s.show_id}`);
@@ -1332,7 +1332,7 @@ test("vouchForHtml's row is separate from the topic cards and forays, per the B1
   assert.ok(!html.includes('class="fy-home-row'), "must not render as foray rows");
 });
 
-test("the vouch row renders on the Shows page and nowhere on Home, so it cannot starve the four cards", async () => {
+test("the vouch row renders on no page — not Home (it cannot starve the four cards) and, since Redesign 2026, not Discover", async () => {
   /* The #433 regression, pinned — now by removing its cause rather than
      working around it.
 
@@ -1377,11 +1377,15 @@ test("the vouch row renders on the Shows page and nowhere on Home, so it cannot 
     "fixture assumption: the real catalogue must have editorially-noted shows, or there is no section to place"
   );
 
+  /* REDESIGN 2026 (ambient, Discover) RETIRED the Shows-page placement (see test/home-information-architecture
+     .test.js): the row is still buildable, and no page renders it now.
+     MUTATION: add `${vouchForHtml()}` to renderAllShows -> the first assertion fails. */
   m.ctx.renderAllShows();
   assert.ok(
-    m.view().includes('class="ep-more fy-vouch"'),
-    "the vouch row must render on the Shows page"
+    !m.view().includes('class="ep-more fy-vouch"'),
+    "Discover is the subject groups: the vouch row is on no page"
   );
+  assert.ok(m.ctx.vouchForHtml().includes('class="ep-more fy-vouch"'), "…but it is still buildable");
 
   m.ctx.renderHome();
   const home = m.view();

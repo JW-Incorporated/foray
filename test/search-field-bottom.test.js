@@ -251,8 +251,10 @@ test("the search field renders inside #sh-compose, a sibling of the page header"
   const m = mount();
   m.ctx.renderAllShows();
   const html = m.view();
-  assert.ok(html.includes('<div id="sh-compose">'), "the compose bar must be rendered");
-  const bar = html.slice(html.indexOf('<div id="sh-compose">'), html.indexOf("</div>", html.indexOf('id="sh-form"')));
+  /* `class="dock-field"` since Redesign 2026: the field is the Dock's top row, and that class is the handle the
+     Dock screen adopts it by (BUILD-PLAN screen 2). */
+  assert.ok(html.includes('<div id="sh-compose" class="dock-field">'), "the compose bar must be rendered");
+  const bar = html.slice(html.indexOf('<div id="sh-compose"'), html.indexOf("</form>", html.indexOf('id="sh-form"')));
   assert.ok(bar.includes('id="sh-form"'), "…and it must hold the form");
   assert.ok(bar.includes('id="sh-input"'), "…and the field itself");
   /* Was `type="submit"`, the Go button, until the founder deleted it on
@@ -271,9 +273,11 @@ test("the compose bar is emitted FIRST, ahead of the results and the browse furn
   const html = m.view();
   const compose = html.indexOf('id="sh-compose"');
   assert.ok(compose !== -1, "fixture assumption: the bar rendered");
+  assert.ok(compose < html.indexOf('id="sh-note"'), "the status lines come after the field they describe");
   assert.ok(compose < html.indexOf('id="sh-results"'), "the field comes before the results it fills");
-  assert.ok(compose < html.indexOf('id="sh-browse"'), "…and before the browse furniture");
-  assert.ok(compose < html.indexOf("show-index"), "…and before the A–Z list");
+  assert.ok(compose < html.indexOf('id="sh-browse"'), "…and before the idle subject groups");
+  assert.ok(compose < html.indexOf('id="ep-search-results"') && compose < html.indexOf('id="pl-search-results"'),
+    "…and before every other result group");
 });
 
 test("the bar lives inside #view, so the next page render disposes of it", () => {
@@ -674,86 +678,76 @@ test("kb-open takes the now-playing bar off the screen and leaves the compose ba
 /* this file.                                                           */
 /* ==================================================================== */
 
-test("the field is a translucent pill, not an opaque bar welded to the screen edge", () => {
-  /* The single most characteristic thing in the screenshots: the category
-     grid reads THROUGH the search pill. An opaque fill cuts the page off at a
-     hard line instead, which is what this replaced.
-     MUTATION: drop the `color-mix(...)` background from `#sh-compose #sh-form`
-     so only the opaque `var(--surface)` fallback remains. This fails. RUN:
-     failed as named. */
-  const pill = cssRule("#sh-compose #sh-form");
-  assert.ok(pill, "the pill must have a rule of its own inside the floating row");
-  /* The capsule is the pill step of the radius scale since visual pass 1
-     (2026-09-23); test/ui-tokens.test.js holds that `--radius-pill` is 999px. */
-  assert.match(pill, /border-radius:\s*var\(--radius-pill\)/, "rounded to a capsule, as in the reference");
-  /* `[^;]*` rather than `[^)]*`: the value nests a `var(--surface)`, so a
-     class excluding `)` stops inside it and never reaches `transparent`. */
-  assert.match(pill, /background:\s*color-mix\(in srgb[^;]*transparent\)/,
-    `the pill must be translucent so content reads through it, got: ${pill}`);
-  assert.match(pill, /background:\s*var\(--surface\);/,
-    "…with an opaque fallback first, for browsers without color-mix");
-  assert.match(STYLES, /backdrop-filter:\s*blur\(/, "and blurred where the platform supports it");
-});
-
-test("the pill's stronger translucency is gated on backdrop-filter actually working", () => {
-  /* An unblurred 55%-transparent pill over dense podcast artwork is
-     unreadable. The heavier transparency must be conditional on the blur
-     being real, not applied unconditionally and hoped for.
-     MUTATION: change the base rule's 72% to 55%, i.e. apply the gated value
-     unconditionally. This fails. RUN: failed as named. */
-  const base = cssRule("#sh-compose #sh-form");
-  assert.ok(!/55%/.test(base), "the heavier transparency must not be in the ungated rule");
-  const i = STYLES.indexOf("@supports (backdrop-filter: blur(20px))");
-  assert.ok(i !== -1, "the support gate must exist");
-  assert.ok(STYLES.slice(i, i + 600).includes("55%"), "…and must be where the 55% lives");
+/* REDESIGN 2026 (ambient, Discover) rewrote the chrome these four tests used to pin. The pill is no longer
+   styled by `#sh-compose #sh-form` (translucent `--surface`, `--radius-pill`, an `@supports` gate on 55%):
+   it is the Afterglow SearchField, `<form class="ag-search-field veil">`, and the translucency, the blur and
+   every fallback belong to the Veil material in ui/tokens.css. What the screenshots settled is unchanged
+   and still pinned, against the new classes: a capsule you can read the page through, no second box inside
+   it, a magnifier at the leading edge, no microphone, nothing but the field (and the x once it is filled)
+   in the pill. */
+test("the field is a Veil capsule: translucent, blurred where the platform can, solid where it cannot", () => {
+  /* The single most characteristic thing in the screenshots: the page reads THROUGH the pill. The Veil is the
+     direction's one glass, and tokens.css owns its three fallbacks in one place.
+     MUTATION: drop `veil` from the form's class list in renderAllShows -> the first assertion fails. A second,
+     independent one: delete the `@supports not` fallback from tokens.css -> the last fails. */
+  const m = mount();
+  m.ctx.renderAllShows();
+  assert.match(m.view(), /<form id="sh-form" class="ag-search-field veil" role="search"/, "the pill is the Veil SearchField");
+  const TOKENS = fs.readFileSync(path.join(ROOT, "ui", "tokens.css"), "utf8").replace(/\r\n/g, "\n");
+  const veil = /\n\.veil \{([^}]*)\}/.exec(TOKENS);
+  assert.ok(veil, "the Veil material must exist");
+  assert.match(veil[1], /background:\s*var\(--glow-veil\)/, "tinted by the playing item's Glow, translucent by construction");
+  assert.match(veil[1], /backdrop-filter:\s*blur\(20px\) saturate\(140%\)/, "and blurred");
+  assert.match(TOKENS, /@supports not \(\(backdrop-filter: blur\(1px\)\) or \(-webkit-backdrop-filter: blur\(1px\)\)\) \{\s*\.veil \{ background: var\(--bg1\); \}/,
+    "solid where the blur is not real: an unblurred translucent pill over dense artwork is unreadable");
+  const CSS = fs.readFileSync(path.join(ROOT, "ui", "primitives.css"), "utf8").replace(/\r\n/g, "\n");
+  const field = /\.ag \.ag-search-field \{([^}]*)\}/.exec(CSS);
+  assert.ok(field && /border-radius:\s*var\(--r-pill\)/.test(field[1]), "rounded to a capsule, as in the reference");
+  assert.ok(/min-height:\s*var\(--field\)/.test(field[1]), "52 tall (--field)");
 });
 
 test("the field gives up its own box so the pill is the only box", () => {
-  /* `#sh-input` carries a border, a surface fill and a shadow from its
-     page-content days. Left in place inside the pill, that is a box in a box.
-     MUTATION: delete the `#sh-compose #sh-input` rule. This fails. RUN:
-     failed as named. */
-  const field = cssRule("#sh-compose #sh-input");
-  assert.ok(field, "the field must be restyled inside the pill");
-  assert.match(field, /border:\s*0/, "no second border");
-  assert.match(field, /background:\s*none/, "no second fill");
-  assert.match(field, /box-shadow:\s*none/, "no second shadow");
+  /* The input is `border: 0; background: transparent` inside the capsule: a box in a box is what the old
+     page-content `#sh-input` rule would have made.
+     MUTATION: delete the `.ag .ag-search-field input` rule from primitives.css. This fails. */
+  const CSS = fs.readFileSync(path.join(ROOT, "ui", "primitives.css"), "utf8").replace(/\r\n/g, "\n");
+  const input = /\.ag \.ag-search-field input \{([^}]*)\}/.exec(CSS);
+  assert.ok(input, "the field must be restyled inside the pill");
+  assert.match(input[1], /border:\s*0/, "no second border");
+  assert.match(input[1], /background:\s*transparent/, "no second fill");
+  assert.ok(!/^#sh-input\s*\{/m.test(STYLES) && !/^body\.ui-v2 #sh-input\s*\{/m.test(STYLES),
+    "and no page-content rule for the old boxed #sh-input is left in styles.css");
 });
 
-test("there is a leading magnifier and NO microphone", () => {
-  /* Apple's pill has a magnifier at the leading edge and a microphone at the
-     trailing one. We copy the first and refuse the second: we have no
-     dictation, and a glyph wired to nothing is worse than an empty slot.
-     MUTATION: add a `<svg class="sh-mic">` beside the input. This fails on
-     the microphone assertion. RUN: failed as named. */
+test("there is a leading magnifier (the sprite's) and NO microphone", () => {
+  /* Apple's pill has a magnifier at the leading edge and a microphone at the trailing one. We copy the first and
+     refuse the second: we have no dictation, and a glyph wired to nothing is worse than an empty slot. The
+     magnifier is the sprite's `i-magnifier` (no inline svg, no text glyph) and the placeholder is the direction's.
+     MUTATION: add a `<svg class="sh-mic">` beside the input -> the microphone assertion fails. Another: put the
+     magnifier after the input -> the order assertion fails. */
   const m = mount();
   m.ctx.renderAllShows();
   const html = m.view();
-  assert.ok(html.includes('class="sh-glyph"'), "the leading magnifier must be in the pill");
-  assert.ok(html.indexOf('class="sh-glyph"') < html.indexOf('id="sh-input"'),
-    "…leading it, not trailing it");
+  const glyph = html.indexOf('ui/icons.svg#i-magnifier');
+  assert.ok(glyph !== -1, "the leading magnifier must be in the pill");
+  assert.ok(glyph < html.indexOf('id="sh-input"'), "…leading it, not trailing it");
+  assert.ok(html.includes('placeholder="Search, or name a subject"'), "the one field both searches and names a subject");
   assert.ok(!/mic/i.test(html), "no microphone: we have no dictation to wire one to");
-  assert.ok(cssRule("#sh-compose .sh-glyph"), "and the glyph must be styled, not a raw 24px SVG");
 });
 
-test("the trailing slot is empty — the Go button is gone", () => {
-  /* Founder, 2026-09-14: "since the search results are live, the 'go' button
-     is useless, delete it." He is right, and the reason is in this repo's own
-     history: G2's "keep the button, keep Enter, make neither required" was
-     decided when the button was the only way to run a search at all, and S-02
-     then made the results filter live on every keystroke. By the time a thumb
-     reached the button, the results it would have produced were already on
-     screen. Its only remaining effect was skipping a 250ms debounce on work
-     that had finished.
-
-     MUTATION: put `<button type="submit">Go</button>` back inside #sh-form.
-     This fails. RUN: failed as named. */
+test("the pill holds the field and the x — no Go button, and the x is hidden until the field is filled", () => {
+  /* Founder, 2026-09-14: "since the search results are live, the 'go' button is useless, delete it." The x
+     (Redesign 2026) is the one other control and lives INSIDE the pill, 44 tall, hidden while the field is empty.
+     MUTATION: put `<button type="submit">Go</button>` back inside #sh-form -> the button-count assertion
+     fails. Another: drop `hidden` from the x -> the idle assertion fails. */
   const m = mount();
   m.ctx.renderAllShows();
   const html = m.view();
   const form = html.slice(html.indexOf('id="sh-form"'), html.indexOf("</form>"));
-  assert.ok(!/<button/.test(form), `the pill holds the field and nothing else, got: ${form}`);
-  assert.ok(!/>Go</.test(html), "no Go button anywhere on the search page");
+  const buttons = form.match(/<button\b[^>]*>/g) || [];
+  assert.strictEqual(buttons.length, 1, `the pill holds the field and one x, got: ${buttons.join(" ")}`);
+  assert.match(buttons[0], /id="sh-dismiss"[^>]*aria-label="Clear search"[^>]*hidden/, "the x is named and hidden while idle");
+  assert.ok(!/>Go</.test(html), "no Go button anywhere on the page");
 });
 
 test("removing the button did not remove the submit path — return still searches", () => {
@@ -790,37 +784,19 @@ test("no orphan CSS is left behind the deleted button", () => {
     "…and the compose-bar sizing rule that had nothing left to size");
 });
 
-test("the companion button is absent when idle and present once the field is live", () => {
-  /* Apple swaps an idle Home button for a circular ✕ on focus. We do not copy
-     the Home half — `.tab-bar` already carries Home two rows below, and the
-     same destination twice is not a design. So the slot is EMPTY when idle,
-     which also lets the pill span the whole row.
-     MUTATION: change the dismiss line to `dismiss.hidden = false`. The button
-     then shows on an untouched page and the first assertion fails. RUN:
-     failed as named. */
+test("the x is absent while the field is empty and present once it is filled — even across a blur", () => {
+  /* Redesign 2026: the x (it was Apple's circular "never mind" beside the pill, drawn on focus) lives inside
+     the pill and is drawn when the field is FILLED. One predicate with the idle groups, inverted: "the field
+     holds a query" — including the case that separates it from a naive `focused` test, a blur with a live
+     query, where the results stay up and so must the way out of them.
+     MUTATION: `dismiss.hidden = !showSearchFieldFocused` in updateShowBrowseVisibility. The blur-with-a-query
+     case fails. */
   const m = mount();
   m.ctx.renderAllShows();
   const dismiss = m.byId.get("sh-dismiss");
-  assert.strictEqual(dismiss.hidden, true, "nothing to dismiss on a resting page");
+  assert.strictEqual(dismiss.hidden, true, "nothing to clear on a resting page");
   m.input.dispatch("focus");
-  assert.strictEqual(dismiss.hidden, false, "…and it arrives with the keyboard");
-  m.input.dispatch("blur");
-  assert.strictEqual(dismiss.hidden, true, "…and leaves again on a blur with an empty field");
-});
-
-test("the companion button follows the SAME predicate as the browse furniture, inverted", () => {
-  /* "There is a search in progress" is one fact about this page. The browse
-     furniture leaving and the ✕ arriving are that fact seen from two sides, so
-     they are computed together rather than by two rules that could drift —
-     including the case that separates them from a naive `focused` test: a
-     blur with a live query, where the results stay up and so must the way out
-     of them.
-     MUTATION: `dismiss.hidden = !showSearchFieldFocused`. The blur-with-a-
-     query case fails. RUN: failed as named. */
-  const m = mount();
-  m.ctx.renderAllShows();
-  const dismiss = m.byId.get("sh-dismiss");
-  m.input.dispatch("focus");
+  assert.strictEqual(dismiss.hidden, true, "…and focus alone does not draw it");
   m.input.value = "radio";
   m.input.dispatch("input");
   m.input.dispatch("blur");
@@ -830,9 +806,11 @@ test("the companion button follows the SAME predicate as the browse furniture, i
     "a live query keeps the results up, so it must keep the way OUT of them up too");
 });
 
-test("pressing the companion button clears the query, the results and the focus", () => {
+test("pressing the x clears the query and the results, and keeps the caret", () => {
   /* It is the phone's Escape key — the gap the Escape handler's own comment
-     names ("desktop only; a phone keyboard has no Escape").
+     names ("desktop only; a phone keyboard has no Escape") — except that, a
+     Redesign 2026 change, it KEEPS focus: the next thing anyone does with a
+     field they just emptied is type.
      MUTATION: bind the button to `click` instead of `mousedown`. On a desktop
      the press blurs the field first, updateShowBrowseVisibility hides the
      button, and the click never lands — this test dispatches `mousedown` and
@@ -849,10 +827,11 @@ test("pressing the companion button clears the query, the results and the focus"
   assert.strictEqual(m.input.value, "", "the field is emptied");
   assert.strictEqual(m.byId.get("sh-results").hidden, true, "the painted results are dropped");
   assert.deepStrictEqual(
-    { browse: m.byId.get("sh-browse").hidden, index: m.showIndex.hidden },
-    { browse: false, index: false },
-    "and the catalogue comes back");
+    { browse: m.byId.get("sh-browse").hidden },
+    { browse: false },
+    "and the idle groups come back");
   assert.strictEqual(dismiss.hidden, true, "…taking the button with it");
+  assert.strictEqual(m.bodyHas("sh-searching"), true, "…while the field keeps focus, so the bars stay out of the keyboard's way");
 });
 
 test("Escape and the button are one path, not two implementations", () => {
@@ -883,7 +862,8 @@ test("Escape and the button are one path, not two implementations", () => {
      `mousedown`, and the button's keyboard `click` — Enter and Space fire
      click, never mousedown, so the ✕ did nothing from a keyboard. Still one
      function; a third TRIGGER, not a second implementation. */
-  const calls = APP_SRC.match(/dismissShowSearch\(input\);/g) || [];
+  /* The x's two triggers pass `{ keepFocus: true }` (Redesign 2026): after the x the listener types again. */
+  const calls = APP_SRC.match(/dismissShowSearch\(input(?:, \{ keepFocus: true \})?\);/g) || [];
   assert.strictEqual(calls.length, 3, `one function, three callers, got ${calls.length}`);
   assert.strictEqual((APP_SRC.match(/function dismissShowSearch\(/g) || []).length, 1,
     "…and exactly one definition of it");
@@ -917,68 +897,43 @@ test("there is still exactly one keyboard detector in the app", () => {
   assert.match(APP_SRC, /vv\.addEventListener\("scroll"/, "…and the scroll half, which is the re-anchor frame");
 });
 
-/* ---------- focusing the field lands the page at the top -------------------
+/* ---------- focusing the field NO LONGER scrolls the page (Redesign 2026) -------
 
    FOUNDER, 2026-09-17, verbatim: "When I click search, it jumps down to the
    bottom, so then I need to scroll up to find the top search result for shows."
+   That was answered by `scrollPageTo(0)` on focus of an empty field, and the
+   reason was the document under the pill: the whole A-Z show list, 17,712px
+   in a 390px harness, which iOS scrolled the focused field against as the
+   keyboard rose.
 
-   This is the cost of the very thing this file pins. The pill is fixed to the
-   bottom edge and needs no scrolling to reach — but the document under it is
-   the whole A-Z show list, measured at 17,712px in a 390px harness on
-   2026-09-17. iOS scrolls a focused field into view against the LAYOUT viewport
-   as the keyboard rises, and on a document that tall the correction lands
-   thousands of pixels down. Results paint at the TOP, above where the listener
-   now stands, and the only way back to the best match is a long scroll up.
+   THE REASON IS GONE. Discover's idle page is five short groups of subject
+   tiles (about 2,500px at 393) and the A-Z list is not on it; typing replaces
+   the groups with the results and the document collapses to them, so the
+   browser's own clamp lands at the top, which is where the results paint.
+   Scrolling on focus, BEFORE any text, is now the rude half: a listener who
+   scrolled down the subjects and tapped the field to type a name lost their
+   place for nothing. The prototype's focused state (`?state=kb`) does not
+   move the page either. So what is pinned here is the negative, plus the half
+   of the old rule that was about correctness and survives. */
 
-   THE LIMIT, stated rather than papered over: desktop Chrome cannot reproduce
-   it. Typing hides the browse list, the document collapses to one viewport, and
-   the browser clamps scrollY to 0 by itself — measured in the same harness:
-   jump to 6000, type, land at 0, first result at y=125. That clamp is the
-   browser being helpful, not a contract, and it is absent on iOS with a
-   keyboard up. So what is pinned here is that the app states the position
-   itself rather than inheriting whatever the browser chose. */
-
-test("focusing the show-search field scrolls the page to the top", () => {
-  /* MUTATION: delete the `scrollPageTo(0)` line from the focus handler. This
-     goes red. RUN: failed as named. */
+test("focusing the field does not scroll the page", () => {
+  /* MUTATION: put `if (!input.value.trim()) scrollPageTo(0);` back in the
+     focus handler. This goes red. */
   const focusHandler = /input\.addEventListener\("focus",\s*\(\)\s*=>\s*\{([\s\S]*?)\n\s{4}\}\);/.exec(APP_SRC);
   assert.ok(focusHandler, "the show-search field must still have a focus handler");
-  /* GATED ON AN EMPTY FIELD, and that gate is load-bearing. Scrolling on EVERY
-     focus — the first draft — broke the mirror-image case: a listener scrolled
-     into their results who taps the field to edit the query was yanked to the
-     top, and the next upward scroll then read as a large DOWNWARD delta and
-     dropped the keyboard. A real browser caught that and these node:vm suites
-     could not: test/playwright/tests/search-chrome-dock.spec.js, "a downward
-     scroll blurs the field; an upward one does not".
-     MUTATION: drop the `if (!input.value.trim())` guard — this stays green, and
-     that playwright spec goes red. Which is the honest note to leave here: the
-     guard's REASON lives in a browser, not in this file. */
-  assert.match(focusHandler[1], /if \(!input\.value\.trim\(\)\) scrollPageTo\(0\)/,
-    "focus on an EMPTY field must put the page at the top, where the results paint");
+  assert.ok(!/scrollPageTo\(/.test(focusHandler[1]), "focus must not move the page: nothing under the field is tall enough to need it");
 });
 
-test("the scroll-dismiss baseline is re-read AFTER the scroll, not before it", () => {
-  /* Not cosmetic, and the ORDER is the invariant — not the value.
-     `maybeDismissKeyboardOnScroll` measures a DELTA against `lastScrollY`. Read
-     it before `scrollPageTo(0)` and the next frame compares the new position
-     against the old one, sees a large fake downward delta, and blurs the field
-     the instant the listener starts typing.
-
-     The first draft of this fix asserted `lastScrollY = 0` instead, reasoning
-     that we had just scrolled there. That was wrong, and
-     test/keyboard-chrome-and-scroll.test.js caught it: `scrollPageTo` is
-     deliberately a no-op where there is no viewport to move (its own guard, for
-     the node:vm suites), so pinning the literal made this handler assert a
-     position the viewport had never taken — and an up-scroll after a re-focus
-     then read as a 200px scroll DOWN and dismissed the keyboard.
-
-     MUTATION: move the `lastScrollY` line above `scrollPageTo(0)`. This goes
-     red, and so does that other suite — which is the part worth having. */
+test("the scroll-dismiss baseline is still re-read from the viewport when the field takes focus", () => {
+  /* The half of the old rule that was about correctness and survives.
+     `maybeDismissKeyboardOnScroll` measures a DELTA against `lastScrollY`; a
+     stale baseline hands it a large fake downward delta on the first frame
+     after focus and it blurs the field the instant the listener starts typing.
+     The old test pinned the ORDER (read after scrollPageTo(0)); with no scroll
+     there is no order, only the read.
+     MUTATION: delete the `lastScrollY = window.scrollY || 0;` line from the
+     focus handler. This goes red. */
   const focusHandler = /input\.addEventListener\("focus",\s*\(\)\s*=>\s*\{([\s\S]*?)\n\s{4}\}\);/.exec(APP_SRC);
-  const body = focusHandler[1];
-  assert.match(body, /lastScrollY\s*=\s*window\.scrollY/, "the baseline is read from the viewport");
-  assert.ok(
-    body.indexOf("scrollPageTo(0)") < body.indexOf("lastScrollY ="),
-    "…and read after the scroll it is meant to describe"
-  );
+  assert.match(focusHandler[1], /lastScrollY\s*=\s*window\.scrollY/, "the baseline is read from the viewport");
+  assert.match(focusHandler[1], /showSearchFocusedAt\s*=\s*Date\.now\(\)/, "…and the settle window is stamped beside it");
 });

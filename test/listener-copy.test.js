@@ -334,8 +334,12 @@ test("the playlist builder hides the last query's note before building the next"
   const hide = body.indexOf("staleNote.hidden = true");
   assert.ok(hide > 0, "the stale note must be hidden");
   /* The build is deferred by whenSearchDataReady since L5 (it waits for the
-     search documents the first route no longer awaits). */
-  assert.ok(hide < body.indexOf("whenSearchDataReady("), "and hidden BEFORE the build starts, not after");
+     search documents the first route no longer awaits); since Redesign 2026 that wait lives in
+     `runPlaylistBuild`, the one build both Create and Discover call, so the order to pin is
+     "hidden, then the build is started". */
+  assert.ok(hide < body.indexOf("runPlaylistBuild("), "and hidden BEFORE the build starts, not after");
+  assert.match(APP_SRC.slice(APP_SRC.indexOf("function runPlaylistBuild"), APP_SRC.indexOf("function bindCreateFormSubmit")), /whenSearchDataReady\(/,
+    "and the build still waits for the search documents");
 });
 
 /* qa row 62: the clear-search ✕ was bound to mousedown only; Enter and Space
@@ -343,7 +347,7 @@ test("the playlist builder hides the last query's note before building the next"
 test("the clear-search control answers the keyboard", () => {
   const body = APP_SRC.slice(APP_SRC.indexOf('const dismiss = $("#sh-dismiss");\n  if (dismiss) {'));
   const block = body.slice(0, 2400);
-  assert.match(block, /dismiss\.addEventListener\("click", \(e\) => \{\s*if \(e && e\.detail !== 0\) return;\s*dismissShowSearch\(input\);/);
+  assert.match(block, /dismiss\.addEventListener\("click", \(e\) => \{\s*if \(e && e\.detail !== 0\) return;\s*dismissShowSearch\(input, \{ keepFocus: true \}\);/);
 });
 
 /* qa rows 73, 74: search results were silent to a screen reader, and six text
@@ -358,7 +362,7 @@ test("every text field has a name that survives typing, and search notes are liv
   assert.match(APP_SRC, /typedInput\.setAttribute\("aria-label", /);
   assert.match(APP_SRC, /<p id="sh-note" class="note" role="status" aria-live="polite" hidden><\/p>/);
   assert.match(APP_SRC, /data-show-ep-search-note role="status" aria-live="polite" hidden/);
-  assert.match(APP_SRC, /<form id="sh-form" role="search"/);
+  assert.match(APP_SRC, /<form id="sh-form" class="ag-search-field veil" role="search"/);
 });
 
 /* Persona row 62: a Foray row that cannot play printed foray-resolve's raw
