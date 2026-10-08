@@ -1148,16 +1148,19 @@ const FLOORS = {
      embedded row lists, and that no interpolated href on the page bypasses
      the in-app hash-route/safeUrl composition every other page uses. */
   "test/library-screen.test.js": 20, // audit round 2, lane L3 (2026-09-23): History is last-played order (honesty-3); 17 -> 20 // // 2026-09-22: Forays and Followed shows are Library sections, one name for #/shows, the ↻ refreshes in place; 11 -> 17 (L1's in-place Up Next reorder cell went at integration: L3's afterQueueMove fixes the same finding and is pinned in test/modal-and-focus.test.js)
-  /* Settings drawer stays open on toggle (Joey, 2026-08-31, t_0c09d83a): the
-     three toggles' click handlers, plus the two real-navigation regression
-     guards. */
-  /* The drawer leaves when it is used (founder, 2026-09-23: "the menu should
-     automatically collapse"). One owner rule in the capture phase, the two
-     declared stays (toggles, the Developer summary), the overlay and scrim
-     each closing only their own thing, focus back to the ☰, and the founder's
-     exact tap sequence. Floored at its count: every cell is one mutation. */
-  "test/drawer-ownership.test.js": 19, // audit round 2, L2 (2026-09-23): the drawer modal contract x3 (nav-5), same-hash x2 (nav-8), hardware back x3 (nav-2); 11 -> 19 //
-  "test/drawer-settings-toggle.test.js": 13, // 2026-09-22 audit (R7, R8): "Open in" and its dead code are gone (replacing the test of its switch), and the founder tools sit in one collapsed Developer group above Delete my data; 12 -> 13 // client audit (2026-09-12): the sixth switch (cp_interlude, disclosed since FD-06 with no control), the one `drawerToggle` shape, and the retired ui-v2 debris; 6 -> 12
+  /* Settings' switches (Redesign 2026, ambient; was the drawer-settings-toggle suite, Joey 2026-08-31,
+     t_0c09d83a): the drawer is gone, so "a toggle must not close the drawer" became "a switch flips in place and the
+     page under it is not rebuilt". The floor went 13 -> 12 in the PR that deletes the drawer: the three tests that
+     pinned the drawer's own leave rule (a link inside it closes it, route() closes it, family-toggle re-renders the
+     page behind it) are replaced by the in-place tests and the host's park-and-mount test. */
+  "test/settings-switches.test.js": 12, // Redesign 2026 (ambient): switches flip in place (x2) and family mode rebuilds the deal, "Open in" stays dead, the jingle switch and its player hand-off, one helper in reading order and binding twice never stacks, the one host is parked, the Developer group above Your data; 13 -> 12 with the drawer
+  /* The gear's Sheet, Settings, About and the appearance setting (Redesign 2026, ambient, screen 9) — and the
+     Sheet-ownership rules the drawer-ownership suite pinned for the drawer (founder 2026-09-23 "the menu should
+     automatically collapse"; audit round 2 nav-2, nav-5, nav-8). Floored at its count: every cell is one mutation.
+     The floor went 19 -> 34 when the drawer's own tests (the capture-phase leave rule, the overlay, the drawer modal
+     contract) were replaced by the Sheet's and the ported ownership rules (scrim stacking, focus return, same-hash,
+     hardware back x3, A-07 x4, init wiring). */
+  "test/settings-sheet.test.js": 35, // Redesign 2026 (ambient): the gear's Sheet (name, rows, veil header and grabber, focus in/trapped/returned, close and scrim, no drawer anywhere, a row is a plain link and focus lands on the heading, the same page closes it, What 4a does after it), Settings (appearance radiogroup writes cp_theme and applies data-theme, arrow keys, boot/bad value/Delete my data, the host mounted and parked, head and order, Downloads honesty), About (version, licences, stamp repaint, What 4a does), every pair AA in both schemes, 44px, copy rules, the stylesheet's scope, the ported ownership rules
   /* "Up Next" auto-advance (docs/listening-queue-plan.md §8 addendum, kanban
      card t_b9880844). Floored for the same reason as up-next-queue.test.js
      above: the auto-advance decision path (off-by-default, queue-origin
@@ -1187,7 +1190,7 @@ const FLOORS = {
      wrong row set, a wrong slider range, or a drag that silently fails to
      persist are all silent-wrong-behavior, not a crash any other suite
      would notice. Every test names its mutation; see the suite header. */
-  "test/interests-page.test.js": 14, // 2026-09-22 audit (theme J + persona jargon ledger): a missing taxonomy.json writes nothing over the profile, an id the taxonomy dropped survives a save, and no raw taxonomy id or "Reset to learned" on the page; 11 -> 14
+  "test/interests-page.test.js": 18, // Redesign 2026 (ambient): Tuning replaces the sliders (three states per subject: radiogroup shape, no sliders, observed state, the real handler ranks and persists, 4a's pick restores exactly, a choice that cannot differ is disabled, a disabled tap is a no-op, 44-tall chips with the Lamp selected, copy rules, Delete my data clears it); 14 -> 18 // 2026-09-22 audit (theme J + persona jargon ledger): a missing taxonomy.json writes nothing over the profile, an id the taxonomy dropped survives a save, and no raw taxonomy id or "Reset to learned" on the page; 11 -> 14
   /* The root-node interest bug this same card fixes (D6): loadInterests()
      used to seed leaf nodes only, silently dropping a root-level interest
      on the next save. Floored separately from interests-page.test.js

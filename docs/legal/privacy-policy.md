@@ -146,6 +146,7 @@ The app also asks the browser to mark its storage as persistent
 | `cp_rate` | Your playback speed | **No** |
 | `cp_voice` | Your chosen narration voice — an identifier the device's own voice list reported | **No** |
 | `cp_interlude` | Whether the short jingle between a foray's segments is on or off — a local per-device preference. On unless you turn it off | **No** |
+| `cp_theme` | Which look you chose in Settings: Dusk, Dawn, or follow your phone's light or dark setting. Absent until you choose — a local per-device preference | **No** |
 | `cp_family` | Family mode on/off — a local content filter that hides explicit-rated episodes | **No** |
 | `cp_show_drafts` | Whether the settings switch that lists unpublished (draft) forays on this device is on — a local per-device preference for testing them before they are published. Off by default | **No** |
 | `cp_voice_probe` | Whether the settings switch that offers the voice-engine measurement on this device is on — a local per-device preference used to test a bundled narration voice before it ships. Off by default; when it is off the control is not shown at all | **No** |

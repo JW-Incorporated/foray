@@ -182,8 +182,7 @@ process.on("unhandledRejection", () => {});
 async function mount({ seed = {}, hash = "#/forays", search = "", appSrc = APP_SRC, legacyBridge = false } = {}) {
   const { resolve } = await mods;
   const body = new El("body");
-  for (const id of ["view", "drawer", "drawer-overlay", "drawer-playlists",
-    "family-toggle", "player-toggle", "autoadvance-toggle", "menu-btn", "refresh-btn",
+  for (const id of ["view", "menu-btn", "refresh-btn",
     "banner-slot", "pl-form", "pl-input", "pl-note",
     "tab-topics", "tab-shows", "sh-form", "sh-input", "sh-note", "sh-results",
     "browse-all-link", "pl-remove", "banner-done"]) {
@@ -273,7 +272,7 @@ async function mount({ seed = {}, hash = "#/forays", search = "", appSrc = APP_S
   h.fn = (name) => vm.runInContext(name, ctx);
   /** The show page's Foray rows, as renderShow() prints them. */
   h.showRows = (showId) => h.fn("showForaysHtml")(h.fn("showById")(showId));
-  h.drawer = () => findIn(body, "#drawer");
+  h.host = () => findIn(body, "#settings-host");
   h.draftsToggle = () => findIn(body, "#drafts-toggle");
   return h;
 }
@@ -496,38 +495,47 @@ test("the ?foray=<id> unlock behaves exactly as before, with the switch off and 
 /* THE DRAWER                                                           */
 /* ==================================================================== */
 
-test("the drawer carries the toggle: it reads its state, flips the key, re-renders the page behind it, and does not close the drawer", async () => {
-  /* M5: `bindDraftsControl` calls `route()` instead of `renderCurrentPage()` —
-     the drawer-still-open assertion goes red (route() closes it). Drop the
-     `lsSet` — the store and re-render assertions go red. */
+test("Settings carries the toggle: it reads its state, flips the key, repaints in place, and the next Forays page lists the drafts", async () => {
+  /* M5: `bindDeveloperToggles` wires the switch to `route()` instead of the plain write — the page under the
+     toggle is rebuilt on every tap and the focused switch is gone (the "same node after the tap" assertion goes
+     red). Drop the `lsSet` — the store and the next-page assertions go red. */
   const h = await mount();
   const btn = h.draftsToggle();
   assert.ok(btn, "#drafts-toggle is in the DOM after init");
-  /* Inside the drawer's Developer group since the 2026-09-22 audit (R8): a
-     founder switch, reachable, and no longer among a listener's settings. */
-  assert.strictEqual(btn.parent && btn.parent.id, "drawer-dev", "in the Developer group");
-  assert.strictEqual(btn.parent.parent, h.drawer(), "which is in the drawer");
-  const order = h.drawer().children
-    .flatMap((c) => (c.id === "drawer-dev" ? c.children : [c]))
-    .map((c) => c.id);
+  /* Inside the Developer group since the 2026-09-22 audit (R8): a founder switch, reachable, and no longer among a
+     listener's settings. The group is a section of the Settings host (ui/settings.js). */
+  assert.strictEqual(btn.parent && btn.parent.id, "settings-dev", "in the Developer group");
+  assert.strictEqual(btn.parent.parent, h.host(), "which is in the Settings host");
+  const order = h.host().tree().map((c) => c.id).filter(Boolean);
   assert.ok(order.indexOf("drafts-toggle") < order.indexOf("diag-open"), "above Playback diagnostics");
   assert.ok(order.indexOf("drafts-toggle") < order.indexOf("delete-data"), "above Delete my data");
 
-  h.fn("openDrawer")(true);
-  assert.strictEqual(h.drawer().hidden, false);
+  h.route("#/settings");
+  await h.settle();
   assert.strictEqual(btn.textContent, "Show draft Forays: off");
+  h.route("#/forays");
+  await h.settle();
   assert.ok(!h.view().includes("· draft"), "#/forays shows no draft before the tap");
 
+  h.route("#/settings");
+  await h.settle();
+  const viewBefore = h.view();
   await btn.click();
   assert.strictEqual(h.store.getItem("cp_show_drafts"), "true", "the durable key is written");
   assert.strictEqual(btn.textContent, "Show draft Forays: on");
-  assert.strictEqual(h.drawer().hidden, false, "a settings toggle must not close the drawer");
+  assert.strictEqual(h.view(), viewBefore, "a settings switch repaints itself, not the page (the focused switch survives)");
+  h.route("#/forays");
+  await h.settle();
   assert.deepStrictEqual(h.ids(), [...PUBLISHED_IDS, ...GENERATED_NEWEST_FIRST, ...AUTHORED_DRAFT_IDS]);
-  assert.ok(h.view().includes("foray · draft"), "the page behind the drawer re-rendered with the drafts");
+  assert.ok(h.view().includes("foray · draft"), "the next Forays page lists the drafts");
 
+  h.route("#/settings");
+  await h.settle();
   await btn.click();
   assert.strictEqual(h.store.getItem("cp_show_drafts"), "false");
   assert.strictEqual(btn.textContent, "Show draft Forays: off");
+  h.route("#/forays");
+  await h.settle();
   assert.deepStrictEqual(h.ids(), PUBLISHED_IDS, "off again: back to the published set");
   assert.ok(!h.view().includes("· draft"));
 });

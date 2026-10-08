@@ -409,20 +409,18 @@ test("no builder pairs a ternary text with a hand-written aria-label", () => {
 });
 
 /* ------------------------------------------------------------------ */
-/* The drawer's switches are switches (audit round 2, a11y-8)          */
+/* Settings' switches are switches (audit round 2, a11y-8)             */
 /* ------------------------------------------------------------------ */
 
 /* VoiceOver read "Family mode: off, button" and, on activation, nothing — it
    does not re-read a focused button's changed text. MUTATION: drop
-   `setAttribute("role", "switch")` from drawerToggle, or the `aria-checked`
-   write from paintDrawerToggles. (The announce() the handler also made was
+   `setAttribute("role", "switch")` from settingSwitch, or the `aria-checked`
+   write from paintSettingSwitches. (The announce() the handler also made was
    the flip said twice; round-2 review removed it and the end of this test
    pins its absence.) */
-test("a drawer setting is a switch named by its label, its state is aria-checked, and a flip is said", () => {
+test("a Settings switch is a switch named by its label, its state is aria-checked, and a flip is said", () => {
   const { ctx } = mountApp();
   const byId = new Map();
-  const drawer = makeEl("nav");
-  byId.set("drawer", drawer);
   const btn = makeEl("button");
   let onClick = null;
   btn.addEventListener = (type, fn) => { if (type === "click") onClick = fn; };
@@ -431,11 +429,11 @@ test("a drawer setting is a switch named by its label, its state is aria-checked
   const view = ctx.document.querySelector("#view");
   ctx.document.querySelector = (sel) => (sel === "#view" ? view : sel === "#a11y-status" ? region : byId.get(String(sel).slice(1)) || null);
   ctx.requestAnimationFrame = undefined;
-  vm.runInContext("renderDrawer = () => paintDrawerToggles(); renderCurrentPage = () => {}; buildCards = () => {};", ctx);
+  vm.runInContext("paintSettings = () => paintSettingSwitches(); renderCurrentPage = () => {}; buildCards = () => {};", ctx);
 
-  ctx.bindDrawerToggles();
+  ctx.bindSettingSwitches();
   assert.strictEqual(btn.getAttribute("role"), "switch");
-  ctx.paintDrawerToggles();
+  ctx.paintSettingSwitches();
   assert.strictEqual(btn.getAttribute("aria-checked"), "false");
   assert.strictEqual(btn.textContent, "Family mode: off", "the visible words are unchanged");
   assert.strictEqual(btn.getAttribute("aria-label"), "Family mode", "the name is the label; the state is the switch's own");
@@ -445,6 +443,6 @@ test("a drawer setting is a switch named by its label, its state is aria-checked
   assert.strictEqual(btn.textContent, "Family mode: on");
   /* Round-2 review: the focused switch's aria-checked flip is what a screen
      reader speaks; a live-region line as well said every tap twice.
-     MUTATION: put the announce() back in drawerToggle's handler -> red. */
+     MUTATION: put the announce() back in settingSwitch's handler -> red. */
   assert.strictEqual(region.textContent, "", "the flip is said once, by the switch, not again by the live region");
 });

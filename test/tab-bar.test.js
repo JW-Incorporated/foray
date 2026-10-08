@@ -242,7 +242,10 @@ test("every route highlights exactly one tab, and it is the right one", () => {
        router renders as Home (audit 2026-09-22). */
     ["#/starred-shows", "library"],
     ["#/shows/q/Science", "search"],
-    ["#/interests", "library"],
+    /* Tuning (#/interests), Settings and About sit behind the gear on Today (Redesign 2026, ambient), so they are Today's. */
+    ["#/interests", "home"],
+    ["#/settings", "home"],
+    ["#/about", "home"],
     ["#", "home"],
     ["", "home"],
     ["#/bogus", "home"],

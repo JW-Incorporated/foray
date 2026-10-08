@@ -175,6 +175,37 @@ async function goOffline(page) {
   await wait(page, 600);
 }
 
+/* Settings, Tuning and About (Redesign 2026, ambient, screen 9). Tuning is the existing `interests` step. These are
+   appended to `returning`: the gear's Sheet opened from Today's own gear, "What 4a does" over it, the Settings page
+   with Dawn chosen live (the page re-lights without a reload), and the About page. */
+async function openGearSheet(page) {
+  if (!(await page.locator("#st-menu:not([hidden])").count())) await page.locator("[data-today-gear]").first().click();
+  await page.waitForSelector("#st-menu:not([hidden])", { timeout: 10000 });
+  await wait(page, 700);
+}
+
+async function openWhatSheet(page) {
+  await openGearSheet(page);
+  await page.locator('#st-menu [data-st-menu="what"]').click();
+  await page.waitForSelector("#st-what:not([hidden])", { timeout: 10000 });
+  await wait(page, 800);
+}
+
+async function chooseDawn(page) {
+  await page.locator('[data-st-theme] [data-st-value="dawn"]').click();
+  await wait(page, 500);
+}
+
+function settingsSteps() {
+  return [
+    { label: "gear-sheet", route: "#/", run: (page) => openGearSheet(page), ready: "#st-menu:not([hidden])" },
+    { label: "what-4a-does", route: "#/", run: (page) => openWhatSheet(page), ready: "#st-what:not([hidden])" },
+    { label: "settings", route: "#/settings", ready: ".st-page[data-st-page=settings]" },
+    { label: "about", route: "#/about", ready: ".st-page[data-st-page=about]" },
+    { label: "settings-dawn-chosen", route: "#/settings", run: (page) => chooseDawn(page), ready: ".st-page[data-st-page=settings]" },
+  ];
+}
+
 /** Routes every seeded profile can show. `fx` supplies real ids. */
 function coreRoutes(fx, { entities }) {
   const ep = fx.items[0].id;
@@ -239,7 +270,7 @@ export function appStates(fx) {
       id: "returning",
       description: "Returning user: saved episodes, Up Next, playlists, starred shows, history.",
       seed: "returning",
-      steps: coreRoutes(fx, { entities: true }),
+      steps: [...coreRoutes(fx, { entities: true }), ...settingsSteps()],
     },
     {
       id: "player",

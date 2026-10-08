@@ -224,7 +224,7 @@ function syncSheetBodyClasses() {
 }
 
 /** The one document keydown listener for every overlay. Bound lazily by the
-    first `openSheet` and by `bindDrawerChrome`, whichever comes first. */
+    first `openSheet` and by `bindSettingsChrome`, whichever comes first. */
 function bindOverlayKeys() {
   if (sheetKeysBound || typeof document.addEventListener !== "function") return;
   document.addEventListener("keydown", onSheetKeydown);
@@ -232,10 +232,6 @@ function bindOverlayKeys() {
 }
 
 function onSheetKeydown(e) {
-  /* The drawer sits over every sheet (F17) and has its own rules: while it is
-     open the keys are its, or Escape over Now Playing would collapse the sheet
-     under a drawer that stayed. */
-  if (drawerIsOpen()) { onDrawerKeydown(e); return; }
   pruneDeadSheets();
   const top = sheetStack[sheetStack.length - 1];
   if (!top) return;
@@ -328,17 +324,12 @@ function openSheet(wrap, opts = {}) {
     || (typeof wrap.querySelector === "function" && wrap.querySelector('[role="dialog"]'))
     || wrap;
   const opener = document.activeElement || null;
-  /* OPENED FROM THE DRAWER: the drawer has already closed (`onDrawerAction`,
-     capture phase), so the button that opened this sheet is inside a hidden
-     panel by the time the sheet closes. Focus goes to the ☰ instead — the
-     control the listener would press to get back to where they were. */
-  const fromDrawer = !!(opener && typeof opener.closest === "function" && opener.closest("#drawer"));
   const entry = {
     wrap, panel,
     requestClose: typeof opts.onRequestClose === "function" ? opts.onRequestClose : () => closeSheet(wrap),
     bodyClass: opts.bodyClass || "fy-sheet-open",
     opener,
-    returnFocus: opts.returnFocus || (fromDrawer ? $("#menu-btn") : null),
+    returnFocus: opts.returnFocus || null,
     inerted: [],
     lifted: [],
     keep: opts.keepReachable || [],
@@ -452,7 +443,11 @@ function panelHeightPx(el) {
 function bindPanelDrag(entry) {
   const panel = entry && entry.panel;
   if (!panel || panel._dragBound || typeof panel.addEventListener !== "function") return;
-  if (!panel.classList || typeof panel.classList.contains !== "function" || !panel.classList.contains("fy-panel")) return;
+  /* A `.fy-panel`, or any panel that opts in with `data-sheet-drag` (the Afterglow Sheets: the gear's, "What 4a
+     does"). The offset is the same `--fy-panel-dy` either way, so a screen's own CSS reads it for its transform. */
+  if (!panel.classList || typeof panel.classList.contains !== "function") return;
+  const optedIn = typeof panel.hasAttribute === "function" && panel.hasAttribute("data-sheet-drag");
+  if (!panel.classList.contains("fy-panel") && !optedIn) return;
   panel._dragBound = true;
   const gest = () => (window.ForayPlayer && window.ForayPlayer.sheetDrag) || null;
   let drag = null;
