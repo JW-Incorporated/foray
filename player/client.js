@@ -1073,7 +1073,13 @@ function el(tag, cls, text) {
     when it equals the text. */
 function paintControl(btn, text, label) {
   if (!btn) return;
-  if (text != null && btn.textContent !== text) btn.textContent = text;
+  /* Afterglow's secondary buttons are an icon plus a caption span; the text goes to the caption so
+     the glyph survives every repaint (Speed's "1x", Bookmark's "Bookmarked"). */
+  const caption = btn.classList.contains("ag-np-action") ? btn.querySelector(".ag-np-action-caption") : null;
+  const target = caption || btn;
+  /* A button that owns a sprite glyph (dataset.agGlyph, set by ui/now-playing.js) keeps its <svg>: the text is
+     only the legacy fallback and its accessible name is carried by aria-label below. */
+  if (text != null && !btn.dataset?.agGlyph && target.textContent !== text) target.textContent = text;
   /* Compared before it is written, like the text (audit round 2, perf-7): this
      runs for every `[data-play]` button on the page at 4 Hz, and an attribute
      rewritten to its own value is still a mutation some screen readers
@@ -1399,7 +1405,7 @@ function buildUI() {
   return {
     root, bar, art, title, show, playBtn, skipBtn, closeBtn, fill, sheet,
     grabZone, scroll, sArt, sDesc, sDescText, clips, clipPrev, clipNext,
-    sTitle, sShow, sWhy, scrub, tNow, tLeft, bigPlay, backBtn, fwdBtn,
+    sTitle, sShow, sWhy, scrub, tNow, tLeft, row, row2, bigPlay, backBtn, fwdBtn,
     rateBtn, nextBtn, saveBtn, bookmarkBtn, queueLink, openLink, forayLink, stopBtn, info, note, err, sErr, announce,
   };
 }
@@ -1771,6 +1777,8 @@ function forayNowPlaying(item, index) {
     id: item.id,
     title: foray.resolved.title || item.title || "",
     show: foraySecondLine(foray.resolved.playable, index),
+    source_show: item.show || (item.kind === TTS ? "4a narration" : ""),
+    artwork_url: artworkByShow.get(item.show || "") || null,
     duration_sec: null,
     dai_suspected: Boolean(item.dai_suspected),
   };
@@ -2197,6 +2205,14 @@ function paintPage(running) {
   const glyph = running ? "❚❚" : "▶";
   paintControl(ui.playBtn, glyph, running ? "Pause" : "Play");
   paintControl(ui.bigPlay, glyph, running ? "Pause" : "Play");
+  if (ui.ag && typeof window.AfterglowNowPlaying?.setIcon === "function") {
+    const icon = running ? "pause" : "play";
+    /* Only the sheet's own Play wears the sprite; the mini bar's glyph is the Dock's to change. */
+    if (ui.bigPlay.dataset.agGlyph !== icon) {
+      window.AfterglowNowPlaying.setIcon(ui.bigPlay, icon, 36);
+    }
+    ui.sheet.classList.toggle("is-paused", !running);
+  }
   /* THE LOAD IS A STATE, and it is shown (audit round 2, p-impatient-4). Between
      the tap and the first audio the glyph honestly says ▶ (persona 15: never
      say playing before audio exists), and until now that was ALL it said — on a
@@ -2262,7 +2278,29 @@ function paintPage(running) {
       ui.scrub.value = String(live);
       scrubShownValue = live;
     }
-    paintClocks(pos, dur, !held);
+    /* Afterglow's slider speaks a value when the listener changes it, not four
+       times a second while focus is parked on it. The visible clocks still tick, and an
+       unfocused slider (nobody hears it) still keeps its spoken value current. */
+    paintClocks(pos, dur, !held && !(ui.ag && document.activeElement === ui.scrub));
+  }
+  if (ui.ag && foray) {
+    const items = foray.resolved.playable.map((item) => ({
+      ...item,
+      artwork_url: item.artwork_url || artworkByShow.get(item.show || "") || null,
+    }));
+    const starts = segmentStarts(items);
+    const model = stripModel(items, { elapsed: pos });
+    window.AfterglowNowPlaying?.paintForay(ui, {
+      items, model, starts, elapsed: pos, currentIndex: foray.index,
+      title: foray.resolved.title || current.title || "",
+      show: items[foray.index]?.show || current.source_show || "4a narration",
+      onSeek: (seconds) => ForayPlayer.foraySeek(seconds),
+    });
+    ui.segmentsSection.hidden = false;
+    ui.sourcesSection.hidden = false;
+    ui.notesSection.hidden = true;
+  } else if (ui.ag) {
+    window.AfterglowNowPlaying?.paintEpisode(ui);
   }
   syncCardButtons(loading);
   paintEpisodeSurface();
@@ -2381,6 +2419,7 @@ function setNowPlaying(item, why) {
      abandon what was playing to start yesterday's episode instead.
      `restoreLastEpisode` sets it immediately AFTER calling this, which is why
      the order there is not an accident. */
+  const previous = current;
   restoredPending = null;
   current = item;
   ui.root.hidden = false;
@@ -2389,26 +2428,45 @@ function setNowPlaying(item, why) {
   ui.show.textContent = item.show || "";
   paintInfoLabel();
   ui.sTitle.textContent = item.title || "";
-  ui.sShow.textContent = item.show || "";
+  /* A Foray's second line is painted by the screen file (it crossfades on a segment change). */
+  if (!(ui.ag && "source_show" in item)) ui.sShow.textContent = item.show || "";
   /* Emptied paragraphs are HIDDEN, not left blank (audit 2026-09-22): both
      carry margins, so an empty one was a dead band in the sheet — on every
      Foray, which never has a hook. `sDesc` below always did it this way. */
   ui.sWhy.textContent = why || item.hook || "";
   ui.sWhy.hidden = !ui.sWhy.textContent;
   if (item.artwork_url) {
-    ui.art.src = item.artwork_url;
+    const artUrl = typeof window.safeUrl === "function" ? window.safeUrl(item.artwork_url) : "";
+    if (!artUrl || artUrl === "#") {
+      ui.art.hidden = true;
+      ui.sArt.hidden = true;
+      ui.art.removeAttribute("src");
+      ui.sArt.removeAttribute("src");
+    } else {
+    ui.art.src = artUrl;
     ui.art.hidden = false;
     /* The same URL, the same gate: the sheet's artwork is the mini bar's
        artwork at full size, never a second source that could disagree with
        it. Assigned through `src` on an element built by createElement, like
        every other field here — there is no HTML-string path in this file for
        a third-party URL to escape through. */
-    ui.sArt.src = item.artwork_url;
+    ui.sArt.src = artUrl;
     ui.sArt.hidden = false;
+    }
   } else {
     ui.art.hidden = true;
     ui.sArt.hidden = true;
     ui.sArt.removeAttribute("src");
+  }
+  if (ui.ag) {
+    const changedShow = Boolean(previous && (previous.source_show || previous.show) !== (item.source_show || item.show));
+    window.AfterglowNowPlaying?.setRoom(ui, item.artwork_url, item.source_show || item.show || item.title, {
+      announce: Boolean(foray && changedShow),
+    });
+    if (!foray && previous?.id && previous.id !== item.id) {
+      window.AfterglowNowPlaying?.handoff(ui, previous.artwork_url, item.artwork_url);
+    }
+    requestAnimationFrame(() => window.AfterglowNowPlaying?.measureTitle(ui));
   }
   paintNotes(item);
   /* A RESTORED FORAY (`restoreForay`) is a bar with a Foray behind it and no
@@ -3212,6 +3270,12 @@ function paintEpisodeSurface() {
   ui.saveBtn.setAttribute("aria-pressed", saved ? "true" : "false");
   ui.saveBtn.classList.toggle("on", saved);
   ui.bookmarkBtn.hidden = !(showEpisode && typeof nav?.addBookmark === "function");
+  if (ui.ag) {
+    /* A bookmark is a place in an episode, so a Foray (a stitched run of clips) offers none, as before. */
+    let nextItem = null;
+    try { nextItem = nav?.nextItem || null; } catch (_) { nextItem = null; }
+    window.AfterglowNowPlaying?.paintUpNext(ui, nextItem, count);
+  }
 }
 
 /** Previous/next are the page's (see `episodeNavigation`), read at the moment
@@ -3857,6 +3921,12 @@ function bind() {
     })) return;
     setSheetDragOffset(0);
     const owner = sheetOwner();
+    const topbar = document.querySelector(".topbar");
+    if (!open) {
+      ui.bar.inert = false;
+      ui.bar.setAttribute("aria-hidden", "false");
+      if (topbar) topbar.inert = false;
+    }
     /* Closing: the owner first, while the sheet is still shown — it lifts
        `inert` off the bar and hands focus back to the button that opened
        the sheet, which must not be inert when it receives focus. */
@@ -3879,16 +3949,71 @@ function bind() {
         returnFocus: ui.info,
       });
     }
+    if (open) {
+      ui.bar.inert = true;
+      ui.bar.setAttribute("aria-hidden", "true");
+      if (topbar) topbar.inert = true;
+    }
     if (open) ui.scroll.scrollTop = 0;
     if (open) slideSheetIn();
   };
-  ui.info.addEventListener("click", () => setExpanded(ui.sheet.hidden));
+  const toggleExpandedFromMini = () => {
+    const opening = ui.sheet.hidden;
+    if (!opening || !ui.ag) {
+      setExpanded(opening);
+      return;
+    }
+    /* Reduce Motion: no shared element, no slide; the sheet crossfades in over 200ms (a transition on
+       opacity, the one motion the reduced-motion block allows). */
+    if (typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      ui.sheet.classList.add("is-entering");
+      setExpanded(true);
+      void ui.sheet.offsetWidth;
+      requestAnimationFrame(() => ui.sheet.classList.remove("is-entering"));
+      return;
+    }
+    if (typeof document.startViewTransition !== "function") {
+      const from = ui.art.getBoundingClientRect();
+      setExpanded(true);
+      requestAnimationFrame(() => {
+        const to = ui.sArt.getBoundingClientRect();
+        if (!ui.sArt.animate || !from.width || !to.width) return;
+        ui.sArt.animate([
+          { transform: `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.width / to.width})`, transformOrigin: "top left" },
+          { transform: "none", transformOrigin: "top left" },
+        ], { duration: 420, easing: "cubic-bezier(.2,.9,.2,1.02)" });
+      });
+      return;
+    }
+    /* The sheet's end of the shared element is the artwork, or a Foray's collage when there is no single sleeve. */
+    const sheetArt = () => (ui.sArt.hidden && ui.artSwap?.querySelector(".ag-np-collage")) || ui.sArt;
+    ui.art.style.setProperty("view-transition-name", "np-art");
+    ui.sArt.style.removeProperty("view-transition-name");
+    let transition = null;
+    try {
+      transition = document.startViewTransition(() => {
+        setExpanded(true);
+        ui.art.style.removeProperty("view-transition-name");
+        sheetArt().style.setProperty("view-transition-name", "np-art");
+      });
+    } catch (_) {
+      ui.art.style.removeProperty("view-transition-name");
+      setExpanded(true);
+      return;
+    }
+    transition.finished.finally(() => {
+      ui.art.style.removeProperty("view-transition-name");
+      ui.sArt.style.removeProperty("view-transition-name");
+      sheetArt().style.removeProperty("view-transition-name");
+    });
+  };
+  ui.info.addEventListener("click", toggleExpandedFromMini);
   /* The artwork too — the biggest thing on the bar, and where every podcast
      app opens the player from. It was an inert <img> beside the one button
      that did (audit 2026-09-22). Not a second button in the tab order: the
      title button beside it already is that control for keyboard and screen
      reader, and the art stays `alt=""` decoration to them. */
-  ui.art.addEventListener("click", () => setExpanded(ui.sheet.hidden));
+  ui.art.addEventListener("click", toggleExpandedFromMini);
   /* The ✕ is the one button that collapses the sheet (the handle's drag is the
      gesture). Declared after `setExpanded` because it is a `const`. */
   ui.closeBtn.addEventListener("click", () => setExpanded(false));
@@ -3917,6 +4042,23 @@ function bind() {
      element's raw clock, which reads 0 through a cold load and on a restored
      bar (see that function). The duration rides along so a bookmark on an
      ad-stitched copy can later be shown as approximate (seek-policy OWN). */
+  /* Sleep timer (Afterglow's detail posture): the screen file cycles the minutes, this owns the clock and the
+     pause. It only pauses; it never seeks, stops the Foray or touches the queue. */
+  if (ui.ag) {
+    let sleepTimer = 0;
+    ui.requestSleep = (minutes) => {
+      clearTimeout(sleepTimer);
+      sleepTimer = 0;
+      if (!minutes) { announce("Sleep timer off"); return; }
+      announce(`Sleep timer set for ${minutes} minutes`);
+      sleepTimer = setTimeout(() => {
+        sleepTimer = 0;
+        ui.resetSleep?.();
+        if (isRunning()) setRunning(false, "sleep");
+        announce("Sleep timer ended, playback paused");
+      }, minutes * 60000);
+    };
+  }
   ui.bookmarkBtn.addEventListener("click", () => {
     const nav = episodeNavigation;
     const id = ForayPlayer.currentEpisodeId();
@@ -4055,11 +4197,15 @@ function bind() {
     scrubShownValue = Number(ui.scrub.value);
     scrubbing = false;
     if (foray) {
+      if (ui.ag) paintClocks(frac * foray.resolved.totalSec, foray.resolved.totalSec, true);
       await ForayPlayer.foraySeek(frac * foray.resolved.totalSec);
       return;
     }
     const dur = episodeDurationSec();
-    if (dur) await seekEpisodeTo(frac * dur);
+    if (dur) {
+      if (ui.ag) paintClocks(frac * dur, dur, true);
+      await seekEpisodeTo(frac * dur);
+    }
     else render();
   }));
 
@@ -4184,7 +4330,11 @@ function bootNative() {
      navigator.mediaSession (WebKit's copy of Now Playing). The engine's
      NowPlayingPublisher and RemoteSurface are the lock screen and the car. */
   media = buildMediaSession({ nav: null });
-  if (!ui) { ui = buildUI(); bind(); }
+  if (!ui) {
+    ui = buildUI();
+    ui = window.AfterglowNowPlaying?.adopt(ui) || ui;
+    bind();
+  }
   /* The page still owns cp_rate / cp_voice (§5.2), so the engine is told what
      they are — non-audible commands, and only when they differ from what the
      engine already holds, so a page booted over a running engine sends
@@ -4316,7 +4466,11 @@ function ensureJsBooted() {
      the DOM, so nothing here waits for it. */
   media = buildMediaSession({ nav: typeof navigator !== "undefined" ? navigator : null });
 
-  if (!ui) { ui = buildUI(); bind(); }
+  if (!ui) {
+    ui = buildUI();
+    ui = window.AfterglowNowPlaying?.adopt(ui) || ui;
+    bind();
+  }
 
   /* Through the durable store, like every other cp_ key: a playback rate is
      small, but "the app forgot I listen at 1.5x" is the same defect in miniature.

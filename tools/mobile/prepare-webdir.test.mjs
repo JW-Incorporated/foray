@@ -90,6 +90,8 @@ const AMBIENT_PRIMITIVES_ASSETS = Object.freeze([
   { rel: "ui/today.css", maxBytes: 10 * 1024 },
   { rel: "ui/palette.js", maxBytes: 2 * 1024 },
   { rel: "ui/home.js", maxBytes: 32 * 1024 },
+  { rel: "ui/now-playing.css", maxBytes: 14 * 1024 }, // 12.7 KB minified
+  { rel: "ui/now-playing.js", maxBytes: 18 * 1024 }, // 16.1 KB minified
 ]);
 
 /* ───────────────────────────── the derivation ───────────────────────────── */

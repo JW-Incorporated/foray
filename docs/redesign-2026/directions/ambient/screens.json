@@ -78,25 +78,25 @@
         "route": "#/now-playing"
       },
       "app": {
-        "state": "player",
-        "step": "now-playing"
+        "state": "ambient-now-playing",
+        "step": "now-playing-foray"
       },
       "regions": {
         "art": {
           "prototype": ".np-art",
-          "app": ".fp-s-art"
+          "app": ".ag-np-art-wrap"
         },
         "title": {
           "prototype": ".np-titles",
-          "app": ".fp-s-title"
+          "app": ".ag-np-titles"
         },
         "primary": {
           "prototype": ".np .playbtn",
-          "app": "#foray-player .fp-play"
+          "app": ".ag-np-play"
         },
         "close": {
           "prototype": ".np-head button",
-          "app": ".fp-sheet .fp-close, #foray-player .fp-close"
+          "app": ".ag-np-head .fp-close"
         }
       }
     },
@@ -378,25 +378,25 @@
         "route": "?state=episode#/now-playing"
       },
       "app": {
-        "state": "player",
-        "step": "now-playing"
+        "state": "ambient-now-playing",
+        "step": "now-playing-episode"
       },
       "regions": {
         "art": {
           "prototype": ".np-art",
-          "app": ".fp-s-art"
+          "app": ".ag-np-art-wrap"
         },
         "title": {
           "prototype": ".np-titles",
-          "app": ".fp-s-title"
+          "app": ".ag-np-titles"
         },
         "primary": {
           "prototype": ".np .playbtn",
-          "app": "#foray-player .fp-play"
+          "app": ".ag-np-play"
         },
         "close": {
           "prototype": ".np-head button",
-          "app": ".fp-sheet .fp-close, #foray-player .fp-close"
+          "app": ".ag-np-head .fp-close"
         }
       }
     },
@@ -406,25 +406,125 @@
         "route": "?state=paused#/now-playing"
       },
       "app": {
-        "state": "player",
-        "step": "now-playing"
+        "state": "ambient-now-playing",
+        "step": "now-playing-paused"
       },
       "regions": {
         "art": {
           "prototype": ".np-art",
-          "app": ".fp-s-art"
+          "app": ".ag-np-art-wrap"
         },
         "title": {
           "prototype": ".np-titles",
-          "app": ".fp-s-title"
+          "app": ".ag-np-titles"
         },
         "primary": {
           "prototype": ".np .playbtn",
-          "app": "#foray-player .fp-play"
+          "app": ".ag-np-play"
         },
         "close": {
           "prototype": ".np-head button",
-          "app": ".fp-sheet .fp-close, #foray-player .fp-close"
+          "app": ".ag-np-head .fp-close"
+        }
+      }
+    },
+    "now-playing-segchange": {
+      "title": "Now Playing, segment change",
+      "prototype": {
+        "route": "?state=np-segchange#/now-playing"
+      },
+      "app": {
+        "state": "ambient-now-playing",
+        "step": "now-playing-segchange"
+      },
+      "regions": {
+        "art": {
+          "prototype": ".np-art",
+          "app": ".ag-np-art-wrap"
+        },
+        "title": {
+          "prototype": ".np-titles",
+          "app": ".ag-np-titles"
+        },
+        "progress": {
+          "prototype": ".np-ctrl",
+          "app": ".ag-np-progress"
+        },
+        "primary": {
+          "prototype": ".np .playbtn",
+          "app": ".ag-np-play"
+        }
+      }
+    },
+    "now-playing-detail": {
+      "title": "Now Playing, detail",
+      "prototype": {
+        "route": "?state=np-detail3#/now-playing"
+      },
+      "app": {
+        "state": "ambient-now-playing",
+        "step": "now-playing-detail"
+      },
+      "regions": {
+        "actions": {
+          "prototype": ".np-detail .sec-row",
+          "app": ".ag-np-actions"
+        },
+        "segments": {
+          "prototype": ".np-detail .stack-8",
+          "app": ".ag-np-clip-list"
+        },
+        "sources": {
+          "prototype": ".np-detail .grid-3",
+          "app": ".ag-np-source-grid"
+        }
+      }
+    },
+    "now-playing-ending": {
+      "title": "Now Playing, end handoff",
+      "prototype": {
+        "route": "?state=ending#/now-playing"
+      },
+      "app": {
+        "state": "ambient-now-playing",
+        "step": "now-playing-ending"
+      },
+      "regions": {
+        "art": {
+          "prototype": ".np-art",
+          "app": ".ag-np-art-wrap"
+        },
+        "title": {
+          "prototype": ".np-titles",
+          "app": ".ag-np-titles"
+        }
+      }
+    },
+    "now-playing-textscale": {
+      "title": "Now Playing, 1.3 text scale",
+      "prototype": {
+        "route": "?state=episode&textscale=1.3#/now-playing"
+      },
+      "app": {
+        "state": "ambient-now-playing",
+        "step": "now-playing-textscale"
+      },
+      "regions": {
+        "art": {
+          "prototype": ".np-art",
+          "app": ".ag-np-art-wrap"
+        },
+        "title": {
+          "prototype": ".np-titles",
+          "app": ".ag-np-titles"
+        },
+        "primary": {
+          "prototype": ".np .playbtn",
+          "app": ".ag-np-play"
+        },
+        "handle": {
+          "prototype": ".np .handle",
+          "app": ".ag-np-detail-handle"
         }
       }
     },

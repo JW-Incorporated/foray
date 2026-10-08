@@ -39,6 +39,11 @@ async function startPlayback(page, itemId) {
 }
 
 async function openNowPlaying(page) {
+  const sheet = page.locator(".fp-sheet").first();
+  if (await sheet.isVisible().catch(() => false)) {
+    await wait(page, 200);
+    return;
+  }
   await page.locator(".fp-info").first().click();
   await page.waitForSelector(".fp-sheet", { state: "visible", timeout: 10000 });
   await wait(page, 700);
@@ -46,8 +51,42 @@ async function openNowPlaying(page) {
 
 async function closeNowPlaying(page) {
   const close = page.locator(".fp-close");
-  if (await close.count()) await close.first().click().catch(() => {});
-  await wait(page, 400);
+  if (await close.first().isVisible().catch(() => false)) {
+    await close.first().click().catch(() => {});
+    await page.waitForSelector(".fp-sheet", { state: "hidden", timeout: 10000 }).catch(() => {});
+  }
+  await wait(page, 100);
+}
+
+async function resetAmbientNowPlaying(page) {
+  await closeNowPlaying(page);
+  await page.evaluate(() => {
+    document.documentElement.classList.remove("ag-np-textscale");
+    document.documentElement.style.removeProperty("font-size");
+    const ui = window.__afterglowNowPlayingUi;
+    ui?.artSwap?.classList.remove("is-frozen-ending");
+    ui?.artSwap?.querySelector(".ag-np-art-out")?.remove();
+    ui?.sArt?.classList.remove("ag-np-art-in");
+  });
+}
+
+async function startForayPlayback(page, seekSeconds = 21) {
+  await resetAmbientNowPlaying(page);
+  await page.waitForSelector("#fy-play", { state: "visible", timeout: 20000 });
+  await page.locator("#fy-play").click();
+  await page.waitForFunction(() => Boolean(window.ForayPlayer?.forayStatus?.()), null, { timeout: 20000 });
+  await page.evaluate(async (seek) => {
+    await window.ForayPlayer.foraySeek(seek);
+    if (!window.ForayPlayer.forayStatus()?.running) await window.ForayPlayer.forayToggle();
+  }, seekSeconds);
+  await openNowPlaying(page);
+  await page.waitForSelector(".ag-np-strip-button", { state: "visible", timeout: 10000 });
+}
+
+async function startEpisodePlayback(page, itemId) {
+  await resetAmbientNowPlaying(page);
+  await startPlayback(page, itemId);
+  await openNowPlaying(page);
 }
 
 async function typeSearch(page, text) {
@@ -174,6 +213,7 @@ function coreRoutes(fx, { entities }) {
 /** @returns {Array<{id:string, description:string, seed:string, steps:Array}>} */
 export function appStates(fx) {
   const ep0 = fx.items[0].id;
+  const foray0 = fx.forays.find((foray) => foray.status === "published")?.id || fx.forays[0]?.id;
   return [
     {
       id: "gallery",
@@ -260,6 +300,101 @@ export function appStates(fx) {
       description: "Today with an episode part-played (40 minutes in): Keep listening, and the ribbon restored over the page.",
       seed: "midlisten",
       steps: [{ label: "home", route: "#/", ready: ".td-keep" }],
+    },
+    {
+      id: "ambient-now-playing",
+      description: "Afterglow Now Playing: Foray, episode, paused, transition, detail, ending and large text.",
+      seed: "returning",
+      steps: [
+        {
+          label: "now-playing-foray",
+          route: "#/foray/" + encodeURIComponent(foray0),
+          /* 15 minutes in, as the prototype is shot: bars behind the listener are lit at full colour, the current one fills. */
+          run: (page) => startForayPlayback(page, 900),
+          ready: ".ag-np.is-foray",
+        },
+        {
+          label: "now-playing-episode",
+          route: "#/library",
+          run: (page) => startEpisodePlayback(page, ep0),
+          ready: ".ag-np:not(.is-foray)",
+        },
+        {
+          label: "now-playing-paused",
+          route: "#/library",
+          run: async (page) => {
+            await startEpisodePlayback(page, ep0);
+            await page.evaluate(async () => {
+              const status = window.ForayPlayer?.forayStatus?.();
+              if (status?.running) await window.ForayPlayer.forayToggle();
+              for (const audio of window.__audios || []) if (!audio.paused) audio.pause();
+            });
+            await wait(page, 300);
+          },
+          ready: ".ag-np.is-paused",
+        },
+        {
+          label: "now-playing-segchange",
+          route: "#/foray/" + encodeURIComponent(foray0),
+          run: async (page) => {
+            await startForayPlayback(page);
+            await page.evaluate(async () => {
+              await window.ForayPlayer.forayJump(1);
+              const ui = window.__afterglowNowPlayingUi;
+              const show = ui?.segmentsSection?.querySelectorAll(".ag-np-clip-row .t-caption")?.[1]?.textContent?.split(" \u00b7 ")?.[0] || "Next show";
+              window.AfterglowNowPlaying?.flashCaption(ui, `Now: ${show}`, true);
+              ui?.roomLayers?.forEach((layer) => layer.classList.add("is-on"));
+              ui?.sShow?.classList.add("is-crossfading");
+            });
+            await wait(page, 120);
+          },
+          ready: ".ag-np-eyebrow.is-lit",
+        },
+        {
+          label: "now-playing-detail",
+          route: "#/foray/" + encodeURIComponent(foray0),
+          run: async (page) => {
+            await startForayPlayback(page);
+            const detail = page.locator(".ag-np-detail");
+            await detail.evaluate((node) => node.scrollIntoView({ block: "start" }));
+            await wait(page, 300);
+          },
+          ready: ".ag-np-detail",
+        },
+        {
+          label: "now-playing-ending",
+          route: "#/library",
+          run: async (page) => {
+            await startEpisodePlayback(page, ep0);
+            await page.evaluate(() => {
+              const ui = window.__afterglowNowPlayingUi;
+              const saved = Object.values(JSON.parse(localStorage.getItem("cp_saved") || "{}"));
+              const next = saved.find((item) => item.id !== window.ForayPlayer?.currentEpisodeId?.() && item.artwork_url);
+              if (!ui || !next) return;
+              const previousSrc = ui.sArt.getAttribute("src") || next.artwork_url;
+              ui.sArt.src = safeUrl(next.artwork_url);
+              ui.sTitle.textContent = next.title || "Up next";
+              ui.sShow.textContent = next.show || "";
+              window.AfterglowNowPlaying.handoff(ui, previousSrc, next.artwork_url, { freeze: true });
+            });
+            await wait(page, 120);
+          },
+          ready: ".ag-np-art-swap.is-frozen-ending",
+        },
+        {
+          label: "now-playing-textscale",
+          route: "#/library",
+          run: async (page) => {
+            await startEpisodePlayback(page, ep0);
+            await page.evaluate(() => {
+              document.documentElement.classList.add("ag-np-textscale");
+              document.documentElement.style.setProperty("font-size", "20.8px");
+            });
+            await wait(page, 300);
+          },
+          ready: ".ag-np",
+        },
+      ],
     },
   ];
 }

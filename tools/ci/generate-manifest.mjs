@@ -164,6 +164,7 @@ const SHELL = [
   "ui/primitives.css",
   /* Redesign 2026 (ambient): Today, the first screen on the system. A stylesheet, so listed by name. */
   "ui/today.css",
+  "ui/now-playing.css",
   /* Redesign 2026 (ambient): the icon sprite ui/icons.svg, fetched by every `<use href>` agIcon() writes.
      Not a script, so uiSources() does not see it; listed by name for the same reason as tokens.css. */
   "ui/icons.svg",
