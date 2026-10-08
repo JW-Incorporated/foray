@@ -470,7 +470,7 @@ test("Create's builder refuses at the cap too, and nothing cuts a store that alr
 /* ==================================================================== */
 
 test("the copy is listed in Library and on the Playlists page, and drawn as own under Playlists for you", () => {
-  /* MUTATION 1: have playlistsForYouHtml badge every card whose `saved_from`
+  /* MUTATION 1: have todayPlaylistsHtml badge every card whose `saved_from`
      is set (`generated: Boolean(p.saved_from)`) -> the own-card assertion
      fails. MUTATION 2: drop the currentCopyOf filter from playlistsForYouPicks
      (or from playlistSearchMatches) -> two identical cards and this fails.
@@ -487,7 +487,7 @@ test("the copy is listed in Library and on the Playlists page, and drawn as own 
   assert.ok(m.view().includes(`href="#/playlist/${copy.id}"`), "the Playlists page lists the copy");
   assert.match(m.view(), /<p class="sub">1 playlist<\/p>/, "the count no longer calls every playlist 'built'");
 
-  const rail = m.ctx.playlistsForYouHtml();
+  const rail = m.ctx.todayPlaylistsHtml(m.ctx.playlistsForYouPicks());
   const at = rail.indexOf(`href="#/playlist/${copy.id}"`);
   assert.ok(at > 0, "the copy is under Playlists for you");
   const card = rail.slice(rail.lastIndexOf("<a ", at), rail.indexOf("</a>", at));
@@ -544,7 +544,9 @@ test("a copy saved under Family Mode holds only what Family Mode showed", () => 
 test("a copy saved with Family Mode OFF neither lists nor plays an explicit episode once Family Mode is on", () => {
   /* The leak direction. MUTATION: drop the `!familyAllows(live)` line from
      resolveParts -> the copy's page draws the explicit row with its ▶ and
-     Home's play button starts it (it is newest, so first); this fails. */
+     Today's playlist card draws its artwork (it is newest, so first); this fails.
+     MUTATION 2: filter on `r.item` instead of `r.state === "live"` in
+     todayPlaylistCardHtml -> its artwork is on Home; the last assertion fails. */
   const m = appMount({ startups: [1, 2, 3, 4] });
   rateClean(m);
   // Its own show, so the per-show cap (2, PKG-04) keeps all five on the leaf.
@@ -561,10 +563,14 @@ test("a copy saved with Family Mode OFF neither lists nor plays an explicit epis
   assert.ok(html.includes("Hidden by Family Mode"), "its row says what holds it back");
   assert.strictEqual((html.match(/class="ep-row/g) || []).length, 5, "and keeps its place, so the count stays true");
 
-  const t = m.ctx.homePlayTarget();
-  assert.ok(t, "fixture assumption: Home has something to play");
-  assert.notStrictEqual(t.item.id, "st-explicit", "Home's play button does not start it");
-  assert.ok(!Array.from(t.list || [], (x) => x.id).includes("st-explicit"), "nor queue it after the first");
+  /* Today's playlist card holds it back too: its count stays true, its picture
+     is only of what Family Mode lets through. (Home's old play capsule, which
+     this half used to check, went with the rails; the hero plays Forays.) */
+  m.ctx.renderHome();
+  const home = m.view();
+  assert.ok(home.includes(`href="#/playlist/${copy.id}"`), "fixture assumption: the copy's card is on Today");
+  assert.ok(!home.includes("st-explicit.jpg"), "the hidden episode's artwork is not on Today");
+  assert.ok(!home.includes('data-play="st-explicit"'), "and it has no play key there");
 });
 
 /* ==================================================================== */

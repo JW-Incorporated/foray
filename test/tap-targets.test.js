@@ -235,7 +235,6 @@ const BUTTONS = {
   ".fy-sheet-go": { rule: ".fy-sheet-go" },
   ".fy-thumb": { rule: ".fy-thumb" },
   ".interest-reset": { rule: ".interest-reset" },
-  ".hv2-play": { tall: "body.ui-v2 .hv2-play", why: "Home's one play button (founder, 2026-09-24): a labelled capsule, \"▶ Play <title>\", 48px tall with 16/20px side padding" },
   ".play-btn": { rule: ".play-btn" },
   ".pl-save": { tall: "button.pl-save", why: "a labelled capsule (\"Save to my playlists\" / \"✓ Saved\") with 16px side padding" },
   ".rate-option": { tall: ".rate-option", why: "a row of the speed sheet's full-width column" },
@@ -461,12 +460,11 @@ test("a held in-app link opens no web preview and no callout, in the shell or th
   assert.strictEqual(valueOf('a[href^="#/"]', "-webkit-user-select"), "none");
   /* Every stretched link really is an in-app route, so the rule reaches it. */
   const app = readAppSource();
-  for (const cls of ["mc-link", "ep-title-link", "hv2-jbi-link"]) {
+  for (const cls of ["ep-title-link", "row__link", "today-resume__link"]) {
     assert.match(app, new RegExp(`<a class="[^"]*\\b${cls}\\b[^"]*" href="#/`), `.${cls} is an <a href="#/…">`);
   }
   /* The flash goes only where the card authors its own press. */
   const PRESS = {
-    ".mc-link": ".mini-card:active",
     ".ep-row .ep-title-link": ".ep-row:has(.ep-title-link:active)",
     ".pl-row": ".pl-row:active",
     ".page-link-row": ".page-link-row:active",

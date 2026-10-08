@@ -295,6 +295,8 @@ const PAIRS = [
   ["--persimmon", "--paper", 3], ["--persimmon", "--card", 3], ["--persimmon", "--paper-2", 3],
   ["--ultramarine", "--paper", 4.5], ["--ultramarine", "--card", 4.5],
   ["--good", "--paper", 4.5], ["--warn", "--paper", 4.5],
+  /* Today's Resume tag: 12px text on the soft fill (`.today-resume .tag--playing`). --persimmon on it was 3.74 in Cream and 4.49 in Bakelite. */
+  ["--ink", "--persimmon-soft", 4.5],
   ...Array.from({ length: 8 }, (_, i) => [`--dial-seg-c${i}`, "--paper-2", 3]),
 ];
 
@@ -402,6 +404,12 @@ test("the sheet has exactly one reduced-motion block, last, that collapses every
     "--spring-snap": "linear(0, 1)", "--spring-settle": "linear(0, 1)", "--spring-sheet": "linear(0, 1)",
   }));
   assert.strictEqual(declsOf(ALL, ".keycap:active", "prefers-reduced-motion").get("transform"), "none");
+  /* The lip counter-translates on press, so reduced motion must still the lip AND the face at the
+     press rules' own specificity (a bare `.keycap:active` loses to `:active:not(:disabled)`).
+     MUTATION: delete `.keycap:active:not(:disabled)::after` from the block -> the lip still drops. */
+  for (const sel of [".keycap:active:not(:disabled)", ".keycap:active:not(:disabled)::after", ".keycap[data-pressed=\"true\"]::after"]) {
+    assert.strictEqual(declsOf(ALL, sel, "prefers-reduced-motion").get("transform"), "none", `${sel} does not move under reduced motion`);
+  }
   const draw = declsOf(ALL, ".band[data-draw]", "prefers-reduced-motion");
   assert.strictEqual(draw.get("stroke-dashoffset"), "0");
   assert.strictEqual(draw.get("animation"), "none");

@@ -57,6 +57,7 @@ async function realBridge(rows = []) {
     },
     listForays: (doc, opts) => resolve.listableForays(doc, opts),
     stripTally: strip.stripTally,
+    stripModel: strip.stripModel,
     segmentStripHtml: strip.segmentStripHtml,
     fmtClock: resolve.fmtClock,
     fmtSpan: resolve.fmtSpan,
@@ -165,10 +166,11 @@ test("a finished Foray says 'Played' on its rows and leaves Jump back in (honest
   assert.match(cap, /<span class="fy-home-sub">Played · /, `the Forays list row: ${cap}`);
 });
 
-test("every list row and Home card says how long a Foray is and what it is made of (p-foray-8)", async () => {
+test("every list row and Today's hero says how long a Foray is and what it is made of (p-foray-8)", async () => {
   /* capital-types-1 in the frozen fixture: 22 clips of measured tape from 7
-     shows. KILLING MUTATION: drop the sub line from forayListHtml (or the
-     `facts` span from forayCardV2Html) — red. */
+     shows. The list rows say the clips too; the hero says what the direction
+     gives it room for, "51 min · 7 shows". KILLING MUTATION: drop the sub line
+     from forayListHtml (or the `facts` join from todayHeroModel) — red. */
   const { resolve } = await mods;
   const app = loadApp(await realBridge());
   const doc = resolve.findForay(readFrozen("forays.json"), "capital-types-1", {});
@@ -180,8 +182,9 @@ test("every list row and Home card says how long a Foray is and what it is made 
   const row = /href="#\/foray\/capital-types-1">[\s\S]*?<\/a>/.exec(list)[0];
   assert.ok(row.includes(`<span class="fy-home-sub">${facts}</span>`), `the Forays list row: ${row}`);
 
-  const card = app.forayCardV2Html(doc);
-  assert.ok(card.includes(`<span class="hv2-foray-sub">${facts}</span>`), `the Home card: ${card.slice(0, 400)}`);
+  const hero = app.todayHeroModel({ foray: doc, r });
+  assert.equal(hero.facts, `${resolve.fmtSpan(r.totalSec)} · 7 shows`, "Today's hero: the length and the show count");
+  assert.match(app.todayHeroHtml(hero), /class="readout today-hero__facts">\d+ min · 7 shows</, "and it is drawn as the mono readout");
 
   const lib = libraryRows(app.libraryForaysHtml()).find(([t]) => t === doc.title);
   assert.equal(lib[1], facts, "an unopened Foray's Library row is its length and makeup");
@@ -215,18 +218,18 @@ test("the Foray explanation promises a narrator only while a listed Foray has on
   assert.match(drafts.forayAbout(), /with a narrator between them\.$/, "a listed narrated Foray earns the clause");
 });
 
-test("the intro popup claims a stretch Foray only when Home's Forays row has one (p-first-11)", async () => {
-  /* One listed Foray is one subject root, so pickWithStretchFloor has no
-     branch left over for a stretch pick. KILLING MUTATION: restore the fixed
-     sentence "The forays and the episodes each include ..." — red. */
+test("the intro popup names the outside pick only where Today has one (p-first-11)", async () => {
+  /* The Foray half of the old stretch claim went with "Forays for you": Today's
+     hero is one Foray, and the only outside pick is Also today's Stretch bridge.
+     The popup names that section and nothing else. KILLING MUTATION: restore
+     "and the forays each include ..." in the sentence -> red. */
   const created = [];
   const app = loadApp(await realBridge(), { showDrafts: false, created });
-  assert.equal(app.foraysForYouPicks().stretchIndex, -1, "fixture: no stretch Foray is possible");
   try { app.showIntroPopupOnce(); } catch (_) { /* the stub cannot open a sheet; the copy is already built */ }
   const sub = created.find((el) => el.className === "fy-sheet-sub" && /outside your usual subjects/.test(el.textContent));
   assert.ok(sub, "the popup's explanation was built");
-  assert.match(sub.textContent, /The episodes include one pick outside your usual subjects/);
-  assert.doesNotMatch(sub.textContent, /forays/);
+  assert.match(sub.textContent, /Also today includes one pick outside your usual subjects/);
+  assert.doesNotMatch(sub.textContent, /forays each/);
 });
 
 /* ---------- p-foray-2: every credited show links in-app, or its arrow says "search" ---------- */

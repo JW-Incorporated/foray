@@ -338,7 +338,7 @@ function openSheet(wrap, opts = {}) {
     requestClose: typeof opts.onRequestClose === "function" ? opts.onRequestClose : () => closeSheet(wrap),
     bodyClass: opts.bodyClass || "fy-sheet-open",
     opener,
-    returnFocus: opts.returnFocus || (fromDrawer ? $("#menu-btn") : null),
+    returnFocus: opts.returnFocus || (fromDrawer ? menuOpener() : null),
     inerted: [],
     lifted: [],
     keep: opts.keepReachable || [],
