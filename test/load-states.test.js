@@ -746,16 +746,20 @@ async function mountForay(id, { forays = readData("data/forays.json"), segments 
   return { ...m, bridge: b };
 }
 
-/* The header's <p class="sub"> text, read from the markup (this DOM parses
-   tags, not text nodes). */
-const headSub = (html) => (/<p class="sub">([^<]*)<\/p>/.exec(html) || [])[1] || "";
+/* The page's readout line ("about 43 min · 1 show · 11 clips"), read from the markup (this
+   DOM parses tags, not text nodes). REWRITTEN ON PURPOSE (Tactile `foray`): the header's
+   `<p class="sub">` ("50 clips: 11 from 1 show and 39 from 4a's AI narrator · about 43
+   min") became the mono readout under the band, which counts the TAPE clips and the shows
+   heard and says "about" only for an estimated runtime. The honesty rules below are the
+   same ones; the sentence they read is shorter. */
+const headSub = (html) => (/<p class="readout fdet-facts">([^<]*)<\/p>/.exec(html) || [])[1] || "";
 
-test("a narrated Foray's header counts the strip's clips, not every queue item, and calls its runtime an estimate", async () => {
+test("a narrated Foray's readout counts the tape clips, not every queue item, and calls its runtime an estimate", async () => {
   /* "50 segments · 1 show · 43:07" over a strip announcing 11 segments, with 41%
      of that clock a script-length projection.
-     MUTATION: restore `${r.playable.length} segment…` in forayHeadSub. The
-     header counts the bridges and the first assertion goes red. MUTATION 2:
-     print `fmtClock(r.totalSec)` unconditionally. "about" is gone, red. */
+     MUTATION: count `r.playable.length` instead of `tally.clips` in renderForay's
+     `clips`. The readout counts the bridges and the first assertion goes red.
+     MUTATION 2: print `fmtClock(r.totalSec)` unconditionally. "about" is gone, red. */
   const id = "how-ai-actually-gets-built-3b83e1";
   const m = await mountForay(id);
   const { strip } = await playerMods;
@@ -763,16 +767,12 @@ test("a narrated Foray's header counts the strip's clips, not every queue item, 
   assert.ok(r, "the Foray resolved");
   const model = strip.stripModel(r.playable);
   const sub = headSub(m.html());
-  /* INTEGRATION (2026-09-22): L4 made every piece a "clip" on the strip, the
-     mini bar and ‹‹/››, with the narrator's counted as the narrator's; the
-     header now says the strip's own sentence, so the two cannot disagree. The
-     tape count is still the strip model's, never a count of its own. */
   const narr = r.playable.length - model.segmentCount;
   assert.ok(narr > 0, "precondition: a narrated Foray");
-  assert.match(sub, new RegExp(`^${r.playable.length} clips: ${model.segmentCount} from ${model.shows.length} shows? and ${narr} from 4a(&#39;|')s AI narrator`), `header: "${sub}"`);
-  assert.ok(strip.stripSummary(model).startsWith(`${r.playable.length} clips: ${model.segmentCount} from`), "the strip says the same numbers");
-  assert.match(sub, /· about \d+ min$/, `an estimated runtime says so: "${sub}"`);
-  assert.match(m.view.querySelector("#fy-total").textContent, /^~\d/, "the clock beside the scrubber carries the same hedge");
+  assert.match(sub, new RegExp(` · ${model.shows.length} shows? · ${model.segmentCount} clips$`), `readout: "${sub}"`);
+  assert.doesNotMatch(sub, new RegExp(`\\b${r.playable.length} clips`), "not the whole queue, bridges included");
+  assert.match(sub, /^about \d+ min · /, `an estimated runtime says so: "${sub}"`);
+  assert.doesNotMatch(m.html(), /No narration yet on this one/, "and a narrated Foray does not say it has none");
 });
 
 test("a Foray of measured tape states its length in minutes, unhedged", async () => {
@@ -783,16 +783,20 @@ test("a Foray of measured tape states its length in minutes, unhedged", async ()
      MUTATION 2: return `player.fmtClock(totalSec)` for a measured runtime. Red. */
   const m = await mountForay("capital-types-1");
   const sub = headSub(m.html());
-  assert.match(sub, /^\d+ clips from \d+ shows · \d+ min$/, `header: "${sub}"`);
+  assert.match(sub, /^\d+ min · \d+ shows? · \d+ clips$/, `readout: "${sub}"`);
   assert.doesNotMatch(sub, /about|narration/);
+  assert.match(m.html(), /No narration yet on this one\./, "and a Foray with no narration says so, once, in words");
 });
 
-test("a finished Foray's page says 'Played' with 'Play again', not the page of one never opened (honesty-2)", async () => {
+test("a finished Foray's page says 'Played' and its key says 'Start over', not the page of one never opened (honesty-2)", async () => {
   /* Frozen fixture (never a live id). The player answers a FINISHED point only
      when asked with `includeFinished`, which is how the page tells "Played"
      from "never opened". KILLING MUTATION: drop `includeFinished: true` from
      renderForay's forayResume call (the fake below then answers null, as the
-     real one does) — no banner, red. */
+     real one does): no Played tag, the key says Play, red.
+     REWRITTEN ON PURPOSE (Tactile `foray`): the old page showed a "Played" banner with
+     a "Play again" button; the new one tags the title "Played", fills every bar and
+     turns the pinned key into "Start over". */
   const FZ = "tools/foray/fixtures/frozen/data";
   const b = await forayBridge();
   b.forayResume = (_id, opts = {}) => opts.includeFinished
@@ -805,9 +809,12 @@ test("a finished Foray's page says 'Played' with 'Play again', not the page of o
   m.ctx.renderCurrentPage();
   await settle(10);
   const html = m.html();
-  assert.match(html, /class="fy-resume fy-played" id="fy-resume"[\s\S]*?>Played<\/span>[\s\S]*?id="fy-restart">Play again<\/button>/, html.slice(0, 1500));
-  assert.doesNotMatch(html, /Jump back in at/, "a finished Foray is not offered as a place to resume");
+  assert.match(html, /data-foray-state="done"/, html.slice(0, 600));
+  assert.match(html, /<span class="tag tag--played">[\s\S]*?<span>Played<\/span><\/span>/, "the title carries the Played tag");
+  assert.match(html, /id="fy-play"[\s\S]*?<span class="keycap__label">Start over<\/span>\s*<span class="readout keycap__readout" hidden><\/span>/, "the key says Start over and has no readout");
+  assert.doesNotMatch(html, /Jump back in|Resume/, "a finished Foray is not offered as a place to resume");
   assert.equal(m.state.forayResume, null, "and the main button starts from the top, as before");
+  assert.equal(m.state.forayFinished, true, "the page remembers it was played to the end");
 });
 
 test("a clip missing from the segment pool is not promised as 'listed below'", async () => {
@@ -848,7 +855,7 @@ test("the header does not count a show whose only clip will not play", async () 
   assert.ok(r.entries.some((e) => !e.playable && e.show === "A Show Nobody Will Hear"), "fixture: its only clip will not play");
   const heard = new Set(r.entries.filter((e) => e.playable && e.show).map((e) => e.show)).size;
   const sub = headSub(m.html());
-  assert.match(sub, new RegExp(` from ${heard} shows? `), `the header counts heard shows (${heard}), not authored ones (${r.shows.length}): "${sub}"`);
+  assert.match(sub, new RegExp(` · ${heard} shows? · `), `the readout counts heard shows (${heard}), not authored ones (${r.shows.length}): "${sub}"`);
   assert.match(m.html(), /1 clip can't play — marked below\./, "and the clip that will not play is the one marked below");
 });
 

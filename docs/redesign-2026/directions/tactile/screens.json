@@ -174,7 +174,147 @@
       "regions": {
         "header": {
           "prototype": ".fdet__bar",
-          "app": ".page-head"
+          "app": ".fdet-bar"
+        },
+        "band": {
+          "prototype": ".fdet .band-wrap",
+          "app": ".fdet-well"
+        },
+        "primary": {
+          "prototype": ".pin .keycap",
+          "app": ".fdet-pin .keycap"
+        },
+        "rows": {
+          "prototype": ".fdet .row--show, .fdet .segrow",
+          "app": ".fdet-from, .fdet-seg__row",
+          "mode": "all"
+        },
+        "tabBar": {
+          "prototype": "#tabs",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "foray-progress": {
+      "title": "Foray detail, in progress",
+      "prototype": {
+        "route": "#/foray/progress"
+      },
+      "app": {
+        "state": "returning",
+        "step": "foray-progress"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".fdet__bar",
+          "app": ".fdet-bar"
+        },
+        "band": {
+          "prototype": ".fdet .band-wrap",
+          "app": ".fdet-well"
+        },
+        "primary": {
+          "prototype": ".pin .keycap",
+          "app": ".fdet-pin .keycap"
+        },
+        "rows": {
+          "prototype": ".fdet .row--show, .fdet .segrow",
+          "app": ".fdet-from, .fdet-seg__row",
+          "mode": "all"
+        },
+        "tabBar": {
+          "prototype": "#tabs",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "foray-done": {
+      "title": "Foray detail, finished",
+      "prototype": {
+        "route": "#/foray/done"
+      },
+      "app": {
+        "state": "returning",
+        "step": "foray-done"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".fdet__bar",
+          "app": ".fdet-bar"
+        },
+        "band": {
+          "prototype": ".fdet .band-wrap",
+          "app": ".fdet-well"
+        },
+        "primary": {
+          "prototype": ".pin .keycap",
+          "app": ".fdet-pin .keycap"
+        },
+        "rows": {
+          "prototype": ".fdet .row--show, .fdet .segrow",
+          "app": ".fdet-from, .fdet-seg__row",
+          "mode": "all"
+        },
+        "tabBar": {
+          "prototype": "#tabs",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "foray-unnarrated": {
+      "title": "Foray detail, no narration",
+      "prototype": {
+        "route": "#/foray/unnarrated"
+      },
+      "app": {
+        "state": "returning",
+        "step": "foray-unnarrated"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".fdet__bar",
+          "app": ".fdet-bar"
+        },
+        "band": {
+          "prototype": ".fdet .band-wrap",
+          "app": ".fdet-well"
+        },
+        "primary": {
+          "prototype": ".pin .keycap",
+          "app": ".fdet-pin .keycap"
+        },
+        "rows": {
+          "prototype": ".fdet .row--show, .fdet .segrow",
+          "app": ".fdet-from, .fdet-seg__row",
+          "mode": "all"
+        },
+        "tabBar": {
+          "prototype": "#tabs",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "foray-unavailable": {
+      "title": "Foray detail, unavailable",
+      "prototype": {
+        "route": "#/foray/unavailable"
+      },
+      "app": {
+        "state": "returning",
+        "step": "foray-unavailable"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".fdet__bar",
+          "app": ".fdet-bar"
+        },
+        "band": {
+          "prototype": ".fdet .band-wrap",
+          "app": ".fdet-well"
+        },
+        "primary": {
+          "prototype": ".hero__keys .keycap--persimmon",
+          "app": ".fdet-keys .keycap--persimmon"
         },
         "tabBar": {
           "prototype": "#tabs",

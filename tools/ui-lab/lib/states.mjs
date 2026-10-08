@@ -119,11 +119,63 @@ async function holdCatalog(page) {
   await page.route("**/data/catalog-client.json*", () => { /* held on purpose */ });
 }
 
+/* Tactile `foray` (Foray detail): the four states the page draws beyond its fresh one.
+ * A step shares one page with the steps before it, and the player reads a Foray's stored
+ * place once at boot (its store is authoritative in memory), so a state that needs a place
+ * writes the `cp_foray:<id>` row the app itself writes, then loads the page again on the
+ * Foray's address. A draft Foray (the un-narrated one) is opened the way a listener opens
+ * one: by name, `?foray=<id>`, which is also what unlocks it. */
+const FORAY_NARRATED = "how-ai-actually-gets-built-3b83e1";
+const FORAY_UNNARRATED = "grilling-history-2";
+
+async function openForayDetail(page, id, { unlock = false, at = null } = {}) {
+  /* Through the durable store the app itself writes with (memory, localStorage and IndexedDB
+     together: clearing localStorage alone lets a stale row come back from IndexedDB), after the
+     player lets go of what it has loaded (it would save its own place over the row as the page
+     unloads). The place is worked out against the real resolver. */
+  await page.evaluate(async ({ id, at }) => {
+    try { await window.ForayPlayer.stopForDataDeletion(); } catch (_) { /* nothing was loaded */ }
+    const store = window.forayStorage;
+    for (const key of store.keys("cp_foray:")) store.removeItem(key);
+    if (at != null) {
+      const [foraysDoc, segmentsDoc, sourcesDoc] = await Promise.all([
+        fetch("data/forays.json").then((response) => response.json()),
+        fetch("data/segments.json").then((response) => response.json()),
+        fetch("data/segment-sources.json").then((response) => response.json()),
+      ]);
+      const resolved = window.ForayPlayer.resolve(foraysDoc, { id, segmentsDoc, sourcesDoc, showDrafts: true });
+      if (!resolved) throw new Error("uilab: Foray detail fixture did not resolve: " + id);
+      const elapsed = at === "end" ? resolved.totalSec : at;
+      const place = window.ForayPlayer.segmentAt(resolved.playable, elapsed);
+      store.setItem("cp_foray:" + id, JSON.stringify({
+        foray_id: id, title: resolved.title, elapsed_sec: elapsed, total_sec: resolved.totalSec,
+        index: place ? place.index : -1, segment_id: null, into_sec: place ? place.into : 0, updated_at: new Date().toISOString(),
+      }));
+    }
+    await store.flush();
+  }, { id, at });
+  const url = new URL(page.url());
+  url.search = unlock ? "?foray=" + encodeURIComponent(id) : "";
+  url.hash = "#/foray/" + encodeURIComponent(id);
+  /* The same address is a hash navigation to itself, which loads nothing: reload it instead. */
+  if (url.href === page.url()) await page.reload({ waitUntil: "load" });
+  else await page.goto(url.href, { waitUntil: "load" });
+  await page.waitForFunction(
+    () => Boolean(window.ForayPlayer) && Boolean(document.querySelector("#tab-bar .tab-btn")) && Boolean(document.querySelector(".fdet")),
+    null,
+    { timeout: 45000 }
+  );
+  await wait(page, 900);
+}
+
 /** Routes every seeded profile can show. `fx` supplies real ids. */
 function coreRoutes(fx, { entities }) {
   const ep = fx.items[0].id;
   const show = fx.shows[0].show_id;
-  const foray = fx.forays[0] && fx.forays[0].id;
+  /* The first PUBLISHED Foray, not the first in the file: that one is a draft, which the page
+     (correctly) refuses without `?foray=`, so this step used to shoot "isn't available". */
+  const published = fx.forays.find((f) => f.status === "published");
+  const foray = published && published.id;
   const steps = [
     { label: "home", route: "#/" },
     { label: "search", route: "#/shows" },
@@ -173,7 +225,16 @@ export function appStates(fx) {
       id: "returning",
       description: "Returning user: saved episodes, Up Next, playlists, starred shows, history.",
       seed: "returning",
-      steps: coreRoutes(fx, { entities: true }),
+      steps: [
+        ...coreRoutes(fx, { entities: true }),
+        /* Appended by Tactile `foray`: the Foray detail page beyond its fresh state. In progress
+           (12:40 in, the prototype's Resume at 12:40), played to the end, a Foray with no
+           narration (BR BR at 412 is this one), and one that is not there. */
+        { label: "foray-progress", route: "#/foray/" + FORAY_NARRATED, run: (page) => openForayDetail(page, FORAY_NARRATED, { at: 760 }) },
+        { label: "foray-done", route: "#/foray/" + FORAY_NARRATED, run: (page) => openForayDetail(page, FORAY_NARRATED, { at: "end" }) },
+        { label: "foray-unnarrated", route: "#/foray/" + FORAY_UNNARRATED, run: (page) => openForayDetail(page, FORAY_UNNARRATED, { unlock: true }) },
+        { label: "foray-unavailable", route: "#/foray/does-not-exist", run: (page) => openForayDetail(page, "does-not-exist") },
+      ],
     },
     {
       id: "player",
