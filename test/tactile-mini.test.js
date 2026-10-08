@@ -427,6 +427,77 @@ function tokens(inset, collapsed) {
   };
 }
 
+test("the mini's keys are the prototype's: Play a 64x48 pill, +30 48x44, neither squeezed by the body button", () => {
+  /* Judges, iteration 3 (fidelity): the prototype draws the mini Play as a wide
+     pill (keycap padding 20 + 24px glyph + 20 = 64 wide, 48 tall) and +30 as
+     `.keycap--sm` (12 + 24 + 12 = 48 wide, 44 tall); the build had a 48px disc
+     and a 42-wide key (a flex-shrinkable width). The side padding is read from
+     the prototype's own CSS, so a prototype change surfaces here.
+     MUTATION 1: set `.fp-play`'s width back to `var(--key)` -> red (48 !== 64).
+     MUTATION 2: delete `flex: none` from the `.fp-skip` rule -> red.
+     MUTATION 3: set `.fp-skip`'s width to `var(--tap)` -> red (44 !== 48). */
+  const proto = fs.readFileSync(path.join(ROOT, "docs", "redesign-2026", "directions", "tactile", "prototype", "app.css"), "utf8").replace(/\r\n/g, "\n");
+  const glyph = 24;
+  const protoPad = Number(/\.keycap \{[^}]*padding:\s*0 (\d+)px/.exec(proto)[1]);
+  const protoSmPad = Number(/\.keycap--sm \{[^}]*padding:\s*0 (\d+)px/.exec(proto)[1]);
+  const v = { "--key": "48px", "--tap": "44px", "--s-1": "4px", "--s-4": "16px" };
+  const play = rule("body.ui-v2 #foray-player.dial-mini .fp-play");
+  const skip = rule("body.ui-v2 #foray-player.dial-mini .fp-skip");
+  const get = (body, prop) => px(new RegExp(`(?:^|;)\\s*${prop}:\\s*([^;]+);`, "m").exec(body)[1].trim(), v);
+  assert.strictEqual(get(play, "width"), 2 * protoPad + glyph, "Play is the prototype's pill width");
+  assert.strictEqual(get(play, "min-width"), 2 * protoPad + glyph);
+  assert.strictEqual(get(play, "height"), 48);
+  assert.ok(get(play, "width") > get(play, "height"), "a pill, not a disc");
+  assert.strictEqual(get(skip, "width"), 2 * protoSmPad + glyph, "+30 is the prototype's 48-wide key");
+  assert.strictEqual(get(skip, "height"), 44);
+  assert.match(play, /flex:\s*none/, "Play does not shrink");
+  assert.match(skip, /flex:\s*none/, "+30 does not shrink");
+});
+
+test("the 3px line is inset evenly from both ends and clears the deck's corner radius", () => {
+  /* Judges, iteration 3: "the band starts at the deck's left edge and ends ~20px
+     short on the right". Measured in a real render at 375/393/412 the line sits
+     16+22 .. W-16-22 in the deck: 22 each side. This pins the cause rather than
+     the picture: one inset used for both `left` and the width, no smaller than
+     the deck's radius, and the painter's own constant agreeing with it.
+     MUTATION 1: change `left` to `var(--s-4)` -> red (uneven and under the radius).
+     MUTATION 2: change the width to `calc(100% - var(--s-5))` -> red.
+     MUTATION 3: set DIAL_MINI_LINE_INSET to 16 in ui/mini.js -> red. */
+  const root = rule(":root");
+  const tok = (n) => Number(new RegExp(`${n}:\\s*(\\d+)px`).exec(root)[1]);
+  const v = { "--s-1": `${tok("--s-1")}px`, "--s-5": `${tok("--s-5")}px` };
+  const line = rule(".mini > .band--line");
+  const left = px(/(?:^|;)\s*left:\s*([^;]+);/.exec(line)[1].trim(), v);
+  const widthExpr = /(?:^|;)\s*width:\s*([^;]+);/.exec(line)[1].trim();
+  const given = px(widthExpr.replace("100%", "0px"), v);
+  assert.strictEqual(-given, 2 * left, "the width gives back exactly twice the left inset: even on both ends");
+  assert.ok(left >= tok("--r-lg"), `the line clears the ${tok("--r-lg")}px corner (inset ${left})`);
+  assert.strictEqual(Number(/var DIAL_MINI_LINE_INSET = (\d+);/.exec(MINI_SRC)[1]), left, "the painter's inset is the CSS inset");
+});
+
+test("a page-background fade sits under the dock while the mini is up, so a card's text never peeks into its 12px gap", () => {
+  /* Judges, iteration 3 (polish, both orders): the last card's text showed below
+     the floating dock and beside its rounded corners. The prototype has a
+     `body::after` fade (paper, solid under the deck, 44px of ramp above it); the
+     build had none. It paints the page background (right in either scheme), sits
+     BELOW the tab row so it never veils the dock, never takes a tap, is solid at
+     the bottom, and is gone while the sheet is open.
+     MUTATION 1: change its z-index to 56 -> red (it would veil the dock).
+     MUTATION 2: delete `pointer-events: none` -> red.
+     MUTATION 3: change `var(--bg) 52%` to `transparent 52%` -> red.
+     MUTATION 4: drop `:not(.fp-expanded)` from the selector -> red. */
+  const fade = rule("body.ui-v2.fp-open:not(.fp-expanded)::after");
+  assert.ok(fade, "the fade is declared for the mini state, and not over the open sheet");
+  assert.match(fade, /position:\s*fixed/);
+  assert.match(fade, /pointer-events:\s*none/);
+  const z = Number(/z-index:\s*(\d+)/.exec(fade)[1]);
+  const tabZ = Number(/z-index:\s*(\d+)/.exec(rule(".tab-bar"))[1]);
+  assert.ok(z < tabZ && z > 20, `the fade (${z}) is under the tab row (${tabZ}) and over the page`);
+  assert.match(fade, /linear-gradient\(to top,\s*var\(--bg\) \d+%,\s*transparent\)/, "solid page background at the bottom, fading to nothing");
+  assert.match(fade, /bottom:\s*0/);
+  assert.match(rule("body.ui-v2.kb-open::after"), /display:\s*none/, "gone under the keyboard");
+});
+
 test("the mini sits flush on the tab row and the content clears both, collapsed or not, at both insets", () => {
   /* BUILD-PLAN 2.4 items 4-5: content padding-bottom = deck-h + mini-h + safe-b
      + 24px, so the last row clears the mini; the tab row drops to 48 collapsed

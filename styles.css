@@ -4831,10 +4831,29 @@ body.ui-v2 #foray-player.dial-mini .fp-skip:active:not(:disabled) { box-shadow: 
    as the same object as Play and not as a floating glyph. */
 body.ui-v2 #foray-player.dial-mini .fp-skip { --k-fill: color-mix(in srgb, var(--ink) 8%, var(--card)); box-shadow: inset 0 0 0 1px var(--dial-line), 0 var(--lip) 0 var(--k-lip); }
 body.ui-v2 #foray-player.dial-mini .fp-skip:active:not(:disabled) { box-shadow: inset 0 0 0 1px var(--dial-line), 0 var(--lip-pressed) 0 var(--k-lip); }
-body.ui-v2 #foray-player.dial-mini .fp-play { width: var(--key); min-width: var(--key); height: var(--key); padding: 0; border-radius: var(--r-pill); }
-body.ui-v2 #foray-player.dial-mini .fp-skip { width: var(--tap); min-width: var(--tap); height: var(--tap); padding: 0; border-radius: calc(var(--r-sm) + var(--s-1)); }
+/* The keys are the prototype's, measured: Play is a PILL, 64 x 48 (the prototype's
+   `.mini .keycap--round` keeps the keycap's 20px side padding around the 24px glyph, so
+   it is wider than the 48px --key), and +30 is 48 wide x 44 tall (`.keycap--sm`: 12px
+   padding around the glyph). `flex: none` because the body button beside them is the
+   one that gives way; as flex items they were squeezed to a 48 disc and a 42-wide key. */
+body.ui-v2 #foray-player.dial-mini .fp-play { flex: none; width: calc(var(--key) + var(--s-4)); min-width: calc(var(--key) + var(--s-4)); height: var(--key); padding: 0; border-radius: var(--r-pill); }
+body.ui-v2 #foray-player.dial-mini .fp-skip { flex: none; width: calc(var(--tap) + var(--s-1)); min-width: calc(var(--tap) + var(--s-1)); height: var(--tap); padding: 0; border-radius: calc(var(--r-sm) + var(--s-1)); }
 body.ui-v2 #foray-player.dial-mini .fp-skip:active { background: var(--k-fill); }
 body.ui-v2 #foray-player.dial-mini .mini > .band--line { top: 0; }
+/* The paper fade under the dock (the prototype's `body::after`). The dock floats 12px
+   off the bottom, and without this the last card's text shows in that gap and under the
+   dock's rounded corners (judges, iteration 3: "clipped text peeks out below the dock").
+   It paints the page's own background (`--bg`, so it is right in either scheme), solid
+   under the dock and its 12px gap, fading out above the mini. Below the tab row (55) and
+   the player (60), above the page; it never takes a tap, and it is gone while the sheet
+   is open (the sheet is its own surface). */
+body.ui-v2.fp-open:not(.fp-expanded)::after {
+  content: ""; position: fixed; z-index: 54; left: 0; right: 0; bottom: 0; pointer-events: none;
+  height: calc(var(--tab-row-h) + var(--mini-h) + var(--safe-b) + var(--s-3) + var(--s-8) + var(--s-3));
+  background: linear-gradient(to top, var(--bg) 52%, transparent);
+}
+body.ui-v2.fp-open.mini-dismissed::after { height: calc(var(--tab-row-h) + var(--safe-b) + var(--s-3) + var(--s-8) + var(--s-3)); }
+body.ui-v2.kb-open::after { display: none; }
 
 /* "Player closed · Undo", above the tab row while the mini is gone. */
 .deck-toast { position: fixed; z-index: 62; left: calc(env(safe-area-inset-left, 0px) + var(--gutter)); right: calc(env(safe-area-inset-right, 0px) + var(--gutter)); bottom: calc(var(--safe-b) + var(--s-3) + var(--tab-row-h) + var(--s-3)); pointer-events: none; }
