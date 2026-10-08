@@ -374,6 +374,7 @@ const NOT_CONTROLS = {
   "app.js": new Set([
     "pct", "el", "note", "$(\"#fy-total\")", "$(\"#fy-sheet-sub\")", "now", "ui.status", "ui.notice", "ddUi.status", "n",
     "link", // a drawer <a> with fixed text, written once
+    "ui.stripCaption", // Now Playing's "Not narrated" caption under the strip: a status line, not a button (ambient iteration 3)
     "region", // L3's announce(): the sr-only live region, a status line (integration)
   ]),
   "player/client.js": new Set([
