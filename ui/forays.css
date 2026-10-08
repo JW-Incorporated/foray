@@ -1,0 +1,148 @@
+/* ui/forays.css — the Forays list (#/forays), Redesign 2026, ambient direction ("Afterglow"), phase 4.
+
+   The numbers are docs/redesign-2026/directions/ambient/BUILD-NOTES.md section 3 ("ForayCard": a collage at 120, the
+   eyebrow "Foray" in Lamp, the title as a headline, "<n> shows, <m> min", a strip 12 tall with bars 8; two-up and never
+   three-up; in progress = strip fill, finished = the Fill check), section 10.2 (Lit art) and section 11.4 (the strip's
+   current bar). The page is one `.ag` surface: a header (Back, the title), the one line that says what a Foray is, and a
+   two-column grid of cards. Everything below is scoped under `.ag` (the markup wears `.ag.fl-page`) except the body
+   rules and the Dock's, which hang on `body.view-forays`; every class is `fl-*`, a new name. Values come from
+   ui/tokens.css.
+
+   NO REDUCED-MOTION BLOCK lives in this file, on purpose: ui/tokens.css has the one, scoped to `.ag` and everything
+   under it, and nothing here animates (the strip's widths are set, not tweened). A second block would be a second owner
+   (test/afterglow-tokens.test.js, "ONE block"). */
+
+/* The page. The page draws its own header, so the legacy top bar steps aside, and the body paints the scheme's bg0. */
+body.view-forays { background: var(--bg0); }
+body.view-forays .topbar { display: none; }
+body.view-forays #view { padding-top: 0; }
+.page.fl-list { max-width: none; margin: 0; padding: 0; }
+
+.ag.fl-page {
+  position: relative; isolation: isolate;
+  max-width: 680px; margin: 0 auto;
+  padding: calc(var(--safe-top) + var(--s-2)) var(--gutter) calc(var(--fl-dock-h) + var(--s-8));
+  background: transparent;
+}
+/* :where() keeps the reset at the specificity of `.ag.fl-page` alone, so every later `.ag .fl-*` margin wins. */
+.ag.fl-page :where(h1, h2, h3, p) { margin: 0; }
+
+/* Header: the Back chevron (44) then the title. The chevron sits 8px inside the gutter so its glyph, not its 44px
+   target, aligns with the text column. */
+.ag .fl-head { display: flex; align-items: center; gap: var(--s-1); margin-inline: calc(var(--s-2) * -1); min-height: var(--tap); }
+.ag .fl-back { flex: none; color: var(--text); }
+.ag .fl-title { min-width: 0; overflow-wrap: normal; }
+/* landOnPage() focuses the heading programmatically (tabindex -1) when a navigation lost focus; it is read, not outlined. */
+.ag .fl-title:focus { outline: none; }
+.ag .fl-about { margin-top: var(--s-2); max-width: 46ch; color: var(--text-2); }
+
+/* Loading, failed and empty: the page's own note, in the body style. */
+.ag .fl-status { margin-top: var(--s-6); }
+.ag .fl-status .note, .ag .fl-status.note { color: var(--text-2); font: var(--t-body); }
+
+/* THE GRID: two columns at every width, never three (a ForayCard at 104 cuts every title; the Library's compact tile is
+   the three-up form). Cards in a row share a height, so the strips line up along the bottom. */
+.ag .fl-grid { margin-top: var(--s-6); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3); align-items: stretch; }
+
+/* THE CARD: the collage (120, left), the eyebrow, the title, the meta, the strip. The title is the card's one real link; its
+   ::after stretches over the card, so the whole card is the tap target (the same pattern as Today's rows). */
+.ag .fl-card { position: relative; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; padding: var(--s-3); }
+.ag .fl-art { position: relative; flex: none; display: block; width: var(--art-foray); height: var(--art-foray); }
+.ag .fl-art .ag-collage { display: block; }
+.ag .fl-eyebrow { margin-top: var(--s-3); }
+.ag .fl-card-title { width: 100%; margin-top: var(--s-1); overflow-wrap: normal; }
+.ag .fl-meta { margin-top: var(--s-1); margin-bottom: var(--s-3); color: var(--text-2); }
+.ag .fl-link { color: inherit; text-decoration: none; }
+.ag .fl-link::after { content: ""; position: absolute; inset: 0; border-radius: var(--r-lg); }
+.ag .fl-link:focus-visible { outline: none; }
+.ag .fl-link:focus-visible::after { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) / -2); }
+
+/* FINISHED: the Fill check on the collage's bottom-right, as a followed show wears it. */
+.ag .fl-done { position: absolute; right: var(--s-1); bottom: var(--s-1); z-index: 4; display: inline-flex; color: var(--ember); filter: drop-shadow(var(--shadow-1)); }
+
+/* THE STRIP: 12 tall, bars 8, the bar the listener is inside 12; 2px between bars. Each bar is a dim track (the show's
+   colour at --seg-dim) with its lit part laid over it, the width of what has been heard; a Foray not yet opened and a
+   finished one are lit throughout, a part-played one is lit up to where the listener is. The width of a bar and of its lit
+   part are written by script (a CSSOM write: the CSP forbids a style attribute). */
+.ag .fl-strip { width: 100%; height: var(--s-3); margin-top: auto; display: flex; align-items: center; gap: calc(var(--s-1) / 2); overflow: hidden; }
+.ag .fl-bar { --tone: var(--seg-c0); position: relative; flex: 1 1 0; min-width: calc(var(--s-1) * .75); height: var(--s-2); overflow: hidden; border-radius: var(--r-xs); }
+.ag .fl-bar.is-here { height: var(--s-3); }
+.ag .fl-bar.t1 { --tone: var(--seg-c1); }
+.ag .fl-bar.t2 { --tone: var(--seg-c2); }
+.ag .fl-bar.t3 { --tone: var(--seg-c3); }
+.ag .fl-bar.t4 { --tone: var(--seg-c4); }
+.ag .fl-bar.t5 { --tone: var(--seg-c5); }
+.ag .fl-bar.t6 { --tone: var(--seg-c6); }
+.ag .fl-bar.t7 { --tone: var(--seg-c7); }
+.ag .fl-bar::before { content: ""; position: absolute; inset: 0; background: var(--tone); opacity: var(--seg-dim); }
+.ag .fl-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--tone); }
+
+/* ---------------------------------------------------------------------------------------------
+   The Dock on this page (DIRECTION.md "Materials": one floating Veil; the Foray detail block in ui/foray-detail.css and the
+   Today block in ui/today.css are the pattern). The legacy `#tab-bar` and `#foray-player` stay the elements (the player wires
+   them) and take the Dock's anatomy here: inset by the gutter, 12px above the safe area, `--r-xl` corners, the Glow-tinted
+   Veil, a rim between rows. The page sets the root's Glow to its first card's, which is what tints the Veil. Nothing here
+   transitions or animates. */
+body.view-forays {
+  --dock-lift: calc(env(safe-area-inset-bottom, 0px) + var(--dock-inset));
+  --tab-bar-h: calc(var(--tab-bar) + var(--dock-inset));
+  --fp-bar-h: var(--mini);
+  --fl-dock-h: calc(var(--dock-lift) + var(--tab-bar));
+  --dock-h: var(--tab-bar);
+}
+body.view-forays.fp-open { --fl-dock-h: calc(var(--dock-lift) + var(--tab-bar) + var(--mini)); --dock-h: calc(var(--tab-bar) + var(--mini)); }
+body.view-forays .tab-bar {
+  left: var(--ag-gutter); right: var(--ag-gutter); bottom: var(--dock-lift);
+  height: var(--tab-bar); padding: 0 var(--s-1);
+  border: 0; border-radius: var(--r-xl); overflow: hidden;
+  background: var(--glow-veil);
+  -webkit-backdrop-filter: blur(20px) saturate(140%); backdrop-filter: blur(20px) saturate(140%);
+  box-shadow: inset 0 1px 0 var(--rim), var(--shadow-2);
+}
+body.view-forays .tab-btn {
+  min-width: var(--tap); min-height: var(--tap); gap: 0; border-radius: var(--r-lg);
+  color: var(--text-2); font: 600 0.8125rem/1.125rem var(--font-text);
+}
+body.view-forays .tab-btn svg { width: var(--icon-tab); height: var(--icon-tab); }
+body.view-forays .tab-bar .tab-btn[aria-current="page"] { color: var(--lamp-text); }
+body.view-forays .tab-btn:focus-visible { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) * -1); }
+/* Something is loaded: the mini is the Dock's top row, with a 2px Glow progress line and an Ember Play. */
+body.view-forays.fp-open .tab-bar { border-radius: 0 0 var(--r-xl) var(--r-xl); }
+body.view-forays.ui-v2.fp-open #foray-player {
+  left: var(--ag-gutter); right: var(--ag-gutter); bottom: calc(var(--dock-lift) + var(--tab-bar));
+  border: 0; border-radius: var(--r-xl) var(--r-xl) 0 0;
+  background: var(--glow-veil);
+  -webkit-backdrop-filter: blur(20px) saturate(140%); backdrop-filter: blur(20px) saturate(140%);
+  box-shadow: inset 0 1px 0 var(--rim), inset 0 -1px 0 var(--rim);
+}
+body.view-forays.ui-v2.fp-open:not(.fp-expanded) #foray-player { overflow: hidden; }
+body.view-forays.ui-v2.fp-open.fp-expanded #foray-player { -webkit-backdrop-filter: none; backdrop-filter: none; }
+/* The mini sits on <body>, outside `.ag`, where `--text` is still the legacy light token (white on Dawn's paper Veil): its title
+   reads the root's `--ag-text`, which follows the scheme. */
+body.view-forays #foray-player .fp-title { font: var(--t-label); color: var(--ag-text); }
+body.view-forays.ui-v2 #foray-player .fp-skip { color: var(--ag-text); }
+body.view-forays #foray-player .fp-show { color: var(--text-2); }
+body.view-forays #foray-player .fp-progress { background: transparent; }
+body.view-forays #foray-player .fp-fill { background: var(--glow); }
+body.view-forays.ui-v2 #foray-player .fp-play { background: var(--ember); border-color: var(--ember); color: var(--ember-ink); }
+/* Content runs under the Dock and fades to bg behind it: solid from 32px above the Dock's top row to the screen edge. */
+body.view-forays::after {
+  content: ''; position: fixed; left: 0; right: 0; bottom: 0; z-index: 54; pointer-events: none;
+  height: calc(var(--fl-dock-h) + var(--s-8));
+  background: linear-gradient(transparent 0, var(--bg0) var(--s-8));
+}
+/* The Dock's cast (ui/tokens.css `.dock-cast`): the Glow rising from the Dock's top edge onto the page, there only while
+   something plays (the mini is up: body.fp-open) and absent when nothing does. It sits behind the cards (z -1 inside the
+   page's own stacking context) and never takes a tap. */
+.ag .fl-cast { position: fixed; z-index: -1; display: none; }
+body.view-forays.fp-open .ag .fl-cast { display: block; }
+/* The same material fallbacks `.veil` carries (ui/tokens.css section 7). */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  body.view-forays .tab-bar, body.view-forays.ui-v2.fp-open #foray-player { background: var(--bg1); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  body.view-forays .tab-bar, body.view-forays.ui-v2.fp-open #foray-player { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--bg1); }
+}
+@media (prefers-contrast: more) {
+  body.view-forays .tab-bar, body.view-forays.ui-v2.fp-open #foray-player { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--bg0); }
+}

@@ -71,10 +71,9 @@ export function forayDetailPicks(fx) {
 
 /** A stored resume point for the narrated Foray, 55% of the way through, in the row shape
     player/foray-progress.js writes (makeProgress): the Foray's own clock, the segment it was in, and when. */
-function forayResumeRow(fx) {
-  const foray = forayDetailPicks(fx).narrated;
+function forayResumeRow(fx, foray = forayDetailPicks(fx).narrated, fraction = 0.55) {
   const r = resolveForay(foray, { segments: indexSegments(fx.forayDocs.segments), sources: indexSources(fx.forayDocs.sources) });
-  const elapsed = Math.round(r.totalSec * 0.55);
+  const elapsed = Math.round(r.totalSec * fraction);
   const at = segmentAtElapsed(r.playable, elapsed);
   return {
     ["cp_foray:" + foray.id]: {
@@ -82,6 +81,16 @@ function forayResumeRow(fx) {
       index: at ? at.index : -1, segment_id: null, into_sec: 0, updated_at: new Date(FIXED_NOW - 3600000).toISOString(),
     },
   };
+}
+
+/** The Forays list's states (Redesign 2026, ambient): the first published Foray part-played (55%), the second one finished,
+    so the page shows an in-progress strip, a finished check and, if there is a third, a card never opened. Falls back to
+    the one published Foray part-played when the data holds only one. */
+function foraysListRows(fx) {
+  const published = fx.forays.filter((f) => f.status === "published");
+  const first = published[0] || fx.forays[0];
+  const second = published[1];
+  return { ...forayResumeRow(fx, first, 0.55), ...(second ? forayResumeRow(fx, second, 1) : {}) };
 }
 
 function playlistsOf(items, titles) {
@@ -150,6 +159,8 @@ export function buildSeed(kind, fx) {
     cp_starred_shows: starred,
     /* "foray-resume" (Foray detail): the returning profile with the narrated Foray part-played. */
     ...(kind === "foray-resume" ? forayResumeRow(fx) : {}),
+    /* "forays-progress" (the Forays list): one Foray part-played, one finished. */
+    ...(kind === "forays-progress" ? foraysListRows(fx) : {}),
   };
 }
 

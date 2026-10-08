@@ -367,7 +367,7 @@ test("switch off is byte-identical to an app with no switch at all, on every sur
   const b = await paint({ seed: { cp_show_drafts: false } });
   const c = await paint({ appSrc: stubbed });
   const d = await paint({ legacyBridge: true });
-  assert.ok(a.home.includes('class="td-hero"') && a.forays.includes("fy-home-row"), "the renders are not empty");
+  assert.ok(a.home.includes('class="td-hero"') && a.forays.includes("fl-card"), "the renders are not empty");
   assert.deepStrictEqual(b, a, "key stored as false = key absent");
   assert.deepStrictEqual(c, a, "the switch off = no switch in the source");
   assert.deepStrictEqual(d, a, "the switch off = a bridge that cannot see it");
@@ -384,13 +384,13 @@ test("switch on: #/forays lists every draft with the draft kicker — published 
   const h = await mount({ seed: ON });
   assert.deepStrictEqual(h.ids(), [...PUBLISHED_IDS, ...GENERATED_NEWEST_FIRST, ...AUTHORED_DRAFT_IDS]);
   const html = h.view();
-  const rows = html.split('class="fy-home-row"').slice(1);
+  const rows = html.split('<article class="raised fl-card').slice(1);   // ForayCards (Redesign 2026, ambient)
   assert.strictEqual(rows.length, FORAYS.length, "one row per Foray in the file");
   assert.ok(rows[0].includes(titleOf(PUBLISHED_ID)) && !rows[0].includes("· draft"), "the published row is first and carries no draft kicker");
   for (const f of DRAFTS) {
     const row = rows.find((r) => r.includes(`href="#/foray/${f.id}"`));
     assert.ok(row, `${f.id} has a row`);
-    assert.ok(row.includes("foray · draft"), `${f.id} carries the draft kicker`);
+    assert.ok(row.includes(">Foray · draft<"), `${f.id} carries the draft eyebrow`);
     assert.ok(row.includes(f.title.replace(/&/g, "&amp;")), `${f.id} is named`);
   }
   const genPos = GENERATED_NEWEST_FIRST.map((id) => html.indexOf(`href="#/foray/${id}"`));
@@ -527,7 +527,7 @@ test("Settings carries the toggle: it reads its state, flips the key, repaints i
   h.route("#/forays");
   await h.settle();
   assert.deepStrictEqual(h.ids(), [...PUBLISHED_IDS, ...GENERATED_NEWEST_FIRST, ...AUTHORED_DRAFT_IDS]);
-  assert.ok(h.view().includes("foray · draft"), "the next Forays page lists the drafts");
+  assert.ok(h.view().includes("Foray · draft"), "the next Forays page lists the drafts");
 
   h.route("#/settings");
   await h.settle();
