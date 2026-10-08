@@ -1,6 +1,13 @@
 /* The search page's bottom edge, in a real browser — founder reports from
  * 2026-09-14, build 2026091419.
  *
+ * UPDATED FOR THE DOCK (Redesign 2026, ambient; ruling "4 tabs + drawer" and the floating-row placement fell):
+ * the field is the TOP ROW of the Dock (`#dock-field`), over the mini row and the receded tab row. The pill
+ * is no longer lifted by a sum of per-object terms (`--sh-dock`): the Dock owns the bottom edge, so the
+ * measurements below are of the Dock - the field's gap to the floor follows the Dock's - and the third
+ * question (does the tab bar's height leave with the bar) is "the field row drops by exactly the tab row's
+ * height when the other rows yield". The reports and their meaning are unchanged.
+ *
  * WHY THESE THREE ARE HERE AND NOT IN A node:vm SUITE. Each one is a real
  * cascade resolving a real `calc()` against a real layout, which is precisely
  * what a DOM stub cannot do. test/keyboard-chrome-and-scroll.test.js pins the
@@ -123,24 +130,28 @@ test("focusing the field takes the tab bar away and its height with it", async (
   await openSearchPage(page);
 
   await expect(page.locator("#tab-bar")).toBeVisible();
+  /* The tab row RECEDES on arriving at Discover (64 -> 36, 280ms), so measure after it has settled. */
+  await expect.poll(() => page.evaluate(() =>
+    Math.round(document.querySelector("#tab-bar").getBoundingClientRect().height))).toBe(36);
   const idleGap = await pillGap(page);
   const tabBarH = await page.evaluate(() =>
     Math.round(document.querySelector("#tab-bar").getBoundingClientRect().height));
-  /* Idle, the pill clears the bar: gap + the bar's own height. Asserted so
-     the focused case below is a comparison against something known, not
-     against whatever the sheet happens to produce. */
+  /* Idle, the field row clears the tab row: the field's gap is the tab row's own height plus the Dock's float.
+     Asserted so the focused case below is a comparison against something known, not against whatever the
+     sheet happens to produce. (The tab row is receded - 36 - on Discover, always.) */
+  expect(tabBarH).toBe(36);
   expect(idleGap).toBeGreaterThanOrEqual(tabBarH);
 
   await page.locator("#sh-input").focus();
 
   await expect(page.locator("#tab-bar")).toBeHidden();
   const focusedGap = await pillGap(page);
-  /* `--sh-gap` is 10px. With the bar gone there is nothing else down there on
-     this viewport (no player, and Chromium reports a zero safe-area inset),
-     so the pill must sit exactly one gap off the floor — not one gap plus a
-     reservation for a bar that is no longer on screen. */
-  expect(focusedGap).toBe(10);
-  expect(idleGap - focusedGap, "the pill should give back exactly the bar's height, no more").toBe(tabBarH);
+  /* With the other rows gone there is nothing else down there on this viewport (no player, and Chromium
+     reports a zero safe-area inset), so the Dock's bottom edge sits exactly its 12px float off the floor and the
+     field - 44px centred in its 48px row - sits 2px inside that: 14. Not 14 plus a reservation for a bar that
+     is no longer on screen. */
+  expect(focusedGap).toBe(14);
+  expect(idleGap - focusedGap, "the field row should give back exactly the tab row's height, no more").toBe(tabBarH);
 
   /* And back again on blur, because a listener reading results needs the
      app's navigation. */

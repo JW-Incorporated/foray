@@ -4,7 +4,8 @@
  * Playlist mode is today's buildPlaylist() flow in the new chrome.
  *
  * WHAT THIS PROVES, in order:
- *  1. route() dispatches #/create to renderCreate().
+ *  1. #/create is folded into Discover (ROUTE_ALIASES): the router paints the Search page, not this
+ *     one. renderCreate() below is UNROUTED (called directly) until Discover's unit retires it.
  *  2. The Foray | Playlist toggle renders both options.
  *  3. The Foray option carries a real `disabled` attribute — not merely a
  *     dimmed style — so it is not focusable as a control (the card's own
@@ -22,9 +23,8 @@
  *  7. A subject with no match shows the honest empty-state note, matching
  *     bindPlaylistFormSubmit's own copy rules.
  *  8. Clicking a suggested subject pill fills the input.
- *  9. The Create tab (U-02) now routes at #/create — covered together with
- *     the rest of the tab-bar suite in test/tab-bar.test.js; not duplicated
- *     here.
+ *  9. There is no Create tab (three tabs, no drawer): covered with the rest of the Dock in
+ *     test/tab-bar.test.js and test/dock.test.js; not duplicated here.
  *
  * Every test names the mutation that kills it, per CLAUDE.md.
  *
@@ -286,15 +286,25 @@ function seedPool(m) {
 /* 1. ROUTING                                                            */
 /* ==================================================================== */
 
-test("route() dispatches #/create to renderCreate", () => {
-  /* MUTATION: remove the `#/create` branch in renderCurrentPage(). The hash
-     falls through to renderHome() instead, and #view never gets the
-     cr-toggle/cr-form markup. */
+test("#/create is FOLDED INTO DISCOVER: the router aliases it to #/shows and owes the field focus", () => {
+  /* RULING THAT FELL: "four tabs (Home, Search, Create, Library) + drawer" (test-classification.md
+     section 0). Create was a tab whose page held one field; DIRECTION.md "Information architecture"
+     folds that field into Discover. The page's renderer stays below, UNROUTED, until Discover's
+     screen unit retires it and the copy suites that pin its words (listener-copy, card-anatomy).
+     MUTATION: delete `"#/create": "#/shows"` from ROUTE_ALIASES in app.js -> the hash falls through to
+     renderHome() and this fails; delete the dockFocusFieldNext() call in route() -> the focus-owed
+     assertion fails. */
   const m = mount();
+  const asked = [];
+  m.evalIn("dockFocusFieldNext = () => { globalThis.__focusOwed = true; };");
   m.ctx.location.hash = "#/create";
   m.evalIn("route()");
-  assert.ok(m.view().includes("cr-toggle"), "the #/create route must render the Create page");
-  assert.ok(m.view().includes('id="cr-form"'), "the #/create route must render the playlist-build form");
+  assert.strictEqual(m.evalIn("currentHash()"), "#/shows", "the folded route reads as Discover everywhere");
+  assert.strictEqual(m.evalIn("tabForHash('#/create')"), "discover", "and lights Discover's tab, not a Create tab");
+  assert.strictEqual(m.ctx.__focusOwed, true, "and Discover is told its field is owed focus");
+  assert.ok(!m.view().includes('id="cr-form"'), "the Create form is no longer a page the router paints");
+  asked.push(m.view());
+  assert.ok(asked[0].includes("sh-compose"), "the page painted is Discover's, with its field");
 });
 
 /* ==================================================================== */
@@ -305,8 +315,7 @@ test("both toggle options render: Playlist and Foray", () => {
   /* MUTATION: drop the Foray button from createToggleHtml(). The affordance
      must be VISIBLE (D7/D8) even though it does nothing. */
   const m = mount();
-  m.ctx.location.hash = "#/create";
-  m.evalIn("route()");
+  m.evalIn("renderCreate()");
   const html = m.view();
   assert.ok(/data-cr-mode="playlist"/.test(html), "a Playlist toggle option must render");
   assert.ok(/data-cr-mode="foray"/.test(html), "a Foray toggle option must render");
@@ -318,8 +327,7 @@ test("the Foray toggle option carries a real disabled attribute (not focusable a
      line, checked directly against the real attribute rather than assumed
      from a CSS class. */
   const m = mount();
-  m.ctx.location.hash = "#/create";
-  m.evalIn("route()");
+  m.evalIn("renderCreate()");
   const forayBtn = m.viewEl.children.find((c) => c._attrs && c._attrs["data-cr-mode"] === "foray");
   assert.ok(forayBtn, "a Foray-mode element must exist");
   assert.strictEqual(forayBtn.disabled, true, "the Foray option must carry a real disabled attribute");
@@ -330,8 +338,7 @@ test('honest copy — "Custom Forays aren\'t available yet" — appears on the p
      feature works. The affordance must not promise something the pipeline
      cannot do (D8). */
   const m = mount();
-  m.ctx.location.hash = "#/create";
-  m.evalIn("route()");
+  m.evalIn("renderCreate()");
   assert.ok(m.view().includes("Custom Forays aren't available yet"), "honest disabled-Foray copy must be on the page");
 });
 
@@ -344,8 +351,7 @@ test("the mockup's Foray-specific ~20/~40/~75 length options are not shown for p
      renderCreate(). D8 excludes it: a playlist of whole episodes has no
      "~20 min" length knob, and showing one would imply it does something. */
   const m = mount();
-  m.ctx.location.hash = "#/create";
-  m.evalIn("route()");
+  m.evalIn("renderCreate()");
   const html = m.view();
   assert.ok(!/~20/.test(html) && !/~40/.test(html) && !/~75/.test(html),
     "no Foray-specific length option (~20/~40/~75) may appear on the Create page");
@@ -370,8 +376,7 @@ test("submitting a matching subject calls buildPlaylist() and navigates to #/pla
      header), so this awaits a tick before asserting. */
   const m = mount();
   seedPool(m);
-  m.ctx.location.hash = "#/create";
-  m.evalIn("route()");
+  m.evalIn("renderCreate()");
   const form = m.viewEl.querySelector("#cr-form");
   const input = form.querySelector("input");
   input.value = "physics";
@@ -390,8 +395,7 @@ test("a subject with no match shows the honest empty-state note, and does not na
      subject with nothing behind it must be told, not sent to a blank page. */
   const m = mount();
   seedPool(m);
-  m.ctx.location.hash = "#/create";
-  m.evalIn("route()");
+  m.evalIn("renderCreate()");
   const originalHash = m.ctx.location.hash;
   const form = m.viewEl.querySelector("#cr-form");
   const input = form.querySelector("input");
@@ -418,8 +422,7 @@ test("clicking a suggested subject pill fills the subject input", () => {
      starts needs a catalogue to run against and must not outlive the test. */
   seedPool(m);
   m.ctx.buildPlaylist = () => ({ status: "miss", suggestions: [] });
-  m.ctx.location.hash = "#/create";
-  m.evalIn("route()");
+  m.evalIn("renderCreate()");
   const pill = m.viewEl.children.find((c) => c.className === "fy-chip");
   assert.ok(pill, "at least one suggestion pill must render");
   const wantSubject = pill.dataset.crSubject;
@@ -439,8 +442,7 @@ test("tapping a suggested subject BUILDS it — no second tap, no keyboard", asy
   seedPool(m);
   const asked = [];
   m.ctx.buildPlaylist = (q) => { asked.push(q); return { status: "miss", suggestions: [] }; };
-  m.ctx.location.hash = "#/create";
-  m.evalIn("route()");
+  m.evalIn("renderCreate()");
   const pill = m.viewEl.children.find((c) => c.className === "fy-chip");
   pill._fire("click", {});
   await new Promise((r) => setTimeout(r, 5));
@@ -457,8 +459,7 @@ test("REVIEW: repeated pill taps while a build is pending build ONE playlist", a
   seedPool(m);
   const asked = [];
   m.ctx.buildPlaylist = (q) => { asked.push(q); return { status: "miss", suggestions: [] }; };
-  m.ctx.location.hash = "#/create";
-  m.evalIn("route()");
+  m.evalIn("renderCreate()");
   const pills = m.viewEl.children.filter((c) => c.className === "fy-chip");
   assert.ok(pills.length >= 2, "fixture: at least two suggestions");
   pills[0]._fire("click", {});
@@ -503,8 +504,7 @@ test("races-3: a build that finishes after the listener left Create does not yan
   const m = mount();
   seedPool(m);
   const arrive = holdSearchData(m);
-  m.ctx.location.hash = "#/create";
-  m.evalIn("route()");
+  m.evalIn("renderCreate()");
   const form = m.viewEl.querySelector("#cr-form");
   form.querySelector("input").value = "physics";
   form._fire("submit", { preventDefault() {}, currentTarget: form });
@@ -530,16 +530,14 @@ test("races-3: returning to Create while a build is waiting shows 'Building…' 
   const m = mount();
   seedPool(m);
   const arrive = holdSearchData(m);
-  m.ctx.location.hash = "#/create";
-  m.evalIn("route()");
+  m.evalIn("renderCreate()");
   let form = m.viewEl.querySelector("#cr-form");
   form.querySelector("input").value = "physics";
   form._fire("submit", { preventDefault() {}, currentTarget: form });
 
   m.ctx.location.hash = "#/";
   m.evalIn("route()");
-  m.ctx.location.hash = "#/create";                // …and came back
-  m.evalIn("route()");
+  m.evalIn("renderCreate()");                      // …and came back (the page is unrouted: drawn directly)
   form = m.viewEl.querySelector("#cr-form");
   const btn = form.querySelector("button");
   assert.strictEqual(btn.disabled, true, "the re-rendered Build button is disabled while the build waits");
@@ -563,17 +561,146 @@ test("races-3: an empty result after a wait writes the note on the LIVE Create p
   seedPool(m);
   m.ctx.buildPlaylist = () => ({ status: "empty", suggestions: [] });
   const arrive = holdSearchData(m);
-  m.ctx.location.hash = "#/create";
-  m.evalIn("route()");
+  m.evalIn("renderCreate()");
   let form = m.viewEl.querySelector("#cr-form");
   form.querySelector("input").value = "zzz-nothing";
   form._fire("submit", { preventDefault() {}, currentTarget: form });
   m.ctx.location.hash = "#/";
   m.evalIn("route()");
-  m.ctx.location.hash = "#/create";
-  m.evalIn("route()");
+  m.evalIn("renderCreate()");
   await arrive();
   const note = m.viewEl.querySelector("#cr-note");
   assert.strictEqual(note.hidden, false, "the live page's note is shown");
   assert.match(note.textContent, /Not much on \u201czzz-nothing\u201d yet/, "with the typographic quotes (copy-8)");
+});
+
+/* ==================================================================== */
+/* DISCOVER'S BUILD: the REAL buildPlaylistFromDiscover, never a stub     */
+/* ==================================================================== */
+
+/* WHY THESE EXIST (review of redesign/ambient-dock). `#/create` is an alias for
+   `#/shows`, so buildPlaylistFromDiscover (ui/create.js) is the ONLY reachable way to
+   build a playlist. test/search-playlists.test.js and test/app-surface-round3.test.js
+   replace it with a stub (`m.ctx.buildPlaylistFromDiscover = ...`), so its body never
+   ran under test; the races-3 tests above exercise the same rule through #cr-form, a page
+   no route renders any more (the #271 pattern in CLAUDE.md). These call the REAL function,
+   with a real search-data wait in front of it (holdSearchData), on Discover and off it. */
+function discoverButton() {
+  const btn = makeEl("button");
+  btn.textContent = "Create a playlist about physics";
+  btn.isConnected = true;
+  return btn;
+}
+
+test("Discover's build, listener still on Discover: it opens the saved playlist, restores the button and clears the flag", async () => {
+  /* MUTATION: in buildPlaylistFromDiscover change `if (onDiscover) location.hash = ...` to an
+     unconditional `location.hash = ...` -> the off-Discover test below goes red; delete the
+     `location.hash = ...` line -> this one goes red; drop `createBuildPending = false` from
+     `finally` -> the flag assertion goes red. */
+  const m = mount();
+  seedPool(m);
+  const arrive = holdSearchData(m);
+  m.ctx.location.hash = "#/shows";
+  const btn = discoverButton();
+  m.evalIn("buildPlaylistFromDiscover")("physics", btn);
+  assert.strictEqual(m.evalIn("createBuildPending"), true, "the one-build flag is set while the data is awaited");
+  assert.strictEqual(btn.disabled, true, "the button is disabled while building");
+  assert.strictEqual(btn.textContent, "Building\u2026", "and says so");
+  m.evalIn("buildPlaylistFromDiscover")("physics", btn);   // a second tap while waiting
+  await arrive();
+  const saved = JSON.parse(m.ctx.localStorage.getItem("cp_playlists") || "[]");
+  assert.strictEqual(saved.length, 1, "exactly one playlist: the second tap queued nothing");
+  assert.strictEqual(m.ctx.location.hash, "#/playlist/" + saved[0].id, "Discover is the page on screen, so the build opens");
+  assert.strictEqual(m.evalIn("createBuildPending"), false);
+  assert.strictEqual(btn.disabled, false, "the button is usable again");
+  assert.strictEqual(btn.textContent, "Create a playlist about physics", "and has its own label back");
+});
+
+test("Discover's build, listener has left Discover: the playlist is saved and nobody is moved (races-3, on the live path)", async () => {
+  /* MUTATION: drop the `onDiscover` test around `location.hash = ...` in buildPlaylistFromDiscover
+     (always navigate) -> the hash becomes the playlist's from Home, red. The same mutation SURVIVED
+     create-page, search-playlists and app-surface-round3 before this test existed. */
+  const m = mount();
+  seedPool(m);
+  const arrive = holdSearchData(m);
+  m.ctx.location.hash = "#/shows";
+  const btn = discoverButton();
+  m.evalIn("buildPlaylistFromDiscover")("physics", btn);
+  m.ctx.location.hash = "#/";                       // gave up waiting, went Home
+  await arrive();
+  const saved = JSON.parse(m.ctx.localStorage.getItem("cp_playlists") || "[]");
+  assert.strictEqual(saved.length, 1, "the playlist is still built and saved");
+  assert.strictEqual(m.ctx.location.hash, "#/", "but the listener stays where they went");
+  assert.strictEqual(m.evalIn("createBuildPending"), false, "the flag clears");
+  assert.strictEqual(btn.textContent, "Create a playlist about physics", "and the button label is restored");
+});
+
+test("Discover's build opens a sparse result too, and stays put off Discover", async () => {
+  /* MUTATION: narrow `result.status === "ok" || result.status === "sparse"` to "ok" only -> the
+     on-Discover half goes red (a sparse playlist is saved but never opened). */
+  for (const onDiscover of [true, false]) {
+    const m = mount();
+    seedPool(m);
+    m.ctx.buildPlaylist = () => ({ status: "sparse", playlist: { id: "pl-sparse", items: [{ id: "x" }] }, suggestions: [] });
+    const arrive = holdSearchData(m);
+    m.ctx.location.hash = onDiscover ? "#/shows" : "#/library";
+    m.evalIn("buildPlaylistFromDiscover")("physics", discoverButton());
+    await arrive();
+    assert.strictEqual(m.ctx.location.hash, onDiscover ? "#/playlist/pl-sparse" : "#/library");
+  }
+});
+
+test("Discover's build, empty/full/unsaved: the failure line lands in #sh-note on Discover, and nowhere off it", async () => {
+  /* MUTATION: delete the `note.textContent = createFailureNote(...)` line -> every on-Discover row
+     goes red; change `else if (onDiscover)` to a bare `else` -> the off-Discover rows go red
+     (#sh-note exists in this harness's page whichever route is current); delete `note.hidden = false`
+     -> the hidden assertion goes red. */
+  const cases = [
+    ["empty", { suggestions: [] }, /Not much on \u201czzz\u201d yet \u2014 try different words\./],
+    ["empty", { suggestions: [{ label: "Physics" }] }, /try Physics instead/],
+    ["full", { suggestions: [] }, /You have \d+ playlists, the most 4a keeps/],
+    ["unsaved", { suggestions: [] }, /could not be saved/],
+  ];
+  for (const [status, extra, want] of cases) {
+    for (const onDiscover of [true, false]) {
+      const m = mount();
+      seedPool(m);
+      m.ctx.buildPlaylist = () => ({ status, ...extra });
+      const arrive = holdSearchData(m);
+      m.ctx.location.hash = onDiscover ? "#/shows" : "#/";
+      const noteEl = m.ctx.document.querySelector("#sh-note");
+      noteEl.hidden = true; noteEl.textContent = "";
+      const btn = discoverButton();
+      m.evalIn("buildPlaylistFromDiscover")("zzz", btn);
+      await arrive();
+      const label = `${status} ${onDiscover ? "on" : "off"} Discover`;
+      if (onDiscover) {
+        assert.strictEqual(noteEl.hidden, false, `${label}: the line is shown`);
+        assert.match(noteEl.textContent, want, `${label}: and says why`);
+      } else {
+        assert.strictEqual(noteEl.hidden, true, `${label}: nothing is written to a page they are not on`);
+      }
+      assert.strictEqual(m.ctx.location.hash, onDiscover ? "#/shows" : "#/", `${label}: nobody navigates`);
+      assert.strictEqual(m.evalIn("createBuildPending"), false, `${label}: the flag clears`);
+      assert.strictEqual(btn.textContent, "Create a playlist about physics", `${label}: the label is restored`);
+    }
+  }
+});
+
+test("Discover's build ignores an empty query and a tap while another build is pending", () => {
+  /* MUTATION: drop `|| !query` -> an empty query sets the flag (flag assertion red); drop the
+     `createBuildPending ||` half -> a second button is disabled and relabelled while a build is
+     pending (the `other` assertions go red). */
+  const m = mount();
+  seedPool(m);
+  holdSearchData(m);
+  const btn = discoverButton();
+  m.evalIn("buildPlaylistFromDiscover")("", btn);
+  assert.strictEqual(m.evalIn("createBuildPending"), false, "an empty query starts nothing");
+  assert.strictEqual(btn.disabled, false);
+  m.evalIn("buildPlaylistFromDiscover")("physics", btn);
+  const other = discoverButton();
+  m.evalIn("buildPlaylistFromDiscover")("physics", other);
+  assert.strictEqual(other.disabled, false, "a second button is left alone while a build is pending");
+  assert.strictEqual(other.textContent, "Create a playlist about physics");
 });

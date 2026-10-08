@@ -262,9 +262,9 @@ test("REVIEW: the page just rendered publishes its header's height, in the order
   let mounted = false;
   m.ctx.document.querySelector = (sel) => (String(sel) === "#view .page-head" && !mounted ? null : realQuery(sel));
   m.evalIn("state.ready = true");
-  m.ctx.location.hash = "#/create";
+  m.ctx.location.hash = "#/library";                 // any routed page with a header (#/create is folded into Discover)
   m.ctx.renderTabBar = () => {};
-  m.ctx.renderCreate = () => { mounted = true; };   // the new page, with its header, lands in #view
+  m.ctx.renderLibrary = () => { mounted = true; };   // the new page, with its header, lands in #view
   m.evalIn("renderCurrentPage()");
   assert.strictEqual(props.get("--page-head-h"), "88px", "the synchronous render publishes the NEW page's header");
 
