@@ -5290,7 +5290,12 @@ body.ui-v2 .fp-sheet.np .np__text .title { font-family: var(--dial-font-display)
 body.ui-v2 .fp-sheet.np .np__show { color: var(--ink-2); }
 body.ui-v2 .fp-sheet.np .fp-s-why,
 body.ui-v2 .fp-sheet.np .fp-left { color: var(--ink-2); }
-.np .np__text .np__why { margin: 0; color: var(--ink-2); font-size: var(--t-body); line-height: var(--lh-body); }
+/* The sheet's head is title, show, chips (BUILD-NOTES 2.1: no why-line under
+   them; the reason lives on the Up next card and in the Media Session album).
+   A started foray gives the player a why-line, which pushed the band 44px down
+   against the prototype in every real playing and paused state. Visually
+   hidden, not display:none, so a screen reader still hears it. */
+.np .np__text .np__why { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .np__chips { min-height: var(--s-6); margin-top: var(--s-1); display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
 .np .tag--station { gap: 6px; height: 28px; padding: 0 10px 0 var(--s-2); border-radius: var(--r-sm); background: var(--card); box-shadow: inset 0 0 0 1px var(--dial-line); color: var(--ink); font: 600 var(--t-label)/var(--lh-label) var(--font-text); }
 .np__station-code { color: var(--ink); font: 700 0.6875rem/1 var(--font-mono); }
@@ -5410,6 +5415,12 @@ body.ui-v2 .fp-sheet.np .np__detail-copy { color: var(--ink-2); }
 .np__notes .ep-description-toggle { min-height: var(--tap); display: flex; align-items: center; font-weight: 700; }
 .np__legacy-actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
 .np__legacy .fp-clips { width: 100%; }
+/* The previous/next clip buttons only exist once a foray has been started (the
+   restored sheet hides the row), so the gate never saw them until the paused
+   step pressed Play: --muted on the mustard tint was 3.43:1 at 13px. They read
+   as secondary text on the tint, like the countdown. */
+body.ui-v2 .fp-sheet.np .fp-clip { color: var(--ink-2); }
+body.ui-v2 .fp-sheet.np .fp-clip:hover:not(:disabled), body.ui-v2 .fp-sheet.np .fp-clip:active:not(:disabled) { color: var(--ink); }
 body.ui-v2 .fp-sheet.np .fp-toforay,
 body.ui-v2 .fp-sheet.np .fp-openep { color: var(--ink); }
 

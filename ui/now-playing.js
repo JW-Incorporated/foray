@@ -133,7 +133,11 @@ function dialBuildNowPlaying(parts) {
   parts.bookmarkBtn.innerHTML = dialNpIcon("ph-bookmark-simple");
   parts.queueLink.className = "fp-upnext keycap keycap--sm keycap--paper";
   parts.queueLink.innerHTML = dialNpIcon("ph-list-bullets") + '<span class="np__badge readout" hidden>0</span>';
-  [parts.backBtn, parts.fwdBtn, parts.rateBtn, parts.bookmarkBtn, parts.queueLink].forEach(dialOwnGlyph);
+  /* The Play keycap's glyph is ph-play-fill / ph-pause-fill, drawn by
+     dialPaintNowPlaying. Left out of this list it was a text "▶" / "❚❚": client.js's
+     paintControl rewrote its text every render and the painter, which only
+     writes when the icon id changes, never put the drawing back. */
+  [parts.backBtn, parts.bigPlay, parts.fwdBtn, parts.rateBtn, parts.bookmarkBtn, parts.queueLink].forEach(dialOwnGlyph);
   /* Icon keys are named from the first paint, before the player's own label
      painters have run. */
   [[parts.backBtn, "Back 15 seconds"], [parts.fwdBtn, "Forward 30 seconds"], [parts.bookmarkBtn, "Bookmark this point"], [parts.rateBtn, "Playback speed"]].forEach(function (pair) {
