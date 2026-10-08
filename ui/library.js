@@ -140,14 +140,12 @@ function yoursChipDefs() {
 }
 
 /** The chip shown now: the listener's last choice this session when it still
-    exists, else Up Next with something queued, else Forays. On the first-run
-    screen (`empty`: nothing of the listener's anywhere) it is Up Next, so the
-    readout line says "0 queued" and the strip is the one the screen will have
-    the day something lands. */
-function yoursActiveKey(queued, empty) {
+    exists, else Up Next with something queued, else Forays. (The first-run
+    screen has no strip at all, so it never asks.) */
+function yoursActiveKey(queued) {
   const keys = yoursChipDefs().map((c) => c.key);
   if (state.yoursChip && keys.includes(state.yoursChip)) return state.yoursChip;
-  return queued > 0 || empty ? "upnext" : "forays";
+  return queued > 0 ? "upnext" : "forays";
 }
 
 /** The readout line under the title for the chip on screen: the Up Next one is
@@ -167,27 +165,30 @@ function yoursReadoutText(key, d) {
   }
 }
 
-/** The tabpanel a chip controls is its own panel, or, on the whole-screen empty
-    state (one panel, "yours-panel-empty"), that one. */
-function yoursChipsHtml(active, queued, emptyPage) {
+/** The tabpanel a chip controls is its own panel. */
+function yoursChipsHtml(active, queued) {
   return yoursChipDefs().map((c) => {
     const on = c.key === active;
     const badge = c.key === "upnext" && queued > 0 ? `<span class="chip__count readout">${esc(queued)}</span>` : "";
     const name = badge ? ` aria-label="${esc(`Up Next, ${queued} queued`)}"` : "";
-    return `<button type="button" class="chip" role="tab" id="yours-chip-${esc(c.key)}" data-yours-chip="${esc(c.key)}" aria-selected="${on ? "true" : "false"}" aria-controls="${esc(emptyPage || $("#yours-panel-empty") ? "yours-panel-empty" : `yours-panel-${c.key}`)}" tabindex="${on ? "0" : "-1"}"${name}>${on ? tactileIcon("ph-check", "sm") : ""}<span>${esc(c.label)}</span>${badge}</button>`;
+    return `<button type="button" class="chip" role="tab" id="yours-chip-${esc(c.key)}" data-yours-chip="${esc(c.key)}" aria-selected="${on ? "true" : "false"}" aria-controls="yours-panel-${esc(c.key)}" tabindex="${on ? "0" : "-1"}"${name}>${on ? tactileIcon("ph-check", "sm") : ""}<span>${esc(c.label)}</span>${badge}</button>`;
   }).join("");
 }
 
 /** First run: nothing queued, followed, saved, played, built, downloaded or
     part-played. ONE `.empty` for the whole screen (BUILD-NOTES 3.16, 4.5): the
-    radio mark, a sentence, the Find key. It stands in for the six panels, so
-    there is no per-chip "nothing here" line to disagree with it, and it is a
-    mark and a key, never a bare sentence. The key opens Find, the tab the app
+    radio mark, a sentence, the Find key. It stands in for the six panels AND
+    the chip strip (the prototype draws none here: a filter over nothing reads
+    as an empty result, not an empty library, and an active "Up Next" chip
+    would contradict the sentence), so there is no per-chip "nothing here" line
+    to disagree with it, and it is a mark and a key, never a bare sentence. The
+    readout line says it too, in the mono face the readouts share. The key opens Find, the tab the app
     draws as Find (`#/shows`; `#/search` is the prototype's name for it). */
-const YOURS_EMPTY_COPY = "Nothing here yet. Follow a show or play today's foray and it lands here.";
+const YOURS_EMPTY_COPY = "Nothing here yet. Follow a show or play today’s foray and it lands here.";
+const YOURS_EMPTY_READOUT = "Nothing saved yet";
 
-function yoursEmptyPanelHtml(active) {
-  return `<div class="yours-panel yours-panel--empty" role="tabpanel" id="yours-panel-empty" aria-labelledby="yours-chip-${esc(active)}">${tactileEmpty({ copy: YOURS_EMPTY_COPY, action: "Find a show", href: yoursFindHash() })}</div>`;
+function yoursEmptyPanelHtml() {
+  return `<div class="yours-panel yours-panel--empty" id="yours-panel-empty">${tactileEmpty({ copy: YOURS_EMPTY_COPY, action: "Find a show", href: yoursFindHash() })}</div>`;
 }
 
 /** The Find tab's own route, read from the tab bar's definition so the two
@@ -631,9 +632,7 @@ function selectYoursChip(key, { focus = false } = {}) {
   if (!keys.includes(key)) return;
   state.yoursChip = key;
   const panels = typeof $("#view").querySelectorAll === "function" ? [...$("#view").querySelectorAll(".yours-panel")] : [];
-  const emptyPanel = $("#yours-panel-empty");
-  if (emptyPanel) emptyPanel.setAttribute("aria-labelledby", `yours-chip-${key}`);
-  else panels.forEach((p) => { p.hidden = p.id !== `yours-panel-${key}`; });
+  panels.forEach((p) => { p.hidden = p.id !== `yours-panel-${key}`; });
   const queued = queueIds().length;
   const strip = $("#yours-chips");
   if (strip) strip.innerHTML = yoursChipsHtml(key, queued);
@@ -771,7 +770,8 @@ function renderLibrary(chip) {
   yoursReadouts.upnext = yoursReadoutText("upnext", { queued: queueList.length, minutes: yoursQueueMinutes(queueList) });
 
   if (typeof chip === "string" && yoursChipDefs().some((c) => c.key === chip)) state.yoursChip = chip;
-  const active = yoursActiveKey(queueList.length, nothingYet);
+  const active = yoursActiveKey(queueList.length);
+  const readoutText = nothingYet ? YOURS_EMPTY_READOUT : yoursReadouts[active];
   const inner = nothingYet ? null : {
     forays: libraryForaysHtml(),
     shows: libraryFollowedHtml(),
@@ -787,13 +787,13 @@ function renderLibrary(chip) {
       <div class="page-head yours-head">
         <div>
           <h2 class="display-xl" aria-level="1">Yours</h2>
-          <p class="readout yours-readout" id="yours-readout" aria-live="polite">${esc(yoursReadouts[active])}</p>
+          <p class="readout yours-readout" id="yours-readout" aria-live="polite">${esc(readoutText)}</p>
         </div>
         ${tactileKeycap({ size: "sm", variant: "paper", icon: "knob", label: "Settings and dials", id: "yours-knob" })}
       </div>
-      <div class="yours-chips" id="yours-chips" role="tablist" aria-label="Yours">${yoursChipsHtml(active, queueList.length, nothingYet)}</div>
+      ${nothingYet ? "" : `<div class="yours-chips" id="yours-chips" role="tablist" aria-label="Yours">${yoursChipsHtml(active, queueList.length)}</div>`}
       <div class="yours-panels">
-        ${nothingYet ? yoursEmptyPanelHtml(active) : yoursChipDefs().map((c) => yoursPanelHtml(c.key, active, inner[c.key])).join("")}
+        ${nothingYet ? yoursEmptyPanelHtml() : yoursChipDefs().map((c) => yoursPanelHtml(c.key, active, inner[c.key])).join("")}
       </div>
     </div>`;
 

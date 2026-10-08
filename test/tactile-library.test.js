@@ -901,18 +901,22 @@ test("Playing, the Up Next list and the toast keep the listener copy rules", asy
 /* 10. FIRST RUN: ONE .empty FOR THE WHOLE SCREEN (group D `library-empty`) */
 /* ==================================================================== */
 
-const EMPTY_COPY = "Nothing here yet. Follow a show or play today's foray and it lands here.";
+const EMPTY_COPY = "Nothing here yet. Follow a show or play today’s foray and it lands here.";
 
-test("first run: ONE .empty for the whole screen (radio mark, the sentence, a Find key) under a strip that still renders", async () => {
+test("first run: ONE .empty for the whole screen (radio mark, the sentence, a Find key), no chip strip, a mono readout", async () => {
   /* BUILD-NOTES 3.16 and 4.5 ("Empty: one state for the whole screen on first run").
      MUTATION 1: drop `+ key +` from tactileEmpty (ui/primitives.js) - the
      "never a bare sentence" assertions fail (no keycap in .empty).
      MUTATION 2: render the six panels as before (nothingYet false) - the
      single-.empty and no-per-chip-note assertions fail.
-     MUTATION 3: yoursActiveKey's `|| empty` removed - the "0 queued" readout
-     and the selected-chip assertions fail (it opens on Forays: "0 forays").
-     MUTATION 4: put the badge back at 0 (`queued > 0` -> `queued >= 0`) - the
-     no-badge assertion fails. */
+     MUTATION 3: render the strip on first run again (drop the `nothingYet ? ""`
+     arm around #yours-chips in renderLibrary) - the "no chip strip, no tab"
+     assertions fail (that strip sat 64px above the empty state and put an
+     active Up Next chip over a sentence about nothing).
+     MUTATION 4: swap YOURS_EMPTY_READOUT for `yoursReadouts[active]` - the
+     "Nothing saved yet" assertion fails (it reads "0 forays").
+     MUTATION 5: straighten the apostrophe in YOURS_EMPTY_COPY - the
+     typographic-apostrophe assertion fails. */
   const m = await mountBooted();
   m.ctx.renderLibrary();
   const empties = q(m, ".empty");
@@ -930,26 +934,34 @@ test("first run: ONE .empty for the whole screen (radio mark, the sentence, a Fi
   assert.strictEqual(keys[0].getAttribute("href"), "#/shows", "and it opens Find, which the app draws at #/shows (the prototype calls the route #/search)");
   const findTab = vm.runInContext("TAB_ROUTES.find((t) => t.key === 'search').hash", m.ctx);
   assert.strictEqual(keys[0].getAttribute("href"), findTab, "the key follows the tab bar's own Find route");
-  /* the strip is still there, on Up Next, with no badge, and the readout counts the queue */
-  assert.strictEqual(q(m, "[data-yours-chip]").length, 6, "the chip strip still renders");
-  assert.strictEqual(one(m, '[aria-selected="true"]').getAttribute("data-yours-chip"), "upnext");
-  assert.ok(!one(m, ".chip__count"), "the Up Next badge is hidden at 0");
-  assert.strictEqual(textOf(one(m, "#yours-readout")), "0 queued", "the readout line is '0 queued', with no tail");
-  /* no per-chip panel or per-chip note survives beside it */
+  /* The prototype draws no strip here: a filter over nothing reads as an empty
+     result, and an active "Up Next" chip would sit over a sentence about
+     following a show. */
+  assert.ok(!one(m, "#yours-chips"), "no chip strip on the first-run screen");
+  assert.strictEqual(q(m, "[data-yours-chip]").length, 0, "no chip");
+  assert.strictEqual(q(m, '[role="tab"]').length, 0, "no tab");
+  assert.strictEqual(q(m, '[role="tablist"]').length, 0, "and no tablist");
+  /* the readout is the prototype's line, set in the readout (mono) face */
+  const ro = one(m, "#yours-readout");
+  assert.strictEqual(textOf(ro), "Nothing saved yet", "the readout line is the prototype's, not '0 queued'");
+  assert.ok(/\breadout\b/.test(ro.className), "it carries .readout, the counts-and-dates face");
+  const css = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");
+  assert.match(css.match(/^\.readout\s*\{[^}]*\}/m)[0], /var\(--font-mono\)/, ".readout is Azeret Mono");
+  assert.ok(!/\.yours-readout[^{]*\{[^}]*font(-family)?\s*:/.test(css), "nothing on the Yours readout swaps the face");
+  /* no per-chip panel or per-chip note survives beside it, and the one panel is not a tabpanel of nothing */
   assert.deepStrictEqual(q(m, ".yours-panel").map((p) => p.id), ["yours-panel-empty"]);
+  assert.ok(!one(m, "#yours-panel-empty").getAttribute("role"), "no tabpanel role without a tab");
+  assert.ok(!one(m, "#yours-panel-empty").getAttribute("aria-labelledby"), "and no label pointing at a chip that is not there");
   assert.strictEqual(q(m, ".note").length, 0, "no 'Nothing saved yet' style line beside the one state");
   assert.strictEqual(q(m, ".yours-queue").length, 0);
-  /* every chip controls a panel that exists (the tab pattern holds on this page too) */
-  for (const t of q(m, "[data-yours-chip]")) {
-    const panel = one(m, `#${t.getAttribute("aria-controls")}`);
-    assert.ok(panel, `${t.id} controls a panel that exists`);
-  }
-  assert.strictEqual(one(m, "#yours-panel-empty").getAttribute("aria-labelledby"), "yours-chip-upnext");
+  /* the lettering: the typographic apostrophe, never the straight one */
+  assert.ok(textOf(e.querySelector("p")).includes("today’s"), "today’s with the typographic apostrophe");
+  assert.ok(!textOf(e.querySelector("p")).includes("'"), "no straight apostrophe in the empty copy");
 });
 
 test("first run: the sentence keeps the listener copy rules (18 words, no banned word, no we/us/our)", () => {
   /* MUTATION: say "Nothing here yet. We will fill it as you follow a show or
-     play today's foray and it lands here." - the word count and the pronoun
+     play today’s foray and it lands here." - the word count and the pronoun
      assertions fail. */
   const words = EMPTY_COPY.split(/\s+/).filter(Boolean);
   assert.ok(words.length <= 18, `${words.length} words`);
@@ -984,24 +996,6 @@ test("first run ends the moment ANY of the listener's things exists: queue, play
   queued.ctx.renderLibrary();
   assert.ok(!one(queued, "#yours-panel-empty"), "queued: not the first-run screen");
   assert.strictEqual(textOf(one(queued, "#yours-readout")).split(" ")[0], "1");
-});
-
-test("first run: a chip press moves the check and the count and leaves the one state on screen", async () => {
-  /* There is no per-chip panel to show, so a press must not hide the only one.
-     MUTATION: drop the `if (emptyPanel) ... else` guard in selectYoursChip so
-     the hide loop runs - the panel is hidden (nothing on the screen) and the
-     visible-panel assertion fails. */
-  const m = await mountBooted();
-  m.ctx.renderLibrary();
-  const panel = one(m, "#yours-panel-empty");
-  const click = one(m, "#yours-chips")._on.get("click")[0];
-  click({ target: one(m, "#yours-chip-saved") });
-  assert.strictEqual(one(m, "#yours-panel-empty"), panel, "the same node: nothing re-rendered");
-  assert.ok(!panel.hidden, "the one state stays shown");
-  assert.strictEqual(one(m, '[aria-selected="true"]').getAttribute("data-yours-chip"), "saved");
-  assert.strictEqual(textOf(one(m, "#yours-readout")), "0 saved episodes");
-  assert.strictEqual(panel.getAttribute("aria-labelledby"), "yours-chip-saved", "the panel is named by the chosen chip");
-  assert.ok(q(m, "[data-yours-chip]").every((t) => t.getAttribute("aria-controls") === "yours-panel-empty"), "and every chip still controls it after the strip was rebuilt");
 });
 
 test("first run ends in place: the first episode queued while Yours is on screen paints the list and the badge", async () => {
