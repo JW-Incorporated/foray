@@ -799,7 +799,7 @@ test("a finished Foray's page says 'Played' with 'Play again', not the page of o
      offer is hidden (there is no position to start over from). MUTATION: drop the `finished` argument from renderForay's
      forayPrimaryLabel call -> the button says "Play". */
   assert.match(html, /id="fy-play">Play again<\/button>/, html.slice(0, 1500));
-  assert.match(html, /<div class="fd-resume" id="fy-resume" hidden>/, "and there is no position left to start over from");
+  assert.doesNotMatch(html, /fy-resume|fy-restart|Start over/, "and nothing sits under the one button");
   assert.doesNotMatch(html, /Jump back in at/, "a finished Foray is not offered as a place to resume");
   assert.equal(m.state.forayResume, null, "and the main button starts from the top, as before");
 });

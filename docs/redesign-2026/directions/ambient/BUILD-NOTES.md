@@ -1016,24 +1016,31 @@ pixels; 41 stable capture plates at three viewports make the 123-shot gallery ba
 
 Decisions the builder made while no one could be asked; each is also in the code or a test.
 
-1. **The mid scrim stop is 236, not 276.** §10.1's stops assume an eyebrow at `safe-top + 276`. The prototype's own stack puts the
+1. **The mid scrim stop is 236, not 276 (and the ramp starts at 120, iteration 2).** §10.1's stops assume an eyebrow at `safe-top + 276`. The prototype's own stack puts the
    eyebrow at `safe-top + 236` (8, the 44px head, 8, the 160 collage, 16), and the token suite pins text contrast at the mid stop, so
    the stop must not sit below the first line of text. `.fd-room` sets `--rs2: calc(var(--safe-top) + 236px)`; `--rs1` stays 196 and
    every other number (the 56 head stop, Dawn's paper mix and 0.55 layer, the 8% / 0.35 unavailable Room) is the tokens'.
+   **Iteration 2:** `--rs1` is now 120 too (the prototype's own `.room-bg` value), not the token's 196: at 196 the scrim climbed from
+   0.20 to 0.89 in 40px right under the 220px collage and drew a hard horizontal seam, the round-1 flat band. The climb is 116px now.
    `test/ambient-foray-detail.test.js` computes the eyebrow's top from the page's own spacing and fails if the stop is lower.
 2. **Share is the `i-share` glyph**, not `i-dots`: §4.6's "dots 44 (share)" and the prototype's own button disagree, and the
    prototype's glyph says what the button does. The target is 44 either way. Share opens the native sheet where there is one and
    otherwise copies `https://jw-incorporated.github.io/foray/#/foray/<id>` and says so; it writes nothing anywhere.
 3. **The runtime says "about" when part of it is an estimate** ("5 shows · about 43 min · narrated"), as the page always has
    (audit 2026-09-22): a narrated Foray's bridges are timed from their script until real audio exists.
-4. **A thumb needs a bar of 28px or more, and a long Foray has none that wide.** A 22-clip Foray at 393px has bars of about 15 to
-   24px, so its thumbs row is hidden (`:empty`), not reserved; the prototype's five-bar strip is what shows thumbs. The region
-   delta the fidelity report prints for the strip (-26px) is exactly the row.
+4. **Thumbs: a bar of 12px or more, 4px clear of the last thumb, inside the strip (iteration 2; was "28px or more").** The first build
+   hid the row when no bar was 28px wide, which on the only narrated Foray in the data (50 clips, 39 of them narration, one show,
+   bars of 8 to 16px) left the sill without its thumbnail row, the sill's signature. The rule is now greedy from the left, so the
+   widest-first bars win by coming first, thumbs never overlap, and none hangs off the right edge (`forayThumbCells`, `stripWidth`).
+   A strip with no tape bar of 12px still has no row (`:empty`). The strip's region delta is the row in the 1-show case.
 5. **"Unavailable" is the resolver's answer** (`r.playable` is empty: no clip has audio), not a guess about the network. A narrated
    Foray whose tape cannot play still plays its narrator's bridges (they need no source), so it is not unavailable; its rows say
    "This clip isn't available right now." as they always did. The harness opens the not-narrated Foray with every audio URL removed.
-6. **"Start over" stays**, as a Quiet button under the primary one, only beside a stored resume point and hidden while the Foray is
-   live. The prototype has no such control; the product had it, and a resume button with no way back to the top loses a function.
+6. **"Start over" is gone (iteration 2; the first build kept it as a Quiet button).** The direction defines one button (Play / Resume /
+   Play again); the extra link under it cost 44px of action and stretched button to "Why 4a made this" from the prototype's 24px
+   to about 100. The way back to the top is the first clip's row or the strip's first bar (a named index beats the stored
+   point, `player/foray-playback.test.js`). `#fy-restart`, `#fy-resume` and their bindings are deleted; `clearForayResume` stays
+   in the player API. The `foray_restart` event is no longer emitted from this page.
 7. **"Where this came from" keeps what the credit block carried**: a show with a page of its own links in-app, one without opens its
    Apple Podcasts page (or a search, and says which in its accessible name), "Every clip plays from the show's own feed." stays, and
    FOLLOW_NOTE sits where Follow is tapped (review 2026-09-23). Follow needs a catalogue record; a show known only to the show index
@@ -1041,6 +1048,14 @@ Decisions the builder made while no one could be asked; each is also in the code
 8. **First paint is not animated**: `.is-fresh` (transitions off, the one `!important` in the sheet, because tokens.css's
    reduced-motion block uses one) comes off two frames after render. The Glow and the artwork URL are worked out before the markup is
    inserted so the Room opens already lit; the reduced-motion gate reads 0.
-9. **Not built here**: the "lamps light in sequence" strip draw-in (§5, motion 3), the Room shifting colour as playback crosses a
+9. **Iteration 2, narration lights.** A narration bar is a 6px Lamp pill (`--r-pill`), centred on the 24px bars (9 under, 9 over),
+   and is never dimmed: `.has-position` dims the coloured show bars to `--seg-dim`, which turned the ivory lights tan beside a
+   resume point. The strip reads as coloured shows joined by ivory lights, in greyscale too.
+10. **Iteration 2, the Dock findings are not this screen's.** The four-tab bar, the violet mini-player play button, the flat orange
+    progress line, the Fraunces mini title, the missing rim and cast, and the Dock slicing the last tile all belong to
+    `redesign/ambient-dock` (`ui/dock.css`, `ui/tabbar.js`), which is not on the direction branch yet; this page changes none of
+    the shared chrome. Once the Dock merges, the page's own bottom padding (`--chrome-bottom`) is what lets content run under
+    its fade.
+11. **Not built here**: the "lamps light in sequence" strip draw-in (§5, motion 3), the Room shifting colour as playback crosses a
    segment (a Now Playing behaviour), per-show palette from the nightly refresh (the committed table in `ui/palette.js` and the hash
    hue are the sources), and the legacy tab bar and mini player the Dock unit replaces.

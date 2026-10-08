@@ -635,7 +635,7 @@ function forayNudgeSteps(player) {
   return { back: 15, fwd: 30 };
 }
 
-function bindForayTransport(r, player, resume = null) {
+function bindForayTransport(r, player) {
   const onChange = (s) => paintForay(s);
   const nudge = forayNudgeSteps(player);
 
@@ -664,17 +664,6 @@ function bindForayTransport(r, player, resume = null) {
      (or 0) and the player's next save overwrote the real one. paintForay
      re-reads the stored point when this Foray goes from live to cold. */
   const startOrResume = () => state.forayResume ? startAt(state.forayResume.elapsedSec) : start(0);
-
-  $("#fy-restart")?.addEventListener("click", async () => {
-    if (typeof player.clearForayResume === "function") player.clearForayResume(r.id);
-    logEvent("foray_restart", { foray_id: r.id, from_sec: Math.round(state.forayResume?.elapsedSec || resume?.elapsedSec || 0) });
-    resume = null;
-    state.forayResume = null;
-    state.forayPlayed = false;
-    const offer = $("#fy-resume");
-    if (offer) offer.hidden = true;
-    await start(0);
-  });
 
   /* Playback speed (#242, popup menu #349). Bound BEFORE the "nothing playable"
      bail-out below and labelled from the stored value, because neither depends
@@ -916,11 +905,8 @@ function refreshForayResume() {
   } catch (_) { point = null; }
   state.forayResume = point && !point.finished ? point : null;
   /* PLAYED TO THE END, THEN CLOSED (round-3 review, L2): the point reads finished and `forayResume` goes
-     null. The main button then says "Play again" (paintForay reads `forayPlayed`) and starts from the top,
-     and "Start over" has nothing to start over from, so it goes with the offer. */
+     null. The main button then says "Play again" (paintForay reads `forayPlayed`) and starts from the top. */
   state.forayPlayed = Boolean(point && point.finished);
-  const banner = $("#fy-resume");
-  if (banner) banner.hidden = !state.forayResume;
 }
 
 /** The main button's words, from the page's states, and the name it speaks. One function for the first
@@ -1007,12 +993,6 @@ function paintForay(s) {
      ticked off instead of pretending it was never touched. */
   const mark = live ? s.index : (resume?.index ?? -1);
   paintSegFill(mark >= 0, elapsed);
-
-  // The offer only means anything while stopped; once it is playing, the
-  // transport IS the progress and a second "jump back in" is noise. A start that
-  // failed is stopped, so the offer — and the "Start over" inside it — comes back.
-  const banner = $("#fy-resume");
-  if (banner) banner.hidden = live || !state.forayResume;
 
   const playBtn = $("#fy-play");
   if (playBtn) {

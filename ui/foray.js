@@ -832,21 +832,30 @@ function tintForayStrip(r, tones) {
   });
 }
 
-/** The thumbnails row under the bars: a 20px artwork thumb, left-aligned under every tape bar that is 28px
-    or wider, in a row of its own so no bar touches one. Measured from the laid-out bars, so it is redone
-    when the strip is resized; a bar that is too narrow for its thumb simply has none. */
-const FORAY_THUMB_MIN_BAR_PX = 28;
-/** The thumbs for a laid-out strip: one cell per tape bar that is wide enough, as { x, tone, html }, x being the bar's
-    left edge inside the strip. `bars` is anything that reports `offsetWidth` and `offsetLeft`, in bar order. Pure,
-    so the rule (28px, tape only, left-aligned) is tested without a browser. */
-function forayThumbCells(r, shows, tones, bars) {
+/** The thumbnails row under the bars: a 20px artwork thumb, left-aligned under a tape bar, in a row of its own so no
+    bar touches one. Measured from the laid-out bars, so it is redone when the strip is resized. A Foray of five
+    clips has five wide bars and a thumb under each; one of fifty has bars of 8 to 16px, and a row that showed
+    nothing there left the sill bare (round-2 finding). So the rule is not "a bar as wide as its thumb" but "a bar
+    wide enough to read as a bar (12px), whose thumb starts clear of the last one (4px) and ends inside the strip":
+    the widest bars win by coming first, nothing overlaps, and a long Foray still shows its shows. */
+const FORAY_THUMB_MIN_BAR_PX = 12;
+const FORAY_THUMB_PX = 20;
+const FORAY_THUMB_GAP_PX = 4;
+/** The thumbs for a laid-out strip: { x, tone, html } cells, x being the bar's left edge inside the strip. `bars` is
+    anything that reports `offsetWidth` and `offsetLeft`, in bar order; `stripWidth` is the strip's own width (omit it for
+    no right edge). Pure, so the rule (12px bar, tape only, left-aligned, 4px clear, inside the strip) is tested without
+    a browser. */
+function forayThumbCells(r, shows, tones, bars, stripWidth = Infinity) {
   const artOf = new Map(shows.map((s) => [s.name, s.art]));
   const entries = forayStripEntries(r);
   const cells = [];
+  let freeFrom = 0;
   bars.forEach((bar, i) => {
     const entry = entries[i];
     if (!entry || isForayNarration(entry) || !entry.show) return;
     if (!(bar.offsetWidth >= FORAY_THUMB_MIN_BAR_PX)) return;
+    if (bar.offsetLeft < freeFrom || bar.offsetLeft + FORAY_THUMB_PX > stripWidth) return;
+    freeFrom = bar.offsetLeft + FORAY_THUMB_PX + FORAY_THUMB_GAP_PX;
     const art = artOf.get(entry.show) || "";
     const letter = String(entry.show).trim().charAt(0).toUpperCase() || "?";
     cells.push({ x: bar.offsetLeft, tone: tones.get(entry.show) || "", html: art
@@ -860,7 +869,7 @@ function paintForayThumbs(r, shows, tones) {
   const strip = $("#fy-strip");
   const row = $("#fd-thumbs");
   if (!strip || !row || !strip.children || typeof strip.getBoundingClientRect !== "function") return;
-  const cells = forayThumbCells(r, shows, tones, [...strip.children]);
+  const cells = forayThumbCells(r, shows, tones, [...strip.children], strip.clientWidth || Infinity);
   row.innerHTML = cells.map((c) => `<span class="fd-thumb">${c.html}</span>`).join("");
   [...row.children].forEach((el, k) => {
     forayCssVar(el, "--x", `${cells[k].x}px`);
@@ -1239,10 +1248,6 @@ async function renderForay(id) {
         </div>
         ${unavailable ? `<p class="t-body fd-unavailable">This foray can’t play right now. Its shows are below.</p>` : ""}
         ${primary}
-        <!-- "Start over" is offered only beside a resume point, and not while this Foray is playing. -->
-        <div class="fd-resume" id="fy-resume"${resume ? "" : " hidden"}>
-          <button type="button" class="ag-btn ag-btn-quiet" id="fy-restart">Start over</button>
-        </div>
         <!-- A start that failed says so HERE, and a screen reader hears it without moving focus off the
              button that was just pressed. -->
         <p class="fy-error" id="fy-error" role="status" aria-live="polite" hidden></p>
@@ -1288,7 +1293,7 @@ async function renderForay(id) {
   bindForayFollows($("#view"));
   bindFeedback(r);
   bindSourceLinks(r);
-  bindForayTransport(r, player, resume);
+  bindForayTransport(r, player);
   /* The page opens already lit and already painted for where the listener is (the strip's played bars, the resume fill):
      nothing animates until two frames after that, then the Room, the bars and the rows move as the player moves them. */
   if (page) {

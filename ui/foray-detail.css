@@ -40,7 +40,10 @@ body.view-foray-detail #view { padding-top: 0; }
   /* The mid stop is where the tokens' contrast is measured (test/afterglow-tokens.test.js: text over the Room at
      --rs2, every hue, both schemes), so it must not sit below the first line of text. BUILD-NOTES 10.1 puts it
      at safe-top + 276 for an eyebrow at 276; this page's eyebrow starts at safe-top + 236 (8 pad, 44 head, 8,
-     the 160 collage, 16), so the stop is 236 and the ramp from the collage's lower edge runs 196 to 236. */
+     the 160 collage, 16), so the stop is 236. The ramp BEGINS BEHIND THE ARTWORK, at 120 (the prototype's own
+     `.room-bg`): started at the collage's lower edge (196) it climbed from 0.20 to 0.89 in 40px and drew a
+     hard horizontal seam just under the sleeve, the flat colour band round 1 was corrected for. */
+  --rs1: calc(var(--safe-top) + 120px);
   --rs2: calc(var(--safe-top) + 236px);
 }
 .ag .fd-room.is-dim { --mix-room: 8%; --room-art-opacity: 0.35; }
@@ -91,14 +94,18 @@ body.view-foray-detail #view { padding-top: 0; }
   transition: opacity var(--m-ui) var(--e-out), height var(--m-ui) var(--e-out);
 }
 .ag .fd-sill .fy-seg.is-run-start, .ag .fd-sill .fy-seg.is-run-end { margin-left: 0; border-radius: var(--r-xs); }
+.ag .fd-sill .fy-seg--narration.is-run-start, .ag .fd-sill .fy-seg--narration.is-run-end { border-radius: var(--r-pill); }
 .ag .fd-sill .fy-seg:first-child { margin-left: 0; }
-/* Narration: a thin Lamp light, 4px, centred on the bars' mid line; on Dawn's white it carries a 1px edge. */
-.ag .fd-sill .fy-seg--narration { height: 4px; margin-bottom: 10px; --seg-tone: var(--seg-narration); box-shadow: inset 0 0 0 1px var(--lamp-edge); }
+/* Narration: a Lamp light, a 6px pill centred on the bars' mid line (bars are 24 on a 28 row: 9 under, 9 over); on Dawn's
+   white it carries a 1px edge. It is what 4a authored, so it is never dimmed (below): a coloured show bar is dimmed
+   until played, the narration between them stays ivory, which is the strip's structure and the part that survives greyscale. */
+.ag .fd-sill .fy-seg--narration { height: 6px; margin-bottom: 9px; border-radius: var(--r-pill); --seg-tone: var(--seg-narration); box-shadow: inset 0 0 0 1px var(--lamp-edge); }
 /* Unplayed bars are dim; played and the one the listener is in are whole. No ring, no outline (a hairline). */
 .ag .fd-sill .fy-strip.has-position .fy-seg { opacity: var(--seg-dim); }
 .ag .fd-sill .fy-strip.has-position .fy-seg.is-played, .ag .fd-sill .fy-strip.has-position .fy-seg.is-here { opacity: 1; }
 .ag .fd-sill .fy-seg.is-here { height: 28px; }
-.ag .fd-sill .fy-seg--narration.is-here { height: 4px; }
+.ag .fd-sill .fy-seg--narration.is-here { height: 6px; }
+.ag .fd-sill .fy-strip.has-position .fy-seg--narration { opacity: 1; }
 .ag .fd-sill .fy-seg.is-playing, .ag .fd-sill .fy-strip.is-seam .fy-seg.is-playing { outline: 0; z-index: auto; }
 .ag .fd-sill .fy-seg-fill { height: 100%; background: color-mix(in oklab, var(--seg-tone, var(--text-3)) 78%, var(--lamp)); opacity: 0; }
 .ag .fd-sill .fy-seg.is-here .fy-seg-fill { opacity: 1; }
@@ -116,9 +123,8 @@ body.view-foray-detail #view { padding-top: 0; }
 
 .ag .fd-unavailable { margin-top: var(--s-4); color: var(--text-2); }
 
-/* The one primary button: full width, 48, Ember (the primitive). The resume offer under it is a Quiet button. */
+/* The one primary button: full width, 48, Ember (the primitive). Play, Resume or Play again; nothing sits under it. */
 .ag .fd-cta { display: flex; width: 100%; margin-top: var(--s-4); text-decoration: none; }
-.ag .fd-resume { margin-top: var(--s-1); }
 .ag .fy-error { margin-top: var(--s-3); font: var(--t-caption); color: var(--warn); text-align: center; }
 .ag .fy-error.is-hint { color: var(--text-2); }
 .ag .fd-note { margin-top: var(--s-3); color: var(--text-2); text-align: left; }

@@ -107,15 +107,22 @@ test("the Room is fixed behind the page, takes its Glow and scrim from the token
   assert.strictEqual(room.inset, "0");
   assert.strictEqual(room["z-index"], "-1");
   assert.ok(!("background" in room) && !("background-image" in room), "the Room's background is .room's var(--glow-room)");
-  assert.ok(!("--rs1" in room), "the collage's lower edge stop stays the token's 196");
-  assert.strictEqual(decls(TOKENS, ".room")["--rs1"], "calc(var(--safe-top) + 196px)");
+  /* THE RAMP STARTS BEHIND THE ARTWORK (round-2 fidelity finding: a hard horizontal edge just under the sleeve). The token's
+     196 sits a few px above the collage's lower edge (220), so the scrim climbed 0.20 -> 0.89 in 40px right there. The
+     page starts it at 120, the prototype's own stop, so the climb is 116px and has no seam.
+     MUTATION: delete the \`--rs1\` line from .fd-room (back to the token's 196) -> red. */
+  const rs1 = /^calc\(var\(--safe-top\) \+ (\d+)px\)$/.exec(room["--rs1"] || "");
+  assert.ok(rs1, `.fd-room sets its own --rs1: ${room["--rs1"]}`);
+  assert.strictEqual(Number(rs1[1]), 120);
   const rs2 = /^calc\(var\(--safe-top\) \+ (\d+)px\)$/.exec(room["--rs2"] || "");
   assert.ok(rs2, `--rs2 is a safe-top-relative pixel stop: ${room["--rs2"]}`);
   const space = (n) => px(decls(TOKENS, ":root")[n]);
   const eyebrowTop = space("--s-2") + space("--tap") + space("--s-2") + space("--art-hero") + space("--s-4");
   assert.strictEqual(eyebrowTop, 236);
   assert.ok(Number(rs2[1]) <= eyebrowTop, `the mid stop (${rs2[1]}) is at or above the eyebrow (${eyebrowTop})`);
-  assert.ok(Number(rs2[1]) > 196, "and below the collage's lower edge stop");
+  const collageBottom = space("--s-2") + space("--tap") + space("--s-2") + space("--art-hero");
+  assert.ok(Number(rs1[1]) < collageBottom, `the ramp starts behind the artwork (${rs1[1]} < ${collageBottom})`);
+  assert.ok(Number(rs2[1]) - Number(rs1[1]) >= 100, `and takes at least 100px to climb (${Number(rs2[1]) - Number(rs1[1])})`);
   /* The page's own spacing is what the arithmetic read. */
   assert.strictEqual(decls(CSS, ".ag .fd-collage").margin, "var(--s-2) auto 0");
   assert.strictEqual(decls(CSS, ".ag .fd-eyebrow")["margin-top"], "var(--s-4)");
@@ -149,10 +156,12 @@ test("the Dawn Room is paper: the tokens give it glow-room at 20% and an artwork
 
 /* ---------- 3. the strip on its sill ---------- */
 
-test("the strip sits on a 10/12 sill: 24px bars on a 28px row, the current bar 4px taller, narration a 4px light, a 20px thumbs row 6px below", () => {
+test("the strip sits on a 10/12 sill: 24px bars on a 28px row, the current bar 4px taller, narration a 6px Lamp pill that never dims, a 20px thumbs row 6px below", () => {
   /* 28 (bars) + 6 (gap) + 20 (thumbs) = 54, the prototype's strip box; with the sill's 10 + 10 it is 74.
      MUTATION: \`.fd-thumbs { margin-top: 6px }\` -> 0 (a thumb would touch the bars) -> red. MUTATION 2: \`.fy-seg.is-here
-     { height: 28px }\` -> 24 -> red. MUTATION 3: narration height 4px -> 12px -> red. MUTATION 4: sill padding -> red. */
+     { height: 28px }\` -> 24 -> red. MUTATION 3: narration height 6px -> 12px -> red. MUTATION 4: sill padding -> red. MUTATION 5: delete the
+     `.has-position .fy-seg--narration { opacity: 1 }` rule -> red (the ivory light dims to tan beside a resume point, the round-2
+     finding). MUTATION 6: narration `border-radius` -> `var(--r-xs)` -> red (a dot is not a pill). */
   const sill = decls(CSS, ".ag .fd-sill");
   assert.strictEqual(sill.padding, "10px var(--s-3)");
   assert.strictEqual(sill.background, "var(--sill)");
@@ -162,8 +171,11 @@ test("the strip sits on a 10/12 sill: 24px bars on a 28px row, the current bar 4
   assert.strictEqual(px(decls(CSS, ".ag .fd-sill .fy-seg").height), 24);
   assert.strictEqual(px(decls(CSS, ".ag .fd-sill .fy-seg.is-here").height), 28, "the current bar grows upward only: 4px taller, same floor");
   const narr = decls(CSS, ".ag .fd-sill .fy-seg--narration");
-  assert.strictEqual(px(narr.height), 4);
-  assert.strictEqual(px(narr["margin-bottom"]), 10, "centred on the 24px bars' mid line");
+  assert.strictEqual(px(narr.height), 6);
+  assert.strictEqual(px(narr["margin-bottom"]), 9, "centred on the 24px bars' mid line: 9 under, 9 over");
+  assert.strictEqual(narr["border-radius"], "var(--r-pill)", "a pill, not a dot");
+  assert.strictEqual(narr["--seg-tone"], "var(--seg-narration)");
+  assert.strictEqual(decls(CSS, ".ag .fd-sill .fy-strip.has-position .fy-seg--narration").opacity, "1", "narration is Lamp ivory at full strength beside a resume point");
   const thumbs = decls(CSS, ".ag .fd-thumbs");
   assert.strictEqual(px(thumbs.height), 20);
   assert.strictEqual(px(thumbs["margin-top"]), 6);
@@ -171,6 +183,7 @@ test("the strip sits on a 10/12 sill: 24px bars on a 28px row, the current bar 4
   assert.strictEqual(px(decls(CSS, ".ag .fd-thumb").width), 20);
   assert.strictEqual(decls(CSS, ".ag .fd-thumbs:empty").display, "none", "no bar wide enough: no row, no gap");
   assert.strictEqual(decls(CSS, ".ag .fd-sill .fy-strip.has-position .fy-seg").opacity, "var(--seg-dim)");
+  assert.ok(CSS.indexOf(".ag .fd-sill .fy-strip.has-position .fy-seg--narration") > CSS.indexOf(".ag .fd-sill .fy-strip.has-position .fy-seg {"), "the narration rule comes later, so it wins at equal specificity");
 });
 
 /* ---------- 4. the page, rendered by the real app.js ---------- */
@@ -301,20 +314,22 @@ test("the caption is '<n> shows · <m> min · narrated' or 'not narrated yet', c
 
 test("the primary button is Play, 'Resume · N min left', or 'Play again', full width, in the Ember primitive", async () => {
   /* One button, three words; the resume state also fills the strip (that is paintForay's work, pinned in
-     player/foray-playback.test.js) and offers "Start over" in a Quiet button; a finished Foray offers "Play again" and no
-     Start over. The middle dot, never a comma.
-     MUTATIONS: join with ", " in forayPrimaryLabel -> red. Drop `finished` from renderForay's label call -> red. Render the
-     Start over offer without \`hidden\` when there is no resume point -> red. */
+     player/foray-playback.test.js) and has NO second control: the direction defines one button, and a "Start over" link under
+     it (round-2 finding) put 44px of action and 100px between the button and "Why 4a made this" where the prototype has
+     24. Starting from the top is the first clip's row and the strip's first bar. The middle dot, never a comma.
+     MUTATIONS: join with ", " in forayPrimaryLabel -> red. Drop `finished` from renderForay's label call -> red. Put a
+     \`<button id="fy-restart">\` back in renderForay -> red. */
   const fresh = (await mountForay(PLAIN)).html();
   assert.match(fresh, /<button type="button" class="ag-btn ag-btn-primary fd-cta" id="fy-play">Play<\/button>/);
-  assert.match(fresh, /<div class="fd-resume" id="fy-resume" hidden>/, "nothing to start over from");
+  assert.doesNotMatch(fresh, /fy-restart|fd-resume|Start over/, "one button, nothing under it");
   const mid = (await mountForay(PLAIN, { resume: { elapsedSec: 1180, index: 9, remainingSec: 1900, percent: 38, finished: false, label: "32 min left", clock: "19:40" } })).html();
   assert.match(mid, /id="fy-play" aria-label="Resume, 32 min left">Resume · 32 min left<\/button>/, "the visible words start the accessible name");
-  assert.match(mid, /<div class="fd-resume" id="fy-resume">\s*<button type="button" class="ag-btn ag-btn-quiet" id="fy-restart">Start over<\/button>/);
+  assert.doesNotMatch(mid, /fy-restart|fd-resume|Start over/, "a resume point adds no second action");
   assert.doesNotMatch(mid.replace(/aria-label="[^"]*"/g, ""), /Resume, 32/, "a middle dot on screen, not a comma");
   const done = (await mountForay(PLAIN, { resume: { elapsedSec: 3000, index: 21, remainingSec: 0, percent: 100, finished: true, label: "Played" } })).html();
   assert.match(done, /id="fy-play">Play again<\/button>/);
-  assert.match(done, /<div class="fd-resume" id="fy-resume" hidden>/);
+  assert.doesNotMatch(done, /fy-restart|fd-resume|Start over/);
+  assert.strictEqual(decls(CSS, ".ag .fd-resume"), null, "no rule for a control that is not there");
   assert.match(decls(CSS, ".ag .fd-cta").display, /flex/);
   assert.strictEqual(decls(CSS, ".ag .fd-cta").width, "100%");
 });
@@ -456,23 +471,46 @@ test("the page opens unanimated: is-fresh is on the first markup and comes off a
 
 /* ---------- 5. rules that need no browser ---------- */
 
-test("a thumb sits under every tape bar 28px or wider, left-aligned, and under no narration bar or narrower bar", async () => {
+test("a thumb sits under a tape bar of 12px or more, left-aligned, 4px clear of the last, inside the strip, and under no narration bar", async () => {
   /* The bars' widths are layout, so the rule is read from a stand-in strip: bars reporting offsetWidth and offsetLeft.
-     MUTATIONS: \`>= FORAY_THUMB_MIN_BAR_PX\` -> \`> 0\` -> red (the 20px bar gets one). Drop the narration check -> red.
-     Use \`offsetLeft + offsetWidth\` for x -> red (a thumb would sit under the bar's end). */
+     Round-2 finding: the sill had no thumbnail row at all on the 50-clip Foray (bars of 8 to 16px, and the old rule
+     wanted 28), so the signature of the sill was missing in the data the lab happens to hold.
+     MUTATIONS: \`>= FORAY_THUMB_MIN_BAR_PX\` -> \`> 0\` -> red (an 8px bar gets one). Drop the narration check -> red.
+     Use \`offsetLeft + offsetWidth\` for x -> red (a thumb would sit under the bar's end). Drop the \`freeFrom\` test ->
+     red (packed bars get overlapping thumbs). Drop the \`stripWidth\` test -> red (a thumb hangs off the right edge). */
   const m = await mountForay(NARRATED);
   const r = m.state.foray;
   const entries = vm.runInContext("forayStripEntries", m.ctx)(r);
-  const bars = entries.map((e, i) => ({ offsetWidth: i % 3 === 0 ? 40 : 20, offsetLeft: i * 50 }));
   const shows = vm.runInContext("forayShowsOf", m.ctx)(r);
   const tones = new Map([[shows[0].name, "oklch(0.7 0.13 40)"]]);
-  const cells = vm.runInContext("forayThumbCells", m.ctx)(r, shows, tones, bars);
-  const expected = entries.map((e, i) => ({ e, i })).filter(({ e, i }) => e && e.type !== "narration" && e.show && bars[i].offsetWidth >= 28);
+  const cellsOf = (bars, width) => vm.runInContext("forayThumbCells", m.ctx)(r, shows, tones, bars, width);
+  const tape = (i) => entries[i] && entries[i].type !== "narration" && entries[i].show;
+
+  /* Spread out: only the width decides. */
+  const spread = entries.map((e, i) => ({ offsetWidth: i % 3 === 0 ? 40 : 8, offsetLeft: i * 50 }));
+  const expected = entries.map((e, i) => i).filter((i) => tape(i) && spread[i].offsetWidth >= 12);
   assert.ok(expected.length >= 2, `fixture: some wide tape bars (${expected.length})`);
-  assert.deepStrictEqual(Array.from(cells, (c) => c.x), expected.map(({ i }) => i * 50), "left edges, one per wide tape bar");
-  assert.strictEqual(vm.runInContext("FORAY_THUMB_MIN_BAR_PX", m.ctx), 28);
+  const cells = cellsOf(spread);
+  assert.deepStrictEqual(Array.from(cells, (c) => c.x), expected.map((i) => i * 50), "left edges, one per wide tape bar");
+  assert.strictEqual(vm.runInContext("FORAY_THUMB_MIN_BAR_PX", m.ctx), 12);
   assert.ok(cells.every((c) => c.tone === "oklch(0.7 0.13 40)" || c.tone === ""));
   assert.ok(cells.every((c) => /fd-thumb-mono|<img /.test(c.html)));
+
+  /* Packed (a long Foray): every bar is 14px on a 16px pitch, so a 20px thumb would cover the next bar's. A thumb
+     starts only 24px (20 + 4) after the last one. */
+  let k = 0;
+  const packed = entries.map((e, i) => ({ offsetWidth: 14, offsetLeft: tape(i) ? 16 * k++ : 0 }));
+  const xs = Array.from(cellsOf(packed), (c) => c.x);
+  assert.ok(xs.length >= 2, `fixture: several thumbs fit (${xs.length})`);
+  xs.slice(1).forEach((x, k) => assert.ok(x - xs[k] >= 24, `thumbs ${xs[k]} and ${x} are 4px clear (${x - xs[k]})`));
+  /* The first tape bar always gets one, whatever follows. */
+  assert.strictEqual(xs[0], 0, "the first tape bar's thumb is never skipped");
+  assert.ok(xs.length < k, `and packed bars do not each get one (${xs.length} thumbs, ${k} bars)`);
+
+  /* The right edge: no thumb runs past the strip. */
+  const edge = cellsOf(spread, 40 * 0 + (expected[expected.length - 1] * 50 + 19));
+  assert.ok(Array.from(edge, (c) => c.x).every((x) => x + 20 <= expected[expected.length - 1] * 50 + 19), "inside the strip");
+  assert.strictEqual(edge.length, cells.length - 1, "the last one would hang off the end, so it is dropped");
 });
 
 test("show colours: a show's hue from the palette at L .70 (Dusk) or .52 (Dawn), a hue within 24 degrees of an earlier show rotates +30", async () => {

@@ -214,7 +214,7 @@ const BUTTONS = {
   ".fy-chip": { rule: ".fy-chip" },
   ".fy-jump": { tall: ".fy-jump", why: "flex: 1 — the clip card's whole play band" },
   /* Ambient Foray detail (Redesign 2026): the page's transport (back 15, forward 30, speed, previous and next clip: .fy-btn,
-     .fy-clip) left it for Now Playing, and "Start over" is a Quiet .ag-btn now (key .ag-btn). A Follow toggle sits under each
+     .fy-clip) left it for Now Playing, and there is no "Start over" control. A Follow toggle sits under each
      came-from tile. */
   ".fd-follow": { tall: ".ag .fd-follow", why: "a labelled toggle (\"Follow\" / \"Following\") with 4px side padding, 44px tall by min-height" },
   ".fy-script-more": { rule: ".fy-script-more" },
@@ -415,11 +415,10 @@ const spacePx = (v) => {
   return m ? px(valueOf(":root", m[1])) : px(t);
 };
 
-test('"Start over" is a real target and sits clear of the seek strip', () => {
-  /* Ambient Foray detail (Redesign 2026): "Start over" is a Quiet .ag-btn under the one primary button, no longer the
-     legacy .fy-restart under a banner. It reaches 44 through .ag-btn's own min-height token, and the seek strip's
-     16px-down hit box (#fy-strip::after) must end before it: the strip's bottom edge to the button's top is the
-     sill's bottom padding plus the primary button's margin plus the button itself.
+test("the primary button is a real target and sits clear of the seek strip", () => {
+  /* Ambient Foray detail (Redesign 2026): the one primary button (there is no "Start over" under it any more) reaches 44
+     through .ag-btn's own min-height token, and the seek strip's 16px-down hit box (#fy-strip::after) must end before
+     it: the strip's bottom edge to the button's top is the sill's bottom padding plus the primary button's margin.
      MUTATION: `.ag .fd-cta { margin-top: 0 }` and `.ag .fd-sill { padding: 0 }` -> the hit box reaches the
      primary button; red. MUTATION: `.ag .ag-btn { min-height: 0 }` -> red. */
   assert.strictEqual(valueOf(".ag .ag-btn", "min-height"), "var(--tap)");
