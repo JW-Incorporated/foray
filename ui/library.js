@@ -187,6 +187,21 @@ function yoursChipsHtml(active, queued) {
 const YOURS_EMPTY_COPY = "Nothing here yet. Follow a show or play today’s foray and it lands here.";
 const YOURS_EMPTY_READOUT = "Nothing saved yet";
 
+/** Whether Yours has nothing at all to show: the whole-screen empty state. One
+    definition for the page's first paint and for the repaint after a queue
+    write, so a removal that empties the queue ends on the same screen a fresh
+    visit to the same data would draw. The saved, history and playlist counts
+    are passed when the caller already has them. */
+function yoursNothingYet(queued, savedCount, historyCount, playlistCount) {
+  const followedNow = Object.keys(starredShowsMap()).length;
+  const saved = savedCount == null ? rowsForIds(Object.keys(savedMap())).length : savedCount;
+  const history = historyCount == null ? rowsForIds(pickedHistory().slice().reverse().slice(0, 20)).length : historyCount;
+  const playlistsNow = playlistCount == null ? playlists().length : playlistCount;
+  const downloadsNow = state.downloadBridge && Object.values(downloadsValue().items).some((rec) => rec.status === "done");
+  const forayProgressNow = window.ForayPlayer && state.forays ? forayProgressLabels().size : 0;
+  return queued === 0 && followedNow === 0 && saved === 0 && history === 0 && playlistsNow === 0 && !downloadsNow && !forayProgressNow;
+}
+
 function yoursEmptyPanelHtml() {
   return `<div class="yours-panel yours-panel--empty" id="yours-panel-empty">${tactileEmpty({ copy: YOURS_EMPTY_COPY, action: "Find a show", href: yoursFindHash() })}</div>`;
 }
@@ -411,9 +426,23 @@ function repaintYoursQueue() {
   }
   const panel = $("#yours-panel-upnext");
   if (!panel) return false;
+  const rows = queueRows();
+  /* The reverse of the above: the last queued episode left and nothing else is
+     saved, followed, played or built. A page with six panels and a chip strip
+     over nothing is not what a visit to the same data draws, so paint it again
+     and it becomes the whole-screen empty state. Any one thing elsewhere keeps
+     the panels, with Up Next's own note. */
+  if (!rows.length && yoursNothingYet(0)) {
+    const heldFocus = yoursFocusBefore(panel);
+    state.yoursOpenRow = null;
+    renderLibrary();
+    /* The control that had focus left with the panel; the heading is where
+       focus goes when its row is gone (yoursFocusAfter's last resort). */
+    if (heldFocus) focusQuietly($("#view h2"));
+    return true;
+  }
   const held = yoursFocusBefore(panel);
   const from = yoursRowTops(panel);
-  const rows = queueRows();
   if (state.yoursOpenRow && !rows.some((r) => r.id === state.yoursOpenRow)) state.yoursOpenRow = null;
   panel.innerHTML = yoursQueueInner(rows);
   yoursFlip(panel, from);
@@ -722,11 +751,7 @@ function renderLibrary(chip) {
   const historyHidden = allHistoryRows.length - historyRows.length;
   const allPlaylists = playlists();
   const queueList = queueRows();
-  const followedNow = Object.keys(starredShowsMap()).length;
-  const downloadsNow = state.downloadBridge && Object.values(downloadsValue().items).some((rec) => rec.status === "done");
-  const forayProgressNow = window.ForayPlayer && state.forays ? forayProgressLabels().size : 0;
-  const nothingYet = queueList.length === 0 && followedNow === 0 && allSavedRows.length === 0
-    && allHistoryRows.length === 0 && allPlaylists.length === 0 && !downloadsNow && !forayProgressNow;
+  const nothingYet = yoursNothingYet(queueList.length, allSavedRows.length, allHistoryRows.length, allPlaylists.length);
 
   const rowHtml = (r, i, ctx) => r.state === "live" ? epRow(r.item, i, ctx, -1) : archivedRow(r.item, i, ctx);
   // History's "unnamed" case (an id neither live in the pool nor covered by a

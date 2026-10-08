@@ -750,12 +750,44 @@ test("fitYoursChip: the chosen chip lands inside the gutter and a half-cut chip 
   assert.ok(chips[5].getBoundingClientRect().right > W - PAD, "the last chip reaches the right fade: the strip goes on");
 });
 
+/** The left padding every rule in the sheet gives `selector`, in source order, the
+    way the cascade resolves it: the `padding` shorthand (1-4 values), then
+    `padding-left`, `padding-inline` and `padding-inline-start` on top, last
+    declaration wins; at-rules count too (a media block can indent the row). A
+    selector counts when it is the one named or ends in it (`.a .yours-qtools`). */
+function effectivePaddingLeft(selector) {
+  let left = "0";
+  const ends = (sel) => sel === selector || sel.endsWith(` ${selector}`) || sel.endsWith(`>${selector}`);
+  for (const r of RULES) {
+    if (!r.selectors.some(ends)) continue;
+    for (const d of r.decls) {
+      const v = d.value.trim().replace(/\s*!important$/, "");
+      if (d.prop === "padding") {
+        const parts = v.split(/\s+(?![^(]*\))/);
+        left = parts.length === 1 ? parts[0] : parts.length === 2 ? parts[1] : parts.length === 3 ? parts[1] : parts[3];
+      } else if (d.prop === "padding-left" || d.prop === "padding-inline-start") {
+        left = v;
+      } else if (d.prop === "padding-inline") {
+        left = v.split(/\s+(?![^(]*\))/)[0];
+      }
+    }
+  }
+  return left;
+}
+
 test("the three actions share one 48px line: no indent, compact keys, and the row is the keys' 44 plus 4", () => {
-  /* MUTATION: put `padding-left: calc(var(--s-5) + var(--s-2) + var(--s-1))`
+  /* MUTATION 1: put `padding-left: calc(var(--s-5) + var(--s-2) + var(--s-1))`
      back on .yours-qtools (the prototype's indent) - the no-indent assertion
-     fails; at 393 the third key would wrap and the row would be 96 tall. */
+     fails; at 393 the third key would wrap and the row would be 96 tall. It is a
+     LONGHAND on purpose: the first version of this test read only the `padding`
+     shorthand and that mutation survived it.
+     MUTATION 2: the same indent written as `padding-inline-start`, or as
+     `padding: 0 0 var(--s-1) var(--s-5)` - both fail the same assertion.
+     MUTATION 3: change the shorthand's bottom to `var(--s-2)` - the 48px line
+     assertion fails. */
+  assert.strictEqual(effectivePaddingLeft(".yours-qtools"), "0", "no indent: nothing on the left, however it is written");
   const padding = decl(".yours-qtools", "padding");
-  assert.strictEqual(padding.trim(), "0 0 var(--s-1)", "no indent: 0 on the left, 4 below the 44px keys = 48");
+  assert.strictEqual(padding.trim(), "0 0 var(--s-1)", "4 below the 44px keys = 48");
   assert.strictEqual(px(decl(".yours-qtools .keycap .i", "width")), 20);
   /* The widest the three can be: the labels measured in a browser at 15/700 in
      the shipped text face (62, 85 and 59px) plus a 20px icon, a 4px gap and 8px
@@ -975,9 +1007,9 @@ test("first run: the sentence keeps the listener copy rules (18 words, no banned
 test("first run ends the moment ANY of the listener's things exists: queue, played, saved, followed or a playlist", async () => {
   /* The raw result, not the truncated view: every case renders the full page and
      asserts the six panels and the absence of #yours-panel-empty.
-     MUTATION (one per case): delete that clause from `nothingYet` in
-     renderLibrary (queueList / followedNow / allSavedRows / allHistoryRows /
-     allPlaylists) - that case still shows the empty state and fails. */
+     MUTATION (one per case): delete that clause from `yoursNothingYet` in
+     ui/library.js (queued / followedNow / saved / history / playlistsNow) - that
+     case still shows the empty state and fails. */
   const cases = {
     played: { cp_history: JSON.stringify(["an-episode-played-before"]) },
     saved: { cp_saved: JSON.stringify({ "an-episode": { id: "an-episode", title: "Kept", saved_at: "2026-01-01T00:00:00.000Z" } }) },
@@ -1012,6 +1044,55 @@ test("first run ends in place: the first episode queued while Yours is on screen
   assert.strictEqual(q(m, ".yours-qwrap").length, 1, "the queued episode is a row");
   assert.strictEqual(one(m, ".chip__count").textContent, "1", "and the badge counts it");
   assert.strictEqual(textOf(one(m, "#yours-readout")).split(" ")[0], "1");
+});
+
+test("last-out ends in place: removing the only queued episode, and Undo, draw what a fresh visit to the same data draws", async () => {
+  /* The reverse of the test above. Without this the page kept the six panels
+     and the chip strip over nothing after the sole queued episode was removed,
+     while navigating away and back drew the whole-screen `.empty` from the same
+     data.
+     MUTATION 1: drop the `!rows.length && yoursNothingYet(0)` branch in
+     repaintYoursQueue - the removal leaves the strip and Up Next's note, and
+     the first block of assertions fails.
+     MUTATION 2: drop `followedNow === 0 &&` from `yoursNothingYet` - the second
+     block (a followed show keeps the panels) fails.
+     MUTATION 3: drop the focus call after renderLibrary there - focus is left on
+     a detached button and the heading assertion fails. */
+  const m = await mountBooted();
+  const [item] = queue(m, 1);
+  withPlayer(m, null);
+  m.ctx.renderLibrary();
+  assert.ok(!one(m, "#yours-panel-empty"), "precondition: a queued episode, so the panels");
+  press(m, `more:${item.id}`);
+  press(m, `rm:${item.id}`);
+  assert.deepStrictEqual(queueIds(m), [], "the queue is empty");
+  assert.ok(one(m, "#yours-panel-empty"), "the whole-screen empty state, not the panels");
+  assert.strictEqual(q(m, ".empty").length, 1, "one .empty");
+  assert.strictEqual(q(m, "#yours-chips").length, 0, "no chip strip over nothing");
+  assert.strictEqual(q(m, ".yours-panel").length, 1, "one panel, not six");
+  assert.strictEqual(textOf(one(m, "#yours-readout")), "Nothing saved yet");
+  assert.strictEqual(m.doc.activeElement, one(m, "h2"), "focus left with the row and lands on the heading");
+  const afterRemoval = m.html();
+  m.ctx.renderLibrary();
+  assert.strictEqual(m.html(), afterRemoval, "identical to a fresh visit to the same data");
+  /* Undo ends it again, in place. */
+  const toast = m.body.querySelector("#yours-toast .toast");
+  toast.querySelector(".textbtn")._on.get("click")[0]();
+  assert.deepStrictEqual(queueIds(m), [item.id], "Undo writes the episode back");
+  assert.ok(!one(m, "#yours-panel-empty"), "and the empty state is gone");
+  assert.strictEqual(q(m, ".yours-qwrap").length, 1, "with the row");
+  assert.strictEqual(q(m, ".yours-panel").length, 6, "and the six panels");
+
+  /* One thing elsewhere in the library keeps the panels, with Up Next's own note. */
+  const f = await mountBooted({ followed: null, cp_starred_shows: JSON.stringify({ "a-show": { show_id: "a-show", name: "A show", starred_at: "2026-01-01T00:00:00.000Z" } }) });
+  const [one2] = queue(f, 1);
+  withPlayer(f, null);
+  f.ctx.renderLibrary();
+  press(f, `more:${one2.id}`);
+  press(f, `rm:${one2.id}`);
+  assert.ok(!one(f, "#yours-panel-empty"), "a followed show remains: not the empty screen");
+  assert.strictEqual(q(f, ".yours-panel").length, 6, "the six panels stay");
+  assert.ok(/Nothing in Up Next yet/.test(textOf(one(f, "#yours-panel-upnext"))), "Up Next says it is empty in its own panel");
 });
 
 test("tactileEmpty: the link key goes through safeUrl and the default stays the gallery's button", () => {
