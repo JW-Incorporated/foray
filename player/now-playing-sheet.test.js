@@ -573,7 +573,10 @@ test("Tactile hero and transport preserve the ruled phone geometry", () => {
   assert.match(CSS_RULES, /\.np\.np--three-title \.np__art \{ width: 160px; height: 160px; \}/);
   assert.match(CSS_RULES, /\.np \.transport \{[^}]*gap:\s*var\(--s-6\)/);
   assert.match(CSS_RULES, /\.np \.transport \.fp-big \{[^}]*width:\s*var\(--key-xl\)[^}]*height:\s*var\(--key-xl\)/);
-  assert.match(CSS_RULES, /\.np \.transport \.keycap--lg \{[^}]*width:\s*var\(--key-lg\)[^}]*height:\s*var\(--key-lg\)/);
+  /* Iteration 2 (fidelity): the 15/30 keys are the prototype's rendered 68 x 56 pill, not a 56 circle.
+     MUTATION: change `--np-skip-w: 68px` to `var(--key-lg)` -> red (the step from Play to the skips steepens again). */
+  assert.match(CSS_RULES, /\.np \{ --np-skip-w: 68px; \}/);
+  assert.match(CSS_RULES, /\.np \.transport \.keycap--lg \{[^}]*width:\s*var\(--np-skip-w\)[^}]*height:\s*var\(--key-lg\)/);
   assert.match(NP_FLAT_TEXT, /parts\.row\.classList\.add\("transport"\)/);
 });
 
@@ -601,7 +604,11 @@ test("Tactile detail scrolls beneath a bottom-pinned dock and keeps seekable 56 
   /* MUTATION: change `.np__dock` from `position: absolute` to `position: sticky` -> red and Play returns to the scroll flow.
      The dock sits at safe-b + 16 (--s-4) per the acceptance criterion. */
   assert.match(NP_FLAT, /sheet\.replaceChildren\(bg, parts\.grabZone, parts\.scroll, dock\)/);
-  assert.match(CSS_RULES, /\.np__top \{[^}]*min-height:\s*calc\(100% - 176px - var\(--safe-b\)\)/);
+  /* 190px puts the "Up next" heading 54px under the counter, as drawn, so its first card peeks out
+     above the dock's fade (176 left a 67px gap and no card). MUTATION: put 176px back -> red. */
+  assert.match(CSS_RULES, /\.np__top \{[^}]*min-height:\s*calc\(100% - 190px - var\(--safe-b\)\)/);
+  assert.match(CSS_RULES, /\.np__up-next-card \{[^}]*align-items:\s*start/, "the card's art and title start at its top, so they are what peeks under the heading");
+  assert.match(CSS_RULES, /\.np__dock::before \{[^}]*inset:\s*-22px 0/, "the fade starts 36px above the keys (the dock box is 14px above the transport row)");
   assert.match(CSS_RULES, /\.np__dock \{[^}]*position:\s*absolute[^}]*bottom:\s*calc\(var\(--safe-b\) \+ var\(--s-4\)\)/);
   assert.match(CSS_RULES, /\.np__dock::before \{[^}]*linear-gradient\(to bottom, transparent, var\(--paper\) 28px\)/);
   assert.match(CSS_RULES, /\.np \.segrow \{[^}]*min-height:\s*56px/);
@@ -610,7 +617,7 @@ test("Tactile detail scrolls beneath a bottom-pinned dock and keeps seekable 56 
 
 test("Tactile transport uses circular 56/80/56 keys with an attached darker lip and custom skip marks", () => {
   /* MUTATION: remove the explicit `width: var(--key-lg)` override -> red and legacy padding squashes the skip keys. */
-  assert.match(CSS_RULES, /\.np \.transport \.keycap--lg \{\s*box-sizing:\s*border-box;\s*width:\s*var\(--key-lg\)[^}]*height:\s*var\(--key-lg\)[^}]*padding:\s*0/);
+  assert.match(CSS_RULES, /\.np \.transport \.keycap--lg \{\s*box-sizing:\s*border-box;\s*width:\s*var\(--np-skip-w\)[^}]*height:\s*var\(--key-lg\)[^}]*padding:\s*0/);
   /* The lip is a hard shadow in the key's own shape (the primitive's flat ::after bar is switched off).
      MUTATION: delete the `box-shadow: 0 var(--lip) 0 var(--k-lip)` rule -> red and the keys lose their lip. */
   assert.match(CSS_RULES, /\.np \.transport \.keycap::after,\s*\.np \.second \.keycap::after \{ content: none; \}/);
@@ -741,6 +748,35 @@ test("the band's station codes are HTML spans under the bars, and the SVG's own 
   assert.match(NP_FLAT_TEXT, /span\.style\.setProperty\("--x"/);
   assert.match(CSS_RULES, /\.np__band-svg \.t-band__code, \.np__band-svg \.needle \{ display: none; \}/);
   assert.match(CSS_RULES, /\.np:not\(\.np--foray\) \.np__codes \{ display: none; \}/, "an episode has one bar and no codes");
+});
+
+test("every run on the band gets a code, narrow ones included, and no two codes overlap", () => {
+  /* Iteration 2 (fidelity): the first purple run was 14px wide, under the primitive's 24px gate, so colour alone
+     carried it ("one code per run, so colour is never alone").
+     MUTATIONS: drop `codeEveryRun: true` from the tactileBand call -> the narrow runs lose their code (the
+     source check fails); make dialSpreadCodes return its input -> the overlap assertion fails; drop the
+     right-to-left pass -> the clamp case fails. */
+  assert.match(NP_FLAT_TEXT, /valueText: d\.valueText, codeEveryRun: true/);
+  assert.match(CSS_RULES, /\.np__code \{[^}]*left:\s*calc\(var\(--x, 0\) \* 100% \+ var\(--dx, 0px\)\)/);
+  const { dial } = loadDial();
+  const size = 14;
+  /* The real case: bar centres 7px apart on a 345px band (adjacent 14px runs at the left edge). */
+  const crowded = [7, 21, 35, 52, 140, 200];
+  const placed = dial.spreadCodes(crowded, crowded.map(() => size), 345);
+  for (let i = 1; i < placed.length; i += 1) assert.ok(placed[i] - placed[i - 1] >= size, `codes ${i - 1} and ${i} are ${placed[i] - placed[i - 1]}px apart`);
+  assert.ok(placed[0] >= size / 2, "the first code stays inside the band's left edge");
+  assert.ok(placed[2] < 52, "a code is moved only as far as its neighbours force: the third stays near its bar");
+  assert.strictEqual(placed[5], 200, "an uncrowded code does not move");
+  /* Crowding at the right edge pushes back in, not out of the box. */
+  const edge = dial.spreadCodes([330, 338, 344], [size, size, size], 345);
+  assert.ok(edge[2] <= 345 - size / 2, `the last code stays inside the right edge (${edge[2]})`);
+  for (let i = 1; i < edge.length; i += 1) assert.ok(edge[i] - edge[i - 1] >= size, "and they still do not overlap");
+  /* More codes than fit (30 x 14px on 345px): they stay ordered and inside the box rather than running off it.
+     MUTATION: drop the final clamp loop -> the last code lands past the right edge. */
+  const many = Array.from({ length: 30 }, (_, i) => 7 + i * 11);
+  const squeezed = dial.spreadCodes(many, many.map(() => size), 345);
+  assert.ok(squeezed[0] >= size / 2 && squeezed[29] <= 345 - size / 2, `inside the box (${squeezed[0]}..${squeezed[29]})`);
+  for (let i = 1; i < squeezed.length; i += 1) assert.ok(squeezed[i] >= squeezed[i - 1], "and still in order");
 });
 
 test("the needle has a 44px-wide hit area, a 2px stroke, and its buffering pulse runs on the buffer token", () => {

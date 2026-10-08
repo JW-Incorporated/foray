@@ -276,9 +276,13 @@ function tactileBand(data) {
   }).join("");
   var labels = kind === "mini" || kind === "line" ? "" : tactileBandRuns(segments, widths).map(function (run) {
     var widthPx = (run.right - run.x) / 1000 * renderWidth;
-    if (widthPx < 24) return "";
+    /* The 24px gate stands unless the caller (Now Playing) asks for a code on
+       every run, "so colour is never alone": it then lays the narrow ones out
+       itself (ui/now-playing.js dialPaintBandCodes) and reads data-narrow. */
+    var narrow = widthPx < 24;
+    if (narrow && !d.codeEveryRun) return "";
     var isCurrent = current >= run.start && current <= run.end;
-    return '<text class="t-band__code' + (isCurrent ? " is-current" : "") + '" data-run-start="' + run.start + '" data-run-end="' + run.end + '" x="' + ((run.x + run.right) / 2).toFixed(2) + '" y="53" text-anchor="middle">' + esc(codes.get(run.showId)) + "</text>";
+    return '<text class="t-band__code' + (isCurrent ? " is-current" : "") + '"' + (narrow ? ' data-narrow="true"' : "") + ' data-run-start="' + run.start + '" data-run-end="' + run.end + '" x="' + ((run.x + run.right) / 2).toFixed(2) + '" y="53" text-anchor="middle">' + esc(codes.get(run.showId)) + "</text>";
   }).join("");
   var role = kind === "scrub" ? "slider" : "img";
   var valueText = d.valueText || Math.round(progress * (Number(d.totalSeconds) || total)) + " seconds of " + Math.round(Number(d.totalSeconds) || total) + " seconds, " + (segments[current] ? segments[current].show : "4a");

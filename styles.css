@@ -4932,9 +4932,9 @@ body.ui-v2 .fp-sheet.np .np__collapse { border-color: transparent; background: t
 .np .np__scroll::-webkit-scrollbar { display: none; }
 /* Everything above the detail (BUILD-NOTES 4.2, item 7). The head's space is
    padding inside it and 100% is the scroller's box (the sheet less its 56px
-   bottom padding), so at rest the "Up next" heading ends just above the keys,
-   in the dock's fade, and its card starts under the dock. */
-.np__top { box-sizing: border-box; display: flex; flex-direction: column; padding-top: calc(var(--safe-t) + var(--s-10)); min-height: calc(100% - 176px - var(--safe-b)); }
+   bottom padding), so at rest the "Up next" heading sits 54px under the counter (as drawn)
+   and its first card peeks out beneath it, fading under the dock. */
+.np__top { box-sizing: border-box; display: flex; flex-direction: column; padding-top: calc(var(--safe-t) + var(--s-10)); min-height: calc(100% - 190px - var(--safe-b)); }
 .np__hero { display: flex; justify-content: center; }
 .np__art { position: relative; width: 280px; height: 280px; flex: none; overflow: hidden; display: grid; place-items: center; border-radius: var(--r-lg); background: var(--paper-2); box-shadow: var(--shadow-card); view-transition-name: np-art; }
 .np__art::before { content: "4a"; color: var(--ink-2); font: 750 var(--t-display)/1 var(--dial-font-display); }
@@ -4995,7 +4995,7 @@ body.ui-v2 .fp-sheet.np .fp-left { color: var(--ink-2); }
    why): the SVG's own text and needle stretch with its viewBox. */
 .np__band-svg .t-band__code, .np__band-svg .needle { display: none; }
 .np__codes { position: absolute; left: 0; right: 0; bottom: 0; height: 16px; }
-.np__code { position: absolute; left: calc(var(--x, 0) * 100%); bottom: 0; transform: translateX(-50%); color: var(--ink-2); font: 700 0.6875rem/16px var(--font-mono); white-space: nowrap; }
+.np__code { position: absolute; left: calc(var(--x, 0) * 100% + var(--dx, 0px)); bottom: 0; transform: translateX(-50%); color: var(--ink-2); font: 700 0.6875rem/16px var(--font-mono); white-space: nowrap; }
 .np__code.is-current { color: var(--ink); font-weight: 800; }
 .np:not(.np--foray) .np__band-svg .t-band__bar { fill: var(--persimmon); }
 .np:not(.np--foray) .np__codes { display: none; }
@@ -5012,13 +5012,20 @@ body.ui-v2 .fp-sheet.np .fp-left { color: var(--ink-2); }
 .np__read { margin-top: var(--s-2); padding: 0 2px; display: flex; align-items: baseline; justify-content: space-between; }
 .np__read .readout-lg { color: var(--ink); letter-spacing: -.05em; }
 .np__read .readout { color: var(--ink-2); }
-/* The pinned transport: the dock's paper runs 36px above the keys and fades
-   in over its first 28px, so a scrolled row passes under it, not through it. */
+/* The pinned transport: the dock's paper starts 36px above the keys and is solid
+   from 8px above them (fading in over 28px), so a scrolled row passes under it,
+   not through it. The dock box itself starts 14px above the transport row, so
+   its ::before is inset 22px from the box (36 from the keys, as drawn). */
 .np__dock { position: absolute; isolation: isolate; z-index: 5; left: 0; right: 0; bottom: calc(var(--safe-b) + var(--s-4)); padding: 0 var(--gutter); }
-.np__dock::before { content: ""; position: absolute; z-index: -1; inset: -36px 0 calc(-1 * (var(--safe-b) + var(--s-4))); background: linear-gradient(to bottom, transparent, var(--paper) 28px); pointer-events: none; }
+.np__dock::before { content: ""; position: absolute; z-index: -1; inset: -22px 0 calc(-1 * (var(--safe-b) + var(--s-4))); background: linear-gradient(to bottom, transparent, var(--paper) 28px); pointer-events: none; }
 .np .transport { min-height: 83px; display: flex; align-items: center; justify-content: center; gap: var(--s-6); }
 .np .transport .keycap { flex: none; margin-bottom: var(--lip); }
-.np .transport .keycap--lg { box-sizing: border-box; width: var(--key-lg); min-width: var(--key-lg); height: var(--key-lg); padding: 0; }
+/* The 15/30 keys are 56 tall and 68 wide, the prototype's rendered weight (its
+   .keycap--lg keeps the base key's side padding, so the pill is wider than the
+   56 token). 68 is the measured width, not a new token: the primary-to-secondary
+   step stays 80 : 68, and the keys sit at x 64.5 / 260.5 of 393 as drawn. */
+.np { --np-skip-w: 68px; }
+.np .transport .keycap--lg { box-sizing: border-box; width: var(--np-skip-w); min-width: var(--np-skip-w); height: var(--key-lg); padding: 0; }
 .np .transport .fp-big { width: var(--key-xl); min-width: var(--key-xl); height: var(--key-xl); padding: 0; }
 /* The lip of a key in the sheet is a hard shadow in the key's own darker tone,
    the key's own shape, attached: the primitive's ::after is a flat bar, which
@@ -5048,7 +5055,7 @@ body.ui-v2 .fp-sheet.np .second .keycap--paper { border-color: transparent; back
 .np__more { padding: var(--s-3) 0 calc(var(--safe-b) + 220px); display: flex; flex-direction: column; gap: var(--s-8); }
 .np__section > .heading { margin: 0 0 var(--s-3); color: var(--ink); }
 .np .sheetcard { padding: 14px; border-radius: var(--r-md); background: var(--card); box-shadow: var(--shadow-card); }
-.np__up-next-card { min-height: 88px; display: grid; grid-template-columns: var(--art-row) minmax(0, 1fr) auto; align-items: center; gap: var(--s-3); }
+.np__up-next-card { min-height: 88px; display: grid; grid-template-columns: var(--art-row) minmax(0, 1fr) auto; align-items: start; gap: var(--s-3); }
 .np__up-next-art { width: var(--art-row); height: var(--art-row); overflow: hidden; display: grid; place-items: center; border-radius: var(--r-sm); background: var(--paper-2); color: white; font: 700 var(--t-body)/1 var(--font-mono); }
 .np__up-next-art img { width: 100%; height: 100%; object-fit: cover; }
 .np__up-next-body { min-width: 0; display: grid; gap: var(--s-1); }
@@ -5080,14 +5087,14 @@ body.ui-v2 .fp-sheet.np .fp-toforay,
 body.ui-v2 .fp-sheet.np .fp-openep { color: var(--ink); }
 
 @media (max-height: 740px) {
-  .np__top { padding-top: calc(var(--safe-t) + var(--s-8)); min-height: calc(100% - 142px - var(--safe-b)); }
+  .np__top { padding-top: calc(var(--safe-t) + var(--s-8)); min-height: calc(100% - 156px - var(--safe-b)); }
   .np__art { width: 200px; height: 200px; }
   .np__text { margin-top: 14px; }
   .np__band { --np-band-h: var(--key-lg); margin-top: 14px; }
   .np .fp-row2.second { margin-top: 10px; }
   /* The prototype's short-screen dock: the fade is 12px, not 36, so the
      readout above the keys stays clear of it. */
-  .np__dock::before { top: -12px; background: linear-gradient(to bottom, transparent, var(--paper) 12px); }
+  .np__dock::before { top: 2px; background: linear-gradient(to bottom, transparent, var(--paper) 12px); }
 }
 .np.np--three-title .np__art { width: 160px; height: 160px; }
 .gallery-sheet-open { margin-top: var(--s-5); }

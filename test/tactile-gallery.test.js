@@ -67,7 +67,14 @@ test("the gallery covers every primitive and state without adopting them on list
     }
   }
   const adopters = fs.readdirSync(path.join(ROOT, "ui")).filter((name) => name.endsWith(".js") && !["gallery.js", "primitives.js"].includes(name)).filter((name) => /\btactile[A-Z]/.test(fs.readFileSync(path.join(ROOT, "ui", name), "utf8")));
-  assert.deepStrictEqual(adopters, [], "Phase 4, not the foundation, adopts primitives on listener screens");
+  /* Phase 4 ruling (redesign/p4-tactile-now-playing, Now Playing first): the
+     mini player and the Now Playing sheet are the first listener screens to
+     adopt primitives, so ui/mini.js and ui/now-playing.js are the ONLY allowed
+     adopters until the next screen's branch adds its own file here. Every other
+     listener screen still adopts in its own Phase 4 PR.
+     MUTATION: add `tactileIcon("x")` to ui/home.js -> the list differs. */
+  const ADOPTED_IN_PHASE_4 = ["mini.js", "now-playing.js"];
+  assert.deepStrictEqual(adopters, ADOPTED_IN_PHASE_4, "only screens whose Phase 4 branch has landed adopt primitives");
 });
 
 test("the gallery's rendered copy obeys the listener copy rules, however the source spells it", () => {

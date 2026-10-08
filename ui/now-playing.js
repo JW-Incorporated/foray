@@ -466,16 +466,51 @@ function dialBandX(boxes, fraction) {
 /* Station codes as HTML under the bars. The primitive's SVG <text> stretches
    with the band's non-uniform viewBox scale (a 1000-unit box drawn ~345px wide
    squeezes each glyph to a third), which made the codes read as faint
-   condensed ticks. The runs, the >= 24px rule and the current run are the
-   primitive's own: this reads its rendered <text> and re-sets them as spans. */
+   condensed ticks. The runs and the current run are the primitive's own (it is
+   asked for EVERY run, narrow ones included: "one code per run, so colour is
+   never alone"): this reads its rendered <text> and re-sets them as spans. */
 function dialPaintBandCodes(parts) {
   if (!parts.bandCodes) return;
   parts.bandCodes.replaceChildren();
+  var width = Math.max(1, parts.bandSvg.clientWidth || 345);
+  var spans = [];
   parts.bandSvg.querySelectorAll(".t-band__code").forEach(function (text) {
     var span = dialNpEl("span", "np__code" + (text.classList.contains("is-current") ? " is-current" : ""), text.textContent);
-    span.style.setProperty("--x", String(Number(text.getAttribute("x")) / 1000));
+    span.dataset.x = String(Number(text.getAttribute("x")) / 1000 * width);
     parts.bandCodes.append(span);
+    spans.push(span);
   });
+  /* A run's code is centred under its bar; where neighbouring codes would
+     collide (adjacent narrow runs) they are pushed apart, so every run keeps a
+     readable code a few px from its bar rather than one stacked on the next. */
+  var sizes = spans.map(function (span) { return span.offsetWidth || 14; });
+  var placed = dialSpreadCodes(spans.map(function (span) { return Number(span.dataset.x); }), sizes, width);
+  spans.forEach(function (span, index) {
+    span.style.setProperty("--x", String(Number(span.dataset.x) / width));
+    span.style.setProperty("--dx", (placed[index] - Number(span.dataset.x)).toFixed(1) + "px");
+    delete span.dataset.x;
+  });
+}
+
+/* Centres (px) -> non-overlapping centres inside [0, total]. Two passes keep
+   the order and move a label only as far as its neighbour forces it: left to
+   right pushes each past the one before, then right to left pulls the run back
+   in from the far edge. Labels that cannot all fit keep their share of the
+   squeeze (still ordered, still inside the box). */
+function dialSpreadCodes(centres, sizes, total) {
+  var gap = 2;
+  var out = centres.slice();
+  var n = out.length;
+  for (var i = 0; i < n; i += 1) {
+    var floor = i ? out[i - 1] + (sizes[i - 1] + sizes[i]) / 2 + gap : sizes[i] / 2;
+    out[i] = Math.max(out[i], floor);
+  }
+  for (var j = n - 1; j >= 0; j -= 1) {
+    var ceil = j < n - 1 ? out[j + 1] - (sizes[j + 1] + sizes[j]) / 2 - gap : total - sizes[j] / 2;
+    out[j] = Math.min(out[j], ceil);
+  }
+  for (var k = 0; k < n; k += 1) out[k] = Math.max(sizes[k] / 2, Math.min(total - sizes[k] / 2, out[k]));
+  return out;
 }
 
 /* The spoken clock: written when what is under the needle changes, or (with
@@ -522,7 +557,7 @@ function dialPaintNowPlaying(parts, model) {
     parts.bandSvg.innerHTML = tactileBand({
       id: "np-band", kind: "scrub", segments: d.segments || [], progress: fraction,
       currentIndex: d.currentIndex || 0, totalSeconds: d.duration || 1, renderWidth: width, buffering: d.buffering,
-      valueText: d.valueText,
+      valueText: d.valueText, codeEveryRun: true,
     });
     var visual = parts.bandSvg.querySelector(".band");
     /* The <input type=range> over the band is the one slider; the drawing is
@@ -636,4 +671,5 @@ window.DialNowPlaying = {
   paintRate: dialPaintNowPlayingRate,
   paintSleep: dialPaintSleep,
   nextSleepStop: dialNextSleepStop,
+  spreadCodes: dialSpreadCodes,
 };
