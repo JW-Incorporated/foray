@@ -6,8 +6,13 @@
  *
  * WHAT THIS PROVES, in order:
  *  1. The tab bar always renders (no on/off state left).
- *  2. It renders all four destinations, in the mockup's order: Home,
- *     Search, Create, Library.
+ *  2. It renders three destinations, in the ambient direction's order: Today,
+ *     Discover, Library. RULING FALLEN (Redesign 2026, ambient Discover
+ *     iteration 3): "four tabs" -- Create is folded into Discover (DIRECTION.md
+ *     "Information architecture"); its pages light Discover, and #/create is
+ *     still a route, reached from Library and from Discover's own field.
+ *  2b. The current tab is drawn with its Phosphor Fill glyph, the others with
+ *     Regular, from the sprite (a state change is a shape, never only a colour).
  *  3. Each of the app's 14 routes maps to exactly one tab, and that tab
  *     (and only that tab) carries aria-current="page" -- so switching tabs
  *     always highlights a real destination, never a stale or double one.
@@ -188,9 +193,9 @@ test("the tab bar always exists after a render (cp_ui_v2 retired, U-11 cutover)"
 /* 2. ALL FOUR TABS, IN ORDER                                            */
 /* ==================================================================== */
 
-test("the tab bar renders all four tabs in the mockup's order: Home, Search, Create, Library", () => {
-  /* MUTATION: reorder TAB_ROUTES, or drop one entry. The labels array
-     comparison below fails on either. */
+test("the tab bar renders three tabs in the ambient order: Today, Discover, Library", () => {
+  /* MUTATION: reorder TAB_ROUTES, drop one entry, or put the Create entry back
+     (the old fourth tab). The labels array comparison below fails on each. */
   const m = mount();
   m.evalIn("renderTabBar();");
   const bar = m.body.querySelector("#tab-bar");
@@ -205,8 +210,31 @@ test("the tab bar renders all four tabs in the mockup's order: Home, Search, Cre
     const m2 = /<span>([^<]*)<\/span>/.exec(a.innerHTML);
     return m2 ? m2[1] : null;
   });
-  assert.deepStrictEqual(htmlLabels, ["Home", "Search", "Create", "Library"]);
+  assert.deepStrictEqual(htmlLabels, ["Today", "Discover", "Library"]);
+  assert.strictEqual(bar.querySelectorAll(".tab-btn").length, 3, "three tabs, no fourth");
   void labels;
+});
+
+test("the current tab wears its Fill glyph and the others their Regular glyph, from the sprite", () => {
+  /* MUTATION: in renderTabBar() pass `false` to tabGlyph() for every tab (colour-only active state) -> the
+     Fill assertion fails; or pass `true` -> the Regular assertions fail. MUTATION 2: put a text glyph or an
+     inline <path> back in TAB_ROUTES -> the `<use href=...#i-` assertions fail. The harness is not more
+     forgiving than the app: the glyphs are the app's own agIcon() output, read back from innerHTML. */
+  const m = mount();
+  const want = { home: "house", search: "compass", library: "books" };
+  const glyphOf = (a) => { const g = /#i-([a-z-]+)"/.exec(a.innerHTML); return g ? g[1] : null; };
+  for (const [hash, active] of [["#/", "home"], ["#/shows", "search"], ["#/library", "library"], ["#/create", "search"], ["#/shows", "search"]]) {
+    m.ctx.location.hash = hash;
+    m.evalIn("renderTabBar();");
+    for (const a of m.body.querySelector("#tab-bar").querySelectorAll(".tab-btn")) {
+      const key = a.dataset.tabKey;
+      const expected = key === active ? want[key] + "-fill" : want[key];
+      assert.strictEqual(glyphOf(a), expected, `${hash}: the ${key} tab draws ${expected}`);
+      assert.ok(/<use href="ui\/icons\.svg#i-/.test(a.innerHTML), "drawn from the sprite through <use>");
+      assert.ok(!/<path|↺|⌂/.test(a.innerHTML), "no inline path and no text glyph");
+      assert.ok(/<span>[^<]+<\/span>/.test(a.innerHTML), "the label survives a glyph change");
+    }
+  }
 });
 
 /* Sections 3 and 4 (turning the flag off; native-shell default vs explicit
@@ -241,10 +269,11 @@ test("every route highlights exactly one tab, and it is the right one", () => {
     ["", "home"],
     ["#/bogus", "home"],
     ["#/episode/xyz", "search"],
-    ["#/playlists", "create"],
-    ["#/playlist/abc", "create"],
-    ["#/subject/tech", "create"],
-    ["#/create", "create"],
+    /* Create is folded into Discover: its pages light Discover (ruling fallen, header). */
+    ["#/playlists", "search"],
+    ["#/playlist/abc", "search"],
+    ["#/subject/tech", "search"],
+    ["#/create", "search"],
     ["#/library", "library"],
     ["#/queue", "library"],
     ["#/forays", "library"],
@@ -305,19 +334,22 @@ test("the Library tab's href is #/library", () => {
 });
 
 /* ==================================================================== */
-/* 7b. CREATE TAB POINTS AT #/create (U-06)                              */
+/* 7b. NO CREATE TAB; #/create LIGHTS DISCOVER (ambient IA)               */
 /* ==================================================================== */
 
-test("the Create tab's href is #/create, not #/playlists", () => {
-  /* MUTATION: revert TAB_ROUTES's create entry's hash back to "#/playlists".
-     U-06 gives Create its own screen (the Foray|Playlist toggle, honest
-     copy) rather than routing straight at the old Playlists page. */
+test("there is no Create tab, and #/create still lights Discover", () => {
+  /* MUTATION: put `{ key: "create", label: "Create", hash: "#/create", glyph: "house" }` back in TAB_ROUTES ->
+     the first assertion fails; or map the create hashes in tabForHash() back to "create" -> the second does
+     (no tab would then read current for #/create). */
   const m = mount();
   m.evalIn("renderTabBar();");
   const bar = m.body.querySelector("#tab-bar");
-  const create = bar.querySelectorAll(".tab-btn").find((a) => a.dataset.tabKey === "create");
-  assert.ok(create, "a create tab must exist");
-  assert.strictEqual(create.href, "#/create");
+  assert.ok(!bar.querySelectorAll(".tab-btn").some((a) => a.dataset.tabKey === "create"), "Create is not a tab");
+  assert.ok(!bar.querySelectorAll(".tab-btn").some((a) => a.href === "#/create"), "no tab points at #/create");
+  m.ctx.location.hash = "#/create";
+  m.evalIn("renderTabBar();");
+  const lit = bar.querySelectorAll(".tab-btn").filter((a) => a.getAttribute("aria-current") === "page");
+  assert.deepStrictEqual(lit.map((a) => a.dataset.tabKey), ["search"]);
 });
 
 /* ==================================================================== */

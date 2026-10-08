@@ -185,6 +185,8 @@ import {
    rather than declared twice — `04_VOICE_AUDIO_SPEC.md`'s "±30/15 s seek". */
 const SEEK_BACK = SEEK_BACKWARD_SEC;
 const SEEK_FWD = SEEK_FORWARD_SEC;
+/** The mini bar's skip glyph: forward 30, from the icon sprite (ui/icons.svg, `i-fwd30`). */
+const MINI_SKIP_GLYPH = '<svg class="fp-skip-glyph" aria-hidden="true" focusable="false"><use href="ui/icons.svg#i-fwd30"></use></svg>';
 
 let manager = null;
 let backend = null;
@@ -1137,9 +1139,12 @@ function buildUI() {
      name and the one that matters in a car. One control, not two, so a 390px
      bar keeps its title line. Inside a Foray it nudges on the Foray clock
      (`nudgeBy`), never previous clip — see persona 58 in the sheet below. */
-  const skipBtn = el("button", "fp-skip", `↺ ${SEEK_BACK}`);
+  const skipBtn = el("button", "fp-skip");
   skipBtn.type = "button";
-  skipBtn.setAttribute("aria-label", `Back ${SEEK_BACK} seconds`);
+  /* REDESIGN 2026 (ambient): the mini slot is forward 30, the custom arc-and-numerals glyph from the
+     sprite, not the text `↺ 15`. A constant string with no interpolation, so nothing here needs esc(). */
+  skipBtn.innerHTML = MINI_SKIP_GLYPH;
+  skipBtn.setAttribute("aria-label", `Forward ${SEEK_FWD} seconds`);
 
   /* U-13 (founder feedback F18): this ✕ used to call `stopAndClose()`, and its
      label said so. Closing the Now Playing screen to go and use the app therefore
@@ -1171,7 +1176,7 @@ function buildUI() {
      own comment set out to remove. It moves into the sheet's grab row below,
      which is the only place it can be both visible and hit-testable, and is
      also where the sheet's other dismiss affordances now are. */
-  bar.append(art, info, skipBtn, playBtn);
+  bar.append(art, info, playBtn, skipBtn);
   root.append(progress, bar);
 
   /* ---------- the Now Playing sheet ----------
@@ -4018,7 +4023,7 @@ function bind() {
      `.fp-clips` row. */
   ui.backBtn.addEventListener("click", () => nudgeBy(-SEEK_BACK));
   ui.fwdBtn.addEventListener("click", () => nudgeBy(SEEK_FWD));
-  ui.skipBtn.addEventListener("click", () => nudgeBy(-SEEK_BACK));
+  ui.skipBtn.addEventListener("click", () => nudgeBy(SEEK_FWD));
   ui.clipPrev.addEventListener("click", guardTap(() => ForayPlayer.forayPrevious()));
   ui.clipNext.addEventListener("click", guardTap(() => ForayPlayer.forayNext()));
 

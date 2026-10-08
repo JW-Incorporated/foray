@@ -107,18 +107,23 @@ test("the seek pair and the speed box are one object on the Foray page and in No
 
 /* ---------- the mini bar ---------- */
 
-test("the mini bar carries ▶ and a back-15 nudge, in that order, and nothing else", () => {
+test("the mini bar carries ▶ and a forward-30 glyph, in that order, and nothing else", () => {
   /* MUTATION: `bar.append(art, info, playBtn)` (the one-control bar)
      -> red. MUTATION 2: add `fwdBtn` to the bar -> the third assertion names
      the crowding. (The live region is no longer on the bar — audit round 2,
      a11y-2: it is a sibling of the bar and the sheet, so expanding Now
      Playing cannot make it inert; player/now-playing-sheet.test.js pins it.) */
-  assert.match(CODE, /const skipBtn = el\("button", "fp-skip", `↺ \$\{SEEK_BACK\}`\);/);
-  assert.match(CODE, /skipBtn\.setAttribute\("aria-label", `Back \$\{SEEK_BACK\} seconds`\);/);
-  assert.match(CODE, /bar\.append\(art, info, skipBtn, playBtn\);/, "art · title · ↺15 · ▶");
+  /* RULING FALLEN (Redesign 2026, ambient Discover iteration 3): the second control was a text `↺ 15` (persona 10);
+     it is the direction's 44px forward-30 custom glyph from the sprite. MUTATION 3: put the text `↺ ${SEEK_BACK}`
+     label back, or point the handler at `nudgeBy(-SEEK_BACK)` -> red. */
+  assert.match(CODE, /const skipBtn = el\("button", "fp-skip"\);/);
+  assert.match(CODE, /skipBtn\.innerHTML = MINI_SKIP_GLYPH;/);
+  assert.match(CODE, /const MINI_SKIP_GLYPH = '<svg class="fp-skip-glyph" aria-hidden="true" focusable="false"><use href="ui\/icons\.svg#i-fwd30"><\/use><\/svg>';/);
+  assert.match(CODE, /skipBtn\.setAttribute\("aria-label", `Forward \$\{SEEK_FWD\} seconds`\);/);
+  assert.match(CODE, /bar\.append\(art, info, playBtn, skipBtn\);/, "art · title · ▶ · forward 30 (the prototype's order); MUTATION 4: swap the two -> red");
   const appended = /bar\.append\(([^)]*)\)/.exec(CODE)[1].split(",").map((s) => s.trim());
-  assert.deepStrictEqual(appended.filter((n) => /Btn$/.test(n)), ["skipBtn", "playBtn"], "two controls on the bar, not three");
-  assert.match(CODE, /ui\.skipBtn\.addEventListener\("click", \(\) => nudgeBy\(-SEEK_BACK\)\);/);
+  assert.deepStrictEqual(appended.filter((n) => /Btn$/.test(n)), ["playBtn", "skipBtn"], "two controls on the bar, not three");
+  assert.match(CODE, /ui\.skipBtn\.addEventListener\("click", \(\) => nudgeBy\(SEEK_FWD\)\);/);
 });
 
 test("the bar's skip is a 44px borderless glyph beside the filled ▶", () => {
@@ -128,7 +133,12 @@ test("the bar's skip is a 44px borderless glyph beside the filled ▶", () => {
   assert.strictEqual(valueOf(".fp-skip", "border"), "0", "borderless: the bar's one filled control is ▶");
   assert.strictEqual(valueOf(".fp-skip", "background"), "none");
   assert.strictEqual(valueOf(".fp-skip", "border-radius"), "var(--radius-round)");
-  assert.match(valueOf("body.ui-v2 .fp-play", "background") || "", /var\(--violet\)/, "▶ keeps the filled violet circle");
+  /* RULING FALLEN (Redesign 2026, ambient): the bar's Play is Ember, not violet (violet as an accent was overturned).
+     MUTATION: put `var(--violet)` back in the `#foray-player .fp-play` rule of ui/primitives.css -> red. */
+  const PRIM = fs.readFileSync(path.join(ROOT, "ui/primitives.css"), "utf8");
+  const rule = (sel) => { const m = new RegExp(sel.replace(/[.#]/g, "\\$&") + "\\s*\\{([^}]*)\\}").exec(PRIM); return m ? m[1] : ""; };
+  assert.match(rule("body.ui-v2 #foray-player .fp-play"), /background:\s*var\(--ember\)/, "▶ is the filled Ember circle");
+  assert.ok(!/violet/.test(rule("body.ui-v2 #foray-player .fp-play")), "and no violet");
 });
 
 /* ---------- the sheet ---------- */

@@ -237,7 +237,7 @@ test("the playlist builder renders on Create — not on Home, and not on #/playl
   assert.ok(!playlists.includes("<form"), "the Playlists page renders no builder form at all");
   assert.ok(!playlists.includes("build me a playlist"), "and not the old builder's placeholder");
   assert.ok(playlists.includes('class="page-link-row" href="#/create"'), "the list links to the one builder, on Create");
-  assert.ok(playlists.includes('No playlists yet — <a href="#/create">build one on the Create tab</a>.'),
+  assert.ok(playlists.includes('No playlists yet — <a href="#/create">build one from Discover</a>.'),
     "the empty state says the same sentence Library's does, and points the same way");
   /* That Create holds the one builder (#cr-form/#cr-input) is test/create-page.test.js's
      subject, with a harness that parses the form; this by-id stub cannot. */
@@ -322,11 +322,11 @@ test("the menu lists exactly the five named destinations, in the founder's order
   const items = [...INDEX_HTML.matchAll(/<a class="drawer-section" href="([^"]+)">([^<]+)<\/a>/g)]
     .map((m) => [m[2], m[1]]);
   assert.deepStrictEqual(items, [
-    ["Home", "#/"],
-    /* "Search", not "Shows", since 2026-09-22: one name per destination, and
+    ["Today", "#/"],
+    /* "Discover" since Redesign 2026 ("Search" from 2026-09-22): one name per destination, and
        the tab bar's name wins (audit personas 36 and 76). Same page, same
        place in the founder's order. */
-    ["Search", "#/shows"],
+    ["Discover", "#/shows"],
     ["Playlists", "#/playlists"],
     ["Forays", "#/forays"],
     ["Up Next", "#/queue"],

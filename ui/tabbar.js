@@ -1,11 +1,11 @@
-/* ui/tabbar.js — Tab bar: the four tabs and their active state.
+/* ui/tabbar.js — Tab bar: the three tabs and their active state.
    A CLASSIC script like app.js, not a module: it shares app.js's globals and
    is loaded by index.html after app.js, in the order listed in
    docs/redesign-2026/split-notes.md. Declarations only at the top level, so
    nothing here runs until app.js's boot (ui/boot.js) starts init(). */
 
 
-/* ---------- U-02: the four-tab bar (docs/ui-transition-plan.md) ----------
+/* ---------- U-02: the tab bar (three tabs since Redesign 2026) (docs/ui-transition-plan.md) ----------
 
    Built and appended in JS, exactly like the diagnostics/delete-my-data
    controls just above and for the identical reason stated on those: this
@@ -23,29 +23,23 @@
    the flag goes off, sidesteps that cascade question entirely instead of
    relying on getting it right. */
 const TAB_ROUTES = [
-  { key: "home", label: "Home", hash: "#/",
-    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
-      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-      '<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>' },
-  { key: "search", label: "Search", hash: "#/shows",
-    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
-      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-      '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>' },
-  { key: "create", label: "Create", hash: "#/create",
-    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
-      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-      '<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>' },
-  { key: "library", label: "Library", hash: "#/library",
-    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
-      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-      '<path d="M4 19V5a2 2 0 0 1 2-2h9l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M15 3v5h5"/></svg>' },
+  { key: "home", label: "Today", hash: "#/", glyph: "house" },
+  { key: "search", label: "Discover", hash: "#/shows", glyph: "compass" },
+  { key: "library", label: "Library", hash: "#/library", glyph: "books" },
 ];
+
+/** THE TAB GLYPH (Redesign 2026, ambient "Iconography"): Phosphor Regular while the tab is inert and
+    its Fill twin while it is the current one, so the state is a change of shape and never only of
+    colour. Drawn from the sprite through <use>, never a text glyph or an inline path. */
+function tabGlyph(glyph, active) {
+  return typeof agIcon === "function" ? agIcon(active ? glyph + "-fill" : glyph, 28) : "";
+}
 
 /** Which tab a hash belongs to, for highlighting `aria-current`. EVERY ROUTE
     LIGHTS A TAB (audit 2026-09-22): Home; everything shows/episode/category-
     shaped to Search, including a browse pill's `#/shows/q/<label>` (the old
     `shows$` missed it, so tapping a pill ON the Search page un-lit Search);
-    playlist/subject-queue-shaped to Create; and everything the listener keeps —
+    playlist/subject-queue-shaped to Search too (Create is folded into Discover); and everything the listener keeps —
     Library's own sections (Up Next, Forays, Followed shows) and their Interests
     — to Library. Anything else is rendered as Home by the router, so it is
     Home here too: the two fallbacks used to disagree by construction, and an
@@ -53,7 +47,8 @@ const TAB_ROUTES = [
 function tabForHash(hash) {
   const h = currentHash(hash);
   if (/^#\/(shows($|\/)|show\/|category\/)/.test(h)) return "search";
-  if (/^#\/(playlists$|playlist\/|subject\/|create$)/.test(h)) return "create";
+  /* Create is folded into Discover (ambient DIRECTION.md: three tabs, Today, Discover, Library). */
+  if (/^#\/(playlists$|playlist\/|subject\/|create$)/.test(h)) return "search";
   if (/^#\/(library$|queue$|forays$|foray\/|starred-shows$|interests$)/.test(h)) return "library";
   if (/^#\/episode\//.test(h)) return "search"; // reached from a show/search result
   return "home";
@@ -95,7 +90,8 @@ function renderTabBar() {
       a.className = "tab-btn";
       a.href = t.hash;
       a.dataset.tabKey = t.key;
-      a.innerHTML = `${t.icon}<span>${esc(t.label)}</span>`;
+      a.innerHTML = `${tabGlyph(t.glyph, false)}<span>${esc(t.label)}</span>`;
+      a.dataset.tabFill = "0";
       bar.append(a);
     }
     /* TAPPING THE TAB YOU ARE ON TAKES YOU TO THE TOP (audit 2026-09-22) — the
@@ -110,7 +106,14 @@ function renderTabBar() {
   }
   const active = tabForHash(location.hash);
   bar.querySelectorAll(".tab-btn").forEach((a) => {
-    if (a.dataset.tabKey === active) a.setAttribute("aria-current", "page");
+    const on = a.dataset.tabKey === active;
+    if (on) a.setAttribute("aria-current", "page");
     else a.removeAttribute("aria-current");
+    /* The glyph follows the state: Fill on the current tab, Regular on the rest. */
+    const t = TAB_ROUTES.find((r) => r.key === a.dataset.tabKey);
+    if (t && a.dataset.tabFill !== (on ? "1" : "0")) {
+      a.innerHTML = `${tabGlyph(t.glyph, on)}<span>${esc(t.label)}</span>`;
+      a.dataset.tabFill = on ? "1" : "0";
+    }
   });
 }

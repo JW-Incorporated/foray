@@ -487,13 +487,12 @@ test("Library lists the shows the listener follows, linking to each show", () =>
   assert.ok(html.includes("A Followed Show"));
 });
 
-test("the drawer and the tab bar use one name for #/shows; the page's heading is Discover (the Dock screen renames the tab)", () => {
+test("the drawer and the tab bar use one name for #/shows; the page's heading is Discover too", () => {
   /* The tab bar's names win (founder default R6). MUTATION: put "Shows" back in
      index.html's drawer. REDESIGN 2026 (ambient, Discover): the page's heading
-     is "Discover" (BUILD-PLAN screen 4), and so will be the tab and the drawer
-     entry once the Dock screen (screen 2) lands its three-tab bar; until then the
-     legacy tab bar and drawer both still say "Search". The two legacy names are
-     pinned to each other, and the page's own heading is pinned to the direction's.
+     is "Discover" (BUILD-PLAN screen 4), and since Discover iteration 3 so are the tab
+     (the three-tab bar: Today, Discover, Library) and the drawer entry. The drawer and
+     the tab are pinned to each other, and the page's own heading to the direction's.
      MUTATION: change the heading to "Search" in renderAllShows -> the last
      assertion fails. */
   const drawerName = /<a class="drawer-section" href="#\/shows">([^<]+)<\/a>/.exec(INDEX_HTML)[1];

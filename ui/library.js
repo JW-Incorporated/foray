@@ -151,8 +151,8 @@ function renderLibrary() {
       + (allPlaylists.length > 5 ? `<a class="lib-more" href="#/playlists">All ${allPlaylists.length} playlists ›</a>` : "")
     /* It said "build one from the home screen", and the builder left Home on
        2026-09-03 — the note named the one screen certain not to have it. It
-       names the Create tab, and links there. */
-    : `<p class="note">No playlists yet — <a href="#/create">build one on the Create tab</a>.</p>`;
+       names Discover (the Create tab is folded into it), and links to #/create. */
+    : `<p class="note">No playlists yet — <a href="#/create">build one from Discover</a>.</p>`;
 
   const queueHtml = queued.length
     ? libSummaryRow("/queue", "Up Next", `${queued.length} queued`)
@@ -212,6 +212,6 @@ function renderPlaylists() {
           </div>
           <span class="chev">›</span>
         </a>`).join("")
-      : `<p class="note">No playlists yet — <a href="#/create">build one on the Create tab</a>.</p>`}
+      : `<p class="note">No playlists yet — <a href="#/create">build one from Discover</a>.</p>`}
     </div>`;
 }

@@ -345,13 +345,13 @@ test("the menu carries a Shows destination pointing at #/shows", () => {
      line from index.html. This fails, and #/shows becomes an address with no
      link to it anywhere in the app.
 
-     Named "Search" since 2026-09-22 (and so is the page's heading, in the
+     Named "Discover" since Redesign 2026, "Search" before (and so is the page's heading, in the
      three route assertions above and below): one name per destination, and
      the tab bar's name wins (audit personas 36 and 76). */
   const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
   assert.ok(
-    /<a class="drawer-section" href="#\/shows">Search<\/a>/.test(html),
-    "the drawer must carry a Search entry linking to #/shows"
+    /<a class="drawer-section" href="#\/shows">Discover<\/a>/.test(html),
+    "the drawer must carry a Discover entry linking to #/shows"
   );
 });
 

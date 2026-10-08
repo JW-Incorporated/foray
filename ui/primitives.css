@@ -334,6 +334,25 @@ body.ag-discover.ui-v2.fp-open #foray-player {
 }
 body.ag-discover #foray-player .fp-show { color: var(--text-2); }   /* the legacy grey is 4.43:1 on the Veil tint; text-2 clears AA there */
 body.ag-discover #foray-player .fp-progress { background: transparent; }   /* the legacy track is a navy line across the Veil's top edge */
+
+/* ---- The Dock's two bars on the Afterglow tokens (Discover iteration 3: tab bar and mini player) ----
+   Global to the app, not to Discover: the tab bar and the mini bar are one object on every page.
+   Specificity does the ordering (an id in the selector), so none of this depends on stylesheet order. */
+/* Mini player: Ember Play (violet as an accent was overturned; a third hue fights the artwork), the title in
+   the body face at the Label style (DM Sans, not Fraunces: the Dock must not compete with screen titles), the
+   show line at Caption, the transport slot a 44 forward-30 glyph, and the 2px Glow progress line on the top
+   edge, across the seam with the field or the page. The line is the playing item's own light, so it is Glow. */
+body.ui-v2 #foray-player .fp-play { background: var(--ember); border-color: var(--ember); color: var(--ember-ink); width: calc(var(--tap) + var(--s-1)); height: calc(var(--tap) + var(--s-1)); }   /* the 48 Play of the direction; the 44 floor still holds */
+body.ui-v2 #foray-player .fp-title { font: var(--t-label); color: var(--text); }
+body.ui-v2 #foray-player .fp-show { font: var(--t-caption); }
+body.ui-v2 #foray-player .fp-progress { height: calc(var(--s-1) / 2); background: transparent; }
+body.ui-v2 #foray-player .fp-fill { background: var(--glow); }
+body.ui-v2 #foray-player .fp-skip .fp-skip-glyph { width: var(--icon-tab); height: var(--icon-tab); fill: currentColor; stroke: none; pointer-events: none; }
+/* Tab bar: Phosphor glyphs from the sprite (28 here, 24 in Discover's receded row), the current tab in Lamp with
+   its Fill twin (ui/tabbar.js swaps the glyph), never an Ember outline: Ember is the listener's own marks only. */
+body.ui-v2 .tab-bar .tab-btn .icon { width: var(--icon-tab); height: var(--icon-tab); fill: currentColor; stroke: none; pointer-events: none; }
+body.ui-v2 .tab-bar .tab-btn { color: var(--text-2); }
+body.ui-v2 .tab-bar .tab-btn[aria-current="page"] { color: var(--lamp-text); }
 /* Content runs under the Dock and fades to bg behind it, never sliced by its edge: a bg0 fade rises 32px
    above the Dock's top row and is solid from there down (the Veil is a tint of bg0, so it reads as one
    surface). It tracks the Dock's height: the field row and the tab row, plus the mini player when it

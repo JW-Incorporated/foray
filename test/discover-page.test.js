@@ -505,3 +505,56 @@ test("every screens.json row Discover owns points at a harness state and step th
     assert.ok(map[id].regions.field, `${id} measures the field`);
   }
 });
+
+/* ==================================================================== */
+/* 8. THE DOCK'S TWO BARS (iteration 3: the mini player and the tab bar)  */
+/* ==================================================================== */
+
+/* The rule body for an exact selector in ui/primitives.css (the last one wins, like the cascade for equal specificity). */
+function primRule(sel) {
+  const css = read("ui/primitives.css").replace(/\/\*[\s\S]*?\*\//g, "");
+  const re = new RegExp("(?:^|\\})\\s*" + sel.replace(/[.#\[\]"=()]/g, "\\$&") + "\\s*\\{([^}]*)\\}", "g");
+  let body = null, m;
+  while ((m = re.exec(css))) body = m[1];
+  return body;
+}
+
+test("the mini player is Ember, DM Sans and lit by a 2px Glow line — not violet, not Fraunces, not a bare seam", () => {
+  /* The Discover fidelity findings of iteration 3. MUTATIONS, each run red: (a) `background: var(--violet)` in the
+     .fp-play rule; (b) `font: var(--t-headline)` (Fraunces) in the .fp-title rule; (c) `background: var(--amber)` in the
+     .fp-fill rule (the line is the playing item's light, Glow, not the listener's Ember); (d) height 3px in the
+     .fp-progress rule; (e) delete the .fp-progress rule (the legacy 3px navy track returns). Harness audit: this reads
+     the shipped stylesheet, not a copy of the rule, and the rules sit behind an id so stylesheet order cannot rescue them. */
+  const play = primRule("body.ui-v2 #foray-player .fp-play");
+  assert.ok(play, "the Ember Play rule exists");
+  assert.match(play, /background:\s*var\(--ember\)/);
+  assert.match(play, /color:\s*var\(--ember-ink\)/, "and its glyph is the ink that clears AA on Ember");
+  assert.ok(!/violet/.test(play), "no violet");
+  assert.match(play, /width:\s*calc\(var\(--tap\)\s*\+\s*var\(--s-1\)\)/, "48 across: the direction's Play, above the 44 floor");
+  const title = primRule("body.ui-v2 #foray-player .fp-title");
+  assert.match(title, /font:\s*var\(--t-label\)/, "the title is the Label style (DM Sans 14/600)");
+  assert.ok(!/display|headline|title\b/.test(title.replace(/--t-label/g, "")), "and never a Fraunces style");
+  const prog = primRule("body.ui-v2 #foray-player .fp-progress");
+  assert.match(prog, /height:\s*calc\(var\(--s-1\)\s*\/\s*2\)/, "2px: half the 4 step");
+  assert.match(prog, /background:\s*transparent/, "the track draws nothing; only the line does");
+  const fill = primRule("body.ui-v2 #foray-player .fp-fill");
+  assert.match(fill, /background:\s*var\(--glow\)/, "the line is Glow");
+  const skip = primRule("body.ui-v2 #foray-player .fp-skip .fp-skip-glyph");
+  assert.match(skip, /width:\s*var\(--icon-tab\)/, "the forward-30 glyph is drawn at the 28 tab-bar icon size inside its 44 target");
+});
+
+test("the tab bar's glyphs are sized from the sprite tokens and the current tab is Lamp, never Ember", () => {
+  /* MUTATIONS, each run red: (a) `color: var(--ember)` (or --amber) in the current-tab rule -> the Lamp assertion; (b) delete
+     the `.icon` rule -> the legacy 22px rule would size an SVG that is no longer an inline path, and the sprite glyph
+     would fall back to the UA's 300x150 default svg box, which this assertion's width catches. The Fill-versus-Regular
+     swap is test/tab-bar.test.js's subject (it needs the app's own renderTabBar). */
+  const cur = primRule('body.ui-v2 .tab-bar .tab-btn[aria-current="page"]');
+  assert.ok(cur, "the current-tab rule exists");
+  assert.match(cur, /color:\s*var\(--lamp-text\)/);
+  assert.match(primRule("body.ui-v2 .tab-bar .tab-btn"), /color:\s*var\(--text-2\)/, "an inert tab is text-2, not the legacy lavender");
+  assert.ok(!/ember|amber|accent/.test(cur), "Ember is the listener's own marks, not where they are");
+  const icon = primRule("body.ui-v2 .tab-bar .tab-btn .icon");
+  assert.match(icon, /width:\s*var\(--icon-tab\)/);
+  assert.match(icon, /height:\s*var\(--icon-tab\)/);
+  assert.match(icon, /fill:\s*currentColor/, "the glyph takes the tab's colour");
+});

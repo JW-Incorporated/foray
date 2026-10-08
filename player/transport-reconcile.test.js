@@ -1666,10 +1666,10 @@ function findWhere(node, pred) {
 }
 const labelled = (prefix) => (n) => String(n.getAttribute?.("aria-label") ?? "").startsWith(prefix);
 const sheet = (doc) => ({
-  /* The mini bar's ↺15 (`.fp-skip`, visual pass 1) is labelled the same way
-     and sits earlier in the tree; the sheet's own is the `.fp-btn`. */
+  /* The mini bar's forward-30 (`.fp-skip`, Redesign 2026) is labelled "Forward 30 seconds" like the
+     sheet's own and sits earlier in the tree; the sheet's are the `.fp-btn`s, so both are matched by class. */
   back: findWhere(doc.body, (n) => n.className === "fp-btn" && labelled("Back ")(n)),
-  fwd: findWhere(doc.body, labelled("Forward ")),
+  fwd: findWhere(doc.body, (n) => n.className === "fp-btn" && labelled("Forward ")(n)),
   scrub: find(doc.body, "fp-scrub"),
   fill: find(doc.body, "fp-fill"),
   left: find(doc.body, "fp-left"),
@@ -2710,21 +2710,23 @@ test("VISUAL PASS: inside a Foray the sheet's ↺15 nudges within the clip — i
   restore();
 });
 
-test("VISUAL PASS: the mini bar's ↺15 is the same nudge, for an episode and for a Foray", async (t) => {
-  /* KILLING MUTATION: drop `skipBtn` from `bar.append(...)`, or point its
-     handler at `forayPrevious`. */
+test("the mini bar's forward 30 is the same nudge, for an episode and for a Foray", async (t) => {
+  /* RULING FALLEN (Redesign 2026, ambient Discover iteration 3): the mini slot was ↺15 (persona 10) and is
+     now forward 30, the direction's custom glyph. KILLING MUTATION: drop `skipBtn` from `bar.append(...)`,
+     point its handler at `forayPrevious`, or back at `nudgeBy(-SEEK_BACK)` (the landing assertion reads 120). */
   const { client, doc, audio, restore } = await bootClient(t);
   await client.playForay(synthetic(), { startIndex: 0 });
   await settle();
   const skip = find(doc.body, "fp-skip");
   assert.ok(skip, "the bar carries a skip control");
-  assert.equal(skip.getAttribute("aria-label"), "Back 15 seconds");
+  assert.equal(skip.getAttribute("aria-label"), "Forward 30 seconds");
+  assert.ok(/#i-fwd30"/.test(skip.innerHTML || ""), "drawn from the sprite, not a text glyph");
   audio.currentTime = 150;
   audio.fire("timeupdate");
   await settle();
   await skip.click();
   await settle();
-  assert.ok(Math.abs(audio.currentTime - 135) < 0.01, `Foray: landed at ${audio.currentTime}s`);
+  assert.ok(Math.abs(audio.currentTime - 180) < 0.01, `Foray: landed at ${audio.currentTime}s`);
   assert.equal(client.forayStatus().index, 0);
   restore();
 });

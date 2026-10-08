@@ -1073,7 +1073,7 @@
       "reason": "dom-only",
       "why": "The previous/next clip row's label and visibility. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
     },
-    "VISUAL PASS: the mini bar's ↺15 is the same nudge, for an episode and for a Foray": {
+    "the mini bar's forward 30 is the same nudge, for an episode and for a Foray": {
       "reason": "dom-only",
       "why": "The mini bar reusing the sheet's ↺15 handler is page wiring; the nudge itself is a seekBy the engine performs (manager-foray / transport families). Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
     },

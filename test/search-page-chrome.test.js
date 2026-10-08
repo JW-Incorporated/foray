@@ -218,7 +218,7 @@ test("the Shows page renders no '220 shows in 4a's catalogue' subtitle at all", 
   m.ctx.renderAllShows();
   const html = m.view();
   /* The heading is "Discover" since Redesign 2026 (ambient screen 4; it was "Search" from 2026-09-22 to
-     2026-10-07). The tab bar and drawer keep "Search" until the Dock screen renames the tab. */
+     2026-10-07). The tab bar and drawer say "Discover" too (iteration 3). */
   assert.ok(html.includes('<h2 class="t-title">Discover</h2>'), "fixture assumption: this is still the Shows page");
   assert.ok(!html.includes("in 4a&#39;s catalogue") && !html.includes("in 4a's catalogue"),
     "the catalogue-count subtitle must be gone");
