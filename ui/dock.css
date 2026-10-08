@@ -56,7 +56,7 @@ body.ui-v2 {
      not slide the light). The cast (#dock-cast) and the fade's own copy of it (.dock-fade::before) both read it, so
      the light is one radial whichever of the two paints it. */
   --cast-centre: calc(var(--safe-bottom) + var(--dock-inset) + var(--dock-rest-h) - var(--s-6));
-  padding-bottom: var(--dock-reserve);
+  padding-bottom: calc(var(--dock-reserve) + var(--kb-inset, 0px));   /* the Dock rides the keyboard (--kb-inset, 0 when none), so the page scrolls its last row above the field, not under it */
 }
 body.ui-v2.fp-open { --dock-mini-h: var(--mini); }
 body.ui-v2.sh-compose { --dock-field-h: var(--dock-field-row); --dock-tab-h: var(--dock-tab-receded); --dock-tab-rest: var(--dock-tab-receded); }
@@ -251,8 +251,7 @@ body.ui-v2 .hv2-play { color: var(--bg); }   /* the legacy page colour: dark in 
       Dock is the field row alone, riding the keyboard's top edge (the mini row and the tab bar are
       `display: none` - an author rule, never `hidden`, for the cascade reason in the header).
    --------------------------------------------------------------------------- */
-body.ui-v2.kb-open .dock-layer .dock { bottom: calc(var(--kb-inset, 0px) + var(--s-2)); }
-body.ui-v2.kb-open .dock-layer .dock-mini, body.ui-v2.kb-open .dock-layer .tab-bar,
+body.ui-v2.kb-open .dock-layer .dock { bottom: calc(var(--kb-inset, 0px) + var(--s-2)); }body.ui-v2.kb-open .dock-layer .dock-mini, body.ui-v2.kb-open .dock-layer .tab-bar,
 body.ui-v2.sh-searching .dock-layer .dock-mini, body.ui-v2.sh-searching .dock-layer .tab-bar { display: none; }
 body.ui-v2.kb-open .dock-layer .dock-fade, body.ui-v2.sh-searching .dock-layer .dock-fade,
 body.ui-v2.kb-open #dock-cast, body.ui-v2.sh-searching #dock-cast { opacity: 0; }

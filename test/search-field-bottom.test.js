@@ -400,6 +400,16 @@ test("the field has no placement of its own: the Dock insets it, floats it and l
     "and while the keyboard is up it still rides its top edge");
 });
 
+test("with the keyboard up the page reserves the keyboard's inset too, so the last row scrolls above the field", () => {
+  /* The field rides the keyboard's top edge (--kb-inset); a page that only reserves the Dock's own height ends
+     UNDER the field, and the last playlist row / subject tile sits covered at its centre (the ui-lab tap-targets
+     gate, discover-kb and discover-results-groups). MUTATION: delete the `+ var(--kb-inset, 0px)` from
+     body.ui-v2's padding-bottom in ui/dock.css -> this fails. */
+  const dockCss = require("./helpers/dock-css.js");
+  assert.match(dockCss.declOf("ui/dock.css", "body.ui-v2", "padding-bottom"), /var\(--dock-reserve\).*var\(--kb-inset,\s*0px\)/,
+    "the page's bottom reserve adds the keyboard inset to the Dock reserve");
+});
+
 test("the Dock's rows hide with the keyboard exactly as the old bars did - by a class, not by the hidden attribute", () => {
   /* The old `--sh-dock` summed the tab bar, the player and the safe area to lift the field clear of both,
      and every term was scoped :not(.kb-open) so it fell back to the bare gap while the keyboard was up.
