@@ -74,6 +74,7 @@ function world({ withToday = true } = {}) {
   }
   vm.runInContext([
     liftConst(APP, "BOOT_LOADING_HTML"), lift(APP, "bootLoadingHtml"), liftLet(APP, "bootChromeUndo"),
+    liftLet(APP, "bootKnobPressed"), lift(APP, "settleBootKnob"),
     lift(APP, "paintBootLoading"), lift(APP, "endBootLoadingChrome"),
   ].join("\n"), ctx, { filename: "app.js (boot paint)" });
   return ctx;
@@ -104,8 +105,8 @@ function decl(selector, prop, { first = false } = {}) {
 }
 const h = (selector, prop = "height") => px(decl(selector, prop));
 
-test("the skeleton is one busy region: aria-busy on the root, every block aria-hidden, nothing to press", () => {
-  // MUTATION: drop `decorative: true` from the `sk` helper in todayLoadingHtml -> every block says aria-busy/aria-label "Loading" instead of aria-hidden and this fails.
+test("the skeleton is one busy region: aria-busy on the root, every block aria-hidden, the knob the one live control", () => {
+  // MUTATION: drop `decorative: true` from the `sk` helper in todayLoadingHtml -> every block says aria-busy/aria-label "Loading" instead of aria-hidden and this fails; put `disabled: true` back on the knob in todayHeaderHtml (the iteration-1 flat tile) -> the not-disabled assertion fails.
   reset();
   const html = world().todayLoadingHtml();
   assert.match(html, /^<div class="today today--loading" data-boot-loading role="region" aria-label="Today" aria-busy="true">/);
@@ -116,12 +117,16 @@ test("the skeleton is one busy region: aria-busy on the root, every block aria-h
   }
   assert.strictEqual((html.match(/aria-busy="true"/g) || []).length, 1, "exactly one busy region");
   assert.doesNotMatch(html, /aria-label="Loading"/);
-  /* Nothing in the skeleton is a link, and the only control (the knob) is disabled:
-     the drawer it opens is bound after the first route. */
+  /* Nothing in the skeleton is a link. The only control is the knob, and it is a
+     real paper keycap, not a disabled tile (the disabled keycap recolours its fill
+     and ink to the skeleton's own tones, which read as a placeholder): a press
+     before the drawer is bound is remembered, see the next test. */
   assert.doesNotMatch(html, /<a[\s>]/);
   const buttons = html.match(/<button\b[^>]*>/g) || [];
   assert.strictEqual(buttons.length, 1);
-  assert.match(buttons[0], /\bdisabled\b/);
+  assert.match(buttons[0], /id="today-knob"/);
+  assert.match(buttons[0], /keycap--paper/);
+  assert.doesNotMatch(buttons[0], /\bdisabled\b|aria-disabled/);
   assert.doesNotMatch(html, /\sstyle=|<script|javascript:/i, "strict CSP: no inline style or script");
 });
 
@@ -234,6 +239,28 @@ test("the boot paint is Today's skeleton only on Today's address, and plain ever
   /* An environment without the Today module (or the primitives) is still painted. */
   reset();
   assert.strictEqual(world({ withToday: false }).bootLoadingHtml(), plain);
+});
+
+test("a press on the skeleton's knob is remembered and answered once the drawer is bound, never dropped", () => {
+  // MUTATION: delete the `bootKnobPressed = true` line in paintBootLoading's click handler -> the drawer never opens; delete `bootKnobPressed = false` in settleBootKnob -> a second settle reopens the drawer; delete the `settleBootKnob();` line after bindDrawerChrome() in init() -> the source assertion fails.
+  reset();
+  const w = world();
+  const opened = [];
+  w.openDrawer = (open) => { opened.push(open); };
+  let press = null;
+  const knob = { addEventListener: (type, fn) => { if (type === "click") press = fn; } };
+  const view = { innerHTML: "", querySelector: (sel) => (sel === "#today-knob" ? knob : null) };
+  w.paintBootLoading(view);
+  assert.strictEqual(typeof press, "function", "the knob in the boot paint gets a click handler");
+  w.settleBootKnob();
+  assert.deepStrictEqual(opened, [], "no press, no drawer");
+  press();
+  w.settleBootKnob();
+  assert.deepStrictEqual(opened, [true], "the remembered press opens the drawer");
+  w.settleBootKnob();
+  assert.deepStrictEqual(opened, [true], "answered once");
+  const init = /^async function init\(\) \{[\s\S]*?\n\}/m.exec(APP)[0];
+  assert.match(init, /bindDrawerChrome\(\);\s*settleBootKnob\(\);/, "answered right after the drawer's handlers are bound");
 });
 
 test("painting Today's skeleton also takes Today's body class and puts the tab row up, the plain line does neither", () => {

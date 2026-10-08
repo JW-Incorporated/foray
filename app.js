@@ -6144,15 +6144,29 @@ function bootLoadingHtml() {
     and a tap on one before `state.ready` only changes the address that the first
     route() then reads. */
 let bootChromeUndo = null;
+/** The knob on the boot skeleton is a real key, but the drawer it opens is bound
+    only after the first route. A press before then is remembered here and
+    answered by settleBootKnob() once the drawer is wired, never dropped. */
+let bootKnobPressed = false;
 function paintBootLoading(view) {
   const html = bootLoadingHtml();
   view.innerHTML = html;
   if (html === BOOT_LOADING_HTML) return;
   try {
     bootChromeUndo = { tabBar: !$("#tab-bar") };
+    const knob = typeof view.querySelector === "function" ? view.querySelector("#today-knob") : null;
+    if (knob) knob.addEventListener("click", () => { bootKnobPressed = true; });
     setBodyClass("view-home");
     if (typeof renderTabBar === "function") renderTabBar();
   } catch (_) { /* the skeleton alone is still the honest screen */ }
+}
+
+/** Answer a knob press made on the boot skeleton: called once, right after the
+    drawer's handlers are bound. The loaded Today has its own knob by then. */
+function settleBootKnob() {
+  if (!bootKnobPressed) return;
+  bootKnobPressed = false;
+  try { openDrawer(true); } catch (_) { /* a stub document: nothing to open */ }
 }
 
 /** A boot that FAILED leaves the skeleton's chrome behind it: the failure note
@@ -6416,6 +6430,7 @@ async function init() {
   });
 
   bindDrawerChrome();
+  settleBootKnob();
   /* Android's back button, ordered like every other overlay close — see
      `handleBack`. A no-op on the web and on iOS. */
   bindHardwareBack();

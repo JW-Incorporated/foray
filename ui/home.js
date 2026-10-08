@@ -744,12 +744,15 @@ function todayPlaylistsHtml({ own, generated }) {
   </section>`;
 }
 
-function todayHeaderHtml({ loading = false } = {}) {
-  /* While the documents are still on the wire the knob has nothing to open (the
-     drawer is bound after the first route), so it is drawn disabled, not dead. */
+function todayHeaderHtml() {
+  /* The knob is the one pressable control on the header, so it is a real paper
+     keycap in EVERY state, boot skeleton included (the prototype's loading Today
+     keeps it a raised key in full ink; a flat tile read as a disabled
+     placeholder). At boot the drawer is not bound yet: app.js's paintBootLoading
+     remembers a press and opens the drawer once it is (settleBootKnob). */
   return `<header class="today-top">
     <div class="today-top__title"><h1 class="display-xl today-title" tabindex="-1">Today</h1><span class="readout today-top__date" data-today-date>${esc(todayDateLine())}</span></div>
-    ${tactileKeycap({ size: "sm", variant: "paper", icon: "knob", label: "Settings and dials", id: "today-knob", disabled: loading })}
+    ${tactileKeycap({ size: "sm", variant: "paper", icon: "knob", label: "Settings and dials", id: "today-knob" })}
   </header>`;
 }
 
@@ -762,7 +765,7 @@ function todayHeaderHtml({ loading = false } = {}) {
     layout's own sizes, so the swap moves nothing (the hero's outer height is
     pinned within 4px by test/tactile-home-loading.test.js and by the harness
     state `loading`). The region is ONE busy region: `aria-busy="true"`, every
-    skeleton block `aria-hidden`, nothing here is a link or a control.
+    skeleton block `aria-hidden`, nothing here is a link, and the knob is the one control.
     `data-boot-loading` is what tools/mobile/webview-probe.mjs reads as "app.js
     ran but the first page has not landed"; it must stay on this root. */
 function todayLoadingHtml() {
@@ -770,7 +773,7 @@ function todayLoadingHtml() {
   /* The loaded order is row, the Stretch bridge, row, row (todayAlsoHtml). */
   const row = tactileSkeleton("row", { decorative: true, why: true });
   return `<div class="today today--loading" data-boot-loading role="region" aria-label="Today" aria-busy="true">
-    ${todayHeaderHtml({ loading: true })}
+    ${todayHeaderHtml()}
     ${sk("hero")}
     <div class="today-sect" aria-hidden="true">
       <h2 class="heading">Also today</h2>
