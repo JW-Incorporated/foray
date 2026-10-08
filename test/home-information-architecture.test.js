@@ -409,7 +409,8 @@ test("'Starred Shows' left the menu without leaving the app — Library carries 
   m.state.ready = true;
   m.ctx.location.hash = "#/starred-shows";
   m.ctx.route();
-  assert.ok(m.view().includes("Followed shows"), "#/starred-shows must still route to its own page");
+  assert.strictEqual(m.ctx.location.hash, "#/library", "#/starred-shows folds into Library (ROUTE_ALIASES)");
+  assert.ok(m.view().includes("Show A"), "…and Library's grid paints the followed show");
 });
 
 test("with nothing followed, Discover draws no 'Followed shows ›' row — a fresh install's first tappable row was a dead end", () => {
