@@ -250,7 +250,7 @@ test("the page opens on Forays with nothing queued, remembers a chosen chip, and
      remembered-chip half fails.
      MUTATION 3: render the badge at 0 (`queued > 0` -> `queued >= 0`) - the
      badge half fails. */
-  const m = await mountBooted();
+  const m = await mountBooted({ cp_history: JSON.stringify(["played-before"]) });   // not the first-run screen
   m.ctx.renderLibrary();
   assert.strictEqual(one(m, '[aria-selected="true"]').getAttribute("data-yours-chip"), "forays");
   assert.ok(!one(m, ".chip__count"), "no badge at 0 queued");
@@ -895,4 +895,139 @@ test("Playing, the Up Next list and the toast keep the listener copy rules", asy
   }
   assert.ok(sheet && /Clear Up Next[?]/.test(textOf(sheet)), "fixture assumption: the sheet was read");
   assert.match(m.html(), /Plays in this order/);
+});
+
+/* ==================================================================== */
+/* 10. FIRST RUN: ONE .empty FOR THE WHOLE SCREEN (group D `library-empty`) */
+/* ==================================================================== */
+
+const EMPTY_COPY = "Nothing here yet. Follow a show or play today's foray and it lands here.";
+
+test("first run: ONE .empty for the whole screen (radio mark, the sentence, a Find key) under a strip that still renders", async () => {
+  /* BUILD-NOTES 3.16 and 4.5 ("Empty: one state for the whole screen on first run").
+     MUTATION 1: drop `+ key +` from tactileEmpty (ui/primitives.js) - the
+     "never a bare sentence" assertions fail (no keycap in .empty).
+     MUTATION 2: render the six panels as before (nothingYet false) - the
+     single-.empty and no-per-chip-note assertions fail.
+     MUTATION 3: yoursActiveKey's `|| empty` removed - the "0 queued" readout
+     and the selected-chip assertions fail (it opens on Forays: "0 forays").
+     MUTATION 4: put the badge back at 0 (`queued > 0` -> `queued >= 0`) - the
+     no-badge assertion fails. */
+  const m = await mountBooted();
+  m.ctx.renderLibrary();
+  const empties = q(m, ".empty");
+  assert.strictEqual(empties.length, 1, "exactly one .empty on the page, not one per chip");
+  const e = empties[0];
+  const marks = e.querySelectorAll("svg");
+  assert.strictEqual(marks.length, 1, "the radio mark is the only illustration");
+  assert.strictEqual(marks[0].getAttribute("viewBox"), "0 0 96 96", "a 96px mark");
+  assert.strictEqual(marks[0].getAttribute("aria-hidden"), "true", "decoration, not content");
+  assert.strictEqual(textOf(e.querySelector("p")), EMPTY_COPY, "BUILD-NOTES 3.16's sentence, to the word");
+  const keys = e.querySelectorAll(".keycap");
+  assert.strictEqual(keys.length, 1, "never a bare sentence: one keycap beside it");
+  assert.ok(/keycap--persimmon/.test(keys[0].className), "the key is persimmon");
+  assert.strictEqual(textOf(keys[0]).trim(), "Find a show");
+  assert.strictEqual(keys[0].getAttribute("href"), "#/shows", "and it opens Find, which the app draws at #/shows (the prototype calls the route #/search)");
+  const findTab = vm.runInContext("TAB_ROUTES.find((t) => t.key === 'search').hash", m.ctx);
+  assert.strictEqual(keys[0].getAttribute("href"), findTab, "the key follows the tab bar's own Find route");
+  /* the strip is still there, on Up Next, with no badge, and the readout counts the queue */
+  assert.strictEqual(q(m, "[data-yours-chip]").length, 6, "the chip strip still renders");
+  assert.strictEqual(one(m, '[aria-selected="true"]').getAttribute("data-yours-chip"), "upnext");
+  assert.ok(!one(m, ".chip__count"), "the Up Next badge is hidden at 0");
+  assert.strictEqual(textOf(one(m, "#yours-readout")), "0 queued", "the readout line is '0 queued', with no tail");
+  /* no per-chip panel or per-chip note survives beside it */
+  assert.deepStrictEqual(q(m, ".yours-panel").map((p) => p.id), ["yours-panel-empty"]);
+  assert.strictEqual(q(m, ".note").length, 0, "no 'Nothing saved yet' style line beside the one state");
+  assert.strictEqual(q(m, ".yours-queue").length, 0);
+  /* every chip controls a panel that exists (the tab pattern holds on this page too) */
+  for (const t of q(m, "[data-yours-chip]")) {
+    const panel = one(m, `#${t.getAttribute("aria-controls")}`);
+    assert.ok(panel, `${t.id} controls a panel that exists`);
+  }
+  assert.strictEqual(one(m, "#yours-panel-empty").getAttribute("aria-labelledby"), "yours-chip-upnext");
+});
+
+test("first run: the sentence keeps the listener copy rules (18 words, no banned word, no we/us/our)", () => {
+  /* MUTATION: say "Nothing here yet. We will fill it as you follow a show or
+     play today's foray and it lands here." - the word count and the pronoun
+     assertions fail. */
+  const words = EMPTY_COPY.split(/\s+/).filter(Boolean);
+  assert.ok(words.length <= 18, `${words.length} words`);
+  for (const banned of [/\bfascinating\b/i, /\bdeep dive\b/i, /\bdelves?\b/i, /\bexplores\b/i, /\bwe\b/i, /\bus\b/i, /\bour\b/i, /\btopics?\b/i]) {
+    assert.ok(!banned.test(EMPTY_COPY), `copy uses ${banned}`);
+  }
+  const src = fs.readFileSync(path.join(ROOT, "ui", "library.js"), "utf8");
+  assert.ok(src.includes(EMPTY_COPY), "ui/library.js says exactly this sentence (the test and the page cannot drift)");
+});
+
+test("first run ends the moment ANY of the listener's things exists: queue, played, saved, followed or a playlist", async () => {
+  /* The raw result, not the truncated view: every case renders the full page and
+     asserts the six panels and the absence of #yours-panel-empty.
+     MUTATION (one per case): delete that clause from `nothingYet` in
+     renderLibrary (queueList / followedNow / allSavedRows / allHistoryRows /
+     allPlaylists) - that case still shows the empty state and fails. */
+  const cases = {
+    played: { cp_history: JSON.stringify(["an-episode-played-before"]) },
+    saved: { cp_saved: JSON.stringify({ "an-episode": { id: "an-episode", title: "Kept", saved_at: "2026-01-01T00:00:00.000Z" } }) },
+    followed: { cp_starred_shows: JSON.stringify({ "a-show": { show_id: "a-show", name: "A show", starred_at: "2026-01-01T00:00:00.000Z" } }) },
+    playlist: { cp_playlists: JSON.stringify([{ id: "pl-1", title: "Mine", items: [], created: "2026-01-01T00:00:00.000Z" }]) },
+  };
+  for (const [name, seed] of Object.entries(cases)) {
+    const m = await mountBooted(seed);
+    m.ctx.renderLibrary();
+    assert.ok(!one(m, "#yours-panel-empty"), `${name}: not the first-run screen`);
+    assert.strictEqual(q(m, ".yours-panel").length, 6, `${name}: the six panels`);
+    assert.strictEqual(q(m, ".empty").length, 0, `${name}: no .empty`);
+  }
+  const queued = await mountBooted();
+  queue(queued, 1);
+  queued.ctx.renderLibrary();
+  assert.ok(!one(queued, "#yours-panel-empty"), "queued: not the first-run screen");
+  assert.strictEqual(textOf(one(queued, "#yours-readout")).split(" ")[0], "1");
+});
+
+test("first run: a chip press moves the check and the count and leaves the one state on screen", async () => {
+  /* There is no per-chip panel to show, so a press must not hide the only one.
+     MUTATION: drop the `if (emptyPanel) ... else` guard in selectYoursChip so
+     the hide loop runs - the panel is hidden (nothing on the screen) and the
+     visible-panel assertion fails. */
+  const m = await mountBooted();
+  m.ctx.renderLibrary();
+  const panel = one(m, "#yours-panel-empty");
+  const click = one(m, "#yours-chips")._on.get("click")[0];
+  click({ target: one(m, "#yours-chip-saved") });
+  assert.strictEqual(one(m, "#yours-panel-empty"), panel, "the same node: nothing re-rendered");
+  assert.ok(!panel.hidden, "the one state stays shown");
+  assert.strictEqual(one(m, '[aria-selected="true"]').getAttribute("data-yours-chip"), "saved");
+  assert.strictEqual(textOf(one(m, "#yours-readout")), "0 saved episodes");
+  assert.strictEqual(panel.getAttribute("aria-labelledby"), "yours-chip-saved", "the panel is named by the chosen chip");
+  assert.ok(q(m, "[data-yours-chip]").every((t) => t.getAttribute("aria-controls") === "yours-panel-empty"), "and every chip still controls it after the strip was rebuilt");
+});
+
+test("first run ends in place: the first episode queued while Yours is on screen paints the list and the badge", async () => {
+  /* Without this the screen keeps saying 'nothing' with an episode queued (from
+     the Now Playing sheet, say). MUTATION: drop the `#yours-panel-empty` branch
+     at the top of repaintYoursQueue - the empty state survives the write and
+     the row assertion fails. */
+  const m = await mountBooted();
+  m.ctx.renderLibrary();
+  assert.ok(one(m, "#yours-panel-empty"), "precondition: first run");
+  queue(m, 1);
+  m.ctx.repaintQueuePage();
+  assert.ok(!one(m, "#yours-panel-empty"), "the empty state is gone");
+  assert.strictEqual(q(m, ".yours-qwrap").length, 1, "the queued episode is a row");
+  assert.strictEqual(one(m, ".chip__count").textContent, "1", "and the badge counts it");
+  assert.strictEqual(textOf(one(m, "#yours-readout")).split(" ")[0], "1");
+});
+
+test("tactileEmpty: the link key goes through safeUrl and the default stays the gallery's button", () => {
+  /* MUTATION: drop safeUrl() around d.href in tactileEmpty - the hostile href
+     reaches the page and the first assertion fails. */
+  const m = mount();
+  const hostile = m.ctx.tactileEmpty({ copy: "x", action: "Go", href: "javascript:alert(1)" });
+  assert.ok(!/javascript:/i.test(hostile), "a hostile href never reaches the page");
+  assert.ok(/<a class="keycap keycap--md keycap--persimmon" href="#"/.test(hostile), "it degrades to an inert #");
+  const plain = m.ctx.tactileEmpty({});
+  assert.ok(/<button type="button" class="keycap keycap--md keycap--persimmon"/.test(plain), "no href: the gallery specimen's button, unchanged");
+  assert.ok(plain.includes("Find a show"));
 });

@@ -140,11 +140,14 @@ function yoursChipDefs() {
 }
 
 /** The chip shown now: the listener's last choice this session when it still
-    exists, else Up Next with something queued, else Forays. */
-function yoursActiveKey(queued) {
+    exists, else Up Next with something queued, else Forays. On the first-run
+    screen (`empty`: nothing of the listener's anywhere) it is Up Next, so the
+    readout line says "0 queued" and the strip is the one the screen will have
+    the day something lands. */
+function yoursActiveKey(queued, empty) {
   const keys = yoursChipDefs().map((c) => c.key);
   if (state.yoursChip && keys.includes(state.yoursChip)) return state.yoursChip;
-  return queued > 0 ? "upnext" : "forays";
+  return queued > 0 || empty ? "upnext" : "forays";
 }
 
 /** The readout line under the title for the chip on screen: the Up Next one is
@@ -164,13 +167,34 @@ function yoursReadoutText(key, d) {
   }
 }
 
-function yoursChipsHtml(active, queued) {
+/** The tabpanel a chip controls is its own panel, or, on the whole-screen empty
+    state (one panel, "yours-panel-empty"), that one. */
+function yoursChipsHtml(active, queued, emptyPage) {
   return yoursChipDefs().map((c) => {
     const on = c.key === active;
     const badge = c.key === "upnext" && queued > 0 ? `<span class="chip__count readout">${esc(queued)}</span>` : "";
     const name = badge ? ` aria-label="${esc(`Up Next, ${queued} queued`)}"` : "";
-    return `<button type="button" class="chip" role="tab" id="yours-chip-${esc(c.key)}" data-yours-chip="${esc(c.key)}" aria-selected="${on ? "true" : "false"}" aria-controls="yours-panel-${esc(c.key)}" tabindex="${on ? "0" : "-1"}"${name}>${on ? tactileIcon("ph-check", "sm") : ""}<span>${esc(c.label)}</span>${badge}</button>`;
+    return `<button type="button" class="chip" role="tab" id="yours-chip-${esc(c.key)}" data-yours-chip="${esc(c.key)}" aria-selected="${on ? "true" : "false"}" aria-controls="${esc(emptyPage || $("#yours-panel-empty") ? "yours-panel-empty" : `yours-panel-${c.key}`)}" tabindex="${on ? "0" : "-1"}"${name}>${on ? tactileIcon("ph-check", "sm") : ""}<span>${esc(c.label)}</span>${badge}</button>`;
   }).join("");
+}
+
+/** First run: nothing queued, followed, saved, played, built, downloaded or
+    part-played. ONE `.empty` for the whole screen (BUILD-NOTES 3.16, 4.5): the
+    radio mark, a sentence, the Find key. It stands in for the six panels, so
+    there is no per-chip "nothing here" line to disagree with it, and it is a
+    mark and a key, never a bare sentence. The key opens Find, the tab the app
+    draws as Find (`#/shows`; `#/search` is the prototype's name for it). */
+const YOURS_EMPTY_COPY = "Nothing here yet. Follow a show or play today's foray and it lands here.";
+
+function yoursEmptyPanelHtml(active) {
+  return `<div class="yours-panel yours-panel--empty" role="tabpanel" id="yours-panel-empty" aria-labelledby="yours-chip-${esc(active)}">${tactileEmpty({ copy: YOURS_EMPTY_COPY, action: "Find a show", href: yoursFindHash() })}</div>`;
+}
+
+/** The Find tab's own route, read from the tab bar's definition so the two
+    cannot drift apart. */
+function yoursFindHash() {
+  const tab = typeof TAB_ROUTES !== "undefined" && Array.isArray(TAB_ROUTES) ? TAB_ROUTES.find((t) => t.key === "search") : null;
+  return tab && tab.hash ? tab.hash : "#/shows";
 }
 
 function yoursPanelHtml(key, active, inner) {
@@ -377,6 +401,13 @@ function yoursFocusAfter(panel, held) {
     after every write to cp_queue and every playback move while #/library is the
     page. Returns whether there was a panel to paint. */
 function repaintYoursQueue() {
+  /* The whole-screen empty state has no Up Next panel. The first thing queued
+     (from the Now Playing sheet, say) ends it: paint the page again, with the
+     listener's chip kept. */
+  if ($("#yours-panel-empty")) {
+    if (queueRows().length) renderLibrary();
+    return true;
+  }
   const panel = $("#yours-panel-upnext");
   if (!panel) return false;
   const held = yoursFocusBefore(panel);
@@ -600,7 +631,9 @@ function selectYoursChip(key, { focus = false } = {}) {
   if (!keys.includes(key)) return;
   state.yoursChip = key;
   const panels = typeof $("#view").querySelectorAll === "function" ? [...$("#view").querySelectorAll(".yours-panel")] : [];
-  panels.forEach((p) => { p.hidden = p.id !== `yours-panel-${key}`; });
+  const emptyPanel = $("#yours-panel-empty");
+  if (emptyPanel) emptyPanel.setAttribute("aria-labelledby", `yours-chip-${key}`);
+  else panels.forEach((p) => { p.hidden = p.id !== `yours-panel-${key}`; });
   const queued = queueIds().length;
   const strip = $("#yours-chips");
   if (strip) strip.innerHTML = yoursChipsHtml(key, queued);
@@ -690,6 +723,11 @@ function renderLibrary(chip) {
   const historyHidden = allHistoryRows.length - historyRows.length;
   const allPlaylists = playlists();
   const queueList = queueRows();
+  const followedNow = Object.keys(starredShowsMap()).length;
+  const downloadsNow = state.downloadBridge && Object.values(downloadsValue().items).some((rec) => rec.status === "done");
+  const forayProgressNow = window.ForayPlayer && state.forays ? forayProgressLabels().size : 0;
+  const nothingYet = queueList.length === 0 && followedNow === 0 && allSavedRows.length === 0
+    && allHistoryRows.length === 0 && allPlaylists.length === 0 && !downloadsNow && !forayProgressNow;
 
   const rowHtml = (r, i, ctx) => r.state === "live" ? epRow(r.item, i, ctx, -1) : archivedRow(r.item, i, ctx);
   // History's "unnamed" case (an id neither live in the pool nor covered by a
@@ -733,8 +771,8 @@ function renderLibrary(chip) {
   yoursReadouts.upnext = yoursReadoutText("upnext", { queued: queueList.length, minutes: yoursQueueMinutes(queueList) });
 
   if (typeof chip === "string" && yoursChipDefs().some((c) => c.key === chip)) state.yoursChip = chip;
-  const active = yoursActiveKey(queueList.length);
-  const inner = {
+  const active = yoursActiveKey(queueList.length, nothingYet);
+  const inner = nothingYet ? null : {
     forays: libraryForaysHtml(),
     shows: libraryFollowedHtml(),
     saved: savedHtml,
@@ -753,9 +791,9 @@ function renderLibrary(chip) {
         </div>
         ${tactileKeycap({ size: "sm", variant: "paper", icon: "knob", label: "Settings and dials", id: "yours-knob" })}
       </div>
-      <div class="yours-chips" id="yours-chips" role="tablist" aria-label="Yours">${yoursChipsHtml(active, queueList.length)}</div>
+      <div class="yours-chips" id="yours-chips" role="tablist" aria-label="Yours">${yoursChipsHtml(active, queueList.length, nothingYet)}</div>
       <div class="yours-panels">
-        ${yoursChipDefs().map((c) => yoursPanelHtml(c.key, active, inner[c.key])).join("")}
+        ${nothingYet ? yoursEmptyPanelHtml(active) : yoursChipDefs().map((c) => yoursPanelHtml(c.key, active, inner[c.key])).join("")}
       </div>
     </div>`;
 

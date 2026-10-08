@@ -4611,6 +4611,8 @@ body.ui-v2.kb-open::after { display: none; }
 .empty { display: flex; flex-direction: column; align-items: center; gap: var(--s-4); padding: var(--s-6) 0; color: var(--ink); text-align: center; }
 .empty > svg { width: var(--key-glance); height: var(--key-glance); fill: none; stroke: var(--ink-2); stroke-width: calc(var(--s-1) / 2); stroke-linecap: round; stroke-linejoin: round; }
 .empty p { max-width: 26rem; margin: 0; }
+.empty .empty__copy { font-size: var(--t-body-lg); line-height: var(--lh-body-lg); font-weight: var(--w-body); }   /* body-lg: the prototype's .empty p */
+.empty .keycap { text-decoration: none; }
 .toast { min-height: var(--key); display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding: 0 var(--s-4); border-radius: var(--r-md); background: var(--card); box-shadow: var(--shadow-deck); color: var(--ink); opacity: 0; visibility: hidden; transform: translateY(var(--s-3)); transition: transform var(--d-settle) var(--spring-settle), opacity var(--d-quick) var(--ease-quick), visibility var(--d-quick) linear; }
 .toast.is-visible { opacity: 1; visibility: visible; transform: translateY(0); }
 

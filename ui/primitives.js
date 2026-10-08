@@ -685,9 +685,18 @@ function tactileSkeleton(kind) {
   return '<div class="skel skel--row" aria-busy="true" aria-label="Loading"><span class="skel__shape skel__row-art"></span><div class="skel__row-lines"><span class="skel__shape"></span><span class="skel__shape"></span><span class="skel__shape skel__row-meta"></span></div><span class="skel__shape skel__row-control"></span></div>';
 }
 
+/* The one drawn mark in the app (BUILD-NOTES 3.16): a 96px small radio, 2px --ink-2
+ * stroke, the prototype's own drawing. `href` makes the keycap a link (an <a> styled
+ * as the persimmon key, the way Today's Details key is) for an empty state whose
+ * way out is a route; without it the key is the gallery specimen's button. Both
+ * routes pass safeUrl(). */
 function tactileEmpty(data) {
   var d = data || {};
-  return '<section class="empty"><svg aria-hidden="true" viewBox="0 0 96 96"><rect x="18" y="26" width="60" height="46" rx="12"></rect><path d="M30 42h36M34 54h12M54 54h8"></path><circle cx="38" cy="66" r="3"></circle><circle cx="62" cy="66" r="3"></circle><path d="M34 26c2-9 26-9 28 0"></path></svg><p>' + esc(d.copy || "Nothing here yet. Follow a show and it lands here.") + "</p>" + tactileKeycap({ size: "md", variant: "persimmon", text: d.action || "Find a show", label: d.action || "Find a show" }) + "</section>";
+  var label = d.action || "Find a show";
+  var key = d.href
+    ? '<a class="keycap keycap--md keycap--persimmon" href="' + esc(safeUrl(d.href)) + '"><span class="keycap__label">' + esc(label) + "</span></a>"
+    : tactileKeycap({ size: "md", variant: "persimmon", text: label, label: label });
+  return '<section class="empty"><svg aria-hidden="true" focusable="false" viewBox="0 0 96 96"><rect x="12" y="30" width="72" height="48" rx="10"></rect><circle cx="34" cy="54" r="12"></circle><circle cx="34" cy="54" r="3"></circle><path d="M52 44h20M52 54h20M52 64h12"></path><path d="M28 30 62 12"></path></svg><p class="empty__copy">' + esc(d.copy || "Nothing here yet. Follow a show and it lands here.") + "</p>" + key + "</section>";
 }
 
 /* A resting toast is invisible, so its Undo must be unreachable too: it renders
