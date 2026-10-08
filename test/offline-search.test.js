@@ -70,7 +70,7 @@ const PAGE_IDS = [
   "view", "drawer", "drawer-overlay", "drawer-playlists", "family-toggle",
   "player-toggle", "menu-btn", "refresh-btn", "banner-slot", "pl-form",
   "pl-input", "pl-note", "sh-form", "sh-input", "sh-note", "sh-offline-note",
-  "sh-partial-note", "sh-results", "ep-search-results", "pl-search-results",
+  "sh-partial-note", "sh-results", "ep-search-results", "pl-search-results", "sh-empty",
 ];
 
 const SHOWS = [
@@ -223,18 +223,24 @@ test("the offline note's static copy says what an offline search can honestly sa
   assert.doesNotMatch(note[1], /available offline/, "it must not promise offline availability");
 });
 
-test("an EMPTY offline search says so in one line — no 'No shows found' over 'available offline' over 'Try again'", async () => {
+test("an EMPTY offline search says so once, in the EmptyState — no 'No shows found' over 'available offline' over 'Try again'", async () => {
   /* Audit round 2, search-12: offline, a query outside the curated 220 stacked
-     three notes under the pill, each true and together contradictory. Now the
-     empty note itself says "You're offline", the offline note (which explains
-     ROWS) stays hidden with none to explain, and the failure line with its
-     useless-offline Try again is not painted. MUTATION: drop the
+     three notes under the pill, each true and together contradictory. Now (Redesign
+     2026) the one EmptyState says "Nothing named <q>." and, offline, that only names
+     already on the device were checked; the status line is gone, the offline note
+     (which explains ROWS) stays hidden with none to explain, and the failure line
+     with its useless-offline Try again is not painted. MUTATION: drop the
      `isOfflineForShardSearch()` clause from paintShowSearchPartialNote, or the
-     `shows.length > 0` clause from the offline note's hidden test. */
+     `shows.length > 0` clause from the offline note's hidden test, or the offline
+     line from paintDiscoverEmpty. */
   const m = mount({ onLine: false });
   m.type("zzqx-nothing");
   await settled(m);
-  assert.match(m.note().textContent, /^You're offline — no shows found for “zzqx-nothing”\.$/, m.note().textContent);
+  const empty = m.byId.get("sh-empty");
+  assert.strictEqual(empty.hidden, false, "the page says nothing was found");
+  assert.ok(empty.innerHTML.includes("Nothing named “zzqx-nothing”."), empty.innerHTML);
+  assert.ok(empty.innerHTML.includes("You&#39;re offline, so only names already on this device were checked."), "and why that is not the whole answer");
+  assert.strictEqual(m.note().hidden, true, "no second line in the status note above it");
   assert.strictEqual(m.offlineNote().hidden, true, "no rows, so nothing for the offline note to explain");
   const partial = m.byId.get("sh-partial-note");
   assert.strictEqual(partial.hidden, true, `the failure line is not painted offline: ${partial.innerHTML}`);
@@ -387,8 +393,9 @@ test("a shard row duplicating an already-painted curated show by title is droppe
   const html = m.results().innerHTML;
   /* Counted as a row's visible title, not as any occurrence: since audit round
      2 (search-11) each row also carries its full name in `title=`, because the
-     visible title is clamped to two lines. */
-  const TITLE = 'class="show-result-title">Lex Fridman Podcast<';
+     visible title is clamped to two lines. (Redesign 2026: the title is the
+     row's `--t-label` span, `discoverShowRow`.) */
+  const TITLE = '<span class="t-label clamp2">Lex Fridman Podcast<';
   const first = html.indexOf(TITLE);
   const second = html.indexOf(TITLE, first + 1);
   assert.ok(first >= 0, "the curated show must still appear");

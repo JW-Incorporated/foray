@@ -270,6 +270,7 @@ export const SHELL_FILES = [
      as JS), which is why this is listed here and not derived. */
   "ui/tokens.css",
   "ui/primitives.css",
+  "ui/dock.css", // Redesign 2026 (ambient): the Dock's own styles; minified like styles.css
   "ui/today.css",
   "ui/onboarding.css",
   "ui/show.css",

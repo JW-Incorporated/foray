@@ -64,7 +64,7 @@
         },
         "mini": {
           "prototype": ".mini",
-          "app": "#foray-player"
+          "app": "#dock-mini"
         },
         "tabBar": {
           "prototype": ".tabbar",
@@ -106,26 +106,26 @@
         "route": "#/search"
       },
       "app": {
-        "state": "search",
-        "step": "search-idle"
+        "state": "discover",
+        "step": "discover-mini"
       },
       "regions": {
         "header": {
           "prototype": ".t-title",
-          "app": ".page-head"
+          "app": ".disc-head"
         },
         "field": {
           "prototype": ".dock-field",
           "app": "#sh-compose"
         },
         "rows": {
-          "prototype": ".ep-row",
-          "app": ".show-result",
+          "prototype": ".subj",
+          "app": ".ag-subject-tile",
           "mode": "all"
         },
         "mini": {
           "prototype": ".mini",
-          "app": null
+          "app": "#foray-player"
         },
         "tabBar": {
           "prototype": ".tabbar",
@@ -669,26 +669,22 @@
         "route": "?state=typing#/search"
       },
       "app": {
-        "state": "search",
-        "step": "search-results-history"
+        "state": "discover",
+        "step": "discover-typing"
       },
       "regions": {
         "header": {
           "prototype": ".t-title",
-          "app": ".page-head"
+          "app": ".disc-head"
         },
         "field": {
           "prototype": ".dock-field",
           "app": "#sh-compose"
         },
         "rows": {
-          "prototype": ".ep-row",
-          "app": ".show-result",
+          "prototype": ".q-row, .ep-row",
+          "app": ".dsc-row",
           "mode": "all"
-        },
-        "mini": {
-          "prototype": ".mini",
-          "app": null
         },
         "tabBar": {
           "prototype": ".tabbar",
@@ -702,26 +698,22 @@
         "route": "?state=results#/search"
       },
       "app": {
-        "state": "search",
-        "step": "search-results-history"
+        "state": "discover",
+        "step": "discover-results"
       },
       "regions": {
         "header": {
           "prototype": ".t-title",
-          "app": ".page-head"
+          "app": ".disc-head"
         },
         "field": {
           "prototype": ".dock-field",
           "app": "#sh-compose"
         },
         "rows": {
-          "prototype": ".ep-row",
-          "app": ".show-result",
+          "prototype": ".q-row, .ep-row",
+          "app": ".dsc-row",
           "mode": "all"
-        },
-        "mini": {
-          "prototype": ".mini",
-          "app": null
         },
         "tabBar": {
           "prototype": ".tabbar",
@@ -735,26 +727,159 @@
         "route": "?state=noresults#/search"
       },
       "app": {
-        "state": "search",
-        "step": "search-no-results"
+        "state": "discover",
+        "step": "discover-no-results-subject"
       },
       "regions": {
         "header": {
           "prototype": ".t-title",
-          "app": ".page-head"
+          "app": ".disc-head"
+        },
+        "field": {
+          "prototype": ".dock-field",
+          "app": "#sh-compose"
+        },
+        "empty": {
+          "prototype": ".empty",
+          "app": ".dsc-empty .ag-empty"
+        },
+        "subject": {
+          "prototype": ".empty .subj",
+          "app": ".dsc-empty-tile .ag-subject-tile"
+        },
+        "primary": {
+          "prototype": ".make-chip .btn",
+          "app": ".dsc-make-btn"
+        },
+        "tabBar": {
+          "prototype": ".tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "discover-kb": {
+      "title": "Discover, field focused over the keyboard",
+      "prototype": {
+        "route": "?state=kb#/search"
+      },
+      "app": {
+        "state": "discover",
+        "step": "discover-kb"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".t-title",
+          "app": ".disc-head"
         },
         "field": {
           "prototype": ".dock-field",
           "app": "#sh-compose"
         },
         "rows": {
-          "prototype": ".ep-row",
-          "app": ".show-result",
+          "prototype": ".subj",
+          "app": ".ag-subject-tile",
           "mode": "all"
+        }
+      }
+    },
+    "discover-nomini": {
+      "title": "Discover, nothing playing",
+      "prototype": {
+        "route": "?mini=0#/search"
+      },
+      "app": {
+        "state": "search",
+        "step": "search-idle"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".t-title",
+          "app": ".disc-head"
+        },
+        "field": {
+          "prototype": ".dock-field",
+          "app": "#sh-compose"
+        },
+        "rows": {
+          "prototype": ".subj",
+          "app": ".ag-subject-tile",
+          "mode": "all"
+        },
+        "tabBar": {
+          "prototype": ".tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "dock-discover": {
+      "title": "Dock: Discover with the field row over the mini player and the receded tab row",
+      "prototype": {
+        "route": "?mini=1#/search"
+      },
+      "app": {
+        "state": "dock",
+        "step": "dock-discover"
+      },
+      "regions": {
+        "dock": {
+          "prototype": ".dock",
+          "app": "#dock"
+        },
+        "field": {
+          "prototype": ".dock-field",
+          "app": "#dock-field"
         },
         "mini": {
           "prototype": ".mini",
-          "app": null
+          "app": "#dock-mini"
+        },
+        "tabBar": {
+          "prototype": ".tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "dock-receded": {
+      "title": "Dock: Today scrolled 120px, the tab row receded under the mini player",
+      "prototype": {
+        "route": "?mini=1&scroll=120#/home"
+      },
+      "app": {
+        "state": "dock",
+        "step": "dock-receded"
+      },
+      "regions": {
+        "dock": {
+          "prototype": ".dock",
+          "app": "#dock"
+        },
+        "mini": {
+          "prototype": ".mini",
+          "app": "#dock-mini"
+        },
+        "tabBar": {
+          "prototype": ".tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "dock-playing": {
+      "title": "Dock: Today with audio running, the mini row's pause glyph and its moving 2px Glow progress line",
+      "prototype": {
+        "route": "?mini=1#/home"
+      },
+      "app": {
+        "state": "dock",
+        "step": "dock-playing"
+      },
+      "regions": {
+        "dock": {
+          "prototype": ".dock",
+          "app": "#dock"
+        },
+        "mini": {
+          "prototype": ".mini",
+          "app": "#dock-mini"
         },
         "tabBar": {
           "prototype": ".tabbar",

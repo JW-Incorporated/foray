@@ -1,4 +1,4 @@
-/* ui/interests.js — Tuning (ex-Interests, #/interests): one row per subject, three states each.
+/* ui/interests.js — Tuning page (#/tuning, was #/interests): the slider rows and their bindings.
    A CLASSIC script like app.js, not a module: it shares app.js's globals and
    is loaded by index.html after app.js, in the order listed in
    docs/redesign-2026/split-notes.md. Declarations only at the top level, so

@@ -643,7 +643,13 @@ test("Today's bottom room is the body's, which counts the safe-area inset once; 
   const bottom = raw.slice(raw.lastIndexOf(" ") + 1);
   assert.doesNotMatch(raw, /env\(/, "Today's padding does not count the inset a second time");
   assert.match(bottom, /^var\(--s-\d+\)$/, `the bottom padding is breathing space on the spacing scale, not a bar height: ${raw}`);
-  assert.match(valueOf("body.ui-v2", "padding-bottom") || "", /env\(safe-area-inset-bottom/, "the body owns the inset");
+  /* The body still owns the inset, but the Dock unit moved the arithmetic into ui/dock.css: the body pads by
+     --dock-reserve, which counts --safe-bottom (tokens.css: env(safe-area-inset-bottom)) exactly once. test/tab-bar.test.js
+     section 6 resolves the numbers at insets 0, 34 and 59. MUTATION: drop var(--safe-bottom) from --dock-reserve -> red. */
+  const dockCssSrc = fs.readFileSync(path.join(ROOT, "ui", "dock.css"), "utf8");
+  assert.match(dockCssSrc, /body\.ui-v2\s*\{[^}]*padding-bottom:\s*var\(--dock-reserve\)/, "the body pads by the Dock's reserve");
+  assert.match(/--dock-reserve:([^;]*);/.exec(dockCssSrc)[1], /var\(--safe-bottom\)/, "and the reserve counts the inset");
+  assert.match(fs.readFileSync(path.join(ROOT, "ui", "tokens.css"), "utf8"), /--safe-bottom:\s*env\(safe-area-inset-bottom/, "once, from the token");
 });
 
 test("a stretch card's bridge line is a row of its own between the two arts and the pick, not a column beside Play", () => {

@@ -13,7 +13,7 @@
 
 /* The page. The legacy top bar steps aside (the page draws its own head with a Back chevron), and the page paints
    the scheme's bg0 rather than the legacy plum. */
-body.view-settings { background: var(--bg0); }
+body.view-settings { background: var(--bg0); --dock-page-bg: var(--bg0); }
 body.view-settings .topbar { display: none; }
 body.view-settings #view { padding-top: 0; }
 
