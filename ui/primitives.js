@@ -278,6 +278,20 @@ function agSkeleton(kind = "row") {
 /* EmptyState: one line (or two), optional pre-built `extra` markup under them (a SubjectTile), and
    at most one button. With no arguments it is the gallery's plate. `extra` is markup the caller built
    from the other primitives, so it is NOT escaped here; every `lines` entry is. */
-function agEmptyState({ lines = ["Nothing followed yet."], extra = "", action = { label: "Find shows" } } = {}) {
-  return `<section class="ag-empty">${lines.map((line) => `<p>${esc(line)}</p>`).join("")}${extra}${action ? agButton({ label: action.label, variant: "secondary" }) : ""}</section>`;
+function agEmptyState({ lines = ["Nothing followed yet."], extra = "", action = { label: "Find shows" }, heading = false } = {}) {
+  /* `heading` names the page: a not-found page has no page head, and landOnPage (app.js) takes focus and the
+     document title from `[data-page-heading]`. `action.route` makes the button a link ("/" is Today). The "#"
+     is written in the literal so no interpolated value can start an href (test/app-security.test.js). */
+  const first = heading ? " data-page-heading" : "";
+  const button = !action ? ""
+    : action.route
+      ? `<a class="ag-btn ag-btn-secondary ag-btn-size-44" href="#${esc(String(action.route).replace(/^#/, ""))}"><span>${esc(action.label)}</span></a>`
+      : agButton({ label: action.label, variant: "secondary" });
+  return `<section class="ag-empty">${lines.map((line, i) => `<p${i === 0 ? first : ""}>${esc(line)}</p>`).join("")}${extra}${button}</section>`;
+}
+
+/* NotFoundPage: the one page behind a playlist or an episode that is gone (a stale link, a queued id whose snapshot is
+   left behind). EmptyState centred, one line, one Secondary button to Today; the Dock is already on screen. */
+function agNotFoundPage() {
+  return `<div class="ag ag-not-found">${agEmptyState({ lines: ["Nothing here any more."], action: { label: "Today", route: "/" }, heading: true })}</div>`;
 }

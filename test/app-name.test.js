@@ -508,8 +508,8 @@ test("no note this app renders into #view capitalises the unit", () => {
   ].map((m) => m[1]);
   assert.equal(
     notes.length,
-    17,   // 16 -> 17 (Redesign 2026): Discover paints its own failed-catalogue note now that it no longer goes through renderShowIndexPage
-    `expected seventeen #view status notes, found ${notes.length}. More is fine -- ` +
+    15,   // 16 -> 17 (Redesign 2026): Discover paints its own failed-catalogue note now that it no longer goes through renderShowIndexPage; 17 -> 15 (ambient not-found): the playlist and episode not-found pages are agNotFoundPage now, not status notes
+    `expected fifteen #view status notes, found ${notes.length}. More is fine -- ` +
       "raise this count so the new one is covered. Fewer means a note was lost " +
       `or reshaped: ${notes.join(" | ")}`
   );
