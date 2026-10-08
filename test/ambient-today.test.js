@@ -240,7 +240,7 @@ test("HeroPick: a 160 collage whose first square is the first show's, the Lamp e
   assert.match(hero, /<span class="eyebrow lamp">Today’s foray<\/span>/);
   assert.match(hero, /<h2 class="t-title clamp4 td-hero-title">/, "title: --t-title, four lines");
   assert.match(hero, /class="ag-btn ag-btn-play ag-btn-size-56" data-home-play/, "Ember Play 56");
-  assert.match(hero, /<p class="t-why clamp2 td-why">A short account of five shows\.<\/p>/, "why-line: italic, two lines, full width");
+  assert.match(hero, /<p class="t-why td-why">A short account of five shows\.<\/p>/, "why-line: italic, full width, never clamped (iteration 3; MUTATION: put clamp2 back on it -> red)");
   assert.match(hero, /<div class="td-hero-actions"><button[^]*?<\/button><p class="t-caption td-hero-meta num">5 shows · 42 min<\/p><\/div>/, "a foray's meta caption sits beside Play");
   const asEpisode = mount({ hero: "none" });
   asEpisode.ctx.renderHome();
@@ -625,16 +625,42 @@ test("content runs under the Dock and fades to bg: a fixed fade behind it, solid
   assert.strictEqual(valueOf("body.view-home.fp-open", "--td-dock-h"), "calc(var(--dock-lift) + var(--tab-bar) + var(--mini))", "the mini row is part of the Dock when something is loaded");
 });
 
-test("the hero's meta sits beside Play on one line: it never wraps", () => {
-  /* The first build wrapped "1 show · about 43 min" onto two lines beside Play, and a nowrap alone squeezed Play to 49.5px
-     and ran the text past the gutter (131px of text, 109px beside Play). So: the meta is nowrap, Play never shrinks, and
-     the row wraps so a meta too long to sit beside Play drops under it whole.
-     MUTATION 1: delete `white-space: nowrap` from `.ag .td-hero-actions .td-hero-meta` -> red.
-     MUTATION 2: delete `flex-wrap: wrap` from `.ag .td-hero-actions` (the text overruns the column) -> red.
-     MUTATION 3: delete the `flex: none` on the row's Play (it shrinks to 49.5px) -> red. */
-  assert.strictEqual(valueOf(".ag .td-hero-actions .td-hero-meta", "white-space"), "nowrap");
-  assert.strictEqual(valueOf(".ag .td-hero-actions", "flex-wrap"), "wrap");
+test("the hero's meta stays beside Play, wrapping to its own lines there rather than dropping under the button", () => {
+  /* Iteration 2 kept the meta whole by letting the row wrap, so "1 show · about 43 min" fell under the 56px button as a
+     caption and broke the hero's rhythm (collage | title / Play + meta). Iteration 3: the row never wraps, the meta takes
+     the rest of the row and wraps inside it.
+     MUTATION 1: set `flex-wrap: wrap` back on `.ag .td-hero-actions` -> red.
+     MUTATION 2: delete `flex: 1 1 0` or `min-width: 0` on `.ag .td-hero-actions .td-hero-meta` -> red.
+     MUTATION 3: delete the `flex: none` on the row's Play (it shrinks to 49.5px) -> red.
+     MUTATION 4: put `white-space: nowrap` back on the meta -> red. */
+  assert.strictEqual(valueOf(".ag .td-hero-actions", "flex-wrap"), "nowrap");
+  assert.strictEqual(valueOf(".ag .td-hero-actions .td-hero-meta", "flex"), "1 1 0");
+  assert.strictEqual(valueOf(".ag .td-hero-actions .td-hero-meta", "min-width"), "0");
+  assert.strictEqual(valueOf(".ag .td-hero-actions .td-hero-meta", "white-space"), null, "the meta may wrap beside Play");
   assert.strictEqual(valueOf(".ag .td-hero-actions > .ag-btn", "flex"), "none");
+});
+
+test("the 2x2 collage is one treatment at every size: whole squares, one gap, no rounded inner tile", () => {
+  /* The finding compared the 72px Keep listening collage with the hero's. Both are `.ag-collage.c4`; the gap and the
+     inner-tile radius come from ONE rule in ui/primitives.css, and Today may restyle neither.
+     MUTATION 1: add `gap: 3px` (or any padding) to `.ag .td-keep-art .ag-collage` in ui/today.css -> red.
+     MUTATION 2: set the c4 inner art's border-radius to var(--r-sm) in ui/primitives.css -> red.
+     MUTATION 3: change the c4 gap in ui/primitives.css to 3px -> red. */
+  const prim = cssRules(read("ui/primitives.css").replace(/\/\*[\s\S]*?\*\//g, " "));
+  const inPrim = (sel, prop) => {
+    let v = null;
+    for (const r of prim) {
+      if (r.prelude.startsWith("@") || r.atRules.length || !selectorsOf(r.prelude).includes(sel)) continue;
+      for (const d of r.body.split(";")) { const c = d.indexOf(":"); if (c >= 0 && d.slice(0, c).trim() === prop) v = d.slice(c + 1).trim(); }
+    }
+    return v;
+  };
+  assert.strictEqual(inPrim(".ag .ag-collage.c4", "gap"), "calc(var(--s-1) / 2)", "2px, the prototype's");
+  assert.strictEqual(inPrim(".ag .ag-collage.c4 > .ag-art", "border-radius"), "0", "inner squares are whole and square-cornered; the collage rounds once");
+  for (const sel of [".ag .td-keep-art .ag-collage", ".ag .td-hero-art .ag-collage"]) {
+    for (const prop of ["gap", "padding", "background"]) assert.strictEqual(valueOf(sel, prop), null, `${sel} does not restyle ${prop}`);
+  }
+  assert.strictEqual(valueOf(".ag .td-keep-art .ag-collage .ag-art", "border-radius"), null);
 });
 
 test("what Today draws uses typographic apostrophes (Today’s picks, Today’s foray); the landmark names stay ASCII", () => {

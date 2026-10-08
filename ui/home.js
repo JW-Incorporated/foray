@@ -762,7 +762,7 @@ function todayHeroHtml(hero, { firstRun }) {
       ${hero.kind === "foray" ? "" : `<p class="t-caption td-hero-meta">${esc(hero.meta)}</p>`}
       <div class="td-hero-actions">${todayPlayButton({ size: 56, label: `Play ${hero.title}`, attrs: " data-home-play" })}${hero.kind === "foray" ? `<p class="t-caption td-hero-meta num">${esc(hero.meta)}</p>` : ""}</div>
     </div>
-    ${hero.why ? `<p class="t-why clamp2 td-why">${esc(hero.why)}</p>` : ""}
+    ${hero.why ? `<p class="t-why td-why">${esc(hero.why)}</p>` : ""}
     ${firstRun ? `<p class="t-body td-first-run">${esc(TODAY_FIRST_RUN_NOTE)}</p>` : ""}
   </section>`;
 }

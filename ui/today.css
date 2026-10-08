@@ -82,12 +82,12 @@ body.view-home #view { padding-top: 0; }
 .ag .td-hero-title.is-compact { font: var(--t-headline); font-variation-settings: 'SOFT' 100, 'WONK' 0; }
 .ag .td-link { color: inherit; text-decoration: none; }
 .ag .td-hero-meta { color: var(--on-wash-2); }
-/* A foray's meta sits beside Play on one baseline and is ONE line, never wrapped to two ("4 shows · 19 min", the
-   prototype's). The column beside the collage leaves 109px after Play and the gap, so a length that carries the
-   estimate marker ("1 show · about 43 min", 131px) cannot sit beside it: the row wraps and that line drops under
-   Play whole, left-aligned. It is never cut, never broken across lines and never allowed past the gutter. Play keeps its 56. */
-.ag .td-hero-actions .td-hero-meta { min-width: 0; white-space: nowrap; }
-.ag .td-hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-1) var(--s-3); margin-top: auto; padding-top: var(--s-2); }
+/* A foray's meta sits BESIDE Play, always: the pair (Play 56 | meta) is the hero's second beat, and it never splits into
+   a button with a caption under it. "4 shows · 19 min" is one line (the prototype's). A length that carries the estimate
+   marker ("1 show · about 43 min", 131px) has only 109px beside Play and the gap, so it wraps to two balanced lines
+   next to the button, centred on it, instead of dropping below. Play keeps its 56; the text never passes the gutter. */
+.ag .td-hero-actions .td-hero-meta { flex: 1 1 0; min-width: 0; text-wrap: balance; }
+.ag .td-hero-actions { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--s-3); margin-top: auto; padding-top: var(--s-2); }
 .ag .td-hero-actions > .ag-btn { flex: none; }
 .ag .td-why, .ag .td-first-run { grid-column: 1 / -1; color: var(--on-wash-2); }
 
