@@ -124,6 +124,13 @@ function tactileWell(data) {
     '><span class="readout">' + esc(d.text || "Inset well") + "</span></div>";
 }
 
+/* The enamels a SHOW may take: the prototype's six (teal, persimmon, mustard,
+   plum, moss, rose). Index 2 is ultramarine, which is what 4a itself authored
+   (the narration ticks), and 6 is the sky blue that sits next to it in both
+   schemes; a show in either would read as narration on a band that has no
+   station codes to tell them apart. The token set still defines all eight. */
+var TACTILE_SHOW_ENAMELS = [0, 1, 3, 4, 5, 7];
+
 function tactileHash(value) {
   var text = String(value || "");
   var h = 2166136261;
@@ -131,7 +138,7 @@ function tactileHash(value) {
     h ^= text.charCodeAt(i);
     h = Math.imul(h, 16777619);
   }
-  return (h >>> 0) % 8;
+  return TACTILE_SHOW_ENAMELS[(h >>> 0) % TACTILE_SHOW_ENAMELS.length];
 }
 
 function tactileStationCode(name) {

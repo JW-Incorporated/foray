@@ -354,3 +354,22 @@ test("an unplayed mini band has no needle; a played one has a 2px needle", () =>
   assert.ok(needle, "the played mini band draws its needle");
   assert.ok(Math.abs(Number(needle[1]) - 2000 / 323) < 0.01, `2px wide (${needle[1]} units)`);
 });
+
+test("a show never takes ultramarine or the sky next to it, so the narration ticks stay distinguishable", () => {
+  /* The Today band is 8px with no station codes, so colour is the only carrier. A
+     single-show foray whose show hashed to enamel 2 (ultramarine, the colour 4a
+     authored its narration in) drew a monochrome blue strip.
+     MUTATION: in ui/primitives.js set TACTILE_SHOW_ENAMELS to [0, 1, 2, 3, 4, 5, 6, 7]
+     -> this fails on the first show id that hashes to 2 or 6. */
+  const seen = new Set();
+  for (let n = 0; n < 400; n += 1) {
+    const html = p.tactileBand({ id: "enamel-" + n, kind: "mini", renderWidth: 300, segments: [
+      { showId: "show-" + n, show: "Show " + n, duration: 300 },
+      { showId: "n", show: "", duration: 20, narration: true },
+      { showId: "show-" + n, show: "Show " + n, duration: 300 },
+    ] });
+    const base = /<g class="t-band__base">([\s\S]*?)<\/g>/.exec(html)[1];
+    for (const m of base.matchAll(/t-band__bar--c(\d)/g)) seen.add(Number(m[1]));
+  }
+  assert.deepStrictEqual([...seen].sort(), [0, 1, 3, 4, 5, 7], "all six show enamels are used, ultramarine (2) and sky (6) are not");
+});
