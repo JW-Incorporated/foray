@@ -478,8 +478,8 @@ function renderAllShows(initialQuery = "") {
       <div class="page-head disc-head">
         <div><h2 class="t-title">Discover</h2></div>
       </div>
-      <div id="sh-compose" class="dock-field">
-        <form id="sh-form" class="ag-search-field veil" role="search" autocomplete="off">
+      <div id="sh-compose" class="dock-field veil">
+        <form id="sh-form" class="ag-search-field" role="search" autocomplete="off">
           ${agIcon("magnifier", 20)}
           <input id="sh-input" type="text" maxlength="120" placeholder="Search, or name a subject" aria-label="Search, or name a subject" ${SEARCH_INPUT_ATTRS}>
           <button id="sh-dismiss" class="ag-btn ag-btn-icon" type="button" aria-label="Clear search" hidden>${agIcon("x", 20)}</button>

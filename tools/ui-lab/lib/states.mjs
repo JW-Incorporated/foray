@@ -261,6 +261,7 @@ export function appStates(fx) {
         { label: "discover-no-results-subject", route: "#/shows", run: (page) => typeSearch(page, "craft & ma") },
         { label: "discover-mini", route: "#/shows", run: async (page) => { await freshDiscover(page); await startPlayback(page, ep0); } },
         { label: "discover-kb", route: "#/shows", run: (page) => focusSearchOverKeyboard(page) },
+        { label: "discover-results-groups", route: "#/shows", run: (page) => typeSearch(page, "history") },
       ],
     },
   ];

@@ -362,7 +362,7 @@ test("every text field has a name that survives typing, and search notes are liv
   assert.match(APP_SRC, /typedInput\.setAttribute\("aria-label", /);
   assert.match(APP_SRC, /<p id="sh-note" class="note" role="status" aria-live="polite" hidden><\/p>/);
   assert.match(APP_SRC, /data-show-ep-search-note role="status" aria-live="polite" hidden/);
-  assert.match(APP_SRC, /<form id="sh-form" class="ag-search-field veil" role="search"/);
+  assert.match(APP_SRC, /<form id="sh-form" class="ag-search-field" role="search"/);
 });
 
 /* Persona row 62: a Foray row that cannot play printed foray-resolve's raw

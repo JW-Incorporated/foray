@@ -106,8 +106,8 @@
         "route": "#/search"
       },
       "app": {
-        "state": "search",
-        "step": "search-idle"
+        "state": "discover",
+        "step": "discover-mini"
       },
       "regions": {
         "header": {
@@ -125,7 +125,7 @@
         },
         "mini": {
           "prototype": ".mini",
-          "app": null
+          "app": "#foray-player"
         },
         "tabBar": {
           "prototype": ".tabbar",

@@ -213,11 +213,15 @@ test("a show row marks FOLLOWED with the Ember badge and the word; an unfollowed
   assert.match(off, /1 episode</, "the singular");
 });
 
-test("a show row's caption: the count when known, else the byline, else nothing; the title is escaped and whole in title=", () => {
-  /* MUTATION: drop `esc(by)` -> the hostile byline assertion fails. Another: print "0 episodes" for a null count. */
+test("a show row's caption: the count when known, else the byline, else the word 'Podcast'; the title is escaped and whole in title=", () => {
+  /* Every result row has art and ONE meta line (DIRECTION.md, Discover). Iteration 2: a row with no count and no
+     byline used to carry no caption, so its title centred and the list lost its shared baseline.
+     MUTATION: drop `|| DISCOVER_SHOW_KIND` -> the bare-row assertion fails. Another: drop `esc(by ...)` -> the hostile
+     byline assertion fails. Another: print "0 episodes" for a null count. */
   const m = mount();
   const bare = m.ctx.discoverShowRow({ show_id: "x", title: "Bare" });
-  assert.ok(!bare.includes("dsc-meta"), "no count and no byline: no caption at all");
+  assert.match(bare, /<span class="t-caption dsc-meta">Podcast<\/span>/, "no count and no byline: still one caption line, the kind of thing it is");
+  assert.ok(!/0 episodes/.test(bare), "and never a count it does not know");
   const by = m.ctx.discoverShowRow({ show_id: "x", title: "By", artist_name: "<b>Host</b>" });
   assert.ok(by.includes("&lt;b&gt;Host&lt;/b&gt;") && !by.includes("<b>"), "the byline stands in, escaped");
   const hostile = m.ctx.discoverShowRow({ show_id: "x/y", title: "<script>alert(1)</script>" });
@@ -279,20 +283,91 @@ test("the costly passes wait 150 ms (the direction's number), not 250", () => {
 });
 
 test("the field's chrome: a 2px Lamp ring OUTSIDE the pill on focus, a 44 x, the grid 2-up with an odd last tile spanning", () => {
-  /* MUTATION: set the ring to `outline-offset: -2px` (inside) -> the ring assertion fails. Another: drop
+  /* MUTATION: make the ring `box-shadow: inset 0 0 0 ...` (inside the pill) -> the ring assertion fails. Another: drop
      `.dsc-grid > :last-child:nth-child(odd)` -> the span assertion fails. Another: `.ag .ag-btn-icon { width: 40px }`
      -> the 44 assertion fails (tap-targets.test.js holds the same floor for every .ag-btn). */
   const css = read("ui/primitives.css");
   const rule = (sel) => { const i = css.indexOf(`${sel} {`); assert.ok(i !== -1, `a rule for ${sel}`); return css.slice(css.indexOf("{", i) + 1, css.indexOf("}", i)); };
   const ring = rule(".ag.disc #sh-compose .ag-search-field:focus-within");
-  assert.match(ring, /outline:\s*calc\(var\(--s-1\) \/ 2\) solid var\(--lamp-text\)/, "2px (half the 4px space step), in Lamp");
-  assert.match(ring, /outline-offset:\s*0/, "outside the pill, not inside it");
+  assert.match(ring, /box-shadow:\s*0 0 0 calc\(var\(--s-1\) \/ 2\) var\(--lamp-text\)/, "2px (half the 4px space step), in Lamp, a spread OUTSIDE the pill");
+  assert.ok(!/inset/.test(ring), "outside the pill, not inside it");
   assert.match(rule(".ag .ag-btn-icon"), /width:\s*var\(--tap\);\s*height:\s*var\(--tap\)/, "the x is the 44 icon button");
   assert.match(rule(".ag .dsc-grid"), /grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/, "two up");
   assert.match(rule(".ag .dsc-grid > :last-child:nth-child(odd)"), /grid-column:\s*1 \/ -1/, "an odd last tile takes the row");
   assert.match(rule(".ag .dsc-grid > :last-child:nth-child(odd) .t-label"), /font:\s*var\(--t-headline\)/, "and its name steps up to the headline style");
   assert.match(rule(".ag .ag-search-field"), /min-height:\s*var\(--field\)/);
   assert.match(read("ui/tokens.css"), /--field:\s*52px/, "the field token is 52");
+});
+
+/* Iteration 2 (fidelity findings 1, 2, 3 and 6). The three tests below pin the CSS the screen's Dock behaviour is made
+   of; the harness (`tools/ui-lab/fidelity.mjs`, run discover-i2-*) is what shows it. They read rules rather than
+   computing layout, so each one also says what it cannot see. */
+function cssRule(css, sel) {
+  const i = css.indexOf(`${sel} {`);
+  assert.ok(i !== -1, `a rule for ${sel}`);
+  return css.slice(css.indexOf("{", i) + 1, css.indexOf("}", i));
+}
+
+test("the field is the Dock's top row: one Veil with the tab row under it, inset to the same column, no stroke at rest", () => {
+  /* Finding: the field was a standalone floating pill over a full-width tab bar, outlined in Lamp, with no tab row
+     beneath it. Not seen here: the pixels (the fidelity run), and the mini player row, which is the legacy bar restyled.
+     MUTATION: delete `left: var(--ag-gutter)` from the `body.ag-discover .tab-bar` rule -> the column assertion fails
+     (the bar is full width again and the field floats over it). Another: give the pill's rest state
+     `box-shadow: 0 0 0 2px var(--lamp-text)` -> the no-stroke assertion fails. Another: drop `--sh-tab: var(--dsc-tab)`
+     -> the field sits 12px above a 44 row it no longer clears. */
+  const css = read("ui/primitives.css");
+  const row = cssRule(css, ".ag.disc #sh-compose");
+  assert.match(row, /left:\s*var\(--ag-gutter\);\s*right:\s*var\(--ag-gutter\)/, "the field row is inset to the gutter column");
+  assert.match(row, /border-radius:\s*var\(--r-xl\) var\(--r-xl\) 0 0/, "top corners round, the tab row under it closes the bottom");
+  assert.match(row, /box-shadow:\s*inset 0 1px 0 var\(--rim\)/, "divided from what is under it by the rim, a light line, not a stroke");
+  assert.match(row, /--sh-gap:\s*var\(--dock-inset\)/, "12 above the safe area, the Dock's own float");
+  const bar = cssRule(css, "body.ag-discover .tab-bar");
+  assert.match(bar, /left:\s*var\(--ag-gutter\);\s*right:\s*var\(--ag-gutter\)/, "the tab row is in the SAME column");
+  assert.match(bar, /background:\s*var\(--glow-veil\)/, "on the SAME Veil tint");
+  assert.match(bar, /height:\s*var\(--dsc-tab\)/, "receded to icons");
+  assert.match(bar, /border:\s*0/, "with no hairline of its own");
+  assert.match(css, /body\.ag-discover:not\(\.kb-open\):not\(\.sh-searching\) #sh-compose \{ --sh-tab: var\(--dsc-tab\); \}/, "styles.css's --sh-dock sum clears the receded row");
+  assert.match(css, /body\.ag-discover \.tab-btn span \{[^}]*clip: rect\(0 0 0 0\)/, "labels stay for a screen reader only");
+  const pill = cssRule(css, ".ag.disc #sh-compose .ag-search-field");
+  assert.match(pill, /box-shadow:\s*none/, "at rest the pill carries no outline: the Lamp ring is for focus only");
+  assert.match(read("ui/tokens.css"), /--dock-inset:\s*12px/, "the float is the token the direction's Dock uses");
+});
+
+test("content fades to bg behind the Dock and is never sliced by its edge; the fade never covers the Dock or takes a tap", () => {
+  /* Finding: a result row was cut off by the field's edge, and another peeked out below it, with no fade.
+     MUTATION: delete the `body.ag-discover::after` rule -> the first assertion fails. Another: `z-index: 60` -> the
+     stacking assertion fails (the fade would draw over the tab row at 55 and the field at 58). Another: drop
+     `pointer-events: none` -> the third fails (the last rows would be untappable). */
+  const css = read("ui/primitives.css");
+  const fade = cssRule(css, "body.ag-discover::after");
+  assert.match(fade, /position:\s*fixed/, "pinned to the screen's bottom edge");
+  assert.match(fade, /linear-gradient\(transparent 0, var\(--bg0\) var\(--s-8\)\)/, "transparent to bg0 over 32px, then solid");
+  assert.match(fade, /height:\s*calc\(var\(--dsc-dock-h\) \+ var\(--s-8\)\)/, "as tall as the Dock plus its 32px ramp");
+  assert.match(fade, /pointer-events:\s*none/, "and never takes a tap");
+  const z = Number(/z-index:\s*(\d+)/.exec(fade)?.[1]);
+  const styles = read("styles.css");
+  assert.ok(z < Number(/\.tab-bar \{[^}]*z-index:\s*(\d+)/.exec(styles)[1]), "below the tab row (55), so the Dock is drawn over it");
+  assert.ok(z < Number(/#sh-compose \{[^}]*z-index:\s*(\d+)/.exec(styles)[1]), "and below the field (58)");
+  for (const state of ["body.ag-discover {", "body.ag-discover.fp-open {", "body.ag-discover.sh-searching, body.ag-discover.kb-open {"]) {
+    assert.ok(css.includes(`${state} --dsc-dock-h:`), `the Dock's height is defined for ${state}`);
+  }
+});
+
+test("'Make a playlist' rides above the Dock while the list is long, and the first heads sit 16 under the title", () => {
+  /* Findings: the button read as missing (it is the last thing on a page that can run to fifty rows), and the Shows head
+     sat 8px lower than the idle page's heads. Not seen here: that it is actually on screen (the fidelity run shows it).
+     MUTATION: delete `position: sticky` -> the first assertion fails. Another: `z-index: 40` -> the fade (54) would dim
+     the button, and the second assertion fails. Another: `margin: var(--s-6) 0 var(--s-3)` on the results head -> the
+     third fails (24, not the idle heads' 16). */
+  const css = read("ui/primitives.css");
+  const make = cssRule(css, ".ag.disc .dsc-make");
+  assert.match(make, /position:\s*sticky/, "sticky");
+  assert.match(make, /bottom:\s*calc\(var\(--dsc-dock-h\) \+ var\(--s-2\)\)/, "8 above the Dock, whatever rows the Dock has");
+  assert.ok(Number(/z-index:\s*(\d+)/.exec(make)[1]) > Number(/z-index:\s*(\d+)/.exec(cssRule(css, "body.ag-discover::after"))[1]), "above the fade");
+  const head = cssRule(css, ".ag.disc .sh-results-head");
+  const idle = cssRule(css, ".ag #sh-browse > .dsc-group:first-of-type > .ag-section-head");
+  assert.match(head, /margin:\s*var\(--s-4\) 0 var\(--s-3\)/, "16 above, 12 below");
+  assert.match(idle, /margin-top:\s*var\(--s-4\)/, "the idle page's first head is 16 too: one rhythm");
 });
 
 test("Discover's result rows are 64 tall at least, and the players' glyph controls 44", () => {

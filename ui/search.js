@@ -56,12 +56,15 @@ function showResultRow(show) {
 
 /** What a SHOW's caption says: "<n> episodes" when the catalogue knows the count (176 of the 229
     curated shows do; a directory or shard row never does), else the byline when the row carries
-    one, else nothing. A followed show says so in words as well as in the badge (a state is never
-    only a mark). */
+    one, else the word for what it is. Every result row has art and ONE meta line (DIRECTION.md,
+    Discover): a title-only row is shorter, its title centres, and the list loses its shared
+    baseline. A followed show says so in words as well as in the badge (a state is never only a
+    mark). */
+const DISCOVER_SHOW_KIND = "Podcast";
 function discoverShowMeta(show, followed) {
   const n = Number(show?.episode_count);
   const by = typeof show?.artist_name === "string" ? show.artist_name.trim() : "";
-  return joinMeta(followed ? "Following" : "", n > 0 ? esc(countLabel(n, "episode")) : esc(by));
+  return joinMeta(followed ? "Following" : "", n > 0 ? esc(countLabel(n, "episode")) : esc(by || DISCOVER_SHOW_KIND));
 }
 
 /** One matched show. The followed badge (`i-check-circle-fill`, Ember, 20, the art's bottom-right)

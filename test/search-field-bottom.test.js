@@ -253,7 +253,7 @@ test("the search field renders inside #sh-compose, a sibling of the page header"
   const html = m.view();
   /* `class="dock-field"` since Redesign 2026: the field is the Dock's top row, and that class is the handle the
      Dock screen adopts it by (BUILD-PLAN screen 2). */
-  assert.ok(html.includes('<div id="sh-compose" class="dock-field">'), "the compose bar must be rendered");
+  assert.ok(html.includes('<div id="sh-compose" class="dock-field veil">'), "the compose bar must be rendered, as the Dock's Veil row");
   const bar = html.slice(html.indexOf('<div id="sh-compose"'), html.indexOf("</form>", html.indexOf('id="sh-form"')));
   assert.ok(bar.includes('id="sh-form"'), "…and it must hold the form");
   assert.ok(bar.includes('id="sh-input"'), "…and the field itself");
@@ -680,19 +680,20 @@ test("kb-open takes the now-playing bar off the screen and leaves the compose ba
 
 /* REDESIGN 2026 (ambient, Discover) rewrote the chrome these four tests used to pin. The pill is no longer
    styled by `#sh-compose #sh-form` (translucent `--surface`, `--radius-pill`, an `@supports` gate on 55%):
-   it is the Afterglow SearchField, `<form class="ag-search-field veil">`, and the translucency, the blur and
-   every fallback belong to the Veil material in ui/tokens.css. What the screenshots settled is unchanged
+   it is the Afterglow SearchField, `<form class="ag-search-field">`, a 40 pill on the Dock's top row, and
+   that row, `#sh-compose.veil` (iteration 2: the field is the Dock's top row, not a Veil pill of its own),
+   carries the translucency, the blur and every fallback of the Veil material in ui/tokens.css. What the screenshots settled is unchanged
    and still pinned, against the new classes: a capsule you can read the page through, no second box inside
    it, a magnifier at the leading edge, no microphone, nothing but the field (and the x once it is filled)
    in the pill. */
 test("the field is a Veil capsule: translucent, blurred where the platform can, solid where it cannot", () => {
   /* The single most characteristic thing in the screenshots: the page reads THROUGH the pill. The Veil is the
      direction's one glass, and tokens.css owns its three fallbacks in one place.
-     MUTATION: drop `veil` from the form's class list in renderAllShows -> the first assertion fails. A second,
+     MUTATION: drop `veil` from #sh-compose's class list in renderAllShows -> the first assertion fails. A second,
      independent one: delete the `@supports not` fallback from tokens.css -> the last fails. */
   const m = mount();
   m.ctx.renderAllShows();
-  assert.match(m.view(), /<form id="sh-form" class="ag-search-field veil" role="search"/, "the pill is the Veil SearchField");
+  assert.match(m.view(), /<div id="sh-compose" class="dock-field veil">\s*<form id="sh-form" class="ag-search-field" role="search"/, "the Dock's top row is the Veil, the pill inside it is the SearchField");
   const TOKENS = fs.readFileSync(path.join(ROOT, "ui", "tokens.css"), "utf8").replace(/\r\n/g, "\n");
   const veil = /\n\.veil \{([^}]*)\}/.exec(TOKENS);
   assert.ok(veil, "the Veil material must exist");
