@@ -333,20 +333,65 @@ test("a subject query draws its shows as ShowTiles with Follow badges; any other
   /* MUTATIONS (each run red): make `asTiles` always false (the first assertion) or always true (the second); drop the
      classList toggle (the grid class assertion: the tiles would stack in the row list's single column). */
   const m = await mountBooted();
-  const shows = m.state.catalog.shows.slice(0, 4);
-  const starred = shows[1].show_id;
-  m.store.set("cp_starred_shows", JSON.stringify({ [starred]: { show_id: starred, title: shows[1].title } }));
+  const subject = m.ctx.discoverSubjectExact("History");
+  assert.ok(subject && subject.shows.length >= 3, "fixture assumption: History is a subject with several shows");
+  const starred = subject.shows[1].show_id;
+  m.store.set("cp_starred_shows", JSON.stringify({ [starred]: { show_id: starred, title: subject.shows[1].title } }));
   const token = m.evalIn("showSearchToken");
   const results = m.byId.get("sh-results");
-  m.ctx.paintShowResults("History", shows, token);
-  assert.strictEqual(tiles(results.innerHTML).length, 4, "four tiles");
+  m.ctx.paintShowResults("History", m.state.catalog.shows.slice(0, 4), token);
+  assert.strictEqual(tiles(results.innerHTML).length, subject.shows.length, "one tile per show of the subject");
   assert.ok(!results.innerHTML.includes("dsc-row"), "no rows");
   assert.strictEqual(results.toggled["dsc-tiles"], true, "the list wears the grid class");
   assert.strictEqual((results.innerHTML.match(/ag-art-badge/g) || []).length, 1, "the one followed show carries the badge");
+  const shows = m.state.catalog.shows.slice(0, 4);
   m.ctx.paintShowResults("hist", shows, token);
   assert.strictEqual(tiles(results.innerHTML).length, 0, "a search keeps rows");
   assert.strictEqual((results.innerHTML.match(/class="dsc-row dsc-show raised"/g) || []).length, 4);
   assert.strictEqual(results.toggled["dsc-tiles"], false);
+});
+
+test("a subject's lead and the tiles under it are ONE set: the subject's own shows, whatever the text search found", async () => {
+  /* The review finding: the lead said "<n> shows" from discoverGroups while the tiles were the free-text search's rows
+     (History 19 vs 11, Food 21 vs 1, Nature 13 vs 0, directory rows that merely contain the word drawn as the subject's).
+     Every subject is walked, with a search answer that is deliberately NOT the subject's set (the first three catalogue
+     shows outside it, and nothing at all).
+     MUTATIONS (each run red): delete `if (subjectTile) shows = subjectTile.shows;` in paintShowResults (the tile-set
+     assertion: the foreign rows are drawn under the lead, and the empty answer paints no tiles); build the tile's `shows`
+     from something other than the array `count` is the length of, e.g. `shows: shows.slice(1)` in discoverGroups (the
+     count assertion); drop the `discoverSubjectExact` guard in paintDiscoverEmpty (the empty-box assertion). */
+  const m = await mountBooted();
+  const subjects = m.ctx.discoverGroups().flatMap((g) => g.tiles);
+  assert.ok(subjects.length >= 20, "fixture assumption: the committed catalogue has many subjects");
+  const lead = m.byId.get("sh-subject");
+  const results = m.byId.get("sh-results");
+  const empty = m.byId.get("sh-empty");
+  for (const tile of subjects) {
+    const inSubject = new Set(tile.shows.map((s) => s.show_id));
+    const foreign = m.state.catalog.shows.filter((s) => !inSubject.has(s.show_id)).slice(0, 3);
+    assert.strictEqual(foreign.length, 3, "fixture assumption: shows outside the subject exist");
+    const want = tile.shows.slice(0, 50).map((s) => s.show_id);
+    for (const searchAnswer of [foreign, []]) {
+      const token = m.evalIn("showSearchToken");
+      m.ctx.paintSubjectLead(tile.name);
+      m.ctx.paintShowResults(tile.name, searchAnswer, token);
+      const hrefs = tiles(results.innerHTML).map((t) => decodeURIComponent(/href="#\/show\/([^"]+)"/.exec(t)[1]));
+      assert.deepStrictEqual([...hrefs], [...want], `${tile.name}: the tiles are the subject's own shows, in subjectShowOrder`);
+      assert.strictEqual(tile.count, tile.shows.length, `${tile.name}: the count is the length of the set the tiles come from`);
+      assert.ok(lead.innerHTML.includes(`<span class="count">${tile.count} show${tile.count === 1 ? "" : "s"}</span>`), `${tile.name}: the lead's count`);
+      for (const f of foreign) assert.ok(!results.innerHTML.includes(`href="#/show/${encodeURIComponent(f.show_id)}"`), `${tile.name}: a show outside the subject is not drawn`);
+      /* The empty page, asked for as runShowSearchCostly does once every group is in, must leave its box closed. */
+      empty.hidden = true; empty.innerHTML = "";
+      m.ctx.paintDiscoverEmpty(tile.name, token);
+      assert.strictEqual(empty.hidden, true, `${tile.name}: no "Nothing named" over a subject's page`);
+      assert.strictEqual(empty.innerHTML, "");
+    }
+  }
+  /* A part of a name is still a search: no hits still gets the empty page. */
+  const token = m.evalIn("showSearchToken");
+  m.ctx.paintShowResults("hist", [], token);
+  m.ctx.paintDiscoverEmpty("hist", token);
+  assert.strictEqual(empty.hidden, false, "a search with no hits still gets its empty page");
 });
 
 /* ==================================================================== */

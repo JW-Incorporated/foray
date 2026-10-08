@@ -332,7 +332,8 @@ function discoverCompare(a, b) {
 
 let discoverGroupsMemo = { catalog: null, taxonomy: null, groups: [] };
 
-/** The page's groups: `[{ name, tiles: [{ id, name, count, arts }] }]`, empty groups dropped, tiles
+/** The page's groups: `[{ name, tiles: [{ id, name, count, arts, shows }] }]` (`shows` is the subject's own set, in
+    subjectShowOrder, and `count` is its length: the lead's number and the tiles under it come from the one array), empty groups dropped, tiles
     biggest first. Memoised on the two documents it reads, so typing never re-walks the catalogue. */
 function discoverGroups() {
   const catalog = state.catalog;
@@ -357,7 +358,7 @@ function discoverGroups() {
       .filter((id) => byId.has(id) && (showsByRoot.get(id) || []).length >= DISCOVER_MIN_SHOWS)
       .map((id) => {
         const shows = showsByRoot.get(id).slice().sort(subjectShowOrder);
-        return { id, name: byId.get(id).label || id, count: shows.length, arts: subjectCollageArts(shows) };
+        return { id, name: byId.get(id).label || id, count: shows.length, arts: subjectCollageArts(shows), shows };
       })
       .sort((a, b) => b.count - a.count || discoverCompare(a.name, b.name)),
   })).filter((group) => group.tiles.length);
