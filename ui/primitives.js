@@ -90,8 +90,11 @@ function agChip(label, { selected = false, disabled = false } = {}) {
   return `<button class="ag-chip${selected ? " is-selected" : ""}" type="button" aria-pressed="${esc(selected ? "true" : "false")}"${disabled ? ' aria-disabled="true" disabled' : ""}>${esc(label)}</button>`;
 }
 
-function agSectionHead(title, count = "", explainer = "") {
-  return `<header class="ag-section-head"><div><h3 class="t-headline">${esc(title)}</h3>${explainer ? `<p>${esc(explainer)}</p>` : ""}</div>${count ? `<span class="count">${esc(count)}</span>` : ""}</header>`;
+/* `level` is the heading's rank: 3 under a page title, 2 when the head IS the page's title (a subject page,
+   whose lead is a SectionHead beside the subject's collage). Anything else is 3. */
+function agSectionHead(title, count = "", explainer = "", { level = 3 } = {}) {
+  const h = level === 2 ? "h2" : "h3";
+  return `<header class="ag-section-head"><div><${h} class="t-headline">${esc(title)}</${h}>${explainer ? `<p>${esc(explainer)}</p>` : ""}</div>${count ? `<span class="count">${esc(count)}</span>` : ""}</header>`;
 }
 
 function agEpisodeRow({
@@ -202,8 +205,19 @@ function agHeroPick() {
   ], { size: 160 })}<div class="ag-hero-copy"><span class="eyebrow lamp">Today's pick</span><h4 class="t-title clamp4">${esc("The hidden systems shaping an ordinary glass of water")}</h4><p class="t-caption">4 shows · 42 min</p>${agPlayButton({ size: 56 })}</div><p class="t-why">${esc("A clear route from local choices to the systems moving water around them.")}</p></article>`;
 }
 
-function agShowTile({ followed = false } = {}) {
-  return `<article class="ag-show-tile">${agArtwork({ name: "Unexplainable", size: 104, tone: "blue", badge: followed ? "check-circle-fill" : "" })}<h4 class="t-caption clamp3">${esc("Unexplainable questions from science")}</h4></article>`;
+/* ShowTile: art 104, the name under it (three lines, `.clamp3`, never broken mid-word). Called with no
+   `name` it is the gallery's plate. Given `name` (and `src`, `tone`) it is a real show; given `showId` as well
+   it is the link a subject page draws (the tile IS the show's page, `#/show/<id>`). `followed` draws the Ember badge and,
+   with it, the word: a state is never only a mark, so the link's name says "following" and the badge stays
+   decorative. The badge is drawn only where the state varies (subject pages); Library never passes it. */
+function agShowTile({ followed = false, name = "", src = "", tone = "blue", showId = "" } = {}) {
+  const real = typeof name === "string" && name !== "";
+  const title = real ? name : "Unexplainable questions from science";
+  const art = agArtwork({ name: real ? name : "Unexplainable", src, size: 104, tone, badge: followed ? "check-circle-fill" : "", decorative: real });
+  const inner = `${art}<h4 class="t-caption clamp3">${esc(title)}</h4>`;
+  if (!showId) return `<article class="ag-show-tile">${inner}</article>`;
+  const label = followed ? ` aria-label="${esc(`${title}, following`)}"` : "";
+  return `<a class="ag-show-tile" href="#/show/${encodeURIComponent(showId)}" title="${esc(title)}"${label}>${inner}</a>`;
 }
 
 /* SubjectTile: a 56 2x2 collage of the subject's first shows, its name and "<n> shows". Called with no

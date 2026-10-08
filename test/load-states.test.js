@@ -673,13 +673,25 @@ test("a subject's name that finds no show by title says it is a subject, with th
     { show_id: "s2", title: "Beta Show", taxonomy_node_ids: ["science/geology"] },
   ] };
   const m = mountSearch({ taxonomy, catalog });
-  m.ctx.renderShowSearchResults("Science");
+  /* "Scien" is a PART of the name, so it is a search (a subject's WHOLE name is the subject's page, below). */
+  m.ctx.renderShowSearchResults("Scien");
   await waitFor(() => !m.empty().hidden);
   const html = m.empty().innerHTML;
-  assert.match(html, /Nothing named “Science”\./);
+  assert.match(html, /Nothing named “Scien”\./);
   assert.match(html, /“Science” is a subject, 2 shows\./, `the subject line: ${html}`);
   assert.match(html, /<a class="ag-subject-tile raised is-default" href="#\/shows\/q\/Science">/, "with the subject's own tile under it");
   assert.doesNotMatch(html, /data-retry/, "nothing failed, so nothing to retry");
+
+  /* THE WHOLE NAME IS THE SUBJECT'S PAGE, NEVER THE EMPTY ONE (round-1 review): the same query that finds no title
+     paints the subject's own two shows once every pass has answered, and no "Nothing named" over them.
+     MUTATION: delete `if (subjectTile) shows = subjectTile.shows;` in paintShowResults -> no tiles, and the empty page
+     paints under the lead (the first assertion goes red). */
+  const w = mountSearch({ taxonomy, catalog });
+  w.ctx.renderShowSearchResults("Science");
+  await waitFor(() => vm.runInContext("showSearchAnswered.token === showSearchToken", w.ctx));
+  const tileCount = (w.view.querySelector("#sh-results").innerHTML.match(/class="ag-show-tile"/g) || []).length;
+  assert.strictEqual(tileCount, 2, "the subject's two shows are drawn");
+  assert.ok(w.empty().hidden, `and no empty page over them: ${w.empty().innerHTML}`);
 });
 
 test("the Make-a-playlist button is on the text alone: no pending line, no scan, before any pass has answered", async () => {
