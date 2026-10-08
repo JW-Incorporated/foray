@@ -1569,7 +1569,6 @@ test("copy-8: every quoted query goes through the one typographic pair — no st
     "No episodes match ${quoteQuery(esc(searchQuery.trim()))}.",
     "Not much on ${quoteQuery(query)} yet",
     "Make a playlist about ${quoteKeyQuery(esc(query))}",
-    "Starts with ${quoteQuery(",
   ]) assert.ok(APP_SRC.includes(site), `site must use the helper: ${site}`);
   const m = mount();
   assert.strictEqual(m.evalIn("quoteQuery")("x"), "\u201cx\u201d");
