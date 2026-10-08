@@ -1666,10 +1666,11 @@ function findWhere(node, pred) {
 }
 const labelled = (prefix) => (n) => String(n.getAttribute?.("aria-label") ?? "").startsWith(prefix);
 const sheet = (doc) => ({
-  /* The mini bar's ↺15 (`.fp-skip`, visual pass 1) is labelled the same way
-     and sits earlier in the tree; the sheet's own is the `.fp-btn`. */
+  /* The mini bar's 30-forward (`.fp-skip`, Tactile `mini`) is labelled the
+     same way as the sheet's and sits earlier in the tree; the sheet's own is
+     the `.fp-btn`. */
   back: findWhere(doc.body, (n) => n.className === "fp-btn" && labelled("Back ")(n)),
-  fwd: findWhere(doc.body, labelled("Forward ")),
+  fwd: findWhere(doc.body, (n) => n.className === "fp-btn" && labelled("Forward ")(n)),
   scrub: find(doc.body, "fp-scrub"),
   fill: find(doc.body, "fp-fill"),
   left: find(doc.body, "fp-left"),
@@ -2710,21 +2711,23 @@ test("VISUAL PASS: inside a Foray the sheet's ↺15 nudges within the clip — i
   restore();
 });
 
-test("VISUAL PASS: the mini bar's ↺15 is the same nudge, for an episode and for a Foray", async (t) => {
-  /* KILLING MUTATION: drop `skipBtn` from `bar.append(...)`, or point its
-     handler at `forayPrevious`. */
+test("VISUAL PASS: the mini bar's 30-forward is the same nudge, for an episode and for a Foray", async (t) => {
+  /* REWRITTEN ON PURPOSE (Tactile `mini`, BUILD-PLAN 2.4): the mini's second
+     key is 30 forward, no longer back 15 (ruling: the mini's transport pair).
+     KILLING MUTATION: drop `skipBtn` from `bar.append(...)`, point its
+     handler at `forayPrevious`, or at `nudgeBy(-SEEK_BACK)`. */
   const { client, doc, audio, restore } = await bootClient(t);
   await client.playForay(synthetic(), { startIndex: 0 });
   await settle();
   const skip = find(doc.body, "fp-skip");
   assert.ok(skip, "the bar carries a skip control");
-  assert.equal(skip.getAttribute("aria-label"), "Back 15 seconds");
+  assert.equal(skip.getAttribute("aria-label"), "Forward 30 seconds");
   audio.currentTime = 150;
   audio.fire("timeupdate");
   await settle();
   await skip.click();
   await settle();
-  assert.ok(Math.abs(audio.currentTime - 135) < 0.01, `Foray: landed at ${audio.currentTime}s`);
+  assert.ok(Math.abs(audio.currentTime - 180) < 0.01, `Foray: landed at ${audio.currentTime}s`);
   assert.equal(client.forayStatus().index, 0);
   restore();
 });

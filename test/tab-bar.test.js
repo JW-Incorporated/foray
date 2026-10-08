@@ -1,19 +1,28 @@
-/* U-02 (docs/ui-transition-plan.md): the four-tab bar. Originally gated by a
- * cp_ui_v2 flag; U-11 (founder override, 2026-09-06, kanban card
- * t_a3f01c8a) retired the flag — ui2On() now always returns true and the
- * bar is unconditional. The pre-cutover flag/off-state tests are preserved
- * in archive/legacy-ui-2026-09/ (see that directory's README).
+/* The tab bar. U-02 built it with four tabs (Home, Search, Create, Library)
+ * and a drawer; U-11 (2026-09-06) retired its cp_ui_v2 flag, so it is
+ * unconditional.
+ *
+ * REWRITTEN ON PURPOSE (Redesign 2026, Tactile Phase 4 group A `mini`): the
+ * ruling that fell is D3, "4 tabs + drawer" (docs/redesign-2026/
+ * test-classification.md; the owner picked Tactile on 2026-10-06, whose
+ * DIRECTION.md overturns it). The deck carries THREE tabs: Today, Find,
+ * Yours. Create's page and the subject queues light Find (naming a subject is
+ * Find's second job); playlists light Yours. What the rewrite still
+ * guarantees, per the classification: every route resolves to a real page;
+ * exactly one nav item is current for every route, never zero or two; the
+ * content reservation clears the bar (safe area counted once); the mini
+ * player never overlaps the bar.
  *
  * WHAT THIS PROVES, in order:
  *  1. The tab bar always renders (no on/off state left).
- *  2. It renders all four destinations, in the mockup's order: Home,
- *     Search, Create, Library.
+ *  2. It renders the three destinations in the direction's order: Today,
+ *     Find, Yours.
  *  3. Each of the app's 14 routes maps to exactly one tab, and that tab
- *     (and only that tab) carries aria-current="page" -- so switching tabs
- *     always highlights a real destination, never a stale or double one.
+ *     (and only that tab) carries aria-current="page"; the indicator's slot
+ *     follows it.
  *  4. All 14 routes still resolve to a real page.
- *  5. Library's tab points at #/library (the U-10/library-screen precedent
- *     this card is explicitly asked to compose with).
+ *  5. Yours points at #/library, Find at #/shows, Today at #/.
+ *  6. The Yours tab says how many are queued, and only when any are.
  *
  * Every test names the mutation that kills it, per CLAUDE.md.
  *
@@ -188,25 +197,29 @@ test("the tab bar always exists after a render (cp_ui_v2 retired, U-11 cutover)"
 /* 2. ALL FOUR TABS, IN ORDER                                            */
 /* ==================================================================== */
 
-test("the tab bar renders all four tabs in the mockup's order: Home, Search, Create, Library", () => {
-  /* MUTATION: reorder TAB_ROUTES, or drop one entry. The labels array
-     comparison below fails on either. */
+test("the tab bar renders the three Tactile tabs in order: Today, Find, Yours, each with both icon weights", () => {
+  /* MUTATION: reorder TAB_ROUTES, or drop one entry (or restore Create). The
+     labels array comparison below fails on any of them.
+     MUTATION 2: drop the `-fill` icon from tabMarkup -> the Fill assertion fails. */
   const m = mount();
   m.evalIn("renderTabBar();");
   const bar = m.body.querySelector("#tab-bar");
   assert.ok(bar, "the tab bar must exist");
-  const labels = bar.querySelectorAll(".tab-btn").map((a) => {
-    const span = a.children.find((c) => c.tagName === "SPAN");
-    return span ? span.textContent : null;
-  });
-  // innerHTML is used to build each tab's content in app.js (icon + <span>text</span>),
-  // not real child nodes -- so read labels back out of innerHTML instead.
-  const htmlLabels = bar.querySelectorAll(".tab-btn").map((a) => {
-    const m2 = /<span>([^<]*)<\/span>/.exec(a.innerHTML);
+  // innerHTML builds each tab's content (icons + label span), not real child
+  // nodes -- so read labels back out of innerHTML.
+  const tabs = bar.querySelectorAll(".tab-btn");
+  const htmlLabels = tabs.map((a) => {
+    const m2 = /<span class="tab__label">([^<]*)<\/span>/.exec(a.innerHTML);
     return m2 ? m2[1] : null;
   });
-  assert.deepStrictEqual(htmlLabels, ["Home", "Find", "Create", "Library"]);
-  void labels;
+  assert.deepStrictEqual(htmlLabels, ["Today", "Find", "Yours"]);
+  const icons = [["ph-sun-horizon"], ["ph-magnifying-glass"], ["ph-bookmarks"]];
+  tabs.forEach((a, i) => {
+    assert.match(a.innerHTML, new RegExp(`class="i i--bold"[^>]*><use href="#${icons[i][0]}"`), "Bold when idle");
+    assert.match(a.innerHTML, new RegExp(`class="i i--fill"[^>]*><use href="#${icons[i][0]}-fill"`), "Fill when current");
+  });
+  assert.strictEqual(bar.getAttribute("aria-label"), "Main");
+  assert.ok(bar.querySelector(".tab-bar__ind"), "one indicator, slid by CSS");
 });
 
 /* Sections 3 and 4 (turning the flag off; native-shell default vs explicit
@@ -224,7 +237,10 @@ test("every route highlights exactly one tab, and it is the right one", () => {
      (an overlapping regex). Both "search" and "library" would then read
      current for a #/library hash and the "exactly one" assertion fails.
      MUTATION 2: restore `shows$` (no `($|\/)`), or `return null` as the
-     fallback — the new #/shows/q/ and #/bogus rows fail. */
+     fallback — the new #/shows/q/ and #/bogus rows fail.
+     MUTATION 3: drop `playlists$|playlist\/` from the library branch -> the
+     playlist rows light Today and fail.
+     MUTATION 4: set `data-active` from a constant 0 -> the indicator rows fail. */
   const m = mount();
   const cases = [
     ["#/", "home"],
@@ -241,10 +257,10 @@ test("every route highlights exactly one tab, and it is the right one", () => {
     ["", "home"],
     ["#/bogus", "home"],
     ["#/episode/xyz", "search"],
-    ["#/playlists", "create"],
-    ["#/playlist/abc", "create"],
-    ["#/subject/tech", "create"],
-    ["#/create", "create"],
+    ["#/playlists", "library"],
+    ["#/playlist/abc", "library"],
+    ["#/subject/tech", "search"],
+    ["#/create", "search"],
     ["#/library", "library"],
     ["#/queue", "library"],
     ["#/forays", "library"],
@@ -257,6 +273,7 @@ test("every route highlights exactly one tab, and it is the right one", () => {
     const current = bar.querySelectorAll(".tab-btn").filter((a) => a.getAttribute("aria-current") === "page");
     assert.strictEqual(current.length, 1, `${hash}: exactly one tab must read as current, got ${current.length}`);
     assert.strictEqual(current[0].dataset.tabKey, want, `${hash}: expected the "${want}" tab current, got "${current[0].dataset.tabKey}"`);
+    assert.strictEqual(bar.getAttribute("data-active"), String(["home", "search", "library"].indexOf(want)), `${hash}: the indicator sits under the current tab`);
   }
 });
 
@@ -295,7 +312,8 @@ test("all 14 existing routes still resolve to a real page", () => {
 /* 7. LIBRARY TAB POINTS AT #/library                                    */
 /* ==================================================================== */
 
-test("the Library tab's href is #/library", () => {
+test("the Yours tab's href is #/library", () => {
+  /* MUTATION: point TAB_ROUTES's library entry at "#/queue" -> red. */
   const m = mount();
   m.evalIn("renderTabBar();");
   const bar = m.body.querySelector("#tab-bar");
@@ -305,19 +323,35 @@ test("the Library tab's href is #/library", () => {
 });
 
 /* ==================================================================== */
-/* 7b. CREATE TAB POINTS AT #/create (U-06)                              */
+/* 7b. TODAY AND FIND, AND NO CREATE TAB (D3 fell with Tactile)          */
 /* ==================================================================== */
 
-test("the Create tab's href is #/create, not #/playlists", () => {
-  /* MUTATION: revert TAB_ROUTES's create entry's hash back to "#/playlists".
-     U-06 gives Create its own screen (the Foray|Playlist toggle, honest
-     copy) rather than routing straight at the old Playlists page. */
+test("Today points at #/, Find at #/shows, and there is no Create tab", () => {
+  /* MUTATION: re-add a `create` entry to TAB_ROUTES -> the count and the
+     no-create assertion fail. Create's page still resolves (section 6) and
+     lights Find (section 5). */
   const m = mount();
   m.evalIn("renderTabBar();");
-  const bar = m.body.querySelector("#tab-bar");
-  const create = bar.querySelectorAll(".tab-btn").find((a) => a.dataset.tabKey === "create");
-  assert.ok(create, "a create tab must exist");
-  assert.strictEqual(create.href, "#/create");
+  const tabs = m.body.querySelector("#tab-bar").querySelectorAll(".tab-btn");
+  assert.strictEqual(tabs.length, 3);
+  assert.strictEqual(tabs.find((a) => a.dataset.tabKey === "home").href, "#/");
+  assert.strictEqual(tabs.find((a) => a.dataset.tabKey === "search").href, "#/shows");
+  assert.strictEqual(tabs.find((a) => a.dataset.tabKey === "create"), undefined);
+});
+
+test("the Yours tab names the Up Next count, and only when something is queued", () => {
+  /* BUILD-NOTES 3.11: the badge shows only when Up Next is non-empty. The
+     badge itself lives in the aria-hidden icon wrapper, so the tab's name
+     carries the count (the badge node is pinned in test/tactile-mini.test.js).
+     MUTATION: in paintTabBadge change `if (n > 0)` to `if (n >= 0)` -> the
+     empty queue still says "0 queued" and this fails. */
+  const m = mount({ seed: { cp_queue: JSON.stringify(["ep-1", "ep-2"]) } });
+  m.evalIn("renderTabBar();");
+  const yours = () => m.body.querySelector("#tab-bar").querySelectorAll(".tab-btn").find((a) => a.dataset.tabKey === "library");
+  assert.strictEqual(yours().getAttribute("aria-label"), "Yours, 2 queued");
+  assert.match(yours().innerHTML, /<span class="tab__badge" hidden><\/span>/, "the badge starts hidden and is filled by paintTabBadge");
+  m.evalIn('saveQueueIds([]);');
+  assert.strictEqual(yours().getAttribute("aria-label"), null, "an empty Up Next names no count");
 });
 
 /* ==================================================================== */
@@ -364,7 +398,9 @@ function resolvePx(expr, insetBottom) {
       // blocks (styles.css opens more than one), so scan all of them and
       // take the last match, same last-one-wins rule as the real cascade.
       let found = null;
-      for (const rootMatch of CSS.matchAll(/:root\s*\{([^}]*)\}/g)) {
+      // The deck's live tab-row height is declared on body.ui-v2 (not the Dial :root,
+      // whose token set is pinned), so those blocks are scanned too, after :root.
+      for (const rootMatch of [...CSS.matchAll(/:root\s*\{([^}]*)\}/g), ...CSS.matchAll(/(?:^|\})\s*body\.ui-v2\s*\{([^}]*)\}/gm)]) {
         const d = re.exec(rootMatch[1]);
         if (d) found = d[1].trim();
       }
@@ -385,35 +421,31 @@ function resolvePx(expr, insetBottom) {
   return total;
 }
 
-test("the tab bar's own height and body.ui-v2's content reservation for it agree, at both insets", () => {
-  /* MUTATION: change `.tab-bar`'s height calc to a different constant than
-     `body.ui-v2`'s padding-bottom (the classic "one got fixed, the other
-     didn't" drift .topbar's own four reservations already guard against
-     for the top edge). Either inset catches a mismatch. */
+test("body.ui-v2's content reservation clears the floating tab row, safe area counted once, at both insets", () => {
+  /* The deck floats: its top edge is its bottom offset (safe area + 12) plus
+     its height, and the reservation must reach past that, by the formula
+     BUILD-NOTES 3.11 gives (deck-h + safe-b + 24 with no mini).
+     MUTATION: change `body.ui-v2`'s padding-bottom to `calc(var(--deck-h) +
+     var(--safe-b))` -> the last row sits under the deck and this fails.
+     MUTATION 2: add the inset twice (`+ var(--safe-b) + var(--safe-b)`) -> the
+     34px row overshoots the 24px gap and fails. */
   for (const insetBottom of [0, 34]) { // 0 = desktop, 34 = iPhone home-indicator inset
-    const barHeight = resolvePx(cssDecl(".tab-bar", "height"), insetBottom);
+    const top = resolvePx(cssDecl("body.ui-v2 .tab-bar", "bottom"), insetBottom) + resolvePx(cssDecl("body.ui-v2 .tab-bar", "height"), insetBottom);
     const reserved = resolvePx(cssDecl("body.ui-v2", "padding-bottom"), insetBottom);
-    assert.strictEqual(
-      reserved, barHeight,
-      `inset ${insetBottom}px: body.ui-v2's padding-bottom (${reserved}px) must equal ` +
-      `the tab bar's own height (${barHeight}px), or content is hidden behind (or a gap ` +
-      `is left under) the bar`
-    );
+    assert.strictEqual(reserved - top, 12, `inset ${insetBottom}px: the reservation (${reserved}px) clears the deck's top (${top}px) by 12px`);
   }
 });
 
-test("the mini-player docks ABOVE the tab bar: #foray-player's bottom offset equals the bar's height while both are open", () => {
-  /* MUTATION: hardcode `body.ui-v2.fp-open #foray-player { bottom: 0 }`
-     (i.e. let the mini-player sit behind/under the tab bar instead of
-     docking above it). This fails because bottom would be 0, not the
-     bar's height. */
+test("the mini-player docks ABOVE the tab row: its bottom offset is the row's top edge plus the 1px separator", () => {
+  /* MUTATION: hardcode `body.ui-v2 #foray-player.dial-mini { bottom: 0 }`
+     (the mini behind the tab row). This fails because bottom would be 0. */
   for (const insetBottom of [0, 34]) {
-    const barHeight = resolvePx(cssDecl(".tab-bar", "height"), insetBottom);
-    const playerBottom = resolvePx(cssDecl("body.ui-v2.fp-open #foray-player", "bottom"), insetBottom);
+    const top = resolvePx(cssDecl("body.ui-v2 .tab-bar", "bottom"), insetBottom) + resolvePx(cssDecl("body.ui-v2 .tab-bar", "height"), insetBottom);
+    const playerBottom = resolvePx(cssDecl("body.ui-v2 #foray-player.dial-mini", "bottom"), insetBottom);
     assert.strictEqual(
-      playerBottom, barHeight,
-      `inset ${insetBottom}px: the mini-player's bottom offset (${playerBottom}px) must equal ` +
-      `the tab bar's height (${barHeight}px) so it docks above the bar, not behind it`
+      playerBottom, top + 1,
+      `inset ${insetBottom}px: the mini's bottom offset (${playerBottom}px) must sit on the tab row's ` +
+      `top edge (${top}px) plus the separator, so it docks above the row, not behind it`
     );
   }
 });

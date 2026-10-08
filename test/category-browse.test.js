@@ -304,7 +304,7 @@ test("the menu carries a Shows destination pointing at #/shows", () => {
      rebuilds those five links, so a render-based assertion would be reading a
      fixture instead of the shipped nav.
 
-     MUTATION: delete the `<a class="drawer-section" href="#/shows">Search</a>`
+     MUTATION: delete the `<a class="drawer-section" href="#/shows">Find</a>`
      line from index.html. This fails, and #/shows becomes an address with no
      link to it anywhere in the app.
 
