@@ -511,3 +511,21 @@ test("the harness reaches the page: an episode-notes state with the notes, the n
   const stress = states.find((s) => s.id === "stress");
   assert.ok(stress.steps.some((s) => s.label === "episode") && stress.steps.some((s) => s.label === "episode-token"));
 });
+
+test("the Glow the page puts on the ROOT does not outlive the page: the next route clears it, so a sheet over Today reads the scheme's own Glow", () => {
+  /* Iteration 2 baseline regression: ui/episode.js writes --glow on documentElement (the Dock reads the root's Glow), and nothing
+     took it off, so the Settings and "What 4a does" sheets, opened later from Today, tinted their header with the last show's hue.
+     The harness's documentElement is its <body>, whose style only had setProperty; here it is a real store.
+     MUTATION: delete the removeProperty("--glow") call from setBodyClass() in app.js -> the second assertion goes red.
+     MUTATION 2: drop forayCssVar(document.documentElement, "--glow", glow) from renderEpisode -> the first goes red (the Dock
+     would stop reading the Room's light, so the clear would be tested against nothing). */
+  const m = mount();
+  const props = new Map();
+  m.body.style = { setProperty: (k, v) => props.set(k, v), removeProperty: (k) => { props.delete(k); }, getPropertyValue: (k) => props.get(k) || "" };
+  open(m);
+  assert.ok(props.get("--glow"), "on the page the root carries the show's Glow (the Dock reads it)");
+  m.ctx.setBodyClass("view-home");
+  assert.strictEqual(props.has("--glow"), false, "leaving the page leaves no Glow on the root");
+  open(m);
+  assert.ok(props.get("--glow"), "and coming back lights it again: the clear happens before the page writes, not after");
+});
