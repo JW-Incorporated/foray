@@ -34,7 +34,6 @@ function renderQueue() {
   libUi.currentId = libCurrentId();
   $("#view").innerHTML = `
     <div class="ag lb-page qp-page is-settling">
-      ${libCastHtml()}
       <section class="lb-section qp-section" data-lb-section="upnext" data-lb-page="queue">${libUpNextInnerHtml(true)}</section>
       ${libHistorySectionHtml()}
       ${libToastHtml()}

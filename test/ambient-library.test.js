@@ -637,37 +637,20 @@ test("every tile casts its own palette colour: --art-glow is written from the ti
   assert.match(read("ui/tokens.css"), /\.lit-art \{\s*box-shadow: var\(--shadow-1\), 0 0 var\(--lit-r, 40px\)[^;]*var\(--art-glow, var\(--glow\)\)/, "and the token paints that colour, not a black shadow");
 });
 
-test("the Dock's cast is drawn only while the bar is up, and idle when nothing plays", async () => {
-  /* MUTATION 1: make libCastHtml always answer "playing" -> the idle assertion is red.
-     MUTATION 2: drop the `:not([data-state="idle"])` guard or the `body.fp-open` prefix in library.css -> the CSS
-     assertion is red. MUTATION 3: set `display: block` on `.ag .lb-cast` -> the hidden-by-default assertion is red. */
+test("the page draws neither a cast nor a fade: the Dock owns both, on every page", async () => {
+  /* The Dock (ui/tabbar.js: #dock-cast, .dock-fade) paints the upward light and the fade behind itself. Library's
+     stopgap copies (`.lb-cast`, `.lb-fade`) would paint a second one.
+     MUTATION 1: put a `<div class="lb-fade">` back into renderLibrary's markup -> red.
+     MUTATION 2: put an `.ag .lb-cast` or `.ag .lb-fade` rule back into library.css -> red.
+     MUTATION 3: take `dock-fade` out of ui/tabbar.js -> the Dock assertion is red. */
   const m = await mount({ bridge: realBridge() });
   m.ctx.renderLibrary();
-  assert.match(m.view(), /<div class="dock-cast lb-cast" data-state="idle" aria-hidden="true"><\/div>/, "nothing plays: idle");
-  m.ctx.document.body.classList.contains = (c) => c === "fp-open";
-  m.ctx.renderLibrary();
-  assert.match(m.view(), /<div class="dock-cast lb-cast" data-state="playing" aria-hidden="true"><\/div>/, "the bar is up: playing");
-  assert.match(LIB_CSS, /\.ag \.lb-cast \{[^}]*display: none;/, "hidden unless the bar is up");
-  assert.match(LIB_CSS, /body\.fp-open \.ag \.lb-cast:not\(\[data-state="idle"\]\) \{ display: block;/, "shown only under body.fp-open and not idle");
-  assert.match(read("ui/tokens.css"), /\.dock-cast\[data-state="idle"\][^{]*\{[^}]*display: none/, "and the token's own idle state hides it");
-});
-
-test("content fades into the page's ground above the bars, never sliced: a fixed fade sits over the last 40px, clicks pass through", async () => {
-  /* MUTATION 1: take `<div class="lb-fade" ...>` out of libCastHtml -> the markup assertion is red.
-     MUTATION 2: drop `pointer-events: none` from `.ag .lb-fade` -> the last row's links stop taking taps; red.
-     MUTATION 3: make the gradient end in `transparent` (not `var(--bg0)`) -> the row under the bar edge still shows
-     through and the ground assertion is red.
-     MUTATION 4: sit the fade at `bottom: 0` (under the bars, not above their top edge) -> the offset assertion is red. */
-  const m = await mount({ bridge: realBridge() });
-  m.ctx.renderLibrary();
-  assert.match(m.view(), /<div class="lb-fade" aria-hidden="true"><\/div>/, "the fade is drawn, and hidden from a screen reader");
-  const rule = /\.ag \.lb-fade \{([^}]*)\}/.exec(LIB_CSS);
-  assert.ok(rule, "a rule for the fade");
-  assert.match(rule[1], /position: fixed;/);
-  assert.match(rule[1], /pointer-events: none;/, "taps pass through to the row beneath");
-  assert.match(rule[1], /background: linear-gradient\(transparent, var\(--bg0\)\)/, "it dissolves into the page's ground");
-  assert.match(rule[1], /bottom: calc\(var\(--safe-bottom\) \+ var\(--tab-bar-h, 56px\)/, "it starts at the legacy bar's top edge, not the screen's");
-  assert.match(LIB_CSS, /body\.fp-open \.ag \.lb-fade \{ bottom: calc\([^}]*var\(--mini\)/, "and rides up over the mini player when it is up");
+  assert.ok(!/lb-cast|lb-fade|dock-cast|dock-fade/.test(m.view()), "no cast or fade in the page's own markup");
+  assert.ok(!/lb-cast|lb-fade/.test(LIB_CSS), "and no rule for them");
+  const dock = read("ui/tabbar.js");
+  assert.match(dock, /dockEl\("div", "dock-cast", "dock-cast"\)/, "the Dock draws the cast");
+  assert.match(dock, /dockEl\("div", "dock-fade"\)/, "and the fade");
+  assert.match(read("ui/tokens.css"), /\.dock-cast\[data-state="idle"\][^{]*\{[^}]*display: none/, "hidden when nothing plays");
 });
 
 /* ==================================================================== */

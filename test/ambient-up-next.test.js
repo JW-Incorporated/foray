@@ -311,17 +311,22 @@ test("the slide is 280ms on --e-out: the row's transform transition and the toke
 /* 4. THE TOAST SITS 8px ABOVE THE MINI ROW                             */
 /* ==================================================================== */
 
-test("the Toast is 48 tall and 8px above the mini row: tab bar + mini + --s-2, on the page's Toast element", () => {
-  /* MUTATION 1: change \`+ var(--s-2)\` to \`+ var(--s-1)\` in the body.fp-open rule -> 4px, red.
-     MUTATION 2: drop \`var(--mini)\` from that rule -> the Toast sits behind the mini row: red.
+test("the Toast is 48 tall and 8px above the mini row: the Dock's own height + --s-2, on the page's Toast element", () => {
+  /* The Toast rides the DOCK's geometry (ui/dock.css), not a copy of the tab bar's: `--dock-h` is the field row, the
+     mini row and the tab row, and body.ui-v2.fp-open turns the mini row's 64 on.
+     MUTATION 1: change `+ var(--s-2)` to `+ var(--s-1)` in the .lb-toast rule -> 4px, red.
+     MUTATION 2: drop `var(--dock-h)` from that rule -> the Toast sits behind the Dock: red.
      MUTATION 3: set --s-2 to 12px in tokens.css -> red. MUTATION 4: min-height 48px -> 40px: red.
-     (The measured number, in a real browser: tools/ui-lab \`up-next-toast\` step, read in the PR.) */
-  const open = /body\.fp-open \.ag \.lb-toast\s*\{([^}]*)\}/.exec(LIB_CSS);
-  assert.ok(open, "the rule that lifts the Toast over the mini row");
-  assert.match(open[1], /bottom:\s*calc\(var\(--safe-bottom\) \+ var\(--tab-bar-h, 56px\) \+ var\(--mini\) \+ var\(--s-2\)\)/, "bar + mini + 8");
+     MUTATION 5: delete `body.ui-v2.fp-open { --dock-mini-h: var(--mini); }` from dock.css -> the mini row stops counting: red.
+     (The measured number, in a real browser: tools/ui-lab `up-next-toast` step, read in the PR.) */
+  const base = /\.ag \.lb-toast\s*\{([^}]*)\}/.exec(LIB_CSS);
+  assert.ok(base, "the Toast rule");
+  assert.match(base[1], /bottom:\s*calc\(var\(--safe-bottom\) \+ var\(--dock-inset\) \+ var\(--dock-h\) \+ var\(--s-2\)\)/, "Dock top edge + 8");
+  assert.ok(!/body\.fp-open \.ag \.lb-toast/.test(LIB_CSS), "no second rule lifting it: the Dock's height already carries the mini row");
+  assert.match(read("ui/dock.css"), /body\.ui-v2\.fp-open \{ --dock-mini-h: var\(--mini\); \}/, "and the mini row counts in --dock-h while something is loaded");
   assert.match(TOKENS_CSS, /--s-1:\s*4px;\s*--s-2:\s*8px;/, "--s-2 is 8px");
   assert.match(TOKENS_CSS, /--mini:\s*64px/, "the mini row is 64");
-  assert.match(/\.ag \.lb-toast\s*\{([^}]*)\}/.exec(LIB_CSS)[1], /min-height:\s*48px/, "48 tall");
+  assert.match(base[1], /min-height:\s*48px/, "48 tall");
   /* The page's Toast is that element, and the page wears the classes the rule is scoped to. */
   const m = mount();
   m.ctx.renderQueue();

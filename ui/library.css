@@ -42,23 +42,8 @@ body.view-library #view { padding-top: 0; }
 .ag.lb-page a:not(.ag-btn) { color: inherit; text-decoration: none; }
 .ag.lb-page a.ag-btn { text-decoration: none; }
 
-/* The Dock's upward light: a Glow radial rising from the bottom edge, behind the content, present while the bar is
-   up (the stylesheet shows it only under body.fp-open, and the script sets data-state so a render says the same)
-   and absent when nothing plays. Position fixed: the legacy bar is the Dock here. The Glow is the playing item's,
-   written on the page root by script. */
-.ag .lb-cast { position: fixed; z-index: 0; display: none; bottom: calc(var(--safe-bottom) + var(--tab-bar-h, 56px) - var(--s-6)); }
-body.fp-open .ag .lb-cast:not([data-state="idle"]) { display: block; bottom: calc(var(--safe-bottom) + var(--tab-bar-h, 56px) + var(--mini) - var(--s-6)); }
-
-/* Content never meets the bar's top edge sliced: it dissolves into the page's ground over the 32px above the legacy bars
-   (DIRECTION, Materials: "Content runs under the Dock and fades to bg behind it ... never sliced"). The Dock unit's own
-   `.dock-fade` replaces this element when the legacy bars go. Fixed, clicks pass through, above the content and below
-   the bars. */
-.ag .lb-fade {
-  position: fixed; left: 0; right: 0; z-index: 3; pointer-events: none; height: calc(var(--s-8) + var(--s-1));
-  bottom: calc(var(--safe-bottom) + var(--tab-bar-h, 56px) - 1px);
-  background: linear-gradient(transparent, var(--bg0));
-}
-body.fp-open .ag .lb-fade { bottom: calc(var(--safe-bottom) + var(--tab-bar-h, 56px) + var(--mini) - 1px); }
+/* The Dock draws the upward light (#dock-cast) and the fade (.dock-fade) itself, on every page (ui/tabbar.js,
+   ui/dock.css); this page keeps neither. */
 
 /* Title: Fraunces 26/30 at the top, a 44 tall row. */
 .ag .lb-head { min-height: var(--tap); display: flex; align-items: center; margin-top: var(--s-2); }
@@ -158,10 +143,9 @@ body.fp-open .ag .lb-fade { bottom: calc(var(--safe-bottom) + var(--tab-bar-h, 5
    a 200ms opacity crossfade, and the motion gate (rightly) reads that crossfade as motion. It leaves at once. */
 .ag .lb-toast {
   position: fixed; left: var(--gutter); right: var(--gutter); z-index: 65; min-height: 48px;
-  bottom: calc(var(--safe-bottom) + var(--tab-bar-h, 56px) + var(--s-2));
+  bottom: calc(var(--safe-bottom) + var(--dock-inset) + var(--dock-h) + var(--s-2));   /* 8 above the Dock's top edge: the mini row when it is up, else the tab row */
   opacity: 0; visibility: hidden; transform: translateY(var(--s-3));
 }
-body.fp-open .ag .lb-toast { bottom: calc(var(--safe-bottom) + var(--tab-bar-h, 56px) + var(--mini) + var(--s-2)); }
 .ag .lb-toast.is-open { opacity: 1; visibility: visible; transform: none; animation: lb-toast-in var(--m-ui) var(--e-out); }
 @keyframes lb-toast-in { from { opacity: 0; transform: translateY(var(--s-3)); } to { opacity: 1; transform: none; } }
 
