@@ -44,7 +44,7 @@ import {
   REPO_ROOT, DEFAULT_OUT, MAX_BYTES, SHELL_FILES, EXCLUDED_FROM_BUNDLE,
   MIN_DERIVED_DATA_FILES, runtimeDataFiles, playerFiles, buildPlan, prepare,
   SHELL_ONLY_FILES, shellOnlyPlan, shellScriptTags, injectShellScripts,
-  assertShellScriptsPresent, WebDirError,
+  assertShellScriptsPresent, WebDirError, stripHtmlComments,
   BUNDLED_ITEMS_PER_SHOW, PROJECTED_DATA, COPIED_WHOLE, discoverSlice,
   assertDiscoverSliceComplete, serializeSlice, sliceBytes, assertSlicesOnDisk, projectData,
   referencedSegmentIds, segmentSlice, segmentSourceSlice, assertForaySliceComplete,
@@ -602,6 +602,22 @@ function withRealBundle(fn, opts = {}) {
     fs.rmSync(path.join(ROOT, "mobile", ".bundle-under-test"), { recursive: true, force: true });
   }
 }
+
+test("the bundle's index.html ships without its comments, and stripping keeps every tag (Redesign 2026: 5.4 KB of comments took the bundle past the 3 MB cap)", () => {
+  /* MUTATION: make stripHtmlComments return its input unchanged -> the first two assertions go red.
+     MUTATION: make the second replace greedy (`<!--[\s\S]*-->`) -> the tag-survives assertion goes red. */
+  assert.equal(stripHtmlComments("a\n  <!-- x\n y -->\nb"), "a\nb", "a comment alone on its lines leaves no blank line");
+  assert.equal(stripHtmlComments('<link href="a"><!-- c --><script src="b"></script>'), '<link href="a"><script src="b"></script>', "an inline comment goes, the tags beside it stay");
+  assert.equal(stripHtmlComments("x <!-- never closed"), "x <!-- never closed", "an unclosed comment is left alone, not allowed to eat the document");
+  assert.equal(stripHtmlComments(stripHtmlComments("<!-- a -->\n<p>b</p>\n<!-- c -->\n")), "<p>b</p>\n", "idempotent");
+  withRealBundle((r, absOut) => {
+    const html = fs.readFileSync(path.join(absOut, "index.html"), "utf8");
+    assert.ok(!html.includes("<!--"), "the shipped index.html carries no comment");
+    const src = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+    const tags = (h) => [...h.matchAll(/<(?:script|link)\b[^>]*>/g)].map((m) => m[0]);
+    for (const t of tags(src)) assert.ok(tags(html).includes(t), `stripping must not lose ${t}`);
+  });
+});
 
 test("REAL REPO: DEFAULT_OUT is the webDir capacitor.config.json declares", () => {
   /* The two would otherwise drift into "the script writes one directory and

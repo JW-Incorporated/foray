@@ -92,7 +92,10 @@ test("car posture ships after Now Playing in every lane and the client wires it 
   assert.match(client, /ui\.root\.hidden = true;\s*ui\.sheet\.hidden = true;\s*\/\*[^*]*\*\/\s*window\.AfterglowCar\?\.leave\(document\);/, "Stop ends posture too");
   assert.match(client, /if \(window\.AfterglowCar\?\.active\(document\)\) ui\.openSheet\?\.\(\);/, "?posture=car opens Now Playing once something is loaded");
   assert.match(client, /onHold: \(\) => \{\s*window\.AfterglowCar\.haptic\(\);\s*window\.AfterglowCar\.enter\(document\);\s*ui\.openSheet\(\);/, "a hold fires the haptic, enters, and opens the sheet");
-  assert.match(client, /isControl: \(t\) => [^\n]*closest\("\.fp-play, \.fp-skip"\)/, "the two transport buttons never start the press");
+  /* The Dock's tap-on-the-rest-of-the-row handler shares the predicate (`inBarControl`), so the transport buttons are
+     named once. MUTATION: change ".fp-play, .fp-skip" to ".fp-play" in that const -> red. */
+  assert.match(client, /const inBarControl = \(t\) => [^\n]*closest\("\.fp-play, \.fp-skip"\)/, "the two transport buttons are named once");
+  assert.match(client, /bindPress\(ui\.bar, \{\s*isControl: inBarControl,/, "the two transport buttons never start the press");
 });
 
 /* ---------------------------------------------------------------- the stylesheet's numbers */
