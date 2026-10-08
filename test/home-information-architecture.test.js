@@ -203,7 +203,7 @@ test("`.home` renders the v2 layout (U-11 cutover retired the flag-off four-card
   };
   m.ctx.renderHome();
   const html = m.view();
-  assert.ok(html.includes('class="home hv2-home"'), "renderHome() must always render Home v2 post-cutover");
+  assert.ok(html.includes('<div class="today">'), "renderHome() must always render Today post-cutover");
   assert.ok(!html.includes('class="cards4"'), "the retired flag-off four-card grid must never render");
 });
 
@@ -470,6 +470,6 @@ test("with cp_ui_v2 on, Home renders the v2 layout instead of the four-card grid
 
   m.ctx.renderHome();
   const html = m.view();
-  assert.ok(html.includes('class="home hv2-home"'), "cp_ui_v2 on must render Home v2");
+  assert.ok(html.includes('<div class="today">'), "cp_ui_v2 on must render Today");
   assert.ok(!html.includes('class="cards4"'), "cp_ui_v2 on must not also render the flag-off four-card grid");
 });

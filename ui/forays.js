@@ -292,8 +292,10 @@ function jumpBackInHtml(rows) {
 /** Bar widths are a DOM property, never a style attribute — the page CSP is
     `style-src 'self'` and test/app-security.test.js gates it. */
 function sizeProgressBars(scope) {
-  scope.querySelectorAll(".fy-bar-fill[data-pct]").forEach(fill => {
-    const pct = Math.max(0, Math.min(100, Number(fill.dataset.pct) || 0));
-    fill.style.width = `${pct}%`;
-  });
+  for (const selector of [".fy-bar-fill[data-pct]", ".today-prog__fill[data-pct]"]) {
+    scope.querySelectorAll(selector).forEach(fill => {
+      const pct = Math.max(0, Math.min(100, Number(fill.dataset.pct) || 0));
+      fill.style.width = `${pct}%`;
+    });
+  }
 }

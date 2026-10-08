@@ -14,8 +14,12 @@ function tactileSpriteRef(id) {
   return "#" + (SPRITE_IDS.has(id) ? id : "ph-radio");
 }
 
-function tactileIcon(id, size) {
+/* `extra` is an opt-in class (a screen's own hook, e.g. `i--swap`); it is escaped
+ * like every other interpolation and defaults to nothing, so every existing
+ * caller's markup is byte-identical. */
+function tactileIcon(id, size, extra) {
   var cls = size === "sm" ? " i--sm" : size === "lg" ? " i--lg" : "";
+  if (extra) cls += " " + esc(extra);
   return '<svg class="i' + cls + '" aria-hidden="true" focusable="false"><use href="' + esc(safeUrl(tactileSpriteRef(id))) + '"></use></svg>';
 }
 
@@ -53,14 +57,30 @@ function tactileKeycap(data) {
   var disabled = d.disabled || d.loading || d.offline;
   var icon = d.offline ? "ph-cloud-slash" : d.loading ? "ph-radio" : d.icon;
   var text = d.offline ? (d.text || "Needs a connection") : d.text;
+  var iconSize = size === "xl" || size === "glance" ? "lg" : "";
+  /* Opt-in hooks for a screen that wires the key to the app's own engines.
+   * `data` becomes data-* attributes (names are checked, values escaped).
+   * `swapIcon` draws a second icon, shown instead of the first while the
+   * engine marks the key data-playing="1": the engine then never writes text
+   * into the key (data-ctl-icons), so the play and pause glyphs stay sprite
+   * icons and never fall back to a text character. */
+  var hooks = "";
+  if (d.data) {
+    Object.keys(d.data).forEach(function (name) {
+      if (/^[a-z][a-z0-9-]*$/.test(name) && d.data[name] != null) hooks += ' data-' + name + '="' + esc(d.data[name]) + '"';
+    });
+  }
+  if (d.swapIcon) hooks += " data-ctl-icons";
   return '<button type="button" class="keycap ' + esc(cls) + '"' +
     (d.id ? ' id="' + esc(d.id) + '"' : "") +
     (d.action ? ' data-action="' + esc(d.action) + '"' : "") +
+    hooks +
     (d.pressed ? ' data-pressed="true"' : "") +
     (d.loading ? ' aria-busy="true"' : "") +
     (disabled ? " disabled" : "") +
     ' aria-label="' + esc(d.label || text || "Action") + '">' +
-    (icon ? tactileIcon(icon, size === "xl" || size === "glance" ? "lg" : "") : "") +
+    (icon ? tactileIcon(icon, iconSize) : "") +
+    (icon && d.swapIcon ? tactileIcon(d.swapIcon, iconSize, "i--swap") : "") +
     (text ? '<span class="keycap__label">' + esc(text) + "</span>" : "") +
     (d.readout ? '<span class="readout keycap__readout">' + esc(d.readout) + "</span>" : "") +
     "</button>";
@@ -425,15 +445,75 @@ function tactileDisplayName(name) {
   return String(name || "Show").replace(/\s+(?:-|\||with|\()[\s\S]*$/i, "").trim();
 }
 
+/* THE ENGINE HOOKS (opt-in, Today and later screens). A row or bridge handed an
+ * `id` is wired to the app's own engines instead of being a specimen:
+ *   - the Play key carries data-play / data-title / data-ctx, which app.js's
+ *     bindPlay and the player's syncCardButtons already drive, and a second
+ *     (pause) icon that CSS shows while the engine marks it data-playing="1";
+ *   - "+ Up Next" carries data-upnext, which bindUpNext drives, and draws its
+ *     three states (off, just queued, queued) as sibling spans the `on` and
+ *     `is-fresh` classes choose between, so the engines never write a text
+ *     glyph into it (data-ctl-icons);
+ *   - the title is a link when `link` names a route kind ("episode"). The `#/`
+ *     is literal here and only the encoded id is interpolated.
+ * Without an `id` every one of these is the gallery specimen it always was. */
+function tactilePlayKey(d, title) {
+  var live = Boolean(d.id) && d.playable !== false;
+  if (d.id && !live) return "";
+  return tactileKeycap({
+    /* The prototype's row key is the 44px rounded key (a 48x44 plate), not a
+       round one: `round` makes a 48x44 key an oval. */
+    size: "sm", variant: "persimmon", icon: "ph-play-fill", label: "Play " + title,
+    data: live ? { play: d.id, title: title, ctx: d.ctx } : null,
+    swapIcon: live ? "ph-pause-fill" : null,
+  });
+}
+
+function tactileQueueAction(d, title) {
+  var name = (d.queued ? "Queued: " : "Add to Up Next: ") + title;
+  if (!d.id) {
+    return '<button type="button" class="row__queue" aria-label="' + esc(name) + '">' + tactileIcon(d.queued ? "ph-check" : "ph-plus", "sm") + '<span>' + esc(d.queued ? "Queued" : "Up Next") + "</span></button>";
+  }
+  if (d.queueable === false) return "";
+  return `<button type="button" class="row__queue${d.queued ? " on" : ""}" data-upnext="${esc(d.id)}" data-ctl-icons aria-label="${esc(d.queued ? "In Up Next" : "Add to Up Next: " + title)}">` +
+    tactileIcon("ph-plus", "sm") + tactileIcon("ph-check", "sm", "i--swap") +
+    '<span class="row__queue-off">Up Next</span><span class="row__queue-fresh">Queued</span><span class="row__queue-on">In Up Next</span></button>';
+}
+
+/* A length the caller does not know is "" and draws nothing; only an ABSENT
+ * length falls back to the specimen's 35 min (a gallery call). A real episode
+ * with no duration_min must never read as 35 minutes. */
+function tactileReadout(value) {
+  var text = value == null ? "35 min" : value;
+  return text === "" ? "" : '<span class="readout">' + esc(text) + "</span>";
+}
+
+/* The subject an episode was dealt for (Home's slots), as data-branch: what the
+ * first-run picks tests and any later "which subject is this" reader look for. */
+function tactileBranchAttr(d) {
+  return d.branch ? ' data-branch="' + esc(d.branch) + '"' : "";
+}
+
+function tactileTitleLink(d, text) {
+  if (!d.id || d.link !== "episode") return esc(text);
+  /* A template literal, the one form the "scheme fixed in code" scan accepts: the
+     `#/` is literal and only the encoded id is interpolated. */
+  return `<a class="row__link" href="#/episode/${esc(encodeURIComponent(d.id))}">${esc(text)}</a>`;
+}
+
 function tactileEpisodeRow(data) {
   var d = data || {};
-  return '<article class="row-episode' + (d.loading ? " is-loading" : "") + '"' + (d.loading ? ' aria-busy="true"' : "") + ">" +
+  var title = d.title || "Episode title";
+  return '<article class="row-episode' + (d.loading ? " is-loading" : "") + '"' + tactileBranchAttr(d) + (d.loading ? ' aria-busy="true"' : "") + ">" +
     tactileArtFrame({ size: "row", title: d.title, url: d.artwork, initials: d.initials, loading: d.loading }) +
-    '<div class="row__body"><h3 class="row__title">' + esc(d.title || "Episode title") + '</h3><div class="row__meta"><span class="row__show">' + esc(tactileDisplayName(d.show)) + '</span><span class="readout">' + esc(d.duration || "35 min") + '</span>' +
+    '<div class="row__body"><h3 class="row__title">' + tactileTitleLink(d, title) + '</h3><div class="row__meta"><span class="row__show">' + esc(tactileDisplayName(d.show)) + '</span><span class="row__facts">' + tactileReadout(d.duration) +
     (d.downloaded ? tactileTag({ kind: "downloaded", text: "Downloaded" }) : "") +
-    '<button type="button" class="row__queue" aria-label="' + esc((d.queued ? "Queued: " : "Add to Up Next: ") + (d.title || "episode")) + '">' + tactileIcon(d.queued ? "ph-check" : "ph-plus", "sm") + '<span>' + esc(d.queued ? "Queued" : "Up Next") + "</span></button></div>" +
-    (d.why ? '<p class="row__why">' + esc(d.why) + "</p>" : "") + "</div>" +
-    '<div class="row__end">' + tactileKeycap({ size: "sm", variant: "persimmon", round: true, icon: "ph-play-fill", label: "Play " + (d.title || "episode") }) + "</div></article>";
+    tactileQueueAction(d, d.title || "episode") + "</span></div></div>" +
+    '<div class="row__end">' + (d.id ? tactilePlayKey(d, d.title || "episode") : tactileKeycap({ size: "sm", variant: "persimmon", round: true, icon: "ph-play-fill", label: "Play " + (d.title || "episode") })) + "</div>" +
+    /* The why-line is the grid's own third row, spanning the text column and the
+       key's (`grid-column: 2 / -1`), as in the prototype; inside the body it wrapped at
+       the title's narrower width and cost a line. */
+    (d.why ? '<p class="row__why">' + esc(d.why) + "</p>" : "") + "</article>";
 }
 
 function tactileShowRow(data) {
@@ -449,7 +529,7 @@ function tactileQueueRow(data) {
 function tactileBridgeCard(data) {
   var d = data || {};
   var title = d.title || "A stretch pick";
-  return '<article class="card bridge" data-draw="true"><p class="bridge__sentence">' + esc(d.sentence || "Machining and language both reveal change through small repeated pressures.") + '</p><div class="bridge__arc">' + tactileArtFrame({ size: "queue", title: d.knownTitle, initials: d.knownInitials || "KN" }) + '<svg aria-hidden="true" viewBox="0 0 100 48" preserveAspectRatio="none"><path class="bridge__path" d="M2 30 C22 -6 78 -6 98 20"></path><circle cx="2" cy="30" r="3"></circle><circle cx="98" cy="20" r="3"></circle></svg>' + tactileArtFrame({ size: "row", title: title, initials: d.initials || "ST" }) + '</div><div class="bridge__meta"><div class="bridge__copy">' + tactileTag({ kind: "stretch", text: "Stretch" }) + '<strong class="bridge__title">' + esc(title) + '</strong><div class="bridge__details"><span class="bridge__show">' + esc(tactileDisplayName(d.show)) + '</span><span class="readout">' + esc(d.duration || "35 min") + '</span><button type="button" class="row__queue" aria-label="' + esc((d.queued ? "Queued: " : "Add to Up Next: ") + title) + '">' + tactileIcon(d.queued ? "ph-check" : "ph-plus", "sm") + '<span>' + esc(d.queued ? "Queued" : "Up Next") + '</span></button></div></div><div class="bridge__play">' + tactileKeycap({ size: "sm", variant: "persimmon", round: true, icon: "ph-play-fill", label: "Play " + title }) + "</div></div></article>";
+  return '<article class="card bridge" data-draw="true"' + tactileBranchAttr(d) + '><p class="bridge__sentence">' + esc(d.sentence || "Machining and language both reveal change through small repeated pressures.") + '</p><div class="bridge__arc">' + tactileArtFrame({ size: "queue", title: d.knownTitle, url: d.knownArtwork, initials: d.knownInitials || "KN" }) + '<span class="bridge__line"><svg aria-hidden="true" viewBox="0 0 100 48" preserveAspectRatio="none"><path class="bridge__path" pathLength="1" d="M2 30 C22 -6 78 -6 98 20"></path></svg><i class="bridge__dot bridge__dot--a"></i><i class="bridge__dot bridge__dot--b"></i></span>' + tactileArtFrame({ size: "row", title: title, url: d.artwork, initials: d.initials || "ST" }) + '</div><div class="bridge__meta"><div class="bridge__copy">' + tactileTag({ kind: "stretch", text: "Stretch" }) + '<strong class="bridge__title">' + tactileTitleLink(d, title) + '</strong><div class="bridge__details"><span class="bridge__show">' + esc(tactileDisplayName(d.show)) + '</span><span class="row__facts">' + tactileReadout(d.duration) + tactileQueueAction(d, title) + '</span></div></div><div class="bridge__play">' + (d.id ? tactilePlayKey(d, title) : tactileKeycap({ size: "sm", variant: "persimmon", round: true, icon: "ph-play-fill", label: "Play " + title })) + "</div></div></article>";
 }
 
 function tactileTile(data) {

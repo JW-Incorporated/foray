@@ -67,7 +67,12 @@ test("the gallery covers every primitive and state without adopting them on list
     }
   }
   const adopters = fs.readdirSync(path.join(ROOT, "ui")).filter((name) => name.endsWith(".js") && !["gallery.js", "primitives.js"].includes(name)).filter((name) => /\btactile[A-Z]/.test(fs.readFileSync(path.join(ROOT, "ui", name), "utf8")));
-  assert.deepStrictEqual(adopters, [], "Phase 4, not the foundation, adopts primitives on listener screens");
+  /* Phase 4 adopts the primitives one screen at a time, and this list is the
+     register of who has: Today's screen (ui/home.js) and the deck's icons
+     (ui/tabbar.js, drawn only on Today). A screen that adopts them without
+     landing here is the foundation leaking onto a listener screen early.
+     MUTATION: use a tactile* renderer in ui/search.js -> red, naming it. */
+  assert.deepStrictEqual(adopters, ["home.js", "tabbar.js"], "only the screens whose Phase 4 branch has landed adopt primitives");
 });
 
 test("the gallery's rendered copy obeys the listener copy rules, however the source spells it", () => {

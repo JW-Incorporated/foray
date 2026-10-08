@@ -1,4 +1,11 @@
-/* "Jump back in" holds Forays, PODCASTS and PLAYLISTS — founder, 2026-09-18:
+/* TODAY (Redesign 2026): the "Jump back in" rail is gone with Home's rails (the
+ * ruling that fell is "Home section order and content", U-03). Its DATA is not:
+ * `jumpBackInEntries` is still the one ordering of what the listener was last in
+ * the middle of, and the Resume card reads the most recent part-played Foray or
+ * episode from it. The tests below that pinned the rail's CARD markup now pin
+ * the same facts on what replaced it (the Resume card and the playlist cards).
+ *
+ * "Jump back in" holds Forays, PODCASTS and PLAYLISTS — founder, 2026-09-18:
  * "Only forays are in the jump back in section, podcasts and playlists should
  * be there too."
  *
@@ -206,41 +213,59 @@ test("the rail is capped", () => {
 test("each kind links to its own route, with the scheme fixed in code", () => {
   /* Not a style point: test/app-security.test.js forbids interpolating a whole
      href, and `safeUrl` would turn every one of these in-app routes into "#".
-     MUTATION: build one `c.href` string and interpolate it — the security suite
-     goes red, and so does this. */
+     The Resume card names its route kind in code and interpolates only the
+     encoded id; a playlist card goes through playlistRoute.
+     MUTATION: build one `href` string and interpolate it - the security suite
+     goes red, and so does this (the id with a space is no longer encoded). */
   const app = loadApp();
   const out = [
-    app.jumpBackInCardHtml({ kind: "foray", id: "f 1", title: "F" }),
-    app.jumpBackInCardHtml({ kind: "playlist", id: "pl-1", title: "P" }),
-    app.jumpBackInCardHtml({ kind: "episode", id: "ep-1", title: "E" }),
+    app.todayResumeHtml({ kind: "foray", id: "f 1", title: "F", percent: 40, left: "9 min left" }),
+    app.todayResumeHtml({ kind: "episode", id: "ep-1", title: "E", percent: 40, left: "9 min left", item: { audio_url: "https://a.test/a.mp3" } }),
+    app.todayPlaylistCardHtml({ id: "pl-1", title: "P", items: [] }, { history: new Set() }),
   ].join("");
   assert.match(out, /href="#\/foray\/f%201"/, "an id with a space must be encoded, not broken");
-  assert.match(out, /href="#\/playlist\/pl-1"/);
   assert.match(out, /href="#\/episode\/ep-1"/);
+  assert.match(out, /href="#\/playlist\/pl-1"/);
 });
 
-test("only the episode card carries the pick-logging attributes", () => {
-  /* `bindPickLogging` reads `data-ep` as an episode id; a Foray or a playlist id
-     there would log a pick for something that is not an episode.
-     MUTATION: emit `ev` for every kind. */
+test("no Today card carries the pick-logging attributes: a Resume or a playlist card is not a pick", () => {
+  /* `bindPickLogging` reads `data-ep` as an episode id and writes history for it;
+     opening the card to look is not a listen. (The old rail's episode card did
+     carry them, as a way of resuming; Resume's key is the engine's own Play.)
+     MUTATION: emit data-ev="picked" on the Resume link -> red. */
   const app = loadApp();
-  assert.ok(app.jumpBackInCardHtml({ kind: "episode", id: "ep-1", title: "E" }).includes('data-ev="picked"'));
-  assert.ok(!app.jumpBackInCardHtml({ kind: "foray", id: "f-1", title: "F" }).includes("data-ev"));
-  assert.ok(!app.jumpBackInCardHtml({ kind: "playlist", id: "pl-1", title: "P" }).includes("data-ev"));
+  for (const html of [
+    app.todayResumeHtml({ kind: "episode", id: "ep-1", title: "E", percent: 40, left: "x", item: { audio_url: "https://a.test/a.mp3" } }),
+    app.todayResumeHtml({ kind: "foray", id: "f-1", title: "F", percent: 40, left: "x" }),
+    app.todayPlaylistCardHtml({ id: "pl-1", title: "P", items: [] }, { history: new Set() }),
+  ]) assert.ok(!html.includes("data-ev"), html.slice(0, 80));
 });
 
 test("a title is escaped like any other untrusted text", () => {
-  const out = app0().jumpBackInCardHtml({ kind: "playlist", id: "pl-1", title: '<img src=x onerror=1>' });
-  assert.ok(!out.includes("<img"));
-  assert.match(out, /&lt;img/);
+  /* MUTATION: drop `esc()` around the title in todayResumeHtml or
+     todayPlaylistCardHtml -> the <img> is live. */
+  const evil = "<img src=x onerror=1>";
+  const app = app0();
+  for (const out of [
+    app.todayResumeHtml({ kind: "foray", id: "f-1", title: evil, percent: 40, left: "x" }),
+    app.todayPlaylistCardHtml({ id: "pl-1", title: evil, items: [] }, { history: new Set() }),
+  ]) {
+    assert.ok(!out.includes("<img"));
+    assert.match(out, /&lt;img/);
+  }
 });
 
-test("a card with no progress renders no bar rather than an empty one", () => {
-  /* A zero-width bar reads as "no progress", which is a different claim from
-     "we do not know". MUTATION: always emit the bar. */
-  const out = app0().jumpBackInCardHtml({ kind: "playlist", id: "pl-1", title: "P" });
-  assert.ok(!out.includes("fy-bar"));
-  assert.ok(app0().jumpBackInCardHtml({ kind: "episode", id: "e", title: "E", percent: 40 }).includes("fy-bar"));
+test("Resume is for a listen in the middle: not at 0 %, not at 100 %", () => {
+  /* A listener who just pressed play has 0 % and the mini player has them; a
+     finished listen is not resumed. Both are absence, not an empty card.
+     MUTATION: change the bounds in todayResumeEntry to `>= 0` / `<= 100` -> the
+     first assertion goes red. */
+  const app = app0();
+  const pick = (percent) => app.todayResumeEntry({ jumpBackIn: [{ kind: "episode", id: "e", title: "E", percent }] });
+  assert.strictEqual(pick(0), null);
+  assert.strictEqual(pick(100), null);
+  assert.strictEqual(pick(40).id, "e");
+  assert.strictEqual(pick(undefined), null, "no percent: nothing to resume");
 });
 
 let _app0 = null;
@@ -264,15 +289,11 @@ function block(src, startMarker, endMarker) {
   return j < 0 ? src.slice(i) : src.slice(i, j + endMarker.length);
 }
 
-test("the episode card renders a bar at 0 %, not no bar", () => {
-  /* `typeof c.percent === "number"` has to admit 0. A listener who has just
-     started an episode has an honest 0 %, and the Foray cards draw theirs at
-     every value -- the episode card matching them is the whole report.
-     MUTATION: change the guard to `c.percent` (truthy) and 0 stops drawing a
-     bar. This goes red. */
-  const out = app0().jumpBackInCardHtml({ kind: "episode", id: "e", title: "E", percent: 0 });
-  assert.match(out, /fy-bar-fill/, "a zero-percent bar is still a bar");
-  assert.match(out, /data-pct="0"/);
+test("the Resume card's bar is drawn at the entry's own percent", () => {
+  /* MUTATION: hard-code data-pct="0" in todayResumeHtml -> red. */
+  const out = app0().todayResumeHtml({ kind: "episode", id: "e", title: "E", percent: 40, left: "9 min left", item: { audio_url: "https://a.test/a.mp3" } });
+  assert.match(out, /class="today-prog__fill" data-pct="40"/);
+  assert.match(out, /9 min left/);
 });
 
 test("lastEpisodeCard does not need the player booted to read a position", () => {
@@ -352,9 +373,9 @@ test("a playlist card says how far in you are, in the same reading as the playli
   const pl = app.jumpBackInEntries().find((e) => e.kind === "playlist");
   assert.strictEqual(pl.left, "1 of 4 played");
   assert.strictEqual(pl.percent, 25);
-  const html = app.jumpBackInCardHtml(pl);
-  assert.match(html, /class="fy-bar"/, "the card draws the same bar the other kinds do");
-  assert.match(html, /1 of 4 played/);
+  const html = app.todayPlaylistsHtml(app.playlistsForYouPicks());
+  assert.match(html, /class="today-prog__fill" data-pct="25"/, "the card draws the same bar the Resume card does");
+  assert.match(html, /4 episodes · 1 of 4 played/);
 });
 
 test("ROUND 2 review (honesty-7 x copy-13): a playlist card never says '0 of N played'", () => {
@@ -374,5 +395,7 @@ test("ROUND 2 review (honesty-7 x copy-13): a playlist card never says '0 of N p
   assert.ok(pl, "premise: the played playlist is on the rail");
   assert.strictEqual(pl.left, "", "no zero line");
   assert.strictEqual(pl.percent, null, "and no empty bar");
-  assert.doesNotMatch(app.jumpBackInCardHtml(pl), /0 of 3 played/);
+  const html = app.todayPlaylistsHtml(app.playlistsForYouPicks());
+  assert.match(html, /3 episodes</, "the card still says what it holds");
+  assert.doesNotMatch(html, /0 of 3 played/);
 });

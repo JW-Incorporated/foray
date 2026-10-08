@@ -6,8 +6,10 @@
  *
  * WHAT THIS PROVES, in order:
  *  1. The tab bar always renders (no on/off state left).
- *  2. It renders all four destinations, in the mockup's order: Home,
- *     Search, Create, Library.
+ *  2. It renders all four destinations, in the mockup's order: Today (the
+ *     tab was "Home" until the Tactile Today screen, whose title it now
+ *     matches), Search, Create, Library. The three-tab IA (Today, Find, Yours)
+ *     is the Find and Yours screens' to adopt, not this one's.
  *  3. Each of the app's 14 routes maps to exactly one tab, and that tab
  *     (and only that tab) carries aria-current="page" -- so switching tabs
  *     always highlights a real destination, never a stale or double one.
@@ -188,9 +190,10 @@ test("the tab bar always exists after a render (cp_ui_v2 retired, U-11 cutover)"
 /* 2. ALL FOUR TABS, IN ORDER                                            */
 /* ==================================================================== */
 
-test("the tab bar renders all four tabs in the mockup's order: Home, Search, Create, Library", () => {
+test("the tab bar renders all four tabs in the mockup's order: Today, Search, Create, Library", () => {
   /* MUTATION: reorder TAB_ROUTES, or drop one entry. The labels array
-     comparison below fails on either. */
+     comparison below fails on either. MUTATION 2: drop a tab's `dial` icons ->
+     the deck draws an empty tab on Today and the sprite assertion fails. */
   const m = mount();
   m.evalIn("renderTabBar();");
   const bar = m.body.querySelector("#tab-bar");
@@ -205,8 +208,13 @@ test("the tab bar renders all four tabs in the mockup's order: Home, Search, Cre
     const m2 = /<span>([^<]*)<\/span>/.exec(a.innerHTML);
     return m2 ? m2[1] : null;
   });
-  assert.deepStrictEqual(htmlLabels, ["Home", "Search", "Create", "Library"]);
+  assert.deepStrictEqual(htmlLabels, ["Today", "Search", "Create", "Library"]);
   void labels;
+  /* The Dial deck's icons ride in every tab (CSS shows them on Today only): the
+     Bold sprite icon, and the Fill one for the three that have it. */
+  const dial = bar.querySelectorAll(".tab-btn").map((a) => (a.innerHTML.match(/class="i tab-dial/g) || []).length);
+  assert.deepStrictEqual(dial, [2, 2, 1, 2]);
+  assert.match(bar.querySelectorAll(".tab-btn")[0].innerHTML, /#ph-sun-horizon-fill/);
 });
 
 /* Sections 3 and 4 (turning the flag off; native-shell default vs explicit

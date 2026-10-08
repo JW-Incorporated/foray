@@ -1,22 +1,27 @@
-/* Home's one play button (founder, 2026-09-24).
+/* Today's Foray keys (Redesign 2026, Tactile Home).
  *
- * FOUNDER: "Add a play button at the Home Screen level and start playing
- * whatever is first in that list (whether it be Suggested or a Playlist or
- * whatever)".
+ * WHAT FELL. This suite pinned Home's one play capsule (founder, 2026-09-24:
+ * "Add a play button at the Home Screen level and start playing whatever is
+ * first in that list"), which walked Jump back in, Forays for you, Playlists
+ * for you and Suggested and played the first thing that could. Tactile's Today
+ * has no rails to walk: the hero is Today's foray and its Play key is that
+ * founder ask, answered by one Foray, and Resume is the part-played listen. The
+ * ruling that fell is "Home section order and content" (U-03,
+ * test-classification.md section 0); the conventions below did not.
  *
  * WHAT THIS PROVES, in order:
- *  1. The button sits under the greeting, above the first rail.
- *  2. It plays the first playable thing of the first rail Home draws, for each
- *     kind a first rail can hold: a Jump back in Foray (resumed), episode and
- *     playlist; a "Forays for you" Foray (from the top); a "Playlists for you"
- *     playlist; a "Suggested" subject queue. Its accessible name is
- *     "Play <what it plays>".
- *  3. A rail with nothing playable is passed over, not stopped at.
- *  4. Nothing playable on Home: no button at all.
- *  5. The round-1/2 play conventions: the loading mark while the start is in
- *     flight (and a second press does nothing), a failure is reported, a
- *     superseded start is not, and a press on what is already the player's
- *     never restarts it (a paused one resumes; a playing one is left alone).
+ *  1. The hero is the first Foray that can play (an unresolvable one is passed
+ *     over), carries ONE Play key that names it, and is absent, with its key,
+ *     when no Foray can play. It says what it is made of from the running order.
+ *  2. Resume is a part-played Foray or episode only, above the hero; a Foray
+ *     resumes where it was left; an episode's key is the engine's own
+ *     `[data-play]`; the player's own listen is not a card; a playlist never is;
+ *     the same Foray is not offered twice while another can stand in.
+ *  3. The round-1/2 play conventions: the start is from the top when nothing is
+ *     stored, the loading mark while the start is in flight (and a second press
+ *     does nothing), a failure is reported, a superseded start is not, a press on
+ *     the live Foray resumes it and never restarts or pauses it, and the Foray is
+ *     resolved at the press, not captured at render.
  *
  * Every test names the mutation that kills it, per CLAUDE.md.
  *
@@ -74,6 +79,7 @@ async function makeBridge({ resumeRows = [], lastEpisode = null } = {}) {
     },
     listForays: (doc, opts) => resolve.listableForays(doc, opts),
     stripTally: strip.stripTally,
+    stripModel: strip.stripModel,
     segmentStripHtml: strip.segmentStripHtml,
     fmtClock: resolve.fmtClock,
     fmtSpan: resolve.fmtSpan,
@@ -171,10 +177,10 @@ function loadApp(bridge, { pool = [EP(1), EP(2), EP(3)], cardSlots = null, playl
 }
 
 /** A button the way bindHomePlay sees it, recording its handler and attributes. */
-function fakeButton() {
+function fakeButton(id = FORAY_ID) {
   const attrs = {};
   const btn = {
-    dataset: {}, attrs,
+    dataset: { homePlay: id }, attrs,
     setAttribute(k, v) { attrs[k] = String(v); },
     removeAttribute(k) { delete attrs[k]; },
     addEventListener(_t, fn) { btn.handler = fn; },
@@ -182,210 +188,232 @@ function fakeButton() {
   return btn;
 }
 
-/** Render Home's button, bind it the way renderHomeV2 does, and press it. */
-async function renderAndPress(app, btn = fakeButton()) {
-  const html = app.ctx.homePlayHtml();
-  app.ctx.bindHomePlay({ querySelector: (sel) => (sel === "[data-home-play]" ? btn : null) });
+/** Bind the Foray key the way renderHomeV2 does, and press it. */
+async function bindAndPress(app, btn = fakeButton()) {
+  app.ctx.bindHomePlay({ querySelectorAll: (sel) => (sel === "[data-home-play]" ? [btn] : []) });
   assert.ok(btn.handler, "bindHomePlay bound no handler");
   await btn.handler();
-  return { html, btn };
+  return btn;
 }
 
-const label = (html) => (/data-home-play aria-label="([^"]*)"/.exec(html) || [])[1];
 const subjectSlot = (items) => ({ branch: "history", role: "top", item: items[0], items });
+/** The hero's Play key: the one control carrying data-home-play inside .today-hero. */
+const heroKey = (html) => /<button[^>]*data-home-play="([^"]*)"[^>]*aria-label="([^"]*)"/.exec(html.slice(html.indexOf('class="card card--hero today-hero"')));
+const resumeSection = (html) => (/<section class="card today-resume"[\s\S]*?<\/section>/.exec(html) || [""])[0];
 
 /* ==================================================================== */
-/* 1. WHERE IT IS                                                        */
+/* 1. WHERE THEY ARE                                                     */
 /* ==================================================================== */
 
-test("the button renders under the greeting, above the first rail", async () => {
-  /* MUTATION: move `${homePlayHtml()}` below the rails in renderHomeV2, or drop it. */
-  const app = loadApp(await makeBridge({ lastEpisode: { ...EP(1), updated_at: "2026-09-20T00:00:00Z", percent: 30, label: "20 min left" } }), { cardSlots: [subjectSlot([EP(2)])] });
+test("Today's foray is the hero: after the header, before Also today, with ONE Play key that names it", async () => {
+  /* MUTATION: drop `${todayHeroHtml(...)}` from renderHomeV2, or move it below
+     Also today -> the order assertion fails. MUTATION 2: render a second
+     data-home-play key on the hero (Details as a key) -> the count fails. */
+  const app = loadApp(await makeBridge(), { cardSlots: [subjectSlot([EP(2)])] });
   app.ctx.renderHome();
   const html = app.view.innerHTML;
   const at = (s) => html.indexOf(s);
-  assert.ok(at("data-home-play") > -1, "Home has no play button");
-  assert.ok(at("hv2-greeting") < at("data-home-play") && at("data-home-play") < at("hv2-jbi"),
-    "the play button must sit between the greeting and the first rail");
-  assert.strictEqual((html.match(/data-home-play/g) || []).length, 1, "ONE play control, not one per rail");
+  assert.ok(at("today-top") > -1 && at("today-hero") > at("today-top") && at("today-also") > at("today-hero"),
+    "header, hero, Also today, in that order");
+  const key = heroKey(html);
+  assert.ok(key, "the hero has a Foray Play key");
+  assert.strictEqual(key[1], FORAY_ID);
+  assert.strictEqual(key[2], `Play ${FORAY_TITLE}`);
+  assert.strictEqual((html.match(/data-home-play/g) || []).length, 1, "ONE Foray key on Home without a Resume card");
+});
+
+test("the hero is the first Foray that can play: an unresolvable one is passed over, not stopped at", async () => {
+  /* MUTATION: take picks[0] without asking resolveListedForay for a running
+     order -> the hero names the ghost and its key plays nothing. MUTATION 2:
+     accept a resolved Foray with an empty `playable` -> the empty one is the hero. */
+  const bridge = await makeBridge();
+  const real = bridge.listForays;
+  const resolve = bridge.resolve.bind(bridge);
+  /* Two ghosts: one the resolver has never heard of (null), one it resolves to an
+     empty running order (every segment left): neither can play. */
+  bridge.resolve = (doc, o) => (o.id === "empty-foray" ? { id: o.id, title: "Empty", totalSec: 0, playable: [] } : resolve(doc, o));
+  bridge.listForays = (doc, opts) => [
+    { id: "ghost-foray", title: "A Foray whose segments left", topic: "history", status: "published" },
+    { id: "empty-foray", title: "A Foray with nothing playable", topic: "history", status: "published" },
+    ...real(doc, opts),
+  ];
+  const app = loadApp(bridge, { cardSlots: [subjectSlot([EP(2)])] });
+  app.ctx.renderHome();
+  const html = app.view.innerHTML;
+  assert.ok(!html.includes("ghost-foray") && !html.includes("empty-foray"), "an unresolvable Foray and an empty one are not the hero");
+  assert.strictEqual(heroKey(html)[1], FORAY_ID);
+});
+
+test("with no Foray that can play there is no hero, and no Foray key at all", async () => {
+  /* MUTATION: render the hero shell with an empty title when todayForayPick is null. */
+  const app = loadApp(await makeBridge(), { cardSlots: [subjectSlot([EP(1)])], forays: false });
+  app.ctx.renderHome();
+  assert.ok(!app.view.innerHTML.includes("today-hero"));
+  assert.ok(!app.view.innerHTML.includes("data-home-play"));
+});
+
+test("the hero says what it is made of, from the running order: a band, the show count, the length", async () => {
+  /* MUTATION: build the band from [] (drop todayHeroModel's stripModel) -> the
+     band has no bars and the bar count assertion fails. */
+  const app = loadApp(await makeBridge(), { cardSlots: [subjectSlot([EP(2)])] });
+  app.ctx.renderHome();
+  const html = app.view.innerHTML;
+  const hero = html.slice(html.indexOf('class="card card--hero today-hero"'), html.indexOf("today-also"));
+  assert.match(hero, /class="band band--mini"/);
+  const bars = (hero.match(/<rect class="t-band__bar /g) || []).length;
+  assert.ok(bars >= 2 * 20, `a band of the foray's items, drawn twice (base and fill); saw ${bars} bars`);
+  assert.match(hero, /class="readout today-hero__facts">(about )?\d+ min · \d+ shows?</);
+  assert.match(hero, /Today(&#39;|')s foray</, "the eyebrow");
 });
 
 /* ==================================================================== */
-/* 2. EACH KIND OF FIRST RAIL                                            */
+/* 2. RESUME                                                             */
 /* ==================================================================== */
 
-test("first rail Jump back in, a Foray first: it resumes that Foray, and says so by name", async () => {
-  /* MUTATION: start a Foray with `startIndex: 0` always (drop the forayResume
-     read) -> startElapsedSec is missing. MUTATION 2: make homePlayRails skip
-     Jump back in -> the label names something else. */
+test("Resume appears only for a part-played Foray or episode, and a Foray resumes where it was left", async () => {
+  /* MUTATION: drop the percent bounds in todayResumeEntry -> a finished listen
+     (percent 100) gets a card. MUTATION 2: start the Foray with startIndex 0
+     always -> startElapsedSec is missing. */
   const bridge = await makeBridge({ resumeRows: [{ id: FORAY_ID, title: FORAY_TITLE, updated_at: "2026-09-21T00:00:00Z", percent: 40, label: "30 min left", finished: false, drift: "unverified" }] });
   const app = loadApp(bridge, { cardSlots: [subjectSlot([EP(2)])] });
-  const { html, btn } = await renderAndPress(app);
-  assert.strictEqual(label(html), `Play ${FORAY_TITLE}`);
-  assert.strictEqual(bridge.calls.playForay.length, 1, "the Foray starts");
-  assert.strictEqual(bridge.calls.playForay[0].r.id, FORAY_ID);
-  assert.strictEqual(bridge.calls.playForay[0].opts.startElapsedSec, 600, "a Jump back in Foray resumes where it was left");
-  assert.strictEqual(bridge.calls.play.length, 0);
-  assert.strictEqual(btn.dataset.loading, undefined, "the loading mark is cleared once the start settles");
+  app.ctx.renderHome();
+  const html = app.view.innerHTML;
+  const resume = resumeSection(html);
+  assert.ok(resume, "a part-played Foray has a Resume card");
+  assert.match(resume, /class="tag tag--playing"[\s\S]*Resume</);
+  assert.match(resume, /30 min left/);
+  assert.match(resume, new RegExp(`data-home-play="${FORAY_ID}"`));
+  assert.ok(html.indexOf("today-resume") < html.indexOf("today-hero"), "Resume sits above Today's foray");
+  const btn = await bindAndPress(app);
+  assert.strictEqual(bridge.calls.playForay[0].opts.startElapsedSec, 600, "resumes where it was left");
+  assert.strictEqual(btn.dataset.loading, undefined);
+
+  const done = await makeBridge({ resumeRows: [{ id: FORAY_ID, title: FORAY_TITLE, updated_at: "2026-09-21T00:00:00Z", percent: 100, label: "Played", finished: true }] });
+  const finished = loadApp(done, { cardSlots: [subjectSlot([EP(2)])] });
+  finished.ctx.renderHome();
+  assert.ok(!finished.view.innerHTML.includes("today-resume"), "a finished listen is not resumed");
 });
 
-test("first rail Jump back in, an episode first: it plays that episode", async () => {
-  /* MUTATION: drop the `episode` branch from homePlayable -> the Suggested queue
-     plays instead and the label names History. */
+test("a part-played episode's Resume key is the engine's own Play control", async () => {
+  /* MUTATION: draw the key without data-play -> bindPlay never binds it and the
+     assertion fails. MUTATION 2: drop swapIcon -> the pause icon is missing. */
   const bridge = await makeBridge({ lastEpisode: { ...EP(3), updated_at: "2026-09-20T00:00:00Z", percent: 30, label: "20 min left" } });
   const app = loadApp(bridge, { cardSlots: [subjectSlot([EP(1)])], forays: false });
-  const { html } = await renderAndPress(app);
-  assert.strictEqual(label(html), "Play Episode 3");
-  assert.deepStrictEqual(bridge.calls.play.map((c) => c.item.id), ["ep-3"]);
-  assert.ok(app.ctx.pickedHistory().includes("ep-3"), "an accepted play is recorded, as a row's ▶ records it");
+  app.ctx.renderHome();
+  const resume = resumeSection(app.view.innerHTML);
+  assert.match(resume, /data-play="ep-3"/);
+  assert.match(resume, /data-ctl-icons/);
+  assert.match(resume, /#ph-pause-fill/);
+  assert.match(resume, /href="#\/episode\/ep-3"/);
+  assert.ok(!resume.includes("data-home-play"), "an episode does not go through the Foray press");
 });
 
-test("first rail Jump back in, a playlist first: its first playable row plays, the playlist is the list, and last_played_at is stamped", async () => {
-  /* MUTATION: pass no ctx from homePlayable -> last_played_at is not re-stamped
-     and the play list is only the one episode. */
+test("Resume yields to the player while it SOUNDS: what is playing is the mini player's, not a card; a paused one keeps its card", async () => {
+  /* MUTATION: drop the isPlaying / running check in todayResumeEntry. MUTATION 2:
+     hide on isCurrent instead (the bar restores the last episode at every launch,
+     so the card would nearly never show) -> the paused assertions fail. */
+  const bridge = await makeBridge({ lastEpisode: { ...EP(3), updated_at: "2026-09-20T00:00:00Z", percent: 30, label: "20 min left" } });
+  bridge.setCurrent("ep-3", true);
+  const app = loadApp(bridge, { cardSlots: [subjectSlot([EP(1)])], forays: false });
+  app.ctx.renderHome();
+  assert.ok(!app.view.innerHTML.includes("today-resume"));
+  const live = await makeBridge({ resumeRows: [{ id: FORAY_ID, title: FORAY_TITLE, updated_at: "2026-09-21T00:00:00Z", percent: 40, label: "30 min left", finished: false }] });
+  live.setForayLive({ forayId: FORAY_ID, running: true });
+  const app2 = loadApp(live, { cardSlots: [subjectSlot([EP(2)])] });
+  app2.ctx.renderHome();
+  assert.ok(!app2.view.innerHTML.includes("today-resume"));
+
+  const paused = await makeBridge({ lastEpisode: { ...EP(3), updated_at: "2026-09-20T00:00:00Z", percent: 30, label: "20 min left" } });
+  paused.setCurrent("ep-3", false);
+  const app3 = loadApp(paused, { cardSlots: [subjectSlot([EP(1)])], forays: false });
+  app3.ctx.renderHome();
+  assert.ok(app3.view.innerHTML.includes("today-resume"), "loaded but paused: the card stays");
+  const idle = await makeBridge({ resumeRows: [{ id: FORAY_ID, title: FORAY_TITLE, updated_at: "2026-09-21T00:00:00Z", percent: 40, label: "30 min left", finished: false }] });
+  idle.setForayLive({ forayId: FORAY_ID, running: false });
+  const app4 = loadApp(idle, { cardSlots: [subjectSlot([EP(2)])] });
+  app4.ctx.renderHome();
+  assert.ok(app4.view.innerHTML.includes("today-resume"), "a paused Foray keeps its card too");
+});
+
+test("a playlist is never a Resume card, and the same Foray is not offered twice while another can stand in", async () => {
+  /* MUTATION: accept kind "playlist" in todayResumeEntry. MUTATION 2: drop the
+     `skip` in todayForayPick -> with two listable Forays the hero repeats Resume's. */
   const pl = { id: "pl-1", title: "Road trip", created: "2026-09-01T00:00:00Z", last_played_at: "2026-09-02T00:00:00Z", items: [{ id: "ep-2" }, { id: "ep-3" }] };
-  const bridge = await makeBridge();
-  const app = loadApp(bridge, { playlists: [pl], cardSlots: [subjectSlot([EP(1)])], forays: false });
-  const { html } = await renderAndPress(app);
-  assert.strictEqual(label(html), "Play Road trip");
-  assert.deepStrictEqual(bridge.calls.play.map((c) => c.item.id), ["ep-2"]);
-  assert.deepStrictEqual([...vm.runInContext("state.playList", app.ctx)], ["ep-2", "ep-3"], "continuous playback goes on through the playlist");
-  const saved = JSON.parse(app.store.get("cp_playlists"));
-  assert.notStrictEqual(saved[0].last_played_at, "2026-09-02T00:00:00Z", "playing a playlist stamps it, as a row's ▶ does");
+  const app = loadApp(await makeBridge(), { playlists: [pl], cardSlots: [subjectSlot([EP(1)])], forays: false });
+  /* Half-played (one of two episodes opened): the entry has a percent, so only the
+     kind filter keeps it off Resume. */
+  app.ctx.lsSet("cp_history", ["ep-2"]);
+  const entry = app.ctx.jumpBackInEntries().find((e) => e.kind === "playlist");
+  assert.strictEqual(entry.percent, 50, "premise: the playlist is part-played");
+  app.ctx.renderHome();
+  assert.ok(!app.view.innerHTML.includes("today-resume"));
+
+  const bridge = await makeBridge({ resumeRows: [{ id: FORAY_ID, title: FORAY_TITLE, updated_at: "2026-09-21T00:00:00Z", percent: 40, label: "30 min left", finished: false }] });
+  const real = bridge.listForays;
+  const twin = { id: "capital-types-1-copy", title: "Twin", topic: "history", status: "published" };
+  bridge.listForays = (doc, opts) => [...real(doc, opts), twin];
+  const app2 = loadApp(bridge, { cardSlots: [subjectSlot([EP(2)])] });
+  /* The twin resolves like the original: same running order under another id. */
+  const resolve = bridge.resolve.bind(bridge);
+  bridge.resolve = (doc, o) => (o.id === twin.id ? resolve(doc, { ...o, id: FORAY_ID }) : resolve(doc, o));
+  app2.ctx.renderHome();
+  const html = app2.view.innerHTML;
+  assert.strictEqual(heroKey(html)[1], twin.id, "the hero is the other Foray");
+  assert.strictEqual(resumeSection(html).includes(`data-home-play="${FORAY_ID}"`), true);
 });
 
-test("first rail Forays for you: its first Foray starts from the top", async () => {
-  /* MUTATION: drop the Forays-for-you rail from homePlayRails -> the Suggested
-     queue plays instead. */
+/* ==================================================================== */
+/* 3. THE PLAY CONVENTIONS                                               */
+/* ==================================================================== */
+
+test("a hero press starts the Foray from the top when nothing is stored", async () => {
+  /* MUTATION: pass startElapsedSec: 0 instead of startIndex: 0 for a fresh start. */
   const bridge = await makeBridge();
-  const app = loadApp(bridge, { cardSlots: [subjectSlot([EP(1)])] });
-  const { html } = await renderAndPress(app);
-  assert.strictEqual(label(html), `Play ${FORAY_TITLE}`);
+  const app = loadApp(bridge, { cardSlots: [] });
+  await bindAndPress(app);
   assert.strictEqual(bridge.calls.playForay[0]?.r.id, FORAY_ID);
   assert.strictEqual(bridge.calls.playForay[0].opts.startIndex, 0, "no stored resume: from the top");
 });
 
-test("first rail Playlists for you: the listener's own playlist plays before Suggested", async () => {
-  /* A playlist never played is not in Jump back in; it is the first card of
-     Playlists for you. MUTATION: drop that rail from homePlayRails -> Suggested's
-     History queue plays instead. */
-  const pl = { id: "pl-2", title: "Never played", created: "2026-09-01T00:00:00Z", items: [{ id: "ep-3" }, { id: "ep-1" }] };
-  const bridge = await makeBridge();
-  const app = loadApp(bridge, { playlists: [pl], cardSlots: [subjectSlot([EP(2)])], forays: false });
-  const { html } = await renderAndPress(app);
-  assert.strictEqual(label(html), "Play Never played");
-  assert.deepStrictEqual(bridge.calls.play.map((c) => c.item.id), ["ep-3"]);
-});
-
-test("first rail Suggested: the first subject queue starts, and its rows are the list", async () => {
-  /* MUTATION: drop the Suggested rail from homePlayRails -> no button at all. */
-  const bridge = await makeBridge();
-  const app = loadApp(bridge, { cardSlots: [subjectSlot([EP(1), EP(2)])], forays: false });
-  const { html } = await renderAndPress(app);
-  assert.strictEqual(label(html), "Play History");
-  assert.deepStrictEqual(bridge.calls.play.map((c) => c.item.id), ["ep-1"]);
-  assert.deepStrictEqual([...vm.runInContext("state.playList", app.ctx)], ["ep-1", "ep-2"]);
-});
-
-/* ==================================================================== */
-/* 3. PASSED OVER, NOT STOPPED AT                                         */
-/* ==================================================================== */
-
-test("a rail with nothing playable is passed over: a playlist whose episodes left the catalogue gives way to Suggested", async () => {
-  /* MUTATION: return the first candidate of the first non-empty rail without
-     asking homePlayable -> the button names "Gone" and plays nothing. */
-  const pl = { id: "pl-3", title: "Gone", created: "2026-09-01T00:00:00Z", last_played_at: "2026-09-02T00:00:00Z", items: [{ id: "ep-9", title: "Retired" }] };
-  const bridge = await makeBridge();
-  const app = loadApp(bridge, { pool: [EP(1, { audio_url: null }), EP(2)], playlists: [pl], cardSlots: [subjectSlot([EP(1, { audio_url: null }), EP(2)])], forays: false });
-  const { html } = await renderAndPress(app);
-  assert.strictEqual(label(html), "Play History");
-  assert.deepStrictEqual(bridge.calls.play.map((c) => c.item.id), ["ep-2"], "and within the queue, the first row that can play");
-});
-
-/* ==================================================================== */
-/* 4. NOTHING PLAYABLE                                                   */
-/* ==================================================================== */
-
-test("with nothing playable on Home there is no button", async () => {
-  /* MUTATION: render the button with a generic "Play" when homePlayTarget is null. */
-  const bridge = await makeBridge();
-  const app = loadApp(bridge, { pool: [EP(1, { audio_url: null })], cardSlots: [subjectSlot([EP(1, { audio_url: null })])], forays: false });
-  assert.strictEqual(app.ctx.homePlayHtml(), "");
-  app.ctx.renderHome();
-  assert.ok(!app.view.innerHTML.includes("data-home-play"));
-});
-
-/* ==================================================================== */
-/* 5. THE PLAY CONVENTIONS                                               */
-/* ==================================================================== */
-
-test("the button carries the loading mark while the start is in flight, and a second press then does nothing", async () => {
+test("the key carries the loading mark while the start is in flight, and a second press then does nothing", async () => {
   /* MUTATION: drop the `data-loading` write, or the early return on it -> the
-     mark is missing mid-load, or a second play() is issued. */
+     mark is missing mid-load, or a second playForay() is issued. */
   const bridge = await makeBridge();
   const pending = [];
-  bridge.playImpl = () => new Promise((r) => { pending.push(r); });
-  const release = (v) => pending.forEach((r) => r(v));
-  const app = loadApp(bridge, { cardSlots: [subjectSlot([EP(1)])], forays: false });
+  bridge.playForayImpl = () => new Promise((r) => { pending.push(r); });
+  const app = loadApp(bridge, { cardSlots: [] });
   const btn = fakeButton();
-  app.ctx.homePlayHtml();
-  app.ctx.bindHomePlay({ querySelector: () => btn });
+  app.ctx.bindHomePlay({ querySelectorAll: () => [btn] });
   const first = btn.handler();
   assert.strictEqual(btn.dataset.loading, "1", "the tapped control shows it is loading");
   assert.strictEqual(btn.attrs["aria-busy"], "true");
   const second = btn.handler();
   await new Promise((r) => setImmediate(r));
-  assert.strictEqual(bridge.calls.play.length, 1, "a press during the load is not a second start");
-  bridge.setCurrent("ep-1", true);
-  release(true);
+  assert.strictEqual(bridge.calls.playForay.length, 1, "a press during the load is not a second start");
+  pending.forEach((r) => r({ items: [] }));
   await Promise.all([first, second]);
   assert.strictEqual(btn.dataset.loading, undefined);
   assert.strictEqual(btn.attrs["aria-busy"], undefined);
 });
 
-test("a start that throws is reported on the bar; a refusal is reported; a superseded start is not", async () => {
-  /* MUTATION: drop startEpisodePlay's reportPlayFailure calls -> the first two
-     go unreported. MUTATION 2: drop the isCurrent check on a false answer ->
+test("a Foray start that throws is reported on the bar; a refusal is reported; a superseded start is not", async () => {
+  /* MUTATION: drop the catch's reportPlayFailure in startHomeForay -> the throw
+     goes unreported. MUTATION 2: drop the forayStatus check on a null report ->
      the superseded start is reported as a failure. */
-  const boom = new Error("load failed");
-  for (const [name, impl, expected] of [
-    ["throw", () => { throw boom; }, [boom]],
-    ["refused, still ours", (item) => { bridge.setCurrent(item.id, false); return false; }, [null]],
-    ["superseded", () => { bridge.setCurrent("ep-other", true); return false; }, []],
-  ]) {
-    var bridge = await makeBridge(); // eslint-disable-line no-var
-    bridge.playImpl = impl;
-    const app = loadApp(bridge, { cardSlots: [subjectSlot([EP(1)])], forays: false });
-    const { btn } = await renderAndPress(app);
+  const boom = new Error("no audio");
+  const cases = [
+    ["throw", (b) => { b.playForayImpl = () => { throw boom; }; }, [boom]],
+    ["refused, still ours", (b) => { b.playForayImpl = () => null; }, [null]],
+    ["superseded", (b) => { b.playForayImpl = () => { b.setForayLive({ forayId: "someone-else", running: true }); return null; }; }, []],
+  ];
+  for (const [name, setup, expected] of cases) {
+    const bridge = await makeBridge();
+    setup(bridge);
+    const app = loadApp(bridge, { cardSlots: [] });
+    const btn = await bindAndPress(app);
     assert.deepStrictEqual(bridge.calls.failures, expected, name);
     assert.strictEqual(btn.dataset.loading, undefined, `${name}: the loading mark is cleared`);
-    assert.ok(!app.ctx.pickedHistory().includes("ep-1"), `${name}: a start that did not happen is not history`);
   }
-});
-
-test("a Foray start that throws is reported on the bar", async () => {
-  /* MUTATION: drop the catch's reportPlayFailure in startHomeForay. */
-  const bridge = await makeBridge();
-  const boom = new Error("no audio");
-  bridge.playForayImpl = () => { throw boom; };
-  const app = loadApp(bridge, { cardSlots: [] });
-  await renderAndPress(app);
-  assert.deepStrictEqual(bridge.calls.failures, [boom]);
-});
-
-test("a press on what is already the player's never restarts it: paused resumes, playing is left alone", async () => {
-  /* MUTATION: drop the isCurrent guard in startHomeEpisode -> play() restarts
-     the episode. MUTATION 2: toggle unconditionally -> the playing case pauses. */
-  const bridge = await makeBridge();
-  const app = loadApp(bridge, { cardSlots: [subjectSlot([EP(1)])], forays: false });
-  bridge.setCurrent("ep-1", false);
-  await renderAndPress(app);
-  assert.strictEqual(bridge.calls.play.length, 0, "no restart");
-  assert.strictEqual(bridge.calls.toggle, 1, "a paused current episode resumes");
-  bridge.setCurrent("ep-1", true);
-  await renderAndPress(app);
-  assert.strictEqual(bridge.calls.toggle, 1, "\"Play\" never pauses what is playing");
-  assert.strictEqual(bridge.calls.play.length, 0);
 });
 
 test("a press on the Foray already live resumes it rather than rebuilding it", async () => {
@@ -393,7 +421,33 @@ test("a press on the Foray already live resumes it rather than rebuilding it", a
   const bridge = await makeBridge();
   bridge.setForayLive({ forayId: FORAY_ID, running: false });
   const app = loadApp(bridge, { cardSlots: [] });
-  await renderAndPress(app);
+  await bindAndPress(app);
   assert.strictEqual(bridge.calls.playForay.length, 0);
   assert.strictEqual(bridge.calls.forayToggle, 1);
+  bridge.setForayLive({ forayId: FORAY_ID, running: true });
+  await bindAndPress(app);
+  assert.strictEqual(bridge.calls.forayToggle, 1, "\"Play\" never pauses what is playing");
+});
+
+test("the Foray is resolved at the press: a key whose Foray has since left plays nothing", async () => {
+  /* MUTATION: capture `r` at render and play it regardless -> playForay is called for a ghost. */
+  const bridge = await makeBridge();
+  const app = loadApp(bridge, { cardSlots: [] });
+  await bindAndPress(app, fakeButton("ghost-foray"));
+  assert.strictEqual(bridge.calls.playForay.length, 0);
+});
+
+test("a half-heard episode still gets its Resume card behind more than six newer playlists", async () => {
+  /* The old rail was capped at six entries, newest first, across all three kinds;
+     Resume reads the same list, so with the cap six newer playlists would have
+     hidden the one thing it exists for.
+     MUTATION: call jumpBackInEntries() (default cap) instead of
+     jumpBackInEntries(Infinity) in homeRailPicks -> no Resume card. */
+  const playlists = Array.from({ length: 8 }, (_, i) => ({
+    id: `pl-${i}`, title: `P${i}`, created: "2026-09-01T00:00:00Z", last_played_at: `2026-09-2${i}T00:00:00Z`, items: [{ id: "ep-2" }],
+  }));
+  const bridge = await makeBridge({ lastEpisode: { ...EP(3), updated_at: "2026-09-10T00:00:00Z", percent: 30, label: "20 min left" } });
+  const app = loadApp(bridge, { playlists, cardSlots: [subjectSlot([EP(1)])], forays: false });
+  app.ctx.renderHome();
+  assert.ok(app.view.innerHTML.includes("today-resume"), "Resume survives the cap");
 });

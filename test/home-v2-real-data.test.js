@@ -1,43 +1,38 @@
-/* U-03 (docs/ui-transition-plan.md): Home v2 over the REAL data files.
+/* Today (Redesign 2026, Tactile Home) over the REAL data files, with the U-03
+ * floor checks carried over.
  *
- * The card's first acceptance line is "at inset 0 and 59 px, all four
- * sections render with real data". test/home-v2.test.js deliberately runs on
- * a synthetic seed (faster, independent of today's pool) and
- * test/home-layout.test.js evaluates `.hv2-home`'s CSS at both insets — but
- * nothing rendered Home v2 over the committed data/*.json until this suite
- * (audit, 2026-09-10). This boots app.js the way init() does — the same ten
- * documents, `loadInterests()` over the real taxonomy — with the Foray bridge
- * built from the REAL pure modules `player/client.js` composes
- * (`player/foray-resolve.js` for listForays/resolve, `player/segment-strip.js`
- * for the strip; client.js itself needs `window` at import time, which is the
- * only reason it is not imported whole), so every card here is one the live
- * site would draw today. NO DATA IS FAKED OR ADDED.
+ * test/home-v2.test.js deliberately runs on a synthetic seed (faster,
+ * independent of today's pool) and test/home-layout.test.js evaluates the
+ * layout's CSS at both insets; nothing rendered Home over the committed
+ * data/*.json until this suite (audit, 2026-09-10). This boots app.js the way
+ * init() does - the same ten documents, `loadInterests()` over the real
+ * taxonomy - with the Foray bridge built from the REAL pure modules
+ * `player/client.js` composes (`player/foray-resolve.js` for listForays/resolve,
+ * `player/segment-strip.js` for the strip model; client.js itself needs
+ * `window` at import time, which is the only reason it is not imported whole),
+ * so every card here is one the live site would draw today. NO DATA IS FAKED OR
+ * ADDED.
+ *
+ * WHAT FELL: the greeting, "Forays for you", "Suggested" and the rails' cards
+ * (test-classification.md section 0, "Home section order and content"). WHAT DID
+ * NOT: the floor over real data, and that Home renders at both safe-area insets.
  *
  * WHAT THIS PROVES, in order:
- *  1. The greeting, Forays for you, Playlists for you and Suggested all
- *     render over the real data, in the card's order. "Jump back in" is the
- *     one section that does NOT render here, by design: a fresh profile has
- *     nothing to resume and the section omits itself rather than showing an
- *     empty rail (jumpBackInV2Html) — asserted, not skipped.
- *  2. At inset 0 and at inset 59 px the same sections render (nothing in
- *     app.js reads the inset — the tab bar's reservation is CSS), and at each
- *     inset the committed stylesheet's content reservation under Home is at
- *     least the tab bar's own height at that inset, evaluated numerically
- *     (var() and env() substituted, calc() summed), so the last section is
- *     never under the bar. Not a grep for "env(": a bare px value fails at 59.
- *  3. THE FLOOR over real data, "Suggested": a visible Stretch tag and
- *     its bridge line on 20 consecutive renders of a fresh profile (real
- *     Math.random, real pool, real default weights).
- *  4. THE FLOOR over real data, "Forays for you", on whichever side of it the
- *     data sits. While the listable Forays span too few subject roots for a
- *     lower tier (one published Foray, as of 2026-09-22), the documented
- *     fallback — "ordinary top-ranked-first ... never render a fake stretch
- *     label over an ordinary pick" — is asserted: its cards, each with its real
- *     SegmentStrip, NO Stretch tag, NO bridge line. The day enough roots are
- *     published, the same test asserts the Stretch tag and its bridge line
- *     instead (mirror test 3). It used to assert only the fallback, with test 5
- *     pinning the published id as a tripwire to flip it by hand (#236).
- *  5. The precondition behind 1, 2 and 4: something is listable, and only
+ *  1. The header, Today's foray, Also today, Playlists for you and New ground all
+ *     render over the real data, in order. Resume is the one section that does
+ *     NOT render here, by design: a fresh profile has nothing to resume and the
+ *     card omits itself rather than showing an empty one - asserted, not skipped.
+ *  2. At inset 0 and at inset 59 px the same sections render, and at each inset
+ *     the committed stylesheet's content reservation under Home is at least the
+ *     tab bar's own height at that inset, evaluated numerically (var() and env()
+ *     substituted, calc() summed), so the last section is never under the bar.
+ *     Today's deck floats 12px up; its reservation is checked the same way.
+ *  3. THE FLOOR over real data: Also today carries its Stretch slot, tag and
+ *     bridge sentence together, on 20 consecutive renders of a fresh profile
+ *     (real Math.random, real pool, real default weights).
+ *  4. Today's foray over the real data is a listable, published Foray with its
+ *     real running order: a band of its items and its real show count.
+ *  5. The precondition behind 1 and 4: something is listable, and only
  *     published Forays are.
  *
  * Every test names the mutation that kills it, per CLAUDE.md.
@@ -169,6 +164,9 @@ async function realBridge() {
       return fr.resolveForay(foray, { segments: fr.indexSegments(segmentsDoc), sources: fr.indexSources(sourcesDoc) });
     },
     segmentStripHtml: strip.segmentStripHtml,
+    stripModel: strip.stripModel,
+    stripTally: strip.stripTally,
+    fmtSpan: fr.fmtSpan,
     applyStripGrow() {},
     forayResumeList: () => [],
   };
@@ -186,31 +184,30 @@ async function mountReal(bridge) {
   return m;
 }
 
-const SECTIONS = ["hv2-greeting", "hv2-forays", "hv2-playlists", "hv2-suggested"];
+const SECTIONS = ["today-top", "today-hero", "today-also", "today-playlists", 'class="gauge"'];
 const forayRoot = (f) => (f.topic || "other").split("/")[0];
 
 /* ==================================================================== */
 /* 1. ALL SECTIONS RENDER OVER THE REAL DATA, IN ORDER                   */
 /* ==================================================================== */
 
-test("over the real data files the greeting, Forays for you, Playlists for you and Suggested render in order; Jump back in omits itself on a fresh profile", async () => {
-  /* MUTATION: return "" from foraysForYouHtml() (or any other section) ->
+test("over the real data files the header, Today's foray, Also today, Playlists for you and New ground render in order; Resume omits itself on a fresh profile", async () => {
+  /* MUTATION: return "" from todayHeroHtml() (or any other section) ->
      that section's index is -1 and the failure names it. MUTATION 2: make
-     jumpBackInV2Html() emit its <section> with nothing to resume -> the
-     "omits itself" assertion fails. */
+     todayResumeHtml() render its card shell when given null (drop the
+     `if (!entry) return ""` guard) -> the "omits itself" assertion fails. */
   const m = await mountReal();
   m.ctx.renderHome();
   const html = m.view();
   const at = Object.fromEntries(SECTIONS.map((cls) => [cls, html.indexOf(cls)]));
   for (const cls of SECTIONS) assert.ok(at[cls] !== -1, `${cls} did not render over the real data`);
-  assert.ok(
-    at["hv2-greeting"] < at["hv2-forays"] && at["hv2-forays"] < at["hv2-playlists"] && at["hv2-playlists"] < at["hv2-suggested"],
-    `sections out of order: ${JSON.stringify(at)}`
-  );
-  assert.strictEqual(html.indexOf("hv2-jbi"), -1,
-    "Jump back in must omit itself on a fresh profile (nothing to resume) rather than render an empty rail");
+  const order = SECTIONS.map((c) => at[c]);
+  assert.deepStrictEqual(order, [...order].sort((a, b) => a - b), `sections out of order: ${JSON.stringify(at)}`);
+  assert.strictEqual(html.indexOf("today-resume"), -1,
+    "Resume must omit itself on a fresh profile (nothing to resume) rather than render an empty card");
   assert.strictEqual(m.state.cardSlots.length, 4, "buildCards() deals four subject slots from the real pool");
-  assert.ok((html.match(/class="hv2-foray-card/g) || []).length >= 1, "at least one real Foray card renders");
+  const also = html.slice(html.indexOf("today-also"), html.indexOf("today-playlists"));
+  assert.strictEqual((also.match(/class="row-episode/g) || []).length, 3, "three pick rows, and the bridge card besides");
   assert.ok(html.includes("Generated for you"),
     "Playlists for you over the real pool carries generated playlists (a fresh profile has no own playlists to show first)");
 });
@@ -251,7 +248,7 @@ function pxAt(expr, inset) {
   }, 0);
 }
 
-test("at inset 0 and at inset 59 px the same sections render, and the stylesheet reserves at least the tab bar's height under them at each inset", async () => {
+test("at inset 0 and at inset 59 px the same sections render, and the stylesheet reserves at least the tab bar's height under them at each inset (and Today's floating deck its own)", async () => {
   /* The render is inset-independent by construction (app.js never reads an
      inset), so the section assertion is the same markup twice; what differs
      per inset is the geometry the committed stylesheet resolves to.
@@ -270,15 +267,23 @@ test("at inset 0 and at inset 59 px the same sections render, and the stylesheet
     assert.ok(reserved >= bar,
       `inset ${inset}px: Home reserves ${reserved}px under its content but the tab bar is ${bar}px tall — the last section would sit under the bar`);
   }
+  /* On Today the bar is the 64px deck floated 12px above the inset, and
+     `--tab-bar-h` (what body.ui-v2 pads and where the mini player docks) is
+     redeclared to cover both. MUTATION: drop the `+ var(--s-3)` from that
+     declaration -> the 12px float is under the last row. */
+  const todayH = /body\.ui-v2\.view-home\s*\{[^}]*--tab-bar-h:\s*calc\(var\(--deck-h\) \+ var\(--s-3\)\)/.exec(CSS);
+  assert.ok(todayH, "Today reserves the deck and its 12px float");
+  assert.match(CSS, /--deck-h:\s*64px/);
+  assert.match(CSS, /--s-3:\s*12px/);
 });
 
 /* ==================================================================== */
-/* 3. THE FLOOR OVER REAL DATA — SUGGESTED, 20 RENDERS            */
+/* 3. THE FLOOR OVER REAL DATA - ALSO TODAY, 20 RENDERS                  */
 /* ==================================================================== */
 
-test("THE FLOOR over real data: Suggested carries a visible Stretch tag with its bridge line on 20 consecutive renders of a fresh profile", async () => {
+test("THE FLOOR over real data: Also today carries a visible Stretch tag with its bridge sentence on 20 consecutive renders of a fresh profile", async () => {
   /* MUTATION: in buildCards(), set `stretchBranch` to null -> no slot has
-     role "stretch", miniCardV2 appends no bridge line, and run 0 fails.
+     role "stretch", todayAlsoSlots finds none, and run 0 fails.
      Real Math.random throughout: the stretch slot is structural (a branch
      outside the top interest tier, chosen deliberately), not a jitter
      outcome, so 20 unseeded renders is the honest form of "20 seeded
@@ -288,72 +293,46 @@ test("THE FLOOR over real data: Suggested carries a visible Stretch tag with its
     const m = await mountReal(bridge);
     m.ctx.renderHome();
     const html = m.view();
-    const episodes = html.slice(html.indexOf("hv2-suggested"));
-    assert.ok(/class="mc-stretch"[^>]*>Stretch</.test(episodes), `run ${i}: Suggested must carry a visible Stretch tag over the real pool`);
-    assert.ok(episodes.includes('class="hv2-bridge">'), `run ${i}: the stretch pick must carry its bridge line`);
+    const also = html.slice(html.indexOf("today-also"), html.indexOf("today-playlists"));
+    assert.ok(/class="tag tag--stretch"/.test(also), `run ${i}: Also today must carry a visible Stretch tag over the real pool`);
+    const sentence = /class="bridge__sentence">([^<]*)</.exec(also);
+    assert.ok(sentence, `run ${i}: the stretch pick must carry its bridge sentence`);
+    assert.match(sentence[1], /outside your usual/i, `run ${i}: and it says why`);
+    assert.ok(sentence[1].trim().split(/\s+/).length <= 16, `run ${i}: within 16 words: ${sentence[1]}`);
     const stretchSlots = m.state.cardSlots.filter((sl) => sl.role === "stretch");
     assert.strictEqual(stretchSlots.length, 1, `run ${i}: exactly one of the four slots is the stretch pick`);
   }
 });
 
 /* ==================================================================== */
-/* 4-5. THE FLOOR OVER REAL DATA — FORAYS FOR YOU: THE DOCUMENTED FALLBACK */
+/* 4. TODAY'S FORAY OVER REAL DATA                                       */
 /* ==================================================================== */
 
-test("THE FLOOR over real data, Forays for you: the section renders exactly what pickWithStretchFloor decides for the listable Forays — a Stretch tag and bridge line when there is a lower tier, and the documented fallback (no tag, no fake bridge) when there is not", async () => {
-  /* WHICH BRANCH RUNS IS A DATA FACT, read rather than pinned (#236,
-     2026-09-22). This test used to assert the fallback unconditionally ("one
-     published Foray, so no lower tier") and test 5 pinned the fact behind it —
-     `ids: ["capital-types-1"], roots: ["business"]` — as a tripwire telling
-     whoever published the next Foray to come back and flip this test by hand.
-     So publishing, unpublishing or retiring a Foray cost two test edits here.
-     Now both branches are written, and the data picks one: a stretch pick
-     exists exactly when the listable Forays span enough subject roots for
-     pickWithStretchFloor to leave one outside its top 60% (three or more
-     today), and the section must render precisely that decision.
-
-     MUTATION: in pickWithStretchFloor, fall back to `branchAvg[0].b` when the
-     lower tier is empty -> on today's single-root data a Stretch tag is painted
-     over an ordinary pick and the "no Stretch label" assertion fails.
-     MUTATION 2: return "" from foraysForYouHtml() when stretchIndex is -1 ->
-     the section vanishes and the card count is 0.
-     MUTATION 3: drop `stretch: i === stretchIndex` from foraysForYouHtml ->
-     inert on today's data (no stretch pick exists), red the day one does;
-     measured by publishing two drafts on other roots in a scratch copy. */
+test("Today's foray over the real data is a listable Foray drawn from its real running order", async () => {
+  /* MUTATION: build the hero from `foray.title` alone (drop todayHeroModel's
+     resolved running order) -> the band has no bars and the show count is
+     missing. MUTATION 2: pick from `forayCards()` including drafts first ->
+     an unpublished id appears (precondition test below). */
   const m = await mountReal();
   m.ctx.renderHome();
   const html = m.view();
-  const section = html.slice(html.indexOf("hv2-forays"), html.indexOf("hv2-playlists"));
+  const hero = html.slice(html.indexOf("today-hero"), html.indexOf("today-also"));
+  const id = /data-home-play="([^"]+)"/.exec(hero);
+  assert.ok(id, "the hero has its Foray Play key");
   const listable = m.ctx.forayCards();
-  assert.ok(listable.length >= 1, "no Foray is listable for a fresh visitor — see test 5");
-  /* The EXPECTATION is computed here, independently of the code under test —
-     a first draft asked pickWithStretchFloor itself which branch to check, and
-     mutation 1 then passed, because the mutated picker agreed with itself. The
-     rule, from the floor's own definition (D1): the top 60% of subject roots
-     (at least one) are the ordinary tier, and a stretch pick exists only when a
-     root is left outside it. Which card it is follows the live interest scores
-     and is test 3's and home-v2.test.js's business, not this one's. */
-  const roots = new Set(listable.map(forayRoot)).size;
-  const expectStretch = roots - Math.max(1, Math.ceil(roots * 0.6)) > 0;
-  const floor = m.ctx.pickWithStretchFloor(listable, { branchFn: forayRoot, scoreFn: () => 0.5, take: 4 });
-  assert.strictEqual(floor.stretchIndex >= 0, expectStretch,
-    `${roots} subject root(s) among the listable Forays: pickWithStretchFloor ${expectStretch ? "must" : "must not"} report a stretch pick`);
-  const cards = (section.match(/class="hv2-foray-card/g) || []).length;
-  assert.strictEqual(cards, Math.min(listable.length, 4), `the section drew ${cards} card(s) for ${listable.length} listable Foray(s)`);
-  assert.ok(section.includes("fy-strip"), "the card carries its SegmentStrip, resolved from the real segments/sources documents");
-  if (!expectStretch) {
-    assert.ok(!section.includes("hv2-stretch-tag"), "no Stretch label may be painted over an ordinary pick when there is no lower tier");
-    assert.ok(!section.includes("hv2-bridge"), "no bridge line without a stretch pick");
-  } else {
-    assert.strictEqual((section.match(/class="hv2-stretch-tag">Stretch</g) || []).length, 1, "exactly one visible Stretch tag");
-    assert.ok(section.includes('class="hv2-bridge">'), "the stretch pick carries its bridge line");
-  }
+  assert.ok(listable.some((f) => f.id === id[1]), `${id[1]} is one of the listable Forays`);
+  const resolved = m.ctx.resolveListedForay(id[1]);
+  assert.ok(resolved && resolved.playable.length > 0, "and it resolves to a running order");
+  const bars = (hero.match(/<rect class="t-band__bar /g) || []).length;
+  assert.ok(bars >= resolved.playable.length, `the band draws the running order's items (${bars} bars for ${resolved.playable.length} items)`);
+  const shows = /(\d+) shows?</.exec(hero);
+  assert.ok(shows && Number(shows[1]) >= 1, "and says how many shows it is made of");
 });
 
 test("the real data lists at least one Foray for a fresh visitor, so the Forays-for-you tests above are about something", async () => {
   /* This was the tripwire that pinned WHICH Foray is published and on which
-     root (see test 4 for why it went). What remains is the precondition: with
-     nothing listable the section omits itself and tests 1, 2 and 4 would be
+     root . What remains is the precondition: with
+     nothing listable there is no hero and tests 1, 2 and 4 would be
      asserting on an empty slice. Which Foray is published is pinned once, in
      tools/foray/check-forays.test.mjs — publishing is a founder action.
      MUTATION: set every Foray in data/forays.json to "draft" -> red here. */

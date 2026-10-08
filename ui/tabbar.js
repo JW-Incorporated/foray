@@ -23,19 +23,19 @@
    the flag goes off, sidesteps that cascade question entirely instead of
    relying on getting it right. */
 const TAB_ROUTES = [
-  { key: "home", label: "Home", hash: "#/",
+  { key: "home", label: "Today", hash: "#/", dial: ["ph-sun-horizon", "ph-sun-horizon-fill"],
     icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
       'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
       '<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>' },
-  { key: "search", label: "Search", hash: "#/shows",
+  { key: "search", label: "Search", hash: "#/shows", dial: ["ph-magnifying-glass", "ph-magnifying-glass-fill"],
     icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
       'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
       '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>' },
-  { key: "create", label: "Create", hash: "#/create",
+  { key: "create", label: "Create", hash: "#/create", dial: ["ph-list-plus", null],
     icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
       'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
       '<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>' },
-  { key: "library", label: "Library", hash: "#/library",
+  { key: "library", label: "Library", hash: "#/library", dial: ["ph-bookmarks", "ph-bookmarks-fill"],
     icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
       'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
       '<path d="M4 19V5a2 2 0 0 1 2-2h9l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M15 3v5h5"/></svg>' },
@@ -95,7 +95,11 @@ function renderTabBar() {
       a.className = "tab-btn";
       a.href = t.hash;
       a.dataset.tabKey = t.key;
-      a.innerHTML = `${t.icon}<span>${esc(t.label)}</span>`;
+      /* The Dial deck draws sprite icons (Phosphor Bold, Fill while current) in
+         place of the legacy strokes; CSS shows one set or the other, so the pages
+         still on the old look keep theirs (styles.css, `body.view-home #tab-bar`). */
+      const dial = t.dial ? tactileIcon(t.dial[0], "", "tab-dial") + (t.dial[1] ? tactileIcon(t.dial[1], "", "tab-dial tab-dial--fill") : "") : "";
+      a.innerHTML = `${t.icon}${dial}<span>${esc(t.label)}</span>`;
       bar.append(a);
     }
     /* TAPPING THE TAB YOU ARE ON TAKES YOU TO THE TOP (audit 2026-09-22) — the

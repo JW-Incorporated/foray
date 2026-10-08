@@ -35,7 +35,15 @@ test("meta lines use the short display-name rule while titles keep escaped data"
 test("downloaded rows wrap after the show name at narrow phone widths", () => {
   // MUTATION: change `flex: 1 1 100%` to `flex: 0 1 auto` -> this test fails.
   assert.match(CSS, /@media \(max-width: 393px\)[\s\S]*\.row-episode:has\(\.tag--downloaded\) \.row__show\s*\{\s*flex:\s*1 1 100%/);
-  assert.match(rule(".row__show"), /min-width:\s*112px/);
+  /* The name shrinks and ellipsises before anything else on the line, and the
+     facts are one unshrinking group. Tactile Today: the notes' `min-width:
+     112px` on the name pushed a row with a long length ("1 hr 4 min") over the
+     key beside it; the prototype's final rule is a name that may shrink to
+     nothing. MUTATION: restore `min-width: 112px` -> the first assertion fails
+     (and the gate's tap-targets report "+ Up Next" overlapping the key). */
+  assert.match(rule(".row__show"), /flex:\s*0 1 auto/);
+  assert.match(rule(".row__show"), /min-width:\s*0/);
+  assert.match(rule(".row__facts"), /flex:\s*none/);
 });
 
 test("artwork URLs pass through safeUrl and unsafe sources never reach markup", () => {

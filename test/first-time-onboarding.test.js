@@ -715,11 +715,19 @@ function seedHomeForRedeal(m) {
   m.evalIn("state.ready = true; Math = Object.assign(Object.create(Math), { random: () => 0.5 });");
 }
 const homeHtml = (m) => m.byId.get("view").innerHTML;
-const dealtRoots = (html) => [...html.matchAll(/class="mini-card" data-branch="([^"]+)"/g)].map((mm) => mm[1]);
+/* Today's four dealt subjects, stretch slot first, as the slots order them.
+   Also today draws a row per top slot and the Stretch bridge second, each
+   carrying the subject it was dealt for as data-branch; the bridge is lifted
+   back to the front here so "slot 1 is the stretch" still reads as it did. */
+const dealtRoots = (html) => {
+  const all = [...html.matchAll(/<article class="(?:row-episode|card bridge)[^>]*data-branch="([^"]+)"/g)].map((mm) => mm[1]);
+  const stretch = (/<article class="card bridge"[^>]*data-branch="([^"]+)"/.exec(html) || [])[1];
+  return stretch ? [stretch, ...all.filter((r) => r !== stretch)] : all;
+};
 /* Typographic quotes since audit round 2 (copy-8): every quoted listener
    string goes through app.js's one `quoteQuery` helper. */
 const leadEpisode = (html, root) =>
-  (new RegExp(`data-branch="${root}"[\\s\\S]*?Starts with \\u201c([^\\u201d]+?)\\.?\\u201d`).exec(html) || [])[1];
+  (new RegExp(`data-branch="${root}"[\\s\\S]*?<a class="row__link" href="#/episode/[^"]+">([^<]+)</a>`).exec(html) || [])[1];
 
 /** Renders the first Home of the session (which deals cardSlots and opens the
     sheet over it) and returns the four dealt subjects, stretch slot first. */

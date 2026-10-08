@@ -1679,7 +1679,10 @@ function interestScore(item) {
    test harness without this file, and this file must run without it. */
 function setControlLabel(btn, text, label) {
   if (!btn) return;
-  if (text != null && btn.textContent !== text) btn.textContent = text;
+  /* A control that draws its own state (data-ctl-icons: sprite icons and sibling
+     spans chosen by CSS from `on` / data-playing) is never written text; only its
+     name changes. The same guard is in player/client.js's paintControl. */
+  if (text != null && !(btn.hasAttribute && btn.hasAttribute("data-ctl-icons")) && btn.textContent !== text) btn.textContent = text;
   if (label && label !== text) btn.setAttribute("aria-label", label);
   else btn.removeAttribute("aria-label");
 }
@@ -4379,6 +4382,20 @@ function bindStars(scope) {
   });
 }
 
+/* THE TWO SECONDS OF "QUEUED" (Tactile rows, BUILD-NOTES 3.9). A Dial "+ Up
+   Next" control (data-ctl-icons) says "Queued" in --good for two seconds after
+   the tap and then settles to the quiet "In Up Next". The state itself is the
+   queue's (`on`); `is-fresh` is only how long the confirmation is shown, and a
+   second tap restarts it. Legacy text controls have no such state and are left
+   alone. */
+const QUEUED_FRESH_MS = 2000;
+function markQueuedFresh(btn) {
+  if (!btn || !btn.hasAttribute || !btn.hasAttribute("data-ctl-icons")) return;
+  btn.classList.add("is-fresh");
+  clearTimeout(btn._freshTimer);
+  btn._freshTimer = setTimeout(() => { btn.classList.remove("is-fresh"); }, QUEUED_FRESH_MS);
+}
+
 /* Toggling here is deliberately different from toggleStar: tapping "+ Up Next"
    a second time does NOT remove the episode (plan §1 Q3 — the control adds;
    removal lives on the #/queue page, not on every row it can appear on, to
@@ -4400,6 +4417,7 @@ function bindUpNext(scope) {
       scope.querySelectorAll(`[data-upnext="${CSS.escape(id)}"]`).forEach(b => {
         setToggleLabel(b, on, UP_NEXT_TOGGLE);
         b.classList.toggle("on", on);
+        if (on) markQueuedFresh(b);
       });
     });
   });
@@ -4836,7 +4854,7 @@ function landOnPage({ navigated = false } = {}) {
   const lost = !active || active === document.body || active.isConnected === false
     || !!(typeof active.closest === "function" && active.closest("#drawer"));
   if (lost) {
-    const greeting = home && view && typeof view.querySelector === "function" ? view.querySelector(".hv2-greeting") : null;
+    const greeting = home && view && typeof view.querySelector === "function" ? view.querySelector(".today-title") : null;
     const target = head || greeting || view;
     if (!target || typeof target.focus !== "function") return;
     if (typeof target.hasAttribute !== "function" || !target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1");
@@ -6290,7 +6308,7 @@ async function init() {
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) return;
     refreshForayDirectory("foreground");
-    refreshGreeting();
+    refreshTodayDate();
   });
 
   /* Warm the concept-vocabulary DF caches now, while the app is idle between

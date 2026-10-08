@@ -373,9 +373,9 @@ test("every offset that reserves room for the fixed topbar equals the topbar's o
      them the difference was visible as empty space: bar 44px, offset 103px,
      43px of nothing under the header.
 
-     `.home` is included by inverting its expression — it subtracts the same
-     reservation from the viewport — so the check covers the subtrahend too,
-     not just the three that name the offset directly.
+     (`.home`, which subtracted the same reservation from the viewport, went with
+     the retired one-screen grid; Today hides the bar and zeroes the offset
+     together, which the last test of this file pins.)
 
      MUTATION: `#view { padding-top: var(--topbar-h); }`. At a 59px inset the
      offset is 44 while the bar is 103, and this fails by 59px. Same for
@@ -390,15 +390,6 @@ test("every offset that reserves room for the fixed topbar equals the topbar's o
       [".shell-notice top", px(valueOf(".shell-notice", "top"), opts)],
       [".fy-transport top", px(valueOf(".fy-transport", "top"), opts)],
     ];
-    // `.home` declares min-height twice (a vh fallback, then svh). Both must
-    // reserve the same room, so both are checked.
-    const homeHeights = valuesOf(".home", "min-height");
-    assert.strictEqual(homeHeights.length, 2,
-      ".home must keep its `100vh` fallback alongside the `100svh` value");
-    homeHeights.forEach((v, i) => {
-      offsets.push([`.home min-height[${i}] reservation`, VIEWPORT_H - px(v, opts)]);
-    });
-
     for (const [what, value] of offsets) {
       assert.strictEqual(value, bar,
         `${label}: ${what} is ${value}px but the topbar's box is ${bar}px — ` +
@@ -544,169 +535,48 @@ test("nothing carrying the `hidden` attribute can render — pinned on the Shows
 });
 
 /* ==================================================================== */
-/* BUG 4 — THE FOUR CARDS CRUSHED TO SLIVERS                             */
+/* TODAY (Redesign 2026, Tactile Home): A SCROLLING COLUMN WITH NO FLOOR  */
 /* ==================================================================== */
 
-test("`.home` grows instead of crushing its content: a min-height floor, never a fixed height", () => {
-  /* ROUND 3 (search-api-css-10): the `.cards4` grid this test also floored is
-     deleted. It was the retired flag-off Home's four-card grid, and renderHome()
-     always renders Home v2, which never emits it
-     (test/home-information-architecture.test.js pins that). The `.home` half
-     below still stands: Home v2 carries the `.home` class too. The history of
-     the bug is kept here because it is why `.home` says min-height. */
-  /* `.home` is a flex column and `.cards4` its only `flex: 1` child, so a
-     fixed `height` on the container makes every optional sibling — the
-     continue banner, the "Jump back in" rows, the foray list — come straight
-     out of the cards. Measured at 440x956 with a banner and three resume
-     rows: `.cards4` 63.8px, each card 26px, artwork and hook clipped away by
-     `.mini-card { overflow: hidden }`. #458 fixed one such sibling by moving
-     it below the fold; the container was the bug.
+/* HISTORY, KEPT BECAUSE IT IS WHY THE COLUMN HAS NO FLOOR. The retired `.home`
+   was a fixed one-screen column whose only `flex: 1` child was the four-card
+   grid, so every optional sibling (the continue banner, the "Jump back in"
+   rows) came straight out of the cards: measured at 440x956, the grid crushed
+   to 63.8px and each card to 26px. #458 moved one sibling below the fold; the
+   container was the bug. Home v2 then inherited `.home`'s floor through its
+   second class and always scrolled by a tab bar's height into bare background.
+   Today is `.today`, a plain flex column with neither a height nor a floor, and
+   carries no second class. */
 
-     The floor is recomputed here from `.mini-card`'s own padding and its
-     artwork height rather than hardcoded, so shrinking either rule without
-     revisiting the floor fails rather than silently lowering it.
-
-     MUTATION: `.cards4 { min-height: 0; }` (its value before this fix). The
-     floor assertion fails. MUTATION 2: change `.home`'s `min-height` back to
-     `height`. The "grows" assertion fails, naming `height`. */
-  /* A floor only helps if the container may exceed its ideal height. With a
-     fixed `height` the column has a hard budget and its content overflows or
-     is crushed instead of making the page scroll. */
-  assert.strictEqual(valueOf(".home", "height"), null,
-    ".home must not declare a fixed `height` — with one, its content is crushed or overflows " +
-    "instead of making the page scroll");
-  assert.strictEqual(valueOf(".cards4", "min-height"), null, "the retired .cards4 grid stays deleted");
-  assert.ok(valueOf(".home", "min-height") != null,
-    ".home must declare `min-height` so it still fills one screen when the content fits");
-});
-
-/* ==================================================================== */
-/* BUG 5 — EMPTY OPTIONAL BLOCKS THAT STILL COST SPACE                   */
-/* ==================================================================== */
-
-/* CUTOVER (U-11, founder override, 2026-09-06, kanban card t_a3f01c8a): BUG
-   5 pinned the flag-off `.home`/`#banner-slot` layout, which is retired —
-   renderHome() always renders Home v2 now, and Home v2 has no
-   `#banner-slot` at all ("Jump back in" is its own always-rendered
-   section, never empty-but-present the way the old banner slot was). The
-   `#banner-slot:empty { display: none; }` CSS rule and the old markup are
-   preserved verbatim in archive/legacy-ui-2026-09/ for reference; this
-   test's premise no longer holds against the shipped code, so it was
-   removed rather than converted. */
-
-/* ==================================================================== */
-/* U-03 — HOME V2's COLUMN HAS NO FIXED HEIGHT FOR A SIBLING TO FIGHT     */
-/* ==================================================================== */
-
-test("`.hv2-home` (U-03) declares no fixed height — unlike `.home`, it is meant to scroll", () => {
-  /* BUG 4 above exists because the flag-off `.home` is a FIXED-height column
-     with exactly one scrollable child (`.cards4`) — any sibling that grows
-     starves it. Home v2 is architecturally different on purpose: the mockup
-     scrolls (docs/ux/foray-mockup.jsx wraps HomeScreen in
-     `overflowY: "auto"`), five sections of unbounded length is not a
-     "four cards, one screen" product, so `.hv2-home` must have no `height`
-     and no `min-height` floor for a sibling to fight over — the whole
-     failure mode BUG 4 fixed cannot recur if the column was never fixed to
-     begin with.
-
-     MUTATION: add `height: calc(100svh - var(--topbar-h))` to `.hv2-home`
-     (porting `.home`'s fix onto a column that doesn't need it). This fails,
-     naming the declared height. */
-  assert.strictEqual(valueOf("body.ui-v2 .hv2-home", "height"), null,
-    ".hv2-home must not declare a fixed height — Home v2 is a scrolling page, not a one-screen column");
-  const own = valueOf("body.ui-v2 .hv2-home", "min-height");
-  assert.ok(own === null || /^0(px)?$/.test(own),
-    ".hv2-home must not declare a min-height floor either — nothing here needs BUG 4's fix because " +
-    `nothing here is fixed-height to begin with (declared: ${own})`);
-});
-
-test("Home v2's element does not inherit the retired `.home` one-screen floor through its second class", () => {
-  /* THE BUG THE TEST ABOVE COULD NOT SEE (audit 2026-09-22, "Home always
-     scrolls by the height of the tab bar into empty background"). It asked
-     what `.hv2-home` DECLARES; the element renderHomeV2 emits is
-     `class="home hv2-home"`, so `.home`'s `min-height: 100svh - topbar` was
-     live on it anyway — and body.ui-v2's tab-bar padding went on top, so the
-     document was always one tab bar taller than the screen.
-
-     This asks the question about the ELEMENT: for every min-height `.home`
-     gives it, a rule that also matches it (`body.ui-v2 .hv2-home`, which
-     out-ranks `.home` at (0,2,1)) must take it back to nothing.
-
-     MUTATION: delete `min-height: 0;` from `body.ui-v2 .hv2-home`. This
-     fails, naming `.home`'s floor. */
+test("`.today` declares no fixed height and no min-height floor: it is a scrolling page, not a one-screen column", () => {
+  /* MUTATION: add `min-height: calc(100svh - var(--topbar-h))` to `.today`
+     (porting the retired `.home`'s fix onto a column that does not need it) ->
+     this fails, naming the declared floor. MUTATION 2: add `class="home today"`
+     back to the template -> the markup assertion fails. */
+  assert.strictEqual(valueOf(".today", "height"), null, ".today must not declare a fixed height");
+  assert.strictEqual(valueOf(".today", "min-height"), null, ".today must not declare a min-height floor either");
+  assert.strictEqual(valueOf(".home", "min-height"), null, "the retired `.home` floor stays deleted");
   const APP = readAppSource();
-  assert.ok(APP.includes('class="home hv2-home"'),
-    "fixture assumption: Home v2 still carries both classes — if `.home` is gone from the markup, delete this test");
-  const floor = valueOf(".home", "min-height");
-  assert.ok(floor && floor !== "0", "fixture assumption: `.home` still declares its one-screen floor");
-  const reset = valueOf("body.ui-v2 .hv2-home", "min-height");
-  assert.ok(reset !== null && /^0(px)?$/.test(reset),
-    `Home v2 inherits \`.home\`'s floor (${floor}) and nothing resets it, so Home scrolls by the ` +
-    "tab bar's height into empty background");
+  assert.ok(APP.includes('<div class="today">'), "fixture assumption: Today's column is `.today` and nothing else");
+  assert.ok(!/class="home\b/.test(APP), "no element still carries the retired `.home` class");
 });
 
-test("`.hv2-home` still reserves the safe-area inset at the bottom, like every other fixed-bar-aware surface", () => {
-  /* Not a repeat of BUG 1/2 (those are about the FIXED topbar reserving its
-     OWN box correctly) — this is the same category of bug on the bottom
-     edge: content padding must include env(safe-area-inset-bottom) or it
-     draws under the home-indicator area on a notched phone. Verified at
-     both insets the rest of this file already tests.
-
-     MUTATION: drop `env(safe-area-inset-bottom)` from `.hv2-home`'s
-     padding-bottom (leaving a bare px value). At NOTCHED this fails by
-     34px; at DESKTOP (env resolves to 0) it still passes, which is why
-     both insets are asserted. */
+test("`.today` reserves the safe-area inset at the top (its own bar is gone) and hides the legacy topbar with the offset it reserved", () => {
+  /* With the topbar hidden on Home, nothing reserves the notch: the title row
+     does, through `--safe-t`. And the legacy `#view` offset (the bar's height)
+     must go in the same breath or Home would start 44px down an empty page.
+     MUTATION: drop `var(--safe-t)` from `.today`'s padding -> the title draws
+     under the status bar at inset 59 (this fails by 59px; at inset 0 it passes,
+     which is why both insets are asserted). MUTATION 2: delete
+     `body.view-home #view { padding-top: 0; }` -> the dead gap returns.
+     MUTATION 3: delete `body.view-home .topbar { display: none; }` -> two
+     headers. */
   for (const [label, env] of [["desktop (inset 0)", DESKTOP], ["notched iPhone (inset 59px)", NOTCHED]]) {
-    const paddingBottom = valuesOf("body.ui-v2 .hv2-home", "padding");
-    assert.ok(paddingBottom.length > 0, ".hv2-home must declare padding");
-    const raw = paddingBottom[paddingBottom.length - 1];
-    assert.match(raw, /env\(safe-area-inset-bottom\)/,
-      `${label}: .hv2-home's padding must reserve env(safe-area-inset-bottom)`);
+    const raw = valuesOf(".today", "padding");
+    assert.ok(raw.length > 0, ".today must declare padding");
+    assert.match(raw[raw.length - 1], /var\(--safe-t\)/, `${label}: .today's top padding must reserve the safe-area inset (--safe-t)`);
   }
-});
-
-test("a stretch card's bridge line is a row of its own under the card, not a fourth column beside the star", () => {
-  /* Audit 2026-09-22. miniCardV2() appends `<p class="hv2-bridge">` INSIDE the
-     `.mini-card` anchor, and `.mini-card` is a single-line flex row — so the
-     sentence a stretch pick is required to carry (D1's copy rule) rendered as
-     a narrow italic column to the right of the star, clipping the title. The
-     Foray card's identical line only worked because that card is a column.
-
-     MUTATION: drop `flex-wrap: wrap` from `body.ui-v2 .hv2-suggested
-     .mini-card` -> the first assertion fails. Drop the `.mc-info` zero basis
-     -> the third fails (and on a device the title jumps to a line of its own,
-     because its max-content width is the whole unclamped title). */
-  const APP = readAppSource();
-  assert.ok(APP.includes('</p></div>`;') && APP.includes("return card.replace("),
-    "fixture assumption: the bridge is still injected inside the card's anchor — if it moved outside, this rule is moot");
-  assert.strictEqual(valueOf("body.ui-v2 .hv2-suggested .mini-card", "flex-wrap"), "wrap",
-    "the Suggested card row must wrap so the bridge can take a line of its own");
-  assert.strictEqual(valueOf("body.ui-v2 .hv2-suggested .mini-card > .hv2-bridge", "flex-basis"), "100%",
-    "the bridge line must span the card's full width");
-  assert.strictEqual(valueOf("body.ui-v2 .hv2-suggested .mini-card > .mc-info", "flex-basis"), "0",
-    "the title block needs a zero basis or wrapping pushes IT onto its own line instead");
-});
-
-test("a snapped rail card rests on the gutter, not the viewport edge: scroll-padding equals the rail's inline padding", () => {
-  /* Review of visual pass 1 (2026-09-23). The Playlists rail's first card sat
-     at x=0 with its corner clipped, 14px off its own section title, while the
-     one-card Forays rail above it sat at 14px. `.hv2-hscroll` snaps
-     (`scroll-snap-type: x proximity`) and its cards align `start`; without
-     `scroll-padding-inline` the snapport ignores the scroller's own padding,
-     so a re-snap after layout parks card 1 at scrollLeft = the padding. The
-     scroll-padding must equal that padding, or a snapped card and an unsnapped
-     one disagree by the difference. MUTATION: delete `scroll-padding-inline`
-     from `body.ui-v2 .hv2-hscroll` -> red. */
-  const sel = "body.ui-v2 .hv2-hscroll";
-  assert.strictEqual(valueOf(sel, "scroll-snap-type"), "x proximity", "fixture assumption: the rail still snaps");
-  const padding = (valueOf(sel, "padding") || "").trim().split(/\s+/);
-  const inline = padding.length === 1 ? padding[0] : padding.length === 2 ? padding[1] : padding[1];
-  const right = padding.length === 4 ? padding[1] : inline;
-  const left = padding.length === 4 ? padding[3] : inline;
-  assert.strictEqual(left, right, "the rail's two gutters are equal, so one scroll-padding value covers both");
-  assert.strictEqual(valueOf(sel, "scroll-padding-inline"), left,
-    `scroll-padding-inline must equal the rail's inline padding (${left})`);
-  for (const card of ["body.ui-v2 .hv2-jbi-card", "body.ui-v2 .hv2-foray-card", "body.ui-v2 .hv2-playlist-card"]) {
-    assert.strictEqual(valueOf(card, "scroll-snap-align"), "start", `${card} snaps its start edge`);
-  }
+  assert.match(CSS, /--safe-t:\s*env\(safe-area-inset-top,\s*0px\)/, "`--safe-t` is the safe-area inset");
+  assert.strictEqual(valueOf("body.view-home #view", "padding-top"), "0", "the legacy bar's offset is zeroed on Home");
+  assert.strictEqual(valueOf("body.view-home .topbar", "display"), "none", "and the bar itself is hidden there");
 });
