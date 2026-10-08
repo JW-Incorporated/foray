@@ -509,6 +509,12 @@ function todayDownloaded(id) {
   } catch (_) { return false; }
 }
 
+/** An episode that cannot be played right now: offline and not on the device. Rows draw it "Unavailable" with Play
+    disabled (todayRowState), and the hero and the continuous-play list follow the same fact. */
+function todayEpisodeBlocked(id) {
+  return todayOffline() && !todayDownloaded(id);
+}
+
 /** Observed, not declared: a listener is new until something has been played or is part-played. */
 function todayIsFirstRun(entries = jumpBackInEntries()) {
   return entries.length === 0 && pickedHistory().length === 0;
@@ -761,19 +767,24 @@ function todayForayMetaHtml(hero) {
 /** HeroPick (BUILD-NOTES §3, §10.6): the collage, the eyebrow, the title (four lines, no ellipsis), the
     meta, Ember Play 56 under the collage's bottom edge, and the why-line across the full width. */
 function todayHeroHtml(hero, { firstRun }) {
+  /* Offline, the hero plays only what is on the device. A foray streams each clip from its show's own feed (a download is a
+     whole episode; nothing in the foray start path reads one), so offline it cannot start; an episode hero plays if downloaded.
+     A press that cannot succeed is not offered: Play is disabled and the art dims, as a row's is (todayRowState). */
+  const blocked = todayOffline() && (hero.kind === "foray" || !todayDownloaded(hero.id));
   /* Typographic apostrophes (U+2019) in what is drawn, as the prototype's Fraunces sets them; the landmark names below stay ASCII. */
   const eyebrow = firstRun ? "Today’s picks" : hero.kind === "foray" ? "Today’s foray" : "Today’s pick";
   const art = agCollage(hero.shows.map(s => ({ name: s.name, src: s.src })), { size: 160 });
   /* The landmark is named for what the hero IS, not for the eyebrow: a first run's eyebrow is "Today's picks", which is also the list's
      region, and two landmarks with one name is an axe `landmark-unique` failure. */
   const landmark = hero.kind === "foray" ? "Today's foray" : "Today's pick";
-  return `<section class="td-hero" aria-label="${esc(landmark)}"${hero.branch ? ` data-branch="${esc(hero.branch)}"` : ""}>
+  return `<section class="td-hero${blocked ? " is-unavailable" : ""}" aria-label="${esc(landmark)}"${hero.branch ? ` data-branch="${esc(hero.branch)}"` : ""}>
     <a class="td-hero-art" href="#${esc(hero.route)}" tabindex="-1" aria-hidden="true">${art}</a>
     <div class="td-hero-copy">
       <span class="eyebrow lamp">${esc(eyebrow)}</span>
       <h2 class="t-title clamp4 td-hero-title"><a class="td-link" href="#${esc(hero.route)}"${hero.kind === "ep" ? ` data-ev="picked" data-ep="${esc(hero.id)}" data-ctx="today"` : ""}>${esc(hero.title)}</a></h2>
       ${hero.kind === "foray" ? "" : `<p class="t-caption td-hero-meta">${esc(hero.meta)}</p>`}
-      <div class="td-hero-actions">${todayPlayButton({ size: 56, label: `Play ${hero.title}`, attrs: " data-home-play" })}${hero.kind === "foray" ? todayForayMetaHtml(hero) : ""}</div>
+      ${blocked ? `<p class="t-caption td-hero-meta td-hero-unavail">${agIcon("wifi-slash", 20)}<span>Unavailable offline</span></p>` : ""}
+      <div class="td-hero-actions">${todayPlayButton({ size: 56, label: `Play ${hero.title}`, attrs: " data-home-play", disabled: blocked })}${hero.kind === "foray" ? todayForayMetaHtml(hero) : ""}</div>
     </div>
     ${hero.why ? `<p class="t-why td-why">${esc(hero.why)}</p>` : ""}
     ${firstRun ? `<p class="t-body td-first-run">${esc(TODAY_FIRST_RUN_NOTE)}</p>` : ""}
@@ -867,10 +878,11 @@ function todayHtml() {
   const picks = todayPicks();
   /* ONE computation of the Foray pick per render (audit round 3, app-2-12): the hero and the test-track drafts read it. */
   const forayPick = foraysForYouPicks();
-  let hero = firstRun ? null : todayForayHero(forayPick);
+  /* Offline a foray cannot start (todayHeroHtml), so the hero falls through to an episode, and to a downloaded one when there is one. */
+  let hero = firstRun || offline ? null : todayForayHero(forayPick);
   let firstPickId = null;
   if (!hero) {
-    const first = picks.rows.find(r => !r.stretch) || picks.rows[0];
+    const first = (offline && picks.rows.find(r => !r.stretch && todayDownloaded(r.item.id))) || picks.rows.find(r => !r.stretch) || picks.rows[0];
     hero = todayEpisodeHero(first && first.item, first ? first.branch : "");
     if (hero && first) firstPickId = first.item.id;
   }
@@ -881,7 +893,7 @@ function todayHtml() {
      rest of the list, then more of what fits: founder 2026-09-14). A foray carries its own running order. */
   if (hero && hero.kind === "ep" && hero.target) {
     hero.target.ctx = "today";
-    hero.target.list = [hero.id].concat(listRows.map(r => r.item.id)).filter((id, i, all) => all.indexOf(id) === i).map(id => ({ id, ctx: "today" }));
+    hero.target.list = [hero.id].concat(listRows.map(r => r.item.id)).filter((id, i, all) => all.indexOf(id) === i && !(id !== hero.id && todayEpisodeBlocked(id))).map(id => ({ id, ctx: "today" }));
   }
   const exclude = new Set(picks.rows.map(r => r.item.id));
   if (hero && hero.id) exclude.add(hero.id);
@@ -890,7 +902,7 @@ function todayHtml() {
   const { own, generated } = playlistsForYouPicks();
   const history = new Set(pickedHistory());
   const playlists = own.map(p => todayPlaylistCard(p, false, history)).concat(generated.map(p => todayPlaylistCard(p, true, history)));
-  homePlayPending = hero ? hero.target : null;
+  homePlayPending = hero && !(hero.kind === "ep" && todayEpisodeBlocked(hero.id)) ? hero.target : null;
 
   const heroHtml = hero ? todayHeroHtml(hero, { firstRun }) : "";
   const keepHtml = keep ? todayKeepHtml(keep) : "";
@@ -1016,7 +1028,8 @@ async function todayPlayPress(btn, scope) {
   const row = btn.closest("[data-td-ep]");
   const art = row ? row.querySelector(".ag-art") : null;
   todayGlowTo(item.show);
-  const list = [...scope.querySelectorAll("[data-td-play]")].map(b => ({ id: b.dataset.tdPlay, ctx: "today" }));
+  /* The continuous-play list is what a listener could play: a row drawn Unavailable (offline, not downloaded) is not queued. */
+  const list = [...scope.querySelectorAll("[data-td-play]")].filter(b => !b.disabled && !todayEpisodeBlocked(b.dataset.tdPlay)).map(b => ({ id: b.dataset.tdPlay, ctx: "today" }));
   const ok = await startEpisodePlay(id, item, { ctx: "today", list });
   todaySyncPlay();
   if (ok) todayFlipToMini(art);

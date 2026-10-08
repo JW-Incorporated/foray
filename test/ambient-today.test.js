@@ -164,7 +164,7 @@ function mount({ onLine = true, seed = {}, vars = {}, hero = "foray", player = {
   return { ctx, evalIn, state, store, rootStyle, docEl, view: () => byId.get("view").innerHTML };
 }
 
-const heroOf = (html) => html.slice(html.indexOf('<section class="td-hero"'), html.indexOf("</section>", html.indexOf('<section class="td-hero"')) + 10);
+const heroOf = (html) => html.slice(html.indexOf('<section class="td-hero'), html.indexOf("</section>", html.indexOf('<section class="td-hero')) + 10);
 
 /* ================================================================== 1-2. the palette */
 
@@ -406,13 +406,15 @@ test("Off your path draws two or three rows from outside the top tier, never the
 
 test("offline: a 36px raised banner with the wifi-slash glyph, rows that cannot play at half art with Play disabled, a downloaded row that still plays", () => {
   /* MUTATION: return false from todayOffline -> no banner; skip the todayDownloaded check -> the downloaded row is
-     dimmed too; drop `disabled` from the unavailable Play -> a dead tap target. */
+     dimmed too; drop `disabled` from the unavailable Play -> a dead tap target.
+     Hero (review fix): drop `disabled: blocked` from the hero's todayPlayButton, or the `offline ||` from the hero choice in
+     todayHtml (a foray leads offline again), or the `!todayDownloaded` half of `blocked` -> the hero assertions go red. */
   const online = mount();
   online.ctx.renderHome();
   assert.ok(!online.view().includes("td-banner"), "online: no banner");
   assert.ok(!online.view().includes("is-unavailable"), "online: nothing is unavailable");
 
-  const downloaded = { cp_downloads: JSON.stringify({ settings: { cellular: false }, items: { "top-2": { status: "done", path: "/p", bytes: 1, total: 1 } } }) };
+  const downloaded = { cp_downloads: JSON.stringify({ settings: { cellular: false }, items: { "top-2": { status: "done", path: "/p", bytes: 1, total: 1 }, "top-3": { status: "done", path: "/p", bytes: 1, total: 1 } } }) };
   const m = mount({ onLine: false, seed: downloaded });
   m.ctx.renderHome();
   const html = m.view();
@@ -424,12 +426,35 @@ test("offline: a 36px raised banner with the wifi-slash glyph, rows that cannot 
   assert.match(dead, /ag-art ag-art-72 ag-tone-amber is-dim/, "art at 50% (the primitive's dim state)");
   assert.match(dead, /<span class="ag-row-state warn"><svg[^>]*><use href="ui\/icons\.svg#i-wifi-slash"><\/use><\/svg>Unavailable<\/span>/, "glyph and word, never colour alone");
   assert.match(dead, /data-td-play="top-1"[^>]*disabled aria-disabled="true"/, "Play is disabled");
-  const alive = row("top-2");
+  const alive = row("top-3");
   assert.match(alive, /class="raised td-row is-downloaded"/);
   assert.ok(!/disabled/.test(alive), "a downloaded row's Play works");
   assert.match(alive, /<span class="ag-row-state ok">[\s\S]*?Downloaded<\/span>/);
   assert.ok(!/is-dim/.test(alive), "and its art is whole");
-  assert.ok(/data-home-play/.test(heroOf(html)) && !/disabled/.test(heroOf(html)), "the hero's Play is not struck offline (a foray plays from its own feeds)");
+  /* The hero follows the same fact as the rows. The fixture has a Foray, which streams from its shows' feeds and so cannot start
+     offline: the hero falls through to a DOWNLOADED pick (top-2, the first downloaded non-Stretch pick), enabled, and the list
+     does not carry it twice. (Review fix: the old assertion pinned an enabled hero Play with "a foray plays from its own feeds",
+     which is the network, unreachable offline.) */
+  const liveHero = heroOf(html);
+  assert.match(liveHero, /<span class="eyebrow lamp">Today’s pick<\/span>/, "an episode leads, not the Foray");
+  assert.ok(liveHero.includes("Title top-2") && !liveHero.includes("A Foray Title"), "the downloaded pick is the hero");
+  assert.ok(/data-home-play/.test(liveHero) && !/disabled/.test(liveHero) && !/is-unavailable/.test(liveHero), "a downloaded hero's Play works");
+  assert.ok(!html.includes('<article class="raised td-row is-downloaded" data-td-ep="top-2"'), "and it is not listed twice");
+
+  /* Nothing downloaded: the first pick leads, drawn unavailable like its row would be (Play disabled, aria-disabled, dim art, the word). */
+  const bare = mount({ onLine: false });
+  bare.ctx.renderHome();
+  const bareHero = heroOf(bare.view());
+  assert.match(bareHero, /<section class="td-hero is-unavailable"/);
+  assert.match(bareHero, /<button type="button" class="ag-btn ag-btn-play ag-btn-size-56" data-home-play aria-label="Play Title top-1" disabled aria-disabled="true">/, "Play is disabled");
+  assert.match(bareHero, /<p class="t-caption td-hero-meta td-hero-unavail"><svg[^>]*><use href="ui\/icons\.svg#i-wifi-slash"><\/use><\/svg><span>Unavailable offline<\/span><\/p>/, "glyph and word, never colour alone");
+  assert.strictEqual(valueOf(".ag .td-hero.is-unavailable .td-hero-art", "opacity"), ".5", "the art dims as a row's does");
+  assert.strictEqual(bare.evalIn("homePlayPending"), null, "and nothing is armed behind the disabled button");
+  /* Online, the same fixture's hero is the Foray and enabled. */
+  const on = mount();
+  on.ctx.renderHome();
+  assert.ok(!/is-unavailable|disabled/.test(heroOf(on.view())), "online: nothing is unavailable");
+  assert.ok(heroOf(on.view()).includes("A Foray Title"), "online: the Foray leads");
 });
 
 /* ================================================================== 12. loading */
@@ -489,6 +514,18 @@ test("pick to play: Glow moves first, the row takes its state (Pause label, Lamp
   m.evalIn('state.itemIndex["top-2"] = state.cardSlots[1].item;');
   await m.ctx.todayPlayPress({ dataset: { tdPlay: "top-2" }, closest: () => null }, { querySelectorAll: () => [] });
   assert.deepStrictEqual(order, ["toggle"], "Pause pauses; it never restarts the episode");
+  /* Offline, the continuous-play list leaves out what is drawn Unavailable (review fix). MUTATION: drop the
+     `!todayEpisodeBlocked(...)` filter in todayPlayPress, or in the hero's target.list in todayHtml -> red. */
+  const off = mount({ onLine: false, seed: { cp_downloads: JSON.stringify({ settings: { cellular: false }, items: { "top-1": { status: "done" }, "top-3": { status: "done" } } }) } });
+  let queued = null;
+  off.ctx.startEpisodePlay = async (id, item, opts) => { queued = opts.list.map((x) => x.id); return true; };
+  off.ctx.todaySyncPlay = () => {};
+  off.evalIn('state.itemIndex["top-1"] = state.cardSlots[0].item;');
+  const mk = (id, disabled) => ({ dataset: { tdPlay: id }, disabled, closest: () => null });
+  await off.ctx.todayPlayPress(mk("top-1", false), { querySelectorAll: () => [mk("top-1", false), mk("top-2", true), mk("top-3", false), mk("top-4", false)] });
+  assert.deepStrictEqual([...queued], ["top-1", "top-3"], "a disabled row is not queued, nor is anything offline and not downloaded");
+  off.ctx.renderHome();
+  assert.deepStrictEqual([...off.evalIn("homePlayPending.list").map((x) => x.id).filter((id) => /^top-/.test(id))], ["top-1", "top-3"], "the hero's own list is the same");
   /* Glow lands on <html> through the CSSOM, as a number-only colour */
   const g = mount();
   g.ctx.todayGlowTo("Science Vs");
@@ -526,21 +563,62 @@ test("the art flies to the mini slot in 560ms on the --e-spring easing; under Re
 /* ================================================================== 15. hostile data */
 
 test("every string from the catalogue goes through esc(), every route is encoded, and no title can open a tag", () => {
-  /* MUTATION: drop esc() on the row title, the hook, the show, the hero why-line, or the playlist title in ui/home.js
-     -> the raw <img appears; interpolate the id into an href unencoded -> the raw "/" and "#" appear. */
+  /* MUTATION: drop esc() on the row title, the hook, the show, the playlist title, the hero title (`${esc(hero.title)}`), the hero
+     why-line (`${esc(hero.why)}`) or a draft's title (`${esc(f.title)}`) in ui/home.js -> the raw <img appears;
+     interpolate the id into an href unencoded -> the raw "/" and "#" appear.
+     Review fix: the hostile strings used to sit on cardSlots[1] only, which is never the hero (the Foray, or cardSlots[0]), so the
+     hero's title and why-line and the drafts' titles were escaped but untested. Three mounts now put a hostile string on each. */
   const evil = '<img src=x onerror=alert(1)>';
+  const escaped = "&lt;img src=x onerror=alert(1)&gt;";
+  const clean = (html, what) => {
+    assert.ok(!html.includes("<img src=x"), `${what}: no raw tag from any field`);
+    assert.ok(html.includes(escaped), `${what}: the text is there, escaped`);
+    assert.ok(!/<[^>]*\son\w+=/.test(html.replace(/&lt;[^]*?&gt;/g, "")), `${what}: no event-handler attribute anywhere`);
+  };
   const m = mount({ hero: "none" });
   m.state.cardSlots[1].item = { ...m.state.cardSlots[1].item, id: 'a/b#c?d', title: evil, show: evil, hook: evil };
   m.state.cardSlots[1].items = [m.state.cardSlots[1].item];
   m.store.set("cp_playlists", JSON.stringify([{ id: "pl-x", title: evil, items: [], created: "2026-09-01T00:00:00Z" }]));
   m.ctx.renderHome();
   const html = m.view();
-  assert.ok(!html.includes("<img src=x"), "no raw tag from any field");
-  assert.ok(html.includes("&lt;img src=x onerror=alert(1)&gt;"), "the text is there, escaped");
+  clean(html, "rows");
   assert.ok(html.includes('href="#/episode/a%2Fb%23c%3Fd"'), "the id is encoded in the route");
   assert.ok(html.includes('data-td-play="a/b#c?d"'), "and carried, as text, in the attribute");
   assert.ok(!/href="#\/episode\/a\/b/.test(html), "never raw");
-  assert.ok(!/<[^>]*\son\w+=/.test(html.replace(/&lt;[^]*?&gt;/g, "")), "no event-handler attribute anywhere");
+
+  /* The hero as an episode: the first pick (cardSlots[0]) is hostile, in its title, show, hook (the why-line) and id. */
+  const ep = mount({ hero: "none" });
+  ep.state.cardSlots[0].item = { ...ep.state.cardSlots[0].item, id: "x/y#z", title: evil, show: evil, hook: evil };
+  ep.state.cardSlots[0].items = [ep.state.cardSlots[0].item];
+  ep.ctx.renderHome();
+  const epHero = heroOf(ep.view());
+  assert.ok(epHero.includes("td-hero-title"), "fixture: the hostile pick is the hero");
+  clean(epHero, "episode hero");
+  assert.match(epHero, /<h2 class="t-title clamp4 td-hero-title"><a [^>]*>&lt;img src=x onerror=alert\(1\)&gt;<\/a><\/h2>/, "the hero title is escaped text");
+  assert.match(epHero, /<p class="t-why td-why">&lt;img src=x onerror=alert\(1\)&gt;<\/p>/, "the hero why-line is escaped text");
+  assert.ok(epHero.includes('href="#/episode/x%2Fy%23z"'), "the hero route is encoded");
+
+  /* The hero as a Foray: a hostile title and summary (the why-line); and a hostile draft beside it (the test track, cp_show_drafts). */
+  const fo = mount({
+    seed: { cp_show_drafts: "true" },
+    player: {
+      listForays: (_doc, o) => [
+        { id: "foray-a", title: evil, topic: "engineering/energy", status: "published", summary: evil },
+        ...(o && o.showDrafts ? [{ id: "draft-1", title: evil, topic: "engineering/energy", status: "draft", summary: "A draft." }] : []),
+      ],
+    },
+  });
+  fo.ctx.renderHome();
+  const foHtml = fo.view();
+  const foHero = heroOf(foHtml);
+  assert.ok(foHero.includes('aria-label="Today&#39;s foray"'), "fixture: the Foray is the hero");
+  clean(foHero, "foray hero");
+  assert.match(foHero, /<h2 class="t-title clamp4 td-hero-title"><a [^>]*>&lt;img src=x onerror=alert\(1\)&gt;<\/a><\/h2>/, "the Foray hero title is escaped text");
+  assert.match(foHero, /<p class="t-why td-why">&lt;img src=x onerror=alert\(1\)&gt;<\/p>/, "the Foray why-line is escaped text");
+  const drafts = foHtml.slice(foHtml.indexOf('aria-label="Draft forays"'));
+  assert.ok(drafts.includes('class="raised td-draft"'), "fixture: a draft row is drawn");
+  assert.match(drafts, /<span class="t-label">&lt;img src=x onerror=alert\(1\)&gt;<\/span>/, "the draft's title is escaped text");
+  clean(foHtml, "the whole page with a hostile Foray and draft");
 });
 
 /* ================================================================== 16. the stylesheet and its shipping */

@@ -88,6 +88,9 @@ body.view-home #view { padding-top: 0; }
    line and centred on Play, so no line ends on a stranded "·". Play keeps its 56; the text never passes the gutter. */
 .ag .td-hero-actions .td-hero-meta { flex: 1 1 0; min-width: 0; white-space: nowrap; }
 .ag .td-hero-actions .td-hero-meta.is-stacked > span:not(.sr-only) { display: block; }
+/* Offline and not on the device: the hero art dims as a row's does, with the word beside a glyph (never colour alone). */
+.ag .td-hero.is-unavailable .td-hero-art { opacity: .5; }
+.ag .td-hero-unavail { display: flex; align-items: center; gap: var(--s-1); }
 .ag .td-hero-actions { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--s-3); margin-top: auto; padding-top: var(--s-2); }
 .ag .td-hero-actions > .ag-btn { flex: none; }
 .ag .td-why, .ag .td-first-run { grid-column: 1 / -1; color: var(--on-wash-2); }
