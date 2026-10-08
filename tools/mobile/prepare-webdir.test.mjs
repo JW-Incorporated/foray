@@ -92,7 +92,7 @@ const AMBIENT_PRIMITIVES_ASSETS = Object.freeze([
   { rel: "ui/home.js", maxBytes: 32 * 1024 },
   { rel: "ui/now-playing.css", maxBytes: 14 * 1024 }, // 12.7 KB minified
   { rel: "ui/now-playing.js", maxBytes: 18 * 1024 }, // 16.1 KB minified
-  { rel: "ui/car.css", maxBytes: 2 * 1024 }, // 1.6 KB minified (car posture: sizes, hidden set, chip)
+  { rel: "ui/car.css", maxBytes: 3 * 1024 }, // 2.6 KB minified after iterations 2-3 (car posture: sizes, hidden set, chip, lit sleeve); was 2 KB at 1.6 KB
   { rel: "ui/car.js", maxBytes: 4 * 1024 }, // 3.1 KB minified (hold gesture, posture attribute, chip)
 ]);
 
