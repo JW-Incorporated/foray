@@ -1244,15 +1244,17 @@ test("today's subject queue renders through the same one path as a saved playlis
 /* #558 — the three code defects the requirements audit found            */
 /* ==================================================================== */
 
-test("a playlist entry with neither last_played_at nor created does not crash the playlist sorts (#558 item 1)", () => {
-  /* The exact crash the issue names: renderDrawer's sort read
+test("the playlists sort (Today's rail; the drawer's list before it went): a playlist entry with neither last_played_at nor created does not crash (#558 item 1)", () => {
+  /* The exact crash the issue names: the drawer's renderDrawer sort read
      `(b.last_played_at || b.created).localeCompare(...)` with no `|| ""`
-     guard, unlike playlistsForYouHtml's identical sort. The drawer's recent-playlists list went with the
-     drawer's navigation (Redesign 2026, the Dock: the drawer is Settings now), so the surviving twin is the
-     one that was always guarded - Home's "Playlists for you" picks. playlists() now backfills `created` on
-     every read, so the malformed shape below is reached by overriding `playlists()` directly rather than
-     through storage - modelling a hand-edited store, a truncated write, or a cp_quests entry from before
-     `created` existed, WITHOUT relying on that backfill to protect this call site too.
+     guard, unlike the rail's identical sort. The drawer is gone (Redesign 2026); the sort that remains is
+     `playlistsForYouPicks()`, Today's "Playlists for you" rail, and the guard is pinned there. playlists() now
+     backfills `created` on every read, so the malformed shape below is
+     reached by overriding `playlists()` directly rather than through
+     storage — modelling a hand-edited store, a truncated write, or a
+     cp_quests entry from before `created` existed, i.e. exactly what
+     playlists()'s own backfill (tested separately below) exists to close,
+     WITHOUT relying on that backfill to protect this call site too.
 
      MUTATION: drop the `|| ""` on either side of the comparator in playlistsForYouPicks. Both entries
      below have neither field, so `undefined.localeCompare` throws and this test fails with an uncaught
@@ -1263,11 +1265,11 @@ test("a playlist entry with neither last_played_at nor created does not crash th
     { id: "q1", title: "One", items: [] },
     { id: "q2", title: "Two", items: [] },
   ];
-  assert.doesNotThrow(() => m.ctx.renderDrawer(), "renderDrawer must not throw on a record with neither timestamp");
-  m.ctx.generatedPlaylists = () => [];               // only the listener's own, sorted: the generated half needs a session
-  const picks = m.ctx.playlistsForYouPicks();
-  assert.deepStrictEqual(Array.from(picks.own, (p) => p.id).sort(), ["q1", "q2"], "both entries must still be picked");
-  assert.ok(!APP_SRC.includes("drawer-playlists"), "and the drawer no longer renders a playlists list to sort");
+  m.ctx.generatedPlaylists = () => [];   // not under test (it needs a session); the SORT of the listener's own is
+  let picks = null;
+  assert.doesNotThrow(() => { picks = m.ctx.playlistsForYouPicks(); }, "the playlists sort must not throw on a record with neither timestamp");
+  const titles = [...picks.own.map((p) => p.title)].sort();
+  assert.deepStrictEqual(titles, ["One", "Two"], "both entries must still be there");
 });
 
 test("playlists(): a record with neither `created` nor `last_played_at` gets `created` backfilled (#558 item 1)", () => {

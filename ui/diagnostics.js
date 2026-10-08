@@ -11,7 +11,7 @@
    exists because two founder reports came out of a car with no numbers in them,
    and the instrument that was supposed to carry those numbers wrote them to
    `console.warn` — "a console line nobody has open", in `player/client.js`'s own
-   words. So this is a drawer item and a sheet: reachable on a phone, in a car,
+   words. So this is a Settings row (the Developer group) and a sheet: reachable on a phone, in a car,
    with no devtools, and copyable.
 
    READ-ONLY AND LOCAL. There is no network call anywhere below, by design and not
@@ -235,12 +235,12 @@ function clearDiagnostics() {
 /** Appended at startup to the Developer group, which sits ABOVE "Delete my
     data" — see the note in `init()`. Bound once, like the control below it. */
 function bindDiagnosticsControl() {
-  const drawer = $("#drawer");
-  if (!drawer || $("#diag-open")) return;
-  const btn = ddEl("button", "drawer-item as-btn", "Playback diagnostics");
+  const group = settingsDevGroup();
+  if (!group || $("#diag-open")) return;
+  const btn = ddEl("button", "st-item st-link", "Playback diagnostics");
   btn.type = "button";
   btn.id = "diag-open";
-  (drawerDevGroup() || drawer).appendChild(btn);
+  group.appendChild(btn);
   btn.addEventListener("click", openDiagSheet);
 
   const ui = diagSheet();
@@ -250,15 +250,14 @@ function bindDiagnosticsControl() {
   ui.clear.addEventListener("click", () => clearDiagnostics());
 }
 
-/** Appended to the drawer at startup. Bound once — `init()` is the only caller,
+/** Appended to the Settings host's "Your data" section at startup. Bound once — `init()` is the only caller,
     and a second call must not stack a second button or a second listener. */
 function bindDeleteControl() {
-  const drawer = $("#drawer");
-  if (!drawer || $("#delete-data")) return;
-  const btn = ddEl("button", "drawer-item as-btn dd-open", "Delete my data");
+  if (!settingsHost() || $("#delete-data")) return;
+  const btn = ddEl("button", "st-item dd-open", "Delete my data");
   btn.type = "button";
   btn.id = "delete-data";
-  drawer.appendChild(btn);
+  settingsList("data").appendChild(btn);
   btn.addEventListener("click", openDeleteSheet);
 
   const ui = deleteSheet();

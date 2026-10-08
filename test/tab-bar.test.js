@@ -250,6 +250,8 @@ test("every route highlights exactly one tab, and it is the right one", () => {
     ["#/episode/xyz", "discover"],
     ["#/subject/tech", "discover"],
     ["#/tuning", "today"],
+    ["#/settings", "today"],      // Settings and About sit behind the gear on Today (Redesign 2026, ambient)
+    ["#/about", "today"],
     ["#", "today"],
     ["", "today"],
     ["#/bogus", "today"],
@@ -311,9 +313,9 @@ test("every routed page, and the three folded routes, still resolve to a real pa
   const routes = [
     "#/", "#/shows", "#/show/abc", "#/category/tech", "#/starred-shows",
     "#/episode/xyz", "#/playlists", "#/playlist/abc", "#/subject/tech",
-    "#/create", "#/library", "#/queue", "#/forays", "#/foray/xyz", "#/tuning", "#/interests",
+    "#/create", "#/library", "#/queue", "#/forays", "#/foray/xyz", "#/tuning", "#/interests", "#/settings", "#/about",
   ];
-  assert.strictEqual(routes.length, 16, "sanity: this suite's own acceptance list names the 14 old routes, Tuning, and its alias");
+  assert.strictEqual(routes.length, 18, "sanity: this suite acceptance list names the 14 old routes, Tuning, its alias, Settings and About");
   for (const hash of routes) {
     m.ctx.location.hash = hash;
     assert.doesNotThrow(() => m.evalIn("renderCurrentPage()"), `${hash} must render without throwing`);
@@ -402,6 +404,7 @@ test("the Dock's rows are, top to bottom, the field, the mini player and the tab
      after #tab-bar, or move #tab-bar out of #dock -> the order assertion goes red; drop `veil` from the
      Dock's class -> the surface assertion does. */
   const m = mount();
+  m.ctx.location.hash = "#/";
   m.evalIn("renderTabBar();");
   const dock = m.body.querySelector("#dock");
   assert.ok(dock, "#dock exists");

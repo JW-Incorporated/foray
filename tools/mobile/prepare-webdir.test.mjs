@@ -89,6 +89,22 @@ const AMBIENT_PRIMITIVES_ASSETS = Object.freeze([
      round 4, about 10% over today's size. ui/tabbar.js and player/client.js are
      existing files and stay in the legacy count. */
   { rel: "ui/dock.css", maxBytes: 10.5 * 1024 },
+  /* Phase 4, Today (Home): the screen's stylesheet, the Glow palette, and ui/home.js itself, which Today rewrote
+     (the Jump back in / Forays / Suggested renderers went; the hero, rows, rail, skeleton and play-state code
+     came). home.js is budgeted here, not in the legacy line, for the reason the primitives are: the legacy alarm
+     is not to be re-baselined a seventh time, and this is a bounded feature step. Measured minified, 2026-10-07:
+     today.css 6.7 KB, palette.js 1.9 KB, home.js 28.5 KB.
+     Iteration 2 added the Dock block (the floating Veil tab bar, its fade, the mini row) to today.css: 9.2 KB minified, ceiling 10 KB. Removed again when the Dock unit landed (the Dock is ui/dock.css on every page): ceiling back to 8 KB. */
+  { rel: "ui/today.css", maxBytes: 8 * 1024 },
+  { rel: "ui/palette.js", maxBytes: 2 * 1024 },
+  { rel: "ui/home.js", maxBytes: 32 * 1024 },
+  /* Phase 4, Foray detail: the screen's stylesheet, the Glow palette, and ui/foray.js itself, which the screen rewrote (the
+     page's markup, the show tiles, the strip's colours and thumbnails, share). foray.js is budgeted here, not in the legacy
+     line, for the reason the primitives are: the legacy alarm is not to be re-baselined an eighth time, and this is a
+     bounded feature step. Measured minified, 2026-10-07: foray-detail.css 9.0 KB, palette.js 1.8 KB, foray.js 26.8 KB. */
+  /* Iteration 4 added the Dock block (the warm Veil, the mini's Ember Play, the fade; 12.4 KB measured minified): ceiling 10 to 14 KB, a bounded step that ui/dock.css retires when the Dock unit lands. RETIRED by the Dock unit: the block went to ui/dock.css, ceiling back to 10 KB. */
+  { rel: "ui/foray-detail.css", maxBytes: 10 * 1024 },
+  { rel: "ui/foray.js", maxBytes: 32 * 1024 },
 ]);
 
 /* ───────────────────────────── the derivation ───────────────────────────── */

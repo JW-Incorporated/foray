@@ -240,9 +240,9 @@ test("flipping Continuous playback while an episode plays re-sends the plan with
   const fake = makeFakePlayer();
   m.ctx.window.ForayPlayer = fake;
   await clickRow(m, [a, b].map((it) => ({ id: it.id, ctx: "show-x" })), 0);
-  m.ctx.bindDrawerToggles();
+  m.ctx.bindSettingSwitches();
   const before = fake.plans.length;
-  try { m.byId.get("autoadvance-toggle").click(); } catch (_) { /* the drawer repaint is not under test */ }
+  try { m.byId.get("autoadvance-toggle").click(); } catch (_) { /* the Settings repaint is not under test */ }
   assert.strictEqual(m.ctx.autoAdvanceOn(), false, "the click turned it off");
   assert.ok(fake.plans.length > before, "the flip was sent while playing");
   const plan = fake.plans.at(-1);

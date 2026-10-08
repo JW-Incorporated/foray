@@ -457,6 +457,7 @@ const FLOORS = {
   "test/app-split.test.js": 7, // Redesign 2026 phase 0d: app.js split into a core + ui/*.js — load order, no duplicate declarations, every shipping path lists the files; each test names its mutation
   "test/afterglow-tokens.test.js": 19, // Redesign 2026 phase 3 (ambient), ui/tokens.css: Dusk/Dawn values, structure tokens, the collision rule (a styles.css token name is declared only on .ag/.room), AA over every pair, Glow worst cases pinned per hue, fallbacks, materials, ONE reduced-motion block, shipping wiring; every test names its mutation and each was run and killed it (39 mutations, PR description)
   "test/afterglow-icons.test.js": 18, // Redesign 2026 phase 3 (ambient), ui/icons.svg + ui/icons.js: the 37 plan symbols in order, filled paths only (no text, stroke, fixed colour), the file equals tools/icons/build-sprite.mjs output, custom glyph geometry (numerals are outlines inside the ring, forward is the mirror of back, play centroid +8, pause bars), agIcon returns "" for any unknown name or size, call-site names exist in the sprite, size classes move the five size tokens, `.icon` is currentColor and .ag/.room scoped, the shell ships the sprite; every test names its mutation and each was run and killed it (PR description)
+  "test/ambient-foray-detail.test.js": 26, // Redesign 2026 ambient Foray detail (phase 4): the stylesheet and palette wired into every shipping path; scoped under .ag, one reduced-motion owner; the Room (fixed, mid stop not below the eyebrow, 8% / 0.35 when unavailable, Dawn paper from the tokens); the strip's sill, bars, narration lights and thumbs row; the page rendered by the real app.js (eyebrow, title, caption, Play / Resume / Play again, unavailable, not narrated, QueueRows and narration rows, why, tiles and Follow, esc()); which bars get a thumb, show colours, the Room's artwork URL, share, no transport; every test names its mutation and each was run red (40 mutations); review fixes: an unavailable row dims its art only and its words clear AA, one strip observer that disconnects on re-render and never repaints another page's thumbs
   "test/afterglow-primitives.test.js": 25, // Redesign 2026 phase 3 (ambient): EpisodeRow state line through esc(), no text dimmed by a loading state (AA), spinner replaces the glyph, buffering MiniPlayer breathes (and holds at 0.9 under Reduce Motion), disabled chip at 40%, no mojibake; safe factories, pressed play state, accessible scrubber values/keyboard, every gallery family/state/scheme including drag, every Dusk/Dawn baseline plate, 44px targets, the single reduced-motion owner, guarded route, sheet focus, and all shipping lists; every test names its mutation and each was run red
   "test/app-surface-round3.test.js": 23, // round-3 completeness sweep: app-2-6 a changed or withdrawn thumbs vote is logged with the vote it replaces (the suite stood at 22 unfloored); 20 -> 23 // audit round 3 (2026-09-25, lane L2): the app-surface fixes with no better-fitting suite (app-2-14/15, app-1-15/16, app-2-1/2/3/5/6/7/8/9/10/11/12/13, app-3-1, data-integrity-8), each test naming its id and the mutation that kills it; zero slack; new
   "test/episode-page.test.js": 8,
@@ -514,7 +515,7 @@ const FLOORS = {
      its cause (pull to refresh, the home-screen builder, browser copy in the
      shell, the four-queue popup, raw resolver reasons) stays gone, with the
      behaviour behind the copy. ZERO SLACK. */
-  "test/listener-copy.test.js": 22, // audit round 3 (lane L1): app-3-8 the voice subtitle pinned to NARRATION_RATE; main already stood at 21; 20 -> 22 // round-2 integration (2026-09-23): the counts of both lanes; -> 20 // audit round 2 (L6): copy-11/7/1/6, a11y-11, p-foray-6 — 4a never 'we', 'subject' not 'topic', no browser words, one failure sentence pair, no tooltip-only explanation, and a down-vote moves the subject only for a subject reason; 13 -> 20 // audit round 2 (2026-09-23, lane L4): no new test; the 'Starts with' pin reads the typographic pair (copy-8) and the stale-note pin follows the builder to Create (p-first-6) — the count was already 14, the floor said 13; 13 -> 14 // // 2026-09-22: new
+  "test/listener-copy.test.js": 20, // Redesign 2026 (Today, 2026-10-07): the subject card's two 'Starts with' tests went with the card (miniCard, startsWithLine); the greeting test became the date-line test; 22 -> 20 // // audit round 3 (lane L1): app-3-8 the voice subtitle pinned to NARRATION_RATE; main already stood at 21; 20 -> 22 // round-2 integration (2026-09-23): the counts of both lanes; -> 20 // audit round 2 (L6): copy-11/7/1/6, a11y-11, p-foray-6 — 4a never 'we', 'subject' not 'topic', no browser words, one failure sentence pair, no tooltip-only explanation, and a down-vote moves the subject only for a subject reason; 13 -> 20 // audit round 2 (2026-09-23, lane L4): no new test; the 'Starts with' pin reads the typographic pair (copy-8) and the stale-note pin follows the builder to Create (p-first-6) — the count was already 14, the floor said 13; 13 -> 14 // // 2026-09-22: new
   /* 2026-09-18, founder: Lex's episode list reloading from the network on every
      visit. Most of this suite is the three ways a cache goes subtly wrong. */
   "test/show-episodes-cache.test.js": 14, // audit round 3 (lane L2): real API rows (guid, no id) and a new head episode repaints (app-1-3), guid-less rows get distinct ids (app-1-5), the LRU + sweep and the eviction trim (app-1-11); 10 -> 14
@@ -550,7 +551,7 @@ const FLOORS = {
      that Family Mode's pre-existing poolFiltered() filter still fires
      unchanged — the badge is additive, not a replacement for that filter. */
   "test/explicit-badge.test.js": 9,
-  "test/first-time-onboarding.test.js": 33, // round-2 integration (2026-09-23): the counts of both lanes; -> 33 // audit round 2 (L6): p-first-1/3/7 — picks fill the first Home's top tier over the shipped pool with real randomness, never the stretch slot; a typed word matches label words and leaves, and a miss is said with the sheet kept open; 'Show my picks'; 28 -> 32 // audit round 2, L2 (2026-09-23): a Foray resume row is prior use (p-first-5); 28 -> 29 // // U-09 audit fix (2026-09-10): +2 — the picks re-deal and repaint the FIRST Home, and the pre-pick deal's memory is undone
+  "test/first-time-onboarding.test.js": 17, // Redesign 2026 (onboarding, 2026-10-07): the first-run SHEET's sixteen tests (Welcome pane, chip grid, typed field, Get started / Skip steps) went with the sheet and its Preferences step, which the full-screen Room retires; the gate, the subject-resolution and write-path tests, the re-deal / reserve tests and the Foray-defers test stay, driven without chips; 33 -> 17 // round-2 integration (2026-09-23): the counts of both lanes; -> 33 // audit round 2 (L6): p-first-1/3/7 — picks fill the first Home's top tier over the shipped pool with real randomness, never the stretch slot; a typed word matches label words and leaves, and a miss is said with the sheet kept open; 'Show my picks'; 28 -> 32 // audit round 2, L2 (2026-09-23): a Foray resume row is prior use (p-first-5); 28 -> 29 // // U-09 audit fix (2026-09-10): +2 — the picks re-deal and repaint the FIRST Home, and the pre-pick deal's memory is undone
   /* Generated playlists (catalogue-personalization PKG-04; #547 fix 3, #558
      item 5, #560 item 3): one leafPlaylistItems helper for Home's card and the
      detail route, at most 2 items per show, no item on a leaf only by a
@@ -870,7 +871,7 @@ const FLOORS = {
   /* 6 -> 8 (2026-09-22 audit): Home v2's element no longer inherits `.home`'s
      one-screen floor through its second class (it always scrolled by the tab
      bar's height), and a stretch card's bridge line is a row of its own. */
-  "test/home-layout.test.js": 9, // review of visual pass 1 (2026-09-23): a snapped rail card rests on the gutter (scroll-padding equals the rail padding); 8 -> 9 // U-11 cutover (2026-09-06, kanban t_a3f01c8a): BUG 5's flag-off #banner-slot test retired with cp_ui_v2 (renderHome always renders Home v2 now, which has no #banner-slot); 7 -> 6
+  "test/home-layout.test.js": 8, // Redesign 2026 (Today): `.home hv2-home` is no longer emitted, so its 'does not inherit the .home floor' test went; the other three Home v2 geometry tests were rewritten for `.ag.td-today` and `.td-rail`; 9 -> 8 // // review of visual pass 1 (2026-09-23): a snapped rail card rests on the gutter (scroll-padding equals the rail padding); 8 -> 9 // U-11 cutover (2026-09-06, kanban t_a3f01c8a): BUG 5's flag-off #banner-slot test retired with cp_ui_v2 (renderHome always renders Home v2 now, which has no #banner-slot); 7 -> 6
 
   /* Stage 3b of docs/show-pages-plan.md — full per-show RSS ingestion
      (kanban card t_567b570f): renders the curated pool synchronously so
@@ -881,7 +882,7 @@ const FLOORS = {
      a stale-cache note rather than hiding it. Client wiring only — see
      backend/test/showEpisodesStore.test.ts and ingestShowFeed.test.ts for
      the ingestion/storage side. */
-  "test/show-pages-3b-full-catalogue.test.js": 8, // audit round 3 (lane L1): data-integrity-4 the full-catalogue list in Family mode; 7 -> 8
+  "test/show-pages-3b-full-catalogue.test.js": 9, // Redesign 2026 (show page): the full list is drawn latest first; 8 -> 9 // audit round 3 (lane L1): data-integrity-4 the full-catalogue list in Family mode; 7 -> 8
 
   /* Issue #687: the show page's episode region has four states and ONE
      WRITER. Founder screenshot, 2026-09-14, with "Couldn't load this show's
@@ -1110,8 +1111,11 @@ const FLOORS = {
      see the suite header. */
   "test/home-v2.test.js": 10, // founder, 2026-09-24: "Rename it 'Suggested'" — the card-slot heading; 9 -> 10 // F14 (2026-09-08): generated playlists are interest leaves, not card slots // F14 (2026-09-08): generated playlists are interest leaves, not card slots
   "test/save-playlist.test.js": 21, // founder, 2026-09-25: "we should add a feature to save playlists" — save a generated playlist or a Suggested queue as your own: shape + provenance, subject, frozen copy, idempotence + no-navigate second tap, remove-and-resave, changed source not "Saved", the 50 cap said not applied x2 (Save; Create + no slice), own everywhere x2 (no duplicate card/result), Family Mode x2 (on-then-saved; saved-then-on leak), playable snapshot, playing it, the app-1-1 writer x5 (provisional, full at settle, exists at settle, remove and play-stamp while pending), Delete my data, copy rules; new suite
-  "test/home-play.test.js": 14, // founder, 2026-09-24: Home's one play button — each first-rail kind, passed-over rails, the empty case, loading / failure / superseded / isCurrent; new suite
-  "test/home-v2-real-data.test.js": 5, // U-03 audit fix (2026-09-10): Home v2 over the committed data/*.json at insets 0/59; the Forays-for-you floor's documented fallback with one published Foray
+  "test/ambient-today.test.js": 21, /* Dock unit: -2, the two stopgap Dock tests (Today's own tab-bar and fade) went with the CSS they pinned; test/dock.test.js pins the Dock on every tab page */ // (iteration 2: +4, the Dock, its fade, the meta line, the apostrophes) Redesign 2026 ambient Today (Home): the palette table pinned to the prototype's, Glow clamps, header / hero / list / rail markup facts, the hero collage and title, the wash and its contrast pairs, first run (count minus one), offline, loading, pick-to-play (glow, FLIP, state line), esc() on hostile data, shipping lists; every test names its mutation and each was run red
+  "test/ambient-onboarding.test.js": 20, // Redesign 2026 ambient onboarding (the first-run Room): the copy and its styles, hostile data, which four shows light the Room, the strip (a flat bar per show, a light at every boundary, condensed, whole bars lit, one gap, the scrim eased out), bar colours as numbers, the 6s cycle and Reduce Motion, Show my picks (flag, the strip's trip, focus to Today, no travel when reduced), Skip, park and replay, the stylesheet's scope and pixel contract and scrim stops, the wordmark's 3:1 head scrim, and the wiring (page, drawer, harness, screens.json, shipping lists, the sheet's absence),
+  "test/ambient-show.test.js": 13, // Redesign 2026 ambient show page (the Room and the EpisodeRow list): the Room markup and its order, hostile data, the light through the CSSOM, Follow as a Secondary button and a fill change, its accessible name, the rows as Today's EpisodeRows sharing the gallery row's geometry with no hairline, latest first, the Play that is not data-play and the repaint from the player, hostile episodes, the AA pairs in both schemes at the lightest and darkest art, the text below the scrim's second stop, the stylesheet's own rules, and the wiring; every test names its mutation and each was run red; new suite
+  "test/home-play.test.js": 13, // Redesign 2026 (Today): Home's one play button is the hero's Play; the six first-rail kinds and the passed-over rail became hero kinds (Foray, resumed Foray, first pick, first run, passed-over pick) plus Keep listening's playlist start; 14 -> 13 // // founder, 2026-09-24: Home's one play button — each first-rail kind, passed-over rails, the empty case, loading / failure / superseded / isCurrent; new suite
+  "test/home-v2-real-data.test.js": 6, // Redesign 2026 (Today): the Forays-for-you fallback test became the returning-hero and never-the-stretch-Foray pair; 5 -> 6 // // U-03 audit fix (2026-09-10): Home v2 over the committed data/*.json at insets 0/59; the Forays-for-you floor's documented fallback with one published Foray
   /* Starred shows (follow-lite), requirement A2.4 / Joey's Q2 answer.
      Kanban card "Build: starred shows (follow-lite) + dedicated Starred
      Shows page". Floored because this is exactly the #276/show-pages
@@ -1145,16 +1149,19 @@ const FLOORS = {
      embedded row lists, and that no interpolated href on the page bypasses
      the in-app hash-route/safeUrl composition every other page uses. */
   "test/library-screen.test.js": 20, // audit round 2, lane L3 (2026-09-23): History is last-played order (honesty-3); 17 -> 20 // // 2026-09-22: Forays and Followed shows are Library sections, one name for #/shows, the ↻ refreshes in place; 11 -> 17 (L1's in-place Up Next reorder cell went at integration: L3's afterQueueMove fixes the same finding and is pinned in test/modal-and-focus.test.js)
-  /* Settings drawer stays open on toggle (Joey, 2026-08-31, t_0c09d83a): the
-     three toggles' click handlers, plus the two real-navigation regression
-     guards. */
-  /* The drawer leaves when it is used (founder, 2026-09-23: "the menu should
-     automatically collapse"). One owner rule in the capture phase, the two
-     declared stays (toggles, the Developer summary), the overlay and scrim
-     each closing only their own thing, focus back to the ☰, and the founder's
-     exact tap sequence. Floored at its count: every cell is one mutation. */
-  "test/drawer-ownership.test.js": 19, // audit round 2, L2 (2026-09-23): the drawer modal contract x3 (nav-5), same-hash x2 (nav-8), hardware back x3 (nav-2); 11 -> 19 //
-  "test/drawer-settings-toggle.test.js": 13, // 2026-09-22 audit (R7, R8): "Open in" and its dead code are gone (replacing the test of its switch), and the founder tools sit in one collapsed Developer group above Delete my data; 12 -> 13 // client audit (2026-09-12): the sixth switch (cp_interlude, disclosed since FD-06 with no control), the one `drawerToggle` shape, and the retired ui-v2 debris; 6 -> 12
+  /* Settings' switches (Redesign 2026, ambient; was the drawer-settings-toggle suite, Joey 2026-08-31,
+     t_0c09d83a): the drawer is gone, so "a toggle must not close the drawer" became "a switch flips in place and the
+     page under it is not rebuilt". The floor went 13 -> 12 in the PR that deletes the drawer: the three tests that
+     pinned the drawer's own leave rule (a link inside it closes it, route() closes it, family-toggle re-renders the
+     page behind it) are replaced by the in-place tests and the host's park-and-mount test. */
+  "test/settings-switches.test.js": 12, // Redesign 2026 (ambient): switches flip in place (x2) and family mode rebuilds the deal, "Open in" stays dead, the jingle switch and its player hand-off, one helper in reading order and binding twice never stacks, the one host is parked, the Developer group above Your data; 13 -> 12 with the drawer
+  /* The gear's Sheet, Settings, About and the appearance setting (Redesign 2026, ambient, screen 9) — and the
+     Sheet-ownership rules the drawer-ownership suite pinned for the drawer (founder 2026-09-23 "the menu should
+     automatically collapse"; audit round 2 nav-2, nav-5, nav-8). Floored at its count: every cell is one mutation.
+     The floor went 19 -> 34 when the drawer's own tests (the capture-phase leave rule, the overlay, the drawer modal
+     contract) were replaced by the Sheet's and the ported ownership rules (scrim stacking, focus return, same-hash,
+     hardware back x3, A-07 x4, init wiring). */
+  "test/settings-sheet.test.js": 35, // Redesign 2026 (ambient): the gear's Sheet (name, rows, veil header and grabber, focus in/trapped/returned, close and scrim, no drawer anywhere, a row is a plain link and focus lands on the heading, the same page closes it, What 4a does after it), Settings (appearance radiogroup writes cp_theme and applies data-theme, arrow keys, boot/bad value/Delete my data, the host mounted and parked, head and order, Downloads honesty), About (version, licences, stamp repaint, What 4a does), every pair AA in both schemes, 44px, copy rules, the stylesheet's scope, the ported ownership rules
   /* "Up Next" auto-advance (docs/listening-queue-plan.md §8 addendum, kanban
      card t_b9880844). Floored for the same reason as up-next-queue.test.js
      above: the auto-advance decision path (off-by-default, queue-origin
@@ -1184,7 +1191,7 @@ const FLOORS = {
      wrong row set, a wrong slider range, or a drag that silently fails to
      persist are all silent-wrong-behavior, not a crash any other suite
      would notice. Every test names its mutation; see the suite header. */
-  "test/interests-page.test.js": 14, // 2026-09-22 audit (theme J + persona jargon ledger): a missing taxonomy.json writes nothing over the profile, an id the taxonomy dropped survives a save, and no raw taxonomy id or "Reset to learned" on the page; 11 -> 14
+  "test/interests-page.test.js": 18, // Redesign 2026 (ambient): Tuning replaces the sliders (three states per subject: radiogroup shape, no sliders, observed state, the real handler ranks and persists, 4a's pick restores exactly, a choice that cannot differ is disabled, a disabled tap is a no-op, 44-tall chips with the Lamp selected, copy rules, Delete my data clears it); 14 -> 18 // 2026-09-22 audit (theme J + persona jargon ledger): a missing taxonomy.json writes nothing over the profile, an id the taxonomy dropped survives a save, and no raw taxonomy id or "Reset to learned" on the page; 11 -> 14
   /* The root-node interest bug this same card fixes (D6): loadInterests()
      used to seed leaf nodes only, silently dropping a root-level interest
      on the next save. Floored separately from interests-page.test.js

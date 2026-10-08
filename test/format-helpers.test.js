@@ -363,8 +363,8 @@ test("a playlist page says how many were played only when some were", () => {
 
 /* MUTATION: restore either count subtitle unguarded ("0 queued" over "Nothing
    in Up Next yet", "0 built" over "No playlists yet"), the drawer's lowercase
-   fragment, or the Library's lowercase subtitle. */
-test("empty Up Next and Playlists pages carry no zero count, and the empty Playlists line is a sentence", () => {
+   fragment, or the Library's lowercase subtitle. (The drawer's "No playlists yet" line went with the drawer, 2026-10-07.) */
+test("empty Up Next and Playlists pages carry no zero count, and the lowercase fragment is gone", () => {
   const m = mount();
   m.ctx.renderQueue();
   assert.ok(!/0 queued/.test(m.view()), m.view());
@@ -372,10 +372,6 @@ test("empty Up Next and Playlists pages carry no zero count, and the empty Playl
   assert.ok(!/0 built/.test(m.view()), m.view());
   m.ctx.renderLibrary();
   assert.ok(!/forays, shows, saved/.test(m.view()), "the Library subtitle is gone");
-  /* The drawer's own "No playlists yet" line went with its recent-playlists list (the drawer is Settings now,
-     not navigation - the Dock ruling); the same sentence is the Playlists page's and Library's empty line. */
-  assert.ok(m.view().includes("No playlists yet"), "the empty Playlists page says it as a sentence, with a way forward");
-  assert.ok(!APP_SRC.includes('class="drawer-empty"'), "and the drawer no longer renders a playlists list to be empty");
   assert.ok(!APP_SRC.includes(">none yet<"), "the lowercase fragment is gone");
 });
 

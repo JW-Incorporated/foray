@@ -315,6 +315,8 @@ test("the Discover tab carries the destination #/shows - the tab bar replaced th
     /\{ key: "discover", label: "Discover", hash: "#\/shows"/.test(tabs),
     "the tab bar must carry a Discover entry linking to #/shows"
   );
+  const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+  assert.ok(!/id="drawer"/.test(html), "and no drawer is left to carry a second copy");
 });
 
 test("nothing renders a 'Browse all shows' link any more — the menu replaced it, it was not duplicated", () => {

@@ -162,7 +162,7 @@ primary key 329px higher). Pure logic is tested in `fidelity.test.mjs` (no brows
 |---|---|---|
 | `first-run` | empty profile | onboarding sheet over Home |
 | `empty` | intro dismissed, nothing saved | Home, Search, Create, Library, Up Next, Playlists, Followed shows, Interests, Forays, not-found playlist and episode |
-| `returning` | saved episodes, Up Next, 3 playlists, followed shows, history | all of the above populated, plus playlist detail, show, episode, category, browse pill, a foray |
+| `returning` | saved episodes, Up Next, 3 playlists, followed shows, history | all of the above populated, plus playlist detail, show, episode, category, browse pill, a foray; then Settings, Tuning (the `interests` step) and About (Redesign 2026, ambient screen 9): `gear-sheet` (Today's gear opened), `what-4a-does` (its second Sheet), `settings`, `about`, `settings-dawn-chosen` (Dawn picked live; last, so it cannot colour the steps after it) |
 | `player` | returning + an episode playing | mini player over Home, Library, Up Next; the Now Playing sheet open; the sheet closed again |
 | `search` | returning | idle, results ("history"), a query with no show matches ("fusion" matches only playlists), a query with no results |
 | `dock` | returning | the Dock (BUILD-PLAN 2.1 screen 2): Discover with its field row over the mini player and the receded tab row (`dock-discover`), then Today scrolled 120px so the tab row recedes (`dock-receded`) |

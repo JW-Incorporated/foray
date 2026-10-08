@@ -1,0 +1,176 @@
+/* ui/today.css — Today (Home), Redesign 2026, ambient direction ("Afterglow"), phase 4.
+
+   The numbers are docs/redesign-2026/directions/ambient/BUILD-NOTES.md §4.1 (the screen), §10.3
+   (the hot spot), §10.5 (collages), §10.6 (the hero title) and the round-4 prototype's afterglow.css
+   (.wash, .hero, .ep-row, .rail, .skel), which settled every measurement the notes leave open.
+   Everything below is scoped under `.ag` (the markup wears `.ag.td-today`), so it can reach no
+   other screen; every class is `td-*`, a new name. Values come from ui/tokens.css; where no token
+   exists (the hot spot's geometry, the header offset) the number is the prototype's, named here.
+
+   NO reduced-motion block lives in this file, on purpose: ui/tokens.css has the one, scoped to
+   `.ag` and everything under it, so the skeleton's sweep (one 1ms iteration, then rest), the
+   row's colour transition and the Play press all fall under it. A second block would be a second
+   owner (test/afterglow-tokens.test.js, "ONE block"). */
+
+/* The page. Today draws its own header, so the legacy top bar steps aside here, and the page
+   paints Dusk's bg0 rather than the legacy plum. */
+body.view-home { background: var(--bg0); --dock-page-bg: var(--bg0); }   /* the Dock fades to the page's own colour (ui/dock.css) */
+body.view-home .topbar { display: none; }
+body.view-home #view { padding-top: 0; }
+
+.ag.td-today {
+  position: relative; isolation: isolate;
+  padding: calc(var(--safe-top) + var(--s-2)) var(--gutter) var(--s-6);
+  /* The wash's hot spot is centred on the collage: x = gutter + half the art, y = header + half the art. */
+  --td-hero-art: var(--art-hero);
+  --td-hc: calc(var(--td-hero-art) / 2);
+  --td-hot: 52%;
+  --td-hot-x: calc(var(--gutter) + var(--td-hc));
+  --td-hot-y: calc(var(--safe-top) + 86px + var(--td-hc));
+}
+@media (max-width: 392px) { .ag.td-today { --td-hero-art: 136px; } }
+/* :where() keeps the reset at the specificity of `.ag.td-today` alone, so every later `.ag .td-*` margin wins. */
+.ag.td-today :where(h1, h2, h3, p) { margin: 0; }
+
+/* The wash: 48vh behind header and hero, lit by the hero's first show (script writes --glow on it).
+   Three layers, top to bottom: the hot spot on the collage (52%), the radial from 22% / 20% at
+   Glow-wash (60 / 40), and the vertical fade into bg0. */
+.ag .td-wash {
+  position: absolute; left: 0; right: 0; top: 0; height: 48vh; z-index: -1; pointer-events: none;
+  --glow-wash: color-mix(in oklab, var(--bg0), var(--glow) var(--mix-wash));
+  background:
+    radial-gradient(60% 34% at var(--td-hot-x) var(--td-hot-y), color-mix(in oklab, var(--glow) var(--td-hot), transparent) 0%, transparent 100%),
+    radial-gradient(120% 70% at 22% 20%, var(--glow-wash) 0%, transparent 70%),
+    linear-gradient(var(--glow-wash), var(--bg0));
+}
+@supports not (color: color-mix(in oklab, red, blue)) {
+  .ag .td-wash { background: linear-gradient(var(--glow-wash), var(--bg0)); }
+}
+
+/* Header: wordmark left, gear right, the date under it. */
+.ag .td-head { display: flex; align-items: center; justify-content: space-between; min-height: var(--tap); }
+.ag .td-wordmark {
+  font: italic 500 1.625rem/1.875rem var(--font-display);
+  font-variation-settings: 'SOFT' 100, 'WONK' 0; font-optical-sizing: auto;
+  color: var(--text);
+}
+.ag .td-wordmark:focus { outline: none; }
+.ag .td-date { margin-top: calc(var(--s-1) * -1); color: var(--on-wash-2); }
+
+/* Offline: a 36px raised banner under the header. The glyph is the warn colour, the words are text-2. */
+.ag .td-banner {
+  display: flex; align-items: center; gap: var(--s-2); min-height: 36px;
+  padding: 6px var(--s-3); margin-top: var(--s-3); border-radius: var(--r-md); color: var(--warn);
+}
+.ag .td-banner span { color: var(--text-2); }
+
+/* HeroPick: the collage (160, 136 at 375), then the eyebrow, title, meta and Play 56; the why-line
+   spans the full width under the pair. Secondary text on the wash is --on-wash-2: text-2 measures
+   3.55:1 on the hot spot at its worst hue, --on-wash-2 5.49:1 (test/afterglow-tokens.test.js). */
+.ag .td-hero {
+  display: grid; grid-template-columns: var(--td-hero-art) minmax(0, 1fr);
+  column-gap: var(--s-4); row-gap: var(--s-3); margin-top: var(--s-5);
+}
+.ag .td-hero-art { display: block; width: var(--td-hero-art); height: var(--td-hero-art); border-radius: var(--r-lg); }
+.ag .td-hero-art .ag-collage { width: 100%; height: 100%; border-radius: var(--r-lg); }
+/* At least as tall as the collage plus the Play's overhang, so Play's centre is never above the collage's bottom edge, whatever the title. */
+.ag .td-hero-copy { min-width: 0; min-height: calc(var(--td-hero-art) + var(--s-6) + var(--s-1)); display: flex; flex-direction: column; gap: var(--s-1); }
+/* The anchor's own box is 32px a line inside a 30px line box, so the last line pokes 1px past the clamp and
+   scrollHeight reads one over clientHeight on a title that fits. 2px of padding, taken back by the margin, keeps
+   the "fits" check (scrollHeight <= clientHeight) honest without moving anything. */
+.ag .td-hero-title { overflow-wrap: normal; padding-bottom: calc(var(--s-1) / 2); margin-bottom: calc(var(--s-1) / -2); }
+.ag .td-hero-title.is-compact { font: var(--t-headline); font-variation-settings: 'SOFT' 100, 'WONK' 0; }
+.ag .td-link { color: inherit; text-decoration: none; }
+.ag .td-hero-meta { color: var(--on-wash-2); }
+/* A foray's meta sits BESIDE Play, always: the pair (Play 56 | meta) is the hero's second beat. "4 shows · 19 min" is ONE
+   line (the prototype's) and never wraps. A meta too long for the 109px beside Play and the gap (the estimate marker:
+   "1 show · about 43 min", 131px) is rendered as two stacked parts (`.is-stacked`, ui/home.js todayForayMetaHtml), one per
+   line and centred on Play, so no line ends on a stranded "·". Play keeps its 56; the text never passes the gutter. */
+.ag .td-hero-actions .td-hero-meta { flex: 1 1 0; min-width: 0; white-space: nowrap; }
+.ag .td-hero-actions .td-hero-meta.is-stacked > span:not(.sr-only) { display: block; }
+/* Offline and not on the device: the hero art dims as a row's does, with the word beside a glyph (never colour alone). */
+.ag .td-hero.is-unavailable .td-hero-art { opacity: .5; }
+.ag .td-hero-unavail { display: flex; align-items: center; gap: var(--s-1); }
+.ag .td-hero-actions { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--s-3); margin-top: auto; padding-top: var(--s-2); }
+.ag .td-hero-actions > .ag-btn { flex: none; }
+.ag .td-why, .ag .td-first-run { grid-column: 1 / -1; color: var(--on-wash-2); }
+
+/* Sections. */
+.ag .td-section { margin-top: var(--s-8); }
+.ag .td-head2 { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); margin-bottom: var(--s-3); }
+.ag .td-head2 .count { color: var(--text-3); }
+.ag .td-explainer { margin: calc(var(--s-1) * -1) 0 var(--s-3); color: var(--text-2); }
+.ag .td-stack > * + * { margin-top: var(--s-2); }
+
+/* EpisodeRow: art 72 spanning three lines, the title with Play 44 beside it, the meta line, a two-line
+   why. The title is the row's one real link; its ::after covers the row and Play sits above it. */
+.ag .td-row {
+  position: relative; display: grid; grid-template-columns: var(--art-row) minmax(0, 1fr) var(--tap);
+  column-gap: var(--s-3); row-gap: calc(var(--s-1) / 2); align-items: start;
+  min-height: var(--row-episode); padding: var(--s-3) var(--s-2) var(--s-3) var(--s-3);
+  transition: background-color var(--m-micro) var(--e-out);
+}
+.ag .td-row:active { background-color: var(--bg2); }
+.ag .td-row > .ag-art, .ag .td-row > .td-keep-art { grid-row: 1 / 4; grid-column: 1; }
+.ag .td-row-title { grid-column: 2; grid-row: 1; min-height: var(--tap); }
+.ag .td-row > .ag-btn { grid-column: 3; grid-row: 1; align-self: start; position: relative; z-index: 2; }
+.ag .td-row-meta { grid-column: 2 / 4; grid-row: 2; display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; color: var(--text-2); }
+.ag .td-row-why { grid-column: 2 / 4; grid-row: 3; color: var(--text-2); }
+.ag .td-ell { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ag .td-row-meta > :not(.td-ell) { flex: none; }
+.ag .td-sep::before { content: ""; display: inline-block; width: 3px; height: 3px; border-radius: var(--r-round); background: currentColor; vertical-align: middle; }
+.ag .td-link::after { content: ""; position: absolute; inset: 0; border-radius: var(--r-lg); }
+/* The hero is not a stretched card: its art is the second way in, and Play and the gear sit beside the title. */
+.ag .td-hero .td-link::after { content: none; }
+.ag .td-link:focus-visible { outline: none; }
+.ag .td-hero .td-link:focus-visible { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) / 2); border-radius: var(--r-xs); }
+.ag .td-link:focus-visible::after { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) / -2); }
+/* The playing row takes Glow-row; its state line is the Lamp "Playing" with a Fill glyph. */
+.ag .td-row.is-playing, .ag .td-stretch.is-playing { background: linear-gradient(var(--overlay), var(--overlay)) var(--glow-row); }
+.ag .td-row.is-played .td-row-title, .ag .td-row.is-played .td-row-why { color: var(--text-2); }
+
+/* A started episode: the Ember rim inside the art's bottom edge. */
+.ag .td-rim { position: absolute; left: 0; right: 0; bottom: 0; height: var(--s-1); background: rgb(0 0 0 / .35); }
+.ag .td-rim-fill { display: block; height: 100%; width: 0; min-width: var(--s-1); background: var(--ember); }
+.ag .td-keep-art { position: relative; width: var(--art-row); height: var(--art-row); border-radius: var(--r-md); overflow: hidden; }
+.ag .td-keep-art .ag-collage { width: 100%; height: 100%; border-radius: var(--r-md); box-shadow: none; }
+
+/* StretchCard: the primitive's anatomy, with the pick's title and meta in the flex column. */
+.ag .td-stretch .ag-card-end h3 { margin: 0; }
+.ag .td-stretch .ag-card-end .ag-btn { flex: none; }
+.ag .td-stretch .td-row-meta { margin-top: calc(var(--s-1) / 2); }
+.ag .td-stretch { position: relative; }
+.ag .td-stretch .ag-card-end .ag-btn { position: relative; z-index: 2; }
+.ag .td-bridge { color: var(--text); }
+
+/* Playlists for you: the only horizontal scroller. Two tiles and a 24px peek, snapping to the gutter. */
+.ag .td-rail {
+  display: flex; gap: var(--s-3); overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none;
+  margin: 0 calc(var(--gutter) * -1); padding: var(--s-1) var(--gutter) var(--s-4); scroll-padding-left: var(--gutter);
+}
+.ag .td-rail::-webkit-scrollbar { display: none; }
+.ag .td-rail > * { flex: none; scroll-snap-align: start; width: calc((100% + var(--gutter) - var(--s-12)) / 2); }
+.ag .td-ptile { color: var(--text); text-decoration: none; }
+.ag .td-ptile .ag-collage { width: 100%; height: auto; aspect-ratio: 1; }
+.ag .td-ptile-meta { color: var(--text-2); }
+.ag .td-generated { color: var(--lamp-text); }
+
+/* The test track's draft Foray rows (cp_show_drafts, off by default): plain links, each marked "draft". */
+.ag .td-draft { display: flex; flex-direction: column; gap: calc(var(--s-1) / 2); min-height: var(--tap); padding: var(--s-3); color: var(--text); text-decoration: none; }
+
+/* Loading: skeletons for the hero and four rows. Both edges of the sweep are transparent. */
+.ag .td-skel {
+  background: linear-gradient(90deg, transparent 0%, var(--overlay) 50%, transparent 100%) -70% 0 / 40% 100% no-repeat var(--bg1);
+  border-radius: var(--r-lg); animation: td-sweep 1600ms ease-in-out infinite;
+}
+@keyframes td-sweep { from { background-position: -70% 0; } to { background-position: 170% 0; } }
+.ag .td-skel-art { width: var(--td-hero-art); height: var(--td-hero-art); }
+.ag .td-skel-line { height: 18px; width: 60%; }
+.ag .td-skel-title { height: 90px; }
+.ag .td-skel-play { width: 56px; height: 56px; border-radius: var(--r-round); }
+.ag .td-skel-row { height: 128px; }
+.ag .td-hero-skel .td-hero-copy { gap: var(--s-2); }
+
+/* Pick to play: the row's art, cloned, flies to the mini player's slot (script, 560ms, --e-spring). */
+.ag .td-flip { position: fixed; z-index: 80; margin: 0; pointer-events: none; transform-origin: top left; }
+

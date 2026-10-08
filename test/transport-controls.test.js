@@ -112,7 +112,10 @@ test("the seek pair and the speed box are one object on the Foray page and in No
   assert.doesNotMatch(CSS, /metrics \(44px, body step/, "no comment may promise a height neither surface has");
   /* And both renderers really do use these classes for the same controls. */
   assert.match(CLIENT, /el\("button", "fp-btn", `↺ \$\{SEEK_BACK\}`\)/);
-  assert.match(APP, /class="fy-btn"[^>]*>↺/, "the page's ↺ is a .fy-btn");
+  /* Ambient Foray detail (Redesign 2026): the Foray page no longer draws a transport; Now Playing owns the seek pair and
+     the speed box, so the one-object guarantee is now "the page draws none of them".
+     MUTATION: put a `<button class="fy-btn"` back in renderForay -> red. */
+  assert.doesNotMatch(APP, /class="fy-btn"/, "no page draws the seek pair any more: the sheet owns it");
 });
 
 /* ---------- the mini bar ---------- */
@@ -202,30 +205,35 @@ test("previous/next clip are a labelled row: words, 44px tall, next disabled on 
 
 /* ---------- the Foray page ---------- */
 
-test("the Foray page's transport is ↺15 · Play · 30↻ · speed, with a clip row beneath", () => {
-  /* MUTATION: `<button … id="fy-prev" aria-label="Previous clip">‹‹</button>`
-     back in the .fy-controls row -> red. */
-  const page = APP.slice(APP.indexOf('<div class="fy-controls">'), APP.indexOf('<p class="fy-error"'));
+test("the Foray page draws ONE transport control, the primary button; the seek pair, speed and clip row live in Now Playing", () => {
+  /* Ambient Foray detail (Redesign 2026) rewrote the page's transport on purpose (BUILD-NOTES 4.6): the page is a detail
+     screen with a Play / Resume / Play again button, the strip and the rows. The ruling that fell is "the Foray page carries
+     ↺15 · Play · 30↻ · speed and a clip row".
+     MUTATIONS: put `<div class="fy-controls">` (or any of the ids below) back in renderForay -> red; rename the primary
+     button's id -> red (the whole page is wired to it). */
+  const render = APP.slice(APP.indexOf("async function renderForay("), APP.indexOf("async function renderForay(") + 12000);
+  const page = render.slice(render.indexOf('<div class="page foray fd-page">'));
   const ids = [...page.matchAll(/id="(fy-[a-z]+)"/g)].map((m) => m[1]);
-  assert.deepStrictEqual(ids, ["fy-back", "fy-play", "fy-fwd", "fy-rate", "fy-prev", "fy-next"]);
-  assert.match(page, /id="fy-back" aria-label="Back \$\{nudge\.back\} seconds">↺ \$\{nudge\.back\}</, "the step comes from the bridge");
-  assert.match(page, /id="fy-fwd" aria-label="Forward \$\{nudge\.fwd\} seconds">\$\{nudge\.fwd\} ↻</);
-  assert.match(page, /<div class="fy-clips">\s*<button type="button" class="fy-clip" id="fy-prev" aria-label="Previous clip">‹ Previous clip<\/button>\s*<button type="button" class="fy-clip" id="fy-next" aria-label="Next clip">Next clip ›<\/button>/,
-    "labelled in words, with the guillemet kept out of the accessible name");
-  assert.doesNotMatch(page, /‹‹|››/, "no glyph-only clip control on the page");
+  for (const gone of ["fy-back", "fy-fwd", "fy-rate", "fy-prev", "fy-next", "fy-now", "fy-total", "fy-bar-fill"]) {
+    assert.ok(!ids.includes(gone), `#${gone} left the page`);
+  }
+  assert.ok(ids.includes("fy-play") || /id="fy-play"/.test(render), "the primary button stays #fy-play");
+  assert.match(render, /class="ag-btn ag-btn-primary fd-cta" id="fy-play"/, "a Primary button, full width by .fd-cta");
+  assert.doesNotMatch(page, /‹‹|››|↺|↻/, "no glyph transport on the page");
 });
 
-test("the Foray page's nudges call the bridge's nudge, start the Foray before it has begun, and read the steps from the bridge", () => {
-  /* MUTATION: bind #fy-back to `player.forayPrevious()` -> red. MUTATION 2:
-     hardcode 15/30 in the template instead of `forayNudgeSteps(player)`. */
-  assert.match(APP, /\$\("#fy-back"\)\.addEventListener\("click", \(\) => playerHasForay\(r\) \? guardForayTap\(\(\) => player\.nudge\(-nudge\.back\)\) : startOrResume\(\)\);/);
-  assert.match(APP, /\$\("#fy-fwd"\)\.addEventListener\("click", \(\) => playerHasForay\(r\) \? guardForayTap\(\(\) => player\.nudge\(nudge\.fwd\)\) : startOrResume\(\)\);/);
-  assert.match(APP, /\["#fy-play", "#fy-next", "#fy-prev", "#fy-back", "#fy-fwd"\]\.forEach\(sel => \{ \$\(sel\)\.disabled = true; \}\);/,
-    "an empty Foray disables the nudges with the rest");
+test("the Foray page's bindings tolerate the controls that left it, and the nudge steps still come from the bridge", () => {
+  /* MUTATION: drop a `?.` from the #fy-back / #fy-fwd / #fy-next / #fy-prev bindings -> red (the real page has no such
+     node, so renderForay would throw and leave the page inert). MUTATION 2: hardcode 15/30 -> red. */
+  assert.match(APP, /\$\("#fy-back"\)\?\.addEventListener\("click", \(\) => playerHasForay\(r\) \? guardForayTap\(\(\) => player\.nudge\(-nudge\.back\)\) : startOrResume\(\)\);/);
+  assert.match(APP, /\$\("#fy-fwd"\)\?\.addEventListener\("click", \(\) => playerHasForay\(r\) \? guardForayTap\(\(\) => player\.nudge\(nudge\.fwd\)\) : startOrResume\(\)\);/);
+  assert.match(APP, /\$\("#fy-next"\)\?\.addEventListener/);
+  assert.match(APP, /\$\("#fy-prev"\)\?\.addEventListener/);
+  assert.match(APP, /\["#fy-play", "#fy-next", "#fy-prev", "#fy-back", "#fy-fwd"\]\.forEach\(sel => \{ const el = \$\(sel\); if \(el\) el\.disabled = true; \}\);/,
+    "an empty Foray disables what is there");
   const steps = APP.slice(APP.indexOf("function forayNudgeSteps("), APP.indexOf("function bindForayTransport("));
   assert.match(steps, /player\.nudgeSteps\(\)/, "reads the bridge");
   assert.match(steps, /return \{ back: 15, fwd: 30 \};/, "falls back to the documented pair for an older cached module");
-  assert.match(APP, /const nudge = forayNudgeSteps\(player\);\n\n  \$\("#view"\)\.innerHTML = `\n    <div class="page foray">/, "renderForay reads the steps before it paints");
 });
 
 /* ---------- the sheet's shape, after the review of visual pass 1 (2026-09-23) ---------- */
@@ -283,15 +291,16 @@ test("ROUND 2 review: the sheet's six-control second row wraps, and ⏭/Save are
   assert.ok(valueOf('body.ui-v2 .fp-save[aria-pressed="true"]', "color"), "…in the v2 theme too");
 });
 
-test("both speed buttons say they open a menu — the Foray page's as well as the sheet's", () => {
+test("the speed button says it opens a menu, and the Foray page draws none", () => {
   /* Audit round 2, player-9, completed in the sweep: the sheet's rate button
      gained `aria-haspopup="dialog"` and the Foray page's `#fy-rate`, which opens
      the same `openRateMenu` dialog, did not — VoiceOver read one "pop-up button"
      and one plain button for the one control. MUTATION: drop the attribute
      from the `#fy-rate` markup -> red. */
+  /* Ambient Foray detail (Redesign 2026): the page's #fy-rate left with the rest of its transport. MUTATION: put a
+     `<button … id="fy-rate">` back in the template without aria-haspopup -> red. */
   const tag = /<button[^>]*\bid="fy-rate"[^>]*>/.exec(APP);
-  assert.ok(tag, "fixture assumption: the Foray page draws #fy-rate");
-  assert.match(tag[0], /\baria-haspopup="dialog"/, "the Foray page's speed button does not say it opens a menu");
+  assert.ok(!tag || /\baria-haspopup="dialog"/.test(tag[0]), "a speed button on the Foray page must say it opens a menu");
   assert.match(CODE, /rateBtn\.setAttribute\("aria-haspopup", "dialog"\);/, "the sheet's, for comparison");
   const menu = APP.slice(APP.indexOf("function openRateMenu("), APP.indexOf("function openRateMenu(") + 800);
   assert.match(menu, /panel\.setAttribute\("role", "dialog"\);/, "fixture assumption: what it opens is a dialog");

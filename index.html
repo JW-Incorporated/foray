@@ -113,6 +113,16 @@
 <!-- The DOCK (Redesign 2026, ambient): one Veil surface holding the Discover field, the mini player and the three tabs, with its fade and its cast.
      Styles every element ui/tabbar.js builds, and the mini bar player/client.js hands to it. -->
 <link rel="stylesheet" href="ui/dock.css">
+<!-- AFTERGLOW Today (Home), the first screen to wear the system: every selector is `.ag .td-*`, new names only. -->
+<link rel="stylesheet" href="ui/today.css">
+<!-- AFTERGLOW onboarding: the first-run Room that replaced the Welcome sheet; every selector is `.ob-*` under `.ob-room`. -->
+<link rel="stylesheet" href="ui/onboarding.css">
+<!-- AFTERGLOW Foray detail (#/foray/<id>), the second screen on the system: every selector is `.ag .fd-*` or a legacy `fy-*` element it restyles inside `.ag.fd`. -->
+<link rel="stylesheet" href="ui/foray-detail.css">
+<!-- AFTERGLOW Settings, Tuning and About, and the gear's Sheet: every selector is `.ag .st-*` (or the Sheet's own `.st-*`), new names only. -->
+<link rel="stylesheet" href="ui/settings.css">
+<!-- AFTERGLOW show page: the Room and the EpisodeRow list; every selector is `.sh-*` under `.ag` / `.room`. -->
+<link rel="stylesheet" href="ui/show.css">
 <link rel="icon" href="icon-180.png" type="image/png">
 </head>
 <!-- ui-v2 FROM THE FIRST BYTE (round-2 audit, p-first-2). setBodyClass()
@@ -126,18 +136,10 @@
   <button id="refresh-btn" aria-label="Refresh this page">↻</button>
 </header>
 
-<div id="drawer-overlay" hidden></div>
-<nav id="drawer" hidden aria-label="Settings">
-  <!-- NO NAVIGATION HERE (Redesign 2026, ambient, the Dock). The five destinations
-       this panel carried (Home, Search, Playlists, Forays, Up Next) are the three
-       tabs of the Dock - Today, Discover, Library - and Library lists Forays,
-       Playlists and Up Next. What stays is Settings: the switches below, Tuning
-       (ui/drawer-dev.js adds it), Diagnostics and Delete my data. The Today unit
-       moves this panel behind the gear at the top of Today. -->
-  <div class="drawer-section-label">Settings</div>
-  <button class="drawer-item as-btn" id="family-toggle"></button>
-  <button class="drawer-item as-btn" id="autoadvance-toggle"></button>
-</nav>
+<!-- NO DRAWER (Redesign 2026, ambient; DIRECTION.md "Information architecture"). The slide-in panel is gone from the
+     DOM: its destinations are the three tabs, and its switches, Developer group and "Delete my data" are the
+     Settings page (#/settings), reached from the gear above or Today's own gear. ui/settings.js builds the gear's
+     Sheet when it is opened and the page's controls into one host it parks in <body>. -->
 
 <main id="view"></main>
 
@@ -149,8 +151,6 @@
 <script src="ui/delete-data.js"></script>
 <script src="ui/diagnostics.js"></script>
 <script src="ui/downloads.js"></script>
-<script src="ui/drawer-dev.js"></script>
-<script src="ui/drawer.js"></script>
 <script src="ui/episode.js"></script>
 <script src="ui/foray-player.js"></script>
 <script src="ui/foray.js"></script>
@@ -162,10 +162,13 @@
 <script src="ui/interests.js"></script>
 <script src="ui/library.js"></script>
 <script src="ui/onboarding.js"></script>
+<script src="ui/palette.js"></script>
 <script src="ui/playlist.js"></script>
 <script src="ui/queue.js"></script>
 <script src="ui/rows.js"></script>
 <script src="ui/search.js"></script>
+<script src="ui/settings-dev.js"></script>
+<script src="ui/settings.js"></script>
 <script src="ui/sheets.js"></script>
 <script src="ui/show.js"></script>
 <script src="ui/tabbar.js"></script>

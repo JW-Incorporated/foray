@@ -15,11 +15,11 @@
  *
  * WHAT EACH TEST PROVES, and the mutation that kills it:
  *
- *  1. F17 — the drawer opens ON TOP of an expanded Now Playing sheet. Its
- *     first item is hit-testable at its own centre, and the scrim covers the
- *     player. MUTATION: put `#drawer-overlay`/`#drawer` back at 30/31 (below
- *     #foray-player's 60) -> `document.elementFromPoint` at the drawer item's
- *     centre returns the player, not the drawer, and this goes red.
+ *  1. F17 — the gear's Sheet (it was the drawer, before Redesign 2026) opens
+ *     ON TOP of an expanded Now Playing sheet. Its first row is hit-testable at
+ *     its own centre, and the scrim covers the player. MUTATION: put `.fy-sheet`
+ *     under #foray-player's 60 -> `document.elementFromPoint` at the row's
+ *     centre returns the player, not the Sheet, and this goes red.
  *
  *  2. F18 — closing collapses, it does not stop. Tapping the ✕ leaves the
  *     audio element playing and the mini bar docked above the tab bar, tab
@@ -101,16 +101,16 @@ async function openApp(page) {
     () => Boolean(window.ForayPlayer) && Boolean(document.querySelector("#tab-bar .tab-btn"))
   );
   /* A genuinely first-time profile — which every fresh browser context is —
-     gets the onboarding explainer, itself a `.fy-sheet` at z 70, over the
+     gets the first-run Room (Redesign 2026, a full-screen `.room` at z 100), over the
      whole page. It is not what these specs are about and it covers the
      controls they tap, so dismiss it the way a listener would ("Skip for
      now"). Bounded rather than asserted-present: if onboarding ever stops
      showing here, these specs should carry on, not turn red for it. */
-  await page.waitForSelector("#first-time-sheet", { timeout: 15_000 }).catch(() => null);
-  if (await page.locator("#first-time-sheet-skip").count()) {
-    await page.locator("#first-time-sheet-skip").click();
+  await page.waitForSelector("#onboarding-room", { timeout: 15_000 }).catch(() => null);
+  if (await page.locator("#onboarding-skip").count()) {
+    await page.locator("#onboarding-skip").click();
   }
-  await expect(page.locator("#first-time-sheet")).toHaveCount(0);
+  await expect(page.locator("#onboarding-room")).toHaveCount(0);
 }
 
 /** Starts one ordinary episode on the fixture audio and waits until the real
@@ -149,46 +149,64 @@ function audioState(page) {
 
 /* ---------- U-12 / F17 ---------- */
 
-test("the drawer opens on top of an expanded Now Playing sheet, and its first item is hit-testable", async ({ page }) => {
+test("the gear's Sheet opens on top of an expanded Now Playing sheet, and its first row is hit-testable", async ({ page }) => {
+  /* The drawer this used to be about is gone (Redesign 2026, ambient); the invariant is not: navigation must be able to cover
+     the thing it navigates away from. The gear stays reachable under the expanded sheet (the sheet owner's keepReachable), and
+     the Sheet it opens is a `.fy-sheet` at 70, over the player's 60. MUTATION: give `.fy-sheet` a z-index under #foray-player's
+     -> `document.elementFromPoint` at the first row's centre returns the player, not the Sheet, and this goes red. */
   await openApp(page);
+  /* Leave Today (no top bar there) for a route that has one. MUTATION: delete this line -> the app stays on Today, the top
+     bar is display:none, and the `body.view-home` count assertion below goes red at once instead of timing out at 180 s. */
+  await page.evaluate(() => { window.location.hash = "#/library"; });
+  await expect(page.locator("body.view-home")).toHaveCount(0);
+  await expect(page.locator("#menu-btn")).toBeVisible();
   await startPlayback(page);
 
   await page.locator(".fp-info").click();
   await expect(page.locator(".fp-sheet")).toBeVisible();
   await expect(page.locator("body.fp-expanded")).toHaveCount(1);
 
+  /* The gear to tap is the top bar's #menu-btn, which the expanded sheet leaves reachable (`keepReachable: [".topbar", ...]`
+     in player/client.js). On Today that bar is display:none (ui/today.css) and the gear is Today's own `[data-today-gear]`,
+     which the expanded sheet makes inert and covers, so the first version of this test waited the full 180 s on an element
+     that was never visible and never reached the stacking assertions. */
   await page.locator("#menu-btn").click();
-  await expect(page.locator("#drawer")).toBeVisible();
+  await expect(page.locator("#st-menu")).toBeVisible();
 
   const hit = await page.evaluate(() => {
-    const first = document.querySelector("#drawer .drawer-item");
-    if (!first) return { error: "the drawer has no .drawer-item items at all" };
+    /* The Sheet's owner marks the player `inert` while it is up, and an inert element is skipped by hit testing, so with that
+       attribute left on, the answer below would not depend on z-order at all (found by running the z-index mutation: it
+       survived). Lift it for the measurement so what is asked is the STACKING ORDER, which must hold on its own. */
+    const player = document.querySelector("#foray-player");
+    const wasInert = player.hasAttribute("inert");
+    player.removeAttribute("inert");
+    const first = document.querySelector("#st-menu [data-st-menu]");
+    if (!first) return { error: "the gear's Sheet has no rows at all" };
     const r = first.getBoundingClientRect();
     const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-    /* The same question asked of the player's own centre: with the drawer
-       open, its scrim — not the mini bar — must be what a tap lands on. */
-    const bar = document.querySelector("#dock-mini .fp-bar").getBoundingClientRect();
+    /* The same question asked of the player's own centre: with the Sheet open, its scrim - not the mini bar - must be what a
+       tap lands on. */
+    const bar = document.querySelector("#foray-player .fp-bar").getBoundingClientRect();
     const overBar = document.elementFromPoint(bar.left + bar.width / 2, bar.top + bar.height / 2);
+    if (wasInert) player.setAttribute("inert", "");
     return {
-      text: (first.textContent || "").trim(),
-      insideDrawer: Boolean(at && at.closest("#drawer")),
+      text: (first.querySelector(".st-row-label") || first).textContent.trim(),
+      insideSheet: Boolean(at && at.closest("#st-menu")),
       landedOn: at ? (at.id || at.className || at.tagName) : null,
-      barCoveredByDrawerLayer: Boolean(
-        overBar && (overBar.closest("#drawer") || overBar.id === "drawer-overlay")
-      ),
+      barCoveredBySheet: Boolean(overBar && overBar.closest("#st-menu")),
       barLandedOn: overBar ? (overBar.id || overBar.className || overBar.tagName) : null,
     };
   });
 
   expect(hit.error).toBeUndefined();
-  expect(hit.text.length, "the drawer's first item is a Settings row with a name").toBeGreaterThan(0);
+  expect(hit.text).toBe("Settings");
   expect(
-    hit.insideDrawer,
-    `the drawer's first item is not hit-testable at its own centre — a tap there lands on "${hit.landedOn}"`
+    hit.insideSheet,
+    `the Sheet's first row is not hit-testable at its own centre - a tap there lands on "${hit.landedOn}"`
   ).toBe(true);
   expect(
-    hit.barCoveredByDrawerLayer,
-    `the open drawer does not cover the mini player — a tap over the bar lands on "${hit.barLandedOn}"`
+    hit.barCoveredBySheet,
+    `the open Sheet does not cover the mini player - a tap over the bar lands on "${hit.barLandedOn}"`
   ).toBe(true);
 });
 

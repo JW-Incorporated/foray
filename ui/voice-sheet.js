@@ -7,21 +7,15 @@
 
 /* ---------- V-01: the narration voice picker ----------
 
-   `docs/ios-controls-and-voice-plan.md` V-01. A drawer item — "Narration
+   `docs/ios-controls-and-voice-plan.md` V-01. A Settings row — "Narration
    voice" — built and bound the same way `bindDiagnosticsControl()`/
-   `bindDeleteControl()` are: appended in JS above "Delete my data", because
-   `index.html`'s drawer markup is outside this card's owned files (same
-   constraint `ensureInterestsDrawerLink` states). The card asked for it
-   "next to Playback diagnostics"; since the 2026-09-22 audit (R8) that item
-   lives in the collapsed Developer group, and this one is a listener setting,
-   so it sits directly ABOVE that group, still next to it and still above
-   "Delete my data".
-
-   DESIGN COMMENT (posted to the card before this was written): there is no
-   separate `#/settings` route on `main` post-U-11 — `cp_ui_v2` is retired
-   and "Settings" is the drawer's own section label (`index.html`'s
-   `.drawer-section-label`). So this ships with exactly one home, the drawer,
-   and there is no "before/after U-02" move pending.
+   `bindDeleteControl()` are: appended in JS into the "Listening" section of the
+   Settings host (ui/settings.js), above the Developer group and "Delete my data".
+   (It started life as a drawer item; the drawer is gone, Redesign 2026, and
+   the row, its id and its sheet are not.) The card asked for it "next to
+   Playback diagnostics"; since the 2026-09-22 audit (R8) that item lives in the
+   collapsed Developer group, and this one is a listener setting, so it sits
+   among the listener's own.
 
    THE THREE ROW KINDS, and why they look different on purpose:
      - INSTALLED, SELECTABLE — a radio-shaped row with an Audition button.
@@ -514,17 +508,14 @@ function closeVoiceSheet() {
   voiceUi.root.hidden = true;
 }
 
-/** Appended to the drawer at startup, after the listener's switches and
-    directly above the Developer group (see `init()`), so it is a listener
-    setting among listener settings and never below "Delete my data". Bound
-    once. */
+/** Appended to Settings' "Listening" section at startup, after the listener's switches, so it is a listener
+    setting among listener settings and never below "Delete my data". Bound once. */
 function bindVoiceControl() {
-  const drawer = $("#drawer");
-  if (!drawer || $("#voice-open")) return;
-  const btn = ddEl("button", "drawer-item as-btn", "Narration voice");
+  if (!settingsHost() || $("#voice-open")) return;
+  const btn = ddEl("button", "st-item st-link", "Narration voice");
   btn.type = "button";
   btn.id = "voice-open";
-  drawer.appendChild(btn);
+  settingsList("listening").appendChild(btn);
   btn.addEventListener("click", openVoiceSheet);
 
   const ui = voiceSheet();

@@ -1,4 +1,4 @@
-/* ui/drawer-dev.js — Drawer developer group: voice probe, engine override rows.
+/* ui/settings-dev.js — the Developer group in Settings: voice probe, engine override rows.
    A CLASSIC script like app.js, not a module: it shares app.js's globals and
    is loaded by index.html after app.js, in the order listed in
    docs/redesign-2026/split-notes.md. Declarations only at the top level, so
@@ -13,46 +13,31 @@
    and one of them offers a button that blocks for ~90 seconds. They must stay
    REACHABLE — the founder files reports from a car with them — so they are not
    hidden behind an unlock. They are grouped instead: one collapsed "Developer"
-   disclosure at the bottom of Settings, directly above "Delete my data" (which
-   stays the drawer's last item, by `bindDeleteControl`'s rule).
+   disclosure on the Settings page, directly above "Your data" (whose "Delete my
+   data" stays the page's last item, by `bindDeleteControl`'s rule).
 
-   A native <details>, so it opens from a tap, Enter or Space and announces its
-   state with no script, and it starts CLOSED on every launch. Built once;
-   every caller gets the same element — remembered on the drawer itself, the
-   way `ensureInterestsDrawerLink` remembers its link, so a lookup that cannot
-   see appended nodes can never build a second group. */
-function drawerDevGroup() {
-  const drawer = $("#drawer");
-  if (!drawer) return null;
-  if (drawer._devGroup) return drawer._devGroup;
-  const group = ddEl("details", "drawer-dev", null);
-  group.id = "drawer-dev";
-  group.appendChild(ddEl("summary", "drawer-item", "Developer"));
-  drawer.appendChild(group);
-  drawer._devGroup = group;
-  return group;
-}
-
+   A native <details> (built once by `settingsHost()`, ui/settings.js), so it opens from a tap, Enter or Space
+   and announces its state with no script, and it starts CLOSED on every launch. The drawer this group used to
+   sit in is gone (Redesign 2026); the group, its ids and its rows are not. */
 /** The founder's two switches, into the Developer group. */
 function bindDeveloperToggles() {
-  const into = drawerDevGroup();
+  const into = settingsDevGroup();
   if (!into) return;
   /* The founder's test track (see § showDraftsOn). No event is logged: this is
      his own switch, not listener behaviour worth a row. */
-  drawerToggle("drafts-toggle", "Show draft Forays", showDraftsOn,
-    (on) => lsSet("cp_show_drafts", on), { repaint: true, into });
+  settingSwitch("drafts-toggle", "Show draft Forays", showDraftsOn,
+    (on) => lsSet("cp_show_drafts", on), { into });
 
   /* K-01's measurement switch (see § voiceProbeOn). Its RUN button is not a
      switch and is added/removed by `syncVoiceProbeRun` instead. */
-  drawerToggle("voice-probe-toggle", "Voice engine probe", voiceProbeOn,
+  settingSwitch("voice-probe-toggle", "Voice engine probe", voiceProbeOn,
     (on) => lsSet("cp_voice_probe", on), { into });
 }
 
-/** The run control, created on demand by `renderDrawer`. Returns nothing; the
-    element is found by id like every other drawer control. */
+/** The run control, created on demand by `paintSettings`. Returns nothing; the
+    element is found by id like every other Settings control. */
 function syncVoiceProbeRun() {
-  const drawer = $("#drawer");
-  if (!drawer) return;
+  if (!settingsDevGroup()) return;
   const toggle = $("#voice-probe-toggle");
   const existing = $("#voice-probe-run");
   if (!voiceProbeOn()) {
@@ -64,15 +49,15 @@ function syncVoiceProbeRun() {
     return;
   }
   if (existing) return;
-  const run = ddEl("button", "drawer-item as-btn", "Run the voice engine probe");
+  const run = ddEl("button", "st-item", "Run the voice engine probe");
   run.type = "button";
   run.id = "voice-probe-run";
-  /* Immediately after the toggle, not at the end of the drawer: "Delete my
+  /* Immediately after the toggle, not at the end of the page: "Delete my
      data" is the last item by the rule `bindDeleteControl` states, and a
      control that appears BELOW it would be the one a scrolled thumb lands on
      instead. */
   if (toggle && toggle.parentNode) toggle.parentNode.insertBefore(run, toggle.nextSibling);
-  else (drawerDevGroup() || drawer).appendChild(run);
+  else settingsDevGroup().appendChild(run);
   run.disabled = Boolean(voiceProbeRunning);   // a control rebuilt mid-run is still busy (app-3-11)
   run.addEventListener("click", () => runVoiceProbe());
 
@@ -80,7 +65,7 @@ function syncVoiceProbeRun() {
      item 9), iPhone only — Android's probe has no soak. Directly under the
      run control, for the reason that one sits under its switch. */
   if (!voiceSoakOffered() || !run.parentNode) return;
-  const soak = ddEl("button", "drawer-item as-btn", VOICE_SOAK_START_LABEL);
+  const soak = ddEl("button", "st-item", VOICE_SOAK_START_LABEL);
   soak.type = "button";
   soak.id = "voice-probe-soak";
   run.parentNode.insertBefore(soak, run.nextSibling);
@@ -96,7 +81,7 @@ function syncVoiceProbeRun() {
      ONLY, never stored: a crash relaunches the app disarmed, so it can never
      crash-loop. "Reset skipped passes": a pass that killed 4a is skipped by
      every later run until this is tapped. */
-  const arm = ddEl("button", "drawer-item as-btn", "");
+  const arm = ddEl("button", "st-item", "");
   arm.type = "button";
   arm.id = "voice-probe-arm";
   soak.parentNode.insertBefore(arm, soak.nextSibling);
@@ -105,7 +90,7 @@ function syncVoiceProbeRun() {
     voiceProbeArmCoreML = !voiceProbeArmCoreML;
     paintVoiceProbeArm(arm);
   });
-  const reset = ddEl("button", "drawer-item as-btn", VOICE_PROBE_RESET_LABEL);
+  const reset = ddEl("button", "st-item", VOICE_PROBE_RESET_LABEL);
   reset.type = "button";
   reset.id = "voice-probe-reset";
   arm.parentNode.insertBefore(reset, arm.nextSibling);
@@ -205,7 +190,7 @@ function voiceSoakOffered() {
    with no engine cannot send one of these by any path.
 
    APPENDED AND REMOVED, NEVER `hidden` (the reason `syncVoiceProbeRun` gives).
-   Painted by `renderDrawer` like every other drawer label, from the ENGINE's
+   Painted by `paintSettings` like every other Settings label, from the ENGINE's
    answer: the pause hold is its snapshot, the engine setting is what it
    confirmed storing, and a one-shot row says what the engine replied to the
    last tap ("armed", or why it refused). A row with a send in flight is
@@ -314,10 +299,10 @@ function paintEngineDevRow(row, btn, st) {
 async function tapEngineDevRow(row) {
   if (engineDevInFlight.has(row.id)) return null;
   const st = engineDevStatus();
-  if (!st || !Array.isArray(st.commands) || !st.commands.includes(row.cmd)) { renderDrawer(); return null; }
+  if (!st || !Array.isArray(st.commands) || !st.commands.includes(row.cmd)) { paintSettings(); return null; }
   const args = row.next ? row.next(st) : undefined;
   engineDevInFlight.add(row.id);
-  renderDrawer();
+  paintSettings();
   let reply = null;
   try {
     reply = await window.ForayPlayer.engineDeveloperSend(row.cmd, args);
@@ -328,7 +313,7 @@ async function tapEngineDevRow(row) {
   }
   const answer = reply || { ok: false, reason: "bridge-error" };
   if (row.oneShot) engineDevOutcome[row.id] = { ok: !!answer.ok, reason: answer.reason };
-  renderDrawer();
+  paintSettings();
   /* The one-shot rows change their words in place, which a screen reader
      does not re-read on a focused button; the switch and the setting are
      said by their own state. */
@@ -339,11 +324,11 @@ async function tapEngineDevRow(row) {
   return answer;
 }
 
-/** Create, paint or remove the engine rows. Called from `renderDrawer`, and
+/** Create, paint or remove the engine rows. Called from `paintSettings`, and
     once the player module has said which lane plays. */
 function syncEngineDevRows() {
-  const drawer = $("#drawer");
-  if (!drawer) return;
+  const group = settingsDevGroup();
+  if (!group) return;
   const st = engineDevStatus();
   const cmds = st && Array.isArray(st.commands) ? st.commands : [];
   const want = ENGINE_DEV_ROWS.filter((row) => cmds.includes(row.cmd));
@@ -353,17 +338,14 @@ function syncEngineDevRows() {
     if (gone) gone.remove();
   }
   if (!want.length) return;
-  const group = drawerDevGroup() || drawer;
   const diag = $("#diag-open");
   const before = diag && diag.parentNode === group ? diag : null;
   for (const row of want) {
     let btn = $("#" + row.id);
     if (!btn) {
-      btn = ddEl("button", "drawer-item as-btn drawer-wrap", "");
+      btn = ddEl("button", "st-item st-wrap", "");
       btn.type = "button";
       btn.id = row.id;
-      /* A setting changes IN the drawer (the switches' rule, Joey 2026-08-31). */
-      btn.dataset.drawerStay = "1";
       if (row.role) btn.setAttribute("role", row.role);
       if (before) group.insertBefore(btn, before);
       else group.appendChild(btn);
@@ -374,7 +356,7 @@ function syncEngineDevRows() {
 }
 
 /** The rows appear only once the lane is known: engineHello answers up to 5 s
-    after launch, so a drawer painted before then has no engine to ask. */
+    after launch, so Settings painted before then has no engine to ask. */
 function bindEngineDevRows() {
   const whenLane = () => {
     const p = window.ForayPlayer;
@@ -395,7 +377,7 @@ function bindEngineDevRows() {
     GUARDED THE SAME WAY EVERY FORAY TAP IS (#225): a rejected promise here
     must not become a console line nobody has open. */
 /* ONE PROBE AT A TIME (audit round 3, app-3-11). Nothing guarded a second
-   tap: a founder who reopened the drawer and pressed RUN again (nothing else
+   tap: a founder who reopened Settings and pressed RUN again (nothing else
    shows a run is under way for its ~90 s, and reopening the sheet clears its
    status line) started a second engine load beside the first, both writing
    the one status line in whatever order they finished. While a run is in
@@ -483,7 +465,7 @@ function paintVoiceProbeListen(ui, player, records) {
   box.id = "voice-probe-listen";
   for (const pass of passes) {
     const label = `Play ${pass} at 1.5x`;
-    const btn = ddEl("button", "drawer-item as-btn", label);
+    const btn = ddEl("button", "st-item", label);
     btn.type = "button";
     btn.addEventListener("click", () => {
       Promise.resolve(player.playVoiceProbeWav(pass)).then((out) => {
@@ -547,32 +529,5 @@ async function runVoiceProbeOnce() {
   } catch (_) {
     ui.status.textContent = "The probe failed to run. Copy the record above and say what build this is.";
     return null;
-  }
-}
-
-/* The Interests page (#/interests, U-07) is reachable from Settings, but
-   index.html's drawer markup is not among this card's owned files and is
-   unlisted/human-merge-gated (CLAUDE.md path-policy) — editing it would pull
-   this whole change off the auto-merge path for one nav link. Injected once
-   into the drawer instead, immediately after `.drawer-section-label`
-   ("Settings" — the drawer's only section label today, per index.html), the
-   same place a founder editing index.html by hand would put it. If the
-   drawer ever grows a second `.drawer-section-label`, this must switch to a
-   text-matched lookup rather than "the first one found". Guarded by a flag
-   on the drawer element so repeated renderDrawer() calls (every
-   `openDrawer(true)`) don't stack duplicate links. */
-function ensureInterestsDrawerLink() {
-  const drawer = $("#drawer");
-  if (!drawer || drawer._interestsLinkAdded) return;
-  drawer._interestsLinkAdded = true;
-  const label = document.querySelector(".drawer-section-label");
-  const link = document.createElement("a");
-  link.className = "drawer-item";
-  link.href = "#/tuning";
-  link.textContent = "Tuning";
-  if (label && label.parentNode) {
-    label.parentNode.insertBefore(link, label.nextSibling);
-  } else {
-    drawer.appendChild(link);
   }
 }
