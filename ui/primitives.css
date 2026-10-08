@@ -292,6 +292,13 @@ body.ui-v2 .ag.disc .page-head { margin-top: var(--s-2); }   /* the title sits 1
    syllable (DISCOVER_SOFT_BREAKS in ui/browse.js), and a word nobody has marked breaks anywhere rather than cut. */
 .ag .ag-subject-tile .t-label { overflow-wrap: anywhere; word-break: normal; hyphens: manual; }
 .ag .ag-subject-tile .count { display: block; }
+/* A small subject (2 or 3 shows) is full squares overlapping, the first whole and on top, sitting straight on the tile:
+   the collage's own well (--collage-bg, darker than the Raised surface) read as a sunken frame behind the stack and as a
+   different component from the 2x2 neighbours. The 4-up 2x2 and the single art fill their cell, so they have no well to drop. */
+.ag .ag-subject-tile .ag-collage.c2, .ag .ag-subject-tile .ag-collage.c3 { background: transparent; }
+/* The prototype's .subj rhythm on Discover: 8 above and below, 10 in from the left, 10 from the collage to the name
+   (the primitive's 8 / 12 put the collage 2px left of the prototype's and the name column 2px narrower on the right). */
+.ag .dsc-grid .ag-subject-tile, .ag .dsc-empty-tile .ag-subject-tile { padding: var(--s-2) calc(var(--s-2) + var(--s-1) / 2); gap: calc(var(--s-2) + var(--s-1) / 2); }
 .ag .dsc-empty-tile .ag-subject-tile { text-align: left; }
 
 /* The field: the Dock's top row (DIRECTION.md "Information architecture"). One Veil surface of three rows:

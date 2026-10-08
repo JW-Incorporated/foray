@@ -585,3 +585,20 @@ test("Discover's Dock rules are scoped to Discover: no global rule restyles the 
   const globals = [...css.matchAll(/^body\.ui-v2 (#foray-player|\.tab-bar)[^{]*\{/gm)].map((m) => m[0].trim());
   assert.deepStrictEqual(globals, ["body.ui-v2 #foray-player .fp-skip .fp-skip-glyph {"], `unscoped Dock rules: ${JSON.stringify(globals)}`);
 });
+
+test("a small subject's overlapping squares sit on the tile, not in a sunken well, and the tile keeps the prototype's 8 / 10 rhythm", () => {
+  /* Second fidelity pass (Space and Cities, 3 shows, drew a darker inset well behind the stack, so the tile read as a different
+     component from its 2x2 neighbours). MUTATIONS, each run red: (a) delete the `background: transparent` line from the c2/c3
+     rule (the well returns); (b) change the grid tile's padding to var(--s-2) (the collage sits 2px left of the prototype's);
+     (c) change its gap to var(--s-3) (the name column shifts 2px); (d) widen the transparent rule to `.ag-collage` itself (the
+     second assertion fails: the 2x2's cell colour behind its hairline is gone). Harness audit: reads the shipped stylesheet;
+     the collage's own rule keeps --collage-bg for the 4-up and the single art. */
+  const well = primRule(".ag .ag-subject-tile .ag-collage.c2, .ag .ag-subject-tile .ag-collage.c3");
+  assert.ok(well, "the small-subject rule exists");
+  assert.match(well, /background:\s*transparent/, "no well behind two or three squares");
+  assert.match(primRule(".ag .ag-collage"), /background:\s*var\(--collage-bg\)/, "the collage's own cell colour is untouched elsewhere");
+  const tile = primRule(".ag .dsc-grid .ag-subject-tile, .ag .dsc-empty-tile .ag-subject-tile");
+  assert.ok(tile, "Discover's tile rhythm rule exists");
+  assert.match(tile, /padding:\s*var\(--s-2\)\s+calc\(var\(--s-2\)\s*\+\s*var\(--s-1\)\s*\/\s*2\)/, "8 above and below, 10 in from the sides");
+  assert.match(tile, /gap:\s*calc\(var\(--s-2\)\s*\+\s*var\(--s-1\)\s*\/\s*2\)/, "10 from the collage to the name");
+});

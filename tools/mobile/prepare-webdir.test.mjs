@@ -81,7 +81,7 @@ const AMBIENT_PRIMITIVES_ASSETS = Object.freeze([
   /* 20 -> 26 KB (Redesign 2026, ambient screen 4, Discover): the screen's CSS (the subject grid, the field's chrome, the
      four result rows, the empty page and the Make button) is appended to this sheet, 24.0 KB shipped. The 0.75 floor
      below still holds the number honest; the next screen that appends here moves it again, in its own PR. */
-  { rel: "ui/primitives.css", maxBytes: 26 * 1024 },
+  { rel: "ui/primitives.css", maxBytes: 28 * 1024 },   // 26 -> 28 KB (screen 4, Discover): the field/Dock rows, results and the small-subject tile rules; 27.5 KB shipped
   { rel: "ui/primitives.js", maxBytes: 18 * 1024 },   // 16 -> 18 KB (screen 4): agSubjectTile / agEmptyState / agCollage take real data, 16.5 KB shipped
   { rel: "ui/gallery.js", maxBytes: 9 * 1024 },
   /* Phase 4, Today (Home): the screen's stylesheet, the Glow palette, and ui/home.js itself, which Today rewrote
