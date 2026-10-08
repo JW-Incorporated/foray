@@ -864,10 +864,12 @@ function bindShowPlay(scope) {
 
 function renderShow(show_id, initialQuery = "") {
   setBodyClass("view-page");
-  /* The Room is the page's own top: the legacy bar steps aside, as on Today (ui/show.css). */
-  try { document.body.classList.add("view-show"); } catch (_) { /* a stub document */ }
   const show = showById(show_id);
   if (!show) { resolveMissingShow(show_id); return; }
+  /* The Room is the page's own top: the legacy bar steps aside, as on Today (ui/show.css). This is AFTER the missing-show
+     guard on purpose: every status page (loading, not found, couldn't load, `pi:`) has no Room, so it keeps the legacy bar
+     and #view's top padding, which clear the status bar; hiding them left its page head and Back under a notch. */
+  try { document.body.classList.add("view-show"); } catch (_) { /* a stub document */ }
   rememberShardShow(show);
   fullPool(); // populate itemIndex/poolIds so curated-pool episode rows can play in-app
   const curatedEps = episodesForShow(show);

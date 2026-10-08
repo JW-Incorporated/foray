@@ -115,6 +115,12 @@ function mount({ docQuery = null, onLine = true } = {}) {
   const store = new Map();
   const byId = new Map(PAGE_IDS.map((id) => { const el = makeEl("div"); el.id = id; return [id, el]; }));
   const body = makeEl("body");
+  /* HARNESS AUDIT: makeEl's classList and className are two unrelated stores, so a className rewrite (what setBodyClass
+     does) never dropped a class added through classList, and a class leaking past setBodyClass passed unseen. The body
+     gets the real coupling: one class set, className reads and rewrites it. */
+  const bodyClasses = new Set();
+  Object.defineProperty(body, "className", { get: () => [...bodyClasses].join(" "), set: (v) => { bodyClasses.clear(); String(v).split(/\s+/).filter(Boolean).forEach((c) => bodyClasses.add(c)); } });
+  body.classList = { add: (c) => bodyClasses.add(c), remove: (c) => bodyClasses.delete(c), toggle: (c, on) => { const v = on === undefined ? !bodyClasses.has(c) : on; if (v) bodyClasses.add(c); else bodyClasses.delete(c); return v; }, contains: (c) => bodyClasses.has(c) };
   const ctx = {
     console: { ...console, warn() {}, error() {} },
     fetch: () => new Promise(() => {}),
@@ -507,4 +513,20 @@ test("the page is wired: linked after the primitives it composes, shipped by the
   assert.ok(body.classList.contains("view-show"), "rendering a show adds view-show");
   m.ctx.setBodyClass("view-page");
   assert.ok(!/view-show/.test(body.className), "and the next page's setBodyClass takes it away again (it rewrites the whole className)");
+});
+
+test("a missing show has no Room, so it does not take the Room's chrome: view-show stays off for every status page", () => {
+  /* MUTATION (run red): move `document.body.classList.add("view-show")` in renderShow back above the
+     `if (!show) { resolveMissingShow(...); return; }` guard. Then body.view-show hides .topbar and zeroes #view's top
+     padding for a page whose head and Back have no safe-area inset of their own (notched iPhone, edge-to-edge Android).
+     HARNESS AUDIT: the body starts WITH view-show (a Room was on screen a moment ago); the render must drop it, and
+     with the add above the guard it is put straight back, so the test cannot pass on a clean body by accident. */
+  const m = mount();
+  for (const id of ["pi:unknown", "no-such-show"]) {
+    m.ctx.renderShow("s-1");
+    assert.ok(m.body.classList.contains("view-show"), "precondition: a real show carries view-show");
+    m.ctx.renderShow(id);
+    assert.ok(!m.body.classList.contains("view-show"), `an unknown id (${id}) leaves view-show off`);
+    assert.match(m.byId.get("view").innerHTML, /back/i, `${id}: the status page paints its own Back`);
+  }
 });
