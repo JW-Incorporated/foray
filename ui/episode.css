@@ -11,7 +11,7 @@
    bump, ui/episode.js), and it asks the same media query itself. */
 
 /* The page. The legacy top bar steps aside (the page draws its own chevron) and the body paints bg0 under the Room. */
-body.view-episode { background: var(--bg0); }
+body.view-episode { background: var(--bg0); --dock-page-bg: var(--bg0); }   /* the Dock fades to the page (ui/dock.css) */
 body.view-episode .topbar { display: none; }
 body.view-episode #view { padding-top: 0; }
 .page.ep-page { max-width: none; margin: 0; padding: 0; }
@@ -128,68 +128,11 @@ body.view-episode #view { padding-top: 0; }
    and the count changes in place. The badge is on every page (ui/episode.js syncLibraryBadge, called by the tab bar). */
 .ag.ep-flight-layer { position: fixed; inset: 0; z-index: 80; background: transparent; pointer-events: none; }
 .ag.ep-flight-layer .ag-art { position: fixed; margin: 0; transform-origin: top left; box-shadow: none; }
-.tab-btn { position: relative; }
+
 .tab-btn .tab-count {
   position: absolute; top: calc(var(--s-1) * 1); left: calc(50% + var(--s-2)); box-sizing: border-box;
   min-width: calc(var(--s-4) + var(--s-1)); height: calc(var(--s-4) + var(--s-1)); padding: 0 var(--s-1);
   display: inline-flex; align-items: center; justify-content: center;
   border-radius: var(--r-pill); background: var(--ember); color: var(--ember-ink);
   font: 700 0.6875rem/1 var(--font-text); font-variant-numeric: tabular-nums; pointer-events: none;
-}
-
-/* ---------------------------------------------------------------------------------------------
-   The Dock on this page (DIRECTION.md "Materials": one floating Veil; the Today block in ui/today.css is the pattern).
-   The legacy `#tab-bar` and `#foray-player` stay the elements and take the Dock's anatomy here: inset by the gutter,
-   12px above the safe area, `--r-xl` corners, the Glow-tinted Veil, a rim between rows. The tab bar is on <body>, outside
-   `.ag`, so it reads the :root tokens (`--ag-gutter`). The page sets the root's Glow to the show's, which tints the Veil.
-   A bounded step the Dock unit retires. Nothing here transitions or animates. */
-body.view-episode {
-  --dock-lift: calc(env(safe-area-inset-bottom, 0px) + var(--dock-inset));
-  --tab-bar-h: calc(var(--tab-bar) + var(--dock-inset));
-  --fp-bar-h: var(--mini);
-  --ep-dock-h: calc(var(--dock-lift) + var(--tab-bar));
-}
-body.view-episode.fp-open { --ep-dock-h: calc(var(--dock-lift) + var(--tab-bar) + var(--mini)); }
-body.view-episode .tab-bar {
-  left: var(--ag-gutter); right: var(--ag-gutter); bottom: var(--dock-lift);
-  height: var(--tab-bar); padding: 0 var(--s-1);
-  border: 0; border-radius: var(--r-xl); overflow: hidden;
-  background: var(--glow-veil);
-  -webkit-backdrop-filter: blur(20px) saturate(140%); backdrop-filter: blur(20px) saturate(140%);
-  box-shadow: inset 0 1px 0 var(--rim), var(--shadow-2);
-}
-body.view-episode .tab-btn { min-width: var(--tap); min-height: var(--tap); gap: 0; border-radius: var(--r-lg); color: var(--text-2); font: 600 0.8125rem/1.125rem var(--font-text); }
-body.view-episode .tab-btn svg { width: var(--icon-tab); height: var(--icon-tab); }
-body.view-episode .tab-bar .tab-btn[aria-current="page"] { color: var(--lamp-text); }
-body.view-episode .tab-btn:focus-visible { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) * -1); }
-body.view-episode.fp-open .tab-bar { border-radius: 0 0 var(--r-xl) var(--r-xl); }
-body.view-episode.ui-v2.fp-open #foray-player {
-  left: var(--ag-gutter); right: var(--ag-gutter); bottom: calc(var(--dock-lift) + var(--tab-bar));
-  border: 0; border-radius: var(--r-xl) var(--r-xl) 0 0;
-  background: var(--glow-veil);
-  -webkit-backdrop-filter: blur(20px) saturate(140%); backdrop-filter: blur(20px) saturate(140%);
-  box-shadow: inset 0 1px 0 var(--rim), inset 0 -1px 0 var(--rim);
-}
-/* A backdrop-filter makes the bar the containing block of the fixed `.fp-sheet`: shed it while Now Playing is open. */
-body.view-episode.ui-v2.fp-open:not(.fp-expanded) #foray-player { overflow: hidden; }
-body.view-episode.ui-v2.fp-open.fp-expanded #foray-player { -webkit-backdrop-filter: none; backdrop-filter: none; }
-body.view-episode #foray-player .fp-title { font: var(--t-label); color: var(--text); }
-body.view-episode #foray-player .fp-show { color: var(--text-2); }
-body.view-episode #foray-player .fp-progress { background: transparent; }
-body.view-episode #foray-player .fp-fill { background: var(--glow); }
-body.view-episode.ui-v2 #foray-player .fp-play { background: var(--ember); border-color: var(--ember); color: var(--ember-ink); }
-/* Content runs under the Dock and fades to bg behind it, so the last row is never sliced by the Dock's edge. */
-body.view-episode::after {
-  content: ''; position: fixed; left: 0; right: 0; bottom: 0; z-index: 54; pointer-events: none;
-  height: calc(var(--ep-dock-h) + var(--s-8));
-  background: linear-gradient(transparent 0, var(--bg0) var(--s-8));
-}
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  body.view-episode .tab-bar, body.view-episode.ui-v2.fp-open #foray-player { background: var(--bg1); }
-}
-@media (prefers-reduced-transparency: reduce) {
-  body.view-episode .tab-bar, body.view-episode.ui-v2.fp-open #foray-player { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--bg1); }
-}
-@media (prefers-contrast: more) {
-  body.view-episode .tab-bar, body.view-episode.ui-v2.fp-open #foray-player { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--bg0); }
 }

@@ -43,7 +43,7 @@ const path = require("node:path");
 const { readAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const CSS = ["styles.css", "ui/tokens.css", "ui/primitives.css", "ui/today.css", "ui/onboarding.css", "ui/foray-detail.css", "ui/settings.css", "ui/show.css", "ui/episode.css"]
+const CSS = ["styles.css", "ui/tokens.css", "ui/primitives.css", "ui/dock.css", "ui/today.css", "ui/onboarding.css", "ui/foray-detail.css", "ui/settings.css", "ui/show.css", "ui/episode.css"]
   .map((rel) => fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n"))
   .join("\n");
 
@@ -108,17 +108,13 @@ function valueOf(sel, prop) {
   }
   return v;
 }
-/* The two token families a size is built from (ui/tokens.css): --tap, and the 4px-base spacing scale. */
-const TOKEN_PX = { "--tap": 44, "--s-1": 4, "--s-2": 8, "--s-3": 12, "--s-4": 16, "--s-5": 20, "--s-6": 24 };
+const dockCssHelper = require("./helpers/dock-css.js");
+const TOKENS_AT_REST = dockCssHelper.scope([]);
 const px = (v) => {
   if (String(v || "").trim() === "var(--tap)") return 44;
-  /* `calc(var(--tap) + var(--s-1))`: sums of tokens and literal px, as the Afterglow rows are written. */
-  const calc = /^calc\(([^()]*(?:var\([^()]*\)[^()]*)*)\)$/.exec(String(v || "").trim());
-  if (calc) {
-    const terms = calc[1].split("+").map((t) => t.trim());
-    const vals = terms.map((t) => (/^var\((--[\w-]+)\)$/.test(t) ? TOKEN_PX[/^var\((--[\w-]+)\)$/.exec(t)[1]] : /^(\d+(?:\.\d+)?)px$/.test(t) ? Number(/^(\d+(?:\.\d+)?)px$/.exec(t)[1]) : undefined));
-    if (vals.every((n) => typeof n === "number")) return vals.reduce((a, b) => a + b, 0);
-  }
+  /* The Dock's sizes are written in tokens (`calc(var(--tap) + var(--s-1))` is the 48px Play), so a value
+     that is a calc/var is RESOLVED, with the same resolver the geometry suites use - never guessed. */
+  if (/var\(|calc\(/.test(String(v || ""))) { try { return dockCssHelper.resolve(v, TOKENS_AT_REST, 0); } catch (_) { return null; } }
   const m = /^(-?\d+(?:\.\d+)?)px$/.exec(String(v || "").trim());
   return m ? Number(m[1]) : null;
 };
@@ -215,10 +211,10 @@ const BUTTONS = {
   ".fp-btn": { size: [".fp-btn"] },
   ".fp-clip": { size: [".fp-clip"] },
   ".fp-close": { size: [".fp-close"] },
-  ".fp-info": { tall: ".fp-info", why: "flex: 1 1 auto — the mini bar's whole title column" },
-  ".fp-play": { size: [".fp-play"] },
+  ".fp-info": { tall: ".dock-layer .fp-info", why: "flex: 1 1 auto — the mini bar's whole title column" },
+  ".fp-play": { size: [".dock-layer .fp-play"] },
   ".fp-rate": { rule: ".fp-rate" },
-  ".fp-skip": { size: [".fp-skip"] },
+  ".fp-skip": { size: [".dock-layer .fp-skip"] },
   ".fp-stop": { rule: ".fp-stop" },
   ".fy-btn": { size: [".fy-btn"] },   // the retry / reload button of a status page and Create's button (the Foray page's transport left it)
   ".fy-chip": { rule: ".fy-chip" },
@@ -299,9 +295,9 @@ const MEASURED_CONTROLS = [
   ".fp-grab-zone .fp-close",   // the sheet's ✕, 36x36
   ".fp-rate", ".fp-stop", ".fp-openep", // the sheet's second row (`.fp-collapse` is gone: the ✕ and the handle close it)
   ".voice-row-audition",       // ~29 tall, inside a row that SELECTS on a miss
-  /* Visual pass 1 (2026-09-23): the mini bar's ↺15 and the clip rows' text
-     buttons are sized by their own declarations, like the transport. */
-  ".fp-skip", ".fp-clip", ".fy-clip",
+  /* Visual pass 1 (2026-09-23): the mini bar's skip (it is forward 30 now, in the Dock) and the clip rows'
+     text buttons are sized by their own declarations, like the transport. */
+  ".dock-layer .fp-skip", ".fp-clip", ".fy-clip",
   /* The one pill (review of the pass): ~35px by its own padding on Search,
      Create and the reason sheet; expanded by the rule, not resized. */
   ".fy-chip",
@@ -484,6 +480,7 @@ test("a held in-app link opens no web preview and no callout, in the shell or th
     ".page-link-row": ".page-link-row:active",
     ".drawer-item": ".drawer-item:active",
     ".drawer-section": ".drawer-section:active",
+    ".dock-layer .tab-btn": ".dock-layer .tab-btn:active",
   };
   const quiet = UNCONDITIONAL.filter((r) => r.decls.some((d) => d.prop === "-webkit-tap-highlight-color" && d.value === "transparent"))
     .flatMap((r) => r.selectors);
@@ -514,19 +511,42 @@ test("the Now Playing scrub bar hands vertical pans to the sheet and keeps horiz
 test("the mini bar's open-the-player button fills the bar's height", () => {
   /* MUTATION: drop `align-self: stretch` -> the ~8px bands above and below
      the two text lines, which look like the bar, are dead again. */
-  assert.strictEqual(valueOf(".fp-info", "align-self"), "stretch");
-  assert.ok(px(valueOf(".fp-info", "min-height")) >= 44);
+  assert.strictEqual(valueOf(".dock-layer .fp-info", "align-self"), "stretch");
+  assert.ok(px(valueOf(".dock-layer .fp-info", "min-height")) >= 44);
 });
 
-test("docked above the tab bar, the mini player does not add the home-indicator inset a second time", () => {
-  /* The tab bar's own box already contains the inset. MUTATION: delete
-     `padding-bottom: 0` from `body.ui-v2.fp-open #foray-player` -> red; a
-     ~34px dead band of bar sits above the tab bar on a notched iPhone. */
-  assert.match(valueOf("#foray-player", "padding-bottom") || "", /safe-area-inset-bottom/,
-    "fixture assumption: the base rule pads by the inset for the on-the-edge case");
-  assert.match(valueOf("body.ui-v2.fp-open #foray-player", "padding-bottom") || "", /^0(px)?$/);
+test("a receded tab is a 44px target by its own box: the row recedes to 44, only the labels go", () => {
+  /* Round 1 receded the row to 36 (BUILD-NOTES 3) and reached 44 with a hit-area `::after`, 4px past the row each
+     way. Round 2 follows the prototype instead ("44 rather than the spec's 36 because every tab keeps a 44px
+     target"): the row stays 44, so there is no `::after` to maintain and the Dock's row rhythm matches. The
+     rule applies to both receded states - a scrolled page and Discover, where the field row is above.
+     MUTATION: set `--dock-tab-receded` in ui/dock.css back to 36px -> the first assertion fails; bring back the
+     `body.ui-v2.dock-receded .dock-layer .tab-btn::after` hit-area rule -> the last one fails (a hit area that
+     reaches outside the Dock is a target the gates run cannot see, and the Dock clipped it away in round 1's
+     review). */
+  const receded = px(dockCssHelper.declOf("ui/dock.css", ":root", "--dock-tab-receded"));
+  assert.ok(receded >= 44, `the receded tab row is ${receded}px, under the 44px floor`);
+  const rowRule = RULES.find((r) => r.selectors.includes("body.ui-v2.dock-receded .dock-layer .tab-bar"));
+  assert.ok(rowRule && rowRule.selectors.includes("body.ui-v2.sh-compose .dock-layer .tab-bar"), "both receded states set the row height");
+  assert.strictEqual(Object.fromEntries(rowRule.decls.map((d) => [d.prop, d.value])).height, "var(--dock-tab-receded)");
+  assert.ok(px(valueOf(".dock-layer .tab-btn", "min-width")) >= 44, "and a tab is at least 44 wide");
+  assert.ok(!RULES.some((r) => r.selectors.some((s) => /\.dock-layer \.tab-btn::after/.test(s))), "no hit-area ::after on a tab: the box is the target");
 });
 
+test("the mini bar is a row of the Dock: it pads for no home indicator and has no box of its own to draw", () => {
+  /* It used to dock ABOVE the tab bar as its own bar, whose base rule padded by the inset for the
+     on-the-edge case and which then had to zero that padding when it sat on the tab bar (a ~34px dead
+     band otherwise). Both halves are gone: the Dock floats above the inset ONCE (test/tab-bar.test.js),
+     the mini bar is a row of it, and `#foray-player` now holds only the sheet - no padding, no fill, no
+     border, no shadow.
+     MUTATION: put `padding-bottom: env(safe-area-inset-bottom, 0)` back on `#foray-player` or on
+     `.dock-layer .fp-bar` -> red; a dead band of bar sits above the tab row on a notched iPhone. */
+  for (const prop of ["padding-bottom", "padding", "background", "border-top", "box-shadow"]) {
+    assert.strictEqual(valueOf("#foray-player", prop), null, `#foray-player carries no ${prop}: it holds the sheet, not a bar`);
+  }
+  assert.doesNotMatch(valueOf(".dock-layer .fp-bar", "padding") || "", /safe-area-inset/, "the row never pads for the home indicator");
+  assert.strictEqual(valueOf(".dock-layer .fp-bar", "height"), "var(--mini)", "a 64px row, the Dock's mini row");
+});
 test("Stop reads as a different control from the speed box beside it", () => {
   /* MUTATION: delete `body.ui-v2 .fp-stop { ... }` -> the shared v2 rule
      paints Stop the same grey as `1×`; red. (Close left the row in visual

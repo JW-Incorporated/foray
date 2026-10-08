@@ -379,7 +379,10 @@ test("Library stays reachable via the tab bar (the interim Playlists link is ret
     "the retired interim link to #/library must never render post-cutover"
   );
   m.evalIn("renderTabBar();");
-  const bar = m.body.children.find((el) => el.id === "tab-bar");
+  /* The bar is the Dock's bottom row: body > #dock-layer > #dock > #tab-bar. */
+  const layer = m.body.children.find((el) => el.id === "dock-layer");
+  const dock = layer && layer.children.find((el) => el.id === "dock");
+  const bar = dock && dock.children.find((el) => el.id === "tab-bar");
   assert.ok(bar, "the tab bar must always exist post-cutover");
   const lib = bar.children.find((a) => a.dataset.tabKey === "library");
   assert.ok(lib, "a library tab must exist");
@@ -493,7 +496,7 @@ test("the tab bar names #/shows once, and nothing else in the shell names it", (
      MUTATION: put a drawer link to #/shows back in index.html -> the first assertion fails; put "Shows" back as the
      page heading -> the last one fails. */
   assert.ok(!/<a class="drawer-section" href="#\/shows">/.test(INDEX_HTML), "no second name for #/shows in index.html");
-  const tabName = /\{ key: "search", label: "([^"]+)", hash: "#\/shows"/.exec(fs.readFileSync(path.join(ROOT, "ui", "tabbar.js"), "utf8"))[1];
+  const tabName = /\{ key: "discover", label: "([^"]+)", hash: "#\/shows"/.exec(fs.readFileSync(path.join(ROOT, "ui", "tabbar.js"), "utf8"))[1];
   /* REDESIGN 2026 (ambient, Today's Dock): the tab is now "Discover" (the three-tab Dock). The page's own heading is
      Discover's screen (it says "Search" until that branch lands, "Discover" after), so it is pinned to either, never
      to a third name. MUTATION: rename the tab to "Explore" -> the next assertion fails. */

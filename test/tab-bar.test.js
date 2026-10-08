@@ -1,25 +1,28 @@
-/* REDESIGN 2026, ambient: THREE tabs now (Today, Discover, Library), no Create tab. The ruling that fell is
- * "Four tabs (Home, Search, Create, Library) + drawer menu" (test-classification.md section 0), overturned by the
- * ambient direction's information architecture (DIRECTION.md: Create folds into Discover's single field). The
- * sections below say what each test pins now; the original U-02 text follows.
+/* The tab bar, as the Dock's bottom row. Originally U-02 (docs/ui-transition-plan.md): a four-tab bar
+ * gated by a cp_ui_v2 flag; U-11 (founder override, 2026-09-06, kanban card t_a3f01c8a) retired the
+ * flag. The pre-cutover flag/off-state tests are preserved in archive/legacy-ui-2026-09/.
  *
- * U-02 (docs/ui-transition-plan.md): the tab bar. Originally gated by a
- * cp_ui_v2 flag; U-11 (founder override, 2026-09-06, kanban card
- * t_a3f01c8a) retired the flag — ui2On() now always returns true and the
- * bar is unconditional. The pre-cutover flag/off-state tests are preserved
- * in archive/legacy-ui-2026-09/ (see that directory's README).
+ * RULING THAT FELL (Redesign 2026, ambient, the Dock; test-classification.md section 0): "FOUR TABS
+ * (Home, Search, Create, Library) + DRAWER". This suite is REWRITE-ON-PURPOSE and is rewritten here, in
+ * the PR that adopts the overturning direction: THREE tabs - Today, Discover, Library - and no drawer
+ * navigation. What it still guarantees, as the classification asks: every route resolves to a real page;
+ * EXACTLY ONE nav item is current for every route, never zero or two; the Dock's height equals the space
+ * reserved for it (no content under it, the safe area counted once); the mini player never overlaps the
+ * tab bar - it is a row of the same surface.
  *
  * WHAT THIS PROVES, in order:
  *  1. The tab bar always renders (no on/off state left).
- *  2. It renders its three destinations, in order: Today, Discover, Library.
- *  3. Each of the app's 14 routes maps to exactly one tab, and that tab
- *     (and only that tab) carries aria-current="page" -- so switching tabs
- *     always highlights a real destination, never a stale or double one.
- *  4. All 14 routes still resolve to a real page.
- *  5. Library's tab points at #/library (the U-10/library-screen precedent
- *     this card is explicitly asked to compose with).
+ *  2. It renders three destinations, in order: Today, Discover, Library - and no Create.
+ *  3. Each routed hash maps to exactly one tab, and that tab (and only that tab) carries
+ *     aria-current="page"; the folded routes (#/create, #/starred-shows, #/interests) read as where
+ *     they were folded.
+ *  4. Every route still resolves to a real page.
+ *  5. The tabs' hrefs: Today #/, Discover #/shows, Library #/library.
+ *  6. The Dock reserves exactly the room it occupies, at both insets and in every state.
+ *  7. The mini player is a row of the Dock, above the tab row, never a second bar.
  *
- * Every test names the mutation that kills it, per CLAUDE.md.
+ * Every test names the mutation that kills it, per CLAUDE.md. The Dock's own behaviour (recede,
+ * rows, field, fade, cast, car posture) is test/dock.test.js's.
  *
  * HARNESS: a small real DOM tree (not the flat by-id stub the other suites
  * use) because renderTabBar() creates and appends a fresh element and later
@@ -189,76 +192,79 @@ test("the tab bar always exists after a render (cp_ui_v2 retired, U-11 cutover)"
 });
 
 /* ==================================================================== */
-/* 2. ALL FOUR TABS, IN ORDER                                            */
+/* 2. THREE TABS, IN ORDER, AND NO CREATE                                */
 /* ==================================================================== */
 
-test("the tab bar renders three tabs in order: Today, Discover, Library (no Create tab)", () => {
-  /* Overturns "Four tabs (Home, Search, Create, Library)" by name (ambient IA).
-     MUTATION: reorder TAB_ROUTES, drop one entry, or put the Create entry back. The labels array
-     comparison below fails on each. */
-  const m = mount();
-  m.evalIn("renderTabBar();");
-  const bar = m.body.querySelector("#tab-bar");
-  assert.ok(bar, "the tab bar must exist");
-  const labels = bar.querySelectorAll(".tab-btn").map((a) => {
-    const span = a.children.find((c) => c.tagName === "SPAN");
-    return span ? span.textContent : null;
-  });
-  // innerHTML is used to build each tab's content in app.js (icon + <span>text</span>),
-  // not real child nodes -- so read labels back out of innerHTML instead.
-  const htmlLabels = bar.querySelectorAll(".tab-btn").map((a) => {
-    const m2 = /<span>([^<]*)<\/span>/.exec(a.innerHTML);
-    return m2 ? m2[1] : null;
-  });
-  assert.deepStrictEqual(htmlLabels, ["Today", "Discover", "Library"]);
-  assert.ok(!bar.querySelectorAll(".tab-btn").some((a) => a.dataset.tabKey === "create"), "no tab is keyed create: Create folded into Discover");
-  void labels;
+const tabLabels = (m) => m.body.querySelector("#tab-bar").querySelectorAll(".tab-btn").map((a) => {
+  const label = /<span class="tab-label">([^<]*)<\/span>/.exec(a.innerHTML);
+  return label ? label[1] : null;
 });
 
-/* Sections 3 and 4 (turning the flag off; native-shell default vs explicit
-   choice) were retired with the cp_ui_v2 flag itself in U-11 (founder
-   override, 2026-09-06). There is no off state left to test — see the
-   header comment and archive/legacy-ui-2026-09/ for the pre-cutover
-   coverage. */
+test("the tab bar renders THREE tabs in order - Today, Discover, Library - and there is no Create tab", () => {
+  /* RULING THAT FELL: "four tabs + drawer". MUTATION: reorder TAB_ROUTES, drop an entry, or put the
+     Create entry back (`{ key: "create", label: "Create", hash: "#/create" }`) - the label list below
+     fails on each. innerHTML is how tabbar.js builds a tab (two glyphs + the label), so labels are read
+     back out of it. */
+  const m = mount();
+  m.evalIn("renderTabBar();");
+  assert.deepStrictEqual(tabLabels(m), ["Today", "Discover", "Library"]);
+  const keys = m.body.querySelector("#tab-bar").querySelectorAll(".tab-btn").map((a) => a.dataset.tabKey);
+  assert.deepStrictEqual(keys, ["today", "discover", "library"]);
+});
+
+test("every tab carries BOTH glyphs - Regular and Fill - from the sprite, so a tab change is a change of glyph", () => {
+  /* The spec: "Active tab = Fill glyph + --text, inert = Regular + --text-2; a tab change is visible in
+     greyscale." The crossfade between the two needs both in the DOM. MUTATION: build only the Regular
+     glyph (drop the `tab-glyph-on` span) -> no Fill symbol is referenced and this goes red; point a tab at
+     a symbol the sprite lacks -> agIcon returns "" and the href assertion goes red. */
+  const m = mount();
+  m.evalIn("renderTabBar();");
+  const hrefs = m.body.querySelector("#tab-bar").querySelectorAll(".tab-btn")
+    .map((a) => [...a.innerHTML.matchAll(/href="ui\/icons\.svg#(i-[\w-]+)"/g)].map((x) => x[1]));
+  assert.deepStrictEqual(hrefs, [
+    ["i-house", "i-house-fill"],
+    ["i-compass", "i-compass-fill"],
+    ["i-books", "i-books-fill"],
+  ]);
+});
 
 /* ==================================================================== */
-/* 5. EACH ROUTE MAPS TO EXACTLY ONE TAB, AND ONLY THAT TAB IS CURRENT    */
+/* 3. EACH ROUTE MAPS TO EXACTLY ONE TAB, AND ONLY THAT TAB IS CURRENT    */
 /* ==================================================================== */
 
 test("every route highlights exactly one tab, and it is the right one", () => {
-  /* MUTATION: change tabForHash's Search branch to also match `#/library`
-     (an overlapping regex). Both "search" and "library" would then read
+  /* MUTATION: change tabForHash's Discover branch to also match `#/library`
+     (an overlapping regex). Both "discover" and "library" would then read
      current for a #/library hash and the "exactly one" assertion fails.
      MUTATION 2: restore `shows$` (no `($|\/)`), or `return null` as the
-     fallback — the new #/shows/q/ and #/bogus rows fail. */
+     fallback - the #/shows/q/ and #/bogus rows fail.
+     MUTATION 3: delete an entry of ROUTE_ALIASES in app.js - the folded route reads as its OLD page
+     (`#/create` falls to Today) and its row fails. */
   const m = mount();
   const cases = [
-    ["#/", "home"],
-    ["#/shows", "search"],
-    ["#/show/abc", "search"],
-    ["#/category/tech", "search"],
-    /* Followed shows moved into Library (R6, 2026-09-22), and every route
-       lights a tab: a browse pill's #/shows/q/, Interests, and anything the
-       router renders as Home (audit 2026-09-22). */
-    ["#/starred-shows", "library"],
-    ["#/shows/q/Science", "search"],
-    /* Tuning (#/interests), Settings and About sit behind the gear on Today (Redesign 2026, ambient), so they are Today's. */
-    ["#/interests", "home"],
-    ["#/settings", "home"],
-    ["#/about", "home"],
-    ["#", "home"],
-    ["", "home"],
-    ["#/bogus", "home"],
-    ["#/episode/xyz", "search"],
-    /* Create's own page and the playlist routes light DISCOVER now (the tab is gone; its field lives there). */
-    ["#/playlists", "search"],
-    ["#/playlist/abc", "search"],
-    ["#/subject/tech", "search"],
-    ["#/create", "search"],
+    ["#/", "today"],
+    ["#/shows", "discover"],
+    ["#/show/abc", "discover"],
+    ["#/category/tech", "discover"],
+    ["#/shows/q/Science", "discover"],
+    ["#/episode/xyz", "discover"],
+    ["#/subject/tech", "discover"],
+    ["#/tuning", "today"],
+    ["#/settings", "today"],      // Settings and About sit behind the gear on Today (Redesign 2026, ambient)
+    ["#/about", "today"],
+    ["#", "today"],
+    ["", "today"],
+    ["#/bogus", "today"],
     ["#/library", "library"],
     ["#/queue", "library"],
     ["#/forays", "library"],
     ["#/foray/xyz", "library"],
+    ["#/playlists", "library"],
+    ["#/playlist/abc", "library"],
+    /* THE THREE FOLDED ROUTES (ROUTE_ALIASES): each reads as where it was folded. */
+    ["#/create", "discover"],        // the Create tab's field is Discover's
+    ["#/starred-shows", "library"],  // Library lists every followed show
+    ["#/interests", "today"],        // Interests is Tuning, behind Settings, which hangs off Today
   ];
   for (const [hash, want] of cases) {
     m.ctx.location.hash = hash;
@@ -270,16 +276,33 @@ test("every route highlights exactly one tab, and it is the right one", () => {
   }
 });
 
+test("the three folded routes are rewritten in place, and only those three", () => {
+  /* MUTATION: add `"#/playlists": "#/library"` to ROUTE_ALIASES -> the exact-set assertion goes red (a
+     route nobody decided to fold); remove one -> it goes red the other way. */
+  const m = mount();
+  assert.deepStrictEqual(JSON.parse(m.evalIn("JSON.stringify(ROUTE_ALIASES)")), {
+    "#/create": "#/shows",
+    "#/starred-shows": "#/library",
+    "#/interests": "#/tuning",
+  });
+  for (const [from, to] of [["#/create", "#/shows"], ["#/starred-shows", "#/library"], ["#/interests", "#/tuning"]]) {
+    m.ctx.location.hash = from;
+    assert.strictEqual(m.evalIn("currentHash()"), to, `${from} reads as ${to}`);
+  }
+  m.ctx.location.hash = "#/shows/q/created";
+  assert.strictEqual(m.evalIn("currentHash()"), "#/shows/q/created", "a hash that merely contains one is untouched");
+});
+
 /* ==================================================================== */
-/* 6. ALL 14 ROUTES STILL RESOLVE WITH THE FLAG ON                       */
+/* 4. EVERY ROUTE STILL RESOLVES                                         */
 /* ==================================================================== */
 
-test("all 14 existing routes still resolve to a real page", () => {
+test("every routed page, and the three folded routes, still resolve to a real page", () => {
   /* MUTATION: have renderCurrentPage() return early for any route (e.g.
      accidentally gate page rendering behind a stale condition). Every one
      of these would then render nothing and the innerHTML assertion fails.
-     13 -> 14 with U-06 (docs/ui-transition-plan.md): #/create is a new
-     route, Create's own screen rather than an alias for #/playlists. */
+     13 -> 14 with U-06; 14 -> 15 with the Dock: #/tuning is the Interests page's new address, and
+     #/create, #/starred-shows and #/interests are aliases that must land on a page, not on nothing. */
   const m = mount();
   m.evalIn(
     'state.catalog = { shows: [] }; state.discover = { items: [] }; ' +
@@ -290,151 +313,123 @@ test("all 14 existing routes still resolve to a real page", () => {
   const routes = [
     "#/", "#/shows", "#/show/abc", "#/category/tech", "#/starred-shows",
     "#/episode/xyz", "#/playlists", "#/playlist/abc", "#/subject/tech",
-    "#/create", "#/library", "#/queue", "#/forays", "#/foray/xyz",
+    "#/create", "#/library", "#/queue", "#/forays", "#/foray/xyz", "#/tuning", "#/interests", "#/settings", "#/about",
   ];
-  assert.strictEqual(routes.length, 14, "sanity: this suite's own acceptance list must name all 14 routes");
+  assert.strictEqual(routes.length, 18, "sanity: this suite acceptance list names the 14 old routes, Tuning, its alias, Settings and About");
   for (const hash of routes) {
     m.ctx.location.hash = hash;
-    assert.doesNotThrow(() => m.evalIn("renderCurrentPage()"), `${hash} must render without throwing when cp_ui_v2 is on`);
+    assert.doesNotThrow(() => m.evalIn("renderCurrentPage()"), `${hash} must render without throwing`);
     const view = m.body.querySelector("#view");
-    assert.ok(view.innerHTML && view.innerHTML.length > 0, `${hash} must render real content with cp_ui_v2 on`);
+    assert.ok(view.innerHTML && view.innerHTML.length > 0, `${hash} must render real content`);
   }
 });
 
 /* ==================================================================== */
-/* 7. LIBRARY TAB POINTS AT #/library                                    */
+/* 5. THE TABS' HREFS                                                    */
 /* ==================================================================== */
 
-test("the Library tab's href is #/library", () => {
+test("the tabs' hrefs are #/, #/shows and #/library", () => {
+  /* MUTATION: point Discover's tab at "#/create" (the retired route) or Library's at "#/playlists" ->
+     red. The tab IS the route: a tab whose href is an alias would light the right tab only after a
+     redirect. */
   const m = mount();
   m.evalIn("renderTabBar();");
-  const bar = m.body.querySelector("#tab-bar");
-  const lib = bar.querySelectorAll(".tab-btn").find((a) => a.dataset.tabKey === "library");
-  assert.ok(lib, "a library tab must exist");
-  assert.strictEqual(lib.href, "#/library");
+  const hrefs = Object.fromEntries(m.body.querySelector("#tab-bar").querySelectorAll(".tab-btn").map((a) => [a.dataset.tabKey, a.href]));
+  assert.deepStrictEqual(hrefs, { today: "#/", discover: "#/shows", library: "#/library" });
 });
 
 /* ==================================================================== */
-/* 7b. THE GLYPH FOLLOWS THE STATE (ambient Fill/Regular pair)          */
+/* 6. THE DOCK AND THE PAGE NEVER OVERLAP CONTENT (ui/dock.css)           */
 /* ==================================================================== */
 
-test("the active tab wears the Fill glyph and the others the Regular one, from the sprite (a state change is a fill)", () => {
-  /* Overturns the old per-tab stroke SVGs: DIRECTION.md "Iconography" (Phosphor, Fill for the active tab).
-     MUTATION 1: render the Regular glyph for the active tab too (tabGlyph ignores `on`) -> the
-     house-fill assertion fails. MUTATION 2: switch back to inline stroke SVG markup -> no <use> reference. */
+/* docs/ui-transition-plan.md U-02's acceptance: "the bar and mini-player never overlap content
+   (measured at inset 59px like test/home-layout.test.js does)" - now one surface. The arithmetic is
+   resolved, not matched: test/helpers/dock-css.js reads the tokens and the Dock's own block and returns
+   numbers, so a change to any token in the chain moves the answer. */
+
+const dockCss = require("./helpers/dock-css.js");
+
+/** Every state the Dock can be in, as the body classes that make it so. */
+const DOCK_STATES = [
+  [], ["fp-open"], ["sh-compose"], ["fp-open", "sh-compose"], ["dock-receded"], ["fp-open", "dock-receded"],
+];
+
+test("the page reserves, under its content, exactly the room the Dock occupies at rest - at both insets, in every state", () => {
+  /* The Dock occupies: its rows (field + mini + tab row AT REST) + the float (--dock-inset, 12) + the
+     home-indicator inset, counted ONCE. The page reserves that plus 24px of air under the last row.
+     MUTATION: drop `var(--safe-bottom)` from `--dock-reserve` -> at inset 34 the reservation is 34 short
+     and every state fails; add it twice -> 34 over. MUTATION 2: drop `var(--dock-mini-h)` -> the
+     `fp-open` states fail by 64. Tested at inset 0 AND 34 because at 0 a missing inset term is invisible. */
+  for (const classes of DOCK_STATES) {
+    const label = classes.join(".") || "(rest)";
+    const vars = dockCss.scope(classes);
+    for (const inset of [0, 34, 59]) {
+      const reserved = dockCss.resolve(dockCss.declOf("ui/dock.css", "body.ui-v2", "padding-bottom"), vars, inset);
+      const occupied = dockCss.resolve("calc(var(--dock-rest-h) + var(--dock-inset) + var(--safe-bottom))", new Map([...vars, ["--safe-bottom", `${inset}px`]]), inset);
+      assert.strictEqual(reserved - occupied, 24, `${label} at inset ${inset}: the page must reserve the Dock's room plus 24px of air (reserved ${reserved}, Dock ${occupied})`);
+    }
+  }
+});
+
+test("the Dock's rows add up to its height: field 48, mini 64, tab row 64 (44 receded), no gap", () => {
+  /* The Veil budget (BUILD-NOTES 1.5): 64 / 128 at rest, 156 on Discover with a mini row (round 1's 148 had a 36px
+     receded row; the prototype and the 44px floor say 44). MUTATION: change `--mini` or `--tab-bar` in
+     tokens.css, `--dock-field-row` or `--dock-tab-receded` in ui/dock.css -> the row sums go red. */
+  const sum = (classes, token) => { const v = dockCss.scope(classes); return dockCss.resolve(v.get(token), v, 0); };
+  assert.strictEqual(sum([], "--dock-h"), 64, "tabs alone");
+  assert.strictEqual(sum(["fp-open"], "--dock-h"), 128, "mini + tabs");
+  assert.strictEqual(sum(["fp-open", "sh-compose"], "--dock-h"), 156, "Discover: field + mini + RECEDED tabs");
+  assert.strictEqual(sum(["sh-compose"], "--dock-h"), 92, "Discover with nothing playing: field + receded tabs");
+  assert.strictEqual(sum(["fp-open", "dock-receded"], "--dock-h"), 108, "a scrolled page: mini + receded tabs");
+  assert.strictEqual(sum(["fp-open", "dock-receded"], "--dock-rest-h"), 128, "...and the page still reserves the tab row at rest");
+});
+
+test("the Dock floats 12px above the safe area, with the inset counted once (and rides the keyboard)", () => {
+  /* MUTATION: `bottom: calc(var(--kb-inset, 0px) + var(--dock-inset))` (drop the safe area) -> red at inset
+     34; add `var(--safe-bottom)` twice -> red the other way. */
+  const vars = dockCss.scope([]);
+  const bottom = dockCss.declOf("ui/dock.css", ".dock-layer .dock", "bottom");
+  for (const inset of [0, 34]) {
+    assert.strictEqual(dockCss.resolve(bottom, new Map([...vars, ["--safe-bottom", `${inset}px`]]), inset), inset + 12, `inset ${inset}`);
+  }
+  assert.strictEqual(dockCss.resolve(bottom, new Map([...vars, ["--kb-inset", "300px"]]), 0), 312, "300px of keyboard lifts it by 300");
+});
+
+/* ==================================================================== */
+/* 7. THE MINI PLAYER IS A ROW OF THE DOCK                                */
+/* ==================================================================== */
+
+test("the Dock's rows are, top to bottom, the field, the mini player and the tab bar - one surface", () => {
+  /* The mini player docks ABOVE the tab bar, and never as its own bar. MUTATION: append the mini row
+     after #tab-bar, or move #tab-bar out of #dock -> the order assertion goes red; drop `veil` from the
+     Dock's class -> the surface assertion does. */
   const m = mount();
   m.ctx.location.hash = "#/";
   m.evalIn("renderTabBar();");
-  const tabs = m.body.querySelector("#tab-bar").querySelectorAll(".tab-btn");
-  const use = (key) => {
-    const a = tabs.find((t) => t.dataset.tabKey === key);
-    const hit = /<use href="([^"]+)"/.exec(a.innerHTML);
-    return hit ? hit[1] : null;
-  };
-  assert.strictEqual(use("home"), "ui/icons.svg#i-house-fill", "the active tab is the Fill glyph");
-  assert.strictEqual(use("search"), "ui/icons.svg#i-compass", "an inert tab is the Regular glyph");
-  assert.strictEqual(use("library"), "ui/icons.svg#i-books");
-  m.ctx.location.hash = "#/library";
+  const dock = m.body.querySelector("#dock");
+  assert.ok(dock, "#dock exists");
+  assert.deepStrictEqual(dock.children.map((c) => c.id), ["dock-field", "dock-mini", "tab-bar"]);
+  assert.ok(dock.className.split(/\s+/).includes("veil"), "one Veil surface");
+  assert.strictEqual(m.body.querySelectorAll("#tab-bar").length, 1, "and one tab bar");
+});
+
+test("the player hands its bar to the Dock's mini row, and the row follows fp-open", () => {
+  /* MUTATION: have dockMountMini append to document.body (a second bar) -> the parent assertion goes red;
+     drop the `mini.hidden = !playing` write from syncDock -> the row stays hidden (or shown) whatever
+     plays. */
+  const m = mount();
   m.evalIn("renderTabBar();");
-  assert.strictEqual(use("home"), "ui/icons.svg#i-house", "the fill moves with the current tab: Today is Regular again");
-  assert.strictEqual(use("library"), "ui/icons.svg#i-books-fill");
-  assert.ok(/<span>Library<\/span>/.test(tabs.find((t) => t.dataset.tabKey === "library").innerHTML), "the label survives the glyph swap");
-});
-
-/* ==================================================================== */
-/* 8. THE BAR AND THE MINI-PLAYER NEVER OVERLAP CONTENT (styles.css)      */
-/* ==================================================================== */
-
-/* docs/ui-transition-plan.md U-02's acceptance: "the bar and mini-player
-   never overlap content (measured at inset 59px like
-   test/home-layout.test.js does)." A minimal CSS box-model check,
-   deliberately narrower than that suite's full evaluator: it resolves
-   just the handful of var()/env()/calc() expressions this card's own
-   rules introduce, over the same two inset conditions. */
-
-const CSS = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");
-
-function cssDecl(selector, prop) {
-  // Every unconditional (non-@media) rule with this exact selector, in
-  // source order -- body.ui-v2 in particular has more than one such block
-  // (U-01's token scope, and this card's own), and the winning declaration
-  // is whichever named block actually declares `prop`, last-one-wins like
-  // the real cascade.
-  const stripped = CSS.replace(/\/\*[\s\S]*?\*\//g, "");
-  const re = new RegExp(
-    `(?:^|\\})\\s*${selector.replace(/[.#]/g, "\\$&")}\\s*\\{([^}]*)\\}`,
-    "gm"
-  );
-  const declRe = new RegExp(`(?:^|;)\\s*${prop}\\s*:\\s*([^;]+);`, "m");
-  let found = null;
-  let m2;
-  while ((m2 = re.exec(stripped))) {
-    const d = declRe.exec(m2[1]);
-    if (d) found = d[1].trim();
-  }
-  assert.ok(found, `no unconditional \`${selector} { ${prop}: ... }\` declaration found in styles.css`);
-  return found;
-}
-
-function resolvePx(expr, insetBottom) {
-  let out = expr;
-  for (let i = 0; i < 10 && /var\(|env\(/.test(out); i++) {
-    out = out.replace(/var\(\s*(--[\w-]+)\s*\)/g, (_m, name) => {
-      const re = new RegExp(`${name}:\\s*([^;]+);`);
-      // --tab-bar-h and --topbar-h etc. are declared across MULTIPLE :root
-      // blocks (styles.css opens more than one), so scan all of them and
-      // take the last match, same last-one-wins rule as the real cascade.
-      let found = null;
-      for (const rootMatch of CSS.matchAll(/:root\s*\{([^}]*)\}/g)) {
-        const d = re.exec(rootMatch[1]);
-        if (d) found = d[1].trim();
-      }
-      assert.ok(found, `\`${name}\` is not declared on any :root block`);
-      return found;
-    });
-    out = out.replace(/env\(\s*safe-area-inset-bottom\s*(?:,[^()]*)?\)/g, `${insetBottom}px`);
-  }
-  const num = /^calc\((.+)\)$/.exec(out.trim());
-  const flat = num ? num[1] : out;
-  // Only `+` of plain px terms appears in these rules -- good enough here.
-  const total = flat.split("+").reduce((sum, term) => {
-    const t = term.trim();
-    const px2 = /^(-?\d*\.?\d+)px$/.exec(t);
-    assert.ok(px2, `unexpected term "${t}" in "${expr}" -- this test's tiny resolver only handles a sum of px terms`);
-    return sum + Number(px2[1]);
-  }, 0);
-  return total;
-}
-
-test("the tab bar's own height and body.ui-v2's content reservation for it agree, at both insets", () => {
-  /* MUTATION: change `.tab-bar`'s height calc to a different constant than
-     `body.ui-v2`'s padding-bottom (the classic "one got fixed, the other
-     didn't" drift .topbar's own four reservations already guard against
-     for the top edge). Either inset catches a mismatch. */
-  for (const insetBottom of [0, 34]) { // 0 = desktop, 34 = iPhone home-indicator inset
-    const barHeight = resolvePx(cssDecl(".tab-bar", "height"), insetBottom);
-    const reserved = resolvePx(cssDecl("body.ui-v2", "padding-bottom"), insetBottom);
-    assert.strictEqual(
-      reserved, barHeight,
-      `inset ${insetBottom}px: body.ui-v2's padding-bottom (${reserved}px) must equal ` +
-      `the tab bar's own height (${barHeight}px), or content is hidden behind (or a gap ` +
-      `is left under) the bar`
-    );
-  }
-});
-
-test("the mini-player docks ABOVE the tab bar: #foray-player's bottom offset equals the bar's height while both are open", () => {
-  /* MUTATION: hardcode `body.ui-v2.fp-open #foray-player { bottom: 0 }`
-     (i.e. let the mini-player sit behind/under the tab bar instead of
-     docking above it). This fails because bottom would be 0, not the
-     bar's height. */
-  for (const insetBottom of [0, 34]) {
-    const barHeight = resolvePx(cssDecl(".tab-bar", "height"), insetBottom);
-    const playerBottom = resolvePx(cssDecl("body.ui-v2.fp-open #foray-player", "bottom"), insetBottom);
-    assert.strictEqual(
-      playerBottom, barHeight,
-      `inset ${insetBottom}px: the mini-player's bottom offset (${playerBottom}px) must equal ` +
-      `the tab bar's height (${barHeight}px) so it docks above the bar, not behind it`
-    );
-  }
+  const progress = { tagName: "DIV" };
+  const bar = { tagName: "DIV" };
+  const mini = m.body.querySelector("#dock-mini");
+  const took = m.evalIn("(p, b) => dockMountMini(p, b)")(progress, bar);
+  assert.strictEqual(took, true, "the Dock took the bar");
+  assert.deepStrictEqual(mini.children, [progress, bar], "the progress line and the bar are the mini row's children, in that order");
+  assert.strictEqual(mini.hidden, true, "nothing is playing: the row is hidden");
+  m.body.classList.add("fp-open");
+  m.evalIn("syncDock()");
+  assert.strictEqual(mini.hidden, false, "something is loaded: the row shows");
+  m.body.classList.remove("fp-open");
+  m.evalIn("syncDock()");
+  assert.strictEqual(mini.hidden, true, "stopped: the row goes again");
 });

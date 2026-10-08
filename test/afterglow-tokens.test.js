@@ -307,16 +307,23 @@ test("every selector in the file is a new name: nothing today's markup emits or 
   /* The phase-3 system files are the deliberate exceptions: icons.js, primitives.js and gallery.js emit
      only the new `.ag` subtree while legacy screens remain unchanged. Every screen-bearing ui/*.js still
      counts. MUTATION: put `class="icon"` in app.js or any other screen template -> red. */
-  /* Home (ui/home.js) and Foray detail (ui/foray.js) are ADOPTED screens (Redesign 2026 phase 4): each wears `.ag`, `.room` and the
-     type, clamp and eyebrow classes by design. A screen joins this list in the PR that adopts the system, and no sooner. */
-  const systemFiles = new Set(["icons.js", "primitives.js", "gallery.js", "home.js", "onboarding.js", "foray.js", "settings.js", "interests.js", "show.js", "episode.js"]);
-  /* Settings (ui/settings.js: the gear's Sheet, Settings, About) and Tuning (ui/interests.js) are adopted too, and so are the show page (ui/show.js) and the Episode page (ui/episode.js). */
-  const emitted = [read("app.js"), read("index.html"), ...fs.readdirSync(path.join(ROOT, "ui")).filter((f) => f.endsWith(".js") && !systemFiles.has(f)).map((f) => read(`ui/${f}`)),
-    ...fs.readdirSync(path.join(ROOT, "player")).filter((f) => f.endsWith(".js") && !f.endsWith(".test.js")).map((f) => read(`player/${f}`))].join("\n");
+  const systemFiles = new Set(["icons.js", "primitives.js", "gallery.js", "tabbar.js", "home.js", "onboarding.js", "foray.js", "settings.js", "interests.js", "show.js", "episode.js"]);
+  /* THE DOCK IS THE FIRST SCREEN TO ADOPT THE SYSTEM (Redesign 2026, Phase 4 "dock"). ui/tabbar.js builds it
+     (`dock veil`, `dock-fade`, `dock-cast`, and the sprite glyphs, `icon`) and player/client.js writes the
+     mini bar's glyphs as `icon` (spriteIcon): those classes are emitted there ON PURPOSE, so the two files
+     are exempt for exactly them. Every OTHER file is still held to "emits none of it", and every other
+     class is still unemitted everywhere. MUTATION: put `class="icon"` or `class="veil"` in app.js or any
+     other screen template -> red. */
+  const DOCK_ADOPTED = new Set(["icon", "dock", "veil", "dock-fade", "dock-cast"]);
+  const playerFiles = fs.readdirSync(path.join(ROOT, "player")).filter((f) => f.endsWith(".js") && !f.endsWith(".test.js"));
+  const emittedOutsideDock = [read("app.js"), read("index.html"), ...fs.readdirSync(path.join(ROOT, "ui")).filter((f) => f.endsWith(".js") && !systemFiles.has(f)).map((f) => read(`ui/${f}`)),
+    ...playerFiles.filter((f) => f !== "client.js").map((f) => read(`player/${f}`))].join("\n");
+  const emitted = emittedOutsideDock + "\n" + read("player/client.js");
   const legacy = new Set(STYLE_RULES.flatMap((r) => r.selectors.flatMap((s) => [...s.matchAll(/\.([A-Za-z][\w-]*)/g)].map((m) => m[1]))));
   for (const c of classes) {
     assert.ok(!legacy.has(c), `class .${c} is already a styles.css selector`);
-    const emits = new RegExp(`class(?:Name)?\\s*=\\s*[\\\\"'\`][^"'\`]*(?<![\\w-])${c}(?![\\w-])`).test(emitted) || new RegExp(`classList\\.(?:add|toggle|contains)\\([^)]*["']${c}["']`).test(emitted);
+    const haystack = DOCK_ADOPTED.has(c) ? emittedOutsideDock : emitted;
+    const emits = new RegExp(`class(?:Name)?\\s*=\\s*[\\\\"'\`][^"'\`]*(?<![\\w-])${c}(?![\\w-])`).test(haystack) || new RegExp(`classList\\.(?:add|toggle|contains)\\([^)]*["']${c}["']`).test(haystack);
     assert.ok(!emits, `class .${c} is emitted by today's markup`);
   }
   assert.ok(classes.size >= 15, `fixture assumption: the file defines its classes (${classes.size})`);
@@ -646,13 +653,18 @@ test("the stylesheet is wired into the page and every shipping path: index.html,
      A stylesheet that ships to the page but not into the generation is the one file sw.js could not verify. */
   const html = read("index.html");
   const links = [...html.matchAll(/<link rel="stylesheet" href="([^"]+)">/g)].map((m) => m[1]);
-  assert.deepStrictEqual(links, ["styles.css", "ui/tokens.css", "ui/primitives.css", "ui/today.css", "ui/onboarding.css", "ui/foray-detail.css", "ui/settings.css", "ui/show.css", "ui/episode.css"], "legacy, tokens, scoped phase-3 primitives, then the adopted Today, onboarding, Foray detail, Settings, show and Episode screens");
+  assert.deepStrictEqual(links, ["styles.css", "ui/tokens.css", "ui/primitives.css", "ui/dock.css", "ui/today.css", "ui/onboarding.css", "ui/foray-detail.css", "ui/settings.css", "ui/show.css", "ui/episode.css"], "legacy, tokens, scoped phase-3 primitives, then the Dock, then the adopted Today, onboarding, Foray detail, Settings, show and Episode screens");
   const shell = (rel, startRe) => { const s = read(rel); const m = startRe.exec(s); assert.ok(m, `${rel}: shell list found`); return m[1]; };
   assert.match(shell("tools/ci/generate-manifest.mjs", /const SHELL = \[([\s\S]*?)\n\];/), /"ui\/tokens\.css"/, "generate-manifest SHELL");
   assert.match(shell("tools/web/prepare-dist.mjs", /const SHELL = \[([\s\S]*?)\n\];/), /"ui\/tokens\.css"/, "prepare-dist SHELL");
   const pw = await import(pathToFileURL(path.join(ROOT, "tools", "mobile", "prepare-webdir.mjs")).href);
   assert.ok(pw.SHELL_FILES.includes("ui/tokens.css"), "prepare-webdir SHELL_FILES");
   assert.ok(pw.buildPlan(ROOT).includes("ui/tokens.css"), "the app bundle's copy plan carries it");
+  /* The Dock's own stylesheet ships down the same four paths (MUTATION: remove "ui/dock.css" from any one of them). */
+  assert.match(shell("tools/ci/generate-manifest.mjs", /const SHELL = \[([\s\S]*?)\n\];/), /"ui\/dock\.css"/, "generate-manifest SHELL carries the Dock's stylesheet");
+  assert.match(shell("tools/web/prepare-dist.mjs", /const SHELL = \[([\s\S]*?)\n\];/), /"ui\/dock\.css"/, "prepare-dist SHELL carries the Dock's stylesheet");
+  assert.ok(pw.SHELL_FILES.includes("ui/dock.css"), "prepare-webdir SHELL_FILES carries the Dock's stylesheet");
+  assert.ok(pw.buildPlan(ROOT).includes("ui/dock.css"), "and the app bundle's copy plan");
   const vercel = JSON.parse(read("vercel.json"));
   assert.ok(vercel.headers.some((h) => h.source === "/ui/(.*)" && /must-revalidate/.test(JSON.stringify(h.headers))), "/ui/ is revalidated like styles.css, so a token change is never served stale");
 });
