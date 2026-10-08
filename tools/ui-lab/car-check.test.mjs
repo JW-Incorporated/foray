@@ -17,8 +17,8 @@ const rect = (w, h, bottom = 0) => ({ width: w, height: h, top: bottom - h, bott
 
 /** A clean measurement at a viewport, from the plan's numbers. */
 function good(w = 393, h = 852) {
-  const art = h < 700 ? 200 : 240;
-  const lines = h >= 800 ? 3 : 2;
+  const lines = 3;                                  // a long title runs its three lines at every height
+  const art = h < 700 ? 180 : 240;                  // ... and under 700px tall a third line costs the artwork 20px
   return {
     viewport: { w, h },
     posture: "car",
@@ -41,11 +41,13 @@ const VIEWPORTS = [[393, 852], [375, 667]];
 const rules = (list) => [...new Set(list.map((x) => x.rule))].sort();
 
 test("both plan viewports are clean from the plan's own numbers", () => {
-  /* MUTATION: change ART_SHORT_PX from 200 to 210 in lib/car-rules.mjs -> red at 375x667.
+  /* MUTATION: change ART_SHORT_LONG_TITLE_PX from 180 to 190 in lib/car-rules.mjs -> red at 375x667.
      MUTATION: change SKIP_PX from 72 to 56 -> red at both. */
   for (const [w, h] of VIEWPORTS) assert.deepEqual(evaluateCar(`${w}x${h}`, good(w, h)), [], `${w}x${h}`);
   assert.equal(artFor(852), 240); assert.equal(artFor(700), 240); assert.equal(artFor(699), 200); assert.equal(artFor(667), 200);
-  assert.equal(clampFor(852), 3); assert.equal(clampFor(800), 3); assert.equal(clampFor(799), 2); assert.equal(clampFor(667), 2);
+  assert.equal(artFor(667, 3), 180, "a three-line title on a short screen"); assert.equal(artFor(852, 3), 240, "a tall screen keeps 240 under three lines");
+  assert.equal(artFor(667, 2), 200, "two lines leave the short screen's 200");
+  assert.equal(clampFor(852), 3); assert.equal(clampFor(800), 3); assert.equal(clampFor(799), 3); assert.equal(clampFor(667), 3);
 });
 
 test("Play's bottom edge must be at least 24px above the viewport bottom, at 393x852 and 375x667", () => {
@@ -76,15 +78,21 @@ test("the posture must fit without scrolling, so Play is never only reachable by
   assert.deepEqual(evaluatePlayClearance("x", m), [], "one pixel of rounding is not a scroll");
 });
 
-test("artwork is 240, and 200 under 700px tall; the long-title 180 must not leak in", () => {
+test("artwork is 240, 200 under 700px tall, and 180 only where a short screen's title runs three lines", () => {
   /* MUTATION: change SHORT_BELOW_PX from 700 to 600 -> red (a 667 viewport expects 240 and the good fixture's 200 fails).
-     MUTATION: make artFor ignore the viewport (return 240) -> red at 375x667. */
+     MUTATION: make artFor ignore the viewport (return 240) -> red at 375x667.
+     MUTATION: make artFor ignore titleLines (drop the ART_SHORT_LONG_TITLE_PX branch) -> red: the iteration-2 fix (a 667
+     screen trades 20px of artwork for the title's third line) would then be asserted as a 200 artwork under a 3-line title. */
   const tall = good(393, 852);
   tall.art = rect(180, 180, 300);
-  assert.deepEqual(rules(evaluateSizes("x", tall)), ["artwork-size"], "180 is the normal posture's long-title size");
+  assert.deepEqual(rules(evaluateSizes("x", tall)), ["artwork-size"], "180 under a 3-line title is a short-screen trade, not a tall one");
   const short = good(375, 667);
   short.art = rect(240, 240, 300);
   assert.deepEqual(rules(evaluateSizes("x", short)), ["artwork-size"], "240 on a 667 screen is the old overflow");
+  short.art = rect(200, 200, 300);
+  assert.deepEqual(rules(evaluateSizes("x", short)), ["artwork-size"], "200 under a 3-line title is the iteration-1 build, which clipped the title to two lines");
+  short.title.lines = 2; short.title.clamp = 3;
+  assert.deepEqual(evaluateSizes("x", short), [], "a two-line title on a short screen keeps 200");
   tall.art = null;
   assert.deepEqual(rules(evaluateSizes("x", tall)), ["artwork-size"], "no artwork is a failure");
 });
@@ -155,8 +163,9 @@ test("the why-line, secondary row, More handle, show notes and chapters are each
   }
 });
 
-test("the title clamps to 3 lines from 800px tall and 2 below, and an ellipsis only appears where the clamp is reached", () => {
-  /* MUTATION: change TALL_FROM_PX from 800 to 900 -> red at 852 (it would expect 2).
+test("the title clamps to 3 lines at every height, and an ellipsis only appears where the clamp is reached", () => {
+  /* MUTATION: make clampFor return 2 below 800px again -> red at 375x667 (the iteration-2 defect: the title ended in an
+     ellipsis on line two while the artwork kept its 200).
      MUTATION: delete the no-ellipsis-beside-empty-room line -> red: this is the 393x852 failure of critique round 3,
      where a two-line clamp ended in an ellipsis with ~110px of empty Room below it. */
   const at852 = good(393, 852);
@@ -165,15 +174,14 @@ test("the title clamps to 3 lines from 800px tall and 2 below, and an ellipsis o
   at852.title.clamp = 3; at852.title.lines = 3; at852.title.truncated = true;
   assert.deepEqual(evaluateTitle("x", at852), [], "an ellipsis on the third line is the clamp doing its job");
   const at667 = good(375, 667);
-  at667.title.clamp = 3;
-  assert.deepEqual(rules(evaluateTitle("x", at667)), ["title-clamp"], "3 lines at 667 is too many");
-  at667.title.clamp = 2; at667.title.lines = 3;
+  assert.deepEqual(evaluateTitle("x", at667), [], "three lines at 667 is the clamp");
+  at667.title.clamp = 2; at667.title.lines = 2; at667.title.truncated = true;
+  assert.deepEqual(rules(evaluateTitle("x", at667)), ["no-ellipsis-beside-empty-room", "title-clamp"], "2 lines at 667 is the iteration-1 build");
+  at667.title.clamp = 3; at667.title.lines = 4;
   assert.deepEqual(rules(evaluateTitle("x", at667)), ["title-clamp"], "a count past the clamp is not a clamp");
-  const edge = good(393, 800);
-  assert.deepEqual(evaluateTitle("x", edge), [], "800 is tall enough for three");
   const justUnder = good(393, 799);
-  justUnder.title.clamp = 3;
-  assert.deepEqual(rules(evaluateTitle("x", justUnder)), ["title-clamp"], "799 is not");
+  justUnder.title.clamp = 2; justUnder.title.lines = 2;
+  assert.deepEqual(rules(evaluateTitle("x", justUnder)), ["title-clamp"], "799 clamps to three as well");
 });
 
 test("a short title takes one line and shows no ellipsis", () => {

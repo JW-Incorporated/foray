@@ -13,8 +13,9 @@ export const near = (a, b, eps = EPS) => Math.abs(a - b) <= eps;
 export const PLAY_CLEARANCE_PX = 24;
 export const ART_PX = 240;
 export const ART_SHORT_PX = 200;
+export const ART_SHORT_LONG_TITLE_PX = 180;   // a three-line title on a short screen trades artwork height for its third line
 export const SHORT_BELOW_PX = 700;       // "200 under 700px tall"
-export const TALL_FROM_PX = 800;         // the title takes three lines from here, two below
+export const TITLE_CLAMP = 3;            // the title takes three lines at every height (iteration 2: the short screen no longer clips it to two)
 export const PLAY_PX = 112;
 export const SKIP_PX = 72;
 export const PLAY_GLYPH_PX = 52;
@@ -28,10 +29,10 @@ export const NOT_RENDERED = [".fp-s-why", ".ag-np-actions", ".ag-np-legacy-actio
 
 const v = (rule, screen, detail) => ({ rule, screen, detail });
 
-/** The expected artwork edge for a viewport: 240, or 200 under 700px tall. */
-export const artFor = (viewportH) => (viewportH < SHORT_BELOW_PX ? ART_SHORT_PX : ART_PX);
-/** The expected title clamp for a viewport: three lines from 800px tall, two below. */
-export const clampFor = (viewportH) => (viewportH >= TALL_FROM_PX ? 3 : 2);
+/** The expected artwork edge: 240, or 200 under 700px tall, or 180 under 700px tall when the title runs its third line. */
+export const artFor = (viewportH, titleLines = 1) => (viewportH < SHORT_BELOW_PX ? (titleLines >= TITLE_CLAMP ? ART_SHORT_LONG_TITLE_PX : ART_SHORT_PX) : ART_PX);
+/** The expected title clamp: three lines at every height. */
+export const clampFor = (_viewportH) => TITLE_CLAMP;
 
 /** Posture is on, the sheet it opened is open, and the Dock, its fade, its cast and today's tab bar are all out. */
 export function evaluateEntered(screen, m) {
@@ -47,7 +48,7 @@ export function evaluateEntered(screen, m) {
 /** Artwork, Play and the skips, and the glyphs inside them. */
 export function evaluateSizes(screen, m) {
   const out = [];
-  const art = artFor(m.viewport.h);
+  const art = artFor(m.viewport.h, m.title?.lines);
   if (!m.art || !near(m.art.width, art) || !near(m.art.height, art)) out.push(v("artwork-size", screen, `artwork is ${m.art ? `${m.art.width}x${m.art.height}` : "missing"}, expected ${art}x${art} at ${m.viewport.h}px tall`));
   if (!m.play || !near(m.play.width, PLAY_PX) || !near(m.play.height, PLAY_PX)) out.push(v("play-size", screen, `Play is ${m.play ? `${m.play.width}x${m.play.height}` : "missing"}, expected ${PLAY_PX}`));
   if (!m.skips.length) out.push(v("skip-size", screen, "no skip buttons found"));
@@ -92,8 +93,9 @@ export function evaluateHidden(screen, m) {
   return out;
 }
 
-/** Title clamp: three lines at 800px tall and above, two below, and an ellipsis only where the clamp is reached, so no
- *  ellipsis sits beside empty Room: at 393x852 a two-line clamp ended in "..." with ~110px free (critique round 3). */
+/** Title clamp: three lines at every height, and an ellipsis only where the clamp is reached, so no ellipsis sits
+ *  beside empty Room: at 393x852 a two-line clamp ended in "..." with ~110px free (critique round 3), and at 375x667 it
+ *  cut the title on line two while the artwork kept 200 (iteration 2). */
 export function evaluateTitle(screen, m) {
   const out = [];
   const want = clampFor(m.viewport.h);

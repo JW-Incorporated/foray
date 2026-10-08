@@ -13,13 +13,16 @@
 /* A held mini row would otherwise raise the system callout on top of the sheet it just opened. */
 .fp-bar { -webkit-touch-callout: none; }
 
-/* Sizes. The title's 3-line growth shrinks the artwork to 180 in the normal posture (is-long-title); in the car the
-   artwork is 240 whatever the title does, so the same rule is restated for it. */
+/* Sizes. The title's 3-line growth shrinks the artwork to 180 in the normal posture (is-long-title). In the car the
+   artwork stays 240 whatever the title does on a tall screen, and is 200 under 700px tall; there a three-line title trades
+   artwork height for its third line (180, DIRECTION: "artwork drops to 180px under a three-line title"), so the one piece
+   of copy the posture exists to read is never cut short. The rule is restated here because the plain car selector would
+   otherwise lose to now-playing.css's is-long-title 180 on tall screens. */
 [data-posture="car"] .ag-np,
 [data-posture="car"] .ag-np.is-long-title { --np-art: 240px; }
 @media (max-height: 699.98px) {
-  [data-posture="car"] .ag-np,
-  [data-posture="car"] .ag-np.is-long-title { --np-art: 200px; }
+  [data-posture="car"] .ag-np { --np-art: 200px; }
+  [data-posture="car"] .ag-np.is-long-title { --np-art: 180px; }
 }
 [data-posture="car"] .ag-np.fp-sheet .ag-np-play.fp-big { width: 112px; height: 112px; min-width: 112px; min-height: 112px; }
 [data-posture="car"] .ag-np.fp-sheet .ag-np-play .icon { --icon-size: 52px; }
@@ -59,12 +62,10 @@
 [data-posture="car"] .ag-np.fp-sheet .ag-np-head .fy-grab { top: -6px; background: var(--text-2); opacity: 1; }
 [data-posture="car"] .ag-np.fp-sheet .ag-np-art-swap > .lit-art { border: 0; }
 
-/* The title clamps to two lines, three when the screen is tall enough that a third line costs nothing: at 393x852 a
-   two-line clamp put an ellipsis beside empty Room (critique round 3). */
-[data-posture="car"] .ag-np.fp-sheet .fp-s-title { -webkit-line-clamp: 2; line-clamp: 2; }
-@media (min-height: 800px) {
-  [data-posture="car"] .ag-np.fp-sheet .fp-s-title { -webkit-line-clamp: 3; line-clamp: 3; }
-}
+/* The title clamps to three lines at every height: the car posture exists to read it, so a short screen gives up artwork
+   height (180 under a three-line title, above) rather than ending the title in an ellipsis on line two (critique round 3
+   did it at 393x852; iteration 2 at 375x667). */
+[data-posture="car"] .ag-np.fp-sheet .fp-s-title { -webkit-line-clamp: 3; line-clamp: 3; }
 
 /* Play's bottom edge stays 24px or more above the viewport bottom: the handle that used to hold that margin is gone, so
    the first screen pads its own foot (round 1 clipped Play at 375x667). */

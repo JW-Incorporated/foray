@@ -99,16 +99,18 @@ test("car posture ships after Now Playing in every lane and the client wires it 
 });
 
 /* ---------------------------------------------------------------- the stylesheet's numbers */
-test("car.css carries the plan's numbers: artwork 240 / 200, Play 112, skips 72, glyphs 52 / 48, title clamp 3 from 800", () => {
+test("car.css carries the plan's numbers: artwork 240 / 200 / 180, Play 112, skips 72, glyphs 52 / 48, title clamp 3 at every height", () => {
   /* MUTATION: change Play's 112px to 111px -> red.   MUTATION: change the 699.98px breakpoint to 600px -> red (the
-     200 artwork must start under 700, the number the plan states).   MUTATION: change `min-height: 800px` to 700px -> red. */
+     200 artwork must start under 700, the number the plan states).   MUTATION: change the short screen's is-long-title 180px to 200px -> red (the title's third line is paid for with 20px of artwork).
+     MUTATION: change the title's `-webkit-line-clamp: 3` to 2 -> red (an ellipsis on line two at 375x667). */
   assert.match(css, /\[data-posture="car"\] \.ag-np,\s*\[data-posture="car"\] \.ag-np\.is-long-title \{ --np-art: 240px; \}/, "240 even when a long title would shrink it to 180");
-  assert.match(css, /@media \(max-height: 699\.98px\) \{\s*\[data-posture="car"\] \.ag-np,\s*\[data-posture="car"\] \.ag-np\.is-long-title \{ --np-art: 200px; \}/, "200 under 700px tall");
+  assert.match(css, /@media \(max-height: 699\.98px\) \{\s*\[data-posture="car"\] \.ag-np \{ --np-art: 200px; \}\s*\[data-posture="car"\] \.ag-np\.is-long-title \{ --np-art: 180px; \}/, "200 under 700px tall, 180 when a short screen's title runs three lines");
   assert.match(css, /\.ag-np-play\.fp-big \{ width: 112px; height: 112px; min-width: 112px; min-height: 112px; \}/, "Play 112, its minimum too");
   assert.match(css, /\.ag-np-skip \{ width: 72px; height: 72px; min-width: 72px; min-height: 72px; \}/, "skips 72, their minimum too");
   assert.match(css, /\.ag-np-play \.icon \{ --icon-size: 52px; \}/);
   assert.match(css, /\.ag-np-skip \.icon \{ --icon-size: 48px; \}/);
-  assert.match(css, /\.fp-s-title \{ -webkit-line-clamp: 2; line-clamp: 2; \}\s*@media \(min-height: 800px\) \{\s*\[data-posture="car"\] \.ag-np\.fp-sheet \.fp-s-title \{ -webkit-line-clamp: 3; line-clamp: 3; \}/, "two lines, three from 800px tall");
+  assert.match(css, /\[data-posture="car"\] \.ag-np\.fp-sheet \.fp-s-title \{ -webkit-line-clamp: 3; line-clamp: 3; \}/, "three lines at every height");
+  assert.doesNotMatch(css, /-webkit-line-clamp: 2/, "no two-line clamp survives in car.css");
 });
 
 test("car.css does not render the why-line, the secondary row, the More handle, the show notes or the chapters", () => {
