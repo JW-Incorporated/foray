@@ -298,7 +298,7 @@ export function appStates(fx) {
             await page.evaluate(async () => {
               await window.ForayPlayer.forayJump(1);
               const ui = window.__afterglowNowPlayingUi;
-              const show = ui?.segmentsSection?.querySelectorAll(".ag-np-segment-row .t-caption")?.[1]?.textContent?.split(" \u00b7 ")?.[0] || "Next show";
+              const show = ui?.segmentsSection?.querySelectorAll(".ag-np-clip-row .t-caption")?.[1]?.textContent?.split(" \u00b7 ")?.[0] || "Next show";
               window.AfterglowNowPlaying?.flashCaption(ui, `Now: ${show}`, true);
               ui?.roomLayers?.forEach((layer) => layer.classList.add("is-on"));
               ui?.sShow?.classList.add("is-crossfading");

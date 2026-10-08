@@ -77,12 +77,12 @@
 .ag-np.fp-sheet .ag-np-action .t-caption { color: var(--text-2); }
 .ag-np.fp-sheet .ag-np-section { margin-top: var(--s-8); }
 .ag-np.fp-sheet .ag-np-section > .t-headline { margin: 0 0 var(--s-3); }
-.ag-np.fp-sheet .ag-np-segment-list { display: grid; gap: var(--s-2); }
-.ag-np.fp-sheet .ag-np-segment-row { min-height: 64px; width: 100%; padding: var(--s-1) var(--s-3); display: flex; align-items: center; gap: var(--s-3); border: 0; border-radius: var(--r-lg); background: linear-gradient(var(--overlay), var(--overlay)) rgb(29 25 22 / .72); color: var(--text); text-align: left; box-shadow: inset 0 1px 0 var(--rim); }
-.ag-np.fp-sheet .ag-np-segment-row.is-narration { background: transparent; box-shadow: none; color: var(--lamp-text); }
-.ag-np.fp-sheet .ag-np-segment-art { width: 56px; height: 56px; flex: none; object-fit: cover; border-radius: var(--r-sm); }
-.ag-np.fp-sheet .ag-np-segment-copy { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.ag-np.fp-sheet .ag-np-segment-copy .t-caption { color: var(--text-2); }
+.ag-np.fp-sheet .ag-np-clip-list { display: grid; gap: var(--s-2); }
+.ag-np.fp-sheet .ag-np-clip-row { min-height: 64px; width: 100%; padding: var(--s-1) var(--s-3); display: flex; align-items: center; gap: var(--s-3); border: 0; border-radius: var(--r-lg); background: linear-gradient(var(--overlay), var(--overlay)) rgb(29 25 22 / .72); color: var(--text); text-align: left; box-shadow: inset 0 1px 0 var(--rim); }
+.ag-np.fp-sheet .ag-np-clip-row.is-narration { background: transparent; box-shadow: none; color: var(--lamp-text); }
+.ag-np.fp-sheet .ag-np-clip-art { width: 56px; height: 56px; flex: none; object-fit: cover; border-radius: var(--r-sm); }
+.ag-np.fp-sheet .ag-np-clip-copy { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ag-np.fp-sheet .ag-np-clip-copy .t-caption { color: var(--text-2); }
 .ag-np.fp-sheet .ag-np-source-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: var(--s-4) var(--s-3); }
 .ag-np.fp-sheet .ag-np-art-fallback { display: block; background: var(--c); }
 .ag-np.fp-sheet .ag-np-source-art { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--r-md); }

@@ -366,7 +366,7 @@
         },
         "segments": {
           "prototype": ".np-detail .stack-8",
-          "app": ".ag-np-segment-list"
+          "app": ".ag-np-clip-list"
         },
         "sources": {
           "prototype": ".np-detail .grid-3",

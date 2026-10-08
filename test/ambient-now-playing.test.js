@@ -95,7 +95,7 @@ test("segment change: narration returns the Room to lamp-warm neutral, the show 
      MUTATION 3: delete the ResizeObserver line -> red (is-long-title would be measured once, before fonts and layout settle: the
      first build left a 3-line title on a 220 sleeve and pushed the More handle off a 375x667 screen). */
   assert.match(ui, /show === "4a narration" \? "oklch\(0\.74 0\.05 75\)"/);
-  assert.match(ui, /ui\.showTimer = setTimeout\(\(\) => \{[^}]*ui\.sShow\.textContent = text;[^}]*\}, 140\)/s);
+  assert.match(ui, /ui\.showTimer = setTimeout\(\(\) => \{[^}]*setStatusText\(ui\.sShow, text\);[^}]*\}, 140\)/s);
   assert.match(css, /\.fp-s-show \{[^}]*transition: opacity calc\(var\(--m-ui\) \/ 2\)/s);
   assert.match(ui, /new ResizeObserver\(\(\) => agNpMeasureTitle\(ui\)\)\.observe\(ui\.sTitle\)/);
   assert.match(ui, /if \(!ui\?\.ag \|\| ui\.sheet\.hidden\) return;/, "a hidden sheet reports height 0 and must keep its class");

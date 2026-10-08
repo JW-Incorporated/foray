@@ -6,7 +6,7 @@
 function agNpEl(tag, cls, text) {
   const node = document.createElement(tag);
   if (cls) node.className = cls;
-  if (text != null) node.textContent = String(text);
+  if (text != null) node.append(document.createTextNode(String(text)));
   return node;
 }
 
@@ -158,7 +158,7 @@ function agNpAdopt(ui) {
 
   const detailHandle = agNpEl("button", "ag-np-detail-handle t-label");
   detailHandle.type = "button";
-  detailHandle.setAttribute("aria-label", "More: speed, sleep, bookmark, share, segments and show notes");
+  detailHandle.setAttribute("aria-label", "More: speed, sleep, bookmark, share, clips and show notes");
   detailHandle.append(agNpEl("span", "ag-np-more-label", "More"));
   const detailChevron = agNpEl("span", "ag-np-handle-icon");
   detailChevron.append(agNpIconNode("chevron-down", 20));
@@ -170,7 +170,7 @@ function agNpAdopt(ui) {
   const actionRow = agNpEl("div", "ag-np-actions");
   const action = (button, icon, label) => {
     button.classList.add("ag-np-action");
-    button.textContent = "";
+    button.replaceChildren();
     const glyph = agNpEl("span", "ag-np-action-icon");
     glyph.append(agNpIconNode(icon, 24));
     button.append(glyph, agNpEl("span", "t-caption ag-np-action-caption", label));
@@ -182,19 +182,19 @@ function agNpAdopt(ui) {
   const shareBtn = action(agNpIconButton("Share a link to this moment", "share", "ag-np-action"), "share", "Share");
   actionRow.append(ui.rateBtn, sleepBtn, ui.bookmarkBtn, shareBtn);
 
-  const segmentsSection = agNpEl("section", "ag-np-section ag-np-segments");
-  segmentsSection.append(agNpEl("h3", "t-headline", "Segments"), agNpEl("div", "ag-np-segment-list"));
+  const segmentsSection = agNpEl("section", "ag-np-section ag-np-clips");
+  segmentsSection.append(agNpEl("h3", "t-headline", "Clips"), agNpEl("div", "ag-np-clip-list"));
   const sourcesSection = agNpEl("section", "ag-np-section ag-np-sources");
   sourcesSection.append(agNpEl("h3", "t-headline", "Where this came from"), agNpEl("div", "ag-np-source-grid"));
   const notesSection = agNpEl("section", "ag-np-section ag-np-notes");
   const notesToggle = ui.sDesc.querySelector("summary");
   ui.sDesc.open = true;
   if (notesToggle) {
-    notesToggle.textContent = "More";
+    setControlLabel(notesToggle, "More", "Show more of the notes");
     notesToggle.addEventListener("click", (event) => {
       event.preventDefault();
       const expanded = ui.sDesc.classList.toggle("is-expanded");
-      notesToggle.textContent = expanded ? "Less" : "More";
+      setControlLabel(notesToggle, expanded ? "Less" : "More", expanded ? "Show less of the notes" : "Show more of the notes");
       notesToggle.setAttribute("aria-expanded", expanded ? "true" : "false");
     });
   }
@@ -218,7 +218,7 @@ function agNpAdopt(ui) {
      handed the minutes through ui.requestSleep and calls ui.resetSleep when it fires. */
   let sleepMinutes = 0;
   const paintSleep = () => {
-    sleepBtn.querySelector(".ag-np-action-caption").textContent = sleepMinutes ? `${sleepMinutes} min` : "Sleep";
+    setStatusText(sleepBtn.querySelector(".ag-np-action-caption"), sleepMinutes ? `${sleepMinutes} min` : "Sleep");
     sleepBtn.setAttribute("aria-label", sleepMinutes ? `Sleep timer, ${sleepMinutes} minutes, tap to change` : "Sleep timer");
     sleepBtn.setAttribute("aria-pressed", sleepMinutes ? "true" : "false");
   };
@@ -264,7 +264,7 @@ function agNpSetShowLine(ui, text) {
   if (!ui?.ag) return;
   if (ui.showLine == null) {
     ui.showLine = text;
-    ui.sShow.textContent = text;
+    setStatusText(ui.sShow, text);
     return;
   }
   if (ui.showLine === text) return;
@@ -272,7 +272,7 @@ function agNpSetShowLine(ui, text) {
   clearTimeout(ui.showTimer);
   ui.sShow.classList.add("is-crossfading");
   ui.showTimer = setTimeout(() => {
-    ui.sShow.textContent = text;
+    setStatusText(ui.sShow, text);
     ui.sShow.classList.remove("is-crossfading");
   }, 140);
 }
@@ -298,7 +298,7 @@ function agNpSetRoom(ui, src, show, { announce = false } = {}) {
 function agNpFlashCaption(ui, text, hold = false) {
   if (!ui?.eyebrow) return;
   clearTimeout(ui.captionTimer);
-  ui.eyebrow.textContent = String(text || "");
+  setStatusText(ui.eyebrow, String(text || ""));
   ui.eyebrow.classList.toggle("is-lit", Boolean(text));
   if (text && !hold) ui.captionTimer = setTimeout(() => ui.eyebrow.classList.remove("is-lit"), 3000);
 }
@@ -342,7 +342,7 @@ function agNpPaintForay(ui, { items = [], model = null, currentIndex = 0, starts
     button.classList.toggle("is-past", segment?.state === "past");
     button.querySelector(".ag-np-strip-fill")?.style.setProperty("--fill", String(current ? segment?.progress ?? 0 : 0));
   });
-  if (ui.sTitle.textContent !== title) ui.sTitle.textContent = title;
+  setStatusText(ui.sTitle, title);
   agNpSetShowLine(ui, `${new Set(items.map(agNpShow).filter((name) => name !== "4a narration")).size} shows · ${show}`);
   ui.strip.setAttribute("aria-label", `Foray position ${agNpClock(elapsed)}`);
 }
@@ -382,7 +382,7 @@ function agNpPaintCollage(ui, items) {
 }
 
 function agNpPaintDetails(ui, items, onSeek, model) {
-  const list = ui.segmentsSection.querySelector(".ag-np-segment-list");
+  const list = ui.segmentsSection.querySelector(".ag-np-clip-list");
   const grid = ui.sourcesSection.querySelector(".ag-np-source-grid");
   list.replaceChildren();
   grid.replaceChildren();
@@ -394,13 +394,13 @@ function agNpPaintDetails(ui, items, onSeek, model) {
     const elapsed = Number(seg?.startSec) || 0;
     const duration = Number(seg?.lengthSec) || 0;
     const narration = item?.kind === "tts";
-    const row = agNpEl("button", narration ? "ag-np-segment-row is-narration" : "ag-np-segment-row");
+    const row = agNpEl("button", narration ? "ag-np-clip-row is-narration" : "ag-np-clip-row");
     row.type = "button";
     row.setAttribute("aria-label", `Seek to ${agNpShow(item)}, ${agNpClock(elapsed)}`);
     if (!narration) {
-      row.append(agNpArtNode("ag-np-segment-art", item, agNpShow(item)));
+      row.append(agNpArtNode("ag-np-clip-art", item, agNpShow(item)));
     }
-    const copy = agNpEl("span", "ag-np-segment-copy");
+    const copy = agNpEl("span", "ag-np-clip-copy");
     copy.append(agNpEl("span", narration ? "t-label lamp" : "t-label", narration ? "Narration" : (item?.title || agNpShow(item))));
     copy.append(agNpEl("span", "t-caption", `${agNpShow(item)} · ${agNpClock(elapsed)}–${agNpClock(elapsed + duration)}`));
     row.append(copy);
@@ -417,10 +417,11 @@ function agNpPaintDetails(ui, items, onSeek, model) {
     const follow = agNpEl("button", "ag-np-follow t-label", "Follow");
     follow.type = "button";
     follow.setAttribute("aria-pressed", "false");
+    setControlLabel(follow, "Follow", `Follow ${show}`);
     follow.addEventListener("click", () => {
       const on = follow.getAttribute("aria-pressed") !== "true";
       follow.setAttribute("aria-pressed", on ? "true" : "false");
-      follow.textContent = on ? "Following" : "Follow";
+      setControlLabel(follow, on ? "Following" : "Follow", on ? `Following ${show}` : `Follow ${show}`);
     });
     tile.append(art, name, follow);
     grid.append(tile);
@@ -449,13 +450,15 @@ function agNpPaintUpNext(ui, item, count = 0) {
   if (!item) return;
   const image = agNpArtNode("ag-np-up-next-art", item, agNpShow(item));
   const copy = agNpEl("div", "ag-np-up-next-copy");
-  copy.append(agNpEl("span", "eyebrow lamp", "4a added"));
+  /* "4a added" only when 4a authored a reason for this pick; anything else in the queue is the listener's own. */
+  const reason = item.why || "";
+  copy.append(agNpEl("span", reason ? "eyebrow lamp" : "eyebrow", reason ? "4a added" : "In your queue"));
   copy.append(agNpEl("p", "t-label clamp2", item.title || "Up next"));
-  const minutes = Math.max(1, Math.round(Number(item.duration_sec || 0) / 60));
-  copy.append(agNpEl("p", "t-caption clamp1", `${agNpShow(item)} · ${minutes} min`));
-  copy.append(agNpEl("p", "t-why clamp2", item.why || item.hook || "A different angle on the same subject."));
+  const minutes = Math.round(Number(item.duration_sec || 0) / 60);
+  copy.append(agNpEl("p", "t-caption clamp1", minutes > 0 ? `${agNpShow(item)} · ${minutes} min` : agNpShow(item)));
+  if (reason) copy.append(agNpEl("p", "t-why clamp2", reason));
   ui.upNextRow.append(image, copy);
-  ui.queueLink.textContent = `Up Next (${count})`;
+  setControlLabel(ui.queueLink, `Up Next (${count})`);
 }
 
 function agNpHandoff(ui, previousSrc, nextSrc, { freeze = false } = {}) {

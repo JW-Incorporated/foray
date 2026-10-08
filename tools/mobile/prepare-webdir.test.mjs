@@ -81,8 +81,8 @@ const AMBIENT_PRIMITIVES_ASSETS = Object.freeze([
   { rel: "ui/primitives.css", maxBytes: 20 * 1024 },
   { rel: "ui/primitives.js", maxBytes: 16 * 1024 },
   { rel: "ui/gallery.js", maxBytes: 9 * 1024 },
-  { rel: "ui/now-playing.css", maxBytes: 20 * 1024 },
-  { rel: "ui/now-playing.js", maxBytes: 20 * 1024 },
+  { rel: "ui/now-playing.css", maxBytes: 14 * 1024 }, // 12.7 KB minified
+  { rel: "ui/now-playing.js", maxBytes: 18 * 1024 }, // 16.1 KB minified
 ]);
 
 /* ───────────────────────────── the derivation ───────────────────────────── */
