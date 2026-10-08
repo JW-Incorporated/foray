@@ -374,24 +374,32 @@ function libQueueRowHtml(r, o) {
   let rest = "";
   if (named) {
     const prog = playable ? rowProgress(item) : null;
-    const left = prog && prog.label && prog.state !== "played" ? prog.label : fmtDur(episodeMinutes(item));
+    /* Up Next says "Played" for a queued episode already finished (audit round 2, honesty-5: a queued row must not
+       look fresh); History is all played, so there it keeps the length. */
+    const left = prog && prog.label && (prog.state !== "played" || o.upnext) ? prog.label : fmtDur(episodeMinutes(item));
     const date = o.date ? fmtDate(item.release_date) : "";
     rest = [date, item.show || "", r.state === "archived" ? "not available right now" : left].filter(Boolean).join(" · ");
   } else rest = "4a no longer has this episode's details";
   const lead = current ? `<span class="ag-row-state">Playing</span>` : "";
   const cover = playable
-    ? `<button type="button" class="lb-cover" data-lb-play="${esc(id)}" data-ctx="${esc(o.ctx)}" data-title="${esc(item.title || "")}" aria-label="${esc(`${running ? "Pause" : "Play"} ${item.title || "this episode"}`)}"></button>`
+    ? `<button type="button" class="lb-cover" data-lb-play="${esc(id)}"${o.page ? ` data-swipe-id="${esc(id)}"` : ""} data-ctx="${esc(o.ctx)}" data-title="${esc(item.title || "")}" aria-label="${esc(`${running ? "Pause" : "Play"} ${item.title || "this episode"}`)}"></button>`
     : "";
   const menu = o.menu
     ? `<button type="button" class="ag-btn ag-btn-icon lb-dots" data-lb-menu="${esc(id)}" aria-haspopup="dialog" aria-label="${esc(`More for ${title}`)}">${agIcon("dots", 24)}</button>`
     : "";
-  return `<article class="raised ag-queue-row lb-row lb-qrow${current ? " is-current" : ""}${o.menu ? "" : " lb-nomenu"}${playable ? "" : " lb-gone"}" data-lb-q="${esc(id)}"${current ? ' aria-current="true"' : ""}>
+  /* The Up Next PAGE (ui/queue.js, `o.page`) draws this same row and adds the two gestures the founder asked for in
+     #762 (PQ-04, PQ-06): a drag handle before the menu, and the swipe id on the cover (the cover is what a finger lands
+     on). The handle is a plain 44 button; the menu is still the way a keyboard or switch user moves a row. */
+  const handle = o.page && o.menu
+    ? `<button type="button" class="qp-handle" data-drag-handle="${esc(id)}" aria-label="${esc(`Drag ${title} to reorder`)}" aria-describedby="up-next-drag-hint"></button>`
+    : "";
+  return `<article class="raised ag-queue-row lb-row lb-qrow${o.page ? " qp-row" : ""}${current ? " is-current" : ""}${o.menu ? "" : " lb-nomenu"}${playable ? "" : " lb-gone"}" data-lb-q="${esc(id)}"${current ? ' aria-current="true"' : ""}>
     ${agArtwork({ name: item.show || title, src: item.artwork_url || "", size: 56, tone: libTone(item.show), state: playable ? "default" : "dim" })}
     <div class="ag-row-copy">
       <p class="t-label clamp2">${current ? agIcon("play-fill", 20) : ""}${esc(title)}</p>
       <p class="t-caption ag-row-meta">${lead}<span class="lb-ell">${current ? "· " : ""}${esc(rest)}</span></p>
     </div>
-    ${cover}${menu}
+    ${cover}${handle}${menu}${o.page ? '<span class="qp-under" aria-hidden="true">Remove</span>' : ""}
   </article>`;
 }
 
@@ -459,20 +467,22 @@ function libUpNextModel() {
   return { cur, queued, rest, rows, current: current && current.state !== "unnamed" ? current : null };
 }
 
-function libUpNextInnerHtml() {
+/* `page` is the Up Next PAGE (ui/queue.js, #/queue): the same rows, menu, Toast and writers, with every row (no cap, no
+   "All N" link), the page's own head in place of the section head, and the two gestures on the rows. */
+function libUpNextInnerHtml(page = false) {
   const m = libUpNextModel();
   const count = m.rows.length + (m.current ? 1 : 0);
   let body;
   if (!count) body = libEmptyHtml("upnext");
   else {
-    const shown = m.rows.slice(0, LIB_UPNEXT_MAX);
+    const shown = page ? m.rows : m.rows.slice(0, LIB_UPNEXT_MAX);
     const list = [];
-    if (m.current) list.push(libQueueRowHtml(m.current, { current: true, ctx: UP_NEXT_CTX }));
-    shown.forEach((r) => list.push(libQueueRowHtml(r, { ctx: UP_NEXT_CTX, menu: true })));
+    if (m.current) list.push(libQueueRowHtml(m.current, { current: true, upnext: true, ctx: UP_NEXT_CTX, page }));
+    shown.forEach((r) => list.push(libQueueRowHtml(r, { upnext: true, ctx: UP_NEXT_CTX, menu: true, page })));
     body = `<div class="lb-stack">${list.join("")}</div>`;
-    if (m.rows.length > LIB_UPNEXT_MAX) body += libQuietLink(`All ${m.rows.length} in Up Next`, "/queue");
+    if (!page && m.rows.length > LIB_UPNEXT_MAX) body += libQuietLink(`All ${m.rows.length} in Up Next`, "/queue");
   }
-  return `${libHead("Up Next", count)}${body}`;
+  return `${page ? queuePageHeadHtml(count, m.queued.length) : libHead("Up Next", count)}${body}`;
 }
 
 function libUpNextHtml() {
@@ -523,18 +533,29 @@ function repaintLibraryUpNext({ slide = false } = {}) {
   const section = view && typeof view.querySelector === "function" ? view.querySelector('[data-lb-section="upnext"]') : null;
   if (!section) return;
   const before = slide ? libRowTops(section) : null;
-  const held = typeof document !== "undefined" && document.activeElement && typeof document.activeElement.closest === "function" && section.contains(document.activeElement)
-    ? (document.activeElement.dataset ? document.activeElement.dataset.lbMenu || document.activeElement.dataset.lbPlay || null : null) : null;
+  const active = typeof document !== "undefined" && document.activeElement && typeof document.activeElement.closest === "function" && section.contains(document.activeElement)
+    ? document.activeElement : null;
+  /* The control that held focus, by which kind it was and for which episode, so it is found again in the new rows; and
+     where it stood among its kind, so a row that has left (played from here, then chained on) hands focus to the row
+     that took its place instead of to <body> (audit round 2, p-impatient-6). */
+  const KINDS = [["lbMenu", "[data-lb-menu]"], ["dragHandle", "[data-drag-handle]"], ["lbPlay", "[data-lb-play]"]];
+  const kind = active && active.dataset ? KINDS.find(([key]) => active.dataset[key]) : null;
+  const held = kind ? { key: kind[0], id: active.dataset[kind[0]], index: Math.max(0, [...section.querySelectorAll(kind[1])].indexOf(active)), sel: kind[1] } : null;
+  const page = !!(section.dataset && section.dataset.lbPage);
   libUi.currentId = libCurrentId();
   /* The page's Glow is the playing item's, set BEFORE the rows are drawn: a playing row that appears already lit
      never animates from the old colour (under Reduce Motion that would be a 200ms crossfade for nothing). */
   libSyncCast();
-  section.innerHTML = libUpNextInnerHtml();
+  section.innerHTML = libUpNextInnerHtml(page);
   bindLibrary(section);
+  /* The Up Next page's own controls (Clear, the drag handles, the swipe) live in ui/queue.js. */
+  if (page && typeof bindQueuePage === "function") bindQueuePage(section);
   libApplyGlow(section);
   if (slide) libSlideRows(section, before);
   if (held) {
-    const again = [...section.querySelectorAll("[data-lb-menu], [data-lb-play]")].find((b) => (b.dataset.lbMenu || b.dataset.lbPlay) === held);
+    const peers = [...section.querySelectorAll(held.sel)];
+    const again = peers.find((b) => b.dataset && b.dataset[held.key] === held.id)
+      || peers[Math.min(held.index, peers.length - 1)] || (typeof section.querySelector === "function" ? section.querySelector("h2") : null);
     if (again) focusQuietly(again);
   }
 }
@@ -747,7 +768,13 @@ function bindLibrary(scope) {
   scope.querySelectorAll("[data-lb-play]").forEach((btn) => {
     if (btn._lbBound) return;
     btn._lbBound = true;
-    btn.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); libPlayPress(btn); });
+    btn.addEventListener("click", (e) => {
+      e.preventDefault(); e.stopPropagation();
+      /* A swipe on the Up Next page ends on this same button and the browser then sends it a click: that click is the
+         end of the gesture, not a tap to play (ui/queue.js sets the flag, once, on a claimed swipe). */
+      if (btn._lbSwallow) { btn._lbSwallow = false; return; }
+      libPlayPress(btn);
+    });
   });
   scope.querySelectorAll("[data-lb-menu]").forEach((btn) => {
     if (btn._lbBound) return;
@@ -882,6 +909,16 @@ function libOpenMenu(id, opener) {
   openSheet(wrap, { panel: wrap.querySelector(".lb-panel"), onRequestClose: libCloseMenu, returnFocus: opener });
 }
 
+/** Remove a row from Up Next and offer the way back: the whole list is kept for Undo, the removal is the one writer's
+    (`removeFromQueue`), and the Toast says so for five seconds. The menu's Remove and the Up Next page's swipe both
+    come here, so a removal by either hand has the same Undo. */
+function libRemoveRow(id) {
+  libUi.undo = { ids: queueIds(), id };
+  removeFromQueue(id);
+  libShowToast("Removed from Up Next");
+  announce("Removed from Up Next.");
+}
+
 /** What a menu item does. The list is always written whole through saveQueueIds, in the order the section draws
     (the playing row first), so the order on screen and the order in storage are the same list. */
 function libMenuAct(id, act) {
@@ -905,10 +942,7 @@ function libMenuAct(id, act) {
     if (!playNextInQueue(id)) return;
     announce("Playing next.");
   } else if (act === "remove") {
-    libUi.undo = { ids: queueIds(), id };
-    removeFromQueue(id);
-    libShowToast("Removed from Up Next");
-    announce("Removed from Up Next.");
+    libRemoveRow(id);
   } else return;
   /* saveQueueIds has repainted the section (app.js repaintQueuePage); the neighbours now slide from where they were. */
   libSlideRows(libUpNextSection(), before);

@@ -2879,57 +2879,14 @@ function saveQueueIds(ids) {
 /** The Up Next page is a LIVE VIEW of `cp_queue`: every write repaints it when
     it is showing, and the writes' own callers do not (the reorder handlers used
     to call `renderQueue()` themselves — that path is gone, so one list cannot be
-    painted twice). Scroll is kept where it was: a render replaces `#view`'s
-    content and would otherwise land the listener at the top. Best-effort on
-    `scrollY`/`scrollTo`, which the test harness does not have. */
+    painted twice). The repaint is of the list's own section, not of `#view`, so
+    the scroll and the control the listener had pressed stay where they were. */
 function repaintQueuePage() {
-  /* Library's Up Next section is a second live view of the same list (Redesign 2026, ambient): it repaints in place,
-     and keeps its own menu, Toast and focus. */
-  if (currentHash() === "#/library" && typeof repaintLibraryUpNext === "function") { repaintLibraryUpNext(); return; }
-  if (currentHash() !== "#/queue") return;
-  const y = typeof window.scrollY === "number" ? window.scrollY : null;
-  const held = queueFocusBefore();
-  renderQueue();
-  if (y != null && typeof window.scrollTo === "function") window.scrollTo(0, y);
-  queueFocusAfter(held);
-}
-
-/* THE REPAINT KEEPS THE LISTENER'S PLACE (audit round 2 review). A live view
-   replaces #view's content, so the control a keyboard or VoiceOver user had
-   just pressed — ▶ on an Up Next row, the playing row's ❚❚ when an episode
-   ends and the next one chains — was destroyed and focus fell to <body>, the
-   top of the page. Only ↑/↓/✕ restored it (afterQueueMove/afterQueueRemove,
-   which still run after this and still win). The same control on the same
-   episode gets focus back; if that row has left, the control at the same
-   position in the list, else the page heading. */
-const QUEUE_FOCUS_ATTRS = ["data-play", "data-playnext", "data-reorder-up", "data-reorder-down", "data-dequeue"];
-
-function queueFocusBefore() {
-  const view = $("#view");
-  const active = document.activeElement;
-  if (!view || !active || active === view || typeof active.getAttribute !== "function") return null;
-  let inView = false;
-  for (let n = active; n; n = n.parentElement) if (n === view) { inView = true; break; }
-  if (!inView) return null;
-  for (const attr of QUEUE_FOCUS_ATTRS) {
-    const id = active.getAttribute(attr);
-    if (id == null) continue;
-    const peers = typeof view.querySelectorAll === "function" ? [...view.querySelectorAll(`[${attr}]`)] : [];
-    return { attr, id, index: Math.max(0, peers.indexOf(active)) };
-  }
-  return null;
-}
-
-function queueFocusAfter(held) {
-  if (!held) return;
-  const view = $("#view");
-  if (!view) return;
-  let target = queueButtonFor(held.attr, held.id);
-  if (!target) {
-    const peers = typeof view.querySelectorAll === "function" ? [...view.querySelectorAll(`[${held.attr}]`)] : [];
-    target = peers[Math.min(held.index, peers.length - 1)] || (typeof view.querySelector === "function" ? view.querySelector("h2") : null);
-  }
-  if (target && target !== document.activeElement) focusQuietly(target);
+  /* Library's Up Next section and the Up Next page are two live views of the same list (Redesign 2026, ambient): the
+     section repaints in place and keeps its own menu, Toast, scroll and focus, so neither page is rebuilt under a press.
+     The page's section carries `data-lb-page` (ui/queue.js), which repaintLibraryUpNext reads. */
+  const h = currentHash();
+  if ((h === "#/library" || h === "#/queue") && typeof repaintLibraryUpNext === "function") repaintLibraryUpNext();
 }
 
 /** Playback moved (a chained play, a tap on an Up Next row): the row that is
@@ -4797,7 +4754,7 @@ function route() {
 function pageHeading(view) {
   if (!view || typeof view.querySelector !== "function") return null;
   /* `.lb-head` is Library's own title row (Redesign 2026, ambient): the same landing, a different class. */
-  const box = view.querySelector(".page-head") || view.querySelector(".st-head") || view.querySelector(".lb-head");
+  const box = view.querySelector(".page-head") || view.querySelector(".lb-head") || view.querySelector(".st-head");
   /* A legacy page head titles itself with an h2 (the top bar owns the h1); a Settings page head IS the page's h1. A page that draws
      its own header (the ambient Foray detail) names itself with `data-page-heading` on its title. */
   return (box && (box.querySelector("h2") || box.querySelector("h1"))) || view.querySelector("[data-page-heading]") || null;

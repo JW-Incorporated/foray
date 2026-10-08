@@ -33,6 +33,12 @@
  * 11. the ✕ still removes, beside the swipe (the alternative a pointer-only
  *     gesture owes keyboard and switch users, WCAG 2.5.1).
  *
+ * PORTED (Redesign 2026, ambient; the Up Next page unit): the page's row is Library's QueueRow (ui/library.js
+ * `libQueueRowHtml` with the `page` flag), so the gestures are bound to it: the drag handle is `.qp-handle`, the
+ * swipe listens on the row's cover (`.qp-row > .lb-cover`, what a finger lands on), the arrows and the ✕ are the row's
+ * menu (Move up, Move down, Remove: pinned by test/ambient-up-next.test.js), and a removal by swipe has the same Toast
+ * and Undo as the menu's. What each gesture does to the list is unchanged, and so are the rules' tests.
+ *
  * Every test names the mutation that kills it (CLAUDE.md: "a green test is not
  * evidence until you have broken it"); each was run and went red.
  *
@@ -94,6 +100,23 @@ const PAGE_IDS = [
   "banner-slot", "pl-form", "pl-input", "pl-note",
 ];
 
+/** The page repaints its section IN PLACE (app.js repaintQueuePage -> repaintLibraryUpNext): `#view` answers the one
+    selector that asks with a section whose innerHTML reads and writes the slice of the page between its tags, and whose
+    `querySelectorAll` is the view's own (so the rows a repaint draws are bound, as a real DOM would). */
+function sectionAware(el) {
+  const open = '<section class="lb-section qp-section" data-lb-section="upnext" data-lb-page="queue">';
+  el.querySelector = (sel) => {
+    if (!String(sel).includes('data-lb-section="upnext"') || !el.innerHTML.includes(open)) return null;
+    const bounds = () => { const a = el.innerHTML.indexOf(open) + open.length; return [a, el.innerHTML.indexOf("</section>", a)]; };
+    return {
+      dataset: { lbPage: "queue" }, contains: () => false, querySelector: () => null,
+      querySelectorAll: (q) => el.querySelectorAll(q), getBoundingClientRect: () => ({ top: 0 }),
+      get innerHTML() { const [a, b] = bounds(); return el.innerHTML.slice(a, b); },
+      set innerHTML(v) { const [a, b] = bounds(); el.innerHTML = el.innerHTML.slice(0, a) + v + el.innerHTML.slice(b); },
+    };
+  };
+}
+
 function mount({ ids = ["a", "b", "c"], hash = "#/queue" } = {}) {
   const store = new Map([["cp_queue", JSON.stringify(ids)]]);
   const writes = [];
@@ -103,6 +126,7 @@ function mount({ ids = ["a", "b", "c"], hash = "#/queue" } = {}) {
     return [id, el];
   }));
   const body = makeEl("body");
+  sectionAware(byId.get("view"));
   const ctx = {
     console: { ...console, warn() {}, error() {} },
     fetch: () => new Promise(() => {}),
@@ -166,17 +190,17 @@ function classes() {
 }
 
 /** The rendered Up Next rows as the drag binder sees them: row i's top edge at
-    56*i, each holding a ⋮⋮ handle that remembers its listeners. */
+    56*i, each holding a drag handle that remembers its listeners. */
 function dragScope(ids) {
   const rows = ids.map((id, i) => ({
-    classList: classes(), style: {},
+    classList: classes(), style: {}, dataset: { lbQ: id },
     getBoundingClientRect: () => ({ top: 56 * i }),
   }));
   const handles = ids.map((id, i) => {
     const h = {
       dataset: { dragHandle: id }, disabled: false, listeners: {},
       addEventListener(type, fn) { (this.listeners[type] ||= []).push(fn); },
-      closest: (sel) => (sel === ".up-next-row" ? rows[i] : null),
+      closest: (sel) => (sel === ".qp-row" ? rows[i] : null),
       setPointerCapture() {},
       getBoundingClientRect: () => ({ top: 56 * i + 8 }),
       focus() {},
@@ -184,7 +208,7 @@ function dragScope(ids) {
     return h;
   });
   const scope = {
-    querySelectorAll: (sel) => (sel === "[data-drag-handle]" ? handles : sel === ".up-next-row" ? rows : []),
+    querySelectorAll: (sel) => (sel === "[data-drag-handle]" ? handles : sel === ".qp-row" ? rows : []),
   };
   return { scope, rows, handles };
 }
@@ -198,7 +222,7 @@ function fire(el, type, init = {}) {
 /* ==================================================================== */
 
 test("every Up Next row has a drag handle, the hint exists once, and the page binds the drag (PQ-04, #762)", () => {
-  /* MUTATION (run, red): delete the drag-handle <button> from upNextRow -> 0
+  /* MUTATION (run, red): delete the drag-handle <button> from libQueueRowHtml -> 0
      handles for 3 rows. MUTATION 2 (run, red): delete `bindUpNextDrag($("#view"));`
      from renderQueue -> the page renders handles nothing listens to; `bound`
      stays 0. */
@@ -208,10 +232,11 @@ test("every Up Next row has a drag handle, the hint exists once, and the page bi
   m.ctx.bindUpNextDrag = (scope) => { bound++; return real(scope); };
   m.ctx.renderQueue();
   const html = m.view();
-  const handles = [...html.matchAll(/<button type="button" class="reorder drag-handle" data-drag-handle="([^"]+)" aria-label="Drag to reorder" aria-describedby="up-next-drag-hint">/g)].map((x) => x[1]);
+  const handles = [...html.matchAll(/<button type="button" class="qp-handle" data-drag-handle="([^"]+)" aria-label="Drag Episode [^"]+ to reorder" aria-describedby="up-next-drag-hint"><\/button>/g)].map((x) => x[1]);
   assert.deepStrictEqual(handles, ["a", "b", "c"], "one handle per row, in list order");
   assert.strictEqual((html.match(/id="up-next-drag-hint"/g) || []).length, 1, "the hint every handle points at exists exactly once");
-  assert.ok(html.indexOf('data-drag-handle="a"') < html.indexOf('data-reorder-up="a"'), "the handle opens the arrows' group; the arrows remain");
+  assert.ok(html.indexOf('data-drag-handle="a"') < html.indexOf('data-lb-menu="a"'), "the handle sits before the menu; the menu (Move up, Move down) remains for keyboard and switch users");
+  assert.ok(!/data-drag-handle="a"[^>]*>[\s\S]*?<\/article>[\s\S]*data-drag-handle="a"/.test(html), "one handle per row");
   assert.strictEqual(bound, 1, "renderQueue binds the drag once per render");
 
   const empty = mount({ ids: [] });
@@ -250,6 +275,7 @@ test("release at y=141 from row 0 commits on pointerup: cp_queue becomes [b, c, 
      MUTATION 2 (run, red): pass `r.from` instead of `r.to` to moveTo ->
      moveTo hands back the same list and nothing moves. */
   const m = mount();
+  m.ctx.renderQueue(); // the page the repaint below is of: it repaints its section in place, it does not draw a page
   const { scope, rows, handles } = dragScope(["a", "b", "c"]);
   m.ctx.bindUpNextDrag(scope);
   fire(handles[0], "pointerdown", { clientY: 20 });
@@ -261,6 +287,28 @@ test("release at y=141 from row 0 commits on pointerup: cp_queue becomes [b, c, 
   assert.strictEqual(m.queueWrites(), 1, "one write, through saveQueueIds");
   const order = [...m.view().matchAll(/data-drag-handle="([^"]+)"/g)].map((x) => x[1]);
   assert.deepStrictEqual(order, ["b", "c", "a"], "the page is a live view of cp_queue: it repainted in the new order");
+});
+
+test("a drag never carries a row above the playing one, and an unqueued playing row is not written into cp_queue (PQ-04, #762)", () => {
+  /* The playing row is drawn first (Library's Up Next model) and stays first, as Move up on the second row is disabled.
+     The drawn list is the list the finger is over; cp_queue holds the playing row only if it was queued.
+     MUTATION 1 (run, red): drop \`Math.max(pinned ? 1 : 0, r.to)\` (use r.to) -> c lands above z: [z] is not first.
+     MUTATION 2 (run, red): drop the \`.filter((x) => x !== pinned)\` -> the unqueued z is written into cp_queue.
+     MUTATION 3 (run, red): move on \`queueIds()\` instead of the drawn rows (\`shown\`) -> the index is off by one when
+     z is not queued. */
+  const drive = (queued) => {
+    const m = mount({ ids: queued });
+    m.state.itemIndex.z = { id: "z", title: "Episode z", show: "S", audio_url: "https://x.test/z.mp3", topics: [] };
+    m.ctx.window.ForayPlayer = { currentEpisodeId: () => "z", isCurrent: (id) => id === "z", isPlaying: () => true };
+    const { scope, handles } = dragScope(["z", "a", "b", "c"]);
+    m.ctx.bindUpNextDrag(scope);
+    fire(handles[3], "pointerdown", { clientY: 3 * 56 + 8 });
+    fire(handles[3], "pointermove", { clientY: 5 });
+    fire(handles[3], "pointerup", { clientY: 5 });
+    return m.queueRaw();
+  };
+  assert.deepStrictEqual(drive(["a", "b", "c"]), ["c", "a", "b"], "z is playing but not queued: c goes to the top of the queue, z stays out of it");
+  assert.deepStrictEqual(drive(["z", "a", "b", "c"]), ["z", "c", "a", "b"], "z is queued and playing: it stays first, c lands right after it");
 });
 
 test("a release without movement writes nothing and leaves the row unpainted (PQ-04, #762)", () => {
@@ -333,11 +381,11 @@ test("a row carried past the screen's edge lands where the finger is in the list
 /* Swipe left to remove (PQ-06, #762)                                    */
 
 /** #view as the swipe and the ✕ see it: `querySelectorAll` answers from the
-    CURRENT innerHTML, so every repaint (`saveQueueIds` -> `renderQueue`) hands
-    out fresh elements, as a real live view does. Each row's `.info` remembers
-    its listeners and leads to a row whose class list really records; each ✕
-    remembers its listeners and records focus. `focused` is the last element
-    given focus, as `{ attr, id }`. */
+    CURRENT innerHTML, so every repaint (`saveQueueIds` -> the section's in-place
+    repaint) hands out fresh elements, as a real live view does. Each row's cover
+    remembers its listeners and leads to a row whose class list really records; each
+    menu button remembers its listeners and records focus. `focused` is the last
+    element given focus, as `{ attr, id }`. */
 function liveView(m) {
   const view = m.byId.get("view");
   const seen = { html: null, infos: [], removes: [] };
@@ -353,27 +401,25 @@ function liveView(m) {
       const row = { classList: classes(), style: {} };
       return Object.assign(listenable(), {
         dataset: { swipeId: x[1] }, row,
-        closest: (sel) => (sel === ".up-next-row" ? row : null),
+        closest: (sel) => (sel === ".qp-row" ? row : null),
         setPointerCapture() {},
       });
     });
-    seen.removes = [...seen.html.matchAll(/data-dequeue="([^"]+)"/g)].map((x) => Object.assign(listenable(), {
-      dataset: { dequeue: x[1] }, disabled: false,
-      getAttribute: (a) => (a === "data-dequeue" ? x[1] : null),
-      focus() { out.focused = { attr: "data-dequeue", id: x[1] }; },
-      click() { for (const fn of this.listeners.click || []) fn({ preventDefault() {}, stopPropagation() {} }); },
+    seen.removes = [...seen.html.matchAll(/data-lb-menu="([^"]+)"/g)].map((x) => Object.assign(listenable(), {
+      dataset: { lbMenu: x[1] }, disabled: false,
+      getAttribute: (a) => (a === "data-lb-menu" ? x[1] : null),
+      focus() { out.focused = { attr: "data-lb-menu", id: x[1] }; },
     }));
     return seen;
   };
   view.querySelectorAll = (sel) => {
     const v = build();
-    if (sel === ".up-next-row > .info") return v.infos;
-    if (sel === "[data-dequeue]") return v.removes;
+    if (sel === ".qp-row > .lb-cover") return v.infos;
+    if (sel === "[data-lb-menu]") return v.removes;
     return [];
   };
-  view.querySelector = () => null;
   out.info = (id) => build().infos.find((i) => i.dataset.swipeId === id);
-  out.remove = (id) => build().removes.find((b) => b.dataset.dequeue === id);
+  out.menu = (id) => build().removes.find((b) => b.dataset.lbMenu === id);
   return out;
 }
 
@@ -394,7 +440,7 @@ function swipe(el, x0, y0, moves, { hold = false } = {}) {
   return cancelled;
 }
 
-test("a 100 px leftward pull on a row's text block removes it on pointerup (PQ-06, #762)", () => {
+test("a 100 px leftward pull on a row removes it on pointerup, with the menu's Toast and Undo (PQ-06, #762)", () => {
   /* MUTATION (run, red): bind the swipe's removal handler to "click" instead
      of "pointerup" -> the release writes nothing and cp_queue keeps b (lane
      L2: the removal belongs to the release, never to the click after it).
@@ -405,10 +451,10 @@ test("a 100 px leftward pull on a row's text block removes it on pointerup (PQ-0
   const m = mount();
   const v = liveView(m);
   m.ctx.renderQueue();
-  assert.strictEqual((m.view().match(/<span class="swipe-under" aria-hidden="true">Remove<\/span>/g) || []).length, 3,
+  assert.strictEqual((m.view().match(/<span class="qp-under" aria-hidden="true">Remove<\/span>/g) || []).length, 3,
     "every row carries the label the swipe reveals, hidden from assistive tech");
   const info = v.info("b");
-  assert.ok(info, "the swipe listens on the row's text block, keyed by its id");
+  assert.ok(info, "the swipe listens on the row's cover, keyed by its id");
   fire(info, "pointerdown", { clientX: 300, clientY: 60, timeStamp: 0 });
   fire(info, "pointermove", { clientX: 250, clientY: 61, timeStamp: 50 });
   assert.ok(info.row.classList.contains("swiping"), "past the lock the row is carried");
@@ -419,6 +465,13 @@ test("a 100 px leftward pull on a row's text block removes it on pointerup (PQ-0
   assert.deepStrictEqual(m.queueRaw(), ["a", "c"], "the swiped row left Up Next");
   assert.strictEqual(m.queueWrites(), 1, "one write, through removeFromQueue -> saveQueueIds");
   assert.ok(!m.view().includes('data-swipe-id="b"'), "the page is a live view of cp_queue: b's row is gone");
+  /* A removal by swipe is the menu's Remove: the same Undo, so it can be taken back. (MUTATION: have the swipe call
+     removeFromQueue directly instead of libRemoveRow -> libUi.undo is null and Undo restores nothing.) */
+  m.ctx.libUndo();
+  assert.deepStrictEqual(m.queueRaw(), ["a", "b", "c"], "Undo puts the swiped row back where it was");
+  /* The click that follows a claimed swipe is the end of the gesture, not a tap to play. (MUTATION: delete the
+     `_lbSwallow` line in the swipe's pointerup -> the flag stays false and the cover would play the row.) */
+  assert.strictEqual(info._lbSwallow, true, "a claimed swipe tells the cover's click to stand down");
 });
 
 test("a gesture that moves vertically first is the list scrolling: nothing moves, nothing is written (PQ-06, #762)", () => {
@@ -459,17 +512,18 @@ test("a rightward drag never paints and never removes (PQ-06, #762)", () => {
   assert.strictEqual(m.queueWrites(), 0);
 });
 
-test("after a swipe removal: 'Removed from Up Next.' and focus on the ✕ that took its place (PQ-06, #762)", () => {
+test("after a swipe removal: 'Removed from Up Next.' and focus on the menu of the row that took its place (PQ-06, #762)", () => {
   /* MUTATION (run, red): delete `afterQueueRemove(index);` from the swipe's
-     pointerup handler -> nothing is announced and focus is left behind.
-     MUTATION 2 (run, red): pass `index + 1` -> focus lands on c's ✕. */
+     pointerup handler -> focus is left behind.
+     MUTATION 2 (run, red): pass `index + 1` -> focus lands on c's menu.
+     MUTATION 3 (run, red): delete `announce(...)` from libRemoveRow -> nothing is announced. */
   const m = mount();
   const v = liveView(m);
   m.ctx.renderQueue();
   swipe(v.info("a"), 300, 20, [[280, 21], [240, 21], [190, 21]]);
   assert.deepStrictEqual(m.queueRaw(), ["b", "c"]);
   assert.strictEqual(m.said(), "Removed from Up Next.", "the removal is said, politely (the shared status region)");
-  assert.deepStrictEqual(v.focused, { attr: "data-dequeue", id: "b" }, "focus goes to the ✕ of the row that took its place");
+  assert.deepStrictEqual(v.focused, { attr: "data-lb-menu", id: "b" }, "focus goes to the menu of the row that took its place");
   /* A pull short of the threshold, released slowly, springs back. */
   const info = v.info("b");
   fire(info, "pointerdown", { clientX: 300, clientY: 20, timeStamp: 0 });
@@ -481,18 +535,19 @@ test("after a swipe removal: 'Removed from Up Next.' and focus on the ✕ that t
   assert.deepStrictEqual(m.queueRaw(), ["b", "c"], "and stays");
 });
 
-test("the ✕ still removes beside the swipe, with the same after-step (PQ-06, #762)", () => {
-  /* MUTATION (run, red): delete the `[data-dequeue]` binder from
-     bindUpNextReorder -> the ✕ click does nothing and cp_queue keeps b.
+test("the menu's Remove still removes beside the swipe, with the same after-step (PQ-06, #762)", () => {
+  /* MUTATION (run, red): delete the `remove` branch from libMenuAct -> the item does nothing and cp_queue keeps b.
      MUTATION 2 (run, red): delete `info.addEventListener("pointercancel",
-     cancel);` -> the cancelled row stays carried and translated. */
+     cancel);` -> the cancelled row stays carried and translated.
+     (The ✕ is gone with the row's arrow buttons; the menu is the alternative a pointer-only gesture owes keyboard and
+     switch users, WCAG 2.5.1.) */
   const m = mount();
   const v = liveView(m);
   m.ctx.renderQueue();
-  v.remove("b").click();
-  assert.deepStrictEqual(m.queueRaw(), ["a", "c"], "the ✕ removes its row");
+  m.ctx.libMenuAct("b", "remove");
+  assert.deepStrictEqual(m.queueRaw(), ["a", "c"], "the menu's Remove removes its row");
   assert.strictEqual(m.said(), "Removed from Up Next.");
-  assert.deepStrictEqual(v.focused, { attr: "data-dequeue", id: "c" }, "focus goes to the ✕ that took its place");
+  assert.deepStrictEqual(v.focused, { attr: "data-lb-menu", id: "c" }, "focus goes to the menu of the row that took its place");
   /* A swipe the system cancels writes nothing and springs the row back. */
   const info = v.info("a");
   fire(info, "pointerdown", { clientX: 300, clientY: 20, timeStamp: 0 });

@@ -56,6 +56,7 @@ const SHELL = [
   "ui/foray-detail.css", // Redesign 2026 (ambient): Foray detail, the second screen on the system
   "ui/settings.css", // Redesign 2026 (ambient): Settings, Tuning, About and the gear's Sheet
   "ui/library.css", // Redesign 2026 (ambient): Library, a screen on the system
+  "ui/queue.css", // Redesign 2026 (ambient): the Up Next page, Library's Up Next section given the screen
   "ui/icons.svg", // Redesign 2026 (ambient): the icon sprite every `<use href>` fetches
   "ui/icons-LICENSES.txt", // complete MIT/OFL notices for the paths shipped in the sprite
   "sw.js",

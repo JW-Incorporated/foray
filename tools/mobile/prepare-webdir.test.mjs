@@ -103,6 +103,9 @@ const AMBIENT_PRIMITIVES_ASSETS = Object.freeze([
      alarm is not to be re-baselined a seventh time and this is a bounded feature step. */
   { rel: "ui/library.css", maxBytes: 8 * 1024 },
   { rel: "ui/library.js", maxBytes: 30 * 1024 },
+  /* Phase 4, Up Next page: its stylesheet (the head, the handle, the gestures' paint). ui/queue.js shrank (the page's own
+     row and its four arrow buttons went into Library's QueueRow), so it stays in the legacy line. */
+  { rel: "ui/queue.css", maxBytes: 4 * 1024 },
 ]);
 
 /* ───────────────────────────── the derivation ───────────────────────────── */
