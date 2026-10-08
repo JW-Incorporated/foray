@@ -718,6 +718,26 @@ and is empty at the detent; the sheet-level line "4a's setting is the
 centre detent" (label 13/500 `--ink-2`, not micro) says the rest. On open, focus the sheet container (`tabindex=-1`),
 never the first button; focus rings on `:focus-visible` only.
 
+**As built (`ui/settings.js`, group G).** Decisions the notes left open:
+the sheet floats 8px in from each edge on the shared `.sheet` material (the
+prototype's, not the bottom-docked gallery sheet's); Appearance is System /
+Cream / Bakelite (the prototype's Cream / Bakelite / Auto, reordered so the
+default comes first) and `System` removes `html[data-theme]`, since the token
+layer knows only `light` and `dark`; `cp_theme` is applied at the top of
+`init()` and again after storage hydration (a head script would have to read
+`localStorage` around the shim, which the security census forbids, so a
+Bakelite user can see one Cream frame before init on a cold load). A dial is
+eleven positions with 4a's setting at 5 whatever the subject's weight: below
+the detent the dial spans 0 to that weight, above it that weight to 1, so the
+detent writes exactly 4a's value and the whole 0..1 range stays reachable
+(`settingsDialPosition` / `settingsDialValue`). Three dials: the roots the
+listener has moved first, then the roots 4a weights highest. At the detent the
+needle sits on top of the detent tick (the same x), so the tick is seen at
+every value but that one, where the needle is the mark. The knob's drawer is
+not gone: the sheet's "More settings" hands over to it, because Family mode,
+Continuous playback, the voice picker and Delete my data live there and the
+topbar's menu button is hidden on Today and Yours.
+
 Prototype routes for the shoot: every screen exposes its states as hash
 sub-routes (`#/home/first`, `#/home/resume`, `#/home/offline`,
 `#/home/loading`, `#/home/also`, `#/home/ground`, `#/library/empty`,

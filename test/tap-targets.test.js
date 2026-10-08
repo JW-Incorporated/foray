@@ -204,6 +204,7 @@ const BUTTONS = {
   ".mini__body": { tall: ".mini__body", why: "flex: 1 — the mini player's whole artwork and title body" },
   ".row-queue__main": { tall: ".row-queue__main", why: "flex: 1 — the Yours queue row's whole artwork and title body, between the position and the 44px ⋯" },
   ".tab": { size: [".tab"] },
+  ".settings-seg__opt": { size: [".settings-seg__opt"] },   // Tactile settings: System / Cream / Bakelite, 44 tall and a third of the well wide
   ".rotary__tick": { size: [".rotary__tick"] },
   "#menu-btn": { rule: ".topbar button" },
   "#refresh-btn": { rule: ".topbar button" },

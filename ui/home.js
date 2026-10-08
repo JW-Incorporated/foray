@@ -786,15 +786,17 @@ function todayLoadingHtml() {
   </div>`;
 }
 
-/* The knob opens the drawer (Settings, until the Settings screen lands). It
-   names what it controls and whether it is open, like the topbar's ☰ does. */
+/* The knob opens the Settings sheet (ui/settings.js; it opened the drawer until
+   the Settings screen landed, and the sheet's "More settings" hands over to the
+   drawer). It names what it controls and whether it is open, like the topbar's
+   ☰ does. */
 function bindTodayKnob(scope) {
   const knob = scope && typeof scope.querySelector === "function" ? scope.querySelector("#today-knob") : null;
   if (!knob || knob._bound) return;
   knob._bound = true;
-  knob.setAttribute("aria-controls", "drawer");
-  knob.setAttribute("aria-expanded", drawerIsOpen() ? "true" : "false");
-  knob.addEventListener("click", () => openDrawer(!drawerIsOpen()));
+  knob.setAttribute("aria-controls", "settings-sheet");
+  knob.setAttribute("aria-expanded", "false");
+  knob.addEventListener("click", () => openSettingsSheet(knob));
 }
 
 /** The press on a Foray key (the hero's, or Resume's). The Foray is resolved at

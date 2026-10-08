@@ -532,28 +532,19 @@
       "prototype": {
         "route": "#/settings"
       },
-      "app": null,
+      "app": {
+        "state": "returning",
+        "step": "settings-sheet"
+      },
       "regions": {
         "header": {
           "prototype": ".top",
-          "app": null
-        },
-        "hero": {
-          "prototype": ".hero",
-          "app": null
-        },
-        "primary": {
-          "prototype": ".hero__keys .keycap",
-          "app": null
+          "app": ".today-top"
         },
         "rows": {
           "prototype": ".row",
-          "app": null,
+          "app": ".today .row-episode",
           "mode": "all"
-        },
-        "tabBar": {
-          "prototype": "#tabs",
-          "app": null
         }
       }
     },

@@ -157,6 +157,16 @@ async function openGallerySheet(page, scheme) {
     Closing the context aborts the pending request. The pattern is the document
     the boot path fetches (`fetchJson("data/catalog-client.json")`, query string
     allowed). */
+/** Today: press the knob keycap and wait for the Settings sheet (tactile
+    `settings`). The sheet is the app's own modal, so `#settings-sheet` loses its
+    `hidden` once `openSheet` has taken it; the beat after is the sheet settling. */
+async function openSettingsFromKnob(page) {
+  await page.waitForSelector("#today-knob", { state: "visible", timeout: 15000 });
+  await page.locator("#today-knob").click();
+  await page.waitForSelector("#settings-sheet:not([hidden])", { state: "visible", timeout: 10000 });
+  await wait(page, 600);
+}
+
 async function holdCatalog(page) {
   await page.route("**/data/catalog-client.json*", () => { /* held on purpose */ });
 }
@@ -215,7 +225,12 @@ export function appStates(fx) {
       id: "returning",
       description: "Returning user: saved episodes, Up Next, playlists, starred shows, history.",
       seed: "returning",
-      steps: coreRoutes(fx, { entities: true }),
+      steps: [
+        ...coreRoutes(fx, { entities: true }),
+        /* Appended by Tactile `settings` (BUILD-PLAN 2.19): Today with the knob
+           pressed and the Settings sheet up. */
+        { label: "settings-sheet", route: "#/", run: (page) => openSettingsFromKnob(page) },
+      ],
     },
     {
       id: "player",

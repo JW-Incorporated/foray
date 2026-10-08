@@ -854,7 +854,7 @@ test("yoursFlip puts a moved row back with translateY and releases it; an unmove
 /* 11. THE KNOB, THE ROUTE, THE LEGACY PAGE                              */
 /* ==================================================================== */
 
-test("the knob is a 44px paper keycap that opens the drawer and says it controls it", async () => {
+test("the knob is a 44px paper keycap that opens the Settings sheet and says it controls it", async () => {
   /* MUTATION 1: bind nothing - the click assertion fails.
      MUTATION 2: label it "Menu" - the name assertion fails (the prototype's is
      "Settings and dials").
@@ -865,11 +865,14 @@ test("the knob is a 44px paper keycap that opens the drawer and says it controls
   const knob = one(m, "#yours-knob");
   assert.ok(knob.classList.contains("keycap--sm") && knob.classList.contains("keycap--paper"));
   assert.strictEqual(knob.getAttribute("aria-label"), "Settings and dials");
-  assert.strictEqual(knob.getAttribute("aria-controls"), "drawer");
+  assert.strictEqual(knob.getAttribute("aria-controls"), "settings-sheet");
   const calls = [];
-  m.ctx.openDrawer = (open) => calls.push(open);
+  const drawers = [];
+  m.ctx.openSettingsSheet = (opener) => calls.push(opener);
+  m.ctx.openDrawer = (open) => drawers.push(open);
   knob._on.get("click")[0]();
-  assert.deepStrictEqual(calls, [true]);
+  assert.deepStrictEqual(calls, [knob], "Tactile settings: the knob opens the Settings sheet from itself");
+  assert.deepStrictEqual(drawers, [], "not the drawer (its More settings key does)");
   assert.strictEqual(knob.querySelector("use").getAttribute("href"), "#knob");
   assert.strictEqual(one(m, "h2").textContent, "Yours");
   assert.strictEqual(one(m, "h2").className, "display-xl", "display-xl on one line");
