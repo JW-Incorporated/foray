@@ -720,8 +720,10 @@ test("one text field: every field reads the one element rule, and only the float
   if (/<input\b[^>]*\bdata-show-ep-search-input\b[^>]*type="text"/.test(APP_JS)) fields.add(".show-ep-search input");
   for (const m of APP_JS.matchAll(/ddEl\("input", "([^"]+)"\)|\.className = "([^"]+-input)"/g)) fields.add(`.${m[1] || m[2]}`);
   /* Six since round 2's p-first-6 took the second playlist builder (#pl-input)
-     off #/playlists: Create's #cr-input is the one builder field left. */
-  assert.ok(fields.size >= 6, `fixture assumption: the census finds the app's text fields (${[...fields]})`);
+     off #/playlists: Create's #cr-input is the one builder field left. Five since
+     the Tactile onboarding took the Preferences step's typed-subject field with
+     it. */
+  assert.ok(fields.size >= 5, `fixture assumption: the census finds the app's text fields (${[...fields]})`);
   const OWN = ["border-radius", "min-height", "height", "font-size", "padding"];
   const bad = [];
   for (const r of RULES) {

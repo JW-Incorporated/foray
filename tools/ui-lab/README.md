@@ -160,7 +160,7 @@ primary key 329px higher). Pure logic is tested in `fidelity.test.mjs` (no brows
 
 | State | Seed | Screens |
 |---|---|---|
-| `first-run` | empty profile | onboarding sheet over Home |
+| `first-run` | empty profile | the Tactile onboarding screen over Home (`intro-sheet`), then its returning mode at `#/onboarding/return` (`onboarding-return`) |
 | `empty` | intro dismissed, nothing saved | Home, Search, Create, Library, Up Next, Playlists, Followed shows, Interests, Forays, not-found playlist and episode |
 | `returning` | saved episodes, Up Next, 3 playlists, followed shows, history | all of the above populated, plus playlist detail, show, episode, category, browse pill, a foray |
 | `player` | returning + an episode playing | mini player over Home, Library, Up Next; the Now Playing sheet open; the sheet closed again |

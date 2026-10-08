@@ -576,11 +576,18 @@ test("the shipped source names exactly the 22 cp_ key families the audit found",
      optional label, the episode's length then. Device-only — no event type,
      never sent, never synced (roadmap README Q19). Same mechanism: this count
      failed first, then the policy check, until privacy-policy.md §1 got the
-     row. */
+     row.
+
+     33 -> 34 on 2026-10-08 (Redesign 2026, Tactile `settings`): `cp_theme`,
+     the Appearance choice (System, Cream or Bakelite) the Settings sheet writes
+     through the storage shim and ui/settings.js paints on <html data-theme> at
+     boot. A local per-device preference, absent means System, never sent. Same
+     mechanism: this count failed first, then the policy check, until
+     privacy-policy.md §1 got the row. */
   const families = [...keyFamiliesInSource().keys()].sort();
   assert.strictEqual(
-    families.length, 33,
-    `expected 33 cp_ key families, found ${families.length}:\n${families.join("\n")}`
+    families.length, 34,
+    `expected 34 cp_ key families, found ${families.length}:\n${families.join("\n")}`
   );
   assert.ok(families.includes("cp_foray:"), "the patterned Foray resume key must be found as a family");
   assert.ok(families.includes("cp_pos:"), "the patterned episode-position key must be found as a family");

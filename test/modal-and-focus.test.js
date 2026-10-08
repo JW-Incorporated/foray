@@ -708,20 +708,12 @@ const dragModule = () => import(pathToFileURL(path.join(ROOT, "player", "sheet-d
    release SEEKS" were here: they drove `bindStripZoomScrub`, which went with the strip
    (see section 3). */
 
-test("ROUND 2 a11y-5: 'Get started' lands focus on the new step's title, so the step is spoken", () => {
-  /* The button that was pressed is destroyed by the body swap and focus fell
-     to <body> inside an open dialog. MUTATION: drop `landOnStep()` from the
-     "Get started" handler -> red. */
-  const m = mount();
-  assert.strictEqual(m.ctx.showFirstTimeExplainerOnce(), true);
-  const wrap = m.doc.body.querySelector("#first-time-sheet");
-  assert.strictEqual(m.doc.activeElement, wrap.querySelector(".fy-panel"), "the first render: the dialog itself is what is announced");
-  wrap.querySelector("#first-time-sheet-go").fire("click");
-  const title = wrap.querySelector("#first-time-sheet-title");
-  assert.ok(title && /What are you into/.test(title.textContent), "precondition: step 2 rendered");
-  assert.strictEqual(m.doc.activeElement, title, "focus is on the new step's title, not on <body>");
-  assert.strictEqual(title.getAttribute("tabindex"), "-1", "as a programmatic target");
-});
+/* ROUND 2 a11y-5 ("Get started" lands focus on the new step's title) is retired
+   with the step it described: the tactile onboarding is one screen, and its
+   Play key closes it, so there is no second step whose title could take focus.
+   What the rule protected, that an action which destroys the element just
+   activated puts focus somewhere that survived, is pinned for the screen's own
+   exits in test/tactile-onboarding.test.js. */
 
 test("ROUND 2 p-first-4: a scrim tap PARKS the first-run sheet for the visit: it neither ends onboarding nor pops back up", () => {
   /* MUTATION 1: bind the scrim to `dismiss` -> the flag assertion is red.

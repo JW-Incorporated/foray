@@ -306,6 +306,12 @@ function tactileBandAutoId() {
   return "dial-band-" + tactileBandSerial;
 }
 
+/* The detail band renders 60px tall (`.band--detail`), so one viewBox unit is exactly
+ * one pixel on y and 1000 / renderWidth units are one pixel on x. Everything the
+ * eye reads as a shape rather than a stretch (the needle's 2px width and round
+ * head, the station codes' glyphs) is drawn through that, never in bare units. */
+var TACTILE_DETAIL_PX = 60;
+
 function tactileBand(data) {
   var d = data || {};
   var kind = ["mini", "detail", "scrub", "line"].includes(d.kind) ? d.kind : "mini";
@@ -336,7 +342,7 @@ function tactileBand(data) {
   var barY = mini ? 0 : 8;
   var barH = mini ? 60 : 28;
   var rx = 2000 / renderWidth;
-  var ry = 2 * 60 / (kind === "detail" ? 44 : kind === "scrub" ? 56 : 8);
+  var ry = 2 * 60 / (kind === "detail" ? TACTILE_DETAIL_PX : kind === "scrub" ? 56 : 8);
   var bars = widths.map(function (box, index) {
     var segment = segments[index];
     var cls = episode ? "t-band__bar t-band__bar--episode"
@@ -350,7 +356,13 @@ function tactileBand(data) {
     var widthPx = (run.right - run.x) / 1000 * renderWidth;
     if (widthPx < 24) return "";
     var isCurrent = current >= run.start && current <= run.end;
-    return '<text class="t-band__code' + (isCurrent ? " is-current" : "") + '" data-run-start="' + run.start + '" data-run-end="' + run.end + '" x="' + ((run.x + run.right) / 2).toFixed(2) + '" y="53" text-anchor="middle">' + esc(codes.get(run.showId)) + "</text>";
+    var centre = ((run.x + run.right) / 2).toFixed(2);
+    /* Detail codes are counter-scaled on x so a glyph is 13px wide and 13px tall, not
+       the 0.3 of that the stretched viewBox would make it (preserveAspectRatio none). */
+    var place = kind === "detail"
+      ? ' x="0" y="0" transform="translate(' + centre + " 53) scale(" + (1000 / renderWidth).toFixed(4) + ' 1)"'
+      : ' x="' + centre + '" y="53"';
+    return '<text class="t-band__code' + (isCurrent ? " is-current" : "") + '" data-run-start="' + run.start + '" data-run-end="' + run.end + '"' + place + ' text-anchor="middle">' + esc(codes.get(run.showId)) + "</text>";
   }).join("");
   var role = kind === "scrub" ? "slider" : "img";
   var valueText = d.valueText || Math.round(progress * (Number(d.totalSeconds) || total)) + " seconds of " + Math.round(Number(d.totalSeconds) || total) + " seconds, " + (segments[current] ? segments[current].show : "4a");
@@ -365,7 +377,11 @@ function tactileBand(data) {
     '<g class="' + (line ? "band__layers" : "band__draw") + '"><g class="t-band__base">' + bars + '</g><g class="t-band__fill" clip-path="url(#' + esc(id) + '-progress)">' + bars + "</g>" + labels +
     (line || (mini && !progress) ? "" : mini
       ? '<g class="needle" transform="translate(' + progressX.toFixed(2) + ' 0)"><rect x="' + (-1000 / renderWidth).toFixed(2) + '" y="-30" width="' + (2000 / renderWidth).toFixed(2) + '" height="120" rx="0"></rect></g>'
-      : '<g class="needle" transform="translate(' + progressX.toFixed(2) + ' 0)"><rect x="-1" y="3" width="2" height="39" rx="1"></rect><circle cx="0" cy="3" r="4"></circle></g>') + "</g></svg>";
+      : kind === "detail"
+        /* 2px wide, 6px past the bars at both ends, a round 8px head on top (BUILD-NOTES 3.6),
+           in rendered pixels: x units are 1000 / renderWidth to the pixel. */
+        ? '<g class="needle" transform="translate(' + progressX.toFixed(2) + ' 0)"><rect x="' + (-1000 / renderWidth).toFixed(2) + '" y="2" width="' + (2000 / renderWidth).toFixed(2) + '" height="40" rx="' + (1000 / renderWidth).toFixed(2) + '" ry="1"></rect><ellipse cx="0" cy="3" rx="' + (4000 / renderWidth).toFixed(2) + '" ry="4"></ellipse></g>'
+        : '<g class="needle" transform="translate(' + progressX.toFixed(2) + ' 0)"><rect x="-1" y="3" width="2" height="39" rx="1"></rect><circle cx="0" cy="3" r="4"></circle></g>') + "</g></svg>";
 }
 
 function tactileWireScrubber(scrubber, data) {

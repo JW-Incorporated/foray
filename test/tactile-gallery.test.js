@@ -83,8 +83,9 @@ test("the gallery covers every primitive and state without adopting them on list
      rows, chips and action keys). */
   /* Group E `foray` adds foray.js (the page: back and share keycaps, the tags, the band, the From
      rows' art, the Foray key) and foray-player.js (its live paint reads the band's own geometry,
-     `tactileBandX`). */
-  assert.deepStrictEqual(adopters, ["browse.js", "foray-player.js", "foray.js", "home.js", "library.js", "mini.js", "now-playing.js", "search.js", "tabbar.js"], "Phase 4, not the foundation, adopts primitives on listener screens, one landed group at a time");
+     `tactileBandX`). Group F `onboarding` adds onboarding.js (the card's brand mark, artwork and
+     band, and the Play key). */
+  assert.deepStrictEqual(adopters, ["browse.js", "foray-player.js", "foray.js", "home.js", "library.js", "mini.js", "now-playing.js", "onboarding.js", "search.js", "tabbar.js"], "Phase 4, not the foundation, adopts primitives on listener screens, one landed group at a time");
 });
 
 test("the gallery's rendered copy obeys the listener copy rules, however the source spells it", () => {
