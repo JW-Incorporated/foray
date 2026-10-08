@@ -700,6 +700,55 @@ test("the strip is 36px chips 8px apart under a 16px gutter; the row is 64 with 
   assert.ok(rows >= 8 && rows <= 10, `${rows} rows fit above the deck at 852`);
 });
 
+test("the Yours readouts close the mono space: '47 min' is one readout, not '47  min'", () => {
+  /* MUTATION: delete `.page--yours .readout { word-spacing: -0.2em }` - the
+     rule is gone and the assertion fails (a mono space is 0.6em wide, so the
+     row's "47 min" renders with a hole in it). */
+  assert.match(decl(".page--yours .readout", "word-spacing") || "", /^-0\.2em$/);
+});
+
+test("fitYoursChip: the chosen chip lands inside the gutter and a half-cut chip on the left is stepped past", async () => {
+  /* The strip is a fake with real geometry: six chips of the app's widths, 8
+     apart, in a 393px strip, chosen = the fifth ("Up Next"). A fake that answered with the
+     scroll it was asked for would pass anything, so scrollLeft is plain data and
+     getBoundingClientRect subtracts it, like a real scroller.
+     MUTATION 1: delete the `for (let i = 0; i < chips.length; i++)` loop
+     step-past - the left chip stays cut (box.left < 16) and the last assertion fails.
+     MUTATION 2: delete `strip.scrollLeft = 0` - a strip already scrolled keeps
+     its old offset and the first assertion fails. */
+  const m = await mountBooted();
+  const W = 393, GAP = 8, PAD = 16;
+  const WIDTHS = [75, 70, 68, 92, 131, 81];   // Forays, Shows, Saved, Playlists, Up Next, History
+  const mk = (selectedIdx, start) => {
+    /* scrollLeft clamps to the content's end, as a browser's does */
+    const max = PAD * 2 + WIDTHS.reduce((a, b) => a + b, 0) + GAP * (WIDTHS.length - 1) - W;
+    let at = Math.min(start, max);
+    const strip = { clientWidth: W };
+    Object.defineProperty(strip, "scrollLeft", { get: () => at, set: (v) => { at = Math.min(Math.max(0, v), max); } });
+    strip.getBoundingClientRect = () => ({ left: 0, right: W });
+    const chips = WIDTHS.map((w, i) => {
+      const x = PAD + WIDTHS.slice(0, i).reduce((a, b) => a + b + GAP, 0);
+      return { getBoundingClientRect: () => ({ left: x - strip.scrollLeft, right: x + w - strip.scrollLeft }) };
+    });
+    strip.querySelector = () => chips[selectedIdx];
+    strip.querySelectorAll = () => chips;
+    return { strip, chips };
+  };
+  const { strip, chips } = mk(4, 170);
+  m.ctx.fitYoursChip(strip);
+  const sel = chips[4].getBoundingClientRect();
+  assert.ok(sel.right <= W - PAD + 0.5 && sel.left >= PAD - 1, "the chosen chip is whole, inside both gutters");
+  for (const c of chips) {
+    const b = c.getBoundingClientRect();
+    assert.ok(!(b.left < PAD - 1 && b.right > PAD), "no chip is cut by the left edge past the fade (at most the gap shows, inside the 16px mask)");
+  }
+  /* the strip is snapped, not parked at its end: Saved (the first chip left) sits
+     at the gutter, and History runs into the right fade (the old fit parked
+     flush at the end, History whole inside the gutter and a "…aved" stub on the left) */
+  assert.strictEqual(Math.round(chips[2].getBoundingClientRect().left), PAD, "the first chip in view starts at the gutter");
+  assert.ok(chips[5].getBoundingClientRect().right > W - PAD, "the last chip reaches the right fade: the strip goes on");
+});
+
 test("the three actions share one 48px line: no indent, compact keys, and the row is the keys' 44 plus 4", () => {
   /* MUTATION: put `padding-left: calc(var(--s-5) + var(--s-2) + var(--s-1))`
      back on .yours-qtools (the prototype's indent) - the no-indent assertion

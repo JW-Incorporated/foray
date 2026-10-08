@@ -5171,6 +5171,7 @@ body.ui-v2.view-yours .page--yours .page-head {
 .page--yours .page-head > div { display: flex; flex-direction: column; gap: var(--s-2); min-width: 0; }
 body.ui-v2.view-yours .page--yours .page-head h2 { margin: 0; color: var(--ink); font-family: var(--dial-font-display); font-size: var(--t-display-xl); line-height: var(--lh-display-xl); font-weight: var(--w-display); font-stretch: var(--wd-screen); letter-spacing: var(--tracking-screen); }
 .yours-readout { margin: 0; color: var(--ink-2); }
+.page--yours .readout { word-spacing: -0.2em; }   /* the mono space is 0.6em wide; "47 min" reads as one readout, not "47  min" */
 
 /* The strip: 36px chips, 8 apart, 16 gutters; a chip half out of the edge fades
    instead of showing a sliver (prototype P1-6). It sits 8px closer to the head

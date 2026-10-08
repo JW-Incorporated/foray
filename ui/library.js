@@ -568,20 +568,33 @@ function onYoursQueueClick(e) {
 
 /* ---------- chips ---------- */
 
-/** The chosen chip, wholly in view. A strip wider than the screen opens at its
-    left end, and "Up Next", the chip the page opens on, is the fifth of six; a
-    chip half past the edge is only a sliver. The chip is scrolled in to the
-    gutter on whichever side it was cut. Nothing to do where the strip does not
-    scroll. */
+/** The chosen chip, wholly in view, the strip snapped to a chip edge. A strip
+    wider than the screen opens at its left end, and "Up Next", the chip the page
+    opens on, is the fifth of six. The strip is scrolled from its left end just
+    far enough to bring the chosen chip inside the right gutter, then on until
+    the chip the left edge has cut is gone and the one after it starts at the
+    gutter (the fade would show the cut chip as a sliver). What is left over on
+    the right is the chips that do not fit; the last of them runs into the right
+    fade, so the strip says it goes on. The prototype's fitChip, ported, with
+    its single step made a snap to the next chip. Nothing to do where the strip
+    does not scroll. */
 function fitYoursChip(strip) {
   if (!strip || typeof strip.querySelector !== "function") return;
   const chip = strip.querySelector('[aria-selected="true"]');
   if (!chip || !(strip.clientWidth > 0)) return;
   const gutter = 16;
-  const left = chip.offsetLeft;
-  const right = left + chip.offsetWidth;
-  if (right > strip.scrollLeft + strip.clientWidth - gutter) strip.scrollLeft = right - strip.clientWidth + gutter;
-  else if (left < strip.scrollLeft + gutter) strip.scrollLeft = Math.max(0, left - gutter);
+  strip.scrollLeft = 0;
+  const edge = strip.getBoundingClientRect();
+  const sel = chip.getBoundingClientRect();
+  if (sel.right > edge.right - gutter) strip.scrollLeft += sel.right - (edge.right - gutter);
+  const chips = Array.from(strip.querySelectorAll(".chip"));
+  for (let i = 0; i < chips.length; i++) {
+    const box = chips[i].getBoundingClientRect();
+    if (box.left < edge.left + gutter - 1 && box.right > edge.left) {
+      const next = chips[i + 1] && chips[i + 1] !== chip ? chips[i + 1].getBoundingClientRect() : null;
+      strip.scrollLeft += next ? next.left - edge.left - gutter : box.right - edge.left + 2;
+    }
+  }
 }
 
 /** Show one panel. No render: hide the others, move the check and the roving
