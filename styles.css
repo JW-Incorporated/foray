@@ -4623,6 +4623,7 @@ body.drawer-open { overflow: hidden; }
 .t-band__bar--c4 { fill: var(--dial-seg-c4); } .t-band__bar--c5 { fill: var(--dial-seg-c5); }
 .t-band__bar--c6 { fill: var(--dial-seg-c6); } .t-band__bar--c7 { fill: var(--dial-seg-c7); }
 .t-band__hatch { fill: var(--dial-seg-narration); }
+.t-band__hatch-bg { fill: var(--ultramarine-soft); }
 .t-band__bar--tick { fill: var(--dial-seg-narration); }
 .t-band__bar--episode { fill: var(--persimmon); }
 .t-band__code { fill: var(--ink-2); font: 700 var(--t-micro) var(--font-mono); }

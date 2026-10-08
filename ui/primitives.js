@@ -148,8 +148,31 @@ function tactileBandSegments(input) {
   });
 }
 
-/* Band geometry in the 0-1000 viewBox. Bars sit 2 units apart, in order, and
- * the last one ends at 1000. Each bar gets its runtime share of the width the
+/* The gap between bars, in viewBox units. The prototype's stitched rhythm is a
+ * gap you can see: 3px rendered (2px on the 8px mini band and the 3px line),
+ * not a 2-unit hairline (0.7px on a 345px band, which read as one slab with
+ * seams). It never drops under 2 units, and where hundreds of clips would make
+ * the gaps eat the band they are capped at a quarter of it between them. */
+function tactileBandGap(kind, renderWidth, count) {
+  var px = kind === "mini" || kind === "line" ? 2 : 3;
+  var units = px / Math.max(1, Number(renderWidth) || 345) * 1000;
+  return Math.max(2, count > 1 ? Math.min(units, 250 / (count - 1)) : units);
+}
+
+/* Corner radius as a viewBox (rx, ry) pair. The viewBox is stretched
+ * non-uniformly (preserveAspectRatio none), so one number would draw an ellipse:
+ * x and y are each converted from the rendered px radius. */
+var TACTILE_BAND_PX = { scrub: 64, detail: 44, mini: 8, line: 3 };
+function tactileBandRadius(kind, renderWidth, boxWidth) {
+  var px = kind === "line" ? 0 : kind === "mini" ? 1 : 3;
+  return {
+    rx: Math.min(px / Math.max(1, Number(renderWidth) || 345) * 1000, boxWidth / 2),
+    ry: Math.min(px * 60 / TACTILE_BAND_PX[kind], 14),
+  };
+}
+
+/* Band geometry in the 0-1000 viewBox. Bars sit a visible gap apart
+ * (tactileBandGap), in order, and the last one ends at 1000. Each bar gets its runtime share of the width the
  * gaps leave, but never less than its rendered minimum (3px; 8px for hatched
  * narration outside the mini and line bands). A bar under its minimum is
  * pinned at it and the others share what is left in runtime proportion,
@@ -162,8 +185,8 @@ function tactileBandSegments(input) {
 function tactileBandLayout(segments, renderWidth, kind) {
   var n = segments.length;
   if (!n) return [];
-  var gap = 2;
   var width = Math.max(1, Number(renderWidth) || 345);
+  var gap = tactileBandGap(kind, width, n);
   var available = Math.max(0, 1000 - gap * (n - 1));
   var mins = segments.map(function (segment) {
     return (segment.narration && kind !== "mini" && kind !== "line" ? 8 : 3) / width * 1000;
@@ -271,7 +294,8 @@ function tactileBand(data) {
     var cls = episode ? "t-band__bar t-band__bar--episode"
       : segment.narration ? "t-band__bar t-band__bar--narration" + (hatch ? "" : " t-band__bar--tick")
       : "t-band__bar t-band__bar--c" + tactileHash(segment.showId);
-    var shape = line ? '" y="0" width="' + box.width.toFixed(2) + '" height="60" rx="0"' : '" y="8" width="' + box.width.toFixed(2) + '" height="28" rx="2"';
+    var radius = tactileBandRadius(kind, renderWidth, box.width);
+    var shape = line ? '" y="0" width="' + box.width.toFixed(2) + '" height="60" rx="0"' : '" y="8" width="' + box.width.toFixed(2) + '" height="28" rx="' + radius.rx.toFixed(2) + '" ry="' + radius.ry.toFixed(2) + '"';
     return '<rect class="' + cls + '"' + (segment.narration && hatch ? ' fill="url(#' + esc(id) + '-hatch)"' : "") + ' data-segment-index="' + index + '" x="' + box.x.toFixed(2) + shape + "></rect>";
   }).join("");
   var labels = kind === "mini" || kind === "line" ? "" : tactileBandRuns(segments, widths).map(function (run) {
@@ -292,7 +316,7 @@ function tactileBand(data) {
     ? ' tabindex="0" aria-valuemin="0" aria-valuemax="' + Math.round(Number(d.totalSeconds) || total) + '" aria-valuenow="' + Math.round(progress * (Number(d.totalSeconds) || total)) + '" aria-valuetext="' + esc(valueText) + '"'
     : ' aria-label="' + esc(d.label || "Foray band with " + codes.size + " stations") + '"';
   return '<svg class="band band--' + esc(kind) + (d.buffering ? " band--buffering" : "") + '"' + (line ? "" : ' data-draw="true" role="' + role + '"') + aria + ' viewBox="0 0 1000 60" preserveAspectRatio="none">' +
-    '<defs><pattern id="' + esc(id) + '-hatch" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="12" class="t-band__hatch"></rect></pattern>' +
+    '<defs><pattern id="' + esc(id) + '-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="scale(' + (1000 / renderWidth).toFixed(4) + " " + (60 / TACTILE_BAND_PX[kind]).toFixed(4) + ') rotate(45)"><rect width="6" height="6" class="t-band__hatch-bg"></rect><rect width="3" height="6" class="t-band__hatch"></rect></pattern>' +
     '<clipPath id="' + esc(id) + '-progress"><rect class="band__progress" x="0" y="0" width="' + progressX.toFixed(2) + '" height="60"></rect></clipPath></defs>' +
     '<g class="' + (line ? "band__layers" : "band__draw") + '"><g class="t-band__base">' + bars + '</g><g class="t-band__fill" clip-path="url(#' + esc(id) + '-progress)">' + bars + "</g>" + labels +
     (line ? "" : '<g class="needle" transform="translate(' + progressX.toFixed(2) + ' 0)"><rect x="-1" y="3" width="2" height="39" rx="1"></rect><circle cx="0" cy="3" r="4"></circle></g>') + "</g></svg>";

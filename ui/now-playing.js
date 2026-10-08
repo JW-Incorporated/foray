@@ -477,6 +477,8 @@ function dialPaintBandCodes(parts) {
   parts.bandSvg.querySelectorAll(".t-band__code").forEach(function (text) {
     var span = dialNpEl("span", "np__code" + (text.classList.contains("is-current") ? " is-current" : ""), text.textContent);
     span.dataset.x = String(Number(text.getAttribute("x")) / 1000 * width);
+    span.dataset.runStart = text.getAttribute("data-run-start");
+    span.dataset.runEnd = text.getAttribute("data-run-end");
     parts.bandCodes.append(span);
     spans.push(span);
   });
@@ -484,12 +486,59 @@ function dialPaintBandCodes(parts) {
      collide (adjacent narrow runs) they are pushed apart, so every run keeps a
      readable code a few px from its bar rather than one stacked on the next. */
   var sizes = spans.map(function (span) { return span.offsetWidth || 14; });
-  var placed = dialSpreadCodes(spans.map(function (span) { return Number(span.dataset.x); }), sizes, width);
-  spans.forEach(function (span, index) {
-    span.style.setProperty("--x", String(Number(span.dataset.x) / width));
-    span.style.setProperty("--dx", (placed[index] - Number(span.dataset.x)).toFixed(1) + "px");
-    delete span.dataset.x;
+  var centres = spans.map(function (span) { return Number(span.dataset.x); });
+  var boxes = parts.bandBoxes || [];
+  var runPx = spans.map(function (span) {
+    var first = boxes[Number(span.dataset.runStart)];
+    var last = boxes[Number(span.dataset.runEnd)];
+    return first && last ? (last.x + last.width - first.x) / 1000 * width : 0;
   });
+  var current = spans.map(function (span) { return span.classList.contains("is-current"); });
+  var kept = dialFitCodes(centres, sizes, runPx, current, width);
+  var shown = spans.filter(function (span, index) { return kept[index]; });
+  var placed = dialSpreadCodes(centres.filter(function (c, index) { return kept[index]; }), sizes.filter(function (s, index) { return kept[index]; }), width);
+  var at = 0;
+  spans.forEach(function (span, index) {
+    if (!kept[index]) { span.remove(); return; }
+    span.style.setProperty("--x", String(centres[index] / width));
+    span.style.setProperty("--dx", (placed[at] - centres[index]).toFixed(1) + "px");
+    at += 1;
+  });
+  /* Keep what was dropped addressable for assistive tech and tests: the band's
+     own accessible name carries every show, so nothing is lost with the label. */
+  parts.bandCodes.dataset.shown = String(shown.length);
+  parts.bandCodes.dataset.dropped = String(spans.length - shown.length);
+}
+
+/* The prototype's code row is a dial scale: a code per run with air around it.
+   A foray with many short runs cannot give every one that, so the codes are
+   laid out at DIAL_CODE_GAP px apart and, where that would push a code more than
+   DIAL_CODE_SHIFT px off its own bar (or not fit at all), the narrowest run
+   loses its code first, never the current run's. The bars keep their colours
+   and the band's accessible name still lists every show. Returns a keep mask. */
+var DIAL_CODE_GAP = 14;
+var DIAL_CODE_SHIFT = 12;
+function dialFitCodes(centres, sizes, runPx, current, total) {
+  var keep = centres.map(function () { return true; });
+  for (var pass = 0; pass < centres.length; pass += 1) {
+    var idx = [];
+    keep.forEach(function (k, i) { if (k) idx.push(i); });
+    var placed = dialSpreadCodes(idx.map(function (i) { return centres[i]; }), idx.map(function (i) { return sizes[i]; }), total);
+    var bad = -1;
+    for (var n = 0; n < idx.length && bad < 0; n += 1) {
+      var tight = n > 0 && placed[n] - placed[n - 1] < (sizes[idx[n]] + sizes[idx[n - 1]]) / 2 + DIAL_CODE_GAP - 0.01;
+      if (tight || Math.abs(placed[n] - centres[idx[n]]) > DIAL_CODE_SHIFT) bad = n;
+    }
+    if (bad < 0) break;
+    /* Drop the narrowest run among the offender and its neighbours (the whole
+       row if they are all current), the current one last. */
+    var pool = [bad - 1, bad, bad + 1].filter(function (n2) { return n2 >= 0 && n2 < idx.length && !current[idx[n2]]; });
+    if (!pool.length) pool = idx.map(function (i, n2) { return n2; }).filter(function (n2) { return !current[idx[n2]]; });
+    if (!pool.length) break;
+    var victim = pool.reduce(function (best, n2) { return runPx[idx[n2]] < runPx[idx[best]] ? n2 : best; }, pool[0]);
+    keep[idx[victim]] = false;
+  }
+  return keep;
 }
 
 /* Centres (px) -> non-overlapping centres inside [0, total]. Two passes keep
@@ -498,7 +547,7 @@ function dialPaintBandCodes(parts) {
    in from the far edge. Labels that cannot all fit keep their share of the
    squeeze (still ordered, still inside the box). */
 function dialSpreadCodes(centres, sizes, total) {
-  var gap = 2;
+  var gap = DIAL_CODE_GAP;
   var out = centres.slice();
   var n = out.length;
   for (var i = 0; i < n; i += 1) {
@@ -672,4 +721,7 @@ window.DialNowPlaying = {
   paintSleep: dialPaintSleep,
   nextSleepStop: dialNextSleepStop,
   spreadCodes: dialSpreadCodes,
+  fitCodes: dialFitCodes,
+  codeGap: DIAL_CODE_GAP,
+  codeShift: DIAL_CODE_SHIFT,
 };

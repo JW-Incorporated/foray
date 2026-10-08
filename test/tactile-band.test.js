@@ -174,6 +174,52 @@ test("narration is hatched outside mini mode and mini has no station labels", ()
   assert.match(rule(".band--mini"), /height:\s*var\(--s-2\)/);
 });
 
+test("bars are separate rounded blocks a visible gap apart, at every render width", () => {
+  /* Iteration 3 (fidelity): the bars abutted with a 2-unit seam, 0.7px on a 345px band, so the band read as one slab.
+     The prototype's rhythm is a gap you can see (3px; 2px on the mini band) and a 3px corner. The viewBox is
+     stretched non-uniformly, so the gap and the rx are converted from rendered px, and ry from the band's height.
+     MUTATIONS: make tactileBandGap return 2 -> the gap-in-px assertion fails at 345 and 412; make
+     tactileBandRadius return `rx: 2` -> the rendered-px radius assertion fails; drop the `Math.max(2, ...)` floor ->
+     the 400-clip case (where gaps would otherwise eat the band) fails assertLayout's 2-unit minimum. */
+  for (const width of [345, 361, 412]) {
+    const boxes = p.tactileBandLayout(p.tactileBandSegments(segments), width, "scrub");
+    for (let i = 1; i < boxes.length; i += 1) {
+      const gapPx = (boxes[i].x - (boxes[i - 1].x + boxes[i - 1].width)) / 1000 * width;
+      assert.ok(Math.abs(gapPx - 3) < 0.01, `${width}px: bars ${i - 1} and ${i} sit ${gapPx.toFixed(2)}px apart, not 3`);
+    }
+    const html = p.tactileBand({ id: "round-" + width, kind: "scrub", segments, renderWidth: width });
+    const first = /<rect class="t-band__bar t-band__bar--c\d" data-segment-index="0" x="[\d.]+" y="8" width="[\d.]+" height="28" rx="([\d.]+)" ry="([\d.]+)"/.exec(html);
+    assert.ok(first, "the first bar carries rx and ry");
+    assert.ok(Math.abs(Number(first[1]) / 1000 * width - 3) < 0.02, `${width}px: rx is 3 rendered px (${first[1]} units)`);
+    assert.ok(Math.abs(Number(first[2]) * 64 / 60 - 3) < 0.02, `${width}px: ry is 3 rendered px on the 64px stage (${first[2]} units)`);
+  }
+  const mini = p.tactileBandLayout(p.tactileBandSegments(segments), 345, "mini");
+  assert.ok(Math.abs((mini[1].x - (mini[0].x + mini[0].width)) / 1000 * 345 - 2) < 0.01, "the 8px mini band keeps a 2px gap");
+  /* A crowd of clips never takes more than a quarter of the band for gaps until it hits the 2-unit floor. */
+  const dense = p.tactileBandSegments(Array.from({ length: 60 }, (_, i) => ({ showId: "s" + (i % 5), show: "Show " + (i % 5), duration: 60 })));
+  const denseBoxes = p.tactileBandLayout(dense, 345, "scrub");
+  const gaps = denseBoxes[denseBoxes.length - 1].x + denseBoxes[denseBoxes.length - 1].width - denseBoxes.reduce((sum, b) => sum + b.width, 0);
+  assert.ok(gaps <= 250.001, `sixty clips spend ${gaps.toFixed(1)} units on gaps, a quarter of the band at most`);
+});
+
+test("the narration hatch is drawn in screen pixels, 45 degrees, ultramarine on its soft tint", () => {
+  /* The 0-1000 viewBox is stretched to the band's width and height, so a pattern in raw units skews: the old 12-unit
+     pattern drew 4px-wide steep slivers at 345px. The pattern now counter-scales by the render width and the stage
+     height, then rotates, so 3px lines and 3px gaps stay 45 degrees at any width, over a soft ultramarine ground.
+     MUTATIONS: drop the `scale(...)` from patternTransform -> the scale assertion fails; remove the
+     `t-band__hatch-bg` rect -> the ground assertion fails; delete the `.t-band__hatch-bg` CSS rule -> the token
+     assertion fails. */
+  for (const [kind, stage] of [["detail", 44], ["scrub", 64]]) {
+    const html = p.tactileBand({ id: "hatch-" + kind, kind, segments, renderWidth: 400 });
+    const m = /<pattern id="hatch-[a-z]+-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="scale\(([\d.]+) ([\d.]+)\) rotate\(45\)">/.exec(html);
+    assert.ok(m, `${kind}: a 6px pattern, scaled then rotated 45 degrees`);
+    assert.ok(Math.abs(Number(m[1]) * 400 / 1000 - 1) < 0.001, `${kind}: x is counter-scaled by the 400px render width`);
+    assert.ok(Math.abs(Number(m[2]) * stage / 60 - 1) < 0.001, `${kind}: y is counter-scaled by the ${stage}px stage`);
+    assert.match(html, /<rect width="6" height="6" class="t-band__hatch-bg"><\/rect><rect width="3" height="6" class="t-band__hatch"><\/rect>/, `${kind}: 3px line over a full ground`);
+  }
+  assert.match(rule(".t-band__hatch-bg"), /fill:\s*var\(--ultramarine-soft\)/);
+});
+
 test("the mini band and the mini player's line draw narration as a solid tick, not a hatch", () => {
   /* BUILD-NOTES 3.6: in the 8px mini band (and the 3px line) a narration item
      is a solid ultramarine tick, min 3px, no hatch; r1 read 4px hatched
@@ -257,10 +303,12 @@ test("scrubber pointer input tracks the well and publishes its changed value", (
   assert.strictEqual(scrubber.progress.attrs.width, "500.00");
   assert.strictEqual(scrubber.needle.attrs.transform, "translate(500.00 0)");
   scrubber.listeners.pointermove({ clientX: 90, pointerId: 7, preventDefault() {} });
-  assert.strictEqual(scrubber.attrs.get("aria-valuenow"), "80");
+  /* 80% of a 100px well with 3px gaps (30 units each at this width) lands 0.574 of the way through the last bar:
+     79 s, not the 80 the old 2-unit hairline gaps gave. */
+  assert.strictEqual(scrubber.attrs.get("aria-valuenow"), "79");
   scrubber.listeners.pointerup({ clientX: 57, pointerId: 7, preventDefault() {} });
   assert.strictEqual(scrubber.attrs.get("aria-valuenow"), "50", "release snaps to a boundary within 12px");
-  assert.deepStrictEqual(inputs, [[50, "pointer"], [80, "pointer"], [50, "pointer"]]);
+  assert.deepStrictEqual(inputs, [[50, "pointer"], [79, "pointer"], [50, "pointer"]]);
   assert.deepStrictEqual(changes, [[50, "pointer"]], "release commits one seek");
   assert.strictEqual(scrubber.captured, 7);
   assert.strictEqual(scrubber.released, 7);

@@ -440,6 +440,12 @@ Playing) inside a well.
   with `x`/`width` proportional to its runtime over the total. Gap between
   rects 2 units (never below 1px rendered). Minimum rendered width per
   segment 3px; if narrower, merge visually but keep the data.
+  **Build (Now Playing iteration 3, supersedes the 2-unit gap):** the gap is
+  3px rendered (2px on `mini` and `line`), converted to units from the render
+  width, floored at 2 units and capped so gaps take at most a quarter of the
+  band; corners are 3px (1px on `mini`), converted separately for x and y
+  because the viewBox is stretched non-uniformly. Two units was 0.7px at 345px
+  and read as one slab with seams, not the prototype's separate enamel blocks.
   **Build (Phase 3 primitives, review follow-up):** a bar under its minimum
   is pinned at it and the other bars share the remaining width in runtime
   proportion (repeated until stable), so bars never overlap, the last one

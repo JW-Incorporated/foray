@@ -760,23 +760,57 @@ test("every run on the band gets a code, narrow ones included, and no two codes 
   assert.match(CSS_RULES, /\.np__code \{[^}]*left:\s*calc\(var\(--x, 0\) \* 100% \+ var\(--dx, 0px\)\)/);
   const { dial } = loadDial();
   const size = 14;
+  const gap = dial.codeGap;
   /* The real case: bar centres 7px apart on a 345px band (adjacent 14px runs at the left edge). */
   const crowded = [7, 21, 35, 52, 140, 200];
   const placed = dial.spreadCodes(crowded, crowded.map(() => size), 345);
-  for (let i = 1; i < placed.length; i += 1) assert.ok(placed[i] - placed[i - 1] >= size, `codes ${i - 1} and ${i} are ${placed[i] - placed[i - 1]}px apart`);
+  for (let i = 1; i < placed.length; i += 1) assert.ok(placed[i] - placed[i - 1] >= size + gap - 1e-9, `codes ${i - 1} and ${i} are ${placed[i] - placed[i - 1]}px apart (a ${size}px code plus its ${gap}px of air)`);
   assert.ok(placed[0] >= size / 2, "the first code stays inside the band's left edge");
-  assert.ok(placed[2] < 52, "a code is moved only as far as its neighbours force: the third stays near its bar");
+  assert.ok(placed[2] <= 7 + 2 * (size + gap) + 1e-9, "a code is moved only as far as its neighbours force: the third sits two pitches from the first");
   assert.strictEqual(placed[5], 200, "an uncrowded code does not move");
   /* Crowding at the right edge pushes back in, not out of the box. */
   const edge = dial.spreadCodes([330, 338, 344], [size, size, size], 345);
   assert.ok(edge[2] <= 345 - size / 2, `the last code stays inside the right edge (${edge[2]})`);
-  for (let i = 1; i < edge.length; i += 1) assert.ok(edge[i] - edge[i - 1] >= size, "and they still do not overlap");
+  for (let i = 1; i < edge.length; i += 1) assert.ok(edge[i] - edge[i - 1] >= size + gap - 1e-9, "and they still keep their air");
   /* More codes than fit (30 x 14px on 345px): they stay ordered and inside the box rather than running off it.
      MUTATION: drop the final clamp loop -> the last code lands past the right edge. */
   const many = Array.from({ length: 30 }, (_, i) => 7 + i * 11);
   const squeezed = dial.spreadCodes(many, many.map(() => size), 345);
   assert.ok(squeezed[0] >= size / 2 && squeezed[29] <= 345 - size / 2, `inside the box (${squeezed[0]}..${squeezed[29]})`);
   for (let i = 1; i < squeezed.length; i += 1) assert.ok(squeezed[i] >= squeezed[i - 1], "and still in order");
+});
+
+test("a crowded code row drops the narrowest run's code instead of cramming it, and never the current run's", () => {
+  /* Iteration 3 (fidelity): nine codes on one 345px line, the first four about 20px apart, read as a caption, not
+     as dial labels. Codes now sit a DIAL_CODE_GAP of air apart; a code that cannot get it within DIAL_CODE_SHIFT of its
+     own bar loses its label, the narrowest run first. The fixture is the shipped foray's nine runs.
+     MUTATIONS: make dialFitCodes return all-true -> the "some are dropped" assertion fails (the row is cramped again);
+     drop the `!current[...]` filter from the pool -> the current-run assertion fails; take the widest run as the victim
+     (`<` -> `>` in the reduce) -> the narrow-end assertion fails. */
+  const { dial } = loadDial();
+  const size = 14;
+  const centres = [15, 34, 58, 86, 126, 171, 231, 301, 340];
+  const runPx = [16, 18, 12, 16, 22, 24, 40, 30, 14];
+  const none = centres.map(() => false);
+  const kept = dial.fitCodes(centres, centres.map(() => size), runPx, none, 345);
+  assert.ok(kept.some((k) => !k), "fixture premise: nine codes cannot all get their air, so some are dropped");
+  const shown = centres.filter((c, i) => kept[i]);
+  const placed = dial.spreadCodes(shown, shown.map(() => size), 345);
+  for (let i = 1; i < placed.length; i += 1) assert.ok(placed[i] - placed[i - 1] >= size + dial.codeGap - 0.01, `kept codes ${i - 1} and ${i} have their air`);
+  placed.forEach((x, i) => assert.ok(Math.abs(x - shown[i]) <= dial.codeShift + 0.01, `code ${i} stays within ${dial.codeShift}px of its bar`));
+  const droppedWidths = runPx.filter((w, i) => !kept[i]);
+  assert.ok(droppedWidths.every((w) => w <= 22), "what is dropped is a narrow run, never the 40px one");
+  assert.strictEqual(kept[6], true, "the widest run keeps its code");
+  /* Three codes jammed together, widths 30 / 10 / 20: the 10px run is the one that goes (the fixture above drops
+     only from a pool that never holds the widest run, so it cannot tell narrowest-first from widest-first). */
+  assert.deepStrictEqual(dial.fitCodes([100, 110, 120], [size, size, size], [30, 10, 20], [false, false, false], 345), [true, false, true]);
+  /* The current run keeps its code even when it is the narrowest of the crowd. */
+  const current = centres.map((c, i) => i === 2);
+  const keptCurrent = dial.fitCodes(centres, centres.map(() => size), runPx, current, 345);
+  assert.strictEqual(keptCurrent[2], true, "the current run's code is never the one dropped");
+  /* An uncrowded row loses nothing (the prototype's five codes). */
+  const sparse = [60, 140, 220, 300];
+  assert.deepStrictEqual(dial.fitCodes(sparse, sparse.map(() => size), [50, 50, 50, 50], sparse.map(() => false), 345), [true, true, true, true]);
 });
 
 test("the needle has a 44px-wide hit area, a 2px stroke, and its buffering pulse runs on the buffer token", () => {
