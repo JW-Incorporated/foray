@@ -202,7 +202,7 @@ const results = await pipeline(DIRS,
         const r = await p
         running.delete(p); inFlight.delete(fam(s))
         screens.push(r)
-        await cleanup()
+        if (!r.skipped) await cleanup() // a skipped (already merged) screen left nothing behind
         dead = r.reason === 'implementer failed' ? dead + 1 : 0
         log(`${d}/${s.id}: ${r.merged ? 'merged' : 'NOT merged (' + r.reason + ')'}${r.escalated ? ', escalated (taste checks not met)' : ''}${r.unjudged ? ', UNJUDGED' : ''}`)
         if (r.merged && !labDone) {

@@ -24,7 +24,10 @@ Runs: `wf_8c930d5d-182` (06:40-09:19, died on the weekly limit: foundation to 7/
 `wf_00d839e8-3c4` (06:20-06:00, stopped for the token fixes), then **`wf_91b5c34d-c58`**
 (from 2026-10-08 06:30 PDT, script @ 19b7b152: cleans up its own worktrees, stops starting
 screens under 4 GB free, build/fix agents on a context + turn budget; launched with
-`maxIters: 3`). **Project management is part of the job, not optional** (owner, 2026-10-08,
+`maxIters: 3`). **On every relaunch pass the already-merged screens in `args.skipScreens`** (list them with
+`git log origin/feature/redesign-2026-<dir> --merges --grep "into feature/redesign-2026-<dir>"`):
+otherwise each one costs an agent just to discover it is merged (~120k tokens apiece).
+**Project management is part of the job, not optional** (owner, 2026-10-08,
 after one night cost 45% of the weekly plan and filled the disk): beside every run, start
 `node docs/redesign-2026/workflows/pm-watchdog.mjs <run transcript dir>` with
 `run_in_background`; it costs no tokens and exits with one line (DISK / STALL / ERRORS /

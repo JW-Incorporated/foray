@@ -66,5 +66,8 @@ function check() {
 }
 scanTranscripts() // baseline: count what already happened, alert only on what happens next
 burn.length = 0; for (const f of turns.keys()) if (turns.get(f) > MAX_TURNS) turns.delete(f)
-setInterval(check, 60000)
-check()
+// A failing check must not kill the watchdog silently: log it and keep watching; a real crash says why.
+process.on('uncaughtException', e => { console.log('WATCHDOG: CRASH ' + String(e && e.stack || e).split(/\r?\n/).slice(0, 2).join(' ')); process.exit(3) })
+const safeCheck = () => { try { check() } catch (e) { console.error('watchdog check error: ' + (e && e.message)) } }
+setInterval(safeCheck, 60000)
+safeCheck()
