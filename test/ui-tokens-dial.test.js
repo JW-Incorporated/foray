@@ -297,6 +297,8 @@ const PAIRS = [
   ["--good", "--paper", 4.5], ["--warn", "--paper", 4.5],
   /* Today's Resume tag: 12px text on the soft fill (`.today-resume .tag--playing`). --persimmon on it was 3.74 in Cream and 4.49 in Bakelite. */
   ["--ink", "--persimmon-soft", 4.5],
+  /* Find's no-results tile is a fill: its name and its count readout are ink on `--ultramarine-soft` (`.tile.is-hit`). */
+  ["--ink", "--ultramarine-soft", 4.5],
   ...Array.from({ length: 8 }, (_, i) => [`--dial-seg-c${i}`, "--paper-2", 3]),
 ];
 
