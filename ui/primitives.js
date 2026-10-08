@@ -168,8 +168,12 @@ function tactileBandSegments(input) {
   });
 }
 
-/* Band geometry in the 0-1000 viewBox. Bars sit 2 units apart, in order, and
- * the last one ends at 1000. Each bar gets its runtime share of the width the
+/* Band geometry in the 0-1000 viewBox. Bars sit a gap apart, in order, and
+ * the last one ends at 1000. The gap is 2px RENDERED (never the bare 2 units,
+ * which is under a pixel at phone widths and let neighbouring bars of one
+ * enamel run together into a single bar): 2000 / renderWidth units, and 1px
+ * (the floor, BUILD-NOTES 3.6) only when 2px gaps would push a bar under its
+ * minimum. Each bar gets its runtime share of the width the
  * gaps leave, but never less than its rendered minimum (3px; 8px for hatched
  * narration outside the mini and line bands). A bar under its minimum is
  * pinned at it and the others share what is left in runtime proportion,
@@ -182,13 +186,15 @@ function tactileBandSegments(input) {
 function tactileBandLayout(segments, renderWidth, kind) {
   var n = segments.length;
   if (!n) return [];
-  var gap = 2;
   var width = Math.max(1, Number(renderWidth) || 345);
-  var available = Math.max(0, 1000 - gap * (n - 1));
   var mins = segments.map(function (segment) {
     return (segment.narration && kind !== "mini" && kind !== "line" ? 8 : 3) / width * 1000;
   });
   var minSum = mins.reduce(function (sum, m) { return sum + m; }, 0);
+  var gap = [Math.max(2, 2000 / width), Math.max(2, 1000 / width), 2].find(function (g, i, all) {
+    return i === all.length - 1 || minSum + g * (n - 1) <= 1000;
+  });
+  var available = Math.max(0, 1000 - gap * (n - 1));
   var widths;
   if (minSum >= available) {
     widths = mins.map(function (m) { return m * available / minSum; });
@@ -286,12 +292,22 @@ function tactileBand(data) {
       codes.set(showId, (code[0] + (words[words.length - 1][0] || code[1])).toUpperCase());
     }
   });
+  /* The mini band's bars fill its 8px (the viewBox is 60 high, so 3.7px of bar in
+     a 28-unit rect, half the prototype's 8px). The corner radius is 2 rendered px:
+     the SVG stretches x and y separately, so it is stated per axis in viewBox
+     units (a bare rx="2" is 0.65px wide and 2px tall, a squarish end). */
+  var mini = kind === "mini";
+  var barY = mini ? 0 : 8;
+  var barH = mini ? 60 : 28;
+  var rx = 2000 / renderWidth;
+  var ry = 2 * 60 / (kind === "detail" ? 44 : kind === "scrub" ? 56 : 8);
   var bars = widths.map(function (box, index) {
     var segment = segments[index];
     var cls = episode ? "t-band__bar t-band__bar--episode"
       : segment.narration ? "t-band__bar t-band__bar--narration" + (hatch ? "" : " t-band__bar--tick")
       : "t-band__bar t-band__bar--c" + tactileHash(segment.showId);
-    var shape = line ? '" y="0" width="' + box.width.toFixed(2) + '" height="60" rx="0"' : '" y="8" width="' + box.width.toFixed(2) + '" height="28" rx="2"';
+    var shape = line ? '" y="0" width="' + box.width.toFixed(2) + '" height="60" rx="0"'
+      : '" y="' + barY + '" width="' + box.width.toFixed(2) + '" height="' + barH + '" rx="' + rx.toFixed(2) + '" ry="' + ry.toFixed(2) + '"';
     return '<rect class="' + cls + '"' + (segment.narration && hatch ? ' fill="url(#' + esc(id) + '-hatch)"' : "") + ' data-segment-index="' + index + '" x="' + box.x.toFixed(2) + shape + "></rect>";
   }).join("");
   var labels = kind === "mini" || kind === "line" ? "" : tactileBandRuns(segments, widths).map(function (run) {
@@ -311,7 +327,9 @@ function tactileBand(data) {
     '<defs><pattern id="' + esc(id) + '-hatch" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="12" class="t-band__hatch"></rect></pattern>' +
     '<clipPath id="' + esc(id) + '-progress"><rect class="band__progress" x="0" y="0" width="' + progressX.toFixed(2) + '" height="60"></rect></clipPath></defs>' +
     '<g class="' + (line ? "band__layers" : "band__draw") + '"><g class="t-band__base">' + bars + '</g><g class="t-band__fill" clip-path="url(#' + esc(id) + '-progress)">' + bars + "</g>" + labels +
-    (line ? "" : '<g class="needle" transform="translate(' + progressX.toFixed(2) + ' 0)"><rect x="-1" y="3" width="2" height="39" rx="1"></rect><circle cx="0" cy="3" r="4"></circle></g>') + "</g></svg>";
+    (line || (mini && !progress) ? "" : mini
+      ? '<g class="needle" transform="translate(' + progressX.toFixed(2) + ' 0)"><rect x="' + (-1000 / renderWidth).toFixed(2) + '" y="-30" width="' + (2000 / renderWidth).toFixed(2) + '" height="120" rx="0"></rect></g>'
+      : '<g class="needle" transform="translate(' + progressX.toFixed(2) + ' 0)"><rect x="-1" y="3" width="2" height="39" rx="1"></rect><circle cx="0" cy="3" r="4"></circle></g>') + "</g></svg>";
 }
 
 function tactileWireScrubber(scrubber, data) {

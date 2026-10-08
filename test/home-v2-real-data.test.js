@@ -323,8 +323,21 @@ test("Today's foray over the real data is a listable Foray drawn from its real r
   assert.ok(listable.some((f) => f.id === id[1]), `${id[1]} is one of the listable Forays`);
   const resolved = m.ctx.resolveListedForay(id[1]);
   assert.ok(resolved && resolved.playable.length > 0, "and it resolves to a running order");
+  /* The band draws the strip model's bars twice (base and fill). Back-to-back
+     narration is ONE tick (mergeNarration), so the bars are the clips plus the narration
+     runs, fewer than the items whenever the foray has two bridges in a row, which is
+     what makes a tick sit only where one clip ends and the next begins.
+     MUTATION: drop `{ mergeNarration: true }` from todayHeroModel -> every item is its
+     own bar again and the merged-count assertion fails. */
+  const strip = await import(pathToFileURL(path.join(ROOT, "player", "segment-strip.js")).href);
+  const merged = strip.stripModel(resolved.playable, { mergeNarration: true }).segments;
+  const flat = strip.stripModel(resolved.playable).segments;
   const bars = (hero.match(/<rect class="t-band__bar /g) || []).length;
-  assert.ok(bars >= resolved.playable.length, `the band draws the running order's items (${bars} bars for ${resolved.playable.length} items)`);
+  assert.strictEqual(bars, merged.length * 2, `the band draws the merged strip (${bars / 2} bars for ${resolved.playable.length} items)`);
+  assert.ok(merged.length < flat.length, "fixture premise: this foray has back-to-back narration, so merging changes the band");
+  for (let i = 1; i < merged.length; i += 1) {
+    assert.ok(!(merged[i].kind === "narration" && merged[i - 1].kind === "narration"), `no two ticks touch (bar ${i})`);
+  }
   const shows = /(\d+) shows?</.exec(hero);
   assert.ok(shows && Number(shows[1]) >= 1, "and says how many shows it is made of");
 });

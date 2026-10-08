@@ -4198,17 +4198,29 @@ body.drawer-open { overflow: hidden; }
   --k-fill: var(--card); --k-lip: var(--dial-line); --k-ink: var(--ink);
   position: relative; isolation: isolate; display: inline-flex; align-items: center; justify-content: center;
   gap: var(--s-2); min-width: var(--key); height: var(--key); padding: 0 var(--s-5);
-  border: 0; border-radius: var(--r-md); background: var(--k-fill); color: var(--k-ink);
+  border: 0; border-radius: var(--r-md); background: transparent; color: var(--k-ink);
   font: var(--w-label) var(--t-body)/var(--lh-body) var(--font-text);
   transform: translateY(0); transition: transform var(--d-snap) var(--spring-snap);
 }
-.keycap::after {
-  content: ""; position: absolute; z-index: -1; left: 0; right: 0; bottom: calc(-1 * var(--lip));
-  height: var(--lip); border-radius: 0 0 var(--r-md) var(--r-md); background: var(--k-lip);
-  transform: scaleY(1); transform-origin: bottom; transition: transform var(--d-snap) var(--spring-snap);
+/* THE KEY IS TWO SOLIDS OF ONE SILHOUETTE (BUILD-NOTES 3.1). The face (::before) fills
+   the box; the lip (::after) is the same box stretched down by --lip, behind the face,
+   with the key's own radius, so the darker tone shows only as a lower edge that follows
+   the circle or the 14px corners. It is never a separate bar under the control: a flat
+   strip below a rounded face reads as a stray underline, not a key. The element's own
+   background stays clear so the lip can sit behind its face. */
+.keycap::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--k-fill);
 }
+.keycap::after {
+  content: ""; position: absolute; z-index: -2; left: 0; right: 0; top: 0; bottom: calc(-1 * var(--lip));
+  border-radius: inherit; background: var(--k-lip);
+  transform: translateY(0); transition: transform var(--d-snap) var(--spring-snap);
+}
+/* Pressed: the face drops 2px and the lip counter-translates, so its base stays put
+   and the visible lip goes 3px to 1px. */
 .keycap:active:not(:disabled), .keycap[data-pressed="true"] { transform: translateY(calc(var(--s-1) / 2)); }
-.keycap:active:not(:disabled)::after, .keycap[data-pressed="true"]::after { transform: scaleY(.3334); }
+.keycap:active:not(:disabled)::after, .keycap[data-pressed="true"]::after { transform: translateY(calc(var(--s-1) / -2)); }
+.keycap--paper::before { box-shadow: inset 0 0 0 calc(var(--s-1) / 4) var(--dial-line); }   /* a paper key keeps its edge on a card */
 .keycap:focus-visible, .keycap.is-focus,
 .textbtn:focus-visible, .textbtn.is-focus,
 .chip:focus-visible, .chip.is-focus,
@@ -4228,7 +4240,6 @@ body.drawer-open { overflow: hidden; }
 .keycap--xl { min-width: var(--key-xl); width: var(--key-xl); height: var(--key-xl); padding: 0; }
 .keycap--glance { min-width: var(--key-glance); width: var(--key-glance); height: var(--key-glance); padding: 0; }
 .keycap--round { border-radius: var(--r-pill); }
-.keycap--round::after { border-radius: 0 0 var(--r-pill) var(--r-pill); }
 .keycap--wide { width: 100%; }
 .keycap__readout { color: inherit; opacity: .85; }
 .keycap:disabled, .keycap--blocked { --k-fill: var(--paper-2); --k-lip: var(--dial-line); --k-ink: var(--ink-3); cursor: not-allowed; transform: none; }
@@ -4588,7 +4599,6 @@ body.view-home::after { content: ""; position: fixed; z-index: 19; left: 0; righ
 .today-notice { color: var(--ink-2); }
 .today-notice a { text-decoration: underline; }
 .today .readout { word-spacing: -0.2em; }   /* the mono space is 0.6em wide; "about 22 min" reads as one readout */
-.today .keycap--paper { box-shadow: inset 0 0 0 calc(var(--s-1) / 4) var(--dial-line); }   /* a paper key on a card keeps its edge */
 .today-hero .t-band__base { opacity: 1; }   /* the hero band is a foray not yet played: full enamel, no progress layer */
 
 /* header: the title, the date 8px below it, the knob at the right */
@@ -4596,7 +4606,8 @@ body.view-home::after { content: ""; position: fixed; z-index: 19; left: 0; righ
 .today-top__title { display: flex; flex-direction: column; gap: var(--s-2); padding-top: calc(var(--s-1) / 2); }
 .today-top__title .display-xl { font-stretch: var(--wd-screen); letter-spacing: var(--tracking-screen); }
 .today-top__date { color: var(--ink-2); }
-.today-top .keycap { width: var(--tap); padding: 0; }   /* the knob is a 44px key, the icon centred */
+/* The knob is the primitive's own small key: 44 tall and the icon plus its 12px side
+   padding wide (48), as in the prototype; it is not squeezed to a 44px square. */
 .today-top .keycap, .today-hero__keys .keycap, .today-resume__key .keycap { margin-bottom: var(--lip); }
 
 /* hero: eyebrow 10 title 12 band 10 meta 12 why 16 keys */
@@ -4708,6 +4719,9 @@ body.view-home .tab-btn:focus-visible { outline: calc(var(--s-1) / 2) solid var(
     --spring-snap: linear(0, 1); --spring-settle: linear(0, 1); --spring-sheet: linear(0, 1);
   }
   .keycap:active { transform: none; }
+  .keycap:active:not(:disabled), .keycap[data-pressed="true"],
+  .keycap:active:not(:disabled)::after, .keycap[data-pressed="true"]::after { transform: none; }
+  .keycap:active:not(:disabled)::before, .keycap[data-pressed="true"]::before { filter: brightness(.92); }   /* the key recolours instead of dropping */
   .band[data-draw] { stroke-dashoffset: 0; animation: none; }
   .sheet { transition-property: opacity; transition-duration: var(--d-quick); }
   .keycap,

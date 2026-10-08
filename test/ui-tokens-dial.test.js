@@ -402,6 +402,12 @@ test("the sheet has exactly one reduced-motion block, last, that collapses every
     "--spring-snap": "linear(0, 1)", "--spring-settle": "linear(0, 1)", "--spring-sheet": "linear(0, 1)",
   }));
   assert.strictEqual(declsOf(ALL, ".keycap:active", "prefers-reduced-motion").get("transform"), "none");
+  /* The lip counter-translates on press, so reduced motion must still the lip AND the face at the
+     press rules' own specificity (a bare `.keycap:active` loses to `:active:not(:disabled)`).
+     MUTATION: delete `.keycap:active:not(:disabled)::after` from the block -> the lip still drops. */
+  for (const sel of [".keycap:active:not(:disabled)", ".keycap:active:not(:disabled)::after", ".keycap[data-pressed=\"true\"]::after"]) {
+    assert.strictEqual(declsOf(ALL, sel, "prefers-reduced-motion").get("transform"), "none", `${sel} does not move under reduced motion`);
+  }
   const draw = declsOf(ALL, ".band[data-draw]", "prefers-reduced-motion");
   assert.strictEqual(draw.get("stroke-dashoffset"), "0");
   assert.strictEqual(draw.get("animation"), "none");

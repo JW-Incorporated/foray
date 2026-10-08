@@ -256,11 +256,13 @@ test("scrubber pointer input tracks the well and publishes its changed value", (
   assert.strictEqual(scrubber.attrs.get("aria-valuenow"), "50");
   assert.strictEqual(scrubber.progress.attrs.width, "500.00");
   assert.strictEqual(scrubber.needle.attrs.transform, "translate(500.00 0)");
+  /* 80px of a 100px well: the 2px gaps (20 units each at this width) put that pointer
+     at 79 s, one under the gap-free 80. */
   scrubber.listeners.pointermove({ clientX: 90, pointerId: 7, preventDefault() {} });
-  assert.strictEqual(scrubber.attrs.get("aria-valuenow"), "80");
+  assert.strictEqual(scrubber.attrs.get("aria-valuenow"), "79");
   scrubber.listeners.pointerup({ clientX: 57, pointerId: 7, preventDefault() {} });
   assert.strictEqual(scrubber.attrs.get("aria-valuenow"), "50", "release snaps to a boundary within 12px");
-  assert.deepStrictEqual(inputs, [[50, "pointer"], [80, "pointer"], [50, "pointer"]]);
+  assert.deepStrictEqual(inputs, [[50, "pointer"], [79, "pointer"], [50, "pointer"]]);
   assert.deepStrictEqual(changes, [[50, "pointer"]], "release commits one seek");
   assert.strictEqual(scrubber.captured, 7);
   assert.strictEqual(scrubber.released, 7);
@@ -288,4 +290,67 @@ test("the gallery wires every rendered scrubber instead of shipping an inert sli
   // MUTATION: remove the tactileWireScrubber call from renderGallery -> this test fails.
   const gallery = fs.readFileSync(path.join(ROOT, "ui", "gallery.js"), "utf8");
   assert.match(gallery, /querySelectorAll\("\.band--scrub"\)[\s\S]*tactileWireScrubber\(scrubber/);
+});
+
+/* ---- Today iteration 2: the mini band reads as bars in a well ---- */
+
+test("bars are separated by 2 rendered px, not 2 viewBox units", () => {
+  /* The first Today build left 2 UNITS between bars: 0.65px at the 323px hero band,
+     so bars of one enamel fused into one long bar. The gap is 2000 / renderWidth units.
+     MUTATION: put `var gap = 2` back in tactileBandLayout -> the 323px gap is 2 units
+     (0.65px) and the pixel assertion fails. */
+  const w = 323;
+  const boxes = p.tactileBandLayout(p.tactileBandSegments(segments), w, "mini");
+  for (let i = 0; i + 1 < boxes.length; i += 1) {
+    const gapPx = (boxes[i + 1].x - (boxes[i].x + boxes[i].width)) / 1000 * w;
+    assert.ok(Math.abs(gapPx - 2) < 1e-6, `gap ${i} is 2px rendered (${gapPx})`);
+  }
+  assert.ok(Math.abs(boxes[boxes.length - 1].x + boxes[boxes.length - 1].width - 1000) < 1e-6);
+});
+
+test("a dense band drops to the 1px gap floor before it lets any bar fall under its minimum", () => {
+  /* 80 clips at 323px need 80 x 3px = 240px of minimum; 79 gaps of 2px add 158 (398 > 323),
+     of 1px add 79 (319 <= 323). So the gap falls to 1px and every bar keeps its 3px.
+     MUTATION: delete the `Math.max(2, 1000 / width)` candidate from the gap list in
+     tactileBandLayout -> the band keeps 2px gaps, its bars are scaled under 3px and the
+     assertions fail. */
+  const w = 323;
+  const many = p.tactileBandSegments(Array.from({ length: 80 }, (_, i) => ({ showId: "s" + (i % 3), show: "Show " + (i % 3), duration: 60 })));
+  const boxes = p.tactileBandLayout(many, w, "mini");
+  const gapPx = (boxes[1].x - (boxes[0].x + boxes[0].width)) / 1000 * w;
+  assert.ok(Math.abs(gapPx - 1) < 1e-6, `the gap fell to the 1px floor (${gapPx})`);
+  assert.ok(boxes.every((b) => b.width / 1000 * w >= 3 - 1e-6), "and every bar still keeps 3px");
+});
+
+test("the mini band's bars fill its 8px and end in a 2px radius on both axes", () => {
+  /* The viewBox is 60 high and the mini band renders 8px tall, so the old 28-unit bar was
+     3.7px: under half the prototype's 8px. Bars fill the box (y 0, height 60) and the corner
+     is 2px: rx 2000/323 units across, ry 15 units (2px of an 8px, 60-unit axis).
+     MUTATION: change `barH = mini ? 60 : 28` to `28` -> the height assertion fails.
+     MUTATION 2: use `rx="2"` for every kind -> the rx assertion fails. */
+  const html = p.tactileBand({ id: "fill", kind: "mini", segments, renderWidth: 323 });
+  const base = /<g class="t-band__base">([\s\S]*?)<\/g>/.exec(html)[1];
+  const rects = [...base.matchAll(/<rect [^>]*>/g)].map((m) => m[0]);
+  assert.strictEqual(rects.length, segments.length);
+  for (const rect of rects) {
+    assert.match(rect, /y="0"/);
+    assert.match(rect, /height="60"/);
+    assert.match(rect, new RegExp('rx="' + (2000 / 323).toFixed(2) + '"'));
+    assert.match(rect, /ry="15\.00"/);
+  }
+  const detail = /<g class="t-band__base">([\s\S]*?)<\/g>/.exec(p.tactileBand({ id: "d", kind: "detail", segments, renderWidth: 323 }))[1];
+  assert.match(detail, /y="8"[^>]*height="28"/, "detail keeps its own 28-unit bars");
+});
+
+test("an unplayed mini band has no needle; a played one has a 2px needle", () => {
+  /* The hero band is a foray nobody has started: a needle at 0 read as a stray "I" at the
+     left end of the well. MUTATION: delete the `(mini && !progress)` guard -> the idle band
+     draws a needle and the first assertion fails. The played needle is 2px wide in
+     rendered terms (2000 / 323 units), not the 2 units the other kinds still use. */
+  const idle = p.tactileBand({ id: "idle", kind: "mini", segments, renderWidth: 323 });
+  assert.doesNotMatch(idle, /class="needle"/);
+  const played = p.tactileBand({ id: "played", kind: "mini", segments, renderWidth: 323, progress: 0.5 });
+  const needle = /class="needle"[^>]*><rect [^>]*width="([\d.]+)"/.exec(played);
+  assert.ok(needle, "the played mini band draws its needle");
+  assert.ok(Math.abs(Number(needle[1]) - 2000 / 323) < 0.01, `2px wide (${needle[1]} units)`);
 });

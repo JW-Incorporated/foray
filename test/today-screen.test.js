@@ -366,12 +366,17 @@ test("the hero band is a foray not yet played: full enamel, not the 40% base the
   assert.match(rule(".t-band__base"), /opacity:\s*\.4/, "the primitive's own base stays 40%");
 });
 
-test("a paper key on a card keeps its edge, the knob is a 44px key, and the readout words sit close", () => {
-  /* MUTATION: delete `.today .keycap--paper { box-shadow }` -> Details vanishes
-     into the card (both are --card). MUTATION 2: delete `.today-top .keycap
-     { width }` -> the knob is 48px wide and off the title's axis. */
-  assert.match(rule(".today .keycap--paper"), /box-shadow:\s*inset 0 0 0 calc\(var\(--s-1\) \/ 4\) var\(--dial-line\)/);
-  assert.match(rule(".today-top .keycap"), /width:\s*var\(--tap\)/);
+test("a paper key keeps its edge on its face, the knob is the primitive's 48 x 44 key, and the readout words sit close", () => {
+  /* MUTATION: delete `.keycap--paper::before { box-shadow }` -> Details vanishes
+     into the card (both are --card); the edge lives on the face because the
+     element's own inset shadow would be painted UNDER the face pseudo-element.
+     MUTATION 2: add `width: var(--tap); padding: 0` back to `.today-top .keycap`
+     -> the knob is a 44px square, 4px narrower than the prototype's 48 (an icon
+     and the small key's 12px side padding); the 48 x 44 rendered box is pinned by
+     the fidelity run. */
+  assert.match(rule(".keycap--paper::before"), /box-shadow:\s*inset 0 0 0 calc\(var\(--s-1\) \/ 4\) var\(--dial-line\)/);
+  assert.doesNotMatch(rule(".today .keycap--paper"), /box-shadow/, "no element-level shadow: it would sit under the face");
+  assert.doesNotMatch(rule(".today-top .keycap"), /width|padding/);
   assert.match(rule(".today .readout"), /word-spacing:\s*-0\.2em/);
 });
 

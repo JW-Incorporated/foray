@@ -487,12 +487,20 @@ function todayForayPick(picks, resumeEntry = null) {
 }
 
 /** The hero's facts, from the running order itself: the band's bars (one per
-    item, the show's name as its colour key, narration as a hatched tick), the
-    first three shows' artwork, and "about 22 min · 4 shows". */
+    clip, the show's name as its colour key, narration as a tick BETWEEN bars), the
+    first three shows' artwork, and "about 22 min · 4 shows".
+
+    A generated foray interleaves a bridge with almost every cut, often several in a
+    row, so drawn item by item the card's band is a run of 3px ticks with a bar
+    between every few of them: a hatched texture, not bars. `mergeNarration` draws each
+    run of back-to-back narration as ONE tick sized by the run's total (the founders' own
+    fix for the same strip on the Foray page), so a tick is only ever where a clip ends
+    and another begins. The card's band is not a scrub target, which is the one reason
+    the strip keeps the merge off elsewhere; the accessible label still counts items. */
 function todayHeroModel(pick) {
   const { foray, r } = pick;
   const player = window.ForayPlayer;
-  const model = typeof player?.stripModel === "function" ? player.stripModel(r.playable) : null;
+  const model = typeof player?.stripModel === "function" ? player.stripModel(r.playable, { mergeNarration: true }) : null;
   const items = model && Array.isArray(model.segments) ? model.segments : [];
   const segments = items.map(s => ({
     showId: s.kind === "narration" ? "narration" : (s.show || s.sourceKey || "show"),
