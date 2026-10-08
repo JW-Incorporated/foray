@@ -289,9 +289,11 @@ test("band codes: once per run, never beside themselves, at 375, 393 and 412 on 
       assert.ok(bars >= shows.length, `${id} ${width}: a bar per clip, merged per run at most (${bars} bars, ${shows.length} runs)`);
     }
   }
-  /* The one fixed point: at 412 the whole Barbecue band carries these five stations. */
+  /* The one fixed point: at 412 the whole Barbecue band carries these six stations. SO is the
+     narrow (under 24px) second run, labelled by tactileBandLabelRuns because colour must never be
+     the only thing that names a run. MUTATION: make tactileBandLabelRuns keep only runs >= 24px -> SO drops; red. */
   const wide = await page(UNNARRATED, { width: 412, unlock: true });
-  assert.deepStrictEqual([...wide.html.matchAll(/<span class="fdet-code"[^>]*>([^<]*)<\/span>/g)].map((x) => x[1]), ["OS", "BR", "MP", "GC", "BC"]);
+  assert.deepStrictEqual([...wide.html.matchAll(/<span class="fdet-code"[^>]*>([^<]*)<\/span>/g)].map((x) => x[1]), ["OS", "SO", "BR", "MP", "GC", "BC"]);
 });
 
 test("the codes are HTML over the bars and the SVG's own glyphs and needle are hidden", () => {
