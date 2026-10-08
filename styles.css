@@ -4239,6 +4239,10 @@ body.drawer-open { overflow: hidden; }
 .t-band__hatch { fill: var(--dial-seg-narration); }
 .t-band__bar--tick { fill: var(--dial-seg-narration); }
 .t-band__bar--episode { fill: var(--persimmon); }
+/* A chapter start on a plain episode's band: a 1px --ink-3 rule, 1 device-independent
+   pixel whatever the band's stretch (vector-effect on the line), over the played
+   and unplayed halves alike. */
+.t-band__tick { stroke: var(--ink-3); stroke-width: 1; }
 .t-band__code { fill: var(--ink-2); font: 700 var(--t-micro) var(--font-mono); }
 .t-band__code.is-current { fill: var(--ink); font-weight: 800; }
 /* Detail codes are the label step (13px, 700, the text face), counter-scaled in the markup so the stretched viewBox does not squash them; the mono micro above is the scrubber's. */
@@ -5080,6 +5084,9 @@ body.ui-v2 .fp-sheet.np .np__collapse { border-color: transparent; background: t
 .np__art::before { content: "4a"; color: var(--ink-2); font: 750 var(--t-display)/1 var(--dial-font-display); }
 .np__art--collage::before { content: none; }
 .np__art .fp-s-art { position: absolute; inset: 0; display: block; width: 100%; height: 100%; max-width: none; margin: 0; border: 0; border-radius: inherit; object-fit: cover; box-shadow: none; }
+.np__downloaded { position: absolute; z-index: 1; right: var(--s-2); bottom: var(--s-2); width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: var(--card); color: var(--good); }
+.np__downloaded[hidden] { display: none; }
+.np__downloaded .i { width: 24px; height: 24px; }
 .np__collage { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 2px; background: var(--paper); }
 .np__collage[hidden] { display: none; }
 .np__tile { position: relative; overflow: hidden; display: grid; place-items: center; color: var(--on-persimmon); }
@@ -5092,6 +5099,9 @@ body.ui-v2 .fp-sheet.np .np__collapse { border-color: transparent; background: t
 .np__text { display: flex; flex-direction: column; gap: var(--s-1); margin-top: var(--s-5); }
 .np__text .title { margin: 0; display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; text-wrap: balance; font-family: var(--dial-font-display); font-size: var(--t-title); line-height: var(--lh-title); font-weight: var(--w-title); letter-spacing: var(--tracking-title); color: var(--ink); }
 .np .np__text .np__show { margin: 0; color: var(--ink-2); font: 500 var(--t-body)/var(--lh-body) var(--font-text); }
+/* A plain episode's show name is body-lg (the prototype's step below the title); the
+   foray's sheet keeps body, so its locked baseline does not move. */
+.np--episode .np__text .np__show { font: 500 var(--t-body-lg)/var(--lh-body-lg) var(--font-text); }
 body.ui-v2 .fp-sheet.np .np__text .title { font-family: var(--dial-font-display); color: var(--ink); }
 body.ui-v2 .fp-sheet.np .np__show { color: var(--ink-2); }
 body.ui-v2 .fp-sheet.np .fp-s-why,
@@ -5154,6 +5164,22 @@ body.ui-v2 .fp-sheet.np .fp-left { color: var(--ink-2); }
 .np__range:active { cursor: grabbing; }
 .np__range:focus-visible { opacity: .001; }
 .np__band-well:has(.np__range:focus-visible) { outline: 2px solid var(--ultramarine); outline-offset: 2px; }
+/* A plain episode has no station codes, so its well is only the bar: 44px, the
+   bar 32px with 6px of well above and below (prototype `.band--episode`), the
+   needle the well's full height. The primitive draws the bar to the same 6/32
+   (`stagePx` in ui/now-playing.js); change the two together. This wins over the
+   short-screen 56px rule below on specificity: there is no row to make room for. */
+.np--episode .np__band { --np-band-h: 44px; }
+.np--episode .np__needle { height: 42px; }
+/* Where the detail starts: the prototype puts "Up next" 13px higher than the
+   foray's pinned offset on a tall screen and 5px higher on a short one, so the
+   first row card peeks above the dock's fade and says there is a queue. */
+.np--episode .np__top { min-height: calc(100% - 189px - var(--safe-b)); }
+/* The dock's paper starts 36px above the keys in the prototype (its padding-top);
+   here the dock box starts 14px above the transport, so the same line is 22px
+   above the dock. At 36 + 14 the paper was opaque over the whole first row
+   card and nothing peeked. */
+.np--episode .np__dock::before { top: -22px; }
 .band-bubble { --bubble-x: 0; position: absolute; z-index: 3; left: clamp(48px, calc(var(--bubble-x) * 100%), calc(100% - 48px)); bottom: calc(100% + var(--s-3)); min-width: 96px; padding: var(--s-2); transform: translateX(-50%); border-radius: var(--r-sm); background: var(--card); color: var(--ink); box-shadow: var(--shadow-card); text-align: center; white-space: nowrap; }
 .np__read { margin-top: var(--s-2); padding: 0 2px; display: flex; align-items: baseline; justify-content: space-between; }
 .np__read .readout-lg { color: var(--ink); letter-spacing: -.05em; }
@@ -5226,9 +5252,14 @@ body.ui-v2 .fp-sheet.np .np__detail-copy { color: var(--ink-2); }
 .np .row-show .row__body { min-width: 0; display: flex; flex-direction: column; }
 .np .row-show .row__meta { color: var(--ink-2); font: 500 var(--t-label)/var(--lh-label) var(--font-text); }
 .np .np__origin-swatch, .np .np__up-next-art { color: var(--np-sw-ink); }
-.np__chapter { width: 100%; min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding: 0; color: var(--ink); text-align: left; }
+.np__chapter { width: 100%; min-height: 48px; display: flex; align-items: center; justify-content: flex-start; gap: var(--s-3); padding: 0; color: var(--ink); text-align: left; }
+.np__chapter .np__chapter-clock { flex: none; min-width: 4.25rem; color: var(--ink-2); }
 .np__empty-detail { margin: 0; color: var(--ink-2); }
 .np__notes .fp-s-desc { margin: 0; padding: 0; color: var(--ink); }
+.np__notes .np__notes-hook { margin: 0; color: var(--ink); font: 500 var(--t-body)/var(--lh-body) var(--font-text); }
+/* A plain episode's sentence lives in Show notes, not under the title: the title
+   block is title, show and the state tags (BUILD-NOTES 4.2). */
+.np--episode .np__why { display: none; }
 .np__notes .fp-s-desc:not([open]) .ep-description-text { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 4; }
 .np__notes .ep-description-toggle { min-height: var(--tap); display: flex; align-items: center; font-weight: 700; }
 .np__legacy-actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
@@ -5244,6 +5275,8 @@ body.ui-v2 .fp-sheet.np .fp-openep { color: var(--ink); }
 
 @media (max-height: 740px) {
   .np__top { padding-top: calc(var(--safe-t) + var(--s-8)); min-height: calc(100% - 142px - var(--safe-b)); }
+  .np--episode .np__top { min-height: calc(100% - 147px - var(--safe-b)); }
+  .np--episode .np__dock::before { top: -12px; }
   .np__art { width: 200px; height: 200px; }
   .np__text { margin-top: 14px; }
   .np__band { --np-band-h: var(--key-lg); margin-top: 14px; }

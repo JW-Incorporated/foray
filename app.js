@@ -3496,6 +3496,27 @@ const EPISODE_NAVIGATION = {
      sleep timer parked). Read by player/client.js's row2 paint; the page owns
      Up Next and the stars, the player owns the sheet. */
   get upNextCount() { return queueIds().length; },
+  /* What the Now Playing sheet shows for a plain episode and the player cannot
+     know (Tactile BUILD-NOTES 4.2): the episode that plays after this one (the
+     SAME pick the skip makes, `planAfterEnded`, which writes nothing), and the
+     two state tags, Downloaded and Played. All observed from the page's own
+     records, never declared. `next` is null when nothing plays after it. */
+  sheetFacts(id) {
+    const nextId = id ? planAfterEnded(id).nextId : null;
+    const it = nextId ? liveEpisode(nextId) : null;
+    let downloaded = false;
+    let played = false;
+    try { downloaded = downloadsValue().items?.[id]?.status === "done"; } catch (_) { downloaded = false; }
+    try { played = rowProgress({ id })?.state === "played"; } catch (_) { played = false; }
+    return {
+      next: it ? {
+        id: it.id, title: it.title || "", show: it.show || "", show_id: it.show_id || "",
+        artwork_url: it.artwork_url || "", duration_sec: itemDurationSec(it) || 0, why: it.hook || "",
+      } : null,
+      downloaded,
+      played,
+    };
+  },
   isSaved(id) { return isSaved(id); },
   toggleSaved(id) { toggleStar(id); return isSaved(id); },
   /* Bookmarks inside episodes (#30, PQ-13). The sheet's Bookmark hands over

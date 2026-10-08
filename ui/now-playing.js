@@ -21,6 +21,9 @@ var DIAL_ART_TINT_CACHE = {};
    rotary primitive's job (BUILD-NOTES 3.14); the chip steps through these. */
 var DIAL_SLEEP_STOPS = [0, 15, 30, 45, 60];
 
+/* A plain episode's scrub stage: 44px, the bar 32px with 6px of well above and below
+   (styles.css `.np--episode .np__band`; the two numbers move together). */
+var NP_EPISODE_STAGE_PX = 44;
 function dialNpEl(tag, cls, text) {
   var node = document.createElement(tag);
   if (cls) node.className = cls;
@@ -85,7 +88,14 @@ function dialBuildNowPlaying(parts) {
   var collage = dialNpEl("div", "np__collage");
   collage.setAttribute("aria-hidden", "true");
   collage.hidden = true;
-  artWrap.append(parts.sArt, collage);
+  /* BUILD-NOTES 4.2: a downloaded episode wears a 24px check-circle badge on its
+     artwork's lower right. The Downloaded tag in the chip row is the accessible
+     statement of it, so the badge is decoration. */
+  var downloadedBadge = dialNpEl("span", "np__downloaded");
+  downloadedBadge.setAttribute("aria-hidden", "true");
+  downloadedBadge.hidden = true;
+  downloadedBadge.innerHTML = dialNpIcon("ph-check-circle-fill");
+  artWrap.append(parts.sArt, collage, downloadedBadge);
   hero.append(artWrap);
 
   var copy = dialNpEl("div", "np__text");
@@ -180,7 +190,47 @@ function dialBuildNowPlaying(parts) {
     if (sheet.classList.contains("np--scrolled") !== scrolled) sheet.classList.toggle("np--scrolled", scrolled);
   }, { passive: true });
   sheet.replaceChildren(bg, parts.grabZone, parts.scroll, dock);
-  return { bg: bg, top: top, artWrap: artWrap, collage: collage, chips: chips, bandVisual: bandVisual, bandSvg: bandSvg, bandCodes: codes, bandNeedle: needle, bubble: bubble, sleepBtn: sleepBtn, upNext: upNext, segments: segments, origin: origin, chapters: chapters, notes: notes, legacy: legacy, dock: dock };
+  return { bg: bg, top: top, artWrap: artWrap, collage: collage, downloadedBadge: downloadedBadge, chips: chips, bandVisual: bandVisual, bandSvg: bandSvg, bandCodes: codes, bandNeedle: needle, bubble: bubble, sleepBtn: sleepBtn, upNext: upNext, segments: segments, origin: origin, chapters: chapters, notes: notes, legacy: legacy, dock: dock };
+}
+
+/* OKLCH -> linear-light sRGB, NOT clipped: a channel outside 0..1 means the
+   colour is outside the sRGB gamut. dialHexRgb clips it for contrast maths; the
+   tint normaliser uses the raw channels to find the gamut edge. */
+function dialOklchToLinear(L, C, hueDeg) {
+  var h = hueDeg * Math.PI / 180;
+  var a = C * Math.cos(h), b = C * Math.sin(h);
+  var l3 = Math.pow(L + .3963377774 * a + .2158037573 * b, 3);
+  var m3 = Math.pow(L - .1055613458 * a - .0638541728 * b, 3);
+  var s3 = Math.pow(L - .0894841775 * a - 1.291485548 * b, 3);
+  return [
+    4.0767416621 * l3 - 3.3077115913 * m3 + .2309699292 * s3,
+    -1.2684380046 * l3 + 2.6097574011 * m3 - .3413193965 * s3,
+    -.0041960863 * l3 - .7034186147 * m3 + 1.707614701 * s3,
+  ];
+}
+
+var DIAL_GAMUT_EPS = 1e-4;
+
+function dialInSrgbGamut(L, C, hueDeg) {
+  return dialOklchToLinear(L, C, hueDeg).every(function (v) { return v >= -DIAL_GAMUT_EPS && v <= 1 + DIAL_GAMUT_EPS; });
+}
+
+/* BUILD-NOTES 7: "walk it down only as far as sRGB gamut needs". The largest
+   chroma, at most `C`, that stays inside sRGB at this lightness and hue, floored
+   to the three decimals the tint is written with so rounding cannot push it back
+   out. A chroma already inside the gamut is only floored to those decimals
+   (toFixed would round it up, which can cross the edge). */
+function dialFitChroma(L, C, hueDeg) {
+  var chroma = C;
+  if (!dialInSrgbGamut(L, C, hueDeg)) {
+    var lo = 0, hi = C;
+    for (var i = 0; i < 24; i += 1) {
+      var mid = (lo + hi) / 2;
+      if (dialInSrgbGamut(L, mid, hueDeg)) lo = mid; else hi = mid;
+    }
+    chroma = lo;
+  }
+  return Math.floor(chroma * 1000 + 1e-9) / 1000;
 }
 
 function dialHexRgb(value) {
@@ -193,16 +243,7 @@ function dialHexRgb(value) {
   if (rgb) return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])];
   var oklch = /^oklch\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)/i.exec(text);
   if (!oklch) return null;
-  var L = Number(oklch[1]), C = Number(oklch[2]), h = Number(oklch[3]) * Math.PI / 180;
-  var a = C * Math.cos(h), b = C * Math.sin(h);
-  var l3 = Math.pow(L + .3963377774 * a + .2158037573 * b, 3);
-  var m3 = Math.pow(L - .1055613458 * a - .0638541728 * b, 3);
-  var s3 = Math.pow(L - .0894841775 * a - 1.291485548 * b, 3);
-  var linear = [
-    4.0767416621 * l3 - 3.3077115913 * m3 + .2309699292 * s3,
-    -1.2684380046 * l3 + 2.6097574011 * m3 - .3413193965 * s3,
-    -.0041960863 * l3 - .7034186147 * m3 + 1.707614701 * s3,
-  ];
+  var linear = dialOklchToLinear(Number(oklch[1]), Number(oklch[2]), Number(oklch[3]));
   return linear.map(function (channel) {
     var value = channel <= .0031308 ? 12.92 * channel : 1.055 * Math.pow(channel, 1 / 2.4) - .055;
     return Math.round(Math.max(0, Math.min(1, value)) * 255);
@@ -250,8 +291,30 @@ function dialUrlHash(url) {
   return (h >>> 0).toString(36);
 }
 
-function dialRgbToOklch(rgb) {
-  var linear = rgb.map(function (v) { var x = v / 255; return x <= .04045 ? x / 12.92 : Math.pow((x + .055) / 1.055, 2.4); });
+function dialSrgbToLinear(v) {
+  var x = v / 255;
+  return x <= .04045 ? x / 12.92 : Math.pow((x + .055) / 1.055, 2.4);
+}
+
+/* BUILD-NOTES 7: "average in linear light". Each opaque pixel's channels are
+   linearised BEFORE they are summed. Averaging the encoded bytes and converting
+   afterwards darkens every mixed colour: a half-red, half-black cover reads
+   L .38 instead of .50 and tints muddy. Pixels under half alpha are skipped.
+   Returns null when nothing is opaque. */
+function dialAverageLinear(pixels) {
+  var sum = [0, 0, 0], count = 0;
+  for (var i = 0; i < pixels.length; i += 4) {
+    if (pixels[i + 3] < 128) continue;
+    sum[0] += dialSrgbToLinear(pixels[i]);
+    sum[1] += dialSrgbToLinear(pixels[i + 1]);
+    sum[2] += dialSrgbToLinear(pixels[i + 2]);
+    count += 1;
+  }
+  return count ? sum.map(function (v) { return v / count; }) : null;
+}
+
+/* Linear-light sRGB (each channel 0..1) -> OKLCH. */
+function dialLinearToOklch(linear) {
   var l = .4122214708 * linear[0] + .5363325363 * linear[1] + .0514459929 * linear[2];
   var m = .2119034982 * linear[0] + .6806995451 * linear[1] + .1073969566 * linear[2];
   var s = .0883024619 * linear[0] + .2817188376 * linear[1] + .6299787005 * linear[2];
@@ -266,7 +329,22 @@ function dialRgbToOklch(rgb) {
 
 function dialNormalizeArtworkTint(oklch, fallback) {
   if (!oklch || oklch.c < .07) return fallback;
-  return "oklch(" + Math.max(.45, Math.min(.6, oklch.l)).toFixed(3) + " " + Math.max(.1, oklch.c).toFixed(3) + " " + oklch.h.toFixed(1) + ")";
+  var lightness = Math.max(.45, Math.min(.6, oklch.l));
+  /* Floor the chroma at .10, then walk it down to the sRGB edge: a saturated
+     cover (pure green at L .6 wants chroma .29, the gamut ends near .20) would
+     otherwise be written out of gamut, the browser would map it one way and the
+     contrast check in dialApplyNowPlayingTint would clip it another. The hue is
+     the one that is written (one decimal), so the gamut is fitted on that. */
+  var hue = Number(oklch.h.toFixed(1));
+  var chroma = dialFitChroma(Number(lightness.toFixed(3)), Math.max(.1, oklch.c), hue);
+  return "oklch(" + lightness.toFixed(3) + " " + chroma.toFixed(3) + " " + hue.toFixed(1) + ")";
+}
+
+/* Everything after the pixels are read: linear-light average -> OKLCH ->
+   normalised tint, or the show's enamel when no pixel is opaque. */
+function dialTintFromPixels(pixels, fallback) {
+  var linear = dialAverageLinear(pixels);
+  return linear ? dialNormalizeArtworkTint(dialLinearToOklch(linear), fallback) : fallback;
 }
 
 function dialExtractArtworkTint(url, showId, fallback) {
@@ -286,13 +364,7 @@ function dialExtractArtworkTint(url, showId, fallback) {
         var context = canvas.getContext("2d", { willReadFrequently: true });
         context.drawImage(image, 0, 0, 32, 32);
         var pixels = context.getImageData(0, 0, 32, 32).data;
-        var rgb = [0, 0, 0], count = 0;
-        for (var i = 0; i < pixels.length; i += 4) {
-          if (pixels[i + 3] < 128) continue;
-          rgb[0] += pixels[i]; rgb[1] += pixels[i + 1]; rgb[2] += pixels[i + 2]; count += 1;
-        }
-        rgb = rgb.map(function (v) { return count ? v / count : 0; });
-        var tint = dialNormalizeArtworkTint(dialRgbToOklch(rgb), fallback);
+        var tint = dialTintFromPixels(pixels, fallback);
         DIAL_ART_TINT_CACHE[key] = { hash: hash, tint: tint };
         resolve(tint);
       } catch (_) { resolve(fallback); }
@@ -322,8 +394,22 @@ function dialCurrentStation(model) {
 
 function dialPaintChip(parts, model) {
   if (!parts.chips) return;
+  if (!model.foray) {
+    /* A plain episode's chip row carries state only (BUILD-NOTES 4.2): the
+       Downloaded and Played tags, observed from the page, never declared, and
+       nothing else (no station chip, no narration). Written only when the pair
+       changes, so a playback tick does not rebuild two nodes four times a
+       second. tactileTag escapes its own text. */
+    var tagKey = "e:" + (model.downloaded ? "d" : "") + (model.played ? "p" : "");
+    if (parts.chipsKey === tagKey) return;
+    parts.chipsKey = tagKey;
+    parts.chips.innerHTML = typeof tactileTag === "function"
+      ? (model.downloaded ? tactileTag({ kind: "downloaded", text: "Downloaded" }) : "") + (model.played ? tactileTag({ kind: "played", text: "Played" }) : "")
+      : "";
+    return;
+  }
+  parts.chipsKey = "f";
   parts.chips.replaceChildren();
-  if (!model.foray) return;
   var segment = model.segments[model.currentIndex] || model.segments[0];
   if (!segment) return;
   if (segment.narration) {
@@ -447,13 +533,24 @@ function dialPaintDetails(parts, model) {
         row.type = "button";
         row.dataset.seek = String(chapter.start || 0);
         row.setAttribute("aria-label", "Play from " + chapter.title);
-        row.append(dialNpEl("span", "np__detail-title", chapter.title), dialNpEl("span", "readout", chapter.clock || ""));
+        /* The clock leads, as the prototype's rows do: a chapter is a place in
+           the episode before it is a name. */
+        row.append(dialNpEl("span", "readout np__chapter-clock", chapter.clock || ""), dialNpEl("span", "np__detail-title", chapter.title));
         parts.chapters.append(row);
       });
     } else parts.chapters.append(dialNpEl("p", "np__empty-detail", "No chapters published."));
   }
   var details = parts.notes.querySelector("details");
-  parts.notes.hidden = model.foray || !details || details.hidden;
+  /* Show notes: the publisher's description when the episode has one (the
+     <details>), else the one-line hook, as the prototype sets it. The hook is
+     the episode's own summary and, on the sheet, lives here and not under the
+     title (the title block is title, show, tags: BUILD-NOTES 4.2). */
+  var hasDetails = Boolean(details) && !details.hidden;
+  var hookText = !model.foray && !hasDetails ? String(model.hook || "") : "";
+  var hook = parts.notes.querySelector(".np__notes-hook");
+  if (hook) hook.remove();
+  if (hookText) parts.notes.append(dialNpEl("p", "np__notes-hook", hookText));
+  parts.notes.hidden = model.foray || (!hasDetails && !hookText);
 }
 
 /* The band's drawn geometry for this paint: the same layout the primitive
@@ -502,12 +599,31 @@ function dialPaintValueText(parts, d, force) {
   if (parts.scrub.getAttribute("aria-valuetext") !== d.valueText) parts.scrub.setAttribute("aria-valuetext", d.valueText);
 }
 
+/* Chapter starts as fractions of the runtime, for the band's ticks: strictly
+   between the ends (a chapter at 0 is the start, one at or past the end is a
+   feed's rounding), ascending, one per distinct place, four decimals so two
+   chapters a hair apart do not draw two ticks. Empty until the runtime is
+   known. */
+function dialChapterFractions(model) {
+  var total = Number(model && model.duration);
+  if (!(total > 0) || !Array.isArray(model.chapters)) return [];
+  var seen = {};
+  return model.chapters
+    .map(function (chapter) { return Number(chapter && chapter.start) / total; })
+    .filter(function (f) { return f > 0 && f < 1; })
+    .map(function (f) { return Math.round(f * 10000) / 10000; })
+    .sort(function (a, b) { return a - b; })
+    .filter(function (f) { if (seen[f]) return false; seen[f] = true; return true; });
+}
+
 function dialPaintNowPlaying(parts, model) {
   if (!parts || !parts.bandVisual) return;
   var d = model || {};
   var tintRequest = (parts.tintRequest || 0) + 1;
   parts.tintRequest = tintRequest;
   parts.sheet.classList.toggle("np--foray", Boolean(d.foray));
+  parts.sheet.classList.toggle("np--episode", !d.foray);
+  if (parts.downloadedBadge) parts.downloadedBadge.hidden = Boolean(d.foray) || !d.downloaded;
   parts.sheet.classList.toggle("np--buffering", Boolean(d.buffering));
   var subtitle = d.subtitle || d.show;
   if (subtitle && parts.sShow.textContent !== subtitle) parts.sShow.replaceChildren(subtitle);
@@ -526,7 +642,10 @@ function dialPaintNowPlaying(parts, model) {
   }
   if (parts.bookmarkBtn) parts.bookmarkBtn.hidden = false;
   var width = Math.max(1, parts.bandSvg.clientWidth || parts.bandVisual.clientWidth || 345);
-  var bandKey = [d.foray ? "f" : "e", d.detailKey, d.currentIndex, d.duration, d.segments && d.segments.length, Math.round(width)].join(":");
+  /* A plain episode draws one persimmon bar with a tick at each chapter start
+     and no station codes; a foray draws its stations (BUILD-NOTES 4.2). */
+  var chapterMarks = d.foray ? [] : dialChapterFractions(d);
+  var bandKey = [d.foray ? "f" : "e", d.detailKey, d.currentIndex, d.duration, d.segments && d.segments.length, Math.round(width), chapterMarks.join(",")].join(":");
   var fraction = d.duration ? d.position / d.duration : 0;
   if (parts.bandKey !== bandKey) {
     parts.bandKey = bandKey;
@@ -534,7 +653,7 @@ function dialPaintNowPlaying(parts, model) {
     parts.bandSvg.innerHTML = tactileBand({
       id: "np-band", kind: "scrub", segments: d.segments || [], progress: fraction,
       currentIndex: d.currentIndex || 0, totalSeconds: d.duration || 1, renderWidth: width, buffering: d.buffering,
-      valueText: d.valueText,
+      valueText: d.valueText, episode: !d.foray, chapters: chapterMarks, stagePx: d.foray ? 0 : NP_EPISODE_STAGE_PX,
     });
     var visual = parts.bandSvg.querySelector(".band");
     /* The <input type=range> over the band is the one slider; the drawing is
@@ -642,6 +761,9 @@ window.DialNowPlaying = {
   applyTint: dialApplyNowPlayingTint,
   normalizeArtworkTint: dialNormalizeArtworkTint,
   extractArtworkTint: dialExtractArtworkTint,
+  tintFromPixels: dialTintFromPixels,
+  chapterFractions: dialChapterFractions,
+  paintChip: dialPaintChip,
   currentStation: dialCurrentStation,
   haptic: dialHaptic,
   transition: dialTransitionNowPlaying,

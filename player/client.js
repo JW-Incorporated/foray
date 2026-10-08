@@ -1493,6 +1493,9 @@ function setSheetDragOffset(px) {
 /* ---------- state -> DOM ---------- */
 
 let current = null;
+/* The sentence the sheet shows under the show (the why-line, or the episode's
+   hook), kept so the OS view can name it as the album (`mediaViewFields`). */
+let currentWhy = "";
 /* The downloaded copy this play is trying (PQ-19, #29): `{ item, opts }` — the
    ORIGINAL item and the caller's options — while the play that chose the local
    file is loading (or was refused by autoplay), else null: a load that settles
@@ -1839,6 +1842,47 @@ function dialQueueCount() {
   catch (_) { return 0; }
 }
 
+/** Where a chapter starts, in seconds, or null when the feed gave none. The
+    catalogue stores `start_time_seconds` (ui/episode.js reads it); the other
+    spellings are what a feed parser may hand over. A chapter with no known
+    start is dropped rather than read as 0, which would draw a tick and a row
+    that seek confidently to the beginning (the episode page's own rule). */
+function chapterStartSec(chapter) {
+  for (const key of ["start_time_seconds", "start_sec", "startTime", "start"]) {
+    const value = chapter?.[key];
+    if (value == null || value === "") continue;
+    const seconds = Number(value);
+    if (Number.isFinite(seconds) && seconds >= 0) return seconds;
+  }
+  return null;
+}
+
+/** What the page knows about the episode on the sheet and the player does not:
+    the episode that plays after it, and whether it is downloaded or played. The
+    page answers (`episodeNavigation.sheetFacts`, app.js); this holds the answer
+    for two seconds per episode, because the model is built on every playback
+    tick and the answer reads storage. Observed, never declared: nothing here is
+    a setting. */
+const NO_EPISODE_FACTS = Object.freeze({ next: null, downloaded: false, played: false });
+let episodeFactsId = null;
+let episodeFactsAt = 0;
+let episodeFactsValue = NO_EPISODE_FACTS;
+
+function dialEpisodeFacts(id) {
+  const nav = episodeNavigation;
+  if (!id || typeof nav?.sheetFacts !== "function") return NO_EPISODE_FACTS;
+  const now = Date.now();
+  if (episodeFactsId === id && now - episodeFactsAt < 2000) return episodeFactsValue;
+  let facts = null;
+  try { facts = nav.sheetFacts(id); } catch (_) { facts = null; }
+  episodeFactsId = id;
+  episodeFactsAt = now;
+  episodeFactsValue = facts && typeof facts === "object"
+    ? { next: facts.next && typeof facts.next === "object" ? facts.next : null, downloaded: facts.downloaded === true, played: facts.played === true }
+    : NO_EPISODE_FACTS;
+  return episodeFactsValue;
+}
+
 /** One station code per show in a foray (BUILD-NOTES 3.6). The collision rule
     is `tactileStationCodes` in ui/primitives.js, the SAME function the band
     draws its labels from, so the chip, the swatches and the band cannot
@@ -1894,18 +1938,28 @@ function dialNowPlayingModel(pos, dur, running, loading) {
   if (!resolvedForay) {
     const show = current?.show || "Show";
     const showId = current?.show_id || show;
-    const chapters = Array.isArray(current?.chapters) ? current.chapters.map((chapter) => ({
-      title: chapter?.title || "Chapter",
-      start: Number(chapter?.start_sec ?? chapter?.startTime ?? chapter?.start) || 0,
-      clock: formatTimestamp(Number(chapter?.start_sec ?? chapter?.startTime ?? chapter?.start) || 0, EXACT),
-    })) : [];
+    const chapters = [];
+    for (const chapter of Array.isArray(current?.chapters) ? current.chapters : []) {
+      const start = chapterStartSec(chapter);
+      if (start == null) continue;
+      chapters.push({ title: chapter?.title || "Chapter", start, clock: formatTimestamp(start, EXACT) });
+    }
+    /* A plain episode's two tags and its Up next card come from the page. */
+    const facts = dialEpisodeFacts(!current?.forayId ? current?.id : null);
+    const upNext = facts.next;
+    const next = upNext ? {
+      title: upNext.title || upNext.show || "", show: upNext.show || "", why: upNext.why || "",
+      duration: upNext.duration_sec > 0 ? fmtSpan(upNext.duration_sec) : "", artwork: upNext.artwork_url || "",
+      code: dialStationCodeFor(upNext.show), colorIndex: dialStationIndex(upNext.show_id || upNext.show),
+    } : null;
     return {
       foray: false, currentIndex: 0, position: pos, duration: dur, running, buffering: loading || buffering,
-      artwork: current?.artwork_url || "", showId, show, queueCount, chapters,
+      artwork: current?.artwork_url || "", showId, show, queueCount, chapters, next,
+      downloaded: facts.downloaded, played: facts.played, hook: current?.hook || "",
       segments: [{ showId, show, code: dialStationCodeFor(show), colorIndex: dialStationIndex(showId), duration: dur, start: 0 }],
       subtitle: show,
       valueText: `${dialSpokenClock(pos)} of ${dialSpokenClock(dur)}, ${show}`,
-      detailKey: `episode:${current?.id || ""}:${chapters.length}`,
+      detailKey: `episode:${current?.id || ""}:${chapters.length}:${upNext?.id || ""}:${current?.hook ? 1 : 0}${current?.description ? 1 : 0}`,
     };
   }
   const resolved = resolvedForay;
@@ -2607,6 +2661,7 @@ function setNowPlaying(item, why) {
      Foray, which never has a hook. `sDesc` below always did it this way. */
   ui.sWhy.textContent = why || item.hook || "";
   ui.sWhy.hidden = !ui.sWhy.textContent;
+  currentWhy = ui.sWhy.textContent;
   const artworkUrl = item.artwork_url && typeof safeUrl === "function" ? safeUrl(item.artwork_url) : "#";
   if (artworkUrl && artworkUrl !== "#") {
     ui.art.src = artworkUrl;
@@ -3552,6 +3607,13 @@ function syncMediaSession() {
   publishMediaView(mediaSessionView(mediaViewFields()));
 }
 
+/** An artwork URL the page's gate accepts, or null: `safeUrl` answers "#" for
+    anything it refuses, which is not a URL to hand the OS. */
+function safeArtworkUrl(url) {
+  const safe = url && typeof safeUrl === "function" ? safeUrl(url) : "";
+  return safe && safe !== "#" ? safe : null;
+}
+
 /** The live values the OS view is built from. One function for the three
     shapes the bar can be in — a Foray, a RESTORED Foray, an episode — so no
     field is gathered twice. */
@@ -3615,7 +3677,14 @@ function mediaViewFields() {
     foray: false,
     index: 0,
     total: 0,
-    showArtworkUrl: current.artwork_url ?? null,
+    /* The lock-screen square goes through the page's own URL gate first, the one
+       the bar's and the sheet's artwork go through (`setNowPlaying`), and then
+       through the module's own (`artworkUrl`): "#" is safeUrl's refusal, never a
+       picture. */
+    showArtworkUrl: safeArtworkUrl(current.artwork_url),
+    /* The album of a plain episode is its why-line when it has one (Tactile
+       BUILD-NOTES 7); with none, `mediaMetadata` falls back to "4a" (#1006). */
+    why: currentWhy,
     /* THE BAR'S OWN READINGS (audit 2026-09-22, qa row 161). These read the
        element directly, which on a RESTORED bar holds nothing: the lock screen
        and the car were told 0:00 while the bar said 30:00, and a feed with no
@@ -4311,8 +4380,8 @@ function bind() {
         : (starts[Math.max(0, at - 1)] ?? 0);
     } else {
       const chapters = Array.isArray(current?.chapters) ? current.chapters
-        .map((chapter) => Number(chapter?.start_sec ?? chapter?.startTime ?? chapter?.start))
-        .filter(Number.isFinite) : [];
+        .map(chapterStartSec)
+        .filter((start) => start != null) : [];
       const ordered = [0, ...chapters, dur].sort((a, b) => a - b);
       target = event.key === "ArrowUp"
         ? (ordered.find((value) => value > now + .5) ?? dur)

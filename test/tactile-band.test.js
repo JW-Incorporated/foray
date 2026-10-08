@@ -469,6 +469,81 @@ test("the Now Playing chip's codes (client.js dialForayCodes) are the band's cod
   assert.strictEqual(new Set(chip).size, foray.length, "and every station has its own code");
 });
 
+// ---- Tactile Now Playing, episode: the plain-episode band ------------------
+
+test("a plain episode's scrub band is one persimmon bar: no codes, no hatch, a 1px --ink-3 tick per chapter", () => {
+  /* The episode band is `episode: true` on the scrub or detail kind (Tactile
+     BUILD-NOTES 4.2: "a plain persimmon fill with chapter ticks 1px --ink-3
+     when chapters exist"). `chapters` are fractions of the runtime.
+     MUTATIONS, each run against this test:
+       - drop `|| plain` from the `episode` flag in tactileBand -> the bar takes a station enamel class and the
+         `t-band__bar--episode` assertion fails;
+       - drop `|| plain` from the `labels` guard -> a `t-band__code` text appears and the no-codes assertion fails;
+       - make `ticks` draw the 0 and 1 marks too (remove the `f > 0 && f < 1` filter) -> the list has 8 ticks, not 5;
+       - set `var plain = false` -> the flag is ignored on scrub, the six segments render as stations and
+         the episode-class assertion fails. */
+  const html = p.tactileBand({
+    id: "ep", kind: "scrub", renderWidth: 361, progress: 0.3, totalSeconds: 3600, valueText: "x",
+    episode: true, chapters: [0, 0.09, 0.24, 0.41, 0.58, 0.9, 1, 1.4, -1],
+    segments,   // a station foray's segments: the episode flag must override them
+  });
+  const bars = [...html.matchAll(/<rect class="([^"]*)"[^>]*data-segment-index/g)].map((m) => m[1]);
+  assert.deepStrictEqual([...new Set(bars)], ["t-band__bar t-band__bar--episode"], "every bar is the one episode class");
+  assert.strictEqual((/<g class="t-band__base">([\s\S]*?)<\/g>/.exec(html)[1].match(/data-segment-index/g) || []).length, 1, "one bar, not one per segment");
+  assert.doesNotMatch(html, /t-band__code/, "no station codes");
+  assert.doesNotMatch(html, /fill="url\(#ep-hatch\)"/, "no hatched bar");
+  const ticks = [...html.matchAll(/<line class="t-band__tick" x1="([\d.]+)" x2="([\d.]+)" y1="8" y2="36" vector-effect="non-scaling-stroke">/g)];
+  assert.deepStrictEqual(ticks.map((m) => m[1]), ["90.00", "240.00", "410.00", "580.00", "900.00"], "a tick at each chapter strictly inside the runtime");
+  assert.ok(ticks.every((m) => m[1] === m[2]), "each tick is vertical");
+  assert.match(html, /role="slider"/, "the scrub band is still the slider");
+  assert.doesNotMatch(html, /Foray band with/, "its own label is not a foray's");
+});
+
+test("a plain episode with no chapters draws no ticks, and the band needs the flag to be plain", () => {
+  /* MUTATIONS, both run: make `plain` true without `d.episode` (drop `Boolean(d.episode) &&`) -> a foray
+     band loses its codes and nine suite tests go red, this one included; drop the `kind === "scrub" ||
+     kind === "detail"` guard -> the mini assertion fails. */
+  const none = p.tactileBand({ id: "nochap", kind: "scrub", renderWidth: 361, episode: true, chapters: [], segments: [{ showId: "s", show: "S", duration: 60 }] });
+  assert.doesNotMatch(none, /<line class="t-band__tick"/, "no chapters, no tick lines");
+  const station = p.tactileBand({ id: "foray", kind: "scrub", renderWidth: 361, chapters: [0.5], segments });
+  assert.doesNotMatch(station, /<line class="t-band__tick"/, "a foray band ignores chapters");
+  assert.match(station, /t-band__code/, "and keeps its codes");
+  const mini = p.tactileBand({ id: "mini", kind: "mini", renderWidth: 361, episode: true, chapters: [0.5], segments });
+  assert.doesNotMatch(mini, /<line class="t-band__tick"/, "the mini band is not an episode scrub");
+});
+
+test("a plain episode's bar sits 6px in and 32px tall on any stage it is told, centred, with no code row under it", () => {
+  /* The 60-unit viewBox is stretched over `stagePx` rendered px, so the bar is
+     60 * 6 / stage units in and 60 * (stage - 12) / stage tall: 6px and
+     (stage - 12)px on the page, an even strip above and below. Without
+     `stagePx` the band is the foray's (bar at 8, 28 tall, room for codes).
+     MUTATIONS, each run against this test: drop the `plain &&` guard on the
+     stagePx branch -> the foray band below moves its bar and the y="8" assertion
+     fails; change `stagePx - 12` to `stagePx - 6` -> the bar is no longer
+     centred (6 above, 0 below) and the symmetry assertion fails; ignore stagePx
+     (delete the branch) -> the 44px assertions read 8 and 28. */
+  const one = [{ showId: "s", show: "S", duration: 60 }];
+  const html = p.tactileBand({ id: "stage", kind: "scrub", renderWidth: 361, episode: true, stagePx: 44, chapters: [0.5], segments: one });
+  const bar = /<rect class="t-band__bar t-band__bar--episode"[^>]* y="([\d.]+)" width="[\d.]+" height="([\d.]+)"/.exec(html);
+  assert.ok(bar, "the episode bar is drawn");
+  const px = (units) => Number(units) * 44 / 60;
+  assert.ok(Math.abs(px(bar[1]) - 6) < 0.01, "6px above the bar, got " + px(bar[1]));
+  assert.ok(Math.abs(px(bar[2]) - 32) < 0.01, "a 32px bar, got " + px(bar[2]));
+  assert.ok(Math.abs(44 - px(bar[1]) - px(bar[2]) - px(bar[1])) < 0.01, "as much well below the bar as above it");
+  const tick = /<line class="t-band__tick" x1="[\d.]+" x2="[\d.]+" y1="([\d.]+)" y2="([\d.]+)"/.exec(html);
+  assert.deepStrictEqual([tick[1], tick[2]], [String(+bar[1]), String(+bar[1] + +bar[2])].map((v) => v), "a chapter tick spans exactly the bar");
+  const foray = p.tactileBand({ id: "stage-foray", kind: "scrub", renderWidth: 361, stagePx: 44, segments });
+  assert.match(foray, / y="8" width="[\d.]+" height="28"/, "a foray band ignores stagePx: its bar stays at 8, 28 tall");
+  const dflt = p.tactileBand({ id: "stage-default", kind: "scrub", renderWidth: 361, episode: true, segments: one });
+  assert.match(dflt, / y="8" width="[\d.]+" height="28"/, "an episode band with no stagePx is unchanged");
+});
+
+test("the chapter tick is a 1px --ink-3 stroke in CSS", () => {
+  /* MUTATION: change `var(--ink-3)` to `var(--ink)` or `stroke-width: 1` to 2 in the rule -> red. */
+  assert.match(rule(".t-band__tick"), /stroke:\s*var\(--ink-3\)/);
+  assert.match(rule(".t-band__tick"), /stroke-width:\s*1\b/);
+});
+
 test("the detail needle is drawn in rendered pixels: 2px wide, a round 8px head, 6px past the bars at both ends", () => {
   /* The detail band is 60px tall in a 1000-unit-wide viewBox stretched to the card, so one y unit
      is a pixel and one x unit is renderWidth/1000 of one. The old needle (width 2, circle r 4) was
