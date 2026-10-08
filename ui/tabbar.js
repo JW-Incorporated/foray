@@ -121,4 +121,6 @@ function renderTabBar() {
       a.dataset.tabGlyph = want;
     }
   });
+  /* The Library tab carries the Up Next count (ui/episode.js); the glyph rewrite above replaced its children. */
+  if (typeof syncLibraryBadge === "function") syncLibraryBadge();
 }

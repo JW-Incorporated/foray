@@ -43,7 +43,7 @@ const path = require("node:path");
 const { readAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const CSS = ["styles.css", "ui/tokens.css", "ui/primitives.css", "ui/today.css", "ui/onboarding.css", "ui/foray-detail.css"]
+const CSS = ["styles.css", "ui/tokens.css", "ui/primitives.css", "ui/today.css", "ui/onboarding.css", "ui/foray-detail.css", "ui/episode.css"]
   .map((rel) => fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n"))
   .join("\n");
 

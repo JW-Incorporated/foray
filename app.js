@@ -2873,6 +2873,7 @@ function saveQueueIds(ids) {
     : lsSet("cp_queue", ids);
   refreshEpisodeNavigation();
   repaintQueuePage();
+  if (typeof syncLibraryBadge === "function") syncLibraryBadge();   // the Library tab's Up Next count (ui/episode.js)
   return ok;
 }
 

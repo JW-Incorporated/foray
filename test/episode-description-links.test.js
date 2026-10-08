@@ -337,37 +337,45 @@ test("a seek does not restart an episode that is already the current one", () =>
   assert.match(fn[1], /await window\.ForayPlayer\.seekTo\(secs\)/, "…and the current episode is seeked instead");
 });
 
-/* ---------- the notes are collapsed by default (founder, 2026-09-18) -------
+/* ---------- the notes open on four lines (founder, 2026-09-18, kept) ---------
 
    "When I'm listening to a podcast with a lot of notes the episode page is just
    notes; the default should be I mostly see album artwork and need to
-   intentionally scroll somewhere to see notes." */
+   intentionally scroll somewhere to see notes."
 
-test("the description renders inside a closed <details>, not in flow", () => {
-  /* MUTATION: change `<details>` back to `<section>`. This goes red, and in a
-     browser a two-thousand-word sponsor block is the whole page again.
-     RUN: failed as named. */
+   REDESIGN 2026 (ambient, Episode page): THE RULING THAT FELL is the native
+   <details> disclosure this test used to pin ("Episode notes" and a chevron).
+   BUILD-NOTES 4.7 replaces it with a four-line clamp and a quiet "More" button:
+   the founder's ask (artwork first, notes by intent) holds, and the start of the
+   notes now shows. */
+
+test("the description renders as a four-line clamp with a More button, not in flow and not in a <details>", () => {
+  /* MUTATION: drop `is-clamped` from the text's class -> the notes are in flow
+     in full again; red. MUTATION: put `open` semantics back (`<details`) -> red.
+     MUTATION: aria-expanded="true" in the markup -> red (closed by default). */
   const out = app.episodeDescriptionSectionHtml({ description: "notes here", duration_min: 60 });
-  assert.match(out, /^<details class="ep-description">/, "the notes must be a disclosure");
-  assert.ok(!/\bopen\b/.test(out.slice(0, out.indexOf(">"))), "…and closed by default, which is the whole ask");
-  assert.match(out, /<summary class="ep-description-toggle">/, "…with a control to open it");
+  assert.match(out, /^<section class="ep-description">/, "the notes are a section");
+  assert.ok(!out.includes("<details"), "…no longer a native disclosure");
+  assert.match(out, /class="ep-description-text is-clamped" id="ep-notes-text"/, "…clamped by default, which is the whole ask");
+  assert.match(out, /<button type="button" class="ag-btn ag-btn-quiet ep-notes-more" aria-expanded="false" aria-controls="ep-notes-text">More<\/button>/,
+    "…with a quiet control that names what it opens and says it is closed");
 });
 
-test("the timestamps still work inside the collapsed notes", () => {
-  /* A `<details>` keeps its content in the DOM, so `bindEpisodeSeeks` still
-     finds the controls — the collapse must not have cost the feature added the
+test("the timestamps still work inside the clamped notes", () => {
+  /* A clamp keeps its content in the DOM, so `bindEpisodeSeeks` still
+     finds the controls — the clamp must not have cost the feature added the
      day before. */
   const out = app.episodeDescriptionSectionHtml({ description: "12:34 the bit", duration_min: 60 });
   assert.match(out, /data-ts="754"/);
 });
 
-test("chapters stay OUT of the disclosure", () => {
+test("chapters stay OUT of the clamp", () => {
   /* They are navigation, not prose: short, scannable, and individually tappable
      to seek. Burying the one part of the notes that DOES something would be the
      wrong half to hide.
-     MUTATION: wrap episodeChaptersHtml in a <details> too. */
+     MUTATION: wrap episodeChaptersHtml in a <details> too, or give its list `is-clamped`. */
   const out = app.episodeChaptersHtml({ chapters: [{ start_time_seconds: 0, title: "Intro" }] });
-  assert.ok(!out.includes("<details"), "the chapter list is not hidden behind a disclosure");
+  assert.ok(!out.includes("<details") && !out.includes("is-clamped"), "the chapter list is not hidden behind a disclosure or a clamp");
   assert.match(out, /^<section class="ep-chapters">/);
 });
 

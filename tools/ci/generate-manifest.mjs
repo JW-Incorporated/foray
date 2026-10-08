@@ -168,6 +168,8 @@ const SHELL = [
   "ui/onboarding.css",
   /* Redesign 2026 (ambient): Foray detail. A stylesheet, so listed by name. */
   "ui/foray-detail.css",
+  /* Redesign 2026 (ambient): the Episode page. A stylesheet, so listed by name. */
+  "ui/episode.css",
   /* Redesign 2026 (ambient): the icon sprite ui/icons.svg, fetched by every `<use href>` agIcon() writes.
      Not a script, so uiSources() does not see it; listed by name for the same reason as tokens.css. */
   "ui/icons.svg",

@@ -134,8 +134,10 @@ function assertFullEpisodeRender(app, html) {
   assert.match(html, /Great Show/, "show name must render (plain text, Stage 1)");
   assert.match(html, /42 min/, "duration must render via fmtDur");
   assert.match(html, /A description hook/, "hook/description must render");
-  assert.match(html, /class="play-btn"/, "the ▶ button must render when audio_url exists");
-  assert.match(html, /class="star /, "the star toggle must render");
+  /* REDESIGN 2026 (ambient Episode page): the page's controls are its own icon buttons (`data-ep-play`, `data-ep-save`), not the
+     legacy `.play-btn` / `.star` glyph buttons, whose text a global painter rewrites (that would wipe the sprite glyph). */
+  assert.match(html, /class="ag-btn ag-btn-primary ep-play" data-ep-play="/, "the Play button must render when audio_url exists");
+  assert.match(html, /data-ep-save="/, "the Save (bookmark) toggle must render");
 }
 
 test("renderEpisode renders artwork/title/show/duration/hook/play/star for an itemIndex item", () => {
@@ -175,11 +177,11 @@ test("renderEpisode renders the honest not-playable note, not a play button or l
   };`);
   app.renderEpisode("ep-5");
   const html = app._view.innerHTML;
-  assert.doesNotMatch(html, /class="play-btn"/, "no play button without audio_url");
+  assert.doesNotMatch(html, /data-ep-play=/, "no play button without audio_url");
   assert.doesNotMatch(html, /class="go"/, "no external link-out control any more (removed 2026-09-03)");
   assert.doesNotMatch(html, /Listen in your podcast app/, "the old link-out copy must not appear anywhere");
   assert.match(html, /class="not-playable"/, "an honest in-app not-playable note replaces the ▶ button");
-  assert.match(html, /class="star /, "star toggle still renders");
+  assert.match(html, /data-ep-save="/, "the Save toggle still renders");
 });
 
 /* ---------- A1.8: "More from this show" ---------- */

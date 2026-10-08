@@ -97,6 +97,9 @@ const AMBIENT_PRIMITIVES_ASSETS = Object.freeze([
   /* Iteration 4 added the Dock block (the warm Veil, the mini's Ember Play, the fade; 12.4 KB measured minified): ceiling 10 to 14 KB, a bounded step that ui/dock.css retires when the Dock unit lands. */
   { rel: "ui/foray-detail.css", maxBytes: 14 * 1024 },
   { rel: "ui/foray.js", maxBytes: 32 * 1024 },
+  /* Phase 4, Episode page: the screen's stylesheet (it carries the Dock block Foray detail's carries, which the Dock unit retires,
+     and the Library tab's count badge). Measured minified, 2026-10-08: 8.8 KB; the ceiling leaves about 1 KB of headroom. */
+  { rel: "ui/episode.css", maxBytes: 10 * 1024 },
 ]);
 
 /* ───────────────────────────── the derivation ───────────────────────────── */

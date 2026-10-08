@@ -307,7 +307,8 @@ test("renderEpisode renders the '+ Up Next' control beside play/star", async () 
   const item = discover.items[0];
   m.ctx.renderEpisode(item.id);
   const html = m.view();
-  assert.ok(html.includes(`data-upnext="${m.ctx.esc(item.id)}"`), "renderEpisode must render the Up Next control");
+  /* REDESIGN 2026 (ambient Episode page): the page's Up Next is its own icon button (`data-ep-upnext`), not the legacy "+ Up Next" text one. */
+  assert.ok(html.includes(`data-ep-upnext="${m.ctx.esc(item.id)}"`), "renderEpisode must render the Up Next control");
 });
 
 test("renderShow's episode rows (via epRow) each carry the '+ Up Next' control", async () => {
@@ -553,7 +554,7 @@ test("a queued row and the episode page carry the player's 'Played' / 'NN min le
   assert.match(m.view(), /<span class="ep-progress is-played">Played<\/span>/, "the finished queued row says so");
   assert.match(m.view(), /<span class="ep-progress">20 min left<\/span>/, "the half-way queued row says how far");
   m.ctx.renderEpisode(b.id);
-  assert.match(m.view(), /fp-s-show[^]*?<span class="ep-progress">20 min left<\/span>/, "the episode page keeps the mark");
+  assert.match(m.view(), /ep-caption[^]*?<span class="ep-progress">20 min left<\/span>/, "the episode page keeps the mark");
 });
 
 test("an Up Next row with no details says one sentence about THIS page (audit round 2, copy-9)", () => {
@@ -720,18 +721,18 @@ test("#/episode renders Play next beside + Up Next, and its click goes through p
   const item = readJson("data/discover.json").items.find((it) => it.audio_url);
   m.ctx.renderEpisode(item.id);
   const html = m.view();
-  const up = html.indexOf(`data-upnext="${m.ctx.esc(item.id)}"`);
-  const next = html.indexOf(`data-playnext="${m.ctx.esc(item.id)}"`);
-  assert.ok(up >= 0 && next > up, "Play next renders right after + Up Next in the episode actions");
-  assert.match(html, /aria-label="Play next">Play next<\/button>/);
+  /* REDESIGN 2026 (ambient Episode page): the page's two queue controls are its own (`data-ep-upnext`, `data-ep-playnext`), bound by
+     bindEpisodeActions; the legacy `[data-playnext]` binder in bindUpNext now serves no episode page. */
+  const up = html.indexOf(`data-ep-upnext="${m.ctx.esc(item.id)}"`);
+  const next = html.indexOf(`data-ep-playnext="${m.ctx.esc(item.id)}"`);
+  assert.ok(up >= 0 && next > up, "Play next renders right after Up Next in the episode actions");
+  assert.match(html, /data-ep-playnext="[^"]*">Play next<\/button>/);
 
   seedPlayable(m, ["x", "y"]);
   m.ctx.lsSet("cp_queue", ["x", "y"]);
   m.ctx.window.ForayPlayer = { currentEpisodeId: () => "x" };
-  const pn = fakeButton({ playnext: item.id });
-  const upBtn = fakeButton({ upnext: item.id });
-  m.ctx.bindUpNext({ querySelectorAll: (sel) => (sel === "[data-playnext]" ? [pn] : sel.startsWith("[data-upnext=") ? [upBtn] : []) });
+  const pn = fakeButton({ epPlaynext: item.id });
+  m.ctx.bindEpisodeActions({ querySelector: (sel) => (sel === "[data-ep-playnext]" ? pn : null) }, item);
   pn.onClick(CLICK);
   assert.deepStrictEqual(m.queueRaw(), ["x", item.id, "y"], "the episode plays right after the one playing");
-  assert.ok(upBtn.painted.includes("✓ Up Next"), `its + Up Next is painted from the queue: ${upBtn.painted.join(" ")}`);
 });

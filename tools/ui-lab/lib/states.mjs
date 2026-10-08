@@ -88,6 +88,48 @@ async function goDawn(page) {
   await wait(page, 700);
 }
 
+/* Episode page with publisher notes. The catalogue's episodes carry no description, so this patches one episode's
+   record in the app's own item index (a real description: prose, a chapter-style list with stamps, an inline stamp, a
+   link) and paints the route again. The item is one the returning seed neither saved nor queued, so Save and Up Next
+   start Off and the Up Next add can be shot. `state` and `renderEpisode` are the app's own top-level bindings. */
+const EPISODE_NOTES = [
+  "A long conversation about how a measurement becomes a fact, recorded over two afternoons in a basement lab.",
+  "",
+  "00:00 Cold open",
+  "02:15 The instrument and its flaws",
+  "21:40 Three continents, one argument",
+  "48:05 What the data finally said",
+  "",
+  "The paper is at https://example.org/papers/measurement-and-meaning and the lab notebook is linked from there.",
+  "The best exchange starts at 31:20 and runs for six minutes, if you only have a little time.",
+  "Thanks to the listeners who wrote in with corrections, and to everyone who sent a photograph of their own bench.",
+].join("\n");
+
+async function seedEpisodeNotes(page, id) {
+  await page.evaluate(({ id, text }) => {
+    state.itemIndex[id] = { ...state.itemIndex[id], description: text, duration_min: 62 };
+    renderEpisode(id);
+  }, { id, text: EPISODE_NOTES });
+  await page.waitForSelector(".ag.ep .ep-description", { timeout: 15000 });
+  await wait(page, 500);
+  await scrollToEpisodeNotes(page);
+}
+
+/** Bring the notes' heading near the top of the viewport, so a viewport shot shows the clamp, the chips and the More button. */
+async function scrollToEpisodeNotes(page) {
+  await page.evaluate(() => {
+    const head = document.querySelector(".ag.ep .ep-description");
+    if (head) window.scrollTo(0, window.scrollY + head.getBoundingClientRect().top - 72);
+  });
+  await wait(page, 300);
+}
+
+async function clickEpisodeControl(page, selector, ms = 900) {
+  await page.waitForSelector(selector, { timeout: 15000 });
+  await page.click(selector);
+  await wait(page, ms);
+}
+
 async function typeSearch(page, text) {
   await page.waitForSelector("#sh-input", { timeout: 15000 });
   await page.fill("#sh-input", text);
@@ -283,6 +325,20 @@ export function appStates(fx) {
       description: "Foray detail with the narrated Foray half played: the strip filled to the stored point and the button reading Resume.",
       seed: "foray-resume",
       steps: [{ label: "foray-resume", route: forayRoute(forayDetailPicks(fx).narrated), ready: ".fd #fy-play" }],
+    },
+    {
+      id: "episode-notes",
+      description: "Episode page with publisher notes: four lines and More, timestamp chips, a chapter-style list, then the notes opened, then Up Next added (the art flies to the Library tab and its count goes up).",
+      seed: "returning",
+      steps: (() => {
+        const id = (fx.items[11] || fx.items[10] || fx.items[9]).id;
+        const route = "#/episode/" + encodeURIComponent(id);
+        return [
+          { label: "episode-notes", route, run: (page) => seedEpisodeNotes(page, id) },
+          { label: "episode-notes-open", route, run: async (page) => { await clickEpisodeControl(page, ".ag.ep .ep-notes-more", 600); await scrollToEpisodeNotes(page); } },
+          { label: "episode-upnext-added", route, run: async (page) => { await page.evaluate(() => window.scrollTo(0, 0)); await clickEpisodeControl(page, "[data-ep-upnext]", 1100); } },
+        ];
+      })(),
     },
     {
       id: "stress",
