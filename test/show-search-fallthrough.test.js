@@ -1564,11 +1564,12 @@ test("copy-8: every quoted query goes through the one typographic pair — no st
   assert.deepStrictEqual(straight, [], `a listener string quotes an interpolation with straight quotes: ${JSON.stringify(straight)}`);
   assert.match(APP_SRC, /function quoteQuery\(text\) \{\s*return `\\u201c\$\{text\}\\u201d`;/, "the helper is the one place the pair lives");
   for (const site of [
-    "No shows found for ${quoteQuery(query)}.",
+    "You're offline — no shows found for ${quoteQuery(query)}.",
+    "No shows match ${quoteKeyQuery(query)}.",
     "Searching for ${quoteQuery(query)}…",
     "No episodes match ${quoteQuery(esc(searchQuery.trim()))}.",
     "Not much on ${quoteQuery(query)} yet",
-    "Create a playlist about ${quoteQuery(esc(query))}",
+    "Make a playlist about ${quoteKeyQuery(esc(query))}",
   ]) assert.ok(APP_SRC.includes(site), `site must use the helper: ${site}`);
   const m = mount();
   assert.strictEqual(m.evalIn("quoteQuery")("x"), "\u201cx\u201d");

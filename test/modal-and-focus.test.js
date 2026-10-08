@@ -424,26 +424,10 @@ test("navigation asks every sheet to close, and a sheet may refuse (Delete my da
     "route() closes sheets on a real navigation only — not on a same-hash re-render under an open sheet");
 });
 
-test("the Foray speed menu is one instance however often it is opened", () => {
-  /* A repeated Enter / key-repeat mounted a second #rate-sheet over the first,
-     and one Cancel took the lock off with a sheet still up.
-     MUTATION: drop the same-id replacement from openSheet -> two sheets; red. */
-  const m = mount();
-  const player = {
-    rateStops: () => [1, 1.5],
-    playbackRate: () => 1,
-    rateLabel: (r) => `${r}×`,
-    setPlaybackRate: (r) => r,
-  };
-  m.ctx.openRateMenu(player, () => {});
-  m.ctx.openRateMenu(player, () => {});
-  const sheets = m.doc.body.querySelectorAll("#rate-sheet");
-  assert.strictEqual(sheets.length, 1, "exactly one #rate-sheet in the document");
-  sheets[0].querySelector(".fy-sheet-cancel").click();
-  assert.strictEqual(m.doc.body.querySelectorAll("#rate-sheet").length, 0);
-  assert.ok(!m.doc.body.classList.contains("fy-sheet-open"), "Cancel leaves no lock and no sheet");
-  assert.ok(!inert(m.view), "and no inert page");
-});
+/* "the Foray speed menu is one instance however often it is opened" went with the speed
+   menu: the Foray page no longer carries a speed key (Tactile `foray`; the speed lives on
+   the Now Playing sheet, which has its own picker in player/client.js). The one-instance
+   rule itself is `openSheet`'s, and the feedback sheet below it still rides on it. */
 
 test("the first-run explainer is a real dialog: focus moves in, and Escape parks it for the visit — only Skip ends onboarding", () => {
   /* MUTATION: open it without the owner (the old appendChild + classList.add)
@@ -474,7 +458,7 @@ test("no sheet writes the modal lock itself any more — they all go through the
   assert.strictEqual(count(APP_SRC, 'classList.remove("fy-sheet-open")'), 0);
   assert.strictEqual(count(CLIENT_SRC, 'classList.add("fy-sheet-open")'), 1, "client.js: only the owner-less fallback");
   for (const fn of ["showFirstTimeExplainerOnce", "showIntroPopupOnce", "openFeedbackSheet",
-    "openRateMenu", "openDeleteSheet", "openVoiceSheet", "openDiagSheet"]) {
+    "openDeleteSheet", "openVoiceSheet", "openDiagSheet"]) {
     const body = new RegExp(`function ${fn}\\([^)]*\\) \\{[\\s\\S]*?\\n\\}`).exec(APP_SRC);
     assert.ok(body, `${fn} exists`);
     assert.match(body[0], /openSheet\(/, `${fn} must open through openSheet()`);
@@ -588,78 +572,13 @@ test("the Up Next binders run the after-steps (the helpers are not orphans)", ()
 });
 
 /* ==================================================================== */
-/* 3. THE FORAY STRIP: A VERTICAL FLICK IS NOT A SEEK                     */
+/* 3. THE FORAY STRIP: GONE (Tactile `foray`)                            */
 /* ==================================================================== */
 
-test("a vertical flick that starts on the strip arms the click suppression; the next press disarms it", async () => {
-  /* The strip is sticky in the path of every scroll flick, and the click a
-     release delivers used to seek. MUTATION: delete the `gesture.scrolled`
-     branch in bindStripZoomScrub -> red. MUTATION: delete the reset at
-     pointerdown -> the second assertion fails (a flag cleared only by a click
-     would eat the next genuine tap after a touch scroll, which has no click). */
-  const gest = await import(pathToFileURL(path.join(ROOT, "player", "strip-scrub-gesture.js")).href);
-  const m = mount();
-  const strip = m.doc.createElement("div");
-  strip.id = "fy-strip";
-  m.view.appendChild(strip);
-  const player = {
-    scrubGesture: {
-      HOLD_MS: gest.HOLD_MS, ZOOM_SCALE: gest.ZOOM_SCALE,
-      start: gest.startGesture, move: gest.moveGesture, holdTimeout: gest.holdTimeoutGesture,
-      end: gest.endGesture, originPercent: gest.zoomOriginPercent,
-      BUBBLE_SCALE: gest.BUBBLE_SCALE, BUBBLE_WIDTH: gest.BUBBLE_WIDTH,
-      bubblePosition: gest.bubblePosition, bubbleContentOffset: gest.bubbleContentOffset,
-    },
-  };
-  m.ctx.bindStripZoomScrub({}, player);
-  strip.fire("pointerdown", { pointerId: 1, pointerType: "touch", button: 0, clientX: 100, clientY: 100 });
-  strip.fire("pointermove", { pointerId: 1, clientX: 103, clientY: 140 });
-  assert.strictEqual(strip._scrollGesture, true, "a mostly-vertical move before any scrub is a scroll");
-  strip.fire("pointerdown", { pointerId: 2, pointerType: "touch", button: 0, clientX: 100, clientY: 100 });
-  assert.strictEqual(strip._scrollGesture, false, "a new press starts clean");
-  strip.fire("pointerup", { pointerId: 2 });
-  assert.match(APP_SRC, /\$\("#fy-strip"\)\.addEventListener\("click", async \(e\) => \{[\s\S]{0,400}?_scrollGesture\) \{[\s\S]{0,120}?return;/,
-    "the strip's click handler must return early on a scroll gesture");
-});
-
-test("REVIEW: while the strip is zoomed, a touchmove is cancelled so the page cannot take the scrub", async () => {
-  /* `touch-action: pan-y` lets the browser pan vertically even mid-zoom; its
-     pointercancel then ended the scrub with no seek. MUTATION: drop the
-     non-passive touchmove listener from bindStripZoomScrub. */
-  const gest = await import(pathToFileURL(path.join(ROOT, "player", "strip-scrub-gesture.js")).href);
-  const m = mount();
-  const strip = m.doc.createElement("div");
-  strip.id = "fy-strip";
-  m.view.appendChild(strip);
-  const player = {
-    scrubGesture: {
-      HOLD_MS: gest.HOLD_MS, ZOOM_SCALE: gest.ZOOM_SCALE,
-      start: gest.startGesture, move: gest.moveGesture, holdTimeout: gest.holdTimeoutGesture,
-      end: gest.endGesture, originPercent: gest.zoomOriginPercent,
-      BUBBLE_SCALE: gest.BUBBLE_SCALE, BUBBLE_WIDTH: gest.BUBBLE_WIDTH,
-      bubblePosition: gest.bubblePosition, bubbleContentOffset: gest.bubbleContentOffset,
-    },
-  };
-  /* The zoom opens the magnifier bubble, which clones the strip: the three DOM
-     calls it makes that this harness's El does not otherwise need. */
-  const proto = Object.getPrototypeOf(strip);
-  if (!proto.replaceChildren) proto.replaceChildren = function (...ks) { for (const k of [...this.children]) k.remove(); this.append(...ks); };
-  if (!proto.cloneNode) proto.cloneNode = function () { const c = m.doc.createElement(this.tagName); c.className = this.className; return c; };
-  if (!("firstElementChild" in proto)) Object.defineProperty(proto, "firstElementChild", { get() { return this.children[0] || null; } });
-  m.ctx.bindStripZoomScrub({}, player);
-  const touchmove = () => {
-    let cancelled = false;
-    strip.fire("touchmove", { cancelable: true, preventDefault() { cancelled = true; } });
-    return cancelled;
-  };
-  strip.fire("pointerdown", { pointerId: 1, pointerType: "touch", button: 0, clientX: 100, clientY: 100 });
-  assert.strictEqual(touchmove(), false, "a pending press may still become a scroll");
-  strip.fire("pointermove", { pointerId: 1, clientX: 100 + gest.MOVE_TOLERANCE_PX + 20, clientY: 102 });
-  assert.ok(strip.classList.contains("is-zooming"), "precondition: a sideways drag entered zoom");
-  assert.strictEqual(touchmove(), true, "once zoomed, the page may not pan under the finger");
-  strip.fire("pointerup", { pointerId: 1 });
-  assert.strictEqual(touchmove(), false, "and after release nothing is held");
-});
+/* The flick-versus-seek and zoomed-touchmove tests lived here; they pinned
+   `bindStripZoomScrub` on the Foray page's scrubbable strip, which the Dial band
+   replaced (a position is chosen on the Now Playing sheet now). The gesture state
+   machine itself is player/strip-scrub-gesture.js, which keeps its own suite. */
 
 /* ==================================================================== */
 /* 5. WHERE A ROUTE LANDS FOCUS (audit sweep 2026-09-23, qa row 80)      */
@@ -783,82 +702,18 @@ test("an async page's real paint renames the document (pageDidPaint)", () => {
 /*    first-run sheet parks, Stop lands focus, every panel drags         */
 /* ==================================================================== */
 
-const scrubModule = () => import(pathToFileURL(path.join(ROOT, "player", "strip-scrub-gesture.js")).href);
 const dragModule = () => import(pathToFileURL(path.join(ROOT, "player", "sheet-drag-dismiss.js")).href);
 
-/** The bridge client.js publishes for the strip, built from the real module. */
-function scrubBridge(gest) {
-  return {
-    scrubGesture: {
-      HOLD_MS: gest.HOLD_MS, ZOOM_SCALE: gest.ZOOM_SCALE,
-      start: gest.startGesture, move: gest.moveGesture, holdTimeout: gest.holdTimeoutGesture,
-      end: gest.endGesture, originPercent: gest.zoomOriginPercent, unzoomedX: gest.unzoomedStripX,
-      BUBBLE_SCALE: gest.BUBBLE_SCALE, BUBBLE_WIDTH: gest.BUBBLE_WIDTH,
-      bubblePosition: gest.bubblePosition, bubbleContentOffset: gest.bubbleContentOffset,
-    },
-  };
-}
+/* The strip's bridge, the zoomable-strip fixture and "ROUND 2 touch-1: a zoomed gesture's
+   release SEEKS" were here: they drove `bindStripZoomScrub`, which went with the strip
+   (see section 3). */
 
-/** A strip whose box is 40px wide before the zoom and 100px once `.is-zooming`
-    is on — what a real strip reports mid-gesture (`transform: scale()` changes
-    the client rect), and the difference that tells a release reading the
-    PRE-zoom box from one reading whatever the browser reports at that instant. */
-function zoomableStrip(m) {
-  const strip = m.doc.createElement("div");
-  strip.id = "fy-strip";
-  m.view.appendChild(strip);
-  strip.getBoundingClientRect = () => ({ top: 0, left: 0, width: strip.classList.contains("is-zooming") ? 100 : 40, height: 40 });
-  const proto = Object.getPrototypeOf(strip);
-  if (!proto.replaceChildren) proto.replaceChildren = function (...ks) { for (const k of [...this.children]) k.remove(); this.append(...ks); };
-  if (!proto.cloneNode) proto.cloneNode = function () { const c = m.doc.createElement(this.tagName); c.className = this.className; return c; };
-  if (!("firstElementChild" in proto)) Object.defineProperty(proto, "firstElementChild", { get() { return this.children[0] || null; } });
-  return strip;
-}
-
-test("ROUND 2 touch-1: a zoomed gesture's release SEEKS, read from the pre-zoom box; a plain tap leaves the seek to its click", async () => {
-  /* The headline gesture committed through a `click` no mobile browser sends
-     after a moved touch. MUTATION 1: drop the `commit(at)` from the pointerup
-     handler -> nothing is committed; red. MUTATION 2: compute the release from
-     `strip.getBoundingClientRect()` at release instead of `preZoomRect` -> the
-     box is 100px wide by then and the seek lands elsewhere; red. MUTATION 3:
-     drop `strip._seekCommitted = true` -> the trailing mouse click would seek
-     a second time; the flag assertion is red. */
-  const gest = await scrubModule();
-  const m = mount();
-  const strip = zoomableStrip(m);
-  const committed = [];
-  const r = { totalSec: 1000, playable: [] };
-  m.ctx.bindStripZoomScrub(r, scrubBridge(gest), (at) => committed.push(at));
-  strip.fire("pointerdown", { pointerId: 1, pointerType: "touch", button: 0, clientX: 10, clientY: 20 });
-  strip.fire("pointermove", { pointerId: 1, clientX: 30, clientY: 21 });
-  assert.ok(strip.classList.contains("is-zooming"), "precondition: the sideways drag entered zoom");
-  strip.fire("pointerup", { pointerId: 1, clientX: 30, clientY: 21 });
-  assert.deepStrictEqual(committed, [750], "30px into a 40px strip is 75% of the hour, against the box measured BEFORE the zoom");
-  assert.strictEqual(strip._seekCommitted, true, "and the click a mouse still sends is told it has been answered");
-  assert.ok(!strip.classList.contains("is-zooming"), "the zoom is cleared on release");
-  strip.fire("pointerdown", { pointerId: 2, pointerType: "touch", button: 0, clientX: 10, clientY: 20 });
-  assert.strictEqual(strip._seekCommitted, false, "a new press starts clean");
-  strip.fire("pointerup", { pointerId: 2, clientX: 10, clientY: 20 });
-  assert.deepStrictEqual(committed, [750], "a tap that never zoomed commits nothing here: its click does, as before");
-  assert.match(APP_SRC, /_seekCommitted\) \{\s*e\.currentTarget\._seekCommitted = false;\s*return;/, "the click handler swallows the answered click");
-  assert.match(APP_SRC, /bindStripZoomScrub\(r, player, commitStripSeek\)/, "the release commits through the same path a tap's click takes");
-  assert.match(APP_SRC, /const at = stripElapsedAt\(e, r\);\s*if \(at != null\) return commitStripSeek\(at\);/);
-});
-
-test("ROUND 2 a11y-5: 'Get started' lands focus on the new step's title, so the step is spoken", () => {
-  /* The button that was pressed is destroyed by the body swap and focus fell
-     to <body> inside an open dialog. MUTATION: drop `landOnStep()` from the
-     "Get started" handler -> red. */
-  const m = mount();
-  assert.strictEqual(m.ctx.showFirstTimeExplainerOnce(), true);
-  const wrap = m.doc.body.querySelector("#first-time-sheet");
-  assert.strictEqual(m.doc.activeElement, wrap.querySelector(".fy-panel"), "the first render: the dialog itself is what is announced");
-  wrap.querySelector("#first-time-sheet-go").fire("click");
-  const title = wrap.querySelector("#first-time-sheet-title");
-  assert.ok(title && /What are you into/.test(title.textContent), "precondition: step 2 rendered");
-  assert.strictEqual(m.doc.activeElement, title, "focus is on the new step's title, not on <body>");
-  assert.strictEqual(title.getAttribute("tabindex"), "-1", "as a programmatic target");
-});
+/* ROUND 2 a11y-5 ("Get started" lands focus on the new step's title) is retired
+   with the step it described: the tactile onboarding is one screen, and its
+   Play key closes it, so there is no second step whose title could take focus.
+   What the rule protected, that an action which destroys the element just
+   activated puts focus somewhere that survived, is pinned for the screen's own
+   exits in test/tactile-onboarding.test.js. */
 
 test("ROUND 2 p-first-4: a scrim tap PARKS the first-run sheet for the visit: it neither ends onboarding nor pops back up", () => {
   /* MUTATION 1: bind the scrim to `dismiss` -> the flag assertion is red.

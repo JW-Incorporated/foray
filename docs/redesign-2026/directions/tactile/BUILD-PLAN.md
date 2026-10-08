@@ -602,6 +602,38 @@ both pairs.
    the show name has `min-width: 112px`, the display-name rule applies, and
    seven of eight fixture names survive at 393 without ellipsis.
 4. Fidelity regions within 4px of `#/search/typing`.
+   **Built (group C `search-typing`, decisions the loop made):** (a) The typing
+   screen is shot after the return key (`search-results-typing`, appended to the
+   `search` state: type, press Enter, so the field lets go): a field that still
+   holds focus hides the deck for a keyboard a headless page never raises, which
+   is the right behaviour on a phone and the wrong state to compare with a
+   prototype drawn with the deck up. `search-results-history` is unchanged and
+   still the focused state the gates walk. (b) The closing key is last whether
+   or not a playlist matched; the gate that decides when to offer it (the scorer
+   can build one) is unchanged, so it still arrives on the idle scan, after the
+   cards. (c) The episode row is `searchEpisodeRow` (ui/search.js) on the shared
+   controls: the Play key is a `data-play` keycap sm (the player swaps its `<use>`
+   icon, `paintCardControl`), "+ Up Next" is `upNextBtn` verbatim on the meta line.
+   It drops what the prototype's row has not: the star, the date, the link on the
+   show's name (a plain name, one tap from the title's episode page) and the first
+   words of the description. Those are the row/card anatomy ruling (visual pass 1,
+   2026-09-23) falling for this list, and the founder's 2026-10-03 request for the
+   description under every title; the owner's Tactile pick draws search rows
+   without them and the 4px bar is measured against that. (d) The show name has
+   `min-width: 112px` and basis 112, so it takes what the length and the action
+   leave and ellipsises last; the pair wraps to a second line together only when
+   not even 112 fits beside them (375 wide, a long length, the "played" mark),
+   never "+ Up Next" alone. At 412 the row is one line; at 393 and 375 the pair
+   wraps (rows +16px; review fix 2026-10-08 restored the 112 floor after iteration 3 had
+   dropped it to 96 to keep 393 on one line with the 48 key). (e) `tactileDisplayName` also drops a trailing generic
+   noun ("Podcast", "Philosophy Podcast") when something real is left: BUILD-NOTES
+   3.9's own example ("The Partially Examined Life") needs it and the prototype's
+   `shortShow` does it. That is a primitive change: the gallery `*-rows` shots
+   differ (the queue specimen's "The Moreish Podcast" reads "The Moreish") and the
+   gallery baseline needs a re-lock after this merges. (f) A settled "No shows
+   found" line (`#sh-note[data-state="empty"]`) gives way when Episodes, Playlists
+   or Forays answered: the absent Shows group says it, as in the prototype; "Searching
+   for ..." always stays. (g) "Make", not "Create": the prototype's word.
 
 #### 2.11 `search-none`: Find, no results  (app: `search` / `search-no-results`)
 
@@ -614,6 +646,32 @@ both pairs.
 3. `{q}` through `esc()`; the copy passes `backend/test/copyRules.test.ts`
    ("subject", no banned words).
 4. Fidelity regions within 4px of `#/search/none`.
+   **Built (group C `search-none`, decisions the loop made):** (a) The screen is
+   shot after the return key (`search-no-results-subject`, appended to the `search`
+   state), for the reason `search-typing` gave: a field that still holds focus hides
+   the deck. The query is "instrument", which finds no show in the lab's index and
+   names one subject with shows; `search-no-results` ("zzqxjv", field focused) stays
+   as the no-subject case the gates walk. (b) A subject matches when every word of the
+   query is in its label (best: the label is the query, then starts with it, then
+   contains it, then more shows) AND it holds shows of its own: the count is
+   `showsForCategory(id).length`, so the sentence, the tile and the page behind the
+   tile cannot disagree. A taxonomy root almost never carries a show itself, so
+   "Science" keeps the existing "Shows filed under" chips instead of a tile.
+   (c) The tile opens `#/category/<id>`, not `#/shows/q/<label>` (the prototype's
+   tile is a search for its label): that search can itself find nothing, which would
+   put the same tile on screen again. (d) The key is offered whatever the playlist
+   scorer says. `createPlaylistCtaHtml`'s gate belongs to the results list, where an
+   offer the scorer cannot meet would be a lie under real rows; here the alternative
+   is a bare sentence, which the acceptance forbids, and Create answers for a query it
+   cannot build from. When the scorer's own closing key arrives too, CSS draws one:
+   this one, in the heading's 12px column. (e) When Episodes, Playlists or Forays
+   answered, the heading (already hidden by `search-typing`'s rule), the sentence, the
+   tile and this key all give way, and the box leaves layout (an empty flex item still
+   took the page's 32px gap). (f) The heading is `textContent`, never markup; the
+   offer writes the query and the subject's label through `esc()`. The offline line
+   ("You're offline — no shows found for “q”.") is unchanged and keeps the offer
+   under it. Fidelity `search-none-i5` (Cream): header, field, heading, sentence, tile,
+   key and tab bar are all 0.0px at 393x852, 375x667 and 412x915.
 
 ### Group D: Yours (branch `redesign/p4-tactile-library`, file `ui/library.js`)
 

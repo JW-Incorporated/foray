@@ -344,7 +344,7 @@ test("route() dispatches #/starred-shows to renderStarredShows, matching #/playl
 /* 6. REACHABILITY — FROM THE SHOWS PAGE, NOT THE DRAWER                 */
 /* ==================================================================== */
 
-test("#/starred-shows is reachable from Yours (the Library page) and is no longer a drawer entry", () => {
+test("Yours lists every followed show (the grid replaces the link to #/starred-shows) and the drawer has no entry for it", () => {
   /* Was: "the drawer nav carries a link to #/starred-shows". The founder
      named the menu's five pages on 2026-09-03 (Home, Shows, Playlists,
      Forays, Up Next) and Starred Shows is not one of them, so the drawer
@@ -370,11 +370,17 @@ test("#/starred-shows is reachable from Yours (the Library page) and is no longe
      direction's Find has "Followed shows" as a heading over the strip and no
      "See all" beside it, so the way into this page is now Yours, whose Followed
      shows section ends in "All N followed shows ›" once the list is longer than
-     the section cap (6 follows here, cap 5). MUTATION: change the href of
-     `libraryFollowedHtml`'s `lib-more` link away from #/starred-shows -> the
-     first assertion fails and the page is reachable only by typing the URL.
-     The Find page itself no longer links here (second assertion; MUTATION 3:
-     put the "See all" anchor back in findFollowedHtml). */
+     the section cap (6 follows here, cap 5). REWRITTEN ON PURPOSE AGAIN (tactile `library-shows`, 2026-10-08): the ruling
+     that fell is "Yours' Shows is a five-row summary that ends in a link to
+     #/starred-shows". The Shows chip is now the whole list as a grid of tiles,
+     so there is nothing for a link to open that the grid does not already show:
+     the page stays routed (the third assertion) but Yours no longer links to it.
+     What is asserted is that Yours draws EVERY follow (6 here, one over the old
+     cap of 5) as a tile linking to its show. MUTATION: put a cap of five back in
+     yoursFollowedShows (`.slice(0, 5)` on its result) -> the sixth-tile
+     assertion fails and that show is reachable only by typing the URL. The Find
+     page itself does not link here (second assertion; MUTATION 3: put the
+     "See all" anchor back in findFollowedHtml). */
   const follows = {};
   for (let i = 0; i < 6; i++) follows["show-" + i] = { show_id: "show-" + i, title: "Show " + i, starred_at: "2026-09-0" + (i + 1) + "T00:00:00Z" };
   const m = mount({ seed: { cp_starred_shows: JSON.stringify(follows) } });
@@ -382,13 +388,17 @@ test("#/starred-shows is reachable from Yours (the Library page) and is no longe
   m.state.discover = { items: [] };
   m.state.taxonomy = { nodes: [] };
   m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
-  m.ctx.renderLibrary();
-  assert.ok(
-    m.view().includes('class="lib-more" href="#/starred-shows">All 6 followed shows'),
-    "Yours must carry a reachable link to #/starred-shows when the list is longer than its cap"
-  );
+  m.ctx.renderLibrary("shows");
+  for (let i = 0; i < 6; i++) {
+    assert.ok(m.view().includes(`href="#/show/show-${i}"`), `Yours must link follow ${i} to its show, with no cap hiding the sixth`);
+  }
+  assert.ok(!m.view().includes('href="#/starred-shows"'), "Yours does not link to the standalone list: the grid is the list");
   m.ctx.renderAllShows();
   assert.ok(!m.view().includes('href="#/starred-shows"'), "Find carries no 'See all' to it: the heading stands alone");
+  m.state.ready = true;
+  m.ctx.location.hash = "#/starred-shows";
+  m.ctx.route();
+  assert.ok(m.view().includes("Followed shows"), "#/starred-shows still routes to its own page");
   assert.doesNotMatch(
     INDEX_HTML,
     /<nav id="drawer"[^]*?href="#\/starred-shows"[^]*?<\/nav>/,

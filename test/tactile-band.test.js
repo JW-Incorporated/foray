@@ -440,3 +440,50 @@ test("the Now Playing chip's codes (client.js dialForayCodes) are the band's cod
   assert.deepStrictEqual(band, chip);
   assert.strictEqual(new Set(chip).size, foray.length, "and every station has its own code");
 });
+
+test("the detail needle is drawn in rendered pixels: 2px wide, a round 8px head, 6px past the bars at both ends", () => {
+  /* The detail band is 60px tall in a 1000-unit-wide viewBox stretched to the card, so one y unit
+     is a pixel and one x unit is renderWidth/1000 of one. The old needle (width 2, circle r 4) was
+     0.64px wide with a 1.3px head at 329px: a stray hairline, not the playhead. Bars span y 8-36.
+     MUTATION 1: set the rect back to `width="2"` -> the 2px width assertion fails.
+     MUTATION 2: draw `<circle r="4">` instead of the ellipse -> the head assertion fails.
+     MUTATION 3: shorten the rect to `height="39"` or move it to y="3" -> it stops short of the bars' bottom (36 + 6 = 42). */
+  const w = 329;
+  const html = p.tactileBand({ id: "needle", kind: "detail", segments, renderWidth: w, progress: 0.3 });
+  const needle = /<g class="needle"[^>]*>([\s\S]*?)<\/g>/.exec(html)[1];
+  const rect = /<rect x="(-?[\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)"/.exec(needle);
+  assert.ok(rect, "a needle rect");
+  const px = w / 1000;
+  assert.ok(Math.abs(Number(rect[3]) * px - 2) < 0.02, `2px wide (${Number(rect[3]) * px}px)`);
+  assert.ok(Math.abs(Number(rect[1]) * px + 1) < 0.02, "centred on its x");
+  assert.strictEqual(Number(rect[2]), 2, "starts 6px above the bars' top (8)");
+  assert.strictEqual(Number(rect[2]) + Number(rect[4]), 42, "ends 6px below the bars' bottom (36)");
+  const head = /<ellipse cx="0" cy="3" rx="([\d.]+)" ry="([\d.]+)"/.exec(needle);
+  assert.ok(head, "the head is an ellipse that undoes the stretch");
+  assert.ok(Math.abs(Number(head[1]) * px - 4) < 0.02 && Number(head[2]) === 4, "an 8px round head on top of the needle");
+  assert.match(rule(".band--detail"), /height:\s*calc\(var\(--tap\)\s*\+\s*var\(--s-4\)\)/, "60px: the unit the markup is drawn in");
+  /* the scrubber's needle (Now Playing, accepted) is untouched */
+  assert.match(p.tactileBand({ id: "scrub-needle", kind: "scrub", segments, renderWidth: w, progress: 0.3 }), /<rect x="-1" y="3" width="2" height="39" rx="1"><\/rect><circle cx="0" cy="3" r="4">/);
+});
+
+test("detail station codes are the 13px label step in the text face, undistorted by the stretched viewBox", () => {
+  /* The codes were 12px mono in a viewBox stretched 0.33 on x and 0.73 on y: a ~9px squashed
+     'PA' beside the prototype's 13px 700 label. The markup counter-scales on x (a glyph is as wide
+     as it is tall) and the CSS names the label tokens.
+     MUTATION 1: drop the `transform` from the detail <text> -> the scale assertion fails.
+     MUTATION 2: in styles.css change `var(--t-label)` to `var(--t-micro)` (or --font-text to
+     --font-mono) in `.band--detail .t-band__code` -> the rule assertion fails. */
+  const w = 329;
+  const html = p.tactileBand({ id: "codes", kind: "detail", segments, renderWidth: w, currentIndex: 4 });
+  const texts = [...html.matchAll(/<text class="t-band__code[^"]*"[^>]*>/g)].map((m) => m[0]);
+  assert.ok(texts.length >= 2, "more than one run is labelled");
+  for (const t of texts) {
+    const m = /transform="translate\(([\d.]+) 53\) scale\(([\d.]+) 1\)"/.exec(t);
+    assert.ok(m, `placed by transform: ${t}`);
+    assert.ok(Math.abs(Number(m[2]) * w / 1000 - 1) < 0.001, `x scale 1000/${w} cancels the stretch (${m[2]})`);
+  }
+  const css = rule(".band--detail .t-band__code");
+  assert.match(css, /font:\s*var\(--w-label\)\s+var\(--t-label\)\/1\s+var\(--font-text\)/, "the 13px / 700 label in the text face");
+  const scrub = p.tactileBand({ id: "scrub-codes", kind: "scrub", segments, renderWidth: w });
+  assert.doesNotMatch(scrub, /<text[^>]*transform=/, "the scrubber's codes are not re-placed");
+});

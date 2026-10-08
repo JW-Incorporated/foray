@@ -310,11 +310,13 @@ test("every token a colour-scheme query redefines is re-owned on the ui-v2 scope
 
 test("the JS-written tokens the ownership check trusts are really written by JS", () => {
   /* Keeps clause (c) above from becoming a blanket excuse: a name only passes
-     as "js" when a setProperty for it exists. Pinned positively for the four
-     known writers so deleting one surfaces here by name as well.
+     as "js" when a setProperty for it exists. Pinned positively for the two
+     known writers so deleting one surfaces here by name as well. (`--zoom-origin` and
+     `--zoom-scale` were the other two: the Foray page's press-and-hold zoom-to-scrub wrote
+     them, and went with the strip, Tactile `foray`.)
      MUTATION: rename `setProperty("--kb-inset"` in app.js -> red. */
   const { verdicts } = tokenOwnership();
-  for (const name of ["--kb-inset", "--fp-sheet-dy", "--zoom-origin", "--zoom-scale"]) {
+  for (const name of ["--kb-inset", "--fp-sheet-dy"]) {
     assert.strictEqual(verdicts.get(name), "js", `${name} is read by CSS but nothing in app.js/player/ writes it`);
   }
 });
@@ -718,8 +720,10 @@ test("one text field: every field reads the one element rule, and only the float
   if (/<input\b[^>]*\bdata-show-ep-search-input\b[^>]*type="text"/.test(APP_JS)) fields.add(".show-ep-search input");
   for (const m of APP_JS.matchAll(/ddEl\("input", "([^"]+)"\)|\.className = "([^"]+-input)"/g)) fields.add(`.${m[1] || m[2]}`);
   /* Six since round 2's p-first-6 took the second playlist builder (#pl-input)
-     off #/playlists: Create's #cr-input is the one builder field left. */
-  assert.ok(fields.size >= 6, `fixture assumption: the census finds the app's text fields (${[...fields]})`);
+     off #/playlists: Create's #cr-input is the one builder field left. Five since
+     the Tactile onboarding took the Preferences step's typed-subject field with
+     it. */
+  assert.ok(fields.size >= 5, `fixture assumption: the census finds the app's text fields (${[...fields]})`);
   const OWN = ["border-radius", "min-height", "height", "font-size", "padding"];
   const bad = [];
   for (const r of RULES) {

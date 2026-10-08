@@ -133,21 +133,24 @@ test("a genuine first-ever visit shows the explainer; once dismissed it never sh
   assert.strictEqual(shownAgain, false, "must not show a second time once dismissed");
 });
 
-test("skipping/completing the explainer both set cp_intro_dismissed (single flag, either action); the scrim only parks it", () => {
+test("skipping/playing the explainer both set cp_intro_dismissed (single flag, either action); the scrim only parks it", () => {
   const app = loadApp();
   app.showFirstTimeExplainerOnce();
-  // both Skip buttons call the same dismiss() closure — proven structurally
-  // since there is only one dismiss() defined in the function body — and the
-  // Preferences primary calls it from its own handler. ROUND 2 (p-first-4):
-  // the SCRIM is bound to `park`, which writes no flag, and Escape /
-  // navigation route through `park` too. MUTATION: bind the scrim to
-  // `dismiss` again -> the count is 3 and the park assertion is red.
+  // "Just show me" binds the one dismiss() directly, and "Play today's foray"
+  // calls it from its own handler. ROUND 2 (p-first-4): the SCRIM is bound to
+  // `park`, which writes no flag, and Escape / navigation route through `park`
+  // too. Redesign 2026 (tactile onboarding): the Preferences step and its
+  // second Skip are gone, so the direct bindings are ONE, not two.
+  // MUTATION: bind the scrim to `dismiss` again -> the park assertion is red;
+  // add a second `addEventListener("click", dismiss)` (a resurrected Skip) ->
+  // the count is 2 and the first assertion is red.
   const body = readAppSource();
   const start = body.indexOf("function showFirstTimeExplainerOnce(");
   const end = body.indexOf("\nfunction ", start + 10);
   const fn = body.slice(start, end);
   const dismissBindings = (fn.match(/addEventListener\("click", dismiss\)/g) || []).length;
-  assert.strictEqual(dismissBindings, 2, "the two Skip buttons bind to the same dismiss() function");
+  assert.strictEqual(dismissBindings, 1, "the Skip key binds the one dismiss() function; Play calls it from its own handler");
+  assert.match(fn, /go\.addEventListener\("click", \(\) => \{[\s\S]*?dismiss\(\);/, "and Play dismisses before it starts anything");
   assert.match(fn, /scrim\.addEventListener\("click", park\)/, "the scrim parks");
   assert.match(fn, /onRequestClose: park/, "so do Escape and a navigation");
   const park = /const park = \(\) => \{[\s\S]*?\};/.exec(fn);
@@ -366,122 +369,57 @@ const prefsGoBtn = (m) => m.body.querySelector("#first-time-sheet-prefs-go");
 const chipsOf = (m) => m.body.querySelectorAll("[data-chip]");
 
 /* ==================================================================== */
-/* 1. STEP 1 — WELCOME                                                   */
+/* 1. THE SCREEN'S TWO EXITS (the screen itself: test/tactile-onboarding.test.js) */
 /* ==================================================================== */
 
-test("step 1 renders the Welcome pane with two value props", () => {
-  const m = mount();
-  bootWithTaxonomy(m);
-  const shown = m.ctx.showFirstTimeExplainerOnce();
-  assert.strictEqual(shown, true);
-  assert.match(sheetTitle(m), /picks podcast episodes for you/);
-  const props = m.body.querySelectorAll(".ft-value-prop");
-  assert.strictEqual(props.length, 2, "Welcome must show exactly two value props");
-});
-
-test("Welcome's second prop carries a live SegmentStrip when a Foray exists", () => {
-  /* MUTATION: drop the segmentStripHtml() call from renderWelcome — the
-     .ft-strip-wrap block would never appear even with a resolvable Foray. */
-  const stripHtml = '<div class="fy-strip fy-strip--sm fy-strip--static" role="img" aria-label="x"></div>';
-  let growApplied = null;
-  const player = {
-    listForays: () => [{ id: "f1", title: "Test Foray", status: "published" }],
-    resolve: (doc, opts) => (opts.id === "f1" ? { playable: [{ id: "a" }] } : null),
-    segmentStripHtml: () => stripHtml,
-    applyStripGrow: (scope) => { growApplied = scope; },
-  };
-  const m = mount({ forayPlayer: player });
-  bootWithTaxonomy(m);
-  m.state.forays = { forays: [{ id: "f1", status: "published" }] };
-  m.ctx.showFirstTimeExplainerOnce();
-  const wraps = m.body.querySelectorAll(".ft-strip-wrap");
-  assert.strictEqual(wraps.length, 1, "the strip illustration must render when a Foray resolves");
-  assert.ok(growApplied, "applyStripGrow must run on the strip's container once it is in the document");
-});
-
-test("Welcome degrades to no strip when the player module or forays are unavailable", () => {
-  /* MUTATION: throw instead of returning "" when window.ForayPlayer is
-     absent — a broken/late-loading player module must not break onboarding. */
-  const m = mount(); // no forayPlayer bridged at all
-  bootWithTaxonomy(m);
-  assert.doesNotThrow(() => m.ctx.showFirstTimeExplainerOnce());
-  assert.strictEqual(m.body.querySelectorAll(".ft-strip-wrap").length, 0);
-});
-
-test("Welcome degrades to no strip when the player module throws (malformed data)", () => {
-  /* MUTATION: remove the try/catch around player.resolve()/segmentStripHtml()
-     — a throwing resolve() (e.g. malformed state.segments) would then
-     propagate out of renderWelcome() and break the whole first-run Home
-     render, not just skip the illustration. */
-  const player = {
-    listForays: () => [{ id: "f1", title: "Test Foray", status: "published" }],
-    resolve: () => { throw new Error("malformed segments doc"); },
-    segmentStripHtml: () => "",
-    applyStripGrow: () => {},
-  };
-  const m = mount({ forayPlayer: player });
-  bootWithTaxonomy(m);
-  m.state.forays = { forays: [{ id: "f1", status: "published" }] };
-  assert.doesNotThrow(() => m.ctx.showFirstTimeExplainerOnce());
-  assert.strictEqual(m.body.querySelectorAll(".ft-strip-wrap").length, 0);
-});
-
-test("Skip for now at step 1 dismisses immediately with no interest write", () => {
-  /* MUTATION: make step-1 skip advance to step 2 instead of calling dismiss()
-     directly — the acceptance line ("skipping at step 1 or 2 lands on Home
-     with default weights") requires step 1's skip to exit the whole flow. */
+test("Just show me dismisses immediately with no interest write", () => {
+  /* MUTATION: make the Skip key write an interest (or call applyOnboardingPicks)
+     before dismissing -> the interests assertion is red. The acceptance line is
+     "skipping lands on Home with default weights". */
   const m = mount();
   bootWithTaxonomy(m);
   const before = JSON.stringify(m.state.interests);
   m.ctx.showFirstTimeExplainerOnce();
   skipBtn(m)._fire("click");
   assert.strictEqual(m.ctx.lsGet("cp_intro_dismissed", false), true);
-  assert.strictEqual(JSON.stringify(m.state.interests), before, "interests must be untouched by a step-1 skip");
-  assert.strictEqual(m.store.has("cp_interests"), false, "no cp_interests write on a step-1 skip");
+  assert.strictEqual(JSON.stringify(m.state.interests), before, "interests must be untouched by a skip");
+  assert.strictEqual(m.store.has("cp_interests"), false, "no cp_interests write on a skip");
+  assert.strictEqual(m.body.querySelectorAll("#first-time-sheet").length, 0, "and the screen is gone");
 });
 
-test("Get started at step 1 advances to step 2 without dismissing yet", () => {
-  /* MUTATION: call dismiss() from the "Get started" handler instead of
-     renderPreferences() — cp_intro_dismissed would flip true before the
-     listener ever saw the Preferences pane, and a reload mid-flow would skip
-     straight past it forever. */
+test("the screen has no picks step: no chip grid, no typed-subject field, no Get started", () => {
+  /* The Preferences step fell with the tactile onboarding (state observed,
+     never declared). MUTATION: render a `data-chip` button or the typed field
+     back into the screen -> red. */
   const m = mount();
   bootWithTaxonomy(m);
   m.ctx.showFirstTimeExplainerOnce();
-  goBtn(m)._fire("click");
-  assert.strictEqual(m.ctx.lsGet("cp_intro_dismissed", false), false, "must not be dismissed yet");
-  assert.match(sheetTitle(m), /What are you into/);
+  assert.strictEqual(chipsOf(m).length, 0);
+  assert.strictEqual(m.body.querySelector("#first-time-sheet-typed"), null);
+  assert.strictEqual(m.body.querySelector("#first-time-sheet-prefs-go"), null);
+  assert.ok(!/Get started|Show my picks/.test(SRC.slice(
+    SRC.indexOf("function showFirstTimeExplainerOnce("),
+    SRC.indexOf("\nfunction ", SRC.indexOf("function showFirstTimeExplainerOnce(") + 10)
+  )));
 });
 
 /* ==================================================================== */
-/* 2. STEP 2 — PREFERENCES                                               */
+/* 2. THE PICKS WRITE PATH (kept, tested, with no UI caller on this screen) */
 /* ==================================================================== */
 
-function toStep2(m) {
-  m.ctx.showFirstTimeExplainerOnce();
-  goBtn(m)._fire("click");
+/** What the Preferences step's primary key did, minus the repaint: write the
+    picks, then re-deal Home from them. The screen no longer has that key; the
+    pair is what a surface that asks for picks calls. */
+function pick(m, roots, typed = "") {
+  /* As the key did: a typed word that resolved lit its ROOT's chip first, so a
+     typed leaf ("cooking") was written as its subject ("food"). */
+  const ids = [...roots];
+  const node = typed ? m.ctx.resolveTypedSubject(typed) : null;
+  if (node && !ids.includes(node.parent || node.id)) ids.push(node.parent || node.id);
+  const applied = m.ctx.applyOnboardingPicks(ids, typed);
+  if (applied) m.ctx.redealAfterOnboardingPicks(applied);
+  return applied;
 }
-
-test("step 2 renders a chip per PREFS_CHIP_IDS node and the typed-subject field", () => {
-  const m = mount();
-  bootWithTaxonomy(m);
-  toStep2(m);
-  const chips = chipsOf(m);
-  assert.strictEqual(chips.length, m.evalIn("PREFS_CHIP_IDS").length);
-  assert.ok(m.body.querySelector("#first-time-sheet-typed"), "the typed-subject input must render");
-});
-
-test("Skip at step 2 dismisses with no interest write (Generalist stands)", () => {
-  const m = mount();
-  bootWithTaxonomy(m);
-  toStep2(m);
-  const before = JSON.stringify(m.state.interests);
-  chipsOf(m)[0]._fire("click"); // pick one, then skip anyway
-  prefsSkipBtn(m)._fire("click");
-  assert.strictEqual(m.ctx.lsGet("cp_intro_dismissed", false), true);
-  assert.strictEqual(JSON.stringify(m.state.interests), before, "a picked-then-skipped chip must never be written");
-  assert.strictEqual(m.store.has("cp_interests"), false);
-});
 
 test("picking a chip and continuing writes through the FIXED U-07 path (root included)", () => {
   /* MUTATION: write to leafNodes()-only or bypass applyOnboardingPicks
@@ -490,13 +428,8 @@ test("picking a chip and continuing writes through the FIXED U-07 path (root inc
   const m = mount();
   bootWithTaxonomy(m);
   const before = m.state.interests["history"];
-  toStep2(m);
-  const historyChip = m.body.querySelectorAll('[data-chip="history"]')[0];
-  assert.ok(historyChip, "a history chip must exist");
-  historyChip._fire("click");
-  prefsGoBtn(m)._fire("click");
+  pick(m, ["history"]);
 
-  assert.strictEqual(m.ctx.lsGet("cp_intro_dismissed", false), true);
   assert.ok(m.state.interests["history"] > before, "picking history must raise its weight");
   const persisted = JSON.parse(m.store.get("cp_interests"));
   assert.ok(persisted["history"] > before, "the raised weight must be persisted via saveInterests()");
@@ -511,9 +444,7 @@ test("a chip pick changes what buildCards() ranks on the next Home render (the c
   const itemComedy = { topics: ["comedy"] };
   assert.strictEqual(m.ctx.interestScore(itemHistory), m.ctx.interestScore(itemComedy), "must start tied");
 
-  toStep2(m);
-  m.body.querySelectorAll('[data-chip="history"]')[0]._fire("click");
-  prefsGoBtn(m)._fire("click");
+  pick(m, ["history"]);
 
   assert.ok(
     m.ctx.interestScore(itemHistory) > m.ctx.interestScore(itemComedy),
@@ -527,12 +458,7 @@ test("picking three chips changes the ranking (card's literal acceptance wording
   ["engineering", "science", "sports"].forEach((id) => { m.state.interests[id] = 0.4; });
   m.state.interests["comedy"] = 0.4;
   const before = m.ctx.interestScore({ topics: ["engineering"] });
-
-  toStep2(m);
-  ["engineering", "science", "sports"].forEach((id) => {
-    m.body.querySelectorAll(`[data-chip="${id}"]`)[0]._fire("click");
-  });
-  prefsGoBtn(m)._fire("click");
+  pick(m, ["engineering", "science", "sports"]);
 
   const after = m.ctx.interestScore({ topics: ["engineering"] });
   assert.ok(after > before, "three picked chips must raise each picked node's score");
@@ -543,61 +469,27 @@ test("picking three chips changes the ranking (card's literal acceptance wording
 });
 
 test("typing a real top-level taxonomy label reaches the same write path a chip tap would", () => {
-  /* MUTATION: only read the chip Set, ignore the typed field entirely — the
-     mockup's "Or type a subject yourself…" input would be decorative. */
+  /* MUTATION: only read the chip Set, ignore the typed argument entirely — the
+     "Or type a subject yourself" path would be decorative. */
   const m = mount();
   bootWithTaxonomy(m);
   const before = m.state.interests["true-crime"];
-  toStep2(m);
-  const typed = m.body.querySelector("#first-time-sheet-typed");
-  typed.value = m.ctx.nodeById("true-crime").label; // exact label match, case-insensitive per applyOnboardingPicks
-  prefsGoBtn(m)._fire("click");
+  pick(m, [], m.ctx.nodeById("true-crime").label); // exact label match, case-insensitive per applyOnboardingPicks
   assert.ok(m.state.interests["true-crime"] > before, "a typed real subject must be written");
 });
 
-test("a typed subject with no taxonomy match writes nothing, SAYS so, and keeps the sheet open", () => {
-  /* Audit round 2, p-first-3: the miss used to close the sheet exactly as a
-     match did — the newcomer's first typed act was a silent no-op.
-     MUTATION: dismiss() unconditionally again -> the sheet is gone and the
-     note never shows; red. */
+test("a typed subject with no taxonomy match writes nothing and says so by returning false", () => {
+  /* Audit round 2, p-first-3: the miss must not look like a match. The note the
+     sheet used to show for it went with the Preferences step; the contract it
+     rested on, no write and a false return, is what a picks surface reads.
+     MUTATION: return [] instead of false for an unmatched word -> the strict
+     false assertion is red. */
   const m = mount();
   bootWithTaxonomy(m);
   const before = JSON.stringify(m.state.interests);
-  toStep2(m);
-  const typed = m.body.querySelector("#first-time-sheet-typed");
-  typed.value = "Underwater basket weaving";
-  prefsGoBtn(m)._fire("click");
+  assert.strictEqual(m.ctx.applyOnboardingPicks([], "Underwater basket weaving"), false);
   assert.strictEqual(JSON.stringify(m.state.interests), before, "an unmatched typed subject must change nothing");
-  assert.strictEqual(m.body.querySelectorAll("#first-time-sheet").length, 1, "the sheet stays open");
-  const note = m.body.querySelector("#first-time-sheet-typed-note");
-  assert.strictEqual(note.hidden, false);
-  assert.strictEqual(note.textContent, 'No subject called “Underwater basket weaving” yet. Try one of the chips above.');
-  assert.strictEqual(note.getAttribute("role"), "status", "said, not only shown");
-  typed._fire("input");
-  assert.strictEqual(note.textContent, "", "editing the word takes the note down");
-});
-
-test("ROUND 2 review (p-first-3): the typed-miss live region is never hidden, and a repeated miss is said again", () => {
-  /* The note was `hidden` while its text changed and shown with the text
-     already in place — usually not read — and a second identical miss changed
-     nothing at all. MUTATIONS: put `typedNote.hidden = true` back at build;
-     drop the clear before the re-set -> no write on the repeat; red. */
-  const m = mount();
-  bootWithTaxonomy(m);
-  toStep2(m);
-  const note = m.body.querySelector("#first-time-sheet-typed-note");
-  assert.strictEqual(note.hidden, false, "in the accessibility tree from the start");
-  assert.strictEqual(note.textContent, "", "and empty until there is something to say");
-  const typed = m.body.querySelector("#first-time-sheet-typed");
-  typed.value = "Underwater basket weaving";
-  prefsGoBtn(m)._fire("click");
-  const writes = [];
-  let text = note.textContent;
-  Object.defineProperty(note, "textContent", { get: () => text, set: (v) => { writes.push(v); text = v; }, configurable: true });
-  prefsGoBtn(m)._fire("click");                       // the same word, pressed again
-  assert.ok(writes.length >= 2 && writes[0] === "" && writes[writes.length - 1] === text && text.startsWith("No subject called"),
-    `cleared, then said again: ${JSON.stringify(writes)}`);
-  assert.strictEqual(note.hidden, false);
+  assert.strictEqual(m.store.has("cp_interests"), false);
 });
 
 test("a typed word matches a subject's label words and its leaves, not only an exact root label", () => {
@@ -613,23 +505,10 @@ test("a typed word matches a subject's label words and its leaves, not only an e
   assert.strictEqual(m.ctx.resolveTypedSubject("true crime").id, "true-crime");
   assert.strictEqual(m.ctx.resolveTypedSubject("xyzzy"), null);
 
-  /* Through the sheet: a typed leaf lights its root's chip and writes the root. */
+  /* Through the write path: a typed leaf writes its root. */
   const before = m.state.interests.food;
-  toStep2(m);
-  m.body.querySelector("#first-time-sheet-typed").value = "cooking";
-  prefsGoBtn(m)._fire("click");
+  pick(m, [], "cooking");
   assert.ok(m.state.interests.food > before, "the leaf's subject is written");
-  assert.strictEqual(m.body.querySelectorAll("#first-time-sheet").length, 0, "a match closes the sheet");
-});
-
-test("the button that ends onboarding says what it does: 'Show my picks' (founder Q8)", () => {
-  /* "Start listening" started nothing — it closes the sheet onto a re-dealt
-     Home. MUTATION: restore the old label. */
-  const m = mount();
-  bootWithTaxonomy(m);
-  toStep2(m);
-  assert.strictEqual(prefsGoBtn(m).textContent, "Show my picks");
-  assert.ok(!SRC.includes('"Start listening"'), "the old label is gone from the source");
 });
 
 /* ==================================================================== */
@@ -661,9 +540,7 @@ test("applyOnboardingPicks seeds every descendant of a picked root, not just the
   const beforeChild = m.state.interests[child.id];
   const beforeRoot = m.state.interests["engineering"];
 
-  toStep2(m);
-  m.body.querySelectorAll('[data-chip="engineering"]')[0]._fire("click");
-  prefsGoBtn(m)._fire("click");
+  pick(m, ["engineering"]);
 
   assert.ok(m.state.interests["engineering"] > beforeRoot, "the root itself must move");
   assert.ok(m.state.interests[child.id] > beforeChild, `child ${child.id} must move too (subtree expansion)`);
@@ -673,18 +550,20 @@ test("applyOnboardingPicks seeds every descendant of a picked root, not just the
 /* 4. NOT BUILT — connector features stay out of scope (D2/C5)           */
 /* ==================================================================== */
 
-test("neither step renders an account-connector or import-history control", () => {
+test("the screen renders no account-connector or import-history control", () => {
   /* MUTATION: add a "Continue with Apple"/"Continue with Google" button or an
-     import-subscriptions control to either pane — both are explicitly out of
+     import-subscriptions control to the screen — both are explicitly out of
      scope per the card ("Not built: Continue with Apple/Google, Import
-     subscriptions/listening history"). */
+     subscriptions/listening history"), and the tactile onboarding has no
+     account step. */
   const m = mount();
   bootWithTaxonomy(m);
-  toStep2(m); // renders through both panes along the way
-  assert.doesNotMatch(SRC.slice(
+  m.ctx.showFirstTimeExplainerOnce();
+  const fn = SRC.slice(
     SRC.indexOf("function showFirstTimeExplainerOnce("),
     SRC.indexOf("\nfunction ", SRC.indexOf("function showFirstTimeExplainerOnce(") + 10)
-  ), /Continue with (Apple|Google)|Import (subscriptions|listening history)/i);
+  );
+  assert.doesNotMatch(fn, /Continue with (Apple|Google)|Import (subscriptions|listening history)|sign ?up|sign ?in|account/i);
 });
 
 /* ==================================================================== */
@@ -733,24 +612,29 @@ const leadEpisode = (html, root) =>
     sheet over it) and returns the four dealt subjects, stretch slot first. */
 function firstRunHome(m) {
   m.ctx.renderHome();
-  assert.match(sheetTitle(m), /picks podcast episodes for you/, "the first-run sheet must be open over Home");
+  assert.match(sheetTitle(m), /Podcasts, lined up around you/, "the first-run screen must be open over Home");
   const before = dealtRoots(homeHtml(m));
   assert.strictEqual(before.length, 4, "fixture: the pre-pick Home dealt four subject cards");
   return before;
 }
 function pickAndStart(m, roots) {
-  goBtn(m)._fire("click");
-  roots.forEach((id) => m.body.querySelectorAll(`[data-chip="${id}"]`)[0]._fire("click"));
-  prefsGoBtn(m)._fire("click");
+  /* The Preferences step's primary key, as it ran: close the screen, write and
+     re-deal, repaint. The screen's own close is Just show me. */
+  skipBtn(m)._fire("click");
+  const applied = m.ctx.applyOnboardingPicks(roots, "");
+  if (applied) {
+    m.ctx.redealAfterOnboardingPicks(applied);
+    m.ctx.renderCurrentPage();
+  }
   assert.strictEqual(m.body.querySelectorAll("#first-time-sheet").length, 0, "the sheet must be gone");
 }
 
 test("picking three chips changes the FIRST Home render: the picked subjects become the top-tier slots", () => {
-  /* MUTATION 1: delete the `redealAfterOnboardingPicks()` call in the Start
-     listening handler -> cardSlots is still the pre-pick deal, Episodes for
+  /* MUTATION 1: delete the `redealAfterOnboardingPicks()` call in pickAndStart
+     (the pair a picks surface calls) -> cardSlots is still the pre-pick deal, Episodes for
      you after the picks is identical to before, and the three picked
      subjects are absent. MUTATION 2: delete the `renderCurrentPage()` call
-     that follows it -> the deal was rebuilt in state but the page under the
+     that follows it in pickAndStart -> the deal was rebuilt in state but the page under the
      sheet never repainted; the rendered HTML is still the old deal. */
   const m = mount();
   bootWithTaxonomy(m);
@@ -824,7 +708,7 @@ test("ROUND 2 review (p-first-5): a playing Foray DEFERS onboarding; it does not
   assert.strictEqual(m.store.get("cp_intro_dismissed"), undefined, "and nothing is written that would skip it later");
   status = { ...status, running: false, playing: false };
   m.ctx.offerHomeOnboarding();
-  assert.strictEqual(m.body.querySelectorAll("#first-time-sheet").length, 1, "the next Home after it stops offers Welcome");
+  assert.strictEqual(m.body.querySelectorAll("#first-time-sheet").length, 1, "the next Home after it stops offers the screen");
   assert.strictEqual(m.body.querySelectorAll("#intro-sheet").length, 0);
 });
 

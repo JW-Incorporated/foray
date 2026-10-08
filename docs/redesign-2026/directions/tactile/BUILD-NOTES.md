@@ -677,6 +677,13 @@ Keycap "Find a show".
 Above the deck, card fill, `--shadow-deck`, 48px, text 15 + an Undo text
 button. Slides up on `--spring-settle`, auto-hides after 4-5s, pauses on
 touch. `role="status"`.
+**Build (Phase 4 `toast`):** padding `0 8px 0 16px` (the prototype's: Undo's 44px box sits 8px from the
+right edge, so the 'Undo' word lands where the prototype's does), text `--w-micro`/`--t-body`
+(600, 15/21). Under reduced motion the toast is cut (listed in the one block's `transition: none` rules): the plan
+says fade, but `gates.mjs` fails any transition over 1ms under that setting and a 120ms fade measured two
+new violations, so a fade needs an orchestrator ruling on the gate. Yours' Remove toast runs 4s and its clock stops on a press or while focus is on the
+toast, so a keyboard user who Tabs to Undo is not raced; the mini's "Player closed" toast keeps its 5s. Above the mini when
+the mini is up (`.yours-toast`). Tests: `test/tactile-toast.test.js`.
 
 ### 3.18 Icons
 Phosphor Bold at 24px via `<svg><use href="#ph-…">` from one sprite
@@ -715,6 +722,40 @@ The per-row readout shows the offset from the detent (`+2`, `−1`, mono 13)
 and is empty at the detent; the sheet-level line "4a's setting is the
 centre detent" (label 13/500 `--ink-2`, not micro) says the rest. On open, focus the sheet container (`tabindex=-1`),
 never the first button; focus rings on `:focus-visible` only.
+
+**As built (`ui/settings.js`, group G).** Decisions the notes left open:
+the sheet floats 8px in from each edge on the shared `.sheet` material (the
+prototype's, not the bottom-docked gallery sheet's); Appearance is Cream /
+Bakelite / Auto, the prototype's order and words (iteration 2 reversed the
+first build's System-first reorder: the label and the position of the default
+are design copy and hierarchy), with Auto, stored as `"system"`, last and
+selected by default, and it removes `html[data-theme]`, since the token layer
+knows only `light` and `dark`; **there is no grabber** (iteration 2: the
+prototype's sheet has none, the title row is the prototype's 44px
+`.sect__head` on one baseline with the `<h2>`'s UA margin reset, and the
+sheet's top, title, Appearance, dials and caption measure within 0px of the
+prototype at 393x852; close is Escape, the scrim and Done); the floor sentence
+is the prototype's caption (micro 12/600, one line, not balanced); the harness
+turns two dials (+2 and -1, the prototype's sample) before the knob is
+pressed, because every readout is empty at the detent; `cp_theme` is applied at the top of
+`init()` and again after storage hydration (a head script would have to read
+`localStorage` around the shim, which the security census forbids, so a
+Bakelite user can see one Cream frame before init on a cold load). A dial is
+eleven positions with 4a's setting at 5 whatever the subject's weight: below
+the detent the dial spans 0 to that weight, above it that weight to 1, so the
+detent writes exactly 4a's value and the whole 0..1 range stays reachable
+(`settingsDialPosition` / `settingsDialValue`). Two dials (the prototype shows two; a third made the sheet 100px taller than the prototype): the roots the
+listener has moved first, then the roots 4a weights highest. At the detent the
+needle sits on top of the detent tick (the same x), so the tick is seen at
+every value but that one, where the needle is the mark. The knob's drawer is
+not gone: the sheet's "More settings" hands over to it, because Family mode,
+Continuous playback, the voice picker and Delete my data live there and the
+topbar's menu button is hidden on Today and Yours. The prototype did not show
+that key, so iteration 2 **adds it to the prototype** (`prototype/app.js`
+`openSettings`, `settings-more`; `app.css` `.settings-more`) rather than leave
+an element the reference does not carry: a "More settings" text button under
+the caption, the same 44px row in both, so the fidelity pair compares like
+with like. In the prototype it closes the sheet and toasts what the menu holds.
 
 Prototype routes for the shoot: every screen exposes its states as hash
 sub-routes (`#/home/first`, `#/home/resume`, `#/home/offline`,
@@ -857,7 +898,7 @@ keyboard opens (it hides; the Find field stays).
 
 ### 4.5 Yours
 - Title "Yours" display-xl, knob keycap right.
-- Chip strip (horizontal scroll, 36px chips, 8 gap, 16 gutters): Forays,
+- Chip strip (horizontal scroll, 36px chips, 12 gap - corrected from 8 after the i4 measurement of the prototype, 16 gutters): Forays,
   Shows, Saved, Playlists, Up Next (count badge), History. Selected chip
   per 3.3; the strip is `role="tablist"`.
 - Forays: cards with `.band--mini`, title 17/700, readout, resume progress.
@@ -913,8 +954,8 @@ the show discs with real artwork from their published URLs, and a mono
 counter running in the readout row under the band (`8:52 / 22:10 · 6
 shows`, the running part `--ink`); the card's top row carries only the 4a
 brand (a counter top-right reads as a fake status bar). Card height 60dvh
-at ≥ 800px tall viewports, 50dvh below 700. Below: headline display 32 "Podcasts, stitched around
-you." (the founders' tagline), sub body-lg "4a picks real shows each day and
+at ≥ 800px tall viewports, 50dvh below 700. Below: headline display 32 "Podcasts, lined up around
+you." (the prototype's 'stitched' tagline is refused by the stitching rule, BUILD-PLAN 1.7), sub body-lg "4a picks real shows each day and
 lines up the best parts into one listen." (15 words). Bottom: Play keycap
 `lg` full width (persimmon) "Play today's foray"; text button "Just show
 me" 12 below; both above `safe-b + 16`. No account step. Returning after

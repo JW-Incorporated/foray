@@ -165,8 +165,15 @@ export async function walk(o, onShot) {
           current = { state: st.id, label: step.label, route: step.route, viewport: vp.name };
           if (o.target === "app") {
             if (first) {
+              /* `before` runs ahead of the first navigation (a request to hold, a
+                 route to stub); `held` says the app is MEANT to still be booting,
+                 so the step's own `ready` selector is the only thing waited for
+                 (appReady would wait on the tab bar and the player, which a held
+                 boot never reaches). Used by the Tactile `loading` state. */
+              if (step.before) await step.before(page, { fx });
               await page.goto(base + (step.route || "#/"), { waitUntil: "load" });
-              await appReady(page);
+              if (step.held) await page.waitForSelector(step.ready, { timeout: 15000 });
+              else await appReady(page);
               await settle(page, 900);
               first = false;
             } else {

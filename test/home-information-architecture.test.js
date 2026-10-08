@@ -451,8 +451,11 @@ test("a Foray's back link lands on #/forays, where an unlocked draft is still li
 
      MUTATION: change renderForay's back link to href="#/". This fails. RUN:
      failed as named. */
-  const forayPage = APP_SRC.slice(APP_SRC.indexOf('<div class="page foray">'));
-  const back = /<a class="back" href="([^"]+)">/.exec(forayPage);
+  /* REWRITTEN ON PURPOSE (Tactile `foray`): the back link is a paper keycap now, in
+     `forayBarHtml`, and its href goes through safeUrl like every other. Same question:
+     where does it land. MUTATION: change `safeUrl("#/forays")` there to `"#/"` -> red. */
+  const forayPage = APP_SRC.slice(APP_SRC.indexOf("function forayBarHtml("));
+  const back = /<a class="keycap keycap--sm keycap--paper back" href="\$\{esc\(safeUrl\("([^"]+)"\)\)\}"/.exec(forayPage);
   assert.ok(back, "the Foray page must still render a back link");
   assert.strictEqual(
     back[1], "#/forays",

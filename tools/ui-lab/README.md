@@ -160,7 +160,7 @@ primary key 329px higher). Pure logic is tested in `fidelity.test.mjs` (no brows
 
 | State | Seed | Screens |
 |---|---|---|
-| `first-run` | empty profile | onboarding sheet over Home |
+| `first-run` | empty profile | the Tactile onboarding screen over Home (`intro-sheet`), then its returning mode at `#/onboarding/return` (`onboarding-return`) |
 | `empty` | intro dismissed, nothing saved | Home, Search, Create, Library, Up Next, Playlists, Followed shows, Interests, Forays, not-found playlist and episode |
 | `returning` | saved episodes, Up Next, 3 playlists, followed shows, history | all of the above populated, plus playlist detail, show, episode, category, browse pill, a foray |
 | `player` | returning + an episode playing | mini player over Home, Library, Up Next; the Now Playing sheet open; the sheet closed again |
@@ -177,8 +177,13 @@ Profiles are built by `lib/seed.mjs` from committed data (`data/discover.json`,
 localStorage keys (`cp_intro_dismissed`, `cp_saved`, `cp_episode_snaps`,
 `cp_queue`, `cp_history`, `cp_playlists`, `cp_starred_shows`) before the app
 loads. Add a state by adding an entry to `appStates()`; add a screen by adding a
-step `{ label, route, run?(page) }`. Steps run in order on one page per
-(state, viewport).
+step `{ label, route, run?(page), ready?, before?(page), held? }`. Steps run in order
+on one page per (state, viewport). `before` and `held` apply to a state's FIRST step
+only: `before(page, {fx})` runs ahead of the first navigation (a request to hold, a route
+to stub), and `held: true` says the app is meant to still be booting, so `ready` (a
+selector) is the only wait and the walker skips its tab-bar-and-player check. The
+`loading` state uses both to hold `data/catalog-client.json` for the life of the page, so
+Today's boot skeleton is what gets shot.
 
 ## Determinism
 

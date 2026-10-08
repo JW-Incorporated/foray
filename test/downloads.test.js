@@ -289,15 +289,24 @@ test("off the shell there is no Download control, no Library section and no cell
      MUTATION 4: delete bootDownloads' `pluginMissing("ForayDownloads")` check
      — a shell built before the plugin (#1052) gets a bridge, and a control
      whose every tap fails. */
-  const m = mount({ capacitor: null });
+  /* Yours (Redesign 2026, tactile `library-empty`): with nothing played the
+     screen is one .empty and no chip strip, so the fixture carries a history
+     entry; the strip is then what the premise and the Downloads assertion read.
+     MUTATION 5: drop `cp_history` from this seed - the premise assert fails
+     (the first-run empty state has no strip to check). */
+  const histStore = new Map();
+  const m = mount({ store: histStore, capacitor: null });
+  histStore.set("cp_history", JSON.stringify([m.item.id]));
   assert.strictEqual(m.state.downloadBridge, null, "no nativePromise, no bridge");
   m.ctx.renderEpisode(m.item.id);
   assert.ok(m.view.innerHTML.includes("ep-actions"), "fixture premise: the episode page rendered");
   assert.ok(!/data-download/.test(m.view.innerHTML), "no Download control off the shell");
 
   m.ctx.renderLibrary();
-  assert.ok(m.view.innerHTML.includes(">History<"), "fixture premise: Library rendered");
-  assert.ok(!m.view.innerHTML.includes(">Downloads<"), "no Downloads section off the shell");
+  const chips = (html) => [...html.matchAll(/data-yours-chip="([^"]*)"/g)].map((x) => x[1]);
+  assert.ok(chips(m.view.innerHTML).includes("history"), "fixture premise: Library rendered with its chip strip");
+  assert.ok(!chips(m.view.innerHTML).includes("downloads"), "no Downloads section off the shell");
+  assert.ok(!m.view.innerHTML.includes(">Downloads<"), "no Downloads label off the shell");
 
   m.ctx.bindDrawerToggles();
   const appended = m.byId.get("drawer").children.map((c) => c.id);
@@ -305,13 +314,16 @@ test("off the shell there is no Download control, no Library section and no cell
   assert.ok(!appended.includes("downloads-cellular-toggle"), "no cellular switch off the shell");
 
   /* A shell that says it has no ForayDownloads plugin: the same absence. */
-  const old = mount({ capacitor: makeCapacitor({}, { plugin: false }) });
+  const oldStore = new Map();
+  const old = mount({ store: oldStore, capacitor: makeCapacitor({}, { plugin: false }) });
+  oldStore.set("cp_history", JSON.stringify([old.item.id]));
   assert.strictEqual(old.state.downloadBridge, null, "a shell without the plugin has no bridge");
   old.ctx.renderEpisode(old.item.id);
   assert.ok(old.view.innerHTML.includes("ep-actions"), "fixture premise: the episode page rendered");
   assert.ok(!/data-download/.test(old.view.innerHTML), "no Download control on a plugin-less shell");
   old.ctx.renderLibrary();
-  assert.ok(!old.view.innerHTML.includes(">Downloads<"), "no Downloads section on a plugin-less shell");
+  assert.ok(chips(old.view.innerHTML).includes("history"), "fixture premise: plugin-less Library rendered with its strip");
+  assert.ok(!chips(old.view.innerHTML).includes("downloads"), "no Downloads section on a plugin-less shell");
   old.ctx.bindDrawerToggles();
   assert.ok(!old.byId.get("drawer").children.some((c) => c.id === "downloads-cellular-toggle"),
     "no cellular switch on a plugin-less shell");
@@ -437,8 +449,8 @@ test("a refused download (downloadFailed 403) shows the note and a disabled cont
 });
 
 test("Library lists finished downloads with the usage line, after Up Next and before History", () => {
-  /* MUTATION: move `${state.downloadBridge ? libSection("Downloads", …) : ""}`
-     below the History line — the order assertion fails.
+  /* MUTATION: move the Downloads entry in yoursChipDefs() below History — the
+     order assertion fails.
      MUTATION 2: list every row, not only `done` ones (drop the status filter in
      libraryDownloadsHtml) — the queued episode appears beside a usage line that
      does not count it. */
@@ -452,13 +464,15 @@ test("Library lists finished downloads with the usage line, after Up Next and be
 
   m.ctx.renderLibrary();
   const html = m.view.innerHTML;
-  const heads = [...html.matchAll(/class="lib-section-head">([^<]*)</g)].map((x) => x[1]);
+  /* Yours (Redesign 2026, tactile `library`): the sections are chips now, so the
+     order is the strip's, and a section is its tab panel. */
+  const heads = [...html.matchAll(/data-yours-chip="([^"]*)"/g)].map((x) => x[1]);
   const at = (t) => heads.indexOf(t);
-  assert.ok(at("Downloads") > -1, `a Downloads section on the shell: ${heads.join(", ")}`);
-  assert.strictEqual(at("Downloads"), at("Up Next") + 1, `Downloads right after Up Next: ${heads.join(", ")}`);
-  assert.strictEqual(at("History"), at("Downloads") + 1, `History right after Downloads: ${heads.join(", ")}`);
+  assert.ok(at("downloads") > -1, `a Downloads chip on the shell: ${heads.join(", ")}`);
+  assert.strictEqual(at("downloads"), at("upnext") + 1, `Downloads right after Up Next: ${heads.join(", ")}`);
+  assert.strictEqual(at("history"), at("downloads") + 1, `History right after Downloads: ${heads.join(", ")}`);
 
-  const section = html.slice(html.indexOf(">Downloads<"), html.indexOf(">History<"));
+  const section = html.slice(html.indexOf('id="yours-panel-downloads"'), html.indexOf('id="yours-panel-history"'));
   assert.match(section, /1\.2 GB of 2 GB used · 1 episode</);
   assert.ok(section.includes(m.item.id), "the finished download is a row");
   assert.ok(!section.includes(other.id), "a queued download is not listed as downloaded");

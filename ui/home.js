@@ -548,13 +548,13 @@ function todayHeroHtml(hero, { firstRun = false } = {}) {
   const why = firstRun ? TODAY_FIRST_RUN_LINE : hero.why;
   return `<section class="card card--hero today-hero" aria-labelledby="today-hero-title">
     <div class="today-hero__eyebrow">${tactileTag({ kind: "narration", text: "Today's foray" })}</div>
-    <h2 class="display today-hero__title" id="today-hero-title"><a class="today-hero__link" href="#${esc(path)}">${esc(foray.title)}</a></h2>
+    <h2 class="display today-hero__title" id="today-hero-title"><a class="today-hero__link" href="${esc(safeUrl("#" + path))}">${esc(foray.title)}</a></h2>
     <div class="well today-hero__band">${tactileBand({ kind: "mini", segments: hero.segments, renderWidth: todayBandWidth(), label: hero.bandLabel })}</div>
     <div class="today-hero__meta"><span class="today-hero__discs">${discs}</span><span class="readout today-hero__facts">${esc(hero.facts)}</span></div>
     ${why ? `<p class="today-hero__why">${esc(why)}</p>` : ""}
     <div class="today-hero__keys">
       ${tactileKeycap({ size: "xl", variant: "persimmon", round: true, icon: "ph-play-fill", label: `Play ${foray.title}`, data: { "home-play": foray.id } })}
-      <a class="keycap keycap--md keycap--paper today-hero__details" href="#${esc(path)}"><span class="keycap__label">Details</span></a>
+      <a class="keycap keycap--md keycap--paper today-hero__details" href="${esc(safeUrl("#" + path))}"><span class="keycap__label">Details</span></a>
     </div>
   </section>`;
 }
@@ -600,7 +600,8 @@ function todayResumeHtml(entry) {
       ? tactileKeycap({ size: "md", variant: "persimmon", round: true, icon: "ph-play-fill", swapIcon: "ph-pause-fill", label: `Play ${entry.title}`, data: { play: entry.id, title: entry.title, ctx: "resume" } })
       : "";
   }
-  /* The `#/` is literal and only the route kind and the encoded id are interpolated. */
+  /* Only the route kind and the encoded id are interpolated, and the whole href
+     goes through safeUrl (a route passes it; nothing else does). */
   const route = isForay ? "foray" : "episode";
   id = encodeURIComponent(entry.id);
   const pct = Math.max(0, Math.min(100, Number(entry.percent) || 0));
@@ -608,7 +609,7 @@ function todayResumeHtml(entry) {
     ${tactileArtFrame({ size: "hero", url: art, initials: todayInitials(entry.title) })}
     <div class="today-resume__body">
       <div class="today-resume__tag">${tactileTag({ kind: "playing", text: "Resume" })}</div>
-      <h2 class="today-resume__title"><a class="today-resume__link" href="#/${route}/${esc(id)}">${esc(entry.title)}</a></h2>
+      <h2 class="today-resume__title"><a class="today-resume__link" href="${esc(safeUrl("#/" + route + "/" + id))}">${esc(entry.title)}</a></h2>
       <div class="today-resume__line"><span class="well today-prog" aria-hidden="true"><span class="today-prog__fill" data-pct="${esc(String(pct))}"></span></span><span class="readout today-resume__left">${esc(entry.left || "")}</span></div>
     </div>
     <div class="today-resume__key">${key}</div>
@@ -722,7 +723,7 @@ function todayPlaylistCardHtml(p, { generated = false, history }) {
   const played = rows.filter(r => hasOpened(r.item.id, history)).length;
   const pct = total && played ? Math.round((played / total) * 100) : 0;
   const meta = joinMeta(countLabel(total, "episode"), total && played ? `${played} of ${total} played` : "");
-  return `<a class="today-pcard" href="#/${esc(playlistRoute(p))}">
+  return `<a class="today-pcard" href="${esc(safeUrl("#/" + playlistRoute(p)))}">
     ${todayCollageHtml(rows.filter(r => r.state === "live").map(r => r.item))}
     <span class="today-pcard__name">${esc(p.title || p.name || "Playlist")}</span>
     <span class="readout today-pcard__meta">${esc(meta)}</span>
@@ -744,21 +745,58 @@ function todayPlaylistsHtml({ own, generated }) {
 }
 
 function todayHeaderHtml() {
+  /* The knob is the one pressable control on the header, so it is a real paper
+     keycap in EVERY state, boot skeleton included (the prototype's loading Today
+     keeps it a raised key in full ink; a flat tile read as a disabled
+     placeholder). At boot the drawer is not bound yet: app.js's paintBootLoading
+     remembers a press and opens the drawer once it is (settleBootKnob). */
   return `<header class="today-top">
     <div class="today-top__title"><h1 class="display-xl today-title" tabindex="-1">Today</h1><span class="readout today-top__date" data-today-date>${esc(todayDateLine())}</span></div>
     ${tactileKeycap({ size: "sm", variant: "paper", icon: "knob", label: "Settings and dials", id: "today-knob" })}
   </header>`;
 }
 
-/* The knob opens the drawer (Settings, until the Settings screen lands). It
-   names what it controls and whether it is open, like the topbar's ☰ does. */
+/** Today BEFORE its documents land (Tactile `home-loading`, BUILD-PLAN 2.8).
+    app.js paints this into `#view` at boot, in place of the "Loading 4a…" line,
+    when the address is Today; renderHomeV2() replaces it wholesale.
+
+    The real title row stays (it is a fact that needs no data); everything the
+    documents decide is drawn as the SHAPE of what is coming, at the loaded
+    layout's own sizes, so the swap moves nothing (the hero's outer height is
+    pinned within 4px by test/tactile-home-loading.test.js and by the harness
+    state `loading`). The region is ONE busy region: `aria-busy="true"`, every
+    skeleton block `aria-hidden`, nothing here is a link, and the knob is the one control.
+    `data-boot-loading` is what tools/mobile/webview-probe.mjs reads as "app.js
+    ran but the first page has not landed"; it must stay on this root. */
+function todayLoadingHtml() {
+  const sk = (kind) => tactileSkeleton(kind, { decorative: true });
+  /* The loaded order is row, the Stretch bridge, row, row (todayAlsoHtml). */
+  const row = tactileSkeleton("row", { decorative: true, why: true });
+  return `<div class="today today--loading" data-boot-loading role="region" aria-label="Today" aria-busy="true">
+    ${todayHeaderHtml()}
+    ${sk("hero")}
+    <div class="today-sect" aria-hidden="true">
+      <h2 class="heading">Also today</h2>
+      <div class="today-rows">${row}${sk("bridge")}${row}${row}</div>
+    </div>
+    <div class="today-sect" aria-hidden="true">
+      <h2 class="heading">Playlists for you</h2>
+      <div class="today-pgrid">${sk("card")}${sk("card")}</div>
+    </div>
+  </div>`;
+}
+
+/* The knob opens the Settings sheet (ui/settings.js; it opened the drawer until
+   the Settings screen landed, and the sheet's "More settings" hands over to the
+   drawer). It names what it controls and whether it is open, like the topbar's
+   ☰ does. */
 function bindTodayKnob(scope) {
   const knob = scope && typeof scope.querySelector === "function" ? scope.querySelector("#today-knob") : null;
   if (!knob || knob._bound) return;
   knob._bound = true;
-  knob.setAttribute("aria-controls", "drawer");
-  knob.setAttribute("aria-expanded", drawerIsOpen() ? "true" : "false");
-  knob.addEventListener("click", () => openDrawer(!drawerIsOpen()));
+  knob.setAttribute("aria-controls", "settings-sheet");
+  knob.setAttribute("aria-expanded", "false");
+  knob.addEventListener("click", () => openSettingsSheet(knob));
 }
 
 /** The press on a Foray key (the hero's, or Resume's). The Foray is resolved at

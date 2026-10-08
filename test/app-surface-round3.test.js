@@ -189,7 +189,7 @@ test("app-1-16: show links go through showRouteHash, and the prefetch parses the
   assert.deepStrictEqual(prefetched, ["lex"], "the /q/ tail is the show page's search, not part of the id");
 
   /* And no producer is left that only HTML-escapes a show id into a route
-     (forayCreditHtml and the credit upgrade included). */
+     (forayFromRowHtml and the credit upgrade included). */
   assert.ok(!/#\/show\/\$\{esc\(/.test(SRC), "every `#/show/` link goes through showRouteHash or encodeURIComponent");
 });
 
@@ -578,9 +578,13 @@ test("app-3-1: play, advance, close the bar, press Play: the Foray resumes from 
      MUTATIONS: have startOrResume read the bind-time `resume` again — red; drop
      the live->cold refreshForayResume() — red. */
   const m = loadApp();
-  for (const sel of ["#fy-play", "#fy-next", "#fy-prev", "#fy-back", "#fy-fwd", "#fy-now", "#fy-strip", "#fy-list"]) m.els[sel] = makeEl("button");
-  const at = makeEl("span");
-  m.els["#fy-resume .fy-resume-at"] = at;
+  /* REWRITTEN ON PURPOSE (Tactile `foray`): the banner's "Jump back in at 30:00" line is the
+     pinned key's readout now ("Resume 30:00"), so the fake key has the two spans the page
+     writes into. */
+  for (const sel of ["#fy-play", "#fy-list"]) m.els[sel] = makeEl("button");
+  const keyWord = makeEl("span");
+  const keyRead = makeEl("span");
+  m.els["#fy-play"].querySelector = (sel) => (sel === ".keycap__label" ? keyWord : sel === ".keycap__readout" ? keyRead : null);
   const r = { id: "f1", title: "A Foray", playable: [{ id: "s1" }, { id: "s2" }, { id: "s3" }], totalSec: 3600, foray: {} };
   let stored = { elapsedSec: 600, index: 0, label: "50 min left" }; // "Jump back in at 10:00" at render
   const starts = [];
@@ -602,7 +606,8 @@ test("app-3-1: play, advance, close the bar, press Play: the Foray resumes from 
   /* Close the mini bar: the player sends index -1. */
   m.ctx.paintForay({ forayId: "f1", index: -1, playing: false, running: false, elapsedSec: 0 });
   assert.strictEqual(m.run("state.forayResume.elapsedSec"), 1800, "the cold page holds the stored point");
-  assert.strictEqual(at.textContent, "Jump back in at 30:00", "and the banner says so");
+  assert.strictEqual(keyWord.textContent, "Resume", "and the key offers to resume");
+  assert.strictEqual(keyRead.textContent, "30:00", "from the stored clock, not the render-time 10:00");
 
   m.els["#fy-play"].dispatch("click");
   await flush();
@@ -689,26 +694,18 @@ test("app-2-2: each local pass hands over at most SHOW_PASS_LIMIT rows, and the 
   assert.ok(m.run(`state.breadthShowCache["${100000 + max + 24}"]`), "the newest stay");
 });
 
-test("round-3 review (L2): played to the end and closed, the Foray page drops 'Jump back in' for 'Played'", async () => {
+test("round-3 review (L2): played to the end and closed, the Foray page's key says Start over, not Resume at 10:00", async () => {
   /* refreshForayResume nulled state.forayResume when the point read finished
      but left the rendered "Jump back in at 10:00" banner up over a 0:00 clock
-     and a Play from the top. MUTATION: drop the finished branch -- the banner
-     still says "Jump back in at 10:00". */
+     and a Play from the top. REWRITTEN ON PURPOSE (Tactile `foray`): the banner is the
+     pinned key now, so the contradiction to avoid is a key still saying "Resume 10:00"
+     after the Foray was played out. MUTATION: drop the finished branch of
+     refreshForayResume (`state.forayFinished = ...`) -- the key still says Resume. */
   const m = loadApp();
-  for (const sel of ["#fy-play", "#fy-next", "#fy-prev", "#fy-back", "#fy-fwd", "#fy-now", "#fy-strip", "#fy-list"]) m.els[sel] = makeEl("button");
-  const banner = makeEl("div");
-  let removed = 0;
-  const at = makeEl("span");
-  at.remove = () => { removed += 1; };
-  const left = makeEl("span");
-  const restart = makeEl("button");
-  at.textContent = "Jump back in at 10:00";
-  left.textContent = "50 min left";
-  restart.textContent = "Start over";
-  m.els["#fy-resume"] = banner;
-  m.els["#fy-resume .fy-resume-at"] = at;
-  m.els["#fy-resume .fy-resume-left"] = left;
-  m.els["#fy-restart"] = restart;
+  for (const sel of ["#fy-play", "#fy-list"]) m.els[sel] = makeEl("button");
+  const keyWord = makeEl("span");
+  const keyRead = makeEl("span");
+  m.els["#fy-play"].querySelector = (sel) => (sel === ".keycap__label" ? keyWord : sel === ".keycap__readout" ? keyRead : null);
   const r = { id: "f1", title: "A Foray", playable: [{ id: "s1" }, { id: "s2" }], totalSec: 3600, foray: {} };
   let stored = { elapsedSec: 600, index: 0, label: "50 min left" };
   const player = {
@@ -721,11 +718,11 @@ test("round-3 review (L2): played to the end and closed, the Foray page drops 'J
   m.run(`state.foray = ${JSON.stringify(r)}; state.forayResume = ${JSON.stringify(stored)};`);
   m.ctx.bindForayTransport(m.run("state.foray"), player, stored);
   m.ctx.paintForay({ forayId: "f1", index: 1, playing: true, running: true, elapsedSec: 3500 });
+  assert.strictEqual(keyWord.textContent, "Pause", "premise: live, the key is Pause");
   stored = { elapsedSec: 3600, index: 1, label: "Played", finished: true };   // it ran to the end
   m.ctx.paintForay({ forayId: "f1", index: -1, playing: false, running: false, elapsedSec: 0 });
   assert.strictEqual(m.run("state.forayResume"), null, "premise: no resume point");
-  assert.strictEqual(removed, 1, "the 'Jump back in at' line is gone");
-  assert.ok(banner.classList.contains("fy-played"), "the banner is the Played variant");
-  assert.strictEqual(left.textContent, "Played");
-  assert.strictEqual(restart.textContent, "Play again");
+  assert.strictEqual(m.run("state.forayFinished"), true, "the page knows it was played out");
+  assert.strictEqual(keyWord.textContent, "Start over", "the key starts it from the top");
+  assert.strictEqual(keyRead.hidden, true, "with no readout beside it");
 });

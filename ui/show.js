@@ -387,7 +387,7 @@ function showForaysHtml(show) {
   return `<footer class="show-forays">
     <h3 class="show-forays-h">Used in the following forays</h3>
     <p class="show-forays-note">Not part of ${esc(show.title)}'s own catalogue — each of these forays plays a moment from one of its episodes.</p>
-    ${forays.map(f => `<a class="show-forays-row" href="#${esc(forayRoutePath(f.id))}">
+    ${forays.map(f => `<a class="show-forays-row" href="${esc(safeUrl("#" + forayRoutePath(f.id)))}">
       <span class="show-forays-title">${esc(f.title)}</span>${f.status === "published" ? "" : `<span class="show-forays-draft">draft</span>`}
     </a>`).join("")}
   </footer>`;
@@ -564,10 +564,9 @@ function showRouteHash(show_id, query = "") {
   return `#${showRoutePath(show_id, query)}`;
 }
 
-/** The same route without its `#`, for an href template (`href="#${…}"`): the
-    app-security census reads an href that OPENS with an interpolation as an
-    outside URL owed to safeUrl, and an in-app route is not one (the way
-    playlistRoute is written into `href="#/${…}"`). */
+/** The same route without its `#`, for an href template: the caller writes
+    `safeUrl("#" + showRoutePath(id))`, which passes it as an in-app route
+    (safeUrl's route pattern) like playlistRoute's. */
 function showRoutePath(show_id, query = "") {
   const q = String(query || "").trim();
   return `/show/${encodeURIComponent(show_id)}${q ? "/q/" + encodeURIComponent(q) : ""}`;
