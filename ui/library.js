@@ -12,12 +12,15 @@
    things that already live in localStorage and already have their own paths; this page
    adds no new storage:
 
-     the grid   the forays the listener has OPENED (a progress row: started or finished,
+     Forays     the forays the listener has OPENED (a progress row: started or finished,
                 most recent first; a foray nobody opened is Today's and #/forays') as
-                ForayTiles, then followed shows (cp_starred_shows) as ShowTiles. Everything
-                here is the listener's, so a ShowTile carries NO followed badge: a mark would
-                say nothing (10.7). Nine cells, then one quiet "All".
-     Saved      cp_saved via savedMap(), EpisodeRows, five and then "All saved"
+                ForayTiles (no pill: the head says it; the facts under the name), six at
+                most, and the Ember "All forays" link to #/forays
+     Followed   followed shows (cp_starred_shows) as ShowTiles, six at most, then an in-place
+                "All". Everything here is followed, so a ShowTile carries NO followed badge:
+                a mark would say nothing (10.7). Two labelled sections, not one mixed grid
+                (iteration 2).
+     Saved      cp_saved via savedMap(), the same QueueRow as Up Next, five and then "All saved"
      Playlists  cp_playlists, PlaylistTile rows
      Up Next    cp_queue via queueIds(), QueueRows: the playing row first (Fill glyph,
                 the Lamp word "Playing"), then the list, each with a menu (Move up, Move
@@ -52,19 +55,26 @@
    and capped, as renderHome caps its rails -- "recently listened" is not a scroll-forever
    list. Saved had no cap; five and an in-place "All saved" keeps that honest. */
 
-const LIB_GRID_MAX = 9;
+/* Two grids, each under its own SectionHead: the forays the listener opened (two rows of three) and the shows they
+   follow (two rows of three, then an in-place "All"). One grid of nine mixed the two and left the listener to learn
+   the difference from a pill; both judges of iteration 1 asked for labelled sections. */
+const LIB_FORAYS_MAX = 6;
+const LIB_SHOWS_MAX = 6;
 const LIB_SAVED_MAX = 5;
 const LIB_PLAYLISTS_MAX = 5;
 const LIB_UPNEXT_MAX = 10;
 const LIB_HISTORY_MAX = 20;
 /* The Toast with Undo stays up this long. */
 const LIB_TOAST_MS = 5000;
-/* A foray tile's strip can only fit so many bars at 96px; runs of the same show are merged first. */
-const LIB_STRIP_TONES = 8;
+/* A strip bar's colour is its show's artwork hue (the palette table), muted: one fixed chroma, so a tile's strip
+   never out-shouts the page. Two neighbours closer than LIB_BAR_NEAR_DEG are pushed 30 apart, as the prototype's
+   segment colours are (BUILD-NOTES 1.2). The old seg-c0..7 rainbow is no longer drawn here. */
+const LIB_BAR_CHROMA = 0.1;
+const LIB_BAR_NEAR_DEG = 24;
 
-/* What this page remembers between paints: nothing is stored, it is the open state of "All saved", the
-   Toast's timer and the one thing Undo needs. */
-const libUi = { savedOpen: false, toastTimer: null, undo: null, poll: null, currentId: null, menuFor: null };
+/* What this page remembers between paints: nothing is stored, it is the open state of "All saved" and of the
+   followed shows, the Toast's timer and the one thing Undo needs. */
+const libUi = { savedOpen: false, showsOpen: false, toastTimer: null, undo: null, poll: null, currentId: null, menuFor: null };
 
 const LIB_EMPTY = {
   grid: ["Nothing followed yet.", "Find shows", "/shows"],
@@ -137,24 +147,60 @@ function libFollowedShows() {
     }));
 }
 
+/** The hue (degrees) of every show's strip colour: its artwork's hue from the palette table, a neighbour closer than
+    LIB_BAR_NEAR_DEG pushed 30 further, up to three times (the prototype's rule). `names` are shows in strip order. */
+function libShowHues(names) {
+  const used = [];
+  const out = new Map();
+  const near = (h) => used.some((u) => { const d = Math.abs(u - h) % 360; return Math.min(d, 360 - d) < LIB_BAR_NEAR_DEG; });
+  for (const name of names) {
+    if (out.has(name)) continue;
+    const pair = typeof agPaletteFor === "function" ? agPaletteFor(name) : null;
+    let hue = pair ? Number(pair[0]) || 0 : 70;
+    for (let tries = 0; tries < 3 && near(hue); tries++) hue = (hue + 30) % 360;
+    used.push(hue);
+    out.set(name, hue);
+  }
+  return out;
+}
+
 /** The strip along a foray tile's bottom edge: one bar per run of the same show, narration left out (at
-    96px it would be a sliver), the bars the listener has reached lit. `elapsed` null = nothing played. */
+    96px it would be a sliver), the bars the listener has reached lit. `elapsed` null = nothing played. Each bar
+    carries its show's hue (libShowHues), painted muted by libPaintStrips. */
 function libForayBars(playable, elapsedSec, finished) {
   const player = window.ForayPlayer;
   if (typeof player?.stripModel !== "function" || !Array.isArray(playable) || !playable.length) return [];
   let model;
   try { model = player.stripModel(playable, { elapsed: elapsedSec > 0 ? elapsedSec : null }); } catch (_) { return []; }
   const reached = finished ? Infinity : (model.positioned && elapsedSec > 0 && Number.isInteger(model.currentIndex) ? model.currentIndex : -1);
+  const runs = (model.runs || []).filter((run) => run.kind === "segment");
+  const hues = libShowHues(runs.map((run) => run.show || ""));
   const bars = [];
-  for (const run of model.runs || []) {
-    if (run.kind !== "segment") continue;
-    const tone = Number.isInteger(run.tone) ? run.tone % LIB_STRIP_TONES : 0;
+  for (const run of runs) {
+    const show = run.show || "";
+    const hue = hues.get(show);
     const lit = run.from <= reached;
     const last = bars[bars.length - 1];
-    if (last && last.tone === tone && last.lit === lit) last.grow += Math.max(1, Math.round(run.lengthSec));
-    else bars.push({ tone, lit, grow: Math.max(1, Math.round(run.lengthSec)) });
+    if (last && last.show === show && last.lit === lit) last.grow += Math.max(1, Math.round(run.lengthSec));
+    else bars.push({ show, hue, lit, grow: Math.max(1, Math.round(run.lengthSec)) });
   }
   return bars;
+}
+
+/** A foray's facts for its tile, two short lines that fit a 96px column: "22 min · 4 shows" and "6 clips" (the same
+    three facts the Forays page gives, forayFactsLabel, split so none is cut). "" for a part the foray cannot say. */
+function libForayFacts(r) {
+  const player = window.ForayPlayer;
+  const none = { length: "", clips: "", shows: "" };
+  if (!r || !player) return none;
+  const tally = typeof player.stripTally === "function" ? player.stripTally(r.playable) : null;
+  const runtime = typeof forayRuntimeLabel === "function" ? forayRuntimeLabel(player, tally, r.totalSec) : "";
+  return {
+    /* "about 43 min" is a tile too wide for its column: the tilde says the same in four fewer letters. */
+    length: runtime ? runtime.replace(/^about /, "~") : "",
+    clips: tally ? countLabel(tally.clips + tally.bridges, "clip") : "",
+    shows: tally && tally.shows ? countLabel(tally.shows, "show") : "",
+  };
 }
 
 /** The forays for the grid: the ones the listener has STARTED or FINISHED, most recent first (the same progress
@@ -176,7 +222,7 @@ function libForayList() {
     started.forEach((p) => resume.set(p.id, p));
   } catch (_) { /* no progress rows */ }
   const mine = started.map((p) => byId.get(p.id)).filter(Boolean);
-  const tiles = mine.slice(0, LIB_GRID_MAX).map((f) => {
+  const tiles = mine.slice(0, LIB_FORAYS_MAX).map((f) => {
     const r = resolveListedForay(f.id);
     const names = [];
     for (const p of (r && r.playable) || []) {
@@ -191,19 +237,31 @@ function libForayList() {
       glowShow: names[0] || f.title || f.id,
       bars: libForayBars(r && r.playable, p ? Number(p.elapsedSec) || 0 : 0, finished),
       finished,
-      sub: forayListSubLabel(f, progress),
+      facts: libForayFacts(r),
+      /* Said to a screen reader only: "Played" or "12 min left". The visible tile shows the check and the lit bars. */
+      sub: progress.get(f.id) || "",
     };
   });
   return { known: true, tiles, total: mine.length, catalog: list.length };
 }
 
+/** A ForayTile (BUILD-NOTES 3), as built for iteration 2: the collage with its strip along the bottom edge, the
+    name (three lines at most), and the foray's facts in two short lines under it, so a tile says how long the foray
+    is, how many clips it holds and how many shows it draws on. NO "Foray" pill: the tile sits under the Forays
+    head, so the pill restated it, the way the followed badge would (10.7), and it hung over the tile's edge. */
 function libForayTileHtml(t) {
   const arts = t.shows.length ? t.shows : [{ name: t.title, src: null }];
-  const bars = t.bars.map((b) => `<i class="lb-bar lb-t${esc(b.tone)}${b.lit ? " is-lit" : ""}" data-grow="${esc(b.grow)}"></i>`).join("");
+  const bars = t.bars.map((b) => `<i class="lb-bar${b.lit ? " is-lit" : ""}" data-grow="${esc(b.grow)}" data-hue="${esc(Math.round(Number(b.hue) || 0))}"></i>`).join("");
+  const f = t.facts || {};
+  const line1 = [f.length, f.shows].filter(Boolean).join(" · ");
+  const facts = (line1 || f.clips)
+    ? `<span class="t-caption lb-facts">${line1 ? `<span class="lb-fact">${esc(line1)}</span>` : ""}${f.clips ? `<span class="lb-fact">${esc(f.clips)}</span>` : ""}</span>`
+    : "";
   return `<a class="lb-tile lb-foray" href="#${esc(forayRoutePath(t.id))}" data-ev="picked" data-ctx="library-foray" data-glow-show="${esc(t.glowShow)}">
-    <span class="lb-art">${agCollage(arts, { size: 104 })}<span class="ag-pill lb-pill"><span>Foray</span></span>${bars ? `<span class="lb-strip" aria-hidden="true">${bars}</span>` : ""}${t.finished ? `<span class="ag-done">${agIcon("check-circle-fill", 20)}</span>` : ""}</span>
+    <span class="lb-art">${agCollage(arts, { size: 104 })}${bars ? `<span class="lb-strip" aria-hidden="true">${bars}</span>` : ""}${t.finished ? `<span class="ag-done">${agIcon("check-circle-fill", 20)}</span>` : ""}</span>
     <span class="t-caption lb-name clamp3">${esc(t.title)}</span>
-    <span class="sr-only lb-sub">${esc(t.sub)}</span>
+    ${facts}
+    ${t.sub ? `<span class="sr-only lb-sub">${esc(t.sub)}</span>` : ""}
   </a>`;
 }
 
@@ -221,23 +279,41 @@ function libraryForaysHtml() {
   return libForayList().tiles.map(libForayTileHtml).join("");
 }
 
-function libGridHtml() {
-  const forays = libForayList();
-  const shows = libFollowedShows();
-  const cells = [...forays.tiles.map(libForayTileHtml)];
-  /* Forays fill the grid first; the shows take what is left of the nine. */
-  const room = Math.max(0, LIB_GRID_MAX - forays.tiles.length);
-  shows.slice(0, room).forEach((s) => cells.push(libShowTileHtml(s)));
+/** The Forays section: the forays the listener opened, up to two rows, and the Ember "All forays" under them. The
+    link is always there once there is anything to open (#/forays also lists the forays nobody has opened, which is
+    what it is for). Absent when the listener has opened none: a first run says one line, under Followed shows. */
+function libForaysSectionHtml(forays) {
   if (!forays.known) {
     /* The player module has not arrived: say nothing about forays, offer the way in. */
-    return `<div class="lb-grid" aria-busy="true">${cells.join("")}</div>${libQuietLink("All forays", "/forays")}`;
+    return `<section class="lb-section lb-grid-section" data-lb-section="forays" aria-busy="true">${libHead("Forays", 0)}${libQuietLink("All forays", "/forays")}</section>`;
   }
-  if (!cells.length) return libEmptyHtml("grid");
-  /* Nine cells, then ONE quiet "All" (BUILD-NOTES 4.5). It opens the list the nine could not hold: the forays
-     when the forays alone overflow, else the followed shows. */
-  const cut = forays.total + shows.length > LIB_GRID_MAX;
-  const all = !cut ? "" : (forays.total > LIB_GRID_MAX ? libQuietLink("All", "/forays", "All forays") : libQuietLink("All", "/starred-shows", "All followed shows"));
-  return `<div class="lb-grid">${cells.join("")}</div>${all}`;
+  if (!forays.tiles.length) return "";
+  const all = libQuietLink("All forays", "/forays");
+  return `<section class="lb-section lb-grid-section" data-lb-section="forays">${libHead("Forays", forays.total)}<div class="lb-grid">${forays.tiles.map(libForayTileHtml).join("")}</div>${all}</section>`;
+}
+
+/** The Followed shows section: two rows, then an in-place Ember "All" ("Show fewer" once open). The Dock folded
+    `#/starred-shows` into this page, so "All" cannot be a link to a page: it opens the rest here, as Saved does. */
+function libShowsSectionHtml(forays, shows) {
+  let body;
+  if (!shows.length) {
+    /* The one first-run line lives here, and only when there are no forays to look at either. */
+    body = forays.known && forays.tiles.length ? "" : libEmptyHtml("grid");
+    if (!body) return "";
+  } else {
+    const shown = libUi.showsOpen ? shows : shows.slice(0, LIB_SHOWS_MAX);
+    body = `<div class="lb-grid">${shown.map(libShowTileHtml).join("")}</div>`;
+    if (shows.length > LIB_SHOWS_MAX) {
+      body += `<button type="button" class="ag-btn ag-btn-quiet lb-more" data-lb-shows-toggle aria-expanded="${libUi.showsOpen ? "true" : "false"}">${libUi.showsOpen ? "Show fewer" : "All"}</button>`;
+    }
+  }
+  return `<section class="lb-section lb-grid-section" data-lb-section="followed">${libHead("Followed shows", shows.length)}${body}</section>`;
+}
+
+/** Both grids' sections, Forays then Followed shows. */
+function libGridHtml() {
+  const forays = libForayList();
+  return libForaysSectionHtml(forays) + libShowsSectionHtml(forays, libFollowedShows());
 }
 
 /* ---------- rows ---------- */
@@ -264,9 +340,11 @@ function libPlayButton({ id, title, playing, disabled, ctx }) {
   return `<button type="button" class="ag-btn ag-btn-play ag-btn-size-44 lb-play" data-lb-play="${esc(id)}" data-ctx="${esc(ctx)}" data-title="${esc(title)}" aria-label="${esc(`${playing ? "Pause" : "Play"} ${title || "this episode"}`)}"${disabled ? ' disabled aria-disabled="true"' : ""}>${agIcon(playing ? "pause" : "play", 20)}</button>`;
 }
 
-/** One EpisodeRow (BUILD-NOTES 3), as Saved draws it: art 72, title, show, state or length and date, Play 44.
-    No why-line here (the row is a list of what the listener kept, not a pick). The title is the row's one
-    real link; its ::after covers the row and Play sits above it. */
+/** Saved's row, the SAME treatment as Up Next and History (iteration 2: one row throughout, not a serif 72px
+    EpisodeRow among sans QueueRows): art 56, the title in the label face (two lines), one caption line (a state
+    line, the show, the length) and the 44 Play. No why-line (the row is what the listener kept, not a pick) and no
+    date: the date was what squeezed the show name to "Lex Fridman Po...". The title is the row's one real link;
+    its ::after covers the row and Play sits above it. */
 function libEpisodeRowHtml(r, ctx) {
   const item = r.item || {};
   const named = r.state !== "unnamed" && !!item.title;
@@ -274,23 +352,20 @@ function libEpisodeRowHtml(r, ctx) {
   const playing = rowState === "playing";
   const id = item.id;
   if (!named) {
-    return `<article class="raised ag-episode-row lb-row lb-gone is-unavailable">${agArtwork({ name: "Episode", size: 72, tone: "amber", state: "dim" })}
-      <div class="ag-row-copy"><h4 class="t-headline clamp2">Episode no longer in the catalogue</h4><p class="t-caption">Saved before 4a kept episode details</p></div></article>`;
+    return `<article class="raised ag-queue-row lb-row lb-qrow lb-nomenu lb-gone is-unavailable">${agArtwork({ name: "Episode", size: 56, tone: "amber", state: "dim" })}
+      <div class="ag-row-copy"><p class="t-label clamp2">Episode no longer in the catalogue</p><p class="t-caption">Saved before 4a kept episode details</p></div></article>`;
   }
   const dur = fmtDur(episodeMinutes(item));
-  /* A state line is the news; it takes the place of the date on a row that has room for one or the other. */
-  const date = rowState === "default" ? fmtDate(item.release_date) : "";
   const parts = [`<span class="lb-ell">${esc(item.show || "")}</span>`];
   if (dur) parts.push(`<span class="dur">${esc(dur)}</span>`);
-  if (date) parts.push(`<span>${esc(date)}</span>`);
   const playable = r.state === "live" && !!item.audio_url;
-  /* The art, the title and Play are grid children of the row itself (art spans the rows, Play beside the title),
-     and the meta line runs under both: a 96px row at 375 has no room for show, length and date beside Play. */
-  return `<article class="raised ag-episode-row lb-row lb-ep is-${esc(rowState)}" data-lb-ep="${esc(id)}">
-    ${agArtwork({ name: item.show || item.title, src: item.artwork_url || showArtworkUrl({ title: item.show }) || "", size: 72, tone: libTone(item.show), state: rowState === "unavailable" ? "dim" : "default" })}
-    <h4 class="t-headline clamp2 lb-ep-title"><a class="lb-link" href="#/episode/${esc(encodeURIComponent(id))}" data-ev="picked" data-ep="${esc(id)}" data-ctx="${esc(ctx)}">${esc(item.title)}</a></h4>
+  return `<article class="raised ag-queue-row lb-row lb-qrow lb-saved is-${esc(rowState)}" data-lb-ep="${esc(id)}">
+    ${agArtwork({ name: item.show || item.title, src: item.artwork_url || showArtworkUrl({ title: item.show }) || "", size: 56, tone: libTone(item.show), state: rowState === "unavailable" ? "dim" : "default" })}
+    <div class="ag-row-copy">
+      <h4 class="t-label clamp2 lb-ep-title"><a class="lb-link" href="#/episode/${esc(encodeURIComponent(id))}" data-ev="picked" data-ep="${esc(id)}" data-ctx="${esc(ctx)}">${esc(item.title)}</a></h4>
+      <p class="t-caption ag-row-meta lb-meta">${libStateLine(rowState)}${parts.join('<span class="lb-sep" aria-hidden="true"></span>')}</p>
+    </div>
     ${playable ? libPlayButton({ id, title: item.title, playing, disabled: rowState === "unavailable", ctx }) : ""}
-    <p class="t-caption ag-row-meta lb-meta">${libStateLine(rowState)}${parts.join('<span class="lb-sep" aria-hidden="true"></span>')}</p>
   </article>`;
 }
 
@@ -517,7 +592,7 @@ function renderLibrary() {
     <div class="ag lb-page is-settling">
       ${libCastHtml()}
       <header class="lb-head"><h2 class="t-title" tabindex="-1">Library</h2></header>
-      <section class="lb-section lb-grid-section" data-lb-section="grid" aria-label="Forays and followed shows">${libGridHtml()}</section>
+      ${libGridHtml()}
       ${libSavedHtml(savedRows, allSavedRows.length - savedRows.length)}
       ${libPlaylistsHtml()}
       ${libUpNextHtml()}
@@ -593,12 +668,22 @@ function libSyncCast() {
   else if (page.style && typeof page.style.removeProperty === "function") page.style.removeProperty("--glow");
 }
 
-/** Bar widths are a DOM property, never a style attribute (strict CSP). */
+/** A strip bar's colour: its show's artwork hue at the strip's lightness (the Glow's lightness, 0.04 up in Dusk and
+    0.04 down in Dawn, the prototype's segColor2) and the one muted chroma. Built from numbers only. */
+function libBarColour(hue) {
+  const gl = typeof agGlowLightness === "function" ? agGlowLightness() : 0.66;
+  const lightness = gl > 0.6 ? gl + 0.04 : gl - 0.04;
+  return "oklch(" + lightness.toFixed(2) + " " + LIB_BAR_CHROMA + " " + (((Number(hue) || 0) % 360) + 360) % 360 + ")";
+}
+
+/** Bar widths and colours are DOM properties, never a style attribute (strict CSP). */
 function libSizeStrips(scope) {
   if (!scope || typeof scope.querySelectorAll !== "function") return;
   scope.querySelectorAll(".lb-bar[data-grow]").forEach((bar) => {
     const grow = Math.max(1, Number(bar.dataset.grow) || 1);
-    if (bar.style) bar.style.flexGrow = String(grow);
+    if (!bar.style) return;
+    bar.style.flexGrow = String(grow);
+    if (typeof bar.style.setProperty === "function") bar.style.setProperty("--c", libBarColour(bar.dataset.hue));
   });
 }
 
@@ -687,6 +772,17 @@ function bindLibrary(scope) {
       libUi.savedOpen = !libUi.savedOpen;
       renderLibrary();
       const again = $("#view") && $("#view").querySelector("[data-lb-saved-toggle]");
+      if (again) focusQuietly(again);
+    });
+  });
+  scope.querySelectorAll("[data-lb-shows-toggle]").forEach((btn) => {
+    if (btn._lbBound) return;
+    btn._lbBound = true;
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      libUi.showsOpen = !libUi.showsOpen;
+      renderLibrary();
+      const again = $("#view") && $("#view").querySelector("[data-lb-shows-toggle]");
       if (again) focusQuietly(again);
     });
   });

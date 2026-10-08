@@ -2,18 +2,21 @@
  * BUILD-NOTES.md 4.5, 10.7, 10.11, 11.1, 12.2; BUILD-PLAN 2.1.5).
  *
  * WHAT THIS PROVES, in order:
- *  1. The grid: forays the listener has OPENED come first as ForayTiles, then followed ShowTiles with NO followed
- *     badge, nine cells at most, then one quiet "All"; a foray nobody opened is not a tile.
- *  2. A ForayTile's anatomy: the Lamp "Foray" pill, the 12px strip inside the collage's bottom radius with the
- *     reached bars lit, the check on a finished one, the names three lines (never cut mid-word).
- *  3. The sections come in the order Saved, Playlists, Up Next, (Downloads), History; a count only when there is
- *     something to count; Saved is five rows and "All saved"; History has no menu.
+ *  1. The grids, one section each (iteration 2): "Forays" (the ones the listener has OPENED, as ForayTiles, six at
+ *     most, an Ember "All forays" link under them) then "Followed shows" (ShowTiles with NO followed badge, six at
+ *     most, an in-place Ember "All"); a foray nobody opened is not a tile.
+ *  2. A ForayTile's anatomy: no pill, the 12px strip inside the collage's bottom radius with the reached bars lit
+ *     and coloured from each show's artwork hue (muted, never the seg-c rainbow), the check on a finished one, the
+ *     name three lines (never cut mid-word) and the foray's length, show count and clip count under it.
+ *  3. The sections come in the order Forays, Followed shows, Saved, Playlists, Up Next, (Downloads), History; a count
+ *     only when there is something to count; Saved is five rows of the same QueueRow as Up Next and "All saved";
+ *     History has no menu.
  *  4. Up Next: the playing row first with the Fill glyph and the Lamp word "Playing"; every other row has the
  *     44px menu; a tap on a row plays it with the Up Next context (so the played row moves to the top).
  *  5. The menu: Move up, Move down, Play next, Remove write the queue through its one writer; Remove opens the
  *     Toast with Undo for five seconds and Undo puts the list back exactly; the neighbours slide for --m-ui on --e-out.
- *  6. Empty: every section is a SectionHead with no count, one line, one button; the grid says "Nothing followed
- *     yet."; no paragraphs.
+ *  6. Empty: every section is a SectionHead with no count, one line, one button; Followed shows says "Nothing
+ *     followed yet."; no paragraphs.
  *  7. Lit art: every tile writes its own palette colour to `--art-glow`; the Dock's cast is drawn only while the bar
  *     is up and never when nothing plays.
  *  8. Hostile data crosses esc(); the stylesheet owns no reduced-motion block and uses only tokens; the screen is
@@ -182,11 +185,13 @@ function followed(n) {
 /* 1 and 2. THE GRID AND ITS TILES                                       */
 /* ==================================================================== */
 
-test("the grid lists the forays the listener opened first, then followed shows, with no followed badge", async () => {
-  /* MUTATION 1: render `shows` before `forays.tiles` in libGridHtml -> the order assertion is red.
+test("the forays the listener opened come first under a Forays head, then followed shows under their own, with no followed badge", async () => {
+  /* MUTATION 1: render `libShowsSectionHtml` before `libForaysSectionHtml` in libGridHtml -> the order assertion is red.
      MUTATION 2: list every listed foray, not only the opened ones (take `list` instead of `mine` in libForayList)
      -> the unopened foray appears and the cell list is red.
-     MUTATION 3: put `badge: "check-circle-fill"` back on libShowTileHtml's agArtwork -> the badge assertion is red. */
+     MUTATION 3: put `badge: "check-circle-fill"` back on libShowTileHtml's agArtwork -> the badge assertion is red.
+     MUTATION 4: put both kinds of tile in one section (drop the `libHead("Followed shows"...)` and the second
+     <section>) -> the two-heads assertion is red (iteration 2: a judge asked for labelled sections). */
   const [a, b, c] = FROZEN_FORAYS().slice(0, 3).map((f) => f.id);
   const m = await mount({ seed: { cp_starred_shows: followed(2), cp_show_drafts: "true" }, bridge: realBridge([[a, { remainingSec: 600, elapsedSec: 900 }], [b, { finished: true }]]) });
   m.ctx.renderLibrary();
@@ -194,41 +199,109 @@ test("the grid lists the forays the listener opened first, then followed shows, 
   const list = cells(html);
   assert.deepStrictEqual(list.map((c) => c[0]), ["foray", "foray", "show", "show"], "forays first, then shows");
   assert.ok(!list.some(([, title]) => title === FROZEN_FORAYS().find((f) => f.id === c).title), "a foray nobody opened is not a tile");
-  assert.ok(!/ag-art-badge/.test(sectionOf(html, "grid")), "no followed badge in Library: everything here is followed");
+  assert.deepStrictEqual(sectionHeads(html).slice(0, 2), ["Forays", "Followed shows"], "two labelled sections, forays first");
+  assert.deepStrictEqual(cells(sectionOf(html, "forays")).map((c) => c[0]), ["foray", "foray"], "only forays under Forays");
+  assert.deepStrictEqual(cells(sectionOf(html, "followed")).map((c) => c[0]), ["show", "show"], "only shows under Followed shows");
+  assert.ok(!/ag-art-badge/.test(sectionOf(html, "followed")), "no followed badge in Library: everything here is followed");
+  assert.match(sectionOf(html, "forays"), /<span class="count">2<\/span>/, "the Forays head counts the forays opened");
 });
 
-test("at most nine cells, then one quiet All that opens the list the nine could not hold", async () => {
-  /* MUTATION 1: LIB_GRID_MAX 9 -> 12 -> eleven cells render and the count is red.
-     MUTATION 2: drop the `cut` guard -> "All" shows under a short grid and the second half is red.
-     MUTATION 3: point the shows' All at "#/forays" -> the href assertion is red. */
-  const m = await mount({ seed: { cp_starred_shows: followed(11) }, bridge: realBridge() });
+test("six forays and six followed shows at most; All forays is a link, the shows' All opens the rest in place", async () => {
+  /* MUTATION 1: LIB_SHOWS_MAX 6 -> 9 -> seven shows render and the count is red.
+     MUTATION 2: drop the `shows.length > LIB_SHOWS_MAX` guard -> an All shows under a short list and the second half is red.
+     MUTATION 3: point the shows' All at "#/starred-shows" (a page the Dock folded into Library: a link to itself) ->
+     the "it is a button, not a link" assertion is red.
+     MUTATION 4: make the toggle ignore `libUi.showsOpen` -> the expanded count is red.
+     MUTATION 5: drop the "All forays" link when there are forays -> the link assertion is red. */
+  const [a, b] = FROZEN_FORAYS().slice(0, 2).map((f) => f.id);
+  const m = await mount({ seed: { cp_starred_shows: followed(11), cp_show_drafts: "true" }, bridge: realBridge([[a, { remainingSec: 600, elapsedSec: 900 }], [b, { finished: true }]]) });
   m.ctx.renderLibrary();
-  const grid = sectionOf(m.view(), "grid");
-  assert.strictEqual(cells(grid).length, 9, "nine cells and no more");
-  assert.match(grid, /<a class="ag-btn ag-btn-quiet lb-more" href="#\/starred-shows" aria-label="All followed shows">All<\/a>/);
+  const shows = sectionOf(m.view(), "followed");
+  assert.strictEqual(cells(shows).length, 6, "six followed shows and no more");
+  assert.match(shows, /<button type="button" class="ag-btn ag-btn-quiet lb-more" data-lb-shows-toggle aria-expanded="false">All<\/button>/, "an in-place All");
+  assert.ok(!/href="#\/starred-shows"/.test(m.view()), "no link to the page the Dock folded into this one");
+  assert.match(sectionOf(m.view(), "forays"), /<a class="ag-btn ag-btn-quiet lb-more" href="#\/forays">All forays<\/a>/, "All forays opens the list of every foray");
+  m.evalIn("libUi.showsOpen = true");
+  m.ctx.renderLibrary();
+  assert.strictEqual(cells(sectionOf(m.view(), "followed")).length, 11, "All shows every followed show");
+  assert.match(sectionOf(m.view(), "followed"), /aria-expanded="true">Show fewer</);
   const few = await mount({ seed: { cp_starred_shows: followed(3) }, bridge: realBridge() });
   few.ctx.renderLibrary();
-  assert.ok(!/lb-more/.test(sectionOf(few.view(), "grid")), "three cells need no All");
+  assert.ok(!/lb-more/.test(sectionOf(few.view(), "followed")), "three shows need no All");
+  assert.ok(!/data-lb-section="forays"/.test(few.view()), "no forays opened: no Forays section at all");
 });
 
-test("a ForayTile: the Lamp pill, the strip inside the collage with the reached bars lit, the check on a finished one", async () => {
+test("a ForayTile: no pill, the strip inside the collage with the reached bars lit, the check on a finished one", async () => {
   /* MUTATION 1: drop the `lit` computation (return lit: false in libForayBars) -> no bar is lit on the part-played tile.
      MUTATION 2: ignore `finished` on the badge -> the check assertion is red.
-     MUTATION 3: render the strip outside `.lb-art` -> the "inside the collage's wrapper" assertion is red. */
+     MUTATION 3: render the strip outside `.lb-art` -> the "inside the collage's wrapper" assertion is red.
+     MUTATION 4: put the `<span class="ag-pill lb-pill">` back into libForayTileHtml -> the no-pill assertion is red
+     (a pill hanging over the tile's edge, restating the Forays head, is what iteration 1 was marked down for). */
   const [a, b] = FROZEN_FORAYS().slice(0, 2).map((f) => f.id);
   const m = await mount({ seed: { cp_show_drafts: "true" }, bridge: realBridge([[a, { remainingSec: 600, elapsedSec: 1500 }], [b, { finished: true }]]) });
   m.ctx.renderLibrary();
-  const html = sectionOf(m.view(), "grid");
+  const html = sectionOf(m.view(), "forays");
   const tiles = html.split('<a class="lb-tile lb-foray"').slice(1);
   assert.strictEqual(tiles.length, 2);
   const [part, done] = tiles;
-  assert.match(part, /<span class="ag-pill lb-pill"><span>Foray<\/span><\/span>/, "the Lamp Foray pill");
+  assert.ok(!/lb-pill|ag-pill/.test(html) && !/<span>Foray<\/span>/.test(html), "no Foray pill: the head says it, and it hung over the edge");
   assert.match(part, /<span class="lb-art">[\s\S]*<span class="lb-strip" aria-hidden="true">[\s\S]*<\/span><\/span>\s*<span class="t-caption lb-name/, "the strip is inside the art wrapper, above the name");
-  assert.ok(/class="lb-bar lb-t\d+ is-lit"/.test(part), "bars the listener has reached are lit");
-  assert.ok(/class="lb-bar lb-t\d+"/.test(part), "and the rest are not");
+  assert.ok(/class="lb-bar is-lit"/.test(part), "bars the listener has reached are lit");
+  assert.ok(/class="lb-bar" /.test(part), "and the rest are not");
   assert.ok(!/ag-done/.test(part), "a part-played foray has no check");
   assert.ok(/ag-done/.test(done), "a finished foray wears the check");
-  assert.ok(!/class="lb-bar lb-t\d+"/.test(done), "a finished foray's bars are all lit");
+  assert.ok(!/class="lb-bar" /.test(done), "a finished foray's bars are all lit");
+});
+
+test("a ForayTile says how long the foray is, how many shows and how many clips, in two lines under the name", async () => {
+  /* MUTATION 1: return `none` from libForayFacts -> no facts and the length assertion is red.
+     MUTATION 2: join all three into one span (drop the second `lb-fact`) -> the two-line assertion is red.
+     MUTATION 3: take `tally.bridges` out of the clip sum -> the count disagrees with the Forays page's own
+     forayFactsLabel and the cross-check is red. */
+  /* The fourth frozen foray is the narrated one: 16 clips and 40 of the narrator's, so the clip count is 56 only if
+     bridges are counted, as the Forays page counts them (a foray with none could not tell the two sums apart). */
+  const a = FROZEN_FORAYS()[3].id;
+  const m = await mount({ seed: { cp_show_drafts: "true" }, bridge: realBridge([[a, { remainingSec: 600, elapsedSec: 1500 }]]) });
+  m.ctx.renderLibrary();
+  const tile = sectionOf(m.view(), "forays");
+  const facts = /<span class="t-caption lb-facts">((?:<span class="lb-fact">[^<]*<\/span>)+)<\/span>/.exec(tile);
+  assert.ok(facts, "the tile has a facts block");
+  const lines = [...facts[1].matchAll(/<span class="lb-fact">([^<]*)<\/span>/g)].map((x) => x[1]);
+  assert.strictEqual(lines.length, 2, "two short lines, so neither is cut in a 96px column");
+  assert.match(lines[0], /^~?\d+ (min|hr)[^·]*· \d+ shows?$/, "line one: the length and the show count");
+  assert.strictEqual(lines[1], "56 clips", "line two: the clip count, the narrator's clips among them");
+  /* The same three facts the Forays page gives (forayFactsLabel), so the tile never disagrees with the page it opens. */
+  const full = m.evalIn(`forayFactsLabel(resolveListedForay(${JSON.stringify(a)}), window.ForayPlayer)`);
+  const joined = `${lines[0]} · ${lines[1]}`.replace(/^~/, "about ");
+  const norm = (s) => s.replace(/^about /, "").replace(/ · /g, "|").split("|").sort().join("|");
+  assert.strictEqual(norm(joined), norm(full), "the tile's three facts are the Forays page's three facts");
+});
+
+test("a strip bar is coloured from its show's artwork hue, muted, never the seg-c rainbow", async () => {
+  /* MUTATION 1: put `lb-t${tone}` and the `--seg-c0..7` rules back (the old rainbow) -> the no-rainbow assertion is red.
+     MUTATION 2: make libShowHues return the same hue for every show -> the distinct-hues assertion is red.
+     MUTATION 3: drop the near-neighbour push (the `for` loop in libShowHues) -> the 24-degree assertion is red.
+     MUTATION 4: LIB_BAR_CHROMA 0.1 -> 0.2 -> the muted-chroma assertion is red. */
+  const a = FROZEN_FORAYS()[0].id;
+  const m = await mount({ seed: { cp_show_drafts: "true" }, bridge: realBridge([[a, { remainingSec: 600, elapsedSec: 1500 }]]) });
+  m.ctx.renderLibrary();
+  const html = sectionOf(m.view(), "forays");
+  const hues = [...html.matchAll(/class="lb-bar[^"]*" data-grow="\d+" data-hue="(\d+)"/g)].map((x) => Number(x[1]));
+  assert.ok(hues.length >= 3, `a frozen foray draws several bars (${hues.length})`);
+  assert.ok(new Set(hues).size >= 3, "the bars are coloured by show, not one colour");
+  assert.ok(!/lb-t\d/.test(html) && !/lb-t\d/.test(LIB_CSS) && !/seg-c\d/.test(LIB_CSS), "no seg-c rainbow in the tile or the stylesheet");
+  const sandbox = vm.createContext({ window: {}, document: { documentElement: {} }, getComputedStyle: () => ({ getPropertyValue: () => "0.66" }) });
+  sandbox.window = sandbox;
+  vm.runInContext(read("ui/palette.js"), sandbox);
+  vm.runInContext(read("ui/library.js"), sandbox);
+  const twin = sandbox.libShowHues(["Planet Money", "Planet Money"]);
+  assert.strictEqual(twin.size, 1, "a show is one hue however many bars it has");
+  /* Three shows whose palette hue is the same: each is pushed 30 degrees from the last, not stacked on it. */
+  const same = vm.runInContext(`(() => { const o = agPaletteFor; agPaletteFor = () => [100, 0.1]; try { return JSON.stringify([...libShowHues(["x", "y", "z"]).values()]); } finally { agPaletteFor = o; } })()`, sandbox);
+  assert.strictEqual(same, "[100,130,160]", "three shows on one palette hue are pushed 30 apart, not stacked");
+  /* The colour itself: muted chroma, the strip's lightness (0.70 in Dusk). */
+  assert.strictEqual(sandbox.libBarColour(40), "oklch(0.70 0.1 40)", "an oklch colour from numbers, muted");
+  assert.ok(vm.runInContext("LIB_BAR_CHROMA", sandbox) <= 0.12, "muted: well under the Glow's own 0.14");
 });
 
 test("grid names are three-line clamps, tiles top-aligned, art 96 / 104 / 112, rows at least 16 apart", () => {
@@ -255,8 +328,10 @@ test("grid names are three-line clamps, tiles top-aligned, art 96 / 104 / 112, r
 /* 3. THE SECTIONS                                                       */
 /* ==================================================================== */
 
-test("sections come in the order Saved, Playlists, Up Next, History, and a count appears only when there is something to count", async () => {
-  /* MUTATION 1: swap the Playlists and Up Next template lines in renderLibrary -> the order assertion is red.
+test("sections come in the order Followed shows, Saved, Playlists, Up Next, History, and a count appears only when there is something to count", async () => {
+  /* (Nothing is followed here, so the first head is Followed shows with its one line; Forays has no section until a
+     foray is opened.)
+     MUTATION 1: swap the Playlists and Up Next template lines in renderLibrary -> the order assertion is red.
      MUTATION 2: pass a count to libHead for History -> the History head carries a count and the second half is red.
      MUTATION 3: drop the `count > 0` guard in libHead -> the empty page's heads gain "0" and the empty test is red. */
   const [a, b] = playable();
@@ -267,9 +342,9 @@ test("sections come in the order Saved, Playlists, Up Next, History, and a count
   m.ctx.fullPool();
   m.ctx.renderLibrary();
   const html = m.view();
-  assert.deepStrictEqual(sectionHeads(html), ["Saved", "Playlists", "Up Next", "History"]);
+  assert.deepStrictEqual(sectionHeads(html), ["Followed shows", "Saved", "Playlists", "Up Next", "History"]);
   const heads = [...html.matchAll(/<header class="ag-section-head"><div><h3 class="t-headline">([^<]*)<\/h3><\/div>(<span class="count">(\d+)<\/span>)?/g)].map((x) => [x[1], x[3] || ""]);
-  assert.deepStrictEqual(heads, [["Saved", "1"], ["Playlists", "1"], ["Up Next", "2"], ["History", ""]], "counts on the three that have them, none on History");
+  assert.deepStrictEqual(heads, [["Followed shows", ""], ["Saved", "1"], ["Playlists", "1"], ["Up Next", "2"], ["History", ""]], "counts on the three that have them, none on History or the empty Followed shows");
 });
 
 test("Saved is five rows and an in-place All saved; the rows are real, playable EpisodeRows", async () => {
@@ -286,6 +361,20 @@ test("Saved is five rows and an in-place All saved; the rows are real, playable 
   assert.match(html, /data-lb-saved-toggle aria-expanded="false">All saved<\/button>/);
   assert.ok(/class="ag-btn ag-btn-play ag-btn-size-44 lb-play" data-lb-play=/.test(html), "each live row has a Play 44");
   assert.ok(!/data-play=/.test(html), "and it is not a [data-play] (the player would overwrite its glyph with text)");
+  /* ONE ROW TREATMENT (iteration 2): Saved wears the QueueRow Up Next and History wear, in the label face, with no
+     date. MUTATION 4: put `ag-episode-row` and `t-headline` back on the Saved row -> the one-treatment assertion is
+     red. MUTATION 5: add the release date back to `parts` -> the no-date assertion is red (it squeezed the show name
+     to "Lex Fridman Po..."). */
+  assert.strictEqual((html.match(/class="raised ag-queue-row lb-row lb-qrow lb-saved /g) || []).length, 5, "every Saved row is a QueueRow");
+  assert.ok(!/ag-episode-row|t-headline/.test(html.replace(/<header class="ag-section-head">[\s\S]*?<\/header>/, "")), "no serif EpisodeRow among the sans rows");
+  assert.ok(/<h4 class="t-label clamp2 lb-ep-title">/.test(html), "the title is in the label face");
+  const drawn = items.filter((it) => html.includes(`data-lb-ep="${m.ctx.esc(it.id)}"`));
+  assert.strictEqual(drawn.length, 5, "premise: five of the saved episodes are drawn");
+  for (const it of drawn) {
+    const date = m.ctx.fmtDate(it.release_date);
+    assert.ok(date, `premise: ${it.id} has a date to leave out`);
+    assert.ok(!html.includes(m.ctx.esc(date)), `no release date (${date}) in a Saved caption`);
+  }
   m.evalIn("libUi.savedOpen = true");
   m.ctx.renderLibrary();
   html = sectionOf(m.view(), "saved");
@@ -463,7 +552,7 @@ test("empty: every section is a SectionHead with no count, one line and one butt
   const m = await mount({ bridge: realBridge() });
   m.ctx.renderLibrary();
   const html = m.view();
-  assert.deepStrictEqual(sectionHeads(html), ["Saved", "Playlists", "Up Next", "History"]);
+  assert.deepStrictEqual(sectionHeads(html), ["Followed shows", "Saved", "Playlists", "Up Next", "History"]);
   assert.ok(!/class="count"/.test(html), "no section head carries a count");
   assert.ok(!/<p class="note"/.test(html), "no paragraphs");
   const empties = [...html.matchAll(/<div class="lb-empty"><p class="t-body">([^<]*)<\/p><a class="ag-btn ag-btn-secondary" href="([^"]*)">([^<]*)<\/a><\/div>/g)].map((x) => [x[1], x[3], x[2]]);
@@ -477,15 +566,16 @@ test("empty: every section is a SectionHead with no count, one line and one butt
   assert.strictEqual((html.match(/<div class="lb-empty">/g) || []).length, 5, "five sections, five empties");
 });
 
-test("before the player can list forays the grid claims nothing and offers the way in", async () => {
-  /* Loading is not empty (the three-state rule). MUTATION: render libEmptyHtml("grid") when `forays.known` is false
-     -> "Nothing followed yet." appears and the assertion is red. */
+test("before the player can list forays the Forays section claims nothing and offers the way in", async () => {
+  /* Loading is not empty (the three-state rule). MUTATION: render libEmptyHtml("grid") in the Forays section when
+     `forays.known` is false -> "Nothing followed yet." appears there and the assertion is red. */
   const m = await mount({});
   m.ctx.renderLibrary();
-  const grid = sectionOf(m.view(), "grid");
+  const grid = sectionOf(m.view(), "forays");
   assert.ok(!/Nothing followed yet/.test(grid), "an unknown list is not an empty one");
   assert.match(grid, /aria-busy="true"/);
   assert.match(grid, /href="#\/forays">All forays</);
+  assert.ok(!/lb-tile/.test(grid), "and no tile is claimed");
 });
 
 /* ==================================================================== */
@@ -563,29 +653,24 @@ test("library.css owns no reduced-motion block and reads only tokens; the slide 
     assert.ok(!/\b(ease|ease-in|ease-out|ease-in-out|linear|cubic-bezier)\b/.test(m[2].replace(/visibility 0s linear var\(--m-ui\)/, "")), `and an easing token (a delayed visibility step aside): ${m[0]}`);
   }
   const withoutOnArt = LIB_CSS.replace(/--lb-on-art[\w-]*:\s*[^;]+;/g, "");
-  assert.ok(!/#[0-9a-fA-F]{3,8}\b/.test(withoutOnArt) && !/rgb\(/.test(withoutOnArt), "no colour literal but the three on-art inks: every other colour is a token");
+  assert.ok(!/#[0-9a-fA-F]{3,8}\b/.test(withoutOnArt) && !/rgb\(/.test(withoutOnArt), "no colour literal but the strip's on-art shade: every other colour is a token");
   const src = read("ui/library.js");
   assert.match(src, /transition = "transform var\(--m-ui\) var\(--e-out\)"/, "the reorder slide runs on the tokens");
   assert.ok(!/style="/.test(src), "no inline style attribute in the markup (strict CSP)");
   assert.match(read("ui/tokens.css"), /@media \(prefers-reduced-motion: reduce\) \{\s*:root, \.ag, \.ag \*/, "the one block covers everything under .ag");
 });
 
-test("the Foray pill's label clears AA over pure white artwork and over pure black, in both schemes (the ink is on the art, not themed)", () => {
-  /* MUTATION 1: --lb-on-art alpha 0.86 -> 0.55 (the prototype's) -> the white-art ratio falls to ~3.4 and this is red.
-     MUTATION 2: make the pill read `var(--scrim-mid-base)` again -> the pill follows Dawn's paper scrim, the custom
-     property assertion is red (the 2026-10-07 shot: a cream pill with a cream label in Dawn). */
-  const decl = (name) => new RegExp(`--${name}:\\s*([^;]+);`).exec(LIB_CSS)[1].trim();
-  const [r, g, b, a] = /rgb\((\d+) (\d+) (\d+) \/ ([\d.]+)\)/.exec(decl("lb-on-art")).slice(1).map(Number);
-  const ink = /#([0-9a-f]{6})/i.exec(decl("lb-on-art-ink"))[1].match(/../g).map((h) => parseInt(h, 16));
-  const lin = (c) => { const s = c / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; };
-  const lum = (rgb) => 0.2126 * lin(rgb[0]) + 0.7152 * lin(rgb[1]) + 0.0722 * lin(rgb[2]);
-  const ratio = (x, y) => (Math.max(lum(x), lum(y)) + 0.05) / (Math.min(lum(x), lum(y)) + 0.05);
-  for (const art of [[255, 255, 255], [0, 0, 0]]) {
-    const under = [r, g, b].map((c, i) => c * a + art[i] * (1 - a));
-    assert.ok(ratio(ink, under) >= 4.5, `the pill label is ${ratio(ink, under).toFixed(2)}:1 over artwork ${art}`);
-  }
-  assert.match(LIB_CSS, /\.ag \.lb-pill \{[^}]*background: var\(--lb-on-art\); color: var\(--lb-on-art-ink\);/, "the pill reads the fixed on-art inks, not the scheme's scrims");
-  assert.ok(!/\.lb-pill[^}]*scrim/.test(LIB_CSS) && !/\.lb-strip[^}]*scrim/.test(LIB_CSS), "nor does the strip's floor");
+test("a foray tile carries nothing that hangs over its edge, and its strip's floor is a fixed shade, not the scheme's scrim", () => {
+  /* (The Foray pill, and its AA test, left in iteration 2: the Forays head says what the pill said, and it overhung
+     the tile.)
+     MUTATION 1: put the `.ag .lb-pill { position: absolute; ...top: calc(var(--s-2) * -1) }` rule back -> the
+     no-overhang assertion is red.
+     MUTATION 2: make the strip's floor read `var(--scrim-mid-base)` -> in Dawn the scrim is paper and the floor under
+     white-ish art vanishes; the fixed-shade assertion is red. */
+  assert.ok(!/\.lb-pill/.test(LIB_CSS), "no pill rule");
+  assert.ok(!/calc\(var\(--s-\d\) \* -1\)/.test(LIB_CSS.replace(/\.lb-menu-head[^}]*\}/, "")), "no tile child is positioned outside its tile with a negative inset");
+  assert.match(LIB_CSS, /\.ag \.lb-strip \{[^}]*background: linear-gradient\(transparent, var\(--lb-on-art-soft\)\)/, "the strip's floor is the fixed on-art shade");
+  assert.ok(!/\.lb-strip[^}]*scrim/.test(LIB_CSS), "not a scrim that follows the scheme");
 });
 
 test("the screen is registered: linked in index.html, in every shell list, palette.js loaded, and its title is the landing heading", () => {

@@ -23,11 +23,9 @@ body.view-library #view { padding-top: 0; }
   position: relative; isolation: isolate;
   /* The grid's art: 104 at 393, 96 at 375, 112 at 412 (BUILD-NOTES §3 ShowTile). */
   --lb-art: var(--art-tile);
-  /* Ink and shade that sit ON artwork (the Foray pill, the strip's floor), whatever the scheme: the art is not
-     themed, so these do not follow Dawn's paper scrims. The pill is 0.86 dark under Lamp-cream text so its 13px
-     label clears 4.5:1 over even pure white artwork (the prototype's 0.55 reads 3.6:1 there). The only colour
-     literals in this file. */
-  --lb-on-art: rgb(20 17 15 / 0.86); --lb-on-art-ink: #F3E7D3; --lb-on-art-soft: rgb(20 17 15 / 0.55);
+  /* The shade under a strip's bars, which sits ON artwork whatever the scheme: the art is not themed, so it does not
+     follow Dawn's paper scrims. The only colour literal in this file. */
+  --lb-on-art-soft: rgb(20 17 15 / 0.55);
   padding: calc(var(--safe-top) + var(--s-2)) var(--gutter) var(--s-6);
   min-height: 100vh;
 }
@@ -55,7 +53,8 @@ body.fp-open .ag .lb-cast:not([data-state="idle"]) { display: block; bottom: cal
 
 /* Sections: 32 between, 12 head to content (the SectionHead primitive carries both margins). */
 .ag .lb-section { position: relative; z-index: 1; }
-.ag .lb-grid-section { margin-top: var(--s-3); }
+/* The first section sits right under the title (its head's 32 would be a gap under a 44 tall title row). */
+.ag .lb-head + .lb-section > .ag-section-head { margin-top: var(--s-2); }
 .ag .lb-stack > * + * { margin-top: var(--s-2); }
 .ag .lb-more { margin-top: var(--s-2); }
 
@@ -70,22 +69,20 @@ body.fp-open .ag .lb-cast:not([data-state="idle"]) { display: block; bottom: cal
 /* Names clamp to three lines and are never cut mid-word (§12.2). */
 .ag .lb-name { color: var(--text); width: 100%; overflow-wrap: normal; word-break: normal; hyphens: none; text-overflow: ellipsis; }
 
-/* ForayTile: the Lamp "Foray" pill straddles the tile's top-left edge (20 tall, §10.11), the strip lies inside the
-   collage's bottom radius (12 tall, bars 8), a finished foray wears the check. */
-.ag .lb-pill {
-  position: absolute; left: var(--s-2); top: calc(var(--s-2) * -1); z-index: 3;
-  min-height: 20px; height: 20px; padding: 0 var(--s-2); line-height: 20px;
-  background: var(--lb-on-art); color: var(--lb-on-art-ink);
-}
+/* ForayTile: the strip lies inside the collage's bottom radius (12 tall, bars 8), a finished foray wears the check,
+   and the facts sit under the name in two short lines. There is no pill: the tile is under the Forays head, and a
+   pill hanging over the tile's edge was what both judges of iteration 1 marked down. */
+.ag .lb-facts { display: flex; flex-direction: column; width: 100%; color: var(--text-2); }
+.ag .lb-fact { display: block; overflow-wrap: normal; }
 .ag .lb-strip {
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; height: 12px;
   padding: 2px var(--s-2); display: flex; align-items: center; gap: 2px;
   border-radius: 0 0 var(--r-md) var(--r-md); background: linear-gradient(transparent, var(--lb-on-art-soft));
 }
-.ag .lb-bar { display: block; height: 8px; min-width: 2px; flex: 1 1 0; border-radius: var(--r-xs); background: var(--c, var(--seg-c0)); opacity: var(--seg-dim); }
+/* A bar's colour is written by script (`--c`, libBarColour: its show's artwork hue, one muted chroma). Before it is, or
+   without script, a bar is the muted text grey, never the seg-c rainbow. */
+.ag .lb-bar { display: block; height: 8px; min-width: 2px; flex: 1 1 0; border-radius: var(--r-xs); background: var(--c, var(--text-3)); opacity: var(--seg-dim); }
 .ag .lb-bar.is-lit { opacity: 1; }
-.ag .lb-t0 { --c: var(--seg-c0); } .ag .lb-t1 { --c: var(--seg-c1); } .ag .lb-t2 { --c: var(--seg-c2); } .ag .lb-t3 { --c: var(--seg-c3); }
-.ag .lb-t4 { --c: var(--seg-c4); } .ag .lb-t5 { --c: var(--seg-c5); } .ag .lb-t6 { --c: var(--seg-c6); } .ag .lb-t7 { --c: var(--seg-c7); }
 .ag .lb-foray .ag-done { position: absolute; right: var(--s-1); bottom: var(--s-4); z-index: 3; color: var(--ember); }
 
 /* Rows. A row's one real link is its title (or, in Up Next and History, a button laid over the row); the controls
@@ -98,13 +95,9 @@ body.fp-open .ag .lb-cast:not([data-state="idle"]) { display: block; bottom: cal
 .ag .lb-row .lb-play, .ag .lb-row .lb-dots { position: relative; z-index: 2; }
 .ag .lb-cover { position: absolute; inset: 0; z-index: 1; min-height: 44px; border-radius: var(--r-lg); }
 .ag .lb-cover:focus-visible { outline: none; box-shadow: 0 0 0 calc(var(--s-1) / 2) var(--lamp-text); }
-/* EpisodeRow: art 72 spanning the rows, the title and Play 44 on the first, the meta line under both (the prototype's
-   .ep-row grid). primitives.css drops Play under the copy below 393 wide; here it stays beside the title. */
-.ag .lb-ep { grid-template-columns: var(--art-row) minmax(0, 1fr) var(--tap); column-gap: var(--s-3); row-gap: 2px; align-items: start; }
-.ag .lb-ep > .ag-art { grid-row: 1 / 4; grid-column: 1; }
-.ag .lb-ep .lb-ep-title { grid-column: 2; grid-row: 1; min-height: var(--tap); }
-.ag .ag-episode-row.lb-ep > .lb-play { grid-column: 3; grid-row: 1; align-self: start; }
-.ag .lb-ep .lb-meta { grid-column: 2 / 4; grid-row: 2; margin-top: 0; }
+/* Saved's row is a QueueRow (art 56, the label-face title, one caption, a 44 control): the one row treatment of the
+   whole page, so the title is sans here as in Up Next and History. Its Play is the third column. */
+.ag .lb-saved > .lb-play { grid-column: 3; }
 .ag .lb-meta { align-items: baseline; flex-wrap: nowrap; gap: var(--s-1); min-width: 0; color: var(--text-2); }
 .ag .lb-meta > span { white-space: nowrap; }
 .ag .lb-meta .dur, .ag .lb-meta .lb-sep { flex: none; }
@@ -113,7 +106,7 @@ body.fp-open .ag .lb-cast:not([data-state="idle"]) { display: block; bottom: cal
 .ag .lb-gone { opacity: .85; }
 .ag .lb-gone .ag-row-copy { opacity: .6; }
 /* The playing row of Saved takes the same ground the Up Next row does. */
-.ag .ag-episode-row.is-playing { background: linear-gradient(var(--overlay), var(--overlay)) var(--glow-row); }
+.ag .lb-saved.is-playing { background: linear-gradient(var(--overlay), var(--overlay)) var(--glow-row); }
 
 /* Up Next and History: QueueRows, 64 tall minimum; History has no menu, so its third column goes. */
 .ag .lb-qrow { align-items: center; }

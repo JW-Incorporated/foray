@@ -1093,3 +1093,38 @@ them. `test/ambient-library.test.js` pins every number here (each test names its
     the rows, mini and tab-bar deltas are data and the legacy chrome the Dock unit replaces.
     `ambient-gallery` compares 123/123 identical; `ambient-app` differs only on Library
     (24 shots) and gains the 9 `library` shots: re-record it on merge.
+
+### 17.1 Library, iteration 2 (art-director calls made unattended)
+
+Judges of iteration 1 did not prefer the build over today's Library: today labelled its sections and gave each
+foray its length, clip count and show count; the build's FORAY pills hung over the tiles' edges, its Saved row
+truncated the show name, and its titles mixed serif rows with sans captions. What changed, each pinned in
+`test/ambient-library.test.js` with a named mutation (all run red and restored):
+
+1. **Two labelled sections replace the one mixed grid.** "Forays" (the ones opened, six at most, a count in the
+   head, an Ember "All forays" link to `#/forays`, always there once forays are known) and "Followed shows" (six at
+   most, an in-place Ember "All" that becomes "Show fewer"). This overturns the prototype's one grid of nine and its
+   one "All"; the single "Nothing followed yet." line now sits under the Followed shows head. The "All" is in place
+   and not a link because the Dock unit folds `#/starred-shows` into Library (`ROUTE_ALIASES`): a link would point
+   at the page it is on. The Ember "All" the prototype has between grid and Saved is no longer missing.
+2. **No Foray pill.** The Forays head says what the pill said (the same logic as 10.7's followed badge), and the
+   pill overhung the tile's top-left edge. The strip along the tile's floor and the check on a finished foray stay.
+   This overturns 10.11 (round 4 item 6); `--lb-on-art`, `--lb-on-art-ink` and the pill's AA test are gone.
+3. **A foray tile carries its facts**, two short lines under the name (the three-line clamp stays): "51 min · 7
+   shows" and "22 clips", the same three facts `forayFactsLabel` gives the Forays page (the clip count includes the
+   narrator's clips, as the strip counts them). "about 43 min" reads "~43 min" in the tile so the line fits 96px.
+4. **Strip colours come from the artwork.** A bar's hue is its show's palette hue (`AG_PALETTES`, pushed 30 degrees
+   when within 24 of an earlier show, the prototype's rule) at the strip's lightness (Glow lightness 0.04 up in
+   Dusk, 0.04 down in Dawn, the prototype's `segColor2`) and ONE muted chroma, 0.10 (`LIB_BAR_CHROMA`). It is written
+   through the CSSOM (`--c`), never a style attribute. The `--seg-c0..7` rainbow is no longer drawn here; an
+   unpainted bar is the muted text grey.
+5. **One row treatment.** Saved's row is the QueueRow Up Next and History wear (art 56, the label-face title, one
+   caption, Play 44 as the third column), not a 96px serif EpisodeRow, and it drops the release date, which was
+   what squeezed the show to "Lex Fridman Po...". Its title is still the row's one link to the episode page (where
+   the star lives); Play is still `data-lb-play`. Serif now means a heading and nothing else on this page.
+
+Not this unit's: the Dock findings (one floating Veil, warm tint, three tabs, Phosphor Fill icons, the 44px
+forward-30 glyph and 2px Glow progress line, the mini player's DM Sans title) belong to `redesign/ambient-dock`;
+Library's shots still show the legacy bars until that branch merges. **At that merge** Library's own `.lb-cast`
+element and its `--tab-bar-h`-based offsets for the cast and the Toast should be retired in favour of the Dock's
+`#dock-cast` and its own bottom edge (the Dock draws its cast itself), and `ambient-app` re-recorded once.
