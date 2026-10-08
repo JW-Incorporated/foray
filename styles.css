@@ -554,14 +554,15 @@ body.view-home .topbar h1 .wordmark { display: none; }
        15  .page-head         sticky page header (pins under the topbar)
        19  .shell-notice      "this page is a version behind" bar (#233)
        20  .topbar            the fixed header  (also .fy-strip-bubble)
-       55  .tab-bar           the tab bar
-       58  #sh-compose        the search page's bottom-docked search field —
-                              above the tab bar it docks on, below the player
-                              because #foray-player is also the Now Playing
-                              sheet and a search box must not punch through a
-                              modal. Its own block carries the full argument.
-       60  #foray-player      mini bar AND the expanded Now Playing sheet
-                              (the sheet is a FULL-HEIGHT overlay since the
+       55  #dock-layer        the Dock: Discover's field, the mini player and the
+                              three tabs, one Veil surface (ui/tabbar.js,
+                              ui/dock.css). It took the old tab bar's rung and
+                              the search field's, and the mini bar's: the field
+                              and the mini bar are rows of it, so they no longer
+                              need numbers of their own. Below the sheet, so a
+                              search box or a tab never punches through a modal.
+       60  #foray-player      the expanded Now Playing sheet (the mini bar left it
+                              for the Dock; the sheet is a FULL-HEIGHT overlay since the
                                2026-09-13 report and paints inside this
                                element's own stacking context, so it covers
                                the mini bar without needing a number of its
@@ -847,22 +848,9 @@ input[type="text"] {
    that used to wrap it is gone: those tabs time-shared one strip of the HOME
    screen between this search and #pl-form's playlist builder, and since
    2026-09-03 the two live on separate pages with nothing to toggle between. */
-#sh-form {
-  flex: none;
-  display: flex; gap: 8px;
-  margin-bottom: 14px;
-}
-#sh-input {
-  flex: 1;
-  min-height: 52px;
-  padding: 0 16px;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--line);
-  background: var(--surface);
-  box-shadow: var(--shadow);
-  color: var(--text);
-  font-size: var(--fs-lg);
-}
+/* REMOVED 2026-10-07 (Redesign 2026, ambient, Discover): `#sh-form` and `#sh-input`, the field's
+   page-content styling. Discover's field is the Afterglow SearchField (`.ag-search-field`, ui/
+   primitives.css) and nothing else ever rendered these two ids. */
 /* REMOVED 2026-09-14: `#sh-form button`, the Go button's base styling. The
    button is gone (app.js, renderAllShows — founder: "since the search results
    are live, the 'go' button is useless, delete it"), `#sh-form` is the only
@@ -1529,38 +1517,24 @@ button.reorder.drag-handle {
 }
 .play-btn:active { transform: scale(0.94); }
 
-/* The player is fixed, so reserve room or it covers the last card.
-
-   N1 (founder feedback, ride-along on U-13): the reservation is COMPOSED,
-   never chosen. Two independent things occupy the bottom edge — the tab bar
-   (always, `body.ui-v2`) and the mini player / Now Playing sheet (only while
-   `body.fp-open`) — so each rule reserves the sum of what is actually on
-   screen, plus the home-indicator inset exactly once. The flat `96px` this
-   replaces left out `env(safe-area-inset-bottom)` even though #foray-player
-   pads itself by precisely that, so on a notched phone the last row of a
-   scrollable page sat under the ribbon.
-
-   And nothing reserves the bar's height when the bar is gone: every rule here
-   is scoped to `.fp-open`, which client.js removes in `stopAndClose()`, so
-   stopping takes the reservation with it rather than leaving a dead gap. */
+/* THE PLAYER'S BAR LIVES IN THE DOCK NOW (Redesign 2026, ambient; ui/tabbar.js,
+   ui/dock.css). The room the mini bar and the tab bar need at the bottom edge is
+   reserved by ONE rule over there (`--dock-reserve`), composed from what is on
+   screen exactly as N1 (founder feedback, ride-along on U-13) asked: the
+   reservation is never chosen, always the sum of what is present, with the
+   home-indicator inset counted once. What this file keeps is `--fp-bar-h`, which
+   the sheets below still read for the strip the bar occupies, and the player's
+   root, which now holds only the Now Playing sheet and the live region. */
 :root {
   /* The room the collapsed mini bar needs, as a token rather than a magic
-     number repeated across the rules below. Unchanged value: this is the
-     number that was inline. It is the bar box ONLY -- the safe-area inset is
-     added by the rules, never folded in here, so it is applied exactly once.
-     Its `--fp-sheet-h` sibling is gone: the expanded sheet is a full-height
-     overlay now and reserves nothing (see `.fp-sheet`). */
+     number repeated across the rules below. It is the bar box ONLY -- the
+     safe-area inset is added by the rules, never folded in here, so it is
+     applied exactly once. */
   --fp-bar-h: 96px;
 }
-body.fp-open { padding-bottom: calc(var(--fp-bar-h) + env(safe-area-inset-bottom)); }
 
 #foray-player {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
-  background: var(--surface);
-  border-top: 1px solid var(--line);
-  box-shadow: var(--shadow-up);
-  /* Android gesture bar / iPhone home indicator (#39 formalises this). */
-  padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
 /* While a soft keyboard is up, the bar is off the screen entirely (founder
@@ -1613,375 +1587,69 @@ body.kb-open #foray-player { display: none; }
   --tab-bar-h: calc(56px * min(var(--type-scale, 1), 1.5));
 }
 
-body.ui-v2 {
-  /* Reserves room so the LAST thing on every page (a card, a list row) is
-     not tucked under the bar — the same "reserve, don't overlap" rule
-     .topbar's own four reservations follow, just at the opposite edge. */
-  padding-bottom: calc(var(--tab-bar-h) + env(safe-area-inset-bottom));
-}
-.tab-bar {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 55; /* below #foray-player's 60: the mini-player docks ON TOP of the bar, never behind it */
-  display: flex;
-  height: calc(var(--tab-bar-h) + env(safe-area-inset-bottom));
-  padding-bottom: env(safe-area-inset-bottom, 0);
-  background: var(--surface);
-  border-top: 1px solid var(--line);
-  box-shadow: var(--shadow-up);
-}
-.tab-btn {
-  flex: 1;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 2px;
-  /* `--text-dim`, which ui-v2 aliases to `--muted` (audit 2026-09-22, qa row 79):
-     an idle tab's label is 0.66rem TEXT, and `--faint` is 3.1:1 on the bar. */
-  color: var(--text-dim);
-  text-decoration: none;
-  font-size: var(--fs-2xs);
-  font-weight: 600;
-}
-.tab-btn svg { width: 22px; height: 22px; fill: currentColor; stroke: none; }   /* the Phosphor sprite is filled paths, painted by currentColor (ui/icons.js) */
-/* The listener's OWN current location in the app is their material, not
-   4a's editorial voice — amber, not violet, per the split U-01 establishes
-   and issue #127 requires stay meaningful everywhere it appears. Falls
-   back to --accent outside ui-v2 scope, though in practice the bar never
-   renders there at all (see the header comment). */
-.tab-btn[aria-current="page"] { color: var(--accent); }
-body.ui-v2 .tab-btn[aria-current="page"] { color: var(--amber); }
-
-/* The mini-player DOCKS ABOVE the bar (U-02's ask, "exactly as the mockup
-   stacks them") rather than overlapping or replacing it — both must stay
-   reachable at once, since the bar is primary nav and the player is
-   transport. Bumping #foray-player's own `bottom` by the bar's reserved
-   height is what "docked above" means in a fixed-position layout; the
-   content reservation below stacks the tab-bar's height UNDERNEATH the
-   existing fp-open reservation (96px) rather than replacing it,
-   because both are real space something now occupies.
-
-   There is no longer a `.fp-expanded` variant of that reservation: since the
-   2026-09-13 founder report the expanded Now Playing sheet is a full-height
-   OVERLAY (see `.fp-sheet` below), so it occupies no page space to reserve —
-   the mini bar's 96px is the only bottom furniture the page ever has to
-   account for, open or closed. */
-body.ui-v2.fp-open #foray-player {
-  bottom: calc(var(--tab-bar-h) + env(safe-area-inset-bottom));
-  /* The inset is applied ONCE, by the tab bar underneath (its own box already
-     contains it). `#foray-player`'s base rule pads itself by the inset for the
-     case where it sits on the screen's bottom edge; docked above the tab bar it
-     is not on that edge, so the same padding became a ~34px dead band of bar
-     surface above the tab bar on a home-indicator iPhone — the exact
-     "applied exactly once" trap the reservation comment above warns about
-     (audit 2026-09-22). */
-  padding-bottom: 0;
-}
-body.ui-v2.fp-open {
-  padding-bottom: calc(var(--fp-bar-h) + var(--tab-bar-h) + env(safe-area-inset-bottom));
-}
-/* ---------- the search page's floating search pill (#sh-compose) ----------
+/* THE TAB BAR IS THE DOCK'S BOTTOM ROW NOW (Redesign 2026, ambient; ui/dock.css).
+   `.tab-bar`, `.tab-btn`, the mini bar docked above it and the page's bottom
+   reservation for both are gone from this file: one Veil surface, one reservation
+   (`--dock-reserve`), written beside the surface it reserves for. `--tab-bar-h`
+   above stays only because the iOS Dynamic Type bridge and the Search pill's
+   arithmetic below still name it; the Dock's tab row is `--tab-bar` (64px,
+   ui/tokens.css), and it recedes to 36. */
+/* ---------- the search page's field (#sh-compose): the Dock's top row ----------
 
    FOUNDER, 2026-09-13: "We should likely also move the search bar down to the
    bottom - model it after most other text boxes, for example in the Claude
-   app or Apple Podcasts" — then, having checked his phone: "the text field on
+   app or Apple Podcasts" - then, having checked his phone: "the text field on
    Apple Podcasts search is definitely on the bottom. Let me share some
    pictures, they seem to have nailed it."
 
-   SO THIS IS BUILT AGAINST THOSE SCREENSHOTS, not against an idea of what
-   Apple probably does. What they show, and what the rules below reproduce in
-   our own palette and type rather than copy pixel for pixel:
+   That ruling stands: the field is at the BOTTOM. What changed (Redesign 2026,
+   ambient, the Dock) is who holds it there. It used to be its own
+   `position: fixed` row, lifted by a sum of per-object terms (`--sh-dock`: the
+   tab bar, the mini bar, the home indicator) to sit above two other fixed bars.
+   Those were three floating things stacked by arithmetic; they are ONE surface
+   now (ui/tabbar.js, ui/dock.css) - the field, the mini player and the three
+   tabs are rows of the Dock, divided by a rim, with no gap - and the Dock owns
+   the bottom edge, the home-indicator inset (counted once), the keyboard lift
+   (`--kb-inset`) and the stacking (55, the old tab bar's rung). ui/tabbar.js
+   moves this page's own #sh-compose into the Dock's field row after the render;
+   everything here that is not about WHERE the field sits is still its look.
 
-     - a FLOATING ROW inset from both screen edges, not a full-width bar
-       welded to the bottom of the window;
-     - the field as a TRANSLUCENT ROUNDED PILL with the page's own content
-       scrolling visibly behind it;
-     - a CIRCULAR COMPANION BUTTON beside the pill (app.js explains why ours
-       is empty when idle where theirs holds a Home button);
-     - the mini-player floating as its own inset pill ABOVE the field, and
-       GONE while the keyboard is up.
+   What the founder's photographs settled, and what is kept below: a TRANSLUCENT
+   ROUNDED PILL, and a CIRCULAR COMPANION BUTTON beside it (app.js explains why
+   ours is empty when idle where theirs holds a Home button). The Dock restyles
+   both onto its Veil (no hairline, no second blur: the Dock is the only blurred
+   surface); the rules below are the page's own base, which the Discover screen
+   unit replaces with the SearchField primitive.
 
-   That last one we had already shipped independently, in the rule above
-   (`body.kb-open #foray-player`), from a separate founder report. Apple
-   agrees with it. The one place we do NOT match them yet is the mini-player's
-   own SHAPE — theirs is an inset floating pill, ours is still a full-width
-   docked bar — and that is deliberately left alone here: `#foray-player`'s
-   markup belongs to the player module and to the Now Playing sheet work
-   landing beside this.
-
-   These rules sit here, after the player and tab-bar block rather than next
-   to `#sh-form` where the field's own styling lives, because what they have
-   to say is entirely about the bottom edge: they compose `--tab-bar-h`,
-   `--fp-bar-h` and `--kb-inset`, and the reader needs those three in view to
-   check the arithmetic.
-
-   WHAT ELSE IS DOWN THERE, bottom-up, and where this lands in it:
-
-     .tab-bar       z 55   always (body.ui-v2), bottom: 0
-     #sh-compose    z 58   <- here
-     #foray-player  z 60   only while body.fp-open; sits above the tab bar,
-                           and is display:none while body.kb-open
-
-   ABOVE THE TAB BAR (55) because the row floats ON TOP of it, which is the
-   same relationship the mini-player has to it and so belongs on the same side
-   of 55. BELOW THE PLAYER (60) because that id is two things: the mini bar
-   AND the expanded Now Playing sheet. A search pill that outranked 60 would
-   float over an open sheet — a modal with someone else's chrome punched
-   through it. Yielding costs nothing in the only case where the two share the
-   screen, because they never overlap: `--sh-dock` lifts this row clear of the
-   mini bar while the keyboard is shut, and `body.kb-open` takes the mini bar
-   off the screen entirely while it is open. That is also the order Apple
-   uses — mini-player above the field, never below it. The ladder near the top
-   of this file carries 58 too.
-
-   `--sh-dock` IS THE ROOM ALREADY TAKEN at the bottom edge, composed exactly
-   the way `body.fp-open`'s content reservations above compose it: each rule
-   names the sum of what is actually on screen, and adds the home-indicator
-   inset exactly once. It is spent as `bottom` — the row FLOATS, so unlike a
-   welded bar it has no background that must reach the screen edge, and
-   lifting it is both simpler and what the screenshots show. `--fp-bar-h` is
-   the player's generous reservation rather than its drawn height, so the gap
-   above the mini bar is a little roomier than Apple's; that is a nicer
-   failure than a 1px overlap, and it reuses the existing token instead of
-   introducing a second number for the same object.
-
-   THE `:not(.kb-open)` PREFIX IS LOAD-BEARING, not decoration. While the
-   keyboard is up there is nothing left to clear — the player is hidden by the
-   rule above, and the tab bar and the home indicator are both behind the
-   keyboard — so `--sh-dock` must fall back to the bare gap. Writing that as a
-   `body.kb-open` override would LOSE: `body.ui-v2.fp-open #sh-compose` is the
-   more specific selector and would keep winning. Scoping the dock rules
-   themselves means the keyboard-open case simply matches none of them and
-   inherits the default. */
-:root {
-  /* The breathing room between the row and whatever is under it — the screen
-     edge, the tab bar, the mini bar. One token, because Apple's inset is
-     visibly the same on every side. */
-  --sh-gap: 10px;
-}
-
-/* ONE TERM PER OBJECT, NOT ONE RULE PER COMBINATION (rewritten 2026-09-14,
-   when the tab bar became the third thing that can be absent — founder: "when
-   the search bar is up, this home ribbon should go away").
-
-   This block used to enumerate the combinations: four rules for two optional
-   objects plus a catch-all for the case the other three missed. That is 2^n
-   rules for n objects and it had already produced one rule
-   (`:not(.ui-v2):not(.fp-open)`) whose only job was to re-add a term the
-   other three each added separately. A third object would have taken it to
-   eight, and the founder's change makes the tab bar exactly that.
-
-   So each object now contributes its OWN term, switched by its OWN selector,
-   and `--sh-dock` sums them. The header's rule is unchanged and is now
-   literal rather than restated per combination: `--sh-dock` is the room
-   already taken at the bottom edge, and the home-indicator inset is added
-   exactly once because it is added by exactly one rule.
-
-   THE `:not(.kb-open)` PREFIX STAYS ON EVERY TERM, for the reason above: with
-   the keyboard up, nothing down there is on screen, every term is 0, and the
-   dock is the bare gap. It is repeated per term rather than factored out
-   because the terms have to be able to be zeroed independently, and because
-   a factored version would need a higher-specificity override to win — the
-   trap the header paragraph describes. */
+   WHAT ELSE IS DOWN THERE: the player's root is `#foray-player` at z 60 and holds
+   only the Now Playing sheet now; `body.kb-open` still takes it off the screen.
+   The Dock's mini row and tab row yield to the keyboard in ui/dock.css. */
 #sh-compose {
-  /* Every optional object defaults to contributing nothing; the rules below
-     turn on only the terms that are actually on screen. */
-  --sh-tab: 0px;
-  --sh-fp: 0px;
-  --sh-safe: 0px;
-  --sh-dock: calc(var(--sh-gap) + var(--sh-tab) + var(--sh-fp) + var(--sh-safe));
-  position: fixed;
-  left: var(--sh-gap); right: var(--sh-gap);
-  /* `--kb-inset` is written by app.js's installKeyboardChrome (see
-     keyboardInsetPx): the distance this row must rise to sit on the
-     keyboard's top edge. 0 whenever no keyboard is up, and 0 on any browser
-     that never sets it. */
-  bottom: calc(var(--kb-inset, 0px) + var(--sh-dock));
-  z-index: 58;
   display: flex;
   align-items: center;
   gap: 8px;
 }
-/* The tab bar: present under ui-v2, and `sh-searching` is the class that
-   takes it away while the field holds focus (see the rule further down that
-   actually hides it, and updateShowBrowseVisibility for why both live on one
-   class). The bar leaving and its height leaving the dock are the SAME
-   selector, which is the only reason the pill does not jump when it goes. */
-body:not(.kb-open).ui-v2:not(.sh-searching) #sh-compose { --sh-tab: var(--tab-bar-h); }
-/* The mini-player, for as long as something is playing. */
-body:not(.kb-open).fp-open #sh-compose { --sh-fp: var(--fp-bar-h); }
-/* The home indicator is down there whatever else is or is not — once. */
-body:not(.kb-open) #sh-compose { --sh-safe: env(safe-area-inset-bottom, 0px); }
 
-/* THE TAB BAR YIELDS TO THE KEYBOARD (founder, 2026-09-14, with a screenshot
-   of it wedged between the search pill and the keyboard — the strip where
-   Apple Podcasts shows nothing at all).
+/* THE PILL, THE x AND THE MAGNIFIER: REMOVED 2026-10-07 (Redesign 2026, ambient, Discover). They were
+   the translucent capsule, its focus ring, the leading glyph and Apple's circular companion button,
+   built against the founder's 2026-09-13 screenshots. The row above still floats exactly where it
+   did (the `--sh-dock` arithmetic is untouched); the field inside it is the Afterglow SearchField now
+   (`.ag-search-field` in ui/primitives.css): 52 tall, the Veil, an i-magnifier, an i-x in the pill when
+   it holds text, and a 2px Lamp ring outside it on focus. */
 
-   `display: none`, not `[hidden]`, and that is not a style preference.
-   `.tab-bar` below carries `display: flex`; an author `display` declaration
-   beats the UA stylesheet's `[hidden] { display: none }` at any specificity,
-   which is the cascade trap renderTabBar's own header documents and
-   test/home-layout.test.js's BUG 3 exists to catch. This is an author rule
-   (0,2,1) against `.tab-bar` (0,1,0), so it wins on the terms the cascade
-   actually judges.
-
-   It also has to beat `body.ui-v2 .tab-bar`-shaped rules if any appear later;
-   `body.sh-searching` is the same weight as `body.ui-v2`, so this is placed
-   AFTER the tab-bar block rather than relying on specificity alone. */
-body.sh-searching .tab-bar { display: none; }
-
-/* THE PILL. `#sh-form`'s own rule earlier in this file is the page-content
-   version (a plain flex row with a 14px bottom margin); inside the floating
-   row it is the translucent capsule the screenshots show. Two IDs, so this
-   beats both that rule and `body.ui-v2 #sh-form` without an !important. */
-#sh-compose #sh-form {
-  flex: 1 1 auto;
-  min-width: 0;
-  margin: 0;
-  gap: 8px;
-  align-items: center;
-  padding: 0 6px 0 14px;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--line);
-  /* Translucent, so the catalogue reads THROUGH the pill rather than being
-     cut off by it — the most characteristic thing about the reference. The
-     plain `background` first is the fallback for browsers without
-     `color-mix`: opaque, but correctly coloured. */
-  background: var(--surface);
-  background: color-mix(in srgb, var(--surface) 72%, transparent);
-  box-shadow: var(--shadow-lift);
-}
-@supports (backdrop-filter: blur(20px)) or (-webkit-backdrop-filter: blur(20px)) {
-  /* Only where it is supported: an unblurred translucent pill over dense
-     artwork is unreadable, so without this the pill has to stay near-opaque. */
-  #sh-compose #sh-form {
-    background: color-mix(in srgb, var(--surface) 55%, transparent);
-    -webkit-backdrop-filter: blur(20px) saturate(1.6);
-    backdrop-filter: blur(20px) saturate(1.6);
-  }
-}
-/* The field gives up its own box: the pill is the box now. Scoped by two IDs
-   so `#sh-input` and `body.ui-v2 #sh-input` are both overridden here, and
-   here only. */
-#sh-compose #sh-input {
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 46px;
-  padding: 0;
-  border: 0;
-  background: none;
-  box-shadow: none;
-  border-radius: 0;
-}
-/* The field gave up its box to the pill, so the PILL carries the ring (audit
-   round 2, a11y-3): `#sh-compose #sh-input:focus { outline: none }` out-ranked
-   the one focus ring and nothing replaced it, so a keyboard or switch user
-   tabbed into the app's primary field and saw only a caret. The ring is the
-   same authored one, drawn on the capsule while anything inside it has focus;
-   the field's own ring would sit inside the capsule as a second outline.
-   test/ui-tokens.test.js refuses an `outline: none` that is neither
-   `:not(:focus-visible)` nor paired with a ring on an ancestor, like this. */
-#sh-compose #sh-form:focus-within { outline: 2px solid var(--amber); outline-offset: 2px; }
-#sh-compose #sh-form #sh-input:focus { outline: none; }
-/* The leading magnifier: what says "search field" rather than "compose box",
-   and the one of Apple's two glyphs we can honour — app.js says why their
-   trailing microphone is deliberately not copied. */
-#sh-compose .sh-glyph {
-  flex: none;
-  width: 18px; height: 18px;
-  stroke: var(--text-dim);
-  stroke-width: 2;
-  stroke-linecap: round;
-  fill: none;
-}
-/* REMOVED 2026-09-14 with the Go button it sized: `#sh-compose #sh-form
-   button[type="submit"] { flex: none; }`. Founder: "since the search results
-   are live, the 'go' button is useless, delete it." The form still submits on
-   the keyboard's return key — a <form> needs no submit control for that —
-   so the path survived the control; this rule had nothing left to select. */
-
-/* THE COMPANION — Apple's circular button beside the pill. Driven by the
-   `hidden` attribute from the same predicate that hides the browse furniture
-   (app.js), so when idle it costs no width and the pill spans the whole row. */
-#sh-dismiss {
-  flex: none;
-  width: 46px; height: 46px;
-  display: flex; align-items: center; justify-content: center;
-  padding: 0;
-  border-radius: var(--radius-round);
-  border: 1px solid var(--line);
-  background: var(--surface);
-  background: color-mix(in srgb, var(--surface) 72%, transparent);
-  color: var(--text);
-  cursor: pointer;
-  box-shadow: var(--shadow-lift);
-}
-@supports (backdrop-filter: blur(20px)) or (-webkit-backdrop-filter: blur(20px)) {
-  #sh-dismiss {
-    background: color-mix(in srgb, var(--surface) 55%, transparent);
-    -webkit-backdrop-filter: blur(20px) saturate(1.6);
-    backdrop-filter: blur(20px) saturate(1.6);
-  }
-}
-#sh-dismiss svg {
-  width: 18px; height: 18px;
-  stroke: currentColor; stroke-width: 2; stroke-linecap: round; fill: none;
-}
-
-/* The row floats, so it occupies none of the page's own height and the last
-   A–Z row would end underneath it. Content scrolling BEHIND the pill is the
-   look we want; content permanently UNREACHABLE behind it is not, so the page
-   still reserves the row's height. Reserved on `#view` rather than on `body`
-   precisely so it STACKS with body's existing tab-bar/player reservations
-   instead of having to restate them. `body.sh-compose` is set by
-   renderAllShows and cleared by the next page's setBodyClass(), so no other
-   page pays for it. */
-:root { --sh-compose-h: 66px; }   /* the 46px pill + --sh-gap above and below */
-body.sh-compose #view { padding-bottom: var(--sh-compose-h); }
-.fp-progress { height: 3px; background: var(--surface-2); }
-.fp-fill { height: 100%; width: 0; background: var(--accent); transition: width .25s linear; }
-
-.fp-bar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
-.fp-art { width: 40px; height: 40px; border-radius: var(--radius-sm); flex: none; box-shadow: var(--shadow-sm); }
-/* The artwork opens Now Playing, like the title beside it (player/client.js
-   wires the same handler) — it is the most obvious 40px target on the bar and
-   every podcast app opens the player from it (audit 2026-09-22). */
-.fp-bar .fp-art { cursor: pointer; }
-/* `align-self: stretch` + centred content: the button fills the bar's full
-   height instead of shrinking to its two lines of text, so the ~8px bands
-   above the title and below the show name — which look like the bar — open
-   the player too, rather than being dead (audit 2026-09-22). */
-.fp-info {
-  flex: 1 1 auto; min-width: 0;
-  align-self: stretch; min-height: 44px;
-  display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px;
-  background: none; border: 0; color: inherit; text-align: left; cursor: pointer; padding: 0;
-}
-.fp-title, .fp-show, .fp-err { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.fp-title { font-family: var(--font-display); font-size: var(--fs-md); font-weight: 600; color: var(--text); }
-.fp-show { font-size: var(--fs-xs); color: var(--text-dim); }
-/* A failed play (player/client.js `setPlayFailure`, audit 2026-09-22): the show
-   line's slot and size, in the error tone `.fy-error` uses on the Foray page. */
-.fp-err { font-size: var(--fs-xs); color: var(--gold); }
-
-/* Big targets — this is still a car product (04_VOICE_AUDIO_SPEC safety).
-   fp-play is the primary action and stays filled at rest, not just on
-   hover — hover barely applies on the touch devices this is mostly used
-   on, so a hover-only accent left the main button looking like every
-   other secondary control until you happened to point at it. */
-.fp-play, .fp-close {
+/* The page reserves room at its bottom edge for the Dock (and, on Discover, the field row it
+   carries) in ONE place: `body.ui-v2`'s padding-bottom in ui/dock.css, composed from what is on
+   screen. `body.sh-compose` is set by renderAllShows and cleared by the next page's
+   setBodyClass(), so no other page pays for the field row. */
+/* THE MINI BAR'S OWN RULES MOVED TO ui/dock.css (Redesign 2026, ambient): its
+   progress line, artwork, title button, Play and Skip are a row of the Dock now.
+   What stays here is the sheet's ✕. Big targets - this is still a car product
+   (04_VOICE_AUDIO_SPEC safety): 44px to hit. */
+.fp-close {
   flex: none; width: 44px; height: 44px; border-radius: var(--radius-round);
-  border: 1px solid var(--line); background: var(--surface-2); color: var(--text);
-  font-size: var(--fs-md); cursor: pointer; padding: 0;
+  border: 1px solid var(--line); background: var(--surface-2); color: var(--text-dim);
+  font-size: var(--fs-xs); cursor: pointer; padding: 0;
 }
-.fp-play { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: var(--shadow); }
-.fp-close { font-size: var(--fs-xs); color: var(--text-dim); }
-/* The bar's back-15 (persona 10): 44px to hit, borderless so the bar stays
-   quiet beside the one filled control (▶). Tabular so "↺ 15" never jitters. */
-.fp-skip {
-  flex: none; width: 44px; height: 44px; border-radius: var(--radius-round);
-  border: 0; background: none; color: var(--text);
-  font: inherit; font-size: var(--fs-xs); font-weight: 600; font-variant-numeric: tabular-nums;
-  cursor: pointer; padding: 0;
-  touch-action: manipulation;
-}
-.fp-skip:active { background: var(--surface-2); }
 /* U-13 follow-up: the ✕ belongs to the EXPANDED sheet, not to the mini bar it
    sits in. Once closing means collapse (client.js's `fp-close` comment), a ✕ on
    an already-collapsed bar has nothing to collapse — a visible control that does
@@ -3494,13 +3162,8 @@ body.fy-sheet-keeps-player.fp-open .fy-sheet .fy-panel {
    the genuinely new surfaces this card adds (the search field/button, the
    browse-subjects pill row, the generated-playlist badge, and the CTA's own
    layout) are styled here. */
-body.ui-v2 #sh-input {
-  border-radius: var(--radius-lg);
-  border-color: var(--line);
-  background: var(--surface);
-  color: var(--text);
-  font-family: var(--font-body);
-}
+/* REMOVED 2026-10-07 (Redesign 2026, ambient, Discover): `body.ui-v2 #sh-input`, the ui-v2 restyle of
+   the field that is now `.ag-search-field`. */
 /* REMOVED 2026-09-14: `body.ui-v2 #sh-form button`, which is the violet pill
    visible inside the field in the founder's screenshot. Deleted with the
    button itself — see `#sh-form button` earlier in this file, and
@@ -3510,14 +3173,8 @@ body.ui-v2 #sh-input {
 body.ui-v2 .show-result-title { font-family: var(--font-display); }
 body.ui-v2 .show-result-by { font-family: var(--font-body); color: var(--muted); }
 
-/* The "browse subjects" pill row (mockup SearchScreen), v2-only per
-   browsePillsHtml()'s own guard -- there is no v1 pill row to restyle,
-   this is new markup, not a restyle of something that already existed. */
-body.ui-v2 .sh-browse-pills {
-  display: flex; flex-wrap: wrap; gap: 8px;
-  margin: 10px 0 14px;
-}
-/* (The pills themselves are `.fy-chip`, restyled once for ui-v2 below.) */
+/* REMOVED 2026-10-07 (Redesign 2026, ambient, Discover): `.sh-browse-pills`, the pill wall. Subjects are
+   five heads of SubjectTiles now (`.dsc-grid`, ui/primitives.css). */
 
 /* "Generated for you" badge (D5's own wording, shared with U-03's Home
    section): violet, per issue #127's split -- this is what 4a itself
@@ -3844,26 +3501,12 @@ body.ui-v2 button.danger { color: var(--muted); }
 /* ---------- mini/full player chrome (styles.css only -- player/*.js untouched) ----------
    Every selector here already exists in the v1 player CSS above; nothing in
    player/client.js or any other player/*.js file changes -- only the paint. */
-body.ui-v2 #foray-player {
-  background: var(--surface);
-  border-top-color: var(--line);
-}
-body.ui-v2 .fp-progress { background: var(--surface2); }
-/* The scrub position is the listener's own place in the episode -- amber,
-   matching the Foray strip's own position marker above. */
-body.ui-v2 .fp-fill { background: var(--amber); }
-body.ui-v2 .fp-title { font-family: var(--font-display); color: var(--text); }
-body.ui-v2 .fp-show { color: var(--muted); }
-body.ui-v2 .fp-play, body.ui-v2 .fp-close {
+/* The mini bar (progress line, title, Play, Skip) is painted by ui/dock.css now. */
+body.ui-v2 .fp-close {
   border-color: var(--line);
   background: var(--surface2);
-  color: var(--text);
+  color: var(--muted);
 }
-/* Play/pause is 4a's own transport control -- violet. */
-body.ui-v2 .fp-play { background: var(--violet); border-color: var(--violet); color: var(--bg); box-shadow: none; }
-body.ui-v2 .fp-close { color: var(--muted); }
-body.ui-v2 .fp-skip { color: var(--text); }
-body.ui-v2 .fp-skip:active { background: var(--surface2); }
 body.ui-v2 .fp-clip, body.ui-v2 .fy-clip { color: var(--muted); }
 body.ui-v2 .fp-clip:hover:not(:disabled), body.ui-v2 .fp-clip:active:not(:disabled),
 body.ui-v2 .fy-clip:hover:not(:disabled), body.ui-v2 .fy-clip:active:not(:disabled) { color: var(--text); }
@@ -3872,14 +3515,15 @@ body.ui-v2 .fp-s-desc { color: var(--text); }
 body.ui-v2 .fp-grab-zone .fy-grab { background: var(--line); }
 body.ui-v2 .fp-times { color: var(--muted); }
 body.ui-v2 .fp-btn:hover:not(:disabled) { border-color: var(--violet); }
-/* The sheet's Play is the bar's Play: the same violet fill (`.fp-play`). */
+/* The sheet's Play keeps the legacy violet fill until the Now Playing screen unit
+   gives it the Ember treatment the mini bar's Play already has (ui/dock.css). */
 body.ui-v2 .fp-btn.fp-big { background: var(--violet); border-color: var(--violet); color: var(--bg); }
 /* After the shared rule, so Stop keeps the weight `.fp-stop`'s own comment
    explains (it is not Close). */
 body.ui-v2 .fp-stop { color: var(--danger-text); border-color: color-mix(in srgb, var(--danger) 55%, var(--line)); }
 body.ui-v2 .fp-openep { color: var(--violet); }
 body.ui-v2 .fp-note { color: var(--muted); }
-body.ui-v2 .fp-err, body.ui-v2 .fp-err-line { color: var(--amber); }
+body.ui-v2 .fp-err-line { color: var(--amber); }
 
 /* ---------- Library summaries reached from Playlists' "Library ›" link ---------- */
 body.ui-v2 .lib-section-head { color: var(--muted); }

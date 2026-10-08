@@ -1241,7 +1241,10 @@ function isNativeShell(win = window) {
    ONE of the two lives on the element this function overwrites. A render
    with the keyboard up dropped `kb-open` and kept `--kb-inset`, and
    `#sh-compose`'s `bottom: calc(var(--kb-inset) + var(--sh-dock))` then
-   composed a keyboard-open inset with the keyboard-SHUT dock.
+   composed a keyboard-open inset with the keyboard-SHUT dock. (Since the Dock,
+   #sh-compose is the Dock's field row and the Dock's own `bottom` carries
+   `--kb-inset` - ui/dock.css; `--sh-dock` is gone. The survival argument is
+   unchanged: a class that is dropped while the inset survives still disagrees.)
 
    MEASURED, not reasoned (test/playwright/tests/search-chrome-dock.spec.js,
    Chromium at 390x844 with the keyboard-open state and something playing):
@@ -4646,12 +4649,10 @@ function renderCurrentPage() {
   else if ((m = /^#\/shows\/q\/(.*)$/.exec(h))) renderAllShows(safeDecode(m[1]));
   else if (h === "#/shows") renderAllShows();
   else if (h === "#/playlists") renderPlaylists();
-  else if (h === "#/create") renderCreate();
   else if (h === "#/forays") renderForays();
   else if (h === "#/queue") renderQueue();
   else if (h === "#/library") renderLibrary();
-  else if (h === "#/starred-shows") renderStarredShows();
-  else if (h === "#/interests") renderInterests();
+  else if (h === "#/tuning") renderInterests();
   else if (h === "#/settings") renderSettings();
   else if (h === "#/about") renderAbout();
   else if (h === "#/gallery" && galleryAllowed()) renderGallery();
@@ -4711,6 +4712,13 @@ function route() {
   /* A timestamp link's alias (or a stray spelling of its `t`) is rewritten to
      the canonical address IN PLACE before anything records it (#30). */
   if (location.hash !== h && episodeDeepLink(location.hash)) replaceHash(h);
+  /* A folded route (ROUTE_ALIASES) is rewritten in place too, so ‹ does not
+     bounce off an address that now means something else. `#/create` lands on
+     Discover WITH THE FIELD FOCUSED: the field is what the Create tab was for. */
+  else if (location.hash !== h && Object.prototype.hasOwnProperty.call(ROUTE_ALIASES, location.hash)) {
+    if (location.hash === "#/create" && typeof dockFocusFieldNext === "function") dockFocusFieldNext();
+    replaceHash(h);
+  }
   const step = noteNavigation(h);
   rememberRouteForRelaunch(h);
   /* Read BEFORE the render: renderCurrentPage() replaces #view's innerHTML,
@@ -4828,6 +4836,12 @@ function landOnPage({ navigated = false } = {}) {
   }
 }
 
+const ROUTE_ALIASES = Object.freeze({
+  "#/create": "#/shows",
+  "#/starred-shows": "#/library",
+  "#/interests": "#/tuning",
+});
+
 /* The one normalisation of the hash every route decision reads. THREE
    SPELLINGS OF HOME ("", "#", "#/") rendered the same page and were three
    different things to everything else: tabForHash lit no tab for two of them,
@@ -4837,6 +4851,14 @@ function landOnPage({ navigated = false } = {}) {
    place, so the address the history holds agrees with this. */
 function currentHash(hash = location.hash) {
   if (!hash || hash === "#") return "#/";
+  /* THREE ROUTES FOLDED INTO THEIR NEW HOMES (Redesign 2026, ambient, the Dock:
+     three tabs, no drawer). The alias is read HERE so every reader of "which
+     page is this" - the tab highlight, the router, back-navigation memory -
+     sees one spelling, and route() rewrites the address in place (below) so
+     the history holds it too. `#/create` was a tab whose page held one field;
+     that field is Discover's now. `#/starred-shows` was Library's overflow
+     page; Library lists every followed show. `#/interests` is Tuning. */
+  if (Object.prototype.hasOwnProperty.call(ROUTE_ALIASES, hash)) return ROUTE_ALIASES[hash];
   /* ONE SPELLING OF A TIMESTAMP LINK, too (#30): `#/play/<id>?t=N` is the
      alias, `#/episode/<id>?t=N` the page — see episodeDeepLink. route()
      writes this spelling back into the address in place. */

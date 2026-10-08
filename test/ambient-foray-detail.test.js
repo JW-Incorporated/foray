@@ -559,60 +559,6 @@ test("the page has no transport of its own: the bindings still run when the cont
 
 /* ---------- 6. the Dock on this page (iteration 4) ---------- */
 
-test("the Dock on Foray detail is the warm Veil, not the legacy slab: inset, rounded, Glow-tinted, DM Sans title, Ember Play, Glow progress line", () => {
-  /* Iteration 3 shipped the legacy full-width violet-black bar (a third hue), a violet Play disc, a Fraunces-bold mini title,
-     and an opaque surface under an orange progress line.
-     MUTATION 1: change `background: var(--glow-veil)` on `body.view-foray-detail .tab-bar` to `var(--surface)` -> red.
-     MUTATION 2: drop `left`/`right` or set `border-radius: 0` on the bar -> red.
-     MUTATION 3: delete the `.fp-play` rule, or put `var(--violet)` anywhere in the sheet -> red.
-     MUTATION 4: delete the `.fp-title` rule (the legacy Fraunces `--font-display` title returns) or give it `var(--font-display)` -> red.
-     MUTATION 5: delete the `.fp-progress` rule (the opaque navy track returns under the line) or set `.fp-fill` to `var(--ember)` -> red.
-     MUTATION 6: delete the `@supports not` / `prefers-reduced-transparency` / `prefers-contrast` fallback blocks -> red. */
-  const bar = decls(CSS, "body.view-foray-detail .tab-bar");
-  assert.ok(bar, "the bar rule exists");
-  assert.strictEqual(bar.left, "var(--ag-gutter)");
-  assert.strictEqual(bar.right, "var(--ag-gutter)", "a floating Dock, not a full-width bar");
-  assert.strictEqual(bar.bottom, "var(--dock-lift)");
-  assert.strictEqual(bar["border-radius"], "var(--r-xl)");
-  assert.strictEqual(bar.background, "var(--glow-veil)", "the warm Glow-tinted Veil, never the legacy surface");
-  assert.match(bar["backdrop-filter"], /blur\(20px\) saturate\(140%\)/);
-  assert.match(bar["box-shadow"], /var\(--rim\)/);
-  const mini = decls(CSS, "body.view-foray-detail.ui-v2.fp-open #foray-player");
-  assert.ok(mini, "the mini rule exists");
-  assert.strictEqual(mini.background, "var(--glow-veil)", "the mini is the same Veil, the Dock's top row");
-  assert.strictEqual(mini["border-radius"], "var(--r-xl) var(--r-xl) 0 0");
-  assert.match(mini["backdrop-filter"], /blur\(20px\)/);
-  assert.strictEqual(decls(CSS, "body.view-foray-detail.fp-open .tab-bar")["border-radius"], "0 0 var(--r-xl) var(--r-xl)");
-  assert.strictEqual(decls(CSS, "body.view-foray-detail.ui-v2 #foray-player .fp-play").background, "var(--ember)", "Ember on the Veil, never violet");
-  assert.doesNotMatch(CSS, /--violet/, "the third hue is nowhere on this page");
-  assert.strictEqual(decls(CSS, "body.view-foray-detail #foray-player .fp-title").font, "var(--t-label)", "the mini title is the DM Sans label style, not Fraunces");
-  assert.strictEqual(decls(CSS, "body.view-foray-detail #foray-player .fp-progress").background, "transparent", "the line sits on the Veil, not on an opaque track");
-  assert.strictEqual(decls(CSS, "body.view-foray-detail #foray-player .fp-fill").background, "var(--glow)");
-  assert.strictEqual(declsAll(CSS, "body.view-foray-detail")["--tab-bar-h"], "calc(var(--tab-bar) + var(--dock-inset))", "the legacy sums read the Dock's real height");
-  /* MUTATION 7: delete the collapsed `overflow: hidden` -> the progress line pokes out past the rounded top corners -> red.
-     MUTATION 8: delete the expanded `backdrop-filter: none` -> the fixed Now Playing sheet is confined to the bar's box -> red. */
-  assert.strictEqual(decls(CSS, "body.view-foray-detail.ui-v2.fp-open:not(.fp-expanded) #foray-player").overflow, "hidden");
-  assert.strictEqual(decls(CSS, "body.view-foray-detail.ui-v2.fp-open.fp-expanded #foray-player")["backdrop-filter"], "none", "a blurred bar would contain the fixed sheet");
-  for (const q of ["@supports not", "@media (prefers-reduced-transparency", "@media (prefers-contrast"]) {
-    assert.ok(CSS.includes(q), `the Dock has its ${q} fallback`);
-  }
-});
-
-test("the last tile is never sliced by the Dock: a fixed fade solid from 32px above the Dock's top row to the screen edge, under the Dock", () => {
-  /* MUTATION 1: delete the `body.view-foray-detail::after` rule -> red. MUTATION 2: z-index 56 (over the Dock) or pointer-events
-     auto (it would eat taps) -> red. MUTATION 3: end the gradient at `transparent` instead of bg0 -> red. */
-  const fade = decls(CSS, "body.view-foray-detail::after");
-  assert.ok(fade, "the fade exists");
-  assert.strictEqual(fade.position, "fixed");
-  assert.strictEqual(fade.bottom, "0");
-  assert.strictEqual(fade["pointer-events"], "none");
-  assert.ok(Number(fade["z-index"]) < 55 && Number(fade["z-index"]) > 1, "over the content, under the legacy bar (55)");
-  assert.strictEqual(fade.height, "calc(var(--fd-dock-h) + var(--s-8))", "32px taller than the Dock");
-  assert.strictEqual(fade.background, "linear-gradient(transparent 0, var(--bg0) var(--s-8))");
-  assert.strictEqual(declsAll(CSS, "body.view-foray-detail")["--fd-dock-h"], "calc(var(--dock-lift) + var(--tab-bar))");
-  assert.strictEqual(decls(CSS, "body.view-foray-detail.fp-open")["--fd-dock-h"], "calc(var(--dock-lift) + var(--tab-bar) + var(--mini))", "the mini row is part of the Dock when something plays");
-});
-
 test("the page lights the root's Glow with its first show's, so the Dock (outside the page) is tinted by the Room", () => {
   /* The Dock lives on <body>; a `--glow` set only on `.fd` never reaches it, so the Veil mixed the root's stale Glow.
      MUTATION: delete the forayCssVar(document.documentElement, "--glow", glow) line in ui/foray.js -> red. */

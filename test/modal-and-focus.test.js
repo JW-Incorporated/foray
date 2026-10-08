@@ -323,19 +323,19 @@ test("REVIEW: a sheet opened over Now Playing is live, even though Now Playing h
   assert.ok(!inert(voice.wrap), "and nothing is left inert once both are closed");
 });
 
-test("REVIEW: a tab bar created while the first-run Room is open is out of reach too", () => {
-  /* The Room opens from Home's render, before renderTabBar creates the bar
-     on a first visit, so inertOutside never saw it. MUTATION: drop the
-     inertUnderOpenSheet(bar) call from renderTabBar. */
+test("REVIEW: a Dock created while the first-run explainer is open is out of reach too", () => {
+  /* The explainer opens from Home's render, before renderTabBar creates the Dock (the tab bar, and the
+     mini player and Discover's field with it) on a first visit, so inertOutside never saw it.
+     MUTATION: drop the inertUnderOpenSheet(layer) call from ensureDock in ui/tabbar.js. */
   const m = mount();
   m.tabBar.remove();                               // a first visit: no bar yet
   assert.strictEqual(m.ctx.showFirstTimeExplainerOnce(), true, "fixture: a fresh profile gets the Room");
   m.ctx.renderTabBar();
-  const bar = m.doc.body.querySelector("#tab-bar");
-  assert.ok(bar, "fixture: the bar was created");
-  assert.ok(inert(bar), "the new bar is behind the dialog like everything else");
+  const layer = m.doc.body.querySelector("#dock-layer");
+  assert.ok(layer, "fixture: the Dock was created");
+  assert.ok(inert(layer), "the new Dock is behind the dialog like everything else");
   m.doc.key("Escape");
-  assert.ok(!inert(bar), "and is released with the rest when the Room closes");
+  assert.ok(!inert(layer), "and is released with the rest when the explainer closes");
 });
 
 test("Escape asks the TOP sheet to close through its own handler", () => {

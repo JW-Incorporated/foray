@@ -960,7 +960,7 @@ function libMenuAct(id, act) {
 /* THE LIST, AND ONE DOOR TO THE BUILDER (audit round 2, p-first-6; founder
    question 4, default taken): the `#pl-form` builder that lived here is gone --
    see the removal note above `bindPickLogging`. The empty state says the same
-   sentence Library's does, and both point at Create. */
+   sentence Library's does, and both point at Discover. */
 function renderPlaylists() {
   setBodyClass("view-page");
   const all = playlists();
@@ -970,7 +970,7 @@ function renderPlaylists() {
         <a class="back" href="#/">‹</a>
         <div><h2>Playlists</h2>${all.length ? `<p class="sub">${countLabel(all.length, "playlist")}</p>` : ""}</div>
       </div>
-      <a class="page-link-row" href="#/create">Build a playlist ›</a>
+      <a class="page-link-row" href="#/shows">Build a playlist ›</a>
       ${all.length ? all.map(p => `
         <a class="pl-row" href="#/${esc(playlistRoute(p))}">
           <div class="info">
@@ -979,6 +979,6 @@ function renderPlaylists() {
           </div>
           <span class="chev">›</span>
         </a>`).join("")
-      : `<p class="note">No playlists yet — <a href="#/create">build one on the Create tab</a>.</p>`}
+      : `<p class="note">No playlists yet — <a href="#/shows">build one from Discover</a>.</p>`}
     </div>`;
 }

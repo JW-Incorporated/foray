@@ -253,10 +253,10 @@ test("a browse tile runs the ordinary search for its own label", async ({ page }
   await expect(tile).toHaveCount(1);
   await tile.click();
 
-  /* "Search", not "Shows": the audit (theme K / R6, 2026-09-23) gave each
+  /* "Discover", not "Search" or "Shows": the audit (theme K / R6, 2026-09-23) gave each
      destination one name, and the tab bar's wins, so the page is titled for
-     the tab that opens it. */
-  await expect(page.locator("#view h2")).toHaveText("Search");
+     the tab that opens it (the tab became Discover with the Dock). */
+  await expect(page.locator("#view h2")).toHaveText("Discover");
   await expect(page.locator("#sh-input")).toHaveValue("Science");
   await page.waitForFunction(() => document.querySelectorAll("#sh-results .show-result").length > 0, null, { timeout: 30_000 });
   await expect(page.locator("#view")).not.toContainText("No shows here yet.");

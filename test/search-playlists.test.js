@@ -94,6 +94,7 @@ function makeEl(tag) {
       }
       return null;
     },
+    querySelectorAll: () => [],
     closest: () => null, focus() {}, select() {}, click() {},
     remove() {
       if (el.parent) el.parent.children = el.parent.children.filter((c) => c !== el);
@@ -107,7 +108,7 @@ const PAGE_IDS = [
   "view", "drawer", "drawer-overlay", "drawer-playlists", "family-toggle",
   "player-toggle", "menu-btn", "refresh-btn", "banner-slot", "pl-form",
   "pl-input", "pl-note", "tab-topics", "tab-shows", "sh-form", "sh-input",
-  "sh-note", "sh-results", "browse-all-link", "pl-search-results",
+  "sh-note", "sh-results", "browse-all-link", "pl-search-results", "sh-make", "sh-make-note",
 ];
 
 function mount({ seed = {}, fetchImpl = () => new Promise(() => {}) } = {}) {
@@ -366,112 +367,117 @@ test("a generated candidate that duplicates an already-shown own playlist id is 
   assert.strictEqual((html.match(/subject-history/g) || []).length, 1, "the shared id must render exactly once");
 });
 
-/* THE GATE IS INVERTED SINCE AUDIT ROUND 2 (search-2). U-05 shipped the CTA
-   for a query the topic scorer called "empty" — and the tap handed that same
-   query to the same scorer, which said "empty" again on another page, every
-   time. The one-tap-builds-a-playlist case is the OTHER one: a rich (or
-   sparse) topic answer with no own/generated playlist yet. The two tests below
-   used to assert the opposite of each other's outcome; their expectations are
-   flipped, not loosened, and each still names the mutation that kills it. */
-test("the CTA appears when a rich topic answer exists and no own/generated playlist matches — the tap will build one", async () => {
-  /* MUTATION: gate the CTA on `status === "empty"` again (the shipped gate),
-     or on `!own.length && !generated.length` alone. The first hides the CTA
-     for "meditation"; the second is caught by the test after this one. The
-     CTA is computed inside a deferred idle callback (see
-     renderPlaylistSearchResults's "THE DEFER IS LOAD-BEARING") -- await one
-     macrotask before asserting. */
+/* ==================================================================== */
+/* 4. "MAKE A PLAYLIST FROM <q>" (Redesign 2026, ambient Discover)       */
+/*                                                                      */
+/* THE THREE TESTS THAT USED TO LIVE HERE pinned the "Create a playlist  */
+/* about X" CTA: gated on the topic scorer (audit round 2, search-2),    */
+/* scanned on an idle callback behind a "Still looking" line, and handing */
+/* the query to #/create through `pendingCreateQuery`. Create folded into */
+/* Discover's one field (DIRECTION.md, "Information architecture"), so   */
+/* the CTA is now a PAGE-level Primary button, offered at three          */
+/* characters under every kind of result (and under none), that builds   */
+/* in place through the one creation path. The ruling that fell is       */
+/* search-2's "offered only when the tap yields a playlist"; its honest  */
+/* half survives as a failure note under the button. Section 3 above      */
+/* (own first, generated badged) is untouched.                            */
+/* ==================================================================== */
+
+test("the Make-a-playlist button needs three characters, then follows the field's text", () => {
+  /* MUTATION: change MAKE_PLAYLIST_MIN_CHARS to 2 -> the "me" assertion fails. Another: drop the
+     `esc()` around the query in paintMakePlaylist -> the hostile-query assertion fails. */
   const m = mount({ seed: { cp_ui_v2: "true" } });
   seedV2Empty(m);
-  const discover = readJson("data/discover.json");
-  const itemTags = readJson("data/item-tags.json");
-  const semantic = readJson("data/semantic-index.json");
-  m.state.discover = discover;
-  m.state.itemTags = itemTags;
-  m.state.semantic = semantic;
-  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
-  const shForm = withSubmittable(m.byId.get("sh-form"));
-  m.byId.get("sh-input").value = "meditation"; // a real, well-covered topic in the fixture corpus
-
   m.ctx.renderAllShows();
-  shForm.submit();
-  await new Promise((r) => setTimeout(r, 0));
-
-  const status = m.evalIn("topicSearchStatus")("meditation").status;
-  assert.ok(status === "ok" || status === "sparse", `fixture: the scorer must be able to build "meditation" (got ${status})`);
-  const pl = m.byId.get("pl-search-results");
-  assert.strictEqual(pl.hidden, false, "the CTA container must become visible");
-  assert.ok(pl.innerHTML.includes("Create a playlist about"), "must render the CTA copy");
-  assert.ok(pl.innerHTML.includes("meditation"), "must name the actual typed query");
-  assert.ok(pl.innerHTML.includes("“meditation”"), "quoted with the one typographic pair (copy-8)");
-  assert.ok(!pl.innerHTML.includes("data-cta-pending"), "and the pending line is gone once the scan answered");
+  const box = m.byId.get("sh-make");
+  m.byId.get("sh-input").value = "me";
+  m.ctx.updateShowBrowseVisibility();
+  assert.strictEqual(box.hidden, true, "two characters: no button");
+  m.byId.get("sh-input").value = "med";
+  m.ctx.updateShowBrowseVisibility();
+  assert.strictEqual(box.hidden, false, "three characters: the button");
+  assert.ok(box.innerHTML.includes("Make a playlist from “med”"), "it names the typed text with the one typographic pair (copy-8)");
+  assert.ok(box.innerHTML.includes('data-make-playlist="med"') && box.innerHTML.includes("ag-btn-primary"), "and it is the Primary button");
+  m.byId.get("sh-input").value = "<img src=x onerror=alert(1)>";
+  m.ctx.updateShowBrowseVisibility();
+  assert.ok(!box.innerHTML.includes("<img"), "the query is escaped in the label and in the attribute");
+  m.byId.get("sh-input").value = "";
+  m.ctx.updateShowBrowseVisibility();
+  assert.strictEqual(box.hidden, true, "an emptied field takes it away");
 });
 
-test("the CTA does NOT appear when the topic scorer is empty — the build it offers would fail", async () => {
-  /* MUTATION: return the CTA unconditionally rather than gating on
-     topicSearchStatus, or gate it on "empty". A query with nothing behind it
-     would then offer a violet primary button whose only outcome is
-     "Not much on … yet" on the Create page. */
+test("the button builds a playlist IN PLACE through the one creation path, and opens it", async () => {
+  /* The whole point of the fold: no hand-off to #/create. MUTATION: set `location.hash = "#/create"` in
+     buildPlaylistFromDiscover instead of building -> the hash assertion fails. Another: call buildPlaylist directly,
+     bypassing the logEvent in buildPlaylistFromDiscover -> the event assertion fails (one path, one event, one flag). */
   const m = mount({ seed: { cp_ui_v2: "true" } });
   seedV2Empty(m);
-  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
-  const shForm = withSubmittable(m.byId.get("sh-form"));
-  m.byId.get("sh-input").value = "zzz-nonsense-query-zzz";
-
+  m.state.discover = readJson("data/discover.json");
+  m.state.itemTags = readJson("data/item-tags.json");
+  m.state.semantic = readJson("data/semantic-index.json");
   m.ctx.renderAllShows();
-  shForm.submit();
-  await new Promise((r) => setTimeout(r, 0));
+  m.ctx.location.hash = "#/shows";
+  const events = [];
+  m.ctx.logEvent = (type, payload) => { events.push({ type, payload }); };
+  const before = JSON.parse(m.store.get("cp_playlists") || "[]").length;
 
-  assert.strictEqual(m.evalIn("topicSearchStatus")("zzz-nonsense-query-zzz").status, "empty", "fixture: nothing to build from");
-  const pl = m.byId.get("pl-search-results");
-  assert.strictEqual(pl.hidden, true, "no Playlists section and no CTA when the scorer has nothing to build from");
-  assert.strictEqual(pl.innerHTML, "", "and the pending line is gone once the scan answered");
+  m.evalIn("buildPlaylistFromDiscover")("meditation");
+  await new Promise((r) => setTimeout(r, 20));
+
+  const after = JSON.parse(m.store.get("cp_playlists") || "[]");
+  assert.strictEqual(after.length, before + 1, "one playlist was built and saved");
+  assert.match(m.ctx.location.hash, /^#\/playlist\//, "and opened; the listener never visited #/create");
+  assert.deepStrictEqual(events.map((e) => [e.type, e.payload.source]), [["playlist_built", "discover"]],
+    "through buildPlaylistFromDiscover: one local event, named for its door");
+  assert.strictEqual(m.evalIn("createBuildPending"), false, "the in-flight flag is released");
 });
 
-test("tapping the CTA does not itself create a playlist — it hands off to Create's own form", async () => {
-  /* MUTATION: call buildPlaylist(query) directly from the CTA's click
-     handler instead of navigating + resubmitting #cr-form. D8/the card's
-     scope line requires exactly one playlist-creation code path
-     (bindCreateFormSubmit, since #/playlists' builder left in round 2); a
-     second one defeats that. And: navigate to "#/playlists" again — the page
-     with no builder — and the hash assertion goes red.
-
-     The container's innerHTML is a raw HTML string in this harness (no real
-     parser), so bindCreatePlaylistCta's own querySelector('[data-create-playlist]')
-     cannot find a node from it — this test appends a REAL fake button with
-     the same attribute as a stand-in for what a real DOM would parse from
-     that same markup, then drives its click through bindCreatePlaylistCta
-     exactly as renderPlaylistSearchResults does. */
+test("a build that cannot make a playlist says why under the button and moves nothing", async () => {
+  /* The honest half of audit round 2's search-2: the button is offered on any text, so a tap on one the
+     scorer cannot build ends in a sentence, not in a navigation. MUTATION: drop the `setStatusText(note, ...)` write in
+     buildPlaylistFromDiscover -> the note assertion fails. */
   const m = mount({ seed: { cp_ui_v2: "true" } });
   seedV2Empty(m);
-  const discover = readJson("data/discover.json");
-  const itemTags = readJson("data/item-tags.json");
-  const semantic = readJson("data/semantic-index.json");
-  m.state.discover = discover;
-  m.state.itemTags = itemTags;
-  m.state.semantic = semantic;
-  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
-  const shForm = withSubmittable(m.byId.get("sh-form"));
-  m.byId.get("sh-input").value = "meditation";
-
+  m.state.discover = readJson("data/discover.json");
+  m.state.itemTags = readJson("data/item-tags.json");
+  m.state.semantic = readJson("data/semantic-index.json");
   m.ctx.renderAllShows();
-  shForm.submit();
-  await new Promise((r) => setTimeout(r, 0));
+  m.ctx.location.hash = "#/shows";
+  m.evalIn("buildPlaylistFromDiscover")("zzz-nonsense-query-zzz");
+  await new Promise((r) => setTimeout(r, 20));
+  const note = m.byId.get("sh-make-note");
+  assert.strictEqual(note.hidden, false, "the note under the button is shown");
+  assert.match(note.textContent, /^Not much on “zzz-nonsense-query-zzz” yet — /, "and says what happened");
+  assert.strictEqual(m.ctx.location.hash, "#/shows", "nothing moved");
+  assert.strictEqual(JSON.parse(m.store.get("cp_playlists") || "[]").length, 0, "and nothing was saved");
+});
 
-  const pl = m.byId.get("pl-search-results");
-  assert.ok(pl.innerHTML.includes("data-create-playlist=\"meditation\""),
-    "the rendered markup must carry the [data-create-playlist] attribute with the typed query");
+test("there is ONE Discover build path: no second builder, painter, button or failure line", () => {
+  /* The branch once carried `runPlaylistBuild` + `onMakePlaylist` + `playlistBuildFailureText` beside trunk's
+     `buildPlaylistFromDiscover` + `createFailureNote` + the `data-create-playlist` button: two flags' worth of
+     pending painting, two failure lines, two buttons. MUTATION: re-add any of those names (a second
+     definition, or a second `data-create-playlist` button) -> red. */
+  const defs = (name) => (APP_SRC.match(new RegExp(`function ${name}\\(`, "g")) || []).length;
+  assert.strictEqual(defs("buildPlaylistFromDiscover"), 1, "one build");
+  assert.strictEqual(defs("paintMakePending"), 1, "one pending painter");
+  assert.strictEqual(defs("createFailureNote"), 1, "one failure line");
+  assert.ok(!/runPlaylistBuild|onMakePlaylist|playlistBuildFailureText|data-create-playlist/.test(APP_SRC), "and no second path's names survive");
+});
 
-  const btnStub = { _attrs: { "data-create-playlist": "meditation" }, children: [], dataset: { createPlaylist: "meditation" }, _listeners: {} };
-  btnStub.addEventListener = (type, fn) => { (btnStub._listeners[type] = btnStub._listeners[type] || []).push(fn); };
-  btnStub.dispatchEvent = (evt) => { (btnStub._listeners[evt.type] || []).forEach((fn) => fn(evt)); };
-  pl.children.push(btnStub);
-
-  const before = (m.store.get("cp_playlists") || "[]");
-  m.evalIn("bindCreatePlaylistCta")(pl);
-  btnStub.dispatchEvent({ type: "click" });
-
-  assert.strictEqual(m.ctx.location.hash, "#/create", "must navigate to the Create page rather than build in place");
-  assert.strictEqual(m.store.get("cp_playlists") || "[]", before, "must not write a new playlist synchronously from the CTA's own click handler");
+test("the old CTA's machinery is gone: no scan on the debounce tick, no hand-off to Create", () => {
+  /* The scan cost 1.3-8 s and the hand-off was a second creation path's front door. MUTATION: call
+     `topicSearchStatus` from renderPlaylistSearchResults -> the first assertion fails. Another: restore
+     `pendingCreateQuery` in create.js -> the second fails. */
+  const m = mount({ seed: { cp_ui_v2: "true" } });
+  seedV2Empty(m);
+  let scans = 0;
+  const real = m.ctx.topicSearchStatus;
+  m.ctx.topicSearchStatus = (q) => { scans++; return real(q); };
+  m.ctx.renderAllShows();
+  m.evalIn("renderPlaylistSearchResults")("meditation", m.evalIn("showSearchToken"));
+  assert.strictEqual(scans, 0, "a playlist search never runs the topic scorer");
+  assert.ok(!/createPlaylistCtaHtml|CTA_PENDING_HTML|bindCreatePlaylistCta|pendingCreateQuery/.test(APP_SRC),
+    "the CTA, its pending line and the module-state hand-off are deleted, not parked");
 });
 
 /* ==================================================================== */
