@@ -134,8 +134,4 @@
 :root[data-type-scale] .ag-np-eyebrow, :root.ag-np-textscale .ag-np-eyebrow { height: 0; }
 :root[data-type-scale] .ag-np-more-label, :root.ag-np-textscale .ag-np-more-label { display: none; }
 
-[data-posture="car"] .ag-np { --np-art: 240px; }
-[data-posture="car"] .ag-np-detail, [data-posture="car"] .ag-np-detail-handle, [data-posture="car"] .ag-np.fp-sheet .fp-s-why { display: none; }
-[data-posture="car"] .ag-np.fp-sheet .ag-np-play.fp-big { width: 112px; height: 112px; }
-[data-posture="car"] .ag-np.fp-sheet .ag-np-skip { width: 72px; height: 72px; }
-@media (max-height: 700px) { [data-posture="car"] .ag-np { --np-art: 200px; } }
+/* Car posture (`[data-posture="car"]`) lives in ui/car.css, beside the script that sets it. */

@@ -626,6 +626,80 @@
           "app": "#tab-bar"
         }
       }
+    },
+    "now-playing-car": {
+      "title": "Now Playing, car posture",
+      "prototype": {
+        "route": "?state=episode&posture=car#/now-playing"
+      },
+      "app": {
+        "state": "player",
+        "step": "now-playing-car"
+      },
+      "regions": {
+        "art": {
+          "prototype": ".np-art",
+          "app": ".ag-np-art-wrap"
+        },
+        "title": {
+          "prototype": ".np-titles",
+          "app": ".ag-np-titles"
+        },
+        "primary": {
+          "prototype": ".np .playbtn",
+          "app": ".ag-np-play"
+        },
+        "skips": {
+          "prototype": ".np .skipbtn",
+          "app": ".ag-np-skip",
+          "mode": "all"
+        },
+        "chip": {
+          "prototype": ".np-head .carchip",
+          "app": ".ag-np-car-chip"
+        },
+        "close": {
+          "prototype": ".np-head button",
+          "app": ".ag-np-head .fp-close"
+        }
+      }
+    },
+    "now-playing-car-375": {
+      "title": "Now Playing, car posture, 375x667 (shoot with --viewports 375x667)",
+      "prototype": {
+        "route": "?state=episode&posture=car&viewport=375x667#/now-playing"
+      },
+      "app": {
+        "state": "player",
+        "step": "now-playing-car"
+      },
+      "regions": {
+        "art": {
+          "prototype": ".np-art",
+          "app": ".ag-np-art-wrap"
+        },
+        "title": {
+          "prototype": ".np-titles",
+          "app": ".ag-np-titles"
+        },
+        "primary": {
+          "prototype": ".np .playbtn",
+          "app": ".ag-np-play"
+        },
+        "skips": {
+          "prototype": ".np .skipbtn",
+          "app": ".ag-np-skip",
+          "mode": "all"
+        },
+        "chip": {
+          "prototype": ".np-head .carchip",
+          "app": ".ag-np-car-chip"
+        },
+        "close": {
+          "prototype": ".np-head button",
+          "app": ".ag-np-head .fp-close"
+        }
+      }
     }
   }
 }

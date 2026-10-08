@@ -58,6 +58,22 @@ async function closeNowPlaying(page) {
   await wait(page, 100);
 }
 
+/** Car posture the way a listener gets there: a 600ms hold on the mini row (the title button; the two transport
+    buttons never start the press). Held a little past the threshold so the timer has fired when the button comes up.
+    Now Playing opens by itself and the Dock steps out; the step waits for the sheet and for the entrance to settle. */
+async function enterCarPosture(page) {
+  await closeNowPlaying(page);
+  const box = await page.locator(".fp-info").first().boundingBox();
+  if (!box) throw new Error("uilab: no mini row to hold (is something playing?)");
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await wait(page, 800);
+  await page.mouse.up();
+  await page.waitForSelector(".fp-sheet", { state: "visible", timeout: 10000 });
+  await page.waitForFunction(() => document.documentElement.getAttribute("data-posture") === "car", null, { timeout: 5000 });
+  await wait(page, 900);
+}
+
 async function resetAmbientNowPlaying(page) {
   await closeNowPlaying(page);
   await page.evaluate(() => {
@@ -253,6 +269,7 @@ export function appStates(fx) {
         { label: "mini-player-up-next", route: "#/queue" },
         { label: "now-playing", route: "#/library", run: (page) => openNowPlaying(page) },
         { label: "now-playing-closed", route: "#/library", run: (page) => closeNowPlaying(page) },
+        { label: "now-playing-car", route: "#/library", run: (page) => enterCarPosture(page) },
       ],
     },
     {

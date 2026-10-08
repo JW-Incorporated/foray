@@ -2424,6 +2424,9 @@ function setNowPlaying(item, why) {
   current = item;
   ui.root.hidden = false;
   document.body.classList.add("fp-open");
+  /* `?posture=car` (the harness's way into car posture) is already on the page; Now Playing opens by itself once there
+     is something to show. After a collapse the posture is gone, so this fires once, at the start. */
+  if (window.AfterglowCar?.active(document)) ui.openSheet?.();
   ui.title.textContent = item.title || "";
   ui.show.textContent = item.show || "";
   paintInfoLabel();
@@ -3129,6 +3132,8 @@ async function stopAndClose({ persist = true } = {}) {
      silence. */
   ui.root.hidden = true;
   ui.sheet.hidden = true;
+  /* Nothing is playing, so nothing is left for car posture to be about. */
+  window.AfterglowCar?.leave(document);
   const active = document.activeElement;
   if (active && active !== document.body && typeof ui.root.contains === "function"
       && ui.root.contains(active) && typeof active.blur === "function") active.blur();
@@ -3923,6 +3928,9 @@ function bind() {
     const owner = sheetOwner();
     const topbar = document.querySelector(".topbar");
     if (!open) {
+      /* Car posture lasts as long as the sheet it opened. Ended BEFORE the owner hands focus back to the bar's title
+         button below, which the posture's chrome rules must not be hiding when it lands. */
+      window.AfterglowCar?.leave(document);
       ui.bar.inert = false;
       ui.bar.setAttribute("aria-hidden", "false");
       if (topbar) topbar.inert = false;
@@ -4014,6 +4022,18 @@ function bind() {
      title button beside it already is that control for keyboard and screen
      reader, and the art stays `alt=""` decoration to them. */
   ui.art.addEventListener("click", toggleExpandedFromMini);
+  /* A 600ms HOLD on the mini row enters car posture and opens Now Playing by itself (BUILD-NOTES 4.2). The two transport
+     buttons keep their own jobs and never start the press. ui/car.js owns the gesture, the haptic hook and the posture
+     attribute; this file owns only the sheet it opens. */
+  ui.openSheet = () => { if (ui.sheet.hidden) toggleExpandedFromMini(); };
+  window.AfterglowCar?.bindPress(ui.bar, {
+    isControl: (t) => typeof t?.closest === "function" && Boolean(t.closest(".fp-play, .fp-skip")),
+    onHold: () => {
+      window.AfterglowCar.haptic();
+      window.AfterglowCar.enter(document);
+      ui.openSheet();
+    },
+  });
   /* The ✕ is the one button that collapses the sheet (the handle's drag is the
      gesture). Declared after `setExpanded` because it is a `const`. */
   ui.closeBtn.addEventListener("click", () => setExpanded(false));
@@ -4333,6 +4353,7 @@ function bootNative() {
   if (!ui) {
     ui = buildUI();
     ui = window.AfterglowNowPlaying?.adopt(ui) || ui;
+    ui = window.AfterglowCar?.adopt(ui) || ui;
     bind();
   }
   /* The page still owns cp_rate / cp_voice (§5.2), so the engine is told what
@@ -4469,6 +4490,7 @@ function ensureJsBooted() {
   if (!ui) {
     ui = buildUI();
     ui = window.AfterglowNowPlaying?.adopt(ui) || ui;
+    ui = window.AfterglowCar?.adopt(ui) || ui;
     bind();
   }
 

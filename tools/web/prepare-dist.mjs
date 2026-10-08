@@ -53,6 +53,7 @@ const SHELL = [
   "ui/primitives.css", // Redesign 2026 (ambient): scoped component primitives and gallery composition
   "ui/today.css", // Redesign 2026 (ambient): Today, the first screen on the system
   "ui/now-playing.css", // Redesign 2026 (ambient): artwork-lit Now Playing Room
+  "ui/car.css", // Redesign 2026 (ambient): car posture (Now Playing glance screen)
   "ui/icons.svg", // Redesign 2026 (ambient): the icon sprite every `<use href>` fetches
   "ui/icons-LICENSES.txt", // complete MIT/OFL notices for the paths shipped in the sprite
   "sw.js",
