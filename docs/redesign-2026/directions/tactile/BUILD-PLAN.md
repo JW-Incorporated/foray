@@ -646,6 +646,32 @@ both pairs.
 3. `{q}` through `esc()`; the copy passes `backend/test/copyRules.test.ts`
    ("subject", no banned words).
 4. Fidelity regions within 4px of `#/search/none`.
+   **Built (group C `search-none`, decisions the loop made):** (a) The screen is
+   shot after the return key (`search-no-results-subject`, appended to the `search`
+   state), for the reason `search-typing` gave: a field that still holds focus hides
+   the deck. The query is "instrument", which finds no show in the lab's index and
+   names one subject with shows; `search-no-results` ("zzqxjv", field focused) stays
+   as the no-subject case the gates walk. (b) A subject matches when every word of the
+   query is in its label (best: the label is the query, then starts with it, then
+   contains it, then more shows) AND it holds shows of its own: the count is
+   `showsForCategory(id).length`, so the sentence, the tile and the page behind the
+   tile cannot disagree. A taxonomy root almost never carries a show itself, so
+   "Science" keeps the existing "Shows filed under" chips instead of a tile.
+   (c) The tile opens `#/category/<id>`, not `#/shows/q/<label>` (the prototype's
+   tile is a search for its label): that search can itself find nothing, which would
+   put the same tile on screen again. (d) The key is offered whatever the playlist
+   scorer says. `createPlaylistCtaHtml`'s gate belongs to the results list, where an
+   offer the scorer cannot meet would be a lie under real rows; here the alternative
+   is a bare sentence, which the acceptance forbids, and Create answers for a query it
+   cannot build from. When the scorer's own closing key arrives too, CSS draws one:
+   this one, in the heading's 12px column. (e) When Episodes, Playlists or Forays
+   answered, the heading (already hidden by `search-typing`'s rule), the sentence, the
+   tile and this key all give way, and the box leaves layout (an empty flex item still
+   took the page's 32px gap). (f) The heading is `textContent`, never markup; the
+   offer writes the query and the subject's label through `esc()`. The offline line
+   ("You're offline — no shows found for “q”.") is unchanged and keeps the offer
+   under it. Fidelity `search-none-i5` (Cream): header, field, heading, sentence, tile,
+   key and tab bar are all 0.0px at 393x852, 375x667 and 412x915.
 
 ### Group D: Yours (branch `redesign/p4-tactile-library`, file `ui/library.js`)
 

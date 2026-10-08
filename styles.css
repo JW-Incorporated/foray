@@ -4913,6 +4913,44 @@ body.view-find .sh-create-cta .keycap { max-width: 100%; }
 body.view-find .sh-create-cta .keycap .i { flex: none; }
 body.view-find .sh-create-cta .keycap__label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* ---------- FIND, NO RESULTS (TACTILE): never a bare sentence ----------
+   Redesign 2026, tactile `search-none` (BUILD-PLAN 2.11, BUILD-NOTES 4.4). The
+   settled "No shows match ‘q’." line (`#sh-note`, state "empty") is the screen's
+   heading in the heading role; under it `#sh-empty-offer` holds, in one 12px
+   column with the heading, the sentence naming a subject that matches ("Fusion &
+   energy systems has 5 shows."), that subject's tile FILLED in `--ultramarine-soft`
+   (never an outline), and the "Make a playlist about" key. The page's own gap is
+   32px between its blocks; the heading pulls the 20px difference back so the
+   four read as the prototype's one section. */
+body.view-find #sh-note[data-state="empty"] {
+  margin-bottom: calc(var(--gap) - var(--s-8));
+  color: var(--ink);
+  font-family: var(--dial-font-display); font-size: var(--t-heading); line-height: var(--lh-heading);
+  font-weight: var(--w-heading); font-stretch: var(--wd-heading); letter-spacing: var(--tracking-heading);
+  text-wrap: balance;
+}
+body.view-find #sh-empty-offer:not([hidden]) { display: flex; flex-direction: column; gap: var(--gap); }
+body.view-find .find-none { display: flex; flex-direction: column; gap: var(--gap); }
+body.view-find .find-none__line { margin: 0; color: var(--ink); font: var(--w-body) var(--t-body-lg)/var(--lh-body-lg) var(--font-text); }
+body.view-find .find-none__mosaic { margin: 0; }
+/* The hit tile: the card's shape on the soft ultramarine fill, ink on it (AA in both
+   schemes, pinned in ui-tokens-dial PAIRS). A fill, not a ring. */
+body.view-find .tile.is-hit { background: var(--ultramarine-soft); }
+body.view-find .tile.is-hit .readout { color: var(--ink); }
+/* When Episodes, Playlists or Forays answered, the sentence, the tile and this key give
+   way (those groups carry their own closing key, and the heading above has already
+   gone: see the settled-line rule). The "Shows filed under" chips stay, as they always
+   were offered beside results. */
+body.view-find #sh-empty-offer:is(:has(~ #ep-search-results:not([hidden])), :has(~ #pl-search-results .fy-playlist-search), :has(~ #fy-search-results:not([hidden]))) :is(.find-none, .find-none__key) { display: none; }
+/* With nothing left in it (no chips either) the box itself goes: an empty flex item
+   still takes the page's 32px gap, which pushed the Shows rows down by that much. */
+body.view-find #sh-empty-offer:is(:has(~ #ep-search-results:not([hidden])), :has(~ #pl-search-results .fy-playlist-search), :has(~ #fy-search-results:not([hidden]))):not(:has(.fy-chips)) { display: none; }
+/* And the other way round: while this key stands, the playlist group's own closing key
+   (it arrives when the scorer can build one, with no playlist card above it) is not
+   drawn, so the screen never carries two of them and the one that stays is the one in
+   the heading's 12px column. */
+body.view-find #sh-empty-offer:has(.find-none__key):not(:has(~ #ep-search-results:not([hidden]))):not(:has(~ #fy-search-results:not([hidden]))):not(:has(~ #pl-search-results .fy-playlist-search)) ~ #pl-search-results .sh-create-cta { display: none; }
+
 /* COMPONENT GALLERY. Development-only markup behind the guarded #/gallery
    route. It starts with the icon family in task 2; later foundation tasks add
    primitives to this same page. No production screen inherits these rules. */
