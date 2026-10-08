@@ -248,7 +248,7 @@ function mountApp() {
     document: {
       body: el("body"), documentElement: el("html"), readyState: "complete",
       addEventListener() {}, createElement: () => el(`x${els.size}`),
-      querySelector: (sel) => (String(sel).startsWith("#") ? el(String(sel).slice(1)) : (sel === ".hv2-greeting-word" ? el("greeting") : null)),
+      querySelector: (sel) => (String(sel).startsWith("#") ? el(String(sel).slice(1)) : (sel === ".td-date" ? el("greeting") : null)),
       querySelectorAll: () => [],
     },
     navigator: { userAgent: "node" }, addEventListener() {}, removeEventListener() {},
@@ -268,38 +268,15 @@ function mountApp() {
   return { ctx, el, state };
 }
 
-/* qa row 136: 210 of the pool's titles end in ? ! or ., and the card appended a
-   full stop regardless ("…Save The World?."). MUTATION: always append ".". */
-test("'Starts with' closes its sentence once, whatever the title ends with", () => {
-  /* Typographic quotes since audit round 2 (copy-8): one `quoteQuery` helper
-     for every quoted listener string. */
-  const { ctx } = mountApp();
-  assert.strictEqual(ctx.startsWithLine("Can Fusion Save The World?"), "Starts with “Can Fusion Save The World?”");
-  assert.strictEqual(ctx.startsWithLine("Gearboxes, alive!"), "Starts with “Gearboxes, alive!”");
-  assert.strictEqual(ctx.startsWithLine("The Fed"), "Starts with “The Fed.”");
-});
-
-/* qa row 148: on a short screen the hook clamps to one line, so the title — the
-   one concrete fact on the card — must come first. MUTATION: put the blurb
-   back in front of startsWithLine in miniCard's hook. */
-test("the subject card's hook leads with the episode it starts with", () => {
-  /* Up to the function's end, not a fixed width: L5 added a comment above the
-     count at integration, which pushed the hook past a 900-character window. */
-  const at = APP_SRC.indexOf("function miniCard(slot)");
-  const body = APP_SRC.slice(at, APP_SRC.indexOf("\n}\n", at));
-  /* The Stretch reason may follow, as visible text (audit round 2, a11y-11). */
-  assert.match(body, /<p class="mc-hook">\$\{startsWithLine\(item\.title\)\} \$\{esc\(subjectBlurb\(slot\)\)\}/);
-});
-
-/* qa row 193: the greeting was computed once per render. MUTATION: drop the
-   refreshGreeting() call from init()'s foreground hook, or make it recompute
-   nothing. */
-test("the greeting is recomputed when the app returns to the foreground", () => {
+/* qa row 193: the greeting was computed once per render. Today's header has the date in its place
+   (Redesign 2026), the same fact about NOW. MUTATION: drop the refreshGreeting() call from init()'s
+   foreground hook, or make it recompute nothing. */
+test("the date line is recomputed when the app returns to the foreground", () => {
   const { ctx, el } = mountApp();
   ctx.refreshGreeting(new Date(2026, 8, 22, 7, 0));
-  assert.strictEqual(el("greeting").textContent, "Good morning");
-  ctx.refreshGreeting(new Date(2026, 8, 22, 21, 0));
-  assert.strictEqual(el("greeting").textContent, "Good evening");
+  assert.strictEqual(el("greeting").textContent, "Tuesday, 22 September");
+  ctx.refreshGreeting(new Date(2026, 8, 23, 21, 0));
+  assert.strictEqual(el("greeting").textContent, "Wednesday, 23 September");
   const hook = APP_SRC.slice(APP_SRC.indexOf('refreshForayDirectory("foreground");'), APP_SRC.indexOf('refreshForayDirectory("foreground");') + 80);
   assert.match(hook, /refreshGreeting\(\);/, "the foreground hook must refresh it");
 });
@@ -359,7 +336,8 @@ test("every text field has a name that survives typing, and search notes are liv
      left with the builder; Create's is the one playlist field. */
   assert.ok(inputs.length >= 4, `expected the app's text inputs, found ${inputs.length}`);
   for (const i of inputs) assert.match(i, /aria-label="[^"]+"/, `a text field named only by its placeholder: ${i}`);
-  assert.match(APP_SRC, /typedInput\.setAttribute\("aria-label", /);
+  /* Redesign 2026 (onboarding): the first-run sheet's "Or type a subject yourself" field is retired with the sheet, so its
+     aria-label assertion went with it; the fields that remain are checked by the loop above. */
   assert.match(APP_SRC, /<p id="sh-note" class="note" role="status" aria-live="polite" hidden><\/p>/);
   assert.match(APP_SRC, /data-show-ep-search-note role="status" aria-live="polite" hidden/);
   assert.match(APP_SRC, /<form id="sh-form" class="ag-search-field" role="search"/);
@@ -376,21 +354,22 @@ test("an unplayable clip says so in plain words and keeps the raw reason off scr
   assert.ok(html.includes('data-reason="segment x is not in data/segments.json"'));
 });
 
-/* Persona row 68: taxonomy ids printed under every slider. MUTATION: put the
-   `interest-row-path` span back. */
-test("the Interests rows show a label, never a taxonomy id", () => {
+/* Persona row 68: taxonomy ids printed under every slider. Tuning (Redesign 2026) has no sliders; the rule stands for
+   its rows. MUTATION: print `node.id` as the row's text, or drop the name element's `aria-labelledby` link. */
+test("the Tuning rows show a label, never a taxonomy id", () => {
   const { ctx, state } = mountApp();
   state.interests = { "engineering/energy-fusion": 0.7 };
-  const html = ctx.interestSliderRow({ id: "engineering/energy-fusion", label: "Fusion", parent: "engineering", weight: 0.5 });
+  const html = ctx.interestTuneRow({ id: "engineering/energy-fusion", label: "Fusion", parent: "engineering", weight: 0.5 });
   assert.ok(!html.includes(">engineering/energy-fusion<"), html);
-  assert.match(html, />Back to 4a's pick</);
-  assert.match(html, /aria-label="Fusion: back to 4a(&#39;|')s pick"/, "each reset names its row");
+  assert.match(html, />Fusion</, "the row is named in words");
+  assert.match(html, />4a(&#39;|')s pick</, "the middle state is 4a's pick, in the listener's words");
+  assert.match(html, /aria-labelledby="tune-name-engineering\/energy-fusion"/, "the group is named by the row's own label");
 });
 
 test("REVIEW: the returning-listener popup claims a stretch pick only where Home actually has one", () => {
   /* It said playlists AND episodes each carry one pick outside the listener's
      subjects; Playlists for you has no stretch logic (and is mostly their own
-     playlists), while Forays for you — which it did not name — does.
+     playlists). Today (Redesign 2026): the picks carry the Stretch card, the playlists do not.
      MUTATION: put "playlists" back into the popup's stretch sentence. */
   const body = (name) => {
     const at = APP_SRC.indexOf(`function ${name}(`);
@@ -398,23 +377,15 @@ test("REVIEW: the returning-listener popup claims a stretch pick only where Home
     return APP_SRC.slice(at, APP_SRC.indexOf("\n}\n", at));
   };
   const hasStretch = {
-    forays: /pickWithStretchFloor/.test(body("foraysForYouPicks")),
-    playlists: /pickWithStretchFloor|stretch/.test(body("playlistsForYouHtml")),
-    episodes: /miniCardV2/.test(body("suggestedHtml")) && /role !== "stretch"/.test(body("miniCardV2")),
+    picks: /stretch: true/.test(body("todayPicks")),
+    playlists: /pickWithStretchFloor|stretch/.test(body("todayPlaylistCard")),
   };
-  assert.deepStrictEqual(hasStretch, { forays: true, playlists: false, episodes: true }, "fixture: where the stretch picks live");
-  const popup = literals(APP_SRC).map((l) => l.text).find((t) => /outside your usual subjects/.test(t));
+  assert.deepStrictEqual(hasStretch, { picks: true, playlists: false }, "fixture: where the stretch picks live");
+  const popup = literals(APP_SRC).map((l) => l.text).find((t) => /A foray plays moments/.test(t));
   assert.ok(popup, "the popup sentence exists");
   const claim = popup.split(/(?<=\.)\s+/).find((sentence) => /outside your usual subjects/.test(sentence));
-  /* Audit round 2 (p-first-11): the Forays row has a stretch pick only when the
-     listed Forays span more than one subject, so the popup names forays only
-     when `foraysForYouPicks()` found one; that branch is exercised in
-     test/foray-surfaces.test.js. Here: the Forays half of the claim is
-     CONDITIONED on the same pick Home renders, never stated outright. */
-  assert.ok(APP_SRC.includes('The episodes ${foraysForYouPicks()?.stretchIndex >= 0 ? "and the forays each " : ""}include one pick'),
-    "the Forays half of the stretch claim asks Home's own pick");
+  assert.ok(claim, "and it makes the stretch claim");
   for (const [section, has] of Object.entries(hasStretch)) {
-    if (section === "forays") continue;
     const named = new RegExp(`\\b${section}\\b`, "i").test(claim);
     assert.strictEqual(named, has, `the stretch claim ${has ? "must" : "must not"} name ${section}: "${claim}"`);
   }
@@ -446,7 +417,8 @@ test("the app speaks as 4a, never as 'we', 'us' or 'our'", () => {
   /* The scanner can see: the rewritten strings are listener prose it finds. */
   const all = listenerProse("app.js").map((l) => l.text).join("\n");
   assert.ok(all.includes("Shows 4a vouches for"), "the editorial row's heading");
-  assert.ok(all.includes("This is how 4a tunes your suggestions."), "the first-run sheet");
+  assert.ok(all.includes("4a picks a few podcasts a day and says why. No account."), "the first-run Room's body");
+  assert.ok(all.includes("Hear things outside your lane."), "the first-run Room's title");
 });
 
 /* copy-7. MUTATION: restore "Not into this topic". */
@@ -487,11 +459,11 @@ test("the explicit badge is a named image, and no explanation lives only in a to
   assert.doesNotMatch(ctx.notPlayableNote(), /title=/);
   state.taxonomy = { nodes: [{ id: "history", parent: null, label: "History" }] };
   const item = { id: "a", title: "A title", show: "S", duration_min: 30 };
-  const card = ctx.miniCard({ branch: "history", role: "stretch", item, items: [item] });
-  assert.doesNotMatch(card, /title="/, card);
-  assert.match(card, /<p class="mc-hook">[^<]*Outside your usual subjects, on purpose\.<\/p>/, "the reason is visible text");
-  const plain = ctx.miniCard({ branch: "history", role: "top", item, items: [item] });
-  assert.doesNotMatch(plain, /on purpose/, "only a stretch card says it");
+  const card = ctx.todayStretchCard({ item: { ...item, audio_url: "https://x.test/a.mp3" }, branch: "history", familiar: null });
+  assert.doesNotMatch(card, /(?<![-w])title="/, card);   // data-title is the repaint label, not a tooltip
+  assert.match(card, /<p class="t-why td-bridge">Outside your usual subjects[^<]*<\/p>/, "the reason is visible text");
+  const plain = ctx.todayEpisodeRow({ item: { ...item, audio_url: "https://x.test/a.mp3" }, branch: "history" });
+  assert.doesNotMatch(plain, /on purpose|Outside your usual/, "only a stretch card says it");
   /* The not-playable chip's explanation moved to the episode page, as text.
      MUTATION: drop the NOT_PLAYABLE_WHY note from renderEpisode. */
   state.discover = { items: [{ id: "silent", title: "No audio here", show: "S", duration_min: 30, topics: [] }] };

@@ -1,11 +1,11 @@
-/* ui/tabbar.js — Tab bar: the three tabs and their active state.
+/* ui/tabbar.js — Tab bar: the four tabs and their active state.
    A CLASSIC script like app.js, not a module: it shares app.js's globals and
    is loaded by index.html after app.js, in the order listed in
    docs/redesign-2026/split-notes.md. Declarations only at the top level, so
    nothing here runs until app.js's boot (ui/boot.js) starts init(). */
 
 
-/* ---------- U-02: the tab bar (three tabs since Redesign 2026) (docs/ui-transition-plan.md) ----------
+/* ---------- U-02: the four-tab bar (docs/ui-transition-plan.md) ----------
 
    Built and appended in JS, exactly like the diagnostics/delete-my-data
    controls just above and for the identical reason stated on those: this
@@ -22,24 +22,29 @@
    to catch. Appending only when the flag is on, and removing it the moment
    the flag goes off, sidesteps that cascade question entirely instead of
    relying on getting it right. */
+/* REDESIGN 2026, ambient (DIRECTION.md "Information architecture"): THREE tabs, Today, Discover, Library.
+   The Create tab is gone (its one field lives in Discover); the ruling that fell is "Four tabs (Home,
+   Search, Create, Library) + drawer menu" (test-classification.md section 0). The glyphs are the Phosphor
+   sprite through agIcon(): the Regular drawing for an inert tab, the FILL drawing for the active one ("a
+   state change is a fill, never only a colour"). The keys stay `home` / `search` / `library`: they are
+   internal ids that tabForHash, the search-tab pop and the harness already speak, and renaming them would
+   touch four suites for no listener-visible gain. */
 const TAB_ROUTES = [
-  { key: "home", label: "Today", hash: "#/", glyph: "house" },
-  { key: "search", label: "Discover", hash: "#/shows", glyph: "compass" },
-  { key: "library", label: "Library", hash: "#/library", glyph: "books" },
+  { key: "home", label: "Today", hash: "#/", icon: "house" },
+  { key: "search", label: "Discover", hash: "#/shows", icon: "compass" },
+  { key: "library", label: "Library", hash: "#/library", icon: "books" },
 ];
 
-/** THE TAB GLYPH (Redesign 2026, ambient "Iconography"): Phosphor Regular while the tab is inert and
-    its Fill twin while it is the current one, so the state is a change of shape and never only of
-    colour. Drawn from the sprite through <use>, never a text glyph or an inline path. */
-function tabGlyph(glyph, active) {
-  return typeof agIcon === "function" ? agIcon(active ? glyph + "-fill" : glyph, 28) : "";
+/** One tab's glyph: Regular when inert, Fill when it is the current tab. */
+function tabGlyph(t, on) {
+  return agIcon(on ? t.icon + "-fill" : t.icon, 28);
 }
 
 /** Which tab a hash belongs to, for highlighting `aria-current`. EVERY ROUTE
     LIGHTS A TAB (audit 2026-09-22): Home; everything shows/episode/category-
     shaped to Search, including a browse pill's `#/shows/q/<label>` (the old
     `shows$` missed it, so tapping a pill ON the Search page un-lit Search);
-    playlist/subject-queue-shaped to Search too (Create is folded into Discover); and everything the listener keeps —
+    playlist/subject-queue-shaped (and Create's own page, which folded into Discover's field) to Discover; and everything the listener keeps —
     Library's own sections (Up Next, Forays, Followed shows) and their Interests
     — to Library. Anything else is rendered as Home by the router, so it is
     Home here too: the two fallbacks used to disagree by construction, and an
@@ -47,9 +52,10 @@ function tabGlyph(glyph, active) {
 function tabForHash(hash) {
   const h = currentHash(hash);
   if (/^#\/(shows($|\/)|show\/|category\/)/.test(h)) return "search";
-  /* Create is folded into Discover (ambient DIRECTION.md: three tabs, Today, Discover, Library). */
   if (/^#\/(playlists$|playlist\/|subject\/|create$)/.test(h)) return "search";
-  if (/^#\/(library$|queue$|forays$|foray\/|starred-shows$|interests$)/.test(h)) return "library";
+  if (/^#\/(library$|queue$|forays$|foray\/|starred-shows$)/.test(h)) return "library";
+  /* Settings, Tuning (#/interests) and About sit behind the gear on Today, so they belong to Today's tab. */
+  if (/^#\/(settings$|interests$|about$)/.test(h)) return "home";
   if (/^#\/episode\//.test(h)) return "search"; // reached from a show/search result
   return "home";
 }
@@ -90,8 +96,8 @@ function renderTabBar() {
       a.className = "tab-btn";
       a.href = t.hash;
       a.dataset.tabKey = t.key;
-      a.innerHTML = `${tabGlyph(t.glyph, false)}<span>${esc(t.label)}</span>`;
-      a.dataset.tabFill = "0";
+      a.dataset.tabGlyph = "regular";
+      a.innerHTML = `${tabGlyph(t, false)}<span>${esc(t.label)}</span>`;
       bar.append(a);
     }
     /* TAPPING THE TAB YOU ARE ON TAKES YOU TO THE TOP (audit 2026-09-22) — the
@@ -109,11 +115,12 @@ function renderTabBar() {
     const on = a.dataset.tabKey === active;
     if (on) a.setAttribute("aria-current", "page");
     else a.removeAttribute("aria-current");
-    /* The glyph follows the state: Fill on the current tab, Regular on the rest. */
+    /* The glyph follows the state, and is rewritten only when it changed. */
     const t = TAB_ROUTES.find((r) => r.key === a.dataset.tabKey);
-    if (t && a.dataset.tabFill !== (on ? "1" : "0")) {
-      a.innerHTML = `${tabGlyph(t.glyph, on)}<span>${esc(t.label)}</span>`;
-      a.dataset.tabFill = on ? "1" : "0";
+    const want = on ? "fill" : "regular";
+    if (t && a.dataset.tabGlyph !== want) {
+      a.innerHTML = tabGlyph(t, on) + "<span>" + esc(t.label) + "</span>";
+      a.dataset.tabGlyph = want;
     }
   });
 }

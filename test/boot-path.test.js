@@ -490,12 +490,13 @@ test("perf-2 (sweep): EVERY image app.js draws below hero size asks for its draw
   /* The lane fixed the two row builders; the finding also named miniCard, which
      still fetched and decoded the 600 px original for a 56 px box on every Home
      paint. The rule is promoted here from "the row builder" to "every <img> in
-     app.js": each one goes through artUrl, or is one of the two heroes whose art
-     IS the page (the show page's and the episode page's, drawn up to ~220-390 px).
-     MUTATION: put miniCard back to `safeUrl(item.artwork_url)` -> red, naming it. */
-  const HERO = new Set(["show-art", "ep-art"]);
+     app.js": each one goes through artUrl, or is the one hero whose art
+     IS the page (the episode page's, drawn up to ~220-390 px; the show page's 160 px art is agArtwork's, which asks for 3x its box).
+     Home's art is now Today's EpisodeRow (agArtwork asks artUrl for 3x its 72px box).
+     MUTATION: put agArtwork back to `safeUrl(src)` (the 600 px original) -> red, naming it. */
+  const HERO = new Set(["ep-art"]);
   const imgs = [...APP_SRC.matchAll(/<img\b[^>]*>/g)].map((m) => m[0]);
-  assert.ok(imgs.length >= 4, `fixture assumption: app.js draws its images from templates (${imgs.length})`);
+  assert.ok(imgs.length >= 3, `fixture assumption: app.js draws its images from templates (${imgs.length})`);
   const unsized = imgs.filter((tag) => {
     const cls = (/class="([^"]+)"/.exec(tag) || [])[1] || "";
     if (cls.split(/\s+/).some((c) => HERO.has(c))) return false;
@@ -504,9 +505,9 @@ test("perf-2 (sweep): EVERY image app.js draws below hero size asks for its draw
   assert.deepStrictEqual(unsized, [], "an image drawn small fetches Apple's 600 px original");
   const m = mount({ fetchImpl: () => new Promise(() => {}) });
   const ep = { id: "e1", title: "T", show: "S", artwork_url: "https://is1-ssl.mzstatic.com/image/thumb/P/v4/mza_1.jpg/600x600bb.jpg", duration_min: 30 };
-  const card = m.ctx.miniCard({ branch: "science", role: "core", item: ep, items: [ep] });
-  assert.match(card, /\/168x168bb\.jpg"/, "Home's card fetched the 600 px image for a 56 px box");
-  assert.match(card, /decoding="async" width="56" height="56"/);
+  const card = m.ctx.todayEpisodeRow({ item: ep, branch: "science" });
+  assert.match(card, /\/216x216bb\.jpg"/, "Home's row fetched the 600 px image for a 72 px box");
+  assert.match(card, /decoding="async" width="72" height="72"/);
 });
 
 test("ROUND 2 review (perf-2): an <img> whose width/height attributes CSS resizes by width also frees its height", () => {
@@ -794,7 +795,7 @@ test("app-1-1: no first-run sheet is offered while the store has not answered; i
   const m = mount({ store, storageWaitMs: 20, ceilingMs: 60000 });
   await m.booted();
   assert.strictEqual(m.ctx.storageWaiting(), true, "premise");
-  const sheetUp = () => Boolean(m.ctx.document.querySelector("#first-time-sheet"));
+  const sheetUp = () => Boolean(m.ctx.document.querySelector("#onboarding-room"));
   assert.strictEqual(m.ctx.isGenuineFirstTimeUser(), true, "premise: unhydrated, the listener looks new");
   assert.ok(!sheetUp(), "the first-run sheet opened before the store answered");
   tier.release();

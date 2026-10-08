@@ -458,13 +458,13 @@ test("REVIEW: a Try again whose segments fail does not adopt a half set; the fai
   assert.ok(m.view.querySelector("[data-retry]"), "and offers Try again again");
 });
 
-test("#/forays explains what a Foray is, from the same sentence the first-run sheet uses", () => {
+test("#/forays explains what a Foray is, from the one sentence forayAbout() holds", () => {
   /* The first-run sheet was the only place the product said what a Foray is, and
      "Skip for now" hid it forever. The page's subtitle now carries it — and it
-     is ONE constant, so the two cannot drift.
+     is ONE function. (Redesign 2026: the first-run sheet retired; the Room says
+     what 4a does in two lines and leaves the Foray to this page.)
      MUTATION: put the count back in the subtitle (`${list.length} forays`). The
-     sentence is gone and this goes red. MUTATION 2: inline the literal back into
-     the sheet. The second assertion goes red. */
+     sentence is gone and this goes red. */
   const m = mount({ hash: "#/forays", bridge: bridge() });
   m.state.forays = FORAYS_DOC;
   m.ctx.renderCurrentPage();
@@ -478,7 +478,6 @@ test("#/forays explains what a Foray is, from the same sentence the first-run sh
   assert.ok(head, "fixture: the page has its header");
   assert.ok(!head[0].includes(shown), "the sentence is below the sticky header, not in it");
   assert.doesNotMatch(m.html(), /\b\d+ forays?\b/, "and states no count in its place");
-  assert.match(APP_SRC, /ddEl\("p", "fy-sheet-sub", forayAbout\(\)\)/, "the first-run sheet reads the same sentence");
 });
 
 test("a Foray page whose player failed has a way back to the list and a Try again", async () => {
@@ -743,16 +742,17 @@ async function mountForay(id, { forays = readData("data/forays.json"), segments 
   return { ...m, bridge: b };
 }
 
-/* The header's <p class="sub"> text, read from the markup (this DOM parses
-   tags, not text nodes). */
-const headSub = (html) => (/<p class="sub">([^<]*)<\/p>/.exec(html) || [])[1] || "";
+/* The line under the title (ambient Foray detail, Redesign 2026: it replaced the header's <p class="sub">), read from the
+   markup (this DOM parses tags, not text nodes). */
+const headSub = (html) => (/<p class="t-caption num fd-caption">([^<]*)<\/p>/.exec(html) || [])[1] || "";
 
-test("a narrated Foray's header counts the strip's clips, not every queue item, and calls its runtime an estimate", async () => {
+test("a narrated Foray's caption counts the shows the strip draws, and calls its runtime an estimate", async () => {
   /* "50 segments · 1 show · 43:07" over a strip announcing 11 segments, with 41%
-     of that clock a script-length projection.
-     MUTATION: restore `${r.playable.length} segment…` in forayHeadSub. The
-     header counts the bridges and the first assertion goes red. MUTATION 2:
-     print `fmtClock(r.totalSec)` unconditionally. "about" is gone, red. */
+     of that clock a script-length projection. Ambient Foray detail (Redesign 2026) cut the line to
+     "<n> shows · <m> min · narrated"; the honesty rules stayed.
+     MUTATION: count `r.shows.length` in forayCaption's playable branch with a ghost show (see the last test here) or
+     read the count from somewhere but the strip's tally. MUTATION 2: print `fmtClock(r.totalSec)`
+     unconditionally. "about" is gone, red. MUTATION 3: say "narrated" for a Foray with no narration -> red. */
   const id = "how-ai-actually-gets-built-3b83e1";
   const m = await mountForay(id);
   const { strip } = await playerMods;
@@ -760,16 +760,10 @@ test("a narrated Foray's header counts the strip's clips, not every queue item, 
   assert.ok(r, "the Foray resolved");
   const model = strip.stripModel(r.playable);
   const sub = headSub(m.html());
-  /* INTEGRATION (2026-09-22): L4 made every piece a "clip" on the strip, the
-     mini bar and ‹‹/››, with the narrator's counted as the narrator's; the
-     header now says the strip's own sentence, so the two cannot disagree. The
-     tape count is still the strip model's, never a count of its own. */
   const narr = r.playable.length - model.segmentCount;
   assert.ok(narr > 0, "precondition: a narrated Foray");
-  assert.match(sub, new RegExp(`^${r.playable.length} clips: ${model.segmentCount} from ${model.shows.length} shows? and ${narr} from 4a(&#39;|')s AI narrator`), `header: "${sub}"`);
-  assert.ok(strip.stripSummary(model).startsWith(`${r.playable.length} clips: ${model.segmentCount} from`), "the strip says the same numbers");
-  assert.match(sub, /· about \d+ min$/, `an estimated runtime says so: "${sub}"`);
-  assert.match(m.view.querySelector("#fy-total").textContent, /^~\d/, "the clock beside the scrubber carries the same hedge");
+  assert.match(sub, new RegExp(`^${model.shows.length} shows? · about \\d+ min · narrated$`), `caption: "${sub}"`);
+  assert.ok(strip.stripSummary(model).startsWith(`${r.playable.length} clips: ${model.segmentCount} from`), "the strip says its own numbers, which the caption's show count is taken from");
 });
 
 test("a Foray of measured tape states its length in minutes, unhedged", async () => {
@@ -780,8 +774,8 @@ test("a Foray of measured tape states its length in minutes, unhedged", async ()
      MUTATION 2: return `player.fmtClock(totalSec)` for a measured runtime. Red. */
   const m = await mountForay("capital-types-1");
   const sub = headSub(m.html());
-  assert.match(sub, /^\d+ clips from \d+ shows · \d+ min$/, `header: "${sub}"`);
-  assert.doesNotMatch(sub, /about|narration/);
+  assert.match(sub, /^\d+ shows? · \d+ min · not narrated yet$/, `caption: "${sub}"`);
+  assert.doesNotMatch(sub, /about/);
 });
 
 test("a finished Foray's page says 'Played' with 'Play again', not the page of one never opened (honesty-2)", async () => {
@@ -802,7 +796,11 @@ test("a finished Foray's page says 'Played' with 'Play again', not the page of o
   m.ctx.renderCurrentPage();
   await settle(10);
   const html = m.html();
-  assert.match(html, /class="fy-resume fy-played" id="fy-resume"[\s\S]*?>Played<\/span>[\s\S]*?id="fy-restart">Play again<\/button>/, html.slice(0, 1500));
+  /* Ambient Foray detail (Redesign 2026): "Played" and "Play again" are one button now, the primary one, and the Start over
+     offer is hidden (there is no position to start over from). MUTATION: drop the `finished` argument from renderForay's
+     forayPrimaryLabel call -> the button says "Play". */
+  assert.match(html, /id="fy-play">Play again<\/button>/, html.slice(0, 1500));
+  assert.doesNotMatch(html, /fy-resume|fy-restart|Start over/, "and nothing sits under the one button");
   assert.doesNotMatch(html, /Jump back in at/, "a finished Foray is not offered as a place to resume");
   assert.equal(m.state.forayResume, null, "and the main button starts from the top, as before");
 });
@@ -830,7 +828,7 @@ test("the header does not count a show whose only clip will not play", async () 
      Built on the real capital-types-1 plus one clip from a show whose episode
      has no audio URL, which the queue builder refuses: that clip resolves, is
      listed as can't-play, and its show must not be counted.
-     MUTATION: count `r.shows.length` in forayHeadSub. The ghost show is
+     MUTATION: count `r.shows.length` in forayCaption's playable branch. The ghost show is
      counted and this goes red. */
   const doc = readData("data/forays.json");
   const segments = readData("data/segments.json");
@@ -845,7 +843,7 @@ test("the header does not count a show whose only clip will not play", async () 
   assert.ok(r.entries.some((e) => !e.playable && e.show === "A Show Nobody Will Hear"), "fixture: its only clip will not play");
   const heard = new Set(r.entries.filter((e) => e.playable && e.show).map((e) => e.show)).size;
   const sub = headSub(m.html());
-  assert.match(sub, new RegExp(` from ${heard} shows? `), `the header counts heard shows (${heard}), not authored ones (${r.shows.length}): "${sub}"`);
+  assert.match(sub, new RegExp(`^${heard} shows? · `), `the caption counts heard shows (${heard}), not authored ones (${r.shows.length}): "${sub}"`);
   assert.match(m.html(), /1 clip can't play — marked below\./, "and the clip that will not play is the one marked below");
 });
 
@@ -897,19 +895,22 @@ test("'played' counts history OR a stored position, so it cannot fall as the his
   assert.match(body, /const played = rows\.filter\(r => rowProgress\(r\.item\)\?\.state === "played"\)\.length;/);
 });
 
-test("a subject card states a total duration only when every episode has one", () => {
-  /* "3 episodes · 1h 20m" summed two of three when one had no duration_min —
-     a partial sum presented as the total of the count beside it.
-     MUTATION: restore `slot.items.reduce((s, it) => s + (it.duration_min || 0), 0)`.
-     The partial total is printed and this goes red. */
+test("a playlist tile states a total duration only when every episode has one", () => {
+  /* "3 episodes · 1h 20m" summed two of three when one had no duration_min \u2014 a partial sum presented
+     as the total of the count beside it. (The subject card this rule was written for went with
+     Today, 2026-10-07; the rule moved to the Playlists-for-you tile, which counts the same way.)
+     MUTATION: sum `episodeMinutes(r.item)` over the rows that have one, without the `allTimed` guard in
+     todayPlaylistCard. The partial total is printed and this goes red. */
   const m = mount();
-  m.state.taxonomy = { nodes: [{ id: "history", parent: null, label: "History" }] };
+  const rowsOf = (items) => items.map((item) => ({ item, state: "live" }));
   const item = (id, duration_min) => ({ id, title: `T ${id}`, show: "S", duration_min });
-  const kicker = (items) => (/<p class="mc-kicker">([\s\S]*?)<\/p>/.exec(
-    m.ctx.miniCard({ branch: "history", role: "anchor", item: items[0], items }),
-  ) || [])[1];
-  assert.match(kicker([item("a", 40), item("b", 40)]), /^2 episodes · 1 hr 20 min$/);
-  assert.strictEqual(kicker([item("a", 40), item("b", 40), item("c", null)]), "3 episodes",
+  const meta = (items) => {
+    m.ctx.__rows = rowsOf(items);
+    m.ctx.resolveParts = () => m.ctx.__rows;
+    return m.ctx.todayPlaylistCard({ id: "p", title: "P", items: [] }, false, new Set()).meta;
+  };
+  assert.strictEqual(meta([item("a", 40), item("b", 40)]), "2 episodes · 1 hr 20 min");
+  assert.strictEqual(meta([item("a", 40), item("b", 40), item("c", null)]), "3 episodes",
     "an unknown length means no total, not a smaller one");
 });
 

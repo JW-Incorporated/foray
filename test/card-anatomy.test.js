@@ -46,6 +46,7 @@ const { readAppSource, runAppSource } = require("./helpers/app-source.js");
 const ROOT = path.join(__dirname, "..");
 const APP_SRC = readAppSource().replace(/\r\n/g, "\n");
 const CSS = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8").replace(/\r\n/g, "\n");
+const TODAY_CSS = fs.readFileSync(path.join(ROOT, "ui/today.css"), "utf8").replace(/\r\n/g, "\n").replace(/\/\*[\s\S]*?\*\//g, " ");
 
 /* ---------- a minimal app.js loader (the jump-back-in-kinds shape) ---------- */
 function loadApp() {
@@ -137,6 +138,20 @@ function valueOf(sel, prop) {
   }
   return v;
 }
+/** The last value `prop` gets on exactly `sel` in ui/today.css (Today, Redesign 2026). */
+function todayValueOf(sel, prop) {
+  let v = null;
+  const re = /([^{}]+)\{([^{}]*)\}/g;
+  let m;
+  while ((m = re.exec(TODAY_CSS))) {
+    if (!names(m[1], sel)) continue;
+    for (const d of m[2].split(";")) {
+      const c = d.indexOf(":");
+      if (c >= 0 && d.slice(0, c).trim() === prop) v = d.slice(c + 1).trim();
+    }
+  }
+  return v;
+}
 function hasRule(sel) {
   const re = /([^{}]+)\{/g;
   let m;
@@ -161,35 +176,39 @@ const JBI = {
 /* 1. no <button> inside an <a>                                          */
 /* ==================================================================== */
 
-test("the subject card is a card: the title is the link, the star is a sibling above it", () => {
-  /* MUTATION: put `<a class="mini-card" …>` back around the whole card ->
-     the star is inside an anchor again and the first assertion names it. */
+test("a Today row is a card: the title is the one link, Play is a sibling above it (and so on the Stretch card)", () => {
+  /* Overturns "Card/row anatomy" for Home (Redesign 2026): the subject card and the Jump back in card
+     are gone; the EpisodeRow and the StretchCard carry the same rule that visual pass 1 set.
+     MUTATION: wrap the whole row in `<a class="td-row" …>` in todayEpisodeRow -> the Play button is
+     inside an anchor again and the first assertion names it. MUTATION 2: delete the `.ag .td-link::after`
+     rule from ui/today.css, or the row's z-index 2 on its button -> the link no longer stretches / Play
+     sits under it. */
   const run = loadApp();
-  const html = run(`miniCard(${JSON.stringify(SLOT)})`);
+  const item = { id: "e1", title: "An episode", show: "A Show", artwork_url: "https://cdn.test/a.png", duration_min: 30, audio_url: "https://cdn.test/a.mp3", hook: "Why it matters." };
+  const html = run(`todayEpisodeRow(${JSON.stringify({ item, branch: "science" })})`);
   assert.deepStrictEqual(buttonsInsideAnchors(html), [], "a <button> opened inside an <a>");
-  assert.match(html, /^<div class="mini-card" data-branch="science">/, "the card is a <div> (first-time-onboarding's dealt-roots regex reads this attribute order)");
-  assert.match(html, /<h3><a class="mc-link" href="#\/[^"]+">[^<]+<\/a><\/h3>/, "the subject title is the one real link");
-  assert.match(html, /<button class="star[^>]*>[\s\S]*<\/div>$/, "the star is a child of the card, after the text block");
-  assert.strictEqual(valueOf(".mini-card", "position"), "relative", "the card is the link's containing block");
-  assert.strictEqual(valueOf(".mc-link::after", "inset"), "0", "the link stretches over the card");
-  assert.strictEqual(valueOf(".mini-card > button.star", "z-index"), "1", "the star sits above the stretched link");
-  /* And the stretch card's bridge line still lands inside the card. */
-  const stretch = run(`miniCardV2(${JSON.stringify({ ...SLOT, role: "stretch" })})`);
-  assert.match(stretch, /<p class="hv2-bridge">[^<]+<\/p><\/div>$/, "miniCardV2 appends the bridge before the card's closing tag");
+  assert.match(html, /^<article class="raised td-row is-default" data-td-ep="e1" data-branch="science">/, "the row is an <article>");
+  assert.match(html, /<h3 class="t-headline clamp2 td-row-title"><a class="td-link" href="#\/episode\/e1" data-ev="picked" data-ep="e1" data-ctx="today">An episode<\/a><\/h3>/,
+    "the title is the one real link, and it carries the `picked` logging attributes bindPickLogging binds");
+  assert.match(html, /<button type="button" class="ag-btn ag-btn-play ag-btn-size-44" data-td-play="e1"/, "Play is a sibling of the title, after it");
+  assert.strictEqual(todayValueOf(".ag .td-row", "position"), "relative", "the row is the link's containing block");
+  assert.strictEqual(todayValueOf(".ag .td-link::after", "inset"), "0", "the link stretches over the row");
+  assert.strictEqual(todayValueOf(".ag .td-row > .ag-btn", "z-index"), "2", "Play sits above the stretched link");
+  /* The Stretch card is the same shape, with its bridge line inside it. */
+  const stretch = run(`todayStretchCard(${JSON.stringify({ item, branch: "science", familiar: { name: "Home Show", src: null } })})`);
+  assert.deepStrictEqual(buttonsInsideAnchors(stretch), [], "a <button> opened inside an <a> on the Stretch card");
+  assert.match(stretch, /^<article class="raised ag-stretch-card td-stretch is-default"/);
+  assert.match(stretch, /<p class="t-why td-bridge">[^<]+<\/p>/, "the bridge line is inside the card");
+  assert.strictEqual(todayValueOf(".ag .td-stretch .ag-card-end .ag-btn", "z-index"), "2", "and its Play is above the link too");
 });
 
-test("the Jump back in card is a card: the title is the link, play is a sibling above it", () => {
-  /* MUTATION: `<a class="hv2-jbi-card" …>` back around the card -> red. */
+test("the Keep listening row is a card too: a foray or a playlist resumes from a sibling Play above the title link", () => {
+  /* MUTATION: `<a class="raised td-row" …>` around the keep row in todayKeepHtml -> red. */
   const run = loadApp();
-  const html = run(`jumpBackInCardHtml(${JSON.stringify(JBI)})`);
+  const html = run(`(() => { const t = homePlayable; homePlayable = () => ({ kind: "foray", r: { id: "f1", playable: [] }, title: "F" }); try { return todayKeepHtml({ kind: "foray", id: "f1", title: "A foray", percent: 40, sub: "Foray", left: "30 min left" }); } finally { homePlayable = t; } })()`);
   assert.deepStrictEqual(buttonsInsideAnchors(html), [], "a <button> opened inside an <a>");
-  assert.match(html, /<div class="hv2-jbi-card">/);
-  assert.match(html, /<a class="hv2-jbi-title hv2-jbi-link" href="#\/episode\/e1" data-ev="picked" data-ep="e1" data-ctx="jbi-episode">Dennis Whyte: Nuclear Fusion<\/a>/,
-    "the title link carries the `picked` logging attributes bindPickLogging binds");
-  assert.match(html, /<button class="play-btn" data-play="e1"/, "the card still carries its play button");
-  assert.strictEqual(valueOf("body.ui-v2 .hv2-jbi-card, body.ui-v2 .hv2-foray-card, body.ui-v2 .hv2-playlist-card", "position"), "relative");
-  assert.strictEqual(valueOf("body.ui-v2 .hv2-jbi-link::after", "inset"), "0");
-  assert.strictEqual(valueOf("body.ui-v2 .hv2-jbi-card > .play-btn", "z-index"), "1");
+  assert.match(html, /<h3 class="t-headline clamp2 td-row-title"><a class="td-link" href="#\/foray\/f1">A foray<\/a><\/h3>/);
+  assert.match(html, /<button type="button" class="ag-btn ag-btn-play ag-btn-size-44" data-td-keep/, "Play resumes through Home's own start path");
 });
 
 test("the Continue banner is gone: no renderer, no rule, no test on unreachable markup", () => {
@@ -334,16 +353,11 @@ test("only a list whose order is the point is numbered: a playlist, not Saved, H
   assert.doesNotMatch(APP_SRC, /<div class="ep-row gone"><span class="q-num">/, "the History fallback row is not numbered");
 });
 
-test("a tag says what its section does not: no JUMP BACK IN under 'Jump back in', no FORAY under 'Forays'", () => {
-  /* Round 2, visual-9. MUTATION: drop `{ inSection: true }` from Home's rail
-     (or from renderForays' forayListHtml call) -> red. */
+test("a tag says what its section does not: no FORAY under 'Forays'", () => {
+  /* Round 2, visual-9 (the Jump back in half of this test went with the rail, 2026-10-07: Today's
+     Keep listening row restates nothing, and its section head is its only label).
+     MUTATION: drop `{ inSection: true }` from renderForays' forayListHtml call -> red. */
   const run = loadApp();
-  assert.match(run(`jumpBackInCardHtml(${JSON.stringify(JBI)})`), /<span class="hv2-jbi-kicker">Jump back in<\/span>/,
-    "on a mixed surface the tag stays — it is the one place it says something");
-  assert.doesNotMatch(run(`jumpBackInCardHtml(${JSON.stringify(JBI)}, { inSection: true })`), /hv2-jbi-kicker/,
-    "under its own heading it goes");
-  assert.match(APP_SRC, /<h2 class="hv2-title">Jump back in<\/h2>\s*<div class="hv2-hscroll">\$\{cards\.map\(c => jumpBackInCardHtml\(c, \{ inSection: true \}\)\)/,
-    "Home's rail renders its cards as in-section");
   assert.match(APP_SRC, /\? forayListHtml\(\{ inSection: true \}\)/, "the Forays page's list sits under its 'Forays' heading");
   const pub = { id: "f1", title: "A Foray", status: "published" };
   const draft = { id: "f2", title: "A draft", status: "draft" };
@@ -364,27 +378,26 @@ test("the Interests page names a lone root once: its card, with no heading resta
   const root = { id: "adventure", label: "Adventure", parent: null, weight: 0.5 };
   const leaf = { id: "adventure/climbing", label: "Climbing", parent: "adventure", weight: 0.2 };
   const lone = run(`interestGroupHtml(${JSON.stringify({ root, rows: [root] })})`);
-  assert.doesNotMatch(lone, /interest-group-label/, "a lone root: the card names itself");
+  assert.doesNotMatch(lone, /st-group-label/, "a lone root: the row names itself");
   assert.strictEqual((lone.match(/Adventure/g) || []).length >= 1, true);
   const grouped = run(`interestGroupHtml(${JSON.stringify({ root, rows: [root, leaf] })})`);
-  assert.match(grouped, /<h3 class="interest-group-label">Adventure<\/h3>/, "a root with a sub-topic keeps the heading that gathers them");
+  assert.match(grouped, /<h3 class="st-group-label t-headline">Adventure<\/h3>/, "a root with a sub-subject keeps the heading that gathers them");
 });
 
-test("a credits row ends in its ↗, so the links make one straight right-hand column", () => {
-  /* Round 2, visual-7: the ↗ was the MIDDLE child of a space-between row, so it
-     sat halfway through whatever width each show name left. MUTATION: put the
-     `.fy-src-out` link back between the name and the count -> red. */
+test("a came-from tile is the art, then the name to three lines, and a show with no page opens its Apple page", () => {
+  /* Ambient Foray detail (Redesign 2026) replaced the credits row (name, count, arrow) with a three-up tile:
+     the card-anatomy ruling that fell is "a credits row ends in its arrow". The tile's face is one link, the
+     art above the name; a show the catalogue has no page for opens its Apple Podcasts page, says so in its
+     accessible name, and has no Follow (there is nothing to bookmark).
+     MUTATIONS: clamp3 -> clamp2 on the name: red. Drop target/rel from the external face: red. Put a
+     data-fd-follow button on a show with no catalogue record: red. */
   const run = loadApp();
-  run(`showNameLink = (s) => s;`);
-  const html = run(`foraySourcesHtml({}, {
-    forayCredits: () => ({ summary: "2 shows", credits: [{ show: "A Show", link: "https://podcasts.apple.com/x", clips: 2, seconds: 300, episodes: [] }] }),
-    fmtSpan: () => "5m",
+  const html = run(`forayCameFromHtml({ shows: ["A Show"], entries: [{ show: "A Show" }] }, {
+    forayCredits: () => ({ summary: "1 show", credits: [{ show: "A Show", link: "https://podcasts.apple.com/x", linkKind: "apple-show", clips: 2, seconds: 300, episodes: [] }] }),
   })`);
-  const head = /<div class="fy-src-head">([\s\S]*?)<\/div>/.exec(html)[1];
-  const order = ["fy-src-show", "fy-src-meta", "fy-src-out"].map((c) => head.indexOf(`class="${c}"`));
-  assert.ok(order.every((i) => i >= 0) && order[0] < order[1] && order[1] < order[2], `name, count, ↗ — got ${order}`);
-  assert.strictEqual(valueOf(".fy-src-show", "flex"), "1 1 auto", "the name takes the free width");
-  assert.notStrictEqual(valueOf(".fy-src-head", "justify-content"), "space-between", "nothing is spread into the middle");
+  assert.match(html, /<a class="fd-tile-face" href="https:\/\/podcasts\.apple\.com\/x" target="_blank" rel="noopener"[^>]*aria-label="Open A Show on Apple Podcasts"><span class="fd-tile-art"[\s\S]*?<span class="t-caption name clamp3">A Show<\/span><\/a>/, html);
+  assert.ok(html.indexOf('class="fd-tile-art"') < html.indexOf('class="t-caption name clamp3"'), "the art, then the name");
+  assert.doesNotMatch(html, /data-fd-follow/, "a show with no catalogue page cannot be followed");
 });
 
 test("a tab's root page has no ‹; a page you were sent to keeps one", () => {
@@ -404,9 +417,12 @@ test("a tab's root page has no ‹; a page you were sent to keeps one", () => {
      `<a class="back" href="#/">‹</a>` in renderAllShows's page-head -> red. */
   assert.doesNotMatch(body("renderAllShows"), /class="back"/, "Discover is a tab root and draws no ‹");
   assert.doesNotMatch(body("renderCategory"), /tabRoot/, "a category page is pushed: it keeps its ‹");
-  for (const fn of ["renderPlaylists", "renderQueue", "renderForays", "renderInterests"]) {
+  for (const fn of ["renderPlaylists", "renderQueue", "renderForays"]) {
     assert.match(body(fn), /class="back"/, `${fn} is pushed from a tab and keeps its ‹`);
   }
+  /* Tuning, Settings and About (Redesign 2026) share one head, stHeadHtml, whose Back chevron is the history-aware a.back. */
+  assert.match(body("renderInterests"), /stPageHtml\(/, "Tuning is a Settings page: it wears the shared head");
+  assert.match(body("stHeadHtml"), /<a class="back st-back /, "the shared head keeps its ‹ (a.back, the history-aware one)");
 });
 
 test("search's shows tier wears the head its Episodes and Playlists tiers do, only while it has rows", () => {
@@ -467,10 +483,10 @@ test("Create's suggestions are the one pill; Discover has no pills (REDESIGN 202
 /* 4. one artwork treatment                                              */
 /* ==================================================================== */
 
-test("the show page, the episode page and Now Playing share one square-artwork treatment", () => {
+test("the episode page and Now Playing share one square-artwork treatment (the show page's art is the Afterglow primitive's, ui/show.css)", () => {
   /* MUTATION: give `.fp-s-art` its own `box-shadow` again, or `.ep-art` its
      own `border-radius` -> red. */
-  const shared = ".show-art, .ep-art, .fp-s-art";
+  const shared = ".ep-art, .fp-s-art";
   assert.strictEqual(valueOf(shared, "border-radius"), "var(--radius-md)");
   assert.match(valueOf(shared, "border") || "", /1px solid var\(--line\)/);
   assert.strictEqual(valueOf(shared, "box-shadow"), "var(--shadow-lift)");
@@ -489,7 +505,7 @@ test("the show page, the episode page and Now Playing share one square-artwork t
     }
     return v;
   };
-  for (const sel of [".show-art", ".ep-art", ".fp-s-art", "body.ui-v2 .ep-art", "body.ui-v2 .show-art"]) {
+  for (const sel of [".ep-art", ".fp-s-art", "body.ui-v2 .ep-art"]) {
     for (const prop of ["border-radius", "box-shadow", "border"]) {
       assert.strictEqual(own(sel, prop), null, `${sel} must not restate ${prop} on its own`);
     }
@@ -576,11 +592,15 @@ test("an intro paragraph sits a section (20px) above the first card, not the row
      tighter than the 8px between the cards themselves.
      MUTATION: delete `.fy-about { margin: 0 0 20px }` -> red. */
   assert.strictEqual(valueOf(".fy-about", "margin"), "0 0 20px", "the Forays intro");
-  assert.strictEqual(valueOf(".show-hero", "margin"), "0 0 20px", "the show page's art + Follow + note block");
-  assert.strictEqual(valueOf(".show-hero", "text-align"), "center", "…which is one centred block");
-  assert.strictEqual(valueOf(".show-hero .show-star", "display"), "inline-block", "Follow centres with it");
+  /* REDESIGN 2026 (ambient, show page): the show page's art + Follow + note block is the Room (ui/show.css); the legacy
+     `.show-hero` rules went with it. Its rhythm is now the Room's own: the note sits 12px under Follow, which sits 16px
+     under the count. MUTATION: set `.ag .sh-note { margin-top: 0 }` -> red. */
+  const showCss = fs.readFileSync(path.join(ROOT, "ui/show.css"), "utf8").replace(/\r\n/g, "\n").replace(/\/\*[\s\S]*?\*\//g, " ");
+  assert.match(showCss, /\.ag \.sh-note \{[^}]*margin-top: var\(--s-3\)/, "the note sits a step under Follow");
+  assert.match(showCss, /\.ag \.sh-follow \{[^}]*margin-top: var\(--s-4\)/, "Follow sits a step under the count");
+  assert.match(showCss, /\.room\.sh-room \{[^}]*align-items: center; text-align: center/, "and the Room is one centred block");
   assert.strictEqual(valueOf(".ep-actions", "justify-content"), "center", "the episode page's actions centre under its art the same way");
-  assert.match(APP_SRC, /<div class="show-hero">\s*\$\{showArt \? `<img class="show-art"[\s\S]*?\$\{showStarBtn\(show\.show_id\)\}\s*<p class="note show-follow-note">[\s\S]*?<\/div>/,
-    "renderShow wraps art, Follow and the note in the hero");
+  assert.match(APP_SRC, /<div class="sh-art">\$\{agArtwork\([^)]*\)\}<\/div>[\s\S]*?\$\{showStarBtn\(show\.show_id\)\}\s*<p class="t-caption sh-note show-follow-note">[\s\S]*?<\/section>/,
+    "renderShow's Room wraps art, Follow and the note");
   assert.match(APP_SRC, /<p class="note fy-about">/, "renderForays' intro carries the class the margin hangs on");
 });

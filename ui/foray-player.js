@@ -28,8 +28,12 @@
 function mountForayStrip(r, player) {
   const strip = $("#fy-strip");
   if (!strip) return;
+  /* A Foray with nothing playable still draws its shape (the unavailable page, BUILD-NOTES 4.6: "strip
+     still drawn"): the strip takes the authored entries, which it reads in either shape (isNarration in
+     player/segment-strip.js). Nothing is bound to that strip, so nothing seeks on it. */
+  const items = r.playable.length ? r.playable : (r.entries || []);
   if (typeof player?.stripInto === "function") {
-    player.stripInto(strip, r.playable, { size: "lg" });
+    player.stripInto(strip, items, { size: "lg" });
     return;
   }
   sizeForayStrip(r);
@@ -40,7 +44,7 @@ function mountForayStrip(r, player) {
 function sizeForayStrip(r) {
   const strip = $("#fy-strip");
   if (!strip) return;
-  r.playable.forEach((item, i) => {
+  (r.playable.length ? r.playable : (r.entries || [])).forEach((item, i) => {
     const seg = strip.children[i];
     if (!seg) return;
     seg.style.flexGrow = String(Math.max(1, Math.round(segLenOf(item))));
@@ -631,7 +635,7 @@ function forayNudgeSteps(player) {
   return { back: 15, fwd: 30 };
 }
 
-function bindForayTransport(r, player, resume = null) {
+function bindForayTransport(r, player) {
   const onChange = (s) => paintForay(s);
   const nudge = forayNudgeSteps(player);
 
@@ -660,15 +664,6 @@ function bindForayTransport(r, player, resume = null) {
      (or 0) and the player's next save overwrote the real one. paintForay
      re-reads the stored point when this Foray goes from live to cold. */
   const startOrResume = () => state.forayResume ? startAt(state.forayResume.elapsedSec) : start(0);
-
-  $("#fy-restart")?.addEventListener("click", async () => {
-    if (typeof player.clearForayResume === "function") player.clearForayResume(r.id);
-    logEvent("foray_restart", { foray_id: r.id, from_sec: Math.round(state.forayResume?.elapsedSec || resume?.elapsedSec || 0) });
-    resume = null;
-    state.forayResume = null;
-    $("#fy-resume")?.remove();
-    await start(0);
-  });
 
   /* Playback speed (#242, popup menu #349). Bound BEFORE the "nothing playable"
      bail-out below and labelled from the stored value, because neither depends
@@ -699,9 +694,10 @@ function bindForayTransport(r, player, resume = null) {
   }
 
   // Nothing playable is not a disabled-looking button that still fires: say it
-  // with the control's own state, so the page and the behaviour agree.
+  // with the control's own state, so the page and the behaviour agree. (The ambient page replaces the
+  // main button with "Find similar" then, so there may be nothing here to disable.)
   if (!r.playable.length) {
-    ["#fy-play", "#fy-next", "#fy-prev", "#fy-back", "#fy-fwd"].forEach(sel => { $(sel).disabled = true; });
+    ["#fy-play", "#fy-next", "#fy-prev", "#fy-back", "#fy-fwd"].forEach(sel => { const el = $(sel); if (el) el.disabled = true; });
     setControlLabel($("#fy-play"), "Nothing to play", null);
     return;
   }
@@ -718,13 +714,13 @@ function bindForayTransport(r, player, resume = null) {
   });
   // Before anything has started, every transport button means "start it" — a
   // next that begins at segment 2 silently drops the opening of the Foray.
-  $("#fy-next").addEventListener("click", () => playerHasForay(r) ? guardForayTap(() => player.forayNext()) : startOrResume());
-  $("#fy-prev").addEventListener("click", () => playerHasForay(r) ? guardForayTap(() => player.forayPrevious()) : startOrResume());
+  $("#fy-next")?.addEventListener("click", () => playerHasForay(r) ? guardForayTap(() => player.forayNext()) : startOrResume());
+  $("#fy-prev")?.addEventListener("click", () => playerHasForay(r) ? guardForayTap(() => player.forayPrevious()) : startOrResume());
   /* The nudges seek on the Foray's clock (`player.nudge`, the same function the
      sheet's ↺15 / 30↻ and the mini bar's ↺15 call); before anything has
      started they start it, like every other transport button here. */
-  $("#fy-back").addEventListener("click", () => playerHasForay(r) ? guardForayTap(() => player.nudge(-nudge.back)) : startOrResume());
-  $("#fy-fwd").addEventListener("click", () => playerHasForay(r) ? guardForayTap(() => player.nudge(nudge.fwd)) : startOrResume());
+  $("#fy-back")?.addEventListener("click", () => playerHasForay(r) ? guardForayTap(() => player.nudge(-nudge.back)) : startOrResume());
+  $("#fy-fwd")?.addEventListener("click", () => playerHasForay(r) ? guardForayTap(() => player.nudge(nudge.fwd)) : startOrResume());
 
   $("#view").querySelectorAll("[data-fy]").forEach(btn => {
     btn.addEventListener("click", async () => {
@@ -908,31 +904,31 @@ function refreshForayResume() {
     point = player.forayResume(r.id, { totalSec: r.totalSec, itemCount: (r.playable || []).length, resolved: r, includeFinished: true });
   } catch (_) { point = null; }
   state.forayResume = point && !point.finished ? point : null;
-  const at = $("#fy-resume .fy-resume-at");
-  const left = $("#fy-resume .fy-resume-left");
-  if (state.forayResume && typeof player.fmtClock === "function") {
-    setStatusText(at, `Jump back in at ${player.fmtClock(state.forayResume.elapsedSec)}`);
-    if (state.forayResume.label) setStatusText(left, state.forayResume.label);
-    return;
-  }
-  /* NO RESUME POINT ANY MORE, SO NO "JUMP BACK IN" (round-3 review, L2). Played
-     to the end and closed, the point reads finished and state.forayResume goes
-     null, but the banner rendered with "Jump back in at 10:00" stayed up
-     (paintForay only sets banner.hidden = live) over a 0:00 clock and a Play
-     that starts from the top: the page contradicting itself. A finished Foray
-     turns the banner into renderForay's "Played" variant, in place (its button
-     already starts from the top, which is what "Play again" does); with no
-     point at all the banner goes. */
-  const banner = $("#fy-resume");
-  if (!banner) return;
-  if (point && point.finished) {
-    banner.classList?.add("fy-played");
-    if (at && typeof at.remove === "function") at.remove();
-    setStatusText(left, point.label || "Played");
-    setStatusText($("#fy-restart"), "Play again");
-  } else if (typeof banner.remove === "function") {
-    banner.remove();
-  }
+  /* PLAYED TO THE END, THEN CLOSED (round-3 review, L2): the point reads finished and `forayResume` goes
+     null. The main button then says "Play again" (paintForay reads `forayPlayed`) and starts from the top. */
+  state.forayPlayed = Boolean(point && point.finished);
+}
+
+/** The main button's words, from the page's states, and the name it speaks. One function for the first
+    paint (renderForay) and every tick (paintForay), so they cannot word a state two ways. "Resume" carries
+    what is left, with a middle dot, never a comma ("Resume · 18 min left"); a Foray played to the end, or
+    one that just ended, offers "Play again". The name starts with the visible words (label in name), so a
+    voice-control "Resume" still matches. */
+function forayPrimaryLabel({ running = false, loading = false, ended = false, started = false, finished = false, left = "" } = {}) {
+  if (running) return ["Pause", "Pause"];
+  if (loading) return ["Loading…", "Loading, please wait"];
+  if (ended || finished) return ["Play again", "Play again"];
+  if (started) return left ? [`Resume · ${left}`, `Resume, ${left}`] : ["Resume", "Resume"];
+  return ["Play", "Play"];
+}
+
+/** What is left of a live Foray, worded the way its resume point words it: "18 min left", "about 18 min
+    left" when part of the runtime is an estimate. "" under a minute (the button then says only "Resume"). */
+function forayLeftLabel(r, elapsedSec) {
+  const player = window.ForayPlayer;
+  const remaining = (r?.totalSec || 0) - (elapsedSec || 0);
+  if (!(remaining >= 60) || typeof player?.fmtSpan !== "function") return "";
+  return `${r.estimated ? "about " : ""}${player.fmtSpan(remaining)} left`;
 }
 
 function paintForay(s) {
@@ -998,12 +994,6 @@ function paintForay(s) {
   const mark = live ? s.index : (resume?.index ?? -1);
   paintSegFill(mark >= 0, elapsed);
 
-  // The offer only means anything while stopped; once it is playing, the
-  // transport IS the progress and a second "jump back in" is noise. A start that
-  // failed is stopped, so the offer — and the "Start over" inside it — comes back.
-  const banner = $("#fy-resume");
-  if (banner) banner.hidden = live;
-
   const playBtn = $("#fy-play");
   if (playBtn) {
     // Three different "not playing" states, and they mean different things:
@@ -1029,12 +1019,12 @@ function paintForay(s) {
     // FIVE states, and the accessible name has all of them: it used to have
     // two, so the button read "Loading…" and announced "Play" — hiding the one
     // moment the app is asking the listener to wait — and a voice-control user
-    // saying "Resume" matched nothing. The name is the text without its glyph.
-    const [text, name] = running ? ["❚❚ Pause", "Pause"]
-      : s.loading ? ["Loading…", "Loading, please wait"]
-      : s.ended ? ["▶ Start over", "Start over"]
-      : started ? ["▶ Resume", "Resume"]
-      : ["▶ Play", "Play"];
+    // saying "Resume" matched nothing. The words are forayPrimaryLabel's.
+    const left = live ? forayLeftLabel(state.foray, elapsed) : (state.forayResume ? state.forayResume.label : "");
+    const [text, name] = forayPrimaryLabel({
+      running, loading: Boolean(s.loading), ended: Boolean(s.ended), started,
+      finished: !live && Boolean(state.forayPlayed), left,
+    });
     setControlLabel(playBtn, text, name);
   }
   // The beat, for CSS: the strip holds still at a boundary for 0.5 s and this

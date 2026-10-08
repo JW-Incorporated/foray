@@ -14,6 +14,8 @@
  * so it is not shot; everything else is.
  */
 
+import { forayDetailPicks } from "./seed.mjs";
+
 const wait = (page, ms) => page.waitForTimeout(ms);
 
 /** Start playback of a seeded item through the real player, then pin it: seek to
@@ -48,6 +50,42 @@ async function closeNowPlaying(page) {
   const close = page.locator(".fp-close");
   if (await close.count()) await close.first().click().catch(() => {});
   await wait(page, 400);
+}
+
+/* Foray detail: the page, the route and the states below it. The Foray in the first coreRoutes step is a
+   draft (the page answers "That foray isn't available"), so this block opens published ones by id. */
+const forayRoute = (foray) => "#/foray/" + encodeURIComponent(foray.id);
+
+/* An unavailable Foray: every audio source in the page's document loses its audio URL, in place, so each
+   clip of the Foray still resolves (its show, its why-line) but is refused ("no audio url"), nothing is
+   playable, and the route is painted again. It takes the Foray without narration: a narrator's bridge needs
+   no source and would still play. `state` is the app's own top-level binding, reachable from the page. */
+async function openUnavailableForay(page, foray) {
+  /* Off the Afterglow page while the scheme goes back to dark (the Dawn step before this one left it light), so no
+     drawn page crossfades; the Foray is then painted new. */
+  await page.evaluate(() => { location.hash = "#/forays"; });
+  await wait(page, 400);
+  await page.emulateMedia({ colorScheme: "dark" });
+  await wait(page, 400);
+  await page.evaluate((hash) => {
+    state.segmentSources = { ...state.segmentSources, sources: state.segmentSources.sources.map((row) => ({ ...row, audio_url: null })) };
+    location.hash = hash;
+  }, forayRoute(foray));
+  await page.waitForSelector(".fd.is-unavailable", { timeout: 15000 });
+  await wait(page, 700);
+}
+
+/* Dawn: the OS asks for the light scheme, the way a phone does. The tokens follow the media query. */
+async function goDawn(page) {
+  /* Leave the Afterglow page first and come back after the flip, so the scheme change is not a live colour change on a page
+     that is already drawn (every .ag element would crossfade for 200ms): the page is painted new, in Dawn. */
+  const hash = await page.evaluate(() => { const h = location.hash; location.hash = "#/forays"; return h; });
+  await wait(page, 500);
+  await page.emulateMedia({ colorScheme: "light" });
+  await wait(page, 500);
+  await page.evaluate((h) => { location.hash = h; }, hash);
+  await page.waitForSelector(".fd .fd-title", { timeout: 15000 });
+  await wait(page, 700);
 }
 
 async function typeSearch(page, text) {
@@ -144,6 +182,61 @@ function galleryCaptureSteps(theme) {
   ];
 }
 
+/* Today (Redesign 2026, ambient): the boot held open. The discover document never answers, so init()
+   never reaches route() and the page stays on the screen it painted before its first await: on Home,
+   Today's skeletons with the lamp sweep. The route is registered AFTER the harness stubs, and a later
+   Playwright route wins; a handler that neither fulfils nor continues leaves the request pending. */
+async function holdBoot(page) {
+  await page.context().route("**/data/discover.json", () => {});
+  await page.reload({ waitUntil: "commit" });
+  await page.waitForSelector("[data-boot-loading]", { timeout: 15000 });
+  await wait(page, 600);
+}
+
+/* Today, offline: the page is told it is offline, the way a phone tells it. Today reads navigator.onLine and
+   follows the offline event, so the banner and the unplayable rows appear on the page already open. The
+   network itself stays up on purpose: on a phone the shell's own files (the icon sprite a new <use> fetches)
+   come from the service worker's cache or the app bundle, but a harness context with no network, and no
+   service worker, cannot serve them, and the glyphs would vanish for a reason that is not the app's. */
+async function goOffline(page) {
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, "onLine", { configurable: true, get: () => false });
+    window.dispatchEvent(new Event("offline"));
+  });
+  await wait(page, 600);
+}
+
+/* Settings, Tuning and About (Redesign 2026, ambient, screen 9). Tuning is the existing `interests` step. These are
+   appended to `returning`: the gear's Sheet opened from Today's own gear, "What 4a does" over it, the Settings page
+   with Dawn chosen live (the page re-lights without a reload), and the About page. */
+async function openGearSheet(page) {
+  if (!(await page.locator("#st-menu:not([hidden])").count())) await page.locator("[data-today-gear]").first().click();
+  await page.waitForSelector("#st-menu:not([hidden])", { timeout: 10000 });
+  await wait(page, 700);
+}
+
+async function openWhatSheet(page) {
+  await openGearSheet(page);
+  await page.locator('#st-menu [data-st-menu="what"]').click();
+  await page.waitForSelector("#st-what:not([hidden])", { timeout: 10000 });
+  await wait(page, 800);
+}
+
+async function chooseDawn(page) {
+  await page.locator('[data-st-theme] [data-st-value="dawn"]').click();
+  await wait(page, 500);
+}
+
+function settingsSteps() {
+  return [
+    { label: "gear-sheet", route: "#/", run: (page) => openGearSheet(page), ready: "#st-menu:not([hidden])" },
+    { label: "what-4a-does", route: "#/", run: (page) => openWhatSheet(page), ready: "#st-what:not([hidden])" },
+    { label: "settings", route: "#/settings", ready: ".st-page[data-st-page=settings]" },
+    { label: "about", route: "#/about", ready: ".st-page[data-st-page=about]" },
+    { label: "settings-dawn-chosen", route: "#/settings", run: (page) => chooseDawn(page), ready: ".st-page[data-st-page=settings]" },
+  ];
+}
+
 /** Routes every seeded profile can show. `fx` supplies real ids. */
 function coreRoutes(fx, { entities }) {
   const ep = fx.items[0].id;
@@ -194,9 +287,9 @@ export function appStates(fx) {
     },
     {
       id: "first-run",
-      description: "Brand-new profile: the onboarding explainer sheet over Home.",
+      description: "Brand-new profile: the first-run Room (Redesign 2026, ambient) over Home. The step keeps its old label, intro-sheet, because other directions' screens.json rows name it.",
       seed: "empty",
-      steps: [{ label: "intro-sheet", route: "#/", ready: "#first-time-sheet" }],
+      steps: [{ label: "intro-sheet", route: "#/", ready: "#onboarding-room" }],
     },
     {
       id: "empty",
@@ -208,7 +301,7 @@ export function appStates(fx) {
       id: "returning",
       description: "Returning user: saved episodes, Up Next, playlists, starred shows, history.",
       seed: "returning",
-      steps: coreRoutes(fx, { entities: true }),
+      steps: [...coreRoutes(fx, { entities: true }), ...settingsSteps()],
     },
     {
       id: "player",
@@ -232,6 +325,26 @@ export function appStates(fx) {
         { label: "search-results-history", route: "#/shows", run: (page) => typeSearch(page, "history") },
         { label: "search-no-results", route: "#/shows", run: (page) => typeSearch(page, "zzqxjv") },
       ],
+    },
+    {
+      id: "foray-detail",
+      description: "Foray detail: a narrated Foray, an unnarrated one, the Dawn scheme, and one that cannot play (its audio sources refused).",
+      seed: "returning",
+      steps: (() => {
+        const { narrated, plain } = forayDetailPicks(fx);
+        return [
+          { label: "foray", route: forayRoute(narrated), ready: ".fd .fd-title" },
+          { label: "foray-unnarrated", route: forayRoute(plain), ready: ".fd .fd-title" },
+          { label: "foray-dawn", route: forayRoute(plain), run: (page) => goDawn(page), ready: ".fd .fd-title" },
+          { label: "foray-unavailable", route: forayRoute(plain), run: (page) => openUnavailableForay(page, plain) },
+        ];
+      })(),
+    },
+    {
+      id: "foray-resume",
+      description: "Foray detail with the narrated Foray half played: the strip filled to the stored point and the button reading Resume.",
+      seed: "foray-resume",
+      steps: [{ label: "foray-resume", route: forayRoute(forayDetailPicks(fx).narrated), ready: ".fd #fy-play" }],
     },
     {
       id: "stress",
@@ -263,6 +376,30 @@ export function appStates(fx) {
         { label: "discover-kb", route: "#/shows", run: (page) => focusSearchOverKeyboard(page) },
         { label: "discover-results-groups", route: "#/shows", run: (page) => typeSearch(page, "history") },
       ],
+    },
+    {
+      id: "loading",
+      description: "Today while the boot is held open: skeletons for the hero and four rows, the wash at the default Glow.",
+      seed: "dismissed",
+      steps: [{ label: "home", route: "#/", run: (page) => holdBoot(page) }],
+    },
+    {
+      id: "offline",
+      description: "Today with the network down: the Offline banner, downloaded items playable, the rest at half art with Play disabled.",
+      seed: "returning",
+      steps: [{ label: "home", route: "#/", run: (page) => goOffline(page) }],
+    },
+    {
+      id: "midlisten",
+      description: "Today with an episode part-played (40 minutes in): Keep listening, and the ribbon restored over the page.",
+      seed: "midlisten",
+      steps: [{ label: "home", route: "#/", ready: ".td-keep" }],
+    },
+    {
+      id: "show",
+      description: "A fresh profile on a show page (Redesign 2026, ambient): the Room lit by the show, Follow in its off state (the Regular plus), the latest episode first. The returning state's `show` step is the followed state.",
+      seed: "dismissed",
+      steps: [{ label: "show-unfollowed", route: "#/show/" + encodeURIComponent(fx.shows[0].show_id), ready: "[data-sh-room]" }],
     },
   ];
 }

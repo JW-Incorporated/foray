@@ -88,7 +88,7 @@ function mount({ seed = {} } = {}) {
      on demand rather than track a real DOM tree. */
   function starButtonsIn(view) {
     const out = [];
-    const re = /<button class="show-star( on)?" data-show-star="([^"]*)"[^>]*>/g;
+    const re = /<button type="button" class="ag-btn ag-btn-secondary sh-follow( is-following)?" data-show-star="([^"]*)"[^>]*>/g;
     let m;
     while ((m = re.exec(view.innerHTML))) {
       out.push({ raw: m[0], id: m[2] });
@@ -124,7 +124,8 @@ function mount({ seed = {} } = {}) {
         return starButtonsIn(view)
           .filter((b) => b.id === targetId)
           .map(() => ({
-            textContent: "",
+            textContent: "", innerHTML: "", dataset: {},
+            setAttribute() {},
             classList: { toggle(cls, on) { this._on = on; }, _on: false },
             set _text(v) {},
           }));
@@ -197,15 +198,20 @@ test("renderShow includes an unstarred showStarBtn by default, and starring upda
 
   m.ctx.renderShow("s-2");
   let html = m.view();
-  assert.match(html, /class="show-star "/, "must render an unstarred show-star button");
+  /* REDESIGN 2026 (ambient, show page): the Follow button is a Secondary Afterglow button (`ag-btn ag-btn-secondary
+     sh-follow`) whose words are "Follow" and "Following" with a plus / a Fill check; the legacy `show-star` capsule and its
+     "+ Follow" / "✓ Followed" text glyphs are gone. MUTATION: put `is-following` back to `on` in showStarBtn -> red. */
+  assert.match(html, /class="ag-btn ag-btn-secondary sh-follow"/, "must render an unfollowed Follow button");
   assert.match(html, /data-show-star="s-2"/, "button must carry the show_id for the click handler");
-  assert.ok(html.includes("+ Follow"), "unfollowed label must read '+ Follow' (R3 vocabulary, 2026-09-22: shows are Followed, episodes are Saved)");
+  assert.ok(html.includes("<span>Follow</span>"), "unfollowed label must read 'Follow' (R3 vocabulary, 2026-09-22: shows are Followed, episodes are Saved)");
+  assert.ok(html.includes("#i-plus"), "…beside the Regular plus");
 
   m.ctx.toggleShowStar("s-2");
   m.ctx.renderShow("s-2");
   html = m.view();
-  assert.match(html, /class="show-star on"/, "re-rendering the page after starring must show the 'on' state");
-  assert.ok(html.includes("✓ Followed"), "followed label must read '✓ Followed'");
+  assert.match(html, /class="ag-btn ag-btn-secondary sh-follow is-following"/, "re-rendering the page after following must show the 'is-following' state");
+  assert.ok(html.includes("<span>Following</span>"), "followed label must read 'Following'");
+  assert.ok(html.includes("#i-check-circle-fill"), "…beside the Fill check: the state is a fill change, not colour alone");
 });
 
 test("REVIEW: the show page says, beside Follow, that following delivers no new episodes", () => {

@@ -131,8 +131,7 @@ function mount({
   const copied = [];
   const cleared = [];
   const body = new El("body");
-  for (const id of ["view", "drawer", "drawer-overlay", "drawer-playlists",
-    "family-toggle", "player-toggle", "autoadvance-toggle", "menu-btn", "refresh-btn",
+  for (const id of ["view", "menu-btn", "refresh-btn",
     // The home screen's own vocabulary, needed only under `boot`.
     "banner-slot", "pl-form", "pl-input", "pl-note",
     "tab-topics", "tab-shows", "sh-form", "sh-input", "sh-note", "sh-results",
@@ -270,26 +269,26 @@ async function mountBooted() {
 /* 1. reachable, on a phone, without devtools                            */
 /* ==================================================================== */
 
-test("the drawer carries a Playback diagnostics item", () => {
-  /* MUTATION: drop the `drawer.appendChild(btn)`. The record becomes unreachable
+test("Settings carries a Playback diagnostics item", () => {
+  /* MUTATION: drop the `group.appendChild(btn)`. The record becomes unreachable
      without devtools, which is the exact failure #264 is about, and this fails. */
   const { ui } = mount();
-  assert.ok(ui.open, "no #diag-open in the drawer");
+  assert.ok(ui.open, "no #diag-open in Settings");
   assert.strictEqual(ui.open.textContent, "Playback diagnostics");
-  /* In the drawer's Developer group since the 2026-09-22 audit (R8): still one
-     tap from the menu, the way a founder in a car needs it. */
-  assert.strictEqual(ui.open.parent.id, "drawer-dev", "it has to be in the Developer group");
-  assert.strictEqual(ui.open.parent.parent.id, "drawer", "which has to be IN the drawer");
+  /* In the Developer group since the 2026-09-22 audit (R8): still one tap from
+     the gear, the way a founder in a car needs it. */
+  assert.strictEqual(ui.open.parent.id, "settings-dev", "it has to be in the Developer group");
+  assert.strictEqual(ui.open.parent.parent.id, "settings-host", "which has to be IN the Settings host");
 });
 
-test("THE REAL init() wires it, and leaves Delete my data as the drawer's LAST item", async () => {
+test("THE REAL init() wires it, and leaves Delete my data as the Settings page's LAST item", async () => {
   /* THE ONE TEST THAT BOOTS THE PAGE FOR REAL, and it exists because a mutation
      round proved it had to. Every other test in this file calls the bind functions
      itself, so deleting `bindDiagnosticsControl()` from `init()` — a control that
      exists, is tested, and is never wired — left them all green. That is the
      "passed with the mechanism removed" shape this repo keeps producing.
 
-     The ORDER is not cosmetics either. The drawer's last item is where a scrolled
+     The ORDER is not cosmetics either. The page's last item is where a scrolled
      thumb lands, and "Delete my data" is the one control in there that cannot be
      undone — `app.js`'s own comment says exactly that. A new control must go above
      it.
@@ -297,17 +296,17 @@ test("THE REAL init() wires it, and leaves Delete my data as the drawer's LAST i
      MUTATION 1: remove `bindDiagnosticsControl()` from `init()`. This fails.
      MUTATION 2: move it below `bindDeleteControl()`. This fails. */
   const { body } = await mountBooted();
-  const drawer = findIn(body, "#drawer");
-  const ids = drawer.children
-    .flatMap((c) => (c.id === "drawer-dev" ? c.children : [c]))
-    .map((c) => c.id).filter(Boolean);
+  const host = findIn(body, "#settings-host");
+  /* The host is sections of lists; the controls, in reading order, are the leaves with an id. */
+  const flatten = (el) => (el.children.length ? el.children.flatMap(flatten) : [el]);
+  const ids = flatten(host).map((c) => c.id).filter(Boolean);
   assert.ok(ids.includes("diag-open"), `init() never wired the control: ${ids.join(", ")}`);
-  assert.strictEqual(ids[ids.length - 1], "delete-data", `drawer order was ${ids.join(", ")}`);
+  assert.strictEqual(ids[ids.length - 1], "delete-data", `Settings order was ${ids.join(", ")}`);
   assert.ok(ids.indexOf("diag-open") < ids.indexOf("delete-data"));
 });
 
 test("binding twice does not stack a second button or a second listener", () => {
-  /* MUTATION: remove the `if (!drawer || $("#diag-open")) return` guard. Two
+  /* MUTATION: remove the `if (!group || $("#diag-open")) return` guard. Two
      buttons appear and this fails. */
   const { ctx, body } = mount();
   ctx.bindDiagnosticsControl();

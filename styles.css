@@ -64,11 +64,6 @@
      and in the player. 16 is the iPhone's own content margin. */
   --gutter: 16px;
   --topbar-h: 44px;
-  /* U-12: the drawer is the top-most chrome. Defined here rather than at the
-     drawer's own rules so the whole stacking ladder has one authored number;
-     the ladder itself is documented in the `---------- drawer ----------`
-     block below, which is the only place this token is read. */
-  --z-drawer: 80;
   /* ELEVATION. Four levels, each with one job; colour-bearing, so `body.ui-v2`
      restates them below (the v2 page is dark whatever the OS says). */
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.2);                         /* thumbnails in rows and cards        */
@@ -351,7 +346,7 @@ html, body {
   .topbar button, button.star, .play-btn, button.up-next, button.reorder, button.up-next-remove, button.up-next-clear,
   .fy-thumb, .fp-grab-zone .fp-close, .fp-rate, .fp-stop, .fp-openep,
   .voice-row-audition, .fy-chip,
-  button.show-star, .fy-sheet-cancel, .fy-sheet-go, .interest-reset, .shell-notice button,
+  .fy-sheet-cancel, .fy-sheet-go, .interest-reset, .shell-notice button,
   .fy-script-more
 ) {
   position: relative;
@@ -360,7 +355,7 @@ html, body {
   .topbar button, button.star, .play-btn, button.up-next, button.reorder, button.up-next-remove, button.up-next-clear,
   .fy-thumb, .fp-grab-zone .fp-close, .fp-rate, .fp-stop, .fp-openep,
   .voice-row-audition, .fy-chip,
-  button.show-star, .fy-sheet-cancel, .fy-sheet-go, .interest-reset, .shell-notice button,
+  .fy-sheet-cancel, .fy-sheet-go, .interest-reset, .shell-notice button,
   .fy-script-more
 )::after {
   content: "";
@@ -391,7 +386,7 @@ a[href^="#/"] {
    a grey box on the link's text inside a card that is already darkening — so
    it goes, there and only there; test/tap-targets.test.js holds each of these
    to an authored press. */
-.mc-link, .ep-row .ep-title-link, .pl-row, .page-link-row, .drawer-item, .drawer-section {
+.mc-link, .ep-row .ep-title-link, .pl-row, .page-link-row {
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -547,16 +542,19 @@ body.view-home .topbar h1 .wordmark { display: none; }
 .topbar button:disabled { opacity: 0.45; cursor: default; }
 .topbar button:disabled:active { background: none; }
 
-/* ---------- drawer ----------
+/* The top bar's one button is the gear (Redesign 2026, ambient: the drawer it used to open is gone, and so is its block here).
+   Its glyph is the sprite's i-gear, drawn at the size the old text glyph was. */
+.topbar .topbar-glyph { width: var(--fs-glyph); height: var(--fs-glyph); fill: currentColor; stroke: none; vertical-align: middle; pointer-events: none; }
 
-   THE Z-INDEX LADDER, in one place, because this is the element that has to
-   sit at the top of it. Every fixed/sticky layer in this file, bottom to top:
+/* ---------- THE Z-INDEX LADDER ----------
+
+   In one place. Every fixed/sticky layer in this file, bottom to top:
 
         5  .fy-transport      sticky transport on a Foray page
        15  .page-head         sticky page header (pins under the topbar)
        19  .shell-notice      "this page is a version behind" bar (#233)
        20  .topbar            the fixed header  (also .fy-strip-bubble)
-       55  .tab-bar           the four-tab bar (U-02)
+       55  .tab-bar           the tab bar
        58  #sh-compose        the search page's bottom-docked search field —
                               above the tab bar it docks on, below the player
                               because #foray-player is also the Now Playing
@@ -567,105 +565,17 @@ body.view-home .topbar h1 .wordmark { display: none; }
                                2026-09-13 report and paints inside this
                                element's own stacking context, so it covers
                                the mini bar without needing a number of its
-                               own — and is still under the drawer, below)
-       70  .fy-sheet          the per-segment reason sheet (modal)
-    -> 80  #drawer-overlay     var(--z-drawer)
-       81  #drawer             var(--z-drawer) + 1, so the panel is over its
-                               own scrim and nothing else has to sit between
+                               own)
+    -> 70  .fy-sheet          every modal Sheet: the per-segment reason sheet,
+                              Delete my data, the voice picker, diagnostics, and
+                              the gear's Sheet and "What 4a does" (ui/settings.js,
+                              which wear `.ag` too)
 
-   U-12 (founder feedback F17) moved the drawer from 30/31 to the top. The
-   menu button lives in the topbar (20) and is reachable at every moment,
-   including while the Now Playing sheet is expanded — and #foray-player is
-   60, so at 30/31 the drawer opened UNDERNEATH the sheet: the scrim dimmed
-   nothing, the panel was invisible, and the tap that opened it looked like a
-   dead button. Navigation must be able to cover the thing it navigates away
-   from, so the drawer is now above BOTH the player (60) and the reason sheet
-   (70). This is a stacking change only — no size, colour or motion changed.
-
-   Anything new that must cover the drawer needs a number above these, and a
-   line in this list; nothing does today. */
-#drawer-overlay {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.45);
-  z-index: var(--z-drawer);
-}
-#drawer {
-  position: fixed;
-  top: 0; left: 0; bottom: 0;
-  width: min(78vw, 300px);
-  background: var(--surface);
-  border-right: 1px solid var(--line);
-  box-shadow: var(--shadow);
-  z-index: calc(var(--z-drawer) + 1);
-  padding: calc(env(safe-area-inset-top) + 14px) 10px 14px;
-  overflow-y: auto;
-}
-/* Top-level destinations (Home/Playlists) read as real nav items — serif,
-   normal case, same family as card/page headlines — distinct from
-   .drawer-section-label below, which is a small-caps section divider, not
-   a link. The two looked identical before (both bold uppercase caps),
-   with no way to tell "tap this" from "this just labels a group." */
-.drawer-section {
-  display: block;
-  margin: 2px 0;
-  padding: 11px 14px;
-  border-radius: var(--radius-md);
-  font-family: var(--font-display);
-  font-size: var(--fs-lg);
-  font-weight: 600; /* a nav row's title: 600, like every row title (round 2, visual-15) */
-  color: var(--text);
-  text-decoration: none;
-}
-.drawer-section:active { background: var(--surface-2); }
-.drawer-item {
-  display: block;
-  margin: 1px 0;
-  /* 44px by its own size (round 2, touch-5): 12 + ~20 + 12. Stacked 1px
-     apart, a hit box grown past the item would overlap its neighbour's. */
-  min-height: 44px;
-  padding: 12px 14px 12px 22px;
-  border-radius: var(--radius-md);
-  color: var(--text-dim);
-  text-decoration: none;
-  font-size: var(--fs-md);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.drawer-item:active { background: var(--surface-2); }
-.drawer-empty { padding: 6px 14px 6px 22px; color: var(--text-dim); font-size: var(--fs-md); }
-.drawer-section-label {
-  margin-top: 12px;
-  padding: 12px 14px 6px;
-  border-top: 1px solid var(--line);
-  font-family: var(--font-body);
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-dim);
-}
-.drawer-item.as-btn {
-  display: block;
-  width: 100%;
-  border: none;
-  background: none;
-  text-align: left;
-  font-family: inherit;
-  cursor: pointer;
-}
-/* The engine's Developer rows (app.js § the engine's Developer rows, NE-22d)
-   say what the engine answered ("armed. Lock the phone now ..."), and an
-   ellipsis would cut exactly the instruction the row exists to give. They
-   wrap instead; 44px stays the floor. */
-.drawer-item.drawer-wrap { white-space: normal; overflow: visible; }
-.drawer-item.as-btn:disabled { opacity: 0.6; cursor: default; }
-/* The Developer group (app.js § the Developer group): the founder's field-report
-   tools in one collapsed <details> at the bottom of Settings. The summary is an
-   ordinary drawer item; its chevron replaces the UA marker, which `.drawer-item`'s
-   `display: block` would hide anyway, and turns when the group is open. */
-.drawer-dev > summary { list-style: none; cursor: pointer; }
-.drawer-dev > summary::-webkit-details-marker { display: none; }
-.drawer-dev > summary::after { content: "\203A"; float: right; transition: transform 120ms; }
-.drawer-dev[open] > summary::after { transform: rotate(90deg); }
+   The drawer that used to sit above all of these (80 / 81, U-12, founder feedback
+   F17: navigation must be able to cover the thing it navigates away from) is gone;
+   what covers the Now Playing sheet is now the gear's Sheet at 70, through the
+   same sheet owner. Anything new that must cover a Sheet needs a number above 70
+   and a line in this list; nothing does today. */
 
 /* ---------- home: one screen, and only one screen ---------- */
 #view { padding-top: calc(var(--topbar-h) + env(safe-area-inset-top)); }
@@ -825,22 +735,8 @@ button.star {
 }
 button.star.on { color: var(--gold); }
 
-/* ---------- starred shows (follow-lite) ---------- */
-
-button.show-star {
-  display: block;
-  margin: 10px 0 14px;
-  padding: 10px 16px;
-  /* A capsule, like Apple's "+ Follow". */
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--line);
-  background: var(--surface-2);
-  color: var(--text);
-  font-size: var(--fs-md);
-  font-weight: 600;
-  cursor: pointer;
-}
-button.show-star.on { color: var(--gold); border-color: var(--gold); }
+/* ---------- starred shows (follow-lite) ----------
+   The Follow button is an Afterglow Secondary button (app.js showStarBtn, ui/show.css); the legacy capsule is gone. */
 
 /* THE ONE TEXT FIELD (audit round 2, visual-8). Playlists' and Create's
    fields were 52px at the card radius, the in-show search 48px, and the three
@@ -1730,7 +1626,7 @@ body.ui-v2 {
   font-size: var(--fs-2xs);
   font-weight: 600;
 }
-.tab-btn svg { width: 22px; height: 22px; }
+.tab-btn svg { width: 22px; height: 22px; fill: currentColor; stroke: none; }   /* the Phosphor sprite is filled paths, painted by currentColor (ui/icons.js) */
 /* The listener's OWN current location in the app is their material, not
    4a's editorial voice — amber, not violet, per the split U-01 establishes
    and issue #127 requires stay meaningful everywhere it appears. Falls
@@ -3138,26 +3034,13 @@ body.fy-sheet-keeps-player.fp-open .fy-sheet .fy-panel {
 }
 
 /* ---------- show page (#/show/:id, Stage 1) ---------- */
-/* ONE HERO, ONE AXIS (visual pass 1, 2026-09-23). Art centred, Follow flush
-   left and its note flush left read as three unrelated stacks under a title
-   that sits beside the back button; the art, the Follow and the note are now
-   one centred block, a section (20px) above the list. The episode page's
-   art + actions block is centred the same way (`.ep-actions`). */
-.show-hero { text-align: center; margin: 0 0 20px; }
-.show-hero .show-star { display: inline-block; margin: 0 auto 8px; }
-.show-art {
-  display: block;
-  width: 100%; max-width: 220px;
-  margin: 0 auto 12px;
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
-}
+/* The show page's hero (art, Follow, note) is the Room in ui/show.css; the legacy `.show-hero` and `.show-art` are gone. */
 /* ONE SQUARE-ARTWORK TREATMENT (audit 2026-09-22, qa row 59): the show page,
    the episode page and the Now Playing sheet show the same object, and it used
    to be flat-and-bordered on one and lifted-and-unbordered on another. Apple's
    art floats; ours floats too, with a hairline so dark art keeps an edge on a
    dark page. */
-.show-art, .ep-art, .fp-s-art {
+.ep-art, .fp-s-art {
   border-radius: var(--radius-md);
   border: 1px solid var(--line);
   box-shadow: var(--shadow-lift);
@@ -3598,14 +3481,7 @@ body.ui-v2 .page-link-row {
 }
 body.ui-v2 .page-link-row:active { background: var(--surface2); }
 
-/* ---------- Show page ---------- */
-body.ui-v2 button.show-star {
-  border-color: var(--line);
-  background: var(--surface);
-  color: var(--muted);
-}
-/* Starring is the listener's own material -- amber, per #127. */
-body.ui-v2 button.show-star.on { color: var(--amber); border-color: var(--amber); }
+/* ---------- Show page ---------- (its Room, Follow and rows are ui/show.css) */
 /* Saving a playlist makes it the listener's own material -- amber, per #127. */
 body.ui-v2 button.pl-save {
   border-color: var(--line);
@@ -4099,15 +3975,7 @@ body.ui-v2 .hv2-suggested .mini-card > .hv2-bridge { flex-basis: 100%; }
 /* `.ep-why` is gone with the line it styled (founder, 2026-09-21: "Delete the
    'why it's in 4a' field from anything the user can read"). */
 
-/* ---------- overlays: the drawer is modal, and sheets move (audit round 2) ----------
-
-   nav-5: `body.drawer-open` is the drawer's page lock, the twin of
-   `body.fp-expanded` above — a drag on its scrim, or on a panel too short to
-   scroll, scrolled the page behind it and the listener lost their place.
-   `overscroll-behavior: contain` keeps the panel's own scroll from chaining
-   into the document; `touch-action: none` on the scrim is what stops a thumb
-   resting on it from panning what it dims. app.js's `openDrawer` writes the
-   class and takes the page `inert`, the same contract every sheet has.
+/* ---------- overlays: sheets move (audit round 2) ----------
 
    touch-4 / touch-8: every `.fy-panel` slides in, and can be pulled down.
    `--fy-panel-dy` is the drag offset app.js's owner writes (the same custom-
@@ -4123,10 +3991,6 @@ body.ui-v2 .hv2-suggested .mini-card > .hv2-bridge { flex-basis: 100%; }
    so it outranks the rules that switch the transitions on; app.js's
    `slideIn`/`slideOut` decline under the same query, so nothing waits on a
    transition that will not run. */
-body.drawer-open { overflow: hidden; }
-#drawer { overscroll-behavior: contain; }
-#drawer-overlay { touch-action: none; }
-
 .fy-panel {
   transform: translateY(var(--fy-panel-dy, 0px));
   animation: fy-panel-in .22s ease;
@@ -4148,7 +4012,6 @@ body.drawer-open { overflow: hidden; }
    fill's width tween is listed too: under this setting the bar steps with the
    clock instead of gliding, which reads the same and moves less.) */
 @media (prefers-reduced-motion: reduce) {
-  .drawer-dev > summary::after,
   .mini-card,
   .page-head,
   .fp-fill,

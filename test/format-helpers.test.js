@@ -364,8 +364,8 @@ test("a playlist page says how many were played only when some were", () => {
 
 /* MUTATION: restore either count subtitle unguarded ("0 queued" over "Nothing
    in Up Next yet", "0 built" over "No playlists yet"), the drawer's lowercase
-   fragment, or the Library's lowercase subtitle. */
-test("empty Up Next and Playlists pages carry no zero count, and the drawer's empty line is a sentence", () => {
+   fragment, or the Library's lowercase subtitle. (The drawer's "No playlists yet" line went with the drawer, 2026-10-07.) */
+test("empty Up Next and Playlists pages carry no zero count, and the lowercase fragment is gone", () => {
   const m = mount();
   m.ctx.renderQueue();
   assert.ok(!/0 queued/.test(m.view()), m.view());
@@ -373,7 +373,6 @@ test("empty Up Next and Playlists pages carry no zero count, and the drawer's em
   assert.ok(!/0 built/.test(m.view()), m.view());
   m.ctx.renderLibrary();
   assert.ok(!/forays, shows, saved/.test(m.view()), "the Library subtitle is gone");
-  assert.ok(APP_SRC.includes('<p class="drawer-empty">No playlists yet</p>'), "the drawer's empty playlists line");
   assert.ok(!APP_SRC.includes(">none yet<"), "the lowercase fragment is gone");
 });
 

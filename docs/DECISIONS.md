@@ -2,6 +2,39 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
+## 2026-10-07 — Redesign 2026 (ambient): the drawer is gone; one gear opens Settings, Tuning, About and "What 4a does"
+
+**Ruling taken by the build (DIRECTION.md "Information architecture", owner pick of Ambient, 2026-10-06):** "Overturns
+4 tabs + drawer". Branch `redesign/ambient-settings-tuning-about` (screen 9). Nothing here is on `main`.
+
+- **No drawer remains.** `index.html` has no `#drawer` or overlay; `ui/drawer.js` is deleted; `ui/drawer-dev.js` is
+  `ui/settings-dev.js`. The top bar's one button is the gear; Today draws its own. Both open ONE Sheet (veil header 56 with a
+  grabber, a 44px close, focus in / trapped / returned, a pull down) listing **Settings, Tuning, About, What 4a does**.
+- **The pages are routes**: `#/settings`, `#/interests` (Tuning, the route it already had) and `#/about`, each a `.ag` page with
+  a Back chevron and the page's one `<h1>`. All three belong to Today's tab (`tabForHash`); Tuning used to belong to Library.
+- **Settings keeps every control the drawer had, by id.** They are built once into one host (`#settings-host`, sections:
+  Listening, Downloads, the Developer disclosure, Your data) that is moved into the page while it is on screen and parked,
+  hidden, in `<body>` before the next page replaces `#view` (`parkSettingsHost`, first line of `renderCurrentPage`). Moving
+  the same nodes keeps their listeners and running state (a voice probe in flight) and every `$("#id")` the builders make.
+  The old rule "a toggle must not close the drawer" became "a switch flips in place and the page under it is not rebuilt".
+- **Appearance** (Dusk / Dawn / Follow system) writes `cp_theme` ("dusk" | "dawn" | "system", the default) through the shim
+  and sets `data-theme` on `<html>`, live; "system" removes it so `prefers-color-scheme` decides. Applied after the storage
+  hydrates and again after Delete my data. The change is a cut (`st-swap` switches the page's transitions off for the instant
+  the colours change), not a 200ms crossfade of every surface. New key family, documented in the privacy policy (33 -> 34).
+- **Tuning is three states per subject** (less / 4a's pick / more) as a radiogroup of 44-tall Chips, Lamp fill selected; no
+  sliders. Weights are unchanged (0-1 in `cp_interests`): less = 0.4 x the pick, more = the pick + 0.3 (cap 1), 4a's pick = the
+  taxonomy weight. The state is read from the stored weight (observed, never declared); a choice that would not differ from
+  the pick is offered disabled. "4a's pick" is the old "Back to 4a's pick" button.
+- **About** says the version it can know (`window.forayBuildStamp`, handed over by `player/client.js`) and the licences
+  (fonts OFL, Phosphor MIT). "What 4a does" is a Sheet of its own, reachable from the gear and from About; it is self-contained
+  until the onboarding screen lands (its first-run Room is gated on a first visit, so it cannot be re-opened by the gear).
+- **Tests that fell with the ruling, replaced not deleted:** drawer-ownership -> settings-sheet (the drawer's leave rule, overlay and
+  modal contract gone; scrim stacking, focus return, same-hash, hardware back and A-07 ported), drawer-settings-toggle ->
+  settings-switches, interests-page (sliders -> Tuning), and the drawer / `Search`-tab / five-destinations assertions in
+  home-information-architecture, category-browse, library-screen, card-anatomy, tab-bar, format-helpers, modal-and-focus.
+- **Found on the way:** `safeUrl("#/settings")` is `"#"` (it admits only http(s)), so a link written through it goes
+  nowhere. In-app links are written after a literal `#/`, as every other page does.
+
 ## 2026-10-05 — No legal review before sharing AI-generated content; #126 re-scoped to content safety in Foray generation
 
 **Founder ruling (Wyatt, 2026-10-05, in a Claude Code session, verbatim):**

@@ -455,7 +455,7 @@ function launchOverride(decision) {
 }
 
 /** The rows' view, or null when there are no rows. Synchronous: app.js paints
-    it inside renderDrawer. */
+    it inside paintSettings. */
 function engineDeveloperStatus() {
   if (!engine) return null;
   const decision = engine.decision;
@@ -837,6 +837,12 @@ function recordBuildStamp() {
          native build (else the version) is passed, never the object — and no
          second round-trip to `getInfo` is made for it. */
       try { noteDownloadsBuild(stamp); } catch (_) { /* the UA stays 4a/dev */ }
+      /* And the About page's version line (ui/settings.js): a classic script cannot import this module, so
+         the stamp is handed over on `window` and announced once, for a page that painted before it arrived. */
+      try {
+        window.forayBuildStamp = stamp;
+        window.dispatchEvent(new Event("foray:build-stamp"));
+      } catch (_) { /* About says "Web version" */ }
     })
     .catch(() => {});
 }
@@ -3870,7 +3876,7 @@ function bind() {
     document.body.classList.toggle("fp-expanded", open);
     paintInfoLabel();
     /* Opening: the page behind (and the mini bar under the sheet) goes inert
-       and focus moves into the dialog. The topbar and the drawer stay
+       and focus moves into the dialog. The topbar (the gear) stays
        reachable (U-12/F17 above), and so does the player's live region — it
        is a sibling of the bar, not inside it, for exactly this reason (see
        buildUI). Escape, and a navigation, collapse it through this same
@@ -3879,7 +3885,7 @@ function bind() {
       owner.openSheet(ui.sheet, {
         panel: ui.sheet,
         bodyClass: "fp-expanded",
-        keepReachable: [".topbar", "#drawer", "#drawer-overlay", ".fp-announce"],
+        keepReachable: [".topbar", ".fp-announce"],
         onRequestClose: () => setExpanded(false),
         returnFocus: ui.info,
       });

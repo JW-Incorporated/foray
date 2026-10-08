@@ -206,41 +206,48 @@ test("the rail is capped", () => {
 test("each kind links to its own route, with the scheme fixed in code", () => {
   /* Not a style point: test/app-security.test.js forbids interpolating a whole
      href, and `safeUrl` would turn every one of these in-app routes into "#".
-     MUTATION: build one `c.href` string and interpolate it — the security suite
-     goes red, and so does this. */
+     "Keep listening" (Today) draws the mid-listen entry; the route is built in code from
+     the id and the kind. MUTATION: build one `href` string and interpolate it — the security
+     suite goes red, and so does this. */
   const app = loadApp();
   const out = [
-    app.jumpBackInCardHtml({ kind: "foray", id: "f 1", title: "F" }),
-    app.jumpBackInCardHtml({ kind: "playlist", id: "pl-1", title: "P" }),
-    app.jumpBackInCardHtml({ kind: "episode", id: "ep-1", title: "E" }),
+    app.todayKeepHtml({ kind: "foray", id: "f 1", title: "F", percent: 10, sub: "Foray", left: "" }),
+    app.todayKeepHtml({ kind: "playlist", id: "pl-1", title: "P", percent: 10, sub: "1 episode", left: "" }),
+    app.todayKeepHtml({ kind: "episode", id: "ep-1", title: "E", percent: 10, sub: "S", left: "", item: { id: "ep-1", title: "E", show: "S", audio_url: "https://a.test/1.mp3" } }),
   ].join("");
   assert.match(out, /href="#\/foray\/f%201"/, "an id with a space must be encoded, not broken");
   assert.match(out, /href="#\/playlist\/pl-1"/);
   assert.match(out, /href="#\/episode\/ep-1"/);
 });
 
-test("only the episode card carries the pick-logging attributes", () => {
+test("only the episode row carries the pick-logging attributes", () => {
   /* `bindPickLogging` reads `data-ep` as an episode id; a Foray or a playlist id
      there would log a pick for something that is not an episode.
-     MUTATION: emit `ev` for every kind. */
+     MUTATION: emit `data-ev` for every kind in todayKeepHtml. */
   const app = loadApp();
-  assert.ok(app.jumpBackInCardHtml({ kind: "episode", id: "ep-1", title: "E" }).includes('data-ev="picked"'));
-  assert.ok(!app.jumpBackInCardHtml({ kind: "foray", id: "f-1", title: "F" }).includes("data-ev"));
-  assert.ok(!app.jumpBackInCardHtml({ kind: "playlist", id: "pl-1", title: "P" }).includes("data-ev"));
+  const item = { id: "ep-1", title: "E", show: "S", audio_url: "https://a.test/1.mp3" };
+  assert.ok(app.todayKeepHtml({ kind: "episode", id: "ep-1", title: "E", percent: 10, item }).includes('data-ev="picked"'));
+  assert.ok(!app.todayKeepHtml({ kind: "foray", id: "f-1", title: "F", percent: 10 }).includes("data-ev"));
+  assert.ok(!app.todayKeepHtml({ kind: "playlist", id: "pl-1", title: "P", percent: 10 }).includes("data-ev"));
 });
 
 test("a title is escaped like any other untrusted text", () => {
-  const out = app0().jumpBackInCardHtml({ kind: "playlist", id: "pl-1", title: '<img src=x onerror=1>' });
+  /* MUTATION: interpolate entry.title without esc() in todayKeepHtml. */
+  const out = app0().todayKeepHtml({ kind: "playlist", id: "pl-1", title: '<img src=x onerror=1>', percent: 10 });
   assert.ok(!out.includes("<img"));
   assert.match(out, /&lt;img/);
 });
 
-test("a card with no progress renders no bar rather than an empty one", () => {
-  /* A zero-width bar reads as "no progress", which is a different claim from
-     "we do not know". MUTATION: always emit the bar. */
-  const out = app0().jumpBackInCardHtml({ kind: "playlist", id: "pl-1", title: "P" });
-  assert.ok(!out.includes("fy-bar"));
-  assert.ok(app0().jumpBackInCardHtml({ kind: "episode", id: "e", title: "E", percent: 40 }).includes("fy-bar"));
+test("an entry with no progress is not mid-listen: Keep listening skips it rather than draw an empty bar", () => {
+  /* A zero-width bar reads as "no progress", which is a different claim from "we do not
+     know"; a finished thing is not mid-listen either. MUTATION: drop the `typeof percent`
+     guard in todayKeepEntry -> the never-started playlist is chosen. */
+  const app = app0();
+  const started = { kind: "episode", id: "e", title: "E", percent: 40 };
+  assert.strictEqual(app.todayKeepEntry([{ kind: "playlist", id: "p", title: "P", percent: null }, started]).id, "e");
+  assert.strictEqual(app.todayKeepEntry([{ kind: "playlist", id: "p", title: "P", percent: null }]), null);
+  assert.strictEqual(app.todayKeepEntry([{ kind: "episode", id: "e", title: "E", percent: 100 }]), null, "a finished one is not mid-listen");
+  assert.ok(app.todayKeepHtml({ kind: "episode", id: "e", title: "E", percent: 40, item: { id: "e", title: "E", show: "S" } }).includes("td-rim-fill"), "a started one draws its rim");
 });
 
 let _app0 = null;
@@ -264,14 +271,16 @@ function block(src, startMarker, endMarker) {
   return j < 0 ? src.slice(i) : src.slice(i, j + endMarker.length);
 }
 
-test("the episode card renders a bar at 0 %, not no bar", () => {
-  /* `typeof c.percent === "number"` has to admit 0. A listener who has just
-     started an episode has an honest 0 %, and the Foray cards draw theirs at
-     every value -- the episode card matching them is the whole report.
-     MUTATION: change the guard to `c.percent` (truthy) and 0 stops drawing a
-     bar. This goes red. */
-  const out = app0().jumpBackInCardHtml({ kind: "episode", id: "e", title: "E", percent: 0 });
-  assert.match(out, /fy-bar-fill/, "a zero-percent bar is still a bar");
+test("the episode row renders its rim at 0 %, not no rim", () => {
+  /* `typeof percent === "number"` has to admit 0. A listener who has just started an episode
+     has an honest 0 %, and the Foray rows draw theirs at every value -- the episode row
+     matching them is the whole report.
+     MUTATION: change todayKeepEntry's guard to `e.percent > 0` (or `todayEpisodeRow`'s to a
+     truthy test) and 0 stops drawing a rim. This goes red. */
+  const entry = { kind: "episode", id: "e", title: "E", percent: 0, item: { id: "e", title: "E", show: "S" } };
+  assert.strictEqual(app0().todayKeepEntry([entry]), entry, "0 % is mid-listen");
+  const out = app0().todayKeepHtml(entry);
+  assert.match(out, /td-rim-fill/, "a zero-percent rim is still a rim");
   assert.match(out, /data-pct="0"/);
 });
 
@@ -335,7 +344,7 @@ test("the card's bar and label read the RAW stored position, never the collapsed
 
 /* ---------- where you are in a playlist (audit round 2, honesty-7) ------- */
 
-test("a playlist card says how far in you are, in the same reading as the playlist page", () => {
+test("a playlist row says how far in you are, in the same reading as the playlist page", () => {
   /* The rail mixed three grammars: a bar and "N min left" on Foray and episode
      cards, a bare "12 episodes" on a playlist's, though its page knew
      "3 played". MUTATION: drop `percent`/`left` from the playlist entry, or
@@ -352,15 +361,18 @@ test("a playlist card says how far in you are, in the same reading as the playli
   const pl = app.jumpBackInEntries().find((e) => e.kind === "playlist");
   assert.strictEqual(pl.left, "1 of 4 played");
   assert.strictEqual(pl.percent, 25);
-  const html = app.jumpBackInCardHtml(pl);
-  assert.match(html, /class="fy-bar"/, "the card draws the same bar the other kinds do");
+  const html = app.todayKeepHtml(pl);
+  assert.match(html, /td-rim-fill/, "the row draws the same rim the other kinds do");
   assert.match(html, /1 of 4 played/);
+  /* and Playlists for you's tile reads the same fact */
+  const tile = app.todayPlaylistCard(app.playlistById("pl-3"), false, new Set(["a"]));
+  assert.strictEqual(tile.played, "1 of 4 played");
 });
 
-test("ROUND 2 review (honesty-7 x copy-13): a playlist card never says '0 of N played'", () => {
+test("ROUND 2 review (honesty-7 x copy-13): a playlist row never says '0 of N played'", () => {
   /* A played playlist whose ids aged out of the history ring counted 0 and the
      card read "0 of 12 played" over an empty bar. MUTATION: drop the
-     `&& played` guards from the playlist entry -> red. */
+     `&& played` guards from the playlist entry (or the tile) -> red. */
   const app = loadApp();
   const item = (id) => ({ id, title: `T ${id}`, show: "S", audio_url: `https://a.test/${id}.mp3`, topics: [] });
   app._state("state.discover = { items: [] }; state.session = { session_id: 's', builder: 't', episodes: {}, cards: [] }; state.itemIndex = {};");
@@ -374,5 +386,8 @@ test("ROUND 2 review (honesty-7 x copy-13): a playlist card never says '0 of N p
   assert.ok(pl, "premise: the played playlist is on the rail");
   assert.strictEqual(pl.left, "", "no zero line");
   assert.strictEqual(pl.percent, null, "and no empty bar");
-  assert.doesNotMatch(app.jumpBackInCardHtml(pl), /0 of 3 played/);
+  assert.strictEqual(app.todayKeepEntry([pl]), null, "so it is not mid-listen");
+  assert.strictEqual(app.todayPlaylistCard(app.playlistById("pl-0"), false, new Set()).played, "", "and its tile claims no zero either");
+  assert.doesNotMatch(app.todayKeepHtml(pl), /0 of 3 played/);
 });
+

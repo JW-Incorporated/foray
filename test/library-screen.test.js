@@ -487,18 +487,19 @@ test("Library lists the shows the listener follows, linking to each show", () =>
   assert.ok(html.includes("A Followed Show"));
 });
 
-test("the drawer and the tab bar use one name for #/shows; the page's heading is Discover too", () => {
-  /* The tab bar's names win (founder default R6). MUTATION: put "Shows" back in
-     index.html's drawer. REDESIGN 2026 (ambient, Discover): the page's heading
-     is "Discover" (BUILD-PLAN screen 4), and since Discover iteration 3 so are the tab
-     (the three-tab bar: Today, Discover, Library) and the drawer entry. The drawer and
-     the tab are pinned to each other, and the page's own heading to the direction's.
-     MUTATION: change the heading to "Search" in renderAllShows -> the last
-     assertion fails. */
-  const drawerName = /<a class="drawer-section" href="#\/shows">([^<]+)<\/a>/.exec(INDEX_HTML)[1];
-  const tabName = /\{ key: "search", label: "([^"]+)", hash: "#\/shows"/.exec(APP_SRC)[1];
-  assert.strictEqual(drawerName, tabName);
-  assert.match(APP_SRC, /<h2 class="t-title">Discover<\/h2>/, "and the page's own heading is the direction's");
+test("the tab bar names #/shows once, and nothing else in the shell names it", () => {
+  /* The tab bar's names win (founder default R6). The drawer that used to carry a second copy of the name is gone
+     (Redesign 2026, ambient), so the one-name rule is now: the tab, the page heading, and no drawer link.
+     MUTATION: put a drawer link to #/shows back in index.html -> the first assertion fails; put "Shows" back as the
+     page heading -> the last one fails. */
+  assert.ok(!/<a class="drawer-section" href="#\/shows">/.test(INDEX_HTML), "no second name for #/shows in index.html");
+  const tabName = /\{ key: "search", label: "([^"]+)", hash: "#\/shows"/.exec(fs.readFileSync(path.join(ROOT, "ui", "tabbar.js"), "utf8"))[1];
+  /* REDESIGN 2026 (ambient, Today's Dock): the tab is now "Discover" (the three-tab Dock). The page's own heading is
+     Discover's screen (it says "Search" until that branch lands, "Discover" after), so it is pinned to either, never
+     to a third name. MUTATION: rename the tab to "Explore" -> the next assertion fails. */
+  assert.strictEqual(tabName, "Discover", "the Dock's second tab");
+  /* MUTATION 2: change the heading to "Search" in renderAllShows -> this assertion fails. */
+  assert.match(APP_SRC, /<h2 class="t-title">Discover<\/h2>/, "and the page's own heading is the direction's: Discover");
 });
 
 /* ==================================================================== */
