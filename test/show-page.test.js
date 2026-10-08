@@ -207,7 +207,9 @@ async function mountBooted(seed) {
   return m;
 }
 
-const rowCount = (html) => (html.match(/class="ep-row/g) || []).length;
+/* REDESIGN 2026 (ambient): a show page's rows are EpisodeRows (`<article class="raised td-row sh-row ...">`), no longer
+   `ep-row`. The count is of those articles; `epRow` itself is still the row of every other list (tested below). */
+const rowCount = (html) => (html.match(/<article class="raised td-row sh-row /g) || []).length;
 
 /**
  * Let the show page settle after `renderShow`.
@@ -258,7 +260,8 @@ test("a valid show_id renders artwork, title and taxonomy chips — and NOT the 
   assert.ok(html.includes(m.ctx.esc(show.title)), "must render the show title");
   assert.ok(!html.includes(m.ctx.esc(show.editorial_note)), "must NOT render the editorial note");
   assert.ok(!html.includes("Why it's in 4a"), "…nor the label it briefly carried");
-  assert.ok(html.includes('class="show-art"'), "must render the artwork image");
+  /* The Room's art (Redesign 2026): the 160 primitive, with the show's own artwork as its image, asked at 3x its box. */
+  assert.match(html, new RegExp(`<div class="sh-art"><span class="ag-art ag-art-160[^"]*" role="img" aria-label="${m.ctx.esc(show.title)}"><img src="${m.ctx.esc(m.ctx.safeUrl(m.ctx.artUrl(show.artwork_url, 480)))}"`), "must render the artwork image");
   const taxonomy = readJson("data/taxonomy.json");
   for (const nodeId of show.taxonomy_node_ids) {
     const label = taxonomy.nodes.find((n) => n.id === nodeId)?.label || nodeId;
@@ -311,7 +314,7 @@ test("a show with no show-level artwork uses its discover-pool episode artwork i
   assert.ok(!row.includes("show-result-art-blank"), "show row must not fall back to the blank placeholder");
 
   m.ctx.renderShow("no-art-show");
-  assert.ok(m.view().includes('class="show-art"'), "the show page header must render artwork too");
+  assert.ok(m.view().includes('<div class="sh-art"><span class="ag-art ag-art-160') && m.view().includes('<img src="https://cdn.test/art600.jpg"'), "the show page header must render artwork too");
 });
 
 test("a show with no artwork anywhere still renders the blank placeholder, not a broken image", () => {
@@ -738,11 +741,19 @@ test("epRow links its show-name text to #/show/:show_id when the show is in cata
   const show = catalog.shows.find((s) => s.show_id === "lex-fridman-podcast");
   assert.ok(show, "fixture assumption: lex-fridman-podcast must be in catalog-client.json");
 
+  /* REDESIGN 2026 (ambient): the show page no longer draws epRow (its rows are EpisodeRows, which omit the show name:
+     the page IS the show), so the join is proven on epRow itself, fed the show's real discover-pool episodes — the row
+     every other list (Library, History, Up Next's neighbours) still draws.
+     MUTATION (run red): change showNameLink's template to a plain `${label}`. */
+  const discover = readJson("data/discover.json");
+  const item = discover.items.find((it) => it.show === "Lex Fridman Podcast");
+  assert.ok(item, "fixture assumption: the discover pool carries a Lex Fridman Podcast episode");
   m.ctx.renderShow("lex-fridman-podcast");
-  const html = await settled(m);
+  await settled(m);
+  const html = m.ctx.epRow(item, 0, "ctx-1", -1);
   assert.ok(
     html.includes(`<a class="show-link" href="#/show/lex-fridman-podcast">${m.ctx.esc(show.title)}</a>`),
-    "every epRow on the show's own page must link its show name back to that show's page"
+    "every epRow must link its show name back to that show's page"
   );
 });
 

@@ -470,10 +470,10 @@ test("Create's suggestions and Search's browse subjects are the same pill", () =
 /* 4. one artwork treatment                                              */
 /* ==================================================================== */
 
-test("the show page, the episode page and Now Playing share one square-artwork treatment", () => {
+test("the episode page and Now Playing share one square-artwork treatment (the show page's art is the Afterglow primitive's, ui/show.css)", () => {
   /* MUTATION: give `.fp-s-art` its own `box-shadow` again, or `.ep-art` its
      own `border-radius` -> red. */
-  const shared = ".show-art, .ep-art, .fp-s-art";
+  const shared = ".ep-art, .fp-s-art";
   assert.strictEqual(valueOf(shared, "border-radius"), "var(--radius-md)");
   assert.match(valueOf(shared, "border") || "", /1px solid var\(--line\)/);
   assert.strictEqual(valueOf(shared, "box-shadow"), "var(--shadow-lift)");
@@ -492,7 +492,7 @@ test("the show page, the episode page and Now Playing share one square-artwork t
     }
     return v;
   };
-  for (const sel of [".show-art", ".ep-art", ".fp-s-art", "body.ui-v2 .ep-art", "body.ui-v2 .show-art"]) {
+  for (const sel of [".ep-art", ".fp-s-art", "body.ui-v2 .ep-art"]) {
     for (const prop of ["border-radius", "box-shadow", "border"]) {
       assert.strictEqual(own(sel, prop), null, `${sel} must not restate ${prop} on its own`);
     }
@@ -579,11 +579,15 @@ test("an intro paragraph sits a section (20px) above the first card, not the row
      tighter than the 8px between the cards themselves.
      MUTATION: delete `.fy-about { margin: 0 0 20px }` -> red. */
   assert.strictEqual(valueOf(".fy-about", "margin"), "0 0 20px", "the Forays intro");
-  assert.strictEqual(valueOf(".show-hero", "margin"), "0 0 20px", "the show page's art + Follow + note block");
-  assert.strictEqual(valueOf(".show-hero", "text-align"), "center", "…which is one centred block");
-  assert.strictEqual(valueOf(".show-hero .show-star", "display"), "inline-block", "Follow centres with it");
+  /* REDESIGN 2026 (ambient, show page): the show page's art + Follow + note block is the Room (ui/show.css); the legacy
+     `.show-hero` rules went with it. Its rhythm is now the Room's own: the note sits 12px under Follow, which sits 16px
+     under the count. MUTATION: set `.ag .sh-note { margin-top: 0 }` -> red. */
+  const showCss = fs.readFileSync(path.join(ROOT, "ui/show.css"), "utf8").replace(/\r\n/g, "\n").replace(/\/\*[\s\S]*?\*\//g, " ");
+  assert.match(showCss, /\.ag \.sh-note \{[^}]*margin-top: var\(--s-3\)/, "the note sits a step under Follow");
+  assert.match(showCss, /\.ag \.sh-follow \{[^}]*margin-top: var\(--s-4\)/, "Follow sits a step under the count");
+  assert.match(showCss, /\.room\.sh-room \{[^}]*align-items: center; text-align: center/, "and the Room is one centred block");
   assert.strictEqual(valueOf(".ep-actions", "justify-content"), "center", "the episode page's actions centre under its art the same way");
-  assert.match(APP_SRC, /<div class="show-hero">\s*\$\{showArt \? `<img class="show-art"[\s\S]*?\$\{showStarBtn\(show\.show_id\)\}\s*<p class="note show-follow-note">[\s\S]*?<\/div>/,
-    "renderShow wraps art, Follow and the note in the hero");
+  assert.match(APP_SRC, /<div class="sh-art">\$\{agArtwork\([^)]*\)\}<\/div>[\s\S]*?\$\{showStarBtn\(show\.show_id\)\}\s*<p class="t-caption sh-note show-follow-note">[\s\S]*?<\/section>/,
+    "renderShow's Room wraps art, Follow and the note");
   assert.match(APP_SRC, /<p class="note fy-about">/, "renderForays' intro carries the class the margin hangs on");
 });

@@ -351,7 +351,7 @@ html, body {
   .topbar button, button.star, .play-btn, button.up-next, button.reorder, button.up-next-remove, button.up-next-clear,
   .fy-thumb, .fp-grab-zone .fp-close, .fp-rate, .fp-stop, .fp-openep,
   .voice-row-audition, .fy-chip,
-  button.show-star, .fy-sheet-cancel, .fy-sheet-go, .interest-reset, .shell-notice button,
+  .fy-sheet-cancel, .fy-sheet-go, .interest-reset, .shell-notice button,
   .fy-script-more
 ) {
   position: relative;
@@ -360,7 +360,7 @@ html, body {
   .topbar button, button.star, .play-btn, button.up-next, button.reorder, button.up-next-remove, button.up-next-clear,
   .fy-thumb, .fp-grab-zone .fp-close, .fp-rate, .fp-stop, .fp-openep,
   .voice-row-audition, .fy-chip,
-  button.show-star, .fy-sheet-cancel, .fy-sheet-go, .interest-reset, .shell-notice button,
+  .fy-sheet-cancel, .fy-sheet-go, .interest-reset, .shell-notice button,
   .fy-script-more
 )::after {
   content: "";
@@ -825,22 +825,8 @@ button.star {
 }
 button.star.on { color: var(--gold); }
 
-/* ---------- starred shows (follow-lite) ---------- */
-
-button.show-star {
-  display: block;
-  margin: 10px 0 14px;
-  padding: 10px 16px;
-  /* A capsule, like Apple's "+ Follow". */
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--line);
-  background: var(--surface-2);
-  color: var(--text);
-  font-size: var(--fs-md);
-  font-weight: 600;
-  cursor: pointer;
-}
-button.show-star.on { color: var(--gold); border-color: var(--gold); }
+/* ---------- starred shows (follow-lite) ----------
+   The Follow button is an Afterglow Secondary button (app.js showStarBtn, ui/show.css); the legacy capsule is gone. */
 
 /* THE ONE TEXT FIELD (audit round 2, visual-8). Playlists' and Create's
    fields were 52px at the card radius, the in-show search 48px, and the three
@@ -3242,26 +3228,13 @@ body.fy-sheet-keeps-player.fp-open .fy-sheet .fy-panel {
 }
 
 /* ---------- show page (#/show/:id, Stage 1) ---------- */
-/* ONE HERO, ONE AXIS (visual pass 1, 2026-09-23). Art centred, Follow flush
-   left and its note flush left read as three unrelated stacks under a title
-   that sits beside the back button; the art, the Follow and the note are now
-   one centred block, a section (20px) above the list. The episode page's
-   art + actions block is centred the same way (`.ep-actions`). */
-.show-hero { text-align: center; margin: 0 0 20px; }
-.show-hero .show-star { display: inline-block; margin: 0 auto 8px; }
-.show-art {
-  display: block;
-  width: 100%; max-width: 220px;
-  margin: 0 auto 12px;
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
-}
+/* The show page's hero (art, Follow, note) is the Room in ui/show.css; the legacy `.show-hero` and `.show-art` are gone. */
 /* ONE SQUARE-ARTWORK TREATMENT (audit 2026-09-22, qa row 59): the show page,
    the episode page and the Now Playing sheet show the same object, and it used
    to be flat-and-bordered on one and lifted-and-unbordered on another. Apple's
    art floats; ours floats too, with a hairline so dark art keeps an edge on a
    dark page. */
-.show-art, .ep-art, .fp-s-art {
+.ep-art, .fp-s-art {
   border-radius: var(--radius-md);
   border: 1px solid var(--line);
   box-shadow: var(--shadow-lift);
@@ -3713,14 +3686,7 @@ body.ui-v2 .page-link-row {
 }
 body.ui-v2 .page-link-row:active { background: var(--surface2); }
 
-/* ---------- Show page ---------- */
-body.ui-v2 button.show-star {
-  border-color: var(--line);
-  background: var(--surface);
-  color: var(--muted);
-}
-/* Starring is the listener's own material -- amber, per #127. */
-body.ui-v2 button.show-star.on { color: var(--amber); border-color: var(--amber); }
+/* ---------- Show page ---------- (its Room, Follow and rows are ui/show.css) */
 /* Saving a playlist makes it the listener's own material -- amber, per #127. */
 body.ui-v2 button.pl-save {
   border-color: var(--line);

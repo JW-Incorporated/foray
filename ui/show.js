@@ -695,8 +695,177 @@ function upgradeBreadthShowRow(show_id) {
   }); // fetchApiJson swallows network/parse errors to null, which the row guard above ignores
 }
 
+/* ---------- Redesign 2026 (ambient): the show page's Room and its EpisodeRows ----------
+
+   The numbers are docs/redesign-2026/directions/ambient/BUILD-NOTES.md section 10 item 10 and
+   section 3 (EpisodeRow), drawn by ui/show.css. The page has two Afterglow parts and nothing else
+   changed under them: THE ROOM (a scheme-following `.room` lit by the show's own colour, with the
+   art at 160, the title, the count, Follow and its note) and THE EPISODES (EpisodeRows, latest
+   first). The search field, the publisher's description, the subject chips, similar shows and the
+   Forays that use the show keep the markup they had; their screens re-skin them later.
+
+   THE ROW IS TODAY'S ROW. showEpisodeRowHtml() draws the same anatomy as todayEpisodeRow() (art 72,
+   title as the one stretched link, Play 44, a meta line, a two-line why) with Today's own helpers
+   and `.td-row` styling, so the two lists cannot drift apart; what differs is only what a show page
+   knows: the show is the page, so the meta line is length and date, and the why-line is the first
+   words of the publisher's own description (episodeRowSnippet), never ours. Save and Up Next are on
+   the episode page (BUILD-NOTES item 11), not on a row, exactly as on Today.
+
+   Its Play carries `data-sh-play`, not `data-play`: syncCardButtons() in the player repaints every
+   `[data-play]` as a glyph-text button, which would wipe the row's icon (Today's `data-td-play` is
+   the same fork). The page repaints its own rows from the player, below. */
+
+/** `url("...")` for the --room-art custom property: safeUrl()'d, with the characters that could end
+    the string percent-encoded, or `none` (safeUrl answers "#" for a URL it refuses, and `url("#")`
+    is the page itself). */
+function showCssUrl(src) {
+  const u = src ? safeUrl(artUrl(src, 400)) : "";
+  return u && u !== "#" ? 'url("' + String(u).replace(/["\\\r\n]/g, c => encodeURIComponent(c)) + '")' : "none";
+}
+
+/** The Room. `<h2>` stays the page's heading (landOnPage names the page by `.sh-head h2`); the count
+    label is EMPTY here and filled by paintCount() alone (issue #687). */
+function showRoomHtml(show, showArt) {
+  return `<section class="room ag sh-room" data-sh-room data-glow-show="${esc(show.title)}">
+    <div class="sh-bar"><a class="ag-btn ag-btn-icon sh-back back" href="#/" aria-label="Back">${agIcon("chevron-left", 24)}</a></div>
+    <div class="sh-art">${agArtwork({ name: show.title, src: showArt || "", size: 160, state: "lit" })}</div>
+    <div class="sh-head">
+      <h2 class="t-title clamp3 sh-title">${esc(show.title)}${explicitBadge(show.explicit)}</h2>
+      <p class="t-caption sh-sub" data-show-count></p>
+    </div>
+    ${showStarBtn(show.show_id)}
+    <p class="t-caption sh-note show-follow-note">${esc(FOLLOW_NOTE)}</p>
+  </section>`;
+}
+
+/** Light: the Room and the art are lit by the show (BUILD-NOTES 1.2). The colour is a pair of
+    numbers from palette.js, and the backdrop is set through the CSSOM (an inline style attribute
+    is not allowed under the CSP).
+
+    TWO STEPS, in this order, on purpose: showRoomLight() is computed BEFORE the Room is in the DOM,
+    because agGlowFor() reads the live --glow-l (a getComputedStyle, which flushes style); showApplyRoom()
+    then only writes. Read after the Room exists, that flush would run the Room's first style at the
+    default Glow and the write would TRANSITION it: a 200ms colour crossfade at every mount under
+    Reduce Motion (the gates' reduced-motion check caught exactly that), and a flash of the default
+    Glow otherwise. */
+function showRoomLight(show, showArt) {
+  return { glow: agGlowFor(show.title), art: showCssUrl(showArt) };
+}
+
+function showApplyRoom(scope, light) {
+  if (!scope || typeof scope.querySelector !== "function" || !light) return;
+  const room = scope.querySelector("[data-sh-room]");
+  if (!room || !room.style || typeof room.style.setProperty !== "function") return;   // a stub document has no CSSOM
+  room.style.setProperty("--glow", light.glow);
+  room.style.setProperty("--room-art", light.art);
+  const art = room.querySelector(".sh-art .ag-art");
+  if (art && art.style && typeof art.style.setProperty === "function") art.style.setProperty("--art-glow", light.glow);
+}
+
+/** Latest first. Only when EVERY row carries a date: a mixed list keeps the order it arrived in,
+    because a comparator over missing dates is not a total order and would shuffle rows. A copy, and Array sort is stable
+    (every engine this app runs on), so equal dates keep the order they arrived in. */
+function showRowsLatestFirst(rows) {
+  const stamp = (r) => Date.parse(r.release_date || "");
+  if (!rows.length || !rows.every((r) => Number.isFinite(stamp(r)))) return rows;
+  return [...rows].sort((a, b) => stamp(b) - stamp(a));
+}
+
+/** What a row's second line says: state, length, date. The date goes when a state line is shown (a
+    96px row at 375 has no room for both), as on Today. */
+function showRowMetaHtml(rowState, item) {
+  const dur = fmtDur(episodeMinutes(item));
+  const date = rowState === "default" ? fmtDate(item.release_date) : "";
+  const parts = [];
+  if (dur) parts.push(`<span class="dur">${esc(dur)}</span>`);
+  if (date) parts.push(`<span>${esc(date)}</span>`);
+  return `${todayStateLine(rowState)}${parts.join('<span class="td-sep" aria-hidden="true"></span>')}`;
+}
+
+/** One EpisodeRow on a show page (see the block comment above). `ctx` is the page's play list name. */
+function showEpisodeRowHtml(item, ctx) {
+  const rowState = todayRowState(item);
+  const pct = todayEpisodePct(item);
+  const id = esc(encodeURIComponent(item.id));
+  const playing = rowState === "playing";
+  const blocked = rowState === "unavailable";
+  const why = episodeRowSnippet(item);
+  return `<article class="raised td-row sh-row is-${esc(rowState)}" data-sh-ep="${esc(item.id)}">
+    ${todayArt({ name: item.show, src: item.artwork_url, size: 72, dim: blocked, pct })}
+    <h3 class="t-headline clamp2 td-row-title"><a class="td-link" href="#/episode/${id}" data-ev="picked" data-ep="${esc(item.id)}" data-ctx="${esc(ctx)}">${esc(item.title || "")}</a>${explicitBadge(item.explicit)}</h3>
+    ${item.audio_url ? todayPlayButton({ size: 44, label: `${playing ? "Pause" : "Play"} ${item.title || "this episode"}`, attrs: ` data-sh-play="${esc(item.id)}" data-ctx="${esc(ctx)}" data-title="${esc(item.title || "")}"`, disabled: blocked, icon: playing ? "pause" : "play" }) : ""}
+    <p class="t-caption td-row-meta">${showRowMetaHtml(rowState, item)}</p>
+    ${why ? `<p class="t-why clamp2 td-row-why">${esc(why)}</p>` : ""}
+  </article>`;
+}
+
+/** A show page's list of EpisodeRows: latest first, and the rows Family Mode hides never reach it
+    (the caller filtered them). */
+function showEpisodeRowsHtml(items, ctx) {
+  return showRowsLatestFirst(items).map((item) => showEpisodeRowHtml(item, ctx)).join("");
+}
+
+/** Repaint every row's playing state from the player, the single authority: the row class, the Play
+    glyph and its name, and the Lamp "Playing" caption (as todaySyncPlay does for Today). */
+function showSyncPlay() {
+  const scope = document.querySelector("[data-show-episodes]");
+  const player = window.ForayPlayer;
+  if (!scope || !player || typeof scope.querySelectorAll !== "function") return;
+  scope.querySelectorAll("[data-sh-ep]").forEach(row => {
+    const id = row.dataset.shEp;
+    let on = false;
+    try { on = !!player.isPlaying?.(id); } catch (_) { on = false; }
+    if (row.classList.contains("is-playing") === on) return;
+    row.classList.toggle("is-playing", on);
+    const btn = row.querySelector("[data-sh-play]");
+    const meta = row.querySelector(".td-row-meta");
+    if (btn) {
+      btn.setAttribute("aria-label", `${on ? "Pause" : "Play"} ${btn.dataset.title || "this episode"}`);
+      btn.innerHTML = agIcon(on ? "pause" : "play", 20);
+    }
+    if (meta) {
+      const line = meta.querySelector(".ag-row-state");
+      if (line) line.remove();
+      if (on) meta.insertAdjacentHTML("afterbegin", todayStateLine("playing"));
+    }
+  });
+}
+
+let showPollTimer = null;
+function showStartPoll() {
+  if (showPollTimer || typeof setInterval !== "function") return;
+  showPollTimer = setInterval(() => {
+    if (!document.querySelector("[data-sh-room]")) { clearInterval(showPollTimer); showPollTimer = null; return; }
+    showSyncPlay();
+  }, 1000);
+}
+
+/** A row's Play: a row showing Pause pauses (the rule bindPlay learned, founder 2026-09-22); anything
+    else starts that episode with the page's rows as the continuous-play list. */
+async function showPlayPress(btn, scope) {
+  const id = btn.dataset.shPlay;
+  const player = window.ForayPlayer;
+  const item = liveEpisode(id) || state.itemIndex[id] || episode(id);
+  if (!item || !player) return;
+  if (player.isCurrent?.(id)) { await player.togglePlayback(); showSyncPlay(); return; }
+  const list = [...scope.querySelectorAll("[data-sh-play]")].filter(b => !b.disabled).map(b => ({ id: b.dataset.shPlay, ctx: b.dataset.ctx }));
+  await startEpisodePlay(id, item, { ctx: btn.dataset.ctx || null, list });
+  showSyncPlay();
+}
+
+function bindShowPlay(scope) {
+  if (!scope || typeof scope.querySelectorAll !== "function") return;
+  scope.querySelectorAll("[data-sh-play]").forEach(btn => {
+    if (btn._bound) return;
+    btn._bound = true;
+    btn.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); showPlayPress(btn, scope); });
+  });
+}
+
 function renderShow(show_id, initialQuery = "") {
   setBodyClass("view-page");
+  /* The Room is the page's own top: the legacy bar steps aside, as on Today (ui/show.css). */
+  try { document.body.classList.add("view-show"); } catch (_) { /* a stub document */ }
   const show = showById(show_id);
   if (!show) { resolveMissingShow(show_id); return; }
   rememberShardShow(show);
@@ -715,25 +884,11 @@ function renderShow(show_id, initialQuery = "") {
   const isBreadthTier = show.tier === "breadth";
   const showArt = showArtworkUrl(show);
 
+  /* THE ROOM IS OUTSIDE `.page` (Redesign 2026, ambient): it runs edge to edge under the status bar,
+     lit by the show; the legacy `.page-head` and `.show-hero` it replaces are gone. Everything the
+     page still draws in the old style (description, subject chips, the search field, similar
+     shows, Forays) sits in `.page` below it. */
   const head = `
-    <div class="page-head">
-      <a class="back" href="#/">‹</a>
-      <div>
-        <h2>${esc(show.title)}${explicitBadge(show.explicit)}</h2>
-        <!-- EMPTY. paintCount() fills it on the very next statement after
-             this template is installed, and is the only thing that ever
-             writes it — see paintEpisodeOutcome. An initial value composed
-             here would be a second author for one label (issue #687). -->
-        <p class="sub" data-show-count></p>
-      </div>
-    </div>
-    <!-- ONE HERO: art, Follow and its note are one centred block (styles.css
-         .show-hero, visual pass 1). The title stays in the page head. -->
-    <div class="show-hero">
-      ${showArt ? `<img class="show-art" src="${esc(safeUrl(showArt))}" alt="">` : ""}
-      ${showStarBtn(show.show_id)}
-      <p class="note show-follow-note">${esc(FOLLOW_NOTE)}</p>
-    </div>
     <!-- The publisher's own description. EMPTY at first paint and filled by
          paintShowDescription() when the episode fetch resolves (or instantly
          from the cache on a revisit) - it comes from the feed, which this page
@@ -793,15 +948,15 @@ function renderShow(show_id, initialQuery = "") {
      The page is still never blank — the first paint happens synchronously in
      the same task, exactly as before — it just happens through the one writer
      instead of beside it. */
-  $("#view").innerHTML = `<div class="page">${head}${searchBox}<div data-show-episodes></div>
+  const roomLight = showRoomLight(show, showArt);   // before the Room exists: see showRoomLight
+  $("#view").innerHTML = `${showRoomHtml(show, showArt)}<div class="page sh-body">${head}${searchBox}<div class="ag sh-eps"><div data-show-episodes></div></div>
   ${similarShowsSection(show)}
   <div data-show-forays>${showForaysHtml(show)}</div>
   </div>`;
+  showApplyRoom($("#view"), roomLight);
   bindPickLogging($("#view"));
-  bindStars($("#view"));
   bindShowStars($("#view"));
-  bindUpNext($("#view"));
-  bindPlay($("#view"));
+  showStartPoll();
 
   // ---- Pagination + in-page search state for this render only. A fresh
   // renderShow() call (new navigation) gets a fresh closure — nothing here
@@ -862,9 +1017,7 @@ function renderShow(show_id, initialQuery = "") {
 
   function bindRows(c) {
     bindPickLogging(c);
-    bindStars(c);
-    bindUpNext(c);
-    bindPlay(c);
+    bindShowPlay(c);
   }
 
   /* The full-catalogue list, search-aware. PRIVATE to paintBody() now — it is
@@ -881,7 +1034,7 @@ function renderShow(show_id, initialQuery = "") {
        no rating of their own, so the show's catalogue rating decides. */
     const rows = visible.map((ep) => fullCatalogueRowToEpRowItem(show, ep)).filter(familyAllows);
     if (!rows.length && visible.length) { c.innerHTML = `<p class="note">${esc(FAMILY_HIDES_NOTE)}</p>`; return; }
-    c.innerHTML = rows.map((item, i) => epRow(item, i, ctx, -1)).join("");
+    c.innerHTML = showEpisodeRowsHtml(rows, ctx);
     bindRows(c);
   }
 
@@ -967,7 +1120,7 @@ function renderShow(show_id, initialQuery = "") {
          again wired to the SAME fetch") holds here too; the rows stay, the
          failure line and its button sit under them, and the subtitle keeps to
          the count (showEpisodeCountLabel: one sentence per outcome). */
-      const rows = curatedEps.map((item, i) => epRow(item, i, ctx, -1)).join("");
+      const rows = showEpisodeRowsHtml(curatedEps, ctx);
       c.innerHTML = loadState === "failed" ? rows + failedNoteHtml(BODY_PLACEHOLDER.failedCurated) : rows;
       bindRows(c);
       if (loadState === "failed") bindRetry(c, retryEpisodes);
