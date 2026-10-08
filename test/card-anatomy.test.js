@@ -370,21 +370,20 @@ test("the Interests page names a lone root once: its card, with no heading resta
   assert.match(grouped, /<h3 class="interest-group-label">Adventure<\/h3>/, "a root with a sub-topic keeps the heading that gathers them");
 });
 
-test("a credits row ends in its ↗, so the links make one straight right-hand column", () => {
-  /* Round 2, visual-7: the ↗ was the MIDDLE child of a space-between row, so it
-     sat halfway through whatever width each show name left. MUTATION: put the
-     `.fy-src-out` link back between the name and the count -> red. */
+test("a came-from tile is the art, then the name to three lines, and a show with no page opens its Apple page", () => {
+  /* Ambient Foray detail (Redesign 2026) replaced the credits row (name, count, arrow) with a three-up tile:
+     the card-anatomy ruling that fell is "a credits row ends in its arrow". The tile's face is one link, the
+     art above the name; a show the catalogue has no page for opens its Apple Podcasts page, says so in its
+     accessible name, and has no Follow (there is nothing to bookmark).
+     MUTATIONS: clamp3 -> clamp2 on the name: red. Drop target/rel from the external face: red. Put a
+     data-fd-follow button on a show with no catalogue record: red. */
   const run = loadApp();
-  run(`showNameLink = (s) => s;`);
-  const html = run(`foraySourcesHtml({}, {
-    forayCredits: () => ({ summary: "2 shows", credits: [{ show: "A Show", link: "https://podcasts.apple.com/x", clips: 2, seconds: 300, episodes: [] }] }),
-    fmtSpan: () => "5m",
+  const html = run(`forayCameFromHtml({ shows: ["A Show"], entries: [{ show: "A Show" }] }, {
+    forayCredits: () => ({ summary: "1 show", credits: [{ show: "A Show", link: "https://podcasts.apple.com/x", linkKind: "apple-show", clips: 2, seconds: 300, episodes: [] }] }),
   })`);
-  const head = /<div class="fy-src-head">([\s\S]*?)<\/div>/.exec(html)[1];
-  const order = ["fy-src-show", "fy-src-meta", "fy-src-out"].map((c) => head.indexOf(`class="${c}"`));
-  assert.ok(order.every((i) => i >= 0) && order[0] < order[1] && order[1] < order[2], `name, count, ↗ — got ${order}`);
-  assert.strictEqual(valueOf(".fy-src-show", "flex"), "1 1 auto", "the name takes the free width");
-  assert.notStrictEqual(valueOf(".fy-src-head", "justify-content"), "space-between", "nothing is spread into the middle");
+  assert.match(html, /<a class="fd-tile-face" href="https:\/\/podcasts\.apple\.com\/x" target="_blank" rel="noopener"[^>]*aria-label="Open A Show on Apple Podcasts"><span class="fd-tile-art"[\s\S]*?<span class="t-caption name clamp3">A Show<\/span><\/a>/, html);
+  assert.ok(html.indexOf('class="fd-tile-art"') < html.indexOf('class="t-caption name clamp3"'), "the art, then the name");
+  assert.doesNotMatch(html, /data-fd-follow/, "a show with no catalogue page cannot be followed");
 });
 
 test("a tab's root page has no ‹; a page you were sent to keeps one", () => {

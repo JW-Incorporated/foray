@@ -1,0 +1,511 @@
+/* Redesign 2026, ambient direction: the Foray detail page (#/foray/<id>), the second screen on the Afterglow system.
+ *
+ * WHAT THIS PROVES, in the order the page reads (docs/redesign-2026/directions/ambient/BUILD-NOTES.md 4.6):
+ *   1. The stylesheet and the palette script are wired into the page and every shipping path.
+ *   2. The Room: fixed behind the page, from the first show's art, its mid scrim stop no lower than the first line of
+ *      text (so the contrast the token suite pins at that stop is the contrast under the text), dimmed to 8% / 0.35 when
+ *      the Foray cannot play, and the Dawn Room's paper numbers come from the tokens.
+ *   3. The strip's geometry on its sill: the sill, the bar heights, the narration lights, the thumbs row.
+ *   4. The page itself, rendered by the REAL app.js over the frozen Foray fixture: eyebrow, title, caption, the one
+ *      primary button in each of its words, the unavailable and not-narrated pages, the tiles and the clip rows.
+ *   5. The rules that need no browser: which bars get a thumb, the show colours, the Room's artwork URL, escaping.
+ *
+ * Every test names the one-line mutation that turns it red; each was run red before being run green. The floor for
+ * this suite lives in test/suite-integrity.test.js.
+ *
+ * Harness: the REAL app.js in a node:vm over the shared small DOM (test/helpers/fake-dom.js), a bridge over the REAL
+ * resolver and the REAL strip module, and the frozen Foray fixture (tools/foray/fixtures/frozen/, never live data).
+ */
+
+const { test } = require("node:test");
+const assert = require("node:assert");
+const vm = require("node:vm");
+const fs = require("node:fs");
+const path = require("node:path");
+const { readAppSource, runAppSource } = require("./helpers/app-source.js");
+const { El } = require("./helpers/fake-dom.js");
+
+const ROOT = path.join(__dirname, "..");
+const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
+const APP_SRC = readAppSource();
+const SEARCH_SRC = read("search-engine.js");
+const stripComments = (css) => css.replace(/\/\*[\s\S]*?\*\//g, " ");
+const CSS = stripComments(read("ui/foray-detail.css"));
+const TOKENS = stripComments(read("ui/tokens.css"));
+
+process.on("unhandledRejection", () => {});
+
+/* ---------- reading a stylesheet ---------- */
+
+/** The declarations of the rule whose selector list is exactly `sel` (outside any @media), as { prop: value }. */
+function decls(css, sel) {
+  const esc = sel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const m = new RegExp(`(?:^|[};])\\s*${esc}\\s*\\{([^{}]*)\\}`).exec(css);
+  if (!m) return null;
+  const out = {};
+  for (const d of m[1].split(";")) {
+    const c = d.indexOf(":");
+    if (c > 0) out[d.slice(0, c).trim()] = d.slice(c + 1).trim();
+  }
+  return out;
+}
+const px = (v) => { const m = /^(-?\d+(?:\.\d+)?)px$/.exec(String(v || "").trim()); return m ? Number(m[1]) : null; };
+
+/* ---------- 1. wiring ---------- */
+
+test("the stylesheet and the palette script are wired into the page and every shipping path", async () => {
+  /* MUTATION: remove "ui/foray-detail.css" from SHELL in tools/web/prepare-dist.mjs (or tools/ci/generate-manifest.mjs, or
+     SHELL_FILES in tools/mobile/prepare-webdir.mjs), or drop the <link> or the palette <script> from index.html -> red,
+     naming the path. A stylesheet that ships to the page but not into the generation is the one file sw.js could not verify. */
+  const html = read("index.html");
+  const links = [...html.matchAll(/<link rel="stylesheet" href="([^"]+)">/g)].map((m) => m[1]);
+  assert.ok(links.indexOf("ui/foray-detail.css") > links.indexOf("ui/primitives.css") && links.includes("ui/foray-detail.css"),
+    "linked after the primitives it reads");
+  assert.match(html, /<script src="ui\/palette\.js"><\/script>/, "the Glow palette loads with the other ui scripts");
+  const shell = (rel, re) => { const m = re.exec(read(rel)); assert.ok(m, `${rel}: shell list found`); return m[1]; };
+  assert.match(shell("tools/ci/generate-manifest.mjs", /const SHELL = \[([\s\S]*?)\n\];/), /"ui\/foray-detail\.css"/, "generate-manifest SHELL");
+  assert.match(shell("tools/web/prepare-dist.mjs", /const SHELL = \[([\s\S]*?)\n\];/), /"ui\/foray-detail\.css"/, "prepare-dist SHELL");
+  const { pathToFileURL } = require("node:url");
+  const pw = await import(pathToFileURL(path.join(ROOT, "tools", "mobile", "prepare-webdir.mjs")).href);
+  assert.ok(pw.SHELL_FILES.includes("ui/foray-detail.css"), "prepare-webdir SHELL_FILES");
+  assert.ok(pw.buildPlan(ROOT).includes("ui/foray-detail.css"), "the app bundle's copy plan carries it");
+});
+
+test("the stylesheet is scoped under .ag, loads nothing and owns no reduced-motion block", () => {
+  /* The page cannot restyle any other screen, and a second reduced-motion block would be a second owner
+     (ui/tokens.css has the one, scoped to .ag).
+     MUTATION: add a bare \`.fy-row { … }\` rule -> red. MUTATION 2: add \`@media (prefers-reduced-motion: reduce)\` -> red.
+     MUTATION 3: add an @import or a url(...) -> red. */
+  const flat = CSS.replace(/@media[^{]*\{/g, "{");
+  const heads = [...flat.matchAll(/(?:^|[}])\s*([^{}@][^{}]*)\{/g)].map((m) => m[1].trim()).filter(Boolean);
+  /* a selector list, split on the commas that are outside parentheses (`:where(h1, h2)` is one selector) */
+  const splitList = (list) => { const out = []; let depth = 0, cur = ""; for (const ch of list) { if (ch === "(") depth++; if (ch === ")") depth--; if (ch === "," && depth === 0) { out.push(cur.trim()); cur = ""; } else cur += ch; } out.push(cur.trim()); return out; };
+  for (const list of heads) {
+    for (const sel of splitList(list)) {
+      assert.ok(/^(\.ag\b|body\.view-foray-detail\b|\.page\.fd-page\b)/.test(sel), `unscoped selector: ${sel}`);
+    }
+  }
+  assert.ok(heads.length >= 25, `fixture assumption: the sheet has its rules (${heads.length})`);
+  assert.doesNotMatch(CSS, /prefers-reduced-motion/, "the one block is tokens.css's");
+  assert.doesNotMatch(CSS, /@import|url\(/, "no font, no image, no origin");
+  assert.strictEqual((CSS.match(/!important/g) || []).length, 1, "nothing wins by force but the one first-paint rule");
+  assert.match(CSS, /\.ag\.fd\.is-fresh \*, \.ag\.fd\.is-fresh \*::before, \.ag\.fd\.is-fresh \*::after \{ transition: none !important; \}/);
+});
+
+/* ---------- 2. the Room ---------- */
+
+test("the Room is fixed behind the page, takes its Glow and scrim from the tokens, and its mid stop is not below the eyebrow", () => {
+  /* The tokens suite pins the contrast of text over the Room AT the mid stop (--rs2), every hue, both schemes; that is
+     the contrast under the eyebrow only if the eyebrow starts at or below that stop. The eyebrow's top is the page's own
+     arithmetic: 8 (top pad) + 44 (the head's 44px buttons) + 8 (the collage's margin) + 160 (the collage) + 16 = 236
+     from the safe top. BUILD-NOTES 10.1's 276 assumed a different stack; the stop here is 236.
+     MUTATION: \`--rs2: calc(var(--safe-top) + 276px)\` -> red (the eyebrow would sit in the ramp, under half a scrim).
+     MUTATION 2: give .fd-room its own \`background\` -> red (the Glow-room token is the Room). */
+  const room = decls(CSS, ".ag .fd-room");
+  assert.ok(room, "the Room rule exists");
+  assert.strictEqual(room.position, "fixed");
+  assert.strictEqual(room.inset, "0");
+  assert.strictEqual(room["z-index"], "-1");
+  assert.ok(!("background" in room) && !("background-image" in room), "the Room's background is .room's var(--glow-room)");
+  assert.ok(!("--rs1" in room), "the collage's lower edge stop stays the token's 196");
+  assert.strictEqual(decls(TOKENS, ".room")["--rs1"], "calc(var(--safe-top) + 196px)");
+  const rs2 = /^calc\(var\(--safe-top\) \+ (\d+)px\)$/.exec(room["--rs2"] || "");
+  assert.ok(rs2, `--rs2 is a safe-top-relative pixel stop: ${room["--rs2"]}`);
+  const space = (n) => px(decls(TOKENS, ":root")[n]);
+  const eyebrowTop = space("--s-2") + space("--tap") + space("--s-2") + space("--art-hero") + space("--s-4");
+  assert.strictEqual(eyebrowTop, 236);
+  assert.ok(Number(rs2[1]) <= eyebrowTop, `the mid stop (${rs2[1]}) is at or above the eyebrow (${eyebrowTop})`);
+  assert.ok(Number(rs2[1]) > 196, "and below the collage's lower edge stop");
+  /* The page's own spacing is what the arithmetic read. */
+  assert.strictEqual(decls(CSS, ".ag .fd-collage").margin, "var(--s-2) auto 0");
+  assert.strictEqual(decls(CSS, ".ag .fd-eyebrow")["margin-top"], "var(--s-4)");
+  assert.strictEqual(decls(CSS, ".ag .fd-top")["padding-top"], "calc(var(--safe-top) + var(--s-2))", "the head's buttons start 8px under the safe top");
+  assert.ok(decls(CSS, ".ag.fd").padding.startsWith("0 "), "and the page adds no top padding of its own");
+});
+
+test("an unavailable Foray turns its lamp down: Glow at 8%, the artwork layer at 0.35, the strip at 60%, the collage at 50%", () => {
+  /* MUTATION: \`--mix-room: 8%\` -> 15%, or \`--room-art-opacity: 0.35\` -> 0.9, or the strip's .6 -> 1, or the collage's .5 -> 1 -> red. */
+  const dim = decls(CSS, ".ag .fd-room.is-dim");
+  assert.strictEqual(dim["--mix-room"], "8%");
+  assert.strictEqual(dim["--room-art-opacity"], "0.35");
+  assert.strictEqual(decls(CSS, ".ag .fd.is-unavailable .fd-sill .fy-strip, .ag .fd.is-unavailable .fd-thumbs").opacity, ".6");
+  assert.strictEqual(decls(CSS, ".ag .fd-collage.is-dim .ag-collage").opacity, ".5");
+  /* --mix-room is read by the token on the element that redeclares it (.room), so the override reaches --glow-room. */
+  assert.match(TOKENS, /:root, \[data-theme\], \.ag, \.room \{[^}]*--glow-room: color-mix\(in oklab, var\(--bg0\), var\(--glow\) var\(--mix-room\)\)/);
+});
+
+test("the Dawn Room is paper: the tokens give it glow-room at 20% and an artwork layer at 0.55, and the page adds nothing of its own", () => {
+  /* MUTATION: change Dawn's `--mix-room: 20%` or `--room-art-opacity: 0.55` in ui/tokens.css -> red. MUTATION 2: add a
+     [data-theme="dawn"] rule to foray-detail.css -> red (the scheme is the tokens' job). */
+  const dawn = decls(TOKENS, `[data-theme="dawn"]`);
+  assert.match(dawn["--mix-room"] ? "x" : "", /x/);
+  assert.strictEqual(dawn["--room-art-opacity"], "0.55");
+  assert.ok(/--mix-room: 20%/.test(read("ui/tokens.css").split(`[data-theme="dawn"] {`)[1].split("}")[0]), "Dawn mixes the room at 20%");
+  assert.strictEqual(dawn["--scrim-mid-base"], "rgb(247 242 235 / 0.92)", "the paper scrim");
+  assert.doesNotMatch(CSS, /data-theme|prefers-color-scheme/, "the page does not restate a scheme");
+  assert.strictEqual(decls(TOKENS, ":root, [data-theme=\"dusk\"]")["--sill"], "rgb(20 17 15 / 0.22)");
+  assert.strictEqual(dawn["--sill"], "rgb(255 255 255 / 0.35)");
+});
+
+/* ---------- 3. the strip on its sill ---------- */
+
+test("the strip sits on a 10/12 sill: 24px bars on a 28px row, the current bar 4px taller, narration a 4px light, a 20px thumbs row 6px below", () => {
+  /* 28 (bars) + 6 (gap) + 20 (thumbs) = 54, the prototype's strip box; with the sill's 10 + 10 it is 74.
+     MUTATION: \`.fd-thumbs { margin-top: 6px }\` -> 0 (a thumb would touch the bars) -> red. MUTATION 2: \`.fy-seg.is-here
+     { height: 28px }\` -> 24 -> red. MUTATION 3: narration height 4px -> 12px -> red. MUTATION 4: sill padding -> red. */
+  const sill = decls(CSS, ".ag .fd-sill");
+  assert.strictEqual(sill.padding, "10px var(--s-3)");
+  assert.strictEqual(sill.background, "var(--sill)");
+  assert.strictEqual(sill["border-radius"], "var(--r-lg)");
+  assert.strictEqual(px(decls(CSS, ".ag .fd-sill .fy-strip")["--strip-h"]), 28);
+  assert.strictEqual(decls(CSS, ".ag .fd-sill .fy-strip").gap, "2px");
+  assert.strictEqual(px(decls(CSS, ".ag .fd-sill .fy-seg").height), 24);
+  assert.strictEqual(px(decls(CSS, ".ag .fd-sill .fy-seg.is-here").height), 28, "the current bar grows upward only: 4px taller, same floor");
+  const narr = decls(CSS, ".ag .fd-sill .fy-seg--narration");
+  assert.strictEqual(px(narr.height), 4);
+  assert.strictEqual(px(narr["margin-bottom"]), 10, "centred on the 24px bars' mid line");
+  const thumbs = decls(CSS, ".ag .fd-thumbs");
+  assert.strictEqual(px(thumbs.height), 20);
+  assert.strictEqual(px(thumbs["margin-top"]), 6);
+  assert.strictEqual(thumbs["pointer-events"], "none", "the strip's hit box, not the thumbs, takes the tap");
+  assert.strictEqual(px(decls(CSS, ".ag .fd-thumb").width), 20);
+  assert.strictEqual(decls(CSS, ".ag .fd-thumbs:empty").display, "none", "no bar wide enough: no row, no gap");
+  assert.strictEqual(decls(CSS, ".ag .fd-sill .fy-strip.has-position .fy-seg").opacity, "var(--seg-dim)");
+});
+
+/* ---------- 4. the page, rendered by the real app.js ---------- */
+
+const playerMods = (async () => ({
+  resolve: await import("../player/foray-resolve.js"),
+  strip: await import("../player/segment-strip.js"),
+}))();
+const FZ = "tools/foray/fixtures/frozen/data";
+const readJson = (rel) => JSON.parse(read(rel));
+const NARRATED = "what-engineers-actually-do-all-day-e08236";
+const PLAIN = "capital-types-1";
+
+async function bridgeOver({ resume = null } = {}) {
+  const { resolve, strip } = await playerMods;
+  return {
+    resolve(doc, { id, segmentsDoc, sourcesDoc } = {}) {
+      const f = resolve.findForay(doc, id, { unlocked: [id], showDrafts: true });
+      return f ? resolve.resolveForay(f, { segments: resolve.indexSegments(segmentsDoc), sources: resolve.indexSources(sourcesDoc) }) : null;
+    },
+    stripTally: strip.stripTally, stripModel: strip.stripModel,
+    fmtClock: resolve.fmtClock, fmtSpan: resolve.fmtSpan, narratorName: strip.NARRATOR_NAME,
+    playbackRate: () => 1, rateStops: () => [1], setPlaybackRate() {},
+    watchForay: () => null,
+    forayResume: (_id, opts = {}) => (resume && (!resume.finished || opts.includeFinished) ? resume : null),
+  };
+}
+
+function mount(hash, bridge) {
+  const body = new El("body");
+  const view = new El("main"); view.id = "view"; body.appendChild(view);
+  for (const id of ["drawer", "drawer-overlay", "menu-btn", "refresh-btn", "drawer-playlists"]) {
+    const e = new El("div"); e.id = id; body.appendChild(e);
+  }
+  const store = new Map();
+  const ctx = {
+    console: { ...console, warn() {}, error() {} },
+    fetch: () => new Promise(() => {}),
+    localStorage: {
+      get length() { return store.size; }, key: (i) => [...store.keys()][i] ?? null,
+      getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => { store.set(k, String(v)); }, removeItem: (k) => { store.delete(k); },
+    },
+    document: {
+      body, documentElement: body, readyState: "complete", hidden: false,
+      addEventListener() {}, removeEventListener() {}, createElement: (t) => new El(t),
+      querySelector: (s) => {
+        const str = String(s).trim();
+        if (str === "#view") return view;
+        if (str.startsWith("#view ")) return view.querySelector(str.slice(6));
+        return body.querySelector(str);
+      },
+      querySelectorAll: (s) => body.querySelectorAll(s),
+    },
+    navigator: { userAgent: "node", onLine: true },
+    addEventListener() {}, removeEventListener() {},
+    location: { hash, search: "", pathname: "/", href: "https://x.test/", protocol: "https:", reload() {} },
+    history: { replaceState() {}, pushState() {}, back() {} },
+    CSS: { escape: (s) => String(s) },
+    URL, URLSearchParams, Math, Date, JSON, Promise, clearTimeout, queueMicrotask,
+    setTimeout: (fn, ms) => { const t = setTimeout(fn, ms); if (t && t.unref) t.unref(); return t; },
+    encodeURIComponent, decodeURIComponent,
+  };
+  ctx.window = ctx; ctx.globalThis = ctx;
+  ctx.ForayPlayer = bridge;
+  vm.createContext(ctx);
+  vm.runInContext(SEARCH_SRC, ctx, { filename: "search-engine.js" });
+  runAppSource(APP_SRC, ctx);
+  const state = vm.runInContext("state", ctx);
+  state.ready = true;
+  state.session = { session_id: "s", builder: "t", episodes: {}, cards: [] };
+  state.discover = { items: [] };
+  state.taxonomy = { nodes: [{ id: "business", label: "Business", parent: null }, { id: "engineering", label: "Engineering", parent: null }] };
+  state.catalog = { shows: [] };
+  return { ctx, state, view, store, html: () => view.innerHTML };
+}
+
+async function mountForay(id, { resume = null, tweakSources = null, catalog = null, indexRows = null } = {}) {
+  const b = await bridgeOver({ resume });
+  const m = mount(`#/foray/${id}`, b);
+  m.state.forays = readJson(`${FZ}/forays.json`);
+  m.state.segments = readJson(`${FZ}/segments.json`);
+  const sources = readJson(`${FZ}/segment-sources.json`);
+  if (tweakSources) tweakSources(sources);
+  m.state.segmentSources = sources;
+  if (catalog) m.state.catalog = catalog;
+  if (indexRows) { m.ctx.__idx = { keys: [], rows: indexRows }; vm.runInContext("showIndex = __idx;", m.ctx); }
+  m.ctx.renderCurrentPage();
+  await new Promise((r) => setTimeout(r, 20));
+  return m;
+}
+const text = (html, re) => (re.exec(html) || [])[1] || "";
+const caption = (html) => text(html, /<p class="t-caption num fd-caption">([^<]*)<\/p>/);
+
+test("the page is a Room with the collage, the eyebrow, the title and the caption, in that order, wearing the type styles", async () => {
+  /* BUILD-NOTES 4.6: chevron-left 44 and share 44, the collage 160, "Foray · <subject>" in Lamp, the title through
+     --t-title with a three-line clamp, the caption. The eyebrow is the primitive's `.eyebrow.lamp` (colour --lamp-text,
+     contrast pinned in the token suite), and the title is the page's heading (data-page-heading) so the router can name it.
+     MUTATIONS: clamp3 -> clamp4 on the title -> red; `ag-collage-160` -> 120 -> red; drop `eyebrow lamp` -> red; swap the
+     eyebrow and the title -> red; drop data-page-heading -> red (and landOnPage finds no heading). */
+  const m = await mountForay(PLAIN);
+  const html = m.html();
+  const order = ["fd-room", "fd-top", "fd-collage", "fd-eyebrow", "fd-title", "fd-caption", "fd-sill"].map((c) => html.indexOf(`class="${c}`) >= 0 ? html.indexOf(`class="${c}`) : html.indexOf(` ${c}`));
+  assert.ok(order.every((i) => i >= 0), `every piece is there: ${order}`);
+  assert.deepStrictEqual([...order].sort((a, b) => a - b), order, "in reading order");
+  assert.match(html, /<span class="ag-collage ag-collage-160 c4 lit-art lit-64">/, "the 160 collage, lit by its own colour (four shows: 2x2)");
+  assert.match(html, /<p class="eyebrow lamp fd-eyebrow">Foray · Business<\/p>/);
+  assert.match(html, /<h1 class="t-title clamp3 fd-title" data-page-heading>The types of capital a startup can raise<\/h1>/);
+  assert.ok(m.ctx.pageHeading(m.view), "pageHeading() finds the title: the route's focus and announcement land on it");
+  assert.match(html, /<a class="back ag-btn ag-btn-icon" href="#\/forays" aria-label="Back">/, "the chevron is the ordinary back link");
+  assert.match(html, /<button type="button" class="ag-btn ag-btn-icon fd-share" aria-label="Share this foray">/);
+  assert.doesNotMatch(html, /style="/, "no inline style: the strict CSP forbids it");
+  assert.ok(m.view.querySelector("#fd-thumbs"), "the thumbs row exists for the strip to fill");
+});
+
+test("the caption is '<n> shows · <m> min · narrated' or 'not narrated yet', counting the shows the strip draws", async () => {
+  /* The count is the strip's own tally (audit 2026-09-22, theme L): a show whose only clip will not play is not counted.
+     "about" is said when part of the runtime is an estimate (a narrated Foray's bridges are timed from their script).
+     MUTATIONS: say "narrated" with no narration -> red. Count `r.shows.length` over playable ones -> red (the ghost test in
+     load-states). Drop the `about` hedge -> red. */
+  const plain = caption((await mountForay(PLAIN)).html());
+  assert.match(plain, /^7 shows · \d+ min · not narrated yet$/, plain);
+  const narrated = await mountForay(NARRATED);
+  const cap = caption(narrated.html());
+  assert.match(cap, /^\d+ shows? · about \d+ min · narrated$/, cap);
+  const { strip } = await playerMods;
+  assert.strictEqual(Number(/^(\d+)/.exec(cap)[1]), strip.stripTally(narrated.state.foray.playable).shows, "the strip's own count");
+});
+
+test("the primary button is Play, 'Resume · N min left', or 'Play again', full width, in the Ember primitive", async () => {
+  /* One button, three words; the resume state also fills the strip (that is paintForay's work, pinned in
+     player/foray-playback.test.js) and offers "Start over" in a Quiet button; a finished Foray offers "Play again" and no
+     Start over. The middle dot, never a comma.
+     MUTATIONS: join with ", " in forayPrimaryLabel -> red. Drop `finished` from renderForay's label call -> red. Render the
+     Start over offer without \`hidden\` when there is no resume point -> red. */
+  const fresh = (await mountForay(PLAIN)).html();
+  assert.match(fresh, /<button type="button" class="ag-btn ag-btn-primary fd-cta" id="fy-play">Play<\/button>/);
+  assert.match(fresh, /<div class="fd-resume" id="fy-resume" hidden>/, "nothing to start over from");
+  const mid = (await mountForay(PLAIN, { resume: { elapsedSec: 1180, index: 9, remainingSec: 1900, percent: 38, finished: false, label: "32 min left", clock: "19:40" } })).html();
+  assert.match(mid, /id="fy-play" aria-label="Resume, 32 min left">Resume · 32 min left<\/button>/, "the visible words start the accessible name");
+  assert.match(mid, /<div class="fd-resume" id="fy-resume">\s*<button type="button" class="ag-btn ag-btn-quiet" id="fy-restart">Start over<\/button>/);
+  assert.doesNotMatch(mid.replace(/aria-label="[^"]*"/g, ""), /Resume, 32/, "a middle dot on screen, not a comma");
+  const done = (await mountForay(PLAIN, { resume: { elapsedSec: 3000, index: 21, remainingSec: 0, percent: 100, finished: true, label: "Played" } })).html();
+  assert.match(done, /id="fy-play">Play again<\/button>/);
+  assert.match(done, /<div class="fd-resume" id="fy-resume" hidden>/);
+  assert.match(decls(CSS, ".ag .fd-cta").display, /flex/);
+  assert.strictEqual(decls(CSS, ".ag .fd-cta").width, "100%");
+});
+
+test("a Foray that cannot play dims, says so in one line, and offers Find similar into Discover with the subject", async () => {
+  /* Every clip's source loses its audio URL: each still resolves (its show, its why-line) and none will play. The page keeps
+     its shape: the collage at 50% with the wifi-slash, the strip still drawn, the shows below; the primary button is a
+     link to #/shows/q/<subject> and #fy-play is gone, so nothing can start.
+     MUTATIONS: render #fy-play when nothing is playable -> red. Drop the one line -> red. Make Find similar point at #/shows
+     without the subject -> red. Drop is-unavailable from the page -> red (it drives the dimming). */
+  const m = await mountForay(PLAIN, { tweakSources: (doc) => { for (const row of doc.sources) row.audio_url = null; } });
+  const html = m.html();
+  assert.strictEqual(m.state.foray.playable.length, 0, "fixture: nothing plays");
+  assert.match(html, /<div class="ag fd is-fresh is-unavailable">/);
+  assert.match(html, /<div class="room fd-room is-dim" aria-hidden="true">/);
+  assert.match(html, /<div class="fd-collage is-dim">[\s\S]*<span class="fd-slash"><svg[^>]*><use href="ui\/icons\.svg#i-wifi-slash">/);
+  assert.match(html, /<p class="t-body fd-unavailable">This foray can’t play right now\. Its shows are below\.<\/p>/);
+  assert.match(html, /<a class="ag-btn ag-btn-primary fd-cta" id="fy-find" href="#\/shows\/q\/Business">Find similar<\/a>/);
+  assert.ok(!/id="fy-play"/.test(html), "nothing can be started");
+  assert.ok(m.view.querySelectorAll("#fy-strip .fy-seg").length > 0, "the strip is still drawn from the authored clips");
+  assert.match(caption(html), /^7 shows · \d+ min · not narrated yet$/, "its authored shows and length, not zero");
+  assert.ok(m.view.querySelectorAll(".fd-tile").length === 7, "the shows are below");
+  assert.ok(!/is-unavailable|is-dim/.test((await mountForay(PLAIN)).html()), "an ordinary Foray is not dimmed");
+});
+
+test("a Foray with no narration draws no narration bars and says so once, in the caption", async () => {
+  /* "nothing else apologises". MUTATION: render the strip's bars from an item list with narrator placeholders -> red.
+     MUTATION 2: add an apology line to the page (any 'not yet'/'sorry' outside the caption) -> red. */
+  const m = await mountForay(PLAIN);
+  const html = m.html();
+  assert.ok(!/fy-seg--narration/.test(html) && !/fd-nbar/.test(html), "no narration bar, no narration row");
+  const sentences = html.replace(/<[^>]*>/g, " ").match(/not narrated yet/g) || [];
+  assert.strictEqual(sentences.length, 1, "said once");
+  assert.ok(!/sorry|unfortunately/i.test(html));
+});
+
+test("a narrated Foray's clip rows are QueueRows with show art; its narration rows are Lamp, with a light and no art", async () => {
+  /* MUTATIONS: drop forayRowLead from the tape row -> red (no art). Render art on a narration row -> red. Drop the
+     narrator's .is-narrator credit -> red (Lamp colour is keyed on it). */
+  const m = await mountForay(NARRATED);
+  const rows = m.html().split('<div class="fy-row').slice(1);
+  assert.ok(rows.length > 40, `fixture: a long narrated Foray (${rows.length} rows)`);
+  const tape = rows.filter((r) => !/fy-credit is-narrator/.test(r));
+  const narr = rows.filter((r) => /fy-credit is-narrator/.test(r));
+  assert.ok(tape.length >= 10 && narr.length >= 30, `${tape.length} tape rows, ${narr.length} narration rows`);
+  for (const r of tape) assert.match(r, /<span class="fd-rowart" aria-hidden="true"><span class="ag-art ag-art-56/, "tape rows lead with 56px show art");
+  for (const r of narr) {
+    assert.match(r, /<span class="fd-nbar" aria-hidden="true"><\/span>/, "narration rows lead with a thin light");
+    assert.ok(!/fd-rowart|ag-art/.test(r), "and carry no art");
+  }
+  assert.match(m.html(), /<h2 class="t-headline">Clips, in order<\/h2>/);
+  const row = decls(CSS, ".ag .fd-clips .fy-row");
+  assert.strictEqual(row["grid-template-columns"], "var(--art-queue) minmax(0, 1fr)");
+  assert.strictEqual(decls(CSS, ".ag .fd-clips .fy-credit.is-narrator").color, "var(--lamp-text)");
+  assert.strictEqual(decls(CSS, ".ag .fd-clips .fy-row:has(.fd-nbar)").background, "none", "a narration row is not a raised card");
+});
+
+test("'Why 4a made this' is the italic why-line in Lamp, three lines at most", async () => {
+  /* MUTATIONS: clamp3 -> clamp4 -> red. Render it in --text instead of --lamp-text -> red. Drop the section when there is
+     a summary -> red. */
+  const m = await mountForay(PLAIN);
+  assert.match(m.html(), /<section class="fd-why"><h2 class="t-headline">Why 4a made this<\/h2><p class="t-why clamp3">Eight ways to fund a company/);
+  assert.strictEqual(decls(CSS, ".ag .fd-why .t-why").color, "var(--lamp-text)");
+  assert.match(TOKENS, /\.t-why \{ font: var\(--t-why\); \}/, "the italic is the token's");
+  assert.match(TOKENS, /--t-why: italic /);
+});
+
+test("'Where this came from' is three-up tiles; a show the catalogue knows gets Follow, one it does not has none", async () => {
+  /* The tile's name clamps to three lines (never cut mid-word), the art is the tile's width, the Follow toggle sits under
+     it, and a tap toggles the show through toggleShowStar and repaints the button, the badge and aria-pressed.
+     MUTATIONS: the grid's 3 columns -> 4 -> red. clamp3 -> clamp2 -> red. Drop `aria-pressed` -> red. Render Follow for a
+     show without a catalogue record -> red. Skip paintForayFollows after the toggle -> red. */
+  /* "Feel the Boot" is in the show index but not in the catalogue: its tile links in-app (id "111") yet it has no record
+     for Follow to act on. */
+  const m = await mountForay(PLAIN, {
+    catalog: { shows: [{ show_id: "yc", title: "Y Combinator Startup Podcast", taxonomy_node_ids: [] }] },
+    indexRows: [{ show_id: "111", title: "Feel the Boot", tier: "breadth" }],
+  });
+  assert.match(m.html(), /<a class="fd-tile-face" href="#\/show\/111">[\s\S]*?Feel the Boot<\/span><\/a><\/li>/, "a show the index knows links in-app and has no Follow under it");
+  const tiles = m.view.querySelectorAll(".fd-tile");
+  assert.strictEqual(tiles.length, 7);
+  const follows = m.view.querySelectorAll("[data-fd-follow]");
+  assert.strictEqual(follows.length, 1, "only the catalogued show can be followed");
+  assert.strictEqual(follows[0].dataset.fdFollow, "yc");
+  assert.strictEqual(follows[0].getAttribute("aria-pressed"), "false");
+  assert.strictEqual(follows[0].getAttribute("aria-label"), "Follow Y Combinator Startup Podcast");
+  assert.match(m.html(), /data-fd-follow="yc" aria-pressed="false"[^>]*>[\s\S]*?<span>Follow<\/span>/);
+  assert.match(m.html(), /<span class="t-caption name clamp3">Y Combinator Startup Podcast<\/span>/);
+  follows[0].click();
+  assert.ok(vm.runInContext(`isShowStarred("yc")`, m.ctx), "the tap followed the show");
+  const after = m.view.querySelectorAll("[data-fd-follow]")[0];
+  assert.strictEqual(after.getAttribute("aria-pressed"), "true");
+  assert.match(after.innerHTML, />Following<\/span>/);
+  assert.strictEqual(decls(CSS, ".ag .fd-tiles")["grid-template-columns"], "repeat(3, minmax(0, 1fr))");
+  assert.strictEqual(decls(CSS, ".ag .fd-tile .ag-art").width, "100%");
+  assert.strictEqual(decls(CSS, ".ag .fd-tile .ag-art-badge").display, "none", "the check badge shows only on a followed tile");
+  assert.strictEqual(decls(CSS, ".ag .fd-tile.is-followed .ag-art-badge").display, "block");
+  assert.match(m.html(), /Following keeps a show one tap away in your Library/, "what Follow does is said where it is tapped");
+});
+
+test("every show name, episode title and URL that reaches the page goes through esc() or safeUrl()", async () => {
+  /* A show name and an episode title are somebody else's text. MUTATIONS: drop esc() around the tile's name -> red; around
+     the row's art name (agArtwork's aria-label) -> red; drop safeUrl from the external tile's href -> red. */
+  const evil = `Evil "<img src=x onerror=alert(1)>" & Co`;
+  const m = await mountForay(PLAIN, { tweakSources: (doc) => { for (const row of doc.sources) { row.show = evil; row.title = `<script>alert(2)</script>`; } } });
+  const html = m.html();
+  assert.ok(!/<img src=x/.test(html) && !/<script>alert/.test(html), "nothing hostile became markup");
+  assert.ok(html.includes("&lt;img src=x onerror=alert(1)&gt;"), "and it is on the page as text");
+  /* An external tile link with a hostile URL falls back to '#'. */
+  const bridge = await bridgeOver();
+  bridge.forayCredits = () => ({ summary: "", credits: [{ show: "No Page Show", link: "javascript:alert(3)", linkKind: "apple-search" }] });
+  const m2 = mount(`#/foray/${PLAIN}`, bridge);
+  const out = vm.runInContext(`forayCameFromHtml({ shows: ["No Page Show"], entries: [{ show: "No Page Show" }] }, ForayPlayer)`, m2.ctx);
+  assert.ok(!/javascript:/.test(out), out);
+  assert.match(out, /href="#"/);
+});
+
+test("the Room's artwork URL cannot end its own string, and a URL safeUrl refuses is no artwork", () => {
+  /* MUTATION: drop the percent-encoding replace in forayRoomArtValue -> red. MUTATION 2: skip safeUrl -> red. */
+  const m = mount("#/", null);
+  const run = (js) => vm.runInContext(js, m.ctx);
+  assert.strictEqual(run(`forayRoomArtValue('https://x.test/a"b.jpg')`), `url("https://x.test/a%22b.jpg")`);
+  assert.strictEqual(run(`forayRoomArtValue('https://x.test/a\\\\b.jpg')`), `url("https://x.test/a%5cb.jpg")`);
+  assert.strictEqual(run(`forayRoomArtValue("javascript:alert(1)")`), "none");
+  assert.strictEqual(run(`forayRoomArtValue("")`), "none");
+  assert.ok(!/style="/.test(APP_SRC.slice(APP_SRC.indexOf("function forayRoomArtValue"), APP_SRC.indexOf("function forayRoomArtValue") + 500)));
+});
+
+test("the page opens unanimated: is-fresh is on the first markup and comes off a moment later", async () => {
+  /* The Room, the bars and the rows must not crossfade into the state they open in (the strip is measured while it is built,
+     so the browser has styled it before the player's first paint changes a class). MUTATION: drop the settle call at the end of
+     renderForay -> the class never comes off and every later change is frozen; red. MUTATION 2: drop `is-fresh` from the
+     template -> red. */
+  const m = await mountForay(PLAIN);
+  assert.ok(/<div class="ag fd is-fresh"/.test(m.html()), "painted fresh");
+  await new Promise((r) => setTimeout(r, 120));
+  assert.ok(!m.view.querySelector(".fd").classList.contains("is-fresh"), "and settled");
+});
+
+/* ---------- 5. rules that need no browser ---------- */
+
+test("a thumb sits under every tape bar 28px or wider, left-aligned, and under no narration bar or narrower bar", async () => {
+  /* The bars' widths are layout, so the rule is read from a stand-in strip: bars reporting offsetWidth and offsetLeft.
+     MUTATIONS: \`>= FORAY_THUMB_MIN_BAR_PX\` -> \`> 0\` -> red (the 20px bar gets one). Drop the narration check -> red.
+     Use \`offsetLeft + offsetWidth\` for x -> red (a thumb would sit under the bar's end). */
+  const m = await mountForay(NARRATED);
+  const r = m.state.foray;
+  const entries = vm.runInContext("forayStripEntries", m.ctx)(r);
+  const bars = entries.map((e, i) => ({ offsetWidth: i % 3 === 0 ? 40 : 20, offsetLeft: i * 50 }));
+  const shows = vm.runInContext("forayShowsOf", m.ctx)(r);
+  const tones = new Map([[shows[0].name, "oklch(0.7 0.13 40)"]]);
+  const cells = vm.runInContext("forayThumbCells", m.ctx)(r, shows, tones, bars);
+  const expected = entries.map((e, i) => ({ e, i })).filter(({ e, i }) => e && e.type !== "narration" && e.show && bars[i].offsetWidth >= 28);
+  assert.ok(expected.length >= 2, `fixture: some wide tape bars (${expected.length})`);
+  assert.deepStrictEqual(Array.from(cells, (c) => c.x), expected.map(({ i }) => i * 50), "left edges, one per wide tape bar");
+  assert.strictEqual(vm.runInContext("FORAY_THUMB_MIN_BAR_PX", m.ctx), 28);
+  assert.ok(cells.every((c) => c.tone === "oklch(0.7 0.13 40)" || c.tone === ""));
+  assert.ok(cells.every((c) => /fd-thumb-mono|<img /.test(c.html)));
+});
+
+test("show colours: a show's hue from the palette at L .70 (Dusk) or .52 (Dawn), a hue within 24 degrees of an earlier show rotates +30", async () => {
+  /* BUILD-NOTES 1.2 step 3. The palette is stubbed so three shows collide on one hue.
+     MUTATION: drop the rotation loop in forayTones -> red (all three share 100). MUTATION 2: rotate by 10 -> red (still
+     within 24). MUTATION 3: Dawn lightness .70 -> red. */
+  const m = mount("#/", null);
+  vm.runInContext(`agPaletteFor = () => [100, 0.1]; agGlowLightness = () => 0.66;`, m.ctx);
+  const dusk = vm.runInContext(`forayTones(["A", "B", "C"])`, m.ctx);
+  const hues = [...dusk.values()].map((v) => Number(/oklch\(0\.7 0\.13 (\d+)\)/.exec(v)[1]));
+  assert.deepStrictEqual(hues, [100, 130, 160]);
+  for (let i = 0; i < hues.length; i++) for (let j = 0; j < i; j++) assert.ok(Math.abs(hues[i] - hues[j]) >= 24);
+  vm.runInContext(`agGlowLightness = () => 0.56;`, m.ctx);
+  assert.match([...vm.runInContext(`forayTones(["A"])`, m.ctx).values()][0], /^oklch\(0\.52 0\.13 100\)$/);
+  vm.runInContext(`agPaletteFor = undefined;`, m.ctx);
+  assert.strictEqual(vm.runInContext(`forayTones(["A"])`, m.ctx).size, 0, "no palette script: no tones, the strip keeps its own");
+});
+
+test("the share link is the published site's page for this Foray, never the shell's own origin, and sends nothing to 4a", () => {
+  /* MUTATION: build the URL from `location.href` -> red (capacitor://localhost is no address anyone else can open).
+     MUTATION 2: add a fetch or logEvent to shareForay -> red. */
+  const src = APP_SRC.slice(APP_SRC.indexOf("async function shareForay("), APP_SRC.indexOf("/** Show -> Apple collection id"));
+  assert.match(APP_SRC, /const FORAY_SHARE_BASE = "https:\/\/jw-incorporated\.github\.io\/foray\/";/);
+  assert.match(src, /`\$\{FORAY_SHARE_BASE\}#\/foray\/\$\{encodeURIComponent\(r\.id\)\}`/);
+  assert.ok(!/location\./.test(src), "the shell's origin is not read");
+  assert.ok(!/fetch\(|logEvent\(|sendBeacon/.test(src), "share writes nothing anywhere");
+});
+
+test("the page has no transport of its own: the bindings still run when the controls that left it are absent", async () => {
+  /* renderForay must not throw on a page with no #fy-back / #fy-fwd / #fy-prev / #fy-next / #fy-rate (the real page has
+     none). MUTATION: drop a `?.` from a binding in bindForayTransport -> this throws inside renderForay -> red. */
+  const m = await mountForay(PLAIN);
+  assert.ok(m.view.querySelector("#fy-play"), "the page painted past its bindings");
+  assert.strictEqual(m.view.querySelector("#fy-play").listeners("click"), 1, "and the primary button is wired");
+  for (const id of ["fy-back", "fy-fwd", "fy-prev", "fy-next", "fy-rate"]) assert.strictEqual(m.view.querySelector(`#${id}`), null, `#${id} is not on the page`);
+});

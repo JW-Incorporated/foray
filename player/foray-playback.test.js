@@ -1299,7 +1299,7 @@ test("pressing play reaches the player, and the callback repaints the page", asy
   assert.equal(typeof onChange, "function", "playForay was called without an onChange — nothing can repaint");
   onChange({ forayId: FORAY_ID, index: 3, playing: true, loading: false, ended: false, elapsedSec: 240, totalSec: resolved.totalSec, error: null });
 
-  assert.equal(dom.el("fy-play").textContent, "❚❚ Pause");
+  assert.equal(dom.el("fy-play").textContent, "Pause");
   assert.equal(dom.el("fy-now").textContent, fmtClock(240));
   assert.ok(dom.rows[3].classList.contains("is-playing"), "the audible segment must be marked");
   assert.ok(dom.rows[2].classList.contains("is-played"));
@@ -1314,9 +1314,9 @@ test("pause comes back through the same callback and the label flips", async () 
   const at = (playing) => onChange({ forayId: FORAY_ID, index: 3, playing, loading: false, ended: false, elapsedSec: 240, totalSec: 3673, error: null });
 
   at(true);
-  assert.equal(dom.el("fy-play").textContent, "❚❚ Pause");
+  assert.equal(dom.el("fy-play").textContent, "Pause");
   at(false);
-  assert.equal(dom.el("fy-play").textContent, "▶ Resume", "paused mid-Foray is a resume, not a fresh play");
+  assert.match(dom.el("fy-play").textContent, /^Resume( · .+ left)?$/, "paused mid-Foray is a resume, not a fresh play");
 
   // Once the player is inside this Foray, play/pause must toggle rather than
   // rebuild the queue from segment 1.
@@ -1461,8 +1461,8 @@ test("during a seam beat the page says Pause, not Loading — the silence is del
 
   // Structurally a load, but a beat: `gap` is what tells the two apart.
   onChange({ ...base, playing: false, loading: true, gap: true });
-  assert.equal(dom.el("fy-play").textContent, "❚❚ Pause");
-  assert.equal(dom.el("fy-play").getAttribute("aria-label"), "Pause");
+  assert.equal(dom.el("fy-play").textContent, "Pause");
+  assert.equal(dom.el("fy-play").getAttribute("aria-label"), null, "the visible word is the name");
   assert.ok(dom.el("fy-strip").classList.contains("is-seam"), "the strip should mark the beat");
 
   // A real load, with no beat, still says so.
@@ -1481,11 +1481,11 @@ test("AUDIT 2026-09-22: the main button is painted from `running`, the answer it
   const onChange = bridge.lastOnChange();
   const base = { forayId: FORAY_ID, index: 4, ended: false, elapsedSec: 600, totalSec: resolved.totalSec, error: null };
   onChange({ ...base, playing: false, loading: false, gap: false, running: true });
-  assert.equal(dom.el("fy-play").textContent, "❚❚ Pause");
-  assert.equal(dom.el("fy-play").getAttribute("aria-label"), "Pause");
+  assert.equal(dom.el("fy-play").textContent, "Pause");
+  assert.equal(dom.el("fy-play").getAttribute("aria-label"), null, "the visible word is the name");
   // And an older player module, which sends no `running`, still paints from the belief.
   onChange({ ...base, playing: true, loading: false, gap: false });
-  assert.equal(dom.el("fy-play").textContent, "❚❚ Pause");
+  assert.equal(dom.el("fy-play").textContent, "Pause");
 });
 
 test("AUDIT 2026-09-22: a FINISHED Foray offers to start over, not to resume", async () => {
@@ -1499,8 +1499,8 @@ test("AUDIT 2026-09-22: a FINISHED Foray offers to start over, not to resume", a
     loading: false, gap: false, ended: true, elapsedSec: resolved.totalSec,
     totalSec: resolved.totalSec, error: null,
   });
-  assert.equal(dom.el("fy-play").textContent, "▶ Start over");
-  assert.equal(dom.el("fy-play").getAttribute("aria-label"), "Start over");
+  assert.equal(dom.el("fy-play").textContent, "Play again");
+  assert.equal(dom.el("fy-play").getAttribute("aria-label"), null, "the words are the name");
 });
 
 /* ================================================ a start that fails (#225) ===
@@ -1548,7 +1548,7 @@ test("a start that fails puts the page back to cold, so the next tap is a real r
   onChange(failedStart(9, "player.error: loadItem(x) failed: load failed (code 2)", resolved));
 
   assert.equal(dom.el("fy-error").hidden, false, "a failed start must say so on the page");
-  assert.equal(dom.el("fy-play").textContent, "▶ Resume", "the button has to offer another go, not a pause");
+  assert.equal(dom.el("fy-play").textContent, "Resume · 42 min left", "the button has to offer another go, not a pause");
   assert.equal(dom.el("fy-resume").hidden, false, "the resume offer is still the truth — nothing played");
   assert.ok(!dom.rows[9].classList.contains("is-playing"), "no row is audible, so none may look it");
 
@@ -1583,7 +1583,7 @@ test("PAUSING a live Foray is not a failed start — the page stays live", async
 
   at({ playing: true });                       // audio, for a while
   at({ playing: false });                      // and the listener pauses
-  assert.equal(dom.el("fy-play").textContent, "▶ Resume");
+  assert.match(dom.el("fy-play").textContent, /^Resume( · .+ left)?$/);
   assert.equal(dom.el("fy-resume").hidden, true, "a live Foray does not re-offer the position it started from");
   assert.ok(dom.rows[9].classList.contains("is-playing"), "the segment is still the loaded one");
 
@@ -1639,7 +1639,7 @@ test("another Foray's ticks are not this page's news", async () => {
 
   live({ forayId: "some-other-foray", index: 4, playing: true, loading: false, gap: false, ended: false, elapsedSec: 1500, totalSec: 4000, error: null });
 
-  assert.equal(dom.el("fy-play").textContent, "▶ Resume", "this page is not playing, whatever the mini bar is doing");
+  assert.equal(dom.el("fy-play").textContent, "Resume · 42 min left", "this page is not playing, whatever the mini bar is doing");
   assert.equal(dom.el("fy-now").textContent, fmtClock(1180), "and its clock is its own");
   assert.ok(!dom.rows[4].classList.contains("is-playing"), "no row here is audible");
 
@@ -1714,7 +1714,7 @@ test("a control that throws over LIVE audio says so without lying about the stat
 
   assert.equal(dom.el("fy-error").hidden, false, "a control that threw has to be visible");
   assert.ok(!/wouldn't load/.test(dom.el("fy-error").textContent), `nothing failed to load: ${dom.el("fy-error").textContent}`);
-  assert.equal(dom.el("fy-play").textContent, "❚❚ Pause", "the label still describes the audio, which is still playing");
+  assert.equal(dom.el("fy-play").textContent, "Pause", "the label still describes the audio, which is still playing");
 
   // And the page still knows a Foray is live, so the next press is a transport
   // action rather than a restart on top of live audio.
@@ -2028,7 +2028,7 @@ test("a stored position makes the cold press a resume, and Start over clears it"
   const { dom, bridge } = await mountForayPage({ resume });
 
   assert.equal(dom.el("fy-now").textContent, fmtClock(1180), "the page must open on the stored clock");
-  assert.equal(dom.el("fy-play").textContent, "▶ Resume");
+  assert.equal(dom.el("fy-play").textContent, "Resume · 42 min left");
   assert.ok(dom.rows[8].classList.contains("is-played"), "everything before the resume point is behind them");
   assert.ok(!dom.rows[9].classList.contains("is-played"));
 
@@ -2088,8 +2088,7 @@ test("the markup app.js emits carries every hook the harness serves", async () =
     resume: { elapsedSec: 1180, index: 9, remainingSec: 2493, percent: 32, finished: false, label: "42 min left", clock: "19:40" },
   });
   for (const hook of [
-    'id="fy-play"', 'id="fy-next"', 'id="fy-prev"', 'id="fy-strip"', 'id="fy-now"',
-    'id="fy-total"', 'id="fy-error"', 'id="fy-resume"', 'id="fy-restart"', 'id="fy-bar-fill"',
+    'id="fy-play"', 'id="fy-strip"', 'id="fy-error"', 'id="fy-resume"', 'id="fy-restart"',
     'id="fy-sheet"', 'id="fy-scrim"', 'id="fy-sheet-go"', 'id="fy-sheet-cancel"',
     'id="fy-sheet-note"', 'id="fy-sheet-sub"',
     'data-fy="0"', 'data-seg="0"', 'data-thumb="up"', 'data-thumb="down"',
@@ -2623,7 +2622,7 @@ test("changing the speed does NOT start playback", async () => {
     bridge.calls.filter((c) => c.name === "playForay"), [],
     "a speed change is not a play"
   );
-  assert.equal(dom.el("fy-play").textContent, "▶ Play", "and the main button still says so");
+  assert.equal(dom.el("fy-play").textContent, "Play", "and the main button still says so");
 });
 
 test("the speed button survives a Foray with nothing playable", async () => {

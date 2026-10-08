@@ -1011,3 +1011,36 @@ pixels; 41 stable capture plates at three viewports make the 123-shot gallery ba
    text button gains the spinner and may widen). Add the buffering MiniPlayer plates to the
    intended `ambient-gallery` diffs above if the baseline renders under reduced motion.
 
+
+## 13. Foray detail, as built (2026-10-07, branch `redesign/ambient-foray-detail`)
+
+Decisions the builder made while no one could be asked; each is also in the code or a test.
+
+1. **The mid scrim stop is 236, not 276.** §10.1's stops assume an eyebrow at `safe-top + 276`. The prototype's own stack puts the
+   eyebrow at `safe-top + 236` (8, the 44px head, 8, the 160 collage, 16), and the token suite pins text contrast at the mid stop, so
+   the stop must not sit below the first line of text. `.fd-room` sets `--rs2: calc(var(--safe-top) + 236px)`; `--rs1` stays 196 and
+   every other number (the 56 head stop, Dawn's paper mix and 0.55 layer, the 8% / 0.35 unavailable Room) is the tokens'.
+   `test/ambient-foray-detail.test.js` computes the eyebrow's top from the page's own spacing and fails if the stop is lower.
+2. **Share is the `i-share` glyph**, not `i-dots`: §4.6's "dots 44 (share)" and the prototype's own button disagree, and the
+   prototype's glyph says what the button does. The target is 44 either way. Share opens the native sheet where there is one and
+   otherwise copies `https://jw-incorporated.github.io/foray/#/foray/<id>` and says so; it writes nothing anywhere.
+3. **The runtime says "about" when part of it is an estimate** ("5 shows · about 43 min · narrated"), as the page always has
+   (audit 2026-09-22): a narrated Foray's bridges are timed from their script until real audio exists.
+4. **A thumb needs a bar of 28px or more, and a long Foray has none that wide.** A 22-clip Foray at 393px has bars of about 15 to
+   24px, so its thumbs row is hidden (`:empty`), not reserved; the prototype's five-bar strip is what shows thumbs. The region
+   delta the fidelity report prints for the strip (-26px) is exactly the row.
+5. **"Unavailable" is the resolver's answer** (`r.playable` is empty: no clip has audio), not a guess about the network. A narrated
+   Foray whose tape cannot play still plays its narrator's bridges (they need no source), so it is not unavailable; its rows say
+   "This clip isn't available right now." as they always did. The harness opens the not-narrated Foray with every audio URL removed.
+6. **"Start over" stays**, as a Quiet button under the primary one, only beside a stored resume point and hidden while the Foray is
+   live. The prototype has no such control; the product had it, and a resume button with no way back to the top loses a function.
+7. **"Where this came from" keeps what the credit block carried**: a show with a page of its own links in-app, one without opens its
+   Apple Podcasts page (or a search, and says which in its accessible name), "Every clip plays from the show's own feed." stays, and
+   FOLLOW_NOTE sits where Follow is tapped (review 2026-09-23). Follow needs a catalogue record; a show known only to the show index
+   links but has no Follow.
+8. **First paint is not animated**: `.is-fresh` (transitions off, the one `!important` in the sheet, because tokens.css's
+   reduced-motion block uses one) comes off two frames after render. The Glow and the artwork URL are worked out before the markup is
+   inserted so the Room opens already lit; the reduced-motion gate reads 0.
+9. **Not built here**: the "lamps light in sequence" strip draw-in (§5, motion 3), the Room shifting colour as playback crosses a
+   segment (a Now Playing behaviour), per-show palette from the nightly refresh (the committed table in `ui/palette.js` and the hash
+   hue are the sources), and the legacy tab bar and mini player the Dock unit replaces.

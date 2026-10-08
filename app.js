@@ -4791,7 +4791,9 @@ function route() {
 function pageHeading(view) {
   if (!view || typeof view.querySelector !== "function") return null;
   const box = view.querySelector(".page-head");
-  return (box && box.querySelector("h2")) || null;
+  /* A page that draws its own header (the ambient Foray detail has a chevron and a share button, not a
+     `.page-head`) names itself with `data-page-heading` on its title. */
+  return (box && box.querySelector("h2")) || view.querySelector("[data-page-heading]") || null;
 }
 
 /* A NAVIGATION WHOSE NAME HAS NOT BEEN SAID YET (audit round 2, races-6). A

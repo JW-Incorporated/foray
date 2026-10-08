@@ -244,41 +244,43 @@ async function withCredits(bridge) {
   return bridge;
 }
 
-/** Each credit in the "Where this came from" block: [show, in-app href|null, arrow label, arrow href].
-    The meta line may sit between the show and the arrow (L7's head order). */
+/** Each tile in the "Where this came from" section: [show, in-app route id|null, accessible name of an external face, its href].
+    Ambient Foray detail (Redesign 2026): a tile's face is one link, in-app when the show has a page, else its Apple Podcasts page
+    or a search for it. */
 function sourceCredits(html) {
-  return [...html.matchAll(/<span class="fy-src-show">((?:(?!<\/span>)[\s\S])*?(?:<\/a>)?)<\/span>(?:\s*<span class="fy-src-meta">[^<]*<\/span>)?\s*<a class="fy-src-out" href="([^"]*)"[^>]*aria-label="([^"]*)">/g)]
+  return [...html.matchAll(/<li class="fd-tile[^"]*">\s*<a class="fd-tile-face" href="([^"]*)"([^>]*)>[\s\S]*?<span class="t-caption name clamp3">([^<]*)<\/span>/g)]
     .map((m) => {
-      const link = /href="#\/show\/([^"]+)">([^<]*)</.exec(m[1]);
-      return { show: link ? link[2] : m[1].trim(), inApp: link ? link[1] : null, label: m[3], out: m[2] };
+      const inApp = /^#\/show\/(.+)$/.exec(m[1]);
+      const label = /aria-label="([^"]*)"/.exec(m[2]);
+      return { show: m[3], inApp: inApp ? inApp[1] : null, label: label ? label[1] : null, out: inApp ? null : m[1] };
     });
 }
 
-test("the published Foray: every credited show links in-app, or its arrow says it is a SEARCH (p-foray-2)", async () => {
+test("the published Foray: every credited show links in-app, or its tile says it is a SEARCH (p-foray-2)", async () => {
   /* capital-types-1 from the frozen fixture. None of its seven shows is in the
      curated catalogue and there is no discover doc here, so before the index
-     loads every arrow is an Apple search, and it must SAY search. KILLING
+     loads every tile is an Apple search, and it must SAY search. KILLING
      MUTATION: put back the fixed aria-label "Open X on Apple Podcasts" — red. */
   const { resolve } = await mods;
   const app = loadApp(await withCredits(await realBridge()), { showDrafts: false });
   const doc = resolve.findForay(readFrozen("forays.json"), "capital-types-1", {});
   const r = resolve.resolveForay(doc, { segments: resolve.indexSegments(readFrozen("segments.json")), sources: resolve.indexSources(readFrozen("segment-sources.json")) });
-  const credits = sourceCredits(app.foraySourcesHtml(r, app.ForayPlayer));
+  const credits = sourceCredits(app.forayCameFromHtml(r, app.ForayPlayer));
   assert.equal(credits.length, 7, "fixture: seven credited shows");
   for (const c of credits) {
     assert.ok(c.inApp || (c.label === `Search Apple Podcasts for ${c.show}` && /\/search\?term=/.test(c.out)),
-      `${c.show}: no in-app page, so the arrow must say it searches: ${JSON.stringify(c)}`);
+      `${c.show}: no in-app page, so the tile must say it searches: ${JSON.stringify(c)}`);
   }
 });
 
-test("once the show index is loaded, a credited show it knows links in-app and to its own Apple page — exact, unique titles only (p-foray-2)", async () => {
+test("once the show index is loaded, a credited show it knows links in-app — exact, unique titles only (p-foray-2)", async () => {
   /* A synthetic index (never the live file): two of the Foray's shows by their
      Apple collection ids, and one title carried by TWO rows, which is two shows
      and must not be guessed between. KILLING MUTATION 1: drop the index
      fallback from showIdForShowName — Acquiring Minds has no in-app link, red.
      KILLING MUTATION 2: take the first of two same-titled rows — Feel the Boot
-     links, red. KILLING MUTATION 3: stop passing showIndexCollectionIds — the
-     arrow stays a search, red. */
+     links, red. (The credits row's third mutation, the Apple page behind the
+     arrow, went with the arrow: a show the index knows is a page of ours now.) */
   const { resolve } = await mods;
   const app = loadApp(await withCredits(await realBridge()), { showDrafts: false });
   app.__idx = { keys: [], rows: [
@@ -290,14 +292,13 @@ test("once the show index is loaded, a credited show it knows links in-app and t
   vm.runInContext("showIndex = __idx;", app);
   const doc = resolve.findForay(readFrozen("forays.json"), "capital-types-1", {});
   const r = resolve.resolveForay(doc, { segments: resolve.indexSegments(readFrozen("segments.json")), sources: resolve.indexSources(readFrozen("segment-sources.json")) });
-  const byShow = new Map(sourceCredits(app.foraySourcesHtml(r, app.ForayPlayer)).map((c) => [c.show, c]));
+  const byShow = new Map(sourceCredits(app.forayCameFromHtml(r, app.ForayPlayer)).map((c) => [c.show, c]));
   const am = byShow.get("Acquiring Minds");
   assert.equal(am.inApp, "1569715379", "the show page the Shows search would open");
-  assert.equal(am.label, "Open Acquiring Minds on Apple Podcasts");
-  assert.equal(am.out, "https://podcasts.apple.com/us/podcast/id1569715379", "the show's own page, not a search");
   const ftb = byShow.get("Feel the Boot");
   assert.equal(ftb.inApp, null, "two rows share the title: no guess");
   assert.equal(ftb.label, "Search Apple Podcasts for Feel the Boot");
+  assert.match(ftb.out, /\/search\?term=/, "and the tile opens a search, not a page it cannot name");
   const row = app.forayCreditHtml(r.entries.find((e) => e.show === "Y Combinator Startup Podcast"));
   assert.equal(row, `<a class="fy-credit show-link" href="#/show/1236907421">Y Combinator Startup Podcast</a>`, "the clip row's credit links too");
 });
