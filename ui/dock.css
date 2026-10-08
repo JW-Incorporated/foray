@@ -256,6 +256,11 @@ body.ui-v2.kb-open .dock-layer .dock-mini, body.ui-v2.kb-open .dock-layer .tab-b
 body.ui-v2.sh-searching .dock-layer .dock-mini, body.ui-v2.sh-searching .dock-layer .tab-bar { display: none; }
 body.ui-v2.kb-open .dock-layer .dock-fade, body.ui-v2.sh-searching .dock-layer .dock-fade,
 body.ui-v2.kb-open #dock-cast, body.ui-v2.sh-searching #dock-cast { opacity: 0; }
+/* With the keyboard up the field row floats mid-screen, so the last results must be able to scroll clear of it: #view
+   reserves the keyboard and the row (section 1 zeroed it for the resting Dock), and scroll-padding makes a result scrolled
+   into view (a tap, a focus move, scrollIntoView) land in the strip above the row instead of centred under it. */
+body.ui-v2.sh-compose.kb-open #view { padding-bottom: calc(var(--kb-inset, 0px) + var(--dock-field-row) + var(--s-8)); }
+html:has(body.ui-v2.kb-open) { scroll-padding-bottom: calc(var(--kb-inset, 0px) + var(--dock-field-row) + var(--s-8)); }
 
 /* ---------------------------------------------------------------------------
    8. MOTION - declared ONLY for a listener who has not asked for less of it. The Dock is not an `.ag` subtree

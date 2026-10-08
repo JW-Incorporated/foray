@@ -4780,6 +4780,8 @@ function route() {
      actually changed: route() is also how a settings toggle or a finished
      deletion re-renders the page UNDER an open sheet on purpose. */
   if (h !== previousHash) closeAllSheets();
+  /* A page that borrowed the root's Glow for the Dock hands it back before the next page paints. */
+  if (h !== previousHash && typeof forayReleaseRootGlow === "function") forayReleaseRootGlow();
   renderCurrentPage();
   if (step === "back") applyRailOffsets(navRailX.get(h));
   /* A NAVIGATION IS SAID, NOT ONLY DRAWN (audit 2026-09-22, qa row 80). Only a

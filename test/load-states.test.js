@@ -474,7 +474,7 @@ test("#/forays explains what a Foray is, from the one sentence forayAbout() hold
   assert.ok(m.html().includes(shown), "the Forays page states what a Foray is");
   /* Review 2026-09-23: not inside the sticky header, which comes back on every
      scroll-up. MUTATION: put it back as the head's `.sub`. */
-  const head = /<div class="page-head">[\s\S]*?<\/div>\s*<\/div>/.exec(m.html());
+  const head = /<header class="fl-head">[\s\S]*?<\/header>/.exec(m.html());   /* Redesign 2026: the page draws its own header */
   assert.ok(head, "fixture: the page has its header");
   assert.ok(!head[0].includes(shown), "the sentence is below the sticky header, not in it");
   assert.doesNotMatch(m.html(), /\b\d+ forays?\b/, "and states no count in its place");
