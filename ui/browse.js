@@ -138,20 +138,92 @@ function catalogShowsOrNull() {
   return state.catalog ? (state.catalog.shows || []) : null;
 }
 
-/* A3.2's landing page. An unknown nodeId still renders — same "absence is a
-   real state, not an error" rule renderShow's not-found guard follows —
-   falling back to the raw id as its own label, and an empty result list
-   getting the shared "No shows here yet" copy rather than a dead end.
+/* THE SUBJECT PAGE (Redesign 2026, ambient, screen 15). A3.2's landing page, and the page a subject's name leads
+   to from Discover ("History" in the field): ONE anatomy for both, Discover's result anatomy under a SectionHead
+   that wears the subject's own 56 collage. Below it the subject's shows as ShowTiles, three across, each with the
+   Follow badge where the show is followed (the state varies here, so the mark earns its place; Library draws none),
+   then its latest episodes as Discover's compact rows. No pill wall: a subject's name is the only word the page
+   needs.
 
-   NO COUNT WITHOUT A CATALOGUE: "0 shows" over a failed fetch was the same
-   false claim as the empty-state sentence under it, so both wait on the
-   catalogue having answered. */
+   An unknown nodeId still renders - same "absence is a real state, not an error" rule renderShow's not-found
+   guard follows - falling back to the raw id as its own label, and an empty list getting the shared "No shows
+   here yet" copy rather than a dead end. NO COUNT WITHOUT A CATALOGUE: "0 shows" over a failed fetch was the same
+   false claim as the empty-state sentence under it, so the failed page keeps the shared template, which draws
+   neither. */
+const SUBJECT_EPISODES = 8;
+
+/** The first DISCOVER_TILE_ARTS covers among a subject's shows, in the order given: the 56 collage on a
+    subject's tile and on its page, so the two are one picture. */
+function subjectCollageArts(shows) {
+  const arts = [];
+  for (const show of shows) {
+    const src = showArtworkUrl(show);
+    if (src) arts.push({ name: show.title, src, tone: AG_TONES[arts.length % AG_TONES.length], decorative: true });
+    if (arts.length === DISCOVER_TILE_ARTS) break;
+  }
+  return arts;
+}
+
+/** Most-charted first, then code-unit title order: the same order on every device (see discoverCompare). */
+function subjectShowOrder(a, b) {
+  const ra = Number.isFinite(a.chart_rank) ? a.chart_rank : Infinity;
+  const rb = Number.isFinite(b.chart_rank) ? b.chart_rank : Infinity;
+  return ra - rb || discoverCompare(String(a.title), String(b.title));
+}
+
+/** One show as a ShowTile: art 104, the name under it (three lines), a link to the show's page, and the
+    Follow badge when the listener follows it. */
+function subjectShowTile(show) {
+  const followed = !!starredShowsMap()[show.show_id];
+  return agShowTile({
+    name: String(show.title || ""), src: showArtworkUrl(show) || "", showId: String(show.show_id), followed,
+    tone: AG_TONES[agFnv1a(String(show.show_id)) % AG_TONES.length],
+  });
+}
+
+/** The page's lead: the subject's 56 collage beside a SectionHead holding its name and "<n> shows". `level` 2
+    when the head IS the page's title (the category page), 3 under Discover's own title. */
+function subjectLeadHtml({ name, count, arts }, level = 2) {
+  const items = arts.length ? arts : [{ name, tone: "amber", decorative: true }];
+  return `<div class="cat-lead">${agCollage(items, { size: 56, lit: false })}${agSectionHead(name, countLabel(count, "show"), "", { level })}</div>`;
+}
+
+/** The newest episodes of the given shows from the discover pool, Family Mode applied, at most `limit`. One pass
+    over the pool, not one per show (episodesForShow's cost, times a subject's shows). */
+function subjectEpisodes(shows, limit = SUBJECT_EPISODES) {
+  const wanted = new Set();
+  for (const show of shows) {
+    wanted.add(show.title);
+    if (TITLE_ALIASES[show.title]) wanted.add(TITLE_ALIASES[show.title]);
+  }
+  return (state.discover?.items || [])
+    .filter((it) => wanted.has(it.show) && familyAllows(it))
+    .sort((a, b) => dateValue(b.release_date) - dateValue(a.release_date))
+    .slice(0, limit);
+}
+
 function renderCategory(nodeId) {
   const node = (state.taxonomy?.nodes || []).find(n => n.id === nodeId);
   const label = node?.label || nodeId;
   if (catalogShowsOrNull() === null) { renderShowIndexPage(label, "", null); return; }
-  const shows = showsForCategory(nodeId).slice().sort((a, b) => a.title.localeCompare(b.title));
-  renderShowIndexPage(label, countLabel(shows.length, "show"), shows);
+  const shows = showsForCategory(nodeId).slice().sort(subjectShowOrder);
+  const episodes = subjectEpisodes(shows);
+  setBodyClass("view-page");
+  $("#view").innerHTML = `
+    <div class="page ag cat">
+      <div class="page-head cat-head">
+        <a class="back ag-btn ag-btn-icon" href="#/" aria-label="Back">${agIcon("chevron-left", 24)}</a>
+        ${subjectLeadHtml({ name: label, count: shows.length, arts: subjectCollageArts(shows) })}
+      </div>
+      ${shows.length
+        ? `<div class="cat-tiles" role="list">${shows.map((show) => `<div role="listitem">${subjectShowTile(show)}</div>`).join("")}</div>`
+        : `<p class="note">No shows here yet.</p>`}
+      ${episodes.length
+        ? `<section class="dsc-group cat-episodes">${agSectionHead("Episodes")}<div class="dsc-list">${episodes.map((item) => discoverEpisodeRow(item, "category")).join("")}</div></section>`
+        : ""}
+    </div>`;
+  document.body.classList.add("ag-category");
+  bindPlay($("#view"));
 }
 
 /* A3.3 — the all-shows browsable index. A-Z over the full curated catalogue;
@@ -284,18 +356,8 @@ function discoverGroups() {
     tiles: ids
       .filter((id) => byId.has(id) && (showsByRoot.get(id) || []).length >= DISCOVER_MIN_SHOWS)
       .map((id) => {
-        const shows = showsByRoot.get(id).slice().sort((a, b) => {
-          const ra = Number.isFinite(a.chart_rank) ? a.chart_rank : Infinity;
-          const rb = Number.isFinite(b.chart_rank) ? b.chart_rank : Infinity;
-          return ra - rb || discoverCompare(String(a.title), String(b.title));
-        });
-        const arts = [];
-        for (const show of shows) {
-          const src = showArtworkUrl(show);
-          if (src) arts.push({ name: show.title, src, tone: AG_TONES[arts.length % AG_TONES.length], decorative: true });
-          if (arts.length === DISCOVER_TILE_ARTS) break;
-        }
-        return { id, name: byId.get(id).label || id, count: shows.length, arts };
+        const shows = showsByRoot.get(id).slice().sort(subjectShowOrder);
+        return { id, name: byId.get(id).label || id, count: shows.length, arts: subjectCollageArts(shows) };
       })
       .sort((a, b) => b.count - a.count || discoverCompare(a.name, b.name)),
   })).filter((group) => group.tiles.length);
@@ -333,6 +395,33 @@ function discoverSubjectMatch(query) {
   if (best) return best.tile;
   const group = groups.find((g) => g.name.toLowerCase().includes(q));
   return group ? group.tiles[0] : null;
+}
+
+/** The subject a query NAMES, whole: "History" is the History page, "hist" is a search. Case is ignored, so a
+    tile's label, the same word lower-cased and a pasted `#/shows/q/history` all land on the subject page. */
+function discoverSubjectExact(query) {
+  const q = String(query || "").trim().toLowerCase();
+  if (!q) return null;
+  for (const group of discoverGroups()) {
+    for (const tile of group.tiles) if (tile.name.toLowerCase() === q) return tile;
+  }
+  return null;
+}
+
+/* Which subject's lead is on the page now (`#sh-subject`), so a keystroke that keeps the same subject repaints
+   nothing: rebuilding the collage's images on every letter would flicker them. Reset by each render. */
+let subjectLeadShown = "";
+
+/** Paints, or clears, the subject lead above Discover's results: the field holds a subject's whole name. */
+function paintSubjectLead(text) {
+  const box = $("#sh-subject");
+  if (!box) return;
+  const tile = discoverSubjectExact(text);
+  const key = tile ? tile.id : "";
+  if (key === subjectLeadShown) return;
+  subjectLeadShown = key;
+  box.innerHTML = tile ? subjectLeadHtml(tile, 3) : "";
+  box.hidden = !tile;
 }
 
 /* THE IDLE FURNITURE: the five subject groups (or the failed-catalogue note
@@ -392,6 +481,7 @@ function updateShowBrowseVisibility() {
   const dismiss = $("#sh-dismiss");
   if (dismiss) dismiss.hidden = !text;
   paintMakePlaylist(text);
+  paintSubjectLead(text);
   document.body.classList.toggle("sh-searching", showSearchFieldFocused);
 }
 
@@ -488,6 +578,7 @@ function renderAllShows(initialQuery = "") {
       <p id="sh-note" class="note" role="status" aria-live="polite" hidden></p>
       <div id="sh-partial-note" hidden></div>
       <p id="sh-offline-note" class="note" hidden>${OFFLINE_SEARCH_NOTE}</p>
+      <div id="sh-subject" class="dsc-subject" hidden></div>
       <h3 class="sh-results-head t-headline">Shows</h3>
       <div id="sh-results" class="show-results dsc-list" hidden></div>
       <div id="ep-search-results" hidden></div>
@@ -530,6 +621,7 @@ function renderAllShows(initialQuery = "") {
      `updateShowBrowseVisibility`'s one predicate (the field holds a query) hides the groups for
      the ordinary reason rather than through a second rule. */
   showSearchFieldFocused = false;
+  subjectLeadShown = "";
   /* A NEW MOUNT SUPERSEDES EVERY PASS THE OLD ONE STARTED (audit 2026-09-22): type "radio", tap
      Home and tap Discover again inside the directory pass's ~0.5 s and the old pass still held
      the current token — its "radio" results painted above the groups, under an empty field. */

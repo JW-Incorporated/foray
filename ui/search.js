@@ -1053,7 +1053,12 @@ function paintShowResults(query, shows, myToken) {
   }
   const cap = showSearchPaintCap.n;
   const more = shows.length - cap;
-  results.innerHTML = shows.slice(0, cap).map(discoverShowRow).join("")
+  /* A SUBJECT'S WHOLE NAME IS ITS PAGE (Redesign 2026, screen 15): "History" in the field paints the subject
+     lead (ui/browse.js `paintSubjectLead`) and the shows as ShowTiles, three across, the page a category link
+     opens. Any other query is a search, and its shows stay Raised rows. */
+  const asTiles = !!discoverSubjectExact(query);
+  if (results.classList) results.classList.toggle("dsc-tiles", asTiles);
+  results.innerHTML = shows.slice(0, cap).map(asTiles ? subjectShowTile : discoverShowRow).join("")
     + (more > 0 ? `<button type="button" class="ag-btn ag-btn-quiet dsc-more" data-sh-more>Show more shows</button>` : "");
   results.hidden = false;
   const moreBtn = more > 0 && typeof results.querySelector === "function" ? results.querySelector("[data-sh-more]") : null;
@@ -1067,7 +1072,9 @@ function paintShowResults(query, shows, myToken) {
          button, and focus fell to <body>: a keyboard or VoiceOver user was
          sent back to the top of the document. The first new row takes it, or
          the next "Show more shows" when there is no row to take it. */
-      const painted = typeof results.querySelectorAll === "function" ? results.querySelectorAll(".dsc-show") : [];
+      const rowsPainted = typeof results.querySelectorAll === "function" ? results.querySelectorAll(".dsc-show") : [];
+      /* A subject's shows are ShowTiles, not rows (see `asTiles` above); the first revealed tile takes focus the same way. */
+      const painted = rowsPainted.length ? rowsPainted : (typeof results.querySelectorAll === "function" ? results.querySelectorAll(".ag-show-tile") : []);
       const target = painted[cap] || (typeof results.querySelector === "function" ? results.querySelector("[data-sh-more]") : null);
       if (target && typeof target.focus === "function") target.focus();
     });

@@ -200,7 +200,10 @@ test("showsForCategory returns an empty array for a node id no show carries", ()
 /* 3. renderCategory() — THE A3.2 LANDING PAGE                          */
 /* ==================================================================== */
 
-test("renderCategory renders the category's label as heading and every matching show as a result row", async () => {
+test("renderCategory renders the category's label as heading and every matching show as a ShowTile", async () => {
+  /* REDESIGN 2026 (ambient, screen 15): the ruling that fell is "a category is a list of show-result rows"
+     (test-classification: category-browse, R). The overlap is the same set; it is drawn as ShowTiles now, each a link
+     to the show's own page. test/ambient-category.test.js pins the anatomy. */
   const m = await mountBooted();
   const catalog = readJson("data/catalog-client.json");
   const taxonomy = readJson("data/taxonomy.json");
@@ -212,7 +215,7 @@ test("renderCategory renders the category's label as heading and every matching 
   m.ctx.renderCategory(nodeId);
   const html = m.view();
   assert.ok(html.includes(m.ctx.esc(label)), "must render the category's real label as the heading");
-  assert.strictEqual(rowCount(html), expected.length, "row count must match the exact overlap set");
+  assert.strictEqual((html.match(/class="ag-show-tile"/g) || []).length, expected.length, "tile count must match the exact overlap set");
   for (const show of expected) {
     assert.ok(
       html.includes(`href="#/show/${encodeURIComponent(show.show_id)}"`),
@@ -231,7 +234,7 @@ test("renderCategory on an unknown node id renders the raw id as heading with ze
   assert.doesNotThrow(() => m.ctx.renderCategory("nonexistent/node"));
   const html = m.view();
   assert.ok(html.includes("nonexistent/node"), "unknown node id must still render as its own heading");
-  assert.strictEqual(rowCount(html), 0, "zero shows must render zero result rows");
+  assert.strictEqual((html.match(/ag-show-tile/g) || []).length, 0, "zero shows must render zero tiles");
   assert.ok(html.includes("No shows here yet"), "must render the honest empty-state copy");
 });
 
