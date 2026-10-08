@@ -82,8 +82,13 @@ body.view-home #view { padding-top: 0; }
 .ag .td-hero-title.is-compact { font: var(--t-headline); font-variation-settings: 'SOFT' 100, 'WONK' 0; }
 .ag .td-link { color: inherit; text-decoration: none; }
 .ag .td-hero-meta { color: var(--on-wash-2); }
-.ag .td-hero-actions .td-hero-meta { min-width: 0; }
-.ag .td-hero-actions { display: flex; align-items: center; gap: var(--s-3); margin-top: auto; padding-top: var(--s-2); }
+/* A foray's meta sits beside Play on one baseline and is ONE line, never wrapped to two ("4 shows · 19 min", the
+   prototype's). The column beside the collage leaves 109px after Play and the gap, so a length that carries the
+   estimate marker ("1 show · about 43 min", 131px) cannot sit beside it: the row wraps and that line drops under
+   Play whole, left-aligned. It is never cut, never broken across lines and never allowed past the gutter. Play keeps its 56. */
+.ag .td-hero-actions .td-hero-meta { min-width: 0; white-space: nowrap; }
+.ag .td-hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-1) var(--s-3); margin-top: auto; padding-top: var(--s-2); }
+.ag .td-hero-actions > .ag-btn { flex: none; }
 .ag .td-why, .ag .td-first-run { grid-column: 1 / -1; color: var(--on-wash-2); }
 
 /* Sections. */
@@ -164,3 +169,75 @@ body.view-home #view { padding-top: 0; }
 
 /* Pick to play: the row's art, cloned, flies to the mini player's slot (script, 560ms, --e-spring). */
 .ag .td-flip { position: fixed; z-index: 80; margin: 0; pointer-events: none; transform-origin: top left; }
+
+/* ---------------------------------------------------------------------------------------------
+   The Dock on Today (DIRECTION.md "Information architecture" and "Materials": one floating Veil, the
+   tab row at the bottom, the mini player the row above it when something is loaded). The legacy
+   `#tab-bar` and `#foray-player` stay the elements (the player wires them), and this block gives
+   them the Dock's anatomy on this page only, as ambient Discover does on its own: inset by the
+   gutter, 12px above the safe area, `--r-xl` corners, the Glow-tinted Veil (a warm tint of bg0
+   mixed with the playing item's colour, never the legacy purple-grey surface), rows divided by a
+   rim and no gap between them. The Dock screen generalises it; nothing here transitions or animates.
+
+   The tab bar lives on <body>, outside `.ag`, so it reads the :root tokens (`--ag-gutter`, not
+   `--gutter`) and the sprite's size is set here. An inert tab is the Regular glyph in text-2; the
+   active tab is the Fill glyph in Lamp (a state change is a fill, never only a colour; Ember is
+   reserved for the listener's own marks). */
+body.view-home {
+  --dock-lift: calc(env(safe-area-inset-bottom, 0px) + var(--dock-inset));
+  --tab-bar-h: calc(var(--tab-bar) + var(--dock-inset));   /* the legacy sums (content padding, the mini's bottom) read the Dock's real height */
+  --fp-bar-h: var(--mini);                                  /* the mini row is 64; the legacy 96 was its reserved box */
+}
+body.view-home .tab-bar {
+  left: var(--ag-gutter); right: var(--ag-gutter); bottom: var(--dock-lift);
+  height: var(--tab-bar); padding: 0 var(--s-1);
+  border: 0; border-radius: var(--r-xl); overflow: hidden;
+  background: var(--glow-veil);
+  -webkit-backdrop-filter: blur(20px) saturate(140%); backdrop-filter: blur(20px) saturate(140%);
+  box-shadow: inset 0 1px 0 var(--rim), var(--shadow-2);
+}
+body.view-home .tab-btn {
+  min-width: var(--tap); min-height: var(--tap); gap: 0;
+  border-radius: var(--r-lg);
+  color: var(--text-2); font: 600 0.8125rem/1.125rem var(--font-text);
+}
+body.view-home .tab-btn svg { width: var(--icon-tab); height: var(--icon-tab); }
+body.view-home .tab-bar .tab-btn[aria-current="page"] { color: var(--lamp-text); }
+body.view-home .tab-btn:focus-visible { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) * -1); }
+
+/* Something is loaded: the mini player is the Dock's top row, the tab row keeps the bottom corners, a rim divides them.
+   The legacy bar's navy track becomes transparent and its fill the playing item's Glow (a 2px line on the Dock's top edge). */
+body.view-home.fp-open .tab-bar { border-radius: 0 0 var(--r-xl) var(--r-xl); }
+body.view-home.ui-v2.fp-open #foray-player {
+  left: var(--ag-gutter); right: var(--ag-gutter); bottom: calc(var(--dock-lift) + var(--tab-bar));
+  border: 0; border-radius: var(--r-xl) var(--r-xl) 0 0;
+  background: var(--glow-veil);
+  -webkit-backdrop-filter: blur(20px) saturate(140%); backdrop-filter: blur(20px) saturate(140%);
+  box-shadow: inset 0 1px 0 var(--rim), inset 0 -1px 0 var(--rim);
+}
+body.view-home #foray-player .fp-show { color: var(--text-2); }   /* the legacy grey is 4.43:1 on the Veil tint; text-2 clears AA there */
+body.view-home #foray-player .fp-progress { background: transparent; }
+body.view-home #foray-player .fp-fill { background: var(--glow); }
+body.view-home.ui-v2 #foray-player .fp-play { background: var(--ember); border-color: var(--ember); color: var(--ember-ink); }   /* the mini's Play is Ember (the direction's 48 round Ember), not the legacy violet */
+
+/* Content runs under the Dock and fades to bg behind it; the Dock's edge never slices a row. The fade rises 32px above the
+   Dock's top row and is solid from there to the screen's bottom edge (BUILD-NOTES 10.9 / 12.1). It tracks the Dock's height:
+   the tab row, plus the mini row when something is loaded. */
+body.view-home { --td-dock-h: calc(var(--dock-lift) + var(--tab-bar)); }
+body.view-home.fp-open { --td-dock-h: calc(var(--dock-lift) + var(--tab-bar) + var(--mini)); }
+body.view-home::after {
+  content: ''; position: fixed; left: 0; right: 0; bottom: 0; z-index: 54; pointer-events: none;
+  height: calc(var(--td-dock-h) + var(--s-8));
+  background: linear-gradient(transparent 0, var(--bg0) var(--s-8));
+}
+
+/* The same material fallbacks `.veil` carries (ui/tokens.css section 7), for the two legacy elements wearing it here. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  body.view-home .tab-bar, body.view-home.ui-v2.fp-open #foray-player { background: var(--bg1); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  body.view-home .tab-bar, body.view-home.ui-v2.fp-open #foray-player { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--bg1); }
+}
+@media (prefers-contrast: more) {
+  body.view-home .tab-bar, body.view-home.ui-v2.fp-open #foray-player { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--bg0); }
+}

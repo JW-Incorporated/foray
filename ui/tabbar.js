@@ -22,30 +22,29 @@
    to catch. Appending only when the flag is on, and removing it the moment
    the flag goes off, sidesteps that cascade question entirely instead of
    relying on getting it right. */
+/* REDESIGN 2026, ambient (DIRECTION.md "Information architecture"): THREE tabs, Today, Discover, Library.
+   The Create tab is gone (its one field lives in Discover); the ruling that fell is "Four tabs (Home,
+   Search, Create, Library) + drawer menu" (test-classification.md section 0). The glyphs are the Phosphor
+   sprite through agIcon(): the Regular drawing for an inert tab, the FILL drawing for the active one ("a
+   state change is a fill, never only a colour"). The keys stay `home` / `search` / `library`: they are
+   internal ids that tabForHash, the search-tab pop and the harness already speak, and renaming them would
+   touch four suites for no listener-visible gain. */
 const TAB_ROUTES = [
-  { key: "home", label: "Home", hash: "#/",
-    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
-      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-      '<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>' },
-  { key: "search", label: "Search", hash: "#/shows",
-    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
-      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-      '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>' },
-  { key: "create", label: "Create", hash: "#/create",
-    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
-      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-      '<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>' },
-  { key: "library", label: "Library", hash: "#/library",
-    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
-      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-      '<path d="M4 19V5a2 2 0 0 1 2-2h9l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M15 3v5h5"/></svg>' },
+  { key: "home", label: "Today", hash: "#/", icon: "house" },
+  { key: "search", label: "Discover", hash: "#/shows", icon: "compass" },
+  { key: "library", label: "Library", hash: "#/library", icon: "books" },
 ];
+
+/** One tab's glyph: Regular when inert, Fill when it is the current tab. */
+function tabGlyph(t, on) {
+  return agIcon(on ? t.icon + "-fill" : t.icon, 28);
+}
 
 /** Which tab a hash belongs to, for highlighting `aria-current`. EVERY ROUTE
     LIGHTS A TAB (audit 2026-09-22): Home; everything shows/episode/category-
     shaped to Search, including a browse pill's `#/shows/q/<label>` (the old
     `shows$` missed it, so tapping a pill ON the Search page un-lit Search);
-    playlist/subject-queue-shaped to Create; and everything the listener keeps —
+    playlist/subject-queue-shaped (and Create's own page, which folded into Discover's field) to Discover; and everything the listener keeps —
     Library's own sections (Up Next, Forays, Followed shows) and their Interests
     — to Library. Anything else is rendered as Home by the router, so it is
     Home here too: the two fallbacks used to disagree by construction, and an
@@ -53,7 +52,7 @@ const TAB_ROUTES = [
 function tabForHash(hash) {
   const h = currentHash(hash);
   if (/^#\/(shows($|\/)|show\/|category\/)/.test(h)) return "search";
-  if (/^#\/(playlists$|playlist\/|subject\/|create$)/.test(h)) return "create";
+  if (/^#\/(playlists$|playlist\/|subject\/|create$)/.test(h)) return "search";
   if (/^#\/(library$|queue$|forays$|foray\/|starred-shows$|interests$)/.test(h)) return "library";
   if (/^#\/episode\//.test(h)) return "search"; // reached from a show/search result
   return "home";
@@ -95,7 +94,8 @@ function renderTabBar() {
       a.className = "tab-btn";
       a.href = t.hash;
       a.dataset.tabKey = t.key;
-      a.innerHTML = `${t.icon}<span>${esc(t.label)}</span>`;
+      a.dataset.tabGlyph = "regular";
+      a.innerHTML = `${tabGlyph(t, false)}<span>${esc(t.label)}</span>`;
       bar.append(a);
     }
     /* TAPPING THE TAB YOU ARE ON TAKES YOU TO THE TOP (audit 2026-09-22) — the
@@ -110,7 +110,15 @@ function renderTabBar() {
   }
   const active = tabForHash(location.hash);
   bar.querySelectorAll(".tab-btn").forEach((a) => {
-    if (a.dataset.tabKey === active) a.setAttribute("aria-current", "page");
+    const on = a.dataset.tabKey === active;
+    if (on) a.setAttribute("aria-current", "page");
     else a.removeAttribute("aria-current");
+    /* The glyph follows the state, and is rewritten only when it changed. */
+    const t = TAB_ROUTES.find((r) => r.key === a.dataset.tabKey);
+    const want = on ? "fill" : "regular";
+    if (t && a.dataset.tabGlyph !== want) {
+      a.innerHTML = tabGlyph(t, on) + "<span>" + esc(t.label) + "</span>";
+      a.dataset.tabGlyph = want;
+    }
   });
 }

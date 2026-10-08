@@ -1743,7 +1743,7 @@ body.ui-v2 {
   font-size: var(--fs-2xs);
   font-weight: 600;
 }
-.tab-btn svg { width: 22px; height: 22px; }
+.tab-btn svg { width: 22px; height: 22px; fill: currentColor; stroke: none; }   /* the Phosphor sprite is filled paths, painted by currentColor (ui/icons.js) */
 /* The listener's OWN current location in the app is their material, not
    4a's editorial voice — amber, not violet, per the split U-01 establishes
    and issue #127 requires stay meaningful everywhere it appears. Falls

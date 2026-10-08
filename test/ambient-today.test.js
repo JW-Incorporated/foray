@@ -237,7 +237,7 @@ test("HeroPick: a 160 collage whose first square is the first show's, the Lamp e
   assert.match(hero, /class="ag-collage ag-collage-160 c4 lit-art lit-64"/, "four shows: the 2x2, lit at 64");
   const arts = [...hero.matchAll(/class="ag-art ag-art-160[^"]*" role="img" aria-label="([^"]+)"/g)].map((x) => x[1]);
   assert.deepStrictEqual(arts, ["Alpha Show", "Beta Show", "Gamma Show", "Delta Show"], "the first show's square leads; at most four");
-  assert.match(hero, /<span class="eyebrow lamp">Today&#39;s foray<\/span>/);
+  assert.match(hero, /<span class="eyebrow lamp">Today’s foray<\/span>/);
   assert.match(hero, /<h2 class="t-title clamp4 td-hero-title">/, "title: --t-title, four lines");
   assert.match(hero, /class="ag-btn ag-btn-play ag-btn-size-56" data-home-play/, "Ember Play 56");
   assert.match(hero, /<p class="t-why clamp2 td-why">A short account of five shows\.<\/p>/, "why-line: italic, two lines, full width");
@@ -323,16 +323,16 @@ test("first run: the hero is the first pick, the list starts at the second pick 
   const returning = mount();
   returning.ctx.renderHome();
   const base = returning.view();
-  const count = (h) => Number(/<h2 class="t-headline">Today&#39;s picks<\/h2><span class="t-caption count">(\d+)<\/span>/.exec(h)[1]);
+  const count = (h) => Number(/<h2 class="t-headline">Today’s picks<\/h2><span class="t-caption count">(\d+)<\/span>/.exec(h)[1]);
   assert.strictEqual(count(html), count(base) - 1, "the count drops by one against the same listener with a Foray leading");
   assert.match(html, /<section class="td-hero" aria-label="Today&#39;s pick" data-branch="engineering">/, "the hero is the first pick (the first top slot's lead)");
-  assert.match(html, /<span class="eyebrow lamp">Today&#39;s picks<\/span>/);
+  assert.match(html, /<span class="eyebrow lamp">Today’s picks<\/span>/);
   const list = html.slice(html.indexOf('aria-label="Today\'s picks"', html.indexOf("</section>")));
   assert.ok(!list.includes('data-td-ep="top-1"'), "the hero's episode is not in the list again");
   assert.ok(list.includes('data-td-ep="top-2"'), "the list starts at the second pick");
   assert.ok(!heroOf(html).includes("usual subjects"), "the first-run hero never cites 'usual subjects'");
   assert.ok(!html.includes('aria-label="Keep listening"'), "no Keep listening");
-  assert.ok(heroOf(html).includes(`<p class="t-body td-first-run">4a found today&#39;s picks. No account, no setup.</p>`), "its one extra line");
+  assert.ok(heroOf(html).includes(`<p class="t-body td-first-run">4a found today’s picks. No account, no setup.</p>`), "its one extra line");
   assert.match(html, /data-today="first-run"/);
   const labels = [...html.matchAll(/<section[^>]*aria-label="([^"]+)"/g)].map((x) => x[1]);
   assert.strictEqual(new Set(labels).size, labels.length, `landmark names are unique, or axe says landmark-unique: ${labels.join(" | ")}`);
@@ -573,4 +573,82 @@ test("ui/today.css and ui/palette.js ship: the page links and loads them, and th
   assert.match(read("tools/web/prepare-dist.mjs"), /const SHELL = \[[\s\S]*?"ui\/today\.css"[\s\S]*?\n\];/, "prepare-dist SHELL");
   const pw = await import(pathToFileURL(path.join(ROOT, "tools", "mobile", "prepare-webdir.mjs")).href);
   assert.ok(pw.SHELL_FILES.includes("ui/today.css"), "prepare-webdir SHELL_FILES");
+});
+
+/* ================================================================== 17-20. iteration 2: the Dock, the fade, the meta line, the apostrophes */
+
+test("the Dock on Today: inset by the gutter, 12px above the safe area, --r-xl corners, the Glow-tinted Veil; an inert tab is text-2, the active tab is Lamp", () => {
+  /* The first build shipped the legacy full-width, square-cornered, purple-grey bar with an Ember active tab.
+     MUTATION 1: change `background: var(--glow-veil)` on `body.view-home .tab-bar` to `var(--surface)` (the legacy grey) -> red.
+     MUTATION 2: drop `left`/`right` (the bar is full width again) or set `border-radius: 0` -> red.
+     MUTATION 3: set the active colour to `var(--ember)` (Ember is the listener's own marks) -> red. */
+  const bar = "body.view-home .tab-bar";
+  assert.strictEqual(valueOf(bar, "left"), "var(--ag-gutter)", "inset by the gutter on the left");
+  assert.strictEqual(valueOf(bar, "right"), "var(--ag-gutter)", "and on the right: a floating Dock, not a full-width bar");
+  assert.strictEqual(valueOf(bar, "bottom"), "var(--dock-lift)", "floating above the safe area");
+  assert.strictEqual(valueOf("body.view-home", "--dock-lift"), "calc(env(safe-area-inset-bottom, 0px) + var(--dock-inset))", "the lift is the safe area plus the 12px token");
+  assert.strictEqual(valueOf(bar, "border-radius"), "var(--r-xl)", "rounded corners");
+  assert.strictEqual(valueOf(bar, "background"), "var(--glow-veil)", "the warm Glow-tinted Veil, never the legacy purple-grey surface");
+  assert.match(valueOf(bar, "backdrop-filter"), /blur\(20px\) saturate\(140%\)/, "the Veil's blur");
+  assert.match(valueOf(bar, "box-shadow"), /var\(--rim\)/, "lit from above by the rim, no hairline");
+  assert.strictEqual(valueOf(bar, "border"), "0", "no border");
+  assert.strictEqual(valueOf("body.view-home .tab-btn", "color"), "var(--text-2)", "an inert tab");
+  assert.strictEqual(valueOf('body.view-home .tab-bar .tab-btn[aria-current="page"]', "color"), "var(--lamp-text)", "the active tab is Lamp, not Ember");
+  assert.strictEqual(valueOf("body.view-home .tab-btn", "min-height"), "var(--tap)", "44px targets");
+  /* The mini player is the Dock's top row: same gutter, same Veil, the top corners; the tab row keeps the bottom ones. */
+  const mini = "body.view-home.ui-v2.fp-open #foray-player";
+  assert.strictEqual(valueOf(mini, "left"), "var(--ag-gutter)");
+  assert.strictEqual(valueOf(mini, "background"), "var(--glow-veil)");
+  assert.strictEqual(valueOf(mini, "border-radius"), "var(--r-xl) var(--r-xl) 0 0");
+  assert.strictEqual(valueOf("body.view-home.fp-open .tab-bar", "border-radius"), "0 0 var(--r-xl) var(--r-xl)");
+  assert.strictEqual(valueOf("body.view-home.ui-v2 #foray-player .fp-play", "background"), "var(--ember)", "the mini's Play is Ember, not the legacy violet (MUTATION 4: put var(--violet) there)");
+  assert.strictEqual(valueOf("body.view-home", "--tab-bar-h"), "calc(var(--tab-bar) + var(--dock-inset))", "the legacy sums (mini bottom, content padding) read the Dock's real height");
+  /* The three material fallbacks the Veil carries elsewhere. */
+  for (const q of ["@supports not", "prefers-reduced-transparency", "prefers-contrast"]) {
+    assert.ok(RULES.some((r) => r.atRules.some((a) => a.includes(q)) && /body\.view-home \.tab-bar/.test(r.prelude)), `the Dock has its ${q} fallback`);
+  }
+});
+
+test("content runs under the Dock and fades to bg: a fixed fade behind it, solid from 32px above the Dock to the screen's bottom edge", () => {
+  /* The first build sliced the second picks row with the bar's hard top edge.
+     MUTATION 1: delete the `body.view-home::after` rule -> red. MUTATION 2: set its z-index to 56 (over the Dock) or
+     its pointer-events to auto (it would eat taps) -> red. MUTATION 3: end the gradient at transparent -> red. */
+  const fade = "body.view-home::after";
+  assert.strictEqual(valueOf(fade, "position"), "fixed");
+  assert.strictEqual(valueOf(fade, "bottom"), "0", "to the screen's bottom edge");
+  assert.strictEqual(valueOf(fade, "pointer-events"), "none", "the fade never takes a tap");
+  assert.ok(Number(valueOf(fade, "z-index")) < 55, "under the Dock (the legacy bar is 55)");
+  assert.ok(Number(valueOf(fade, "z-index")) > 1, "over the content");
+  assert.strictEqual(valueOf(fade, "height"), "calc(var(--td-dock-h) + var(--s-8))", "32px taller than the Dock");
+  assert.strictEqual(valueOf(fade, "background"), "linear-gradient(transparent 0, var(--bg0) var(--s-8))", "solid bg from 32px up");
+  assert.strictEqual(valueOf("body.view-home", "--td-dock-h"), "calc(var(--dock-lift) + var(--tab-bar))");
+  assert.strictEqual(valueOf("body.view-home.fp-open", "--td-dock-h"), "calc(var(--dock-lift) + var(--tab-bar) + var(--mini))", "the mini row is part of the Dock when something is loaded");
+});
+
+test("the hero's meta sits beside Play on one line: it never wraps", () => {
+  /* The first build wrapped "1 show · about 43 min" onto two lines beside Play, and a nowrap alone squeezed Play to 49.5px
+     and ran the text past the gutter (131px of text, 109px beside Play). So: the meta is nowrap, Play never shrinks, and
+     the row wraps so a meta too long to sit beside Play drops under it whole.
+     MUTATION 1: delete `white-space: nowrap` from `.ag .td-hero-actions .td-hero-meta` -> red.
+     MUTATION 2: delete `flex-wrap: wrap` from `.ag .td-hero-actions` (the text overruns the column) -> red.
+     MUTATION 3: delete the `flex: none` on the row's Play (it shrinks to 49.5px) -> red. */
+  assert.strictEqual(valueOf(".ag .td-hero-actions .td-hero-meta", "white-space"), "nowrap");
+  assert.strictEqual(valueOf(".ag .td-hero-actions", "flex-wrap"), "wrap");
+  assert.strictEqual(valueOf(".ag .td-hero-actions > .ag-btn", "flex"), "none");
+});
+
+test("what Today draws uses typographic apostrophes (Today’s picks, Today’s foray); the landmark names stay ASCII", () => {
+  /* The prototype sets them in Fraunces. MUTATION: put a straight ' back in the eyebrow, the section head or either note -> red. */
+  const m = mount();
+  m.ctx.renderHome();
+  const html = m.view();
+  const visible = html.replace(/<[^>]+>/g, "|");
+  assert.ok(visible.includes("Today’s foray"), "the eyebrow");
+  assert.ok(visible.includes("Today’s picks"), "the section head");
+  assert.ok(!/Today(&#39;|')s/.test(visible), "no straight apostrophe in a text node");
+  assert.ok(html.includes('aria-label="Today\'s picks"'), "the landmark name is unchanged, so every query that finds the region still does");
+  const first = mount({ seed: { cp_history: "[]" } });
+  first.ctx.renderHome();
+  assert.ok(/4a found today’s picks\./.test(first.view()), "the first-run note");
+  assert.ok(!/today(&#39;|')s/.test(first.view().replace(/<[^>]+>/g, "|")), "and no straight one anywhere in its text");
 });

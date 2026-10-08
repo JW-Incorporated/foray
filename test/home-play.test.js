@@ -229,7 +229,7 @@ test("returning, with a published Foray: the hero is that Foray and Play starts 
   const app = loadApp(bridge, { cardSlots: [subjectSlot([EP(1)])], ...RETURNING });
   const { html } = await renderAndPress(app);
   assert.strictEqual(label(html), `Play ${FORAY_TITLE}`);
-  assert.match(html, /Today&#39;s foray/, "the eyebrow names it");
+  assert.match(html, /Today’s foray/, "the eyebrow names it");
   assert.strictEqual(bridge.calls.playForay[0]?.r.id, FORAY_ID);
   assert.strictEqual(bridge.calls.playForay[0].opts.startIndex, 0, "no stored resume: from the top");
   assert.strictEqual(bridge.calls.play.length, 0);
@@ -266,7 +266,7 @@ test("first run: the hero is the first pick whatever Forays exist, and the eyebr
   const app = loadApp(bridge, { cardSlots: [subjectSlot([EP(1), EP(2)])] });
   const { html } = await renderAndPress(app);
   assert.strictEqual(label(html), "Play Episode 1");
-  assert.match(html, /Today&#39;s picks<\/span>/);
+  assert.match(html, /Today’s picks<\/span>/);
   assert.strictEqual(bridge.calls.playForay.length, 0);
   assert.ok(!/usual subjects/.test(html.slice(0, html.indexOf('aria-label="Today\'s picks"', 20))), "the first-run hero never cites 'usual subjects'");
 });

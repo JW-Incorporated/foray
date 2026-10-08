@@ -216,7 +216,7 @@ test("Off your path opens with its one-line explainer, and its rows carry no Str
   m.ctx.renderHome();
   const html = m.view();
   const off = html.slice(html.indexOf('aria-label="Off your path"'));
-  assert.ok(off.includes("About a third of each day sits outside your usual subjects. This is today&#39;s third."), "the explainer is verbatim");
+  assert.ok(off.includes("About a third of each day sits outside your usual subjects. This is today’s third."), "the explainer is verbatim");
   assert.ok((off.match(/class="raised td-row/g) || []).length >= 2, "two or three rows");
   assert.ok(!/Stretch/.test(off), "the section is the label: no Stretch pill inside it");
 });

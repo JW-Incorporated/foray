@@ -308,17 +308,17 @@ test("the menu carries a Shows destination pointing at #/shows", () => {
      rebuilds those five links, so a render-based assertion would be reading a
      fixture instead of the shipped nav.
 
-     MUTATION: delete the `<a class="drawer-section" href="#/shows">Search</a>`
+     MUTATION: delete the `<a class="drawer-section" href="#/shows">Discover</a>`
      line from index.html. This fails, and #/shows becomes an address with no
      link to it anywhere in the app.
 
-     Named "Search" since 2026-09-22 (and so is the page's heading, in the
-     three route assertions above and below): one name per destination, and
-     the tab bar's name wins (audit personas 36 and 76). */
+     Named "Discover" since the ambient Dock renamed the tab (it was "Search" from 2026-09-22): one name per
+     destination, and the tab bar's name wins (audit personas 36 and 76). The page's own <h2> still says
+     "Search" in the route assertions above and below until the Discover screen's branch lands its heading. */
   const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
   assert.ok(
-    /<a class="drawer-section" href="#\/shows">Search<\/a>/.test(html),
-    "the drawer must carry a Search entry linking to #/shows"
+    /<a class="drawer-section" href="#\/shows">Discover<\/a>/.test(html),
+    "the drawer must carry a Discover entry linking to #/shows"
   );
 });
 

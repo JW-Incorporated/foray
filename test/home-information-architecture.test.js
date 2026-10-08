@@ -313,11 +313,11 @@ test("the menu lists exactly the five named destinations, in the founder's order
   const items = [...INDEX_HTML.matchAll(/<a class="drawer-section" href="([^"]+)">([^<]+)<\/a>/g)]
     .map((m) => [m[2], m[1]]);
   assert.deepStrictEqual(items, [
-    ["Home", "#/"],
+    ["Today", "#/"],   /* REDESIGN 2026 (ambient Dock): the tab bar says Today and Discover, so the drawer does too (one name per destination) */
     /* "Search", not "Shows", since 2026-09-22: one name per destination, and
        the tab bar's name wins (audit personas 36 and 76). Same page, same
        place in the founder's order. */
-    ["Search", "#/shows"],
+    ["Discover", "#/shows"],
     ["Playlists", "#/playlists"],
     ["Forays", "#/forays"],
     ["Up Next", "#/queue"],

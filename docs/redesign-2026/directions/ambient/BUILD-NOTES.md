@@ -1095,3 +1095,30 @@ clock 2026-10-05, remote art off.)
     today-i1` and `today-i2`, a Dawn pass in `today-dawn-i1`. The rolling `ambient-app`
     baseline is not re-recorded (it is shared by every screen branch and re-locks on merge);
     the compare shows 15 intended Home diffs, 9 added states and nothing else.
+13. **Iteration 2 (art-director fidelity findings, 2026-10-07).** Six deviations, all closed on this branch.
+    - **The Dock on Today.** The tab bar is three tabs, Today, Discover, Library, with Create folded into Discover
+      (`ui/tabbar.js` `TAB_ROUTES`; `tabForHash` lights Discover for `#/create`, `#/playlists`, `#/playlist/`, `#/subject/`).
+      Overturned by name: "Four tabs (Home, Search, Create, Library) + drawer menu" (`test-classification.md` §0); the
+      drawer's two entries follow the tab names (one name per destination, R6). The glyphs are the Phosphor sprite through
+      `agIcon()`: Regular when inert, **Fill when active**, so a state change is a fill. The keys stay `home`/`search`/
+      `library`. On Today (`body.view-home`, `ui/today.css`) the legacy `#tab-bar` and `#foray-player` take the Dock's
+      anatomy: inset by the gutter, 12px above the safe area, `--r-xl`, the Glow-tinted `--glow-veil` with the Veil blur
+      and its three fallbacks, a rim between rows, no gap; the active tab is Lamp (not Ember), the mini's Play is Ember
+      (not violet), the mini's 2px progress line is Glow. `--tab-bar-h` and `--fp-bar-h` are redeclared on Today's body so the
+      legacy sums (content padding, the mini's bottom) read the Dock's real height. Fidelity run `today-iter2-c`: `tabBar`
+      20,776 353x64 on both sides (delta 0); `mini` +1px.
+    - **Never sliced.** `body.view-home::after`, a fixed fade under the Dock (z 54, `pointer-events: none`), solid `bg0` from
+      32px above the Dock's top row to the screen edge; it tracks the Dock's height (tab row, plus the mini row when loaded).
+    - **Hero meta.** One line, never wrapped: `white-space: nowrap`, Play `flex: none`, and the actions row wraps so a
+      length too long to sit beside Play (131px against the 109px left of the 177px column, e.g. "1 show · about 43 min",
+      where "about" is the audited estimate marker) drops under Play whole. The prototype's "4 shows · 19 min" still sits
+      beside Play on one baseline.
+    - **Apostrophes.** Everything drawn uses U+2019 (eyebrow, the "Today’s picks" head, the first-run and Off-your-path
+      notes); the landmark names (`aria-label`) stay ASCII so every query that finds the region still does.
+    - **Budget.** `ui/today.css` minifies to 9.2 KB with the Dock block; its ceiling moves 8 to 10 KB in
+      `prepare-webdir.test.mjs` (a bounded feature step, not the legacy alarm).
+    - **Not done here.** The Dock's own behaviours (recede on scroll, the field row, car posture, the cast) belong to the
+      Dock screen; Today adopts only the surface. While Today loads (`home-loading`) the app has no tab bar yet (it is
+      created by the first `renderCurrentPage`), so that state's `tabBar` region reads prototype-only. The Create page is
+      reachable only from Discover's "Make a playlist" once the Discover branch merges; until then `#/create` is a route
+      with no tab.

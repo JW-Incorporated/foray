@@ -85,8 +85,9 @@ const AMBIENT_PRIMITIVES_ASSETS = Object.freeze([
      (the Jump back in / Forays / Suggested renderers went; the hero, rows, rail, skeleton and play-state code
      came). home.js is budgeted here, not in the legacy line, for the reason the primitives are: the legacy alarm
      is not to be re-baselined a seventh time, and this is a bounded feature step. Measured minified, 2026-10-07:
-     today.css 6.7 KB, palette.js 1.9 KB, home.js 28.5 KB. */
-  { rel: "ui/today.css", maxBytes: 8 * 1024 },
+     today.css 6.7 KB, palette.js 1.9 KB, home.js 28.5 KB.
+     Iteration 2 added the Dock block (the floating Veil tab bar, its fade, the mini row) to today.css: 9.2 KB minified, ceiling 10 KB. */
+  { rel: "ui/today.css", maxBytes: 10 * 1024 },
   { rel: "ui/palette.js", maxBytes: 2 * 1024 },
   { rel: "ui/home.js", maxBytes: 32 * 1024 },
 ]);

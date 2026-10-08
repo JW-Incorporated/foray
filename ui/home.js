@@ -469,8 +469,8 @@ const TODAY_MONTHS = ["January", "February", "March", "April", "May", "June", "J
 const TODAY_PICKS_MAX = 6;
 const TODAY_OFFPATH_MAX = 3;
 /* The first-run hero's one extra line. Written once: DIRECTION.md "Hero screens". */
-const TODAY_FIRST_RUN_NOTE = "4a found today's picks. No account, no setup.";
-const TODAY_OFFPATH_NOTE = "About a third of each day sits outside your usual subjects. This is today's third.";
+const TODAY_FIRST_RUN_NOTE = "4a found today’s picks. No account, no setup.";
+const TODAY_OFFPATH_NOTE = "About a third of each day sits outside your usual subjects. This is today’s third.";
 const TODAY_OFFLINE_NOTE = "Offline. Downloaded items play.";
 
 /** "Monday, 5 October": a fact about NOW, so a page left open overnight corrects it
@@ -748,7 +748,8 @@ function todaySectionHead(title, count, explainer) {
 /** HeroPick (BUILD-NOTES §3, §10.6): the collage, the eyebrow, the title (four lines, no ellipsis), the
     meta, Ember Play 56 under the collage's bottom edge, and the why-line across the full width. */
 function todayHeroHtml(hero, { firstRun }) {
-  const eyebrow = firstRun ? "Today's picks" : hero.kind === "foray" ? "Today's foray" : "Today's pick";
+  /* Typographic apostrophes (U+2019) in what is drawn, as the prototype's Fraunces sets them; the landmark names below stay ASCII. */
+  const eyebrow = firstRun ? "Today’s picks" : hero.kind === "foray" ? "Today’s foray" : "Today’s pick";
   const art = agCollage(hero.shows.map(s => ({ name: s.name, src: s.src })), { size: 160 });
   /* The landmark is named for what the hero IS, not for the eyebrow: a first run's eyebrow is "Today's picks", which is also the list's
      region, and two landmarks with one name is an axe `landmark-unique` failure. */
@@ -888,7 +889,7 @@ function todayHtml() {
     ${testTrackNoticeHtml()}
     ${heroHtml}
     ${keepHtml ? `<section class="td-section" aria-label="Keep listening">${todaySectionHead("Keep listening")}${keepHtml}</section>` : ""}
-    ${listHtml ? `<section class="td-section" aria-label="Today's picks">${todaySectionHead("Today's picks", listRows.length)}<div class="td-stack">${listHtml}</div></section>` : ""}
+    ${listHtml ? `<section class="td-section" aria-label="Today's picks">${todaySectionHead("Today’s picks", listRows.length)}<div class="td-stack">${listHtml}</div></section>` : ""}
     ${playlists.length ? `<section class="hv2-playlists td-section" aria-label="Playlists for you">${todaySectionHead("Playlists for you")}<div class="td-rail">${playlists.map(todayPlaylistTile).join("")}</div></section>` : ""}
     ${off.length ? `<section class="td-section" aria-label="Off your path">${todaySectionHead("Off your path", 0, TODAY_OFFPATH_NOTE)}<div class="td-stack">${off.map(r => todayEpisodeRow(r)).join("")}</div></section>` : ""}
     ${todayDraftsHtml(forayPick ? forayPick.drafts : [])}
