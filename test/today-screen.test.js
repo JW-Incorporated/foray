@@ -390,12 +390,15 @@ test("New ground is the specified gauge: role=img, the caption word for word, no
   const html = m.view();
   const gauge = /<figure class="gauge"[\s\S]*?<\/figure>/.exec(html)[0];
   assert.match(gauge, /role="img"/);
-  assert.match(gauge, /<p>About a third of today sits outside your usual subjects\. 4a keeps it that way\.<\/p>/);
+  /* This mount has no history, so it is a first run: the state-neutral sentence
+     (test/today-first-run.test.js pins the returning one). */
+  assert.match(gauge, /<p>About a third of today is new ground, on purpose\.<\/p>/);
   assert.match(gauge, /<span class="readout">1 in 3<\/span>/);
   assert.match(gauge, /<span class="heading">New ground<\/span>/);
   assert.doesNotMatch(gauge, /<input|tabindex|<button|<a /);
   assert.ok(gauge.indexOf("gauge__needle") > gauge.indexOf("gauge__fill"));
-  assert.strictEqual("About a third of today sits outside your usual subjects. 4a keeps it that way.".split(" ").length, 15, "15 words: under the 18 ceiling");
+  assert.ok("About a third of today is new ground, on purpose.".split(" ").length <= 18, "under the 18 ceiling");
+  assert.ok("About a third of today sits outside your usual subjects. 4a keeps it that way.".split(" ").length <= 18, "the returning line is under the 18 ceiling too");
   assert.doesNotMatch(rule(".gauge"), /cursor:\s*pointer|touch-action/);
   assert.match(rule(".gauge__well"), /height:\s*var\(--s-6\)/, "a 24px well");
   assert.match(rule(".gauge__needle"), /top:\s*calc\(-1 \* \(var\(--s-2\) \+ var\(--s-1\) \/ 2\)\)/, "the needle stands 10px above the well, its cap at the top");
