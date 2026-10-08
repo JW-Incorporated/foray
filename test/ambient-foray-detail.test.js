@@ -732,3 +732,18 @@ test("a strip that has left the document stops its observer and paints nothing, 
     assert.strictEqual(ro.all[0].disconnected, true, "and the observer disconnects itself");
   });
 });
+
+test("PROGRESS.md does not claim the Foray detail iteration 2 run-suites failures were only the Windows CRLF checks", () => {
+  /* That entry once said "the only run-suites failures are the 9 Windows native CRLF checks" while test/legal-citations.test.js
+     was also red on this branch (the dropped #fy-restart binding left the legal documents counting an event the code no
+     longer emits). A progress log that hides a real failure behind a known environmental one is how it stayed red.
+     MUTATION: restore the sentence "the only run-suites failures are the 9 Windows native CRLF checks." to that entry (or
+     delete its "legal-citations" correction) in docs/redesign-2026/PROGRESS.md -> red. */
+  const lines = read("docs/redesign-2026/PROGRESS.md").split("\n");
+  const entry = lines.filter((l) => l.includes("Ambient Foray detail iteration 2 on `redesign/ambient-foray-detail`"));
+  assert.strictEqual(entry.length, 1, "fixture: exactly one iteration 2 entry");
+  assert.doesNotMatch(entry[0], /the only run-suites failures are the 9 Windows native CRLF checks/);
+  assert.match(entry[0], /legal-citations/, "the entry names the suite that was also red");
+  const round2 = lines.filter((l) => l.includes("Ambient Foray detail review round 2"));
+  assert.strictEqual(round2.length, 1, "the round-2 fix is recorded once");
+});
