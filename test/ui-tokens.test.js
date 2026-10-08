@@ -310,11 +310,13 @@ test("every token a colour-scheme query redefines is re-owned on the ui-v2 scope
 
 test("the JS-written tokens the ownership check trusts are really written by JS", () => {
   /* Keeps clause (c) above from becoming a blanket excuse: a name only passes
-     as "js" when a setProperty for it exists. Pinned positively for the four
-     known writers so deleting one surfaces here by name as well.
+     as "js" when a setProperty for it exists. Pinned positively for the two
+     known writers so deleting one surfaces here by name as well. (`--zoom-origin` and
+     `--zoom-scale` were the other two: the Foray page's press-and-hold zoom-to-scrub wrote
+     them, and went with the strip, Tactile `foray`.)
      MUTATION: rename `setProperty("--kb-inset"` in app.js -> red. */
   const { verdicts } = tokenOwnership();
-  for (const name of ["--kb-inset", "--fp-sheet-dy", "--zoom-origin", "--zoom-scale"]) {
+  for (const name of ["--kb-inset", "--fp-sheet-dy"]) {
     assert.strictEqual(verdicts.get(name), "js", `${name} is read by CSS but nothing in app.js/player/ writes it`);
   }
 });

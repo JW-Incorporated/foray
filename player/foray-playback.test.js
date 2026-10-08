@@ -85,6 +85,7 @@ import {
 } from "./foray-resolve.js";
 import { ForayProgressStore, resumePoint, makeProgress, progressKey } from "./foray-progress.js";
 import { SEAM_GAP_SEC } from "./seam-gap.js";
+import { stripModel, stripTally } from "./segment-strip.js";
 import { nextRate, normalizeRate, rateLabel, rateAriaLabel, RATES } from "./playback-rate.js";
 import { createDurableStore } from "./durable-store.js";
 import { createRequire as __cr } from "node:module";
@@ -933,13 +934,6 @@ class StubDom {
 
     const playable = resolved.entries.filter((e) => e.playable);
     this.rows = playable.map((e) => new StubEl(this, { className: "fy-jump", attrs: { fy: String(e.queueIndex) } }));
-    // Each bar carries the fill element the markup gives it, so a test can read
-    // back the width app.js wrote rather than trusting that it wrote one.
-    this.segs = playable.map((_, i) => {
-      const seg = new StubEl(this, { className: "fy-seg", attrs: { seg: String(i) } });
-      seg.children = [new StubEl(this, { className: "fy-seg-fill" })];
-      return seg;
-    });
     this.thumbs = [];
     for (const e of resolved.entries) {
       if (!e.segment_id || !e.topic) continue;
@@ -954,18 +948,35 @@ class StubDom {
     this.srcLinks = [...new Set(playable.map((e) => e.show))]
       .map((s) => new StubEl(this, { className: "fy-src-head", attrs: { srcShow: s } }));
 
+    /* REWRITTEN ON PURPOSE (Tactile `foray`): the page's transport is ONE pinned key
+       (`#fy-play`: a glyph, a word and a mono readout) over a band; the strip, the
+       seek pair, the speed key, the clip row and the resume banner are gone, so their
+       ids are no longer served (an id the page does not emit must answer null, which is
+       what a browser does). The pin's two spans, the page element and the band's moving
+       parts are served because the paint writes to them. */
     for (const id of [
-      "view", "fy-strip", "fy-now", "fy-total", "fy-play", "fy-next", "fy-prev", "fy-back", "fy-fwd", "fy-error",
-      "fy-resume", "fy-bar-fill", "fy-restart", "fy-sheet", "fy-scrim", "fy-sheet-sub",
+      "view", "fy-play", "fy-error", "fy-sheet", "fy-scrim", "fy-sheet-sub",
       "fy-sheet-note", "fy-sheet-cancel", "fy-sheet-go", "banner-slot",
       "pl-form", "pl-input", "pl-note", "pl-remove", "banner-done",
       "drawer", "drawer-overlay", "drawer-playlists", "family-toggle", "player-toggle",
       "menu-btn", "refresh-btn",
-      // Playback speed (#242).
-      "fy-rate",
     ]) this.byId.set(id, new StubEl(this, { id }));
 
-    this.byId.get("fy-strip").children = this.segs;
+    /* The pin's word is its `textContent` here, so the assertions below read what a listener
+       reads first ("Pause", "Resume", "Start over"); its readout is `pinRead`. */
+    this.pinLabel = new StubEl(this, { className: "keycap__label" });
+    this.pinRead = new StubEl(this, { className: "readout keycap__readout" });
+    this.page = new StubEl(this, { className: "page foray fdet" });
+    this.band = {
+      progress: new StubEl(this, { className: "band__progress" }),
+      needle: new StubEl(this, { className: "fdet-needle" }),
+    };
+    for (const el of [this.band.needle]) {
+      el.props = {};
+      el.style = { setProperty: (k, v) => { el.props[k] = String(v); } };
+    }
+    const pin = this.byId.get("fy-play");
+    Object.defineProperty(pin, "textContent", { get: () => this.pinLabel.textContent, set: () => {}, configurable: true });
     this.body = new StubEl(this, { id: "body" });
   }
   detach(el) { this.detached.add(el); }
@@ -985,7 +996,6 @@ class StubDom {
   queryAll(sel, _scope) {
     const s = sel.trim();
     if (s === "[data-fy]") return this.live(this.rows);
-    if (s === "[data-seg]") return this.live(this.segs);
     if (s === "[data-thumb]") return this.live(this.thumbs);
     if (s === "[data-chip]") return this.live(this.chips);
     if (s === "[data-chip].on") return this.live(this.chips).filter((c) => c.classList.contains("on"));
@@ -995,6 +1005,14 @@ class StubDom {
     return [];
   }
   query(sel, scope) {
+    const key = sel.trim();
+    if (scope === this.byId.get("fy-play")) {
+      if (key === ".keycap__label") return this.pinLabel;
+      if (key === ".keycap__readout") return this.pinRead;
+    }
+    if (key === ".fdet") return this.page;
+    if (key === ".fdet-well .band__progress") return this.band.progress;
+    if (key === ".fdet-well .fdet-needle") return this.band.needle;
     const id = /^#([\w-]+)$/.exec(sel.trim());
     if (id) {
       const el = this.byId.get(id[1]);
@@ -1039,6 +1057,9 @@ function fakeBridge(resolved, { resume = null, startThrows = null, rate = 1 } = 
     },
     listForays: () => [{ id: resolved.id, title: resolved.title, status: "draft" }],
     fmtClock, fmtSpan: (s) => `${Math.round(s)}s`,
+    // The REAL strip model and tally: the band and its readout are built from them.
+    stripModel: (items, opts) => stripModel(items, opts),
+    stripTally: (items) => stripTally(items),
     // The REAL resolver, not a stub: the strip's fill and the strip's seek
     // destination have to be computed by one function or the bar lies about
     // where a click will land.
@@ -1276,7 +1297,7 @@ test("mounting the Foray page binds the transport — the inert-page regression"
   // was skipped, the listener counts are zero. The shipped bug did the first,
   // which caused the second.
   const { dom, resolved } = await mountForayPage();
-  for (const id of ["fy-play", "fy-next", "fy-prev", "fy-back", "fy-fwd", "fy-strip"]) {
+  for (const id of ["fy-play"]) {
     assert.ok(dom.el(id).listeners("click") > 0, `#${id} has no click handler — the page is inert`);
   }
   assert.ok(resolved.playable.length > 0, "nothing resolved, so the row count below proves nothing");
@@ -1299,12 +1320,13 @@ test("pressing play reaches the player, and the callback repaints the page", asy
   assert.equal(typeof onChange, "function", "playForay was called without an onChange — nothing can repaint");
   onChange({ forayId: FORAY_ID, index: 3, playing: true, loading: false, ended: false, elapsedSec: 240, totalSec: resolved.totalSec, error: null });
 
-  assert.equal(dom.el("fy-play").textContent, "❚❚ Pause");
-  assert.equal(dom.el("fy-now").textContent, fmtClock(240));
+  assert.equal(dom.el("fy-play").textContent, "Pause");
+  assert.equal(dom.pinRead.textContent, fmtClock(240), "the key's readout is the clock, once it is running");
+  assert.equal(dom.page.getAttribute("data-foray-state"), "progress", "and the page says it is in progress, which is what shows the needle");
+  assert.equal(dom.el("fy-play").getAttribute("data-playing"), "1", "the key draws its pause glyph from this");
   assert.ok(dom.rows[3].classList.contains("is-playing"), "the audible segment must be marked");
   assert.ok(dom.rows[2].classList.contains("is-played"));
   assert.ok(!dom.rows[4].classList.contains("is-played"));
-  assert.ok(dom.segs[3].classList.contains("is-playing"), "the strip must track the segment too");
 });
 
 test("pause comes back through the same callback and the label flips", async () => {
@@ -1314,9 +1336,10 @@ test("pause comes back through the same callback and the label flips", async () 
   const at = (playing) => onChange({ forayId: FORAY_ID, index: 3, playing, loading: false, ended: false, elapsedSec: 240, totalSec: 3673, error: null });
 
   at(true);
-  assert.equal(dom.el("fy-play").textContent, "❚❚ Pause");
+  assert.equal(dom.el("fy-play").textContent, "Pause");
   at(false);
-  assert.equal(dom.el("fy-play").textContent, "▶ Resume", "paused mid-Foray is a resume, not a fresh play");
+  assert.equal(dom.el("fy-play").textContent, "Resume", "paused mid-Foray is a resume, not a fresh play");
+  assert.equal(dom.el("fy-play").getAttribute("data-playing"), null, "and the key draws its play glyph again");
 
   // Once the player is inside this Foray, play/pause must toggle rather than
   // rebuild the queue from segment 1.
@@ -1325,91 +1348,35 @@ test("pause comes back through the same callback and the label flips", async () 
   assert.equal(bridge.calls.filter((c) => c.name === "playForay").length, 1, "must not restart the Foray");
 });
 
-test("next, previous, a row and the strip each reach the player", async () => {
+test("a row starts the Foray AT that clip when cold, and jumps inside it when live", async () => {
+  /* REWRITTEN ON PURPOSE (Tactile `foray`): this was "next, previous, a row and the strip
+     each reach the player"; the next/previous buttons and the strip went with the transport
+     row (a clip is chosen from the rows now, a position on the Now Playing sheet).
+     MUTATION: make the cold row handler `start(0)` -> the first assertion names the wrong
+     clip. MUTATION 2: always `start(index)` -> no forayJump, red. */
   const { dom, bridge, resolved } = await mountForayPage();
-  // Cold, every control means "start it" — a next that begins at segment 2
-  // silently drops the opening.
-  await dom.el("fy-next").click();
-  assert.equal(bridge.calls.filter((c) => c.name === "playForay").length, 1);
+  const rowAt = Math.floor(dom.rows.length / 2);
+  await dom.rows[rowAt].click();
+  const started = bridge.calls.filter((c) => c.name === "playForay");
+  assert.equal(started.length, 1, "a cold row starts the Foray");
+  assert.equal(started[0].args[1].startIndex, Number(dom.rows[rowAt].dataset.fy), "at that row's clip, not the top");
 
   const onChange = bridge.lastOnChange();
   onChange({ forayId: FORAY_ID, index: 0, playing: true, loading: false, ended: false, elapsedSec: 5, totalSec: resolved.totalSec, error: null });
-
-  const rowAt = Math.floor(dom.rows.length / 2);
-  const segAt = positions(resolved).second;
-  assert.ok(rowAt !== segAt, "the two jump targets must differ, or the assertion below cannot tell them apart");
-  await dom.el("fy-next").click();
-  await dom.el("fy-prev").click();
-  await dom.rows[rowAt].click();
-  await dom.el("fy-strip").click(dom.segs[segAt]);
-
-  const names = bridge.calls.map((c) => c.name);
-  assert.ok(names.includes("forayNext"), names.join(","));
-  assert.ok(names.includes("forayPrevious"), names.join(","));
+  await dom.rows[1].click();
   const jumps = bridge.calls.filter((c) => c.name === "forayJump").map((c) => c.args[0]);
-  // A click with no coordinates — synthetic, or from assistive tech — cannot be
-  // a position, so both the row and the strip fall back to the exact segment.
-  assert.deepEqual(jumps, [rowAt, segAt], "a row and a coordinate-less strip click both jump to their own segment");
+  assert.deepEqual(jumps, [Number(dom.rows[1].dataset.fy)], "live, a row jumps inside the Foray that is playing");
+  assert.equal(bridge.calls.filter((c) => c.name === "playForay").length, 1, "and does not rebuild the queue");
 });
 
-/* ---------- the strip is a scrubber (docs/ux/foray-mockup.jsx §Scrubber) ----
+/* ---------- the strip is a scrubber: GONE (Tactile `foray`) ----------
 
-   It always LOOKED like one — a proportional bar of the whole hour — and
-   behaved like one jump target per segment. `foraySeek` existed, was tested, and nothing
-   on the page called it. The stub strip is 320px wide from x=0, so clientX is
-   the percentage times 3.2. */
-
-test("clicking a quarter of the way along the strip seeks to a quarter of the Foray", async () => {
-  const { dom, bridge, resolved } = await mountForayPage();
-  await dom.el("fy-play").click();
-  bridge.lastOnChange()({ forayId: FORAY_ID, index: 0, playing: true, loading: false, ended: false, elapsedSec: 5, totalSec: resolved.totalSec, error: null });
-
-  await dom.el("fy-strip").click(dom.segs[0], 80);   // 80 / 320 = 25%
-  const seeks = bridge.calls.filter((c) => c.name === "foraySeek");
-  assert.equal(seeks.length, 1, `expected a seek, got ${bridge.calls.map((c) => c.name)}`);
-  assert.ok(Math.abs(seeks[0].args[0] - resolved.totalSec * 0.25) < 1, `landed at ${seeks[0].args[0]}`);
-  assert.equal(bridge.calls.filter((c) => c.name === "forayJump").length, 0, "a position is not a segment snap");
-});
-
-test("the 2px gaps between the bars are live scrubber, not dead zones", async () => {
-  // A fifth of the strip's width is the gaps between its bars. Requiring a
-  // `[data-seg]` hit before reading the coordinate made every one of them do
-  // nothing at all, while the control still looked like a continuous bar.
-  const { dom, bridge, resolved } = await mountForayPage();
-  await dom.el("fy-play").click();
-  bridge.lastOnChange()({ forayId: FORAY_ID, index: 0, playing: true, loading: false, ended: false, elapsedSec: 5, totalSec: resolved.totalSec, error: null });
-
-  // target is the strip itself — a click that landed between two bars.
-  await dom.el("fy-strip").click(dom.el("fy-strip"), 160);
-  const seeks = bridge.calls.filter((c) => c.name === "foraySeek");
-  assert.equal(seeks.length, 1, `a click in a gap did nothing: ${bridge.calls.map((c) => c.name)}`);
-  assert.ok(Math.abs(seeks[0].args[0] - resolved.totalSec * 0.5) < 1);
-});
-
-test("scrubbing a Foray that has not started begins it AT that position, not at the top", async () => {
-  const { dom, bridge, resolved } = await mountForayPage();
-  /* WHICH cell is clicked is incidental — the handler reads the coordinate, and
-     240 of the stub strip's 320px is what makes it 75 %. Derived anyway, because
-     `dom.segs[15]` was undefined on any Foray under 16 segments. */
-  await dom.el("fy-strip").click(dom.segs[positions(resolved).middle], 240);  // 240 / 320 = 75%
-
-  const started = bridge.calls.filter((c) => c.name === "playForay");
-  assert.equal(started.length, 1, `expected one playForay, got ${bridge.calls.map((c) => c.name)}`);
-  const opts = started[0].args[1];
-  assert.ok(Math.abs(opts.startElapsedSec - resolved.totalSec * 0.75) < 1, `startElapsedSec was ${opts.startElapsedSec}`);
-  assert.equal(typeof opts.onChange, "function", "a cold scrub still has to be able to repaint the page");
-});
-
-test("a scrub past either end of the strip clamps instead of leaving the Foray", async () => {
-  const { dom, bridge, resolved } = await mountForayPage();
-  assert.ok(dom.segs.length > 1, "one strip cell cannot be scrubbed past either end");
-  await dom.el("fy-strip").click(dom.segs[0], -50);
-  await dom.el("fy-strip").click(dom.segs.at(-1), 9999);
-  const at = bridge.calls.filter((c) => c.name === "playForay").map((c) => c.args[1].startElapsedSec);
-  assert.equal(at.length, 2);
-  assert.equal(at[0], 0);
-  assert.ok(Math.abs(at[1] - resolved.totalSec) < 1, `clamped to ${at[1]}`);
-});
+   Four tests lived here (a click a quarter of the way along seeks a quarter of the Foray,
+   the 2px gaps between bars are live, a cold scrub starts AT that position, a scrub past
+   either end clamps). They pinned the Foray page's scrubbable strip; the page now draws
+   the Dial band, which is a display, not a scrubber: a position is chosen on the Now
+   Playing sheet, and a clip row starts the Foray at that clip. The clock the player maps
+   positions onto is held by player/seek-policy and player/foray-queue. */
 
 /* ---------- the strip's fill, and the seam beat you can see ---------- */
 
@@ -1419,38 +1386,30 @@ test("a scrub past either end of the strip clamps instead of leaving the Foray",
 const segLen = (item) => (item.authored_end_sec ?? item.end_sec) - item.start_sec;
 const segStart = (r, i) => r.playable.slice(0, i).reduce((t, it) => t + segLen(it), 0);
 
-test("the bar the listener is inside fills as it plays; the ones behind it are full", async () => {
+test("the band's needle and filled part follow the clock, and it is painted above the paint guard", async () => {
+  /* REWRITTEN ON PURPOSE (Tactile `foray`): this pinned the strip's per-bar fill widths and
+     "the live bar keeps moving". The band is one SVG now; what has to be true is the same:
+     the needle and the filled part move on every tick, between clip changes too.
+     `paintForay` short-circuits when the clip index has not changed (that is what keeps
+     every row from churning at 4 Hz), so anything continuous is written before that
+     return. The values are the primitive's own (`tactileBandX` over the laid-out bars).
+     MUTATION: move `paintForayBand(...)` below the `state.forayPainted === liveIndex`
+     return -> the second tick changes nothing and the notEqual is red. MUTATION 2: write
+     the needle from `s.elapsedSec` on a cold page -> the stored-place assertion is red. */
   const { dom, bridge, resolved } = await mountForayPage();
   await dom.el("fy-play").click();
   const onChange = bridge.lastOnChange();
+  const total = resolved.totalSec;
+  const tick = (sec) => onChange({ forayId: FORAY_ID, index: 0, playing: true, loading: false, ended: false, elapsedSec: sec, totalSec: total, error: null });
 
-  // Halfway through segment 3 (0-indexed 2). `playable` is the player QUEUE, so
-  // a segment's length is its bounds, not a `duration_sec` field.
-  const halfway = segStart(resolved, 2) + segLen(resolved.playable[2]) / 2;
-  onChange({ forayId: FORAY_ID, index: 2, playing: true, loading: false, ended: false, elapsedSec: halfway, totalSec: resolved.totalSec, error: null });
-
-  const width = (i) => dom.segs[i].children[0].style.width;
-  assert.equal(width(0), "100%", "a segment already heard is a full bar");
-  assert.equal(width(1), "100%");
-  assert.match(width(2), /^5[01](\.\d+)?%$/, `the live bar should be about half full, got ${width(2)}`);
-  assert.equal(width(3), "0%", "a segment not reached yet is an empty bar");
-});
-
-test("the live bar keeps moving between segment changes — it is painted above the paint guard", async () => {
-  // `paintForay` short-circuits when the segment index has not changed, which
-  // is what keeps every row from churning at 4 Hz. Anything continuous has to be
-  // written before that return, and the fill is the first such thing.
-  const { dom, bridge, resolved } = await mountForayPage();
-  await dom.el("fy-play").click();
-  const onChange = bridge.lastOnChange();
-  const dur = segLen(resolved.playable[0]);
-  const width = () => dom.segs[0].children[0].style.width;
-
-  onChange({ forayId: FORAY_ID, index: 0, playing: true, loading: false, ended: false, elapsedSec: dur * 0.25, totalSec: resolved.totalSec, error: null });
-  const quarter = width();
-  onChange({ forayId: FORAY_ID, index: 0, playing: true, loading: false, ended: false, elapsedSec: dur * 0.75, totalSec: resolved.totalSec, error: null });
-  assert.notEqual(width(), quarter, "the fill froze on the second tick — it is below the paint guard");
-  assert.match(width(), /^7[456](\.\d+)?%$/, `got ${width()}`);
+  tick(total * 0.25);
+  const quarter = { x: dom.band.needle.props["--x"], w: dom.band.progress.getAttribute("width") };
+  assert.ok(quarter.x != null && quarter.w != null, "the first tick wrote the needle and the filled part");
+  tick(total * 0.75);
+  assert.notEqual(dom.band.needle.props["--x"], quarter.x, "the needle froze on the second tick: it is below the paint guard");
+  assert.notEqual(dom.band.progress.getAttribute("width"), quarter.w, "and so did the filled part");
+  assert.ok(Number(dom.band.needle.props["--x"]) > Number(quarter.x), "it moved forward");
+  assert.ok(Number(dom.band.needle.props["--x"]) <= 1, "as a 0-1 fraction of the band");
 });
 
 test("during a seam beat the page says Pause, not Loading — the silence is deliberate", async () => {
@@ -1461,14 +1420,13 @@ test("during a seam beat the page says Pause, not Loading — the silence is del
 
   // Structurally a load, but a beat: `gap` is what tells the two apart.
   onChange({ ...base, playing: false, loading: true, gap: true });
-  assert.equal(dom.el("fy-play").textContent, "❚❚ Pause");
+  assert.equal(dom.el("fy-play").textContent, "Pause");
   assert.equal(dom.el("fy-play").getAttribute("aria-label"), "Pause");
-  assert.ok(dom.el("fy-strip").classList.contains("is-seam"), "the strip should mark the beat");
 
   // A real load, with no beat, still says so.
   onChange({ ...base, playing: false, loading: true, gap: false });
   assert.equal(dom.el("fy-play").textContent, "Loading…");
-  assert.equal(dom.el("fy-strip").classList.contains("is-seam"), false);
+  assert.equal(dom.el("fy-play").getAttribute("aria-label"), "Loading, please wait");
 });
 
 test("AUDIT 2026-09-22: the main button is painted from `running`, the answer its press is decided by", async () => {
@@ -1481,11 +1439,11 @@ test("AUDIT 2026-09-22: the main button is painted from `running`, the answer it
   const onChange = bridge.lastOnChange();
   const base = { forayId: FORAY_ID, index: 4, ended: false, elapsedSec: 600, totalSec: resolved.totalSec, error: null };
   onChange({ ...base, playing: false, loading: false, gap: false, running: true });
-  assert.equal(dom.el("fy-play").textContent, "❚❚ Pause");
+  assert.equal(dom.el("fy-play").textContent, "Pause");
   assert.equal(dom.el("fy-play").getAttribute("aria-label"), "Pause");
   // And an older player module, which sends no `running`, still paints from the belief.
   onChange({ ...base, playing: true, loading: false, gap: false });
-  assert.equal(dom.el("fy-play").textContent, "❚❚ Pause");
+  assert.equal(dom.el("fy-play").textContent, "Pause");
 });
 
 test("AUDIT 2026-09-22: a FINISHED Foray offers to start over, not to resume", async () => {
@@ -1499,8 +1457,10 @@ test("AUDIT 2026-09-22: a FINISHED Foray offers to start over, not to resume", a
     loading: false, gap: false, ended: true, elapsedSec: resolved.totalSec,
     totalSec: resolved.totalSec, error: null,
   });
-  assert.equal(dom.el("fy-play").textContent, "▶ Start over");
+  assert.equal(dom.el("fy-play").textContent, "Start over");
   assert.equal(dom.el("fy-play").getAttribute("aria-label"), "Start over");
+  assert.equal(dom.pinRead.hidden, true, "and there is no readout beside it");
+  assert.equal(dom.page.getAttribute("data-foray-state"), "done");
 });
 
 /* ================================================ a start that fails (#225) ===
@@ -1548,8 +1508,8 @@ test("a start that fails puts the page back to cold, so the next tap is a real r
   onChange(failedStart(9, "player.error: loadItem(x) failed: load failed (code 2)", resolved));
 
   assert.equal(dom.el("fy-error").hidden, false, "a failed start must say so on the page");
-  assert.equal(dom.el("fy-play").textContent, "▶ Resume", "the button has to offer another go, not a pause");
-  assert.equal(dom.el("fy-resume").hidden, false, "the resume offer is still the truth — nothing played");
+  assert.equal(dom.el("fy-play").textContent, "Resume", "the key has to offer another go, not a pause");
+  assert.equal(dom.pinRead.textContent, "19:40", "from the stored place — nothing played, so the offer is still the truth");
   assert.ok(!dom.rows[9].classList.contains("is-playing"), "no row is audible, so none may look it");
 
   // THE ASYMMETRY THE FOUNDER MET. With the page believing a Foray is live, this
@@ -1583,8 +1543,8 @@ test("PAUSING a live Foray is not a failed start — the page stays live", async
 
   at({ playing: true });                       // audio, for a while
   at({ playing: false });                      // and the listener pauses
-  assert.equal(dom.el("fy-play").textContent, "▶ Resume");
-  assert.equal(dom.el("fy-resume").hidden, true, "a live Foray does not re-offer the position it started from");
+  assert.equal(dom.el("fy-play").textContent, "Resume");
+  assert.equal(dom.pinRead.textContent, fmtClock(1500), "a live Foray offers the place it is at, not the position it started from");
   assert.ok(dom.rows[9].classList.contains("is-playing"), "the segment is still the loaded one");
 
   // The next press is a toggle, because the Foray IS live — not a rebuild.
@@ -1612,8 +1572,8 @@ test("the clock a failed start leaves behind is the place the button goes", asyn
   assert.ok(phantom.elapsedSec > 2000, "the fixture has to carry the phantom, or this test is about nothing");
   onChange(phantom);
 
-  assert.equal(dom.el("fy-now").textContent, fmtClock(1180), "the cold clock is the stored point, not the segment that would not load");
-  assert.equal(dom.el("fy-resume").hidden, false, "cold means the offer — and the Start over inside it — is back");
+  assert.equal(dom.pinRead.textContent, fmtClock(1180), "the cold clock is the stored point, not the segment that would not load");
+  assert.equal(dom.el("fy-play").textContent, "Resume", "cold means the offer is back");
   /* The stored point is index 9, so rows 0..8 are behind it. `rows.at(-1)` for the
      unplayed side rather than `rows[20]`, which needed 21 rows (#236 review). */
   assert.ok(dom.rows.length > 9, `a ${dom.rows.length}-row Foray cannot carry a resume at index 9`);
@@ -1639,8 +1599,8 @@ test("another Foray's ticks are not this page's news", async () => {
 
   live({ forayId: "some-other-foray", index: 4, playing: true, loading: false, gap: false, ended: false, elapsedSec: 1500, totalSec: 4000, error: null });
 
-  assert.equal(dom.el("fy-play").textContent, "▶ Resume", "this page is not playing, whatever the mini bar is doing");
-  assert.equal(dom.el("fy-now").textContent, fmtClock(1180), "and its clock is its own");
+  assert.equal(dom.el("fy-play").textContent, "Resume", "this page is not playing, whatever the mini bar is doing");
+  assert.equal(dom.pinRead.textContent, fmtClock(1180), "and its clock is its own");
   assert.ok(!dom.rows[4].classList.contains("is-playing"), "no row here is audible");
 
   // And the button still means START — pressing it must not reach for the other
@@ -1714,7 +1674,7 @@ test("a control that throws over LIVE audio says so without lying about the stat
 
   assert.equal(dom.el("fy-error").hidden, false, "a control that threw has to be visible");
   assert.ok(!/wouldn't load/.test(dom.el("fy-error").textContent), `nothing failed to load: ${dom.el("fy-error").textContent}`);
-  assert.equal(dom.el("fy-play").textContent, "❚❚ Pause", "the label still describes the audio, which is still playing");
+  assert.equal(dom.el("fy-play").textContent, "Pause", "the label still describes the audio, which is still playing");
 
   // And the page still knows a Foray is live, so the next press is a transport
   // action rather than a restart on top of live audio.
@@ -2023,41 +1983,51 @@ test("dismissing the sheet leaves the segment unvoted", async () => {
   assert.equal(store.has("cp_foray_feedback"), false, "cancelling is not a quiet down-vote");
 });
 
-test("a stored position makes the cold press a resume, and Start over clears it", async () => {
+test("a stored position makes the cold press a resume", async () => {
+  /* REWRITTEN ON PURPOSE (Tactile `foray`): the page opened on the stored clock under a
+     "Jump back in" banner with a Start over beside it, and the strip marked the bar being
+     resumed into. The banner is the pinned key now ("Resume" and the clock), the strip is
+     the band (its needle stands at the stored place), and "Start over" is the finished
+     Foray's key (see the test after this one).
+     MUTATION: drop the `elapsed` from the key's readout on a cold page -> the first
+     assertion is red. MUTATION 2: start `start(0)` from a cold press with a stored place ->
+     the startElapsedSec assertion is red. */
   const resume = { elapsedSec: 1180, index: 9, remainingSec: 2493, percent: 32, finished: false, label: "42 min left", clock: "19:40" };
-  const { dom, bridge } = await mountForayPage({ resume });
+  const { dom, bridge, resolved } = await mountForayPage({ resume });
 
-  assert.equal(dom.el("fy-now").textContent, fmtClock(1180), "the page must open on the stored clock");
-  assert.equal(dom.el("fy-play").textContent, "▶ Resume");
+  assert.equal(dom.pinRead.textContent, fmtClock(1180), "the page must open on the stored clock");
+  assert.equal(dom.el("fy-play").textContent, "Resume");
+  assert.equal(dom.page.getAttribute("data-foray-state"), "progress", "a stored position IS a position: the needle shows");
   assert.ok(dom.rows[8].classList.contains("is-played"), "everything before the resume point is behind them");
   assert.ok(!dom.rows[9].classList.contains("is-played"));
-
-  /* THE STRIP HAS TO SHOW THE SAME THING (#128). The bar the listener is inside
-     is `is-here`; nothing is `is-playing`, because nothing is playing. Those two
-     were one class until the strip carried show colours, and merging them cost
-     exactly this case: `has-position` dims every bar that is neither played nor
-     here, and the fill inside a bar only shows on the bar the listener is in, so
-     the resume point rendered as the one dark, empty bar on a page whose banner
-     offers to jump back into it.
-
-     Mutation: in `paintForay`, drop the `is-here` toggle. Both assertions below
-     fail, and the page contradicts its own resume banner. */
-  assert.ok(dom.el("fy-strip").classList.contains("has-position"), "a stored position IS a position");
-  assert.ok(dom.segs[9].classList.contains("is-here"), "the strip must mark the bar being resumed into");
-  assert.equal(dom.segs[9].classList.contains("is-playing"), false, "nothing is playing yet");
-  assert.ok(dom.segs[8].classList.contains("is-played"));
-  assert.equal(dom.segs[10].classList.contains("is-here"), false);
+  assert.equal(dom.rows[9].classList.contains("is-playing"), false, "nothing is playing yet");
+  const x = Number(dom.band.needle.props["--x"]);
+  assert.ok(Math.abs(x - 1180 / resolved.totalSec) < 0.2, `the needle stands near the stored place (${x})`);
 
   await dom.el("fy-play").click();
   const opts = bridge.calls.find((c) => c.name === "playForay").args[1];
   assert.equal(opts.startElapsedSec, 1180, "the press must resume, not restart");
   assert.equal(opts.startIndex, undefined);
+});
 
-  await dom.el("fy-restart").click();
+test("a finished Foray's key starts over: it forgets the position, logs a restart and starts from the top", async () => {
+  /* The Played page's key (BUILD-PLAN 2.17): "Start over", no readout. The press is not a
+     first play: the stored row goes, the event is a restart (a pause or a replay logged as
+     a play is the small lie that makes a metric useless), and it starts at clip 0.
+     MUTATION: drop `player.clearForayResume(r.id)` from the finished branch -> red.
+     MUTATION 2: log "foray_play" there -> the event assertion is red. */
+  const finished = { elapsedSec: 3600, index: 21, remainingSec: 0, percent: 100, finished: true, label: "Played", drift: "unverified" };
+  const { dom, bridge, eventLog } = await mountForayPage({ resume: finished });
+  assert.equal(dom.el("fy-play").textContent, "Start over");
+  assert.equal(dom.page.getAttribute("data-foray-state"), "done");
+
+  await dom.el("fy-play").click();
   assert.ok(bridge.calls.some((c) => c.name === "clearForayResume"), "Start over must forget the position");
   const last = bridge.calls.filter((c) => c.name === "playForay").pop();
   assert.equal(last.args[1].startIndex, 0);
   assert.equal(last.args[1].startElapsedSec, undefined);
+  assert.equal(eventLog.rows.filter((e) => e.type === "foray_restart").length, 1, "logged as a restart");
+  assert.equal(eventLog.rows.filter((e) => e.type === "foray_play").length, 0, "and not as a play");
 });
 
 test("a source credit is bound, so the outbound click is measured", async () => {
@@ -2088,19 +2058,25 @@ test("the markup app.js emits carries every hook the harness serves", async () =
     resume: { elapsedSec: 1180, index: 9, remainingSec: 2493, percent: 32, finished: false, label: "42 min left", clock: "19:40" },
   });
   for (const hook of [
-    'id="fy-play"', 'id="fy-next"', 'id="fy-prev"', 'id="fy-strip"', 'id="fy-now"',
-    'id="fy-total"', 'id="fy-error"', 'id="fy-resume"', 'id="fy-restart"', 'id="fy-bar-fill"',
+    'id="fy-play"', 'id="fy-error"',
+    'class="keycap__label"', 'class="readout keycap__readout"', 'class="page foray fdet"',
+    'class="band__progress"', 'class="fdet-needle"',
     'id="fy-sheet"', 'id="fy-scrim"', 'id="fy-sheet-go"', 'id="fy-sheet-cancel"',
     'id="fy-sheet-note"', 'id="fy-sheet-sub"',
-    'data-fy="0"', 'data-seg="0"', 'data-thumb="up"', 'data-thumb="down"',
+    'data-fy="0"', 'data-thumb="up"', 'data-thumb="down"',
     'data-chip="', 'data-seg-id="', 'data-src-show="',
   ]) {
     assert.ok(html.includes(hook), `the rendered page no longer contains ${hook}`);
   }
-  // Counts, not just presence: one strip cell for the whole Foray leaves every
+  /* And what the page must NOT carry any more (Tactile `foray`): the strip, its cells and the
+     rest of the old transport row. A hook the stubs above no longer serve must also be one the
+     markup no longer emits, or the harness is again kinder than the browser. */
+  for (const gone of ['id="fy-strip"', 'data-seg="', 'id="fy-next"', 'id="fy-prev"', 'id="fy-back"', 'id="fy-fwd"', 'id="fy-rate"', 'id="fy-now"', 'id="fy-resume"', 'id="fy-restart"', 'id="fy-bar-fill"']) {
+    assert.ok(!html.includes(gone), `the page still emits ${gone}`);
+  }
+  // Counts, not just presence: one row for the whole Foray leaves every
   // segment but one unclickable and passes a presence check.
   assert.equal((html.match(/data-fy="/g) ?? []).length, resolved.playable.length);
-  assert.equal((html.match(/data-seg="/g) ?? []).length, resolved.playable.length);
   assert.equal((html.match(/data-thumb="/g) ?? []).length, resolved.entries.filter((e) => e.segment_id && e.topic).length * 2);
   /* Every reason chip the harness serves is a chip the page really emits —
      compared through app.js's own `esc`, because a label with an apostrophe
@@ -2204,7 +2180,7 @@ test("STORAGE FAILURE MUST NOT MAKE THE PAGE INERT — the regression this suite
   // Every tier refusing every write, through the real page. A storage layer that
   // throws out of a render path is how a perfect, dead page gets shipped.
   const { dom, forayStorage, ctx } = await mountForayPage({ durable: true, failLocalWrites: true });
-  for (const id of ["fy-play", "fy-next", "fy-prev", "fy-back", "fy-fwd", "fy-strip"]) {
+  for (const id of ["fy-play"]) {
     assert.ok(dom.el(id).listeners("click") > 0, `#${id} lost its handler when storage failed`);
   }
   await assert.doesNotReject(() => dom.thumbs.find((t) => t.dataset.thumb === "up").click());
@@ -2261,7 +2237,7 @@ test("DELETING EVERYTHING leaves the page interactive, and resume works again af
   assert.deepEqual([...durableTier.data.keys()].filter((k) => k.startsWith("cp_")), [], "the durable tier is not clear");
 
   // THE PAGE. Same assertion as the inert-page regression test, after a clear.
-  for (const id of ["fy-play", "fy-next", "fy-prev", "fy-back", "fy-fwd", "fy-strip"]) {
+  for (const id of ["fy-play"]) {
     assert.ok(dom.el(id).listeners("click") > 0, `#${id} lost its handler to the deletion`);
   }
   const callsBefore = bridge.calls.length;
@@ -2305,7 +2281,7 @@ test("a resume whose segment no longer exists still mounts an interactive page",
   const resume = { elapsedSec: 900, index: -1, remainingSec: 2773, percent: 24, finished: false, drift: "dropped", label: "46 min left", clock: "15:00" };
   const { dom, bridge } = await mountForayPage({ resume });
   assert.ok(dom.el("fy-play").listeners("click") > 0, "the page went inert on a stale row");
-  assert.equal(dom.el("fy-now").textContent, fmtClock(900));
+  assert.equal(dom.pinRead.textContent, fmtClock(900));
   assert.ok(!dom.rows.some((r) => r.classList.contains("is-played")),
     "a row that cannot be identified must not mark the running order as heard");
   await dom.el("fy-play").click();
@@ -2531,109 +2507,29 @@ test("the seam beat stays SEAM_GAP_SEC of WALL clock at 2x — it does not scale
    labelled by the PLAYER rather than by the page, that it does not start
    playback, and that a change made elsewhere reaches it. */
 
-test("the Foray page carries a speed button, labelled from the player", async () => {
-  const { dom, bridge } = await mountForayPage({ rate: 1.5 });
-  const btn = dom.el("fy-rate");
-  assert.equal(btn.textContent, "1.5×", "the stored speed, on the page, before anything is played");
-  assert.equal(btn.listeners("click"), 1, "and it is actually bound");
-  assert.match(
-    btn.getAttribute("aria-label") ?? "", /1\.5×/,
-    "aria-label REPLACES a button's text, so the value has to be inside it"
-  );
-  assert.ok(
-    !bridge.calls.some((c) => c.name === "playForay"),
-    "and rendering the page must not have started anything"
-  );
+/* ---------- playback speed: no longer on this page (Tactile `foray`) ----------
+
+   Six tests lived here (the page carries a speed button labelled from the player, it says its
+   value at normal speed, a tap opens a picker, it does not start playback, it survives a
+   Foray with nothing playable, a change made in the mini-player's sheet reaches it, an older
+   module's snapshot leaves it alone). The page's transport is one pinned key now and the
+   speed is the Now Playing sheet's; the sheet's own button and picker are pinned in
+   test/transport-controls.test.js and player/now-playing-sheet.test.js. What stays true
+   here is that this page neither draws nor asks for a speed. */
+
+test("the Foray page neither draws a speed control nor asks the player for the speed ladder", async () => {
+  /* MUTATION: draw `id="fy-rate"` again, or call `player.rateStops()` while rendering -> red. */
+  const { html, bridge } = await mountForayPage({ rate: 1.5 });
+  assert.ok(!html.includes('id="fy-rate"'), "no speed key on the page");
+  assert.ok(!bridge.calls.some((c) => c.name === "rateStops" || c.name === "cycleRate" || c.name === "setPlaybackRate"), "and nothing asked for it");
 });
 
-test("the speed button says its value to a screen reader AT NORMAL SPEED too", async () => {
-  /* The case a memo swallowed. The MARKUP ships `1×` as the button text and a bare
-     `aria-label="Playback speed"`, so at the default speed the visible label already
-     matches on the first paint — and the early return in `paintRateButton` skipped
-     the `aria-label` with it. A screen-reader user was then told what the control
-     does and never what it is set to, for every listener who had not changed the
-     speed, which is most of them.
-
-     THE MARKUP'S STARTING STATE IS SET BY HAND HERE, and that is the whole reason
-     this test is written the way it is. `StubEl` constructs with `textContent = ""`
-     rather than parsing the page's HTML, so a fresh mount does not reproduce the
-     match that triggers the memo — the first draft of this test asserted the right
-     thing and passed with the bug fully present, because the fake was kinder than
-     the browser. `watchForay` hands the page's callback over at bind time, so the
-     repaint below needs nothing to be playing.
-
-     MUTATION THAT KILLS THIS: drop `&& btn.getAttribute("aria-label") === aria`
-     from the memo in `paintRateButton`. */
-  const { dom, bridge } = await mountForayPage();          // rate 1, the default
-  const btn = dom.el("fy-rate");
-  assert.equal(btn.textContent, "1×", "the page labels it from the player on bind");
-
-  btn.textContent = "1×";                                  // as index.html ships it
-  btn.setAttribute("aria-label", "Playback speed");         // likewise: no value in it
-  bridge.lastOnChange()({
-    forayId: FORAY_ID, index: 0, playing: true, loading: false, ended: false,
-    elapsedSec: 5, totalSec: 3673, error: null, rate: 1,
-  });
-
-  assert.match(
-    btn.getAttribute("aria-label") ?? "", /1×/,
-    "aria-label REPLACES the text, so a bare 'Playback speed' tells a screen reader nothing"
-  );
-});
-
-test("tapping the speed button opens a picker instead of cycling directly", () => {
-  /* #349: the button used to change the speed on every tap with no way to see
-     the other stops. It must now open a menu — meaning `rateStops()` is asked
-     for the ladder and the rate does NOT change from the tap alone (the harness
-     cannot render or click into the dynamically-built menu; that selection
-     path is proven cheaply in tools/refresh or by hand — what this binding
-     harness CAN prove is that the tap no longer mutates the rate directly).
-
-     MUTATION THAT KILLS THIS: put the old `player.cycleRate()` call back in the
-     click handler. The label would change to "1.25×" on the first tap and
-     `rateStops` would never appear in the call log. */
-  return mountForayPage().then(({ dom, bridge }) => {
-    const btn = dom.el("fy-rate");
-    assert.equal(btn.textContent, "1×");
-
-    return btn.click().then(() => {
-      assert.ok(
-        bridge.calls.some((c) => c.name === "rateStops"),
-        "opening the picker must ask the player for the ladder"
-      );
-      assert.ok(
-        !bridge.calls.some((c) => c.name === "cycleRate"),
-        "a tap on the button must no longer cycle the rate directly"
-      );
-      assert.equal(btn.textContent, "1×", "the label does not change until a stop is picked");
-    });
-  });
-});
-
-test("changing the speed does NOT start playback", async () => {
-  /* Every other control on that row means "start it" before anything is loaded —
-     `#fy-next` and `#fy-prev` both fall through to `startOrResume()`, because a
-     next that begins at segment 2 would silently drop the opening. The speed button
-     must NOT: it is a preference, it is meaningful with nothing playing, and
-     starting an hour of audio because someone set 1.5x first would be the worst
-     surprise on this page. */
-  const { dom, bridge } = await mountForayPage();
-  await dom.el("fy-rate").click();
-  assert.deepStrictEqual(
-    bridge.calls.filter((c) => c.name === "playForay"), [],
-    "a speed change is not a play"
-  );
-  assert.equal(dom.el("fy-play").textContent, "▶ Play", "and the main button still says so");
-});
-
-test("the speed button survives a Foray with nothing playable", async () => {
-  /* The bail-out that disables `#fy-play`/`#fy-next`/`#fy-prev` returns early, so
-     the speed binder has to sit ABOVE it: the speed is global and settable for
-     whatever the listener plays next, and a dead button on a page they are already
-     looking at is the kind of small breakage nobody reports.
-
-     MUTATION THAT KILLS THIS: move the `#fy-rate` block below the
-     `if (!r.playable.length)` return. `listeners("click")` drops to 0. */
+test("a Foray with nothing playable disables the key and says why", async () => {
+  /* The bail-out in `bindForayTransport` returns before any row or key is bound; the key must
+     say so with its own state rather than look live and do nothing. (The speed key used to
+     be bound above this bail-out; it is gone, so the pin is what is left to protect.)
+     MUTATION: drop `play.disabled = true` -> red. MUTATION 2: drop the paintForayPin call ->
+     the key still says "Play" over a Foray that cannot be played; red. */
   const base = realResolve();
   const empty = {
     ...base,
@@ -2641,50 +2537,11 @@ test("the speed button survives a Foray with nothing playable", async () => {
     entries: base.entries.map((e) => ({ ...e, playable: false, reason: "no audio" })),
     unplayable: base.entries.map((e) => ({ ...e, playable: false, reason: "no audio" })),
   };
-  const { dom } = await mountForayPage({ resolved: empty, rate: 2 });
-
+  const { dom } = await mountForayPage({ resolved: empty });
   assert.equal(dom.el("fy-play").disabled, true, "the premise: this Foray cannot play");
-  assert.equal(dom.el("fy-rate").disabled, false, "but the speed is not this Foray's property");
-  assert.equal(dom.el("fy-rate").listeners("click"), 1);
-  assert.equal(dom.el("fy-rate").textContent, "2×");
+  assert.equal(dom.el("fy-play").textContent, "Nothing to play");
+  assert.equal(dom.el("fy-play").getAttribute("aria-label"), "Nothing to play");
 });
-
-test("a speed changed in the mini-player's sheet reaches the page's button", async () => {
-  /* There is ONE speed and TWO controls. `client.js`'s `applyRate` notifies the
-     Foray page, so the snapshot carries the value and `paintForay` relabels — a
-     stale label on either control is the app disagreeing with itself about a number
-     the listener just set.
-
-     MUTATION THAT KILLS THIS: delete the `paintRateButton` call in `paintForay`.
-     The label stays at whatever the page was bound with. */
-  const { dom, bridge } = await mountForayPage();
-  await dom.el("fy-play").click();
-  const onChange = bridge.lastOnChange();
-  assert.equal(typeof onChange, "function");
-
-  onChange({
-    forayId: FORAY_ID, index: 3, playing: true, loading: false, ended: false,
-    elapsedSec: 240, totalSec: 3673, error: null, rate: 1.75,
-  });
-  assert.equal(dom.el("fy-rate").textContent, "1.75×");
-  assert.match(dom.el("fy-rate").getAttribute("aria-label") ?? "", /1\.75×/);
-});
-
-test("a snapshot from an OLDER player module leaves the label alone rather than blanking it", async () => {
-  /* app.js and player/client.js are cached and refreshed independently by the
-     service worker, so this page is regularly paired with a module of a different
-     vintage — the same skew `renderForay` and `FY_AUTOPLAY_HINT` are written
-     around. A module with no `rate` on its snapshot must not produce
-     "undefined×"; the value lives in `cp_rate`, not in the tick. */
-  const { dom, bridge } = await mountForayPage({ rate: 1.5 });
-  await dom.el("fy-play").click();
-  bridge.lastOnChange()({
-    forayId: FORAY_ID, index: 3, playing: true, loading: false, ended: false,
-    elapsedSec: 240, totalSec: 3673, error: null,   // no `rate` at all
-  });
-  assert.equal(dom.el("fy-rate").textContent, "1.5×");
-});
-
 
 test("client.js sends both Foray paths through the seek-policy switch", async () => {
   /* DAI-07b (docs/roadmap/dai.md §3). The ad-pad switch (`AD_PAD_SHIPPED` in

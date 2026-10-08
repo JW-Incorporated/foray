@@ -2592,62 +2592,9 @@ input[type="range"] { accent-color: var(--amber); }
   position: relative;
   z-index: 1;
 }
-/* Set by app.js's bindStripZoomScrub via CSSOM (style-src 'self' — never a
-   style attribute). --zoom-origin follows the touch point so the enlarged
-   view stays centred on where the finger actually is, not the strip's
-   midpoint; --zoom-scale is player/strip-scrub-gesture.js's ZOOM_SCALE,
-   piped through rather than hardcoded here so the two never drift. */
-.fy-strip.is-zooming {
-  transform: scale(var(--zoom-scale, 2.5));
-  transform-origin: var(--zoom-origin, 50%) 50%;
-  transition: none;         /* live-tracks the finger; an easing curve would lag it */
-}
-
-/* Floating magnifier bubble (V2). Position/size are set by app.js's
-   bindStripZoomScrub via CSSOM (style-src 'self' — see the V1 zoom rule
-   above for why). Fixed positioning: coordinates are viewport-relative,
-   computed by player/strip-scrub-gesture.js's `bubblePosition` against
-   `window.innerWidth/Height`, so this element must not sit inside any
-   scaled/transformed ancestor (it is appended straight to <body>). */
-.fy-strip-bubble {
-  position: fixed;
-  z-index: 20;             /* above the mini-player bar and Now Playing sheet */
-  overflow: hidden;
-  border-radius: var(--radius-md);
-  background: var(--surface-2, #1c1c1e);
-  box-shadow: var(--shadow-lift);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  pointer-events: none;    /* never steals the pointer capture the strip holds */
-}
-.fy-strip-bubble__viewport {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-}
-/* The cloned strip inside the bubble. Its own transform (translateX + scale)
-   is set per-frame by app.js from `bubbleContentOffset`/`BUBBLE_SCALE`; this
-   rule only fixes its transform-origin so the scale grows from the clone's
-   own top-left, matching the coordinate space `bubbleContentOffset` assumes. */
-.fy-strip-bubble__viewport > .fy-strip {
-  position: absolute;
-  top: 0;
-  left: 0;
-}
-/* The scrub-location marker: a fixed vertical line at the bubble's own
-   horizontal midline. It never moves, by construction — bubbleContentOffset
-   always translates the cloned content so the touch point lands exactly
-   here, which is what makes this a static CSS rule rather than a per-frame
-   calculation (see strip-scrub-gesture.js's V2 header). */
-.fy-strip-bubble__marker {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  width: 2px;
-  margin-left: -1px;
-  background: var(--accent, #ff453a);
-  pointer-events: none;
-}
+/* The press-and-hold zoom-to-scrub rules (`.fy-strip.is-zooming`, the magnifier bubble) stood
+   here. They served the Foray page's scrubbable strip, which Tactile `foray` replaced with the
+   Dial band; nothing writes `--zoom-scale` or `--zoom-origin` any more. */
 
 /* Three sizes (#128): a list row, a card, the player. The seam scales with the
    height so the break still reads on a 5px strip, where a 5px gap would be a
@@ -3763,22 +3710,6 @@ body.ui-v2 #fy-sheet-note { border-color: var(--line); background: var(--surface
 body.ui-v2 .rate-option { border-color: var(--line); background: var(--surface2); color: var(--text); }
 body.ui-v2 .rate-option.on { border-color: var(--violet); background: color-mix(in srgb, var(--violet) 14%, var(--surface2)); }
 body.ui-v2 .rate-option:active { background: var(--surface); }
-
-/* SegmentStrip (U-04) extension: the floating magnifier bubble and its
-   marker still fell back to v1's `--surface-2`/`--accent` (different names
-   than v2's `--surface2`/no shadowed accent), so under body.ui-v2 they were
-   painting v1's palette on a v2 page. Everything else about the strip --
-   the per-show tone palette, the seam/capsule geometry -- is intentionally
-   left on :root per U-04's own header (shared, unscoped, measured contrast
-   across both themes), so only the two v1-named fallbacks are overridden
-   here, in styles.css only, per the card's player/*.js boundary. */
-body.ui-v2 .fy-strip-bubble {
-  background: var(--surface2);
-  border-color: var(--line);
-}
-/* The marker tracks the listener's own scrub position -- amber, same role
-   as .fy-bar-fill and the mini-player's progress fill below. */
-body.ui-v2 .fy-strip-bubble__marker { background: var(--amber); }
 
 /* ---------- Up Next / Queue (renderQueue) ---------- */
 body.ui-v2 button.reorder {
@@ -5582,6 +5513,200 @@ body.view-home::after { content: ""; position: fixed; z-index: 19; left: 0; righ
 .today--loading .today-pgrid .skel__card-art { width: var(--key-glance); height: var(--key-glance); }
 .today--loading .today-pgrid .skel__card-lines { width: 100%; }
 
+/* ---------- FORAY DETAIL (TACTILE): the band, the clips, one pinned key ----------
+   Redesign 2026, tactile `foray` (docs/redesign-2026/directions/tactile/
+   BUILD-PLAN.md 2.17, BUILD-NOTES 4.6). Everything here hangs off `body.view-foray`
+   (renderForay sets it, the next page's setBodyClass() clears it) or `.fdet`, so no
+   other page moves. The page reads the Dial tokens; the reason sheet, the
+   narration transcript and the sources block still draw with the legacy names, so
+   those are pointed at the Dial tokens for this page, as Find does. The three
+   things below the content, the deck, the mini player and the Play key, stand on
+   one arithmetic: the deck is `--deck-h` tall and floats `--s-3` off the bottom,
+   the mini (when up) sits on it, and the key floats `--s-4` above the lot. */
+body.ui-v2.view-foray {
+  --bg: var(--paper);
+  --surface: var(--card);
+  --surface2: var(--paper-2);
+  --surface-2: var(--paper-2);
+  --line: var(--dial-line);
+  --text: var(--ink);
+  --muted: var(--ink-2);
+  --text-dim: var(--ink-2);
+  --faint: var(--ink-3);
+  --amber: var(--persimmon);
+  --accent: var(--persimmon);
+  --gold: var(--ink-2);
+  --violet: var(--ultramarine);
+  --danger-text: var(--persimmon);
+  --shadow-sm: var(--shadow-card);
+  --shadow: var(--shadow-card);
+  --shadow-lift: var(--shadow-card);
+  --foray-dock: calc(var(--safe-b) + var(--s-3) + var(--deck-h));
+  background: var(--paper);
+  color: var(--ink);
+  font: var(--w-body) var(--t-body)/var(--lh-body) var(--font-text);
+  -webkit-font-smoothing: antialiased;
+  padding-bottom: 0;
+}
+body.ui-v2.view-foray.fp-open:not(.mini-dismissed) { --foray-dock: calc(var(--safe-b) + var(--s-3) + var(--deck-h) + var(--fp-bar-h)); }
+body.view-foray > .topbar { display: none; }
+body.ui-v2.view-foray #view { padding: 0 var(--gutter) calc(var(--foray-dock) + var(--s-12) * 2); }
+/* THE PAPER FADE (BUILD-NOTES 4.6): `deck + safe-b + 100px` of clear paper from the
+   bottom edge, solid to 60%, behind the key and the deck, in front of the rows, so
+   the pinned key never sits on unfaded text. */
+body.view-foray::after {
+  content: ""; position: fixed; z-index: 19; left: 0; right: 0; bottom: 0; pointer-events: none;
+  height: calc(var(--deck-h) + var(--safe-b) + 100px);
+  background: linear-gradient(to top, var(--paper) 60%, transparent);
+}
+body.view-foray.fp-open:not(.mini-dismissed)::after { height: calc(var(--deck-h) + var(--fp-bar-h) + var(--safe-b) + 100px); }
+
+body.view-foray .fdet {
+  max-width: 680px; margin: 0 auto;
+  padding: calc(var(--safe-t) + var(--s-6) + var(--s-1)) 0 0;
+  display: flex; flex-direction: column; gap: var(--s-5);
+}
+.fdet h1, .fdet h2, .fdet h3, .fdet p { margin: 0; }
+.fdet a { color: inherit; text-decoration: none; }
+.fdet a.keycap { color: var(--k-ink); }   /* a key drawn as a link keeps its own ink (the link rule above is more specific than .keycap) */
+.fdet a:focus-visible { outline: calc(var(--s-1) / 2) solid var(--ultramarine); outline-offset: calc(var(--s-1) / 2); border-radius: calc(var(--s-1) * 1.5); }
+.fdet .readout { word-spacing: -0.2em; }   /* the mono space is 0.6em wide; "about 22 min" reads as one readout */
+
+/* the two keys: back at the left, share at the right */
+.fdet-bar { display: flex; align-items: flex-start; justify-content: space-between; }
+.fdet-bar .keycap { margin-bottom: var(--lip); }
+
+/* tag over title; the title is a display line balanced on up to four lines */
+.fdet-head { display: flex; flex-direction: column; gap: var(--gap); }
+.fdet-tags { display: flex; align-items: center; gap: var(--s-2); }
+.fdet-title {
+  color: var(--ink); text-wrap: balance;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden;
+  padding-bottom: var(--s-1);   /* the clamp's overflow box would otherwise shave the last line's descenders */
+}
+.fdet--unavailable .fdet-title { color: var(--ink); }
+
+/* the band, in a well 16 below the title (the page gap is 20, the well pulls 4 back) */
+.fdet-well { display: block; min-height: 0; margin-top: calc(var(--s-1) * -1); padding: var(--s-2) 10px 2px; border-radius: var(--r-md); }
+.fdet-stage { position: relative; }
+.fdet .band--detail { height: 60px; }   /* the primitive's viewBox is 1000x60: at 60px tall the bars are the spec's 28px */
+.fdet-stage .t-band__code, .fdet-stage .needle { display: none; }   /* the SVG's own glyphs stretch with its viewBox: the codes and the needle are HTML below */
+.fdet:not([data-foray-state="progress"]) .t-band__base { opacity: 1; }   /* browsing and played: every bar at full enamel; in progress the rest sits at 40% */
+.fdet-codes { position: absolute; left: 0; right: 0; bottom: 0; height: var(--s-4); pointer-events: none; }
+.fdet-code { position: absolute; left: calc(var(--x, 0) * 100%); bottom: 0; transform: translateX(-50%); color: var(--ink-2); font: 700 var(--t-micro)/var(--s-4) var(--font-mono); white-space: nowrap; }
+.fdet-code.is-current { color: var(--ink); font-weight: 800; }
+.fdet-needle { position: absolute; z-index: 1; top: 3px; left: calc(var(--x, 0) * 100%); width: 2px; height: 39px; margin-left: -1px; border-radius: 1px; background: var(--ink); pointer-events: none; }
+.fdet-needle::before { content: ""; position: absolute; top: -4px; left: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--ink); }
+.fdet:not([data-foray-state="progress"]):not(.fdet--unavailable) .fdet-needle { display: none; }   /* a needle only where the listener is */
+/* An unavailable Foray's well has nothing in it: no bars, no station labels (a code
+   under nothing reads as a legend for a chart that failed to load), and the needle
+   lifted off its slot, pivoting on its foot. */
+.fdet-well--empty .fdet-stage { height: 60px; }
+.fdet-well--empty .fdet-needle { --x: .5; transform: rotate(20deg); transform-origin: 50% 100%; opacity: .7; }
+.band--empty .t-band__code, .band--empty .band__labels { display: none; }
+
+/* readout, summary, why */
+.fdet-lead { display: flex; flex-direction: column; gap: var(--gap); }
+.fdet-facts, .fdet-muted { color: var(--ink-2); }
+.fdet-muted { font: var(--w-label) var(--t-label)/var(--lh-label) var(--font-text); }
+.fdet-summary { font-size: var(--t-body-lg); line-height: var(--lh-body-lg); font-weight: var(--w-body); }
+.fdet-why { display: flex; flex-direction: column; gap: var(--s-1); }
+.fdet-why__line { font-size: var(--t-body); line-height: var(--lh-body); font-weight: var(--w-body); }
+.fdet-notice { color: var(--ink-2); font: var(--w-label) var(--t-label)/var(--lh-label) var(--font-text); }
+body.view-foray .fdet .fy-draft { padding: 0; border: 0; border-radius: 0; background: transparent; }   /* the legacy draft note was a dashed box; here it is one more muted line */
+
+/* From, Clips: a heading and its rows */
+.fdet-sect { display: flex; flex-direction: column; gap: var(--gap); }
+.fdet-rows { display: flex; flex-direction: column; gap: var(--s-2); }
+.fdet-slot { display: flex; flex-direction: column; gap: var(--s-2); }
+.fdet-from { position: relative; padding: 0; gap: var(--s-3); }
+.fdet-from .row__title { -webkit-line-clamp: 1; line-clamp: 1; }
+.fdet-from .row__meta { color: var(--ink-2); }
+/* The show link is the whole row (the shared `.row__link::after` stretch), and a little beyond it above and below:
+   the name sits near the top of a 56px row, and a 44px square centred on the name would otherwise start above the row. */
+.fdet-from .row__link::after { inset: calc(var(--s-1) * -1.5) 0; }
+
+/* the station swatch: the enamel the show wears on the band, its code on it */
+.fdet { --sw-dim: 20%; --sw-ink: white; }
+:root[data-theme="dark"] .fdet { --sw-dim: 0%; --sw-ink: var(--paper); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .fdet { --sw-dim: 0%; --sw-ink: var(--paper); } }
+.fdet-sw { width: 24px; height: 24px; flex: none; display: inline-grid; place-items: center; border-radius: 6px; color: var(--sw-ink); font: 700 0.6875rem/1 var(--font-mono); letter-spacing: -0.02em; }
+.fdet-sw.t-band__bar--c0 { background: color-mix(in srgb, var(--dial-seg-c0), black var(--sw-dim)); }
+.fdet-sw.t-band__bar--c1 { background: color-mix(in srgb, var(--dial-seg-c1), black var(--sw-dim)); }
+.fdet-sw.t-band__bar--c2 { background: color-mix(in srgb, var(--dial-seg-c2), black var(--sw-dim)); }
+.fdet-sw.t-band__bar--c3 { background: color-mix(in srgb, var(--dial-seg-c3), black var(--sw-dim)); }
+.fdet-sw.t-band__bar--c4 { background: color-mix(in srgb, var(--dial-seg-c4), black var(--sw-dim)); }
+.fdet-sw.t-band__bar--c5 { background: color-mix(in srgb, var(--dial-seg-c5), black var(--sw-dim)); }
+.fdet-sw.t-band__bar--c6 { background: color-mix(in srgb, var(--dial-seg-c6), black var(--sw-dim)); }
+.fdet-sw.t-band__bar--c7 { background: color-mix(in srgb, var(--dial-seg-c7), black var(--sw-dim)); }
+.fdet-sw--narration { background: repeating-linear-gradient(45deg, var(--ultramarine) 0 2px, var(--ultramarine-soft) 2px 4px); }
+
+/* a clip: the row-wide button, then its two votes */
+.fdet-seg__row { display: flex; align-items: center; gap: var(--s-1); min-height: 56px; }
+.fdet-seg .segrow {
+  appearance: none; border: 0; margin: 0; padding: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;
+  flex: 1; min-width: 0; min-height: 56px; display: flex; align-items: center; gap: var(--s-3); border-radius: var(--r-md);
+}
+.fdet-seg .segrow:focus-visible { outline: calc(var(--s-1) / 2) solid var(--ultramarine); outline-offset: calc(var(--s-1) / 2); }
+.fdet-seg .segrow.is-playing { background: var(--persimmon-soft); margin-left: calc(var(--s-2) * -1); padding-left: var(--s-2); }
+.fdet-seg__text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.fdet-seg__text .row__title, .fdet-seg__sub { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fdet-seg__text .row__title { font: var(--w-label) var(--t-body)/var(--lh-body) var(--font-text); color: var(--ink); }
+.fdet-seg__sub { color: var(--ink-2); font: var(--w-body) var(--t-label)/var(--lh-label) var(--font-text); }
+.fdet-seg__len { flex: none; color: var(--ink-2); }
+.fdet-state { display: none; flex: none; color: var(--persimmon); }
+.fdet-seg .segrow.is-playing .fdet-state { display: inline-flex; }
+.fdet-seg .segrow.is-played .row__title, .fdet-seg .segrow.is-played .fdet-seg__len { color: var(--ink-2); }
+.fdet-seg.is-out .fdet-seg__row { min-height: 56px; }   /* no row-wide dimming: the show name and why-line are information on a div, not a disabled control, so they keep full --ink / --ink-2 (AA); the state is the plain-words line below plus the dimmed swatch */
+.fdet-seg.is-out .fdet-sw { opacity: .6; }   /* the swatch is decoration (aria-hidden), so dimming it is the only fade the row takes */
+body.view-foray .fdet-seg__out { margin-left: calc(24px + var(--s-3)); color: var(--ink-2); }   /* out-ranks the legacy `body.ui-v2 .fy-out` amber: persimmon text on paper is not AA */
+.fdet-seg .fy-script-wrap { margin: 0 0 var(--s-2) calc(24px + var(--s-3)); }
+.fdet-seg .fy-script { font: var(--w-body) var(--t-label)/var(--lh-body) var(--font-text); color: var(--ink-2); }
+.fdet-seg .fy-script-more { min-height: var(--tap); padding: 0; color: var(--ink); font: var(--w-label) var(--t-label)/var(--lh-label) var(--font-text); }
+.fdet-seg .fy-cites-head { font: var(--w-label) var(--t-micro)/var(--lh-micro) var(--font-text); letter-spacing: 0; text-transform: none; color: var(--ink-2); }
+.fdet-seg .fy-cites li { font: var(--w-body) var(--t-label)/var(--lh-label) var(--font-text); color: var(--ink-2); }
+
+/* the two votes: 44px targets, drawn icons, a fill when chosen (never an outline) */
+body.view-foray .fdet .fy-fb { gap: 0; padding: 0; }
+body.view-foray .fdet .fy-thumb {
+  width: var(--tap); height: var(--tap); min-width: var(--tap); padding: 0; border: 0; border-radius: var(--r-pill);
+  background: transparent; color: var(--ink-2); filter: none; opacity: 1; font-size: inherit;
+}
+body.view-foray .fdet .fy-thumb:hover { background: var(--paper-2); }
+body.view-foray .fdet .fy-thumb:focus-visible { outline: calc(var(--s-1) / 2) solid var(--ultramarine); outline-offset: calc(var(--s-1) / -2); }
+body.view-foray .fdet .fy-thumb.on { color: var(--ink); }
+body.view-foray .fdet .fy-thumb[data-thumb="up"].on { background: var(--persimmon-soft); }
+body.view-foray .fdet .fy-thumb[data-thumb="down"].on { background: var(--paper-2); }
+
+/* where this came from, in the page's own voice */
+.fdet .fy-sources { margin: 0; display: flex; flex-direction: column; gap: var(--gap); }
+.fdet .fy-sources h3 { margin: 0; font: var(--w-heading) var(--t-heading)/var(--lh-heading) var(--dial-font-display); letter-spacing: var(--tracking-heading); text-transform: none; color: var(--ink); }
+.fdet .fy-src-note { margin: 0; color: var(--ink-2); font: var(--w-body) var(--t-label)/var(--lh-label) var(--font-text); }
+.fdet .fy-src { margin: 0; padding: var(--s-4); border: 0; border-radius: var(--r-md); background: var(--card); box-shadow: var(--shadow-card); }
+.fdet .fy-src-show { font: var(--w-label) var(--t-body)/var(--lh-body) var(--font-text); }
+.fdet .fy-src-show .show-link { display: inline-flex; align-items: center; min-height: var(--tap); margin-block: calc((var(--lh-body) - var(--tap)) / 2); }   /* a 44px target that takes one line of room */
+.fdet .fy-src-meta, .fdet .fy-src-eps li { color: var(--ink-2); font: var(--w-body) var(--t-label)/var(--lh-label) var(--font-text); }
+.fdet .fy-src-eps li span { opacity: 1; }   /* the legacy 75% dims --ink-2 under AA on the card */
+.fdet .fy-src-out { min-width: var(--tap); min-height: var(--tap); margin: calc(var(--s-3) * -1) calc(var(--s-3) * -1) calc(var(--s-3) * -1) 0; display: inline-flex; align-items: center; justify-content: center; color: var(--ink-2); }
+
+/* the pinned Play key: one extended persimmon keycap, the play glyph, the word, the readout */
+.fdet-pin {
+  position: fixed; z-index: 22; bottom: calc(var(--foray-dock) + var(--s-4));
+  right: max(var(--gutter), calc((100vw - 680px) / 2 + var(--gutter)));
+  transition: transform var(--d-settle) var(--spring-settle);
+}
+body.fp-expanded .fdet-pin { transform: translateY(240%); }   /* the sheet owns the transport while it is open */
+.fdet-pin .keycap { margin-bottom: var(--lip); }   /* the lip hangs below the face: the face, not the lip, floats 16 above the deck */
+.fdet-pin .keycap--pin { height: 56px; min-width: 0; padding: 0 var(--s-5) 0 14px; gap: var(--s-2); }
+.fdet-pin .keycap--pin .i { width: 28px; height: 28px; }
+.fdet-pin .keycap__label { font: 700 var(--t-body-lg)/1 var(--font-text); }
+.fdet-pin .keycap__readout { color: var(--on-persimmon); opacity: 1; line-height: 1; }   /* 13px/500 mono is normal-size text: --on-persimmon at the primitive's .85 over --persimmon is 4.01:1 in Cream, under AA */
+.fdet-pin .keycap__readout[hidden] { display: none; }
+
+/* unavailable: the way out is two keys */
+.fdet-keys { display: flex; align-items: center; gap: var(--s-4); margin-top: var(--s-1); }
+.fdet-keys .keycap { margin-bottom: var(--lip); }
+
 /* ---------- REDUCE MOTION: ONE BLOCK, EVERY TRANSITION (audit round 2, a11y-9) ----------
    Three strip rules honoured the setting and nothing else did: the Now Playing
    sheet still slid back over 220ms after a partial drag, the notes chevron
@@ -5613,6 +5738,7 @@ body.view-home::after { content: ""; position: fixed; z-index: 19; left: 0; righ
   .tile,
   .today-pcard,
   .today .row__queue,
+  .fdet-pin,
   .tab__label,
   .tab__indicator,
   /* The toast is cut, not slid and not faded: tools/ui-lab's reduced-motion gate counts any transition over 1ms under this setting, so a 120ms fade would be new debt (BUILD-PLAN 2.16 says fade; the gate wins until the orchestrator rules otherwise). */
@@ -5647,7 +5773,6 @@ body.view-home::after { content: ""; position: fixed; z-index: 19; left: 0; righ
   .fy-panel:not(.fy-panel-dragging),
   .ep-description-toggle::after,
   .fy-strip,
-  .fy-strip-bubble, .fy-strip-bubble__viewport > *,
   .fy-seg { transition: none; }
   .up-next-row { transition: none; }
   .fy-panel { animation: none; }

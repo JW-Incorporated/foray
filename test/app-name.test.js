@@ -506,10 +506,13 @@ test("no note this app renders into #view capitalises the unit", () => {
     ...src.matchAll(/statusPageHtml\(\{[^}]*?note: "([^"]*)"/g),
     ...src.matchAll(/failedNoteHtml\("([^"]*)"\)/g),
   ].map((m) => m[1]);
+  /* 16 -> 15 (Tactile `foray`): "That foray isn't available." was a status note; the Foray
+     page's unavailable state is its own screen now (an h1, "This foray isn't available right
+     now.", the empty well and two keys), counted by the assertion after the loop. */
   assert.equal(
     notes.length,
-    16,
-    `expected sixteen #view status notes, found ${notes.length}. More is fine -- ` +
+    15,
+    `expected fifteen #view status notes, found ${notes.length}. More is fine -- ` +
       "raise this count so the new one is covered. Fewer means a note was lost " +
       `or reshaped: ${notes.join(" | ")}`
   );
@@ -521,9 +524,13 @@ test("no note this app renders into #view capitalises the unit", () => {
         "to get past this -- decide which sense the sentence means."
     );
   }
+  /* The unavailable Foray page names the unit as a common noun too, and is not a status note. */
+  const unavailable = /<h1 class="display fdet-title">([^<]*)<\/h1>/.exec(src);
+  assert.ok(unavailable, "the unavailable Foray page's heading exists");
+  assert.equal(unavailable[1], "This foray isn't available right now.");
+  assert.ok(!/Foray/.test(unavailable[1]), "and does not capitalise the unit");
   for (const expected of [
     "Couldn't load forays right now.",
-    "That foray isn't available.",
   ]) {
     assert.ok(
       notes.includes(expected),
