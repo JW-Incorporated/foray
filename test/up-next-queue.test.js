@@ -339,7 +339,8 @@ test("renderShow's episode rows each open the episode page, which is where '+ Up
   }
   assert.ok(!html.includes("data-upnext"), "an EpisodeRow carries no Up Next control of its own");
   m.ctx.renderEpisode(expected[0].id);
-  assert.ok(m.view().includes(`data-upnext="${m.ctx.esc(expected[0].id)}"`), "the episode page it opens does");
+  /* The page it opens carries Up Next as its own icon button (`data-ep-upnext`, ambient Episode page), not the legacy text control. */
+  assert.ok(m.view().includes(`data-ep-upnext="${m.ctx.esc(expected[0].id)}"`), "the episode page it opens does");
 });
 
 /* ==================================================================== */
