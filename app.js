@@ -2910,6 +2910,12 @@ function saveQueueIds(ids) {
     content and would otherwise land the listener at the top. Best-effort on
     `scrollY`/`scrollTo`, which the test harness does not have. */
 function repaintQueuePage() {
+  /* Yours (#/library) lists Up Next as its own panel (ui/library.js), repainted
+     in place: the strip's badge, the readout and the rows follow the write. */
+  if (currentHash() === "#/library") {
+    if (typeof repaintYoursQueue === "function") repaintYoursQueue();
+    return;
+  }
   if (currentHash() !== "#/queue") return;
   const y = typeof window.scrollY === "number" ? window.scrollY : null;
   const held = queueFocusBefore();
@@ -4721,6 +4727,7 @@ function renderCurrentPage() {
   else if (h === "#/starred-shows") renderStarredShows();
   else if (h === "#/interests") renderInterests();
   else if (h === "#/gallery" && galleryEnabled()) renderGallery();
+  else if ((m = ONB_ROUTE.exec(h))) renderOnboardingRoute(Boolean(m[1]));
   else renderHome();
   publishRenderedPageHead();
   /* Called AFTER the page paints, not before: renderTabBar() reads
@@ -4845,7 +4852,9 @@ function route() {
 function pageHeading(view) {
   if (!view || typeof view.querySelector !== "function") return null;
   const box = view.querySelector(".page-head");
-  return (box && box.querySelector("h2")) || null;
+  /* The Foray page (Tactile `foray`) has no `.page-head`: its h1 is the title under the two keys. It
+     names the document and takes focus on a navigation like any other page's heading. */
+  return (box && box.querySelector("h2")) || view.querySelector("h1.fdet-title") || null;
 }
 
 /* A NAVIGATION WHOSE NAME HAS NOT BEEN SAID YET (audit round 2, races-6). A
@@ -5017,6 +5026,9 @@ function rememberRouteForRelaunch(hash) {
      successful deletion put a cp_ key back, the exact thing it already avoids
      buildCards() for. The next real navigation records the route again. */
   if (ddBusy || dataDeletionInProgress) return;
+  /* The onboarding screen is an address for the harness and for a listener who
+     asks for it again, not a place to reopen on the next launch. */
+  if (ONB_ROUTE.test(hash)) return;
   if (lsGet(LAST_ROUTE_KEY, null) !== hash) lsSet(LAST_ROUTE_KEY, hash);
 }
 
@@ -6124,6 +6136,68 @@ const BOOT_FAILED_NOTE = "4a couldn't start.";
 /** What `#view` holds between app.js starting and the first `route()`. */
 const BOOT_LOADING_HTML = `<div class="page" data-boot-loading><p class="note">Loading 4a…</p></div>`;
 
+/** What the first paint is. Today's address gets Today's own skeleton
+    (ui/home.js todayLoadingHtml: the title row, then the hero, rows and playlist
+    cards as shapes at their loaded sizes, Tactile `home-loading`); every other
+    address, and any environment without the Today module, keeps the plain line
+    above. The skeleton root carries `data-boot-loading` too, which is what the
+    webview probe and the boot tests read. */
+function bootLoadingHtml() {
+  try {
+    const onToday = currentHash() === "#/" && (!isNativeShell() || relaunchRoute() === "#/");
+    if (onToday && typeof todayLoadingHtml === "function" && typeof tactileSkeleton === "function") return todayLoadingHtml();
+  } catch (_) { /* a stub environment, or a half-built page: the plain line */ }
+  return BOOT_LOADING_HTML;
+}
+
+/** Paint the boot screen into `#view`. Today's skeleton also takes Today's body
+    class (the title row replaces the legacy top bar) and puts the tab row up
+    now, so neither jumps in when the first route lands: the tabs are plain links,
+    and a tap on one before `state.ready` only changes the address that the first
+    route() then reads. */
+let bootChromeUndo = null;
+/** The knob on the boot skeleton is a real key, but the sheet it opens is bound
+    only after the first route (it reads the taxonomy, and its Done hands over
+    to the drawer). A press before then is remembered here and answered by
+    settleBootKnob() once the drawer is wired, never dropped. */
+let bootKnobPressed = false;
+function paintBootLoading(view) {
+  const html = bootLoadingHtml();
+  view.innerHTML = html;
+  if (html === BOOT_LOADING_HTML) return;
+  try {
+    bootChromeUndo = { tabBar: !$("#tab-bar") };
+    const knob = typeof view.querySelector === "function" ? view.querySelector("#today-knob") : null;
+    if (knob) knob.addEventListener("click", () => { bootKnobPressed = true; });
+    setBodyClass("view-home");
+    if (typeof renderTabBar === "function") renderTabBar();
+  } catch (_) { /* the skeleton alone is still the honest screen */ }
+}
+
+/** Answer a knob press made on the boot skeleton: called once, right after the
+    drawer's handlers are bound. The loaded Today has its own knob by then, and
+    it is the one focus goes back to. */
+function settleBootKnob() {
+  if (!bootKnobPressed) return;
+  bootKnobPressed = false;
+  try { openSettingsSheet($("#today-knob")); } catch (_) { /* a stub document: nothing to open */ }
+}
+
+/** A boot that FAILED leaves the skeleton's chrome behind it: the failure note
+    is a plain page, and it needs the legacy top bar (and the safe-area padding
+    `.today` would have supplied) back, with no tab row whose links do nothing
+    until `state.ready`. Called from both failure paints in init(). */
+function endBootLoadingChrome() {
+  const undo = bootChromeUndo;
+  bootChromeUndo = null;
+  if (!undo) return;
+  try {
+    document.body.classList.remove("view-home");   /* index.html's body is only `ui-v2`; setBodyClass is the one writer of the class list */
+    const bar = $("#tab-bar");
+    if (undo.tabBar && bar) bar.remove();
+  } catch (_) { /* a stub document */ }
+}
+
 async function init() {
   /* EVERY BOOT REQUEST STARTS BEFORE THE FIRST AWAIT (round-2 audit, perf-1).
      The seven documents used to wait for `storageReady()` — which on the web
@@ -6144,11 +6218,14 @@ async function init() {
      executed, and the probe separately refuses a view still holding it
      (`data-boot-loading`), so a boot that hangs is not certified either. */
   const view = $("#view");
-  if (view && !view.firstElementChild) view.innerHTML = BOOT_LOADING_HTML;
+  if (view && !view.firstElementChild) paintBootLoading(view);
   /* Belt for index.html's `<body class="ui-v2">` (p-first-2): a cached older
      index.html without it still gets the dark design from this line on. */
   try { document.body.classList.add("ui-v2"); } catch (_) { /* a stub document */ }
   setBootChrome(false);
+  /* The listener's Appearance choice (ui/settings.js, `cp_theme`) is on <html>
+     before anything below paints, and again once the durable tier has landed. */
+  if (typeof applyStoredTheme === "function") applyStoredTheme();
   const storageP = storageReady();
   const sessionP = fetchJson("data/session.json");
   /* Every one of these may come back null (fetchJson swallows a 404 and a
@@ -6187,6 +6264,7 @@ async function init() {
     /* A failure offers "Try again", wired to the same boot (theme G). Safe to
        re-run: nothing above this line binds a listener or starts the directory,
        so a second init() starts from exactly where the first one stopped. */
+    endBootLoadingChrome();
     $("#view").innerHTML = `<div class="page">${failedNoteHtml("Couldn't load 4a — check your connection.")}</div>`;
     bindRetry($("#view"), () => {
       $("#view").innerHTML = BOOT_LOADING_HTML;
@@ -6258,6 +6336,7 @@ async function init() {
 
   /* The one wait on hydration, bounded at five seconds (see storageReady). */
   await storageP;
+  if (typeof applyStoredTheme === "function") applyStoredTheme();
   loadInterests();
   /* Hydration that overran the bound re-seeds every weight this session has
      not moved, so Home's next deal ranks by the listener's own profile rather
@@ -6265,6 +6344,7 @@ async function init() {
   if (storageWaiting()) {
     afterStorageSettles(() => {
       loadInterests();
+      if (typeof applyStoredTheme === "function") applyStoredTheme();
       state._interestsGen = (state._interestsGen || 0) + 1;
     });
   }
@@ -6309,6 +6389,7 @@ async function init() {
   trySyncEvents();   // waits for storage to settle itself — see trySyncEvents
   } catch (err) {
     console.error("boot failed", err);
+    endBootLoadingChrome();
     const failed = $("#view");
     if (failed) {
       failed.innerHTML = `<div class="page">${failedNoteHtml(BOOT_FAILED_NOTE)}</div>`;
@@ -6368,6 +6449,7 @@ async function init() {
   });
 
   bindDrawerChrome();
+  settleBootKnob();
   /* Android's back button, ordered like every other overlay close — see
      `handleBack`. A no-op on the web and on iOS. */
   bindHardwareBack();

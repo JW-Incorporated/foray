@@ -69,11 +69,14 @@ function drawerIsOpen() {
 }
 
 /** The control that opens the drawer, and gets focus back from it. Today's knob
-    (`#today-knob`, Tactile) IS the menu button while Home is on screen: the
-    topbar's ☰ is hidden there, and focus handed to a hidden control is lost.
-    Every other page keeps the ☰. */
+    (`#today-knob`, Tactile) IS the menu button while Home is on screen, and the
+    Yours knob (`#yours-knob`) is while Yours is: the topbar's ☰ is hidden on
+    both, and focus handed to a hidden control is lost (Escape on the drawer,
+    opened from Settings > More settings, left focus on <body>; the watcher in
+    ui/library.js could not repair it because the drawer link still held focus
+    when it ran). Every other page keeps the ☰. */
 function menuOpener() {
-  const knob = $("#today-knob");
+  const knob = $("#today-knob") || $("#yours-knob");
   return knob || $("#menu-btn");
 }
 

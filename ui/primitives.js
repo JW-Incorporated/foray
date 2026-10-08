@@ -313,6 +313,12 @@ function tactileBandAutoId() {
   return "dial-band-" + tactileBandSerial;
 }
 
+/* The detail band renders 60px tall (`.band--detail`), so one viewBox unit is exactly
+ * one pixel on y and 1000 / renderWidth units are one pixel on x. Everything the
+ * eye reads as a shape rather than a stretch (the needle's 2px width and round
+ * head, the station codes' glyphs) is drawn through that, never in bare units. */
+var TACTILE_DETAIL_PX = 60;
+
 function tactileBand(data) {
   var d = data || {};
   var kind = ["mini", "detail", "scrub", "line"].includes(d.kind) ? d.kind : "mini";
@@ -343,7 +349,7 @@ function tactileBand(data) {
   var barY = mini ? 0 : 8;
   var barH = mini ? 60 : 28;
   var rx = 2000 / renderWidth;
-  var ry = 2 * 60 / (kind === "detail" ? 44 : kind === "scrub" ? 56 : 8);
+  var ry = 2 * 60 / (kind === "detail" ? TACTILE_DETAIL_PX : kind === "scrub" ? 56 : 8);
   var bars = widths.map(function (box, index) {
     var segment = segments[index];
     var cls = episode ? "t-band__bar t-band__bar--episode"
@@ -357,7 +363,13 @@ function tactileBand(data) {
     var widthPx = (run.right - run.x) / 1000 * renderWidth;
     if (widthPx < 24) return "";
     var isCurrent = current >= run.start && current <= run.end;
-    return '<text class="t-band__code' + (isCurrent ? " is-current" : "") + '" data-run-start="' + run.start + '" data-run-end="' + run.end + '" x="' + ((run.x + run.right) / 2).toFixed(2) + '" y="53" text-anchor="middle">' + esc(codes.get(run.showId)) + "</text>";
+    var centre = ((run.x + run.right) / 2).toFixed(2);
+    /* Detail codes are counter-scaled on x so a glyph is 13px wide and 13px tall, not
+       the 0.3 of that the stretched viewBox would make it (preserveAspectRatio none). */
+    var place = kind === "detail"
+      ? ' x="0" y="0" transform="translate(' + centre + " 53) scale(" + (1000 / renderWidth).toFixed(4) + ' 1)"'
+      : ' x="' + centre + '" y="53"';
+    return '<text class="t-band__code' + (isCurrent ? " is-current" : "") + '" data-run-start="' + run.start + '" data-run-end="' + run.end + '"' + place + ' text-anchor="middle">' + esc(codes.get(run.showId)) + "</text>";
   }).join("");
   var role = kind === "scrub" ? "slider" : "img";
   var valueText = d.valueText || Math.round(progress * (Number(d.totalSeconds) || total)) + " seconds of " + Math.round(Number(d.totalSeconds) || total) + " seconds, " + (segments[current] ? segments[current].show : "4a");
@@ -372,7 +384,11 @@ function tactileBand(data) {
     '<g class="' + (line ? "band__layers" : "band__draw") + '"><g class="t-band__base">' + bars + '</g><g class="t-band__fill" clip-path="url(#' + esc(id) + '-progress)">' + bars + "</g>" + labels +
     (line || (mini && !progress) ? "" : mini
       ? '<g class="needle" transform="translate(' + progressX.toFixed(2) + ' 0)"><rect x="' + (-1000 / renderWidth).toFixed(2) + '" y="-30" width="' + (2000 / renderWidth).toFixed(2) + '" height="120" rx="0"></rect></g>'
-      : '<g class="needle" transform="translate(' + progressX.toFixed(2) + ' 0)"><rect x="-1" y="3" width="2" height="39" rx="1"></rect><circle cx="0" cy="3" r="4"></circle></g>') + "</g></svg>";
+      : kind === "detail"
+        /* 2px wide, 6px past the bars at both ends, a round 8px head on top (BUILD-NOTES 3.6),
+           in rendered pixels: x units are 1000 / renderWidth to the pixel. */
+        ? '<g class="needle" transform="translate(' + progressX.toFixed(2) + ' 0)"><rect x="' + (-1000 / renderWidth).toFixed(2) + '" y="2" width="' + (2000 / renderWidth).toFixed(2) + '" height="40" rx="' + (1000 / renderWidth).toFixed(2) + '" ry="1"></rect><ellipse cx="0" cy="3" rx="' + (4000 / renderWidth).toFixed(2) + '" ry="4"></ellipse></g>'
+        : '<g class="needle" transform="translate(' + progressX.toFixed(2) + ' 0)"><rect x="-1" y="3" width="2" height="39" rx="1"></rect><circle cx="0" cy="3" r="4"></circle></g>') + "</g></svg>";
 }
 
 function tactileWireScrubber(scrubber, data) {
@@ -703,16 +719,34 @@ function tactileRotary(data) {
   return '<div class="rotary" role="group" aria-label="' + esc(d.label || "Playback speed") + '">' + tactileKeycap({ size: "sm", variant: "paper", icon: "ph-arrow-down", label: "Less" }) + '<div class="well rotary__track" role="radiogroup">' + values.map(function (value) { var selected = value === (d.value || "1.0×"); return '<button type="button" class="rotary__tick" role="radio" aria-checked="' + (selected ? "true" : "false") + '"><span class="readout">' + esc(value) + "</span></button>"; }).join("") + "</div>" + tactileKeycap({ size: "sm", variant: "paper", icon: "ph-arrow-up", label: "More" }) + "</div>";
 }
 
-function tactileSkeleton(kind) {
-  var type = ["hero", "row", "card"].includes(kind) ? kind : "row";
-  if (type === "hero") return '<div class="skel skel--hero" aria-busy="true" aria-label="Loading"><span class="skel__shape skel__eyebrow"></span><div class="skel__title"><span class="skel__shape"></span><span class="skel__shape"></span><span class="skel__shape"></span></div><span class="skel__shape skel__band"></span><div class="skel__meta"><span class="skel__discs"><span class="skel__shape"></span><span class="skel__shape"></span><span class="skel__shape"></span></span><span class="skel__shape skel__readout"></span></div><div class="skel__why"><span class="skel__shape"></span><span class="skel__shape"></span></div><div class="skel__actions"><span class="skel__shape skel__primary"></span><span class="skel__shape skel__secondary"></span></div></div>';
-  if (type === "card") return '<div class="skel skel--card" aria-busy="true" aria-label="Loading"><span class="skel__shape skel__card-art"></span><div class="skel__card-lines"><span class="skel__shape"></span><span class="skel__shape"></span></div></div>';
-  return '<div class="skel skel--row" aria-busy="true" aria-label="Loading"><span class="skel__shape skel__row-art"></span><div class="skel__row-lines"><span class="skel__shape"></span><span class="skel__shape"></span><span class="skel__shape skel__row-meta"></span></div><span class="skel__shape skel__row-control"></span></div>';
+/** A placeholder shaped like what is coming. `opts.decorative` is for a page that
+    wraps its skeletons in ONE busy region (the Today boot paint): each block is
+    then `aria-hidden` instead of announcing "Loading" once per block. `opts.why`
+    adds the row's two why-line bars (the loaded Today row carries a why-line, so
+    its skeleton has to be as tall); the gallery's bare row leaves it off. `bridge`
+    is the Stretch slot (a sentence, the arc between two artworks, the pick): the
+    loaded page always reserves it, so the boot paint does too. */
+function tactileSkeleton(kind, opts) {
+  var type = ["hero", "row", "card", "bridge"].includes(kind) ? kind : "row";
+  var a = opts && opts.decorative ? 'aria-hidden="true"' : 'aria-busy="true" aria-label="Loading"';
+  if (type === "hero") return '<div class="skel skel--hero" ' + a + '><span class="skel__shape skel__eyebrow"></span><div class="skel__title"><span class="skel__shape"></span><span class="skel__shape"></span><span class="skel__shape"></span></div><span class="skel__shape skel__band"></span><div class="skel__meta"><span class="skel__discs"><span class="skel__shape"></span><span class="skel__shape"></span><span class="skel__shape"></span></span><span class="skel__shape skel__readout"></span></div><div class="skel__why"><span class="skel__shape"></span><span class="skel__shape"></span></div><div class="skel__actions"><span class="skel__shape skel__primary"></span><span class="skel__shape skel__secondary"></span></div></div>';
+  if (type === "bridge") return '<div class="skel skel--bridge" ' + a + '><div class="skel__why skel__bridge-sentence"><span class="skel__shape"></span><span class="skel__shape"></span></div><div class="skel__bridge-arc"><span class="skel__shape skel__bridge-known"></span><span class="skel__shape skel__bridge-line"></span><span class="skel__shape skel__bridge-stretch"></span></div><div class="skel__bridge-pick"><div class="skel__bridge-lines"><span class="skel__shape skel__bridge-tag"></span><span class="skel__shape"></span><span class="skel__shape"></span><span class="skel__shape skel__row-meta"></span></div><span class="skel__shape skel__row-control"></span></div></div>';
+  if (type === "card") return '<div class="skel skel--card" ' + a + '><span class="skel__shape skel__card-art"></span><div class="skel__card-lines"><span class="skel__shape"></span><span class="skel__shape"></span></div></div>';
+  return '<div class="skel skel--row" ' + a + '><span class="skel__shape skel__row-art"></span><div class="skel__row-lines"><span class="skel__shape"></span><span class="skel__shape"></span><span class="skel__shape skel__row-meta"></span></div><span class="skel__shape skel__row-control"></span>' + (opts && opts.why ? '<div class="skel__why skel__row-why"><span class="skel__shape"></span><span class="skel__shape"></span></div>' : "") + '</div>';
 }
 
+/* The one drawn mark in the app (BUILD-NOTES 3.16): a 96px small radio, 2px --ink-2
+ * stroke, the prototype's own drawing. `href` makes the keycap a link (an <a> styled
+ * as the persimmon key, the way Today's Details key is) for an empty state whose
+ * way out is a route; without it the key is the gallery specimen's button. Both
+ * routes pass safeUrl(). */
 function tactileEmpty(data) {
   var d = data || {};
-  return '<section class="empty"><svg aria-hidden="true" viewBox="0 0 96 96"><rect x="18" y="26" width="60" height="46" rx="12"></rect><path d="M30 42h36M34 54h12M54 54h8"></path><circle cx="38" cy="66" r="3"></circle><circle cx="62" cy="66" r="3"></circle><path d="M34 26c2-9 26-9 28 0"></path></svg><p>' + esc(d.copy || "Nothing here yet. Follow a show and it lands here.") + "</p>" + tactileKeycap({ size: "md", variant: "persimmon", text: d.action || "Find a show", label: d.action || "Find a show" }) + "</section>";
+  var label = d.action || "Find a show";
+  var key = d.href
+    ? '<a class="keycap keycap--md keycap--persimmon" href="' + esc(safeUrl(d.href)) + '"><span class="keycap__label">' + esc(label) + "</span></a>"
+    : tactileKeycap({ size: "md", variant: "persimmon", text: label, label: label });
+  return '<section class="empty"><svg aria-hidden="true" focusable="false" viewBox="0 0 96 96"><rect x="12" y="30" width="72" height="48" rx="10"></rect><circle cx="34" cy="54" r="12"></circle><circle cx="34" cy="54" r="3"></circle><path d="M52 44h20M52 54h20M52 64h12"></path><path d="M28 30 62 12"></path></svg><p class="empty__copy">' + esc(d.copy || "Nothing here yet. Follow a show and it lands here.") + "</p>" + key + "</section>";
 }
 
 /* A resting toast is invisible, so its Undo must be unreachable too: it renders
