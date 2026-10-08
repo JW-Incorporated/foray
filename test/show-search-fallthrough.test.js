@@ -1591,13 +1591,13 @@ test("copy-8: every quoted query goes through the one typographic pair — no st
   assert.match(APP_SRC, /function quoteQuery\(text\) \{\s*return `\\u201c\$\{text\}\\u201d`;/, "the helper is the one place the pair lives");
   for (const site of [
     /* "No shows found for ..." and "Create a playlist about ..." left with Redesign 2026 (Discover's EmptyState and its
-       Make-a-playlist button say the same things in the direction's words, through the same helper). */
+       Make-a-playlist button say the same things in the direction's words, through the same helper); "Starts with …" left with
+       the old Home hook (ui/home.js is Today now and writes no such line). */
     "Nothing named ${quoteQuery(query)}.",
     "Searching for ${quoteQuery(query)}…",
     "No episodes match ${quoteQuery(esc(searchQuery.trim()))}.",
     "Not much on ${quoteQuery(query)} yet",
     "Make a playlist from ${quoteQuery(q)}",
-    "Starts with ${quoteQuery(",
   ]) assert.ok(APP_SRC.includes(site), `site must use the helper: ${site}`);
   const m = mount();
   assert.strictEqual(m.evalIn("quoteQuery")("x"), "\u201cx\u201d");
