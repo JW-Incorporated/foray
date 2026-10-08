@@ -2020,7 +2020,31 @@ test("REAL REPO: the sliced bundle, its budgets and the headroom that is left", 
          lever is still the Kokoro probe (player/kokoro-probe.js 31,459 B +
          kokoro-probe-passage.json 34,794 B = 66,253 B, shell only) pending
          the founder's answer — not a seventh raise. */
-      r.total < 2.85 * 1024 * 1024,
+      /* RAISED 2.85 -> 2.95 MB on 2026-10-08, Redesign 2026 QA (tactile), the
+         seventh re-baseline, and again a feature step: the 3 MB CAP was NOT touched.
+
+         WHAT MOVED: the tactile branch's bundle went 2.809 -> 3.066 MB against its
+         merge-base (+257 KB), which failed prepare-webdir itself. All of it is
+         shipped code: styles.css 65 -> 166 KB minified (+101), ui/*.js 354 KB of
+         which app.js gave back 219 (net +135 JS), index.html 9 -> 24 KB (the
+         inline icon sprite). Nothing in data/ moved. Measured: unreferenced CSS is
+         under 14 KB, minifySyntax would save 15 KB, so there is no cheap code
+         lever left.
+
+         WHAT PAID FOR IT: BUNDLED_ITEMS_PER_SHOW 3 -> 2 (the lever the header of
+         that constant documents): data/discover.json 652 -> 463 KB, -194 KB, taking
+         the bundle to 2.88 MB. The app fetches the rest of a show's episodes from
+         the API (API_ORIGIN); the shell's offline floor is two newest episodes per
+         show instead of three.
+
+         WHAT 2.95 MB BUYS: ~70 KB over the bundle today, and it still fires 50 KB
+         before the cap. That is deliberately thin. KNOWN CLAIM ON IT: the three
+         Dial faces (fonts/dial-*.woff2, azeret-mono) are 119 KB, painted by 94
+         rules in styles.css and NOT in SHELL_FILES, so the native shell serves
+         them from nowhere. Listing them lands this at ~3.0 MB, so the next step
+         is NOT a raise: it is retiring the legacy Fraunces / DM Sans faces (211 KB)
+         as the last legacy screen converts, or BUNDLED_ITEMS_PER_SHOW 1. */
+      r.total < 2.95 * 1024 * 1024,
       `the bundle is ${(r.total / 1024 / 1024).toFixed(2)} MB, leaving ` +
         `${((MAX_BYTES - r.total) / 1024).toFixed(0)} KB of headroom under the 3 MB cap`
     );

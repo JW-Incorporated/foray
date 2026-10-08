@@ -93,3 +93,22 @@ test("path policy treats ui/ as app code beside app.js", async () => {
   assert.ok(pp.ALLOWED_PREFIXES.includes("ui/"), "ui/ is on the allow-list on this branch");
   assert.ok(pp.ALLOWED_PREFIXES.includes("app.js"));
 });
+
+test("every classic script in index.html is deferred, so the 31 downloads run in parallel and still execute in order", () => {
+  /* WHY: a plain classic <script src> is fetched only after the one before it has
+     finished (the preload scanner does not run ahead of a parser-blocking script),
+     so app.js plus 30 ui/*.js cost about one round trip each: QA measured LCP
+     3.5 s -> 9.1 s on a slow link. `defer` fetches them all up front and runs them
+     in document order before DOMContentLoaded (app.js's whenReady already assumes
+     that). A tag that loses `defer` serialises its own fetch and everything after
+     it, with no error anywhere, which is why nothing but this test notices.
+     MUTATION (run, red): delete ` defer` from any one `<script defer src="ui/...">`
+     line of index.html -> this test names that file. The scan asserts a minimum tag
+     count so it cannot pass on an empty match. */
+  const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+  const tags = [...html.matchAll(/<script\b([^>]*)>/gi)].map((m) => m[1]);
+  const classic = tags.filter((a) => /\bsrc="/.test(a) && !/\btype="module"/.test(a));
+  assert.ok(classic.length >= 31, `fixture assumption: search-engine.js, app.js and the ui/ files are classic scripts (saw ${classic.length})`);
+  const bare = classic.filter((a) => !/\bdefer\b/.test(a)).map((a) => (a.match(/\bsrc="([^"]+)"/) || [])[1]);
+  assert.deepStrictEqual(bare, [], "classic scripts without defer: each one blocks the download of every script after it");
+});

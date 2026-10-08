@@ -4107,3 +4107,23 @@ quoted query uses the typographic pair through one `quoteQuery` helper; and the
 on-device show index sorts and searches on the diacritic-folded title
 (`foldDiacritics` is the builder's sort key and the client's lookup key — the two
 must stay one function).
+
+## 2026-10-08 (Redesign 2026 QA: the app bundle fits its 3 MB cap by shipping two items a show; the cap does not move; classic scripts are deferred)
+
+The tactile branch's mobile bundle was 3.07 MB against a 3.00 MB cap
+(`prepare-webdir` refuses to build, so no 4a Lab build was possible). The growth
+over the merge-base (+257 KB) is all shipped code: `styles.css` +101 KB minified,
+`ui/*.js` net +135 KB, the icon sprite in `index.html` +15 KB. Unreferenced CSS is
+under 14 KB and `minifySyntax` would save 15 KB, so no code lever was big enough.
+Decision: `BUNDLED_ITEMS_PER_SHOW` 3 -> 2 (the documented lever; `discover.json`
+652 -> 463 KB, bundle 2.88 MB). The offline floor is two newest episodes per show;
+the app fetches the rest from the API. The 3 MB cap is unchanged; the 2.85 MB alarm
+was re-baselined to 2.95 MB (note in `tools/mobile/prepare-webdir.test.mjs`).
+Open claim on the headroom: the three Dial faces (119 KB) are painted by styles.css
+but not listed in `SHELL_FILES`, so the native shell does not ship them. Listing
+them needs the legacy Fraunces / DM Sans faces (211 KB) retired first.
+
+Same pass: all 31 classic `<script src>` tags in `index.html` now carry `defer`.
+Undeferred, each is fetched only after the previous one finishes (QA measured LCP
+3.5 s -> 9.1 s on a slow link; deferred: 4.1 s). Execution order and
+DOMContentLoaded timing are unchanged. `test/app-split.test.js` pins it.
