@@ -67,6 +67,27 @@ async function closeNowPlaying(page) {
   await wait(page, 400);
 }
 
+/** Put the phone on a train: one Also-today episode (the second row, as in the prototype's
+    offline route) is recorded as on the device, then the radio goes off. The page is loaded
+    ONLINE first (an offline context cannot even fetch the local bundle) and the browser's
+    own `offline` event repaints Today, which is the path a real listener's phone takes.
+    The record is written through the app's lsSet, the same door the Downloads code uses. */
+async function goOffline(page) {
+  await page.evaluate(() => {
+    const rows = [...document.querySelectorAll(".today .row-episode [data-play]")];
+    const key = rows[1] || rows[0];
+    if (!key) throw new Error("uilab: no playable Also-today row to mark as downloaded");
+    const id = key.getAttribute("data-play");
+    window.lsSet("cp_downloads", {
+      settings: { cellular: false },
+      items: { [id]: { status: "done", bytes: 31457280, total: 31457280, path: "downloads/" + id + ".mp3", updated_at: "2026-10-04T12:00:00.000Z" } },
+    });
+  });
+  await page.context().setOffline(true);
+  await page.waitForFunction(() => navigator.onLine === false && document.querySelector(".today .keycap--blocked"), null, { timeout: 10000 });
+  await wait(page, 400);
+}
+
 async function typeSearch(page, text) {
   await page.waitForSelector("#sh-input", { timeout: 15000 });
   await page.fill("#sh-input", text);
@@ -226,6 +247,15 @@ export function appStates(fx) {
       description: "Returning user with a part-played episode (25 of 60 min): Today shows the Resume card.",
       seed: "resuming",
       steps: [{ label: "home-resume", route: "#/", ready: ".today-resume" }],
+    },
+    {
+      id: "offline",
+      description: "Returning user with the radio off: Today and the Foray page with one episode on the device (live key, downloaded mark) and every other Play key blocked.",
+      seed: "returning",
+      steps: [
+        { label: "home", route: "#/", ready: ".today .row-episode", run: (page) => goOffline(page) },
+        ...(fx.forays[0] ? [{ label: "foray", route: "#/foray/" + encodeURIComponent(fx.forays[0].id) }] : []),
+      ],
     },
   ];
 }
