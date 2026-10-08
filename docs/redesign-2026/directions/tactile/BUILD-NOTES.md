@@ -672,6 +672,13 @@ Keycap "Find a show".
 Above the deck, card fill, `--shadow-deck`, 48px, text 15 + an Undo text
 button. Slides up on `--spring-settle`, auto-hides after 4-5s, pauses on
 touch. `role="status"`.
+**Build (Phase 4 `toast`):** padding `0 8px 0 16px` (the prototype's: Undo's 44px box sits 8px from the
+right edge, so the 'Undo' word lands where the prototype's does), text `--w-micro`/`--t-body`
+(600, 15/21). Under reduced motion the toast is cut (listed in the one block's `transition: none` rules): the plan
+says fade, but `gates.mjs` fails any transition over 1ms under that setting and a 120ms fade measured two
+new violations, so a fade needs an orchestrator ruling on the gate. Yours' Remove toast runs 4s and its clock stops on a press or while focus is on the
+toast, so a keyboard user who Tabs to Undo is not raced; the mini's "Player closed" toast keeps its 5s. Above the mini when
+the mini is up (`.yours-toast`). Tests: `test/tactile-toast.test.js`.
 
 ### 3.18 Icons
 Phosphor Bold at 24px via `<svg><use href="#ph-…">` from one sprite
@@ -847,7 +854,7 @@ keyboard opens (it hides; the Find field stays).
 
 ### 4.5 Yours
 - Title "Yours" display-xl, knob keycap right.
-- Chip strip (horizontal scroll, 36px chips, 8 gap, 16 gutters): Forays,
+- Chip strip (horizontal scroll, 36px chips, 12 gap - corrected from 8 after the i4 measurement of the prototype, 16 gutters): Forays,
   Shows, Saved, Playlists, Up Next (count badge), History. Selected chip
   per 3.3; the strip is `role="tablist"`.
 - Forays: cards with `.band--mini`, title 17/700, readout, resume progress.
