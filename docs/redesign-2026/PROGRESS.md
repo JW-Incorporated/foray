@@ -22,7 +22,7 @@ Source of truth for a cleared session. Update on every deliverable.
 | 1 Research | done | docs/redesign-2026/research/, design-brief.md |
 | 2 Directions | done | editorial r3, ambient r3, native-2026 r3, tactile r3, clarity r3 (docs/redesign-2026/directions/) |
 | Checkpoint | **picked: Tactile + Ambient** (owner, 2026-10-06 18:17 PDT) | one condition: replace Tactile's "cartoonish" header/title font first; Phase 3 starts once the owner approves the new font |
-| 3–5 | **running** (`wf_91b5c34d-c58`, from 2026-10-08 06:30 PDT; Sonnet builds with a turn budget, Codex reviews, PM watchdog) | foundation 8/8; screens 18/35 merged (tactile 13/19, ambient 5/16); see In flight |
+| 3–5 | **running** (`wf_91b5c34d-c58`, from 2026-10-08 06:30 PDT; Sonnet builds with a turn budget, Codex reviews, PM watchdog) | foundation 8/8; screens 28/35 merged (tactile 18/19, ambient 10/16); see In flight |
 
 ## Checkpoint (decided 2026-10-06: Tactile + Ambient, pending Tactile's font)
 
@@ -158,3 +158,4 @@ Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40-22:40 PDT, 128 agents
 - 2026-10-08 — tactile: Phase 3 foundation 4/4 merged into feature/redesign-2026-tactile
 - 2026-10-08 — tactile: Phase 4 screens 18/19 merged; escalated: none
 - 2026-10-08 — tactile: Phase 5 QA 2 high-severity issues, fixes merged; final lab build dispatched
+- 2026-10-08 — ambient: Phase 4 screens 10/16 merged; escalated: forays-list
