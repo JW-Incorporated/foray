@@ -313,7 +313,7 @@ function paintForayBand(elapsedSec, mark) {
   if (!r || !band) return;
   const frac = r.totalSec > 0 ? Math.max(0, Math.min(1, elapsedSec / r.totalSec)) : 0;
   const x = tactileBandX(band.boxes, frac);
-  const bar = Math.max(0, forayBandBarOf(band.items, mark));
+  const bar = forayBandBarOf(band.items, mark);
   const key = `${x.toFixed(2)}/${bar}`;
   if (state.forayBandPainted === key) return;
   const first = state.forayBandPainted == null;
@@ -406,7 +406,9 @@ function paintForay(s) {
   }));
   const page = $("#view").querySelector(".fdet");
   if (page) page.setAttribute("data-foray-state", forayStateName({ started: started && !ended, finished: ended }));
-  paintForayBand(ended ? state.foray.totalSec : elapsed, Math.max(0, mark));
+  /* The run the needle is in is drawn in --ink only where there is a needle: a browsing or played
+     page has no current run, so the mark is -1 there (and `forayBandBarOf` answers -1). */
+  paintForayBand(ended ? state.foray.totalSec : elapsed, ended || !started ? -1 : mark);
 
   /* The player's own words are telemetry, not copy. Say the one thing a
      listener can act on, and keep the detail in the console.

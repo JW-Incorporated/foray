@@ -126,7 +126,7 @@ async function makeBridge({ resume = null, forays = FORAYS } = {}) {
     },
     forayDriftIsClean: () => true,
     clearForayResume: (id) => { calls.push({ name: "clearForayResume", args: [id] }); },
-    watchForay: () => null,
+    watchForay: (fn) => { bridge.onChange = fn; return null; },
     playForay: (r, opts) => { calls.push({ name: "playForay", args: [r.id, opts] }); return null; },
     forayToggle: () => { calls.push({ name: "forayToggle", args: [] }); },
     forayJump: (i) => { calls.push({ name: "forayJump", args: [i] }); },
@@ -225,6 +225,19 @@ test("the chrome: back and share keycaps, the Foray tag, a display-xl title, the
   assert.ok(!/ style="/.test(h), "no inline style attribute anywhere on the page (the CSP)");
 });
 
+test("the page is named: its h1 is the heading a navigation lands focus on and the document is titled after", async () => {
+  /* The page has no `.page-head`, which is where pageHeading() used to look, so without this focus fell to the
+     bare #view and the document stayed "4a". MUTATION: drop `|| view.querySelector("h1.fdet-title")` from
+     pageHeading -> red. */
+  const m = await page(PUBLISHED);
+  const head = m.ctx.pageHeading(m.view);
+  assert.ok(head, "a heading is found");
+  assert.ok(head.classList.contains("fdet-title"));
+  assert.strictEqual(head.tagName, "H1");
+  const un = await page("does-not-exist");
+  assert.ok(un.ctx.pageHeading(un.view).classList.contains("fdet-title"), "and the unavailable page is named too");
+});
+
 test("the title is clamped at four balanced lines and keeps its descenders", () => {
   /* MUTATION: `-webkit-line-clamp: 3` or drop `text-wrap: balance` or `padding-bottom` -> red. */
   const t = decl(".fdet-title");
@@ -317,6 +330,22 @@ test("the needle shows only in progress, the rest of the bars sit at 40% only in
   assert.strictEqual(width(fresh), 0, "nothing played");
   assert.ok(width(mid) > 100 && width(mid) < 900, `the filled part stands near the stored place (${width(mid)})`);
   assert.ok(width(done) >= 990, `a played Foray is filled end to end (${width(done)})`);
+  /* The run under the needle is drawn in --ink: only where there is a needle. A browsing or played
+     page has no current run (MUTATION 4: pass `mark` instead of -1 for them -> red). */
+  const current = (m) => m.view.querySelectorAll(".fdet-code").filter((c) => c.classList.contains("is-current")).length;
+  assert.deepStrictEqual([current(fresh), current(mid), current(done)], [0, 1, 0], "no current run while browsing, one in progress, none once played");
+  /* And a Foray that has just played out while the page was open: the tick says ended, the index is still
+     a clip, and no run is current any more. The clip is one inside a run that carries a code, so the
+     positive control (live, it IS current) is not vacuous. */
+  const r = await resolved(NARRATED);
+  const firstCoded = Number(mid.view.querySelectorAll(".fdet-code")[0].dataset.runStart);
+  const index = mid.state.forayBand.items[firstCoded].index;
+  const tick = (over) => mid.bridge.onChange({ forayId: NARRATED, index, playing: true, running: true, loading: false, gap: false, ended: false, elapsedSec: 100, totalSec: r.totalSec, error: null, ...over });
+  tick({});
+  assert.strictEqual(current(mid), 1, "positive control: live inside a coded run, that run is current");
+  tick({ playing: false, running: false, ended: true, elapsedSec: r.totalSec });
+  assert.strictEqual(current(mid), 0, "a Foray that has played out has no current run");
+  assert.strictEqual(mid.view.querySelector(".fdet").getAttribute("data-foray-state"), "done");
   assert.ok(done.html.includes('<span class="tag tag--played">'), "and its title carries the Played tag");
   assert.ok(!fresh.html.includes("tag--played") && !mid.html.includes("tag--played"));
 });
@@ -662,6 +691,16 @@ test("targets: clip rows and votes reach 44px, the keys are the primitives' own"
   assert.strictEqual(thumb.height, "var(--tap)");
   assert.strictEqual(thumb["min-width"], "var(--tap)");
   assert.strictEqual(decl(".fdet-from")["min-height"] ?? "56px", "56px", "From rows keep the row-show 56");
+  /* The gates' tap-target pass (tools/ui-lab/gates.mjs) found two text links under 44px: the From rows' name
+     and the sources block's show name. The first is stretched over its row and a little beyond (a 44px
+     square centred on a name near the top of a 56px row would start above it); the second is a 44px box
+     that takes one line of room. MUTATION: drop either rule -> red here and in the gate. */
+  assert.strictEqual(decl(".fdet-from .row__link::after").inset, "calc(var(--s-1) * -1.5) 0");
+  const srcLink = decl(".fdet .fy-src-show .show-link");
+  assert.strictEqual(srcLink["min-height"], "var(--tap)");
+  assert.match(srcLink["margin-block"], /var\(--lh-body\) - var\(--tap\)/, "and gives the extra height back as negative margin");
+  assert.strictEqual(decl(".fdet .fy-src-eps li span").opacity, "1", "the legacy 75% on the clip counts takes --ink-2 under AA on the card");
+  assert.strictEqual(decl(".fdet a.keycap").color, "var(--k-ink)", "a key drawn as a link keeps its own ink: 'Try another foray' is white on persimmon, not the page's ink");
   assert.strictEqual(decl(".fdet-sw").width, "24px");
   assert.strictEqual(decl(".fdet-sw").height, "24px");
   const keysSrc = APP_SRC.slice(APP_SRC.indexOf("function forayBarHtml("), APP_SRC.indexOf("function forayFromRowHtml("));
