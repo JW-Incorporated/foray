@@ -224,6 +224,32 @@ async function openLibraryMenu(page) {
   await wait(page, 700);
 }
 
+/* The Up Next page (Redesign 2026, ambient): `#/queue` is Library's Up Next section given the screen. Playback starts on
+   another page and the queue is then opened fresh, as a listener would (the page's rows are drawn once, with the playing
+   row first); the menu is the first queued row's (the playing row has none); Remove opens the Toast over the mini row. */
+async function openQueueWithPlayback(page, itemId) {
+  await page.evaluate(() => { location.hash = "#/forays"; });
+  await wait(page, 500);
+  await startPlayback(page, itemId);
+  await page.evaluate(() => { location.hash = "#/queue"; });
+  await page.waitForSelector("[data-lb-page]", { timeout: 10000 });
+  await wait(page, 600);
+}
+
+async function openQueueMenu(page) {
+  await page.locator("[data-lb-menu]").first().click();
+  await page.waitForSelector(".lb-panel", { state: "visible", timeout: 10000 });
+  await wait(page, 700);
+}
+
+async function removeFirstQueueRow(page) {
+  /* The step before leaves the first queued row's menu open (a sheet makes the page inert): use it. */
+  if (!(await page.locator(".lb-panel").count())) await openQueueMenu(page);
+  await page.locator('[data-lb-do="remove"]').first().click();
+  await page.waitForSelector(".lb-toast.is-open", { timeout: 10000 });
+  await wait(page, 500);
+}
+
 /** Routes every seeded profile can show. `fx` supplies real ids. */
 function coreRoutes(fx, { entities }) {
   const ep = fx.items[0].id;
@@ -379,6 +405,17 @@ export function appStates(fx) {
         { label: "library", route: "#/library", run: async (page) => { await page.evaluate(() => { location.hash = "#/forays"; }); await wait(page, 500); await startPlayback(page, ep0); await page.evaluate(() => { location.hash = "#/library"; }); await wait(page, 700); } },
         { label: "library-lower", route: "#/library", run: (page) => scrollLibrary(page) },
         { label: "library-up-next-menu", route: "#/library", run: (page) => openLibraryMenu(page), ready: "[data-lb-menu]" },
+      ],
+    },
+    {
+      id: "up-next",
+      description: "The Up Next page: the list; with an episode playing (the playing row first, the mini row up); a row's menu open; then after Remove, the Toast with Undo 8px above the mini row.",
+      seed: "returning",
+      steps: [
+        { label: "up-next-list", route: "#/queue", ready: "[data-lb-page]" },
+        { label: "up-next-playing", route: "#/forays", run: (page) => openQueueWithPlayback(page, ep0), ready: "[data-lb-page]" },
+        { label: "up-next-menu", route: "#/queue", run: (page) => openQueueMenu(page), ready: ".lb-panel" },
+        { label: "up-next-toast", route: "#/queue", run: (page) => removeFirstQueueRow(page), ready: ".lb-toast.is-open" },
       ],
     },
   ];

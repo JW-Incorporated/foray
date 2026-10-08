@@ -149,15 +149,17 @@ body.fp-open .ag .lb-fade { bottom: calc(var(--safe-bottom) + var(--tab-bar-h, 5
 .ag .lb-grid-section > .lb-empty { padding-top: var(--s-2); }
 
 /* The Toast: 48 tall, 8 above the bar, five seconds. Closed it is not drawn at all (visibility), so its Undo is
-   neither focusable nor read. */
+   neither focusable nor read. It rises in as an ANIMATION, not a transition (the Up Next page unit, Redesign 2026): the
+   one reduced-motion block collapses an animation to 1ms, which is no motion, while it can only soften a transition to
+   a 200ms opacity crossfade, and the motion gate (rightly) reads that crossfade as motion. It leaves at once. */
 .ag .lb-toast {
   position: fixed; left: var(--gutter); right: var(--gutter); z-index: 65; min-height: 48px;
   bottom: calc(var(--safe-bottom) + var(--tab-bar-h, 56px) + var(--s-2));
   opacity: 0; visibility: hidden; transform: translateY(var(--s-3));
-  transition: opacity var(--m-ui) var(--e-out), transform var(--m-ui) var(--e-out), visibility 0s linear var(--m-ui);
 }
 body.fp-open .ag .lb-toast { bottom: calc(var(--safe-bottom) + var(--tab-bar-h, 56px) + var(--mini) + var(--s-2)); }
-.ag .lb-toast.is-open { opacity: 1; visibility: visible; transform: none; transition: opacity var(--m-ui) var(--e-out), transform var(--m-ui) var(--e-out), visibility 0s; }
+.ag .lb-toast.is-open { opacity: 1; visibility: visible; transform: none; animation: lb-toast-in var(--m-ui) var(--e-out); }
+@keyframes lb-toast-in { from { opacity: 0; transform: translateY(var(--s-3)); } to { opacity: 1; transform: none; } }
 
 /* The row menu: a sheet over the page (the legacy sheet frame, the Afterglow ground). */
 .fy-sheet.ag.lb-sheet { background: transparent; }

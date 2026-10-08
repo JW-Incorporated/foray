@@ -1471,3 +1471,48 @@ the state varies"), so the prototype's structure wins here and 17.1.1, 17.1.2 an
 Not this unit's, and unchanged: the Dock findings (three tabs and no Create, one floating Veil, Ember play on a Glow
 tint, back-15 and forward-30 glyphs, the 2px Glow progress line, Phosphor Fill active tab) belong to
 `redesign/ambient-dock` and Library's shots still show the legacy bars until it merges.
+
+## 18. As built: phase 4, the Up Next page (`redesign/ambient-up-next`, `ui/queue.js`, `ui/queue.css`)
+
+Screen 13 (`#/queue`; `returning/up-next`, `player/mini-player-up-next`; the prototype has no route for it, so the
+fidelity pair is its Library Up Next section and the menu sheet, `screens.json` rows `up-next` and `up-next-menu`).
+**The page is Library's Up Next section given the screen**, and it does not draw a second copy of any of it:
+
+1. **One row, one menu, one Toast, five writers.** The page asks `ui/library.js` for every piece: `libQueueRowHtml` (the
+   QueueRow, with a `page` flag), `libMenuItems`/`libOpenMenu`/`libMenuAct` (Move up, Move down, Play next, Remove),
+   `libRemoveRow` + `libUndo` + `libToastHtml` (the Toast, five seconds), `libSlideRows` (the neighbours, `--m-ui` on
+   `--e-out`) and `repaintLibraryUpNext`, which now repaints either section in place: the page's carries
+   `data-lb-page`, and the repaint then draws the page's head (Back, title, "N queued", Clear, the drag hint) and all
+   rows (no cap, no "All N" link) instead of Library's head and ten. `repaintQueuePage` dispatches both routes to it,
+   so a write to `cp_queue` never rebuilds `#view` and the menu, Toast, scroll and focus survive. The playing row is
+   first with the Fill glyph and the Lamp word "Playing" (the Library rule: no menu, no handle, it leaves the list
+   when it ends). The page wears `body.view-library`, so Library's stylesheet (top bar off, the page's ground, the cast,
+   the fade, the Toast, the menu sheet) applies as is; `ui/queue.css` holds only what Library lacks (the head, the
+   handle, the gestures' paint, a fourth grid column).
+2. **What this overturns** (named for `test-classification.md`): the page's own numbered `.ep-row` with ▶, ☆, ⋮⋮, Next,
+   ↑, ↓ and ✕ ("card anatomy": the row numbers and the star left it; the star stays on the episode page, the order
+   is the order on screen and a move says its new place aloud), and the "Nothing in Up Next yet" paragraph (now
+   Library's one line and one button).
+3. **The founder's two gestures stay** (#762, PQ-04 drag to reorder, PQ-06 swipe left to remove; both KEEP in the
+   classification). Each row with a menu has a 44px drag handle drawn as six dots in `--text-2` (the sprite is closed at
+   37 symbols and has no grip), its column only 24 wide so the caption keeps the room (the button is 44 and reaches 10px
+   into the gaps; the menu's edge is 2px beyond it); the swipe listens on the row's cover (the button a finger lands
+   on), keeps the vertical scroll with `touch-action: pan-y`, reveals "Remove" past the row's right edge, and now
+   removes through `libRemoveRow`, so a swipe has the menu's Toast and Undo. A claimed swipe's trailing click does not
+   play the row (`_lbSwallow`). The drag moves the DRAWN rows (`data-lb-q`), keeps the playing row first and does not
+   write an unqueued playing row into `cp_queue`. The rules (`player/queue-drag.js`, `queue-swipe.js`) are untouched.
+4. **Two small changes to shared Library code, both better for Library too.** An Up Next row now says "Played" for a
+   queued episode already finished (audit round 2, honesty-5: the old page said it, the Library row did not); History
+   keeps its length. The Toast rises in by `animation: lb-toast-in` instead of a `transition`: under Reduce Motion the one
+   block can only soften a transition to a 200ms opacity crossfade, which the motion gate reads as motion (it flagged
+   the first Remove it saw, on this page; Library's Toast had the same latent finding, never exercised), while it
+   collapses an animation to 1ms. The Toast leaves at once.
+5. **Measured** (real browser, `up-next-toast` step, 375x667, 393x852, 412x915): the Toast's bottom is exactly 8px above
+   the mini row's top at all three (724 to 732, 539 to 547, 787 to 795), 48 tall; rows 72px; handle and menu both 44 with a
+   2px clearance; no horizontal overflow (scrollWidth = viewport). Fidelity against the prototype Library's Up Next
+   section: first row 353x72 on the same left edge (+0.4 in height), the menu sheet identical (0, 0, 0, 0); the
+   mini and tab bar deltas are the legacy bars, the Dock unit's.
+6. **Left alone on purpose.** styles.css keeps the dead `.up-next-row`, `.reorder`, `.up-next-remove`, `.q-num` and
+   `.swipe-under` rules (`ui-tokens` and `tap-targets` pin them as legacy look; retire them with the legacy sheet), and
+   `moveQueueItem` has no caller but its own tests (`up-next-queue`, K: they pin the swap rule and its bounds; Library's menu does its own swap, so a follow-up can delete both together).
+   `libCastHtml`'s cast and fade are reused as is and retire with the Library's when the Dock lands.

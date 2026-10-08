@@ -55,7 +55,7 @@ function queuePageHeadHtml(count, queued) {
     <h2 class="t-title" tabindex="-1">Up Next</h2>
     ${count ? `<span class="t-caption qp-count">${esc(`${count} queued`)}</span>` : ""}
     ${count ? '<p class="sr-only" id="up-next-drag-hint">Drag to move this episode. Its menu has Move up and Move down.</p>' : ""}
-    ${queued > 1 ? `<button type="button" class="ag-btn ag-btn-quiet up-next-clear" id="up-next-clear">Clear</button>` : ""}
+    ${queued > 1 ? `<button type="button" class="ag-btn ag-btn-quiet qp-clear" id="up-next-clear">Clear</button>` : ""}
   </header>`;
 }
 

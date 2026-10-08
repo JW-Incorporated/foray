@@ -252,9 +252,11 @@ test("a finished queued row says Played, in Up Next only (History keeps its leng
 
 test("a write to cp_queue repaints the section in place: rows, count and Clear follow, and only on this page", () => {
   /* MUTATION 1: drop \`|| h === "#/queue"\` from repaintQueuePage -> the page does not follow the write: red.
-     MUTATION 2: drop the hash guard -> a write on Home paints the page into #view: the last assertion is red.
-     MUTATION 3: have repaintLibraryUpNext ignore \`data-lb-page\` (always draw the Library section) -> the head and the
-     handles vanish on the first write: the head assertion is red. */
+     MUTATION 2: have repaintLibraryUpNext ignore \`data-lb-page\` (always draw the Library section) -> the head and the
+     handles vanish on the first write: the head assertion is red.
+     (The last assertion is a guard that cannot fail with the hash check dropped: the repaint is of the page's SECTION,
+     and Home has none, so a write on Home finds nothing to paint. It is kept because the old renderQueue repaint DID
+     paint #view, and a regression to it would fail here.) */
   const m = mount();
   m.ctx.renderQueue();
   assert.match(sectionHtml(m.view()), /4 queued/);
@@ -323,6 +325,22 @@ test("the Toast is 48 tall and 8px above the mini row: tab bar + mini + --s-2, o
   m.ctx.renderQueue();
   assert.match(m.view(), /<div class="ag lb-page qp-page is-settling">[\s\S]*class="raised ag-toast lb-toast"/, "the Toast is inside .ag");
   assert.match(read("ui/queue.js"), /setBodyClass\("view-library"\)/, "the page wears the shell class Library's stylesheet is scoped to");
+});
+
+test("the Toast rises in by animation, not by transition, so Reduce Motion collapses it to no motion at all", () => {
+  /* The motion gate (tools/ui-lab/gates.mjs, reduced-motion) read the Toast's 200ms opacity transition under Reduce
+     Motion as a violation: the one block can only soften a transition to a 200ms crossfade, but it collapses an
+     animation to 1ms. MUTATION 1: put \`transition: opacity var(--m-ui) var(--e-out)\` back on .lb-toast -> red.
+     MUTATION 2: drop the \`animation\` from .is-open -> the Toast appears with no arrival: red.
+     MUTATION 3: delete the @keyframes -> the name points at nothing: red. */
+  const toast = /\.ag \.lb-toast\s*\{([^}]*)\}/.exec(LIB_CSS)[1];
+  assert.ok(!/transition/.test(toast), "the closed Toast carries no transition");
+  const open = /\.ag \.lb-toast\.is-open\s*\{([^}]*)\}/.exec(LIB_CSS)[1];
+  assert.ok(!/transition/.test(open), "nor does the open one");
+  assert.match(open, /animation:\s*lb-toast-in var\(--m-ui\) var\(--e-out\)/, "it arrives on the motion tokens");
+  assert.match(LIB_CSS, /@keyframes lb-toast-in\s*\{\s*from\s*\{[^}]*opacity:\s*0[^}]*\}\s*to\s*\{[^}]*opacity:\s*1[^}]*\}\s*\}/, "from nothing to the resting place");
+  assert.ok(!/prefers-reduced-motion/.test(LIB_CSS), "and the block that collapses it is still tokens.css's alone");
+  assert.match(TOKENS_CSS, /animation-duration:\s*1ms !important/, "which makes an animation 1ms, under Reduce Motion");
 });
 
 /* ==================================================================== */
@@ -447,7 +465,7 @@ test("the handle and the swipe's label are tokens-sized: the handle is a 44 squa
   assert.match(handle, /height:\s*var\(--tap\)/);
   assert.match(handle, /touch-action:\s*none/);
   assert.match(QUEUE_CSS, /\.ag \.qp-row \.lb-cover\s*\{\s*touch-action:\s*pan-y/);
-  assert.match(QUEUE_CSS, /grid-template-columns:\s*var\(--art-queue\) minmax\(0, 1fr\) var\(--tap\) var\(--tap\)/, "art, copy, handle, menu");
+  assert.match(QUEUE_CSS, /grid-template-columns:\s*var\(--art-queue\) minmax\(0, 1fr\) var\(--s-6\) var\(--tap\)/, "art, copy, a 24 column for the 44 handle to sit over, the 44 menu");
 });
 
 test("the screen is registered: linked once in index.html, in every shell list, and its script is a classic script after library.js", () => {

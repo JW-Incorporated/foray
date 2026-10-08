@@ -19,7 +19,7 @@
 .ag .qp-back:focus-visible { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) / 2); }
 .ag .qp-head h2 { min-width: 0; }
 .ag .qp-count { flex: none; color: var(--text-2); }
-.ag .qp-head .up-next-clear { flex: none; }
+.ag .qp-head .qp-clear { flex: none; }
 /* The head sits 16 above the first row, as Library's title does above its grid. */
 .ag .qp-section > .lb-stack { margin-top: var(--s-3); }
 .ag .qp-section > .lb-empty { padding-top: var(--s-6); }
@@ -27,18 +27,21 @@
 /* The row is Library's QueueRow with a fourth column: art, copy, the handle, the menu. The playing row has neither the
    handle nor the menu (it leaves the list when it ends), so it keeps Library's two columns (`.lb-nomenu`). The row
    keeps the vertical scroll for the browser everywhere but the handle. */
-.ag .qp-row { grid-template-columns: var(--art-queue) minmax(0, 1fr) var(--tap) var(--tap); transition: transform var(--m-ui) var(--e-out); }
+.ag .qp-row { grid-template-columns: var(--art-queue) minmax(0, 1fr) var(--s-6) var(--tap); transition: transform var(--m-ui) var(--e-out); }
 .ag .qp-row .lb-cover { touch-action: pan-y; }
 
 /* The handle: a 44 button whose glyph is six dots (two columns of three) drawn here, in the muted text colour, 3:1
-   against the row's ground in both schemes. `touch-action: none` on the handle alone: a finger that lands there is
-   asking to drag, so the browser must not take it as a pan. */
+   against the row's ground in both schemes. Its column is only 24 wide, so the caption keeps the room; the button is 44
+   and centred on it, reaching 10px into the gaps either side (the menu's own edge is 12 beyond the column, so the two
+   targets never overlap). `touch-action: none` on the handle alone: a finger that lands there is asking to drag, so the
+   browser must not take it as a pan. */
 .ag .qp-handle {
-  position: relative; z-index: 2; width: var(--tap); height: var(--tap); padding: 0; border: 0; background: transparent;
+  position: relative; z-index: 2; justify-self: center; width: var(--tap); height: var(--tap); padding: 0; border: 0; background: transparent;
   border-radius: var(--r-round); color: var(--text-2); cursor: grab; touch-action: none;
 }
 .ag .qp-handle::before {
-  content: ''; position: absolute; left: 50%; top: 50%; width: var(--s-3); height: var(--s-5); margin: calc(var(--s-5) / -2) 0 0 calc(var(--s-3) / -2);
+  content: ''; position: absolute; left: 50%; top: 50%; width: var(--s-3); height: calc(var(--s-1) * 4.5);
+  margin: calc(var(--s-1) * -2.25) 0 0 calc(var(--s-3) / -2);
   background: radial-gradient(circle at center, currentColor 1.5px, transparent 2px) 0 0 / calc(var(--s-1) * 1.5) calc(var(--s-1) * 1.5);
 }
 .ag .qp-handle:focus-visible { outline: none; box-shadow: 0 0 0 calc(var(--s-1) / 2) var(--lamp-text); }
