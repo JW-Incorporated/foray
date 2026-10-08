@@ -1090,7 +1090,13 @@ clock 2026-10-05, remote art off.)
     `home-loading`. The offline state tells the page it is offline without cutting the network:
     a context with no network and no service worker cannot serve the icon sprite a new `<use>`
     fetches, and the glyphs vanished for a reason that is not the app's.
-12. **Not done here, on purpose.** Judge passes (no judge agent could be spawned from this
+12. **Iteration 3 rework (fidelity audit: top seam, strip rhythm).** Both findings are the two items above (3b, 4):
+    the scrim's release is eased over 126px and the strip is flat bars at one gap with a light at every boundary, no
+    part-lit bar. Tests: 4 (rewritten), 4b (rewritten, adds the feed-with-and-without-narration identity), 4c (the gap
+    and the fixed light), 4d (no fill layer, no taller bar, whole-bar lit and dim) and 10c (the eased release), each
+    with its mutation run red (twelve mutations, one survivor fixed: the `g.kind !== "narration"` filter was absorbed by
+    the empty-name filter until 4b gave a narration row a voice's name). Floor 17 to 20.
+13. **Not done here, on purpose.** Judge passes (no judge agent could be spawned from this
     run): the fidelity renders and the side-by-sides are in `data-local/redesign/fidelity/
     today-i1` and `today-i2`, a Dawn pass in `today-dawn-i1`. The rolling `ambient-app`
     baseline is not re-recorded (it is shared by every screen branch and re-locks on merge);
@@ -1150,17 +1156,28 @@ the pixel numbers are 11.2's, checked against the round-4 prototype's `.onb-*` r
    say; the prototype's `.strip-wrap` is a 54px `<button>` box (its hit area), so the strip region reads -6px high and the
    title and body +/-6px up. The bars sit 12px down in the box (the prototype's button centred them), so they land 5px
    above the prototype's. (b) The head scrim is held at `--scrim-head` to the wordmark's last pixel (`safe-top + 54`) and
-   released to `--scrim-top` by `+ 72`; the prototype ramped from 0. 11.2 says "head 0.52 to safe-top + 72" and the
+   then eased out to `--scrim-top`; the prototype ramped from 0. 11.2 says "head 0.52 to safe-top + 72" and the
    acceptance says the head icons keep 3:1 over any art: at the wordmark's baseline the ramp was at 0.28 alpha and the
-   pair measured 1.6:1 over pure white art. Held, the pair is 3.27:1 in Dusk and 4.8:1 in Dawn (test 11).
+   pair measured 1.6:1 over pure white art. Held, the pair is 3.27:1 in Dusk and 4.8:1 in Dawn (test 11). The release
+   was first 18px (to `+ 72`) and the art director's iteration-3 audit saw it: a flat darker band over a lit wash, a
+   banner slab rather than a lit room. It is now a smoothstep in five stops over 126px, ending at `safe-top + 180`
+   (`--ob-head`; test 10c holds every segment to at most 1.5% of the head-to-top difference per pixel, the old release
+   was 5.6%). The hold itself stays: the wordmark's 3:1 depends on it and `--scrim-head` is shared with every Room.
 4. **The strip** is drawn from the first listable foray through `ForayPlayer.stripModel` (narration merged), as bars
    sharing the 343px by runtime, 4px apart (iteration 3: the 2px of 4.1's strip read as one striped block on the dim hues, so the
-   onboarding strip, which is a row of lanterns, takes `--s-1`; neighbours that name one show, and lights that touch, are
-   merged into one bar or one light so three same-hue bars never sit side by side; lights are 12px wide; the unnarrated
-   gaps stay unfilled, a light is only drawn where the foray has narration): a show's bar in its artwork hue (`oklch(0.70 0.13 H)` Dusk, `0.52` Dawn, nudged
-   30 degrees when within 24 of a bar already drawn; numbers only), narration as thin Lamp lights, the bar being played 4px
-   taller and part-lit (18% in, an illustration, `aria-hidden`). More than 14 bars condense to nine named for the show that
-   holds most of each, with a narration light after every third (the prototype's mini-strip rule). It draws in over 1.2s:
+   onboarding strip, which is a row of lanterns, takes `--s-1`; neighbours that name one show are merged into one bar so
+   three same-hue bars never sit side by side). **Iteration 3 rework, after the art director's fidelity audit:** the strip
+   is a drawing, not a readout, and it is drawn as the prototype draws it. A narration light (12px, fixed, Lamp) sits at
+   EVERY boundary between two bars, whether or not the feed carries narration there, so the air between two bars is one
+   gap (4px) or one gap, a light, one gap, never 4px at one boundary and 20px at the next; the feed's own narration rows
+   are not drawn at all (the unnarrated gaps used to stay open, which is what read as uneven). No bar is part-lit and
+   none is taller: the old "playing" bar (18% in) was a lit block fused to a dim block with no gap, which read as two
+   segments run together. At rest a bar is one flat colour, whole: the bars the first 18% of the foray has gone by (the
+   ones whose middle is behind it; the first, at any real length) are at full opacity and the rest at `--seg-dim`, as the
+   prototype's strip is drawn. A bar's colour is its artwork hue (`oklch(0.70 0.13 H)` Dusk, `0.52` Dawn, nudged
+   30 degrees when within 24 of a bar already drawn; numbers only). `aria-hidden`. More than 8 bars condense to seven
+   named for the show that holds most of each (with a light between every two bars the 343px would otherwise be mostly
+   lights; the prototype draws six). It draws in over 1.2s:
    `--ob-step` is set from the bar count so the last bar ends at 1200ms (280ms each). No foray, no player module: no strip,
    the title moves up to 24 under the sleeves.
 5. **Show my picks.** Writes `cp_intro_dismissed` through the shim at the press, sends the strip to Today's hero collage
@@ -1204,7 +1221,13 @@ the pixel numbers are 11.2's, checked against the round-4 prototype's `.onb-*` r
     three Playwright specs and two root suites (ids). Equivalent mutant noted: dropping only the `stripModel` guard in
     `onboardingBars` is absorbed by its own try/catch; dropping both is red.
 11. **Budget.** `ui/onboarding.css` is 8.3 KB source; `prepare-webdir.test.mjs` passes with the bundle under the cap.
-12. **Not done here, on purpose.** Judge passes and the reviewer pass (no agent could be spawned from this run): the
+12. **Iteration 3 rework (fidelity audit: top seam, strip rhythm).** Both findings are the two items above (3b, 4):
+    the scrim's release is eased over 126px and the strip is flat bars at one gap with a light at every boundary, no
+    part-lit bar. Tests: 4 (rewritten), 4b (rewritten, adds the feed-with-and-without-narration identity), 4c (the gap
+    and the fixed light), 4d (no fill layer, no taller bar, whole-bar lit and dim) and 10c (the eased release), each
+    with its mutation run red (twelve mutations, one survivor fixed: the `g.kind !== "narration"` filter was absorbed by
+    the empty-name filter until 4b gave a narration row a voice's name). Floor 17 to 20.
+13. **Not done here, on purpose.** Judge passes and the reviewer pass (no agent could be spawned from this run): the
     fidelity renders and side-by-sides are in `data-local/redesign/fidelity/onboarding-i2`, `onboarding-412-i2` and
     `onboarding-dawn-i2`. The rolling `ambient-app` baseline is not re-recorded (shared by every screen branch; it
     re-locks on merge). `ambient-gallery` compared 123/123 exact. Gates on `first-run`: 0 new against the known debt;

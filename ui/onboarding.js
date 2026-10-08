@@ -322,8 +322,9 @@ const ONBOARDING_CYCLE_MS = 6000;      // each artwork holds the Room this long
 const ONBOARDING_LEAVE_MS = 420;       // --m-sheet: the strip travels, then the Room lets go
 const ONBOARDING_DRAW_MS = 1200;       // the strip draws in over this, the last bar included
 const ONBOARDING_BAR_MS = 280;         // --m-ui: one bar's own scale-in
-const ONBOARDING_PLAYED = 0.18;        // how far into the foray the strip is lit when it is drawn
-const ONBOARDING_BAR_MAX = 14;         // more bars than this are condensed (the strip is 343px wide)
+const ONBOARDING_PLAYED = 0.18;        // how far into the foray the strip is lit when it is drawn (whole bars: the ones whose middle is behind it)
+const ONBOARDING_BAR_MAX = 8;          // more shows' bars than this are condensed (the strip is 343px wide, and a light sits between bars)
+const ONBOARDING_CONDENSED = 7;        // ... into this many
 
 /** Up to four {name, src}: the first foray's distinct shows, then the pool's. */
 function onboardingShows(r = null) {
@@ -348,52 +349,53 @@ function onboardingForay() {
   } catch (_) { return null; }
 }
 
-/** The strip's bars as {s: show|null, d: seconds, f: 0..1 lit, cur}. Ported from the prototype's mini strip:
-    more than ONBOARDING_BAR_MAX bars become nine, each named for the show that holds most of it, with a thin
-    narration light after every third. [] when the player module or the foray is absent (no strip is drawn). */
+/** The strip's bars as {s: show|null, d: seconds, f: 0|1}: one bar per run of a show, a narration light between every
+    two bars. It is a drawing of the foray's shape, not a readout (aria-hidden), so the rhythm is the design's: the
+    prototype puts one light at every boundary, and so do we, at a fixed width and one gap, never only where the feed
+    happens to carry narration (that left some neighbours 4px apart and others 20px, and read as a block).
+    Neighbours that name one show (two episodes back to back, or two separated only by narration) are one bar. More than
+    ONBOARDING_BAR_MAX bars become ONBOARDING_CONDENSED, each named for the show that holds most of it. `f` is 1 for the
+    bars the first ONBOARDING_PLAYED of the foray has gone by and 0 for the rest: whole bars only, at rest, never a bar
+    half lit (a half-lit bar read as two segments run together). [] when the player module or the foray is absent. */
 function onboardingBars(r) {
   const player = window.ForayPlayer;
   if (!r || !player || typeof player.stripModel !== "function") return [];
   let model;
   try { model = player.stripModel(r.playable, { mergeNarration: true }); } catch (_) { return []; }
-  let bars = (model && model.segments || [])
-    .map(g => ({ s: g.kind === "narration" ? null : (g.show || ""), d: Math.max(1, Number(g.lengthSec) || 0) }))
-    .filter(b => b.d > 0);
-  if (bars.length > ONBOARDING_BAR_MAX) {
-    const sum = bars.reduce((t, b) => t + b.d, 0);
-    const n = 9, per = sum / n, out = [];
-    let i = 0;
-    for (let k = 0; k < n; k++) {
-      const tally = new Map();
-      let got = 0;
-      while (i < bars.length && (got < per || k === n - 1)) {
-        if (bars[i].s) tally.set(bars[i].s, (tally.get(bars[i].s) || 0) + bars[i].d);
-        got += bars[i].d; i++;
-      }
-      let best = null;
-      tally.forEach((v, s) => { if (best === null || v > tally.get(best)) best = s; });
-      out.push({ s: best, d: got });
-      if (k % 3 === 1 && k < n - 1) out.push({ s: null, d: Math.max(1, Math.round(per * 0.08)) });
-    }
-    bars = out;
-  }
-  /* One lantern per run: neighbours that name the same show (two episodes of it back to back) draw as one bar, and
-     two lights in a row (a condensed group that held only narration, then the light after every third) as one. A
-     strip of three same-hue bars side by side reads as a smear, not as a map. */
-  bars = bars.reduce((out, b) => {
+  const oneRun = (list) => list.reduce((out, b) => {
     const last = out[out.length - 1];
     if (last && last.s === b.s) last.d += b.d; else out.push({ s: b.s, d: b.d });
     return out;
   }, []);
-  const total = bars.reduce((t, b) => t + b.d, 0);
+  let runs = oneRun((model && model.segments || [])
+    .filter(g => g.kind !== "narration" && String(g.show || "").trim())
+    .map(g => ({ s: String(g.show), d: Math.max(1, Number(g.lengthSec) || 0) })));
+  if (runs.length > ONBOARDING_BAR_MAX) {
+    const sum = runs.reduce((t, b) => t + b.d, 0);
+    const n = ONBOARDING_CONDENSED, per = sum / n, out = [];
+    let i = 0;
+    for (let k = 0; k < n; k++) {
+      const tally = new Map();
+      let got = 0;
+      while (i < runs.length && (got < per || k === n - 1)) {
+        tally.set(runs[i].s, (tally.get(runs[i].s) || 0) + runs[i].d);
+        got += runs[i].d; i++;
+      }
+      let best = null;
+      tally.forEach((v, s) => { if (best === null || v > tally.get(best)) best = s; });
+      if (best !== null) out.push({ s: best, d: got });
+    }
+    runs = oneRun(out);
+  }
+  const total = runs.reduce((t, b) => t + b.d, 0);
   const lit = total * ONBOARDING_PLAYED;
-  let start = 0, cur = -1;
-  bars.forEach((b, k) => {
-    b.f = Math.max(0, Math.min(1, (lit - start) / b.d));
-    if (cur < 0 && b.s && lit >= start && lit < start + b.d) cur = k;
+  let start = 0;
+  const bars = [];
+  runs.forEach((b, k) => {
+    if (k) bars.push({ s: null, d: 0, f: 0 });
+    bars.push({ s: b.s, d: b.d, f: start + b.d / 2 < lit ? 1 : 0 });
     start += b.d;
   });
-  if (cur >= 0) bars[cur].cur = true;
   return bars;
 }
 
@@ -478,12 +480,11 @@ function openOnboardingRoom({ replay = false } = {}) {
     all(".ob-bar").forEach((el, k) => {
       const b = bars[k];
       if (!b) return;
-      el.style.setProperty("flex-grow", String(Math.max(1, Math.round(b.d))));
       el.style.setProperty("--i", String(k));
-      el.style.setProperty("--f", b.f.toFixed(3));
+      if (!b.s) { el.classList.add("is-narr"); return; }   // a light is a fixed width; only a show's bar shares the width by runtime
+      el.style.setProperty("flex-grow", String(Math.max(1, Math.round(b.d))));
       if (colours[k]) el.style.setProperty("--c", colours[k]);
-      if (!b.s) el.classList.add("is-narr");
-      if (b.cur) el.classList.add("is-cur");
+      if (b.f) el.classList.add("is-lit");
     });
   }
 

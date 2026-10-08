@@ -9,7 +9,7 @@
  *   1   the copy, word for word, in the styles the acceptance names, and inside the copy rules
  *   2   hostile data: show names and art URLs never reach markup or a style unescaped
  *   3   which four shows light the Room: the first foray's, in running order, then the pool's
- *   4   the strip: built from the foray's segments, condensed past 14 bars, one bar playing
+ *   4   the strip: a flat bar per show with a light at every boundary, condensed past 8 bars, whole bars lit, none part-lit
  *   5   the strip's colours are numbers only, in the scheme's lightness band, and nudged apart
  *   6   the Room cycles its artworks (6s), holds still under Reduce Motion, and stops with the Room
  *   7   "Show my picks": sets the flag through the shim, the strip travels to the hero collage, the Room lets go,
@@ -17,7 +17,8 @@
  *   8   "Skip for now": the flag, no travel, no sheet left behind
  *   9   Escape and a navigation park the Room and write nothing; Settings' "What 4a does" reopens it for anyone
  *   10  the stylesheet's own rules: scoped, one Reduce Motion owner, token durations, the pixel contract
- *   11  the head scrim holds through the wordmark, so the mark keeps 3:1 over any art in both schemes
+ *   11  the head scrim holds through the wordmark, so the mark keeps 3:1 over any art in both schemes, then eases out
+ *       (no hard edge in the backdrop)
  *   12  the Room is wired: index.html, the drawer, the harness state, screens.json, every shipping list
  *
  * Every test names the one-line mutation that makes it fail, and each was run (the PR lists them). A green test is
@@ -340,35 +341,37 @@ test("3. four shows light the Room: the first foray's in running order, then the
 });
 
 /* ================================================================== 4. the strip */
-test("4. the strip is built from the foray's segments, condensed past 14 bars, with exactly one bar playing", () => {
-  /* MUTATION: delete the condense branch -> thirty bars in 343px; set ONBOARDING_PLAYED to 0 -> no bar is playing;
-     drop the stripModel guard -> a missing player throws; mark every bar `cur` -> red. */
+test("4. the strip is a flat bar per show with a light at every boundary, condensed past 8 bars, whole bars lit and none part-lit", () => {
+  /* MUTATION: delete the condense branch -> sixteen bars in 343px; set ONBOARDING_PLAYED to 0 -> no bar is lit; make `f`
+     a fraction again (`(lit - start) / b.d`) -> a part-lit bar; push a light only `if (k % 2)` -> a boundary without one;
+     drop the stripModel guard -> a missing player throws -> red. */
   const m = mount();
   const small = withForay(m, ["A", "B", "C"]);
   const bars = [...m.evalIn("onboardingBars")(m.evalIn("onboardingForay()"))];
-  assert.strictEqual(bars.length, 5, "three shows and two bridges, as drawn");
-  assert.deepStrictEqual(bars.map((b) => b.s), ["A", null, "B", null, "C"]);
-  assert.strictEqual(bars.filter((b) => b.cur).length, 1, "exactly one bar is playing");
-  const cur = bars.findIndex((b) => b.cur);
-  bars.forEach((b, i) => assert.strictEqual(b.f, i < cur ? 1 : i === cur ? b.f : 0, `bar ${i}: lit before the playing one, dark after`));
-  assert.ok(bars[cur].f > 0 && bars[cur].f < 1, "and the playing bar is part-lit");
+  assert.deepStrictEqual(bars.map((b) => b.s), ["A", null, "B", null, "C"], "three shows, and a light at each of the two boundaries");
+  assert.ok(bars.every((b) => b.f === 0 || b.f === 1), "whole bars only: nothing is part-lit");
+  assert.ok(bars.every((b) => !("cur" in b)), "and no bar is the one playing: nothing is");
+  assert.deepStrictEqual(bars.map((b) => b.f), [1, 0, 0, 0, 0], "the first 18% has gone by: A, whose middle is behind it, is lit; B and C are not");
   void small;
   const many = mount();
   withForay(many, Array.from({ length: 16 }, (_, i) => `Show ${i % 5}`));
   const condensed = [...many.evalIn("onboardingBars")(many.evalIn("onboardingForay()"))];
-  assert.ok(condensed.length >= 9 && condensed.length <= 12, `at most nine bars and a narration light after every third (neighbours that name one show are one bar), got ${condensed.length}`);
-  assert.ok(condensed.filter((b) => b.s === null).length >= 3, "the lights are there");
-  assert.strictEqual(condensed.filter((b) => b.cur).length, 1);
-  assert.ok(condensed.every((b) => b.s === null || /^Show \d$/.test(b.s)), "every bar is named for a real show or is a light");
+  const showBars = condensed.filter((b) => b.s !== null);
+  assert.ok(showBars.length >= 2 && showBars.length <= 7, `at most seven bars, got ${showBars.length}`);
+  assert.strictEqual(condensed.length, showBars.length * 2 - 1, "a light between every two bars, none at either end");
+  assert.ok(condensed.every((b, i) => (i % 2 === 1) === (b.s === null)), "bar, light, bar, light: one rhythm the whole width");
+  assert.ok(condensed.every((b) => b.s === null || /^Show \d$/.test(b.s)), "every bar is named for a real show");
+  assert.ok(condensed.every((b) => b.f === 0 || b.f === 1));
   const bare = mount();
   assert.deepStrictEqual([...bare.evalIn("onboardingBars")(null)], [], "no foray: no strip");
   bare.ctx.ForayPlayer = {};
   assert.deepStrictEqual([...bare.evalIn("onboardingBars")({ playable: [{ show: "A" }] })], [], "no stripModel: no strip, no throw");
 });
 
-test("4b. no two neighbouring bars share a show and no two lights touch, so the strip is lanterns, not a smear", () => {
-  /* MUTATION: delete the `bars.reduce` merge in onboardingBars (the "One lantern per run" block) -> the same-show pair and
-     the doubled lights come back and every assertion below is red. */
+test("4b. no two neighbouring bars share a show, and narration the feed has or lacks never changes the rhythm", () => {
+  /* MUTATION: delete the `oneRun` merges in onboardingBars -> the same-show pair comes back; draw the feed's own narration
+     (drop the `g.kind !== "narration"` filter) -> a light the feed carries sits beside the synthetic one and the
+     alternation below is red. */
   const m = mount();
   /* two episodes of A back to back, then B */
   const b = bridge(["A", "A", "B"]);
@@ -378,21 +381,55 @@ test("4b. no two neighbouring bars share a show and no two lights touch, so the 
   const small = [...m.evalIn("onboardingBars")(m.evalIn("onboardingForay()"))];
   assert.deepStrictEqual(small.map((x) => x.s), ["A", null, "B"], "two A segments draw as one bar");
   assert.strictEqual(small[0].d, 600, "and it holds both lengths");
+  /* the same foray with and without feed narration between its shows draws the same strip */
+  const withNarr = mount(), without = mount();
+  const bw = withForay(withNarr, ["A", "B", "C"]);
+  bw.playable.forEach((p) => { if (p.type === "narration") p.show = "Narrator"; });   // a narration row that names a voice must not become a bar
+  const bn = bridge(["A", "B", "C"]);
+  bn.playable.splice(0, bn.playable.length, ...bn.playable.filter((p) => p.type !== "narration"));
+  without.ctx.ForayPlayer = bn.player;
+  without.state.forays = { forays: [{ id: "f1", status: "published" }] };
+  const sig = (mm) => JSON.stringify([...mm.evalIn("onboardingBars")(mm.evalIn("onboardingForay()"))].map((x) => [x.s, x.f]));
+  assert.strictEqual(sig(without), sig(withNarr), "a foray whose feed carries no narration draws the same lights");
   for (const shows of [["A", "A", "A", "B", "B", "B", "C", "C"], Array.from({ length: 30 }, (_, i) => `Show ${Math.floor(i / 6)}`)]) {
     const many = mount();
     withForay(many, shows);
     const bars = [...many.evalIn("onboardingBars")(many.evalIn("onboardingForay()"))];
     assert.ok(bars.length >= 3, "fixture: the strip has several bars");
-    bars.slice(1).forEach((x, i) => assert.notStrictEqual(x.s, bars[i].s, `bars ${i} and ${i + 1} are both ${JSON.stringify(x.s)}`));
-    assert.strictEqual(bars.filter((x) => x.cur).length, 1, "still exactly one bar playing");
+    const named = bars.filter((x) => x.s !== null);
+    named.slice(1).forEach((x, i) => assert.notStrictEqual(x.s, named[i].s, `bars ${i} and ${i + 1} are both ${JSON.stringify(x.s)}`));
+    assert.ok(bars.every((x, i) => (i % 2 === 1) === (x.s === null)), "bar, light, bar, light");
   }
 });
 
-test("4c. the bars are 4px apart so neighbouring lanterns read as separate", () => {
-  /* MUTATION: set the .ob-strip gap back to `calc(var(--s-1) / 2)` (2px) -> red. */
+test("4c. one gap, everywhere: bars 4px apart, every light a fixed 12px, so the air between two bars is the same at every boundary", () => {
+  /* MUTATION: set the .ob-strip gap back to `calc(var(--s-1) / 2)` (2px); let a light grow with its runtime (drop the
+     `flex: 0 0 12px`) or set its min-width to 14px; let `.ob-bar` take a margin -> red. */
   const strip = ONB_RULES.find((r) => r.prelude === ".ob-room .ob-strip");
   assert.ok(strip, "fixture: the strip rule exists");
   assert.strictEqual(decls(strip.body).gap, "var(--s-1)", "4px of air between bars (--s-1)");
+  const light = ruleOf(ONB_CSS, ".ob-room .ob-bar.is-narr");
+  assert.strictEqual(light.flex, "0 0 12px", "a light neither grows nor shrinks");
+  assert.strictEqual(light["min-width"], "12px");
+  const bar = ruleOf(ONB_CSS, ".ob-room .ob-bar");
+  assert.ok(!Object.keys(bar).some((k) => /^margin(-left|-right|-inline)/.test(k)), "no side margin: the gap is the only air");
+  /* and the script never sets a width on a light: only a show's bar takes its runtime */
+  assert.match(ONB_JS, /if \(!b\.s\) \{ el\.classList\.add\("is-narr"\); return; \}[^\n]*\n\s*el\.style\.setProperty\("flex-grow"/, "flex-grow is set after the light has returned");
+});
+
+test("4d. every bar is one flat colour at rest: no fill layer, no taller 'playing' bar, lit and dim are whole-bar opacities", () => {
+  /* MUTATION: put `.ob-room .ob-bar::before` / `::after` back (a fill layer), or an `.ob-bar.is-cur` rule (a taller bar),
+     or `--f` back into the script -> red. A half-lit bar was the iteration-3 finding: it read as two segments run together. */
+  const sels = ONB_RULES.flatMap((r) => selectorsOf(r.prelude));
+  assert.ok(!sels.some((x) => /\.ob-bar(\.[\w-]+)*::(before|after)/.test(x)), "a bar draws no layer of its own");
+  assert.ok(!sels.some((x) => /\.is-cur\b/.test(x)), "no taller current bar");
+  assert.doesNotMatch(ONB_JS.replace(/\/\*[\s\S]*?\*\//g, ""), /--f\b|is-cur|\.cur\b/, "the script sets no fill and marks no current bar");
+  const bar = ruleOf(ONB_CSS, ".ob-room .ob-bar");
+  assert.strictEqual(bar.background, "var(--c, var(--seg-c0))", "the bar is its show's hue, whole");
+  assert.strictEqual(bar.opacity, "var(--seg-dim)", "unlit bars are the dim token, as the prototype draws them");
+  assert.strictEqual(ruleOf(ONB_CSS, ".ob-room .ob-bar.is-lit").opacity, "1");
+  assert.strictEqual(ruleOf(ONB_CSS, ".ob-room .ob-bar.is-narr").opacity, "1", "a light is never dimmed");
+  assert.strictEqual(ruleOf(ONB_CSS, ".ob-room .ob-bar").height, "var(--s-6)", "one height for every bar");
 });
 
 /* ================================================================== 5. the strip's colours */
@@ -614,17 +651,30 @@ test("10b. the pixel contract: 176px sleeves 40 under the wordmark row, the stri
   assert.strictEqual(ruleOf(ONB_CSS, ".ob-room .ob-sleeve .ag-art").width, "96px");
 });
 
-test("10c. the scrim's stops are pixels from the top: the head held to the wordmark's last pixel, bright to +248, mid at +272", () => {
-  /* MUTATION: change a stop's px; remove the `var(--scrim-head) var(--ob-mark)` hold; move --ob-mark under 54 -> red. */
+test("10c. the scrim's stops are pixels from the top: the head held to the wordmark's last pixel, EASED out by +180, bright to +248, mid at +272", () => {
+  /* MUTATION: change a stop's px; remove the `var(--scrim-head) var(--ob-mark)` hold; move --ob-mark under 54; collapse the
+     release to one stop (`var(--scrim-top) var(--ob-head)` straight after the hold, with --ob-head at +72) -> red. */
   const r = ruleOf(ONB_CSS, ".room.ob-room");
   assert.strictEqual(r["--ob-mark"], "calc(var(--safe-top) + 54px)");
-  assert.strictEqual(r["--ob-head"], "calc(var(--safe-top) + 72px)");
+  assert.ok(r["--ob-head"].startsWith("calc(var(--safe-top) + 180px)"), "the release ends at safe-top + 180");
   assert.strictEqual(r["--ob-bright"], "calc(var(--safe-top) + 248px)");
   assert.strictEqual(r["--ob-mid"], "calc(var(--safe-top) + 272px)");
   const after = ruleOf(ONB_CSS, ".room.ob-room::after").background.replace(/\s+/g, " ");
-  assert.strictEqual(after, "linear-gradient(180deg, var(--scrim-head) 0, var(--scrim-head) var(--ob-mark), var(--scrim-top) var(--ob-head), var(--scrim-top) var(--ob-bright), var(--scrim-mid) var(--ob-mid), var(--scrim-low) 100%)");
+  const mix = (n) => `color-mix(in srgb, var(--scrim-top) ${n}%, var(--scrim-head))`;
+  assert.strictEqual(after, "linear-gradient(180deg, var(--scrim-head) 0, var(--scrim-head) var(--ob-mark), "
+    + `${mix(10)} calc(var(--ob-mark) + 25px), ${mix(35)} calc(var(--ob-mark) + 50px), ${mix(65)} calc(var(--ob-mark) + 76px), ${mix(90)} calc(var(--ob-mark) + 101px), `
+    + "var(--scrim-top) var(--ob-head), var(--scrim-top) var(--ob-bright), var(--scrim-mid) var(--ob-mid), var(--scrim-low) 100%)");
   const wordmarkEnd = 24 + 30;
   assert.ok(parseInt(/\+ (\d+)px/.exec(r["--ob-mark"])[1], 10) >= wordmarkEnd, "the hold reaches the wordmark's bottom edge");
+  /* No hard edge in the backdrop: the release is a long monotone ramp, and no stretch of it changes the alpha faster than
+     1.5% of the head-to-top difference per pixel (the 18px release it replaces was 5.6%/px, a seam under the wordmark). */
+  const stops = [[0, 54], ...[...after.matchAll(/color-mix\(in srgb, var\(--scrim-top\) (\d+)%, var\(--scrim-head\)\) calc\(var\(--ob-mark\) \+ (\d+)px\)/g)].map((x) => [Number(x[1]), 54 + Number(x[2])]), [100, 180]];
+  assert.ok(stops.length === 6 && stops[5][1] - stops[0][1] >= 120, "the release spans at least 120px");
+  stops.slice(1).forEach(([v, y], i) => {
+    const [pv, py] = stops[i];
+    assert.ok(v > pv, `stop ${i + 1} releases further than the last`);
+    assert.ok((v - pv) / (y - py) <= 1.5, `between y=${py} and y=${y} the scrim changes ${((v - pv) / (y - py)).toFixed(2)}% per px`);
+  });
 });
 
 /* ================================================================== 11. contrast */
