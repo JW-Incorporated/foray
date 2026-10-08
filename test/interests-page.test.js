@@ -184,6 +184,43 @@ function tapChip(group, which, { disabled = false } = {}) {
   group._fire("click", { target: chip });
 }
 
+/** A LIVE radiogroup for one row, built from the markup the page really wrote for it: three chip elements that carry
+    the rendered attributes and class, and that the REAL handlers can repaint (stSegSelect reads `querySelectorAll`,
+    `getAttribute`, `classList.toggle`, `setAttribute`; stSegKey reads `closest`, `focus`, `click`). A `click()` on a
+    chip dispatches to the group the way a bubbling tap does, so a tap runs bindInterestsControls' own listener. Unlike
+    tuneGroup/tapChip above (which only prove what the handler WRITES), this shows what the handler leaves ON SCREEN. */
+function liveGroup(m, id) {
+  const row = rowHtml(m.view(), id);
+  assert.ok(row, `the ${id} row must render`);
+  const group = makeEl("div");
+  const groupAttrs = new Map([["data-interest-id", id], ["role", "radiogroup"]]);
+  group.getAttribute = (k) => (groupAttrs.has(k) ? groupAttrs.get(k) : null);
+  group.focused = null;
+  group.chips = [...row.matchAll(/<button\b([^>]*)>([^<]*)<\/button>/g)].map((b) => {
+    const attrs = new Map([...b[1].matchAll(/([\w-]+)="([^"]*)"/g)].map((a) => [a[1], a[2]]));
+    const cls = new Set((attrs.get("class") || "").split(/\s+/).filter(Boolean));
+    const chip = makeEl("button");
+    chip.disabled = /\sdisabled\b/.test(b[1]);
+    chip.getAttribute = (k) => (attrs.has(k) ? attrs.get(k) : null);
+    chip.setAttribute = (k, v) => { attrs.set(k, String(v)); };
+    chip.classList = {
+      add: (c) => cls.add(c), remove: (c) => cls.delete(c), contains: (c) => cls.has(c),
+      toggle: (c, on) => { if (on) cls.add(c); else cls.delete(c); return !!on; },
+    };
+    chip.closest = (sel) => (sel === "[data-st-value]" || sel === "[role=radio]" ? chip : sel === "[role=radiogroup]" ? group : null);
+    chip.focus = () => { group.focused = chip; };
+    chip.click = () => group._fire("click", { target: chip });
+    chip.value = attrs.get("data-st-value");
+    chip.read = () => ({ selected: cls.has("is-selected"), checked: attrs.get("aria-checked") === "true", tabindex: attrs.get("tabindex") });
+    return chip;
+  });
+  group.querySelectorAll = (sel) => (sel === "[role=radio]" ? group.chips : []);
+  m.byId.get("view").querySelectorAll = (sel) => (sel === "[data-interest-id]" ? [group] : []);
+  m.ctx.bindInterestsControls(m.byId.get("view"));
+  return group;
+}
+const pickOf = (group) => group.chips.map((c) => ({ v: c.value, ...c.read() }));
+
 const A_ROOT_ID = "true-crime";
 
 /* ==================================================================== */
@@ -288,7 +325,7 @@ test("there are no sliders on the page", async () => {
 });
 
 test("the chip that reads as selected is the one that is aria-checked, tabbable, and Lamp-filled", async () => {
-  /* MUTATION: leave `is-selected` on the old chip after a tap (stSegSelect not called), or give every chip
+  /* The FIRST render only (the repaint after a tap is pinned by the next test). MUTATION: give every chip
      tabindex="0". The roving tabindex keeps one Tab stop per row of 40; the picture and the state agree. */
   const m = await mountBooted();
   m.ctx.location.hash = "#/interests";
@@ -298,6 +335,36 @@ test("the chip that reads as selected is the one that is aria-checked, tabbable,
   assert.strictEqual(tabbable.length, 1, "one Tab stop per row");
   assert.match(tabbable[0][0], /aria-checked="true"/, "and it is the checked one");
   assert.match(tabbable[0][0], /class="ag-chip is-selected"/, "which wears the Lamp fill class");
+});
+
+test("tapping another chip moves the Lamp fill, aria-checked and the one Tab stop to it, in place, and writes the weight", async () => {
+  /* The first render is not the control: after a tap the SAME elements are repainted by stSegSelect (no re-render, so
+     focus stays on the chip), and a stale old chip is what a screen reader and a keyboard would still be told.
+     MUTATION 1: remove `if (now) stSegSelect(group, now);` from bindInterestsControls (ui/interests.js) -> the tapped
+     chip is not selected / checked / tabbable and the old one still is; red on the first group of assertions.
+     MUTATION 2: remove `group.addEventListener("keydown", stSegKey);` -> the ArrowLeft below moves nothing; red.
+     MUTATION 3: have stSegSelect leave `tabindex` alone -> two Tab stops / the wrong one; red. */
+  const m = await mountBooted();
+  m.ctx.location.hash = "#/interests";
+  m.ctx.route();
+  const group = liveGroup(m, A_ROOT_ID);
+  const node = TAXONOMY.nodes.find((n) => n.id === A_ROOT_ID);
+  assert.deepStrictEqual(pickOf(group).filter((c) => c.selected).map((c) => c.v), ["pick"], "fixture: the row starts on 4a's pick");
+
+  group.chips.find((c) => c.value === "more").click();
+  assert.strictEqual(m.state.interests[A_ROOT_ID], Math.round(Math.min(1, node.weight + 0.3) * 100) / 100, "More wrote its weight");
+  assert.deepStrictEqual(pickOf(group), [
+    { v: "less", selected: false, checked: false, tabindex: "-1" },
+    { v: "pick", selected: false, checked: false, tabindex: "-1" },
+    { v: "more", selected: true, checked: true, tabindex: "0" },
+  ], "the fill, aria-checked and the single Tab stop all moved to the tapped chip");
+
+  /* Arrow keys: ArrowLeft from More lands on 4a's pick, focuses it, and the choice follows focus as native radios do. */
+  group._fire("keydown", { key: "ArrowLeft", target: group.chips.find((c) => c.value === "more"), preventDefault() {} });
+  assert.strictEqual(group.focused && group.focused.value, "pick", "ArrowLeft moved focus to the previous chip");
+  assert.strictEqual(m.state.interests[A_ROOT_ID], node.weight, "and chose it: the weight is 4a's pick again");
+  assert.deepStrictEqual(pickOf(group).filter((c) => c.selected && c.checked && c.tabindex === "0").map((c) => c.v), ["pick"]);
+  assert.strictEqual(pickOf(group).filter((c) => c.selected || c.checked || c.tabindex === "0").length, 1, "and only that chip");
 });
 
 /* ==================================================================== */
@@ -381,18 +448,44 @@ test("4a's pick restores the taxonomy-authored default exactly, and persists at 
 });
 
 test("a choice that would not differ from 4a's pick is offered disabled, and a tap on it changes nothing", async () => {
-  /* A subject already at 1 has no "More"; at 0 no "Less". MUTATION: drop `tuneOffered` from chooseInterest or the
-     `disabled` flag from interestTuneRow — a dead choice that looks live. */
+  /* A subject already at 1 has no "More"; at 0 no "Less". The nodes are put INTO the taxonomy the page reads, because
+     chooseInterest looks the id up (nodeById) and returns null for an id it does not know whether or not
+     `tuneOffered` is checked: the earlier made-up id made "returns null" true for the wrong reason. Each refusal is
+     paired with a POSITIVE control on the same node (its other direction is accepted), so a null here can only be
+     the offer check.
+     MUTATION 1: drop `|| !tuneOffered(node, which)` from chooseInterest (ui/interests.js) -> "More" on the weight-1
+     node is accepted: it returns a state and rewrites the stored 0.9 to 1; red.
+     MUTATION 2: drop the `disabled` flag from interestTuneRow (the `!tuneOffered` options column) -> the markup
+     assertions go red. */
   const m = await mountBooted();
-  const node = { id: "x-top", label: "Top subject", parent: null, weight: 1 };
-  const html = m.ctx.interestTuneRow(node);
-  const more = [...html.matchAll(/<button\b([^>]*)>([^<]*)<\/button>/g)].find((b) => /data-st-value="more"/.test(b[1]));
-  assert.ok(/\sdisabled\b/.test(more[1]), "More is disabled where the pick is already 1");
-  assert.strictEqual(m.ctx.chooseInterest("x-top", "more"), null, "and choosing it does nothing");
-  const zero = { id: "x-zero", label: "Zero subject", parent: null, weight: 0 };
-  const zeroHtml = m.ctx.interestTuneRow(zero);
-  const less = [...zeroHtml.matchAll(/<button\b([^>]*)>([^<]*)<\/button>/g)].find((b) => /data-st-value="less"/.test(b[1]));
-  assert.ok(/\sdisabled\b/.test(less[1]), "Less is disabled where the pick is already 0");
+  m.state.taxonomy.nodes.push(
+    { id: "x-top", label: "Top subject", parent: null, weight: 1 },
+    { id: "x-zero", label: "Zero subject", parent: null, weight: 0 },
+  );
+  const top = m.ctx.nodeById("x-top");
+  const zero = m.ctx.nodeById("x-zero");
+  assert.ok(top && zero, "fixture: the page's own taxonomy lookup finds both nodes (so a null below is not 'unknown id')");
+  const chipOf = (node, which) => {
+    const html = m.ctx.interestTuneRow(node);
+    return [...html.matchAll(/<button\b([^>]*)>([^<]*)<\/button>/g)].find((b) => new RegExp(`data-st-value="${which}"`).test(b[1]));
+  };
+  assert.ok(/\sdisabled\b/.test(chipOf(top, "more")[1]), "More is disabled where the pick is already 1");
+  assert.ok(!/\sdisabled\b/.test(chipOf(top, "less")[1]), "while Less is live there");
+  assert.ok(/\sdisabled\b/.test(chipOf(zero, "less")[1]), "Less is disabled where the pick is already 0");
+  assert.ok(!/\sdisabled\b/.test(chipOf(zero, "more")[1]), "while More is live there");
+
+  m.state.interests["x-top"] = 0.9;
+  const gen = m.state._interestsGen || 0;
+  assert.strictEqual(m.ctx.chooseInterest("x-top", "more"), null, "choosing the dead More does nothing");
+  assert.strictEqual(m.state.interests["x-top"], 0.9, "the stored weight did not move");
+  assert.strictEqual(m.state._interestsGen || 0, gen, "and no ranker was told anything changed");
+  assert.strictEqual(m.ctx.chooseInterest("x-top", "less"), "less", "control: the live direction on the same node is accepted");
+  assert.strictEqual(m.state.interests["x-top"], 0.4, "and writes 0.4 x the pick");
+
+  m.state.interests["x-zero"] = 0.2;
+  assert.strictEqual(m.ctx.chooseInterest("x-zero", "less"), null, "choosing the dead Less does nothing");
+  assert.strictEqual(m.state.interests["x-zero"], 0.2, "the stored weight did not move");
+  assert.strictEqual(m.ctx.chooseInterest("x-zero", "more"), "more", "control: the live direction on the same node is accepted");
 });
 
 test("a disabled chip's tap never reaches the weights", async () => {

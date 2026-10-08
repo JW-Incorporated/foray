@@ -499,11 +499,19 @@ test("NO DRAWER remains: not in index.html, not in the DOM after the page is wir
 
 test("a row to another page is a plain link: the router closes the Sheet, and focus lands on the new page's heading", () => {
   /* The three page rows are links, so the browser's own navigation runs and route() closes every Sheet when the hash
-     changes. The Sheet is mid-slide when route() lands focus, and the link it landed on leaves with the Sheet:
-     `stCloseSheet` lands focus on the heading once the Sheet is gone. MUTATION 1: make a row's click handler call
-     preventDefault -> the "left to the router" assertion is red. MUTATION 2: drop the `landOnPage` fallback from
-     stCloseSheet -> focus is left on nothing; red. */
-  const m = mount();
+     changes. THE REAL ORDER, which this test reproduces: route() asks the Sheet to close, the Sheet starts to slide out
+     (it is still in the DOM, focus is still on the link inside it), route() renders and calls landOnPage, which finds
+     focus NOT lost and does nothing; only when the slide ends does the link leave with the Sheet, and `stCloseSheet`
+     lands focus on the heading. So the harness reports Reduce Motion OFF and the panel a height (canSlide is true),
+     and the assertions wait for the slide. With Reduce Motion ON the Sheet closes synchronously inside route(), before
+     the render, and route()'s own landOnPage rescues focus: that harness could not tell the fallback from its absence
+     (this test's earlier form, whose MUTATION 2 survived).
+     MUTATION 1: make a row's click handler call preventDefault -> the "left to the router" assertion is red.
+     MUTATION 2: drop `landOnPage({ navigated: false })` from stCloseSheet (ui/settings.js, the `Promise.resolve().then`
+     block) -> after the slide focus is left on the removed link, and the last assertion is red.
+     MUTATION 3: make the harness report Reduce Motion (mount() without `reduce: false`) -> the "still sliding" assertion
+     is red, so a harness that skips the slide cannot pass this test again. */
+  const m = mount({ reduce: false });
   vm.runInContext("state.ready = true;", m.ctx);
   m.ctx.renderCurrentPage = () => {
     m.view.children.forEach((c) => { c.parentElement = null; });
@@ -524,8 +532,16 @@ test("a row to another page is a plain link: the router closes the Sheet, and fo
   assert.strictEqual(m.$$("#st-menu").length, 1, "which has not run yet, so the Sheet is still up");
   m.ctx.location.hash = "#/settings";
   m.ctx.route();
-  assert.strictEqual(m.$$("#st-menu").length, 0, "route() closed the Sheet on the hashchange");
-  assert.strictEqual(m.doc.activeElement, m.view.querySelector(".st-head").querySelector("h1"), "focus is on the page's heading, not stranded on the removed link");
+  assert.strictEqual(m.$$("#st-menu").length, 1, "route() asked the Sheet to close, and it is still sliding out");
+  assert.strictEqual(m.doc.activeElement, link, "so focus is still on the link inside it when route() lands the page");
+  return new Promise((resolve, reject) => setTimeout(() => {
+    try {
+      assert.strictEqual(m.$$("#st-menu").length, 0, "the slide ended and the Sheet left the DOM");
+      assert.strictEqual(m.doc.activeElement, m.view.querySelector(".st-head").querySelector("h1"),
+        "focus is on the page's heading, not stranded on the removed link");
+      resolve();
+    } catch (e) { reject(e); }
+  }, 400));
 });
 
 test("a row to the page already on screen closes the Sheet and navigates nowhere", () => {
