@@ -1657,6 +1657,18 @@ fidelity pair is its Library Up Next section and the menu sheet, `screens.json` 
    - Measured, `up-next-it2` (393x852): rows +0/+12 (the back row; the prototype is a scrolled crop of Library's section with
      no page head) and +18.6 tall (the wrapped four-line title that used to be cut); sheet delta 0, 0, 0, 0; mini and tab bar
      the Dock unit's (+40 wide).
+8. **Iteration 3 round (second judge pass), decided without the owner.** Fixed: **Clear is the caption's grey, not Ember**
+   (`.qp-clear`, `ui/queue.css`; Ember is the listener's own marks and `.ag-btn-quiet` paints it by default; a guard test pins the
+   override). Left, with the reason: (a) the **Back chevron and "N queued"** stay: this page is reached from Library's "All N in
+   Up Next" and by URL, not from the Dock, so it needs the history-aware Back (`card-anatomy`, KEEP), and the plain-language count
+   is pinned by `up-next-queue`; (b) the **cool tint on the playing row** is a harness artefact (item 7: no remote artwork, so the
+   show hashes to violet); a show in the palette table, or a real cover, reads as its own art, and `AG_NEUTRAL_GLOW` is warm; (c) the
+   **"4a added" eyebrow and why-line** are not built: `cp_queue` holds ids only and nothing records who queued a row, and "state
+   observed, never declared" forbids inventing the provenance; the primitive exists (`agQueueRow({state: "added"})`) for the day a
+   queue write carries a reason; (d) rows of 90 to 200px are real titles that are never cut (item 7), 64 is a minimum; (e) tab labels,
+   the mini player's title face and the Ember active tab belong to the Dock unit; (f) the Discover tap-target debt
+   (`discover-kb`, `discover-results-groups`, both covered tiles) and the Library, starred-shows and now-playing baseline diffs
+   belong to their own units: this branch changes neither.
 
 ## 19. Show page (built, `redesign/ambient-show`)
 

@@ -482,6 +482,18 @@ test("the row is Library's three columns and the cover is the gesture surface: n
   assert.match(cover[1], /user-select:\s*none/);
 });
 
+test("Clear is a quiet grey word, never Ember (iteration 2): the header carries no listener-mark colour", () => {
+  /* Ember is the listener's own marks (saved, followed, progress); `.ag-btn-quiet` paints Ember by default, so the page's
+     Clear overrides it. This test is a deliberate guard, not a tripwire on today's markup.
+     MUTATION 1: delete `color: var(--text-2)` from the `.qp-clear` rule in queue.css -> the colour assertion is red.
+     MUTATION 2: change it to `var(--ember)` -> the no-Ember assertion is red. */
+  const rule = /\.ag \.qp-head \.qp-clear\s*\{([^}]*)\}/.exec(QUEUE_CSS);
+  assert.ok(rule, "the Clear rule exists, scoped under the head");
+  assert.match(rule[1], /color:\s*var\(--text-2\)/);
+  assert.doesNotMatch(rule[1], /ember/);
+  assert.ok(/\.ag \.ag-btn-quiet\s*\{[^}]*color:\s*var\(--ember\)/.test(read("ui/primitives.css").replace(/\/\*[\s\S]*?\*\//g, " ")), "premise: the quiet button IS Ember by default, so the override is what keeps Clear grey");
+});
+
 test("titles and captions are never cut: the title is not clamped and the caption runs as wrapping text (iteration 2)", () => {
   /* The first judge pass saw 'Head, School of Nuclear...' and '56 ...': a two-line clamp on the title and a nowrap ellipsis
      on the caption hid the very length a listener reads a queue for. DIRECTION: titles never cut; the prototype wraps a

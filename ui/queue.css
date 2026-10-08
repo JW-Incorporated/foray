@@ -18,7 +18,9 @@
 .ag .qp-back:focus-visible { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) / 2); }
 .ag .qp-head h2 { min-width: 0; }
 .ag .qp-count { flex: none; color: var(--text-2); }
-.ag .qp-head .qp-clear { flex: none; }
+/* Clear is a quiet word in the caption's grey, not Ember: Ember is the listener's own marks (saved, followed, progress), and
+   `.ag-btn-quiet` paints Ember by default (iteration 2: the judge saw an Ember Clear beside the title). */
+.ag .qp-head .qp-clear { flex: none; color: var(--text-2); }
 /* The head sits 16 above the first row, as Library's title does above its grid. */
 .ag .qp-section > .lb-stack { margin-top: var(--s-3); }
 .ag .qp-section > .lb-empty { padding-top: var(--s-6); }
