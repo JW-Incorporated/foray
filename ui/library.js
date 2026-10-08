@@ -140,7 +140,8 @@ function yoursChipDefs() {
 }
 
 /** The chip shown now: the listener's last choice this session when it still
-    exists, else Up Next with something queued, else Forays. */
+    exists, else Up Next with something queued, else Forays. (The first-run
+    screen has no strip at all, so it never asks.) */
 function yoursActiveKey(queued) {
   const keys = yoursChipDefs().map((c) => c.key);
   if (state.yoursChip && keys.includes(state.yoursChip)) return state.yoursChip;
@@ -164,6 +165,7 @@ function yoursReadoutText(key, d) {
   }
 }
 
+/** The tabpanel a chip controls is its own panel. */
 function yoursChipsHtml(active, queued) {
   return yoursChipDefs().map((c) => {
     const on = c.key === active;
@@ -171,6 +173,44 @@ function yoursChipsHtml(active, queued) {
     const name = badge ? ` aria-label="${esc(`Up Next, ${queued} queued`)}"` : "";
     return `<button type="button" class="chip" role="tab" id="yours-chip-${esc(c.key)}" data-yours-chip="${esc(c.key)}" aria-selected="${on ? "true" : "false"}" aria-controls="yours-panel-${esc(c.key)}" tabindex="${on ? "0" : "-1"}"${name}>${on ? tactileIcon("ph-check", "sm") : ""}<span>${esc(c.label)}</span>${badge}</button>`;
   }).join("");
+}
+
+/** First run: nothing queued, followed, saved, played, built, downloaded or
+    part-played. ONE `.empty` for the whole screen (BUILD-NOTES 3.16, 4.5): the
+    radio mark, a sentence, the Find key. It stands in for the six panels AND
+    the chip strip (the prototype draws none here: a filter over nothing reads
+    as an empty result, not an empty library, and an active "Up Next" chip
+    would contradict the sentence), so there is no per-chip "nothing here" line
+    to disagree with it, and it is a mark and a key, never a bare sentence. The
+    readout line says it too, in the mono face the readouts share. The key opens Find, the tab the app
+    draws as Find (`#/shows`; `#/search` is the prototype's name for it). */
+const YOURS_EMPTY_COPY = "Nothing here yet. Follow a show or play today’s foray and it lands here.";
+const YOURS_EMPTY_READOUT = "Nothing saved yet";
+
+/** Whether Yours has nothing at all to show: the whole-screen empty state. One
+    definition for the page's first paint and for the repaint after a queue
+    write, so a removal that empties the queue ends on the same screen a fresh
+    visit to the same data would draw. The saved, history and playlist counts
+    are passed when the caller already has them. */
+function yoursNothingYet(queued, savedCount, historyCount, playlistCount) {
+  const followedNow = Object.keys(starredShowsMap()).length;
+  const saved = savedCount == null ? rowsForIds(Object.keys(savedMap())).length : savedCount;
+  const history = historyCount == null ? rowsForIds(pickedHistory().slice().reverse().slice(0, 20)).length : historyCount;
+  const playlistsNow = playlistCount == null ? playlists().length : playlistCount;
+  const downloadsNow = state.downloadBridge && Object.values(downloadsValue().items).some((rec) => rec.status === "done");
+  const forayProgressNow = window.ForayPlayer && state.forays ? forayProgressLabels().size : 0;
+  return queued === 0 && followedNow === 0 && saved === 0 && history === 0 && playlistsNow === 0 && !downloadsNow && !forayProgressNow;
+}
+
+function yoursEmptyPanelHtml() {
+  return `<div class="yours-panel yours-panel--empty" id="yours-panel-empty">${tactileEmpty({ copy: YOURS_EMPTY_COPY, action: "Find a show", href: yoursFindHash() })}</div>`;
+}
+
+/** The Find tab's own route, read from the tab bar's definition so the two
+    cannot drift apart. */
+function yoursFindHash() {
+  const tab = typeof TAB_ROUTES !== "undefined" && Array.isArray(TAB_ROUTES) ? TAB_ROUTES.find((t) => t.key === "search") : null;
+  return tab && tab.hash ? tab.hash : "#/shows";
 }
 
 function yoursPanelHtml(key, active, inner) {
@@ -377,11 +417,32 @@ function yoursFocusAfter(panel, held) {
     after every write to cp_queue and every playback move while #/library is the
     page. Returns whether there was a panel to paint. */
 function repaintYoursQueue() {
+  /* The whole-screen empty state has no Up Next panel. The first thing queued
+     (from the Now Playing sheet, say) ends it: paint the page again, with the
+     listener's chip kept. */
+  if ($("#yours-panel-empty")) {
+    if (queueRows().length) renderLibrary();
+    return true;
+  }
   const panel = $("#yours-panel-upnext");
   if (!panel) return false;
+  const rows = queueRows();
+  /* The reverse of the above: the last queued episode left and nothing else is
+     saved, followed, played or built. A page with six panels and a chip strip
+     over nothing is not what a visit to the same data draws, so paint it again
+     and it becomes the whole-screen empty state. Any one thing elsewhere keeps
+     the panels, with Up Next's own note. */
+  if (!rows.length && yoursNothingYet(0)) {
+    const heldFocus = yoursFocusBefore(panel);
+    state.yoursOpenRow = null;
+    renderLibrary();
+    /* The control that had focus left with the panel; the heading is where
+       focus goes when its row is gone (yoursFocusAfter's last resort). */
+    if (heldFocus) focusQuietly($("#view h2"));
+    return true;
+  }
   const held = yoursFocusBefore(panel);
   const from = yoursRowTops(panel);
-  const rows = queueRows();
   if (state.yoursOpenRow && !rows.some((r) => r.id === state.yoursOpenRow)) state.yoursOpenRow = null;
   panel.innerHTML = yoursQueueInner(rows);
   yoursFlip(panel, from);
@@ -690,6 +751,7 @@ function renderLibrary(chip) {
   const historyHidden = allHistoryRows.length - historyRows.length;
   const allPlaylists = playlists();
   const queueList = queueRows();
+  const nothingYet = yoursNothingYet(queueList.length, allSavedRows.length, allHistoryRows.length, allPlaylists.length);
 
   const rowHtml = (r, i, ctx) => r.state === "live" ? epRow(r.item, i, ctx, -1) : archivedRow(r.item, i, ctx);
   // History's "unnamed" case (an id neither live in the pool nor covered by a
@@ -734,7 +796,8 @@ function renderLibrary(chip) {
 
   if (typeof chip === "string" && yoursChipDefs().some((c) => c.key === chip)) state.yoursChip = chip;
   const active = yoursActiveKey(queueList.length);
-  const inner = {
+  const readoutText = nothingYet ? YOURS_EMPTY_READOUT : yoursReadouts[active];
+  const inner = nothingYet ? null : {
     forays: libraryForaysHtml(),
     shows: libraryFollowedHtml(),
     saved: savedHtml,
@@ -749,13 +812,13 @@ function renderLibrary(chip) {
       <div class="page-head yours-head">
         <div>
           <h2 class="display-xl" aria-level="1">Yours</h2>
-          <p class="readout yours-readout" id="yours-readout" aria-live="polite">${esc(yoursReadouts[active])}</p>
+          <p class="readout yours-readout" id="yours-readout" aria-live="polite">${esc(readoutText)}</p>
         </div>
         ${tactileKeycap({ size: "sm", variant: "paper", icon: "knob", label: "Settings and dials", id: "yours-knob" })}
       </div>
-      <div class="yours-chips" id="yours-chips" role="tablist" aria-label="Yours">${yoursChipsHtml(active, queueList.length)}</div>
+      ${nothingYet ? "" : `<div class="yours-chips" id="yours-chips" role="tablist" aria-label="Yours">${yoursChipsHtml(active, queueList.length)}</div>`}
       <div class="yours-panels">
-        ${yoursChipDefs().map((c) => yoursPanelHtml(c.key, active, inner[c.key])).join("")}
+        ${nothingYet ? yoursEmptyPanelHtml() : yoursChipDefs().map((c) => yoursPanelHtml(c.key, active, inner[c.key])).join("")}
       </div>
     </div>`;
 
