@@ -744,11 +744,43 @@ function todayPlaylistsHtml({ own, generated }) {
   </section>`;
 }
 
-function todayHeaderHtml() {
+function todayHeaderHtml({ loading = false } = {}) {
+  /* While the documents are still on the wire the knob has nothing to open (the
+     drawer is bound after the first route), so it is drawn disabled, not dead. */
   return `<header class="today-top">
     <div class="today-top__title"><h1 class="display-xl today-title" tabindex="-1">Today</h1><span class="readout today-top__date" data-today-date>${esc(todayDateLine())}</span></div>
-    ${tactileKeycap({ size: "sm", variant: "paper", icon: "knob", label: "Settings and dials", id: "today-knob" })}
+    ${tactileKeycap({ size: "sm", variant: "paper", icon: "knob", label: "Settings and dials", id: "today-knob", disabled: loading })}
   </header>`;
+}
+
+/** Today BEFORE its documents land (Tactile `home-loading`, BUILD-PLAN 2.8).
+    app.js paints this into `#view` at boot, in place of the "Loading 4a…" line,
+    when the address is Today; renderHomeV2() replaces it wholesale.
+
+    The real title row stays (it is a fact that needs no data); everything the
+    documents decide is drawn as the SHAPE of what is coming, at the loaded
+    layout's own sizes, so the swap moves nothing (the hero's outer height is
+    pinned within 4px by test/tactile-home-loading.test.js and by the harness
+    state `loading`). The region is ONE busy region: `aria-busy="true"`, every
+    skeleton block `aria-hidden`, nothing here is a link or a control.
+    `data-boot-loading` is what tools/mobile/webview-probe.mjs reads as "app.js
+    ran but the first page has not landed"; it must stay on this root. */
+function todayLoadingHtml() {
+  const sk = (kind) => tactileSkeleton(kind, { decorative: true });
+  /* The loaded order is row, the Stretch bridge, row, row (todayAlsoHtml). */
+  const row = tactileSkeleton("row", { decorative: true, why: true });
+  return `<div class="today today--loading" data-boot-loading role="region" aria-label="Today" aria-busy="true">
+    ${todayHeaderHtml({ loading: true })}
+    ${sk("hero")}
+    <div class="today-sect" aria-hidden="true">
+      <h2 class="heading">Also today</h2>
+      <div class="today-rows">${row}${sk("bridge")}${row}${row}</div>
+    </div>
+    <div class="today-sect" aria-hidden="true">
+      <h2 class="heading">Playlists for you</h2>
+      <div class="today-pgrid">${sk("card")}${sk("card")}</div>
+    </div>
+  </div>`;
 }
 
 /* The knob opens the drawer (Settings, until the Settings screen lands). It

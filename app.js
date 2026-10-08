@@ -6124,6 +6124,52 @@ const BOOT_FAILED_NOTE = "4a couldn't start.";
 /** What `#view` holds between app.js starting and the first `route()`. */
 const BOOT_LOADING_HTML = `<div class="page" data-boot-loading><p class="note">Loading 4a…</p></div>`;
 
+/** What the first paint is. Today's address gets Today's own skeleton
+    (ui/home.js todayLoadingHtml: the title row, then the hero, rows and playlist
+    cards as shapes at their loaded sizes, Tactile `home-loading`); every other
+    address, and any environment without the Today module, keeps the plain line
+    above. The skeleton root carries `data-boot-loading` too, which is what the
+    webview probe and the boot tests read. */
+function bootLoadingHtml() {
+  try {
+    const onToday = currentHash() === "#/" && (!isNativeShell() || relaunchRoute() === "#/");
+    if (onToday && typeof todayLoadingHtml === "function" && typeof tactileSkeleton === "function") return todayLoadingHtml();
+  } catch (_) { /* a stub environment, or a half-built page: the plain line */ }
+  return BOOT_LOADING_HTML;
+}
+
+/** Paint the boot screen into `#view`. Today's skeleton also takes Today's body
+    class (the title row replaces the legacy top bar) and puts the tab row up
+    now, so neither jumps in when the first route lands: the tabs are plain links,
+    and a tap on one before `state.ready` only changes the address that the first
+    route() then reads. */
+let bootChromeUndo = null;
+function paintBootLoading(view) {
+  const html = bootLoadingHtml();
+  view.innerHTML = html;
+  if (html === BOOT_LOADING_HTML) return;
+  try {
+    bootChromeUndo = { tabBar: !$("#tab-bar") };
+    setBodyClass("view-home");
+    if (typeof renderTabBar === "function") renderTabBar();
+  } catch (_) { /* the skeleton alone is still the honest screen */ }
+}
+
+/** A boot that FAILED leaves the skeleton's chrome behind it: the failure note
+    is a plain page, and it needs the legacy top bar (and the safe-area padding
+    `.today` would have supplied) back, with no tab row whose links do nothing
+    until `state.ready`. Called from both failure paints in init(). */
+function endBootLoadingChrome() {
+  const undo = bootChromeUndo;
+  bootChromeUndo = null;
+  if (!undo) return;
+  try {
+    document.body.classList.remove("view-home");   /* index.html's body is only `ui-v2`; setBodyClass is the one writer of the class list */
+    const bar = $("#tab-bar");
+    if (undo.tabBar && bar) bar.remove();
+  } catch (_) { /* a stub document */ }
+}
+
 async function init() {
   /* EVERY BOOT REQUEST STARTS BEFORE THE FIRST AWAIT (round-2 audit, perf-1).
      The seven documents used to wait for `storageReady()` — which on the web
@@ -6144,7 +6190,7 @@ async function init() {
      executed, and the probe separately refuses a view still holding it
      (`data-boot-loading`), so a boot that hangs is not certified either. */
   const view = $("#view");
-  if (view && !view.firstElementChild) view.innerHTML = BOOT_LOADING_HTML;
+  if (view && !view.firstElementChild) paintBootLoading(view);
   /* Belt for index.html's `<body class="ui-v2">` (p-first-2): a cached older
      index.html without it still gets the dark design from this line on. */
   try { document.body.classList.add("ui-v2"); } catch (_) { /* a stub document */ }
@@ -6187,6 +6233,7 @@ async function init() {
     /* A failure offers "Try again", wired to the same boot (theme G). Safe to
        re-run: nothing above this line binds a listener or starts the directory,
        so a second init() starts from exactly where the first one stopped. */
+    endBootLoadingChrome();
     $("#view").innerHTML = `<div class="page">${failedNoteHtml("Couldn't load 4a — check your connection.")}</div>`;
     bindRetry($("#view"), () => {
       $("#view").innerHTML = BOOT_LOADING_HTML;
@@ -6309,6 +6356,7 @@ async function init() {
   trySyncEvents();   // waits for storage to settle itself — see trySyncEvents
   } catch (err) {
     console.error("boot failed", err);
+    endBootLoadingChrome();
     const failed = $("#view");
     if (failed) {
       failed.innerHTML = `<div class="page">${failedNoteHtml(BOOT_FAILED_NOTE)}</div>`;

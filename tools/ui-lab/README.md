@@ -177,8 +177,13 @@ Profiles are built by `lib/seed.mjs` from committed data (`data/discover.json`,
 localStorage keys (`cp_intro_dismissed`, `cp_saved`, `cp_episode_snaps`,
 `cp_queue`, `cp_history`, `cp_playlists`, `cp_starred_shows`) before the app
 loads. Add a state by adding an entry to `appStates()`; add a screen by adding a
-step `{ label, route, run?(page) }`. Steps run in order on one page per
-(state, viewport).
+step `{ label, route, run?(page), ready?, before?(page), held? }`. Steps run in order
+on one page per (state, viewport). `before` and `held` apply to a state's FIRST step
+only: `before(page, {fx})` runs ahead of the first navigation (a request to hold, a route
+to stub), and `held: true` says the app is meant to still be booting, so `ready` (a
+selector) is the only wait and the walker skips its tab-bar-and-player check. The
+`loading` state uses both to hold `data/catalog-client.json` for the life of the page, so
+Today's boot skeleton is what gets shot.
 
 ## Determinism
 

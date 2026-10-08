@@ -110,6 +110,15 @@ async function openGallerySheet(page, scheme) {
   await wait(page, 300);
 }
 
+/** Hold the catalog document for the life of the page: the request is answered
+    never, so init() stays at `await documentsP` and `#view` keeps the boot paint.
+    Closing the context aborts the pending request. The pattern is the document
+    the boot path fetches (`fetchJson("data/catalog-client.json")`, query string
+    allowed). */
+async function holdCatalog(page) {
+  await page.route("**/data/catalog-client.json*", () => { /* held on purpose */ });
+}
+
 /** Routes every seeded profile can show. `fx` supplies real ids. */
 function coreRoutes(fx, { entities }) {
   const ep = fx.items[0].id;
@@ -234,6 +243,12 @@ export function appStates(fx) {
         { label: "icons-fill", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-fill-title", "light") },
         { label: "icons-custom", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-custom-title", "light") },
       ],
+    },
+    {
+      id: "loading",
+      description: "Returning user, Today while the catalog document is still on the wire (held by page.route until the shot): the boot skeleton.",
+      seed: "returning",
+      steps: [{ label: "home-loading", route: "#/", before: holdCatalog, held: true, ready: ".skel" }],
     },
     {
       id: "resume-home",
