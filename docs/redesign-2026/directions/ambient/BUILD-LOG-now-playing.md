@@ -42,3 +42,13 @@ Calls made without the owner or the art director in the loop.
 4. **More handle scroll** reads `prefers-reduced-motion` and scrolls with `auto` instead of `smooth`.
 
 Still open (unchanged): the three-judge pairwise pass and the two fidelity deltas listed under Iteration 2.
+
+## Iteration 3 (fidelity findings: lit art, strip, narration, baseline diffs)
+
+Calls made without the owner or the art director in the loop.
+
+1. **Lit art is one tone.** The blurred-collage halo (`.ag-np-halo`) is deleted: its purple, teal and orange spilled past the sleeve as a multi-hue smudge. The sleeve now casts only the two box-shadow rings in `--art-glow`, the one extracted colour of the show that is playing (radius 96 at 280+, from `.lit-96`).
+2. **Strip bars are at full art colour.** The 38% base that dimmed every bar ahead of the playhead is gone (it read dark teal, olive, brown). Every show bar is `var(--c)`; only the current bar carries the partial fill, `color-mix(in oklab, var(--c) 78%, var(--lamp))`, a lighter tint of the same hue (BUILD-NOTES 10.8).
+3. **Narration lights.** `foray0` (`capital-types-1`, the first published Foray in `data/forays.json`) has no narration at all (22 segments, 0 bridges), so the build was drawing the right thing for its data and the fixture was the problem. Two changes: an un-narrated Foray carries one caption, "Not narrated", in the time row between the clocks (hidden when there is narration to see); and a new step `now-playing-foray-narrated` (the first published Foray that has bridges, `how-ai-actually-gets-built-3b83e1`) shows the ivory lights. That step found a real overflow: 40 bridges in 51 items at a 6px floor each ran ~90px off the right edge, so a narration light now shrinks to 2px (`data-narration`, a data attribute for the same reason as `data-join-*`).
+4. **Baseline diffs on `foray-resume` and `midlisten/home` are not this screen.** They are 2-3 px bars of the mini bar's progress fill, deterministic (two shots of `midlisten` are byte-identical), going from today's orange `--accent` to the Glow violet. The cause is `body.view-home #foray-player .fp-fill { background: var(--glow) }` (`ui/today.css:224`, the Today/Dock builder) and the same rule for the Foray detail page (`ui/foray-detail.css:257`), both merged into the direction branch after `ambient-app` was last recorded. This branch changes only the sheet and the strip; the mini bar is untouched here. Intended by those screens; the baseline needs re-recording by the orchestrator once they are accepted.
+5. **Not done here:** the three-judge pairwise pass (no judge agents in this loop); the primary-control region delta (-12px at 393x852) and the episode art delta (-36px, a three-line fixture title) are unchanged.

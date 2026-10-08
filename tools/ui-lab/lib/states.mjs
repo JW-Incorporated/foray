@@ -283,6 +283,8 @@ function coreRoutes(fx, { entities }) {
 export function appStates(fx) {
   const ep0 = fx.items[0].id;
   const foray0 = fx.forays.find((foray) => foray.status === "published")?.id || fx.forays[0]?.id;
+  /* A published Foray that carries narration: the strip's ivory lights only exist for one of these (foray0 has none). */
+  const forayNarrated = fx.forays.find((foray) => foray.status === "published" && (foray.items || []).some((item) => item.type === "narration" || item.kind === "tts"))?.id || foray0;
   return [
     {
       id: "gallery",
@@ -488,6 +490,12 @@ export function appStates(fx) {
             await wait(page, 300);
           },
           ready: ".ag-np",
+        },
+        {
+          label: "now-playing-foray-narrated",
+          route: "#/foray/" + encodeURIComponent(forayNarrated),
+          run: (page) => startForayPlayback(page, 900),
+          ready: ".ag-np.is-foray",
         },
       ],
     },

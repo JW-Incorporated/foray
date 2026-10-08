@@ -153,6 +153,10 @@ function agNpAdopt(ui) {
   ui.scrub.classList.add("ag-np-scrubber");
   ui.times = ui.tNow.parentElement || ui.times;
   ui.tNow.parentElement?.classList.add("ag-np-times", "t-caption");
+  /* The one caption an un-narrated Foray carries, in the time row between the two clocks (hidden when there is narration to see). */
+  ui.stripCaption = agNpEl("span", "ag-np-strip-caption");
+  ui.stripCaption.hidden = true;
+  ui.times?.insertBefore(ui.stripCaption, ui.times.lastElementChild);
   progress.append(strip, ui.scrub, ui.tNow.parentElement);
 
   ui.row.classList.add("ag-np-transport");
@@ -368,6 +372,7 @@ function agNpPaintForay(ui, { items = [], model = null, currentIndex = 0, starts
       button.style.setProperty("--c", item?.kind === "tts" ? "var(--lamp)" : agNpColour(name));
       const bar = agNpEl("span", item?.kind === "tts" ? "ag-np-strip-bar is-narration" : "ag-np-strip-bar");
       bar.append(agNpEl("span", "ag-np-strip-fill"));
+      if (item?.kind === "tts") button.dataset.narration = "1";
       button.append(bar);
       /* Neighbouring cuts from one show are one lantern: they touch (no gap, square inner corners), so the strip reads
          as shows joined by narration instead of a row of equal chips. */
@@ -392,7 +397,14 @@ function agNpPaintForay(ui, { items = [], model = null, currentIndex = 0, starts
     button.querySelector(".ag-np-strip-fill")?.style.setProperty("--fill", String(current ? segment?.progress ?? 0 : 0));
   });
   setStatusText(ui.sTitle, title);
-  agNpSetShowLine(ui, `${new Set(items.map(agNpShow).filter((name) => name !== "4a narration")).size} shows · ${show}`);
+  /* A Foray with no narration draws no ivory lights; the one caption says why (direction: "Un-narrated: no ivory lights, one caption"). */
+  const narrated = items.some((item) => item?.kind === "tts");
+  const showCount = new Set(items.map(agNpShow).filter((name) => name !== "4a narration")).size;
+  agNpSetShowLine(ui, `${showCount} ${showCount === 1 ? "show" : "shows"} · ${show}`);
+  if (ui.stripCaption) {
+    ui.stripCaption.textContent = narrated ? "" : "Not narrated";
+    ui.stripCaption.hidden = narrated;
+  }
   ui.strip.setAttribute("aria-label", `Foray position ${agNpClock(elapsed)}`);
 }
 
@@ -429,11 +441,6 @@ function agNpPaintCollage(ui, items) {
     collage.append(img);
   });
   collage.dataset.count = String(sources.length);
-  ui.artSwap.querySelector(".ag-np-halo")?.remove();
-  const halo = collage.cloneNode(true);
-  halo.className = "ag-np-halo";
-  halo.setAttribute("aria-hidden", "true");
-  ui.artSwap.prepend(halo);
   ui.sArt.hidden = true;
 }
 
@@ -497,13 +504,13 @@ function agNpPaintEpisode(ui) {
   ui.collageSources = null;
   for (const layer of ui.roomLayers) if (layer.dataset.artless === "1") layer.replaceChildren();
   ui.strip.hidden = true;
+  if (ui.stripCaption) ui.stripCaption.hidden = true;
   ui.scrub.hidden = false;
   ui.segmentsSection.hidden = true;
   ui.sourcesSection.hidden = true;
   ui.notesSection.hidden = ui.sDesc.hidden;
   ui.sArt.hidden = false;
   ui.artSwap.querySelector(".ag-np-collage")?.remove();
-  ui.artSwap.querySelector(".ag-np-halo")?.remove();
 }
 
 function agNpPaintUpNext(ui, item, count = 0) {
