@@ -43,7 +43,7 @@ const path = require("node:path");
 const { readAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const CSS = ["styles.css", "ui/tokens.css", "ui/primitives.css", "ui/today.css", "ui/onboarding.css", "ui/foray-detail.css", "ui/settings.css"]
+const CSS = ["styles.css", "ui/tokens.css", "ui/primitives.css", "ui/today.css", "ui/onboarding.css", "ui/foray-detail.css", "ui/settings.css", "ui/show.css"]
   .map((rel) => fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n"))
   .join("\n");
 
@@ -239,7 +239,6 @@ const BUTTONS = {
   ".pl-save": { tall: "button.pl-save", why: "a labelled capsule (\"Save to my playlists\" / \"✓ Saved\") with 16px side padding" },
   ".rate-option": { tall: ".rate-option", why: "a row of the speed sheet's full-width column" },
   ".reorder": { rule: "button.reorder" },
-  ".show-star": { rule: "button.show-star" },
   ".star": { rule: "button.star" },
   ".up-next": { rule: "button.up-next" },
   ".up-next-remove": { rule: "button.up-next-remove" },
@@ -252,8 +251,8 @@ const BUTTONS = {
 
 test("every <button> the app renders is classified, and reaches 44px the way its class says", () => {
   /* THE WALKER (round 2, touch-5). MUTATIONS, each run and red:
-       - drop `button.show-star` from the hit-area rule (both halves) -> red,
-         naming .show-star (Follow is ~39px by its own padding);
+       - drop `min-height` from `.ag .ag-btn` (or set it under 44px) -> red, naming .ag-btn (the show page's Follow is one, as is every row's Play);
+         it replaced `button.show-star`, whose hit-area rule went with the old Follow;
        - `.drawer-item { min-height: 40px }` -> red, naming .drawer-item;
        - add `<button class="new-thing">` to any template in app.js -> red,
          "not classified", until someone decides how it reaches 44. */

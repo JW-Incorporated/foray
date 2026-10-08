@@ -1294,3 +1294,15 @@ Decisions the builder made while no one could be asked; each is also in the code
     replaces both. `foray-detail.css` minifies to 12.4 KB, its ceiling moves 10 to 14 KB in `prepare-webdir.test.mjs`. Fidelity
     `foray-detail-it4b`: header, hero, strip, primary regions unchanged from it3 (the foray row's 30px strip offset and the
     24px `why` height are the seed's one-line title and three-line why-line, as before).
+
+## 17. Show page (built, `redesign/ambient-show`)
+
+Screen 10 of the screen list: `ui/show.js` (`showRoomHtml`, `showEpisodeRowHtml`, `showRowsLatestFirst`), `ui/show.css`, and the Follow button in `app.js` (`showStarBtn`, `paintFollow`). No prototype route exists, so there is no fidelity pair; the is-it-better pair is the only judged one.
+
+1. **The Room.** `section.room.ag.sh-room` follows the page's scheme (no pinned Dusk). Stack, safe-top 0: Back 44 at 8 to 52 (head scrim), art 160 Lit at 56, the title at 236, then the count, Follow (16 under), the note (12 under), 24 below. This page sets the scrim's own stops, `--rs1` safe-top + 120 and `--rs2` safe-top + 232, so every line of text starts at or below `--rs2` (the zone the existing Room pairs are measured in), and the last stop is the page's `--bg0` instead of `--scrim-low`, so the Room's foot meets the list with no seam.
+2. **Contrast.** Title `--text`, count and note `--on-wash-2`. `--text-2` is deliberately not used: over the lightest art in Dusk it is 4.44:1. Worst cases over every hue and white or black art: Dusk title 8.32, `--on-wash-2` 6.87; Dawn 10.93 (both are ink). Pinned in `test/ambient-show.test.js`.
+3. **Follow.** A Secondary `ag-btn`. Following is the Fill `i-check-circle-fill` in Ember (Regular `i-plus` when not), the word "Following" (was "+ Follow" / "✓ Followed"), an Ember ring and an overlay fill. Accessible name "Follow <show>" / "Following <show>".
+4. **Rows.** Today's EpisodeRow (`td-row`, reused whole): art 72, title as the one stretched link, Play 44, meta (length, date), two-line why-line from the publisher's own description. Latest first when every row is dated, else server order. No hairline, an 8px gap. The show name is dropped from the meta line (the page is the show).
+5. **Rulings that fell** (named as the build-loop asks): (a) **Save and Up Next on every show-page row**: an EpisodeRow carries neither, they are the episode page's actions, one tap further (`up-next-queue` rewritten to pin the link and that the episode page offers Up Next); (b) the **"+ Follow" / "✓ Followed"** vocabulary (`starred-shows`, `toggle-labels` rewritten). The owner may overturn (a) by adding an `i-queue` icon to the row, which breaks the row's 3-column grid.
+6. **Retired:** `.show-hero`, `.show-art`, `button.show-star` and their hit-area entries in `styles.css`. Harness: the `show` app state (a fresh profile on the show page, Follow off); `returning/show` is the followed state.
+7. **Not done here, on purpose.** Judge and reviewer passes (no agent could be spawned from this run). The search field, description, subject chips, similar shows and Forays rail on this page keep their legacy markup; their screens re-skin them.
