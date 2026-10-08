@@ -558,7 +558,7 @@ function tactileTitleLink(d, text) {
   if (!d.id || d.link !== "episode") return esc(text);
   /* A template literal, the one form the "scheme fixed in code" scan accepts: the
      `#/` is literal and only the encoded id is interpolated. */
-  return `<a class="row__link" href="#/episode/${esc(encodeURIComponent(d.id))}">${esc(text)}</a>`;
+  return `<a class="row__link" href="${esc(safeUrl("#/episode/" + encodeURIComponent(d.id)))}">${esc(text)}</a>`;
 }
 
 function tactileEpisodeRow(data) {

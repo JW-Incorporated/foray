@@ -34,7 +34,7 @@ function showResultRow(show) {
   /* `title=` carries the whole name: styles.css clamps the row's title to two
      lines (audit round 2, search-11), so a 125-character title is cut on
      screen, and hover and a long-press tooltip still have all of it. */
-  return `<a class="show-result" href="#/show/${encodeURIComponent(show.show_id)}" title="${esc(show.title)}">
+  return `<a class="show-result" href="${esc(safeUrl("#/show/" + encodeURIComponent(show.show_id)))}" title="${esc(show.title)}">
     ${art ? rowArtImg(art) : `<span class="show-result-art show-result-art-blank" data-i="${esc(tactileStationCode(show.title))}"></span>`}
     <span class="show-result-text">
       <span class="show-result-title">${esc(show.title)}</span>
@@ -1806,7 +1806,7 @@ function renderPlaylistSearchResults(query, myToken, reportCtaMs = () => {}) {
     const cells = arts.length
       ? arts.map((u, i) => findArtHtml({ id: `${p.id}:${i}`, name: p.title, url: u }, "find-art--cell")).join("")
       : findArtHtml({ id: String(p.id), name: p.title, url: null }, "find-art--cell");
-    return `<a class="pcard pl-card" href="#/${esc(playlistRoute(p))}">
+    return `<a class="pcard pl-card" href="${esc(safeUrl("#/" + playlistRoute(p)))}">
       <span class="find-collage find-collage--card${arts.length < 2 ? " is-single" : ""}" aria-hidden="true">${cells}</span>
       <span class="h17 pcard__name">${esc(p.title)}</span>${generated ? `<span class="fy-badge fy-badge-generated">Generated for you</span>` : ""}
       <span class="readout muted">${playlistLengthLabel(p)}</span>
@@ -2216,7 +2216,7 @@ function searchEpisodeRow(item, ctx) {
   return `<article class="row-episode">
     ${tactileArtFrame({ size: "row", url: art, initials: tactileStationCode(showName) })}
     <div class="row__body">
-      <h3 class="row__title"><a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(title)}</a>${explicitBadge(item.explicit)}</h3>
+      <h3 class="row__title"><a class="ep-title-link" href="${esc(safeUrl("#/episode/" + encodeURIComponent(item.id)))}">${esc(title)}</a>${explicitBadge(item.explicit)}</h3>
       <div class="row__meta"><span class="row__show">${esc(showName)}</span><span class="row__tail">${dur ? `<span class="readout">${esc(dur)}</span>` : ""}${progHtml}${searchUpNextBtn(item.id, item)}</span></div>
     </div>
     <div class="row__end">${key}</div>

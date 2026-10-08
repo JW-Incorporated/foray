@@ -104,9 +104,14 @@ function esc(s) {
    pins that this list and the sprite agree). The one same-document reference
    safeUrl lets through is "#" + one of these, exactly: an icon's sprite href
    goes through safeUrl like every other href, and a fragment can carry no
-   scheme. Every other fragment ("#/library", "#ep-1", "#ph-nope") still
-   answers "#". Callers that need a fetchable URL test for http(s) themselves
-   (ui/downloads.js) rather than reading "#" as the only refusal. */
+   scheme. The other same-document reference it lets through is an in-app
+   ROUTE: "#/" followed by path characters only (the regex in safeUrl). A route can carry
+   no scheme, quote, angle bracket or space, and a "%" must open a real
+   percent-escape, so an id that was not encoded cannot smuggle an attribute
+   or a second fragment into the href: it answers "#". Every other fragment
+   ("#ep-1", "#ph-nope", "#/a b") still answers "#". Callers that need a
+   fetchable URL test for http(s) themselves (ui/downloads.js) rather than
+   reading "#" as the only refusal. */
 const SPRITE_IDS = new Set([
   "ph-play", "ph-pause", "ph-sun-horizon", "ph-magnifying-glass", "ph-bookmarks",
   "ph-caret-down", "ph-arrow-left", "ph-dots-three", "ph-plus", "ph-check",
@@ -120,7 +125,8 @@ const SPRITE_IDS = new Set([
 ]);
 
 function safeUrl(u) {
-  if (typeof u === "string" && u.charAt(0) === "#" && SPRITE_IDS.has(u.slice(1))) return u;
+  /* The route pattern is inline so the function stands alone for the suites that lift it. */
+  if (typeof u === "string" && u.charAt(0) === "#" && (SPRITE_IDS.has(u.slice(1)) || /^#\/(?:[A-Za-z0-9\-._~!$&'()*+,;=:@\/?]|%[0-9A-Fa-f]{2})*$/.test(u))) return u;
   try {
     const p = new URL(u);
     if (p.protocol === "https:" || p.protocol === "http:") return u;
@@ -1361,12 +1367,12 @@ function reloadNoteHtml(note) {
 }
 
 function statusPageHtml({ title = "", note, back = "#/", retry = false, reload = false }) {
-  /* `back` is always one of our own routes; the "#" is written in the literal so
-     no interpolated value can ever start an href (test/app-security.test.js). */
+  /* `back` is always one of our own routes; the href still goes through safeUrl
+     like every other (a route passes, anything else answers "#"). */
   const route = String(back).replace(/^#/, "");
   return `<div class="page">
     <div class="page-head">
-      <a class="back" href="#${esc(route)}">‹</a>
+      <a class="back" href="${esc(safeUrl("#" + route))}">‹</a>
       <div>${title ? `<h2>${esc(title)}</h2>` : ""}</div>
     </div>
     ${reload ? reloadNoteHtml(note) : retry ? failedNoteHtml(note) : `<p class="note">${note}</p>`}
@@ -1894,7 +1900,7 @@ function starredShowRow(entry) {
      shows harvested without one. Fall back through the live show record so a
      starred show is never blanker than the same show is on any other surface. */
   const art = entry.artwork_url || showArtworkUrl(showById(entry.show_id));
-  return `<a class="show-result" href="#/show/${encodeURIComponent(entry.show_id)}" title="${esc(entry.title)}">
+  return `<a class="show-result" href="${esc(safeUrl("#/show/" + encodeURIComponent(entry.show_id)))}" title="${esc(entry.title)}">
     ${art ? rowArtImg(art) : `<span class="show-result-art show-result-art-blank"></span>`}
     <span class="show-result-title">${esc(entry.title)}</span>
   </a>`;
@@ -2813,8 +2819,8 @@ function savePlaylistControlHtml(p) {
   const { text, attr } = toggleMarkup(on, SAVE_PLAYLIST_TOGGLE);
   return `<div class="pl-save-wrap">
         <button type="button" class="pl-save${on ? " on" : ""}" id="pl-save"${attr}${on || pending ? ` aria-disabled="true"` : ""}>${text}</button>
-        <a class="pl-save-open" id="pl-save-open" href="#/${on ? esc(playlistRoute(copy)) : "playlists"}"${on ? "" : " hidden"}>Open your copy</a>
-        ${earlier ? `<p class="note">You saved an earlier version of this playlist. <a href="#/${esc(playlistRoute(earlier))}">Open that copy</a></p>` : ""}
+        <a class="pl-save-open" id="pl-save-open" href="${esc(safeUrl("#/" + (on ? playlistRoute(copy) : "playlists")))}"${on ? "" : " hidden"}>Open your copy</a>
+        ${earlier ? `<p class="note">You saved an earlier version of this playlist. <a href="${esc(safeUrl("#/" + playlistRoute(earlier)))}">Open that copy</a></p>` : ""}
         <p class="note pl-save-note" id="pl-save-note" role="status">${pending ? esc(SAVE_PLAYLIST_NOTES.pending) : ""}</p>
       </div>`;
 }
@@ -4041,7 +4047,7 @@ function showNameLink(showName, showId = null) {
   const id = showId || showIdForShowName(showName);
   /* Through showRoutePath (showRouteHash without its #), which encodes (audit round 3, app-1-16): the router
      decodes the segment, so an id carrying `%`, `/` or `#` misrouted from here. */
-  return id ? `<a class="show-link" href="#${esc(showRoutePath(id))}">${label}</a>` : label;
+  return id ? `<a class="show-link" href="${esc(safeUrl("#" + showRoutePath(id)))}">${label}</a>` : label;
 }
 
 /* Through editPlaylists, as a pure edit: a stamp made before hydration lands

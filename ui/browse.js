@@ -25,7 +25,7 @@
 function taxonomyChip(nodeId) {
   const node = (state.taxonomy?.nodes || []).find(n => n.id === nodeId);
   const label = esc(node?.label || nodeId);
-  return `<a class="fy-chip" href="#/category/${esc(encodeURIComponent(nodeId))}">${label}</a>`;
+  return `<a class="fy-chip" href="${esc(safeUrl("#/category/" + encodeURIComponent(nodeId)))}">${label}</a>`;
 }
 
 /* Every catalogue show whose taxonomy_node_ids includes nodeId — the exact
@@ -262,7 +262,7 @@ function safeDecode(s) {
 function browseTile(nodeId) {
   const node = (state.taxonomy?.nodes || []).find(n => n.id === nodeId);
   const label = node?.label || nodeId;
-  return `<a class="fy-chip" href="#/shows/q/${esc(encodeURIComponent(label))}">${esc(label)}</a>`;
+  return `<a class="fy-chip" href="${esc(safeUrl("#/shows/q/" + encodeURIComponent(label)))}">${esc(label)}</a>`;
 }
 
 function browsePillsHtml() {
@@ -472,7 +472,7 @@ function findTileHtml(t) {
     ? `<span class="find-collage" aria-hidden="true">${t.arts.slice(0, 4).map((a) => findArtHtml(a, "find-art--cell")).join("")}</span>`
     : `<span class="find-discs" aria-hidden="true">${t.arts.slice(0, 3).map((a) => findArtHtml(a, "find-art--disc")).join("")}</span>`;
   const count = `${t.count} ${t.count === 1 ? "show" : "shows"}`;
-  return `<a class="tile tile--${t.size}" href="#/shows/q/${esc(encodeURIComponent(t.label))}" data-subject="${esc(t.id)}">${art}<span><strong class="tile__name">${esc(t.label)}</strong><span class="readout">${esc(count)}</span></span></a>`;
+  return `<a class="tile tile--${t.size}" href="${esc(safeUrl("#/shows/q/" + encodeURIComponent(t.label)))}" data-subject="${esc(t.id)}">${art}<span><strong class="tile__name">${esc(t.label)}</strong><span class="readout">${esc(count)}</span></span></a>`;
 }
 
 /** The followed-shows strip: only when the listener follows something, newest
@@ -490,7 +490,7 @@ function findFollowedHtml() {
     const img = e.url
       ? `<img src="${esc(safeUrl(artUrl(e.url, 192)))}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`
       : "";
-    return `<a class="find-strip__item" href="#${esc(showRoutePath(e.id))}"><span class="find-strip__art find-art--c${tactileHash(e.id)}" data-i="${esc(tactileStationCode(name))}">${img}</span><span class="micro find-strip__name">${esc(name)}</span></a>`;
+    return `<a class="find-strip__item" href="${esc(safeUrl("#" + showRoutePath(e.id)))}"><span class="find-strip__art find-art--c${tactileHash(e.id)}" data-i="${esc(tactileStationCode(name))}">${img}</span><span class="micro find-strip__name">${esc(name)}</span></a>`;
   }).join("");
   return `<section class="find-sect" aria-labelledby="find-followed-h"><h3 class="heading" id="find-followed-h">Followed shows</h3><div class="find-strip">${items}</div></section>`;
 }

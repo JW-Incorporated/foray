@@ -453,7 +453,7 @@ const FLOORS = {
   "test/api-origin.test.js": 5,
   "test/clock-formatters.test.js": 2, // audit round 3, arch-drift-10 (2026-09-25): the episode, Foray and chapter clocks share one floored rule
   "test/jingle-duration.test.js": 1, // audit round 3, arch-drift-4 (2026-09-25): the generator's jingle length is the player's, which is the interlude file's
-  "test/app-security.test.js": 27,
+  "test/app-security.test.js": 29, // review of redesign/tactile-search-typing: +2 (safeUrl passes an in-app route and refuses what a route cannot be; the href/src census sees an interpolation that does not open the value), each naming its mutation
   "test/app-split.test.js": 7, // Redesign 2026 phase 0d: app.js split into a core + ui/*.js — load order, no duplicate declarations, every shipping path lists the files; each test names its mutation
   "test/app-surface-round3.test.js": 23, // round-3 completeness sweep: app-2-6 a changed or withdrawn thumbs vote is logged with the vote it replaces (the suite stood at 22 unfloored); 20 -> 23 // audit round 3 (2026-09-25, lane L2): the app-surface fixes with no better-fitting suite (app-2-14/15, app-1-15/16, app-2-1/2/3/5/6/7/8/9/10/11/12/13, app-3-1, data-integrity-8), each test naming its id and the mutation that kills it; zero slack; new
   "test/episode-page.test.js": 8,

@@ -439,7 +439,7 @@ test("Create's suggestions and Search's browse subjects are the same pill", () =
   /* MUTATION: render `class="cr-pill"` in renderCreate again, or add a
      `.cr-pill {` rule -> red. */
   assert.match(APP_SRC, /<button type="button" class="fy-chip" data-cr-subject=/, "Create renders .fy-chip");
-  assert.match(APP_SRC, /<a class="fy-chip" href="#\/shows\/q\//, "Search's browse tiles render .fy-chip");
+  assert.match(APP_SRC, /<a class="fy-chip" href="\$\{esc\(safeUrl\("#\/shows\/q\/"/, "Search's browse tiles render .fy-chip");
   assert.doesNotMatch(APP_SRC, /class="cr-pill/, "no renderer emits .cr-pill");
   assert.ok(!hasRule(".cr-pill"), ".cr-pill has no rule left");
   assert.ok(!hasRule("body.ui-v2 .sh-browse-pills .fy-chip"), "Search does not restyle the pill's geometry on its own");

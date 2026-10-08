@@ -49,6 +49,7 @@ const assert = require("node:assert");
 const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
+const { interpolatedUrlAttrs, unguardedInterpolatedUrlAttrs } = require("./helpers/url-attr-census.js");
 const { readAppSource, runAppSource } = require("./helpers/app-source.js");
 const { parseRules } = require("./helpers/dial-css.js");
 
@@ -556,25 +557,25 @@ test("the typing block reads tokens only and adds no transition or animation the
 
 /* ----------------------------------------------------- 5 the hrefs the typing results write */
 
-/* THE RULE, AND WHY THESE TWO HREFS DO NOT CALL safeUrl. CLAUDE.md: every href goes
- * through safeUrl(). safeUrl gates SCHEMES (it runs `new URL`), and on a bare hash
- * route it answers "#" (app.js safeUrl; ui/browse.js `browseTile` documents the same),
- * so wrapping `#/playlist/p1` would turn every playlist card and every episode title
- * into a dead "#" link. The repo's answer, which app-security's census and `playlistRoute`
- * both state, is that an in-app route keeps its `#/` LITERAL in the template and only a
- * percent-encoded path is interpolated after it: no scheme can be injected because the
- * href can only ever begin `#/`. These tests pin exactly that, on hostile ids, so the
- * rule is held by a test rather than by a reading of the template.
+/* THE RULE: CLAUDE.md and PLAN.md say every href goes through safeUrl(), with no
+ * exemption. An in-app route is no exception: `safeUrl` passes "#/" + path
+ * characters (safeUrl's route pattern) and answers "#" for anything a route cannot be, so
+ * the playlist card and the episode title link write `esc(safeUrl("#/" + <encoded
+ * path>))` and the guard is the same function that guards every other link. (An
+ * earlier revision of this section pinned a literal-#/ exception because safeUrl
+ * used to answer "#" for a hash route; review rejected the exception and safeUrl
+ * learned routes instead.) These tests pin it on hostile ids.
  *
- * MUTATION 1: in `renderPlaylistSearchResults` change `href="#/${esc(playlistRoute(p))}"`
- *   to `href="${esc(playlistRoute(p))}"` (the prefix interpolated) -> the census and the
- *   card test fail.
+ * MUTATION 1: in `renderPlaylistSearchResults` change the card's href back to
+ *   `href="#/${esc(playlistRoute(p))}"` -> the census test fails (and with it
+ *   app-security's).
  * MUTATION 2: in `searchEpisodeRow` drop `encodeURIComponent` from the title link ->
- *   the `a/b#c?d%e` id leaks a raw `/`, `#`, `?` and `%` into the route and the
- *   episode test fails.
+ *   the `a/b#c?d%e` id leaks a raw `/`, `#`, `?` and `%` into the route; safeUrl
+ *   refuses the space/quote ids and the episode test fails.
  * MUTATION 3: in the card, replace `playlistRoute(p)` with `"playlist/" + p.id` -> the
- *   `gen-history/technology` id keeps its slash and the card test fails. */
-test("the playlist card and the episode title link keep a literal #/ and an encoded path, on hostile ids", () => {
+ *   `gen-history/technology" onclick="x` id is refused by safeUrl, the card href
+ *   becomes "#", and the card test fails. */
+test("the playlist card and the episode title link go through safeUrl, with an encoded path, on hostile ids", () => {
   const m = mount();
   m.state.catalog = { shows: [{ show_id: "sh", title: "S" }] };
   const hostileId = 'gen-history/technology" onclick="x';
@@ -583,7 +584,7 @@ test("the playlist card and the episode title link keep a literal #/ and an enco
   const html = m.byId.get("pl-search-results").innerHTML;
   const hrefs = [...html.matchAll(/<a class="pcard pl-card" href="([^"]*)"/g)].map((x) => x[1]);
   assert.strictEqual(hrefs.length, 1, `one card, and its href is one attribute (a quote in the id did not end it): ${html}`);
-  assert.strictEqual(hrefs[0], "#/playlist/gen-history%2Ftechnology%22%20onclick%3D%22x", "literal #/, then the encoded id");
+  assert.strictEqual(hrefs[0], "#/playlist/gen-history%2Ftechnology%22%20onclick%3D%22x", "#/, then the encoded id");
   assert.ok(!/onclick="/.test(html), "the hostile id grew no attribute");
 
   const row = m.ctx.searchEpisodeRow({ ...ITEM, id: "a/b#c?d%e" }, "ctx");
@@ -593,17 +594,20 @@ test("the playlist card and the episode title link keep a literal #/ and an enco
   const scheme = m.ctx.searchEpisodeRow({ ...ITEM, id: "javascript:alert(1)" }, "ctx");
   assert.ok(scheme.includes('href="#/episode/javascript%3Aalert(1)"'), `a scheme-shaped id stays a path segment: ${scheme}`);
 
-  /* The reason safeUrl is not the guard here, asserted so the comment above cannot rot. */
-  assert.strictEqual(m.ctx.safeUrl("#/playlist/p1"), "#", "safeUrl would kill an in-app route");
+  /* safeUrl is the guard, not a bystander: it passes the encoded route and refuses the
+     same route written without encoding. */
+  assert.strictEqual(m.ctx.safeUrl("#/playlist/p1"), "#/playlist/p1", "safeUrl passes an in-app route");
+  assert.strictEqual(m.ctx.safeUrl('#/playlist/gen" onclick="x'), "#", "an unencoded id is refused, not passed");
 });
 
-test("every interpolated href in ui/search.js opens with a literal #/ or goes through safeUrl", () => {
-  /* The census app-security.test.js runs over app.js, scoped to this file and widened
-     one step: an href that OPENS with an interpolation must name safeUrl. MUTATION: see
-     MUTATION 1 above (or add `href="${esc(url)}"` anywhere in ui/search.js). */
-  const searchJs = fs.readFileSync(path.join(ROOT, "ui", "search.js"), "utf8");
-  const hrefs = searchJs.match(/\b(?:href|src)\s*=\s*"[^"\n]*\$\{[^}]*\}[^"\n]*"/g) || [];
-  assert.ok(hrefs.length >= 3, `expected the show, playlist and episode links to be seen, saw ${hrefs.length}`);
-  const bad = hrefs.filter((h) => !/=\s*"#\//.test(h) && !h.includes("safeUrl("));
-  assert.deepStrictEqual(bad, [], `these href/src interpolations are neither a literal #/ route nor safeUrl'd:\n${bad.join("\n")}`);
+test("every interpolated href/src in ui/search.js names safeUrl, whatever it opens with", () => {
+  /* The census app-security.test.js runs over the whole client, scoped to this file so
+     a failure names this screen. It reads every attribute value holding an interpolation
+     (not only one that OPENS with it, which is how a literal-prefix href walked past the
+     first version). There is no literal-#/ exception. MUTATION: see MUTATION 1 above (or
+     add `href="${esc(url)}"` anywhere in ui/search.js). */
+  const searchJs = fs.readFileSync(path.join(ROOT, "ui", "search.js"), "utf8").replace(/\r\n/g, "\n");
+  const seen = interpolatedUrlAttrs(searchJs);
+  assert.ok(seen.length >= 3, `expected the show, playlist and episode links to be seen, saw ${seen.length}`);
+  assert.deepStrictEqual(unguardedInterpolatedUrlAttrs(searchJs), [], "these href/src interpolations bypass safeUrl()");
 });
