@@ -18,7 +18,7 @@
  *      repaints), "+ Up Next" on the meta line (the shared `upNextBtn`), the show's
  *      display name as plain text, the title escaped, no star.
  *   4. The eight fixture show names run through the display-name rule, and the CSS
- *      that gives the name `min-width: 112px` and lets the meta wrap only when
+ *      that gives the name `min-width: 96px` and lets the meta wrap only when
  *      even that cannot fit.
  *   5. The Shows rows are `.row-show` around the same `.show-result` link; the
  *      playlist cards are a two-column grid of collages; the clear key is shown
@@ -168,18 +168,86 @@ const TYPING_CSS = CSS.slice(TYPING_START, TYPING_END);
 
 test("the closing key is an ultramarine keycap with the sparkle, never the bridge, and the query is escaped in the label and the attribute", () => {
   /* MUTATION: interpolate `${query}` (not `${esc(query)}`) in the label, or in the
-     data attribute, or swap "ph-sparkle" for "bridge", or drop "keycap--ultramarine".
-     Each fails below. */
+     data attribute, or swap "ph-sparkle" for "bridge", or drop "keycap--ultramarine",
+     or put quoteQuery() back in the label (double curly quotes). Each fails below. */
   const m = mount();
   const html = m.ctx.makePlaylistKeyHtml("<b>x</b>");
   assert.ok(!html.includes("<b>x</b>"), `the raw query never reaches the page: ${html}`);
   assert.ok(html.includes("&lt;b&gt;x&lt;/b&gt;"), "it is escaped");
   assert.ok(html.includes('data-create-playlist="&lt;b&gt;x&lt;/b&gt;"'), "and the attribute carries the escaped query too");
-  assert.ok(html.includes("Make a playlist about “&lt;b&gt;x&lt;/b&gt;”"), "in the one typographic pair, after 'Make'");
+  assert.ok(html.includes("Make a playlist about \u2018&lt;b&gt;x&lt;/b&gt;\u2019"), "in the prototype's SINGLE curly pair, after 'Make'");
+  assert.ok(!html.includes("\u201c") && !html.includes("\u201d"), "never the double pair the sentences use");
   assert.ok(/class="keycap keycap--md keycap--ultramarine keycap--wide"/.test(html), "ultramarine, full width");
   assert.ok(html.includes('href="#ph-sparkle"'), "Phosphor's sparkle ahead of the words");
   assert.ok(!html.includes("#bridge"), "the bridge mark means Stretch and nothing else");
   assert.strictEqual((html.match(/<button/g) || []).length, 1, "one key");
+});
+
+test("the key's lip is the face's own rounded shape offset down, not a flat bar under it", () => {
+  /* The primitive's `.keycap::after` is a straight bar as wide as the key. Under a 14px
+     radius it leaves a light gap at each bottom corner, so the Play key and the
+     ultramarine key read as a button floating above a stray underline (iteration 3's
+     fidelity finding). On Find the lip is a hard box-shadow instead, the shape
+     `.np .transport .keycap` already uses, and it wraps the rounded bottom.
+     MUTATION: delete the `box-shadow` from `body.view-find .keycap` (the key has no lip
+     at all), delete the `::after { content: none }` rule (the flat bar returns beside
+     the shadow), or drop the `--lip-pressed` shadow from the pressed rule (the base
+     moves when the key is pressed). Each fails below. WHAT IT CANNOT PROVE: the look;
+     fidelity `search-typing-i6` is where the corners were read. */
+  const key = rule("body.view-find .keycap");
+  assert.strictEqual(key["box-shadow"], "0 var(--lip) 0 var(--k-lip)", "the lip is the key's own shape, 3px lower, in the key's darker tone");
+  assert.strictEqual(key["margin-bottom"], "var(--lip)", "and it has the room the prototype's margin gives it");
+  assert.strictEqual(rule("body.view-find .keycap::after").content, "none", "the primitive's flat bar is switched off here");
+  assert.strictEqual(rule(":root")["--lip"], "3px");
+  const pressed = rule("body.view-find .keycap:active:not(:disabled)");
+  assert.strictEqual(pressed["box-shadow"], "0 var(--lip-pressed) 0 var(--k-lip)", "pressed, the face drops and the shadow shrinks, so the base stays put");
+  /* The shadow reads `--k-lip`, which only the colour variants set: the two keys on
+     this screen must each have one that is not the default hairline. */
+  assert.ok(rule(".keycap--persimmon")["--k-lip"] === "var(--persimmon-lip)" && rule(".keycap--ultramarine")["--k-lip"] === "var(--ultramarine-lip)", "a darker tone of the key's own colour");
+});
+
+test("'Up Next' on a row is a drawn plus that repaints to a drawn check, and its text is never rewritten", () => {
+  /* The row used to carry "+ Up Next" / "✓ Up Next" as TEXT, a Unicode character
+     standing in for an icon, which the direction forbids. The plus and check are now
+     Phosphor Bold from the sprite, `paintUpNext` swaps the `<use>` and the accessible
+     name, and a text control (every other screen's "+ Up Next") still goes through
+     setToggleLabel. The fakes are real enough to matter: the button keeps its text, so
+     a repaint that wrote textContent would flatten the icon and fail the first check.
+     MUTATION: make paintUpNext always call setToggleLabel (the icon is flattened to
+     text), drop `data-upnext-icon` from searchUpNextBtn (the repaint treats the icon
+     button as text), or restore the typed "+" in searchUpNextBtn. */
+  const m = mount();
+  const attrs = new Map();
+  const use = { setAttribute: (k, v) => attrs.set("use:" + k, v), getAttribute: (k) => attrs.get("use:" + k) ?? null };
+  const btn = { ...makeEl("button"), dataset: { upnextIcon: "1" }, textContent: "Up Next", querySelector: (sel) => (sel === "use" ? use : null), setAttribute: (k, v) => attrs.set(k, v), removeAttribute: (k) => attrs.delete(k) };
+  m.ctx.paintUpNext(btn, true);
+  assert.strictEqual(attrs.get("use:href"), "#ph-check", "queued: the drawn check");
+  assert.strictEqual(attrs.get("aria-label"), "In Up Next");
+  assert.strictEqual(btn.textContent, "Up Next", "the words were not rewritten");
+  m.ctx.paintUpNext(btn, false);
+  assert.strictEqual(attrs.get("use:href"), "#ph-plus", "not queued: the drawn plus");
+  assert.strictEqual(attrs.get("aria-label"), "Add to Up Next");
+  assert.strictEqual(btn.textContent, "Up Next");
+  const text = { ...makeEl("button"), dataset: {}, textContent: "+ Up Next", setAttribute: () => {}, removeAttribute: () => {} };
+  m.ctx.paintUpNext(text, true);
+  assert.strictEqual(text.textContent, "✓ Up Next", "a text control still repaints its words, through setToggleLabel");
+
+  /* The builder reads the queue: a queued episode is drawn with the check, named for the state. */
+  m.store.set("cp_queue", JSON.stringify(["ep-1"]));
+  const html = m.ctx.searchEpisodeRow(ITEM, "ctx");
+  const meta = html.slice(html.indexOf('<div class="row__meta">'), html.indexOf("</div>", html.indexOf('<div class="row__meta">')));
+  assert.ok(meta.includes('href="#ph-check"') && meta.includes('class="up-next on"') && meta.includes('aria-label="In Up Next"'), `queued row: ${meta}`);
+  assert.ok(!meta.includes("✓"), "and no check mark typed into the text");
+  /* The gate is upNextBtn's own: an episode addToQueue refuses gets no control. */
+  const silent = m.ctx.searchEpisodeRow({ ...ITEM, id: "ep-2", audio_url: null }, "ctx");
+  assert.ok(!silent.includes("data-upnext"), "no audio, no Up Next");
+});
+
+test("the key's label quotes the query in single curly quotes, once, and escapes it", () => {
+  /* MUTATION: return the double pair from quoteKeyQuery, or interpolate without esc(). */
+  const m = mount();
+  assert.strictEqual(m.ctx.quoteKeyQuery("x"), "‘x’");
+  assert.strictEqual(m.evalIn("quoteQuery")("x"), "“x”", "the sentences keep their own pair");
 });
 
 test("the key closes the results whether or not a playlist matched, after the playlist cards, and only when the scorer can build one", async () => {
@@ -292,7 +360,10 @@ test("an episode row trails ONE Play key, carries '+ Up Next' on the meta line, 
   assert.ok(/<button type="button" class="keycap keycap--sm keycap--persimmon row-play" data-play="ep-1" data-ctx="episode-search-x" data-title="&lt;b&gt;x&lt;\/b&gt; Kola" aria-label="Play &lt;b&gt;x&lt;\/b&gt; Kola">/.test(end), `the one trailing key is a keycap sm carrying data-play: ${end}`);
   assert.ok(end.includes('href="#ph-play-fill"'), "with the drawn play icon, not a text glyph");
   const meta = html.slice(html.indexOf('<div class="row__meta">'), html.indexOf("</div>", html.indexOf('<div class="row__meta">')));
-  assert.ok(meta.includes('data-upnext="ep-1"') && meta.includes("+ Up Next"), `"+ Up Next" sits on the meta line: ${meta}`);
+  assert.ok(meta.includes('data-upnext="ep-1"') && meta.includes("<span>Up Next</span>"), `"Up Next" sits on the meta line: ${meta}`);
+  assert.ok(meta.includes('href="#ph-plus"'), "its glyph is Phosphor Bold's plus, drawn from the sprite");
+  assert.ok(!meta.includes("+ Up Next") && !meta.includes("\u2713"), "no '+' or check mark typed into the text: the direction forbids Unicode glyphs as icons");
+  assert.ok(meta.includes('data-upnext-icon="1" aria-label="Add to Up Next"'), "the icon form says so, and is named for the action");
   assert.ok(meta.includes('<span class="row__show">Stuff You Should Know</span>'), "the show is named in plain text");
   assert.ok(meta.includes('<span class="readout">46 min</span>'), "with the length as one readout");
   assert.ok(!html.includes('class="show-link"'), "the name is not a second link");
@@ -321,19 +392,25 @@ test("the eight fixture show names go through the display-name rule on the meta 
 
 test("the show name keeps 112px and takes what the length and the action leave; the meta wraps only when even that cannot fit", () => {
   /* The 393 arithmetic, so the numbers are not folklore: 393 - 2x16 gutter - 56 art
-     - 44 key - 2x12 gap = 237 for the body. The length ("46 min", 49.9 measured in
-     Chromium) and "+ Up Next" (60.8) with their 4px gap and the 6px meta gap leave
-     112.3: just enough for the floor, so at 393 the common row stays on one line,
-     and at 375 (219) the pair drops to a second line together.
-     MUTATION: set `.row__show`'s min-width to 72px, its flex-basis to `auto`
-     (a long name then wraps the tail before it ellipsises), or the key's width back
-     to the primitive's padded 48 (the body loses 4px and the 393 row wraps). */
+     - 48 key - 2x12 gap = 233 for the body (the key is the prototype's 48 square).
+     The length ("46 min", 49.9 measured in Chromium) and "Up Next" with its 16px
+     icon and 4px gap (69.5) with their 4px gap and the 6px meta gap leave 103.6:
+     above the 96px floor, so at 393 the common row stays on one line, and at 375
+     (215) the pair drops to a second line together.
+     MUTATION: set `.row__show`'s min-width to 72px (names cut shorter than the
+     prototype's own), its flex-basis to `auto` (a long name then wraps the tail
+     before it ellipsises), or to 112px (the 393 row then wraps now that the key is
+     48 wide). */
   const show = rule("body.view-find .row-episode .row__show");
-  assert.strictEqual(show["min-width"], "112px");
-  assert.strictEqual(show.flex, "1 1 112px", "basis 112: a name only forces a wrap when 112 itself cannot fit");
+  assert.strictEqual(show["min-width"], "96px");
+  assert.strictEqual(show.flex, "1 1 96px", "basis 96: a name only forces a wrap when 96 itself cannot fit");
   assert.strictEqual(rule("body.view-find .row-episode .row__meta")["flex-wrap"], "wrap");
   assert.strictEqual(rule("body.view-find .row-episode .row__tail").flex, "none", "length and action travel as one");
-  assert.strictEqual(rule("body.view-find .row-episode .row-play").width, "var(--tap)");
+  const play = rule("body.view-find .row-episode .row-play");
+  assert.strictEqual(play.width, "var(--key)", "the Play key is the prototype's 48 square, not the 44 tap target");
+  assert.strictEqual(play.height, "var(--key)");
+  assert.strictEqual(play["min-width"], "var(--key)", "the primitive's `--sm` min-width (44) must not win");
+  assert.strictEqual(rule(":root")["--key"], "48px");
   assert.strictEqual(rule(".row-episode")["grid-template-columns"], "var(--art-row) minmax(0, 1fr) auto");
   assert.strictEqual(rule(":root")["--art-row"], "56px");
   assert.strictEqual(rule(":root")["--tap"], "44px");

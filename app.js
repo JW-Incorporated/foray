@@ -4387,6 +4387,18 @@ function bindStars(scope) {
    keep browsing rows at their control-density ceiling). It just re-confirms
    membership, which is why addToQueue is already idempotent rather than a
    toggle. */
+/* Repaints one "Up Next" control from the queue. A text control ("+ Up Next" /
+   "✓ Up Next") goes through setToggleLabel; one drawn with an icon (Find's rows:
+   a Phosphor plus or check ahead of the fixed words "Up Next") swaps the icon's
+   sprite reference and writes the accessible name, and never rewrites its text,
+   which would flatten the icon. The icon form says so with data-upnext-icon. */
+function paintUpNext(btn, on) {
+  const use = btn.dataset.upnextIcon ? btn.querySelector("use") : null;
+  if (!use) { setToggleLabel(btn, on, UP_NEXT_TOGGLE); return; }
+  use.setAttribute("href", on ? "#ph-check" : "#ph-plus");
+  btn.setAttribute("aria-label", on ? UP_NEXT_TOGGLE.onLabel : UP_NEXT_TOGGLE.offLabel);
+}
+
 function bindUpNext(scope) {
   scope.querySelectorAll("[data-upnext]").forEach(btn => {
     if (btn._bound) return;
@@ -4400,7 +4412,7 @@ function bindUpNext(scope) {
          "✓ Up Next" over an unchanged cp_queue was a false success. */
       const on = isQueued(id);
       scope.querySelectorAll(`[data-upnext="${CSS.escape(id)}"]`).forEach(b => {
-        setToggleLabel(b, on, UP_NEXT_TOGGLE);
+        paintUpNext(b, on);
         b.classList.toggle("on", on);
       });
     });
@@ -4418,7 +4430,7 @@ function bindUpNext(scope) {
       if (playNextInQueue(id)) announce("Plays next.");
       const on = isQueued(id);
       scope.querySelectorAll(`[data-upnext="${CSS.escape(id)}"]`).forEach(b => {
-        setToggleLabel(b, on, UP_NEXT_TOGGLE);
+        paintUpNext(b, on);
         b.classList.toggle("on", on);
       });
     });

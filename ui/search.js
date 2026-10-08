@@ -1896,8 +1896,16 @@ function createPlaylistCtaHtml(query) {
   return makePlaylistKeyHtml(query);
 }
 
+/** The key's own quote pair: single curly quotes, \u2018 and \u2019, as the prototype
+    authors them ("Make a playlist about \u2018chern\u2019"). `quoteQuery` (app.js) stays
+    the pair for every sentence that quotes a query back; the key is a control label and
+    the direction draws it with the single pair. One helper, so the pair lives in one place. */
+function quoteKeyQuery(text) {
+  return `\u2018${text}\u2019`;
+}
+
 /** THE KEY ITSELF (Tactile `search-typing`, BUILD-PLAN 2.10, BUILD-NOTES 4.4): a
-    full-width ultramarine keycap, "Make a playlist about \u201cquery\u201d", with
+    full-width ultramarine keycap, "Make a playlist about \u2018query\u2019", with
     Phosphor's sparkle ahead of the words. Never the bridge mark: that glyph means
     Stretch and nothing else. Split from the gate above so what the query becomes
     in the markup (escaped once, in the label and in the attribute) can be pinned
@@ -1905,7 +1913,7 @@ function createPlaylistCtaHtml(query) {
     ellipsis in styles.css, not wrapped. */
 function makePlaylistKeyHtml(query) {
   return `<div class="sh-create-cta">
-    <button type="button" class="keycap keycap--md keycap--ultramarine keycap--wide" data-create-playlist="${esc(query)}">${tactileIcon("ph-sparkle")}<span class="keycap__label">Make a playlist about ${quoteQuery(esc(query))}</span></button>
+    <button type="button" class="keycap keycap--md keycap--ultramarine keycap--wide" data-create-playlist="${esc(query)}">${tactileIcon("ph-sparkle")}<span class="keycap__label">Make a playlist about ${quoteKeyQuery(esc(query))}</span></button>
   </div>`;
 }
 
@@ -2159,6 +2167,20 @@ function localEpisodeMatches(query) {
   return byTitle.concat(byShow).slice(0, LOCAL_EPISODE_TIER_MAX);
 }
 
+/** "Up Next" on a Find row, drawn the way the prototype draws it: Phosphor Bold's plus
+    (ph-plus) or check (ph-check, once queued) ahead of the words, never a "+" or a
+    check mark typed into the text. The gate is `upNextBtn`'s own (it answers "" for what
+    addToQueue refuses), so the two cannot disagree about which rows get a control; the
+    state is read from the queue, as upNextBtn reads it. The accessible name comes from
+    `UP_NEXT_TOGGLE`'s labels, which differ from the visible "Up Next", and bindUpNext
+    repaints the icon and the name together (see `paintUpNext`). */
+function searchUpNextBtn(id, item) {
+  if (!upNextBtn(id, item)) return "";
+  const on = isQueued(id);
+  const label = on ? UP_NEXT_TOGGLE.onLabel : UP_NEXT_TOGGLE.offLabel;
+  return `<button class="up-next ${on ? "on" : ""}" data-upnext="${esc(id)}" data-upnext-icon="1" aria-label="${esc(label)}">${tactileIcon(on ? "ph-check" : "ph-plus")}<span>Up Next</span></button>`;
+}
+
 /** THE EPISODE ROW OF THE FIND RESULTS (Tactile `search-typing`, BUILD-PLAN 2.10,
     BUILD-NOTES 3.9): art 56, the title (two lines), a meta line of the show's
     display name, the length and "+ Up Next", and ONE trailing Play keycap `sm`.
@@ -2195,7 +2217,7 @@ function searchEpisodeRow(item, ctx) {
     ${tactileArtFrame({ size: "row", url: art, initials: tactileStationCode(showName) })}
     <div class="row__body">
       <h3 class="row__title"><a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(title)}</a>${explicitBadge(item.explicit)}</h3>
-      <div class="row__meta"><span class="row__show">${esc(showName)}</span><span class="row__tail">${dur ? `<span class="readout">${esc(dur)}</span>` : ""}${progHtml}${upNextBtn(item.id, item)}</span></div>
+      <div class="row__meta"><span class="row__show">${esc(showName)}</span><span class="row__tail">${dur ? `<span class="readout">${esc(dur)}</span>` : ""}${progHtml}${searchUpNextBtn(item.id, item)}</span></div>
     </div>
     <div class="row__end">${key}</div>
   </article>`;

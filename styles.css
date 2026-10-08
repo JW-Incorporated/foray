@@ -5159,17 +5159,19 @@ body.view-find .row-episode .ep-title-link { color: inherit; text-decoration: no
 body.view-find .row-episode .ep-title-link::after { content: ""; position: absolute; inset: 0; }
 body.view-find .row-episode .row__end { position: relative; z-index: 1; }
 body.view-find .row-episode .row__meta { flex-wrap: wrap; row-gap: 0; column-gap: calc(var(--s-1) + var(--s-1) / 2); }
-body.view-find .row-episode .row__show { flex: 1 1 112px; min-width: 112px; max-width: 100%; }
+body.view-find .row-episode .row__show { flex: 1 1 96px; min-width: 96px; max-width: 100%; }
 body.view-find .row-episode .row__tail { flex: none; display: flex; align-items: center; gap: var(--s-1); }
-body.view-find .row-episode .row-play { width: var(--tap); padding: 0; }
+body.view-find .row-episode .row-play { width: var(--key); min-width: var(--key); height: var(--key); padding: 0; }
 body.view-find .row-episode .row__tail > .readout,
 body.view-find .row-episode .row__tail > .ep-progress { flex: none; }
 body.view-find .row-episode .ep-progress { color: var(--ink-2); }
 body.view-find .row-episode button.up-next {
   flex: none; margin-left: auto; min-width: 0; min-height: 0; padding: 0; z-index: 1;
+  display: inline-flex; align-items: center; gap: var(--s-1);
   border: 0; border-radius: 0; background: transparent; box-shadow: none; color: var(--ink-2);
   font: var(--w-label) var(--t-label)/var(--lh-label) var(--font-text);
 }
+body.view-find .row-episode button.up-next .i { width: var(--s-4); height: var(--s-4); }
 body.view-find .row-episode button.up-next:active { color: var(--ink); }
 body.view-find .row-episode button.up-next.on { color: var(--ink-2); background: transparent; border: 0; }
 body.view-find .row-episode button.up-next:focus-visible { outline: calc(var(--s-1) / 2) solid var(--ultramarine); outline-offset: calc(var(--s-1) / 2); }
@@ -5192,6 +5194,18 @@ body.view-find .pcard .fy-badge-generated {
 body.view-find .find-collage--card { display: grid; grid-template-columns: 1fr 1fr; width: 100%; height: auto; aspect-ratio: 1; border-radius: var(--r-sm); }
 body.view-find .find-collage--card.is-single { grid-template-columns: 1fr; }
 body.view-find .find-collage--card .find-art--cell { width: 100%; height: 100%; }
+
+/* THE LIP (BUILD-NOTES 2.4, Materials 3): a 3px lower edge in a darker tone of the
+   key's own fill that wraps the rounded bottom, so the key reads as one object. The
+   primitive's `::after` is a flat bar as wide as the key, which under a 14px radius
+   leaves a light gap at each corner and reads as a stray underline. Here the lip is
+   the face's own rounded shape offset down by `--lip` (a hard box-shadow), exactly the
+   shape `.np .transport .keycap` uses; the margin gives it the room the prototype's
+   `margin-bottom: var(--lip)` does. Pressed, the face drops 2px and the shadow
+   shrinks to `--lip-pressed`, so the base stays where it was. */
+body.view-find .keycap { margin-bottom: var(--lip); box-shadow: 0 var(--lip) 0 var(--k-lip); }
+body.view-find .keycap::after { content: none; }
+body.view-find .keycap:active:not(:disabled), body.view-find .keycap[data-pressed="true"] { box-shadow: 0 var(--lip-pressed) 0 var(--k-lip); }
 
 /* The key: a full-width ultramarine keycap that closes the results. The label
    is cut by an ellipsis, never wrapped: the key keeps its height under a

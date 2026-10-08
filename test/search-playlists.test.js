@@ -402,7 +402,7 @@ test("the CTA appears when a rich topic answer exists and no own/generated playl
   assert.strictEqual(pl.hidden, false, "the CTA container must become visible");
   assert.ok(pl.innerHTML.includes("Make a playlist about"), "must render the CTA copy (Tactile: Make, not Create)");
   assert.ok(pl.innerHTML.includes("meditation"), "must name the actual typed query");
-  assert.ok(pl.innerHTML.includes("“meditation”"), "quoted with the one typographic pair (copy-8)");
+  assert.ok(pl.innerHTML.includes("\u2018meditation\u2019"), "the key quotes the query in the prototype's single curly pair (quoteKeyQuery)");
   assert.ok(!pl.innerHTML.includes("data-cta-pending"), "and the pending line is gone once the scan answered");
 });
 
