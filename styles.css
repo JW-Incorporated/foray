@@ -4855,7 +4855,7 @@ body.view-find .row-episode .ep-title-link { color: inherit; text-decoration: no
 body.view-find .row-episode .ep-title-link::after { content: ""; position: absolute; inset: 0; }
 body.view-find .row-episode .row__end { position: relative; z-index: 1; }
 body.view-find .row-episode .row__meta { flex-wrap: wrap; row-gap: 0; column-gap: calc(var(--s-1) + var(--s-1) / 2); }
-body.view-find .row-episode .row__show { flex: 1 1 96px; min-width: 96px; max-width: 100%; }
+body.view-find .row-episode .row__show { flex: 1 1 112px; min-width: 112px; max-width: 100%; }
 body.view-find .row-episode .row__tail { flex: none; display: flex; align-items: center; gap: var(--s-1); }
 body.view-find .row-episode .row-play { width: var(--key); min-width: var(--key); height: var(--key); padding: 0; }
 body.view-find .row-episode .row__tail > .readout,

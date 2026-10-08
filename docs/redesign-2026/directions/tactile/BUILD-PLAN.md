@@ -623,8 +623,9 @@ both pairs.
    `min-width: 112px` and basis 112, so it takes what the length and the action
    leave and ellipsises last; the pair wraps to a second line together only when
    not even 112 fits beside them (375 wide, a long length, the "played" mark),
-   never "+ Up Next" alone. At 393 the row is one line (fidelity 0px); at 375 it
-   wraps (rows +16px). (e) `tactileDisplayName` also drops a trailing generic
+   never "+ Up Next" alone. At 412 the row is one line; at 393 and 375 the pair
+   wraps (rows +16px; review fix 2026-10-08 restored the 112 floor after iteration 3 had
+   dropped it to 96 to keep 393 on one line with the 48 key). (e) `tactileDisplayName` also drops a trailing generic
    noun ("Podcast", "Philosophy Podcast") when something real is left: BUILD-NOTES
    3.9's own example ("The Partially Examined Life") needs it and the prototype's
    `shortShow` does it. That is a primitive change: the gallery `*-rows` shots

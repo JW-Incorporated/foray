@@ -18,7 +18,7 @@
  *      repaints), "+ Up Next" on the meta line (the shared `upNextBtn`), the show's
  *      display name as plain text, the title escaped, no star.
  *   4. The eight fixture show names run through the display-name rule, and the CSS
- *      that gives the name `min-width: 96px` and lets the meta wrap only when
+ *      that gives the name `min-width: 112px` and lets the meta wrap only when
  *      even that cannot fit.
  *   5. The Shows rows are `.row-show` around the same `.show-result` link; the
  *      playlist cards are a two-column grid of collages; the clear key is shown
@@ -395,15 +395,17 @@ test("the show name keeps 112px and takes what the length and the action leave; 
      - 48 key - 2x12 gap = 233 for the body (the key is the prototype's 48 square).
      The length ("46 min", 49.9 measured in Chromium) and "Up Next" with its 16px
      icon and 4px gap (69.5) with their 4px gap and the 6px meta gap leave 103.6:
-     above the 96px floor, so at 393 the common row stays on one line, and at 375
-     (215) the pair drops to a second line together.
-     MUTATION: set `.row__show`'s min-width to 72px (names cut shorter than the
-     prototype's own), its flex-basis to `auto` (a long name then wraps the tail
-     before it ellipsises), or to 112px (the 393 row then wraps now that the key is
-     48 wide). */
+     BELOW the 112px BUILD-NOTES 3.9 / BUILD-PLAN 2.10 floor, so at 393 and at 375
+     (215) the length and the action drop to a second line TOGETHER, and the name
+     keeps its 112 on the first. A 96px floor (the earlier iteration's trade for the
+     48 key) kept the 393 row on one line but is not the specified number; the
+     review of this branch held the spec.
+     MUTATION: set `.row__show`'s min-width back to 96px (or 72px, the r2 value that
+     cut six of eight names at 393), or its flex-basis to `auto` (a long name then
+     wraps the tail before it ellipsises). Each fails the two assertions below. */
   const show = rule("body.view-find .row-episode .row__show");
-  assert.strictEqual(show["min-width"], "96px");
-  assert.strictEqual(show.flex, "1 1 96px", "basis 96: a name only forces a wrap when 96 itself cannot fit");
+  assert.strictEqual(show["min-width"], "112px", "BUILD-NOTES 3.9: the name keeps 112px");
+  assert.strictEqual(show.flex, "1 1 112px", "basis 112: a name only forces a wrap when 112 itself cannot fit");
   assert.strictEqual(rule("body.view-find .row-episode .row__meta")["flex-wrap"], "wrap");
   assert.strictEqual(rule("body.view-find .row-episode .row__tail").flex, "none", "length and action travel as one");
   const play = rule("body.view-find .row-episode .row-play");
@@ -550,4 +552,58 @@ test("the typing block reads tokens only and adds no transition or animation the
   const searchJs = fs.readFileSync(path.join(ROOT, "ui", "search.js"), "utf8");
   const from = searchJs.indexOf("function searchEpisodeRow");
   assert.ok(!/\bstyle=/.test(searchJs.slice(from, searchJs.indexOf("function paintEpisodeSearchResults", from))), "no inline style in the row markup");
+});
+
+/* ----------------------------------------------------- 5 the hrefs the typing results write */
+
+/* THE RULE, AND WHY THESE TWO HREFS DO NOT CALL safeUrl. CLAUDE.md: every href goes
+ * through safeUrl(). safeUrl gates SCHEMES (it runs `new URL`), and on a bare hash
+ * route it answers "#" (app.js safeUrl; ui/browse.js `browseTile` documents the same),
+ * so wrapping `#/playlist/p1` would turn every playlist card and every episode title
+ * into a dead "#" link. The repo's answer, which app-security's census and `playlistRoute`
+ * both state, is that an in-app route keeps its `#/` LITERAL in the template and only a
+ * percent-encoded path is interpolated after it: no scheme can be injected because the
+ * href can only ever begin `#/`. These tests pin exactly that, on hostile ids, so the
+ * rule is held by a test rather than by a reading of the template.
+ *
+ * MUTATION 1: in `renderPlaylistSearchResults` change `href="#/${esc(playlistRoute(p))}"`
+ *   to `href="${esc(playlistRoute(p))}"` (the prefix interpolated) -> the census and the
+ *   card test fail.
+ * MUTATION 2: in `searchEpisodeRow` drop `encodeURIComponent` from the title link ->
+ *   the `a/b#c?d%e` id leaks a raw `/`, `#`, `?` and `%` into the route and the
+ *   episode test fails.
+ * MUTATION 3: in the card, replace `playlistRoute(p)` with `"playlist/" + p.id` -> the
+ *   `gen-history/technology` id keeps its slash and the card test fails. */
+test("the playlist card and the episode title link keep a literal #/ and an encoded path, on hostile ids", () => {
+  const m = mount();
+  m.state.catalog = { shows: [{ show_id: "sh", title: "S" }] };
+  const hostileId = 'gen-history/technology" onclick="x';
+  m.store.set("cp_playlists", JSON.stringify([{ id: hostileId, title: "Mix of sleep", items: [{ id: "a", title: "A", show: "S", show_id: "sh", topics: ["sleep"] }] }]));
+  m.evalIn("renderPlaylistSearchResults")("sleep", m.evalIn("showSearchToken"));
+  const html = m.byId.get("pl-search-results").innerHTML;
+  const hrefs = [...html.matchAll(/<a class="pcard pl-card" href="([^"]*)"/g)].map((x) => x[1]);
+  assert.strictEqual(hrefs.length, 1, `one card, and its href is one attribute (a quote in the id did not end it): ${html}`);
+  assert.strictEqual(hrefs[0], "#/playlist/gen-history%2Ftechnology%22%20onclick%3D%22x", "literal #/, then the encoded id");
+  assert.ok(!/onclick="/.test(html), "the hostile id grew no attribute");
+
+  const row = m.ctx.searchEpisodeRow({ ...ITEM, id: "a/b#c?d%e" }, "ctx");
+  const link = /<a class="ep-title-link" href="([^"]*)"/.exec(row);
+  assert.ok(link, `the title link: ${row}`);
+  assert.strictEqual(link[1], "#/episode/a%2Fb%23c%3Fd%25e", "a `/`, `#`, `?` and `%` in an id cannot break the route");
+  const scheme = m.ctx.searchEpisodeRow({ ...ITEM, id: "javascript:alert(1)" }, "ctx");
+  assert.ok(scheme.includes('href="#/episode/javascript%3Aalert(1)"'), `a scheme-shaped id stays a path segment: ${scheme}`);
+
+  /* The reason safeUrl is not the guard here, asserted so the comment above cannot rot. */
+  assert.strictEqual(m.ctx.safeUrl("#/playlist/p1"), "#", "safeUrl would kill an in-app route");
+});
+
+test("every interpolated href in ui/search.js opens with a literal #/ or goes through safeUrl", () => {
+  /* The census app-security.test.js runs over app.js, scoped to this file and widened
+     one step: an href that OPENS with an interpolation must name safeUrl. MUTATION: see
+     MUTATION 1 above (or add `href="${esc(url)}"` anywhere in ui/search.js). */
+  const searchJs = fs.readFileSync(path.join(ROOT, "ui", "search.js"), "utf8");
+  const hrefs = searchJs.match(/\b(?:href|src)\s*=\s*"[^"\n]*\$\{[^}]*\}[^"\n]*"/g) || [];
+  assert.ok(hrefs.length >= 3, `expected the show, playlist and episode links to be seen, saw ${hrefs.length}`);
+  const bad = hrefs.filter((h) => !/=\s*"#\//.test(h) && !h.includes("safeUrl("));
+  assert.deepStrictEqual(bad, [], `these href/src interpolations are neither a literal #/ route nor safeUrl'd:\n${bad.join("\n")}`);
 });
