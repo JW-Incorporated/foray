@@ -5175,13 +5175,14 @@ body.ui-v2.view-yours .page--yours .page-head h2 { margin: 0; color: var(--ink);
 .yours-readout { margin: 0; color: var(--ink-2); }
 .page--yours .readout { word-spacing: -0.2em; }   /* the mono space is 0.6em wide; "47 min" reads as one readout, not "47  min" */
 
-/* The strip: 36px chips, 8 apart, 16 gutters; a chip half out of the edge fades
-   instead of showing a sliver (prototype P1-6). It sits 8px closer to the head
-   than the page gap, the way the prototype's strip does. */
+/* The strip: 36px chips, 12 apart (the prototype's gap token, measured 24px on
+   its 2x shot; BUILD-NOTES' "8 gap" was wrong), 16 gutters; a chip half out of
+   the edge fades instead of showing a sliver (prototype P1-6). It sits 8px
+   closer to the head than the page gap, the way the prototype's strip does. */
 .yours-chips {
   position: relative;
   display: flex;
-  gap: var(--s-2);
+  gap: var(--s-3);
   overflow-x: auto;
   margin: calc(var(--s-2) * -1) calc(var(--gutter) * -1) calc(var(--s-2) * -1);
   padding: var(--s-2) var(--gutter) var(--s-1);

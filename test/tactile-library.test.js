@@ -26,7 +26,7 @@
  *   7. Clear asks first (a sheet with focus moved in, Escape and Keep leave the
  *      list alone, Clear empties it but for the playing row).
  *   8. Escaping: a title and an id with markup in them reach the page inert.
- *   9. The sheet's own rules: 36px chips 8 apart, a 64px row with a 20px
+ *   9. The sheet's own rules: 36px chips 12 apart, a 64px row with a 20px
  *      position, one line of three keys, no height transition, every new
  *      transition and animation in the one reduced-motion block.
  *
@@ -678,13 +678,14 @@ function px(v) {
   return n ? Number(n[1]) : null;
 }
 
-test("the strip is 36px chips 8px apart under a 16px gutter; the row is 64 with a 20px position and 48px art; the queue rows are 12 apart", () => {
-  /* MUTATION 1: `.yours-chips { gap: var(--s-3) }` - the 8px assertion fails.
+test("the strip is 36px chips 12px apart under a 16px gutter; the row is 64 with a 20px position and 48px art; the queue rows are 12 apart", () => {
+  /* MUTATION 1: `.yours-chips { gap: var(--s-2) }` - the 12px assertion fails
+     (the 8px it replaced was the i3 regression: the prototype's gap is 12).
      MUTATION 2: `.yours-queue .row-queue__position { width: var(--s-4) }` - the
      20px assertion fails.
      MUTATION 3: `.yours-queue { gap: var(--s-2) }` - the pitch assertion fails
      (and with it the 8-10 rows at 852). */
-  assert.strictEqual(px(decl(".yours-chips", "gap")), 8);
+  assert.strictEqual(px(decl(".yours-chips", "gap")), 12);
   assert.match(decl(".yours-chips", "padding"), /var\(--gutter\)/);
   assert.match(decl(".yours-chips", "overflow-x"), /auto/, "horizontal scroll");
   assert.match(decl(".chip", "height"), /var\(--s-8\) \+ var\(--s-1\)/, "32 + 4");
