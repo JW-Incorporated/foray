@@ -130,7 +130,22 @@ function makeDocument() {
     tree() { return this.children.flatMap((c) => [c, ...c.tree()]); }
     querySelectorAll(sel) { return this.tree().filter((e) => matches(e, sel)); }
     querySelector(sel) { return this.querySelectorAll(sel)[0] || null; }
-    set innerHTML(v) { if (v === "") this.children.forEach((c) => { c.parentElement = null; }), this.children = []; }
+    set innerHTML(v) {
+      if (v === "") { this.children.forEach((c) => { c.parentElement = null; }); this.children = []; return; }
+      /* The first-run Room (ui/onboarding.js) is built from one markup string. Only its own markup is read here, so
+         every other test's innerHTML stays the inert no-op it always was: each tag becomes a flat child with its id
+         and classes, which is what the Room's handlers and these tests look up. */
+      if (typeof v === "string" && v.includes('class="ob-inner"')) {
+        for (const m of v.matchAll(/<(button|div|span|h2|p)\b([^>]*)>/g)) {
+          const k = new El(m[1]);
+          const id = /\bid="([^"]+)"/.exec(m[2]);
+          const cls = /\bclass="([^"]+)"/.exec(m[2]);
+          if (id) k.id = id[1];
+          if (cls) k.className = cls[1];
+          this.appendChild(k);
+        }
+      }
+    }
     get innerHTML() { return ""; }
     focus() { doc.activeElement = this; }
     blur() { if (doc.activeElement === this) doc.activeElement = doc.body; }
@@ -308,19 +323,19 @@ test("REVIEW: a sheet opened over Now Playing is live, even though Now Playing h
   assert.ok(!inert(voice.wrap), "and nothing is left inert once both are closed");
 });
 
-test("REVIEW: a tab bar created while the first-run explainer is open is out of reach too", () => {
-  /* The explainer opens from Home's render, before renderTabBar creates the bar
+test("REVIEW: a tab bar created while the first-run Room is open is out of reach too", () => {
+  /* The Room opens from Home's render, before renderTabBar creates the bar
      on a first visit, so inertOutside never saw it. MUTATION: drop the
      inertUnderOpenSheet(bar) call from renderTabBar. */
   const m = mount();
   m.tabBar.remove();                               // a first visit: no bar yet
-  assert.strictEqual(m.ctx.showFirstTimeExplainerOnce(), true, "fixture: a fresh profile gets the explainer");
+  assert.strictEqual(m.ctx.showFirstTimeExplainerOnce(), true, "fixture: a fresh profile gets the Room");
   m.ctx.renderTabBar();
   const bar = m.doc.body.querySelector("#tab-bar");
   assert.ok(bar, "fixture: the bar was created");
   assert.ok(inert(bar), "the new bar is behind the dialog like everything else");
   m.doc.key("Escape");
-  assert.ok(!inert(bar), "and is released with the rest when the explainer closes");
+  assert.ok(!inert(bar), "and is released with the rest when the Room closes");
 });
 
 test("Escape asks the TOP sheet to close through its own handler", () => {
@@ -445,22 +460,21 @@ test("the Foray speed menu is one instance however often it is opened", () => {
   assert.ok(!inert(m.view), "and no inert page");
 });
 
-test("the first-run explainer is a real dialog: focus moves in, and Escape parks it for the visit — only Skip ends onboarding", () => {
-  /* MUTATION: open it without the owner (the old appendChild + classList.add)
-     -> focus never moves; red. ROUND 2 (p-first-4): Escape used to write the
-     never-again flag, the same as Skip; it is now "not now, this visit".
-     MUTATION: route `onRequestClose` back to `dismiss` -> the flag assertion
-     is red. */
+test("the first-run Room is a real dialog: focus moves in, and Escape parks it for the visit — only a button ends onboarding", () => {
+  /* MUTATION: open it without the owner (a bare appendChild) -> focus never moves; red. ROUND 2 (p-first-4): Escape used
+     to write the never-again flag, the same as Skip; it is "not now, this visit". MUTATION: route `onRequestClose` back to
+     `dismiss` -> the flag assertion is red. Redesign 2026: the Room is its own panel (no .fy-panel to drag away). */
   const m = mount();
-  assert.strictEqual(m.ctx.showFirstTimeExplainerOnce(), true, "fixture assumption: a fresh profile gets the explainer");
-  const wrap = m.doc.body.querySelector("#first-time-sheet");
-  assert.ok(wrap && m.doc.activeElement === wrap.querySelector(".fy-panel"));
+  assert.strictEqual(m.ctx.showFirstTimeExplainerOnce(), true, "fixture assumption: a fresh profile gets the Room");
+  const wrap = m.doc.body.querySelector("#onboarding-room");
+  assert.ok(wrap && m.doc.activeElement === wrap, "focus is on the Room, which carries the dialog's name");
+  assert.strictEqual(wrap.getAttribute("aria-labelledby"), "onboarding-title");
   m.doc.key("Escape");
-  assert.strictEqual(m.doc.body.querySelector("#first-time-sheet"), null, "Escape closed it");
+  assert.strictEqual(m.doc.body.querySelector("#onboarding-room"), null, "Escape closed it");
   assert.strictEqual(m.store.get("cp_intro_dismissed"), undefined, "without ending onboarding");
   const fresh = mount();
   assert.strictEqual(fresh.ctx.showFirstTimeExplainerOnce(), true);
-  fresh.doc.body.querySelector("#first-time-sheet-skip").fire("click");
+  fresh.doc.body.querySelector("#onboarding-room").querySelector("#onboarding-skip").fire("click");
   assert.strictEqual(fresh.store.get("cp_intro_dismissed"), "true", "Skip is the considered press that does");
 });
 
@@ -473,7 +487,7 @@ test("no sheet writes the modal lock itself any more — they all go through the
   assert.strictEqual(count(APP_SRC, 'classList.add("fy-sheet-open")'), 0);
   assert.strictEqual(count(APP_SRC, 'classList.remove("fy-sheet-open")'), 0);
   assert.strictEqual(count(CLIENT_SRC, 'classList.add("fy-sheet-open")'), 1, "client.js: only the owner-less fallback");
-  for (const fn of ["showFirstTimeExplainerOnce", "showIntroPopupOnce", "openFeedbackSheet",
+  for (const fn of ["openOnboardingRoom", "showIntroPopupOnce", "openFeedbackSheet",
     "openRateMenu", "openDeleteSheet", "openVoiceSheet", "openDiagSheet"]) {
     const body = new RegExp(`function ${fn}\\([^)]*\\) \\{[\\s\\S]*?\\n\\}`).exec(APP_SRC);
     assert.ok(body, `${fn} exists`);
@@ -845,72 +859,55 @@ test("ROUND 2 touch-1: a zoomed gesture's release SEEKS, read from the pre-zoom 
   assert.match(APP_SRC, /const at = stripElapsedAt\(e, r\);\s*if \(at != null\) return commitStripSeek\(at\);/);
 });
 
-test("ROUND 2 a11y-5: 'Get started' lands focus on the new step's title, so the step is spoken", () => {
-  /* The button that was pressed is destroyed by the body swap and focus fell
-     to <body> inside an open dialog. MUTATION: drop `landOnStep()` from the
-     "Get started" handler -> red. */
+test("ROUND 2 p-first-4: Escape and a navigation PARK the first-run Room for the visit: neither ends onboarding, and it does not pop back up", () => {
+  /* MUTATION 1: route `onRequestClose` to `dismiss` -> the flag assertion is red. MUTATION 2: drop `|| firstRunParked`
+     from the on-screen check -> the Room re-mounts on Home's next render; red. (The sheet's scrim is gone: a Room has
+     none.) */
   const m = mount();
   assert.strictEqual(m.ctx.showFirstTimeExplainerOnce(), true);
-  const wrap = m.doc.body.querySelector("#first-time-sheet");
-  assert.strictEqual(m.doc.activeElement, wrap.querySelector(".fy-panel"), "the first render: the dialog itself is what is announced");
-  wrap.querySelector("#first-time-sheet-go").fire("click");
-  const title = wrap.querySelector("#first-time-sheet-title");
-  assert.ok(title && /What are you into/.test(title.textContent), "precondition: step 2 rendered");
-  assert.strictEqual(m.doc.activeElement, title, "focus is on the new step's title, not on <body>");
-  assert.strictEqual(title.getAttribute("tabindex"), "-1", "as a programmatic target");
-});
-
-test("ROUND 2 p-first-4: a scrim tap PARKS the first-run sheet for the visit: it neither ends onboarding nor pops back up", () => {
-  /* MUTATION 1: bind the scrim to `dismiss` -> the flag assertion is red.
-     MUTATION 2: drop `|| firstRunParked` from the on-screen check -> the sheet
-     re-mounts on Home's next render; red. */
-  const m = mount();
-  assert.strictEqual(m.ctx.showFirstTimeExplainerOnce(), true);
-  m.doc.body.querySelector("#first-time-sheet").querySelector(".fy-scrim").fire("click");
-  assert.strictEqual(m.doc.body.querySelector("#first-time-sheet"), null, "the scrim closes it");
+  m.ctx.closeAllSheets();                                  // what a hash change does (app.js route())
+  assert.strictEqual(m.doc.body.querySelector("#onboarding-room"), null, "a navigation closes it");
   assert.strictEqual(m.store.get("cp_intro_dismissed"), undefined, "without the never-again flag");
   /* Home's gate, as renderHomeV2 writes it: the popup runs only when the
      explainer says it did not render — and "parked" answers true for exactly
      that reason. */
   if (!m.ctx.showFirstTimeExplainerOnce()) m.ctx.showIntroPopupOnce();
-  assert.strictEqual(m.doc.body.querySelector("#first-time-sheet"), null, "Home's next render this visit does not bring it back");
+  assert.strictEqual(m.doc.body.querySelector("#onboarding-room"), null, "Home's next render this visit does not bring it back");
   assert.strictEqual(m.doc.body.querySelector("#intro-sheet"), null, "and the returning-user popup does not take its place");
 });
 
-test("ROUND 2 p-first-5: the first-run sheet leaves the player reachable, so a shared Foray keeps its controls under it", () => {
-  /* MUTATION: drop `keepReachable: ONBOARDING_KEEPS_REACHABLE` -> #foray-player
-     goes inert with the page; red. */
+test("ROUND 2 p-first-5, redone for the Room: the full-screen Room covers the player and takes it out of reach with the page", () => {
+  /* The sheet kept the mini bar reachable because it sat over a Home with a bar on it. The Room is the whole screen and
+     the bar would sit on its buttons, and the Room waits while a Foray is sounding (offerHomeOnboarding), so what is
+     under it is only a restored, paused bar. MUTATION: pass `keepReachable: ONBOARDING_KEEPS_REACHABLE` in
+     openOnboardingRoom -> the bar stays live over the Room's bottom buttons; red. */
   const m = mount();
   const player = m.doc.createElement("div");
   player.id = "foray-player";
   m.doc.body.appendChild(player);
   assert.strictEqual(m.ctx.showFirstTimeExplainerOnce(), true);
   assert.ok(inert(m.view), "the page is out of reach");
-  assert.ok(!inert(player), "the mini bar's play and back-15 are not");
+  assert.ok(inert(player), "and so is the bar under a full-screen Room");
+  assert.ok(!m.doc.body.classList.contains("fy-sheet-keeps-player"), "nothing lifts the bar over the Room");
   m.doc.key("Escape");
   assert.ok(!inert(m.view) && !inert(player));
 });
 
-test("ROUND 2 review (p-first-5): an onboarding sheet lifts the player OVER its scrim and does not trap VoiceOver with aria-modal", () => {
-  /* Out of `inert` was not reachable: the z-70 scrim covered the z-60 bar, so
-     a tap on ❚❚ parked the sheet and the audio played on, and aria-modal kept
-     VoiceOver inside the dialog. MUTATIONS: drop SHEET_KEEPS_PLAYER_CLASS from
-     sheetBodyClasses; set aria-modal back to "true"; delete the styles.css
-     lift rule. */
+test("ROUND 2 review (p-first-5), for the Room: it does not trap VoiceOver with aria-modal, and it stacks above the player", () => {
+  /* The first-run dialogs never set aria-modal="true" (it keeps VoiceOver's cursor inside); `inert` is the modality.
+     MUTATIONS: set aria-modal to "true" in openOnboardingRoom -> red; lower `.room.ob-room`'s z-index under
+     #foray-player's -> red (the bar would draw over the Room's buttons). */
   const m = mount();
-  const player = m.doc.createElement("div");
-  player.id = "foray-player";
-  m.doc.body.appendChild(player);
   assert.strictEqual(m.ctx.showFirstTimeExplainerOnce(), true);
-  assert.ok(m.doc.body.classList.contains("fy-sheet-keeps-player"), "the body says the player is lifted");
-  const panel = m.doc.body.querySelector("#first-time-sheet").querySelector(".fy-panel");
-  assert.notStrictEqual(panel.getAttribute("aria-modal"), "true", "VoiceOver can leave the dialog for the player");
+  const wrap = m.doc.body.querySelector("#onboarding-room");
+  assert.notStrictEqual(wrap.getAttribute("aria-modal"), "true", "VoiceOver can leave the dialog");
   m.doc.key("Escape");
-  assert.ok(!m.doc.body.classList.contains("fy-sheet-keeps-player"), "and it drops when the sheet goes");
   const css = fs.readFileSync(path.join(__dirname, "..", "styles.css"), "utf8");
-  const lift = /body\.fy-sheet-keeps-player #foray-player\s*\{[^}]*z-index:\s*(\d+)/.exec(css);
+  const room = /\.room\.ob-room \{[^}]*z-index:\s*(\d+)/.exec(fs.readFileSync(path.join(__dirname, "..", "ui", "onboarding.css"), "utf8"));
+  const player = /#foray-player\s*\{[^}]*z-index:\s*(\d+)/.exec(css);
   const sheetZ = /\.fy-sheet \{[^}]*z-index:\s*(\d+)/.exec(css);
-  assert.ok(lift && sheetZ && Number(lift[1]) > Number(sheetZ[1]), "the lifted player stacks above the sheet");
+  assert.ok(room && player && sheetZ, "fixture: the three z-indexes are declared");
+  assert.ok(Number(room[1]) > Number(player[1]) && Number(room[1]) > Number(sheetZ[1]), `the Room (${room[1]}) stacks above the player (${player[1]}) and every sheet (${sheetZ[1]})`);
 });
 
 test("ROUND 2 a11y-6: with the player hidden BEFORE the owner lets go, Stop leaves focus on the page, not on a hidden button", () => {

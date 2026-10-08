@@ -795,7 +795,7 @@ test("app-1-1: no first-run sheet is offered while the store has not answered; i
   const m = mount({ store, storageWaitMs: 20, ceilingMs: 60000 });
   await m.booted();
   assert.strictEqual(m.ctx.storageWaiting(), true, "premise");
-  const sheetUp = () => Boolean(m.ctx.document.querySelector("#first-time-sheet"));
+  const sheetUp = () => Boolean(m.ctx.document.querySelector("#onboarding-room"));
   assert.strictEqual(m.ctx.isGenuineFirstTimeUser(), true, "premise: unhydrated, the listener looks new");
   assert.ok(!sheetUp(), "the first-run sheet opened before the store answered");
   tier.release();

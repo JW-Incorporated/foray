@@ -1780,7 +1780,7 @@ test("persist-2: a finished deletion on Home writes no cp_playlists and opens no
     seed: { cp_intro_dismissed: "true", cp_interests: "{}" },
   });
   assert.ok(ui.openBtn, "premise: the page booted");
-  assert.strictEqual(findIn(dom.body, "#first-time-sheet"), null, "premise: no onboarding at boot");
+  assert.strictEqual(findIn(dom.body, "#onboarding-room"), null, "premise: no onboarding at boot");
   await ui.openBtn.click();
   await ui.input.enter("DELETE");
   const out = await ctx.deleteMyData();
@@ -1788,7 +1788,7 @@ test("persist-2: a finished deletion on Home writes no cp_playlists and opens no
   await store.flush();
   await new Promise((r) => setTimeout(r, 0));
   assert.deepStrictEqual(cpKeys(), { local: [], idb: [] }, "the re-render wrote a key back");
-  assert.strictEqual(findIn(dom.body, "#first-time-sheet"), null, "onboarding opened over the deletion result");
+  assert.strictEqual(findIn(dom.body, "#onboarding-room"), null, "onboarding opened over the deletion result");
   assert.match(ui.status.textContent, /This device is clear/);
 });
 

@@ -96,16 +96,16 @@ async function openApp(page) {
     () => Boolean(window.ForayPlayer) && Boolean(document.querySelector("#tab-bar .tab-btn"))
   );
   /* A genuinely first-time profile — which every fresh browser context is —
-     gets the onboarding explainer, itself a `.fy-sheet` at z 70, over the
+     gets the first-run Room (Redesign 2026, a full-screen `.room` at z 100), over the
      whole page. It is not what these specs are about and it covers the
      controls they tap, so dismiss it the way a listener would ("Skip for
      now"). Bounded rather than asserted-present: if onboarding ever stops
      showing here, these specs should carry on, not turn red for it. */
-  await page.waitForSelector("#first-time-sheet", { timeout: 15_000 }).catch(() => null);
-  if (await page.locator("#first-time-sheet-skip").count()) {
-    await page.locator("#first-time-sheet-skip").click();
+  await page.waitForSelector("#onboarding-room", { timeout: 15_000 }).catch(() => null);
+  if (await page.locator("#onboarding-skip").count()) {
+    await page.locator("#onboarding-skip").click();
   }
-  await expect(page.locator("#first-time-sheet")).toHaveCount(0);
+  await expect(page.locator("#onboarding-room")).toHaveCount(0);
 }
 
 /** Starts one ordinary episode on the fixture audio and waits until the real

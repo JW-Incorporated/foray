@@ -38,7 +38,7 @@
    plays four moments from one episode. So it says "moments", and the narrator
    clause appears only while a Foray this listener can see actually carries
    narration. A function, not a constant, for that one clause; still ONE
-   sentence for the Forays page and the first-run sheet. */
+   sentence, on the Forays page (the first-run sheet that shared it is retired, Redesign 2026). */
 function forayAbout() {
   const narrated = forayCards().some(f => Array.isArray(f?.items) && f.items.some(i => i?.type === "narration"));
   return `One subject, heard across several podcasts: moments from their episodes, played in turn from each show's own feed${narrated ? ", with a narrator between them" : ""}.`;
