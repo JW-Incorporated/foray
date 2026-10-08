@@ -8,11 +8,11 @@ for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.meta.json'))) {
   const meta = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'))
   const tf = path.join(dir, f.replace('.meta.json', '.jsonl'))
   if (!fs.existsSync(tf)) continue
-  const u = { in: 0, cw: 0, cr: 0, out: 0, turns: 0 }
+  const u = { in: 0, cw: 0, cr: 0, out: 0, turns: 0 }, seen = new Set() // count each message id once (content blocks repeat usage)
   for (const line of fs.readFileSync(tf, 'utf8').split('\n')) {
     if (!line.includes('"usage"')) continue
     let e; try { e = JSON.parse(line) } catch { continue }
-    const us = e.message && e.message.usage; if (!us) continue
+    const us = e.message && e.message.usage; if (!us || seen.has(e.message.id)) continue; seen.add(e.message.id)
     u.in += us.input_tokens || 0; u.cw += us.cache_creation_input_tokens || 0; u.cr += us.cache_read_input_tokens || 0; u.out += us.output_tokens || 0; u.turns++
   }
   const label = meta.description || '?'

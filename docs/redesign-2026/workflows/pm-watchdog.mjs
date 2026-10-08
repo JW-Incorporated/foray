@@ -6,11 +6,11 @@
 // orchestrating session to act (then re-arm it). Silence means healthy.
 //
 //   node pm-watchdog.mjs <workflow transcript dir> [--min-free-gb 8] [--max-turns 160]
-//        [--max-unit-agents 30] [--stall-min 45] [--max-cache-read-m-per-h 250]
+//        [--max-unit-agents 30] [--stall-min 45] [--max-cache-read-m-per-h 125]
 //
 // Checks: disk free on C:, journal stalled (or the run finished), agent error streak, an agent
 // past its turn budget (runaway context), a unit stuck in loops (too many agents), and token
-// burn per hour (cache reads, the dominant cost: ~480M/h on 2026-10-07/08).
+// burn per hour (cache reads, the dominant cost: ~247M/h on 2026-10-07/08; the alarm is half that).
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -18,8 +18,8 @@ const dir = process.argv[2]
 if (!dir || !fs.existsSync(path.join(dir, 'journal.jsonl'))) { console.log('WATCHDOG: no journal.jsonl in ' + dir); process.exit(2) }
 const opt = (k, d) => { const i = process.argv.indexOf('--' + k); return i > 0 ? Number(process.argv[i + 1]) : d }
 const MIN_FREE = opt('min-free-gb', 8), MAX_TURNS = opt('max-turns', 160), MAX_UNIT = opt('max-unit-agents', 30)
-const STALL_MIN = opt('stall-min', 45), MAX_CR_H = opt('max-cache-read-m-per-h', 250)
-const offsets = new Map(), turns = new Map()
+const STALL_MIN = opt('stall-min', 45), MAX_CR_H = opt('max-cache-read-m-per-h', 125)
+const offsets = new Map(), turns = new Map(), seen = new Set() // one transcript line per content block repeats a message's usage: count each message id once
 const burn = [] // [timeMs, cumulative cache-read]
 let cacheRead = 0
 
@@ -33,7 +33,7 @@ function scanTranscripts() {
     offsets.set(f, from + Buffer.byteLength(text.slice(0, cut)))
     for (const line of text.slice(0, cut).split('\n')) {
       if (!line.includes('"usage"')) continue
-      try { const u = JSON.parse(line).message.usage; cacheRead += u.cache_read_input_tokens || 0; turns.set(f, (turns.get(f) || 0) + 1) } catch {}
+      try { const msg = JSON.parse(line).message; if (seen.has(msg.id)) continue; seen.add(msg.id); cacheRead += msg.usage.cache_read_input_tokens || 0; turns.set(f, (turns.get(f) || 0) + 1) } catch {}
     }
   }
 }
