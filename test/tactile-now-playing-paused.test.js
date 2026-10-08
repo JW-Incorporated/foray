@@ -261,3 +261,39 @@ test("the previous/next clip buttons a started foray shows read in --ink-2 on th
   assert.match(rule("body.ui-v2 .fp-sheet.np .fp-clip"), /color:\s*var\(--ink-2\)/);
   assert.match(rule("body.ui-v2 .fp-sheet.np .fp-clip:hover:not(:disabled)"), /color:\s*var\(--ink\)/);
 });
+
+test("the needle stands on the bar the show chip names, even when the time is exactly a segment boundary", () => {
+  /* A foray restored or advanced to a segment sits exactly at its start. The
+     primitive maps a boundary time to the END of the earlier bar, so the chip read
+     the new show (YC) while the needle stood on the old show's (SS) bar.
+     MUTATION: make dialBandX ignore its third argument (`return x;`) -> the clamped
+     needle falls back to the earlier bar's right edge and the first assertion fails.
+     The inverse (no index given) keeps the primitive's own answer, so the clamp is not
+     what moved the unrelated callers. */
+  const { ctx } = build();
+  const shows = [{ showId: "a", show: "A Show", duration: 100 }, { showId: "b", show: "B Show", duration: 100 }, { showId: "c", show: "C Show", duration: 100 }];
+  const boxes = ctx.tactileBandLayout(ctx.tactileBandSegments(shows), 345, "scrub");
+  const edgeOfFirst = boxes[0].x + boxes[0].width;
+  assert.ok(boxes[1].x > edgeOfFirst, "fixture premise: there is a gap between bars 0 and 1");
+  assert.ok(ctx.dialBandX(boxes, 1 / 3, 1) >= boxes[1].x - 1e-9, "at the boundary the needle is on the second bar the chip names");
+  assert.ok(Math.abs(ctx.dialBandX(boxes, 1 / 3) - edgeOfFirst) < 1e-6, "no index: the primitive's answer, the earlier bar's edge");
+  assert.ok(ctx.dialBandX(boxes, 1 / 3 + 0.2, 1) <= boxes[1].x + boxes[1].width + 1e-9, "a late index cannot pull the needle past its own bar");
+  /* End to end through the paint: the --x the sheet writes. */
+  const boundary = paint({ position: 1000, duration: 3000, currentIndex: 1, segments: shows.map((s, i) => ({ ...s, colorIndex: i })) });
+  const x = Number(boundary.bandNeedle.log.filter((e) => e[0] === "css" && e[1] === "--x").pop()[2]) * 1000;
+  assert.ok(x >= boxes[1].x - 1, `the painted needle (${x}) is on bar 1 (from ${boxes[1].x})`);
+});
+
+test("the transport keeps the prototype's 68/80/68 key widths and the Up next heading its 607px top block", () => {
+  /* Measured against the prototype at 393x852: the skip keys are 68 wide (the 56px
+     key with 20px side padding), and the block above "Up next" ends at 607px, so the
+     heading's first card peeks into the dock's fade.
+     MUTATION 1: put `width: var(--key-lg)` back on `.np .transport .keycap--lg` -> red.
+     MUTATION 2: set `.np__top` min-height back to `calc(100% - 176px ...)` -> red
+     (that put the heading 14px low and the card under opaque paper). */
+  const lg = rule(".np .transport .keycap--lg");
+  assert.match(lg, /width:\s*calc\(var\(--key-lg\) \+ var\(--s-3\)\)/);
+  assert.doesNotMatch(lg, /[^-]width:\s*var\(--key-lg\)/);
+  assert.match(rule(".np__top"), /min-height:\s*calc\(100% - 189px - var\(--safe-b\)\)/);
+  assert.match(rule(".np__dock::before"), /inset:\s*-14px 0/);
+});

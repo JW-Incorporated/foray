@@ -460,9 +460,16 @@ function dialBandBoxes(d, width) {
   return tactileBandLayout(tactileBandSegments(d.segments || []), width, "scrub");
 }
 
-function dialBandX(boxes, fraction) {
-  if (typeof tactileBandX === "function" && boxes.length) return tactileBandX(boxes, fraction);
-  return Math.max(0, Math.min(1, Number(fraction) || 0)) * 1000;
+/* `currentIndex`, when given, keeps the needle on the bar the chip names. A time
+   at an exact boundary maps to the END of the earlier bar (the primitive's rule),
+   but a foray restored or advanced to a segment starts exactly there, so the chip
+   read the new show while the needle stood on the old show's bar. The needle is
+   clamped into the current segment's own bar, which only ever moves it by the gap. */
+function dialBandX(boxes, fraction, currentIndex) {
+  if (typeof tactileBandX !== "function" || !boxes.length) return Math.max(0, Math.min(1, Number(fraction) || 0)) * 1000;
+  var x = tactileBandX(boxes, fraction);
+  var box = currentIndex === undefined ? null : boxes[Math.max(0, Math.min(boxes.length - 1, Number(currentIndex) || 0))];
+  return box ? Math.max(box.x, Math.min(box.x + box.width, x)) : x;
 }
 
 /* Station codes as HTML under the bars. The primitive's SVG <text> stretches
@@ -533,7 +540,7 @@ function dialPaintNowPlaying(parts, model) {
     dialPaintBandCodes(parts);
     dialPaintValueText(parts, d, true);
   } else dialPaintValueText(parts, d, false);
-  var x = dialBandX(parts.bandBoxes || [], fraction);
+  var x = dialBandX(parts.bandBoxes || [], fraction, d.foray ? d.currentIndex || 0 : undefined);
   var clip = parts.bandSvg.querySelector(".band__progress");
   var svgNeedle = parts.bandSvg.querySelector(".needle");
   if (clip) clip.setAttribute("width", x.toFixed(2));

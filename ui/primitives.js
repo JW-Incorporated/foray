@@ -201,6 +201,41 @@ function tactileBandRuns(segments, widths) {
   return runs;
 }
 
+/* Which runs carry a station code (BUILD-NOTES 3.6: one code per run). A run of
+ * at least 24px rendered always does. A narrower run still does when its two
+ * letters fit under it without touching a neighbour's code, because colour must
+ * never be the only thing that says which show a short run is (the first two
+ * runs of a 7-show foray are 13 and 19px wide): runs are tried left to right
+ * after the wide ones have claimed their room, two labels' centres stay at least
+ * CODE_PX + CODE_GAP_PX apart, and a run narrower than MIN_RUN_PX (a bar too
+ * thin to read as the thing the letters sit under) keeps only its aria-label. A
+ * code may overhang the band's own edge by EDGE_PX: the well round the band has
+ * 10px of padding, so the first run's code stays inside the well. */
+var TACTILE_CODE_PX = 14;
+var TACTILE_CODE_GAP_PX = 2;
+var TACTILE_CODE_MIN_RUN_PX = 8;
+var TACTILE_CODE_FULL_RUN_PX = 24;
+var TACTILE_CODE_EDGE_PX = 8;
+
+function tactileBandLabelRuns(runs, renderWidth) {
+  var px = 1 / 1000 * renderWidth;
+  var pitch = TACTILE_CODE_PX + TACTILE_CODE_GAP_PX;
+  var placed = [];
+  function fits(run) {
+    var centre = (run.x + run.right) / 2 * px;
+    if (centre - TACTILE_CODE_PX / 2 < -TACTILE_CODE_EDGE_PX || centre + TACTILE_CODE_PX / 2 > renderWidth + TACTILE_CODE_EDGE_PX) return false;
+    return placed.every(function (other) { return Math.abs((other.x + other.right) / 2 * px - centre) >= pitch; });
+  }
+  [true, false].forEach(function (wide) {
+    runs.forEach(function (run) {
+      var widthPx = (run.right - run.x) * px;
+      if (wide ? widthPx < TACTILE_CODE_FULL_RUN_PX : widthPx >= TACTILE_CODE_FULL_RUN_PX || widthPx < TACTILE_CODE_MIN_RUN_PX) return;
+      if (wide || fits(run)) placed.push(run);
+    });
+  });
+  return runs.filter(function (run) { return placed.indexOf(run) >= 0; });
+}
+
 function tactileBandSegments(input) {
   return (Array.isArray(input) ? input : []).map(function (segment, index) {
     var s = segment || {};
@@ -346,9 +381,7 @@ function tactileBand(data) {
       : '" y="' + barY + '" width="' + box.width.toFixed(2) + '" height="' + barH + '" rx="' + rx.toFixed(2) + '" ry="' + ry.toFixed(2) + '"';
     return '<rect class="' + cls + '"' + (segment.narration && hatch ? ' fill="url(#' + esc(id) + '-hatch)"' : "") + ' data-segment-index="' + index + '" x="' + box.x.toFixed(2) + shape + "></rect>";
   }).join("");
-  var labels = kind === "mini" || kind === "line" ? "" : tactileBandRuns(segments, widths).map(function (run) {
-    var widthPx = (run.right - run.x) / 1000 * renderWidth;
-    if (widthPx < 24) return "";
+  var labels = kind === "mini" || kind === "line" ? "" : tactileBandLabelRuns(tactileBandRuns(segments, widths), renderWidth).map(function (run) {
     var isCurrent = current >= run.start && current <= run.end;
     return '<text class="t-band__code' + (isCurrent ? " is-current" : "") + '" data-run-start="' + run.start + '" data-run-end="' + run.end + '" x="' + ((run.x + run.right) / 2).toFixed(2) + '" y="53" text-anchor="middle">' + esc(codes.get(run.showId)) + "</text>";
   }).join("");

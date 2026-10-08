@@ -4964,7 +4964,10 @@ body.ui-v2 .fp-sheet.np .np__collapse { border-color: transparent; background: t
    padding inside it and 100% is the scroller's box (the sheet less its 56px
    bottom padding), so at rest the "Up next" heading ends just above the keys,
    in the dock's fade, and its card starts under the dock. */
-.np__top { box-sizing: border-box; display: flex; flex-direction: column; padding-top: calc(var(--safe-t) + var(--s-10)); min-height: calc(100% - 176px - var(--safe-b)); }
+/* 189 = the prototype's 245 less the scroller's 56px bottom padding: the "Up next"
+   heading sits where the prototype's does, so its first card peeks into the dock's
+   fade (the scroll-to-detail cue) instead of starting under the opaque paper. */
+.np__top { box-sizing: border-box; display: flex; flex-direction: column; padding-top: calc(var(--safe-t) + var(--s-10)); min-height: calc(100% - 189px - var(--safe-b)); }
 .np__hero { display: flex; justify-content: center; }
 .np__art { position: relative; width: 280px; height: 280px; flex: none; overflow: hidden; display: grid; place-items: center; border-radius: var(--r-lg); background: var(--paper-2); box-shadow: var(--shadow-card); view-transition-name: np-art; }
 .np__art::before { content: "4a"; color: var(--ink-2); font: 750 var(--t-display)/1 var(--dial-font-display); }
@@ -5047,13 +5050,19 @@ body.ui-v2 .fp-sheet.np .fp-left { color: var(--ink-2); }
 .np__read { margin-top: var(--s-2); padding: 0 2px; display: flex; align-items: baseline; justify-content: space-between; }
 .np__read .readout-lg { color: var(--ink); letter-spacing: -.05em; }
 .np__read .readout { color: var(--ink-2); }
-/* The pinned transport: the dock's paper runs 36px above the keys and fades
-   in over its first 28px, so a scrolled row passes under it, not through it. */
+/* The pinned transport: its paper fades in from 14px above the dock to solid 36px
+   lower, so a scrolled row passes under it, not through it. */
 .np__dock { position: absolute; isolation: isolate; z-index: 5; left: 0; right: 0; bottom: calc(var(--safe-b) + var(--s-4)); padding: 0 var(--gutter); }
-.np__dock::before { content: ""; position: absolute; z-index: -1; inset: -36px 0 calc(-1 * (var(--safe-b) + var(--s-4))); background: linear-gradient(to bottom, transparent, var(--paper) 28px); pointer-events: none; }
+/* The fade starts 14px above the dock and is paper by 36px more: the first
+   "Up next" card, which starts 12px under its heading, is half-covered where the keys
+   begin and reads as a peek, not as a gap. */
+.np__dock::before { content: ""; position: absolute; z-index: -1; inset: -14px 0 calc(-1 * (var(--safe-b) + var(--s-4))); background: linear-gradient(to bottom, transparent, var(--paper) 36px); pointer-events: none; }
 .np .transport { min-height: 83px; display: flex; align-items: center; justify-content: center; gap: var(--s-6); }
 .np .transport .keycap { flex: none; margin-bottom: var(--lip); }
-.np .transport .keycap--lg { box-sizing: border-box; width: var(--key-lg); min-width: var(--key-lg); height: var(--key-lg); padding: 0; }
+/* The skip keys are 56 tall and 68 wide (the prototype's measured box: its 56px key
+   with 20px side padding round the mark), so the three-key row keeps its
+   weight beside the 80px Play; a square 56px read as a smaller, lighter key. */
+.np .transport .keycap--lg { box-sizing: border-box; width: calc(var(--key-lg) + var(--s-3)); min-width: calc(var(--key-lg) + var(--s-3)); height: var(--key-lg); padding: 0; }
 .np .transport .fp-big { width: var(--key-xl); min-width: var(--key-xl); height: var(--key-xl); padding: 0; }
 /* The lip of a key in the sheet is a hard shadow in the key's own darker tone,
    the key's own shape, attached: the primitive's ::after is a flat bar, which
