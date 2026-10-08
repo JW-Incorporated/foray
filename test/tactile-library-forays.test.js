@@ -253,7 +253,8 @@ test("a title with markup in it reaches the page inert", async () => {
 
 test("sheet rules: title 700 at the 17px step clamped to two lines, 44px link and key, full enamel when not started", () => {
   /* MUTATION 1: change the title font to var(--w-label) / drop the clamp - red.
-     MUTATION 2: delete `min-height: var(--tap)` on the link - red.
+     MUTATION 2: delete the link's `padding-block` (the 44px target) - red; put `min-height: var(--tap)` back
+     on it instead and the one-line title reserves a 44px slot with ~10px of dead space under the text - red.
      MUTATION 3: delete the `.yours-foray:not(.is-part) .t-band__base` rule - the not-started band
      would sit at the primitive's 40% as if it were part played - red. */
   const rule = (sel) => {
@@ -264,7 +265,9 @@ test("sheet rules: title 700 at the 17px step clamped to two lines, 44px link an
   assert.match(rule(".yours-foray__title"), /font: 700 var\(--t-body-lg\)\/var\(--lh-body-lg\)/);
   const link = rule(".yours-foray__link");
   assert.match(link, /-webkit-line-clamp: 2/);
-  assert.match(link, /min-height: var\(--tap\)/);
+  assert.match(link, /padding-block: calc\(\(var\(--tap\) - var\(--lh-body-lg\)\) \/ 2\)/, "the link is a 44px target by padding...");
+  assert.match(link, /margin-block: calc\(\(var\(--tap\) - var\(--lh-body-lg\)\) \/ -2\)/, "...paid back by an equal negative margin, so the band sits one gap under the title's last line");
+  assert.ok(!/min-height/.test(link), "no reserved-height slot under a one-line title");
   assert.match(CSS, /\.keycap--sm \{ min-width: var\(--tap\); height: var\(--tap\);/, "the sm key is the 44px target");
   /* MUTATION 4: delete the `.yours-foray__foot .keycap--sm` rule - the key falls back to 44x44
      (48 wide by padding), 16px narrower than the prototype's, and this is red. */
