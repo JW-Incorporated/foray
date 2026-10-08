@@ -311,12 +311,13 @@ test("renderEpisode renders the '+ Up Next' control beside play/star", async () 
   assert.ok(html.includes(`data-ep-upnext="${m.ctx.esc(item.id)}"`), "renderEpisode must render the Up Next control");
 });
 
-test("renderShow's episode rows (via epRow) each carry the '+ Up Next' control", async () => {
-  /* Confirms Stage 1's card-body scope (add-control on show pages too, since
-     #366 is merged) actually reaches renderShow — not just epRow in
-     isolation.
-     MUTATION: call a stripped-down row renderer in renderShow instead of the
-     shared epRow. Every data-upnext assertion below fails. */
+test("renderShow's episode rows each open the episode page, which is where '+ Up Next' lives", async () => {
+  /* REDESIGN 2026 (ambient, show page) — THE RULING THAT FELL: "an add-control on every show-page row" (Stage 1's
+     card-body scope). A show page's rows are EpisodeRows now (art, title, Play, meta, a two-line why: the same row Today
+     draws), and an EpisodeRow carries no Save and no Up Next: those are the episode page's actions (BUILD-NOTES section
+     10 item 11; renderEpisode is pinned just above). The row's title is the one stretched link to that page, so the
+     control is one tap further, never gone. This test pins the link, and that the page it opens offers the control.
+     MUTATION: render the row's title as plain text in showEpisodeRowHtml (drop the anchor, class td-link) -> red. */
   const m = await mountBooted();
   const catalog = readJson("data/catalog-client.json");
   const show = catalog.shows.find((s) => s.show_id === "lex-fridman-podcast");
@@ -334,8 +335,11 @@ test("renderShow's episode rows (via epRow) each carry the '+ Up Next' control",
   const discover = readJson("data/discover.json");
   const expected = discover.items.filter((it) => it.show === "Lex Fridman Podcast");
   for (const ep of expected.slice(0, 3)) {
-    assert.ok(html.includes(`data-upnext="${m.ctx.esc(ep.id)}"`), `show page must offer Up Next for "${ep.title}"`);
+    assert.ok(html.includes(`href="#/episode/${encodeURIComponent(ep.id)}"`), `show page must link "${ep.title}" to its episode page`);
   }
+  assert.ok(!html.includes("data-upnext"), "an EpisodeRow carries no Up Next control of its own");
+  m.ctx.renderEpisode(expected[0].id);
+  assert.ok(m.view().includes(`data-upnext="${m.ctx.esc(expected[0].id)}"`), "the episode page it opens does");
 });
 
 /* ==================================================================== */
