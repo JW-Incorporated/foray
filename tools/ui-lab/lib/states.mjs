@@ -239,5 +239,11 @@ export function appStates(fx) {
         { label: "icons-custom", route: "#/gallery", run: (page) => showGallerySection(page, "#gallery-custom-title", "light") },
       ],
     },
+    {
+      id: "resume-home",
+      description: "Returning user with a part-played episode (25 of 60 min): Today shows the Resume card.",
+      seed: "resuming",
+      steps: [{ label: "home-resume", route: "#/", ready: ".today-resume" }],
+    },
   ];
 }

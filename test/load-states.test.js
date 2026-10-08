@@ -895,20 +895,19 @@ test("'played' counts history OR a stored position, so it cannot fall as the his
   assert.match(body, /const played = rows\.filter\(r => rowProgress\(r\.item\)\?\.state === "played"\)\.length;/);
 });
 
-test("a subject card states a total duration only when every episode has one", () => {
-  /* "3 episodes · 1h 20m" summed two of three when one had no duration_min —
-     a partial sum presented as the total of the count beside it.
-     MUTATION: restore `slot.items.reduce((s, it) => s + (it.duration_min || 0), 0)`.
-     The partial total is printed and this goes red. */
+test("an episode row states a length only when it has one: unknown is no readout, never the specimen's 35 min", () => {
+  /* The subject card's rule ("3 episodes · 1h 20m" summed two of three when one
+     had no duration_min: a partial sum presented as a total) outlived the card
+     as the same rule on the row that replaced it: a length is stated when it is
+     known. The row primitive's specimen default (35 min, for the gallery) must
+     never reach a real episode.
+     MUTATION: restore `d.duration || "35 min"` in tactileEpisodeRow -> the
+     unknown episode reads 35 min and this goes red. */
   const m = mount();
-  m.state.taxonomy = { nodes: [{ id: "history", parent: null, label: "History" }] };
-  const item = (id, duration_min) => ({ id, title: `T ${id}`, show: "S", duration_min });
-  const kicker = (items) => (/<p class="mc-kicker">([\s\S]*?)<\/p>/.exec(
-    m.ctx.miniCard({ branch: "history", role: "anchor", item: items[0], items }),
-  ) || [])[1];
-  assert.match(kicker([item("a", 40), item("b", 40)]), /^2 episodes · 1 hr 20 min$/);
-  assert.strictEqual(kicker([item("a", 40), item("b", 40), item("c", null)]), "3 episodes",
-    "an unknown length means no total, not a smaller one");
+  const row = (duration_min) => m.ctx.tactileEpisodeRow(m.ctx.todayEpisodeData({ id: "a", title: "T", show: "S", duration_min }, { ctx: "also-today" }));
+  assert.match(row(40), /<span class="readout">40 min<\/span>/);
+  assert.doesNotMatch(row(null), /class="readout"/, "an unknown length draws no readout");
+  assert.doesNotMatch(row(null), /35 min/);
 });
 
 /* ==================================================================== */

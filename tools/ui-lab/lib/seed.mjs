@@ -71,7 +71,7 @@ function playlistsOf(items, titles) {
 }
 
 /**
- * @param {string} kind  empty | dismissed | returning | stress
+ * @param {string} kind  empty | dismissed | returning | resuming | stress
  * @returns {Record<string, unknown>}  localStorage key -> JSON-serialisable value
  */
 export function buildSeed(kind, fx) {
@@ -99,6 +99,18 @@ export function buildSeed(kind, fx) {
     ? [LONG_TITLE, "Short one", LONG_TOKEN]
     : ["The fusion reactor tour", "Short histories for a long drive", "How things get built"];
 
+  /* `resuming` is `returning` plus a part-played episode: the durable pointer and a stored
+     position, which is what puts the Resume card on Today. No other profile has one, so the
+     card was never rendered by any state (the overlay blocker and the tag contrast failure on
+     tactile-home both got through that way). The position is 25 of 60 minutes: under the
+     near-end window, over MIN_RESUME_SEC, so `lastEpisodeCard` offers it. */
+  const resume = {};
+  if (kind === "resuming") {
+    const it = items[1];
+    resume.cp_last_episode = { id: it.id, title: it.title, show: it.show, artwork_url: it.artwork_url, audio_url: it.audio_url, duration_min: 60, duration_sec: 3600, updated_at: daysAgo(0.05) };
+    resume["cp_pos:" + it.id] = { seconds: 1500, duration: 3600, updated_at: daysAgo(0.05), source: "local" };
+  }
+
   return {
     ...base,
     cp_saved: saved,
@@ -107,6 +119,7 @@ export function buildSeed(kind, fx) {
     cp_history: items.slice(5, 11).map((i) => i.id),
     cp_playlists: playlistsOf(items, playlistTitles),
     cp_starred_shows: starred,
+    ...resume,
   };
 }
 
