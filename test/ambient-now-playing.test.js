@@ -69,7 +69,7 @@ test("motion, detail posture and dynamic content keep the final Afterglow contra
   assert.match(client, /document\.startViewTransition/);
   assert.match(client, /duration: 420, easing:/, "the FLIP fallback is 420ms");
   assert.match(client, /ui\.sheet\.classList\.add\("is-entering"\)/, "Reduce Motion crossfades the sheet instead of sliding it");
-  assert.match(tokens, /\.ag \.ag-np \{[^}]*transition: opacity 200ms !important/, "and the crossfade is 200ms inside the one reduced-motion block");
+  assert.match(tokens, /\.room\.ag-np \{[^}]*transition: opacity 200ms !important/, "and the crossfade is 200ms inside the one reduced-motion block");
   assert.match(client, /returnFocus:\s*ui\.info/);
   assert.doesNotMatch(ui, /innerHTML|style\s*=/, "screen DOM uses nodes and CSSOM, never interpolated markup or inline attributes");
   assert.match(ui, /node\.src = url/);

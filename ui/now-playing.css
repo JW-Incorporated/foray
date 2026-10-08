@@ -1,16 +1,8 @@
-/* Afterglow Now Playing. The screen is always the artwork's Dusk Room. */
-.ag-player { --fp-bar-h: 64px; }
-.ag-player .fp-bar { min-height: 64px; padding: 10px 12px; gap: var(--s-2); background: var(--glow-veil); }
-.ag-player .fp-art { width: var(--art-mini); height: var(--art-mini); border-radius: var(--r-sm); box-shadow: none; }
-.ag-player .fp-title { font: var(--t-label); }
-.ag-player .fp-show { font: var(--t-caption); color: var(--text-2); }
-.ag-player .fp-play { width: 48px; height: 48px; border: 0; border-radius: var(--r-round); background: var(--ember); color: var(--ember-ink); }
-.ag-player .fp-skip { width: var(--tap); height: var(--tap); }
-.ag-player .fp-progress { height: 2px; background: transparent; }
-.ag-player .fp-fill { background: var(--glow); }
-.fp-expanded .topbar button, .fp-expanded .topbar .wordmark { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+/* Afterglow Now Playing. The screen is always the artwork's Dusk Room. This file styles the SHEET only: the mini bar
+   belongs to the Dock and keeps today's look until that screen lands. Every rule starts from .ag-np.fp-sheet so that
+   styles.css's body.ui-v2 rules for the same elements cannot win. */
 
-.ag-np.fp-sheet { position: fixed; inset: 0; height: 100dvh; max-height: none; padding: 0; border: 0; border-radius: 0; background: var(--glow-room); color: var(--text); transform: translateY(var(--fp-sheet-dy, 0px)); transition: transform var(--m-sheet) var(--e-spring-soft), --glow var(--m-room) var(--e-out); }
+.ag-np.fp-sheet { position: fixed; inset: 0; height: 100dvh; max-height: none; padding: 0; border: 0; border-radius: 0; background: var(--glow-room); color: var(--text); font: var(--t-body); color-scheme: dark; transform: translateY(var(--fp-sheet-dy, 0px)); transition: transform var(--m-sheet) var(--e-spring-soft), --glow var(--m-room) var(--e-out); }
 .ag-np.fp-sheet:not(.fp-sheet-dragging) { transition: transform var(--m-sheet) var(--e-spring-soft), --glow var(--m-room) var(--e-out); }
 .ag-np.fp-sheet::before { opacity: 0; }
 /* Reduce Motion's entrance: client.js adds this for one frame, then the 200ms opacity transition in the reduced-motion block runs. */

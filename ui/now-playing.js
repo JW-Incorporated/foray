@@ -106,7 +106,7 @@ function agNpArt(item) {
 
 function agNpAdopt(ui) {
   if (!ui?.sheet || ui.sheet.dataset.afterglow === "1") return ui;
-  ui.root.classList.add("ag", "ag-player");
+  ui.root.classList.add("ag-player");
   ui.sheet.classList.add("room", "ag-np");
   ui.sheet.dataset.theme = "dusk";
   ui.sheet.dataset.afterglow = "1";

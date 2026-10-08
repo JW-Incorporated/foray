@@ -2207,9 +2207,7 @@ function paintPage(running) {
   paintControl(ui.bigPlay, glyph, running ? "Pause" : "Play");
   if (ui.ag && typeof window.AfterglowNowPlaying?.setIcon === "function") {
     const icon = running ? "pause" : "play";
-    if (ui.playBtn.dataset.agGlyph !== icon) {
-      window.AfterglowNowPlaying.setIcon(ui.playBtn, icon, 24);
-    }
+    /* Only the sheet's own Play wears the sprite; the mini bar's glyph is the Dock's to change. */
     if (ui.bigPlay.dataset.agGlyph !== icon) {
       window.AfterglowNowPlaying.setIcon(ui.bigPlay, icon, 36);
     }
