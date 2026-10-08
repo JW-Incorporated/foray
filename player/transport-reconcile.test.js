@@ -1666,10 +1666,11 @@ function findWhere(node, pred) {
 }
 const labelled = (prefix) => (n) => String(n.getAttribute?.("aria-label") ?? "").startsWith(prefix);
 const sheet = (doc) => ({
-  /* The mini bar's ↺15 (`.fp-skip`, visual pass 1) is labelled the same way
-     and sits earlier in the tree; the sheet's own is the `.fp-btn`. */
+  /* The mini bar's 30-forward (`.fp-skip`, Tactile `mini`) is labelled the
+     same way as the sheet's and sits earlier in the tree; the sheet's own is
+     the `.fp-btn`. */
   back: findWhere(doc.body, (n) => n.className === "fp-btn" && labelled("Back ")(n)),
-  fwd: findWhere(doc.body, labelled("Forward ")),
+  fwd: findWhere(doc.body, (n) => n.className === "fp-btn" && labelled("Forward ")(n)),
   scrub: find(doc.body, "fp-scrub"),
   fill: find(doc.body, "fp-fill"),
   left: find(doc.body, "fp-left"),
@@ -2710,21 +2711,23 @@ test("VISUAL PASS: inside a Foray the sheet's ↺15 nudges within the clip — i
   restore();
 });
 
-test("VISUAL PASS: the mini bar's ↺15 is the same nudge, for an episode and for a Foray", async (t) => {
-  /* KILLING MUTATION: drop `skipBtn` from `bar.append(...)`, or point its
-     handler at `forayPrevious`. */
+test("VISUAL PASS: the mini bar's 30-forward is the same nudge, for an episode and for a Foray", async (t) => {
+  /* REWRITTEN ON PURPOSE (Tactile `mini`, BUILD-PLAN 2.4): the mini's second
+     key is 30 forward, no longer back 15 (ruling: the mini's transport pair).
+     KILLING MUTATION: drop `skipBtn` from `bar.append(...)`, point its
+     handler at `forayPrevious`, or at `nudgeBy(-SEEK_BACK)`. */
   const { client, doc, audio, restore } = await bootClient(t);
   await client.playForay(synthetic(), { startIndex: 0 });
   await settle();
   const skip = find(doc.body, "fp-skip");
   assert.ok(skip, "the bar carries a skip control");
-  assert.equal(skip.getAttribute("aria-label"), "Back 15 seconds");
+  assert.equal(skip.getAttribute("aria-label"), "Forward 30 seconds");
   audio.currentTime = 150;
   audio.fire("timeupdate");
   await settle();
   await skip.click();
   await settle();
-  assert.ok(Math.abs(audio.currentTime - 135) < 0.01, `Foray: landed at ${audio.currentTime}s`);
+  assert.ok(Math.abs(audio.currentTime - 180) < 0.01, `Foray: landed at ${audio.currentTime}s`);
   assert.equal(client.forayStatus().index, 0);
   restore();
 });
@@ -3073,6 +3076,37 @@ test("ROUND 2 a11y-7: a slider that has FOCUS is not rewritten every tick", asyn
   doc.activeElement = null;
   audio.fire("timeupdate");
   assert.equal(scrub.value, "167", "and it follows again once focus leaves");
+  restore();
+});
+
+test("REDESIGN a11y: with Now Playing loaded, every render tick keeps the slider's aria-valuetext on its value (WCAG 4.1.2)", async (t) => {
+  /* The tick passed `!held && !window.DialNowPlaying`, and index.html always
+     loads ui/now-playing.js, whose own writer runs only when its band key
+     changes. So after a nudge the value moved on and the spoken value stayed
+     where it was (value 266 = 13:40, text still "13 minutes 10"). The fake
+     below is the real module's contract (build/paint/preview) and nothing
+     more; what matters is that `window.DialNowPlaying` is defined and its
+     paint never writes the text, which is what the real one does between band
+     rebuilds. KILLING MUTATION: put `&& !window.DialNowPlaying` back on the
+     `paintClocks(pos, dur, !held, ...)` call in render() -> the first assert
+     goes red (aria-valuetext is never written, actual null). */
+  const { client, doc, win, audio, restore } = await bootClient(t);
+  win.DialNowPlaying = { build: () => ({}), paint: () => {}, preview: () => {}, hidePreview: () => {}, haptic: () => {} };
+  await client.play(episodeItem());
+  await settle();
+  const { scrub } = clocks(doc);
+  assert.ok(win.DialNowPlaying, "precondition: Now Playing is loaded");
+  audio.currentTime = 600;
+  audio.fire("timeupdate");
+  assert.equal(scrub.value, "167", "precondition: the value moved");
+  assert.equal(scrub.getAttribute("aria-valuetext"), "10 minutes of 60 minutes, Show A", "the spoken value moved with it");
+  audio.currentTime = 830; // a nudge: 13:50
+  audio.fire("timeupdate");
+  assert.equal(scrub.getAttribute("aria-valuetext"), "13 minutes 50 of 60 minutes, Show A", "and again after a jump, not only at a band rebuild");
+  doc.activeElement = scrub;
+  audio.currentTime = 900;
+  audio.fire("timeupdate");
+  assert.equal(scrub.getAttribute("aria-valuetext"), "13 minutes 50 of 60 minutes, Show A", "a focused slider is still left alone (a11y-7)");
   restore();
 });
 

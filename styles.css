@@ -4401,6 +4401,122 @@ body.drawer-open { overflow: hidden; }
 .deck--collapsed .tabbar { height: var(--key); }
 .deck--collapsed .tab__label { opacity: 0; position: absolute; }
 
+/* DIAL DECK, LIVE (Phase 4 group A `mini`; BUILD-NOTES 3.11-3.12, BUILD-PLAN
+   2.4). The app's deck is TWO fixed boxes that meet, not one `.deck` parent:
+   `#foray-player` is the mini AND the full-screen Now Playing sheet, and a
+   parent with the deck's `backdrop-filter` would become the containing block
+   of that fixed sheet (ui/tabbar.js has the long version). So:
+     #tab-bar        the tab row, bottom: safe-b + 12, 64 tall (48 collapsed)
+     separator       1px --dial-line inset 12, the tab row's ::before
+     #foray-player   the mini, 64 tall, flush on top of the separator
+   and the deck's ONE shadow is the tab row's ::after, sized to both.
+   `--tab-row-h` is the tab row's live height (declared on `body.ui-v2`, not
+   the Dial `:root`, whose token set is pinned); `body.deck-collapsed` (the
+   scroll rule in ui/tabbar.js) drops it, and the mini rides down with it.
+   `--tab-bar-h` / `--fp-bar-h` keep their old meaning for the rules that
+   compose the bottom edge (#sh-compose's dock, sheets that keep the player):
+   the room each takes above the home indicator. */
+body.ui-v2 {
+  --tab-row-h: var(--deck-h);
+  --tab-bar-h: calc(var(--s-3) + var(--tab-row-h));
+  --fp-bar-h: calc(var(--mini-h) + 1px);
+  /* Content clears the deck (BUILD-NOTES 3.11): the last row ends above it. */
+  padding-bottom: calc(var(--deck-h) + var(--safe-b) + var(--s-6));
+}
+body.ui-v2.fp-open { padding-bottom: calc(var(--deck-h) + var(--mini-h) + var(--safe-b) + var(--s-6)); }
+body.ui-v2.deck-collapsed { --tab-row-h: var(--key); }
+
+body.ui-v2 .tab-bar {
+  left: calc(env(safe-area-inset-left, 0px) + var(--gutter));
+  right: calc(env(safe-area-inset-right, 0px) + var(--gutter));
+  bottom: calc(var(--safe-b) + var(--s-3));
+  height: var(--tab-row-h);
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-lg);
+  background: var(--deck-tint);
+  -webkit-backdrop-filter: var(--deck-blur);
+  backdrop-filter: var(--deck-blur);
+  box-shadow: var(--shadow-deck);
+  color: var(--ink-2);
+  transition: height var(--d-quick) var(--ease-quick);
+}
+body.ui-v2.fp-open:not(.mini-dismissed) .tab-bar { border-radius: 0 0 var(--r-lg) var(--r-lg); box-shadow: none; }
+body.ui-v2.fp-open:not(.mini-dismissed) .tab-bar::before {
+  content: ""; position: absolute; left: 0; right: 0; top: -1px; height: 1px;
+  background: linear-gradient(var(--dial-line), var(--dial-line)) var(--s-3) 0 / calc(100% - 2 * var(--s-3)) 100% no-repeat, var(--deck-tint);
+}
+body.ui-v2.fp-open:not(.mini-dismissed) .tab-bar::after {
+  content: ""; position: absolute; z-index: -1; left: 0; right: 0; bottom: 0; top: calc(-1px - var(--mini-h));
+  border-radius: var(--r-lg); box-shadow: var(--shadow-deck); pointer-events: none;
+}
+body.ui-v2 .tab-btn {
+  position: relative; min-width: var(--tap); min-height: var(--tap);
+  gap: calc(var(--s-1) / 2); padding-top: calc(var(--s-1) * 1.5);
+  color: var(--ink-2); font: var(--w-micro) var(--t-micro)/1 var(--font-text);
+}
+body.ui-v2 .tab-btn[aria-current="page"] { color: var(--ink); }
+body.ui-v2 .tab-btn:focus-visible { outline: calc(var(--s-1) / 2) solid var(--ultramarine); outline-offset: calc(-1 * var(--s-1)); border-radius: var(--r-md); }
+.tab__icon { position: relative; width: 24px; height: 24px; }
+.tab__icon .i { position: absolute; inset: 0; transition: opacity var(--d-quick) var(--ease-quick); }
+.tab__icon .i--fill { opacity: 0; }
+.tab-btn[aria-current="page"] .i--fill { opacity: 1; }
+.tab-btn[aria-current="page"] .i--bold { opacity: 0; }
+.tab-btn .tab__label { transition: opacity var(--d-quick) var(--ease-quick); }
+.tab-bar__ind { position: absolute; top: calc(var(--s-1) + 1px); left: 0; width: calc(100% / 3); display: flex; justify-content: center; transform: translateX(0); transition: transform var(--d-settle) var(--spring-settle); pointer-events: none; }
+.tab-bar__ind::before { content: ""; width: var(--s-8); height: var(--s-1); border-radius: calc(var(--s-1) / 2); background: var(--persimmon); }
+.tab-bar[data-active="1"] .tab-bar__ind { transform: translateX(100%); }
+.tab-bar[data-active="2"] .tab-bar__ind { transform: translateX(200%); }
+.tab__badge { position: absolute; top: -6px; left: calc(50% + 6px); min-width: 18px; height: 18px; padding: 0 5px; display: grid; place-items: center; border-radius: 9px; background: var(--ultramarine); color: var(--on-ultramarine); font: 500 11px/1 var(--font-mono); font-variant-numeric: tabular-nums; }
+.tab__badge[hidden] { display: none; }
+body.deck-collapsed .tab-btn { padding-top: var(--s-1); }
+body.deck-collapsed .tab-btn .tab__label { opacity: 0; position: absolute; }
+/* The keyboard takes the deck away; the Find field stays (BUILD-NOTES 4.3). */
+body.kb-open .tab-bar { display: none; }
+
+/* The mini: flush on the separator, the deck's top half. Its material is on
+   `.fp-bar` (the drag moves that), never on the root, whose fixed sheet must
+   not be clipped or contained. The legacy ui-v2 paint (violet play, surface
+   background, the 3px amber `.fp-progress`) is replaced, not layered under. */
+body.ui-v2 #foray-player.dial-mini {
+  left: calc(env(safe-area-inset-left, 0px) + var(--gutter));
+  right: calc(env(safe-area-inset-right, 0px) + var(--gutter));
+  bottom: calc(var(--safe-b) + var(--s-3) + var(--tab-row-h) + 1px);
+  min-height: 0; padding: 0; border: 0;
+  background: transparent; box-shadow: none;
+  transition: bottom var(--d-quick) var(--ease-quick);
+}
+body.ui-v2 #foray-player.dial-mini > .fp-progress { display: none; }
+body.ui-v2 #foray-player.dial-mini > .fp-bar {
+  position: relative; height: var(--mini-h); padding: 0 calc(var(--s-2) + var(--s-1) / 2); gap: calc(var(--s-2) + var(--s-1) / 2);
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  background: var(--deck-tint);
+  -webkit-backdrop-filter: var(--deck-blur); backdrop-filter: var(--deck-blur);
+  color: var(--ink);
+  transform: translateY(0);
+  transition: transform var(--d-settle) var(--spring-settle), opacity var(--d-quick) var(--ease-quick);
+}
+body.ui-v2 #foray-player.dial-mini.is-dragging > .fp-bar { transform: translateY(var(--mini-drag, 0px)); opacity: .7; transition: none; }
+body.ui-v2 #foray-player.dial-mini.is-dismissed > .fp-bar { display: none; }
+/* The text pair sits centred beside the art (title 15/700, show 13), one line
+   each, as the prototype's `.mini__text` column; the art spans both rows. */
+body.ui-v2 #foray-player.dial-mini .mini__body { touch-action: none; grid-template-rows: auto auto; align-content: center; column-gap: var(--s-3); row-gap: 0; border-radius: var(--r-md); }
+body.ui-v2 #foray-player.dial-mini .mini__art { align-self: center; }
+body.ui-v2 #foray-player.dial-mini .mini__title { align-self: auto; font: 700 var(--t-body)/1.25 var(--font-text); color: var(--ink); }
+body.ui-v2 #foray-player.dial-mini .mini__show { align-self: auto; font: 500 var(--t-label)/1.25 var(--font-text); color: var(--ink-2); }
+body.ui-v2 #foray-player.dial-mini .fp-err { grid-column: 2; font: 500 var(--t-label)/1.25 var(--font-text); color: var(--warn); }
+body.ui-v2 #foray-player.dial-mini .fp-play,
+body.ui-v2 #foray-player.dial-mini .fp-skip { border: 0; box-shadow: none; background: var(--k-fill); color: var(--k-ink); font: inherit; }
+body.ui-v2 #foray-player.dial-mini .fp-play { width: var(--key); min-width: var(--key); height: var(--key); padding: 0; border-radius: var(--r-pill); }
+body.ui-v2 #foray-player.dial-mini .fp-skip { width: var(--tap); min-width: var(--tap); height: var(--tap); padding: 0; border-radius: calc(var(--r-sm) + var(--s-1)); }
+body.ui-v2 #foray-player.dial-mini .fp-skip::after { border-radius: 0 0 calc(var(--r-sm) + var(--s-1)) calc(var(--r-sm) + var(--s-1)); }
+body.ui-v2 #foray-player.dial-mini .fp-skip:active { background: var(--k-fill); }
+body.ui-v2 #foray-player.dial-mini .mini > .band--line { top: 0; }
+
+/* "Player closed · Undo", above the tab row while the mini is gone. */
+.deck-toast { position: fixed; z-index: 62; left: calc(env(safe-area-inset-left, 0px) + var(--gutter)); right: calc(env(safe-area-inset-right, 0px) + var(--gutter)); bottom: calc(var(--safe-b) + var(--s-3) + var(--tab-row-h) + var(--s-3)); pointer-events: none; }
+.deck-toast .toast.is-visible { pointer-events: auto; }
+
 .sheet { position: fixed; z-index: 100; left: 0; right: 0; bottom: 0; max-height: calc(100dvh - var(--safe-t) - var(--s-4)); padding: var(--s-5) var(--s-4) calc(var(--safe-b) + var(--s-6)); border-radius: var(--r-lg) var(--r-lg) 0 0; background: var(--deck-tint); -webkit-backdrop-filter: var(--deck-blur); backdrop-filter: var(--deck-blur); box-shadow: var(--shadow-deck); color: var(--ink); transform: translateY(0); opacity: 1; transition-property: transform, opacity; transition-duration: var(--d-sheet), var(--d-quick); transition-timing-function: var(--spring-sheet), var(--ease-quick); }
 .sheet[hidden] { display: none; }
 .sheet:focus { outline: none; }
@@ -4465,10 +4581,191 @@ body.drawer-open { overflow: hidden; }
 @keyframes tactile-pulse { from { opacity: .4; } to { opacity: 1; } }
 @keyframes tactile-shimmer { from { opacity: .58; } to { opacity: 1; } }
 
+/* ---------- FIND (TACTILE): the subject mosaic page ----------
+   Redesign 2026, tactile `search` (docs/redesign-2026/directions/tactile/
+   BUILD-PLAN.md 2.9, BUILD-NOTES 4.4). Everything here hangs off
+   `body.view-find`, which renderAllShows sets and the next page's
+   setBodyClass() clears, so no other page inherits any of it, and none of it
+   touches the shared primitives the gallery baseline records (`.tile` and
+   `.keycap` keep their own rules; the mosaic only adds under `.mosaic`).
+   The page reads the Dial tokens (paper, ink, card, the Dial type) instead of
+   the legacy dark ones for as long as the rest of the app has not adopted
+   them. The three things below the page content, the field, the deck and the
+   mini-player, stack on one arithmetic: the deck is `--deck-h` tall, floats
+   `--s-3` off the bottom, and the field floats `--s-3` above it. */
+body.ui-v2.view-find {
+  /* The legacy colour names are pointed at the Dial tokens for this page, so the
+     result rows, notes and playlist cards this page still draws with the old
+     components (the typing and no-results screens are their own units) read as
+     ink on paper and card instead of light-on-dark text on cream. Both Dial
+     schemes follow, because the tokens do. */
+  --bg: var(--paper);
+  --surface: var(--card);
+  --surface2: var(--paper-2);
+  --line: var(--dial-line);
+  --text: var(--ink);
+  --muted: var(--ink-2);
+  --faint: var(--ink-3);
+  --amber: var(--persimmon);
+  --violet: var(--ultramarine);
+  --danger-text: var(--persimmon);
+  --shadow-sm: var(--shadow-card);
+  --shadow: var(--shadow-card);
+  --shadow-lift: var(--shadow-card);
+  background: var(--paper);
+  color: var(--ink);
+  font: var(--w-body) var(--t-body)/var(--lh-body) var(--font-text);
+  padding-bottom: 0;
+}
+body.view-find > .topbar { display: none; }
+body.ui-v2.view-find #view {
+  padding: 0 var(--gutter) calc(var(--deck-h) + var(--safe-b) + var(--s-12) * 2 + var(--s-4));
+}
+body.ui-v2.view-find.fp-open:not(.mini-dismissed) #view { padding-bottom: calc(var(--deck-h) + var(--fp-bar-h) + var(--safe-b) + var(--s-12) * 2 + var(--s-4)); }
+body.view-find .page--find {
+  max-width: none;
+  margin: 0;
+  padding: calc(var(--safe-t) + var(--s-6) + var(--s-1)) 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+}
+
+/* The head: "Find" over one readout line, in the slot Today gives its date. */
+body.ui-v2.view-find .page--find .page-head {
+  position: static;
+  margin: 0;
+  padding: calc(var(--s-1) / 2) 0 0;
+  background: transparent;
+  border: 0;
+  transform: none;
+  transition: none;
+}
+.page--find .page-head > div { display: flex; flex-direction: column; gap: var(--s-2); }
+body.ui-v2.view-find .page--find .page-head h2 { margin: 0; color: var(--ink); font-family: var(--dial-font-display); font-size: var(--t-display-xl); line-height: var(--lh-display-xl); font-weight: var(--w-display); font-stretch: var(--wd-screen); letter-spacing: var(--tracking-screen); }
+.find-hint { margin: 0; color: var(--ink-2); font: 500 var(--t-label)/var(--lh-label) var(--font-text); }
+
+/* The field: a fixed pill above the deck. The wrapper is the pill; the form
+   inside it gives up its own box, and its ring moves to the wrapper
+   (:focus-within) so the one authored focus ring survives. */
+body.view-find #sh-compose {
+  left: calc(env(safe-area-inset-left, 0px) + var(--s-4));
+  right: calc(env(safe-area-inset-right, 0px) + var(--s-4));
+  bottom: calc(var(--kb-inset, 0px) + var(--find-dock));
+  height: calc(var(--s-12) + var(--s-1));
+  gap: var(--s-2);
+  padding: 0 var(--s-2) 0 var(--s-4);
+  border-radius: var(--r-pill);
+  background: var(--card);
+  box-shadow: var(--shadow-deck);
+}
+/* The dock height lives on the body, not on the field, because the paper fade
+   below reads it too: both stand on the same arithmetic (the room the deck, and
+   the mini when it is up, take above the home indicator, plus the 12px gap). */
+body.view-find { --find-dock: calc(var(--safe-b) + var(--s-3) + var(--deck-h) + var(--s-3)); }
+body.view-find.fp-open:not(.mini-dismissed) { --find-dock: calc(var(--safe-b) + var(--s-3) + var(--deck-h) + var(--fp-bar-h) + var(--s-3)); }
+body.view-find.kb-open, body.view-find.sh-searching { --find-dock: var(--s-3); }
+/* THE PAPER FADE (prototype app.css `body::after`, BUILD-NOTES 4.4): a fixed
+   band of clear paper from the bottom edge up past the field, behind the field
+   and the deck (z 58 and 55), in front of the page. Without it a tile's name
+   shows clipped in the 12px gap between the field and the deck and tile art
+   shows below the deck's lower edge, so the deck reads as a window, not a raised
+   card on clear paper. Solid to the field's mid-line, then 32px of fade above
+   the field. Idle only: with the keyboard up or a query typed the deck is gone
+   and the results own the page. */
+body.view-find::after {
+  content: "";
+  position: fixed;
+  z-index: 50;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(var(--find-dock) + var(--s-12) + var(--s-1) + var(--s-8));
+  pointer-events: none;
+  background: linear-gradient(to top, var(--paper) calc(var(--find-dock) + var(--s-6)), transparent);
+}
+body.view-find.kb-open::after, body.view-find.sh-searching::after { display: none; }
+body.view-find #sh-compose:focus-within { box-shadow: var(--shadow-deck), 0 0 0 2px var(--ultramarine); }
+body.view-find #sh-compose #sh-form {
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: var(--s-3);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  outline: none;
+}
+body.view-find #sh-compose #sh-form:focus-within { outline: none; }
+body.view-find #sh-compose #sh-input {
+  min-height: var(--tap);
+  color: var(--ink);
+  font: var(--w-body) 1rem/1.25 var(--font-text);
+}
+body.view-find #sh-compose #sh-input::placeholder { color: var(--ink-3); opacity: 1; }
+body.view-find #sh-compose .sh-glyph { display: inline-flex; flex: none; width: 24px; height: 24px; stroke: none; color: var(--ink); }
+body.view-find #sh-dismiss {
+  width: var(--tap);
+  height: var(--tap);
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  color: var(--ink-2);
+}
+body.view-find #sh-dismiss svg { width: 24px; height: 24px; stroke: none; fill: currentColor; }
+
+/* Sections: the followed strip and the subjects. */
+body.view-find #sh-browse { display: flex; flex-direction: column; gap: var(--s-8); }
+.find-sect { display: flex; flex-direction: column; gap: var(--gap); }
+.find-sect .heading { margin: 0; color: var(--ink); }
+
+.find-strip { display: flex; gap: var(--gap); overflow-x: auto; margin: 0 calc(var(--gutter) * -1); padding: 0 var(--gutter) var(--s-1); scrollbar-width: none; }
+.find-strip::-webkit-scrollbar { display: none; }
+.find-strip__item { flex: none; width: 72px; display: flex; flex-direction: column; align-items: center; gap: 6px; color: inherit; text-decoration: none; }
+.find-strip__art { position: relative; display: block; width: 64px; height: 64px; overflow: hidden; border-radius: var(--r-md); background: var(--seg, var(--dial-seg-c0)); box-shadow: inset 0 0 0 1px var(--dial-line); }
+.find-strip__name { font: var(--w-micro) var(--t-micro)/var(--lh-micro) var(--font-text); max-width: calc(72px + var(--s-3)); margin-inline: calc(var(--s-3) / -2); color: var(--ink-2); text-align: center; overflow-wrap: normal; word-break: normal; hyphens: none; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+
+/* The mosaic: two columns, gap 12; `s` is 1x1, `m` 2x1, `l` 2x2. */
+.mosaic { display: grid; grid-template-columns: 1fr 1fr; grid-auto-flow: dense; gap: var(--gap); }
+.mosaic .tile { position: relative; overflow: hidden; text-decoration: none; }
+.mosaic .tile--m { gap: var(--s-3); }
+.mosaic .tile--l { grid-row: span 2; flex-direction: row; justify-content: flex-start; }
+.mosaic .tile > span:last-child { min-width: 0; }
+.mosaic .tile--l > span:last-child { max-width: calc(100% - 196px); }
+.mosaic .tile__name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+
+.mosaic .tile--l .tile__name { -webkit-line-clamp: 3; line-clamp: 3; }
+.mosaic .tile .readout { color: var(--ink-2); white-space: nowrap; }
+.find-discs { display: inline-flex; align-items: center; }
+.find-art, .find-strip__art { --seg: var(--dial-seg-c0); }
+.find-art { position: relative; display: block; flex: none; overflow: hidden; background: var(--seg); box-shadow: inset 0 0 0 1px var(--dial-line); }
+.find-art::before, .find-strip__art::before { content: attr(data-i); position: absolute; inset: 0; display: grid; place-items: center; font: 700 0.9375rem/1 var(--font-mono); color: var(--on-persimmon); }
+.find-art img, .find-strip__art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: var(--paper-2); }
+.find-art--disc { width: 36px; height: 36px; margin-left: -12px; border-radius: 50%; box-shadow: 0 0 0 2px var(--card); }
+.find-art--disc:first-child { margin-left: 0; }
+.find-collage { display: grid; grid-template-columns: 88px 88px; gap: 2px; width: 178px; height: 178px; overflow: hidden; border-radius: var(--r-md); background: var(--paper-2); }
+.mosaic .tile--l .find-collage { position: absolute; top: 50%; right: calc(var(--s-3) + var(--s-1) / 2); transform: translateY(-50%); }
+.find-art--cell { width: 88px; height: 88px; border-radius: 0; box-shadow: none; }
+.find-art--cell::before { font-size: 1rem; }
+.find-art--c0 { --seg: var(--dial-seg-c0); } .find-art--c1 { --seg: var(--dial-seg-c1); } .find-art--c2 { --seg: var(--dial-seg-c2); } .find-art--c3 { --seg: var(--dial-seg-c3); }
+.find-art--c4 { --seg: var(--dial-seg-c4); } .find-art--c5 { --seg: var(--dial-seg-c5); } .find-art--c6 { --seg: var(--dial-seg-c6); } .find-art--c7 { --seg: var(--dial-seg-c7); }
+.find-more { display: flex; }
+
 /* COMPONENT GALLERY. Development-only markup behind the guarded #/gallery
    route. It starts with the icon family in task 2; later foundation tasks add
    primitives to this same page. No production screen inherits these rules. */
 body.ui-v2.view-gallery { background: var(--paper); color: var(--ink); font: var(--w-body) var(--t-body)/var(--lh-body) var(--font-text); }
+/* The gallery has no live deck (its #tab-bar is hidden just below), so it keeps
+   the 56px-plus-inset bottom room it was baselined with instead of the deck's
+   clearance formula: its last sections sit at the end of the page, and a taller
+   reserve shifts them in the `tactile-gallery` baseline shots. */
+body.ui-v2.view-gallery { padding-bottom: calc(56px + env(safe-area-inset-bottom)); }
 .view-gallery > .topbar,
 .view-gallery > #drawer-overlay,
 .view-gallery > #drawer,
@@ -4558,6 +4855,155 @@ body.ui-v2.view-gallery { background: var(--paper); color: var(--ink); font: var
 .gallery-device--bare { height: calc(var(--key) + var(--s-12)); }
 .gallery-decks + .rotary { margin-top: var(--s-5); }
 .sheet--preview { position: relative; z-index: auto; left: auto; right: auto; bottom: auto; display: block; max-height: none; margin-top: var(--s-5); padding-bottom: var(--s-5); transform: none; }
+
+/* DIAL NOW PLAYING (Phase 4, Group A). The player module remains the state
+   owner; ui/now-playing.js arranges its nodes into this screen. */
+#foray-player.dial-mini {
+  --mini-h: 64px;
+  left: var(--gutter);
+  right: var(--gutter);
+  bottom: calc(var(--safe-b) + var(--deck-h) + var(--s-3));
+  min-height: var(--mini-h);
+  border: 0;
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  background: var(--deck-tint);
+  box-shadow: var(--shadow-deck);
+  color: var(--ink);
+}
+#foray-player.dial-mini .fp-progress { height: 3px; background: var(--paper-2); }
+#foray-player.dial-mini .fp-fill { background: var(--persimmon); }
+#foray-player.dial-mini .fp-bar { height: var(--mini-h); padding: 0 10px; gap: var(--s-2); -webkit-backdrop-filter: var(--deck-blur); backdrop-filter: var(--deck-blur); }
+#foray-player.dial-mini .fp-info { order: 0; min-width: 0; min-height: var(--tap); flex: 1; display: grid; grid-template-columns: 44px 1fr; grid-template-rows: 1fr 1fr; column-gap: var(--s-3); padding: 0; text-align: left; color: var(--ink); background: transparent; }
+#foray-player.dial-mini .mini__art { grid-row: 1 / 3; width: 44px; height: 44px; border-radius: var(--r-sm); object-fit: cover; view-transition-name: np-art; }
+#foray-player.dial-mini .mini__title { align-self: end; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 700 var(--t-body)/var(--lh-body) var(--font-text); }
+#foray-player.dial-mini .mini__show { align-self: start; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); font: 500 var(--t-label)/var(--lh-label) var(--font-text); }
+#foray-player.dial-mini .fp-play, #foray-player.dial-mini .fp-skip { position: relative; inset: auto; flex: none; }
+body.fp-expanded #foray-player.dial-mini > .fp-progress,
+body.fp-expanded #foray-player.dial-mini > .fp-bar { visibility: hidden; }
+
+.fp-sheet.np {
+  --np-tint: var(--dial-seg-c0);
+  position: fixed;
+  z-index: 120;
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+  max-height: none;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  background: var(--np-surface, var(--paper));
+  color: var(--ink);
+  transform: translateY(var(--fp-sheet-dy, 0px));
+  transition: transform var(--d-sheet) var(--spring-sheet), opacity var(--d-quick) var(--ease-quick), --np-tint var(--d-sheet) var(--ease-quick);
+}
+.fp-sheet.np[hidden] { display: none; }
+.np__bg { position: absolute; inset: 0; overflow: hidden; background-color: var(--np-surface, var(--paper)); transition: background-color var(--d-sheet) var(--ease-quick); pointer-events: none; }
+.np__bg::before { content: ""; position: absolute; inset: 0; background: transparent; }
+.np__bg::after { content: ""; position: absolute; inset: 32% 0 0; background: linear-gradient(to bottom, transparent, var(--paper) 78%); }
+.np .np__head { position: absolute; z-index: 4; top: 0; left: 0; right: 0; height: calc(var(--safe-t) + var(--tap)); padding-top: calc(var(--safe-t) + var(--s-2)); display: flex; justify-content: center; touch-action: none; }
+.np .np__head .fy-grab,
+body.ui-v2 .fp-sheet.np .np__head .fy-grab { width: 36px; height: 5px; margin: 0; border-radius: var(--r-pill); background: var(--ink-3); }
+.np .np__collapse { position: absolute; top: var(--safe-t); right: auto; left: var(--s-2); width: var(--tap); height: var(--tap); transform: none; display: grid; place-items: center; color: var(--ink); border-radius: var(--r-pill); background: transparent; }
+body.ui-v2 .fp-sheet.np .np__collapse { border-color: transparent; background: transparent; color: var(--ink); box-shadow: none; }
+.np .np__scroll { position: absolute; z-index: 1; inset: 0; display: block; overflow-y: auto; overscroll-behavior: contain; padding: calc(var(--safe-t) + var(--s-10)) var(--gutter) calc(var(--safe-b) + var(--s-12) + var(--s-12) + var(--s-12) + var(--s-12)); scrollbar-width: none; }
+.np .np__scroll::-webkit-scrollbar { display: none; }
+.np__top { display: flex; flex-direction: column; min-height: calc(100% - 176px - var(--safe-b)); }
+.np__hero { display: flex; justify-content: center; }
+.np__art { position: relative; width: 280px; height: 280px; flex: none; overflow: hidden; display: grid; place-items: center; border-radius: var(--r-lg); background: var(--paper-2); box-shadow: var(--shadow-card); view-transition-name: np-art; }
+.np__art::before { content: "4a"; color: var(--ink-2); font: 750 var(--t-display)/1 var(--dial-font-display); }
+.np__art .fp-s-art { position: absolute; inset: 0; display: block; width: 100%; height: 100%; max-width: none; margin: 0; border: 0; border-radius: inherit; object-fit: cover; box-shadow: none; }
+.np__text { margin-top: var(--s-5); }
+.np__text .title { margin: 0; display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; text-wrap: balance; font-family: var(--dial-font-display); font-size: var(--t-title); line-height: var(--lh-title); font-weight: var(--w-title); letter-spacing: var(--tracking-title); color: var(--ink); }
+.np__show { margin: var(--s-1) 0 0; color: var(--ink-2); font: 500 var(--t-body)/var(--lh-body) var(--font-text); }
+body.ui-v2 .fp-sheet.np .np__text .title { font-family: var(--dial-font-display); color: var(--ink); }
+body.ui-v2 .fp-sheet.np .np__show { color: var(--ink-2); }
+body.ui-v2 .fp-sheet.np .fp-s-why,
+body.ui-v2 .fp-sheet.np .fp-left { color: var(--ink-2); }
+.np__why { margin: var(--s-2) 0 0; color: var(--ink-2); font-size: var(--t-body); line-height: var(--lh-body); }
+.np__chips { min-height: var(--s-6); margin-top: var(--s-2); display: flex; align-items: center; gap: var(--s-2); }
+.tag--station { background: color-mix(in srgb, var(--card) 72%, transparent); color: var(--ink); }
+.np__swatch, .np__origin-swatch { width: 24px; height: 24px; flex: none; display: inline-grid; place-items: center; border-radius: 6px; color: white; font: 800 var(--t-micro)/1 var(--font-mono); }
+.np__swatch { width: 10px; height: 10px; border-radius: 3px; }
+.np__swatch.t-band__bar--c0, .np__origin-swatch.t-band__bar--c0 { background: var(--dial-seg-c0); }
+.np__swatch.t-band__bar--c1, .np__origin-swatch.t-band__bar--c1 { background: var(--dial-seg-c1); }
+.np__swatch.t-band__bar--c2, .np__origin-swatch.t-band__bar--c2 { background: var(--dial-seg-c2); }
+.np__swatch.t-band__bar--c3, .np__origin-swatch.t-band__bar--c3 { background: var(--dial-seg-c3); }
+.np__swatch.t-band__bar--c4, .np__origin-swatch.t-band__bar--c4 { background: var(--dial-seg-c4); }
+.np__swatch.t-band__bar--c5, .np__origin-swatch.t-band__bar--c5 { background: var(--dial-seg-c5); }
+.np__swatch.t-band__bar--c6, .np__origin-swatch.t-band__bar--c6 { background: var(--dial-seg-c6); }
+.np__swatch.t-band__bar--c7, .np__origin-swatch.t-band__bar--c7 { background: var(--dial-seg-c7); }
+.np__station-code { color: var(--ink); font-weight: 800; }
+.np__band { margin-top: var(--s-5); }
+.np__band-well { position: relative; width: 100%; min-height: calc(var(--key-lg) + var(--s-2)); padding: 0 var(--s-2); border-radius: var(--r-md); }
+.np__band-visual { height: var(--key-lg); pointer-events: none; }
+.np__band-visual .band--scrub { height: var(--key-lg); }
+.np__band .t-band__code { fill: var(--ink); font: var(--w-label) var(--t-label) var(--font-text); }
+.np:not(.np--foray) .np__band-visual .t-band__bar { fill: var(--persimmon); }
+.np:not(.np--foray) .np__band-visual .t-band__code { display: none; }
+.np__range { position: absolute; z-index: 2; inset: 0; width: 100%; height: var(--key-lg); margin: 0; opacity: 0; cursor: grab; touch-action: none; }
+.np__range:active { cursor: grabbing; }
+.np__range:focus-visible { opacity: .001; outline: 2px solid var(--ultramarine); outline-offset: 2px; }
+.band-bubble { --bubble-x: 0; position: absolute; z-index: 3; left: clamp(48px, calc(var(--bubble-x) * 100%), calc(100% - 48px)); bottom: calc(100% + var(--s-3)); min-width: 96px; padding: var(--s-2); transform: translateX(-50%); border-radius: var(--r-sm); background: var(--card); color: var(--ink); box-shadow: var(--shadow-card); text-align: center; }
+.np__read { margin-top: var(--s-2); padding: 0 2px; display: flex; align-items: baseline; justify-content: space-between; }
+.np__read .readout-lg { color: var(--ink); letter-spacing: -.05em; }
+.np__read .readout { color: var(--ink-2); }
+.np__dock { position: absolute; isolation: isolate; z-index: 5; left: 0; right: 0; bottom: calc(var(--safe-b) + var(--s-1)); padding: 0 var(--gutter); }
+.np__dock::before { content: ""; position: absolute; z-index: -1; inset: calc(-1 * (var(--s-12) + var(--s-6))) 0 calc(-1 * (var(--safe-b) + var(--s-1))); background: linear-gradient(to bottom, transparent, var(--paper) 58%); pointer-events: none; }
+.np .transport { min-height: 83px; display: flex; align-items: center; justify-content: center; gap: var(--s-6); }
+.np .transport .keycap { flex: none; margin-bottom: var(--lip); }
+.np .transport .keycap--lg { box-sizing: border-box; width: var(--key-lg); min-width: var(--key-lg); height: var(--key-lg); padding: 0; }
+.np .transport .fp-big { width: var(--key-xl); min-width: var(--key-xl); height: var(--key-xl); padding: 0; }
+.np .transport .keycap::after { inset: 0; width: auto; height: auto; border-radius: inherit; transform: translateY(var(--lip)); }
+.np .transport .keycap:active:not(:disabled)::after { transform: translateY(var(--lip-pressed)); }
+body.ui-v2 .fp-sheet.np .transport .keycap { border-color: transparent; background: var(--k-fill); color: var(--k-ink); }
+body.ui-v2 .fp-sheet.np .transport .keycap--persimmon { background: var(--persimmon); color: var(--on-persimmon); }
+body.ui-v2 .fp-sheet.np .transport .keycap--rubber { background: var(--rubber); color: var(--on-rubber); }
+.np .fp-row2.second { min-height: var(--key-lg); margin-top: var(--s-4); display: flex; align-items: center; justify-content: center; gap: var(--s-2); }
+.rotary-chip { min-width: var(--tap); min-height: var(--tap); padding: 0 var(--s-3); display: inline-flex; align-items: center; justify-content: center; gap: var(--s-1); border: 1px solid var(--dial-line); border-radius: var(--r-pill); background: var(--card); color: var(--ink); box-shadow: none; font: 700 var(--t-body)/var(--lh-body) var(--font-text); }
+body.ui-v2 .fp-sheet.np .rotary-chip { border: 1px solid var(--dial-line); background: var(--card); color: var(--ink); box-shadow: none; }
+body.ui-v2 .fp-sheet.np .second .keycap--paper { border-color: transparent; background: var(--card); color: var(--ink); }
+.np .fp-upnext { position: relative; display: inline-grid; place-items: center; padding: 0; text-decoration: none; }
+.np .fp-upnext .i { width: 20px; height: 20px; }
+.np__badge { position: absolute; top: -4px; right: -4px; width: 18px; height: 18px; display: grid; place-items: center; border-radius: var(--r-pill); background: var(--ultramarine); color: var(--on-ultramarine); font-size: 11px; line-height: 18px; }
+.np__more { padding-top: var(--s-10); display: flex; flex-direction: column; gap: var(--s-8); }
+.np__section > .heading { margin: 0 0 var(--s-3); color: var(--ink); }
+.np__up-next-card { min-height: 88px; display: grid; grid-template-columns: var(--art-row) minmax(0, 1fr) auto; align-items: center; gap: var(--s-3); }
+.np__up-next-art { width: var(--art-row); height: var(--art-row); overflow: hidden; display: grid; place-items: center; border-radius: var(--r-sm); background: var(--paper-2); color: var(--ink-2); font: var(--w-label) var(--t-label)/1 var(--font-text); }
+.np__up-next-art img { width: 100%; height: 100%; object-fit: cover; }
+.np__up-next-body { min-width: 0; display: grid; gap: var(--s-1); }
+.np__detail-title, .np__detail-copy { margin: 0; }
+.np__detail-title { font: 700 var(--t-body)/var(--lh-body) var(--font-text); color: var(--ink); }
+.np__detail-copy { color: var(--ink-2); font: 500 var(--t-body)/var(--lh-body) var(--font-text); }
+.np__slot + .np__slot { margin-top: var(--s-5); }
+.np__slot-title { margin: 0 0 var(--s-2); font: 750 var(--t-body-lg)/var(--lh-body-lg) var(--dial-font-display); color: var(--ink); }
+.np .segrow { min-height: 56px; padding: 0; border-radius: var(--r-md); color: var(--ink); }
+.np .segrow.is-current { padding: 0 var(--s-2); margin: 0 calc(-1 * var(--s-2)); background: var(--persimmon-soft); }
+body.ui-v2 .fp-sheet.np .np__detail-copy { color: var(--ink); }
+.np__segment-copy { min-width: 0; flex: 1; display: flex; flex-direction: column; text-align: left; }
+.np .row-show { min-height: 56px; padding: 0; }
+.np .np__origin-swatch { color: #17130f; }
+.np__chapter { width: 100%; min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding: 0; color: var(--ink); text-align: left; }
+.np__empty-detail { margin: 0; color: var(--ink-2); }
+.np__notes .fp-s-desc { margin: 0; padding: 0; color: var(--ink); }
+.np__notes .fp-s-desc:not([open]) .ep-description-text { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 4; }
+.np__notes .ep-description-toggle { min-height: var(--tap); display: flex; align-items: center; font-weight: 700; }
+.np__legacy-actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.np__legacy .fp-clips { width: 100%; }
+body.ui-v2 .fp-sheet.np .fp-toforay,
+body.ui-v2 .fp-sheet.np .fp-openep { color: var(--ink); }
+
+@media (max-height: 740px) {
+  .np .np__scroll { padding-top: calc(var(--safe-t) + var(--s-3)); }
+  .np__art { width: 200px; height: 200px; }
+  .np__top { min-height: calc(100% - 142px - var(--safe-b)); }
+  .np__text { margin-top: var(--s-2); }
+  .np__band { margin-top: var(--s-2); }
+  .np__dock { bottom: calc(var(--safe-b) + var(--s-1)); }
+  .np .fp-row2.second { margin-top: var(--s-2); }
+}
+.np.np--three-title .np__art { width: 160px; height: 160px; }
 .gallery-sheet-open { margin-top: var(--s-5); }
 .gallery-icons { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-2); list-style: none; margin: 0; padding: 0; }
 .gallery-icons li { min-width: 0; min-height: var(--key-lg); display: grid; place-items: center; align-content: center; gap: var(--s-1); padding: var(--s-2) var(--s-1); border-radius: var(--r-sm); background: var(--card); box-shadow: var(--shadow-card); color: var(--ink); }
@@ -4734,7 +5180,16 @@ body.view-home .tab-btn:focus-visible { outline: calc(var(--s-1) / 2) solid var(
   .today .row__queue,
   .tab__label,
   .tab__indicator,
-  .toast { transition: none; }
+  .toast,
+  /* The live deck (group A `mini`): the tab row's collapse, the indicator's
+     slide, the Bold/Fill cross-fade, the label fade, the mini riding down with
+     the row and its swipe-dismiss settle. */
+  body.ui-v2 .tab-bar,
+  .tab-bar__ind,
+  .tab__icon .i,
+  .tab-btn .tab__label,
+  body.ui-v2 #foray-player.dial-mini,
+  body.ui-v2 #foray-player.dial-mini > .fp-bar { transition: none; }
   .keycap.is-loading .i,
   .keycap[data-loading="1"] .i,
   .chip.is-loading,

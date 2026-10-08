@@ -1140,9 +1140,14 @@ function buildUI() {
      name and the one that matters in a car. One control, not two, so a 390px
      bar keeps its title line. Inside a Foray it nudges on the Foray clock
      (`nudgeBy`), never previous clip — see persona 58 in the sheet below. */
-  const skipBtn = el("button", "fp-skip", `↺ ${SEEK_BACK}`);
+  /* REDESIGN 2026, Tactile `mini` (BUILD-PLAN 2.4): the mini's second control is
+     the 30-FORWARD keycap, not back 15 (the Dial mini: Play 48 + 30-forward 44,
+     ui/mini.js arranges and re-icons them). The glyph and label are written
+     here as well, so the bar still says what its click does when ui/mini.js
+     has not decorated it; the handler below is `nudgeBy(SEEK_FWD)`. */
+  const skipBtn = el("button", "fp-skip", `${SEEK_FWD} ↻`);
   skipBtn.type = "button";
-  skipBtn.setAttribute("aria-label", `Back ${SEEK_BACK} seconds`);
+  skipBtn.setAttribute("aria-label", `Forward ${SEEK_FWD} seconds`);
 
   /* U-13 (founder feedback F18): this ✕ used to call `stopAndClose()`, and its
      label said so. Closing the Now Playing screen to go and use the app therefore
@@ -1397,6 +1402,15 @@ function buildUI() {
   scroll.append(sArt, sTitle, sShow, sWhy, scrub, times, row, clips, row2, sErr, note, sDesc);
   sheet.append(grabZone, scroll);
   root.append(sheet, announce);
+  if (window.DialMiniPlayer) {
+    window.DialMiniPlayer.decorate({ root, bar, art, info, title, show, playBtn, skipBtn });
+  }
+  const dial = window.DialNowPlaying ? window.DialNowPlaying.build({
+    sheet, grabZone, closeBtn, scroll, sArt, sTitle, sShow, sWhy,
+    scrub, times, tNow, tLeft, row, backBtn, bigPlay, fwdBtn, clips,
+    row2, rateBtn, openLink, forayLink, stopBtn, nextBtn, saveBtn,
+    bookmarkBtn, queueLink, note, sErr, sDesc,
+  }) : {};
   document.body.append(root);
 
   return {
@@ -1404,6 +1418,7 @@ function buildUI() {
     grabZone, scroll, sArt, sDesc, sDescText, clips, clipPrev, clipNext,
     sTitle, sShow, sWhy, scrub, tNow, tLeft, bigPlay, backBtn, fwdBtn,
     rateBtn, nextBtn, saveBtn, bookmarkBtn, queueLink, openLink, forayLink, stopBtn, info, note, err, sErr, announce,
+    ...dial,
   };
 }
 
@@ -1770,12 +1785,14 @@ function syncForaySegment() {
     "Clip", not "part": a part is one of a Foray's titled sections, and a clip is
     the listener's word for the pieces inside them (audit 2026-09-22). */
 function forayNowPlaying(item, index) {
+  const source = item?.source_item_id ? foray?.resolved?.sources?.get(item.source_item_id) : null;
   return {
     id: item.id,
     title: foray.resolved.title || item.title || "",
     show: foraySecondLine(foray.resolved.playable, index),
     duration_sec: null,
     dai_suspected: Boolean(item.dai_suspected),
+    artwork_url: source?.artwork_url || source?.image_url || "",
   };
 }
 
@@ -1792,6 +1809,94 @@ function foraySecondLine(playable, index) {
   const show = item?.show || (item?.kind === TTS ? "Narration" : "");
   const clip = `clip ${Math.min(index, total - 1) + 1} of ${total}`;
   return show ? `${show} · ${clip}` : clip.charAt(0).toUpperCase() + clip.slice(1);
+}
+
+function dialStationIndex(value) {
+  return typeof tactileHash === "function" ? tactileHash(value) : 0;
+}
+
+function dialStationCodeFor(value) {
+  return typeof tactileStationCode === "function" ? tactileStationCode(value) : "4A";
+}
+
+function dialSpokenClock(seconds) {
+  const whole = Math.max(0, Math.floor(Number(seconds) || 0));
+  const minutes = Math.floor(whole / 60);
+  const remain = whole % 60;
+  return `${minutes} ${minutes === 1 ? "minute" : "minutes"}${remain ? ` ${remain}` : ""}`;
+}
+
+function dialQueueCount() {
+  try { return Math.max(0, Number(episodeNavigation?.upNextCount) || 0); }
+  catch (_) { return 0; }
+}
+
+function dialForaySegments(resolved, currentIndex) {
+  const starts = segmentStarts(resolved.playable);
+  let priorColour = 0;
+  return resolved.playable.map((item, index) => {
+    const entry = resolved.entries.find((row) => row.queueIndex === index) || {};
+    const narration = item.kind === TTS;
+    const show = narration ? "4a narration" : (entry.show || item.show || "Show");
+    const showId = narration ? `narration-${index}` : (entry.show_id || entry.source_id || item.source_item_id || show);
+    const source = item?.source_item_id ? resolved.sources?.get(item.source_item_id) : null;
+    const colorIndex = narration ? priorColour : dialStationIndex(showId);
+    if (!narration) priorColour = colorIndex;
+    return {
+      showId, show, code: narration ? "4a" : dialStationCodeFor(show), colorIndex, narration,
+      duration: itemRuntimeSec(item), start: starts[index] || 0, current: index === currentIndex,
+      why: entry.why || item.why || "",
+      title: entry.episode_title || item.title || show,
+      artwork: narration ? "" : (source?.artwork_url || source?.image_url || artworkByShow.get(show) || ""),
+      slot: entry.slot ?? null,
+    };
+  });
+}
+
+function dialNowPlayingModel(pos, dur, running, loading) {
+  const queueCount = dialQueueCount();
+  const resolvedForay = foray?.resolved || restoredPending?.foray?.resolved || null;
+  if (!resolvedForay) {
+    const show = current?.show || "Show";
+    const showId = current?.show_id || show;
+    const chapters = Array.isArray(current?.chapters) ? current.chapters.map((chapter) => ({
+      title: chapter?.title || "Chapter",
+      start: Number(chapter?.start_sec ?? chapter?.startTime ?? chapter?.start) || 0,
+      clock: formatTimestamp(Number(chapter?.start_sec ?? chapter?.startTime ?? chapter?.start) || 0, EXACT),
+    })) : [];
+    return {
+      foray: false, currentIndex: 0, position: pos, duration: dur, running, buffering: loading,
+      artwork: current?.artwork_url || "", showId, show, queueCount, chapters,
+      segments: [{ showId, show, code: dialStationCodeFor(show), colorIndex: dialStationIndex(showId), duration: dur, start: 0 }],
+      valueText: `${dialSpokenClock(pos)} of ${dialSpokenClock(dur)}, ${show}`,
+      detailKey: `episode:${current?.id || ""}:${chapters.length}`,
+    };
+  }
+  const resolved = resolvedForay;
+  const currentIndex = foray?.index ?? (segmentAtElapsed(resolved.playable, pos)?.index || 0);
+  const segments = dialForaySegments(resolved, currentIndex);
+  const here = segments[currentIndex] || segments[0] || {};
+  const next = segments[currentIndex + 1] || null;
+  const slots = resolved.slots.map((slot) => ({
+    title: slot.title,
+    items: segments.filter((segment) => segment.slot === (slot.id ?? null)).map((segment) => ({
+      ...segment, duration: fmtSpan(segment.duration),
+    })),
+  }));
+  const origins = [];
+  const seen = new Set();
+  for (const segment of segments) {
+    if (segment.narration || seen.has(segment.showId)) continue;
+    seen.add(segment.showId);
+    origins.push({ name: segment.show, code: segment.code, colorIndex: segment.colorIndex, meta: "Source show" });
+  }
+  return {
+    foray: true, currentIndex, position: pos, duration: dur, running, buffering: loading,
+    artwork: current?.artwork_url || "", showId: here.showId, show: here.show, queueCount, segments, slots, origins,
+    next: next ? { title: next.title, show: next.show, why: next.why, duration: fmtSpan(next.duration), artwork: next.artwork } : null,
+    valueText: `${dialSpokenClock(pos)} of ${dialSpokenClock(dur)}, ${here.show || "4a narration"}`,
+    detailKey: `foray:${resolved.id}:${currentIndex}`,
+  };
 }
 
 /** Everything a page needs to paint itself, in Foray terms. */
@@ -2255,6 +2360,10 @@ function paintPage(running) {
      VoiceOver user parked on "Seek" heard a running clock talk over their own
      swipes — the same rule the status line already keeps, written only when it
      is theirs to hear). */
+  /* ONE MODEL, built before the clocks so the slider's spoken value comes
+     from the SAME string `ui/now-playing.js` writes when it rebuilds the band.
+     Two writers composing their own text overwrote each other. */
+  const dialModel = window.DialMiniPlayer || window.DialNowPlaying ? dialNowPlayingModel(pos, dur, running, loading) : null;
   if (!scrubbing) {
     const frac = dur ? Math.min(1, Math.max(0, pos / dur)) : 0;
     ui.fill.style.width = `${frac * 100}%`;
@@ -2265,10 +2374,20 @@ function paintPage(running) {
       ui.scrub.value = String(live);
       scrubShownValue = live;
     }
-    paintClocks(pos, dur, !held);
+    /* `!held` alone: with Now Playing loaded this tick is the slider's only
+       per-tick writer of aria-valuetext (the band rebuild runs only when its
+       key changes), so gating on DialNowPlaying left the spoken value stale
+       after every nudge (WCAG 4.1.2). */
+    paintClocks(pos, dur, !held, window.DialNowPlaying ? dialModel?.valueText : null);
   }
   syncCardButtons(loading);
   paintEpisodeSurface();
+  /* One model for both Dial surfaces: the mini's 3px line draws the same
+     segments the Now Playing scrub band does. */
+  if (window.DialMiniPlayer) window.DialMiniPlayer.paint(ui, {
+    title: ui.title.textContent, show: ui.show.textContent, running, model: dialModel,
+  });
+  if (window.DialNowPlaying) window.DialNowPlaying.paint(ui, dialModel);
 }
 
 /**
@@ -2281,7 +2400,7 @@ function paintPage(running) {
  * countdown rounded separately made 13 + 48 = 61 out of 12.5 s into 60. Both
  * clocks go through the same formatter's rule first, so they add up.
  */
-function paintClocks(pos, dur, valuetext = true) {
+function paintClocks(pos, dur, valuetext = true, spoken = null) {
   /* One rounding rule for both clocks (audit round 3, arch-drift-10): the
      elapsed text is floored everywhere now, so its countdown is too. */
   const whole = Math.floor;
@@ -2293,9 +2412,17 @@ function paintClocks(pos, dur, valuetext = true) {
   /* The slider's value is a 0-1000 fraction, which is what a screen reader
      read out ("Seek, 437"). The clock beside it is the listener's unit, so the
      slider says that instead. */
-  const text = dur
-    ? `${now} of ${foray ? `${foray.resolved.estimated === true ? "about " : ""}${fmtClock(dur)}` : formatTimestamp(dur, EXACT)}`
-    : now;
+  const show = foray
+    ? (foray.resolved.playable[foray.index]?.show || (foray.resolved.playable[foray.index]?.kind === TTS ? "4a narration" : ""))
+    : (current?.show || "");
+  /* `spoken` is the Now Playing model's valueText for this same tick, so the
+     two writers cannot disagree; a drag preview has no model and composes the
+     same shape from the thumb. */
+  const text = spoken && dur ? spoken : window.DialNowPlaying && dur
+    ? `${dialSpokenClock(pos)} of ${dialSpokenClock(dur)}, ${show}`
+    : dur
+      ? `${now} of ${foray ? `${foray.resolved.estimated === true ? "about " : ""}${fmtClock(dur)}` : formatTimestamp(dur, EXACT)}`
+      : now;
   if (ui.scrub.getAttribute("aria-valuetext") !== text) ui.scrub.setAttribute("aria-valuetext", text);
 }
 
@@ -2327,7 +2454,21 @@ function paintScrubPreview() {
   scrubbing = true;
   const dur = foray ? foray.resolved.totalSec : episodeDurationSec();
   const at = (Number(ui.scrub.value) / 1000) * (dur || 0);
+  /* The slider's spoken value follows the thumb too: a range input whose
+     aria-valuetext lags its value tells a screen reader the wrong time (audit
+     round 2, player-6, "and the slider says it too"). The earlier "do not
+     flood assistive technology mid-drag" idea was never measured. No ruling
+     fell here; this restores the pinned behaviour. */
   paintClocks(at, dur);
+  if (window.DialNowPlaying) {
+    const item = foray ? segmentAtElapsed(foray.resolved.playable, at) : null;
+    window.DialNowPlaying.preview(ui, {
+      position: at,
+      duration: dur,
+      clock: foray ? fmtClock(at) : formatTimestamp(at, EXACT),
+      show: item ? (foray.resolved.playable[item.index]?.show || "4a narration") : (current?.show || ""),
+    });
+  }
 }
 
 /** The mini bar's title button: named by what is playing, and telling a screen
@@ -2398,15 +2539,16 @@ function setNowPlaying(item, why) {
      Foray, which never has a hook. `sDesc` below always did it this way. */
   ui.sWhy.textContent = why || item.hook || "";
   ui.sWhy.hidden = !ui.sWhy.textContent;
-  if (item.artwork_url) {
-    ui.art.src = item.artwork_url;
+  const artworkUrl = item.artwork_url && typeof safeUrl === "function" ? safeUrl(item.artwork_url) : "#";
+  if (artworkUrl && artworkUrl !== "#") {
+    ui.art.src = artworkUrl;
     ui.art.hidden = false;
     /* The same URL, the same gate: the sheet's artwork is the mini bar's
        artwork at full size, never a second source that could disagree with
        it. Assigned through `src` on an element built by createElement, like
        every other field here — there is no HTML-string path in this file for
        a third-party URL to escape through. */
-    ui.sArt.src = item.artwork_url;
+    ui.sArt.src = artworkUrl;
     ui.sArt.hidden = false;
   } else {
     ui.art.hidden = true;
@@ -2696,6 +2838,7 @@ function applyRate(rate) {
 function paintRate(rate = currentRate()) {
   if (!ui) return;
   paintControl(ui.rateBtn, rateLabel(rate), rateAriaLabel(rate));
+  window.DialNowPlaying?.paintRate?.(ui.rateBtn, rate);
 }
 
 /* ---------- V-01: the listener's chosen narration voice ----------
@@ -3775,6 +3918,9 @@ function bind() {
      lock screen's surface is pinned to. */
   ui.playBtn.addEventListener("click", guardTap(toggle));
   ui.bigPlay.addEventListener("click", guardTap(toggle));
+  for (const button of [ui.playBtn, ui.bigPlay]) {
+    button.addEventListener("click", () => window.DialNowPlaying?.haptic?.("medium"));
+  }
 
   /* U-13: the only listener that reaches `stopAndClose` from the UI. Everything
      else that used to (the mini bar's ✕) now collapses instead. */
@@ -3845,6 +3991,7 @@ function bind() {
     return !!started;
   };
   const slideSheetIn = () => {
+    if (window.DialNowPlaying?.transitioning) return;
     const owner = sheetOwner();
     const h = sheetHeightPx();
     if (!owner || typeof owner.slideIn !== "function" || !h) return;
@@ -3853,6 +4000,7 @@ function bind() {
   /* True only inside a slide-out's settle: the close below is due NOW, not
      another slide. */
   let sheetSettled = false;
+  let requestExpanded;
   const setExpanded = (open) => {
     if (!open && !sheetSettled && slideSheetOut(() => {
       sheetSettled = true;
@@ -3877,32 +4025,38 @@ function bind() {
       owner.openSheet(ui.sheet, {
         panel: ui.sheet,
         bodyClass: "fp-expanded",
-        keepReachable: [".topbar", "#drawer", "#drawer-overlay", ".fp-announce"],
-        onRequestClose: () => setExpanded(false),
+        keepReachable: [".fp-announce"],
+        onRequestClose: () => requestExpanded(false),
         returnFocus: ui.info,
       });
     }
     if (open) ui.scroll.scrollTop = 0;
     if (open) slideSheetIn();
+    if (open && typeof ui.bigPlay.focus === "function") ui.bigPlay.focus({ preventScroll: true });
   };
-  ui.info.addEventListener("click", () => setExpanded(ui.sheet.hidden));
+  requestExpanded = (open) => {
+    if (window.DialNowPlaying?.transition) {
+      window.DialNowPlaying.transition(open, ui.art, ui.sArt, () => setExpanded(open));
+    } else setExpanded(open);
+  };
+  ui.info.addEventListener("click", () => requestExpanded(ui.sheet.hidden));
   /* The artwork too — the biggest thing on the bar, and where every podcast
      app opens the player from. It was an inert <img> beside the one button
      that did (audit 2026-09-22). Not a second button in the tab order: the
      title button beside it already is that control for keyboard and screen
      reader, and the art stays `alt=""` decoration to them. */
-  ui.art.addEventListener("click", () => setExpanded(ui.sheet.hidden));
+  if (ui.art.parentElement !== ui.info) ui.art.addEventListener("click", () => requestExpanded(ui.sheet.hidden));
   /* The ✕ is the one button that collapses the sheet (the handle's drag is the
      gesture). Declared after `setExpanded` because it is a `const`. */
-  ui.closeBtn.addEventListener("click", () => setExpanded(false));
+  ui.closeBtn.addEventListener("click", () => requestExpanded(false));
   // Following the route with the sheet still open would leave the Foray page
   // rendered underneath a full-height overlay.
-  ui.forayLink.addEventListener("click", () => setExpanded(false));
+  ui.forayLink.addEventListener("click", () => requestExpanded(false));
   // Same reasoning as forayLink above — now that "Episode" is an in-app
   // hash route too, not target="_blank", the sheet must not linger open
   // over the page it navigates to.
-  ui.openLink.addEventListener("click", () => setExpanded(false));
-  ui.queueLink.addEventListener("click", () => setExpanded(false));
+  ui.openLink.addEventListener("click", () => requestExpanded(false));
+  ui.queueLink.addEventListener("click", () => requestExpanded(false));
   /* ⏭ IS THE STEERING WHEEL'S NEXT, not a second opinion: `episodeNeighbour`
      is the same wrapper `episodeMediaSurface.next` hands the lock screen. */
   ui.nextBtn.addEventListener("click", () => {
@@ -3927,8 +4081,19 @@ function bind() {
     let bm = null;
     try { bm = nav.addBookmark(id, episodePositionSec(), episodeDurationSec()); } catch (_) { bm = null; }
     paintControl(ui.bookmarkBtn, bm ? "Bookmarked ✓" : "Bookmark", bm ? "Bookmarked at this point" : "Bookmark this point");
+    if (bm) window.DialNowPlaying?.haptic?.("success");
     if (bm) setTimeout(() => paintControl(ui.bookmarkBtn, "Bookmark", "Bookmark this point"), 1500);
   });
+
+  ui.sheet.addEventListener("click", guardTap(async (event) => {
+    const target = event.target?.closest?.("[data-seek]");
+    if (!target) return;
+    const seconds = Number(target.dataset.seek);
+    if (!Number.isFinite(seconds)) return;
+    window.DialNowPlaying?.haptic?.("selection");
+    if (foray) await ForayPlayer.foraySeek(seconds);
+    else await seekEpisodeTo(seconds);
+  }));
 
   /* ---------- drag the sheet down to dismiss it ----------
 
@@ -4000,7 +4165,7 @@ function bind() {
     const { dismiss } = endDrag(drag);
     drag = null;
     dragPointer = null;
-    if (dismiss) setExpanded(false);
+    if (dismiss) requestExpanded(false);
     else setSheetDragOffset(0);
   };
   ui.sheet.addEventListener("pointerup", endSheetDrag);
@@ -4019,15 +4184,43 @@ function bind() {
      expect of them. A 30 s step that leaves a short clip is fine — it lands in
      the next one, exactly as the scrubber would. Clip navigation is the
      `.fp-clips` row. */
-  ui.backBtn.addEventListener("click", () => nudgeBy(-SEEK_BACK));
-  ui.fwdBtn.addEventListener("click", () => nudgeBy(SEEK_FWD));
-  ui.skipBtn.addEventListener("click", () => nudgeBy(-SEEK_BACK));
+  ui.backBtn.addEventListener("click", () => { window.DialNowPlaying?.haptic?.("light"); nudgeBy(-SEEK_BACK); });
+  ui.fwdBtn.addEventListener("click", () => { window.DialNowPlaying?.haptic?.("light"); nudgeBy(SEEK_FWD); });
+  ui.skipBtn.addEventListener("click", () => { window.DialNowPlaying?.haptic?.("light"); nudgeBy(SEEK_FWD); });
   ui.clipPrev.addEventListener("click", guardTap(() => ForayPlayer.forayPrevious()));
   ui.clipNext.addEventListener("click", guardTap(() => ForayPlayer.forayNext()));
 
   /* The clocks follow the thumb while it moves (audit round 2, player-6). */
   ui.scrub.addEventListener("pointerdown", () => { scrubByPointer = true; });
-  ui.scrub.addEventListener("keydown", () => { scrubByPointer = false; });
+  ui.scrub.addEventListener("keydown", (event) => {
+    scrubByPointer = false;
+    if (!window.DialNowPlaying || !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
+    event.preventDefault();
+    const dur = foray ? foray.resolved.totalSec : episodeDurationSec();
+    if (!dur) return;
+    const now = (Number(ui.scrub.value) / 1000) * dur;
+    let target = now;
+    if (event.key === "ArrowLeft") target = now - SEEK_BACK;
+    else if (event.key === "ArrowRight") target = now + SEEK_FWD;
+    else if (foray) {
+      const starts = segmentStarts(foray.resolved.playable);
+      const at = segmentAtElapsed(foray.resolved.playable, now)?.index ?? 0;
+      target = event.key === "ArrowUp"
+        ? (starts[Math.min(starts.length - 1, at + 1)] ?? dur)
+        : (starts[Math.max(0, at - 1)] ?? 0);
+    } else {
+      const chapters = Array.isArray(current?.chapters) ? current.chapters
+        .map((chapter) => Number(chapter?.start_sec ?? chapter?.startTime ?? chapter?.start))
+        .filter(Number.isFinite) : [];
+      const ordered = [0, ...chapters, dur].sort((a, b) => a - b);
+      target = event.key === "ArrowUp"
+        ? (ordered.find((value) => value > now + .5) ?? dur)
+        : ([...ordered].reverse().find((value) => value < now - .5) ?? 0);
+    }
+    ui.scrub.value = String(Math.round(Math.max(0, Math.min(dur, target)) / dur * 1000));
+    paintScrubPreview();
+    ui.scrub.dispatchEvent(new Event("change", { bubbles: true }));
+  });
   ui.scrub.addEventListener("blur", () => { scrubByPointer = false; });
   ui.scrub.addEventListener("input", () => paintScrubPreview());
   /* A RELEASE WITH NO `change` ENDS THE PREVIEW TOO (audit round 3,
@@ -4044,6 +4237,7 @@ function bind() {
     setTimeout(() => {
       if (!scrubbing) return;
       scrubbing = false;
+      window.DialNowPlaying?.hidePreview?.(ui);
       render();
     }, 0);
   };
@@ -4054,9 +4248,22 @@ function bind() {
     /* A change with no `input` before it (some assistive paths) is still a
        step from the frozen value. */
     if (!scrubbing) rebaseHeldScrubStep();
-    const frac = Number(ui.scrub.value) / 1000;
-    scrubShownValue = Number(ui.scrub.value);
+    let frac = Number(ui.scrub.value) / 1000;
+    if (scrubByPointer && foray) {
+      const dur = foray.resolved.totalSec;
+      const width = ui.scrub.getBoundingClientRect?.().width || ui.scrub.clientWidth || 1;
+      const threshold = dur * 12 / width;
+      const seconds = frac * dur;
+      const nearest = segmentStarts(foray.resolved.playable).reduce((best, value) =>
+        Math.abs(value - seconds) < Math.abs(best - seconds) ? value : best, 0);
+      if (Math.abs(nearest - seconds) <= threshold) frac = nearest / dur;
+    }
     scrubbing = false;
+    ui.scrub.value = String(Math.round(frac * 1000));
+    scrubShownValue = Number(ui.scrub.value);
+    paintClocks(frac * (foray ? foray.resolved.totalSec : episodeDurationSec()), foray ? foray.resolved.totalSec : episodeDurationSec());
+    window.DialNowPlaying?.hidePreview?.(ui);
+    window.DialNowPlaying?.haptic?.("selection");
     if (foray) {
       await ForayPlayer.foraySeek(frac * foray.resolved.totalSec);
       return;
@@ -4727,6 +4934,7 @@ const ForayPlayer = {
     ensureBooted();
     const at = segmentAtElapsed(resolved.playable, startElapsedSec);
     const total = resolved.playable.length;
+    const restoredArtwork = artworkUrlsByShow(discoverDoc).get(resolved.playable[at ? at.index : 0]?.show || "") || "";
     /* The same handlers as a restored episode: `play` goes through
        `setRunning`, whose restored branch starts the Foray. Installed before the
        metadata, as `restoreLastEpisode` does, so the car never shows a play
@@ -4741,6 +4949,7 @@ const ForayPlayer = {
          following the thumb (player-10). */
       show: foraySecondLine(resolved.playable, at ? at.index : 0),
       duration_sec: resolved.totalSec,
+      artwork_url: restoredArtwork,
     }, null);
     const positionSec = Number.isFinite(startElapsedSec) && startElapsedSec > 0 ? startElapsedSec : 0;
     restoredPending = { item: current, positionSec, foray: { resolved, discoverDoc } };
@@ -5004,6 +5213,17 @@ const ForayPlayer = {
    */
   async togglePlayback() {
     await setRunning(!transportIsRunning());
+  },
+
+  /**
+   * Close the player: the sheet's Stop, reachable from the page. The Tactile
+   * mini's swipe-down dismiss (ui/mini.js) commits through this once its undo
+   * toast runs out, so a gesture and the button can never stop differently;
+   * the resume point is kept, as it is for every stop but data deletion.
+   */
+  async stop() {
+    if (!current && !restoredPending) return;
+    await stopAndClose();
   },
 
   /**

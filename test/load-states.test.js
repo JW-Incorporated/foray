@@ -169,7 +169,7 @@ test("#/shows with no catalogue says it could not load the list, and Try again f
   assert.ok(m.retry(), "the failed list must offer Try again");
   await settle();
   assert.ok(m.fetched.some((u) => u.includes("data/catalog-client.json")), "Try again re-fetches the catalogue");
-  assert.match(m.html(), /Alpha Show/, "and the page repaints from what it answered");
+  assert.match(m.html(), /id="sh-compose"/, "and the page repaints from what it answered (the Find page, with its field)");
   assert.doesNotMatch(m.html(), /Couldn't load the show list/);
 });
 
@@ -373,7 +373,7 @@ test("Try again on the Foray docs says it is trying, and a late answer repaints 
   // The listener gives up and goes to Search.
   m.ctx.location.hash = "#/shows";
   m.ctx.renderCurrentPage();
-  assert.match(m.html(), /Alpha Show/, "fixture: the Search page is on screen");
+  assert.match(m.html(), /id="sh-compose"/, "fixture: the Find page is on screen");
   /* A repaint of an idle Search page produces the SAME markup, so equality of
      the html would not see it; count writes to #view instead. */
   let paints = 0;
@@ -387,7 +387,7 @@ test("Try again on the Foray docs says it is trying, and a late answer repaints 
   release({ ok: false, status: 503, json: async () => ({}) });
   await settle();
   assert.strictEqual(paints, 0, "a late failure must not repaint the page the listener moved to");
-  assert.match(m.html(), /Alpha Show/);
+  assert.match(m.html(), /id="sh-compose"/);
 });
 
 test("Try again on the Foray docs that fails again lands on the same failed page with a fresh button (races-7)", async () => {

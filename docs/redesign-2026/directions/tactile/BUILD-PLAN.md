@@ -454,6 +454,25 @@ both pairs.
    tabs Today / Find / Yours with Bold icons inactive, Fill active, a 32×4
    persimmon indicator sliding on `--spring-settle`; the Yours badge
    (ultramarine, 18px, mono 11) only when Up Next is non-empty.
+   **Built (group A `mini`, decisions the loop made):** (a) the collapse is the
+   100ms-throttled scroll listener on every engine, not an
+   `animation-timeline: scroll()` branch behind `@supports`: a scroll timeline
+   maps a POSITION to a state, and the rule here is about DIRECTION (the deck
+   must return on the first upward flick deep in a list), which it cannot
+   express; the listener is one passive handler with a trailing call and CSS
+   does the motion on `--d-quick` (`ui/tabbar.js` `deckCollapseStep`). (b) The
+   deck is two fixed boxes that meet, `#tab-bar` (row, bottom `safe-b + 12`) and
+   `#foray-player` (mini, flush on the row over a 1px `--dial-line`), not one
+   `.deck` parent: `#foray-player` is also the full-screen Now Playing sheet,
+   and a parent carrying the deck's `backdrop-filter` becomes the containing
+   block of its fixed descendants and would trap the sheet in a 361x129 box;
+   the deck's one shadow is the row's `::after`, sized to both halves. (c) Create
+   has no tab: `#/create` and the subject queues light Find, saved playlists
+   light Yours (`tabForHash`), and the legacy drawer entry reads "Find" until
+   the Today/Yours knob replaces the drawer. (d) Swipe-down defers the close:
+   for the 5s the mini is hidden and playback paused; Undo restores both,
+   and only the timeout stops the player (through `ForayPlayer.stop()`, which
+   keeps the resume point).
 5. Content `padding-bottom: calc(var(--deck-h) + var(--mini-h, 0px) +
    var(--safe-b) + 24px)`: the last "Also today" row's bottom edge clears the
    mini at 393×852; the keyboard hides the deck (the Find field stays).

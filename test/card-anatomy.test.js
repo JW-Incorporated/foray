@@ -392,7 +392,7 @@ test("a tab's root page has no ‹; a page you were sent to keeps one", () => {
     assert.doesNotMatch(body(fn), /class="back"/, `${fn} is a tab root`);
   }
   assert.match(body("renderShowIndexPage"), /\$\{tabRoot \? "" : `<a class="back" href="#\/">‹<\/a>`\}/, "the shared template omits it on request");
-  assert.match(body("renderAllShows"), /`, \{ tabRoot: true \}\);/, "Search asks");
+  assert.match(body("renderAllShows"), /`, \{ tabRoot: true, find: true, hint: "[^"]+" \}\);/, "Find asks");
   assert.doesNotMatch(body("renderCategory"), /tabRoot/, "a category page is pushed: it keeps its ‹");
   for (const fn of ["renderPlaylists", "renderQueue", "renderForays", "renderInterests"]) {
     assert.match(body(fn), /class="back"/, `${fn} is pushed from a tab and keeps its ‹`);

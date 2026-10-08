@@ -493,7 +493,7 @@ test("the drawer and the tab bar use one name for #/shows", () => {
   const drawerName = /<a class="drawer-section" href="#\/shows">([^<]+)<\/a>/.exec(INDEX_HTML)[1];
   const tabName = /\{ key: "search", label: "([^"]+)", hash: "#\/shows"/.exec(APP_SRC)[1];
   assert.strictEqual(drawerName, tabName);
-  assert.match(APP_SRC, /renderShowIndexPage\("Search", /, "and the page's own heading agrees");
+  assert.match(APP_SRC, /renderShowIndexPage\("Find", /, "and the page's own heading agrees");
 });
 
 /* ==================================================================== */

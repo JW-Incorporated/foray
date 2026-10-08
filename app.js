@@ -2892,6 +2892,8 @@ function saveQueueIds(ids) {
     : lsSet("cp_queue", ids);
   refreshEpisodeNavigation();
   repaintQueuePage();
+  /* The deck's Yours badge counts Up Next (ui/tabbar.js); it follows every write. */
+  if (typeof paintTabBadge === "function") paintTabBadge();
   return ok;
 }
 
