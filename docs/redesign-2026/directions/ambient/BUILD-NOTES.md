@@ -1449,8 +1449,7 @@ detail's Room, at the sizes the plan names. Where this departs from the lines ab
    unchanged (`esc()` for every character, `safeUrl()` for every href). Timestamps in prose are Chips (a Lamp pill on the line, its
    hit box a 44px square through `::after`); a stamp-led line stays a 44px `.ep-chapter-row`. **The ruling that fell**: the
    native `<details>` "Episode notes" disclosure (founder, 2026-09-18, kept in spirit: artwork first, notes by intent).
-6. **"More from this show"** keeps today's `epRow` (the Show screen rebuilds rows); it wears the Room's raised surface and its
-   three glyph controls take the system's shapes (44 Ember Play, 44 Save and Up Next on `--bg2`).
+6. **"More from this show"** is the Show screen's EpisodeRow (iteration 3; was today's `epRow`): `showEpisodeRowHtml` from `ui/show.js`, latest first, up to 8, a Raised 96px row (art 72, title, Play 44, meta, two-line why) with no Save or Up Next on the row. The wrapper carries `data-show-episodes` so the show page's `bindShowPlay` and play sync repaint the rows; `showStartPoll` now ends when `[data-show-episodes]` leaves the DOM, not `[data-sh-room]`. `ui/episode.css` paints no surface over the rows (they own the rim and warm shadows from `.raised`) and takes the row title back from styles.css's legacy `.ep-more h3` eyebrow.
 7. **Colour choices that are not the direction's first reading.** Controls that are not a listener's mark ("Play next", "More")
    are Lamp, not Ember: Ember (#8E520E in Dawn) is 4.2:1 on the Room's lower scrim. The caption's progress label is `--text`.
 8. **Rulings that fell, with the tests ported in this branch**: `ui-tokens` "the episode page's head is two lines at --fs-xl"

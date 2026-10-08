@@ -53,12 +53,18 @@ function moreFromShow(item) {
   const showId = showIdForShowName(item.show);
   const show = showId ? showById(showId) : null;
   if (!show) return "";
-  const eps = episodesForShow(show).filter(e => e.id !== item.id).slice(0, 8);
-  if (!eps.length) return "";
+  const others = episodesForShow(show).filter(e => e.id !== item.id);
+  if (!others.length) return "";
   const ctx = "episode-more-" + item.id;
+  /* The Show screen's EpisodeRow (ui/show.js showEpisodeRowHtml: art 72, title, Play 44, meta, a two-line why in a 96px
+     Raised row), latest first. The wrapper carries data-show-episodes so the show page's own play sync and bindings
+     (bindShowPlay, showSyncPlay) repaint these rows too. Without ui/show.js (a test stub) today's epRow stands in. */
+  const rows = typeof showEpisodeRowHtml === "function"
+    ? showRowsLatestFirst(others).slice(0, 8).map(e => showEpisodeRowHtml(e, ctx)).join("")
+    : others.slice(0, 8).map((e, i) => epRow(e, i, ctx, -1)).join("");
   return `<section class="ep-more">
     <h2>More from this show</h2>
-    ${eps.map((e, i) => epRow(e, i, ctx, -1)).join("")}
+    <div class="ep-more-rows" data-show-episodes>${rows}</div>
   </section>`;
 }
 
@@ -791,7 +797,10 @@ function renderEpisode(id, { t = null } = {}) {
   if (room && item.artwork_url) forayCssVar(room, "--room-art", forayRoomArtValue(item.artwork_url));
   bindPickLogging($("#view"));
   bindDownloads($("#view"));
-  bindPlay($("#view"));            // the "more from this show" rows keep their own ▶
+  bindPlay($("#view"));
+  /* The "more from this show" rows are the Show screen's: their Play is data-sh-play (bindPlay's data-play repaint would wipe
+     the glyph), bound and repainted by ui/show.js. */
+  if (typeof bindShowPlay === "function") { bindShowPlay($("#view .ep-more-rows")); if (typeof showStartPoll === "function") showStartPoll(); }
   bindStars($("#view"));
   bindUpNext($("#view"));
   bindEpisodeActions($("#view"), item);

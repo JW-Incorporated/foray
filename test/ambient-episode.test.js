@@ -529,3 +529,32 @@ test("the Glow the page puts on the ROOT does not outlive the page: the next rou
   open(m);
   assert.ok(props.get("--glow"), "and coming back lights it again: the clear happens before the page writes, not after");
 });
+
+test("\"More from this show\" is the Show screen's EpisodeRow: Raised, art 72 beside a title and a Play 44, a two-line why, and no glyph Save or Up Next on the row", () => {
+  /* The first build kept today's legacy epRow: ~200px cards with no artwork, a text-glyph star and a "+ Up Next" button on every
+     row, on a hand-made surface. The direction's row is 96px with 72px art and a two-line why, in the Raised material (a rim and
+     two warm shadows from tokens.css `.raised`); Save and Up Next live on the episode page, not on a row.
+     MUTATION: in moreFromShow (ui/episode.js) build the rows with epRow(e, i, ctx, -1) again -> the first four assertions go red
+     (no .td-row, no data-sh-play, a legacy .star and .up-next come back).
+     MUTATION 2: put a `background:` or `box-shadow:` rule for `.ep-more .td-row` back in ui/episode.css -> the CSS assertion goes red
+     (the row would stop wearing the Raised material and read as a flat slab). */
+  const m = mount();
+  m.state.catalog = { shows: [{ show_id: "show-1", title: "The Indicator" }] };
+  const sib = (id, title, d) => ({ id, title, show: "The Indicator", duration_min: 20, release_date: d, audio_url: "https://example.com/" + id + ".mp3", artwork_url: "https://example.com/" + id + ".png", description: "A plain description of " + title + " from the publisher." });
+  m.state.discover = { items: [{ ...EP }, sib("sib-old", "Older sibling", "2026-01-01"), sib("sib-new", "Newer sibling", "2026-03-01")] };
+  open(m);
+  const html = m.html();
+  const more = html.slice(html.indexOf('class="ep-more"'));
+  assert.match(more, /<article class="raised td-row[^"]*" data-sh-ep="sib-new">/, "each sibling is the Show screen's Raised EpisodeRow");
+  assert.match(more, /data-sh-play="sib-new"/, "its Play is the row's own data-sh-play (data-play would be repainted into a text glyph)");
+  assert.doesNotMatch(more, /class="[^"]*\b(star|up-next|ep-row)\b/, "no legacy glyph Save, Up Next or epRow card");
+  assert.ok(more.indexOf("sib-new") < more.indexOf("sib-old"), "latest first, as on the Show screen");
+  assert.doesNotMatch(more, /data-ep="ep-1"/, "the episode itself is not among its siblings");
+  assert.match(more, /data-show-episodes/, "the wrapper is what the show page's play sync repaints");
+  const css = read("ui/episode.css");
+  assert.doesNotMatch(css, /\.ep-more\s+\.(td-row|ep-row)[^{]*\{[^}]*(background|box-shadow)/, "the page paints no surface over the Raised row");
+  assert.doesNotMatch(css, /button\.star|button\.up-next|\.play-btn/, "no rules left for the legacy row controls");
+  /* MUTATION 3: delete the `.ep-more-rows .td-row-title` rule -> this goes red (styles.css's `.ep-more h3` eyebrow, uppercase and
+     letter-spaced, would take the row's h3 title; the iteration-3 shot showed exactly that). */
+  assert.match(css, /\.ep-more-rows\s+\.td-row-title\s*\{[^}]*text-transform:\s*none/, "a row's h3 title takes its type back from the legacy .ep-more h3 eyebrow");
+});

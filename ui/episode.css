@@ -110,17 +110,15 @@ body.view-episode #view { padding-top: 0; }
 .ag .ep-title .ep-cut { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .ag .ep-title .ep-last::after { content: "\2026"; }
 
-/* "More from this show": today's row, wearing the Room's raised surface until the Show screen rebuilds it. */
-.ag .ep-more .ep-row { margin-top: var(--s-2); padding: var(--s-3); border: 0; border-radius: var(--r-lg); background: linear-gradient(var(--overlay), var(--overlay)) color-mix(in oklab, var(--bg1) 70%, transparent); box-shadow: inset 0 1px 0 var(--rim), var(--shadow-1), var(--shadow-2); }
-.ag .ep-more .ep-title-link { color: var(--text); text-decoration: none; font: var(--t-headline); }
-/* The row's own controls (legacy glyph buttons, repainted by the player and the toggles) take the system's shapes: a 44 Ember
-   Play, 44 Save and Up Next on the neutral fill. */
-.ag .ep-more .play-btn { width: var(--tap); height: var(--tap); border: 0; border-radius: var(--r-round); background: var(--ember); color: var(--ember-ink); }
-.ag .ep-more button.star, .ag .ep-more button.up-next { min-width: var(--tap); min-height: var(--tap); border: 0; background: var(--bg2); color: var(--text); }
-.ag .ep-more button.star { border-radius: var(--r-round); }
-.ag .ep-more button.up-next { border-radius: var(--r-pill); padding: 0 var(--s-3); font: var(--t-label); }
-.ag .ep-more button.star.on, .ag .ep-more button.up-next.on { color: var(--ember); }
-.ag .ep-more .ep-hook, .ag .ep-more .ep-row .s, .ag .ep-more .ep-row .s a { color: var(--text-2); font: var(--t-caption); text-decoration: none; }
+
+/* "More from this show": the Show screen's EpisodeRows (.raised .td-row, drawn by ui/show.js and ui/today.css) in a stack with
+   the Show page's 8px gap. The rows own their rim and shadow; nothing here repaints them. */
+.ag .ep-more h2 { margin-bottom: var(--s-3); }
+.ag .ep-more-rows :where(h3, p) { margin: 0; }
+.ag .ep-more-rows > * + * { margin-top: var(--s-2); }
+/* styles.css still styles every `.ep-more h3` as an uppercase eyebrow (the legacy section label); a row's title is an h3 inside
+   this section, so it takes its own type back. */
+.ag .ep-more-rows .td-row-title { font: var(--t-headline); letter-spacing: normal; text-transform: none; color: var(--text); }
 
 /* ---------------------------------------------------------------------------------------------
    The Up Next flight (script, 420ms, --e-spring): a clone of the artwork, in a layer of its own above the Dock, shrinks to
