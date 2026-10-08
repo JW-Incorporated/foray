@@ -592,7 +592,9 @@ test("an Up Next row with no details says one sentence about THIS page (audit ro
   m.state.session = { session_id: "s", episodes: {}, cards: [] };
   m.ctx.renderQueue();
   assert.ok(m.view().includes(m.ctx.esc("4a no longer has this episode's details")), m.view());
-  assert.ok(!/history/i.test(m.view()), "the sentence does not mention History");
+  /* The page now ends with Library's History section (its head says "History"), so the sentence is read from the queue's own section. */
+  const queueOnly = m.view().slice(0, m.view().indexOf('data-lb-section="history"') < 0 ? undefined : m.view().indexOf('data-lb-section="history"'));
+  assert.ok(!/history/i.test(queueOnly), "the sentence does not mention History");
 });
 
 test("the snapshot cap never prunes a QUEUED episode (audit round 2, p-impatient-11)", () => {

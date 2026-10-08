@@ -134,8 +134,12 @@ body.fp-open .ag .lb-fade { bottom: calc(var(--safe-bottom) + var(--tab-bar-h, 5
 .ag .lb-qrow.lb-nomenu { grid-template-columns: var(--art-queue) minmax(0, 1fr); padding-right: var(--s-3); }
 .ag .lb-qrow .t-label { color: var(--text); }
 .ag .lb-qrow .t-label .icon { vertical-align: -4px; }
-.ag .lb-qrow .ag-row-meta { margin-top: 0; flex-wrap: nowrap; }
-.ag .lb-qrow .ag-row-state { flex: none; }
+/* A QueueRow's title and caption are never cut (DIRECTION: titles never cut; the prototype wraps a long title whole and keeps
+   the caption's length and date intact). The caption runs as inline text so a long show name wraps to a second line rather
+   than hiding what follows it; the row grows to fit (its 64 is a minimum). */
+.ag .lb-qrow .ag-row-meta { display: block; margin-top: 0; }
+.ag .lb-qrow .ag-row-meta .lb-ell { display: inline; overflow: visible; text-overflow: clip; white-space: normal; }
+.ag .lb-qrow .ag-row-state { margin-inline-end: var(--s-1); }
 
 /* Playlists as rows: a 56 collage (no lit glow at this size), the name, the length, the played count in Ember. */
 .ag .lb-prow { min-height: var(--row-queue); padding: var(--s-2) var(--s-3) var(--s-2) var(--s-2); display: grid; grid-template-columns: var(--art-queue) minmax(0, 1fr); align-items: center; gap: var(--s-3); }

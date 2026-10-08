@@ -240,13 +240,12 @@ const BUTTONS = {
   ".play-btn": { rule: ".play-btn" },
   ".pl-save": { tall: "button.pl-save", why: "a labelled capsule (\"Save to my playlists\" / \"✓ Saved\") with 16px side padding" },
   ".rate-option": { tall: ".rate-option", why: "a row of the speed sheet's full-width column" },
-  ".reorder": { rule: "button.reorder" },
   ".star": { rule: "button.star" },
   ".up-next": { rule: "button.up-next" },
   /* The Up Next page (Redesign 2026, ambient): the row is Library's QueueRow, so the arrows, the ✕ and Next are the row's
-     menu (`.lb-dots`, an `.ag-btn`), Clear is an `.ag-btn-quiet`, and the drag handle is the one new button. The
-     legacy `.reorder`, `.up-next-remove` and `.up-next-clear` entries went with the markup that rendered them. */
-  ".qp-handle": { size: [".ag .qp-handle"] },
+     menu (`.lb-dots`, an `.ag-btn`), Clear is an `.ag-btn-quiet`, and the drag is a hold on the row's own cover
+     (`.lb-cover`, above), so the page adds no button. The legacy `.reorder`, `.up-next-remove`, `.up-next-clear`
+     entries went with the markup that rendered them, and the `.qp-handle` entry with the handle (iteration 2). */
   ".voice-row-audition": { rule: ".voice-row-audition" },
   /* #pl-form's Go went with the #/playlists builder (round-3 audit,
      search-api-css-10); Create's Build is the one submit button left. */

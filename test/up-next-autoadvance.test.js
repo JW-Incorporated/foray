@@ -292,7 +292,7 @@ test("playing row k from the Up Next page moves THAT row to the top and keeps ev
   assert.deepStrictEqual([...m.queueRaw()], [c.id, a.id, b.id, d.id], "c jumped to the top; nothing left, nothing else moved");
   /* PORTED (Redesign 2026, ambient): the page's row is Library's QueueRow, whose cover button names the list. MUTATION: draw
      the cover with another data-ctx in libQueueRowHtml -> red. */
-  assert.match(m.ctx.libQueueRowHtml({ item: c, id: c.id, state: "live" }, { upnext: true, menu: true, page: true, ctx: "upnext" }), /data-lb-play="[^"]+" data-swipe-id="[^"]+" data-ctx="upnext"/, "the page's row names its list");
+  assert.match(m.ctx.libQueueRowHtml({ item: c, id: c.id, state: "live" }, { upnext: true, menu: true, page: true, ctx: "upnext" }), /data-lb-play="[^"]+" data-swipe-id="[^"]+" data-drag-handle="[^"]+" aria-describedby="up-next-drag-hint" data-ctx="upnext"/, "the page's row names its list");
 
   /* And when c ends, it leaves and the row that was first plays: nothing the
      listener passed over is lost. */

@@ -5,14 +5,16 @@
  *  1. ONE row, one menu, one Toast: the page draws Library's QueueRow (`libQueueRowHtml`), opens Library's menu items
  *     (Move up, Move down, Play next, Remove), shows Library's Toast with Undo for five seconds, and writes through
  *     the same functions. Nothing on the page is a second copy.
- *  2. The playing row is first, marked by the Fill glyph and the Lamp word "Playing", with no menu and no handle; every
- *     other row has the 44 menu and the drag handle; the page lists every queued row (Library stops at ten).
+ *  2. The playing row is first, marked by the Fill glyph and the Lamp word "Playing", with no menu and no drag; every
+ *     other row has the 44 menu and is lifted by a hold on its cover (no handle glyph: one trailing control); the page
+ *     lists every queued row (Library stops at ten), and History continues under it as it does in Library.
  *  3. The page is a live view painted IN PLACE: a write to cp_queue redraws the section (rows, count, Clear), not
  *     #view, and a move slides the neighbours on the motion tokens (280ms, --e-out).
  *  4. The Toast sits 8px above the mini row (the stylesheet's rule, in tokens), on the page's own Toast element.
  *  5. The page's head: Back is the history-aware a.back, the count, Clear only for more than one, the drag hint once.
- *  6. The gestures are on the row: a handle on every row that has a menu, the swipe id on the cover, the Remove label
- *     the swipe reveals; and the drag keeps the playing row first (its wiring is in test/up-next-gestures.test.js).
+ *  6. The gestures are on the row's cover: the drag id (a hold lifts the row) on every row that has a menu, the swipe id,
+ *     the Remove label the swipe reveals; and the drag keeps the playing row first (its wiring is in
+ *     test/up-next-gestures.test.js). Titles and captions are never cut (iteration 2).
  *  7. Empty is one line and one button; hostile data crosses esc(); the stylesheet owns no reduced-motion block and reads
  *     only tokens; the screen is registered in index.html and every shell list.
  *
@@ -206,7 +208,7 @@ test("Remove opens Library's Toast for five seconds and Undo puts the list back 
 test("the playing row is first, with the Fill glyph and the word Playing, and neither a menu nor a handle", () => {
   /* MUTATION 1: draw the other rows before the playing one in libUpNextInnerHtml -> the order assertion is red.
      MUTATION 2: pass \`current: false\` for the first row -> no Playing word and no aria-current: red.
-     MUTATION 3: give the playing row a handle (drop \`o.menu\` from the handle's guard) -> the handle assertion is red. */
+     MUTATION 3: let the playing row drag (drop \`o.menu\` from the \`drags\` guard in libQueueRowHtml) -> the drag assertion is red. */
   const m = mount({ ids: ["a", "b", "c"], current: "c" });
   m.ctx.renderQueue();
   const html = sectionHtml(m.view());
@@ -216,7 +218,7 @@ test("the playing row is first, with the Fill glyph and the word Playing, and ne
   assert.match(first, /aria-current="true"/);
   assert.match(first, /<use href="[^"]*#i-play-fill">/, "the Fill glyph");
   assert.match(first, /<span class="ag-row-state">Playing<\/span>/, "the Lamp word");
-  assert.ok(!/data-lb-menu=|data-drag-handle=/.test(first), "it leaves the list when it ends: no menu, no handle");
+  assert.ok(!/data-lb-menu=|data-drag-handle=/.test(first), "it leaves the list when it ends: no menu, no drag");
   assert.ok(/data-lb-menu="a"/.test(second) && /data-drag-handle="a"/.test(second), "every other row has both");
 });
 
@@ -264,7 +266,7 @@ test("a write to cp_queue repaints the section in place: rows, count and Clear f
   assert.deepStrictEqual(ids(m.view()), ["b", "c", "d"], "the removed row is gone at once");
   assert.match(sectionHtml(m.view()), /3 queued/, "the count follows");
   assert.match(sectionHtml(m.view()), /<header class="lb-head qp-head">/, "and the page's head survives the repaint");
-  assert.match(sectionHtml(m.view()), /data-drag-handle="b"/, "so do the handles");
+  assert.match(sectionHtml(m.view()), /data-drag-handle="b"/, "so does the drag id on each cover");
   m.ctx.clearQueue();
   assert.match(sectionHtml(m.view()), /Nothing queued\./);
   assert.ok(!/id="up-next-clear"/.test(m.view()), "Clear goes with the second-to-last row");
@@ -375,20 +377,24 @@ test("the landing heading is the page's h2, found through .lb-head", () => {
 /* 6. THE GESTURES ARE ON THE ROW                                       */
 /* ==================================================================== */
 
-test("every row with a menu carries the drag handle and the swipe's id and label; the cover names the Up Next list", () => {
+test("every row with a menu carries the drag id and the swipe's id and label on its COVER, with no handle button; the cover names the Up Next list", () => {
   /* MUTATION 1: drop \`data-swipe-id\` from the cover -> the swipe has nothing to bind: red.
      MUTATION 2: drop the qp-under label -> the swipe reveals nothing: red.
-     MUTATION 3: render the handle on Library's section too (ignore \`o.page\`) -> the Library assertion is red. */
+     MUTATION 3: render the drag id on Library's section too (ignore \`o.page\`) -> the Library assertion is red.
+     MUTATION 4 (iteration 2): restore a \`<button class="qp-handle" data-drag-handle>\` beside the menu in libQueueRowHtml
+     -> the "two buttons a row" and "no handle" assertions are red (the direction gives the row one trailing control). */
   const m = mount({ ids: ["a", "b"] });
   m.ctx.renderQueue();
   const html = sectionHtml(m.view());
   assert.deepStrictEqual([...html.matchAll(/data-drag-handle="([^"]+)"/g)].map((x) => x[1]), ["a", "b"]);
-  assert.deepStrictEqual([...html.matchAll(/class="lb-cover" data-lb-play="([^"]+)" data-swipe-id="([^"]+)" data-ctx="upnext"/g)].map((x) => [x[1], x[2]]), [["a", "a"], ["b", "b"]]);
+  assert.deepStrictEqual([...html.matchAll(/class="lb-cover" data-lb-play="([^"]+)" data-swipe-id="([^"]+)" data-drag-handle="([^"]+)" aria-describedby="up-next-drag-hint" data-ctx="upnext"/g)].map((x) => [x[1], x[2], x[3]]), [["a", "a", "a"], ["b", "b", "b"]], "the drag id rides the cover, with the hint that says how");
+  assert.ok(!/qp-handle/.test(html), "no handle glyph button");
+  assert.ok(rowsOf(html).every((r) => (r.match(/<button\b/g) || []).length === 2), "a row has two buttons: the cover (a tap plays) and the menu");
   assert.strictEqual((html.match(/<span class="qp-under" aria-hidden="true">Remove<\/span>/g) || []).length, 2, "the label the swipe reveals, hidden from assistive tech");
   m.ctx.location.hash = "#/library";
   m.ctx.renderLibrary();
   const lib = sectionHtml(m.view().replace('<section class="lb-section" data-lb-section="upnext">', SECTION_OPEN));
-  assert.ok(!/data-drag-handle=|data-swipe-id=|qp-under/.test(lib), "Library's section has neither the handle nor the swipe");
+  assert.ok(!/data-drag-handle=|data-swipe-id=|qp-under/.test(lib), "Library's section has neither the drag nor the swipe");
 });
 
 test("a tap on a row plays it with the Up Next context (the played row moves to the top)", async () => {
@@ -425,7 +431,7 @@ test("the click that ends a claimed swipe does not play the row", async () => {
 /* 7. EMPTY, HOSTILE DATA, THE STYLESHEET, REGISTRATION                 */
 /* ==================================================================== */
 
-test("empty is one line and one button, with the page's own head and no Clear, no hint, no handles", () => {
+test("empty is one line and one button, with the page's own head and no Clear, no hint, no drag", () => {
   /* MUTATION: render the rows' wrapper even with nothing queued -> the \`lb-stack\` assertion is red. */
   const m = mount({ ids: [] });
   m.ctx.renderQueue();
@@ -457,15 +463,63 @@ test("queue.css owns no reduced-motion block and reads only tokens: no colour li
   assert.ok(selectors.every((s) => s.trim().startsWith(".ag ")), `every selector is scoped under .ag: ${selectors.filter((s) => !s.trim().startsWith(".ag ")).join(" | ")}`);
 });
 
-test("the handle and the swipe's label are tokens-sized: the handle is a 44 square, the cover keeps the vertical scroll", () => {
-  /* MUTATION 1: width: var(--s-8) on .qp-handle -> red. MUTATION 2: drop \`touch-action: none\` from the handle -> the
-     drag fights the page's pan: red. MUTATION 3: drop \`touch-action: pan-y\` from the cover -> the swipe takes the scroll: red. */
-  const handle = /\.ag \.qp-handle\s*\{([^}]*)\}/.exec(QUEUE_CSS)[1];
-  assert.match(handle, /width:\s*var\(--tap\)/);
-  assert.match(handle, /height:\s*var\(--tap\)/);
-  assert.match(handle, /touch-action:\s*none/);
-  assert.match(QUEUE_CSS, /\.ag \.qp-row \.lb-cover\s*\{\s*touch-action:\s*pan-y/);
-  assert.match(QUEUE_CSS, /grid-template-columns:\s*var\(--art-queue\) minmax\(0, 1fr\) var\(--s-6\) var\(--tap\)/, "art, copy, a 24 column for the 44 handle to sit over, the 44 menu");
+test("the row is Library's three columns and the cover is the gesture surface: no handle column, the vertical scroll kept, no callout", () => {
+  /* MUTATION 1: restore \`.ag .qp-handle\` or a four-column \`grid-template-columns\` on .qp-row in queue.css -> the first two
+     assertions are red (the handle column is what crowded the text and cut the titles). MUTATION 2: drop \`touch-action:
+     pan-y\` from the cover -> the swipe takes the scroll: red. MUTATION 3: drop \`-webkit-touch-callout: none\` -> a held
+     press raises the system callout on iOS: red. */
+  assert.doesNotMatch(QUEUE_CSS, /qp-handle/, "no handle styles");
+  assert.doesNotMatch(QUEUE_CSS, /grid-template-columns/, "the row keeps Library's art, copy, menu");
+  const cover = /\.ag \.qp-row \.lb-cover\s*\{([^}]*)\}/.exec(QUEUE_CSS);
+  assert.ok(cover, "the cover rule exists");
+  assert.match(cover[1], /touch-action:\s*pan-y/);
+  assert.match(cover[1], /-webkit-touch-callout:\s*none/);
+  assert.match(cover[1], /user-select:\s*none/);
+});
+
+test("titles and captions are never cut: the title is not clamped and the caption runs as wrapping text (iteration 2)", () => {
+  /* The first judge pass saw 'Head, School of Nuclear...' and '56 ...': a two-line clamp on the title and a nowrap ellipsis
+     on the caption hid the very length a listener reads a queue for. DIRECTION: titles never cut; the prototype wraps a
+     long title whole and keeps the caption intact.
+     MUTATION 1: put \`clamp2\` back on the title <p> in libQueueRowHtml -> the markup assertion is red.
+     MUTATION 2: restore \`white-space: nowrap\` or \`text-overflow: ellipsis\` on \`.lb-qrow .lb-ell\` -> the CSS assertions are red.
+     MUTATION 3: put \`flex-wrap: nowrap\` and \`display: flex\` back on \`.lb-qrow .ag-row-meta\` -> the display assertion is red. */
+  const long = "A very long episode title that runs past two lines of a narrow phone column and then a little more besides";
+  const m = mount({ ids: ["a"] });
+  m.state.itemIndex.a.title = long;
+  m.state.itemIndex.a.show = "A show with a rather long name, Catalyst with Shayle Kann";
+  m.ctx.renderQueue();
+  const row = rowsOf(sectionHtml(m.view()))[0];
+  assert.ok(row.includes(`<p class="t-label">${long}</p>`), "the whole title, in an unclamped label");
+  assert.ok(!/clamp[1-4]/.test(row), "no line clamp anywhere in the row");
+  assert.ok(row.includes("A show with a rather long name, Catalyst with Shayle Kann"), "the whole caption is in the markup");
+  const ell = /\.ag \.lb-qrow \.ag-row-meta \.lb-ell\s*\{([^}]*)\}/.exec(LIB_CSS);
+  assert.ok(ell, "the queue row's caption rule exists");
+  assert.match(ell[1], /white-space:\s*normal/);
+  assert.match(ell[1], /overflow:\s*visible/);
+  assert.doesNotMatch(ell[1], /text-overflow:\s*ellipsis|nowrap/);
+  const meta = /\.ag \.lb-qrow \.ag-row-meta\s*\{([^}]*)\}/.exec(LIB_CSS);
+  assert.ok(meta && /display:\s*block/.test(meta[1]), "the caption is a block of inline text, not a nowrap flex row");
+});
+
+test("History continues under the queue on the page, as it does in Library", () => {
+  /* MUTATION: drop \`\${libHistorySectionHtml()}\` from renderQueue -> the order assertion is red (the page ended at the
+     queue and left the prototype's Library surface behind). */
+  const m = mount({ ids: ["a", "b"] });
+  m.store.set("cp_history", JSON.stringify(["h1"]));
+  m.state.itemIndex.h1 = { id: "h1", title: "Played before", show: "Old show", audio_url: "https://x.test/h1.mp3", topics: [], duration_min: 20 };
+  m.ctx.renderQueue();
+  const html = m.view();
+  const up = html.indexOf('data-lb-section="upnext"');
+  const hist = html.indexOf('data-lb-section="history"');
+  const toast = html.indexOf("data-lb-toast");
+  assert.ok(up >= 0 && hist > up && toast > hist, "Up Next, then History, then the Toast");
+  assert.match(html.slice(hist), /Played before/, "the played episode is a row there");
+  assert.deepStrictEqual(ids(sectionHtml(html)), ["a", "b"], "History's rows are not Up Next's: the queue section holds only the queue");
+  /* Nothing played yet: History says so in one line. */
+  const none = mount({ ids: ["a"] });
+  none.ctx.renderQueue();
+  assert.match(none.view(), /data-lb-section="history"[\s\S]*Nothing played yet\./);
 });
 
 test("the screen is registered: linked once in index.html, in every shell list, and its script is a classic script after library.js", () => {

@@ -108,7 +108,7 @@ const AMBIENT_PRIMITIVES_ASSETS = Object.freeze([
   { rel: "ui/library.js", maxBytes: 32 * 1024 },
   /* Phase 4, Up Next page: its stylesheet (the head, the handle, the gestures' paint). ui/queue.js shrank (the page's own
      row and its four arrow buttons went into Library's QueueRow), so it stays in the legacy line. */
-  { rel: "ui/queue.css", maxBytes: 2.5 * 1024 },
+  { rel: "ui/queue.css", maxBytes: 1.75 * 1024 },
 ]);
 
 /* ───────────────────────────── the derivation ───────────────────────────── */

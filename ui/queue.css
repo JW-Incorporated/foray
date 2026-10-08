@@ -3,8 +3,7 @@
    The page is Library's Up Next section given the whole screen (BUILD-PLAN screen 13), so the QueueRow, the row menu,
    the Toast, the cast and the fade are ui/library.css's, unchanged: the page wears the same `.ag.lb-page` shell and
    `body.view-library`. This sheet holds only what Library does not have: the page's head (Back, the title, the count,
-   Clear), the drag handle, the two gestures' paint (the lifted row, the drop line, the swipe's Remove) and the fourth
-   column the handle needs. Everything is scoped under `.ag` and every class is `qp-*` (or the existing
+   Clear) and the two gestures' paint (the lifted row, the drop line, the swipe's Remove). Everything is scoped under `.ag` and every class is `qp-*` (or the existing
    `up-next-clear`/`is-dragging`/`drop-*`/`swiping` names, only ever under `.qp-row`), so it reaches no other screen.
    Values come from ui/tokens.css.
 
@@ -24,28 +23,13 @@
 .ag .qp-section > .lb-stack { margin-top: var(--s-3); }
 .ag .qp-section > .lb-empty { padding-top: var(--s-6); }
 
-/* The row is Library's QueueRow with a fourth column: art, copy, the handle, the menu. The playing row has neither the
-   handle nor the menu (it leaves the list when it ends), so it keeps Library's two columns (`.lb-nomenu`). The row
-   keeps the vertical scroll for the browser everywhere but the handle. */
-.ag .qp-row { grid-template-columns: var(--art-queue) minmax(0, 1fr) var(--s-6) var(--tap); transition: transform var(--m-ui) var(--e-out); }
-.ag .qp-row .lb-cover { touch-action: pan-y; }
-
-/* The handle: a 44 button whose glyph is six dots (two columns of three) drawn here, in the muted text colour, 3:1
-   against the row's ground in both schemes. Its column is only 24 wide, so the caption keeps the room; the button is 44
-   and centred on it, reaching 10px into the gaps either side (the menu's own edge is 12 beyond the column, so the two
-   targets never overlap). `touch-action: none` on the handle alone: a finger that lands there is asking to drag, so the
-   browser must not take it as a pan. */
-.ag .qp-handle {
-  position: relative; z-index: 2; justify-self: center; width: var(--tap); height: var(--tap); padding: 0; border: 0; background: transparent;
-  border-radius: var(--r-round); color: var(--text-2); cursor: grab; touch-action: none;
-}
-.ag .qp-handle::before {
-  content: ''; position: absolute; left: 50%; top: 50%; width: var(--s-3); height: calc(var(--s-1) * 4.5);
-  margin: calc(var(--s-1) * -2.25) 0 0 calc(var(--s-3) / -2);
-  background: radial-gradient(circle at center, currentColor 1.5px, transparent 2px) 0 0 / calc(var(--s-1) * 1.5) calc(var(--s-1) * 1.5);
-}
-.ag .qp-handle:focus-visible { outline: none; box-shadow: 0 0 0 calc(var(--s-1) / 2) var(--lamp-text); }
-.ag .qp-row.is-dragging .qp-handle { cursor: grabbing; }
+/* The row is Library's QueueRow, unchanged: art, copy, the menu. Nothing is added to it for the page's two gestures: a swipe
+   left removes it and a hold lifts it to drag, both on its cover, so the row has ONE trailing control and the text column
+   keeps the room the title needs (titles are never cut). The cover keeps the vertical scroll for the browser (`pan-y`)
+   until a hold lifts the row (ui/queue.js then cancels the touchmove), and a held press must not select text or raise
+   the system's callout. */
+.ag .qp-row { transition: transform var(--m-ui) var(--e-out); }
+.ag .qp-row .lb-cover { touch-action: pan-y; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 
 /* While a row is carried it is lifted over its neighbours (no easing: it follows the finger), and the row it would land
    beside shows a Lamp line on the side it would land on. Only `transform` and the line change, so nothing reflows. */

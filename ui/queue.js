@@ -16,7 +16,7 @@
    (they did before: the page had its own row with four arrow buttons).
 
    WHAT THIS OVERTURNS (named, as test-classification.md asks): the page's own row (a numbered `.ep-row` with ▶, ☆,
-   a ⋮⋮ handle, Next, ↑, ↓ and ✕ in a wrapped row of controls) and the "N queued" sub-line; "card anatomy" (the row
+   a ⋮⋮ handle, Next, ↑, ↓ and ✕ in a wrapped row of controls); "card anatomy" (the row
    numbers go: the order is the order on screen, and a move says its new place aloud). The founder's two gestures stay
    (#762, PQ-04 drag to reorder, PQ-06 swipe to remove: both KEEP behaviour in test-classification.md) and so do their
    rules (player/queue-drag.js, player/queue-swipe.js); only what they are bound to changed.
@@ -36,6 +36,7 @@ function renderQueue() {
     <div class="ag lb-page qp-page is-settling">
       ${libCastHtml()}
       <section class="lb-section qp-section" data-lb-section="upnext" data-lb-page="queue">${libUpNextInnerHtml(true)}</section>
+      ${libHistorySectionHtml()}
       ${libToastHtml()}
     </div>`;
   const view = $("#view");
@@ -54,12 +55,12 @@ function queuePageHeadHtml(count, queued) {
     <a class="back qp-back ag-btn ag-btn-icon" href="#/library" aria-label="Back">${agIcon("chevron-left", 24)}</a>
     <h2 class="t-title" tabindex="-1">Up Next</h2>
     ${count ? `<span class="t-caption qp-count">${esc(`${count} queued`)}</span>` : ""}
-    ${count ? '<p class="sr-only" id="up-next-drag-hint">Drag to move this episode. Its menu has Move up and Move down.</p>' : ""}
+    ${count ? '<p class="sr-only" id="up-next-drag-hint">Hold, then drag, to move this episode. Its menu has Move up and Move down.</p>' : ""}
     ${queued > 1 ? `<button type="button" class="ag-btn ag-btn-quiet qp-clear" id="up-next-clear">Clear</button>` : ""}
   </header>`;
 }
 
-/** Everything the page adds to Library's section: Clear, the drag handles and the swipe. Bound again after every
+/** Everything the page adds to Library's section: Clear, the hold-to-drag and the swipe. Bound again after every
     repaint of the section (repaintLibraryUpNext), each element once (`_bound`). */
 function bindQueuePage(scope) {
   bindUpNextClear(scope);
@@ -69,8 +70,8 @@ function bindQueuePage(scope) {
 
 /* AFTER A DRAG OR A SWIPE, THE LISTENER IS STILL WHERE THEY WERE (audit 2026-09-22: two a11y findings and a persona,
    one cause). The section is repainted in place, so the pressed control is not destroyed, but a row that moved is a
-   different row under the same thumb: focus goes to the same episode's handle in its new place, the page scrolls by
-   exactly how far the handle moved so it lands back under the finger, and the new position is announced. A removal
+   different row under the same thumb: focus goes to the same episode's row (its cover) in its new place, the page scrolls by
+   exactly how far the cover moved so it lands back under the finger, and the new position is announced. A removal
    focuses the menu button of the row that took its place. (The menu's own Move up / Move down / Remove do the same in
    ui/library.js `libMenuAct`.) */
 function queueButtonFor(attr, id) {
@@ -88,7 +89,7 @@ function buttonTop(btn) {
 function afterQueueMove(id, dir, topBefore) {
   const m = libUpNextModel();
   const pos = m.rest.indexOf(id) + 1;
-  const target = queueButtonFor("data-drag-handle", id) || queueButtonFor("data-lb-menu", id);
+  const target = queueButtonFor("data-drag-handle", id) || queueButtonFor("data-lb-menu", id); // the row's cover, else its menu
   const topAfter = buttonTop(target);
   if (topBefore != null && topAfter != null && topAfter !== topBefore && typeof window.scrollBy === "function") {
     window.scrollBy(0, topAfter - topBefore);
@@ -121,14 +122,20 @@ function bindUpNextClear(scope) {
   });
 }
 
-/* DRAG TO REORDER (#762, PQ-04). Each row's handle carries the row to
-   another slot. The ARITHMETIC — which slot the finger is over, whether the
-   press has become a drag, whether the release means it — is
+/* DRAG TO REORDER (#762, PQ-04). HOLD A ROW, THEN DRAG IT to another slot. The row has no handle glyph (the direction gives
+   it one trailing control, the menu): the hold is on the row's cover, the button a finger lands on, and the page still
+   scrolls under any finger that moves before the hold completes. The ARITHMETIC — which slot the finger is over,
+   whether the press has become a drag, whether the release means it — is
    `player/queue-drag.js` (PQ-03), published as `window.forayQueueDrag` by
-   player/client.js; this binder only reads the layout once at the press, feeds
-   it pointer samples and paints what it answers. "The menu remains"
-   (DECISIONS 2026-09-23, lane L3, the Up Next model; it was the arrows): a
-   drag is the quick way, not the only one.
+   player/client.js; this binder only reads the layout once when the row is lifted, feeds it pointer samples and paints
+   what it answers. "The menu remains" (DECISIONS 2026-09-23, lane L3, the Up Next model; it was the arrows): a drag is
+   the quick way, not the only one, and Move up / Move down in the row's menu are the way for a keyboard or switch user.
+
+   THE HOLD (QP_HOLD_MS, QP_HOLD_SLOP): a press that moves 8 px or more before QP_HOLD_MS is a scroll or a swipe, and the
+   hold is dropped at once; a press held still that long LIFTS the row (the lift is the row's shadow, and "Picked up." is
+   said), and from then on the page under the finger must not pan (the non-passive touchmove below). A lifted row that is
+   released without moving writes nothing, and the click that follows is the gesture's end, not a tap to play
+   (`_lbSwallow`, as for a claimed swipe).
 
    COMMIT ON RELEASE (DECISIONS 2026-09-23, lane L2): the move is written in
    `pointerup` through the one writer, `saveQueueIds`, with the order
@@ -147,8 +154,11 @@ function bindUpNextClear(scope) {
    each autoscroll nudge, so a row carried past the screen's edge lands where
    the finger is in the LIST, not where it was on the glass.
 
-   `topBefore` for `afterQueueMove` is the handle's on-screen top at release,
+   `topBefore` for `afterQueueMove` is the cover's on-screen top at release,
    transform included, so the row lands back under the finger after the repaint. */
+const QP_HOLD_MS = 350;
+const QP_HOLD_SLOP = 8;
+
 function queueDragRules() {
   const r = window.forayQueueDrag;
   return r && typeof r.startRowDrag === "function" ? r : null;
@@ -164,7 +174,14 @@ function bindUpNextDrag(scope) {
     let pointer = null;
     let row = null;
     let rows = [];
+    let index = -1;
+    let holdTimer = null;
+    let press = null; // where the finger landed, and where it is now, until the row is lifted
     const unmark = () => rows.forEach((r) => { r.classList.remove("drop-before"); r.classList.remove("drop-after"); });
+    const dropHold = () => {
+      if (holdTimer != null && typeof clearTimeout === "function") clearTimeout(holdTimer);
+      holdTimer = null;
+    };
     /* Under the lock nothing moves: the press may still be a tap. Past it the
        row follows the finger and the row it would land beside is marked —
        above that row when it moves up, below it when it moves down. */
@@ -176,15 +193,34 @@ function bindUpNextDrag(scope) {
       if (target) target.classList.add(drag.over < drag.fromIndex ? "drop-before" : "drop-after");
     };
     const reset = () => {
+      dropHold();
       unmark();
       if (row) {
         row.classList.remove("is-dragging");
         if (row.style) row.style.transform = "";
       }
+      btn._dragArmed = false;
       drag = null;
       pointer = null;
+      press = null;
       row = null;
       rows = [];
+      index = -1;
+    };
+    /* The hold completed: read the layout once, start the rules' gesture at the finger's latest place, lift the row. */
+    const lift = () => {
+      holdTimer = null;
+      const g = queueDragRules();
+      if (!g || pointer == null || !row || !press) return;
+      const rowTops = rows.map((r) => {
+        const b = typeof r.getBoundingClientRect === "function" ? r.getBoundingClientRect() : null;
+        return b && Number.isFinite(b.top) ? b.top : 0;
+      });
+      try { btn.setPointerCapture(pointer); } catch (_) { /* capture is best-effort */ }
+      drag = g.startRowDrag({ index, y: press.y, t: press.t, rowTops, scrollY: scrollOffset() });
+      btn._dragArmed = true;
+      row.classList.add("is-dragging");
+      announce("Picked up.");
     };
     btn.addEventListener("pointerdown", (e) => {
       const g = queueDragRules();
@@ -192,26 +228,28 @@ function bindUpNextDrag(scope) {
       if (typeof e.button === "number" && e.button !== 0) return; // primary button only
       const own = typeof btn.closest === "function" ? btn.closest(".qp-row") : null;
       const all = [...scope.querySelectorAll(".qp-row")];
-      const index = all.indexOf(own);
-      if (!own || index < 0) return;
-      const rowTops = all.map((r) => {
-        const b = typeof r.getBoundingClientRect === "function" ? r.getBoundingClientRect() : null;
-        return b && Number.isFinite(b.top) ? b.top : 0;
-      });
+      const at = all.indexOf(own);
+      if (!own || at < 0) return;
       row = own;
       rows = all;
+      index = at;
       pointer = e.pointerId;
-      try { btn.setPointerCapture(e.pointerId); } catch (_) { /* capture is best-effort */ }
-      drag = g.startRowDrag({ index, y: e.clientY, t: e.timeStamp, rowTops, scrollY: scrollOffset() });
-      row.classList.add("is-dragging");
+      press = { x: e.clientX, y: e.clientY, t: e.timeStamp };
+      if (typeof setTimeout === "function") holdTimer = setTimeout(lift, QP_HOLD_MS);
     });
     btn.addEventListener("pointermove", (e) => {
       const g = queueDragRules();
-      if (!drag || !g || e.pointerId !== pointer) return;
+      if (!g || e.pointerId !== pointer) return;
+      if (!drag) {
+        /* Not lifted yet: a finger that travels is scrolling or swiping, so the hold is over. */
+        if (press && Math.hypot(e.clientX - press.x, e.clientY - press.y) >= QP_HOLD_SLOP) { reset(); return; }
+        if (press) press = { ...press, y: e.clientY, t: e.timeStamp };
+        return;
+      }
       drag = g.moveRowDrag(drag, e.clientY, e.timeStamp, scrollOffset());
       paint(g);
-      /* Only a claimed drag scrolls the page: a press near the bottom edge
-         that is still a tap must not nudge the list. */
+      /* Only a claimed drag scrolls the page: a hold that has not moved yet
+         near the bottom edge must not nudge the list. */
       const vh = window.innerHeight;
       const d = g.claimsTouch(drag) && Number.isFinite(vh) ? g.autoscrollDelta(e.clientY, vh) : 0;
       if (d && typeof window.scrollBy === "function") {
@@ -220,19 +258,27 @@ function bindUpNextDrag(scope) {
         paint(g);
       }
     });
-    /* NON-passive, or the cancel is ignored: once the drag owns the finger the
-       page under it must not pan (the sheet drag's rule, touch-2). */
+    /* NON-passive, or the cancel is ignored: once the row is lifted the
+       page under the finger must not pan (the sheet drag's rule, touch-2).
+       Before the lift it may still be a scroll, and keeps the finger. */
     btn.addEventListener("touchmove", (e) => {
-      const g = queueDragRules();
-      if (drag && g && g.claimsTouch(drag) && e.cancelable !== false && typeof e.preventDefault === "function") e.preventDefault();
+      if (drag && e.cancelable !== false && typeof e.preventDefault === "function") e.preventDefault();
     }, { passive: false });
+    /* A long press on a button can raise the system's context menu; a held row is a drag, not that. */
+    btn.addEventListener("contextmenu", (e) => {
+      if ((holdTimer != null || drag) && typeof e.preventDefault === "function") e.preventDefault();
+    });
     btn.addEventListener("pointerup", (e) => {
       const g = queueDragRules();
-      if (!drag || e.pointerId !== pointer) return;
+      if (e.pointerId !== pointer) return;
+      if (!drag) { reset(); return; } // released before the hold completed: a tap, and the click plays the row
       const r = g ? g.endRowDrag(drag) : { commit: false };
       const top = buttonTop(btn);
       const id = btn.dataset.dragHandle;
       const shown = rows.map((el) => (el.dataset ? el.dataset.lbQ : null)).filter(Boolean);
+      /* A lifted row's release is followed by a click on this button; it is the end of the gesture, not a tap to play. */
+      btn._lbSwallow = true;
+      if (typeof setTimeout === "function") setTimeout(() => { btn._lbSwallow = false; }, 50);
       reset();
       const order = window.forayQueueOrder;
       if (!r.commit || !order || typeof order.moveTo !== "function") return;
@@ -246,7 +292,7 @@ function bindUpNextDrag(scope) {
       afterQueueMove(id, to < r.from ? -1 : 1, top);
     });
     const cancel = (e) => {
-      if (!drag || e.pointerId !== pointer) return;
+      if (e.pointerId !== pointer) return;
       reset();
     };
     btn.addEventListener("pointercancel", cancel);
@@ -265,7 +311,7 @@ function bindUpNextDrag(scope) {
    without the player) means no swipe, and the menu's Remove still removes.
 
    ON THE ROW'S COVER, NOT THE BUTTONS: a QueueRow is a button laid over the whole row (`.lb-cover`, a tap plays it)
-   with the handle and the menu above it, so the listeners sit on the cover, and a press on the handle or the menu
+   with the menu above it, so the listeners sit on the cover, and a press on the menu
    is that control's and never starts a swipe. queue.css gives the cover `touch-action: pan-y`, so the browser keeps
    the vertical scroll and hands the horizontal travel to these listeners. The click a release is followed by is the
    gesture's end, not a tap to play: a claimed swipe tells the cover's click to stand down (`_lbSwallow`).
@@ -311,6 +357,8 @@ function bindUpNextSwipe(scope) {
     info.addEventListener("pointermove", (e) => {
       const g = queueSwipeRules();
       if (!swipe || !g || e.pointerId !== pointer) return;
+      /* A row lifted by a hold (bindUpNextDrag) is being dragged, not swiped. */
+      if (info._dragArmed) { reset(); return; }
       swipe = g.moveSwipe(swipe, e.clientX, e.clientY, e.timeStamp);
       /* A vertical start is the list scrolling: let it go entirely. */
       if (swipe.rejected) { reset(); return; }

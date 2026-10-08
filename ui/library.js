@@ -381,25 +381,24 @@ function libQueueRowHtml(r, o) {
     rest = [date, item.show || "", r.state === "archived" ? "not available right now" : left].filter(Boolean).join(" · ");
   } else rest = "4a no longer has this episode's details";
   const lead = current ? `<span class="ag-row-state">Playing</span>` : "";
+  /* On the Up Next PAGE the cover also carries the two gestures (ui/queue.js): a swipe left removes (`data-swipe-id`), and a
+     hold lifts the row to drag it (`data-drag-handle`, rows with a menu only: the playing row stays first). There is no
+     handle glyph: the direction gives the row one trailing control, the menu, and its Move up / Move down are how a
+     keyboard or switch user reorders. */
+  const drags = !!(o.page && o.menu);
   const cover = playable
-    ? `<button type="button" class="lb-cover" data-lb-play="${esc(id)}"${o.page ? ` data-swipe-id="${esc(id)}"` : ""} data-ctx="${esc(o.ctx)}" data-title="${esc(item.title || "")}" aria-label="${esc(`${running ? "Pause" : "Play"} ${item.title || "this episode"}`)}"></button>`
+    ? `<button type="button" class="lb-cover" data-lb-play="${esc(id)}"${o.page ? ` data-swipe-id="${esc(id)}"` : ""}${drags ? ` data-drag-handle="${esc(id)}" aria-describedby="up-next-drag-hint"` : ""} data-ctx="${esc(o.ctx)}" data-title="${esc(item.title || "")}" aria-label="${esc(`${running ? "Pause" : "Play"} ${item.title || "this episode"}`)}"></button>`
     : "";
   const menu = o.menu
     ? `<button type="button" class="ag-btn ag-btn-icon lb-dots" data-lb-menu="${esc(id)}" aria-haspopup="dialog" aria-label="${esc(`More for ${title}`)}">${agIcon("dots", 24)}</button>`
     : "";
-  /* The Up Next PAGE (ui/queue.js, `o.page`) draws this same row and adds the two gestures the founder asked for in
-     #762 (PQ-04, PQ-06): a drag handle before the menu, and the swipe id on the cover (the cover is what a finger lands
-     on). The handle is a plain 44 button; the menu is still the way a keyboard or switch user moves a row. */
-  const handle = o.page && o.menu
-    ? `<button type="button" class="qp-handle" data-drag-handle="${esc(id)}" aria-label="${esc(`Drag ${title} to reorder`)}" aria-describedby="up-next-drag-hint"></button>`
-    : "";
   return `<article class="raised ag-queue-row lb-row lb-qrow${o.page ? " qp-row" : ""}${current ? " is-current" : ""}${o.menu ? "" : " lb-nomenu"}${playable ? "" : " lb-gone"}" data-lb-q="${esc(id)}"${current ? ' aria-current="true"' : ""}>
     ${agArtwork({ name: item.show || title, src: item.artwork_url || "", size: 56, tone: libTone(item.show), state: playable ? "default" : "dim" })}
     <div class="ag-row-copy">
-      <p class="t-label clamp2">${current ? agIcon("play-fill", 20) : ""}${esc(title)}</p>
+      <p class="t-label">${current ? agIcon("play-fill", 20) : ""}${esc(title)}</p>
       <p class="t-caption ag-row-meta">${lead}<span class="lb-ell">${current ? "· " : ""}${esc(rest)}</span></p>
     </div>
-    ${cover}${handle}${menu}${o.page ? '<span class="qp-under" aria-hidden="true">Remove</span>' : ""}
+    ${cover}${menu}${o.page ? '<span class="qp-under" aria-hidden="true">Remove</span>' : ""}
   </article>`;
 }
 
@@ -575,6 +574,15 @@ function libHistoryHtml(rows, hidden) {
   return `<section class="lb-section" data-lb-section="history">${libHead("History", 0)}${body}</section>`;
 }
 
+/** History as the Library draws it, read from the store: the last LIB_HISTORY_MAX played, newest first, Family Mode applied
+    (an "unnamed" row has nothing in it to hide). The Up Next page (ui/queue.js) ends with this same section, so History
+    continues under the queue there as it does in the prototype's Library. */
+function libHistorySectionHtml() {
+  const all = rowsForIds(pickedHistory().slice().reverse().slice(0, LIB_HISTORY_MAX));
+  const shown = all.filter((r) => r.state === "unnamed" || familyAllows(r.item));
+  return libHistoryHtml(shown, all.length - shown.length);
+}
+
 /* ---------- the page ---------- */
 
 function libCastHtml() {
@@ -595,8 +603,6 @@ function renderLibrary() {
   const family = (r) => r.state === "unnamed" || familyAllows(r.item);
   const allSavedRows = rowsForIds(Object.keys(savedMap()));
   const savedRows = allSavedRows.filter(family);
-  const allHistoryRows = rowsForIds(pickedHistory().slice().reverse().slice(0, LIB_HISTORY_MAX));
-  const historyRows = allHistoryRows.filter(family);
 
   libUi.currentId = libCurrentId();
   $("#view").innerHTML = `
@@ -608,7 +614,7 @@ function renderLibrary() {
       ${libPlaylistsHtml()}
       ${libUpNextHtml()}
       ${state.downloadBridge ? `<section class="lb-section" data-lb-section="downloads">${libHead("Downloads", 0)}${libraryDownloadsHtml(family)}</section>` : ""}
-      ${libHistoryHtml(historyRows, allHistoryRows.length - historyRows.length)}
+      ${libHistorySectionHtml()}
       ${libToastHtml()}
     </div>`;
 

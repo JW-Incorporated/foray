@@ -1516,6 +1516,33 @@ fidelity pair is its Library Up Next section and the menu sheet, `screens.json` 
    `.swipe-under` rules (`ui-tokens` and `tap-targets` pin them as legacy look; retire them with the legacy sheet), and
    `moveQueueItem` has no caller but its own tests (`up-next-queue`, K: they pin the swap rule and its bounds; Library's menu does its own swap, so a follow-up can delete both together).
    `libCastHtml`'s cast and fade are reused as is and retire with the Library's when the Dock lands.
+7. **Iteration 2 (judge findings, after the merge of the Show page).** What fell, and what was left to its owner:
+   - **No handle glyph.** The direction gives a QueueRow one trailing control, the menu (Move up, Move down, Remove). The
+     six-dot handle (item 3 above) was a second control that crowded the text column to 24px and forced the cuts. It is gone,
+     with its fourth grid column, its `.qp-handle` styles and its `tap-targets` entry. **The founder's drag (#762, PQ-04) stays,
+     rebound:** a HOLD on the row's cover (`QP_HOLD_MS` 350, `QP_HOLD_SLOP` 8) lifts the row ("Picked up." said, the lift
+     shadow), and the rules in `player/queue-drag.js` run unchanged from there. A finger that travels 8px before the hold is a
+     scroll or a swipe and drops the hold; once lifted the touchmove is cancelled so the page does not pan; a lifted release
+     with no travel writes nothing and swallows the click (`_lbSwallow`, as a claimed swipe does); the swipe lets go while a
+     drag is armed (`_dragArmed`). The cover carries `data-drag-handle`, so the focus helpers find the row's cover; Move up /
+     Move down in the menu remain the way for a keyboard or switch user, and the sr-only hint now says "Hold, then drag".
+   - **Titles and captions are never cut** (DIRECTION: titles never cut; the prototype wraps a title whole). The QueueRow's
+     title lost `clamp2`, and its caption runs as inline wrapping text (`.lb-ell` is `white-space: normal`, the meta a block)
+     instead of one nowrap line with an ellipsis, so the length and date after a long show name are always readable. The row's
+     64 is a minimum; it grows. This is Library's QueueRow too (Up Next and History there), so the two cannot drift.
+   - **History continues under the queue on the page**, as it does in the prototype's Library: `libHistorySectionHtml()`
+     (the Library's own, factored out of `renderLibrary`) is drawn after the queue section. Back, "N queued" and Clear stay:
+     the page is reached from Library's "All N in Up Next" and Back returns there; Clear is the page's one destructive
+     control and a count is its own sentence; the prototype has no route for this page, so those three are owner calls the art
+     director keeps (decision logged here, not asked).
+   - **Not this unit's, left to the Dock unit** (the page wears the legacy mini player and tab bar until `redesign/ambient-dock`
+     merges): the floating Veil material and hairlines, the mini player's play colour and glyphs and its title face, the tab
+     labels. **Glow tint** (cool violet on the playing row and the bar) is the specified fallback, not a defect: a show
+     outside the palette table gets a hash hue (ui/palette.js, DIRECTION "a hash hue the fallback"), and the harness has no
+     remote artwork, so "Lex Fridman Podcast" hashes to violet; the prototype's seed happens to land on amber.
+   - Measured, `up-next-it2` (393x852): rows +0/+12 (the back row; the prototype is a scrolled crop of Library's section with
+     no page head) and +18.6 tall (the wrapped four-line title that used to be cut); sheet delta 0, 0, 0, 0; mini and tab bar
+     the Dock unit's (+40 wide).
 
 ## 19. Show page (built, `redesign/ambient-show`)
 
