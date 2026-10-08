@@ -4796,6 +4796,123 @@ body.view-find #sh-browse { display: flex; flex-direction: column; gap: var(--s-
 .find-art--c4 { --seg: var(--dial-seg-c4); } .find-art--c5 { --seg: var(--dial-seg-c5); } .find-art--c6 { --seg: var(--dial-seg-c6); } .find-art--c7 { --seg: var(--dial-seg-c7); }
 .find-more { display: flex; }
 
+/* ---------- FIND, TYPING (TACTILE): the results that replace the mosaic ----------
+   Redesign 2026, tactile `search-typing` (BUILD-PLAN 2.10, BUILD-NOTES 3.9, 4.4).
+   Shows, Episodes, Playlists, each a 17px heading over its rows with a count in
+   the readout face at the right edge, then the "Make a playlist about" key. All
+   of it hangs off `body.view-find`, so the Shows rows on a show page, the
+   episode rows on Library and every other `.ep-row` keep the look they have until
+   their own screens adopt the Dial (group D and after). Specificity does the
+   work against the legacy `body.ui-v2` rules rather than `!important`. */
+body.view-find .sh-tier { display: flex; flex-direction: column; gap: var(--gap); }
+body.view-find .sh-tier:has(> #sh-results[hidden]) { display: none; }
+body.view-find .ep-more { margin: 0; display: flex; flex-direction: column; gap: var(--gap); }
+body.view-find .sh-results-head,
+body.view-find .ep-more > h3 {
+  margin: 0;
+  display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3);
+  color: var(--ink);
+  font: var(--w-label) var(--t-body-lg)/var(--lh-body-lg) var(--font-text);
+  letter-spacing: 0; text-transform: none;
+}
+body.view-find .find-count { margin-left: auto; flex: none; color: var(--ink-2); white-space: nowrap; }
+body.view-find .ep-more > h3 .note { margin-left: var(--s-2); color: var(--ink-2); font: var(--w-body) var(--t-label)/var(--lh-label) var(--font-text); letter-spacing: 0; }
+body.view-find .ep-more .fy-episode-search-more { margin: 0; padding: 0; border: 0; color: var(--ink-2); font: var(--w-body) var(--t-label)/var(--lh-label) var(--font-text); }
+body.view-find .note { color: var(--ink-2); font: var(--w-body) var(--t-label)/var(--lh-label) var(--font-text); }
+/* A settled "No shows found" line is for a page with nothing else on it: when
+   Episodes, Playlists or Forays answered, the absent Shows group says it. */
+body.view-find #sh-note[data-state="empty"]:is(:has(~ #ep-search-results:not([hidden])), :has(~ #pl-search-results .fy-playlist-search), :has(~ #fy-search-results:not([hidden]))) { display: none; }
+body.view-find #pl-search-results:not([hidden]) { display: flex; flex-direction: column; gap: var(--s-8); }
+
+/* Shows: `.row-show`, 56 tall, art 44, the name on one line. No card around it:
+   the prototype's rows are bare on the paper. */
+body.view-find .show-results { gap: var(--gap); }
+body.view-find .show-results > .row-show { padding: 0; }
+body.view-find .row-show > .show-result {
+  flex: 1 1 auto; min-width: 0; min-height: var(--row-show); padding: 0; gap: var(--s-3);
+  border: 0; border-radius: 0; background: transparent; box-shadow: none; color: var(--ink);
+}
+body.view-find .row-show .show-result-art { width: var(--art-mini); height: var(--art-mini); border-radius: var(--r-sm); box-shadow: inset 0 0 0 calc(var(--s-1) / 4) var(--dial-line); }
+body.view-find .row-show .show-result-art-blank { position: relative; display: grid; place-items: center; background: var(--paper-2); color: var(--ink-2); font: var(--w-label) var(--t-label)/1 var(--font-mono); }
+body.view-find .row-show .show-result-art-blank::before { content: attr(data-i); }
+body.view-find .row-show .show-result-title { font: var(--w-label) var(--t-body)/var(--lh-body) var(--font-text); -webkit-line-clamp: 1; line-clamp: 1; overflow-wrap: normal; }
+body.view-find .row-show .show-result-by { font: var(--w-body) var(--t-label)/var(--lh-label) var(--font-text); color: var(--ink-2); }
+
+/* Episodes: `.row-episode`. Art 56, the title (two lines) as a link that spreads
+   over the row, the meta line, ONE trailing Play keycap `sm`. The show name has
+   `min-width: 112px` (72 cut six of eight at 393) and takes whatever the length
+   and "+ Up Next" leave, ellipsising last; only when not even 112px fits beside
+   them (375 wide, a long length, the "played" mark) do those travel together to
+   a second line, never "+ Up Next" alone. */
+body.view-find .fy-episode-rows { display: flex; flex-direction: column; gap: var(--gap); }
+body.view-find .row-episode {
+  position: relative; min-height: 0; padding: 0;
+  column-gap: var(--s-3); row-gap: var(--s-2); align-items: start; color: var(--ink);
+}
+body.view-find .row-episode .row__body { padding-top: 0; }
+/* The row's title is an <h3> inside `.ep-more`, whose legacy eyebrow rule
+   (11.84px, uppercase, dim) it would otherwise inherit: restated here in full. */
+body.view-find .row-episode .row__title { margin: 0; color: var(--ink); font: var(--w-label) var(--t-body)/var(--lh-body) var(--font-text); letter-spacing: 0; text-transform: none; }
+body.view-find .row-episode .ep-title-link { color: inherit; text-decoration: none; }
+body.view-find .row-episode .ep-title-link::after { content: ""; position: absolute; inset: 0; }
+body.view-find .row-episode .row__end { position: relative; z-index: 1; }
+body.view-find .row-episode .row__meta { flex-wrap: wrap; row-gap: 0; column-gap: calc(var(--s-1) + var(--s-1) / 2); }
+body.view-find .row-episode .row__show { flex: 1 1 112px; min-width: 112px; max-width: 100%; }
+body.view-find .row-episode .row__tail { flex: none; display: flex; align-items: center; gap: var(--s-1); }
+body.view-find .row-episode .row-play { width: var(--key); min-width: var(--key); height: var(--key); padding: 0; }
+body.view-find .row-episode .row__tail > .readout,
+body.view-find .row-episode .row__tail > .ep-progress { flex: none; }
+body.view-find .row-episode .ep-progress { color: var(--ink-2); }
+body.view-find .row-episode button.up-next {
+  flex: none; margin-left: auto; min-width: 0; min-height: 0; padding: 0; z-index: 1;
+  display: inline-flex; align-items: center; gap: var(--s-1);
+  border: 0; border-radius: 0; background: transparent; box-shadow: none; color: var(--ink-2);
+  font: var(--w-label) var(--t-label)/var(--lh-label) var(--font-text);
+}
+body.view-find .row-episode button.up-next .i { width: var(--s-4); height: var(--s-4); }
+body.view-find .row-episode button.up-next:active { color: var(--ink); }
+body.view-find .row-episode button.up-next.on { color: var(--ink-2); background: transparent; border: 0; }
+body.view-find .row-episode button.up-next:focus-visible { outline: calc(var(--s-1) / 2) solid var(--ultramarine); outline-offset: calc(var(--s-1) / 2); }
+body.view-find .row-episode .not-playable { align-self: center; color: var(--ink-3); font: var(--w-label) var(--t-label)/var(--lh-label) var(--font-text); }
+
+/* Playlists: the prototype's `.pcard`, two to a row. */
+body.view-find .pgrid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap); }
+body.view-find .pcard {
+  min-width: 0; display: flex; flex-direction: column; align-items: stretch; gap: calc(var(--s-2) + var(--s-1) / 2);
+  padding: var(--s-3); border-radius: var(--r-md); background: var(--card); box-shadow: var(--shadow-card);
+  color: var(--ink); text-align: left; text-decoration: none;
+}
+body.view-find .pcard:active { transform: scale(.98); }
+body.view-find .pcard__name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; font: var(--w-label) var(--t-body-lg)/var(--lh-body-lg) var(--font-text); }
+body.view-find .pcard .readout { color: var(--ink-2); }
+body.view-find .pcard .fy-badge-generated {
+  align-self: flex-start; margin: 0; padding: 0; background: none; color: var(--ultramarine);
+  font: var(--w-micro) var(--t-micro)/var(--lh-micro) var(--font-text); letter-spacing: 0; text-transform: none;
+}
+body.view-find .find-collage--card { display: grid; grid-template-columns: 1fr 1fr; width: 100%; height: auto; aspect-ratio: 1; border-radius: var(--r-sm); }
+body.view-find .find-collage--card.is-single { grid-template-columns: 1fr; }
+body.view-find .find-collage--card .find-art--cell { width: 100%; height: 100%; }
+
+/* THE LIP (BUILD-NOTES 2.4, Materials 3): a 3px lower edge in a darker tone of the
+   key's own fill that wraps the rounded bottom, so the key reads as one object. The
+   primitive's `::after` is a flat bar as wide as the key, which under a 14px radius
+   leaves a light gap at each corner and reads as a stray underline. Here the lip is
+   the face's own rounded shape offset down by `--lip` (a hard box-shadow), exactly the
+   shape `.np .transport .keycap` uses; the margin gives it the room the prototype's
+   `margin-bottom: var(--lip)` does. Pressed, the face drops 2px and the shadow
+   shrinks to `--lip-pressed`, so the base stays where it was. */
+body.view-find .keycap { margin-bottom: var(--lip); box-shadow: 0 var(--lip) 0 var(--k-lip); }
+body.view-find .keycap::after { content: none; }
+body.view-find .keycap:active:not(:disabled), body.view-find .keycap[data-pressed="true"] { box-shadow: 0 var(--lip-pressed) 0 var(--k-lip); }
+
+/* The key: a full-width ultramarine keycap that closes the results. The label
+   is cut by an ellipsis, never wrapped: the key keeps its height under a
+   120-character query. */
+body.view-find .sh-create-cta { margin: 0; }
+body.view-find .sh-create-cta .keycap { max-width: 100%; }
+body.view-find .sh-create-cta .keycap .i { flex: none; }
+body.view-find .sh-create-cta .keycap__label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* COMPONENT GALLERY. Development-only markup behind the guarded #/gallery
    route. It starts with the icon family in task 2; later foundation tasks add
    primitives to this same page. No production screen inherits these rules. */

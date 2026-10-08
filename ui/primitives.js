@@ -496,7 +496,13 @@ function tactileGauge(data) {
 }
 
 function tactileDisplayName(name) {
-  return String(name || "Show").replace(/\s+(?:-|\||with|\()[\s\S]*$/i, "").trim();
+  var shown = String(name || "Show").replace(/\s+(?:-|\||with|\()[\s\S]*$/i, "").trim();
+  /* The generic noun is not the name (BUILD-NOTES 3.9: "The Partially Examined
+   * Life" is "The Partially Examined Life Philosophy Podcast" on a meta line, and
+   * the prototype's shortShow strips it the same way). Kept when nothing real
+   * would be left: "The Podcast" stays "The Podcast". */
+  var bare = shown.replace(/\s+(?:Philosophy\s+)?Podcast$/i, "").trim();
+  return bare.length >= 4 && !/^(?:the|a|an)$/i.test(bare) ? bare : shown;
 }
 
 /* THE ENGINE HOOKS (opt-in, Today and later screens). A row or bridge handed an
@@ -552,7 +558,7 @@ function tactileTitleLink(d, text) {
   if (!d.id || d.link !== "episode") return esc(text);
   /* A template literal, the one form the "scheme fixed in code" scan accepts: the
      `#/` is literal and only the encoded id is interpolated. */
-  return `<a class="row__link" href="#/episode/${esc(encodeURIComponent(d.id))}">${esc(text)}</a>`;
+  return `<a class="row__link" href="${esc(safeUrl("#/episode/" + encodeURIComponent(d.id)))}">${esc(text)}</a>`;
 }
 
 function tactileEpisodeRow(data) {

@@ -602,6 +602,38 @@ both pairs.
    the show name has `min-width: 112px`, the display-name rule applies, and
    seven of eight fixture names survive at 393 without ellipsis.
 4. Fidelity regions within 4px of `#/search/typing`.
+   **Built (group C `search-typing`, decisions the loop made):** (a) The typing
+   screen is shot after the return key (`search-results-typing`, appended to the
+   `search` state: type, press Enter, so the field lets go): a field that still
+   holds focus hides the deck for a keyboard a headless page never raises, which
+   is the right behaviour on a phone and the wrong state to compare with a
+   prototype drawn with the deck up. `search-results-history` is unchanged and
+   still the focused state the gates walk. (b) The closing key is last whether
+   or not a playlist matched; the gate that decides when to offer it (the scorer
+   can build one) is unchanged, so it still arrives on the idle scan, after the
+   cards. (c) The episode row is `searchEpisodeRow` (ui/search.js) on the shared
+   controls: the Play key is a `data-play` keycap sm (the player swaps its `<use>`
+   icon, `paintCardControl`), "+ Up Next" is `upNextBtn` verbatim on the meta line.
+   It drops what the prototype's row has not: the star, the date, the link on the
+   show's name (a plain name, one tap from the title's episode page) and the first
+   words of the description. Those are the row/card anatomy ruling (visual pass 1,
+   2026-09-23) falling for this list, and the founder's 2026-10-03 request for the
+   description under every title; the owner's Tactile pick draws search rows
+   without them and the 4px bar is measured against that. (d) The show name has
+   `min-width: 112px` and basis 112, so it takes what the length and the action
+   leave and ellipsises last; the pair wraps to a second line together only when
+   not even 112 fits beside them (375 wide, a long length, the "played" mark),
+   never "+ Up Next" alone. At 412 the row is one line; at 393 and 375 the pair
+   wraps (rows +16px; review fix 2026-10-08 restored the 112 floor after iteration 3 had
+   dropped it to 96 to keep 393 on one line with the 48 key). (e) `tactileDisplayName` also drops a trailing generic
+   noun ("Podcast", "Philosophy Podcast") when something real is left: BUILD-NOTES
+   3.9's own example ("The Partially Examined Life") needs it and the prototype's
+   `shortShow` does it. That is a primitive change: the gallery `*-rows` shots
+   differ (the queue specimen's "The Moreish Podcast" reads "The Moreish") and the
+   gallery baseline needs a re-lock after this merges. (f) A settled "No shows
+   found" line (`#sh-note[data-state="empty"]`) gives way when Episodes, Playlists
+   or Forays answered: the absent Shows group says it, as in the prototype; "Searching
+   for ..." always stays. (g) "Make", not "Create": the prototype's word.
 
 #### 2.11 `search-none`: Find, no results  (app: `search` / `search-no-results`)
 

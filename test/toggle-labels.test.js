@@ -207,6 +207,7 @@ function clientCtx(extra) {
   const ctx = { ...extra };
   vm.createContext(ctx);
   vm.runInContext(clientFn("paintControl"), ctx);
+  vm.runInContext(clientFn("paintCardControl"), ctx);
   return ctx;
 }
 

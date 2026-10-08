@@ -548,13 +548,13 @@ function todayHeroHtml(hero, { firstRun = false } = {}) {
   const why = firstRun ? TODAY_FIRST_RUN_LINE : hero.why;
   return `<section class="card card--hero today-hero" aria-labelledby="today-hero-title">
     <div class="today-hero__eyebrow">${tactileTag({ kind: "narration", text: "Today's foray" })}</div>
-    <h2 class="display today-hero__title" id="today-hero-title"><a class="today-hero__link" href="#${esc(path)}">${esc(foray.title)}</a></h2>
+    <h2 class="display today-hero__title" id="today-hero-title"><a class="today-hero__link" href="${esc(safeUrl("#" + path))}">${esc(foray.title)}</a></h2>
     <div class="well today-hero__band">${tactileBand({ kind: "mini", segments: hero.segments, renderWidth: todayBandWidth(), label: hero.bandLabel })}</div>
     <div class="today-hero__meta"><span class="today-hero__discs">${discs}</span><span class="readout today-hero__facts">${esc(hero.facts)}</span></div>
     ${why ? `<p class="today-hero__why">${esc(why)}</p>` : ""}
     <div class="today-hero__keys">
       ${tactileKeycap({ size: "xl", variant: "persimmon", round: true, icon: "ph-play-fill", label: `Play ${foray.title}`, data: { "home-play": foray.id } })}
-      <a class="keycap keycap--md keycap--paper today-hero__details" href="#${esc(path)}"><span class="keycap__label">Details</span></a>
+      <a class="keycap keycap--md keycap--paper today-hero__details" href="${esc(safeUrl("#" + path))}"><span class="keycap__label">Details</span></a>
     </div>
   </section>`;
 }
@@ -600,7 +600,8 @@ function todayResumeHtml(entry) {
       ? tactileKeycap({ size: "md", variant: "persimmon", round: true, icon: "ph-play-fill", swapIcon: "ph-pause-fill", label: `Play ${entry.title}`, data: { play: entry.id, title: entry.title, ctx: "resume" } })
       : "";
   }
-  /* The `#/` is literal and only the route kind and the encoded id are interpolated. */
+  /* Only the route kind and the encoded id are interpolated, and the whole href
+     goes through safeUrl (a route passes it; nothing else does). */
   const route = isForay ? "foray" : "episode";
   id = encodeURIComponent(entry.id);
   const pct = Math.max(0, Math.min(100, Number(entry.percent) || 0));
@@ -608,7 +609,7 @@ function todayResumeHtml(entry) {
     ${tactileArtFrame({ size: "hero", url: art, initials: todayInitials(entry.title) })}
     <div class="today-resume__body">
       <div class="today-resume__tag">${tactileTag({ kind: "playing", text: "Resume" })}</div>
-      <h2 class="today-resume__title"><a class="today-resume__link" href="#/${route}/${esc(id)}">${esc(entry.title)}</a></h2>
+      <h2 class="today-resume__title"><a class="today-resume__link" href="${esc(safeUrl("#/" + route + "/" + id))}">${esc(entry.title)}</a></h2>
       <div class="today-resume__line"><span class="well today-prog" aria-hidden="true"><span class="today-prog__fill" data-pct="${esc(String(pct))}"></span></span><span class="readout today-resume__left">${esc(entry.left || "")}</span></div>
     </div>
     <div class="today-resume__key">${key}</div>
@@ -722,7 +723,7 @@ function todayPlaylistCardHtml(p, { generated = false, history }) {
   const played = rows.filter(r => hasOpened(r.item.id, history)).length;
   const pct = total && played ? Math.round((played / total) * 100) : 0;
   const meta = joinMeta(countLabel(total, "episode"), total && played ? `${played} of ${total} played` : "");
-  return `<a class="today-pcard" href="#/${esc(playlistRoute(p))}">
+  return `<a class="today-pcard" href="${esc(safeUrl("#/" + playlistRoute(p)))}">
     ${todayCollageHtml(rows.filter(r => r.state === "live").map(r => r.item))}
     <span class="today-pcard__name">${esc(p.title || p.name || "Playlist")}</span>
     <span class="readout today-pcard__meta">${esc(meta)}</span>

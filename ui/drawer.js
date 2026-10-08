@@ -18,7 +18,7 @@ function renderDrawer() {
     .sort((a, b) => (b.last_played_at || b.created || "").localeCompare(a.last_played_at || a.created || ""))
     .slice(0, 5);
   $("#drawer-playlists").innerHTML = recent.map(p =>
-    `<a class="drawer-item" href="#/${esc(playlistRoute(p))}">${esc(p.title)}</a>`).join("")
+    `<a class="drawer-item" href="${esc(safeUrl("#/" + playlistRoute(p)))}">${esc(p.title)}</a>`).join("")
     || `<p class="drawer-empty">No playlists yet</p>`;
   /* Every switch's label, from the one registry `drawerToggle` fills. This was
      five ad-hoc lines — three unguarded, two guarded, each spelling its own

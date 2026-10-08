@@ -460,7 +460,8 @@ test("a held in-app link opens no web preview and no callout, in the shell or th
   /* Every stretched link really is an in-app route, so the rule reaches it. */
   const app = readAppSource();
   for (const cls of ["ep-title-link", "row__link", "today-resume__link"]) {
-    assert.match(app, new RegExp(`<a class="[^"]*\\b${cls}\\b[^"]*" href="#/`), `.${cls} is an <a href="#/…">`);
+    /* The href is \`${esc(safeUrl("#/…" + id))}\`: an in-app route through safeUrl, which passes it. */
+    assert.match(app, new RegExp(`<a class="[^"]*\\b${cls}\\b[^"]*" href="\\$\\{esc\\(safeUrl\\("#/`), `.${cls} is an <a href="#/…">`);
   }
   /* The flash goes only where the card authors its own press. */
   const PRESS = {

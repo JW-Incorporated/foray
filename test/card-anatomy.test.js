@@ -402,7 +402,10 @@ test("a tab's root page has no ‹; a page you were sent to keeps one", () => {
 test("search's shows tier wears the eyebrow its Episodes and Playlists tiers do, only while it has rows", () => {
   /* Round 2, visual-16. MUTATION: delete the `<h3 class="sh-results-head">` or
      its `:has(+ #sh-results[hidden])` rule -> red. */
-  assert.match(APP_SRC, /<h3 class="sh-results-head">Shows<\/h3>\s*<div id="sh-results" class="show-results" hidden><\/div>/,
+  /* TACTILE `search-typing`: the label gains its count readout and the pair gains
+     a wrapper (`.sh-tier`, so the heading-to-rows gap is 12 and not the page's
+     32); the label still sits directly before the tier it names. */
+  assert.match(APP_SRC, /<h3 class="sh-results-head">Shows<span class="readout find-count" id="sh-results-count"><\/span><\/h3>\s*<div id="sh-results" class="show-results" hidden><\/div>/,
     "the label sits directly before the tier it names");
   assert.strictEqual(valueOf(".sh-results-head:has(+ #sh-results[hidden])", "display"), "none", "and hides with it");
   assert.strictEqual(valueOf(".ep-more h3, .sh-results-head", "text-transform"), "uppercase", "the same eyebrow as Episodes");
@@ -436,7 +439,7 @@ test("Create's suggestions and Search's browse subjects are the same pill", () =
   /* MUTATION: render `class="cr-pill"` in renderCreate again, or add a
      `.cr-pill {` rule -> red. */
   assert.match(APP_SRC, /<button type="button" class="fy-chip" data-cr-subject=/, "Create renders .fy-chip");
-  assert.match(APP_SRC, /<a class="fy-chip" href="#\/shows\/q\//, "Search's browse tiles render .fy-chip");
+  assert.match(APP_SRC, /<a class="fy-chip" href="\$\{esc\(safeUrl\("#\/shows\/q\/"/, "Search's browse tiles render .fy-chip");
   assert.doesNotMatch(APP_SRC, /class="cr-pill/, "no renderer emits .cr-pill");
   assert.ok(!hasRule(".cr-pill"), ".cr-pill has no rule left");
   assert.ok(!hasRule("body.ui-v2 .sh-browse-pills .fy-chip"), "Search does not restyle the pill's geometry on its own");
