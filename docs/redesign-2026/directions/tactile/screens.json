@@ -453,7 +453,7 @@
       },
       "app": {
         "state": "search",
-        "step": "search-results-history"
+        "step": "search-results-typing"
       },
       "regions": {
         "header": {
@@ -465,9 +465,13 @@
           "app": "#sh-compose"
         },
         "rows": {
-          "prototype": "#results .tile, #results .row",
-          "app": ".show-result",
+          "prototype": "#results .row",
+          "app": "#sh-results .row-show, #ep-search-results .row-episode",
           "mode": "all"
+        },
+        "primary": {
+          "prototype": "#results .keycap--ultramarine",
+          "app": ".sh-create-cta .keycap"
         },
         "tabBar": {
           "prototype": "#tabs",

@@ -777,15 +777,23 @@ function renderAllShows(initialQuery = "") {
       <div id="sh-partial-note" hidden></div>
       <div id="sh-empty-offer" hidden></div>
       <p id="sh-offline-note" class="note" hidden>${OFFLINE_SEARCH_NOTE}</p>
-      <div id="fy-search-results" hidden></div>
-      <!-- The shows tier's eyebrow (audit round 2, visual-16): Episodes and
+      <!-- The shows tier's heading (audit round 2, visual-16): Episodes and
            Playlists label their tiers, and the first one was the only bare
            list. styles.css hides it whenever #sh-results is hidden, so
-           paintShowResults needs no second switch to keep them in step. -->
-      <h3 class="sh-results-head">Shows</h3>
-      <div id="sh-results" class="show-results" hidden></div>
+           paintShowResults needs no second switch to keep them in step. It
+           carries the count of matches in a readout, as the other two do
+           (Tactile search-typing: Shows, Episodes, Playlists, each a 17px
+           heading over its rows with a count at the right edge).
+           THE ORDER IS THE PROTOTYPE'S: Shows, Episodes, Playlists, and the
+           "Make a playlist about" key last inside the playlists container.
+           Forays, which the prototype has no group for, follow them. -->
+      <div class="sh-tier">
+        <h3 class="sh-results-head">Shows<span class="readout find-count" id="sh-results-count"></span></h3>
+        <div id="sh-results" class="show-results" hidden></div>
+      </div>
       <div id="ep-search-results" hidden></div>
       <div id="pl-search-results" hidden></div>
+      <div id="fy-search-results" hidden></div>
       <!-- The followed strip first, ONLY WHEN THE LISTENER FOLLOWS SOMETHING
            (audit round 2, p-first-12: on a fresh install the page's first
            tappable row led to "0 shows you follow"), then the subjects. -->

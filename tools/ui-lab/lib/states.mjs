@@ -73,6 +73,19 @@ async function typeSearch(page, text) {
   await wait(page, 1800);
 }
 
+/* Type a query, then press return: the phone keyboard's own way of putting it
+   away. The field lets go (the submit handler blurs it), so the deck is back
+   and the field sits above it, which is the state the Tactile typing screen
+   is drawn in; a field that still holds focus hides the deck for the keyboard
+   that a headless page never raises. */
+async function typeSearchThenReturn(page, text) {
+  await page.waitForSelector("#sh-input", { timeout: 15000 });
+  await page.fill("#sh-input", text);
+  await wait(page, 600);
+  await page.press("#sh-input", "Enter");
+  await wait(page, 1800);
+}
+
 async function setGalleryTheme(page, scheme) {
   await page.evaluate((value) => { document.documentElement.dataset.theme = value; }, scheme);
 }
@@ -174,6 +187,7 @@ export function appStates(fx) {
         { label: "search-results-fusion", route: "#/shows", run: (page) => typeSearch(page, "fusion") },
         { label: "search-results-history", route: "#/shows", run: (page) => typeSearch(page, "history") },
         { label: "search-no-results", route: "#/shows", run: (page) => typeSearch(page, "zzqxjv") },
+        { label: "search-results-typing", route: "#/shows", run: (page) => typeSearchThenReturn(page, "geoengineering") },
       ],
     },
     {

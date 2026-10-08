@@ -76,7 +76,10 @@ test("the gallery covers every primitive and state without adopting them on list
      that adopts early, or a file that reaches for a primitive it should not,
      is a new name here and fails.
      MUTATION: make ui/home.js call tactileKeycap() -> "home.js" appears and this fails. */
-  assert.deepStrictEqual(adopters, ["browse.js", "mini.js", "now-playing.js", "tabbar.js"], "Phase 4, not the foundation, adopts primitives on listener screens, one landed group at a time");
+  /* Group C `search-typing` adds search.js: the Find results draw their Play keys,
+     the closing "Make a playlist" key and the episode art through the primitives
+     (tactileKeycap/tactileIcon/tactileArtFrame), as browse.js's idle page does. */
+  assert.deepStrictEqual(adopters, ["browse.js", "mini.js", "now-playing.js", "search.js", "tabbar.js"], "Phase 4, not the foundation, adopts primitives on listener screens, one landed group at a time");
 });
 
 test("the gallery's rendered copy obeys the listener copy rules, however the source spells it", () => {
