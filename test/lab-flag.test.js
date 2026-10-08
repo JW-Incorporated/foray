@@ -19,6 +19,10 @@
  * (otherwise "no fetch happened" would be vacuous: the fixture would be the only
  * reason). Reads are untouched, and are not under test here.
  *
+ * A SCREEN THAT ADDS A NETWORK WRITE gets a test beside these (build-loop.md section 6). Discover (ambient screen 4)
+ * adds none: its Make-a-playlist button builds into cp_playlists and logs a LOCAL event, and
+ * test/discover-page.test.js section 6 pins that the path reaches no fetch at all, lab flag on and off.
+ *
  * MUTATIONS (each run red on its named test):
  *   - delete `if (isLabBuild()) return { ok: false, ... }` in sbAuth     -> test 1
  *   - delete `if (isLabBuild()) return null;` in ensureAnonSessionOnce   -> test 2

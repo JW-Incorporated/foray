@@ -307,7 +307,11 @@ test("every selector in the file is a new name: nothing today's markup emits or 
   /* The phase-3 system files are the deliberate exceptions: icons.js, primitives.js and gallery.js emit
      only the new `.ag` subtree while legacy screens remain unchanged. Every screen-bearing ui/*.js still
      counts. MUTATION: put `class="icon"` in app.js or any other screen template -> red. */
-  const systemFiles = new Set(["icons.js", "primitives.js", "gallery.js", "tabbar.js", "home.js", "now-playing.js", "car.js", "onboarding.js", "foray.js", "settings.js", "interests.js", "show.js"]);
+
+  const systemFiles = new Set(["icons.js", "primitives.js", "gallery.js", "tabbar.js", "home.js", "now-playing.js", "car.js", "onboarding.js", "foray.js", "settings.js", "interests.js", "show.js", "browse.js", "search.js", "create.js"]);
+  /* Home (ui/home.js), Foray detail (ui/foray.js), Settings, Tuning, Show and Discover (ui/browse.js, ui/search.js, ui/create.js)
+     are ADOPTED screens (Redesign 2026 phase 4): each wears `.ag`, `.room` and the type, clamp and eyebrow classes by design. A screen
+     joins the list above in the PR that adopts the system, and no sooner. */
   /* THE DOCK IS THE FIRST SCREEN TO ADOPT THE SYSTEM (Redesign 2026, Phase 4 "dock"). ui/tabbar.js builds it
      (`dock veil`, `dock-fade`, `dock-cast`, and the sprite glyphs, `icon`) and player/client.js writes the
      mini bar's glyphs as `icon` (spriteIcon): those classes are emitted there ON PURPOSE, so the two files

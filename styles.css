@@ -848,22 +848,9 @@ input[type="text"] {
    that used to wrap it is gone: those tabs time-shared one strip of the HOME
    screen between this search and #pl-form's playlist builder, and since
    2026-09-03 the two live on separate pages with nothing to toggle between. */
-#sh-form {
-  flex: none;
-  display: flex; gap: 8px;
-  margin-bottom: 14px;
-}
-#sh-input {
-  flex: 1;
-  min-height: 52px;
-  padding: 0 16px;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--line);
-  background: var(--surface);
-  box-shadow: var(--shadow);
-  color: var(--text);
-  font-size: var(--fs-lg);
-}
+/* REMOVED 2026-10-07 (Redesign 2026, ambient, Discover): `#sh-form` and `#sh-input`, the field's
+   page-content styling. Discover's field is the Afterglow SearchField (`.ag-search-field`, ui/
+   primitives.css) and nothing else ever rendered these two ids. */
 /* REMOVED 2026-09-14: `#sh-form button`, the Go button's base styling. The
    button is gone (app.js, renderAllShows — founder: "since the search results
    are live, the 'go' button is useless, delete it"), `#sh-form` is the only
@@ -1643,103 +1630,12 @@ body.kb-open #foray-player { display: none; }
   gap: 8px;
 }
 
-/* THE PILL. `#sh-form`'s own rule earlier in this file is the page-content
-   version (a plain flex row with a 14px bottom margin); inside the floating
-   row it is the translucent capsule the screenshots show. Two IDs, so this
-   beats both that rule and `body.ui-v2 #sh-form` without an !important. */
-#sh-compose #sh-form {
-  flex: 1 1 auto;
-  min-width: 0;
-  margin: 0;
-  gap: 8px;
-  align-items: center;
-  padding: 0 6px 0 14px;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--line);
-  /* Translucent, so the catalogue reads THROUGH the pill rather than being
-     cut off by it — the most characteristic thing about the reference. The
-     plain `background` first is the fallback for browsers without
-     `color-mix`: opaque, but correctly coloured. */
-  background: var(--surface);
-  background: color-mix(in srgb, var(--surface) 72%, transparent);
-  box-shadow: var(--shadow-lift);
-}
-@supports (backdrop-filter: blur(20px)) or (-webkit-backdrop-filter: blur(20px)) {
-  /* Only where it is supported: an unblurred translucent pill over dense
-     artwork is unreadable, so without this the pill has to stay near-opaque. */
-  #sh-compose #sh-form {
-    background: color-mix(in srgb, var(--surface) 55%, transparent);
-    -webkit-backdrop-filter: blur(20px) saturate(1.6);
-    backdrop-filter: blur(20px) saturate(1.6);
-  }
-}
-/* The field gives up its own box: the pill is the box now. Scoped by two IDs
-   so `#sh-input` and `body.ui-v2 #sh-input` are both overridden here, and
-   here only. */
-#sh-compose #sh-input {
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 46px;
-  padding: 0;
-  border: 0;
-  background: none;
-  box-shadow: none;
-  border-radius: 0;
-}
-/* The field gave up its box to the pill, so the PILL carries the ring (audit
-   round 2, a11y-3): `#sh-compose #sh-input:focus { outline: none }` out-ranked
-   the one focus ring and nothing replaced it, so a keyboard or switch user
-   tabbed into the app's primary field and saw only a caret. The ring is the
-   same authored one, drawn on the capsule while anything inside it has focus;
-   the field's own ring would sit inside the capsule as a second outline.
-   test/ui-tokens.test.js refuses an `outline: none` that is neither
-   `:not(:focus-visible)` nor paired with a ring on an ancestor, like this. */
-#sh-compose #sh-form:focus-within { outline: 2px solid var(--amber); outline-offset: 2px; }
-#sh-compose #sh-form #sh-input:focus { outline: none; }
-/* The leading magnifier: what says "search field" rather than "compose box",
-   and the one of Apple's two glyphs we can honour — app.js says why their
-   trailing microphone is deliberately not copied. */
-#sh-compose .sh-glyph {
-  flex: none;
-  width: 18px; height: 18px;
-  stroke: var(--text-dim);
-  stroke-width: 2;
-  stroke-linecap: round;
-  fill: none;
-}
-/* REMOVED 2026-09-14 with the Go button it sized: `#sh-compose #sh-form
-   button[type="submit"] { flex: none; }`. Founder: "since the search results
-   are live, the 'go' button is useless, delete it." The form still submits on
-   the keyboard's return key — a <form> needs no submit control for that —
-   so the path survived the control; this rule had nothing left to select. */
-
-/* THE COMPANION — Apple's circular button beside the pill. Driven by the
-   `hidden` attribute from the same predicate that hides the browse furniture
-   (app.js), so when idle it costs no width and the pill spans the whole row. */
-#sh-dismiss {
-  flex: none;
-  width: 46px; height: 46px;
-  display: flex; align-items: center; justify-content: center;
-  padding: 0;
-  border-radius: var(--radius-round);
-  border: 1px solid var(--line);
-  background: var(--surface);
-  background: color-mix(in srgb, var(--surface) 72%, transparent);
-  color: var(--text);
-  cursor: pointer;
-  box-shadow: var(--shadow-lift);
-}
-@supports (backdrop-filter: blur(20px)) or (-webkit-backdrop-filter: blur(20px)) {
-  #sh-dismiss {
-    background: color-mix(in srgb, var(--surface) 55%, transparent);
-    -webkit-backdrop-filter: blur(20px) saturate(1.6);
-    backdrop-filter: blur(20px) saturate(1.6);
-  }
-}
-#sh-dismiss svg {
-  width: 18px; height: 18px;
-  stroke: currentColor; stroke-width: 2; stroke-linecap: round; fill: none;
-}
+/* THE PILL, THE x AND THE MAGNIFIER: REMOVED 2026-10-07 (Redesign 2026, ambient, Discover). They were
+   the translucent capsule, its focus ring, the leading glyph and Apple's circular companion button,
+   built against the founder's 2026-09-13 screenshots. The row above still floats exactly where it
+   did (the `--sh-dock` arithmetic is untouched); the field inside it is the Afterglow SearchField now
+   (`.ag-search-field` in ui/primitives.css): 52 tall, the Veil, an i-magnifier, an i-x in the pill when
+   it holds text, and a 2px Lamp ring outside it on focus. */
 
 /* The page reserves room at its bottom edge for the Dock (and, on Discover, the field row it
    carries) in ONE place: `body.ui-v2`'s padding-bottom in ui/dock.css, composed from what is on
@@ -3266,13 +3162,8 @@ body.fy-sheet-keeps-player.fp-open .fy-sheet .fy-panel {
    the genuinely new surfaces this card adds (the search field/button, the
    browse-subjects pill row, the generated-playlist badge, and the CTA's own
    layout) are styled here. */
-body.ui-v2 #sh-input {
-  border-radius: var(--radius-lg);
-  border-color: var(--line);
-  background: var(--surface);
-  color: var(--text);
-  font-family: var(--font-body);
-}
+/* REMOVED 2026-10-07 (Redesign 2026, ambient, Discover): `body.ui-v2 #sh-input`, the ui-v2 restyle of
+   the field that is now `.ag-search-field`. */
 /* REMOVED 2026-09-14: `body.ui-v2 #sh-form button`, which is the violet pill
    visible inside the field in the founder's screenshot. Deleted with the
    button itself — see `#sh-form button` earlier in this file, and
@@ -3282,14 +3173,8 @@ body.ui-v2 #sh-input {
 body.ui-v2 .show-result-title { font-family: var(--font-display); }
 body.ui-v2 .show-result-by { font-family: var(--font-body); color: var(--muted); }
 
-/* The "browse subjects" pill row (mockup SearchScreen), v2-only per
-   browsePillsHtml()'s own guard -- there is no v1 pill row to restyle,
-   this is new markup, not a restyle of something that already existed. */
-body.ui-v2 .sh-browse-pills {
-  display: flex; flex-wrap: wrap; gap: 8px;
-  margin: 10px 0 14px;
-}
-/* (The pills themselves are `.fy-chip`, restyled once for ui-v2 below.) */
+/* REMOVED 2026-10-07 (Redesign 2026, ambient, Discover): `.sh-browse-pills`, the pill wall. Subjects are
+   five heads of SubjectTiles now (`.dsc-grid`, ui/primitives.css). */
 
 /* "Generated for you" badge (D5's own wording, shared with U-03's Home
    section): violet, per issue #127's split -- this is what 4a itself
