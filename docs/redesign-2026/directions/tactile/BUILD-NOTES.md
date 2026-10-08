@@ -910,8 +910,8 @@ the show discs with real artwork from their published URLs, and a mono
 counter running in the readout row under the band (`8:52 / 22:10 · 6
 shows`, the running part `--ink`); the card's top row carries only the 4a
 brand (a counter top-right reads as a fake status bar). Card height 60dvh
-at ≥ 800px tall viewports, 50dvh below 700. Below: headline display 32 "Podcasts, stitched around
-you." (the founders' tagline), sub body-lg "4a picks real shows each day and
+at ≥ 800px tall viewports, 50dvh below 700. Below: headline display 32 "Podcasts, lined up around
+you." (the prototype's 'stitched' tagline is refused by the stitching rule, BUILD-PLAN 1.7), sub body-lg "4a picks real shows each day and
 lines up the best parts into one listen." (15 words). Bottom: Play keycap
 `lg` full width (persimmon) "Play today's foray"; text button "Just show
 me" 12 below; both above `safe-b + 16`. No account step. Returning after

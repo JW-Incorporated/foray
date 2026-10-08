@@ -334,11 +334,47 @@
       "regions": {
         "sheet": {
           "prototype": ".onb__card",
-          "app": "#first-time-sheet"
+          "app": "#first-time-sheet .onb__card"
+        },
+        "title": {
+          "prototype": ".onb__copy .display",
+          "app": "#first-time-sheet-title"
         },
         "primary": {
           "prototype": ".onb__actions button, .onb__actions a",
-          "app": "#first-time-sheet button"
+          "app": "#first-time-sheet-go"
+        },
+        "skip": {
+          "prototype": ".onb__actions .textbtn",
+          "app": "#first-time-sheet-skip"
+        }
+      }
+    },
+    "onboarding-return": {
+      "title": "Onboarding, returning after skip",
+      "prototype": {
+        "route": "#/onboarding/return"
+      },
+      "app": {
+        "state": "first-run",
+        "step": "onboarding-return"
+      },
+      "regions": {
+        "sheet": {
+          "prototype": ".onb__card",
+          "app": "#first-time-sheet .onb__card"
+        },
+        "title": {
+          "prototype": ".onb__copy .display",
+          "app": "#first-time-sheet-title"
+        },
+        "primary": {
+          "prototype": ".onb__actions button, .onb__actions a",
+          "app": "#first-time-sheet-go"
+        },
+        "skip": {
+          "prototype": ".onb__actions .textbtn",
+          "app": "#first-time-sheet-skip"
         }
       }
     },

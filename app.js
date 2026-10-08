@@ -4727,6 +4727,7 @@ function renderCurrentPage() {
   else if (h === "#/starred-shows") renderStarredShows();
   else if (h === "#/interests") renderInterests();
   else if (h === "#/gallery" && galleryEnabled()) renderGallery();
+  else if ((m = ONB_ROUTE.exec(h))) renderOnboardingRoute(Boolean(m[1]));
   else renderHome();
   publishRenderedPageHead();
   /* Called AFTER the page paints, not before: renderTabBar() reads
@@ -5025,6 +5026,9 @@ function rememberRouteForRelaunch(hash) {
      successful deletion put a cp_ key back, the exact thing it already avoids
      buildCards() for. The next real navigation records the route again. */
   if (ddBusy || dataDeletionInProgress) return;
+  /* The onboarding screen is an address for the harness and for a listener who
+     asks for it again, not a place to reopen on the next launch. */
+  if (ONB_ROUTE.test(hash)) return;
   if (lsGet(LAST_ROUTE_KEY, null) !== hash) lsSet(LAST_ROUTE_KEY, hash);
 }
 

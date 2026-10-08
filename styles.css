@@ -4221,7 +4221,7 @@ body.drawer-open { overflow: hidden; }
 
 .band { display: block; width: 100%; overflow: visible; color: var(--ink); }
 .band--mini { height: var(--s-2); }
-.band--detail { height: var(--tap); }
+.band--detail { height: calc(var(--tap) + var(--s-4)); }   /* 60px: one viewBox unit is one pixel on y (TACTILE_DETAIL_PX in ui/primitives.js) */
 .band--scrub { height: var(--key-lg); touch-action: none; cursor: grab; }
 .band--scrub[data-scrubbing="true"] { cursor: grabbing; }
 .band--scrub[data-scrubbing="true"] .needle { transition: none; }
@@ -4241,6 +4241,9 @@ body.drawer-open { overflow: hidden; }
 .t-band__bar--episode { fill: var(--persimmon); }
 .t-band__code { fill: var(--ink-2); font: 700 var(--t-micro) var(--font-mono); }
 .t-band__code.is-current { fill: var(--ink); font-weight: 800; }
+/* Detail codes are the label step (13px, 700, the text face), counter-scaled in the markup so the stretched viewBox does not squash them; the mono micro above is the scrubber's. */
+.band--detail .t-band__code { font: var(--w-label) var(--t-label)/1 var(--font-text); }
+.band--detail .t-band__code.is-current { font-weight: var(--w-label); }
 .needle { fill: var(--ink); transition: transform var(--d-settle) var(--spring-settle), opacity var(--d-quick) var(--ease-quick); }
 .band--buffering .needle { animation: tactile-pulse var(--d-buffer) var(--ease-quick) infinite alternate; }
 
@@ -5671,6 +5674,64 @@ body.fp-expanded .fdet-pin { transform: translateY(240%); }   /* the sheet owns 
 /* unavailable: the way out is two keys */
 .fdet-keys { display: flex; align-items: center; gap: var(--s-4); margin-top: var(--s-1); }
 .fdet-keys .keycap { margin-bottom: var(--lip); }
+
+/* ONBOARDING (Tactile, group F; BUILD-NOTES 4.7, prototype/app.css `.onb`). The
+   first-run screen is the sheet owner's `#first-time-sheet`, made a PAGE: full
+   screen on --paper (the sheet's scrim is the paper, so nothing of Today or the
+   deck shows), the panel a column of card, headline and keys. Every rule hangs
+   on `.onb-sheet` / `.onb`, so no other sheet moves. The specificity (three
+   classes) beats `.fy-panel`, `body.ui-v2 .fy-panel` and the entrance animation. */
+.onb-sheet > .fy-scrim { background: var(--paper); }
+.fy-sheet .fy-panel.onb {
+  top: 0; max-width: 680px; max-height: none;
+  display: flex; flex-direction: column; gap: var(--s-5);
+  padding: calc(var(--safe-t) + var(--s-4)) var(--gutter) calc(var(--safe-b) + var(--s-4));
+  border: 0; border-radius: 0; background: transparent; box-shadow: none; color: var(--ink);
+  font: var(--w-body) var(--t-body)/var(--lh-body) var(--font-text);
+  animation: none;   /* a page does not slide in; the pull-down to park still tracks the thumb (--fy-panel-dy) */
+}
+.fy-sheet .fy-panel.onb:focus { outline: none; }
+.onb h2, .onb p { margin: 0; }
+/* The card: 60% of the screen on a tall phone, 50% on a short one, 56% between
+   (the prototype's three heights). It gives up height before anything below it
+   is pushed off a phone with a notch, so the keys stay above safe-b + 16. */
+.onb__card {
+  position: relative; overflow: hidden; flex: 0 1 auto;
+  display: flex; flex-direction: column; justify-content: space-between; gap: var(--s-4);
+  height: 56dvh; min-height: 280px; max-height: 620px; padding: var(--s-5);
+  border-radius: var(--r-lg); background: var(--card); box-shadow: var(--shadow-card);
+}
+@media (min-height: 800px) { .onb__card { height: 60dvh; } }
+@media (max-height: 700px) { .fy-sheet .fy-panel.onb { gap: var(--s-4); } .onb__card { height: 50dvh; min-height: 250px; padding: var(--s-4); } }
+.onb__wm { display: flex; align-items: center; justify-content: space-between; }
+.onb__brand { display: flex; align-items: center; gap: var(--s-2); }
+.onb__brand .i { color: var(--persimmon); }
+.onb__stage { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: space-between; gap: calc(var(--s-3) + var(--s-1) / 2); }
+.onb__art { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+.onb__collage {
+  --s: clamp(120px, 31dvh, 260px);
+  flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: calc(var(--s-1) / 2);
+  width: var(--s); height: var(--s); overflow: hidden; border-radius: var(--r-sm); background: var(--paper-2);
+}
+.onb__collage--one { grid-template-columns: 1fr; }
+@media (max-height: 700px) { .onb__collage { --s: clamp(96px, 20dvh, 140px); } }
+.onb__collage .art-frame { --art-size: 100%; width: 100%; height: 100%; border-radius: 0; box-shadow: none; }
+.onb__collage .art-frame img { width: 100%; height: 100%; }
+.onb__well { display: block; min-height: 0; padding: var(--s-2) calc(var(--s-2) + var(--s-1) / 2) calc(var(--s-1) / 2); }   /* the prototype's 10 / 10 / 6 around a 54px stage, in a 60px band: bars start 16px down, the well is 70px */
+.onb .needle { transition: none; }   /* the loop moves it every 100ms; a spring on each step would lag it */
+.onb--still .band__draw { animation: none; }   /* returning: nothing moves */
+.onb__meta { display: flex; align-items: center; gap: var(--s-3); }
+.onb .readout { word-spacing: -0.2em; }   /* the mono space is 0.6em wide; "8:52 / 22:10 · 6 shows" reads as one readout */
+.onb__now { color: var(--ink); }
+.onb__total { color: var(--ink-2); }
+.onb__copy { display: flex; flex-direction: column; gap: calc(var(--s-2) + var(--s-1) / 2); }
+.onb__copy .display { text-wrap: balance; }
+.onb__sub { font: var(--w-body) var(--t-body-lg)/var(--lh-body-lg) var(--font-text); color: var(--ink-2); }
+/* The text button sits 11px under the key's box (8 + the 3px lip): the nearest to the
+   stated 12 that keeps Play within 4px of the prototype, whose key sits 7px above the
+   text button (a 4px gap and a lip). At 12 the key rode 8px high on a 852px screen. */
+.onb__actions { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: var(--s-2); }
+.onb__actions .keycap { margin-bottom: var(--lip); }   /* the lip draws below the box; the gap is measured from it */
 
 /* ---------- REDUCE MOTION: ONE BLOCK, EVERY TRANSITION (audit round 2, a11y-9) ----------
    Three strip rules honoured the setting and nothing else did: the Now Playing
