@@ -204,4 +204,71 @@ body.view-foray-detail #view { padding-top: 0; }
 /* The share link's confirmation. */
 .ag .fd-toast { position: fixed; left: 50%; bottom: calc(var(--chrome-bottom) + var(--s-4)); transform: translateX(-50%); z-index: 30; min-height: calc(var(--tap) + var(--s-1)); padding: 0 var(--s-5); display: flex; align-items: center; }
 
+/* ---------------------------------------------------------------------------------------------
+   The Dock on this page (DIRECTION.md "Materials": one floating Veil, never a third hue; the Today block in
+   ui/today.css is the pattern). The legacy `#tab-bar` and `#foray-player` stay the elements (the player wires them)
+   and take the Dock's anatomy here: inset by the gutter, 12px above the safe area, `--r-xl` corners, the Glow-tinted
+   Veil (bg0 mixed with the Room's light, warm when the Foray is, never the legacy violet-black surface), a rim between
+   rows. The tab bar is on <body>, outside `.ag`, so it reads the :root tokens (`--ag-gutter`). The page sets the root's
+   Glow to its first show's, which is what tints the Veil. Nothing here transitions or animates. */
+body.view-foray-detail {
+  --dock-lift: calc(env(safe-area-inset-bottom, 0px) + var(--dock-inset));
+  --tab-bar-h: calc(var(--tab-bar) + var(--dock-inset));
+  --fp-bar-h: var(--mini);
+  --fd-dock-h: calc(var(--dock-lift) + var(--tab-bar));
+}
+body.view-foray-detail.fp-open { --fd-dock-h: calc(var(--dock-lift) + var(--tab-bar) + var(--mini)); }
+body.view-foray-detail .tab-bar {
+  left: var(--ag-gutter); right: var(--ag-gutter); bottom: var(--dock-lift);
+  height: var(--tab-bar); padding: 0 var(--s-1);
+  border: 0; border-radius: var(--r-xl); overflow: hidden;
+  background: var(--glow-veil);
+  -webkit-backdrop-filter: blur(20px) saturate(140%); backdrop-filter: blur(20px) saturate(140%);
+  box-shadow: inset 0 1px 0 var(--rim), var(--shadow-2);
+}
+body.view-foray-detail .tab-btn {
+  min-width: var(--tap); min-height: var(--tap); gap: 0; border-radius: var(--r-lg);
+  color: var(--text-2); font: 600 0.8125rem/1.125rem var(--font-text);
+}
+body.view-foray-detail .tab-btn svg { width: var(--icon-tab); height: var(--icon-tab); }
+body.view-foray-detail .tab-bar .tab-btn[aria-current="page"] { color: var(--lamp-text); }
+body.view-foray-detail .tab-btn:focus-visible { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) * -1); }
+/* Something is loaded: the mini is the Dock's top row. Its progress line is 2px of Glow on the Veil (the legacy navy track is
+   clear), its title is DM Sans (Fraunces is for the page's display roles), its Play is Ember (never violet). */
+body.view-foray-detail.fp-open .tab-bar { border-radius: 0 0 var(--r-xl) var(--r-xl); }
+body.view-foray-detail.ui-v2.fp-open #foray-player {
+  left: var(--ag-gutter); right: var(--ag-gutter); bottom: calc(var(--dock-lift) + var(--tab-bar));
+  border: 0; border-radius: var(--r-xl) var(--r-xl) 0 0;
+  background: var(--glow-veil);
+  -webkit-backdrop-filter: blur(20px) saturate(140%); backdrop-filter: blur(20px) saturate(140%);
+  box-shadow: inset 0 1px 0 var(--rim), inset 0 -1px 0 var(--rim);
+}
+/* The collapsed mini clips its 2px progress line to the Dock's rounded top. Expanded (Now Playing), the bar sheds its blur: a
+   backdrop-filter makes it the containing block of the fixed `.fp-sheet`, which would shrink the sheet to the bar's box. */
+body.view-foray-detail.ui-v2.fp-open:not(.fp-expanded) #foray-player { overflow: hidden; }
+body.view-foray-detail.ui-v2.fp-open.fp-expanded #foray-player { -webkit-backdrop-filter: none; backdrop-filter: none; }
+body.view-foray-detail #foray-player .fp-title { font: var(--t-label); color: var(--text); }
+body.view-foray-detail #foray-player .fp-show { color: var(--text-2); }
+body.view-foray-detail #foray-player .fp-progress { background: transparent; }
+body.view-foray-detail #foray-player .fp-fill { background: var(--glow); }
+body.view-foray-detail.ui-v2 #foray-player .fp-play { background: var(--ember); border-color: var(--ember); color: var(--ember-ink); }
+/* Content runs under the Dock and fades to bg behind it: solid from 32px above the Dock's top row to the screen edge, so the
+   last tile is never sliced by the Dock's edge (BUILD-NOTES 10.9 / 12.1). It tracks the Dock's height. */
+body.view-foray-detail::after {
+  content: ''; position: fixed; left: 0; right: 0; bottom: 0; z-index: 54; pointer-events: none;
+  height: calc(var(--fd-dock-h) + var(--s-8));
+  background: linear-gradient(transparent 0, var(--bg0) var(--s-8));
+}
+body.view-foray-detail.fp-open .ag .fd-toast { bottom: calc(var(--chrome-bottom) + var(--mini) + var(--s-4)); }
+/* The same material fallbacks `.veil` carries (ui/tokens.css section 7). */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  body.view-foray-detail .tab-bar, body.view-foray-detail.ui-v2.fp-open #foray-player { background: var(--bg1); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  body.view-foray-detail .tab-bar, body.view-foray-detail.ui-v2.fp-open #foray-player { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--bg1); }
+}
+@media (prefers-contrast: more) {
+  body.view-foray-detail .tab-bar, body.view-foray-detail.ui-v2.fp-open #foray-player { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--bg0); }
+}
+
 @media (max-width: 392px) { .ag .fd-tiles { gap: var(--s-2); } }

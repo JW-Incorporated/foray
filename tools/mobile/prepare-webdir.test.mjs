@@ -94,7 +94,8 @@ const AMBIENT_PRIMITIVES_ASSETS = Object.freeze([
      page's markup, the show tiles, the strip's colours and thumbnails, share). foray.js is budgeted here, not in the legacy
      line, for the reason the primitives are: the legacy alarm is not to be re-baselined an eighth time, and this is a
      bounded feature step. Measured minified, 2026-10-07: foray-detail.css 9.0 KB, palette.js 1.8 KB, foray.js 26.8 KB. */
-  { rel: "ui/foray-detail.css", maxBytes: 10 * 1024 },
+  /* Iteration 4 added the Dock block (the warm Veil, the mini's Ember Play, the fade; 12.4 KB measured minified): ceiling 10 to 14 KB, a bounded step that ui/dock.css retires when the Dock unit lands. */
+  { rel: "ui/foray-detail.css", maxBytes: 14 * 1024 },
   { rel: "ui/foray.js", maxBytes: 32 * 1024 },
 ]);
 

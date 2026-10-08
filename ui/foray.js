@@ -1271,6 +1271,9 @@ async function renderForay(id) {
      the CSP forbids a style attribute, not these. */
   const page = $("#view .fd");
   if (glow) forayCssVar(page, "--glow", glow);
+  /* The Dock (tab bar and mini player) lives on <body>, outside the page, so it reads the root's Glow: set it there too, so
+     the Veil is tinted by the Room's light and not by whatever the last page left (the root's `transition: --glow` moves it). */
+  try { if (glow) forayCssVar(document.documentElement, "--glow", glow); } catch (_) { /* a stub document */ }
   const room = $("#view .fd-room");
   if (room && first && first.art) forayCssVar(room, "--room-art", forayRoomArtValue(first.art));
   const collageEl = $("#view .fd-collage .ag-collage");

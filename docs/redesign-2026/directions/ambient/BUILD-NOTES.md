@@ -1169,3 +1169,18 @@ Decisions the builder made while no one could be asked; each is also in the code
 11. **Not built here**: the "lamps light in sequence" strip draw-in (§5, motion 3), the Room shifting colour as playback crosses a
    segment (a Now Playing behaviour), per-show palette from the nightly refresh (the committed table in `ui/palette.js` and the hash
    hue are the sources), and the legacy tab bar and mini player the Dock unit replaces.
+12. **Iteration 4, the Dock on this page (overrides item 10: the shared chrome is now dressed here, as Today does).** Five art-director
+    findings closed in `ui/foray-detail.css`, all under `body.view-foray-detail` so no other screen moves: the tab bar and the
+    mini take the Dock anatomy (gutter inset, 12px lift, `--r-xl`, the Glow-tinted `--glow-veil` with the Veil blur and its three
+    fallbacks, a rim between rows), which removes the violet-black slab; the mini's Play is Ember on the Veil (no violet anywhere
+    in the sheet); the mini title is the DM Sans `--t-label` (the legacy Fraunces `--font-display` is gone from it); a fixed fade
+    (`body.view-foray-detail::after`, z 54) is solid bg0 from 32px above the Dock's top row to the screen edge, so the last
+    show tile is never sliced; the 2px progress line is Glow on the transparent track, and the collapsed mini clips it to the
+    rounded top. Two decisions: (a) the page now sets the **root's** `--glow` to its first show's (`ui/foray.js`), because the Dock
+    lives on `<body>` outside `.fd` and a Glow set only on the page never reached it (the Veil mixed whatever the last page left);
+    (b) an expanded Now Playing sheds the bar's `backdrop-filter`, since a blurred ancestor becomes the containing block of the
+    fixed `.fp-sheet` and would shrink it to the bar's box (Today's block has the same hazard; that is the Dock unit's to fold in).
+    The block is a copy of Today's, on purpose (two screens, one file each, no shared edit); the Dock unit's `ui/dock.css`
+    replaces both. `foray-detail.css` minifies to 12.4 KB, its ceiling moves 10 to 14 KB in `prepare-webdir.test.mjs`. Fidelity
+    `foray-detail-it4b`: header, hero, strip, primary regions unchanged from it3 (the foray row's 30px strip offset and the
+    24px `why` height are the seed's one-line title and three-line why-line, as before).
