@@ -33,8 +33,15 @@ test("meta lines use the short display-name rule while titles keep escaped data"
 });
 
 test("downloaded rows wrap after the show name at narrow phone widths", () => {
-  // MUTATION: change `flex: 1 1 100%` to `flex: 0 1 auto` -> this test fails.
-  assert.match(CSS, /@media \(max-width: 393px\)[\s\S]*\.row-episode:has\(\.tag--downloaded\) \.row__show\s*\{\s*flex:\s*1 1 100%/);
+  /* A row with the mark wraps when it must at any width (row-gap 0), and at 393 and under the
+     WORD mark (offline) puts the name alone on line one; the check-circle alone (`.tag--icon`,
+     online) is left to wrap naturally. Redesign 2026 `home-offline` changed this from "every
+     downloaded row, at 393 and under" because the online mark is small and must not force a wrap.
+     MUTATION: change `flex: 1 1 100%` to `flex: 0 1 auto` -> this test fails.
+     MUTATION 2: drop `:not(.tag--icon)` -> the icon-only row is forced to wrap and the third assertion fails. */
+  assert.match(CSS, /@media \(max-width: 393px\)[\s\S]*\.row-episode:has\(\.tag--downloaded:not\(\.tag--icon\)\) \.row__show\s*\{\s*flex:\s*1 1 100%/);
+  assert.match(rule(".row-episode:has(.tag--downloaded) .row__meta"), /flex-wrap:\s*wrap/);
+  assert.doesNotMatch(CSS, /\.row-episode:has\(\.tag--downloaded\) \.row__show\s*\{/);
   /* The name shrinks and ellipsises before anything else on the line, and the
      facts are one unshrinking group. Tactile Today: the notes' `min-width:
      112px` on the name pushed a row with a long length ("1 hr 4 min") over the

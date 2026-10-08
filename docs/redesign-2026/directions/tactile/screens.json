@@ -420,28 +420,31 @@
       "prototype": {
         "route": "#/home/offline"
       },
-      "app": null,
+      "app": {
+        "state": "offline",
+        "step": "home"
+      },
       "regions": {
         "header": {
           "prototype": ".top",
-          "app": null
+          "app": ".today-top"
         },
         "hero": {
           "prototype": ".hero",
-          "app": null
+          "app": ".today-hero"
         },
         "primary": {
           "prototype": ".hero__keys .keycap",
-          "app": null
+          "app": ".today-hero__keys .keycap"
         },
         "rows": {
           "prototype": ".row",
-          "app": null,
+          "app": ".today .row-episode",
           "mode": "all"
         },
         "tabBar": {
           "prototype": "#tabs",
-          "app": null
+          "app": "#tab-bar"
         }
       }
     },

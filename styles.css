@@ -4305,10 +4305,22 @@ body.drawer-open { overflow: hidden; }
 .iconbtn { width: var(--tap); height: var(--tap); flex: none; display: inline-grid; place-items: center; padding: 0; border-radius: calc(var(--r-sm) + var(--s-1)); background: transparent; color: var(--ink-2); transition: background var(--d-quick) var(--ease-quick); }
 .iconbtn:active { background: var(--paper-2); }
 .row-episode.is-loading { color: var(--ink-3); }
+/* A row with the downloaded mark wraps when its meta cannot fit, at any width: the facts are
+   one unshrinking group, so a wrap puts the name alone on line one and "35 min, the mark,
+   + Up Next" together on line two, never the action alone. At 393 and under the WORD mark
+   ("Downloaded", offline) is wide enough that the name always takes line one; the
+   check-circle alone (online) wraps only when it must. */
+.row-episode:has(.tag--downloaded) .row__meta { flex-wrap: wrap; }
+.today .row-episode:has(.tag--downloaded) .row__meta { row-gap: 0; }   /* the prototype's two meta lines sit tight; the gallery keeps the 6px primitive gap */
 @media (max-width: 393px) {
-  .row-episode:has(.tag--downloaded) .row__meta { flex-wrap: wrap; }
-  .row-episode:has(.tag--downloaded) .row__show { flex: 1 1 100%; }
+  .row-episode:has(.tag--downloaded:not(.tag--icon)) .row__show { flex: 1 1 100%; }
 }
+.tag--icon { min-height: 0; padding: 0; background: transparent; }
+/* "Needs a connection" (offline): the sentence the blocked keys share, under the row or hero it sits on. */
+.needs { display: flex; align-items: center; gap: calc(var(--s-1) + var(--s-1) / 2); color: var(--warn); font: var(--w-label) var(--t-label)/var(--lh-label) var(--font-text); }
+.needs .i { width: var(--s-4); height: var(--s-4); }
+.today .needs { margin-top: var(--s-1); }   /* beats `.today p { margin: 0 }` */
+.today .today-hero .needs { margin-top: var(--s-3); }
 
 .tile { min-width: var(--tap); min-height: calc(var(--key-glance) + var(--s-6)); display: flex; flex-direction: column; justify-content: space-between; gap: var(--s-2); padding: calc(var(--s-3) + var(--s-1) / 2); border-radius: var(--r-md); background: var(--card); box-shadow: var(--shadow-card); color: var(--ink); text-align: left; transition: transform var(--d-snap) var(--spring-snap); }
 .tile:active { transform: scale(.98); }

@@ -69,7 +69,7 @@ function world({ withToday = true } = {}) {
   if (withToday) {
     vm.runInContext([
       liftConst(HOME, "TODAY_DAYS"), liftConst(HOME, "TODAY_MONTHS"),
-      lift(HOME, "todayDateLine"), lift(HOME, "todayHeaderHtml"), lift(HOME, "todayLoadingHtml"),
+      lift(HOME, "todayDateLine"), lift(HOME, "todayIsOffline"), lift(HOME, "todayDateReadout"), lift(HOME, "todayHeaderHtml"), lift(HOME, "todayLoadingHtml"),
     ].join("\n"), ctx, { filename: "ui/home.js (loading)" });
   }
   vm.runInContext([
