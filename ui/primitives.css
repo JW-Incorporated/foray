@@ -221,6 +221,10 @@
 /* The line is the page's landing target (tabindex -1, set by landOnPage), not a control: no ring on it, as for every other page heading. */
 .ag.ag-not-found [data-page-heading]:focus { outline: none; }
 .ag.ag-not-found a.ag-btn { text-decoration: none; }
+/* The Today button here is lit, not outlined: Raised's overlay and 1px top rim, no perimeter line ("No hairline borders anywhere"). Focus keeps the shared ring. */
+.ag.ag-not-found a.ag-btn-secondary { background: linear-gradient(var(--overlay), var(--overlay)) var(--bg1); box-shadow: inset 0 1px 0 var(--rim), var(--shadow-1), var(--shadow-2); }
+.ag.ag-not-found a.ag-btn-secondary:active { box-shadow: inset 0 0 0 var(--s-1) var(--overlay); }
+.ag.ag-not-found a.ag-btn-secondary:focus-visible { box-shadow: 0 0 0 calc(var(--s-1) / 2) var(--bg0), 0 0 0 var(--s-1) var(--lamp-text); }
 
 /* Gallery-only composition. It is never rendered without .ag and cannot style a screen. */
 .gallery-page { overflow: auto; background: var(--bg0); }

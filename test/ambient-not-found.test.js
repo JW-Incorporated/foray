@@ -118,6 +118,15 @@ test("3. the button is 44px and the page cannot overflow sideways: the rules tha
      MUTATION E: delete the `a.ag-btn { text-decoration: none }` rule -> red (the Today label is underlined as a legacy link). */
   assert.match(css, /\.ag\.ag-not-found \[data-page-heading\]:focus \{\s*outline:\s*none;/);
   assert.match(css, /\.ag\.ag-not-found a\.ag-btn \{\s*text-decoration:\s*none;/);
+  /* MUTATION F: change the lit rule's box-shadow to `inset 0 0 0 1.5px var(--text-2)` (the outlined Secondary) or delete the rule -> red:
+     the Today button is a lit Raised surface (overlay + top rim), not a full-perimeter outline (DIRECTION.md "No hairline borders anywhere").
+     MUTATION G: delete the :focus-visible rule -> red (the lit shadow would otherwise swallow the focus ring). */
+  const lit = css.match(/\.ag\.ag-not-found a\.ag-btn-secondary \{([^}]*)\}/);
+  assert.ok(lit, "the lit Today rule exists");
+  assert.match(lit[1], /background:\s*linear-gradient\(var\(--overlay\), var\(--overlay\)\)/);
+  assert.match(lit[1], /box-shadow:\s*inset 0 1px 0 var\(--rim\)/);
+  assert.ok(!/inset 0 0 0/.test(lit[1]), "no full-perimeter inset line");
+  assert.match(css, /\.ag\.ag-not-found a\.ag-btn-secondary:focus-visible \{[^}]*var\(--lamp-text\)/);
 });
 
 test("4. the shared EmptyState escapes its label, route and lines; the '#' is a literal", () => {
