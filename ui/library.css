@@ -56,7 +56,9 @@ body.fp-open .ag .lb-cast:not([data-state="idle"]) { display: block; bottom: cal
 /* The first section sits right under the title (its head's 32 would be a gap under a 44 tall title row). */
 .ag .lb-head + .lb-section > .ag-section-head { margin-top: var(--s-2); }
 .ag .lb-stack > * + * { margin-top: var(--s-2); }
-.ag .lb-more { margin-top: var(--s-2); }
+/* A quiet link under a grid or a list starts at the content edge: the button's 16px inline padding would indent its word off
+   the tiles above it (iteration 2's judges: "All forays" off the grid). The padding moves to the end, so the 44 tall target stays. */
+.ag .lb-more { margin-top: var(--s-2); justify-content: flex-start; padding-inline-start: 0; }
 
 /* The grid: 3-up, rows at least 16 apart, every cell top-aligned so a tall caption never stretches its neighbours. */
 .ag .lb-grid {

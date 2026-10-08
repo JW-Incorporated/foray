@@ -264,7 +264,7 @@ test("a ForayTile says how long the foray is, how many shows and how many clips,
   const m = await mount({ seed: { cp_show_drafts: "true" }, bridge: realBridge([[a, { remainingSec: 600, elapsedSec: 1500 }]]) });
   m.ctx.renderLibrary();
   const tile = sectionOf(m.view(), "forays");
-  const facts = /<span class="t-caption lb-facts">((?:<span class="lb-fact">[^<]*<\/span>)+)<\/span>/.exec(tile);
+  const facts = /<span class="t-caption lb-facts"(?: aria-hidden="true")?>((?:<span class="lb-fact">[^<]*<\/span>)+)<\/span>/.exec(tile);
   assert.ok(facts, "the tile has a facts block");
   const lines = [...facts[1].matchAll(/<span class="lb-fact">([^<]*)<\/span>/g)].map((x) => x[1]);
   assert.strictEqual(lines.length, 2, "two short lines, so neither is cut in a 96px column");
@@ -686,4 +686,24 @@ test("the screen is registered: linked in index.html, in every shell list, palet
   }
   assert.match(read("app.js"), /querySelector\("\.page-head"\) \|\| view\.querySelector\("\.lb-head"\)/, "the landing heading finds Library's title (two lookups, not a comma list: the suites' fake DOM parses one simple selector)");
   assert.match(read("app.js"), /currentHash\(\) === "#\/library" && typeof repaintLibraryUpNext === "function"/, "a queue write repaints Library's Up Next");
+});
+
+test("a quiet link under a grid or list starts at the content edge, and a foray tile's screen-reader line is the whole Foray line", async () => {
+  /* Iteration 3 (judges of iteration 2: "All forays" sat indented off the grid; porting foray-surfaces found the tile
+     had lost the draft tag and the facts from what a screen reader hears).
+     MUTATION 1: drop `padding-inline-start: 0` (and `justify-content: flex-start`) from `.ag .lb-more` in library.css ->
+     the link's 16px primitive padding is back and the CSS assertion is red.
+     MUTATION 2: in libForayList set `sub: progress.get(f.id) || ""` again -> the sub carries no length and makeup and
+     the suffix assertion is red.
+     MUTATION 3: drop `aria-hidden` from the facts span -> a screen reader hears the facts twice; the aria-hidden
+     assertion is red. */
+  assert.match(LIB_CSS, /\.ag \.lb-more \{[^}]*justify-content: flex-start;[^}]*padding-inline-start: 0;/, "the link's word starts at the content edge");
+  const a = FROZEN_FORAYS()[0].id;
+  const m = await mount({ seed: { cp_show_drafts: "true" }, bridge: realBridge([[a, { remainingSec: 600, elapsedSec: 1500 }]]) });
+  m.ctx.renderLibrary();
+  const tile = sectionOf(m.view(), "forays");
+  const sub = /<span class="sr-only lb-sub">([^<]*)<\/span>/.exec(tile);
+  assert.ok(sub, "the tile has a screen-reader line");
+  assert.match(sub[1], /^draft · 10 min left · \d+ hr \d+ min · \d+ clips · \d+ shows$/, `progress, then length and makeup: "${sub[1]}"`);
+  assert.match(tile, /<span class="t-caption lb-facts" aria-hidden="true">/, "the visible facts are not read a second time");
 });

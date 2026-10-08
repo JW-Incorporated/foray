@@ -238,8 +238,10 @@ function libForayList() {
       bars: libForayBars(r && r.playable, p ? Number(p.elapsedSec) || 0 : 0, finished),
       finished,
       facts: libForayFacts(r),
-      /* Said to a screen reader only: "Played" or "12 min left". The visible tile shows the check and the lit bars. */
-      sub: progress.get(f.id) || "",
+      /* Said to a screen reader only, and whole: the draft tag, "Played" or "12 min left", then the length and makeup
+         (forayListSubLabel, the one line every Foray list says; honesty-12, p-foray-8). The visible tile shows the
+         check, the lit bars and the facts, so the facts block is aria-hidden and this line says them once. */
+      sub: forayListSubLabel(f, progress),
     };
   });
   return { known: true, tiles, total: mine.length, catalog: list.length };
@@ -255,7 +257,7 @@ function libForayTileHtml(t) {
   const f = t.facts || {};
   const line1 = [f.length, f.shows].filter(Boolean).join(" · ");
   const facts = (line1 || f.clips)
-    ? `<span class="t-caption lb-facts">${line1 ? `<span class="lb-fact">${esc(line1)}</span>` : ""}${f.clips ? `<span class="lb-fact">${esc(f.clips)}</span>` : ""}</span>`
+    ? `<span class="t-caption lb-facts"${t.sub ? ' aria-hidden="true"' : ""}>${line1 ? `<span class="lb-fact">${esc(line1)}</span>` : ""}${f.clips ? `<span class="lb-fact">${esc(f.clips)}</span>` : ""}</span>`
     : "";
   return `<a class="lb-tile lb-foray" href="#${esc(forayRoutePath(t.id))}" data-ev="picked" data-ctx="library-foray" data-glow-show="${esc(t.glowShow)}">
     <span class="lb-art">${agCollage(arts, { size: 104 })}${bars ? `<span class="lb-strip" aria-hidden="true">${bars}</span>` : ""}${t.finished ? `<span class="ag-done">${agIcon("check-circle-fill", 20)}</span>` : ""}</span>

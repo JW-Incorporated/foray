@@ -1128,3 +1128,25 @@ forward-30 glyph and 2px Glow progress line, the mini player's DM Sans title) be
 Library's shots still show the legacy bars until that branch merges. **At that merge** Library's own `.lb-cast`
 element and its `--tab-bar-h`-based offsets for the cast and the Toast should be retired in favour of the Dock's
 `#dock-cast` and its own bottom edge (the Dock draws its cast itself), and `ambient-app` re-recorded once.
+
+### 17.2 Library, iteration 3 (art-director calls made unattended)
+
+The iteration-2 review failed on tests, not on look: four `test/foray-surfaces.test.js` cases read the Foray rows by
+the old markup (`libraryRows`) and found none once the Library was tiles. What changed:
+
+1. **`libraryRows` is ported to the tile** (name, then the facts block, then the sr-only line), and the tests keep
+   what they pinned: every part-played Foray is labelled (not the rail's three), a part-played draft keeps its
+   "draft" tag, a finished one says "Played", every list surface says length and makeup. A Foray nobody opened is
+   not a tile (ruling 17.1.1), so the length-and-makeup test now opens it first.
+2. **The tile's screen-reader line is whole again.** It was `progress.get(id)` only, which lost the draft tag and
+   the length and makeup the old row said (honesty-12, p-foray-8). It is `forayListSubLabel`, the line every other
+   Foray list says, and the visible facts block is `aria-hidden` so they are read once.
+3. **A quiet link under a grid or list starts at the content edge** (`.lb-more`: no inline-start padding, the 44
+   tall target kept). "All forays" had been indented 16px off the tiles above it (judges of iteration 2).
+
+Not changed, and why. The two-section structure stays (17.1.1): it is what the judges praised (serif heads with
+counts, artwork-led tiles) and the prototype's single grid lost to today's Library on labelling in iteration 1; the
+fidelity deltas on the grid origin and tile height are that call and the facts under each tile (17.1.3). The
+Dock-owned findings (full-width opaque bar, violet play, four tabs, generic icons, back-15 glyph, the bar slicing
+the last caption row) belong to `redesign/ambient-dock`; the right-hand empty cell of a two-tile foray row is the
+grid, not a defect.
