@@ -1,5 +1,5 @@
 /* The engine's four Developer rows (card NE-22d; docs/native-engine-plan.md
- * NE-16, NE-17, NE-24, NE-25c): the drawer half.
+ * NE-16, NE-17, NE-24, NE-25c): the Settings half.
  *
  * docs/native-engine-m1-car-test.md drives four engine commands from the
  * page's Developer group: "Playback engine: Automatic / Native / Web (applies
@@ -9,11 +9,11 @@
  * which exist (`ForayPlayer.engineDeveloperStatus`) and is their only sender
  * (`ForayPlayer.engineDeveloperSend`, over the NE-21 engine client).
  * player/native-mode.test.js pins that half against the reference engine;
- * this suite pins the drawer against a recording ForayPlayer.
+ * this suite pins Settings against a recording ForayPlayer.
  *
  * THE PROPERTIES. No rows and no send where there is no engine (the web,
  * Android, an older player module). Where there is one, the rows sit in the
- * Developer group above "Playback diagnostics", follow the drawer's control
+ * Developer group above "Playback diagnostics", follow Settings' control
  * conventions, and paint what the ENGINE answered, not what was tapped.
  *
  * Every test names the mutation that turns it red.
@@ -28,7 +28,7 @@ const { readAppSource, runAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
 const APP_SRC = readAppSource();
-const CSS = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");
+const CSS = fs.readFileSync(path.join(ROOT, "ui/settings.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, " ");
 
 /* ---------- the smallest DOM that boots app.js (voice-probe-switch's) ---------- */
 
@@ -147,8 +147,7 @@ const nativeStatus = (over = {}) => ({ lane: "native", override: "auto", holdPol
  */
 async function mount({ engine = null } = {}) {
   const body = new El("body");
-  for (const id of ["view", "drawer", "drawer-overlay", "drawer-playlists",
-    "family-toggle", "player-toggle", "autoadvance-toggle", "menu-btn", "refresh-btn",
+  for (const id of ["view", "menu-btn", "refresh-btn",
     "banner-slot", "pl-form", "pl-input", "pl-note", "tab-topics", "tab-shows",
     "sh-form", "sh-input", "sh-note", "sh-results", "browse-all-link", "pl-remove", "banner-done"]) {
     const el = new El("div"); el.id = id; body.append(el);
@@ -203,11 +202,12 @@ async function mount({ engine = null } = {}) {
 
   const h = { ctx, body };
   h.fn = (name) => vm.runInContext(name, ctx);
-  h.openDrawer = () => h.fn("openDrawer")(true);
-  h.drawer = () => findIn(body, "#drawer");
+  /* "Opening" Settings is what the page does when it mounts the controls: paint every label from live state. */
+  h.openSettings = () => h.fn("paintSettings")();
+  h.host = () => findIn(body, "#settings-host");
   h.row = (id) => findIn(body, "#" + id);
-  h.devIds = () => (findIn(body, "#drawer-dev")?.children ?? []).map((c) => c.id).filter(Boolean);
-  h.engineIds = () => h.drawer().tree().map((e) => e.id).filter((id) => ROW_IDS.includes(id));
+  h.devIds = () => (findIn(body, "#settings-dev")?.children ?? []).map((c) => c.id).filter(Boolean);
+  h.engineIds = () => h.host().tree().map((e) => e.id).filter((id) => ROW_IDS.includes(id));
   h.settle = async (n = 20) => { for (let i = 0; i < n; i++) await tick(); };
   return h;
 }
@@ -221,7 +221,7 @@ test("web/Android (status null): no engine row exists and nothing is sent", asyn
      (drop the `cmds.includes(row.cmd)` gate) — four rows appear on the web. */
   const eng = fakeEngine({ status: null });
   const h = await mount({ engine: eng });
-  h.openDrawer();
+  h.openSettings();
   await h.settle();
   assert.deepStrictEqual(h.engineIds(), []);
   /* Even a direct call of the tap handler sends nothing without an engine. */
@@ -231,24 +231,24 @@ test("web/Android (status null): no engine row exists and nothing is sent", asyn
 
 test("an older player module with no engine half: no rows, no throw", async () => {
   /* KILLING MUTATION: drop the `typeof ... === "function"` checks in
-     engineDevStatus — renderDrawer throws and the whole drawer goes blank. */
+     engineDevStatus — paintSettings throws and the whole Settings page goes blank. */
   const h = await mount({ engine: null });
-  h.openDrawer();
+  h.openSettings();
   assert.deepStrictEqual(h.engineIds(), []);
   assert.ok(h.devIds().includes("diag-open"), "the rest of the Developer group is intact");
 });
 
 test("no engine is byte-identical to an app without the rows", async () => {
   /* KILLING MUTATION: create a placeholder row that is merely `hidden` when
-     there is no engine — the drawer's id list diverges. */
+     there is no engine — Settings' id list diverges. */
   const paint = async (engine) => {
     const h = await mount({ engine });
-    h.openDrawer();
-    return h.drawer().tree().map((e) => e.id).filter(Boolean);
+    h.openSettings();
+    return h.host().tree().map((e) => e.id).filter(Boolean);
   };
   const a = await paint(fakeEngine({ status: null }));
   const b = await paint(null);
-  assert.ok(a.includes("diag-open") && a.includes("delete-data"), "the drawer is not empty");
+  assert.ok(a.includes("diag-open") && a.includes("delete-data"), "Settings is not empty");
   assert.deepStrictEqual(a, b, "an engine that is absent = a player with no engine half");
 });
 
@@ -261,32 +261,33 @@ test("native lane: four rows, in the Developer group, above Playback diagnostics
      "Playback diagnostics", and the script's "Developer -> Pause hold" is
      hunted for under the Copy button. */
   const h = await mount({ engine: fakeEngine({ status: nativeStatus() }) });
-  h.openDrawer();
+  h.openSettings();
   const dev = h.devIds();
   const at = (id) => dev.indexOf(id);
   assert.deepStrictEqual(ROW_IDS.map(at).every((i) => i >= 0), true, `all four are in the group: ${dev.join(",")}`);
   assert.deepStrictEqual([...ROW_IDS].sort((x, y) => at(x) - at(y)), ROW_IDS, "in order");
   assert.ok(at("engine-session-probe") < at("diag-open"), "above Playback diagnostics");
-  const ids = h.drawer().children.map((c) => c.id).filter(Boolean);
+  const flatten = (el) => (el.children.length ? el.children.flatMap(flatten) : [el]);
+  const ids = flatten(h.host()).map((c) => c.id).filter(Boolean);
   assert.strictEqual(ids[ids.length - 1], "delete-data", "Delete my data stays last");
 });
 
-test("the rows follow the drawer's control conventions: 44px buttons that keep the drawer open", async () => {
-  /* KILLING MUTATION: build the rows with a bare class — no `.drawer-item`
-     min-height, so each is a ~20px target. Or drop `drawerStay` — a tap
-     closes the drawer before the answer is painted. */
+test("the rows follow Settings' control conventions: 44px buttons, wrapping text, painted in place", async () => {
+  /* KILLING MUTATION: build the rows with a bare class — no `.st-item`
+     min-height, so each is a ~20px target. Or give `.st-item` `white-space: nowrap` — the engine's
+     answer is cut off instead of wrapping. */
   const h = await mount({ engine: fakeEngine({ status: nativeStatus() }) });
-  h.openDrawer();
+  h.openSettings();
   for (const id of ROW_IDS) {
     const b = h.row(id);
     assert.strictEqual(b.tagName, "BUTTON");
     assert.strictEqual(b.type, "button");
     const cls = String(b.className).split(/\s+/);
-    assert.ok(cls.includes("drawer-item") && cls.includes("as-btn") && cls.includes("drawer-wrap"), `${id}: ${b.className}`);
-    assert.strictEqual(b.dataset.drawerStay, "1");
+    assert.ok(cls.includes("st-item") && cls.includes("st-wrap"), `${id}: ${b.className}`);
   }
-  assert.match(CSS, /\.drawer-item \{[^}]*min-height: 44px;/, ".drawer-item is the 44px target");
-  assert.match(CSS, /\.drawer-item\.drawer-wrap \{[^}]*white-space: normal;/, "the engine's answer wraps, never an ellipsis");
+  assert.match(CSS, /\.ag \.st-item, \.ag \.st-row \{[^}]*min-height: calc\(var\(--tap\) \+ var\(--s-1\)\);/, ".st-item is at least the 44px target (48)");
+  assert.doesNotMatch(CSS, /\.st-item[^{]*\{[^}]*(white-space: nowrap|text-overflow: ellipsis)/, "the engine's answer wraps, never an ellipsis");
+  assert.match(CSS, /\.ag \.st-wrap \{[^}]*height: auto;/, "a wrapped answer grows the row");
   const hold = h.row("engine-hold-policy");
   assert.strictEqual(hold.getAttribute("role"), "switch");
 });
@@ -297,7 +298,7 @@ test("each row paints what the engine says", async () => {
      `holdPolicyWord` and "until:60" paints raw. */
   const eng = fakeEngine({ status: nativeStatus() });
   const h = await mount({ engine: eng });
-  h.openDrawer();
+  h.openSettings();
   assert.strictEqual(h.row("engine-mode-override").textContent, "Playback engine: Automatic (applies after restart) · now Native");
   assert.strictEqual(h.row("engine-hold-policy").textContent, "Pause hold: forever");
   assert.strictEqual(h.row("engine-hold-policy").getAttribute("aria-checked"), "true");
@@ -306,7 +307,7 @@ test("each row paints what the engine says", async () => {
   assert.strictEqual(h.row("engine-session-probe").textContent, "Session probe");
 
   eng.status = nativeStatus({ holdPolicy: "until:60", override: null });
-  h.openDrawer();
+  h.openSettings();
   assert.strictEqual(h.row("engine-hold-policy").textContent, "Pause hold: 60 min");
   assert.strictEqual(h.row("engine-hold-policy").getAttribute("aria-checked"), "false");
   assert.strictEqual(h.row("engine-mode-override").textContent, "Playback engine: not known (applies after restart) · now Native");
@@ -317,7 +318,7 @@ test("Pause hold: a tap sends setHoldPolicy through the player and paints the en
      test's H-1b block ("Pause hold: none") is unreachable. */
   const eng = fakeEngine({ status: nativeStatus() });
   const h = await mount({ engine: eng });
-  h.openDrawer();
+  h.openSettings();
   await h.row("engine-hold-policy").click();
   assert.deepStrictEqual(plain(eng.sends), [{ cmd: "setHoldPolicy", args: { policy: "none" } }]);
   assert.strictEqual(h.row("engine-hold-policy").textContent, "Pause hold: none");
@@ -336,7 +337,7 @@ test("NE-40 Route sharing: the row appears with setRouteSharing, starts not know
      "Default" before any tap — the row would claim a value nobody read. */
   const eng = fakeEngine({ status: nativeStatus({ commands: [...ALL, "setRouteSharing"], routeSharing: null }) });
   const h = await mount({ engine: eng });
-  h.openDrawer();
+  h.openSettings();
   const row = () => h.row("engine-route-sharing");
   assert.strictEqual(row().textContent, "Route sharing: not known (applies after restart)");
   await row().click();
@@ -350,7 +351,7 @@ test("NE-40 Route sharing: the row appears with setRouteSharing, starts not know
 test("NE-40 Route sharing: no row on a build whose engine does not take setRouteSharing", async () => {
   const eng = fakeEngine({ status: nativeStatus() });
   const h = await mount({ engine: eng });
-  h.openDrawer();
+  h.openSettings();
   assert.strictEqual(h.row("engine-route-sharing"), null);
 });
 
@@ -359,7 +360,7 @@ test("Playback engine: a tap steps Automatic -> Native -> Web -> Automatic throu
      engine's value — after a refusal the row and the engine disagree. */
   const eng = fakeEngine({ status: nativeStatus() });
   const h = await mount({ engine: eng });
-  h.openDrawer();
+  h.openSettings();
   const row = () => h.row("engine-mode-override");
   await row().click();
   assert.strictEqual(row().textContent, "Playback engine: Native (applies after restart) · now Native");
@@ -375,7 +376,7 @@ test("a refusal leaves the engine's value on the row, not the tapped one", async
   /* KILLING MUTATION: paint the requested value optimistically on tap. */
   const eng = fakeEngine({ status: nativeStatus(), answer: () => ({ ok: false, reason: "bridge-error" }) });
   const h = await mount({ engine: eng });
-  h.openDrawer();
+  h.openSettings();
   await h.row("engine-hold-policy").click();
   assert.strictEqual(eng.sends.length, 1);
   assert.strictEqual(h.row("engine-hold-policy").textContent, "Pause hold: forever");
@@ -389,7 +390,7 @@ test("the one-shot rows say what the engine replied: armed, or why it refused", 
     answer: (cmd) => (cmd === "probeSession" ? { ok: true } : { ok: false, reason: "not-loaded" }),
   });
   const h = await mount({ engine: eng });
-  h.openDrawer();
+  h.openSettings();
   await h.row("engine-session-probe").click();
   await h.row("engine-simulate-termination").click();
   assert.deepStrictEqual(eng.sends.map((s) => s.cmd), ["probeSession", "simulateTermination"]);
@@ -407,7 +408,7 @@ test("a second tap while the first is in flight sends nothing", async () => {
      first's "armed"). */
   const eng = fakeEngine({ status: nativeStatus(), hold: true });
   const h = await mount({ engine: eng });
-  h.openDrawer();
+  h.openSettings();
   const first = h.row("engine-session-probe").click();
   await h.settle(2);
   assert.strictEqual(h.row("engine-session-probe").disabled, true, "disabled while in flight");
@@ -427,7 +428,7 @@ test("JS lane over an engine that answered: only the engine setting, which is ho
      the web player could never ask for the native engine. */
   const eng = fakeEngine({ status: { lane: "js", override: "auto", holdPolicy: null, commands: ["setModeOverride"] } });
   const h = await mount({ engine: eng });
-  h.openDrawer();
+  h.openSettings();
   assert.deepStrictEqual(h.engineIds(), ["engine-mode-override"]);
   assert.strictEqual(h.row("engine-mode-override").textContent, "Playback engine: Automatic (applies after restart) · now Web");
   await h.row("engine-mode-override").click();
@@ -441,10 +442,10 @@ test("a relinquish (native -> JS) removes the three native-only rows at the next
      relinquished engine. */
   const eng = fakeEngine({ status: nativeStatus() });
   const h = await mount({ engine: eng });
-  h.openDrawer();
+  h.openSettings();
   assert.strictEqual(h.engineIds().length, 4);
   eng.status = { lane: "js", override: "auto", holdPolicy: null, commands: ["setModeOverride"] };
-  h.openDrawer();
+  h.openSettings();
   assert.deepStrictEqual(h.engineIds(), ["engine-mode-override"]);
   /* and a stale handler cannot send what the lane no longer takes */
   const probe = h.fn("ENGINE_DEV_ROWS").find((r) => r.cmd === "probeSession");
@@ -452,13 +453,13 @@ test("a relinquish (native -> JS) removes the three native-only rows at the next
   assert.deepStrictEqual(eng.sends, []);
 });
 
-test("reopening the drawer never stacks a second row or a second listener", async () => {
+test("repainting Settings never stacks a second row or a second listener", async () => {
   /* KILLING MUTATION: drop the `if (!btn)` guard — three opens, three rows,
      and one tap sends three commands. */
   const eng = fakeEngine({ status: nativeStatus() });
   const h = await mount({ engine: eng });
-  h.openDrawer(); h.openDrawer(); h.openDrawer();
-  for (const id of ROW_IDS) assert.strictEqual(findAllIn(h.drawer(), "#" + id).length, 1, id);
+  h.openSettings(); h.openSettings(); h.openSettings();
+  for (const id of ROW_IDS) assert.strictEqual(findAllIn(h.host(), "#" + id).length, 1, id);
   await h.row("engine-session-probe").click();
   assert.strictEqual(eng.sends.length, 1);
 });

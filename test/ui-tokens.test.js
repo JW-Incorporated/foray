@@ -552,7 +552,7 @@ test("the two heading kinds: eyebrows are the text face, section titles the disp
      eyebrow now reads the same four declarations; a section title is the
      other kind. MUTATION: give `.fy-sources h3` `font-family:
      var(--font-display)` -> red. */
-  const eyebrows = [".ep-description h3", ".ep-more h3", ".fy-sources h3", ".show-forays-h", ".lib-section-head", ".drawer-section-label"];
+  const eyebrows = [".ep-description h3", ".ep-more h3", ".fy-sources h3", ".show-forays-h", ".lib-section-head"];
   for (const sel of eyebrows) {
     assert.strictEqual(lastOn(sel, "font-family"), "var(--font-body)", `${sel} is an eyebrow: text face`);
     assert.strictEqual(lastOn(sel, "font-size"), "var(--fs-xs)", `${sel} at the caption step`);
@@ -681,11 +681,12 @@ test("no C1 control character anywhere in the sheet: the notes chevron is the \\
 
 test("every range input is the listener's own material: amber, never the UA's system blue", () => {
   /* Round 2, visual-2: the Interests sliders set no accent-color and painted
-     system blue. MUTATION: delete `input[type="range"] { accent-color }` -> red. */
+     system blue. (Tuning has no sliders any more, Redesign 2026; the rule stays for every range input the app
+     draws: the Afterglow scrubber is one.) MUTATION: delete `input[type="range"] { accent-color }` -> red. */
   assert.strictEqual(lastOn('input[type="range"]', "accent-color"), "var(--amber)");
   const others = RULES.filter((r) => r.decls.some((d) => d.prop === "accent-color") && !r.selectors.includes('input[type="range"]'));
   assert.deepStrictEqual(others.map((r) => r.selectors.join(", ")), [], "no class re-colours a range input on its own");
-  assert.match(APP_JS, /<input type="range" class="interest-slider"/, "fixture assumption: the sliders are range inputs");
+  assert.match(APP_JS, /<input class="ag-scrub-input" type="range"/, "fixture assumption: the app still draws a range input (the scrubber)");
 });
 
 test("one text field: every field reads the one element rule, and only the floating search capsule differs", () => {
@@ -702,8 +703,9 @@ test("one text field: every field reads the one element rule, and only the float
   if (/<input\b[^>]*\bdata-show-ep-search-input\b[^>]*type="text"/.test(APP_JS)) fields.add(".show-ep-search input");
   for (const m of APP_JS.matchAll(/ddEl\("input", "([^"]+)"\)|\.className = "([^"]+-input)"/g)) fields.add(`.${m[1] || m[2]}`);
   /* Six since round 2's p-first-6 took the second playlist builder (#pl-input)
-     off #/playlists: Create's #cr-input is the one builder field left. */
-  assert.ok(fields.size >= 6, `fixture assumption: the census finds the app's text fields (${[...fields]})`);
+     off #/playlists: Create's #cr-input is the one builder field left. Five since Redesign 2026
+     (onboarding) retired the first-run sheet's "Or type a subject yourself" field (.ft-typed-input). */
+  assert.ok(fields.size >= 5, `fixture assumption: the census finds the app's text fields (${[...fields]})`);
   const OWN = ["border-radius", "min-height", "height", "font-size", "padding"];
   const bad = [];
   for (const r of RULES) {
@@ -840,13 +842,16 @@ test("'N min left' is amber and bold on Home's card, as on the Forays page and t
   assert.strictEqual(lastOn(".fy-jbi-left", "font-weight"), "700");
 });
 
-test("Home shows the wordmark once: the greeting has it, the bar keeps only its tagline there", () => {
-  /* Round 2, p-first-8: two identical italic "4a" marks ~50px apart. MUTATION:
-     delete `body.view-home .topbar h1 .wordmark { display: none }` -> red. */
-  assert.strictEqual(lastOn("body.view-home .topbar h1 .wordmark", "display"), "none");
-  assert.ok(!RULES.some((r) => r.selectors.some((s) => /view-home .*topbar-tag/.test(s)) && r.decls.some((d) => d.value === "none")),
-    "the tagline — what this app is — stays on Home");
-  assert.match(APP_JS, /class="hv2-greeting-brand"/, "fixture assumption: the greeting carries the brand");
+test("Home shows the wordmark once: Today's header has it, and the legacy bar steps aside there", () => {
+  /* Round 2, p-first-8: two identical italic "4a" marks ~50px apart. REDESIGN 2026 (Today) overturns
+     "wordmark once on Home, in the greeting": the mark is the header's left edge, and the legacy bar
+     (☰, the tagline, ↻) is hidden on Home by ui/today.css. The styles.css rule that hid the bar's mark
+     stays for the pages that still wear the bar. MUTATION: delete `body.view-home .topbar { display: none; }`
+     from ui/today.css, or render a second `td-wordmark` in todayHeaderHtml -> red. */
+  const today = fs.readFileSync(path.join(__dirname, "..", "ui/today.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, " ");
+  assert.match(today, /body\.view-home \.topbar\s*\{\s*display:\s*none;\s*\}/, "the legacy bar is hidden on Home");
+  assert.strictEqual(lastOn("body.view-home .topbar h1 .wordmark", "display"), "none", "and where it is not, Home\u2019s bar still carries no second mark");
+  assert.strictEqual((APP_JS.match(/class="td-wordmark"/g) || []).length, 1, "Today's header carries the one mark");
   assert.match(APP_JS, /setBodyClass\("view-home"\)/, "fixture assumption: Home's body class is view-home");
 });
 
@@ -923,15 +928,18 @@ test("the Up Next row the bar is on is drawn as the one that is on", () => {
   assert.strictEqual(lastOn("body.ui-v2 .up-next-row.is-current", "background"), "var(--surface2)");
 });
 
-test("a route's focus landing never paints the ring — Home's greeting included", () => {
+test("a route's focus landing never paints the ring — Home's wordmark included", () => {
   /* Founder, 2026-09-27: "Sometimes the top '4a' title bar block has a yellow
      outline, as if I somehow selected it." landOnPage focuses Home's greeting,
      which had no rule, and WebKit judges a script's post-render focus() as
      :focus-visible, so a :not(:focus-visible)-only guard does not hold on a
-     phone. MUTATIONS: drop `.hv2-greeting` from the rule -> red; re-qualify
-     any landing with :not(:focus-visible) -> red. */
-  for (const sel of ['.page-head h2[tabindex="-1"]:focus', '.hv2-greeting[tabindex="-1"]:focus', '#view[tabindex="-1"]:focus']) {
+     phone. MUTATIONS: drop `.td-wordmark:focus` from ui/today.css -> red; re-qualify
+     any landing with :not(:focus-visible) -> red. (Today's header mark took the greeting's place as
+     the landing, Redesign 2026.) */
+  for (const sel of ['.page-head h2[tabindex="-1"]:focus', '#view[tabindex="-1"]:focus']) {
     assert.strictEqual(lastOn(sel, "outline"), "none", `${sel} has no ring`);
   }
-  assert.match(APP_JS, /querySelector\("\.hv2-greeting"\)/, "fixture assumption: landOnPage still lands on the greeting");
+  const today = fs.readFileSync(path.join(__dirname, "..", "ui/today.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, " ");
+  assert.match(today, /\.td-wordmark:focus\s*\{\s*outline:\s*none;\s*\}/, "the landing mark has no ring");
+  assert.match(APP_JS, /querySelector\("\.td-wordmark"\)/, "fixture assumption: landOnPage still lands on the header mark");
 });

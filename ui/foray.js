@@ -529,6 +529,16 @@ function onForayScriptClick(e) {
   text.classList.toggle("is-clamped", open);
 }
 
+/* A clip row's leading mark (ambient Foray detail, QueueRow anatomy): the show's artwork at 56, drawn
+   as a decoration (the credit line beside it already names the show, so it is aria-hidden here), or
+   for a narration beat, no artwork and a thin Lamp light in the same 56px column. */
+function forayRowLead(entry) {
+  if (isForayNarration(entry)) return `<span class="fd-nbar" aria-hidden="true"></span>`;
+  const id = forayShowId(entry);
+  const src = showArtworkUrl((id ? showById(id) : null) || { title: entry.show }) || "";
+  return `<span class="fd-rowart" aria-hidden="true">${agArtwork({ name: entry.show || "Show", src, size: 56 })}</span>`;
+}
+
 function forayRow(entry) {
   const dur = window.ForayPlayer ? window.ForayPlayer.fmtSpan(entry.duration_sec) : "";
   /* HTML, not text, and named so — the credit is a link when the show joins.
@@ -557,6 +567,7 @@ function forayRow(entry) {
      the page and nobody reads it aloud. */
   if (!entry.playable) {
     return `<div class="fy-row is-out">
+      ${forayRowLead(entry)}
       <div class="fy-meta">${metaHtml}</div>
       <div class="fy-play-row">
         <div class="fy-jump">
@@ -575,6 +586,7 @@ function forayRow(entry) {
      `data-fy` — which paintForay and the transport both key on — moves with the
      button, not with the container. */
   return `<div class="fy-row">
+    ${forayRowLead(entry)}
     <div class="fy-meta">${metaHtml}</div>
     <div class="fy-play-row">
       <button type="button" class="fy-jump${entry.why ? "" : " is-bare"}" data-fy="${esc(String(entry.queueIndex))}"
@@ -713,45 +725,271 @@ function bindFeedback(r) {
   });
 }
 
-/* ---------- where this came from ---------- */
+/* ---------- the ambient Foray detail page: the data it draws (Redesign 2026) ----------
 
-/* The publisher credit block. This is not decoration: a Foray plays nine
-   episodes straight from their own enclosure URLs, so the download lands on the
-   publisher's numbers — and until now the listener had no single place that said
-   whose work they had spent an hour with, or how to go and get more of it. The
-   grouping and the links are computed in player/foray-sources.js, where they are
-   tested; this only renders them. */
-function foraySourcesHtml(r, player) {
-  // Deployed asynchronously from player/client.js (service worker, cache), so a
-  // returning visitor can briefly hold a new app.js against an older module.
-  // Losing the credit block is a missing section; throwing here is a blank page.
-  if (typeof player.forayCredits !== "function") return "";
-  const { credits, summary } = player.forayCredits(r, { discoverDoc: state.discover, collectionIds: showIndexCollectionIds(r) });
-  if (!credits.length) return "";
-  const clips = (n) => esc(countLabel(n, "clip"));
-  /* THE ARROW SAYS WHERE IT GOES (audit round 2, p-foray-2). It was labelled
-     "Open X on Apple Podcasts" for every show, while for a show with no known
-     Apple id it opens a SEARCH results page. `linkKind` exists in
-     player/foray-sources.js "so a surface can be honest about it". */
-  const outLabel = (c) => c.linkKind === "apple-show"
-    ? `Open ${c.show} on Apple Podcasts`
-    : `Search Apple Podcasts for ${c.show}`;
-  const rows = credits.map(c => `
-    <div class="fy-src">
-      <div class="fy-src-head">
-        <span class="fy-src-show">${showNameLink(c.show)}</span>
-        <span class="fy-src-meta">${clips(c.clips)} · ${esc(player.fmtSpan(c.seconds))}</span>
-        <a class="fy-src-out" href="${esc(safeUrl(c.link))}" target="_blank" rel="noopener"
-           data-src-show="${esc(c.show)}" data-link-kind="${esc(c.linkKind || "")}" aria-label="${esc(outLabel(c))}">↗</a>
-      </div>
-      <ul class="fy-src-eps">${c.episodes.map(e =>
-        `<li>${esc(e.title)} <span>${clips(e.clips)}</span></li>`).join("")}</ul>
-    </div>`).join("");
-  return `<section class="fy-sources">
-    <h3>Where this came from</h3>
-    <p class="fy-src-note">${esc(summary)}. Every clip plays from the show's own feed.</p>
-    ${rows}
+   The page is Afterglow's Foray detail (docs/redesign-2026/directions/ambient/BUILD-NOTES.md 4.6): a Room
+   lit by the first show's artwork, the collage, the strip on its sill, one primary button, why, where it
+   came from, the clips. Everything below turns the resolved Foray (`player.resolve`) into the pieces it
+   draws; nothing here decides what plays. */
+
+/** The shows a Foray is made of, in order of first appearance (the first one lights the Room): the name,
+    the catalogue id when the name joins one (`id`, which may be a show-index id with no catalogue record),
+    the catalogue record when there is one (`rec`, the only thing Follow can act on) and the artwork.
+    Narration has no show, so it is never here. */
+function forayShowsOf(r) {
+  return (r?.shows || []).map((name) => {
+    const entry = (r.entries || []).find((e) => e.show === name && !isForayNarration(e));
+    const id = entry ? forayShowId(entry) : showIdForShowName(name);
+    const rec = id ? showById(id) : null;
+    return { name, id: id || null, rec, art: showArtworkUrl(rec || { title: name }) || "" };
+  });
+}
+
+/** One bar per strip item, in bar order: the entry each bar draws. The strip is drawn from the playable
+    queue when there is one; a Foray with nothing playable still draws its shape from the authored
+    entries (mountForayStrip), so the bars and the entries line up either way. */
+function forayStripEntries(r) {
+  if (!r.playable.length) return r.entries || [];
+  const byQueue = new Map((r.entries || []).filter((e) => e.playable && Number.isInteger(e.queueIndex)).map((e) => [e.queueIndex, e]));
+  return r.playable.map((_, i) => byQueue.get(i) || null);
+}
+
+/** A custom property written through the CSSOM (the CSP forbids a style attribute, not this); a node with no
+    style object (a stub document) is skipped rather than thrown on. */
+function forayCssVar(el, name, value) {
+  if (el && el.style && typeof el.style.setProperty === "function") el.style.setProperty(name, value);
+}
+
+/** `<angle> distance` on the hue circle, in degrees. */
+function forayHueGap(a, b) {
+  const d = Math.abs((((a - b) % 360) + 360) % 360);
+  return d > 180 ? 360 - d : d;
+}
+
+/** Show name -> the colour of its bar and thumbnail, for one Foray (BUILD-NOTES 1.2 step 3): the show's
+    hue from the palette table at L .70 / C .13 in Dusk, .52 in Dawn; shows taken in order of first
+    appearance, and a hue within 24 degrees of an earlier one is rotated +30, at most three times. A page
+    without the palette script gets no tones and falls back to the strip's own `--seg-c0..7`. */
+function forayTones(names) {
+  const out = new Map();
+  if (typeof agPaletteFor !== "function" || typeof agGlowLightness !== "function") return out;
+  const L = agGlowLightness() < 0.6 ? 0.52 : 0.70;
+  const taken = [];
+  for (const name of names) {
+    const hc = agPaletteFor(name);
+    if (!hc) continue;
+    let hue = ((Number(hc[0]) % 360) + 360) % 360;
+    for (let tries = 0; tries < 3 && taken.some((h) => forayHueGap(h, hue) < 24); tries++) hue = (hue + 30) % 360;
+    taken.push(hue);
+    out.set(name, `oklch(${L} 0.13 ${Math.round(hue)})`);
+  }
+  return out;
+}
+
+/** The subject the eyebrow names ("Foray · Building companies"): the taxonomy label of the Foray's
+    first topic segment, "" when it has none. */
+function forayEyebrowSubject(r) {
+  const branch = String(r?.foray?.topic || "").split("/")[0];
+  return branch ? subjectLabel(branch) : "";
+}
+
+/** The line under the title: "4 shows · 42 min · narrated" (or "not narrated yet"). The number of shows is
+    the number a listener will HEAR (the strip's own tally; audit 2026-09-22, theme L), the runtime is
+    the strip's own too and says "about" when any of it is a script-length estimate, and a Foray with
+    nothing playable counts its authored shows and runtime instead of claiming zero. */
+function forayCaption(r, player) {
+  const playable = r.playable.length > 0;
+  const tally = playable && typeof player?.stripTally === "function" ? player.stripTally(r.playable) : null;
+  const shows = playable ? (tally ? tally.shows : 0) : (r.shows || []).length;
+  const narrated = (r.entries || []).some(isForayNarration);
+  return joinMeta(
+    shows ? countLabel(shows, "show") : "",
+    forayRuntimeLabel(player, tally, playable ? r.totalSec : r.authoredSec),
+    narrated ? "narrated" : "not narrated yet",
+  );
+}
+
+/** A CSS `url("…")` for the Room's artwork, built from a URL that has already passed safeUrl(); a
+    quote, backslash or line break inside it is percent-encoded so it cannot end the string. "" for a
+    URL safeUrl() refused. */
+function forayRoomArtValue(url) {
+  const safe = safeUrl(artUrl(url, 600));
+  if (!url || safe === "#") return "none";
+  const quote = String.fromCharCode(34);
+  const inner = safe.replace(/[\x22\\\r\n]/g, (c) => "%" + c.charCodeAt(0).toString(16).padStart(2, "0"));
+  return `url(${quote}${inner}${quote})`;
+}
+
+/** Paint the strip's show colours: each tape bar takes its show's tone (CSSOM, never a style attribute). */
+function tintForayStrip(r, tones) {
+  const strip = $("#fy-strip");
+  if (!strip || !strip.children || !tones.size) return;
+  const entries = forayStripEntries(r);
+  [...strip.children].forEach((bar, i) => {
+    const entry = entries[i];
+    const tone = entry && !isForayNarration(entry) ? tones.get(entry.show) : null;
+    if (tone) forayCssVar(bar, "--seg-tone", tone);
+  });
+}
+
+/** The thumbnails row under the bars: a 20px artwork thumb, left-aligned under a tape bar, in a row of its own so no
+    bar touches one. Measured from the laid-out bars, so it is redone when the strip is resized. A Foray of five
+    clips has five wide bars and a thumb under each; one of fifty has bars of 8 to 16px, and a row that showed
+    nothing there left the sill bare (round-2 finding). So the rule is not "a bar as wide as its thumb" but "a bar
+    wide enough to read as a bar (12px), whose thumb starts clear of the last one (4px) and ends inside the strip":
+    the widest bars win by coming first, nothing overlaps, and a long Foray still shows its shows. */
+const FORAY_THUMB_MIN_BAR_PX = 12;
+const FORAY_THUMB_PX = 20;
+const FORAY_THUMB_GAP_PX = 4;
+/** The thumbs for a laid-out strip: { x, tone, html } cells, x being the bar's left edge inside the strip. `bars` is
+    anything that reports `offsetWidth` and `offsetLeft`, in bar order; `stripWidth` is the strip's own width (omit it for
+    no right edge). Pure, so the rule (12px bar, tape only, left-aligned, 4px clear, inside the strip) is tested without
+    a browser. */
+function forayThumbCells(r, shows, tones, bars, stripWidth = Infinity) {
+  const artOf = new Map(shows.map((s) => [s.name, s.art]));
+  const entries = forayStripEntries(r);
+  const cells = [];
+  let freeFrom = 0;
+  bars.forEach((bar, i) => {
+    const entry = entries[i];
+    if (!entry || isForayNarration(entry) || !entry.show) return;
+    if (!(bar.offsetWidth >= FORAY_THUMB_MIN_BAR_PX)) return;
+    if (bar.offsetLeft < freeFrom || bar.offsetLeft + FORAY_THUMB_PX > stripWidth) return;
+    freeFrom = bar.offsetLeft + FORAY_THUMB_PX + FORAY_THUMB_GAP_PX;
+    const art = artOf.get(entry.show) || "";
+    const letter = String(entry.show).trim().charAt(0).toUpperCase() || "?";
+    cells.push({ x: bar.offsetLeft, tone: tones.get(entry.show) || "", html: art
+      ? `<img src="${esc(safeUrl(artUrl(art, 60)))}" alt="" loading="lazy" decoding="async" width="20" height="20">`
+      : `<span class="fd-thumb-mono">${esc(letter)}</span>` });
+  });
+  return cells;
+}
+
+function paintForayThumbs(r, shows, tones, strip = $("#fy-strip"), row = $("#fd-thumbs")) {
+  if (!strip || !row || !strip.children || typeof strip.getBoundingClientRect !== "function") return;
+  const cells = forayThumbCells(r, shows, tones, [...strip.children], strip.clientWidth || Infinity);
+  row.innerHTML = cells.map((c) => `<span class="fd-thumb">${c.html}</span>`).join("");
+  [...row.children].forEach((el, k) => {
+    forayCssVar(el, "--x", `${cells[k].x}px`);
+    if (cells[k].tone) forayCssVar(el, "--tone", cells[k].tone);
+  });
+}
+
+/* ---------- where this came from: the shows, as three-up tiles ----------
+
+   The credit block this replaces (a row per show with its clip count, its episodes and an Apple arrow)
+   became tiles: the show's artwork with a check badge once followed, its name (three lines, never cut
+   mid-word), a Follow toggle, and the tile is the show's page. A show with no page of its own keeps what
+   the block gave it: the tile opens its Apple Podcasts page, or a search for it, and says which in its
+   accessible name (player/foray-sources.js, `linkKind`). Every clip still plays from the publisher's own
+   feed, and the section says so. Follow is a bookmark, not a subscription, and says so where it is tapped
+   (FOLLOW_NOTE, review 2026-09-23). */
+function forayCameFromHtml(r, player) {
+  const shows = forayShowsOf(r);
+  if (!shows.length) return "";
+  const credits = typeof player?.forayCredits === "function"
+    ? (player.forayCredits(r, { discoverDoc: state.discover, collectionIds: showIndexCollectionIds(r) }).credits || [])
+    : [];
+  const creditOf = new Map(credits.map((c) => [c.show, c]));
+  let anyFollow = false;
+  const tiles = shows.map((s, i) => {
+    const followed = Boolean(s.rec && s.id && isShowStarred(s.id));
+    const art = `<span class="fd-tile-art" aria-hidden="true">${agArtwork({ name: s.name, src: s.art, size: 104, tone: AG_TONES[i % AG_TONES.length], badge: "check-circle-fill" })}</span>`;
+    const name = `<span class="t-caption name clamp3">${esc(s.name)}</span>`;
+    const credit = creditOf.get(s.name);
+    let face;
+    if (s.id) {
+      face = `<a class="fd-tile-face" href="#${esc(showRoutePath(s.id))}">${art}${name}</a>`;
+    } else if (credit && credit.link) {
+      const out = credit.linkKind === "apple-show" ? `Open ${s.name} on Apple Podcasts` : `Search Apple Podcasts for ${s.name}`;
+      face = `<a class="fd-tile-face" href="${esc(safeUrl(credit.link))}" target="_blank" rel="noopener" data-src-show="${esc(s.name)}" data-link-kind="${esc(credit.linkKind || "")}" aria-label="${esc(out)}">${art}${name}</a>`;
+    } else {
+      face = `<div class="fd-tile-face">${art}${name}</div>`;
+    }
+    let follow = "";
+    if (s.rec && s.id) {
+      anyFollow = true;
+      follow = forayFollowHtml(s, followed);
+    }
+    return `<li class="fd-tile${followed ? " is-followed" : ""}">${face}${follow}</li>`;
+  }).join("");
+  return `<section class="fd-came" aria-labelledby="fd-came-head">
+    <h2 class="t-headline" id="fd-came-head">Where this came from</h2>
+    <ul class="fd-tiles">${tiles}</ul>
+    <p class="t-caption fd-note">Every clip plays from the show's own feed.</p>
+    ${anyFollow ? `<p class="t-caption fd-note">${esc(FOLLOW_NOTE)}</p>` : ""}
   </section>`;
+}
+
+/** A tile's Follow toggle: the glyph changes with the state (a fill, never only a colour) and so does the
+    word; the button keeps one accessible name and says its state through aria-pressed. */
+function forayFollowHtml(show, followed) {
+  return `<button type="button" class="fd-follow" data-fd-follow="${esc(show.id)}" aria-pressed="${followed ? "true" : "false"}"
+      aria-label="${esc(`Follow ${show.name}`)}">${agIcon(followed ? "check-circle-fill" : "plus", 20)}<span>${followed ? "Following" : "Follow"}</span></button>`;
+}
+
+/** Bound once per paint of the tiles: a tap toggles the show through the one place that records a follow
+    (toggleShowStar), then every Follow control and badge on the page is repainted from the stored state. */
+function bindForayFollows(scope) {
+  if (!scope || typeof scope.querySelectorAll !== "function") return;
+  scope.querySelectorAll("[data-fd-follow]").forEach((btn) => {
+    if (btn._bound) return;
+    btn._bound = true;
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      toggleShowStar(btn.dataset.fdFollow);
+      paintForayFollows(scope);
+    });
+  });
+}
+
+function paintForayFollows(scope) {
+  scope.querySelectorAll("[data-fd-follow]").forEach((btn) => {
+    const on = isShowStarred(btn.dataset.fdFollow);
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+    btn.innerHTML = `${agIcon(on ? "check-circle-fill" : "plus", 20)}<span>${on ? "Following" : "Follow"}</span>`;
+    const tile = typeof btn.closest === "function" ? btn.closest(".fd-tile") : null;
+    if (tile) tile.classList.toggle("is-followed", on);
+  });
+}
+
+/* ---------- share ---------- */
+
+/** Where a shared Foray opens: the published site, at this Foray's own page. The native shells' own origin
+    (capacitor://localhost) is no address anyone else can open, so the link never reads `location`. */
+const FORAY_SHARE_BASE = "https://jw-incorporated.github.io/foray/";
+
+/** The native share sheet where there is one, otherwise the link on the clipboard and a line saying so. Share is
+    the listener's own choice and sends nothing to 4a; a dismissed sheet is not an error. */
+async function shareForay(r) {
+  const url = `${FORAY_SHARE_BASE}#/foray/${encodeURIComponent(r.id)}`;
+  try {
+    if (typeof navigator.share === "function") {
+      await navigator.share({ title: r.title, url });
+      return;
+    }
+  } catch (err) {
+    if (err && err.name === "AbortError") return;
+  }
+  let copied = false;
+  try {
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+      await navigator.clipboard.writeText(url);
+      copied = true;
+    }
+  } catch (_) { /* a clipboard that refuses is the line below */ }
+  const text = copied ? "Link copied" : "Couldn't copy the link";
+  announce(text);
+  const host = $("#view .fd");
+  if (!host) return;
+  const old = host.querySelector(".fd-toast");
+  if (old) old.remove();
+  const line = document.createElement("div");
+  line.className = "fd-toast raised t-label";
+  line.setAttribute("role", "status");
+  setStatusText(line, text);
+  host.appendChild(line);
+  setTimeout(() => { if (line.isConnected !== false) line.remove(); }, 2600);
 }
 
 /** Show -> Apple collection id for this Foray's shows, from the show index's
@@ -791,10 +1029,11 @@ function relinkForayCredits(r, player) {
     const id = showIdForShowName(show);
     if (id) span.outerHTML = `<a class="fy-credit show-link" href="#${esc(showRoutePath(id))}">${esc(show)}</a>`;
   });
-  const src = view.querySelector(".fy-sources");
-  if (src) {
-    src.outerHTML = foraySourcesHtml(r, player);
+  const came = view.querySelector(".fd-came");
+  if (came) {
+    came.outerHTML = forayCameFromHtml(r, player);
     bindSourceLinks(r);
+    bindForayFollows(view);
   }
 }
 
@@ -845,32 +1084,24 @@ function forayFactsLabel(r, player) {
   );
 }
 
-function forayHeadSub(r, player) {
-  const tally = typeof player?.stripTally === "function" ? player.stripTally(r.playable) : null;
-  const parts = [];
-  if (tally) {
-    /* THE STRIP'S OWN WORDS (integration, 2026-09-22). L4 made every piece of a
-       Foray a "clip" — the strip's label, the mini bar's "clip N of M", ‹‹/››
-       — with the narrator's clips counted as the narrator's. L5's header
-       counted tape only and said "with narration", so over a narrated Foray
-       the header said "11 clips" and the strip beneath it "56 clips". One
-       count now: the same total, split the same way the strip splits it. */
-    const from = tally.shows ? ` from ${countLabel(tally.shows, "show")}` : "";
-    parts.push(tally.bridges
-      ? `${countLabel(tally.clips + tally.bridges, "clip")}: ${tally.clips}${from} and ${tally.bridges} from ${narratorName()}`
-      : `${countLabel(tally.clips, "clip")}${from}`);
-  }
-  parts.push(forayRuntimeLabel(player, tally, r.totalSec));
-  return joinMeta(...parts);
-}
-
 /* The back link on this page goes to `#/forays`, not `#/`. enterForayFromQuery's
    whole point is that a `?foray=` link lands somewhere the unlocked DRAFT is
    still listed, so the back button is not a dead end for the one person
    reviewing it. That list moved off Home to `#/forays` on 2026-09-03, so this
    link moved with it. */
+/* The one ResizeObserver this page owns, on its strip. It is disconnected the moment any Foray render starts (a
+   second page's render, a retry), and its callback bails out and disconnects when the strip it watches has left the
+   document, because removing a watched node makes the observer fire once at width 0. Before this, that last
+   callback redrew whatever #fy-strip was on the page by then with the OLD Foray's shows and artwork. */
+let forayStripObserver = null;
+function disconnectForayStripObserver() {
+  if (forayStripObserver) { try { forayStripObserver.disconnect(); } catch (_) { /* already gone */ } }
+  forayStripObserver = null;
+}
+
 async function renderForay(id) {
   setBodyClass("view-page");
+  disconnectForayStripObserver();
   /* Every status this page can stop on has a ‹ back to the list, and each
      failure offers "Try again" wired to the thing that failed (audit
      2026-09-22, theme G). "Reload the page" was browser advice inside a native
@@ -977,98 +1208,115 @@ async function renderForay(id) {
       elapsed_sec: Math.round(resume.elapsedSec), index: resume.index,
     });
   }
-  const nudge = forayNudgeSteps(player);
+  /* The page is the ambient Foray detail (BUILD-NOTES 4.6): a Room from the first show's artwork behind
+     everything, the collage, the eyebrow, the title, the caption, the strip on its sill, ONE primary
+     button, why 4a made it, where it came from, the clips. The transport that used to sit here (back 15,
+     forward 30, speed, previous and next clip) lives in Now Playing; the strip, the main button and the
+     rows are still wired by bindForayTransport, under the same ids. */
+  const shows = forayShowsOf(r);
+  const first = shows[0] || null;
+  /* A Foray with nothing playable is "unavailable": the Room dims with the collage, the strip is drawn at
+     60%, and the button becomes Find similar. It is the resolver's answer, not a guess about the network. */
+  const unavailable = r.playable.length === 0;
+  const subject = forayEyebrowSubject(r);
+  const [playText, playName] = forayPrimaryLabel({ started: Boolean(resume), finished: Boolean(played), left: resume ? resume.label : "" });
+  const primary = unavailable
+    ? `<a class="ag-btn ag-btn-primary fd-cta" id="fy-find" href="#/shows${subject ? `/q/${esc(encodeURIComponent(subject))}` : ""}">Find similar</a>`
+    : `<button type="button" class="ag-btn ag-btn-primary fd-cta" id="fy-play"${controlLabelAttr(playText, playName)}>${esc(playText)}</button>`;
+  /* Every colour is worked out BEFORE the markup goes in: agGlowFor() reads the scheme's lightness from the live styles,
+     and a style read after the new nodes exist forces their first style pass with the default Glow, so setting the
+     real one a moment later would animate the whole Room from neutral to the show's colour. The writes below then land
+     before the first pass and the page opens already lit. */
+  const glow = first && typeof agGlowFor === "function" ? agGlowFor(first.name) : "";
+  const tones = forayTones(shows.map((s) => s.name));
+  const collage = agCollage(shows.slice(0, 4).map((s, i) => ({ name: s.name, src: s.art, tone: AG_TONES[i % AG_TONES.length] })), { size: 160 });
+  const stripBars = (r.playable.length ? r.playable : r.entries);
+  state.forayPlayed = Boolean(played);
 
   $("#view").innerHTML = `
-    <div class="page foray">
-      <div class="page-head">
-        <a class="back" href="#/forays">‹</a>
-        <div>
-          <h2>${esc(r.title)}</h2>
-          <p class="sub">${esc(forayHeadSub(r, player))}</p>
+    <div class="page foray fd-page">
+      <div class="ag fd is-fresh${unavailable ? " is-unavailable" : ""}">
+        <div class="room fd-room${unavailable ? " is-dim" : ""}" aria-hidden="true"></div>
+        <div class="fd-top">
+          <a class="back ag-btn ag-btn-icon" href="#/forays" aria-label="Back">${agIcon("chevron-left", 24)}</a>
+          <button type="button" class="ag-btn ag-btn-icon fd-share" aria-label="Share this foray">${agIcon("share", 24)}</button>
         </div>
-      </div>
-      ${draft ? `<p class="fy-draft">${draftNote}</p>` : ""}
-      ${r.foray.summary ? `<p class="fy-summary">${esc(r.foray.summary)}</p>` : ""}
-      <div class="fy-transport">
-        ${resume ? `<div class="fy-resume" id="fy-resume">
-          <div class="fy-bar"><span class="fy-bar-fill" id="fy-bar-fill"></span></div>
-          <p class="fy-resume-line">
-            <span class="fy-resume-at">Jump back in at ${esc(player.fmtClock(resume.elapsedSec))}</span>
-            <span class="fy-resume-left">${esc(resume.label)}</span>
-          </p>
-          <button type="button" class="fy-restart" id="fy-restart">Start over</button>
-        </div>` : ""}
-        ${played ? `<div class="fy-resume fy-played" id="fy-resume">
-          <div class="fy-bar"><span class="fy-bar-fill" data-pct="100"></span></div>
-          <p class="fy-resume-line">
-            <span class="fy-resume-left">${esc(played.label)}</span>
-          </p>
-          <button type="button" class="fy-restart" id="fy-restart">Play again</button>
-        </div>` : ""}
-        <!-- Plain bars, replaced wholesale by the SegmentStrip component in
-             mountForayStrip below (#128). They stay in the markup as the
-             fallback for a page paired with an older cached module, and are the
-             only reason this element is never empty. -->
-        <div class="fy-strip" id="fy-strip">${r.playable.map((_, i) =>
-          `<span class="fy-seg" data-seg="${i}"><i class="fy-seg-fill"></i></span>`).join("")}</div>
-        <div class="fy-times"><span id="fy-now">0:00</span><span id="fy-total"></span></div>
-        <!-- THE SEEK PAIR STAYS THE SEEK PAIR (audit 2026-09-22, persona 58).
-             The two buttons beside Play were previous/next clip, so the
-             gesture every other player has taught — missed a sentence, tap
-             back — threw the listener to the top of an eleven-minute clip.
-             ↺15 / 30↻ nudge on the Foray's own clock here, as they do in the
-             Now Playing sheet; previous/next clip have their own row below,
-             labelled in words. The numbers come from the player bridge so this
-             page and the sheet cannot disagree about a step. -->
-        <div class="fy-controls">
-          <button type="button" class="fy-btn" id="fy-back" aria-label="Back ${nudge.back} seconds">↺ ${nudge.back}</button>
-          <button type="button" class="fy-btn fy-main" id="fy-play"${controlLabelAttr("▶ Play", "Play")}>▶ Play</button>
-          <button type="button" class="fy-btn" id="fy-fwd" aria-label="Forward ${nudge.fwd} seconds">${nudge.fwd} ↻</button>
-          <!-- Playback speed (#242). On the transport row rather than in a settings
-               screen, because this is the surface a listener is looking at when
-               they decide a segment is slow — and its current value is the label,
-               so it is legible without opening anything. The label and the
-               accessible name both come from the player bridge, so this button and
-               the mini-player's cannot word the same speed two ways. It opens the
-               speed menu (a dialog, openRateMenu), and says so the way the
-               sheet's button does (audit round 2, player-9): VoiceOver reads
-               "pop-up button" before the tap, not a surprise after it. -->
-          <button type="button" class="fy-btn fy-rate" id="fy-rate" aria-label="Playback speed" aria-haspopup="dialog">1×</button>
+        <div class="fd-collage${unavailable ? " is-dim" : ""}">${collage}${unavailable ? `<span class="fd-slash">${agIcon("wifi-slash", 32)}</span>` : ""}</div>
+        <p class="eyebrow lamp fd-eyebrow">${esc(subject ? `Foray · ${subject}` : "Foray")}</p>
+        <h1 class="t-title clamp3 fd-title" data-page-heading>${esc(r.title)}</h1>
+        <p class="t-caption num fd-caption">${esc(forayCaption(r, player))}</p>
+        ${draft ? `<p class="fy-draft">${draftNote}</p>` : ""}
+        <!-- THE STRIP. Plain bars, replaced wholesale by the SegmentStrip component in mountForayStrip
+             (#128); they stay in the markup as the fallback for a page paired with an older cached module,
+             and are the only reason this element is never empty. The thumbnails are a row of their own
+             beneath it (paintForayThumbs), so no bar ever touches one. -->
+        <div class="fd-sill">
+          <div class="fy-strip" id="fy-strip">${stripBars.map((_, i) =>
+            `<span class="fy-seg" data-seg="${i}"><i class="fy-seg-fill"></i></span>`).join("")}</div>
+          <div class="fd-thumbs" id="fd-thumbs" aria-hidden="true"></div>
         </div>
-        <!-- The guillemets are decoration: the accessible name is the words
-             alone, or VoiceOver opens with "single left-pointing angle
-             quotation mark" (visual pass 1 review, 2026-09-23). -->
-        <div class="fy-clips">
-          <button type="button" class="fy-clip" id="fy-prev" aria-label="Previous clip">‹ Previous clip</button>
-          <button type="button" class="fy-clip" id="fy-next" aria-label="Next clip">Next clip ›</button>
-        </div>
-        <!-- A start that failed says so HERE, and a screen reader hears it
-             without moving focus off the button that was just pressed. -->
+        ${unavailable ? `<p class="t-body fd-unavailable">This foray can’t play right now. Its shows are below.</p>` : ""}
+        ${primary}
+        <!-- A start that failed says so HERE, and a screen reader hears it without moving focus off the
+             button that was just pressed. -->
         <p class="fy-error" id="fy-error" role="status" aria-live="polite" hidden></p>
+        ${!unavailable && shownOut ? `<p class="t-caption fd-note">${countLabel(shownOut, "clip")} can't play — marked below.</p>` : ""}
+        ${missing ? `<p class="t-caption fd-note">${countLabel(missing, "clip")} from this foray couldn't be found, so ${missing === 1 ? "it's" : "they're"} left out.</p>` : ""}
+        ${r.foray.summary ? `<section class="fd-why"><h2 class="t-headline">Why 4a made this</h2><p class="t-why clamp3">${esc(r.foray.summary)}</p></section>` : ""}
+        ${forayCameFromHtml(r, player)}
+        <section class="fd-clips">
+          <h2 class="t-headline">Clips, in order</h2>
+          ${r.slots.map(foraySlotHtml).join("")}
+        </section>
       </div>
-      ${shownOut ? `<p class="note">${countLabel(shownOut, "clip")} can't play — marked below.</p>` : ""}
-      ${missing ? `<p class="note">${countLabel(missing, "clip")} from this foray couldn't be found, so ${missing === 1 ? "it's" : "they're"} left out.</p>` : ""}
-      ${r.slots.map(foraySlotHtml).join("")}
-      ${foraySourcesHtml(r, player)}
       ${feedbackSheetHtml()}
     </div>`;
 
-  /* The clock beside the scrubber keeps its clock shape — it sits opposite a
-     ticking one — but an estimate carries a "~" so it cannot pass for a
-     measurement (same `stripTally` flag as the header above). */
-  const tally = typeof player.stripTally === "function" ? player.stripTally(r.playable) : null;
-  $("#fy-total").textContent = `${tally && tally.estimated ? "~" : ""}${player.fmtClock(r.totalSec)}`;
+  /* From here the page is the ambient one: the legacy top bar steps aside (the page draws its own
+     chevron), and the body paints bg0 behind the Room. setBodyClass() clears this on the next route. */
+  try { document.body.classList.add("view-foray-detail"); } catch (_) { /* a stub document */ }
+  /* The Room is lit by the first show: its Glow on the whole page (the playing row's tint reads it too), its
+     artwork blurred behind the scrim, and the collage's own light in the same colour. All through CSSOM:
+     the CSP forbids a style attribute, not these. */
+  const page = $("#view .fd");
+  if (glow) forayCssVar(page, "--glow", glow);
+  /* The Dock (tab bar and mini player) lives on <body>, outside the page, so it reads the root's Glow: set it there too, so
+     the Veil is tinted by the Room's light and not by whatever the last page left (the root's `transition: --glow` moves it). */
+  try { if (glow) forayCssVar(document.documentElement, "--glow", glow); } catch (_) { /* a stub document */ }
+  const room = $("#view .fd-room");
+  if (room && first && first.art) forayCssVar(room, "--room-art", forayRoomArtValue(first.art));
+  const collageEl = $("#view .fd-collage .ag-collage");
+  if (glow) forayCssVar(collageEl, "--art-glow", glow);
+
   mountForayStrip(r, player);
-  // Optional-chained deliberately. This runs BEFORE every binder, so if the
-  // markup and this line ever disagree the throw would take the whole transport
-  // down with it — an unfilled progress bar is a far better failure. CI catches
-  // the disagreement itself: the hook is pinned in player/foray-playback.test.js.
-  if (resume) { const fill = $("#fy-bar-fill"); if (fill) fill.style.width = `${resume.percent}%`; }
-  if (played) sizeProgressBars($("#view"));
+  tintForayStrip(r, tones);
+  paintForayThumbs(r, shows, tones);
+  /* The thumbnails are measured from the bars, so a strip that changes width (a rotation, a resized
+     window) gets them again. */
+  const strip = $("#fy-strip");
+  const thumbsRow = $("#fd-thumbs");
+  if (strip && thumbsRow && typeof ResizeObserver === "function") {
+    let lastWidth = Math.round(strip.getBoundingClientRect().width);
+    const observer = new ResizeObserver(() => {
+      if (!strip.isConnected) { observer.disconnect(); if (forayStripObserver === observer) forayStripObserver = null; return; }
+      const w = Math.round(strip.getBoundingClientRect().width);
+      if (w !== lastWidth) { lastWidth = w; paintForayThumbs(r, shows, tones, strip, thumbsRow); }
+    });
+    forayStripObserver = observer;
+    observer.observe(strip);
+  }
+  $("#view .fd-share")?.addEventListener("click", () => shareForay(r));
+  bindForayFollows($("#view"));
   bindFeedback(r);
   bindSourceLinks(r);
-  bindForayTransport(r, player, resume);
+  bindForayTransport(r, player);
+  /* The page opens already lit and already painted for where the listener is (the strip's played bars, the resume fill):
+     nothing animates until two frames after that, then the Room, the bars and the rows move as the player moves them. */
+  if (page) {
+    const settle = () => { if (page.classList && typeof page.classList.remove === "function") page.classList.remove("is-fresh"); };
+    if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => requestAnimationFrame(settle));
+    else setTimeout(settle, 60);
+  }
   pageDidPaint();   // the real page is up: a clamped back-step restore can land now
   joinForayCreditsToShowIndex(r, player);
 }

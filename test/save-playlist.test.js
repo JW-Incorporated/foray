@@ -472,7 +472,7 @@ test("Create's builder refuses at the cap too, and nothing cuts a store that alr
 test("the copy is listed in Library and on the Playlists page, and drawn as own under Playlists for you", () => {
   /* MUTATION 1: have playlistsForYouHtml badge every card whose `saved_from`
      is set (`generated: Boolean(p.saved_from)`) -> the own-card assertion
-     fails. MUTATION 2: drop the currentCopyOf filter from playlistsForYouPicks
+     fails (todayPlaylistCard / playlistsForYouPicks). MUTATION 2: drop the currentCopyOf filter from playlistsForYouPicks
      (or from playlistSearchMatches) -> two identical cards and this fails.
      Library and the Playlists page read playlists(), so a copy written under
      any other key fails their assertions. */
@@ -487,7 +487,12 @@ test("the copy is listed in Library and on the Playlists page, and drawn as own 
   assert.ok(m.view().includes(`href="#/playlist/${copy.id}"`), "the Playlists page lists the copy");
   assert.match(m.view(), /<p class="sub">1 playlist<\/p>/, "the count no longer calls every playlist 'built'");
 
-  const rail = m.ctx.playlistsForYouHtml();
+  m.ctx.renderHome();
+  const page = m.view();
+  const start = page.indexOf('aria-label="Playlists for you"');
+  assert.ok(start > 0, "Today draws Playlists for you");
+  const stop = page.indexOf('aria-label="Off your path"');
+  const rail = page.slice(start, stop > start ? stop : undefined);
   const at = rail.indexOf(`href="#/playlist/${copy.id}"`);
   assert.ok(at > 0, "the copy is under Playlists for you");
   const card = rail.slice(rail.lastIndexOf("<a ", at), rail.indexOf("</a>", at));
@@ -561,9 +566,10 @@ test("a copy saved with Family Mode OFF neither lists nor plays an explicit epis
   assert.ok(html.includes("Hidden by Family Mode"), "its row says what holds it back");
   assert.strictEqual((html.match(/class="ep-row/g) || []).length, 5, "and keeps its place, so the count stays true");
 
-  const t = m.ctx.homePlayTarget();
+  /* Today's Keep listening starts a playlist through homePlayable (the hero never is one). */
+  const t = m.ctx.homePlayable({ kind: "playlist", playlist: m.ctx.playlistById(copy.id) });
   assert.ok(t, "fixture assumption: Home has something to play");
-  assert.notStrictEqual(t.item.id, "st-explicit", "Home's play button does not start it");
+  assert.notStrictEqual(t.item.id, "st-explicit", "Home's start path does not play it");
   assert.ok(!Array.from(t.list || [], (x) => x.id).includes("st-explicit"), "nor queue it after the first");
 });
 

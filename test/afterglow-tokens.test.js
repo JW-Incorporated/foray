@@ -307,7 +307,10 @@ test("every selector in the file is a new name: nothing today's markup emits or 
   /* The phase-3 system files are the deliberate exceptions: icons.js, primitives.js and gallery.js emit
      only the new `.ag` subtree while legacy screens remain unchanged. Every screen-bearing ui/*.js still
      counts. MUTATION: put `class="icon"` in app.js or any other screen template -> red. */
-  const systemFiles = new Set(["icons.js", "primitives.js", "gallery.js", "now-playing.js"]);
+  /* Home (ui/home.js) and Foray detail (ui/foray.js) are ADOPTED screens (Redesign 2026 phase 4): each wears `.ag`, `.room` and the
+     type, clamp and eyebrow classes by design. A screen joins this list in the PR that adopts the system, and no sooner. */
+  const systemFiles = new Set(["icons.js", "primitives.js", "gallery.js", "home.js", "onboarding.js", "foray.js", "settings.js", "interests.js", "show.js", "now-playing.js"]);
+  /* Settings (ui/settings.js: the gear's Sheet, Settings, About) and Tuning (ui/interests.js) are adopted too. */
   const emitted = [read("app.js"), read("index.html"), ...fs.readdirSync(path.join(ROOT, "ui")).filter((f) => f.endsWith(".js") && !systemFiles.has(f)).map((f) => read(`ui/${f}`)),
     ...fs.readdirSync(path.join(ROOT, "player")).filter((f) => f.endsWith(".js") && !f.endsWith(".test.js")).map((f) => read(`player/${f}`))].join("\n");
   const legacy = new Set(STYLE_RULES.flatMap((r) => r.selectors.flatMap((s) => [...s.matchAll(/\.([A-Za-z][\w-]*)/g)].map((m) => m[1]))));
@@ -643,7 +646,7 @@ test("the stylesheet is wired into the page and every shipping path: index.html,
      A stylesheet that ships to the page but not into the generation is the one file sw.js could not verify. */
   const html = read("index.html");
   const links = [...html.matchAll(/<link rel="stylesheet" href="([^"]+)">/g)].map((m) => m[1]);
-  assert.deepStrictEqual(links, ["styles.css", "ui/tokens.css", "ui/primitives.css", "ui/now-playing.css"], "legacy, tokens, scoped primitives, then the adopted Now Playing screen");
+  assert.deepStrictEqual(links, ["styles.css", "ui/tokens.css", "ui/primitives.css", "ui/today.css", "ui/onboarding.css", "ui/foray-detail.css", "ui/settings.css", "ui/show.css", "ui/now-playing.css"], "legacy, tokens, scoped phase-3 primitives, then the adopted Today, onboarding, Foray detail, Settings and show screens");
   const shell = (rel, startRe) => { const s = read(rel); const m = startRe.exec(s); assert.ok(m, `${rel}: shell list found`); return m[1]; };
   assert.match(shell("tools/ci/generate-manifest.mjs", /const SHELL = \[([\s\S]*?)\n\];/), /"ui\/tokens\.css"/, "generate-manifest SHELL");
   assert.match(shell("tools/web/prepare-dist.mjs", /const SHELL = \[([\s\S]*?)\n\];/), /"ui\/tokens\.css"/, "prepare-dist SHELL");

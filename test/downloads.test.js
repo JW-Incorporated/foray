@@ -144,10 +144,14 @@ ${view.innerHTML}`;
 }
 
 const PAGE_IDS = [
-  "drawer", "drawer-overlay", "drawer-playlists", "family-toggle",
-  "player-toggle", "autoadvance-toggle", "menu-btn", "refresh-btn",
+  "menu-btn", "refresh-btn",
   "banner-slot", "pl-form", "pl-input", "pl-note",
 ];
+
+/** Every element under `root` (the Settings host is built by app.js and appended to <body>, in sections), depth first. */
+function treeOf(root) {
+  return [root, ...root.children.flatMap(treeOf)];
+}
 
 /**
  * A fake shell. `answers[method]` is what `nativePromise` resolves with (a
@@ -263,7 +267,7 @@ function mount({ store = new Map(), capacitor = null, build = "37", order = null
   state.poolIds = new Set([item.id, other.id]);
   evalIn("bootDownloads()");
   return {
-    ctx, evalIn, state, store, view, item, other, byId, capacitor,
+    ctx, evalIn, state, store, view, item, other, byId, capacitor, body,
     record: () => JSON.parse(store.get("cp_downloads") || "null"),
   };
 }
@@ -285,7 +289,7 @@ test("off the shell there is no Download control, no Library section and no cell
      MUTATION 2: drop the `state.downloadBridge ?` gate on Library's
      Downloads section — red on the Library half.
      MUTATION 3: drop `if (state.downloadBridge)` around the cellular
-     drawerToggle — red on the drawer half.
+     settingSwitch — red on the Settings half.
      MUTATION 4: delete bootDownloads' `pluginMissing("ForayDownloads")` check
      — a shell built before the plugin (#1052) gets a bridge, and a control
      whose every tap fails. */
@@ -299,9 +303,9 @@ test("off the shell there is no Download control, no Library section and no cell
   assert.ok(m.view.innerHTML.includes(">History<"), "fixture premise: Library rendered");
   assert.ok(!m.view.innerHTML.includes(">Downloads<"), "no Downloads section off the shell");
 
-  m.ctx.bindDrawerToggles();
-  const appended = m.byId.get("drawer").children.map((c) => c.id);
-  assert.ok(appended.includes("interlude-toggle"), "fixture premise: the drawer's switches were bound");
+  m.ctx.bindSettingSwitches();
+  const appended = treeOf(m.body).map((c) => c.id);
+  assert.ok(appended.includes("interlude-toggle"), "fixture premise: Settings' switches were bound");
   assert.ok(!appended.includes("downloads-cellular-toggle"), "no cellular switch off the shell");
 
   /* A shell that says it has no ForayDownloads plugin: the same absence. */
@@ -312,8 +316,8 @@ test("off the shell there is no Download control, no Library section and no cell
   assert.ok(!/data-download/.test(old.view.innerHTML), "no Download control on a plugin-less shell");
   old.ctx.renderLibrary();
   assert.ok(!old.view.innerHTML.includes(">Downloads<"), "no Downloads section on a plugin-less shell");
-  old.ctx.bindDrawerToggles();
-  assert.ok(!old.byId.get("drawer").children.some((c) => c.id === "downloads-cellular-toggle"),
+  old.ctx.bindSettingSwitches();
+  assert.ok(!treeOf(old.body).some((c) => c.id === "downloads-cellular-toggle"),
     "no cellular switch on a plugin-less shell");
 });
 
@@ -451,8 +455,8 @@ test("the cellular switch writes settings.cellular, and the next download carrie
      is stored and ignored. */
   const cap = makeCapacitor({ enqueue: { ok: true } });
   const m = mount({ capacitor: cap });
-  m.ctx.bindDrawerToggles();
-  const sw = m.byId.get("drawer").children.find((c) => c.id === "downloads-cellular-toggle");
+  m.ctx.bindSettingSwitches();
+  const sw = treeOf(m.body).find((c) => c.id === "downloads-cellular-toggle");
   assert.ok(sw, "the switch is appended on the shell");
   assert.strictEqual(m.ctx.downloadsCellularOn(), false, "Wi-Fi only by default (Q17)");
   sw.click();
