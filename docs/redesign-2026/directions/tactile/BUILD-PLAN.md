@@ -155,9 +155,10 @@ href="#..."/></svg>`; no text glyphs stand in for icons (`⋯`, `✓`, `+` and
 `x`). Phosphor **Bold** at 24px (MIT), **Fill** only for the active tab and the
 toggled bookmark/play states. Forty-one symbols, the prototype's exact set:
 
-- Phosphor Bold (27): `ph-play`, `ph-pause`, `ph-sun-horizon`,
+- Phosphor Bold (28; `ph-minus` joined the prototype's 27 with the Now Playing
+  rotary's "−" key, BUILD-NOTES 3.14): `ph-play`, `ph-pause`, `ph-sun-horizon`,
   `ph-magnifying-glass`, `ph-bookmarks`, `ph-caret-down`, `ph-arrow-left`,
-  `ph-dots-three`, `ph-plus`, `ph-check`, `ph-check-circle`, `ph-cloud-slash`,
+  `ph-dots-three`, `ph-plus`, `ph-minus`, `ph-check`, `ph-check-circle`, `ph-cloud-slash`,
   `ph-bookmark-simple`, `ph-list-plus`, `ph-timer`, `ph-share-network`, `ph-x`,
   `ph-arrow-up`, `ph-arrow-down`, `ph-trash`, `ph-radio`, `ph-speaker-high`,
   `ph-moon`, `ph-sun`, `ph-list-bullets`, `ph-shuffle`, `ph-sparkle`.

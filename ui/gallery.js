@@ -155,6 +155,7 @@ function renderGallery() {
           <li><svg class="i" aria-hidden="true"><use href="#ph-arrow-left"></use></svg><span>back</span></li>
           <li><svg class="i" aria-hidden="true"><use href="#ph-dots-three"></use></svg><span>more</span></li>
           <li><svg class="i" aria-hidden="true"><use href="#ph-plus"></use></svg><span>add</span></li>
+          <li><svg class="i" aria-hidden="true"><use href="#ph-minus"></use></svg><span>less</span></li>
           <li><svg class="i" aria-hidden="true"><use href="#ph-check"></use></svg><span>check</span></li>
           <li><svg class="i" aria-hidden="true"><use href="#ph-check-circle"></use></svg><span>ready</span></li>
           <li><svg class="i" aria-hidden="true"><use href="#ph-cloud-slash"></use></svg><span>offline</span></li>

@@ -109,7 +109,7 @@ function esc(s) {
    (ui/downloads.js) rather than reading "#" as the only refusal. */
 const SPRITE_IDS = new Set([
   "ph-play", "ph-pause", "ph-sun-horizon", "ph-magnifying-glass", "ph-bookmarks",
-  "ph-caret-down", "ph-arrow-left", "ph-dots-three", "ph-plus", "ph-check",
+  "ph-caret-down", "ph-arrow-left", "ph-dots-three", "ph-plus", "ph-minus", "ph-check",
   "ph-check-circle", "ph-cloud-slash", "ph-bookmark-simple", "ph-list-plus",
   "ph-timer", "ph-share-network", "ph-x", "ph-arrow-up", "ph-arrow-down",
   "ph-trash", "ph-radio", "ph-speaker-high", "ph-moon", "ph-sun",

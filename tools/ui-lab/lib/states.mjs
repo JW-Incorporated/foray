@@ -61,6 +61,25 @@ async function openForayNowPlaying(page) {
   await openNowPlaying(page);
 }
 
+/* The Now Playing rotary: play, open the sheet, press the chip. A second call
+   closes the open strip first (Done), then opens the other chip's. */
+async function openRotary(page, chip) {
+  /* Self-contained: the gates trace a sheet by closing it after the shot, so a
+     later step finds Now Playing collapsed. */
+  if (!(await page.locator(".fp-sheet:not([hidden])").count())) await openNowPlaying(page);
+  const done = page.locator(".np__dial:not([hidden]) .rotary__done");
+  if (await done.count()) await done.first().click();
+  await page.locator(chip).first().click();
+  await page.waitForSelector(".np__dial:not([hidden]) .rotary__tick", { state: "visible", timeout: 10000 });
+  await wait(page, 500);
+}
+
+async function openRotaryNowPlaying(page, itemId, chip) {
+  await startPlayback(page, itemId);
+  await openNowPlaying(page);
+  await openRotary(page, chip);
+}
+
 async function closeNowPlaying(page) {
   const close = page.locator(".fp-close");
   if (await close.count()) await close.first().click().catch(() => {});
@@ -163,6 +182,15 @@ export function appStates(fx) {
         { label: "mini-player-up-next", route: "#/queue" },
         { label: "now-playing", route: "#/library", run: (page) => openForayNowPlaying(page) },
         { label: "now-playing-closed", route: "#/library", run: (page) => closeNowPlaying(page) },
+      ],
+    },
+    {
+      id: "player-dial",
+      description: "Now Playing with the rotary open: the speed detent strip, then the sleep detent strip (BUILD-NOTES 3.14).",
+      seed: "returning",
+      steps: [
+        { label: "np-speed-dial", route: "#/library", run: (page) => openRotaryNowPlaying(page, ep0, ".fp-rate") },
+        { label: "np-sleep-dial", route: "#/library", run: (page) => openRotary(page, ".fp-sleep") },
       ],
     },
     {

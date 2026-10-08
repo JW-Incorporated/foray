@@ -1,14 +1,14 @@
 /* Redesign 2026, Phase 3, task "sprite": the Tactile icon sprite.
  *
  * What this pins (docs/redesign-2026/directions/tactile/BUILD-PLAN.md 1.5):
- *   - index.html carries ONE inline sprite with the 41 symbols of the
+ *   - index.html carries ONE inline sprite with the 42 symbols (the prototype's 41 plus ph-minus, the rotary's "-" key, BUILD-NOTES 3.14) of the
  *     prototype's exact set, each id once, and no other element in the page
  *     takes one of those ids (a `<use href="#band">` must reach the symbol, not
  *     whatever else is called `band`);
  *   - the sprite is inert: first thing in <body>, aria-hidden, focusable=false,
  *     0x0 and absolutely positioned (so adding it moves no pixel of any screen),
  *     no inline style, no script, no <image>, no external reference (strict CSP);
- *   - the families: 27 Phosphor Bold + 7 Phosphor Fill on the 256 grid, the 7
+ *   - the families: 28 Phosphor Bold + 7 Phosphor Fill on the 256 grid, the 7
  *     custom marks on the 24 grid with round caps; the knob keeps its anatomy
  *     and nothing above its disc;
  *   - every `<use>` in the app (index.html outside the sprite, app.js, ui/*.js)
@@ -36,7 +36,7 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\
 
 const BOLD = [
   "ph-play", "ph-pause", "ph-sun-horizon", "ph-magnifying-glass", "ph-bookmarks", "ph-caret-down",
-  "ph-arrow-left", "ph-dots-three", "ph-plus", "ph-check", "ph-check-circle", "ph-cloud-slash",
+  "ph-arrow-left", "ph-dots-three", "ph-plus", "ph-minus", "ph-check", "ph-check-circle", "ph-cloud-slash",
   "ph-bookmark-simple", "ph-list-plus", "ph-timer", "ph-share-network", "ph-x", "ph-arrow-up",
   "ph-arrow-down", "ph-trash", "ph-radio", "ph-speaker-high", "ph-moon", "ph-sun", "ph-list-bullets",
   "ph-shuffle", "ph-sparkle",
@@ -97,15 +97,15 @@ function iconViolations(src, file, ids, dynamicOk) {
   return bad;
 }
 
-test("the sprite carries exactly the 41 prototype ids, each once", () => {
+test("the sprite carries exactly the 42 expected ids, each once", () => {
   // MUTATION: rename `knob` to `dial` in index.html's sprite (id="knob" -> id="dial"): the set no longer matches.
   // MUTATION: copy any one <symbol> line a second time: "each once" fails.
   assert.ok(SPRITE, "index.html has no <svg class=\"sprite\">");
   assert.strictEqual((html.match(/class="sprite"/g) || []).length, 1, "exactly one sprite");
   const syms = symbolsOf(SPRITE.text);
   const ids = syms.map((s) => s.id);
-  assert.strictEqual(IDS.length, 41, "the expected list itself is 41 (27 + 7 + 7)");
-  assert.strictEqual(new Set(IDS).size, 41, "the expected list has no repeats");
+  assert.strictEqual(IDS.length, 42, "the expected list itself is 42 (28 + 7 + 7)");
+  assert.strictEqual(new Set(IDS).size, 42, "the expected list has no repeats");
   const dupes = ids.filter((id, i) => ids.indexOf(id) !== i);
   assert.deepStrictEqual(dupes, [], "an id appears twice: " + dupes.join(", "));
   assert.deepStrictEqual([...ids].sort(), [...IDS].sort());

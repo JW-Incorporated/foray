@@ -5049,6 +5049,31 @@ body.ui-v2 .fp-sheet.np .transport .keycap--rubber { background: var(--rubber); 
 .np .fp-row2.second { min-height: var(--tap); margin-top: var(--s-4); display: flex; flex-wrap: nowrap; align-items: center; justify-content: center; gap: var(--s-2); }
 .rotary-chip { min-width: var(--tap); min-height: var(--tap); padding: 0 var(--s-3); display: inline-flex; align-items: center; justify-content: center; gap: var(--s-1); border: 1px solid var(--dial-line); border-radius: var(--r-pill); background: var(--card); color: var(--ink); box-shadow: none; font: 700 var(--t-body)/var(--lh-body) var(--font-text); white-space: nowrap; }
 .rotary-chip .readout { font-size: var(--t-body); }
+/* THE ROTARY IN THE DOCK (BUILD-NOTES 3.14). Speed and sleep open a detent strip
+   that takes the secondary row's place: a 56px well of 44px ticks between a "-"
+   and a "+" key, and Done. A tick is a 2 x 14px mark over a mono label; the
+   selected one stands taller in persimmon (the mark, not the label: a label in
+   persimmon on the well is under AA). No transition here, so nothing joins the
+   reduced-motion block. The strip scrolls by drag and by selection, never by
+   native touch pan (touch-action: pan-y leaves vertical pans to the sheet). */
+.np .fp-row2.second[hidden], .np__dial[hidden] { display: none; }
+.np__dial { min-height: var(--key-lg); margin-top: var(--s-4); display: flex; align-items: center; }
+.np-rotary { width: 100%; gap: var(--s-1); }
+.np-rotary .rotary__track { min-width: 0; height: var(--key-lg); flex: 1; position: relative; display: flex; justify-content: flex-start; padding: 0 var(--s-1); overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; touch-action: pan-y; }
+.np-rotary .rotary__track::-webkit-scrollbar { display: none; }
+.np-rotary .rotary__tick { flex: 0 0 var(--tap); width: var(--tap); min-width: var(--tap); height: var(--key-lg); padding: 0 0 6px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: var(--s-1); border-radius: 0; background: transparent; color: var(--ink-2); font: 500 var(--t-micro)/1 var(--font-mono); scroll-snap-align: center; }
+.np-rotary .rotary__tick .readout { font: inherit; color: inherit; }
+.np-rotary .rotary__tick::before { content: ""; width: 2px; height: 14px; border-radius: 1px; background: var(--ink-3); }
+.np-rotary .rotary__track button[aria-checked="true"] { background: transparent; color: var(--ink); font-weight: 800; }
+.np-rotary .rotary__track button[aria-checked="true"]::before { width: 3px; height: 22px; background: var(--persimmon); }
+.np__dial .keycap::after { content: none; }
+.np__dial .keycap { flex: none; box-shadow: 0 var(--lip) 0 var(--k-lip); }
+.np__dial .keycap:active:not(:disabled) { box-shadow: 0 var(--lip-pressed) 0 var(--k-lip); }
+.np__dial .keycap:disabled { box-shadow: none; }
+.np__dial .keycap--sm { min-width: var(--tap); min-height: var(--tap); height: var(--tap); padding: 0; }
+body.ui-v2 .fp-sheet.np .np__dial .keycap--paper { border-color: transparent; background: var(--card); color: var(--ink); }
+body.ui-v2 .fp-sheet.np .np__dial .keycap--paper:disabled { background: var(--paper-2); color: var(--ink-3); }
+body.ui-v2 .fp-sheet.np .np__dial .keycap--persimmon { border-color: transparent; background: var(--persimmon); color: var(--on-persimmon); }
 body.ui-v2 .fp-sheet.np .rotary-chip { border: 1px solid var(--dial-line); background: var(--card); color: var(--ink); box-shadow: none; }
 body.ui-v2 .fp-sheet.np .second .keycap--paper { border-color: transparent; background: var(--card); color: var(--ink); }
 .np .fp-upnext { position: relative; display: inline-flex; padding: 0 var(--s-3); text-decoration: none; }
