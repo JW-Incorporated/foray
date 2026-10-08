@@ -1669,6 +1669,18 @@ fidelity pair is its Library Up Next section and the menu sheet, `screens.json` 
    the mini player's title face and the Ember active tab belong to the Dock unit; (f) the Discover tap-target debt
    (`discover-kb`, `discover-results-groups`, both covered tiles) and the Library, starred-shows and now-playing baseline diffs
    belong to their own units: this branch changes neither.
+9. **Iteration 3 (third judge pass), decided without the owner.** Fixed: (a) **one Glow for the row and the Dock.** The mini player
+   and its cast live outside the page and read the ROOT's `--glow`, which only a pick on Today moved, so a track started anywhere else
+   lit the playing row in the show's hue over a mini player in the default warm one (the judges' "two surfaces, two light sources").
+   `libSyncCast` now sets the playing show's Glow on the root as well as on the page; row, mini and cast agree. The hue itself is
+   still the show's (a palette-table show or a real cover reads as its own art; the harness has no artwork, so "Lex Fridman Podcast"
+   hashes to violet, the specified fallback), so a cool tint is correct when the show is cool. (b) **The head is Library's section
+   head**: the title sits on the gutter edge every card shares and the count is a quiet numeral at the right (`5`, spoken as "5
+   queued" by an sr-only twin); Back moved to a slim row of its own above it instead of indenting the title. (c) **Clear is no header
+   action**: it sits under the last queued row as the quiet grey "Clear Up Next" (`.qp-foot`), still offered for more than one. Left:
+   Back stays (the page is reached from Library's "All N in Up Next" and by URL; `card-anatomy`, KEEP); the Dock's labelled tabs show
+   because the page is not scrolled, the recede is the Dock's scroll behaviour. The two Discover tap-target entries are the Discover
+   unit's (`gates --states up-next,library` is clean on this branch).
 
 ## 19. Show page (built, `redesign/ambient-show`)
 

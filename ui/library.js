@@ -481,7 +481,7 @@ function libUpNextInnerHtml(page = false) {
     body = `<div class="lb-stack">${list.join("")}</div>`;
     if (!page && m.rows.length > LIB_UPNEXT_MAX) body += libQuietLink(`All ${m.rows.length} in Up Next`, "/queue");
   }
-  return `${page ? queuePageHeadHtml(count, m.queued.length) : libHead("Up Next", count)}${body}`;
+  return `${page ? queuePageHeadHtml(count) : libHead("Up Next", count)}${body}${page ? queuePageFootHtml(m.queued.length) : ""}`;
 }
 
 function libUpNextHtml() {
@@ -674,8 +674,13 @@ function libSyncCast() {
   if (!on) return;
   /* The page's Glow is the playing item's: the cast and the playing row's ground (--glow-row) both read it. */
   const item = cur ? (state.itemIndex[cur] || storedEpisode(cur)) : null;
-  if (item && item.show && typeof agSetGlow === "function") agSetGlow(page, item.show, "--glow");
-  else if (page.style && typeof page.style.removeProperty === "function") page.style.removeProperty("--glow");
+  if (item && item.show && typeof agSetGlow === "function") {
+    agSetGlow(page, item.show, "--glow");
+    /* ...and so is the Dock's: the mini player and its cast live outside the page and read the ROOT's Glow, which only a
+       pick on Today used to move. Without this a track started anywhere else lit the playing row in the show's hue over a
+       mini player in the default warm one (iteration 3: two surfaces, two light sources). One Glow, set both places. */
+    try { agSetGlow(document.documentElement, item.show, "--glow"); } catch (_) { /* a stub document */ }
+  } else if (page.style && typeof page.style.removeProperty === "function") page.style.removeProperty("--glow");
 }
 
 /** A strip bar's colour: its show's artwork hue at the strip's lightness (the Glow's lightness, 0.04 up in Dusk and

@@ -140,7 +140,7 @@ function mount({ ids = ["a", "b", "c", "d"], current = null, hash = "#/queue", e
 }
 
 const sectionHtml = (html) => { const a = html.indexOf(SECTION_OPEN); return html.slice(a, html.indexOf("</section>", a)); };
-const rowsOf = (html) => html.split("<article ").slice(1);
+const rowsOf = (html) => html.split("<article ").slice(1).map((r) => r.slice(0, r.indexOf("</article>") + 10)); // each row to its own end, so the foot (Clear) is not counted as part of the last row
 const ids = (html) => [...html.matchAll(/<article [^>]*data-lb-q="([^"]*)"/g)].map((x) => x[1]);
 
 /* ==================================================================== */
@@ -354,17 +354,22 @@ test("the Toast rises in by animation, not by transition, so Reduce Motion colla
 /* 5. THE PAGE'S HEAD                                                   */
 /* ==================================================================== */
 
-test("the head: a history-aware Back, the count, Clear only for more than one, and the drag hint exactly once", () => {
+test("the head: a history-aware Back, the title and a quiet numeral, Clear under the rows for more than one, the hint once", () => {
   /* MUTATION 1: drop \`back\` from the link's class -> the route no longer steps back: red.
      MUTATION 2: render Clear for any count -> the one-row page shows it: red.
-     MUTATION 3: render the hint per row (move it into libQueueRowHtml) -> the \"once\" assertion is red. */
+     MUTATION 3: render the hint per row (move it into libQueueRowHtml) -> the \"once\" assertion is red.
+     MUTATION 4 (iteration 3: the head is the title and a numeral, Clear is not a header action): move the Clear button back
+     inside <header class="lb-head qp-head"> -> the "Clear is after the head" assertion is red. */
   const m = mount();
   m.ctx.renderQueue();
   const html = m.view();
   assert.match(html, /<a class="back qp-back ag-btn ag-btn-icon" href="#\/library" aria-label="Back">/, "Back is the a.back app.js steps back on, with a href for a cold open");
   assert.match(html, /<h2 class="t-title" tabindex="-1">Up Next<\/h2>/);
-  assert.match(html, /<span class="t-caption qp-count">4 queued<\/span>/);
+  assert.match(html, /<span class="t-caption qp-count"><span aria-hidden="true">4<\/span><span class="sr-only">4 queued<\/span><\/span>/, "a quiet numeral, spoken as a sentence");
   assert.ok(html.includes('id="up-next-clear"'), "four rows: Clear is offered");
+  const headEnd = html.indexOf("</header>");
+  assert.ok(headEnd > 0 && html.indexOf('id="up-next-clear"') > headEnd, "Clear is after the head, not a header action");
+  assert.ok(html.indexOf('id="up-next-clear"') > html.lastIndexOf("data-lb-q="), "and after the last queued row");
   assert.strictEqual((html.match(/id="up-next-drag-hint"/g) || []).length, 1, "every handle points at one hint");
   const one = mount({ ids: ["a"] });
   one.ctx.renderQueue();
@@ -487,8 +492,8 @@ test("Clear is a quiet grey word, never Ember (iteration 2): the header carries 
      Clear overrides it. This test is a deliberate guard, not a tripwire on today's markup.
      MUTATION 1: delete `color: var(--text-2)` from the `.qp-clear` rule in queue.css -> the colour assertion is red.
      MUTATION 2: change it to `var(--ember)` -> the no-Ember assertion is red. */
-  const rule = /\.ag \.qp-head \.qp-clear\s*\{([^}]*)\}/.exec(QUEUE_CSS);
-  assert.ok(rule, "the Clear rule exists, scoped under the head");
+  const rule = /\.ag \.qp-foot \.qp-clear\s*\{([^}]*)\}/.exec(QUEUE_CSS);
+  assert.ok(rule, "the Clear rule exists, scoped under the foot (iteration 3 moved Clear under the rows)");
   assert.match(rule[1], /color:\s*var\(--text-2\)/);
   assert.doesNotMatch(rule[1], /ember/);
   assert.ok(/\.ag \.ag-btn-quiet\s*\{[^}]*color:\s*var\(--ember\)/.test(read("ui/primitives.css").replace(/\/\*[\s\S]*?\*\//g, " ")), "premise: the quiet button IS Ember by default, so the override is what keeps Clear grey");
@@ -551,4 +556,22 @@ test("the screen is registered: linked once in index.html, in every shell list, 
   }
   const scripts = [...html.matchAll(/<script src="(ui\/[a-z-]+\.js)"/g)].map((x) => x[1]);
   assert.ok(scripts.indexOf("ui/queue.js") > scripts.indexOf("ui/library.js") || scripts.indexOf("ui/library.js") < 0, "queue.js loads after library.js");
+});
+
+test("the playing row and the Dock share one Glow: libSyncCast sets the page's AND the root's (iteration 3)", () => {
+  /* The mini player and its cast live outside the page and read the ROOT's --glow, which only a pick on Today moved; a track
+     started anywhere else lit the playing row in the show's hue over a mini player in the default warm one.
+     MUTATION: delete the `agSetGlow(document.documentElement, ...)` line from libSyncCast in ui/library.js -> red. */
+  const m = mount({ ids: ["b"], current: "a" });
+  m.state.itemIndex.a.show = "A Show Outside The Palette";
+  const calls = [];
+  const page = { style: { removeProperty() {} } };
+  m.ctx.__calls = calls;
+  m.ctx.__page = page;
+  m.evalIn(`agSetGlow = (el, show, prop) => __calls.push([el === __page ? "page" : el === document.documentElement ? "root" : "other", show, prop]);
+    libBarOpen = () => true;
+    document.querySelector = (s) => (s === "#view" ? { querySelector: () => __page } : null);`);
+  m.evalIn("libSyncCast()");
+  assert.deepStrictEqual(calls.map((c) => c[0]).sort(), ["page", "root"], "both elements take the playing show's Glow");
+  assert.ok(calls.every((c) => c[1] === "A Show Outside The Palette" && c[2] === "--glow"));
 });

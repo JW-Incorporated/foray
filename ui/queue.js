@@ -47,16 +47,23 @@ function renderQueue() {
   libStartPoll();
 }
 
-/** The page's head: Back (to Library, where Up Next lives), the title, how many are queued, and Clear. `count` is the
-    rows drawn (the playing row included); `queued` is what cp_queue holds, and Clear is offered for more than one. */
-function queuePageHeadHtml(count, queued) {
-  return `<header class="lb-head qp-head">
-    <a class="back qp-back ag-btn ag-btn-icon" href="#/library" aria-label="Back">${agIcon("chevron-left", 24)}</a>
+/** The page's head: Back on a slim row of its own (this page is reached from Library's "All N in Up Next" and by URL, so
+    it needs the history-aware a.back), then the title on the gutter edge every card shares and the count as a quiet
+    numeral at the right, which is Library's section head's silhouette. The count is also spoken as a sentence ("4 queued");
+    `count` is the rows drawn (the playing row included). Clear is not up here: see queuePageFootHtml. */
+function queuePageHeadHtml(count) {
+  return `<div class="qp-bar"><a class="back qp-back ag-btn ag-btn-icon" href="#/library" aria-label="Back">${agIcon("chevron-left", 24)}</a></div>
+  <header class="lb-head qp-head">
     <h2 class="t-title" tabindex="-1">Up Next</h2>
-    ${count ? `<span class="t-caption qp-count">${esc(`${count} queued`)}</span>` : ""}
+    ${count ? `<span class="t-caption qp-count"><span aria-hidden="true">${esc(String(count))}</span><span class="sr-only">${esc(`${count} queued`)}</span></span>` : ""}
     ${count ? '<p class="sr-only" id="up-next-drag-hint">Hold, then drag, to move this episode. Its menu has Move up and Move down.</p>' : ""}
-    ${queued > 1 ? `<button type="button" class="ag-btn ag-btn-quiet qp-clear" id="up-next-clear">Clear</button>` : ""}
   </header>`;
+}
+
+/** Clear, the page's one destructive control, sits under the last queued row as a quiet word (not in the head, where a
+    second action would compete with the title). `queued` is what cp_queue holds; offered for more than one. */
+function queuePageFootHtml(queued) {
+  return queued > 1 ? `<div class="qp-foot"><button type="button" class="ag-btn ag-btn-quiet qp-clear" id="up-next-clear">Clear Up Next</button></div>` : "";
 }
 
 /** Everything the page adds to Library's section: Clear, the hold-to-drag and the swipe. Bound again after every
