@@ -4290,7 +4290,7 @@ body.drawer-open { overflow: hidden; }
 
 .band { display: block; width: 100%; overflow: visible; color: var(--ink); }
 .band--mini { height: var(--s-2); }
-.band--detail { height: var(--tap); }
+.band--detail { height: calc(var(--tap) + var(--s-4)); }   /* 60px: one viewBox unit is one pixel on y (TACTILE_DETAIL_PX in ui/primitives.js) */
 .band--scrub { height: var(--key-lg); touch-action: none; cursor: grab; }
 .band--scrub[data-scrubbing="true"] { cursor: grabbing; }
 .band--scrub[data-scrubbing="true"] .needle { transition: none; }
@@ -4310,6 +4310,9 @@ body.drawer-open { overflow: hidden; }
 .t-band__bar--episode { fill: var(--persimmon); }
 .t-band__code { fill: var(--ink-2); font: 700 var(--t-micro) var(--font-mono); }
 .t-band__code.is-current { fill: var(--ink); font-weight: 800; }
+/* Detail codes are the label step (13px, 700, the text face), counter-scaled in the markup so the stretched viewBox does not squash them; the mono micro above is the scrubber's. */
+.band--detail .t-band__code { font: var(--w-label) var(--t-label)/1 var(--font-text); }
+.band--detail .t-band__code.is-current { font-weight: var(--w-label); }
 .needle { fill: var(--ink); transition: transform var(--d-settle) var(--spring-settle), opacity var(--d-quick) var(--ease-quick); }
 .band--buffering .needle { animation: tactile-pulse var(--d-buffer) var(--ease-quick) infinite alternate; }
 
@@ -5589,7 +5592,7 @@ body.view-home::after { content: ""; position: fixed; z-index: 19; left: 0; righ
 @media (max-height: 700px) { .onb__collage { --s: clamp(96px, 20dvh, 140px); } }
 .onb__collage .art-frame { --art-size: 100%; width: 100%; height: 100%; border-radius: 0; box-shadow: none; }
 .onb__collage .art-frame img { width: 100%; height: 100%; }
-.onb__well { display: block; min-height: 0; padding: var(--s-1) calc(var(--s-1) * 1.5); }
+.onb__well { display: block; min-height: 0; padding: var(--s-2) calc(var(--s-2) + var(--s-1) / 2) calc(var(--s-1) / 2); }   /* the prototype's 10 / 10 / 6 around a 54px stage, in a 60px band: bars start 16px down, the well is 70px */
 .onb .needle { transition: none; }   /* the loop moves it every 100ms; a spring on each step would lag it */
 .onb--still .band__draw { animation: none; }   /* returning: nothing moves */
 .onb__meta { display: flex; align-items: center; gap: var(--s-3); }

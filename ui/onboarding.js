@@ -330,7 +330,7 @@ let onboardingHeld = false;
    whose events stay local in a lab build (test/lab-flag.test.js). */
 const ONB_HEADLINE = "Podcasts, stitched around you.";
 const ONB_SUB = "4a picks real shows each day and lines up the best parts into one listen.";
-const ONB_PLAY = "Play today's foray";
+const ONB_PLAY = "Play today’s foray";
 const ONB_PLAY_AGAIN = "Play";
 const ONB_SKIP = "Just show me";
 const ONB_START = 0.31;      // where the demo needle starts, as a fraction of the foray
@@ -374,6 +374,11 @@ function onboardingCollageHtml(shows) {
   return `<span class="onb__collage${n === 1 ? " onb__collage--one" : ""}">${names.map(cell).join("")}</span>`;
 }
 
+/** The band's rendered width in the onboarding well: Today's hero width less the
+    well's 10px side padding against the hero well's 6px (2 x 4px). Only the bars'
+    minimum-width arithmetic and the needle's 2px (2000 / width units) read it. */
+function onboardingBandWidth() { return todayBandWidth() - 8; }
+
 /** The card's inside: the brand alone in the top row (a counter top-right reads
     as a fake status bar), then the artwork, the band and its readout row. */
 function onboardingCardHtml(model, still) {
@@ -385,7 +390,7 @@ function onboardingCardHtml(model, still) {
   const start = still ? 0 : ONB_START;
   return `${brand}<div class="onb__stage">
     <div class="onb__art">${onboardingCollageHtml(shows)}</div>
-    <div class="well onb__well">${tactileBand({ kind: "detail", id: "onb-band", segments: hero.segments, renderWidth: todayBandWidth(), label: hero.bandLabel, progress: start })}</div>
+    <div class="well onb__well">${tactileBand({ kind: "detail", id: "onb-band", segments: hero.segments, renderWidth: onboardingBandWidth(), label: hero.bandLabel, progress: start })}</div>
     <div class="onb__meta" aria-hidden="true"><span class="readout"><span class="onb__now" data-onb-clock>${esc(onbClock(total * start))}</span><span class="onb__total"> / ${esc(onbClock(total))} · ${esc(countLabel(shows.length, "show"))}</span></span></div>
   </div>`;
 }
@@ -399,7 +404,7 @@ function startOnboardingLoop(wrap, model) {
   const clip = wrap.querySelector(".onb__well .band__progress");
   if (!needle || !clip) return;
   const clock = wrap.querySelector("[data-onb-clock]");
-  const boxes = tactileBandLayout(tactileBandSegments(model.hero.segments), todayBandWidth(), "detail");
+  const boxes = tactileBandLayout(tactileBandSegments(model.hero.segments), onboardingBandWidth(), "detail");
   const step = ONB_RATE * ONB_TICK_MS / 1000;
   let at = ONB_START;
   const timer = setInterval(() => {

@@ -346,10 +346,10 @@ test("headline, sub line, the Play key and Just show me, in that order, with no 
 
   const go = goBtn(m);
   assert.ok(go, "the Play key");
-  assert.match(go.innerHTML, /<span class="keycap__label">Play today(?:'|&#39;)s foray<\/span>/);
+  assert.match(go.innerHTML, /<span class="keycap__label">Play today’s foray<\/span>/);
   assert.match(go.innerHTML, /<use href="#ph-play-fill">/, "a sprite icon, not a glyph");
   for (const c of ["keycap", "keycap--lg", "keycap--persimmon", "keycap--wide"]) assert.ok(go.classList.contains(c), `Play is ${c}`);
-  assert.strictEqual(go.getAttribute("aria-label"), "Play today's foray");
+  assert.strictEqual(go.getAttribute("aria-label"), "Play today’s foray", "the typographic apostrophe the prototype pinned, not a straight one");
 
   const skip = skipBtn(m);
   assert.strictEqual(skip.textContent, "Just show me");
@@ -520,7 +520,7 @@ test("#/onboarding and #/onboarding/return render the screen over Today; the fir
   first.ctx.renderCurrentPage();
   assert.ok(sheetOf(first), "the screen is up");
   assert.ok(!panelOf(first).classList.contains("onb--still"));
-  assert.match(goBtn(first).innerHTML, /Play today(?:'|&#39;)s foray/);
+  assert.match(goBtn(first).innerHTML, /Play today’s foray/);
 
   const again = await mountReal({ hash: "#/onboarding/return" });
   again.ctx.renderCurrentPage();
