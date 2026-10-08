@@ -571,6 +571,32 @@ test("the toast's clock stops while it is touched and runs again, with what was 
   assert.ok(resumed.ms <= 1000 && resumed.ms > 0, `with the second that was left, not another four (got ${resumed.ms} ms)`);
 });
 
+test("the toast's clock also stops while focus is on it (Undo by keyboard) and runs again when focus leaves", async () => {
+  /* Tactile `toast`: a four-second window is not enough for a keyboard or switch
+     user who has to Tab to Undo, so focus holds it the way a touch does.
+     MUTATION 1: drop the focusin listener - the cancelled-clock assertion fails.
+     MUTATION 2: drop the focusout listener - the resumed assertion fails (the
+     toast would stay up on a clock that was never re-armed, then never leave). */
+  const m = await mountBooted();
+  const items = queue(m, 3);
+  withPlayer(m, null);
+  m.ctx.renderLibrary();
+  press(m, `more:${items[1].id}`);
+  let now = 2_000_000;
+  m.ctx.Date = class extends Date { static now() { return now; } };
+  press(m, `rm:${items[1].id}`);
+  const toast = m.body.querySelector("#yours-toast .toast");
+  const first = m.timers.filter((t) => t.ms === 4000).pop();
+  now += 1000;
+  toast._on.get("focusin")[0]();
+  assert.ok(m.cleared.includes(first.id), "focus on the toast cancels the running clock");
+  now += 60_000;
+  toast._on.get("focusout")[0]();
+  const resumed = m.timers[m.timers.length - 1];
+  assert.ok(resumed.id > first.id, "focus leaving arms a new clock");
+  assert.ok(resumed.ms <= 3000 && resumed.ms > 0, `with the three seconds that were left (got ${resumed.ms} ms)`);
+});
+
 /* ==================================================================== */
 /* 7. CLEAR                                                              */
 /* ==================================================================== */

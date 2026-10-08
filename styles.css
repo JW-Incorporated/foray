@@ -4611,7 +4611,7 @@ body.ui-v2.kb-open::after { display: none; }
 .empty { display: flex; flex-direction: column; align-items: center; gap: var(--s-4); padding: var(--s-6) 0; color: var(--ink); text-align: center; }
 .empty > svg { width: var(--key-glance); height: var(--key-glance); fill: none; stroke: var(--ink-2); stroke-width: calc(var(--s-1) / 2); stroke-linecap: round; stroke-linejoin: round; }
 .empty p { max-width: 26rem; margin: 0; }
-.toast { min-height: var(--key); display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding: 0 var(--s-4); border-radius: var(--r-md); background: var(--card); box-shadow: var(--shadow-deck); color: var(--ink); opacity: 0; visibility: hidden; transform: translateY(var(--s-3)); transition: transform var(--d-settle) var(--spring-settle), opacity var(--d-quick) var(--ease-quick), visibility var(--d-quick) linear; }
+.toast { min-height: var(--key); display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding: 0 var(--s-2) 0 var(--s-4); font: var(--w-micro) var(--t-body)/var(--lh-body) var(--font-text); border-radius: var(--r-md); background: var(--card); box-shadow: var(--shadow-deck); color: var(--ink); opacity: 0; visibility: hidden; transform: translateY(var(--s-3)); transition: transform var(--d-settle) var(--spring-settle), opacity var(--d-quick) var(--ease-quick), visibility var(--d-quick) linear; }
 .toast.is-visible { opacity: 1; visibility: visible; transform: translateY(0); }
 
 @keyframes tactile-draw { from { transform: scaleX(0); } to { transform: scaleX(1); } }
@@ -5545,6 +5545,7 @@ body.view-home::after { content: ""; position: fixed; z-index: 19; left: 0; righ
   .today .row__queue,
   .tab__label,
   .tab__indicator,
+  /* The toast is cut, not slid and not faded: tools/ui-lab's reduced-motion gate counts any transition over 1ms under this setting, so a 120ms fade would be new debt (BUILD-PLAN 2.16 says fade; the gate wins until the orchestrator rules otherwise). */
   .toast,
   .yours-qwrap,
   .yours-qwrap.is-flipping,

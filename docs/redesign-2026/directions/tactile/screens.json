@@ -573,6 +573,18 @@
           "app": ".row-queue",
           "mode": "all"
         },
+        "toast": {
+          "prototype": "#toast",
+          "app": "#yours-toast .toast"
+        },
+        "toastText": {
+          "prototype": "#toast span",
+          "app": "#yours-toast .toast span"
+        },
+        "undo": {
+          "prototype": "#toast .textbtn",
+          "app": "#yours-toast .textbtn"
+        },
         "mini": {
           "prototype": "#mini",
           "app": "#foray-player"

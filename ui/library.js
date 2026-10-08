@@ -446,12 +446,15 @@ function yoursToastHost() {
   const toast = host.querySelector(".toast");
   const undo = host.querySelector(".textbtn");
   if (undo) undo.addEventListener("click", () => undoYoursRemove());
-  /* Held while touched: the clock stops on a press and runs again, with what
-     was left of it, on release. */
+  /* Held while touched or focused: the clock stops on a press (or when focus
+     lands on Undo, so a keyboard or switch user is not raced) and runs again,
+     with what was left of it, on release (or when focus leaves). */
   if (toast) {
     toast.addEventListener("pointerdown", () => pauseYoursUndo());
     toast.addEventListener("pointerup", () => resumeYoursUndo());
     toast.addEventListener("pointercancel", () => resumeYoursUndo());
+    toast.addEventListener("focusin", () => pauseYoursUndo());
+    toast.addEventListener("focusout", () => resumeYoursUndo());
   }
   return host;
 }
