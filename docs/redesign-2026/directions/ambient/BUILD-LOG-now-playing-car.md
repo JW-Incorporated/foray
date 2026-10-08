@@ -26,3 +26,9 @@ Play and the skips match the prototype to the pixel at both sizes (dx, dy, dw, d
 ## Measured (393x852 and 375x667, dark)
 
 Play bottom edge 32px above the viewport bottom at both sizes (rule: 24). Artwork 240 / 200. Play 112, skips 72, glyphs 52 and 48. Title 40px on 45px leading, three lines at 852 and two at 667. Label 17.5px on 22.75px. The posture fits without scrolling at both sizes. All of it re-measured after reloading with `?posture=car`.
+
+## Iteration 3 (fidelity findings: lit-art rim, grabber contrast)
+
+- **The dark rim was two things, both gone.** The car's restated lit-art cast still led with `var(--shadow-1)` (a black 1px/2px drop), and styles.css gives `.fp-s-art` (the sleeve) a 1px `--line` border. Both removed in `ui/car.css`: the cast is the art's colour only (reduced transparency drops it to nothing, not to the black rim) and the sleeve has `border: 0`. Measured on the render: the 2 device-pixel dark edge under the art is gone. The same two rules still sit in `now-playing.css` for the normal posture; that screen's file is not this unit's, so it is a follow-up for whoever next touches Now Playing (a one-line change there, affecting only the normal posture).
+- **Grabber** is `--text-2` at full opacity (was `--text-3` at 70%, a few percent off the Glow-tinted Room) and sits at the prototype's `top: -6px` of the head. Contrast of `--text-2` on the Room's lightest stop is above 3:1 (non-text).
+- Fidelity run `now-playing-car-i3` / `now-playing-car-375-i3` (dark): region deltas unchanged from iteration 2 (play, skips, close 0; art/title/chip as explained above); car-check clean (12 evaluations); gates new 0.
