@@ -149,7 +149,7 @@ body.ui-v2:not(.fp-open) #dock-cast { display: none; }
   background: var(--overlay);
   -webkit-backdrop-filter: none; backdrop-filter: none;     /* the Dock is the only blurred surface */
 }
-.dock-layer #sh-compose #sh-input { min-height: var(--tap); color: var(--text); font: var(--t-body); }
+.dock-layer #sh-compose #sh-input { min-height: var(--tap); color: var(--text); font: var(--t-body); background: transparent; }
 .dock-layer #sh-compose #sh-input::placeholder { color: var(--text-2); opacity: 1; }
 .dock-layer #sh-compose .sh-glyph { stroke: var(--text-2); }
 .dock-layer #sh-compose #sh-form:focus-within { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) / 2); }
