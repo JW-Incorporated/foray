@@ -467,8 +467,13 @@ Playing) inside a well.
 - Station codes (`detail` and `scrub`): two characters per show, mono
   11/700 `--ink-2` (the current station `--ink` 800), centred under each
   **run** of consecutive bars from one show (narration ticks between them do
-  not break the run) whose combined width is ≥ 24px rendered; a narrower
-  run gets no label but keeps the show name in `aria-label`. One code per
+  not break the run) whose combined width is ≥ 24px rendered. **Narrow runs
+  (Now Playing paused, iteration 2):** a run of 8 to 23px still takes its code
+  when the two letters fit, centres at least 16px from every other code, wide
+  runs claiming their room first and the rest left to right; colour must never
+  be the only carrier on a band whose first runs are 13 and 19px wide. A run
+  under 8px, or one that cannot clear a neighbour's code, gets no label but
+  keeps the show name in `aria-label`. One code per
   run, never per bar: r3's un-narrated band labelled adjacent bars `BR BR`
   and `BC BC`, which reads as a legend glitch. The current-station weight
   follows the run too. Code rule: strip a leading "The "; first letter of the first
@@ -834,10 +839,15 @@ Layout at 393x852, top to bottom:
    Readouts: `.readout-lg` tracking -0.05em and the colon wrapped in a span
    with `margin: 0 -0.06em` (Azeret's colon has wide sidebearings).
 7. At rest nothing sits under the pinned transport: everything above the
-   scrolling detail is wrapped in `.np__top { min-height: calc(100% - 176px
-   - var(--safe-b)) }` so the "Up next" heading peeks 24px above the dock
-   edge as the scroll cue and its card is below the fold (dock is 190px;
-   156px at ≤ 740px tall, same rule).
+   scrolling detail is wrapped in `.np__top { min-height: calc(100% - 189px
+   - var(--safe-b)) }` (the prototype's `100dvh - 245px`, the scroller's own
+   56px bottom padding taken out of the 100%) so the "Up next" heading ends
+   where the prototype's does and **its first card peeks into the dock's fade**
+   as the scroll cue (iteration 2 of paused; the earlier "card below the fold"
+   reading lost the cue). The dock's paper starts 14px above the dock and is
+   solid 36px lower (the prototype's `transparent -> paper 28%`), so the peeking
+   row is half-covered where the keys begin. Skip keys are 68 wide, 56 tall
+   (56/80/56 is the heights; the prototype's skip key is 56 + 12 wide).
 8. Scroll continues (the sheet body scrolls; the transport stays pinned):
    "Up next" card (artwork 56, title, why-line, readout), then for a foray
    "Segments" grouped by slot title (heading 17, rows of 56: initial swatch,

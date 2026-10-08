@@ -5071,7 +5071,10 @@ body.ui-v2 .fp-sheet.np .np__collapse { border-color: transparent; background: t
    padding inside it and 100% is the scroller's box (the sheet less its 56px
    bottom padding), so at rest the "Up next" heading ends just above the keys,
    in the dock's fade, and its card starts under the dock. */
-.np__top { box-sizing: border-box; display: flex; flex-direction: column; padding-top: calc(var(--safe-t) + var(--s-10)); min-height: calc(100% - 176px - var(--safe-b)); }
+/* 189 = the prototype's 245 less the scroller's 56px bottom padding: the "Up next"
+   heading sits where the prototype's does, so its first card peeks into the dock's
+   fade (the scroll-to-detail cue) instead of starting under the opaque paper. */
+.np__top { box-sizing: border-box; display: flex; flex-direction: column; padding-top: calc(var(--safe-t) + var(--s-10)); min-height: calc(100% - 189px - var(--safe-b)); }
 .np__hero { display: flex; justify-content: center; }
 .np__art { position: relative; width: 280px; height: 280px; flex: none; overflow: hidden; display: grid; place-items: center; border-radius: var(--r-lg); background: var(--paper-2); box-shadow: var(--shadow-card); view-transition-name: np-art; }
 .np__art::before { content: "4a"; color: var(--ink-2); font: 750 var(--t-display)/1 var(--dial-font-display); }
@@ -5093,7 +5096,12 @@ body.ui-v2 .fp-sheet.np .np__text .title { font-family: var(--dial-font-display)
 body.ui-v2 .fp-sheet.np .np__show { color: var(--ink-2); }
 body.ui-v2 .fp-sheet.np .fp-s-why,
 body.ui-v2 .fp-sheet.np .fp-left { color: var(--ink-2); }
-.np .np__text .np__why { margin: 0; color: var(--ink-2); font-size: var(--t-body); line-height: var(--lh-body); }
+/* The sheet's head is title, show, chips (BUILD-NOTES 2.1: no why-line under
+   them; the reason lives on the Up next card and in the Media Session album).
+   A started foray gives the player a why-line, which pushed the band 44px down
+   against the prototype in every real playing and paused state. Visually
+   hidden, not display:none, so a screen reader still hears it. */
+.np .np__text .np__why { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .np__chips { min-height: var(--s-6); margin-top: var(--s-1); display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
 .np .tag--station { gap: 6px; height: 28px; padding: 0 10px 0 var(--s-2); border-radius: var(--r-sm); background: var(--card); box-shadow: inset 0 0 0 1px var(--dial-line); color: var(--ink); font: 600 var(--t-label)/var(--lh-label) var(--font-text); }
 .np__station-code { color: var(--ink); font: 700 0.6875rem/1 var(--font-mono); }
@@ -5131,7 +5139,8 @@ body.ui-v2 .fp-sheet.np .fp-left { color: var(--ink-2); }
 /* Codes and the needle are HTML over the drawing (ui/now-playing.js says
    why): the SVG's own text and needle stretch with its viewBox. */
 .np__band-svg .t-band__code, .np__band-svg .needle { display: none; }
-.np__codes { position: absolute; left: 0; right: 0; bottom: 0; height: 16px; }
+/* 7px up from the visual's bottom edge: the prototype centres the station codes in the 19px under the bars, not on the well's lip (fidelity, it2). */
+.np__codes { position: absolute; left: 0; right: 0; bottom: 7px; height: 16px; }
 .np__code { position: absolute; left: calc(var(--x, 0) * 100%); bottom: 0; transform: translateX(-50%); color: var(--ink-2); font: 700 0.6875rem/16px var(--font-mono); white-space: nowrap; }
 .np__code.is-current { color: var(--ink); font-weight: 800; }
 .np:not(.np--foray) .np__band-svg .t-band__bar { fill: var(--persimmon); }
@@ -5149,13 +5158,19 @@ body.ui-v2 .fp-sheet.np .fp-left { color: var(--ink-2); }
 .np__read { margin-top: var(--s-2); padding: 0 2px; display: flex; align-items: baseline; justify-content: space-between; }
 .np__read .readout-lg { color: var(--ink); letter-spacing: -.05em; }
 .np__read .readout { color: var(--ink-2); }
-/* The pinned transport: the dock's paper runs 36px above the keys and fades
-   in over its first 28px, so a scrolled row passes under it, not through it. */
+/* The pinned transport: its paper fades in from 14px above the dock to solid 36px
+   lower, so a scrolled row passes under it, not through it. */
 .np__dock { position: absolute; isolation: isolate; z-index: 5; left: 0; right: 0; bottom: calc(var(--safe-b) + var(--s-4)); padding: 0 var(--gutter); }
-.np__dock::before { content: ""; position: absolute; z-index: -1; inset: -36px 0 calc(-1 * (var(--safe-b) + var(--s-4))); background: linear-gradient(to bottom, transparent, var(--paper) 28px); pointer-events: none; }
+/* The fade starts 14px above the dock and is paper by 36px more: the first
+   "Up next" card, which starts 12px under its heading, is half-covered where the keys
+   begin and reads as a peek, not as a gap. */
+.np__dock::before { content: ""; position: absolute; z-index: -1; inset: -14px 0 calc(-1 * (var(--safe-b) + var(--s-4))); background: linear-gradient(to bottom, transparent, var(--paper) 36px); pointer-events: none; }
 .np .transport { min-height: 83px; display: flex; align-items: center; justify-content: center; gap: var(--s-6); }
 .np .transport .keycap { flex: none; margin-bottom: var(--lip); }
-.np .transport .keycap--lg { box-sizing: border-box; width: var(--key-lg); min-width: var(--key-lg); height: var(--key-lg); padding: 0; }
+/* The skip keys are 56 tall and 68 wide (the prototype's measured box: its 56px key
+   with 20px side padding round the mark), so the three-key row keeps its
+   weight beside the 80px Play; a square 56px read as a smaller, lighter key. */
+.np .transport .keycap--lg { box-sizing: border-box; width: calc(var(--key-lg) + var(--s-3)); min-width: calc(var(--key-lg) + var(--s-3)); height: var(--key-lg); padding: 0; }
 .np .transport .fp-big { width: var(--key-xl); min-width: var(--key-xl); height: var(--key-xl); padding: 0; }
 /* The lip of a key in the sheet is a hard shadow in the key's own darker tone,
    the key's own shape, attached: the primitive's ::after is a flat bar, which
@@ -5178,14 +5193,19 @@ body.ui-v2 .fp-sheet.np .transport .keycap--rubber { background: var(--rubber); 
 .rotary-chip .readout { font-size: var(--t-body); }
 body.ui-v2 .fp-sheet.np .rotary-chip { border: 1px solid var(--dial-line); background: var(--card); color: var(--ink); box-shadow: none; }
 body.ui-v2 .fp-sheet.np .second .keycap--paper { border-color: transparent; background: var(--card); color: var(--ink); }
-.np .fp-upnext { position: relative; display: inline-flex; padding: 0 var(--s-3); text-decoration: none; }
+/* The opener is the prototype's .iconbtn in the secondary row: a 44px round chip on the
+   card, a 1px ring, no lip (a key is for what changes playback or the collection). */
+.np .fp-upnext { position: relative; width: var(--tap); padding: 0; text-decoration: none; }
 .np .fp-upnext .i { width: 20px; height: 20px; }
 .np__badge { position: absolute; top: -4px; right: -4px; width: 18px; height: 18px; display: grid; place-items: center; border-radius: var(--r-pill); background: var(--ultramarine); color: var(--on-ultramarine); font-size: 11px; line-height: 18px; }
 .np__badge[hidden] { display: none; }
 .np__more { padding: var(--s-3) 0 calc(var(--safe-b) + 220px); display: flex; flex-direction: column; gap: var(--s-8); }
 .np__section > .heading { margin: 0 0 var(--s-3); color: var(--ink); }
 .np .sheetcard { padding: 14px; border-radius: var(--r-md); background: var(--card); box-shadow: var(--shadow-card); }
-.np__up-next-card { min-height: 88px; display: grid; grid-template-columns: var(--art-row) minmax(0, 1fr) auto; align-items: center; gap: var(--s-3); }
+/* Top-aligned, so the art tile sits in the strip of the card the dock fade leaves
+   visible (a centred tile on a three-line body sat under the keys, and the slot
+   read as empty). */
+.np__up-next-card { min-height: 88px; display: grid; grid-template-columns: var(--art-row) minmax(0, 1fr) auto; align-items: start; gap: var(--s-3); }
 .np__up-next-art { width: var(--art-row); height: var(--art-row); overflow: hidden; display: grid; place-items: center; border-radius: var(--r-sm); background: var(--paper-2); color: white; font: 700 var(--t-body)/1 var(--font-mono); }
 .np__up-next-art img { width: 100%; height: 100%; object-fit: cover; }
 .np__up-next-body { min-width: 0; display: grid; gap: var(--s-1); }
@@ -5213,6 +5233,12 @@ body.ui-v2 .fp-sheet.np .np__detail-copy { color: var(--ink-2); }
 .np__notes .ep-description-toggle { min-height: var(--tap); display: flex; align-items: center; font-weight: 700; }
 .np__legacy-actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
 .np__legacy .fp-clips { width: 100%; }
+/* The previous/next clip buttons only exist once a foray has been started (the
+   restored sheet hides the row), so the gate never saw them until the paused
+   step pressed Play: --muted on the mustard tint was 3.43:1 at 13px. They read
+   as secondary text on the tint, like the countdown. */
+body.ui-v2 .fp-sheet.np .fp-clip { color: var(--ink-2); }
+body.ui-v2 .fp-sheet.np .fp-clip:hover:not(:disabled), body.ui-v2 .fp-sheet.np .fp-clip:active:not(:disabled) { color: var(--ink); }
 body.ui-v2 .fp-sheet.np .fp-toforay,
 body.ui-v2 .fp-sheet.np .fp-openep { color: var(--ink); }
 

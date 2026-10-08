@@ -61,6 +61,27 @@ async function openForayNowPlaying(page) {
   await openNowPlaying(page);
 }
 
+/** Now Playing, paused (Tactile BUILD-PLAN 2.2): the sheet of a foray the
+    listener started and then paused with the Play keycap. The foray restores
+    paused, so one press starts it (the key turns to Pause) and the next press
+    pauses it again, leaving the key reading Play. Everything that differs from
+    the playing sheet sits inside that keycap's box. The playhead moves a few
+    hundred ms between the presses; the elapsed readout floors to the second
+    and the restore point (12:40) leaves a whole second of room. */
+async function pausedForayNowPlaying(page) {
+  /* This step follows the Up Next steps, which leave the Clear confirm sheet up; it
+     would sit over the bar the sheet opens from. */
+  await page.keyboard.press("Escape");
+  await wait(page, 300);
+  await openForayNowPlaying(page);
+  const big = page.locator("#foray-player .fp-big");
+  await big.click();
+  await page.waitForSelector('#foray-player .fp-big[aria-label="Pause"]', { timeout: 10000 });
+  await big.click();
+  await page.waitForSelector('#foray-player .fp-big[aria-label="Play"]', { timeout: 10000 });
+  await wait(page, 600);
+}
+
 async function closeNowPlaying(page) {
   const close = page.locator(".fp-close");
   if (await close.count()) await close.first().click().catch(() => {});
@@ -362,6 +383,7 @@ export function appStates(fx) {
         { label: "up-next-actions", route: "#/library", run: async (page) => { await queueWithPlaying(page, ep0); await openQueueActions(page, 1); } },
         { label: "up-next-remove-toast", route: "#/library", run: async (page) => { await queueWithPlaying(page, ep0); await removeQueueRow(page, 1); } },
         { label: "up-next-clear-sheet", route: "#/library", run: async (page) => { await queueWithPlaying(page, ep0); await openClearSheet(page); } },
+        { label: "now-playing-paused", route: "#/library", run: (page) => pausedForayNowPlaying(page), ready: '#foray-player .fp-play[aria-label="Play"]' },
       ],
     },
     {

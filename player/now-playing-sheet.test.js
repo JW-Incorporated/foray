@@ -573,7 +573,9 @@ test("Tactile hero and transport preserve the ruled phone geometry", () => {
   assert.match(CSS_RULES, /\.np\.np--three-title \.np__art \{ width: 160px; height: 160px; \}/);
   assert.match(CSS_RULES, /\.np \.transport \{[^}]*gap:\s*var\(--s-6\)/);
   assert.match(CSS_RULES, /\.np \.transport \.fp-big \{[^}]*width:\s*var\(--key-xl\)[^}]*height:\s*var\(--key-xl\)/);
-  assert.match(CSS_RULES, /\.np \.transport \.keycap--lg \{[^}]*width:\s*var\(--key-lg\)[^}]*height:\s*var\(--key-lg\)/);
+  /* The skip keys are 68 wide (key-lg + s-3), 56 tall. MUTATION: change the width back to
+     `var(--key-lg)` (or drop the `+ var(--s-3)`) -> red; change the height from var(--key-lg) -> red. */
+  assert.match(CSS_RULES, /\.np \.transport \.keycap--lg \{[^}]*\swidth:\s*calc\(var\(--key-lg\) \+ var\(--s-3\)\)[^}]*height:\s*var\(--key-lg\)/);
   assert.match(NP_FLAT_TEXT, /parts\.row\.classList\.add\("transport"\)/);
 });
 
@@ -599,18 +601,20 @@ test("Tactile Foray provenance shows the station or narration under the needle, 
 
 test("Tactile detail scrolls beneath a bottom-pinned dock and keeps seekable 56 and 48px rows", () => {
   /* MUTATION: change `.np__dock` from `position: absolute` to `position: sticky` -> red and Play returns to the scroll flow.
+     MUTATION: change the dock fade stop (36px, `.np__dock::before`) to 28px -> red.
+     MUTATION: change the 189px in `.np__top` min-height (here and in styles.css) back to 176px -> red.
      The dock sits at safe-b + 16 (--s-4) per the acceptance criterion. */
   assert.match(NP_FLAT, /sheet\.replaceChildren\(bg, parts\.grabZone, parts\.scroll, dock\)/);
-  assert.match(CSS_RULES, /\.np__top \{[^}]*min-height:\s*calc\(100% - 176px - var\(--safe-b\)\)/);
+  assert.match(CSS_RULES, /\.np__top \{[^}]*min-height:\s*calc\(100% - 189px - var\(--safe-b\)\)/);
   assert.match(CSS_RULES, /\.np__dock \{[^}]*position:\s*absolute[^}]*bottom:\s*calc\(var\(--safe-b\) \+ var\(--s-4\)\)/);
-  assert.match(CSS_RULES, /\.np__dock::before \{[^}]*linear-gradient\(to bottom, transparent, var\(--paper\) 28px\)/);
+  assert.match(CSS_RULES, /\.np__dock::before \{[^}]*linear-gradient\(to bottom, transparent, var\(--paper\) 36px\)/);
   assert.match(CSS_RULES, /\.np \.segrow \{[^}]*min-height:\s*56px/);
   assert.match(CSS_RULES, /\.np__chapter \{[^}]*min-height:\s*48px/);
 });
 
 test("Tactile transport uses circular 56/80/56 keys with an attached darker lip and custom skip marks", () => {
-  /* MUTATION: remove the explicit `width: var(--key-lg)` override -> red and legacy padding squashes the skip keys. */
-  assert.match(CSS_RULES, /\.np \.transport \.keycap--lg \{\s*box-sizing:\s*border-box;\s*width:\s*var\(--key-lg\)[^}]*height:\s*var\(--key-lg\)[^}]*padding:\s*0/);
+  /* MUTATION: remove the explicit `width: calc(var(--key-lg) + var(--s-3))` override -> red and legacy padding squashes the skip keys. */
+  assert.match(CSS_RULES, /\.np \.transport \.keycap--lg \{\s*box-sizing:\s*border-box;\s*width:\s*calc\(var\(--key-lg\) \+ var\(--s-3\)\)[^}]*height:\s*var\(--key-lg\)[^}]*padding:\s*0/);
   /* The lip is a hard shadow in the key's own shape (the primitive's flat ::after bar is switched off).
      MUTATION: delete the `box-shadow: 0 var(--lip) 0 var(--k-lip)` rule -> red and the keys lose their lip. */
   assert.match(CSS_RULES, /\.np \.transport \.keycap::after,\s*\.np \.second \.keycap::after \{ content: none; \}/);
