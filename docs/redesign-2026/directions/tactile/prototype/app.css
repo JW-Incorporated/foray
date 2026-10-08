@@ -637,6 +637,8 @@ body.route-search::after { height: calc(var(--deck-total) + var(--safe-b) + 100p
 .dial__needle::before { content: ""; position: absolute; top: 0; left: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--ink); }
 .dialrow__top .readout { min-height: 16px; }
 .sheet:focus { outline: none; }
+/* Added in the Redesign 2026 build (Settings, iteration 2): the sheet's way to the menu, whose switches have no other way in from Today and Yours. The word lines up with the sheet's text; the button's 12px side padding is hit area. */
+.settings-more { align-self: flex-start; margin-left: -12px; }
 
 /* P0-5 Foray detail: the pinned Play is one extended keycap; an empty well has no legend */
 .pin { gap: 0; }

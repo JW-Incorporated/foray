@@ -162,6 +162,16 @@ async function openGallerySheet(page, scheme) {
     `hidden` once `openSheet` has taken it; the beat after is the sheet settling. */
 async function openSettingsFromKnob(page) {
   await page.waitForSelector("#today-knob", { state: "visible", timeout: 15000 });
+  /* A listener who has turned two dials: the first two the sheet would offer sit
+     at +2 and -1 (the prototype's own sample: Engineering 7, History 4), the third
+     stays at 4a's setting. Through the app's own writers, so the sheet reads real
+     state; without this every readout is empty (it is empty at the detent) and the
+     only carrier of a setting is the needle. */
+  await page.evaluate(() => {
+    const [a, b] = settingsDialNodes();
+    for (const [n, pos] of [[a, 7], [b, 4]]) if (n) setInterest(n.id, settingsDialValue(pos, settingsAnchor(n)));
+    saveInterests();
+  });
   await page.locator("#today-knob").click();
   await page.waitForSelector("#settings-sheet:not([hidden])", { state: "visible", timeout: 10000 });
   await wait(page, 600);

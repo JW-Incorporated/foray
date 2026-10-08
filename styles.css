@@ -5563,16 +5563,19 @@ body.view-home::after { content: ""; position: fixed; z-index: 19; left: 0; righ
   padding: var(--s-5) var(--s-4) var(--s-4); border-radius: var(--r-lg);
 }
 .settings-sheet p { margin: 0; }
-/* The grabber's tap zone is the sheet's own top padding, so it never covers the header. */
-.settings-grab { position: absolute; top: 0; left: 0; right: 0; height: var(--s-5); display: flex; justify-content: center; align-items: center; cursor: pointer; }
-.settings-grab .sheet__grabber { margin: 0; }
+/* The title is an <h2>: without this its UA margin (0.83em, about 22px each side) turned a 44px header into 73px and floated "Settings" away from "Appearance". */
+.settings-sheet header .title { margin: 0; }
+/* The prototype's .sect__head sits the title and Done on one baseline (the title lands 3.5px under the header's top), not on one centre line. */
+.sheet.settings-sheet > header { align-items: baseline; }
 /* The scroller's own 4px (cancelled by the negative margin) is where a focus ring's 2px offset and 2px line live; without it the scroller clips the ring at the well's ends. */
 .settings-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: var(--s-4); padding: var(--s-1); margin: calc(-1 * var(--s-1)); }
 .settings-group { display: flex; flex-direction: column; gap: var(--s-2); }
 .settings-group__top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); }
 .settings-label { margin: 0; font: var(--w-label) var(--t-label)/var(--lh-label) var(--font-text); color: var(--ink); }
-/* "4a's setting is the centre detent" and the floor sentence: label size at 500, not micro. */
+/* "4a's setting is the centre detent": label size at 500, not micro. */
 .settings-note { font: var(--w-body) var(--t-label)/var(--lh-label) var(--font-text); color: var(--ink-2); text-wrap: balance; }
+/* The floor sentence is the prototype's caption: micro size and weight (12/600, the label-vs-body step the direction uses for captions), one line at 375 and up, never balanced into a narrow measure. */
+.settings-note.settings-floor { font: var(--w-micro) var(--t-micro)/var(--lh-micro) var(--font-text); text-wrap: wrap; }
 /* The text button's own 12px side padding is hit area, not indent: the word lines up with the sheet's text. */
 .settings-more { align-self: flex-start; margin-left: calc(-1 * var(--s-3)); }
 
@@ -5582,7 +5585,6 @@ body.view-home::after { content: ""; position: fixed; z-index: 19; left: 0; righ
 .settings-seg__opt:focus-visible { outline: calc(var(--s-1) / 2) solid var(--ultramarine); outline-offset: calc(var(--s-1) / 2); }
 
 .settings-dial { display: flex; flex-direction: column; gap: var(--s-2); }
-.settings-dial + .settings-dial { margin-top: var(--s-1); }
 .settings-dial__top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); }
 .settings-dial__name { font: var(--w-body) var(--t-body)/var(--lh-body) var(--font-text); color: var(--ink); }
 .settings-dial__read { min-height: var(--s-4); color: var(--ink-2); }

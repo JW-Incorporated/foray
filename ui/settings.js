@@ -13,9 +13,10 @@
 
      - it is the app's own modal (`openSheet`): `aria-modal`, the page behind it
        `inert`, focus on the sheet container (never its first button), Tab kept
-       inside, Escape / the scrim / the grabber / Done close it and focus goes
-       back to the knob;
-     - APPEARANCE: System / Cream / Bakelite in a well, written to `cp_theme`
+       inside, Escape / the scrim / Done close it and focus goes back to the
+       knob. There is no grabber: the prototype's sheet has none, and without
+       it the header reads title-then-Appearance on one 4px rhythm;
+     - APPEARANCE: Cream / Bakelite / Auto in a well, written to `cp_theme`
        through the storage shim and flipped on `html[data-theme]` with no reload
        (the token layer already honours the attribute; "System" removes it);
      - DIALS: a 44px well per subject, a persimmon fill from the left, the band
@@ -38,16 +39,18 @@
    listener has already moved first (most moved first), then the ones 4a leans
    on hardest. The interests page keeps every root and every moved leaf. */
 
+/* The prototype's order and words: Cream / Bakelite / Auto, with the default
+   (Auto = "follow the OS", stored as "system") on the right. */
 const SETTINGS_THEMES = Object.freeze([
-  Object.freeze({ value: "system", label: "System" }),
   Object.freeze({ value: "light", label: "Cream" }),
   Object.freeze({ value: "dark", label: "Bakelite" }),
+  Object.freeze({ value: "system", label: "Auto" }),
 ]);
 
 /** A dial is eleven positions, 0 to 10, with 4a's setting at 5. */
 const SETTINGS_DIAL_MAX = 10;
 const SETTINGS_DIAL_DETENT = 5;
-const SETTINGS_DIAL_COUNT = 3;
+const SETTINGS_DIAL_COUNT = 2;
 
 const SETTINGS_DETENT_COPY = "4a's setting is the centre detent";
 const SETTINGS_FLOOR_COPY = "The exploration floor stays at about a third. It is not a dial.";
@@ -246,7 +249,6 @@ function settingsBindDials(sheet) {
 
 function settingsSheetHtml() {
   return `<div class="settings-scrim" id="settings-scrim"></div><section class="sheet settings-sheet" id="settings-sheet" role="dialog" aria-modal="true" aria-labelledby="settings-sheet-title" tabindex="-1" hidden>
-    <div class="settings-grab" aria-hidden="true"><div class="sheet__grabber"></div></div>
     <header><h2 class="title" id="settings-sheet-title">Settings</h2><button type="button" class="textbtn" id="settings-done">Done</button></header>
     <div class="settings-body">
       ${settingsThemeHtml(settingsThemeRead())}
@@ -287,19 +289,6 @@ function openSettingsSheet(opener) {
   openSheet(sheet, { onRequestClose: shut, keepReachable: ["#settings-scrim"], returnFocus: knob });
   setExpanded(true);
   scrim.addEventListener("click", shut);
-  const grab = sheet.querySelector(".settings-grab");
-  if (grab) {
-    /* The grabber closes on a tap, and on a pull down (the same gesture the
-       other sheets answer); Done is its button twin. */
-    let startY = null;
-    grab.addEventListener("pointerdown", (e) => { startY = typeof e.clientY === "number" ? e.clientY : null; });
-    grab.addEventListener("pointerup", (e) => {
-      const pulled = startY != null && typeof e.clientY === "number" && e.clientY - startY > 40;
-      startY = null;
-      if (pulled) shut();
-    });
-    grab.addEventListener("click", shut);
-  }
   sheet.querySelector("#settings-done").addEventListener("click", shut);
   sheet.querySelector("#settings-more").addEventListener("click", () => {
     shut();

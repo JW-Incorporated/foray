@@ -9,10 +9,12 @@
  *      empty at the detent.
  *   2. The sheet is the app's own modal: a dialog with aria-modal, the page
  *      behind it inert, focus on the container (never a button), Escape, the
- *      scrim, the grabber and Done all close it, and focus goes back to the knob.
- *   3. Appearance is System / Cream / Bakelite in a well, a radiogroup with one
- *      tab stop. Choosing writes `cp_theme` through the shim and flips
- *      html[data-theme] with no reload; System removes the attribute; boot
+ *      scrim and Done all close it (there is no grabber: the prototype's sheet
+ *      has none), and focus goes back to the knob.
+ *   3. Appearance is Cream / Bakelite / Auto in a well (the prototype's order
+ *      and words, Auto - stored as "system" - last and the default), a
+ *      radiogroup with one tab stop. Choosing writes `cp_theme` through the
+ *      shim and flips html[data-theme] with no reload; Auto removes the attribute; boot
  *      paints the stored choice. Bakelite's --paper is #17130F (Cream's #F7F0E4).
  *   4. Dials write the interest the dial stands for through setInterest /
  *      saveInterests, fire the selection haptic on ARRIVING at the detent only,
@@ -21,8 +23,12 @@
  *   6. The stylesheet's dial: a 44px well, a persimmon fill from the left, the
  *      detent drawn ABOVE the fill and recoloured where the fill runs under it,
  *      the needle's 2px stem and 8px cap, no transition or animation.
- *   7. The harness reaches it (`returning` / `settings-sheet`) and screens.json
- *      measures header and rows only.
+ *   7. The harness reaches it (`returning` / `settings-sheet`), with two dials
+ *      turned so the readouts have something to read, and screens.json measures
+ *      the sheet's own regions (iteration 2 of 4).
+ *   8. The sheet's rhythm and caption follow the prototype (iteration 2): the
+ *      title's UA margin is reset, the floor sentence is the micro caption on
+ *      one line, there is no grabber, and Auto is the last option.
  *
  * WHAT IT CANNOT PROVE: how it looks (fidelity.mjs: header and rows within 4px
  * of #/settings) or that the computed colour changes in a browser (checked by a
@@ -178,8 +184,8 @@ const base = (sel) => RULES.filter((r) => r.atRules.length === 0 && r.selectors.
 /** The unconditional rule for `sel` that declares the paper (a scheme block, not a component). */
 const rootRule = (sel) => RULES.find((r) => r.selectors.includes(sel) && r.atRules.length === 0 && decl(r, "--paper"));
 
-/** The three dials' subjects, the way settingsDialNodes picks them for a fresh profile. */
-const topRoots = () => TAXONOMY.nodes.filter((n) => n.parent === null).sort((a, b) => b.weight - a.weight || a.label.localeCompare(b.label)).slice(0, 3);
+/** The two dials' subjects, the way settingsDialNodes picks them for a fresh profile. */
+const topRoots = () => TAXONOMY.nodes.filter((n) => n.parent === null).sort((a, b) => b.weight - a.weight || a.label.localeCompare(b.label)).slice(0, 2);
 
 /* ==================================================================== */
 /* 1. THE DIAL'S ARITHMETIC                                              */
@@ -250,15 +256,14 @@ test("the sheet is a modal dialog: aria-modal, labelled, the page inert, focus o
 });
 function open_(m) { open(m); return m; }
 
-test("Escape, the scrim, the grabber and Done each close it, and focus goes back to the knob", () => {
-  /* MUTATION 1: leave the `grab.addEventListener("click", shut)` line out - the grabber case fails.
+test("Escape, the scrim and Done each close it, and focus goes back to the knob", () => {
+  /* MUTATION 1: leave the `scrim.addEventListener("click", shut)` line out - the scrim case fails.
      MUTATION 2: drop `returnFocus: knob` from the openSheet call AND the `focusQuietly(knobNow())` fallback in shut - a tap that left focus on <body> returns nowhere and the knob-focus assertion fails.
      MUTATION 3: drop `keepReachable: ["#settings-scrim"]` - the scrim is inert, so its click handler is unreachable in a browser; the keepReachable assertion fails.
      MUTATION 4: forget `setExpanded(false)` - the aria-expanded assertion fails. */
   const ways = {
     Escape: (m) => assert.ok(m.keydown("Escape"), "Escape is claimed"),
     scrim: (m) => click(q(m, "#settings-scrim")),
-    grabber: (m) => click(q(m, ".settings-grab")),
     Done: (m) => click(q(m, "#settings-done")),
   };
   for (const [name, close] of Object.entries(ways)) {
@@ -300,8 +305,8 @@ test("a second press while it is open opens nothing, and More settings hands ove
 /* 3. APPEARANCE                                                         */
 /* ==================================================================== */
 
-test("Appearance is System / Cream / Bakelite in a well, a radiogroup with one tab stop on the chosen option", () => {
-  /* MUTATION 1: reorder SETTINGS_THEMES - the order assertion fails.
+test("Appearance is Cream / Bakelite / Auto in a well, a radiogroup with one tab stop on the chosen option", () => {
+  /* MUTATION 1: reorder SETTINGS_THEMES back to System first, or relabel Auto "System" - the order and label assertions fail.
      MUTATION 2: tabindex is "0" on every option - the roving-tabindex assertion fails.
      MUTATION 3: drop role="radiogroup" - the group assertion fails.
      MUTATION 4: the group is a div without the .well class - the well assertion fails. */
@@ -313,17 +318,17 @@ test("Appearance is System / Cream / Bakelite in a well, a radiogroup with one t
   assert.strictEqual(group.getAttribute("aria-labelledby"), "settings-appearance-label");
   assert.strictEqual(q(m, "#settings-appearance-label").textContent, "Appearance");
   const opts = qa(m, "[data-theme-choice]");
-  assert.deepStrictEqual(opts.map((o) => o.textContent), ["System", "Cream", "Bakelite"]);
-  assert.deepStrictEqual(opts.map((o) => o.getAttribute("data-theme-choice")), ["system", "light", "dark"]);
+  assert.deepStrictEqual(opts.map((o) => o.textContent), ["Cream", "Bakelite", "Auto"]);
+  assert.deepStrictEqual(opts.map((o) => o.getAttribute("data-theme-choice")), ["light", "dark", "system"]);
   assert.ok(opts.every((o) => o.getAttribute("role") === "radio" && o.tagName === "BUTTON"));
-  assert.deepStrictEqual(opts.map((o) => o.getAttribute("aria-checked")), ["true", "false", "false"], "System is the default");
-  assert.deepStrictEqual(opts.map((o) => o.getAttribute("tabindex")), ["0", "-1", "-1"], "one tab stop");
+  assert.deepStrictEqual(opts.map((o) => o.getAttribute("aria-checked")), ["false", "false", "true"], "Auto is the default, at the right");
+  assert.deepStrictEqual(opts.map((o) => o.getAttribute("tabindex")), ["-1", "-1", "0"], "one tab stop");
 });
 
-test("choosing Bakelite writes cp_theme through the shim and flips html[data-theme] with no reload; System removes it", () => {
+test("choosing Bakelite writes cp_theme through the shim and flips html[data-theme] with no reload; Auto removes it", () => {
   /* MUTATION 1: `lsSet("cp_theme", next)` removed from settingsThemeSet - the stored-key assertion fails.
      MUTATION 2: apply to document.body instead of documentElement - the attribute assertion fails.
-     MUTATION 3: "system" sets data-theme="system" instead of removing it - the removal assertion fails
+     MUTATION 3: "system" (Auto) sets data-theme="system" instead of removing it - the removal assertion fails
      (the token layer only knows light and dark, so "system" would pin Cream under a dark OS).
      MUTATION 4: do not update aria-checked after a choice - the state assertion fails. */
   const m = mount();
@@ -332,13 +337,13 @@ test("choosing Bakelite writes cp_theme through the shim and flips html[data-the
   click(by("dark"));
   assert.strictEqual(m.html.getAttribute("data-theme"), "dark", "Bakelite is on <html>");
   assert.strictEqual(m.store.get("cp_theme"), '"dark"', "stored through lsSet, in the cp_ namespace");
-  assert.deepStrictEqual(qa(m, "[data-theme-choice]").map((o) => o.getAttribute("aria-checked")), ["false", "false", "true"]);
-  assert.deepStrictEqual(qa(m, "[data-theme-choice]").map((o) => o.getAttribute("tabindex")), ["-1", "-1", "0"]);
+  assert.deepStrictEqual(qa(m, "[data-theme-choice]").map((o) => o.getAttribute("aria-checked")), ["false", "true", "false"]);
+  assert.deepStrictEqual(qa(m, "[data-theme-choice]").map((o) => o.getAttribute("tabindex")), ["-1", "0", "-1"]);
   click(by("light"));
   assert.strictEqual(m.html.getAttribute("data-theme"), "light");
   assert.strictEqual(m.store.get("cp_theme"), '"light"');
   click(by("system"));
-  assert.strictEqual(m.html.getAttribute("data-theme"), null, "System removes the attribute: the OS decides");
+  assert.strictEqual(m.html.getAttribute("data-theme"), null, "Auto removes the attribute: the OS decides");
   assert.strictEqual(m.store.get("cp_theme"), '"system"');
   /* The CSS half of "--paper computes to #17130F": the attribute selects a block that declares it. */
   const bakelite = rootRule(':root[data-theme="dark"]');
@@ -350,22 +355,24 @@ test("choosing Bakelite writes cp_theme through the shim and flips html[data-the
 
 test("the arrow keys move the choice and the focus along the radiogroup, wrapping", () => {
   /* MUTATION 1: ArrowRight steps by 0 - the move assertion fails.
-     MUTATION 2: drop the `+ list.length) % list.length` wrap - ArrowLeft from System goes nowhere and fails.
+     MUTATION 2: drop the `+ list.length) % list.length` wrap - ArrowLeft from Cream (the first option) goes nowhere and fails.
      MUTATION 3: skip focusQuietly after the choice - the focus assertion fails. */
   const m = mount();
   open(m);
   const opts = qa(m, "[data-theme-choice]");
   const group = q(m, ".settings-seg");
   const key = (el, k) => { for (const fn of group._on.get("keydown") || []) fn({ key: k, target: el, preventDefault() {} }); };
+  key(opts[2], "ArrowRight");   // from Auto, the last: wraps to the first
+  assert.strictEqual(m.html.getAttribute("data-theme"), "light", "wrapped from Auto to Cream");
+  assert.strictEqual(m.doc.activeElement, opts[0], "focus follows");
   key(opts[0], "ArrowRight");
-  assert.strictEqual(m.html.getAttribute("data-theme"), "light", "Cream");
-  assert.strictEqual(m.doc.activeElement, opts[1], "focus follows");
+  assert.strictEqual(m.html.getAttribute("data-theme"), "dark", "Bakelite");
   key(opts[1], "ArrowLeft");
   key(opts[0], "ArrowLeft");
-  assert.strictEqual(m.html.getAttribute("data-theme"), "dark", "wrapped from System to Bakelite");
+  assert.strictEqual(m.html.getAttribute("data-theme"), null, "wrapped from Cream back to Auto, which removes the attribute");
   assert.strictEqual(m.doc.activeElement, opts[2]);
   key(opts[2], "Home");   // not an arrow: nothing moves
-  assert.strictEqual(m.html.getAttribute("data-theme"), "dark");
+  assert.strictEqual(m.html.getAttribute("data-theme"), null);
 });
 
 test("boot paints the stored choice, before the first await and again once storage has landed", () => {
@@ -391,20 +398,20 @@ test("boot paints the stored choice, before the first await and again once stora
 /* 4. DIALS                                                              */
 /* ==================================================================== */
 
-test("a fresh profile gets three dials on the roots 4a leans on hardest; a moved subject takes a dial first", () => {
-  /* MUTATION 1: slice(0, 4) - the count assertion fails.
+test("a fresh profile gets two dials on the roots 4a leans on hardest; a moved subject takes a dial first", () => {
+  /* MUTATION 1: slice(0, 3) - the count assertion fails.
      MUTATION 2: sort the untouched ones ascending - the order assertion fails.
      MUTATION 3: drop the `touched` list - the moved-first assertion fails. */
   const m = mount();
   open(m);
   const ids = qa(m, ".knobtrack").map((t) => t.getAttribute("data-dial-id"));
   assert.deepStrictEqual(ids, topRoots().map((n) => n.id));
-  assert.strictEqual(ids.length, 3);
+  assert.strictEqual(ids.length, 2);
   const m2 = mount({ seed: { cp_interests: JSON.stringify({ music: 0.05, cities: 0.95 }) } });
   open(m2);
   const ids2 = qa(m2, ".knobtrack").map((t) => t.getAttribute("data-dial-id"));
   assert.deepStrictEqual(ids2.slice(0, 2), ["music", "cities"], "the two the listener moved, most moved first (0.45 each: by name)");
-  assert.strictEqual(ids2.length, 3);
+  assert.strictEqual(ids2.length, 2);
 });
 
 test("a dial: a hidden 0..10 range input with step 1, labelled by its subject, an empty readout at the detent", () => {
@@ -415,7 +422,7 @@ test("a dial: a hidden 0..10 range input with step 1, labelled by its subject, a
   const m = mount();
   open(m);
   const dials = qa(m, ".settings-dial");
-  assert.strictEqual(dials.length, 3);
+  assert.strictEqual(dials.length, 2);
   const first = dials[0];
   const input = first.querySelector("input");
   assert.strictEqual(input.getAttribute("type"), "range");
@@ -505,8 +512,8 @@ test("THE EXPLORATION FLOOR IS A SENTENCE: one paragraph, no input, no .knobtrac
   assert.strictEqual(floor.tagName, "P");
   assert.strictEqual(floor.textContent, sentence);
   assert.strictEqual(floor.descendants().length, 0, "plain text, nothing inside it");
-  assert.strictEqual(qa(m, ".knobtrack").length, 3, "one track per DIAL; the floor has none");
-  assert.strictEqual(qa(m, "input").length, 3, "three inputs on the sheet: the dials");
+  assert.strictEqual(qa(m, ".knobtrack").length, 2, "one track per DIAL; the floor has none");
+  assert.strictEqual(qa(m, "input").length, 2, "two inputs on the sheet: the dials");
   assert.ok(qa(m, ".knobtrack").every((t) => t.getAttribute("data-dial-id")), "every track belongs to a taxonomy subject");
   for (const t of qa(m, ".knobtrack")) assert.ok(!t.textContent.includes("floor"));
   assert.ok(!/\bfloor\b/i.test(qa(m, "input").map((i) => i.getAttribute("aria-labelledby")).join(" ")), "no control is named for it");
@@ -637,11 +644,34 @@ test("the segmented options are 44px targets and the radiogroup is a well", () =
   assert.strictEqual(decl(on, "box-shadow"), "var(--shadow-card)");
 });
 
+test("iteration 2: no grabber, the title's UA margin is reset, the floor sentence is the one-line micro caption", () => {
+  /* MUTATION 1: put `<div class="settings-grab" aria-hidden="true"><div class="sheet__grabber"></div></div>` back into settingsSheetHtml - the no-grabber assertion fails.
+     MUTATION 2: delete the `.settings-sheet header .title { margin: 0; }` rule - the margin assertion fails (an <h2> carries 0.83em top and bottom, which turned a 44px header into 73px).
+     MUTATION 3: drop the `.settings-note.settings-floor` rule - the caption falls back to the 13/500 note and the micro assertion fails.
+     MUTATION 4: `text-wrap: wrap` -> `text-wrap: balance` on the floor - the one-line assertion fails (balance squeezes it into a narrow two-line measure). */
+  const m = mount();
+  open(m);
+  assert.strictEqual(q(m, ".settings-grab"), null, "no grab handle: the prototype's sheet has none");
+  assert.strictEqual(q(m, ".sheet__grabber"), null);
+  assert.doesNotMatch(CSS, /\.settings-grab\b/, "and no rule left for it");
+  const title = base(".settings-sheet header .title")[0];
+  assert.ok(title, "the title has its own rule inside the sheet");
+  assert.strictEqual(decl(title, "margin"), "0");
+  /* MUTATION 5: delete the `.sheet.settings-sheet > header { align-items: baseline }` rule - the baseline assertion fails (the title drops to the centre line, 3.5px off the prototype). */
+  const head = base(".sheet.settings-sheet > header")[0];
+  assert.ok(head, "the header has its own rule");
+  assert.strictEqual(decl(head, "align-items"), "baseline", "title and Done on one baseline, as the prototype's .sect__head");
+  const floor = base(".settings-note.settings-floor")[0];
+  assert.ok(floor, "the floor sentence has its own caption rule");
+  assert.match(decl(floor, "font"), /^var\(--w-micro\) var\(--t-micro\)\/var\(--lh-micro\)/, "micro size and weight, the prototype's caption");
+  assert.strictEqual(decl(floor, "text-wrap"), "wrap", "one line, not balanced into a narrow measure");
+});
+
 /* ==================================================================== */
 /* 6. THE HARNESS AND THE SCREEN MAP                                     */
 /* ==================================================================== */
 
-test("the harness reaches the sheet by pressing the knob on Today, and screens.json measures header and rows", () => {
+test("the harness reaches the sheet by pressing the knob on Today, and turns two dials first; screens.json measures the sheet", () => {
   /* MUTATION 1: delete the settings-sheet step from the `returning` state - the step assertion fails.
      MUTATION 2: point screens.json at a step that does not exist - the map assertion fails (and fidelity.mjs exits 2).
      MUTATION 3: put the hero region back with app: ".today-hero" - the "regions the prototype sheet does not have" assertion fails. */
@@ -650,9 +680,15 @@ test("the harness reaches the sheet by pressing the knob on Today, and screens.j
   const helper = /async function openSettingsFromKnob\(page\) \{[\s\S]*?\n\}/.exec(STATES_SRC)[0];
   assert.match(helper, /page\.locator\("#today-knob"\)\.click\(\)/, "the knob keycap is pressed");
   assert.match(helper, /waitForSelector\("#settings-sheet:not\(\[hidden\]\)"/, "and the sheet waited for");
+  /* MUTATION 4: delete the page.evaluate block in openSettingsFromKnob - the dials-turned assertions fail (every readout would be empty). */
+  assert.match(helper, /settingsDialValue\(pos, settingsAnchor\(n\)\)/, "two dials are turned through the app's own writers");
+  assert.match(helper, /\[a, 7\], \[b, 4\]/, "to +2 and -1, the prototype's own sample");
+  assert.ok(helper.indexOf("page.evaluate") < helper.indexOf('page.locator("#today-knob").click()'), "before the sheet is opened, so it reads them");
   const s = SCREENS.screens.settings;
   assert.deepStrictEqual(s.app, { state: "returning", step: "settings-sheet" });
-  assert.deepStrictEqual(Object.keys(s.regions).sort(), ["header", "rows"], "hero, primary and tabBar are not in the prototype's sheet");
+  assert.deepStrictEqual(Object.keys(s.regions).sort(), ["appearance", "caption", "dials", "header", "rows", "sheet", "sheetHeader", "sheetTitle"], "hero, primary and tabBar are not in the prototype's sheet; the sheet's own regions are");
+  assert.deepStrictEqual(s.regions.sheet, { prototype: "#sheet", app: "#settings-sheet" });
+  assert.deepStrictEqual(s.regions.caption, { prototype: "#sheet .dialrow > .micro", app: "#settings-sheet .settings-floor" });
   assert.deepStrictEqual(s.regions.header, { prototype: ".top", app: ".today-top" });
   assert.deepStrictEqual(s.regions.rows, { prototype: ".row", app: ".today .row-episode", mode: "all" });
   assert.strictEqual(s.prototype.route, "#/settings");
