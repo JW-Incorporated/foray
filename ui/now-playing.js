@@ -58,6 +58,20 @@ function dialOwnGlyph(button) {
   if (button && button.dataset) button.dataset.dialOwned = "1";
 }
 
+/* A chip that reveals the inline dial: collapsed until dialOpenRotary says
+   otherwise. */
+function dialDisclosure(button, controls) {
+  if (!button) return;
+  button.setAttribute("aria-expanded", "false");
+  button.setAttribute("aria-controls", controls);
+}
+
+function dialSetDisclosed(parts, opener) {
+  [parts && parts.rateBtn, parts && parts.sleepBtn].forEach(function (button) {
+    if (button) button.setAttribute("aria-expanded", button === opener ? "true" : "false");
+  });
+}
+
 function dialBuildNowPlaying(parts) {
   if (!parts || !parts.sheet || !parts.scroll) return {};
   var sheet = parts.sheet;
@@ -118,12 +132,17 @@ function dialBuildNowPlaying(parts) {
 
   var sleepBtn = dialNpEl("button", "fp-sleep rotary-chip");
   sleepBtn.type = "button";
-  /* It opens the sleep dial, a dialog: say so to voice control (the speed chip
-     carries the same attribute from player/client.js). */
-  sleepBtn.setAttribute("aria-haspopup", "dialog");
+  /* It opens the sleep dial inline in the dock: a disclosure, not a dialog (the
+     dial is a group holding a radiogroup, not a role=dialog), so it carries
+     aria-expanded/aria-controls and never aria-haspopup. */
+  dialDisclosure(sleepBtn, "np-dial");
   dialPaintSleep(sleepBtn, 0);
 
   parts.rateBtn.className = "fp-rate rotary-chip";
+  /* With this view the speed chip opens the inline dial, so it is a disclosure
+     too; player/client.js keeps aria-haspopup only for the list-picker dialog it
+     falls back to when this view is absent. */
+  dialDisclosure(parts.rateBtn, "np-dial");
   dialPaintNowPlayingRate(parts.rateBtn, 1);
   parts.bookmarkBtn.className = "fp-btn fp-bookmark keycap keycap--sm keycap--paper";
   parts.bookmarkBtn.innerHTML = dialNpIcon("ph-bookmark-simple");
@@ -160,6 +179,7 @@ function dialBuildNowPlaying(parts) {
 
   var dock = dialNpEl("div", "np__dock");
   var rotaryHost = dialNpEl("div", "np__dial");
+  rotaryHost.id = "np-dial";
   rotaryHost.hidden = true;
   dock.append(parts.row, parts.row2, rotaryHost);
   parts.scroll.classList.add("np__scroll");
@@ -174,6 +194,42 @@ function dialBuildNowPlaying(parts) {
   return { bg: bg, top: top, artWrap: artWrap, collage: collage, chips: chips, bandVisual: bandVisual, bandSvg: bandSvg, bandCodes: codes, bandNeedle: needle, bubble: bubble, sleepBtn: sleepBtn, upNext: upNext, segments: segments, origin: origin, chapters: chapters, notes: notes, legacy: legacy, dock: dock, row2: parts.row2, rotaryHost: rotaryHost };
 }
 
+/* OKLCH -> linear-light sRGB, NOT clipped: a channel outside 0..1 means the
+   colour is outside the sRGB gamut. dialHexRgb clips it for contrast maths; the
+   tint normaliser uses the raw channels to find the gamut edge. */
+function dialOklchToLinear(L, C, hueDeg) {
+  var h = hueDeg * Math.PI / 180;
+  var a = C * Math.cos(h), b = C * Math.sin(h);
+  var l3 = Math.pow(L + .3963377774 * a + .2158037573 * b, 3);
+  var m3 = Math.pow(L - .1055613458 * a - .0638541728 * b, 3);
+  var s3 = Math.pow(L - .0894841775 * a - 1.291485548 * b, 3);
+  return [
+    4.0767416621 * l3 - 3.3077115913 * m3 + .2309699292 * s3,
+    -1.2684380046 * l3 + 2.6097574011 * m3 - .3413193965 * s3,
+    -.0041960863 * l3 - .7034186147 * m3 + 1.707614701 * s3,
+  ];
+}
+
+var DIAL_GAMUT_EPS = 1e-4;
+
+function dialInSrgbGamut(L, C, hueDeg) {
+  return dialOklchToLinear(L, C, hueDeg).every(function (v) { return v >= -DIAL_GAMUT_EPS && v <= 1 + DIAL_GAMUT_EPS; });
+}
+
+/* BUILD-NOTES 7: "walk it down only as far as sRGB gamut needs". The largest
+   chroma, at most `C`, that stays inside sRGB at this lightness and hue, floored
+   to the three decimals the tint is written with so rounding cannot push it back
+   out. A chroma already inside the gamut is returned as it came. */
+function dialFitChroma(L, C, hueDeg) {
+  if (dialInSrgbGamut(L, C, hueDeg)) return C;
+  var lo = 0, hi = C;
+  for (var i = 0; i < 24; i += 1) {
+    var mid = (lo + hi) / 2;
+    if (dialInSrgbGamut(L, mid, hueDeg)) lo = mid; else hi = mid;
+  }
+  return Math.floor(lo * 1000) / 1000;
+}
+
 function dialHexRgb(value) {
   var text = String(value || "").trim();
   var short = /^#([0-9a-f]{3})$/i.exec(text);
@@ -184,16 +240,7 @@ function dialHexRgb(value) {
   if (rgb) return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])];
   var oklch = /^oklch\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)/i.exec(text);
   if (!oklch) return null;
-  var L = Number(oklch[1]), C = Number(oklch[2]), h = Number(oklch[3]) * Math.PI / 180;
-  var a = C * Math.cos(h), b = C * Math.sin(h);
-  var l3 = Math.pow(L + .3963377774 * a + .2158037573 * b, 3);
-  var m3 = Math.pow(L - .1055613458 * a - .0638541728 * b, 3);
-  var s3 = Math.pow(L - .0894841775 * a - 1.291485548 * b, 3);
-  var linear = [
-    4.0767416621 * l3 - 3.3077115913 * m3 + .2309699292 * s3,
-    -1.2684380046 * l3 + 2.6097574011 * m3 - .3413193965 * s3,
-    -.0041960863 * l3 - .7034186147 * m3 + 1.707614701 * s3,
-  ];
+  var linear = dialOklchToLinear(Number(oklch[1]), Number(oklch[2]), Number(oklch[3]));
   return linear.map(function (channel) {
     var value = channel <= .0031308 ? 12.92 * channel : 1.055 * Math.pow(channel, 1 / 2.4) - .055;
     return Math.round(Math.max(0, Math.min(1, value)) * 255);
@@ -294,7 +341,13 @@ function dialLinearToOklch(linear) {
 
 function dialNormalizeArtworkTint(oklch, fallback) {
   if (!oklch || oklch.c < .07) return fallback;
-  return "oklch(" + Math.max(.45, Math.min(.6, oklch.l)).toFixed(3) + " " + Math.max(.1, oklch.c).toFixed(3) + " " + oklch.h.toFixed(1) + ")";
+  var lightness = Math.max(.45, Math.min(.6, oklch.l));
+  /* Floor the chroma at .10, then walk it down to the sRGB edge: a saturated
+     cover (pure green at L .6 wants chroma .29, the gamut ends near .20) would
+     otherwise be written out of gamut, the browser would map it one way and the
+     contrast check in dialApplyNowPlayingTint would clip it another. */
+  var chroma = dialFitChroma(lightness, Math.max(.1, oklch.c), oklch.h);
+  return "oklch(" + lightness.toFixed(3) + " " + chroma.toFixed(3) + " " + oklch.h.toFixed(1) + ")";
 }
 
 /* Everything after the pixels are read: linear-light average -> OKLCH ->
@@ -891,6 +944,7 @@ function dialOpenRotary(parts, spec) {
   parts.rotaryHost.replaceChildren(rotary.root);
   parts.rotaryHost.hidden = false;
   parts.row2.hidden = true;
+  dialSetDisclosed(parts, spec.opener);
   if (parts.dock) parts.dock.classList.add("np__dock--dial");
   rotary.reveal();
   var tick = rotary.ticks[rotary.index()];
@@ -906,6 +960,7 @@ function dialCloseRotary(parts, restoreFocus) {
   parts.rotaryHost.replaceChildren();
   parts.rotaryHost.hidden = true;
   parts.row2.hidden = false;
+  dialSetDisclosed(parts, null);
   if (parts.dock) parts.dock.classList.remove("np__dock--dial");
   if (restoreFocus && rotary.opener && typeof rotary.opener.focus === "function") rotary.opener.focus({ preventScroll: true });
   return true;
@@ -990,6 +1045,7 @@ window.DialNowPlaying = {
   tintFromPixels: dialTintFromPixels,
   spreadCodes: dialSpreadCodes,
   fitCodes: dialFitCodes,
+  fitChroma: dialFitChroma,
   codeGap: DIAL_CODE_GAP,
   codeShift: DIAL_CODE_SHIFT,
 };

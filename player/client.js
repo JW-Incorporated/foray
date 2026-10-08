@@ -1293,10 +1293,13 @@ function buildUI() {
   const rateBtn = el("button", "fp-rate", "1×");
   rateBtn.type = "button";
   rateBtn.setAttribute("aria-label", "Playback speed");
-  /* It opens the speed picker, a dialog (#349) — say so, or a voice-control
-     user told "next speed" expects a cycle (audit round 2, player-9). The
-     Foray page's `#fy-rate` is the same control and needs the same attribute. */
-  rateBtn.setAttribute("aria-haspopup", "dialog");
+  /* Without the Dial view it opens the speed picker, a dialog (#349) — say so,
+     or a voice-control user told "next speed" expects a cycle (audit round 2,
+     player-9). The Foray page's `#fy-rate` is the same control and needs the
+     same attribute. WITH the Dial view the chip opens an inline radiogroup in
+     the dock, not a dialog: `dialBuildNowPlaying` gives it aria-expanded and
+     aria-controls instead, and a false "dialog" must not be announced. */
+  if (!window.DialNowPlaying) rateBtn.setAttribute("aria-haspopup", "dialog");
   const openLink = el("a", "fp-openep", "Episode");
   /* The bar already survives navigation — it lives on <body>, not inside
      #view — but until now there was no way BACK. Leaving the foray page to look

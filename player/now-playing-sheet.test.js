@@ -1295,3 +1295,91 @@ test("the extraction path turns a half-red, half-black cover into a mid-lightnes
   const fallback = await dial.extractArtworkTint("", "show-1", "ENAMEL");
   assert.equal(fallback, "ENAMEL", "no usable URL is the show's enamel");
 });
+
+/* An independent OKLCH -> linear sRGB, written out here so the test does not lean on the code it checks. */
+function testOklchLinear(L, C, hDeg) {
+  const h = (hDeg * Math.PI) / 180;
+  const a = C * Math.cos(h), b = C * Math.sin(h);
+  const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+  const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+  const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
+  return [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s, -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s];
+}
+const parseTint = (tint) => { const m = /^oklch\(([\d.]+) ([\d.]+) ([\d.]+)\)$/.exec(tint); return m ? m.slice(1).map(Number) : null; };
+
+test("a saturated cover's tint is walked down to the sRGB edge, so the contrast maths and the browser see the same colour", async () => {
+  /* BUILD-NOTES 7: floor chroma at .10 "and walk it down only as far as sRGB gamut needs". Pure green
+     averages to OKLCH L .866 C .295 h 142; the lightness clamp (.6) leaves that chroma well outside
+     sRGB, so the browser maps the colour one way while dialHexRgb clips each channel another and the
+     4.5:1 check judges a surface nobody sees. The whole extraction path is run on four saturated covers.
+     MUTATIONS: in dialNormalizeArtworkTint pass `Math.max(.1, oklch.c)` straight to toFixed (no
+     dialFitChroma) -> green comes back at chroma .295, out of gamut, and the channel assertion is red;
+     make dialFitChroma return `Math.min(C, 0.1)` -> the chroma is no longer "only as far as the gamut
+     needs" and the edge assertion is red; make dialInSrgbGamut always true -> the same red as the first. */
+  const fixture = async (rgb) => {
+    const data = new Uint8ClampedArray(32 * 32 * 4);
+    for (let i = 0; i < 32 * 32; i += 1) { data[i * 4] = rgb[0]; data[i * 4 + 1] = rgb[1]; data[i * 4 + 2] = rgb[2]; data[i * 4 + 3] = 255; }
+    const canvas = { width: 0, height: 0, getContext: () => ({ drawImage() {}, getImageData: () => ({ data }) }) };
+    class FakeImage { set src(value) { this.loaded = value; Promise.resolve().then(() => this.onload()); } }
+    const { dial, doc } = loadDial({ extra: { Image: FakeImage, safeUrl: (url) => url } });
+    const create = doc.createElement;
+    doc.createElement = (tag) => (tag === "canvas" ? canvas : create(tag));
+    return { dial, tint: await dial.extractArtworkTint("https://example.test/" + rgb.join("-") + ".jpg", "show-" + rgb.join("-"), "ENAMEL") };
+  };
+  for (const rgb of [[0, 255, 0], [0, 0, 255], [255, 0, 0], [0, 255, 255]]) {
+    const { tint } = await fixture(rgb);
+    const parts = parseTint(tint);
+    assert.ok(parts, `a tint, not the enamel, for ${rgb}: ${tint}`);
+    const [L, C, h] = parts;
+    assert.ok(L >= 0.45 && L <= 0.6, `lightness stays clamped: ${tint}`);
+    testOklchLinear(L, C, h).forEach((v) => assert.ok(v >= -0.0005 && v <= 1.0005, `${rgb} -> ${tint}: channel ${v} is outside sRGB`));
+  }
+  const green = parseTint((await fixture([0, 255, 0])).tint);
+  assert.ok(green[1] < 0.25, `the walk-down reduced green's chroma from .295: ${green}`);
+  assert.ok(green[1] >= 0.1, "and not below the .10 floor, because green has room above it at L .6");
+  /* "only as far as the gamut needs": a little more chroma would leave the gamut. */
+  assert.ok(testOklchLinear(green[0], green[1] + 0.005, green[2]).some((v) => v < -0.0005 || v > 1.0005), "it stopped at the edge, not short of it");
+});
+
+test("dialFitChroma leaves an in-gamut chroma alone and finds the edge for one that is not", () => {
+  /* MUTATION: drop the leading `if (dialInSrgbGamut(L, C, hueDeg)) return C;` -> the in-gamut chroma is
+     floored to 3 decimals by the walk and 0.1234 comes back as 0.123 (red). */
+  const { dial } = loadDial();
+  assert.equal(dial.fitChroma(0.5, 0.1234, 40), 0.1234, "inside the gamut: returned untouched");
+  const edge = dial.fitChroma(0.6, 0.4, 142);
+  assert.ok(edge > 0.15 && edge < 0.25, `green at L .6 ends near .20: ${edge}`);
+  assert.ok(testOklchLinear(0.6, edge, 142).every((v) => v >= -0.0005 && v <= 1.0005));
+  assert.equal(dial.fitChroma(0.6, 0, 142), 0);
+});
+
+test("Speed and Sleep are disclosures of the inline dial, not dialogs: aria-expanded and aria-controls, never aria-haspopup", () => {
+  /* The chips open a group holding a radiogroup in the dock (dialOpenRotary), not a role=dialog, so
+     aria-haspopup="dialog" told assistive technology something false (review, 2026-10-07).
+     MUTATIONS: put `aria-haspopup` back on the sleep chip in dialBuildNowPlaying -> the first block is
+     red; delete `dialSetDisclosed(parts, spec.opener)` from dialOpenRotary -> the open assertions are
+     red; delete `dialSetDisclosed(parts, null)` from dialCloseRotary -> the closed-again assertion is
+     red; drop `rotaryHost.id = "np-dial"` -> aria-controls points at nothing (red); drop the
+     `if (!window.DialNowPlaying)` guard in player/client.js -> the source assertion is red. */
+  const { dial, doc } = loadDial({ extra: { esc: (s) => String(s), tactileIcon: (id) => `<icon ${id}>`, safeUrl: (u) => u } });
+  const el = (tag) => doc.createElement(tag);
+  const names = ["sheet", "grabZone", "closeBtn", "scroll", "sArt", "sTitle", "sShow", "sWhy", "scrub", "times", "tNow", "tLeft", "row", "backBtn", "bigPlay", "fwdBtn", "clips", "row2", "rateBtn", "openLink", "forayLink", "stopBtn", "nextBtn", "saveBtn", "bookmarkBtn", "queueLink", "note", "sErr", "sDesc"];
+  const parts = Object.fromEntries(names.map((n) => [n, el("div")]));
+  const built = dial.build(parts);
+  const chips = { rate: parts.rateBtn, sleep: built.sleepBtn };
+  const expanded = () => [chips.rate.getAttribute("aria-expanded"), chips.sleep.getAttribute("aria-expanded")];
+  for (const [name, chip] of Object.entries(chips)) {
+    assert.equal(chip.getAttribute("aria-haspopup"), null, `${name} chip: no false dialog role`);
+    assert.equal(chip.getAttribute("aria-controls"), "np-dial", `${name} chip points at the dial host`);
+  }
+  assert.equal(built.rotaryHost.id, "np-dial", "and that id exists");
+  assert.deepEqual(expanded(), ["false", "false"], "collapsed until opened");
+  const spec = (kind, opener) => ({ kind, label: kind, stops: [{ value: 1, text: "1" }, { value: 2, text: "2" }], value: 1, opener });
+  const ui = { ...built, rateBtn: chips.rate };
+  dial.openRotary(ui, spec("sleep", chips.sleep));
+  assert.deepEqual(expanded(), ["false", "true"], "opening sleep expands only the sleep chip");
+  dial.openRotary(ui, spec("rate", chips.rate));
+  assert.deepEqual(expanded(), ["true", "false"], "switching to speed moves the expanded state with it");
+  dial.closeRotary(ui, true);
+  assert.deepEqual(expanded(), ["false", "false"], "closing collapses both");
+  assert.match(CLIENT, /if \(!window\.DialNowPlaying\) rateBtn\.setAttribute\("aria-haspopup", "dialog"\);/, "client.js keeps the dialog role only for the list-picker fallback");
+});
