@@ -506,11 +506,24 @@ test("the ⋯ keeps the 44px tap target; a hidden Unfollow stays hidden; the lay
      back to a 44px box (or any size but `--s-5`) - the chip-size assertion fails. */
   assert.strictEqual(px(decl(".iconbtn", "width")), 44);
   assert.strictEqual(px(decl(".iconbtn", "height")), 44);
-  assert.strictEqual(decl(".shows-tile__more", "width"), undefined, "the ⋯ does not shrink the shared 44px button");
-  assert.strictEqual(decl(".shows-tile__more", "height"), undefined);
   assert.strictEqual(decl(".shows-tile__more", "background"), "transparent", "the 44px target is not painted: no disc over the artwork");
   assert.match(decl(".shows-tile__more .i", "width"), /^var\(--s-5\)$/, "the drawn mark is a 20px chip, not the 44px target");
   assert.strictEqual(RULES.some((r) => r.selectors.some((x) => /tag--following/.test(x))), false, "the Following tag's rules are gone (no green check, no six identical labels)");
+  /* ITERATION 3: the ⋯ is not chrome on the artwork. A 0x0 box at rest (nothing drawn,
+     nothing for a pointer to land on, so a tap on the art's corner opens the show; the
+     gate skips it, and it is still focusable and named), its 44px target for keyboard
+     focus and while open.
+     MUTATION 7: drop `width: 0` from `.shows-tile__more` (the 44px disc is back on every
+     tile) - the first assertion fails. MUTATION 8: drop `height: 0` - the second fails.
+     MUTATION 9: delete the `:focus-visible` / `.is-open` reveal rule - the third and
+     fourth fail and a keyboard user tabs onto a button they cannot see. MUTATION 10:
+     set `display: none` on the base rule - the fifth fails (out of the tab order). */
+  assert.strictEqual(decl(".shows-tile__more", "width"), "0", "no disc over the artwork at rest");
+  assert.strictEqual(decl(".shows-tile__more", "height"), "0", "and no box a thumb can land on: the corner of the art is the show's link");
+  assert.strictEqual(decl(".shows-tile__more:focus-visible", "width"), "var(--tap)", "44px for keyboard focus");
+  assert.strictEqual(decl(".shows-tile__more:focus-visible", "height"), "var(--tap)");
+  assert.strictEqual(decl(".shows-tile.is-open .shows-tile__more", "width"), "var(--tap)", "and while the tile's Unfollow is open, so it can be closed");
+  assert.strictEqual(decl(".shows-tile__more", "display"), undefined, "never display:none: it must stay in the tab order and the accessibility tree");
   assert.strictEqual(decl(".shows-tile__layer", "pointer-events"), "none");
   assert.strictEqual(decl(".shows-tile__layer > *", "pointer-events"), "auto");
   assert.strictEqual(decl(".shows-tile__layer", "aspect-ratio"), "1");

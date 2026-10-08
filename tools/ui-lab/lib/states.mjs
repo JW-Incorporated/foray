@@ -119,11 +119,11 @@ async function openYoursShows(page) {
   await wait(page, 500);
 }
 
-/** Yours > Shows with the first tile's ⋯ pressed: Unfollow revealed over its art. */
+/** Yours > Shows with the first tile's ⋯ pressed: Unfollow revealed over its art. The ⋯ is invisible and inert to a pointer at rest (iteration 3), so it is reached the way a keyboard user does: focus, then Enter. */
 async function openYoursShowActions(page) {
   await openYoursShows(page);
   const tile = page.locator("#yours-panel-shows .shows-tile").first();
-  if (!(await tile.locator(".shows-tile__actions:not([hidden])").count())) await tile.locator(".shows-tile__more").click();
+  if (!(await tile.locator(".shows-tile__actions:not([hidden])").count())) { await tile.locator(".shows-tile__more").focus(); await page.keyboard.press("Enter"); }
   await tile.locator(".shows-tile__actions:not([hidden])").waitFor({ state: "visible", timeout: 10000 });
   await wait(page, 400);
 }

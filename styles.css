@@ -5415,11 +5415,16 @@ body.fp-open:not(.mini-dismissed) .yours-toast { bottom: calc(var(--safe-b) + va
 .shows-tile__name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; color: var(--ink); font: var(--w-micro) var(--t-label)/var(--lh-label) var(--font-text); }
 .shows-tile__layer { position: absolute; top: 0; left: 0; width: 100%; aspect-ratio: 1; pointer-events: none; }
 .shows-tile__layer > * { pointer-events: auto; }
-/* The ⋯ is a quiet opener (DIRECTION, Yours: "a menu opener is quiet"): the button
-   keeps its 44px target in the corner, the mark drawn in it is a 20px chip
-   (the glyph on a 80% paper scrim, so it reads on any artwork in either scheme),
-   not a 44px disc. No "Following" tag: every tile here is followed (iteration 2). */
-.shows-tile__more { position: absolute; top: 0; right: 0; z-index: 2; background: transparent; color: var(--ink); }
+/* The ⋯ is NOT chrome on the artwork (iteration 3; the prototype's Shows grid is bare
+   artwork with the name beneath, and DIRECTION reserves the quiet ⋯ for Up Next rows).
+   At rest the button is a 0x0 box: nothing to see, nothing for a pointer to land on, so
+   a tap anywhere on the art opens the show, yet it is still in the tab order and the
+   accessibility tree (a 0x0 button is focusable and named, the .sr-only pattern). It
+   takes its 44px target in the corner, a 20px chip drawn in it, only while it has
+   keyboard focus or its tile's Unfollow is open. A pointer reaches Unfollow by long
+   press or context menu. */
+.shows-tile__more { position: absolute; top: 0; right: 0; z-index: 2; width: 0; height: 0; overflow: hidden; background: transparent; color: var(--ink); }
+.shows-tile__more:focus-visible, .shows-tile.is-open .shows-tile__more { width: var(--tap); height: var(--tap); overflow: visible; }
 .shows-tile__more .i { box-sizing: border-box; width: var(--s-5); height: var(--s-5); padding: calc(var(--s-1) / 2); border-radius: var(--r-pill); background: color-mix(in srgb, var(--paper) 80%, transparent); }
 .shows-tile__more:active { background: transparent; }
 .shows-tile__actions { position: absolute; inset: 0; z-index: 1; align-items: center; justify-content: center; padding: var(--s-2); border-radius: var(--r-sm); background: var(--card); box-shadow: inset 0 0 0 1px var(--dial-line); }
