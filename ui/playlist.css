@@ -50,15 +50,18 @@ body.view-playlist #view { padding-top: 0; }
 /* Detail: the cover (120, whole squares) beside the name, the length, "3 of 6 played" and the Play. */
 .ag .pl-hero { display: grid; grid-template-columns: var(--art-foray) minmax(0, 1fr); column-gap: var(--s-4); margin-top: var(--s-5); align-items: start; }
 .ag .pl-cover { width: var(--art-foray); height: var(--art-foray); }
-.ag .pl-cover .ag-collage { width: 100%; height: 100%; }
+.ag .pl-cover .ag-collage { width: 100%; height: 100%; gap: 0; }
 /* At least as tall as the cover, so the Play sits at its foot whatever the name. */
 .ag .pl-copy { min-width: 0; min-height: var(--art-foray); display: flex; flex-direction: column; gap: var(--s-1); }
 /* A name is the listener's own words: it wraps in full (a long unbroken run breaks anywhere) rather than being cut. */
 .ag .pl-title { overflow-wrap: anywhere; color: var(--text); }
 .ag .pl-title:focus, .ag .pl-heading:focus { outline: none; }
 .ag .pl-meta { color: var(--on-wash-2); }
-.ag .pl-actions { margin-top: auto; padding-top: var(--s-2); }
-.ag .pl-actions > .ag-btn { flex: none; }
+/* The cover's and the tile's four squares abut (gap 0 on their collages, above and in the tile rule): the Room lights them, the
+   primitive's 1px gap would draw a dark seam, a hairline. */
+
+/* The one primary button, as the Foray detail has it: full width, 48, Ember (the primitive), a word. */
+.ag .pl-cta { display: flex; width: 100%; margin-top: var(--s-4); text-decoration: none; }
 
 /* Notes (a sparse playlist, a shortfall) and the keep control that a generated playlist or subject queue carries. */
 .ag .pl-note, .ag.pl-page .note { margin-top: var(--s-4); color: var(--text-2); font: var(--t-body); }
@@ -80,7 +83,9 @@ body.view-playlist #view { padding-top: 0; }
    upward only), a 6px gap and the 20px thumbs row. A map, not a control: no bar is a button (see playlistStripEntries).
    No transitions on purpose: nothing here moves, so nothing joins the reduced-motion block. */
 .ag .pl-sill { margin-top: var(--s-4); padding: 10px var(--s-3); border-radius: var(--r-lg); background: var(--sill); }
-.ag .pl-strip { display: flex; align-items: flex-end; gap: calc(var(--s-1) / 2); height: calc(var(--s-6) + var(--s-1)); }
+/* position: relative makes the strip the offsetParent of its bars, so the thumbnails (measured from offsetLeft) sit under the
+   bar they belong to and not offset by the page gutter and the sill's padding. */
+.ag .pl-strip { position: relative; display: flex; align-items: flex-end; gap: calc(var(--s-1) / 2); height: calc(var(--s-6) + var(--s-1)); }
 .ag .pl-bar { flex: var(--w, 1) 1 0; min-width: calc(var(--s-1) + var(--s-1) / 2); height: var(--s-6); border-radius: var(--r-xs); background: var(--seg-tone, var(--text-3)); }
 .ag .pl-strip.is-started .pl-bar { opacity: var(--seg-dim); }
 .ag .pl-strip.is-started .pl-bar.is-played, .ag .pl-strip.is-started .pl-bar.is-here { opacity: 1; }
@@ -91,21 +96,27 @@ body.view-playlist #view { padding-top: 0; }
 .ag .pl-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .ag .pl-thumb-mono { display: grid; place-items: center; width: 100%; height: 100%; color: var(--ember-ink); font: var(--t-caption); }
 
+/* Un-narrated: no ivory lights, one caption. */
+.ag .pl-unnarrated { margin-top: var(--s-2); color: var(--text-2); }
+
 /* Why 4a made this: the headline, then the why-line in Lamp italic (only on a playlist 4a built). */
 .ag .pl-why { margin-top: var(--s-6); }
 .ag .pl-why h2, .ag .pl-came h2, .ag .pl-list-section h2 { color: var(--text); }
 .ag .pl-why .t-why { margin-top: var(--s-1); color: var(--lamp-text); }
 
-/* Where this came from: the shows' artwork three-up, the name whole under each (a caption that wraps, never clamped). */
+/* Where this came from: artwork rows, one per show. A 56 artwork, the name whole beside it (it wraps, never clamped), the count
+   of its episodes here, and Following where the listener follows it. The row is at least 64 tall: a 44 target with room. */
 .ag .pl-came { margin-top: var(--s-6); }
-.ag .pl-shows { list-style: none; margin: var(--s-3) 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-4) var(--s-3); align-items: start; }
+.ag .pl-shows { list-style: none; margin: var(--s-2) 0 0; padding: 0; }
 .ag .pl-show { min-width: 0; }
-.ag .pl-show-face { display: flex; flex-direction: column; gap: var(--s-2); min-width: 0; color: inherit; text-decoration: none; }
+.ag .pl-show-face { display: grid; grid-template-columns: var(--art-queue) minmax(0, 1fr); column-gap: var(--s-3); align-items: center; min-height: calc(var(--art-queue) + var(--s-2)); padding-block: var(--s-1); min-width: 0; color: inherit; text-decoration: none; }
 .ag .pl-show-face:focus-visible { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) / 2); border-radius: var(--r-md); }
-.ag .pl-tile-art { display: block; width: 100%; }
-.ag .pl-tile-art .ag-art { width: 100%; height: auto; aspect-ratio: 1 / 1; border-radius: var(--r-md); }
+.ag .pl-show-art { display: block; width: var(--art-queue); height: var(--art-queue); }
+.ag .pl-show-art .ag-art { width: 100%; height: 100%; border-radius: var(--r-sm); }
+.ag .pl-show-words { display: flex; flex-direction: column; gap: calc(var(--s-1) / 2); min-width: 0; }
 .ag .pl-show-name { color: var(--text); overflow-wrap: break-word; }
-@media (max-width: 392px) { .ag .pl-shows { column-gap: var(--s-2); } }
+.ag .pl-show-sub { color: var(--text-2); }
+.ag .pl-following { color: var(--lamp-text); }
 
 /* The rows: Today's EpisodeRow, with the playlist's own bits. The next part is marked in Lamp; a part that is not
    in the catalogue reads as Unavailable and carries no Play. The title and the why-line are never clamped (a vertical
@@ -138,7 +149,7 @@ body.view-playlist #view { padding-top: 0; }
 .ag .pl-tile:active .pl-tile-cover { opacity: .8; }
 .ag .pl-tile:focus-visible { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) / 2); border-radius: var(--r-md); }
 .ag .pl-tile-cover { display: block; margin-bottom: var(--s-1); }
-.ag .pl-tile-cover .ag-collage { width: 100%; height: auto; aspect-ratio: 1; }
+.ag .pl-tile-cover .ag-collage { width: 100%; height: auto; aspect-ratio: 1; gap: 0; }
 .ag .pl-tile-name { color: var(--text); overflow-wrap: break-word; }
 .ag .pl-tile-meta { color: var(--text-2); }
 .ag .pl-tile-last { color: var(--text-3); }

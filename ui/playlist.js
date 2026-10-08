@@ -124,15 +124,17 @@ function playlistCoverHtml(rows, title, size) {
 /** The distinct shows of a playlist, in order of first appearance: the name, the artwork the episode carried, and the
     show page when the name joins one. Family Mode's hidden parts name nothing, so they add nothing. */
 function playlistShows(rows) {
-  const seen = new Set();
+  const byName = new Map();
   const out = [];
   for (const r of rows) {
     const it = r && r.item;
-    if (!it || r.state === "hidden" || !it.show || seen.has(it.show)) continue;
-    seen.add(it.show);
+    if (!it || r.state === "hidden" || !it.show) continue;
+    if (byName.has(it.show)) { byName.get(it.show).n += 1; continue; }
     let id = null;
     try { id = typeof showIdForShowName === "function" ? showIdForShowName(it.show) : null; } catch (_) { id = null; }
-    out.push({ name: it.show, src: it.artwork_url || "", id: id || null });
+    const entry = { name: it.show, src: it.artwork_url || "", id: id || null, n: 1 };
+    byName.set(it.show, entry);
+    out.push(entry);
   }
   return out;
 }
@@ -159,6 +161,22 @@ const PL_WHY_SUBJECT = "The newest episodes on this subject, gathered for today.
 const PL_WHY_GENERATED = "Built from one of your strongest subjects: the newest episodes, two at most from any show.";
 function playlistWhy(p) {
   return p && p.isSubject ? PL_WHY_SUBJECT : (p && p.isGenerated ? PL_WHY_GENERATED : "");
+}
+
+/** The block under the strip. A playlist 4a built says why, under the headline the direction names. A listener's own
+    playlist was not made by 4a, so it never wears that headline: it gets the same italic line, saying only what is
+    observed (how many episodes, from how many shows, in the order the listener set). */
+function playlistOwnLine(rows) {
+  const n = rows.filter((r) => r.state !== "hidden").length;
+  const shows = playlistShows(rows).length;
+  if (!n) return "";
+  return `${countLabel(n, "episode")}${shows ? ` from ${countLabel(shows, "show")}` : ""}, in the order you chose.`;
+}
+function playlistWhyHtml(p, rows) {
+  const why = playlistWhy(p);
+  if (why) return `<section class="pl-why" aria-labelledby="pl-why-head"><h2 class="t-headline" id="pl-why-head">Why 4a made this</h2><p class="t-why">${esc(why)}</p></section>`;
+  const own = playlistOwnLine(rows);
+  return own ? `<section class="pl-why pl-why-own" aria-labelledby="pl-why-head"><h2 class="t-headline" id="pl-why-head">Your playlist</h2><p class="t-why">${esc(own)}</p></section>` : "";
 }
 
 /** The eyebrow, in Lamp: what the playlist is, then its subject when that is a different thing from its name
@@ -205,7 +223,8 @@ function playlistStripHtml(rows, history) {
   return `<div class="pl-sill" role="img" aria-label="${esc(label)}">
       <div class="pl-strip${started ? " is-started" : ""}" aria-hidden="true">${bars}</div>
       <div class="pl-thumbs" aria-hidden="true"></div>
-    </div>`;
+    </div>
+    <p class="t-caption pl-unnarrated">Not narrated. Just the episodes, in order.</p>`;
 }
 
 const PL_THUMB_MIN_BAR_PX = 12;
@@ -266,25 +285,34 @@ function playlistPaintStrip(scope, givenTones) {
   });
 }
 
-/** "Where this came from": the shows' own artwork, three-up, the name whole under each. A show with a page is a link to it. */
+/** "Where this came from": artwork rows (the direction's word), one per show: the show's own artwork at 56, the name whole,
+    how many of its episodes are here, and "Following" where the listener follows it. A show with a page is a link to it. */
 function playlistCameHtml(rows) {
   const shows = playlistShows(rows);
   if (!shows.length) return "";
-  const tiles = shows.map((s) => {
-    const art = `<span class="pl-tile-art" aria-hidden="true">${agArtwork({ name: s.name, src: s.src, size: 104 })}</span>`;
-    const name = `<span class="t-caption pl-show-name">${esc(s.name)}</span>`;
+  const items = shows.map((s) => {
+    let following = false;
+    try { following = !!(s.id && typeof isShowStarred === "function" && isShowStarred(s.id)); } catch (_) { following = false; }
+    const art = `<span class="pl-show-art" aria-hidden="true">${agArtwork({ name: s.name, src: s.src, size: 56 })}</span>`;
+    const words = `<span class="pl-show-words"><span class="t-body pl-show-name">${esc(s.name)}</span><span class="t-caption pl-show-sub">${esc(countLabel(s.n, "episode"))} here${following ? ` · <span class="pl-following">Following</span>` : ""}</span></span>`;
     const face = s.id
-      ? `<a class="pl-show-face" href="#${esc(showRoutePath(s.id))}">${art}${name}</a>`
-      : `<div class="pl-show-face">${art}${name}</div>`;
+      ? `<a class="pl-show-face" href="#${esc(showRoutePath(s.id))}">${art}${words}</a>`
+      : `<div class="pl-show-face">${art}${words}</div>`;
     return `<li class="pl-show">${face}</li>`;
   }).join("");
   return `<section class="pl-came" aria-labelledby="pl-came-head">
       <h2 class="t-headline" id="pl-came-head">Where this came from</h2>
-      <ul class="pl-shows">${tiles}</ul>
+      <ul class="pl-shows">${items}</ul>
     </section>`;
 }
 
 /* ---------- pieces ---------- */
+
+/** The one primary button: full width, 48, Ember, a word (Play, Resume or Play again; Pause while it plays). The word the
+    page paints is kept in data-label so a repaint from the player can put it back. */
+function playlistPrimaryHtml(title, text, anyLive) {
+  return `<button type="button" class="ag-btn ag-btn-primary pl-cta" data-pl-playall data-title="${esc(title)}" data-label="${esc(text)}" ${controlLabelAttr(text, `${text} ${title}`)}${anyLive ? "" : ' disabled aria-disabled="true"'}>${esc(text)}</button>`;
+}
 
 /** The head: Back (the history-aware `a.back`; `route`, written after a literal "#/", is where it goes with no history
     to step back through), and an optional trailing control. */
@@ -433,8 +461,8 @@ function playlistSyncPlay() {
   const hero = scope.querySelector("[data-pl-playall]");
   if (hero) {
     const name = hero.dataset.title || "this playlist";
-    hero.setAttribute("aria-label", `${anyPlaying ? "Pause" : "Play"} ${name}`);
-    hero.innerHTML = agIcon(anyPlaying ? "pause" : "play", 28);
+    const word = anyPlaying ? "Pause" : (hero.dataset.label || "Play");
+    setControlLabel(hero, word, `${word} ${name}`);
   }
 }
 
@@ -540,7 +568,10 @@ function renderPlaylistDetail(id) {
   const anyLive = rows.some(r => r.state === "live");
   const title = p.title || p.name || "Playlist";
   const playedLine = rows.length && played ? `${played} of ${rows.length} played` : "";
-  const why = playlistWhy(p);
+  /* The one primary button, as the Foray detail has it: Play before anything is opened, Resume while a part is still ahead,
+     Play again once every part has been opened. */
+  const opened = rows.some(r => r.state === "live" && hasOpened(r.item.id, history));
+  const playText = !opened ? "Play" : (nextRow ? "Resume" : "Play again");
   const stripHtml = playlistStripHtml(rows, history);
   /* The tones read the scheme's computed Glow lightness, which flushes style: do it BEFORE the bars exist, so they are never styled
      without their colour and then restyled (a transition at load, which the reduced-motion gate counts). */
@@ -556,15 +587,15 @@ function renderPlaylistDetail(id) {
         <h1 class="t-headline pl-title" data-page-heading>${esc(title)}</h1>
         <p class="t-caption num pl-meta">${playlistSummaryHtml(rows)}</p>
         ${playedLine ? `<p class="t-caption num ag-progress-copy pl-played">${esc(playedLine)}</p>` : ""}
-        <div class="pl-actions">${todayPlayButton({ size: 56, label: `Play ${title}`, attrs: ` data-pl-playall data-title="${esc(title)}"`, disabled: !anyLive })}</div>
       </div>
     </section>
     ${stripHtml}
+    ${playlistPrimaryHtml(title, playText, anyLive)}
     ${source ? savePlaylistControlHtml(p) : ""}
     ${p.sparse ? `<p class="t-body pl-note">Only found a few on this — here's what 4a has.</p>` : ""}
     ${p.relaxed === "duration" ? `<p class="t-body pl-note">Couldn't match the length you asked for — here's what 4a found without it.</p>` : ""}
     ${partsNote(rows)}
-    ${why ? `<section class="pl-why" aria-labelledby="pl-why-head"><h2 class="t-headline" id="pl-why-head">Why 4a made this</h2><p class="t-why">${esc(why)}</p></section>` : ""}
+    ${playlistWhyHtml(p, rows)}
     ${playlistCameHtml(rows)}
     <section class="pl-list-section" aria-labelledby="pl-list-head">
       <h2 class="t-headline" id="pl-list-head">Episodes, in order</h2>

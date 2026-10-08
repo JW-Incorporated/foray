@@ -596,7 +596,7 @@ test("a row's Play is a bare Phosphor glyph on the 24 grid: no ring, no fill, 44
   assert.match(prim["box-shadow"], /^inset/, "fixture assumption: the primitive IS the ring this overrides");
   const html = read("index.html");
   assert.ok(html.indexOf("ui/playlist.css") > html.indexOf("ui/primitives.css"), "the override loads after the primitive it beats");
-  assert.match(w.html(), /class="ag-btn ag-btn-play ag-btn-size-56" data-pl-playall/, "the hero Play is still the Ember 56");
+  assert.match(w.html(), /class="ag-btn ag-btn-primary pl-cta" data-pl-playall/, "the page's own Play is the labelled Ember primary, not a glyph");
   assert.match(read("ui/playlist.js"), /agIcon\(on \? "pause" : "play", 24\)/, "a repaint to playing writes a 24 glyph too");
 });
 
@@ -706,10 +706,11 @@ test("Why 4a made this appears only on a playlist 4a built, in Lamp italic, and 
   assert.strictEqual(w.ctx.playlistWhy({}), "");
 });
 
-test("Where this came from: the distinct shows' artwork three-up with the name whole, a link only where the show has a page", () => {
-  /* DIRECTION.md: "'Where this came from' as artwork rows" (and ShowTile: names never cut). Four episodes of one show is one tile.
-     MUTATIONS: drop the dedupe in playlistShows -> the repeated show draws twice, red. Link every tile (even with no page) -> red. Put a
-     `clamp3` on the name -> red. Make the grid 2-up -> red. Interpolate a show name raw -> red. */
+test("Where this came from: artwork rows, one per distinct show, the name whole and the count here, a link only where the show has a page", () => {
+  /* DIRECTION.md: "'Where this came from' as artwork rows". Three shows are three rows (iteration 1 drew a 3-up grid, which stranded one tile
+     when there were four). Four episodes of one show is one row.
+     MUTATIONS: drop the dedupe in playlistShows -> the repeated show draws twice, red. Link every row (even with no page) -> red. Put a
+     `clamp3` on the name -> red. Make .pl-shows a grid again -> red. Interpolate a show name raw -> red. Drop the count -> red. */
   const items = [item(1, { show: "Alpha" }), item(2, { show: "Alpha" }), item(3, { show: `<b>Beta</b>` })];
   const w = world({ items, lists: [{ id: "q1", title: "T", items }] });
   w.state.catalog = { shows: [{ show_id: "alpha-id", title: "Alpha" }] };
@@ -718,14 +719,73 @@ test("Where this came from: the distinct shows' artwork three-up with the name w
   const came = /<section class="pl-came"[\s\S]*?<\/section>/.exec(html)[0];
   assert.strictEqual((came.match(/<li class="pl-show">/g) || []).length, 2, "Alpha once, Beta once");
   assert.match(came, /<a class="pl-show-face" href="#\/show\/alpha-id">/, "a show with a page links to it");
-  assert.match(came, /<div class="pl-show-face"><span class="pl-tile-art"[\s\S]*?&lt;b&gt;Beta&lt;\/b&gt;/, "one without is a plain tile, and its name is escaped");
+  assert.match(came, /<div class="pl-show-face"><span class="pl-show-art"[\s\S]*?&lt;b&gt;Beta&lt;\/b&gt;/, "one without is a plain row, and its name is escaped");
   assert.ok(!came.includes("<b>Beta"), "never raw");
   assert.doesNotMatch(came, /clamp[1-4]/, "the name is never clamped");
-  assert.match(came, /<span class="t-caption pl-show-name">Alpha<\/span>/);
-  assert.strictEqual(decls(CSS, ".ag .pl-shows")["grid-template-columns"], "repeat(3, minmax(0, 1fr))");
+  assert.match(came, /<span class="t-body pl-show-name">Alpha<\/span><span class="t-caption pl-show-sub">2 episodes here/, "the count of its episodes here");
+  assert.match(came, /1 episode here/);
+  const list = decls(CSS, ".ag .pl-shows");
+  assert.ok(list && !/grid/.test(list.display || ""), "a list of rows, not a grid");
+  assert.strictEqual(decls(CSS, ".ag .pl-show-face")["grid-template-columns"], "var(--art-queue) minmax(0, 1fr)", "a 56 artwork beside the words");
+  assert.match(decls(CSS, ".ag .pl-show-face")["min-height"], /art-queue/, "at least a 44 target");
   /* Family Mode's hidden part names no show. */
   const rows = [{ item: items[0], state: "hidden" }, { item: items[2], state: "live" }];
   assert.deepStrictEqual(Array.from(w.ctx.playlistShows(rows), (s) => s.name), ["<b>Beta</b>"]);
+});
+
+test("the primary button is a word: Play, Resume or Play again, full width, and Pause while it plays", () => {
+  /* DIRECTION.md Foray detail: "Button: Play, Resume or Play again". Iteration 1 drew the Today hero's icon-only circle, which cannot say any of the three.
+     MUTATIONS: always write "Play" -> the Resume and Play again assertions go red. Test `nextRow` instead of `opened` for Play -> a started playlist reads
+     Play, red. Swap Resume and Play again -> red. Drop `data-label` from the markup -> the repaint after a pause says Play, red. Drop width: 100% -> red. */
+  const items = [1, 2, 3].map((n) => item(n));
+  const lists = [{ id: "q1", title: "Slow", items }];
+  const label = (w) => /<button[^>]*data-pl-playall[^>]*data-label="([^"]*)"/.exec(w.html())[1];
+  const fresh = world({ items, lists });
+  fresh.ctx.renderPlaylistDetail("q1");
+  assert.strictEqual(label(fresh), "Play");
+  assert.match(fresh.html(), /data-pl-playall[^>]*>Play<\/button>/, "the word is the button's text");
+  const mid = world({ items, lists, progress: { [items[0].id]: DONE } });
+  mid.ctx.renderPlaylistDetail("q1");
+  assert.strictEqual(label(mid), "Resume", "one finished, two ahead");
+  const all = world({ items, lists, progress: { [items[0].id]: DONE, [items[1].id]: DONE, [items[2].id]: DONE } });
+  all.ctx.renderPlaylistDetail("q1");
+  assert.strictEqual(label(all), "Play again", "every part opened");
+  assert.match(all.html(), /aria-label="Play again Slow"/, "the visible word is inside the name");
+  const playing = world({ items, lists, playing: items[1].id });
+  playing.ctx.renderPlaylistDetail("q1");
+  playing.ctx.playlistSyncPlay();
+  const btn = playing.view.querySelector("[data-pl-playall]");
+  assert.strictEqual(btn.textContent, "Pause");
+  assert.strictEqual(btn.dataset.label, "Play", "the word to restore");
+  assert.strictEqual(decls(CSS, ".ag .pl-cta").width, "100%");
+});
+
+test("a listener's own playlist gets the italic block too, without 4a's headline; the Foray detail's un-narrated caption sits under the strip", () => {
+  /* The finding: the page went strip -> Where this came from, the authored italic line missing. 4a did not make a listener's playlist, so the headline
+     is "Your playlist" and the line says only what is observed. MUTATIONS: print "Why 4a made this" on it -> red. Drop playlistWhyHtml's own branch -> red.
+     Say "we" in the line -> red. Drop the caption -> red. */
+  const items = [1, 2, 3].map((n) => item(n, { show: n === 3 ? "Beta" : "Alpha" }));
+  const w = world({ items, lists: [{ id: "q1", title: "Mine", items }] });
+  w.ctx.renderPlaylistDetail("q1");
+  const html = w.html();
+  const own = one(html, /<section class="pl-why pl-why-own"[^>]*><h2 class="t-headline" id="pl-why-head">Your playlist<\/h2><p class="t-why">([^<]*)<\/p>/);
+  assert.strictEqual(own, "3 episodes from 2 shows, in the order you chose.");
+  assert.ok(own.split(/\s+/).length <= 18);
+  assert.doesNotMatch(own, BANNED);
+  assert.doesNotMatch(own, FIRST_PERSON);
+  assert.doesNotMatch(html, /Why 4a made this/);
+  assert.match(html, /<p class="t-caption pl-unnarrated">Not narrated\. Just the episodes, in order\.<\/p>/);
+  assert.ok(html.indexOf('class="pl-sill"') < html.indexOf("pl-unnarrated") && html.indexOf("pl-unnarrated") < html.indexOf('class="pl-why'), "caption under the strip, before the why");
+});
+
+test("the strip is the offsetParent of its bars and the cover's squares abut", () => {
+  /* The thumbnails are placed at bar.offsetLeft. With nothing positioned between a bar and the page, offsetLeft was measured from the page (gutter plus the
+     sill's padding), so the first thumbnail sat a quarter of the way along the first bar. Position the strip and the numbers agree with the thumbs row.
+     MUTATIONS: drop `position: relative` from .pl-strip -> red. Put `gap: 1px` back on the cover or the tile collage -> red. */
+  assert.strictEqual(decls(CSS, ".ag .pl-strip").position, "relative");
+  assert.strictEqual(decls(CSS, ".ag .pl-thumbs").position, "relative", "the thumbs row is positioned too: x is measured from the same left edge");
+  assert.strictEqual(decls(CSS, ".ag .pl-cover .ag-collage").gap, "0");
+  assert.strictEqual(decls(CSS, ".ag .pl-tile-cover .ag-collage").gap, "0");
 });
 
 test("the detail page reads in the Foray detail's order: the head, the strip on its sill, why, where it came from, then the episodes", () => {
