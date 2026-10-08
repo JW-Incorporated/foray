@@ -4995,8 +4995,10 @@ body.ui-v2 .fp-sheet.np .fp-left { color: var(--ink-2); }
 /* Codes and the needle are HTML over the drawing (ui/now-playing.js says
    why): the SVG's own text and needle stretch with its viewBox. */
 .np__band-svg .t-band__code, .np__band-svg .needle { display: none; }
-.np__codes { position: absolute; left: 0; right: 0; bottom: 0; height: 16px; }
-.np__code { position: absolute; left: calc(var(--x, 0) * 100% + var(--dx, 0px)); bottom: 0; transform: translateX(-50%); color: var(--ink-2); font: 700 0.6875rem/16px var(--font-mono); white-space: nowrap; }
+/* The prototype's .band__labels: 4px under the bars (they end at 34 of 64, so at
+   .53125 of the stage), 16px tall, which leaves 10px of well under the codes. */
+.np__codes { position: absolute; left: 0; right: 0; top: calc(var(--np-band-h) * .53125 + 4px); height: 16px; }
+.np__code { position: absolute; left: calc(var(--x, 0) * 100% + var(--dx, 0px)); top: 0; transform: translateX(-50%); color: var(--ink-2); font: 700 0.6875rem/16px var(--font-mono); white-space: nowrap; }
 .np__code.is-current { color: var(--ink); font-weight: 800; }
 .np:not(.np--foray) .np__band-svg .t-band__bar { fill: var(--persimmon); }
 .np:not(.np--foray) .np__codes { display: none; }

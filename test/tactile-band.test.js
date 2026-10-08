@@ -19,7 +19,7 @@ const segments = [
 
 function baseBars(html) {
   const first = /<g class="t-band__base">([\s\S]*?)<\/g>/.exec(html)[1];
-  return [...first.matchAll(/data-segment-index="(\d+)" x="([\d.]+)" y="8" width="([\d.]+)"/g)]
+  return [...first.matchAll(/data-segment-index="(\d+)" x="([\d.]+)" y="[\d.]+" width="([\d.]+)"/g)]
     .map((m) => ({ index: Number(m[1]), x: Number(m[2]), width: Number(m[3]) }));
 }
 
@@ -188,10 +188,15 @@ test("bars are separate rounded blocks a visible gap apart, at every render widt
       assert.ok(Math.abs(gapPx - 3) < 0.01, `${width}px: bars ${i - 1} and ${i} sit ${gapPx.toFixed(2)}px apart, not 3`);
     }
     const html = p.tactileBand({ id: "round-" + width, kind: "scrub", segments, renderWidth: width });
-    const first = /<rect class="t-band__bar t-band__bar--c\d" data-segment-index="0" x="[\d.]+" y="8" width="[\d.]+" height="28" rx="([\d.]+)" ry="([\d.]+)"/.exec(html);
+    const first = /<rect class="t-band__bar t-band__bar--c\d" data-segment-index="0" x="[\d.]+" y="([\d.]+)" width="[\d.]+" height="([\d.]+)" rx="([\d.]+)" ry="([\d.]+)"/.exec(html);
     assert.ok(first, "the first bar carries rx and ry");
-    assert.ok(Math.abs(Number(first[1]) / 1000 * width - 3) < 0.02, `${width}px: rx is 3 rendered px (${first[1]} units)`);
-    assert.ok(Math.abs(Number(first[2]) * 64 / 60 - 3) < 0.02, `${width}px: ry is 3 rendered px on the 64px stage (${first[2]} units)`);
+    assert.ok(Math.abs(Number(first[3]) / 1000 * width - 3) < 0.02, `${width}px: rx is 3 rendered px (${first[3]} units)`);
+    assert.ok(Math.abs(Number(first[4]) * 64 / 60 - 3) < 0.02, `${width}px: ry is 3 rendered px on the 64px stage (${first[4]} units)`);
+    /* The prototype's scrub bar: 6px down the 64px stage, 28px tall, so the codes sit 4px under it
+       and 10px of well remain beneath them (the build once drew 8.5px / 29.9px).
+       MUTATION: set TACTILE_BAND_BAR.scrub back to { y: 8, h: 28 } in ui/primitives.js -> 8.53px / 29.87px fails. */
+    assert.ok(Math.abs(Number(first[1]) * 64 / 60 - 6) < 0.02, `${width}px: the bar starts 6px down the stage (${first[1]} units)`);
+    assert.ok(Math.abs(Number(first[2]) * 64 / 60 - 28) < 0.02, `${width}px: the bar is 28px tall (${first[2]} units)`);
   }
   const mini = p.tactileBandLayout(p.tactileBandSegments(segments), 345, "mini");
   assert.ok(Math.abs((mini[1].x - (mini[0].x + mini[0].width)) / 1000 * 345 - 2) < 0.01, "the 8px mini band keeps a 2px gap");

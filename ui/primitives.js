@@ -163,6 +163,14 @@ function tactileBandGap(kind, renderWidth, count) {
  * non-uniformly (preserveAspectRatio none), so one number would draw an ellipse:
  * x and y are each converted from the rendered px radius. */
 var TACTILE_BAND_PX = { scrub: 64, detail: 44, mini: 8, line: 3 };
+/* Where a bar sits in the 0-60 viewBox. The scrub band draws the prototype's
+ * 28px bars 6px down a 64px stage (.band--scrub .band__stage: --bt 6px, --bh
+ * 28px), which leaves the station codes 4px under the bars and 10px of well
+ * under them. The older 8/28 units rendered 8.5px / 29.9px at 64px, 2px taller
+ * and 2.5px lower, which pushed the codes down against the well's edge. The
+ * other kinds keep 8/28. */
+var TACTILE_BAND_BAR = { scrub: { y: 6 * 60 / 64, h: 28 * 60 / 64 } };
+function tactileBandBar(kind) { return TACTILE_BAND_BAR[kind] || { y: 8, h: 28 }; }
 function tactileBandRadius(kind, renderWidth, boxWidth) {
   var px = kind === "line" ? 0 : kind === "mini" ? 1 : 3;
   return {
@@ -289,13 +297,14 @@ function tactileBand(data) {
       codes.set(showId, (code[0] + (words[words.length - 1][0] || code[1])).toUpperCase());
     }
   });
+  var barBox = tactileBandBar(kind);
   var bars = widths.map(function (box, index) {
     var segment = segments[index];
     var cls = episode ? "t-band__bar t-band__bar--episode"
       : segment.narration ? "t-band__bar t-band__bar--narration" + (hatch ? "" : " t-band__bar--tick")
       : "t-band__bar t-band__bar--c" + tactileHash(segment.showId);
     var radius = tactileBandRadius(kind, renderWidth, box.width);
-    var shape = line ? '" y="0" width="' + box.width.toFixed(2) + '" height="60" rx="0"' : '" y="8" width="' + box.width.toFixed(2) + '" height="28" rx="' + radius.rx.toFixed(2) + '" ry="' + radius.ry.toFixed(2) + '"';
+    var shape = line ? '" y="0" width="' + box.width.toFixed(2) + '" height="60" rx="0"' : '" y="' + barBox.y.toFixed(2) + '" width="' + box.width.toFixed(2) + '" height="' + barBox.h.toFixed(2) + '" rx="' + radius.rx.toFixed(2) + '" ry="' + radius.ry.toFixed(2) + '"';
     return '<rect class="' + cls + '"' + (segment.narration && hatch ? ' fill="url(#' + esc(id) + '-hatch)"' : "") + ' data-segment-index="' + index + '" x="' + box.x.toFixed(2) + shape + "></rect>";
   }).join("");
   var labels = kind === "mini" || kind === "line" ? "" : tactileBandRuns(segments, widths).map(function (run) {
