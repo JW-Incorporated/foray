@@ -67,8 +67,8 @@ test("the gallery covers every primitive and state without adopting them on list
     }
   }
   /* Phase 4 adopts the primitives screen by screen; each screen's PR adds its own file here, so an
-     adoption nobody announced still fails. browse.js is tactile `search` (Find). */
-  const PHASE_4_ADOPTERS = ["browse.js"];
+     adoption nobody announced still fails. browse.js is tactile `search` (Find), library.js is tactile `library` (Yours). */
+  const PHASE_4_ADOPTERS = ["browse.js", "library.js"];
   const adopters = fs.readdirSync(path.join(ROOT, "ui")).filter((name) => name.endsWith(".js") && !["gallery.js", "primitives.js"].includes(name)).filter((name) => /\btactile[A-Z]/.test(fs.readFileSync(path.join(ROOT, "ui", name), "utf8")));
   /* Phase 4 adopts them one screen group at a time, so the set of adopters is an
      explicit list that grows only with a screen that landed: group A is Now
@@ -76,7 +76,7 @@ test("the gallery covers every primitive and state without adopting them on list
      that adopts early, or a file that reaches for a primitive it should not,
      is a new name here and fails.
      MUTATION: make ui/home.js call tactileKeycap() -> "home.js" appears and this fails. */
-  assert.deepStrictEqual(adopters, ["browse.js", "mini.js", "now-playing.js", "tabbar.js"], "Phase 4, not the foundation, adopts primitives on listener screens, one landed group at a time");
+  assert.deepStrictEqual(adopters, ["browse.js", "library.js", "mini.js", "now-playing.js", "tabbar.js"], "Phase 4, not the foundation, adopts primitives on listener screens, one landed group at a time");
 });
 
 test("the gallery's rendered copy obeys the listener copy rules, however the source spells it", () => {

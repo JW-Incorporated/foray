@@ -2901,6 +2901,12 @@ function saveQueueIds(ids) {
     content and would otherwise land the listener at the top. Best-effort on
     `scrollY`/`scrollTo`, which the test harness does not have. */
 function repaintQueuePage() {
+  /* Yours (#/library) lists Up Next as its own panel (ui/library.js), repainted
+     in place: the strip's badge, the readout and the rows follow the write. */
+  if (currentHash() === "#/library") {
+    if (typeof repaintYoursQueue === "function") repaintYoursQueue();
+    return;
+  }
   if (currentHash() !== "#/queue") return;
   const y = typeof window.scrollY === "number" ? window.scrollY : null;
   const held = queueFocusBefore();

@@ -437,8 +437,8 @@ test("a refused download (downloadFailed 403) shows the note and a disabled cont
 });
 
 test("Library lists finished downloads with the usage line, after Up Next and before History", () => {
-  /* MUTATION: move `${state.downloadBridge ? libSection("Downloads", …) : ""}`
-     below the History line — the order assertion fails.
+  /* MUTATION: move the Downloads entry in yoursChipDefs() below History — the
+     order assertion fails.
      MUTATION 2: list every row, not only `done` ones (drop the status filter in
      libraryDownloadsHtml) — the queued episode appears beside a usage line that
      does not count it. */
@@ -452,13 +452,15 @@ test("Library lists finished downloads with the usage line, after Up Next and be
 
   m.ctx.renderLibrary();
   const html = m.view.innerHTML;
-  const heads = [...html.matchAll(/class="lib-section-head">([^<]*)</g)].map((x) => x[1]);
+  /* Yours (Redesign 2026, tactile `library`): the sections are chips now, so the
+     order is the strip's, and a section is its tab panel. */
+  const heads = [...html.matchAll(/data-yours-chip="([^"]*)"/g)].map((x) => x[1]);
   const at = (t) => heads.indexOf(t);
-  assert.ok(at("Downloads") > -1, `a Downloads section on the shell: ${heads.join(", ")}`);
-  assert.strictEqual(at("Downloads"), at("Up Next") + 1, `Downloads right after Up Next: ${heads.join(", ")}`);
-  assert.strictEqual(at("History"), at("Downloads") + 1, `History right after Downloads: ${heads.join(", ")}`);
+  assert.ok(at("downloads") > -1, `a Downloads chip on the shell: ${heads.join(", ")}`);
+  assert.strictEqual(at("downloads"), at("upnext") + 1, `Downloads right after Up Next: ${heads.join(", ")}`);
+  assert.strictEqual(at("history"), at("downloads") + 1, `History right after Downloads: ${heads.join(", ")}`);
 
-  const section = html.slice(html.indexOf(">Downloads<"), html.indexOf(">History<"));
+  const section = html.slice(html.indexOf('id="yours-panel-downloads"'), html.indexOf('id="yours-panel-history"'));
   assert.match(section, /1\.2 GB of 2 GB used · 1 episode</);
   assert.ok(section.includes(m.item.id), "the finished download is a row");
   assert.ok(!section.includes(other.id), "a queued download is not listed as downloaded");

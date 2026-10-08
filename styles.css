@@ -4575,7 +4575,7 @@ body.drawer-open { overflow: hidden; }
 
 .chip { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: var(--s-1); min-width: var(--tap); height: calc(var(--s-8) + var(--s-1)); padding: 0 calc(var(--s-3) + var(--s-1) / 2); border-radius: var(--r-pill); background: var(--paper-2); color: var(--ink); font: var(--w-label) var(--t-body)/var(--lh-body) var(--font-text); transition: transform var(--d-snap) var(--spring-snap); }
 .chip:active:not(:disabled) { transform: scale(.96); }
-.chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.chip[aria-pressed="true"], .chip[aria-selected="true"] { background: var(--ink); color: var(--paper); }
 .chip:disabled { color: var(--ink-3); cursor: not-allowed; }
 .chip.is-loading { animation: tactile-pulse var(--d-sheet) var(--ease-quick) infinite alternate; }
 .chip__count, .tab__count { min-width: calc(var(--s-4) + var(--s-1) / 2); height: calc(var(--s-4) + var(--s-1) / 2); padding: 0 var(--s-1); border-radius: var(--r-pill); display: inline-grid; place-items: center; background: var(--ultramarine); color: var(--on-ultramarine); font-size: var(--t-micro); }
@@ -4934,7 +4934,8 @@ body.ui-v2.kb-open::after { display: none; }
    them. The three things below the page content, the field, the deck and the
    mini-player, stack on one arithmetic: the deck is `--deck-h` tall, floats
    `--s-3` off the bottom, and the field floats `--s-3` above it. */
-body.ui-v2.view-find {
+body.ui-v2.view-find,
+body.ui-v2.view-yours {
   /* The legacy colour names are pointed at the Dial tokens for this page, so the
      result rows, notes and playlist cards this page still draws with the old
      components (the typing and no-results screens are their own units) read as
@@ -4958,7 +4959,8 @@ body.ui-v2.view-find {
   font: var(--w-body) var(--t-body)/var(--lh-body) var(--font-text);
   padding-bottom: 0;
 }
-body.view-find > .topbar { display: none; }
+body.view-find > .topbar,
+body.view-yours > .topbar { display: none; }
 body.ui-v2.view-find #view {
   padding: 0 var(--gutter) calc(var(--deck-h) + var(--safe-b) + var(--s-12) * 2 + var(--s-4));
 }
@@ -5436,6 +5438,107 @@ body.ui-v2 .fp-sheet.np .fp-openep { color: var(--ink); }
   .gallery-state-grid .keycap__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
 
+/* ---------- YOURS (TACTILE): the chip strip and the Up Next list ----------
+   Redesign 2026, tactile `library` (BUILD-PLAN 2.12, BUILD-NOTES 3.9, 4.5).
+   Everything hangs off `body.view-yours`, which renderLibrary sets and the next
+   page's setBodyClass() clears. The page shares the Find page's colour aliasing
+   and hidden topbar (the two selectors above); the head, the strip and the
+   list are its own. */
+body.ui-v2.view-yours #view {
+  padding: 0 var(--gutter) calc(var(--deck-h) + var(--safe-b) + var(--s-10));
+}
+body.ui-v2.view-yours.fp-open:not(.mini-dismissed) #view {
+  padding-bottom: calc(var(--deck-h) + var(--fp-bar-h) + var(--safe-b) + var(--s-10));
+}
+body.view-yours .page--yours {
+  max-width: none;
+  margin: 0;
+  padding: calc(var(--safe-t) + var(--s-6) + var(--s-1)) 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+}
+
+/* The head: "Yours" over the readout line, the knob at the right. */
+body.ui-v2.view-yours .page--yours .page-head {
+  position: static;
+  margin: 0;
+  padding: calc(var(--s-1) / 2) 0 0;
+  background: transparent;
+  border: 0;
+  transform: none;
+  transition: none;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+.page--yours .page-head > div { display: flex; flex-direction: column; gap: var(--s-2); min-width: 0; }
+body.ui-v2.view-yours .page--yours .page-head h2 { margin: 0; color: var(--ink); font-family: var(--dial-font-display); font-size: var(--t-display-xl); line-height: var(--lh-display-xl); font-weight: var(--w-display); font-stretch: var(--wd-screen); letter-spacing: var(--tracking-screen); }
+.yours-readout { margin: 0; color: var(--ink-2); }
+
+/* The strip: 36px chips, 8 apart, 16 gutters; a chip half out of the edge fades
+   instead of showing a sliver (prototype P1-6). It sits 8px closer to the head
+   than the page gap, the way the prototype's strip does. */
+.yours-chips {
+  position: relative;
+  display: flex;
+  gap: var(--s-2);
+  overflow-x: auto;
+  margin: calc(var(--s-2) * -1) calc(var(--gutter) * -1) calc(var(--s-2) * -1);
+  padding: var(--s-2) var(--gutter) var(--s-1);
+  scrollbar-width: none;
+  scroll-padding-inline: var(--gutter);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--gutter), #000 calc(100% - var(--gutter)), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 var(--gutter), #000 calc(100% - var(--gutter)), transparent);
+}
+.yours-chips::-webkit-scrollbar { display: none; }
+.yours-chips .chip { flex: none; }
+.yours-chips .chip .i { width: 18px; height: 18px; }
+.yours-chips .chip__count { margin-left: calc(var(--s-1) / 2); }
+
+.yours-panel[hidden] { display: none; }
+
+/* Up Next: the header line (the order, and Clear), then the rows. */
+.yours-qhead { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding-bottom: var(--lip); }
+.yours-qlabel { color: var(--ink-2); font: var(--w-label) var(--t-label)/var(--lh-label) var(--font-text); }
+.yours-queue { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-3); }
+.yours-qwrap { position: relative; display: flex; flex-direction: column; }
+.yours-qwrap.is-flipping { transition: transform var(--d-settle) var(--spring-settle); }
+.yours-queue .row-queue { gap: var(--s-2); padding: 6px 0; min-height: var(--row-queue); }
+.yours-queue .row-queue.is-current { margin: 0 calc(var(--s-2) * -1); padding: 6px var(--s-2); }
+.yours-queue .row-queue__position { width: var(--s-5); display: inline-grid; place-items: center; font-size: var(--t-readout); line-height: var(--lh-readout); }
+.yours-queue .row-queue__position .i { width: var(--s-5); height: var(--s-5); }
+.row-queue__main { flex: 1; min-width: 0; min-height: var(--tap); display: flex; align-items: center; gap: var(--s-2); margin: 0; padding: 0; border: 0; border-radius: var(--r-sm); background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; appearance: none; }
+div.row-queue__main { cursor: default; }
+.row-queue__main:focus-visible { outline: calc(var(--s-1) / 2) solid var(--ultramarine); outline-offset: calc(var(--s-1) / 2); }
+.yours-queue .find-art--queue { width: var(--art-queue); height: var(--art-queue); border-radius: var(--r-sm); }
+.yours-queue .find-art--queue::before { font-size: var(--t-body); }
+.yours-queue .row__title { color: var(--ink); }
+.yours-queue .row__meta { gap: calc(var(--s-1) + var(--s-1) / 2); flex-wrap: nowrap; }
+.yours-queue .row__meta > .readout, .yours-queue .row__meta > .tag { flex: none; }
+.yours-queue .row__meta .row__show { min-width: 0; flex: 0 1 auto; }
+.yours-queue .tag--playing { min-height: 0; padding: 0; gap: var(--s-1); font-weight: var(--w-label); }
+.yours-queue .tag--playing .i { width: calc(var(--s-3) + var(--s-1) / 2); height: calc(var(--s-3) + var(--s-1) / 2); }
+.yours-queue .row-queue.is-current .row-queue__position { color: var(--persimmon); }
+
+/* The 48px action row under an open ⋯: three paper keycaps on one line, from
+   the gutter (the prototype indents them 32px and wraps to a second line at 393;
+   one line is the spec, so the indent goes and the keys are 20px-icon compact).
+   Its opening is the prototype's `open` (a rise and a fade on --spring-settle);
+   the rows below it slide down by FLIP. */
+.yours-qtools { display: flex; flex-wrap: wrap; gap: calc(var(--s-1) + var(--s-1) / 2); padding: 0 0 var(--s-1); animation: yours-open var(--d-settle) var(--spring-settle) both; transform-origin: top; }
+.yours-qtools .keycap { gap: var(--s-1); padding: 0 var(--s-2); }
+.yours-qtools .keycap .i { width: var(--s-5); height: var(--s-5); }
+@keyframes yours-open { from { opacity: 0; transform: translateY(calc(var(--s-2) * -1)); } to { opacity: 1; transform: none; } }
+
+/* The clear-all sheet's backdrop; the sheet itself is the shared `.sheet`. */
+.yours-scrim { position: fixed; inset: 0; z-index: 99; background: color-mix(in srgb, var(--ink) 40%, transparent); }
+
+/* "Removed from Up Next / Undo", above the deck, and above the mini when it is
+   up. The shared `.deck-toast` places it over the tab row; the mini adds its
+   height. */
+body.fp-open:not(.mini-dismissed) .yours-toast { bottom: calc(var(--safe-b) + var(--s-3) + var(--tab-row-h) + var(--fp-bar-h) + var(--s-3)); }
+
 /* ---------- REDUCE MOTION: ONE BLOCK, EVERY TRANSITION (audit round 2, a11y-9) ----------
    Three strip rules honoured the setting and nothing else did: the Now Playing
    sheet still slid back over 220ms after a partial drag, the notes chevron
@@ -5465,6 +5568,8 @@ body.ui-v2 .fp-sheet.np .fp-openep { color: var(--ink); }
   .tab__label,
   .tab__indicator,
   .toast,
+  .yours-qwrap,
+  .yours-qwrap.is-flipping,
   /* The live deck (group A `mini`): the tab row's collapse, the indicator's
      slide, the Bold/Fill cross-fade, the label fade, the mini riding down with
      the row and its swipe-dismiss settle. */
@@ -5481,7 +5586,8 @@ body.ui-v2 .fp-sheet.np .fp-openep { color: var(--ink); }
   .band--buffering .needle,
   .np__needle.is-buffering,
   .bridge[data-draw] .bridge__path,
-  .skel { animation: none; }
+  .skel,
+  .yours-qtools { animation: none; }
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation-duration: 1ms; }
   .drawer-dev > summary::after,
   .mini-card,
