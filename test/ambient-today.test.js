@@ -625,19 +625,36 @@ test("content runs under the Dock and fades to bg: a fixed fade behind it, solid
   assert.strictEqual(valueOf("body.view-home.fp-open", "--td-dock-h"), "calc(var(--dock-lift) + var(--tab-bar) + var(--mini))", "the mini row is part of the Dock when something is loaded");
 });
 
-test("the hero's meta stays beside Play, wrapping to its own lines there rather than dropping under the button", () => {
-  /* Iteration 2 kept the meta whole by letting the row wrap, so "1 show · about 43 min" fell under the 56px button as a
-     caption and broke the hero's rhythm (collage | title / Play + meta). Iteration 3: the row never wraps, the meta takes
-     the rest of the row and wraps inside it.
+test("the hero's meta stays beside Play on ONE nowrap line, or stacks its two parts; it never wraps mid-line", () => {
+  /* Iteration 3 let "1 show · about 43 min" wrap inside the 109px beside Play, which left "1 show ·" at a line end and
+     "about 43 min" under it (the separator stranded). Iteration 4: the line is nowrap; a meta too long for it is
+     rendered as two stacked parts, one per line, the separator for screen readers only.
      MUTATION 1: set `flex-wrap: wrap` back on `.ag .td-hero-actions` -> red.
      MUTATION 2: delete `flex: 1 1 0` or `min-width: 0` on `.ag .td-hero-actions .td-hero-meta` -> red.
      MUTATION 3: delete the `flex: none` on the row's Play (it shrinks to 49.5px) -> red.
-     MUTATION 4: put `white-space: nowrap` back on the meta -> red. */
+     MUTATION 4: delete `white-space: nowrap` from the meta -> red (the wrap, and the stranded "·", is back).
+     MUTATION 5: raise TODAY_META_ONE_LINE_MAX to 99 in ui/home.js -> the 21-character estimate renders as one line -> red.
+     MUTATION 6: drop the `is-stacked` class from todayForayMetaHtml, or the `display: block` on its spans -> red. */
   assert.strictEqual(valueOf(".ag .td-hero-actions", "flex-wrap"), "nowrap");
   assert.strictEqual(valueOf(".ag .td-hero-actions .td-hero-meta", "flex"), "1 1 0");
   assert.strictEqual(valueOf(".ag .td-hero-actions .td-hero-meta", "min-width"), "0");
-  assert.strictEqual(valueOf(".ag .td-hero-actions .td-hero-meta", "white-space"), null, "the meta may wrap beside Play");
+  assert.strictEqual(valueOf(".ag .td-hero-actions .td-hero-meta", "white-space"), "nowrap", "one line, never wrapped");
+  assert.strictEqual(valueOf(".ag .td-hero-actions .td-hero-meta", "text-wrap"), null, "no balanced wrapping to strand a separator");
   assert.strictEqual(valueOf(".ag .td-hero-actions > .ag-btn", "flex"), "none");
+  assert.strictEqual(valueOf(".ag .td-hero-actions .td-hero-meta.is-stacked > span:not(.sr-only)", "display"), "block", "stacked parts take a line each");
+  const m = mount();
+  const fits = m.ctx.todayForayMetaHtml({ meta: "4 shows · 19 min", metaParts: ["4 shows", "19 min"] });
+  assert.strictEqual(fits, '<p class="t-caption td-hero-meta num">4 shows · 19 min</p>', "the prototype's own line stays one line");
+  const estimate = m.ctx.todayForayMetaHtml({ meta: "1 show · about 43 min", metaParts: ["1 show", "about 43 min"] });
+  assert.strictEqual(estimate, '<p class="t-caption td-hero-meta num is-stacked"><span>1 show</span><span class="sr-only"> · </span><span>about 43 min</span></p>', "the estimate stacks: no line can end on the separator");
+  const hostile = m.ctx.todayForayMetaHtml({ meta: "<b>x</b> · about 43 min", metaParts: ["<b>x</b>", "about 43 min"] });
+  assert.ok(!hostile.includes("<b>"), "every part goes through esc()");
+  assert.strictEqual(m.ctx.todayForayMetaHtml({ meta: "about 43 min", metaParts: ["about 43 min"] }), '<p class="t-caption td-hero-meta num">about 43 min</p>', "one part is one line");
+  /* The whole path, not only the helper: an ESTIMATED foray on Home comes out stacked, a measured one on one line.
+     MUTATION 7: drop `metaParts` from the foray hero in ui/home.js -> the estimate falls back to one (overflowing) line -> red. */
+  const est = mount({ player: { stripTally: () => ({ shows: 1, clips: 4, bridges: 1, estimated: true }) } });
+  est.ctx.renderHome();
+  assert.match(heroOf(est.view()), /<p class="t-caption td-hero-meta num is-stacked"><span>1 show<\/span><span class="sr-only"> · <\/span><span>about 42 min<\/span><\/p>/, "an estimated foray stacks beside Play");
 });
 
 test("the 2x2 collage is one treatment at every size: whole squares, one gap, no rounded inner tile", () => {
@@ -645,7 +662,7 @@ test("the 2x2 collage is one treatment at every size: whole squares, one gap, no
      inner-tile radius come from ONE rule in ui/primitives.css, and Today may restyle neither.
      MUTATION 1: add `gap: 3px` (or any padding) to `.ag .td-keep-art .ag-collage` in ui/today.css -> red.
      MUTATION 2: set the c4 inner art's border-radius to var(--r-sm) in ui/primitives.css -> red.
-     MUTATION 3: change the c4 gap in ui/primitives.css to 3px -> red. */
+     MUTATION 3: change the c4 gap in ui/primitives.css to 3px (or back to 2px) -> red. */
   const prim = cssRules(read("ui/primitives.css").replace(/\/\*[\s\S]*?\*\//g, " "));
   const inPrim = (sel, prop) => {
     let v = null;
@@ -655,7 +672,7 @@ test("the 2x2 collage is one treatment at every size: whole squares, one gap, no
     }
     return v;
   };
-  assert.strictEqual(inPrim(".ag .ag-collage.c4", "gap"), "calc(var(--s-1) / 2)", "2px, the prototype's");
+  assert.strictEqual(inPrim(".ag .ag-collage.c4", "gap"), "1px", "a 1px hairline between whole squares, at every size (iteration 4)");
   assert.strictEqual(inPrim(".ag .ag-collage.c4 > .ag-art", "border-radius"), "0", "inner squares are whole and square-cornered; the collage rounds once");
   for (const sel of [".ag .td-keep-art .ag-collage", ".ag .td-hero-art .ag-collage"]) {
     for (const prop of ["gap", "padding", "background"]) assert.strictEqual(valueOf(sel, prop), null, `${sel} does not restyle ${prop}`);

@@ -536,6 +536,7 @@ function todayForayHero(pick = foraysForYouPicks()) {
       shows: names.slice(0, 4).map(n => ({ name: n, src: todayShowArt(n) })),
       glowShow: names[0] || f.title,
       meta: joinMeta(showCount ? countLabel(showCount, "show") : "", forayRuntimeLabel(player, tally, target.r.totalSec)),
+      metaParts: [showCount ? countLabel(showCount, "show") : "", forayRuntimeLabel(player, tally, target.r.totalSec)].filter(Boolean),
       why: String(f.summary || ""),
       target,
     };
@@ -745,6 +746,18 @@ function todaySectionHead(title, count, explainer) {
   return `<div class="td-head2"><h2 class="t-headline">${esc(title)}</h2>${count ? `<span class="t-caption count">${esc(String(count))}</span>` : ""}</div>${explainer ? `<p class="t-body td-explainer">${esc(explainer)}</p>` : ""}`;
 }
 
+/** The foray hero's meta beside Play. The column beside the collage leaves ~109px after Play and the gap, which holds
+    "4 shows · 19 min" (the prototype's, ~98px) on ONE line but not "1 show · about 43 min" (131px). Rather than let that
+    wrap mid-line and strand the separator ("1 show ·" / "about 43 min"), a meta that will not fit stacks its two parts,
+    one per line, with the separator carried for screen readers only. Either way no line ever breaks inside a part. */
+const TODAY_META_ONE_LINE_MAX = 17;
+function todayForayMetaHtml(hero) {
+  const parts = Array.isArray(hero.metaParts) ? hero.metaParts : [];
+  const stacked = parts.length === 2 && String(hero.meta).length > TODAY_META_ONE_LINE_MAX;
+  if (!stacked) return `<p class="t-caption td-hero-meta num">${esc(hero.meta)}</p>`;
+  return `<p class="t-caption td-hero-meta num is-stacked"><span>${esc(parts[0])}</span><span class="sr-only"> · </span><span>${esc(parts[1])}</span></p>`;
+}
+
 /** HeroPick (BUILD-NOTES §3, §10.6): the collage, the eyebrow, the title (four lines, no ellipsis), the
     meta, Ember Play 56 under the collage's bottom edge, and the why-line across the full width. */
 function todayHeroHtml(hero, { firstRun }) {
@@ -760,7 +773,7 @@ function todayHeroHtml(hero, { firstRun }) {
       <span class="eyebrow lamp">${esc(eyebrow)}</span>
       <h2 class="t-title clamp4 td-hero-title"><a class="td-link" href="#${esc(hero.route)}"${hero.kind === "ep" ? ` data-ev="picked" data-ep="${esc(hero.id)}" data-ctx="today"` : ""}>${esc(hero.title)}</a></h2>
       ${hero.kind === "foray" ? "" : `<p class="t-caption td-hero-meta">${esc(hero.meta)}</p>`}
-      <div class="td-hero-actions">${todayPlayButton({ size: 56, label: `Play ${hero.title}`, attrs: " data-home-play" })}${hero.kind === "foray" ? `<p class="t-caption td-hero-meta num">${esc(hero.meta)}</p>` : ""}</div>
+      <div class="td-hero-actions">${todayPlayButton({ size: 56, label: `Play ${hero.title}`, attrs: " data-home-play" })}${hero.kind === "foray" ? todayForayMetaHtml(hero) : ""}</div>
     </div>
     ${hero.why ? `<p class="t-why td-why">${esc(hero.why)}</p>` : ""}
     ${firstRun ? `<p class="t-body td-first-run">${esc(TODAY_FIRST_RUN_NOTE)}</p>` : ""}

@@ -310,7 +310,7 @@ test("a returning profile's hero is a real listable Foray with its shows' collag
   assert.ok(hero, "a returning profile's hero is a Foray");
   assert.ok(listable.some((f) => encodeURIComponent(f.id) === hero[1]), "and a listable one (published, for a visitor who asked for none)");
   assert.match(html, /class="ag-collage ag-collage-160 c[1-4]/, "its collage is the shows' art");
-  assert.match(html, /\d+ shows? · /, "its meta says how many shows and how long");
+  assert.match(html, /\d+ shows?(?: · |<\/span><span class="sr-only"> · <\/span><span>)(?:about )?\d+ min/, "its meta says how many shows and how long (one line, or stacked when an estimate is too long for it)");
 });
 
 test("the hero is never the floor's stretch Foray", async () => {
