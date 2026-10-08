@@ -1073,7 +1073,13 @@ function el(tag, cls, text) {
     when it equals the text. */
 function paintControl(btn, text, label) {
   if (!btn) return;
-  if (text != null && btn.textContent !== text) btn.textContent = text;
+  /* Afterglow's secondary buttons are an icon plus a caption span; the text goes to the caption so
+     the glyph survives every repaint (Speed's "1x", Bookmark's "Bookmarked"). */
+  const caption = btn.classList.contains("ag-np-action") ? btn.querySelector(".ag-np-action-caption") : null;
+  const target = caption || btn;
+  /* A button that owns a sprite glyph (dataset.agGlyph, set by ui/now-playing.js) keeps its <svg>: the text is
+     only the legacy fallback and its accessible name is carried by aria-label below. */
+  if (text != null && !btn.dataset?.agGlyph && target.textContent !== text) target.textContent = text;
   /* Compared before it is written, like the text (audit round 2, perf-7): this
      runs for every `[data-play]` button on the page at 4 Hz, and an attribute
      rewritten to its own value is still a mutation some screen readers
@@ -2275,8 +2281,9 @@ function paintPage(running) {
       scrubShownValue = live;
     }
     /* Afterglow's slider speaks a value when the listener changes it, not four
-       times a second while focus is parked on it. The visible clocks still tick. */
-    paintClocks(pos, dur, !held && !ui.ag);
+       times a second while focus is parked on it. The visible clocks still tick, and an
+       unfocused slider (nobody hears it) still keeps its spoken value current. */
+    paintClocks(pos, dur, !held && !(ui.ag && document.activeElement === ui.scrub));
   }
   if (ui.ag && foray) {
     const items = foray.resolved.playable.map((item) => ({
@@ -2423,7 +2430,8 @@ function setNowPlaying(item, why) {
   ui.show.textContent = item.show || "";
   paintInfoLabel();
   ui.sTitle.textContent = item.title || "";
-  ui.sShow.textContent = item.show || "";
+  /* A Foray's second line is painted by the screen file (it crossfades on a segment change). */
+  if (!(ui.ag && "source_show" in item)) ui.sShow.textContent = item.show || "";
   /* Emptied paragraphs are HIDDEN, not left blank (audit 2026-09-22): both
      carry margins, so an empty one was a dead band in the sheet — on every
      Foray, which never has a hook. `sDesc` below always did it this way. */
@@ -2460,11 +2468,7 @@ function setNowPlaying(item, why) {
     if (!foray && previous?.id && previous.id !== item.id) {
       window.AfterglowNowPlaying?.handoff(ui, previous.artwork_url, item.artwork_url);
     }
-    requestAnimationFrame(() => {
-      const line = parseFloat(getComputedStyle(ui.sTitle).lineHeight) || 36;
-      const lines = Math.round(ui.sTitle.getBoundingClientRect().height / line);
-      ui.sheet.classList.toggle("is-long-title", lines >= 3);
-    });
+    requestAnimationFrame(() => window.AfterglowNowPlaying?.measureTitle(ui));
   }
   paintNotes(item);
   /* A RESTORED FORAY (`restoreForay`) is a bar with a Foray behind it and no
@@ -3269,7 +3273,7 @@ function paintEpisodeSurface() {
   ui.saveBtn.classList.toggle("on", saved);
   ui.bookmarkBtn.hidden = !(showEpisode && typeof nav?.addBookmark === "function");
   if (ui.ag) {
-    ui.bookmarkBtn.hidden = false;
+    /* A bookmark is a place in an episode, so a Foray (a stitched run of clips) offers none, as before. */
     let nextItem = null;
     try { nextItem = nav?.nextItem || null; } catch (_) { nextItem = null; }
     window.AfterglowNowPlaying?.paintUpNext(ui, nextItem, count);
@@ -3961,20 +3965,30 @@ function bind() {
       setExpanded(opening);
       return;
     }
+    /* Reduce Motion: no shared element, no slide; the sheet crossfades in over 200ms (a transition on
+       opacity, the one motion the reduced-motion block allows). */
+    if (typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      ui.sheet.classList.add("is-entering");
+      setExpanded(true);
+      void ui.sheet.offsetWidth;
+      requestAnimationFrame(() => ui.sheet.classList.remove("is-entering"));
+      return;
+    }
     if (typeof document.startViewTransition !== "function") {
       const from = ui.art.getBoundingClientRect();
       setExpanded(true);
       requestAnimationFrame(() => {
         const to = ui.sArt.getBoundingClientRect();
         if (!ui.sArt.animate || !from.width || !to.width) return;
-        const reduce = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        ui.sArt.animate(reduce ? [{ opacity: 0 }, { opacity: 1 }] : [
+        ui.sArt.animate([
           { transform: `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.width / to.width})`, transformOrigin: "top left" },
           { transform: "none", transformOrigin: "top left" },
-        ], { duration: reduce ? 200 : 420, easing: reduce ? "linear" : "cubic-bezier(.2,.9,.2,1.02)" });
+        ], { duration: 420, easing: "cubic-bezier(.2,.9,.2,1.02)" });
       });
       return;
     }
+    /* The sheet's end of the shared element is the artwork, or a Foray's collage when there is no single sleeve. */
+    const sheetArt = () => (ui.sArt.hidden && ui.artSwap?.querySelector(".ag-np-collage")) || ui.sArt;
     ui.art.style.setProperty("view-transition-name", "np-art");
     ui.sArt.style.removeProperty("view-transition-name");
     let transition = null;
@@ -3982,7 +3996,7 @@ function bind() {
       transition = document.startViewTransition(() => {
         setExpanded(true);
         ui.art.style.removeProperty("view-transition-name");
-        ui.sArt.style.setProperty("view-transition-name", "np-art");
+        sheetArt().style.setProperty("view-transition-name", "np-art");
       });
     } catch (_) {
       ui.art.style.removeProperty("view-transition-name");
@@ -3992,6 +4006,7 @@ function bind() {
     transition.finished.finally(() => {
       ui.art.style.removeProperty("view-transition-name");
       ui.sArt.style.removeProperty("view-transition-name");
+      sheetArt().style.removeProperty("view-transition-name");
     });
   };
   ui.info.addEventListener("click", toggleExpandedFromMini);
@@ -4029,15 +4044,26 @@ function bind() {
      element's raw clock, which reads 0 through a cold load and on a restored
      bar (see that function). The duration rides along so a bookmark on an
      ad-stitched copy can later be shown as approximate (seek-policy OWN). */
+  /* Sleep timer (Afterglow's detail posture): the screen file cycles the minutes, this owns the clock and the
+     pause. It only pauses; it never seeks, stops the Foray or touches the queue. */
+  if (ui.ag) {
+    let sleepTimer = 0;
+    ui.requestSleep = (minutes) => {
+      clearTimeout(sleepTimer);
+      sleepTimer = 0;
+      if (!minutes) { announce("Sleep timer off"); return; }
+      announce(`Sleep timer set for ${minutes} minutes`);
+      sleepTimer = setTimeout(() => {
+        sleepTimer = 0;
+        ui.resetSleep?.();
+        if (isRunning()) setRunning(false, "sleep");
+        announce("Sleep timer ended, playback paused");
+      }, minutes * 60000);
+    };
+  }
   ui.bookmarkBtn.addEventListener("click", () => {
     const nav = episodeNavigation;
     const id = ForayPlayer.currentEpisodeId();
-    if (foray && ui.ag) {
-      const on = ui.bookmarkBtn.getAttribute("aria-pressed") !== "true";
-      ui.bookmarkBtn.setAttribute("aria-pressed", on ? "true" : "false");
-      announce(on ? `Bookmarked at ${fmtClock(forayPosition())}` : "Bookmark removed");
-      return;
-    }
     if (!nav || !id || typeof nav.addBookmark !== "function") return;
     let bm = null;
     try { bm = nav.addBookmark(id, episodePositionSec(), episodeDurationSec()); } catch (_) { bm = null; }

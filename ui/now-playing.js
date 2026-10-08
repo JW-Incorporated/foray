@@ -53,6 +53,21 @@ function agNpSafeArt(node, src) {
   return url;
 }
 
+/* Artwork for a row or tile: the image when the item has a URL that passes safeUrl(), otherwise a square in the
+   show's own colour (the one its strip bar wears), so a missing sleeve never leaves a hole. */
+function agNpArtNode(cls, item, name) {
+  const src = safeUrl(agNpArt(item) || "");
+  if (src && src !== "#") {
+    const img = agNpEl("img", cls);
+    img.alt = "";
+    img.src = src;
+    return img;
+  }
+  const tile = agNpEl("span", `${cls} ag-np-art-fallback`);
+  tile.style.setProperty("--c", agNpColour(name));
+  return tile;
+}
+
 function agNpHash(value) {
   let hash = 2166136261;
   for (const ch of String(value || "4a")) {
@@ -62,9 +77,10 @@ function agNpHash(value) {
   return hash >>> 0;
 }
 
-function agNpColour(value, index = 0) {
-  const hue = (agNpHash(value) + index * 30) % 360;
-  return `oklch(0.70 0.13 ${hue})`;
+/* One colour per show, so a show's bar, its Room and its source tile always agree (the hash hue is the fallback the direction names when no palette is precomputed). */
+function agNpColour(value) {
+  const hue = agNpHash(value) % 360;
+  return `oklch(0.66 0.14 ${hue})`;
 }
 
 function agNpCssUrl(src) {
@@ -157,7 +173,7 @@ function agNpAdopt(ui) {
     button.textContent = "";
     const glyph = agNpEl("span", "ag-np-action-icon");
     glyph.append(agNpIconNode(icon, 24));
-    button.append(glyph, agNpEl("span", "t-caption", label));
+    button.append(glyph, agNpEl("span", "t-caption ag-np-action-caption", label));
     return button;
   };
   action(ui.rateBtn, "gauge", "Speed");
@@ -191,13 +207,27 @@ function agNpAdopt(ui) {
   ui.scroll.replaceChildren(first, detail);
   ui.sheet.prepend(roomLayers);
 
-  detailHandle.addEventListener("click", () => detail.scrollIntoView({ behavior: "smooth", block: "start" }));
+  /* The More handle and the dots both bring the detail posture up and park focus on its first control. */
+  const openDetail = () => {
+    detail.scrollIntoView({ behavior: "smooth", block: "start" });
+    ui.rateBtn.focus({ preventScroll: true });
+  };
+  detailHandle.addEventListener("click", openDetail);
+  moreMenuBtn.addEventListener("click", openDetail);
+  /* Sleep cycles off, 15, 30, 60, off. The timer itself belongs to player/client.js (it owns playback): it is
+     handed the minutes through ui.requestSleep and calls ui.resetSleep when it fires. */
   let sleepMinutes = 0;
+  const paintSleep = () => {
+    sleepBtn.querySelector(".ag-np-action-caption").textContent = sleepMinutes ? `${sleepMinutes} min` : "Sleep";
+    sleepBtn.setAttribute("aria-label", sleepMinutes ? `Sleep timer, ${sleepMinutes} minutes, tap to change` : "Sleep timer");
+    sleepBtn.setAttribute("aria-pressed", sleepMinutes ? "true" : "false");
+  };
   sleepBtn.addEventListener("click", () => {
-    sleepMinutes = sleepMinutes === 0 ? 15 : sleepMinutes === 15 ? 30 : 0;
-    sleepBtn.querySelector(".t-caption").textContent = sleepMinutes ? `${sleepMinutes} min` : "Sleep";
-    sleepBtn.setAttribute("aria-label", sleepMinutes ? `Sleep timer, ${sleepMinutes} minutes` : "Sleep timer");
+    sleepMinutes = sleepMinutes === 0 ? 15 : sleepMinutes === 15 ? 30 : sleepMinutes === 30 ? 60 : 0;
+    paintSleep();
+    ui.requestSleep?.(sleepMinutes);
   });
+  ui.resetSleep = () => { sleepMinutes = 0; paintSleep(); };
   shareBtn.addEventListener("click", async () => {
     const url = safeUrl(location.href);
     try {
@@ -212,8 +242,39 @@ function agNpAdopt(ui) {
     upNextRow: upNextSection.querySelector(".ag-np-up-next-row"), artSwap,
     artWrap, moreMenuBtn, sleepBtn, shareBtn,
   });
+  if (typeof ResizeObserver === "function") new ResizeObserver(() => agNpMeasureTitle(ui)).observe(ui.sTitle);
   window.__afterglowNowPlayingUi = ui;
   return ui;
+}
+
+/* Three title lines shrink the artwork to 180 (BUILD-NOTES 4.2). Measured on the laid-out title,
+   so it only counts while the sheet is open (a hidden sheet reports height 0 and keeps its class);
+   the title's width never depends on the artwork's size, so toggling the class cannot loop. */
+function agNpMeasureTitle(ui) {
+  if (!ui?.ag || ui.sheet.hidden) return;
+  const height = ui.sTitle.getBoundingClientRect().height;
+  if (!height) return;
+  const line = parseFloat(getComputedStyle(ui.sTitle).lineHeight) || 36;
+  ui.sheet.classList.toggle("is-long-title", Math.round(height / line) >= 3);
+}
+
+/* The show line under the title crossfades on a segment change: out for half of --m-ui, the text swaps
+   while it is invisible, in for the other half (280ms in all). The title never changes, so its box cannot move. */
+function agNpSetShowLine(ui, text) {
+  if (!ui?.ag) return;
+  if (ui.showLine == null) {
+    ui.showLine = text;
+    ui.sShow.textContent = text;
+    return;
+  }
+  if (ui.showLine === text) return;
+  ui.showLine = text;
+  clearTimeout(ui.showTimer);
+  ui.sShow.classList.add("is-crossfading");
+  ui.showTimer = setTimeout(() => {
+    ui.sShow.textContent = text;
+    ui.sShow.classList.remove("is-crossfading");
+  }, 140);
 }
 
 function agNpSetRoom(ui, src, show, { announce = false } = {}) {
@@ -226,7 +287,8 @@ function agNpSetRoom(ui, src, show, { announce = false } = {}) {
   incoming.classList.add("is-on");
   outgoing.classList.remove("is-on");
   ui.roomLayer = next;
-  const glow = agNpColour(show);
+  /* Narration is 4a's own voice: the Room returns to lamp-warm neutral instead of taking a show's hue. */
+  const glow = show === "4a narration" ? "oklch(0.74 0.05 75)" : agNpColour(show);
   ui.sheet.style.setProperty("--glow", glow);
   ui.root.style.setProperty("--glow", glow);
   ui.sArt.style.setProperty("--art-glow", glow);
@@ -262,14 +324,14 @@ function agNpPaintForay(ui, { items = [], model = null, currentIndex = 0, starts
       button.dataset.index = String(segment.index);
       button.setAttribute("aria-label", `Seek to ${name}, ${agNpClock(starts[segment.index] || 0)}`);
       button.style.setProperty("--grow", String(segment.grow || 1));
-      button.style.setProperty("--c", item?.kind === "tts" ? "var(--lamp)" : agNpColour(name, order));
+      button.style.setProperty("--c", item?.kind === "tts" ? "var(--lamp)" : agNpColour(name));
       const bar = agNpEl("span", item?.kind === "tts" ? "ag-np-strip-bar is-narration" : "ag-np-strip-bar");
       bar.append(agNpEl("span", "ag-np-strip-fill"));
       button.append(bar);
       button.addEventListener("click", () => onSeek?.(starts[segment.index] || 0));
       ui.strip.append(button);
     });
-    agNpPaintDetails(ui, items, onSeek);
+    agNpPaintDetails(ui, items, onSeek, model);
     agNpPaintCollage(ui, items);
   }
   [...ui.strip.children].forEach((button, order) => {
@@ -280,10 +342,8 @@ function agNpPaintForay(ui, { items = [], model = null, currentIndex = 0, starts
     button.classList.toggle("is-past", segment?.state === "past");
     button.querySelector(".ag-np-strip-fill")?.style.setProperty("--fill", String(current ? segment?.progress ?? 0 : 0));
   });
-  ui.sTitle.textContent = title;
-  ui.sShow.textContent = `${new Set(items.map(agNpShow).filter((name) => name !== "4a narration")).size} shows · ${show}`;
-  ui.sShow.classList.add("is-crossfading");
-  requestAnimationFrame(() => ui.sShow.classList.remove("is-crossfading"));
+  if (ui.sTitle.textContent !== title) ui.sTitle.textContent = title;
+  agNpSetShowLine(ui, `${new Set(items.map(agNpShow).filter((name) => name !== "4a narration")).size} shows · ${show}`);
   ui.strip.setAttribute("aria-label", `Foray position ${agNpClock(elapsed)}`);
 }
 
@@ -292,7 +352,7 @@ function agNpPaintCollage(ui, items) {
   for (const item of items) {
     const name = agNpShow(item);
     const src = agNpArt(item);
-    if (!src || name === "4a narration" || sources.some((source) => source.name === name)) continue;
+    if (name === "4a narration" || sources.some((source) => source.name === name)) continue;
     sources.push({ name, src });
     if (sources.length === 4) break;
   }
@@ -303,51 +363,55 @@ function agNpPaintCollage(ui, items) {
     ui.artSwap.append(collage);
   }
   collage.replaceChildren();
-  for (const source of sources) {
+  sources.forEach((source, order) => {
+    /* A show with no artwork URL still gets its square, in the colour the strip derives for it:
+       the collage is the Foray's identity, so it is never an empty hole in the Room. */
+    if (!source.src) {
+      const tile = agNpEl("span", "ag-np-collage-art ag-np-collage-tile");
+      tile.style.setProperty("--c", agNpColour(source.name));
+      collage.append(tile);
+      return;
+    }
     const img = agNpEl("img", "ag-np-collage-art");
     img.alt = "";
     agNpSafeArt(img, source.src);
     collage.append(img);
-  }
+  });
   collage.dataset.count = String(sources.length);
   ui.sArt.hidden = true;
 }
 
-function agNpPaintDetails(ui, items, onSeek) {
+function agNpPaintDetails(ui, items, onSeek, model) {
   const list = ui.segmentsSection.querySelector(".ag-np-segment-list");
   const grid = ui.sourcesSection.querySelector(".ag-np-source-grid");
   list.replaceChildren();
   grid.replaceChildren();
   const seen = new Set();
-  let elapsed = 0;
   items.forEach((item, index) => {
-    const duration = Number(item?.duration_sec || item?.durationSec || item?.length_sec || 0);
+    /* The strip model owns the Foray clock (runtimes, cumulative starts), so a row's time range is the
+       range its bar covers and a seek from the row lands where the same bar's seek lands. */
+    const seg = model?.segments?.find((segment) => segment.index === index);
+    const elapsed = Number(seg?.startSec) || 0;
+    const duration = Number(seg?.lengthSec) || 0;
     const narration = item?.kind === "tts";
     const row = agNpEl("button", narration ? "ag-np-segment-row is-narration" : "ag-np-segment-row");
     row.type = "button";
     row.setAttribute("aria-label", `Seek to ${agNpShow(item)}, ${agNpClock(elapsed)}`);
     if (!narration) {
-      const image = agNpEl("img", "ag-np-segment-art");
-      image.alt = "";
-      agNpSafeArt(image, agNpArt(item));
-      row.append(image);
+      row.append(agNpArtNode("ag-np-segment-art", item, agNpShow(item)));
     }
     const copy = agNpEl("span", "ag-np-segment-copy");
     copy.append(agNpEl("span", narration ? "t-label lamp" : "t-label", narration ? "Narration" : (item?.title || agNpShow(item))));
     copy.append(agNpEl("span", "t-caption", `${agNpShow(item)} · ${agNpClock(elapsed)}–${agNpClock(elapsed + duration)}`));
     row.append(copy);
-    const seekAt = elapsed;
-    row.addEventListener("click", () => onSeek?.(seekAt));
+    row.addEventListener("click", () => onSeek?.(elapsed));
     list.append(row);
-    elapsed += duration;
 
     const show = agNpShow(item);
     if (narration || seen.has(show)) return;
     seen.add(show);
     const tile = agNpEl("article", "ag-np-source-tile");
-    const art = agNpEl("img", "ag-np-source-art lit-art lit-40");
-    art.alt = "";
-    agNpSafeArt(art, agNpArt(item));
+    const art = agNpArtNode("ag-np-source-art lit-art lit-40", item, show);
     art.style.setProperty("--art-glow", agNpColour(show));
     const name = agNpEl("p", "t-caption clamp3", show);
     const follow = agNpEl("button", "ag-np-follow t-label", "Follow");
@@ -366,6 +430,9 @@ function agNpPaintDetails(ui, items, onSeek) {
 function agNpPaintEpisode(ui) {
   if (!ui?.ag) return;
   ui.sheet.classList.remove("is-foray");
+  ui.showLine = null;
+  /* The collage and the strip are torn down below, so the same Foray played again must rebuild both. */
+  ui.foraySignature = null;
   ui.strip.hidden = true;
   ui.scrub.hidden = false;
   ui.segmentsSection.hidden = true;
@@ -380,9 +447,7 @@ function agNpPaintUpNext(ui, item, count = 0) {
   ui.upNextSection.hidden = !item;
   ui.upNextRow.replaceChildren();
   if (!item) return;
-  const image = agNpEl("img", "ag-np-up-next-art");
-  image.alt = "";
-  agNpSafeArt(image, agNpArt(item));
+  const image = agNpArtNode("ag-np-up-next-art", item, agNpShow(item));
   const copy = agNpEl("div", "ag-np-up-next-copy");
   copy.append(agNpEl("span", "eyebrow lamp", "4a added"));
   copy.append(agNpEl("p", "t-label clamp2", item.title || "Up next"));
@@ -412,6 +477,8 @@ window.AfterglowNowPlaying = {
   adopt: agNpAdopt,
   setRoom: agNpSetRoom,
   flashCaption: agNpFlashCaption,
+  measureTitle: agNpMeasureTitle,
+  setShowLine: agNpSetShowLine,
   paintForay: agNpPaintForay,
   paintEpisode: agNpPaintEpisode,
   paintUpNext: agNpPaintUpNext,
