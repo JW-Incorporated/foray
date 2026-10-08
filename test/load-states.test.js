@@ -967,13 +967,26 @@ function diskFetch({ hang = [], fail = [] } = {}) {
   };
 }
 
-test("the boot paints 'Loading 4a…' before its first await, not a blank page", () => {
+test("the boot paints before its first await, not a blank page: Today's skeleton on Today, 'Loading 4a…' elsewhere", () => {
   /* The body used to stay blank behind the header until ~3.5 MB of JSON had
-     landed. MUTATION: delete the `view.innerHTML = BOOT_LOADING_HTML` line at the
-     top of init(). The view is empty and this goes red. */
-  const m = mount(); // every fetch hangs: init() is parked on its first await
-  assert.match(m.html(), /data-boot-loading/);
-  assert.match(m.html(), /Loading 4a…/);
+     landed. MUTATION: delete the `paintBootLoading(view)` line at the top of
+     init(). The view is empty and both halves go red.
+
+     REDESIGN 2026 (Tactile `home-loading`, BUILD-PLAN 2.8): the ruling that fell
+     is "the boot always says 'Loading 4a…'". Today's address now paints Today's
+     own skeleton (title row, hero/row/playlist shapes, one aria-busy region);
+     every other address keeps the plain line. Both carry `data-boot-loading`,
+     which the webview probe reads. The skeleton's own anatomy is pinned in
+     test/tactile-home-loading.test.js. */
+  const today = mount(); // every fetch hangs: init() is parked on its first await
+  assert.match(today.html(), /data-boot-loading/);
+  assert.match(today.html(), /today--loading/);
+  assert.match(today.html(), /aria-busy="true"/);
+  assert.doesNotMatch(today.html(), /Loading 4a…/, "Today shows shapes, not the plain line");
+  const elsewhere = mount({ hash: "#/library" });
+  assert.match(elsewhere.html(), /data-boot-loading/);
+  assert.match(elsewhere.html(), /Loading 4a…/);
+  assert.doesNotMatch(elsewhere.html(), /today--loading/);
 });
 
 test("a boot whose session never loads says so, and Try again runs the boot again", async () => {

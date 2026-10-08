@@ -678,11 +678,20 @@ function tactileRotary(data) {
   return '<div class="rotary" role="group" aria-label="' + esc(d.label || "Playback speed") + '">' + tactileKeycap({ size: "sm", variant: "paper", icon: "ph-arrow-down", label: "Less" }) + '<div class="well rotary__track" role="radiogroup">' + values.map(function (value) { var selected = value === (d.value || "1.0×"); return '<button type="button" class="rotary__tick" role="radio" aria-checked="' + (selected ? "true" : "false") + '"><span class="readout">' + esc(value) + "</span></button>"; }).join("") + "</div>" + tactileKeycap({ size: "sm", variant: "paper", icon: "ph-arrow-up", label: "More" }) + "</div>";
 }
 
-function tactileSkeleton(kind) {
-  var type = ["hero", "row", "card"].includes(kind) ? kind : "row";
-  if (type === "hero") return '<div class="skel skel--hero" aria-busy="true" aria-label="Loading"><span class="skel__shape skel__eyebrow"></span><div class="skel__title"><span class="skel__shape"></span><span class="skel__shape"></span><span class="skel__shape"></span></div><span class="skel__shape skel__band"></span><div class="skel__meta"><span class="skel__discs"><span class="skel__shape"></span><span class="skel__shape"></span><span class="skel__shape"></span></span><span class="skel__shape skel__readout"></span></div><div class="skel__why"><span class="skel__shape"></span><span class="skel__shape"></span></div><div class="skel__actions"><span class="skel__shape skel__primary"></span><span class="skel__shape skel__secondary"></span></div></div>';
-  if (type === "card") return '<div class="skel skel--card" aria-busy="true" aria-label="Loading"><span class="skel__shape skel__card-art"></span><div class="skel__card-lines"><span class="skel__shape"></span><span class="skel__shape"></span></div></div>';
-  return '<div class="skel skel--row" aria-busy="true" aria-label="Loading"><span class="skel__shape skel__row-art"></span><div class="skel__row-lines"><span class="skel__shape"></span><span class="skel__shape"></span><span class="skel__shape skel__row-meta"></span></div><span class="skel__shape skel__row-control"></span></div>';
+/** A placeholder shaped like what is coming. `opts.decorative` is for a page that
+    wraps its skeletons in ONE busy region (the Today boot paint): each block is
+    then `aria-hidden` instead of announcing "Loading" once per block. `opts.why`
+    adds the row's two why-line bars (the loaded Today row carries a why-line, so
+    its skeleton has to be as tall); the gallery's bare row leaves it off. `bridge`
+    is the Stretch slot (a sentence, the arc between two artworks, the pick): the
+    loaded page always reserves it, so the boot paint does too. */
+function tactileSkeleton(kind, opts) {
+  var type = ["hero", "row", "card", "bridge"].includes(kind) ? kind : "row";
+  var a = opts && opts.decorative ? 'aria-hidden="true"' : 'aria-busy="true" aria-label="Loading"';
+  if (type === "hero") return '<div class="skel skel--hero" ' + a + '><span class="skel__shape skel__eyebrow"></span><div class="skel__title"><span class="skel__shape"></span><span class="skel__shape"></span><span class="skel__shape"></span></div><span class="skel__shape skel__band"></span><div class="skel__meta"><span class="skel__discs"><span class="skel__shape"></span><span class="skel__shape"></span><span class="skel__shape"></span></span><span class="skel__shape skel__readout"></span></div><div class="skel__why"><span class="skel__shape"></span><span class="skel__shape"></span></div><div class="skel__actions"><span class="skel__shape skel__primary"></span><span class="skel__shape skel__secondary"></span></div></div>';
+  if (type === "bridge") return '<div class="skel skel--bridge" ' + a + '><div class="skel__why skel__bridge-sentence"><span class="skel__shape"></span><span class="skel__shape"></span></div><div class="skel__bridge-arc"><span class="skel__shape skel__bridge-known"></span><span class="skel__shape skel__bridge-line"></span><span class="skel__shape skel__bridge-stretch"></span></div><div class="skel__bridge-pick"><div class="skel__bridge-lines"><span class="skel__shape skel__bridge-tag"></span><span class="skel__shape"></span><span class="skel__shape"></span><span class="skel__shape skel__row-meta"></span></div><span class="skel__shape skel__row-control"></span></div></div>';
+  if (type === "card") return '<div class="skel skel--card" ' + a + '><span class="skel__shape skel__card-art"></span><div class="skel__card-lines"><span class="skel__shape"></span><span class="skel__shape"></span></div></div>';
+  return '<div class="skel skel--row" ' + a + '><span class="skel__shape skel__row-art"></span><div class="skel__row-lines"><span class="skel__shape"></span><span class="skel__shape"></span><span class="skel__shape skel__row-meta"></span></div><span class="skel__shape skel__row-control"></span>' + (opts && opts.why ? '<div class="skel__why skel__row-why"><span class="skel__shape"></span><span class="skel__shape"></span></div>' : "") + '</div>';
 }
 
 function tactileEmpty(data) {
