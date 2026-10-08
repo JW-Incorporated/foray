@@ -5415,10 +5415,13 @@ body.fp-open:not(.mini-dismissed) .yours-toast { bottom: calc(var(--safe-b) + va
 .shows-tile__name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; color: var(--ink); font: var(--w-micro) var(--t-label)/var(--lh-label) var(--font-text); }
 .shows-tile__layer { position: absolute; top: 0; left: 0; width: 100%; aspect-ratio: 1; pointer-events: none; }
 .shows-tile__layer > * { pointer-events: auto; }
-.shows-tile__more { position: absolute; top: 0; right: 0; z-index: 2; border-radius: var(--r-pill); background: color-mix(in srgb, var(--card) 92%, transparent); color: var(--ink); }
-.shows-tile__more .i { width: var(--s-5); height: var(--s-5); }
-.tag--following { position: absolute; left: var(--s-1); bottom: var(--s-1); max-width: calc(100% - var(--s-2)); min-height: var(--s-6); padding: 0 var(--s-2) 0 var(--s-1); gap: calc(var(--s-1) / 2); overflow: hidden; background: var(--card); box-shadow: inset 0 0 0 1px var(--dial-line); color: var(--ink); white-space: nowrap; }
-.tag--following .i { color: var(--good); }
+/* The ⋯ is a quiet opener (DIRECTION, Yours: "a menu opener is quiet"): the button
+   keeps its 44px target in the corner, the mark drawn in it is a 20px chip
+   (the glyph on a 80% paper scrim, so it reads on any artwork in either scheme),
+   not a 44px disc. No "Following" tag: every tile here is followed (iteration 2). */
+.shows-tile__more { position: absolute; top: 0; right: 0; z-index: 2; background: transparent; color: var(--ink); }
+.shows-tile__more .i { box-sizing: border-box; width: var(--s-5); height: var(--s-5); padding: calc(var(--s-1) / 2); border-radius: var(--r-pill); background: color-mix(in srgb, var(--paper) 80%, transparent); }
+.shows-tile__more:active { background: transparent; }
 .shows-tile__actions { position: absolute; inset: 0; z-index: 1; align-items: center; justify-content: center; padding: var(--s-2); border-radius: var(--r-sm); background: var(--card); box-shadow: inset 0 0 0 1px var(--dial-line); }
 .shows-tile__actions:not([hidden]) { display: flex; }
 .shows-tile__actions .keycap { max-width: 100%; }

@@ -90,9 +90,11 @@ function libraryForaysHtml() {
    RULING THAT FELL: "Yours' Shows is a capped summary that opens
    #/starred-shows" (test/starred-shows.test.js, the Shows-page section).
 
-   EACH TILE is a link to the show, with two things laid over its artwork that
-   are not part of the link: a "Following" tag (a check and a word, so the state
-   is never colour alone) and the ⋯ (a real 44px button). ⋯ - or a long press,
+   EACH TILE is a link to the show, with one thing laid over its artwork that is
+   not part of the link: the ⋯ (a real 44px button whose drawn mark is a small
+   quiet chip; the artwork is otherwise bare, as in the prototype). There is no
+   "Following" tag: every tile in this panel is followed by definition, so the
+   tag said nothing and cost a third of each face (iteration 2). ⋯ - or a long press,
    or the context menu - reveals the tile's one action, Unfollow, as a real
    button over the artwork (`hidden` until asked for, so it is out of the
    accessibility tree when closed). Opening moves focus to Unfollow; Escape,
@@ -137,7 +139,6 @@ function yoursShowTileHtml(s) {
     + `<span class="find-art find-art--tile find-art--c${tactileHash(s.id)}" data-i="${esc(station)}">${img}</span>`
     + `<span class="shows-tile__name">${esc(name)}</span></a>`
     + `<div class="shows-tile__layer">`
-    + `<span class="tag tag--following">${tactileIcon("ph-check", "sm")}<span>Following</span></span>`
     + `<button type="button" class="iconbtn shows-tile__more" data-action="${esc(yoursActionKey("show-more", s.id))}" aria-expanded="false" aria-controls="shows-actions-${esc(s.id)}" aria-label="${esc(`More for ${name}`)}">${tactileIcon("ph-dots-three")}</button>`
     + `<div class="shows-tile__actions" id="shows-actions-${esc(s.id)}" role="group" aria-label="${esc(`${name}, followed`)}" hidden>`
     + tactileKeycap({ size: "sm", variant: "paper", text: "Unfollow", label: `Unfollow ${name}`, action: yoursActionKey("unfollow", s.id) })

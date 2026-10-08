@@ -7,8 +7,8 @@
  * WHAT THIS PROVES
  *   1. One tile per followed show, newest follow first, in a three-column list
  *      inside the Shows tabpanel; each tile is a link to its show with the artwork
- *      through safeUrl(artUrl()), a name, a "Following" tag (words and a check, so
- *      the state is never colour alone), a real 44px ⋯ button, and an Unfollow
+ *      through safeUrl(artUrl()), a name, NO "Following" tag (every tile
+ *      here is followed; iteration 2), a real 44px ⋯ button drawn as a small quiet chip, and an Unfollow
  *      button that is `hidden` (out of the accessibility tree) until asked for.
  *   2. The readout line is "{n} shows" and the knob keycap is in the head.
  *   3. ⋯ reveals Unfollow, moves focus to it, and closes again (⋯ again, Escape,
@@ -196,11 +196,11 @@ function pressMore(m, id, { focuses = true } = {}) {
 /* 1. THE TILES                                                          */
 /* ==================================================================== */
 
-test("one tile per follow, newest first, in the Shows tabpanel: link, artwork, name, Following tag, 44px ⋯, hidden Unfollow", () => {
+test("one tile per follow, newest first, in the Shows tabpanel: link, artwork, name, no Following tag, 44px ⋯, hidden Unfollow", () => {
   /* MUTATION 1: sort ascending (swap `b.at.localeCompare(a.at)`) - the order
      assertion fails.
-     MUTATION 2: drop the `tag--following` span from yoursShowTileHtml - the tag
-     assertion fails (the state would be told by nothing at all).
+     MUTATION 2: re-add the `tag tag--following` span to yoursShowTileHtml (iteration 2
+     removed it: six identical labels over the artwork) - the no-tag assertion fails.
      MUTATION 3: render the actions group without `hidden` - the hidden assertion
      fails (Unfollow would be in the accessibility tree on every tile).
      MUTATION 4: pass the artwork URL without safeUrl() - the src assertion fails
@@ -221,11 +221,8 @@ test("one tile per follow, newest first, in the Shows tabpanel: link, artwork, n
     assert.match(img.getAttribute("src"), /^https:\/\/is1-ssl\.mzstatic\.com\/.*\/324x324bb\.jpg$/, "artwork at 3x of the 108px tile, through the CDN's size path");
     assert.strictEqual(img.getAttribute("alt"), "", "decorative: the name beside it says it");
     assert.ok(t.querySelector(".shows-tile__name").textContent.length > 0, "a name");
-    const tag = t.querySelector(".tag--following");
-    assert.ok(tag, "a Following tag");
-    assert.strictEqual(tag.textContent.trim(), "Following", "the state is a word, not a colour");
-    assert.ok(tag.querySelector("svg"), "with a check");
-    assert.ok(!link.contains(tag), "the tag is not part of the link's name");
+    assert.strictEqual(t.querySelector(".tag--following"), null, "no tag: every tile here is followed, the artwork is bare");
+    assert.ok(!/Following/.test(t.innerHTML.replace(/aria-label="[^"]*"/g, "")), "and no visible 'Following' word on the tile");
     const more = moreOf(t);
     assert.strictEqual(more.tagName.toLowerCase(), "button");
     assert.ok(/\biconbtn\b/.test(more.className), "the ⋯ is the 44px icon button");
@@ -503,11 +500,17 @@ test("the ⋯ keeps the 44px tap target; a hidden Unfollow stays hidden; the lay
      MUTATION 3: drop `pointer-events: none` from the layer - the first
      assertion fails and the layer eats the taps meant for the link.
      MUTATION 4: drop `aspect-ratio: 1` from the layer - the second assertion
-     fails and the Following tag floats at the bottom of the name, not the art. */
+     fails and the ⋯ floats at the top of the name column, not the art.
+     MUTATION 5 (iteration 2): give `.shows-tile__more` a background (the old 44px
+     disc) - the quiet-opener assertion fails. MUTATION 6: set `.shows-tile__more .i`
+     back to a 44px box (or any size but `--s-5`) - the chip-size assertion fails. */
   assert.strictEqual(px(decl(".iconbtn", "width")), 44);
   assert.strictEqual(px(decl(".iconbtn", "height")), 44);
   assert.strictEqual(decl(".shows-tile__more", "width"), undefined, "the ⋯ does not shrink the shared 44px button");
   assert.strictEqual(decl(".shows-tile__more", "height"), undefined);
+  assert.strictEqual(decl(".shows-tile__more", "background"), "transparent", "the 44px target is not painted: no disc over the artwork");
+  assert.match(decl(".shows-tile__more .i", "width"), /^var\(--s-5\)$/, "the drawn mark is a 20px chip, not the 44px target");
+  assert.strictEqual(RULES.some((r) => r.selectors.some((x) => /tag--following/.test(x))), false, "the Following tag's rules are gone (no green check, no six identical labels)");
   assert.strictEqual(decl(".shows-tile__layer", "pointer-events"), "none");
   assert.strictEqual(decl(".shows-tile__layer > *", "pointer-events"), "auto");
   assert.strictEqual(decl(".shows-tile__layer", "aspect-ratio"), "1");
@@ -520,8 +523,8 @@ test("no transition and no animation was added for the tiles, so the one reduced
   /* MUTATION: `.shows-tile__actions { transition: opacity .2s }` (or any
      animation on a shows rule) - the assertion fails, and the gate's reduced-
      motion check would count it as new debt. */
-  const rules = RULES.filter((r) => !r.atRules.length && r.selectors.some((s) => /shows-tile|shows-grid|tag--following|find-art--tile/.test(s)));
-  assert.ok(rules.length >= 12, "the shows rules were found");
+  const rules = RULES.filter((r) => !r.atRules.length && r.selectors.some((s) => /shows-tile|shows-grid|find-art--tile/.test(s)));
+  assert.ok(rules.length >= 10, "the shows rules were found");
   for (const r of rules) {
     for (const d of r.decls) {
       assert.ok(!/^(transition|animation)/.test(d.prop), `${r.selectors.join(", ")} has ${d.prop}`);
