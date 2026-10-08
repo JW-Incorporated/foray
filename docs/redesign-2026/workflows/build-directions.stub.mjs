@@ -2,11 +2,13 @@
 import fs from 'node:fs'
 const src = fs.readFileSync(process.argv[2], 'utf8').replace('export const meta', 'const meta')
 const DEAD = process.env.STUB_DEAD === '1'
+const LOWDISK = process.env.STUB_LOWDISK === '1'
 const calls = []
 const counters = {}
-const plan = d => ({ foundation: d, screens: [{ id: 's1', name: 'screen one', acceptance: ['a'] }, { id: 's2', name: 'screen two', acceptance: ['b'] }, { id: 's1-x', name: 'screen one variant', acceptance: ['c'] }] })
+const plan = d => ({ foundation: d, screens: [{ id: 's1', name: 'screen one', acceptance: ['a'] }, { id: 's2', name: 'screen two', acceptance: ['b'] }, { id: 's1-x', name: 'screen one variant', acceptance: ['c'] }].concat(LOWDISK ? [3, 4, 5, 6, 7].map(n => ({ id: 't' + n, name: 'screen ' + n, acceptance: ['x'] })) : []) })
 async function agent(prompt, o) {
   const l = o.label; calls.push(l); counters[l.split(':')[0]] = (counters[l.split(':')[0]] || 0) + 1
+  if (l === 'cleanup:disk') return { freeGB: LOWDISK ? 2 : 50, removed: 1, summary: 'ok' }
   if (l.startsWith('baseline')) return { ok: true, summary: 'ok' }
   if (l.startsWith('plan:')) { if (!l.endsWith('from-file')) throw new Error('re-planned with Fable: ' + l); return plan(l.split(':')[1]) }
   if (l.startsWith('build:') && DEAD && l.startsWith('build:ambient:s')) return null
@@ -33,6 +35,13 @@ const fn = new Function('args', 'agent', 'parallel', 'pipeline', 'phase', 'log',
 const out = await fn({ directions: ['tactile', 'ambient'], plansFile: 'plans.json' }, agent, parallel, pipeline, () => {}, m => logs.push(m))
 const byId = (d, id) => out.results.find(r => r && r.direction === d)[id === 'p3' ? 'foundation' : 'screens']
 const scr = d => Object.fromEntries(byId(d, 's').map(s => [s.id, s]))
+if (LOWDISK) {
+  const firstClean = calls.indexOf('cleanup:disk')
+  const buildsAfter = calls.slice(firstClean + 1).filter(c => /^build:w+:s/.test(c))
+  const lc = [['cleanup runs after a screen', firstClean > 0], ['low disk: later screens never start', !calls.includes('build:tactile:t7') && !calls.includes('build:ambient:t7')], ['low disk: QA skipped in both directions', !calls.some(c => c.startsWith('qa:'))], ['low disk logged', logs.some(m => m.includes('LOW DISK'))]]
+  for (const [n, ok] of lc) console.log(ok ? 'ok  ' : 'FAIL', n)
+  process.exit(lc.every(c => c[1]) ? 0 : 1)
+}
 if (DEAD) {
   const amb = out.results.find(r => r && r.direction === 'ambient')
   const dc = [['dead direction stops after 3 implementer deaths', amb.stopped === true && amb.screens.length === 3], ['dead direction skips QA and final lab', !calls.some(c => c.startsWith('qa:ambient') || c === 'lab:ambient:final')], ['live direction still runs QA', calls.some(c => c.startsWith('qa:tactile'))]]

@@ -21,6 +21,14 @@ if (!DIRS.length) throw new Error('args.directions is required, e.g. ["tactile",
 const MAX_ITERS = (args && args.maxIters) || 4
 const SCREEN_CONC = (args && args.screenConcurrency) || 4 // screens in flight per direction
 const MERGE_CHAIN = {} // per direction: merges into feature/redesign-2026-<d> one at a time
+
+// Disk hygiene (2026-10-08: the disk filled overnight, ~2.4 GB/h of leftover agent worktrees,
+// and every step started failing). After each screen, one cleanup agent at a time removes
+// finished workflow worktrees and stale test temp dirs; under 4 GB free, no new screens start.
+let LOW_DISK = false
+let cleanupChain = Promise.resolve()
+const DISK = { type: 'object', properties: { freeGB: { type: 'number' }, removed: { type: 'integer' }, summary: { type: 'string' } }, required: ['freeGB', 'summary'] }
+const cleanup = () => (cleanupChain = cleanupChain.catch(() => null).then(() => agent(`Free disk space left behind by finished workflow agents. Do not touch anything else. Work from the trunk checkout ${WT}.\n1. Note free space on C: (PowerShell: (Get-PSDrive C).Free/1GB).\n2. git worktree list --porcelain. Candidates: worktrees whose folder is directly under ${WT.replace(/\\redesign-2026$/, '')} and whose name starts with "wf_", whose folder was created more than 3 hours ago, and whose HEAD commit is on origin (git branch -r --contains <sha> prints something). For each candidate run git worktree remove "<literal path>" (one plain command per worktree, the literal path written out: no variables, loops, xargs or -C, because this session's guard refuses computed git arguments; never --force). Git refuses worktrees with modified or untracked files: leave those alone.\n3. In %TEMP%, delete folders older than 3 hours whose names start with uilab-, foray-webdir-, foray-inject-models- or playwright_chromiumdev_profile- (test scratch dirs; nothing else).\n4. Return free GB after, the number of worktrees removed, and a one-line summary.`, { label: 'cleanup:disk', phase: 'Screens', schema: DISK, model: 'sonnet', effort: 'low' }).then(c => { if (c && c.freeGB < 4) { LOW_DISK = true; log(`LOW DISK: ${c.freeGB} GB free after cleanup; no new screens will start`) } return c })))
 const WT = 'C:\\Users\\Fourtys\\Documents\\Claude\\Projects\\foray\\.claude\\worktrees\\redesign-2026'
 const ROOT = `${WT}\\data-local\\redesign`
 const TRUNK = 'feature/redesign-2026'
@@ -173,7 +181,7 @@ const results = await pipeline(DIRS,
     const inFlight = new Set(), running = new Set()
     const next = () => { const i = queue.findIndex(s => !inFlight.has(fam(s))); return i < 0 ? null : queue.splice(i, 1)[0] }
     const worker = async () => {
-      while (dead < 3) {
+      while (dead < 3 && !LOW_DISK) {
         const s = next()
         if (!s) { if (!queue.length || !running.size) return; await Promise.race(running); continue }
         inFlight.add(fam(s))
@@ -182,6 +190,7 @@ const results = await pipeline(DIRS,
         const r = await p
         running.delete(p); inFlight.delete(fam(s))
         screens.push(r)
+        await cleanup()
         dead = r.reason === 'implementer failed' ? dead + 1 : 0
         log(`${d}/${s.id}: ${r.merged ? 'merged' : 'NOT merged (' + r.reason + ')'}${r.escalated ? ', escalated (taste checks not met)' : ''}${r.unjudged ? ', UNJUDGED' : ''}`)
         if (r.merged && !labDone) {
@@ -193,7 +202,7 @@ const results = await pipeline(DIRS,
     await parallel(Array.from({ length: SCREEN_CONC }, () => worker))
     if (dead >= 3) log(`${d}: stopped after 3 implementer deaths in a row; ${queue.length} screens not started: ${queue.map(s => s.id).join(', ')}`)
     await progress(`${d}: Phase 4 screens ${screens.filter(r => r.merged).length}/${screens.length} merged; escalated: ${screens.filter(r => r.escalated).map(r => r.id).join(', ') || 'none'}`)
-    return { ...prev, screens, stopped: dead >= 3, notStarted: queue.map(s => s.id) }
+    return { ...prev, screens, stopped: dead >= 3 || LOW_DISK, notStarted: queue.map(s => s.id) }
   },
   // QA + final lab build (skipped when the screens stopped early: QA of a half-built
   // direction, with agents that cannot run, reports a vacuous "0 issues")
