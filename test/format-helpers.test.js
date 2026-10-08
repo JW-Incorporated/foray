@@ -195,9 +195,10 @@ test("a one-episode playlist reads '1 episode' on the Playlists page, in Library
 
 /* The playlist SEARCH row is a fourth surface, and it lives in a different
    function 1,500 lines away from the other three.
-   MUTATION: restore `${resolveParts(p).length} parts` in its `row` template. */
+   MUTATION: restore `${resolveParts(p).length} parts` in its row template.
+   (Redesign 2026: the row is `discoverPlaylistRow` now, in ui/search.js.) */
 test("the playlist search row counts through the same helper", () => {
-  const body = APP_SRC.slice(APP_SRC.indexOf("const row = (p, generated) => `"), APP_SRC.indexOf("const row = (p, generated) => `") + 600);
+  const body = APP_SRC.slice(APP_SRC.indexOf("function discoverPlaylistRow("), APP_SRC.indexOf("function discoverPlaylistRow(") + 600);
   assert.ok(body.includes("playlistLengthLabel(p)"), `the search row counts by hand: ${body}`);
   assert.ok(!/resolveParts\(p\)\.length\}\s*part/.test(APP_SRC), "no surface may count playlist parts by hand");
 });

@@ -1270,9 +1270,10 @@ test("the playlists sort (Today's rail; the drawer's list before it went): a pla
      playlists()'s own backfill (tested separately below) exists to close,
      WITHOUT relying on that backfill to protect this call site too.
 
-     MUTATION: drop the `|| ""` on either side of the comparator. Both
-     entries below have neither field, so `undefined.localeCompare` throws
-     and this test fails with an uncaught exception rather than an assertion. */
+     MUTATION: drop the `|| ""` on either side of the comparator in playlistsForYouPicks. Both entries
+     below have neither field, so `undefined.localeCompare` throws and this test fails with an uncaught
+     exception rather than an assertion. Put the drawer's playlists list back (a `#drawer-playlists`
+     writer in renderDrawer) -> the last assertion fails: nothing in the drawer sorts playlists any more. */
   const m = mount();
   m.ctx.playlists = () => [
     { id: "q1", title: "One", items: [] },

@@ -9,8 +9,14 @@
      pinned it; it now pins this). maximum-scale=1 + user-scalable=no is the
      declaration WKWebView honours; styles.css (touch-action on html/body)
      and app.js (gesturestart) are the two belts behind it, because Safari
-     itself ignores this meta for accessibility and a WebView may some day. -->
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+     itself ignores this meta for accessibility and a WebView may some day.
+
+     interactive-widget=resizes-content (Redesign 2026, ambient, Discover): where the engine
+     honours it (Chromium on Android, the Capacitor WebView) the soft keyboard SHRINKS the layout
+     viewport, so a bottom-anchored field rides above the keyboard with no script and the Dock's
+     top row stays on screen. Where it is ignored (WebKit) installKeyboardChrome's `--kb-inset`
+     does the same job, so nothing depends on either alone. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
 <!-- DARK IS THE DESIGN (styles.css, body.ui-v2): the page ships one palette,
      so it declares one scheme. "dark light" let the browser paint its own
      surfaces — the focus ring, form-control chrome, scrollbars, the default
@@ -110,6 +116,9 @@
 <link rel="stylesheet" href="ui/tokens.css">
 <!-- AFTERGLOW primitives remain inert until markup opts into `.ag`; the lab-only gallery is their Phase 3 consumer. -->
 <link rel="stylesheet" href="ui/primitives.css">
+<!-- The DOCK (Redesign 2026, ambient): one Veil surface holding the Discover field, the mini player and the three tabs, with its fade and its cast.
+     Styles every element ui/tabbar.js builds, and the mini bar player/client.js hands to it. -->
+<link rel="stylesheet" href="ui/dock.css">
 <!-- AFTERGLOW Today (Home), the first screen to wear the system: every selector is `.ag .td-*`, new names only. -->
 <link rel="stylesheet" href="ui/today.css">
 <!-- AFTERGLOW onboarding: the first-run Room that replaced the Welcome sheet; every selector is `.ob-*` under `.ob-room`. -->
@@ -118,6 +127,8 @@
 <link rel="stylesheet" href="ui/foray-detail.css">
 <!-- AFTERGLOW Settings, Tuning and About, and the gear's Sheet: every selector is `.ag .st-*` (or the Sheet's own `.st-*`), new names only. -->
 <link rel="stylesheet" href="ui/settings.css">
+<!-- AFTERGLOW show page: the Room and the EpisodeRow list; every selector is `.sh-*` under `.ag` / `.room`. -->
+<link rel="stylesheet" href="ui/show.css">
 <!-- AFTERGLOW Playlist detail and the Playlists list: every selector is `.ag .pl-*` (the EpisodeRow is Today's `.td-row`), new names only. -->
 <link rel="stylesheet" href="ui/playlist.css">
 <link rel="icon" href="icon-180.png" type="image/png">

@@ -1241,7 +1241,10 @@ function isNativeShell(win = window) {
    ONE of the two lives on the element this function overwrites. A render
    with the keyboard up dropped `kb-open` and kept `--kb-inset`, and
    `#sh-compose`'s `bottom: calc(var(--kb-inset) + var(--sh-dock))` then
-   composed a keyboard-open inset with the keyboard-SHUT dock.
+   composed a keyboard-open inset with the keyboard-SHUT dock. (Since the Dock,
+   #sh-compose is the Dock's field row and the Dock's own `bottom` carries
+   `--kb-inset` - ui/dock.css; `--sh-dock` is gone. The survival argument is
+   unchanged: a class that is dropped while the inset survives still disagrees.)
 
    MEASURED, not reasoned (test/playwright/tests/search-chrome-dock.spec.js,
    Chromium at 390x844 with the keyboard-open state and something playing):
@@ -1694,7 +1697,11 @@ function toggleMarkup(on, spec) {
    "Unstar show", "★ Starred" and a page headed "Starred Shows" — three words
    for two ideas. Storage keys (`cp_saved`, `cp_starred_shows`) are unchanged. */
 const SAVE_TOGGLE = { offText: "☆", onText: "★", offLabel: "Save episode", onLabel: "Saved" };
-const FOLLOW_TOGGLE = { offText: "+ Follow", onText: "✓ Followed", offLabel: "Follow show", onLabel: "Followed" };
+/* Redesign 2026 (ambient, show page): the words are "Follow" and "Following", and the state is a
+   FILL change as well as a word: the Regular `i-plus` becomes the Fill `i-check-circle-fill`
+   (BUILD-NOTES 4.x, "toggle fills"), so the toggle never rests on colour alone. The old
+   "+ Follow" / "✓ Followed" pair put a text glyph where the icon now is. */
+const FOLLOW_TOGGLE = { offText: "Follow", onText: "Following", offLabel: "Follow", onLabel: "Following" };
 /* WHAT FOLLOWING DOES NOT DO, said where the tap happens (review 2026-09-23).
    Apple's Follow delivers new episodes; 4a's is a bookmark (no feed, no
    notifications, nothing added anywhere — CLAUDE.md principle 2), and the audit
@@ -1833,19 +1840,39 @@ function toggleShowStar(id) {
     if (had) delete out[id]; else out[id] = entry;
     return out;
   });
-  document.querySelectorAll(`[data-show-star="${CSS.escape(id)}"]`).forEach(b => {
-    setToggleLabel(b, isShowStarred(id), FOLLOW_TOGGLE);
-    b.classList.toggle("on", isShowStarred(id));
-  });
+  document.querySelectorAll(`[data-show-star="${CSS.escape(id)}"]`).forEach(b => paintFollow(b, isShowStarred(id)));
 }
 
-/* Text label, not a bare glyph like starBtn -- this button sits alone in a
-   page header rather than beside a play control in a dense row, so it needs
-   to read on its own. */
+/* THE FOLLOW BUTTON (Redesign 2026, ambient, show page): a Secondary button whose state is a
+   FILL change. Unfollowed is the Regular `i-plus` and "Follow"; followed is the Fill
+   `i-check-circle-fill` (Ember) and "Following", with the Secondary ring in Ember and a
+   soft overlay fill, so the toggle is carried by shape, word and fill, never by colour alone.
+   It is a text button on purpose (it sits alone under the title and must read on its own).
+
+   ONE WRITER of its words: followFillHtml() builds the icon and the word, followName() the
+   accessible name (the word, then the show: "Following Lex Fridman Podcast" contains the
+   visible text, so the name carries the label), and both the first paint (showStarBtn) and
+   the repaint after a tap (paintFollow) call them, so the two cannot disagree. The text is
+   written through innerHTML because the button holds an icon as well as a word; the helper
+   below is still the only place the words change (test/toggle-labels.test.js). */
+function followFillHtml(on) {
+  return `${agIcon(on ? "check-circle-fill" : "plus", 24)}<span>${esc(on ? FOLLOW_TOGGLE.onText : FOLLOW_TOGGLE.offText)}</span>`;
+}
+function followName(on, title) {
+  const word = on ? FOLLOW_TOGGLE.onLabel : FOLLOW_TOGGLE.offLabel;
+  return title ? `${word} ${title}` : word;
+}
+function paintFollow(btn, on) {
+  if (!btn) return;
+  const title = btn.dataset && btn.dataset.followName ? String(btn.dataset.followName) : "";
+  btn.innerHTML = followFillHtml(on);
+  btn.setAttribute("aria-label", followName(on, title));
+  btn.classList.toggle("is-following", on);
+}
 function showStarBtn(show_id) {
   const on = isShowStarred(show_id);
-  const { text, attr } = toggleMarkup(on, FOLLOW_TOGGLE);
-  return `<button class="show-star ${on ? "on" : ""}" data-show-star="${esc(show_id)}"${attr}>${text}</button>`;
+  const title = (showById(show_id) || {}).title || "";
+  return `<button type="button" class="ag-btn ag-btn-secondary sh-follow${on ? " is-following" : ""}" data-show-star="${esc(show_id)}" data-follow-name="${esc(title)}" aria-label="${esc(followName(on, title))}">${followFillHtml(on)}</button>`;
 }
 
 function bindShowStars(scope) {
@@ -4662,12 +4689,10 @@ function renderCurrentPage() {
   else if ((m = /^#\/shows\/q\/(.*)$/.exec(h))) renderAllShows(safeDecode(m[1]));
   else if (h === "#/shows") renderAllShows();
   else if (h === "#/playlists") renderPlaylists();
-  else if (h === "#/create") renderCreate();
   else if (h === "#/forays") renderForays();
   else if (h === "#/queue") renderQueue();
   else if (h === "#/library") renderLibrary();
-  else if (h === "#/starred-shows") renderStarredShows();
-  else if (h === "#/interests") renderInterests();
+  else if (h === "#/tuning") renderInterests();
   else if (h === "#/settings") renderSettings();
   else if (h === "#/about") renderAbout();
   else if (h === "#/gallery" && galleryAllowed()) renderGallery();
@@ -4727,6 +4752,13 @@ function route() {
   /* A timestamp link's alias (or a stray spelling of its `t`) is rewritten to
      the canonical address IN PLACE before anything records it (#30). */
   if (location.hash !== h && episodeDeepLink(location.hash)) replaceHash(h);
+  /* A folded route (ROUTE_ALIASES) is rewritten in place too, so ‹ does not
+     bounce off an address that now means something else. `#/create` lands on
+     Discover WITH THE FIELD FOCUSED: the field is what the Create tab was for. */
+  else if (location.hash !== h && Object.prototype.hasOwnProperty.call(ROUTE_ALIASES, location.hash)) {
+    if (location.hash === "#/create" && typeof dockFocusFieldNext === "function") dockFocusFieldNext();
+    replaceHash(h);
+  }
   const step = noteNavigation(h);
   rememberRouteForRelaunch(h);
   /* Read BEFORE the render: renderCurrentPage() replaces #view's innerHTML,
@@ -4793,7 +4825,8 @@ function route() {
    heading's text WITHOUT its explicit badge (`headingName`). */
 function pageHeading(view) {
   if (!view || typeof view.querySelector !== "function") return null;
-  const box = view.querySelector(".page-head") || view.querySelector(".st-head");
+  /* `.sh-head` is the Redesign 2026 show page's heading (it has no `.page-head`: its Room is not a sticky bar). */
+  const box = view.querySelector(".page-head") || view.querySelector(".st-head") || view.querySelector(".sh-head");
   /* A legacy page head titles itself with an h2 (the top bar owns the h1); a Settings page head IS the page's h1. A page that draws
      its own header (the ambient Foray detail) names itself with `data-page-heading` on its title. */
   return (box && (box.querySelector("h2") || box.querySelector("h1"))) || view.querySelector("[data-page-heading]") || null;
@@ -4843,6 +4876,12 @@ function landOnPage({ navigated = false } = {}) {
   }
 }
 
+const ROUTE_ALIASES = Object.freeze({
+  "#/create": "#/shows",
+  "#/starred-shows": "#/library",
+  "#/interests": "#/tuning",
+});
+
 /* The one normalisation of the hash every route decision reads. THREE
    SPELLINGS OF HOME ("", "#", "#/") rendered the same page and were three
    different things to everything else: tabForHash lit no tab for two of them,
@@ -4852,6 +4891,14 @@ function landOnPage({ navigated = false } = {}) {
    place, so the address the history holds agrees with this. */
 function currentHash(hash = location.hash) {
   if (!hash || hash === "#") return "#/";
+  /* THREE ROUTES FOLDED INTO THEIR NEW HOMES (Redesign 2026, ambient, the Dock:
+     three tabs, no drawer). The alias is read HERE so every reader of "which
+     page is this" - the tab highlight, the router, back-navigation memory -
+     sees one spelling, and route() rewrites the address in place (below) so
+     the history holds it too. `#/create` was a tab whose page held one field;
+     that field is Discover's now. `#/starred-shows` was Library's overflow
+     page; Library lists every followed show. `#/interests` is Tuning. */
+  if (Object.prototype.hasOwnProperty.call(ROUTE_ALIASES, hash)) return ROUTE_ALIASES[hash];
   /* ONE SPELLING OF A TIMESTAMP LINK, too (#30): `#/play/<id>?t=N` is the
      alias, `#/episode/<id>?t=N` the page — see episodeDeepLink. route()
      writes this spelling back into the address in place. */

@@ -433,7 +433,7 @@ test("the subtitle has one author too — it is not composed in the initial mark
   m.ctx.renderShow("show-b");
 
   const markup = m.viewEl.innerHTML;
-  const el = /<p class="sub" data-show-count>([\s\S]*?)<\/p>/.exec(markup);
+  const el = /<p class="t-caption sh-sub" data-show-count>([\s\S]*?)<\/p>/.exec(markup);
   assert.ok(el, `expected the subtitle element in the markup, got: ${markup.slice(0, 400)}`);
   assert.strictEqual(el[1].trim(), "",
     `the subtitle element must be emitted empty and filled by paintCount(), got: "${el[1]}"`);

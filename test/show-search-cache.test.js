@@ -374,7 +374,12 @@ test("the episode endpoint is not asked at all once a newer query owns the page"
 /* The record measures every slow half (findings 2 + 4)                 */
 /* ==================================================================== */
 
-test("ONE search record carries the episode endpoint AND the playlist CTA's scan, not only the shows half", async () => {
+test("ONE search record carries the episode endpoint, and says the playlist half did not scan — not only the shows half", async () => {
+  /* REDESIGN 2026 (Discover) REMOVED THE PLAYLIST SCAN: the "Create a playlist about X" CTA, and the 1.3-8 s
+     relaxation scan that gated it, are gone (the Make-a-playlist button is offered on the text alone and builds on a
+     tap). The record keeps its `ctaMs` field, and the field is now `null` — the existing "this half did not run" value
+     — so every historical comparison still reads. The finding below is why the field exists and why it must stay
+     null: a scan on the debounce tick was invisible in the very record built to measure search. */
   /* FINDING 2: `createPlaylistCtaHtml` runs the same 1.3-8 s
      `searchWithRelaxation` scan `buildPlaylist` does, and it ran behind a
      `setTimeout(0)` — one paint turn, then the main thread blocked for
@@ -397,7 +402,7 @@ test("ONE search record carries the episode endpoint AND the playlist CTA's scan
   await sleep(30);
   assert.strictEqual(m.records.length, 1, `exactly one record per completed search, got ${m.records.length}`);
   const r = m.records[0];
-  assert.ok(Number.isFinite(r.ctaMs), `the CTA's scan is measured, got ${r.ctaMs}`);
+  assert.strictEqual(r.ctaMs, null, `the playlist half no longer scans, so it reports "did not run", got ${r.ctaMs}`);
   assert.ok(Number.isFinite(r.epMs), `the episode endpoint is measured, got ${r.epMs}`);
   assert.ok(Number.isFinite(r.netMs) && Number.isFinite(r.localMs) && Number.isFinite(r.paintedMs),
     "and the three that were already there are still there");
@@ -406,7 +411,12 @@ test("ONE search record carries the episode endpoint AND the playlist CTA's scan
     "query LENGTH, never the query text — S-01's rule, restated where the fields grew");
 });
 
-test("the CTA's scan is scheduled through the idle queue, and the record still lands without one", async () => {
+test("a playlist search schedules nothing on the idle queue (the CTA scan is gone), and the record still lands", async () => {
+  /* REDESIGN 2026: this test used to pin the OPPOSITE — that the CTA's scan went through `requestIdleCallback` with a
+     deadline (finding 2's fix). The scan no longer exists, so what is pinned now is its absence: a search must not put
+     a multi-second job on the idle queue at all. MUTATION: call `whenIdle(...)` from renderPlaylistSearchResults -> the
+     spy is called and this goes red. The older text below describes the idiom and why it was right while the scan
+     lived. */
   /* `setTimeout(fn, 0)` buys ONE paint turn and then runs on the very next
      task; `requestIdleCallback` waits for a frame with room in it and carries
      a deadline. `init()` has primed the search vocabulary that way since the H
@@ -425,8 +435,6 @@ test("the CTA's scan is scheduled through the idle queue, and the record still l
   m.ctx.requestIdleCallback = (fn, opts) => { idleCalls.push(opts); return setTimeout(fn, 0); };
   await m.search("another query no playlist matches");
   await sleep(30);
-  assert.ok(idleCalls.length >= 1, "the scan went through requestIdleCallback");
-  assert.ok(idleCalls.every((o) => o && Number.isFinite(o.timeout)),
-    "with a deadline, so a permanently busy thread does not mean never");
+  assert.strictEqual(idleCalls.length, 0, "no scan is put on the idle queue");
   assert.strictEqual(m.records.length, 1, "and the record still lands");
 });

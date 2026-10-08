@@ -36,8 +36,30 @@ async function startPlayback(page, itemId) {
   await page.evaluate(() => {
     for (const a of window.__audios || []) if (a.src) { try { a.currentTime = 21; a.pause(); } catch (_) { /* ignore */ } }
   });
-  await page.waitForSelector("#foray-player", { state: "visible", timeout: 10000 });
+  /* The mini bar is a row of the Dock now (ui/tabbar.js); #foray-player holds only the sheet. */
+  await page.waitForSelector("#dock-mini .fp-bar", { state: "visible", timeout: 10000 });
   await wait(page, 600);
+}
+
+/** Let the item the fixture paused play again from the same offset, and leave it PLAYING: the mini row then shows
+    the pause glyph and a Glow progress line that has moved (the paused fixture shows a play glyph and no line, so
+    the Dock's 2px line could not be checked). The silent 60 s fixture runs on during the shot; the line is a few
+    px long at any frame, which is all the check needs. Used by the Dock's `dock-playing` step. */
+async function keepPlaying(page) {
+  /* The previous step left the page scrolled and the tab row receded; this one is the tall row at the top. */
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.evaluate(() => {
+    for (const a of window.__audios || []) if (a.src) { try { a.currentTime = 21; a.play(); } catch (_) { /* ignore */ } }
+  });
+  await page.waitForFunction(() => (window.__audios || []).some((a) => a.src && !a.paused), null, { timeout: 20000 });
+  await wait(page, 900);
+}
+
+/** Scroll the page by `y` CSS px and let the Dock's recede (280ms) settle: the scroll event, then the
+    transition, then a frame. Used by the Dock's `dock-receded` step. */
+async function scrollPage(page, y) {
+  await page.evaluate((dy) => window.scrollTo(0, dy), y);
+  await wait(page, 700);
 }
 
 async function openNowPlaying(page) {
@@ -92,6 +114,37 @@ async function typeSearch(page, text) {
   await page.waitForSelector("#sh-input", { timeout: 15000 });
   await page.fill("#sh-input", text);
   await wait(page, 1800);
+}
+
+/** Steps of one state share ONE page and a step whose route is the current hash does not navigate, so
+    a step that wants the IDLE Discover after a typed one leaves the page and comes back: the router
+    re-renders `#/shows` with an empty field and drops `kb-open` (setBodyClass writes the class list
+    whole); the `--kb-inset` a previous step wrote on <html> is cleared by hand. */
+async function freshDiscover(page) {
+  await page.evaluate(() => {
+    document.documentElement.style.removeProperty("--kb-inset");
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    location.hash = "#/library";
+  });
+  await wait(page, 500);
+  await page.evaluate(() => { location.hash = "#/shows"; });
+  await page.waitForSelector("#sh-input", { timeout: 15000 });
+  await wait(page, 500);
+}
+
+/** Discover with the field focused over a keyboard. A headless browser has no soft keyboard, so the
+    inset a real one would leave is written the way installKeyboardChrome writes it (`--kb-inset` on
+    <html>, `kb-open` on <body>) once the field has focus: the field rides 300px up, the bars yield. */
+async function focusSearchOverKeyboard(page) {
+  await freshDiscover(page);
+  await page.waitForSelector("#sh-input", { timeout: 15000 });
+  await page.focus("#sh-input");
+  await wait(page, 300);
+  await page.evaluate(() => {
+    document.documentElement.style.setProperty("--kb-inset", "300px");
+    document.body.classList.add("kb-open");
+  });
+  await wait(page, 300);
 }
 
 async function showGalleryTarget(page, selector) {
@@ -342,6 +395,30 @@ export function appStates(fx) {
       ],
     },
     {
+      id: "discover",
+      description: "Discover (ambient): typing, a settled result list, the empty page with and without a subject, the field focused over a keyboard, and the idle page under a mini player.",
+      seed: "returning",
+      steps: [
+        { label: "discover-typing", route: "#/shows", run: (page) => typeSearch(page, "ma") },
+        { label: "discover-results", route: "#/shows", run: (page) => typeSearch(page, "money") },
+        { label: "discover-no-results", route: "#/shows", run: (page) => typeSearch(page, "zzqxjv") },
+        { label: "discover-no-results-subject", route: "#/shows", run: (page) => typeSearch(page, "craft & ma") },
+        { label: "discover-mini", route: "#/shows", run: async (page) => { await freshDiscover(page); await startPlayback(page, ep0); } },
+        { label: "discover-kb", route: "#/shows", run: (page) => focusSearchOverKeyboard(page) },
+        { label: "discover-results-groups", route: "#/shows", run: (page) => typeSearch(page, "history") },
+      ],
+    },
+    {
+      id: "dock",
+      description: "The Dock: Discover with its field row over the mini player and the receded tab row, then Today scrolled until the tab row recedes (BUILD-PLAN 2.1 screen 2).",
+      seed: "returning",
+      steps: [
+        { label: "dock-discover", route: "#/shows", run: (page) => startPlayback(page, ep0) },
+        { label: "dock-receded", route: "#/", run: (page) => scrollPage(page, 120) },
+        { label: "dock-playing", route: "#/", run: (page) => keepPlaying(page) },
+      ],
+    },
+    {
       id: "loading",
       description: "Today while the boot is held open: skeletons for the hero and four rows, the wash at the default Glow.",
       seed: "dismissed",
@@ -358,6 +435,12 @@ export function appStates(fx) {
       description: "Today with an episode part-played (40 minutes in): Keep listening, and the ribbon restored over the page.",
       seed: "midlisten",
       steps: [{ label: "home", route: "#/", ready: ".td-keep" }],
+    },
+    {
+      id: "show",
+      description: "A fresh profile on a show page (Redesign 2026, ambient): the Room lit by the show, Follow in its off state (the Regular plus), the latest episode first. The returning state's `show` step is the followed state.",
+      seed: "dismissed",
+      steps: [{ label: "show-unfollowed", route: "#/show/" + encodeURIComponent(fx.shows[0].show_id), ready: "[data-sh-room]" }],
     },
   ];
 }

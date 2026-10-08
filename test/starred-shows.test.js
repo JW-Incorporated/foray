@@ -88,7 +88,7 @@ function mount({ seed = {} } = {}) {
      on demand rather than track a real DOM tree. */
   function starButtonsIn(view) {
     const out = [];
-    const re = /<button class="show-star( on)?" data-show-star="([^"]*)"[^>]*>/g;
+    const re = /<button type="button" class="ag-btn ag-btn-secondary sh-follow( is-following)?" data-show-star="([^"]*)"[^>]*>/g;
     let m;
     while ((m = re.exec(view.innerHTML))) {
       out.push({ raw: m[0], id: m[2] });
@@ -124,7 +124,8 @@ function mount({ seed = {} } = {}) {
         return starButtonsIn(view)
           .filter((b) => b.id === targetId)
           .map(() => ({
-            textContent: "",
+            textContent: "", innerHTML: "", dataset: {},
+            setAttribute() {},
             classList: { toggle(cls, on) { this._on = on; }, _on: false },
             set _text(v) {},
           }));
@@ -197,15 +198,20 @@ test("renderShow includes an unstarred showStarBtn by default, and starring upda
 
   m.ctx.renderShow("s-2");
   let html = m.view();
-  assert.match(html, /class="show-star "/, "must render an unstarred show-star button");
+  /* REDESIGN 2026 (ambient, show page): the Follow button is a Secondary Afterglow button (`ag-btn ag-btn-secondary
+     sh-follow`) whose words are "Follow" and "Following" with a plus / a Fill check; the legacy `show-star` capsule and its
+     "+ Follow" / "✓ Followed" text glyphs are gone. MUTATION: put `is-following` back to `on` in showStarBtn -> red. */
+  assert.match(html, /class="ag-btn ag-btn-secondary sh-follow"/, "must render an unfollowed Follow button");
   assert.match(html, /data-show-star="s-2"/, "button must carry the show_id for the click handler");
-  assert.ok(html.includes("+ Follow"), "unfollowed label must read '+ Follow' (R3 vocabulary, 2026-09-22: shows are Followed, episodes are Saved)");
+  assert.ok(html.includes("<span>Follow</span>"), "unfollowed label must read 'Follow' (R3 vocabulary, 2026-09-22: shows are Followed, episodes are Saved)");
+  assert.ok(html.includes("#i-plus"), "…beside the Regular plus");
 
   m.ctx.toggleShowStar("s-2");
   m.ctx.renderShow("s-2");
   html = m.view();
-  assert.match(html, /class="show-star on"/, "re-rendering the page after starring must show the 'on' state");
-  assert.ok(html.includes("✓ Followed"), "followed label must read '✓ Followed'");
+  assert.match(html, /class="ag-btn ag-btn-secondary sh-follow is-following"/, "re-rendering the page after following must show the 'is-following' state");
+  assert.ok(html.includes("<span>Following</span>"), "followed label must read 'Following'");
+  assert.ok(html.includes("#i-check-circle-fill"), "…beside the Fill check: the state is a fill change, not colour alone");
 });
 
 test("REVIEW: the show page says, beside Follow, that following delivers no new episodes", () => {
@@ -344,7 +350,13 @@ test("route() dispatches #/starred-shows to renderStarredShows, matching #/playl
 /* 6. REACHABILITY — FROM THE SHOWS PAGE, NOT THE DRAWER                 */
 /* ==================================================================== */
 
-test("#/starred-shows is reachable from the Shows page and is no longer a drawer entry", () => {
+test("the followed shows are on Library whole (Redesign 2026: #/starred-shows folded into it), not on Discover, and not a drawer entry", () => {
+  /* REDESIGN 2026 (ambient, Discover): the Followed-shows shortcut left the Shows page (it is "Discover" now);
+     Library owns the followed shows and, since the Dock folded `#/starred-shows` into it (ROUTE_ALIASES in app.js),
+     lists ALL of them: a cap or an "All N" link here would send the listener to the page they are on. The ruling
+     that fell: "the Shows page carries the shortcut" (2026-09-03). The original reasoning below still describes the
+     drawer half, which is unchanged.
+     MUTATION: re-cap libraryFollowedHtml with `.slice(0, LIBRARY_SECTION_CAP)` -> the six-rows assertion fails. */
   /* Was: "the drawer nav carries a link to #/starred-shows". The founder
      named the menu's five pages on 2026-09-03 (Home, Shows, Playlists,
      Forays, Up Next) and Starred Shows is not one of them, so the drawer
@@ -370,11 +382,15 @@ test("#/starred-shows is reachable from the Shows page and is no longer a drawer
   m.state.discover = { items: [] };
   m.state.taxonomy = { nodes: [] };
   m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+  const many = {};
+  for (let i = 0; i < 6; i++) many[`show-${i}`] = { show_id: `show-${i}`, title: `Show ${i}`, starred_at: `2026-09-0${i + 1}T00:00:00Z` };
+  m.ctx.localStorage.setItem("cp_starred_shows", JSON.stringify(many));
+  const followedHtml = m.ctx.libraryFollowedHtml();
+  assert.strictEqual((followedHtml.match(/show-results|class="[^"]*show-row/g) || []).length >= 1, true, "Library draws the followed shows");
+  for (let i = 0; i < 6; i++) assert.ok(followedHtml.includes(`Show ${i}`), `Library lists followed show ${i}: all six, past the five-row cap other sections keep`);
+  assert.ok(!followedHtml.includes('href="#/starred-shows"'), "and has no overflow link to a page it has folded in");
   m.ctx.renderAllShows();
-  assert.ok(
-    m.view().includes('href="#/starred-shows"'),
-    "the Shows page must carry a reachable link to #/starred-shows"
-  );
+  assert.ok(!m.view().includes('href="#/starred-shows"'), "…and Discover must not");
   assert.doesNotMatch(
     INDEX_HTML,
     /<nav id="drawer"[^]*?href="#\/starred-shows"[^]*?<\/nav>/,

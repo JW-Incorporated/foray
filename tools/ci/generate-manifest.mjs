@@ -162,10 +162,14 @@ const SHELL = [
   "ui/tokens.css",
   /* Redesign 2026 (ambient): token-only primitive treatments, scoped under .ag. */
   "ui/primitives.css",
+  /* Redesign 2026 (ambient): the Dock (tabs, mini player, Discover's field), a stylesheet index.html links after primitives.css. */
+  "ui/dock.css",
   /* Redesign 2026 (ambient): Today, the first screen on the system. A stylesheet, so listed by name. */
   "ui/today.css",
   /* Redesign 2026 (ambient): the first-run Room. A stylesheet, so listed by name. */
   "ui/onboarding.css",
+  /* Redesign 2026 (ambient): the show page, the Room and its EpisodeRows. A stylesheet, so listed by name. */
+  "ui/show.css",
   /* Redesign 2026 (ambient): Foray detail. A stylesheet, so listed by name. */
   "ui/foray-detail.css",
   /* Redesign 2026 (ambient): Settings, Tuning, About and the gear's Sheet. */

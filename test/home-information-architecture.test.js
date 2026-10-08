@@ -219,7 +219,9 @@ test("the playlist builder renders on Create — not on Home, and not on #/playl
      with two vocabularies — Create's and #/playlists' "build me a playlist…" /
      Go — so #/playlists is now the list with one link to Create, and Create
      holds the one builder. The drawer keeps its five entries; only the page
-     changed.
+     changed. (Redesign 2026, the Dock: the Create tab folded into Discover's field, so "the one
+     builder" is Discover's button, and the list's one door and the empty line point at #/shows. RULING
+     THAT FELL: "four tabs + drawer".)
 
      MUTATION: paste the `#pl-form` block back into renderHome's or
      renderPlaylists's template — either page's assertions fail. Drop the
@@ -257,13 +259,21 @@ test("the show search renders on #/shows and not on Home", () => {
   assert.ok(m.view().includes('id="sh-form"'), "the Shows page must render the show search");
 });
 
-test("'Shows 4a vouches for' renders on #/shows and not on Home", () => {
-  /* Founder item 1: "move the 'shows we recommend' row to the Shows page."
-     (He calls it "shows we recommend"; the shipped heading says "Shows we
-     vouch for" and is left as it is — he asked for a move, not a rename.)
+test("'Shows 4a vouches for' renders on neither Home nor Discover (the redesign retired its #/shows placement)", () => {
+  /* Founder item 1 (2026-09-03): "move the 'shows we recommend' row to the
+     Shows page." REDESIGN 2026 (ambient, Discover) OVERTURNED THAT PLACEMENT:
+     the prototype's idle page is five heads of subject tiles and nothing else
+     (BUILD-NOTES 4.4; the same pass removed "Shows you follow", which Library
+     owns), and the exploration it served is carried by the subjects themselves
+     and by Today's "Off your path". The row's sampler and markup stay
+     (`showsWeVouchFor`, `vouchForHtml`, pinned in test/show-page.test.js and
+     test/app-surface-round3.test.js) for the next surface that adopts it; no
+     page renders it now. The ruling that fell: "the editorial show row lives
+     on #/shows".
 
      MUTATION: put `${vouchForHtml()}` back inside renderHome's `.home`
-     template. The Home assertion fails. RUN: failed as named. */
+     template -> the Home assertion fails. MUTATION 2: add it to
+     renderAllShows's template -> the Discover assertion fails. */
   const m = quietMount();
   m.state.catalog = {
     shows: [
@@ -276,7 +286,8 @@ test("'Shows 4a vouches for' renders on #/shows and not on Home", () => {
   assert.ok(!m.view().includes("Shows 4a vouches for"), "Home must not render the editorial show row");
 
   m.ctx.renderAllShows();
-  assert.ok(m.view().includes("Shows 4a vouches for"), "the Shows page must render the editorial show row");
+  assert.ok(!m.view().includes("Shows 4a vouches for"), "Discover is the subject groups: it must not render the editorial show row");
+  assert.ok(m.ctx.vouchForHtml().includes("Shows 4a vouches for"), "…and the row itself is still buildable, for the next surface");
 });
 
 /* CUTOVER (U-11, founder override, 2026-09-06, kanban card t_a3f01c8a): the
@@ -366,7 +377,13 @@ test("'Up Next' is a page over real cp_queue state, not a slot filled to match t
   });
 });
 
-test("'Starred Shows' left the menu without leaving the app — the Shows page carries it", () => {
+test("'Starred Shows' left the menu without leaving the app — Library carries it, Discover no longer does", () => {
+  /* REDESIGN 2026 (ambient, Discover) MOVED THE LINK AGAIN, and names the ruling that fell: "the Shows page
+     carries the Followed shows shortcut" (2026-09-03, itself a move from the menu). Followed shows live in
+     Library only (BUILD-NOTES 4.4: round 1's "Shows you follow" duplicated Library's grid and pushed the
+     subjects below the fold); Library draws "All N followed shows" past its cap (ui/library.js) and
+     #/starred-shows still routes. What this test now pins: the page is still reachable, and Discover does NOT
+     carry the row (the old placement's mutation would turn this red). */
   /* The founder named five destinations and Starred Shows is a sixth, so it
      came off the menu. It is working functionality, so it did not come out of
      the app: a show-shaped surface belongs on the Shows page, which is where
@@ -375,29 +392,19 @@ test("'Starred Shows' left the menu without leaving the app — the Shows page c
      FLAGGED FOR JOEY in the PR, as product: dropping a top-level entry is his
      call, not this change's.
 
-     MUTATION: delete the `page-link-row` anchor from renderAllShows's `above`
-     block. The link assertion fails and #/starred-shows becomes reachable
-     only by typing the URL. RUN: failed as named.
+     MUTATION: put a `<a class="page-link-row" href="#/starred-shows">` back in
+     renderAllShows's template. The link assertion fails.
 
-     WITH A SHOW FOLLOWED, because since audit round 2 (p-first-12) the row is
-     drawn only when there is something behind it — the test below pins the
-     empty half. */
+     WITH A SHOW FOLLOWED, so the old placement would have drawn the row (the
+     test below pins the empty half). */
   const m = quietMount({ cp_starred_shows: JSON.stringify({ "show-a": { show_id: "show-a", title: "Show A", starred_at: "2026-09-01T00:00:00Z" } }) });
 
   m.ctx.renderAllShows();
   assert.ok(
-    m.view().includes('href="#/starred-shows"'),
-    "the Shows page must link to the starred-shows page"
+    !m.view().includes('href="#/starred-shows"'),
+    "Discover must not link to the starred-shows page: Library owns the followed shows"
   );
-  /* ABOVE the browse cloud (review of visual pass 1, 2026-09-23): below it,
-     the page's only non-chip action landed exactly under the floating search
-     pill at scroll 0 once the pills grew a row. MUTATION: move the anchor back
-     under ${browsePillsHtml()} -> red. */
-  const html = m.view();
-  const link = html.indexOf('class="page-link-row" href="#/starred-shows"');
-  const pills = html.indexOf('class="sh-browse-pills"');
-  assert.ok(link > 0, "the link renders");
-  assert.ok(pills < 0 || link < pills, "Followed shows sits above the browse pills, under the page head");
+  assert.ok(!m.view().includes("page-link-row"), "…and carries no shortcut row of any kind");
 
   m.state.ready = true;
   m.ctx.location.hash = "#/starred-shows";
@@ -405,17 +412,19 @@ test("'Starred Shows' left the menu without leaving the app — the Shows page c
   assert.ok(m.view().includes("Followed shows"), "#/starred-shows must still route to its own page");
 });
 
-test("with nothing followed, the Search page draws no 'Followed shows ›' row — a fresh install's first tappable row was a dead end", () => {
+test("with nothing followed, Discover draws no 'Followed shows ›' row — a fresh install's first tappable row was a dead end", () => {
   /* Audit round 2, p-first-12: the shortcut was emitted unconditionally, so a
      newcomer's first tap on the discovery page opened "0 shows you follow".
-     Apple hides an empty Library shortcut. Library still lists the section with
-     its own empty note, so the feature stays discoverable.
-     MUTATION: drop the `Object.keys(starredShowsMap()).length ?` gate in
-     renderAllShows — the row renders for an empty map, red. */
+     Since Redesign 2026 the row is not drawn at all (see the test above); this
+     half keeps the original guarantee against the placement coming back
+     ungated. Library still lists the section with its own empty note, so the
+     feature stays discoverable.
+     MUTATION: add the shortcut back to renderAllShows with no
+     `starredShowsMap()` gate — the row renders for an empty map, red. */
   const m = quietMount();
   m.ctx.renderAllShows();
   assert.ok(!m.view().includes('href="#/starred-shows"'), "no followed shows, no shortcut to an empty page");
-  assert.ok(m.view().includes('id="sh-browse"'), "the browse furniture still renders around the gap");
+  assert.ok(m.view().includes('id="sh-browse"'), "the idle container still renders around the gap");
 });
 
 test("a Foray's back link lands on #/forays, where an unlocked draft is still listed", () => {

@@ -511,8 +511,8 @@ test("no note this app renders into #view capitalises the unit", () => {
   ].map((m) => m[1]);
   assert.equal(
     notes.length,
-    17,
-    `expected seventeen #view status notes, found ${notes.length}. More is fine -- ` +
+    18,   // 16 -> 17: Discover paints its own failed-catalogue note; 17 -> 18: Playlists (ui/playlist.js) owns the empty list note too
+    `expected eighteen #view status notes, found ${notes.length}. More is fine -- ` +
       "raise this count so the new one is covered. Fewer means a note was lost " +
       `or reshaped: ${notes.join(" | ")}`
   );

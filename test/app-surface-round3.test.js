@@ -487,32 +487,29 @@ test("data-integrity-8: cp_lastpick is never written, and a stored copy is remov
 
 /* ---------- app-2-11: the Search CTA's query reaches Create without a timer --- */
 
-test("app-2-11: the Search CTA hands its query to Create through module state, consumed when the form is bound", () => {
-  /* The CTA set location.hash and prefilled on a setTimeout(0), assuming the
-     hashchange render ran first; the spec does not order those tasks, and when
-     the timer won there was no #cr-form and the listener landed on an empty
-     Create page.
-     MUTATION: restore the setTimeout(0) hand-off — no pending query reaches
-     renderCreate (and a 0 ms timer is armed), red. */
+test("app-2-11 (REDESIGN 2026): the Make-a-playlist button builds in place - no #/create hop, no 0 ms timer, no module-state hand-off", () => {
+  /* The CTA set location.hash and prefilled #cr-form on a setTimeout(0) (then, after the fix this test pinned,
+     through `pendingCreateQuery`, consumed by renderCreate). Create folded into Discover's one field (ROUTE_ALIASES
+     in app.js), so the race it guarded against (a timer winning against the hashchange render, the listener landing on
+     an empty Create page) has no surface left: the button's click asks `buildPlaylistFromDiscover` (ui/create.js), the
+     one build, with its own button, from the page the listener is on, and arms no timer of its own.
+     MUTATION: restore the setTimeout(0) hand-off or the `location.hash = "#/create"` hop -> the hash assertion and the
+     timer assertion go red, and `asked` stays empty. MUTATION 2: restore the `pendingCreateQuery` read in
+     renderCreate -> the last assertion fails. */
   const m = loadApp();
   const btn = makeEl("button");
-  btn.dataset.createPlaylist = "tokamaks";
-  const scope = makeEl("div");
-  scope.querySelector = (sel) => (sel === "[data-create-playlist]" ? btn : null);
-  m.ctx.bindCreatePlaylistCta(scope);
+  const box = makeEl("div");
+  box.querySelector = (sel) => (sel === "[data-make-playlist]" ? btn : null);
+  m.els["#sh-make"] = box;
+  const asked = [];
+  m.ctx.buildPlaylistFromDiscover = (query, button) => { asked.push([query, button]); };
+  const hashBefore = m.ctx.location.hash;
+  m.ctx.paintMakePlaylist("tokamaks");
   btn.dispatch("click");
-  assert.strictEqual(m.ctx.location.hash, "#/create", "it navigates");
+  assert.deepStrictEqual(asked, [["tokamaks", btn]], "the click asks the one build path, with its own button");
+  assert.strictEqual(m.ctx.location.hash, hashBefore, "and navigates nowhere");
   assert.ok(![...m.timers.values()].some((t) => t.ms === 0), "and arms no race-prone 0 ms timer");
-
-  const submits = [];
-  m.ctx.bindCreateFormSubmit = (e) => submits.push(e.currentTarget);
-  m.els["#cr-form"] = makeEl("form");
-  m.els["#cr-input"] = makeEl("input");
-  m.ctx.renderCreate();
-  assert.strictEqual(m.els["#cr-input"].value, "tokamaks", "the form is prefilled");
-  assert.deepStrictEqual(submits, [m.els["#cr-form"]], "and submitted through the one creation path");
-  m.ctx.renderCreate();
-  assert.strictEqual(submits.length, 1, "consumed once: a later visit to Create does not rebuild it");
+  assert.ok(!/pendingCreateQuery/.test(SRC), "renderCreate has no pending query to consume");
 });
 
 /* ---------- app-2-3: leaving Search supersedes its passes --------------------- */
@@ -627,7 +624,7 @@ test("app-2-2: the Shows list paints SHOW_RESULTS_PAINT_STEP rows at a time, and
   assert.ok(step >= 25 && step <= 100, "a screenful or two");
   const rows = Array.from({ length: step * 2 + 30 }, (_, i) => ({ show_id: `s${i}`, title: `Show ${i}` }));
   const token = m.run("showSearchToken");
-  const count = () => (results.innerHTML.match(/class="show-result"/g) || []).length;
+  const count = () => (results.innerHTML.match(/class="dsc-row dsc-show raised"/g) || []).length;
   m.ctx.paintShowResults("s", rows, token);
   assert.strictEqual(count(), step, "the first step is painted");
   assert.match(results.innerHTML, /data-sh-more/, "with a way to the rest");
@@ -656,8 +653,8 @@ test("round-3 review (L2): 'Show more shows' puts focus on the first row it reve
   let focused = null;
   results.querySelector = (sel) => (sel === "[data-sh-more]" && /data-sh-more/.test(results.innerHTML) ? more : null);
   results.querySelectorAll = (sel) => {
-    if (sel !== ".show-result") return [];
-    const n = (results.innerHTML.match(/class="show-result"/g) || []).length;
+    if (sel !== ".dsc-show") return [];
+    const n = (results.innerHTML.match(/class="dsc-row dsc-show raised"/g) || []).length;
     return Array.from({ length: n }, (_, i) => ({ focus() { focused = i; } }));
   };
   m.els["#sh-results"] = results;
