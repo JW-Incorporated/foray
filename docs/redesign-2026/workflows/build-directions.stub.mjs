@@ -12,6 +12,7 @@ async function agent(prompt, o) {
   if (l.startsWith('baseline')) return { ok: true, summary: 'ok' }
   if (l.startsWith('plan:')) { if (!l.endsWith('from-file')) throw new Error('re-planned with Fable: ' + l); return plan(l.split(':')[1]) }
   if (l.startsWith('build:') && DEAD && l.startsWith('build:ambient:s')) return null
+  if (l === 'build:tactile:s2') return { ok: false, summary: 'continue: CSS and tests remain' }
   if (l.startsWith('build:')) return l.includes('p3-tokens') ? { ok: true, alreadyMerged: true, summary: 'already merged' } : { ok: true, sha: 'x', summary: 'built' }
   if (l.startsWith('check:')) return { hardPass: true, testsPass: true, gatesPass: true, summary: 'ok', implShot: 'i.png', protoShot: 'p.png', todayShot: 't.png', sideBySide: 'sbs.png' }
   if (l.startsWith('fidelity:')) return l.includes('tactile:s2') ? null : { faithful: true, deviations: [] } // tactile s2: fidelity never comes back
@@ -51,6 +52,7 @@ if (DEAD) {
 const t = scr('tactile'), a = scr('ambient')
 const ix = l => calls.indexOf(l)
 const checks = [
+  ['turn budget: unfinished build hands over to a fresh agent and merges', calls.includes('build:tactile:s2:c2') && scr('tactile').s2.unjudged !== undefined],
   ['same family waits: s1-x builds after s1 merges', ix('build:tactile:s1-x') > ix('merge:tactile:redesign/tactile-s1') && ix('merge:tactile:redesign/tactile-s1') >= 0],
   ['other family in parallel: s2 builds before s1 merges', ix('build:tactile:s2') >= 0 && ix('build:tactile:s2') < ix('merge:tactile:redesign/tactile-s1')],
   ['every screen reported', scr('tactile')['s1-x'] && scr('ambient')['s1-x']],
