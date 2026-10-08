@@ -1,9 +1,10 @@
 /* Visual pass 1 (2026-09-23): the transport's shape on every surface
  * (docs/audit/status.tsv persona rows 10 and 58).
  *
- *   - THE MINI BAR HAS TWO CONTROLS: ▶ and ↺15, both 44px, the skip
- *     borderless so the bar stays quiet. Stop stays in the sheet, in the
- *     danger colour (test/tap-targets.test.js holds that half).
+ *   - THE MINI BAR HAS TWO CONTROLS: ▶ (Ember, 48) and forward 30 (44), the skip
+ *     borderless so the bar stays quiet. It was ↺15 until the Dock (Redesign 2026,
+ *     ambient: "MiniPlayer: Play 48 Ember, Fwd30 44"); the sheet keeps both. Stop
+ *     stays in the sheet, in the danger colour (test/tap-targets.test.js holds that half).
  *   - THE SEEK PAIR IS THE SEEK PAIR: ↺15 / 30↻ in the sheet and on the Foray
  *     page in EVERY mode; previous/next clip are their own labelled row.
  *   - ONE NUDGE: every surface calls `nudgeBy` (the bridge's `nudge`), and the
@@ -24,7 +25,8 @@ const { readAppSource } = require("./helpers/app-source.js");
 const ROOT = path.join(__dirname, "..");
 const APP = readAppSource().replace(/\r\n/g, "\n");
 const CLIENT = fs.readFileSync(path.join(ROOT, "player/client.js"), "utf8").replace(/\r\n/g, "\n");
-const CSS = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8").replace(/\r\n/g, "\n");
+/* The mini bar's rules are ui/dock.css's now (it is a row of the Dock); the sheet's are still styles.css's. */
+const CSS = ["styles.css", "ui/dock.css"].map((rel) => fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n")).join("\n");
 const CODE = CLIENT.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 const SRC = CSS.replace(/\/\*[\s\S]*?\*\//g, " ");
 
@@ -58,7 +60,15 @@ function valueOf(sel, prop) {
   }
   return v;
 }
-const px = (v) => { const m = /^(\d+(?:\.\d+)?)px$/.exec(String(v || "")); return m ? Number(m[1]) : null; };
+const dockCss = require("./helpers/dock-css.js");
+const TOKENS_AT_REST = dockCss.scope([]);
+const px = (v) => {
+  const m = /^(\d+(?:\.\d+)?)px$/.exec(String(v || ""));
+  if (m) return Number(m[1]);
+  /* The Dock's sizes are tokens (`var(--tap)`, `calc(var(--tap) + var(--s-1))`): resolved, never guessed. */
+  if (/var\(|calc\(/.test(String(v || ""))) { try { return dockCss.resolve(v, TOKENS_AT_REST, 0); } catch (_) { return null; } }
+  return null;
+};
 
 /* ---------- one transport button on every surface (audit round 2, visual-5) ---------- */
 
@@ -102,33 +112,46 @@ test("the seek pair and the speed box are one object on the Foray page and in No
   assert.doesNotMatch(CSS, /metrics \(44px, body step/, "no comment may promise a height neither surface has");
   /* And both renderers really do use these classes for the same controls. */
   assert.match(CLIENT, /el\("button", "fp-btn", `↺ \$\{SEEK_BACK\}`\)/);
-  assert.match(APP, /class="fy-btn"[^>]*>↺/, "the page's ↺ is a .fy-btn");
+  /* Ambient Foray detail (Redesign 2026): the Foray page no longer draws a transport; Now Playing owns the seek pair and
+     the speed box, so the one-object guarantee is now "the page draws none of them".
+     MUTATION: put a `<button class="fy-btn"` back in renderForay -> red. */
+  assert.doesNotMatch(APP, /class="fy-btn"/, "no page draws the seek pair any more: the sheet owns it");
 });
 
 /* ---------- the mini bar ---------- */
 
-test("the mini bar carries ▶ and a back-15 nudge, in that order, and nothing else", () => {
-  /* MUTATION: `bar.append(art, info, playBtn)` (the one-control bar)
-     -> red. MUTATION 2: add `fwdBtn` to the bar -> the third assertion names
-     the crowding. (The live region is no longer on the bar — audit round 2,
-     a11y-2: it is a sibling of the bar and the sheet, so expanding Now
-     Playing cannot make it inert; player/now-playing-sheet.test.js pins it.) */
-  assert.match(CODE, /const skipBtn = el\("button", "fp-skip", `↺ \$\{SEEK_BACK\}`\);/);
-  assert.match(CODE, /skipBtn\.setAttribute\("aria-label", `Back \$\{SEEK_BACK\} seconds`\);/);
-  assert.match(CODE, /bar\.append\(art, info, skipBtn, playBtn\);/, "art · title · ↺15 · ▶");
+test("the mini bar carries ▶ and a forward-30 nudge, in that order, and nothing else", () => {
+  /* RULING THAT FELL: "transport-controls: mini bar = ▶ + ↺15" (test-classification.md, R). The Afterglow
+     Dock's mini row is Play 48 + Fwd30 44. What it still guarantees: two controls, both at the 44px floor,
+     the skip is the same nudge as the sheet's (`nudgeBy`), and the glyphs come from the sprite.
+     MUTATION: `bar.append(art, info, playBtn)` (the one-control bar) -> red. MUTATION 2: add `backBtn` to the
+     bar -> the third assertion names the crowding. MUTATION 3: point the handler at `-SEEK_BACK` -> red.
+     (The live region is not on the bar - audit round 2, a11y-2: it is a sibling of the bar and the sheet, so
+     expanding Now Playing cannot make it inert; player/now-playing-sheet.test.js pins it.) */
+  assert.match(CODE, /const skipBtn = el\("button", "fp-skip"\);/);
+  assert.match(CODE, /skipBtn\.setAttribute\("aria-label", `Forward \$\{SEEK_FWD\} seconds`\);/);
+  assert.match(CODE, /skipBtn\.append\(spriteIcon\("fwd30"\)\);/, "a sprite glyph, not a text one");
+  assert.match(CODE, /playBtn\.append\(spriteIcon\("play", "fp-glyph-play"\), spriteIcon\("pause", "fp-glyph-pause"\)\);/);
+  assert.match(CODE, /bar\.append\(art, info, playBtn, skipBtn\);/, "art · title · ▶ · forward 30");
   const appended = /bar\.append\(([^)]*)\)/.exec(CODE)[1].split(",").map((s) => s.trim());
-  assert.deepStrictEqual(appended.filter((n) => /Btn$/.test(n)), ["skipBtn", "playBtn"], "two controls on the bar, not three");
-  assert.match(CODE, /ui\.skipBtn\.addEventListener\("click", \(\) => nudgeBy\(-SEEK_BACK\)\);/);
+  assert.deepStrictEqual(appended.filter((n) => /Btn$/.test(n)), ["playBtn", "skipBtn"], "two controls on the bar, not three");
+  assert.match(CODE, /ui\.skipBtn\.addEventListener\("click", \(\) => nudgeBy\(SEEK_FWD\)\);/);
+  assert.doesNotMatch(CODE, /skipBtn[^;\n]*SEEK_BACK/, "and nothing sends the bar's skip backwards any more");
 });
 
-test("the bar's skip is a 44px borderless glyph beside the filled ▶", () => {
-  /* MUTATION: `.fp-skip { width: 36px }` -> red (tap-targets lists it too). */
-  assert.strictEqual(px(valueOf(".fp-skip", "width")), 44);
-  assert.strictEqual(px(valueOf(".fp-skip", "height")), 44);
-  assert.strictEqual(valueOf(".fp-skip", "border"), "0", "borderless: the bar's one filled control is ▶");
-  assert.strictEqual(valueOf(".fp-skip", "background"), "none");
-  assert.strictEqual(valueOf(".fp-skip", "border-radius"), "var(--radius-round)");
-  assert.match(valueOf("body.ui-v2 .fp-play", "background") || "", /var\(--violet\)/, "▶ keeps the filled violet circle");
+test("the bar's Play is an Ember 48 and its skip a bare 44, both round", () => {
+  /* MUTATION: `.dock-layer .fp-skip { width: 36px }` -> red (tap-targets lists it too). MUTATION 2: give
+     the skip a fill (`background: var(--ember)`) -> the bar has two filled controls and the second
+     assertion goes red. MUTATION 3: take Ember off the Play -> the third. */
+  assert.strictEqual(px(valueOf(".dock-layer .fp-skip", "width")), 44);
+  assert.strictEqual(px(valueOf(".dock-layer .fp-skip", "height")), 44);
+  assert.strictEqual(valueOf(".dock-layer .fp-skip", "background"), null, "bare: the bar's one filled control is ▶");
+  assert.strictEqual(valueOf(".dock-layer .fp-skip", "border-radius"), "var(--r-round)");
+  assert.strictEqual(valueOf(".dock-layer .fp-play", "border-radius"), "var(--r-round)");
+  assert.strictEqual(valueOf(".dock-layer .fp-play", "background"), "var(--ember)", "▶ is the listener's own mark: Ember");
+  assert.strictEqual(valueOf(".dock-layer .fp-play", "color"), "var(--ember-ink)");
+  assert.strictEqual(px(valueOf(".dock-layer .fp-play", "width")), 48);
+  assert.strictEqual(px(valueOf(".dock-layer .fp-play", "height")), 48);
 });
 
 /* ---------- the sheet ---------- */
@@ -182,44 +205,49 @@ test("previous/next clip are a labelled row: words, 44px tall, next disabled on 
 
 /* ---------- the Foray page ---------- */
 
-test("the Foray page's transport is ↺15 · Play · 30↻ · speed, with a clip row beneath", () => {
-  /* MUTATION: `<button … id="fy-prev" aria-label="Previous clip">‹‹</button>`
-     back in the .fy-controls row -> red. */
-  const page = APP.slice(APP.indexOf('<div class="fy-controls">'), APP.indexOf('<p class="fy-error"'));
+test("the Foray page draws ONE transport control, the primary button; the seek pair, speed and clip row live in Now Playing", () => {
+  /* Ambient Foray detail (Redesign 2026) rewrote the page's transport on purpose (BUILD-NOTES 4.6): the page is a detail
+     screen with a Play / Resume / Play again button, the strip and the rows. The ruling that fell is "the Foray page carries
+     ↺15 · Play · 30↻ · speed and a clip row".
+     MUTATIONS: put `<div class="fy-controls">` (or any of the ids below) back in renderForay -> red; rename the primary
+     button's id -> red (the whole page is wired to it). */
+  const render = APP.slice(APP.indexOf("async function renderForay("), APP.indexOf("async function renderForay(") + 12000);
+  const page = render.slice(render.indexOf('<div class="page foray fd-page">'));
   const ids = [...page.matchAll(/id="(fy-[a-z]+)"/g)].map((m) => m[1]);
-  assert.deepStrictEqual(ids, ["fy-back", "fy-play", "fy-fwd", "fy-rate", "fy-prev", "fy-next"]);
-  assert.match(page, /id="fy-back" aria-label="Back \$\{nudge\.back\} seconds">↺ \$\{nudge\.back\}</, "the step comes from the bridge");
-  assert.match(page, /id="fy-fwd" aria-label="Forward \$\{nudge\.fwd\} seconds">\$\{nudge\.fwd\} ↻</);
-  assert.match(page, /<div class="fy-clips">\s*<button type="button" class="fy-clip" id="fy-prev" aria-label="Previous clip">‹ Previous clip<\/button>\s*<button type="button" class="fy-clip" id="fy-next" aria-label="Next clip">Next clip ›<\/button>/,
-    "labelled in words, with the guillemet kept out of the accessible name");
-  assert.doesNotMatch(page, /‹‹|››/, "no glyph-only clip control on the page");
+  for (const gone of ["fy-back", "fy-fwd", "fy-rate", "fy-prev", "fy-next", "fy-now", "fy-total", "fy-bar-fill"]) {
+    assert.ok(!ids.includes(gone), `#${gone} left the page`);
+  }
+  assert.ok(ids.includes("fy-play") || /id="fy-play"/.test(render), "the primary button stays #fy-play");
+  assert.match(render, /class="ag-btn ag-btn-primary fd-cta" id="fy-play"/, "a Primary button, full width by .fd-cta");
+  assert.doesNotMatch(page, /‹‹|››|↺|↻/, "no glyph transport on the page");
 });
 
-test("the Foray page's nudges call the bridge's nudge, start the Foray before it has begun, and read the steps from the bridge", () => {
-  /* MUTATION: bind #fy-back to `player.forayPrevious()` -> red. MUTATION 2:
-     hardcode 15/30 in the template instead of `forayNudgeSteps(player)`. */
-  assert.match(APP, /\$\("#fy-back"\)\.addEventListener\("click", \(\) => playerHasForay\(r\) \? guardForayTap\(\(\) => player\.nudge\(-nudge\.back\)\) : startOrResume\(\)\);/);
-  assert.match(APP, /\$\("#fy-fwd"\)\.addEventListener\("click", \(\) => playerHasForay\(r\) \? guardForayTap\(\(\) => player\.nudge\(nudge\.fwd\)\) : startOrResume\(\)\);/);
-  assert.match(APP, /\["#fy-play", "#fy-next", "#fy-prev", "#fy-back", "#fy-fwd"\]\.forEach\(sel => \{ \$\(sel\)\.disabled = true; \}\);/,
-    "an empty Foray disables the nudges with the rest");
+test("the Foray page's bindings tolerate the controls that left it, and the nudge steps still come from the bridge", () => {
+  /* MUTATION: drop a `?.` from the #fy-back / #fy-fwd / #fy-next / #fy-prev bindings -> red (the real page has no such
+     node, so renderForay would throw and leave the page inert). MUTATION 2: hardcode 15/30 -> red. */
+  assert.match(APP, /\$\("#fy-back"\)\?\.addEventListener\("click", \(\) => playerHasForay\(r\) \? guardForayTap\(\(\) => player\.nudge\(-nudge\.back\)\) : startOrResume\(\)\);/);
+  assert.match(APP, /\$\("#fy-fwd"\)\?\.addEventListener\("click", \(\) => playerHasForay\(r\) \? guardForayTap\(\(\) => player\.nudge\(nudge\.fwd\)\) : startOrResume\(\)\);/);
+  assert.match(APP, /\$\("#fy-next"\)\?\.addEventListener/);
+  assert.match(APP, /\$\("#fy-prev"\)\?\.addEventListener/);
+  assert.match(APP, /\["#fy-play", "#fy-next", "#fy-prev", "#fy-back", "#fy-fwd"\]\.forEach\(sel => \{ const el = \$\(sel\); if \(el\) el\.disabled = true; \}\);/,
+    "an empty Foray disables what is there");
   const steps = APP.slice(APP.indexOf("function forayNudgeSteps("), APP.indexOf("function bindForayTransport("));
   assert.match(steps, /player\.nudgeSteps\(\)/, "reads the bridge");
   assert.match(steps, /return \{ back: 15, fwd: 30 \};/, "falls back to the documented pair for an older cached module");
-  assert.match(APP, /const nudge = forayNudgeSteps\(player\);\n\n  \$\("#view"\)\.innerHTML = `\n    <div class="page foray">/, "renderForay reads the steps before it paints");
 });
 
 /* ---------- the sheet's shape, after the review of visual pass 1 (2026-09-23) ---------- */
 
-test("the sheet's Play is the bar's Play, scaled: one filled round object, not a grey box like the skips", () => {
+test("the sheet's Play is a filled round object, not a grey box like the skips", () => {
   /* Four play affordances shipped; the sheet's primary ▶ was the unfilled one,
      a rounded square identical to ↺15 / 30↻ beside it. MUTATION: delete
-     `.fp-btn.fp-big { … border-radius: var(--radius-round) … }` -> red. */
-  assert.strictEqual(valueOf(".fp-btn.fp-big", "border-radius"), "var(--radius-round)", "round, like .fp-play");
-  assert.strictEqual(valueOf(".fp-play", "border-radius"), "var(--radius-round)");
+     `.fp-btn.fp-big { … border-radius: var(--radius-round) … }` -> red.
+     (It was "the bar's Play, scaled" - the same violet fill. The bar's Play is Ember in the Dock now and the
+     sheet's keeps the legacy violet until the Now Playing screen unit re-fills it; the shape is what is held.) */
+  assert.strictEqual(valueOf(".fp-btn.fp-big", "border-radius"), "var(--radius-round)", "round, like the bar's Play");
+  assert.strictEqual(valueOf(".dock-layer .fp-play", "border-radius"), "var(--r-round)");
   assert.ok(px(valueOf(".fp-btn.fp-big", "width")) >= 56 && px(valueOf(".fp-btn.fp-big", "height")) >= 56, "and it leads the row");
-  assert.strictEqual(valueOf("body.ui-v2 .fp-btn.fp-big", "background"), "var(--violet)", "the same fill as the bar's ▶ under ui-v2");
-  assert.strictEqual(valueOf("body.ui-v2 .fp-play", "background"), "var(--violet)");
-  assert.strictEqual(valueOf("body.ui-v2 .fp-btn.fp-big", "color"), valueOf("body.ui-v2 .fp-play", "color"));
+  assert.strictEqual(valueOf("body.ui-v2 .fp-btn.fp-big", "background"), "var(--violet)", "filled, under ui-v2");
   /* The skips stay the quiet boxed pair. */
   assert.strictEqual(valueOf(".fp-btn", "border-radius"), "var(--radius-md)");
   assert.strictEqual(valueOf("body.ui-v2 .fp-btn", "background"), "var(--surface2)");
@@ -263,15 +291,16 @@ test("ROUND 2 review: the sheet's six-control second row wraps, and ⏭/Save are
   assert.ok(valueOf('body.ui-v2 .fp-save[aria-pressed="true"]', "color"), "…in the v2 theme too");
 });
 
-test("both speed buttons say they open a menu — the Foray page's as well as the sheet's", () => {
+test("the speed button says it opens a menu, and the Foray page draws none", () => {
   /* Audit round 2, player-9, completed in the sweep: the sheet's rate button
      gained `aria-haspopup="dialog"` and the Foray page's `#fy-rate`, which opens
      the same `openRateMenu` dialog, did not — VoiceOver read one "pop-up button"
      and one plain button for the one control. MUTATION: drop the attribute
      from the `#fy-rate` markup -> red. */
+  /* Ambient Foray detail (Redesign 2026): the page's #fy-rate left with the rest of its transport. MUTATION: put a
+     `<button … id="fy-rate">` back in the template without aria-haspopup -> red. */
   const tag = /<button[^>]*\bid="fy-rate"[^>]*>/.exec(APP);
-  assert.ok(tag, "fixture assumption: the Foray page draws #fy-rate");
-  assert.match(tag[0], /\baria-haspopup="dialog"/, "the Foray page's speed button does not say it opens a menu");
+  assert.ok(!tag || /\baria-haspopup="dialog"/.test(tag[0]), "a speed button on the Foray page must say it opens a menu");
   assert.match(CODE, /rateBtn\.setAttribute\("aria-haspopup", "dialog"\);/, "the sheet's, for comparison");
   const menu = APP.slice(APP.indexOf("function openRateMenu("), APP.indexOf("function openRateMenu(") + 800);
   assert.match(menu, /panel\.setAttribute\("role", "dialog"\);/, "fixture assumption: what it opens is a dialog");

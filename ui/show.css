@@ -1,0 +1,78 @@
+/* ui/show.css — the show page (#/show/<id>), Redesign 2026, ambient direction ("Afterglow"), phase 4.
+
+   The numbers are docs/redesign-2026/directions/ambient/BUILD-NOTES.md section 10 item 10 (the screen),
+   section 3 (EpisodeRow), section 1.5 (the Room) and §10.2 (Lit art). The page is two Afterglow parts:
+     THE ROOM      `.room.ag.sh-room`, a scheme-following Room lit by the show's colour: Back, the art at 160
+                   (Lit), the title, the count, Follow and its note, centred.
+     THE EPISODES  `.ag.sh-eps`, EpisodeRows (art 72, title, Play 44, meta, a two-line why) in a stack, latest
+                   first, no hairlines. The rows are Today's: they wear `.td-row` (ui/today.css), so the two
+                   lists are one component; this file adds only the stack and the page.
+   Every rule is scoped under `.ag` (the Room and the list both wear it), so nothing here can reach another
+   screen; every class is `sh-*`, a new name. Values come from ui/tokens.css; the two scrim stops that are
+   this page's own are named below.
+
+   NO reduced-motion block lives in this file, on purpose: ui/tokens.css has the one, scoped to `.ag` and
+   `.room` and everything under them, and the only transition here (Follow's fill) is `.ag-btn`'s, which that
+   block already covers. A second block would be a second owner (test/afterglow-tokens.test.js, "ONE block"). */
+
+/* The page. The Room is the top of the page, so the legacy bar steps aside (as on Today) and the page paints bg0. */
+body.view-show { background: var(--bg0); --dock-page-bg: var(--bg0); }
+body.view-show .topbar { display: none; }
+body.view-show #view { padding-top: 0; }
+
+/* THE ROOM. The tokens give it a Glow-tinted base, the art blurred under a scrim whose stops are PIXELS from the
+   top. This page sets the two stops itself so that every line of text starts below the second one, where the scrim
+   is its darkest mix (the zone test/ambient-show.test.js measures AA in): Back and the art are above it, the title
+   is not. Back sits at safe-top + 8 .. + 52 (on the head scrim, 3:1 over any art); the art at safe-top + 56 .. + 216;
+   the title at safe-top + 236, which is below --rs2 (safe-top + 232). */
+.room.sh-room {
+  --rs1: calc(var(--safe-top) + 120px);
+  --rs2: calc(var(--safe-top) + 232px);
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  padding: calc(var(--safe-top) + var(--s-2)) var(--gutter) var(--s-6);
+  color: var(--text);
+}
+/* The scrim runs the tokens' stops down to --rs2, then eases into the page's own bg0 instead of --scrim-low, so the
+   Room's foot meets the list with no seam (--scrim-low is bg0 plus a tint, and a tint is a visible edge). Below
+   --rs2 only text sits, and bg0 is the best background any text colour here has: the pairs measured at --rs2 hold. */
+.room.sh-room::after {
+  background: linear-gradient(180deg,
+    var(--scrim-head) 0,
+    var(--scrim-top) calc(var(--safe-top) + 56px),
+    var(--scrim-top) var(--rs1),
+    var(--scrim-mid) var(--rs2),
+    var(--bg0) 100%);
+}
+.room.sh-room, .room.sh-room *, .room.sh-room *::before, .room.sh-room *::after { box-sizing: border-box; }
+.room.sh-room :where(h2, p) { margin: 0; }
+/* landOnPage() focuses the heading programmatically (tabindex -1) when a navigation lost focus; it is read, not outlined. */
+.ag .sh-head h2[tabindex="-1"]:focus { outline: none; }
+
+.ag .sh-bar { align-self: stretch; display: flex; align-items: center; justify-content: flex-start; min-height: var(--tap); }
+.ag .sh-back { color: var(--text); }
+.ag .sh-art { margin-top: var(--s-1); display: block; width: var(--art-hero); height: var(--art-hero); border-radius: var(--r-lg); }
+.ag .sh-art .ag-art { display: block; }
+
+/* Title: three lines at most, never cut mid-word; the count is the caption under it. Secondary text on the Room is
+   --on-wash-2 (Dusk #E2D9CD, Dawn ink): --text-2 measures under 4.5:1 over the lightest art at the title's y. */
+.ag .sh-head { margin-top: var(--s-5); max-width: 100%; min-width: 0; }
+.ag .sh-title { overflow-wrap: normal; padding-bottom: calc(var(--s-1) / 2); margin-bottom: calc(var(--s-1) / -2); }
+.ag .sh-sub { margin-top: var(--s-1); color: var(--on-wash-2); }
+.ag .sh-sub:empty { display: none; }
+
+/* Follow: a Secondary button; followed, its glyph is the Fill check in Ember, its ring Ember and its inside takes
+   the overlay, so the state is a fill change (shape and word and fill), never colour alone. */
+.ag .sh-follow { margin-top: var(--s-4); }
+.ag .sh-follow.is-following { background: var(--overlay); box-shadow: inset 0 0 0 calc(var(--s-1) * .375) var(--ember); }
+.ag .sh-follow.is-following .icon { color: var(--ember); }
+.ag .sh-note { margin-top: var(--s-3); max-width: 34ch; color: var(--on-wash-2); }
+
+/* The body: the legacy sections keep their own look, a section (24px) under the Room. */
+.page.sh-body { padding-top: var(--s-6); }
+
+/* The list. `.td-row` brings the row; this stack brings the 8px gap Today's `.td-stack` does (that rule needs an `.ag`
+   ancestor, and this list IS the `.ag`), and the paragraph reset Today's page root does. */
+.ag.sh-eps { padding: 0; background: transparent; }
+.ag.sh-eps :where(h3, p) { margin: 0; }
+.ag.sh-eps [data-show-episodes] > * + * { margin-top: var(--s-2); }
+.ag.sh-eps [data-show-episodes] > .note { color: var(--text-2); font: var(--t-body); }

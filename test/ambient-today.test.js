@@ -655,54 +655,6 @@ test("ui/today.css and ui/palette.js ship: the page links and loads them, and th
 
 /* ================================================================== 17-20. iteration 2: the Dock, the fade, the meta line, the apostrophes */
 
-test("the Dock on Today: inset by the gutter, 12px above the safe area, --r-xl corners, the Glow-tinted Veil; an inert tab is text-2, the active tab is Lamp", () => {
-  /* The first build shipped the legacy full-width, square-cornered, purple-grey bar with an Ember active tab.
-     MUTATION 1: change `background: var(--glow-veil)` on `body.view-home .tab-bar` to `var(--surface)` (the legacy grey) -> red.
-     MUTATION 2: drop `left`/`right` (the bar is full width again) or set `border-radius: 0` -> red.
-     MUTATION 3: set the active colour to `var(--ember)` (Ember is the listener's own marks) -> red. */
-  const bar = "body.view-home .tab-bar";
-  assert.strictEqual(valueOf(bar, "left"), "var(--ag-gutter)", "inset by the gutter on the left");
-  assert.strictEqual(valueOf(bar, "right"), "var(--ag-gutter)", "and on the right: a floating Dock, not a full-width bar");
-  assert.strictEqual(valueOf(bar, "bottom"), "var(--dock-lift)", "floating above the safe area");
-  assert.strictEqual(valueOf("body.view-home", "--dock-lift"), "calc(env(safe-area-inset-bottom, 0px) + var(--dock-inset))", "the lift is the safe area plus the 12px token");
-  assert.strictEqual(valueOf(bar, "border-radius"), "var(--r-xl)", "rounded corners");
-  assert.strictEqual(valueOf(bar, "background"), "var(--glow-veil)", "the warm Glow-tinted Veil, never the legacy purple-grey surface");
-  assert.match(valueOf(bar, "backdrop-filter"), /blur\(20px\) saturate\(140%\)/, "the Veil's blur");
-  assert.match(valueOf(bar, "box-shadow"), /var\(--rim\)/, "lit from above by the rim, no hairline");
-  assert.strictEqual(valueOf(bar, "border"), "0", "no border");
-  assert.strictEqual(valueOf("body.view-home .tab-btn", "color"), "var(--text-2)", "an inert tab");
-  assert.strictEqual(valueOf('body.view-home .tab-bar .tab-btn[aria-current="page"]', "color"), "var(--lamp-text)", "the active tab is Lamp, not Ember");
-  assert.strictEqual(valueOf("body.view-home .tab-btn", "min-height"), "var(--tap)", "44px targets");
-  /* The mini player is the Dock's top row: same gutter, same Veil, the top corners; the tab row keeps the bottom ones. */
-  const mini = "body.view-home.ui-v2.fp-open #foray-player";
-  assert.strictEqual(valueOf(mini, "left"), "var(--ag-gutter)");
-  assert.strictEqual(valueOf(mini, "background"), "var(--glow-veil)");
-  assert.strictEqual(valueOf(mini, "border-radius"), "var(--r-xl) var(--r-xl) 0 0");
-  assert.strictEqual(valueOf("body.view-home.fp-open .tab-bar", "border-radius"), "0 0 var(--r-xl) var(--r-xl)");
-  assert.strictEqual(valueOf("body.view-home.ui-v2 #foray-player .fp-play", "background"), "var(--ember)", "the mini's Play is Ember, not the legacy violet (MUTATION 4: put var(--violet) there)");
-  assert.strictEqual(valueOf("body.view-home", "--tab-bar-h"), "calc(var(--tab-bar) + var(--dock-inset))", "the legacy sums (mini bottom, content padding) read the Dock's real height");
-  /* The three material fallbacks the Veil carries elsewhere. */
-  for (const q of ["@supports not", "prefers-reduced-transparency", "prefers-contrast"]) {
-    assert.ok(RULES.some((r) => r.atRules.some((a) => a.includes(q)) && /body\.view-home \.tab-bar/.test(r.prelude)), `the Dock has its ${q} fallback`);
-  }
-});
-
-test("content runs under the Dock and fades to bg: a fixed fade behind it, solid from 32px above the Dock to the screen's bottom edge", () => {
-  /* The first build sliced the second picks row with the bar's hard top edge.
-     MUTATION 1: delete the `body.view-home::after` rule -> red. MUTATION 2: set its z-index to 56 (over the Dock) or
-     its pointer-events to auto (it would eat taps) -> red. MUTATION 3: end the gradient at transparent -> red. */
-  const fade = "body.view-home::after";
-  assert.strictEqual(valueOf(fade, "position"), "fixed");
-  assert.strictEqual(valueOf(fade, "bottom"), "0", "to the screen's bottom edge");
-  assert.strictEqual(valueOf(fade, "pointer-events"), "none", "the fade never takes a tap");
-  assert.ok(Number(valueOf(fade, "z-index")) < 55, "under the Dock (the legacy bar is 55)");
-  assert.ok(Number(valueOf(fade, "z-index")) > 1, "over the content");
-  assert.strictEqual(valueOf(fade, "height"), "calc(var(--td-dock-h) + var(--s-8))", "32px taller than the Dock");
-  assert.strictEqual(valueOf(fade, "background"), "linear-gradient(transparent 0, var(--bg0) var(--s-8))", "solid bg from 32px up");
-  assert.strictEqual(valueOf("body.view-home", "--td-dock-h"), "calc(var(--dock-lift) + var(--tab-bar))");
-  assert.strictEqual(valueOf("body.view-home.fp-open", "--td-dock-h"), "calc(var(--dock-lift) + var(--tab-bar) + var(--mini))", "the mini row is part of the Dock when something is loaded");
-});
-
 test("the hero's meta stays beside Play on ONE nowrap line, or stacks its two parts; it never wraps mid-line", () => {
   /* Iteration 3 let "1 show · about 43 min" wrap inside the 109px beside Play, which left "1 show ·" at a line end and
      "about 43 min" under it (the separator stranded). Iteration 4: the line is nowrap; a meta too long for it is

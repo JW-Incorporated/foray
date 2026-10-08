@@ -14,6 +14,8 @@
  * so it is not shot; everything else is.
  */
 
+import { forayDetailPicks } from "./seed.mjs";
+
 const wait = (page, ms) => page.waitForTimeout(ms);
 
 /** Start playback of a seeded item through the real player, then pin it: seek to
@@ -34,8 +36,30 @@ async function startPlayback(page, itemId) {
   await page.evaluate(() => {
     for (const a of window.__audios || []) if (a.src) { try { a.currentTime = 21; a.pause(); } catch (_) { /* ignore */ } }
   });
-  await page.waitForSelector("#foray-player", { state: "visible", timeout: 10000 });
+  /* The mini bar is a row of the Dock now (ui/tabbar.js); #foray-player holds only the sheet. */
+  await page.waitForSelector("#dock-mini .fp-bar", { state: "visible", timeout: 10000 });
   await wait(page, 600);
+}
+
+/** Let the item the fixture paused play again from the same offset, and leave it PLAYING: the mini row then shows
+    the pause glyph and a Glow progress line that has moved (the paused fixture shows a play glyph and no line, so
+    the Dock's 2px line could not be checked). The silent 60 s fixture runs on during the shot; the line is a few
+    px long at any frame, which is all the check needs. Used by the Dock's `dock-playing` step. */
+async function keepPlaying(page) {
+  /* The previous step left the page scrolled and the tab row receded; this one is the tall row at the top. */
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.evaluate(() => {
+    for (const a of window.__audios || []) if (a.src) { try { a.currentTime = 21; a.play(); } catch (_) { /* ignore */ } }
+  });
+  await page.waitForFunction(() => (window.__audios || []).some((a) => a.src && !a.paused), null, { timeout: 20000 });
+  await wait(page, 900);
+}
+
+/** Scroll the page by `y` CSS px and let the Dock's recede (280ms) settle: the scroll event, then the
+    transition, then a frame. Used by the Dock's `dock-receded` step. */
+async function scrollPage(page, y) {
+  await page.evaluate((dy) => window.scrollTo(0, dy), y);
+  await wait(page, 700);
 }
 
 async function openNowPlaying(page) {
@@ -103,6 +127,42 @@ async function startEpisodePlayback(page, itemId) {
   await resetAmbientNowPlaying(page);
   await startPlayback(page, itemId);
   await openNowPlaying(page);
+}
+
+/* Foray detail: the page, the route and the states below it. The Foray in the first coreRoutes step is a
+   draft (the page answers "That foray isn't available"), so this block opens published ones by id. */
+const forayRoute = (foray) => "#/foray/" + encodeURIComponent(foray.id);
+
+/* An unavailable Foray: every audio source in the page's document loses its audio URL, in place, so each
+   clip of the Foray still resolves (its show, its why-line) but is refused ("no audio url"), nothing is
+   playable, and the route is painted again. It takes the Foray without narration: a narrator's bridge needs
+   no source and would still play. `state` is the app's own top-level binding, reachable from the page. */
+async function openUnavailableForay(page, foray) {
+  /* Off the Afterglow page while the scheme goes back to dark (the Dawn step before this one left it light), so no
+     drawn page crossfades; the Foray is then painted new. */
+  await page.evaluate(() => { location.hash = "#/forays"; });
+  await wait(page, 400);
+  await page.emulateMedia({ colorScheme: "dark" });
+  await wait(page, 400);
+  await page.evaluate((hash) => {
+    state.segmentSources = { ...state.segmentSources, sources: state.segmentSources.sources.map((row) => ({ ...row, audio_url: null })) };
+    location.hash = hash;
+  }, forayRoute(foray));
+  await page.waitForSelector(".fd.is-unavailable", { timeout: 15000 });
+  await wait(page, 700);
+}
+
+/* Dawn: the OS asks for the light scheme, the way a phone does. The tokens follow the media query. */
+async function goDawn(page) {
+  /* Leave the Afterglow page first and come back after the flip, so the scheme change is not a live colour change on a page
+     that is already drawn (every .ag element would crossfade for 200ms): the page is painted new, in Dawn. */
+  const hash = await page.evaluate(() => { const h = location.hash; location.hash = "#/forays"; return h; });
+  await wait(page, 500);
+  await page.emulateMedia({ colorScheme: "light" });
+  await wait(page, 500);
+  await page.evaluate((h) => { location.hash = h; }, hash);
+  await page.waitForSelector(".fd .fd-title", { timeout: 15000 });
+  await wait(page, 700);
 }
 
 async function typeSearch(page, text) {
@@ -192,6 +252,37 @@ async function goOffline(page) {
   await wait(page, 600);
 }
 
+/* Settings, Tuning and About (Redesign 2026, ambient, screen 9). Tuning is the existing `interests` step. These are
+   appended to `returning`: the gear's Sheet opened from Today's own gear, "What 4a does" over it, the Settings page
+   with Dawn chosen live (the page re-lights without a reload), and the About page. */
+async function openGearSheet(page) {
+  if (!(await page.locator("#st-menu:not([hidden])").count())) await page.locator("[data-today-gear]").first().click();
+  await page.waitForSelector("#st-menu:not([hidden])", { timeout: 10000 });
+  await wait(page, 700);
+}
+
+async function openWhatSheet(page) {
+  await openGearSheet(page);
+  await page.locator('#st-menu [data-st-menu="what"]').click();
+  await page.waitForSelector("#st-what:not([hidden])", { timeout: 10000 });
+  await wait(page, 800);
+}
+
+async function chooseDawn(page) {
+  await page.locator('[data-st-theme] [data-st-value="dawn"]').click();
+  await wait(page, 500);
+}
+
+function settingsSteps() {
+  return [
+    { label: "gear-sheet", route: "#/", run: (page) => openGearSheet(page), ready: "#st-menu:not([hidden])" },
+    { label: "what-4a-does", route: "#/", run: (page) => openWhatSheet(page), ready: "#st-what:not([hidden])" },
+    { label: "settings", route: "#/settings", ready: ".st-page[data-st-page=settings]" },
+    { label: "about", route: "#/about", ready: ".st-page[data-st-page=about]" },
+    { label: "settings-dawn-chosen", route: "#/settings", run: (page) => chooseDawn(page), ready: ".st-page[data-st-page=settings]" },
+  ];
+}
+
 /** Routes every seeded profile can show. `fx` supplies real ids. */
 function coreRoutes(fx, { entities }) {
   const ep = fx.items[0].id;
@@ -257,7 +348,7 @@ export function appStates(fx) {
       id: "returning",
       description: "Returning user: saved episodes, Up Next, playlists, starred shows, history.",
       seed: "returning",
-      steps: coreRoutes(fx, { entities: true }),
+      steps: [...coreRoutes(fx, { entities: true }), ...settingsSteps()],
     },
     {
       id: "player",
@@ -284,6 +375,26 @@ export function appStates(fx) {
       ],
     },
     {
+      id: "foray-detail",
+      description: "Foray detail: a narrated Foray, an unnarrated one, the Dawn scheme, and one that cannot play (its audio sources refused).",
+      seed: "returning",
+      steps: (() => {
+        const { narrated, plain } = forayDetailPicks(fx);
+        return [
+          { label: "foray", route: forayRoute(narrated), ready: ".fd .fd-title" },
+          { label: "foray-unnarrated", route: forayRoute(plain), ready: ".fd .fd-title" },
+          { label: "foray-dawn", route: forayRoute(plain), run: (page) => goDawn(page), ready: ".fd .fd-title" },
+          { label: "foray-unavailable", route: forayRoute(plain), run: (page) => openUnavailableForay(page, plain) },
+        ];
+      })(),
+    },
+    {
+      id: "foray-resume",
+      description: "Foray detail with the narrated Foray half played: the strip filled to the stored point and the button reading Resume.",
+      seed: "foray-resume",
+      steps: [{ label: "foray-resume", route: forayRoute(forayDetailPicks(fx).narrated), ready: ".fd #fy-play" }],
+    },
+    {
       id: "stress",
       description: "Long-title stress: 150-character titles, a 90-character show name, unbreakable tokens.",
       seed: "stress",
@@ -298,6 +409,16 @@ export function appStates(fx) {
         { label: "episode-token", route: "#/episode/uilab-stress-2" },
         { label: "mini-player", route: "#/library", run: (page) => startPlayback(page, "uilab-stress-1") },
         { label: "now-playing", route: "#/library", run: (page) => openNowPlaying(page) },
+      ],
+    },
+    {
+      id: "dock",
+      description: "The Dock: Discover with its field row over the mini player and the receded tab row, then Today scrolled until the tab row recedes (BUILD-PLAN 2.1 screen 2).",
+      seed: "returning",
+      steps: [
+        { label: "dock-discover", route: "#/shows", run: (page) => startPlayback(page, ep0) },
+        { label: "dock-receded", route: "#/", run: (page) => scrollPage(page, 120) },
+        { label: "dock-playing", route: "#/", run: (page) => keepPlaying(page) },
       ],
     },
     {
@@ -412,6 +533,12 @@ export function appStates(fx) {
           ready: ".ag-np",
         },
       ],
+    },
+    {
+      id: "show",
+      description: "A fresh profile on a show page (Redesign 2026, ambient): the Room lit by the show, Follow in its off state (the Regular plus), the latest episode first. The returning state's `show` step is the followed state.",
+      seed: "dismissed",
+      steps: [{ label: "show-unfollowed", route: "#/show/" + encodeURIComponent(fx.shows[0].show_id), ready: "[data-sh-room]" }],
     },
   ];
 }

@@ -7,6 +7,7 @@
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { indexSegments, indexSources, resolveForay, segmentAtElapsed } from "../../../player/foray-resolve.js";
 
 /** The frozen "now" every run starts from (2026-10-05 12:00 UTC). */
 export const FIXED_NOW_ISO = "2026-10-05T12:00:00.000Z";
@@ -52,7 +53,35 @@ export function loadFixtures(repoRoot) {
   const shows = catalog.shows.filter((s) => s.title && s.artwork_url).slice(0, 8);
   const tagged = catalog.shows.find((s) => Array.isArray(s.taxonomy_node_ids) && s.taxonomy_node_ids.length);
   const category = tagged ? tagged.taxonomy_node_ids[0] : "engineering";
-  return { items, shows, taxonomy, category, forays: forays.forays || [], episodeIds: items.map((i) => i.id) };
+  return {
+    items, shows, taxonomy, category, forays: forays.forays || [], episodeIds: items.map((i) => i.id),
+    forayDocs: { segments: readJson(repoRoot, "data/segments.json"), sources: readJson(repoRoot, "data/segment-sources.json") },
+  };
+}
+
+/** The two published Forays the Foray detail states open (the first Foray in the file is a draft, which the
+    page answers with "That foray isn't available"): one with narration, one without. Falls back to the first
+    published Foray for either when the data holds only one kind. */
+export function forayDetailPicks(fx) {
+  const published = fx.forays.filter((f) => f.status === "published");
+  const narrated = (f) => (f.items || []).some((i) => i.type === "narration");
+  const first = published[0] || fx.forays[0];
+  return { narrated: published.find(narrated) || first, plain: published.find((f) => !narrated(f)) || first };
+}
+
+/** A stored resume point for the narrated Foray, 55% of the way through, in the row shape
+    player/foray-progress.js writes (makeProgress): the Foray's own clock, the segment it was in, and when. */
+function forayResumeRow(fx) {
+  const foray = forayDetailPicks(fx).narrated;
+  const r = resolveForay(foray, { segments: indexSegments(fx.forayDocs.segments), sources: indexSources(fx.forayDocs.sources) });
+  const elapsed = Math.round(r.totalSec * 0.55);
+  const at = segmentAtElapsed(r.playable, elapsed);
+  return {
+    ["cp_foray:" + foray.id]: {
+      foray_id: foray.id, title: foray.title, elapsed_sec: elapsed, total_sec: r.totalSec,
+      index: at ? at.index : -1, segment_id: null, into_sec: 0, updated_at: new Date(FIXED_NOW - 3600000).toISOString(),
+    },
+  };
 }
 
 function playlistsOf(items, titles) {
@@ -119,6 +148,8 @@ export function buildSeed(kind, fx) {
     cp_history: items.slice(5, 11).map((i) => i.id),
     cp_playlists: playlistsOf(items, playlistTitles),
     cp_starred_shows: starred,
+    /* "foray-resume" (Foray detail): the returning profile with the narrated Foray part-played. */
+    ...(kind === "foray-resume" ? forayResumeRow(fx) : {}),
   };
 }
 

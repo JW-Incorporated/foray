@@ -64,7 +64,7 @@
         },
         "mini": {
           "prototype": ".mini",
-          "app": "#foray-player"
+          "app": "#dock-mini"
         },
         "tabBar": {
           "prototype": ".tabbar",
@@ -163,23 +163,146 @@
       }
     },
     "foray": {
-      "title": "Foray room",
+      "title": "Foray detail (half played: Resume)",
       "prototype": {
         "route": "#/foray"
       },
       "app": {
-        "state": "returning",
-        "step": "foray"
+        "state": "foray-resume",
+        "step": "foray-resume"
       },
       "regions": {
         "header": {
           "prototype": ".foray-top",
-          "app": ".page-head"
+          "app": ".fd-top"
         },
-        "rows": {
-          "prototype": ".seglist .row",
-          "app": null,
-          "mode": "all"
+        "hero": {
+          "prototype": ".foray-collage",
+          "app": ".fd-collage"
+        },
+        "strip": {
+          "prototype": ".strip-wrap",
+          "app": ".fd-sill"
+        },
+        "primary": {
+          "prototype": "[data-foray-cta], .foray-body .btn-primary",
+          "app": ".fd-cta"
+        },
+        "why": {
+          "prototype": ".whymade",
+          "app": ".fd-why"
+        },
+        "came": {
+          "prototype": ".came",
+          "app": ".fd-came"
+        }
+      }
+    },
+    "foray-unavailable": {
+      "title": "Foray detail, unavailable",
+      "prototype": {
+        "route": "?state=unavailable#/foray"
+      },
+      "app": {
+        "state": "foray-detail",
+        "step": "foray-unavailable"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".foray-top",
+          "app": ".fd-top"
+        },
+        "hero": {
+          "prototype": ".foray-collage",
+          "app": ".fd-collage"
+        },
+        "strip": {
+          "prototype": ".strip-wrap",
+          "app": ".fd-sill"
+        },
+        "primary": {
+          "prototype": "[data-foray-cta], .foray-body .btn-primary",
+          "app": ".fd-cta"
+        },
+        "why": {
+          "prototype": ".whymade",
+          "app": ".fd-why"
+        },
+        "came": {
+          "prototype": ".came",
+          "app": ".fd-came"
+        }
+      }
+    },
+    "foray-unnarrated": {
+      "title": "Foray detail, not narrated",
+      "prototype": {
+        "route": "?state=unnarrated#/foray"
+      },
+      "app": {
+        "state": "foray-detail",
+        "step": "foray-unnarrated"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".foray-top",
+          "app": ".fd-top"
+        },
+        "hero": {
+          "prototype": ".foray-collage",
+          "app": ".fd-collage"
+        },
+        "strip": {
+          "prototype": ".strip-wrap",
+          "app": ".fd-sill"
+        },
+        "primary": {
+          "prototype": "[data-foray-cta], .foray-body .btn-primary",
+          "app": ".fd-cta"
+        },
+        "why": {
+          "prototype": ".whymade",
+          "app": ".fd-why"
+        },
+        "came": {
+          "prototype": ".came",
+          "app": ".fd-came"
+        }
+      }
+    },
+    "foray-dawn": {
+      "title": "Foray detail, Dawn",
+      "prototype": {
+        "route": "?theme=dawn&state=unnarrated#/foray"
+      },
+      "app": {
+        "state": "foray-detail",
+        "step": "foray-dawn"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".foray-top",
+          "app": ".fd-top"
+        },
+        "hero": {
+          "prototype": ".foray-collage",
+          "app": ".fd-collage"
+        },
+        "strip": {
+          "prototype": ".strip-wrap",
+          "app": ".fd-sill"
+        },
+        "primary": {
+          "prototype": "[data-foray-cta], .foray-body .btn-primary",
+          "app": ".fd-cta"
+        },
+        "why": {
+          "prototype": ".whymade",
+          "app": ".fd-why"
+        },
+        "came": {
+          "prototype": ".came",
+          "app": ".fd-came"
         }
       }
     },
@@ -810,6 +933,82 @@
         "close": {
           "prototype": ".np-head button",
           "app": ".ag-np-head .fp-close"
+        }
+      }
+    },
+    "dock-discover": {
+      "title": "Dock: Discover with the field row over the mini player and the receded tab row",
+      "prototype": {
+        "route": "?mini=1#/search"
+      },
+      "app": {
+        "state": "dock",
+        "step": "dock-discover"
+      },
+      "regions": {
+        "dock": {
+          "prototype": ".dock",
+          "app": "#dock"
+        },
+        "field": {
+          "prototype": ".dock-field",
+          "app": "#dock-field"
+        },
+        "mini": {
+          "prototype": ".mini",
+          "app": "#dock-mini"
+        },
+        "tabBar": {
+          "prototype": ".tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "dock-receded": {
+      "title": "Dock: Today scrolled 120px, the tab row receded under the mini player",
+      "prototype": {
+        "route": "?mini=1&scroll=120#/home"
+      },
+      "app": {
+        "state": "dock",
+        "step": "dock-receded"
+      },
+      "regions": {
+        "dock": {
+          "prototype": ".dock",
+          "app": "#dock"
+        },
+        "mini": {
+          "prototype": ".mini",
+          "app": "#dock-mini"
+        },
+        "tabBar": {
+          "prototype": ".tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "dock-playing": {
+      "title": "Dock: Today with audio running, the mini row's pause glyph and its moving 2px Glow progress line",
+      "prototype": {
+        "route": "?mini=1#/home"
+      },
+      "app": {
+        "state": "dock",
+        "step": "dock-playing"
+      },
+      "regions": {
+        "dock": {
+          "prototype": ".dock",
+          "app": "#dock"
+        },
+        "mini": {
+          "prototype": ".mini",
+          "app": "#dock-mini"
+        },
+        "tabBar": {
+          "prototype": ".tabbar",
+          "app": "#tab-bar"
         }
       }
     }

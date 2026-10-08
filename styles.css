@@ -64,11 +64,6 @@
      and in the player. 16 is the iPhone's own content margin. */
   --gutter: 16px;
   --topbar-h: 44px;
-  /* U-12: the drawer is the top-most chrome. Defined here rather than at the
-     drawer's own rules so the whole stacking ladder has one authored number;
-     the ladder itself is documented in the `---------- drawer ----------`
-     block below, which is the only place this token is read. */
-  --z-drawer: 80;
   /* ELEVATION. Four levels, each with one job; colour-bearing, so `body.ui-v2`
      restates them below (the v2 page is dark whatever the OS says). */
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.2);                         /* thumbnails in rows and cards        */
@@ -351,7 +346,7 @@ html, body {
   .topbar button, button.star, .play-btn, button.up-next, button.reorder, button.up-next-remove, button.up-next-clear,
   .fy-thumb, .fp-grab-zone .fp-close, .fp-rate, .fp-stop, .fp-openep,
   .voice-row-audition, .fy-chip,
-  button.show-star, .fy-sheet-cancel, .fy-sheet-go, .interest-reset, .shell-notice button,
+  .fy-sheet-cancel, .fy-sheet-go, .interest-reset, .shell-notice button,
   .fy-script-more
 ) {
   position: relative;
@@ -360,7 +355,7 @@ html, body {
   .topbar button, button.star, .play-btn, button.up-next, button.reorder, button.up-next-remove, button.up-next-clear,
   .fy-thumb, .fp-grab-zone .fp-close, .fp-rate, .fp-stop, .fp-openep,
   .voice-row-audition, .fy-chip,
-  button.show-star, .fy-sheet-cancel, .fy-sheet-go, .interest-reset, .shell-notice button,
+  .fy-sheet-cancel, .fy-sheet-go, .interest-reset, .shell-notice button,
   .fy-script-more
 )::after {
   content: "";
@@ -391,7 +386,7 @@ a[href^="#/"] {
    a grey box on the link's text inside a card that is already darkening — so
    it goes, there and only there; test/tap-targets.test.js holds each of these
    to an authored press. */
-.mc-link, .ep-row .ep-title-link, .pl-row, .page-link-row, .drawer-item, .drawer-section {
+.mc-link, .ep-row .ep-title-link, .pl-row, .page-link-row {
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -547,125 +542,41 @@ body.view-home .topbar h1 .wordmark { display: none; }
 .topbar button:disabled { opacity: 0.45; cursor: default; }
 .topbar button:disabled:active { background: none; }
 
-/* ---------- drawer ----------
+/* The top bar's one button is the gear (Redesign 2026, ambient: the drawer it used to open is gone, and so is its block here).
+   Its glyph is the sprite's i-gear, drawn at the size the old text glyph was. */
+.topbar .topbar-glyph { width: var(--fs-glyph); height: var(--fs-glyph); fill: currentColor; stroke: none; vertical-align: middle; pointer-events: none; }
 
-   THE Z-INDEX LADDER, in one place, because this is the element that has to
-   sit at the top of it. Every fixed/sticky layer in this file, bottom to top:
+/* ---------- THE Z-INDEX LADDER ----------
+
+   In one place. Every fixed/sticky layer in this file, bottom to top:
 
         5  .fy-transport      sticky transport on a Foray page
        15  .page-head         sticky page header (pins under the topbar)
        19  .shell-notice      "this page is a version behind" bar (#233)
        20  .topbar            the fixed header  (also .fy-strip-bubble)
-       55  .tab-bar           the four-tab bar (U-02)
-       58  #sh-compose        the search page's bottom-docked search field —
-                              above the tab bar it docks on, below the player
-                              because #foray-player is also the Now Playing
-                              sheet and a search box must not punch through a
-                              modal. Its own block carries the full argument.
-       60  #foray-player      mini bar AND the expanded Now Playing sheet
-                              (the sheet is a FULL-HEIGHT overlay since the
+       55  #dock-layer        the Dock: Discover's field, the mini player and the
+                              three tabs, one Veil surface (ui/tabbar.js,
+                              ui/dock.css). It took the old tab bar's rung and
+                              the search field's, and the mini bar's: the field
+                              and the mini bar are rows of it, so they no longer
+                              need numbers of their own. Below the sheet, so a
+                              search box or a tab never punches through a modal.
+       60  #foray-player      the expanded Now Playing sheet (the mini bar left it
+                              for the Dock; the sheet is a FULL-HEIGHT overlay since the
                                2026-09-13 report and paints inside this
                                element's own stacking context, so it covers
                                the mini bar without needing a number of its
-                               own — and is still under the drawer, below)
-       70  .fy-sheet          the per-segment reason sheet (modal)
-    -> 80  #drawer-overlay     var(--z-drawer)
-       81  #drawer             var(--z-drawer) + 1, so the panel is over its
-                               own scrim and nothing else has to sit between
+                               own)
+    -> 70  .fy-sheet          every modal Sheet: the per-segment reason sheet,
+                              Delete my data, the voice picker, diagnostics, and
+                              the gear's Sheet and "What 4a does" (ui/settings.js,
+                              which wear `.ag` too)
 
-   U-12 (founder feedback F17) moved the drawer from 30/31 to the top. The
-   menu button lives in the topbar (20) and is reachable at every moment,
-   including while the Now Playing sheet is expanded — and #foray-player is
-   60, so at 30/31 the drawer opened UNDERNEATH the sheet: the scrim dimmed
-   nothing, the panel was invisible, and the tap that opened it looked like a
-   dead button. Navigation must be able to cover the thing it navigates away
-   from, so the drawer is now above BOTH the player (60) and the reason sheet
-   (70). This is a stacking change only — no size, colour or motion changed.
-
-   Anything new that must cover the drawer needs a number above these, and a
-   line in this list; nothing does today. */
-#drawer-overlay {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.45);
-  z-index: var(--z-drawer);
-}
-#drawer {
-  position: fixed;
-  top: 0; left: 0; bottom: 0;
-  width: min(78vw, 300px);
-  background: var(--surface);
-  border-right: 1px solid var(--line);
-  box-shadow: var(--shadow);
-  z-index: calc(var(--z-drawer) + 1);
-  padding: calc(env(safe-area-inset-top) + 14px) 10px 14px;
-  overflow-y: auto;
-}
-/* Top-level destinations (Home/Playlists) read as real nav items — serif,
-   normal case, same family as card/page headlines — distinct from
-   .drawer-section-label below, which is a small-caps section divider, not
-   a link. The two looked identical before (both bold uppercase caps),
-   with no way to tell "tap this" from "this just labels a group." */
-.drawer-section {
-  display: block;
-  margin: 2px 0;
-  padding: 11px 14px;
-  border-radius: var(--radius-md);
-  font-family: var(--font-display);
-  font-size: var(--fs-lg);
-  font-weight: 600; /* a nav row's title: 600, like every row title (round 2, visual-15) */
-  color: var(--text);
-  text-decoration: none;
-}
-.drawer-section:active { background: var(--surface-2); }
-.drawer-item {
-  display: block;
-  margin: 1px 0;
-  /* 44px by its own size (round 2, touch-5): 12 + ~20 + 12. Stacked 1px
-     apart, a hit box grown past the item would overlap its neighbour's. */
-  min-height: 44px;
-  padding: 12px 14px 12px 22px;
-  border-radius: var(--radius-md);
-  color: var(--text-dim);
-  text-decoration: none;
-  font-size: var(--fs-md);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.drawer-item:active { background: var(--surface-2); }
-.drawer-empty { padding: 6px 14px 6px 22px; color: var(--text-dim); font-size: var(--fs-md); }
-.drawer-section-label {
-  margin-top: 12px;
-  padding: 12px 14px 6px;
-  border-top: 1px solid var(--line);
-  font-family: var(--font-body);
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-dim);
-}
-.drawer-item.as-btn {
-  display: block;
-  width: 100%;
-  border: none;
-  background: none;
-  text-align: left;
-  font-family: inherit;
-  cursor: pointer;
-}
-/* The engine's Developer rows (app.js § the engine's Developer rows, NE-22d)
-   say what the engine answered ("armed. Lock the phone now ..."), and an
-   ellipsis would cut exactly the instruction the row exists to give. They
-   wrap instead; 44px stays the floor. */
-.drawer-item.drawer-wrap { white-space: normal; overflow: visible; }
-.drawer-item.as-btn:disabled { opacity: 0.6; cursor: default; }
-/* The Developer group (app.js § the Developer group): the founder's field-report
-   tools in one collapsed <details> at the bottom of Settings. The summary is an
-   ordinary drawer item; its chevron replaces the UA marker, which `.drawer-item`'s
-   `display: block` would hide anyway, and turns when the group is open. */
-.drawer-dev > summary { list-style: none; cursor: pointer; }
-.drawer-dev > summary::-webkit-details-marker { display: none; }
-.drawer-dev > summary::after { content: "\203A"; float: right; transition: transform 120ms; }
-.drawer-dev[open] > summary::after { transform: rotate(90deg); }
+   The drawer that used to sit above all of these (80 / 81, U-12, founder feedback
+   F17: navigation must be able to cover the thing it navigates away from) is gone;
+   what covers the Now Playing sheet is now the gear's Sheet at 70, through the
+   same sheet owner. Anything new that must cover a Sheet needs a number above 70
+   and a line in this list; nothing does today. */
 
 /* ---------- home: one screen, and only one screen ---------- */
 #view { padding-top: calc(var(--topbar-h) + env(safe-area-inset-top)); }
@@ -825,22 +736,8 @@ button.star {
 }
 button.star.on { color: var(--gold); }
 
-/* ---------- starred shows (follow-lite) ---------- */
-
-button.show-star {
-  display: block;
-  margin: 10px 0 14px;
-  padding: 10px 16px;
-  /* A capsule, like Apple's "+ Follow". */
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--line);
-  background: var(--surface-2);
-  color: var(--text);
-  font-size: var(--fs-md);
-  font-weight: 600;
-  cursor: pointer;
-}
-button.show-star.on { color: var(--gold); border-color: var(--gold); }
+/* ---------- starred shows (follow-lite) ----------
+   The Follow button is an Afterglow Secondary button (app.js showStarBtn, ui/show.css); the legacy capsule is gone. */
 
 /* THE ONE TEXT FIELD (audit round 2, visual-8). Playlists' and Create's
    fields were 52px at the card radius, the in-show search 48px, and the three
@@ -1633,38 +1530,24 @@ button.reorder.drag-handle {
 }
 .play-btn:active { transform: scale(0.94); }
 
-/* The player is fixed, so reserve room or it covers the last card.
-
-   N1 (founder feedback, ride-along on U-13): the reservation is COMPOSED,
-   never chosen. Two independent things occupy the bottom edge — the tab bar
-   (always, `body.ui-v2`) and the mini player / Now Playing sheet (only while
-   `body.fp-open`) — so each rule reserves the sum of what is actually on
-   screen, plus the home-indicator inset exactly once. The flat `96px` this
-   replaces left out `env(safe-area-inset-bottom)` even though #foray-player
-   pads itself by precisely that, so on a notched phone the last row of a
-   scrollable page sat under the ribbon.
-
-   And nothing reserves the bar's height when the bar is gone: every rule here
-   is scoped to `.fp-open`, which client.js removes in `stopAndClose()`, so
-   stopping takes the reservation with it rather than leaving a dead gap. */
+/* THE PLAYER'S BAR LIVES IN THE DOCK NOW (Redesign 2026, ambient; ui/tabbar.js,
+   ui/dock.css). The room the mini bar and the tab bar need at the bottom edge is
+   reserved by ONE rule over there (`--dock-reserve`), composed from what is on
+   screen exactly as N1 (founder feedback, ride-along on U-13) asked: the
+   reservation is never chosen, always the sum of what is present, with the
+   home-indicator inset counted once. What this file keeps is `--fp-bar-h`, which
+   the sheets below still read for the strip the bar occupies, and the player's
+   root, which now holds only the Now Playing sheet and the live region. */
 :root {
   /* The room the collapsed mini bar needs, as a token rather than a magic
-     number repeated across the rules below. Unchanged value: this is the
-     number that was inline. It is the bar box ONLY -- the safe-area inset is
-     added by the rules, never folded in here, so it is applied exactly once.
-     Its `--fp-sheet-h` sibling is gone: the expanded sheet is a full-height
-     overlay now and reserves nothing (see `.fp-sheet`). */
+     number repeated across the rules below. It is the bar box ONLY -- the
+     safe-area inset is added by the rules, never folded in here, so it is
+     applied exactly once. */
   --fp-bar-h: 96px;
 }
-body.fp-open { padding-bottom: calc(var(--fp-bar-h) + env(safe-area-inset-bottom)); }
 
 #foray-player {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
-  background: var(--surface);
-  border-top: 1px solid var(--line);
-  box-shadow: var(--shadow-up);
-  /* Android gesture bar / iPhone home indicator (#39 formalises this). */
-  padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
 /* While a soft keyboard is up, the bar is off the screen entirely (founder
@@ -1717,218 +1600,48 @@ body.kb-open #foray-player { display: none; }
   --tab-bar-h: calc(56px * min(var(--type-scale, 1), 1.5));
 }
 
-body.ui-v2 {
-  /* Reserves room so the LAST thing on every page (a card, a list row) is
-     not tucked under the bar — the same "reserve, don't overlap" rule
-     .topbar's own four reservations follow, just at the opposite edge. */
-  padding-bottom: calc(var(--tab-bar-h) + env(safe-area-inset-bottom));
-}
-.tab-bar {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 55; /* below #foray-player's 60: the mini-player docks ON TOP of the bar, never behind it */
-  display: flex;
-  height: calc(var(--tab-bar-h) + env(safe-area-inset-bottom));
-  padding-bottom: env(safe-area-inset-bottom, 0);
-  background: var(--surface);
-  border-top: 1px solid var(--line);
-  box-shadow: var(--shadow-up);
-}
-.tab-btn {
-  flex: 1;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 2px;
-  /* `--text-dim`, which ui-v2 aliases to `--muted` (audit 2026-09-22, qa row 79):
-     an idle tab's label is 0.66rem TEXT, and `--faint` is 3.1:1 on the bar. */
-  color: var(--text-dim);
-  text-decoration: none;
-  font-size: var(--fs-2xs);
-  font-weight: 600;
-}
-.tab-btn svg { width: 22px; height: 22px; fill: currentColor; stroke: none; }   /* the Phosphor sprite is filled paths, painted by currentColor (ui/icons.js) */
-/* The listener's OWN current location in the app is their material, not
-   4a's editorial voice — amber, not violet, per the split U-01 establishes
-   and issue #127 requires stay meaningful everywhere it appears. Falls
-   back to --accent outside ui-v2 scope, though in practice the bar never
-   renders there at all (see the header comment). */
-.tab-btn[aria-current="page"] { color: var(--accent); }
-body.ui-v2 .tab-btn[aria-current="page"] { color: var(--amber); }
-
-/* The mini-player DOCKS ABOVE the bar (U-02's ask, "exactly as the mockup
-   stacks them") rather than overlapping or replacing it — both must stay
-   reachable at once, since the bar is primary nav and the player is
-   transport. Bumping #foray-player's own `bottom` by the bar's reserved
-   height is what "docked above" means in a fixed-position layout; the
-   content reservation below stacks the tab-bar's height UNDERNEATH the
-   existing fp-open reservation (96px) rather than replacing it,
-   because both are real space something now occupies.
-
-   There is no longer a `.fp-expanded` variant of that reservation: since the
-   2026-09-13 founder report the expanded Now Playing sheet is a full-height
-   OVERLAY (see `.fp-sheet` below), so it occupies no page space to reserve —
-   the mini bar's 96px is the only bottom furniture the page ever has to
-   account for, open or closed. */
-body.ui-v2.fp-open #foray-player {
-  bottom: calc(var(--tab-bar-h) + env(safe-area-inset-bottom));
-  /* The inset is applied ONCE, by the tab bar underneath (its own box already
-     contains it). `#foray-player`'s base rule pads itself by the inset for the
-     case where it sits on the screen's bottom edge; docked above the tab bar it
-     is not on that edge, so the same padding became a ~34px dead band of bar
-     surface above the tab bar on a home-indicator iPhone — the exact
-     "applied exactly once" trap the reservation comment above warns about
-     (audit 2026-09-22). */
-  padding-bottom: 0;
-}
-body.ui-v2.fp-open {
-  padding-bottom: calc(var(--fp-bar-h) + var(--tab-bar-h) + env(safe-area-inset-bottom));
-}
-/* ---------- the search page's floating search pill (#sh-compose) ----------
+/* THE TAB BAR IS THE DOCK'S BOTTOM ROW NOW (Redesign 2026, ambient; ui/dock.css).
+   `.tab-bar`, `.tab-btn`, the mini bar docked above it and the page's bottom
+   reservation for both are gone from this file: one Veil surface, one reservation
+   (`--dock-reserve`), written beside the surface it reserves for. `--tab-bar-h`
+   above stays only because the iOS Dynamic Type bridge and the Search pill's
+   arithmetic below still name it; the Dock's tab row is `--tab-bar` (64px,
+   ui/tokens.css), and it recedes to 36. */
+/* ---------- the search page's field (#sh-compose): the Dock's top row ----------
 
    FOUNDER, 2026-09-13: "We should likely also move the search bar down to the
    bottom - model it after most other text boxes, for example in the Claude
-   app or Apple Podcasts" — then, having checked his phone: "the text field on
+   app or Apple Podcasts" - then, having checked his phone: "the text field on
    Apple Podcasts search is definitely on the bottom. Let me share some
    pictures, they seem to have nailed it."
 
-   SO THIS IS BUILT AGAINST THOSE SCREENSHOTS, not against an idea of what
-   Apple probably does. What they show, and what the rules below reproduce in
-   our own palette and type rather than copy pixel for pixel:
+   That ruling stands: the field is at the BOTTOM. What changed (Redesign 2026,
+   ambient, the Dock) is who holds it there. It used to be its own
+   `position: fixed` row, lifted by a sum of per-object terms (`--sh-dock`: the
+   tab bar, the mini bar, the home indicator) to sit above two other fixed bars.
+   Those were three floating things stacked by arithmetic; they are ONE surface
+   now (ui/tabbar.js, ui/dock.css) - the field, the mini player and the three
+   tabs are rows of the Dock, divided by a rim, with no gap - and the Dock owns
+   the bottom edge, the home-indicator inset (counted once), the keyboard lift
+   (`--kb-inset`) and the stacking (55, the old tab bar's rung). ui/tabbar.js
+   moves this page's own #sh-compose into the Dock's field row after the render;
+   everything here that is not about WHERE the field sits is still its look.
 
-     - a FLOATING ROW inset from both screen edges, not a full-width bar
-       welded to the bottom of the window;
-     - the field as a TRANSLUCENT ROUNDED PILL with the page's own content
-       scrolling visibly behind it;
-     - a CIRCULAR COMPANION BUTTON beside the pill (app.js explains why ours
-       is empty when idle where theirs holds a Home button);
-     - the mini-player floating as its own inset pill ABOVE the field, and
-       GONE while the keyboard is up.
+   What the founder's photographs settled, and what is kept below: a TRANSLUCENT
+   ROUNDED PILL, and a CIRCULAR COMPANION BUTTON beside it (app.js explains why
+   ours is empty when idle where theirs holds a Home button). The Dock restyles
+   both onto its Veil (no hairline, no second blur: the Dock is the only blurred
+   surface); the rules below are the page's own base, which the Discover screen
+   unit replaces with the SearchField primitive.
 
-   That last one we had already shipped independently, in the rule above
-   (`body.kb-open #foray-player`), from a separate founder report. Apple
-   agrees with it. The one place we do NOT match them yet is the mini-player's
-   own SHAPE — theirs is an inset floating pill, ours is still a full-width
-   docked bar — and that is deliberately left alone here: `#foray-player`'s
-   markup belongs to the player module and to the Now Playing sheet work
-   landing beside this.
-
-   These rules sit here, after the player and tab-bar block rather than next
-   to `#sh-form` where the field's own styling lives, because what they have
-   to say is entirely about the bottom edge: they compose `--tab-bar-h`,
-   `--fp-bar-h` and `--kb-inset`, and the reader needs those three in view to
-   check the arithmetic.
-
-   WHAT ELSE IS DOWN THERE, bottom-up, and where this lands in it:
-
-     .tab-bar       z 55   always (body.ui-v2), bottom: 0
-     #sh-compose    z 58   <- here
-     #foray-player  z 60   only while body.fp-open; sits above the tab bar,
-                           and is display:none while body.kb-open
-
-   ABOVE THE TAB BAR (55) because the row floats ON TOP of it, which is the
-   same relationship the mini-player has to it and so belongs on the same side
-   of 55. BELOW THE PLAYER (60) because that id is two things: the mini bar
-   AND the expanded Now Playing sheet. A search pill that outranked 60 would
-   float over an open sheet — a modal with someone else's chrome punched
-   through it. Yielding costs nothing in the only case where the two share the
-   screen, because they never overlap: `--sh-dock` lifts this row clear of the
-   mini bar while the keyboard is shut, and `body.kb-open` takes the mini bar
-   off the screen entirely while it is open. That is also the order Apple
-   uses — mini-player above the field, never below it. The ladder near the top
-   of this file carries 58 too.
-
-   `--sh-dock` IS THE ROOM ALREADY TAKEN at the bottom edge, composed exactly
-   the way `body.fp-open`'s content reservations above compose it: each rule
-   names the sum of what is actually on screen, and adds the home-indicator
-   inset exactly once. It is spent as `bottom` — the row FLOATS, so unlike a
-   welded bar it has no background that must reach the screen edge, and
-   lifting it is both simpler and what the screenshots show. `--fp-bar-h` is
-   the player's generous reservation rather than its drawn height, so the gap
-   above the mini bar is a little roomier than Apple's; that is a nicer
-   failure than a 1px overlap, and it reuses the existing token instead of
-   introducing a second number for the same object.
-
-   THE `:not(.kb-open)` PREFIX IS LOAD-BEARING, not decoration. While the
-   keyboard is up there is nothing left to clear — the player is hidden by the
-   rule above, and the tab bar and the home indicator are both behind the
-   keyboard — so `--sh-dock` must fall back to the bare gap. Writing that as a
-   `body.kb-open` override would LOSE: `body.ui-v2.fp-open #sh-compose` is the
-   more specific selector and would keep winning. Scoping the dock rules
-   themselves means the keyboard-open case simply matches none of them and
-   inherits the default. */
-:root {
-  /* The breathing room between the row and whatever is under it — the screen
-     edge, the tab bar, the mini bar. One token, because Apple's inset is
-     visibly the same on every side. */
-  --sh-gap: 10px;
-}
-
-/* ONE TERM PER OBJECT, NOT ONE RULE PER COMBINATION (rewritten 2026-09-14,
-   when the tab bar became the third thing that can be absent — founder: "when
-   the search bar is up, this home ribbon should go away").
-
-   This block used to enumerate the combinations: four rules for two optional
-   objects plus a catch-all for the case the other three missed. That is 2^n
-   rules for n objects and it had already produced one rule
-   (`:not(.ui-v2):not(.fp-open)`) whose only job was to re-add a term the
-   other three each added separately. A third object would have taken it to
-   eight, and the founder's change makes the tab bar exactly that.
-
-   So each object now contributes its OWN term, switched by its OWN selector,
-   and `--sh-dock` sums them. The header's rule is unchanged and is now
-   literal rather than restated per combination: `--sh-dock` is the room
-   already taken at the bottom edge, and the home-indicator inset is added
-   exactly once because it is added by exactly one rule.
-
-   THE `:not(.kb-open)` PREFIX STAYS ON EVERY TERM, for the reason above: with
-   the keyboard up, nothing down there is on screen, every term is 0, and the
-   dock is the bare gap. It is repeated per term rather than factored out
-   because the terms have to be able to be zeroed independently, and because
-   a factored version would need a higher-specificity override to win — the
-   trap the header paragraph describes. */
+   WHAT ELSE IS DOWN THERE: the player's root is `#foray-player` at z 60 and holds
+   only the Now Playing sheet now; `body.kb-open` still takes it off the screen.
+   The Dock's mini row and tab row yield to the keyboard in ui/dock.css. */
 #sh-compose {
-  /* Every optional object defaults to contributing nothing; the rules below
-     turn on only the terms that are actually on screen. */
-  --sh-tab: 0px;
-  --sh-fp: 0px;
-  --sh-safe: 0px;
-  --sh-dock: calc(var(--sh-gap) + var(--sh-tab) + var(--sh-fp) + var(--sh-safe));
-  position: fixed;
-  left: var(--sh-gap); right: var(--sh-gap);
-  /* `--kb-inset` is written by app.js's installKeyboardChrome (see
-     keyboardInsetPx): the distance this row must rise to sit on the
-     keyboard's top edge. 0 whenever no keyboard is up, and 0 on any browser
-     that never sets it. */
-  bottom: calc(var(--kb-inset, 0px) + var(--sh-dock));
-  z-index: 58;
   display: flex;
   align-items: center;
   gap: 8px;
 }
-/* The tab bar: present under ui-v2, and `sh-searching` is the class that
-   takes it away while the field holds focus (see the rule further down that
-   actually hides it, and updateShowBrowseVisibility for why both live on one
-   class). The bar leaving and its height leaving the dock are the SAME
-   selector, which is the only reason the pill does not jump when it goes. */
-body:not(.kb-open).ui-v2:not(.sh-searching) #sh-compose { --sh-tab: var(--tab-bar-h); }
-/* The mini-player, for as long as something is playing. */
-body:not(.kb-open).fp-open #sh-compose { --sh-fp: var(--fp-bar-h); }
-/* The home indicator is down there whatever else is or is not — once. */
-body:not(.kb-open) #sh-compose { --sh-safe: env(safe-area-inset-bottom, 0px); }
-
-/* THE TAB BAR YIELDS TO THE KEYBOARD (founder, 2026-09-14, with a screenshot
-   of it wedged between the search pill and the keyboard — the strip where
-   Apple Podcasts shows nothing at all).
-
-   `display: none`, not `[hidden]`, and that is not a style preference.
-   `.tab-bar` below carries `display: flex`; an author `display` declaration
-   beats the UA stylesheet's `[hidden] { display: none }` at any specificity,
-   which is the cascade trap renderTabBar's own header documents and
-   test/home-layout.test.js's BUG 3 exists to catch. This is an author rule
-   (0,2,1) against `.tab-bar` (0,1,0), so it wins on the terms the cascade
-   actually judges.
-
-   It also has to beat `body.ui-v2 .tab-bar`-shaped rules if any appear later;
-   `body.sh-searching` is the same weight as `body.ui-v2`, so this is placed
-   AFTER the tab-bar block rather than relying on specificity alone. */
-body.sh-searching .tab-bar { display: none; }
 
 /* THE PILL. `#sh-form`'s own rule earlier in this file is the page-content
    version (a plain flex row with a 14px bottom margin); inside the floating
@@ -2028,64 +1741,19 @@ body.sh-searching .tab-bar { display: none; }
   stroke: currentColor; stroke-width: 2; stroke-linecap: round; fill: none;
 }
 
-/* The row floats, so it occupies none of the page's own height and the last
-   A–Z row would end underneath it. Content scrolling BEHIND the pill is the
-   look we want; content permanently UNREACHABLE behind it is not, so the page
-   still reserves the row's height. Reserved on `#view` rather than on `body`
-   precisely so it STACKS with body's existing tab-bar/player reservations
-   instead of having to restate them. `body.sh-compose` is set by
-   renderAllShows and cleared by the next page's setBodyClass(), so no other
-   page pays for it. */
-:root { --sh-compose-h: 66px; }   /* the 46px pill + --sh-gap above and below */
-body.sh-compose #view { padding-bottom: var(--sh-compose-h); }
-.fp-progress { height: 3px; background: var(--surface-2); }
-.fp-fill { height: 100%; width: 0; background: var(--accent); transition: width .25s linear; }
-
-.fp-bar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
-.fp-art { width: 40px; height: 40px; border-radius: var(--radius-sm); flex: none; box-shadow: var(--shadow-sm); }
-/* The artwork opens Now Playing, like the title beside it (player/client.js
-   wires the same handler) — it is the most obvious 40px target on the bar and
-   every podcast app opens the player from it (audit 2026-09-22). */
-.fp-bar .fp-art { cursor: pointer; }
-/* `align-self: stretch` + centred content: the button fills the bar's full
-   height instead of shrinking to its two lines of text, so the ~8px bands
-   above the title and below the show name — which look like the bar — open
-   the player too, rather than being dead (audit 2026-09-22). */
-.fp-info {
-  flex: 1 1 auto; min-width: 0;
-  align-self: stretch; min-height: 44px;
-  display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px;
-  background: none; border: 0; color: inherit; text-align: left; cursor: pointer; padding: 0;
-}
-.fp-title, .fp-show, .fp-err { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.fp-title { font-family: var(--font-display); font-size: var(--fs-md); font-weight: 600; color: var(--text); }
-.fp-show { font-size: var(--fs-xs); color: var(--text-dim); }
-/* A failed play (player/client.js `setPlayFailure`, audit 2026-09-22): the show
-   line's slot and size, in the error tone `.fy-error` uses on the Foray page. */
-.fp-err { font-size: var(--fs-xs); color: var(--gold); }
-
-/* Big targets — this is still a car product (04_VOICE_AUDIO_SPEC safety).
-   fp-play is the primary action and stays filled at rest, not just on
-   hover — hover barely applies on the touch devices this is mostly used
-   on, so a hover-only accent left the main button looking like every
-   other secondary control until you happened to point at it. */
-.fp-play, .fp-close {
+/* The page reserves room at its bottom edge for the Dock (and, on Discover, the field row it
+   carries) in ONE place: `body.ui-v2`'s padding-bottom in ui/dock.css, composed from what is on
+   screen. `body.sh-compose` is set by renderAllShows and cleared by the next page's
+   setBodyClass(), so no other page pays for the field row. */
+/* THE MINI BAR'S OWN RULES MOVED TO ui/dock.css (Redesign 2026, ambient): its
+   progress line, artwork, title button, Play and Skip are a row of the Dock now.
+   What stays here is the sheet's ✕. Big targets - this is still a car product
+   (04_VOICE_AUDIO_SPEC safety): 44px to hit. */
+.fp-close {
   flex: none; width: 44px; height: 44px; border-radius: var(--radius-round);
-  border: 1px solid var(--line); background: var(--surface-2); color: var(--text);
-  font-size: var(--fs-md); cursor: pointer; padding: 0;
+  border: 1px solid var(--line); background: var(--surface-2); color: var(--text-dim);
+  font-size: var(--fs-xs); cursor: pointer; padding: 0;
 }
-.fp-play { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: var(--shadow); }
-.fp-close { font-size: var(--fs-xs); color: var(--text-dim); }
-/* The bar's back-15 (persona 10): 44px to hit, borderless so the bar stays
-   quiet beside the one filled control (▶). Tabular so "↺ 15" never jitters. */
-.fp-skip {
-  flex: none; width: 44px; height: 44px; border-radius: var(--radius-round);
-  border: 0; background: none; color: var(--text);
-  font: inherit; font-size: var(--fs-xs); font-weight: 600; font-variant-numeric: tabular-nums;
-  cursor: pointer; padding: 0;
-  touch-action: manipulation;
-}
-.fp-skip:active { background: var(--surface-2); }
 /* U-13 follow-up: the ✕ belongs to the EXPANDED sheet, not to the mini bar it
    sits in. Once closing means collapse (client.js's `fp-close` comment), a ✕ on
    an already-collapsed bar has nothing to collapse — a visible control that does
@@ -3242,26 +2910,13 @@ body.fy-sheet-keeps-player.fp-open .fy-sheet .fy-panel {
 }
 
 /* ---------- show page (#/show/:id, Stage 1) ---------- */
-/* ONE HERO, ONE AXIS (visual pass 1, 2026-09-23). Art centred, Follow flush
-   left and its note flush left read as three unrelated stacks under a title
-   that sits beside the back button; the art, the Follow and the note are now
-   one centred block, a section (20px) above the list. The episode page's
-   art + actions block is centred the same way (`.ep-actions`). */
-.show-hero { text-align: center; margin: 0 0 20px; }
-.show-hero .show-star { display: inline-block; margin: 0 auto 8px; }
-.show-art {
-  display: block;
-  width: 100%; max-width: 220px;
-  margin: 0 auto 12px;
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
-}
+/* The show page's hero (art, Follow, note) is the Room in ui/show.css; the legacy `.show-hero` and `.show-art` are gone. */
 /* ONE SQUARE-ARTWORK TREATMENT (audit 2026-09-22, qa row 59): the show page,
    the episode page and the Now Playing sheet show the same object, and it used
    to be flat-and-bordered on one and lifted-and-unbordered on another. Apple's
    art floats; ours floats too, with a hairline so dark art keeps an edge on a
    dark page. */
-.show-art, .ep-art, .fp-s-art {
+.ep-art, .fp-s-art {
   border-radius: var(--radius-md);
   border: 1px solid var(--line);
   box-shadow: var(--shadow-lift);
@@ -3713,14 +3368,7 @@ body.ui-v2 .page-link-row {
 }
 body.ui-v2 .page-link-row:active { background: var(--surface2); }
 
-/* ---------- Show page ---------- */
-body.ui-v2 button.show-star {
-  border-color: var(--line);
-  background: var(--surface);
-  color: var(--muted);
-}
-/* Starring is the listener's own material -- amber, per #127. */
-body.ui-v2 button.show-star.on { color: var(--amber); border-color: var(--amber); }
+/* ---------- Show page ---------- (its Room, Follow and rows are ui/show.css) */
 /* Saving a playlist makes it the listener's own material -- amber, per #127. */
 body.ui-v2 button.pl-save {
   border-color: var(--line);
@@ -3968,26 +3616,12 @@ body.ui-v2 button.danger { color: var(--muted); }
 /* ---------- mini/full player chrome (styles.css only -- player/*.js untouched) ----------
    Every selector here already exists in the v1 player CSS above; nothing in
    player/client.js or any other player/*.js file changes -- only the paint. */
-body.ui-v2 #foray-player {
-  background: var(--surface);
-  border-top-color: var(--line);
-}
-body.ui-v2 .fp-progress { background: var(--surface2); }
-/* The scrub position is the listener's own place in the episode -- amber,
-   matching the Foray strip's own position marker above. */
-body.ui-v2 .fp-fill { background: var(--amber); }
-body.ui-v2 .fp-title { font-family: var(--font-display); color: var(--text); }
-body.ui-v2 .fp-show { color: var(--muted); }
-body.ui-v2 .fp-play, body.ui-v2 .fp-close {
+/* The mini bar (progress line, title, Play, Skip) is painted by ui/dock.css now. */
+body.ui-v2 .fp-close {
   border-color: var(--line);
   background: var(--surface2);
-  color: var(--text);
+  color: var(--muted);
 }
-/* Play/pause is 4a's own transport control -- violet. */
-body.ui-v2 .fp-play { background: var(--violet); border-color: var(--violet); color: var(--bg); box-shadow: none; }
-body.ui-v2 .fp-close { color: var(--muted); }
-body.ui-v2 .fp-skip { color: var(--text); }
-body.ui-v2 .fp-skip:active { background: var(--surface2); }
 body.ui-v2 .fp-clip, body.ui-v2 .fy-clip { color: var(--muted); }
 body.ui-v2 .fp-clip:hover:not(:disabled), body.ui-v2 .fp-clip:active:not(:disabled),
 body.ui-v2 .fy-clip:hover:not(:disabled), body.ui-v2 .fy-clip:active:not(:disabled) { color: var(--text); }
@@ -3996,14 +3630,15 @@ body.ui-v2 .fp-s-desc { color: var(--text); }
 body.ui-v2 .fp-grab-zone .fy-grab { background: var(--line); }
 body.ui-v2 .fp-times { color: var(--muted); }
 body.ui-v2 .fp-btn:hover:not(:disabled) { border-color: var(--violet); }
-/* The sheet's Play is the bar's Play: the same violet fill (`.fp-play`). */
+/* The sheet's Play keeps the legacy violet fill until the Now Playing screen unit
+   gives it the Ember treatment the mini bar's Play already has (ui/dock.css). */
 body.ui-v2 .fp-btn.fp-big { background: var(--violet); border-color: var(--violet); color: var(--bg); }
 /* After the shared rule, so Stop keeps the weight `.fp-stop`'s own comment
    explains (it is not Close). */
 body.ui-v2 .fp-stop { color: var(--danger-text); border-color: color-mix(in srgb, var(--danger) 55%, var(--line)); }
 body.ui-v2 .fp-openep { color: var(--violet); }
 body.ui-v2 .fp-note { color: var(--muted); }
-body.ui-v2 .fp-err, body.ui-v2 .fp-err-line { color: var(--amber); }
+body.ui-v2 .fp-err-line { color: var(--amber); }
 
 /* ---------- Library summaries reached from Playlists' "Library ›" link ---------- */
 body.ui-v2 .lib-section-head { color: var(--muted); }
@@ -4214,15 +3849,7 @@ body.ui-v2 .hv2-suggested .mini-card > .hv2-bridge { flex-basis: 100%; }
 /* `.ep-why` is gone with the line it styled (founder, 2026-09-21: "Delete the
    'why it's in 4a' field from anything the user can read"). */
 
-/* ---------- overlays: the drawer is modal, and sheets move (audit round 2) ----------
-
-   nav-5: `body.drawer-open` is the drawer's page lock, the twin of
-   `body.fp-expanded` above — a drag on its scrim, or on a panel too short to
-   scroll, scrolled the page behind it and the listener lost their place.
-   `overscroll-behavior: contain` keeps the panel's own scroll from chaining
-   into the document; `touch-action: none` on the scrim is what stops a thumb
-   resting on it from panning what it dims. app.js's `openDrawer` writes the
-   class and takes the page `inert`, the same contract every sheet has.
+/* ---------- overlays: sheets move (audit round 2) ----------
 
    touch-4 / touch-8: every `.fy-panel` slides in, and can be pulled down.
    `--fy-panel-dy` is the drag offset app.js's owner writes (the same custom-
@@ -4238,10 +3865,6 @@ body.ui-v2 .hv2-suggested .mini-card > .hv2-bridge { flex-basis: 100%; }
    so it outranks the rules that switch the transitions on; app.js's
    `slideIn`/`slideOut` decline under the same query, so nothing waits on a
    transition that will not run. */
-body.drawer-open { overflow: hidden; }
-#drawer { overscroll-behavior: contain; }
-#drawer-overlay { touch-action: none; }
-
 .fy-panel {
   transform: translateY(var(--fy-panel-dy, 0px));
   animation: fy-panel-in .22s ease;
@@ -4263,7 +3886,6 @@ body.drawer-open { overflow: hidden; }
    fill's width tween is listed too: under this setting the bar steps with the
    clock instead of gliding, which reads the same and moves less.) */
 @media (prefers-reduced-motion: reduce) {
-  .drawer-dev > summary::after,
   .mini-card,
   .page-head,
   .fp-fill,

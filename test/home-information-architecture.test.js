@@ -219,11 +219,13 @@ test("the playlist builder renders on Create — not on Home, and not on #/playl
      with two vocabularies — Create's and #/playlists' "build me a playlist…" /
      Go — so #/playlists is now the list with one link to Create, and Create
      holds the one builder. The drawer keeps its five entries; only the page
-     changed.
+     changed. (Redesign 2026, the Dock: the Create tab folded into Discover's field, so "the one
+     builder" is Discover's button, and the list's one door and the empty line point at #/shows. RULING
+     THAT FELL: "four tabs + drawer".)
 
      MUTATION: paste the `#pl-form` block back into renderHome's or
      renderPlaylists's template — either page's assertions fail. Drop the
-     `page-link-row` to #/create from renderPlaylists — the list loses its one
+     `page-link-row` to #/shows from renderPlaylists — the list loses its one
      door to the builder, red. */
   const m = quietMount();
 
@@ -236,11 +238,11 @@ test("the playlist builder renders on Create — not on Home, and not on #/playl
   const playlists = m.view();
   assert.ok(!playlists.includes("<form"), "the Playlists page renders no builder form at all");
   assert.ok(!playlists.includes("build me a playlist"), "and not the old builder's placeholder");
-  assert.ok(playlists.includes('class="page-link-row" href="#/create"'), "the list links to the one builder, on Create");
-  assert.ok(playlists.includes('No playlists yet — <a href="#/create">build one on the Create tab</a>.'),
+  assert.ok(playlists.includes('class="page-link-row" href="#/shows"'), "the list links to the one builder, on Discover");
+  assert.ok(playlists.includes('No playlists yet — <a href="#/shows">build one from Discover</a>.'),
     "the empty state says the same sentence Library's does, and points the same way");
-  /* That Create holds the one builder (#cr-form/#cr-input) is test/create-page.test.js's
-     subject, with a harness that parses the form; this by-id stub cannot. */
+  /* That Discover's button builds through the one creation path is test/search-playlists.test.js's
+     subject; the unrouted Create page's own form is test/create-page.test.js's. */
 });
 
 test("the show search renders on #/shows and not on Home", () => {
@@ -297,31 +299,26 @@ test("'Shows 4a vouches for' renders on #/shows and not on Home", () => {
 /* 6-7. THE MENU ITSELF                                                  */
 /* ==================================================================== */
 
-test("the menu lists exactly the five named destinations, in the founder's order", () => {
-  /* "Menu should have the following pages: Home, Shows, Playlists, Forays,
-     Up Next." Asserted as an exact, ordered list rather than five
-     containment checks, because the failure this guards is ACCUMULATION —
-     the same failure the home screen just had. A sixth entry is a change to
-     the information architecture and should have to edit this line.
+test("the navigation is exactly three tabs, in order, and no drawer holds a second list", () => {
+  /* REDESIGN 2026, ambient (DIRECTION.md "Information architecture"): the ruling that fell is the founder's
+     "Menu should have the following pages: Home, Shows, Playlists, Forays, Up Next" (2026-09-03) and the drawer that
+     carried it. Playlists, Forays and Up Next are Library's sections now, and Settings, Tuning and About sit behind
+     the gear. What this guards is unchanged: ACCUMULATION. The failure was a navigation that grew one "just one more
+     row" at a time, so the list is asserted as an exact, ordered list, read out of ui/tabbar.js's TAB_ROUTES (where
+     the shipped navigation actually lives), and index.html is asserted to carry no second one.
 
-     Read out of index.html, which is where the drawer's markup actually
-     lives; nothing in app.js rebuilds these five links.
-
-     MUTATION: add a sixth `<a class="drawer-section">` to index.html, or
-     reorder two. deepStrictEqual fails and prints the list. RUN: added
-     "Starred Shows" back as a sixth; failed naming it. */
-  const items = [...INDEX_HTML.matchAll(/<a class="drawer-section" href="([^"]+)">([^<]+)<\/a>/g)]
-    .map((m) => [m[2], m[1]]);
+     MUTATION: add a fourth entry to TAB_ROUTES, or reorder two; or put `<nav id="drawer">` back in index.html.
+     deepStrictEqual (or the markup check) fails and prints what it found. */
+  const tabbar = fs.readFileSync(path.join(ROOT, "ui", "tabbar.js"), "utf8");
+  const routes = /const TAB_ROUTES = \[([\s\S]*?)\n\];/.exec(tabbar)[1];
+  const items = [...routes.matchAll(/label: "([^"]+)", hash: "([^"]+)"/g)].map((m) => [m[1], m[2]]);
   assert.deepStrictEqual(items, [
-    ["Today", "#/"],   /* REDESIGN 2026 (ambient Dock): the tab bar says Today and Discover, so the drawer does too (one name per destination) */
-    /* "Search", not "Shows", since 2026-09-22: one name per destination, and
-       the tab bar's name wins (audit personas 36 and 76). Same page, same
-       place in the founder's order. */
+    ["Today", "#/"],
     ["Discover", "#/shows"],
-    ["Playlists", "#/playlists"],
-    ["Forays", "#/forays"],
-    ["Up Next", "#/queue"],
-  ], "the drawer's top-level destinations must be exactly these five, in this order");
+    ["Library", "#/library"],
+  ], "the top-level destinations must be exactly these three, in this order");
+  assert.ok(!/id="drawer"|class="drawer-section"/.test(INDEX_HTML), "no drawer, and no drawer links, in index.html");
+  assert.ok(/id="menu-btn" aria-label="Settings"/.test(INDEX_HTML), "the top bar's one button is the gear");
 });
 
 test("route() dispatches #/forays to renderForays, matching the #/playlists pattern", () => {
@@ -438,8 +435,8 @@ test("a Foray's back link lands on #/forays, where an unlocked draft is still li
 
      MUTATION: change renderForay's back link to href="#/". This fails. RUN:
      failed as named. */
-  const forayPage = APP_SRC.slice(APP_SRC.indexOf('<div class="page foray">'));
-  const back = /<a class="back" href="([^"]+)">/.exec(forayPage);
+  const forayPage = APP_SRC.slice(APP_SRC.indexOf('<div class="page foray fd-page">'));
+  const back = /<a class="back ag-btn ag-btn-icon" href="([^"]+)"/.exec(forayPage);
   assert.ok(back, "the Foray page must still render a back link");
   assert.strictEqual(
     back[1], "#/forays",

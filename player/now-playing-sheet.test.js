@@ -312,10 +312,10 @@ test("the ✕ lives in the sheet's grab row, not on the mini bar it would now hi
      U-13 removed once already. It is also the non-gesture way out, which a
      drag can never be for a switch or screen-reader user.
      MUTATION: restore `bar.append(art, info, playBtn, closeBtn)`. The second
-     assertion fails. (The bar's back-15 `skipBtn` sits between the title and
-     ▶ since visual pass 1, persona 10 — test/transport-controls.test.js.) */
+     assertion fails. (The bar's `skipBtn` is a nudge beside ▶ since visual pass 1, persona 10 - back
+     15 then, forward 30 and AFTER ▶ in the Dock's mini row: test/transport-controls.test.js.) */
   assert.match(FLAT_TEXT, /grabZone\.append\(el\("div", "fy-grab"\), closeBtn\);/);
-  assert.match(FLAT_TEXT, /bar\.append\(art, info, skipBtn, playBtn\);/);
+  assert.match(FLAT_TEXT, /bar\.append\(art, info, playBtn, skipBtn\);/);
   assert.doesNotMatch(FLAT_TEXT, /bar\.append\([^)]*closeBtn/);
   /* Unchanged from U-13, and asserted here because this is the change that
      could have quietly dropped it: the control still only COLLAPSES. */
@@ -402,7 +402,8 @@ test("opening and closing go through app.js's sheet owner, with the topbar left 
   assert.ok(fn, "setExpanded must exist");
   const body = fn[0];
   assert.match(body, /owner\.openSheet\(ui\.sheet, \{/);
-  assert.match(body, /keepReachable: \[[^\]]*"\.topbar"[^\]]*"#drawer"/);
+  assert.match(body, /keepReachable: \[[^\]]*"\.topbar"[^\]]*"\.fp-announce"/, "the top bar (the gear) and the live region stay reachable");
+  assert.doesNotMatch(body, /#drawer/, "and nothing names the drawer, which no longer exists");
   assert.match(body, /onRequestClose: \(\) => setExpanded\(false\)/, "Escape and navigation collapse through the same path");
   assert.ok(body.indexOf("owner.closeSheet(ui.sheet)") < body.indexOf("ui.sheet.hidden = !open;"),
     "closing must release the owner before the sheet hides");
@@ -569,9 +570,14 @@ test("ROUND 2 touch-4: every .fy-panel can move — the transform, the release t
   assert.match(FLAT_TEXT, /sheetDrag: \{ start: startDrag, move: moveDrag, end: endDrag, offset: dragOffset, claimsTouch, \}/);
 });
 
-test("ROUND 2 nav-5: the drawer's lock and its scrim's touch-action live beside the sheet's in styles.css", () => {
-  /* MUTATION: delete `body.drawer-open { overflow: hidden; }` -> red. */
-  assert.match(CSS_RULES, /body\.drawer-open \{\s*overflow:\s*hidden;?\s*\}/);
-  assert.match(CSS_RULES, /#drawer \{[^}]*overscroll-behavior:\s*contain/);
-  assert.match(CSS_RULES, /#drawer-overlay \{[^}]*touch-action:\s*none/);
+test("ROUND 2 nav-5: every sheet locks the page's scroll in styles.css, and the gear's Sheet keeps its own scroll to itself", () => {
+  /* The drawer's own lock (`body.drawer-open`) went with the drawer (Redesign 2026, ambient). What it was the twin of stays:
+     the sheet owner's `body.fy-sheet-open` lock, which the gear's Sheet (a `.fy-sheet`) takes like every other; and the
+     Sheet's body, which scrolls inside the panel, must not chain into the page behind (ui/settings.css).
+     MUTATION: delete `body.fy-sheet-open { overflow: hidden; }` from styles.css, or `overscroll-behavior: contain` from
+     `.st-sheet-body` -> red. */
+  assert.match(CSS_RULES, /body\.fy-sheet-open \{\s*overflow:\s*hidden;?\s*\}/);
+  const settingsCss = fs.readFileSync(path.join(ROOT, "ui/settings.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, " ");
+  assert.match(settingsCss, /\.ag \.st-sheet-body \{[^}]*overscroll-behavior:\s*contain/);
+  assert.doesNotMatch(CSS_RULES, /body\.drawer-open|#drawer-overlay|#drawer \{/, "and no rule is left for the drawer");
 });

@@ -1,0 +1,132 @@
+/* ui/settings.css — Settings, Tuning and About, and the gear's Sheet. Redesign 2026, ambient direction
+   ("Afterglow"), BUILD-PLAN screen 9. The prototype draws no settings page, so this is built from the component
+   inventory (ui/primitives.css): the Sheet's veil header and grabber, the Chip, the raised row.
+
+   Everything below is scoped under `.ag` (the pages and both Sheets wear it), so it can reach no other screen,
+   and every class is `st-*`, a new name. Values come from ui/tokens.css; the one literal colour is the Sheet's
+   scrim, named once as `--st-scrim`.
+
+   NO reduced-motion block lives in this file, on purpose: ui/tokens.css has the one, scoped to `.ag` and
+   everything under it, so the switch knob's slide, the disclosure's turn and the Sheet's slide (which the sheet
+   owner already declines to run under Reduce Motion) all fall under it. A second block would be a second owner
+   (test/afterglow-tokens.test.js, "ONE block"). */
+
+/* The page. The legacy top bar steps aside (the page draws its own head with a Back chevron), and the page paints
+   the scheme's bg0 rather than the legacy plum. */
+body.view-settings { background: var(--bg0); --dock-page-bg: var(--bg0); }
+body.view-settings .topbar { display: none; }
+body.view-settings #view { padding-top: 0; }
+
+.ag.st-page {
+  max-width: 680px; margin-inline: auto;
+  padding: calc(var(--safe-top) + var(--s-2)) var(--gutter) calc(var(--chrome-bottom-mini) + var(--s-8));
+}
+/* :where() keeps the reset at the specificity of `.ag.st-page` alone, so every later `.ag .st-*` margin wins. */
+.ag.st-page :where(h1, h2, h3, p, ul) { margin: 0; }
+
+/* Head: the Back chevron (44) and the title. */
+.ag .st-head { display: flex; align-items: center; gap: var(--s-2); min-height: var(--tap); margin-inline-start: calc(var(--s-2) * -1); }
+.ag .st-back { color: var(--text); text-decoration: none; }
+.ag .st-back:focus-visible { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) / 2); }
+.ag .st-head h1:focus { outline: none; }
+
+.ag .st-lede { margin-top: var(--s-3); color: var(--text-2); }
+.ag .st-section { margin-top: var(--s-8); }
+.ag .st-section-head { margin-bottom: var(--s-3); }
+.ag .st-note { margin-top: var(--s-3); color: var(--text-2); }
+
+/* The segmented control: three Chips in a pill-shaped track. The selected Chip is the Lamp fill with bg0-dark ink
+   (`--lamp` / `--lamp-ink`, ui/primitives.css's `.is-selected`); the others are text-2 on the track. Every chip is 44 tall. */
+.ag .st-seg {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-1); padding: var(--s-1);
+  border-radius: var(--r-pill); background: var(--bg1); box-shadow: inset 0 1px 0 var(--rim);
+}
+.ag .st-seg .ag-chip { width: 100%; padding-inline: var(--s-2); background: transparent; color: var(--text-2); white-space: nowrap; }
+.ag .st-seg .ag-chip.is-selected { background: var(--lamp); color: var(--lamp-ink); }
+.ag .st-seg .ag-chip:disabled { opacity: .4; cursor: default; }
+
+/* Rows: the raised look, as a list of buttons. `st-item` is every control the old drawer carried (switches, the
+   rows that open a sheet, Delete my data); `st-row` is the gear Sheet's. */
+.ag .st-list { display: flex; flex-direction: column; gap: var(--s-2); }
+.ag .st-item, .ag .st-row {
+  position: relative; display: flex; align-items: center; justify-content: space-between; gap: var(--s-3);
+  width: 100%; min-height: calc(var(--tap) + var(--s-1)); padding: var(--s-2) var(--s-4);
+  border-radius: var(--r-lg); color: var(--text); font: var(--t-body); text-align: left; text-decoration: none;
+  background: linear-gradient(var(--overlay), var(--overlay)) var(--bg1); box-shadow: inset 0 1px 0 var(--rim), var(--shadow-1);
+  transition: background-color var(--m-micro) var(--e-out);
+}
+.ag .st-item:active, .ag .st-row:active { background-color: var(--bg2); }
+.ag .st-item:focus-visible, .ag .st-row:focus-visible, .ag .st-seg .ag-chip:focus-visible { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) / 2); }
+.ag .st-item:disabled { opacity: .6; cursor: default; }
+.ag .st-wrap { height: auto; }
+.ag .st-link, .ag .st-row { cursor: pointer; }
+.ag .st-row > svg { color: var(--text-3); }
+.ag .st-list > .st-note { margin-top: 0; }
+/* Delete my data is an ordinary row, on purpose: the sheet it opens carries the warning (2026-09-22 audit), the menu does not shout it. */
+
+/* A switch: the words say on or off ("Family mode: off"), and a track and knob say it again at a glance. The
+   listener's own mark is Ember. aria-checked drives both, so the picture can never disagree with the state. */
+.ag .st-switch { padding-inline-end: calc(var(--s-4) + 44px + var(--s-3)); }
+.ag .st-switch::before, .ag .st-switch::after { content: ""; position: absolute; top: 50%; }
+.ag .st-switch::after {
+  right: var(--s-4); width: 44px; height: 26px; margin-top: -13px; border-radius: var(--r-pill);
+  background: var(--track); transition: background-color var(--m-micro) var(--e-out);
+}
+.ag .st-switch::before {
+  z-index: 1; right: calc(var(--s-4) + 22px); width: 20px; height: 20px; margin-top: -10px; border-radius: var(--r-round);
+  background: var(--text-2); transition: transform var(--m-micro) var(--e-out), background-color var(--m-micro) var(--e-out);
+}
+.ag .st-switch[aria-checked="true"]::after { background: var(--ember); }
+.ag .st-switch[aria-checked="true"]::before { background: var(--ember-ink); transform: translateX(18px); }
+
+/* The Developer disclosure: a native <details>; its summary is a row with a drawn chevron (a shape, not a glyph). */
+.ag .st-dev > * + * { margin-top: var(--s-2); }
+.ag .st-summary { cursor: pointer; list-style: none; }
+.ag .st-summary::-webkit-details-marker { display: none; }
+.ag .st-summary::after, .ag .st-link::after {
+  content: ""; width: var(--s-2); height: var(--s-2); margin-inline-end: var(--s-1);
+  border-right: calc(var(--s-1) / 2) solid var(--text-3); border-bottom: calc(var(--s-1) / 2) solid var(--text-3);
+  transform: rotate(-45deg); transition: transform var(--m-micro) var(--e-out);
+}
+.ag .st-dev[open] > .st-summary::after { transform: rotate(45deg); }
+
+/* Tuning: a subject's name over its three-chip track. */
+.ag .st-group { margin-top: var(--s-6); }
+.ag .st-group-label { margin-bottom: var(--s-1); }
+.ag .st-tune-row { margin-top: var(--s-4); }
+.ag .st-tune-name { margin-bottom: var(--s-2); color: var(--text); }
+
+/* About. */
+.ag .st-about-mark { margin-top: var(--s-8); text-align: center; }
+.ag .st-wordmark {
+  font: italic 500 3rem/1.1 var(--font-display); font-variation-settings: 'SOFT' 100, 'WONK' 0; font-optical-sizing: auto;
+  color: var(--text);
+}
+.ag .st-tagline, .ag .st-version { margin-top: var(--s-1); color: var(--text-2); }
+.ag .st-lics { list-style: none; padding: 0; display: flex; flex-direction: column; gap: var(--s-2); }
+.ag .st-lic {
+  display: flex; flex-direction: column; gap: calc(var(--s-1) / 2); padding: var(--s-3) var(--s-4); border-radius: var(--r-lg);
+  background: linear-gradient(var(--overlay), var(--overlay)) var(--bg1); box-shadow: inset 0 1px 0 var(--rim), var(--shadow-1);
+}
+.ag .st-lic-terms { color: var(--text-2); }
+
+/* A scheme change is a cut: ui/settings.js puts `st-swap` on the page for the instant the colours change (see stCutTransitions). */
+.ag.st-swap, .ag.st-swap *, .ag.st-swap *::before, .ag.st-swap *::after { transition: none !important; }
+
+/* The Sheets (the gear's, and "What 4a does"): the app's one modal shell (`.fy-sheet`, z 70, above the player), the
+   Afterglow panel (`.ag-sheet`: veil header 56 with its grabber, a 44 close) bottom-anchored, and a warm scrim. The panel
+   reads `--fy-panel-dy`, the offset the sheet owner writes for the slide in and out and for a pull down. */
+.ag.st-sheet { --st-scrim: rgb(20 17 15 / 0.56); background: transparent; }   /* `.ag` paints bg0; the wrapper must not */
+.ag.st-sheet .fy-scrim { background: var(--st-scrim); }
+.ag .ag-sheet.st-panel {
+  display: flex; flex-direction: column; max-width: 680px; margin-inline: auto; max-height: 88%;
+  transform: translateY(var(--fy-panel-dy, 0px));
+}
+.ag .ag-sheet.st-panel:not(.fy-panel-dragging) { transition: transform var(--m-sheet) var(--e-spring-soft); }
+.ag .st-panel .ag-sheet-head h2 { margin: 0; }
+.ag .st-sheet-body { overflow-y: auto; min-height: 0; padding-bottom: calc(var(--s-6) + var(--safe-bottom)); overscroll-behavior: contain; }
+.ag .st-sheet-body p + p { margin-top: var(--s-3); }
+.ag .st-menu { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-2); }
+.ag .st-row { min-height: calc(var(--tap) + var(--s-3)); }
+.ag .st-row-copy { display: flex; flex-direction: column; min-width: 0; }
+.ag .st-row-note { color: var(--text-2); }

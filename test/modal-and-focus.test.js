@@ -323,19 +323,19 @@ test("REVIEW: a sheet opened over Now Playing is live, even though Now Playing h
   assert.ok(!inert(voice.wrap), "and nothing is left inert once both are closed");
 });
 
-test("REVIEW: a tab bar created while the first-run Room is open is out of reach too", () => {
-  /* The Room opens from Home's render, before renderTabBar creates the bar
-     on a first visit, so inertOutside never saw it. MUTATION: drop the
-     inertUnderOpenSheet(bar) call from renderTabBar. */
+test("REVIEW: a Dock created while the first-run explainer is open is out of reach too", () => {
+  /* The explainer opens from Home's render, before renderTabBar creates the Dock (the tab bar, and the
+     mini player and Discover's field with it) on a first visit, so inertOutside never saw it.
+     MUTATION: drop the inertUnderOpenSheet(layer) call from ensureDock in ui/tabbar.js. */
   const m = mount();
   m.tabBar.remove();                               // a first visit: no bar yet
   assert.strictEqual(m.ctx.showFirstTimeExplainerOnce(), true, "fixture: a fresh profile gets the Room");
   m.ctx.renderTabBar();
-  const bar = m.doc.body.querySelector("#tab-bar");
-  assert.ok(bar, "fixture: the bar was created");
-  assert.ok(inert(bar), "the new bar is behind the dialog like everything else");
+  const layer = m.doc.body.querySelector("#dock-layer");
+  assert.ok(layer, "fixture: the Dock was created");
+  assert.ok(inert(layer), "the new Dock is behind the dialog like everything else");
   m.doc.key("Escape");
-  assert.ok(!inert(bar), "and is released with the rest when the Room closes");
+  assert.ok(!inert(layer), "and is released with the rest when the explainer closes");
 });
 
 test("Escape asks the TOP sheet to close through its own handler", () => {
@@ -684,9 +684,6 @@ test("REVIEW: while the strip is zoomed, a touchmove is cancelled so the page ca
    (Home) nothing but sections. */
 function routed(m) {
   vm.runInContext("state.ready = true;", m.ctx);
-  const overlay = m.doc.createElement("div");
-  overlay.id = "drawer-overlay";
-  m.doc.body.appendChild(overlay);
   const pages = { "#/": null, "#/library": "Library", "#/forays": "Forays" };
   m.ctx.renderCurrentPage = () => {
     m.view.children.forEach((c) => { c.parentElement = null; });
@@ -706,15 +703,20 @@ function routed(m) {
 }
 const heading = (m) => m.view.querySelector(".page-head").querySelector("h2");
 
-test("a drawer link's navigation lands focus on the new page's heading, and the document is named after it", () => {
-  /* The drawer hides under the focused link. MUTATION: delete the
-     `landOnPage(...)` call from route() -> focus stays on the hidden link and
-     the title stays "4a"; red. */
+test("a Sheet link's navigation lands focus on the new page's heading, and the document is named after it", () => {
+  /* The gear's Sheet (ui/settings.js) closes under the focused link: the navigation is what dismisses it, and the
+     element that held focus leaves with it. MUTATION: delete the `landOnPage(...)` call from route() -> focus is left
+     on nothing and the title stays "4a"; red. */
   const m = mount();
   const go = routed(m);
+  const gear = m.doc.createElement("button");     // the control that opened the Sheet: on the page being left
+  m.view.appendChild(gear);
+  gear.focus();
+  const s = sheet(m);
   const link = m.doc.createElement("a");
   link.setAttribute("href", "#/library");
-  m.drawer.appendChild(link);
+  s.panel.appendChild(link);
+  m.ctx.openSheet(s.wrap, { onRequestClose: () => m.ctx.closeSheet(s.wrap, { removeIfOwned: true }) });
   link.focus();
   go("#/library");
   assert.strictEqual(m.doc.activeElement, heading(m), "focus is on the Library heading");
@@ -1033,9 +1035,6 @@ test("ROUND 2 touch-8: a close that settles late leaves focus alone when it has 
    the greeting. */
 function routedPages(m, pages) {
   vm.runInContext("state.ready = true;", m.ctx);
-  const overlay = m.doc.createElement("div");
-  overlay.id = "drawer-overlay";
-  m.doc.body.appendChild(overlay);
   const paint = (spec) => {
     m.view.children.forEach((c) => { c.parentElement = null; });
     m.view.children = [];

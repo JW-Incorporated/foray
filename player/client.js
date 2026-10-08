@@ -453,7 +453,7 @@ function launchOverride(decision) {
 }
 
 /** The rows' view, or null when there are no rows. Synchronous: app.js paints
-    it inside renderDrawer. */
+    it inside paintSettings. */
 function engineDeveloperStatus() {
   if (!engine) return null;
   const decision = engine.decision;
@@ -835,6 +835,12 @@ function recordBuildStamp() {
          native build (else the version) is passed, never the object — and no
          second round-trip to `getInfo` is made for it. */
       try { noteDownloadsBuild(stamp); } catch (_) { /* the UA stays 4a/dev */ }
+      /* And the About page's version line (ui/settings.js): a classic script cannot import this module, so
+         the stamp is handed over on `window` and announced once, for a page that painted before it arrived. */
+      try {
+        window.forayBuildStamp = stamp;
+        window.dispatchEvent(new Event("foray:build-stamp"));
+      } catch (_) { /* About says "Web version" */ }
     })
     .catch(() => {});
 }
@@ -1063,6 +1069,32 @@ function el(tag, cls, text) {
   return n;
 }
 
+/** One glyph of the app's icon sprite (ui/icons.svg, Phosphor + four custom
+    transport glyphs), built with the DOM and not a markup string - this module
+    owns no innerHTML. The same `<svg class="icon"><use href="ui/icons.svg#i-..."/>`
+    ui/icons.js's agIcon() writes, kept here because this ES module must evaluate
+    in its own test harness without app.js. `name` is a literal at every call
+    site, never data. A document with no SVG namespace (the suite's fake DOM)
+    gets an empty, aria-hidden span: the control still exists and is still named
+    by its aria-label. */
+function spriteIcon(name, extraClass = "") {
+  const NS = "http://www.w3.org/2000/svg";
+  const cls = extraClass ? `icon ${extraClass}` : "icon";
+  if (typeof document.createElementNS !== "function") {
+    const stub = el("span", cls);
+    stub.setAttribute("aria-hidden", "true");
+    return stub;
+  }
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("class", cls);
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("focusable", "false");
+  const use = document.createElementNS(NS, "use");
+  use.setAttribute("href", `ui/icons.svg#i-${name}`);
+  svg.append(use);
+  return svg;
+}
+
 /** A control's visible words AND its accessible name, in one write (audit
     2026-09-22, theme D). `aria-label` REPLACES a button's text for a screen
     reader, so a control whose text changes and whose name does not is a control
@@ -1096,8 +1128,14 @@ function buildUI() {
   root.id = "foray-player";
   root.hidden = true;
 
-  /* mini bar */
+  /* mini bar - a ROW OF THE DOCK (Redesign 2026, ambient). It is built here, with
+     the player's state, and handed to ui/tabbar.js's Dock at the end of this
+     function; its markup is unchanged in kind (art, one title button, a play
+     button, a skip) and its geometry and paint are ui/dock.css's. The region
+     is named for what is playing, so a screen reader finds it by landmark. */
   const bar = el("div", "fp-bar");
+  bar.setAttribute("role", "region");
+  bar.setAttribute("aria-label", "Now playing");
   const art = el("img", "fp-art");
   art.alt = "";
   /* NO static name. This button's contents ARE the episode title and show,
@@ -1133,19 +1171,26 @@ function buildUI() {
   announce.setAttribute("role", "status");
   announce.setAttribute("aria-live", "polite");
 
-  const playBtn = el("button", "fp-play", "▶");
+  /* PLAY AND PAUSE ARE TWO SPRITE GLYPHS, BOTH IN THE DOM, ONE SHOWN: `data-running`
+     (written by paintPage) picks which, in ui/dock.css. No text glyph stands in for
+     an icon, and the label below is what a screen reader hears. */
+  const playBtn = el("button", "fp-play");
   playBtn.type = "button";
   playBtn.setAttribute("aria-label", "Play");
+  playBtn.append(spriteIcon("play", "fp-glyph-play"), spriteIcon("pause", "fp-glyph-pause"));
   /* THE BAR'S SECOND CONTROL (audit 2026-09-22, persona 10). The bar carried
      one ▶ and every other transport action cost a full-screen sheet — four
      interactions to hear a missed sentence again. Apple's mini bar is play +
-     one skip; ours is play + back 15 s, the nudge the persona asked for by
-     name and the one that matters in a car. One control, not two, so a 390px
-     bar keeps its title line. Inside a Foray it nudges on the Foray clock
-     (`nudgeBy`), never previous clip — see persona 58 in the sheet below. */
-  const skipBtn = el("button", "fp-skip", `↺ ${SEEK_BACK}`);
+     one skip; ours is play + ONE nudge. It was back 15 s (the persona's ask,
+     and the one that matters in a car); the Afterglow Dock makes it forward
+     30 s (BUILD-NOTES §3: "MiniPlayer: Play 48 Ember, Fwd30 44"), the sheet
+     keeps both. One control, not two, so a 390px bar keeps its title line.
+     Inside a Foray it nudges on the Foray clock (`nudgeBy`), never next clip
+     - see persona 58 in the sheet below. */
+  const skipBtn = el("button", "fp-skip");
   skipBtn.type = "button";
-  skipBtn.setAttribute("aria-label", `Back ${SEEK_BACK} seconds`);
+  skipBtn.setAttribute("aria-label", `Forward ${SEEK_FWD} seconds`);
+  skipBtn.append(spriteIcon("fwd30"));
 
   /* U-13 (founder feedback F18): this ✕ used to call `stopAndClose()`, and its
      label said so. Closing the Now Playing screen to go and use the app therefore
@@ -1165,7 +1210,10 @@ function buildUI() {
   closeBtn.type = "button";
   closeBtn.setAttribute("aria-label", "Collapse player");
 
+  /* The progress line is the row's top edge in Glow: decoration. The position is said by the sheet's
+     slider and the bar's own name, so a screen reader never meets an unlabelled bar of colour. */
   const progress = el("div", "fp-progress");
+  progress.setAttribute("aria-hidden", "true");
   const fill = el("div", "fp-fill");
   progress.append(fill);
 
@@ -1177,8 +1225,7 @@ function buildUI() {
      own comment set out to remove. It moves into the sheet's grab row below,
      which is the only place it can be both visible and hit-testable, and is
      also where the sheet's other dismiss affordances now are. */
-  bar.append(art, info, skipBtn, playBtn);
-  root.append(progress, bar);
+  bar.append(art, info, playBtn, skipBtn);
 
   /* ---------- the Now Playing sheet ----------
 
@@ -1399,6 +1446,12 @@ function buildUI() {
 
   scroll.append(sArt, sTitle, sShow, sWhy, scrub, times, row, clips, row2, sErr, note, sDesc);
   sheet.append(grabZone, scroll);
+  /* THE MINI BAR GOES TO THE DOCK (ui/tabbar.js): one Veil surface with the tabs, so
+     no page ever shows through a seam between the bar and the tab bar. Without a
+     Dock (this module's own test harness loads no app.js) the bar stays in the
+     root, in front of the sheet, as it always was. */
+  const docked = typeof globalThis.dockMountMini === "function" && globalThis.dockMountMini(progress, bar);
+  if (!docked) root.append(progress, bar);
   root.append(sheet, announce);
   document.body.append(root);
 
@@ -2203,7 +2256,12 @@ function paintPage(running) {
      INTENT index, like the running order's highlight. */
   ui.clipNext.disabled = Boolean(foray) && foray.index >= foray.resolved.playable.length - 1;
   const glyph = running ? "❚❚" : "▶";
-  paintControl(ui.playBtn, glyph, running ? "Pause" : "Play");
+  /* The mini bar's button carries two sprite glyphs and shows the one `data-running`
+     names (ui/dock.css); only its label is text. The sheet's big button is still the
+     text glyph until the Now Playing screen unit swaps it. */
+  paintControl(ui.playBtn, null, running ? "Pause" : "Play");
+  const runningFlag = running ? "1" : "0";
+  if (ui.playBtn.dataset.running !== runningFlag) ui.playBtn.dataset.running = runningFlag;
   paintControl(ui.bigPlay, glyph, running ? "Pause" : "Play");
   if (ui.ag && typeof window.AfterglowNowPlaying?.setIcon === "function") {
     const icon = running ? "pause" : "play";
@@ -2376,6 +2434,8 @@ function paintInfoLabel() {
   const second = ui.err && !ui.err.hidden ? ui.err.textContent : ui.show.textContent;
   const what = [ui.title.textContent, second].filter(Boolean).join(", ");
   paintControl(ui.info, null, what ? `Now playing: ${what}` : "Now playing");
+  /* The bar is a region of the Dock, named the same way: "Now playing: <title>, <show>". */
+  ui.bar.setAttribute("aria-label", what ? `Now playing: ${what}` : "Now playing");
   ui.info.setAttribute("aria-expanded", ui.sheet && !ui.sheet.hidden ? "true" : "false");
 }
 
@@ -2427,6 +2487,8 @@ function setNowPlaying(item, why) {
   /* `?posture=car` (the harness's way into car posture) is already on the page; Now Playing opens by itself once there
      is something to show. After a collapse the posture is gone, so this fires once, at the start. */
   if (window.AfterglowCar?.active(document)) ui.openSheet?.();
+  /* The Dock's mini row follows `fp-open` (ui/tabbar.js); no Dock, no call. */
+  globalThis.syncDock?.();
   ui.title.textContent = item.title || "";
   ui.show.textContent = item.show || "";
   paintInfoLabel();
@@ -3140,6 +3202,7 @@ async function stopAndClose({ persist = true } = {}) {
   const owner = sheetOwner();
   if (owner) owner.closeSheet(ui.sheet);
   document.body.classList.remove("fp-open", "fp-expanded");
+  globalThis.syncDock?.();
   const nav = typeof window !== "undefined" ? window.ForayNav : null;
   if (nav && typeof nav.landOnPage === "function") nav.landOnPage({ navigated: false });
   if (nav && typeof nav.announce === "function") nav.announce(STOPPED_LINE);
@@ -3941,9 +4004,11 @@ function bind() {
     if (!open && owner) owner.closeSheet(ui.sheet);
     ui.sheet.hidden = !open;
     document.body.classList.toggle("fp-expanded", open);
+    /* Car posture lasts as long as the sheet it opened: collapsing ends it. */
+    if (!open) document.documentElement?.removeAttribute?.("data-posture");
     paintInfoLabel();
     /* Opening: the page behind (and the mini bar under the sheet) goes inert
-       and focus moves into the dialog. The topbar and the drawer stay
+       and focus moves into the dialog. The topbar (the gear) stays
        reachable (U-12/F17 above), and so does the player's live region — it
        is a sibling of the bar, not inside it, for exactly this reason (see
        buildUI). Escape, and a navigation, collapse it through this same
@@ -3952,7 +4017,7 @@ function bind() {
       owner.openSheet(ui.sheet, {
         panel: ui.sheet,
         bodyClass: "fp-expanded",
-        keepReachable: [".topbar", "#drawer", "#drawer-overlay", ".fp-announce"],
+        keepReachable: [".topbar", ".fp-announce"],
         onRequestClose: () => setExpanded(false),
         returnFocus: ui.info,
       });
@@ -4023,16 +4088,28 @@ function bind() {
      reader, and the art stays `alt=""` decoration to them. */
   ui.art.addEventListener("click", toggleExpandedFromMini);
   /* A 600ms HOLD on the mini row enters car posture and opens Now Playing by itself (BUILD-NOTES 4.2). The two transport
-     buttons keep their own jobs and never start the press. ui/car.js owns the gesture, the haptic hook and the posture
-     attribute; this file owns only the sheet it opens. */
+     buttons keep their own jobs and never start the press. ui/car.js owns the gesture, the haptic hook, the capture-phase
+     swallow of the click that ends a hold, the image-menu guard and the posture attribute; this file owns only the sheet
+     it opens. */
   ui.openSheet = () => { if (ui.sheet.hidden) toggleExpandedFromMini(); };
+  const inBarControl = (t) => typeof t?.closest === "function" && Boolean(t.closest(".fp-play, .fp-skip"));
   window.AfterglowCar?.bindPress(ui.bar, {
-    isControl: (t) => typeof t?.closest === "function" && Boolean(t.closest(".fp-play, .fp-skip")),
+    isControl: inBarControl,
     onHold: () => {
       window.AfterglowCar.haptic();
       window.AfterglowCar.enter(document);
       ui.openSheet();
     },
+  });
+  /* THE REST OF THE ROW (Redesign 2026, ambient, the Dock). Tapping anywhere on the mini row that is not one of its two
+     buttons opens Now Playing - the title button and the artwork above already do; this is the padding and the gaps, so no
+     part of the row between the controls is dead. The click that ends a hold never reaches here (ui/car.js swallows it in
+     the capture phase). */
+  ui.bar.addEventListener("click", (e) => {
+    const t = e.target;
+    if (t === ui.art || inBarControl(t)) return;
+    if (typeof t?.closest === "function" && t.closest("button")) return;
+    setExpanded(ui.sheet.hidden);
   });
   /* The ✕ is the one button that collapses the sheet (the handle's drag is the
      gesture). Declared after `setExpanded` because it is a `const`. */
@@ -4180,7 +4257,7 @@ function bind() {
      `.fp-clips` row. */
   ui.backBtn.addEventListener("click", () => nudgeBy(-SEEK_BACK));
   ui.fwdBtn.addEventListener("click", () => nudgeBy(SEEK_FWD));
-  ui.skipBtn.addEventListener("click", () => nudgeBy(-SEEK_BACK));
+  ui.skipBtn.addEventListener("click", () => nudgeBy(SEEK_FWD));
   ui.clipPrev.addEventListener("click", guardTap(() => ForayPlayer.forayPrevious()));
   ui.clipNext.addEventListener("click", guardTap(() => ForayPlayer.forayNext()));
 

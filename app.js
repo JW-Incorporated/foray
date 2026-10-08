@@ -1241,7 +1241,10 @@ function isNativeShell(win = window) {
    ONE of the two lives on the element this function overwrites. A render
    with the keyboard up dropped `kb-open` and kept `--kb-inset`, and
    `#sh-compose`'s `bottom: calc(var(--kb-inset) + var(--sh-dock))` then
-   composed a keyboard-open inset with the keyboard-SHUT dock.
+   composed a keyboard-open inset with the keyboard-SHUT dock. (Since the Dock,
+   #sh-compose is the Dock's field row and the Dock's own `bottom` carries
+   `--kb-inset` - ui/dock.css; `--sh-dock` is gone. The survival argument is
+   unchanged: a class that is dropped while the inset survives still disagrees.)
 
    MEASURED, not reasoned (test/playwright/tests/search-chrome-dock.spec.js,
    Chromium at 390x844 with the keyboard-open state and something playing):
@@ -1694,7 +1697,11 @@ function toggleMarkup(on, spec) {
    "Unstar show", "★ Starred" and a page headed "Starred Shows" — three words
    for two ideas. Storage keys (`cp_saved`, `cp_starred_shows`) are unchanged. */
 const SAVE_TOGGLE = { offText: "☆", onText: "★", offLabel: "Save episode", onLabel: "Saved" };
-const FOLLOW_TOGGLE = { offText: "+ Follow", onText: "✓ Followed", offLabel: "Follow show", onLabel: "Followed" };
+/* Redesign 2026 (ambient, show page): the words are "Follow" and "Following", and the state is a
+   FILL change as well as a word: the Regular `i-plus` becomes the Fill `i-check-circle-fill`
+   (BUILD-NOTES 4.x, "toggle fills"), so the toggle never rests on colour alone. The old
+   "+ Follow" / "✓ Followed" pair put a text glyph where the icon now is. */
+const FOLLOW_TOGGLE = { offText: "Follow", onText: "Following", offLabel: "Follow", onLabel: "Following" };
 /* WHAT FOLLOWING DOES NOT DO, said where the tap happens (review 2026-09-23).
    Apple's Follow delivers new episodes; 4a's is a bookmark (no feed, no
    notifications, nothing added anywhere — CLAUDE.md principle 2), and the audit
@@ -1833,19 +1840,39 @@ function toggleShowStar(id) {
     if (had) delete out[id]; else out[id] = entry;
     return out;
   });
-  document.querySelectorAll(`[data-show-star="${CSS.escape(id)}"]`).forEach(b => {
-    setToggleLabel(b, isShowStarred(id), FOLLOW_TOGGLE);
-    b.classList.toggle("on", isShowStarred(id));
-  });
+  document.querySelectorAll(`[data-show-star="${CSS.escape(id)}"]`).forEach(b => paintFollow(b, isShowStarred(id)));
 }
 
-/* Text label, not a bare glyph like starBtn -- this button sits alone in a
-   page header rather than beside a play control in a dense row, so it needs
-   to read on its own. */
+/* THE FOLLOW BUTTON (Redesign 2026, ambient, show page): a Secondary button whose state is a
+   FILL change. Unfollowed is the Regular `i-plus` and "Follow"; followed is the Fill
+   `i-check-circle-fill` (Ember) and "Following", with the Secondary ring in Ember and a
+   soft overlay fill, so the toggle is carried by shape, word and fill, never by colour alone.
+   It is a text button on purpose (it sits alone under the title and must read on its own).
+
+   ONE WRITER of its words: followFillHtml() builds the icon and the word, followName() the
+   accessible name (the word, then the show: "Following Lex Fridman Podcast" contains the
+   visible text, so the name carries the label), and both the first paint (showStarBtn) and
+   the repaint after a tap (paintFollow) call them, so the two cannot disagree. The text is
+   written through innerHTML because the button holds an icon as well as a word; the helper
+   below is still the only place the words change (test/toggle-labels.test.js). */
+function followFillHtml(on) {
+  return `${agIcon(on ? "check-circle-fill" : "plus", 24)}<span>${esc(on ? FOLLOW_TOGGLE.onText : FOLLOW_TOGGLE.offText)}</span>`;
+}
+function followName(on, title) {
+  const word = on ? FOLLOW_TOGGLE.onLabel : FOLLOW_TOGGLE.offLabel;
+  return title ? `${word} ${title}` : word;
+}
+function paintFollow(btn, on) {
+  if (!btn) return;
+  const title = btn.dataset && btn.dataset.followName ? String(btn.dataset.followName) : "";
+  btn.innerHTML = followFillHtml(on);
+  btn.setAttribute("aria-label", followName(on, title));
+  btn.classList.toggle("is-following", on);
+}
 function showStarBtn(show_id) {
   const on = isShowStarred(show_id);
-  const { text, attr } = toggleMarkup(on, FOLLOW_TOGGLE);
-  return `<button class="show-star ${on ? "on" : ""}" data-show-star="${esc(show_id)}"${attr}>${text}</button>`;
+  const title = (showById(show_id) || {}).title || "";
+  return `<button type="button" class="ag-btn ag-btn-secondary sh-follow${on ? " is-following" : ""}" data-show-star="${esc(show_id)}" data-follow-name="${esc(title)}" aria-label="${esc(followName(on, title))}">${followFillHtml(on)}</button>`;
 }
 
 function bindShowStars(scope) {
@@ -4462,19 +4489,18 @@ function sameHashTap(a, e) {
 
 /* ---------- HARDWARE BACK (audit round 2, nav-2) ----------
 
-   Android's back was the raw WebView back: with the drawer or the Now
-   Playing sheet open it closed the overlay AND stepped the page underneath
-   (the drawer and the sheets push no history entry, so the step was a real
+   Android's back was the raw WebView back: with the Now Playing sheet (or
+   any sheet) open it closed the overlay AND stepped the page underneath
+   (the sheets push no history entry, so the step was a real
    one), and on a first page it left the app with the sheet still up. Every
    Android app treats back as "dismiss the top-most thing"; this is that
-   ordering, in one place, beside the ownership model the drawer and the
-   sheets already follow: the drawer (it sits over everything), then the top
-   sheet through its own close (Escape's path — a sheet may decline), then one
-   step of the app's own history, else leave the app. iOS has no back button
+   ordering, in one place, beside the ownership model the sheets follow: the
+   top sheet through its own close (Escape's path — a sheet may decline), then one
+   step of the app's own history, else leave the app. (The drawer that used to
+   sit above the sheets in this order is gone; the gear's Sheet is a sheet.) iOS has no back button
    and registers the same listener harmlessly. `docs/DECISIONS.md` 2026-09-23
    records the order. */
 function handleBack() {
-  if (drawerIsOpen()) { openDrawer(false, { toMenu: true }); return "drawer"; }
   if (openSheetCount() > 0) {
     sheetStack[sheetStack.length - 1].requestClose();
     return "sheet";
@@ -4597,6 +4623,9 @@ function enterForayFromQuery() {
    split fixes. route() itself still closes the drawer, for real navigation. */
 function renderCurrentPage() {
   if (!state.ready) return;
+  /* The Settings page's controls live in one host that is moved into the page and back (ui/settings.js). Parked
+     BEFORE #view is rewritten, or the rewrite would take the host with it. */
+  parkSettingsHost();
   /* Both of these belong to a page that is about to be replaced. The sheet's DOM
      and listeners die with #view, so neither can act — but a stale entry left
      pointing at a detached segment is the kind of thing that becomes a bug the
@@ -4666,12 +4695,12 @@ function renderCurrentPage() {
   else if ((m = /^#\/shows\/q\/(.*)$/.exec(h))) renderAllShows(safeDecode(m[1]));
   else if (h === "#/shows") renderAllShows();
   else if (h === "#/playlists") renderPlaylists();
-  else if (h === "#/create") renderCreate();
   else if (h === "#/forays") renderForays();
   else if (h === "#/queue") renderQueue();
   else if (h === "#/library") renderLibrary();
-  else if (h === "#/starred-shows") renderStarredShows();
-  else if (h === "#/interests") renderInterests();
+  else if (h === "#/tuning") renderInterests();
+  else if (h === "#/settings") renderSettings();
+  else if (h === "#/about") renderAbout();
   else if (h === "#/gallery" && galleryAllowed()) renderGallery();
   else renderHome();
   publishRenderedPageHead();
@@ -4729,6 +4758,13 @@ function route() {
   /* A timestamp link's alias (or a stray spelling of its `t`) is rewritten to
      the canonical address IN PLACE before anything records it (#30). */
   if (location.hash !== h && episodeDeepLink(location.hash)) replaceHash(h);
+  /* A folded route (ROUTE_ALIASES) is rewritten in place too, so ‹ does not
+     bounce off an address that now means something else. `#/create` lands on
+     Discover WITH THE FIELD FOCUSED: the field is what the Create tab was for. */
+  else if (location.hash !== h && Object.prototype.hasOwnProperty.call(ROUTE_ALIASES, location.hash)) {
+    if (location.hash === "#/create" && typeof dockFocusFieldNext === "function") dockFocusFieldNext();
+    replaceHash(h);
+  }
   const step = noteNavigation(h);
   rememberRouteForRelaunch(h);
   /* Read BEFORE the render: renderCurrentPage() replaces #view's innerHTML,
@@ -4743,7 +4779,6 @@ function route() {
   /* To the top first, THEN render: the new page is laid out with the viewport
      already where it is going rather than painted and yanked. */
   scrollPageTo(0);
-  openDrawer(false);
   /* A NAVIGATION closes whatever modal was up — a back gesture over a sheet
      used to leave it stranded over a different page (the speed menu, the
      delete sheet) — through each sheet's own close, so a sheet that must not
@@ -4796,8 +4831,11 @@ function route() {
    heading's text WITHOUT its explicit badge (`headingName`). */
 function pageHeading(view) {
   if (!view || typeof view.querySelector !== "function") return null;
-  const box = view.querySelector(".page-head");
-  return (box && box.querySelector("h2")) || null;
+  /* `.sh-head` is the Redesign 2026 show page's heading (it has no `.page-head`: its Room is not a sticky bar). */
+  const box = view.querySelector(".page-head") || view.querySelector(".st-head") || view.querySelector(".sh-head");
+  /* A legacy page head titles itself with an h2 (the top bar owns the h1); a Settings page head IS the page's h1. A page that draws
+     its own header (the ambient Foray detail) names itself with `data-page-heading` on its title. */
+  return (box && (box.querySelector("h2") || box.querySelector("h1"))) || view.querySelector("[data-page-heading]") || null;
 }
 
 /* A NAVIGATION WHOSE NAME HAS NOT BEEN SAID YET (audit round 2, races-6). A
@@ -4823,8 +4861,7 @@ function landOnPage({ navigated = false } = {}) {
   try { document.title = name ? `${name} · 4a` : "4a"; } catch (_) { /* a stub document */ }
   const owed = navigated || (announceOwedFor !== null && announceOwedFor === renderedHash);
   const active = document.activeElement;
-  const lost = !active || active === document.body || active.isConnected === false
-    || !!(typeof active.closest === "function" && active.closest("#drawer"));
+  const lost = !active || active === document.body || active.isConnected === false;
   if (lost) {
     const greeting = home && view && typeof view.querySelector === "function" ? view.querySelector(".td-wordmark") : null;
     const target = head || greeting || view;
@@ -4845,6 +4882,12 @@ function landOnPage({ navigated = false } = {}) {
   }
 }
 
+const ROUTE_ALIASES = Object.freeze({
+  "#/create": "#/shows",
+  "#/starred-shows": "#/library",
+  "#/interests": "#/tuning",
+});
+
 /* The one normalisation of the hash every route decision reads. THREE
    SPELLINGS OF HOME ("", "#", "#/") rendered the same page and were three
    different things to everything else: tabForHash lit no tab for two of them,
@@ -4854,6 +4897,14 @@ function landOnPage({ navigated = false } = {}) {
    place, so the address the history holds agrees with this. */
 function currentHash(hash = location.hash) {
   if (!hash || hash === "#") return "#/";
+  /* THREE ROUTES FOLDED INTO THEIR NEW HOMES (Redesign 2026, ambient, the Dock:
+     three tabs, no drawer). The alias is read HERE so every reader of "which
+     page is this" - the tab highlight, the router, back-navigation memory -
+     sees one spelling, and route() rewrites the address in place (below) so
+     the history holds it too. `#/create` was a tab whose page held one field;
+     that field is Discover's now. `#/starred-shows` was Library's overflow
+     page; Library lists every followed show. `#/interests` is Tuning. */
+  if (Object.prototype.hasOwnProperty.call(ROUTE_ALIASES, hash)) return ROUTE_ALIASES[hash];
   /* ONE SPELLING OF A TIMESTAMP LINK, too (#30): `#/play/<id>?t=N` is the
      alias, `#/episode/<id>?t=N` the page — see episodeDeepLink. route()
      writes this spelling back into the address in place. */
@@ -6184,10 +6235,12 @@ async function init() {
      screen whatever route the listener types. */
   try {
   await waitForStorage();
+  /* The room the listener chose (Dusk, Dawn, or follow the phone), before the first route paints it. */
+  applyStoredTheme();
   /* Offline downloads (#29, PQ-18): the bridge comes from player/client.js,
      which `waitForStorage` has just waited for, and is null off the shell.
      Before the first route, so a cold open on an episode page draws its
-     Download control, and before `bindDrawerToggles` below, which appends the
+     Download control, and before `bindSettingSwitches` below, which appends the
      cellular switch only when there is a bridge. */
   bootDownloads();
   const directory = forayDirectoryBridge();
@@ -6225,6 +6278,7 @@ async function init() {
      than the taxonomy defaults (races-4). */
   if (storageWaiting()) {
     afterStorageSettles(() => {
+      applyStoredTheme();
       loadInterests();
       state._interestsGen = (state._interestsGen || 0) + 1;
     });
@@ -6328,16 +6382,16 @@ async function init() {
     refreshEpisodeNavigation();
   });
 
-  bindDrawerChrome();
+  bindSettingsChrome();
   /* Android's back button, ordered like every other overlay close — see
      `handleBack`. A no-op on the web and on iOS. */
   bindHardwareBack();
   $("#view").addEventListener("click", onBackClick);
   $("#view").addEventListener("click", onForayScriptClick);   // once — see its header
-  /* The listener's settings switches, in one call — see `bindDrawerToggles`.
+  /* The listener's settings switches, in one call — see `bindSettingSwitches`.
      They land ABOVE everything bound below, so "Delete my data" stays last where
      a scrolled thumb expects it. */
-  bindDrawerToggles();
+  bindSettingSwitches();
   /* Narration voice (V-01): a listener setting, so it stays with the switches
      above rather than inside the Developer group below (2026-09-22 audit, R8). */
   bindVoiceControl();

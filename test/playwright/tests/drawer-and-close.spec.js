@@ -1,5 +1,10 @@
 /* U-12 / U-13 (docs/ui-transition-plan.md; founder feedback F17 and F18).
  *
+ * UPDATED FOR THE DOCK (Redesign 2026, ambient; ruling "4 tabs + drawer" fell): the drawer is Settings only now
+ * (no `.drawer-section` links), and the mini bar is a row of the Dock (`#dock-mini .fp-bar`, above `#tab-bar`
+ * inside one Veil) instead of the root of `#foray-player`, which holds only the sheet. The flows - the drawer
+ * over an open sheet, collapse-not-stop, no "Stop and close player" - are the same contracts.
+ *
  * Both defects are about what one layer does to another while audio is
  * playing, and neither is visible to a node:vm suite: F17 is a stacking
  * order (which element wins `elementFromPoint` at a given pixel — a real
@@ -10,11 +15,11 @@
  *
  * WHAT EACH TEST PROVES, and the mutation that kills it:
  *
- *  1. F17 — the drawer opens ON TOP of an expanded Now Playing sheet. Its
- *     first item is hit-testable at its own centre, and the scrim covers the
- *     player. MUTATION: put `#drawer-overlay`/`#drawer` back at 30/31 (below
- *     #foray-player's 60) -> `document.elementFromPoint` at the drawer item's
- *     centre returns the player, not the drawer, and this goes red.
+ *  1. F17 — the gear's Sheet (it was the drawer, before Redesign 2026) opens
+ *     ON TOP of an expanded Now Playing sheet. Its first row is hit-testable at
+ *     its own centre, and the scrim covers the player. MUTATION: put `.fy-sheet`
+ *     under #foray-player's 60 -> `document.elementFromPoint` at the row's
+ *     centre returns the player, not the Sheet, and this goes red.
  *
  *  2. F18 — closing collapses, it does not stop. Tapping the ✕ leaves the
  *     audio element playing and the mini bar docked above the tab bar, tab
@@ -128,7 +133,7 @@ async function startPlayback(page) {
     },
     AUDIO_PATH
   );
-  await expect(page.locator("#foray-player")).toBeVisible();
+  await expect(page.locator("#dock-mini .fp-bar")).toBeVisible();
 }
 
 /** `{ paused, currentTime }` for the element actually carrying the fixture
@@ -144,46 +149,64 @@ function audioState(page) {
 
 /* ---------- U-12 / F17 ---------- */
 
-test("the drawer opens on top of an expanded Now Playing sheet, and its first item is hit-testable", async ({ page }) => {
+test("the gear's Sheet opens on top of an expanded Now Playing sheet, and its first row is hit-testable", async ({ page }) => {
+  /* The drawer this used to be about is gone (Redesign 2026, ambient); the invariant is not: navigation must be able to cover
+     the thing it navigates away from. The gear stays reachable under the expanded sheet (the sheet owner's keepReachable), and
+     the Sheet it opens is a `.fy-sheet` at 70, over the player's 60. MUTATION: give `.fy-sheet` a z-index under #foray-player's
+     -> `document.elementFromPoint` at the first row's centre returns the player, not the Sheet, and this goes red. */
   await openApp(page);
+  /* Leave Today (no top bar there) for a route that has one. MUTATION: delete this line -> the app stays on Today, the top
+     bar is display:none, and the `body.view-home` count assertion below goes red at once instead of timing out at 180 s. */
+  await page.evaluate(() => { window.location.hash = "#/library"; });
+  await expect(page.locator("body.view-home")).toHaveCount(0);
+  await expect(page.locator("#menu-btn")).toBeVisible();
   await startPlayback(page);
 
   await page.locator(".fp-info").click();
   await expect(page.locator(".fp-sheet")).toBeVisible();
   await expect(page.locator("body.fp-expanded")).toHaveCount(1);
 
+  /* The gear to tap is the top bar's #menu-btn, which the expanded sheet leaves reachable (`keepReachable: [".topbar", ...]`
+     in player/client.js). On Today that bar is display:none (ui/today.css) and the gear is Today's own `[data-today-gear]`,
+     which the expanded sheet makes inert and covers, so the first version of this test waited the full 180 s on an element
+     that was never visible and never reached the stacking assertions. */
   await page.locator("#menu-btn").click();
-  await expect(page.locator("#drawer")).toBeVisible();
+  await expect(page.locator("#st-menu")).toBeVisible();
 
   const hit = await page.evaluate(() => {
-    const first = document.querySelector("#drawer .drawer-section");
-    if (!first) return { error: "the drawer has no .drawer-section items at all" };
+    /* The Sheet's owner marks the player `inert` while it is up, and an inert element is skipped by hit testing, so with that
+       attribute left on, the answer below would not depend on z-order at all (found by running the z-index mutation: it
+       survived). Lift it for the measurement so what is asked is the STACKING ORDER, which must hold on its own. */
+    const player = document.querySelector("#foray-player");
+    const wasInert = player.hasAttribute("inert");
+    player.removeAttribute("inert");
+    const first = document.querySelector("#st-menu [data-st-menu]");
+    if (!first) return { error: "the gear's Sheet has no rows at all" };
     const r = first.getBoundingClientRect();
     const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-    /* The same question asked of the player's own centre: with the drawer
-       open, its scrim — not the mini bar — must be what a tap lands on. */
+    /* The same question asked of the player's own centre: with the Sheet open, its scrim - not the mini bar - must be what a
+       tap lands on. */
     const bar = document.querySelector("#foray-player .fp-bar").getBoundingClientRect();
     const overBar = document.elementFromPoint(bar.left + bar.width / 2, bar.top + bar.height / 2);
+    if (wasInert) player.setAttribute("inert", "");
     return {
-      text: (first.textContent || "").trim(),
-      insideDrawer: Boolean(at && at.closest("#drawer")),
+      text: (first.querySelector(".st-row-label") || first).textContent.trim(),
+      insideSheet: Boolean(at && at.closest("#st-menu")),
       landedOn: at ? (at.id || at.className || at.tagName) : null,
-      barCoveredByDrawerLayer: Boolean(
-        overBar && (overBar.closest("#drawer") || overBar.id === "drawer-overlay")
-      ),
+      barCoveredBySheet: Boolean(overBar && overBar.closest("#st-menu")),
       barLandedOn: overBar ? (overBar.id || overBar.className || overBar.tagName) : null,
     };
   });
 
   expect(hit.error).toBeUndefined();
-  expect(hit.text).toBe("Home");
+  expect(hit.text).toBe("Settings");
   expect(
-    hit.insideDrawer,
-    `the drawer's first item is not hit-testable at its own centre — a tap there lands on "${hit.landedOn}"`
+    hit.insideSheet,
+    `the Sheet's first row is not hit-testable at its own centre - a tap there lands on "${hit.landedOn}"`
   ).toBe(true);
   expect(
-    hit.barCoveredByDrawerLayer,
-    `the open drawer does not cover the mini player — a tap over the bar lands on "${hit.barLandedOn}"`
+    hit.barCoveredBySheet,
+    `the open Sheet does not cover the mini player - a tap over the bar lands on "${hit.barLandedOn}"`
   ).toBe(true);
 });
 
@@ -219,16 +242,16 @@ test("closing the expanded sheet collapses to a mini bar that keeps playing, and
     [AUDIO_PATH, beforeClose.currentTime]
   );
 
-  /* 3. The mini bar is still there, and docked ABOVE the tab bar. */
-  await expect(page.locator("#foray-player")).toBeVisible();
+  /* 3. The mini bar is still there, and is the Dock's row ABOVE the tab row. */
+  await expect(page.locator("#dock-mini .fp-bar")).toBeVisible();
   const stack = await page.evaluate(() => {
-    const bar = document.querySelector("#foray-player .fp-bar").getBoundingClientRect();
+    const bar = document.querySelector("#dock-mini .fp-bar").getBoundingClientRect();
     const tabs = document.querySelector("#tab-bar").getBoundingClientRect();
     const at = document.elementFromPoint(bar.left + bar.width / 2, bar.top + bar.height / 2);
     return {
       barBottom: bar.bottom,
       tabsTop: tabs.top,
-      hitInsidePlayer: Boolean(at && at.closest("#foray-player")),
+      hitInsidePlayer: Boolean(at && at.closest("#dock-mini")),
       landedOn: at ? (at.id || at.className || at.tagName) : null,
     };
   });
@@ -247,7 +270,7 @@ test("closing the expanded sheet collapses to a mini bar that keeps playing, and
          because the defect is "a visible control that does nothing", which any
          future control could reintroduce under a different class name. */
   const exposed = await page.evaluate(() =>
-    [...document.querySelectorAll("#foray-player button, #foray-player a")]
+    [...document.querySelectorAll("#dock-mini button, #dock-mini a")]
       .filter((el) => el.getClientRects().length > 0)
       .map((el) => (el.getAttribute("aria-label") || el.textContent || "").trim())
   );
@@ -263,7 +286,7 @@ test("closing the expanded sheet collapses to a mini bar that keeps playing, and
   await expect(page).toHaveURL(/#\/library$/);
   await expect(page.locator('#tab-bar a[data-tab-key="library"]')).toHaveAttribute("aria-current", "page");
   await expect(page.locator("#view")).not.toBeEmpty();
-  await expect(page.locator("#foray-player")).toBeVisible();
+  await expect(page.locator("#dock-mini .fp-bar")).toBeVisible();
   expect((await audioState(page)).paused).toBe(false);
 
   /* 5. Stop — the separately labelled control — is what ends it. */
@@ -271,7 +294,7 @@ test("closing the expanded sheet collapses to a mini bar that keeps playing, and
   await expect(page.locator(".fp-sheet")).toBeVisible();
   await page.locator(".fp-stop").click();
 
-  await expect(page.locator("#foray-player")).toBeHidden();
+  await expect(page.locator("#dock-mini")).toBeHidden();
   await expect(page.locator("body.fp-open")).toHaveCount(0);
   await expect.poll(async () => (await audioState(page)).paused).toBe(true);
 });

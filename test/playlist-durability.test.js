@@ -1244,10 +1244,11 @@ test("today's subject queue renders through the same one path as a saved playlis
 /* #558 — the three code defects the requirements audit found            */
 /* ==================================================================== */
 
-test("renderDrawer: a playlist entry with neither last_played_at nor created does not crash (#558 item 1)", () => {
-  /* The exact crash the issue names: renderDrawer's sort read
+test("the playlists sort (Today's rail; the drawer's list before it went): a playlist entry with neither last_played_at nor created does not crash (#558 item 1)", () => {
+  /* The exact crash the issue names: the drawer's renderDrawer sort read
      `(b.last_played_at || b.created).localeCompare(...)` with no `|| ""`
-     guard, unlike playlistsForYouHtml's identical sort. playlists() now
+     guard, unlike the rail's identical sort. The drawer is gone (Redesign 2026); the sort that remains is
+     `playlistsForYouPicks()`, Today's "Playlists for you" rail, and the guard is pinned there. playlists() now
      backfills `created` on every read, so the malformed shape below is
      reached by overriding `playlists()` directly rather than through
      storage — modelling a hand-edited store, a truncated write, or a
@@ -1255,17 +1256,20 @@ test("renderDrawer: a playlist entry with neither last_played_at nor created doe
      playlists()'s own backfill (tested separately below) exists to close,
      WITHOUT relying on that backfill to protect this call site too.
 
-     MUTATION: drop the `|| ""` on either side of the comparator. Both
-     entries below have neither field, so `undefined.localeCompare` throws
-     and this test fails with an uncaught exception rather than an assertion. */
+     MUTATION: drop the `|| ""` on either side of the comparator in playlistsForYouPicks. Both entries
+     below have neither field, so `undefined.localeCompare` throws and this test fails with an uncaught
+     exception rather than an assertion. Put the drawer's playlists list back (a `#drawer-playlists`
+     writer in renderDrawer) -> the last assertion fails: nothing in the drawer sorts playlists any more. */
   const m = mount();
   m.ctx.playlists = () => [
     { id: "q1", title: "One", items: [] },
     { id: "q2", title: "Two", items: [] },
   ];
-  assert.doesNotThrow(() => m.ctx.renderDrawer(), "renderDrawer must not throw on a record with neither timestamp");
-  const html = m.ctx.document.querySelector("#drawer-playlists").innerHTML;
-  assert.ok(html.includes("One") && html.includes("Two"), "both entries must still render");
+  m.ctx.generatedPlaylists = () => [];   // not under test (it needs a session); the SORT of the listener's own is
+  let picks = null;
+  assert.doesNotThrow(() => { picks = m.ctx.playlistsForYouPicks(); }, "the playlists sort must not throw on a record with neither timestamp");
+  const titles = [...picks.own.map((p) => p.title)].sort();
+  assert.deepStrictEqual(titles, ["One", "Two"], "both entries must still be there");
 });
 
 test("playlists(): a record with neither `created` nor `last_played_at` gets `created` backfilled (#558 item 1)", () => {

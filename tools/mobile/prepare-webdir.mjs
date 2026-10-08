@@ -270,10 +270,14 @@ export const SHELL_FILES = [
      as JS), which is why this is listed here and not derived. */
   "ui/tokens.css",
   "ui/primitives.css",
+  "ui/dock.css", // Redesign 2026 (ambient): the Dock's own styles; minified like styles.css
   "ui/today.css",
   "ui/now-playing.css",
   "ui/car.css",
   "ui/onboarding.css",
+  "ui/show.css",
+  "ui/foray-detail.css",
+  "ui/settings.css",
   /* Redesign 2026 (ambient): the icon sprite. An SVG: not JS or CSS, so copy() ships it byte for byte
      (the dispatch falls through to copy for anything else). */
   "ui/icons.svg",

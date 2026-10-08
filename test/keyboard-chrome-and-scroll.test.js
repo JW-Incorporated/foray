@@ -316,9 +316,14 @@ test("every render function routes through setBodyClass — no direct body.class
 
      MUTATION: revert renderInterests to `document.body.className =
      "view-page"`. This fails. RUN: failed as named. */
-  const assignments = APP_SRC.match(/document\.body\.className\s*=/g) || [];
-  assert.strictEqual(assignments.length, 1,
-    `only setBodyClass may assign document.body.className; found ${assignments.length} assignments`);
+  /* Comments are stripped first: this count used to be 1 only because interests.js's header comment QUOTED the old
+     direct write, which says nothing about the code. setBodyClass assigns through a local alias (`body.className =`),
+     so the honest numbers are: no `document.body.className =` anywhere, and exactly the one aliased write. */
+  const code = APP_SRC.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/^\s*\/\/.*$/gm, " ");
+  const direct = code.match(/document\.body\.className\s*=/g) || [];
+  assert.strictEqual(direct.length, 0, `only setBodyClass may assign the body's className; found ${direct.length} direct assignments`);
+  const aliased = code.match(/\bbody\.className\s*=/g) || [];
+  assert.strictEqual(aliased.length, 1, `exactly one aliased write (setBodyClass's); found ${aliased.length}`);
 });
 
 /* ==================================================================== */
@@ -486,25 +491,28 @@ test("the dismiss button restores the tab bar through the same one path", () => 
   assert.strictEqual(m.input.value, "", "sanity: Escape is the full 'never mind'");
 });
 
-test("styles.css is what hides the bar — a `hidden` attribute provably cannot", () => {
-  /* `.tab-bar` carries `display: flex`, and an author `display` declaration
-     beats the UA stylesheet's `[hidden] { display: none }` at ANY
-     specificity. That is the cascade trap renderTabBar's own header
-     documents and test/home-layout.test.js's BUG 3 exists to catch, and it
-     is why this is a class rule rather than the `el.hidden` idiom the rest of
-     this page uses.
+test("ui/dock.css is what hides the bar - a `hidden` attribute provably cannot", () => {
+  /* The tab bar is the Dock's bottom row and carries `display: flex`, and an author `display` declaration
+     beats the UA stylesheet's `[hidden] { display: none }` at ANY specificity. That is the cascade trap
+     renderTabBar's own header documents and test/home-layout.test.js's BUG 3 exists to catch, and it
+     is why this is a class rule rather than the `el.hidden` idiom the rest of this page uses.
+     (It lived in styles.css as `body.sh-searching .tab-bar` until the Dock took the bar in; the rule moved
+     with it and also hides the mini row, so the field is the Dock's one row while it has focus.)
 
-     MUTATION: delete `body.sh-searching .tab-bar { display: none; }` from
-     styles.css. This fails — and on a phone the class would go on and the bar
-     would keep rendering, with no error anywhere. RUN: failed as named. */
-  assert.match(STYLES, /body\.sh-searching\s+\.tab-bar\s*\{[^}]*display:\s*none/,
+     MUTATION: delete `body.ui-v2.sh-searching .dock-layer .tab-bar` from the hiding rule in ui/dock.css.
+     This fails - and on a phone the class would go on and the bar would keep rendering, with no error
+     anywhere. */
+  const DOCK = fs.readFileSync(path.join(ROOT, "ui", "dock.css"), "utf8").replace(/\r\n/g, "\n").replace(/\/\*[\s\S]*?\*\//g, " ");
+  assert.match(DOCK, /body\.ui-v2\.sh-searching\s+\.dock-layer\s+\.tab-bar\s*\{[^}]*display:\s*none/,
     "the class must be backed by an author `display: none`, not by `hidden`");
-  assert.match(STYLES, /\.tab-bar\s*\{[^}]*display:\s*flex/,
+  assert.match(DOCK, /body\.ui-v2\.sh-searching\s+\.dock-layer\s+\.dock-mini[^{]*\{[^}]*display:\s*none/,
+    "and the mini row yields with it: only the field row stands while the field has focus");
+  assert.match(DOCK, /\.dock-layer\s+\.tab-bar\s*\{[^}]*display:\s*flex/,
     "sanity: the bar really does carry an author display, which is what makes `hidden` useless here");
-  const hideAt = STYLES.search(/body\.sh-searching\s+\.tab-bar/);
-  const barAt = STYLES.search(/^\.tab-bar\s*\{/m);
+  const hideAt = DOCK.search(/body\.ui-v2\.sh-searching\s+\.dock-layer\s+\.tab-bar/);
+  const barAt = DOCK.search(/^\.dock-layer\s+\.tab-bar\s*\{/m);
   assert.ok(hideAt > barAt,
-    "the hiding rule must come AFTER the bar's own rule — same-weight selectors are resolved by source order");
+    "the hiding rule must come AFTER the bar's own rule - it out-weighs it, but source order is the belt");
 });
 
 test("styles.css parses to the end — a stray comment marker silently kills the rest of it", () => {
