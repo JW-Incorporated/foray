@@ -151,6 +151,30 @@ function galleryCaptureSteps(theme) {
   ];
 }
 
+/* Today (Redesign 2026, ambient): the boot held open. The discover document never answers, so init()
+   never reaches route() and the page stays on the screen it painted before its first await: on Home,
+   Today's skeletons with the lamp sweep. The route is registered AFTER the harness stubs, and a later
+   Playwright route wins; a handler that neither fulfils nor continues leaves the request pending. */
+async function holdBoot(page) {
+  await page.context().route("**/data/discover.json", () => {});
+  await page.reload({ waitUntil: "commit" });
+  await page.waitForSelector("[data-boot-loading]", { timeout: 15000 });
+  await wait(page, 600);
+}
+
+/* Today, offline: the page is told it is offline, the way a phone tells it. Today reads navigator.onLine and
+   follows the offline event, so the banner and the unplayable rows appear on the page already open. The
+   network itself stays up on purpose: on a phone the shell's own files (the icon sprite a new <use> fetches)
+   come from the service worker's cache or the app bundle, but a harness context with no network, and no
+   service worker, cannot serve them, and the glyphs would vanish for a reason that is not the app's. */
+async function goOffline(page) {
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, "onLine", { configurable: true, get: () => false });
+    window.dispatchEvent(new Event("offline"));
+  });
+  await wait(page, 600);
+}
+
 /** Routes every seeded profile can show. `fx` supplies real ids. */
 function coreRoutes(fx, { entities }) {
   const ep = fx.items[0].id;
@@ -276,6 +300,24 @@ export function appStates(fx) {
         { label: "mini-player", route: "#/library", run: (page) => startPlayback(page, "uilab-stress-1") },
         { label: "now-playing", route: "#/library", run: (page) => openNowPlaying(page) },
       ],
+    },
+    {
+      id: "loading",
+      description: "Today while the boot is held open: skeletons for the hero and four rows, the wash at the default Glow.",
+      seed: "dismissed",
+      steps: [{ label: "home", route: "#/", run: (page) => holdBoot(page) }],
+    },
+    {
+      id: "offline",
+      description: "Today with the network down: the Offline banner, downloaded items playable, the rest at half art with Play disabled.",
+      seed: "returning",
+      steps: [{ label: "home", route: "#/", run: (page) => goOffline(page) }],
+    },
+    {
+      id: "midlisten",
+      description: "Today with an episode part-played (40 minutes in): Keep listening, and the ribbon restored over the page.",
+      seed: "midlisten",
+      steps: [{ label: "home", route: "#/", ready: ".td-keep" }],
     },
   ];
 }

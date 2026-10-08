@@ -4822,7 +4822,7 @@ function landOnPage({ navigated = false } = {}) {
   const lost = !active || active === document.body || active.isConnected === false
     || !!(typeof active.closest === "function" && active.closest("#drawer"));
   if (lost) {
-    const greeting = home && view && typeof view.querySelector === "function" ? view.querySelector(".hv2-greeting") : null;
+    const greeting = home && view && typeof view.querySelector === "function" ? view.querySelector(".td-wordmark") : null;
     const target = head || greeting || view;
     if (!target || typeof target.focus !== "function") return;
     if (typeof target.hasAttribute !== "function" || !target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1");
@@ -5154,7 +5154,7 @@ function railKey(rail, i) {
 /** `{ key: scrollLeft }` for every shelf on screen that is not at its start. */
 function railOffsets() {
   const view = $("#view");
-  const rails = view && typeof view.querySelectorAll === "function" ? [...view.querySelectorAll(".hv2-hscroll")] : [];
+  const rails = view && typeof view.querySelectorAll === "function" ? [...view.querySelectorAll(".td-rail")] : [];
   const out = {};
   rails.forEach((rail, i) => {
     const x = Number(rail.scrollLeft) || 0;
@@ -5166,7 +5166,7 @@ function railOffsets() {
 function applyRailOffsets(offsets) {
   if (!offsets) return;
   const view = $("#view");
-  const rails = view && typeof view.querySelectorAll === "function" ? [...view.querySelectorAll(".hv2-hscroll")] : [];
+  const rails = view && typeof view.querySelectorAll === "function" ? [...view.querySelectorAll(".td-rail")] : [];
   rails.forEach((rail, i) => {
     const x = offsets[railKey(rail, i)];
     if (x > 0) rail.scrollLeft = x;
@@ -6093,6 +6093,15 @@ async function init() {
      (`data-boot-loading`), so a boot that hangs is not certified either. */
   const view = $("#view");
   if (view && !view.firstElementChild) view.innerHTML = BOOT_LOADING_HTML;
+  /* ON HOME, THE BOOT SCREEN IS TODAY'S SKELETON (Redesign 2026, ambient): the hero and four
+     rows as lamp-swept blocks, under the header, instead of a line of text. It carries the same
+     `data-boot-loading` mark and the same "Loading 4a…" for a screen reader, so the webview
+     probe and every "still booting" check read it exactly as they read the line above. Any
+     other route keeps the line. */
+  if (view && typeof todaySkeletonHtml === "function" && isHomeRoute()) {
+    setBodyClass("view-home");
+    view.innerHTML = todaySkeletonHtml({ boot: true });
+  }
   /* Belt for index.html's `<body class="ui-v2">` (p-first-2): a cached older
      index.html without it still gets the dark design from this line on. */
   try { document.body.classList.add("ui-v2"); } catch (_) { /* a stub document */ }

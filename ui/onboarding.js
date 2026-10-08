@@ -583,13 +583,12 @@ function showIntroPopupOnce() {
        the first-run sheet learns what a foray is.
        Review 2026-09-23: no "stitch clips" (the 2026-08-11 playback ruling —
        see forayAbout), and only what Home renders: the stretch pick is in
-       Forays for you and Suggested (pickWithStretchFloor, the cardSlots
-       stretch role), not in Playlists, which are mostly the listener's own.
-       Audit round 2 (p-first-11): the Forays row has a stretch pick only when
-       the listed Forays span more than one subject, and with one published
-       Foray it cannot. The sentence asks the SAME pick Home renders
-       (foraysForYouPicks) instead of assuming. */
-    `A foray plays moments from several shows, straight from each show's own feed, one after another. Below them are your playlists and episodes picked for you. The episodes ${foraysForYouPicks()?.stretchIndex >= 0 ? "and the forays each " : ""}include one pick outside your usual subjects, on purpose.`);
+       Today's picks (the cardSlots stretch role, todayPicks), not in Playlists,
+       which are mostly the listener's own. Redesign 2026 (Today): the Forays
+       row and Suggested are gone, so the sentence no longer branches on
+       whether a stretch Foray exists — the hero is never the floor's stretch
+       Foray, and the picks always carry the stretch card. */
+    `A foray plays moments from several shows, straight from each show's own feed, one after another. Below it are today's picks and your playlists. The picks include one outside your usual subjects, on purpose.`);
 
   const actions = ddEl("div", "fy-sheet-actions");
   const ok = ddEl("button", "fy-sheet-go", "Got it");

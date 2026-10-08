@@ -110,6 +110,8 @@
 <link rel="stylesheet" href="ui/tokens.css">
 <!-- AFTERGLOW primitives remain inert until markup opts into `.ag`; the lab-only gallery is their Phase 3 consumer. -->
 <link rel="stylesheet" href="ui/primitives.css">
+<!-- AFTERGLOW Today (Home), the first screen to wear the system: every selector is `.ag .td-*`, new names only. -->
+<link rel="stylesheet" href="ui/today.css">
 <!-- AFTERGLOW Foray detail (#/foray/<id>), the second screen on the system: every selector is `.ag .fd-*` or a legacy `fy-*` element it restyles inside `.ag.fd`. -->
 <link rel="stylesheet" href="ui/foray-detail.css">
 <link rel="icon" href="icon-180.png" type="image/png">
@@ -134,9 +136,9 @@
        the clutter this replaced accumulated one "just one more row" at a time.
        "Starred Shows" is NOT dropped — it is a Library section (2026-09-22).
        ONE NAME PER DESTINATION (2026-09-22): #/shows is "Search" here because
-       that is the tab bar's name for it; the tab bar's names win. -->
-  <a class="drawer-section" href="#/">Home</a>
-  <a class="drawer-section" href="#/shows">Search</a>
+       that is the tab bar's name for it; the tab bar's names win. (Ambient Dock: "Today" and "Discover".) -->
+  <a class="drawer-section" href="#/">Today</a>
+  <a class="drawer-section" href="#/shows">Discover</a>
   <a class="drawer-section" href="#/playlists">Playlists</a>
   <a class="drawer-section" href="#/forays">Forays</a>
   <a class="drawer-section" href="#/queue">Up Next</a>

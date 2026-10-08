@@ -82,7 +82,7 @@ function mount({ fetchImpl = () => new Promise(() => {}), native = false, seed =
   const byId = new Map(PAGE_IDS.map((id) => { const el = makeEl("div"); el.id = id; return [id, el]; }));
   const view = byId.get("view");
   view.rails = [];
-  view.querySelectorAll = (sel) => (sel === ".hv2-hscroll" ? view.rails : []);
+  view.querySelectorAll = (sel) => (sel === ".td-rail" ? view.rails : []);
   const store = new Map(Object.entries(seed));
   const ctx = {
     console: { ...console, warn() {}, error() {} },
@@ -177,13 +177,15 @@ test("a retried catalogue is the page's real paint too (nav-3)", async () => {
 /* 2. perf-8 — a shelf keeps its place                                   */
 /* ==================================================================== */
 
-/* Home paints three shelves, each in its own section, at card one — exactly
-   what renderHomeV2's innerHTML rebuild gives the real page. */
+/* Today paints ONE shelf (Playlists for you), in its own section, at card one — exactly what renderHomeV2's
+   innerHTML rebuild gives the real page (Redesign 2026: the Jump back in and Forays for you rails are gone,
+   and "the only horizontal scroller on the screen" is a rule). A second, unrelated shelf is painted too,
+   so the memory is still keyed by SECTION, not by position: the offset must land on the right one. */
 function shelvesRouter(m) {
   m.evalIn("state.ready = true;");
   const paintHome = () => {
-    m.view.rails = ["hv2-jbi", "hv2-forays", "hv2-playlists"].map((cls) => {
-      const section = { className: `hv2-section ${cls}` };
+    m.view.rails = ["hv2-test-shelf", "hv2-playlists"].map((cls) => {
+      const section = { className: `${cls} td-section` };
       return { scrollLeft: 0, closest: (sel) => (sel === "section" ? section : null) };
     });
   };
@@ -200,17 +202,17 @@ function shelvesRouter(m) {
 
 test("‹ back to Home puts each shelf where it was left, by section (perf-8)", () => {
   /* MUTATION: delete the `applyRailOffsets(navRailX.get(h))` line in route() ->
-     the Forays shelf is back at card one; red. MUTATION 2: key by index instead
-     of section and let Jump back in appear -> the offset lands on the wrong
+     the Playlists shelf is back at card one; red. MUTATION 2: key by index instead
+     of section and let another shelf appear above it -> the offset lands on the wrong
      shelf. */
   const m = mount();
   const r = shelvesRouter(m);
   r.go("#/");
-  r.rail("hv2-forays").scrollLeft = 480;
+  r.rail("hv2-playlists").scrollLeft = 480;
   r.go("#/library");
   r.back();
-  assert.strictEqual(r.rail("hv2-forays").scrollLeft, 480, "the shelf the listener swiped");
-  assert.strictEqual(r.rail("hv2-playlists").scrollLeft, 0, "a shelf left at its start stays there");
+  assert.strictEqual(r.rail("hv2-playlists").scrollLeft, 480, "the shelf the listener swiped");
+  assert.strictEqual(r.rail("hv2-test-shelf").scrollLeft, 0, "a shelf left at its start stays there");
 });
 
 test("a FORWARD tap onto Home starts every shelf at card one (perf-8)", () => {
@@ -218,10 +220,10 @@ test("a FORWARD tap onto Home starts every shelf at card one (perf-8)", () => {
   const m = mount();
   const r = shelvesRouter(m);
   r.go("#/");
-  r.rail("hv2-forays").scrollLeft = 480;
+  r.rail("hv2-playlists").scrollLeft = 480;
   r.go("#/library");
   r.go("#/");
-  assert.strictEqual(r.rail("hv2-forays").scrollLeft, 0);
+  assert.strictEqual(r.rail("hv2-playlists").scrollLeft, 0);
 });
 
 test("an in-place repaint of Home (a settings switch, the late ribbon) keeps the shelves (perf-8)", () => {

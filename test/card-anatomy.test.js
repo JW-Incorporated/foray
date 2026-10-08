@@ -46,6 +46,7 @@ const { readAppSource, runAppSource } = require("./helpers/app-source.js");
 const ROOT = path.join(__dirname, "..");
 const APP_SRC = readAppSource().replace(/\r\n/g, "\n");
 const CSS = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8").replace(/\r\n/g, "\n");
+const TODAY_CSS = fs.readFileSync(path.join(ROOT, "ui/today.css"), "utf8").replace(/\r\n/g, "\n").replace(/\/\*[\s\S]*?\*\//g, " ");
 
 /* ---------- a minimal app.js loader (the jump-back-in-kinds shape) ---------- */
 function loadApp() {
@@ -137,6 +138,20 @@ function valueOf(sel, prop) {
   }
   return v;
 }
+/** The last value `prop` gets on exactly `sel` in ui/today.css (Today, Redesign 2026). */
+function todayValueOf(sel, prop) {
+  let v = null;
+  const re = /([^{}]+)\{([^{}]*)\}/g;
+  let m;
+  while ((m = re.exec(TODAY_CSS))) {
+    if (!names(m[1], sel)) continue;
+    for (const d of m[2].split(";")) {
+      const c = d.indexOf(":");
+      if (c >= 0 && d.slice(0, c).trim() === prop) v = d.slice(c + 1).trim();
+    }
+  }
+  return v;
+}
 function hasRule(sel) {
   const re = /([^{}]+)\{/g;
   let m;
@@ -161,35 +176,39 @@ const JBI = {
 /* 1. no <button> inside an <a>                                          */
 /* ==================================================================== */
 
-test("the subject card is a card: the title is the link, the star is a sibling above it", () => {
-  /* MUTATION: put `<a class="mini-card" …>` back around the whole card ->
-     the star is inside an anchor again and the first assertion names it. */
+test("a Today row is a card: the title is the one link, Play is a sibling above it (and so on the Stretch card)", () => {
+  /* Overturns "Card/row anatomy" for Home (Redesign 2026): the subject card and the Jump back in card
+     are gone; the EpisodeRow and the StretchCard carry the same rule that visual pass 1 set.
+     MUTATION: wrap the whole row in `<a class="td-row" …>` in todayEpisodeRow -> the Play button is
+     inside an anchor again and the first assertion names it. MUTATION 2: delete the `.ag .td-link::after`
+     rule from ui/today.css, or the row's z-index 2 on its button -> the link no longer stretches / Play
+     sits under it. */
   const run = loadApp();
-  const html = run(`miniCard(${JSON.stringify(SLOT)})`);
+  const item = { id: "e1", title: "An episode", show: "A Show", artwork_url: "https://cdn.test/a.png", duration_min: 30, audio_url: "https://cdn.test/a.mp3", hook: "Why it matters." };
+  const html = run(`todayEpisodeRow(${JSON.stringify({ item, branch: "science" })})`);
   assert.deepStrictEqual(buttonsInsideAnchors(html), [], "a <button> opened inside an <a>");
-  assert.match(html, /^<div class="mini-card" data-branch="science">/, "the card is a <div> (first-time-onboarding's dealt-roots regex reads this attribute order)");
-  assert.match(html, /<h3><a class="mc-link" href="#\/[^"]+">[^<]+<\/a><\/h3>/, "the subject title is the one real link");
-  assert.match(html, /<button class="star[^>]*>[\s\S]*<\/div>$/, "the star is a child of the card, after the text block");
-  assert.strictEqual(valueOf(".mini-card", "position"), "relative", "the card is the link's containing block");
-  assert.strictEqual(valueOf(".mc-link::after", "inset"), "0", "the link stretches over the card");
-  assert.strictEqual(valueOf(".mini-card > button.star", "z-index"), "1", "the star sits above the stretched link");
-  /* And the stretch card's bridge line still lands inside the card. */
-  const stretch = run(`miniCardV2(${JSON.stringify({ ...SLOT, role: "stretch" })})`);
-  assert.match(stretch, /<p class="hv2-bridge">[^<]+<\/p><\/div>$/, "miniCardV2 appends the bridge before the card's closing tag");
+  assert.match(html, /^<article class="raised td-row is-default" data-td-ep="e1" data-branch="science">/, "the row is an <article>");
+  assert.match(html, /<h3 class="t-headline clamp2 td-row-title"><a class="td-link" href="#\/episode\/e1" data-ev="picked" data-ep="e1" data-ctx="today">An episode<\/a><\/h3>/,
+    "the title is the one real link, and it carries the `picked` logging attributes bindPickLogging binds");
+  assert.match(html, /<button type="button" class="ag-btn ag-btn-play ag-btn-size-44" data-td-play="e1"/, "Play is a sibling of the title, after it");
+  assert.strictEqual(todayValueOf(".ag .td-row", "position"), "relative", "the row is the link's containing block");
+  assert.strictEqual(todayValueOf(".ag .td-link::after", "inset"), "0", "the link stretches over the row");
+  assert.strictEqual(todayValueOf(".ag .td-row > .ag-btn", "z-index"), "2", "Play sits above the stretched link");
+  /* The Stretch card is the same shape, with its bridge line inside it. */
+  const stretch = run(`todayStretchCard(${JSON.stringify({ item, branch: "science", familiar: { name: "Home Show", src: null } })})`);
+  assert.deepStrictEqual(buttonsInsideAnchors(stretch), [], "a <button> opened inside an <a> on the Stretch card");
+  assert.match(stretch, /^<article class="raised ag-stretch-card td-stretch is-default"/);
+  assert.match(stretch, /<p class="t-why td-bridge">[^<]+<\/p>/, "the bridge line is inside the card");
+  assert.strictEqual(todayValueOf(".ag .td-stretch .ag-card-end .ag-btn", "z-index"), "2", "and its Play is above the link too");
 });
 
-test("the Jump back in card is a card: the title is the link, play is a sibling above it", () => {
-  /* MUTATION: `<a class="hv2-jbi-card" …>` back around the card -> red. */
+test("the Keep listening row is a card too: a foray or a playlist resumes from a sibling Play above the title link", () => {
+  /* MUTATION: `<a class="raised td-row" …>` around the keep row in todayKeepHtml -> red. */
   const run = loadApp();
-  const html = run(`jumpBackInCardHtml(${JSON.stringify(JBI)})`);
+  const html = run(`(() => { const t = homePlayable; homePlayable = () => ({ kind: "foray", r: { id: "f1", playable: [] }, title: "F" }); try { return todayKeepHtml({ kind: "foray", id: "f1", title: "A foray", percent: 40, sub: "Foray", left: "30 min left" }); } finally { homePlayable = t; } })()`);
   assert.deepStrictEqual(buttonsInsideAnchors(html), [], "a <button> opened inside an <a>");
-  assert.match(html, /<div class="hv2-jbi-card">/);
-  assert.match(html, /<a class="hv2-jbi-title hv2-jbi-link" href="#\/episode\/e1" data-ev="picked" data-ep="e1" data-ctx="jbi-episode">Dennis Whyte: Nuclear Fusion<\/a>/,
-    "the title link carries the `picked` logging attributes bindPickLogging binds");
-  assert.match(html, /<button class="play-btn" data-play="e1"/, "the card still carries its play button");
-  assert.strictEqual(valueOf("body.ui-v2 .hv2-jbi-card, body.ui-v2 .hv2-foray-card, body.ui-v2 .hv2-playlist-card", "position"), "relative");
-  assert.strictEqual(valueOf("body.ui-v2 .hv2-jbi-link::after", "inset"), "0");
-  assert.strictEqual(valueOf("body.ui-v2 .hv2-jbi-card > .play-btn", "z-index"), "1");
+  assert.match(html, /<h3 class="t-headline clamp2 td-row-title"><a class="td-link" href="#\/foray\/f1">A foray<\/a><\/h3>/);
+  assert.match(html, /<button type="button" class="ag-btn ag-btn-play ag-btn-size-44" data-td-keep/, "Play resumes through Home's own start path");
 });
 
 test("the Continue banner is gone: no renderer, no rule, no test on unreachable markup", () => {
@@ -334,16 +353,11 @@ test("only a list whose order is the point is numbered: a playlist, not Saved, H
   assert.doesNotMatch(APP_SRC, /<div class="ep-row gone"><span class="q-num">/, "the History fallback row is not numbered");
 });
 
-test("a tag says what its section does not: no JUMP BACK IN under 'Jump back in', no FORAY under 'Forays'", () => {
-  /* Round 2, visual-9. MUTATION: drop `{ inSection: true }` from Home's rail
-     (or from renderForays' forayListHtml call) -> red. */
+test("a tag says what its section does not: no FORAY under 'Forays'", () => {
+  /* Round 2, visual-9 (the Jump back in half of this test went with the rail, 2026-10-07: Today's
+     Keep listening row restates nothing, and its section head is its only label).
+     MUTATION: drop `{ inSection: true }` from renderForays' forayListHtml call -> red. */
   const run = loadApp();
-  assert.match(run(`jumpBackInCardHtml(${JSON.stringify(JBI)})`), /<span class="hv2-jbi-kicker">Jump back in<\/span>/,
-    "on a mixed surface the tag stays — it is the one place it says something");
-  assert.doesNotMatch(run(`jumpBackInCardHtml(${JSON.stringify(JBI)}, { inSection: true })`), /hv2-jbi-kicker/,
-    "under its own heading it goes");
-  assert.match(APP_SRC, /<h2 class="hv2-title">Jump back in<\/h2>\s*<div class="hv2-hscroll">\$\{cards\.map\(c => jumpBackInCardHtml\(c, \{ inSection: true \}\)\)/,
-    "Home's rail renders its cards as in-section");
   assert.match(APP_SRC, /\? forayListHtml\(\{ inSection: true \}\)/, "the Forays page's list sits under its 'Forays' heading");
   const pub = { id: "f1", title: "A Foray", status: "published" };
   const draft = { id: "f2", title: "A draft", status: "draft" };

@@ -78,9 +78,6 @@ const PUBLISHED_ID = PUBLISHED_IDS[0];
     published Foray this was "the published one, then the draft"; with two it
     is not, because a generated draft can sit between them in the file. */
 const listedWith = (unlocked) => FORAYS.filter((f) => f.status === "published" || f.id === unlocked).map((f) => f.id);
-/** Home's "Forays for you" takes up to four listed Forays (foraysForYouPicks,
-    `take: 4`) before the test-track drafts. */
-const HOME_PICKS = Math.min(4, PUBLISHED_IDS.length);
 
 /* ---------- a DOM with a tree, whose innerHTML grows ids ---------- */
 
@@ -335,8 +332,8 @@ test("switch off (the default): the listed set is exactly the published set, and
 
   h.route("#/");
   const home = h.view();
-  assert.ok(home.includes("hv2-forays"), "Home has its Forays section");
-  assert.ok(!home.includes("hv2-draft-tag"), "no draft tag on Home");
+  assert.ok(home.includes('class="td-hero"'), "Today has its hero");
+  assert.ok(!home.includes('aria-label="Draft forays"'), "no draft section on Home");
   assert.ok(!home.includes("Showing draft Forays"), "no test-track notice on Home");
   for (const f of DRAFTS) assert.ok(!home.includes(f.title), `${f.id} must not be named on Home`);
 
@@ -371,7 +368,7 @@ test("switch off is byte-identical to an app with no switch at all, on every sur
   const b = await paint({ seed: { cp_show_drafts: false } });
   const c = await paint({ appSrc: stubbed });
   const d = await paint({ legacyBridge: true });
-  assert.ok(a.home.includes("hv2-forays") && a.forays.includes("fy-home-row"), "the renders are not empty");
+  assert.ok(a.home.includes('class="td-hero"') && a.forays.includes("fy-home-row"), "the renders are not empty");
   assert.deepStrictEqual(b, a, "key stored as false = key absent");
   assert.deepStrictEqual(c, a, "the switch off = no switch in the source");
   assert.deepStrictEqual(d, a, "the switch off = a bridge that cannot see it");
@@ -401,28 +398,28 @@ test("switch on: #/forays lists every draft with the draft kicker — published 
   for (let i = 1; i < genPos.length; i++) assert.ok(genPos[i - 1] < genPos[i], "generated drafts are newest first");
 });
 
-test("switch on: Home lists every draft as a badged card after the ordinary picks, and carries the notice", async () => {
-  /* M6: drop `${testTrackNoticeHtml()}` from renderHomeV2 — the notice
-     assertion goes red. Drop `${drafts.map(...)}` from foraysForYouHtml — the
-     card assertions go red. */
+test("switch on: Home lists every draft as a marked row under the page, newest first, and carries the notice above the hero", async () => {
+  /* Redesign 2026 (Today): Home no longer has a "Forays for you" rail, so the drafts the switch admits are a
+     plain "Draft forays" section after the page's own sections; the one-line notice stays on top.
+     M6: drop `${testTrackNoticeHtml()}` from todayHtml — the notice assertion goes red.
+     Drop `${todayDraftsHtml(...)}` from todayHtml — the row assertions go red.
+     M7: pass `[]` for the drafts, or filter them by status — a draft goes missing. */
   const h = await mount({ seed: ON, hash: "#/" });
   const home = h.view();
   assert.ok(home.includes('class="hv2-test-track note">Showing draft Forays — test track</p>'), "the one-line notice");
-  assert.ok(home.indexOf("Showing draft Forays") < home.indexOf("hv2-forays"), "the notice is above the Forays section");
-  const cards = home.split('class="hv2-foray-card').slice(1);
-  assert.strictEqual(cards.length, HOME_PICKS + DRAFTS.length, "the published picks, then every draft");
-  for (const card of cards.slice(0, HOME_PICKS)) {
-    assert.ok(PUBLISHED_IDS.some((id) => card.includes(`href="#/foray/${id}"`)) && !card.includes("hv2-draft-tag"),
-      "the published picks come first and are unbadged");
-  }
+  assert.ok(home.indexOf("Showing draft Forays") < home.indexOf('class="td-hero"'), "the notice is above the hero");
+  const section = home.slice(home.indexOf('aria-label="Draft forays"'));
+  assert.ok(section.length < home.length, "the Draft forays section renders");
+  const rows = section.split('class="raised td-draft"').slice(1);
+  assert.strictEqual(rows.length, DRAFTS.length, "every draft, and only the drafts");
   for (const f of DRAFTS) {
-    const card = cards.find((c) => c.includes(`href="#/foray/${f.id}"`));
-    assert.ok(card, `${f.id} has a card`);
-    assert.ok(card.includes('<span class="hv2-draft-tag">draft</span>'), `${f.id} is badged draft`);
+    const row = rows.find((c) => c.includes(`href="#/foray/${f.id}"`));
+    assert.ok(row, `${f.id} has a row`);
+    assert.ok(row.includes('<span class="eyebrow">draft</span>'), `${f.id} is marked draft`);
   }
-  const genPos = GENERATED_NEWEST_FIRST.map((id) => home.indexOf(`href="#/foray/${id}"`));
+  for (const id of PUBLISHED_IDS) assert.ok(!rows.some((r) => r.includes(`href="#/foray/${id}"`)), "a published Foray is not a draft row");
+  const genPos = GENERATED_NEWEST_FIRST.map((id) => section.indexOf(`href="#/foray/${id}"`));
   for (let i = 1; i < genPos.length; i++) assert.ok(genPos[i - 1] < genPos[i], "generated drafts are newest first on Home too");
-  assert.ok(!home.includes("hv2-bridge\">undefined"), "no stretch bridge leaked onto a draft card");
 });
 
 test("switch on: a show page's Foray rows name a draft that draws on the show, with the draft marker", async () => {

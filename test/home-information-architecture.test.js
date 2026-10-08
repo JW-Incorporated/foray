@@ -203,7 +203,7 @@ test("`.home` renders the v2 layout (U-11 cutover retired the flag-off four-card
   };
   m.ctx.renderHome();
   const html = m.view();
-  assert.ok(html.includes('class="home hv2-home"'), "renderHome() must always render Home v2 post-cutover");
+  assert.ok(html.includes('class="ag td-today'), "renderHome() must always render Today (Redesign 2026) post-cutover");
   assert.ok(!html.includes('class="cards4"'), "the retired flag-off four-card grid must never render");
 });
 
@@ -313,11 +313,11 @@ test("the menu lists exactly the five named destinations, in the founder's order
   const items = [...INDEX_HTML.matchAll(/<a class="drawer-section" href="([^"]+)">([^<]+)<\/a>/g)]
     .map((m) => [m[2], m[1]]);
   assert.deepStrictEqual(items, [
-    ["Home", "#/"],
+    ["Today", "#/"],   /* REDESIGN 2026 (ambient Dock): the tab bar says Today and Discover, so the drawer does too (one name per destination) */
     /* "Search", not "Shows", since 2026-09-22: one name per destination, and
        the tab bar's name wins (audit personas 36 and 76). Same page, same
        place in the founder's order. */
-    ["Search", "#/shows"],
+    ["Discover", "#/shows"],
     ["Playlists", "#/playlists"],
     ["Forays", "#/forays"],
     ["Up Next", "#/queue"],
@@ -470,6 +470,6 @@ test("with cp_ui_v2 on, Home renders the v2 layout instead of the four-card grid
 
   m.ctx.renderHome();
   const html = m.view();
-  assert.ok(html.includes('class="home hv2-home"'), "cp_ui_v2 on must render Home v2");
+  assert.ok(html.includes('class="ag td-today'), "cp_ui_v2 on must render Today");
   assert.ok(!html.includes('class="cards4"'), "cp_ui_v2 on must not also render the flag-off four-card grid");
 });

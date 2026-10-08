@@ -1,4 +1,9 @@
-/* U-02 (docs/ui-transition-plan.md): the four-tab bar. Originally gated by a
+/* REDESIGN 2026, ambient: THREE tabs now (Today, Discover, Library), no Create tab. The ruling that fell is
+ * "Four tabs (Home, Search, Create, Library) + drawer menu" (test-classification.md section 0), overturned by the
+ * ambient direction's information architecture (DIRECTION.md: Create folds into Discover's single field). The
+ * sections below say what each test pins now; the original U-02 text follows.
+ *
+ * U-02 (docs/ui-transition-plan.md): the tab bar. Originally gated by a
  * cp_ui_v2 flag; U-11 (founder override, 2026-09-06, kanban card
  * t_a3f01c8a) retired the flag — ui2On() now always returns true and the
  * bar is unconditional. The pre-cutover flag/off-state tests are preserved
@@ -6,8 +11,7 @@
  *
  * WHAT THIS PROVES, in order:
  *  1. The tab bar always renders (no on/off state left).
- *  2. It renders all four destinations, in the mockup's order: Home,
- *     Search, Create, Library.
+ *  2. It renders its three destinations, in order: Today, Discover, Library.
  *  3. Each of the app's 14 routes maps to exactly one tab, and that tab
  *     (and only that tab) carries aria-current="page" -- so switching tabs
  *     always highlights a real destination, never a stale or double one.
@@ -188,9 +192,10 @@ test("the tab bar always exists after a render (cp_ui_v2 retired, U-11 cutover)"
 /* 2. ALL FOUR TABS, IN ORDER                                            */
 /* ==================================================================== */
 
-test("the tab bar renders all four tabs in the mockup's order: Home, Search, Create, Library", () => {
-  /* MUTATION: reorder TAB_ROUTES, or drop one entry. The labels array
-     comparison below fails on either. */
+test("the tab bar renders three tabs in order: Today, Discover, Library (no Create tab)", () => {
+  /* Overturns "Four tabs (Home, Search, Create, Library)" by name (ambient IA).
+     MUTATION: reorder TAB_ROUTES, drop one entry, or put the Create entry back. The labels array
+     comparison below fails on each. */
   const m = mount();
   m.evalIn("renderTabBar();");
   const bar = m.body.querySelector("#tab-bar");
@@ -205,7 +210,8 @@ test("the tab bar renders all four tabs in the mockup's order: Home, Search, Cre
     const m2 = /<span>([^<]*)<\/span>/.exec(a.innerHTML);
     return m2 ? m2[1] : null;
   });
-  assert.deepStrictEqual(htmlLabels, ["Home", "Search", "Create", "Library"]);
+  assert.deepStrictEqual(htmlLabels, ["Today", "Discover", "Library"]);
+  assert.ok(!bar.querySelectorAll(".tab-btn").some((a) => a.dataset.tabKey === "create"), "no tab is keyed create: Create folded into Discover");
   void labels;
 });
 
@@ -241,10 +247,11 @@ test("every route highlights exactly one tab, and it is the right one", () => {
     ["", "home"],
     ["#/bogus", "home"],
     ["#/episode/xyz", "search"],
-    ["#/playlists", "create"],
-    ["#/playlist/abc", "create"],
-    ["#/subject/tech", "create"],
-    ["#/create", "create"],
+    /* Create's own page and the playlist routes light DISCOVER now (the tab is gone; its field lives there). */
+    ["#/playlists", "search"],
+    ["#/playlist/abc", "search"],
+    ["#/subject/tech", "search"],
+    ["#/create", "search"],
     ["#/library", "library"],
     ["#/queue", "library"],
     ["#/forays", "library"],
@@ -305,19 +312,30 @@ test("the Library tab's href is #/library", () => {
 });
 
 /* ==================================================================== */
-/* 7b. CREATE TAB POINTS AT #/create (U-06)                              */
+/* 7b. THE GLYPH FOLLOWS THE STATE (ambient Fill/Regular pair)          */
 /* ==================================================================== */
 
-test("the Create tab's href is #/create, not #/playlists", () => {
-  /* MUTATION: revert TAB_ROUTES's create entry's hash back to "#/playlists".
-     U-06 gives Create its own screen (the Foray|Playlist toggle, honest
-     copy) rather than routing straight at the old Playlists page. */
+test("the active tab wears the Fill glyph and the others the Regular one, from the sprite (a state change is a fill)", () => {
+  /* Overturns the old per-tab stroke SVGs: DIRECTION.md "Iconography" (Phosphor, Fill for the active tab).
+     MUTATION 1: render the Regular glyph for the active tab too (tabGlyph ignores `on`) -> the
+     house-fill assertion fails. MUTATION 2: switch back to inline stroke SVG markup -> no <use> reference. */
   const m = mount();
+  m.ctx.location.hash = "#/";
   m.evalIn("renderTabBar();");
-  const bar = m.body.querySelector("#tab-bar");
-  const create = bar.querySelectorAll(".tab-btn").find((a) => a.dataset.tabKey === "create");
-  assert.ok(create, "a create tab must exist");
-  assert.strictEqual(create.href, "#/create");
+  const tabs = m.body.querySelector("#tab-bar").querySelectorAll(".tab-btn");
+  const use = (key) => {
+    const a = tabs.find((t) => t.dataset.tabKey === key);
+    const hit = /<use href="([^"]+)"/.exec(a.innerHTML);
+    return hit ? hit[1] : null;
+  };
+  assert.strictEqual(use("home"), "ui/icons.svg#i-house-fill", "the active tab is the Fill glyph");
+  assert.strictEqual(use("search"), "ui/icons.svg#i-compass", "an inert tab is the Regular glyph");
+  assert.strictEqual(use("library"), "ui/icons.svg#i-books");
+  m.ctx.location.hash = "#/library";
+  m.evalIn("renderTabBar();");
+  assert.strictEqual(use("home"), "ui/icons.svg#i-house", "the fill moves with the current tab: Today is Regular again");
+  assert.strictEqual(use("library"), "ui/icons.svg#i-books-fill");
+  assert.ok(/<span>Library<\/span>/.test(tabs.find((t) => t.dataset.tabKey === "library").innerHTML), "the label survives the glyph swap");
 });
 
 /* ==================================================================== */

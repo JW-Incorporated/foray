@@ -43,7 +43,7 @@ const path = require("node:path");
 const { readAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const CSS = ["styles.css", "ui/tokens.css", "ui/primitives.css", "ui/foray-detail.css"]
+const CSS = ["styles.css", "ui/tokens.css", "ui/primitives.css", "ui/today.css", "ui/foray-detail.css"]
   .map((rel) => fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n"))
   .join("\n");
 
@@ -226,7 +226,6 @@ const BUTTONS = {
   ".ag-chip": { tall: ".ag .ag-chip", why: "a labelled pill with inline padding" },
   ".ag-strip-bar": { tall: ".ag .ag-strip-bar", why: "a flexible bar that fills the strip's width" },
   ".ag-tab": { tall: ".ag .ag-tab", why: "a tab that flexes across one third of the tab bar" },
-  ".hv2-play": { tall: "body.ui-v2 .hv2-play", why: "Home's one play button (founder, 2026-09-24): a labelled capsule, \"▶ Play <title>\", 48px tall with 16/20px side padding" },
   ".play-btn": { rule: ".play-btn" },
   ".pl-save": { tall: "button.pl-save", why: "a labelled capsule (\"Save to my playlists\" / \"✓ Saved\") with 16px side padding" },
   ".rate-option": { tall: ".rate-option", why: "a row of the speed sheet's full-width column" },
@@ -464,7 +463,9 @@ test("a held in-app link opens no web preview and no callout, in the shell or th
   assert.strictEqual(valueOf('a[href^="#/"]', "-webkit-user-select"), "none");
   /* Every stretched link really is an in-app route, so the rule reaches it. */
   const app = readAppSource();
-  for (const cls of ["mc-link", "ep-title-link", "hv2-jbi-link"]) {
+  /* Today's rows, hero and tiles are stretched links too (`.td-link`, ui/today.css), replacing the subject card's
+     `.mc-link` and the Jump back in card's `.hv2-jbi-link` (Redesign 2026). */
+  for (const cls of ["td-link", "ep-title-link"]) {
     assert.match(app, new RegExp(`<a class="[^"]*\\b${cls}\\b[^"]*" href="#/`), `.${cls} is an <a href="#/…">`);
   }
   /* The flash goes only where the card authors its own press. */

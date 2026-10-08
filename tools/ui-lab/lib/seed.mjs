@@ -100,7 +100,7 @@ function playlistsOf(items, titles) {
 }
 
 /**
- * @param {string} kind  empty | dismissed | returning | stress
+ * @param {string} kind  empty | dismissed | returning | midlisten | stress
  * @returns {Record<string, unknown>}  localStorage key -> JSON-serialisable value
  */
 export function buildSeed(kind, fx) {
@@ -128,8 +128,20 @@ export function buildSeed(kind, fx) {
     ? [LONG_TITLE, "Short one", LONG_TOKEN]
     : ["The fusion reactor tour", "Short histories for a long drive", "How things get built"];
 
+  /* midlisten (Today's "Keep listening"): the returning profile, and the first episode part-played: the durable
+     pointer the ribbon restores from (cp_last_episode) and its stored position (cp_pos:<id>), 40 minutes in. */
+  const mid = items[0];
+  const midlisten = kind === "midlisten" ? {
+    cp_last_episode: {
+      id: mid.id, title: mid.title, show: mid.show, artwork_url: mid.artwork_url, audio_url: mid.audio_url,
+      duration_min: mid.duration_min, duration_sec: mid.duration_sec || mid.duration_min * 60, updated_at: new Date(FIXED_NOW - 3600000).toISOString(),
+    },
+    ["cp_pos:" + mid.id]: { seconds: 2400, duration: mid.duration_sec || mid.duration_min * 60, updated_at: new Date(FIXED_NOW - 3600000).toISOString(), source: "local" },
+  } : {};
+
   return {
     ...base,
+    ...midlisten,
     cp_saved: saved,
     cp_episode_snaps: snaps,
     cp_queue: items.slice(0, kind === "stress" ? 4 : 5).map((i) => i.id),

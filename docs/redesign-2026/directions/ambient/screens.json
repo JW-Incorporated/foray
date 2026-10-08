@@ -14,19 +14,19 @@
       "regions": {
         "header": {
           "prototype": ".screen-head",
-          "app": ".topbar"
+          "app": ".td-head"
         },
         "hero": {
           "prototype": ".hero",
-          "app": ".hv2-jbi-card"
+          "app": ".td-hero"
         },
         "primary": {
           "prototype": ".hero .playbtn",
-          "app": ".hv2-play"
+          "app": ".td-hero [data-home-play]"
         },
         "rows": {
           "prototype": ".ep-row",
-          "app": ".mini-card",
+          "app": ".td-row",
           "mode": "all"
         },
         "tabBar": {
@@ -47,19 +47,19 @@
       "regions": {
         "header": {
           "prototype": ".screen-head",
-          "app": ".topbar"
+          "app": ".td-head"
         },
         "hero": {
           "prototype": ".hero",
-          "app": ".hv2-jbi-card"
+          "app": ".td-hero"
         },
         "primary": {
           "prototype": ".hero .playbtn",
-          "app": ".hv2-play"
+          "app": ".td-hero [data-home-play]"
         },
         "rows": {
           "prototype": ".ep-row",
-          "app": ".mini-card",
+          "app": ".td-row",
           "mode": "all"
         },
         "mini": {
@@ -338,19 +338,19 @@
       "regions": {
         "header": {
           "prototype": ".screen-head",
-          "app": ".topbar"
+          "app": ".td-head"
         },
         "hero": {
           "prototype": ".hero",
-          "app": ".hv2-jbi-card"
+          "app": ".td-hero"
         },
         "primary": {
           "prototype": ".hero .playbtn",
-          "app": ".hv2-play"
+          "app": ".td-hero [data-home-play]"
         },
         "rows": {
           "prototype": ".ep-row",
-          "app": ".mini-card",
+          "app": ".td-row",
           "mode": "all"
         },
         "tabBar": {
@@ -364,28 +364,134 @@
       "prototype": {
         "route": "?state=loading#/home"
       },
-      "app": null,
+      "app": {
+        "state": "loading",
+        "step": "home"
+      },
       "regions": {
         "header": {
           "prototype": ".screen-head",
-          "app": null
+          "app": ".td-head"
         },
         "hero": {
           "prototype": ".hero",
-          "app": null
+          "app": ".td-hero"
         },
         "primary": {
           "prototype": ".hero .playbtn",
           "app": null
         },
         "rows": {
-          "prototype": ".ep-row",
-          "app": null,
+          "prototype": ".skel",
+          "app": ".td-skel-row",
           "mode": "all"
         },
         "tabBar": {
           "prototype": ".tabbar",
-          "app": null
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "home-midlisten": {
+      "title": "Today, mid-listen",
+      "prototype": {
+        "route": "?state=midlisten#/home"
+      },
+      "app": {
+        "state": "midlisten",
+        "step": "home"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".screen-head",
+          "app": ".td-head"
+        },
+        "hero": {
+          "prototype": ".hero",
+          "app": ".td-hero"
+        },
+        "primary": {
+          "prototype": ".hero .playbtn",
+          "app": ".td-hero [data-home-play]"
+        },
+        "rows": {
+          "prototype": ".ep-row",
+          "app": ".td-row",
+          "mode": "all"
+        },
+        "mini": {
+          "prototype": ".mini",
+          "app": "#foray-player"
+        },
+        "tabBar": {
+          "prototype": ".tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "home-offline": {
+      "title": "Today, offline",
+      "prototype": {
+        "route": "?state=offline#/home"
+      },
+      "app": {
+        "state": "offline",
+        "step": "home"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".screen-head",
+          "app": ".td-head"
+        },
+        "hero": {
+          "prototype": ".hero",
+          "app": ".td-hero"
+        },
+        "primary": {
+          "prototype": ".hero .playbtn",
+          "app": ".td-hero [data-home-play]"
+        },
+        "rows": {
+          "prototype": ".ep-row",
+          "app": ".td-row",
+          "mode": "all"
+        },
+        "tabBar": {
+          "prototype": ".tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "home-stress": {
+      "title": "Today, long-title stress",
+      "prototype": {
+        "route": "?state=stress#/home"
+      },
+      "app": {
+        "state": "stress",
+        "step": "home"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".screen-head",
+          "app": ".td-head"
+        },
+        "hero": {
+          "prototype": ".hero",
+          "app": ".td-hero"
+        },
+        "primary": {
+          "prototype": ".hero .playbtn",
+          "app": ".td-hero [data-home-play]"
+        },
+        "rows": {
+          "prototype": ".ep-row",
+          "app": ".td-row",
+          "mode": "all"
+        },
+        "tabBar": {
+          "prototype": ".tabbar",
+          "app": "#tab-bar"
         }
       }
     },

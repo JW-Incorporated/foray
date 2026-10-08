@@ -894,19 +894,22 @@ test("'played' counts history OR a stored position, so it cannot fall as the his
   assert.match(body, /const played = rows\.filter\(r => rowProgress\(r\.item\)\?\.state === "played"\)\.length;/);
 });
 
-test("a subject card states a total duration only when every episode has one", () => {
-  /* "3 episodes · 1h 20m" summed two of three when one had no duration_min —
-     a partial sum presented as the total of the count beside it.
-     MUTATION: restore `slot.items.reduce((s, it) => s + (it.duration_min || 0), 0)`.
-     The partial total is printed and this goes red. */
+test("a playlist tile states a total duration only when every episode has one", () => {
+  /* "3 episodes · 1h 20m" summed two of three when one had no duration_min \u2014 a partial sum presented
+     as the total of the count beside it. (The subject card this rule was written for went with
+     Today, 2026-10-07; the rule moved to the Playlists-for-you tile, which counts the same way.)
+     MUTATION: sum `episodeMinutes(r.item)` over the rows that have one, without the `allTimed` guard in
+     todayPlaylistCard. The partial total is printed and this goes red. */
   const m = mount();
-  m.state.taxonomy = { nodes: [{ id: "history", parent: null, label: "History" }] };
+  const rowsOf = (items) => items.map((item) => ({ item, state: "live" }));
   const item = (id, duration_min) => ({ id, title: `T ${id}`, show: "S", duration_min });
-  const kicker = (items) => (/<p class="mc-kicker">([\s\S]*?)<\/p>/.exec(
-    m.ctx.miniCard({ branch: "history", role: "anchor", item: items[0], items }),
-  ) || [])[1];
-  assert.match(kicker([item("a", 40), item("b", 40)]), /^2 episodes · 1 hr 20 min$/);
-  assert.strictEqual(kicker([item("a", 40), item("b", 40), item("c", null)]), "3 episodes",
+  const meta = (items) => {
+    m.ctx.__rows = rowsOf(items);
+    m.ctx.resolveParts = () => m.ctx.__rows;
+    return m.ctx.todayPlaylistCard({ id: "p", title: "P", items: [] }, false, new Set()).meta;
+  };
+  assert.strictEqual(meta([item("a", 40), item("b", 40)]), "2 episodes · 1 hr 20 min");
+  assert.strictEqual(meta([item("a", 40), item("b", 40), item("c", null)]), "3 episodes",
     "an unknown length means no total, not a smaller one");
 });
 
