@@ -330,22 +330,6 @@ export function mediaArtworkList({ showArtworkUrl = null, appArtworkUrl = APP_AR
   return app ? [app] : [];
 }
 
-/* The sizes the web Media Session is offered (Tactile BUILD-NOTES 7). */
-export const MEDIA_ARTWORK_LADDER = [96, 128, 192, 256, 384, 512];
-
-/**
- * The web write's artwork: the one chosen square (see mediaArtworkList)
- * declared at each size of the ladder, so the OS never scales a 512 icon by
- * guesswork. It is applied only where the web assigns `navigator.mediaSession.
- * metadata`: mediaArtworkList is the contract the native plugins mirror and
- * the parity fixtures pin, and stays one entry. Still one source, never a mix.
- */
-export function mediaArtworkLadder(list) {
-  const first = Array.isArray(list) ? list[0] : null;
-  if (!first || !first.src) return [];
-  return MEDIA_ARTWORK_LADDER.map((size) => ({ ...first, sizes: `${size}x${size}` }));
-}
-
 /* ---------- metadata ---------- */
 
 /** The app's own name. Exported so a test can assert where it may and may not
@@ -737,8 +721,7 @@ export function createMediaSession({ nav = null, MediaMetadata = null, onWrite =
           let writeOk = true;
           let writeError = "";
           try {
-            const written = { ...metadata, artwork: mediaArtworkLadder(metadata.artwork) };
-            ms.metadata = typeof MediaMetadata === "function" ? new MediaMetadata(written) : written;
+            ms.metadata = typeof MediaMetadata === "function" ? new MediaMetadata(metadata) : { ...metadata };
           } catch (e) {
             writeOk = false;
             writeError = String((e && (e.message || e.name)) || e);

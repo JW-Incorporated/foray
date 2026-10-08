@@ -239,28 +239,24 @@ test("renderCategory on an unknown node id renders the raw id as heading with ze
 /* 4. renderAllShows() — THE A3.3 ALL-SHOWS INDEX                       */
 /* ==================================================================== */
 
-test("renderAllShows renders every catalogue show, A-Z, as a result row", async () => {
-  /* Scoped to the A-Z list (`.show-index`), not the whole page. Since the Shows
-     page also carries the "Shows we vouch for" editorial row, which reuses the
-     SAME `.show-result` markup, a page-wide row count would read 228 for a
-     220-show catalogue and would go on passing while the index itself lost
-     rows to the sample.
+test("renderAllShows no longer renders the A-Z index of every catalogue show", async () => {
+  /* RULING THAT FELL (tactile `search`, 2026-10-07): "A3.3 - the all-shows
+     browsable index". The Find screen is a fixed mosaic of about fourteen
+     subjects ended by a "More subjects" key (BUILD-PLAN 2.9: fixed count, no
+     infinite scroll), so the 220-row alphabetical list under it is gone and
+     shows are reached through the field, a subject tile, the followed strip or
+     a category. The shared template still renders such a list for a category
+     page (renderCategory, pinned above).
 
-     MUTATION: slice/filter the shows list before rendering (e.g. `.slice(0, 50)`).
-     The row-count assertion fails because it no longer matches the full catalogue. */
+     MUTATION: pass `shows` through for the Find page, i.e. drop `find ? "" :`
+     from renderShowIndexPage's list. The list comes back and this goes red. */
   const m = await mountBooted();
-  const catalog = readJson("data/catalog-client.json");
 
   m.ctx.renderAllShows();
   const page = m.view();
-  const at = page.indexOf('class="show-results show-index"');
-  assert.ok(at !== -1, "the A-Z index list must be distinguishable from the editorial row above it");
-  const html = page.slice(at);
-  assert.strictEqual(rowCount(html), catalog.shows.length, "must render every show in the catalogue");
-
-  const titles = [...html.matchAll(/class="show-result-title">([^<]*)</g)].map((mm) => mm[1]);
-  const sorted = [...titles].sort((a, b) => a.localeCompare(b));
-  assert.deepStrictEqual(titles, sorted, "rendered order must be alphabetical (A-Z)");
+  assert.ok(!page.includes("show-index"), "the Find page carries no A-Z list");
+  assert.strictEqual(rowCount(page), 0, "and no catalogue show is drawn as a result row until a search runs");
+  assert.ok(page.includes('class="mosaic"'), "the subject mosaic is what the page draws instead");
 });
 
 /* ==================================================================== */
@@ -294,7 +290,7 @@ test("route() dispatches #/shows to renderAllShows, matching the #/playlists pat
 
   m.ctx.location.hash = "#/shows";
   m.ctx.route();
-  assert.ok(m.view().includes("<h2>Search</h2>"), "route() must dispatch #/shows to renderAllShows");
+  assert.ok(m.view().includes('<h2 class="display-xl">Find</h2>'), "route() must dispatch #/shows to renderAllShows");
 });
 
 /* ==================================================================== */
@@ -312,10 +308,9 @@ test("the menu carries a Shows destination pointing at #/shows", () => {
      line from index.html. This fails, and #/shows becomes an address with no
      link to it anywhere in the app.
 
-     Named "Search" since 2026-09-22 and "Find" since the Tactile deck (Redesign
-     2026 group A `mini`, DIRECTION.md: Today / Find / Yours): one name per
-     destination, and the tab bar's name wins (audit personas 36 and 76; the
-     page's own heading follows with the Find screen). */
+     Named "Find" since tactile `search` (2026-10-07; "Search" from 2026-09-22,
+     "Shows" before): one name per destination, and the page's heading, the tab
+     bar and this entry all say it (audit personas 36 and 76). */
   const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
   assert.ok(
     /<a class="drawer-section" href="#\/shows">Find<\/a>/.test(html),
@@ -428,7 +423,7 @@ test("route() dispatches #/shows/q/:query to the Shows page with that search alr
   m.ctx.location.hash = "#/shows/q/Science";
   m.ctx.route();
 
-  assert.ok(m.view().includes("<h2>Search</h2>"), "it is the Shows page, not a new one");
+  assert.ok(m.view().includes('<h2 class="display-xl">Find</h2>'), "it is the Shows page, not a new one");
   assert.strictEqual(m.byId.get("sh-input").value, "Science",
     "the field must hold the query, so it can be edited rather than retyped");
   assert.ok(m.byId.get("sh-results").innerHTML.includes("Science Friday"),
@@ -453,7 +448,7 @@ test("a malformed #/shows/q/ hash lands on the plain Shows page instead of throw
 
   m.ctx.location.hash = "#/shows/q/%";
   assert.doesNotThrow(() => m.ctx.route());
-  assert.ok(m.view().includes("<h2>Search</h2>"), "an undecodable query is not a query — the browse page stands");
+  assert.ok(m.view().includes('<h2 class="display-xl">Find</h2>'), "an undecodable query is not a query — the browse page stands");
 });
 
 /* 7.3 — WHAT WAS NOT DELETED, AND WHY. */

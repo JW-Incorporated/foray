@@ -3079,6 +3079,37 @@ test("ROUND 2 a11y-7: a slider that has FOCUS is not rewritten every tick", asyn
   restore();
 });
 
+test("REDESIGN a11y: with Now Playing loaded, every render tick keeps the slider's aria-valuetext on its value (WCAG 4.1.2)", async (t) => {
+  /* The tick passed `!held && !window.DialNowPlaying`, and index.html always
+     loads ui/now-playing.js, whose own writer runs only when its band key
+     changes. So after a nudge the value moved on and the spoken value stayed
+     where it was (value 266 = 13:40, text still "13 minutes 10"). The fake
+     below is the real module's contract (build/paint/preview) and nothing
+     more; what matters is that `window.DialNowPlaying` is defined and its
+     paint never writes the text, which is what the real one does between band
+     rebuilds. KILLING MUTATION: put `&& !window.DialNowPlaying` back on the
+     `paintClocks(pos, dur, !held, ...)` call in render() -> the first assert
+     goes red (aria-valuetext is never written, actual null). */
+  const { client, doc, win, audio, restore } = await bootClient(t);
+  win.DialNowPlaying = { build: () => ({}), paint: () => {}, preview: () => {}, hidePreview: () => {}, haptic: () => {} };
+  await client.play(episodeItem());
+  await settle();
+  const { scrub } = clocks(doc);
+  assert.ok(win.DialNowPlaying, "precondition: Now Playing is loaded");
+  audio.currentTime = 600;
+  audio.fire("timeupdate");
+  assert.equal(scrub.value, "167", "precondition: the value moved");
+  assert.equal(scrub.getAttribute("aria-valuetext"), "10 minutes of 60 minutes, Show A", "the spoken value moved with it");
+  audio.currentTime = 830; // a nudge: 13:50
+  audio.fire("timeupdate");
+  assert.equal(scrub.getAttribute("aria-valuetext"), "13 minutes 50 of 60 minutes, Show A", "and again after a jump, not only at a band rebuild");
+  doc.activeElement = scrub;
+  audio.currentTime = 900;
+  audio.fire("timeupdate");
+  assert.equal(scrub.getAttribute("aria-valuetext"), "13 minutes 50 of 60 minutes, Show A", "a focused slider is still left alone (a11y-7)");
+  restore();
+});
+
 test("ROUND 2 review: a step on a FOCUSED (frozen) slider moves from where the audio is, not from where the value froze", async (t) => {
   /* a11y-7 froze the value while the slider has focus; a keyboard or
      VoiceOver user parked on Seek at 0:00 who listened to 10:00 and pressed

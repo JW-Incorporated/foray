@@ -2410,6 +2410,10 @@ function paintPage(running) {
      VoiceOver user parked on "Seek" heard a running clock talk over their own
      swipes — the same rule the status line already keeps, written only when it
      is theirs to hear). */
+  /* ONE MODEL, built before the clocks so the slider's spoken value comes
+     from the SAME string `ui/now-playing.js` writes when it rebuilds the band.
+     Two writers composing their own text overwrote each other. */
+  const dialModel = window.DialMiniPlayer || window.DialNowPlaying ? dialNowPlayingModel(pos, dur, running, loading) : null;
   if (!scrubbing) {
     const frac = dur ? Math.min(1, Math.max(0, pos / dur)) : 0;
     ui.fill.style.width = `${frac * 100}%`;
@@ -2420,13 +2424,16 @@ function paintPage(running) {
       ui.scrub.value = String(live);
       scrubShownValue = live;
     }
-    paintClocks(pos, dur, !held && !window.DialNowPlaying);
+    /* `!held` alone: with Now Playing loaded this tick is the slider's only
+       per-tick writer of aria-valuetext (the band rebuild runs only when its
+       key changes), so gating on DialNowPlaying left the spoken value stale
+       after every nudge (WCAG 4.1.2). */
+    paintClocks(pos, dur, !held, window.DialNowPlaying ? dialModel?.valueText : null);
   }
   syncCardButtons(loading);
   paintEpisodeSurface();
   /* One model for both Dial surfaces: the mini's 3px line draws the same
      segments the Now Playing scrub band does. */
-  const dialModel = window.DialMiniPlayer || window.DialNowPlaying ? dialNowPlayingModel(pos, dur, running, loading) : null;
   if (window.DialMiniPlayer) window.DialMiniPlayer.paint(ui, {
     title: ui.title.textContent, show: ui.show.textContent, running, model: dialModel,
   });
@@ -2443,7 +2450,7 @@ function paintPage(running) {
  * countdown rounded separately made 13 + 48 = 61 out of 12.5 s into 60. Both
  * clocks go through the same formatter's rule first, so they add up.
  */
-function paintClocks(pos, dur, valuetext = true) {
+function paintClocks(pos, dur, valuetext = true, spoken = null) {
   /* One rounding rule for both clocks (audit round 3, arch-drift-10): the
      elapsed text is floored everywhere now, so its countdown is too. */
   const whole = Math.floor;
@@ -2458,7 +2465,10 @@ function paintClocks(pos, dur, valuetext = true) {
   const show = foray
     ? (foray.resolved.playable[foray.index]?.show || (foray.resolved.playable[foray.index]?.kind === TTS ? "4a narration" : ""))
     : (current?.show || "");
-  const text = window.DialNowPlaying && dur
+  /* `spoken` is the Now Playing model's valueText for this same tick, so the
+     two writers cannot disagree; a drag preview has no model and composes the
+     same shape from the thumb. */
+  const text = spoken && dur ? spoken : window.DialNowPlaying && dur
     ? `${dialSpokenClock(pos)} of ${dialSpokenClock(dur)}, ${show}`
     : dur
       ? `${now} of ${foray ? `${foray.resolved.estimated === true ? "about " : ""}${fmtClock(dur)}` : formatTimestamp(dur, EXACT)}`
@@ -2494,9 +2504,11 @@ function paintScrubPreview() {
   scrubbing = true;
   const dur = foray ? foray.resolved.totalSec : episodeDurationSec();
   const at = (Number(ui.scrub.value) / 1000) * (dur || 0);
-  /* The thumb moving IS a change of the slider's value, so its spoken value
-     follows it (player-6); what never happens is a rewrite per playback tick
-     (paintPage passes `false` under the Dial view, a11y-7). */
+  /* The slider's spoken value follows the thumb too: a range input whose
+     aria-valuetext lags its value tells a screen reader the wrong time (audit
+     round 2, player-6, "and the slider says it too"). The earlier "do not
+     flood assistive technology mid-drag" idea was never measured. No ruling
+     fell here; this restores the pinned behaviour. */
   paintClocks(at, dur);
   if (window.DialNowPlaying) {
     const item = foray ? segmentAtElapsed(foray.resolved.playable, at) : null;

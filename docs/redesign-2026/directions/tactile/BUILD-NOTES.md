@@ -761,8 +761,8 @@ get the `downloaded` tag. Loading → skeletons at the exact heights above.
 
 ### 4.2 Now Playing (full)
 Full-height sheet, `--r-lg` top corners, background: a layer of the
-artwork's dominant colour (Web: 32x32 canvas sample, cached under
-`cp_art_tint:{id}`) under `--scrim-np`, edge to edge, plus a 60% height
+artwork's dominant colour (Web: 32x32 canvas sample, cached in memory per session; no storage key,
+review fix 2026-10-07) under `--scrim-np`, edge to edge, plus a 60% height
 radial fade to `--paper` at the bottom so the transport sits on paper.
 Layout at 393x852, top to bottom:
 1. Grabber at `safe-t + 8`. Close is the grabber and swipe-down; a 44px
@@ -963,8 +963,8 @@ do not add extra calls to compensate.
   anonymous; on a CORS failure use the show's enamel), average in linear
   light, convert to OKLCH; if chroma < **0.07** use the show's enamel
   instead; clamp lightness to 0.45-0.6, then **floor chroma at 0.10** and
-  walk it down only as far as sRGB gamut needs; store under
-  `cp_art_tint:{showId}` with the URL's hash. (r3 used a 0.04 floor and no
+  walk it down only as far as sRGB gamut needs; cache in memory by show id
+  with the URL's hash, never in storage (review fix 2026-10-07: a cp_ key family needs a privacy-policy line). (r3 used a 0.04 floor and no
   boost: Odd Lots averaged to a mauve that read as grey-brown under the
   Cream scrim. A tint is a colour or it is the enamel; nothing in between.) Apply as `--np-tint` and transition it with `@property
   --np-tint { syntax: '<color>'; inherits: true; initial-value: #F7F0E4 }`

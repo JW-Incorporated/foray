@@ -12,7 +12,11 @@
  */
 
 var DIAL_HAPTIC_AT = 0;
-var DIAL_ART_TINT_PREFIX = "cp_art_tint:";
+/* The sampled tint is derived data. It is cached in memory for the session and
+   never written to storage: a new cp_ key family would need a line in the
+   privacy policy and the data-deletion inventory for a colour the page can
+   recompute from an already-cached image (review fix, 2026-10-07). */
+var DIAL_ART_TINT_CACHE = {};
 /* Sleep timer stops, in minutes; 0 is Off. The rotary detent strip is the
    rotary primitive's job (BUILD-NOTES 3.14); the chip steps through these. */
 var DIAL_SLEEP_STOPS = [0, 15, 30, 45, 60];
@@ -20,7 +24,12 @@ var DIAL_SLEEP_STOPS = [0, 15, 30, 45, 60];
 function dialNpEl(tag, cls, text) {
   var node = document.createElement(tag);
   if (cls) node.className = cls;
-  if (text != null) node.append(String(text));
+  /* A control's text goes through the label helper, anything else through the
+     status helper (test/toggle-labels.test.js: no hand-written textContent). */
+  if (text != null) {
+    if (tag === "button" || tag === "a") setControlLabel(node, text);
+    else setStatusText(node, text);
+  }
   return node;
 }
 
@@ -228,17 +237,6 @@ function dialApplyNowPlayingTint(sheet, tint) {
   return alpha;
 }
 
-function dialStorageGet(key) {
-  if (!/^cp_/.test(key)) return null;
-  if (typeof lsGet === "function") return lsGet(key, null);
-  return null;
-}
-
-function dialStorageSet(key, value) {
-  if (!/^cp_/.test(key)) return false;
-  return typeof lsSet === "function" ? lsSet(key, value) : false;
-}
-
 function dialUrlHash(url) {
   var h = 2166136261;
   String(url || "").split("").forEach(function (c) { h = Math.imul(h ^ c.charCodeAt(0), 16777619); });
@@ -267,9 +265,9 @@ function dialNormalizeArtworkTint(oklch, fallback) {
 function dialExtractArtworkTint(url, showId, fallback) {
   var safe = dialSafeImageUrl(url);
   if (!safe) return Promise.resolve(fallback);
-  var key = DIAL_ART_TINT_PREFIX + String(showId || "show");
+  var key = String(showId || "show");
   var hash = dialUrlHash(safe);
-  var cached = dialStorageGet(key);
+  var cached = DIAL_ART_TINT_CACHE[key];
   if (cached && cached.hash === hash && typeof cached.tint === "string") return Promise.resolve(cached.tint);
   return new Promise(function (resolve) {
     var image = new Image();
@@ -288,7 +286,7 @@ function dialExtractArtworkTint(url, showId, fallback) {
         }
         rgb = rgb.map(function (v) { return count ? v / count : 0; });
         var tint = dialNormalizeArtworkTint(dialRgbToOklch(rgb), fallback);
-        dialStorageSet(key, { hash: hash, tint: tint });
+        DIAL_ART_TINT_CACHE[key] = { hash: hash, tint: tint };
         resolve(tint);
       } catch (_) { resolve(fallback); }
     };

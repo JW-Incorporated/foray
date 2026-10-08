@@ -757,3 +757,45 @@ test("the foray detail list is headed Clips, not the pipeline word", () => {
   assert.match(NP_FLAT_TEXT, /dialNpEl\("h2", "heading", "Clips"\)/);
   assert.doesNotMatch(NP_FLAT_TEXT, /dialNpEl\("h2", "heading", "Segments"\)/);
 });
+
+test("the sampled artwork tint is cached in memory for the session and never written to storage", async () => {
+  /* Review fix (Redesign 2026, search review 0f70a7fc): a `cp_art_tint:<show>`
+     row per show played would need a privacy-policy row and a data-deletion
+     count for a colour the page can recompute. The harness answers like the
+     real thing: the Image loads asynchronously, the canvas returns real
+     pixels, and storage is a spy on every route (lsSet/lsGet and the
+     localStorage object itself).
+     MUTATION: add `lsSet("cp_art_tint:" + key, JSON.stringify({ hash: hash, tint: tint }));`
+     after `DIAL_ART_TINT_CACHE[key] = ...` in dialExtractArtworkTint -> the
+     storage assertion goes red; delete the `DIAL_ART_TINT_CACHE[key] = ...`
+     line -> the second call builds a second Image and the count goes red. */
+  const writes = [];
+  let images = 0;
+  class FakeImage {
+    set src(value) { images += 1; this._src = value; Promise.resolve().then(() => this.onload && this.onload()); }
+  }
+  const pixels = new Uint8ClampedArray(32 * 32 * 4);
+  for (let i = 0; i < pixels.length; i += 4) { pixels[i] = 200; pixels[i + 1] = 40; pixels[i + 2] = 30; pixels[i + 3] = 255; }
+  const canvas = { getContext: () => ({ drawImage() {}, getImageData: () => ({ data: pixels }) }) };
+  const window = {};
+  const context = {
+    window,
+    Image: FakeImage,
+    safeUrl: (url) => url,
+    lsSet: (...args) => { writes.push(["lsSet", ...args]); return true; },
+    lsGet: (...args) => { writes.push(["lsGet", ...args]); return null; },
+    localStorage: { setItem: (...args) => writes.push(["setItem", ...args]), getItem: (...args) => { writes.push(["getItem", ...args]); return null; } },
+    document: { documentElement: { dataset: {} }, createElement: (tag) => (tag === "canvas" ? canvas : {}) },
+    Math,
+    Date,
+  };
+  vm.createContext(context);
+  vm.runInContext(NOW_PLAYING, context, { filename: "ui/now-playing.js" });
+  const first = await window.DialNowPlaying.extractArtworkTint("https://example.test/a.jpg", "show-1", "ENAMEL");
+  assert.match(first, /^oklch\(/, "a saturated sample produces a tint, not the fallback");
+  const second = await window.DialNowPlaying.extractArtworkTint("https://example.test/a.jpg", "show-1", "ENAMEL");
+  assert.equal(second, first, "the same show and artwork is served from memory");
+  assert.equal(images, 1, "the image was sampled once, not once per call");
+  assert.deepEqual(writes, [], "no storage route was touched: no cp_art_tint key exists");
+  assert.doesNotMatch(NOW_PLAYING, /cp_art_tint/, "and the key is not named in the view at all");
+});

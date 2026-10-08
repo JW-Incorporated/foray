@@ -33,7 +33,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  artworkUrl, mediaArtwork, mediaArtworkList, mediaArtworkLadder, mediaMetadata,
+  artworkUrl, mediaArtwork, mediaArtworkList, mediaMetadata,
   mediaPositionState, mediaPlaybackState, mediaSessionView,
   mediaSessionActions, createMediaSession, narrationCredit,
   MEDIA_ACTIONS, APP_ARTWORK_URL, APP_NAME, SEEK_BACKWARD_SEC, SEEK_FORWARD_SEC,
@@ -127,20 +127,6 @@ test("mediaArtworkList prefers the publisher's square when we have one", () => {
   const list = mediaArtworkList({ showArtworkUrl: APPLE });
   assert.equal(list.length, 1);
   assert.equal(list[0].src, APPLE);
-});
-
-test("mediaArtworkLadder declares the one chosen square at each of the six sizes", () => {
-  /* The ladder is the WEB write only (Tactile BUILD-NOTES 7); mediaArtworkList
-     stays one entry because the native plugins mirror it and the parity
-     fixtures pin it.
-     MUTATION: remove 384 from MEDIA_ARTWORK_LADDER -> red on the exact ladder;
-     make the ladder map over `list` instead of `first` -> the single-source
-     assertion stays but the length one fails. */
-  const list = mediaArtworkLadder(mediaArtworkList({ showArtworkUrl: APPLE }));
-  assert.deepEqual(list.map((image) => image.sizes), ["96x96", "128x128", "192x192", "256x256", "384x384", "512x512"]);
-  assert.deepEqual([...new Set(list.map((image) => image.src))], [APPLE]);
-  assert.deepEqual(mediaArtworkLadder([]), [], "no usable artwork, no ladder");
-  assert.equal(mediaArtworkList({ showArtworkUrl: APPLE }).length, 1, "the contract list the natives mirror is unchanged");
 });
 
 test("mediaArtworkList falls back to the app icon, so the lock screen is never blank", () => {
@@ -1250,7 +1236,7 @@ test("the PUBLISHER's name is what actually reaches the platform, not ours", () 
       title: "Episode 09: Did Cooking Make Us Human?",
       artist: "Origin Stories",
       album: "The history of grilling · clip 12 of 32",
-      artwork: Array(6).fill(APPLE).join("+"),
+      artwork: APPLE,
     }], MediaMetadata ? "with a MediaMetadata constructor" : "without one");
   }
 });
@@ -1260,7 +1246,7 @@ test("the artwork really reaches the platform, and falls back to ours when it mu
     const nav = fakeNav();
     createMediaSession({ nav, MediaMetadata })
       .update(mediaSessionView({ item: SEG, durationSec: 60, positionSec: 1, playing: true }));
-    assert.equal(metadataWrites(nav)[0].artwork, Array(6).fill(APP_ARTWORK_URL).join("+"));
+    assert.equal(metadataWrites(nav)[0].artwork, APP_ARTWORK_URL);
   }
 });
 
