@@ -75,7 +75,7 @@ body.view-playlist #view { padding-top: 0; }
 /* The rows: Today's EpisodeRow, with the playlist's own bits. The next part is marked in Lamp; a part that is not
    in the catalogue reads as Unavailable and carries no Play. */
 .ag .pl-list-section { margin-top: var(--s-6); }
-.ag .pl-row.is-unavailable .td-row-title, .ag .pl-row.is-unavailable .td-row-why { color: var(--text-2); }
+.ag .pl-ep.is-unavailable .td-row-title, .ag .pl-ep.is-unavailable .td-row-why { color: var(--text-2); }
 .ag .pl-next { font-weight: 600; }
 
 /* Remove: a Secondary button at the foot of the page, away from the rows. */

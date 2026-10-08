@@ -160,7 +160,7 @@ function playlistRowHtml(r, ctx, isNext) {
     const blocked = rowState === "unavailable";
     const why = item.hook || episodeRowSnippet(item);
     const next = isNext && rowState === "default" ? `<span class="ag-row-state pl-next">Next</span>` : "";
-    return `<article class="raised td-row pl-row is-${esc(rowState)}" data-pl-ep="${esc(item.id)}">
+    return `<article class="raised td-row pl-ep is-${esc(rowState)}" data-pl-ep="${esc(item.id)}">
     ${todayArt({ name: item.show, src: item.artwork_url, size: 72, dim: blocked, pct })}
     <h3 class="t-headline clamp2 td-row-title"><a class="td-link" href="#/episode/${id}" data-ev="picked" data-ep="${esc(item.id)}" data-ctx="${esc(ctx)}">${esc(item.title || "")}</a></h3>
     ${item.audio_url ? todayPlayButton({ size: 44, label: `${playing ? "Pause" : "Play"} ${item.title || "this episode"}`, attrs: ` data-pl-play="${esc(item.id)}" data-title="${esc(item.title || "")}"`, disabled: blocked, icon: playing ? "pause" : "play" }) : ""}
@@ -177,7 +177,7 @@ function playlistRowHtml(r, ctx, isNext) {
     /* The publish date a part stored (PLAYLIST_PART_FIELDS) is what is left to say about it; it has the why-line's slot,
        because the meta line gives its date up to the state (Today's rule for any row that carries a state line). */
     const date = fmtDate(item.release_date);
-    return `<article class="raised td-row pl-row is-unavailable" data-pl-gone="archived">
+    return `<article class="raised td-row pl-ep is-unavailable" data-pl-gone="archived">
     ${todayArt({ name: item.show, src: item.artwork_url, size: 72, dim: true })}
     <h3 class="t-headline clamp2 td-row-title"><a class="td-link" href="#/episode/${id}">${esc(item.title || "")}</a></h3>
     <p class="t-caption td-row-meta">${todayStateLine("unavailable")}<span class="td-ell">${esc(item.show || "")}</span>${dur ? `<span class="td-sep" aria-hidden="true"></span><span class="dur">${esc(dur)}</span>` : ""}</p>
@@ -185,14 +185,14 @@ function playlistRowHtml(r, ctx, isNext) {
   </article>`;
   }
   if (r.state === "hidden") {
-    return `<article class="raised td-row pl-row is-unavailable" data-pl-gone="hidden">
+    return `<article class="raised td-row pl-ep is-unavailable" data-pl-gone="hidden">
     ${todayArt({ name: "", src: "", size: 72, dim: true })}
     <h3 class="t-headline clamp2 td-row-title">Hidden by Family Mode</h3>
     <p class="t-caption td-row-meta">${todayStateLine("unavailable")}</p>
     <p class="t-why clamp2 td-row-why">Turn Family Mode off to see and play it.</p>
   </article>`;
   }
-  return `<article class="raised td-row pl-row is-unavailable" data-pl-gone="unnamed">
+  return `<article class="raised td-row pl-ep is-unavailable" data-pl-gone="unnamed">
     ${todayArt({ name: "", src: "", size: 72, dim: true })}
     <h3 class="t-headline clamp2 td-row-title">Episode no longer in the catalogue</h3>
     <p class="t-caption td-row-meta">${todayStateLine("unavailable")}</p>
@@ -278,7 +278,7 @@ async function playlistPlayPress(btn, scope) {
 /** The hero Play: pauses what this playlist is playing, else plays the next part (the first one not yet opened; from the
     top when all are). */
 function playlistPlayAllPress(scope) {
-  const playing = scope.querySelector(".pl-row.is-playing [data-pl-play]");
+  const playing = scope.querySelector(".pl-ep.is-playing [data-pl-play]");
   const nextRow = [...scope.querySelectorAll("[data-pl-ep]")].find(row => row.dataset.plEp === scope.dataset.plNext);
   const next = nextRow ? nextRow.querySelector("[data-pl-play]") : null;
   const target = playing || (next && !next.disabled ? next : null)
@@ -369,6 +369,7 @@ function renderPlaylistDetail(id) {
     ${p.relaxed === "duration" ? `<p class="t-body pl-note">Couldn't match the length you asked for — here's what 4a found without it.</p>` : ""}
     ${partsNote(rows)}
     <section class="pl-list-section" aria-label="Episodes">
+      <h2 class="sr-only">Episodes</h2>
       <div class="td-stack">${rows.map(r => playlistRowHtml(r, ctx, r.state === "live" && r.item.id === nextId && played > 0)).join("")}</div>
     </section>
     ${(p.isSubject || p.isGenerated) ? "" : `<button type="button" class="ag-btn ag-btn-secondary pl-remove" id="pl-remove">Remove this playlist</button>`}

@@ -97,6 +97,14 @@ test("the stylesheet is scoped under .ag, loads nothing and owns no reduced-moti
   const allowed = new Set(["ag", "view-playlist", "topbar", "note", "on", "ag-btn", "ag-empty", "ag-collage", "ag-progress-copy", "td-row-title", "td-row-why"]);
   for (const c of classes) assert.ok(/^(pl-|is-)/.test(c) || allowed.has(c), `class .${c} is not a new pl- name`);
   assert.ok([...classes].filter((c) => /^pl-/.test(c)).length >= 15, "fixture assumption: the sheet defines its own classes");
+  /* And no pl- class the page emits is one styles.css already styles: the first build named the row `pl-row`, which styles.css
+     draws as the legacy dark playlist row, so every row on Dawn was a dark slab with dark text. The only exceptions are the
+     keep control's own legacy names (`pl-save*`), which the app's markup (savePlaylistControlHtml) emits and this sheet restyles.
+     MUTATION: rename `pl-ep` back to `pl-row` in ui/playlist.js -> red. */
+  const legacy = new Set([...stripComments(read("styles.css")).matchAll(/\.([A-Za-z][\w-]*)/g)].map((m) => m[1]));
+  const emitted = new Set([...read("ui/playlist.js").matchAll(/class="([^"$]*)/g)].flatMap((m) => m[1].split(/\s+/)).filter((c) => /^pl-/.test(c)));
+  assert.ok(emitted.size >= 15, `fixture assumption: the page emits its pl- classes (${emitted.size})`);
+  for (const c of emitted) assert.ok(!legacy.has(c), `class .${c} is already a styles.css selector`);
 });
 
 test("the Playlists grid is two equal columns, and the tiles come out at the widths the notes name", () => {
@@ -279,12 +287,17 @@ test("the episodes are Today's EpisodeRow: art, a two-line title that opens the 
   const w = world({ items: hostile, lists: [{ id: "q1", title: `<b>bold</b>`, items: hostile }] });
   w.ctx.renderPlaylistDetail("q1");
   const html = w.html();
-  assert.strictEqual((html.match(/<article class="raised td-row pl-row is-/g) || []).length, 2, "two EpisodeRows");
+  assert.strictEqual((html.match(/<article class="raised td-row pl-ep is-/g) || []).length, 2, "two EpisodeRows");
   assert.match(html, /<a class="td-link" href="#\/episode\/show-2--ep-2" data-ev="picked" data-ep="show-2--ep-2" data-ctx="playlist-q1">Episode 2<\/a>/);
   assert.match(html, /<p class="t-why clamp2 td-row-why">Why episode 2 matters\.<\/p>/, "the why-line, two lines");
   assert.ok(!html.includes("<img src=x") && !html.includes("<script>alert") && !html.includes("<b>bold"), "nothing from a stored title reaches the page as markup");
   assert.ok(html.includes("&lt;img src=x") && html.includes("&lt;b&gt;bold"), "it is there, escaped");
   assert.doesNotMatch(html, /style="/, "no inline style: the strict CSP forbids it");
+  /* Heading order (axe heading-order): the name is the h1 and each row's title an h3, so the page needs the h2 between them
+     (visually hidden: the page shows no section title). MUTATION: delete `<h2 class="sr-only">Episodes</h2>` from renderPlaylistDetail -> red. */
+  const levels = [...html.matchAll(/<h([1-6])\b/g)].map((x) => Number(x[1]));
+  assert.deepStrictEqual(levels.slice(0, 3), [1, 2, 3], `headings step down one level at a time: ${levels}`);
+  levels.forEach((l, i) => assert.ok(i === 0 || l - levels[i - 1] <= 1, `heading order: ${levels}`));
 });
 
 test("'Next' marks the first part the listener has not opened, once the playlist is started, and only on a part that can play", () => {
@@ -450,7 +463,7 @@ test("the hero Play starts the next unopened part, pauses what is playing, and i
   playing.ctx.renderPlaylistDetail("q1");
   const scope = playing.view.querySelector(".pl-detail");
   /* The page paints a row as playing from the player; the fake DOM has no layout, so mark it as the sync would. */
-  scope.querySelectorAll("[data-pl-ep]").find((r) => r.dataset.plEp === "show-4--ep-4").classList.add("pl-row", "is-playing");
+  scope.querySelectorAll("[data-pl-ep]").find((r) => r.dataset.plEp === "show-4--ep-4").classList.add("pl-ep", "is-playing");
   playing.ctx.bindPlaylistPlay(scope);
   scope.querySelector("[data-pl-playall]").click();
   await new Promise((r) => setTimeout(r, 20));

@@ -1294,3 +1294,50 @@ Decisions the builder made while no one could be asked; each is also in the code
     replaces both. `foray-detail.css` minifies to 12.4 KB, its ceiling moves 10 to 14 KB in `prepare-webdir.test.mjs`. Fidelity
     `foray-detail-it4b`: header, hero, strip, primary regions unchanged from it3 (the foray row's 30px strip offset and the
     24px `why` height are the seed's one-line title and three-line why-line, as before).
+
+## 18. As built: phase 4, Playlists (`redesign/ambient-playlist-detail-and-playlists`, `ui/playlist.js`, `ui/playlist.css`)
+
+Three pages from one file, no prototype route (so no fidelity pairing: the is-it-better pair is the acceptance, and §3's
+PlaylistTile, EpisodeRow, EmptyState and Collage rows are the measurements). `renderPlaylists` moved here from `ui/library.js`
+(Library's own branch must drop its copy when it merges: two declarations of one function fail `app-split`).
+
+- **Detail** (`#/playlist/<id>`, `#/subject/<branch>`): Back 44; a 120 Collage (`ag-collage-120`, decorative, aria-hidden)
+  beside the name (`t-headline`, wraps in full, `overflow-wrap: anywhere`), "`<n>` episodes, `<h>` hr `<m>` min" (a comma; the
+  count alone when any part has no length; two `nowrap` halves so a narrow column wraps at the comma), "3 of 6 played" in Ember
+  (`.ag-progress-copy`) once one has finished (never a zero), an Ember Play 56 (pauses what the playlist is playing, else plays the
+  next part). Then the EpisodeRows. The page is lit by the first show (`.pl-wash`, Today's three layers at 40vh, hot spot on
+  the cover). A generated playlist or subject queue carries a Lamp eyebrow ("Picked for you" / "Generated for you") and the app's
+  own keep control (restyled `.pl-save*`); a listener's own playlist ends in a Secondary "Remove this playlist".
+- **Rows** are Today's EpisodeRow, not a copy: `todayArt`, `todayMetaHtml`, `todayPlayButton`, `todayRowState` and the `.ag .td-row`
+  styles. What is the playlist's: Play carries `data-pl-play`, the title link logs a pick under `playlist-<id>`, and a press
+  calls `startEpisodePlay(…, { ctx: "playlist-<id>", list })` with the page's rows as the continuous-play list (which stamps
+  `last_played_at`). A part not in the catalogue is an unavailable row (art 50%, the Unavailable state line, no Play, its stored
+  publish date in the why slot); Family-hidden and unnameable parts keep their place and count. "Next" is the Lamp word on the first
+  live part the listener has not opened (`hasOpened`, as before), shown once one has finished; `data-pl-next` carries its id always.
+- **List** (`#/playlists`): 2-up PlaylistTiles, `grid-template-columns: repeat(2, minmax(0, 1fr))`, gap 20 = the gutter from 393:
+  166.5 wide at 393 (the notes say 164), 176 at 412, 161.5 at 375. Tile: the cover fills the tile, name (`t-headline`, 2 lines),
+  length line, then ONE played line: "2 of 4 played" in Ember when one has finished, else "played Sep 21, 2019" (`fmtDate`, nothing
+  for a date that does not parse). A plus in the head opens Create; Back goes to Library.
+- **Not found / empty**: an EmptyState, one line and one link-button (Secondary pill, 44): "That playlist isn’t here any more." →
+  "All playlists"; "No playlists yet." → "Build a playlist" (`#/create`). The not-found page keeps Back and a visually hidden h1
+  ("Playlist not found") so the router can name it.
+- **"Played" is the player's verdict**, not "opened": `playlistRowPlayed` reads `rowProgress` (state `played`) and falls back to
+  the history ring only while the player has not arrived. This is what the rows say, so the count cannot disagree with them
+  (audit round 2, honesty-6, kept). Today's PlaylistTile still counts `hasOpened` (its own comment says why: Keep listening's
+  bar); **the same playlist can therefore read "3 of 6 played" on Today and "1 of 6 played" here. Left for the orchestrator**:
+  move `todayPlaylistCard` onto `playlistPlayedLine` (one line; `jump-back-in-kinds` still passes through the history fallback).
+- **Rulings overturned, by name** (test-classification §0): "Card/row anatomy" on playlist pages (the numbered three-control row
+  becomes the one-control EpisodeRow; "numbers mean order" goes with it). The row's Save and + Up Next leave the list; both are one tap
+  further on the episode page the title opens, which is also how an archived part is still recoverable (the page seeds its
+  snapshot, so Save works there; `playlist-durability` now pins that loop through the link, not a row star).
+- **Gates**: `gates.mjs --states playlist-started,returning,empty,stress --allow …`: new 0 (the old playlist screens' known debt,
+  the legacy top bar's 24px wordmark, is gone from these pages: 48 stale entries, which the orchestrator's `--write-allow` prunes).
+  axe: only the app-wide `meta-viewport` (the no-zoom ruling); `heading-order` closed by a visually hidden h2 "Episodes".
+- **Harness**: `playlist-started` seed (the first playlist's first two parts finished, the third half heard) and state, steps
+  `playlist-started` and `playlists-started`; the pages' other shots are the existing `returning` / `empty` / `stress` steps.
+- **Collision found by looking**: the first build named the row `pl-row`, which `styles.css` already styles (the legacy dark
+  playlist row), so every Dawn row was a dark slab with dark text. Renamed `pl-ep`; a test now reads every `pl-` class the page
+  emits against `styles.css`.
+- **Not done / open**: `tabForHash` lights Discover for `#/playlists` and `#/playlist/`, `#/subject/` (Today's call, pinned by
+  `tab-bar`); Library owns Playlists, so Library may be the better tab. Independent judges (three Opus, both orders) were not
+  runnable from inside this agent; the is-it-better and reviewer passes are the orchestrator's.
