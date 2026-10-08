@@ -242,6 +242,17 @@ function tactileBandLayout(segments, renderWidth, kind) {
   var mins = segments.map(function (segment) {
     return (segment.narration && kind !== "mini" && kind !== "line" ? 8 : 3) / width * 1000;
   });
+  /* Narration in the tick kinds (mini, line) is a SHORT tick between station bars
+     whatever its runtime: capped at 4px rendered, the surplus going to the stations,
+     so a long narrated stretch never reads as a second wide bar (the stations-on-a-dial
+     read). Only when a station bar exists to take the surplus; an all-narration band
+     keeps proportional widths so the last bar still ends at 1000.
+     MUTATION: make `maxs` all Infinity -> the long-narration test fails. */
+  var tickKind = kind === "mini" || kind === "line";
+  var hasStation = segments.some(function (segment) { return !segment.narration; });
+  var maxs = segments.map(function (segment) {
+    return tickKind && hasStation && segment.narration ? 4 / width * 1000 : Infinity;
+  });
   var minSum = mins.reduce(function (sum, m) { return sum + m; }, 0);
   var gap = [Math.max(2, 2000 / width), Math.max(2, 1000 / width), 2].find(function (g, i, all) {
     return i === all.length - 1 || minSum + g * (n - 1) <= 1000;
@@ -252,14 +263,19 @@ function tactileBandLayout(segments, renderWidth, kind) {
     widths = mins.map(function (m) { return m * available / minSum; });
   } else {
     var pinned = mins.map(function () { return false; });
+    var pinW = mins.slice();
     var changed = true;
     while (changed) {
       var free = available;
       var freeTime = 0;
-      segments.forEach(function (segment, i) { if (pinned[i]) free -= mins[i]; else freeTime += segment.duration; });
-      widths = segments.map(function (segment, i) { return pinned[i] ? mins[i] : segment.duration / freeTime * free; });
+      segments.forEach(function (segment, i) { if (pinned[i]) free -= pinW[i]; else freeTime += segment.duration; });
+      widths = segments.map(function (segment, i) { return pinned[i] ? pinW[i] : segment.duration / freeTime * free; });
       changed = false;
-      widths.forEach(function (w, i) { if (!pinned[i] && w < mins[i]) { pinned[i] = true; changed = true; } });
+      widths.forEach(function (w, i) {
+        if (pinned[i]) return;
+        if (w < mins[i]) { pinned[i] = true; pinW[i] = mins[i]; changed = true; }
+        else if (w > maxs[i]) { pinned[i] = true; pinW[i] = maxs[i]; changed = true; }
+      });
     }
   }
   var total = segments.reduce(function (sum, segment) { return sum + segment.duration; }, 0);

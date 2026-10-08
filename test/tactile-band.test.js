@@ -192,6 +192,34 @@ test("the mini band and the mini player's line draw narration as a solid tick, n
   assert.match(rule(".t-band__bar--tick"), /fill:\s*var\(--dial-seg-narration\)/);
 });
 
+test("mini and line narration stays a short tick however long it runs", () => {
+  /* The offline home fixture: one show plus long narration beats, 60px wide each
+     when proportional, which read as a second bar rather than ticks between stations.
+     MUTATION: in tactileBandLayout make every `maxs` entry Infinity -> the narration
+     boxes come out far wider than 4px and the cap assertions fail. The layout must
+     still end at 1000 and keep a gap between neighbours. */
+  const w = 345;
+  const longNarration = [
+    { showId: "n", narration: true, duration: 300 },
+    { showId: "bbq", show: "BBQ Radio Network", duration: 400 },
+    { showId: "n", narration: true, duration: 300 },
+    { showId: "n", narration: true, duration: 300 },
+    { showId: "bbq", show: "BBQ Radio Network", duration: 700 },
+  ];
+  for (const kind of ["mini", "line"]) {
+    const input = p.tactileBandSegments(longNarration);
+    const boxes = p.tactileBandLayout(input, w, kind);
+    boxes.forEach((box, i) => {
+      if (input[i].narration) assert.ok(box.width <= 4 / w * 1000 + 0.01, `${kind}: narration ${i} is a tick (${(box.width * w / 1000).toFixed(1)}px)`);
+    });
+    const last = boxes[boxes.length - 1];
+    assert.ok(Math.abs(last.x + last.width - 1000) < 0.01, `${kind}: the last bar still ends at 1000`);
+    for (let i = 1; i < boxes.length; i++) assert.ok(boxes[i].x > boxes[i - 1].x + boxes[i - 1].width, `${kind}: a gap between bars ${i - 1} and ${i}`);
+  }
+  const detail = p.tactileBandLayout(p.tactileBandSegments(longNarration), w, "detail");
+  assert.ok(detail[0].width > 4 / w * 1000 * 3, "detail narration stays proportional (hatched, wide enough to read)");
+});
+
 test("bands rendered without an id never share their pattern or clip-path ids", () => {
   /* A url(#id) reference resolves to the FIRST element in the document with
      that id. Two bands sharing a default id would both hatch and clip through
