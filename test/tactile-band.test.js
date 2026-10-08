@@ -146,6 +146,31 @@ test("the 24px label gate is applied to the whole run, not either bar", () => {
   assert.strictEqual((html.match(/>SS<\/text>/g) || []).length, 0, "a truly narrow run stays unlabelled");
 });
 
+test("a run under 24px keeps its station code when two letters fit between its neighbours' codes", () => {
+  /* The first runs of a 7-show foray are 13 and 19px wide; with no code beside them
+     colour was the only thing naming the show. Wide runs claim their codes first, a
+     narrow one takes a code only if it clears its neighbours (centres 16px apart) and
+     is at least 8px wide, left to right.
+     MUTATION 1: make tactileBandLabelRuns return only the wide runs -> the two fitting
+     narrow codes (BF, YC) disappear and the first assertion fails.
+     MUTATION 2: drop the `fits(run)` collision test (`if (wide || true)`) -> the crowded
+     pair loses its gap and the pitch assertion fails. */
+  const shows = [
+    { showId: "bf", show: "Bootstrapped Founder", duration: 40 },
+    { showId: "yc", show: "Y Combinator", duration: 55 },
+    { showId: "ss", show: "Startups Stories", duration: 300 },
+    { showId: "bg", show: "Big Show", duration: 600 },
+    { showId: "t1", show: "Tiny One", duration: 35 },
+    { showId: "t2", show: "Tiny Two", duration: 35 },
+  ];
+  const html = p.tactileBand({ id: "narrow", kind: "scrub", segments: shows, renderWidth: 345 });
+  const labels = [...html.matchAll(/class="t-band__code[^"]*" data-run-start="(\d+)"[^>]*>([^<]+)</g)].map((m) => `${m[1]}:${m[2]}`);
+  assert.deepStrictEqual(labels.slice(0, 4), ["0:BF", "1:YC", "2:SS", "3:BS"], "the narrow runs read, in order, beside the wide ones");
+  const xs = [...html.matchAll(/class="t-band__code[^"]*"[^>]*x="([\d.]+)"/g)].map((m) => Number(m[1]) * 345 / 1000);
+  xs.slice(1).forEach((x, i) => assert.ok(x - xs[i] >= 16 - 1e-6, `codes ${i} and ${i + 1} are ${x - xs[i]}px apart, under the 16px pitch`));
+  assert.deepStrictEqual(labels.slice(4), ["4:TO"], "two 11px runs side by side cannot both clear the pitch: the first reads, the second stays code-less");
+});
+
 test("progress uses a clip path on the drawn bars and scrub exposes the raw accessible value", () => {
   /* 43% of runtime is exactly the end of the first narration tick (400 + 30 of
      1000 s). The bars are laid out with minimum widths, so that instant must
@@ -190,6 +215,34 @@ test("the mini band and the mini player's line draw narration as a solid tick, n
     }
   }
   assert.match(rule(".t-band__bar--tick"), /fill:\s*var\(--dial-seg-narration\)/);
+});
+
+test("mini and line narration stays a short tick however long it runs", () => {
+  /* The offline home fixture: one show plus long narration beats, 60px wide each
+     when proportional, which read as a second bar rather than ticks between stations.
+     MUTATION: in tactileBandLayout make every `maxs` entry Infinity -> the narration
+     boxes come out far wider than 4px and the cap assertions fail. The layout must
+     still end at 1000 and keep a gap between neighbours. */
+  const w = 345;
+  const longNarration = [
+    { showId: "n", narration: true, duration: 300 },
+    { showId: "bbq", show: "BBQ Radio Network", duration: 400 },
+    { showId: "n", narration: true, duration: 300 },
+    { showId: "n", narration: true, duration: 300 },
+    { showId: "bbq", show: "BBQ Radio Network", duration: 700 },
+  ];
+  for (const kind of ["mini", "line"]) {
+    const input = p.tactileBandSegments(longNarration);
+    const boxes = p.tactileBandLayout(input, w, kind);
+    boxes.forEach((box, i) => {
+      if (input[i].narration) assert.ok(box.width <= 4 / w * 1000 + 0.01, `${kind}: narration ${i} is a tick (${(box.width * w / 1000).toFixed(1)}px)`);
+    });
+    const last = boxes[boxes.length - 1];
+    assert.ok(Math.abs(last.x + last.width - 1000) < 0.01, `${kind}: the last bar still ends at 1000`);
+    for (let i = 1; i < boxes.length; i++) assert.ok(boxes[i].x > boxes[i - 1].x + boxes[i - 1].width, `${kind}: a gap between bars ${i - 1} and ${i}`);
+  }
+  const detail = p.tactileBandLayout(p.tactileBandSegments(longNarration), w, "detail");
+  assert.ok(detail[0].width > 4 / w * 1000 * 3, "detail narration stays proportional (hatched, wide enough to read)");
 });
 
 test("bands rendered without an id never share their pattern or clip-path ids", () => {
@@ -489,4 +542,51 @@ test("the chapter tick is a 1px --ink-3 stroke in CSS", () => {
   /* MUTATION: change `var(--ink-3)` to `var(--ink)` or `stroke-width: 1` to 2 in the rule -> red. */
   assert.match(rule(".t-band__tick"), /stroke:\s*var\(--ink-3\)/);
   assert.match(rule(".t-band__tick"), /stroke-width:\s*1\b/);
+});
+
+test("the detail needle is drawn in rendered pixels: 2px wide, a round 8px head, 6px past the bars at both ends", () => {
+  /* The detail band is 60px tall in a 1000-unit-wide viewBox stretched to the card, so one y unit
+     is a pixel and one x unit is renderWidth/1000 of one. The old needle (width 2, circle r 4) was
+     0.64px wide with a 1.3px head at 329px: a stray hairline, not the playhead. Bars span y 8-36.
+     MUTATION 1: set the rect back to `width="2"` -> the 2px width assertion fails.
+     MUTATION 2: draw `<circle r="4">` instead of the ellipse -> the head assertion fails.
+     MUTATION 3: shorten the rect to `height="39"` or move it to y="3" -> it stops short of the bars' bottom (36 + 6 = 42). */
+  const w = 329;
+  const html = p.tactileBand({ id: "needle", kind: "detail", segments, renderWidth: w, progress: 0.3 });
+  const needle = /<g class="needle"[^>]*>([\s\S]*?)<\/g>/.exec(html)[1];
+  const rect = /<rect x="(-?[\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)"/.exec(needle);
+  assert.ok(rect, "a needle rect");
+  const px = w / 1000;
+  assert.ok(Math.abs(Number(rect[3]) * px - 2) < 0.02, `2px wide (${Number(rect[3]) * px}px)`);
+  assert.ok(Math.abs(Number(rect[1]) * px + 1) < 0.02, "centred on its x");
+  assert.strictEqual(Number(rect[2]), 2, "starts 6px above the bars' top (8)");
+  assert.strictEqual(Number(rect[2]) + Number(rect[4]), 42, "ends 6px below the bars' bottom (36)");
+  const head = /<ellipse cx="0" cy="3" rx="([\d.]+)" ry="([\d.]+)"/.exec(needle);
+  assert.ok(head, "the head is an ellipse that undoes the stretch");
+  assert.ok(Math.abs(Number(head[1]) * px - 4) < 0.02 && Number(head[2]) === 4, "an 8px round head on top of the needle");
+  assert.match(rule(".band--detail"), /height:\s*calc\(var\(--tap\)\s*\+\s*var\(--s-4\)\)/, "60px: the unit the markup is drawn in");
+  /* the scrubber's needle (Now Playing, accepted) is untouched */
+  assert.match(p.tactileBand({ id: "scrub-needle", kind: "scrub", segments, renderWidth: w, progress: 0.3 }), /<rect x="-1" y="3" width="2" height="39" rx="1"><\/rect><circle cx="0" cy="3" r="4">/);
+});
+
+test("detail station codes are the 13px label step in the text face, undistorted by the stretched viewBox", () => {
+  /* The codes were 12px mono in a viewBox stretched 0.33 on x and 0.73 on y: a ~9px squashed
+     'PA' beside the prototype's 13px 700 label. The markup counter-scales on x (a glyph is as wide
+     as it is tall) and the CSS names the label tokens.
+     MUTATION 1: drop the `transform` from the detail <text> -> the scale assertion fails.
+     MUTATION 2: in styles.css change `var(--t-label)` to `var(--t-micro)` (or --font-text to
+     --font-mono) in `.band--detail .t-band__code` -> the rule assertion fails. */
+  const w = 329;
+  const html = p.tactileBand({ id: "codes", kind: "detail", segments, renderWidth: w, currentIndex: 4 });
+  const texts = [...html.matchAll(/<text class="t-band__code[^"]*"[^>]*>/g)].map((m) => m[0]);
+  assert.ok(texts.length >= 2, "more than one run is labelled");
+  for (const t of texts) {
+    const m = /transform="translate\(([\d.]+) 53\) scale\(([\d.]+) 1\)"/.exec(t);
+    assert.ok(m, `placed by transform: ${t}`);
+    assert.ok(Math.abs(Number(m[2]) * w / 1000 - 1) < 0.001, `x scale 1000/${w} cancels the stretch (${m[2]})`);
+  }
+  const css = rule(".band--detail .t-band__code");
+  assert.match(css, /font:\s*var\(--w-label\)\s+var\(--t-label\)\/1\s+var\(--font-text\)/, "the 13px / 700 label in the text face");
+  const scrub = p.tactileBand({ id: "scrub-codes", kind: "scrub", segments, renderWidth: w });
+  assert.doesNotMatch(scrub, /<text[^>]*transform=/, "the scrubber's codes are not re-placed");
 });

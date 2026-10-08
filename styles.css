@@ -2592,62 +2592,9 @@ input[type="range"] { accent-color: var(--amber); }
   position: relative;
   z-index: 1;
 }
-/* Set by app.js's bindStripZoomScrub via CSSOM (style-src 'self' — never a
-   style attribute). --zoom-origin follows the touch point so the enlarged
-   view stays centred on where the finger actually is, not the strip's
-   midpoint; --zoom-scale is player/strip-scrub-gesture.js's ZOOM_SCALE,
-   piped through rather than hardcoded here so the two never drift. */
-.fy-strip.is-zooming {
-  transform: scale(var(--zoom-scale, 2.5));
-  transform-origin: var(--zoom-origin, 50%) 50%;
-  transition: none;         /* live-tracks the finger; an easing curve would lag it */
-}
-
-/* Floating magnifier bubble (V2). Position/size are set by app.js's
-   bindStripZoomScrub via CSSOM (style-src 'self' — see the V1 zoom rule
-   above for why). Fixed positioning: coordinates are viewport-relative,
-   computed by player/strip-scrub-gesture.js's `bubblePosition` against
-   `window.innerWidth/Height`, so this element must not sit inside any
-   scaled/transformed ancestor (it is appended straight to <body>). */
-.fy-strip-bubble {
-  position: fixed;
-  z-index: 20;             /* above the mini-player bar and Now Playing sheet */
-  overflow: hidden;
-  border-radius: var(--radius-md);
-  background: var(--surface-2, #1c1c1e);
-  box-shadow: var(--shadow-lift);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  pointer-events: none;    /* never steals the pointer capture the strip holds */
-}
-.fy-strip-bubble__viewport {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-}
-/* The cloned strip inside the bubble. Its own transform (translateX + scale)
-   is set per-frame by app.js from `bubbleContentOffset`/`BUBBLE_SCALE`; this
-   rule only fixes its transform-origin so the scale grows from the clone's
-   own top-left, matching the coordinate space `bubbleContentOffset` assumes. */
-.fy-strip-bubble__viewport > .fy-strip {
-  position: absolute;
-  top: 0;
-  left: 0;
-}
-/* The scrub-location marker: a fixed vertical line at the bubble's own
-   horizontal midline. It never moves, by construction — bubbleContentOffset
-   always translates the cloned content so the touch point lands exactly
-   here, which is what makes this a static CSS rule rather than a per-frame
-   calculation (see strip-scrub-gesture.js's V2 header). */
-.fy-strip-bubble__marker {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  width: 2px;
-  margin-left: -1px;
-  background: var(--accent, #ff453a);
-  pointer-events: none;
-}
+/* The press-and-hold zoom-to-scrub rules (`.fy-strip.is-zooming`, the magnifier bubble) stood
+   here. They served the Foray page's scrubbable strip, which Tactile `foray` replaced with the
+   Dial band; nothing writes `--zoom-scale` or `--zoom-origin` any more. */
 
 /* Three sizes (#128): a list row, a card, the player. The seam scales with the
    height so the break still reads on a 5px strip, where a 5px gap would be a
@@ -3764,22 +3711,6 @@ body.ui-v2 .rate-option { border-color: var(--line); background: var(--surface2)
 body.ui-v2 .rate-option.on { border-color: var(--violet); background: color-mix(in srgb, var(--violet) 14%, var(--surface2)); }
 body.ui-v2 .rate-option:active { background: var(--surface); }
 
-/* SegmentStrip (U-04) extension: the floating magnifier bubble and its
-   marker still fell back to v1's `--surface-2`/`--accent` (different names
-   than v2's `--surface2`/no shadowed accent), so under body.ui-v2 they were
-   painting v1's palette on a v2 page. Everything else about the strip --
-   the per-show tone palette, the seam/capsule geometry -- is intentionally
-   left on :root per U-04's own header (shared, unscoped, measured contrast
-   across both themes), so only the two v1-named fallbacks are overridden
-   here, in styles.css only, per the card's player/*.js boundary. */
-body.ui-v2 .fy-strip-bubble {
-  background: var(--surface2);
-  border-color: var(--line);
-}
-/* The marker tracks the listener's own scrub position -- amber, same role
-   as .fy-bar-fill and the mini-player's progress fill below. */
-body.ui-v2 .fy-strip-bubble__marker { background: var(--amber); }
-
 /* ---------- Up Next / Queue (renderQueue) ---------- */
 body.ui-v2 button.reorder {
   border-color: var(--line);
@@ -4254,7 +4185,7 @@ body.drawer-open { overflow: hidden; }
 
 .chip { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: var(--s-1); min-width: var(--tap); height: calc(var(--s-8) + var(--s-1)); padding: 0 calc(var(--s-3) + var(--s-1) / 2); border-radius: var(--r-pill); background: var(--paper-2); color: var(--ink); font: var(--w-label) var(--t-body)/var(--lh-body) var(--font-text); transition: transform var(--d-snap) var(--spring-snap); }
 .chip:active:not(:disabled) { transform: scale(.96); }
-.chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.chip[aria-pressed="true"], .chip[aria-selected="true"] { background: var(--ink); color: var(--paper); }
 .chip:disabled { color: var(--ink-3); cursor: not-allowed; }
 .chip.is-loading { animation: tactile-pulse var(--d-sheet) var(--ease-quick) infinite alternate; }
 .chip__count, .tab__count { min-width: calc(var(--s-4) + var(--s-1) / 2); height: calc(var(--s-4) + var(--s-1) / 2); padding: 0 var(--s-1); border-radius: var(--r-pill); display: inline-grid; place-items: center; background: var(--ultramarine); color: var(--on-ultramarine); font-size: var(--t-micro); }
@@ -4290,7 +4221,7 @@ body.drawer-open { overflow: hidden; }
 
 .band { display: block; width: 100%; overflow: visible; color: var(--ink); }
 .band--mini { height: var(--s-2); }
-.band--detail { height: var(--tap); }
+.band--detail { height: calc(var(--tap) + var(--s-4)); }   /* 60px: one viewBox unit is one pixel on y (TACTILE_DETAIL_PX in ui/primitives.js) */
 .band--scrub { height: var(--key-lg); touch-action: none; cursor: grab; }
 .band--scrub[data-scrubbing="true"] { cursor: grabbing; }
 .band--scrub[data-scrubbing="true"] .needle { transition: none; }
@@ -4314,6 +4245,9 @@ body.drawer-open { overflow: hidden; }
 .t-band__tick { stroke: var(--ink-3); stroke-width: 1; }
 .t-band__code { fill: var(--ink-2); font: 700 var(--t-micro) var(--font-mono); }
 .t-band__code.is-current { fill: var(--ink); font-weight: 800; }
+/* Detail codes are the label step (13px, 700, the text face), counter-scaled in the markup so the stretched viewBox does not squash them; the mono micro above is the scrubber's. */
+.band--detail .t-band__code { font: var(--w-label) var(--t-label)/1 var(--font-text); }
+.band--detail .t-band__code.is-current { font-weight: var(--w-label); }
 .needle { fill: var(--ink); transition: transform var(--d-settle) var(--spring-settle), opacity var(--d-quick) var(--ease-quick); }
 .band--buffering .needle { animation: tactile-pulse var(--d-buffer) var(--ease-quick) infinite alternate; }
 
@@ -4375,10 +4309,22 @@ body.drawer-open { overflow: hidden; }
 .iconbtn { width: var(--tap); height: var(--tap); flex: none; display: inline-grid; place-items: center; padding: 0; border-radius: calc(var(--r-sm) + var(--s-1)); background: transparent; color: var(--ink-2); transition: background var(--d-quick) var(--ease-quick); }
 .iconbtn:active { background: var(--paper-2); }
 .row-episode.is-loading { color: var(--ink-3); }
+/* A row with the downloaded mark wraps when its meta cannot fit, at any width: the facts are
+   one unshrinking group, so a wrap puts the name alone on line one and "35 min, the mark,
+   + Up Next" together on line two, never the action alone. At 393 and under the WORD mark
+   ("Downloaded", offline) is wide enough that the name always takes line one; the
+   check-circle alone (online) wraps only when it must. */
+.row-episode:has(.tag--downloaded) .row__meta { flex-wrap: wrap; }
+.today .row-episode:has(.tag--downloaded) .row__meta { row-gap: 0; }   /* the prototype's two meta lines sit tight; the gallery keeps the 6px primitive gap */
 @media (max-width: 393px) {
-  .row-episode:has(.tag--downloaded) .row__meta { flex-wrap: wrap; }
-  .row-episode:has(.tag--downloaded) .row__show { flex: 1 1 100%; }
+  .row-episode:has(.tag--downloaded:not(.tag--icon)) .row__show { flex: 1 1 100%; }
 }
+.tag--icon { min-height: 0; padding: 0; background: transparent; }
+/* "Needs a connection" (offline): the sentence the blocked keys share, under the row or hero it sits on. */
+.needs { display: flex; align-items: center; gap: calc(var(--s-1) + var(--s-1) / 2); color: var(--warn); font: var(--w-label) var(--t-label)/var(--lh-label) var(--font-text); }
+.needs .i { width: var(--s-4); height: var(--s-4); }
+.today .needs { margin-top: var(--s-1); }   /* beats `.today p { margin: 0 }` */
+.today .today-hero .needs { margin-top: var(--s-3); }
 
 .tile { min-width: var(--tap); min-height: calc(var(--key-glance) + var(--s-6)); display: flex; flex-direction: column; justify-content: space-between; gap: var(--s-2); padding: calc(var(--s-3) + var(--s-1) / 2); border-radius: var(--r-md); background: var(--card); box-shadow: var(--shadow-card); color: var(--ink); text-align: left; transition: transform var(--d-snap) var(--spring-snap); }
 .tile:active { transform: scale(.98); }
@@ -4615,7 +4561,9 @@ body.ui-v2.kb-open::after { display: none; }
 .empty { display: flex; flex-direction: column; align-items: center; gap: var(--s-4); padding: var(--s-6) 0; color: var(--ink); text-align: center; }
 .empty > svg { width: var(--key-glance); height: var(--key-glance); fill: none; stroke: var(--ink-2); stroke-width: calc(var(--s-1) / 2); stroke-linecap: round; stroke-linejoin: round; }
 .empty p { max-width: 26rem; margin: 0; }
-.toast { min-height: var(--key); display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding: 0 var(--s-4); border-radius: var(--r-md); background: var(--card); box-shadow: var(--shadow-deck); color: var(--ink); opacity: 0; visibility: hidden; transform: translateY(var(--s-3)); transition: transform var(--d-settle) var(--spring-settle), opacity var(--d-quick) var(--ease-quick), visibility var(--d-quick) linear; }
+.empty .empty__copy { font-size: var(--t-body-lg); line-height: var(--lh-body-lg); font-weight: var(--w-body); }   /* body-lg: the prototype's .empty p */
+.empty .keycap { text-decoration: none; }
+.toast { min-height: var(--key); display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding: 0 var(--s-2) 0 var(--s-4); font: var(--w-micro) var(--t-body)/var(--lh-body) var(--font-text); border-radius: var(--r-md); background: var(--card); box-shadow: var(--shadow-deck); color: var(--ink); opacity: 0; visibility: hidden; transform: translateY(var(--s-3)); transition: transform var(--d-settle) var(--spring-settle), opacity var(--d-quick) var(--ease-quick), visibility var(--d-quick) linear; }
 .toast.is-visible { opacity: 1; visibility: visible; transform: translateY(0); }
 
 @keyframes tactile-draw { from { transform: scaleX(0); } to { transform: scaleX(1); } }
@@ -4636,7 +4584,8 @@ body.ui-v2.kb-open::after { display: none; }
    them. The three things below the page content, the field, the deck and the
    mini-player, stack on one arithmetic: the deck is `--deck-h` tall, floats
    `--s-3` off the bottom, and the field floats `--s-3` above it. */
-body.ui-v2.view-find {
+body.ui-v2.view-find,
+body.ui-v2.view-yours {
   /* The legacy colour names are pointed at the Dial tokens for this page, so the
      result rows, notes and playlist cards this page still draws with the old
      components (the typing and no-results screens are their own units) read as
@@ -4660,7 +4609,8 @@ body.ui-v2.view-find {
   font: var(--w-body) var(--t-body)/var(--lh-body) var(--font-text);
   padding-bottom: 0;
 }
-body.view-find > .topbar { display: none; }
+body.view-find > .topbar,
+body.view-yours > .topbar { display: none; }
 body.ui-v2.view-find #view {
   padding: 0 var(--gutter) calc(var(--deck-h) + var(--safe-b) + var(--s-12) * 2 + var(--s-4));
 }
@@ -5125,7 +5075,10 @@ body.ui-v2 .fp-sheet.np .np__collapse { border-color: transparent; background: t
    padding inside it and 100% is the scroller's box (the sheet less its 56px
    bottom padding), so at rest the "Up next" heading ends just above the keys,
    in the dock's fade, and its card starts under the dock. */
-.np__top { box-sizing: border-box; display: flex; flex-direction: column; padding-top: calc(var(--safe-t) + var(--s-10)); min-height: calc(100% - 176px - var(--safe-b)); }
+/* 189 = the prototype's 245 less the scroller's 56px bottom padding: the "Up next"
+   heading sits where the prototype's does, so its first card peeks into the dock's
+   fade (the scroll-to-detail cue) instead of starting under the opaque paper. */
+.np__top { box-sizing: border-box; display: flex; flex-direction: column; padding-top: calc(var(--safe-t) + var(--s-10)); min-height: calc(100% - 189px - var(--safe-b)); }
 .np__hero { display: flex; justify-content: center; }
 .np__art { position: relative; width: 280px; height: 280px; flex: none; overflow: hidden; display: grid; place-items: center; border-radius: var(--r-lg); background: var(--paper-2); box-shadow: var(--shadow-card); view-transition-name: np-art; }
 .np__art::before { content: "4a"; color: var(--ink-2); font: 750 var(--t-display)/1 var(--dial-font-display); }
@@ -5153,7 +5106,12 @@ body.ui-v2 .fp-sheet.np .np__text .title { font-family: var(--dial-font-display)
 body.ui-v2 .fp-sheet.np .np__show { color: var(--ink-2); }
 body.ui-v2 .fp-sheet.np .fp-s-why,
 body.ui-v2 .fp-sheet.np .fp-left { color: var(--ink-2); }
-.np .np__text .np__why { margin: 0; color: var(--ink-2); font-size: var(--t-body); line-height: var(--lh-body); }
+/* The sheet's head is title, show, chips (BUILD-NOTES 2.1: no why-line under
+   them; the reason lives on the Up next card and in the Media Session album).
+   A started foray gives the player a why-line, which pushed the band 44px down
+   against the prototype in every real playing and paused state. Visually
+   hidden, not display:none, so a screen reader still hears it. */
+.np .np__text .np__why { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .np__chips { min-height: var(--s-6); margin-top: var(--s-1); display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
 .np .tag--station { gap: 6px; height: 28px; padding: 0 10px 0 var(--s-2); border-radius: var(--r-sm); background: var(--card); box-shadow: inset 0 0 0 1px var(--dial-line); color: var(--ink); font: 600 var(--t-label)/var(--lh-label) var(--font-text); }
 .np__station-code { color: var(--ink); font: 700 0.6875rem/1 var(--font-mono); }
@@ -5191,7 +5149,8 @@ body.ui-v2 .fp-sheet.np .fp-left { color: var(--ink-2); }
 /* Codes and the needle are HTML over the drawing (ui/now-playing.js says
    why): the SVG's own text and needle stretch with its viewBox. */
 .np__band-svg .t-band__code, .np__band-svg .needle { display: none; }
-.np__codes { position: absolute; left: 0; right: 0; bottom: 0; height: 16px; }
+/* 7px up from the visual's bottom edge: the prototype centres the station codes in the 19px under the bars, not on the well's lip (fidelity, it2). */
+.np__codes { position: absolute; left: 0; right: 0; bottom: 7px; height: 16px; }
 .np__code { position: absolute; left: calc(var(--x, 0) * 100%); bottom: 0; transform: translateX(-50%); color: var(--ink-2); font: 700 0.6875rem/16px var(--font-mono); white-space: nowrap; }
 .np__code.is-current { color: var(--ink); font-weight: 800; }
 .np:not(.np--foray) .np__band-svg .t-band__bar { fill: var(--persimmon); }
@@ -5225,18 +5184,20 @@ body.ui-v2 .fp-sheet.np .fp-left { color: var(--ink-2); }
 .np__read { margin-top: var(--s-2); padding: 0 2px; display: flex; align-items: baseline; justify-content: space-between; }
 .np__read .readout-lg { color: var(--ink); letter-spacing: -.05em; }
 .np__read .readout { color: var(--ink-2); }
-/* The pinned transport: the dock's paper runs 36px above the keys and fades
-   in over its first 28px, so a scrolled row passes under it, not through it. */
+/* The pinned transport: its paper fades in from 14px above the dock to solid 36px
+   lower, so a scrolled row passes under it, not through it. */
 .np__dock { position: absolute; isolation: isolate; z-index: 5; left: 0; right: 0; bottom: calc(var(--safe-b) + var(--s-4)); padding: 0 var(--gutter); }
-.np__dock::before { content: ""; position: absolute; z-index: -1; inset: -36px 0 calc(-1 * (var(--safe-b) + var(--s-4))); background: linear-gradient(to bottom, transparent, var(--paper) 28px); pointer-events: none; }
+/* The fade starts 14px above the dock and is paper by 36px more: the first
+   "Up next" card, which starts 12px under its heading, is half-covered where the keys
+   begin and reads as a peek, not as a gap. */
+.np__dock::before { content: ""; position: absolute; z-index: -1; inset: -14px 0 calc(-1 * (var(--safe-b) + var(--s-4))); background: linear-gradient(to bottom, transparent, var(--paper) 36px); pointer-events: none; }
 .np .transport { min-height: 83px; display: flex; align-items: center; justify-content: center; gap: var(--s-6); }
 .np .transport .keycap { flex: none; margin-bottom: var(--lip); }
-.np .transport .keycap--lg { box-sizing: border-box; width: var(--key-lg); min-width: var(--key-lg); height: var(--key-lg); padding: 0; }
+/* The skip keys are 56 tall and 68 wide (the prototype's measured box: its 56px key
+   with 20px side padding round the mark), so the three-key row keeps its
+   weight beside the 80px Play; a square 56px read as a smaller, lighter key. */
+.np .transport .keycap--lg { box-sizing: border-box; width: calc(var(--key-lg) + var(--s-3)); min-width: calc(var(--key-lg) + var(--s-3)); height: var(--key-lg); padding: 0; }
 .np .transport .fp-big { width: var(--key-xl); min-width: var(--key-xl); height: var(--key-xl); padding: 0; }
-/* The episode's skip keys are the prototype's 68 x 56 pills (its `.keycap--lg`
-   is 56 high with 20px of padding round a 28px mark), so the three keys keep
-   the prototype's rhythm: 68, 80, 68 across a 24px gap. */
-.np--episode .transport .keycap--lg { width: calc(var(--key-lg) + var(--s-3)); min-width: calc(var(--key-lg) + var(--s-3)); padding: 0; }
 /* The lip of a key in the sheet is a hard shadow in the key's own darker tone,
    the key's own shape, attached: the primitive's ::after is a flat bar, which
    reads as a separate plinth under a round key, and covering the face with it
@@ -5258,14 +5219,19 @@ body.ui-v2 .fp-sheet.np .transport .keycap--rubber { background: var(--rubber); 
 .rotary-chip .readout { font-size: var(--t-body); }
 body.ui-v2 .fp-sheet.np .rotary-chip { border: 1px solid var(--dial-line); background: var(--card); color: var(--ink); box-shadow: none; }
 body.ui-v2 .fp-sheet.np .second .keycap--paper { border-color: transparent; background: var(--card); color: var(--ink); }
-.np .fp-upnext { position: relative; display: inline-flex; padding: 0 var(--s-3); text-decoration: none; }
+/* The opener is the prototype's .iconbtn in the secondary row: a 44px round chip on the
+   card, a 1px ring, no lip (a key is for what changes playback or the collection). */
+.np .fp-upnext { position: relative; width: var(--tap); padding: 0; text-decoration: none; }
 .np .fp-upnext .i { width: 20px; height: 20px; }
 .np__badge { position: absolute; top: -4px; right: -4px; width: 18px; height: 18px; display: grid; place-items: center; border-radius: var(--r-pill); background: var(--ultramarine); color: var(--on-ultramarine); font-size: 11px; line-height: 18px; }
 .np__badge[hidden] { display: none; }
 .np__more { padding: var(--s-3) 0 calc(var(--safe-b) + 220px); display: flex; flex-direction: column; gap: var(--s-8); }
 .np__section > .heading { margin: 0 0 var(--s-3); color: var(--ink); }
 .np .sheetcard { padding: 14px; border-radius: var(--r-md); background: var(--card); box-shadow: var(--shadow-card); }
-.np__up-next-card { min-height: 88px; display: grid; grid-template-columns: var(--art-row) minmax(0, 1fr) auto; align-items: center; gap: var(--s-3); }
+/* Top-aligned, so the art tile sits in the strip of the card the dock fade leaves
+   visible (a centred tile on a three-line body sat under the keys, and the slot
+   read as empty). */
+.np__up-next-card { min-height: 88px; display: grid; grid-template-columns: var(--art-row) minmax(0, 1fr) auto; align-items: start; gap: var(--s-3); }
 .np__up-next-art { width: var(--art-row); height: var(--art-row); overflow: hidden; display: grid; place-items: center; border-radius: var(--r-sm); background: var(--paper-2); color: white; font: 700 var(--t-body)/1 var(--font-mono); }
 .np__up-next-art img { width: 100%; height: 100%; object-fit: cover; }
 .np__up-next-body { min-width: 0; display: grid; gap: var(--s-1); }
@@ -5298,6 +5264,12 @@ body.ui-v2 .fp-sheet.np .np__detail-copy { color: var(--ink-2); }
 .np__notes .ep-description-toggle { min-height: var(--tap); display: flex; align-items: center; font-weight: 700; }
 .np__legacy-actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
 .np__legacy .fp-clips { width: 100%; }
+/* The previous/next clip buttons only exist once a foray has been started (the
+   restored sheet hides the row), so the gate never saw them until the paused
+   step pressed Play: --muted on the mustard tint was 3.43:1 at 13px. They read
+   as secondary text on the tint, like the countdown. */
+body.ui-v2 .fp-sheet.np .fp-clip { color: var(--ink-2); }
+body.ui-v2 .fp-sheet.np .fp-clip:hover:not(:disabled), body.ui-v2 .fp-sheet.np .fp-clip:active:not(:disabled) { color: var(--ink); }
 body.ui-v2 .fp-sheet.np .fp-toforay,
 body.ui-v2 .fp-sheet.np .fp-openep { color: var(--ink); }
 
@@ -5325,6 +5297,144 @@ body.ui-v2 .fp-sheet.np .fp-openep { color: var(--ink); }
   .gallery-state-grid .keycap { max-width: 100%; }
   .gallery-state-grid .keycap__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
+
+/* ---------- YOURS (TACTILE): the chip strip and the Up Next list ----------
+   Redesign 2026, tactile `library` (BUILD-PLAN 2.12, BUILD-NOTES 3.9, 4.5).
+   Everything hangs off `body.view-yours`, which renderLibrary sets and the next
+   page's setBodyClass() clears. The page shares the Find page's colour aliasing
+   and hidden topbar (the two selectors above); the head, the strip and the
+   list are its own. */
+body.ui-v2.view-yours #view {
+  padding: 0 var(--gutter) calc(var(--deck-h) + var(--safe-b) + var(--s-10));
+}
+body.ui-v2.view-yours.fp-open:not(.mini-dismissed) #view {
+  padding-bottom: calc(var(--deck-h) + var(--fp-bar-h) + var(--safe-b) + var(--s-10));
+}
+body.view-yours .page--yours {
+  max-width: none;
+  margin: 0;
+  padding: calc(var(--safe-t) + var(--s-6) + var(--s-1)) 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+}
+
+/* The head: "Yours" over the readout line, the knob at the right. */
+body.ui-v2.view-yours .page--yours .page-head {
+  position: static;
+  margin: 0;
+  padding: calc(var(--s-1) / 2) 0 0;
+  background: transparent;
+  border: 0;
+  transform: none;
+  transition: none;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+.page--yours .page-head > div { display: flex; flex-direction: column; gap: var(--s-2); min-width: 0; }
+body.ui-v2.view-yours .page--yours .page-head h2 { margin: 0; color: var(--ink); font-family: var(--dial-font-display); font-size: var(--t-display-xl); line-height: var(--lh-display-xl); font-weight: var(--w-display); font-stretch: var(--wd-screen); letter-spacing: var(--tracking-screen); }
+.yours-readout { margin: 0; color: var(--ink-2); }
+.yours-head > .keycap { margin-top: calc(var(--s-1) / -2); }   /* the head pads 2px for the title; the knob sits at the prototype's top edge, not 2px under it (library-shows i1: primary dy +2) */
+.page--yours .readout { word-spacing: -0.2em; }   /* the mono space is 0.6em wide; "47 min" reads as one readout, not "47  min" */
+
+/* The strip: 36px chips, 12 apart (the prototype's gap token, measured 24px on
+   its 2x shot; BUILD-NOTES' "8 gap" was wrong), 16 gutters; a chip half out of
+   the edge fades instead of showing a sliver (prototype P1-6). It sits 8px
+   closer to the head than the page gap, the way the prototype's strip does. */
+.yours-chips {
+  position: relative;
+  display: flex;
+  gap: var(--s-3);
+  overflow-x: auto;
+  margin: calc(var(--s-2) * -1) calc(var(--gutter) * -1) calc(var(--s-2) * -1);
+  padding: var(--s-2) var(--gutter) var(--s-1);
+  scrollbar-width: none;
+  scroll-padding-inline: var(--gutter);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--gutter), #000 calc(100% - var(--gutter)), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 var(--gutter), #000 calc(100% - var(--gutter)), transparent);
+}
+.yours-chips::-webkit-scrollbar { display: none; }
+.yours-chips .chip { flex: none; }
+.yours-chips .chip .i { width: 18px; height: 18px; }
+.yours-chips .chip__count { margin-left: calc(var(--s-1) / 2); }
+
+.yours-panel[hidden] { display: none; }
+
+/* Up Next: the header line (the order, and Clear), then the rows. */
+.yours-qhead { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding-bottom: var(--lip); }
+.yours-qlabel { color: var(--ink-2); font: var(--w-label) var(--t-label)/var(--lh-label) var(--font-text); }
+.yours-queue { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-3); }
+.yours-qwrap { position: relative; display: flex; flex-direction: column; }
+.yours-qwrap.is-flipping { transition: transform var(--d-settle) var(--spring-settle); }
+.yours-queue .row-queue { gap: var(--s-2); padding: 6px 0; min-height: var(--row-queue); }
+.yours-queue .row-queue.is-current { margin: 0 calc(var(--s-2) * -1); padding: 6px var(--s-2); }
+.yours-queue .row-queue__position { width: var(--s-5); display: inline-grid; place-items: center; font-size: var(--t-readout); line-height: var(--lh-readout); }
+.yours-queue .row-queue__position .i { width: var(--s-5); height: var(--s-5); }
+.row-queue__main { flex: 1; min-width: 0; min-height: var(--tap); display: flex; align-items: center; gap: var(--s-2); margin: 0; padding: 0; border: 0; border-radius: var(--r-sm); background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; appearance: none; }
+div.row-queue__main { cursor: default; }
+.row-queue__main:focus-visible { outline: calc(var(--s-1) / 2) solid var(--ultramarine); outline-offset: calc(var(--s-1) / 2); }
+.yours-queue .find-art--queue { width: var(--art-queue); height: var(--art-queue); border-radius: var(--r-sm); }
+.yours-queue .find-art--queue::before { font-size: var(--t-body); }
+.yours-queue .row__title { color: var(--ink); }
+.yours-queue .row__meta { gap: calc(var(--s-1) + var(--s-1) / 2); flex-wrap: nowrap; }
+.yours-queue .row__meta > .readout, .yours-queue .row__meta > .tag { flex: none; }
+.yours-queue .row__meta .row__show { min-width: 0; flex: 0 1 auto; }
+.yours-queue .tag--playing { min-height: 0; padding: 0; gap: var(--s-1); font-weight: var(--w-label); }
+.yours-queue .tag--playing .i { width: calc(var(--s-3) + var(--s-1) / 2); height: calc(var(--s-3) + var(--s-1) / 2); }
+.yours-queue .row-queue.is-current .row-queue__position { color: var(--persimmon); }
+
+/* The 48px action row under an open ⋯: three paper keycaps on one line, from
+   the gutter (the prototype indents them 32px and wraps to a second line at 393;
+   one line is the spec, so the indent goes and the keys are 20px-icon compact).
+   Its opening is the prototype's `open` (a rise and a fade on --spring-settle);
+   the rows below it slide down by FLIP. */
+.yours-qtools { display: flex; flex-wrap: wrap; gap: calc(var(--s-1) + var(--s-1) / 2); padding: 0 0 var(--s-1); animation: yours-open var(--d-settle) var(--spring-settle) both; transform-origin: top; }
+.yours-qtools .keycap { gap: var(--s-1); padding: 0 var(--s-2); }
+.yours-qtools .keycap .i { width: var(--s-5); height: var(--s-5); }
+@keyframes yours-open { from { opacity: 0; transform: translateY(calc(var(--s-2) * -1)); } to { opacity: 1; transform: none; } }
+
+/* The clear-all sheet's backdrop; the sheet itself is the shared `.sheet`. */
+.yours-scrim { position: fixed; inset: 0; z-index: 99; background: color-mix(in srgb, var(--ink) 40%, transparent); }
+
+/* "Removed from Up Next / Undo", above the deck, and above the mini when it is
+   up. The shared `.deck-toast` places it over the tab row; the mini adds its
+   height. */
+body.fp-open:not(.mini-dismissed) .yours-toast { bottom: calc(var(--safe-b) + var(--s-3) + var(--tab-row-h) + var(--fp-bar-h) + var(--s-3)); }
+
+/* Shows: every followed show as a tile (tactile `library-shows`, BUILD-PLAN 2.14,
+   the prototype's `.agrid`). Three columns of `1fr`, 12 apart, so a tile is
+   106px at 375, 112 at 393 and 126 at 412 (the "108px" in the plan is the
+   prototype's nominal size; what it measures is the same `1fr`). The artwork is
+   square, `--r-sm`; the name sits 6px under it, 13/600, two lines. The ⋯, the
+   "Following" tag and the Unfollow group are laid over the artwork in a layer
+   exactly as tall as the artwork (a square the width of the tile), so the name
+   under it never moves when they appear. The layer takes no pointer events; its
+   three children take their own. No transition or animation is added here. */
+.shows-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-3); }
+.shows-tile { position: relative; display: flex; flex-direction: column; min-width: 0; }
+.shows-tile__link { display: flex; flex-direction: column; gap: calc(var(--s-1) + var(--s-1) / 2); min-width: 0; border-radius: var(--r-sm); color: inherit; text-decoration: none; -webkit-touch-callout: none; }
+.shows-tile__link:focus-visible { outline: calc(var(--s-1) / 2) solid var(--ultramarine); outline-offset: calc(var(--s-1) / 2); }
+.shows-grid .find-art--tile { width: 100%; height: auto; aspect-ratio: 1; border-radius: var(--r-sm); }
+.find-art--tile::before { font-size: var(--t-title); }
+.shows-tile__name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; color: var(--ink); font: var(--w-micro) var(--t-label)/var(--lh-label) var(--font-text); }
+.shows-tile__layer { position: absolute; top: 0; left: 0; width: 100%; aspect-ratio: 1; pointer-events: none; }
+.shows-tile__layer > * { pointer-events: auto; }
+/* The ⋯ is NOT chrome on the artwork (iteration 3; the prototype's Shows grid is bare
+   artwork with the name beneath, and DIRECTION reserves the quiet ⋯ for Up Next rows).
+   At rest the button is a 0x0 box: nothing to see, nothing for a pointer to land on, so
+   a tap anywhere on the art opens the show, yet it is still in the tab order and the
+   accessibility tree (a 0x0 button is focusable and named, the .sr-only pattern). It
+   takes its 44px target in the corner, a 20px chip drawn in it, only while it has
+   keyboard focus or its tile's Unfollow is open. A pointer reaches Unfollow by long
+   press or context menu. */
+.shows-tile__more { position: absolute; top: 0; right: 0; z-index: 2; width: 0; height: 0; overflow: hidden; background: transparent; color: var(--ink); }
+.shows-tile__more:focus-visible, .shows-tile.is-open .shows-tile__more { width: var(--tap); height: var(--tap); overflow: visible; }
+.shows-tile__more .i { box-sizing: border-box; width: var(--s-5); height: var(--s-5); padding: calc(var(--s-1) / 2); border-radius: var(--r-pill); background: color-mix(in srgb, var(--paper) 80%, transparent); }
+.shows-tile__more:active { background: transparent; }
+.shows-tile__actions { position: absolute; inset: 0; z-index: 1; align-items: center; justify-content: center; padding: var(--s-2); border-radius: var(--r-sm); background: var(--card); box-shadow: inset 0 0 0 1px var(--dial-line); }
+.shows-tile__actions:not([hidden]) { display: flex; }
+.shows-tile__actions .keycap { max-width: 100%; }
 
 /* TODAY (Tactile Home, screen "home"; docs/redesign-2026/directions/tactile/
    BUILD-NOTES.md 4.1, prototype/app.css the target). Everything here hangs on
@@ -5477,6 +5587,317 @@ body.view-home::after { content: ""; position: fixed; z-index: 19; left: 0; righ
 .today--loading .today-pgrid .skel__card-art { width: var(--key-glance); height: var(--key-glance); }
 .today--loading .today-pgrid .skel__card-lines { width: 100%; }
 
+/* ---------- FORAY DETAIL (TACTILE): the band, the clips, one pinned key ----------
+   Redesign 2026, tactile `foray` (docs/redesign-2026/directions/tactile/
+   BUILD-PLAN.md 2.17, BUILD-NOTES 4.6). Everything here hangs off `body.view-foray`
+   (renderForay sets it, the next page's setBodyClass() clears it) or `.fdet`, so no
+   other page moves. The page reads the Dial tokens; the reason sheet, the
+   narration transcript and the sources block still draw with the legacy names, so
+   those are pointed at the Dial tokens for this page, as Find does. The three
+   things below the content, the deck, the mini player and the Play key, stand on
+   one arithmetic: the deck is `--deck-h` tall and floats `--s-3` off the bottom,
+   the mini (when up) sits on it, and the key floats `--s-4` above the lot. */
+body.ui-v2.view-foray {
+  --bg: var(--paper);
+  --surface: var(--card);
+  --surface2: var(--paper-2);
+  --surface-2: var(--paper-2);
+  --line: var(--dial-line);
+  --text: var(--ink);
+  --muted: var(--ink-2);
+  --text-dim: var(--ink-2);
+  --faint: var(--ink-3);
+  --amber: var(--persimmon);
+  --accent: var(--persimmon);
+  --gold: var(--ink-2);
+  --violet: var(--ultramarine);
+  --danger-text: var(--persimmon);
+  --shadow-sm: var(--shadow-card);
+  --shadow: var(--shadow-card);
+  --shadow-lift: var(--shadow-card);
+  --foray-dock: calc(var(--safe-b) + var(--s-3) + var(--deck-h));
+  background: var(--paper);
+  color: var(--ink);
+  font: var(--w-body) var(--t-body)/var(--lh-body) var(--font-text);
+  -webkit-font-smoothing: antialiased;
+  padding-bottom: 0;
+}
+body.ui-v2.view-foray.fp-open:not(.mini-dismissed) { --foray-dock: calc(var(--safe-b) + var(--s-3) + var(--deck-h) + var(--fp-bar-h)); }
+body.view-foray > .topbar { display: none; }
+body.ui-v2.view-foray #view { padding: 0 var(--gutter) calc(var(--foray-dock) + var(--s-12) * 2); }
+/* THE PAPER FADE (BUILD-NOTES 4.6): `deck + safe-b + 100px` of clear paper from the
+   bottom edge, solid to 60%, behind the key and the deck, in front of the rows, so
+   the pinned key never sits on unfaded text. */
+body.view-foray::after {
+  content: ""; position: fixed; z-index: 19; left: 0; right: 0; bottom: 0; pointer-events: none;
+  height: calc(var(--deck-h) + var(--safe-b) + 100px);
+  background: linear-gradient(to top, var(--paper) 60%, transparent);
+}
+body.view-foray.fp-open:not(.mini-dismissed)::after { height: calc(var(--deck-h) + var(--fp-bar-h) + var(--safe-b) + 100px); }
+
+body.view-foray .fdet {
+  max-width: 680px; margin: 0 auto;
+  padding: calc(var(--safe-t) + var(--s-6) + var(--s-1)) 0 0;
+  display: flex; flex-direction: column; gap: var(--s-5);
+}
+.fdet h1, .fdet h2, .fdet h3, .fdet p { margin: 0; }
+.fdet a { color: inherit; text-decoration: none; }
+.fdet a.keycap { color: var(--k-ink); }   /* a key drawn as a link keeps its own ink (the link rule above is more specific than .keycap) */
+.fdet a:focus-visible { outline: calc(var(--s-1) / 2) solid var(--ultramarine); outline-offset: calc(var(--s-1) / 2); border-radius: calc(var(--s-1) * 1.5); }
+.fdet .readout { word-spacing: -0.2em; }   /* the mono space is 0.6em wide; "about 22 min" reads as one readout */
+
+/* the two keys: back at the left, share at the right */
+.fdet-bar { display: flex; align-items: flex-start; justify-content: space-between; }
+.fdet-bar .keycap { margin-bottom: var(--lip); }
+
+/* tag over title; the title is a display line balanced on up to four lines */
+.fdet-head { display: flex; flex-direction: column; gap: var(--gap); }
+.fdet-tags { display: flex; align-items: center; gap: var(--s-2); }
+.fdet-title {
+  color: var(--ink); text-wrap: balance;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden;
+  padding-bottom: var(--s-1);   /* the clamp's overflow box would otherwise shave the last line's descenders */
+}
+.fdet--unavailable .fdet-title { color: var(--ink); }
+
+/* the band, in a well 16 below the title (the page gap is 20, the well pulls 4 back) */
+.fdet-well { display: block; min-height: 0; margin-top: calc(var(--s-1) * -1); padding: var(--s-2) 10px 2px; border-radius: var(--r-md); }
+.fdet-stage { position: relative; }
+.fdet .band--detail { height: 60px; }   /* the primitive's viewBox is 1000x60: at 60px tall the bars are the spec's 28px */
+.fdet-stage .t-band__code, .fdet-stage .needle { display: none; }   /* the SVG's own glyphs stretch with its viewBox: the codes and the needle are HTML below */
+.fdet:not([data-foray-state="progress"]) .t-band__base { opacity: 1; }   /* browsing and played: every bar at full enamel; in progress the rest sits at 40% */
+.fdet-codes { position: absolute; left: 0; right: 0; bottom: 0; height: var(--s-4); pointer-events: none; }
+.fdet-code { position: absolute; left: calc(var(--x, 0) * 100%); bottom: 0; transform: translateX(-50%); color: var(--ink-2); font: 700 var(--t-micro)/var(--s-4) var(--font-mono); white-space: nowrap; }
+.fdet-code.is-current { color: var(--ink); font-weight: 800; }
+.fdet-needle { position: absolute; z-index: 1; top: 3px; left: calc(var(--x, 0) * 100%); width: 2px; height: 39px; margin-left: -1px; border-radius: 1px; background: var(--ink); pointer-events: none; }
+.fdet-needle::before { content: ""; position: absolute; top: -4px; left: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--ink); }
+.fdet:not([data-foray-state="progress"]):not(.fdet--unavailable) .fdet-needle { display: none; }   /* a needle only where the listener is */
+/* An unavailable Foray's well has nothing in it: no bars, no station labels (a code
+   under nothing reads as a legend for a chart that failed to load), and the needle
+   lifted off its slot, pivoting on its foot. */
+.fdet-well--empty .fdet-stage { height: 60px; }
+.fdet-well--empty .fdet-needle { --x: .5; transform: rotate(20deg); transform-origin: 50% 100%; opacity: .7; }
+.band--empty .t-band__code, .band--empty .band__labels { display: none; }
+
+/* readout, summary, why */
+.fdet-lead { display: flex; flex-direction: column; gap: var(--gap); }
+.fdet-facts, .fdet-muted { color: var(--ink-2); }
+.fdet-muted { font: var(--w-label) var(--t-label)/var(--lh-label) var(--font-text); }
+.fdet-summary { font-size: var(--t-body-lg); line-height: var(--lh-body-lg); font-weight: var(--w-body); }
+.fdet-why { display: flex; flex-direction: column; gap: var(--s-1); }
+.fdet-why__line { font-size: var(--t-body); line-height: var(--lh-body); font-weight: var(--w-body); }
+.fdet-notice { color: var(--ink-2); font: var(--w-label) var(--t-label)/var(--lh-label) var(--font-text); }
+body.view-foray .fdet .fy-draft { padding: 0; border: 0; border-radius: 0; background: transparent; }   /* the legacy draft note was a dashed box; here it is one more muted line */
+
+/* From, Clips: a heading and its rows */
+.fdet-sect { display: flex; flex-direction: column; gap: var(--gap); }
+.fdet-rows { display: flex; flex-direction: column; gap: var(--s-2); }
+.fdet-slot { display: flex; flex-direction: column; gap: var(--s-2); }
+.fdet-from { position: relative; padding: 0; gap: var(--s-3); }
+.fdet-from .row__title { -webkit-line-clamp: 1; line-clamp: 1; }
+.fdet-from .row__meta { color: var(--ink-2); }
+/* The show link is the whole row (the shared `.row__link::after` stretch), and a little beyond it above and below:
+   the name sits near the top of a 56px row, and a 44px square centred on the name would otherwise start above the row. */
+.fdet-from .row__link::after { inset: calc(var(--s-1) * -1.5) 0; }
+
+/* the station swatch: the enamel the show wears on the band, its code on it */
+.fdet { --sw-dim: 20%; --sw-ink: white; }
+:root[data-theme="dark"] .fdet { --sw-dim: 0%; --sw-ink: var(--paper); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .fdet { --sw-dim: 0%; --sw-ink: var(--paper); } }
+.fdet-sw { width: 24px; height: 24px; flex: none; display: inline-grid; place-items: center; border-radius: 6px; color: var(--sw-ink); font: 700 0.6875rem/1 var(--font-mono); letter-spacing: -0.02em; }
+.fdet-sw.t-band__bar--c0 { background: color-mix(in srgb, var(--dial-seg-c0), black var(--sw-dim)); }
+.fdet-sw.t-band__bar--c1 { background: color-mix(in srgb, var(--dial-seg-c1), black var(--sw-dim)); }
+.fdet-sw.t-band__bar--c2 { background: color-mix(in srgb, var(--dial-seg-c2), black var(--sw-dim)); }
+.fdet-sw.t-band__bar--c3 { background: color-mix(in srgb, var(--dial-seg-c3), black var(--sw-dim)); }
+.fdet-sw.t-band__bar--c4 { background: color-mix(in srgb, var(--dial-seg-c4), black var(--sw-dim)); }
+.fdet-sw.t-band__bar--c5 { background: color-mix(in srgb, var(--dial-seg-c5), black var(--sw-dim)); }
+.fdet-sw.t-band__bar--c6 { background: color-mix(in srgb, var(--dial-seg-c6), black var(--sw-dim)); }
+.fdet-sw.t-band__bar--c7 { background: color-mix(in srgb, var(--dial-seg-c7), black var(--sw-dim)); }
+.fdet-sw--narration { background: repeating-linear-gradient(45deg, var(--ultramarine) 0 2px, var(--ultramarine-soft) 2px 4px); }
+
+/* a clip: the row-wide button, then its two votes */
+.fdet-seg__row { display: flex; align-items: center; gap: var(--s-1); min-height: 56px; }
+.fdet-seg .segrow {
+  appearance: none; border: 0; margin: 0; padding: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;
+  flex: 1; min-width: 0; min-height: 56px; display: flex; align-items: center; gap: var(--s-3); border-radius: var(--r-md);
+}
+.fdet-seg .segrow:focus-visible { outline: calc(var(--s-1) / 2) solid var(--ultramarine); outline-offset: calc(var(--s-1) / 2); }
+.fdet-seg .segrow.is-playing { background: var(--persimmon-soft); margin-left: calc(var(--s-2) * -1); padding-left: var(--s-2); }
+.fdet-seg__text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.fdet-seg__text .row__title, .fdet-seg__sub { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fdet-seg__text .row__title { font: var(--w-label) var(--t-body)/var(--lh-body) var(--font-text); color: var(--ink); }
+.fdet-seg__sub { color: var(--ink-2); font: var(--w-body) var(--t-label)/var(--lh-label) var(--font-text); }
+.fdet-seg__len { flex: none; color: var(--ink-2); }
+.fdet-state { display: none; flex: none; color: var(--persimmon); }
+.fdet-seg .segrow.is-playing .fdet-state { display: inline-flex; }
+.fdet-seg .segrow.is-played .row__title, .fdet-seg .segrow.is-played .fdet-seg__len { color: var(--ink-2); }
+.fdet-seg.is-out .fdet-seg__row { min-height: 56px; }   /* no row-wide dimming: the show name and why-line are information on a div, not a disabled control, so they keep full --ink / --ink-2 (AA); the state is the plain-words line below plus the dimmed swatch */
+.fdet-seg.is-out .fdet-sw { opacity: .6; }   /* the swatch is decoration (aria-hidden), so dimming it is the only fade the row takes */
+body.view-foray .fdet-seg__out { margin-left: calc(24px + var(--s-3)); color: var(--ink-2); }   /* out-ranks the legacy `body.ui-v2 .fy-out` amber: persimmon text on paper is not AA */
+.fdet-seg .fy-script-wrap { margin: 0 0 var(--s-2) calc(24px + var(--s-3)); }
+.fdet-seg .fy-script { font: var(--w-body) var(--t-label)/var(--lh-body) var(--font-text); color: var(--ink-2); }
+.fdet-seg .fy-script-more { min-height: var(--tap); padding: 0; color: var(--ink); font: var(--w-label) var(--t-label)/var(--lh-label) var(--font-text); }
+.fdet-seg .fy-cites-head { font: var(--w-label) var(--t-micro)/var(--lh-micro) var(--font-text); letter-spacing: 0; text-transform: none; color: var(--ink-2); }
+.fdet-seg .fy-cites li { font: var(--w-body) var(--t-label)/var(--lh-label) var(--font-text); color: var(--ink-2); }
+
+/* the two votes: 44px targets, drawn icons, a fill when chosen (never an outline) */
+body.view-foray .fdet .fy-fb { gap: 0; padding: 0; }
+body.view-foray .fdet .fy-thumb {
+  width: var(--tap); height: var(--tap); min-width: var(--tap); padding: 0; border: 0; border-radius: var(--r-pill);
+  background: transparent; color: var(--ink-2); filter: none; opacity: 1; font-size: inherit;
+}
+body.view-foray .fdet .fy-thumb:hover { background: var(--paper-2); }
+body.view-foray .fdet .fy-thumb:focus-visible { outline: calc(var(--s-1) / 2) solid var(--ultramarine); outline-offset: calc(var(--s-1) / -2); }
+body.view-foray .fdet .fy-thumb.on { color: var(--ink); }
+body.view-foray .fdet .fy-thumb[data-thumb="up"].on { background: var(--persimmon-soft); }
+body.view-foray .fdet .fy-thumb[data-thumb="down"].on { background: var(--paper-2); }
+
+/* where this came from, in the page's own voice */
+.fdet .fy-sources { margin: 0; display: flex; flex-direction: column; gap: var(--gap); }
+.fdet .fy-sources h3 { margin: 0; font: var(--w-heading) var(--t-heading)/var(--lh-heading) var(--dial-font-display); letter-spacing: var(--tracking-heading); text-transform: none; color: var(--ink); }
+.fdet .fy-src-note { margin: 0; color: var(--ink-2); font: var(--w-body) var(--t-label)/var(--lh-label) var(--font-text); }
+.fdet .fy-src { margin: 0; padding: var(--s-4); border: 0; border-radius: var(--r-md); background: var(--card); box-shadow: var(--shadow-card); }
+.fdet .fy-src-show { font: var(--w-label) var(--t-body)/var(--lh-body) var(--font-text); }
+.fdet .fy-src-show .show-link { display: inline-flex; align-items: center; min-height: var(--tap); margin-block: calc((var(--lh-body) - var(--tap)) / 2); }   /* a 44px target that takes one line of room */
+.fdet .fy-src-meta, .fdet .fy-src-eps li { color: var(--ink-2); font: var(--w-body) var(--t-label)/var(--lh-label) var(--font-text); }
+.fdet .fy-src-eps li span { opacity: 1; }   /* the legacy 75% dims --ink-2 under AA on the card */
+.fdet .fy-src-out { min-width: var(--tap); min-height: var(--tap); margin: calc(var(--s-3) * -1) calc(var(--s-3) * -1) calc(var(--s-3) * -1) 0; display: inline-flex; align-items: center; justify-content: center; color: var(--ink-2); }
+
+/* the pinned Play key: one extended persimmon keycap, the play glyph, the word, the readout */
+.fdet-pin {
+  position: fixed; z-index: 22; bottom: calc(var(--foray-dock) + var(--s-4));
+  right: max(var(--gutter), calc((100vw - 680px) / 2 + var(--gutter)));
+  transition: transform var(--d-settle) var(--spring-settle);
+}
+body.fp-expanded .fdet-pin { transform: translateY(240%); }   /* the sheet owns the transport while it is open */
+.fdet-pin .keycap { margin-bottom: var(--lip); }   /* the lip hangs below the face: the face, not the lip, floats 16 above the deck */
+.fdet-pin .keycap--pin { height: 56px; min-width: 0; padding: 0 var(--s-5) 0 14px; gap: var(--s-2); }
+.fdet-pin .keycap--pin .i { width: 28px; height: 28px; }
+.fdet-pin .keycap__label { font: 700 var(--t-body-lg)/1 var(--font-text); }
+.fdet-pin .keycap__readout { color: var(--on-persimmon); opacity: 1; line-height: 1; }   /* 13px/500 mono is normal-size text: --on-persimmon at the primitive's .85 over --persimmon is 4.01:1 in Cream, under AA */
+.fdet-pin .keycap__readout[hidden] { display: none; }
+
+/* unavailable: the way out is two keys */
+.fdet-keys { display: flex; align-items: center; gap: var(--s-4); margin-top: var(--s-1); }
+.fdet-keys .keycap { margin-bottom: var(--lip); }
+
+/* ONBOARDING (Tactile, group F; BUILD-NOTES 4.7, prototype/app.css `.onb`). The
+   first-run screen is the sheet owner's `#first-time-sheet`, made a PAGE: full
+   screen on --paper (the sheet's scrim is the paper, so nothing of Today or the
+   deck shows), the panel a column of card, headline and keys. Every rule hangs
+   on `.onb-sheet` / `.onb`, so no other sheet moves. The specificity (three
+   classes) beats `.fy-panel`, `body.ui-v2 .fy-panel` and the entrance animation. */
+.onb-sheet > .fy-scrim { background: var(--paper); }
+.fy-sheet .fy-panel.onb {
+  top: 0; max-width: 680px; max-height: none;
+  display: flex; flex-direction: column; gap: var(--s-5);
+  padding: calc(var(--safe-t) + var(--s-4)) var(--gutter) calc(var(--safe-b) + var(--s-4));
+  border: 0; border-radius: 0; background: transparent; box-shadow: none; color: var(--ink);
+  font: var(--w-body) var(--t-body)/var(--lh-body) var(--font-text);
+  animation: none;   /* a page does not slide in; the pull-down to park still tracks the thumb (--fy-panel-dy) */
+}
+.fy-sheet .fy-panel.onb:focus { outline: none; }
+.onb h2, .onb p { margin: 0; }
+/* The card: 60% of the screen on a tall phone, 50% on a short one, 56% between
+   (the prototype's three heights). It gives up height before anything below it
+   is pushed off a phone with a notch, so the keys stay above safe-b + 16. */
+.onb__card {
+  position: relative; overflow: hidden; flex: 0 1 auto;
+  display: flex; flex-direction: column; justify-content: space-between; gap: var(--s-4);
+  height: 56dvh; min-height: 280px; max-height: 620px; padding: var(--s-5);
+  border-radius: var(--r-lg); background: var(--card); box-shadow: var(--shadow-card);
+}
+@media (min-height: 800px) { .onb__card { height: 60dvh; } }
+@media (max-height: 700px) { .fy-sheet .fy-panel.onb { gap: var(--s-4); } .onb__card { height: 50dvh; min-height: 250px; padding: var(--s-4); } }
+.onb__wm { display: flex; align-items: center; justify-content: space-between; }
+.onb__brand { display: flex; align-items: center; gap: var(--s-2); }
+.onb__brand .i { color: var(--persimmon); }
+.onb__stage { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: space-between; gap: calc(var(--s-3) + var(--s-1) / 2); }
+.onb__art { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+.onb__collage {
+  --s: clamp(120px, 31dvh, 260px);
+  flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: calc(var(--s-1) / 2);
+  width: var(--s); height: var(--s); overflow: hidden; border-radius: var(--r-sm); background: var(--paper-2);
+}
+.onb__collage--one { grid-template-columns: 1fr; }
+@media (max-height: 700px) { .onb__collage { --s: clamp(96px, 20dvh, 140px); } }
+.onb__collage .art-frame { --art-size: 100%; width: 100%; height: 100%; border-radius: 0; box-shadow: none; }
+.onb__collage .art-frame img { width: 100%; height: 100%; }
+.onb__well { display: block; min-height: 0; padding: var(--s-2) calc(var(--s-2) + var(--s-1) / 2) calc(var(--s-1) / 2); }   /* the prototype's 10 / 10 / 6 around a 54px stage, in a 60px band: bars start 16px down, the well is 70px */
+.onb .needle { transition: none; }   /* the loop moves it every 100ms; a spring on each step would lag it */
+.onb--still .band__draw { animation: none; }   /* returning: nothing moves */
+.onb__meta { display: flex; align-items: center; gap: var(--s-3); }
+.onb .readout { word-spacing: -0.2em; }   /* the mono space is 0.6em wide; "8:52 / 22:10 · 6 shows" reads as one readout */
+.onb__now { color: var(--ink); }
+.onb__total { color: var(--ink-2); }
+.onb__copy { display: flex; flex-direction: column; gap: calc(var(--s-2) + var(--s-1) / 2); }
+.onb__copy .display { text-wrap: balance; }
+.onb__sub { font: var(--w-body) var(--t-body-lg)/var(--lh-body-lg) var(--font-text); color: var(--ink-2); }
+/* The text button sits 11px under the key's box (8 + the 3px lip): the nearest to the
+   stated 12 that keeps Play within 4px of the prototype, whose key sits 7px above the
+   text button (a 4px gap and a lip). At 12 the key rode 8px high on a 852px screen. */
+.onb__actions { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: var(--s-2); }
+.onb__actions .keycap { margin-bottom: var(--lip); }   /* the lip draws below the box; the gap is measured from it */
+/* SETTINGS (Tactile group G, screen "settings"; docs/redesign-2026/directions/
+   tactile/BUILD-PLAN.md 2.19, BUILD-NOTES 4, ui/settings.js). The knob's sheet:
+   the shared `.sheet` shell, floated the way the prototype floats it (8px in from
+   each edge, all four corners round), a segmented control in a well, and the
+   Dials. Nothing here transitions or animates (a dial is direct manipulation:
+   the fill and the needle follow the thumb with no easing), so nothing joins the
+   one reduced-motion block; the sheet's blur is the shared `--deck-blur`, which
+   `prefers-reduced-transparency` already turns opaque. */
+.settings-scrim { position: fixed; inset: 0; z-index: 99; background: color-mix(in srgb, var(--ink) 40%, transparent); }
+.sheet.settings-sheet {
+  left: calc(env(safe-area-inset-left, 0px) + var(--s-2)); right: calc(env(safe-area-inset-right, 0px) + var(--s-2));
+  bottom: calc(var(--safe-b) + var(--s-2)); max-width: 640px; margin: 0 auto;
+  display: flex; flex-direction: column; gap: var(--s-4); overflow: hidden;
+  padding: var(--s-5) var(--s-4) var(--s-4); border-radius: var(--r-lg);
+}
+.settings-sheet p { margin: 0; }
+/* The title is an <h2>: without this its UA margin (0.83em, about 22px each side) turned a 44px header into 73px and floated "Settings" away from "Appearance". */
+.settings-sheet header .title { margin: 0; }
+/* The prototype's .sect__head sits the title and Done on one baseline (the title lands 3.5px under the header's top), not on one centre line. */
+.sheet.settings-sheet > header { align-items: baseline; }
+/* The scroller's own 4px (cancelled by the negative margin) is where a focus ring's 2px offset and 2px line live; without it the scroller clips the ring at the well's ends. */
+.settings-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: var(--s-4); padding: var(--s-1); margin: calc(-1 * var(--s-1)); }
+.settings-group { display: flex; flex-direction: column; gap: var(--s-2); }
+.settings-group__top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); }
+.settings-label { margin: 0; font: var(--w-label) var(--t-label)/var(--lh-label) var(--font-text); color: var(--ink); }
+/* "4a's setting is the centre detent": label size at 500, not micro. */
+.settings-note { font: var(--w-body) var(--t-label)/var(--lh-label) var(--font-text); color: var(--ink-2); text-wrap: balance; }
+/* The floor sentence is the prototype's caption: micro size and weight (12/600, the label-vs-body step the direction uses for captions), one line at 375 and up, never balanced into a narrow measure. */
+.settings-note.settings-floor { font: var(--w-micro) var(--t-micro)/var(--lh-micro) var(--font-text); text-wrap: wrap; }
+/* The text button's own 12px side padding is hit area, not indent: the word lines up with the sheet's text. */
+.settings-more { align-self: flex-start; margin-left: calc(-1 * var(--s-3)); }
+
+.settings-seg { padding: var(--s-1); gap: var(--s-1); border-radius: var(--r-md); }
+.settings-seg__opt { appearance: none; border: 0; margin: 0; font: inherit; cursor: pointer; flex: 1; min-width: var(--tap); min-height: var(--tap); padding: 0 var(--s-2); display: flex; align-items: center; justify-content: center; border-radius: calc(var(--r-sm) + var(--s-1) / 2); background: transparent; color: var(--ink-2); font-weight: var(--w-label); }
+.settings-seg__opt[aria-checked="true"] { background: var(--card); color: var(--ink); box-shadow: var(--shadow-card); }
+.settings-seg__opt:focus-visible { outline: calc(var(--s-1) / 2) solid var(--ultramarine); outline-offset: calc(var(--s-1) / 2); }
+
+.settings-dial { display: flex; flex-direction: column; gap: var(--s-2); }
+.settings-dial__top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); }
+.settings-dial__name { font: var(--w-body) var(--t-body)/var(--lh-body) var(--font-text); color: var(--ink); }
+.settings-dial__read { min-height: var(--s-4); color: var(--ink-2); }
+
+/* The dial. The well is 44px; the fill is 16px tall inside it, 4px from each end, so a full
+   dial and an empty one both leave the well's edge visible. The needle's stem runs 14px
+   above the well (an 8px cap, then 6px of stem) and its left follows the same
+   (100% - 8px) travel as the fill, 4px in, which is the travel of the hidden
+   input's 8px thumb: a tap on the well lands the needle under the finger. */
+.knobtrack { position: relative; isolation: isolate; height: var(--tap); margin-top: var(--s-3); padding: 0; border-radius: var(--r-sm); overflow: visible; }
+.knobtrack__input { position: absolute; inset: 0; z-index: 3; width: 100%; height: 100%; margin: 0; padding: 0; opacity: 0; cursor: pointer; -webkit-appearance: none; appearance: none; background: transparent; touch-action: pan-y; }
+.knobtrack__input::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: var(--s-2); height: var(--tap); border: 0; }
+.knobtrack__input::-moz-range-thumb { width: var(--s-2); height: var(--tap); border: 0; }
+.knobtrack:has(.knobtrack__input:focus-visible) { outline: calc(var(--s-1) / 2) solid var(--ultramarine); outline-offset: calc(var(--s-1) / 2); }
+.knobtrack__fill { position: absolute; z-index: 0; left: var(--s-1); top: calc((var(--tap) - var(--s-4)) / 2); height: var(--s-4); width: calc(var(--g, .5) * (100% - var(--s-2))); border-radius: calc(var(--s-1) / 2); background: var(--persimmon); pointer-events: none; }
+/* Drawn AFTER the fill and above it (r3 put it behind, so every dial above centre lost it):
+   --ink-3 on the well, --on-persimmon at 70% where the fill runs under it. */
+.knobtrack__detent { position: absolute; z-index: 1; left: 50%; top: calc((var(--tap) - var(--s-4)) / 2); width: calc(var(--s-1) / 2); height: var(--s-4); margin-left: calc(var(--s-1) / -4); border-radius: calc(var(--s-1) / 4); background: var(--ink-3); pointer-events: none; }
+.knobtrack[data-over="true"] .knobtrack__detent { background: color-mix(in srgb, var(--on-persimmon) 70%, transparent); }
+.knobtrack__needle { position: absolute; z-index: 2; top: calc(-1 * (var(--s-3) + var(--s-1) / 2)); bottom: 0; width: calc(var(--s-1) / 2); margin-left: calc(var(--s-1) / -4); left: calc(var(--g, .5) * (100% - var(--s-2)) + var(--s-1)); border-radius: calc(var(--s-1) / 4); background: var(--ink); pointer-events: none; }
+.knobtrack__needle::before { content: ""; position: absolute; top: 0; left: calc(-1 * var(--s-1) / 2 - var(--s-1) / 4); width: var(--s-2); height: var(--s-2); border-radius: 50%; background: var(--ink); }
+
 /* ---------- REDUCE MOTION: ONE BLOCK, EVERY TRANSITION (audit round 2, a11y-9) ----------
    Three strip rules honoured the setting and nothing else did: the Now Playing
    sheet still slid back over 220ms after a partial drag, the notes chevron
@@ -5508,9 +5929,13 @@ body.view-home::after { content: ""; position: fixed; z-index: 19; left: 0; righ
   .tile,
   .today-pcard,
   .today .row__queue,
+  .fdet-pin,
   .tab__label,
   .tab__indicator,
+  /* The toast is cut, not slid and not faded: tools/ui-lab's reduced-motion gate counts any transition over 1ms under this setting, so a 120ms fade would be new debt (BUILD-PLAN 2.16 says fade; the gate wins until the orchestrator rules otherwise). */
   .toast,
+  .yours-qwrap,
+  .yours-qwrap.is-flipping,
   /* The live deck (group A `mini`): the tab row's collapse, the indicator's
      slide, the Bold/Fill cross-fade, the label fade, the mini riding down with
      the row and its swipe-dismiss settle. */
@@ -5529,7 +5954,8 @@ body.view-home::after { content: ""; position: fixed; z-index: 19; left: 0; righ
   .np__needle.is-buffering,
   .bridge[data-draw] .bridge__path,
   .bridge[data-draw] .bridge__dot--b,
-  .skel { animation: none; }
+  .skel,
+  .yours-qtools { animation: none; }
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation-duration: 1ms; }
   .drawer-dev > summary::after,
   .page-head,
@@ -5538,7 +5964,6 @@ body.view-home::after { content: ""; position: fixed; z-index: 19; left: 0; righ
   .fy-panel:not(.fy-panel-dragging),
   .ep-description-toggle::after,
   .fy-strip,
-  .fy-strip-bubble, .fy-strip-bubble__viewport > *,
   .fy-seg { transition: none; }
   .up-next-row { transition: none; }
   .fy-panel { animation: none; }

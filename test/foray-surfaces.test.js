@@ -301,19 +301,25 @@ test("once the show index is loaded, a credited show it knows links in-app and t
   const ftb = byShow.get("Feel the Boot");
   assert.equal(ftb.inApp, null, "two rows share the title: no guess");
   assert.equal(ftb.label, "Search Apple Podcasts for Feel the Boot");
-  const row = app.forayCreditHtml(r.entries.find((e) => e.show === "Y Combinator Startup Podcast"));
-  assert.equal(row, `<a class="fy-credit show-link" href="#/show/1236907421">Y Combinator Startup Podcast</a>`, "the clip row's credit links too");
+  /* REWRITTEN ON PURPOSE (Tactile `foray`): the clip row's credit link became the show's "From"
+     row (a clip row is a play button now, and a link cannot sit inside one). The same show-index
+     join answers for it. MUTATION: make forayDetailShows ignore the index join -> red. */
+  const shows = app.forayDetailShows(r);
+  const ycs = shows.find((s) => s.name === "Y Combinator Startup Podcast");
+  assert.equal(ycs.showId, "1236907421", "the From row's show joins through the index");
+  const row = app.forayFromRowHtml(ycs, app.forayStationCodes(shows));
+  assert.ok(row.includes(`<a class="row__link" href="#/show/1236907421">Y Combinator Startup Podcast</a>`), "the From row links too");
 });
 
 test("the index landing after paint relinks the row credits in place (p-foray-2)", async () => {
-  /* KILLING MUTATION: make relinkForayCredits skip the `.fy-credit[data-credit-show]`
-     pass — the span is never replaced, red. */
+  /* KILLING MUTATION: make relinkForayCredits skip the `[data-credit-show]`
+     pass — the span is never replaced, red. (The spans are the From rows' plain-text names now.) */
   const app = loadApp(await withCredits(await realBridge()), { showDrafts: false });
   const span = { dataset: { creditShow: "Acquiring Minds" }, outerHTML: "<span>" };
-  const view = { querySelectorAll: (sel) => (sel === ".fy-credit[data-credit-show]" ? [span] : []), querySelector: () => null };
+  const view = { querySelectorAll: (sel) => (sel === "[data-credit-show]" ? [span] : []), querySelector: () => null };
   app.document.querySelector = (sel) => (sel === "#view" ? view : null);
   app.__idx = { keys: [], rows: [{ show_id: "1569715379", title: "Acquiring Minds", tier: "breadth" }] };
   vm.runInContext("showIndex = __idx;", app);
   app.relinkForayCredits({ entries: [] }, app.ForayPlayer);
-  assert.equal(span.outerHTML, `<a class="fy-credit show-link" href="#/show/1569715379">Acquiring Minds</a>`);
+  assert.equal(span.outerHTML, `<a class="row__link" href="#/show/1569715379">Acquiring Minds</a>`);
 });

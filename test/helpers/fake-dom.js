@@ -30,7 +30,8 @@ class El {
     this.parent = null;
     this.id = null;
     this.className = "";
-    this.textContent = "";
+    this._text = undefined; // an assigned textContent; else the text parsed from innerHTML
+    this._own = "";
     this.value = "";
     this.hidden = false;
     this.disabled = false;
@@ -47,15 +48,28 @@ class El {
       toggle: (c, on) => { const want = on ?? !cls().has(c); if (want) this.classList.add(c); else this.classList.remove(c); return want; },
     };
   }
+  /** The text of this element: what was assigned, else the text its markup carried
+      (own text nodes and every descendant's, in order, entities decoded). It was a
+      plain property that stayed "" for anything parsed, so a test that asked a
+      parsed button for its label got nothing and had to read the markup instead. */
+  get textContent() { return this._text !== undefined ? this._text : this._own + this.children.map((c) => c.textContent).join(""); }
+  set textContent(v) { this._text = String(v); }
   get firstElementChild() { return this.children[0] || null; }
   get innerHTML() { return this._html; }
   set innerHTML(html) {
     this._html = String(html);
     this.children = [];
+    this._text = undefined;
+    this._own = "";
     const stack = [this];
     const re = /<(\/?)([a-zA-Z][a-zA-Z0-9-]*)([^>]*)>/g;
     let m;
+    let last = 0;
+    const decode = (t) => t.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, "\"").replace(/&#0?39;/g, "'").replace(/&amp;/g, "&");
+    const text = (to) => { const t = this._html.slice(last, to); if (t) stack[stack.length - 1]._own += decode(t); };
     while ((m = re.exec(this._html))) {
+      text(m.index);
+      last = re.lastIndex;
       const [, closing, tag, rest] = m;
       if (closing) { if (stack.length > 1) stack.pop(); continue; }
       const kid = new El(tag);
@@ -65,11 +79,13 @@ class El {
         if (name === "id") kid.id = val;
         if (name === "class") kid.className = val;
         if (name === "hidden") kid.hidden = true;
+        if (name === "disabled") kid.disabled = true;
         if (name.startsWith("data-")) kid.dataset[name.slice(5).replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = val;
       }
       stack[stack.length - 1].appendChild(kid);
       if (!VOID.has(tag.toLowerCase()) && !/\/\s*$/.test(rest)) stack.push(kid);
     }
+    text(this._html.length);
   }
   appendChild(k) { k.parent = this; this.children.push(k); return k; }
   append(...ks) { ks.forEach((k) => this.appendChild(k)); }

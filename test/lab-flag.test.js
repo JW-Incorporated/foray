@@ -25,11 +25,15 @@
  *   - delete `if (isLabBuild()) return;` in syncEventsOnce               -> test 3
  *   - make isLabBuild() `return false`                                   -> 1, 2, 3
  *   - make isLabBuild() `return Boolean(window.__FORAY_LAB__)`           -> test 4 ("true" string)
+ *   - add `fetch(...)`, `sbAuth(...)` or an /auth/v1 or /rest/v1 path to the
+ *     onboarding screen (ui/onboarding.js)                               -> test 6
  */
 
 const { test } = require("node:test");
 const assert = require("node:assert");
 const vm = require("node:vm");
+const fs = require("node:fs");
+const path = require("node:path");
 const { readAppSource } = require("./helpers/app-source.js");
 
 const SRC = readAppSource().replace(/\r\n/g, "\n");
@@ -144,4 +148,23 @@ test("5. the real app's source never sets the flag (only the lab bundle's inject
   const code = SRC.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:/])\/\/[^\n]*/g, "$1");
   const writes = code.match(/__FORAY_LAB__\s*=[^=]/g) || [];
   assert.deepStrictEqual(writes, [], "app source assigns the lab flag; the real build would stop syncing");
+});
+
+test("6. the onboarding screen makes no network call of its own: Play reaches the engines only through playHomeTarget, whose events stay local in a lab build", () => {
+  /* The first-run screen (Redesign 2026, Tactile group F) has two exits. Neither
+     may sign up, refresh a token or POST an event itself: the lab-flag gates live
+     in sbAuth / ensureAnonSessionOnce / syncEventsOnce (tests 1-3), and a screen
+     that called the network around them would be the hole in all three. The RUNNING
+     half, both exits pressed with the flag on over the real engines and a spy on
+     every POST, is test/tactile-onboarding.test.js.
+     MUTATION: add `fetch("/rest/v1/events", { method: "POST" })`, `sbAuth(...)`,
+     `ensureAnonSession()` or `navigator.sendBeacon(...)` to ui/onboarding.js ->
+     red. The twin: the same scan DOES see those spellings in app.js, so it is not
+     blind to them. */
+  const strip = (src) => src.replace(/\r\n/g, "\n").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:/])\/\/[^\n]*/g, "$1");
+  const NETWORK = /\bfetch\s*\(|\bsbAuth\s*\(|\bensureAnonSession(?:Once)?\s*\(|\bsyncEvents(?:Once)?\s*\(|\bflushBufferedEvents\s*\(|\/auth\/v1|\/rest\/v1|sendBeacon|XMLHttpRequest|new WebSocket/;
+  const onboarding = strip(fs.readFileSync(path.join(__dirname, "..", "ui", "onboarding.js"), "utf8"));
+  assert.doesNotMatch(onboarding, NETWORK, "the onboarding screen reaches the network around the lab-flag gates");
+  assert.match(onboarding, /playHomeTarget\(\{ kind: "foray", r \}, null\)/, "and Play goes through the one start path Today's key uses");
+  assert.match(strip(SRC), NETWORK, "the twin: the scan is not blind, app.js carries those calls");
 });

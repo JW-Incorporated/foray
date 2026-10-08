@@ -41,7 +41,7 @@
   },
   "suites": {
     "continuation": 13,
-    "foray-playback": 92,
+    "foray-playback": 83,
     "foray-progress": 62,
     "html-audio-backend": 129,
     "interlude": 18,

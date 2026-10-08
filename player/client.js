@@ -1927,6 +1927,11 @@ function dialForaySegments(resolved, currentIndex) {
   });
 }
 
+/* `buffering` here is what the sheet DRAWS as a stall: the needle pulses and
+   the elapsed readout reads an ellipsis. It is the first load (`loading`, the
+   tap to the first audio) OR a stall mid-play (`buffering`, the element's
+   `waiting`); it used to be the load alone, so a stall mid-episode painted the
+   "Buffering..." line and nothing else (Tactile BUILD-PLAN 2.2). */
 function dialNowPlayingModel(pos, dur, running, loading) {
   const queueCount = dialQueueCount();
   const resolvedForay = foray?.resolved || restoredPending?.foray?.resolved || null;
@@ -1948,7 +1953,7 @@ function dialNowPlayingModel(pos, dur, running, loading) {
       code: dialStationCodeFor(upNext.show), colorIndex: dialStationIndex(upNext.show_id || upNext.show),
     } : null;
     return {
-      foray: false, currentIndex: 0, position: pos, duration: dur, running, buffering: loading,
+      foray: false, currentIndex: 0, position: pos, duration: dur, running, buffering: loading || buffering,
       artwork: current?.artwork_url || "", showId, show, queueCount, chapters, next,
       downloaded: facts.downloaded, played: facts.played, hook: current?.hook || "",
       segments: [{ showId, show, code: dialStationCodeFor(show), colorIndex: dialStationIndex(showId), duration: dur, start: 0 }],
@@ -1984,7 +1989,7 @@ function dialNowPlayingModel(pos, dur, running, loading) {
     });
   }
   return {
-    foray: true, currentIndex, position: pos, duration: dur, running, buffering: loading,
+    foray: true, currentIndex, position: pos, duration: dur, running, buffering: loading || buffering,
     artwork: current?.artwork_url || "", showId: here.showId, show: here.show, queueCount, segments, slots, origins,
     subtitle: `4a foray · ${origins.length} ${origins.length === 1 ? "show" : "shows"}`,
     collage: origins.slice(0, 4).map((origin) => ({ show: origin.name, code: origin.code, colorIndex: origin.colorIndex, artwork: origin.artwork })),
@@ -2476,7 +2481,7 @@ function paintPage(running) {
        per-tick writer of aria-valuetext (the band rebuild runs only when its
        key changes), so gating on DialNowPlaying left the spoken value stale
        after every nudge (WCAG 4.1.2). */
-    paintClocks(pos, dur, !held, window.DialNowPlaying ? dialModel?.valueText : null);
+    paintClocks(pos, dur, !held, window.DialNowPlaying ? dialModel?.valueText : null, Boolean(window.DialNowPlaying) && Boolean(dialModel?.buffering));
   }
   syncCardButtons(loading);
   paintEpisodeSurface();
@@ -2498,12 +2503,17 @@ function paintPage(running) {
  * countdown rounded separately made 13 + 48 = 61 out of 12.5 s into 60. Both
  * clocks go through the same formatter's rule first, so they add up.
  */
-function paintClocks(pos, dur, valuetext = true, spoken = null) {
+function paintClocks(pos, dur, valuetext = true, spoken = null, stalled = false) {
   /* One rounding rule for both clocks (audit round 3, arch-drift-10): the
      elapsed text is floored everywhere now, so its countdown is too. */
   const whole = Math.floor;
   const now = foray ? fmtClock(pos) : formatTimestamp(pos, EXACT);
-  if (ui.tNow.textContent !== now) ui.tNow.textContent = now;
+  /* Tactile Now Playing, buffering (BUILD-PLAN 2.2): while the element waits
+     for data the elapsed readout shows an ellipsis, not a number it is not
+     advancing. Only the readout: `spoken`, the slider and the countdown below
+     keep the real position, and a paused sheet (not stalled) keeps its value. */
+  const shownNow = stalled ? "…" : now;
+  if (ui.tNow.textContent !== shownNow) ui.tNow.textContent = shownNow;
   const left = dur ? remainingClock(whole(dur) - whole(pos)) : "--:--";
   if (ui.tLeft.textContent !== left) ui.tLeft.textContent = left;
   if (!valuetext) return;

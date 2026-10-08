@@ -61,6 +61,27 @@ async function openForayNowPlaying(page) {
   await openNowPlaying(page);
 }
 
+/** Now Playing, paused (Tactile BUILD-PLAN 2.2): the sheet of a foray the
+    listener started and then paused with the Play keycap. The foray restores
+    paused, so one press starts it (the key turns to Pause) and the next press
+    pauses it again, leaving the key reading Play. Everything that differs from
+    the playing sheet sits inside that keycap's box. The playhead moves a few
+    hundred ms between the presses; the elapsed readout floors to the second
+    and the restore point (12:40) leaves a whole second of room. */
+async function pausedForayNowPlaying(page) {
+  /* This step follows the Up Next steps, which leave the Clear confirm sheet up; it
+     would sit over the bar the sheet opens from. */
+  await page.keyboard.press("Escape");
+  await wait(page, 300);
+  await openForayNowPlaying(page);
+  const big = page.locator("#foray-player .fp-big");
+  await big.click();
+  await page.waitForSelector('#foray-player .fp-big[aria-label="Pause"]', { timeout: 10000 });
+  await big.click();
+  await page.waitForSelector('#foray-player .fp-big[aria-label="Play"]', { timeout: 10000 });
+  await wait(page, 600);
+}
+
 async function closeNowPlaying(page) {
   const close = page.locator(".fp-close");
   if (await close.count()) await close.first().click().catch(() => {});
@@ -107,6 +128,88 @@ async function openEpisodeNowPlaying(page, itemId) {
   await page.waitForSelector("#foray-player", { state: "visible", timeout: 10000 });
   await wait(page, 600);
   await openNowPlaying(page);
+}
+
+/** Put the phone on a train: one Also-today episode (the second row, as in the prototype's
+    offline route) is recorded as on the device, then the radio goes off. The page is loaded
+    ONLINE first (an offline context cannot even fetch the local bundle) and the browser's
+    own `offline` event repaints Today, which is the path a real listener's phone takes.
+    The record is written through the app's lsSet, the same door the Downloads code uses. */
+async function goOffline(page) {
+  await page.evaluate(() => {
+    const rows = [...document.querySelectorAll(".today .row-episode [data-play]")];
+    const key = rows[1] || rows[0];
+    if (!key) throw new Error("uilab: no playable Also-today row to mark as downloaded");
+    const id = key.getAttribute("data-play");
+    window.lsSet("cp_downloads", {
+      settings: { cellular: false },
+      items: { [id]: { status: "done", bytes: 31457280, total: 31457280, path: "downloads/" + id + ".mp3", updated_at: "2026-10-04T12:00:00.000Z" } },
+    });
+  });
+  await page.context().setOffline(true);
+  await page.waitForFunction(() => navigator.onLine === false && document.querySelector(".today .keycap--blocked"), null, { timeout: 10000 });
+  await wait(page, 400);
+}
+
+/** The earlier steps leave a Foray on the bar; Yours > Up Next shows the playing
+    row only for an episode that is in the list. Put the first one back on the bar
+    and repaint the page, so the playing row is drawn the way it was in
+    mini-player-library. */
+async function queueWithPlaying(page, itemId) {
+  await startPlayback(page, itemId);
+  await page.evaluate(() => { if (typeof renderCurrentPage === "function") renderCurrentPage(); });
+  await wait(page, 400);
+}
+
+/** Yours > Up Next: open the action row (the ⋯) of the n-th queue row. Opens
+    only when it is not already open, so a step that repeats the route does not
+    toggle it shut. */
+async function openQueueActions(page, n) {
+  await page.waitForSelector("#yours-panel-upnext .yours-qwrap", { state: "visible", timeout: 15000 });
+  const row = page.locator("#yours-panel-upnext .yours-qwrap").nth(n);
+  if (!(await row.locator(".yours-qtools").count())) await row.locator('[data-action^="more:"]').click();
+  await row.locator(".yours-qtools").waitFor({ state: "visible", timeout: 10000 });
+  await wait(page, 500);
+}
+
+/** Yours > Up Next: press Clear and wait for the confirm sheet. */
+async function openClearSheet(page) {
+  /* The step before held its undo toast up; it does not belong in this capture. */
+  await page.evaluate(() => { if (typeof hideYoursUndo === "function") hideYoursUndo(); });
+  await page.waitForSelector('#yours-panel-upnext [data-action="clear"]', { state: "visible", timeout: 15000 });
+  await page.locator('#yours-panel-upnext [data-action="clear"]').click();
+  await page.waitForSelector("#yours-clear-sheet:not([hidden])", { state: "visible", timeout: 10000 });
+  await wait(page, 600);
+}
+
+/** Yours > Up Next: Remove on the n-th row, then wait for the undo toast. */
+async function removeQueueRow(page, n) {
+  await openQueueActions(page, n);
+  await page.locator("#yours-panel-upnext .yours-qwrap").nth(n).locator('[data-action^="rm:"]').click();
+  await page.waitForSelector("#yours-toast .toast.is-visible", { state: "visible", timeout: 10000 });
+  /* The toast's clock stops while it is touched, so a press holds it up for the
+     capture instead of racing the 4 seconds the harness's settle may take. */
+  await page.locator("#yours-toast .toast").dispatchEvent("pointerdown");
+  await wait(page, 500);
+}
+
+/** Yours > Shows: press the Shows chip and wait for the grid. A chip press only
+    moves `hidden`, so the panel is already in the document; it is visible once
+    the press has landed. */
+async function openYoursShows(page) {
+  await page.waitForSelector('[data-yours-chip="shows"]', { state: "visible", timeout: 15000 });
+  await page.locator('[data-yours-chip="shows"]').click();
+  await page.waitForSelector("#yours-panel-shows .shows-tile", { state: "visible", timeout: 10000 });
+  await wait(page, 500);
+}
+
+/** Yours > Shows with the first tile's ⋯ pressed: Unfollow revealed over its art. The ⋯ is invisible and inert to a pointer at rest (iteration 3), so it is reached the way a keyboard user does: focus, then Enter. */
+async function openYoursShowActions(page) {
+  await openYoursShows(page);
+  const tile = page.locator("#yours-panel-shows .shows-tile").first();
+  if (!(await tile.locator(".shows-tile__actions:not([hidden])").count())) { await tile.locator(".shows-tile__more").focus(); await page.keyboard.press("Enter"); }
+  await tile.locator(".shows-tile__actions:not([hidden])").waitFor({ state: "visible", timeout: 10000 });
+  await wait(page, 400);
 }
 
 async function typeSearch(page, text) {
@@ -157,15 +260,87 @@ async function openGallerySheet(page, scheme) {
     Closing the context aborts the pending request. The pattern is the document
     the boot path fetches (`fetchJson("data/catalog-client.json")`, query string
     allowed). */
+/** Today: press the knob keycap and wait for the Settings sheet (tactile
+    `settings`). The sheet is the app's own modal, so `#settings-sheet` loses its
+    `hidden` once `openSheet` has taken it; the beat after is the sheet settling. */
+async function openSettingsFromKnob(page) {
+  await page.waitForSelector("#today-knob", { state: "visible", timeout: 15000 });
+  /* A listener who has turned two dials: the first two the sheet would offer sit
+     at +2 and -1 (the prototype's own sample: Engineering 7, History 4), the third
+     stays at 4a's setting. Through the app's own writers, so the sheet reads real
+     state; without this every readout is empty (it is empty at the detent) and the
+     only carrier of a setting is the needle. */
+  await page.evaluate(() => {
+    const [a, b] = settingsDialNodes();
+    for (const [n, pos] of [[a, 7], [b, 4]]) if (n) setInterest(n.id, settingsDialValue(pos, settingsAnchor(n)));
+    saveInterests();
+  });
+  await page.locator("#today-knob").click();
+  await page.waitForSelector("#settings-sheet:not([hidden])", { state: "visible", timeout: 10000 });
+  await wait(page, 600);
+}
+
 async function holdCatalog(page) {
   await page.route("**/data/catalog-client.json*", () => { /* held on purpose */ });
+}
+
+/* Tactile `foray` (Foray detail): the four states the page draws beyond its fresh one.
+ * A step shares one page with the steps before it, and the player reads a Foray's stored
+ * place once at boot (its store is authoritative in memory), so a state that needs a place
+ * writes the `cp_foray:<id>` row the app itself writes, then loads the page again on the
+ * Foray's address. A draft Foray (the un-narrated one) is opened the way a listener opens
+ * one: by name, `?foray=<id>`, which is also what unlocks it. */
+const FORAY_NARRATED = "how-ai-actually-gets-built-3b83e1";
+const FORAY_UNNARRATED = "grilling-history-2";
+
+async function openForayDetail(page, id, { unlock = false, at = null } = {}) {
+  /* Through the durable store the app itself writes with (memory, localStorage and IndexedDB
+     together: clearing localStorage alone lets a stale row come back from IndexedDB), after the
+     player lets go of what it has loaded (it would save its own place over the row as the page
+     unloads). The place is worked out against the real resolver. */
+  await page.evaluate(async ({ id, at }) => {
+    try { await window.ForayPlayer.stopForDataDeletion(); } catch (_) { /* nothing was loaded */ }
+    const store = window.forayStorage;
+    for (const key of store.keys("cp_foray:")) store.removeItem(key);
+    if (at != null) {
+      const [foraysDoc, segmentsDoc, sourcesDoc] = await Promise.all([
+        fetch("data/forays.json").then((response) => response.json()),
+        fetch("data/segments.json").then((response) => response.json()),
+        fetch("data/segment-sources.json").then((response) => response.json()),
+      ]);
+      const resolved = window.ForayPlayer.resolve(foraysDoc, { id, segmentsDoc, sourcesDoc, showDrafts: true });
+      if (!resolved) throw new Error("uilab: Foray detail fixture did not resolve: " + id);
+      const elapsed = at === "end" ? resolved.totalSec : at;
+      const place = window.ForayPlayer.segmentAt(resolved.playable, elapsed);
+      store.setItem("cp_foray:" + id, JSON.stringify({
+        foray_id: id, title: resolved.title, elapsed_sec: elapsed, total_sec: resolved.totalSec,
+        index: place ? place.index : -1, segment_id: null, into_sec: place ? place.into : 0, updated_at: new Date().toISOString(),
+      }));
+    }
+    await store.flush();
+  }, { id, at });
+  const url = new URL(page.url());
+  url.search = unlock ? "?foray=" + encodeURIComponent(id) : "";
+  url.hash = "#/foray/" + encodeURIComponent(id);
+  /* The same address is a hash navigation to itself, which loads nothing: reload it instead. */
+  if (url.href === page.url()) await page.reload({ waitUntil: "load" });
+  else await page.goto(url.href, { waitUntil: "load" });
+  await page.waitForFunction(
+    () => Boolean(window.ForayPlayer) && Boolean(document.querySelector("#tab-bar .tab-btn")) && Boolean(document.querySelector(".fdet")),
+    null,
+    { timeout: 45000 }
+  );
+  await wait(page, 900);
 }
 
 /** Routes every seeded profile can show. `fx` supplies real ids. */
 function coreRoutes(fx, { entities }) {
   const ep = fx.items[0].id;
   const show = fx.shows[0].show_id;
-  const foray = fx.forays[0] && fx.forays[0].id;
+  /* The first PUBLISHED Foray, not the first in the file: that one is a draft, which the page
+     (correctly) refuses without `?foray=`, so this step used to shoot "isn't available". */
+  const published = fx.forays.find((f) => f.status === "published");
+  const foray = published && published.id;
   const steps = [
     { label: "home", route: "#/" },
     { label: "search", route: "#/shows" },
@@ -201,13 +376,16 @@ export function appStates(fx) {
   /* A different episode from ep0: the earlier player steps leave ep0 as the
      manager's playhead item, and its 60 s fixture would answer for the length
      of anything restored under the same id (the sheet read "-0:00"). */
-  const ep2 = fx.items[2].id;
+  const ep2 = (fx.items[2] || fx.items[0]).id;
   return [
     {
       id: "first-run",
-      description: "Brand-new profile: the onboarding explainer sheet over Home.",
+      description: "Brand-new profile: the Tactile onboarding screen over Home, then its returning mode (#/onboarding/return).",
       seed: "empty",
-      steps: [{ label: "intro-sheet", route: "#/", ready: "#first-time-sheet" }],
+      steps: [
+        { label: "intro-sheet", route: "#/", ready: "#first-time-sheet" },
+        { label: "onboarding-return", route: "#/onboarding/return", ready: "#first-time-sheet" },
+      ],
     },
     {
       id: "empty",
@@ -219,7 +397,22 @@ export function appStates(fx) {
       id: "returning",
       description: "Returning user: saved episodes, Up Next, playlists, starred shows, history.",
       seed: "returning",
-      steps: coreRoutes(fx, { entities: true }),
+      steps: [
+        ...coreRoutes(fx, { entities: true }),
+        /* Yours, Shows (tactile `library-shows`, BUILD-PLAN 2.14): the Shows chip pressed, then the first tile's ⋯ open. */
+        { label: "yours-shows", route: "#/library", run: (page) => openYoursShows(page) },
+        { label: "yours-shows-actions", route: "#/library", run: (page) => openYoursShowActions(page) },
+        /* Appended by Tactile `foray`: the Foray detail page beyond its fresh state. In progress
+           (12:40 in, the prototype's Resume at 12:40), played to the end, a Foray with no
+           narration (BR BR at 412 is this one), and one that is not there. */
+        { label: "foray-progress", route: "#/foray/" + FORAY_NARRATED, run: (page) => openForayDetail(page, FORAY_NARRATED, { at: 760 }) },
+        { label: "foray-done", route: "#/foray/" + FORAY_NARRATED, run: (page) => openForayDetail(page, FORAY_NARRATED, { at: "end" }) },
+        { label: "foray-unnarrated", route: "#/foray/" + FORAY_UNNARRATED, run: (page) => openForayDetail(page, FORAY_UNNARRATED, { unlock: true }) },
+        { label: "foray-unavailable", route: "#/foray/does-not-exist", run: (page) => openForayDetail(page, "does-not-exist") },
+        /* Appended by Tactile `settings` (BUILD-PLAN 2.19): Today with the knob
+           pressed and the Settings sheet up. */
+        { label: "settings-sheet", route: "#/", run: (page) => openSettingsFromKnob(page) },
+      ],
     },
     {
       id: "player",
@@ -231,6 +424,12 @@ export function appStates(fx) {
         { label: "mini-player-up-next", route: "#/queue" },
         { label: "now-playing", route: "#/library", run: (page) => openForayNowPlaying(page) },
         { label: "now-playing-closed", route: "#/library", run: (page) => closeNowPlaying(page) },
+        /* Yours, Up Next (tactile `library`, BUILD-PLAN 2.12 and 2.16): the second
+           row's action row open, then Remove pressed and the undo toast up. */
+        { label: "up-next-actions", route: "#/library", run: async (page) => { await queueWithPlaying(page, ep0); await openQueueActions(page, 1); } },
+        { label: "up-next-remove-toast", route: "#/library", run: async (page) => { await queueWithPlaying(page, ep0); await removeQueueRow(page, 1); } },
+        { label: "up-next-clear-sheet", route: "#/library", run: async (page) => { await queueWithPlaying(page, ep0); await openClearSheet(page); } },
+        { label: "now-playing-paused", route: "#/library", run: (page) => pausedForayNowPlaying(page), ready: '#foray-player .fp-play[aria-label="Play"]' },
         { label: "now-playing-episode", route: "#/library", run: (page) => openEpisodeNowPlaying(page, ep2) },
       ],
     },
@@ -307,6 +506,15 @@ export function appStates(fx) {
       description: "Returning user with a part-played episode (25 of 60 min): Today shows the Resume card.",
       seed: "resuming",
       steps: [{ label: "home-resume", route: "#/", ready: ".today-resume" }],
+    },
+    {
+      id: "offline",
+      description: "Returning user with the radio off: Today and the Foray page with one episode on the device (live key, downloaded mark) and every other Play key blocked.",
+      seed: "returning",
+      steps: [
+        { label: "home", route: "#/", ready: ".today .row-episode", run: (page) => goOffline(page) },
+        ...(fx.forays[0] ? [{ label: "foray", route: "#/foray/" + encodeURIComponent(fx.forays[0].id) }] : []),
+      ],
     },
   ];
 }

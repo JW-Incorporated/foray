@@ -438,7 +438,48 @@ function todayDateLine(now = new Date()) {
    changed, not the whole of Home under the listener's thumb. */
 function refreshTodayDate(now = new Date()) {
   const el = document.querySelector("[data-today-date]");
-  if (el) setStatusText(el, todayDateLine(now));
+  if (el) setStatusText(el, todayDateReadout(now));
+}
+
+/* OFFLINE (BUILD-NOTES 4.1, DIRECTION.md "Offline"). Observed, never declared: the
+   runtime says so through `navigator.onLine`, and a runtime that cannot say (no
+   `navigator`, the value undefined) is online, as ui/search.js's shard pass already
+   reads it. What changes on Today then: the date readout ends " · Offline"; every
+   Play key whose audio is not on this device takes the blocked key (cloud-slash,
+   "Needs a connection"); an episode that IS on the device keeps its live key and
+   carries the downloaded mark with its word. A Foray is never downloaded, so its
+   hero key is always blocked. */
+function todayIsOffline() {
+  return typeof navigator !== "undefined" && navigator.onLine === false;
+}
+
+/** True only for a file the record says is on disk (status `done`); a `missing`,
+    `failed` or in-flight row streams, so offline it is not playable. */
+function todayIsDownloaded(id) {
+  if (typeof downloadsValue !== "function") return false;
+  try {
+    const rec = downloadsValue().items[id];
+    return Boolean(rec && rec.status === "done");
+  } catch (_) { return false; }
+}
+
+function todayDateReadout(now = new Date()) {
+  return todayDateLine(now) + (todayIsOffline() ? " · Offline" : "");
+}
+
+/* Going offline or coming back repaints Today where it stands, so the keys are never
+   a minute behind the radio. Bound once, from the first Today render; a repaint only
+   happens while Today is the page on screen. */
+let todayConnectionBound = false;
+function bindTodayConnection() {
+  if (todayConnectionBound || typeof window === "undefined" || typeof window.addEventListener !== "function") return;
+  todayConnectionBound = true;
+  const repaint = () => {
+    const view = typeof document !== "undefined" ? document.querySelector("#view") : null;
+    if (view && typeof view.querySelector === "function" && view.querySelector(".today")) renderHomeV2();
+  };
+  window.addEventListener("offline", repaint);
+  window.addEventListener("online", repaint);
 }
 
 const TODAY_ALSO_ROWS = 3;      // the picks before the bridge card
@@ -458,10 +499,15 @@ function todayInitials(name) { return tactileStationCode(name); }
     control that does nothing. */
 function todayEpisodeData(item, { ctx, why = "", branch = "" } = {}) {
   const mins = episodeMinutes(item);
+  const offline = todayIsOffline();
+  const downloaded = todayIsDownloaded(item.id);
   return {
     branch, id: item.id, ctx, link: "episode", title: item.title || "this episode", show: item.show || "",
     duration: fmtDur(mins), artwork: item.artwork_url || "", initials: todayInitials(item.show),
     why, queued: isQueued(item.id),
+    /* Offline, the mark is the check-circle WITH its word; online it is the circle alone. */
+    downloaded, downloadedMark: offline ? "word" : "icon",
+    blocked: offline && !downloaded && Boolean(item.audio_url),
     playable: Boolean(item.audio_url),
     queueable: isQueued(item.id) || Boolean(item.audio_url) || Boolean(liveEpisode(item.id)),
   };
@@ -546,6 +592,12 @@ function todayHeroHtml(hero, { firstRun = false } = {}) {
   const path = forayRoutePath(foray.id);
   const discs = hero.discs.map(d => tactileArtFrame({ size: "disc", round: true, url: d.url, initials: d.initials })).join("");
   const why = firstRun ? TODAY_FIRST_RUN_LINE : hero.why;
+  /* A Foray is streamed from each show's own feed, never downloaded: offline its key is
+     always blocked, and the sentence is drawn once under the keys. */
+  const offline = todayIsOffline();
+  const play = offline
+    ? tactileKeycap({ size: "xl", variant: "paper", round: true, offline: true, iconOnly: true, label: `Needs a connection: ${foray.title}` })
+    : tactileKeycap({ size: "xl", variant: "persimmon", round: true, icon: "ph-play-fill", label: `Play ${foray.title}`, data: { "home-play": foray.id } });
   return `<section class="card card--hero today-hero" aria-labelledby="today-hero-title">
     <div class="today-hero__eyebrow">${tactileTag({ kind: "narration", text: "Today's foray" })}</div>
     <h2 class="display today-hero__title" id="today-hero-title"><a class="today-hero__link" href="${esc(safeUrl("#" + path))}">${esc(foray.title)}</a></h2>
@@ -553,9 +605,10 @@ function todayHeroHtml(hero, { firstRun = false } = {}) {
     <div class="today-hero__meta"><span class="today-hero__discs">${discs}</span><span class="readout today-hero__facts">${esc(hero.facts)}</span></div>
     ${why ? `<p class="today-hero__why">${esc(why)}</p>` : ""}
     <div class="today-hero__keys">
-      ${tactileKeycap({ size: "xl", variant: "persimmon", round: true, icon: "ph-play-fill", label: `Play ${foray.title}`, data: { "home-play": foray.id } })}
+      ${play}
       <a class="keycap keycap--md keycap--paper today-hero__details" href="${esc(safeUrl("#" + path))}"><span class="keycap__label">Details</span></a>
     </div>
+    ${offline ? tactileNeedsLine() : ""}
   </section>`;
 }
 
@@ -584,6 +637,7 @@ function todayResumeEntry(picks) {
 function todayResumeHtml(entry) {
   if (!entry) return "";
   const isForay = entry.kind === "foray";
+  const offline = todayIsOffline();
   let art = "";
   let key = "";
   let id;
@@ -592,12 +646,16 @@ function todayResumeHtml(entry) {
     const first = r && Array.isArray(r.playable) ? r.playable.find(i => i && i.show) : null;
     art = first ? showArtworkUrl({ title: first.show }) || "" : "";
     key = r && r.playable && r.playable.length
-      ? tactileKeycap({ size: "md", variant: "persimmon", round: true, icon: "ph-play-fill", label: `Resume ${entry.title}`, data: { "home-play": entry.id } })
+      ? (offline
+        ? tactileKeycap({ size: "md", variant: "paper", round: true, offline: true, iconOnly: true, label: `Needs a connection: ${entry.title}` })
+        : tactileKeycap({ size: "md", variant: "persimmon", round: true, icon: "ph-play-fill", label: `Resume ${entry.title}`, data: { "home-play": entry.id } }))
       : "";
   } else {
     art = (entry.item && entry.item.artwork_url) || "";
     key = entry.item && entry.item.audio_url
-      ? tactileKeycap({ size: "md", variant: "persimmon", round: true, icon: "ph-play-fill", swapIcon: "ph-pause-fill", label: `Play ${entry.title}`, data: { play: entry.id, title: entry.title, ctx: "resume" } })
+      ? (offline && !todayIsDownloaded(entry.id)
+        ? tactileKeycap({ size: "md", variant: "paper", round: true, offline: true, iconOnly: true, label: `Needs a connection: ${entry.title}` })
+        : tactileKeycap({ size: "md", variant: "persimmon", round: true, icon: "ph-play-fill", swapIcon: "ph-pause-fill", label: `Play ${entry.title}`, data: { play: entry.id, title: entry.title, ctx: "resume" } }))
       : "";
   }
   /* Only the route kind and the encoded id are interpolated, and the whole href
@@ -751,7 +809,7 @@ function todayHeaderHtml() {
      placeholder). At boot the drawer is not bound yet: app.js's paintBootLoading
      remembers a press and opens the drawer once it is (settleBootKnob). */
   return `<header class="today-top">
-    <div class="today-top__title"><h1 class="display-xl today-title" tabindex="-1">Today</h1><span class="readout today-top__date" data-today-date>${esc(todayDateLine())}</span></div>
+    <div class="today-top__title"><h1 class="display-xl today-title" tabindex="-1">Today</h1><span class="readout today-top__date" data-today-date>${esc(todayDateReadout())}</span></div>
     ${tactileKeycap({ size: "sm", variant: "paper", icon: "knob", label: "Settings and dials", id: "today-knob" })}
   </header>`;
 }
@@ -786,15 +844,17 @@ function todayLoadingHtml() {
   </div>`;
 }
 
-/* The knob opens the drawer (Settings, until the Settings screen lands). It
-   names what it controls and whether it is open, like the topbar's ☰ does. */
+/* The knob opens the Settings sheet (ui/settings.js; it opened the drawer until
+   the Settings screen landed, and the sheet's "More settings" hands over to the
+   drawer). It names what it controls and whether it is open, like the topbar's
+   ☰ does. */
 function bindTodayKnob(scope) {
   const knob = scope && typeof scope.querySelector === "function" ? scope.querySelector("#today-knob") : null;
   if (!knob || knob._bound) return;
   knob._bound = true;
-  knob.setAttribute("aria-controls", "drawer");
-  knob.setAttribute("aria-expanded", drawerIsOpen() ? "true" : "false");
-  knob.addEventListener("click", () => openDrawer(!drawerIsOpen()));
+  knob.setAttribute("aria-controls", "settings-sheet");
+  knob.setAttribute("aria-expanded", "false");
+  knob.addEventListener("click", () => openSettingsSheet(knob));
 }
 
 /** The press on a Foray key (the hero's, or Resume's). The Foray is resolved at
@@ -838,4 +898,5 @@ function renderHomeV2() {
   bindUpNext($("#view"));
   bindPlay($("#view"));
   bindHomePlay($("#view"));
+  bindTodayConnection();
 }

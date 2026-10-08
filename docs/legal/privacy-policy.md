@@ -145,6 +145,7 @@ The app also asks the browser to mark its storage as persistent
 | `cp_downloads` | Which episodes you downloaded for offline listening, each one's download state and size, the file's location on this device, the episode's length as downloaded, and your "download over cellular" setting. The audio files themselves sit in the app's own storage on the device (Application Support on iPhone, the app's files directory on Android), are never backed up, and are deleted by "Delete my data" and by removing the download | **No** |
 | `cp_rate` | Your playback speed | **No** |
 | `cp_voice` | Your chosen narration voice — an identifier the device's own voice list reported | **No** |
+| `cp_theme` | Which look you picked in Settings: System, Cream (light) or Bakelite (dark) — a local per-device preference. System follows your phone | **No** |
 | `cp_interlude` | Whether the short jingle between a foray's segments is on or off — a local per-device preference. On unless you turn it off | **No** |
 | `cp_family` | Family mode on/off — a local content filter that hides explicit-rated episodes | **No** |
 | `cp_show_drafts` | Whether the settings switch that lists unpublished (draft) forays on this device is on — a local per-device preference for testing them before they are published. Off by default | **No** |

@@ -63,13 +63,13 @@ function world({ withToday = true } = {}) {
     setBodyClass: (c) => { env.bodyClass = c; env.classes = new Set([c, "ui-v2"]); },
     renderTabBar: () => { env.tabBars += 1; if (!env.bar) env.bar = { remove: () => { env.bar = null; } }; },
     document: { body: { classList: { remove: (c) => { env.classes.delete(c); } } } },
-    $: (sel) => (sel === "#tab-bar" ? env.bar : null),
+    $: (sel) => (sel === "#tab-bar" ? env.bar : sel === "#today-knob" ? env.knob || null : null),
     Date,
   });
   if (withToday) {
     vm.runInContext([
       liftConst(HOME, "TODAY_DAYS"), liftConst(HOME, "TODAY_MONTHS"),
-      lift(HOME, "todayDateLine"), lift(HOME, "todayHeaderHtml"), lift(HOME, "todayLoadingHtml"),
+      lift(HOME, "todayDateLine"), lift(HOME, "todayIsOffline"), lift(HOME, "todayDateReadout"), lift(HOME, "todayHeaderHtml"), lift(HOME, "todayLoadingHtml"),
     ].join("\n"), ctx, { filename: "ui/home.js (loading)" });
   }
   vm.runInContext([
@@ -81,7 +81,7 @@ function world({ withToday = true } = {}) {
 }
 /* A `const` in a vm context is lexical, not a property of the context object. */
 const plainLine = (ctx) => vm.runInContext("BOOT_LOADING_HTML", ctx);
-function reset(patch = {}) { Object.assign(env, { hash: "#/", native: false, relaunch: "#/", bodyClass: null, tabBars: 0, classes: new Set(["ui-v2"]), bar: null }, patch); }
+function reset(patch = {}) { Object.assign(env, { hash: "#/", native: false, relaunch: "#/", bodyClass: null, tabBars: 0, classes: new Set(["ui-v2"]), bar: null, knob: null }, patch); }
 
 /* ---- the stylesheet's own arithmetic ---- */
 function token(name) {
@@ -212,7 +212,9 @@ test("the shimmer is opacity only at 1.2s, and the one reduced-motion block stil
   const blocks = CSS.match(/@media \(prefers-reduced-motion: reduce\)/g) || [];
   assert.strictEqual(blocks.length, 1, "exactly one reduced-motion block");
   const block = CSS.slice(CSS.indexOf("@media (prefers-reduced-motion: reduce)"));
-  assert.match(block, /\.skel \{ animation: none; \}/);
+  /* `.skel` shares the `animation: none` rule with the other stilled animations (the library unit put
+     `.yours-qtools` after it in one list), so it is "the selector that ends the list" or alone. */
+  assert.match(block, /\.skel(?:,\s*[^{}]*)? \{ animation: none; \}/);
   /* Today's overrides add no motion of their own. */
   for (const m of CSS_RULES.matchAll(/([^{}]*\.today--loading[^{}]*)\{([^{}]*)\}/g)) {
     assert.doesNotMatch(m[2], /animation|transition/, `${m[1].trim()} adds no motion`);
@@ -242,23 +244,24 @@ test("the boot paint is Today's skeleton only on Today's address, and plain ever
 });
 
 test("a press on the skeleton's knob is remembered and answered once the drawer is bound, never dropped", () => {
-  // MUTATION: delete the `bootKnobPressed = true` line in paintBootLoading's click handler -> the drawer never opens; delete `bootKnobPressed = false` in settleBootKnob -> a second settle reopens the drawer; delete the `settleBootKnob();` line after bindDrawerChrome() in init() -> the source assertion fails.
+  // MUTATION: delete the `bootKnobPressed = true` line in paintBootLoading's click handler -> the Settings sheet never opens; delete `bootKnobPressed = false` in settleBootKnob -> a second settle reopens it; delete the `settleBootKnob();` line after bindDrawerChrome() in init() -> the source assertion fails; open the drawer instead of the sheet in settleBootKnob -> the opener assertion fails (the knob opens the Settings sheet since Tactile `settings`).
   reset();
   const w = world();
   const opened = [];
-  w.openDrawer = (open) => { opened.push(open); };
+  w.openSettingsSheet = (opener) => { opened.push(opener); };
   let press = null;
   const knob = { addEventListener: (type, fn) => { if (type === "click") press = fn; } };
+  env.knob = knob;
   const view = { innerHTML: "", querySelector: (sel) => (sel === "#today-knob" ? knob : null) };
   w.paintBootLoading(view);
   assert.strictEqual(typeof press, "function", "the knob in the boot paint gets a click handler");
   w.settleBootKnob();
-  assert.deepStrictEqual(opened, [], "no press, no drawer");
+  assert.deepStrictEqual(opened, [], "no press, no sheet");
   press();
   w.settleBootKnob();
-  assert.deepStrictEqual(opened, [true], "the remembered press opens the drawer");
+  assert.deepStrictEqual(opened, [knob], "the remembered press opens the Settings sheet, from the knob that is in the page");
   w.settleBootKnob();
-  assert.deepStrictEqual(opened, [true], "answered once");
+  assert.deepStrictEqual(opened, [knob], "answered once");
   const init = /^async function init\(\) \{[\s\S]*?\n\}/m.exec(APP)[0];
   assert.match(init, /bindDrawerChrome\(\);\s*settleBootKnob\(\);/, "answered right after the drawer's handlers are bound");
 });

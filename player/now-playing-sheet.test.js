@@ -573,7 +573,9 @@ test("Tactile hero and transport preserve the ruled phone geometry", () => {
   assert.match(CSS_RULES, /\.np\.np--three-title \.np__art \{ width: 160px; height: 160px; \}/);
   assert.match(CSS_RULES, /\.np \.transport \{[^}]*gap:\s*var\(--s-6\)/);
   assert.match(CSS_RULES, /\.np \.transport \.fp-big \{[^}]*width:\s*var\(--key-xl\)[^}]*height:\s*var\(--key-xl\)/);
-  assert.match(CSS_RULES, /\.np \.transport \.keycap--lg \{[^}]*width:\s*var\(--key-lg\)[^}]*height:\s*var\(--key-lg\)/);
+  /* The skip keys are 68 wide (key-lg + s-3), 56 tall. MUTATION: change the width back to
+     `var(--key-lg)` (or drop the `+ var(--s-3)`) -> red; change the height from var(--key-lg) -> red. */
+  assert.match(CSS_RULES, /\.np \.transport \.keycap--lg \{[^}]*\swidth:\s*calc\(var\(--key-lg\) \+ var\(--s-3\)\)[^}]*height:\s*var\(--key-lg\)/);
   assert.match(NP_FLAT_TEXT, /parts\.row\.classList\.add\("transport"\)/);
 });
 
@@ -599,18 +601,20 @@ test("Tactile Foray provenance shows the station or narration under the needle, 
 
 test("Tactile detail scrolls beneath a bottom-pinned dock and keeps seekable 56 and 48px rows", () => {
   /* MUTATION: change `.np__dock` from `position: absolute` to `position: sticky` -> red and Play returns to the scroll flow.
+     MUTATION: change the dock fade stop (36px, `.np__dock::before`) to 28px -> red.
+     MUTATION: change the 189px in `.np__top` min-height (here and in styles.css) back to 176px -> red.
      The dock sits at safe-b + 16 (--s-4) per the acceptance criterion. */
   assert.match(NP_FLAT, /sheet\.replaceChildren\(bg, parts\.grabZone, parts\.scroll, dock\)/);
-  assert.match(CSS_RULES, /\.np__top \{[^}]*min-height:\s*calc\(100% - 176px - var\(--safe-b\)\)/);
+  assert.match(CSS_RULES, /\.np__top \{[^}]*min-height:\s*calc\(100% - 189px - var\(--safe-b\)\)/);
   assert.match(CSS_RULES, /\.np__dock \{[^}]*position:\s*absolute[^}]*bottom:\s*calc\(var\(--safe-b\) \+ var\(--s-4\)\)/);
-  assert.match(CSS_RULES, /\.np__dock::before \{[^}]*linear-gradient\(to bottom, transparent, var\(--paper\) 28px\)/);
+  assert.match(CSS_RULES, /\.np__dock::before \{[^}]*linear-gradient\(to bottom, transparent, var\(--paper\) 36px\)/);
   assert.match(CSS_RULES, /\.np \.segrow \{[^}]*min-height:\s*56px/);
   assert.match(CSS_RULES, /\.np__chapter \{[^}]*min-height:\s*48px/);
 });
 
 test("Tactile transport uses circular 56/80/56 keys with an attached darker lip and custom skip marks", () => {
-  /* MUTATION: remove the explicit `width: var(--key-lg)` override -> red and legacy padding squashes the skip keys. */
-  assert.match(CSS_RULES, /\.np \.transport \.keycap--lg \{\s*box-sizing:\s*border-box;\s*width:\s*var\(--key-lg\)[^}]*height:\s*var\(--key-lg\)[^}]*padding:\s*0/);
+  /* MUTATION: remove the explicit `width: calc(var(--key-lg) + var(--s-3))` override -> red and legacy padding squashes the skip keys. */
+  assert.match(CSS_RULES, /\.np \.transport \.keycap--lg \{\s*box-sizing:\s*border-box;\s*width:\s*calc\(var\(--key-lg\) \+ var\(--s-3\)\)[^}]*height:\s*var\(--key-lg\)[^}]*padding:\s*0/);
   /* The lip is a hard shadow in the key's own shape (the primitive's flat ::after bar is switched off).
      MUTATION: delete the `box-shadow: 0 var(--lip) 0 var(--k-lip)` rule -> red and the keys lose their lip. */
   assert.match(CSS_RULES, /\.np \.transport \.keycap::after,\s*\.np \.second \.keycap::after \{ content: none; \}/);
@@ -984,9 +988,9 @@ test("a plain episode's chip row carries the Downloaded and Played tags only, wr
   dial.paintChip(parts, { ...episode, played: true });
   dial.paintChip(parts, { ...episode, played: true });
   assert.equal(writes.length, 2, "an unchanged pair is not rewritten");
-  assert.match(writes[0], /^<span class="tag tag--downloaded">.*<span>Downloaded<\/span><\/span>$/);
+  assert.match(writes[0], /^<span class="tag tag--downloaded"[^>]*>.*<span>Downloaded<\/span><\/span>$/);
   assert.doesNotMatch(writes[0], /Played|station|narration/);
-  assert.match(writes[1], /tag--downloaded[\s\S]*<span class="tag tag--played">.*<span>Played<\/span><\/span>$/);
+  assert.match(writes[1], /tag--downloaded[\s\S]*<span class="tag tag--played"[^>]*>.*<span>Played<\/span><\/span>$/);
   const none = { chips: { set innerHTML(v) { writes.push("none:" + v); } } };
   dial.paintChip(none, { foray: false });
   assert.equal(writes[2], "none:", "neither tag: an empty row, no station chip");
@@ -1143,7 +1147,7 @@ test("the plain-episode sheet matches the prototype's geometry: a 44px well, 68p
      - `.np--episode .np__band { --np-band-h: 44px; }` -> 64px: the well is a third taller than the prototype's
        and the band sits against its top edge; also change NP_EPISODE_STAGE_PX away from 44 -> the stage
        assertion fails (the CSS and the drawing move together);
-     - the `.np--episode .transport .keycap--lg` width calc(var(--key-lg) + var(--s-3)) -> var(--key-lg): the
+     - the shared `.np .transport .keycap--lg` width calc(var(--key-lg) + var(--s-3)) -> var(--key-lg): the
        side keys are circles of 56 and the row loses its 68/80/68 rhythm;
      - the episode `.np__top` min-height 189px -> 176px: "Up next" lands 13px low and the first row card
        slides under the dock's paper (nothing peeks), and the 147px short-screen twin -> 142px likewise;
@@ -1154,12 +1158,12 @@ test("the plain-episode sheet matches the prototype's geometry: a 44px well, 68p
   assert.match(NP_FLAT_TEXT, /var NP_EPISODE_STAGE_PX = 44;/);
   assert.match(NP_FLAT_TEXT, /stagePx: d\.foray \? 0 : NP_EPISODE_STAGE_PX/);
   assert.match(CSS_RULES, /\.np--episode \.np__needle \{ height: 42px; \}/);
-  assert.match(CSS_RULES, /\.np--episode \.transport \.keycap--lg \{[^}]*width:\s*calc\(var\(--key-lg\) \+ var\(--s-3\)\)[^}]*min-width:\s*calc\(var\(--key-lg\) \+ var\(--s-3\)\)[^}]*padding:\s*0/);
+  assert.match(CSS_RULES, /\.np \.transport \.keycap--lg \{[^}]*width:\s*calc\(var\(--key-lg\) \+ var\(--s-3\)\)[^}]*min-width:\s*calc\(var\(--key-lg\) \+ var\(--s-3\)\)[^}]*padding:\s*0/);
   assert.match(CSS_RULES, /\.np--episode \.np__top \{ min-height: calc\(100% - 189px - var\(--safe-b\)\); \}/);
   assert.match(CSS_RULES, /@media \(max-height: 740px\)[\s\S]*?\.np--episode \.np__top \{ min-height: calc\(100% - 147px - var\(--safe-b\)\); \}/);
   assert.match(CSS_RULES, /\.np--episode \.np__dock::before \{ top: -22px; \}/);
   assert.match(CSS_RULES, /\.np--episode \.np__text \.np__show \{[^}]*font:\s*500 var\(--t-body-lg\)\/var\(--lh-body-lg\)/);
   assert.match(CSS_RULES, /\.np \.np__text \.np__show \{[^}]*font:\s*500 var\(--t-body\)\/var\(--lh-body\)/);
-  /* The foray's own rules are untouched: its keys stay the ruled 56px circles. */
-  assert.match(CSS_RULES, /\.np \.transport \.keycap--lg \{\s*box-sizing:\s*border-box;\s*width:\s*var\(--key-lg\)/);
+  /* The 68px skip key is shared with the foray sheet (trunk, now-playing-paused), so no episode-only override exists. */
+  assert.doesNotMatch(CSS_RULES, /\.np--episode \.transport \.keycap--lg/);
 });
