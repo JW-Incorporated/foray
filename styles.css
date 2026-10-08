@@ -4622,8 +4622,6 @@ body.drawer-open { overflow: hidden; }
 .t-band__bar--c2 { fill: var(--dial-seg-c2); } .t-band__bar--c3 { fill: var(--dial-seg-c3); }
 .t-band__bar--c4 { fill: var(--dial-seg-c4); } .t-band__bar--c5 { fill: var(--dial-seg-c5); }
 .t-band__bar--c6 { fill: var(--dial-seg-c6); } .t-band__bar--c7 { fill: var(--dial-seg-c7); }
-.t-band__hatch-bg { fill: var(--ultramarine-soft); }
-.t-band__hatch { fill: none; stroke: var(--dial-seg-narration); stroke-width: 5px; }
 .t-band__hatch { fill: var(--dial-seg-narration); }
 .t-band__bar--tick { fill: var(--dial-seg-narration); }
 .t-band__bar--episode { fill: var(--persimmon); }
@@ -4889,6 +4887,10 @@ body.ui-v2.view-gallery { background: var(--paper); color: var(--ink); font: var
 #foray-player.dial-mini .fp-play, #foray-player.dial-mini .fp-skip { position: relative; inset: auto; flex: none; }
 body.fp-expanded #foray-player.dial-mini > .fp-progress,
 body.fp-expanded #foray-player.dial-mini > .fp-bar { visibility: hidden; }
+/* One np-art at a time: a view transition with two live elements of one name
+   is refused, so the hidden mini's artwork gives the name up while the sheet
+   holds it. */
+body.fp-expanded #foray-player.dial-mini .mini__art { view-transition-name: none; }
 
 .fp-sheet.np {
   --np-tint: var(--dial-seg-c0);
@@ -4908,91 +4910,165 @@ body.fp-expanded #foray-player.dial-mini > .fp-bar { visibility: hidden; }
   transition: transform var(--d-sheet) var(--spring-sheet), opacity var(--d-quick) var(--ease-quick), --np-tint var(--d-sheet) var(--ease-quick);
 }
 .fp-sheet.np[hidden] { display: none; }
+/* The sheet's colour (BUILD-NOTES 4.2 + 7): the station's enamel (--np-tint,
+   which .np transitions over --d-sheet) under the paper scrim, and a radial
+   fade to paper over the bottom ~60% so the transport sits on paper. */
+/* The tint under the scrim is ONE solid colour (--np-surface, which
+   dialApplyNowPlayingTint composites: tint under paper at the scrim alpha), so
+   a contrast tool reads the surface the listener sees; painting the tint and
+   the scrim as two layers hid the scrim from axe and read 1.7:1. The colour
+   change cross-fades over --d-sheet as a background-color transition. */
 .np__bg { position: absolute; inset: 0; overflow: hidden; background-color: var(--np-surface, var(--paper)); transition: background-color var(--d-sheet) var(--ease-quick); pointer-events: none; }
-.np__bg::before { content: ""; position: absolute; inset: 0; background: transparent; }
-.np__bg::after { content: ""; position: absolute; inset: 32% 0 0; background: linear-gradient(to bottom, transparent, var(--paper) 78%); }
-.np .np__head { position: absolute; z-index: 4; top: 0; left: 0; right: 0; height: calc(var(--safe-t) + var(--tap)); padding-top: calc(var(--safe-t) + var(--s-2)); display: flex; justify-content: center; touch-action: none; }
+.np__bg::after { content: ""; position: absolute; inset: 0; background: radial-gradient(130% 62% at 50% 100%, var(--paper) 48%, transparent 100%); }
+.np .np__head { position: absolute; z-index: 4; top: 0; left: 0; right: 0; height: calc(var(--safe-t) + var(--tap)); padding-top: calc(var(--safe-t) + var(--s-2)); display: flex; align-items: flex-start; justify-content: center; touch-action: none; }
+/* Scrolled, the head keeps the sheet's top colour so the detail passes under
+   the Collapse key instead of through it. */
+.np.np--scrolled .np__head { background: linear-gradient(to bottom, var(--np-surface, var(--paper)) 72%, transparent); }
 .np .np__head .fy-grab,
-body.ui-v2 .fp-sheet.np .np__head .fy-grab { width: 36px; height: 5px; margin: 0; border-radius: var(--r-pill); background: var(--ink-3); }
+body.ui-v2 .fp-sheet.np .np__head .fy-grab { width: 36px; height: 5px; margin: 0; border-radius: var(--r-pill); background: var(--ink-3); opacity: .5; }
 .np .np__collapse { position: absolute; top: var(--safe-t); right: auto; left: var(--s-2); width: var(--tap); height: var(--tap); transform: none; display: grid; place-items: center; color: var(--ink); border-radius: var(--r-pill); background: transparent; }
 body.ui-v2 .fp-sheet.np .np__collapse { border-color: transparent; background: transparent; color: var(--ink); box-shadow: none; }
-.np .np__scroll { position: absolute; z-index: 1; inset: 0; display: block; overflow-y: auto; overscroll-behavior: contain; padding: calc(var(--safe-t) + var(--s-10)) var(--gutter) calc(var(--safe-b) + var(--s-12) + var(--s-12) + var(--s-12) + var(--s-12)); scrollbar-width: none; }
+.np .np__scroll { position: absolute; z-index: 1; inset: 0; display: block; overflow-y: auto; overscroll-behavior: contain; padding: 0 var(--gutter) calc(var(--s-12) + var(--s-2)); scrollbar-width: none; }
 .np .np__scroll::-webkit-scrollbar { display: none; }
-.np__top { display: flex; flex-direction: column; min-height: calc(100% - 176px - var(--safe-b)); }
+/* Everything above the detail (BUILD-NOTES 4.2, item 7). The head's space is
+   padding inside it and 100% is the scroller's box (the sheet less its 56px
+   bottom padding), so at rest the "Up next" heading ends just above the keys,
+   in the dock's fade, and its card starts under the dock. */
+.np__top { box-sizing: border-box; display: flex; flex-direction: column; padding-top: calc(var(--safe-t) + var(--s-10)); min-height: calc(100% - 176px - var(--safe-b)); }
 .np__hero { display: flex; justify-content: center; }
 .np__art { position: relative; width: 280px; height: 280px; flex: none; overflow: hidden; display: grid; place-items: center; border-radius: var(--r-lg); background: var(--paper-2); box-shadow: var(--shadow-card); view-transition-name: np-art; }
 .np__art::before { content: "4a"; color: var(--ink-2); font: 750 var(--t-display)/1 var(--dial-font-display); }
+.np__art--collage::before { content: none; }
 .np__art .fp-s-art { position: absolute; inset: 0; display: block; width: 100%; height: 100%; max-width: none; margin: 0; border: 0; border-radius: inherit; object-fit: cover; box-shadow: none; }
-.np__text { margin-top: var(--s-5); }
+.np__collage { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 2px; background: var(--paper); }
+.np__collage[hidden] { display: none; }
+.np__tile { position: relative; overflow: hidden; display: grid; place-items: center; color: var(--on-persimmon); }
+.np__tile img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.np__tile-code { color: var(--paper); font-size: var(--t-title); line-height: 1; }
+.np__tile.t-band__bar--c0 { background: var(--dial-seg-c0); } .np__tile.t-band__bar--c1 { background: var(--dial-seg-c1); }
+.np__tile.t-band__bar--c2 { background: var(--dial-seg-c2); } .np__tile.t-band__bar--c3 { background: var(--dial-seg-c3); }
+.np__tile.t-band__bar--c4 { background: var(--dial-seg-c4); } .np__tile.t-band__bar--c5 { background: var(--dial-seg-c5); }
+.np__tile.t-band__bar--c6 { background: var(--dial-seg-c6); } .np__tile.t-band__bar--c7 { background: var(--dial-seg-c7); }
+.np__text { display: flex; flex-direction: column; gap: var(--s-1); margin-top: var(--s-5); }
 .np__text .title { margin: 0; display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; text-wrap: balance; font-family: var(--dial-font-display); font-size: var(--t-title); line-height: var(--lh-title); font-weight: var(--w-title); letter-spacing: var(--tracking-title); color: var(--ink); }
-.np__show { margin: var(--s-1) 0 0; color: var(--ink-2); font: 500 var(--t-body)/var(--lh-body) var(--font-text); }
+.np .np__text .np__show { margin: 0; color: var(--ink-2); font: 500 var(--t-body)/var(--lh-body) var(--font-text); }
 body.ui-v2 .fp-sheet.np .np__text .title { font-family: var(--dial-font-display); color: var(--ink); }
 body.ui-v2 .fp-sheet.np .np__show { color: var(--ink-2); }
 body.ui-v2 .fp-sheet.np .fp-s-why,
 body.ui-v2 .fp-sheet.np .fp-left { color: var(--ink-2); }
-.np__why { margin: var(--s-2) 0 0; color: var(--ink-2); font-size: var(--t-body); line-height: var(--lh-body); }
-.np__chips { min-height: var(--s-6); margin-top: var(--s-2); display: flex; align-items: center; gap: var(--s-2); }
-.tag--station { background: color-mix(in srgb, var(--card) 72%, transparent); color: var(--ink); }
-.np__swatch, .np__origin-swatch { width: 24px; height: 24px; flex: none; display: inline-grid; place-items: center; border-radius: 6px; color: white; font: 800 var(--t-micro)/1 var(--font-mono); }
+.np .np__text .np__why { margin: 0; color: var(--ink-2); font-size: var(--t-body); line-height: var(--lh-body); }
+.np__chips { min-height: var(--s-6); margin-top: var(--s-1); display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
+.np .tag--station { gap: 6px; height: 28px; padding: 0 10px 0 var(--s-2); border-radius: var(--r-sm); background: var(--card); box-shadow: inset 0 0 0 1px var(--dial-line); color: var(--ink); font: 600 var(--t-label)/var(--lh-label) var(--font-text); }
+.np__station-code { color: var(--ink); font: 700 0.6875rem/1 var(--font-mono); }
+.np__swatch, .np__origin-swatch { width: 24px; height: 24px; flex: none; display: inline-grid; place-items: center; border-radius: 6px; color: white; font: 700 0.6875rem/1 var(--font-mono); letter-spacing: -0.02em; }
 .np__swatch { width: 10px; height: 10px; border-radius: 3px; }
-.np__swatch.t-band__bar--c0, .np__origin-swatch.t-band__bar--c0 { background: var(--dial-seg-c0); }
-.np__swatch.t-band__bar--c1, .np__origin-swatch.t-band__bar--c1 { background: var(--dial-seg-c1); }
-.np__swatch.t-band__bar--c2, .np__origin-swatch.t-band__bar--c2 { background: var(--dial-seg-c2); }
-.np__swatch.t-band__bar--c3, .np__origin-swatch.t-band__bar--c3 { background: var(--dial-seg-c3); }
-.np__swatch.t-band__bar--c4, .np__origin-swatch.t-band__bar--c4 { background: var(--dial-seg-c4); }
-.np__swatch.t-band__bar--c5, .np__origin-swatch.t-band__bar--c5 { background: var(--dial-seg-c5); }
-.np__swatch.t-band__bar--c6, .np__origin-swatch.t-band__bar--c6 { background: var(--dial-seg-c6); }
-.np__swatch.t-band__bar--c7, .np__origin-swatch.t-band__bar--c7 { background: var(--dial-seg-c7); }
-.np__station-code { color: var(--ink); font-weight: 800; }
-.np__band { margin-top: var(--s-5); }
-.np__band-well { position: relative; width: 100%; min-height: calc(var(--key-lg) + var(--s-2)); padding: 0 var(--s-2); border-radius: var(--r-md); }
-.np__band-visual { height: var(--key-lg); pointer-events: none; }
-.np__band-visual .band--scrub { height: var(--key-lg); }
-.np__band .t-band__code { fill: var(--ink); font: var(--w-label) var(--t-label) var(--font-text); }
-.np:not(.np--foray) .np__band-visual .t-band__bar { fill: var(--persimmon); }
-.np:not(.np--foray) .np__band-visual .t-band__code { display: none; }
-.np__range { position: absolute; z-index: 2; inset: 0; width: 100%; height: var(--key-lg); margin: 0; opacity: 0; cursor: grab; touch-action: none; }
+/* A swatch that carries its two-letter code is the enamel shaded 20% toward
+   black in the light scheme, so white 11px code text clears AA on all eight
+   (raw teal, mustard and sky read 3.9-4.3:1 with white or ink). The dark
+   scheme's enamels are light: the code is set in paper over the raw enamel. */
+.np { --np-sw-dim: 20%; --np-sw-ink: #FFFFFF; }
+:root[data-theme="dark"] .np { --np-sw-dim: 0%; --np-sw-ink: var(--paper); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .np { --np-sw-dim: 0%; --np-sw-ink: var(--paper); } }
+.np__swatch.t-band__bar--c0 { background: var(--dial-seg-c0); }
+.np__swatch.t-band__bar--c1 { background: var(--dial-seg-c1); }
+.np__swatch.t-band__bar--c2 { background: var(--dial-seg-c2); }
+.np__swatch.t-band__bar--c3 { background: var(--dial-seg-c3); }
+.np__swatch.t-band__bar--c4 { background: var(--dial-seg-c4); }
+.np__swatch.t-band__bar--c5 { background: var(--dial-seg-c5); }
+.np__swatch.t-band__bar--c6 { background: var(--dial-seg-c6); }
+.np__swatch.t-band__bar--c7 { background: var(--dial-seg-c7); }
+.np__origin-swatch.t-band__bar--c0, .np__up-next-art.t-band__bar--c0 { background: color-mix(in srgb, var(--dial-seg-c0), #000 var(--np-sw-dim)); }
+.np__origin-swatch.t-band__bar--c1, .np__up-next-art.t-band__bar--c1 { background: color-mix(in srgb, var(--dial-seg-c1), #000 var(--np-sw-dim)); }
+.np__origin-swatch.t-band__bar--c2, .np__up-next-art.t-band__bar--c2 { background: color-mix(in srgb, var(--dial-seg-c2), #000 var(--np-sw-dim)); }
+.np__origin-swatch.t-band__bar--c3, .np__up-next-art.t-band__bar--c3 { background: color-mix(in srgb, var(--dial-seg-c3), #000 var(--np-sw-dim)); }
+.np__origin-swatch.t-band__bar--c4, .np__up-next-art.t-band__bar--c4 { background: color-mix(in srgb, var(--dial-seg-c4), #000 var(--np-sw-dim)); }
+.np__origin-swatch.t-band__bar--c5, .np__up-next-art.t-band__bar--c5 { background: color-mix(in srgb, var(--dial-seg-c5), #000 var(--np-sw-dim)); }
+.np__origin-swatch.t-band__bar--c6, .np__up-next-art.t-band__bar--c6 { background: color-mix(in srgb, var(--dial-seg-c6), #000 var(--np-sw-dim)); }
+.np__origin-swatch.t-band__bar--c7, .np__up-next-art.t-band__bar--c7 { background: color-mix(in srgb, var(--dial-seg-c7), #000 var(--np-sw-dim)); }
+/* The scrub stage is 64px (the prototype's .band__stage) and 56px on a short
+   screen; the range input fills it, so the hit band is never under 56. */
+.np__band { --np-band-h: 64px; margin-top: var(--s-5); }
+.np__band-well { position: relative; width: 100%; min-height: var(--np-band-h); padding: 0 10px; border-radius: var(--r-md); }
+.np__band-visual { position: relative; width: 100%; height: var(--np-band-h); pointer-events: none; }
+.np__band-svg, .np__band-svg .band--scrub { display: block; width: 100%; height: var(--np-band-h); }
+/* Codes and the needle are HTML over the drawing (ui/now-playing.js says
+   why): the SVG's own text and needle stretch with its viewBox. */
+.np__band-svg .t-band__code, .np__band-svg .needle { display: none; }
+.np__codes { position: absolute; left: 0; right: 0; bottom: 0; height: 16px; }
+.np__code { position: absolute; left: calc(var(--x, 0) * 100%); bottom: 0; transform: translateX(-50%); color: var(--ink-2); font: 700 0.6875rem/16px var(--font-mono); white-space: nowrap; }
+.np__code.is-current { color: var(--ink); font-weight: 800; }
+.np:not(.np--foray) .np__band-svg .t-band__bar { fill: var(--persimmon); }
+.np:not(.np--foray) .np__codes { display: none; }
+.np__needle { position: absolute; z-index: 1; top: 2px; left: calc(var(--x, 0) * 100%); width: 44px; height: 38px; margin-left: -22px; }
+.np__needle::before { content: ""; position: absolute; left: 21px; top: 0; width: 2px; height: 100%; border-radius: 1px; background: var(--ink); }
+.np__needle::after { content: ""; position: absolute; left: 18px; top: -4px; width: 8px; height: 8px; border-radius: 50%; background: var(--ink); }
+.np__needle.is-buffering { animation: np-needle-pulse var(--d-buffer) var(--ease-quick) infinite alternate; }
+@keyframes np-needle-pulse { from { opacity: 1; } to { opacity: .4; } }
+.np__range { position: absolute; z-index: 2; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: grab; touch-action: none; }
 .np__range:active { cursor: grabbing; }
-.np__range:focus-visible { opacity: .001; outline: 2px solid var(--ultramarine); outline-offset: 2px; }
-.band-bubble { --bubble-x: 0; position: absolute; z-index: 3; left: clamp(48px, calc(var(--bubble-x) * 100%), calc(100% - 48px)); bottom: calc(100% + var(--s-3)); min-width: 96px; padding: var(--s-2); transform: translateX(-50%); border-radius: var(--r-sm); background: var(--card); color: var(--ink); box-shadow: var(--shadow-card); text-align: center; }
+.np__range:focus-visible { opacity: .001; }
+.np__band-well:has(.np__range:focus-visible) { outline: 2px solid var(--ultramarine); outline-offset: 2px; }
+.band-bubble { --bubble-x: 0; position: absolute; z-index: 3; left: clamp(48px, calc(var(--bubble-x) * 100%), calc(100% - 48px)); bottom: calc(100% + var(--s-3)); min-width: 96px; padding: var(--s-2); transform: translateX(-50%); border-radius: var(--r-sm); background: var(--card); color: var(--ink); box-shadow: var(--shadow-card); text-align: center; white-space: nowrap; }
 .np__read { margin-top: var(--s-2); padding: 0 2px; display: flex; align-items: baseline; justify-content: space-between; }
 .np__read .readout-lg { color: var(--ink); letter-spacing: -.05em; }
 .np__read .readout { color: var(--ink-2); }
-.np__dock { position: absolute; isolation: isolate; z-index: 5; left: 0; right: 0; bottom: calc(var(--safe-b) + var(--s-1)); padding: 0 var(--gutter); }
-.np__dock::before { content: ""; position: absolute; z-index: -1; inset: calc(-1 * (var(--s-12) + var(--s-6))) 0 calc(-1 * (var(--safe-b) + var(--s-1))); background: linear-gradient(to bottom, transparent, var(--paper) 58%); pointer-events: none; }
+/* The pinned transport: the dock's paper runs 36px above the keys and fades
+   in over its first 28px, so a scrolled row passes under it, not through it. */
+.np__dock { position: absolute; isolation: isolate; z-index: 5; left: 0; right: 0; bottom: calc(var(--safe-b) + var(--s-4)); padding: 0 var(--gutter); }
+.np__dock::before { content: ""; position: absolute; z-index: -1; inset: -36px 0 calc(-1 * (var(--safe-b) + var(--s-4))); background: linear-gradient(to bottom, transparent, var(--paper) 28px); pointer-events: none; }
 .np .transport { min-height: 83px; display: flex; align-items: center; justify-content: center; gap: var(--s-6); }
 .np .transport .keycap { flex: none; margin-bottom: var(--lip); }
 .np .transport .keycap--lg { box-sizing: border-box; width: var(--key-lg); min-width: var(--key-lg); height: var(--key-lg); padding: 0; }
 .np .transport .fp-big { width: var(--key-xl); min-width: var(--key-xl); height: var(--key-xl); padding: 0; }
-.np .transport .keycap::after { inset: 0; width: auto; height: auto; border-radius: inherit; transform: translateY(var(--lip)); }
-.np .transport .keycap:active:not(:disabled)::after { transform: translateY(var(--lip-pressed)); }
+/* The lip of a key in the sheet is a hard shadow in the key's own darker tone,
+   the key's own shape, attached: the primitive's ::after is a flat bar, which
+   reads as a separate plinth under a round key, and covering the face with it
+   (an isolated stacking context paints a z-index -1 child OVER its parent's
+   background) darkened Play to its lip colour. Pressed, the key travels down
+   and the lip shrinks to 1px (BUILD-NOTES 3.1). */
+.np .transport .keycap::after,
+.np .second .keycap::after { content: none; }
+.np .transport .keycap,
+.np .second .keycap { box-shadow: 0 var(--lip) 0 var(--k-lip); }
+.np .transport .keycap:active:not(:disabled),
+.np .second .keycap:active:not(:disabled) { box-shadow: 0 var(--lip-pressed) 0 var(--k-lip); }
 body.ui-v2 .fp-sheet.np .transport .keycap { border-color: transparent; background: var(--k-fill); color: var(--k-ink); }
 body.ui-v2 .fp-sheet.np .transport .keycap--persimmon { background: var(--persimmon); color: var(--on-persimmon); }
 body.ui-v2 .fp-sheet.np .transport .keycap--rubber { background: var(--rubber); color: var(--on-rubber); }
-.np .fp-row2.second { min-height: var(--key-lg); margin-top: var(--s-4); display: flex; align-items: center; justify-content: center; gap: var(--s-2); }
-.rotary-chip { min-width: var(--tap); min-height: var(--tap); padding: 0 var(--s-3); display: inline-flex; align-items: center; justify-content: center; gap: var(--s-1); border: 1px solid var(--dial-line); border-radius: var(--r-pill); background: var(--card); color: var(--ink); box-shadow: none; font: 700 var(--t-body)/var(--lh-body) var(--font-text); }
+.np .second .keycap--sm { min-height: var(--tap); height: var(--tap); }
+.np .fp-row2.second { min-height: var(--tap); margin-top: var(--s-4); display: flex; flex-wrap: nowrap; align-items: center; justify-content: center; gap: var(--s-2); }
+.rotary-chip { min-width: var(--tap); min-height: var(--tap); padding: 0 var(--s-3); display: inline-flex; align-items: center; justify-content: center; gap: var(--s-1); border: 1px solid var(--dial-line); border-radius: var(--r-pill); background: var(--card); color: var(--ink); box-shadow: none; font: 700 var(--t-body)/var(--lh-body) var(--font-text); white-space: nowrap; }
+.rotary-chip .readout { font-size: var(--t-body); }
 body.ui-v2 .fp-sheet.np .rotary-chip { border: 1px solid var(--dial-line); background: var(--card); color: var(--ink); box-shadow: none; }
 body.ui-v2 .fp-sheet.np .second .keycap--paper { border-color: transparent; background: var(--card); color: var(--ink); }
-.np .fp-upnext { position: relative; display: inline-grid; place-items: center; padding: 0; text-decoration: none; }
+.np .fp-upnext { position: relative; display: inline-flex; padding: 0 var(--s-3); text-decoration: none; }
 .np .fp-upnext .i { width: 20px; height: 20px; }
 .np__badge { position: absolute; top: -4px; right: -4px; width: 18px; height: 18px; display: grid; place-items: center; border-radius: var(--r-pill); background: var(--ultramarine); color: var(--on-ultramarine); font-size: 11px; line-height: 18px; }
-.np__more { padding-top: var(--s-10); display: flex; flex-direction: column; gap: var(--s-8); }
+.np__badge[hidden] { display: none; }
+.np__more { padding: var(--s-3) 0 calc(var(--safe-b) + 220px); display: flex; flex-direction: column; gap: var(--s-8); }
 .np__section > .heading { margin: 0 0 var(--s-3); color: var(--ink); }
+.np .sheetcard { padding: 14px; border-radius: var(--r-md); background: var(--card); box-shadow: var(--shadow-card); }
 .np__up-next-card { min-height: 88px; display: grid; grid-template-columns: var(--art-row) minmax(0, 1fr) auto; align-items: center; gap: var(--s-3); }
-.np__up-next-art { width: var(--art-row); height: var(--art-row); overflow: hidden; display: grid; place-items: center; border-radius: var(--r-sm); background: var(--paper-2); color: var(--ink-2); font: var(--w-label) var(--t-label)/1 var(--font-text); }
+.np__up-next-art { width: var(--art-row); height: var(--art-row); overflow: hidden; display: grid; place-items: center; border-radius: var(--r-sm); background: var(--paper-2); color: white; font: 700 var(--t-body)/1 var(--font-mono); }
 .np__up-next-art img { width: 100%; height: 100%; object-fit: cover; }
 .np__up-next-body { min-width: 0; display: grid; gap: var(--s-1); }
 .np__detail-title, .np__detail-copy { margin: 0; }
 .np__detail-title { font: 700 var(--t-body)/var(--lh-body) var(--font-text); color: var(--ink); }
+.np__up-next-body .np__detail-title { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .np__detail-copy { color: var(--ink-2); font: 500 var(--t-body)/var(--lh-body) var(--font-text); }
 .np__slot + .np__slot { margin-top: var(--s-5); }
 .np__slot-title { margin: 0 0 var(--s-2); font: 750 var(--t-body-lg)/var(--lh-body-lg) var(--dial-font-display); color: var(--ink); }
-.np .segrow { min-height: 56px; padding: 0; border-radius: var(--r-md); color: var(--ink); }
-.np .segrow.is-current { padding: 0 var(--s-2); margin: 0 calc(-1 * var(--s-2)); background: var(--persimmon-soft); }
-body.ui-v2 .fp-sheet.np .np__detail-copy { color: var(--ink); }
+body.ui-v2 .fp-sheet.np .segrow, body.ui-v2 .fp-sheet.np .np__chapter { border: 0; background: transparent; box-shadow: none; font: inherit; }
+body.ui-v2 .fp-sheet.np .segrow.is-current { background: var(--persimmon-soft); }
+.np .segrow { width: 100%; min-height: 56px; padding: 0; display: flex; align-items: center; gap: var(--s-3); border-radius: var(--r-md); color: var(--ink); text-align: left; }
+.np .segrow.is-current { padding: 0 var(--s-2); margin: 0 calc(-1 * var(--s-2)); width: calc(100% + var(--s-4)); background: var(--persimmon-soft); }
+.np .segrow--n .np__origin-swatch { background: repeating-linear-gradient(45deg, var(--ultramarine) 0 2px, var(--ultramarine-soft) 2px 4px); }
+body.ui-v2 .fp-sheet.np .np__detail-copy { color: var(--ink-2); }
 .np__segment-copy { min-width: 0; flex: 1; display: flex; flex-direction: column; text-align: left; }
-.np .row-show { min-height: 56px; padding: 0; }
-.np .np__origin-swatch { color: #17130f; }
+.np .row-show { min-height: 56px; padding: 0; display: flex; align-items: center; gap: var(--s-3); }
+.np .row-show .row__body { min-width: 0; display: flex; flex-direction: column; }
+.np .row-show .row__meta { color: var(--ink-2); font: 500 var(--t-label)/var(--lh-label) var(--font-text); }
+.np .np__origin-swatch, .np .np__up-next-art { color: var(--np-sw-ink); }
 .np__chapter { width: 100%; min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding: 0; color: var(--ink); text-align: left; }
 .np__empty-detail { margin: 0; color: var(--ink-2); }
 .np__notes .fp-s-desc { margin: 0; padding: 0; color: var(--ink); }
@@ -5004,13 +5080,14 @@ body.ui-v2 .fp-sheet.np .fp-toforay,
 body.ui-v2 .fp-sheet.np .fp-openep { color: var(--ink); }
 
 @media (max-height: 740px) {
-  .np .np__scroll { padding-top: calc(var(--safe-t) + var(--s-3)); }
+  .np__top { padding-top: calc(var(--safe-t) + var(--s-8)); min-height: calc(100% - 142px - var(--safe-b)); }
   .np__art { width: 200px; height: 200px; }
-  .np__top { min-height: calc(100% - 142px - var(--safe-b)); }
-  .np__text { margin-top: var(--s-2); }
-  .np__band { margin-top: var(--s-2); }
-  .np__dock { bottom: calc(var(--safe-b) + var(--s-1)); }
-  .np .fp-row2.second { margin-top: var(--s-2); }
+  .np__text { margin-top: 14px; }
+  .np__band { --np-band-h: var(--key-lg); margin-top: 14px; }
+  .np .fp-row2.second { margin-top: 10px; }
+  /* The prototype's short-screen dock: the fade is 12px, not 36, so the
+     readout above the keys stays clear of it. */
+  .np__dock::before { top: -12px; background: linear-gradient(to bottom, transparent, var(--paper) 12px); }
 }
 .np.np--three-title .np__art { width: 160px; height: 160px; }
 .gallery-sheet-open { margin-top: var(--s-5); }
@@ -5047,6 +5124,7 @@ body.ui-v2 .fp-sheet.np .fp-openep { color: var(--ink); }
   .keycap,
   .keycap::after,
   .chip,
+  .np__bg,
   .needle,
   .iconbtn,
   .tile,
@@ -5058,6 +5136,7 @@ body.ui-v2 .fp-sheet.np .fp-openep { color: var(--ink); }
   .art-frame.is-loading,
   .band__draw,
   .band--buffering .needle,
+  .np__needle.is-buffering,
   .bridge[data-draw] .bridge__path,
   .skel { animation: none; }
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation-duration: 1ms; }

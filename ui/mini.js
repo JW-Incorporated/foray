@@ -24,9 +24,13 @@ function dialDecorateMiniPlayer(parts) {
   parts.info.insertBefore(parts.art, parts.info.firstChild);
 
   parts.playBtn.className = "fp-play keycap keycap--md keycap--persimmon keycap--round";
+  /* The bar's nudge stays BACK 15 (transport-controls' ruling, visual pass
+     2026-09-23). BUILD-NOTES 3.12 draws a forward-30 key here; overturning
+     that ruling belongs to the mini-player screen's own PR, which rewrites
+     transport-controls on purpose. Now Playing only borrows the mini's art. */
   parts.skipBtn.className = "fp-skip keycap keycap--sm keycap--paper";
-  parts.skipBtn.setAttribute("aria-label", "Forward 30 seconds");
-  parts.skipBtn.innerHTML = dialMiniIcon("skip-30");
+  parts.skipBtn.setAttribute("aria-label", "Back 15 seconds");
+  parts.skipBtn.innerHTML = dialMiniIcon("skip-15");
 }
 
 function dialPaintMiniPlayer(parts, data) {

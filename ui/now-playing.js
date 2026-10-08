@@ -2,17 +2,25 @@
  *
  * player/client.js owns audio and supplies real state. This file owns the
  * screen's markup, tint/material treatment, safe artwork sampling and haptic
- * shim. Dynamic prose is assigned with textContent; primitive HTML routes all
- * interpolations through esc() and all image URLs through safeUrl().
+ * shim. Dynamic prose is added as text nodes (never parsed); primitive HTML
+ * routes all interpolations through esc() and all image URLs through safeUrl().
+ *
+ * Copy: the detail list of a foray's pieces is headed "Clips", not the
+ * prototype's "Segments" — "segment" is pipeline vocabulary the listener copy
+ * rules ban (build-loop.md section 2), and "clip" is the player's own word for
+ * the pieces inside a foray's titled parts (client.js, audit 2026-09-22).
  */
 
 var DIAL_HAPTIC_AT = 0;
 var DIAL_ART_TINT_PREFIX = "cp_art_tint:";
+/* Sleep timer stops, in minutes; 0 is Off. The rotary detent strip is the
+   rotary primitive's job (BUILD-NOTES 3.14); the chip steps through these. */
+var DIAL_SLEEP_STOPS = [0, 15, 30, 45, 60];
 
 function dialNpEl(tag, cls, text) {
   var node = document.createElement(tag);
   if (cls) node.className = cls;
-  if (text != null) node.textContent = text;
+  if (text != null) node.append(String(text));
   return node;
 }
 
@@ -25,17 +33,27 @@ function dialSafeImageUrl(url) {
   return value === "#" ? "" : value;
 }
 
-function dialHaptic(kind) {
-  var now = Date.now();
-  if (now - DIAL_HAPTIC_AT < 100) return;
-  DIAL_HAPTIC_AT = now;
+/* BUILD-NOTES 6: one call per 100ms at most, never on scroll, and a no-op on
+   the web build (no Capacitor Haptics plugin) or when the OS has haptics off.
+   Returns whether a call was let through the throttle, for the tests. */
+function dialHaptic(kind, now) {
+  var at = typeof now === "number" ? now : Date.now();
+  if (at - DIAL_HAPTIC_AT < 100) return false;
+  DIAL_HAPTIC_AT = at;
   try {
     var plugin = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics;
-    if (!plugin) return;
+    if (!plugin) return true;
     if (kind === "selection" && typeof plugin.selectionChanged === "function") plugin.selectionChanged();
     else if (kind === "success" && typeof plugin.notification === "function") plugin.notification({ type: "SUCCESS" });
     else if (typeof plugin.impact === "function") plugin.impact({ style: kind === "medium" ? "MEDIUM" : kind === "heavy" ? "HEAVY" : "LIGHT" });
   } catch (_) { /* Web build and OS-disabled haptics are intentional no-ops. */ }
+  return true;
+}
+
+/* A control whose glyph this view owns: client.js's paintControl then writes
+   only its accessible name, never its text, so a skip key keeps its mark. */
+function dialOwnGlyph(button) {
+  if (button && button.dataset) button.dataset.dialOwned = "1";
 }
 
 function dialBuildNowPlaying(parts) {
@@ -55,7 +73,10 @@ function dialBuildNowPlaying(parts) {
   var top = dialNpEl("div", "np__top");
   var hero = dialNpEl("div", "np__hero");
   var artWrap = dialNpEl("div", "np__art");
-  artWrap.append(parts.sArt);
+  var collage = dialNpEl("div", "np__collage");
+  collage.setAttribute("aria-hidden", "true");
+  collage.hidden = true;
+  artWrap.append(parts.sArt, collage);
   hero.append(artWrap);
 
   var copy = dialNpEl("div", "np__text");
@@ -69,6 +90,12 @@ function dialBuildNowPlaying(parts) {
   var bandSection = dialNpEl("div", "np__band");
   var bandWell = dialNpEl("div", "np__band-well well");
   var bandVisual = dialNpEl("div", "np__band-visual");
+  var bandSvg = dialNpEl("div", "np__band-svg");
+  var codes = dialNpEl("div", "np__codes");
+  codes.setAttribute("aria-hidden", "true");
+  var needle = dialNpEl("div", "np__needle");
+  needle.setAttribute("aria-hidden", "true");
+  bandVisual.append(bandSvg, codes, needle);
   var bubble = dialNpEl("output", "band-bubble readout");
   bubble.hidden = true;
   parts.scrub.className = "fp-scrub np__range";
@@ -89,15 +116,20 @@ function dialBuildNowPlaying(parts) {
 
   var sleepBtn = dialNpEl("button", "fp-sleep rotary-chip");
   sleepBtn.type = "button";
-  sleepBtn.setAttribute("aria-label", "Sleep timer, off");
-  sleepBtn.innerHTML = '<span>Sleep · <span class="readout">Off</span></span>';
+  dialPaintSleep(sleepBtn, 0);
 
   parts.rateBtn.className = "fp-rate rotary-chip";
-  parts.rateBtn.innerHTML = '<span class="readout">1.0×</span>';
+  dialPaintNowPlayingRate(parts.rateBtn, 1);
   parts.bookmarkBtn.className = "fp-btn fp-bookmark keycap keycap--sm keycap--paper";
   parts.bookmarkBtn.innerHTML = dialNpIcon("ph-bookmark-simple");
-  parts.queueLink.className = "fp-openep fp-upnext keycap keycap--sm keycap--paper";
+  parts.queueLink.className = "fp-upnext keycap keycap--sm keycap--paper";
   parts.queueLink.innerHTML = dialNpIcon("ph-list-bullets") + '<span class="np__badge readout" hidden>0</span>';
+  [parts.backBtn, parts.fwdBtn, parts.rateBtn, parts.bookmarkBtn, parts.queueLink].forEach(dialOwnGlyph);
+  /* Icon keys are named from the first paint, before the player's own label
+     painters have run. */
+  [[parts.backBtn, "Back 15 seconds"], [parts.fwdBtn, "Forward 30 seconds"], [parts.bookmarkBtn, "Bookmark this point"], [parts.rateBtn, "Playback speed"]].forEach(function (pair) {
+    if (pair[0] && !pair[0].getAttribute("aria-label")) pair[0].setAttribute("aria-label", pair[1]);
+  });
 
   parts.row2.className = "fp-row2 second";
   parts.row2.replaceChildren(parts.rateBtn, sleepBtn, parts.bookmarkBtn, parts.queueLink);
@@ -112,7 +144,7 @@ function dialBuildNowPlaying(parts) {
   var upNext = dialNpEl("section", "np__section np__up-next");
   upNext.append(dialNpEl("h2", "heading", "Up next"), dialNpEl("div", "np__up-next-card sheetcard"));
   var segments = dialNpEl("section", "np__section np__segments");
-  segments.append(dialNpEl("h2", "heading", "Segments"), dialNpEl("div", "np__segment-groups"));
+  segments.append(dialNpEl("h2", "heading", "Clips"), dialNpEl("div", "np__segment-groups"));
   var origin = dialNpEl("section", "np__section np__origin");
   origin.append(dialNpEl("h2", "heading", "Where this came from"), dialNpEl("div", "np__origin-rows"));
   var chapters = dialNpEl("section", "np__section np__chapters");
@@ -125,8 +157,14 @@ function dialBuildNowPlaying(parts) {
   dock.append(parts.row, parts.row2);
   parts.scroll.classList.add("np__scroll");
   parts.scroll.replaceChildren(top, more);
+  /* A class flip on the threshold only (passive, no layout read beyond
+     scrollTop), so the head can hold the sheet's colour once text is under it. */
+  parts.scroll.addEventListener("scroll", function () {
+    var scrolled = parts.scroll.scrollTop > 8;
+    if (sheet.classList.contains("np--scrolled") !== scrolled) sheet.classList.toggle("np--scrolled", scrolled);
+  }, { passive: true });
   sheet.replaceChildren(bg, parts.grabZone, parts.scroll, dock);
-  return { bg: bg, top: top, artWrap: artWrap, chips: chips, bandVisual: bandVisual, bubble: bubble, sleepBtn: sleepBtn, upNext: upNext, segments: segments, origin: origin, chapters: chapters, notes: notes, legacy: legacy, dock: dock };
+  return { bg: bg, top: top, artWrap: artWrap, collage: collage, chips: chips, bandVisual: bandVisual, bandSvg: bandSvg, bandCodes: codes, bandNeedle: needle, bubble: bubble, sleepBtn: sleepBtn, upNext: upNext, segments: segments, origin: origin, chapters: chapters, notes: notes, legacy: legacy, dock: dock };
 }
 
 function dialHexRgb(value) {
@@ -165,24 +203,29 @@ function dialContrast(a, b) {
   return (Math.max(x, y) + .05) / (Math.min(x, y) + .05);
 }
 
+/* BUILD-NOTES 7: the sheet is the tint under the scrim. When ink over
+   mix(tint, scrim) falls below 4.5:1 the scrim rises to 0.9. Returns the
+   alpha it chose, for the tests. */
 function dialApplyNowPlayingTint(sheet, tint) {
-  if (!sheet || !tint || typeof getComputedStyle !== "function") return;
+  if (!sheet || !tint || typeof getComputedStyle !== "function") return null;
   var styles = getComputedStyle(document.documentElement);
   var ink = dialHexRgb(styles.getPropertyValue("--ink"));
   var paper = dialHexRgb(styles.getPropertyValue("--paper"));
   var tintRgb = dialHexRgb(tint);
-  if (!ink || !paper || !tintRgb) return;
-  var systemDark = typeof matchMedia === "function" && matchMedia("(prefers-color-scheme: dark)").matches;
+  if (!ink || !paper || !tintRgb) return null;
+  var systemDark = typeof matchMedia === "function" && matchMedia("(prefers-color-scheme: dark)").matches && document.documentElement.dataset.theme !== "light";
   var defaultAlpha = document.documentElement.dataset.theme === "dark" || systemDark ? .72 : .78;
   function mixed(alpha) { return tintRgb.map(function (v, i) { return Math.round(v * (1 - alpha) + paper[i] * alpha); }); }
   var alpha = dialContrast(ink, mixed(defaultAlpha)) < 4.5 ? .9 : defaultAlpha;
   var surface = mixed(alpha);
   sheet.style.setProperty("--np-tint", tint);
   sheet.style.setProperty("--np-scrim", "rgba(" + paper.join(",") + "," + alpha + ")");
-  /* This solid twin of the composited tint gives contrast tools and
-     forced-colour engines the same surface the pseudo-element paints. */
+  /* The solid twin of the composited tint: the sheet's own background colour,
+     so contrast tools and forced-colour engines read the surface the layers
+     paint. */
   sheet.style.setProperty("--np-surface", "rgb(" + surface.join(",") + ")");
   sheet.dataset.scrimAlpha = String(alpha);
+  return alpha;
 }
 
 function dialStorageGet(key) {
@@ -259,6 +302,8 @@ function dialStationToken(index) {
   return typeof getComputedStyle === "function" ? getComputedStyle(document.documentElement).getPropertyValue(name).trim() : "";
 }
 
+/* The station under the needle. Narration keeps the previous show's enamel
+   (BUILD-NOTES 7), so a narration tick never flashes the tint. */
 function dialCurrentStation(model) {
   var segments = model && Array.isArray(model.segments) ? model.segments : [];
   var index = Math.max(0, Math.min(segments.length - 1, Number(model && model.currentIndex) || 0));
@@ -272,7 +317,7 @@ function dialCurrentStation(model) {
 
 function dialPaintChip(parts, model) {
   if (!parts.chips) return;
-  parts.chips.textContent = "";
+  parts.chips.replaceChildren();
   if (!model.foray) return;
   var segment = model.segments[model.currentIndex] || model.segments[0];
   if (!segment) return;
@@ -289,16 +334,44 @@ function dialPaintChip(parts, model) {
   var swatch = dialNpEl("i", "np__swatch");
   swatch.classList.add("t-band__bar--c" + station.colorIndex);
   var code = dialNpEl("b", "np__station-code readout", station.code);
-  chip.append(swatch, code, document.createTextNode(station.show));
+  chip.append(swatch, code, dialNpEl("span", "np__station-name", station.show));
   parts.chips.append(chip);
+}
+
+function dialInitials(name) {
+  return String(name || "4a").replace(/[^A-Za-z0-9 ]/g, " ").trim().split(/\s+/).slice(0, 2).map(function (word) { return word.charAt(0); }).join("").toUpperCase() || "4a";
+}
+
+/* A foray's hero is a 2x2 of its first four shows (the prototype's collage);
+   a show with no published artwork is its enamel tile with its code. */
+function dialPaintCollage(parts, model) {
+  if (!parts.collage) return;
+  var tiles = model.foray && Array.isArray(model.collage) ? model.collage.slice(0, 4) : [];
+  parts.collage.replaceChildren();
+  parts.collage.hidden = !tiles.length;
+  parts.artWrap.classList.toggle("np__art--collage", tiles.length > 0);
+  if (tiles.length) parts.sArt.hidden = true;
+  tiles.forEach(function (tile) {
+    var cell = dialNpEl("span", "np__tile t-band__bar--c" + (Number(tile.colorIndex) || 0));
+    var url = dialSafeImageUrl(tile.artwork);
+    if (url) {
+      var image = dialNpEl("img", "");
+      image.alt = "";
+      image.decoding = "async";
+      image.src = url;
+      cell.append(image);
+    } else cell.append(dialNpEl("b", "np__tile-code readout", tile.code || dialInitials(tile.show)));
+    parts.collage.append(cell);
+  });
 }
 
 function dialPaintDetails(parts, model) {
   var key = model.detailKey || "";
   if (parts.moreKey === key) return;
   parts.moreKey = key;
+  dialPaintCollage(parts, model);
   var nextHost = parts.upNext.querySelector(".np__up-next-card");
-  nextHost.textContent = "";
+  nextHost.replaceChildren();
   if (model.next) {
     var nextArt = dialNpEl("span", "np__up-next-art");
     var artworkUrl = dialSafeImageUrl(model.next.artwork);
@@ -309,38 +382,37 @@ function dialPaintDetails(parts, model) {
       image.src = artworkUrl;
       nextArt.append(image);
     } else {
-      var initials = String(model.next.show || "4a").replace(/[^A-Za-z0-9 ]/g, " ").trim().split(/\s+/).slice(0, 2).map(function (word) { return word.charAt(0); }).join("").toUpperCase();
-      nextArt.append(dialNpEl("span", "", initials || "4a"));
+      nextArt.classList.add("t-band__bar--c" + (Number(model.next.colorIndex) || 0));
+      nextArt.append(dialNpEl("span", "", model.next.code || dialInitials(model.next.show)));
     }
     var nextBody = dialNpEl("span", "np__up-next-body");
     var nextTitle = dialNpEl("h3", "np__detail-title", model.next.title || model.next.show);
-    var nextWhy = dialNpEl("p", "np__detail-copy", model.next.why || "Continues this foray.");
+    nextBody.append(nextTitle);
+    if (model.next.why) nextBody.append(dialNpEl("p", "np__detail-copy", model.next.why));
     var nextTime = dialNpEl("span", "readout", model.next.duration || "");
-    nextBody.append(nextTitle, nextWhy);
     nextHost.append(nextArt, nextBody, nextTime);
   } else {
     nextHost.append(dialNpEl("p", "np__empty-detail", "Nothing queued."));
   }
 
   var groups = parts.segments.querySelector(".np__segment-groups");
-  groups.textContent = "";
+  groups.replaceChildren();
   (model.slots || []).forEach(function (slot) {
     var group = dialNpEl("div", "np__slot");
-    group.append(dialNpEl("h3", "np__slot-title", slot.title || "Segments"));
+    group.append(dialNpEl("h3", "np__slot-title", slot.title || "Clips"));
     (slot.items || []).forEach(function (item) {
-      var row = dialNpEl("button", "segrow" + (item.current ? " is-current" : ""));
+      var row = dialNpEl("button", "segrow" + (item.current ? " is-current" : "") + (item.narration ? " segrow--n" : ""));
       row.type = "button";
       row.dataset.seek = String(item.start || 0);
-      row.setAttribute("aria-label", "Seek to " + (item.narration ? "4a narration" : item.show));
+      row.setAttribute("aria-label", "Play from " + (item.narration ? "4a narration" : item.show) + ", " + (item.duration || ""));
       var swatch = dialNpEl("span", "np__origin-swatch t-band__bar--c" + item.colorIndex, item.narration ? "" : item.code);
       var body = dialNpEl("span", "np__segment-copy");
       body.append(dialNpEl("strong", "np__detail-title", item.narration ? "4a narration" : item.show));
-      if (item.why) body.append(dialNpEl("span", "np__detail-copy", item.why));
       row.append(swatch, body, dialNpEl("span", "readout", item.duration || ""));
       if (item.narration) {
         var tag = dialNpEl("span", "tag tag--narration");
         tag.innerHTML = dialNpIcon("narration", "sm");
-        tag.append(dialNpEl("span", "", "Narration"));
+        tag.append(dialNpEl("span", "", "narration"));
         row.append(tag);
       }
       group.append(row);
@@ -350,7 +422,7 @@ function dialPaintDetails(parts, model) {
   parts.segments.hidden = !model.foray;
 
   var origins = parts.origin.querySelector(".np__origin-rows");
-  origins.textContent = "";
+  origins.replaceChildren();
   (model.origins || []).forEach(function (show) {
     var row = dialNpEl("div", "row-show");
     var swatch = dialNpEl("span", "np__origin-swatch t-band__bar--c" + show.colorIndex, show.code);
@@ -369,13 +441,53 @@ function dialPaintDetails(parts, model) {
         var row = dialNpEl("button", "np__chapter");
         row.type = "button";
         row.dataset.seek = String(chapter.start || 0);
-        row.setAttribute("aria-label", "Seek to " + chapter.title);
+        row.setAttribute("aria-label", "Play from " + chapter.title);
         row.append(dialNpEl("span", "np__detail-title", chapter.title), dialNpEl("span", "readout", chapter.clock || ""));
         parts.chapters.append(row);
       });
     } else parts.chapters.append(dialNpEl("p", "np__empty-detail", "No chapters published."));
   }
-  parts.notes.hidden = model.foray || parts.notes.querySelector("details").hidden;
+  var details = parts.notes.querySelector("details");
+  parts.notes.hidden = model.foray || !details || details.hidden;
+}
+
+/* The band's drawn geometry for this paint: the same layout the primitive
+   used, so the needle and the clip land on the bars, not on raw runtime. */
+function dialBandBoxes(d, width) {
+  if (typeof tactileBandLayout !== "function" || typeof tactileBandSegments !== "function") return [];
+  return tactileBandLayout(tactileBandSegments(d.segments || []), width, "scrub");
+}
+
+function dialBandX(boxes, fraction) {
+  if (typeof tactileBandX === "function" && boxes.length) return tactileBandX(boxes, fraction);
+  return Math.max(0, Math.min(1, Number(fraction) || 0)) * 1000;
+}
+
+/* Station codes as HTML under the bars. The primitive's SVG <text> stretches
+   with the band's non-uniform viewBox scale (a 1000-unit box drawn ~345px wide
+   squeezes each glyph to a third), which made the codes read as faint
+   condensed ticks. The runs, the >= 24px rule and the current run are the
+   primitive's own: this reads its rendered <text> and re-sets them as spans. */
+function dialPaintBandCodes(parts) {
+  if (!parts.bandCodes) return;
+  parts.bandCodes.replaceChildren();
+  parts.bandSvg.querySelectorAll(".t-band__code").forEach(function (text) {
+    var span = dialNpEl("span", "np__code" + (text.classList.contains("is-current") ? " is-current" : ""), text.textContent);
+    span.style.setProperty("--x", String(Number(text.getAttribute("x")) / 1000));
+    parts.bandCodes.append(span);
+  });
+}
+
+/* The spoken clock: written when what is under the needle changes, or (with
+   the slider not focused) when the whole minute moves. Never per tick: a
+   focused slider whose text changes is re-announced (a11y-7). */
+function dialPaintValueText(parts, d, force) {
+  if (!d.valueText || !parts.scrub) return;
+  var minute = Math.floor((Number(d.position) || 0) / 60);
+  var focused = typeof document !== "undefined" && document.activeElement === parts.scrub;
+  if (!force && (focused || parts.valueMinute === minute)) return;
+  parts.valueMinute = minute;
+  if (parts.scrub.getAttribute("aria-valuetext") !== d.valueText) parts.scrub.setAttribute("aria-valuetext", d.valueText);
 }
 
 function dialPaintNowPlaying(parts, model) {
@@ -385,36 +497,47 @@ function dialPaintNowPlaying(parts, model) {
   parts.tintRequest = tintRequest;
   parts.sheet.classList.toggle("np--foray", Boolean(d.foray));
   parts.sheet.classList.toggle("np--buffering", Boolean(d.buffering));
-  if (d.show && parts.sShow.textContent !== d.show) parts.sShow.textContent = d.show;
-  parts.bigPlay.innerHTML = dialNpIcon(d.running ? "ph-pause-fill" : "ph-play-fill", "lg");
+  var subtitle = d.subtitle || d.show;
+  if (subtitle && parts.sShow.textContent !== subtitle) parts.sShow.replaceChildren(subtitle);
+  var playIcon = d.running ? "ph-pause-fill" : "ph-play-fill";
+  if (parts.bigPlay.dataset.icon !== playIcon) {
+    parts.bigPlay.dataset.icon = playIcon;
+    parts.bigPlay.innerHTML = dialNpIcon(playIcon, "lg");
+  }
   parts.bigPlay.setAttribute("aria-label", d.running ? "Pause" : "Play");
   if (parts.queueLink) {
     var count = Math.max(0, Number(d.queueCount) || 0);
     parts.queueLink.hidden = false;
-    parts.queueLink.innerHTML = dialNpIcon("ph-list-bullets") + '<span class="np__badge readout" hidden>0</span>';
     parts.queueLink.setAttribute("aria-label", "Up Next, " + count + " queued");
     var badge = parts.queueLink.querySelector(".np__badge");
-    if (badge) { badge.textContent = String(count); badge.hidden = count < 1; }
+    if (badge) { badge.replaceChildren(String(count)); badge.hidden = count < 1; }
   }
   if (parts.bookmarkBtn) parts.bookmarkBtn.hidden = false;
-  var bandKey = [d.foray ? "f" : "e", d.currentIndex, d.duration, d.segments && d.segments.length].join(":");
+  var width = Math.max(1, parts.bandSvg.clientWidth || parts.bandVisual.clientWidth || 345);
+  var bandKey = [d.foray ? "f" : "e", d.detailKey, d.currentIndex, d.duration, d.segments && d.segments.length, Math.round(width)].join(":");
+  var fraction = d.duration ? d.position / d.duration : 0;
   if (parts.bandKey !== bandKey) {
     parts.bandKey = bandKey;
-    parts.bandVisual.innerHTML = tactileBand({
-      id: "np-band", kind: "scrub", segments: d.segments || [], progress: d.duration ? d.position / d.duration : 0,
-      currentIndex: d.currentIndex || 0, totalSeconds: d.duration || 1, renderWidth: Math.max(1, parts.bandVisual.clientWidth || 345), buffering: d.buffering,
+    parts.bandBoxes = dialBandBoxes(d, width);
+    parts.bandSvg.innerHTML = tactileBand({
+      id: "np-band", kind: "scrub", segments: d.segments || [], progress: fraction,
+      currentIndex: d.currentIndex || 0, totalSeconds: d.duration || 1, renderWidth: width, buffering: d.buffering,
       valueText: d.valueText,
     });
-    var visual = parts.bandVisual.querySelector(".band");
-    if (visual) { visual.setAttribute("aria-hidden", "true"); visual.removeAttribute("tabindex"); }
-    if (d.valueText) parts.scrub.setAttribute("aria-valuetext", d.valueText);
-  } else {
-    var x = d.duration ? Math.max(0, Math.min(1000, d.position / d.duration * 1000)) : 0;
-    var clip = parts.bandVisual.querySelector(".band__progress");
-    var needle = parts.bandVisual.querySelector(".needle");
-    if (clip) clip.setAttribute("width", x.toFixed(2));
-    if (needle) needle.setAttribute("transform", "translate(" + x.toFixed(2) + " 0)");
-  }
+    var visual = parts.bandSvg.querySelector(".band");
+    /* The <input type=range> over the band is the one slider; the drawing is
+       decoration to assistive tech. */
+    if (visual) { visual.setAttribute("aria-hidden", "true"); visual.removeAttribute("role"); visual.removeAttribute("tabindex"); }
+    dialPaintBandCodes(parts);
+    dialPaintValueText(parts, d, true);
+  } else dialPaintValueText(parts, d, false);
+  var x = dialBandX(parts.bandBoxes || [], fraction);
+  var clip = parts.bandSvg.querySelector(".band__progress");
+  var svgNeedle = parts.bandSvg.querySelector(".needle");
+  if (clip) clip.setAttribute("width", x.toFixed(2));
+  if (svgNeedle) svgNeedle.setAttribute("transform", "translate(" + x.toFixed(2) + " 0)");
+  parts.bandNeedle.style.setProperty("--x", String(x / 1000));
+  parts.bandNeedle.classList.toggle("is-buffering", Boolean(d.buffering));
   dialPaintChip(parts, d);
   dialPaintDetails(parts, d);
   var station = dialCurrentStation(d);
@@ -433,23 +556,43 @@ function dialPaintNowPlaying(parts, model) {
 function dialPaintNowPlayingRate(button, rate) {
   if (!button) return;
   var value = Number(rate);
-  var text = Number.isFinite(value) ? value.toFixed(1) + "×" : "1.0×";
+  var text = Number.isFinite(value) && value > 0 ? value.toFixed(1) + "×" : "1.0×";
   button.innerHTML = '<span class="readout">' + esc(text) + "</span>";
+}
+
+/* "Sleep · Off" / "Sleep · 15 min": the word in the text face, the value in
+   the mono readout (BUILD-NOTES 4.2, item 6). */
+function dialPaintSleep(button, minutes) {
+  if (!button) return;
+  var m = Math.max(0, Number(minutes) || 0);
+  var value = m ? m + " min" : "Off";
+  button.replaceChildren(dialNpEl("span", "", "Sleep · "), dialNpEl("span", "readout", value));
+  button.setAttribute("aria-label", m ? "Sleep timer, " + m + " minutes. Change" : "Sleep timer, off. Set");
+}
+
+function dialNextSleepStop(minutes) {
+  var at = DIAL_SLEEP_STOPS.indexOf(Number(minutes) || 0);
+  return DIAL_SLEEP_STOPS[(at + 1) % DIAL_SLEEP_STOPS.length];
 }
 
 function dialPreviewNowPlaying(parts, model) {
   if (!parts || !parts.bubble) return;
   var d = model || {};
   parts.bubble.hidden = false;
-  parts.bubble.textContent = (d.show || "4a") + " · " + (d.clock || "0:00");
-  var pct = d.duration ? Math.max(0, Math.min(1, d.position / d.duration)) : 0;
-  parts.bubble.style.setProperty("--bubble-x", String(pct));
+  parts.bubble.replaceChildren((d.show || "4a") + " · " + (d.clock || "0:00"));
+  var x = dialBandX(parts.bandBoxes || [], d.duration ? d.position / d.duration : 0);
+  parts.bubble.style.setProperty("--bubble-x", String(x / 1000));
+  if (parts.bandNeedle) parts.bandNeedle.style.setProperty("--x", String(x / 1000));
 }
 
 function dialHideNowPlayingPreview(parts) {
   if (parts && parts.bubble) parts.bubble.hidden = true;
 }
 
+/* The deck opens: the mini's artwork moves into the hero slot (BUILD-NOTES 5).
+   View Transitions where the engine has them (both artworks carry
+   view-transition-name np-art, and only the visible one does at capture), a
+   WAAPI FLIP of the hero otherwise; reduced motion commits at once. */
 function dialTransitionNowPlaying(open, miniArt, heroArt, commit) {
   if (typeof commit !== "function") return;
   var reduce = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -468,7 +611,7 @@ function dialTransitionNowPlaying(open, miniArt, heroArt, commit) {
   nextFrame(function () {
     if (!first || !target || typeof target.animate !== "function") return;
     var last = target.getBoundingClientRect();
-    if (!last.width || !last.height) return;
+    if (!last.width || !last.height || !first.width || !first.height) return;
     var dx = first.left - last.left;
     var dy = first.top - last.top;
     target.animate([
@@ -487,7 +630,10 @@ window.DialNowPlaying = {
   applyTint: dialApplyNowPlayingTint,
   normalizeArtworkTint: dialNormalizeArtworkTint,
   extractArtworkTint: dialExtractArtworkTint,
+  currentStation: dialCurrentStation,
   haptic: dialHaptic,
   transition: dialTransitionNowPlaying,
   paintRate: dialPaintNowPlayingRate,
+  paintSleep: dialPaintSleep,
+  nextSleepStop: dialNextSleepStop,
 };

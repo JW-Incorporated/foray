@@ -288,10 +288,10 @@ function tactileBand(data) {
     ? ' tabindex="0" aria-valuemin="0" aria-valuemax="' + Math.round(Number(d.totalSeconds) || total) + '" aria-valuenow="' + Math.round(progress * (Number(d.totalSeconds) || total)) + '" aria-valuetext="' + esc(valueText) + '"'
     : ' aria-label="' + esc(d.label || "Foray band with " + codes.size + " stations") + '"';
   return '<svg class="band band--' + esc(kind) + (d.buffering ? " band--buffering" : "") + '"' + (line ? "" : ' data-draw="true" role="' + role + '"') + aria + ' viewBox="0 0 1000 60" preserveAspectRatio="none">' +
-    '<defs><pattern id="' + esc(id) + '-hatch" width="24" height="12" patternUnits="userSpaceOnUse"><rect width="24" height="12" class="t-band__hatch-bg"></rect><path d="M-3 12L9 0M9 12L21 0M21 12L33 0" class="t-band__hatch"></path></pattern>' +
+    '<defs><pattern id="' + esc(id) + '-hatch" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="12" class="t-band__hatch"></rect></pattern>' +
     '<clipPath id="' + esc(id) + '-progress"><rect class="band__progress" x="0" y="0" width="' + progressX.toFixed(2) + '" height="60"></rect></clipPath></defs>' +
     '<g class="' + (line ? "band__layers" : "band__draw") + '"><g class="t-band__base">' + bars + '</g><g class="t-band__fill" clip-path="url(#' + esc(id) + '-progress)">' + bars + "</g>" + labels +
-    (line ? "" : '<g class="needle" transform="translate(' + progressX.toFixed(2) + ' 0)"><rect x="-1" y="-3" width="2" height="45" rx="1"></rect><circle cx="0" cy="-3" r="5"></circle></g>') + "</g></svg>";
+    (line ? "" : '<g class="needle" transform="translate(' + progressX.toFixed(2) + ' 0)"><rect x="-1" y="3" width="2" height="39" rx="1"></rect><circle cx="0" cy="3" r="4"></circle></g>') + "</g></svg>";
 }
 
 function tactileWireScrubber(scrubber, data) {
