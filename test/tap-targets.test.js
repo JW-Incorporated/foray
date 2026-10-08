@@ -501,20 +501,22 @@ test("the mini bar's open-the-player button fills the bar's height", () => {
   assert.ok(px(valueOf(".dock-layer .fp-info", "min-height")) >= 44);
 });
 
-test("a receded tab keeps a 44px target: the 36px row's link reaches 4px past it, above and below", () => {
-  /* The Dock's tab row recedes to 36 (BUILD-NOTES 3), under the 44 floor. The link carries a hit-area
-     `::after` that grows the target to 44 - (44 - 36) / 2 = 4px each way - the same device as the
-     hit-area rule above, scoped to the receded states (at 64 the link is its row).
-     MUTATION: delete the `::after` rule from ui/dock.css, or set `--dock-hit` to 0 -> the gates run's
-     44px check reports every receded tab (this static twin goes red first). */
-  const h = (36 + 2 * px(dockCssHelper.declOf("ui/dock.css", ":root", "--dock-hit")));
-  assert.strictEqual(h, 44, "36 + 2 x --dock-hit is the 44px floor");
-  const after = RULES.find((r) => r.selectors.includes("body.ui-v2.dock-receded .dock-layer .tab-btn::after"));
-  assert.ok(after, "the receded tab has a hit-area ::after");
-  assert.ok(after.selectors.includes("body.ui-v2.sh-compose .dock-layer .tab-btn::after"), "and so does the always-receded Discover row");
-  const decl = Object.fromEntries(after.decls.map((d) => [d.prop, d.value]));
-  assert.strictEqual(decl.top, "calc(var(--dock-hit) * -1)");
-  assert.strictEqual(decl.bottom, "calc(var(--dock-hit) * -1)");
+test("a receded tab is a 44px target by its own box: the row recedes to 44, only the labels go", () => {
+  /* Round 1 receded the row to 36 (BUILD-NOTES 3) and reached 44 with a hit-area `::after`, 4px past the row each
+     way. Round 2 follows the prototype instead ("44 rather than the spec's 36 because every tab keeps a 44px
+     target"): the row stays 44, so there is no `::after` to maintain and the Dock's row rhythm matches. The
+     rule applies to both receded states - a scrolled page and Discover, where the field row is above.
+     MUTATION: set `--dock-tab-receded` in ui/dock.css back to 36px -> the first assertion fails; bring back the
+     `body.ui-v2.dock-receded .dock-layer .tab-btn::after` hit-area rule -> the last one fails (a hit area that
+     reaches outside the Dock is a target the gates run cannot see, and the Dock clipped it away in round 1's
+     review). */
+  const receded = px(dockCssHelper.declOf("ui/dock.css", ":root", "--dock-tab-receded"));
+  assert.ok(receded >= 44, `the receded tab row is ${receded}px, under the 44px floor`);
+  const rowRule = RULES.find((r) => r.selectors.includes("body.ui-v2.dock-receded .dock-layer .tab-bar"));
+  assert.ok(rowRule && rowRule.selectors.includes("body.ui-v2.sh-compose .dock-layer .tab-bar"), "both receded states set the row height");
+  assert.strictEqual(Object.fromEntries(rowRule.decls.map((d) => [d.prop, d.value])).height, "var(--dock-tab-receded)");
+  assert.ok(px(valueOf(".dock-layer .tab-btn", "min-width")) >= 44, "and a tab is at least 44 wide");
+  assert.ok(!RULES.some((r) => r.selectors.some((s) => /\.dock-layer \.tab-btn::after/.test(s))), "no hit-area ::after on a tab: the box is the target");
 });
 
 test("the mini bar is a row of the Dock: it pads for no home indicator and has no box of its own to draw", () => {

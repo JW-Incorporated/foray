@@ -15,9 +15,8 @@ export const DOCK_INSET = 12;          // the Dock floats this far above the saf
 export const FIELD_ROW = 48;
 export const MINI_ROW = 64;
 export const TAB_ROW = 64;
-export const TAB_ROW_RECEDED = 36;
-export const FADE_STOP_PX = 32;        // the fade reaches the page colour at 32px
-export const FADE_EXTRA = 44;          // fade height = safe-bottom + 12 + 44
+export const TAB_ROW_RECEDED = 44;       // labels go, the row does not: every tab stays its own 44px target (the prototype's number; BUILD-NOTES 16 item 5)
+export const FADE_STOP_PX = 32;        // the fade reaches the page colour 32px below its top, and its top is 32px above the Dock's top edge
 export const CAST_RADIUS = 260;
 export const CAST_ALPHA = { dark: 0.14, light: 0.09 };
 export const TEXT_OPACITY_FLOOR = 0.02;
@@ -86,6 +85,13 @@ export function evaluateMiniRow(screen, m) {
   if (!near(p.rect.top, mini.rect.top, 0.1)) out.push(v("mini-progress-on-the-top-edge", screen, `the line is at ${p.rect.top}, the row's top edge at ${mini.rect.top}`));
   if (p.ariaHidden !== "true") out.push(v("mini-progress-aria-hidden", screen, `aria-hidden is ${JSON.stringify(p.ariaHidden)}`));
   if (p.fillBg !== m.colours.glow) out.push(v("mini-progress-glow", screen, `the fill paints ${p.fillBg}, expected Glow ${m.colours.glow}`));
+  /* A PLAYING row shows its state: the pause glyph and a line that has started to fill. The paused fixture (play
+     glyph, 0 progress) cannot show either, so round 1 could not check the 2px line against a moving one. */
+  if (m.expect && m.expect.playing) {
+    if (mini.running !== "1") out.push(v("mini-shows-pause-while-playing", screen, `the Play button's data-running is ${JSON.stringify(mini.running)} while audio runs`));
+    if (!(p.fillWidth > 0)) out.push(v("mini-progress-moves", screen, `the progress fill is ${p.fillWidth}px wide while audio runs: the 2px line has nothing to draw`));
+    if (p.fillWidth > p.rect.width + EPS) out.push(v("mini-progress-within-the-row", screen, `the fill is ${p.fillWidth}px in a ${p.rect.width}px line`));
+  }
   if (mini.region.role !== "region" || !/^Now playing: .+, .+$/.test(mini.region.label || "")) {
     out.push(v("mini-region-label", screen, `role ${JSON.stringify(mini.region.role)}, label ${JSON.stringify(mini.region.label)}; expected a region named "Now playing: <title>, <show>"`));
   }
@@ -94,7 +100,7 @@ export function evaluateMiniRow(screen, m) {
 }
 
 /** The tabs: three, one current, Fill glyph + --text for it, Regular + --text-2 for the rest (so a tab change is a
- *  change of glyph, visible in greyscale); icons 28 (24 receded), labels shown (faded receded). */
+ *  change of glyph, visible in greyscale); icons 28 (24 receded), labels shown (faded receded), each tab 44x44 or more by its own box. */
 export function evaluateTabs(screen, m) {
   const out = [];
   const keys = m.tabs.items.map((t) => t.key);
@@ -117,26 +123,40 @@ export function evaluateTabs(screen, m) {
   if (!near(m.tabs.iconBox.width, icon) || !near(m.tabs.iconBox.height, icon)) out.push(v("tab-icon-size", screen, `icons are ${m.tabs.iconBox.width}x${m.tabs.iconBox.height}, expected ${icon}`));
   const label = m.receded ? 0 : 1;
   if (!near(m.tabs.labelOpacity, label, 0.05)) out.push(v("tab-label", screen, `label opacity ${m.tabs.labelOpacity}, expected ${label}`));
-  if (m.receded) {
-    const reach = (m.tabs.afterTop === null || m.tabs.afterBottom === null) ? null : 36 + Math.abs(m.tabs.afterTop) + Math.abs(m.tabs.afterBottom);
-    if (reach === null || reach + EPS < 44) out.push(v("receded-tab-44", screen, `a receded tab's hit area is ${reach}px tall (the 36px row + its ::after), expected at least 44`));
+  /* Every tab is its own 44px target, tall or receded: no ::after reach, no hit-area trick (the row is 44 when receded). */
+  for (const t of m.tabs.items) {
+    if (!t.rect || t.rect.height + EPS < 44 || t.rect.width + EPS < 44) out.push(v("tab-target-44", screen, `${t.key} is ${t.rect ? `${t.rect.width}x${t.rect.height}` : "unmeasured"}, expected at least 44x44 by its own box`));
   }
   return out;
 }
 
-/** The fade and the cast, present on every tab page. The fade is `safe-bottom + 12 + 44` tall and reaches the page
- *  colour at 32px; the cast is a 260px radial in Glow at 14% (9% in Dawn), lit only while something is loaded. */
+/** The fade and the cast, present on every tab page. The fade covers the WHOLE Dock: its top is 32px above the Dock's
+ *  top edge, its bottom is the screen's, and it reaches the page colour 32px below its top, so from the Dock's top
+ *  edge down the page is bg and nothing is sliced by the Dock's edge (round 1's 56px strip left every card behind the
+ *  Dock at full strength). When something plays it carries a masked copy of the cast (`::before`) so the page colour
+ *  does not paint over the light at the edge it rises from. The cast is a 260px radial in Glow at 14% (9% in Dawn), lit only while something is loaded. */
 export function evaluateDecorations(screen, m) {
   const out = [];
   const f = m.fade;
   if (!f.present || f.display === "none") out.push(v("fade-present", screen, "the Dock fade is missing or hidden"));
   else {
-    const want = m.safeBottom + DOCK_INSET + FADE_EXTRA;
-    if (!near(f.rect.height, want)) out.push(v("fade-height", screen, `the fade is ${f.rect.height}px tall, expected ${want} (safe + 12 + 44)`));
+    const want = m.dock.top - FADE_STOP_PX;
+    if (!near(f.rect.top, want)) out.push(v("fade-covers-the-dock", screen, `the fade starts at ${f.rect.top}, expected ${want} (the Dock's top edge ${m.dock.top} less the ${FADE_STOP_PX}px ramp): the Dock's edge would slice what runs under it`));
     if (!near(f.rect.bottom, m.viewport.h)) out.push(v("fade-at-the-bottom", screen, `the fade ends at ${f.rect.bottom}, the viewport at ${m.viewport.h}`));
     if (!new RegExp(`\\b${FADE_STOP_PX}px\\b`).test(f.backgroundImage || "")) out.push(v("fade-reaches-bg-at-32px", screen, `gradient "${f.backgroundImage}" has no ${FADE_STOP_PX}px stop`));
     if (f.pointerEvents !== "none") out.push(v("fade-takes-no-tap", screen, `pointer-events is ${f.pointerEvents}`));
     if (f.ariaHidden !== "true") out.push(v("fade-aria-hidden", screen, "the fade is not aria-hidden"));
+    /* The cast's copy inside the fade: present, a 260px radial, masked, only while something plays. */
+    const cc = f.castCopy;
+    if (m.expect.mini) {
+      if (!cc || cc.display === "none") out.push(v("fade-keeps-the-cast", screen, "something plays but the fade has no cast copy: the page colour would paint over the light at the Dock's top edge"));
+      else {
+        if (!new RegExp(`\\b${CAST_RADIUS}px\\b`).test(cc.backgroundImage || "")) out.push(v("fade-cast-copy-260px", screen, `the fade's cast copy gradient "${cc.backgroundImage}" has no ${CAST_RADIUS}px radius`));
+        if (!cc.mask || cc.mask === "none") out.push(v("fade-cast-copy-masked", screen, "the fade's cast copy has no mask: it would stack on the real cast above the ramp (twice the light)"));
+      }
+    } else if (cc && cc.display !== "none") {
+      out.push(v("fade-cast-copy-hidden-with-no-mini", screen, `nothing plays but the fade's cast copy displays (${cc.display})`));
+    }
   }
   const c = m.cast;
   if (m.expect.mini) {
@@ -160,14 +180,15 @@ export function evaluateDecorations(screen, m) {
  *  string check). A fade with no stop is a hard edge. */
 export const fadeAlphaAt = (fadeTop, y, stop = FADE_STOP_PX) => (stop > 0 ? Math.min(1, Math.max(0, (y - fadeTop) / stop)) : (y >= fadeTop ? 1 : 0));
 
-/** No text node intersects the band below the Dock's bottom edge at rendered opacity above 0.02. The band is the
- *  Dock's bottom edge down to the viewport's; a text node's rendered opacity is its own (the product of its
+/** No text node intersects the band from the Dock's TOP edge down to the viewport's at rendered opacity above 0.02:
+ *  nothing shows behind the Dock or under it (round 1 measured only below the Dock's bottom edge, which let every
+ *  card behind the Dock stay at full strength). The band is the Dock's top edge down to the viewport's; a text node's rendered opacity is its own (the product of its
  *  ancestors') through the fade that lies over it. `samples` counts the text rects that DID enter the band, so
  *  a page with nothing in it cannot make the rule pass vacuously: the caller requires at least one across a
  *  screen's scroll positions (`requireSamples`). */
 export function evaluateBand(screen, m, { requireSamples = false } = {}) {
   const out = [];
-  const bandTop = m.dock.bottom;
+  const bandTop = m.dock.top;
   const bandBottom = m.viewport.h;
   const fadeTop = m.fade.present ? m.fade.rect.top : bandBottom;
   let samples = 0;
@@ -177,7 +198,7 @@ export function evaluateBand(screen, m, { requireSamples = false } = {}) {
     /* the most visible part of the rect inside the band is its highest one: alpha grows downward */
     const y = Math.max(t.top, bandTop);
     const rendered = t.opacity * (1 - fadeAlphaAt(fadeTop, y, m.fade.present ? m.fade.stopPx : 0));
-    if (rendered > TEXT_OPACITY_FLOOR) out.push(v("no-text-in-the-band", screen, `"${t.text}" shows at opacity ${rendered.toFixed(3)} at y=${Math.round(y)}, in the band below the Dock's edge (${bandTop}..${bandBottom})`));
+    if (rendered > TEXT_OPACITY_FLOOR) out.push(v("no-text-in-the-band", screen, `"${t.text}" shows at opacity ${rendered.toFixed(3)} at y=${Math.round(y)}, in the band from the Dock's top edge to the screen's bottom (${bandTop}..${bandBottom})`));
   }
   if (requireSamples && samples === 0) out.push(v("band-sampled", screen, "no text passed through the band at any scroll position: the rule would pass vacuously"));
   return { violations: out, samples };

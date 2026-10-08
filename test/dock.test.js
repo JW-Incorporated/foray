@@ -346,3 +346,106 @@ test("`?posture=car` puts the page in car posture; without it the attribute is n
   plain.evalIn("renderTabBar()");
   assert.strictEqual(plain.html.getAttribute("data-posture"), null, "a lookalike parameter is not the hook");
 });
+
+/* ==================================================================== */
+/* 7. ROUND 2: THE FIELD'S WORDS, THE FADE THAT COVERS THE DOCK, AND THE   */
+/*    LEGACY CONTROLS THE GATES CAUGHT                                    */
+/* ==================================================================== */
+
+const dockCss = require("./helpers/dock-css.js");
+
+test("the adopted field says 'Search, or name a subject', placeholder and accessible name alike", () => {
+  /* The Search page writes "Search shows and episodes..."; in the Dock the field is also where Create folded in,
+     and fidelity saw the app drop that half of the intent. The Dock owns the copy, applied at adoption.
+     MUTATION: delete the two `fieldInput.setAttribute(...)` lines in syncDock -> every assertion fails; change
+     DOCK_FIELD_COPY to the page's own words -> the first two fail; set only the placeholder -> the second
+     does (a visible name that the accessible name does not contain fails WCAG label-in-name). */
+  const m = mount();
+  m.evalIn("renderTabBar()");
+  m.body.classList.add("sh-compose");
+  const { input } = writeCompose(m);
+  input.setAttribute("placeholder", "Search shows and episodes…");
+  input.setAttribute("aria-label", "Search shows and episodes");
+  m.evalIn("renderTabBar()");
+  assert.strictEqual(input.getAttribute("placeholder"), "Search, or name a subject");
+  assert.strictEqual(input.getAttribute("aria-label"), "Search, or name a subject");
+  /* a repaint's fresh field gets the same words (the page rewrites them on every render) */
+  const second = writeCompose(m);
+  second.input.setAttribute("placeholder", "Search shows and episodes…");
+  m.evalIn("renderTabBar()");
+  assert.strictEqual(second.input.getAttribute("placeholder"), "Search, or name a subject", "a fresh render of Discover is re-worded too");
+});
+
+test("the fade covers the whole Dock: its top is 32px above the Dock's top edge in every state, at both insets", () => {
+  /* DIRECTION: "content runs under the Dock and fades to bg behind it; it is never sliced by the Dock's edge".
+     Round 1's fade was `safe + 12 + 44` (56px), which began 72px BELOW the top of a 128px Dock, so a card wider
+     than the Dock showed its rounded outline framing the Dock on three sides. The height is resolved here, not
+     matched as a string: it must equal the Dock's occupied height (rows + float + safe area) plus the ramp.
+     MUTATION: put `height` back to `calc(var(--safe-bottom) + var(--dock-inset) + 44px)` -> every state fails;
+     drop `var(--dock-h)` from it -> the states with a mini row or the field fail; change `--dock-fade-rise`
+     without the gradient's own stop -> the gradient assertion fails. */
+  const heightExpr = dockCss.declOf("ui/dock.css", ".dock-layer .dock-fade", "height");
+  assert.ok(heightExpr, "the fade sets its height");
+  for (const classes of [[], ["fp-open"], ["sh-compose"], ["fp-open", "sh-compose"], ["dock-receded"], ["fp-open", "dock-receded"]]) {
+    const vars = dockCss.scope(classes);
+    for (const inset of [0, 34]) {
+      const withInset = new Map([...vars, ["--safe-bottom", `${inset}px`]]);
+      const fade = dockCss.resolve(heightExpr, withInset, inset);
+      const occupied = dockCss.resolve("calc(var(--dock-h) + var(--dock-inset) + var(--safe-bottom))", withInset, inset);
+      assert.strictEqual(fade - occupied, 32, `${classes.join(".") || "(rest)"} at inset ${inset}: the fade must reach 32px above the Dock's top edge (fade ${fade}, Dock ${occupied})`);
+    }
+  }
+  assert.strictEqual(dockCss.declOf("ui/dock.css", ":root", "--dock-fade-rise"), "32px");
+  assert.strictEqual(dockCss.declOf("ui/dock.css", ".dock-layer .dock-fade", "background"), "linear-gradient(transparent 0, var(--dock-page-bg) var(--dock-fade-rise))",
+    "transparent at its top, the page colour from the ramp's end: solid from the Dock's top edge down");
+});
+
+test("the fade carries a masked copy of the cast, so the page colour never paints over the light it rises from", () => {
+  /* The cast sits behind the content and under the fade; a fade that covers the Dock would paint bg over the
+     brightest edge of the light. `::before` repeats the cast's radial in front, masked by the fade's own ramp
+     (the real cast shows through the ramp and the copy covers below it: one radial at every height), and is
+     hidden with the cast when nothing plays.
+     MUTATION: delete the `.dock-fade::before` rule -> the first assertion fails (the light goes dark at the Dock's
+     edge); delete its mask -> the mask assertions fail (the light doubles over the ramp); change its radial's
+     centre away from `--cast-centre` or its radius from 260px -> the same-gradient assertion fails; delete the
+     `:not(.fp-open)` hide -> the display assertion fails (a lit edge over a page with nothing playing);
+     re-declare `--cast-centre` on #dock-cast -> the last fails (the two would fork). */
+  const sel = ".dock-layer .dock-fade::before";
+  const bg = dockCss.declOf("ui/dock.css", sel, "background");
+  assert.ok(bg, "the fade has a ::before that paints");
+  const castBg = dockCss.declOf("ui/dock.css", "#dock-cast", "background");
+  assert.ok(castBg && castBg.includes(bg.replace(/^background:\s*/, "")), `the copy is the very same radial as #dock-cast's, so the two cannot drift: ${bg}`);
+  assert.ok(/radial-gradient\(90% 260px at 50% calc\(100% - var\(--cast-centre\)\)/.test(bg), "260px, centred at --cast-centre from the bottom");
+  assert.strictEqual(dockCss.declOf("ui/dock.css", sel, "mask-image"), "linear-gradient(transparent 0, #000 var(--dock-fade-rise))", "masked by the fade's own ramp");
+  assert.strictEqual(dockCss.declOf("ui/dock.css", sel, "-webkit-mask-image"), "linear-gradient(transparent 0, #000 var(--dock-fade-rise))", "and for WebKit");
+  assert.strictEqual(dockCss.declOf("ui/dock.css", "body.ui-v2:not(.fp-open) .dock-layer .dock-fade::before", "display"), "none", "hidden with the cast when nothing plays");
+  assert.ok(dockCss.declOf("ui/dock.css", "body.ui-v2", "--cast-centre"), "--cast-centre is declared once, on <body>, where the cast and the fade both inherit it");
+  assert.strictEqual(dockCss.declOf("ui/dock.css", "#dock-cast", "--cast-centre"), null, "and not again on the cast, which would fork the two");
+});
+
+test("the legacy controls the gates caught under the dock/* ids are real 44px targets and legible: chip, wordmark, play capsule", () => {
+  /* Round 1 carried 24 new violations as known debt (22 tap targets: the wordmark at 24x24 and the Discover
+     chip wall at 32px; 2 contrast: Home's white-on-violet play capsule, 2.72 and 2.48). The Dock's unit clears
+     them in ui/dock.css 6b rather than adding to gates-known-debt.json.
+     MUTATION: drop `min-height: var(--tap)` from `.fy-chip` or the wordmark rule -> the matching assertion fails
+     (and `gates.mjs` reports the 32px and 24px boxes again); set `.hv2-play` back to white or to --ember-ink
+     (white in Dawn) -> the colour assertions fail. */
+  assert.strictEqual(dockCss.declOf("ui/dock.css", "body.ui-v2 .fy-chip", "min-height"), "var(--tap)");
+  assert.strictEqual(dockCss.declOf("ui/dock.css", "body.ui-v2 .topbar h1 a.wordmark", "min-height"), "var(--tap)");
+  assert.strictEqual(dockCss.declOf("ui/dock.css", "body.ui-v2 .topbar h1 a.wordmark", "min-width"), "var(--tap)");
+  const colour = dockCss.declOf("ui/dock.css", "body.ui-v2 .hv2-play", "color");
+  assert.ok(colour && /^var\(--bg\)/.test(colour), `the capsule's ink is the legacy page colour, dark in both schemes: ${colour}`);
+  const css = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");
+  const bgHex = /^\s*--bg:\s*(#[0-9a-f]{6})/im.exec(css);
+  assert.ok(bgHex, "styles.css declares --bg");
+  const lum = (hex) => {
+    const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  };
+  const ratio = (a, b) => { const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05); };
+  const mix = (fg, bg, a) => "#" + [1, 3, 5].map((i) => Math.round(parseInt(fg.slice(i, i + 2), 16) * a + parseInt(bg.slice(i, i + 2), 16) * (1 - a)).toString(16).padStart(2, "0")).join("");
+  const violet = "#a78bfa";
+  assert.ok(ratio(bgHex[1], violet) >= 4.5, `ink on the violet capsule: ${ratio(bgHex[1], violet).toFixed(2)}:1`);
+  /* the capsule's title is drawn at .9 opacity, the worse case */
+  assert.ok(ratio(mix(bgHex[1], violet, 0.9), violet) >= 4.5, `the capsule's title at 0.9 opacity: ${ratio(mix(bgHex[1], violet, 0.9), violet).toFixed(2)}:1`);
+});

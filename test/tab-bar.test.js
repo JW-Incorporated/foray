@@ -369,15 +369,16 @@ test("the page reserves, under its content, exactly the room the Dock occupies a
   }
 });
 
-test("the Dock's rows add up to its height: field 48, mini 64, tab row 64 (36 receded), no gap", () => {
-  /* The Veil budget (BUILD-NOTES 1.5): 64 / 128 / 148 at rest. MUTATION: change `--mini` or `--tab-bar` in
-     tokens.css, or `--dock-field-row` here -> the row sums go red. */
+test("the Dock's rows add up to its height: field 48, mini 64, tab row 64 (44 receded), no gap", () => {
+  /* The Veil budget (BUILD-NOTES 1.5): 64 / 128 at rest, 156 on Discover with a mini row (round 1's 148 had a 36px
+     receded row; the prototype and the 44px floor say 44). MUTATION: change `--mini` or `--tab-bar` in
+     tokens.css, `--dock-field-row` or `--dock-tab-receded` in ui/dock.css -> the row sums go red. */
   const sum = (classes, token) => { const v = dockCss.scope(classes); return dockCss.resolve(v.get(token), v, 0); };
   assert.strictEqual(sum([], "--dock-h"), 64, "tabs alone");
   assert.strictEqual(sum(["fp-open"], "--dock-h"), 128, "mini + tabs");
-  assert.strictEqual(sum(["fp-open", "sh-compose"], "--dock-h"), 148, "Discover: field + mini + RECEDED tabs");
-  assert.strictEqual(sum(["sh-compose"], "--dock-h"), 84, "Discover with nothing playing: field + receded tabs");
-  assert.strictEqual(sum(["fp-open", "dock-receded"], "--dock-h"), 100, "a scrolled page: mini + receded tabs");
+  assert.strictEqual(sum(["fp-open", "sh-compose"], "--dock-h"), 156, "Discover: field + mini + RECEDED tabs");
+  assert.strictEqual(sum(["sh-compose"], "--dock-h"), 92, "Discover with nothing playing: field + receded tabs");
+  assert.strictEqual(sum(["fp-open", "dock-receded"], "--dock-h"), 108, "a scrolled page: mini + receded tabs");
   assert.strictEqual(sum(["fp-open", "dock-receded"], "--dock-rest-h"), 128, "...and the page still reserves the tab row at rest");
 });
 

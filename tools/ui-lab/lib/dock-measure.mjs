@@ -56,27 +56,26 @@ export function measureDock(expect) {
       showText: (show.textContent || "").trim(),
       playBg: getComputedStyle(bar.querySelector(".fp-play")).backgroundColor,
       skipBg: getComputedStyle(bar.querySelector(".fp-skip")).backgroundColor,
-      progress: { rect: rect(prog), ariaHidden: prog.getAttribute("aria-hidden"), fillBg: getComputedStyle(fill).backgroundColor },
+      running: bar.querySelector(".fp-play").dataset.running || null,
+      progress: { fillWidth: fill.getBoundingClientRect().width, rect: rect(prog), ariaHidden: prog.getAttribute("aria-hidden"), fillBg: getComputedStyle(fill).backgroundColor },
       region: { role: bar.getAttribute("role"), label: bar.getAttribute("aria-label") },
     };
   })() : null;
   const tabEls = [...document.querySelectorAll("#tab-bar .tab-btn")];
   const first = tabEls[0];
-  const after = first ? getComputedStyle(first, "::after") : null;
   const href = (el) => (el && el.querySelector("use") ? el.querySelector("use").getAttribute("href") : null);
   const tabs = {
     items: tabEls.map((a) => ({
-      key: a.dataset.tabKey, current: a.getAttribute("aria-current") === "page", color: getComputedStyle(a).color,
+      key: a.dataset.tabKey, rect: rect(a), current: a.getAttribute("aria-current") === "page", color: getComputedStyle(a).color,
       onOpacity: +getComputedStyle(a.querySelector(".tab-glyph-on")).opacity, offOpacity: +getComputedStyle(a.querySelector(".tab-glyph-off")).opacity,
       fillHref: href(a.querySelector(".tab-glyph-on")), regularHref: href(a.querySelector(".tab-glyph-off")),
     })),
     iconBox: first ? rect(first.querySelector(".tab-glyphs")) : { width: 0, height: 0 },
     labelOpacity: first ? +getComputedStyle(first.querySelector(".tab-label")).opacity : 1,
-    afterTop: after && after.content !== "none" && after.content !== "normal" ? parseFloat(after.top) : null,
-    afterBottom: after && after.content !== "none" && after.content !== "normal" ? parseFloat(after.bottom) : null,
   };
   const fadeEl = q(".dock-fade");
   const fcs = fadeEl ? getComputedStyle(fadeEl) : null;
+  const fbs = fadeEl ? getComputedStyle(fadeEl, "::before") : null;   // the cast's copy inside the fade
   const castEl = q("#dock-cast");
   const ccs = castEl ? getComputedStyle(castEl) : null;
   /* Every visible text run OUTSIDE the Dock: its client rect and the opacity it is painted at. */
@@ -116,6 +115,7 @@ export function measureDock(expect) {
     fade: fadeEl ? {
       present: true, rect: rect(fadeEl), display: fcs.display, backgroundImage: fcs.backgroundImage, pointerEvents: fcs.pointerEvents, ariaHidden: fadeEl.getAttribute("aria-hidden"),
       /* the gradient's last px stop: where it reaches the page colour */
+      castCopy: fbs && fbs.content !== "none" && fbs.content !== "normal" ? { display: fbs.display, backgroundImage: fbs.backgroundImage, mask: fbs.maskImage || fbs.webkitMaskImage || "none" } : null,
       stopPx: (() => { const n = [...fcs.backgroundImage.matchAll(/(\d+(?:\.\d+)?)px/g)].map((x) => Number(x[1])); return n.length ? n[n.length - 1] : 0; })(),
     } : { present: false },
     cast: castEl ? { state: castEl.dataset.state, display: ccs.display, backgroundImage: ccs.backgroundImage, rect: rect(castEl), ariaHidden: castEl.getAttribute("aria-hidden") } : { state: null, display: "none", backgroundImage: "", rect: { bottom: 0 }, ariaHidden: null },

@@ -23,7 +23,7 @@
                    render is done, so the Dock is the field's only home.
      #dock-mini    64, while something is loaded (body.fp-open). player/client.js
                    builds the mini bar and hands it over through dockMountMini().
-     #tab-bar      64, or 36 receded: Today `#/`, Discover `#/shows`, Library
+     #tab-bar      64, or 44 receded (the labels go, the row does not): Today `#/`, Discover `#/shows`, Library
                    `#/library`. `#tab-bar` and `.tab-btn` keep their names - the
                    harness (tools/ui-lab) waits on them.
 
@@ -61,6 +61,14 @@
    BUG 3 pins: `[hidden]` is a UA rule and any author `display` beats it. The
    layer is created once and kept; rows inside it use `hidden`, and ui/dock.css
    puts `[hidden] { display: none }` back above every author display it declares. */
+/* THE FIELD'S WORDS BELONG TO THE DOCK, not to the page that rendered it. The Search page writes its own field
+   ("Search shows and episodes..."); once that node is the Dock's top row it is Create's field as well (a subject
+   named here builds a playlist, DIRECTION "Information architecture": "the one-field interaction was Create's good
+   part"), and the placeholder has to say both halves or the second is undiscoverable. Applied when the node is
+   adopted, so it holds for every render of Discover without that page's unit having to know. The accessible name
+   matches the visible words (WCAG label-in-name). */
+const DOCK_FIELD_COPY = "Search, or name a subject";
+
 const TAB_ROUTES = [
   { key: "today", label: "Today", hash: "#/", icon: "house", fill: "house-fill" },
   { key: "discover", label: "Discover", hash: "#/shows", icon: "compass", fill: "compass-fill" },
@@ -71,7 +79,7 @@ const TAB_ROUTES = [
    "after 80px of downward scroll, restores on any upward scroll"). */
 const DOCK_RECEDE_AFTER_PX = 80;
 
-let dockReceded = false;      // the tab row is at 36, not 64
+let dockReceded = false;      // the tab row is at 44, not 64
 let dockHash = null;          // the hash the receded state belongs to
 let dockLastY = 0;            // the scroll offset the last scroll event saw
 let dockFocusField = false;   // `#/create` was opened: Discover's field is owed focus once it is in the Dock
@@ -225,6 +233,11 @@ function syncDock() {
       if (typeof field.replaceChildren === "function") field.replaceChildren(compose);
       else { field.innerHTML = ""; field.append(compose); }
       dockFieldNode = compose;
+      const fieldInput = typeof compose.querySelector === "function" ? compose.querySelector("#sh-input") : null;
+      if (fieldInput && typeof fieldInput.setAttribute === "function") {
+        fieldInput.setAttribute("placeholder", DOCK_FIELD_COPY);
+        fieldInput.setAttribute("aria-label", DOCK_FIELD_COPY);
+      }
     }
   } else if (dockFieldNode) {
     if (typeof field.replaceChildren === "function") field.replaceChildren();
@@ -247,7 +260,7 @@ function dockFocusFieldNext() {
   dockFocusField = true;
 }
 
-/** Recede or restore the tab row: 64 to 36 with the labels fading, 280ms ease-out (ui/dock.css). */
+/** Recede or restore the tab row: 64 to 44 with the labels fading, 280ms ease-out (ui/dock.css). */
 function setDockReceded(on) {
   dockReceded = !!on;
   document.body.classList.toggle("dock-receded", dockReceded);

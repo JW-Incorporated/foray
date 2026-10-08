@@ -39,6 +39,20 @@ async function startPlayback(page, itemId) {
   await wait(page, 600);
 }
 
+/** Let the item the fixture paused play again from the same offset, and leave it PLAYING: the mini row then shows
+    the pause glyph and a Glow progress line that has moved (the paused fixture shows a play glyph and no line, so
+    the Dock's 2px line could not be checked). The silent 60 s fixture runs on during the shot; the line is a few
+    px long at any frame, which is all the check needs. Used by the Dock's `dock-playing` step. */
+async function keepPlaying(page) {
+  /* The previous step left the page scrolled and the tab row receded; this one is the tall row at the top. */
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.evaluate(() => {
+    for (const a of window.__audios || []) if (a.src) { try { a.currentTime = 21; a.play(); } catch (_) { /* ignore */ } }
+  });
+  await page.waitForFunction(() => (window.__audios || []).some((a) => a.src && !a.paused), null, { timeout: 20000 });
+  await wait(page, 900);
+}
+
 /** Scroll the page by `y` CSS px and let the Dock's recede (280ms) settle: the scroll event, then the
     transition, then a frame. Used by the Dock's `dock-receded` step. */
 async function scrollPage(page, y) {
@@ -234,6 +248,7 @@ export function appStates(fx) {
       steps: [
         { label: "dock-discover", route: "#/shows", run: (page) => startPlayback(page, ep0) },
         { label: "dock-receded", route: "#/", run: (page) => scrollPage(page, 120) },
+        { label: "dock-playing", route: "#/", run: (page) => keepPlaying(page) },
       ],
     },
   ];

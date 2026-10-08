@@ -335,9 +335,9 @@ test("the Dock reserves the field row: Discover raises it to field + receded tab
   const rest = dockCss.scope([]);
   const discover = dockCss.scope(["sh-compose"]);
   assert.strictEqual(dockCss.resolve(discover.get("--dock-field-h"), discover, 0), 48, "the field row is 48");
-  assert.strictEqual(dockCss.resolve(discover.get("--dock-tab-h"), discover, 0), 36, "and the tab row is receded on Discover");
+  assert.strictEqual(dockCss.resolve(discover.get("--dock-tab-h"), discover, 0), 44, "and the tab row is receded on Discover (44: the labels go, the row does not)");
   const reserve = (v) => dockCss.resolve(v.get("--dock-reserve"), v, 0);
-  assert.strictEqual(reserve(discover) - reserve(rest), 48 + 36 - 64, "Discover reserves field + receded tabs, over the tab row alone");
+  assert.strictEqual(reserve(discover) - reserve(rest), 48 + 44 - 64, "Discover reserves field + receded tabs, over the tab row alone");
   assert.strictEqual(dockCss.declOf("ui/dock.css", "body.ui-v2.sh-compose #view", "padding-bottom"), "0",
     "#view carries no padding of its own for the field: the body reserves the whole Dock");
   assert.ok(!/--sh-compose-h/.test(STYLES), "and the floating row's own height token is gone");

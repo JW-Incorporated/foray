@@ -649,7 +649,7 @@ const FLOORS = {
      and pins the gesture findings (the strip's vertical flick, the scrubber's
      touch-action, the double home-indicator inset, Stop vs Close, hover vs
      playing). Sixteen tests, each mutation-checked red. */
-  "test/tap-targets.test.js": 23, // Redesign 2026 (the Dock): a receded 36px tab keeps its 44px target (the ::after), the mini bar pads for no inset; 22 -> 23 // audit round 2 (2026-09-23): the rendered-<button> census, the whole ep-row stretched link, the show-link hit box, the half-leading stamp, the static strip pans, no link preview; 18 -> 22 | earlier: visual pass 1 (2026-09-23): the mini bar's ↺15 and the clip rows' text buttons join the measured list; 16 -> 18 (two sweep tests had landed unfloored)
+  "test/tap-targets.test.js": 23, // Redesign 2026 (the Dock): a receded tab is a 44px target by its own box (round 2: the row is 44, the ::after is gone), the mini bar pads for no inset; 22 -> 23 // audit round 2 (2026-09-23): the rendered-<button> census, the whole ep-row stretched link, the show-link hit box, the half-leading stamp, the static strip pans, no link preview; 18 -> 22 | earlier: visual pass 1 (2026-09-23): the mini bar's ↺15 and the clip rows' text buttons join the measured list; 16 -> 18 (two sweep tests had landed unfloored)
   /* Theme E of the same audit: ONE owner for "a modal is open" — focus in and
      back, `inert`, Tab trap, Escape, one instance, the body lock derived from
      what is open (the back-gesture scroll-lock leak) — plus focus and the
@@ -1272,7 +1272,7 @@ const FLOORS = {
      not counted here) because a regression that reverted just the href
      while leaving tabForHash's mapping correct would otherwise pass. */
   "test/tab-bar.test.js": 12, // Redesign 2026 (the Dock): rewritten for THREE tabs and no drawer - ruling "4 tabs + drawer" fell; the folded routes, the glyph pairs, the resolved reservation at every inset and state, the mini row as a row of the Dock; 8 -> 12 // U-11 cutover (2026-09-06, kanban t_a3f01c8a): cp_ui_v2 is retired — ui2On() always returns true, so the off-by-default, native-shell-default, and explicit-off-overrides-native tests (4 of them) no longer have a flag-off state to assert against; replaced with one "always renders" test. 12 -> 8
-  "test/dock.test.js": 8, // Redesign 2026 (the Dock): the recede rule, the class surviving a repaint and dying with the page, the field row adoption, #/create owing the field focus, the fade and cast, ?posture=car
+  "test/dock.test.js": 12, // Redesign 2026 (the Dock, round 2: the field's words, the fade covering the whole Dock, its masked cast copy, the legacy controls the gates caught; 8 -> 12): the recede rule, the class surviving a repaint and dying with the page, the field row adoption, #/create owing the field focus, the fade and cast, ?posture=car
   /* U-06's Create screen (docs/ui-transition-plan.md D7+D8, kanban card
      t_bd3f749a): the Foray | Playlist toggle with Foray permanently
      disabled and honestly labelled, and Playlist mode reusing the real
@@ -1884,7 +1884,7 @@ const FLOORS = {
   /* Redesign 2026 visual baselines (pure diff/report logic, synthetic PNGs). Each test names its mutation. */
   "tools/ui-lab/baseline.test.mjs": 16,
   "tools/ui-lab/gates.test.mjs": 26, // hard-limit gate rules; pure, each test names its mutation
-  "tools/ui-lab/dock-check.test.mjs": 16, // Redesign 2026 (the Dock): the acceptance rules of lib/dock-rules.mjs, pure; each test names its mutation
+  "tools/ui-lab/dock-check.test.mjs": 17, // Redesign 2026 (the Dock; round 2 adds the playing-row rule, 16 -> 17, and re-points the fade, band and receded-row rules): the acceptance rules of lib/dock-rules.mjs, pure; each test names its mutation
   "tools/ui-lab/fidelity.test.mjs": 13,
   /* Audit round 3 (L8, data-tools-11): session.json is patched and verified
      before backfill-audio / classify-dai write any file, with replacer

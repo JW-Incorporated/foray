@@ -39,6 +39,7 @@ mkdirSync(out, { recursive: true });
 const SCREENS = {
   "dock/dock-discover": { field: true, mini: true },
   "dock/dock-receded": { field: false, mini: true },
+  "dock/dock-playing": { field: false, mini: true, playing: true },   // audio running: pause glyph, a progress line that has moved
   "player/mini-player-home": { field: false, mini: true },
   "player/mini-player-library": { field: false, mini: true },
   "player/mini-player-up-next": { field: false, mini: true },

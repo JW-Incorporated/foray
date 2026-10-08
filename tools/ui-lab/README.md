@@ -229,13 +229,13 @@ node tools/ui-lab/dock-check.mjs [--viewports 375x667,393x852] [--schemes dark,l
 ```
 
 The browser-only half of the Dock's acceptance (the DOM-less half is `test/dock.test.js` and `test/tab-bar.test.js`):
-walks the `dock`, `player` and `returning` states in each scheme and viewport and, at each of the eight Dock screens,
+walks the `dock`, `player` and `returning` states in each scheme and viewport and, at each of the nine Dock screens,
 measures the Dock at three scroll offsets (`lib/dock-measure.mjs`, run in the page) and evaluates every line of the
 acceptance (`lib/dock-rules.mjs`, pure and unit-tested in `dock-check.test.mjs`): the rows share an edge and fill the
 Dock; one Veil at the gutter inset, 12px above the safe area, radius 24, the rim between rows and none above the first;
 mini row sizes, one-line title, 2px Glow progress line (aria-hidden), region label; three tabs, one current, Fill glyph +
-`--text` for it; icons 28 / 24 and labels shown / faded when receded, and a receded tab's 44px hit area; the fade and the
-cast (260px, 14% / 9%, only with a mini row); **no text node in the band below the Dock's bottom edge at rendered opacity
+`--text` for it; icons 28 / 24 and labels shown / faded when receded (the receded row is 44, and every tab is 44x44 by its own box); the fade (covering the whole Dock: its top 32px above the Dock's) and the
+cast (260px, 14% / 9%, only with a mini row, and the fade's masked copy of it); **no text node in the band from the Dock's top edge to the screen's bottom at rendered opacity
 above 0.02** (judged through the fade by the gradient's own stop, and a screen where no text ever entered the band is a
 failure, so the rule cannot pass vacuously); and, on the last `dock` step, the interactions: the recede sequence (not at 60px, receded at 120px,
 restored by one pixel back up, 280ms `--e-out`), the folded routes (`#/create` -> Discover with the field focused in the

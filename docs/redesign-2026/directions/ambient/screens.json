@@ -472,6 +472,30 @@
           "app": "#tab-bar"
         }
       }
+    },
+    "dock-playing": {
+      "title": "Dock: Today with audio running, the mini row's pause glyph and its moving 2px Glow progress line",
+      "prototype": {
+        "route": "?mini=1#/home"
+      },
+      "app": {
+        "state": "dock",
+        "step": "dock-playing"
+      },
+      "regions": {
+        "dock": {
+          "prototype": ".dock",
+          "app": "#dock"
+        },
+        "mini": {
+          "prototype": ".mini",
+          "app": "#dock-mini"
+        },
+        "tabBar": {
+          "prototype": ".tabbar",
+          "app": "#tab-bar"
+        }
+      }
     }
   }
 }

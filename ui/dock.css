@@ -31,8 +31,12 @@
    --------------------------------------------------------------------------- */
 :root {
   --dock-field-row: 48px;        /* Discover's field row */
-  --dock-tab-receded: 36px;      /* the tab row after 80px of downward scroll, and always on Discover */
-  --dock-hit: 4px;               /* a receded tab reaches (44 - 36) / 2 past its row, above and below, to keep its 44px target */
+  /* The tab row after 80px of downward scroll, and always on Discover: the labels go, the row does NOT. 44, not the
+     36 BUILD-NOTES 3 first wrote, so every tab is its own 44px target with no hit-area trick and the Dock keeps the
+     row rhythm the prototype draws (its own comment: "44 rather than the spec's 36 because every tab keeps a 44px
+     target"). Round 2 of this screen: the first build followed the number and fidelity measured -8 on the row. */
+  --dock-tab-receded: 44px;
+  --dock-fade-rise: 32px;        /* the fade's ramp: content above the Dock's top edge fades to the page colour over this much */
 }
 body.ui-v2 {
   --dock-field-h: 0px;
@@ -48,6 +52,10 @@ body.ui-v2 {
      not Afterglow's bg0, so until a page adopts the system it fades to what is behind it. A
      page that wears `.ag` and paints bg0 sets `--dock-page-bg: var(--bg0)` on <body>. */
   --dock-page-bg: var(--bg);
+  /* The cast's centre, measured up from the screen's bottom: 24px under the Dock's top edge, at rest (a recede must
+     not slide the light). The cast (#dock-cast) and the fade's own copy of it (.dock-fade::before) both read it, so
+     the light is one radial whichever of the two paints it. */
+  --cast-centre: calc(var(--safe-bottom) + var(--dock-inset) + var(--dock-rest-h) - var(--s-6));
   padding-bottom: var(--dock-reserve);
 }
 body.ui-v2.fp-open { --dock-mini-h: var(--mini); }
@@ -79,7 +87,6 @@ body.ui-v2.sh-compose #view { padding-bottom: 0; }
 .dock-layer .icon-28 { --icon-size: var(--icon-tab); }
 .dock-layer .dock {
   pointer-events: auto;
-  overflow: visible;                          /* a receded tab's 44px target reaches past the row; the mini row clips its own corners */
   margin-inline: auto; max-width: 560px;      /* a wide window keeps a phone-width Dock */
   bottom: calc(var(--kb-inset, 0px) + var(--safe-bottom) + var(--dock-inset));
 }
@@ -89,15 +96,39 @@ body.ui-v2.sh-compose #view { padding-bottom: 0; }
    always was: it is one surface, so keeping the mini row live would leave the tabs live behind the dialog (a tab
    navigation dismisses onboarding for good). Nothing plays on a first visit; the Onboarding unit decides. */
 
-/* The fade and the cast belong to the PAGE'S colour, see --dock-page-bg above. */
-.dock-layer .dock-fade { background: linear-gradient(transparent 0, var(--dock-page-bg) 32px); }
+/* The fade and the cast belong to the PAGE'S colour, see --dock-page-bg above.
+
+   THE FADE COVERS THE WHOLE DOCK, not only the strip below it (DIRECTION "Materials": "content runs under the Dock and
+   fades to bg behind it; it is never sliced by the Dock's edge"). Its box is the Dock's height + the float + the safe
+   area + a 32px ramp, from the screen's bottom edge up: transparent at its top, the page colour from 32px down, so
+   from the Dock's top edge to the bottom of the screen the page is bg and above the Dock's top edge it ramps in.
+   Round 1 made it 56px tall (safe + 12 + 44), which left every card behind the Dock at full strength: a card wider
+   than the Dock showed its rounded outline framing the Dock on three sides, and a chip row ran into the Dock's
+   corners. It tracks the Dock's own height (--dock-h: a recede or a mini row moves it), so the ramp always ends on
+   the Dock's top edge.
+
+   THE CAST HAS TO SURVIVE IT. The cast sits behind the content and under this fade, so a plain fade would paint
+   the page colour over the light at the very edge it rises from. `::before` repeats the cast's radial in front of
+   the fade under a mask that is the fade's own alpha ramp: where the fade lets the page through, the real cast
+   shows behind it; where it covers the page, the copy shows in front; the two add up to the cast's one radial at
+   every height. Hidden with the cast when nothing plays. */
+.dock-layer .dock-fade {
+  height: calc(var(--dock-h) + var(--safe-bottom) + var(--dock-inset) + var(--dock-fade-rise));
+  background: linear-gradient(transparent 0, var(--dock-page-bg) var(--dock-fade-rise));
+}
+.dock-layer .dock-fade::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(90% 260px at 50% calc(100% - var(--cast-centre)), color-mix(in oklab, var(--glow) var(--cast-mix), transparent) 0%, transparent 100%);
+  -webkit-mask-image: linear-gradient(transparent 0, #000 var(--dock-fade-rise));
+  mask-image: linear-gradient(transparent 0, #000 var(--dock-fade-rise));
+}
+body.ui-v2:not(.fp-open) .dock-layer .dock-fade::before { display: none; }
 /* The cast sits BEHIND the page's content (over the canvas, under every in-flow box) and is never a layer of its own.
    tokens.css's `.dock-cast` is a 260px box whose bottom edge ends 24px under the Dock's top edge: it ends in the
    gutters beside the Dock too, where nothing covers the step from 6% Glow to none. Here the box runs on to the
    screen's bottom (where the fade has taken over) and the radial keeps its 260px radius and its centre, 24px
    under the Dock's top edge, so what is lit above the Dock is exactly tokens.css's and nothing steps below it. */
 #dock-cast {
-  --cast-centre: calc(var(--safe-bottom) + var(--dock-inset) + var(--dock-rest-h) - var(--s-6));   /* at rest: a recede must not slide the light */
   position: fixed; z-index: -1; top: auto; bottom: 0;
   height: calc(var(--cast-centre) + 260px);
   background: radial-gradient(90% 260px at 50% calc(100% - var(--cast-centre)), color-mix(in oklab, var(--glow) var(--cast-mix), transparent) 0%, transparent 100%);
@@ -188,21 +219,32 @@ body.ui-v2:not(.fp-open) #dock-cast { display: none; }
 .dock-layer .tab-label {
   display: block; height: calc(var(--s-4) + var(--s-1) / 2); line-height: calc(var(--s-4) + var(--s-1) / 2); overflow: hidden;
 }
-/* RECEDED: 64 to 36, labels fade (they stay in the tree: the name of the link), icons 28 to 24.
+/* RECEDED: 64 to 44, labels fade (they stay in the tree: the name of the link), icons 28 to 24. The row is
+   still a 44px row, so every tab is its own 44px target - only the labels leave.
    Always on Discover (the field row is above); on any page after 80px of downward scroll. */
 body.ui-v2.dock-receded .dock-layer .tab-bar, body.ui-v2.sh-compose .dock-layer .tab-bar { height: var(--dock-tab-receded); }
 body.ui-v2.dock-receded .dock-layer .tab-glyphs, body.ui-v2.sh-compose .dock-layer .tab-glyphs { width: var(--icon); height: var(--icon); }
 body.ui-v2.dock-receded .dock-layer .tab-label, body.ui-v2.sh-compose .dock-layer .tab-label { height: 0; opacity: 0; }
-/* The 44px target of a 36px row: the link reaches (44 - 36) / 2 past it, above and below. The row's
-   bottom edge is the Dock's, and the Dock does not clip (section 2), so the lower half still hits. */
-body.ui-v2.dock-receded .dock-layer .tab-btn::after, body.ui-v2.sh-compose .dock-layer .tab-btn::after {
-  content: ""; position: absolute; left: 0; right: 0; top: calc(var(--dock-hit) * -1); bottom: calc(var(--dock-hit) * -1);
-}
 
 /* ---------------------------------------------------------------------------
    6. The Settings button in the top bar: the gear is a sprite glyph now, not a text glyph.
    --------------------------------------------------------------------------- */
 .topbar .topbar-glyph { width: var(--icon); height: var(--icon); fill: currentColor; stroke: none; vertical-align: middle; pointer-events: none; }
+
+/* ---------------------------------------------------------------------------
+   6b. LEGACY CONTROLS THE `dock/*` SCREEN IDS PUT IN FRONT OF THE GATES. Round 1 of this screen carried them as
+      known debt (24 new violations: the screen ids are new, the controls are not). They are on every page the
+      Dock sits under, so the Dock's own unit clears them rather than adding to tools/ui-lab/gates-known-debt.json.
+      Each is a real size, not a hit-area trick: gates.mjs counts an extension only when nothing else can sit over it,
+      and the chips sit 8px apart. The Today and Discover units replace these controls; until then:
+        - the wordmark is a 24x24 link (it is the only way "home" is named on a page that has no Today tab lit);
+        - every `.fy-chip` (Discover's pill wall, Create's suggestions, the reason sheet) is 32px tall;
+        - Home's play capsule is white on #a78bfa, 2.72:1 (its `.hv2-play-title` is dimmer, 2.48:1): ink on the
+          violet is about 7:1 and the capsule keeps its colour.
+   --------------------------------------------------------------------------- */
+body.ui-v2 .topbar h1 a.wordmark { display: inline-flex; align-items: center; min-width: var(--tap); min-height: var(--tap); }
+body.ui-v2 .fy-chip { display: inline-flex; align-items: center; min-height: var(--tap); }
+body.ui-v2 .hv2-play { color: var(--bg); }   /* the legacy page colour: dark in both schemes, unlike Afterglow's --ember-ink (white in Dawn) */
 
 /* ---------------------------------------------------------------------------
    7. STATES, LAST so they out-rank the rows' own display. A soft keyboard or a focused field: the
@@ -224,7 +266,8 @@ body.ui-v2.kb-open #dock-cast, body.ui-v2.sh-searching #dock-cast { opacity: 0; 
       block's 200ms crossfade of an `.ag` subtree is the open question tokens.css's header records.
    --------------------------------------------------------------------------- */
 @media (prefers-reduced-motion: no-preference) {
-  .dock-layer .dock-fade, #dock-cast { transition: opacity var(--m-ui) var(--e-out); }
+  .dock-layer .dock-fade { transition: opacity var(--m-ui) var(--e-out), height var(--m-ui) var(--e-out); }   /* height: the ramp follows the Dock's own recede */
+  #dock-cast { transition: opacity var(--m-ui) var(--e-out); }
   .dock-layer .dock-mini .fp-fill { transition: width var(--m-ui) linear; }
   .dock-layer .fp-play, .dock-layer .fp-skip { transition: transform var(--m-micro) var(--e-out); }
   .dock-layer .tab-bar { transition: height var(--m-ui) var(--e-out); }
