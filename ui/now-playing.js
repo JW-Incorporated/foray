@@ -131,7 +131,10 @@ function dialBuildNowPlaying(parts) {
   dialPaintNowPlayingRate(parts.rateBtn, 1);
   parts.bookmarkBtn.className = "fp-btn fp-bookmark keycap keycap--sm keycap--paper";
   parts.bookmarkBtn.innerHTML = dialNpIcon("ph-bookmark-simple");
-  parts.queueLink.className = "fp-upnext keycap keycap--sm keycap--paper";
+  /* The Up next opener is a menu opener, so a quiet round chip: the direction
+     keeps keys for what changes playback or the collection (Tactile DIRECTION,
+     keycaps). Bookmark stays the one key in this row. */
+  parts.queueLink.className = "fp-upnext rotary-chip rotary-chip--icon";
   parts.queueLink.innerHTML = dialNpIcon("ph-list-bullets") + '<span class="np__badge readout" hidden>0</span>';
   /* The Play keycap's glyph is ph-play-fill / ph-pause-fill, drawn by
      dialPaintNowPlaying. Left out of this list it was a text "▶" / "❚❚": client.js's

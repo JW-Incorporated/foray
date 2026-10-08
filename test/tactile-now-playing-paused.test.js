@@ -297,3 +297,52 @@ test("the transport keeps the prototype's 68/80/68 key widths and the Up next he
   assert.match(rule(".np__top"), /min-height:\s*calc\(100% - 189px - var\(--safe-b\)\)/);
   assert.match(rule(".np__dock::before"), /inset:\s*-14px 0/);
 });
+
+test("the Up next opener is a quiet round chip, so the second row reads one key (bookmark) and three chips", () => {
+  /* The prototype draws the opener as `.iconbtn` (44px, round, on the card, a 1px ring,
+     no lip); DIRECTION: keys are for what changes playback or the collection, a menu
+     opener is quiet. It was built as a keycap, which made the row two keys plus two chips.
+     MUTATION 1: put "keycap keycap--sm keycap--paper" back on `parts.queueLink.className`
+     -> red. MUTATION 2: drop `rotary-chip` from that className -> red.
+     MUTATION 3: delete `width: var(--tap)` from `.np .fp-upnext` -> red (the chip would
+     stretch to the glyph plus the chip's side padding, off the prototype's 44). */
+  const line = /parts\.queueLink\.className = "([^"]*)";/.exec(NP_SRC);
+  assert.ok(line, "the opener's className is assigned in one place");
+  const classes = line[1].split(/\s+/);
+  assert.ok(classes.includes("fp-upnext") && classes.includes("rotary-chip"), "round chip: " + line[1]);
+  assert.ok(!classes.some((c) => c.startsWith("keycap")), "no keycap class on the opener: " + line[1]);
+  const keys = [...NP_SRC.matchAll(/parts\.(\w+)\.className = "[^"]*\bkeycap\b/g)].map((m) => m[1]);
+  assert.deepStrictEqual(keys.filter((k) => ["rateBtn", "bookmarkBtn", "queueLink"].includes(k)), ["bookmarkBtn"]);
+  const chip = rule(".np .fp-upnext");
+  assert.match(chip, /[^-]width:\s*var\(--tap\)/);
+  assert.match(chip, /padding:\s*0;/);
+});
+
+test("the Up next card's art tile is top-aligned so it sits in the part of the card the dock fade leaves visible", () => {
+  /* A tall body (title, why-line) centred the 56px tile lower, under the keys and the
+     paper fade: the slot read as empty at 393x852 though the tile was drawn.
+     MUTATION: set `.np__up-next-card` back to `align-items: center` -> red. */
+  const card = rule(".np__up-next-card");
+  assert.match(card, /align-items:\s*start/);
+  assert.doesNotMatch(card, /align-items:\s*center/);
+});
+
+test("the harness foray carries no narration, so its band is bars only; a narrated foray in the same data hatches", () => {
+  /* The hatch is the 'authored by 4a' mark, so its absence from the paused render had to
+     be checked against the data, not assumed: capital-types-1 (the step's foray) is 22
+     show segments and no narration item, while the published how-ai-actually-gets-built
+     foray carries 39. The sheet draws its band through tactileBand's non-mini path, which
+     hatches narration (test/tactile-band.test.js pins that half: the hatch fill URL on
+     every narration rect). If a narrated fixture ever replaces capital-types-1 this test
+     goes red and the render deviation is real, not data.
+     MUTATION 1: add one non-segment item to capital-types-1 in data/forays.json -> red.
+     MUTATION 2: change `kind: "scrub"` to `kind: "mini"` in the sheet's band paint -> red. */
+  const doc = JSON.parse(fs.readFileSync(path.join(ROOT, "data", "forays.json"), "utf8"));
+  const list = Array.isArray(doc) ? doc : doc.forays;
+  const byId = new Map(list.map((f) => [f.id, f]));
+  const narrations = (f) => f.items.filter((i) => i.type !== "segment").length;
+  assert.match(STATES, /const id = "capital-types-1";/);
+  assert.strictEqual(narrations(byId.get("capital-types-1")), 0, "the harness foray has no narration");
+  assert.ok(narrations(byId.get("how-ai-actually-gets-built-3b83e1")) > 0, "a narrated foray exists to show the hatch");
+  assert.match(NP_SRC, /tactileBand\(\{[^}]*kind:\s*"scrub"/);
+});
