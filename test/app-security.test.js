@@ -26,6 +26,8 @@ const vm = require("node:vm");
 const fs = require("node:fs");
 const path = require("node:path");
 const { readAppSource, runAppSource } = require("./helpers/app-source.js");
+// The href/src census lives in a helper so ui/search.js can be pointed at it too.
+const { interpolatedUrlAttrs, unguardedInterpolatedUrlAttrs } = require("./helpers/url-attr-census.js");
 
 const APP_PATH = path.join(__dirname, "..", "app.js");
 const SRC = readAppSource();
@@ -138,8 +140,9 @@ test("safeUrl passes exactly the icon sprite's own fragments and refuses every o
   /* Icon <use href>s go through safeUrl like every other href (third review of
      redesign/tactile-p3-primitives: a second, non-safeUrl guard for sprite
      refs was a breach of the hard limit). So safeUrl passes "#" + a symbol id
-     from app.js SPRITE_IDS, verbatim, and nothing else that starts with "#":
-     not an in-app route, not an element id, not an unknown or hostile id.
+     from app.js SPRITE_IDS, verbatim, and nothing else that starts with "#"
+     except an in-app route (the next test): not an element id, not an unknown
+     or hostile id.
      ui/downloads.js no longer reads "#" as its only refusal (it tests for
      http(s); test/downloads.test.js pins that).
      MUTATION: delete the SPRITE_IDS line from safeUrl -> "#ph-play" comes back
@@ -148,7 +151,7 @@ test("safeUrl passes exactly the icon sprite's own fragments and refuses every o
      refusals below fail. */
   assert.strictEqual(app.safeUrl("#ph-play"), "#ph-play");
   assert.strictEqual(app.safeUrl("#knob"), "#knob");
-  for (const bad of ["#/library", "#ep-1", "#ph-nope", "#PH-PLAY", "#ph-play ", '#ph-play" onload="x', "##ph-play", "#"]) {
+  for (const bad of ["#ep-1", "#ph-nope", "#PH-PLAY", "#ph-play ", '#ph-play" onload="x', "##ph-play", "#"]) {
     assert.strictEqual(app.safeUrl(bad), "#", `${bad} is not a sprite symbol`);
   }
 });
@@ -195,20 +198,79 @@ test("safeUrl does not attempt to sanitise — it either allows or replaces", ()
     The page has a strict CSP — no inline styles/scripts."
    Enforced by nothing until now. */
 
+test("safeUrl passes an in-app route and refuses anything a route cannot be", () => {
+  /* An in-app link is "#/" + an encoded path. It goes through safeUrl like every
+     other href (no literal-#/ exemption: PLAN.md "Hard limits", and the census
+     below), so safeUrl must pass a well-formed route and refuse everything that
+     could break out of the attribute or smuggle a scheme.
+     MUTATION: delete the route clause from safeUrl -> every route answers "#"
+     and the first loop fails (every in-app link would go dead).
+     MUTATION 2: widen the route pattern's class to `[^\s]` -> the quote, angle-bracket and
+     backtick refusals below fail.
+     MUTATION 3: replace `%[0-9A-Fa-f]{2}` with a bare `%` -> "#/a%zz" and the
+     unterminated escapes fail. */
+  for (const ok of [
+    "#/", "#/library", "#/show/abc123", "#/episode/a%2Fb%23c%3Fd%25e", "#/playlist/gen-history%2Ftechnology%22%20onclick%3D%22x",
+    "#/episode/javascript%3Aalert(1)", "#/shows/q/sleep%20well", "#/subject/Self-care",
+  ]) assert.strictEqual(app.safeUrl(ok), ok, ok + " is a route");
+  for (const bad of [
+    '#/x" onclick="y', "#/x y", "#/x<script>", "#/x>", "#/x`", "#/x\"", "#/a%zz", "#/a%2", "#/a%", "#/a\nb", "#/a\\b", "#/a#b",
+    "#library", "#/ ", "#/a{b}", "#/a|b", "#/a^b",
+  ]) {
+    assert.strictEqual(app.safeUrl(bad), "#", JSON.stringify(bad) + " is not a route");
+  }
+  const long = "#/" + "x".repeat(5000);
+  assert.strictEqual(app.safeUrl(long), long, "a long route is matched in linear time");
+});
+
+test("the census sees an interpolation that does not open the attribute value", () => {
+  /* The census must catch every shape that evaded the old opener-only regex.
+     MUTATION: make interpolatedUrlAttrs report only values that START with ${
+     (the old behaviour) -> the literal-prefix, mid-value, ternary and
+     single-quote samples below stop being reported and this fails. */
+  const unguarded = [
+    'a href="#/${esc(playlistRoute(p))}"',
+    'a href="#/episode/${esc(encodeURIComponent(item.id))}"',
+    'a href="#/${on ? esc(r) : "playlists"}"',
+    "a href='#/${esc(r)}'",
+    'a href="${esc(url)}"',
+    'img src="/art/${esc(id)}.jpg"',
+    'a href="#/show/${encodeURIComponent(id)}" title="${esc(t)}"',
+    "a href=${esc(u)}",
+  ];
+  for (const sample of unguarded) {
+    assert.strictEqual(unguardedInterpolatedUrlAttrs(sample).length, 1, "should be flagged: " + sample);
+  }
+  const fine = [
+    'a href="${esc(safeUrl("#/" + playlistRoute(p)))}"',
+    'a href="#/library"',
+    'a title="${esc(t)}" href="${esc(safeUrl(u))}"',
+    'a href="${esc(safeUrl(on ? "#/" + esc(r) : "#/playlists"))}"',
+  ];
+  for (const sample of fine) {
+    assert.deepStrictEqual(unguardedInterpolatedUrlAttrs(sample), [], "should pass: " + sample);
+  }
+  /* One bad interpolation among guarded ones is still reported. */
+  assert.strictEqual(unguardedInterpolatedUrlAttrs('a href="${esc(safeUrl(a))}/${esc(b)}"').length, 1);
+});
+
 test("every template or classic-script concatenated href and src passes through safeUrl", () => {
   /* No exemptions: an icon sprite <use href> goes through safeUrl too (third
      review of redesign/tactile-p3-primitives removed the tactileSpriteRef
-     exemption this scan used to carry).
+     exemption this scan used to carry), and so does an in-app "#/" route (review
+     of redesign/tactile-search-typing removed the literal-prefix exemption: safeUrl
+     now passes a well-formed route, see the route test above).
      MUTATION: replace `esc(safeUrl(tactileSpriteRef(id)))` in tactileIcon with
      `esc(tactileSpriteRef(id))` -> the concatenated <use href> is reported here.
      MUTATION 2: replace `esc(safeUrl(artUrl(d.url, px * 3)))` in tactileArtFrame with
-     `esc(artUrl(d.url, px * 3))` -> the concatenated <img src> is reported here. */
-  const templates = SRC.match(/\b(?:href|src)\s*=\s*"\$\{[^}]*\}/g) || [];
+     `esc(artUrl(d.url, px * 3))` -> the concatenated <img src> is reported here.
+     MUTATION 3: in ui/search.js change the playlist card's href back to
+     `href="#/${esc(playlistRoute(p))}"` -> reported here (the old census missed it). */
+  const seen = interpolatedUrlAttrs(SRC);
   const concatenated = SRC.match(/\b(?:href|src)=["'][^"'`\n]*(?:'|")\s*\+\s*[^+\n]+/g) || [];
-  assert.ok(templates.length > 0, "expected at least one template href/src to guard");
+  assert.ok(seen.length > 0, "expected at least one template href/src to guard");
   assert.ok(concatenated.length > 0, "expected at least one classic-script concatenated href/src to guard");
-  const guarded = (a) => a.includes("safeUrl(");
-  const unguarded = [...templates, ...concatenated].filter((a) => !guarded(a));
+  const unguarded = [...unguardedInterpolatedUrlAttrs(SRC), ...concatenated.filter((a) => !a.includes("safeUrl("))];
   assert.deepStrictEqual(
     unguarded, [],
     "these href/src interpolations bypass safeUrl():\n" + unguarded.join("\n")

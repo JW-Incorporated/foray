@@ -2557,8 +2557,22 @@ function syncCardButtons(loading = false) {
     /* The row's own title, stamped by app.js's playBtn: `current` is a
        different episode on every row but one. */
     const title = b.dataset.title || "this episode";
-    paintControl(b, on ? "❚❚" : "▶", `${on ? "Pause" : "Play"} ${title}`);
+    paintCardControl(b, on, `${on ? "Pause" : "Play"} ${title}`);
   });
+}
+
+/* A row's play control, repainted. A glyph button (the legacy `.play-btn`) is its
+   text, so the text is what changes. A KEYCAP (Tactile rows: the Find results
+   carry one) holds a sprite icon and no text, and writing `textContent` over it
+   would delete the icon and leave a bare "▶" in a key made for a drawn one; its
+   `<use>` href swaps between the two Phosphor fills instead and its name follows
+   in the same write. Both are compared before they are written (perf-7). */
+function paintCardControl(btn, playing, label) {
+  const use = typeof btn.querySelector === "function" ? btn.querySelector("use") : null;
+  if (!use) { paintControl(btn, playing ? "❚❚" : "▶", label); return; }
+  const href = playing ? "#ph-pause-fill" : "#ph-play-fill";
+  if (use.getAttribute("href") !== href) use.setAttribute("href", href);
+  if (btn.getAttribute("aria-label") !== label) btn.setAttribute("aria-label", label);
 }
 
 function setNowPlaying(item, why) {

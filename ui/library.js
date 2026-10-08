@@ -42,17 +42,13 @@
    caps its rails — a scroll-forever list is not what "recently listened"
    means. Saved has no cap: an unbounded star list is the one honest reading
    of "everything you saved". */
-/* This one's href is `#${...}` rather than a bare `${...}` — the leading `#`
-   is a literal prefix, not part of the interpolation, so it reads the same
-   as every other in-app hash link (`#/playlist/` + esc(id), etc.) rather
-   than a URL built entirely from a variable, which is exactly the shape
-   test/app-security.test.js's static safeUrl-guard checks for
-   (CLAUDE.md § Conventions: "all href/src through safeUrl()" — that rule is
-   for links that can carry an attacker-controlled scheme; an in-app hash
-   route built from this module's own constant strings and `playlists()`/
-   `queueIds()` ids, which esc() already escapes, is not one). */
+/* The href is `"#" + hashPath` through safeUrl like every other (CLAUDE.md
+   § Conventions: "all href/src through safeUrl()"; test/app-security.test.js
+   reads every interpolated href, whatever it opens with). hashPath is this
+   module's own constant route or an encoded id, which safeUrl passes as an
+   in-app route. */
 function libSummaryRow(hashPath, title, sub) {
-  return `<a class="pl-row" href="#${esc(hashPath)}">
+  return `<a class="pl-row" href="${esc(safeUrl("#" + hashPath))}">
     <div class="info">
       <div class="t">${esc(title)}</div>
       <div class="s">${esc(sub)}</div>
@@ -205,7 +201,7 @@ function renderPlaylists() {
       </div>
       <a class="page-link-row" href="#/create">Build a playlist ›</a>
       ${all.length ? all.map(p => `
-        <a class="pl-row" href="#/${esc(playlistRoute(p))}">
+        <a class="pl-row" href="${esc(safeUrl("#/" + playlistRoute(p)))}">
           <div class="info">
             <div class="t">${esc(p.title)}</div>
             <div class="s">${joinMeta(playlistLengthLabel(p), playedOnLabel(p.last_played_at))}</div>

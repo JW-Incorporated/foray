@@ -34,8 +34,8 @@ function showResultRow(show) {
   /* `title=` carries the whole name: styles.css clamps the row's title to two
      lines (audit round 2, search-11), so a 125-character title is cut on
      screen, and hover and a long-press tooltip still have all of it. */
-  return `<a class="show-result" href="#/show/${encodeURIComponent(show.show_id)}" title="${esc(show.title)}">
-    ${art ? rowArtImg(art) : `<span class="show-result-art show-result-art-blank"></span>`}
+  return `<a class="show-result" href="${esc(safeUrl("#/show/" + encodeURIComponent(show.show_id)))}" title="${esc(show.title)}">
+    ${art ? rowArtImg(art) : `<span class="show-result-art show-result-art-blank" data-i="${esc(tactileStationCode(show.title))}"></span>`}
     <span class="show-result-text">
       <span class="show-result-title">${esc(show.title)}</span>
       ${by ? `<span class="show-result-by">${esc(by)}</span>` : ""}
@@ -926,6 +926,11 @@ function paintShowResults(query, shows, myToken) {
        doing exactly that; a search that found nothing says so, and nothing
        about whose catalogue fell short. */
     const settled = showSearchSettled.token === myToken;
+    /* Which line this is, for styles.css: a SETTLED "no shows" line gives way when
+       Episodes, Playlists or Forays answered (the Shows group is simply absent
+       then, as in the prototype), while "Searching for ..." always stays, since
+       it says an answer is still owed. */
+    if (note.dataset) note.dataset.state = settled ? "empty" : "searching";
     note.textContent = !settled ? `Searching for ${quoteQuery(query)}…`
       : offline ? `You're offline — no shows found for ${quoteQuery(query)}.`
       : `No shows found for ${quoteQuery(query)}.`;
@@ -945,7 +950,13 @@ function paintShowResults(query, shows, myToken) {
   }
   const cap = showSearchPaintCap.n;
   const more = shows.length - cap;
-  results.innerHTML = shows.slice(0, cap).map(showResultRow).join("")
+  /* TACTILE `search-typing` (BUILD-PLAN 2.10): each row is a `.row-show` (56px)
+     around the same `.show-result` link every other list of shows draws, and
+     the heading carries the count of matches, not of the rows painted so far
+     (the page of rows below it grows with "Show more shows"). */
+  const countEl = $("#sh-results-count");
+  setStatusText(countEl, String(shows.length));
+  results.innerHTML = shows.slice(0, cap).map((s) => `<div class="row-show">${showResultRow(s)}</div>`).join("")
     + (more > 0 ? `<button type="button" class="fy-script-more" data-sh-more>Show more shows</button>` : "");
   results.hidden = false;
   const moreBtn = more > 0 && typeof results.querySelector === "function" ? results.querySelector("[data-sh-more]") : null;
@@ -1781,43 +1792,83 @@ function renderPlaylistSearchResults(query, myToken, reportCtaMs = () => {}) {
        (a newer query, or a cleared field, owns the container outright). */
     container.innerHTML = CTA_PENDING_HTML;
     container.hidden = false;
-    whenIdle(() => searchDataSettled().then(() => {
-      if (myToken !== showSearchToken) { reportCtaMs(null); return; } // a newer query already superseded this one
-      /* Belt to the router's supersede (app-2-3): a section no longer in the
-         document is nobody's, so the multi-second scan is not run for it. */
-      if (container.isConnected === false) { reportCtaMs(null); return; }
-      const ctaStart = nowMs();
-      /* A scan that throws must not leave "Still looking" up for good: the
-         pending line is a promise that this callback always ends it. */
-      let cta = "";
-      try { cta = createPlaylistCtaHtml(query); } catch (err) { console.warn("[search] playlist CTA scan failed", err); }
-      reportCtaMs(nowMs() - ctaStart);
-      if (!cta) { container.innerHTML = ""; container.hidden = true; return; } // answered: nothing to offer
-      container.innerHTML = cta;
-      container.hidden = false;
-      bindCreatePlaylistCta(container);
-    }));
+    scheduleCreatePlaylistCta(container, query, myToken, reportCtaMs, "");
     return;
   }
 
-  const row = (p, generated) => `
-    <a class="pl-row" href="#/${esc(playlistRoute(p))}">
-      <div class="info">
-        <div class="t">${esc(p.title)}${generated ? ` <span class="fy-badge fy-badge-generated">Generated for you</span>` : ""}</div>
-        <div class="s">${playlistLengthLabel(p)}</div>
-      </div>
-      <span class="chev">\u203a</span>
+  /* TACTILE `search-typing` (BUILD-PLAN 2.10): a playlist is a CARD in a
+     two-column grid, a collage of its shows' covers over its name and length
+     (the prototype's `.pcard`, the same shape Today and Yours use), under a
+     heading with the count. The route, the "Generated for you" badge and the
+     own-before-generated order are what the rows carried before. */
+  const card = (p, generated) => {
+    const arts = playlistCoverUrls(p);
+    const cells = arts.length
+      ? arts.map((u, i) => findArtHtml({ id: `${p.id}:${i}`, name: p.title, url: u }, "find-art--cell")).join("")
+      : findArtHtml({ id: String(p.id), name: p.title, url: null }, "find-art--cell");
+    return `<a class="pcard pl-card" href="${esc(safeUrl("#/" + playlistRoute(p)))}">
+      <span class="find-collage find-collage--card${arts.length < 2 ? " is-single" : ""}" aria-hidden="true">${cells}</span>
+      <span class="h17 pcard__name">${esc(p.title)}</span>${generated ? `<span class="fy-badge fy-badge-generated">Generated for you</span>` : ""}
+      <span class="readout muted">${playlistLengthLabel(p)}</span>
     </a>`;
-
-  container.innerHTML = `<section class="ep-more fy-playlist-search">
-    <h3>Playlists</h3>
-    <div class="show-results">
-      ${own.map(p => row(p, false)).join("")}
-      ${generated.map(p => row(p, true)).join("")}
+  };
+  const section = `<section class="ep-more fy-playlist-search">
+    <h3>Playlists<span class="readout find-count">${own.length + generated.length}</span></h3>
+    <div class="pgrid">
+      ${own.map(p => card(p, false)).join("")}
+      ${generated.map(p => card(p, true)).join("")}
     </div>
   </section>`;
+  container.innerHTML = section;
   container.hidden = false;
-  reportCtaMs(null); // the scan never ran: a playlist already matched
+  /* THE KEY IS THE LAST ROW OF THE PAGE WHETHER OR NOT A PLAYLIST MATCHED (the
+     prototype's results always end on it). It used to be offered only when none
+     did; the same gate still decides it (a tap must be able to build), so it
+     arrives after the playlists, on the same idle scan. */
+  scheduleCreatePlaylistCta(container, query, myToken, reportCtaMs, section);
+}
+
+/** Up to four distinct cover URLs for a playlist's collage: its live episodes'
+    own artwork, else the artwork its show carries. Nothing is fetched; a part
+    with no cover contributes none, and a playlist with none draws one initials
+    cell. */
+function playlistCoverUrls(p) {
+  const out = [];
+  for (const r of resolveParts(p)) {
+    if (r.state === "hidden") continue;
+    const it = r.item || {};
+    const url = it.artwork_url || (it.show_id ? showArtworkUrl(showById(it.show_id)) : null);
+    if (url && !out.includes(url)) out.push(url);
+    if (out.length >= 4) break;
+  }
+  return out;
+}
+
+/** The deferred half of the "Make a playlist about" key, shared by the path
+    with no matching playlist (the pending line stands in until it answers) and
+    the one with some (the section stays, the key joins it). `sectionHtml` is
+    what the container holds ahead of the key. */
+function scheduleCreatePlaylistCta(container, query, myToken, reportCtaMs, sectionHtml) {
+  whenIdle(() => searchDataSettled().then(() => {
+    if (myToken !== showSearchToken) { reportCtaMs(null); return; } // a newer query already superseded this one
+    /* Belt to the router's supersede (app-2-3): a section no longer in the
+       document is nobody's, so the multi-second scan is not run for it. */
+    if (container.isConnected === false) { reportCtaMs(null); return; }
+    const ctaStart = nowMs();
+    /* A scan that throws must not leave "Still looking" up for good: the
+       pending line is a promise that this callback always ends it. */
+    let cta = "";
+    try { cta = createPlaylistCtaHtml(query); } catch (err) { console.warn("[search] playlist CTA scan failed", err); }
+    reportCtaMs(nowMs() - ctaStart);
+    if (!cta) {
+      container.innerHTML = sectionHtml;
+      container.hidden = !sectionHtml; // answered: nothing to offer
+      return;
+    }
+    container.innerHTML = sectionHtml + cta;
+    container.hidden = false;
+    bindCreatePlaylistCta(container);
+  }));
 }
 
 /* U-05 (#135, D7/D8): appears in place of a Playlists section when no
@@ -1842,10 +1893,27 @@ function renderPlaylistSearchResults(query, myToken, reportCtaMs = () => {}) {
 function createPlaylistCtaHtml(query) {
   const status = topicSearchStatus(query).status;
   if (status !== "ok" && status !== "sparse") return "";
+  return makePlaylistKeyHtml(query);
+}
+
+/** The key's own quote pair: single curly quotes, \u2018 and \u2019, as the prototype
+    authors them ("Make a playlist about \u2018chern\u2019"). `quoteQuery` (app.js) stays
+    the pair for every sentence that quotes a query back; the key is a control label and
+    the direction draws it with the single pair. One helper, so the pair lives in one place. */
+function quoteKeyQuery(text) {
+  return `\u2018${text}\u2019`;
+}
+
+/** THE KEY ITSELF (Tactile `search-typing`, BUILD-PLAN 2.10, BUILD-NOTES 4.4): a
+    full-width ultramarine keycap, "Make a playlist about \u2018query\u2019", with
+    Phosphor's sparkle ahead of the words. Never the bridge mark: that glyph means
+    Stretch and nothing else. Split from the gate above so what the query becomes
+    in the markup (escaped once, in the label and in the attribute) can be pinned
+    with a query the scorer would never answer. A long query is cut by an
+    ellipsis in styles.css, not wrapped. */
+function makePlaylistKeyHtml(query) {
   return `<div class="sh-create-cta">
-    <button type="button" class="fy-btn fy-main" data-create-playlist="${esc(query)}">
-      Create a playlist about ${quoteQuery(esc(query))}
-    </button>
+    <button type="button" class="keycap keycap--md keycap--ultramarine keycap--wide" data-create-playlist="${esc(query)}">${tactileIcon("ph-sparkle")}<span class="keycap__label">Make a playlist about ${quoteKeyQuery(esc(query))}</span></button>
   </div>`;
 }
 
@@ -2099,6 +2167,62 @@ function localEpisodeMatches(query) {
   return byTitle.concat(byShow).slice(0, LOCAL_EPISODE_TIER_MAX);
 }
 
+/** "Up Next" on a Find row, drawn the way the prototype draws it: Phosphor Bold's plus
+    (ph-plus) or check (ph-check, once queued) ahead of the words, never a "+" or a
+    check mark typed into the text. The gate is `upNextBtn`'s own (it answers "" for what
+    addToQueue refuses), so the two cannot disagree about which rows get a control; the
+    state is read from the queue, as upNextBtn reads it. The accessible name comes from
+    `UP_NEXT_TOGGLE`'s labels, which differ from the visible "Up Next", and bindUpNext
+    repaints the icon and the name together (see `paintUpNext`). */
+function searchUpNextBtn(id, item) {
+  if (!upNextBtn(id, item)) return "";
+  const on = isQueued(id);
+  const label = on ? UP_NEXT_TOGGLE.onLabel : UP_NEXT_TOGGLE.offLabel;
+  return `<button class="up-next ${on ? "on" : ""}" data-upnext="${esc(id)}" data-upnext-icon="1" aria-label="${esc(label)}">${tactileIcon(on ? "ph-check" : "ph-plus")}<span>Up Next</span></button>`;
+}
+
+/** THE EPISODE ROW OF THE FIND RESULTS (Tactile `search-typing`, BUILD-PLAN 2.10,
+    BUILD-NOTES 3.9): art 56, the title (two lines), a meta line of the show's
+    display name, the length and "+ Up Next", and ONE trailing Play keycap `sm`.
+    Built on the shared controls rather than beside them: the key carries
+    `data-play` (bindPlay and the player's syncCardButtons drive it, and the
+    player swaps its icon), "+ Up Next" is `upNextBtn` verbatim (bindUpNext and
+    setToggleLabel keep painting it from the queue), the title is a link to the
+    episode page that stretches over the row.
+
+    What this row has that the prototype's does not: the "played" / "12 min left"
+    mark. What it no longer has: the first words of the publisher's description
+    (the founder asked for them under every episode title on 2026-10-03; the owner's
+    pick, Tactile, draws search rows without them, and its 4px fidelity bar on the
+    row is measured against that), the star (a second trailing control; saving is
+    on the episode page), the date, and the link on the show's name (a plain name,
+    as the prototype has it: the title leads to a page that links the show).
+
+    THE SHOW NAME IS THE DISPLAY NAME (`tactileDisplayName`: no " - \u2026", " | \u2026",
+    " with \u2026" or " (\u2026)" clause) and styles.css gives it `min-width: 112px`
+    so it ellipsises last, after the length and the action have taken their room. */
+function searchEpisodeRow(item, ctx) {
+  const title = item.title || "Episode";
+  const art = item.artwork_url || (item.show_id ? showArtworkUrl(showById(item.show_id)) : null);
+  const showName = tactileDisplayName(item.show);
+  const dur = fmtDur(episodeMinutes(item));
+  const prog = rowProgress(item);
+  const progHtml = prog && prog.label
+    ? `<span class="ep-progress${prog.state === "played" ? " is-played" : ""}">${esc(prog.label)}</span>`
+    : "";
+  const key = item.audio_url
+    ? `<button type="button" class="keycap keycap--sm keycap--persimmon row-play" data-play="${esc(item.id)}"${ctx ? ` data-ctx="${esc(ctx)}"` : ""} data-title="${esc(title)}" aria-label="${esc(`Play ${title}`)}">${tactileIcon("ph-play-fill")}</button>`
+    : notPlayableNote();
+  return `<article class="row-episode">
+    ${tactileArtFrame({ size: "row", url: art, initials: tactileStationCode(showName) })}
+    <div class="row__body">
+      <h3 class="row__title"><a class="ep-title-link" href="${esc(safeUrl("#/episode/" + encodeURIComponent(item.id)))}">${esc(title)}</a>${explicitBadge(item.explicit)}</h3>
+      <div class="row__meta"><span class="row__show">${esc(showName)}</span><span class="row__tail">${dur ? `<span class="readout">${esc(dur)}</span>` : ""}${progHtml}${searchUpNextBtn(item.id, item)}</span></div>
+    </div>
+    <div class="row__end">${key}</div>
+  </article>`;
+}
+
 /** Paints one episode answer, or the honest nothing. Split out of the fetch so
     a cache hit and a fresh response cannot drift into two renderers.
 
@@ -2170,7 +2294,7 @@ function paintEpisodeSearchResults(query, data, container, localEpisodes) {
         duration_sec: ep.duration_seconds ?? null,
         topics: [],
       });
-      return epRow(item, i, ctx, -1);
+      return searchEpisodeRow(item, ctx);
     }
     const id = `apple:${ep.show_id}:${ep.guid || (ep.title + "--" + i)}`;
     /* THE SAME SNAPSHOT THE SHOW PAGE WOULD HAVE MADE (audit round 2,
@@ -2197,7 +2321,7 @@ function paintEpisodeSearchResults(query, data, container, localEpisodes) {
       artwork_url: ep.artwork_url || showArtworkUrl(showById(ep.show_id)) || null,
       topics: [],
     });
-    return epRow(item, i, ctx, -1);
+    return searchEpisodeRow(item, ctx);
   };
   const localRows = local.map((ep, i) => rowFor(ep, i));
   const remoteRows = remote.map((ep, i) => rowFor(ep, local.length + i));
@@ -2220,10 +2344,12 @@ function paintEpisodeSearchResults(query, data, container, localEpisodes) {
   const appleNote = fromApple ? `<span class="note">from Apple's index</span>` : "";
   const notes = [countNote, appleNote].filter(Boolean).join(" ");
   container.innerHTML = `<section class="ep-more fy-episode-search">
-    <h3>Episodes${!local.length && notes ? ` ${notes}` : ""}</h3>
+    <h3>Episodes${!local.length && notes ? ` ${notes}` : ""}<span class="readout find-count">${local.length + remote.length}</span></h3>
+    <div class="rows fy-episode-rows">
     ${localRows.join("")}
     ${local.length && notes ? `<div class="note fy-episode-search-more">${notes}</div>` : ""}
     ${remoteRows.join("")}
+    </div>
   </section>`;
   container.hidden = false;
   bindPickLogging(container);
