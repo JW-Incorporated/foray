@@ -205,7 +205,7 @@ test("the tab bar renders all four tabs in the mockup's order: Home, Search, Cre
     const m2 = /<span>([^<]*)<\/span>/.exec(a.innerHTML);
     return m2 ? m2[1] : null;
   });
-  assert.deepStrictEqual(htmlLabels, ["Home", "Search", "Create", "Library"]);
+  assert.deepStrictEqual(htmlLabels, ["Home", "Find", "Create", "Library"]);
   void labels;
 });
 

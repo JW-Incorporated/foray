@@ -66,8 +66,11 @@ test("the gallery covers every primitive and state without adopting them on list
       assert.ok(html.includes(state), `${scheme} ${state} is visible in the gallery`);
     }
   }
+  /* Phase 4 adopts the primitives screen by screen; each screen's PR adds its own file here, so an
+     adoption nobody announced still fails. browse.js is tactile `search` (Find). */
+  const PHASE_4_ADOPTERS = ["browse.js"];
   const adopters = fs.readdirSync(path.join(ROOT, "ui")).filter((name) => name.endsWith(".js") && !["gallery.js", "primitives.js"].includes(name)).filter((name) => /\btactile[A-Z]/.test(fs.readFileSync(path.join(ROOT, "ui", name), "utf8")));
-  assert.deepStrictEqual(adopters, [], "Phase 4, not the foundation, adopts primitives on listener screens");
+  assert.deepStrictEqual(adopters, PHASE_4_ADOPTERS, "only the Phase 4 screens that have landed adopt primitives on listener screens");
 });
 
 test("the gallery's rendered copy obeys the listener copy rules, however the source spells it", () => {

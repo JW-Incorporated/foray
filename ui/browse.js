@@ -84,20 +84,30 @@ function showsForCategory(nodeId) {
    root. The pages you are SENT to (a show, an episode, a Foray, a category,
    Up Next, a playlist) keep theirs. `tabRoot` because this template is also
    the category page's, and that one is pushed. */
-function renderShowIndexPage(title, subtitle, shows, above = "", { tabRoot = false } = {}) {
+/* `find` IS THE TACTILE FIND SCREEN'S HEAD, not a second template (Redesign 2026,
+   tactile `search`): a display-xl "Find" over one readout line (`hint`, in the
+   slot Today gives its date), and no A–Z list under it. The list is the
+   "browse furniture" this page used to carry; the subject mosaic replaces it
+   (renderAllShows, below), and the 220-row index is not rebuilt here. A catalogue
+   that failed to load still paints the failed note with its Retry, because the
+   mosaic is built from that catalogue and an empty page would be a false claim. */
+function renderShowIndexPage(title, subtitle, shows, above = "", { tabRoot = false, find = false, hint = "" } = {}) {
   setBodyClass("view-page");
   const list = shows === null
     ? `<div class="show-index-failed">${failedNoteHtml("Couldn't load the show list.")}</div>`
-    : shows.length
-      ? `<div class="show-results show-index">${shows.map(showResultRow).join("")}</div>`
-      : `<p class="note">No shows here yet.</p>`;
+    : find
+      ? ""
+      : shows.length
+        ? `<div class="show-results show-index">${shows.map(showResultRow).join("")}</div>`
+        : `<p class="note">No shows here yet.</p>`;
   $("#view").innerHTML = `
-    <div class="page">
+    <div class="page${find ? " page--find" : ""}">
       <div class="page-head">
         ${tabRoot ? "" : `<a class="back" href="#/">‹</a>`}
         <div>
-          <h2>${esc(title)}</h2>
+          <h2${find ? ` class="display-xl"` : ""}>${esc(title)}</h2>
           ${subtitle ? `<p class="sub">${esc(subtitle)}</p>` : ""}
+          ${hint ? `<p class="label find-hint">${esc(hint)}</p>` : ""}
         </div>
       </div>
       ${above}
@@ -261,15 +271,258 @@ function browsePillsHtml() {
   return `<div class="sh-browse-pills">${roots.map(n => browseTile(n.id)).join("")}</div>`;
 }
 
-/* THE BROWSE FURNITURE \u2014 everything on this page that is a SUGGESTION rather
-   than an ANSWER: the browse-subjects pill row, the starred-shows shortcut,
-   the "Shows we vouch for" editorial row, and the A\u2013Z index itself.
+/* ---------- Find (Tactile): the subject mosaic and the followed strip ----------
 
-   Two nodes, not one wrapper, because the A\u2013Z list is rendered by
-   renderShowIndexPage AFTER `above` and the two therefore cannot be enclosed
-   in a single element without reshaping the template the category page
-   shares. Missing nodes are filtered out rather than guarded at each call
-   site, so this is safe on a page that has no search box at all. */
+   Redesign 2026, tactile `search` (docs/redesign-2026/directions/tactile/
+   BUILD-PLAN.md 2.9). The idle page is a mosaic of about fourteen subjects, not
+   a cloud of forty-one pills and a 220-row index. Each tile is a link to the
+   search for its own name (`#/shows/q/<name>`, founder 2026-09-13 \u2014 see
+   browseTile), so a tile is "a submit the listener did not have to type".
+
+   WHERE A TILE COMES FROM. Every taxonomy node (root or leaf, because the
+   catalogue tags shows with both) that at least FIND_MIN_SHOWS curated shows
+   carry, and whose shows have the artwork the tile draws. The count on the tile
+   is that tag's own count, so it is a number the curated catalogue can stand
+   behind. The branch is the node's root.
+
+   THE EXPLORATION FLOOR (CLAUDE.md principle 1, ~30%). A mosaic ordered by what
+   the listener already likes would be the echo chamber the product exists to
+   avoid, so the set is DRAWN, not sorted: FIND_EXPLORE_SHARE (40%, which leaves
+   headroom over the 30% floor) of the tiles come from outside the listener's own
+   subjects, and test/tactile-find.test.js asserts \u2265 30% outside across many
+   seeds. "Own" is observed, never declared: an interest weight at or above
+   FIND_OWN_INTEREST, or a subject carried by a show the listener follows.
+   Weight only decides how big a drawn tile is, never whether it is drawn.
+
+   THE SHUFFLE IS SEEDED (the day, plus how many times "More subjects" was
+   pressed), so a test can reproduce it and the page does not reshuffle under a
+   thumb on every repaint. */
+const FIND_TILE_COUNT = 14;
+const FIND_EXPLORE_SHARE = 0.4;
+const FIND_OWN_INTEREST = 0.65;
+const FIND_MIN_SHOWS = 3;
+const FIND_MAX_PER_BRANCH = 2;
+/* Slot sizes down the two-column grid: one 2x2 `l`, three 2x1 `m`, ten 1x1 `s`.
+   Ten singles pair off exactly, so no tile is left half a row on its own. */
+const FIND_LAYOUT = ["l", "m", "s", "s", "s", "s", "m", "s", "s", "m", "s", "s", "s", "s"];
+
+let findMosaicRotation = 0;
+let findMosaicDrawn = null;
+
+/** Every subject the mosaic may draw: plain data, so findMosaicTiles can be
+    driven without a DOM. `weight` is the listener's interest in it (the taxonomy
+    default until they have moved it). */
+function findSubjectPool() {
+  const nodes = state.taxonomy?.nodes || [];
+  const shows = state.catalog?.shows || [];
+  const byNode = new Map();
+  for (const s of shows) {
+    for (const id of new Set(s.taxonomy_node_ids || [])) {
+      if (!byNode.has(id)) byNode.set(id, []);
+      byNode.get(id).push(s);
+    }
+  }
+  const pool = [];
+  const seenLabels = new Set();
+  for (const n of nodes) {
+    const list = byNode.get(n.id);
+    if (!list || list.length < FIND_MIN_SHOWS || !n.label) continue;
+    const arts = list.filter((s) => s.artwork_url);
+    if (arts.length < 3) continue;
+    /* Two nodes can share a label ("History" is a root and a leaf of Computing).
+       Two tiles with one name would be one search twice. First node wins. */
+    const key = String(n.label).toLowerCase();
+    if (seenLabels.has(key)) continue;
+    seenLabels.add(key);
+    const interest = state.interests && typeof state.interests[n.id] === "number" ? state.interests[n.id] : n.weight;
+    pool.push({
+      id: n.id,
+      label: n.label,
+      branch: n.parent || n.id,
+      count: list.length,
+      weight: typeof interest === "number" ? interest : 0,
+      arts: arts.slice(0, 4).map((s) => ({ url: s.artwork_url, id: s.show_id, name: s.title })),
+    });
+  }
+  return pool;
+}
+
+/** The subjects the listener already has: a strong interest weight, or a tag on
+    a show they follow. Observed from what they did, never asked for. */
+function findOwnSubjectIds() {
+  const own = new Set();
+  for (const [id, v] of Object.entries(state.interests || {})) {
+    if (typeof v === "number" && v >= FIND_OWN_INTEREST) own.add(id);
+  }
+  for (const id of Object.keys(starredShowsMap())) {
+    const show = typeof showById === "function" ? showById(id) : null;
+    for (const t of (show && show.taxonomy_node_ids) || []) own.add(t);
+  }
+  return own;
+}
+
+/** Draw `count` tiles from `pool`: a seeded shuffle under the exploration floor,
+    sized by weight, ordered so that no two neighbours share a branch.
+    `own` is a Set of subject ids; `exclude` a Set to leave out while enough
+    others remain. Pure: the same inputs give the same tiles. */
+function findMosaicTiles(pool, { own = new Set(), seed = 1, count = FIND_TILE_COUNT, exclude = new Set() } = {}) {
+  let candidates = pool.filter((p) => !exclude.has(p.id));
+  if (candidates.length < count) candidates = pool.slice();
+  const take = (list, n, branchCount) => {
+    const out = [];
+    for (const p of list) {
+      if (out.length >= n) break;
+      if ((branchCount.get(p.branch) || 0) >= FIND_MAX_PER_BRANCH) continue;
+      branchCount.set(p.branch, (branchCount.get(p.branch) || 0) + 1);
+      out.push(p);
+    }
+    return out;
+  };
+  const inside = seededShuffle(candidates.filter((p) => own.has(p.id)), seed);
+  const outside = seededShuffle(candidates.filter((p) => !own.has(p.id)), seed ^ 0x9e3779b9);
+  const want = Math.min(count, candidates.length);
+  const branchCount = new Map();
+  const outsidePicks = take(outside, Math.min(outside.length, Math.ceil(want * FIND_EXPLORE_SHARE)), branchCount);
+  const insidePicks = take(inside, want - outsidePicks.length, branchCount);
+  /* Own subjects ran short: the rest comes from outside, which only raises the
+     share of new ground. Never the other way round. */
+  const rest = want - outsidePicks.length - insidePicks.length;
+  const extra = rest > 0 ? take(outside.filter((p) => !outsidePicks.includes(p)), rest, branchCount) : [];
+  const chosen = [...outsidePicks, ...insidePicks, ...extra];
+  /* A small catalogue can have fewer branches than the cap allows for: top up
+     from whatever is left, so the page draws what it has rather than a stub.
+     Outside subjects first, so this too only raises the share of new ground. */
+  if (chosen.length < want) {
+    for (const p of [...outside, ...inside]) {
+      if (chosen.length >= want) break;
+      if (!chosen.includes(p)) chosen.push(p);
+    }
+  }
+  const picks = chosen.map((p) => ({ ...p, outside: !own.has(p.id) }));
+
+  /* Size by weight: the heaviest subject with four covers is the `l`, the next
+     three the `m`s, the rest `s`. Ties keep the shuffled order. */
+  const byWeight = picks.map((p, i) => ({ p, i })).sort((a, b) => b.p.weight - a.p.weight || a.i - b.i).map((x) => x.p);
+  const slots = FIND_LAYOUT.slice(0, picks.length);
+  const classes = { l: [], m: [], s: [] };
+  const left = byWeight.slice();
+  const bigIdx = left.findIndex((p) => p.arts.length >= 4);
+  if (slots.includes("l") && bigIdx >= 0) classes.l.push(left.splice(bigIdx, 1)[0]);
+  const mSlots = slots.filter((x) => x === "m" || (x === "l" && !classes.l.length)).length;
+  classes.m.push(...left.splice(0, mSlots));
+  classes.s.push(...left);
+
+  /* Arrange: fill the slots in order, each from its own size class, so that no
+     tile shares a branch with the one beside it or, in the two-column grid, the
+     one above it (the two before it in the sequence). A depth-first search over
+     at most fourteen slots, taking candidates in their shuffled order, so the
+     answer is as random as the draw allows; if no order satisfies both rules
+     the second is dropped, then the first, and the draw order stands. */
+  const kinds = slots.map((slot) => (slot === "l" && !classes.l.length ? "m" : slot));
+  for (const lag of [2, 1, 0]) {
+    const placed = [];
+    const left = { l: classes.l.slice(), m: classes.m.slice(), s: classes.s.slice() };
+    const fill = (i) => {
+      if (i === kinds.length) return true;
+      const bucket = left[kinds[i]];
+      for (let k = 0; k < bucket.length; k++) {
+        const p = bucket[k];
+        if (lag >= 1 && placed[i - 1] && placed[i - 1].branch === p.branch) continue;
+        if (lag >= 2 && placed[i - 2] && placed[i - 2].branch === p.branch) continue;
+        bucket.splice(k, 1);
+        placed[i] = { ...p, size: kinds[i] };
+        if (fill(i + 1)) return true;
+        bucket.splice(k, 0, p);
+      }
+      placed.length = i;
+      return false;
+    };
+    if (fill(0)) return placed;
+  }
+  return [];
+}
+
+/** The tiles for the page right now. A repaint of the same page gets the same
+    set back (nothing reshuffles under a thumb); `advance` is "More subjects":
+    a fresh draw that leaves out what is on screen while enough others remain. */
+function findCurrentTiles({ advance = false } = {}) {
+  const pool = findSubjectPool();
+  if (advance) findMosaicRotation += 1;
+  else if (findMosaicDrawn && findMosaicDrawn.rotation === findMosaicRotation && findMosaicDrawn.poolSize === pool.length) return findMosaicDrawn;
+  const exclude = advance && findMosaicDrawn ? new Set(findMosaicDrawn.tiles.map((t) => t.id)) : new Set();
+  const tiles = findMosaicTiles(pool, {
+    own: findOwnSubjectIds(),
+    seed: (dayOfYearSeed(new Date()) + Math.imul(findMosaicRotation, 2654435761)) >>> 0,
+    exclude,
+  });
+  findMosaicDrawn = { rotation: findMosaicRotation, poolSize: pool.length, tiles };
+  return findMosaicDrawn;
+}
+
+function findArtHtml(a, cls) {
+  const code = esc(tactileStationCode(a.name));
+  const img = a.url
+    ? `<img src="${esc(safeUrl(artUrl(a.url, 264)))}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`
+    : "";
+  return `<span class="find-art ${cls} find-art--c${tactileHash(a.id)}" data-i="${code}">${img}</span>`;
+}
+
+function findTileHtml(t) {
+  const art = t.size === "l"
+    ? `<span class="find-collage" aria-hidden="true">${t.arts.slice(0, 4).map((a) => findArtHtml(a, "find-art--cell")).join("")}</span>`
+    : `<span class="find-discs" aria-hidden="true">${t.arts.slice(0, 3).map((a) => findArtHtml(a, "find-art--disc")).join("")}</span>`;
+  const count = `${t.count} ${t.count === 1 ? "show" : "shows"}`;
+  return `<a class="tile tile--${t.size}" href="#/shows/q/${esc(encodeURIComponent(t.label))}" data-subject="${esc(t.id)}">${art}<span><strong class="tile__name">${esc(t.label)}</strong><span class="readout">${esc(count)}</span></span></a>`;
+}
+
+/** The followed-shows strip: only when the listener follows something, newest
+    first. The name drops a trailing " - \u2026" clause the way every other
+    surface does (tactileDisplayName), so "Lingthusiasm - A podcast that's
+    enthusiastic" reads "Lingthusiasm" and is not cut mid-word at the gutter. */
+function findFollowedHtml() {
+  const map = starredShowsMap();
+  const entries = Object.entries(map)
+    .map(([id, e]) => ({ id, title: (e && e.title) || (showById(id) && showById(id).title) || id, url: e && e.artwork_url, at: (e && e.starred_at) || "" }))
+    .sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
+  if (!entries.length) return "";
+  const items = entries.map((e) => {
+    const name = tactileDisplayName(e.title);
+    const img = e.url
+      ? `<img src="${esc(safeUrl(artUrl(e.url, 192)))}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`
+      : "";
+    return `<a class="find-strip__item" href="#${esc(showRoutePath(e.id))}"><span class="find-strip__art find-art--c${tactileHash(e.id)}" data-i="${esc(tactileStationCode(name))}">${img}</span><span class="micro find-strip__name">${esc(name)}</span></a>`;
+  }).join("");
+  return `<section class="find-sect" aria-labelledby="find-followed-h"><div class="find-sect__head"><h3 class="heading" id="find-followed-h">Followed shows</h3><a class="textbtn find-all" href="#/starred-shows">See all</a></div><div class="find-strip">${items}</div></section>`;
+}
+
+function findSubjectsHtml() {
+  const { tiles, poolSize } = findCurrentTiles();
+  if (!tiles.length) return "";
+  const more = poolSize > tiles.length
+    ? `<div class="find-more"><button type="button" class="keycap keycap--md keycap--paper" id="find-more">More subjects</button></div>`
+    : "";
+  return `<section class="find-sect" aria-labelledby="find-subjects-h"><h3 class="heading" id="find-subjects-h">Subjects</h3><div class="mosaic" id="find-mosaic">${tiles.map(findTileHtml).join("")}</div>${more}</section>`;
+}
+
+/** "More subjects": the next set replaces the mosaic in place. A new draw, not
+    a longer list: the count stays fixed and nothing scrolls forever. */
+function bindFindMore() {
+  const btn = $("#find-more");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    const { tiles } = findCurrentTiles({ advance: true });
+    const mosaic = $("#find-mosaic");
+    if (mosaic) mosaic.innerHTML = tiles.map(findTileHtml).join("");
+  });
+}
+
+/* THE BROWSE FURNITURE \u2014 everything on this page that is a SUGGESTION rather
+   than an ANSWER: the followed-shows strip and the subject mosaic (it was the
+   pill row, the starred-shows shortcut, the "Shows we vouch for" row and the
+   A\u2013Z index before the Tactile Find screen).
+
+   Missing nodes are filtered out rather than guarded at each call site, so this
+   is safe on a page that has no search box at all. */
 function showBrowseSections() {
   return [$("#sh-browse"), $("#view .show-index"), $("#view .show-index-failed")].filter(Boolean);
 }
@@ -352,7 +605,11 @@ function updateShowBrowseVisibility() {
      dismiss button arriving are the same event seen from two sides. A
      separate predicate would be one more thing to drift. */
   const dismiss = $("#sh-dismiss");
-  if (dismiss) dismiss.hidden = !hide;
+  /* TACTILE `search` (BUILD-PLAN 2.9): the clear button is hidden until there
+     is text to clear. It used to appear on focus too, as Apple's "dismiss"; an
+     empty focused field has nothing to clear, and the key is a 44px target that
+     would sit in the pill doing nothing. Blurring still brings the page back. */
+  if (dismiss) dismiss.hidden = !(input && input.value.trim());
 
   /* THE TAB BAR GOES AWAY WHILE THE FIELD HOLDS FOCUS (founder, 2026-09-14,
      with a screenshot of it wedged between the pill and the keyboard: "when
@@ -498,18 +755,22 @@ function renderAllShows(initialQuery = "") {
 
      The leading magnifier is kept: it is what tells you the pill is a search
      field rather than a compose box. */
-  /* ONE NAME PER DESTINATION (audit 2026-09-22): the tab bar calls this page
-     Search, so its heading does too — it was "Shows" here and in the drawer. The
-     field searches shows, episodes and playlists, so the placeholder says more
-     than "shows by name". */
-  renderShowIndexPage("Search", "", shows, `
+  /* THE PAGE IS "Find" (Redesign 2026, tactile `search`; the direction's three
+     tabs are Today, Find and Yours). It was "Search" under the audit's
+     one-name-per-destination rule of 2026-09-22; the rule stands and the name
+     moved: the tab and the drawer entry say "Find" too (ui/tabbar.js,
+     index.html), so the three still agree. The readout line under the title is
+     the slot Today gives its date, and it replaces the separate "Name a subject"
+     key the first round had (the field already says it). The placeholder says
+     what the field takes. */
+  renderShowIndexPage("Find", "", shows, `
       <div id="sh-compose">
         <form id="sh-form" role="search" autocomplete="off">
-          <svg class="sh-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
-          <input id="sh-input" type="text" maxlength="120" placeholder="Search shows and episodes\u2026" aria-label="Search shows and episodes" ${SEARCH_INPUT_ATTRS}>
+          <span class="sh-glyph">${tactileIcon("ph-magnifying-glass")}</span>
+          <input id="sh-input" type="text" maxlength="120" placeholder="Search, or name a subject" aria-label="Search shows and episodes, or name a subject" ${SEARCH_INPUT_ATTRS}>
         </form>
         <button id="sh-dismiss" type="button" aria-label="Clear search" hidden>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg>
+          ${tactileIcon("ph-x")}
         </button>
       </div>
       <p id="sh-note" class="note" role="status" aria-live="polite" hidden></p>
@@ -525,26 +786,22 @@ function renderAllShows(initialQuery = "") {
       <div id="sh-results" class="show-results" hidden></div>
       <div id="ep-search-results" hidden></div>
       <div id="pl-search-results" hidden></div>
+      <!-- The followed strip first, ONLY WHEN THE LISTENER FOLLOWS SOMETHING
+           (audit round 2, p-first-12: on a fresh install the page's first
+           tappable row led to "0 shows you follow"), then the subjects. -->
       <div id="sh-browse">
-        <!-- ABOVE the browse cloud, not below it (visual pass 1, 2026-09-23):
-             below, the page's one non-chip action sat exactly under the
-             floating search pill at scroll 0 on a 390x844 phone. Apple keeps
-             its Library shortcuts at the top of Search for the same reason.
-             ONLY WHEN THERE IS SOMETHING BEHIND IT (audit round 2, p-first-12):
-             on a fresh install this was the page's first tappable row and it
-             led to "0 shows you follow". Apple hides an empty Library shortcut;
-             so does this. Library still lists the section, with its own empty
-             note, so the feature stays discoverable. -->
-        ${Object.keys(starredShowsMap()).length ? `<a class="page-link-row" href="#/starred-shows">Followed shows \u203a</a>` : ""}
-        ${browsePillsHtml()}
-        ${vouchForHtml()}
-      </div>`, { tabRoot: true });
+        ${findFollowedHtml()}${catalogShows === null ? "" : findSubjectsHtml()}
+      </div>`, { tabRoot: true, find: true, hint: "Type any subject and 4a builds a playlist" });
   /* The page reserves room at its bottom edge for a bar that is fixed and so
      occupies none of its own. Added AFTER renderShowIndexPage, which writes
      document.body.className wholesale through setBodyClass() and would
      otherwise wipe it \u2014 and that same wholesale write is what removes this
      class again on navigation away, so it needs no cleanup of its own. */
   document.body.classList.add("sh-compose");
+  /* The Tactile surface for this page only (paper, ink, the Dial type), scoped
+     by this class in styles.css; the next page's setBodyClass() removes it. */
+  document.body.classList.add("view-find");
+  bindFindMore();
 
   /* S-02 (docs/search-plan.md, founder feedback F2: "Shows search should
      filter live as you type. Hitting Go should not be required.").

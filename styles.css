@@ -4769,6 +4769,192 @@ body.drawer-open { overflow: hidden; }
 @keyframes tactile-pulse { from { opacity: .4; } to { opacity: 1; } }
 @keyframes tactile-shimmer { from { opacity: .58; } to { opacity: 1; } }
 
+/* ---------- FIND (TACTILE): the subject mosaic page ----------
+   Redesign 2026, tactile `search` (docs/redesign-2026/directions/tactile/
+   BUILD-PLAN.md 2.9, BUILD-NOTES 4.4). Everything here hangs off
+   `body.view-find`, which renderAllShows sets and the next page's
+   setBodyClass() clears, so no other page inherits any of it, and none of it
+   touches the shared primitives the gallery baseline records (`.tile` and
+   `.keycap` keep their own rules; the mosaic only adds under `.mosaic`).
+   The page reads the Dial tokens (paper, ink, card, the Dial type) instead of
+   the legacy dark ones for as long as the rest of the app has not adopted
+   them. The three things below the page content, the field, the deck and the
+   mini-player, stack on one arithmetic: the deck is `--deck-h` tall, floats
+   `--s-3` off the bottom, and the field floats `--s-3` above it. */
+body.ui-v2.view-find {
+  /* The legacy colour names are pointed at the Dial tokens for this page, so the
+     result rows, notes and playlist cards this page still draws with the old
+     components (the typing and no-results screens are their own units) read as
+     ink on paper and card instead of light-on-dark text on cream. Both Dial
+     schemes follow, because the tokens do. */
+  --bg: var(--paper);
+  --surface: var(--card);
+  --surface2: var(--paper-2);
+  --line: var(--dial-line);
+  --text: var(--ink);
+  --muted: var(--ink-2);
+  --faint: var(--ink-3);
+  --amber: var(--persimmon);
+  --violet: var(--ultramarine);
+  --danger-text: var(--persimmon);
+  --shadow-sm: var(--shadow-card);
+  --shadow: var(--shadow-card);
+  --shadow-lift: var(--shadow-card);
+  background: var(--paper);
+  color: var(--ink);
+  font: var(--w-body) var(--t-body)/var(--lh-body) var(--font-text);
+  padding-bottom: 0;
+}
+body.view-find > .topbar { display: none; }
+body.ui-v2.view-find #view {
+  padding: 0 var(--gutter) calc(var(--deck-h) + var(--safe-b) + var(--s-12) * 2 + var(--s-4));
+}
+body.ui-v2.view-find.fp-open #view { padding-bottom: calc(var(--deck-h) + var(--fp-bar-h) + var(--safe-b) + var(--s-12) * 2 + var(--s-4)); }
+body.view-find .page--find {
+  max-width: none;
+  margin: 0;
+  padding: calc(var(--safe-t) + var(--s-6) + var(--s-1)) 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+}
+
+/* The head: "Find" over one readout line, in the slot Today gives its date. */
+body.ui-v2.view-find .page--find .page-head {
+  position: static;
+  margin: 0;
+  padding: calc(var(--s-1) / 2) 0 0;
+  background: transparent;
+  border: 0;
+  transform: none;
+  transition: none;
+}
+.page--find .page-head > div { display: flex; flex-direction: column; gap: var(--s-2); }
+body.ui-v2.view-find .page--find .page-head h2 { margin: 0; color: var(--ink); font-family: var(--dial-font-display); font-size: var(--t-display-xl); line-height: var(--lh-display-xl); font-weight: var(--w-display); font-stretch: var(--wd-screen); letter-spacing: var(--tracking-screen); }
+.find-hint { margin: 0; color: var(--ink-2); font: 500 var(--t-label)/var(--lh-label) var(--font-text); }
+
+/* The field: a fixed pill above the deck. The wrapper is the pill; the form
+   inside it gives up its own box, and its ring moves to the wrapper
+   (:focus-within) so the one authored focus ring survives. */
+body.view-find #sh-compose {
+  --find-dock: calc(var(--safe-b) + var(--s-3) + var(--deck-h) + var(--s-3));
+  left: calc(env(safe-area-inset-left, 0px) + var(--s-4));
+  right: calc(env(safe-area-inset-right, 0px) + var(--s-4));
+  bottom: calc(var(--kb-inset, 0px) + var(--find-dock));
+  height: calc(var(--s-12) + var(--s-1));
+  gap: var(--s-2);
+  padding: 0 var(--s-2) 0 var(--s-4);
+  border-radius: var(--r-pill);
+  background: var(--card);
+  box-shadow: var(--shadow-deck);
+}
+body.view-find.fp-open:not(.kb-open):not(.sh-searching) #sh-compose { --find-dock: calc(var(--safe-b) + var(--s-3) + var(--deck-h) + var(--fp-bar-h) + var(--s-3)); }
+body.view-find.kb-open #sh-compose, body.view-find.sh-searching #sh-compose { --find-dock: var(--s-3); }
+body.view-find #sh-compose:focus-within { box-shadow: var(--shadow-deck), 0 0 0 2px var(--ultramarine); }
+body.view-find #sh-compose #sh-form {
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: var(--s-3);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  outline: none;
+}
+body.view-find #sh-compose #sh-form:focus-within { outline: none; }
+body.view-find #sh-compose #sh-input {
+  min-height: var(--tap);
+  color: var(--ink);
+  font: var(--w-body) 1rem/1.25 var(--font-text);
+}
+body.view-find #sh-compose #sh-input::placeholder { color: var(--ink-3); opacity: 1; }
+body.view-find #sh-compose .sh-glyph { display: inline-flex; flex: none; width: 24px; height: 24px; stroke: none; color: var(--ink); }
+body.view-find #sh-dismiss {
+  width: var(--tap);
+  height: var(--tap);
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  color: var(--ink-2);
+}
+body.view-find #sh-dismiss svg { width: 24px; height: 24px; stroke: none; fill: currentColor; }
+
+/* The deck, until the three-tab deck replaces this bar for every page
+   (tactile `mini`): the same box (inset 16, 12 off the bottom, 64 tall, r-lg,
+   the deck tint and shadow), and the lit tab marked with the persimmon bar. */
+body.view-find .tab-bar {
+  left: calc(env(safe-area-inset-left, 0px) + var(--s-4));
+  right: calc(env(safe-area-inset-right, 0px) + var(--s-4));
+  bottom: calc(var(--safe-b) + var(--s-3));
+  height: var(--deck-h);
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--r-lg);
+  background: var(--deck-tint);
+  -webkit-backdrop-filter: var(--deck-blur);
+  backdrop-filter: var(--deck-blur);
+  box-shadow: var(--shadow-deck);
+}
+body.view-find .tab-btn { position: relative; color: var(--ink-2); font: var(--w-micro) var(--t-micro)/var(--lh-micro) var(--font-text); }
+body.view-find .tab-btn[aria-current="page"] { color: var(--ink); }
+body.view-find .tab-btn[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: var(--s-8);
+  height: var(--s-1);
+  margin-left: calc(var(--s-8) / -2);
+  border-radius: 0 0 var(--s-1) var(--s-1);
+  background: var(--persimmon);
+}
+
+/* Sections: the followed strip and the subjects. */
+body.view-find #sh-browse { display: flex; flex-direction: column; gap: var(--s-8); }
+.find-sect { display: flex; flex-direction: column; gap: var(--gap); }
+.find-sect__head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); }
+.find-sect .heading { margin: 0; color: var(--ink); }
+.find-sect__head .find-all { display: inline-flex; align-items: center; margin-block: calc((var(--lh-heading) - var(--tap)) / 2); color: var(--ink-2); text-decoration: none; }
+
+.find-strip { display: flex; gap: var(--gap); overflow-x: auto; margin: 0 calc(var(--gutter) * -1); padding: 0 var(--gutter) var(--s-1); scrollbar-width: none; }
+.find-strip::-webkit-scrollbar { display: none; }
+.find-strip__item { flex: none; width: 72px; display: flex; flex-direction: column; align-items: center; gap: 6px; color: inherit; text-decoration: none; }
+.find-strip__art { position: relative; display: block; width: 64px; height: 64px; overflow: hidden; border-radius: var(--r-md); background: var(--seg, var(--dial-seg-c0)); box-shadow: inset 0 0 0 1px var(--dial-line); }
+.find-strip__name { font: var(--w-micro) var(--t-micro)/var(--lh-micro) var(--font-text); max-width: calc(72px + var(--s-3)); margin-inline: calc(var(--s-3) / -2); color: var(--ink-2); text-align: center; overflow-wrap: normal; word-break: normal; hyphens: none; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+
+/* The mosaic: two columns, gap 12; `s` is 1x1, `m` 2x1, `l` 2x2. */
+.mosaic { display: grid; grid-template-columns: 1fr 1fr; grid-auto-flow: dense; gap: var(--gap); }
+.mosaic .tile { position: relative; overflow: hidden; text-decoration: none; }
+.mosaic .tile--m { gap: var(--s-3); }
+.mosaic .tile--l { grid-row: span 2; flex-direction: row; justify-content: flex-start; }
+.mosaic .tile > span:last-child { min-width: 0; }
+.mosaic .tile--l > span:last-child { max-width: calc(100% - 196px); }
+.mosaic .tile__name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+
+.mosaic .tile--l .tile__name { -webkit-line-clamp: 3; line-clamp: 3; }
+.mosaic .tile .readout { color: var(--ink-2); white-space: nowrap; }
+.find-discs { display: inline-flex; align-items: center; }
+.find-art, .find-strip__art { --seg: var(--dial-seg-c0); }
+.find-art { position: relative; display: block; flex: none; overflow: hidden; background: var(--seg); box-shadow: inset 0 0 0 1px var(--dial-line); }
+.find-art::before, .find-strip__art::before { content: attr(data-i); position: absolute; inset: 0; display: grid; place-items: center; font: 700 0.9375rem/1 var(--font-mono); color: var(--on-persimmon); }
+.find-art img, .find-strip__art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: var(--paper-2); }
+.find-art--disc { width: 36px; height: 36px; margin-left: -12px; border-radius: 50%; box-shadow: 0 0 0 2px var(--card); }
+.find-art--disc:first-child { margin-left: 0; }
+.find-collage { display: grid; grid-template-columns: 88px 88px; gap: 2px; width: 178px; height: 178px; overflow: hidden; border-radius: var(--r-md); background: var(--paper-2); }
+.mosaic .tile--l .find-collage { position: absolute; top: 50%; right: calc(var(--s-3) + var(--s-1) / 2); transform: translateY(-50%); }
+.find-art--cell { width: 88px; height: 88px; border-radius: 0; box-shadow: none; }
+.find-art--cell::before { font-size: 1rem; }
+.find-art--c0 { --seg: var(--dial-seg-c0); } .find-art--c1 { --seg: var(--dial-seg-c1); } .find-art--c2 { --seg: var(--dial-seg-c2); } .find-art--c3 { --seg: var(--dial-seg-c3); }
+.find-art--c4 { --seg: var(--dial-seg-c4); } .find-art--c5 { --seg: var(--dial-seg-c5); } .find-art--c6 { --seg: var(--dial-seg-c6); } .find-art--c7 { --seg: var(--dial-seg-c7); }
+.find-more { display: flex; }
+
 /* COMPONENT GALLERY. Development-only markup behind the guarded #/gallery
    route. It starts with the icon family in task 2; later foundation tasks add
    primitives to this same page. No production screen inherits these rules. */

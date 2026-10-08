@@ -124,7 +124,7 @@
         },
         "rows": {
           "prototype": "#results .tile, #results .row",
-          "app": ".show-result",
+          "app": ".mosaic .tile, #sh-results .show-result",
           "mode": "all"
         },
         "tabBar": {

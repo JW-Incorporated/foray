@@ -206,9 +206,10 @@ test("the Shows page renders no '220 shows in 4a's catalogue' subtitle at all", 
   const m = mount();
   m.ctx.renderAllShows();
   const html = m.view();
-  /* The heading is "Search" since 2026-09-22 — one name per destination, the
-     tab bar's (audit personas 36 and 76). Still the same page. */
-  assert.ok(html.includes("<h2>Search</h2>"), "fixture assumption: this is still the Shows page");
+  /* The heading is "Find" since tactile `search` (2026-10-07; "Search" from
+     2026-09-22) — one name per destination, the tab bar's (audit personas 36
+     and 76). Still the same page. */
+  assert.ok(html.includes('<h2 class="display-xl">Find</h2>'), "fixture assumption: this is still the Shows page");
   assert.ok(!html.includes("in 4a&#39;s catalogue") && !html.includes("in 4a's catalogue"),
     "the catalogue-count subtitle must be gone");
   assert.ok(!html.includes('<p class="sub">'),
@@ -274,7 +275,7 @@ test("the search form does NOT render inside .page-head any more", () => {
   const m = mount();
   m.ctx.renderAllShows();
   const head = elementHtml(m.view(), '<div class="page-head');
-  assert.ok(head.includes("<h2>Search</h2>"), "fixture assumption: that really is the page header");
+  assert.ok(head.includes('<h2 class="display-xl">Find</h2>'), "fixture assumption: that really is the page header");
   assert.ok(!head.includes("sh-form"), "the search form must not be inside the collapsing header");
   assert.ok(!head.includes("sh-input"), "nor the field itself");
   assert.ok(!head.includes("sh-compose"), "nor the bar that now holds it");
@@ -303,7 +304,7 @@ test("the page header keeps its job — the title — and only one shape of it s
      category page, which shares the template, is pushed and keeps it
      (test/card-anatomy.test.js pins both halves). */
   assert.ok(!head.includes('class="back"'), "a tab root has no ‹");
-  assert.ok(head.includes("<h2>Search</h2>"), "and the title stays");
+  assert.ok(head.includes('<h2 class="display-xl">Find</h2>'), "and the title stays");
   assert.ok(!head.includes("page-head-main"), "the stacked inner row is gone with the modifier");
   assert.ok(!STYLES.includes(".page-head-stacked {"),
     "the dead layout rule must be gone from styles.css, not left orphaned");
@@ -349,7 +350,7 @@ test("the browse furniture is visible when the page opens, before anyone touches
      (audit round 2, p-first-12) — test/home-information-architecture.test.js
      pins both halves; this harness follows nothing, so it is absent here. */
   assert.ok(!m.view().includes('href="#/starred-shows"'), "…with nothing followed, no dead-end shortcut");
-  assert.ok(m.view().includes("Shows 4a vouches for"), "…and the editorial row");
+  assert.ok(!m.view().includes("Shows 4a vouches for"), "…and no editorial row: it left with the A–Z index (tactile `search`, 2026-10-07)");
 });
 
 test("FOCUSING the search box hides the cards and the A-Z list — before a single keystroke", () => {
