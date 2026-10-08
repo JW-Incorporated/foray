@@ -4248,7 +4248,7 @@ function bind() {
      `.fp-clips` row. */
   ui.backBtn.addEventListener("click", () => nudgeBy(-SEEK_BACK));
   ui.fwdBtn.addEventListener("click", () => nudgeBy(SEEK_FWD));
-  ui.skipBtn.addEventListener("click", () => nudgeBy(-SEEK_BACK));
+  ui.skipBtn.addEventListener("click", () => nudgeBy(SEEK_FWD));
   /* BUILD-NOTES 6: a skip ticks a light impact. A listener of its own, so the
      nudge wiring above stays the one line the transport suites pin. */
   for (const button of [ui.backBtn, ui.fwdBtn, ui.skipBtn]) {

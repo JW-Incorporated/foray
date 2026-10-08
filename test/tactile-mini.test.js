@@ -358,7 +358,7 @@ test("the live deck is the Tactile deck: fixed, inset 16, 12 above the safe area
   assert.match(bar, /right:\s*calc\(env\(safe-area-inset-right,\s*0px\)\s*\+\s*var\(--gutter\)\)/);
   assert.match(bar, /bottom:\s*calc\(var\(--safe-b\)\s*\+\s*var\(--s-3\)\)/);
   assert.match(bar, /border-radius:\s*var\(--r-lg\)/);
-  assert.match(bar, /background:\s*var\(--deck-tint\)/);
+  assert.match(bar, /background:\s*var\(--dock-tint\)/);
   assert.match(bar, /(?:^|;)\s*backdrop-filter:\s*var\(--deck-blur\)/);
   assert.match(bar, /box-shadow:\s*var\(--shadow-deck\)/);
   assert.match(rule(":root"), /--gutter:\s*16px/);
@@ -367,10 +367,36 @@ test("the live deck is the Tactile deck: fixed, inset 16, 12 above the safe area
   assert.match(CSS, /@supports not \(backdrop-filter: blur\(1px\)\) \{ :root \{ --deck-tint: var\(--card\); \} \}/);
   /* The mini's half carries the same material. */
   const mini = rule("body.ui-v2 #foray-player.dial-mini > .fp-bar");
-  assert.match(mini, /background:\s*var\(--deck-tint\)/);
+  assert.match(mini, /background:\s*var\(--dock-tint\)/);
   assert.match(mini, /(?:^|;)\s*backdrop-filter:\s*var\(--deck-blur\)/);
   assert.match(mini, /height:\s*var\(--mini-h\)/);
   assert.match(rule("body.ui-v2.fp-open:not(.mini-dismissed) .tab-bar::before"), /var\(--dial-line\)/, "a 1px --line separates the mini from the tab row");
+});
+
+test("the live dock is nearly solid and falls back to solid card; the mini's keys wear a crescent lip and a bounded +30 face", () => {
+  /* Judges, iteration 2: the row under the dock read clearly through it, the
+     Play lip was a flat bar detached below the disc, and the +30 key had no
+     visible face. What stays guaranteed: (1) the dock tint is at least 94% card
+     (the deck token's 84% is for a deck over plain paper), (2) both fall back to
+     solid card under reduced transparency / no backdrop-filter, (3) the lip is
+     the key's own silhouette as a zero-blur shadow with the flat `::after` bar
+     switched off, (4) the +30 key is bounded by a 1px line and its own face.
+     MUTATION 1: set `--dock-tint` to `... 84%, transparent` -> (1) red.
+     MUTATION 2: delete the `@supports not` dock fallback line -> (2) red.
+     MUTATION 3: delete `.fp-play::after { content: none }` (the flat bar returns) -> (3) red.
+     MUTATION 4: delete `inset 0 0 0 1px var(--dial-line)` from the +30 rule -> (4) red. */
+  const tint = /--dock-tint:\s*color-mix\(in srgb, var\(--card\) (\d+)%, transparent\)/.exec(rule("body.ui-v2"));
+  assert.ok(tint, "the dock tint is declared on body.ui-v2");
+  assert.ok(Number(tint[1]) >= 94, `the dock must not let the page read through it (${tint[1]}% card)`);
+  assert.match(CSS, /@media \(prefers-reduced-transparency: reduce\) \{ body\.ui-v2 \{ --dock-tint: var\(--card\); \} \}/);
+  assert.match(CSS, /@supports not \(backdrop-filter: blur\(1px\)\) \{ body\.ui-v2 \{ --dock-tint: var\(--card\); \} \}/);
+  const keys = rule("body.ui-v2 #foray-player.dial-mini .fp-play");
+  assert.match(keys, /box-shadow:\s*0 var\(--lip\) 0 var\(--k-lip\)/, "the lip is a zero-blur shadow of the key's own shape");
+  const noBar = rule("body.ui-v2 #foray-player.dial-mini .fp-play::after") + rule("body.ui-v2 #foray-player.dial-mini .fp-skip::after");
+  assert.match(noBar, /content:\s*none/, "no flat bar under a round key");
+  const skip = rule("body.ui-v2 #foray-player.dial-mini .fp-skip");
+  assert.match(skip, /--k-fill:\s*color-mix\(in srgb, var\(--ink\) \d+%, var\(--card\)\)/, "the +30 face is a step off the deck");
+  assert.match(skip, /box-shadow:\s*inset 0 0 0 1px var\(--dial-line\), 0 var\(--lip\) 0 var\(--k-lip\)/, "and a 1px line bounds it");
 });
 
 /* A resolver for the handful of tokens the deck geometry is written in. */

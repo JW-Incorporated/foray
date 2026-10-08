@@ -124,7 +124,7 @@ test("the mini bar carries ▶ and a 30-forward nudge, and nothing else", () => 
   assert.match(CODE, /bar\.append\(art, info, skipBtn, playBtn\);/, "art · title · +30 · ▶ (ui/mini.js puts ▶ first)");
   const appended = /bar\.append\(([^)]*)\)/.exec(CODE)[1].split(",").map((s) => s.trim());
   assert.deepStrictEqual(appended.filter((n) => /Btn$/.test(n)), ["skipBtn", "playBtn"], "two controls on the bar, not three");
-  assert.match(CODE, /ui\.skipBtn\.addEventListener\("click", \(\) => \{[^}]*nudgeBy\(SEEK_FWD\);/);
+  assert.match(CODE, /ui\.skipBtn\.addEventListener\("click", \(\) => nudgeBy\(SEEK_FWD\)\);/);
 });
 
 test("the bar's skip is a 44px borderless glyph beside the filled ▶", () => {
@@ -250,7 +250,8 @@ test("the sheet's second row is one treatment: 48px transport boxes, a quiet tex
      (#30) sit between the speed and the two navigation links, ⏭ and Save in the transport family's plain
      `.fp-btn` box so they are at the same tap floor. */
   assert.match(CODE, /row2\.append\(stopBtn, rateBtn, nextBtn, saveBtn, bookmarkBtn, queueLink, openLink, forayLink\);/, "Stop leads the row, alone at the danger end");
-  assert.match(CODE, /ui\.closeBtn\.addEventListener\("click", \(\) => setExpanded\(false\)\);/, "the ✕ is the way out");
+  /* Tactile Now Playing: the ✕ collapses through requestExpanded (the shared-element move back to the mini). MUTATION: delete the closeBtn listener -> red. */
+  assert.match(CODE, /ui\.closeBtn\.addEventListener\("click", \(\) => requestExpanded\(false\)\);/, "the ✕ is the way out");
   assert.strictEqual(valueOf(".fp-collapse", "color"), null, "and its rule is gone");
 });
 

@@ -4486,6 +4486,8 @@ body.drawer-open { overflow: hidden; }
 /* The deck's tint falls back to solid card where translucency is off or unsupported. */
 @media (prefers-reduced-transparency: reduce) { :root { --deck-tint: var(--card); --deck-blur: none; } }
 @supports not (backdrop-filter: blur(1px)) { :root { --deck-tint: var(--card); } }
+@media (prefers-reduced-transparency: reduce) { body.ui-v2 { --dock-tint: var(--card); } }
+@supports not (backdrop-filter: blur(1px)) { body.ui-v2 { --dock-tint: var(--card); } }
 
 /* TYPE ROLES. New class names (nothing in the live markup carries them). Each
    sets the family and its own weight / width / tracking tokens; sentence-length
@@ -4722,6 +4724,11 @@ body.drawer-open { overflow: hidden; }
    compose the bottom edge (#sh-compose's dock, sheets that keep the player):
    the room each takes above the home indicator. */
 body.ui-v2 {
+  /* The live dock's tint: 98% card, not the deck token's 84%. The prototype's deck
+     floats over paper, so 84% reads as one solid object; here it floats over live
+     list content, and at 84% the row beneath stays legible through it (judges, iteration
+     2). Blur still frosts what is left. Falls back to solid card where translucency is off. */
+  --dock-tint: color-mix(in srgb, var(--card) 98%, transparent);
   --tab-row-h: var(--deck-h);
   --tab-bar-h: calc(var(--s-3) + var(--tab-row-h));
   --fp-bar-h: calc(var(--mini-h) + 1px);
@@ -4739,7 +4746,7 @@ body.ui-v2 .tab-bar {
   padding: 0;
   border: 0;
   border-radius: var(--r-lg);
-  background: var(--deck-tint);
+  background: var(--dock-tint);
   -webkit-backdrop-filter: var(--deck-blur);
   backdrop-filter: var(--deck-blur);
   box-shadow: var(--shadow-deck);
@@ -4749,7 +4756,7 @@ body.ui-v2 .tab-bar {
 body.ui-v2.fp-open:not(.mini-dismissed) .tab-bar { border-radius: 0 0 var(--r-lg) var(--r-lg); box-shadow: none; }
 body.ui-v2.fp-open:not(.mini-dismissed) .tab-bar::before {
   content: ""; position: absolute; left: 0; right: 0; top: -1px; height: 1px;
-  background: linear-gradient(var(--dial-line), var(--dial-line)) var(--s-3) 0 / calc(100% - 2 * var(--s-3)) 100% no-repeat, var(--deck-tint);
+  background: linear-gradient(var(--dial-line), var(--dial-line)) var(--s-3) 0 / calc(100% - 2 * var(--s-3)) 100% no-repeat, var(--dock-tint);
 }
 body.ui-v2.fp-open:not(.mini-dismissed) .tab-bar::after {
   content: ""; position: absolute; z-index: -1; left: 0; right: 0; bottom: 0; top: calc(-1px - var(--mini-h));
@@ -4795,7 +4802,7 @@ body.ui-v2 #foray-player.dial-mini > .fp-progress { display: none; }
 body.ui-v2 #foray-player.dial-mini > .fp-bar {
   position: relative; height: var(--mini-h); padding: 0 calc(var(--s-2) + var(--s-1) / 2); gap: calc(var(--s-2) + var(--s-1) / 2);
   border-radius: var(--r-lg) var(--r-lg) 0 0;
-  background: var(--deck-tint);
+  background: var(--dock-tint);
   -webkit-backdrop-filter: var(--deck-blur); backdrop-filter: var(--deck-blur);
   color: var(--ink);
   transform: translateY(0);
@@ -4811,10 +4818,21 @@ body.ui-v2 #foray-player.dial-mini .mini__title { align-self: auto; font: 700 va
 body.ui-v2 #foray-player.dial-mini .mini__show { align-self: auto; font: 500 var(--t-label)/1.25 var(--font-text); color: var(--ink-2); }
 body.ui-v2 #foray-player.dial-mini .fp-err { grid-column: 2; font: 500 var(--t-label)/1.25 var(--font-text); color: var(--warn); }
 body.ui-v2 #foray-player.dial-mini .fp-play,
-body.ui-v2 #foray-player.dial-mini .fp-skip { border: 0; box-shadow: none; background: var(--k-fill); color: var(--k-ink); font: inherit; }
+body.ui-v2 #foray-player.dial-mini .fp-skip { border: 0; background: var(--k-fill); color: var(--k-ink); font: inherit; margin: 0 0 var(--lip); box-shadow: 0 var(--lip) 0 var(--k-lip); }
+/* The lip is the key's own silhouette moved down 3px (a zero-blur shadow), so on the
+   round Play it is a crescent hugging the disc; the base `.keycap::after` is a flat bar
+   across the bottom, which on a circle reads as a stray line under it. */
+body.ui-v2 #foray-player.dial-mini .fp-play::after,
+body.ui-v2 #foray-player.dial-mini .fp-skip::after { content: none; }
+body.ui-v2 #foray-player.dial-mini .fp-play:active:not(:disabled),
+body.ui-v2 #foray-player.dial-mini .fp-skip:active:not(:disabled) { box-shadow: 0 var(--lip-pressed) 0 var(--k-lip); }
+/* The +30 key is a paper keycap on a paper-coloured deck: its face is a step off the
+   deck and a 1px line bounds it, as the prototype's `.keycap--paper` does, so it reads
+   as the same object as Play and not as a floating glyph. */
+body.ui-v2 #foray-player.dial-mini .fp-skip { --k-fill: color-mix(in srgb, var(--ink) 8%, var(--card)); box-shadow: inset 0 0 0 1px var(--dial-line), 0 var(--lip) 0 var(--k-lip); }
+body.ui-v2 #foray-player.dial-mini .fp-skip:active:not(:disabled) { box-shadow: inset 0 0 0 1px var(--dial-line), 0 var(--lip-pressed) 0 var(--k-lip); }
 body.ui-v2 #foray-player.dial-mini .fp-play { width: var(--key); min-width: var(--key); height: var(--key); padding: 0; border-radius: var(--r-pill); }
 body.ui-v2 #foray-player.dial-mini .fp-skip { width: var(--tap); min-width: var(--tap); height: var(--tap); padding: 0; border-radius: calc(var(--r-sm) + var(--s-1)); }
-body.ui-v2 #foray-player.dial-mini .fp-skip::after { border-radius: 0 0 calc(var(--r-sm) + var(--s-1)) calc(var(--r-sm) + var(--s-1)); }
 body.ui-v2 #foray-player.dial-mini .fp-skip:active { background: var(--k-fill); }
 body.ui-v2 #foray-player.dial-mini .mini > .band--line { top: 0; }
 
