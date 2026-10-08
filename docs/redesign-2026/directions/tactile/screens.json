@@ -274,28 +274,31 @@
       "prototype": {
         "route": "#/home/loading"
       },
-      "app": null,
+      "app": {
+        "state": "loading",
+        "step": "home-loading"
+      },
       "regions": {
         "header": {
           "prototype": ".top",
-          "app": null
+          "app": ".today-top"
         },
         "hero": {
           "prototype": ".hero",
-          "app": null
-        },
-        "primary": {
-          "prototype": ".hero__keys .keycap",
-          "app": null
+          "app": ".today--loading .skel--hero"
         },
         "rows": {
           "prototype": ".row",
-          "app": null,
+          "app": ".today--loading .skel--row",
           "mode": "all"
+        },
+        "bridge": {
+          "prototype": ".bridge",
+          "app": ".today--loading .skel--bridge"
         },
         "tabBar": {
           "prototype": "#tabs",
-          "app": null
+          "app": "#tab-bar"
         }
       }
     },

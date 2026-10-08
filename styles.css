@@ -5444,6 +5444,39 @@ body.view-home::after { content: ""; position: fixed; z-index: 19; left: 0; righ
 .today-pcard__badge { align-self: flex-start; }
 .today .gauge { margin: 0; }
 
+/* Today, loading (Tactile `home-loading`, BUILD-PLAN 2.8). The boot paint
+   (ui/home.js todayLoadingHtml) is the skeleton primitives above, placed with
+   Today's own spacing so the swap to the loaded page moves nothing: the hero
+   card takes the loaded hero's padding, radius and five gaps (eyebrow to title
+   10, title to band 12, band to discs 10, discs to why 12, why to keys 16), and
+   its height is the sum of the spec'd shapes, not a min-height. The shimmer is
+   the primitive's (`.skel`, opacity only, 1.2s) and is stilled by the one
+   reduced-motion block below, which already names `.skel`. */
+.today--loading .skel--hero { min-height: 0; padding: var(--s-5); border-radius: var(--r-lg); gap: 0; }
+.today--loading .skel--hero > .skel__title { margin-top: calc(var(--s-2) + var(--s-1) / 2); }
+.today--loading .skel--hero > .skel__band { margin-top: var(--s-3); }
+.today--loading .skel--hero > .skel__meta { margin-top: calc(var(--s-2) + var(--s-1) / 2); }
+.today--loading .skel--hero > .skel__why { margin-top: var(--s-3); }
+.today--loading .skel--hero > .skel__actions { margin-top: var(--s-4); }
+.today--loading .skel--row { min-height: 0; padding: var(--s-3); row-gap: var(--s-3); }   /* art 56 + 12 + two why-lines 38 + 24 padding: the loaded row (131 at 393, 3-line why) within 4px */
+.today--loading .skel__row-why { grid-column: 2 / -1; }
+.today--loading .skel--bridge { min-height: 0; display: flex; flex-direction: column; gap: var(--s-3); padding: var(--s-4); }   /* 16 + sentence 48 + 12 + arc 72 + 12 + pick 89 + 16 = 265: the loaded bridge (266) */
+.today--loading .skel__bridge-sentence { min-height: calc(var(--s-8) + var(--s-4)); align-content: center; }
+.today--loading .skel__bridge-arc { min-height: calc(var(--art-row) + var(--s-4)); display: grid; grid-template-columns: var(--art-queue) minmax(0, 1fr) calc(var(--art-row) + var(--s-4)); align-items: center; gap: var(--s-3); }
+.today--loading .skel__bridge-known { width: var(--art-queue); height: var(--art-queue); }
+.today--loading .skel__bridge-line { height: calc(var(--s-1) / 2); border-radius: var(--r-pill); }
+.today--loading .skel__bridge-stretch { width: calc(var(--art-row) + var(--s-4)); height: calc(var(--art-row) + var(--s-4)); }
+.today--loading .skel__bridge-pick { display: grid; grid-template-columns: minmax(0, 1fr) var(--tap); align-items: end; gap: var(--s-3); }
+.today--loading .skel__bridge-lines { min-width: 0; display: grid; gap: var(--s-1); }
+.today--loading .skel__bridge-lines > span { height: var(--s-4); }
+.today--loading .skel__bridge-lines > span:nth-child(2) { width: 90%; }
+.today--loading .skel__bridge-lines > span:nth-child(3) { width: 60%; }
+.today--loading .skel__bridge-lines > .skel__bridge-tag { width: calc(var(--key-glance) - var(--s-6)); height: var(--s-6); margin-bottom: var(--s-1); }
+.today--loading .skel__bridge-lines > .skel__row-meta { width: 50%; height: calc(var(--s-3) + var(--s-1) / 4); margin-top: var(--s-1); }
+.today--loading .today-pgrid .skel--card { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-3); padding: var(--s-3); }
+.today--loading .today-pgrid .skel__card-art { width: var(--key-glance); height: var(--key-glance); }
+.today--loading .today-pgrid .skel__card-lines { width: 100%; }
+
 /* ---------- REDUCE MOTION: ONE BLOCK, EVERY TRANSITION (audit round 2, a11y-9) ----------
    Three strip rules honoured the setting and nothing else did: the Now Playing
    sheet still slid back over 220ms after a partial drag, the notes chevron
