@@ -1289,7 +1289,7 @@ const FLOORS = {
      disabled-Foray control is a product promise (D8 — the pipeline exists,
      its key/segment pool don't) and each test is one line from silently
      no longer holding it. Every test names the mutation that kills it. */
-  "test/create-page.test.js": 13, // audit round 2 (2026-09-23, lane L4): a build that outlives the page does not navigate from wherever the listener is, a return to Create shows Building… with the pills disabled and the build lands on the live page, and an empty result writes the live note (races-3); 9 -> 13 // // 2026-09-22: a suggestion pill builds from one tap (persona 26); 8 -> 9
+  "test/create-page.test.js": 18, // ambient-dock review: the REAL buildPlaylistFromDiscover is run on and off Discover (ok/sparse/empty/full/unsaved, pending guard, label restore) because every other suite stubs it; 13 -> 18 // // audit round 2 (2026-09-23, lane L4): a build that outlives the page does not navigate from wherever the listener is, a return to Create shows Building… with the pills disabled and the build lands on the live page, and an empty result writes the live note (races-3); 9 -> 13 // // 2026-09-22: a suggestion pill builds from one tap (persona 26); 8 -> 9
   // tools/ is allowlisted for auto-merge too (T3 in automerge-nightly.yml),
   // so suites under it need the same floor.
   /* The icons are generated from tools/brand/4a-logo.png, and this suite is the

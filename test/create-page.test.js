@@ -573,3 +573,134 @@ test("races-3: an empty result after a wait writes the note on the LIVE Create p
   assert.strictEqual(note.hidden, false, "the live page's note is shown");
   assert.match(note.textContent, /Not much on \u201czzz-nothing\u201d yet/, "with the typographic quotes (copy-8)");
 });
+
+/* ==================================================================== */
+/* DISCOVER'S BUILD: the REAL buildPlaylistFromDiscover, never a stub     */
+/* ==================================================================== */
+
+/* WHY THESE EXIST (review of redesign/ambient-dock). `#/create` is an alias for
+   `#/shows`, so buildPlaylistFromDiscover (ui/create.js) is the ONLY reachable way to
+   build a playlist. test/search-playlists.test.js and test/app-surface-round3.test.js
+   replace it with a stub (`m.ctx.buildPlaylistFromDiscover = ...`), so its body never
+   ran under test; the races-3 tests above exercise the same rule through #cr-form, a page
+   no route renders any more (the #271 pattern in CLAUDE.md). These call the REAL function,
+   with a real search-data wait in front of it (holdSearchData), on Discover and off it. */
+function discoverButton() {
+  const btn = makeEl("button");
+  btn.textContent = "Create a playlist about physics";
+  btn.isConnected = true;
+  return btn;
+}
+
+test("Discover's build, listener still on Discover: it opens the saved playlist, restores the button and clears the flag", async () => {
+  /* MUTATION: in buildPlaylistFromDiscover change `if (onDiscover) location.hash = ...` to an
+     unconditional `location.hash = ...` -> the off-Discover test below goes red; delete the
+     `location.hash = ...` line -> this one goes red; drop `createBuildPending = false` from
+     `finally` -> the flag assertion goes red. */
+  const m = mount();
+  seedPool(m);
+  const arrive = holdSearchData(m);
+  m.ctx.location.hash = "#/shows";
+  const btn = discoverButton();
+  m.evalIn("buildPlaylistFromDiscover")("physics", btn);
+  assert.strictEqual(m.evalIn("createBuildPending"), true, "the one-build flag is set while the data is awaited");
+  assert.strictEqual(btn.disabled, true, "the button is disabled while building");
+  assert.strictEqual(btn.textContent, "Building\u2026", "and says so");
+  m.evalIn("buildPlaylistFromDiscover")("physics", btn);   // a second tap while waiting
+  await arrive();
+  const saved = JSON.parse(m.ctx.localStorage.getItem("cp_playlists") || "[]");
+  assert.strictEqual(saved.length, 1, "exactly one playlist: the second tap queued nothing");
+  assert.strictEqual(m.ctx.location.hash, "#/playlist/" + saved[0].id, "Discover is the page on screen, so the build opens");
+  assert.strictEqual(m.evalIn("createBuildPending"), false);
+  assert.strictEqual(btn.disabled, false, "the button is usable again");
+  assert.strictEqual(btn.textContent, "Create a playlist about physics", "and has its own label back");
+});
+
+test("Discover's build, listener has left Discover: the playlist is saved and nobody is moved (races-3, on the live path)", async () => {
+  /* MUTATION: drop the `onDiscover` test around `location.hash = ...` in buildPlaylistFromDiscover
+     (always navigate) -> the hash becomes the playlist's from Home, red. The same mutation SURVIVED
+     create-page, search-playlists and app-surface-round3 before this test existed. */
+  const m = mount();
+  seedPool(m);
+  const arrive = holdSearchData(m);
+  m.ctx.location.hash = "#/shows";
+  const btn = discoverButton();
+  m.evalIn("buildPlaylistFromDiscover")("physics", btn);
+  m.ctx.location.hash = "#/";                       // gave up waiting, went Home
+  await arrive();
+  const saved = JSON.parse(m.ctx.localStorage.getItem("cp_playlists") || "[]");
+  assert.strictEqual(saved.length, 1, "the playlist is still built and saved");
+  assert.strictEqual(m.ctx.location.hash, "#/", "but the listener stays where they went");
+  assert.strictEqual(m.evalIn("createBuildPending"), false, "the flag clears");
+  assert.strictEqual(btn.textContent, "Create a playlist about physics", "and the button label is restored");
+});
+
+test("Discover's build opens a sparse result too, and stays put off Discover", async () => {
+  /* MUTATION: narrow `result.status === "ok" || result.status === "sparse"` to "ok" only -> the
+     on-Discover half goes red (a sparse playlist is saved but never opened). */
+  for (const onDiscover of [true, false]) {
+    const m = mount();
+    seedPool(m);
+    m.ctx.buildPlaylist = () => ({ status: "sparse", playlist: { id: "pl-sparse", items: [{ id: "x" }] }, suggestions: [] });
+    const arrive = holdSearchData(m);
+    m.ctx.location.hash = onDiscover ? "#/shows" : "#/library";
+    m.evalIn("buildPlaylistFromDiscover")("physics", discoverButton());
+    await arrive();
+    assert.strictEqual(m.ctx.location.hash, onDiscover ? "#/playlist/pl-sparse" : "#/library");
+  }
+});
+
+test("Discover's build, empty/full/unsaved: the failure line lands in #sh-note on Discover, and nowhere off it", async () => {
+  /* MUTATION: delete the `note.textContent = createFailureNote(...)` line -> every on-Discover row
+     goes red; change `else if (onDiscover)` to a bare `else` -> the off-Discover rows go red
+     (#sh-note exists in this harness's page whichever route is current); delete `note.hidden = false`
+     -> the hidden assertion goes red. */
+  const cases = [
+    ["empty", { suggestions: [] }, /Not much on \u201czzz\u201d yet \u2014 try different words\./],
+    ["empty", { suggestions: [{ label: "Physics" }] }, /try Physics instead/],
+    ["full", { suggestions: [] }, /You have \d+ playlists, the most 4a keeps/],
+    ["unsaved", { suggestions: [] }, /could not be saved/],
+  ];
+  for (const [status, extra, want] of cases) {
+    for (const onDiscover of [true, false]) {
+      const m = mount();
+      seedPool(m);
+      m.ctx.buildPlaylist = () => ({ status, ...extra });
+      const arrive = holdSearchData(m);
+      m.ctx.location.hash = onDiscover ? "#/shows" : "#/";
+      const noteEl = m.ctx.document.querySelector("#sh-note");
+      noteEl.hidden = true; noteEl.textContent = "";
+      const btn = discoverButton();
+      m.evalIn("buildPlaylistFromDiscover")("zzz", btn);
+      await arrive();
+      const label = `${status} ${onDiscover ? "on" : "off"} Discover`;
+      if (onDiscover) {
+        assert.strictEqual(noteEl.hidden, false, `${label}: the line is shown`);
+        assert.match(noteEl.textContent, want, `${label}: and says why`);
+      } else {
+        assert.strictEqual(noteEl.hidden, true, `${label}: nothing is written to a page they are not on`);
+      }
+      assert.strictEqual(m.ctx.location.hash, onDiscover ? "#/shows" : "#/", `${label}: nobody navigates`);
+      assert.strictEqual(m.evalIn("createBuildPending"), false, `${label}: the flag clears`);
+      assert.strictEqual(btn.textContent, "Create a playlist about physics", `${label}: the label is restored`);
+    }
+  }
+});
+
+test("Discover's build ignores an empty query and a tap while another build is pending", () => {
+  /* MUTATION: drop `|| !query` -> an empty query sets the flag (flag assertion red); drop the
+     `createBuildPending ||` half -> a second button is disabled and relabelled while a build is
+     pending (the `other` assertions go red). */
+  const m = mount();
+  seedPool(m);
+  holdSearchData(m);
+  const btn = discoverButton();
+  m.evalIn("buildPlaylistFromDiscover")("", btn);
+  assert.strictEqual(m.evalIn("createBuildPending"), false, "an empty query starts nothing");
+  assert.strictEqual(btn.disabled, false);
+  m.evalIn("buildPlaylistFromDiscover")("physics", btn);
+  const other = discoverButton();
+  m.evalIn("buildPlaylistFromDiscover")("physics", other);
+  assert.strictEqual(other.disabled, false, "a second button is left alone while a build is pending");
+  assert.strictEqual(other.textContent, "Create a playlist about physics");
+});
