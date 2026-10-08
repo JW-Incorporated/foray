@@ -610,11 +610,12 @@ function forayBandHtml(band, { progress = 0, current = 0, label = "" } = {}) {
     progress, currentIndex: bar, label,
   });
   const codes = [];
-  const re = /<text class="t-band__code(?: is-current)?" data-run-start="(\d+)" data-run-end="(\d+)" x="([\d.]+)" y="[\d.]+" text-anchor="middle">([^<]*)<\/text>/g;
+  const re = /<text class="t-band__code(?: is-current)?" data-run-start="(\d+)" data-run-end="(\d+)"(?: x="([\d.]+)" y="[\d.]+"| x="0" y="0" transform="translate\(([\d.]+) [\d.]+\)[^"]*") text-anchor="middle">([^<]*)<\/text>/g;
   let m;
   while ((m = re.exec(svg)) !== null) {
-    /* `m[4]` is the primitive's already-escaped code text; the rest is digits. */
-    codes.push(`<span class="fdet-code" data-run-start="${m[1]}" data-run-end="${m[2]}" data-x="${(Number(m[3]) / 1000).toFixed(4)}">${m[4]}</span>`);
+    /* `m[5]` is the primitive's already-escaped code text; the rest is digits. The detail band
+       (Tactile onboarding, group F) writes its centre as a translate(), the others as `x`. */
+    codes.push(`<span class="fdet-code" data-run-start="${m[1]}" data-run-end="${m[2]}" data-x="${(Number(m[3] ?? m[4]) / 1000).toFixed(4)}">${m[5]}</span>`);
   }
   return `<div class="well fdet-well"><div class="fdet-stage">${svg}<div class="fdet-codes" aria-hidden="true">${codes.join("")}</div><span class="fdet-needle" aria-hidden="true"></span></div></div>`;
 }

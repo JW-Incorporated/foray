@@ -92,7 +92,8 @@ function decl(selector, atRules = []) {
   return out;
 }
 const FORAY_START = CSS.lastIndexOf("/*", CSS.indexOf("FORAY DETAIL (TACTILE): the band, the clips, one pinned key"));
-const FORAY_END = CSS.indexOf("/* ---------- REDUCE MOTION: ONE BLOCK");
+/* ends at the next section: the onboarding block (group F) follows, else the reduced-motion block */
+const FORAY_END = (() => { const o = CSS.indexOf("/* ONBOARDING (Tactile"); return o > FORAY_START ? o : CSS.indexOf("/* ---------- REDUCE MOTION: ONE BLOCK"); })();
 const FORAY_CSS = CSS.slice(FORAY_START, FORAY_END);
 
 /* ---------------------------------------------------------------- the page */
