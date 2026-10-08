@@ -558,3 +558,18 @@ test("the tab bar's glyphs are sized from the sprite tokens and the current tab 
   assert.match(icon, /height:\s*var\(--icon-tab\)/);
   assert.match(icon, /fill:\s*currentColor/, "the glyph takes the tab's colour");
 });
+
+test("the mini row keeps the prototype's rhythm: 44 art, 12 gaps, abutting 48 Play and forward-30, progress out of flow", () => {
+  /* Iteration 4's fidelity finding (art->title 8, Play 14px left, Play->forward 21). MUTATIONS, each run red: (a) `gap: var(--s-2)`
+     in the .fp-bar rule (art->title tightens); (b) delete `margin-left` from the .fp-skip rule (the buttons stand 12 apart and the
+     Play drifts 12px left); (c) change the .fp-bar right padding to var(--s-3) (forward-30 no longer 30 from the edge); (d) drop
+     `position: absolute` from the .fp-progress rule (the row is 66 tall, not 64). Harness audit: reads the shipped stylesheet; the
+     measured positions were checked against the prototype's own boxes in the browser (all deltas 0 at 393). */
+  const bar = primRule("body.ui-v2 #foray-player .fp-bar");
+  assert.ok(bar, "the mini row rule exists");
+  assert.match(bar, /gap:\s*var\(--s-3\)/, "12 between art, title column and the controls");
+  assert.match(bar, /padding:\s*var\(--s-2\)\s+var\(--s-2\)\s+var\(--s-2\)\s+calc\(var\(--s-2\)\s*\+\s*var\(--s-1\)\s*\/\s*2\)/, "8 right (forward-30 centres 30 from the edge), 10 left");
+  assert.match(primRule("body.ui-v2 #foray-player .fp-art"), /width:\s*var\(--art-mini\)/, "the 44 art tile");
+  assert.match(primRule("body.ui-v2 #foray-player .fp-skip"), /margin-left:\s*calc\(var\(--s-3\)\s*\*\s*-1\)/, "pulled flush against the Play");
+  assert.match(primRule("body.ui-v2 #foray-player .fp-progress"), /position:\s*absolute/, "the line does not take a row of its own");
+});

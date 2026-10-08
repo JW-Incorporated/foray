@@ -345,8 +345,14 @@ body.ag-discover #foray-player .fp-progress { background: transparent; }   /* th
 body.ui-v2 #foray-player .fp-play { background: var(--ember); border-color: var(--ember); color: var(--ember-ink); width: calc(var(--tap) + var(--s-1)); height: calc(var(--tap) + var(--s-1)); }   /* the 48 Play of the direction; the 44 floor still holds */
 body.ui-v2 #foray-player .fp-title { font: var(--t-label); color: var(--text); }
 body.ui-v2 #foray-player .fp-show { font: var(--t-caption); }
-body.ui-v2 #foray-player .fp-progress { height: calc(var(--s-1) / 2); background: transparent; }
+body.ui-v2 #foray-player .fp-progress { position: absolute; left: 0; right: 0; top: 0; height: calc(var(--s-1) / 2); background: transparent; }   /* out of flow, like the prototype's .prog: in flow it made the row 66, not 64 */
 body.ui-v2 #foray-player .fp-fill { background: var(--glow); }
+/* The mini row's rhythm, from the prototype's .mini: 44 art, 12 to the title, the 48 Play and the 44 forward-30 abutting
+   (no gap between the two buttons), 10 in from the left and 8 from the right so the forward-30 centres 30 from the Dock's
+   right edge. The legacy bar's 40 art, 10 gap and 12 side padding put the controls 14px left of that. */
+body.ui-v2 #foray-player .fp-bar { gap: var(--s-3); padding: var(--s-2) var(--s-2) var(--s-2) calc(var(--s-2) + var(--s-1) / 2); }
+body.ui-v2 #foray-player .fp-art { width: var(--art-mini); height: var(--art-mini); }
+body.ui-v2 #foray-player .fp-skip { margin-left: calc(var(--s-3) * -1); display: grid; place-items: center; }   /* the glyph centred in the 44, not sat on a text baseline 2px high */
 body.ui-v2 #foray-player .fp-skip .fp-skip-glyph { width: var(--icon-tab); height: var(--icon-tab); fill: currentColor; stroke: none; pointer-events: none; }
 /* Tab bar: Phosphor glyphs from the sprite (28 here, 24 in Discover's receded row), the current tab in Lamp with
    its Fill twin (ui/tabbar.js swaps the glyph), never an Ember outline: Ember is the listener's own marks only. */
