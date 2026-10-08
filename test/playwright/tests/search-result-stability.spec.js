@@ -127,7 +127,7 @@ async function openShowsPage(page) {
   await page.goto(site.baseUrl + "#/shows");
   await page.waitForFunction(() => !!document.querySelector("#sh-input"), null, { timeout: 60_000 });
   await page.waitForFunction(() => document.querySelectorAll("#view .show-result").length > 0, null, { timeout: 60_000 });
-  await page.evaluate(() => { document.querySelector("#first-time-sheet")?.remove(); });
+  await page.evaluate(() => { document.querySelector("#onboarding-room")?.remove(); });
 }
 
 /** Installs a MutationObserver on `#sh-results` that records the full row list

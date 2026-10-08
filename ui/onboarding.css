@@ -1,0 +1,128 @@
+/* ui/onboarding.css — the first-run Room, Redesign 2026, ambient direction ("Afterglow"), phase 4.
+
+   The numbers are docs/redesign-2026/directions/ambient/BUILD-NOTES.md §4.7 (the screen) and §11.2
+   (the composition after round 3), checked against the round-4 prototype's afterglow.css (.onb-*).
+   The Room wears `.room ag ob-room`, so it reads the tokens of ui/tokens.css in the page's scheme:
+   Dusk by default, and in Dawn the same stops with the Dawn scrim colours, ink on paper. Every class
+   is `ob-*`, a new name; nothing here can reach another screen.
+
+   NO reduced-motion block lives in this file, on purpose: ui/tokens.css has the one, scoped to `.room`
+   and everything under it. The strip's draw-in runs one 1ms iteration and rests lit; the Room's
+   crossfade between artworks and its dismissal become 200ms opacity fades; the sleeves stop moving.
+   A second block would be a second owner (test/afterglow-tokens.test.js, "ONE block").
+
+   The pixel contract (375, 393 and 412 wide; 667, 852 and 915 tall), from the top of the viewport:
+     safe-top + 24            wordmark row, 30 tall, ends at safe-top + 54
+     safe-top + 94            the sleeves row, 176 tall: 40 under the wordmark, in the scrim's bright zone
+     sleeves + 24             the strip, 48 tall
+     strip + 28               the display title, then the body 12 under it
+     bottom                   Primary (48), 12, Secondary (44), then safe-bottom + 24
+   The surplus on a tall screen opens between the copy and the buttons (.ob-mid is the flexible row), never
+   above the sleeves. */
+
+/* The Room: a full-screen layer over the app. The scrim's stops are PIXELS from the top (BUILD-NOTES 11.2):
+   the head band (held to the wordmark's last pixel, then released) to safe-top + 72, the bright zone to
+   safe-top + 248, the mid stop at safe-top + 272. */
+.room.ob-room {
+  position: fixed; inset: 0; z-index: 100; overflow: hidden;
+  --ob-mark: calc(var(--safe-top) + 54px);   /* the wordmark row ends here: the head scrim holds to this line, so the mark keeps 3:1 over any art */
+  --ob-head: calc(var(--safe-top) + 72px);
+  --ob-bright: calc(var(--safe-top) + 248px);
+  --ob-mid: calc(var(--safe-top) + 272px);
+  color: var(--text);
+}
+.room.ob-room, .room.ob-room *, .room.ob-room *::before, .room.ob-room *::after { box-sizing: border-box; }
+.room.ob-room::after {
+  background: linear-gradient(180deg,
+    var(--scrim-head) 0,
+    var(--scrim-head) var(--ob-mark),
+    var(--scrim-top) var(--ob-head),
+    var(--scrim-top) var(--ob-bright),
+    var(--scrim-mid) var(--ob-mid),
+    var(--scrim-low) 100%);
+}
+
+/* Two stacked artwork layers crossfade over --m-room: the new one comes on while the old one goes off. They sit
+   above the Room's own ::before (the Glow gradient that stands in until art loads) and under the scrim. */
+.ob-room .ob-layers { position: absolute; inset: 0; z-index: -2; overflow: hidden; }
+.ob-room .ob-layer {
+  position: absolute; inset: -12%;
+  background: var(--ob-art, none) center / cover;
+  filter: blur(64px) saturate(130%);
+  transform: scale(1.4);
+  opacity: 0;
+  transition: opacity var(--m-room) var(--e-out);
+}
+.ob-room .ob-layer.is-on { opacity: var(--room-art-opacity); }
+@media (prefers-contrast: more) { .ob-room .ob-layer.is-on { opacity: 0.35; } }
+
+/* The content scrolls only if a large text size needs it; at ordinary sizes it fills the screen exactly. */
+.ob-room .ob-inner {
+  position: absolute; inset: 0; z-index: 1;
+  display: flex; flex-direction: column;
+  padding: calc(var(--safe-top) + var(--s-6)) var(--gutter) calc(var(--safe-bottom) + var(--s-6));
+  overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain;
+}
+.ob-room .ob-wordmark {
+  margin: 0; flex: none;
+  font: italic 500 1.625rem/1.875rem var(--font-display);
+  font-variation-settings: 'SOFT' 100, 'WONK' 0; font-optical-sizing: auto;
+  color: var(--text);
+}
+/* The flexible row: sleeves top-anchored under the wordmark, the copy under them, the surplus below. */
+.ob-room .ob-mid { flex: 1 0 auto; display: flex; flex-direction: column; justify-content: flex-start; padding-top: var(--s-10); }
+
+/* Four sleeves, scattered: x as a percent of the row, y in px, a rotation in degrees. The lit one is the
+   artwork the Room is lit by; it grows to 1.08. A tall screen (>= 800) scales every sleeve by 1.15. */
+.ob-room .ob-arts { position: relative; flex: none; height: 176px; margin: 0 calc(var(--s-1) * -1); --sb: 1; }
+@media (min-height: 800px) { .ob-room .ob-arts { --sb: 1.15; } }
+.ob-room .ob-sleeve {
+  position: absolute; left: calc(var(--x) * 1%); top: calc(var(--y) * 1px);
+  transform: rotate(calc(var(--r) * 1deg)) scale(calc(var(--s, 1) * var(--sb, 1)));
+  transition: transform var(--m-room) var(--e-spring-soft);
+}
+.ob-room .ob-sleeve:nth-child(1) { --x: 2; --y: 28; --r: -8; }
+.ob-room .ob-sleeve:nth-child(2) { --x: 24; --y: 4; --r: 4; }
+.ob-room .ob-sleeve:nth-child(3) { --x: 47; --y: 34; --r: -3; }
+.ob-room .ob-sleeve:nth-child(4) { --x: 69; --y: 8; --r: 7; }
+.ob-room .ob-sleeve.is-lit { --s: 1.08; z-index: 2; }
+.ob-room .ob-sleeve .ag-art { width: 96px; height: 96px; border-radius: var(--r-lg); }
+
+/* The strip: 48 tall, 24 under the sleeves. Bars share the width by runtime, 2px apart; a show's bar is its
+   artwork's hue, a narration bar a thin Lamp light; the bar being played is 4px taller and filled. */
+.ob-room .ob-strip { flex: none; display: flex; align-items: flex-start; gap: calc(var(--s-1) / 2); height: 48px; margin-top: var(--s-6); }
+.ob-room .ob-bar {
+  position: relative; display: block; flex: 1 1 0; min-width: 6px; height: var(--s-6); margin-top: var(--s-3);
+  border-radius: var(--r-xs); overflow: hidden; transform-origin: left;
+  animation: ob-bar-in var(--m-ui) var(--e-spring) both;
+  animation-delay: calc(var(--i, 0) * var(--ob-step, 60ms));
+}
+.ob-room .ob-bar::before, .ob-room .ob-bar::after { content: ''; position: absolute; inset: 0; background: var(--c, var(--seg-c0)); }
+.ob-room .ob-bar::before { opacity: var(--seg-dim); }
+.ob-room .ob-bar::after { transform-origin: left; transform: scaleX(var(--f, 0)); }
+.ob-room .ob-bar.is-cur { height: calc(var(--s-6) + var(--s-1)); margin-top: calc(var(--s-3) - var(--s-1)); }
+.ob-room .ob-bar.is-cur::before { opacity: 0.62; }
+.ob-room .ob-bar.is-cur::after { background: color-mix(in oklab, var(--c, var(--seg-c0)) 78%, var(--lamp)); }
+.ob-room .ob-bar.is-narr { min-width: 10px; height: var(--s-1); margin-top: calc(var(--s-3) + (var(--s-6) - var(--s-1)) / 2); box-shadow: 0 0 0 1px var(--lamp-edge); }
+.ob-room .ob-bar.is-narr::before { opacity: 1; background: var(--lamp); }
+.ob-room .ob-bar.is-narr::after { background: var(--lamp); }
+@keyframes ob-bar-in { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* The copy: the display title 28 under the strip (or the sleeves when there is no strip), the body 12 under it. */
+.ob-room .ob-title { margin: 28px 0 0; color: var(--text); }
+.ob-room .ob-arts + .ob-title { margin-top: var(--s-6); }
+.ob-room .ob-body { margin: var(--s-3) 0 0; color: var(--text-2); }
+.ob-room .ob-title:focus { outline: none; }
+
+/* The buttons hold the bottom: Primary (Ember, 48), Secondary (44), 12 apart, safe-bottom + 24 under. */
+.ob-room .ob-actions { flex: none; display: flex; flex-direction: column; gap: var(--s-3); padding-top: var(--s-6); }
+.ob-room .ob-actions .ag-btn { width: 100%; }
+
+/* Dismissal. "Show my picks" sends the strip toward Today's hero collage over --m-ui (script sets the three travel
+   properties only when motion is allowed) and the Room lets go in the last --m-micro of --m-sheet, so the strip
+   lands on the collage before the Room dissolves to show it. "Skip for now" just fades over --m-ui. Under Reduce
+   Motion tokens.css makes both a 200ms opacity crossfade with no delay, and script never sets the travel. */
+.room.ob-room.is-leaving { opacity: 0; pointer-events: none; transition: opacity var(--m-ui) var(--e-out); }
+.room.ob-room.is-leaving.is-travelling { transition: opacity var(--m-micro) var(--e-out) calc(var(--m-sheet) - var(--m-micro)); }
+.ob-room .ob-strip { transition: transform var(--m-ui) var(--e-out); }
+.ob-room.is-travelling .ob-strip { transform: translate(var(--ob-dx, 0px), var(--ob-dy, 0px)) scale(var(--ob-k, 1)); }

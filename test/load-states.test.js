@@ -451,13 +451,13 @@ test("REVIEW: a Try again whose segments fail does not adopt a half set; the fai
   assert.ok(m.view.querySelector("[data-retry]"), "and offers Try again again");
 });
 
-test("#/forays explains what a Foray is, from the same sentence the first-run sheet uses", () => {
+test("#/forays explains what a Foray is, from the one sentence forayAbout() holds", () => {
   /* The first-run sheet was the only place the product said what a Foray is, and
      "Skip for now" hid it forever. The page's subtitle now carries it — and it
-     is ONE constant, so the two cannot drift.
+     is ONE function. (Redesign 2026: the first-run sheet retired; the Room says
+     what 4a does in two lines and leaves the Foray to this page.)
      MUTATION: put the count back in the subtitle (`${list.length} forays`). The
-     sentence is gone and this goes red. MUTATION 2: inline the literal back into
-     the sheet. The second assertion goes red. */
+     sentence is gone and this goes red. */
   const m = mount({ hash: "#/forays", bridge: bridge() });
   m.state.forays = FORAYS_DOC;
   m.ctx.renderCurrentPage();
@@ -471,7 +471,6 @@ test("#/forays explains what a Foray is, from the same sentence the first-run sh
   assert.ok(head, "fixture: the page has its header");
   assert.ok(!head[0].includes(shown), "the sentence is below the sticky header, not in it");
   assert.doesNotMatch(m.html(), /\b\d+ forays?\b/, "and states no count in its place");
-  assert.match(APP_SRC, /ddEl\("p", "fy-sheet-sub", forayAbout\(\)\)/, "the first-run sheet reads the same sentence");
 });
 
 test("a Foray page whose player failed has a way back to the list and a Try again", async () => {

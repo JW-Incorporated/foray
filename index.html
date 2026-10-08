@@ -112,6 +112,8 @@
 <link rel="stylesheet" href="ui/primitives.css">
 <!-- AFTERGLOW Today (Home), the first screen to wear the system: every selector is `.ag .td-*`, new names only. -->
 <link rel="stylesheet" href="ui/today.css">
+<!-- AFTERGLOW onboarding: the first-run Room that replaced the Welcome sheet; every selector is `.ob-*` under `.ob-room`. -->
+<link rel="stylesheet" href="ui/onboarding.css">
 <link rel="icon" href="icon-180.png" type="image/png">
 </head>
 <!-- ui-v2 FROM THE FIRST BYTE (round-2 audit, p-first-2). setBodyClass()
@@ -144,6 +146,7 @@
   <div class="drawer-section-label">Settings</div>
   <button class="drawer-item as-btn" id="family-toggle"></button>
   <button class="drawer-item as-btn" id="autoadvance-toggle"></button>
+  <button class="drawer-item as-btn" id="intro-replay" type="button">What 4a does</button>
 </nav>
 
 <main id="view"></main>

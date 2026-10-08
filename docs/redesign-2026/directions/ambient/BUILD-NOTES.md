@@ -1122,3 +1122,87 @@ clock 2026-10-05, remote art off.)
       created by the first `renderCurrentPage`), so that state's `tabBar` region reads prototype-only. The Create page is
       reachable only from Discover's "Make a playlist" once the Discover branch merges; until then `#/create` is a route
       with no tab.
+
+
+## 17. As built: phase 4, Onboarding (`redesign/ambient-onboarding`, `ui/onboarding.js`, `ui/onboarding.css`)
+
+The first-run screen of BUILD-NOTES 4.7 and 11.2, built as one full-screen Room over Today. It replaces the two-step
+first-run sheet (`#first-time-sheet`, retired). Decisions are the builder's and the art director's, made overnight;
+the pixel numbers are 11.2's, checked against the round-4 prototype's `.onb-*` rules.
+
+1. **What it is.** `showFirstTimeExplainerOnce()` keeps its gates (genuine first-time listener, `cp_intro_dismissed`
+   unset, no Room already on screen, not parked this visit, nothing sounding) and opens `openOnboardingRoom()`: a
+   `.room.ag.ob-room` dialog appended to `<body>` and opened through the one sheet owner (`openSheet`: focus in, the page
+   and tab bar `inert`, Escape routed to the Room's own close). `role="dialog"`, `aria-labelledby` the display title,
+   deliberately not `aria-modal` (the reason the sheets never were). Two stacked artwork layers crossfade over 560ms
+   every 6s through four real show arts (the first foray's shows in running order, then the discover pool's, distinct,
+   never five); the lit sleeve and the Room's Glow follow. Reduce Motion, or one artwork: the first art, held.
+2. **The pixel contract**, from the top, at every width and height: wordmark row `safe-top + 24` to `+ 54`; sleeves row
+   176 tall at `+ 94` (40 under the wordmark), the four sleeves at the prototype's x / y / rotation, the lit one at 1.08
+   and the whole row at 1.15 from 800px tall; the strip 24 under the sleeves; the display title 28 under the strip, the body
+   12 under that; Primary (Ember, 48) and Secondary (44) 12 apart at the bottom, `safe-bottom + 24` under. The flexible row
+   is `.ob-mid` (`flex: 1 0 auto`, content `flex-start`), so a tall screen's surplus opens between the copy and the
+   buttons and never above the sleeves. Measured (`fidelity` runs `onboarding-i2`, `onboarding-412-i2`, `onboarding-dawn-i2`):
+   wordmark, sleeves, Primary, Secondary and the Room all 0px against the prototype at 375x667, 393x852 and 412x915.
+   Primary's bottom edge is 80px above the viewport bottom at all three (Secondary 44 + the 12 gap + 24: 667 - 587,
+   852 - 772, 915 - 835) when the safe area is zero, and `safe-bottom + 24` more by the padding rule when it is not.
+3. **Two deliberate differences from the prototype's numbers.** (a) The strip is a 48px box, as 4.7 and the acceptance
+   say; the prototype's `.strip-wrap` is a 54px `<button>` box (its hit area), so the strip region reads -6px high and the
+   title and body +/-6px up. The bars sit 12px down in the box (the prototype's button centred them), so they land 5px
+   above the prototype's. (b) The head scrim is held at `--scrim-head` to the wordmark's last pixel (`safe-top + 54`) and
+   released to `--scrim-top` by `+ 72`; the prototype ramped from 0. 11.2 says "head 0.52 to safe-top + 72" and the
+   acceptance says the head icons keep 3:1 over any art: at the wordmark's baseline the ramp was at 0.28 alpha and the
+   pair measured 1.6:1 over pure white art. Held, the pair is 3.27:1 in Dusk and 4.8:1 in Dawn (test 11).
+4. **The strip** is drawn from the first listable foray through `ForayPlayer.stripModel` (narration merged), as bars
+   sharing the 343px by runtime, 2px apart: a show's bar in its artwork hue (`oklch(0.70 0.13 H)` Dusk, `0.52` Dawn, nudged
+   30 degrees when within 24 of a bar already drawn; numbers only), narration as thin Lamp lights, the bar being played 4px
+   taller and part-lit (18% in, an illustration, `aria-hidden`). More than 14 bars condense to nine named for the show that
+   holds most of each, with a narration light after every third (the prototype's mini-strip rule). It draws in over 1.2s:
+   `--ob-step` is set from the bar count so the last bar ends at 1200ms (280ms each). No foray, no player module: no strip,
+   the title moves up to 24 under the sleeves.
+5. **Show my picks.** Writes `cp_intro_dismissed` through the shim at the press, sends the strip to Today's hero collage
+   (translate and scale to the collage's centre and width over `--m-ui`, then the Room fades over the last `--m-micro` of
+   `--m-sheet`: 420ms in all), closes the sheet, and puts focus on Today's wordmark. Under Reduce Motion script sets none
+   of the travel properties and the shared block turns the fade into a 200ms crossfade. Skip for now: the flag, a plain
+   `--m-ui` fade, no travel, no sheet left, no `inert`. Escape, a navigation and hardware back park the Room for the visit
+   and write nothing (round 2, p-first-4); there is no scrim to tap.
+6. **What fell with the sheet.** The Preferences step (17 subject chips, a typed-subject field), the Welcome pane's two
+   value props, the "Get started" step and `PREFS_CHIP_IDS`. 4.7 and DIRECTION say one screen; a newcomer who skips the
+   chips loses nothing the ranking does not learn from the first plays, and Tuning (less, 4a's pick, more) is where a
+   subject is changed on purpose. Kept: `applyOnboardingPicks`, `resolveTypedSubject` and `redealAfterOnboardingPicks`
+   (the write path Tuning and `applyPersonaPick` share, and the `reserve` re-deal the first-Home tests pin). Overturned by
+   name (`test-classification.md`, 2b): the first-run sheet and founder Q8's "Show my picks" as the chip step's button
+   (the label survives as the Room's Primary); the U-09 acceptance line "picking three chips changes the first Home" has
+   no UI until Tuning adopts the write path.
+7. **Settings' "What 4a does".** The drawer (still the Settings surface on this branch) gains `#intro-replay`, bound in
+   `bindDrawerChrome` to `showWhatFouraDoes()`: the same Room for anyone, any time, writing nothing; its Primary goes to
+   Today. **The Dock / Settings unit must keep this entry** (the prototype's Settings sheet has it as `i-sparkle`
+   "What 4a does"); the hook is that one function.
+8. **The Room does not keep the player reachable.** The sheet lifted the mini bar over its scrim; a full-screen Room has
+   the bar under its buttons, and the Room already waits while a Foray is sounding (`forayHoldsOnboarding`), so only a
+   restored, paused bar can sit under it. `ONBOARDING_KEEPS_REACHABLE` stays for the returning-listener popup. The Room's
+   `z-index` is 100, above the player and every sheet.
+9. **Harness.** `first-run` keeps its step label `intro-sheet` (other directions' `screens.json` name it) and waits for
+   `#onboarding-room`; `SHEET_OPENERS` names the Room, with `#onboarding-skip` as its close. `screens.json`: `onboarding`
+   (regions: room, wordmark, sleeves, strip, title, body, primary, secondary), `onboarding-412` and `onboarding-dawn`
+   (same state; fidelity keys screens by prototype route, so they carry `?size=412` and `?theme=dawn`; shoot Dawn with
+   `--scheme light`). The fixtures carry no artwork URLs (third-party imagery stays out of the repo), so the harness Room
+   shows monograms and the Glow gradient; the blurred backdrop was checked with a CSS gradient in `--ob-art` (red, pure
+   white, pure black art, both schemes).
+10. **Tests.** New `test/ambient-onboarding.test.js` (17 tests; every mutation in each test's header ran red: 63 in
+    all across the new suite and the rewritten ones. Five ran green at first and were fixed: an equivalent `stripModel`
+    guard, a redundant `if (!replay)` on the park flag (removed), a replay test whose seed hid the flag write, a button
+    height rule no suite measured, and a once-per-visit check the count alone could not see). Rewritten for the Room: `first-time-onboarding` (sixteen sheet tests went,
+    the gate / subject-resolution / write-path / re-deal tests stay, driven without chips; floor 33 to 17),
+    `onboarding-sheet-once` (ids; plus an identity assertion, because the owner replaces a twin by id and the count alone
+    cannot tell "left alone" from "closed and reopened"), `modal-and-focus` (the dialog, park, reachability and z-order
+    tests for the Room; the Get-started focus test went), `listener-copy`, `load-states`, `ui-tokens` (field census 6 to 5),
+    `afterglow-tokens` (onboarding.js joins the adopted screens; the stylesheet link list), `tap-targets` (the CSS list),
+    three Playwright specs and two root suites (ids). Equivalent mutant noted: dropping only the `stripModel` guard in
+    `onboardingBars` is absorbed by its own try/catch; dropping both is red.
+11. **Budget.** `ui/onboarding.css` is 8.3 KB source; `prepare-webdir.test.mjs` passes with the bundle under the cap.
+12. **Not done here, on purpose.** Judge passes and the reviewer pass (no agent could be spawned from this run): the
+    fidelity renders and side-by-sides are in `data-local/redesign/fidelity/onboarding-i2`, `onboarding-412-i2` and
+    `onboarding-dawn-i2`. The rolling `ambient-app` baseline is not re-recorded (shared by every screen branch; it
+    re-locks on merge). `ambient-gallery` compared 123/123 exact. Gates on `first-run`: 0 new against the known debt;
+    axe: only the app-wide `meta-viewport` (the no-zoom ruling).

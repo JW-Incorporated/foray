@@ -184,7 +184,7 @@
       }
     },
     "onboarding": {
-      "title": "Onboarding",
+      "title": "Onboarding (Dusk)",
       "prototype": {
         "route": "#/onboarding"
       },
@@ -193,13 +193,125 @@
         "step": "intro-sheet"
       },
       "regions": {
-        "sheet": {
-          "prototype": ".onb-inner",
-          "app": "#first-time-sheet"
+        "room": {
+          "prototype": ".onb",
+          "app": "#onboarding-room"
+        },
+        "wordmark": {
+          "prototype": ".onb .wordmark",
+          "app": ".ob-wordmark"
+        },
+        "sleeves": {
+          "prototype": ".onb-arts",
+          "app": ".ob-arts"
+        },
+        "strip": {
+          "prototype": ".onb .strip-wrap",
+          "app": ".ob-strip"
+        },
+        "title": {
+          "prototype": ".onb .t-display",
+          "app": ".ob-title"
+        },
+        "body": {
+          "prototype": ".onb .t-body",
+          "app": ".ob-body"
         },
         "primary": {
-          "prototype": ".onb-inner button",
-          "app": "#first-time-sheet button"
+          "prototype": ".onb .actions .btn-primary",
+          "app": "#onboarding-go"
+        },
+        "secondary": {
+          "prototype": ".onb .actions .btn-secondary",
+          "app": "#onboarding-skip"
+        }
+      }
+    },
+    "onboarding-412": {
+      "title": "Onboarding at 412x915 (the surplus sits between copy and buttons)",
+      "prototype": {
+        "route": "?size=412#/onboarding"
+      },
+      "app": {
+        "state": "first-run",
+        "step": "intro-sheet"
+      },
+      "regions": {
+        "room": {
+          "prototype": ".onb",
+          "app": "#onboarding-room"
+        },
+        "wordmark": {
+          "prototype": ".onb .wordmark",
+          "app": ".ob-wordmark"
+        },
+        "sleeves": {
+          "prototype": ".onb-arts",
+          "app": ".ob-arts"
+        },
+        "strip": {
+          "prototype": ".onb .strip-wrap",
+          "app": ".ob-strip"
+        },
+        "title": {
+          "prototype": ".onb .t-display",
+          "app": ".ob-title"
+        },
+        "body": {
+          "prototype": ".onb .t-body",
+          "app": ".ob-body"
+        },
+        "primary": {
+          "prototype": ".onb .actions .btn-primary",
+          "app": "#onboarding-go"
+        },
+        "secondary": {
+          "prototype": ".onb .actions .btn-secondary",
+          "app": "#onboarding-skip"
+        }
+      }
+    },
+    "onboarding-dawn": {
+      "title": "Onboarding in Dawn (paper scrim, ink copy; shoot with --scheme light)",
+      "prototype": {
+        "route": "?theme=dawn#/onboarding"
+      },
+      "app": {
+        "state": "first-run",
+        "step": "intro-sheet"
+      },
+      "regions": {
+        "room": {
+          "prototype": ".onb",
+          "app": "#onboarding-room"
+        },
+        "wordmark": {
+          "prototype": ".onb .wordmark",
+          "app": ".ob-wordmark"
+        },
+        "sleeves": {
+          "prototype": ".onb-arts",
+          "app": ".ob-arts"
+        },
+        "strip": {
+          "prototype": ".onb .strip-wrap",
+          "app": ".ob-strip"
+        },
+        "title": {
+          "prototype": ".onb .t-display",
+          "app": ".ob-title"
+        },
+        "body": {
+          "prototype": ".onb .t-body",
+          "app": ".ob-body"
+        },
+        "primary": {
+          "prototype": ".onb .actions .btn-primary",
+          "app": "#onboarding-go"
+        },
+        "secondary": {
+          "prototype": ".onb .actions .btn-secondary",
+          "app": "#onboarding-skip"
         }
       }
     },
