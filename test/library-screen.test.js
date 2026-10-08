@@ -12,8 +12,10 @@
  *  6. Playlists (`cp_playlists`) render as summary rows linking to
  *     `#/playlist/:id`, not embedded detail — and playlists' own empty state
  *     is honest.
- *  7. Up Next (`cp_queue`) renders as a summary row linking to `#/queue`,
- *     same treatment as playlists — and its own empty state is honest.
+ *  7. Up Next (`cp_queue`) is the Yours page's own list (Redesign 2026,
+ *     tactile `library`; it was a summary row linking to `#/queue`): one row
+ *     per queued episode, the count in the readout line, and its own empty
+ *     state is honest. test/tactile-library.test.js holds the rows' anatomy.
  *  8. Every link Library renders stays in-app: no interpolated href bypasses
  *     the in-app hash-route/safeUrl composition every other page uses (this
  *     is also covered generally by test/app-security.test.js, pinned here
@@ -21,7 +23,7 @@
  *  9. The Library screen is reachable — linked from the Playlists page
  *     (demoted off the drawer by the founder's later 5-item mandate; same
  *     precedent as Starred Shows).
- * 10. Forays and Followed shows are Library sections (2026-09-22), the Forays
+ * 10. Forays and Shows (the followed ones) are Yours chips (2026-09-22), the Forays
  *     one claiming no count before the player can list them; the drawer and
  *     the tab bar name #/shows the same.
  * 11. The header ↻ refreshes the page it is pressed on and never navigates.
@@ -47,6 +49,14 @@ const APP_SRC = readAppSource();
 const SEARCH_SRC = fs.readFileSync(path.join(ROOT, "search-engine.js"), "utf8");
 const INDEX_HTML = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
 const readJson = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
+
+/* A profile with ONE thing in it, so the page is not the first-run screen. The
+   per-panel "nothing here" lines below describe a panel that is empty on a
+   page that is not; a profile with nothing anywhere gets the single whole-screen
+   `.empty` instead (test/tactile-library.test.js section 10). cp_history is the
+   cheapest seed: one id, no catalogue needed ("unnamed" still counts). */
+const NOT_FIRST_RUN = { cp_history: JSON.stringify(["an-episode-played-before"]) };
+const ONE_PLAYLIST = { cp_playlists: JSON.stringify([{ id: "pl-1", title: "Mine", items: [], created: "2026-01-01T00:00:00.000Z" }]) };
 
 process.on("unhandledRejection", () => {});
 
@@ -158,7 +168,7 @@ test("route() dispatches #/library to renderLibrary, matching the #/playlists pa
 
   m.ctx.location.hash = "#/library";
   m.ctx.route();
-  assert.ok(m.view().includes("<h2>Library</h2>"), "route() must dispatch to renderLibrary for #/library");
+  assert.ok(m.view().includes('<h2 class="display-xl" aria-level="1">Yours</h2>'), "route() must dispatch to renderLibrary for #/library");
 });
 
 /* ==================================================================== */
@@ -189,7 +199,7 @@ test("Library's Saved section renders an honest empty state when nothing is star
      With zero saved rows that renders an empty string, so this assertion
      (which requires visible copy) fails rather than passing on an
      accidentally-blank section. */
-  const m = mount();
+  const m = mount({ seed: NOT_FIRST_RUN });
   m.state.catalog = { shows: [] };
   m.state.discover = { items: [] };
   m.state.taxonomy = { nodes: [] };
@@ -248,7 +258,7 @@ test("History leads with the LAST-played episode: a replay moves it to the front
 test("Library's History section renders an honest empty state with no listening history", () => {
   /* MUTATION: drop the `historyRows.length ? ... : <empty state>` ternary.
      Same shape as the Saved empty-state mutation above. */
-  const m = mount();
+  const m = mount({ seed: ONE_PLAYLIST });
   m.state.catalog = { shows: [] };
   m.state.discover = { items: [] };
   m.state.taxonomy = { nodes: [] };
@@ -280,7 +290,7 @@ test("Library's Playlists section renders a summary row per playlist, linking to
 
 test("Library's Playlists section renders an honest empty state with no playlists", async () => {
   /* MUTATION: drop the `allPlaylists.length ? ... : <empty state>` ternary. */
-  const m = await mountBooted({ cp_playlists: "[]" });
+  const m = await mountBooted({ ...NOT_FIRST_RUN, cp_playlists: "[]" });
   m.ctx.renderLibrary();
   const html = m.view();
   assert.ok(html.includes("No playlists yet"), `expected an honest empty state, got: ${html}`);
@@ -290,10 +300,11 @@ test("Library's Playlists section renders an honest empty state with no playlist
 /* 7. UP NEXT SECTION: SUMMARY ROW, LINKED NOT EMBEDDED                  */
 /* ==================================================================== */
 
-test("Library's Up Next section renders a single summary row linking to #/queue", async () => {
-  /* MUTATION: render queueRows() inline instead of one summary link (the
-     same "linked, not embedded" rule as Playlists). The href assertion
-     fails because there would be no `#/queue` anchor. */
+test("Yours' Up Next chip lists every queued episode as a row and counts them in the readout", async () => {
+  /* RULING THAT FELL: "Up Next is one summary row that links to #/queue"
+     (Redesign 2026, tactile `library`). MUTATION: put the single summary row
+     back (libSummaryRow("/queue", "Up Next", …)) in place of yoursQueueInner —
+     the row-count assertion fails, and so does the readout's "2 queued". */
   const m = await mountBooted();
   /* Real playable ids: `addToQueue` refuses an episode 4a cannot play (audit
      round 2, p-impatient-10). */
@@ -303,13 +314,14 @@ test("Library's Up Next section renders a single summary row linking to #/queue"
   m.ctx.addToQueue(b.id);
   m.ctx.renderLibrary();
   const html = m.view();
-  assert.ok(html.includes('href="#/queue"'), "Up Next must summary-link to #/queue");
-  assert.ok(html.includes("2 queued"), "the summary must report the real queued count");
+  assert.strictEqual((html.match(/class="yours-qwrap"/g) || []).length, 2, "one row per queued episode");
+  assert.ok(html.includes(m.ctx.esc(a.title)) && html.includes(m.ctx.esc(b.title)), "each queued title renders");
+  assert.match(html, /id="yours-readout"[^>]*>2 queued/, "the readout reports the real queued count");
 });
 
 test("Library's Up Next section renders an honest empty state with nothing queued", async () => {
   /* MUTATION: drop the `queued.length ? ... : <empty state>` ternary. */
-  const m = await mountBooted();
+  const m = await mountBooted(NOT_FIRST_RUN);
   m.ctx.renderLibrary();
   const html = m.view();
   assert.ok(html.includes("Nothing in Up Next yet"), `expected an honest empty state, got: ${html}`);
@@ -405,7 +417,7 @@ function seedEmpty(m) {
 
 test("Library lists the Forays, linking each to its own page", () => {
   /* MUTATION: drop the `libSection("Forays", …)` line from renderLibrary. */
-  const m = mount();
+  const m = mount({ seed: NOT_FIRST_RUN });
   seedEmpty(m);
   m.state.forays = { forays: [] };
   m.ctx.window.ForayPlayer = {
@@ -426,7 +438,7 @@ test("before the player has loaded, the Forays section offers the way in and cla
   /* Loading is not empty (the three-state rule): "No forays" before the list
      could be read would be a claim about the catalogue. MUTATION: return the
      empty-state note when window.ForayPlayer is missing. */
-  const m = mount();
+  const m = mount({ seed: NOT_FIRST_RUN });
   seedEmpty(m);
   m.state.forays = { forays: [] };
   m.ctx.renderLibrary();
@@ -473,8 +485,8 @@ test("REVIEW: a foreground directory refresh repaints Library's Forays too", () 
   assert.notStrictEqual(m.ctx.foraySurfaceSignature(), before, "a new Foray changes what Library shows");
 });
 
-test("Library lists the shows the listener follows, linking to each show", () => {
-  /* MUTATION: drop the `libSection("Followed shows", …)` line. */
+test("Yours lists the shows the listener follows, linking to each show", () => {
+  /* MUTATION: drop the `shows: libraryFollowedHtml()` entry from renderLibrary. */
   const m = mount({ seed: { cp_starred_shows: JSON.stringify({
     "s-1": { show_id: "s-1", title: "A Followed Show", artwork_url: null, starred_at: "2026-09-01" },
   }) } });
@@ -482,7 +494,7 @@ test("Library lists the shows the listener follows, linking to each show", () =>
   m.state.catalog = { shows: [] };
   m.ctx.renderLibrary();
   const html = m.view();
-  assert.ok(html.includes(">Followed shows<"));
+  assert.ok(html.includes('data-yours-chip="shows"') && html.includes(">Shows<"), "a Shows chip");
   assert.ok(html.includes('href="#/show/s-1"'));
   assert.ok(html.includes("A Followed Show"));
 });
