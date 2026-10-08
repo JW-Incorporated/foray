@@ -150,16 +150,31 @@ test("the gear's Sheet opens on top of an expanded Now Playing sheet, and its fi
      the Sheet it opens is a `.fy-sheet` at 70, over the player's 60. MUTATION: give `.fy-sheet` a z-index under #foray-player's
      -> `document.elementFromPoint` at the first row's centre returns the player, not the Sheet, and this goes red. */
   await openApp(page);
+  /* Leave Today (no top bar there) for a route that has one. MUTATION: delete this line -> the app stays on Today, the top
+     bar is display:none, and the `body.view-home` count assertion below goes red at once instead of timing out at 180 s. */
+  await page.evaluate(() => { window.location.hash = "#/library"; });
+  await expect(page.locator("body.view-home")).toHaveCount(0);
+  await expect(page.locator("#menu-btn")).toBeVisible();
   await startPlayback(page);
 
   await page.locator(".fp-info").click();
   await expect(page.locator(".fp-sheet")).toBeVisible();
   await expect(page.locator("body.fp-expanded")).toHaveCount(1);
 
+  /* The gear to tap is the top bar's #menu-btn, which the expanded sheet leaves reachable (`keepReachable: [".topbar", ...]`
+     in player/client.js). On Today that bar is display:none (ui/today.css) and the gear is Today's own `[data-today-gear]`,
+     which the expanded sheet makes inert and covers, so the first version of this test waited the full 180 s on an element
+     that was never visible and never reached the stacking assertions. */
   await page.locator("#menu-btn").click();
   await expect(page.locator("#st-menu")).toBeVisible();
 
   const hit = await page.evaluate(() => {
+    /* The Sheet's owner marks the player `inert` while it is up, and an inert element is skipped by hit testing, so with that
+       attribute left on, the answer below would not depend on z-order at all (found by running the z-index mutation: it
+       survived). Lift it for the measurement so what is asked is the STACKING ORDER, which must hold on its own. */
+    const player = document.querySelector("#foray-player");
+    const wasInert = player.hasAttribute("inert");
+    player.removeAttribute("inert");
     const first = document.querySelector("#st-menu [data-st-menu]");
     if (!first) return { error: "the gear's Sheet has no rows at all" };
     const r = first.getBoundingClientRect();
@@ -168,6 +183,7 @@ test("the gear's Sheet opens on top of an expanded Now Playing sheet, and its fi
        tap lands on. */
     const bar = document.querySelector("#foray-player .fp-bar").getBoundingClientRect();
     const overBar = document.elementFromPoint(bar.left + bar.width / 2, bar.top + bar.height / 2);
+    if (wasInert) player.setAttribute("inert", "");
     return {
       text: (first.querySelector(".st-row-label") || first).textContent.trim(),
       insideSheet: Boolean(at && at.closest("#st-menu")),
