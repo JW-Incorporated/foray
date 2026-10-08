@@ -1341,3 +1341,33 @@ PlaylistTile, EpisodeRow, EmptyState and Collage rows are the measurements). `re
 - **Not done / open**: `tabForHash` lights Discover for `#/playlists` and `#/playlist/`, `#/subject/` (Today's call, pinned by
   `tab-bar`); Library owns Playlists, so Library may be the better tab. Independent judges (three Opus, both orders) were not
   runnable from inside this agent; the is-it-better and reviewer passes are the orchestrator's.
+
+### 18.1 Iteration 2 (2026-10-08, judges' findings)
+
+Four findings, four calls. **Superseded above:** the 2-up list, the `clamp2` title and why-line, the outlined row Play, and the
+detail's "hero plus a plain list".
+
+- **List is 3-up** (DIRECTION: "art grids are 3-up everywhere, so show names never cut"): `repeat(3, minmax(0, 1fr))`, column
+  gap 20 (104 at 393, 111 at 412, 101 at 375), row gap 24. A tile is the 104 cover, the name as a caption (13/18, never clamped,
+  `overflow-wrap: break-word`), the length line (wraps at its comma), then the played line. No card: a 3-up tile is art and words.
+- **Rows never cut their copy.** No `clamp` on the title or the why-line, the show name wraps (it gives up its ellipsis), the meta
+  line is `flex-wrap`, Play moved from the title's row to the meta line's so the title runs the whole 245px column (it was 189).
+  **The 96 is a floor, not a height, and cannot be met without cutting:** a 2-line title (48) + meta (18) + a 2-line why (48) +
+  24 of padding is 138, and §3 itself says "96 min height (grows with text)". The finding asked for both 96 and no cuts; copy wins.
+  Realistic titles run four to five lines. If a judge still wants a shorter row, that is a direction defect (the prototype's
+  `.ep-row` is the same grid and clamps), not a build one.
+- **Row Play is a bare glyph**: `.ag .pl-ep .pl-row-play` removes the primitive's inset ring and fill, 24px Phosphor play/pause in a
+  44 target. Scoped to this page: **Today's rows still wear the ring** (`.ag .ag-btn-play.ag-btn-size-44`, ui/primitives.css, a
+  shared file). The one-line follow-up for the orchestrator is to drop that `box-shadow` in the primitive, which changes Today,
+  Library and Queue rows and the gallery; this loop did not.
+- **The Foray-detail structure**, adapted for a list of episodes (a playlist is not stitched): the Lamp eyebrow names the kind and
+  the subject ("Playlist · Science"; a subject queue's name is the subject, so it is not said twice); the strip on its sill
+  (`.pl-sill`: one bar per episode that has a length, `flex-grow` = minutes through `--w`, tinted by the show via `forayTones`,
+  played bars whole and the rest dim once started, the playing one 4px taller, a 20px thumb row under bars of 12px or more with
+  the Foray detail's own rule). **A map, not a control**: bars are not buttons (a 4px target would fail the 44 gate; the rows
+  are the way in), so the sill is one `role="img"` sentence ("4 episodes from 3 shows, drawn by length"). "Why 4a made this" only
+  on the two playlists 4a built, one line each saying what the builder did (a listener's own playlist was not made by 4a, so it
+  has none: state observed, never declared); "Where this came from" is the distinct shows as 3-up artwork tiles, the name whole,
+  a link only where the show has a page (`showIdForShowName`); then "Episodes, in order". Order is the direction's.
+- **Not done**: the thumbs row is measured once at render (no resize observer: a phone does not resize; a rotation re-renders on
+  the next route). No fidelity pairing (no prototype route); `screens.json` still has no playlist row.

@@ -119,6 +119,171 @@ function playlistCoverHtml(rows, title, size) {
   return agCollage(covers.length ? covers : [{ name: title || "Playlist" }], { size });
 }
 
+/* ---------- the detail page's Foray-detail structure (iteration 2) ---------- */
+
+/** The distinct shows of a playlist, in order of first appearance: the name, the artwork the episode carried, and the
+    show page when the name joins one. Family Mode's hidden parts name nothing, so they add nothing. */
+function playlistShows(rows) {
+  const seen = new Set();
+  const out = [];
+  for (const r of rows) {
+    const it = r && r.item;
+    if (!it || r.state === "hidden" || !it.show || seen.has(it.show)) continue;
+    seen.add(it.show);
+    let id = null;
+    try { id = typeof showIdForShowName === "function" ? showIdForShowName(it.show) : null; } catch (_) { id = null; }
+    out.push({ name: it.show, src: it.artwork_url || "", id: id || null });
+  }
+  return out;
+}
+
+/** The subject a playlist is mostly about, by the taxonomy's own label, or "". The most common root branch among its
+    episodes (ties go to the one that appears first); an episode with no topics says nothing. */
+function playlistSubject(rows) {
+  const count = new Map();
+  for (const r of rows) {
+    const it = r && r.item;
+    if (!it || r.state === "hidden" || !(it.topics && it.topics.length)) continue;
+    const branch = String(it.topics[0]).split("/")[0];
+    if (branch) count.set(branch, (count.get(branch) || 0) + 1);
+  }
+  let best = "";
+  let bestN = 0;
+  for (const [branch, n] of count) if (n > bestN) { best = branch; bestN = n; }
+  return best ? subjectLabel(best) : "";
+}
+
+/** "Why 4a made this": only for the two playlists 4a built. A listener's own playlist has no authored line, because 4a
+    did not make it. Each line says only what the builder did (subjectItemsForBranch, generatedPlaylistById). */
+const PL_WHY_SUBJECT = "The newest episodes on this subject, gathered for today.";
+const PL_WHY_GENERATED = "Built from one of your strongest subjects: the newest episodes, two at most from any show.";
+function playlistWhy(p) {
+  return p && p.isSubject ? PL_WHY_SUBJECT : (p && p.isGenerated ? PL_WHY_GENERATED : "");
+}
+
+/** The eyebrow, in Lamp: what the playlist is, then its subject when that is a different thing from its name
+    (a subject queue's name IS the subject). */
+function playlistEyebrow(p, rows, title) {
+  const kind = p.isSubject ? "Picked for you" : (p.isGenerated ? "Generated for you" : "Playlist");
+  const subject = playlistSubject(rows);
+  return subject && subject.toLowerCase() !== String(title || "").toLowerCase() ? `${kind} · ${subject}` : kind;
+}
+
+/** Show name -> tone for the strip and its thumbnails: the Foray detail's own derivation (BUILD-NOTES 1.2). A page
+    without that script gets no tones and the bars fall back to Text-3. */
+function playlistTones(names) {
+  try { return typeof forayTones === "function" ? forayTones(names) : new Map(); } catch (_) { return new Map(); }
+}
+
+/** One bar per episode that has a length, in order. Width follows the runtime (set through the CSSOM, below), colour the
+    show. The strip is a map and not a control: a bar is a few px of colour, not a 44px target, so the page says in words
+    what it shows and the rows below are the way in. */
+function playlistStripEntries(rows) {
+  return rows
+    .map((r) => ({ r, min: r.state === "hidden" ? 0 : episodeMinutes(r.item || {}) }))
+    .filter((e) => e.min > 0)
+    .map((e) => ({ id: e.r.item.id || "", show: e.r.item.show || "", art: e.r.item.artwork_url || "", min: e.min }));
+}
+
+function playlistStripHtml(rows, history) {
+  const entries = playlistStripEntries(rows);
+  if (!entries.length) return "";
+  const shows = new Set(entries.map((e) => e.show).filter(Boolean)).size;
+  const label = `${countLabel(entries.length, "episode")}${shows ? ` from ${countLabel(shows, "show")}` : ""}, drawn by length`;
+  /* The strip is drawn in its FINAL state: is-started and is-here are in the markup, not toggled on after the first style
+     recalculation, because a class that flips an opacity after the bars have been styled is a 200ms transition (the
+     reduced-motion gate counts it) and nothing here is meant to move at load. */
+  const player = window.ForayPlayer;
+  let started = false;
+  const bars = entries.map((e) => {
+    const played = playlistRowPlayed({ item: { id: e.id }, state: "live" }, history);
+    let here = false;
+    try { here = !!(player && player.isPlaying && player.isPlaying(e.id)); } catch (_) { here = false; }
+    if (played || here) started = true;
+    return `<span class="pl-bar${played ? " is-played" : ""}${here ? " is-here" : ""}" data-pl-bar="${esc(e.id)}" data-min="${esc(String(e.min))}" data-show="${esc(e.show)}"></span>`;
+  }).join("");
+  return `<div class="pl-sill" role="img" aria-label="${esc(label)}">
+      <div class="pl-strip${started ? " is-started" : ""}" aria-hidden="true">${bars}</div>
+      <div class="pl-thumbs" aria-hidden="true"></div>
+    </div>`;
+}
+
+const PL_THUMB_MIN_BAR_PX = 12;
+const PL_THUMB_PX = 20;
+const PL_THUMB_GAP_PX = 4;
+/** The thumbnails under a laid-out strip, the Foray detail's rule: a bar of 12px or more gets a 20px artwork under its left
+    edge, if it starts clear of the last one (4px) and ends inside the strip. `bars` report offsetWidth and offsetLeft, in bar
+    order; `entries` are { show, art } in the same order. Pure, so the rule is tested without a browser. */
+function playlistThumbCells(entries, bars, stripWidth = Infinity) {
+  const cells = [];
+  let freeFrom = 0;
+  bars.forEach((bar, i) => {
+    const e = entries[i];
+    if (!e || !e.show) return;
+    if (!(bar.offsetWidth >= PL_THUMB_MIN_BAR_PX)) return;
+    if (bar.offsetLeft < freeFrom || bar.offsetLeft + PL_THUMB_PX > stripWidth) return;
+    freeFrom = bar.offsetLeft + PL_THUMB_PX + PL_THUMB_GAP_PX;
+    const letter = String(e.show).trim().charAt(0).toUpperCase() || "?";
+    cells.push({ x: bar.offsetLeft, show: e.show, html: e.art
+      ? `<img src="${esc(safeUrl(artUrl(e.art, 60)))}" alt="" loading="lazy" decoding="async" width="20" height="20">`
+      : `<span class="pl-thumb-mono">${esc(letter)}</span>` });
+  });
+  return cells;
+}
+
+/** A custom property written through the CSSOM (the CSP forbids a style attribute, not this). */
+function playlistCssVar(el, name, value) {
+  if (el && el.style && typeof el.style.setProperty === "function") el.style.setProperty(name, value);
+}
+
+/** Size and tint the bars, then lay the thumbnails under them. The widths are the runtimes; the tones are the shows'. The
+    artwork for a thumbnail is read off the episode row the bar belongs to (one source for the picture); a bar whose
+    row has none gets the show's initial. */
+function playlistPaintStrip(scope, givenTones) {
+  const strip = scope && typeof scope.querySelector === "function" ? scope.querySelector(".pl-strip") : null;
+  if (!strip || !strip.children) return;
+  const bars = [...strip.children];
+  const tones = givenTones || playlistTones([...new Set(bars.map((b) => b.dataset.show).filter(Boolean))]);
+  bars.forEach((bar) => {
+    playlistCssVar(bar, "--w", String(Number(bar.dataset.min) || 1));
+    const tone = tones.get(bar.dataset.show);
+    if (tone) playlistCssVar(bar, "--seg-tone", tone);
+  });
+  const row = scope.querySelector(".pl-thumbs");
+  if (!row || typeof strip.getBoundingClientRect !== "function") return;
+  const art = new Map();
+  scope.querySelectorAll("[data-pl-ep]").forEach((rowEl) => {
+    const img = rowEl.querySelector(".ag-art img");
+    if (img) art.set(rowEl.dataset.plEp, img.getAttribute("src") || "");
+  });
+  const entries = bars.map((b) => ({ show: b.dataset.show || "", art: art.get(b.dataset.plBar) || "" }));
+  const cells = playlistThumbCells(entries, bars, strip.clientWidth || Infinity);
+  row.innerHTML = cells.map((c) => `<span class="pl-thumb">${c.html}</span>`).join("");
+  [...row.children].forEach((el, k) => {
+    playlistCssVar(el, "--x", `${cells[k].x}px`);
+    const tone = tones.get(cells[k].show);
+    if (tone) playlistCssVar(el, "--tone", tone);
+  });
+}
+
+/** "Where this came from": the shows' own artwork, three-up, the name whole under each. A show with a page is a link to it. */
+function playlistCameHtml(rows) {
+  const shows = playlistShows(rows);
+  if (!shows.length) return "";
+  const tiles = shows.map((s) => {
+    const art = `<span class="pl-tile-art" aria-hidden="true">${agArtwork({ name: s.name, src: s.src, size: 104 })}</span>`;
+    const name = `<span class="t-caption pl-show-name">${esc(s.name)}</span>`;
+    const face = s.id
+      ? `<a class="pl-show-face" href="#${esc(showRoutePath(s.id))}">${art}${name}</a>`
+      : `<div class="pl-show-face">${art}${name}</div>`;
+    return `<li class="pl-show">${face}</li>`;
+  }).join("");
+  return `<section class="pl-came" aria-labelledby="pl-came-head">
+      <h2 class="t-headline" id="pl-came-head">Where this came from</h2>
+      <ul class="pl-shows">${tiles}</ul>
+    </section>`;
+}
+
 /* ---------- pieces ---------- */
 
 /** The head: Back (the history-aware `a.back`; `route`, written after a literal "#/", is where it goes with no history
@@ -133,20 +298,36 @@ function playlistEmptyHtml(line, label, route) {
   return `<section class="ag-empty pl-empty"><p class="t-body">${esc(line)}</p><a class="ag-btn ag-btn-secondary ag-btn-size-44" href="#/${esc(route)}">${esc(label)}</a></section>`;
 }
 
-/** One PlaylistTile: the cover fills the tile, the name (two lines), the length line, and "3 of 6 played" in Ember
-    when one has finished. The whole tile is the link. */
+/** One PlaylistTile, three-up (iteration 2: the direction's art grids are 3-up so a name never cuts): the lit cover, the name
+    in full (caption, never clamped), the length line, and "3 of 6 played" in Ember when one has finished. The whole tile is
+    the link. No card around it: a 3-up tile is art and words, like a ShowTile. */
 function playlistTileHtml(p, history) {
   const rows = resolveParts(p);
   const played = playlistPlayedLine(rows, history);
   /* One "played" line per tile: the count when one has finished, else the day it was last played ("played Sep 21, 2026",
      through fmtDate, and nothing at all for a date that does not parse). */
   const last = played ? "" : playedOnLabel(p.last_played_at);
-  return `<a class="raised ag-playlist-tile pl-tile" href="#/${esc(playlistRoute(p))}" data-pl-tile="${esc(p.id)}">
-    <span class="pl-tile-cover" aria-hidden="true">${playlistCoverHtml(rows, p.title, 120)}</span>
-    <h2 class="t-headline clamp2 pl-tile-name">${esc(p.title || "Playlist")}</h2>
+  return `<a class="pl-tile" href="#/${esc(playlistRoute(p))}" data-pl-tile="${esc(p.id)}">
+    <span class="pl-tile-cover" aria-hidden="true">${playlistCoverHtml(rows, p.title, 104)}</span>
+    <h2 class="t-caption pl-tile-name">${esc(p.title || "Playlist")}</h2>
     <p class="t-caption num pl-tile-meta">${playlistSummaryHtml(rows)}</p>
     ${played ? `<p class="t-caption num ag-progress-copy pl-tile-played">${esc(played)}</p>` : (last ? `<p class="t-caption pl-tile-last">${esc(last)}</p>` : "")}
   </a>`;
+}
+
+/** An episode row's Play: a Phosphor glyph on the 24px grid in a 44px target, no ring and no fill (the direction has no
+    hairline borders, and the Ember hero Play is the one filled control). Pause when it is playing. */
+function playlistRowPlayHtml({ label, attrs = "", disabled = false, icon = "play" }) {
+  return `<button type="button" class="ag-btn ag-btn-play ag-btn-size-44 pl-row-play"${attrs} aria-label="${esc(label)}"${disabled ? ' disabled aria-disabled="true"' : ""}>${agIcon(icon, 24)}</button>`;
+}
+
+/** The row's second line: the state, the show (whole, it wraps rather than cutting), then the length and the day. The dot
+    after the show trails it, so a line that wraps starts with a word and never with a dot. */
+function playlistMetaHtml(rowState, item) {
+  const dur = fmtDur(episodeMinutes(item));
+  const date = rowState === "default" ? fmtDate(item.release_date || item.published_at) : "";
+  const facts = [dur ? `<span class="dur">${esc(dur)}</span>` : "", date ? `<span>${esc(date)}</span>` : ""].filter(Boolean);
+  return `${todayStateLine(rowState)}<span class="pl-show-line">${esc(item.show || "")}</span>${facts.length ? `<span class="pl-facts">${facts.join('<span class="td-sep" aria-hidden="true"></span>')}</span>` : ""}`;
 }
 
 /** One EpisodeRow of the detail page, by the state resolveParts gave the part. */
@@ -160,12 +341,14 @@ function playlistRowHtml(r, ctx, isNext) {
     const blocked = rowState === "unavailable";
     const why = item.hook || episodeRowSnippet(item);
     const next = isNext && rowState === "default" ? `<span class="ag-row-state pl-next">Next</span>` : "";
+    /* The title and the why-line carry no clamp: a vertical list is where a title never cuts, and the why-line is the
+       product's main copy (iteration 2). The row grows with its words, from the 96 floor. */
     return `<article class="raised td-row pl-ep is-${esc(rowState)}" data-pl-ep="${esc(item.id)}">
     ${todayArt({ name: item.show, src: item.artwork_url, size: 72, dim: blocked, pct })}
-    <h3 class="t-headline clamp2 td-row-title"><a class="td-link" href="#/episode/${id}" data-ev="picked" data-ep="${esc(item.id)}" data-ctx="${esc(ctx)}">${esc(item.title || "")}</a></h3>
-    ${item.audio_url ? todayPlayButton({ size: 44, label: `${playing ? "Pause" : "Play"} ${item.title || "this episode"}`, attrs: ` data-pl-play="${esc(item.id)}" data-title="${esc(item.title || "")}"`, disabled: blocked, icon: playing ? "pause" : "play" }) : ""}
-    <p class="t-caption td-row-meta">${next}${todayMetaHtml(rowState, item)}</p>
-    ${why ? `<p class="t-why clamp2 td-row-why">${esc(why)}</p>` : ""}
+    <h3 class="t-headline td-row-title"><a class="td-link" href="#/episode/${id}" data-ev="picked" data-ep="${esc(item.id)}" data-ctx="${esc(ctx)}">${esc(item.title || "")}</a></h3>
+    ${item.audio_url ? playlistRowPlayHtml({ label: `${playing ? "Pause" : "Play"} ${item.title || "this episode"}`, attrs: ` data-pl-play="${esc(item.id)}" data-title="${esc(item.title || "")}"`, disabled: blocked, icon: playing ? "pause" : "play" }) : ""}
+    <p class="t-caption td-row-meta">${next}${playlistMetaHtml(rowState, item)}</p>
+    ${why ? `<p class="t-why td-row-why">${esc(why)}</p>` : ""}
   </article>`;
   }
   if (r.state === "archived") {
@@ -179,24 +362,24 @@ function playlistRowHtml(r, ctx, isNext) {
     const date = fmtDate(item.release_date);
     return `<article class="raised td-row pl-ep is-unavailable" data-pl-gone="archived">
     ${todayArt({ name: item.show, src: item.artwork_url, size: 72, dim: true })}
-    <h3 class="t-headline clamp2 td-row-title"><a class="td-link" href="#/episode/${id}">${esc(item.title || "")}</a></h3>
-    <p class="t-caption td-row-meta">${todayStateLine("unavailable")}<span class="td-ell">${esc(item.show || "")}</span>${dur ? `<span class="td-sep" aria-hidden="true"></span><span class="dur">${esc(dur)}</span>` : ""}</p>
+    <h3 class="t-headline td-row-title"><a class="td-link" href="#/episode/${id}">${esc(item.title || "")}</a></h3>
+    <p class="t-caption td-row-meta">${todayStateLine("unavailable")}<span class="pl-show-line">${esc(item.show || "")}</span>${dur ? `<span class="pl-facts"><span class="dur">${esc(dur)}</span></span>` : ""}</p>
     ${date ? `<p class="t-caption td-row-why">Published ${esc(date)}</p>` : ""}
   </article>`;
   }
   if (r.state === "hidden") {
     return `<article class="raised td-row pl-ep is-unavailable" data-pl-gone="hidden">
     ${todayArt({ name: "", src: "", size: 72, dim: true })}
-    <h3 class="t-headline clamp2 td-row-title">Hidden by Family Mode</h3>
+    <h3 class="t-headline td-row-title">Hidden by Family Mode</h3>
     <p class="t-caption td-row-meta">${todayStateLine("unavailable")}</p>
-    <p class="t-why clamp2 td-row-why">Turn Family Mode off to see and play it.</p>
+    <p class="t-why td-row-why">Turn Family Mode off to see and play it.</p>
   </article>`;
   }
   return `<article class="raised td-row pl-ep is-unavailable" data-pl-gone="unnamed">
     ${todayArt({ name: "", src: "", size: 72, dim: true })}
-    <h3 class="t-headline clamp2 td-row-title">Episode no longer in the catalogue</h3>
+    <h3 class="t-headline td-row-title">Episode no longer in the catalogue</h3>
     <p class="t-caption td-row-meta">${todayStateLine("unavailable")}</p>
-    <p class="t-why clamp2 td-row-why">Saved before 4a kept episode details.</p>
+    <p class="t-why td-row-why">Saved before 4a kept episode details.</p>
   </article>`;
 }
 
@@ -230,7 +413,7 @@ function playlistSyncPlay() {
     const meta = row.querySelector(".td-row-meta");
     if (btn) {
       btn.setAttribute("aria-label", `${on ? "Pause" : "Play"} ${btn.dataset.title || "this episode"}`);
-      btn.innerHTML = agIcon(on ? "pause" : "play", 20);
+      btn.innerHTML = agIcon(on ? "pause" : "play", 24);
     }
     if (meta) {
       /* The state line is the one `.ag-row-state` that is not the "Next" marker. */
@@ -239,6 +422,14 @@ function playlistSyncPlay() {
       if (on) meta.insertAdjacentHTML("afterbegin", todayStateLine("playing"));
     }
   });
+  /* The strip follows the player too: the bar of the episode that is playing is the taller one, and the strip dims what is
+     still ahead once the listener is anywhere in the playlist. */
+  const strip = scope.querySelector(".pl-strip");
+  if (strip && typeof strip.querySelectorAll === "function") {
+    const playingId = anyPlaying ? (scope.querySelector(".pl-ep.is-playing") || {}).dataset?.plEp : "";
+    strip.querySelectorAll("[data-pl-bar]").forEach(bar => bar.classList.toggle("is-here", !!playingId && bar.dataset.plBar === playingId));
+    strip.classList.toggle("is-started", anyPlaying || !!strip.querySelector(".is-played"));
+  }
   const hero = scope.querySelector("[data-pl-playall]");
   if (hero) {
     const name = hero.dataset.title || "this playlist";
@@ -347,9 +538,13 @@ function renderPlaylistDetail(id) {
   const source = savedFromOf(p);
   const firstShow = (playlistCovers(rows)[0] || {}).name || "";
   const anyLive = rows.some(r => r.state === "live");
-  const kind = p.isSubject ? "Picked for you" : (p.isGenerated ? "Generated for you" : "");
   const title = p.title || p.name || "Playlist";
   const playedLine = rows.length && played ? `${played} of ${rows.length} played` : "";
+  const why = playlistWhy(p);
+  const stripHtml = playlistStripHtml(rows, history);
+  /* The tones read the scheme's computed Glow lightness, which flushes style: do it BEFORE the bars exist, so they are never styled
+     without their colour and then restyled (a transition at load, which the reduced-motion gate counts). */
+  const stripTones = playlistTones([...new Set(playlistStripEntries(rows).map((e) => e.show).filter(Boolean))]);
 
   $("#view").innerHTML = `<div class="ag pl-page pl-detail" data-pl-ctx="${esc(ctx)}" data-pl-next="${esc(nextId)}">
     <div class="pl-wash" aria-hidden="true" data-glow-show="${esc(firstShow)}"></div>
@@ -357,25 +552,31 @@ function renderPlaylistDetail(id) {
     <section class="pl-hero" aria-label="Playlist">
       <div class="pl-cover" aria-hidden="true">${playlistCoverHtml(rows, title, 120)}</div>
       <div class="pl-copy">
-        ${kind ? `<p class="eyebrow lamp">${esc(kind)}</p>` : ""}
+        <p class="eyebrow lamp pl-eyebrow">${esc(playlistEyebrow(p, rows, title))}</p>
         <h1 class="t-headline pl-title" data-page-heading>${esc(title)}</h1>
         <p class="t-caption num pl-meta">${playlistSummaryHtml(rows)}</p>
         ${playedLine ? `<p class="t-caption num ag-progress-copy pl-played">${esc(playedLine)}</p>` : ""}
         <div class="pl-actions">${todayPlayButton({ size: 56, label: `Play ${title}`, attrs: ` data-pl-playall data-title="${esc(title)}"`, disabled: !anyLive })}</div>
       </div>
     </section>
+    ${stripHtml}
     ${source ? savePlaylistControlHtml(p) : ""}
     ${p.sparse ? `<p class="t-body pl-note">Only found a few on this — here's what 4a has.</p>` : ""}
     ${p.relaxed === "duration" ? `<p class="t-body pl-note">Couldn't match the length you asked for — here's what 4a found without it.</p>` : ""}
     ${partsNote(rows)}
-    <section class="pl-list-section" aria-label="Episodes">
-      <h2 class="sr-only">Episodes</h2>
+    ${why ? `<section class="pl-why" aria-labelledby="pl-why-head"><h2 class="t-headline" id="pl-why-head">Why 4a made this</h2><p class="t-why">${esc(why)}</p></section>` : ""}
+    ${playlistCameHtml(rows)}
+    <section class="pl-list-section" aria-labelledby="pl-list-head">
+      <h2 class="t-headline" id="pl-list-head">Episodes, in order</h2>
       <div class="td-stack">${rows.map(r => playlistRowHtml(r, ctx, r.state === "live" && r.item.id === nextId && played > 0)).join("")}</div>
     </section>
     ${(p.isSubject || p.isGenerated) ? "" : `<button type="button" class="ag-btn ag-btn-secondary pl-remove" id="pl-remove">Remove this playlist</button>`}
   </div>`;
 
   const view = $("#view");
+  /* FIRST, before anything that reads a computed style (agGlowLightness does): the bars' widths and tones are written while
+     they have never been styled, so the first paint is the final one and no colour transitions in at load. */
+  playlistPaintStrip(view.querySelector(".pl-detail"), stripTones);
   if (!p.isSubject && !p.isGenerated) $("#pl-remove")?.addEventListener("click", () => {
     /* A pure edit (editPlaylists), so a remove made before hydration composes
        with a save still queued there instead of being undone by it. */
@@ -388,6 +589,7 @@ function renderPlaylistDetail(id) {
   todaySizeRims(view);
   bindPickLogging(view);
   bindPlaylistPlay(view.querySelector(".pl-detail"));
+  playlistSyncPlay();
   playlistStartPoll();
 }
 

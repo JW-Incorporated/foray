@@ -72,25 +72,74 @@ body.view-playlist #view { padding-top: 0; }
 .ag .pl-save-wrap .pl-save-open { display: inline-flex; align-items: center; min-height: var(--tap); color: var(--ember); font: var(--t-label); }
 .ag .pl-save-wrap .note { flex: 1 1 100%; margin: 0; }
 
+/* The eyebrow: what the playlist is, then its subject, in Lamp. */
+.ag .pl-eyebrow { overflow-wrap: break-word; }
+
+/* The strip on its sill (the Foray detail's, iteration 2): a row of lanterns, one bar per episode, wide as the episode is
+   long, in its show's colour. A 10/12 sill, a 28px bar row (24 tall bars on its floor, the one playing 4px taller and growing
+   upward only), a 6px gap and the 20px thumbs row. A map, not a control: no bar is a button (see playlistStripEntries).
+   No transitions on purpose: nothing here moves, so nothing joins the reduced-motion block. */
+.ag .pl-sill { margin-top: var(--s-4); padding: 10px var(--s-3); border-radius: var(--r-lg); background: var(--sill); }
+.ag .pl-strip { display: flex; align-items: flex-end; gap: calc(var(--s-1) / 2); height: calc(var(--s-6) + var(--s-1)); }
+.ag .pl-bar { flex: var(--w, 1) 1 0; min-width: calc(var(--s-1) + var(--s-1) / 2); height: var(--s-6); border-radius: var(--r-xs); background: var(--seg-tone, var(--text-3)); }
+.ag .pl-strip.is-started .pl-bar { opacity: var(--seg-dim); }
+.ag .pl-strip.is-started .pl-bar.is-played, .ag .pl-strip.is-started .pl-bar.is-here { opacity: 1; }
+.ag .pl-bar.is-here { height: calc(var(--s-6) + var(--s-1)); }
+.ag .pl-thumbs { position: relative; height: var(--s-5); margin-top: 6px; pointer-events: none; }
+.ag .pl-thumbs:empty { display: none; }
+.ag .pl-thumb { position: absolute; top: 0; left: var(--x, 0); width: var(--s-5); height: var(--s-5); overflow: hidden; border-radius: var(--r-xs); background: var(--tone, var(--bg2)); }
+.ag .pl-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.ag .pl-thumb-mono { display: grid; place-items: center; width: 100%; height: 100%; color: var(--ember-ink); font: var(--t-caption); }
+
+/* Why 4a made this: the headline, then the why-line in Lamp italic (only on a playlist 4a built). */
+.ag .pl-why { margin-top: var(--s-6); }
+.ag .pl-why h2, .ag .pl-came h2, .ag .pl-list-section h2 { color: var(--text); }
+.ag .pl-why .t-why { margin-top: var(--s-1); color: var(--lamp-text); }
+
+/* Where this came from: the shows' artwork three-up, the name whole under each (a caption that wraps, never clamped). */
+.ag .pl-came { margin-top: var(--s-6); }
+.ag .pl-shows { list-style: none; margin: var(--s-3) 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-4) var(--s-3); align-items: start; }
+.ag .pl-show { min-width: 0; }
+.ag .pl-show-face { display: flex; flex-direction: column; gap: var(--s-2); min-width: 0; color: inherit; text-decoration: none; }
+.ag .pl-show-face:focus-visible { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) / 2); border-radius: var(--r-md); }
+.ag .pl-tile-art { display: block; width: 100%; }
+.ag .pl-tile-art .ag-art { width: 100%; height: auto; aspect-ratio: 1 / 1; border-radius: var(--r-md); }
+.ag .pl-show-name { color: var(--text); overflow-wrap: break-word; }
+@media (max-width: 392px) { .ag .pl-shows { column-gap: var(--s-2); } }
+
 /* The rows: Today's EpisodeRow, with the playlist's own bits. The next part is marked in Lamp; a part that is not
-   in the catalogue reads as Unavailable and carries no Play. */
+   in the catalogue reads as Unavailable and carries no Play. The title and the why-line are never clamped (a vertical
+   list is where a title never cuts), so the row grows with its words from the 96 floor `.td-row` sets; the meta line
+   wraps instead of cutting the show. Play is a bare glyph: no ring, no fill. */
 .ag .pl-list-section { margin-top: var(--s-6); }
+.ag .pl-list-section .td-stack { margin-top: var(--s-3); }
+.ag .pl-ep .td-row-title { grid-column: 2 / 4; min-height: 0; overflow-wrap: break-word; }
+/* Play moves down beside the meta line, so the title runs the full width of the text column (245 at 393, not 189). */
+.ag .pl-ep > .pl-row-play { grid-column: 3; grid-row: 2; align-self: center; }
+.ag .pl-ep .td-row-why { overflow-wrap: break-word; }
+.ag .pl-ep .td-row-meta { grid-column: 2; align-self: center; flex-wrap: wrap; white-space: normal; column-gap: 6px; row-gap: 0; }
+.ag .pl-ep .td-row-meta > .pl-show-line { flex: 0 1 auto; min-width: 0; overflow-wrap: break-word; }
+.ag .pl-ep .td-row-meta > .pl-facts { flex: none; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.ag .pl-ep .td-row-meta > .pl-show-line:not(:last-child)::after { content: ""; display: inline-block; width: 3px; height: 3px; margin-left: 6px; border-radius: var(--r-round); background: currentColor; vertical-align: middle; }
+.ag .pl-ep .pl-row-play { background: none; box-shadow: none; color: var(--text); }
 .ag .pl-ep.is-unavailable .td-row-title, .ag .pl-ep.is-unavailable .td-row-why { color: var(--text-2); }
 .ag .pl-next { font-weight: 600; }
 
 /* Remove: a Secondary button at the foot of the page, away from the rows. */
 .ag .pl-remove { margin-top: var(--s-10); }
 
-/* The list: the title, the count, and the tiles 2-up. Gap 20 is the gutter at 393 and up: 166.5 wide at 393 (the notes say 164),
-   176 at 412. */
+/* The list: the title, the count, and the tiles 3-up (iteration 2: the direction's art grids are 3-up so a name never cuts;
+   round 1 shipped 2-up and cut "Short histories for a long..."). Column gap 20 gives 104 wide at 393 (the notes' tile), 111
+   at 412 and 101 at 375. Each tile is art and words, no card: the name is a caption that wraps in full. */
 .ag .pl-heading { margin-top: var(--s-2); }
 .ag .pl-count { margin-top: var(--s-1); color: var(--text-2); }
-.ag .pl-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-5); margin-top: var(--s-5); }
-.ag .pl-tile { min-width: 0; color: var(--text); text-decoration: none; transition: background-color var(--m-micro) var(--e-out); }
-.ag .pl-tile:active { background-color: var(--bg2); }
-.ag .pl-tile:focus-visible { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) / 2); }
-.ag .pl-tile-cover { display: block; }
+.ag .pl-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: var(--s-5); row-gap: var(--s-6); align-items: start; margin-top: var(--s-5); }
+.ag .pl-tile { display: flex; flex-direction: column; gap: var(--s-1); min-width: 0; color: var(--text); text-decoration: none; }
+.ag .pl-tile:active .pl-tile-cover { opacity: .8; }
+.ag .pl-tile:focus-visible { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) / 2); border-radius: var(--r-md); }
+.ag .pl-tile-cover { display: block; margin-bottom: var(--s-1); }
 .ag .pl-tile-cover .ag-collage { width: 100%; height: auto; aspect-ratio: 1; }
+.ag .pl-tile-name { color: var(--text); overflow-wrap: break-word; }
 .ag .pl-tile-meta { color: var(--text-2); }
 .ag .pl-tile-last { color: var(--text-3); }
 

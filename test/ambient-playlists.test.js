@@ -94,7 +94,7 @@ test("the stylesheet is scoped under .ag, loads nothing and owns no reduced-moti
   const classes = new Set([...CSS.matchAll(/\.([A-Za-z][\w-]*)/g)].map((m) => m[1]));
   /* The only names that are not `pl-*`: the scope, the body class the page sets, the legacy top bar it hides, and the
      primitives and legacy note it places things inside (never restyled: the rules that name them set position and margin). */
-  const allowed = new Set(["ag", "view-playlist", "topbar", "note", "on", "ag-btn", "ag-empty", "ag-collage", "ag-progress-copy", "td-row-title", "td-row-why"]);
+  const allowed = new Set(["ag", "view-playlist", "topbar", "note", "on", "ag-btn", "ag-empty", "ag-collage", "ag-art", "ag-progress-copy", "td-row-title", "td-row-why", "td-row-meta", "td-row", "td-stack", "eyebrow", "t-why"]);
   for (const c of classes) assert.ok(/^(pl-|is-)/.test(c) || allowed.has(c), `class .${c} is not a new pl- name`);
   assert.ok([...classes].filter((c) => /^pl-/.test(c)).length >= 15, "fixture assumption: the sheet defines its own classes");
   /* And no pl- class the page emits is one styles.css already styles: the first build named the row `pl-row`, which styles.css
@@ -107,23 +107,34 @@ test("the stylesheet is scoped under .ag, loads nothing and owns no reduced-moti
   for (const c of emitted) assert.ok(!legacy.has(c), `class .${c} is already a styles.css selector`);
 });
 
-test("the Playlists grid is two equal columns, and the tiles come out at the widths the notes name", () => {
-  /* BUILD-NOTES 3, PlaylistTile: "2-up", 164 wide at 393, 176 at 412. The width is the arithmetic of the page: the screen minus
-     two gutters (20 from 393, 16 below: tokens.css) minus the column gap, over two. Gap 20 gives 166.5 and 176.
-     MUTATION: `gap: var(--s-8)` -> 160.5 at 393, red. MUTATION 2: `repeat(3, …)` -> red. MUTATION 3: `1fr` for `minmax(0, 1fr)`
-     -> red (a long name would push a column wider than its half). */
+test("the Playlists grid is three equal columns, and the tiles come out at the widths the direction names", () => {
+  /* DIRECTION.md "Art grids are 3-up everywhere, so show names never cut" and BUILD-NOTES 3 ShowTile (104 at 393, 112 at 412).
+     Round 1 shipped 2-up and the Fraunces names cut ("Short histories for a long..."): that is the finding this pins. The width is
+     the arithmetic of the page: the screen minus two gutters (20 from 393, 16 below: tokens.css) minus two column gaps, over three.
+     Gap 20 gives 104.3 at 393 and 110.7 at 412.
+     MUTATION: `repeat(3, …)` -> `repeat(2, …)` (the round-1 grid) -> red. MUTATION 2: `column-gap: var(--s-8)` -> 96 wide at 393,
+     red. MUTATION 3: `1fr` for `minmax(0, 1fr)` -> red (a long name would push a column wider than its third). MUTATION 4: a row
+     gap under 16 (`row-gap: var(--s-3)`) -> red (BUILD-NOTES 12.2: tile row gap never under 16). */
   const grid = decls(CSS, ".ag .pl-grid");
   assert.ok(grid, "the grid rule exists");
   assert.strictEqual(grid.display, "grid");
-  assert.strictEqual(grid["grid-template-columns"], "repeat(2, minmax(0, 1fr))");
+  assert.strictEqual(grid["grid-template-columns"], "repeat(3, minmax(0, 1fr))");
   const token = (name) => px(decls(TOKENS, ":root")[name]);
-  const gap = token(/^var\((--s-\d+)\)$/.exec(grid.gap)[1]);
+  const gap = token(/^var\((--s-\d+)\)$/.exec(grid["column-gap"])[1]);
+  const rowGap = token(/^var\((--s-\d+)\)$/.exec(grid["row-gap"])[1]);
+  assert.ok(rowGap >= 16, `row gap ${rowGap}`);
   const gutterAt = (vw) => (vw >= 393 ? 20 : 16);
   assert.strictEqual(token("--ag-gutter"), 16, "fixture assumption: the base gutter");
   assert.match(TOKENS, /@media \(min-width: 393px\) \{ :root \{ --ag-gutter: 20px; \} \}/, "fixture assumption: 20 from 393");
-  const tile = (vw) => (vw - 2 * gutterAt(vw) - gap) / 2;
-  assert.ok(Math.abs(tile(393) - 164) <= 3, `393 -> ${tile(393)}`);
-  assert.ok(Math.abs(tile(412) - 176) <= 3, `412 -> ${tile(412)}`);
+  const tile = (vw) => (vw - 2 * gutterAt(vw) - 2 * gap) / 3;
+  assert.ok(Math.abs(tile(393) - 104) <= 3, `393 -> ${tile(393)}`);
+  assert.ok(Math.abs(tile(412) - 112) <= 3, `412 -> ${tile(412)}`);
+  assert.ok(tile(375) >= 96, `375 -> ${tile(375)}: no narrower than the direction's 96`);
+  /* The tile's name is never clamped: a clamp is a cut. Neither the CSS nor the markup carries one. */
+  const name = decls(CSS, ".ag .pl-tile-name");
+  assert.ok(name, "the name rule exists");
+  assert.doesNotMatch(JSON.stringify(name), /line-clamp|ellipsis/);
+  assert.strictEqual(name["overflow-wrap"], "break-word", "a long unbroken token wraps instead of widening the column");
 });
 
 /* ---------- the harness ---------- */
@@ -289,14 +300,15 @@ test("the episodes are Today's EpisodeRow: art, a two-line title that opens the 
   const html = w.html();
   assert.strictEqual((html.match(/<article class="raised td-row pl-ep is-/g) || []).length, 2, "two EpisodeRows");
   assert.match(html, /<a class="td-link" href="#\/episode\/show-2--ep-2" data-ev="picked" data-ep="show-2--ep-2" data-ctx="playlist-q1">Episode 2<\/a>/);
-  assert.match(html, /<p class="t-why clamp2 td-row-why">Why episode 2 matters\.<\/p>/, "the why-line, two lines");
+  assert.match(html, /<p class="t-why td-row-why">Why episode 2 matters\.<\/p>/, "the why-line, whole: no clamp");
   assert.ok(!html.includes("<img src=x") && !html.includes("<script>alert") && !html.includes("<b>bold"), "nothing from a stored title reaches the page as markup");
   assert.ok(html.includes("&lt;img src=x") && html.includes("&lt;b&gt;bold"), "it is there, escaped");
   assert.doesNotMatch(html, /style="/, "no inline style: the strict CSP forbids it");
-  /* Heading order (axe heading-order): the name is the h1 and each row's title an h3, so the page needs the h2 between them
-     (visually hidden: the page shows no section title). MUTATION: delete `<h2 class="sr-only">Episodes</h2>` from renderPlaylistDetail -> red. */
+  /* Heading order (axe heading-order): the name is the h1 and each row's title an h3, so the page needs an h2 between them: the
+     visible "Episodes, in order" (and "Where this came from"). MUTATION: turn the `<h2 ... id="pl-list-head">` into an h4 -> red. */
   const levels = [...html.matchAll(/<h([1-6])\b/g)].map((x) => Number(x[1]));
-  assert.deepStrictEqual(levels.slice(0, 3), [1, 2, 3], `headings step down one level at a time: ${levels}`);
+  assert.strictEqual(levels[0], 1, "the name is the h1");
+  assert.ok(levels.includes(2) && levels.includes(3), `h2 and h3 both present: ${levels}`);
   levels.forEach((l, i) => assert.ok(i === 0 || l - levels[i - 1] <= 1, `heading order: ${levels}`));
 });
 
@@ -358,10 +370,12 @@ test("the Playlists list is a grid of tiles: cover, name, length, and the played
   });
   w.ctx.renderPlaylists();
   const html = w.html();
-  assert.strictEqual((html.match(/<a class="raised ag-playlist-tile pl-tile" href="#\/playlist\/[ab]"/g) || []).length, 2, "two tiles, each one link");
+  assert.strictEqual((html.match(/<a class="pl-tile" href="#\/playlist\/[ab]"/g) || []).length, 2, "two tiles, each one link");
   assert.match(html, /<div class="pl-grid">/);
   assert.doesNotMatch(html, /td-rail/, "a grid, not a rail");
-  assert.match(html, /<h2 class="t-headline clamp2 pl-tile-name">Finished one<\/h2>/);
+  assert.doesNotMatch(html, /raised/, "no card around a 3-up tile: art and words");
+  assert.match(html, /<h2 class="t-caption pl-tile-name">Finished one<\/h2>/, "the name is a caption with no clamp class");
+  assert.match(html, /ag-collage-104/, "the cover is the 104 tile art");
   const tileA = /href="#\/playlist\/a"[\s\S]*?<\/a>/.exec(html)[0];
   assert.match(tileA, /1 of 4 played/, "the finished tile says how far");
   assert.doesNotMatch(tileA, /played Sep/, "and not the day as well");
@@ -511,10 +525,218 @@ test("a generated playlist or subject queue can be kept and not removed; a liste
   assert.match(w.html(), /<button type="button" class="ag-btn ag-btn-secondary pl-remove" id="pl-remove">Remove this playlist<\/button>/);
   assert.doesNotMatch(w.html(), /id="pl-save"/);
   assert.doesNotMatch(w.html(), /Picked for you|Generated for you/);
+  assert.match(w.html(), /<p class="eyebrow lamp pl-eyebrow">Playlist<\/p>/, "an own playlist is a Playlist");
   w.state.cardSlots = [{ slot: 1, branch: "science", role: "top", item: FOUR[0], items: FOUR }];
   w.state.taxonomy = { nodes: [{ id: "science", parent: null, label: "Science" }] };
   w.ctx.renderPlaylistDetail("subject-science");
   assert.doesNotMatch(w.html(), /id="pl-remove"/);
   assert.match(w.html(), /id="pl-save"/);
-  assert.match(w.html(), /<p class="eyebrow lamp">Picked for you<\/p>/);
+  assert.match(w.html(), /<p class="eyebrow lamp pl-eyebrow">Picked for you<\/p>/);
+});
+
+/* ---------- 6. iteration 2: the rows, the strip, the Foray-detail structure, the 3-up list ---------- */
+
+test("an episode row never cuts its copy: no clamp on the title or the why-line, the meta line wraps, and the 96 floor stays", () => {
+  /* Iteration 2 finding: titles clamped to two lines ('#497 - Biggest Mysteries in...'), why-lines cut mid-word ('and th...'), the show
+     truncated ('Lex Fridman Pod...'). DIRECTION.md: "vertical lists exist so titles never cut" and the why-line is the product's main copy.
+     The row's height is BUILD-NOTES 3's own "96 min height (grows with text)": 96 is the floor `.td-row` sets, and a 2-line title, a meta
+     line and a 2-line why-line cannot fit in 96 (48 + 18 + 48 + 24 of padding is 138), so copy wins over height, and the arithmetic is on record.
+     A title is NOT clamped at four lines either: a real title ('#288 Why Your Apartment Building Doesn't Have EV Chargers (And How to Fix It) | Carter Li
+     (SWTCH Energy)') is five lines in the 245px column and a four-line clamp cut it at the pipe. With Play beside the meta line the title at least runs
+     the full column instead of 189px.
+     MUTATIONS: put `clamp2` (or `clamp4`) on the `<h3 ... td-row-title>` (a round-1 cut) or `clamp2` on the `<p ... td-row-why>` in playlistRowHtml -> red. Put Play back in
+     the title's row (`grid-row: 1`) or the title back to one column (`grid-column: 2`) -> red. Delete
+     `flex-wrap: wrap` from `.ag .pl-ep .td-row-meta` -> red. Put `text-overflow: ellipsis` on the show line -> red. Raise `min-height` of the
+     title back to var(--tap) -> red (a one-line title would leave 20px of air). */
+  const long = [item(1, { title: "#497 - Biggest Mysteries in Physics, From Antimatter to Dark Energy", show: "The Lex Fridman Podcast", hook: "A Fermilab physicist on antimatter, dark energy, and the questions the field still cannot answer." }), item(2)];
+  const w = world({ items: long, lists: [{ id: "q1", title: "T", items: long }] });
+  w.ctx.renderPlaylistDetail("q1");
+  const html = w.html();
+  const rows = html.match(/<article class="raised td-row pl-ep[\s\S]*?<\/article>/g) || [];
+  assert.strictEqual(rows.length, 2);
+  for (const row of rows) {
+    assert.doesNotMatch(row, /clamp[1-4]/, "no clamp class anywhere in a row");
+    assert.doesNotMatch(row, /<h3[^>]*>\s*<a[^>]*>[^<]*(\.\.\.|…)/, "the title is whole");
+  }
+  assert.ok(rows[0].includes("#497 - Biggest Mysteries in Physics, From Antimatter to Dark Energy"), "the whole title is in the markup");
+  assert.ok(rows[0].includes("and the questions the field still cannot answer."), "and the whole why-line");
+  assert.ok(rows[0].includes(">The Lex Fridman Podcast<"), "and the whole show name");
+  const meta = decls(CSS, ".ag .pl-ep .td-row-meta");
+  assert.strictEqual(meta["flex-wrap"], "wrap");
+  assert.strictEqual(meta["white-space"], "normal");
+  assert.doesNotMatch(CSS, /text-overflow/, "nothing in this sheet ellipsises");
+  assert.doesNotMatch(CSS, /line-clamp/, "nor clamps");
+  assert.strictEqual(decls(CSS, ".ag .pl-ep .td-row-title")["min-height"], "0");
+  assert.strictEqual(decls(CSS, ".ag .pl-ep .td-row-title")["grid-column"], "2 / 4", "the title runs under the Play column: the full text width");
+  assert.strictEqual(decls(CSS, ".ag .pl-ep > .pl-row-play")["grid-row"], "2", "Play sits beside the meta line, not the title");
+  const today = stripComments(read("ui/today.css"));
+  assert.strictEqual(decls(today, ".ag .td-row")["min-height"], "var(--row-episode)", "the floor is Today's EpisodeRow's");
+  assert.strictEqual(px(decls(TOKENS, ":root")["--row-episode"]), 96, "and it is 96");
+});
+
+test("a row's Play is a bare Phosphor glyph on the 24 grid: no ring, no fill, 44 to tap, and a pause glyph while it plays", () => {
+  /* Iteration 2 finding: the outlined ring (a 1px circle stroke around a play glyph) competed with the Ember hero Play and the direction
+     has no hairline borders. The primitive's 44 Play IS that ring (`.ag-btn-play.ag-btn-size-44`: inset box-shadow), so this page overrides
+     it for its own rows; the Ember 56 hero Play is untouched.
+     MUTATIONS: build the row Play with todayPlayButton (the ringed primitive) -> no `pl-row-play`, red. Delete `box-shadow: none` from
+     `.ag .pl-ep .pl-row-play` -> red. Delete `background: none` -> red. Size the glyph 20 -> red. Draw a ring with `border` -> red. */
+  const w = world({ items: FOUR, lists: [{ id: "q1", title: "T", items: FOUR }], playing: FOUR[1].id });
+  w.ctx.renderPlaylistDetail("q1");
+  const first = /<button type="button" class="ag-btn ag-btn-play ag-btn-size-44 pl-row-play" data-pl-play="show-1--ep-1"[^>]*>(<svg[\s\S]*?<\/svg>)<\/button>/.exec(w.html());
+  assert.ok(first, "row Play is the 44 with the pl-row-play class");
+  assert.match(first[1], /<svg class="icon" /, "24 is the sprite's own grid: the bare `icon` class");
+  assert.match(first[1], /#i-play"/);
+  assert.match(w.html(), /data-pl-play="show-2--ep-2"[^>]*><svg class="icon" [^>]*><use href="ui\/icons\.svg#i-pause"/, "the playing row shows Pause");
+  const rule = decls(CSS, ".ag .pl-ep .pl-row-play");
+  assert.ok(rule, "the override exists");
+  assert.strictEqual(rule["box-shadow"], "none");
+  assert.strictEqual(rule.background, "none");
+  assert.doesNotMatch(JSON.stringify(rule), /border|outline/, "no ring by another name");
+  const prim = decls(read("ui/primitives.css").replace(/\/\*[\s\S]*?\*\//g, " "), ".ag .ag-btn-play.ag-btn-size-44");
+  assert.match(prim["box-shadow"], /^inset/, "fixture assumption: the primitive IS the ring this overrides");
+  const html = read("index.html");
+  assert.ok(html.indexOf("ui/playlist.css") > html.indexOf("ui/primitives.css"), "the override loads after the primitive it beats");
+  assert.match(w.html(), /class="ag-btn ag-btn-play ag-btn-size-56" data-pl-playall/, "the hero Play is still the Ember 56");
+  assert.match(read("ui/playlist.js"), /agIcon\(on \? "pause" : "play", 24\)/, "a repaint to playing writes a 24 glyph too");
+});
+
+test("the strip: one bar per episode that has a length, wide as the runtime, tinted by its show, on a sill, and a map, not a control", () => {
+  /* DIRECTION.md Foray detail: "the strip at 48px with thumbnails on a dark sill" and the thesis "a foray is a row of lanterns". Round 1 had
+     none of it. A playlist's strip is the Foray detail's, one bar per episode: BUILD-NOTES 3 Strip.
+     MUTATIONS: write a constant `--w` in playlistPaintStrip -> the widths no longer follow the minutes, red. Drop the `--seg-tone` write -> red.
+     Count hidden or lengthless rows as bars -> red. Make a bar a `<button>` -> red (it would be a 4px target under the 44 gate). Add a
+     `style="` -> red. Drop `is-played` -> red. Drop `role="img"` or the label -> red. */
+  const items = [20, 40, 60, 0].map((m, i) => item(i + 1, { duration_min: m, duration_sec: m * 60, show: i === 1 ? "Show 1" : `Show ${i + 1}` }));
+  const w = world({ items, lists: [{ id: "q1", title: "T", items }], progress: { [items[0].id]: DONE } });
+  w.ctx.renderPlaylistDetail("q1");
+  const html = w.html();
+  const sill = /<div class="pl-sill"[\s\S]*?<div class="pl-thumbs"[^>]*><\/div>\s*<\/div>/.exec(html);
+  assert.ok(sill, "a sill holds the strip and its thumbnails row");
+  const bars = [...sill[0].matchAll(/<span class="pl-bar([^"]*)" data-pl-bar="([^"]*)" data-min="(\d+)" data-show="([^"]*)"><\/span>/g)];
+  assert.strictEqual(bars.length, 3, "three bars: the episode with no length has none");
+  assert.deepStrictEqual(bars.map((b) => Number(b[3])), [20, 40, 60], "weights are the minutes");
+  assert.match(bars[0][1], /is-played/, "a finished episode's bar says so");
+  assert.doesNotMatch(bars[1][1] + bars[2][1], /is-played/);
+  assert.match(sill[0], /role="img" aria-label="3 episodes from 2 shows, drawn by length"/, "a sentence for a screen reader");
+  assert.doesNotMatch(sill[0], /<button|<a |style="|tabindex/, "not interactive, no inline style");
+  /* The painter: weights and tones through the CSSOM. */
+  const written = [];
+  const mk = (show, min, id) => { const b = new El("span"); b.dataset.show = show; b.dataset.min = String(min); b.dataset.plBar = id; b.style = { setProperty: (k, v) => written.push([id, k, v]) }; return b; };
+  const strip = new El("div"); strip.appendChild(mk("Show 1", 20, "a")); strip.appendChild(mk("Show 3", 60, "c"));
+  const scope = { querySelector: (s) => (s === ".pl-strip" ? strip : null), querySelectorAll: () => [] };
+  w.ctx.playlistPaintStrip(scope);
+  assert.deepStrictEqual(written.filter((x) => x[1] === "--w").map((x) => x[2]), ["20", "60"]);
+  const tones = written.filter((x) => x[1] === "--seg-tone");
+  assert.strictEqual(tones.length, 2, "each bar takes its show's tone");
+  assert.notStrictEqual(tones[0][2], tones[1][2], "two shows, two colours");
+  assert.strictEqual(decls(CSS, ".ag .pl-bar").flex, "var(--w, 1) 1 0");
+  assert.strictEqual(decls(CSS, ".ag .pl-sill").background, "var(--sill)");
+  assert.doesNotMatch(CSS, /transition|animation/, "nothing moves, so nothing joins the reduced-motion block");
+});
+
+test("the strip is drawn in its final state: started and playing are in the markup, and the tones are read and written before anything styles the bars", () => {
+  /* The reduced-motion gate (gates.mjs) counted 200ms background-color and opacity transitions on `.pl-bar` at load: the tone was written
+     after a style flush (agGlowLightness reads the root's computed style) and `is-started` was toggled on after the bars were first styled.
+     Under reduced motion tokens.css gives every `.ag *` a 200ms crossfade, so any change after first style is a transition.
+     MUTATIONS: drop `is-started` from the strip markup -> red. Drop `is-here` from the markup -> red. Move `const stripTones` below the
+     `innerHTML` assignment -> red. Move `playlistPaintStrip(...)` below `playlistApplyGlow(view)` -> red. */
+  const items = [20, 40].map((m, i) => item(i + 1, { duration_min: m, duration_sec: m * 60 }));
+  const started = world({ items, lists: [{ id: "q1", title: "T", items }], progress: { [items[0].id]: DONE } });
+  started.ctx.renderPlaylistDetail("q1");
+  assert.match(started.html(), /<div class="pl-strip is-started" aria-hidden="true">/, "a finished episode: the strip is started from the first paint");
+  const fresh = world({ items, lists: [{ id: "q1", title: "T", items }] });
+  fresh.ctx.renderPlaylistDetail("q1");
+  assert.match(fresh.html(), /<div class="pl-strip" aria-hidden="true">/, "nothing played: not started");
+  const playing = world({ items, lists: [{ id: "q1", title: "T", items }], playing: items[1].id });
+  playing.ctx.renderPlaylistDetail("q1");
+  assert.match(playing.html(), /<span class="pl-bar is-here" data-pl-bar="show-2--ep-2"/, "the playing episode's bar is the tall one from the first paint");
+  assert.match(playing.html(), /<div class="pl-strip is-started"/, "and playing starts the strip");
+  const src = read("ui/playlist.js");
+  const body = src.slice(src.indexOf("function renderPlaylistDetail"), src.indexOf("/* ---------- The Playlists list"));
+  const at = (needle) => { const i = body.indexOf(needle); assert.ok(i >= 0, `${needle} is in renderPlaylistDetail`); return i; };
+  assert.ok(at("const stripTones") < at('$("#view").innerHTML = `<div class="ag pl-page pl-detail"'), "tones are read before the bars exist");
+  assert.ok(at("playlistPaintStrip(view.querySelector") < at("playlistApplyGlow(view)"), "the bars are painted before agSetGlow reads the computed style");
+});
+
+test("the strip's thumbnails follow the Foray detail's rule: a 12px bar, 4px clear of the last thumb, ending inside the strip", () => {
+  /* Pure over { show, art } entries and laid-out bars. MUTATIONS: lower PL_THUMB_MIN_BAR_PX to 1 -> the 8px bar gets a thumb, red. Drop the
+     `freeFrom` check -> the overlapping thumb appears, red. Drop the `stripWidth` check -> the thumb that spills past the edge appears, red.
+     Drop the mono fallback -> the artless entry yields an empty cell, red. */
+  const entries = [{ show: "A", art: "https://art.test/a.jpg" }, { show: "B", art: "" }, { show: "C", art: "https://art.test/c.jpg" }, { show: "D", art: "https://art.test/d.jpg" }, { show: "E", art: "https://art.test/e.jpg" }];
+  const bars = [
+    { offsetLeft: 0, offsetWidth: 40 },    // A: a thumb at 0
+    { offsetLeft: 42, offsetWidth: 8 },    // B: too narrow
+    { offsetLeft: 20, offsetWidth: 30 },   // C: starts inside A's thumb (needs 24): none
+    { offsetLeft: 60, offsetWidth: 30 },   // D: a thumb at 60
+    { offsetLeft: 95, offsetWidth: 30 },   // E: 95 + 20 > 110: spills
+  ];
+  const w = world({ items: FOUR, lists: [{ id: "q1", title: "T", items: FOUR }] });
+  const out = w.ctx.playlistThumbCells(entries, bars, 110);
+  assert.deepStrictEqual(Array.from(out, (c) => [c.show, c.x]), [["A", 0], ["D", 60]]);
+  assert.match(out[0].html, /<img src="https:\/\/art\.test\/a\.jpg" alt="" loading="lazy" decoding="async" width="20" height="20">/);
+  const mono = w.ctx.playlistThumbCells([{ show: "Bee", art: "" }], [{ offsetLeft: 0, offsetWidth: 40 }], 110);
+  assert.match(mono[0].html, /<span class="pl-thumb-mono">B<\/span>/, "no artwork: the show's initial");
+});
+
+test("Why 4a made this appears only on a playlist 4a built, in Lamp italic, and passes the copy rules; the eyebrow names the subject", () => {
+  /* DIRECTION.md Foray detail: "'Why 4a made this' in italic" and "Subject eyebrow in Lamp". A listener's own playlist was not made by 4a, so it
+     carries no such line (state observed, never declared: the line only says what the builder did).
+     MUTATIONS: print the why on an own playlist -> red. Write 20 words, "we", "explores" or "topic" into either constant -> red. Drop the
+     `lamp` class from the eyebrow -> red. Drop the subject suffix -> red. Repeat the subject when it IS the title -> red. */
+  const sci = [1, 2, 3, 4].map((n) => item(n, { topics: ["science/physics"] }));
+  const w = world({ items: sci, lists: [{ id: "q1", title: "Slow mornings", items: sci }] });
+  w.state.taxonomy = { nodes: [{ id: "science", parent: null, label: "Science" }, { id: "science/physics", parent: "science", label: "Physics" }] };
+  w.ctx.renderPlaylistDetail("q1");
+  assert.match(w.html(), /<p class="eyebrow lamp pl-eyebrow">Playlist · Science<\/p>/, "an own playlist names its subject");
+  assert.doesNotMatch(w.html(), /Why 4a made this/, "4a did not make this one");
+  w.state.cardSlots = [{ slot: 1, branch: "science", role: "top", item: sci[0], items: sci }];
+  w.ctx.renderPlaylistDetail("subject-science");
+  const html = w.html();
+  assert.match(html, /<p class="eyebrow lamp pl-eyebrow">Picked for you<\/p>/, "a subject queue's name IS the subject: not said twice");
+  const why = one(html, /<section class="pl-why"[^>]*><h2 class="t-headline" id="pl-why-head">Why 4a made this<\/h2><p class="t-why">([^<]*)<\/p>/);
+  assert.ok(why, "the why section");
+  for (const line of [why, w.run("PL_WHY_GENERATED"), w.run("PL_WHY_SUBJECT")]) {
+    assert.ok(line.split(/\s+/).length <= 18, `at most 18 words: ${line}`);
+    assert.doesNotMatch(line, BANNED, `no banned word: ${line}`);
+    assert.doesNotMatch(line, FIRST_PERSON, `no we/us/our: ${line}`);
+    assert.doesNotMatch(line, /!/);
+  }
+  assert.strictEqual(decls(CSS, ".ag .pl-why .t-why").color, "var(--lamp-text)");
+  assert.strictEqual(w.ctx.playlistWhy({ isGenerated: true }), w.run("PL_WHY_GENERATED"));
+  assert.strictEqual(w.ctx.playlistWhy({}), "");
+});
+
+test("Where this came from: the distinct shows' artwork three-up with the name whole, a link only where the show has a page", () => {
+  /* DIRECTION.md: "'Where this came from' as artwork rows" (and ShowTile: names never cut). Four episodes of one show is one tile.
+     MUTATIONS: drop the dedupe in playlistShows -> the repeated show draws twice, red. Link every tile (even with no page) -> red. Put a
+     `clamp3` on the name -> red. Make the grid 2-up -> red. Interpolate a show name raw -> red. */
+  const items = [item(1, { show: "Alpha" }), item(2, { show: "Alpha" }), item(3, { show: `<b>Beta</b>` })];
+  const w = world({ items, lists: [{ id: "q1", title: "T", items }] });
+  w.state.catalog = { shows: [{ show_id: "alpha-id", title: "Alpha" }] };
+  w.ctx.renderPlaylistDetail("q1");
+  const html = w.html();
+  const came = /<section class="pl-came"[\s\S]*?<\/section>/.exec(html)[0];
+  assert.strictEqual((came.match(/<li class="pl-show">/g) || []).length, 2, "Alpha once, Beta once");
+  assert.match(came, /<a class="pl-show-face" href="#\/show\/alpha-id">/, "a show with a page links to it");
+  assert.match(came, /<div class="pl-show-face"><span class="pl-tile-art"[\s\S]*?&lt;b&gt;Beta&lt;\/b&gt;/, "one without is a plain tile, and its name is escaped");
+  assert.ok(!came.includes("<b>Beta"), "never raw");
+  assert.doesNotMatch(came, /clamp[1-4]/, "the name is never clamped");
+  assert.match(came, /<span class="t-caption pl-show-name">Alpha<\/span>/);
+  assert.strictEqual(decls(CSS, ".ag .pl-shows")["grid-template-columns"], "repeat(3, minmax(0, 1fr))");
+  /* Family Mode's hidden part names no show. */
+  const rows = [{ item: items[0], state: "hidden" }, { item: items[2], state: "live" }];
+  assert.deepStrictEqual(Array.from(w.ctx.playlistShows(rows), (s) => s.name), ["<b>Beta</b>"]);
+});
+
+test("the detail page reads in the Foray detail's order: the head, the strip on its sill, why, where it came from, then the episodes", () => {
+  /* MUTATIONS: move the episodes above the strip -> red. Drop the `Episodes, in order` heading -> red. Drop playlistStripHtml from the page -> red. */
+  const sci = [1, 2, 3].map((n) => item(n, { topics: ["science/x"] }));
+  const w = world({ items: sci, lists: [{ id: "q1", title: "T", items: sci }] });
+  w.state.cardSlots = [{ slot: 1, branch: "science", role: "top", item: sci[0], items: sci }];
+  w.state.taxonomy = { nodes: [{ id: "science", parent: null, label: "Science" }] };
+  w.ctx.renderPlaylistDetail("subject-science");
+  const at = (needle) => { const i = w.html().indexOf(needle); assert.ok(i >= 0, `${needle} is on the page`); return i; };
+  const order = ['class="pl-hero"', 'class="pl-sill"', 'class="pl-why"', 'class="pl-came"', 'id="pl-list-head"', 'data-pl-ep="show-1--ep-1"'].map(at);
+  assert.deepStrictEqual(order, [...order].sort((a, b) => a - b), "in that order");
+  assert.match(w.html(), /<h2 class="t-headline" id="pl-list-head">Episodes, in order<\/h2>/);
 });
