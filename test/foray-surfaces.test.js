@@ -126,7 +126,7 @@ function loadApp(bridge, { showDrafts = true, created = [] } = {}) {
     Forays the listener has OPENED (a started or finished one has a progress row), so these tests give the ones they
     read a row. */
 function libraryRows(html) {
-  return [...html.matchAll(/<span class="t-caption lb-name clamp3">([^<]*)<\/span>\s*(?:<span class="t-caption lb-facts"(?: aria-hidden="true")?>(?:<span class="lb-fact">[^<]*<\/span>)*<\/span>\s*)?<span class="sr-only lb-sub">([^<]*)<\/span>/g)].map((m) => [m[1], m[2]]);
+  return [...html.matchAll(/<span class="t-caption lb-name clamp2">([^<]*)<\/span>\s*(?:<span class="t-caption lb-facts"(?: aria-hidden="true")?>(?:<span class="lb-fact">[^<]*<\/span>)*<\/span>\s*)?<span class="sr-only lb-sub">([^<]*)<\/span>/g)].map((m) => [m[1], m[2]]);
 }
 
 const FROZEN_IDS = readFrozen("forays.json").forays.map((f) => f.id);

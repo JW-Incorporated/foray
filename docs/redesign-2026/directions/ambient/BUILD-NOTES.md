@@ -1189,6 +1189,36 @@ the state varies"), so the prototype's structure wins here and 17.1.1, 17.1.2 an
 Not this unit's, and unchanged: the Dock findings (three tabs and no Create, one floating Veil, Ember play on a Glow
 tint, back-15 and forward-30 glyphs, the 2px Glow progress line, Phosphor Fill active tab) belong to
 `redesign/ambient-dock` and Library's shots still show the legacy bars until it merges.
+### 17.4 Library, iteration 5 (art-director calls made unattended)
+
+Judges of iteration 4 still marked the build down on the Dock and on three tile details. Each change is pinned in
+`test/ambient-library.test.js` with a named mutation (all run red and restored):
+
+1. **The Dock stopgap, as Today and Foray detail wear it** (`body.view-library` block in `ui/library.css`): the legacy
+   `#tab-bar` and `#foray-player` become one floating, gutter-inset, `--r-xl` Veil tinted by the playing item's Glow, a rim
+   between the rows and no gap, Ember Play, DM Sans title, a 2px Glow progress line, the active tab the Lamp Fill glyph. The
+   violet is gone. `libSyncCast` now writes the playing item's Glow on the root too, because the Dock is on `<body>`, outside
+   the page, and reads the root (the Veil takes the colour of whatever plays: the harness plays a blue-toned show, the
+   prototype a brown one; that is the Glow rule, not a fault). The hard-edged `.lb-fade` element is gone: the body's
+   `::after` fade (solid from 32px above the Dock's top row) means a Saved row runs dimmed under the Dock and is never sliced.
+   **Not done here, Dock-owned** (`redesign/ambient-dock`, which edits `player/client.js` and `ui/tabbar.js`): the 44px
+   forward-30 arc glyph in place of the text "back 15", and the Phosphor tab icons. At that merge `ui/library.css`'s block
+   retires with Today's and Foray detail's into `ui/dock.css`, as 457a4c15 did for them.
+2. **Two-line names.** `clamp3` -> `clamp2` on both tile kinds, so no row is taller than another (a three-line foray title
+   made row 1 taller than rows 2 and 3). The full title stays in the tile's screen-reader line and on its own page.
+3. **The strip is evenly rounded bars on a dark sill.** The shade along the collage's floor is a 28px gradient to
+   `--lb-on-art-sill` (0.78 ink; the 0.55 soft shade let the bars wash out over a bright collage, and its 36px reach tinted
+   the whole art brown), bars are fully rounded, the narrator's run is a 4px round Lamp dot (not a stretched pip), and a strip
+   holds eleven bars at most (not sixteen), so the show bars are 6px wide in the narrowest tile.
+4. **The Foray pill is the small one**: 16 tall (the ForayTile row of section 3), 11px type, 4px inside the top-left corner.
+   Its ink and ground are unchanged (10:1).
+5. **The grid's trailer reads "All"** (the prototype's word; its accessible name stays "All forays", which contains the
+   visible word) and is indented 28 (16 button padding plus the 12px column gap) so its word shares the second tile's edge;
+   the lists' links ("All saved", "Show fewer") keep the content edge. This overturns 17.2.3 for the grid only.
+
+Not changed: the 1px collage separator is already `gap: 1px` on `.ag-collage.c4` (the primitive; the Library adds no wash of its
+own), and the harness's letter artwork is fixture data.
+
 ## 16. As built: phase 4, Today (`redesign/ambient-today`, `ui/home.js`, `ui/today.css`, `ui/palette.js`)
 
 Screen 3 of `BUILD-PLAN.md` §2.1.3. What landed, and every place the build differs from a
