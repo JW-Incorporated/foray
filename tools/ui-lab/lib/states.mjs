@@ -67,6 +67,48 @@ async function closeNowPlaying(page) {
   await wait(page, 400);
 }
 
+/** A plain episode (not a foray) on the bar with the sheet open: the Tactile
+    "Now Playing, episode" screen. It is the RESTORED bar, the state a returning
+    listener meets: the page's own durable pointer (`cp_last_episode`) and stored
+    position (`cp_pos:<id>`, 18:20 of 60:00) are written, then
+    `ForayPlayer.restoreLastEpisode()` puts the episode on the bar, paused, at
+    that position and against its catalogue length. Nothing here plays audio, so
+    the clock is exact and the render deterministic (the silent 60 s fixture the
+    other steps pin cannot be seeked: the stub serves it without ranges).
+    The seeded catalogue carries no chapters, so the pointer is handed seven, at
+    the share-of-runtime marks the prototype's demo uses, in the shape the
+    catalogue stores (`start_time_seconds`), and the episode is marked downloaded
+    in `cp_downloads`, the record the page reads for the Downloaded tag. Both
+    are this harness standing in for a feed that publishes chapters and a shell
+    that downloaded the file, never data the app invents. */
+const EPISODE_DEMO_CHAPTER_SHARES = [0, 0.09, 0.24, 0.41, 0.58, 0.74, 0.9];
+const EPISODE_DEMO_POSITION_SEC = 1100;
+
+async function openEpisodeNowPlaying(page, itemId) {
+  await page.evaluate(async ({ id, shares, positionSec }) => {
+    const saved = JSON.parse(localStorage.getItem("cp_saved") || "{}");
+    const it = saved[id];
+    if (!it) throw new Error("uilab: seeded item missing: " + id);
+    await window.ForayPlayer.stopForDataDeletion();
+    const durationSec = 3600;
+    const at = new Date(Date.now() - 3600 * 1000).toISOString();
+    lsSet("cp_last_episode", ({
+      id: it.id, title: it.title, show: it.show, show_id: it.show_id, artwork_url: it.artwork_url, audio_url: it.audio_url,
+      hook: it.hook || "", description: it.description || "", duration_min: 60, duration_sec: durationSec, updated_at: at,
+      chapters: shares.map((share, i) => ({ title: "Chapter " + (i + 1), start_time_seconds: Math.round(share * durationSec) })),
+    }));
+    lsSet("cp_pos:" + id, { seconds: positionSec, duration: durationSec, updated_at: at, source: "local" });
+    const downloads = lsGet("cp_downloads", null) || { settings: {}, items: {} };
+    downloads.items = { ...(downloads.items || {}), [id]: { status: "done", path: "uilab/" + id + ".mp3", bytes: 1, total: 1 } };
+    lsSet("cp_downloads", downloads);
+    const rec = await window.ForayPlayer.restoreLastEpisode();
+    if (!rec) throw new Error("uilab: restoreLastEpisode put nothing on the bar");
+  }, { id: itemId, shares: EPISODE_DEMO_CHAPTER_SHARES, positionSec: EPISODE_DEMO_POSITION_SEC });
+  await page.waitForSelector("#foray-player", { state: "visible", timeout: 10000 });
+  await wait(page, 600);
+  await openNowPlaying(page);
+}
+
 async function typeSearch(page, text) {
   await page.waitForSelector("#sh-input", { timeout: 15000 });
   await page.fill("#sh-input", text);
@@ -147,6 +189,10 @@ function coreRoutes(fx, { entities }) {
 /** @returns {Array<{id:string, description:string, seed:string, steps:Array}>} */
 export function appStates(fx) {
   const ep0 = fx.items[0].id;
+  /* A different episode from ep0: the earlier player steps leave ep0 as the
+     manager's playhead item, and its 60 s fixture would answer for the length
+     of anything restored under the same id (the sheet read "-0:00"). */
+  const ep2 = fx.items[2].id;
   return [
     {
       id: "first-run",
@@ -176,6 +222,7 @@ export function appStates(fx) {
         { label: "mini-player-up-next", route: "#/queue" },
         { label: "now-playing", route: "#/library", run: (page) => openForayNowPlaying(page) },
         { label: "now-playing-closed", route: "#/library", run: (page) => closeNowPlaying(page) },
+        { label: "now-playing-episode", route: "#/library", run: (page) => openEpisodeNowPlaying(page, ep2) },
       ],
     },
     {

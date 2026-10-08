@@ -72,7 +72,7 @@ import { REMOTE_COMMANDS } from "../../player/diagnostic-log.js";
 
 /* The real thing, imported rather than re-described: §7 drives the module the page
    actually uses, so a change to either side of the contract fails here. */
-import { createMediaSession, mediaSessionView, MEDIA_ACTIONS } from "../../player/media-session.js";
+import { createMediaSession, mediaSessionView, MEDIA_ACTIONS, MEDIA_ARTWORK_LADDER } from "../../player/media-session.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..");
@@ -510,7 +510,12 @@ test("iOS: WebKit's OWN Now Playing entry says what the page said — title, sho
   assert.ok(shown.handlers.has("seekforward") && shown.handlers.has("seekbackward"));
   /* THE ORIGINAL ARTWORK URL, not the `bundle://` rewrite: WebKit fetches it
      inside the WebView and only the Swift side understands `bundle://`. */
-  assert.deepEqual(shown.artwork, ["icon-512.png"]);
+  /* The web write declares the ONE chosen square at every size of the ladder
+     (Tactile BUILD-NOTES 7); the fake keeps `src` only, so it shows the same URL
+     once per rung. Still one source, never a mix.
+     MUTATION: make mediaArtworkLadder return [] (or mix a second src in) and this fails. */
+  assert.deepEqual(shown.artwork, MEDIA_ARTWORK_LADDER.map(() => "icon-512.png"));
+  assert.equal(shown.artwork.length, 6, "the ladder is six rungs: 96 128 192 256 384 512");
   assert.equal(wk.playbackState, "playing");
   return turn().then(() => {
     /* And the native path is unchanged: the plugin got the same strings with

@@ -33,7 +33,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  artworkUrl, mediaArtwork, mediaArtworkList, mediaMetadata,
+  artworkUrl, mediaArtwork, mediaArtworkList, mediaArtworkLadder, mediaMetadata,
   mediaPositionState, mediaPlaybackState, mediaSessionView,
   mediaSessionActions, createMediaSession, narrationCredit,
   MEDIA_ACTIONS, APP_ARTWORK_URL, APP_NAME, SEEK_BACKWARD_SEC, SEEK_FORWARD_SEC,
@@ -127,6 +127,45 @@ test("mediaArtworkList prefers the publisher's square when we have one", () => {
   const list = mediaArtworkList({ showArtworkUrl: APPLE });
   assert.equal(list.length, 1);
   assert.equal(list[0].src, APPLE);
+});
+
+test("mediaArtworkLadder declares the one chosen square at each of the six sizes", () => {
+  /* The ladder is the WEB write only (Tactile BUILD-NOTES 7); mediaArtworkList
+     stays one entry because the native plugins mirror it and the parity
+     fixtures pin it.
+     MUTATION: remove 384 from MEDIA_ARTWORK_LADDER -> red on the exact ladder;
+     make the ladder map over `list` instead of `first` -> the single-source
+     assertion stays but the length one fails. */
+  const list = mediaArtworkLadder(mediaArtworkList({ showArtworkUrl: APPLE }));
+  assert.deepEqual(list.map((image) => image.sizes), ["96x96", "128x128", "192x192", "256x256", "384x384", "512x512"]);
+  assert.deepEqual([...new Set(list.map((image) => image.src))], [APPLE]);
+  assert.deepEqual(mediaArtworkLadder([]), [], "no usable artwork, no ladder");
+  assert.equal(mediaArtworkList({ showArtworkUrl: APPLE }).length, 1, "the contract list the natives mirror is unchanged");
+  /* The gate is upstream and unchanged: an http or javascript: square never
+     reaches the ladder, so there is nothing for it to multiply. */
+  assert.deepEqual(mediaArtworkLadder(mediaArtworkList({ showArtworkUrl: "javascript:alert(1)" })).map((image) => image.src), Array(6).fill(APP_ARTWORK_URL));
+});
+
+test("a plain episode's album is its why-line, and '4a' when it has none (Tactile BUILD-NOTES 7; #1006)", () => {
+  /* MUTATION: drop `episodeWhy ||` from the album line in mediaMetadata -> the
+     first assertion reads "4a"; drop the `!foray` condition -> a Foray's album
+     becomes its why-line and the second fails; drop `!narration` -> the third. */
+  const why = "A historian of science traces three centuries of how the West learned to see nature.";
+  const episode = { kind: "episode", title: "Surroundings", show: "omega tau" };
+  assert.equal(mediaMetadata({ item: episode, why }).album, why, "artist = show, album = the why-line");
+  assert.equal(mediaMetadata({ item: episode, why }).artist, "omega tau");
+  assert.equal(mediaMetadata({ item: episode, why: "   " }).album, APP_NAME, "a blank why-line keeps the founder's '4a'");
+  assert.equal(mediaMetadata({ item: episode }).album, APP_NAME);
+  assert.equal(
+    mediaMetadata({ item: SEG, forayTitle: "The history of grilling", index: 0, total: 32, why }).album,
+    "The history of grilling · clip 1 of 32",
+    "a Foray keeps its title and counter",
+  );
+  assert.equal(
+    mediaMetadata({ item: { kind: "tts", id: "bridge-1" }, nextItem: episode, why }).album,
+    APP_NAME,
+    "a narration line is not an episode and carries no why-line",
+  );
 });
 
 test("mediaArtworkList falls back to the app icon, so the lock screen is never blank", () => {
@@ -1236,7 +1275,9 @@ test("the PUBLISHER's name is what actually reaches the platform, not ours", () 
       title: "Episode 09: Did Cooking Make Us Human?",
       artist: "Origin Stories",
       album: "The history of grilling · clip 12 of 32",
-      artwork: APPLE,
+      /* The web write declares the ONE chosen square at each ladder size, so the
+         fake's `src` join reads the same URL six times (see mediaArtworkLadder). */
+      artwork: Array(6).fill(APPLE).join("+"),
     }], MediaMetadata ? "with a MediaMetadata constructor" : "without one");
   }
 });
@@ -1246,7 +1287,7 @@ test("the artwork really reaches the platform, and falls back to ours when it mu
     const nav = fakeNav();
     createMediaSession({ nav, MediaMetadata })
       .update(mediaSessionView({ item: SEG, durationSec: 60, positionSec: 1, playing: true }));
-    assert.equal(metadataWrites(nav)[0].artwork, APP_ARTWORK_URL);
+    assert.equal(metadataWrites(nav)[0].artwork, Array(6).fill(APP_ARTWORK_URL).join("+"));
   }
 });
 
