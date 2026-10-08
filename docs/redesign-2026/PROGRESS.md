@@ -22,7 +22,7 @@ Source of truth for a cleared session. Update on every deliverable.
 | 1 Research | done | docs/redesign-2026/research/, design-brief.md |
 | 2 Directions | done | editorial r3, ambient r3, native-2026 r3, tactile r3, clarity r3 (docs/redesign-2026/directions/) |
 | Checkpoint | **picked: Tactile + Ambient** (owner, 2026-10-06 18:17 PDT) | one condition: replace Tactile's "cartoonish" header/title font first; Phase 3 starts once the owner approves the new font |
-| 3–5 | **running** (`wf_d90d5c98-c0e`, from 2026-10-07 16:10 PDT; Sonnet builds, Codex reviews) | foundation 8/8 merged (tactile 4/4, ambient 4/4); screens tactile 13/19 (escalated: mini), ambient 5/16 (escalated: today, foray-detail); see In flight |
+| 3–5 | **running** (`wf_00d839e8-3c4`, from 2026-10-08 06:20 PDT; Sonnet builds, Codex reviews) | foundation 8/8; screens 18/35 merged (tactile 13/19, ambient 5/16); see In flight |
 
 ## Checkpoint (decided 2026-10-06: Tactile + Ambient, pending Tactile's font)
 
@@ -48,7 +48,7 @@ through Editorial's tab bar. Detail: `checkpoint/README.md`.
 
 (Agent/workflow and what it is doing. Clear an entry when it lands.)
 
-- **Phases 3-5 build, Claude workflow `wf_d90d5c98-c0e`** (launched 2026-10-07 16:10 PDT,
+- **Phases 3-5 build, Claude workflow `wf_00d839e8-3c4`** (launched 2026-10-08 06:20 PDT, script @ 2b1584d8; before it `wf_d90d5c98-c0e`, 2026-10-07 16:10 to 2026-10-08 05:50,
   `build-directions.workflow.js` @ 197aff46; launch args and resume steps in RESTART.md "Day
   3"). Sonnet builds and fixes;
   Codex reviews (up to 3 rounds, Opus if Codex fails); Fable/Opus judge; 4 screens in
@@ -153,3 +153,4 @@ Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40-22:40 PDT, 128 agents
 - 2026-10-07 — ambient: Phase 3 foundation 4/4 merged into feature/redesign-2026-ambient
 - 2026-10-08 — tactile: Phase 4 screens 13/19 merged; escalated: mini
 - 2026-10-08 — ambient: Phase 4 screens 5/16 merged; escalated: today, foray-detail
+- 2026-10-08 06:20 PDT — Run `wf_d90d5c98-c0e` (16:10 to ~05:50, 510 agents) merged 18 of 35 screens (tactile 13/19: home, home-first-run, home-loading, search, search-typing, search-none, mini, library-empty, library-shows, foray, onboarding, settings, toast; ambient 5/16: today, show, foray-detail, onboarding, settings-tuning-about), then the disk filled (C: 0 GB free): ~260 leftover agent worktrees (~115 MB each) plus test temp. Run stopped; 121 finished worktrees (HEAD on origin, clean) removed with plain `git worktree remove` -> 18.8 GB free; 140 with modified/untracked files and 30 belonging to other sessions left untouched. Workflow now cleans up after each screen and stops starting screens under 4 GB (2b1584d8; stub 17 checks, low-disk mutation caught after the first version of that check proved vacuous). Relaunched as `wf_00d839e8-3c4`. Still open: both Now Playing screens (long fix/review loops), tactile now-playing-paused/-episode, home-offline, library, library-forays; ambient dock, discover, library, now-playing-car, episode, playlist-detail-and-playlists, up-next, forays-list, category-and-browse, not-found.

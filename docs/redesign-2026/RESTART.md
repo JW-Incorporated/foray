@@ -20,7 +20,11 @@ beside the workflow. The build runs as a Claude workflow: Sonnet builds and fixe
 reviews (thin Claude agent -> `codex exec`, up to 3 rounds, Opus if Codex fails), Fable/Opus
 judge, 4 screens in flight per direction (one per screen family), merges one at a time.
 Runs: `wf_8c930d5d-182` (06:40-09:19, died on the weekly limit: foundation to 7/8), then
-**`wf_d90d5c98-c0e`** (from 16:10 PDT, script @ 197aff46). Launch / relaunch (same args every
+`wf_d90d5c98-c0e` (16:10 to 05:50 on 10-08: 18/35 screens, stopped when the disk filled), then
+**`wf_00d839e8-3c4`** (from 2026-10-08 06:20 PDT, script @ 2b1584d8, which cleans up its own
+worktrees and stops starting screens under 4 GB free). If the disk fills anyway: stop the run,
+remove finished `wf_*` worktrees whose HEAD is on origin with plain `git worktree remove`
+(literal paths, never `--force`), relaunch. Launch / relaunch (same args every
 time; merged units are skipped by git, interrupted units continue from their pushed branch):
 
 ```
