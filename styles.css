@@ -4812,10 +4812,10 @@ body.ui-v2 #foray-player.dial-mini.is-dragging > .fp-bar { transform: translateY
 body.ui-v2 #foray-player.dial-mini.is-dismissed > .fp-bar { display: none; }
 /* The text pair sits centred beside the art (title 15/700, show 13), one line
    each, as the prototype's `.mini__text` column; the art spans both rows. */
-body.ui-v2 #foray-player.dial-mini .mini__body { touch-action: none; grid-template-rows: auto auto; align-content: center; column-gap: var(--s-3); row-gap: 0; border-radius: var(--r-md); }
+body.ui-v2 #foray-player.dial-mini .mini__body { touch-action: none; grid-template-rows: 1fr 1fr; align-content: center; column-gap: var(--s-3); row-gap: 0; border-radius: var(--r-md); }
 body.ui-v2 #foray-player.dial-mini .mini__art { align-self: center; }
-body.ui-v2 #foray-player.dial-mini .mini__title { align-self: auto; font: 700 var(--t-body)/1.25 var(--font-text); color: var(--ink); }
-body.ui-v2 #foray-player.dial-mini .mini__show { align-self: auto; font: 500 var(--t-label)/1.25 var(--font-text); color: var(--ink-2); }
+body.ui-v2 #foray-player.dial-mini .mini__title { align-self: end; font: 700 var(--t-body)/1.25 var(--font-text); color: var(--ink); }
+body.ui-v2 #foray-player.dial-mini .mini__show { align-self: start; font: 500 var(--t-label)/1.25 var(--font-text); color: var(--ink-2); }
 body.ui-v2 #foray-player.dial-mini .fp-err { grid-column: 2; font: 500 var(--t-label)/1.25 var(--font-text); color: var(--warn); }
 body.ui-v2 #foray-player.dial-mini .fp-play,
 body.ui-v2 #foray-player.dial-mini .fp-skip { border: 0; background: var(--k-fill); color: var(--k-ink); font: inherit; margin: 0 0 var(--lip); box-shadow: 0 var(--lip) 0 var(--k-lip); }
@@ -4826,10 +4826,10 @@ body.ui-v2 #foray-player.dial-mini .fp-play::after,
 body.ui-v2 #foray-player.dial-mini .fp-skip::after { content: none; }
 body.ui-v2 #foray-player.dial-mini .fp-play:active:not(:disabled),
 body.ui-v2 #foray-player.dial-mini .fp-skip:active:not(:disabled) { box-shadow: 0 var(--lip-pressed) 0 var(--k-lip); }
-/* The +30 key is a paper keycap on a paper-coloured deck: its face is a step off the
-   deck and a 1px line bounds it, as the prototype's `.keycap--paper` does, so it reads
-   as the same object as Play and not as a floating glyph. */
-body.ui-v2 #foray-player.dial-mini .fp-skip { --k-fill: color-mix(in srgb, var(--ink) 8%, var(--card)); box-shadow: inset 0 0 0 1px var(--dial-line), 0 var(--lip) 0 var(--k-lip); }
+/* The +30 key is the prototype's quiet `.keycap--paper`: the card fill (nearly the deck
+   colour), bounded by a 1px line, with the dial-line lip below it. Not a lighter tile --
+   a lifted face would shout over Play, the one persimmon key. */
+body.ui-v2 #foray-player.dial-mini .fp-skip { box-shadow: inset 0 0 0 1px var(--dial-line), 0 var(--lip) 0 var(--k-lip); }
 body.ui-v2 #foray-player.dial-mini .fp-skip:active:not(:disabled) { box-shadow: inset 0 0 0 1px var(--dial-line), 0 var(--lip-pressed) 0 var(--k-lip); }
 /* The keys are the prototype's, measured: Play is a PILL, 64 x 48 (the prototype's
    `.mini .keycap--round` keeps the keycap's 20px side padding around the 24px glyph, so

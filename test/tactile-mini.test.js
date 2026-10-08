@@ -380,11 +380,13 @@ test("the live dock is nearly solid and falls back to solid card; the mini's key
      (the deck token's 84% is for a deck over plain paper), (2) both fall back to
      solid card under reduced transparency / no backdrop-filter, (3) the lip is
      the key's own silhouette as a zero-blur shadow with the flat `::after` bar
-     switched off, (4) the +30 key is bounded by a 1px line and its own face.
+     switched off, (4) the +30 key is bounded by a 1px line and keeps the card face, (5) the text pair is one tight block on two 1fr rows.
      MUTATION 1: set `--dock-tint` to `... 84%, transparent` -> (1) red.
      MUTATION 2: delete the `@supports not` dock fallback line -> (2) red.
      MUTATION 3: delete `.fp-play::after { content: none }` (the flat bar returns) -> (3) red.
-     MUTATION 4: delete `inset 0 0 0 1px var(--dial-line)` from the +30 rule -> (4) red. */
+     MUTATION 4: delete `inset 0 0 0 1px var(--dial-line)` from the +30 rule -> (4) red.
+     MUTATION 5: re-add `--k-fill: color-mix(in srgb, var(--ink) 8%, var(--card))` to the +30 rule -> (4) red.
+     MUTATION 6: set `.mini__title` `align-self` back to `auto` -> (5) red (the 20px title-to-show gap returns). */
   const tint = /--dock-tint:\s*color-mix\(in srgb, var\(--card\) (\d+)%, transparent\)/.exec(rule("body.ui-v2"));
   assert.ok(tint, "the dock tint is declared on body.ui-v2");
   assert.ok(Number(tint[1]) >= 94, `the dock must not let the page read through it (${tint[1]}% card)`);
@@ -395,7 +397,10 @@ test("the live dock is nearly solid and falls back to solid card; the mini's key
   const noBar = rule("body.ui-v2 #foray-player.dial-mini .fp-play::after") + rule("body.ui-v2 #foray-player.dial-mini .fp-skip::after");
   assert.match(noBar, /content:\s*none/, "no flat bar under a round key");
   const skip = rule("body.ui-v2 #foray-player.dial-mini .fp-skip");
-  assert.match(skip, /--k-fill:\s*color-mix\(in srgb, var\(--ink\) \d+%, var\(--card\)\)/, "the +30 face is a step off the deck");
+  assert.doesNotMatch(skip, /--k-fill\s*:/, "the +30 face is the paper keycap's card fill, not a lighter tile");
+  assert.match(rule("body.ui-v2 #foray-player.dial-mini .mini__title"), /align-self:\s*end/, "the title sits on the row boundary");
+  assert.match(rule("body.ui-v2 #foray-player.dial-mini .mini__show"), /align-self:\s*start/, "and the show hangs from it");
+  assert.match(rule("body.ui-v2 #foray-player.dial-mini .mini__body"), /grid-template-rows:\s*1fr 1fr/, "two equal rows centre the pair on the art");
   assert.match(skip, /box-shadow:\s*inset 0 0 0 1px var\(--dial-line\), 0 var\(--lip\) 0 var\(--k-lip\)/, "and a 1px line bounds it");
 });
 
