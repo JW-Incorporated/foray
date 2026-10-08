@@ -1011,3 +1011,67 @@ pixels; 41 stable capture plates at three viewports make the 123-shot gallery ba
    text button gains the spinner and may widen). Add the buffering MiniPlayer plates to the
    intended `ambient-gallery` diffs above if the baseline renders under reduced motion.
 
+## 16. As built: phase 4, the Dock (`redesign/ambient-dock`; `ui/tabbar.js`, `ui/dock.css`, the mini bar in `player/client.js`)
+
+The IA change that lands before any tab page: three tabs, no drawer navigation, one floating Veil holding the
+Discover field, the mini player and the tab row. Rulings that fell (the PR says so, `test-classification.md` §0):
+**"four tabs (Home, Search, Create, Library) + drawer menu"** (tab-bar, home-information-architecture, library-screen,
+create-page, category-browse, search-field-bottom rewritten on purpose, each naming it) and **"mini bar = ▶ + ↺15"**
+(transport-controls, tap-targets, transport-reconcile: the mini row is Play 48 Ember + Fwd30 44).
+
+1. **Markup.** `#dock-layer` (fixed, z 55, the old tab bar's rung; `body.fy-sheet-keeps-player` lifts it to 71) holds
+   `.dock-fade` and `#dock.dock.veil`; `#dock` holds `#dock-field` / `#dock-mini` / `#tab-bar` (ids and `.tab-btn`
+   kept: the harness waits on them). `#dock-cast` is a body child with `z-index: -1`, behind the page's content. Rows
+   are hidden with the `hidden` attribute only (tokens.css draws the rim between non-hidden siblings; a row hidden by
+   CSS alone would leave a stray line on the row below). State is on `<body>` as classes (`fp-open`, `sh-compose`,
+   `sh-searching`, `kb-open`, and `dock-receded`, which `renderTabBar` writes back after every `setBodyClass`).
+2. **The field row adopts the Search page's own `#sh-compose`** after each render (a moved node, so the page's handlers
+   survive; a fresh render's replaces the old; leaving Discover empties and hides the row). `#/create` is aliased to
+   `#/shows` (`ROUTE_ALIASES` in `app.js`, rewritten in place) and the field is focused once it is in the Dock;
+   `#/starred-shows` -> Library (which now lists every followed show, no cap, no "All N" link); `#/interests` ->
+   `#/tuning` (the page's heading is Tuning; its link in the Settings panel too). The Discover page's own heading is
+   "Discover", the tab's name (one name per destination). "Create a playlist about X" builds in place
+   (`buildPlaylistFromDiscover`, the same `buildPlaylist()`); `renderCreate` stays, unrouted, until the Discover
+   unit retires it and the copy suites that pin its words.
+3. **No drawer navigation.** The five links and the recent-playlists list are gone from `#drawer`, which is Settings
+   only (switches, Tuning, Diagnostics, Delete my data) behind the gear in the top bar (a sprite glyph now). The Today
+   unit moves it into the gear sheet it designs.
+4. **Mini row.** The bar is still built by `player/client.js` and handed to the Dock (`dockMountMini`); art 44, `--t-label`
+   title on one line, show caption, Ember Play 48 (two sprite glyphs, `data-running` picks one), Fwd30 44 (`nudgeBy`, the
+   sheet's own), a 2px Glow progress line on the row's top edge (`aria-hidden`), the bar a `role="region"` named
+   "Now playing: <title>, <show>". A tap on the rest of the row opens Now Playing; a 600ms hold enters car posture
+   (`data-posture="car"` on `<html>`: the Dock, fade and cast hide, Now Playing opens by itself); collapsing the sheet ends
+   it; the click that ends the hold is swallowed; a 10px slide, an early release or a press on a button never starts it.
+   The Bluetooth-route observer is Native and not built. `?posture=car` is the harness hook.
+5. **Recede.** Tab row 64 -> 36 after 80px of downward scroll, restored by ANY upward scroll, 280ms `--e-out`, labels fade,
+   icons 28 -> 24; always receded on Discover. A receded tab keeps a 44px target through an `::after` reaching 4px past
+   the row each way, which is why the Dock does not clip (`overflow: visible`; the mini row clips its own corners).
+   **The prototype recedes to 44 and the spec says 36** (`BUILD-NOTES` §3, §1.5, the plan, the acceptance): 36 is built,
+   so fidelity reports an 8px delta on the Dock and the tab row of `dock-discover` / `dock-receded` that the prototype
+   explains. The reservation is composed (`--dock-reserve`: rows + float + safe-bottom once + 24) at the tall row so a
+   recede never reflows the page; `ui/dock.css` resolves to 100 / 164 / 120 / 184 (rest / mini / Discover / both).
+6. **Fade and cast.** `.dock-fade` = `safe + 12 + 44`, solid from 32px, to `--dock-page-bg` (the legacy `--bg` while pages
+   are legacy; an adopting page sets `--dock-page-bg: var(--bg0)` on `<body>`); the cast is a 260px radial in Glow at
+   14% (Dawn 9%) centred 24px under the Dock's top edge, but its box runs on to the screen's bottom (tokens.css's
+   260px box ended 24px under the Dock's top and stepped in the gutters), hidden with no mini row. Glow itself is not
+   written by anything yet: the Dock wears the warm default until Now Playing's palette loader lands.
+7. **Not `.ag`, on purpose.** The layer declares `--text` / `--gutter`, a font and the button/icon resets itself and its
+   transitions sit inside `@media (prefers-reduced-motion: no-preference)`. Reason: tokens.css's one reduced-motion
+   block would turn every `.ag` transition into a 200ms crossfade, which `gates.mjs` counts as motion (§13.5 left it
+   open "for the first screen that animates under `.ag`"), and §6 gives the recede "instant" when reduced anyway.
+   Result: the reduced-motion gate reads 0 on every screen. Screens that DO wear `.ag` still need the orchestrator's
+   `MIN_MOTION_MS` ruling.
+8. **Scheme interim.** Dawn follows the OS, but every page under the Dock is still the legacy dark page, so on a
+   light-mode device the Dock is a paper veil over a dark page until the pages adopt Dawn. The fade fades to the page's
+   own colour (above), so no band shows.
+9. **Verification.** `tools/ui-lab/dock-check.mjs` (README): 0 violations at 375x667 and 393x852 in both schemes, over
+   eight screens x three scroll offsets, plus the interactions; each rule was broken in the app and seen to fire (fade
+   stop 32 -> 80px, recede threshold, receded row 44, Play not Ember, hold 100ms, posture never cleared, `#/create`
+   alias removed, `mini.hidden` dropped, cast mix 20%, labels kept, hit area removed, progress 4px, aria-hidden dropped,
+   Tabs not hidden on focus, cast box ending at 260px). Gates: errors / requests / csp / reduced-motion / sheet-focus 0;
+   24 NEW, all legacy debt the new `dock/*` screen ids inherit (22 tap-targets: the wordmark and the browse chips on
+   Discover, identical to `empty/search`; 2 contrast: Home's `.hv2-play-*`), none the Dock's own; 2 stale allow entries
+   (`empty/create`, `returning/create` chips: the Create page is gone). `ambient-gallery` compares 123/123 identical.
+   `ambient-app` differs on every screen by design (the Dock and the gear on every page, and text antialiasing under a
+   backdrop-filter layer); re-record on merge. The bounded 2.85 MB legacy alarm now has `ui/dock.css` (8.4 KB) in its
+   separately-budgeted list; `ui/tabbar.js` +4.6 KB and `player/client.js` +3 KB stay in the legacy count.

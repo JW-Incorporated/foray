@@ -482,32 +482,29 @@ test("data-integrity-8: cp_lastpick is never written, and a stored copy is remov
 
 /* ---------- app-2-11: the Search CTA's query reaches Create without a timer --- */
 
-test("app-2-11: the Search CTA hands its query to Create through module state, consumed when the form is bound", () => {
+test("app-2-11: the Search CTA builds in place - no #/create hop and no 0 ms timer between the tap and the build", () => {
   /* The CTA set location.hash and prefilled on a setTimeout(0), assuming the
      hashchange render ran first; the spec does not order those tasks, and when
      the timer won there was no #cr-form and the listener landed on an empty
-     Create page.
-     MUTATION: restore the setTimeout(0) hand-off — no pending query reaches
-     renderCreate (and a 0 ms timer is armed), red. */
+     Create page. The first fix carried the query in module state (`pendingCreateQuery`);
+     the Create tab then folded into Discover (ROUTE_ALIASES in app.js), and the
+     CTA now calls buildPlaylistFromDiscover directly, so the race has no second
+     task to lose to. RULING THAT FELL: "four tabs + drawer".
+     MUTATION: restore the setTimeout(0) hand-off or the `location.hash = "#/create"` hop - the
+     hash assertion and the timer assertion go red, and `asked` stays empty. */
   const m = loadApp();
   const btn = makeEl("button");
   btn.dataset.createPlaylist = "tokamaks";
   const scope = makeEl("div");
   scope.querySelector = (sel) => (sel === "[data-create-playlist]" ? btn : null);
+  const asked = [];
+  m.ctx.buildPlaylistFromDiscover = (query, button) => { asked.push([query, button]); };
+  const hashBefore = m.ctx.location.hash;
   m.ctx.bindCreatePlaylistCta(scope);
   btn.dispatch("click");
-  assert.strictEqual(m.ctx.location.hash, "#/create", "it navigates");
+  assert.deepStrictEqual(asked, [["tokamaks", btn]], "the click asks the one build path, with its own button");
+  assert.strictEqual(m.ctx.location.hash, hashBefore, "and navigates nowhere");
   assert.ok(![...m.timers.values()].some((t) => t.ms === 0), "and arms no race-prone 0 ms timer");
-
-  const submits = [];
-  m.ctx.bindCreateFormSubmit = (e) => submits.push(e.currentTarget);
-  m.els["#cr-form"] = makeEl("form");
-  m.els["#cr-input"] = makeEl("input");
-  m.ctx.renderCreate();
-  assert.strictEqual(m.els["#cr-input"].value, "tokamaks", "the form is prefilled");
-  assert.deepStrictEqual(submits, [m.els["#cr-form"]], "and submitted through the one creation path");
-  m.ctx.renderCreate();
-  assert.strictEqual(submits.length, 1, "consumed once: a later visit to Create does not rebuild it");
 });
 
 /* ---------- app-2-3: leaving Search supersedes its passes --------------------- */

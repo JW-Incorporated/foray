@@ -9,17 +9,8 @@
 
 function renderDrawer() {
   ensureInterestsDrawerLink();
-  /* `|| ""` on both sides, same guard playlistsForYouHtml already carries: a
-     playlist() backfills `created` on read, but this must not depend on that —
-     a record that somehow still carries neither field must not throw
-     `localeCompare` out of undefined and blank the drawer on every navigation
-     (#558 item 1). */
-  const recent = [...playlists()]
-    .sort((a, b) => (b.last_played_at || b.created || "").localeCompare(a.last_played_at || a.created || ""))
-    .slice(0, 5);
-  $("#drawer-playlists").innerHTML = recent.map(p =>
-    `<a class="drawer-item" href="#/${esc(playlistRoute(p))}">${esc(p.title)}</a>`).join("")
-    || `<p class="drawer-empty">No playlists yet</p>`;
+  /* NO RECENT-PLAYLISTS LIST ANY MORE (Redesign 2026, ambient, the Dock): this
+     panel is Settings, not navigation. Playlists are a Library section. */
   /* Every switch's label, from the one registry `drawerToggle` fills. This was
      five ad-hoc lines — three unguarded, two guarded, each spelling its own
      on/off — and the sixth switch is what made that a shape rather than a

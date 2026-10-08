@@ -251,24 +251,27 @@ function pxAt(expr, inset) {
   }, 0);
 }
 
-test("at inset 0 and at inset 59 px the same sections render, and the stylesheet reserves at least the tab bar's height under them at each inset", async () => {
+test("at inset 0 and at inset 59 px the same sections render, and the stylesheet reserves at least the Dock's height under them at each inset", async () => {
   /* The render is inset-independent by construction (app.js never reads an
      inset), so the section assertion is the same markup twice; what differs
-     per inset is the geometry the committed stylesheet resolves to.
-     MUTATION: change `body.ui-v2`'s padding-bottom to a bare `56px` (drop
-     env(safe-area-inset-bottom)) -> at inset 59 the reservation is 56 and the
-     bar is 115; this fails by 59px. At inset 0 both are 56 and it passes —
-     which is why both insets are asserted. */
+     per inset is the geometry the committed stylesheets resolve to. The bar it measures against is
+     the DOCK (ui/dock.css) since the tab bar became its bottom row; the arithmetic is resolved by
+     test/helpers/dock-css.js, not matched as text.
+     MUTATION: change `body.ui-v2`'s padding-bottom to a bare `100px` (drop var(--safe-bottom) from
+     --dock-reserve) -> at inset 59 the reservation is 100 and the Dock is 135; this fails by 59px. At
+     inset 0 both are fine - which is why both insets are asserted. */
   const m = await mountReal();
   m.ctx.renderHome();
   const html = m.view();
+  const dockCss = require("./helpers/dock-css.js");
+  const vars = dockCss.scope([]);
   for (const inset of [0, 59]) {
     for (const cls of SECTIONS) assert.ok(html.includes(cls), `inset ${inset}px: ${cls} must render`);
-    const reserved = pxAt(declOf("body.ui-v2", "padding-bottom"), inset);
-    const bar = pxAt(declOf(".tab-bar", "height"), inset);
-    assert.ok(bar > inset, `inset ${inset}px: the bar's own box (${bar}px) must exceed the inset it pads`);
-    assert.ok(reserved >= bar,
-      `inset ${inset}px: Home reserves ${reserved}px under its content but the tab bar is ${bar}px tall — the last section would sit under the bar`);
+    const reserved = dockCss.resolve(dockCss.declOf("ui/dock.css", "body.ui-v2", "padding-bottom"), vars, inset);
+    const dock = dockCss.resolve("calc(var(--dock-rest-h) + var(--dock-inset) + var(--safe-bottom))", new Map([...vars, ["--safe-bottom", `${inset}px`]]), inset);
+    assert.ok(dock > inset, `inset ${inset}px: the Dock's own box (${dock}px) must exceed the inset it floats over`);
+    assert.ok(reserved >= dock,
+      `inset ${inset}px: Home reserves ${reserved}px under its content but the Dock is ${dock}px tall - the last section would sit under it`);
   }
 });
 

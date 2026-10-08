@@ -568,8 +568,8 @@ function ensureInterestsDrawerLink() {
   const label = document.querySelector(".drawer-section-label");
   const link = document.createElement("a");
   link.className = "drawer-item";
-  link.href = "#/interests";
-  link.textContent = "Interests";
+  link.href = "#/tuning";
+  link.textContent = "Tuning";
   if (label && label.parentNode) {
     label.parentNode.insertBefore(link, label.nextSibling);
   } else {

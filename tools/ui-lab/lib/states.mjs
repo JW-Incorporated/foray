@@ -34,8 +34,16 @@ async function startPlayback(page, itemId) {
   await page.evaluate(() => {
     for (const a of window.__audios || []) if (a.src) { try { a.currentTime = 21; a.pause(); } catch (_) { /* ignore */ } }
   });
-  await page.waitForSelector("#foray-player", { state: "visible", timeout: 10000 });
+  /* The mini bar is a row of the Dock now (ui/tabbar.js); #foray-player holds only the sheet. */
+  await page.waitForSelector("#dock-mini .fp-bar", { state: "visible", timeout: 10000 });
   await wait(page, 600);
+}
+
+/** Scroll the page by `y` CSS px and let the Dock's recede (280ms) settle: the scroll event, then the
+    transition, then a frame. Used by the Dock's `dock-receded` step. */
+async function scrollPage(page, y) {
+  await page.evaluate((dy) => window.scrollTo(0, dy), y);
+  await wait(page, 700);
 }
 
 async function openNowPlaying(page) {
@@ -217,6 +225,15 @@ export function appStates(fx) {
         { label: "episode-token", route: "#/episode/uilab-stress-2" },
         { label: "mini-player", route: "#/library", run: (page) => startPlayback(page, "uilab-stress-1") },
         { label: "now-playing", route: "#/library", run: (page) => openNowPlaying(page) },
+      ],
+    },
+    {
+      id: "dock",
+      description: "The Dock: Discover with its field row over the mini player and the receded tab row, then Today scrolled until the tab row recedes (BUILD-PLAN 2.1 screen 2).",
+      seed: "returning",
+      steps: [
+        { label: "dock-discover", route: "#/shows", run: (page) => startPlayback(page, ep0) },
+        { label: "dock-receded", route: "#/", run: (page) => scrollPage(page, 120) },
       ],
     },
   ];

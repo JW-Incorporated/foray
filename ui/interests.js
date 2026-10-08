@@ -1,4 +1,4 @@
-/* ui/interests.js — Interests page (#/interests): the slider rows and their bindings.
+/* ui/interests.js — Tuning page (#/tuning, was #/interests): the slider rows and their bindings.
    A CLASSIC script like app.js, not a module: it shares app.js's globals and
    is loaded by index.html after app.js, in the order listed in
    docs/redesign-2026/split-notes.md. Declarations only at the top level, so
@@ -38,7 +38,7 @@ function renderInterests() {
     <div class="page">
       <div class="page-head">
         <a class="back" href="#/">‹</a>
-        <div><h2>Interests</h2><p class="sub">Drag a slider to change what 4a suggests.</p></div>
+        <div><h2>Tuning</h2><p class="sub">Drag a slider to change what 4a suggests.</p></div>
       </div>
       ${groups.map(interestGroupHtml).join("")}
     </div>`;

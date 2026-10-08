@@ -110,6 +110,9 @@
 <link rel="stylesheet" href="ui/tokens.css">
 <!-- AFTERGLOW primitives remain inert until markup opts into `.ag`; the lab-only gallery is their Phase 3 consumer. -->
 <link rel="stylesheet" href="ui/primitives.css">
+<!-- The DOCK (Redesign 2026, ambient): one Veil surface holding the Discover field, the mini player and the three tabs, with its fade and its cast.
+     Styles every element ui/tabbar.js builds, and the mini bar player/client.js hands to it. -->
+<link rel="stylesheet" href="ui/dock.css">
 <link rel="icon" href="icon-180.png" type="image/png">
 </head>
 <!-- ui-v2 FROM THE FIRST BYTE (round-2 audit, p-first-2). setBodyClass()
@@ -118,27 +121,19 @@
      "Loading 4a…" on warm off-white before cutting to the dark design. -->
 <body class="ui-v2">
 <header class="topbar">
-  <button id="menu-btn" aria-label="Menu">☰</button>
+  <button id="menu-btn" aria-label="Settings"><svg class="topbar-glyph" aria-hidden="true" focusable="false"><use href="ui/icons.svg#i-gear"></use></svg></button>
   <h1><a class="wordmark" href="#/">4a</a> <span class="topbar-tag">a daily podcast picker</span></h1>
   <button id="refresh-btn" aria-label="Refresh this page">↻</button>
 </header>
 
 <div id="drawer-overlay" hidden></div>
-<nav id="drawer" hidden>
-  <!-- The five destinations, in the founder's own order (2026-09-03). Home is
-       the four subject cards and nothing else; everything that used to sit
-       under them has one of the four pages below as its home. Keep this list
-       to five: test/home-information-architecture.test.js pins it, because
-       the clutter this replaced accumulated one "just one more row" at a time.
-       "Starred Shows" is NOT dropped — it is a Library section (2026-09-22).
-       ONE NAME PER DESTINATION (2026-09-22): #/shows is "Search" here because
-       that is the tab bar's name for it; the tab bar's names win. -->
-  <a class="drawer-section" href="#/">Home</a>
-  <a class="drawer-section" href="#/shows">Search</a>
-  <a class="drawer-section" href="#/playlists">Playlists</a>
-  <a class="drawer-section" href="#/forays">Forays</a>
-  <a class="drawer-section" href="#/queue">Up Next</a>
-  <div id="drawer-playlists"></div>
+<nav id="drawer" hidden aria-label="Settings">
+  <!-- NO NAVIGATION HERE (Redesign 2026, ambient, the Dock). The five destinations
+       this panel carried (Home, Search, Playlists, Forays, Up Next) are the three
+       tabs of the Dock - Today, Discover, Library - and Library lists Forays,
+       Playlists and Up Next. What stays is Settings: the switches below, Tuning
+       (ui/drawer-dev.js adds it), Diagnostics and Delete my data. The Today unit
+       moves this panel behind the gear at the top of Today. -->
   <div class="drawer-section-label">Settings</div>
   <button class="drawer-item as-btn" id="family-toggle"></button>
   <button class="drawer-item as-btn" id="autoadvance-toggle"></button>

@@ -165,6 +165,7 @@ primary key 329px higher). Pure logic is tested in `fidelity.test.mjs` (no brows
 | `returning` | saved episodes, Up Next, 3 playlists, followed shows, history | all of the above populated, plus playlist detail, show, episode, category, browse pill, a foray |
 | `player` | returning + an episode playing | mini player over Home, Library, Up Next; the Now Playing sheet open; the sheet closed again |
 | `search` | returning | idle, results ("history"), a query with no show matches ("fusion" matches only playlists), a query with no results |
+| `dock` | returning | the Dock (BUILD-PLAN 2.1 screen 2): Discover with its field row over the mini player and the receded tab row (`dock-discover`), then Today scrolled 120px so the tab row recedes (`dock-receded`) |
 | `stress` | long titles | 150-character titles, a 90-character show name and unbreakable 100-character tokens through Home, Library, Up Next, Playlists, detail pages, mini player and Now Playing |
 
 Routes covered are every one in `app.js` `renderCurrentPage` and `TAB_ROUTES`,
@@ -220,6 +221,27 @@ inline-style-free author rule of higher specificity.
 `lib/server.mjs` makes the same single CSP edit the Playwright site server does:
 `media-src https:` becomes `media-src 'self' https:` so the silent WAV can play. A
 prototype without that string is served byte-for-byte.
+
+## The Dock's facts (`dock-check.mjs`)
+
+```
+node tools/ui-lab/dock-check.mjs [--viewports 375x667,393x852] [--schemes dark,light] [--out dir]
+```
+
+The browser-only half of the Dock's acceptance (the DOM-less half is `test/dock.test.js` and `test/tab-bar.test.js`):
+walks the `dock`, `player` and `returning` states in each scheme and viewport and, at each of the eight Dock screens,
+measures the Dock at three scroll offsets (`lib/dock-measure.mjs`, run in the page) and evaluates every line of the
+acceptance (`lib/dock-rules.mjs`, pure and unit-tested in `dock-check.test.mjs`): the rows share an edge and fill the
+Dock; one Veil at the gutter inset, 12px above the safe area, radius 24, the rim between rows and none above the first;
+mini row sizes, one-line title, 2px Glow progress line (aria-hidden), region label; three tabs, one current, Fill glyph +
+`--text` for it; icons 28 / 24 and labels shown / faded when receded, and a receded tab's 44px hit area; the fade and the
+cast (260px, 14% / 9%, only with a mini row); **no text node in the band below the Dock's bottom edge at rendered opacity
+above 0.02** (judged through the fade by the gradient's own stop, and a screen where no text ever entered the band is a
+failure, so the rule cannot pass vacuously); and, on the last `dock` step, the interactions: the recede sequence (not at 60px, receded at 120px,
+restored by one pixel back up, 280ms `--e-out`), the folded routes (`#/create` -> Discover with the field focused in the
+Dock, `#/starred-shows` -> Library, `#/interests` -> Tuning), the field's focus hiding the other rows, and the 600ms hold
+into car posture. Writes `report.md` and `dock-check.json`; exit 1 on any violation. It compares no pixels, so it needs
+no baseline machine, only Chromium.
 
 ## Hard-limit gates (`gates.mjs`)
 

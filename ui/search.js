@@ -1849,27 +1849,24 @@ function createPlaylistCtaHtml(query) {
   </div>`;
 }
 
-/* Hands off to Create's own, single creation path (#cr-form's
-   bindCreateFormSubmit) rather than calling buildPlaylist() from here --
-   see createPlaylistCtaHtml's header for why a second creation path is out
-   of scope. It used to hand off to #/playlists' form; that builder is gone
-   (p-first-6).
+/* The button builds in place (buildPlaylistFromDiscover, ui/create.js): the
+   Create tab folded into Discover's field (Redesign 2026, ambient, the Dock), so
+   there is no Create page to hand off to any more. It is still the one
+   creation path - the same buildPlaylist() the Create form calls, not a second
+   builder (see createPlaylistCtaHtml's header).
 
-   THE QUERY RIDES IN MODULE STATE, NOT ON A TIMER (audit round 3, app-2-11).
-   This navigated and then prefilled on a setTimeout(0), assuming the
-   hashchange render would run first. The spec does not order a timer task
-   against a hashchange task, so on a slow WebView the timer could win, find no
-   #cr-form and land the listener on an empty Create page. Now the query waits
-   in `pendingCreateQuery` and renderCreate consumes it once its form is bound —
-   whenever that render happens. */
+   `pendingCreateQuery` is the old hand-off (audit round 3, app-2-11): the query
+   waited in module state for renderCreate to consume it, instead of riding a
+   setTimeout(0) the hashchange render might lose. Nothing sets it today; the
+   Create page's own consumer is kept because the page's suite pins it, and goes
+   with the page when Discover's screen unit retires renderCreate. */
 let pendingCreateQuery = null;
 
 function bindCreatePlaylistCta(scope) {
   const btn = scope.querySelector("[data-create-playlist]");
   if (!btn) return;
   btn.addEventListener("click", () => {
-    pendingCreateQuery = btn.dataset.createPlaylist || "";
-    location.hash = "#/create";
+    buildPlaylistFromDiscover(btn.dataset.createPlaylist || "", btn);
   });
 }
 

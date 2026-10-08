@@ -81,6 +81,12 @@ const AMBIENT_PRIMITIVES_ASSETS = Object.freeze([
   { rel: "ui/primitives.css", maxBytes: 20 * 1024 },
   { rel: "ui/primitives.js", maxBytes: 16 * 1024 },
   { rel: "ui/gallery.js", maxBytes: 9 * 1024 },
+  /* Phase 4, screen "dock" (the IA change that lands before any tab page): the Dock's
+     own stylesheet, a NEW file, so it is budgeted the way the foundation files are
+     rather than against the legacy alarm. Measured 8,366 B minified; the ceiling is
+     10% above it. ui/tabbar.js and player/client.js are existing files and stay in
+     the legacy count. */
+  { rel: "ui/dock.css", maxBytes: 9 * 1024 },
 ]);
 
 /* ───────────────────────────── the derivation ───────────────────────────── */

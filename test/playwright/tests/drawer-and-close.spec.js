@@ -1,5 +1,10 @@
 /* U-12 / U-13 (docs/ui-transition-plan.md; founder feedback F17 and F18).
  *
+ * UPDATED FOR THE DOCK (Redesign 2026, ambient; ruling "4 tabs + drawer" fell): the drawer is Settings only now
+ * (no `.drawer-section` links), and the mini bar is a row of the Dock (`#dock-mini .fp-bar`, above `#tab-bar`
+ * inside one Veil) instead of the root of `#foray-player`, which holds only the sheet. The flows - the drawer
+ * over an open sheet, collapse-not-stop, no "Stop and close player" - are the same contracts.
+ *
  * Both defects are about what one layer does to another while audio is
  * playing, and neither is visible to a node:vm suite: F17 is a stacking
  * order (which element wins `elementFromPoint` at a given pixel — a real
@@ -128,7 +133,7 @@ async function startPlayback(page) {
     },
     AUDIO_PATH
   );
-  await expect(page.locator("#foray-player")).toBeVisible();
+  await expect(page.locator("#dock-mini .fp-bar")).toBeVisible();
 }
 
 /** `{ paused, currentTime }` for the element actually carrying the fixture
@@ -156,13 +161,13 @@ test("the drawer opens on top of an expanded Now Playing sheet, and its first it
   await expect(page.locator("#drawer")).toBeVisible();
 
   const hit = await page.evaluate(() => {
-    const first = document.querySelector("#drawer .drawer-section");
-    if (!first) return { error: "the drawer has no .drawer-section items at all" };
+    const first = document.querySelector("#drawer .drawer-item");
+    if (!first) return { error: "the drawer has no .drawer-item items at all" };
     const r = first.getBoundingClientRect();
     const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
     /* The same question asked of the player's own centre: with the drawer
        open, its scrim — not the mini bar — must be what a tap lands on. */
-    const bar = document.querySelector("#foray-player .fp-bar").getBoundingClientRect();
+    const bar = document.querySelector("#dock-mini .fp-bar").getBoundingClientRect();
     const overBar = document.elementFromPoint(bar.left + bar.width / 2, bar.top + bar.height / 2);
     return {
       text: (first.textContent || "").trim(),
@@ -176,7 +181,7 @@ test("the drawer opens on top of an expanded Now Playing sheet, and its first it
   });
 
   expect(hit.error).toBeUndefined();
-  expect(hit.text).toBe("Home");
+  expect(hit.text.length, "the drawer's first item is a Settings row with a name").toBeGreaterThan(0);
   expect(
     hit.insideDrawer,
     `the drawer's first item is not hit-testable at its own centre — a tap there lands on "${hit.landedOn}"`
@@ -219,16 +224,16 @@ test("closing the expanded sheet collapses to a mini bar that keeps playing, and
     [AUDIO_PATH, beforeClose.currentTime]
   );
 
-  /* 3. The mini bar is still there, and docked ABOVE the tab bar. */
-  await expect(page.locator("#foray-player")).toBeVisible();
+  /* 3. The mini bar is still there, and is the Dock's row ABOVE the tab row. */
+  await expect(page.locator("#dock-mini .fp-bar")).toBeVisible();
   const stack = await page.evaluate(() => {
-    const bar = document.querySelector("#foray-player .fp-bar").getBoundingClientRect();
+    const bar = document.querySelector("#dock-mini .fp-bar").getBoundingClientRect();
     const tabs = document.querySelector("#tab-bar").getBoundingClientRect();
     const at = document.elementFromPoint(bar.left + bar.width / 2, bar.top + bar.height / 2);
     return {
       barBottom: bar.bottom,
       tabsTop: tabs.top,
-      hitInsidePlayer: Boolean(at && at.closest("#foray-player")),
+      hitInsidePlayer: Boolean(at && at.closest("#dock-mini")),
       landedOn: at ? (at.id || at.className || at.tagName) : null,
     };
   });
@@ -247,7 +252,7 @@ test("closing the expanded sheet collapses to a mini bar that keeps playing, and
          because the defect is "a visible control that does nothing", which any
          future control could reintroduce under a different class name. */
   const exposed = await page.evaluate(() =>
-    [...document.querySelectorAll("#foray-player button, #foray-player a")]
+    [...document.querySelectorAll("#dock-mini button, #dock-mini a")]
       .filter((el) => el.getClientRects().length > 0)
       .map((el) => (el.getAttribute("aria-label") || el.textContent || "").trim())
   );
@@ -263,7 +268,7 @@ test("closing the expanded sheet collapses to a mini bar that keeps playing, and
   await expect(page).toHaveURL(/#\/library$/);
   await expect(page.locator('#tab-bar a[data-tab-key="library"]')).toHaveAttribute("aria-current", "page");
   await expect(page.locator("#view")).not.toBeEmpty();
-  await expect(page.locator("#foray-player")).toBeVisible();
+  await expect(page.locator("#dock-mini .fp-bar")).toBeVisible();
   expect((await audioState(page)).paused).toBe(false);
 
   /* 5. Stop — the separately labelled control — is what ends it. */
@@ -271,7 +276,7 @@ test("closing the expanded sheet collapses to a mini bar that keeps playing, and
   await expect(page.locator(".fp-sheet")).toBeVisible();
   await page.locator(".fp-stop").click();
 
-  await expect(page.locator("#foray-player")).toBeHidden();
+  await expect(page.locator("#dock-mini")).toBeHidden();
   await expect(page.locator("body.fp-open")).toHaveCount(0);
   await expect.poll(async () => (await audioState(page)).paused).toBe(true);
 });

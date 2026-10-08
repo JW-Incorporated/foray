@@ -51,6 +51,7 @@ const SHELL = [
   "styles.css",
   "ui/tokens.css", // Redesign 2026 (ambient): the Afterglow design tokens, linked after styles.css
   "ui/primitives.css", // Redesign 2026 (ambient): scoped component primitives and gallery composition
+  "ui/dock.css", // Redesign 2026 (ambient): the Dock (tabs, mini player, Discover's field), linked after primitives.css
   "ui/icons.svg", // Redesign 2026 (ambient): the icon sprite every `<use href>` fetches
   "ui/icons-LICENSES.txt", // complete MIT/OFL notices for the paths shipped in the sprite
   "sw.js",

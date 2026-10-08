@@ -379,7 +379,10 @@ test("Library stays reachable via the tab bar (the interim Playlists link is ret
     "the retired interim link to #/library must never render post-cutover"
   );
   m.evalIn("renderTabBar();");
-  const bar = m.body.children.find((el) => el.id === "tab-bar");
+  /* The bar is the Dock's bottom row: body > #dock-layer > #dock > #tab-bar. */
+  const layer = m.body.children.find((el) => el.id === "dock-layer");
+  const dock = layer && layer.children.find((el) => el.id === "dock");
+  const bar = dock && dock.children.find((el) => el.id === "tab-bar");
   assert.ok(bar, "the tab bar must always exist post-cutover");
   const lib = bar.children.find((a) => a.dataset.tabKey === "library");
   assert.ok(lib, "a library tab must exist");
@@ -487,13 +490,15 @@ test("Library lists the shows the listener follows, linking to each show", () =>
   assert.ok(html.includes("A Followed Show"));
 });
 
-test("the drawer and the tab bar use one name for #/shows", () => {
-  /* The tab bar's names win (founder default R6). MUTATION: put "Shows" back in
-     index.html's drawer, or the page heading. */
-  const drawerName = /<a class="drawer-section" href="#\/shows">([^<]+)<\/a>/.exec(INDEX_HTML)[1];
-  const tabName = /\{ key: "search", label: "([^"]+)", hash: "#\/shows"/.exec(APP_SRC)[1];
-  assert.strictEqual(drawerName, tabName);
-  assert.match(APP_SRC, /renderShowIndexPage\("Search", /, "and the page's own heading agrees");
+test("the Discover tab and the page it opens use one name, and the drawer no longer names a destination at all", () => {
+  /* The tab bar's names win (founder default R6). RULING THAT FELL: "four tabs + drawer" - the drawer
+     carried a "Search" link; it carries none now, so the pair to keep in step is the tab and the page.
+     MUTATION: put "Search" back in the page heading, or rename the tab -> the two names disagree. Put a
+     `drawer-section` link back in index.html -> the drawer assertion goes red. */
+  assert.ok(!/class="drawer-section"/.test(INDEX_HTML), "the drawer is Settings now: no navigation links");
+  const tabName = /\{ key: "discover", label: "([^"]+)", hash: "#\/shows"/.exec(APP_SRC)[1];
+  assert.strictEqual(tabName, "Discover");
+  assert.match(APP_SRC, new RegExp(`renderShowIndexPage\\("${tabName}", `), "and the page's own heading agrees");
 });
 
 /* ==================================================================== */

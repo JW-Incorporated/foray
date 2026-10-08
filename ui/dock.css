@@ -1,0 +1,242 @@
+/* ===========================================================================
+   AFTERGLOW Dock (Redesign 2026, direction "ambient", Phase 4 screen "dock").
+
+   The one chrome surface at the bottom of every page: the Discover field, the
+   mini player and the three tabs, divided by a rim, with a fade behind it and a
+   cast of the playing item's colour above it. ui/tabbar.js builds it; the mini
+   bar inside it is player/client.js's. Source of truth: BUILD-NOTES.md §1.5, §3
+   (Dock, TabBar, MiniPlayer), §4.3, §6, §10.9, §11.1, §12.1 and BUILD-PLAN §2.1
+   screen 2. The Veil, the Dock's own box (`.dock`), `.dock-fade` and `.dock-cast`
+   are ui/tokens.css's; this file adds what is specific to the real Dock.
+
+   WHY THE SELECTORS ARE LONG. Every rule here starts at `.dock-layer`, so that nothing
+   here reaches outside the Dock, `#dock-cast` and `<body>`'s own geometry variables, with
+   two exceptions that exist because a page element moved into the Dock: `#sh-compose` (the
+   Search page's field, adopted into the field row) and the page padding the Dock reserves.
+   The layer is not an `.ag` subtree (section 2 says why), so it carries its own scope.
+
+   THE ROWS ARE HIDDEN WITH THE `hidden` ATTRIBUTE, never a class. tokens.css draws
+   the rim between non-hidden siblings; a row hidden only by CSS would still count
+   as one and put a stray line on the row below it. `[hidden]` loses to any author
+   `display` (the cascade trap test/home-layout.test.js BUG 3 pins), so section 2
+   puts it back with !important above every display this file declares.
+   (`display: none` is used below only for what a STATE removes - the keyboard, a
+   focused field - where the rim cannot matter because the field row is then alone.)
+   =========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   1. Geometry the page needs to agree with the Dock, from <body>'s state classes:
+      fp-open (something is loaded), sh-compose (Discover), dock-receded (scrolled).
+      New names only; styles.css declares none of them.
+   --------------------------------------------------------------------------- */
+:root {
+  --dock-field-row: 48px;        /* Discover's field row */
+  --dock-tab-receded: 36px;      /* the tab row after 80px of downward scroll, and always on Discover */
+  --dock-hit: 4px;               /* a receded tab reaches (44 - 36) / 2 past its row, above and below, to keep its 44px target */
+}
+body.ui-v2 {
+  --dock-field-h: 0px;
+  --dock-mini-h: 0px;
+  --dock-tab-h: var(--tab-bar);       /* the tab row now */
+  --dock-tab-rest: var(--tab-bar);    /* the tab row the PAGE reserves: a recede must not reflow the list */
+  --dock-h: calc(var(--dock-field-h) + var(--dock-mini-h) + var(--dock-tab-h));
+  --dock-rest-h: calc(var(--dock-field-h) + var(--dock-mini-h) + var(--dock-tab-rest));   /* the Dock's height before any recede */
+  /* The room at the bottom edge, composed from what is on screen and counted once:
+     rows + the home-indicator inset + the Dock's float + 24 of air under the last row. */
+  --dock-reserve: calc(var(--dock-field-h) + var(--dock-mini-h) + var(--dock-tab-rest) + var(--safe-bottom) + var(--dock-inset) + var(--s-6));
+  /* The fade fades to the PAGE's colour. Every page is still the legacy dark page (`--bg`),
+     not Afterglow's bg0, so until a page adopts the system it fades to what is behind it. A
+     page that wears `.ag` and paints bg0 sets `--dock-page-bg: var(--bg0)` on <body>. */
+  --dock-page-bg: var(--bg);
+  padding-bottom: var(--dock-reserve);
+}
+body.ui-v2.fp-open { --dock-mini-h: var(--mini); }
+body.ui-v2.sh-compose { --dock-field-h: var(--dock-field-row); --dock-tab-h: var(--dock-tab-receded); --dock-tab-rest: var(--dock-tab-receded); }
+body.ui-v2.dock-receded { --dock-tab-h: var(--dock-tab-receded); }
+/* Discover reserved the old floating row's height on #view; the Dock reserves its field row above. */
+body.ui-v2.sh-compose #view { padding-bottom: 0; }
+
+/* ---------------------------------------------------------------------------
+   2. The layer and the Dock's box.
+   --------------------------------------------------------------------------- */
+.dock-layer {
+  /* THE TWO NAMES STYLES.CSS ALSO DECLARES are Afterglow's only on a scope (tokens.css rule 1); this is the Dock's
+     scope. It is deliberately NOT `.ag`: ui/tokens.css's one reduced-motion block turns every transition of an
+     `.ag` subtree into a 200ms crossfade, which gates.mjs's reduced-motion gate counts as motion, and BUILD-NOTES
+     section 6 gives the Dock's recede "instant" under reduced motion anyway. Out of that block, with its own
+     transitions declared only for `no-preference` (section 8), the Dock is still, by construction, for a
+     listener who asked for less. What `.ag` would have given - the two names, a font, the button and icon
+     resets - is spelled out here, in six lines. */
+  --text: var(--ag-text);
+  --gutter: var(--ag-gutter);
+  color: var(--text); font: var(--t-body);
+  position: fixed; inset: 0; z-index: 55;     /* the old tab bar's rung: above the page, below the sheets (60) and the drawer (80) */
+  pointer-events: none;
+}
+.dock-layer button { border: 0; margin: 0; padding: 0; color: inherit; background: none; font: inherit; }
+.dock-layer button:not(:disabled) { cursor: pointer; }
+.dock-layer .icon { width: var(--icon-size, var(--icon)); height: var(--icon-size, var(--icon)); flex: none; fill: currentColor; stroke: none; vertical-align: middle; pointer-events: none; }
+.dock-layer .icon-28 { --icon-size: var(--icon-tab); }
+.dock-layer .dock {
+  pointer-events: auto;
+  overflow: visible;                          /* a receded tab's 44px target reaches past the row; the mini row clips its own corners */
+  margin-inline: auto; max-width: 560px;      /* a wide window keeps a phone-width Dock */
+  bottom: calc(var(--kb-inset, 0px) + var(--safe-bottom) + var(--dock-inset));
+}
+.dock-layer .dock [hidden] { display: none !important; }
+/* Standing in the first-run sheet's way would hide the playback controls it keeps reachable. */
+body.fy-sheet-keeps-player .dock-layer { z-index: 71; }
+
+/* The fade and the cast belong to the PAGE'S colour, see --dock-page-bg above. */
+.dock-layer .dock-fade { background: linear-gradient(transparent 0, var(--dock-page-bg) 32px); }
+/* The cast sits BEHIND the page's content (over the canvas, under every in-flow box) and is never a layer of its own.
+   tokens.css's `.dock-cast` is a 260px box whose bottom edge ends 24px under the Dock's top edge: it ends in the
+   gutters beside the Dock too, where nothing covers the step from 6% Glow to none. Here the box runs on to the
+   screen's bottom (where the fade has taken over) and the radial keeps its 260px radius and its centre, 24px
+   under the Dock's top edge, so what is lit above the Dock is exactly tokens.css's and nothing steps below it. */
+#dock-cast {
+  --cast-centre: calc(var(--safe-bottom) + var(--dock-inset) + var(--dock-rest-h) - var(--s-6));   /* at rest: a recede must not slide the light */
+  position: fixed; z-index: -1; top: auto; bottom: 0;
+  height: calc(var(--cast-centre) + 260px);
+  background: radial-gradient(90% 260px at 50% calc(100% - var(--cast-centre)), color-mix(in oklab, var(--glow) var(--cast-mix), transparent) 0%, transparent 100%);
+}
+body.ui-v2:not(.fp-open) #dock-cast { display: none; }
+
+/* ---------------------------------------------------------------------------
+   3. Row 1: Discover's field (the Search page's own #sh-compose, adopted).
+   --------------------------------------------------------------------------- */
+.dock-layer .dock-field { height: var(--dock-field-row); padding: calc(var(--s-1) / 2) var(--s-2); display: flex; align-items: center; }
+.dock-layer #sh-compose {
+  flex: 1 1 auto; min-width: 0; height: var(--tap);
+  display: flex; align-items: center; gap: var(--s-1);
+}
+.dock-layer #sh-compose #sh-form {
+  height: var(--tap); padding: 0 var(--s-1) 0 var(--s-3);
+  border: 0; border-radius: var(--r-pill); box-shadow: none;
+  background: var(--overlay);
+  -webkit-backdrop-filter: none; backdrop-filter: none;     /* the Dock is the only blurred surface */
+}
+.dock-layer #sh-compose #sh-input { min-height: var(--tap); color: var(--text); font: var(--t-body); }
+.dock-layer #sh-compose #sh-input::placeholder { color: var(--text-2); opacity: 1; }
+.dock-layer #sh-compose .sh-glyph { stroke: var(--text-2); }
+.dock-layer #sh-compose #sh-form:focus-within { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) / 2); }
+.dock-layer #sh-dismiss {
+  width: var(--tap); height: var(--tap); border: 0; box-shadow: none; color: var(--text);
+  background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+
+/* ---------------------------------------------------------------------------
+   4. Row 2: the mini player. Round at the top where it is the Dock's first row, so the
+      2px progress line follows the Dock's corner.
+   --------------------------------------------------------------------------- */
+.dock-layer .dock-mini { position: relative; overflow: hidden; border-radius: var(--r-xl) var(--r-xl) 0 0; }
+.dock-layer .dock-field:not([hidden]) + .dock-mini { border-radius: 0; }
+/* The progress line: 2px of Glow along the row's top edge. player/client.js writes the fill's width. */
+.dock-layer .dock-mini .fp-progress { position: absolute; top: 0; left: 0; right: 0; height: calc(var(--s-1) / 2); background: transparent; z-index: 3; pointer-events: none; }
+.dock-layer .dock-mini .fp-fill { display: block; height: 100%; width: 0; background: var(--glow); }
+.dock-layer .fp-bar { display: flex; align-items: center; gap: var(--s-3); height: var(--mini); padding: 0 var(--s-2) 0 var(--s-3); }
+.dock-layer .fp-art { flex: none; width: var(--art-mini); height: var(--art-mini); border-radius: var(--r-sm); object-fit: cover; background: var(--bg2); cursor: pointer; }
+.dock-layer .fp-info {
+  flex: 1 1 auto; min-width: 0; align-self: stretch; min-height: var(--tap);
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 0;
+  color: inherit; text-align: left;
+}
+.dock-layer .fp-title, .dock-layer .fp-show, .dock-layer .fp-err { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dock-layer .fp-title { font: var(--t-label); color: var(--text); }
+.dock-layer .fp-show { font: var(--t-caption); color: var(--text-2); }
+.dock-layer .fp-err { font: var(--t-caption); color: var(--warn); }
+/* Play: Ember, 48, the glyph its state names. Fwd30: bare, 44. Pressed is a scale, not a colour. */
+.dock-layer .fp-play, .dock-layer .fp-skip {
+  flex: none; display: grid; place-items: center; border-radius: var(--r-round); touch-action: manipulation;
+}
+.dock-layer .fp-play { width: calc(var(--tap) + var(--s-1)); height: calc(var(--tap) + var(--s-1)); background: var(--ember); color: var(--ember-ink); }
+.dock-layer .fp-skip { width: var(--tap); height: var(--tap); color: var(--text); }
+.dock-layer .fp-play:active, .dock-layer .fp-skip:active { transform: scale(0.94); }
+.dock-layer .fp-play .icon, .dock-layer .fp-skip .icon { grid-area: 1 / 1; }
+.dock-layer .fp-play .fp-glyph-pause { display: none; }
+.dock-layer .fp-play[data-running="1"] .fp-glyph-play { display: none; }
+.dock-layer .fp-play[data-running="1"] .fp-glyph-pause { display: block; }
+.dock-layer .fp-info:focus-visible, .dock-layer .fp-play:focus-visible, .dock-layer .fp-skip:focus-visible,
+.dock-layer .tab-btn:focus-visible { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) / 2); }
+.dock-layer .tab-btn:focus-visible { outline-offset: calc(var(--s-1) * -1); }
+
+/* ---------------------------------------------------------------------------
+   5. Row 3: the tabs. Active = the Fill glyph and --text; inert = Regular and --text-2,
+      so a tab change is a change of glyph and survives greyscale.
+   --------------------------------------------------------------------------- */
+.dock-layer .tab-bar {
+  display: flex; align-items: stretch; height: var(--tab-bar); padding-inline: var(--s-1);
+}
+.dock-layer .tab-btn {
+  position: relative; flex: 1 1 0; min-width: var(--tap); min-height: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  color: var(--text-2); border-radius: var(--r-lg); text-decoration: none; font: var(--t-label);
+  -webkit-tap-highlight-color: transparent;
+}
+.dock-layer .tab-btn:active { background-color: var(--overlay); }      /* the press the tap flash used to be */
+.dock-layer .tab-btn[aria-current="page"] { color: var(--text); }
+.dock-layer .tab-glyphs {
+  position: relative; display: block; width: var(--icon-tab); height: var(--icon-tab);
+}
+.dock-layer .tab-glyph { position: absolute; inset: 0; display: block; }
+.dock-layer .tab-glyph .icon { width: 100%; height: 100%; }
+.dock-layer .tab-glyph-on { opacity: 0; }
+.dock-layer .tab-btn[aria-current="page"] .tab-glyph-on { opacity: 1; }
+.dock-layer .tab-btn[aria-current="page"] .tab-glyph-off { opacity: 0; }
+.dock-layer .tab-label {
+  display: block; height: calc(var(--s-4) + var(--s-1) / 2); line-height: calc(var(--s-4) + var(--s-1) / 2); overflow: hidden;
+}
+/* RECEDED: 64 to 36, labels fade (they stay in the tree: the name of the link), icons 28 to 24.
+   Always on Discover (the field row is above); on any page after 80px of downward scroll. */
+body.ui-v2.dock-receded .dock-layer .tab-bar, body.ui-v2.sh-compose .dock-layer .tab-bar { height: var(--dock-tab-receded); }
+body.ui-v2.dock-receded .dock-layer .tab-glyphs, body.ui-v2.sh-compose .dock-layer .tab-glyphs { width: var(--icon); height: var(--icon); }
+body.ui-v2.dock-receded .dock-layer .tab-label, body.ui-v2.sh-compose .dock-layer .tab-label { height: 0; opacity: 0; }
+/* The 44px target of a 36px row: the link reaches (44 - 36) / 2 past it, above and below. The row's
+   bottom edge is the Dock's, and the Dock does not clip (section 2), so the lower half still hits. */
+body.ui-v2.dock-receded .dock-layer .tab-btn::after, body.ui-v2.sh-compose .dock-layer .tab-btn::after {
+  content: ""; position: absolute; left: 0; right: 0; top: calc(var(--dock-hit) * -1); bottom: calc(var(--dock-hit) * -1);
+}
+
+/* ---------------------------------------------------------------------------
+   6. The Settings button in the top bar: the gear is a sprite glyph now, not a text glyph.
+   --------------------------------------------------------------------------- */
+.topbar .topbar-glyph { width: var(--icon); height: var(--icon); fill: currentColor; stroke: none; vertical-align: middle; pointer-events: none; }
+
+/* ---------------------------------------------------------------------------
+   7. STATES, LAST so they out-rank the rows' own display. A soft keyboard or a focused field: the
+      Dock is the field row alone, riding the keyboard's top edge (the mini row and the tab bar are
+      `display: none` - an author rule, never `hidden`, for the cascade reason in the header).
+   --------------------------------------------------------------------------- */
+body.ui-v2.kb-open .dock-layer .dock { bottom: calc(var(--kb-inset, 0px) + var(--s-2)); }
+body.ui-v2.kb-open .dock-layer .dock-mini, body.ui-v2.kb-open .dock-layer .tab-bar,
+body.ui-v2.sh-searching .dock-layer .dock-mini, body.ui-v2.sh-searching .dock-layer .tab-bar { display: none; }
+body.ui-v2.kb-open .dock-layer .dock-fade, body.ui-v2.sh-searching .dock-layer .dock-fade,
+body.ui-v2.kb-open #dock-cast, body.ui-v2.sh-searching #dock-cast { opacity: 0; }
+
+/* ---------------------------------------------------------------------------
+   8. MOTION - declared ONLY for a listener who has not asked for less of it. The Dock is not an `.ag` subtree
+      (section 2), so ui/tokens.css's reduced-motion block does not re-time it; instead nothing here moves under
+      `reduce`: the recede (BUILD-NOTES section 6: 280ms --e-out, "instant" when reduced), the tab change, the
+      label fade, the press and the progress fill are all instant, by there being no transition to run. That
+      is also what lets gates.mjs's reduced-motion gate (any transition over 1ms) pass on this screen: the
+      block's 200ms crossfade of an `.ag` subtree is the open question tokens.css's header records.
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+  .dock-layer .dock-fade, #dock-cast { transition: opacity var(--m-ui) var(--e-out); }
+  .dock-layer .dock-mini .fp-fill { transition: width var(--m-ui) linear; }
+  .dock-layer .fp-play, .dock-layer .fp-skip { transition: transform var(--m-micro) var(--e-out); }
+  .dock-layer .tab-bar { transition: height var(--m-ui) var(--e-out); }
+  .dock-layer .tab-btn { transition: color var(--m-micro) var(--e-out), background-color var(--m-micro) var(--e-out); }
+  .dock-layer .tab-glyphs { transition: width var(--m-ui) var(--e-out), height var(--m-ui) var(--e-out); }
+  .dock-layer .tab-glyph { transition: opacity var(--m-micro) var(--e-out); }
+  .dock-layer .tab-label { transition: opacity var(--m-ui) var(--e-out), height var(--m-ui) var(--e-out); }
+}
+
+/* ---------------------------------------------------------------------------
+   9. The component gallery (#/gallery, lab only) shows the Dock as a PLATE; the real Dock stays out of it, as the
+      old tab bar and player did (ui/primitives.css hides them the same way).
+   --------------------------------------------------------------------------- */
+body.gallery-page > .dock-layer, body.gallery-page > #dock-cast { display: none !important; }
+/* ...and keeps the 56px + inset the old tab bar's reservation gave the page's foot (the gallery baseline is
+   shot at scroll positions that depend on the document's height). */
+body.ui-v2.gallery-page { padding-bottom: calc(var(--tab-bar-h) + env(safe-area-inset-bottom)); }

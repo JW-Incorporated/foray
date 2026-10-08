@@ -43,7 +43,7 @@ const path = require("node:path");
 const { readAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const CSS = ["styles.css", "ui/primitives.css"]
+const CSS = ["styles.css", "ui/primitives.css", "ui/dock.css"]
   .map((rel) => fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n"))
   .join("\n");
 
@@ -108,8 +108,13 @@ function valueOf(sel, prop) {
   }
   return v;
 }
+const dockCssHelper = require("./helpers/dock-css.js");
+const TOKENS_AT_REST = dockCssHelper.scope([]);
 const px = (v) => {
   if (String(v || "").trim() === "var(--tap)") return 44;
+  /* The Dock's sizes are written in tokens (`calc(var(--tap) + var(--s-1))` is the 48px Play), so a value
+     that is a calc/var is RESOLVED, with the same resolver the geometry suites use - never guessed. */
+  if (/var\(|calc\(/.test(String(v || ""))) { try { return dockCssHelper.resolve(v, TOKENS_AT_REST, 0); } catch (_) { return null; } }
   const m = /^(-?\d+(?:\.\d+)?)px$/.exec(String(v || "").trim());
   return m ? Number(m[1]) : null;
 };
@@ -205,10 +210,10 @@ const BUTTONS = {
   ".fp-btn": { size: [".fp-btn"] },
   ".fp-clip": { size: [".fp-clip"] },
   ".fp-close": { size: [".fp-close"] },
-  ".fp-info": { tall: ".fp-info", why: "flex: 1 1 auto — the mini bar's whole title column" },
-  ".fp-play": { size: [".fp-play"] },
+  ".fp-info": { tall: ".dock-layer .fp-info", why: "flex: 1 1 auto — the mini bar's whole title column" },
+  ".fp-play": { size: [".dock-layer .fp-play"] },
   ".fp-rate": { rule: ".fp-rate" },
-  ".fp-skip": { size: [".fp-skip"] },
+  ".fp-skip": { size: [".dock-layer .fp-skip"] },
   ".fp-stop": { rule: ".fp-stop" },
   ".fy-btn": { size: [".fy-btn"] },
   ".fy-chip": { rule: ".fy-chip" },
@@ -290,9 +295,9 @@ const MEASURED_CONTROLS = [
   ".fp-grab-zone .fp-close",   // the sheet's ✕, 36x36
   ".fp-rate", ".fp-stop", ".fp-openep", // the sheet's second row (`.fp-collapse` is gone: the ✕ and the handle close it)
   ".voice-row-audition",       // ~29 tall, inside a row that SELECTS on a miss
-  /* Visual pass 1 (2026-09-23): the mini bar's ↺15 and the clip rows' text
-     buttons are sized by their own declarations, like the transport. */
-  ".fp-skip", ".fp-clip", ".fy-clip",
+  /* Visual pass 1 (2026-09-23): the mini bar's skip (it is forward 30 now, in the Dock) and the clip rows'
+     text buttons are sized by their own declarations, like the transport. */
+  ".dock-layer .fp-skip", ".fp-clip", ".fy-clip",
   /* The one pill (review of the pass): ~35px by its own padding on Search,
      Create and the reason sheet; expanded by the rule, not resized. */
   ".fy-chip",
@@ -461,6 +466,7 @@ test("a held in-app link opens no web preview and no callout, in the shell or th
     ".page-link-row": ".page-link-row:active",
     ".drawer-item": ".drawer-item:active",
     ".drawer-section": ".drawer-section:active",
+    ".dock-layer .tab-btn": ".dock-layer .tab-btn:active",
   };
   const quiet = UNCONDITIONAL.filter((r) => r.decls.some((d) => d.prop === "-webkit-tap-highlight-color" && d.value === "transparent"))
     .flatMap((r) => r.selectors);
@@ -491,19 +497,40 @@ test("the Now Playing scrub bar hands vertical pans to the sheet and keeps horiz
 test("the mini bar's open-the-player button fills the bar's height", () => {
   /* MUTATION: drop `align-self: stretch` -> the ~8px bands above and below
      the two text lines, which look like the bar, are dead again. */
-  assert.strictEqual(valueOf(".fp-info", "align-self"), "stretch");
-  assert.ok(px(valueOf(".fp-info", "min-height")) >= 44);
+  assert.strictEqual(valueOf(".dock-layer .fp-info", "align-self"), "stretch");
+  assert.ok(px(valueOf(".dock-layer .fp-info", "min-height")) >= 44);
 });
 
-test("docked above the tab bar, the mini player does not add the home-indicator inset a second time", () => {
-  /* The tab bar's own box already contains the inset. MUTATION: delete
-     `padding-bottom: 0` from `body.ui-v2.fp-open #foray-player` -> red; a
-     ~34px dead band of bar sits above the tab bar on a notched iPhone. */
-  assert.match(valueOf("#foray-player", "padding-bottom") || "", /safe-area-inset-bottom/,
-    "fixture assumption: the base rule pads by the inset for the on-the-edge case");
-  assert.match(valueOf("body.ui-v2.fp-open #foray-player", "padding-bottom") || "", /^0(px)?$/);
+test("a receded tab keeps a 44px target: the 36px row's link reaches 4px past it, above and below", () => {
+  /* The Dock's tab row recedes to 36 (BUILD-NOTES 3), under the 44 floor. The link carries a hit-area
+     `::after` that grows the target to 44 - (44 - 36) / 2 = 4px each way - the same device as the
+     hit-area rule above, scoped to the receded states (at 64 the link is its row).
+     MUTATION: delete the `::after` rule from ui/dock.css, or set `--dock-hit` to 0 -> the gates run's
+     44px check reports every receded tab (this static twin goes red first). */
+  const h = (36 + 2 * px(dockCssHelper.declOf("ui/dock.css", ":root", "--dock-hit")));
+  assert.strictEqual(h, 44, "36 + 2 x --dock-hit is the 44px floor");
+  const after = RULES.find((r) => r.selectors.includes("body.ui-v2.dock-receded .dock-layer .tab-btn::after"));
+  assert.ok(after, "the receded tab has a hit-area ::after");
+  assert.ok(after.selectors.includes("body.ui-v2.sh-compose .dock-layer .tab-btn::after"), "and so does the always-receded Discover row");
+  const decl = Object.fromEntries(after.decls.map((d) => [d.prop, d.value]));
+  assert.strictEqual(decl.top, "calc(var(--dock-hit) * -1)");
+  assert.strictEqual(decl.bottom, "calc(var(--dock-hit) * -1)");
 });
 
+test("the mini bar is a row of the Dock: it pads for no home indicator and has no box of its own to draw", () => {
+  /* It used to dock ABOVE the tab bar as its own bar, whose base rule padded by the inset for the
+     on-the-edge case and which then had to zero that padding when it sat on the tab bar (a ~34px dead
+     band otherwise). Both halves are gone: the Dock floats above the inset ONCE (test/tab-bar.test.js),
+     the mini bar is a row of it, and `#foray-player` now holds only the sheet - no padding, no fill, no
+     border, no shadow.
+     MUTATION: put `padding-bottom: env(safe-area-inset-bottom, 0)` back on `#foray-player` or on
+     `.dock-layer .fp-bar` -> red; a dead band of bar sits above the tab row on a notched iPhone. */
+  for (const prop of ["padding-bottom", "padding", "background", "border-top", "box-shadow"]) {
+    assert.strictEqual(valueOf("#foray-player", prop), null, `#foray-player carries no ${prop}: it holds the sheet, not a bar`);
+  }
+  assert.doesNotMatch(valueOf(".dock-layer .fp-bar", "padding") || "", /safe-area-inset/, "the row never pads for the home indicator");
+  assert.strictEqual(valueOf(".dock-layer .fp-bar", "height"), "var(--mini)", "a 64px row, the Dock's mini row");
+});
 test("Stop reads as a different control from the speed box beside it", () => {
   /* MUTATION: delete `body.ui-v2 .fp-stop { ... }` -> the shared v2 rule
      paints Stop the same grey as `1×`; red. (Close left the row in visual

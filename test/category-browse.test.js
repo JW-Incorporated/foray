@@ -294,31 +294,26 @@ test("route() dispatches #/shows to renderAllShows, matching the #/playlists pat
 
   m.ctx.location.hash = "#/shows";
   m.ctx.route();
-  assert.ok(m.view().includes("<h2>Search</h2>"), "route() must dispatch #/shows to renderAllShows");
+  assert.ok(m.view().includes("<h2>Discover</h2>"), "route() must dispatch #/shows to renderAllShows");
 });
 
 /* ==================================================================== */
 /* 6. #/shows IS STILL REACHABLE AFTER "BROWSE ALL SHOWS" WAS REMOVED    */
 /* ==================================================================== */
 
-test("the menu carries a Shows destination pointing at #/shows", () => {
-  /* The affordance the removed "Browse all shows" button provided, replaced
-     rather than dropped. Read out of index.html rather than a render,
-     because that is where the drawer's markup actually lives — the app never
-     rebuilds those five links, so a render-based assertion would be reading a
-     fixture instead of the shipped nav.
+test("the Discover tab carries the destination #/shows - the tab bar replaced the menu's entry", () => {
+  /* The affordance the removed "Browse all shows" button provided, replaced rather than dropped - first by
+     the drawer's "Shows" link, now (RULING THAT FELL: "four tabs + drawer"; the drawer carries no
+     navigation) by the Discover tab. Read out of ui/tabbar.js's TAB_ROUTES rather than a render, because
+     that is where the shipped nav lives.
 
-     MUTATION: delete the `<a class="drawer-section" href="#/shows">Search</a>`
-     line from index.html. This fails, and #/shows becomes an address with no
-     link to it anywhere in the app.
-
-     Named "Search" since 2026-09-22 (and so is the page's heading, in the
-     three route assertions above and below): one name per destination, and
-     the tab bar's name wins (audit personas 36 and 76). */
-  const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+     MUTATION: point the Discover entry at another hash, or delete it. This fails, and #/shows becomes an
+     address with no link to it anywhere in the app. The page's heading is the tab's name (one name per
+     destination; the three route assertions above and below). */
+  const tabs = fs.readFileSync(path.join(ROOT, "ui", "tabbar.js"), "utf8");
   assert.ok(
-    /<a class="drawer-section" href="#\/shows">Search<\/a>/.test(html),
-    "the drawer must carry a Search entry linking to #/shows"
+    /\{ key: "discover", label: "Discover", hash: "#\/shows"/.test(tabs),
+    "the tab bar must carry a Discover entry linking to #/shows"
   );
 });
 
@@ -427,7 +422,7 @@ test("route() dispatches #/shows/q/:query to the Shows page with that search alr
   m.ctx.location.hash = "#/shows/q/Science";
   m.ctx.route();
 
-  assert.ok(m.view().includes("<h2>Search</h2>"), "it is the Shows page, not a new one");
+  assert.ok(m.view().includes("<h2>Discover</h2>"), "it is the Shows page, not a new one");
   assert.strictEqual(m.byId.get("sh-input").value, "Science",
     "the field must hold the query, so it can be edited rather than retyped");
   assert.ok(m.byId.get("sh-results").innerHTML.includes("Science Friday"),
@@ -452,7 +447,7 @@ test("a malformed #/shows/q/ hash lands on the plain Shows page instead of throw
 
   m.ctx.location.hash = "#/shows/q/%";
   assert.doesNotThrow(() => m.ctx.route());
-  assert.ok(m.view().includes("<h2>Search</h2>"), "an undecodable query is not a query — the browse page stands");
+  assert.ok(m.view().includes("<h2>Discover</h2>"), "an undecodable query is not a query — the browse page stands");
 });
 
 /* 7.3 — WHAT WAS NOT DELETED, AND WHY. */

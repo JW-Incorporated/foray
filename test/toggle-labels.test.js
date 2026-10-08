@@ -243,16 +243,20 @@ test("a playing card's button is renamed 'Pause <its title>', and back to 'Play'
 
 /* MUTATION: put back `info.setAttribute("aria-label", "Open player")` and drop
    paintInfoLabel — the name loses the title. MUTATION 2: drop the aria-expanded
-   write — the open-sheet assertion fails. */
+   write — the open-sheet assertion fails. MUTATION 3: drop the `ui.bar.setAttribute("aria-label", ...)`
+   line (the Dock's mini row is a region named for what is playing) — the region assertion fails. */
 test("the mini bar's title button is named by what is playing and says whether the sheet is open", () => {
   const info = makeEl();
+  const bar = makeEl("div");
   const sheet = makeEl("div");
   sheet.hidden = true;
-  const ui = { info, sheet, title: { textContent: "Dennis Whyte: Nuclear Fusion" }, show: { textContent: "Lex Fridman Podcast" } };
+  const ui = { info, bar, sheet, title: { textContent: "Dennis Whyte: Nuclear Fusion" }, show: { textContent: "Lex Fridman Podcast" } };
   const ctx = clientCtx({ ui });
   vm.runInContext(clientFn("paintInfoLabel"), ctx);
   ctx.paintInfoLabel();
   assert.strictEqual(info.getAttribute("aria-label"), "Now playing: Dennis Whyte: Nuclear Fusion, Lex Fridman Podcast");
+  assert.strictEqual(bar.getAttribute("aria-label"), "Now playing: Dennis Whyte: Nuclear Fusion, Lex Fridman Podcast",
+    "the bar is a region of the Dock, named 'Now playing: <title>, <show>'");
   assert.strictEqual(info.getAttribute("aria-expanded"), "false");
   sheet.hidden = false;
   ctx.paintInfoLabel();
