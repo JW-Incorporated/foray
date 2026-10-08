@@ -341,8 +341,19 @@ function tactileBand(data) {
   var mini = kind === "mini";
   var barY = mini ? 0 : 8;
   var barH = mini ? 60 : 28;
+  var stagePx = kind === "detail" ? 44 : kind === "scrub" ? 56 : 8;
+  /* A plain episode has no code row under the bar, so its stage is only the bar
+     and an even 6px of well above and below it (the prototype's
+     `.band--episode` stage: 44px, bar 32px at 6px). `stagePx` says how many
+     rendered px the 60-unit viewBox is stretched over; the bar is then 6px in
+     and 32px tall on any stage, centred. */
+  if (plain && Number(d.stagePx) > 0) {
+    stagePx = Number(d.stagePx);
+    barY = +(60 * 6 / stagePx).toFixed(3);
+    barH = +(60 * (stagePx - 12) / stagePx).toFixed(3);
+  }
   var rx = 2000 / renderWidth;
-  var ry = 2 * 60 / (kind === "detail" ? 44 : kind === "scrub" ? 56 : 8);
+  var ry = 2 * 60 / stagePx;
   var bars = widths.map(function (box, index) {
     var segment = segments[index];
     var cls = episode ? "t-band__bar t-band__bar--episode"

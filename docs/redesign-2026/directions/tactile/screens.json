@@ -444,6 +444,18 @@
           "prototype": ".transport .keycap--persimmon",
           "app": ".np .fp-big"
         },
+        "readout": {
+          "prototype": ".np__read",
+          "app": ".np__read"
+        },
+        "skipBack": {
+          "prototype": ".transport .keycap--rubber",
+          "app": ".np .transport .keycap--rubber"
+        },
+        "upNext": {
+          "prototype": "#sec-upnext .heading",
+          "app": ".np__up-next > .heading"
+        },
         "close": {
           "prototype": ".np__collapse",
           "app": ".np__collapse"

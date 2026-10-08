@@ -459,6 +459,32 @@ test("a plain episode with no chapters draws no ticks, and the band needs the fl
   assert.doesNotMatch(mini, /<line class="t-band__tick"/, "the mini band is not an episode scrub");
 });
 
+test("a plain episode's bar sits 6px in and 32px tall on any stage it is told, centred, with no code row under it", () => {
+  /* The 60-unit viewBox is stretched over `stagePx` rendered px, so the bar is
+     60 * 6 / stage units in and 60 * (stage - 12) / stage tall: 6px and
+     (stage - 12)px on the page, an even strip above and below. Without
+     `stagePx` the band is the foray's (bar at 8, 28 tall, room for codes).
+     MUTATIONS, each run against this test: drop the `plain &&` guard on the
+     stagePx branch -> the foray band below moves its bar and the y="8" assertion
+     fails; change `stagePx - 12` to `stagePx - 6` -> the bar is no longer
+     centred (6 above, 0 below) and the symmetry assertion fails; ignore stagePx
+     (delete the branch) -> the 44px assertions read 8 and 28. */
+  const one = [{ showId: "s", show: "S", duration: 60 }];
+  const html = p.tactileBand({ id: "stage", kind: "scrub", renderWidth: 361, episode: true, stagePx: 44, chapters: [0.5], segments: one });
+  const bar = /<rect class="t-band__bar t-band__bar--episode"[^>]* y="([\d.]+)" width="[\d.]+" height="([\d.]+)"/.exec(html);
+  assert.ok(bar, "the episode bar is drawn");
+  const px = (units) => Number(units) * 44 / 60;
+  assert.ok(Math.abs(px(bar[1]) - 6) < 0.01, "6px above the bar, got " + px(bar[1]));
+  assert.ok(Math.abs(px(bar[2]) - 32) < 0.01, "a 32px bar, got " + px(bar[2]));
+  assert.ok(Math.abs(44 - px(bar[1]) - px(bar[2]) - px(bar[1])) < 0.01, "as much well below the bar as above it");
+  const tick = /<line class="t-band__tick" x1="[\d.]+" x2="[\d.]+" y1="([\d.]+)" y2="([\d.]+)"/.exec(html);
+  assert.deepStrictEqual([tick[1], tick[2]], [String(+bar[1]), String(+bar[1] + +bar[2])].map((v) => v), "a chapter tick spans exactly the bar");
+  const foray = p.tactileBand({ id: "stage-foray", kind: "scrub", renderWidth: 361, stagePx: 44, segments });
+  assert.match(foray, / y="8" width="[\d.]+" height="28"/, "a foray band ignores stagePx: its bar stays at 8, 28 tall");
+  const dflt = p.tactileBand({ id: "stage-default", kind: "scrub", renderWidth: 361, episode: true, segments: one });
+  assert.match(dflt, / y="8" width="[\d.]+" height="28"/, "an episode band with no stagePx is unchanged");
+});
+
 test("the chapter tick is a 1px --ink-3 stroke in CSS", () => {
   /* MUTATION: change `var(--ink-3)` to `var(--ink)` or `stroke-width: 1` to 2 in the rule -> red. */
   assert.match(rule(".t-band__tick"), /stroke:\s*var\(--ink-3\)/);

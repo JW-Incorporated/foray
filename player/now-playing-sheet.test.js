@@ -1137,3 +1137,28 @@ test("the web lock screen names a plain episode's why-line as its album, and the
   assert.match(FLAT, /ui\.sWhy\.textContent = why \|\| item\.hook \|\| ""; ui\.sWhy\.hidden = !ui\.sWhy\.textContent; currentWhy = ui\.sWhy\.textContent;/);
   assert.equal((FLAT.match(/why: currentWhy/g) || []).length, 1, "only the episode branch carries it; a foray's album stays its title and counter");
 });
+
+test("the plain-episode sheet matches the prototype's geometry: a 44px well, 68px skip keys, a peeking Up next, 17px show name", () => {
+  /* Each assertion names the one-line mutation that turns it red (all run):
+     - `.np--episode .np__band { --np-band-h: 44px; }` -> 64px: the well is a third taller than the prototype's
+       and the band sits against its top edge; also change NP_EPISODE_STAGE_PX away from 44 -> the stage
+       assertion fails (the CSS and the drawing move together);
+     - the `.np--episode .transport .keycap--lg` width calc(var(--key-lg) + var(--s-3)) -> var(--key-lg): the
+       side keys are circles of 56 and the row loses its 68/80/68 rhythm;
+     - the episode `.np__top` min-height 189px -> 176px: "Up next" lands 13px low and the first row card
+       slides under the dock's paper (nothing peeks), and the 147px short-screen twin -> 142px likewise;
+     - the episode `.np__dock::before { top: -22px }` -> delete it: the paper starts 14px higher than the
+       prototype's and is opaque over the whole first card;
+     - `.np__show` font body-lg -> body: the show name is a step below the title-to-show step the prototype draws. */
+  assert.match(CSS_RULES, /\.np--episode \.np__band \{ --np-band-h: 44px; \}/);
+  assert.match(NP_FLAT_TEXT, /var NP_EPISODE_STAGE_PX = 44;/);
+  assert.match(NP_FLAT_TEXT, /stagePx: d\.foray \? 0 : NP_EPISODE_STAGE_PX/);
+  assert.match(CSS_RULES, /\.np--episode \.np__needle \{ height: 42px; \}/);
+  assert.match(CSS_RULES, /\.np--episode \.transport \.keycap--lg \{[^}]*width:\s*calc\(var\(--key-lg\) \+ var\(--s-3\)\)[^}]*min-width:\s*calc\(var\(--key-lg\) \+ var\(--s-3\)\)[^}]*padding:\s*0/);
+  assert.match(CSS_RULES, /\.np--episode \.np__top \{ min-height: calc\(100% - 189px - var\(--safe-b\)\); \}/);
+  assert.match(CSS_RULES, /@media \(max-height: 740px\)[\s\S]*?\.np--episode \.np__top \{ min-height: calc\(100% - 147px - var\(--safe-b\)\); \}/);
+  assert.match(CSS_RULES, /\.np--episode \.np__dock::before \{ top: -22px; \}/);
+  assert.match(CSS_RULES, /\.np \.np__text \.np__show \{[^}]*font:\s*500 var\(--t-body-lg\)\/var\(--lh-body-lg\)/);
+  /* The foray's own rules are untouched: its keys stay the ruled 56px circles. */
+  assert.match(CSS_RULES, /\.np \.transport \.keycap--lg \{\s*box-sizing:\s*border-box;\s*width:\s*var\(--key-lg\)/);
+});

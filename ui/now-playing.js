@@ -21,6 +21,9 @@ var DIAL_ART_TINT_CACHE = {};
    rotary primitive's job (BUILD-NOTES 3.14); the chip steps through these. */
 var DIAL_SLEEP_STOPS = [0, 15, 30, 45, 60];
 
+/* A plain episode's scrub stage: 44px, the bar 32px with 6px of well above and below
+   (styles.css `.np--episode .np__band`; the two numbers move together). */
+var NP_EPISODE_STAGE_PX = 44;
 function dialNpEl(tag, cls, text) {
   var node = document.createElement(tag);
   if (cls) node.className = cls;
@@ -636,7 +639,7 @@ function dialPaintNowPlaying(parts, model) {
     parts.bandSvg.innerHTML = tactileBand({
       id: "np-band", kind: "scrub", segments: d.segments || [], progress: fraction,
       currentIndex: d.currentIndex || 0, totalSeconds: d.duration || 1, renderWidth: width, buffering: d.buffering,
-      valueText: d.valueText, episode: !d.foray, chapters: chapterMarks,
+      valueText: d.valueText, episode: !d.foray, chapters: chapterMarks, stagePx: d.foray ? 0 : NP_EPISODE_STAGE_PX,
     });
     var visual = parts.bandSvg.querySelector(".band");
     /* The <input type=range> over the band is the one slider; the drawing is

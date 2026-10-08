@@ -5107,7 +5107,7 @@ body.ui-v2 .fp-sheet.np .np__collapse { border-color: transparent; background: t
 .np__tile.t-band__bar--c6 { background: var(--dial-seg-c6); } .np__tile.t-band__bar--c7 { background: var(--dial-seg-c7); }
 .np__text { display: flex; flex-direction: column; gap: var(--s-1); margin-top: var(--s-5); }
 .np__text .title { margin: 0; display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; text-wrap: balance; font-family: var(--dial-font-display); font-size: var(--t-title); line-height: var(--lh-title); font-weight: var(--w-title); letter-spacing: var(--tracking-title); color: var(--ink); }
-.np .np__text .np__show { margin: 0; color: var(--ink-2); font: 500 var(--t-body)/var(--lh-body) var(--font-text); }
+.np .np__text .np__show { margin: 0; color: var(--ink-2); font: 500 var(--t-body-lg)/var(--lh-body-lg) var(--font-text); }
 body.ui-v2 .fp-sheet.np .np__text .title { font-family: var(--dial-font-display); color: var(--ink); }
 body.ui-v2 .fp-sheet.np .np__show { color: var(--ink-2); }
 body.ui-v2 .fp-sheet.np .fp-s-why,
@@ -5164,6 +5164,22 @@ body.ui-v2 .fp-sheet.np .fp-left { color: var(--ink-2); }
 .np__range:active { cursor: grabbing; }
 .np__range:focus-visible { opacity: .001; }
 .np__band-well:has(.np__range:focus-visible) { outline: 2px solid var(--ultramarine); outline-offset: 2px; }
+/* A plain episode has no station codes, so its well is only the bar: 44px, the
+   bar 32px with 6px of well above and below (prototype `.band--episode`), the
+   needle the well's full height. The primitive draws the bar to the same 6/32
+   (`stagePx` in ui/now-playing.js); change the two together. This wins over the
+   short-screen 56px rule below on specificity: there is no row to make room for. */
+.np--episode .np__band { --np-band-h: 44px; }
+.np--episode .np__needle { height: 42px; }
+/* Where the detail starts: the prototype puts "Up next" 13px higher than the
+   foray's pinned offset on a tall screen and 5px higher on a short one, so the
+   first row card peeks above the dock's fade and says there is a queue. */
+.np--episode .np__top { min-height: calc(100% - 189px - var(--safe-b)); }
+/* The dock's paper starts 36px above the keys in the prototype (its padding-top);
+   here the dock box starts 14px above the transport, so the same line is 22px
+   above the dock. At 36 + 14 the paper was opaque over the whole first row
+   card and nothing peeked. */
+.np--episode .np__dock::before { top: -22px; }
 .band-bubble { --bubble-x: 0; position: absolute; z-index: 3; left: clamp(48px, calc(var(--bubble-x) * 100%), calc(100% - 48px)); bottom: calc(100% + var(--s-3)); min-width: 96px; padding: var(--s-2); transform: translateX(-50%); border-radius: var(--r-sm); background: var(--card); color: var(--ink); box-shadow: var(--shadow-card); text-align: center; white-space: nowrap; }
 .np__read { margin-top: var(--s-2); padding: 0 2px; display: flex; align-items: baseline; justify-content: space-between; }
 .np__read .readout-lg { color: var(--ink); letter-spacing: -.05em; }
@@ -5176,6 +5192,10 @@ body.ui-v2 .fp-sheet.np .fp-left { color: var(--ink-2); }
 .np .transport .keycap { flex: none; margin-bottom: var(--lip); }
 .np .transport .keycap--lg { box-sizing: border-box; width: var(--key-lg); min-width: var(--key-lg); height: var(--key-lg); padding: 0; }
 .np .transport .fp-big { width: var(--key-xl); min-width: var(--key-xl); height: var(--key-xl); padding: 0; }
+/* The episode's skip keys are the prototype's 68 x 56 pills (its `.keycap--lg`
+   is 56 high with 20px of padding round a 28px mark), so the three keys keep
+   the prototype's rhythm: 68, 80, 68 across a 24px gap. */
+.np--episode .transport .keycap--lg { width: calc(var(--key-lg) + var(--s-3)); min-width: calc(var(--key-lg) + var(--s-3)); padding: 0; }
 /* The lip of a key in the sheet is a hard shadow in the key's own darker tone,
    the key's own shape, attached: the primitive's ::after is a flat bar, which
    reads as a separate plinth under a round key, and covering the face with it
@@ -5242,6 +5262,8 @@ body.ui-v2 .fp-sheet.np .fp-openep { color: var(--ink); }
 
 @media (max-height: 740px) {
   .np__top { padding-top: calc(var(--safe-t) + var(--s-8)); min-height: calc(100% - 142px - var(--safe-b)); }
+  .np--episode .np__top { min-height: calc(100% - 147px - var(--safe-b)); }
+  .np--episode .np__dock::before { top: -12px; }
   .np__art { width: 200px; height: 200px; }
   .np__text { margin-top: 14px; }
   .np__band { --np-band-h: var(--key-lg); margin-top: 14px; }
