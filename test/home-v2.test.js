@@ -325,7 +325,7 @@ test("F14: the generated playlist's detail page resolves by id, lists the leaf's
   m.ctx.renderPlaylistDetail("gen-business/startups");
   const html = m.view();
   assert.ok(!html.includes("Playlist not found"), "generated id resolves");
-  assert.ok(html.includes("generated for you"), "subtitle says what it is");
+  assert.ok(html.includes("Generated for you"), "the eyebrow says what it is: 4a's, in Lamp");
   assert.ok(!html.includes("pl-remove"), "nothing to remove: it is not saved");
   assert.ok(html.indexOf("Startup 3") < html.indexOf("Startup 1"), "newest episode first");
 });

@@ -223,7 +223,7 @@ test("the playlist builder renders on Create — not on Home, and not on #/playl
 
      MUTATION: paste the `#pl-form` block back into renderHome's or
      renderPlaylists's template — either page's assertions fail. Drop the
-     `page-link-row` to #/create from renderPlaylists — the list loses its one
+     "Build a playlist" link to #/create from renderPlaylists — the list loses its one
      door to the builder, red. */
   const m = quietMount();
 
@@ -236,9 +236,9 @@ test("the playlist builder renders on Create — not on Home, and not on #/playl
   const playlists = m.view();
   assert.ok(!playlists.includes("<form"), "the Playlists page renders no builder form at all");
   assert.ok(!playlists.includes("build me a playlist"), "and not the old builder's placeholder");
-  assert.ok(playlists.includes('class="page-link-row" href="#/create"'), "the list links to the one builder, on Create");
-  assert.ok(playlists.includes('No playlists yet — <a href="#/create">build one on the Create tab</a>.'),
-    "the empty state says the same sentence Library's does, and points the same way");
+  assert.ok(playlists.includes('<a class="ag-btn ag-btn-secondary ag-btn-size-44" href="#/create">Build a playlist</a>'),
+    "the empty list's one button is the door to the builder, on Create");
+  assert.ok(playlists.includes('<p class="t-body">No playlists yet.</p>'), "and its one line says what is true");
   /* That Create holds the one builder (#cr-form/#cr-input) is test/create-page.test.js's
      subject, with a harness that parses the form; this by-id stub cannot. */
 });

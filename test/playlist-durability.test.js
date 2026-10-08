@@ -280,11 +280,19 @@ function clickPick(m, { ep, ctx: dataCtx, app }) {
   return a;
 }
 
-const rowCount = (html) => (html.match(/class="ep-row/g) || []).length;
-const goneCount = (html) => (html.match(/class="ep-row gone"/g) || []).length;
-const nextMarkers = (html) =>
-  [...html.matchAll(/<span class="q-num ([^"]*)">(\d+)<\/span>/g)]
-    .filter(([, cls]) => cls.includes("next")).map(([, , n]) => n);
+/* The page's rows are Today's EpisodeRow (Redesign 2026, ambient): a playable part is `data-pl-ep`, a part that cannot play
+   (archived, hidden by Family Mode, unnameable) is `data-pl-gone`. The old numbered "start here" marker is the page's
+   `data-pl-next` (the id of the first part that can be opened and is not finished), reported here as the part's 1-based
+   position so the assertions below read as they always did. */
+const rowCount = (html) => (html.match(/data-pl-(?:ep|gone)="/g) || []).length;
+const goneCount = (html) => (html.match(/data-pl-gone="/g) || []).length;
+const nextMarkers = (html) => {
+  const id = (/data-pl-next="([^"]*)"/.exec(html) || [])[1];
+  if (!id) return [];
+  const ids = [...html.matchAll(/data-pl-ep="([^"]*)"|data-pl-gone="[^"]*"/g)].map((m) => m[1] || null);
+  const at = ids.indexOf(id);
+  return at < 0 ? [] : [String(at + 1)];
+};
 
 /* ==================================================================== */
 /* 1. THE REPRODUCTION — the real catalogue, the real builder            */
@@ -611,7 +619,7 @@ test("THE SECOND RENDER SAYS WHAT THE FIRST SAID — liveness is the pool, not t
     assert.ok(html.includes("not available right now"), `${label} render: it must keep its caption`);
     assert.ok(html.includes("class=\"note\""), `${label} render: the shortfall must still be announced`);
     assert.deepStrictEqual(nextMarkers(html), ["2"], `${label} render: next belongs on the live part`);
-    assert.strictEqual((html.match(/data-play="/g) || []).length, 1,
+    assert.strictEqual((html.match(/data-pl-play="/g) || []).length, 1,
       `${label} render: only the live part may offer in-app playback`);
   }
   assert.strictEqual(first, second, "a re-render with nothing changed must be byte-identical");
@@ -666,18 +674,20 @@ test("an archived part offers no in-app play button — the audio URL was delibe
      elsewhere (product rule, 2026-09-03: 4a plays everything itself or says
      so, it never sends a listener to another app).
 
-     MUTATION: render an archived part through epRow. `data-play` appears for it
-     (or, with no audio_url, a bare `Play` link built from a snapshot that has no
-     apple_episode_url) and this fails. */
+     MUTATION: render an archived part through the live-row branch of playlistRowHtml.
+     `data-pl-play` appears for it (a Play button with no audio behind it) and this fails. */
   const m = mount();
   const html = withArchivedPart(m);
-  const plays = (html.match(/data-play="/g) || []).length;
+  const plays = (html.match(/data-pl-play="/g) || []).length;
   assert.strictEqual(plays, 1, "only the live part may offer in-app playback");
-  assert.ok(html.includes(`data-play="show-1--episode-1"`), "and it must be the live one");
-  assert.ok(!html.includes(`data-play="show-2--episode-2"`));
+  assert.ok(html.includes(`data-pl-play="show-1--episode-1"`), "and it must be the live one");
+  assert.ok(!html.includes(`data-pl-play="show-2--episode-2"`));
   assert.ok(!html.includes("class=\"go\""), "no external link-out control any more (removed 2026-09-03)");
   assert.ok(!html.includes("Listen in your podcast app"), "the old link-out copy must not appear anywhere");
-  assert.ok(html.includes("class=\"not-playable\""), "the archived part gets the honest not-playable note instead");
+  /* The honest state is the EpisodeRow's own Unavailable line, on a row with the unavailable class. */
+  const archived = /<article class="[^"]*is-unavailable[^"]*" data-pl-gone="archived">[\s\S]*?<\/article>/.exec(html);
+  assert.ok(archived, "the archived part is an unavailable row");
+  assert.ok(archived[0].includes("Unavailable"), "and says so in words (never colour alone)");
 });
 
 test("a part with no snapshot behind it still holds its place, and links nowhere rather than to idundefined", () => {
@@ -699,6 +709,8 @@ test("a part with no snapshot behind it still holds its place, and links nowhere
   assert.ok(!html.includes("idundefined"), "a part with no apple id must get no link at all");
   assert.ok(!html.includes(`data-star="long-gone--episode"`),
     "and no star either — there is no snapshot for toggleStar to store");
+  const unnamed = /<article class="[^"]*" data-pl-gone="unnamed">[\s\S]*?<\/article>/.exec(html);
+  assert.ok(unnamed && !unnamed[0].includes("<a "), "the unnameable row links nowhere");
 });
 
 test("the page says what happened, once, and says nothing when nothing is missing", () => {
@@ -810,13 +822,12 @@ test("an archived title is escaped, so a hostile feed cannot reach the page thro
     over: { id: `ep" onmouseover="alert(3)` },
   });
   assert.ok(!/onmouseover="/.test(rowHtml), `the id broke out of an attribute: ${rowHtml}`);
-  assert.ok(rowHtml.includes("&quot; onmouseover=&quot;"), "the id should be there, escaped");
-  /* And the star, which is the attribute this found the hard way: it interpolated
-     `data-star` raw, and a playlist part is the first STORED id to reach it. */
-  assert.match(rowHtml, /data-star="ep&quot; onmouseover=&quot;alert\(3\)"/, "data-star must be escaped");
+  /* The id reaches the page in the title link's href, and only there (an archived row carries no star, no Play and no
+     logged pick): percent-encoded, so the quote that would close the attribute is %22. */
+  assert.ok(rowHtml.includes("href=\"#/episode/ep%22%20onmouseover%3D%22alert(3)\""), "the id should be there, encoded");
 });
 
-test("an archived part keeps its star, and starring it makes it permanently recoverable", () => {
+test("an archived part can still be starred, and starring it makes it permanently recoverable", () => {
   /* Without the itemIndex seeding, starring an archived part is a silent no-op:
      toggleStar bails when `state.itemIndex` has no snapshot. And the star is not
      decoration here — `cp_saved` is the second place hydratePlaylistParts looks,
@@ -824,9 +835,12 @@ test("an archived part keeps its star, and starring it makes it permanently reco
      be named again. This test walks that whole loop: star it, throw the playlist
      back to legacy ids, and watch the migration recover it from the star.
 
+     THE STAR MOVED, NOT THE LOOP (Redesign 2026, ambient: the EpisodeRow's one control is Play, and an archived part
+     has none). The row's title still opens the episode page, which draws from the snapshot seeded below and carries
+     the Save control (ui/episode.js), so "star it from where you can reach it" is the same action one tap further.
      MUTATION 1: delete the itemIndex seeding loop in renderPlaylistDetail — the
-     star is a no-op and this fails. MUTATION 2: drop `starBtn` from archivedRow —
-     the control is unreachable, and the assertion on the rendered row fails, which
+     snapshot is never seeded and this fails. MUTATION 2: drop the title link from the archived row (ui/playlist.js
+     playlistRowHtml) — the page is unreachable, and the assertion on the rendered row fails, which
      is what stops the rest of this test from covering something a listener cannot
      do.
 
@@ -839,7 +853,8 @@ test("an archived part keeps its star, and starring it makes it permanently reco
      rather than left as a mutation a reviewer would try and find dead. */
   const m = mount();
   const html = withArchivedPart(m);
-  assert.ok(html.includes(`data-star="show-2--episode-2"`), "the archived row must offer the star");
+  assert.ok(html.includes(`href="#/episode/show-2--episode-2"`), "the archived row must open its episode page, where Save is");
+  assert.ok(m.state.itemIndex["show-2--episode-2"], "and the page it opens has a snapshot to star");
   m.ctx.toggleStar("show-2--episode-2");
   const saved = JSON.parse(m.store.get("cp_saved"));
   assert.ok(saved["show-2--episode-2"], "starring an archived part did nothing");
@@ -890,8 +905,7 @@ test("the 'next' marker never lands on a part that cannot be opened in the app",
   setPool(m, [poolItem(2)]);       // episode 1 — the FIRST part — has rotated out
   m.ctx.renderPlaylistDetail("q1");
   const html = m.view();
-  const next = /<span class="q-num ([^"]*)">(\d+)<\/span>/g;
-  const marked = [...html.matchAll(next)].filter(([, cls]) => cls.includes("next")).map(([, , n]) => n);
+  const marked = nextMarkers(html);
   assert.deepStrictEqual(marked, ["2"], "the marker belongs on the part that can actually play");
 });
 
@@ -910,7 +924,7 @@ test("an archived part that was already played still counts as played", () => {
       : { state: "unplayed", percent: null, label: null }),
   };
   const html = withArchivedPart(m);
-  assert.ok(html.includes("· 1 played"), `played count was wrong: ${/· \d+ played/.exec(html)}`);
+  assert.ok(html.includes(">1 of 2 played<"), `played count was wrong: ${/\d+ of \d+ played/.exec(html)}`);
 });
 
 /* ==================================================================== */
@@ -1236,8 +1250,8 @@ test("today's subject queue renders through the same one path as a saved playlis
   assert.strictEqual(goneCount(html), 0, "a live queue has nothing archived in it");
   /* "picked for you", not "today's queue": buildCards() re-deals on every load,
      so nothing about the queue is daily (audit 2026-09-22, qa row 149). */
-  assert.ok(html.includes("picked for you"));
-  assert.ok(!html.includes("remove this playlist"), "a subject queue is not removable");
+  assert.ok(html.includes("Picked for you"), "the eyebrow says whose it is: 4a's, in Lamp");
+  assert.ok(!/remove this playlist/i.test(html), "a subject queue is not removable");
 });
 
 /* ==================================================================== */
@@ -1418,10 +1432,11 @@ test("a playlist's 'N played' counts FINISHED episodes only — the rows' own wo
   }]);
   m.ctx.renderPlaylistDetail("q1");
   const html = m.view();
-  assert.ok(html.includes("· 1 played"), `expected exactly the finished episode counted, got: ${/· \d+ played/.exec(html)}`);
-  assert.ok(html.includes("21 min left"), "the half-way row still says how far in it is");
+  assert.ok(html.includes(">1 of 4 played<"), `expected exactly the finished episode counted, got: ${/\d+ of \d+ played/.exec(html)}`);
+  /* The half-way row still says how far in it is: the player's progress is the row's Ember rim (the label is the
+     player's own and reaches the row through the same reading). */
+  assert.match(html, /data-pl-ep="show-2--episode-2"[\s\S]*?td-rim-fill" data-pct="50"/, "the half-way row draws its progress rim at 50%");
   /* The next-up marker still reads "opened": it skips everything the listener
      has touched, so it lands on episode 4. */
-  const marked = [...html.matchAll(/<span class="q-num ([^"]*)">(\d+)<\/span>/g)].filter(([, cls]) => cls.includes("next")).map(([, , n]) => n);
-  assert.deepStrictEqual(marked, ["4"]);
+  assert.deepStrictEqual(nextMarkers(html), ["4"]);
 });

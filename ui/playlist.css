@@ -1,0 +1,102 @@
+/* ui/playlist.css — Playlist detail (#/playlist/<id>) and the Playlists list (#/playlists), Redesign 2026, ambient
+   direction ("Afterglow"), phase 4.
+
+   The prototype draws no playlist page, so the numbers are docs/redesign-2026/directions/ambient/BUILD-NOTES.md §3 (the
+   PlaylistTile, EpisodeRow, EmptyState and Collage rows of the component inventory) and §4.1's tile widths, with the wash
+   borrowed from Today (§10.3) so the page is lit by its first show's art. Everything is scoped under `.ag` (the markup
+   wears `.ag.pl-page`), so it can reach no other screen; every class is `pl-*`, a new name. The EpisodeRow itself is
+   Today's `.ag .td-row` (ui/today.css): one treatment, one stylesheet. Values come from ui/tokens.css.
+
+   NO reduced-motion block lives in this file, on purpose: ui/tokens.css has the one, scoped to `.ag` and everything under
+   it, so the tile's and the row's colour transition fall under it. A second block would be a second owner
+   (test/afterglow-tokens.test.js, "ONE block"). */
+
+/* The page. The legacy top bar steps aside (the page draws its own Back), and the page paints the scheme's bg0 rather
+   than the legacy plum. */
+body.view-playlist { background: var(--bg0); }
+body.view-playlist .topbar { display: none; }
+body.view-playlist #view { padding-top: 0; }
+
+.ag.pl-page {
+  position: relative; isolation: isolate;
+  max-width: 680px; margin-inline: auto;
+  padding: calc(var(--safe-top) + var(--s-2)) var(--gutter) calc(var(--chrome-bottom-mini) + var(--s-8));
+  /* The wash's hot spot is centred on the cover: x = gutter + half the art, y = the head (44) plus the hero's top margin plus half the art. */
+  --pl-hot-x: calc(var(--gutter) + var(--art-foray) / 2);
+  --pl-hot-y: calc(var(--safe-top) + var(--s-2) + var(--tap) + var(--s-5) + var(--art-foray) / 2);
+}
+/* :where() keeps the reset at the specificity of `.ag.pl-page` alone, so every later `.ag .pl-*` margin wins. */
+.ag.pl-page :where(h1, h2, h3, p) { margin: 0; }
+
+/* The wash: the detail page is lit by its first show, the way Today is lit by its hero. Same three layers (the hot spot on
+   the art, the radial, the fade into bg0), shorter, because the page has no hero as tall as Today's. */
+.ag .pl-wash {
+  position: absolute; left: 0; right: 0; top: 0; height: 40vh; z-index: -1; pointer-events: none;
+  --glow-wash: color-mix(in oklab, var(--bg0), var(--glow) var(--mix-wash));
+  background:
+    radial-gradient(60% 40% at var(--pl-hot-x) var(--pl-hot-y), color-mix(in oklab, var(--glow) 40%, transparent) 0%, transparent 100%),
+    radial-gradient(120% 70% at 22% 20%, var(--glow-wash) 0%, transparent 70%),
+    linear-gradient(var(--glow-wash), var(--bg0));
+}
+@supports not (color: color-mix(in oklab, red, blue)) {
+  .ag .pl-wash { background: linear-gradient(var(--glow-wash), var(--bg0)); }
+}
+
+/* Head: Back (44) on the left, an optional control on the right. The row sits 8px inside the gutter so the glyphs, not
+   the 44px targets, align with the text column. */
+.ag .pl-top { display: flex; align-items: center; justify-content: space-between; min-height: var(--tap); margin-inline: calc(var(--s-2) * -1); }
+.ag .pl-top a.ag-btn { color: var(--text); text-decoration: none; }
+
+/* Detail: the cover (120, whole squares) beside the name, the length, "3 of 6 played" and the Play. */
+.ag .pl-hero { display: grid; grid-template-columns: var(--art-foray) minmax(0, 1fr); column-gap: var(--s-4); margin-top: var(--s-5); align-items: start; }
+.ag .pl-cover { width: var(--art-foray); height: var(--art-foray); }
+.ag .pl-cover .ag-collage { width: 100%; height: 100%; }
+/* At least as tall as the cover, so the Play sits at its foot whatever the name. */
+.ag .pl-copy { min-width: 0; min-height: var(--art-foray); display: flex; flex-direction: column; gap: var(--s-1); }
+/* A name is the listener's own words: it wraps in full (a long unbroken run breaks anywhere) rather than being cut. */
+.ag .pl-title { overflow-wrap: anywhere; color: var(--text); }
+.ag .pl-title:focus, .ag .pl-heading:focus { outline: none; }
+.ag .pl-meta { color: var(--on-wash-2); }
+.ag .pl-actions { margin-top: auto; padding-top: var(--s-2); }
+.ag .pl-actions > .ag-btn { flex: none; }
+
+/* Notes (a sparse playlist, a shortfall) and the keep control that a generated playlist or subject queue carries. */
+.ag .pl-note, .ag.pl-page .note { margin-top: var(--s-4); color: var(--text-2); font: var(--t-body); }
+.ag .pl-save-wrap { margin-top: var(--s-5); display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); }
+.ag .pl-save-wrap .pl-save {
+  min-height: var(--tap); padding-inline: var(--s-4); border-radius: var(--r-pill); color: var(--text); font: var(--t-label);
+  background: none; box-shadow: inset 0 0 0 calc(var(--s-1) * .375) var(--text-2);
+}
+.ag .pl-save-wrap .pl-save.on { color: var(--ember); box-shadow: inset 0 0 0 calc(var(--s-1) * .375) var(--ember); }
+.ag .pl-save-wrap .pl-save[aria-disabled="true"] { cursor: default; }
+.ag .pl-save-wrap .pl-save-open { display: inline-flex; align-items: center; min-height: var(--tap); color: var(--ember); font: var(--t-label); }
+.ag .pl-save-wrap .note { flex: 1 1 100%; margin: 0; }
+
+/* The rows: Today's EpisodeRow, with the playlist's own bits. The next part is marked in Lamp; a part that is not
+   in the catalogue reads as Unavailable and carries no Play. */
+.ag .pl-list-section { margin-top: var(--s-6); }
+.ag .pl-row.is-unavailable .td-row-title, .ag .pl-row.is-unavailable .td-row-why { color: var(--text-2); }
+.ag .pl-next { font-weight: 600; }
+
+/* Remove: a Secondary button at the foot of the page, away from the rows. */
+.ag .pl-remove { margin-top: var(--s-10); }
+
+/* The list: the title, the count, and the tiles 2-up. Gap 20 is the gutter at 393 and up: 166.5 wide at 393 (the notes say 164),
+   176 at 412. */
+.ag .pl-heading { margin-top: var(--s-2); }
+.ag .pl-count { margin-top: var(--s-1); color: var(--text-2); }
+.ag .pl-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-5); margin-top: var(--s-5); }
+.ag .pl-tile { min-width: 0; color: var(--text); text-decoration: none; transition: background-color var(--m-micro) var(--e-out); }
+.ag .pl-tile:active { background-color: var(--bg2); }
+.ag .pl-tile:focus-visible { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) / 2); }
+.ag .pl-tile-cover { display: block; }
+.ag .pl-tile-cover .ag-collage { width: 100%; height: auto; aspect-ratio: 1; }
+.ag .pl-tile-meta { color: var(--text-2); }
+.ag .pl-tile-last { color: var(--text-3); }
+
+/* EmptyState: one line, one button, centred in the page. */
+.ag .pl-empty { margin-top: var(--s-8); }
+.ag .pl-empty .ag-btn { text-decoration: none; }
+
+/* The length line wraps at its comma only. */
+.ag .pl-nb { white-space: nowrap; }

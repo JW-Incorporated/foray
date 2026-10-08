@@ -43,7 +43,7 @@ const path = require("node:path");
 const { readAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const CSS = ["styles.css", "ui/tokens.css", "ui/primitives.css", "ui/today.css", "ui/onboarding.css", "ui/foray-detail.css", "ui/settings.css"]
+const CSS = ["styles.css", "ui/tokens.css", "ui/primitives.css", "ui/today.css", "ui/onboarding.css", "ui/foray-detail.css", "ui/settings.css", "ui/playlist.css"]
   .map((rel) => fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n"))
   .join("\n");
 
@@ -205,7 +205,6 @@ const BUTTONS = {
   "#shell-notice-reload": { rule: ".shell-notice button" },
   "#shell-notice-dismiss": { rule: ".shell-notice button" },
   ".cr-toggle-btn": { tall: ".cr-toggle-btn", why: "flex: 1 — half of Create's toggle row" },
-  ".danger": { tall: "button.danger", why: "a labelled text button (\"remove this playlist\")" },
   ".dd-device-only": { tall: ".dd-device-only", why: "width: 100% of the sheet" },
   ".diag-clear": { tall: ".diag-clear", why: "width: 100% of the sheet" },
   ".st-item": { tall: ".ag .st-item", why: "width: 100% of the Settings page: every switch, link and the Developer summary is a full-width row" },

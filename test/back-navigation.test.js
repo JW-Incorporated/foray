@@ -356,14 +356,14 @@ test("leaveRemovedPlaylist navigates directly to the list when there is no such 
 });
 
 test("a removed/missing playlist still renders a page head with a working ‹ back link", () => {
-  /* MUTATION: revert renderPlaylistDetail's not-found branch to the bare
-     `<p class="note">Playlist not found.</p>` with no page-head/back link.
+  /* MUTATION: revert renderPlaylistDetail's not-found branch to a bare line
+     with no Back (drop `${playlistTopHtml("playlists")}` from it).
      The assertion below fails. */
   const m = mount();
   m.evalIn("playlistById = () => null; subjectQueueById = () => null;");
   m.evalIn(`renderPlaylistDetail("nonexistent")`);
   const html = m.ctx.document.querySelector("#view").innerHTML;
-  assert.ok(html.includes('class="back"'), "a not-found playlist page must still offer a way back");
+  assert.ok(html.includes('class="back ag-btn ag-btn-icon"'), "a not-found playlist page must still offer a way back (the history-aware a.back)");
   assert.ok(html.includes("#/playlists"), "its back link must point at the playlists list");
 });
 

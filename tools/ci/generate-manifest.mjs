@@ -170,6 +170,8 @@ const SHELL = [
   "ui/foray-detail.css",
   /* Redesign 2026 (ambient): Settings, Tuning, About and the gear's Sheet. */
   "ui/settings.css",
+  /* Redesign 2026 (ambient): Playlist detail and the Playlists list. A stylesheet, so listed by name. */
+  "ui/playlist.css",
   /* Redesign 2026 (ambient): the icon sprite ui/icons.svg, fetched by every `<use href>` agIcon() writes.
      Not a script, so uiSources() does not see it; listed by name for the same reason as tokens.css. */
   "ui/icons.svg",

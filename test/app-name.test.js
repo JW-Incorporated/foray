@@ -498,18 +498,21 @@ test("both shell notices name the app", () => {
    playlist note is counted here with the rest.
    15 -> 16 in round 2 (L5, states-6): the Foray page's player-failed branch now
    tells "still loading" from "failed to load", and the failed one is its own
-   statusPageHtml note with Reload 4a. */
+   statusPageHtml note with Reload 4a.
+   16 -> 17 (Playlists, Redesign 2026 ambient): the playlist miss ("Playlist not found.") is an EmptyState line now, and
+   so is the empty Playlists list's; both go through playlistEmptyHtml and are scanned through it: 15 status notes + 2. */
 test("no note this app renders into #view capitalises the unit", () => {
   const src = readAppSource();
   const notes = [
     ...src.matchAll(/innerHTML = `<div class="page"><p class="note">([^<]*)<\/p><\/div>`/g),
     ...src.matchAll(/statusPageHtml\(\{[^}]*?note: "([^"]*)"/g),
     ...src.matchAll(/failedNoteHtml\("([^"]*)"\)/g),
+    ...src.matchAll(/playlistEmptyHtml\("([^"]*)"/g),
   ].map((m) => m[1]);
   assert.equal(
     notes.length,
-    16,
-    `expected sixteen #view status notes, found ${notes.length}. More is fine -- ` +
+    17,
+    `expected seventeen #view status notes, found ${notes.length}. More is fine -- ` +
       "raise this count so the new one is covered. Fewer means a note was lost " +
       `or reshaped: ${notes.join(" | ")}`
   );

@@ -316,6 +316,15 @@ export function appStates(fx) {
       steps: [{ label: "foray-resume", route: forayRoute(forayDetailPicks(fx).narrated), ready: ".fd #fy-play" }],
     },
     {
+      id: "playlist-started",
+      description: "Playlist detail and the Playlists list with the first playlist part-played: '2 of 4 played' in Ember, the next part marked.",
+      seed: "playlist-started",
+      steps: [
+        { label: "playlist-started", route: "#/playlist/p1", ready: ".pl-detail .pl-title" },
+        { label: "playlists-started", route: "#/playlists", ready: ".pl-grid" },
+      ],
+    },
+    {
       id: "stress",
       description: "Long-title stress: 150-character titles, a 90-character show name, unbreakable tokens.",
       seed: "stress",
