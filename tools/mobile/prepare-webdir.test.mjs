@@ -97,6 +97,12 @@ const AMBIENT_PRIMITIVES_ASSETS = Object.freeze([
   /* Iteration 4 added the Dock block (the warm Veil, the mini's Ember Play, the fade; 12.4 KB measured minified): ceiling 10 to 14 KB, a bounded step that ui/dock.css retires when the Dock unit lands. */
   { rel: "ui/foray-detail.css", maxBytes: 14 * 1024 },
   { rel: "ui/foray.js", maxBytes: 32 * 1024 },
+  /* Phase 4, Library: the screen's stylesheet, the Glow palette its tiles read, and ui/library.js itself, which the
+     screen rewrote (the capped link rows went; the grid, the rows, the Up Next menu, the Toast and the reorder
+     slide came). library.js is budgeted here, not in the legacy line, for the reason the primitives are: the legacy
+     alarm is not to be re-baselined a seventh time and this is a bounded feature step. */
+  { rel: "ui/library.css", maxBytes: 8 * 1024 },
+  { rel: "ui/library.js", maxBytes: 30 * 1024 },
 ]);
 
 /* ───────────────────────────── the derivation ───────────────────────────── */

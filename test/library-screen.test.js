@@ -1,6 +1,15 @@
 /* Library screen (#/library, `docs/ux/foray-mockup.jsx`'s `LibraryScreen`,
  * kanban card t_a1e7a69c).
  *
+ * REDESIGN 2026 (ambient direction, phase 4): REWRITE-ON-PURPOSE. Library was rebuilt on the Afterglow system
+ * (ui/library.js, ui/library.css; test/ambient-library.test.js pins the screen itself). The rulings that fell, by
+ * name: Library as capped legacy `.pl-row` summaries ("linked, not embedded"; Up Next is now its rows with a menu);
+ * the "Forays" and "Followed shows" sections (now the grid's ForayTiles for the forays the listener has OPENED and
+ * ShowTiles for followed shows); the saved row's star and "+ Up Next" (the EpisodeRow's one control is Play); and
+ * the empty-state sentences (one line, one button per section). What this file keeps is what stays true: the route,
+ * Saved's honest empties and real rows, History newest-first and last-played, playlists linking to their pages,
+ * no external link-out, the tab bar entry, a cold open repainting once the player lands, and the header's refresh.
+ *
  * WHAT THIS PROVES, in order:
  *  1. `route()` dispatches `#/library` to `renderLibrary()`, matching the
  *     `#/playlists`/`#/queue` pattern.
@@ -158,7 +167,7 @@ test("route() dispatches #/library to renderLibrary, matching the #/playlists pa
 
   m.ctx.location.hash = "#/library";
   m.ctx.route();
-  assert.ok(m.view().includes("<h2>Library</h2>"), "route() must dispatch to renderLibrary for #/library");
+  assert.ok(m.view().includes('<h2 class="t-title" tabindex="-1">Library</h2>'), "route() must dispatch to renderLibrary for #/library");
 });
 
 /* ==================================================================== */
@@ -168,9 +177,11 @@ test("route() dispatches #/library to renderLibrary, matching the #/playlists pa
 test("Library's Saved section renders every starred episode as a real, playable row", async () => {
   /* MUTATION: read the saved section from anything other than savedMap()
      (e.g. an empty array). The title assertion fails.
-     MUTATION 2: render a summary instead of the full row (drop epRow/
-     archivedRow). The data-star assertion fails because summary rows
-     (libSummaryRow) never carry a star control. */
+     MUTATION 2: render a bare summary instead of the full row (drop libEpisodeRowHtml). The Play assertion fails
+     because a summary row never carries a play control.
+     REDESIGN 2026 (ambient Library): the row is the system's EpisodeRow, whose one control is Play 44, so the star
+     and "+ Up Next" of the legacy `epRow` left Library (both live on the episode page); the Play is
+     `data-lb-play`, not `data-play`, because the player rewrites a `[data-play]` button's text. */
   const m = await mountBooted();
   const discover = readJson("data/discover.json");
   const item = discover.items.find((it) => it.audio_url);
@@ -180,8 +191,8 @@ test("Library's Saved section renders every starred episode as a real, playable 
   m.ctx.renderLibrary();
   const html = m.view();
   assert.ok(html.includes(m.ctx.esc(item.title)), "a saved episode's title must render in Library");
-  assert.ok(html.includes(`data-star="${m.ctx.esc(item.id)}"`), "a saved row must still be starrable (it's a real row, not a summary)");
-  assert.ok(html.includes(`data-play="${m.ctx.esc(item.id)}"`), "a saved, live episode must be playable in-app");
+  assert.ok(html.includes(`data-lb-ep="${m.ctx.esc(item.id)}"`), "a saved row is a real EpisodeRow, not a summary");
+  assert.ok(html.includes(`data-lb-play="${m.ctx.esc(item.id)}"`), "a saved, live episode must be playable in-app");
 });
 
 test("Library's Saved section renders an honest empty state when nothing is starred", () => {
@@ -255,7 +266,7 @@ test("Library's History section renders an honest empty state with no listening 
   m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
 
   const html = (() => { m.ctx.renderLibrary(); return m.view(); })();
-  assert.ok(html.includes("No listening history yet"), `expected an honest empty state, got: ${html}`);
+  assert.ok(html.includes("Nothing played yet."), `expected an honest empty state, got: ${html}`);
 });
 
 /* ==================================================================== */
@@ -287,13 +298,16 @@ test("Library's Playlists section renders an honest empty state with no playlist
 });
 
 /* ==================================================================== */
-/* 7. UP NEXT SECTION: SUMMARY ROW, LINKED NOT EMBEDDED                  */
+/* 7. UP NEXT SECTION: THE LIST ITSELF, A ROW EACH                       */
 /* ==================================================================== */
 
-test("Library's Up Next section renders a single summary row linking to #/queue", async () => {
-  /* MUTATION: render queueRows() inline instead of one summary link (the
-     same "linked, not embedded" rule as Playlists). The href assertion
-     fails because there would be no `#/queue` anchor. */
+/* REDESIGN 2026 (ambient Library) OVERTURNS "linked, not embedded": Up Next was one "N queued" row linking to
+   #/queue because the page had no room for the reorder controls at mobile width. The section is now QueueRows with
+   a 44px menu (Move up, Move down, Play next, Remove; test/ambient-library.test.js pins the menu), so the list is
+   on the page and #/queue stays as the full view of the same list. */
+test("Library's Up Next section renders a QueueRow per queued episode, with the real count", async () => {
+  /* MUTATION: render one summary row instead of the rows (the legacy libSummaryRow shape). The row-count assertion
+     fails because there is no `data-lb-q` row for either episode. */
   const m = await mountBooted();
   /* Real playable ids: `addToQueue` refuses an episode 4a cannot play (audit
      round 2, p-impatient-10). */
@@ -303,8 +317,9 @@ test("Library's Up Next section renders a single summary row linking to #/queue"
   m.ctx.addToQueue(b.id);
   m.ctx.renderLibrary();
   const html = m.view();
-  assert.ok(html.includes('href="#/queue"'), "Up Next must summary-link to #/queue");
-  assert.ok(html.includes("2 queued"), "the summary must report the real queued count");
+  assert.strictEqual((html.match(/data-lb-q="/g) || []).length, 2, "both queued episodes are rows");
+  assert.ok(html.includes(`data-lb-q="${m.ctx.esc(a.id)}"`) && html.includes(`data-lb-q="${m.ctx.esc(b.id)}"`));
+  assert.match(html, /<h3 class="t-headline">Up Next<\/h3><\/div><span class="count">2<\/span>/, "the head reports the real queued count");
 });
 
 test("Library's Up Next section renders an honest empty state with nothing queued", async () => {
@@ -312,7 +327,7 @@ test("Library's Up Next section renders an honest empty state with nothing queue
   const m = await mountBooted();
   m.ctx.renderLibrary();
   const html = m.view();
-  assert.ok(html.includes("Nothing in Up Next yet"), `expected an honest empty state, got: ${html}`);
+  assert.ok(html.includes("Nothing queued."), `expected an honest empty state, got: ${html}`);
 });
 
 /* ==================================================================== */
@@ -403,8 +418,12 @@ function seedEmpty(m) {
   m.state.taxonomy = { nodes: [] };
 }
 
-test("Library lists the Forays, linking each to its own page", () => {
-  /* MUTATION: drop the `libSection("Forays", …)` line from renderLibrary. */
+test("Library lists the Forays the listener has opened as tiles, linking each to its own page", () => {
+  /* REDESIGN 2026 (ambient Library): the "Forays" section of capped link rows is the grid's ForayTiles, and the
+     grid holds the forays the listener STARTED or FINISHED (a progress row), so a first-run Library can say
+     "Nothing followed yet." and mean it. An unopened foray is Today's and #/forays'.
+     MUTATION 1: list every listed foray, not the opened ones -> the unopened draft appears and this is red.
+     MUTATION 2: drop the foray tiles from the grid -> the link assertion is red. */
   const m = mount();
   seedEmpty(m);
   m.state.forays = { forays: [] };
@@ -413,13 +432,13 @@ test("Library lists the Forays, linking each to its own page", () => {
       { id: "capital-types-1", title: "What capital is", status: "published" },
       { id: "draft-1", title: "A draft", status: "draft" },
     ],
-    forayResumeList: () => [],
+    forayResumeList: () => [{ id: "capital-types-1", title: "What capital is", elapsedSec: 600, percent: 20, finished: false, drift: "unverified", label: "40 min left" }],
   };
   m.ctx.renderLibrary();
   const html = m.view();
-  assert.ok(html.includes(">Forays<"), "a Forays section heading");
-  assert.ok(html.includes('href="#/foray/capital-types-1"'), "each Foray links to its page");
+  assert.ok(html.includes('href="#/foray/capital-types-1"'), "an opened Foray links to its page");
   assert.ok(html.includes("What capital is"));
+  assert.ok(!html.includes("A draft"), "a Foray nobody opened is not in Library");
 });
 
 test("before the player has loaded, the Forays section offers the way in and claims no count", () => {
@@ -458,14 +477,16 @@ test("REVIEW: a Library opened before the player module repaints once the module
 test("REVIEW: a foreground directory refresh repaints Library's Forays too", () => {
   /* isForaySurface did not include #/library, so an adopted set (a newly
      published Foray) left Library's list stale. MUTATION: drop `#/library`
-     from isForaySurface. */
+     from isForaySurface. (Redesign 2026: Library draws the OPENED forays, so the fake player has progress rows for
+     both; the signature is the grid's foray tiles, `libraryForaysHtml`.) */
   const m = mount();
   assert.strictEqual(m.ctx.isForaySurface("#/library"), true);
   seedEmpty(m);
   m.ctx.location.hash = "#/library";
+  const row = (id) => ({ id, title: id.toUpperCase(), elapsedSec: 600, percent: 20, finished: false, drift: "unverified", label: "40 min left" });
   m.ctx.window.ForayPlayer = {
     listForays: (doc) => (doc?.forays || []),
-    forayResumeList: () => [],
+    forayResumeList: () => [row("a"), row("b")],
   };
   m.state.forays = { forays: [{ id: "a", title: "A", status: "published" }] };
   const before = m.ctx.foraySurfaceSignature();
@@ -474,7 +495,8 @@ test("REVIEW: a foreground directory refresh repaints Library's Forays too", () 
 });
 
 test("Library lists the shows the listener follows, linking to each show", () => {
-  /* MUTATION: drop the `libSection("Followed shows", …)` line. */
+  /* MUTATION: drop the followed shows from libGridHtml (the grid keeps the forays only). The link assertion fails.
+     REDESIGN 2026: the "Followed shows" section is the grid's ShowTiles, with no section head and no followed badge. */
   const m = mount({ seed: { cp_starred_shows: JSON.stringify({
     "s-1": { show_id: "s-1", title: "A Followed Show", artwork_url: null, starred_at: "2026-09-01" },
   }) } });
@@ -482,7 +504,6 @@ test("Library lists the shows the listener follows, linking to each show", () =>
   m.state.catalog = { shows: [] };
   m.ctx.renderLibrary();
   const html = m.view();
-  assert.ok(html.includes(">Followed shows<"));
   assert.ok(html.includes('href="#/show/s-1"'));
   assert.ok(html.includes("A Followed Show"));
 });

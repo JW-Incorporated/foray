@@ -2883,6 +2883,9 @@ function saveQueueIds(ids) {
     content and would otherwise land the listener at the top. Best-effort on
     `scrollY`/`scrollTo`, which the test harness does not have. */
 function repaintQueuePage() {
+  /* Library's Up Next section is a second live view of the same list (Redesign 2026, ambient): it repaints in place,
+     and keeps its own menu, Toast and focus. */
+  if (currentHash() === "#/library" && typeof repaintLibraryUpNext === "function") { repaintLibraryUpNext(); return; }
   if (currentHash() !== "#/queue") return;
   const y = typeof window.scrollY === "number" ? window.scrollY : null;
   const held = queueFocusBefore();
@@ -4793,7 +4796,8 @@ function route() {
    heading's text WITHOUT its explicit badge (`headingName`). */
 function pageHeading(view) {
   if (!view || typeof view.querySelector !== "function") return null;
-  const box = view.querySelector(".page-head") || view.querySelector(".st-head");
+  /* `.lb-head` is Library's own title row (Redesign 2026, ambient): the same landing, a different class. */
+  const box = view.querySelector(".page-head") || view.querySelector(".st-head") || view.querySelector(".lb-head");
   /* A legacy page head titles itself with an h2 (the top bar owns the h1); a Settings page head IS the page's h1. A page that draws
      its own header (the ambient Foray detail) names itself with `data-page-heading` on its title. */
   return (box && (box.querySelector("h2") || box.querySelector("h1"))) || view.querySelector("[data-page-heading]") || null;

@@ -120,9 +120,13 @@ function loadApp(bridge, { showDrafts = true, created = [] } = {}) {
   return ctx;
 }
 
-/** Library's Foray rows as [title, sub] pairs, read from the markup. */
+/** Library's Foray tiles as [title, sub] pairs, read from the markup. REDESIGN 2026 (ambient Library): a Foray is a
+    ForayTile now, its name under the art and the old row's second line the tile's screen-reader text (`.lb-sub`), so
+    "Played" and "N min left" are still said; the sighted tile says it with the strip and the check. Library lists the
+    Forays the listener has OPENED (a started or finished one has a progress row), so these tests give the ones they
+    read a row. */
 function libraryRows(html) {
-  return [...html.matchAll(/<div class="t">([^<]*)<\/div>\s*<div class="s">([^<]*)<\/div>/g)].map((m) => [m[1], m[2]]);
+  return [...html.matchAll(/<span class="t-caption lb-name clamp3">([^<]*)<\/span>\s*(?:<span class="t-caption lb-facts"(?: aria-hidden="true")?>(?:<span class="lb-fact">[^<]*<\/span>)*<\/span>\s*)?<span class="sr-only lb-sub">([^<]*)<\/span>/g)].map((m) => [m[1], m[2]]);
 }
 
 const FROZEN_IDS = readFrozen("forays.json").forays.map((f) => f.id);
@@ -184,8 +188,13 @@ test("every list row and Today's hero says how long a Foray is and what it is ma
   assert.ok(hero, "a published Foray leads Today");
   assert.equal(hero.meta, `7 shows · ${resolve.fmtSpan(r.totalSec)}`, `Today's hero: ${hero.meta}`);
 
-  const lib = libraryRows(app.libraryForaysHtml()).find(([t]) => t === doc.title);
-  assert.equal(lib[1], facts, "an unopened Foray's Library row is its length and makeup");
+  /* Library lists the Forays the listener has opened (Redesign 2026): an unopened one is not a tile at all, and a
+     part-played one says how far, then its length and makeup. KILLING MUTATION: drop `forayListSubLabel`'s facts
+     from the tile's sr-only line -> the suffix is gone and this is red. */
+  assert.deepEqual(libraryRows(app.libraryForaysHtml()), [], "a Foray nobody opened is not in Library");
+  const opened = loadApp(await realBridge([["capital-types-1", { remainingSec: 1200 }]]));
+  const lib = libraryRows(opened.libraryForaysHtml()).find(([t]) => t === doc.title);
+  assert.equal(lib[1], `20 min left · ${facts}`, "an opened Foray's Library tile is how far, then its length and makeup");
 });
 
 test("a narrated Foray's length is hedged on every list surface, and counts the narrator's clips (p-foray-8, states-11)", async () => {
