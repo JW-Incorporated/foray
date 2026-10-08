@@ -493,7 +493,7 @@
       },
       "app": {
         "state": "search",
-        "step": "search-no-results"
+        "step": "search-no-results-subject"
       },
       "regions": {
         "header": {
@@ -504,10 +504,22 @@
           "prototype": "#field",
           "app": "#sh-compose"
         },
+        "heading": {
+          "prototype": "#results .heading",
+          "app": "#sh-note"
+        },
+        "sentence": {
+          "prototype": "#results .body-lg",
+          "app": ".find-none__line"
+        },
         "rows": {
-          "prototype": "#results .tile, #results .row",
-          "app": ".show-result",
+          "prototype": "#results .tile",
+          "app": "#sh-empty-offer .tile",
           "mode": "all"
+        },
+        "primary": {
+          "prototype": "#results .keycap--ultramarine",
+          "app": ".find-none__key .keycap"
         },
         "tabBar": {
           "prototype": "#tabs",

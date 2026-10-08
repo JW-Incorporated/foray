@@ -467,12 +467,74 @@ function findArtHtml(a, cls) {
   return `<span class="find-art ${cls} find-art--c${tactileHash(a.id)}" data-i="${code}">${img}</span>`;
 }
 
-function findTileHtml(t) {
+/** A tile's inside: the art, then the name over its count readout. One builder
+    for the mosaic's tiles and the no-results tile, so the count a tile prints is
+    spelled in one place (`findShowsCount`). */
+function findTileBody(t) {
   const art = t.size === "l"
     ? `<span class="find-collage" aria-hidden="true">${t.arts.slice(0, 4).map((a) => findArtHtml(a, "find-art--cell")).join("")}</span>`
     : `<span class="find-discs" aria-hidden="true">${t.arts.slice(0, 3).map((a) => findArtHtml(a, "find-art--disc")).join("")}</span>`;
-  const count = `${t.count} ${t.count === 1 ? "show" : "shows"}`;
-  return `<a class="tile tile--${t.size}" href="${esc(safeUrl("#/shows/q/" + encodeURIComponent(t.label)))}" data-subject="${esc(t.id)}">${art}<span><strong class="tile__name">${esc(t.label)}</strong><span class="readout">${esc(count)}</span></span></a>`;
+  return `${art}<span><strong class="tile__name">${esc(t.label)}</strong><span class="readout">${esc(findShowsCount(t.count))}</span></span>`;
+}
+
+/** "5 shows", "1 show": the count's one spelling, read by the tile's readout and by
+    the sentence that names the same subject on the no-results screen. */
+function findShowsCount(n) {
+  return `${n} ${n === 1 ? "show" : "shows"}`;
+}
+
+function findTileHtml(t) {
+  return `<a class="tile tile--${t.size}" href="${esc(safeUrl("#/shows/q/" + encodeURIComponent(t.label)))}" data-subject="${esc(t.id)}">${findTileBody(t)}</a>`;
+}
+
+/** THE SUBJECT A NO-RESULTS QUERY NAMES (Tactile `search-none`, BUILD-PLAN 2.11).
+    "fusion" finds no show, and the catalogue has a subject called "Fusion & energy
+    systems" with five: saying "No shows found" beside a subject that holds shows was
+    the contradiction the redesign critique named. A subject matches when every word
+    of the query is in its label (the prototype's rule, with the words not the
+    phrase), best match first: the label IS the query, then the label starts with it,
+    then it merely contains it; ties go to the subject with more shows.
+
+    ONLY A SUBJECT THAT HOLDS SHOWS OF ITS OWN, and that is the whole guard: the
+    count is `showsForCategory(id).length`, the same list the category page the tile
+    opens renders, so the sentence, the tile's readout and the page behind the tile
+    can never disagree, and the tile is never a door to an empty room (a taxonomy ROOT
+    is almost never tagged on a show itself, which is why "Science" gets the existing
+    "Shows filed under" chips instead, in `paintShowSearchEmptyOffer`). Pure: the same
+    taxonomy and catalogue give the same subject. */
+function findNoneSubject(query) {
+  const words = String(query || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.length) return null;
+  const phrase = words.join(" ");
+  let best = null;
+  for (const n of state.taxonomy?.nodes || []) {
+    const label = String(n.label || "");
+    const low = label.toLowerCase();
+    if (!label || !words.every((w) => low.includes(w))) continue;
+    const shows = showsForCategory(n.id);
+    if (!shows.length) continue;
+    const rank = low === phrase ? 0 : low.startsWith(phrase) ? 1 : 2;
+    if (!best || rank < best.rank || (rank === best.rank && shows.length > best.shows.length)) best = { rank, node: n, shows };
+  }
+  if (!best) return null;
+  const arts = best.shows
+    .filter((s) => s.artwork_url)
+    .slice(0, 3)
+    .map((s) => ({ url: s.artwork_url, id: s.show_id, name: s.title }));
+  return { id: best.node.id, label: best.node.label, count: best.shows.length, size: "m", arts };
+}
+
+/** The no-results subject block: the sentence, then that subject's tile as a filled
+    `--ultramarine-soft` tile (`.is-hit`, never an outline). The sentence and the tile
+    read the SAME subject object, so the count is one number printed twice, and the
+    tile opens the category page for that subject (`#/category/<id>`, which lists
+    exactly that count), not a search for its label, which is the screen the listener
+    is already on. */
+function findNoneSubjectHtml(subject) {
+  return `<div class="find-none">
+    <p class="find-none__line">${esc(subject.label)} has ${esc(findShowsCount(subject.count))}.</p>
+    <div class="mosaic find-none__mosaic"><a class="tile tile--m is-hit" href="${esc(safeUrl("#/category/" + encodeURIComponent(subject.id)))}" data-subject="${esc(subject.id)}">${findTileBody(subject)}</a></div>
+  </div>`;
 }
 
 /** The followed-shows strip: only when the listener follows something, newest

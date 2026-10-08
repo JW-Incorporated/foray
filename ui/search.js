@@ -931,9 +931,15 @@ function paintShowResults(query, shows, myToken) {
        then, as in the prototype), while "Searching for ..." always stays, since
        it says an answer is still owed. */
     if (note.dataset) note.dataset.state = settled ? "empty" : "searching";
+    /* THE SETTLED LINE IS THE SCREEN'S HEADING (Tactile `search-none`, BUILD-PLAN
+       2.11): "No shows match ‘fusion’." in the prototype's single curly pair, with
+       the subject sentence, its tile and the Make key under it
+       (`paintShowSearchEmptyOffer`). It is `textContent`, never markup, so a query
+       cannot become an element however it is spelled; the offer below it writes the
+       same query through esc(). */
     note.textContent = !settled ? `Searching for ${quoteQuery(query)}…`
       : offline ? `You're offline — no shows found for ${quoteQuery(query)}.`
-      : `No shows found for ${quoteQuery(query)}.`;
+      : `No shows match ${quoteKeyQuery(query)}.`;
     note.hidden = false;
     paintShowSearchEmptyOffer(settled ? { query } : null);
     return;
@@ -1015,26 +1021,50 @@ function cacheShowRow(kind, row) {
     here moved to `paintShowSearchPartialNote`, which paints it over a full list
     as well as an empty one (states-7).
 
-    `null` clears it — every non-empty paint and every cleared query. */
+    `null` clears it — every non-empty paint and every cleared query.
+
+    TACTILE `search-none` (BUILD-PLAN 2.11, BUILD-NOTES 4.4): NEVER A BARE SENTENCE.
+    The heading above this box says no show matched; what is in here is what the
+    listener can do about it, always one of two things, always ending in the key:
+      - a subject that holds shows and matches the query (`findNoneSubject`): its
+        sentence ("Fusion & energy systems has 5 shows.") and its tile, both read
+        from the one subject object, so they cannot disagree; or, with no such
+        subject, the existing "Shows filed under" chips for a query that is a
+        subject's own name (a taxonomy root, almost never tagged on a show itself);
+      - the "Make a playlist about" key, unconditionally. The gate that decides
+        whether the playlist scorer can build one (`createPlaylistCtaHtml`) belongs
+        to the results list, where an offer the scorer cannot meet would be a lie
+        under real rows; here the alternative is a dead end, and Create answers
+        honestly for a query it cannot build from.
+    When Episodes, Playlists or Forays answered, styles.css hides the sentence, the
+    tile and this key (those groups carry their own closing key), and keeps the
+    chips, which were always offered beside results. */
 function paintShowSearchEmptyOffer(opts) {
   const box = $("#sh-empty-offer");
   if (!box) return;
   if (!opts) { box.innerHTML = ""; box.hidden = true; return; }
   const { query } = opts;
   const parts = [];
-  const wanted = String(query || "").trim().toLowerCase();
-  const node = (state.taxonomy?.nodes || []).find(n => String(n.label || "").toLowerCase() === wanted);
-  if (node) {
-    const within = (state.taxonomy?.nodes || [])
-      .filter(n => (n.id === node.id || String(n.id).startsWith(`${node.id}/`)) && showsForCategory(n.id).length > 0)
-      .slice(0, 8);
-    if (within.length) {
-      parts.push(`<p class="note">Shows filed under ${esc(node.label)}:</p>
+  const subject = findNoneSubject(query);
+  if (subject) {
+    parts.push(findNoneSubjectHtml(subject));
+  } else {
+    const wanted = String(query || "").trim().toLowerCase();
+    const node = (state.taxonomy?.nodes || []).find(n => String(n.label || "").toLowerCase() === wanted);
+    if (node) {
+      const within = (state.taxonomy?.nodes || [])
+        .filter(n => (n.id === node.id || String(n.id).startsWith(`${node.id}/`)) && showsForCategory(n.id).length > 0)
+        .slice(0, 8);
+      if (within.length) {
+        parts.push(`<p class="note">Shows filed under ${esc(node.label)}:</p>
         <div class="fy-chips">${within.map(n => taxonomyChip(n.id)).join("")}</div>`);
+      }
     }
   }
+  parts.push(`<div class="find-none__key">${makePlaylistKeyHtml(String(query || "").trim())}</div>`);
   box.innerHTML = parts.join("");
-  box.hidden = parts.length === 0;
+  box.hidden = false;
+  bindCreatePlaylistCta(box);
 }
 
 /** The rows on screen for `query` under `myToken`, or `fallback` when the

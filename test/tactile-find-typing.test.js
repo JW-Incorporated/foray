@@ -23,7 +23,7 @@
  *   5. The Shows rows are `.row-show` around the same `.show-result` link; the
  *      playlist cards are a two-column grid of collages; the clear key is shown
  *      once there is a query.
- *   6. A settled "No shows found" note says what kind of line it is, so the page
+ *   6. A settled "No shows match" note says what kind of line it is, so the page
  *      drops it only when another group answered.
  *   7. A row's play key keeps its icon when the player repaints it.
  *   8. The harness has a settled typing step, appended (the four existing steps
@@ -477,7 +477,7 @@ test("the clear key is shown once there is a query, and the settled 'No shows fo
   m.evalIn("showSearchSettled = { token: showSearchToken, query: 'kola' }");
   m.evalIn("paintShowResults")("kola", [], token);
   assert.strictEqual(note.dataset.state, "empty", "once every pass has answered it is a settled 'none'");
-  assert.ok(/No shows found/.test(note.textContent));
+  assert.ok(/No shows match/.test(note.textContent));
   assert.ok(TYPING_CSS.includes('#sh-note[data-state="empty"]:is(:has(~ #ep-search-results:not([hidden])), :has(~ #pl-search-results .fy-playlist-search), :has(~ #fy-search-results:not([hidden])))'), "and only that line gives way, to an Episodes, Playlists or Forays group that answered");
 });
 
@@ -530,7 +530,7 @@ test("the harness has a settled typing step appended after the four it already h
   const states = fs.readFileSync(path.join(ROOT, "tools", "ui-lab", "lib", "states.mjs"), "utf8").replace(/\r\n/g, "\n");
   const block = states.slice(states.indexOf('id: "search",'), states.indexOf('id: "stress",'));
   const labels = [...block.matchAll(/label: "([^"]+)"/g)].map((x) => x[1]);
-  assert.deepStrictEqual(labels, ["search-idle", "search-results-fusion", "search-results-history", "search-no-results", "search-results-typing"], "the existing four keep their order; the new one is appended");
+  assert.deepStrictEqual(labels, ["search-idle", "search-results-fusion", "search-results-history", "search-no-results", "search-results-typing", "search-no-results-subject"], "the existing four keep their order; the typing step and then search-none's step are appended");
   assert.ok(/typeSearchThenReturn\(page, "geoengineering"\)/.test(block), "it types a query with one saved episode, no show and a buildable subject, then presses return so the field lets go and the deck is back");
   assert.ok(/await page\.press\("#sh-input", "Enter"\)/.test(states), "return is how a phone keyboard puts the field away");
   const map = readJson("docs/redesign-2026/directions/tactile/screens.json").screens["search-typing"];
