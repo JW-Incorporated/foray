@@ -582,14 +582,12 @@ function showIntroPopupOnce() {
        describes the Home that ships, and it is where a listener who skipped
        the first-run sheet learns what a foray is.
        Review 2026-09-23: no "stitch clips" (the 2026-08-11 playback ruling —
-       see forayAbout), and only what Home renders: the stretch pick is in
-       Forays for you and Suggested (pickWithStretchFloor, the cardSlots
-       stretch role), not in Playlists, which are mostly the listener's own.
-       Audit round 2 (p-first-11): the Forays row has a stretch pick only when
-       the listed Forays span more than one subject, and with one published
-       Foray it cannot. The sentence asks the SAME pick Home renders
-       (foraysForYouPicks) instead of assuming. */
-    `A foray plays moments from several shows, straight from each show's own feed, one after another. Below them are your playlists and episodes picked for you. The episodes ${foraysForYouPicks()?.stretchIndex >= 0 ? "and the forays each " : ""}include one pick outside your usual subjects, on purpose.`);
+       see forayAbout), and only what Home renders. Today (Redesign 2026) draws
+       one Foray first, then "Also today": the picks, one of them the Stretch
+       bridge (the cardSlots stretch role), then the listener's playlists, which
+       are mostly their own and carry no stretch pick. So the sentence names Also
+       today and nothing else as the place the outside pick is. */
+    `A foray plays moments from several shows, straight from each show's own feed, one after another. Today's foray comes first, then Also today and your playlists. Also today includes one pick outside your usual subjects, on purpose.`);
 
   const actions = ddEl("div", "fy-sheet-actions");
   const ok = ddEl("button", "fy-sheet-go", "Got it");

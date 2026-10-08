@@ -22,8 +22,30 @@ test("the four variants share one lip and the pressed state drops it two pixels"
   for (const variant of ["persimmon", "ultramarine", "rubber", "paper"]) {
     assert.match(p.tactileKeycap({ variant, text: variant, pressed: true }), new RegExp(`keycap--${variant}`));
   }
-  assert.match(rule(".keycap::after"), /height:\s*var\(--lip\)/);
   assert.match(CSS, /\.keycap:active:not\(:disabled\), \.keycap\[data-pressed="true"\]\s*\{\s*transform:\s*translateY\(calc\(var\(--s-1\) \/ 2\)\)/);
+  assert.match(CSS, /\.keycap:active:not\(:disabled\)::after, \.keycap\[data-pressed="true"\]::after\s*\{\s*transform:\s*translateY\(calc\(var\(--s-1\) \/ -2\)\)/, "the lip counter-translates so its base stays put");
+});
+
+test("the lip is the key's own silhouette stretched down, not a bar under it", () => {
+  /* The first Today build drew the lip as `height: var(--lip)` strip under the face with
+     square lower corners, which floated 2-4px below a round key and read as a stray
+     underline. The lip must span the whole box (top 0) down to --lip below it, take the
+     key's own radius, and sit behind a face that is a separate pseudo-element.
+     MUTATION: put `height: var(--lip)` back on `.keycap::after` (and drop `top: 0`) -> the
+     strip assertions fail. MUTATION 2: give `.keycap--round::after` its own
+     `0 0 var(--r-pill) var(--r-pill)` radius -> the round-key assertion fails. */
+  const lip = rule(".keycap::after");
+  assert.match(lip, /top:\s*0/, "the lip starts at the top of the key and hides behind the face");
+  assert.match(lip, /bottom:\s*calc\(-1 \* var\(--lip\)\)/, "and ends --lip below it");
+  assert.match(lip, /border-radius:\s*inherit/, "so its corners are the key's own, circle included");
+  assert.doesNotMatch(lip, /height:/, "never a strip of its own height");
+  assert.match(lip, /z-index:\s*-2/);
+  const face = rule(".keycap::before");
+  assert.match(face, /inset:\s*0/);
+  assert.match(face, /background:\s*var\(--k-fill\)/);
+  assert.match(face, /z-index:\s*-1/, "the face is in front of the lip");
+  assert.match(rule(".keycap"), /background:\s*transparent/, "the element's own background would paint over the lip");
+  assert.strictEqual(rule(".keycap--round::after"), "", "a round key's lip follows the circle by inheriting, not by a second radius");
 });
 
 test("disabled, loading, offline-blocked, and focus-visible states are explicit", () => {

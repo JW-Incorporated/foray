@@ -1,4 +1,5 @@
-/* ui/home.js — Home (#/): greeting, Jump back in, Forays / Playlists / Suggested rails.
+/* ui/home.js — Today (#/): the Tactile Home. Header, Resume, Today's foray, Also
+   today, Playlists for you, New ground.
    A CLASSIC script like app.js, not a module: it shares app.js's globals and
    is loaded by index.html after app.js, in the order listed in
    docs/redesign-2026/split-notes.md. Declarations only at the top level, so
@@ -13,64 +14,6 @@
    position store), and the only thing keeping them alive was two tests that
    called the function directly. Dead markup guarded by tests reads as
    coverage and is not; both went, with their CSS (`.banner`, `#banner-slot`). */
-
-/* What actually connects the episodes in a subject queue is one fact: they
-   share a taxonomy branch. Say that plainly via the real shows involved,
-   rather than implying a curatorial narrative ("the fusion reactor tour")
-   the grouping doesn't actually have. */
-function subjectBlurb(slot) {
-  const shows = [...new Set(slot.items.map(it => it.show))];
-  if (shows.length === 1) return `All from ${shows[0]}.`;
-  if (shows.length === 2) return `From ${shows[0]} and ${shows[1]}.`;
-  return `From ${shows[0]}, ${shows[1]}, and ${shows.length - 2} more.`;
-}
-
-/* "Starts with …" LEADS the hook, and closes its own sentence only when the
-   title has not already. Two defects, one line (audit 2026-09-22, qa rows 136 and
-   148): the full stop was appended unconditionally, so 210 of the pool's 2,167
-   titles read `Starts with "…Save The World?."`; and the clause came AFTER the
-   blurb, so on a short screen — where styles.css clamps the hook to one line —
-   the episode title, the one concrete thing the card says, was the part cut. */
-function startsWithLine(title) {
-  const t = String(title || "").trim();
-  return `Starts with ${quoteQuery(esc(t) + (/[.?!…]$/.test(t) ? "" : "."))}`;
-}
-
-/** Why a Stretch card is there, as a sentence the listener can read on a phone
-    (audit round 2, a11y-11 — it was a tooltip). Uppercase "Outside" on purpose:
-    the returning-listener popup's own sentence is the lowercase one, and
-    test/listener-copy.test.js finds that one by its case. */
-const STRETCH_WHY = "Outside your usual subjects, on purpose.";
-
-function miniCard(slot) {
-  const item = slot.item;
-  /* ONE POPULATION FOR THE COUNT AND THE DURATION (audit 2026-09-22). `|| 0`
-     summed only the episodes whose length is known and printed that beside a
-     count of all of them — "3 episodes · 1h 20m" when one of the three had no
-     `duration_min` (8 such items ship in data/discover.json). A total is stated
-     only when it is a total; otherwise the line keeps the count alone. */
-  const allTimed = slot.items.length > 0 && slot.items.every(it => episodeMinutes(it) > 0);
-  const totalMin = allTimed ? slot.items.reduce((s, it) => s + episodeMinutes(it), 0) : 0;
-  /* The tag is the word; the reason is visible text in the hook (below), not a
-     `title=` tooltip a phone never shows (audit round 2, a11y-11). */
-  const stretch = slot.role === "stretch";
-  const stretchTag = stretch ? `<span class="mc-stretch">Stretch</span>` : "";
-  /* A CARD WITH A STRETCHED LINK (audit 2026-09-22, qa row 78). The card used
-     to be the <a>, with the star <button> nested inside it — invalid HTML that a
-     screen reader read as one link named "Education … Save", and whose star
-     only avoided following the link through bindStars' preventDefault. The
-     subject title is now the one real <a>; styles.css stretches its ::after
-     over the card, and the star is a sibling lifted above it. */
-  return `<div class="mini-card" data-branch="${esc(slot.branch)}">
-    ${item.artwork_url ? `<img src="${esc(safeUrl(artUrl(item.artwork_url, CARD_ART_PX)))}" alt="" loading="lazy" decoding="async" width="56" height="56">` : `<div class="art-ph"></div>`}
-    <div class="mc-info">
-      <p class="mc-kicker">${stretchTag}${joinMeta(countLabel(slot.items.length, "episode"), fmtDur(totalMin))}</p>
-      <h3><a class="mc-link" href="#/${esc(playlistRoute({ isSubject: true, branch: slot.branch }))}">${esc(subjectLabel(slot.branch))}</a></h3>
-      <p class="mc-hook">${startsWithLine(item.title)} ${esc(subjectBlurb(slot))}${stretch ? ` ${STRETCH_WHY}` : ""}</p>
-    </div>
-    ${starBtn(item.id)}
-  </div>`;
-}
 
 /* WHAT A FORAY IS, in one sentence, written ONCE (audit 2026-09-22, persona
    #18/#37/#45/#83). It was a literal inside the first-run sheet below — the only
@@ -210,179 +153,37 @@ function pickWithStretchFloor(candidates, { branchFn, scoreFn, take }) {
     their taste (that's what the non-stretch "Because you finish every X"
     line is for, and it is deliberately never used here). Takes the
     subject label so the sentence names the actual branch, matching how
-    every other Home string prefers a real name over a generic one. */
-function stretchBridgeLine(subjectLabelText) {
-  return esc(stretchBridgeText(subjectLabelText));
-}
-/** The same sentence as plain text, for a surface that sets textContent (the
-    player sheet's why line for a stretch tail pick, PQ-11) — escaping it there
-    would print "Craft &amp; making". The sentence itself has nothing to escape,
-    so the line above is exactly what it was. */
+    every other Home string prefers a real name over a generic one. Plain
+    text, for a surface that sets textContent (the player sheet's why line for
+    a stretch tail pick, PQ-11) or for one that escapes it itself (the bridge
+    card, through esc()): escaping it here would print "Craft &amp; making". */
 function stretchBridgeText(subjectLabelText) {
   return `Outside your usual subjects — a deliberate change of pace into ${String(subjectLabelText ?? "")}.`;
 }
 
-function greetingWord(now = new Date()) {
-  const h = now.getHours();
-  return h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
-}
-
-/* The greeting is a fact about NOW, and a page left open overnight kept saying
-   "Good evening" at 7am (audit 2026-09-22, qa row 193): it was computed once per
-   render and nothing re-rendered Home on return. `refreshGreeting` runs from the
-   foreground hook in init() and rewrites the one word, only when it changed —
-   not the whole of Home under the listener's thumb. */
-function refreshGreeting(now = new Date()) {
-  const el = document.querySelector(".hv2-greeting-word");
-  if (el) setStatusText(el, greetingWord(now));
-}
-
-function homeGreeting() {
-  const word = greetingWord();
-  return `<div class="hv2-greeting">
-    <span class="hv2-greeting-word">${word}</span>
-    <span class="hv2-greeting-brand">4a</span>
-  </div>`;
-}
-
-/* ---------- Home's one play button ----------
-
-   FOUNDER, 2026-09-24: "Add a play button at the Home Screen level and start
-   playing whatever is first in that list (whether it be Suggested or a
-   Playlist or whatever)".
-
-   ONE control under the greeting. It plays the first PLAYABLE thing on Home,
-   walking the rails in the order Home draws them — Jump back in, Forays for
-   you, Playlists for you, Suggested — and within a rail, its cards in order. A
-   rail whose cards cannot play (a Foray that does not resolve, a playlist whose
-   episodes have all left the catalogue) is passed over rather than stopped at:
-   a button that names a thing and then fails is worse than one that names the
-   next thing. It is not rendered at all only when nothing on Home can play.
-
-   Each kind starts the way its own page starts it, through the same code:
-     foray     the Foray page's main button — `playForay`, resuming where the
-               listener left it (`forayResume`), else from the top;
-     episode   a row's ▶ (`startEpisodePlay`);
-     playlist  its first playable row, with the playlist's rows as the list
-               continuous playback goes on through — a saved playlist, a
-               generated one, or a Suggested subject queue alike (the detail
-               page's `playlistCtx`, so a real playlist's `last_played_at` is
-               stamped exactly as a row's ▶ stamps it).
-
-   Its name says what it will play ("Play <title>"), because "Play" alone on a
-   screen of twenty things answers nothing. */
-
-/** Home's rails as candidate lists, in render order. Each rail is the data the
-    rail itself draws from, so the order cannot drift from what is on screen. */
-/* `picks` is renderHomeV2's one computation of the rails' contents (audit round
-   3, app-2-12): computed once per render and handed to the button AND the rail
-   renderers, instead of each of them re-running every pick (generatedPlaylists
-   walks and sorts the whole pool) a second time. Absent, each is computed here,
-   as before. */
-function homePlayRails(picks = homeRailPicks()) {
-  const rails = [];
-  rails.push(picks.jumpBackIn.map(c =>
-    c.kind === "foray" ? { kind: "foray", id: c.id, title: c.title }
-      : c.kind === "episode" ? { kind: "episode", item: c.item, title: c.title }
-        : { kind: "playlist", playlist: playlistById(c.id) }));
-  const forays = picks.forays;
-  rails.push(forays ? forays.picks.concat(forays.drafts).map(f => ({ kind: "foray", id: f.id, title: f.title })) : []);
-  const { own, generated } = picks.playlists;
-  rails.push(own.concat(generated).map(p => ({ kind: "playlist", playlist: p })));
-  rails.push((state.cardSlots || []).map(slot => ({ kind: "playlist", playlist: subjectQueueById("subject-" + slot.branch) })));
-  return rails;
-}
-
-/** A candidate made concrete, or null when it cannot play right now. */
-function homePlayable(c) {
-  if (c.kind === "foray") {
-    const r = resolveListedForay(c.id);
-    if (!r || !Array.isArray(r.playable) || !r.playable.length) return null;
-    return { kind: "foray", r, title: c.title || r.title || c.id };
-  }
-  if (c.kind === "episode") {
-    const item = c.item && c.item.id ? (liveEpisode(c.item.id) || c.item) : null;
-    if (!item || !item.audio_url) return null;
-    return { kind: "episode", item, title: c.title || item.title || "this episode", list: [], ctx: null };
-  }
-  const p = c.playlist;
-  if (!p) return null;
-  const rows = resolveParts(p).filter(r => r.state === "live" && isPlayableId(r.item.id));
-  if (!rows.length) return null;
-  const ctx = playlistCtx(p);
-  return {
-    kind: "playlist", title: p.title || "this playlist", ctx,
-    item: liveEpisode(rows[0].item.id),
-    list: rows.map(r => ({ id: r.item.id, ctx })),
-  };
-}
-
-/** What Home's play button will play, or null (nothing on Home can). */
 /** Every Home rail's picks, once. */
 function homeRailPicks() {
-  return { jumpBackIn: jumpBackInEntries(), forays: foraysForYouPicks(), playlists: playlistsForYouPicks() };
+  /* Resume reads the most recent part-played Foray or episode, so the cap is
+     lifted: with the old six, six more recent playlists would push a half-heard
+     episode out of the list before Resume ever looked at it. */
+  return { jumpBackIn: jumpBackInEntries(Infinity), forays: foraysForYouPicks(), playlists: playlistsForYouPicks() };
 }
 
-function homePlayTarget(picks) {
-  for (const rail of homePlayRails(picks)) {
-    for (const c of rail) {
-      const t = homePlayable(c);
-      if (t) return t;
-    }
-  }
-  return null;
-}
-
-/* The target the rendered button names. Set at render time and read at the
-   press, so the press plays exactly what the label promised. */
-let homePlayPending = null;
-
-function homePlayHtml(picks) {
-  const t = homePlayTarget(picks);
-  homePlayPending = t;
-  if (!t) return "";
-  return `<div class="hv2-play-row">
-    <button type="button" class="hv2-play" data-home-play aria-label="${esc(`Play ${t.title}`)}">
-      <span class="hv2-play-glyph" aria-hidden="true">▶</span>
-      <span class="hv2-play-text">Play</span>
-      <span class="hv2-play-title">${esc(t.title)}</span>
-    </button>
-  </div>`;
-}
-
-function bindHomePlay(scope) {
-  const btn = scope && typeof scope.querySelector === "function" ? scope.querySelector("[data-home-play]") : null;
-  if (!btn || btn._bound) return;
-  btn._bound = true;
-  btn.addEventListener("click", () => playHomeTarget(homePlayPending, btn));
-}
-
-/** The press. The loading mark is the row ▶'s (`data-loading`, which
-    styles.css breathes and holds still under Reduce Motion), and a second
-    press while it is set does nothing: the impatient thumb is not a second
-    start. */
+/** The press on a Foray key. The loading mark is the key's (`data-loading`, which
+    styles.css pulses and holds still under Reduce Motion), and a second press
+    while it is set does nothing: the impatient thumb is not a second start. An
+    episode's key is not here: it is `[data-play]`, bindPlay's, which already
+    pauses what is playing and starts the rest through startEpisodePlay. */
 async function playHomeTarget(t, btn = null) {
   const player = window.ForayPlayer;
-  if (!t || !player) return false;
+  if (!t || !player || t.kind !== "foray") return false;
   if (btn && btn.dataset.loading === "1") return false;
   if (btn) { btn.dataset.loading = "1"; btn.setAttribute("aria-busy", "true"); }
   try {
-    return t.kind === "foray" ? await startHomeForay(player, t.r) : await startHomeEpisode(player, t);
+    return await startHomeForay(player, t.r);
   } finally {
     if (btn) { delete btn.dataset.loading; btn.removeAttribute("aria-busy"); }
   }
-}
-
-async function startHomeEpisode(player, t) {
-  const item = t.item;
-  if (!item || !item.audio_url) return false;
-  /* IS IT ALREADY THE PLAYER'S? A paused one resumes where it is; a playing
-     one is left alone — this button says "Play", so it never pauses. */
-  if (player.isCurrent?.(item.id)) {
-    if (!player.isPlaying?.(item.id)) await player.togglePlayback?.();
-    return true;
-  }
-  return startEpisodePlay(item.id, item, { ctx: t.ctx, list: t.list });
 }
 
 async function startHomeForay(player, r) {
@@ -426,11 +227,6 @@ async function startHomeForay(player, r) {
   return true;
 }
 
-/** "Jump back in": forayResumeRows() plus the ordinary-episode continue
-    banner, as one horizontal scroller — the mockup's own shape for this
-    section (docs/ux/foray-mockup.jsx `HomeScreen`'s first row). Degrades
-    to "" when neither has anything to resume, so the section simply does
-    not render rather than showing an empty rail. */
 /**
  * "Jump back in" — FORAYS, PODCASTS AND PLAYLISTS, most recent first.
  *
@@ -465,14 +261,6 @@ async function startHomeForay(player, r) {
  * otherwise — deliberately conservative: an unknown time must not out-rank a
  * known one.
  */
-function jumpBackInV2Html(cards = jumpBackInEntries()) {
-  if (!cards.length) return "";
-  return `<section class="hv2-section hv2-jbi">
-    <h2 class="hv2-title">Jump back in</h2>
-    <div class="hv2-hscroll">${cards.map(c => jumpBackInCardHtml(c, { inSection: true })).join("")}</div>
-  </section>`;
-}
-
 /** The rail's contents as data — one array of `{kind, at, ...}`, sorted, capped.
     Split out from the markup so the ORDERING is testable without parsing HTML. */
 function jumpBackInEntries(limit = 6) {
@@ -554,105 +342,6 @@ function lastEpisodeCard() {
   }
 }
 
-/* A TAG NAMES WHAT ITS SECTION DOES NOT (audit round 2, visual-9). Every card
-   in Home's "Jump back in" rail opened with an amber JUMP BACK IN tag directly
-   under the "Jump back in" heading — the section's name, restated on each card
-   in it. `inSection` is the renderer saying "the heading above already says
-   this"; a card on a MIXED surface (a rail of several kinds, a search result)
-   leaves it off and keeps the tag, which is the one place it tells the
-   listener something. */
-function jumpBackInCardHtml(c, { inSection = false } = {}) {
-  const bar = typeof c.percent === "number"
-    ? `<span class="fy-bar"><span class="fy-bar-fill" data-pct="${esc(String(c.percent))}"></span></span>`
-    : "";
-  const left = c.left ? `<span class="hv2-jbi-left">${esc(c.left)}</span>` : "";
-  const sub = c.sub ? `<span class="hv2-jbi-sub">${esc(c.sub)}</span>` : "";
-  /* The `picked` logging attributes ride on the episode card only, as before —
-     a Foray and a playlist are not pool episodes and `bindPickLogging`'s
-     handler reads `data-ep` as an episode id. */
-  const ev = c.kind === "episode"
-    ? ` data-ev="picked" data-ep="${esc(c.id)}" data-ctx="jbi-episode"`
-    : "";
-  /* PLAY WITHOUT OPENING THE EPISODE (founder, 2026-09-21: "It would be good if
-     there were a play button directly on that card, as it is I need to press the
-     card then press play").
-
-     Episodes only. A Foray and a playlist are sequences whose card is a way IN to
-     a running order, and a one-tap play on either would be choosing a starting
-     point on the listener's behalf; an episode has exactly one thing to play.
-
-     `playBtn` is the same control every row and card already uses, so it inherits
-     `bindPlay` (already called on this page) and with it the `preventDefault` +
-     `stopPropagation` that stops the press ALSO following the card's own link —
-     the exact reason that handler has them. It renders "" when the item has no
-     `audio_url`, which is the honest outcome for a card we cannot play from.
-
-     `lastEpisodeCard` has already `snapshot()`ed the row into `state.itemIndex`,
-     which is where `bindPlay` looks the id up — so the button can play an episode
-     the catalogue has never heard of, which is the whole point of the pointer. */
-  const play = c.kind === "episode" ? playBtn(c.item, "jbi-episode") : "";
-  const id = esc(encodeURIComponent(c.id));
-  /* THE `#/` IS LITERAL IN THE TEMPLATE, and only the route segment and the id
-     are interpolated — the form every other link in this file uses.
-
-     Two earlier drafts got this wrong and the security suite caught both. The
-     first built one `c.href` string and interpolated it whole, which
-     "every interpolated href and src passes through safeUrl" rejects. The
-     obvious repair — wrapping it in `safeUrl` — would have been WORSE than
-     noisy: `safeUrl` admits http(s) only and answers "#" for anything else, so
-     every in-app route here would have become a dead link. The real rule
-     underneath that test is that a link's SCHEME must be fixed by the code and
-     never carried in data, and a literal `#/` prefix is how this file says so. */
-  const route = c.kind === "foray" ? "foray" : c.kind === "playlist" ? "playlist" : "episode";
-  /* A CARD WITH A STRETCHED LINK (audit 2026-09-22, qa row 78): the title is
-     the one real <a> (styles.css stretches its ::after over the card) and the
-     play button is its SIBLING, lifted above it — not a <button> inside an <a>,
-     which is invalid HTML that reads as "link, …, Play …" to a screen reader
-     and only behaved on a pointer because bindPlay calls preventDefault. The
-     `picked` attributes ride on the link, which is what bindPickLogging binds. */
-  return `
-    <div class="hv2-jbi-card">
-      ${inSection ? "" : `<span class="hv2-jbi-kicker">Jump back in</span>`}
-      <a class="hv2-jbi-title hv2-jbi-link" href="#/${route}/${id}"${ev}>${esc(c.title)}</a>
-      ${sub}${bar}${left}${play}
-    </div>`;
-}
-
-/** One Foray card for "Forays for you", carrying its SegmentStrip (U-04) —
-    the one component the plan names as what makes a Foray legible as a
-    different object from an episode. Resolves each Foray through the same
-    bridge welcomeStripHtml() (U-09) already uses; a Foray whose segments
-    fail to resolve degrades to a card with no strip, never an error, same
-    contract as that function's own try/catch. `stretch` renders the
-    visible label plus the required bridge line naming the Foray's own
-    subject; a non-stretch card gets neither. */
-function forayCardV2Html(foray, { stretch = false, draft = false } = {}) {
-  const player = window.ForayPlayer;
-  const r = resolveListedForay(foray.id);
-  let stripHtml = "";
-  if (r && typeof player?.segmentStripHtml === "function") {
-    try {
-      /* mergeNarration — same reason as welcomeStripHtml() above: a card is not
-         a scrub target, so a run of bridges may be one bar. */
-      stripHtml = player.segmentStripHtml(r.playable, { size: "sm", mergeNarration: true }) || "";
-    } catch (_) {
-      stripHtml = ""; // malformed segments/sources must not break Home
-    }
-  }
-  /* How long, and what it is made of (audit round 2, p-foray-8): the card was
-     a title and a strip, and the strip's length is only in its aria-label. */
-  const facts = forayFactsLabel(r, player);
-  const subject = subjectLabel((foray.topic || "").split("/")[0]);
-  return `<a class="hv2-foray-card${stretch ? " hv2-stretch" : ""}" href="#${esc(forayRoutePath(foray.id))}">
-    ${stretch ? `<span class="hv2-stretch-tag">Stretch</span>` : ""}
-    ${draft ? `<span class="hv2-draft-tag">draft</span>` : ""}
-    <span class="hv2-foray-title">${esc(foray.title)}</span>
-    ${facts ? `<span class="hv2-foray-sub">${esc(facts)}</span>` : ""}
-    ${stripHtml}
-    ${stretch ? `<p class="hv2-bridge">${stretchBridgeLine(subject)}</p>` : ""}
-  </a>`;
-}
-
 /** "Forays for you" (D1, U-03/U-04): the published (+ explicitly unlocked)
     Forays, floored per pickWithStretchFloor over each Foray's own topic
     root. Renders nothing when there are no listable Forays at all —
@@ -682,34 +371,15 @@ function foraysForYouPicks() {
   return { picks, stretchIndex, drafts };
 }
 
-function foraysForYouHtml(pick = foraysForYouPicks()) {
-  if (!pick) return "";
-  const { picks, stretchIndex, drafts } = pick;
-  return `<section class="hv2-section hv2-forays">
-    <h2 class="hv2-title">Forays for you</h2>
-    <div class="hv2-hscroll">${picks.map((f, i) => forayCardV2Html(f, { stretch: i === stretchIndex })).join("")}${drafts.map(f => forayCardV2Html(f, { draft: true })).join("")}</div>
-  </section>`;
-}
-
 /** The one-line notice Home carries while the test track is on, so a device
     left with the switch flipped says so on the first screen rather than
-    quietly listing work nobody published. */
+    quietly listing work nobody published. Today draws one Foray, not a rail, so
+    the drafts the switch admits are listed where every Foray is, under Forays;
+    the notice says so and links there (a draft is Today's foray only when no
+    published Foray can play). */
 function testTrackNoticeHtml() {
   if (!showDraftsOn()) return "";
-  return `<p class="hv2-test-track note">Showing draft Forays — test track</p>`;
-}
-
-/** One playlist card for "Playlists for you" — own recent playlists render
-    exactly like a subject queue's card (shared shape, #276), generated
-    ones carry the "Generated for you" badge D5 requires so a listener
-    never mistakes a generated grouping for one they built. */
-function playlistCardV2Html(p, { generated = false } = {}) {
-  const count = (p.items || []).length;
-  return `<a class="hv2-playlist-card" href="#/${esc(playlistRoute(p))}">
-    ${generated ? `<span class="hv2-generated-badge">Generated for you</span>` : ""}
-    <span class="hv2-playlist-title">${esc(p.title)}</span>
-    <span class="hv2-playlist-sub">${countLabel(count, "episode")}</span>
-  </a>`;
+  return `<p class="today-notice note">Showing draft Forays — test track. <a href="#/forays">See them under Forays</a>.</p>`;
 }
 
 /** "Playlists for you" (D5): the listener's own recent playlists first,
@@ -729,69 +399,378 @@ function playlistsForYouPicks() {
   return { own, generated: generatedPlaylists().filter(g => !currentCopyOf(g, own)) };
 }
 
-function playlistsForYouHtml({ own, generated } = playlistsForYouPicks()) {
+/* ==================================================================== */
+/* TODAY (Redesign 2026, Tactile, screen "home", branch                  */
+/* redesign/tactile-home). docs/redesign-2026/directions/tactile/        */
+/* BUILD-NOTES.md 4.1 is the spec; the prototype's #/home the target.    */
+/* ==================================================================== */
+
+/* Top to bottom: the header (title, the date, the knob), Resume (only while a
+   listen is part-played), Today's foray, Also today, Playlists for you, New
+   ground. There is no "Suggested" heading any more: its slot is "Also today",
+   three picks and the Stretch bridge.
+
+   WHAT FELL, said once (docs/redesign-2026/test-classification.md section 0,
+   "Home section order and content", U-03; founder 2026-09-18 and 09-24): the
+   five-section order, the greeting, the "Jump back in" rail, the "Forays for
+   you" rail, the "Suggested" cards and Home's one play capsule. The floor did
+   not fall: the Stretch slot is always present on Also today, carries its
+   bridge sentence, and the sentence is never a taste-match reason.
+
+   EVERY CONTROL HERE IS THE APP'S OWN ENGINE'S. A Play key is `[data-play]`
+   (bindPlay, the player's syncCardButtons), "+ Up Next" is `[data-upnext]`
+   (bindUpNext), the hero's Play key and Resume's Foray key are `[data-home-play]`
+   (bindHomePlay), the knob is the drawer's opener (`#today-knob`, menuOpener).
+   The markup comes from ui/primitives.js; nothing here draws a button of its
+   own. */
+
+const TODAY_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const TODAY_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/** "Mon 5 Oct". Written out, not toLocaleDateString: the readout is mono, and its
+    shape must not move with the device's language. */
+function todayDateLine(now = new Date()) {
+  return `${TODAY_DAYS[now.getDay()]} ${now.getDate()} ${TODAY_MONTHS[now.getMonth()]}`;
+}
+
+/* The date is a fact about NOW, and a page left open overnight kept yesterday's
+   (the greeting had the same defect, audit 2026-09-22, qa row 193). `refreshTodayDate`
+   runs from the foreground hook in init() and rewrites the one line, only when it
+   changed, not the whole of Home under the listener's thumb. */
+function refreshTodayDate(now = new Date()) {
+  const el = document.querySelector("[data-today-date]");
+  if (el) setStatusText(el, todayDateLine(now));
+}
+
+const TODAY_ALSO_ROWS = 3;      // the picks before the bridge card
+const TODAY_PLAYLISTS = 4;      // two rows of two
+const TODAY_WHY_WORDS = 18;     // the why-line ceiling (CLAUDE.md copy rules)
+const TODAY_BRIDGE_WORDS = 16;  // the bridge sentence ceiling (BUILD-NOTES 3.8)
+
+function wordCount(text) { return String(text || "").trim().split(/\s+/).filter(Boolean).length; }
+
+/** Two letters for artwork that has no image, the same code a band's station
+    label uses. */
+function todayInitials(name) { return tactileStationCode(name); }
+
+/** One episode as the row primitive's data. `duration` is "" for an episode
+    whose length is unknown (never the specimen's default). `playable` and
+    `queueable` mirror what playBtn and upNextBtn refuse, so a row never offers a
+    control that does nothing. */
+function todayEpisodeData(item, { ctx, why = "", branch = "" } = {}) {
+  const mins = episodeMinutes(item);
+  return {
+    branch, id: item.id, ctx, link: "episode", title: item.title || "this episode", show: item.show || "",
+    duration: fmtDur(mins), artwork: item.artwork_url || "", initials: todayInitials(item.show),
+    why, queued: isQueued(item.id),
+    playable: Boolean(item.audio_url),
+    queueable: isQueued(item.id) || Boolean(item.audio_url) || Boolean(liveEpisode(item.id)),
+  };
+}
+
+/** Today's foray: the first playable Foray, the listener's own pick order first
+    (the floor's stretch Foray last, drafts only if nothing else plays). A Foray
+    that is already the Resume card is skipped while another can stand in, so the
+    same listen is never offered twice on one screen. Null when none resolves,
+    and Home then has no hero (nothing says there is one). */
+function todayForayPick(picks, resumeEntry = null) {
+  const f = picks && picks.forays;
+  if (!f) return null;
+  const stretch = f.stretchIndex >= 0 ? [f.picks[f.stretchIndex]] : [];
+  const ordered = f.picks.filter((_, i) => i !== f.stretchIndex).concat(stretch, f.drafts || []);
+  const playable = [];
+  for (const foray of ordered) {
+    const r = resolveListedForay(foray.id);
+    if (r && Array.isArray(r.playable) && r.playable.length) playable.push({ foray, r });
+  }
+  const skip = resumeEntry && resumeEntry.kind === "foray" ? resumeEntry.id : null;
+  return playable.find(p => p.foray.id !== skip) || playable[0] || null;
+}
+
+/** The hero's facts, from the running order itself: the band's bars (one per
+    clip, the show's name as its colour key, narration as a tick BETWEEN bars), the
+    first three shows' artwork, and "about 22 min · 4 shows".
+
+    A generated foray interleaves a bridge with almost every cut, often several in a
+    row, so drawn item by item the card's band is a run of 3px ticks with a bar
+    between every few of them: a hatched texture, not bars. `mergeNarration` draws each
+    run of back-to-back narration as ONE tick sized by the run's total (the founders' own
+    fix for the same strip on the Foray page), so a tick is only ever where a clip ends
+    and another begins. The card's band is not a scrub target, which is the one reason
+    the strip keeps the merge off elsewhere; the accessible label still counts items. */
+function todayHeroModel(pick) {
+  const { foray, r } = pick;
+  const player = window.ForayPlayer;
+  const model = typeof player?.stripModel === "function" ? player.stripModel(r.playable, { mergeNarration: true }) : null;
+  const items = model && Array.isArray(model.segments) ? model.segments : [];
+  const segments = items.map(s => ({
+    showId: s.kind === "narration" ? "narration" : (s.show || s.sourceKey || "show"),
+    show: s.kind === "narration" ? "" : (s.show || ""),
+    duration: s.lengthSec,
+    narration: s.kind === "narration",
+  }));
+  const shows = [...new Set(items.filter(s => s.kind !== "narration" && s.show).map(s => s.show))];
+  const tally = typeof player?.stripTally === "function" ? player.stripTally(r.playable) : null;
+  const facts = joinMeta(
+    forayRuntimeLabel(player, tally, r.totalSec),
+    countLabel(tally ? tally.shows : shows.length, "show"),
+  );
+  const summary = String(foray.summary || "").trim();
+  return {
+    foray, r, segments, facts,
+    discs: shows.slice(0, 3).map(name => ({ url: showArtworkUrl({ title: name }), initials: todayInitials(name) })),
+    why: summary && wordCount(summary) <= TODAY_WHY_WORDS ? summary : "",
+    bandLabel: tally
+      ? `Foray band: ${countLabel(tally.clips + tally.bridges, "clip")} from ${countLabel(tally.shows, "show")}${tally.bridges ? ", with 4a narration between them" : ""}`
+      : "Foray band",
+  };
+}
+
+/** First run is observed, never declared: nothing listened to, nothing to resume.
+    DIRECTION.md: the line takes the why-line's slot and never sits beside a
+    "Because you follow..." line, which a first-run listener has not earned. */
+const TODAY_FIRST_RUN_LINE = "4a starts with wide bets. Each listen narrows the dial.";
+function todayIsFirstRun(picks) {
+  return pickedHistory().length === 0 && !(picks && picks.jumpBackIn && picks.jumpBackIn.length);
+}
+
+function todayBandWidth() {
+  /* The hero's inner width: the viewport, less 16px gutters, 20px card padding and
+     the well's own 6px. Only the bars' minimum-width arithmetic reads it. */
+  const vw = Math.max(280, Math.min(Number(window.innerWidth) || 393, 680));
+  return vw - 2 * 16 - 2 * 20 - 2 * 6;
+}
+
+function todayHeroHtml(hero, { firstRun = false } = {}) {
+  if (!hero) return "";
+  const { foray } = hero;
+  const path = forayRoutePath(foray.id);
+  const discs = hero.discs.map(d => tactileArtFrame({ size: "disc", round: true, url: d.url, initials: d.initials })).join("");
+  const why = firstRun ? TODAY_FIRST_RUN_LINE : hero.why;
+  return `<section class="card card--hero today-hero" aria-labelledby="today-hero-title">
+    <div class="today-hero__eyebrow">${tactileTag({ kind: "narration", text: "Today's foray" })}</div>
+    <h2 class="display today-hero__title" id="today-hero-title"><a class="today-hero__link" href="#${esc(path)}">${esc(foray.title)}</a></h2>
+    <div class="well today-hero__band">${tactileBand({ kind: "mini", segments: hero.segments, renderWidth: todayBandWidth(), label: hero.bandLabel })}</div>
+    <div class="today-hero__meta"><span class="today-hero__discs">${discs}</span><span class="readout today-hero__facts">${esc(hero.facts)}</span></div>
+    ${why ? `<p class="today-hero__why">${esc(why)}</p>` : ""}
+    <div class="today-hero__keys">
+      ${tactileKeycap({ size: "xl", variant: "persimmon", round: true, icon: "ph-play-fill", label: `Play ${foray.title}`, data: { "home-play": foray.id } })}
+      <a class="keycap keycap--md keycap--paper today-hero__details" href="#${esc(path)}"><span class="keycap__label">Details</span></a>
+    </div>
+  </section>`;
+}
+
+/** The Resume card's entry: the most recent part-played Foray or episode, unless
+    it is SOUNDING right now (the mini player is already that). A paused one, or
+    the one the bar restored at launch, still gets its card: the bar restores the
+    last episode on every launch, so hiding the card for "the player holds it"
+    would hide it nearly always. A playlist is a way into a running order, not a
+    place to resume, so it never stands here. */
+function todayResumeEntry(picks) {
+  const player = window.ForayPlayer;
+  return (picks.jumpBackIn || []).find(c => {
+    if (c.kind !== "episode" && c.kind !== "foray") return false;
+    if (!(typeof c.percent === "number" && c.percent > 0 && c.percent < 100)) return false;
+    try {
+      if (c.kind === "episode" && player?.isPlaying?.(c.id)) return false;
+      if (c.kind === "foray") {
+        const live = player?.forayStatus?.();
+        if (live && live.forayId === c.id && live.running) return false;
+      }
+    } catch (_) { /* a throwing bridge is not "playing" */ }
+    return true;
+  }) || null;
+}
+
+function todayResumeHtml(entry) {
+  if (!entry) return "";
+  const isForay = entry.kind === "foray";
+  let art = "";
+  let key = "";
+  let id;
+  if (isForay) {
+    const r = resolveListedForay(entry.id);
+    const first = r && Array.isArray(r.playable) ? r.playable.find(i => i && i.show) : null;
+    art = first ? showArtworkUrl({ title: first.show }) || "" : "";
+    key = r && r.playable && r.playable.length
+      ? tactileKeycap({ size: "md", variant: "persimmon", round: true, icon: "ph-play-fill", label: `Resume ${entry.title}`, data: { "home-play": entry.id } })
+      : "";
+  } else {
+    art = (entry.item && entry.item.artwork_url) || "";
+    key = entry.item && entry.item.audio_url
+      ? tactileKeycap({ size: "md", variant: "persimmon", round: true, icon: "ph-play-fill", swapIcon: "ph-pause-fill", label: `Play ${entry.title}`, data: { play: entry.id, title: entry.title, ctx: "resume" } })
+      : "";
+  }
+  /* The `#/` is literal and only the route kind and the encoded id are interpolated. */
+  const route = isForay ? "foray" : "episode";
+  id = encodeURIComponent(entry.id);
+  const pct = Math.max(0, Math.min(100, Number(entry.percent) || 0));
+  return `<section class="card today-resume" aria-label="${esc(`Resume: ${entry.title}`)}">
+    ${tactileArtFrame({ size: "hero", url: art, initials: todayInitials(entry.title) })}
+    <div class="today-resume__body">
+      <div class="today-resume__tag">${tactileTag({ kind: "playing", text: "Resume" })}</div>
+      <h2 class="today-resume__title"><a class="today-resume__link" href="#/${route}/${esc(id)}">${esc(entry.title)}</a></h2>
+      <div class="today-resume__line"><span class="well today-prog" aria-hidden="true"><span class="today-prog__fill" data-pct="${esc(String(pct))}"></span></span><span class="readout today-resume__left">${esc(entry.left || "")}</span></div>
+    </div>
+    <div class="today-resume__key">${key}</div>
+  </section>`;
+}
+
+/** The Stretch bridge, one sentence naming both ends: where the listener already
+    is and where this pick goes. It states WHY the pick sits outside their usual
+    subjects and never reads as a taste match (D1). Over the word ceiling (two
+    long subject names), it falls back to the one-subject sentence. */
+function stretchBridgeSentence(knownLabel, stretchLabel) {
+  const both = `Outside your usual subjects: from ${knownLabel} into ${stretchLabel}, on purpose.`;
+  return wordCount(both) <= TODAY_BRIDGE_WORDS ? both : stretchBridgeText(stretchLabel);
+}
+
+/** The slots Also today draws: up to three top picks (in the order buildCards
+    dealt them), and the one Stretch slot. */
+function todayAlsoSlots() {
+  const slots = Array.isArray(state.cardSlots) ? state.cardSlots : [];
+  return {
+    tops: slots.filter(s => s.role !== "stretch" && s.item).slice(0, TODAY_ALSO_ROWS),
+    stretch: slots.find(s => s.role === "stretch" && s.item) || null,
+  };
+}
+
+function todayBridgeData(stretch, tops) {
+  /* The "known" end is the dealt top slot the listener's interests rank highest:
+     the nearest thing they already like to the pick Home is stretching them to. */
+  const known = [...tops].sort((a, b) =>
+    interestScore({ topics: [b.branch] }) - interestScore({ topics: [a.branch] }))[0] || null;
+  const stretchLabel = subjectLabel(stretch.branch);
+  return {
+    ...todayEpisodeData(stretch.item, { ctx: "also-today", branch: stretch.branch }),
+    sentence: known ? stretchBridgeSentence(subjectLabel(known.branch), stretchLabel) : stretchBridgeText(stretchLabel),
+    knownArtwork: known ? known.item.artwork_url || "" : "",
+    knownTitle: known ? subjectLabel(known.branch) : "",
+    knownInitials: known ? todayInitials(subjectLabel(known.branch)) : "KN",
+  };
+}
+
+function todayAlsoHtml() {
+  const { tops, stretch } = todayAlsoSlots();
+  if (!tops.length && !stretch) return "";
+  const rows = tops.map(s => tactileEpisodeRow(todayEpisodeData(s.item, { ctx: "also-today", why: s.item.hook || "", branch: s.branch })));
+  const bridge = stretch ? tactileBridgeCard(todayBridgeData(stretch, tops)) : "";
+  /* The bridge sits second, as in the prototype: a row, the bridge, the rest. */
+  const ordered = rows.length ? [rows[0], bridge, ...rows.slice(1)] : [bridge];
+  return `<section class="today-sect today-also" aria-labelledby="today-also-title">
+    <h2 class="heading" id="today-also-title">Also today</h2>
+    <div class="today-rows">${ordered.filter(Boolean).join("")}</div>
+  </section>`;
+}
+
+/** A playlist card's four artworks: distinct shows first, the same show again
+    only to fill the grid. One artwork fills the whole tile. */
+function todayCollageHtml(items) {
+  const seen = new Set();
+  const urls = [];
+  for (const it of items) {
+    const url = it && it.artwork_url;
+    if (url && !seen.has(it.show || url)) { seen.add(it.show || url); urls.push({ url, initials: todayInitials(it.show) }); }
+  }
+  for (const it of items) {
+    if (urls.length >= 4) break;
+    if (it && it.artwork_url && !urls.some(u => u.url === it.artwork_url)) urls.push({ url: it.artwork_url, initials: todayInitials(it.show) });
+  }
+  if (!urls.length) return `<span class="today-collage today-collage--empty">${tactileArtFrame({ size: "row", initials: "4a" })}</span>`;
+  if (urls.length === 1) return `<span class="today-collage today-collage--one">${tactileArtFrame({ size: "row", url: urls[0].url, initials: urls[0].initials })}</span>`;
+  const cells = [];
+  for (let i = 0; i < 4; i += 1) cells.push(urls[i % urls.length]);
+  return `<span class="today-collage">${cells.map(c => tactileArtFrame({ size: "row", url: c.url, initials: c.initials })).join("")}</span>`;
+}
+
+/** One playlist card. Own playlists render exactly like a generated one (shared
+    shape, #276); a generated one carries the "Generated for you" tag D5 requires
+    so a listener never mistakes a grouping 4a made for one they built. "N of M
+    played" is stated only when N is not zero (copy-13). */
+function todayPlaylistCardHtml(p, { generated = false, history }) {
+  /* Family Mode holds an episode back from the artwork too: the card's count
+     stays true (a held-back part keeps its place), but its picture is only of
+     what the listener may see (resolveParts state "live"). */
+  const rows = resolveParts(p).filter(r => r.item);
+  const total = rows.length || (p.items || []).length;
+  const played = rows.filter(r => hasOpened(r.item.id, history)).length;
+  const pct = total && played ? Math.round((played / total) * 100) : 0;
+  const meta = joinMeta(countLabel(total, "episode"), total && played ? `${played} of ${total} played` : "");
+  return `<a class="today-pcard" href="#/${esc(playlistRoute(p))}">
+    ${todayCollageHtml(rows.filter(r => r.state === "live").map(r => r.item))}
+    <span class="today-pcard__name">${esc(p.title || p.name || "Playlist")}</span>
+    <span class="readout today-pcard__meta">${esc(meta)}</span>
+    <span class="well today-prog" aria-hidden="true"><span class="today-prog__fill" data-pct="${esc(String(pct))}"></span></span>
+    ${generated ? `<span class="tag tag--narration today-pcard__badge">Generated for you</span>` : ""}
+  </a>`;
+}
+
+function todayPlaylistsHtml({ own, generated }) {
   if (!own.length && !generated.length) return "";
-  const cards = own.map(p => playlistCardV2Html(p, { generated: false }))
-    .concat(generated.map(p => playlistCardV2Html(p, { generated: true })));
-  return `<section class="hv2-section hv2-playlists">
-    <h2 class="hv2-title">Playlists for you</h2>
-    <div class="hv2-hscroll">${cards.join("")}</div>
+  const history = new Set(pickedHistory());
+  const cards = own.map(p => ({ p, generated: false })).concat(generated.map(p => ({ p, generated: true })))
+    .slice(0, TODAY_PLAYLISTS)
+    .map(c => todayPlaylistCardHtml(c.p, { generated: c.generated, history }));
+  return `<section class="today-sect today-playlists" aria-labelledby="today-playlists-title">
+    <h2 class="heading" id="today-playlists-title">Playlists for you</h2>
+    <div class="today-pgrid">${cards.join("")}</div>
   </section>`;
 }
 
-/** One episode card for "Suggested" — miniCard()'s existing markup
-    plus the visible bridge line D1's copy rule requires on a stretch
-    slot, which miniCard() itself does not render (its "Stretch" tag is a
-    hover-only `title`, pinned as-is elsewhere and left untouched here).
-    Composes rather than forks: the card body is exactly miniCard(slot),
-    with the bridge line appended after it for a stretch slot only. */
-function miniCardV2(slot) {
-  const card = miniCard(slot);
-  if (slot.role !== "stretch") return card;
-  // Insert the bridge line just before the card's closing tag.
-  const bridge = `<p class="hv2-bridge">${stretchBridgeLine(subjectLabel(slot.branch))}</p></div>`;
-  return card.replace(/<\/div>$/, bridge);
+function todayHeaderHtml() {
+  return `<header class="today-top">
+    <div class="today-top__title"><h1 class="display-xl today-title" tabindex="-1">Today</h1><span class="readout today-top__date" data-today-date>${esc(todayDateLine())}</span></div>
+    ${tactileKeycap({ size: "sm", variant: "paper", icon: "knob", label: "Settings and dials", id: "today-knob" })}
+  </header>`;
 }
 
-/** "Suggested": buildCards()'s ranked discover-pool picks, i.e.
-    state.cardSlots verbatim — the SAME floor buildCards() already
-    computes for the flag-off four-card Home, so this section and that
-    one can never disagree about which slot is the stretch. renderHomeV2()
-    guarantees state.cardSlots is already built before this runs (same as
-    v1's own renderHome()), so this only guards a caller that invokes this
-    function directly (e.g. a future test). */
-function suggestedHtml() {
-  if (!state.cardSlots.length) return "";
-  return `<section class="hv2-section hv2-suggested">
-    <h2 class="hv2-title">Suggested</h2>
-    <div class="hv2-cards">${state.cardSlots.map(miniCardV2).join("")}</div>
-  </section>`;
+/* The knob opens the drawer (Settings, until the Settings screen lands). It
+   names what it controls and whether it is open, like the topbar's ☰ does. */
+function bindTodayKnob(scope) {
+  const knob = scope && typeof scope.querySelector === "function" ? scope.querySelector("#today-knob") : null;
+  if (!knob || knob._bound) return;
+  knob._bound = true;
+  knob.setAttribute("aria-controls", "drawer");
+  knob.setAttribute("aria-expanded", drawerIsOpen() ? "true" : "false");
+  knob.addEventListener("click", () => openDrawer(!drawerIsOpen()));
+}
+
+/** The press on a Foray key (the hero's, or Resume's). The Foray is resolved at
+    the press, never captured at render, so a draft that has since left the list
+    is not started from a stale card. */
+function bindHomePlay(scope) {
+  if (!scope || typeof scope.querySelectorAll !== "function") return;
+  scope.querySelectorAll("[data-home-play]").forEach(btn => {
+    if (btn._bound) return;
+    btn._bound = true;
+    btn.addEventListener("click", () => {
+      const r = resolveListedForay(btn.dataset.homePlay);
+      if (!r || !Array.isArray(r.playable) || !r.playable.length) return;
+      return playHomeTarget({ kind: "foray", r }, btn);
+    });
+  });
 }
 
 function renderHomeV2() {
   setBodyClass("view-home");
   if (!state.cardSlots.length) buildCards();
   const picks = homeRailPicks();
+  const resume = todayResumeEntry(picks);
+  const pick = todayForayPick(picks, resume);
   $("#view").innerHTML = `
-    <div class="home hv2-home">
-      ${homeGreeting()}
-      ${homePlayHtml(picks)}
+    <div class="today">
+      ${todayHeaderHtml()}
       ${testTrackNoticeHtml()}
-      ${jumpBackInV2Html(picks.jumpBackIn)}
-      ${foraysForYouHtml(picks.forays)}
-      ${playlistsForYouHtml(picks.playlists)}
-      ${suggestedHtml()}
+      ${todayResumeHtml(resume)}
+      ${todayHeroHtml(pick ? todayHeroModel(pick) : null, { firstRun: todayIsFirstRun(picks) })}
+      ${todayAlsoHtml()}
+      ${todayPlaylistsHtml(picks.playlists)}
+      ${tactileGauge({})}
     </div>`;
 
   offerHomeOnboarding();
 
   sizeProgressBars($("#view"));
-  if (window.ForayPlayer && typeof window.ForayPlayer.applyStripGrow === "function") {
-    window.ForayPlayer.applyStripGrow($("#view"));
-  }
-
-  bindPickLogging($("#view"));
-  bindStars($("#view"));
+  bindTodayKnob($("#view"));
   bindUpNext($("#view"));
   bindPlay($("#view"));
   bindHomePlay($("#view"));
