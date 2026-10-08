@@ -5145,7 +5145,10 @@ body.ui-v2 .fp-sheet.np .np__collapse { border-color: transparent; background: t
 .np__tile.t-band__bar--c6 { background: var(--dial-seg-c6); } .np__tile.t-band__bar--c7 { background: var(--dial-seg-c7); }
 .np__text { display: flex; flex-direction: column; gap: var(--s-1); margin-top: var(--s-5); }
 .np__text .title { margin: 0; display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; text-wrap: balance; font-family: var(--dial-font-display); font-size: var(--t-title); line-height: var(--lh-title); font-weight: var(--w-title); letter-spacing: var(--tracking-title); color: var(--ink); }
-.np .np__text .np__show { margin: 0; color: var(--ink-2); font: 500 var(--t-body-lg)/var(--lh-body-lg) var(--font-text); }
+.np .np__text .np__show { margin: 0; color: var(--ink-2); font: 500 var(--t-body)/var(--lh-body) var(--font-text); }
+/* A plain episode's show name is body-lg (the prototype's step below the title); the
+   foray's sheet keeps body, so its locked baseline does not move. */
+.np--episode .np__text .np__show { font: 500 var(--t-body-lg)/var(--lh-body-lg) var(--font-text); }
 body.ui-v2 .fp-sheet.np .np__text .title { font-family: var(--dial-font-display); color: var(--ink); }
 body.ui-v2 .fp-sheet.np .np__show { color: var(--ink-2); }
 body.ui-v2 .fp-sheet.np .fp-s-why,

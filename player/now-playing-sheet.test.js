@@ -1149,7 +1149,7 @@ test("the plain-episode sheet matches the prototype's geometry: a 44px well, 68p
        slides under the dock's paper (nothing peeks), and the 147px short-screen twin -> 142px likewise;
      - the episode `.np__dock::before { top: -22px }` -> delete it: the paper starts 14px higher than the
        prototype's and is opaque over the whole first card;
-     - `.np__show` font body-lg -> body: the show name is a step below the title-to-show step the prototype draws. */
+     - the episode `.np__show` font body-lg -> body (or the rule moved back to plain `.np`, which also moves the foray's band 1px): the show name is a step below the title-to-show step the prototype draws. */
   assert.match(CSS_RULES, /\.np--episode \.np__band \{ --np-band-h: 44px; \}/);
   assert.match(NP_FLAT_TEXT, /var NP_EPISODE_STAGE_PX = 44;/);
   assert.match(NP_FLAT_TEXT, /stagePx: d\.foray \? 0 : NP_EPISODE_STAGE_PX/);
@@ -1158,7 +1158,8 @@ test("the plain-episode sheet matches the prototype's geometry: a 44px well, 68p
   assert.match(CSS_RULES, /\.np--episode \.np__top \{ min-height: calc\(100% - 189px - var\(--safe-b\)\); \}/);
   assert.match(CSS_RULES, /@media \(max-height: 740px\)[\s\S]*?\.np--episode \.np__top \{ min-height: calc\(100% - 147px - var\(--safe-b\)\); \}/);
   assert.match(CSS_RULES, /\.np--episode \.np__dock::before \{ top: -22px; \}/);
-  assert.match(CSS_RULES, /\.np \.np__text \.np__show \{[^}]*font:\s*500 var\(--t-body-lg\)\/var\(--lh-body-lg\)/);
+  assert.match(CSS_RULES, /\.np--episode \.np__text \.np__show \{[^}]*font:\s*500 var\(--t-body-lg\)\/var\(--lh-body-lg\)/);
+  assert.match(CSS_RULES, /\.np \.np__text \.np__show \{[^}]*font:\s*500 var\(--t-body\)\/var\(--lh-body\)/);
   /* The foray's own rules are untouched: its keys stay the ruled 56px circles. */
   assert.match(CSS_RULES, /\.np \.transport \.keycap--lg \{\s*box-sizing:\s*border-box;\s*width:\s*var\(--key-lg\)/);
 });
