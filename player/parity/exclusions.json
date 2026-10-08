@@ -427,6 +427,10 @@
     }
   },
   "media-session": {
+    "mediaArtworkLadder declares the one chosen square at each of the six sizes": {
+      "reason": "webview-only",
+      "why": "The six-size artwork ladder is applied only where the web page assigns navigator.mediaSession.metadata (Tactile BUILD-NOTES 7); the native plugins build their own artwork from mediaArtworkList, which stays one entry and is fixtured."
+    },
     "EVERY playForay call site in app.js passes the artwork document": {
       "reason": "js-module-shape",
       "why": "Text scan: every app.js playForay call site passes discoverDoc; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."

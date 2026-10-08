@@ -318,18 +318,32 @@ export function mediaArtwork(url, over = {}) {
 
 /**
  * The artwork list for one item: the publisher's square when we have it, ours
- * when we do not, and an empty list when neither is usable. Each supported
- * Media Session size points at the same safe square URL.
+ * when we do not, and an empty list when neither is usable.
  *
  * Deliberately not both: the OS picks by size, not by preference, so offering
  * our icon alongside a publisher's square is a coin flip over whose mark shows.
  */
 export function mediaArtworkList({ showArtworkUrl = null, appArtworkUrl = APP_ARTWORK_URL } = {}) {
   const show = mediaArtwork(showArtworkUrl);
-  const sizes = [96, 128, 192, 256, 384, 512];
-  if (show) return sizes.map((size) => mediaArtwork(show.src, { sizes: `${size}x${size}`, type: show.type || "" }));
+  if (show) return [show];
   const app = mediaArtwork(appArtworkUrl, { sizes: "512x512", type: "image/png" });
-  return app ? sizes.map((size) => mediaArtwork(app.src, { sizes: `${size}x${size}`, type: app.type || "" })) : [];
+  return app ? [app] : [];
+}
+
+/* The sizes the web Media Session is offered (Tactile BUILD-NOTES 7). */
+export const MEDIA_ARTWORK_LADDER = [96, 128, 192, 256, 384, 512];
+
+/**
+ * The web write's artwork: the one chosen square (see mediaArtworkList)
+ * declared at each size of the ladder, so the OS never scales a 512 icon by
+ * guesswork. It is applied only where the web assigns `navigator.mediaSession.
+ * metadata`: mediaArtworkList is the contract the native plugins mirror and
+ * the parity fixtures pin, and stays one entry. Still one source, never a mix.
+ */
+export function mediaArtworkLadder(list) {
+  const first = Array.isArray(list) ? list[0] : null;
+  if (!first || !first.src) return [];
+  return MEDIA_ARTWORK_LADDER.map((size) => ({ ...first, sizes: `${size}x${size}` }));
 }
 
 /* ---------- metadata ---------- */
@@ -723,7 +737,8 @@ export function createMediaSession({ nav = null, MediaMetadata = null, onWrite =
           let writeOk = true;
           let writeError = "";
           try {
-            ms.metadata = typeof MediaMetadata === "function" ? new MediaMetadata(metadata) : { ...metadata };
+            const written = { ...metadata, artwork: mediaArtworkLadder(metadata.artwork) };
+            ms.metadata = typeof MediaMetadata === "function" ? new MediaMetadata(written) : written;
           } catch (e) {
             writeOk = false;
             writeError = String((e && (e.message || e.name)) || e);

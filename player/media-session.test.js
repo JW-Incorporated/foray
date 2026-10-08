@@ -33,7 +33,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  artworkUrl, mediaArtwork, mediaArtworkList, mediaMetadata,
+  artworkUrl, mediaArtwork, mediaArtworkList, mediaArtworkLadder, mediaMetadata,
   mediaPositionState, mediaPlaybackState, mediaSessionView,
   mediaSessionActions, createMediaSession, narrationCredit,
   MEDIA_ACTIONS, APP_ARTWORK_URL, APP_NAME, SEEK_BACKWARD_SEC, SEEK_FORWARD_SEC,
@@ -125,26 +125,34 @@ test("mediaArtwork returns null for a refused URL rather than an entry with no s
 
 test("mediaArtworkList prefers the publisher's square when we have one", () => {
   const list = mediaArtworkList({ showArtworkUrl: APPLE });
-  assert.equal(list.length, 6);
+  assert.equal(list.length, 1);
   assert.equal(list[0].src, APPLE);
 });
 
-test("mediaArtworkList publishes the six native sizes against one safe source", () => {
-  /* MUTATION: remove 384 from mediaArtworkList's sizes -> red on the exact ladder. */
-  const list = mediaArtworkList({ showArtworkUrl: APPLE });
+test("mediaArtworkLadder declares the one chosen square at each of the six sizes", () => {
+  /* The ladder is the WEB write only (Tactile BUILD-NOTES 7); mediaArtworkList
+     stays one entry because the native plugins mirror it and the parity
+     fixtures pin it.
+     MUTATION: remove 384 from MEDIA_ARTWORK_LADDER -> red on the exact ladder;
+     make the ladder map over `list` instead of `first` -> the single-source
+     assertion stays but the length one fails. */
+  const list = mediaArtworkLadder(mediaArtworkList({ showArtworkUrl: APPLE }));
   assert.deepEqual(list.map((image) => image.sizes), ["96x96", "128x128", "192x192", "256x256", "384x384", "512x512"]);
   assert.deepEqual([...new Set(list.map((image) => image.src))], [APPLE]);
+  assert.deepEqual(mediaArtworkLadder([]), [], "no usable artwork, no ladder");
+  assert.equal(mediaArtworkList({ showArtworkUrl: APPLE }).length, 1, "the contract list the natives mirror is unchanged");
 });
 
 test("mediaArtworkList falls back to the app icon, so the lock screen is never blank", () => {
   const list = mediaArtworkList({ showArtworkUrl: null });
-  assert.equal(list.length, 6);
+  assert.equal(list.length, 1);
   assert.equal(list[0].src, APP_ARTWORK_URL);
 });
 
-test("mediaArtworkList never mixes publisher and app marks", () => {
-  assert.deepEqual([...new Set(mediaArtworkList({ showArtworkUrl: APPLE }).map((image) => image.src))], [APPLE]);
-  assert.deepEqual([...new Set(mediaArtworkList({}).map((image) => image.src))], [APP_ARTWORK_URL]);
+test("mediaArtworkList never offers both — the OS picks by size, not by preference", () => {
+  // Two entries would make it a coin flip over whose mark the car shows.
+  assert.equal(mediaArtworkList({ showArtworkUrl: APPLE }).length, 1);
+  assert.equal(mediaArtworkList({}).length, 1);
 });
 
 test("mediaArtworkList is empty when neither the show's square nor the app icon is usable", () => {
@@ -536,8 +544,7 @@ test("artwork coverage over the shipped Forays is THIN, and the fallback carries
   assert.ok(hits.length < shows.size, "if every show now has artwork, say so and update the PR's verdict");
   for (const show of shows) {
     const list = mediaArtworkList({ showArtworkUrl: map.get(show) ?? null });
-    assert.equal(list.length, 6, `${show} must end up with the native six-size artwork ladder`);
-    assert.equal(new Set(list.map((image) => image.src)).size, 1, `${show} must keep one artwork source`);
+    assert.equal(list.length, 1, `${show} must end up with exactly one artwork entry`);
   }
 });
 

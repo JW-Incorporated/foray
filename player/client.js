@@ -1073,6 +1073,14 @@ function el(tag, cls, text) {
     when it equals the text. */
 function paintControl(btn, text, label) {
   if (!btn) return;
+  /* A Tactile keycap whose glyph ui/now-playing.js owns (`data-dial-owned`):
+     its state reaches the listener through its accessible name, and its text
+     — a drawn skip mark, a speed readout — is never replaced by a word. */
+  if (btn.dataset && btn.dataset.dialOwned === "1") {
+    const name = label || text;
+    if (name && btn.getAttribute("aria-label") !== name) btn.setAttribute("aria-label", name);
+    return;
+  }
   if (text != null && btn.textContent !== text) btn.textContent = text;
   /* Compared before it is written, like the text (audit round 2, perf-7): this
      runs for every `[data-play]` button on the page at 4 Hz, and an attribute
@@ -1828,19 +1836,50 @@ function dialQueueCount() {
   catch (_) { return 0; }
 }
 
+/** One station code per show in a foray (BUILD-NOTES 3.6): a collision takes
+    the first letter of the show's last word as its second letter, the band's
+    own rule, so the chip, the swatches and the band agree on the key. */
+function dialForayCodes(shows) {
+  const codes = new Map();
+  const used = new Set();
+  for (const [showId, show] of shows) {
+    if (codes.has(showId)) continue;
+    let code = dialStationCodeFor(show);
+    const words = String(show).replace(/^The\s+/i, "").trim().split(/\s+/);
+    if (used.has(code)) code = (code[0] + ((words[words.length - 1] || "")[0] || code[1])).toUpperCase();
+    /* Past the documented rule (the last word starts like the second): the
+       first word's first two letters, so a key never names two shows. */
+    if (used.has(code)) code = (words[0] || code).slice(0, 2).toUpperCase();
+    used.add(code);
+    codes.set(showId, code);
+  }
+  return codes;
+}
+
 function dialForaySegments(resolved, currentIndex) {
   const starts = segmentStarts(resolved.playable);
   let priorColour = 0;
+  /* A station is a SHOW, keyed by its name: two episodes of one show are one
+     enamel and one code (a per-episode key gave The Bootstrapped Founder two
+     colours and two "BF" tiles in one foray). */
+  const showOf = (item, index) => {
+    const entry = resolved.entries.find((row) => row.queueIndex === index) || {};
+    const show = entry.show || item.show || "Show";
+    return [entry.show_id || show, show];
+  };
+  const codes = dialForayCodes(resolved.playable
+    .map((item, index) => (item.kind === TTS ? null : showOf(item, index)))
+    .filter(Boolean));
   return resolved.playable.map((item, index) => {
     const entry = resolved.entries.find((row) => row.queueIndex === index) || {};
     const narration = item.kind === TTS;
-    const show = narration ? "4a narration" : (entry.show || item.show || "Show");
-    const showId = narration ? `narration-${index}` : (entry.show_id || entry.source_id || item.source_item_id || show);
+    const show = narration ? "4a narration" : showOf(item, index)[1];
+    const showId = narration ? `narration-${index}` : showOf(item, index)[0];
     const source = item?.source_item_id ? resolved.sources?.get(item.source_item_id) : null;
     const colorIndex = narration ? priorColour : dialStationIndex(showId);
     if (!narration) priorColour = colorIndex;
     return {
-      showId, show, code: narration ? "4a" : dialStationCodeFor(show), colorIndex, narration,
+      showId, show, code: narration ? "4a" : (codes.get(showId) || dialStationCodeFor(show)), colorIndex, narration,
       duration: itemRuntimeSec(item), start: starts[index] || 0, current: index === currentIndex,
       why: entry.why || item.why || "",
       title: entry.episode_title || item.title || show,
@@ -1865,6 +1904,7 @@ function dialNowPlayingModel(pos, dur, running, loading) {
       foray: false, currentIndex: 0, position: pos, duration: dur, running, buffering: loading,
       artwork: current?.artwork_url || "", showId, show, queueCount, chapters,
       segments: [{ showId, show, code: dialStationCodeFor(show), colorIndex: dialStationIndex(showId), duration: dur, start: 0 }],
+      subtitle: show,
       valueText: `${dialSpokenClock(pos)} of ${dialSpokenClock(dur)}, ${show}`,
       detailKey: `episode:${current?.id || ""}:${chapters.length}`,
     };
@@ -1873,7 +1913,9 @@ function dialNowPlayingModel(pos, dur, running, loading) {
   const currentIndex = foray?.index ?? (segmentAtElapsed(resolved.playable, pos)?.index || 0);
   const segments = dialForaySegments(resolved, currentIndex);
   const here = segments[currentIndex] || segments[0] || {};
-  const next = segments[currentIndex + 1] || null;
+  /* Up next is the next SHOW: a narration line between two clips is the
+     foray talking, not something to put on a card. */
+  const next = segments.slice(currentIndex + 1).find((segment) => !segment.narration) || null;
   const slots = resolved.slots.map((slot) => ({
     title: slot.title,
     items: segments.filter((segment) => segment.slot === (slot.id ?? null)).map((segment) => ({
@@ -1881,16 +1923,27 @@ function dialNowPlayingModel(pos, dur, running, loading) {
     })),
   }));
   const origins = [];
-  const seen = new Set();
+  const clipsByShow = new Map();
   for (const segment of segments) {
-    if (segment.narration || seen.has(segment.showId)) continue;
-    seen.add(segment.showId);
-    origins.push({ name: segment.show, code: segment.code, colorIndex: segment.colorIndex, meta: "Source show" });
+    if (!segment.narration) clipsByShow.set(segment.showId, (clipsByShow.get(segment.showId) || 0) + 1);
+  }
+  for (const segment of segments) {
+    if (segment.narration || origins.some((origin) => origin.showId === segment.showId)) continue;
+    const clips = clipsByShow.get(segment.showId) || 1;
+    origins.push({
+      showId: segment.showId, name: segment.show, code: segment.code, colorIndex: segment.colorIndex,
+      artwork: segment.artwork, meta: `${clips} ${clips === 1 ? "clip" : "clips"}`,
+    });
   }
   return {
     foray: true, currentIndex, position: pos, duration: dur, running, buffering: loading,
     artwork: current?.artwork_url || "", showId: here.showId, show: here.show, queueCount, segments, slots, origins,
-    next: next ? { title: next.title, show: next.show, why: next.why, duration: fmtSpan(next.duration), artwork: next.artwork } : null,
+    subtitle: `4a foray · ${origins.length} ${origins.length === 1 ? "show" : "shows"}`,
+    collage: origins.slice(0, 4).map((origin) => ({ show: origin.name, code: origin.code, colorIndex: origin.colorIndex, artwork: origin.artwork })),
+    next: next ? {
+      title: next.title, show: next.show, why: next.why, duration: fmtSpan(next.duration), artwork: next.artwork,
+      code: next.code, colorIndex: next.colorIndex,
+    } : null,
     valueText: `${dialSpokenClock(pos)} of ${dialSpokenClock(dur)}, ${here.show || "4a narration"}`,
     detailKey: `foray:${resolved.id}:${currentIndex}`,
   };
@@ -2441,9 +2494,10 @@ function paintScrubPreview() {
   scrubbing = true;
   const dur = foray ? foray.resolved.totalSec : episodeDurationSec();
   const at = (Number(ui.scrub.value) / 1000) * (dur || 0);
-  /* Keep the visible preview live, but reserve the slider's spoken value for
-     the committed change so assistive technology is not flooded mid-drag. */
-  paintClocks(at, dur, false);
+  /* The thumb moving IS a change of the slider's value, so its spoken value
+     follows it (player-6); what never happens is a rewrite per playback tick
+     (paintPage passes `false` under the Dial view, a11y-7). */
+  paintClocks(at, dur);
   if (window.DialNowPlaying) {
     const item = foray ? segmentAtElapsed(foray.resolved.playable, at) : null;
     window.DialNowPlaying.preview(ui, {
@@ -2823,6 +2877,28 @@ function paintRate(rate = currentRate()) {
   if (!ui) return;
   paintControl(ui.rateBtn, rateLabel(rate), rateAriaLabel(rate));
   window.DialNowPlaying?.paintRate?.(ui.rateBtn, rate);
+}
+
+/* ---------- the sleep timer (Tactile Now Playing, BUILD-NOTES 4.2) ----------
+
+   The chip steps Off -> 15 -> 30 -> 45 -> 60 min -> Off; when the time is up
+   playback pauses, the same pause as the ▶ key. In memory only, never stored:
+   a timer that survived a relaunch would pause tomorrow's first listen. */
+let sleepMinutes = 0;
+let sleepTimer = null;
+function setSleepTimer(minutes) {
+  if (sleepTimer) clearTimeout(sleepTimer);
+  sleepTimer = null;
+  sleepMinutes = Math.max(0, Number(minutes) || 0);
+  if (sleepMinutes) {
+    sleepTimer = setTimeout(() => {
+      sleepTimer = null;
+      sleepMinutes = 0;
+      if (isRunning()) setRunning(false, "sleep");
+      window.DialNowPlaying?.paintSleep?.(ui?.sleepBtn, 0);
+    }, sleepMinutes * 60 * 1000);
+  }
+  window.DialNowPlaying?.paintSleep?.(ui?.sleepBtn, sleepMinutes);
 }
 
 /* ---------- V-01: the listener's chosen narration voice ----------
@@ -4035,12 +4111,14 @@ function bind() {
   ui.closeBtn.addEventListener("click", () => requestExpanded(false));
   // Following the route with the sheet still open would leave the Foray page
   // rendered underneath a full-height overlay.
-  ui.forayLink.addEventListener("click", () => requestExpanded(false));
+  // Navigation away closes at once: the shared-element move back to the mini
+  // is for the Collapse button and the drag, not for leaving the route.
+  ui.forayLink.addEventListener("click", () => setExpanded(false));
   // Same reasoning as forayLink above — now that "Episode" is an in-app
   // hash route too, not target="_blank", the sheet must not linger open
   // over the page it navigates to.
-  ui.openLink.addEventListener("click", () => requestExpanded(false));
-  ui.queueLink.addEventListener("click", () => requestExpanded(false));
+  ui.openLink.addEventListener("click", () => setExpanded(false));
+  ui.queueLink.addEventListener("click", () => setExpanded(false));
   /* ⏭ IS THE STEERING WHEEL'S NEXT, not a second opinion: `episodeNeighbour`
      is the same wrapper `episodeMediaSurface.next` hands the lock screen. */
   ui.nextBtn.addEventListener("click", () => {
@@ -4168,9 +4246,14 @@ function bind() {
      expect of them. A 30 s step that leaves a short clip is fine — it lands in
      the next one, exactly as the scrubber would. Clip navigation is the
      `.fp-clips` row. */
-  ui.backBtn.addEventListener("click", () => { window.DialNowPlaying?.haptic?.("light"); nudgeBy(-SEEK_BACK); });
-  ui.fwdBtn.addEventListener("click", () => { window.DialNowPlaying?.haptic?.("light"); nudgeBy(SEEK_FWD); });
-  ui.skipBtn.addEventListener("click", () => { window.DialNowPlaying?.haptic?.("light"); nudgeBy(SEEK_FWD); });
+  ui.backBtn.addEventListener("click", () => nudgeBy(-SEEK_BACK));
+  ui.fwdBtn.addEventListener("click", () => nudgeBy(SEEK_FWD));
+  ui.skipBtn.addEventListener("click", () => nudgeBy(-SEEK_BACK));
+  /* BUILD-NOTES 6: a skip ticks a light impact. A listener of its own, so the
+     nudge wiring above stays the one line the transport suites pin. */
+  for (const button of [ui.backBtn, ui.fwdBtn, ui.skipBtn]) {
+    button.addEventListener("click", () => window.DialNowPlaying?.haptic?.("light"));
+  }
   ui.clipPrev.addEventListener("click", guardTap(() => ForayPlayer.forayPrevious()));
   ui.clipNext.addEventListener("click", guardTap(() => ForayPlayer.forayNext()));
 
@@ -4258,6 +4341,12 @@ function bind() {
   }));
 
   ui.rateBtn.addEventListener("click", () => openRatePicker());
+  if (ui.sleepBtn) {
+    ui.sleepBtn.addEventListener("click", () => {
+      window.DialNowPlaying?.haptic?.("selection");
+      setSleepTimer(window.DialNowPlaying?.nextSleepStop?.(sleepMinutes) ?? 0);
+    });
+  }
 
   document.addEventListener("visibilitychange", () => {
     /* Native mode: tell the engine (it gates its events on this, §5.4), and on

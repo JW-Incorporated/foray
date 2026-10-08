@@ -120,10 +120,12 @@ test("closing the sheet on tap: openLink collapses the sheet like forayLink alre
   // navigates to would be the same bug forayLink's own click handler exists
   // to prevent. Mirror it. Checked against the raw source: codeOnly()
   // replaces quoted strings like "click" with "", which would defeat a
-  // literal match on the addEventListener call.
+  // literal match on the addEventListener call. Redesign 2026: the Dial sheet
+  // closes through requestExpanded (its animated dismissal); setExpanded is
+  // the instant form. MUTATION: delete the openLink click listener -> red.
   assert.match(
     CLIENT,
-    /ui\.openLink\.addEventListener\("click",\s*\(\)\s*=>\s*setExpanded\(false\)\)/,
+    /ui\.openLink\.addEventListener\("click",\s*\(\)\s*=>\s*(?:setExpanded|requestExpanded)\(false\)\)/,
     "ui.openLink should collapse the expanded sheet on click, same as ui.forayLink"
   );
 });
