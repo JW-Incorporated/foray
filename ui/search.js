@@ -1002,6 +1002,14 @@ function paintShowSearchPartialNote(query, myToken) {
     list, each true, together contradictory (audit round 2, search-12). */
 function paintShowResults(query, shows, myToken) {
   if (myToken !== showSearchToken) return; // a newer query already superseded this one
+  /* A SUBJECT'S WHOLE NAME IS ITS PAGE, AND ITS PAGE IS THE SUBJECT'S SHOWS, not whatever the text search found
+     (round-1 review). The lead above says "<n> shows" from discoverGroups; the free-text pass (localShowMatches,
+     directory and index rows) is a different set: History's lead said 19 while the search found 11, Nature's said
+     13 over 0 hits and the empty page. So for a subject the search's rows are replaced by the subject's own shows,
+     ordered by subjectShowOrder, before anything below reads them: the tiles, the "Show more" reveal, the painted
+     record that `answerDone` asks "is this page empty?" of, and the merges that append later passes. */
+  const subjectTile = discoverSubjectExact(query);
+  if (subjectTile) shows = subjectTile.shows;
   const note = $("#sh-note");
   const results = $("#sh-results");
   const offlineNote = $("#sh-offline-note");
@@ -1053,7 +1061,12 @@ function paintShowResults(query, shows, myToken) {
   }
   const cap = showSearchPaintCap.n;
   const more = shows.length - cap;
-  results.innerHTML = shows.slice(0, cap).map(discoverShowRow).join("")
+  /* A SUBJECT'S WHOLE NAME IS ITS PAGE (Redesign 2026, screen 15): "History" in the field paints the subject
+     lead (ui/browse.js `paintSubjectLead`) and the shows as ShowTiles, three across, the page a category link
+     opens. Any other query is a search, and its shows stay Raised rows. */
+  const asTiles = !!subjectTile;
+  if (results.classList) results.classList.toggle("dsc-tiles", asTiles);
+  results.innerHTML = shows.slice(0, cap).map(asTiles ? subjectShowTile : discoverShowRow).join("")
     + (more > 0 ? `<button type="button" class="ag-btn ag-btn-quiet dsc-more" data-sh-more>Show more shows</button>` : "");
   results.hidden = false;
   const moreBtn = more > 0 && typeof results.querySelector === "function" ? results.querySelector("[data-sh-more]") : null;
@@ -1067,7 +1080,9 @@ function paintShowResults(query, shows, myToken) {
          button, and focus fell to <body>: a keyboard or VoiceOver user was
          sent back to the top of the document. The first new row takes it, or
          the next "Show more shows" when there is no row to take it. */
-      const painted = typeof results.querySelectorAll === "function" ? results.querySelectorAll(".dsc-show") : [];
+      const rowsPainted = typeof results.querySelectorAll === "function" ? results.querySelectorAll(".dsc-show") : [];
+      /* A subject's shows are ShowTiles, not rows (see `asTiles` above); the first revealed tile takes focus the same way. */
+      const painted = rowsPainted.length ? rowsPainted : (typeof results.querySelectorAll === "function" ? results.querySelectorAll(".ag-show-tile") : []);
       const target = painted[cap] || (typeof results.querySelector === "function" ? results.querySelector("[data-sh-more]") : null);
       if (target && typeof target.focus === "function") target.focus();
     });
@@ -1124,6 +1139,9 @@ function paintDiscoverEmpty(query, myToken) {
   if (myToken !== showSearchToken) return;
   const box = $("#sh-empty");
   if (!box) return;
+  /* A subject's whole name is never empty: paintShowResults paints its own shows (a subject has at least
+     DISCOVER_MIN_SHOWS), so "Nothing named" over its lead would contradict the page. */
+  if (discoverSubjectExact(query)) { hideDiscoverEmpty(); return; }
   const subject = discoverSubjectMatch(query);
   const lines = [`Nothing named ${quoteQuery(query)}.`];
   /* Offline, the answer is "nothing on this device", and saying only the first half would be a

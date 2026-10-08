@@ -656,7 +656,7 @@ test("the stylesheet is wired into the page and every shipping path: index.html,
      A stylesheet that ships to the page but not into the generation is the one file sw.js could not verify. */
   const html = read("index.html");
   const links = [...html.matchAll(/<link rel="stylesheet" href="([^"]+)">/g)].map((m) => m[1]);
-  assert.deepStrictEqual(links, ["styles.css", "ui/tokens.css", "ui/primitives.css", "ui/dock.css", "ui/today.css", "ui/onboarding.css", "ui/foray-detail.css", "ui/settings.css", "ui/show.css", "ui/forays.css"], "legacy, tokens, scoped phase-3 primitives, then the Dock, then the adopted Today, onboarding, Foray detail, Settings and show screens");
+  assert.deepStrictEqual(links, ["styles.css", "ui/tokens.css", "ui/primitives.css", "ui/dock.css", "ui/today.css", "ui/onboarding.css", "ui/foray-detail.css", "ui/settings.css", "ui/show.css", "ui/browse.css", "ui/forays.css"], "legacy, tokens, scoped phase-3 primitives, then the Dock, then the adopted Today, onboarding, Foray detail, Settings and show screens");
   const shell = (rel, startRe) => { const s = read(rel); const m = startRe.exec(s); assert.ok(m, `${rel}: shell list found`); return m[1]; };
   assert.match(shell("tools/ci/generate-manifest.mjs", /const SHELL = \[([\s\S]*?)\n\];/), /"ui\/tokens\.css"/, "generate-manifest SHELL");
   assert.match(shell("tools/web/prepare-dist.mjs", /const SHELL = \[([\s\S]*?)\n\];/), /"ui\/tokens\.css"/, "prepare-dist SHELL");

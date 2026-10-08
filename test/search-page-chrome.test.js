@@ -226,7 +226,10 @@ test("the Shows page renders no '220 shows in 4a's catalogue' subtitle at all", 
     "not even an empty <p class=\"sub\"> may remain — it would leave the heading sitting on a blank line");
 });
 
-test("the category page still renders its own subtitle — the parameter was kept, not deleted", () => {
+test("the subject page still says how big the subject is, in its SectionHead — and never blames 4a's catalogue", () => {
+  /* REDESIGN 2026 (ambient, screen 15) moved the count from the shared template's `<p class="sub">` into the subject
+     page's own SectionHead (`<span class="count">`, beside the 56 collage); the ruling that fell is "the category page is
+     renderShowIndexPage's subtitle" (test-classification: category-browse, R). The count and the no-blame rule stay.
   /* The category page's count is the only thing that says how big the category
      is, and it is not a restatement of the heading the way the Shows page's
      was.
@@ -247,9 +250,9 @@ test("the category page still renders its own subtitle — the parameter was kep
   m.state.catalog.shows[0].taxonomy_node_ids = ["science"];
   m.ctx.renderCategory("science");
   const html = m.view();
-  assert.ok(html.includes("<h2>Science</h2>"), "fixture assumption: the category rendered");
-  assert.ok(html.includes('<p class="sub">1 show</p>'),
-    `the category page must keep its count subtitle, got: ${html.slice(0, 400)}`);
+  assert.ok(html.includes('<h2 class="t-headline">Science</h2>'), "fixture assumption: the category rendered");
+  assert.ok(html.includes('<span class="count">1 show</span>'),
+    `the subject page must keep its count, got: ${html.slice(0, 600)}`);
   assert.ok(!html.includes("4a"),
     `the subtitle must not name our own catalogue as the reason for anything: ${html.slice(0, 400)}`);
 });
@@ -332,7 +335,7 @@ test("the category page, which shares the template, still has no search field of
   m.ctx.renderCategory("science");
   const html = m.view();
   const head = elementHtml(html, '<div class="page-head');
-  assert.ok(head.startsWith('<div class="page-head">'), `got: ${head.slice(0, 80)}`);
+  assert.ok(head.startsWith('<div class="page-head cat-head">'), `got: ${head.slice(0, 80)}`);
   assert.ok(!html.includes("sh-form"), "no search field on the category page");
   assert.ok(!html.includes("sh-compose"), "and no compose bar either");
 });
