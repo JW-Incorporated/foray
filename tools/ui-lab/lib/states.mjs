@@ -70,15 +70,15 @@ async function resetAmbientNowPlaying(page) {
   });
 }
 
-async function startForayPlayback(page) {
+async function startForayPlayback(page, seekSeconds = 21) {
   await resetAmbientNowPlaying(page);
   await page.waitForSelector("#fy-play", { state: "visible", timeout: 20000 });
   await page.locator("#fy-play").click();
   await page.waitForFunction(() => Boolean(window.ForayPlayer?.forayStatus?.()), null, { timeout: 20000 });
-  await page.evaluate(async () => {
-    await window.ForayPlayer.foraySeek(21);
+  await page.evaluate(async (seek) => {
+    await window.ForayPlayer.foraySeek(seek);
     if (!window.ForayPlayer.forayStatus()?.running) await window.ForayPlayer.forayToggle();
-  });
+  }, seekSeconds);
   await openNowPlaying(page);
   await page.waitForSelector(".ag-np-strip-button", { state: "visible", timeout: 10000 });
 }
@@ -267,7 +267,8 @@ export function appStates(fx) {
         {
           label: "now-playing-foray",
           route: "#/foray/" + encodeURIComponent(foray0),
-          run: (page) => startForayPlayback(page),
+          /* 15 minutes in, as the prototype is shot: bars behind the listener are lit at full colour, the current one fills. */
+          run: (page) => startForayPlayback(page, 900),
           ready: ".ag-np.is-foray",
         },
         {

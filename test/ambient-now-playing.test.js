@@ -126,3 +126,27 @@ test("a Foray with no artwork URLs still draws its collage, from the strip's own
   assert.match(ui, /tile\.style\.setProperty\("--c", agNpColour\(source\.name\)\)/);
   assert.match(css, /\.ag-np-collage-tile \{[^}]*background: var\(--c\)/);
 });
+
+test("a Foray's Room is its blurred collage, the sleeve casts a halo of its own tones, and the strip joins one show's cuts", () => {
+  /* MUTATION 1: in agNpSetRoom change `if (artless) agNpFillRoomCollage(incoming, ui.collageSources)` to `if (false)` -> red
+       (iteration 2: the Room was one flat Glow colour and none of the sleeves' purple or cyan reached the wall).
+     MUTATION 2: delete `ui.artSwap.prepend(halo)` -> red (the 280px collage sat on the wall with only a darker edge, a shadow not a lamp).
+     MUTATION 3: set `.ag-np-strip-button[data-join-prev] { margin-left: -2px }` to `0` -> red (24 equal chips with uniform gaps again).
+     MUTATION 4: drop the `show !== "4a narration"` clause from `artless` -> red (narration would keep a show's collage instead of lamp-warm). */
+  assert.match(ui, /const artless = css === "none" && show !== "4a narration";/);
+  assert.match(ui, /if \(artless\) agNpFillRoomCollage\(incoming, ui\.collageSources\);/);
+  assert.match(ui, /for \(const layer of ui\.roomLayers\) if \(layer\.dataset\.artless === "1"\) agNpFillRoomCollage\(layer, sources\);/, "a collage that arrives after setRoom still reaches the layer that is on");
+  assert.match(ui, /for \(const layer of ui\.roomLayers\) if \(layer\.dataset\.artless === "1"\) layer\.replaceChildren\(\);/, "an episode never inherits a Foray's collage");
+  assert.match(css, /\.ag-np-room-collage \{[^}]*position: absolute;[^}]*height: 66%;[^}]*display: grid;/s);
+  assert.match(css, /\.ag-np-room-tile \{[^}]*background: var\(--c, transparent\)/);
+  assert.match(ui, /ui\.artSwap\.style\.setProperty\("--art-glow", glow\);/, "the glow colour lives on the art box so the collage, the halo and an episode sleeve all cast it");
+  assert.match(ui, /ui\.artSwap\.prepend\(halo\);/);
+  assert.match(ui, /halo\.setAttribute\("aria-hidden", "true"\);/);
+  assert.match(css, /\.ag-np-halo \{[^}]*filter: blur\(34px\)[^}]*pointer-events: none;/s);
+  assert.match(css, /prefers-reduced-transparency: reduce\) \{ \.ag-np\.fp-sheet \.ag-np-halo \{ display: none;/);
+  assert.match(css, /\.ag-np-art-swap > \.lit-art \{ box-shadow: var\(--shadow-1\), 0 0 calc\(var\(--lit-r\) \* \.6\)[^;]*var\(--art-glow, var\(--glow\)\)/);
+  assert.match(ui, /if \(runOf\(order - 1\)\) button\.dataset\.joinPrev = "1";/);
+  assert.match(ui, /if \(runOf\(order \+ 1\)\) button\.dataset\.joinNext = "1";/, "a data attribute, not a class: gates.mjs keys its tap-target exemption on the class list, so a new class would void it");
+  assert.match(css, /\.ag-np-strip-button\[data-join-prev\] \{ margin-left: -2px; \}/);
+  assert.match(css, /\[data-join-prev\] \.ag-np-strip-bar \{ border-top-left-radius: 0; border-bottom-left-radius: 0; \}/);
+});

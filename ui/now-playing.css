@@ -12,6 +12,13 @@
 .ag-np.fp-sheet .ag-np-room-layer { position: absolute; inset: -12%; opacity: 0; background: var(--room-art, none) center/cover; filter: blur(64px) saturate(130%); transform: scale(1.4); transition: opacity var(--m-room) var(--e-out); }
 .ag-np.fp-sheet .ag-np-room-layer.is-on { opacity: var(--room-art-opacity); }
 .ag-np.is-paused .ag-np-room-layer.is-on { opacity: .7; }
+/* A Foray's Room is its collage, blurred with the layer: the tones of every sleeve in the wall. The grid fills the top two thirds
+   of the layer so both rows land in the scrim's light zone (a grid across the whole layer buries the lower row under the 0.86 stop). */
+.ag-np.fp-sheet .ag-np-room-collage { position: absolute; inset: 0 0 auto 0; height: 66%; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+.ag-np.fp-sheet .ag-np-room-tile { display: block; width: 100%; height: 100%; min-width: 0; object-fit: cover; background: var(--c, transparent); }
+.ag-np.fp-sheet .ag-np-room-collage[data-count="1"] .ag-np-room-tile { grid-column: 1 / -1; grid-row: 1 / -1; }
+.ag-np.fp-sheet .ag-np-room-collage[data-count="2"] .ag-np-room-tile { grid-row: 1 / -1; }
+.ag-np.fp-sheet .ag-np-room-collage[data-count="3"] .ag-np-room-tile:nth-child(3) { grid-column: 1 / -1; }
 .ag-np.fp-sheet .fp-sheet-scroll { position: absolute; inset: 0; z-index: 2; width: auto; max-width: none; padding: 0 var(--gutter); overflow-x: hidden; overflow-y: auto; scrollbar-width: none; touch-action: pan-y; }
 .ag-np.fp-sheet .fp-sheet-scroll::-webkit-scrollbar { display: none; }
 .ag-np.fp-sheet .ag-np-first { min-height: 100%; display: flex; flex-direction: column; padding-top: calc(var(--safe-top) + 12px); }
@@ -23,14 +30,24 @@
 .ag-np.is-long-title { --np-art: clamp(180px, calc(100dvh - 556px), 284px); }
 .ag-np.fp-sheet .ag-np-art-wrap { display: flex; justify-content: center; margin-top: var(--s-4); }
 .ag-np.fp-sheet .ag-np-art-swap { position: relative; width: var(--np-art); height: var(--np-art); }
-.ag-np.fp-sheet .ag-np-art-swap > img, .ag-np.fp-sheet .ag-np-collage { position: absolute; inset: 0; width: var(--np-art); height: var(--np-art); border-radius: var(--r-xl); object-fit: cover; overflow: hidden; }
-.ag-np.fp-sheet .ag-np-art-swap > img:not(.ag-np-art-out), .ag-np.fp-sheet .ag-np-collage { transition: transform var(--m-room) var(--e-spring-soft); }
-.ag-np.is-paused.fp-sheet .ag-np-art-swap > img:not(.ag-np-art-out):not(.ag-np-art-in), .ag-np.is-paused.fp-sheet .ag-np-collage { transform: scale(.94); }
-.ag-np.fp-sheet .ag-np-collage { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 2px; background: var(--bg1); }
+.ag-np.fp-sheet .ag-np-art-swap > img, .ag-np.fp-sheet .ag-np-collage, .ag-np.fp-sheet .ag-np-halo { position: absolute; inset: 0; width: var(--np-art); height: var(--np-art); border-radius: var(--r-xl); object-fit: cover; overflow: hidden; }
+/* The sleeve is the lamp: at 280px the cast is a lit pool in the art's own colour (a second, wider ring stands in for the glow the
+   prototype's blurred art gives for free), never the black drop shadow --shadow-1 alone would leave. */
+.ag-np.fp-sheet .ag-np-art-swap > .lit-art { box-shadow: var(--shadow-1), 0 0 calc(var(--lit-r) * .6) 0 color-mix(in oklab, var(--art-glow, var(--glow)) calc(var(--lit-mix) + 25%), transparent), 0 0 calc(var(--lit-r) * 1.6) calc(var(--lit-r) / -5) color-mix(in oklab, var(--art-glow, var(--glow)) calc(var(--lit-mix) + 10%), transparent); }
+@media (prefers-reduced-transparency: reduce) { .ag-np.fp-sheet .ag-np-art-swap > .lit-art { box-shadow: var(--shadow-1); } }
+@media (forced-colors: active) { .ag-np.fp-sheet .ag-np-art-swap > .lit-art { box-shadow: none; } }
+.ag-np.fp-sheet .ag-np-art-swap > img:not(.ag-np-art-out), .ag-np.fp-sheet .ag-np-collage, .ag-np.fp-sheet .ag-np-halo { transition: transform var(--m-room) var(--e-spring-soft); }
+.ag-np.is-paused.fp-sheet .ag-np-art-swap > img:not(.ag-np-art-out):not(.ag-np-art-in), .ag-np.is-paused.fp-sheet .ag-np-collage, .ag-np.is-paused.fp-sheet .ag-np-halo { transform: scale(.94); }
+.ag-np.fp-sheet .ag-np-collage, .ag-np.fp-sheet .ag-np-halo { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 2px; background: var(--bg1); }
+/* The halo is a second, blurred copy of the sleeve behind it: the Foray's own tones (purple, cyan, orange) spill past its edge as light,
+   not as one flat Glow colour. Decorative: no pointer events, hidden from the tree, off under reduced transparency. */
+.ag-np.fp-sheet .ag-np-halo { filter: blur(34px) saturate(140%); opacity: .8; pointer-events: none; background: transparent; }
+@media (prefers-reduced-transparency: reduce) { .ag-np.fp-sheet .ag-np-halo { display: none; } }
+@media (forced-colors: active) { .ag-np.fp-sheet .ag-np-halo { display: none; } }
 .ag-np.fp-sheet .ag-np-collage-art { width: 100%; height: 100%; object-fit: cover; min-width: 0; }
 .ag-np.fp-sheet .ag-np-collage-tile { display: block; background: var(--c); }
-.ag-np.fp-sheet .ag-np-collage[data-count="1"] .ag-np-collage-art { grid-column: 1 / -1; grid-row: 1 / -1; }
-.ag-np.fp-sheet .ag-np-collage[data-count="2"] .ag-np-collage-art { grid-row: 1 / -1; }
+.ag-np.fp-sheet .ag-np-collage[data-count="1"] .ag-np-collage-art, .ag-np.fp-sheet .ag-np-halo[data-count="1"] .ag-np-collage-art { grid-column: 1 / -1; grid-row: 1 / -1; }
+.ag-np.fp-sheet .ag-np-collage[data-count="2"] .ag-np-collage-art, .ag-np.fp-sheet .ag-np-halo[data-count="2"] .ag-np-collage-art { grid-row: 1 / -1; }
 .ag-np.fp-sheet .ag-np-art-out { animation: ag-np-art-out var(--m-room) var(--e-spring-soft) both; }
 .ag-np.fp-sheet .ag-np-art-in { animation: ag-np-art-in var(--m-room) var(--e-spring-soft) both; }
 .ag-np.fp-sheet .ag-np-art-swap.is-frozen-ending .ag-np-art-out { animation: none; transform: translateX(-36%); opacity: .2; }
@@ -54,6 +71,9 @@
 .ag-np.fp-sheet .ag-np-times { display: flex; justify-content: space-between; margin-top: 0; color: var(--text-2); font-variant-numeric: tabular-nums; }
 .ag-np.fp-sheet .ag-np-strip { display: flex; align-items: center; gap: 2px; height: 32px; }
 .ag-np.fp-sheet .ag-np-strip-button { flex: var(--grow) 1 0; min-width: 6px; height: 44px; margin: -6px 0; padding: 0; border: 0; display: flex; align-items: center; background: transparent; }
+.ag-np.fp-sheet .ag-np-strip-button[data-join-prev] { margin-left: -2px; }
+.ag-np.fp-sheet .ag-np-strip-button[data-join-prev] .ag-np-strip-bar { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.ag-np.fp-sheet .ag-np-strip-button[data-join-next] .ag-np-strip-bar { border-top-right-radius: 0; border-bottom-right-radius: 0; }
 .ag-np.fp-sheet .ag-np-strip-bar { position: relative; display: block; width: 100%; height: 16px; overflow: hidden; border-radius: var(--r-xs); background: color-mix(in oklab, var(--c) 38%, transparent); }
 .ag-np.fp-sheet .ag-np-strip-fill { position: absolute; inset: 0; transform: scaleX(var(--fill, 0)); transform-origin: left; background: color-mix(in oklab, var(--c) 78%, var(--lamp)); transition: transform var(--m-micro) linear; }
 .ag-np.fp-sheet .ag-np-strip-button.is-past .ag-np-strip-bar { background: var(--c); }

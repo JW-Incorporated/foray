@@ -277,6 +277,28 @@ function agNpSetShowLine(ui, text) {
   }, 140);
 }
 
+/* The Room's copy of the Foray collage: the same sleeves (or, for a show with no artwork URL, the same colour tiles)
+   that the big collage shows, laid out in the top band of the layer so every sleeve's tone sits inside the scrim's
+   light zone once the layer is blurred (a 2x2 across the whole layer buries the lower row under the 0.86 scrim). */
+function agNpFillRoomCollage(layer, sources) {
+  if (!layer || !Array.isArray(sources) || !sources.length) return;
+  const grid = agNpEl("div", "ag-np-room-collage");
+  grid.dataset.count = String(sources.length);
+  sources.forEach((source) => {
+    if (!source.src) {
+      const tile = agNpEl("span", "ag-np-room-tile");
+      tile.style.setProperty("--c", agNpColour(source.name));
+      grid.append(tile);
+      return;
+    }
+    const img = agNpEl("img", "ag-np-room-tile");
+    img.alt = "";
+    agNpSafeArt(img, source.src);
+    grid.append(img);
+  });
+  layer.replaceChildren(grid);
+}
+
 function agNpSetRoom(ui, src, show, { announce = false } = {}) {
   if (!ui?.ag) return;
   const css = agNpCssUrl(src);
@@ -284,6 +306,12 @@ function agNpSetRoom(ui, src, show, { announce = false } = {}) {
   const incoming = ui.roomLayers[next];
   const outgoing = ui.roomLayers[ui.roomLayer];
   incoming.style.setProperty("--room-art", css);
+  incoming.replaceChildren();
+  /* A show with no artwork URL lights the Room with the Foray's collage instead of a flat colour: the Room is the
+     sleeve's own tones (BUILD-NOTES 1.5). Narration is 4a's voice, so it takes no collage and falls back to lamp-warm. */
+  const artless = css === "none" && show !== "4a narration";
+  incoming.dataset.artless = artless ? "1" : "";
+  if (artless) agNpFillRoomCollage(incoming, ui.collageSources);
   incoming.classList.add("is-on");
   outgoing.classList.remove("is-on");
   ui.roomLayer = next;
@@ -291,7 +319,7 @@ function agNpSetRoom(ui, src, show, { announce = false } = {}) {
   const glow = show === "4a narration" ? "oklch(0.74 0.05 75)" : agNpColour(show);
   ui.sheet.style.setProperty("--glow", glow);
   ui.root.style.setProperty("--glow", glow);
-  ui.sArt.style.setProperty("--art-glow", glow);
+  ui.artSwap.style.setProperty("--art-glow", glow);
   if (announce) agNpFlashCaption(ui, `Now: ${show}`);
 }
 
@@ -328,6 +356,14 @@ function agNpPaintForay(ui, { items = [], model = null, currentIndex = 0, starts
       const bar = agNpEl("span", item?.kind === "tts" ? "ag-np-strip-bar is-narration" : "ag-np-strip-bar");
       bar.append(agNpEl("span", "ag-np-strip-fill"));
       button.append(bar);
+      /* Neighbouring cuts from one show are one lantern: they touch (no gap, square inner corners), so the strip reads
+         as shows joined by narration instead of a row of equal chips. */
+      const runOf = (at) => {
+        const other = items[segments[at]?.index];
+        return other && other.kind !== "tts" && item?.kind !== "tts" && agNpShow(other) === name;
+      };
+      if (runOf(order - 1)) button.dataset.joinPrev = "1";
+      if (runOf(order + 1)) button.dataset.joinNext = "1";
       button.addEventListener("click", () => onSeek?.(starts[segment.index] || 0));
       ui.strip.append(button);
     });
@@ -357,6 +393,8 @@ function agNpPaintCollage(ui, items) {
     if (sources.length === 4) break;
   }
   if (!sources.length) return;
+  ui.collageSources = sources;
+  for (const layer of ui.roomLayers) if (layer.dataset.artless === "1") agNpFillRoomCollage(layer, sources);
   let collage = ui.artSwap.querySelector(".ag-np-collage");
   if (!collage) {
     collage = agNpEl("div", "ag-np-collage lit-art lit-96");
@@ -378,6 +416,11 @@ function agNpPaintCollage(ui, items) {
     collage.append(img);
   });
   collage.dataset.count = String(sources.length);
+  ui.artSwap.querySelector(".ag-np-halo")?.remove();
+  const halo = collage.cloneNode(true);
+  halo.className = "ag-np-halo";
+  halo.setAttribute("aria-hidden", "true");
+  ui.artSwap.prepend(halo);
   ui.sArt.hidden = true;
 }
 
@@ -434,6 +477,8 @@ function agNpPaintEpisode(ui) {
   ui.showLine = null;
   /* The collage and the strip are torn down below, so the same Foray played again must rebuild both. */
   ui.foraySignature = null;
+  ui.collageSources = null;
+  for (const layer of ui.roomLayers) if (layer.dataset.artless === "1") layer.replaceChildren();
   ui.strip.hidden = true;
   ui.scrub.hidden = false;
   ui.segmentsSection.hidden = true;
@@ -441,6 +486,7 @@ function agNpPaintEpisode(ui) {
   ui.notesSection.hidden = ui.sDesc.hidden;
   ui.sArt.hidden = false;
   ui.artSwap.querySelector(".ag-np-collage")?.remove();
+  ui.artSwap.querySelector(".ag-np-halo")?.remove();
 }
 
 function agNpPaintUpNext(ui, item, count = 0) {
