@@ -209,6 +209,8 @@ function agNpAdopt(ui) {
 
   /* The More handle and the dots both bring the detail posture up and park focus on its first control. */
   const openDetail = () => {
+    /* The detail is not drawn in car posture (ui/car.css): the dots there end it first, so what they lead to exists. */
+    window.AfterglowCar?.leave(document);
     detail.scrollIntoView({ behavior: "smooth", block: "start" });
     ui.rateBtn.focus({ preventScroll: true });
   };

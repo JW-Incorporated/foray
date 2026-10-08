@@ -112,12 +112,46 @@ test("car.css does not render the why-line, the secondary row, the More handle, 
   /* MUTATION: delete `.ag-np-detail-handle` from the hidden list -> red.   MUTATION: delete `.fp-s-why` from it -> red.
      (The detail posture is one container: actions row, chapters, sources, show notes, Up next and the legacy action
      row all live inside `.ag-np-detail`, so hiding it is hiding all of them.) */
-  const m = css.match(/((?:\[data-posture="car"\] \.ag-np\.fp-sheet [^,{]+,\s*)+)\[data-posture="car"\] \.ag-np\.fp-sheet \.ag-np-more-btn \{ display: none; \}/);
+  const m = css.match(/((?:\[data-posture="car"\] \.ag-np\.fp-sheet [^,{]+,\s*)+)\[data-posture="car"\] \.ag-np\.fp-sheet \.fp-s-why \{ display: none; \}/);
   assert.ok(m, "one display:none rule names the posture's hidden set");
   const names = [...(m[0].matchAll(/\.ag-np\.fp-sheet (\.[\w-]+)/g))].map((x) => x[1]).sort();
-  assert.deepStrictEqual(names, [".ag-np-detail", ".ag-np-detail-handle", ".ag-np-more-btn", ".fp-s-why"]);
+  assert.deepStrictEqual(names, [".ag-np-detail", ".ag-np-detail-handle", ".fp-s-why"]);
   const ui = read("ui/now-playing.js");
   assert.match(ui, /detail\.append\(actionRow, segmentsSection, sourcesSection, notesSection, upNextSection, ui\.clips, ui\.row2/, "the container really does hold the actions, chapters, notes and the legacy row");
+});
+
+test("the dots stay in the car head and lead out of the car to the detail actions (iteration 2, fidelity: trailing overflow control)", () => {
+  /* The prototype keeps its "..." in car posture (its hide list is sec-row, np-detail, handle, why). Without it the head
+     is left-heavy, the Car chip is not centred between two controls, and speed / sleep / bookmark / share lose their
+     entry point. The build's detail is not drawn in the car, so the dots end posture first.
+     MUTATION: add `.ag-np-more-btn` back to car.css or car.js -> red (no car rule may name the dots).
+     MUTATION: delete the `window.AfterglowCar?.leave(document);` line in openDetail (ui/now-playing.js) -> red: the dots
+     would scroll to a container that is display:none and look dead.
+     Harness audit: the check reads the source of both files because the fake DOM here has no layout; the browser half,
+     tools/ui-lab/car-check.mjs, measures the head. */
+  assert.ok(!/ag-np-more-btn/.test(css), "no car rule hides or restyles the dots");
+  assert.ok(!/ag-np-more-btn/.test(src), "car.js adds no hiding class to the dots");
+  const ui = read("ui/now-playing.js");
+  assert.match(ui, /const openDetail = \(\) => \{\s*\/\*[^*]*\*\/\s*window\.AfterglowCar\?\.leave\(document\);\s*detail\.scrollIntoView/, "openDetail ends posture before it scrolls");
+  assert.match(ui, /moreMenuBtn\.addEventListener\("click", openDetail\)/, "the dots run openDetail");
+  assert.match(css, /\.ag-np-head \{ display: grid; grid-template-columns: 1fr auto 1fr; \}/, "1fr / auto / 1fr: the chip is centred whatever the outer controls weigh");
+  /* MUTATION: delete the `justify-self: end` rule -> red (the dots sit against the chip, not at the trailing edge, and the head reads lopsided again). */
+  assert.match(css, /\.ag-np-head \.ag-np-car-chip \+ \.ag-np-icon-btn \{ justify-self: end; \}/, "the dots take the trailing edge, mirroring the chevron");
+});
+
+test("the car's artwork holds its step when paused and its lit-art cast is one soft ring (iteration 2, fidelity: artwork size and halo)", () => {
+  /* MUTATION: delete the `transform: none` paused rule in car.css -> red (the 240 step renders ~226 whenever paused,
+     which is what the judged render showed: 224).
+     MUTATION: change the cast's `var(--lit-mix)` to `calc(var(--lit-mix) + 25%)` -> red (the bright rim comes back).
+     MUTATION: delete the forced-colors restatement -> red (the car selector outranks now-playing.css's drop).
+     Harness audit: now-playing.css declares the paused 0.94 at specificity (0,5,0)+; the test pins the car selector's
+     whole chain, not only the declaration, and the browser half measures the sleeve while paused. */
+  assert.match(css, /\[data-posture="car"\] \.ag-np\.is-paused\.fp-sheet \.ag-np-art-swap > img:not\(\.ag-np-art-out\):not\(\.ag-np-art-in\),\s*\[data-posture="car"\] \.ag-np\.is-paused\.fp-sheet \.ag-np-collage,\s*\[data-posture="car"\] \.ag-np\.is-paused\.fp-sheet \.ag-np-halo \{ transform: none; \}/);
+  const cast = css.match(/\.ag-np-art-swap > \.lit-art \{ box-shadow: ([^;]*); \}/);
+  assert.ok(cast, "car.css restates the lit-art cast");
+  assert.strictEqual(cast[1], "var(--shadow-1), 0 0 var(--lit-r) calc(var(--lit-r) / -4) color-mix(in oklab, var(--art-glow, var(--glow)) var(--lit-mix), transparent)", "one ring, the art's colour at the token's mix, no second ring and no mix boost");
+  assert.match(css, /@media \(prefers-reduced-transparency: reduce\) \{ \[data-posture="car"\][^}]*box-shadow: var\(--shadow-1\); \} \}/, "dropped under reduced transparency");
+  assert.match(css, /@media \(forced-colors: active\) \{ \[data-posture="car"\][^}]*box-shadow: none; \} \}/, "dropped under forced colours");
 });
 
 test("car.css keeps Play above the foot of the screen and draws the chip as a 44px target", () => {
@@ -275,7 +309,7 @@ test("adopt puts one named chip before the dots; it reads the posture and its cl
   const chips = grabZone.children.filter((c) => c.className && c.className.includes("ag-np-car-chip"));
   assert.strictEqual(chips.length, 1, "adopting twice adds one chip");
   assert.strictEqual(grabZone.children.indexOf(chips[0]), grabZone.children.indexOf(more) - 1, "directly before the dots");
-  assert.match(more.className, /ag-np-more-btn/, "the dots get the class car.css hides");
+  assert.strictEqual(more.className, "", "the dots are left alone: they stay visible in the car");
   assert.match(chips[0].getAttribute("aria-label"), /leave car mode/i, "named for what it does");
   assert.strictEqual(chips[0].getAttribute("aria-pressed"), "false");
   assert.deepStrictEqual([...safeUrlCalls], ["ui/icons.svg#i-car"], "the sprite reference crosses safeUrl()");

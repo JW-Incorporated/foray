@@ -104,7 +104,8 @@ function agCarBindPress(bar, opts = {}) {
 }
 
 /* The chip: sprite glyph + "Car", 44px tall, shown by CSS only while posture is on, pressed because it is on. It sits
-   before the dots and takes the dots' place in the car (the detail posture those dots open is not rendered there). */
+   between the close chevron and the dots, which stay visible in the car to balance it (ui/now-playing.js openDetail ends
+   posture before it opens the detail the dots lead to). */
 function agCarAdopt(ui) {
   if (!ui?.grabZone || ui.carChip) return ui;
   const chip = document.createElement("button");
@@ -125,7 +126,6 @@ function agCarAdopt(ui) {
   chip.append(svg, document.createTextNode("Car"));
   chip.addEventListener("click", () => { agCarLeave(); });
   if (ui.moreMenuBtn) {
-    ui.moreMenuBtn.classList.add("ag-np-more-btn");
     ui.grabZone.insertBefore(chip, ui.moreMenuBtn);
   } else {
     ui.grabZone.append(chip);
