@@ -4925,7 +4925,7 @@ body.view-find > .topbar { display: none; }
 body.ui-v2.view-find #view {
   padding: 0 var(--gutter) calc(var(--deck-h) + var(--safe-b) + var(--s-12) * 2 + var(--s-4));
 }
-body.ui-v2.view-find.fp-open #view { padding-bottom: calc(var(--deck-h) + var(--fp-bar-h) + var(--safe-b) + var(--s-12) * 2 + var(--s-4)); }
+body.ui-v2.view-find.fp-open:not(.mini-dismissed) #view { padding-bottom: calc(var(--deck-h) + var(--fp-bar-h) + var(--safe-b) + var(--s-12) * 2 + var(--s-4)); }
 body.view-find .page--find {
   max-width: none;
   margin: 0;
@@ -4953,7 +4953,6 @@ body.ui-v2.view-find .page--find .page-head h2 { margin: 0; color: var(--ink); f
    inside it gives up its own box, and its ring moves to the wrapper
    (:focus-within) so the one authored focus ring survives. */
 body.view-find #sh-compose {
-  --find-dock: calc(var(--safe-b) + var(--s-3) + var(--deck-h) + var(--s-3));
   left: calc(env(safe-area-inset-left, 0px) + var(--s-4));
   right: calc(env(safe-area-inset-right, 0px) + var(--s-4));
   bottom: calc(var(--kb-inset, 0px) + var(--find-dock));
@@ -4964,8 +4963,32 @@ body.view-find #sh-compose {
   background: var(--card);
   box-shadow: var(--shadow-deck);
 }
-body.view-find.fp-open:not(.kb-open):not(.sh-searching) #sh-compose { --find-dock: calc(var(--safe-b) + var(--s-3) + var(--deck-h) + var(--fp-bar-h) + var(--s-3)); }
-body.view-find.kb-open #sh-compose, body.view-find.sh-searching #sh-compose { --find-dock: var(--s-3); }
+/* The dock height lives on the body, not on the field, because the paper fade
+   below reads it too: both stand on the same arithmetic (the room the deck, and
+   the mini when it is up, take above the home indicator, plus the 12px gap). */
+body.view-find { --find-dock: calc(var(--safe-b) + var(--s-3) + var(--deck-h) + var(--s-3)); }
+body.view-find.fp-open:not(.mini-dismissed) { --find-dock: calc(var(--safe-b) + var(--s-3) + var(--deck-h) + var(--fp-bar-h) + var(--s-3)); }
+body.view-find.kb-open, body.view-find.sh-searching { --find-dock: var(--s-3); }
+/* THE PAPER FADE (prototype app.css `body::after`, BUILD-NOTES 4.4): a fixed
+   band of clear paper from the bottom edge up past the field, behind the field
+   and the deck (z 58 and 55), in front of the page. Without it a tile's name
+   shows clipped in the 12px gap between the field and the deck and tile art
+   shows below the deck's lower edge, so the deck reads as a window, not a raised
+   card on clear paper. Solid to the field's mid-line, then 32px of fade above
+   the field. Idle only: with the keyboard up or a query typed the deck is gone
+   and the results own the page. */
+body.view-find::after {
+  content: "";
+  position: fixed;
+  z-index: 50;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(var(--find-dock) + var(--s-12) + var(--s-1) + var(--s-8));
+  pointer-events: none;
+  background: linear-gradient(to top, var(--paper) calc(var(--find-dock) + var(--s-6)), transparent);
+}
+body.view-find.kb-open::after, body.view-find.sh-searching::after { display: none; }
 body.view-find #sh-compose:focus-within { box-shadow: var(--shadow-deck), 0 0 0 2px var(--ultramarine); }
 body.view-find #sh-compose #sh-form {
   flex: 1 1 auto;
@@ -5001,43 +5024,10 @@ body.view-find #sh-dismiss {
 }
 body.view-find #sh-dismiss svg { width: 24px; height: 24px; stroke: none; fill: currentColor; }
 
-/* The deck, until the three-tab deck replaces this bar for every page
-   (tactile `mini`): the same box (inset 16, 12 off the bottom, 64 tall, r-lg,
-   the deck tint and shadow), and the lit tab marked with the persimmon bar. */
-body.view-find .tab-bar {
-  left: calc(env(safe-area-inset-left, 0px) + var(--s-4));
-  right: calc(env(safe-area-inset-right, 0px) + var(--s-4));
-  bottom: calc(var(--safe-b) + var(--s-3));
-  height: var(--deck-h);
-  padding: 0;
-  overflow: hidden;
-  border: 0;
-  border-radius: var(--r-lg);
-  background: var(--deck-tint);
-  -webkit-backdrop-filter: var(--deck-blur);
-  backdrop-filter: var(--deck-blur);
-  box-shadow: var(--shadow-deck);
-}
-body.view-find .tab-btn { position: relative; color: var(--ink-2); font: var(--w-micro) var(--t-micro)/var(--lh-micro) var(--font-text); }
-body.view-find .tab-btn[aria-current="page"] { color: var(--ink); }
-body.view-find .tab-btn[aria-current="page"]::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 50%;
-  width: var(--s-8);
-  height: var(--s-1);
-  margin-left: calc(var(--s-8) / -2);
-  border-radius: 0 0 var(--s-1) var(--s-1);
-  background: var(--persimmon);
-}
-
 /* Sections: the followed strip and the subjects. */
 body.view-find #sh-browse { display: flex; flex-direction: column; gap: var(--s-8); }
 .find-sect { display: flex; flex-direction: column; gap: var(--gap); }
-.find-sect__head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); }
 .find-sect .heading { margin: 0; color: var(--ink); }
-.find-sect__head .find-all { display: inline-flex; align-items: center; margin-block: calc((var(--lh-heading) - var(--tap)) / 2); color: var(--ink-2); text-decoration: none; }
 
 .find-strip { display: flex; gap: var(--gap); overflow-x: auto; margin: 0 calc(var(--gutter) * -1); padding: 0 var(--gutter) var(--s-1); scrollbar-width: none; }
 .find-strip::-webkit-scrollbar { display: none; }

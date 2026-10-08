@@ -389,11 +389,12 @@ test("'Starred Shows' left the menu without leaving the app — the Find page ca
      FLAGGED FOR JOEY in the PR, as product: dropping a top-level entry is his
      call, not this change's.
 
-     MUTATION: delete the "See all" anchor (`find-all`) from findFollowedHtml.
-     The link assertion fails and #/starred-shows becomes reachable only by
-     typing the URL. RUN: failed as named. (Before tactile `search` this was a
-     `page-link-row` above the pill cloud; the followed strip's heading row now
-     carries it.)
+     Iteration 2 of tactile `search`: the prototype's Followed shows heading has
+     no "See all" beside it, so the link left the heading row. What is asserted
+     now is that each followed show still links to its own page and that
+     #/starred-shows still routes (Yours lists every followed show).
+     MUTATION: drop the strip item's `href` in findFollowedHtml -> the first
+     assertion fails.
 
      WITH A SHOW FOLLOWED, because since audit round 2 (p-first-12) the row is
      drawn only when there is something behind it — the test below pins the
@@ -402,15 +403,15 @@ test("'Starred Shows' left the menu without leaving the app — the Find page ca
 
   m.ctx.renderAllShows();
   assert.ok(
-    m.view().includes('href="#/starred-shows"'),
-    "the Shows page must link to the starred-shows page"
+    m.view().includes('class="find-strip__item" href="#/show/show-a"'),
+    "the Find page must link each followed show to its own page"
   );
   /* FIRST in the browse container, above the subject mosaic: the followed strip
      is the top of Find (tactile `search`; it was above the pill cloud before,
      review of visual pass 1, 2026-09-23). MUTATION: render findSubjectsHtml()
      before findFollowedHtml() in renderAllShows -> red. */
   const html = m.view();
-  const link = html.indexOf('class="textbtn find-all" href="#/starred-shows"');
+  const link = html.indexOf('class="find-strip__item" href="#/show/show-a"');
   const browse = html.indexOf('id="sh-browse"');
   const mosaic = html.indexOf('class="mosaic"');
   assert.ok(link > browse && browse > 0, "the link renders inside the browse container");

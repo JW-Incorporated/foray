@@ -344,7 +344,7 @@ test("route() dispatches #/starred-shows to renderStarredShows, matching #/playl
 /* 6. REACHABILITY — FROM THE SHOWS PAGE, NOT THE DRAWER                 */
 /* ==================================================================== */
 
-test("#/starred-shows is reachable from the Shows page and is no longer a drawer entry", () => {
+test("#/starred-shows is reachable from Yours (the Library page) and is no longer a drawer entry", () => {
   /* Was: "the drawer nav carries a link to #/starred-shows". The founder
      named the menu's five pages on 2026-09-03 (Home, Shows, Playlists,
      Forays, Up Next) and Starred Shows is not one of them, so the drawer
@@ -364,17 +364,31 @@ test("#/starred-shows is reachable from the Shows page and is no longer a drawer
 
      WITH A SHOW FOLLOWED: since audit round 2 (p-first-12) the Shows page draws
      the shortcut only when there is something behind it — the empty half is
-     pinned in test/home-information-architecture.test.js. */
-  const m = mount({ seed: { cp_starred_shows: JSON.stringify({ "show-a": { show_id: "show-a", title: "Show A", starred_at: "2026-09-01T00:00:00Z" } }) } });
+     pinned in test/home-information-architecture.test.js.
+
+     REWRITTEN ON PURPOSE (tactile `search`, iteration 2, 2026-10-07): the
+     direction's Find has "Followed shows" as a heading over the strip and no
+     "See all" beside it, so the way into this page is now Yours, whose Followed
+     shows section ends in "All N followed shows ›" once the list is longer than
+     the section cap (6 follows here, cap 5). MUTATION: change the href of
+     `libraryFollowedHtml`'s `lib-more` link away from #/starred-shows -> the
+     first assertion fails and the page is reachable only by typing the URL.
+     The Find page itself no longer links here (second assertion; MUTATION 3:
+     put the "See all" anchor back in findFollowedHtml). */
+  const follows = {};
+  for (let i = 0; i < 6; i++) follows["show-" + i] = { show_id: "show-" + i, title: "Show " + i, starred_at: "2026-09-0" + (i + 1) + "T00:00:00Z" };
+  const m = mount({ seed: { cp_starred_shows: JSON.stringify(follows) } });
   m.state.catalog = { shows: [] };
   m.state.discover = { items: [] };
   m.state.taxonomy = { nodes: [] };
   m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
-  m.ctx.renderAllShows();
+  m.ctx.renderLibrary();
   assert.ok(
-    m.view().includes('href="#/starred-shows"'),
-    "the Shows page must carry a reachable link to #/starred-shows"
+    m.view().includes('class="lib-more" href="#/starred-shows">All 6 followed shows'),
+    "Yours must carry a reachable link to #/starred-shows when the list is longer than its cap"
   );
+  m.ctx.renderAllShows();
+  assert.ok(!m.view().includes('href="#/starred-shows"'), "Find carries no 'See all' to it: the heading stands alone");
   assert.doesNotMatch(
     INDEX_HTML,
     /<nav id="drawer"[^]*?href="#\/starred-shows"[^]*?<\/nav>/,

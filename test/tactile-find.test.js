@@ -387,7 +387,14 @@ test("the followed strip renders only when the listener follows something, and r
   assert.ok(!html.includes("A podcast that"), "…and never appears on the strip");
   assert.ok(html.indexOf(">Odd Lots<") < html.indexOf(">Lingthusiasm<"), "newest first");
   assert.ok(html.includes('class="find-strip__item" href="#/show/odd"'), "an item links to its show page");
-  assert.ok(html.includes('href="#/starred-shows"'), "and the heading row carries 'See all'");
+  /* ITERATION 2 (fidelity finding): the prototype's "Followed shows" heading is
+     the heading alone. A "See all" beside it was a second element competing with
+     it and is not part of the direction's Find; Yours lists every followed show.
+     MUTATION: put `<a class="textbtn find-all" href="#/starred-shows">See all</a>`
+     back after the h3 in findFollowedHtml -> both assertions below fail. */
+  assert.ok(!html.includes("See all") && !html.includes("find-all"), "the heading stands alone: no 'See all' action");
+  assert.ok(!html.includes('href="#/starred-shows"'), "…and Find links no further than the shows themselves");
+  assert.ok(/<section class="find-sect"[^>]*><h3 class="heading" id="find-followed-h">Followed shows<\/h3><div class="find-strip">/.test(html), "the heading is the strip's direct lead-in");
   assert.ok(html.indexOf("find-followed-h") < html.indexOf("find-subjects-h"), "the strip sits above the subjects");
 });
 
@@ -451,10 +458,13 @@ test("the field is a 52px card-filled pill docked 12px above the 64px deck, and 
   assert.strictEqual(pill.background, "var(--card)");
   assert.strictEqual(pill["box-shadow"], "var(--shadow-deck)");
   assert.strictEqual(pill.padding, "0 var(--s-2) 0 var(--s-4)", "16 leading, 8 trailing around the 44px key");
-  assert.strictEqual(pill["--find-dock"], "calc(var(--safe-b) + var(--s-3) + var(--deck-h) + var(--s-3))", "safe + 12 + deck + 12");
+  /* The dock height is declared on the body (iteration 2): the paper fade reads
+     the same variable, so field and fade cannot drift apart. */
+  assert.strictEqual(rule("body.view-find")["--find-dock"], "calc(var(--safe-b) + var(--s-3) + var(--deck-h) + var(--s-3))", "safe + 12 + deck + 12");
   assert.strictEqual(pill.bottom, "calc(var(--kb-inset, 0px) + var(--find-dock))", "the keyboard lifts it by its own inset");
-  assert.strictEqual(rule("body.view-find.kb-open #sh-compose")["--find-dock"], "var(--s-3)", "with the keyboard up the deck is gone and the field docks to it");
-  assert.strictEqual(rule("body.view-find.sh-searching #sh-compose")["--find-dock"], "var(--s-3)", "…and with the field focused, which is when the bar hides");
+  assert.strictEqual(rule("body.view-find.fp-open:not(.mini-dismissed)")["--find-dock"], "calc(var(--safe-b) + var(--s-3) + var(--deck-h) + var(--fp-bar-h) + var(--s-3))", "with the mini up the field rides above it; a dismissed mini gives the room back");
+  assert.strictEqual(rule("body.view-find.kb-open")["--find-dock"], "var(--s-3)", "with the keyboard up the deck is gone and the field docks to it");
+  assert.strictEqual(rule("body.view-find.sh-searching")["--find-dock"], "var(--s-3)", "…and with the field focused, which is when the bar hides");
   const clear = rule("body.view-find #sh-dismiss");
   assert.strictEqual(clear.width, "var(--tap)");
   assert.strictEqual(clear.height, "var(--tap)");
@@ -489,4 +499,41 @@ test("the Find section adds no transition or animation the one reduced-motion bl
   const end = CSS.indexOf("COMPONENT GALLERY. Development-only");
   const section = CSS.slice(start, end);
   assert.ok(!/\btransition\s*:|\banimation\s*:/.test(section.replace(/transition:\s*none/g, "")), "Find's own rules animate nothing; its tiles and keys reuse the primitives' transitions, which the block names");
+});
+
+test("clear paper sits between the field and the deck: a fixed paper fade stands behind both and in front of the page", () => {
+  /* Iteration 2 (fidelity finding): a subject tile's name showed clipped in the
+     12px gap between the field and the deck, and tile art showed below the deck's
+     lower edge. The prototype's `body::after` is a paper band behind the field
+     and the deck; this is its port.
+     MUTATION (each fails below): delete the `body.view-find::after` rule (no
+     fade, the finding returns); set its z-index to 70 (it would cover the field
+     and the deck); drop `pointer-events: none` (it would eat taps on the tiles
+     it overlaps); change its height to `var(--find-dock)` (it ends at the deck's
+     top, so the gap is open again); give it `var(--ink)` for paper. */
+  const fade = rule("body.view-find::after");
+  assert.strictEqual(fade.position, "fixed");
+  assert.strictEqual(fade.bottom, "0");
+  assert.strictEqual(fade["pointer-events"], "none", "it never takes a tap from the tiles under it");
+  const z = Number(fade["z-index"]);
+  const fieldZ = Number(rule("#sh-compose")["z-index"]);
+  const deckZ = Number(rule(".tab-bar")["z-index"]);
+  assert.ok(Number.isFinite(z) && z < fieldZ && z < deckZ, `behind the field (${fieldZ}) and the deck (${deckZ}), got ${fade["z-index"]}`);
+  assert.ok(/^calc\(var\(--find-dock\) \+ /.test(fade.height), "it is at least as tall as the field's dock, so the gap and the strip below the deck are covered");
+  assert.ok(fade.height.includes("var(--s-12) + var(--s-1)"), "…and clears the 52px field");
+  assert.ok(/^linear-gradient\(to top, var\(--paper\) calc\(var\(--find-dock\) \+ var\(--s-6\)\), transparent\)$/.test(fade.background), "paper, solid through the field's mid-line, then clear");
+  assert.strictEqual(rule("body.view-find.kb-open::after").display, "none", "keyboard up: the deck is gone, so is the fade");
+  assert.strictEqual(rule("body.view-find.sh-searching::after").display, "none", "a typed query: results own the page");
+});
+
+test("the interim bar-as-deck rules are gone: the live deck (tactile mini) is the only thing that styles the tab bar on Find", () => {
+  /* Iteration 2: Find used to restyle the old four-tab bar into a deck-shaped
+     box on this page only. The live three-tab deck replaces it on every page, so a
+     second `.tab-bar` skin here would fight it (and kept the old four tabs'
+     thin glyphs on screen).
+     MUTATION: add `body.view-find .tab-bar { overflow: hidden }` back -> red. */
+  const start = CSS.indexOf("FIND (TACTILE): the subject mosaic page");
+  const end = CSS.indexOf("COMPONENT GALLERY. Development-only");
+  const section = CSS.slice(start, end);
+  assert.ok(!/\.tab-bar|\.tab-btn/.test(section.replace(/\/\*[\s\S]*?\*\//g, "")), "no rule in the Find section targets the tab bar");
 });

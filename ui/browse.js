@@ -492,7 +492,7 @@ function findFollowedHtml() {
       : "";
     return `<a class="find-strip__item" href="#${esc(showRoutePath(e.id))}"><span class="find-strip__art find-art--c${tactileHash(e.id)}" data-i="${esc(tactileStationCode(name))}">${img}</span><span class="micro find-strip__name">${esc(name)}</span></a>`;
   }).join("");
-  return `<section class="find-sect" aria-labelledby="find-followed-h"><div class="find-sect__head"><h3 class="heading" id="find-followed-h">Followed shows</h3><a class="textbtn find-all" href="#/starred-shows">See all</a></div><div class="find-strip">${items}</div></section>`;
+  return `<section class="find-sect" aria-labelledby="find-followed-h"><h3 class="heading" id="find-followed-h">Followed shows</h3><div class="find-strip">${items}</div></section>`;
 }
 
 function findSubjectsHtml() {
