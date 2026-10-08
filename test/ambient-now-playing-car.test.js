@@ -103,7 +103,8 @@ test("car.css carries the plan's numbers: artwork 240 / 200 / 180, Play 112, ski
   /* MUTATION: change Play's 112px to 111px -> red.   MUTATION: change the 699.98px breakpoint to 600px -> red (the
      200 artwork must start under 700, the number the plan states).   MUTATION: change the short screen's is-long-title 180px to 200px -> red (the title's third line is paid for with 20px of artwork).
      MUTATION: change the title's `-webkit-line-clamp: 3` to 2 -> red (an ellipsis on line two at 375x667). */
-  assert.match(css, /\[data-posture="car"\] \.ag-np,\s*\[data-posture="car"\] \.ag-np\.is-long-title \{ --np-art: 240px; \}/, "240 even when a long title would shrink it to 180");
+  /* MUTATION (iteration 4): restore the combined `[data-posture="car"] .ag-np, [data-posture="car"] .ag-np.is-long-title { --np-art: 240px; }` -> red (the sleeve would stay 240 under a three-line title and the gaps would squeeze instead). */
+  assert.match(css, /\[data-posture="car"\] \.ag-np \{ --np-art: 240px; \}\s*\[data-posture="car"\] \.ag-np\.is-long-title \{ --np-art: 180px; \}\s*@media/, "240, and 180 under a three-line title on a tall screen too");
   assert.match(css, /@media \(max-height: 699\.98px\) \{\s*\[data-posture="car"\] \.ag-np \{ --np-art: 200px; \}\s*\[data-posture="car"\] \.ag-np\.is-long-title \{ --np-art: 180px; \}/, "200 under 700px tall, 180 when a short screen's title runs three lines");
   assert.match(css, /\.ag-np-play\.fp-big \{ width: 112px; height: 112px; min-width: 112px; min-height: 112px; \}/, "Play 112, its minimum too");
   assert.match(css, /\.ag-np-skip \{ width: 72px; height: 72px; min-width: 72px; min-height: 72px; \}/, "skips 72, their minimum too");

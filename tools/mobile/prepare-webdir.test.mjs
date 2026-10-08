@@ -2405,7 +2405,7 @@ function makeFakeRepo({
   );
   /* The shell-only sources live outside the site's own tree, so they are not
      covered by the SHELL_FILES loop above. */
-  for (const f of SHELL_ONLY_FILES) write(f.src, "/* the shell's foreground-service bridge */\n");
+  for (const f of SHELL_ONLY_FILES) write(f.src, f.dest.endsWith(".json") ? '{"shell":"document"}' : "/* the shell's foreground-service bridge */\n");
   write("sw.js", 'const CACHE = "foray-v4";');
   write("player/client.js", 'import { x } from "./queue-manager.js";');
   write("player/queue-manager.js", "export const x = 1;");
@@ -2974,6 +2974,19 @@ test("K-01: the probe passage ships into the shell and is not a script tag", () 
   assert.ok(!shellScriptTags().some((t) => t.includes("kokoro-probe-passage")), "a JSON file is not a script");
   const bytes = fs.statSync(path.join(ROOT, entry.src)).size;
   assert.ok(bytes < 48 * 1024, `the passage is ${bytes} B — if it grew past 48 KB something other than four phonemized lines got in`);
+});
+
+test("the shell-only probe passage ships compact and parses to the source (Redesign 2026: 21 KB of indentation kept the bundle over the 3 MB cap)", () => {
+  /* MUTATION: change the shell-only branch in prepare() back to copy(src, f.dest) -> the compactness assertion goes red.
+     MUTATION: serialise something other than the parsed source (e.g. {}) -> the deepEqual goes red. */
+  const entry = SHELL_ONLY_FILES.find((f) => f.src.endsWith("kokoro-probe-passage.json"));
+  const source = fs.readFileSync(path.join(ROOT, entry.src), "utf8");
+  withRealBundle((r, absOut) => {
+    const shipped = fs.readFileSync(path.join(absOut, entry.dest), "utf8");
+    assert.deepEqual(JSON.parse(shipped), JSON.parse(source), "compacting must not change one value");
+    assert.equal(shipped, JSON.stringify(JSON.parse(source)), "the shipped passage is the compact serialisation");
+    assert.ok(shipped.length < source.length * 0.6, `shipped ${shipped.length} B of ${source.length} B — indentation is back`);
+  });
 });
 
 test("K-01: the page's two passage URLs match where the file actually lands", () => {

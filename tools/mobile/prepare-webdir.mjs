@@ -1907,6 +1907,10 @@ export function prepare({
   for (const f of shellOnly) {
     const src = path.join(root, f.src);
     if (isMinified(f.dest)) minify(src, f.dest);
+    /* A shell-only JSON document ships compact, like every data/*.json beside it (Redesign 2026: kokoro-probe-passage.json is
+       pretty-printed in the repo for git diffs, 35 KB against 14 KB compact, and that 21 KB is what kept the bundle under the
+       3 MB cap once car posture landed; the page reads it with fetch().json() and the web keeps serving the indented source). */
+    else if (f.dest.endsWith(".json")) reserialize(src, f.dest);
     else copy(src, f.dest);
   }
 

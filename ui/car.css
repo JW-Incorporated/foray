@@ -13,13 +13,14 @@
 /* A held mini row would otherwise raise the system callout on top of the sheet it just opened. */
 .fp-bar { -webkit-touch-callout: none; }
 
-/* Sizes. The title's 3-line growth shrinks the artwork to 180 in the normal posture (is-long-title). In the car the
-   artwork stays 240 whatever the title does on a tall screen, and is 200 under 700px tall; there a three-line title trades
-   artwork height for its third line (180, DIRECTION: "artwork drops to 180px under a three-line title"), so the one piece
-   of copy the posture exists to read is never cut short. The rule is restated here because the plain car selector would
-   otherwise lose to now-playing.css's is-long-title 180 on tall screens. */
-[data-posture="car"] .ag-np,
-[data-posture="car"] .ag-np.is-long-title { --np-art: 240px; }
+/* Sizes. The artwork is 240 (200 under 700px tall), and a three-line title steps it down to 180 at EVERY height
+   (DIRECTION: "artwork drops to 180px under a three-line title"; iteration 4 of the art director's call, reversing
+   iteration 1's "240 whatever the title does", which kept the full sleeve and squeezed the gaps above and below it, so the
+   rhythm changed with the title's length instead of the sleeve stepping). The title is the copy the posture exists to
+   read and is never cut short. The is-long-title rule is restated here because the plain car selector would otherwise
+   lose to now-playing.css's is-long-title clamp on tall screens (this selector is one class heavier). */
+[data-posture="car"] .ag-np { --np-art: 240px; }
+[data-posture="car"] .ag-np.is-long-title { --np-art: 180px; }
 @media (max-height: 699.98px) {
   [data-posture="car"] .ag-np { --np-art: 200px; }
   [data-posture="car"] .ag-np.is-long-title { --np-art: 180px; }

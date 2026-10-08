@@ -18,7 +18,7 @@ const rect = (w, h, bottom = 0) => ({ width: w, height: h, top: bottom - h, bott
 /** A clean measurement at a viewport, from the plan's numbers. */
 function good(w = 393, h = 852) {
   const lines = 3;                                  // a long title runs its three lines at every height
-  const art = h < 700 ? 180 : 240;                  // ... and under 700px tall a third line costs the artwork 20px
+  const art = 180;                                  // ... and a third line steps the artwork down to 180 at every height
   return {
     viewport: { w, h },
     posture: "car",
@@ -41,11 +41,11 @@ const VIEWPORTS = [[393, 852], [375, 667]];
 const rules = (list) => [...new Set(list.map((x) => x.rule))].sort();
 
 test("both plan viewports are clean from the plan's own numbers", () => {
-  /* MUTATION: change ART_SHORT_LONG_TITLE_PX from 180 to 190 in lib/car-rules.mjs -> red at 375x667.
+  /* MUTATION: change ART_LONG_TITLE_PX from 180 to 190 in lib/car-rules.mjs -> red at 375x667.
      MUTATION: change SKIP_PX from 72 to 56 -> red at both. */
   for (const [w, h] of VIEWPORTS) assert.deepEqual(evaluateCar(`${w}x${h}`, good(w, h)), [], `${w}x${h}`);
   assert.equal(artFor(852), 240); assert.equal(artFor(700), 240); assert.equal(artFor(699), 200); assert.equal(artFor(667), 200);
-  assert.equal(artFor(667, 3), 180, "a three-line title on a short screen"); assert.equal(artFor(852, 3), 240, "a tall screen keeps 240 under three lines");
+  assert.equal(artFor(667, 3), 180, "a three-line title on a short screen"); assert.equal(artFor(852, 3), 180, "a tall screen steps down too under three lines"); assert.equal(artFor(852, 2), 240, "two lines keep 240");
   assert.equal(artFor(667, 2), 200, "two lines leave the short screen's 200");
   assert.equal(clampFor(852), 3); assert.equal(clampFor(800), 3); assert.equal(clampFor(799), 3); assert.equal(clampFor(667), 3);
 });
@@ -78,14 +78,15 @@ test("the posture must fit without scrolling, so Play is never only reachable by
   assert.deepEqual(evaluatePlayClearance("x", m), [], "one pixel of rounding is not a scroll");
 });
 
-test("artwork is 240, 200 under 700px tall, and 180 only where a short screen's title runs three lines", () => {
+test("artwork is 240, 200 under 700px tall, and 180 wherever the title runs three lines", () => {
   /* MUTATION: change SHORT_BELOW_PX from 700 to 600 -> red (a 667 viewport expects 240 and the good fixture's 200 fails).
      MUTATION: make artFor ignore the viewport (return 240) -> red at 375x667.
-     MUTATION: make artFor ignore titleLines (drop the ART_SHORT_LONG_TITLE_PX branch) -> red: the iteration-2 fix (a 667
+     MUTATION: make artFor ignore titleLines (drop the ART_LONG_TITLE_PX branch) -> red: the iteration-2 fix (a 667
      screen trades 20px of artwork for the title's third line) would then be asserted as a 200 artwork under a 3-line title. */
   const tall = good(393, 852);
-  tall.art = rect(180, 180, 300);
-  assert.deepEqual(rules(evaluateSizes("x", tall)), ["artwork-size"], "180 under a 3-line title is a short-screen trade, not a tall one");
+  assert.deepEqual(evaluateSizes("x", tall), [], "180 under a 3-line title is the rule at 852 too");
+  tall.art = rect(240, 240, 300);
+  assert.deepEqual(rules(evaluateSizes("x", tall)), ["artwork-size"], "240 under a 3-line title is the iteration-3 build, which squeezed the gaps instead");
   const short = good(375, 667);
   short.art = rect(240, 240, 300);
   assert.deepEqual(rules(evaluateSizes("x", short)), ["artwork-size"], "240 on a 667 screen is the old overflow");
