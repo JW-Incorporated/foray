@@ -166,6 +166,8 @@ const SHELL = [
   "ui/today.css",
   /* Redesign 2026 (ambient): the first-run Room. A stylesheet, so listed by name. */
   "ui/onboarding.css",
+  /* Redesign 2026 (ambient): the show page, the Room and its EpisodeRows. A stylesheet, so listed by name. */
+  "ui/show.css",
   /* Redesign 2026 (ambient): Foray detail. A stylesheet, so listed by name. */
   "ui/foray-detail.css",
   /* Redesign 2026 (ambient): Settings, Tuning, About and the gear's Sheet. */

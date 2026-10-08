@@ -322,6 +322,31 @@ test("a successful fetch swaps in the full-catalogue episode list", async () => 
   assert.ok(container.innerHTML.includes("Full Ep Two"), "must render every full-catalogue episode");
 });
 
+test("the full list is drawn latest first, whatever order the endpoint answered in (Redesign 2026, show page)", async () => {
+  /* The rows are EpisodeRows and the page owns their order: newest on top (BUILD-NOTES section 10 item 10). The endpoint
+     here answers OLDEST first on purpose; a page that trusted the server's order would show it that way round.
+     MUTATION: make showRowsLatestFirst return its argument untouched -> the order assertion goes red. */
+  const fetchImpl = () => Promise.resolve({
+    ok: true,
+    json: async () => ({
+      show_id: "show-a", stale: false, error: null,
+      episodes: [
+        { guid: "old", title: "Oldest Ep", description_text: "d", audio_url: "https://cdn.example.com/o.mp3", duration_seconds: 600, published_at: "2026-01-01T00:00:00.000Z" },
+        { guid: "mid", title: "Middle Ep", description_text: "d", audio_url: "https://cdn.example.com/m.mp3", duration_seconds: 600, published_at: "2026-02-01T00:00:00.000Z" },
+        { guid: "new", title: "Newest Ep", description_text: "d", audio_url: "https://cdn.example.com/n.mp3", duration_seconds: 600, published_at: "2026-03-01T00:00:00.000Z" },
+      ],
+    }),
+  });
+  const m = mount({ fetchImpl });
+  seedShowAndPool(m.ctx, { show: { show_id: "show-a", title: "Show A", taxonomy_node_ids: [] } });
+  m.ctx.renderShow("show-a");
+  await flushMicrotasks();
+  const html = m.viewEl._episodesContainerRef.innerHTML;
+  const at = ["Newest Ep", "Middle Ep", "Oldest Ep"].map((t) => html.indexOf(t));
+  assert.ok(at.every((v) => v >= 0), "all three rows are drawn");
+  assert.ok(at[0] < at[1] && at[1] < at[2], `newest, then middle, then oldest: ${at}`);
+});
+
 test("every full-catalogue episode row is playable in-app (real audio_url, no link-out)", async () => {
   /* Direct fix for the link-out problem the card exists to close. Checks the
      play button renders, which playBtn() only does when item.audio_url is
@@ -346,7 +371,8 @@ test("every full-catalogue episode row is playable in-app (real audio_url, no li
   await flushMicrotasks();
 
   const container = m.viewEl._episodesContainerRef;
-  assert.match(container.innerHTML, /class="play-btn"/, "the full-catalogue episode must render a play button, not a link-out");
+  /* Redesign 2026 (ambient): the row's Play is the EpisodeRow's own (`data-sh-play`, an icon button), not epRow's `play-btn`. */
+  assert.match(container.innerHTML, /<button type="button" class="ag-btn ag-btn-play ag-btn-size-44"[^>]*data-sh-play="show-a--g1"/, "the full-catalogue episode must render a play button, not a link-out");
   assert.ok(!container.innerHTML.includes("Listen in your podcast app"), "must not fall back to link-out when a real audio_url is present");
 });
 

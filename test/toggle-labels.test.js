@@ -173,18 +173,36 @@ test("the episode star is named by its state, at build time and after a tap", ()
 });
 
 /* The inverted case: "★ Starred" on screen, "Star show" to a screen reader.
-   MUTATION: restore toggleShowStar's bare `b.textContent = …` write. */
+   REDESIGN 2026 (ambient, show page): the words are "Follow" / "Following" and the glyph is an icon (the Regular
+   i-plus becomes the Fill i-check-circle-fill), so the button is written through paintFollow(): the icon, the word and
+   the accessible name in ONE call (followFillHtml + followName), and showStarBtn builds the same three for the first
+   paint. The name is the word, then the show, so it always contains the visible text.
+   MUTATION: have paintFollow write the icon and word but leave the aria-label alone -> the on-state name assertion goes
+   red; or have followName ignore its argument -> the off/on names collapse into one. */
 test("the show's Follow button never announces the opposite of what it shows", () => {
   const btn = selectable("data-show-star", "s-1");
   const m = mountApp({ buttons: [btn] });
   const off = m.ctx.showStarBtn("s-1");
-  assert.strictEqual(textOf(off), "+ Follow");
-  assert.strictEqual(attrOf(off, "aria-label"), "Follow show");
+  assert.match(off, /<span>Follow<\/span><\/button>/, "unfollowed shows the word Follow");
+  assert.match(off, /#i-plus"/, "…beside the Regular plus");
+  assert.strictEqual(attrOf(off, "aria-label"), "Follow Show One");
+  assert.strictEqual(attrOf(off, "data-follow-name"), "Show One", "the repaint needs the show's own name");
+
+  btn.dataset.followName = "Show One";
+  m.ctx.toggleShowStar("s-1");
+  assert.match(btn.innerHTML, /<span>Following<\/span>/, "followed shows the word Following");
+  assert.match(btn.innerHTML, /#i-check-circle-fill"/, "…beside the Fill check, a fill change and not colour alone");
+  assert.ok(!/#i-plus"/.test(btn.innerHTML), "the plus is gone");
+  assert.strictEqual(btn.getAttribute("aria-label"), "Following Show One", "the repaint must rename it, not only re-word it");
+  assert.ok(btn.classList.contains("is-following"));
+  const on = m.ctx.showStarBtn("s-1");
+  assert.strictEqual(attrOf(on, "aria-label"), "Following Show One", "and a fresh build agrees with the repaint");
+  assert.match(on, /class="ag-btn ag-btn-secondary sh-follow is-following"/);
 
   m.ctx.toggleShowStar("s-1");
-  assert.strictEqual(btn.textContent, "✓ Followed");
-  assert.strictEqual(btn.getAttribute("aria-label"), "Followed");
-  assert.strictEqual(attrOf(m.ctx.showStarBtn("s-1"), "aria-label"), "Followed");
+  assert.match(btn.innerHTML, /<span>Follow<\/span>/);
+  assert.strictEqual(btn.getAttribute("aria-label"), "Follow Show One");
+  assert.ok(!btn.classList.contains("is-following"));
 });
 
 /* ------------------------------------------------------------------ */

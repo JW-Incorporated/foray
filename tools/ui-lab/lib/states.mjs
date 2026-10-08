@@ -418,5 +418,11 @@ export function appStates(fx) {
         { label: "up-next-toast", route: "#/queue", run: (page) => removeFirstQueueRow(page), ready: ".lb-toast.is-open" },
       ],
     },
+    {
+      id: "show",
+      description: "A fresh profile on a show page (Redesign 2026, ambient): the Room lit by the show, Follow in its off state (the Regular plus), the latest episode first. The returning state's `show` step is the followed state.",
+      seed: "dismissed",
+      steps: [{ label: "show-unfollowed", route: "#/show/" + encodeURIComponent(fx.shows[0].show_id), ready: "[data-sh-room]" }],
+    },
   ];
 }

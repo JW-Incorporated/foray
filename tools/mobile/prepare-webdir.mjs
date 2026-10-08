@@ -272,6 +272,7 @@ export const SHELL_FILES = [
   "ui/primitives.css",
   "ui/today.css",
   "ui/onboarding.css",
+  "ui/show.css",
   "ui/foray-detail.css",
   "ui/settings.css",
   "ui/library.css",
