@@ -575,28 +575,33 @@ test("a keystroke with no local match says it is searching — never 'not found'
      250 ms later. The note used to read `No results for "huberman".` for that
      whole window and then sit above ten results.
      MUTATION: in paintShowResults, drop the `settled` test and always write the
-     "No shows found" sentence. The first assertion goes red. */
+     "No shows match" sentence. The first assertion goes red. */
   const m = mountSearch({ catalogue: [{ show_id: "hub", title: "Huberman Lab" }], catalogueDelayMs: 50 });
   m.ctx.onShowSearchInput("huberman");
   assert.match(m.note.textContent, /Searching for \u201chuberman\u201d/, `the keystroke must not claim an answer: "${m.note.textContent}"`);
   await waitFor(() => /Huberman Lab/.test(m.view.querySelector("#sh-results").innerHTML) && m.note.hidden);
   assert.match(m.view.querySelector("#sh-results").innerHTML, /Huberman Lab/, "the catalogue's row lands");
   assert.ok(m.note.hidden, "and the note steps aside for it");
-  assert.ok(!m.said.some((s) => /not found|No results|No shows found/i.test(s)),
+  assert.ok(!m.said.some((s) => /not found|No results|No shows found|No shows match/i.test(s)),
     `"not found" must never have been said about a search that found something: ${JSON.stringify(m.said)}`);
 });
 
-test("a search that every pass answered with nothing says 'No shows found' — scoped to shows", async () => {
+test("a search that every pass answered with nothing says 'No shows match' — scoped to shows — over the key that makes a playlist of it", async () => {
   /* The settled half of the same convention, and the scope: the note sits above
      the Episodes and Playlists sections, so it names what IT searched.
      MUTATION: delete the `showPassDone(...)` call from the catalogue pass. The
      count never reaches zero, the note stays "Searching…", red. */
   const m = mountSearch();
   m.ctx.renderShowSearchResults("zzqx");
-  await waitFor(() => /No shows found/.test(m.note.textContent));
-  assert.strictEqual(m.note.textContent, "No shows found for \u201czzqx\u201d.");
+  await waitFor(() => /No shows match/.test(m.note.textContent));
+  assert.strictEqual(m.note.textContent, "No shows match \u2018zzqx\u2019.");
   assert.ok(!m.note.hidden);
-  assert.ok(m.offer().hidden, "every pass answered, and there is nothing else to offer");
+  /* Tactile `search-none`: never a bare sentence. With no subject to name, what is
+     offered is the "Make a playlist about" key and nothing else (the subject cases
+     are in test/tactile-find-none.test.js). */
+  assert.ok(!m.offer().hidden, "the settled line is never left bare");
+  assert.match(m.offer().innerHTML, /data-create-playlist="zzqx"/, "the key is offered");
+  assert.doesNotMatch(m.offer().innerHTML, /find-none"|fy-chips/, "and with no subject named, nothing but the key");
   assert.ok(m.partial().hidden, "and nothing failed, so no failure line");
 });
 
@@ -608,8 +613,8 @@ test("an empty answer behind a pass that FAILED says part of the search did not 
      showPassDone. The failure is not reported, and this goes red. */
   const m = mountSearch({ directoryError: "rate-limited" });
   m.ctx.renderShowSearchResults("zzqx");
-  await waitFor(() => /No shows found/.test(m.note.textContent) && /Part of this search didn't load/.test(m.partial().innerHTML));
-  assert.match(m.note.textContent, /No shows found/);
+  await waitFor(() => /No shows match/.test(m.note.textContent) && /Part of this search didn't load/.test(m.partial().innerHTML));
+  assert.match(m.note.textContent, /No shows match/);
   assert.match(m.partial().innerHTML, /Part of this search didn't load\./);
   const before = m.calls.filter((u) => u.includes("fallthrough=1")).length;
   assert.ok(m.retry(m.partial()), "the failure offers Try again");
@@ -661,8 +666,8 @@ test("a subject's own name that finds no show by title offers that subject's cat
   const catalog = { shows: [{ show_id: "s1", title: "Alpha Show", taxonomy_node_ids: ["science/physics"] }] };
   const m = mountSearch({ taxonomy, catalog });
   m.ctx.renderShowSearchResults("Science");
-  await waitFor(() => /No shows found/.test(m.note.textContent) && /category/.test(m.offer().innerHTML));
-  assert.match(m.note.textContent, /No shows found for \u201cScience\u201d/);
+  await waitFor(() => /No shows match/.test(m.note.textContent) && /category/.test(m.offer().innerHTML));
+  assert.match(m.note.textContent, /No shows match \u2018Science\u2019/);
   const html = m.offer().innerHTML;
   assert.match(html, /href="#\/category\/science%2Fphysics"/, `the category that holds a show is offered: ${html}`);
   assert.doesNotMatch(html, /geology/, "a category with no shows is not offered — it would be another dead end");
