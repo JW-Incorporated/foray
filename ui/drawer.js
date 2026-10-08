@@ -179,6 +179,9 @@ function bindDrawerChrome() {
      see the block comment above. */
   $("#drawer").addEventListener("click", onDrawerAction, true);
   bindOverlayKeys();
+  /* Settings' "What 4a does" (Redesign 2026, onboarding): the first-run Room again. The drawer has already closed (capture phase above). */
+  const intro = $("#intro-replay");
+  if (intro) intro.addEventListener("click", () => showWhatFouraDoes());
   const mark = $(".wordmark");
   if (mark) mark.addEventListener("click", (e) => sameHashTap(mark, e));
 }

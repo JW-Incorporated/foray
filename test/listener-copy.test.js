@@ -332,7 +332,8 @@ test("every text field has a name that survives typing, and search notes are liv
      left with the builder; Create's is the one playlist field. */
   assert.ok(inputs.length >= 4, `expected the app's text inputs, found ${inputs.length}`);
   for (const i of inputs) assert.match(i, /aria-label="[^"]+"/, `a text field named only by its placeholder: ${i}`);
-  assert.match(APP_SRC, /typedInput\.setAttribute\("aria-label", /);
+  /* Redesign 2026 (onboarding): the first-run sheet's "Or type a subject yourself" field is retired with the sheet, so its
+     aria-label assertion went with it; the fields that remain are checked by the loop above. */
   assert.match(APP_SRC, /<p id="sh-note" class="note" role="status" aria-live="polite" hidden><\/p>/);
   assert.match(APP_SRC, /data-show-ep-search-note role="status" aria-live="polite" hidden/);
   assert.match(APP_SRC, /<form id="sh-form" role="search"/);
@@ -411,7 +412,8 @@ test("the app speaks as 4a, never as 'we', 'us' or 'our'", () => {
   /* The scanner can see: the rewritten strings are listener prose it finds. */
   const all = listenerProse("app.js").map((l) => l.text).join("\n");
   assert.ok(all.includes("Shows 4a vouches for"), "the editorial row's heading");
-  assert.ok(all.includes("This is how 4a tunes your suggestions."), "the first-run sheet");
+  assert.ok(all.includes("4a picks a few podcasts a day and says why. No account."), "the first-run Room's body");
+  assert.ok(all.includes("Hear things outside your lane."), "the first-run Room's title");
 });
 
 /* copy-7. MUTATION: restore "Not into this topic". */

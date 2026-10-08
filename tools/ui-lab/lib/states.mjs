@@ -243,9 +243,9 @@ export function appStates(fx) {
     },
     {
       id: "first-run",
-      description: "Brand-new profile: the onboarding explainer sheet over Home.",
+      description: "Brand-new profile: the first-run Room (Redesign 2026, ambient) over Home. The step keeps its old label, intro-sheet, because other directions' screens.json rows name it.",
       seed: "empty",
-      steps: [{ label: "intro-sheet", route: "#/", ready: "#first-time-sheet" }],
+      steps: [{ label: "intro-sheet", route: "#/", ready: "#onboarding-room" }],
     },
     {
       id: "empty",
