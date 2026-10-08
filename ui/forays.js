@@ -86,8 +86,8 @@ function renderForays() {
 
 /* ---------- the list: two-up ForayCards (Redesign 2026, ambient, BUILD-NOTES 3 "ForayCard") ----------
 
-   A card is the collage at 120 (the first show's square whole and on top), the eyebrow "Foray" in Lamp, the title
-   as a headline, "<n> shows, <m> min", and a strip 12 tall (bars 8, the current bar 12). It is two-up and never
+   A card is the collage at 120 (the first show's square whole and on top), the "Foray" pill (Lamp fill, ink on it: 4a's hand), the title
+   as a headline (every word of it: a name is never cut), "<n> shows, <m> min", and a strip 12 tall (bars 8, the current bar 12). It is two-up and never
    three-up: at 104 the title would be cut on every card (the Library's compact ForayTile is the three-up form).
 
    STATE IS SHAPE, NOT COLOUR ALONE. A part-played Foray lights the strip up to where the listener is (the bars
@@ -127,6 +127,18 @@ function forayCardBars(r, player, elapsed = null) {
   });
 }
 
+/** Every show a listener will HEAR in this Foray, authored shows first and then any the running order adds: the collage
+    draws these, so it agrees with the "<n> shows" the meta counts from the same strip (the authored list alone can name
+    fewer, and a 7-show Foray then drew one tile). */
+function forayTapeShows(r, player) {
+  const names = new Set(r.shows || []);
+  try {
+    const model = r.playable && r.playable.length && typeof player?.stripModel === "function" ? player.stripModel(r.playable) : null;
+    for (const name of (model && model.shows) || []) if (name) names.add(name);
+  } catch (_) { /* a malformed running order draws the authored shows only */ }
+  return [...names];
+}
+
 /** Everything one card draws, computed up front: { id, title, draft, covers, meta, state, stateLabel, bars, glow }.
     `state` is "fresh" | "started" | "finished", read from the stored resume point (forayResumeRows, which applies the
     draft rule and the live running order). */
@@ -135,7 +147,7 @@ function forayCardModels(list) {
   const rows = new Map(forayResumeRows({ limit: Infinity, includeFinished: true }).map((p) => [p.id, p]));
   return list.map((f) => {
     const r = resolveListedForay(f.id);
-    const shows = r ? forayShowsOf(r) : [];
+    const shows = r ? forayShowsOf({ ...r, shows: forayTapeShows(r, player) }) : [];
     const row = rows.get(f.id) || null;
     const finished = Boolean(row && row.finished);
     const started = Boolean(row && !row.finished && row.elapsedSec > 0);
@@ -159,8 +171,8 @@ function forayCardHtml(c) {
   const done = c.state === "finished" ? `<span class="fl-done">${agIcon("check-circle-fill", 20)}</span>` : "";
   return `<article class="raised fl-card is-${esc(c.state)}" data-foray="${esc(c.id)}">
       <span class="fl-art">${agCollage(c.covers, { size: 120 })}${done}</span>
-      <span class="eyebrow lamp fl-eyebrow">${c.draft ? "Foray · draft" : "Foray"}</span>
-      <h2 class="t-headline clamp3 fl-card-title"><a class="fl-link" href="#${esc(forayRoutePath(c.id))}">${esc(c.title)}</a></h2>
+      <span class="ag-pill fl-eyebrow">${c.draft ? "Foray · draft" : "Foray"}</span>
+      <h2 class="t-headline fl-card-title"><a class="fl-link" href="#${esc(forayRoutePath(c.id))}">${esc(c.title)}</a></h2>
       <p class="t-caption fl-meta">${esc(c.meta)}${c.stateLabel ? `<span class="sr-only">. ${esc(c.stateLabel)}</span>` : ""}</p>
       ${bars ? `<div class="fl-strip" aria-hidden="true">${bars}</div>` : ""}
     </article>`;
@@ -179,6 +191,35 @@ function forayCastHtml() {
   return `<div class="dock-cast fl-cast" aria-hidden="true"></div>`;
 }
 
+/* THE ROOT'S GLOW IS BORROWED, NOT OWNED. The Dock lives on <body>, outside the page, so the Forays page lights the
+   root's --glow for it. Whatever the root held before is kept the first time and put back when the route changes
+   (route() calls forayReleaseRootGlow), or every page without a Glow of its own kept the Forays page's tint on its Veil. */
+let forayRootGlowHeld = false;
+let forayRootGlowBefore = "";
+
+function forayClaimRootGlow(glow) {
+  if (!glow) return;
+  try {
+    const root = document.documentElement;
+    if (!forayRootGlowHeld) {
+      forayRootGlowBefore = root.style.getPropertyValue("--glow") || "";
+      forayRootGlowHeld = true;
+    }
+    forayCssVar(root, "--glow", glow);
+  } catch (_) { /* a stub document */ }
+}
+
+function forayReleaseRootGlow() {
+  if (!forayRootGlowHeld) return;
+  forayRootGlowHeld = false;
+  try {
+    const root = document.documentElement;
+    if (forayRootGlowBefore) root.style.setProperty("--glow", forayRootGlowBefore);
+    else root.style.removeProperty("--glow");
+  } catch (_) { /* a stub document */ }
+  forayRootGlowBefore = "";
+}
+
 /** After the cards are in the document: the bars' widths and fills (a CSSOM write, never a style attribute: the CSP
     forbids that), each collage in its first show's light, and the page and the root (the Dock lives on <body>, outside
     the page) in the first card's. */
@@ -195,7 +236,7 @@ function paintForayCards(scope, cards) {
   const glow = cards.length ? cards[0].glow : "";
   const page = scope.querySelector(".fl-page");
   if (glow) forayCssVar(page, "--glow", glow);
-  try { if (glow) forayCssVar(document.documentElement, "--glow", glow); } catch (_) { /* a stub document */ }
+  forayClaimRootGlow(glow);
   scope.querySelectorAll(".fl-card .ag-collage").forEach((el, i) => {
     if (cards[i] && cards[i].glow) forayCssVar(el, "--art-glow", cards[i].glow);
   });

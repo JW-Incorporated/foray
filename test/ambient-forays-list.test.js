@@ -250,18 +250,20 @@ test("the grid is two columns at every width and the collage is 120: a ForayCard
 
 /* ================================================================================ 3 the card */
 
-test("a card reads: collage, eyebrow 'Foray' in Lamp, the title as a headline link, '<n> shows, <m> min', the strip", async () => {
-  /* MUTATIONS (each run red): swap the eyebrow and the title in forayCardHtml; change the eyebrow text to "Forays" or drop
-     `lamp`; drop `t-headline` or `clamp3` from the title; join the meta with " · " instead of ", "; use `r.shows.length`
+test("a card reads: collage, the Lamp 'Foray' pill, the title (whole, never cut) as a headline link, '<n> shows, <m> min', the strip", async () => {
+  /* MUTATIONS (each run red): swap the pill and the title in forayCardHtml; change the pill text to "Forays" or make it a
+     plain `eyebrow` span again (grey caption, not Lamp's fill); drop `t-headline` from the title, or put `clamp3` back on it
+     (a title is never cut: BUILD-NOTES 3, hero "never an ellipsis"); join the meta with " · " instead of ", "; use `r.shows.length`
      (authored count) instead of the strip's tally; delete the `fl-strip` line. */
   const m = await mountList();
   const html = m.html();
   const plain = cardOf(html, PLAIN);
   assert.ok(plain, "the plain Foray has its card");
-  const order = ['class="fl-art"', "ag-collage-120", 'class="eyebrow lamp fl-eyebrow"', "<h2", 'class="t-caption fl-meta"', 'class="fl-strip"'].map((s) => plain.indexOf(s));
+  const order = ['class="fl-art"', "ag-collage-120", 'class="ag-pill fl-eyebrow"', "<h2", 'class="t-caption fl-meta"', 'class="fl-strip"'].map((s) => plain.indexOf(s));
   assert.ok(order.every((v) => v >= 0) && order.every((v, i) => i === 0 || v > order[i - 1]), `in order: ${order}`);
-  assert.match(plain, /<span class="eyebrow lamp fl-eyebrow">Foray<\/span>/, "the eyebrow is the word Foray, in Lamp");
-  assert.match(plain, /<h2 class="t-headline clamp3 fl-card-title"><a class="fl-link" href="#\/foray\/capital-types-1">The types of capital a startup can raise<\/a><\/h2>/);
+  assert.match(plain, /<span class="ag-pill fl-eyebrow">Foray<\/span>/, "the pill is the word Foray, on Lamp's fill (4a's hand)");
+  assert.doesNotMatch(plain, /clamp\d/, "no line clamp anywhere on the card: a name is never cut");
+  assert.match(plain, /<h2 class="t-headline fl-card-title"><a class="fl-link" href="#\/foray\/capital-types-1">The types of capital a startup can raise<\/a><\/h2>/);
   const meta = /<p class="t-caption fl-meta">([^<]*)(?:<span[^>]*>[^<]*<\/span>)?<\/p>/.exec(plain);
   assert.ok(meta, "the meta line");
   assert.match(meta[1], /^\d+ shows?, (about )?(\d+ min|\d+ hr( \d+ min)?)$/, `n shows, m min: ${meta[1]}`);
@@ -274,11 +276,15 @@ test("a card reads: collage, eyebrow 'Foray' in Lamp, the title as a headline li
   assert.match(html, /<a class="back ag-btn ag-btn-icon fl-back" href="#\/library" aria-label="Back">/);
   assert.ok(m.ctx.pageHeading(m.view), "pageHeading() finds the title: the route's focus lands on it");
   /* heading order: the page is an h1 and each card an h2, never a skipped level (axe `heading-order`).
-     MUTATION: `<h2 class="t-headline clamp3 fl-card-title">` -> `<h3 ...>` in forayCardHtml -> red. */
+     MUTATION: `<h2 class="t-headline fl-card-title">` -> `<h3 ...>` in forayCardHtml -> red. */
   assert.strictEqual((html.match(/<h1\b/g) || []).length, 1);
   assert.strictEqual((html.match(/<h2\b/g) || []).length, 2, "one h2 per card");
   assert.doesNotMatch(html, /<h3\b/);
   assert.doesNotMatch(html, /style="/, "no inline style: the strict CSP forbids it");
+  /* The collage keeps the primitive's own display (a 2x2 is a grid): a `.ag .fl-art .ag-collage { display: block }` here ties
+     `.ag .ag-collage.c4` on specificity, loads later and wins, which collapsed a 7-show Foray to one tile.
+     MUTATION: re-add that rule to ui/forays.css -> red. */
+  assert.doesNotMatch(CSS, /\.ag-collage[^{,]*\{[^}]*display\s*:/, "forays.css never restyles the collage's display");
   assert.strictEqual(valueOf(".ag .fl-eyebrow", "margin-top"), "var(--s-3)");
   assert.strictEqual(valueOf(".ag .fl-link::after", "inset"), "0", "the title link stretches over the card: the whole card is the tap target");
   assert.strictEqual(valueOf(".ag .fl-card", "position"), "relative");
@@ -393,7 +399,7 @@ test("a draft is a card too: its eyebrow says so, and a Foray with no data still
   withDrafts.store.set("cp_show_drafts", "true");
   withDrafts.ctx.renderCurrentPage();
   const draft = cardOf(withDrafts.html(), NARRATED);
-  assert.match(draft, /<span class="eyebrow lamp fl-eyebrow">Foray · draft<\/span>/);
+  assert.match(draft, /<span class="ag-pill fl-eyebrow">Foray · draft<\/span>/);
   const none = withDrafts.run(`forayCardBars(null, window.ForayPlayer, null)`);
   assert.deepStrictEqual(Array.from(none), [], "no running order: no bars");
   assert.strictEqual(withDrafts.run(`forayCardBars({ playable: [] }, window.ForayPlayer, null).length`), 0);
@@ -481,15 +487,58 @@ test("a title with markup never reaches the DOM as markup, and the paint is CSSO
   assert.doesNotThrow(() => m.ctx.paintForayCards({ querySelectorAll: () => [{ dataset: { grow: "5" }, style: {} }], querySelector: () => ({ style: {} }) }, [{ glow: "x" }]), "a stub document has no CSSOM: nothing painted, nothing thrown");
   assert.doesNotThrow(() => m.ctx.paintForayCards(null, []));
   /* the real page paints the root's Glow before any frame: from the first card, through the same writer */
-  assert.match(APP_SRC.slice(APP_SRC.indexOf("function paintForayCards(")), /forayCssVar\(document\.documentElement, "--glow", glow\)/, "the Dock (on <body>) takes the page's light");
+  assert.match(APP_SRC.slice(APP_SRC.indexOf("function paintForayCards(")), /forayClaimRootGlow\(glow\)/, "the Dock (on <body>) takes the page's light, borrowed through the claim");
   /* ORDER: every colour is read before the markup goes in */
   const render = APP_SRC.slice(APP_SRC.indexOf("function renderForays("), APP_SRC.indexOf("function forayCardMeta("));
   assert.ok(render.indexOf("forayCardModels(forayCards())") < render.indexOf('$("#view").innerHTML = shell(cards.length'), "the Glow is read before the Room is installed");
 });
 
+/* ================================================================================ 7b the root's Glow is borrowed */
+
+test("the root's Glow is borrowed for the Dock and handed back when the route changes; other pages never keep this page's tint", async () => {
+  /* The Forays page lights the ROOT's --glow (the Dock lives outside the page). It used to leave it there, so every page
+     without a Glow of its own (show, episode, about, settings...) tinted its Veil with the Forays page's Glow (5.7-8.1%
+     baseline diffs on every other screen). MUTATIONS (each run red): make forayReleaseRootGlow a no-op; drop the
+     `forayReleaseRootGlow()` call from route() in app.js; let a second claim overwrite the saved "before" value. */
+  const m = await mountList();
+  const props = new Map([["--glow", "oklch(0.5 0.1 10)"]]);
+  const root = { style: { setProperty: (k, v) => props.set(k, v), getPropertyValue: (k) => props.get(k) || "", removeProperty: (k) => props.delete(k) } };
+  const real = m.ctx.document;
+  m.ctx.document = { ...real, documentElement: root };
+  try {
+    m.ctx.forayClaimRootGlow("oklch(0.66 0.100 40)");
+    m.ctx.forayClaimRootGlow("oklch(0.66 0.100 200)");   /* a re-render on the same page */
+    assert.strictEqual(props.get("--glow"), "oklch(0.66 0.100 200)", "the page lights the root");
+    m.ctx.forayReleaseRootGlow();
+    assert.strictEqual(props.get("--glow"), "oklch(0.5 0.1 10)", "what the root held before is put back, not the first claim's");
+    m.ctx.forayReleaseRootGlow();
+    assert.strictEqual(props.get("--glow"), "oklch(0.5 0.1 10)", "a second release is a no-op");
+    props.delete("--glow");
+    m.ctx.forayClaimRootGlow("oklch(0.66 0.100 40)");
+    m.ctx.forayReleaseRootGlow();
+    assert.ok(!props.has("--glow"), "a root that held nothing holds nothing again");
+    m.ctx.forayReleaseRootGlow();
+    m.ctx.forayClaimRootGlow("");
+    assert.ok(!props.has("--glow"), "no Glow, no claim");
+  } finally { m.ctx.document = real; }
+  const at = APP_SRC.indexOf("function route()");
+  const route = APP_SRC.slice(at, APP_SRC.indexOf("landOnPage({ navigated", at));
+  assert.ok(route.indexOf("forayReleaseRootGlow()") > 0 && route.indexOf("forayReleaseRootGlow()") < route.indexOf("\n  renderCurrentPage();"), "route() hands the Glow back before the next page paints");
+});
+
+test("the collage draws every show the listener will hear, not only the authored list", async () => {
+  /* The authored `shows` list can name fewer shows than the running order plays (the meta said "7 shows" over one tile).
+     MUTATION: make forayTapeShows return `r.shows` only -> the added show is missing -> red. */
+  const m = await mountList();
+  const names = m.ctx.forayTapeShows({ shows: ["A"], playable: [{}] }, { stripModel: () => ({ shows: ["A", "B", "C"] }) });
+  assert.deepStrictEqual(Array.from(names), ["A", "B", "C"]);
+  assert.deepStrictEqual(Array.from(m.ctx.forayTapeShows({ shows: ["A"], playable: [] }, null)), ["A"], "nothing playable: the authored shows");
+  assert.deepStrictEqual(Array.from(m.ctx.forayTapeShows({ shows: ["A"], playable: [{}] }, { stripModel: () => { throw new Error("bad"); } })), ["A"], "a malformed running order does not break the list");
+});
+
 /* ================================================================================ 8 contrast */
 
-test("the card's text clears AA on the raised surface in both schemes: title, meta, and the Lamp eyebrow", () => {
+test("the card's text clears AA on the raised surface in both schemes: title and meta (the Lamp pill's own ink-on-Lamp pair is pinned by the token suite)", () => {
   /* The token suite pins text on bg0/bg1/bg2; a card is `.raised`, bg1 under the scheme's overlay, which Dusk lightens and Dawn
      whitens. MUTATION: make Dusk's `--overlay` alpha 0.30 or Dawn's `--text-2` #8A8279 in ui/tokens.css -> red, naming the pair. */
   const block = (re) => { const m = re.exec(TOKENS); assert.ok(m, `token block ${re}`); return m[1]; };
@@ -505,6 +554,8 @@ test("the card's text clears AA on the raised surface in both schemes: title, me
   };
   for (const [name, b] of [["Dusk", dusk], ["Dawn", dawn]]) {
     const bg = over(b);
+    /* the pill: --lamp-ink on --lamp. MUTATION: set Dusk's --lamp-ink to #F3E7D3 in ui/tokens.css -> red. */
+    assert.ok(ok.contrast(hex(b, "--lamp-ink"), hex(b, "--lamp")) >= 4.5, `${name}: the Foray pill's ink on Lamp`);
     for (const fg of ["--ag-text", "--text-2", "--lamp-text"]) {
       const ratio = ok.contrast(hex(b, fg), bg);
       assert.ok(ratio >= 4.5, `${name}: ${fg} on a raised card = ${ratio.toFixed(2)}`);

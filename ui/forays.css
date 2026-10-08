@@ -48,7 +48,6 @@ body.view-forays #view { padding-top: 0; }
    ::after stretches over the card, so the whole card is the tap target (the same pattern as Today's rows). */
 .ag .fl-card { position: relative; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; padding: var(--s-3); }
 .ag .fl-art { position: relative; flex: none; display: block; width: var(--art-foray); height: var(--art-foray); }
-.ag .fl-art .ag-collage { display: block; }
 .ag .fl-eyebrow { margin-top: var(--s-3); }
 .ag .fl-card-title { width: 100%; margin-top: var(--s-1); overflow-wrap: normal; }
 .ag .fl-meta { margin-top: var(--s-1); margin-bottom: var(--s-3); color: var(--text-2); }
