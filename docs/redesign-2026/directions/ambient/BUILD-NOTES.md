@@ -1154,7 +1154,10 @@ the pixel numbers are 11.2's, checked against the round-4 prototype's `.onb-*` r
    acceptance says the head icons keep 3:1 over any art: at the wordmark's baseline the ramp was at 0.28 alpha and the
    pair measured 1.6:1 over pure white art. Held, the pair is 3.27:1 in Dusk and 4.8:1 in Dawn (test 11).
 4. **The strip** is drawn from the first listable foray through `ForayPlayer.stripModel` (narration merged), as bars
-   sharing the 343px by runtime, 2px apart: a show's bar in its artwork hue (`oklch(0.70 0.13 H)` Dusk, `0.52` Dawn, nudged
+   sharing the 343px by runtime, 4px apart (iteration 3: the 2px of 4.1's strip read as one striped block on the dim hues, so the
+   onboarding strip, which is a row of lanterns, takes `--s-1`; neighbours that name one show, and lights that touch, are
+   merged into one bar or one light so three same-hue bars never sit side by side; lights are 12px wide; the unnarrated
+   gaps stay unfilled, a light is only drawn where the foray has narration): a show's bar in its artwork hue (`oklch(0.70 0.13 H)` Dusk, `0.52` Dawn, nudged
    30 degrees when within 24 of a bar already drawn; numbers only), narration as thin Lamp lights, the bar being played 4px
    taller and part-lit (18% in, an illustration, `aria-hidden`). More than 14 bars condense to nine named for the show that
    holds most of each, with a narration light after every third (the prototype's mini-strip rule). It draws in over 1.2s:

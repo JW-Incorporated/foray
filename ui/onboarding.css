@@ -88,9 +88,9 @@
 .ob-room .ob-sleeve.is-lit { --s: 1.08; z-index: 2; }
 .ob-room .ob-sleeve .ag-art { width: 96px; height: 96px; border-radius: var(--r-lg); }
 
-/* The strip: 48 tall, 24 under the sleeves. Bars share the width by runtime, 2px apart; a show's bar is its
+/* The strip: 48 tall, 24 under the sleeves. Bars share the width by runtime, 4px of air apart (a lantern each, never a block); a show's bar is its
    artwork's hue, a narration bar a thin Lamp light; the bar being played is 4px taller and filled. */
-.ob-room .ob-strip { flex: none; display: flex; align-items: flex-start; gap: calc(var(--s-1) / 2); height: 48px; margin-top: var(--s-6); }
+.ob-room .ob-strip { flex: none; display: flex; align-items: flex-start; gap: var(--s-1); height: 48px; margin-top: var(--s-6); }
 .ob-room .ob-bar {
   position: relative; display: block; flex: 1 1 0; min-width: 6px; height: var(--s-6); margin-top: var(--s-3);
   border-radius: var(--r-xs); overflow: hidden; transform-origin: left;
@@ -103,7 +103,7 @@
 .ob-room .ob-bar.is-cur { height: calc(var(--s-6) + var(--s-1)); margin-top: calc(var(--s-3) - var(--s-1)); }
 .ob-room .ob-bar.is-cur::before { opacity: 0.62; }
 .ob-room .ob-bar.is-cur::after { background: color-mix(in oklab, var(--c, var(--seg-c0)) 78%, var(--lamp)); }
-.ob-room .ob-bar.is-narr { min-width: 10px; height: var(--s-1); margin-top: calc(var(--s-3) + (var(--s-6) - var(--s-1)) / 2); box-shadow: 0 0 0 1px var(--lamp-edge); }
+.ob-room .ob-bar.is-narr { min-width: 12px; height: var(--s-1); margin-top: calc(var(--s-3) + (var(--s-6) - var(--s-1)) / 2); box-shadow: 0 0 0 1px var(--lamp-edge); }
 .ob-room .ob-bar.is-narr::before { opacity: 1; background: var(--lamp); }
 .ob-room .ob-bar.is-narr::after { background: var(--lamp); }
 @keyframes ob-bar-in { from { transform: scaleX(0); } to { transform: scaleX(1); } }

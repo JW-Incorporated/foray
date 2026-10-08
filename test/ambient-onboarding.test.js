@@ -356,7 +356,7 @@ test("4. the strip is built from the foray's segments, condensed past 14 bars, w
   const many = mount();
   withForay(many, Array.from({ length: 16 }, (_, i) => `Show ${i % 5}`));
   const condensed = [...many.evalIn("onboardingBars")(many.evalIn("onboardingForay()"))];
-  assert.strictEqual(condensed.length, 12, `nine bars and a narration light after every third, got ${condensed.length}`);
+  assert.ok(condensed.length >= 9 && condensed.length <= 12, `at most nine bars and a narration light after every third (neighbours that name one show are one bar), got ${condensed.length}`);
   assert.ok(condensed.filter((b) => b.s === null).length >= 3, "the lights are there");
   assert.strictEqual(condensed.filter((b) => b.cur).length, 1);
   assert.ok(condensed.every((b) => b.s === null || /^Show \d$/.test(b.s)), "every bar is named for a real show or is a light");
@@ -364,6 +364,35 @@ test("4. the strip is built from the foray's segments, condensed past 14 bars, w
   assert.deepStrictEqual([...bare.evalIn("onboardingBars")(null)], [], "no foray: no strip");
   bare.ctx.ForayPlayer = {};
   assert.deepStrictEqual([...bare.evalIn("onboardingBars")({ playable: [{ show: "A" }] })], [], "no stripModel: no strip, no throw");
+});
+
+test("4b. no two neighbouring bars share a show and no two lights touch, so the strip is lanterns, not a smear", () => {
+  /* MUTATION: delete the `bars.reduce` merge in onboardingBars (the "One lantern per run" block) -> the same-show pair and
+     the doubled lights come back and every assertion below is red. */
+  const m = mount();
+  /* two episodes of A back to back, then B */
+  const b = bridge(["A", "A", "B"]);
+  b.playable.splice(1, 1);   /* drop the bridge between the two A's: nothing separates them */
+  m.ctx.ForayPlayer = b.player;
+  m.state.forays = { forays: [{ id: "f1", status: "published" }] };
+  const small = [...m.evalIn("onboardingBars")(m.evalIn("onboardingForay()"))];
+  assert.deepStrictEqual(small.map((x) => x.s), ["A", null, "B"], "two A segments draw as one bar");
+  assert.strictEqual(small[0].d, 600, "and it holds both lengths");
+  for (const shows of [["A", "A", "A", "B", "B", "B", "C", "C"], Array.from({ length: 30 }, (_, i) => `Show ${Math.floor(i / 6)}`)]) {
+    const many = mount();
+    withForay(many, shows);
+    const bars = [...many.evalIn("onboardingBars")(many.evalIn("onboardingForay()"))];
+    assert.ok(bars.length >= 3, "fixture: the strip has several bars");
+    bars.slice(1).forEach((x, i) => assert.notStrictEqual(x.s, bars[i].s, `bars ${i} and ${i + 1} are both ${JSON.stringify(x.s)}`));
+    assert.strictEqual(bars.filter((x) => x.cur).length, 1, "still exactly one bar playing");
+  }
+});
+
+test("4c. the bars are 4px apart so neighbouring lanterns read as separate", () => {
+  /* MUTATION: set the .ob-strip gap back to `calc(var(--s-1) / 2)` (2px) -> red. */
+  const strip = ONB_RULES.find((r) => r.prelude === ".ob-room .ob-strip");
+  assert.ok(strip, "fixture: the strip rule exists");
+  assert.strictEqual(decls(strip.body).gap, "var(--s-1)", "4px of air between bars (--s-1)");
 });
 
 /* ================================================================== 5. the strip's colours */

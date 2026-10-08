@@ -377,6 +377,14 @@ function onboardingBars(r) {
     }
     bars = out;
   }
+  /* One lantern per run: neighbours that name the same show (two episodes of it back to back) draw as one bar, and
+     two lights in a row (a condensed group that held only narration, then the light after every third) as one. A
+     strip of three same-hue bars side by side reads as a smear, not as a map. */
+  bars = bars.reduce((out, b) => {
+    const last = out[out.length - 1];
+    if (last && last.s === b.s) last.d += b.d; else out.push({ s: b.s, d: b.d });
+    return out;
+  }, []);
   const total = bars.reduce((t, b) => t + b.d, 0);
   const lit = total * ONBOARDING_PLAYED;
   let start = 0, cur = -1;
