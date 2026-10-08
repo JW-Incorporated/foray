@@ -154,14 +154,20 @@ const FORAYS_DOC = { forays: [{ id: "f1", title: "First Foray", status: "publish
 test("#/shows with no catalogue says it could not load the list, and Try again fetches it", async () => {
   /* "No shows here yet." was painted over `state.catalog === null` — a claim
      about 4a's catalogue standing in for a failed fetch.
-     MUTATION: in renderShowIndexPage, drop the `shows === null` branch (treat
-     null like an empty list). This goes red on the first assertion. MUTATION 2:
+     MUTATION: in renderAllShows, drop the `catalogShows === null` branch (treat
+     null like an empty catalogue). This goes red on the first assertion. MUTATION 2:
      drop `bindRetry(... retryCatalog)`. The retry finds nothing to press. */
+  const TWO_SCIENCE = { shows: [
+    { show_id: "s1", title: "Alpha Show", taxonomy_node_ids: ["science"] },
+    { show_id: "s2", title: "Beta Show", taxonomy_node_ids: ["science"] },
+  ] };
   const m = mount({
     hash: "#/shows",
-    fetchImpl: (url) => (url.includes("data/catalog-client.json") ? okJson(CATALOG) : new Promise(() => {})),
+    fetchImpl: (url) => (url.includes("data/catalog-client.json") ? okJson(TWO_SCIENCE) : new Promise(() => {})),
   });
   m.state.catalog = null;
+  /* Two science-tagged shows, so the answered catalogue yields a Discover tile (a subject needs two). */
+  m.state.taxonomy = { nodes: [{ id: "science", label: "Science", parent: null }] };
   m.ctx.renderCurrentPage();
 
   assert.match(m.html(), /Couldn't load the show list\./);
@@ -169,7 +175,8 @@ test("#/shows with no catalogue says it could not load the list, and Try again f
   assert.ok(m.retry(), "the failed list must offer Try again");
   await settle();
   assert.ok(m.fetched.some((u) => u.includes("data/catalog-client.json")), "Try again re-fetches the catalogue");
-  assert.match(m.html(), /Alpha Show/, "and the page repaints from what it answered");
+  /* REDESIGN 2026: the page that repaints is Discover's idle groups, drawn from what the retry answered. */
+  assert.match(m.html(), /href="#\/shows\/q\/Science"/, "and the page repaints from what it answered");
   assert.doesNotMatch(m.html(), /Couldn't load the show list/);
 });
 
@@ -373,7 +380,7 @@ test("Try again on the Foray docs says it is trying, and a late answer repaints 
   // The listener gives up and goes to Search.
   m.ctx.location.hash = "#/shows";
   m.ctx.renderCurrentPage();
-  assert.match(m.html(), /Alpha Show/, "fixture: the Search page is on screen");
+  assert.ok(m.html().includes('<h2 class="t-title">Discover</h2>'), "fixture: the Discover page is on screen");
   /* A repaint of an idle Search page produces the SAME markup, so equality of
      the html would not see it; count writes to #view instead. */
   let paints = 0;
@@ -387,7 +394,7 @@ test("Try again on the Foray docs says it is trying, and a late answer repaints 
   release({ ok: false, status: 503, json: async () => ({}) });
   await settle();
   assert.strictEqual(paints, 0, "a late failure must not repaint the page the listener moved to");
-  assert.match(m.html(), /Alpha Show/);
+  assert.ok(m.html().includes('<h2 class="t-title">Discover</h2>'));
 });
 
 test("Try again on the Foray docs that fails again lands on the same failed page with a fresh button (races-7)", async () => {
@@ -564,9 +571,9 @@ function mountSearch({ catalogue = [], directory = [], directoryError = null, ca
   let text = "";
   Object.defineProperty(note, "textContent", { get: () => text, set: (v) => { text = String(v); said.push(text); } });
   /* `partial` is where the failure line lives since audit round 2 (states-7):
-     above the rows, painted whether or not the list is empty. `offer` keeps
-     the subject chips. */
-  return { ...m, calls, note, said, offer: () => m.view.querySelector("#sh-empty-offer"), partial: () => m.view.querySelector("#sh-partial-note") };
+     above the rows, painted whether or not the list is empty. `empty` is the EmptyState
+     that replaced the "No shows found" note and the subject chips (Redesign 2026). */
+  return { ...m, calls, note, said, empty: () => m.view.querySelector("#sh-empty"), partial: () => m.view.querySelector("#sh-partial-note") };
 }
 
 test("a keystroke with no local match says it is searching — never 'not found' — and the rows arrive under it", async () => {
@@ -585,30 +592,33 @@ test("a keystroke with no local match says it is searching — never 'not found'
     `"not found" must never have been said about a search that found something: ${JSON.stringify(m.said)}`);
 });
 
-test("a search that every pass answered with nothing says 'No shows found' — scoped to shows", async () => {
-  /* The settled half of the same convention, and the scope: the note sits above
-     the Episodes and Playlists sections, so it names what IT searched.
-     MUTATION: delete the `showPassDone(...)` call from the catalogue pass. The
-     count never reaches zero, the note stays "Searching…", red. */
+test("a search that every group answered with nothing says 'Nothing named' — once, in the EmptyState, after all of them have answered", async () => {
+  /* The settled half of the same convention. REDESIGN 2026 (Discover) replaced the shows-scoped "No shows found for
+     <q>." with the EmptyState's "Nothing named <q>.", which names the whole page (a Shows group with no rows over an
+     Episodes group still owed is a SEARCHING page), so it waits for ALL THREE halves (the shows passes, the episode
+     endpoint, the playlist group), not the shows passes alone.
+     MUTATION: delete the `answerDone()` call from showPassDone. The count never reaches zero, the page stays
+     "Searching…", red. MUTATION 2: paint the EmptyState from showPassDone as before -> the early-paint assertion in
+     test/show-search-fallthrough.test.js goes red. */
   const m = mountSearch();
   m.ctx.renderShowSearchResults("zzqx");
-  await waitFor(() => /No shows found/.test(m.note.textContent));
-  assert.strictEqual(m.note.textContent, "No shows found for \u201czzqx\u201d.");
-  assert.ok(!m.note.hidden);
-  assert.ok(m.offer().hidden, "every pass answered, and there is nothing else to offer");
+  await waitFor(() => !m.empty().hidden);
+  assert.match(m.empty().innerHTML, /Nothing named “zzqx”\./);
+  assert.ok(m.note.hidden, "the searching line is gone");
+  assert.ok(!m.said.some((s) => /No shows found/.test(s)), `the old shows-scoped sentence is never said: ${JSON.stringify(m.said)}`);
   assert.ok(m.partial().hidden, "and nothing failed, so no failure line");
 });
 
 test("an empty answer behind a pass that FAILED says part of the search did not load, and Try again re-runs it", async () => {
   /* `api/shows/search.ts` answers a limiter trip with 200 and zero directory
-     rows by design; offline, every network pass fails. Either way "no shows"
-     was a permanent claim about a moment's network, with nothing to press.
+     rows by design; offline, every network pass fails. Either way "nothing" was
+     a permanent claim about a moment's network, with nothing to press.
      MUTATION: pass `false` instead of `!answered` to the directory's
      showPassDone. The failure is not reported, and this goes red. */
   const m = mountSearch({ directoryError: "rate-limited" });
   m.ctx.renderShowSearchResults("zzqx");
-  await waitFor(() => /No shows found/.test(m.note.textContent) && /Part of this search didn't load/.test(m.partial().innerHTML));
-  assert.match(m.note.textContent, /No shows found/);
+  await waitFor(() => !m.empty().hidden && /Part of this search didn't load/.test(m.partial().innerHTML));
+  assert.match(m.empty().innerHTML, /Nothing named/);
   assert.match(m.partial().innerHTML, /Part of this search didn't load\./);
   const before = m.calls.filter((u) => u.includes("fallthrough=1")).length;
   assert.ok(m.retry(m.partial()), "the failure offers Try again");
@@ -645,59 +655,51 @@ test("REVIEW: a playlist build whose search documents never arrive still runs, a
   assert.strictEqual(ran, true, "the build runs with the degraded scorer once the deadline passes");
 });
 
-test("a subject's own name that finds no show by title offers that subject's categories that hold shows", async () => {
-  /* A browse pill runs the ordinary search for its label (founder, #684) and a
-     label like "Science" rarely matches a show TITLE. The empty answer now
-     offers the subject's narrower categories that do hold shows — each chip a
-     page with at least one show on it — instead of a dead end.
-     MUTATION: delete the `if (node) { … }` block in paintShowSearchEmptyOffer.
-     The offer is empty and this goes red. */
+test("a subject's name that finds no show by title says it is a subject, with that subject's own tile under it", async () => {
+  /* A subject tile runs the ordinary search for its label (founder, #684) and a label like "Science" rarely matches a
+     show TITLE. REDESIGN 2026: the empty answer used to offer the subject's narrower categories as chips; it now says
+     "<Subject> is a subject, <n> shows." with that SubjectTile under it (BUILD-NOTES 4.4), so the message can never
+     contradict what the idle page shows. A subject with fewer than two shows has no tile and no line.
+     MUTATION: delete the `discoverSubjectMatch(query)` call in paintDiscoverEmpty. The line and the tile are gone and
+     this goes red. */
   const taxonomy = { nodes: [
     { id: "science", parent: null, label: "Science" },
     { id: "science/physics", parent: "science", label: "Physics" },
     { id: "science/geology", parent: "science", label: "Geology" },
   ] };
-  const catalog = { shows: [{ show_id: "s1", title: "Alpha Show", taxonomy_node_ids: ["science/physics"] }] };
+  const catalog = { shows: [
+    { show_id: "s1", title: "Alpha Show", taxonomy_node_ids: ["science/physics"] },
+    { show_id: "s2", title: "Beta Show", taxonomy_node_ids: ["science/geology"] },
+  ] };
   const m = mountSearch({ taxonomy, catalog });
   m.ctx.renderShowSearchResults("Science");
-  await waitFor(() => /No shows found/.test(m.note.textContent) && /category/.test(m.offer().innerHTML));
-  assert.match(m.note.textContent, /No shows found for \u201cScience\u201d/);
-  const html = m.offer().innerHTML;
-  assert.match(html, /href="#\/category\/science%2Fphysics"/, `the category that holds a show is offered: ${html}`);
-  assert.doesNotMatch(html, /geology/, "a category with no shows is not offered — it would be another dead end");
+  await waitFor(() => !m.empty().hidden);
+  const html = m.empty().innerHTML;
+  assert.match(html, /Nothing named “Science”\./);
+  assert.match(html, /“Science” is a subject, 2 shows\./, `the subject line: ${html}`);
+  assert.match(html, /<a class="ag-subject-tile raised is-default" href="#\/shows\/q\/Science">/, "with the subject's own tile under it");
   assert.doesNotMatch(html, /data-retry/, "nothing failed, so nothing to retry");
 });
 
-test("while the playlist check behind the results is still owed, the page says so, and the line always ends", async () => {
-  /* Persona audit #28: the topic scan behind "Create a playlist about…" runs
-     on an idle callback, blocks for seconds on a phone, then grows a section
-     at the bottom — with nothing on screen saying work was still going.
-     MUTATION: in renderPlaylistSearchResults, paint "" (hidden) instead of
-     CTA_PENDING_HTML before the whenIdle. The first assertion goes red. */
+test("the Make-a-playlist button is on the text alone: no pending line, no scan, before any pass has answered", async () => {
+  /* Persona audit #28 (the topic scan behind "Create a playlist about..." ran on an idle callback, blocked for
+     seconds, then grew a section with nothing on screen saying work was owed) is answered by deleting the scan: the
+     button is offered at three characters (paintMakePlaylist) and builds on a tap. So there is no "still looking" line
+     to end, and the playlist group never claims an outcome.
+     MUTATION: put `CTA_PENDING_HTML`-style text back in renderPlaylistSearchResults -> the second assertion fails.
+     MUTATION 2: gate paintMakePlaylist on the passes having answered -> the first fails. */
   const m = mountSearch();
+  const input = m.view.querySelector("#sh-input");
+  input.value = "zzqx";
+  m.ctx.updateShowBrowseVisibility();
   m.ctx.renderShowSearchResults("zzqx");
+  const make = m.view.querySelector("#sh-make");
+  assert.ok(!make.hidden && /Make a playlist from “zzqx”/.test(make.innerHTML),
+    `the button is up on the keystroke, before any pass answered: hidden=${make.hidden} ${make.innerHTML}`);
   const pl = m.view.querySelector("#pl-search-results");
-  assert.ok(!pl.hidden && /data-cta-pending/.test(pl.innerHTML),
-    `the section says it is still looking before the scan runs: hidden=${pl.hidden} ${pl.innerHTML}`);
-  assert.doesNotMatch(pl.innerHTML, /Create a playlist|No /, "and claims no outcome while it does");
-  await waitFor(() => !/data-cta-pending/.test(pl.innerHTML));
-  assert.doesNotMatch(pl.innerHTML, /data-cta-pending/, `the scan answered, so "still looking" is gone: ${pl.innerHTML}`);
-});
-
-test("a playlist check that throws still ends 'Still looking' — it is not a spinner that never resolves", async () => {
-  /* MUTATION: drop the try/catch round createPlaylistCtaHtml. The throw
-     escapes the idle callback, the pending line stays up for good, red. */
-  const m = mountSearch();
-  m.ctx.topicSearchStatus = () => { throw new Error("scorer blew up"); };
-  const warn = console.warn;
-  console.warn = () => {};
-  try {
-    m.ctx.renderShowSearchResults("zzqx");
-    await waitFor(() => !/data-cta-pending/.test(m.view.querySelector("#pl-search-results").innerHTML));
-  } finally { console.warn = warn; }
-  const pl = m.view.querySelector("#pl-search-results");
-  assert.doesNotMatch(pl.innerHTML, /data-cta-pending/, `a failed scan must not leave the line up: ${pl.innerHTML}`);
-  assert.ok(pl.hidden, "and nothing is offered from a scan that did not answer");
+  assert.ok(pl.hidden && pl.innerHTML === "", `the playlist group says nothing while it owes nothing: ${pl.innerHTML}`);
+  await waitFor(() => !m.empty().hidden);
+  assert.ok(!make.hidden, "and it stays under the empty page");
 });
 
 /* ==================================================================== */

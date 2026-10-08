@@ -191,7 +191,10 @@ test("a successful episode search renders one ep-row per result under an Episode
   const html = m.container().innerHTML;
   assert.ok(html.includes("Episodes"), "must render an Episodes heading");
   assert.ok(html.includes("Ep One") && html.includes("Ep Two"), "must render both episode titles");
-  assert.strictEqual((html.match(/class="ep-row/g) || []).length, 2, "must render exactly one ep-row per result");
+  /* "ep-row" was the old row; the compact Discover row is `dsc-row dsc-ep` (Redesign 2026). */
+  assert.strictEqual((html.match(/class="dsc-row dsc-ep raised"/g) || []).length, 2, "must render exactly one compact row per result");
+  assert.ok(!/class="ep-row/.test(html) && !html.includes("data-star") && !html.includes("up-next"),
+    "…and not the old row: no star and no Up Next button (the episode page carries both)");
   assert.strictEqual(m.container().hidden, false);
 });
 
@@ -392,7 +395,7 @@ test("the endpoint's copy of an already-saved episode is merged, not duplicated"
      naive /Sleep Toolkit/g count reads 2 for a correctly-deduped list. */
   assert.strictEqual((html.match(/>Sleep Toolkit</g) || []).length, 1, "the shared episode must render exactly one row");
   assert.ok(html.includes(">Focus Toolkit<"), "the endpoint's other row must still be merged beneath");
-  assert.strictEqual((html.match(/class="ep-row/g) || []).length, 2, "two distinct episodes, two rows");
+  assert.strictEqual((html.match(/class="dsc-row dsc-ep raised"/g) || []).length, 2, "two distinct episodes, two rows");
   assert.ok(
     html.indexOf("Sleep Toolkit") < html.indexOf("Focus Toolkit"),
     "the listener's own episode leads; the endpoint's rows are merged BENEATH, never interleaved"
@@ -736,9 +739,15 @@ test("search-8 / p-switcher-7: a remote row's snapshot carries show_id, the publ
   assert.strictEqual(snap.release_date, "2026-09-12T00:00:00Z", "published_at becomes release_date, as the show page maps it");
   assert.strictEqual(snap.artwork_url, "https://art.test/huberman600.jpg", "Apple's artwork rides on the snapshot the player reads");
 
+  /* REDESIGN 2026 (ambient, Discover): the compact episode row is ONE link (to the episode page) with the show's
+     name as plain text in its caption, because a link inside a link is two controls on one target. The ruling
+     that fell is "a search episode row's show name links to the show page"; the show's id still rides on the
+     snapshot above, which is what the episode page's own show link reads. MUTATION: drop `show: ...` from the
+     row's caption (discoverEpisodeRow) -> the name assertion fails. */
   const html = m.container().innerHTML;
-  assert.ok(html.includes('<a class="show-link" href="#/show/1545953110">Huberman Lab</a>'),
-    `the show name links by id, not by a title lookup that only knows the curated 220: ${html}`);
+  assert.ok(html.includes("Huberman Lab"), `the row names its show: ${html}`);
+  assert.ok(html.includes('href="#/episode/apple%3A1545953110%3Ag-sleep"'), "and links to the episode page, the one place a show link lives now");
+  assert.ok(!/<a [^>]*><[^>]*>[^<]*<a /.test(html) && !html.includes('class="show-link"'), "with no nested show link");
   /* "Sep 12" with no year: a date in the current year omits it (copy-15,
      test/format-helpers.test.js), and 2026-09-12 is this year until January. */
   assert.ok(/Sep 12|12 Sep/.test(html), "and the date is on the row");

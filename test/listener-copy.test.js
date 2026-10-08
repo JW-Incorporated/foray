@@ -320,7 +320,7 @@ test("the playlist builder hides the last query's note before building the next"
 test("the clear-search control answers the keyboard", () => {
   const body = APP_SRC.slice(APP_SRC.indexOf('const dismiss = $("#sh-dismiss");\n  if (dismiss) {'));
   const block = body.slice(0, 2400);
-  assert.match(block, /dismiss\.addEventListener\("click", \(e\) => \{\s*if \(e && e\.detail !== 0\) return;\s*dismissShowSearch\(input\);/);
+  assert.match(block, /dismiss\.addEventListener\("click", \(e\) => \{\s*if \(e && e\.detail !== 0\) return;\s*dismissShowSearch\(input, \{ keepFocus: true \}\);/);
 });
 
 /* qa rows 73, 74: search results were silent to a screen reader, and six text
@@ -336,7 +336,7 @@ test("every text field has a name that survives typing, and search notes are liv
      aria-label assertion went with it; the fields that remain are checked by the loop above. */
   assert.match(APP_SRC, /<p id="sh-note" class="note" role="status" aria-live="polite" hidden><\/p>/);
   assert.match(APP_SRC, /data-show-ep-search-note role="status" aria-live="polite" hidden/);
-  assert.match(APP_SRC, /<form id="sh-form" role="search"/);
+  assert.match(APP_SRC, /<form id="sh-form" class="ag-search-field" role="search"/);
 });
 
 /* Persona row 62: a Foray row that cannot play printed foray-resolve's raw
