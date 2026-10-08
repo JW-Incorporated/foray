@@ -352,14 +352,17 @@
           "prototype": ".top",
           "app": ".page-head"
         },
-        "rows": {
-          "prototype": ".row",
-          "app": ".ep-row",
-          "mode": "all"
+        "empty": {
+          "prototype": ".empty",
+          "app": ".empty"
         },
-        "mini": {
-          "prototype": "#mini",
-          "app": "#foray-player"
+        "mark": {
+          "prototype": ".empty svg",
+          "app": ".empty svg"
+        },
+        "primary": {
+          "prototype": ".empty .keycap",
+          "app": ".empty .keycap"
         },
         "tabBar": {
           "prototype": "#tabs",
