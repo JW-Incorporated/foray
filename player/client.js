@@ -1137,9 +1137,14 @@ function buildUI() {
      name and the one that matters in a car. One control, not two, so a 390px
      bar keeps its title line. Inside a Foray it nudges on the Foray clock
      (`nudgeBy`), never previous clip — see persona 58 in the sheet below. */
-  const skipBtn = el("button", "fp-skip", `↺ ${SEEK_BACK}`);
+  /* REDESIGN 2026, Tactile `mini` (BUILD-PLAN 2.4): the mini's second control is
+     the 30-FORWARD keycap, not back 15 (the Dial mini: Play 48 + 30-forward 44,
+     ui/mini.js arranges and re-icons them). The glyph and label are written
+     here as well, so the bar still says what its click does when ui/mini.js
+     has not decorated it; the handler below is `nudgeBy(SEEK_FWD)`. */
+  const skipBtn = el("button", "fp-skip", `${SEEK_FWD} ↻`);
   skipBtn.type = "button";
-  skipBtn.setAttribute("aria-label", `Back ${SEEK_BACK} seconds`);
+  skipBtn.setAttribute("aria-label", `Forward ${SEEK_FWD} seconds`);
 
   /* U-13 (founder feedback F18): this ✕ used to call `stopAndClose()`, and its
      label said so. Closing the Now Playing screen to go and use the app therefore
@@ -2366,10 +2371,13 @@ function paintPage(running) {
   }
   syncCardButtons(loading);
   paintEpisodeSurface();
+  /* One model for both Dial surfaces: the mini's 3px line draws the same
+     segments the Now Playing scrub band does. */
+  const dialModel = window.DialMiniPlayer || window.DialNowPlaying ? dialNowPlayingModel(pos, dur, running, loading) : null;
   if (window.DialMiniPlayer) window.DialMiniPlayer.paint(ui, {
-    title: ui.title.textContent, show: ui.show.textContent, running,
+    title: ui.title.textContent, show: ui.show.textContent, running, model: dialModel,
   });
-  if (window.DialNowPlaying) window.DialNowPlaying.paint(ui, dialNowPlayingModel(pos, dur, running, loading));
+  if (window.DialNowPlaying) window.DialNowPlaying.paint(ui, dialModel);
 }
 
 /**
@@ -5189,6 +5197,17 @@ const ForayPlayer = {
    */
   async togglePlayback() {
     await setRunning(!transportIsRunning());
+  },
+
+  /**
+   * Close the player: the sheet's Stop, reachable from the page. The Tactile
+   * mini's swipe-down dismiss (ui/mini.js) commits through this once its undo
+   * toast runs out, so a gesture and the button can never stop differently;
+   * the resume point is kept, as it is for every stop but data deletion.
+   */
+  async stop() {
+    if (!current && !restoredPending) return;
+    await stopAndClose();
   },
 
   /**

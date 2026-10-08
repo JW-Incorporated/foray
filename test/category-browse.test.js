@@ -308,17 +308,18 @@ test("the menu carries a Shows destination pointing at #/shows", () => {
      rebuilds those five links, so a render-based assertion would be reading a
      fixture instead of the shipped nav.
 
-     MUTATION: delete the `<a class="drawer-section" href="#/shows">Search</a>`
+     MUTATION: delete the `<a class="drawer-section" href="#/shows">Find</a>`
      line from index.html. This fails, and #/shows becomes an address with no
      link to it anywhere in the app.
 
-     Named "Search" since 2026-09-22 (and so is the page's heading, in the
-     three route assertions above and below): one name per destination, and
-     the tab bar's name wins (audit personas 36 and 76). */
+     Named "Search" since 2026-09-22 and "Find" since the Tactile deck (Redesign
+     2026 group A `mini`, DIRECTION.md: Today / Find / Yours): one name per
+     destination, and the tab bar's name wins (audit personas 36 and 76; the
+     page's own heading follows with the Find screen). */
   const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
   assert.ok(
-    /<a class="drawer-section" href="#\/shows">Search<\/a>/.test(html),
-    "the drawer must carry a Search entry linking to #/shows"
+    /<a class="drawer-section" href="#\/shows">Find<\/a>/.test(html),
+    "the drawer must carry a Find entry linking to #/shows"
   );
 });
 
