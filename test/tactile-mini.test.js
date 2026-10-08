@@ -358,7 +358,7 @@ test("the live deck is the Tactile deck: fixed, inset 16, 12 above the safe area
   assert.match(bar, /right:\s*calc\(env\(safe-area-inset-right,\s*0px\)\s*\+\s*var\(--gutter\)\)/);
   assert.match(bar, /bottom:\s*calc\(var\(--safe-b\)\s*\+\s*var\(--s-3\)\)/);
   assert.match(bar, /border-radius:\s*var\(--r-lg\)/);
-  assert.match(bar, /background:\s*var\(--deck-tint\)/);
+  assert.match(bar, /background:\s*var\(--dock-tint\)/);
   assert.match(bar, /(?:^|;)\s*backdrop-filter:\s*var\(--deck-blur\)/);
   assert.match(bar, /box-shadow:\s*var\(--shadow-deck\)/);
   assert.match(rule(":root"), /--gutter:\s*16px/);
@@ -367,10 +367,41 @@ test("the live deck is the Tactile deck: fixed, inset 16, 12 above the safe area
   assert.match(CSS, /@supports not \(backdrop-filter: blur\(1px\)\) \{ :root \{ --deck-tint: var\(--card\); \} \}/);
   /* The mini's half carries the same material. */
   const mini = rule("body.ui-v2 #foray-player.dial-mini > .fp-bar");
-  assert.match(mini, /background:\s*var\(--deck-tint\)/);
+  assert.match(mini, /background:\s*var\(--dock-tint\)/);
   assert.match(mini, /(?:^|;)\s*backdrop-filter:\s*var\(--deck-blur\)/);
   assert.match(mini, /height:\s*var\(--mini-h\)/);
   assert.match(rule("body.ui-v2.fp-open:not(.mini-dismissed) .tab-bar::before"), /var\(--dial-line\)/, "a 1px --line separates the mini from the tab row");
+});
+
+test("the live dock is nearly solid and falls back to solid card; the mini's keys wear a crescent lip and a bounded +30 face", () => {
+  /* Judges, iteration 2: the row under the dock read clearly through it, the
+     Play lip was a flat bar detached below the disc, and the +30 key had no
+     visible face. What stays guaranteed: (1) the dock tint is at least 94% card
+     (the deck token's 84% is for a deck over plain paper), (2) both fall back to
+     solid card under reduced transparency / no backdrop-filter, (3) the lip is
+     the key's own silhouette as a zero-blur shadow with the flat `::after` bar
+     switched off, (4) the +30 key is bounded by a 1px line and keeps the card face, (5) the text pair is one tight block on two 1fr rows.
+     MUTATION 1: set `--dock-tint` to `... 84%, transparent` -> (1) red.
+     MUTATION 2: delete the `@supports not` dock fallback line -> (2) red.
+     MUTATION 3: delete `.fp-play::after { content: none }` (the flat bar returns) -> (3) red.
+     MUTATION 4: delete `inset 0 0 0 1px var(--dial-line)` from the +30 rule -> (4) red.
+     MUTATION 5: re-add `--k-fill: color-mix(in srgb, var(--ink) 8%, var(--card))` to the +30 rule -> (4) red.
+     MUTATION 6: set `.mini__title` `align-self` back to `auto` -> (5) red (the 20px title-to-show gap returns). */
+  const tint = /--dock-tint:\s*color-mix\(in srgb, var\(--card\) (\d+)%, transparent\)/.exec(rule("body.ui-v2"));
+  assert.ok(tint, "the dock tint is declared on body.ui-v2");
+  assert.ok(Number(tint[1]) >= 94, `the dock must not let the page read through it (${tint[1]}% card)`);
+  assert.match(CSS, /@media \(prefers-reduced-transparency: reduce\) \{ body\.ui-v2 \{ --dock-tint: var\(--card\); \} \}/);
+  assert.match(CSS, /@supports not \(backdrop-filter: blur\(1px\)\) \{ body\.ui-v2 \{ --dock-tint: var\(--card\); \} \}/);
+  const keys = rule("body.ui-v2 #foray-player.dial-mini .fp-play");
+  assert.match(keys, /box-shadow:\s*0 var\(--lip\) 0 var\(--k-lip\)/, "the lip is a zero-blur shadow of the key's own shape");
+  const noBar = rule("body.ui-v2 #foray-player.dial-mini .fp-play::after") + rule("body.ui-v2 #foray-player.dial-mini .fp-skip::after");
+  assert.match(noBar, /content:\s*none/, "no flat bar under a round key");
+  const skip = rule("body.ui-v2 #foray-player.dial-mini .fp-skip");
+  assert.doesNotMatch(skip, /--k-fill\s*:/, "the +30 face is the paper keycap's card fill, not a lighter tile");
+  assert.match(rule("body.ui-v2 #foray-player.dial-mini .mini__title"), /align-self:\s*end/, "the title sits on the row boundary");
+  assert.match(rule("body.ui-v2 #foray-player.dial-mini .mini__show"), /align-self:\s*start/, "and the show hangs from it");
+  assert.match(rule("body.ui-v2 #foray-player.dial-mini .mini__body"), /grid-template-rows:\s*1fr 1fr/, "two equal rows centre the pair on the art");
+  assert.match(skip, /box-shadow:\s*inset 0 0 0 1px var\(--dial-line\), 0 var\(--lip\) 0 var\(--k-lip\)/, "and a 1px line bounds it");
 });
 
 /* A resolver for the handful of tokens the deck geometry is written in. */
@@ -400,6 +431,77 @@ function tokens(inset, collapsed) {
     "--tab-row-h": collapsed ? decl("body.ui-v2.deck-collapsed", "--tab-row-h") : decl("body.ui-v2", "--tab-row-h"),
   };
 }
+
+test("the mini's keys are the prototype's: Play a 64x48 pill, +30 48x44, neither squeezed by the body button", () => {
+  /* Judges, iteration 3 (fidelity): the prototype draws the mini Play as a wide
+     pill (keycap padding 20 + 24px glyph + 20 = 64 wide, 48 tall) and +30 as
+     `.keycap--sm` (12 + 24 + 12 = 48 wide, 44 tall); the build had a 48px disc
+     and a 42-wide key (a flex-shrinkable width). The side padding is read from
+     the prototype's own CSS, so a prototype change surfaces here.
+     MUTATION 1: set `.fp-play`'s width back to `var(--key)` -> red (48 !== 64).
+     MUTATION 2: delete `flex: none` from the `.fp-skip` rule -> red.
+     MUTATION 3: set `.fp-skip`'s width to `var(--tap)` -> red (44 !== 48). */
+  const proto = fs.readFileSync(path.join(ROOT, "docs", "redesign-2026", "directions", "tactile", "prototype", "app.css"), "utf8").replace(/\r\n/g, "\n");
+  const glyph = 24;
+  const protoPad = Number(/\.keycap \{[^}]*padding:\s*0 (\d+)px/.exec(proto)[1]);
+  const protoSmPad = Number(/\.keycap--sm \{[^}]*padding:\s*0 (\d+)px/.exec(proto)[1]);
+  const v = { "--key": "48px", "--tap": "44px", "--s-1": "4px", "--s-4": "16px" };
+  const play = rule("body.ui-v2 #foray-player.dial-mini .fp-play");
+  const skip = rule("body.ui-v2 #foray-player.dial-mini .fp-skip");
+  const get = (body, prop) => px(new RegExp(`(?:^|;)\\s*${prop}:\\s*([^;]+);`, "m").exec(body)[1].trim(), v);
+  assert.strictEqual(get(play, "width"), 2 * protoPad + glyph, "Play is the prototype's pill width");
+  assert.strictEqual(get(play, "min-width"), 2 * protoPad + glyph);
+  assert.strictEqual(get(play, "height"), 48);
+  assert.ok(get(play, "width") > get(play, "height"), "a pill, not a disc");
+  assert.strictEqual(get(skip, "width"), 2 * protoSmPad + glyph, "+30 is the prototype's 48-wide key");
+  assert.strictEqual(get(skip, "height"), 44);
+  assert.match(play, /flex:\s*none/, "Play does not shrink");
+  assert.match(skip, /flex:\s*none/, "+30 does not shrink");
+});
+
+test("the 3px line is inset evenly from both ends and clears the deck's corner radius", () => {
+  /* Judges, iteration 3: "the band starts at the deck's left edge and ends ~20px
+     short on the right". Measured in a real render at 375/393/412 the line sits
+     16+22 .. W-16-22 in the deck: 22 each side. This pins the cause rather than
+     the picture: one inset used for both `left` and the width, no smaller than
+     the deck's radius, and the painter's own constant agreeing with it.
+     MUTATION 1: change `left` to `var(--s-4)` -> red (uneven and under the radius).
+     MUTATION 2: change the width to `calc(100% - var(--s-5))` -> red.
+     MUTATION 3: set DIAL_MINI_LINE_INSET to 16 in ui/mini.js -> red. */
+  const root = rule(":root");
+  const tok = (n) => Number(new RegExp(`${n}:\\s*(\\d+)px`).exec(root)[1]);
+  const v = { "--s-1": `${tok("--s-1")}px`, "--s-5": `${tok("--s-5")}px` };
+  const line = rule(".mini > .band--line");
+  const left = px(/(?:^|;)\s*left:\s*([^;]+);/.exec(line)[1].trim(), v);
+  const widthExpr = /(?:^|;)\s*width:\s*([^;]+);/.exec(line)[1].trim();
+  const given = px(widthExpr.replace("100%", "0px"), v);
+  assert.strictEqual(-given, 2 * left, "the width gives back exactly twice the left inset: even on both ends");
+  assert.ok(left >= tok("--r-lg"), `the line clears the ${tok("--r-lg")}px corner (inset ${left})`);
+  assert.strictEqual(Number(/var DIAL_MINI_LINE_INSET = (\d+);/.exec(MINI_SRC)[1]), left, "the painter's inset is the CSS inset");
+});
+
+test("a page-background fade sits under the dock while the mini is up, so a card's text never peeks into its 12px gap", () => {
+  /* Judges, iteration 3 (polish, both orders): the last card's text showed below
+     the floating dock and beside its rounded corners. The prototype has a
+     `body::after` fade (paper, solid under the deck, 44px of ramp above it); the
+     build had none. It paints the page background (right in either scheme), sits
+     BELOW the tab row so it never veils the dock, never takes a tap, is solid at
+     the bottom, and is gone while the sheet is open.
+     MUTATION 1: change its z-index to 56 -> red (it would veil the dock).
+     MUTATION 2: delete `pointer-events: none` -> red.
+     MUTATION 3: change `var(--bg) 52%` to `transparent 52%` -> red.
+     MUTATION 4: drop `:not(.fp-expanded)` from the selector -> red. */
+  const fade = rule("body.ui-v2.fp-open:not(.fp-expanded)::after");
+  assert.ok(fade, "the fade is declared for the mini state, and not over the open sheet");
+  assert.match(fade, /position:\s*fixed/);
+  assert.match(fade, /pointer-events:\s*none/);
+  const z = Number(/z-index:\s*(\d+)/.exec(fade)[1]);
+  const tabZ = Number(/z-index:\s*(\d+)/.exec(rule(".tab-bar"))[1]);
+  assert.ok(z < tabZ && z > 20, `the fade (${z}) is under the tab row (${tabZ}) and over the page`);
+  assert.match(fade, /linear-gradient\(to top,\s*var\(--bg\) \d+%,\s*transparent\)/, "solid page background at the bottom, fading to nothing");
+  assert.match(fade, /bottom:\s*0/);
+  assert.match(rule("body.ui-v2.kb-open::after"), /display:\s*none/, "gone under the keyboard");
+});
 
 test("the mini sits flush on the tab row and the content clears both, collapsed or not, at both insets", () => {
   /* BUILD-PLAN 2.4 items 4-5: content padding-bottom = deck-h + mini-h + safe-b

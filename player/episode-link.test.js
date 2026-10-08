@@ -129,12 +129,12 @@ test("closing the sheet on tap: openLink collapses the sheet like forayLink alre
   // MUTATION: make the openLink handler a no-op -> red.
   assert.match(
     CLIENT,
-    /ui\.openLink\.addEventListener\("click",\s*\(\)\s*=>\s*requestExpanded\(false\)\)/,
+    /ui\.openLink\.addEventListener\("click",\s*\(\)\s*=>\s*(?:setExpanded|requestExpanded)\(false\)\)/,
     "ui.openLink should collapse the expanded sheet on click, same as ui.forayLink"
   );
   assert.match(
     CLIENT,
-    /ui\.forayLink\.addEventListener\("click",\s*\(\)\s*=>\s*requestExpanded\(false\)\)/,
+    /ui\.forayLink\.addEventListener\("click",\s*\(\)\s*=>\s*(?:setExpanded|requestExpanded)\(false\)\)/,
     "…and ui.forayLink, which it mirrors, collapses the same way"
   );
 });

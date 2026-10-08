@@ -129,7 +129,7 @@ test("opening the sheet resets its scroller, and does so AFTER the unhide", () =
 test("the redesigned sheet starts with the artwork hero, then the title block", () => {
   /* REWRITE-ON-PURPOSE, Tactile Now Playing: the hero wrapper is the shared
      element. MUTATION: append `copy` before `hero` -> red. */
-  assert.match(NP_FLAT, /artWrap\.append\(parts\.sArt\); hero\.append\(artWrap\);/);
+  assert.match(NP_FLAT, /artWrap\.append\(parts\.sArt, collage\); hero\.append\(artWrap\);/);
   assert.match(NP_FLAT, /copy\.append\(parts\.sTitle, parts\.sShow, chips, parts\.sWhy\);/);
   assert.match(NP_FLAT, /top\.append\(hero, copy, bandSection\);/);
   assert.match(NP_FLAT, /parts\.scroll\.replaceChildren\(top, more\);/);
@@ -578,8 +578,13 @@ test("Tactile hero and transport preserve the ruled phone geometry", () => {
 });
 
 test("Tactile scrubber keeps its 56px band, snapping and spoken show-aware clock", () => {
-  /* MUTATION: change the 12px snap threshold -> red. */
-  assert.match(CSS_RULES, /\.np__range \{[^}]*height:\s*var\(--key-lg\)/);
+  /* MUTATION: change the 12px snap threshold -> red; change `.np__band-visual`'s
+     height from var(--np-band-h) -> red; set the short-screen --np-band-h below
+     var(--key-lg) -> red (the hit band is never under 56; the range fills it). */
+  assert.match(CSS_RULES, /\.np__band-visual \{[^}]*height:\s*var\(--np-band-h\)/);
+  assert.match(CSS_RULES, /\.np__band \{ --np-band-h: 64px;/);
+  assert.match(CSS_RULES, /\.np__band \{ --np-band-h: var\(--key-lg\);/);
+  assert.match(CSS_RULES, /\.np__range \{[^}]*inset:\s*0[^}]*height:\s*100%/);
   assert.match(FLAT_TEXT, /const threshold = dur \* 12 \/ width/);
   assert.match(TEXT, /dialSpokenClock\(pos\).*dialSpokenClock\(dur\)/s);
   assert.match(FLAT_TEXT, /"ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"/);
@@ -593,11 +598,12 @@ test("Tactile Foray provenance shows the station or narration under the needle, 
 });
 
 test("Tactile detail scrolls beneath a bottom-pinned dock and keeps seekable 56 and 48px rows", () => {
-  /* MUTATION: change `.np__dock` from `position: absolute` to `position: sticky` -> red and Play returns to the scroll flow. */
+  /* MUTATION: change `.np__dock` from `position: absolute` to `position: sticky` -> red and Play returns to the scroll flow.
+     The dock sits at safe-b + 16 (--s-4) per the acceptance criterion. */
   assert.match(NP_FLAT, /sheet\.replaceChildren\(bg, parts\.grabZone, parts\.scroll, dock\)/);
   assert.match(CSS_RULES, /\.np__top \{[^}]*min-height:\s*calc\(100% - 176px - var\(--safe-b\)\)/);
-  assert.match(CSS_RULES, /\.np__dock \{[^}]*position:\s*absolute[^}]*bottom:\s*calc\(var\(--safe-b\) \+ var\(--s-1\)\)/);
-  assert.match(CSS_RULES, /\.np__dock::before \{[^}]*linear-gradient\(to bottom, transparent, var\(--paper\) 58%\)/);
+  assert.match(CSS_RULES, /\.np__dock \{[^}]*position:\s*absolute[^}]*bottom:\s*calc\(var\(--safe-b\) \+ var\(--s-4\)\)/);
+  assert.match(CSS_RULES, /\.np__dock::before \{[^}]*linear-gradient\(to bottom, transparent, var\(--paper\) 28px\)/);
   assert.match(CSS_RULES, /\.np \.segrow \{[^}]*min-height:\s*56px/);
   assert.match(CSS_RULES, /\.np__chapter \{[^}]*min-height:\s*48px/);
 });
@@ -605,7 +611,10 @@ test("Tactile detail scrolls beneath a bottom-pinned dock and keeps seekable 56 
 test("Tactile transport uses circular 56/80/56 keys with an attached darker lip and custom skip marks", () => {
   /* MUTATION: remove the explicit `width: var(--key-lg)` override -> red and legacy padding squashes the skip keys. */
   assert.match(CSS_RULES, /\.np \.transport \.keycap--lg \{\s*box-sizing:\s*border-box;\s*width:\s*var\(--key-lg\)[^}]*height:\s*var\(--key-lg\)[^}]*padding:\s*0/);
-  assert.match(CSS_RULES, /\.np \.transport \.keycap::after \{[^}]*inset:\s*0[^}]*border-radius:\s*inherit[^}]*translateY\(var\(--lip\)\)/);
+  /* The lip is a hard shadow in the key's own shape (the primitive's flat ::after bar is switched off).
+     MUTATION: delete the `box-shadow: 0 var(--lip) 0 var(--k-lip)` rule -> red and the keys lose their lip. */
+  assert.match(CSS_RULES, /\.np \.transport \.keycap::after,\s*\.np \.second \.keycap::after \{ content: none; \}/);
+  assert.match(CSS_RULES, /\.np \.transport \.keycap,\s*\.np \.second \.keycap \{ box-shadow: 0 var\(--lip\) 0 var\(--k-lip\); \}/);
   assert.match(NP_FLAT_TEXT, /parts\.backBtn\.innerHTML = dialNpIcon\("skip-15", "lg"\)/);
   assert.match(NP_FLAT_TEXT, /parts\.fwdBtn\.innerHTML = dialNpIcon\("skip-30", "lg"\)/);
 });
@@ -613,7 +622,11 @@ test("Tactile transport uses circular 56/80/56 keys with an attached darker lip 
 test("Tactile readout, band labels, chips and grabber use the ruled high-contrast materials", () => {
   /* MUTATION: change `.np__read .readout-lg` from `var(--ink)` to `var(--ink-2)` -> red. */
   assert.match(CSS_RULES, /\.np__read \.readout-lg \{[^}]*color:\s*var\(--ink\)/);
-  assert.match(CSS_RULES, /\.np__band \.t-band__code \{[^}]*var\(--w-label\) var\(--t-label\) var\(--font-text\)/);
+  /* Codes are HTML spans under the bars (the SVG <text> is squeezed by the band's non-uniform scale).
+     MUTATION: put `.np__band-svg .t-band__code` back to visible -> the doubled, squeezed codes return. */
+  assert.match(CSS_RULES, /\.np__band-svg \.t-band__code, \.np__band-svg \.needle \{ display: none; \}/);
+  assert.match(CSS_RULES, /\.np__code \{[^}]*font:\s*700 0\.6875rem\/16px var\(--font-mono\)/);
+  assert.match(CSS_RULES, /\.np__code\.is-current \{[^}]*color:\s*var\(--ink\)[^}]*font-weight:\s*800/);
   assert.match(CSS_RULES, /\.fp-sheet\.np \.rotary-chip \{[^}]*background:\s*var\(--card\)[^}]*box-shadow:\s*none/);
   assert.match(CSS_RULES, /\.fp-sheet\.np \.np__head \.fy-grab \{[^}]*background:\s*var\(--ink-3\)/);
 });
@@ -633,4 +646,194 @@ test("Tactile open uses a shared artwork transition with reduced-motion and WAAP
   assert.match(NP_TEXT, /typeof target\.animate !== "function"/);
   assert.match(NP_TEXT, /duration: 480/);
   assert.match(NP_TEXT, /prefers-reduced-motion: reduce/);
+});
+
+/* ==================================================================== */
+/* BEHAVIOUR OF THE VIEW'S OWN LOGIC — ui/now-playing.js run in a vm     */
+/* ==================================================================== */
+
+import vm from "node:vm";
+
+function loadDial({ ink = "#201a17", paper = "#f7f0e4", dark = false, haptics = null } = {}) {
+  const calls = [];
+  const window = { Capacitor: haptics ? { Plugins: { Haptics: haptics(calls) } } : undefined };
+  const root = { dataset: {} };
+  const context = {
+    window,
+    document: { documentElement: root, createElement() { throw new Error("no DOM in this harness"); } },
+    getComputedStyle: () => ({ getPropertyValue: (name) => (name === "--ink" ? ink : name === "--paper" ? paper : "") }),
+    matchMedia: () => ({ matches: dark }),
+    Date,
+    Math,
+  };
+  vm.createContext(context);
+  vm.runInContext(NOW_PLAYING, context, { filename: "ui/now-playing.js" });
+  return { dial: window.DialNowPlaying, calls };
+}
+
+function fakeSheet() {
+  const props = {};
+  return { props, dataset: {}, style: { setProperty(name, value) { props[name] = value; } } };
+}
+
+test("haptics are throttled to one call per 100ms and are a no-op without the plugin", () => {
+  /* MUTATION: change `< 100` to `< 0` in dialHaptic -> the 50ms call goes
+     through, the plugin sees three impacts instead of two, and this fails. */
+  const { dial, calls } = loadDial({ haptics: (log) => ({ impact: (o) => log.push(o), selectionChanged: () => log.push("sel") }) });
+  assert.equal(dial.haptic("light", 1000), true);
+  assert.equal(dial.haptic("light", 1050), false, "inside 100ms: dropped");
+  assert.equal(dial.haptic("light", 1100), true, "at 100ms: allowed again");
+  assert.equal(calls.length, 2, "the plugin was called only for the two allowed calls");
+  const bare = loadDial();
+  assert.doesNotThrow(() => bare.dial.haptic("heavy", 5000), "the web build has no plugin and must not throw");
+});
+
+test("the scrim rises to 0.9 only when ink over the mixed tint falls below 4.5:1", () => {
+  /* MUTATION: change `< 4.5` to `< 0` in dialApplyNowPlayingTint -> the weak
+     pair stays at .78 and the second assertion fails; change it to `< 99` ->
+     the strong pair is raised too and the first fails. */
+  const strong = loadDial({ ink: "#201a17", paper: "#f7f0e4" });
+  const a = fakeSheet();
+  assert.equal(strong.dial.applyTint(a, "#c99a00"), 0.78, "Cream ink over a mustard tint passes at the default");
+  assert.equal(a.dataset.scrimAlpha, "0.78");
+  assert.match(a.props["--np-scrim"], /,0\.78\)$/);
+  assert.match(a.props["--np-surface"], /^rgb\(/, "a solid twin of the composited surface is published for contrast tools");
+  const weak = loadDial({ ink: "#808080", paper: "#ffffff" });
+  const b = fakeSheet();
+  assert.equal(weak.dial.applyTint(b, "#ffd400"), 0.9, "a forced bright tint under mid-grey ink raises the scrim");
+  assert.equal(b.dataset.scrimAlpha, "0.9");
+});
+
+test("an artwork tint under chroma 0.07 is the show's enamel, and anything else is clamped to 0.45-0.6 lightness with chroma floored at 0.10", () => {
+  /* MUTATION: change `.07` to `.0` -> the grey sample is no longer replaced and
+     the first assertion fails; remove `Math.max(.1, ...)` -> the third fails. */
+  const { dial } = loadDial();
+  assert.equal(dial.normalizeArtworkTint({ l: 0.5, c: 0.03, h: 40 }, "ENAMEL"), "ENAMEL");
+  assert.equal(dial.normalizeArtworkTint(null, "ENAMEL"), "ENAMEL");
+  assert.equal(dial.normalizeArtworkTint({ l: 0.9, c: 0.08, h: 40 }, "ENAMEL"), "oklch(0.600 0.100 40.0)", "light is clamped down, chroma floored");
+  assert.equal(dial.normalizeArtworkTint({ l: 0.2, c: 0.2, h: 300 }, "ENAMEL"), "oklch(0.450 0.200 300.0)", "dark is clamped up, chroma kept");
+});
+
+test("narration keeps the previous show's enamel; an opening narration borrows the first show's", () => {
+  /* MUTATION: make dialCurrentStation return `current` unconditionally -> the
+     narration tick has no station and the tint flashes. */
+  const { dial } = loadDial();
+  const show = (code, colorIndex) => ({ narration: false, code, colorIndex, show: code });
+  const tick = { narration: true, code: "", colorIndex: 0, show: "4a" };
+  assert.equal(dial.currentStation({ segments: [show("AA", 1), show("BB", 2), tick], currentIndex: 2 }).code, "BB");
+  assert.equal(dial.currentStation({ segments: [tick, show("AA", 1)], currentIndex: 0 }).code, "AA");
+  assert.equal(dial.currentStation({ segments: [show("AA", 1), show("BB", 2)], currentIndex: 1 }).code, "BB");
+});
+
+test("the sleep chip steps Off, 15, 30, 45, 60 and back to Off", () => {
+  /* MUTATION: drop 60 from DIAL_SLEEP_STOPS -> the walk ends early and fails. */
+  const { dial } = loadDial();
+  const walk = [0];
+  for (let i = 0; i < 5; i += 1) walk.push(dial.nextSleepStop(walk[walk.length - 1]));
+  assert.deepEqual(walk, [0, 15, 30, 45, 60, 0]);
+  assert.equal(dial.nextSleepStop(7), 0, "an unknown value falls back to Off rather than sticking");
+});
+
+test("the band's station codes are HTML spans under the bars, and the SVG's own squeezed codes are hidden", () => {
+  /* MUTATION: delete `.np__band-svg .t-band__code` from the display:none rule ->
+     the squeezed SVG codes and the spans both show ("BR BR" doubled). */
+  assert.match(NP_FLAT_TEXT, /dialNpEl\("div", "np__codes"\)/);
+  assert.match(NP_FLAT_TEXT, /span\.style\.setProperty\("--x"/);
+  assert.match(CSS_RULES, /\.np__band-svg \.t-band__code, \.np__band-svg \.needle \{ display: none; \}/);
+  assert.match(CSS_RULES, /\.np:not\(\.np--foray\) \.np__codes \{ display: none; \}/, "an episode has one bar and no codes");
+});
+
+test("the needle has a 44px-wide hit area, a 2px stroke, and its buffering pulse runs on the buffer token", () => {
+  /* MUTATION: change `.np__needle`'s width from 44px -> red; put a literal `1s` back
+     in the pulse -> red here and in ui-tokens-dial. */
+  assert.match(CSS_RULES, /\.np__needle \{[^}]*width:\s*44px/);
+  assert.match(CSS_RULES, /\.np__needle::before \{[^}]*width:\s*2px/);
+  assert.match(CSS_RULES, /\.np__needle\.is-buffering \{ animation: np-needle-pulse var\(--d-buffer\)/);
+});
+
+test("the foray detail list is headed Clips, not the pipeline word", () => {
+  /* The listener-copy rules ban "segment" (build-loop.md section 2).
+     MUTATION: put "Segments" back in the heading -> red. */
+  assert.match(NP_FLAT_TEXT, /dialNpEl\("h2", "heading", "Clips"\)/);
+  assert.doesNotMatch(NP_FLAT_TEXT, /dialNpEl\("h2", "heading", "Segments"\)/);
+});
+
+test("the sampled artwork tint is cached in memory for the session and never written to storage", async () => {
+  /* Review fix (Redesign 2026, search review 0f70a7fc): a `cp_art_tint:<show>`
+     row per show played would need a privacy-policy row and a data-deletion
+     count for a colour the page can recompute. The harness answers like the
+     real thing: the Image loads asynchronously, the canvas returns real
+     pixels, and storage is a spy on every route (lsSet/lsGet and the
+     localStorage object itself).
+     MUTATION: add `lsSet("cp_art_tint:" + key, JSON.stringify({ hash: hash, tint: tint }));`
+     after `DIAL_ART_TINT_CACHE[key] = ...` in dialExtractArtworkTint -> the
+     storage assertion goes red; delete the `DIAL_ART_TINT_CACHE[key] = ...`
+     line -> the second call builds a second Image and the count goes red. */
+  const writes = [];
+  let images = 0;
+  class FakeImage {
+    set src(value) { images += 1; this._src = value; Promise.resolve().then(() => this.onload && this.onload()); }
+  }
+  const pixels = new Uint8ClampedArray(32 * 32 * 4);
+  for (let i = 0; i < pixels.length; i += 4) { pixels[i] = 200; pixels[i + 1] = 40; pixels[i + 2] = 30; pixels[i + 3] = 255; }
+  const canvas = { getContext: () => ({ drawImage() {}, getImageData: () => ({ data: pixels }) }) };
+  const window = {};
+  const context = {
+    window,
+    Image: FakeImage,
+    safeUrl: (url) => url,
+    lsSet: (...args) => { writes.push(["lsSet", ...args]); return true; },
+    lsGet: (...args) => { writes.push(["lsGet", ...args]); return null; },
+    localStorage: { setItem: (...args) => writes.push(["setItem", ...args]), getItem: (...args) => { writes.push(["getItem", ...args]); return null; } },
+    document: { documentElement: { dataset: {} }, createElement: (tag) => (tag === "canvas" ? canvas : {}) },
+    Math,
+    Date,
+  };
+  vm.createContext(context);
+  vm.runInContext(NOW_PLAYING, context, { filename: "ui/now-playing.js" });
+  const first = await window.DialNowPlaying.extractArtworkTint("https://example.test/a.jpg", "show-1", "ENAMEL");
+  assert.match(first, /^oklch\(/, "a saturated sample produces a tint, not the fallback");
+  const second = await window.DialNowPlaying.extractArtworkTint("https://example.test/a.jpg", "show-1", "ENAMEL");
+  assert.equal(second, first, "the same show and artwork is served from memory");
+  assert.equal(images, 1, "the image was sampled once, not once per call");
+  assert.deepEqual(writes, [], "no storage route was touched: no cp_art_tint key exists");
+  assert.doesNotMatch(NOW_PLAYING, /cp_art_tint/, "and the key is not named in the view at all");
+});
+
+test("sleep expiry pauses through the transport authority, so a stale reducer cannot leave audio playing", () => {
+  /* MUTATION: change `transportIsRunning()` back to `isRunning()` in setSleepTimer's callback (client.js) ->
+     the belief says "paused" while the element is audible, setRunning(false) is never called and the
+     pause assertion fails (the timer reset to Off and the audio kept going). */
+  const m = /^let sleepMinutes = 0;\nlet sleepTimer = null;\nfunction setSleepTimer\(minutes\) \{[\s\S]*?\n\}/m.exec(CLIENT);
+  assert.ok(m, "client.js still declares the sleep timer at top level");
+  const run = ({ believed, audible }) => {
+    const timers = [];
+    const calls = [];
+    const painted = [];
+    const context = {
+      setTimeout: (fn, ms) => { timers.push({ fn, ms }); return timers.length; },
+      clearTimeout: () => {},
+      Math, Number,
+      isRunning: () => believed,
+      transportIsRunning: () => believed || audible,
+      setRunning: (want, source) => { calls.push([want, source]); },
+      ui: { sleepBtn: {} },
+      window: { DialNowPlaying: { paintSleep: (_btn, minutes) => painted.push(minutes) } },
+    };
+    vm.createContext(context);
+    vm.runInContext(m[0] + "\nvar __set = setSleepTimer;", context, { filename: "player/client.js (setSleepTimer)" });
+    context.__set(15);
+    assert.equal(timers.length, 1);
+    assert.equal(timers[0].ms, 15 * 60 * 1000);
+    timers[0].fn();
+    return { calls, painted };
+  };
+  const stale = run({ believed: false, audible: true });
+  assert.deepEqual(stale.calls, [[false, "sleep"]], "audible while the reducer says paused: expiry still pauses");
+  assert.deepEqual(stale.painted, [15, 0], "and the chip returns to Off");
+  const quiet = run({ believed: false, audible: false });
+  assert.deepEqual(quiet.calls, [], "nothing audible: expiry has nothing to pause");
+  assert.deepEqual(quiet.painted, [15, 0]);
+  const live = run({ believed: true, audible: true });
+  assert.deepEqual(live.calls, [[false, "sleep"]]);
 });
