@@ -10,6 +10,13 @@ const AG_STATES = ["default", "pressed", "focus", "disabled", "loading"];
 const AG_ART_SIZES = [44, 56, 72, 104, 120, 160, 280];
 const AG_CONTROL_SIZES = [44, 48, 56, 88];
 const AG_TONES = ["amber", "teal", "coral", "violet", "blue", "gold"];
+/* Row and card state -> the state their Play control takes (anything else: default). */
+const AG_BUSY = { unavailable: "disabled", disabled: "disabled", loading: "loading" };
+/* EpisodeRow state line: [modifier class, icon, visible caption]. */
+const AG_ROW_LINES = {
+  playing: ["", "play-fill", "Playing"], played: [" muted", "check-circle-fill", "Played"],
+  downloaded: [" ok", "download-fill", "Downloaded"], unavailable: [" warn", "wifi-slash", "Unavailable"],
+};
 
 function agChoice(value, allowed, fallback) {
   return allowed.includes(value) ? value : fallback;
@@ -34,7 +41,7 @@ function agButton({ label, variant = "secondary", state = "default", icon = "", 
     ["aria-disabled", disabled ? "true" : null],
     ["aria-busy", busy ? "true" : null],
     ["disabled", disabled ? true : null],
-  ])}>${iconMarkup}${text}${busy ? '<span class="ag-spinner" aria-hidden="true"></span>' : ""}</button>`;
+  ])}>${busy ? '<span class="ag-spinner" aria-hidden="true"></span>' : iconMarkup}${text}</button>`;
 }
 
 function agPlayButton({ label = "Play", size = 48, state = "default", playing = false } = {}) {
@@ -86,11 +93,10 @@ function agEpisodeRow({
   meta = "38 min · Today", state = "default", tone = "amber",
 } = {}) {
   const rowState = agChoice(state, ["default", "pressed", "focus", "playing", "played", "downloaded", "unavailable", "loading"], "default");
-  const stateLine = rowState === "playing" ? `<span class="ag-row-state">${agIcon("play-fill", 20)}Playing</span>`
-    : rowState === "played" ? `<span class="ag-row-state muted">${agIcon("check-circle-fill", 20)}Played</span>`
-      : rowState === "downloaded" ? `<span class="ag-row-state ok">${agIcon("download-fill", 20)}Downloaded</span>`
-        : rowState === "unavailable" ? `<span class="ag-row-state warn">${agIcon("wifi-slash", 20)}Unavailable</span>` : "";
-  return `<article class="ag-episode-row raised is-${esc(rowState)}">${agArtwork({ name: show, size: 72, tone, state: rowState === "unavailable" ? "dim" : "default" })}<div class="ag-row-copy"><h4 class="t-headline clamp2">${esc(title)}</h4><p class="t-caption clamp1">${esc(show)}</p><p class="t-why clamp2">${esc(why)}</p><p class="t-caption ag-row-meta">${stateLine}<span>${esc(meta)}</span></p></div>${agButton({ label: rowState === "playing" ? "Pause" : "Play", variant: "icon", icon: rowState === "playing" ? "pause" : "play", state: rowState === "unavailable" ? "disabled" : "default" })}</article>`;
+  const line = AG_ROW_LINES[rowState];
+  const stateLine = line ? `<span class="ag-row-state${esc(line[0])}">${agIcon(line[1], 20)}${esc(line[2])}</span>` : "";
+  /* Loading keeps the copy at full contrast; the Play control carries the spinner and aria-busy. */
+  return `<article class="ag-episode-row raised is-${esc(rowState)}">${agArtwork({ name: show, size: 72, tone, state: rowState === "unavailable" ? "dim" : "default" })}<div class="ag-row-copy"><h4 class="t-headline clamp2">${esc(title)}</h4><p class="t-caption clamp1">${esc(show)}</p><p class="t-why clamp2">${esc(why)}</p><p class="t-caption ag-row-meta">${stateLine}<span>${esc(meta)}</span></p></div>${agButton({ label: rowState === "playing" ? "Pause" : "Play", variant: "icon", icon: rowState === "playing" ? "pause" : "play", state: AG_BUSY[rowState] })}</article>`;
 }
 
 function agQueueRow({ title = "Cooling factories without wasting water", show = "The Indicator", meta = "24 min left", state = "default", reason = "" } = {}) {
@@ -170,7 +176,8 @@ function agScrubber({ value = 42, duration = 2880, state = "default" } = {}) {
 }
 
 function agStretchCard({ state = "default" } = {}) {
-  return `<article class="ag-stretch-card raised is-${esc(state)}">${agPill("Stretch", "sparkle")}<div class="ag-bridge-arts">${agArtwork({ name: "Science Vs", size: 56, tone: "teal" })}<span class="ag-bridge-line" aria-hidden="true"></span>${agArtwork({ name: "Acquired", size: 56, tone: "coral" })}</div><p class="t-why">${esc("If insect systems held you, this asks the same question of a company.")}</p><div class="ag-card-end"><div><h4 class="t-headline clamp2">${esc("How an unusual company stayed independent")}</h4><p class="t-caption clamp1">${esc("Acquired · 42 min · Today")}</p></div>${agButton({ label: "Play", variant: "icon", icon: "play", state: state === "disabled" ? "disabled" : "default" })}</div></article>`;
+  const s = agChoice(state, AG_STATES, "default");
+  return `<article class="ag-stretch-card raised is-${esc(s)}">${agPill("Stretch", "sparkle")}<div class="ag-bridge-arts">${agArtwork({ name: "Science Vs", size: 56, tone: "teal" })}<span class="ag-bridge-line" aria-hidden="true"></span>${agArtwork({ name: "Acquired", size: 56, tone: "coral" })}</div><p class="t-why">${esc("If insect systems held you, this asks the same question of a company.")}</p><div class="ag-card-end"><div><h4 class="t-headline clamp2">${esc("How an unusual company stayed independent")}</h4><p class="t-caption clamp1">${esc("Acquired · 42 min · Today")}</p></div>${agButton({ label: "Play", variant: "icon", icon: "play", state: AG_BUSY[s] })}</div></article>`;
 }
 
 function agForayCard({ compact = false, finished = false } = {}) {
@@ -186,7 +193,7 @@ function agHeroPick() {
   return `<article class="ag-hero-pick">${agCollage([
     { name: "Science Vs", tone: "teal" }, { name: "Planet Money", tone: "coral" },
     { name: "99% Invisible", tone: "violet" }, { name: "Odd Lots", tone: "blue" },
-  ], { size: 160 })}<div class="ag-hero-copy"><span class="eyebrow lamp">Today's pick</span><h4 class="t-title clamp4">${esc("The hidden systems shaping an ordinary glass of water")}</h4><p class="t-caption">4 shows Â· 42 min</p>${agPlayButton({ size: 56 })}</div><p class="t-why">${esc("A clear route from local choices to the systems moving water around them.")}</p></article>`;
+  ], { size: 160 })}<div class="ag-hero-copy"><span class="eyebrow lamp">Today's pick</span><h4 class="t-title clamp4">${esc("The hidden systems shaping an ordinary glass of water")}</h4><p class="t-caption">4 shows · 42 min</p>${agPlayButton({ size: 56 })}</div><p class="t-why">${esc("A clear route from local choices to the systems moving water around them.")}</p></article>`;
 }
 
 function agShowTile({ followed = false } = {}) {
@@ -219,7 +226,8 @@ function agTabBar({ active = "today", receded = false, label = "Primary" } = {})
 function agMiniPlayer({ state = "playing" } = {}) {
   const miniState = agChoice(state, ["playing", "paused", "buffering", "drag"], "playing");
   const playing = miniState === "playing" || miniState === "drag";
-  return `<div class="ag-mini-player is-${esc(miniState)}" data-ag-primitive="mini-player" role="group" aria-label="Now playing: Cooling the world without wasting water, The Indicator"><span class="ag-mini-progress" aria-hidden="true"></span>${agArtwork({ name: "The Indicator", size: 44, tone: "blue" })}<div class="ag-mini-copy"><p class="t-label clamp1">${esc("Cooling the world without wasting water")}</p><p class="t-caption clamp1">${esc("The Indicator")}</p></div>${agPlayButton({ size: 48, state: miniState === "buffering" ? "loading" : "default", playing })}${agSkipButton({ size: 44 })}</div>`;
+  /* Buffering keeps the Play glyph and lets it breathe (BUILD-NOTES §3); the group says it is busy. */
+  return `<div class="ag-mini-player is-${esc(miniState)}" data-ag-primitive="mini-player" role="group"${miniState === "buffering" ? ' aria-busy="true"' : ""} aria-label="Now playing: Cooling the world without wasting water, The Indicator"><span class="ag-mini-progress" aria-hidden="true"></span>${agArtwork({ name: "The Indicator", size: 44, tone: "blue" })}<div class="ag-mini-copy"><p class="t-label clamp1">${esc("Cooling the world without wasting water")}</p><p class="t-caption clamp1">${esc("The Indicator")}</p></div>${agPlayButton({ size: 48, playing })}${agSkipButton({ size: 44 })}</div>`;
 }
 
 function agDock({ active = "today", withField = false, receded = false, label = "Primary" } = {}) {

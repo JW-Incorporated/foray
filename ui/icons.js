@@ -48,13 +48,14 @@ const AG_ICON_SIZES = [20, 24, 28, 32, 36];
  *  A name not in the sprite, or a size not in AG_ICON_SIZES, returns "" (nothing is drawn),
  *  so a bad argument can never put a caller-chosen string into a `href` or a class. The
  *  allow-list constrains the fragment; safeUrl() constrains the relative sprite path; esc()
- *  protects the attribute context. */
+ *  protects both attribute contexts. The class is built only from AG_ICON_SIZES today, but it
+ *  goes through esc() anyway: the rule is every interpolation, not every risky-looking one. */
 function agIcon(name, size) {
   if (!AG_ICON_NAMES.includes(name)) return "";
   const px = size === undefined ? 24 : size;
   if (!AG_ICON_SIZES.includes(px)) return "";
   const cls = px === 24 ? "icon" : "icon icon-" + px;
-  return '<svg class="' + cls + '" aria-hidden="true" focusable="false"><use href="' +
+  return '<svg class="' + esc(cls) + '" aria-hidden="true" focusable="false"><use href="' +
     esc(safeUrl(AG_ICON_SPRITE + "#i-" + name)) + '"></use></svg>';
 }
 

@@ -972,4 +972,42 @@ pixels; 41 stable capture plates at three viewports make the 123-shot gallery ba
    beside its filled glyph. SubjectTile accepts `default` / `pressed`, and the gallery
    records both in Dusk and Dawn. Four focused tests name mutations that ran red against
    removal of each correction.
+10. **Second blocking review, closed (2026-10-07).** (a) *Loading never dims text.* The
+   `opacity: .55` on a loading EpisodeRow's copy and `.7` on a loading StretchCard
+   composited `text-2` to 3.15:1 (Dusk) / 2.51:1 (Dawn) and Dawn card metadata to 3.49:1.
+   Both rules are gone: a loading row or card keeps its copy at full contrast and its own
+   Play control takes the `loading` state (spinner + `aria-busy`). A test scans every
+   `opacity` below 1 in `primitives.css` and allows it only on disabled controls (WCAG
+   1.4.3 exempts them) and non-text parts (dim artwork, strip bars, the invisible range
+   input). (b) *Spinner replaces the glyph.* A loading control used to render glyph and
+   spinner side by side, which pushed the spinner out of a 44px circle; the spinner now
+   takes the glyph's 24px slot, so a control keeps its width when it starts loading.
+   (c) *Buffering breathes, as §3 says.* The MiniPlayer's buffering state keeps its Play
+   glyph (the `ag-breathe` rule now has something to animate), shows no spinner, and marks
+   the group `aria-busy`. (d) *Disabled chip* renders at 40% (it was identical to default).
+   (e) HeroPick's caption read "4 shows Â· 42 min" (double-encoded middle dot); fixed, and
+   a test rejects mojibake in the primitive sources. (f) The drag MiniPlayer plate no longer
+   lifts over the buffering plate above it. The review's other two items were already closed
+   by the gallery unit: every section of both schemes is a capture plate (pinned by "the
+   gallery baseline visits every visual plate"), and `compare --name ambient-gallery` ran
+   123/123 identical before this change. On the final code a fresh gallery recorded into a
+   private root compared 123/123 identical twice in a row, so the capture is deterministic.
+   Seven tests were added (suite floor 12 -> 23), each mutation run red and restored; the
+   round-4 review added an eighth (the state line's class modifier and caption go through
+   `esc()`), floor 24.
+   Intended gallery diffs against the shared `ambient-gallery`: the loading button/row/card
+   plates, the disabled chip, the hero caption and the Dock plates, plus plates whose
+   viewport shows them; at 412 wide the narrower loading Primary reflows the button grid,
+   and the drag plate's 24px spacing moves every plate below it in each scheme (including
+   sub-pixel antialiasing on the live sheet behind `sheet-open`). Re-record it on merge. The `trunk-app` screens are
+   unchanged (138/138 identical). Minified `primitives.js` is 16,355 bytes after the
+   round-4 `esc()` calls (the row state lines became a table to stay inside the 16 KB
+   ceiling; 29 bytes of headroom, so Phase 4 additions to this file need room made first).
+11. **Round-5 review (Codex, 2026-10-07): merge, zero blocking.** Its nits were taken:
+   under Reduce Motion the buffering glyph now holds at 0.9 (§5's motion table) through a
+   `.ag`-scoped rule inside the one reduce block in `ui/tokens.css`, where it used to end
+   its 1ms animation back at 1 and show no cue; a test pins it (mutation run red, floor
+   24 -> 25). The spinner-width test now says it covers glyph-bearing controls only (a
+   text button gains the spinner and may widen). Add the buffering MiniPlayer plates to the
+   intended `ambient-gallery` diffs above if the baseline renders under reduced motion.
 
