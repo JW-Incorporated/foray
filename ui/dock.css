@@ -285,3 +285,32 @@ body.gallery-page > .dock-layer, body.gallery-page > #dock-cast { display: none 
 /* ...and keeps the 56px + inset the old tab bar's reservation gave the page's foot (the gallery baseline is
    shot at scroll positions that depend on the document's height). */
 body.ui-v2.gallery-page { padding-bottom: calc(var(--tab-bar-h) + env(safe-area-inset-bottom)); }
+
+/* ---------------------------------------------------------------------------
+   10. The page the Dock sits on (round 3). The Dock's light is the artwork's, cast onto the page behind it
+       (DIRECTION "The Dock casts upward"), so a page that is cool purple-black under a warm Dock reads as two
+       rooms. Until a screen adopts `.ag` and brings its own neutrals, the legacy `body.ui-v2` neutrals take
+       Dusk's warm ones by name; the violet and amber accents are not touched (each screen unit retires them
+       when it adopts its own markup). Dusk only: Dawn's paper under a legacy page that is still dark would
+       be worse than either, so a Dawn room keeps the legacy values it had.
+   --------------------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="dawn"]) body.ui-v2:not(.gallery-page) {
+    --bg: var(--bg0); --surface: var(--bg1); --surface2: var(--bg2);
+    --text: var(--ag-text); --muted: var(--text-2); --faint: var(--text-3); --line: var(--rim);
+  }
+}
+:root[data-theme="dusk"] body.ui-v2:not(.gallery-page) {
+  --bg: var(--bg0); --surface: var(--bg1); --surface2: var(--bg2);
+  --text: var(--ag-text); --muted: var(--text-2); --faint: var(--text-3); --line: var(--rim);
+}
+/* No hairline rules anywhere: depth is light and rims. The header bar and a page's title keep their
+   place, not their line. */
+.topbar, body.ui-v2 .page-head { border-bottom: 0; }
+/* Discover has no header chrome (DIRECTION: settings sit behind one button at the top of Today): its
+   title is the first thing on the page and the Dock holds the rest. `body.sh-compose` is the Discover
+   page's own class (renderAllShows); `--topbar-h` going to 0 hands the bar's 44px back to every rule that
+   reserves it, the safe-area inset staying. */
+body.ui-v2.sh-compose { --topbar-h: 0px; }
+body.ui-v2.sh-compose .topbar { display: none; }
+body.ui-v2.sh-compose #view { padding-top: calc(var(--topbar-h) + env(safe-area-inset-top) + var(--s-5)); }

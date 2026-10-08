@@ -449,3 +449,26 @@ test("the legacy controls the gates caught under the dock/* ids are real 44px ta
   /* the capsule's title is drawn at .9 opacity, the worse case */
   assert.ok(ratio(mix(bgHex[1], violet, 0.9), violet) >= 4.5, `the capsule's title at 0.9 opacity: ${ratio(mix(bgHex[1], violet, 0.9), violet).toFixed(2)}:1`);
 });
+
+test("round 3: a Dusk page under the Dock takes the warm neutrals, has no hairline rules, and Discover has no header bar", () => {
+  /* The Dock casts the artwork's light onto the page behind it; on the legacy cool #151119 page the warm Dock
+     read as a second room, and the header bar and page-title hairlines drew the borders DIRECTION forbids.
+     MUTATION: point `--bg` at `var(--bg1)` (or delete the line) in the `:root[data-theme="dusk"]` rule -> the
+     neutral assertions fail; drop `border-bottom: 0` from `.topbar` -> the hairline assertion fails; drop
+     `display: none` from `body.ui-v2.sh-compose .topbar` -> the header assertion fails. The `@media` mirror is
+     checked as text because declOf reads unconditional rules only. */
+  const dusk = ':root[data-theme="dusk"] body.ui-v2:not(.gallery-page)';
+  for (const [name, want] of [["--bg", "var(--bg0)"], ["--surface", "var(--bg1)"], ["--surface2", "var(--bg2)"], ["--text", "var(--ag-text)"], ["--muted", "var(--text-2)"], ["--faint", "var(--text-3)"], ["--line", "var(--rim)"]]) {
+    assert.strictEqual(dockCss.declOf("ui/dock.css", dusk, name), want, `${name} on a Dusk legacy page`);
+  }
+  const css = fs.readFileSync(path.join(ROOT, "ui/dock.css"), "utf8").replace(/\r\n/g, "\n");
+  const media = /@media \(prefers-color-scheme: dark\) \{\s*:root:not\(\[data-theme="dawn"\]\) body\.ui-v2:not\(\.gallery-page\) \{([^}]*)\}/.exec(css);
+  assert.ok(media, "the dark-OS mirror of the Dusk neutrals exists");
+  for (const [name, want] of [["--bg", "var(--bg0)"], ["--surface2", "var(--bg2)"], ["--line", "var(--rim)"]]) {
+    assert.ok(new RegExp(`${name}:\\s*${want.replace(/[()]/g, "\\$&")}`).test(media[1]), `${name} in the dark-OS mirror`);
+  }
+  assert.strictEqual(dockCss.declOf("ui/dock.css", ".topbar", "border-bottom"), "0", "no hairline under the header bar");
+  assert.strictEqual(dockCss.declOf("ui/dock.css", "body.ui-v2 .page-head", "border-bottom"), "0", "no hairline under a page title");
+  assert.strictEqual(dockCss.declOf("ui/dock.css", "body.ui-v2.sh-compose .topbar", "display"), "none", "Discover has no header bar");
+  assert.strictEqual(dockCss.declOf("ui/dock.css", "body.ui-v2.sh-compose", "--topbar-h"), "0px", "and what the bar reserved goes back to every rule that read it");
+});
