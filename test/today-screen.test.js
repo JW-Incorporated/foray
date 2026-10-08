@@ -16,7 +16,7 @@
  *     back to it.
  *  5. The measured layout (BUILD-NOTES 4.1) is the CSS's, not an accident of the
  *     render: hero rhythm 10/12/10/12/16, the 44px target of "+ Up Next" without
- *     a taller meta line, the deck only on Today, the hero band at full enamel.
+ *     a taller meta line, the hero band at full enamel.
  *  6. The gauge is exactly the specified readout: a role=img, the caption word
  *     for word, no input, nothing focusable.
  *
@@ -339,22 +339,16 @@ test("'+ Up Next' has a 44px target without making its meta line taller: a 24px 
   assert.match(box, /position:\s*relative/);
 });
 
-test("the Dial deck is drawn on Today only: the legacy tab bar and its icons are untouched everywhere else", () => {
-  /* MUTATION: write the deck rule as `#tab-bar { ... }` (drop `body.view-home`) ->
-     the legacy tab bar floats on every page and the scoping assertion fails.
-     MUTATION 2: show `.tab-dial` unconditionally -> two sets of icons elsewhere. */
-  assert.match(rule(".tab-btn .tab-dial"), /display:\s*none/, "the sprite icons are hidden by default");
-  const deck = rule("body.view-home #tab-bar");
-  assert.match(deck, /border-radius:\s*var\(--r-lg\)/);
-  assert.match(deck, /height:\s*var\(--deck-h\)/);
-  assert.match(deck, /backdrop-filter:\s*var\(--deck-blur\)/);
-  assert.match(rule("body.view-home .tab-btn .tab-dial"), /display:\s*block/);
-  assert.match(rule("body.view-home .tab-btn svg:not(.tab-dial)"), /display:\s*none/, "the legacy stroke icons are hidden on Today");
-  assert.match(rule("body.view-home .tab-btn[aria-current=\"page\"]::after"), /background:\s*var\(--persimmon\)/, "the active tab's persimmon indicator");
-  /* Nothing outside body.view-home restyles #tab-bar. */
+test("Today carries no deck of its own: the live deck (ui/tabbar.js) is the one tab bar on every screen", () => {
+  /* Iteration 1 drew the Dial deck on `body.view-home` only, over the legacy four-tab bar.
+     The direction branch has since merged the live deck (three tabs, Phosphor icons in
+     both weights, the mini docked on it), so a Today-scoped copy would hide that deck's
+     icons: the merged build rendered Today's tabs as bare labels until these rules went.
+     MUTATION: restore `body.view-home .tab-btn svg:not(.tab-dial) { display: none }` ->
+     the tab icons vanish on Today and this fails. */
   const rogue = [...CSS_RULES.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((x) => x[1].trim())
-    .filter((sel) => /#tab-bar|\.tab-dial/.test(sel) && !/view-home|view-gallery/.test(sel) && sel !== ".tab-btn .tab-dial");
-  assert.deepStrictEqual(rogue, [], "a rule restyles the tab bar outside Today");
+    .filter((sel) => /view-home/.test(sel) && /#tab-bar|\.tab-btn|\.tab-dial/.test(sel));
+  assert.deepStrictEqual(rogue, [], "a Today-scoped rule restyles the deck");
 });
 
 test("the hero band is a foray not yet played: full enamel, not the 40% base the progress layer sits over", () => {

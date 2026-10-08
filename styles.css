@@ -5134,20 +5134,6 @@ body.view-home::after { content: ""; position: fixed; z-index: 19; left: 0; righ
 .today-pcard__badge { align-self: flex-start; }
 .today .gauge { margin: 0; }
 
-/* the deck: the legacy tab bar, drawn as the Dial deck while Today is on screen.
-   Sprite icons (Bold; Fill while current) replace the legacy strokes only here. */
-.tab-btn .tab-dial { display: none; }
-body.view-home #tab-bar { left: calc(env(safe-area-inset-left, 0px) + var(--s-4)); right: calc(env(safe-area-inset-right, 0px) + var(--s-4)); bottom: calc(var(--safe-b) + var(--s-3)); height: var(--deck-h); padding: 0; border: 0; border-radius: var(--r-lg); overflow: hidden; background: var(--deck-tint); -webkit-backdrop-filter: var(--deck-blur); backdrop-filter: var(--deck-blur); box-shadow: var(--shadow-deck); color: var(--ink); }
-body.view-home .tab-btn { position: relative; min-width: var(--tap); min-height: var(--tap); gap: calc(var(--s-1) / 2); padding: var(--s-1); color: var(--ink-2); font: var(--w-micro) var(--t-micro)/var(--lh-micro) var(--font-text); }
-body.ui-v2.view-home .tab-btn[aria-current="page"] { color: var(--ink); }
-body.view-home .tab-btn svg:not(.tab-dial) { display: none; }
-body.view-home .tab-btn .tab-dial { display: block; width: var(--s-6); height: var(--s-6); }
-body.view-home .tab-btn .tab-dial--fill { display: none; }
-body.view-home .tab-btn[aria-current="page"] .tab-dial--fill { display: block; }
-body.view-home .tab-btn[aria-current="page"] .tab-dial:has(+ .tab-dial--fill) { display: none; }
-body.view-home .tab-btn[aria-current="page"]::after { content: ""; position: absolute; left: 50%; top: calc(var(--s-1) + var(--s-1) / 4); width: var(--s-8); height: var(--s-1); border-radius: var(--r-pill); background: var(--persimmon); transform: translateX(-50%); }
-body.view-home .tab-btn:focus-visible { outline: calc(var(--s-1) / 2) solid var(--ultramarine); outline-offset: calc(var(--s-1) / -2); border-radius: var(--r-md); }
-
 /* ---------- REDUCE MOTION: ONE BLOCK, EVERY TRANSITION (audit round 2, a11y-9) ----------
    Three strip rules honoured the setting and nothing else did: the Now Playing
    sheet still slid back over 220ms after a partial drag, the notes chevron
