@@ -18,22 +18,22 @@ binds one screen moved to `ui/*.js`, loaded by `index.html` with plain
 | `ui/browse.js` | Shows index, category pages, All Shows page, browse tiles |
 | `ui/create.js` | Create page (`#/create`) |
 | `ui/delete-data.js` | Delete-my-data flow (remote + local deletion, its sheet) |
-| `ui/diagnostics.js` | Diagnostics sheet; the drawer's delete / diagnostics bindings |
+| `ui/diagnostics.js` | Diagnostics sheet; the Settings page's delete / diagnostics bindings |
 | `ui/downloads.js` | Downloads glue, controls, Library downloads section |
-| `ui/drawer-dev.js` | Drawer developer group: voice probe, engine override rows |
-| `ui/drawer.js` | Drawer render / open / keyboard / actions, settings toggles |
 | `ui/episode.js` | Episode page: description, chapters, timestamp seeks |
 | `ui/foray-player.js` | Foray player surface: segment strip, transport, rate menu, `paintForay` |
 | `ui/foray.js` | Foray page: rows, feedback sheet, credits, sources, `renderForay` |
 | `ui/forays.js` | Forays directory page; Foray list, resume and ribbon rows |
 | `ui/home.js` | Home: greeting, Jump back in, Forays / Playlists / Suggested rails |
-| `ui/interests.js` | Interests page |
+| `ui/interests.js` | Tuning (ex-Interests, `#/interests`): three states per subject |
 | `ui/library.js` | Library and Playlists list pages |
 | `ui/onboarding.js` | First-run subject picks, personas, explainer, intro popup |
 | `ui/playlist.js` | Playlist detail page |
 | `ui/queue.js` | Up Next page: rows, reorder, drag, swipe |
 | `ui/rows.js` | Shared episode-row components (`epRow`, archived / hidden rows) |
 | `ui/search.js` | Search page: show / playlist / episode / Foray results and show-search caches |
+| `ui/settings-dev.js` | Settings' Developer group: voice probe, engine override rows (was `ui/drawer-dev.js`) |
+| `ui/settings.js` | The gear's Sheet, Settings, About, "What 4a does", appearance (`cp_theme`), the switches and the control host (replaces the drawer, `ui/drawer.js`) |
 | `ui/sheets.js` | Sheet infrastructure: `openSheet`, focus, inert, slide motion, drag |
 | `ui/show.js` | Show page: episode fetch + cache, similar shows, `renderShow` |
 | `ui/tabbar.js` | Tab bar |

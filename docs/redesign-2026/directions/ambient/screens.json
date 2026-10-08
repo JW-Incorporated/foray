@@ -14,19 +14,19 @@
       "regions": {
         "header": {
           "prototype": ".screen-head",
-          "app": ".topbar"
+          "app": ".td-head"
         },
         "hero": {
           "prototype": ".hero",
-          "app": ".hv2-jbi-card"
+          "app": ".td-hero"
         },
         "primary": {
           "prototype": ".hero .playbtn",
-          "app": ".hv2-play"
+          "app": ".td-hero [data-home-play]"
         },
         "rows": {
           "prototype": ".ep-row",
-          "app": ".mini-card",
+          "app": ".td-row",
           "mode": "all"
         },
         "tabBar": {
@@ -47,19 +47,19 @@
       "regions": {
         "header": {
           "prototype": ".screen-head",
-          "app": ".topbar"
+          "app": ".td-head"
         },
         "hero": {
           "prototype": ".hero",
-          "app": ".hv2-jbi-card"
+          "app": ".td-hero"
         },
         "primary": {
           "prototype": ".hero .playbtn",
-          "app": ".hv2-play"
+          "app": ".td-hero [data-home-play]"
         },
         "rows": {
           "prototype": ".ep-row",
-          "app": ".mini-card",
+          "app": ".td-row",
           "mode": "all"
         },
         "mini": {
@@ -238,28 +238,151 @@
       }
     },
     "foray": {
-      "title": "Foray room",
+      "title": "Foray detail (half played: Resume)",
       "prototype": {
         "route": "#/foray"
       },
       "app": {
-        "state": "returning",
-        "step": "foray"
+        "state": "foray-resume",
+        "step": "foray-resume"
       },
       "regions": {
         "header": {
           "prototype": ".foray-top",
-          "app": ".page-head"
+          "app": ".fd-top"
         },
-        "rows": {
-          "prototype": ".seglist .row",
-          "app": null,
-          "mode": "all"
+        "hero": {
+          "prototype": ".foray-collage",
+          "app": ".fd-collage"
+        },
+        "strip": {
+          "prototype": ".strip-wrap",
+          "app": ".fd-sill"
+        },
+        "primary": {
+          "prototype": "[data-foray-cta], .foray-body .btn-primary",
+          "app": ".fd-cta"
+        },
+        "why": {
+          "prototype": ".whymade",
+          "app": ".fd-why"
+        },
+        "came": {
+          "prototype": ".came",
+          "app": ".fd-came"
+        }
+      }
+    },
+    "foray-unavailable": {
+      "title": "Foray detail, unavailable",
+      "prototype": {
+        "route": "?state=unavailable#/foray"
+      },
+      "app": {
+        "state": "foray-detail",
+        "step": "foray-unavailable"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".foray-top",
+          "app": ".fd-top"
+        },
+        "hero": {
+          "prototype": ".foray-collage",
+          "app": ".fd-collage"
+        },
+        "strip": {
+          "prototype": ".strip-wrap",
+          "app": ".fd-sill"
+        },
+        "primary": {
+          "prototype": "[data-foray-cta], .foray-body .btn-primary",
+          "app": ".fd-cta"
+        },
+        "why": {
+          "prototype": ".whymade",
+          "app": ".fd-why"
+        },
+        "came": {
+          "prototype": ".came",
+          "app": ".fd-came"
+        }
+      }
+    },
+    "foray-unnarrated": {
+      "title": "Foray detail, not narrated",
+      "prototype": {
+        "route": "?state=unnarrated#/foray"
+      },
+      "app": {
+        "state": "foray-detail",
+        "step": "foray-unnarrated"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".foray-top",
+          "app": ".fd-top"
+        },
+        "hero": {
+          "prototype": ".foray-collage",
+          "app": ".fd-collage"
+        },
+        "strip": {
+          "prototype": ".strip-wrap",
+          "app": ".fd-sill"
+        },
+        "primary": {
+          "prototype": "[data-foray-cta], .foray-body .btn-primary",
+          "app": ".fd-cta"
+        },
+        "why": {
+          "prototype": ".whymade",
+          "app": ".fd-why"
+        },
+        "came": {
+          "prototype": ".came",
+          "app": ".fd-came"
+        }
+      }
+    },
+    "foray-dawn": {
+      "title": "Foray detail, Dawn",
+      "prototype": {
+        "route": "?theme=dawn&state=unnarrated#/foray"
+      },
+      "app": {
+        "state": "foray-detail",
+        "step": "foray-dawn"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".foray-top",
+          "app": ".fd-top"
+        },
+        "hero": {
+          "prototype": ".foray-collage",
+          "app": ".fd-collage"
+        },
+        "strip": {
+          "prototype": ".strip-wrap",
+          "app": ".fd-sill"
+        },
+        "primary": {
+          "prototype": "[data-foray-cta], .foray-body .btn-primary",
+          "app": ".fd-cta"
+        },
+        "why": {
+          "prototype": ".whymade",
+          "app": ".fd-why"
+        },
+        "came": {
+          "prototype": ".came",
+          "app": ".fd-came"
         }
       }
     },
     "onboarding": {
-      "title": "Onboarding",
+      "title": "Onboarding (Dusk)",
       "prototype": {
         "route": "#/onboarding"
       },
@@ -268,13 +391,125 @@
         "step": "intro-sheet"
       },
       "regions": {
-        "sheet": {
-          "prototype": ".onb-inner",
-          "app": "#first-time-sheet"
+        "room": {
+          "prototype": ".onb",
+          "app": "#onboarding-room"
+        },
+        "wordmark": {
+          "prototype": ".onb .wordmark",
+          "app": ".ob-wordmark"
+        },
+        "sleeves": {
+          "prototype": ".onb-arts",
+          "app": ".ob-arts"
+        },
+        "strip": {
+          "prototype": ".onb .strip-wrap",
+          "app": ".ob-strip"
+        },
+        "title": {
+          "prototype": ".onb .t-display",
+          "app": ".ob-title"
+        },
+        "body": {
+          "prototype": ".onb .t-body",
+          "app": ".ob-body"
         },
         "primary": {
-          "prototype": ".onb-inner button",
-          "app": "#first-time-sheet button"
+          "prototype": ".onb .actions .btn-primary",
+          "app": "#onboarding-go"
+        },
+        "secondary": {
+          "prototype": ".onb .actions .btn-secondary",
+          "app": "#onboarding-skip"
+        }
+      }
+    },
+    "onboarding-412": {
+      "title": "Onboarding at 412x915 (the surplus sits between copy and buttons)",
+      "prototype": {
+        "route": "?size=412#/onboarding"
+      },
+      "app": {
+        "state": "first-run",
+        "step": "intro-sheet"
+      },
+      "regions": {
+        "room": {
+          "prototype": ".onb",
+          "app": "#onboarding-room"
+        },
+        "wordmark": {
+          "prototype": ".onb .wordmark",
+          "app": ".ob-wordmark"
+        },
+        "sleeves": {
+          "prototype": ".onb-arts",
+          "app": ".ob-arts"
+        },
+        "strip": {
+          "prototype": ".onb .strip-wrap",
+          "app": ".ob-strip"
+        },
+        "title": {
+          "prototype": ".onb .t-display",
+          "app": ".ob-title"
+        },
+        "body": {
+          "prototype": ".onb .t-body",
+          "app": ".ob-body"
+        },
+        "primary": {
+          "prototype": ".onb .actions .btn-primary",
+          "app": "#onboarding-go"
+        },
+        "secondary": {
+          "prototype": ".onb .actions .btn-secondary",
+          "app": "#onboarding-skip"
+        }
+      }
+    },
+    "onboarding-dawn": {
+      "title": "Onboarding in Dawn (paper scrim, ink copy; shoot with --scheme light)",
+      "prototype": {
+        "route": "?theme=dawn#/onboarding"
+      },
+      "app": {
+        "state": "first-run",
+        "step": "intro-sheet"
+      },
+      "regions": {
+        "room": {
+          "prototype": ".onb",
+          "app": "#onboarding-room"
+        },
+        "wordmark": {
+          "prototype": ".onb .wordmark",
+          "app": ".ob-wordmark"
+        },
+        "sleeves": {
+          "prototype": ".onb-arts",
+          "app": ".ob-arts"
+        },
+        "strip": {
+          "prototype": ".onb .strip-wrap",
+          "app": ".ob-strip"
+        },
+        "title": {
+          "prototype": ".onb .t-display",
+          "app": ".ob-title"
+        },
+        "body": {
+          "prototype": ".onb .t-body",
+          "app": ".ob-body"
+        },
+        "primary": {
+          "prototype": ".onb .actions .btn-primary",
+          "app": "#onboarding-go"
+        },
+        "secondary": {
+          "prototype": ".onb .actions .btn-secondary",
+          "app": "#onboarding-skip"
         }
       }
     },
@@ -290,19 +525,19 @@
       "regions": {
         "header": {
           "prototype": ".screen-head",
-          "app": ".topbar"
+          "app": ".td-head"
         },
         "hero": {
           "prototype": ".hero",
-          "app": ".hv2-jbi-card"
+          "app": ".td-hero"
         },
         "primary": {
           "prototype": ".hero .playbtn",
-          "app": ".hv2-play"
+          "app": ".td-hero [data-home-play]"
         },
         "rows": {
           "prototype": ".ep-row",
-          "app": ".mini-card",
+          "app": ".td-row",
           "mode": "all"
         },
         "tabBar": {
@@ -316,28 +551,134 @@
       "prototype": {
         "route": "?state=loading#/home"
       },
-      "app": null,
+      "app": {
+        "state": "loading",
+        "step": "home"
+      },
       "regions": {
         "header": {
           "prototype": ".screen-head",
-          "app": null
+          "app": ".td-head"
         },
         "hero": {
           "prototype": ".hero",
-          "app": null
+          "app": ".td-hero"
         },
         "primary": {
           "prototype": ".hero .playbtn",
           "app": null
         },
         "rows": {
-          "prototype": ".ep-row",
-          "app": null,
+          "prototype": ".skel",
+          "app": ".td-skel-row",
           "mode": "all"
         },
         "tabBar": {
           "prototype": ".tabbar",
-          "app": null
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "home-midlisten": {
+      "title": "Today, mid-listen",
+      "prototype": {
+        "route": "?state=midlisten#/home"
+      },
+      "app": {
+        "state": "midlisten",
+        "step": "home"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".screen-head",
+          "app": ".td-head"
+        },
+        "hero": {
+          "prototype": ".hero",
+          "app": ".td-hero"
+        },
+        "primary": {
+          "prototype": ".hero .playbtn",
+          "app": ".td-hero [data-home-play]"
+        },
+        "rows": {
+          "prototype": ".ep-row",
+          "app": ".td-row",
+          "mode": "all"
+        },
+        "mini": {
+          "prototype": ".mini",
+          "app": "#foray-player"
+        },
+        "tabBar": {
+          "prototype": ".tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "home-offline": {
+      "title": "Today, offline",
+      "prototype": {
+        "route": "?state=offline#/home"
+      },
+      "app": {
+        "state": "offline",
+        "step": "home"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".screen-head",
+          "app": ".td-head"
+        },
+        "hero": {
+          "prototype": ".hero",
+          "app": ".td-hero"
+        },
+        "primary": {
+          "prototype": ".hero .playbtn",
+          "app": ".td-hero [data-home-play]"
+        },
+        "rows": {
+          "prototype": ".ep-row",
+          "app": ".td-row",
+          "mode": "all"
+        },
+        "tabBar": {
+          "prototype": ".tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "home-stress": {
+      "title": "Today, long-title stress",
+      "prototype": {
+        "route": "?state=stress#/home"
+      },
+      "app": {
+        "state": "stress",
+        "step": "home"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".screen-head",
+          "app": ".td-head"
+        },
+        "hero": {
+          "prototype": ".hero",
+          "app": ".td-hero"
+        },
+        "primary": {
+          "prototype": ".hero .playbtn",
+          "app": ".td-hero [data-home-play]"
+        },
+        "rows": {
+          "prototype": ".ep-row",
+          "app": ".td-row",
+          "mode": "all"
+        },
+        "tabBar": {
+          "prototype": ".tabbar",
+          "app": "#tab-bar"
         }
       }
     },

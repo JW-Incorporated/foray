@@ -188,8 +188,7 @@ function mount({
   const auditionCalls = [];
   const listCalls = [];
   const body = new El("body");
-  for (const id of ["view", "drawer", "drawer-overlay", "drawer-playlists",
-    "family-toggle", "player-toggle", "autoadvance-toggle", "menu-btn", "refresh-btn"]) {
+  for (const id of ["view", "menu-btn", "refresh-btn"]) {
     const el = new El("div");
     el.id = id;
     body.append(el);
@@ -280,16 +279,18 @@ const choiceOf = (row) => findIn(row, ".voice-row-choice");
 const missingRows = (ui) => rowsOf(ui).filter((r) => r.classes.includes("voice-row-missing"));
 
 /* ==================================================================== */
-/* 1. reachable, in the drawer                                           */
+/* 1. reachable, in Settings                                              */
 /* ==================================================================== */
 
-test("the drawer carries a Narration voice item", () => {
-  // MUTATION: drop `drawer.appendChild(btn)` in `bindVoiceControl`. The
+test("Settings carries a Narration voice item", () => {
+  // MUTATION: drop the `settingsList("listening").appendChild(btn)` in `bindVoiceControl`. The
   // control becomes unreachable and this fails.
   const { ui } = mount();
-  assert.ok(ui.open, "no #voice-open in the drawer");
+  assert.ok(ui.open, "no #voice-open in Settings");
   assert.strictEqual(ui.open.textContent, "Narration voice");
-  assert.strictEqual(ui.open.parent.id, "drawer", "it has to be IN the drawer");
+  /* In the Listening section of the Settings host (ui/settings.js): a listener setting among listener settings. */
+  assert.strictEqual(ui.open.parent.parent.dataset.stSection, "listening", "it has to be in the Listening section");
+  assert.strictEqual(ui.open.parent.parent.parent.id, "settings-host", "of the Settings host");
 });
 
 /* ==================================================================== */

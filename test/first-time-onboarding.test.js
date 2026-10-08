@@ -15,6 +15,15 @@
  *      screen must not reference one, and must not add a new event/field
  *      that isn't part of the existing weighted-signal model.
  *
+ * REDESIGN 2026 (ambient): the two-step SHEET this suite used to drive (a Welcome
+ * pane, then a chip grid) is retired for one full-screen Room (#onboarding-room,
+ * ui/onboarding.js, test/ambient-onboarding.test.js). The gate tests and the
+ * ranking tests stay: they pin who sees the screen and what a subject pick does,
+ * which the Room keeps (the picks write path now serves Tuning and the personas).
+ * What fell, by name: the Preferences chip grid and the typed-subject field
+ * (founder Q8's "Show my picks" button is now the Room's primary and goes
+ * straight to Today), and the Welcome pane's value props.
+ *
  * Same dependency-free node:vm harness as test/episode-page.test.js — no
  * jsdom, just enough DOM surface for app.js to run its top-level init()
  * (parked at its first fetch await) and expose its functions/state.
@@ -133,34 +142,29 @@ test("a genuine first-ever visit shows the explainer; once dismissed it never sh
   assert.strictEqual(shownAgain, false, "must not show a second time once dismissed");
 });
 
-test("skipping/completing the explainer both set cp_intro_dismissed (single flag, either action); the scrim only parks it", () => {
-  const app = loadApp();
-  app.showFirstTimeExplainerOnce();
-  // both Skip buttons call the same dismiss() closure — proven structurally
-  // since there is only one dismiss() defined in the function body — and the
-  // Preferences primary calls it from its own handler. ROUND 2 (p-first-4):
-  // the SCRIM is bound to `park`, which writes no flag, and Escape /
-  // navigation route through `park` too. MUTATION: bind the scrim to
-  // `dismiss` again -> the count is 3 and the park assertion is red.
+test("both buttons set cp_intro_dismissed through one dismiss(); Escape and a navigation only park the Room", () => {
+  /* ROUND 2 (p-first-4), kept for the Room: the two buttons are the considered presses; Escape / navigation /
+     hardware back route through `park`, which writes no flag. MUTATION: write `cp_intro_dismissed` in park() ->
+     the park assertion is red; bind either button to something other than dismiss -> the count is not 2. */
   const body = readAppSource();
-  const start = body.indexOf("function showFirstTimeExplainerOnce(");
+  const start = body.indexOf("function openOnboardingRoom(");
   const end = body.indexOf("\nfunction ", start + 10);
   const fn = body.slice(start, end);
-  const dismissBindings = (fn.match(/addEventListener\("click", dismiss\)/g) || []).length;
-  assert.strictEqual(dismissBindings, 2, "the two Skip buttons bind to the same dismiss() function");
-  assert.match(fn, /scrim\.addEventListener\("click", park\)/, "the scrim parks");
-  assert.match(fn, /onRequestClose: park/, "so do Escape and a navigation");
-  const park = /const park = \(\) => \{[\s\S]*?\};/.exec(fn);
+  const dismissCalls = (fn.match(/addEventListener\("click", \(\) => (?:\{\s*)?dismiss\(/g) || []).length;
+  assert.strictEqual(dismissCalls, 2, "both buttons go through dismiss()");
+  assert.match(fn, /onRequestClose: park/, "Escape and a navigation park");
+  const park = /const park = \(\) => \{[\s\S]*?\n  \};/.exec(fn);
   assert.ok(park, "park() exists");
   assert.doesNotMatch(park[0], /cp_intro_dismissed/, "and park() never writes the never-again flag");
+  assert.match(/const dismiss = \(travel\) => \{[\s\S]*?\n  \};/.exec(fn)[0], /lsSet\("cp_intro_dismissed", true\)/, "dismiss() writes it");
 });
 
 /* ---------- no interview/quiz step ---------- */
 
 test("the first-time explainer names the M3 prototype's interview only to say there isn't one, and builds no quiz UI", () => {
-  const start = SRC.indexOf("function showFirstTimeExplainerOnce(");
+  const start = SRC.indexOf("function openOnboardingRoom(");
   const end = SRC.indexOf("\nfunction ", start + 10);
-  const fn = SRC.slice(start, end);
+  const fn = SRC.slice(start, end) + SRC.slice(SRC.indexOf("function onboardingRoomHtml("), SRC.indexOf("function onboardingCssUrl("));
   // Copy is allowed to reassure the user "there's no interview" — that is
   // the whole point of this screen per the card. What must never appear is
   // an actual interview mechanic: a question/answer flow, or calls to the
@@ -358,247 +362,7 @@ function bootWithTaxonomy(m) {
   m.ctx.loadInterests();
 }
 
-const sheetTitle = (m) => m.body.querySelector("#first-time-sheet-title")?.textContent || "";
-const skipBtn = (m) => m.body.querySelector("#first-time-sheet-skip");
-const goBtn = (m) => m.body.querySelector("#first-time-sheet-go");
-const prefsSkipBtn = (m) => m.body.querySelector("#first-time-sheet-prefs-skip");
-const prefsGoBtn = (m) => m.body.querySelector("#first-time-sheet-prefs-go");
-const chipsOf = (m) => m.body.querySelectorAll("[data-chip]");
-
-/* ==================================================================== */
-/* 1. STEP 1 — WELCOME                                                   */
-/* ==================================================================== */
-
-test("step 1 renders the Welcome pane with two value props", () => {
-  const m = mount();
-  bootWithTaxonomy(m);
-  const shown = m.ctx.showFirstTimeExplainerOnce();
-  assert.strictEqual(shown, true);
-  assert.match(sheetTitle(m), /picks podcast episodes for you/);
-  const props = m.body.querySelectorAll(".ft-value-prop");
-  assert.strictEqual(props.length, 2, "Welcome must show exactly two value props");
-});
-
-test("Welcome's second prop carries a live SegmentStrip when a Foray exists", () => {
-  /* MUTATION: drop the segmentStripHtml() call from renderWelcome — the
-     .ft-strip-wrap block would never appear even with a resolvable Foray. */
-  const stripHtml = '<div class="fy-strip fy-strip--sm fy-strip--static" role="img" aria-label="x"></div>';
-  let growApplied = null;
-  const player = {
-    listForays: () => [{ id: "f1", title: "Test Foray", status: "published" }],
-    resolve: (doc, opts) => (opts.id === "f1" ? { playable: [{ id: "a" }] } : null),
-    segmentStripHtml: () => stripHtml,
-    applyStripGrow: (scope) => { growApplied = scope; },
-  };
-  const m = mount({ forayPlayer: player });
-  bootWithTaxonomy(m);
-  m.state.forays = { forays: [{ id: "f1", status: "published" }] };
-  m.ctx.showFirstTimeExplainerOnce();
-  const wraps = m.body.querySelectorAll(".ft-strip-wrap");
-  assert.strictEqual(wraps.length, 1, "the strip illustration must render when a Foray resolves");
-  assert.ok(growApplied, "applyStripGrow must run on the strip's container once it is in the document");
-});
-
-test("Welcome degrades to no strip when the player module or forays are unavailable", () => {
-  /* MUTATION: throw instead of returning "" when window.ForayPlayer is
-     absent — a broken/late-loading player module must not break onboarding. */
-  const m = mount(); // no forayPlayer bridged at all
-  bootWithTaxonomy(m);
-  assert.doesNotThrow(() => m.ctx.showFirstTimeExplainerOnce());
-  assert.strictEqual(m.body.querySelectorAll(".ft-strip-wrap").length, 0);
-});
-
-test("Welcome degrades to no strip when the player module throws (malformed data)", () => {
-  /* MUTATION: remove the try/catch around player.resolve()/segmentStripHtml()
-     — a throwing resolve() (e.g. malformed state.segments) would then
-     propagate out of renderWelcome() and break the whole first-run Home
-     render, not just skip the illustration. */
-  const player = {
-    listForays: () => [{ id: "f1", title: "Test Foray", status: "published" }],
-    resolve: () => { throw new Error("malformed segments doc"); },
-    segmentStripHtml: () => "",
-    applyStripGrow: () => {},
-  };
-  const m = mount({ forayPlayer: player });
-  bootWithTaxonomy(m);
-  m.state.forays = { forays: [{ id: "f1", status: "published" }] };
-  assert.doesNotThrow(() => m.ctx.showFirstTimeExplainerOnce());
-  assert.strictEqual(m.body.querySelectorAll(".ft-strip-wrap").length, 0);
-});
-
-test("Skip for now at step 1 dismisses immediately with no interest write", () => {
-  /* MUTATION: make step-1 skip advance to step 2 instead of calling dismiss()
-     directly — the acceptance line ("skipping at step 1 or 2 lands on Home
-     with default weights") requires step 1's skip to exit the whole flow. */
-  const m = mount();
-  bootWithTaxonomy(m);
-  const before = JSON.stringify(m.state.interests);
-  m.ctx.showFirstTimeExplainerOnce();
-  skipBtn(m)._fire("click");
-  assert.strictEqual(m.ctx.lsGet("cp_intro_dismissed", false), true);
-  assert.strictEqual(JSON.stringify(m.state.interests), before, "interests must be untouched by a step-1 skip");
-  assert.strictEqual(m.store.has("cp_interests"), false, "no cp_interests write on a step-1 skip");
-});
-
-test("Get started at step 1 advances to step 2 without dismissing yet", () => {
-  /* MUTATION: call dismiss() from the "Get started" handler instead of
-     renderPreferences() — cp_intro_dismissed would flip true before the
-     listener ever saw the Preferences pane, and a reload mid-flow would skip
-     straight past it forever. */
-  const m = mount();
-  bootWithTaxonomy(m);
-  m.ctx.showFirstTimeExplainerOnce();
-  goBtn(m)._fire("click");
-  assert.strictEqual(m.ctx.lsGet("cp_intro_dismissed", false), false, "must not be dismissed yet");
-  assert.match(sheetTitle(m), /What are you into/);
-});
-
-/* ==================================================================== */
-/* 2. STEP 2 — PREFERENCES                                               */
-/* ==================================================================== */
-
-function toStep2(m) {
-  m.ctx.showFirstTimeExplainerOnce();
-  goBtn(m)._fire("click");
-}
-
-test("step 2 renders a chip per PREFS_CHIP_IDS node and the typed-subject field", () => {
-  const m = mount();
-  bootWithTaxonomy(m);
-  toStep2(m);
-  const chips = chipsOf(m);
-  assert.strictEqual(chips.length, m.evalIn("PREFS_CHIP_IDS").length);
-  assert.ok(m.body.querySelector("#first-time-sheet-typed"), "the typed-subject input must render");
-});
-
-test("Skip at step 2 dismisses with no interest write (Generalist stands)", () => {
-  const m = mount();
-  bootWithTaxonomy(m);
-  toStep2(m);
-  const before = JSON.stringify(m.state.interests);
-  chipsOf(m)[0]._fire("click"); // pick one, then skip anyway
-  prefsSkipBtn(m)._fire("click");
-  assert.strictEqual(m.ctx.lsGet("cp_intro_dismissed", false), true);
-  assert.strictEqual(JSON.stringify(m.state.interests), before, "a picked-then-skipped chip must never be written");
-  assert.strictEqual(m.store.has("cp_interests"), false);
-});
-
-test("picking a chip and continuing writes through the FIXED U-07 path (root included)", () => {
-  /* MUTATION: write to leafNodes()-only or bypass applyOnboardingPicks
-     entirely — a root-level chip (every PREFS_CHIP_IDS entry is a root)
-     would silently fail to persist, exactly the bug U-07 fixed. */
-  const m = mount();
-  bootWithTaxonomy(m);
-  const before = m.state.interests["history"];
-  toStep2(m);
-  const historyChip = m.body.querySelectorAll('[data-chip="history"]')[0];
-  assert.ok(historyChip, "a history chip must exist");
-  historyChip._fire("click");
-  prefsGoBtn(m)._fire("click");
-
-  assert.strictEqual(m.ctx.lsGet("cp_intro_dismissed", false), true);
-  assert.ok(m.state.interests["history"] > before, "picking history must raise its weight");
-  const persisted = JSON.parse(m.store.get("cp_interests"));
-  assert.ok(persisted["history"] > before, "the raised weight must be persisted via saveInterests()");
-});
-
-test("a chip pick changes what buildCards() ranks on the next Home render (the card's acceptance line)", () => {
-  const m = mount();
-  bootWithTaxonomy(m);
-  m.state.interests["history"] = 0.4;
-  m.state.interests["comedy"] = 0.4;
-  const itemHistory = { topics: ["history"] };
-  const itemComedy = { topics: ["comedy"] };
-  assert.strictEqual(m.ctx.interestScore(itemHistory), m.ctx.interestScore(itemComedy), "must start tied");
-
-  toStep2(m);
-  m.body.querySelectorAll('[data-chip="history"]')[0]._fire("click");
-  prefsGoBtn(m)._fire("click");
-
-  assert.ok(
-    m.ctx.interestScore(itemHistory) > m.ctx.interestScore(itemComedy),
-    "picking history must outrank the untouched comedy branch afterward"
-  );
-});
-
-test("picking three chips changes the ranking (card's literal acceptance wording)", () => {
-  const m = mount();
-  bootWithTaxonomy(m);
-  ["engineering", "science", "sports"].forEach((id) => { m.state.interests[id] = 0.4; });
-  m.state.interests["comedy"] = 0.4;
-  const before = m.ctx.interestScore({ topics: ["engineering"] });
-
-  toStep2(m);
-  ["engineering", "science", "sports"].forEach((id) => {
-    m.body.querySelectorAll(`[data-chip="${id}"]`)[0]._fire("click");
-  });
-  prefsGoBtn(m)._fire("click");
-
-  const after = m.ctx.interestScore({ topics: ["engineering"] });
-  assert.ok(after > before, "three picked chips must raise each picked node's score");
-  assert.ok(
-    after > m.ctx.interestScore({ topics: ["comedy"] }),
-    "a picked branch must outrank an unpicked one on the next scoring pass"
-  );
-});
-
-test("typing a real top-level taxonomy label reaches the same write path a chip tap would", () => {
-  /* MUTATION: only read the chip Set, ignore the typed field entirely — the
-     mockup's "Or type a subject yourself…" input would be decorative. */
-  const m = mount();
-  bootWithTaxonomy(m);
-  const before = m.state.interests["true-crime"];
-  toStep2(m);
-  const typed = m.body.querySelector("#first-time-sheet-typed");
-  typed.value = m.ctx.nodeById("true-crime").label; // exact label match, case-insensitive per applyOnboardingPicks
-  prefsGoBtn(m)._fire("click");
-  assert.ok(m.state.interests["true-crime"] > before, "a typed real subject must be written");
-});
-
-test("a typed subject with no taxonomy match writes nothing, SAYS so, and keeps the sheet open", () => {
-  /* Audit round 2, p-first-3: the miss used to close the sheet exactly as a
-     match did — the newcomer's first typed act was a silent no-op.
-     MUTATION: dismiss() unconditionally again -> the sheet is gone and the
-     note never shows; red. */
-  const m = mount();
-  bootWithTaxonomy(m);
-  const before = JSON.stringify(m.state.interests);
-  toStep2(m);
-  const typed = m.body.querySelector("#first-time-sheet-typed");
-  typed.value = "Underwater basket weaving";
-  prefsGoBtn(m)._fire("click");
-  assert.strictEqual(JSON.stringify(m.state.interests), before, "an unmatched typed subject must change nothing");
-  assert.strictEqual(m.body.querySelectorAll("#first-time-sheet").length, 1, "the sheet stays open");
-  const note = m.body.querySelector("#first-time-sheet-typed-note");
-  assert.strictEqual(note.hidden, false);
-  assert.strictEqual(note.textContent, 'No subject called “Underwater basket weaving” yet. Try one of the chips above.');
-  assert.strictEqual(note.getAttribute("role"), "status", "said, not only shown");
-  typed._fire("input");
-  assert.strictEqual(note.textContent, "", "editing the word takes the note down");
-});
-
-test("ROUND 2 review (p-first-3): the typed-miss live region is never hidden, and a repeated miss is said again", () => {
-  /* The note was `hidden` while its text changed and shown with the text
-     already in place — usually not read — and a second identical miss changed
-     nothing at all. MUTATIONS: put `typedNote.hidden = true` back at build;
-     drop the clear before the re-set -> no write on the repeat; red. */
-  const m = mount();
-  bootWithTaxonomy(m);
-  toStep2(m);
-  const note = m.body.querySelector("#first-time-sheet-typed-note");
-  assert.strictEqual(note.hidden, false, "in the accessibility tree from the start");
-  assert.strictEqual(note.textContent, "", "and empty until there is something to say");
-  const typed = m.body.querySelector("#first-time-sheet-typed");
-  typed.value = "Underwater basket weaving";
-  prefsGoBtn(m)._fire("click");
-  const writes = [];
-  let text = note.textContent;
-  Object.defineProperty(note, "textContent", { get: () => text, set: (v) => { writes.push(v); text = v; }, configurable: true });
-  prefsGoBtn(m)._fire("click");                       // the same word, pressed again
-  assert.ok(writes.length >= 2 && writes[0] === "" && writes[writes.length - 1] === text && text.startsWith("No subject called"),
-    `cleared, then said again: ${JSON.stringify(writes)}`);
-  assert.strictEqual(note.hidden, false);
-});
+const roomUp = (m) => m.body.querySelectorAll("#onboarding-room").length;
 
 test("a typed word matches a subject's label words and its leaves, not only an exact root label", () => {
   /* "health" is "Health & Fitness"; "cooking" is Food's "Cooking Science" leaf.
@@ -613,41 +377,17 @@ test("a typed word matches a subject's label words and its leaves, not only an e
   assert.strictEqual(m.ctx.resolveTypedSubject("true crime").id, "true-crime");
   assert.strictEqual(m.ctx.resolveTypedSubject("xyzzy"), null);
 
-  /* Through the sheet: a typed leaf lights its root's chip and writes the root. */
-  const before = m.state.interests.food;
-  toStep2(m);
-  m.body.querySelector("#first-time-sheet-typed").value = "cooking";
-  prefsGoBtn(m)._fire("click");
-  assert.ok(m.state.interests.food > before, "the leaf's subject is written");
-  assert.strictEqual(m.body.querySelectorAll("#first-time-sheet").length, 0, "a match closes the sheet");
-});
-
-test("the button that ends onboarding says what it does: 'Show my picks' (founder Q8)", () => {
-  /* "Start listening" started nothing — it closes the sheet onto a re-dealt
-     Home. MUTATION: restore the old label. */
-  const m = mount();
-  bootWithTaxonomy(m);
-  toStep2(m);
-  assert.strictEqual(prefsGoBtn(m).textContent, "Show my picks");
-  assert.ok(!SRC.includes('"Start listening"'), "the old label is gone from the source");
+  /* A typed leaf is written, and the re-deal is told its root. */
+  const leaf = "food/cooking-science";
+  const before = m.state.interests[leaf];
+  assert.ok(before < 1, "fixture: the leaf is not already at the ceiling");
+  assert.deepStrictEqual([...m.ctx.applyOnboardingPicks([], "cooking")], ["food"]);
+  assert.ok(m.state.interests[leaf] > before, "the leaf's weight is written");
 });
 
 /* ==================================================================== */
 /* 3. SUBTREE EXPANSION (interest-survey-plan.md §4.1)                   */
 /* ==================================================================== */
-
-test("PREFS_CHIP_IDS resolves to real taxonomy roots, none dangling", () => {
-  /* MUTATION: add a stale/typo'd id to PREFS_CHIP_IDS — a chip for a node
-     that no longer exists would silently vanish from the grid (nodeById
-     guards it), so this pins the LIST itself rather than the render. */
-  const m = mount();
-  bootWithTaxonomy(m);
-  m.evalIn("PREFS_CHIP_IDS").forEach((id) => {
-    const node = TAXONOMY.nodes.find((n) => n.id === id);
-    assert.ok(node, `PREFS_CHIP_IDS entry ${id} must be a real taxonomy node`);
-    assert.strictEqual(node.parent, null, `PREFS_CHIP_IDS entry ${id} must be a top-level node`);
-  });
-});
 
 test("applyOnboardingPicks seeds every descendant of a picked root, not just the root", () => {
   const m = mount();
@@ -661,30 +401,10 @@ test("applyOnboardingPicks seeds every descendant of a picked root, not just the
   const beforeChild = m.state.interests[child.id];
   const beforeRoot = m.state.interests["engineering"];
 
-  toStep2(m);
-  m.body.querySelectorAll('[data-chip="engineering"]')[0]._fire("click");
-  prefsGoBtn(m)._fire("click");
+  m.ctx.applyOnboardingPicks(["engineering"], "");
 
   assert.ok(m.state.interests["engineering"] > beforeRoot, "the root itself must move");
   assert.ok(m.state.interests[child.id] > beforeChild, `child ${child.id} must move too (subtree expansion)`);
-});
-
-/* ==================================================================== */
-/* 4. NOT BUILT — connector features stay out of scope (D2/C5)           */
-/* ==================================================================== */
-
-test("neither step renders an account-connector or import-history control", () => {
-  /* MUTATION: add a "Continue with Apple"/"Continue with Google" button or an
-     import-subscriptions control to either pane — both are explicitly out of
-     scope per the card ("Not built: Continue with Apple/Google, Import
-     subscriptions/listening history"). */
-  const m = mount();
-  bootWithTaxonomy(m);
-  toStep2(m); // renders through both panes along the way
-  assert.doesNotMatch(SRC.slice(
-    SRC.indexOf("function showFirstTimeExplainerOnce("),
-    SRC.indexOf("\nfunction ", SRC.indexOf("function showFirstTimeExplainerOnce(") + 10)
-  ), /Continue with (Apple|Google)|Import (subscriptions|listening history)/i);
 });
 
 /* ==================================================================== */
@@ -693,11 +413,11 @@ test("neither step renders an account-connector or import-history control", () =
 
 /* Home's "Suggested" is state.cardSlots, dealt by buildCards() BEFORE
    the sheet opens over Home, from the pre-pick default weights, and never
-   rebuilt for the rest of the session. The two "changes the ranking" tests
-   in section 2 only proved interestScore() moved — the audit (2026-09-10)
-   found the rendered Home did not. These drive the real flow: Home renders
-   (the sheet opens over it), chips are picked, Start listening — and assert
-   on what Home now shows. Eight tied subjects, four items each, and
+   rebuilt for the rest of the session. The audit (2026-09-10) found the rendered
+   Home did not change with a pick. These drive the flow: Home renders (the Room
+   opens over it), the picks are written and re-dealt through the one write path
+   (the Room has no chips since Redesign 2026; Tuning and the personas use the
+   same path), and Home repaints — and assert on what Home now shows. Eight tied subjects, four items each, and
    Math.random pinned to 0.5 so buildCards()'s jitter is zero: the deal is
    then a pure function of the weights, and the only thing that can reorder
    it is the picks. */
@@ -715,35 +435,40 @@ function seedHomeForRedeal(m) {
   m.evalIn("state.ready = true; Math = Object.assign(Object.create(Math), { random: () => 0.5 });");
 }
 const homeHtml = (m) => m.byId.get("view").innerHTML;
-const dealtRoots = (html) => [...html.matchAll(/class="mini-card" data-branch="([^"]+)"/g)].map((mm) => mm[1]);
+/* The subjects the deal put on Home, in page order, once each: Today's hero (the first pick) and Today's picks
+   carry `data-branch`; "Off your path" is a different share of the day and is not part of the deal.
+   (Redesign 2026: the four `.mini-card`s became a hero and a list of rows, so a subject can show twice.) */
+const dealtRoots = (html) => {
+  const ends = ['aria-label="Playlists for you"', 'aria-label="Off your path"'].map((m) => html.indexOf(m)).filter((i) => i >= 0);
+  const dealt = html.slice(html.indexOf('class="td-hero"'), ends.length ? Math.min(...ends) : undefined);
+  return [...new Set([...dealt.matchAll(/data-branch="([^"]+)"/g)].map((mm) => mm[1]))];
+};
 /* Typographic quotes since audit round 2 (copy-8): every quoted listener
    string goes through app.js's one `quoteQuery` helper. */
 const leadEpisode = (html, root) =>
-  (new RegExp(`data-branch="${root}"[\\s\\S]*?Starts with \\u201c([^\\u201d]+?)\\.?\\u201d`).exec(html) || [])[1];
+  (new RegExp(`data-branch="${root}"[\\s\\S]*?class="td-link"[^>]*>([^<]+)<`).exec(html) || [])[1];
 
 /** Renders the first Home of the session (which deals cardSlots and opens the
     sheet over it) and returns the four dealt subjects, stretch slot first. */
 function firstRunHome(m) {
   m.ctx.renderHome();
-  assert.match(sheetTitle(m), /picks podcast episodes for you/, "the first-run sheet must be open over Home");
+  assert.strictEqual(roomUp(m), 1, "the first-run Room must be open over Home");
   const before = dealtRoots(homeHtml(m));
-  assert.strictEqual(before.length, 4, "fixture: the pre-pick Home dealt four subject cards");
+  assert.strictEqual(before.length, 4, "fixture: the pre-pick Home dealt four subjects");
   return before;
 }
 function pickAndStart(m, roots) {
-  goBtn(m)._fire("click");
-  roots.forEach((id) => m.body.querySelectorAll(`[data-chip="${id}"]`)[0]._fire("click"));
-  prefsGoBtn(m)._fire("click");
-  assert.strictEqual(m.body.querySelectorAll("#first-time-sheet").length, 0, "the sheet must be gone");
+  const applied = m.ctx.applyOnboardingPicks(roots, "");
+  assert.ok(applied, "the picks were written");
+  m.ctx.redealAfterOnboardingPicks(applied);
+  m.ctx.renderCurrentPage();
 }
 
 test("picking three chips changes the FIRST Home render: the picked subjects become the top-tier slots", () => {
-  /* MUTATION 1: delete the `redealAfterOnboardingPicks()` call in the Start
-     listening handler -> cardSlots is still the pre-pick deal, Episodes for
-     you after the picks is identical to before, and the three picked
-     subjects are absent. MUTATION 2: delete the `renderCurrentPage()` call
-     that follows it -> the deal was rebuilt in state but the page under the
-     sheet never repainted; the rendered HTML is still the old deal. */
+  /* MUTATION 1: delete the `redealAfterOnboardingPicks()` call in pickAndStart (the write path's second half)
+     -> cardSlots is still the pre-pick deal, Today's picks after the picks is identical to before, and the three
+     picked subjects are absent. MUTATION 2: delete the `renderCurrentPage()` call that follows it -> the deal was
+     rebuilt in state but the page never repainted; the rendered HTML is still the old deal. */
   const m = mount();
   bootWithTaxonomy(m);
   seedHomeForRedeal(m);
@@ -754,9 +479,10 @@ test("picking three chips changes the FIRST Home render: the picked subjects bec
   pickAndStart(m, picks);
 
   const after = dealtRoots(homeHtml(m));
-  assert.notDeepStrictEqual(after, before, "the picks must change the Home the listener lands on");
-  assert.deepStrictEqual([...after.slice(1)].sort(), [...picks].sort(),
-    `slots 2-4 must be the three picked subjects (slot 1 is the stretch pick, outside them by design); got ${after.join(", ")}`);
+  assert.notDeepStrictEqual([...after].sort(), [...before].sort(), "the picks must change the Home the listener lands on");
+  assert.strictEqual(after.length, 4, `four subjects are dealt; got ${after.join(", ")}`);
+  for (const p of picks) assert.ok(after.includes(p), `the picked subject ${p} must be dealt; got ${after.join(", ")}`);
+  assert.strictEqual(after.filter((r) => !picks.includes(r)).length, 1, "and the fourth is the stretch pick, outside them by design");
 });
 
 test("subjects the pre-pick deal happened to show are not penalised as 'recently shown' or 'seen' when the picks bring them forward", () => {
@@ -776,19 +502,19 @@ test("subjects the pre-pick deal happened to show are not penalised as 'recently
   bootWithTaxonomy(m);
   seedHomeForRedeal(m);
   const before = firstRunHome(m);
-  const picks = before.slice(1); // the three top-tier subjects the default deal showed
+  const stretchRoot = m.state.cardSlots.find((sl) => sl.role === "stretch").branch;
+  const picks = before.filter((r) => r !== stretchRoot); // the three top-tier subjects the default deal showed
 
   pickAndStart(m, picks);
 
   const html = homeHtml(m);
   const after = dealtRoots(html);
-  assert.deepStrictEqual([...after.slice(1)].sort(), [...picks].sort(),
-    `the picked subjects the default deal showed must stay the top-tier slots; got ${after.join(", ")}`);
+  for (const p of picks) assert.ok(after.includes(p), `the picked subjects the default deal showed must stay the top-tier slots; got ${after.join(", ")}`);
   for (const root of picks) {
     assert.strictEqual(leadEpisode(html, root), `${root} episode 4`,
       `${root}'s card must lead with its newest episode — the pre-pick deal must not count as 'seen'`);
   }
-  assert.deepStrictEqual(m.ctx.lsGet("cp_recent_branches", []), after,
+  assert.deepStrictEqual([...m.ctx.lsGet("cp_recent_branches", [])].sort(), [...m.state.cardSlots.map((sl) => sl.branch)].sort(),
     "after the re-deal, recent-branch memory holds exactly the re-dealt subjects, not the pre-pick deal's too");
 });
 
@@ -800,7 +526,7 @@ test("ROUND 2 review (p-first-5): a playing Foray DEFERS onboarding; it does not
      Foray) and its "Got it" then suppressed Welcome/Preferences for good.
      MUTATION 1: put a cp_foray: check back into isGenuineFirstTimeUser -> the
      first assertion is red. MUTATION 2: drop `forayHoldsOnboarding()` from
-     offerHomeOnboarding -> a sheet opens over the playing Foray; red. */
+     offerHomeOnboarding -> the Room opens over the playing Foray; red. */
   const { pathToFileURL } = require("node:url");
   const { KEY_PREFIX } = await import(pathToFileURL(path.join(__dirname, "..", "player", "foray-progress.js")).href);
   let status = { forayId: "some-foray", running: true, playing: true, loading: false, gap: false, ended: false };
@@ -811,12 +537,12 @@ test("ROUND 2 review (p-first-5): a playing Foray DEFERS onboarding; it does not
   bootWithTaxonomy(m);
   assert.strictEqual(m.ctx.isGenuineFirstTimeUser(), true, "a Foray row is not a reason to skip the survey");
   m.ctx.offerHomeOnboarding();
-  assert.strictEqual(m.body.querySelectorAll("#first-time-sheet").length, 0, "nothing over the playing Foray");
+  assert.strictEqual(m.body.querySelectorAll("#onboarding-room").length, 0, "nothing over the playing Foray");
   assert.strictEqual(m.body.querySelectorAll("#intro-sheet").length, 0, "not the returning-user popup either");
   assert.strictEqual(m.store.get("cp_intro_dismissed"), undefined, "and nothing is written that would skip it later");
   status = { ...status, running: false, playing: false };
   m.ctx.offerHomeOnboarding();
-  assert.strictEqual(m.body.querySelectorAll("#first-time-sheet").length, 1, "the next Home after it stops offers Welcome");
+  assert.strictEqual(m.body.querySelectorAll("#onboarding-room").length, 1, "the next Home after it stops offers the Room");
   assert.strictEqual(m.body.querySelectorAll("#intro-sheet").length, 0);
 });
 

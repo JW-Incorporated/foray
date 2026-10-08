@@ -1,4 +1,4 @@
-/* K-01's founder switch: the drawer half of the bundled-voice measurement.
+/* K-01's founder switch: the Settings half of the bundled-voice measurement.
  *
  * `docs/bundled-voice-plan.md` K-01 asks for the probe to reach a phone
  * "behind the same `withDiagnosticUnlock` discipline #29 used" — a hidden
@@ -9,7 +9,7 @@
  * and prove the durable key is documented.
  *
  * THE PROPERTY THIS SUITE PROTECTS. A probe control that appeared in a
- * listener's drawer, or one that could be tapped by accident, would be a
+ * listener's Settings, or one that could be tapped by accident, would be a
  * 90-second CPU burn on somebody's commute. Off by default, not rendered at all
  * while off, and two deliberate taps to run.
  *
@@ -114,8 +114,7 @@ process.on("unhandledRejection", () => {});
  */
 async function mount({ seed = {}, appSrc = APP_SRC, probe = null, noPlayer = false } = {}) {
   const body = new El("body");
-  for (const id of ["view", "drawer", "drawer-overlay", "drawer-playlists",
-    "family-toggle", "player-toggle", "autoadvance-toggle", "menu-btn", "refresh-btn",
+  for (const id of ["view", "menu-btn", "refresh-btn",
     "banner-slot", "pl-form", "pl-input", "pl-note", "tab-topics", "tab-shows",
     "sh-form", "sh-input", "sh-note", "sh-results", "browse-all-link", "pl-remove", "banner-done"]) {
     const el = new El("div"); el.id = id; body.append(el);
@@ -181,19 +180,18 @@ async function mount({ seed = {}, appSrc = APP_SRC, probe = null, noPlayer = fal
 
   const h = { ctx, body, store: ctx.localStorage, probeCalls };
   h.fn = (name) => vm.runInContext(name, ctx);
-  h.openDrawer = () => h.fn("openDrawer")(true);
-  h.drawer = () => findIn(body, "#drawer");
+  /* "Opening" Settings is what the page does when it mounts the controls: paint every label from live state. */
+  h.openSettings = () => h.fn("paintSettings")();
+  h.host = () => findIn(body, "#settings-host");
   h.toggle = () => findIn(body, "#voice-probe-toggle");
   h.run = () => findIn(body, "#voice-probe-run");
   h.status = () => findIn(body, "#diag-status");
   h.sheet = () => findIn(body, "#diag-sheet");
-  /** The drawer's controls in order, which is what "the probe never lands
-      below Delete my data" is asserted against. The Developer group (2026-09-22
-      audit, R8) is read through, in place: its controls are the drawer's
-      controls, one level down. */
-  h.drawerIds = () => h.drawer().children
-    .flatMap((c) => (c.id === "drawer-dev" ? c.children : [c]))
-    .map((c) => c.id).filter(Boolean);
+  /** The Settings controls in reading order, which is what "the probe never lands
+      below Delete my data" is asserted against. The host is sections of lists (and the Developer
+      group, 2026-09-22 audit R8, one of them): its controls are the leaves with an id. */
+  const flatten = (el) => (el.children.length ? el.children.flatMap(flatten) : [el]);
+  h.settingsIds = () => flatten(h.host()).map((c) => c.id).filter(Boolean);
   h.settle = async (n = 30) => { for (let i = 0; i < n; i++) await tick(); };
   return h;
 }
@@ -204,9 +202,9 @@ async function mount({ seed = {}, appSrc = APP_SRC, probe = null, noPlayer = fal
 
 test("off by default: the run control does not exist, on a fresh device", async () => {
   /* MUTATION: default `voiceProbeOn()` to true — every assertion here goes
-     red, and a 90-second CPU burn appears in a listener's drawer. */
+     red, and a 90-second CPU burn appears in a listener's Settings. */
   const h = await mount();
-  h.openDrawer();
+  h.openSettings();
   assert.strictEqual(h.fn("voiceProbeOn")(), false);
   assert.strictEqual(h.run(), null, "no run button while the switch is off");
   assert.ok(h.toggle(), "the switch itself is always there, like #drafts-toggle");
@@ -216,20 +214,20 @@ test("off by default: the run control does not exist, on a fresh device", async 
 test("the run control is REMOVED, not hidden", async () => {
   /* `[hidden] { display: none }` is a UA-stylesheet rule and ANY author
      `display` declaration beats it (test/home-layout.test.js's BUG 3). A
-     `hidden` control here would render the day `.drawer-item` got a display
+     `hidden` control here would render the day `.st-item` got a display
      rule.
      MUTATION: set `run.hidden = true` instead of `run.remove()` — the element
      is then still in the tree and this goes red. */
   const h = await mount({ seed: { cp_voice_probe: true } });
-  h.openDrawer();
+  h.openSettings();
   assert.ok(h.run(), "on: the button exists");
   h.store.setItem("cp_voice_probe", "false");
-  h.openDrawer();
+  h.openSettings();
   assert.strictEqual(h.run(), null, "off: the button is gone from the tree entirely");
 });
 
 test("off is byte-identical to an app with no switch at all", async () => {
-  /* Three apps, one drawer. (a) key absent; (b) key stored false; (c) the real
+  /* Three apps, one Settings page. (a) key absent; (b) key stored false; (c) the real
      app with `voiceProbeOn()` stubbed to `return false`.
      MUTATION: make `voiceProbeOn()` return true — (a) and (b) diverge from (c). */
   const stubbed = APP_SRC.replace(
@@ -237,11 +235,11 @@ test("off is byte-identical to an app with no switch at all", async () => {
     "function voiceProbeOn() { return false; }",
   );
   assert.notStrictEqual(stubbed, APP_SRC, "the stub must have found voiceProbeOn() to replace");
-  const paint = async (opts) => { const h = await mount(opts); h.openDrawer(); return h.drawerIds(); };
+  const paint = async (opts) => { const h = await mount(opts); h.openSettings(); return h.settingsIds(); };
   const a = await paint({});
   const b = await paint({ seed: { cp_voice_probe: false } });
   const c = await paint({ appSrc: stubbed });
-  assert.ok(a.includes("diag-open") && a.includes("delete-data"), "the drawer is not empty");
+  assert.ok(a.includes("diag-open") && a.includes("delete-data"), "Settings is not empty");
   assert.deepStrictEqual(b, a, "key stored as false = key absent");
   assert.deepStrictEqual(c, a, "the switch off = no switch in the source");
 });
@@ -251,39 +249,39 @@ test("off is byte-identical to an app with no switch at all", async () => {
 /* ==================================================================== */
 
 test("flipping the switch writes the durable key and paints the run control", async () => {
-  /* MUTATION: write the key but skip `renderDrawer()` — the button does not
-     appear until the drawer is reopened, which reads as a broken switch. */
+  /* MUTATION: write the key but skip `paintSettings()` — the button does not
+     appear until Settings is repainted, which reads as a broken switch. */
   const h = await mount();
-  h.openDrawer();
+  h.openSettings();
   await h.toggle().click();
   assert.strictEqual(h.store.getItem("cp_voice_probe"), "true");
   assert.strictEqual(h.toggle().textContent, "Voice engine probe: on");
-  assert.ok(h.run(), "the run control appears without reopening the drawer");
+  assert.ok(h.run(), "the run control appears without reopening Settings");
   await h.toggle().click();
   assert.strictEqual(h.store.getItem("cp_voice_probe"), "false");
   assert.strictEqual(h.run(), null);
 });
 
 test("the run control sits directly under its switch, never below Delete my data", async () => {
-  /* "Delete my data" is the drawer's last item by `bindDeleteControl`'s rule —
+  /* "Delete my data" is the page's last item by `bindDeleteControl`'s rule —
      it is the one control that cannot be undone, and the last item is where a
      scrolled thumb lands. A probe button below it would take that place.
-     MUTATION: `drawer.appendChild(run)` instead of `insertBefore`. */
+     MUTATION: `group.appendChild(run)` instead of `insertBefore`. */
   const h = await mount({ seed: { cp_voice_probe: true } });
-  h.openDrawer();
-  const ids = h.drawerIds();
+  h.openSettings();
+  const ids = h.settingsIds();
   assert.strictEqual(ids[ids.indexOf("voice-probe-toggle") + 1], "voice-probe-run");
   assert.strictEqual(ids[ids.length - 1], "delete-data", "Delete my data stays last");
 });
 
-test("reopening the drawer does not stack a second run control or a second switch", async () => {
+test("repainting Settings does not stack a second run control or a second switch", async () => {
   /* MUTATION: drop the `if (existing) return;` guard in `syncVoiceProbeRun` —
      three opens give three buttons, each with its own listener, so one tap
      runs the probe three times. */
   const h = await mount({ seed: { cp_voice_probe: true } });
-  h.openDrawer(); h.openDrawer(); h.openDrawer();
-  assert.strictEqual(findAllIn(h.drawer(), "#voice-probe-run").length, 1);
-  assert.strictEqual(findAllIn(h.drawer(), "#voice-probe-toggle").length, 1);
+  h.openSettings(); h.openSettings(); h.openSettings();
+  assert.strictEqual(findAllIn(h.host(), "#voice-probe-run").length, 1);
+  assert.strictEqual(findAllIn(h.host(), "#voice-probe-toggle").length, 1);
 });
 
 /* ==================================================================== */
@@ -298,7 +296,7 @@ test("tapping run calls the player once and opens the copyable surface", async (
      MUTATION: drop `openDiagSheet()` — the sheet stays hidden and the numbers
      are only in `cp_diag`, which nobody can reach without this sheet. */
   const h = await mount({ seed: { cp_voice_probe: true } });
-  h.openDrawer();
+  h.openSettings();
   await h.run().click();
   await h.settle();
   assert.strictEqual(h.probeCalls.length, 1, "exactly one run per tap");
@@ -311,7 +309,7 @@ test("a refusal is reported with its reason, not as a measurement", async () => 
      MUTATION: paint `out.text` unconditionally — the refusal then shows the
      formatter's seven-line table full of dashes and no reason. */
   const h = await mount({ seed: { cp_voice_probe: true } });
-  h.openDrawer();
+  h.openSettings();
   await h.run().click();
   await h.settle();
   const status = h.status().textContent;
@@ -328,7 +326,7 @@ test("a successful run shows the numbers and the go/no-go verdict", async () => 
     seed: { cp_voice_probe: true },
     probe: { engine: "kokoro-probe", ok: true, rtfWarm: 0.6, peakMemoryMb: 300, lockedScreenCompleted: true },
   });
-  h.openDrawer();
+  h.openSettings();
   await h.run().click();
   await h.settle();
   const status = h.status().textContent;
@@ -337,12 +335,12 @@ test("a successful run shows the numbers and the go/no-go verdict", async () => 
 });
 
 test("with no player module loaded the run says so instead of throwing", async () => {
-  /* A blank or crashed drawer is the one answer this surface must never give
+  /* A blank or crashed Settings page is the one answer this surface must never give
      (`diagText`'s own rule).
      MUTATION: call `player.runVoiceProbe()` without the typeof guard — this
      throws inside a click handler and the status line stays on "Running…". */
   const h = await mount({ seed: { cp_voice_probe: true }, noPlayer: true });
-  h.openDrawer();
+  h.openSettings();
   await h.run().click();
   await h.settle();
   assert.match(h.status().textContent, /player hasn.t loaded/);
@@ -354,7 +352,7 @@ test("a rejecting player is caught and reported, never left as an unhandled reje
      MUTATION: remove the try/catch in `runVoiceProbe`. */
   const h = await mount({ seed: { cp_voice_probe: true } });
   h.ctx.window.ForayPlayer.runVoiceProbe = async () => { throw new Error("boom"); };
-  h.openDrawer();
+  h.openSettings();
   await h.run().click();
   await h.settle();
   assert.match(h.status().textContent, /The probe failed to run/);
@@ -383,7 +381,7 @@ test("player/ never reads the key — the page decides whether to OFFER a run", 
     .filter((f) => f.endsWith(".js"))
     .filter((f) => fs.readFileSync(path.join(ROOT, "player", f), "utf8").includes("cp_voice_probe"));
   assert.deepStrictEqual(offenders, []);
-  /* Probe v3.1: the ONE argument is the drawer's per-session "arm Core ML
+  /* Probe v3.1: the ONE argument is Settings' per-session "arm Core ML
      (may crash)" choice, handed in by the page — still no storage read. */
   assert.ok(/async runVoiceProbe\(\{ armCoreML = false \} = \{\}\) \{/.test(CLIENT_SRC),
     "the player's entry point takes only the page's arm choice");
@@ -410,7 +408,7 @@ test("app-3-11: a second tap while a probe runs starts no second probe, and the 
   const h = await mount({ seed: { cp_voice_probe: true } });
   let finish;
   h.ctx.window.ForayPlayer.runVoiceProbe = () => { h.probeCalls.push(Date.now()); return new Promise((r) => { finish = r; }); };
-  h.openDrawer();
+  h.openSettings();
   const first = h.fn("runVoiceProbe")();
   await h.settle(3);
   assert.strictEqual(h.run().disabled, true, "the run control looks tappable mid-run");
@@ -438,12 +436,12 @@ test("KV-R3: the soak control exists only on iOS, under the run control, and goe
   /* MUTATION: offer the soak everywhere — Android's plugin has no soak and a
      tap would run the matrix again under a soak's label. */
   const h = await mount({ seed: { cp_voice_probe: true } });
-  h.openDrawer();
+  h.openSettings();
   assert.strictEqual(findIn(h.body, "#voice-probe-soak"), null, "no soak off iOS");
   const g = await mount({ seed: { cp_voice_probe: true } });
   g.ctx.Capacitor = { getPlatform: () => "ios" };
-  g.openDrawer();
-  const ids = g.drawerIds();
+  g.openSettings();
+  const ids = g.settingsIds();
   assert.strictEqual(ids[ids.indexOf("voice-probe-run") + 1], "voice-probe-soak");
   assert.strictEqual(ids[ids.length - 1], "delete-data", "Delete my data stays last");
   await g.toggle().click();
@@ -463,7 +461,7 @@ test("KV-R3: a v3 run shows the table and one Play button per pass that kept a W
     voiceProbeWavPasses: () => ["ane"],
     playVoiceProbeWav: async (pass) => { played.push(pass); return { ok: true }; },
   });
-  h.openDrawer();
+  h.openSettings();
   await h.run().click();
   await h.settle();
   assert.match(h.status().textContent, /^voice probe v3 — TABLE\nCopy the record above/);
@@ -496,7 +494,7 @@ test("KV-R3: the soak runs through runVoiceSoak, shows its report, and blocks a 
     runVoiceSoak: () => new Promise((r) => { finish = r; }),
     formatVoiceSoak: () => "voice soak [ane-cputail @1.5x]: 412 loops",
   });
-  h.openDrawer();
+  h.openSettings();
   const soak = findIn(h.body, "#voice-probe-soak");
   soak.click();
   await h.settle(3);
@@ -529,7 +527,7 @@ test("KV-R3 review: tapping the soak control mid-soak STOPS it, and the soak's r
     stopVoiceSoak: async () => { stops += 1; finish([{ kind: "soak", ok: true, stopped: true }]); return { ok: true }; },
     formatVoiceSoak: () => "voice soak [ane-cputail @1.5x]: 3 loops over 4.0 min (stopped early by you)",
   });
-  h.openDrawer();
+  h.openSettings();
   const soak = findIn(h.body, "#voice-probe-soak");
   soak.click();
   await h.settle(3);
@@ -551,8 +549,8 @@ test("probe v3.1: iPhone gets Arm Core ML and Reset skipped passes under the soa
      26.4+ or bring back a pass that crashed once. */
   const g = await mount({ seed: { cp_voice_probe: true } });
   g.ctx.Capacitor = { getPlatform: () => "ios" };
-  g.openDrawer();
-  const ids = g.drawerIds();
+  g.openSettings();
+  const ids = g.settingsIds();
   const at = ids.indexOf("voice-probe-soak");
   assert.deepStrictEqual(ids.slice(at, at + 3), ["voice-probe-soak", "voice-probe-arm", "voice-probe-reset"]);
   assert.strictEqual(ids[ids.length - 1], "delete-data", "Delete my data stays last");
@@ -562,7 +560,7 @@ test("probe v3.1: iPhone gets Arm Core ML and Reset skipped passes under the soa
   assert.strictEqual(findIn(g.body, "#voice-probe-arm"), null);
   assert.strictEqual(findIn(g.body, "#voice-probe-reset"), null);
   const h = await mount({ seed: { cp_voice_probe: true } });
-  h.openDrawer();
+  h.openSettings();
   assert.strictEqual(findIn(h.body, "#voice-probe-arm"), null, "not off iOS");
 });
 
@@ -574,7 +572,7 @@ test("probe v3.1: arming reaches the next run, and is never stored (a crash rela
   h.ctx.Capacitor = { getPlatform: () => "ios" };
   const seen = [];
   h.ctx.window.ForayPlayer.runVoiceProbe = async (opts) => { seen.push(opts); return { engine: "kokoro-probe", ok: false, reason: "model-absent" }; };
-  h.openDrawer();
+  h.openSettings();
   const before = [...h.store.map.keys()].sort();
   await h.run().click();
   await h.settle();
@@ -592,7 +590,7 @@ test("probe v3.1: Reset skipped passes calls the player and says what it did", a
   h.ctx.Capacitor = { getPlatform: () => "ios" };
   let resets = 0;
   h.ctx.window.ForayPlayer.resetVoiceProbeSkips = async () => { resets += 1; return { ok: true, cleared: 3 }; };
-  h.openDrawer();
+  h.openSettings();
   await findIn(h.body, "#voice-probe-reset").click();
   await h.settle();
   assert.strictEqual(resets, 1);

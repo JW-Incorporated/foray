@@ -301,25 +301,24 @@ test("route() dispatches #/shows to renderAllShows, matching the #/playlists pat
 /* 6. #/shows IS STILL REACHABLE AFTER "BROWSE ALL SHOWS" WAS REMOVED    */
 /* ==================================================================== */
 
-test("the menu carries a Shows destination pointing at #/shows", () => {
-  /* The affordance the removed "Browse all shows" button provided, replaced
-     rather than dropped. Read out of index.html rather than a render,
-     because that is where the drawer's markup actually lives — the app never
-     rebuilds those five links, so a render-based assertion would be reading a
-     fixture instead of the shipped nav.
+test("the app carries a Shows destination pointing at #/shows: the Discover tab", () => {
+  /* The affordance the removed "Browse all shows" button provided, replaced rather than dropped. The drawer that once
+     carried the link is gone (Redesign 2026, ambient: "Overturns 4 tabs + drawer"); the destination is the Discover
+     tab, read out of ui/tabbar.js's TAB_ROUTES because that is where the shipped nav actually lives.
 
-     MUTATION: delete the `<a class="drawer-section" href="#/shows">Search</a>`
-     line from index.html. This fails, and #/shows becomes an address with no
-     link to it anywhere in the app.
+     MUTATION: delete the `{ key: "search", label: "Discover", hash: "#/shows", ... }` entry from TAB_ROUTES. This
+     fails, and #/shows becomes an address with no link to it anywhere in the app.
 
-     Named "Search" since 2026-09-22 (and so is the page's heading, in the
-     three route assertions above and below): one name per destination, and
-     the tab bar's name wins (audit personas 36 and 76). */
-  const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+     Named "Discover" since the ambient Dock renamed the tab (it was "Search" from 2026-09-22): one name per
+     destination (audit personas 36 and 76). The page's own <h2> still says "Search" in the route assertions above
+     and below until the Discover screen's branch lands its heading. */
+  const tabbar = fs.readFileSync(path.join(ROOT, "ui/tabbar.js"), "utf8");
   assert.ok(
-    /<a class="drawer-section" href="#\/shows">Search<\/a>/.test(html),
-    "the drawer must carry a Search entry linking to #/shows"
+    /\{ key: "search", label: "Discover", hash: "#\/shows"/.test(tabbar),
+    "the tab bar must carry a Discover entry linking to #/shows"
   );
+  const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+  assert.ok(!/id="drawer"/.test(html), "and no drawer is left to carry a second copy");
 });
 
 test("nothing renders a 'Browse all shows' link any more — the menu replaced it, it was not duplicated", () => {

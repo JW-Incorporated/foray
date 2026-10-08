@@ -311,7 +311,8 @@ test("a next_cursor does not silently auto-load the next page either: exactly on
   assert.doesNotMatch(m.calls[0], /cursor=/, "and it must be the un-cursored page-1 request");
 
   const container = m.viewEl.querySelector("[data-show-episodes]");
-  const epRowCount = (container.innerHTML.match(/class="ep-row"/g) || []).length;
+  /* Redesign 2026 (ambient): a show page's rows are EpisodeRows (`td-row sh-row`), no longer `ep-row`. */
+  const epRowCount = (container.innerHTML.match(/<article class="raised td-row sh-row /g) || []).length;
   assert.strictEqual(epRowCount, 100, "page 1's episodes are what is rendered");
 });
 

@@ -1012,7 +1012,7 @@ pixels; 41 stable capture plates at three viewports make the 123-shot gallery ba
    intended `ambient-gallery` diffs above if the baseline renders under reduced motion.
 
 
-## 17. As built: phase 4, Library (`redesign/ambient-library`, `ui/library.js`, `ui/library.css`)
+## 18. As built: phase 4, Library (`redesign/ambient-library`, `ui/library.js`, `ui/library.css`)
 
 Where the build departs from §3, §4.5, §10.7, §10.11, §11.1 and §12.2, or fills a gap in
 them. `test/ambient-library.test.js` pins every number here (each test names its mutation;
@@ -1189,3 +1189,297 @@ the state varies"), so the prototype's structure wins here and 17.1.1, 17.1.2 an
 Not this unit's, and unchanged: the Dock findings (three tabs and no Create, one floating Veil, Ember play on a Glow
 tint, back-15 and forward-30 glyphs, the 2px Glow progress line, Phosphor Fill active tab) belong to
 `redesign/ambient-dock` and Library's shots still show the legacy bars until it merges.
+## 16. As built: phase 4, Today (`redesign/ambient-today`, `ui/home.js`, `ui/today.css`, `ui/palette.js`)
+
+Screen 3 of `BUILD-PLAN.md` §2.1.3. What landed, and every place the build differs from a
+sentence above, with the reason. (Measurements are Chromium 393x852 and 375x667, Dusk, harness
+clock 2026-10-05, remote art off.)
+
+1. **Rulings overturned, by name** (`test-classification.md` §0): "Home section order and
+   content" (U-03; founder 2026-09-18 and 09-24), "wordmark once on Home, in the greeting", and
+   "card/row anatomy" for Home. Kept: the floor, the bridge copy, the badge honesty, F14,
+   continuous playback, Home's one Play (now the hero's), the test-track switch. The retired
+   renderers (`miniCard`, `subjectBlurb`, `startsWithLine`, `jumpBackInV2Html`,
+   `jumpBackInCardHtml`, `forayCardV2Html`, `foraysForYouHtml`, `playlistCardV2Html`,
+   `playlistsForYouHtml`, `miniCardV2`, `suggestedHtml`, `homeGreeting`, `homePlayHtml`,
+   `homePlayRails`, `homePlayTarget`) were deleted with their tests rewritten, not kept as dead
+   code. Their `styles.css` rules (`.hv2-*`, `.mini-card`, `.mc-*`) are now dead CSS and stay
+   until the legacy sheet is retired at the phase exit: two KEEP suites still read them.
+2. **Data.** The hero is today's foray: the first listable, resolvable, non-stretch published
+   Foray (`todayForayHero`); otherwise, and always on a first run, the first pick, in which case
+   the list starts at the second pick and its count drops by one. A first run is observed, not
+   declared: no history and nothing mid-listen. Today's picks are `state.cardSlots` (the
+   existing deal) laid out as four to six rows with the Stretch spliced at index 2 (index 1 when
+   short): never first, never last, also after the first-run hero is taken out. Off your path is
+   two or three leads from the lower tier of the same 60% cut, excluding the Stretch's own
+   subject and anything already on the page; deterministic, so a repaint never re-rolls.
+   Keep listening is the most recent entry that is part-way (`percent` 0 to 99), which is what
+   `jumpBackInEntries` already computed; a playlist with a play date but no progress is not
+   mid-listen.
+3. **The wash.** 48vh, three layers, 52% hot spot, as §4.1 and §10.3, with the hot spot placed
+   by the prototype's measured geometry (the collage's centre: `gutter + half the art`, `86 +
+   half the art`) rather than §10.3's `22% 16%`, which only approximates it. Secondary text on
+   the wash (date, meta, why-line, first-run line) is `--on-wash-2`, not `--text-2` and not
+   `--text-3`: the acceptance line says text-2 clears 4.5:1 on the hot-spot row, and it does
+   not (3.55:1 at the worst hue; `ui/tokens.css` already carries `--on-wash-2` at 5.49:1 for
+   exactly this). `test/ambient-today.test.js` computes both across the hue wheel.
+4. **HeroPick.** Collage 160 (136 at 375), whole first square, lit at 64 in the first show's
+   colour; a foray's meta sits beside Play (the prototype), an episode's under its title. The
+   title is `--t-title` clamped to four lines; 2px of padding (taken back by margin) keeps
+   `scrollHeight <= clientHeight` true on a title that fits (the anchor's own box is 32px a
+   line inside a 30px line box, which read 1px over), and a title that cannot fit steps down to
+   `--t-headline` rather than be cut. The copy column is at least collage + 28px tall, so
+   Play's centre is never above the collage's bottom edge.
+5. **Rows, rail, banner.** EpisodeRow 96 min as primitives; a row that carries a state line
+   gives up its date (a 96px row at 375 has no room for the word, show, length and day: the
+   gate caught it). The rail is `calc((100% + gutter - 48px) / 2)` a tile: two tiles and an
+   exact 24px peek at every width (155.5 at 375). Offline reads `navigator.onLine === false`,
+   follows the `online`/`offline` events, and treats `cp_downloads` `done` as playable.
+6. **Loading** is the boot screen on Home (`todaySkeletonHtml({ boot: true })` painted by
+   `init()` before its first await, carrying `data-boot-loading` and "Loading 4a…"), so the
+   state needs no new fetch hook beyond the harness holding `data/discover.json` open.
+7. **Pick to play.** `todayGlowTo` writes `--glow` on `<html>` (CSSOM, number-only colour) before
+   the start; the `:root` transition makes it 560ms. The row's art is cloned into `.td-today`
+   and flown to `[data-mini-art]` (the Dock's hook) or today's `#foray-player .fp-art` with
+   `element.animate`, 560ms, the live `--e-spring`; Reduce Motion skips the flight. Row state
+   (`is-playing`, Pause label, Lamp "Playing" with the Fill glyph) comes from the player through
+   a 1s poll that stops when Today leaves the page: `syncCardButtons` rewrites every
+   `[data-play]` button's text, so the rows use `data-td-play` and the player is not touched.
+8. **Chrome.** Today hides the legacy top bar (`body.view-home .topbar`) and draws its own
+   header; the gear opens the Settings Sheet (screen 9, built; there is no drawer left).
+   `app.js` lands focus on `.td-wordmark` and remembers `.td-rail`'s scroll; both were one-word
+   edits. The tab bar and mini player are still legacy: their region deltas against the
+   prototype (`tabBar`, `mini`) belong to the Dock screen.
+9. **Palette.** `ui/palette.js` carries the prototype's 40 `[hue, chroma]` pairs keyed by
+   `fnv1a(show name)`, not by name (a show title is third-party text and the copy scanners
+   read this file); clamped L 0.66 / 0.56 (live `--glow-l`), chroma 0.07 to 0.14; a show not in
+   the table gets a hash hue at chroma 0.10. No `data/palettes.json` fetch: it would add a boot
+   document for 40 numbers.
+10. **Shipping.** New: `ui/today.css`, `ui/palette.js`, `test/ambient-today.test.js` (18 tests,
+    40 mutations run red across the suites touched; the list is in the PR). Native bundle: the
+    2.85 MB legacy alarm is untouched; `today.css` (6.7 KB), `palette.js` (1.9 KB) and the
+    rewritten `home.js` (28.5 KB) are budgeted in `AMBIENT_PRIMITIVES_ASSETS` beside the
+    foundation, 8 / 2 / 32 KB ceilings.
+11. **Harness additions** (appended, nothing reordered): app states `loading`, `offline`,
+    `midlisten` (and a `midlisten` seed: the returning profile plus `cp_last_episode` and
+    `cp_pos:<id>` at 40 minutes); `screens.json` rows `home-midlisten`, `home-offline`,
+    `home-stress` and Today's app selectors on `home`, `mini`, `home-first-run`,
+    `home-loading`. The offline state tells the page it is offline without cutting the network:
+    a context with no network and no service worker cannot serve the icon sprite a new `<use>`
+    fetches, and the glyphs vanished for a reason that is not the app's.
+12. **Iteration 3 rework (fidelity audit: top seam, strip rhythm).** Both findings are the two items above (3b, 4):
+    the scrim's release is eased over 126px and the strip is flat bars at one gap with a light at every boundary, no
+    part-lit bar. Tests: 4 (rewritten), 4b (rewritten, adds the feed-with-and-without-narration identity), 4c (the gap
+    and the fixed light), 4d (no fill layer, no taller bar, whole-bar lit and dim) and 10c (the eased release), each
+    with its mutation run red (twelve mutations, one survivor fixed: the `g.kind !== "narration"` filter was absorbed by
+    the empty-name filter until 4b gave a narration row a voice's name). Floor 17 to 20.
+13. **Not done here, on purpose.** Judge passes (no judge agent could be spawned from this
+    run): the fidelity renders and the side-by-sides are in `data-local/redesign/fidelity/
+    today-i1` and `today-i2`, a Dawn pass in `today-dawn-i1`. The rolling `ambient-app`
+    baseline is not re-recorded (it is shared by every screen branch and re-locks on merge);
+    the compare shows 15 intended Home diffs, 9 added states and nothing else.
+13. **Iteration 2 (art-director fidelity findings, 2026-10-07).** Six deviations, all closed on this branch.
+    - **The Dock on Today.** The tab bar is three tabs, Today, Discover, Library, with Create folded into Discover
+      (`ui/tabbar.js` `TAB_ROUTES`; `tabForHash` lights Discover for `#/create`, `#/playlists`, `#/playlist/`, `#/subject/`).
+      Overturned by name: "Four tabs (Home, Search, Create, Library) + drawer menu" (`test-classification.md` §0); the
+      drawer's two entries follow the tab names (one name per destination, R6). The glyphs are the Phosphor sprite through
+      `agIcon()`: Regular when inert, **Fill when active**, so a state change is a fill. The keys stay `home`/`search`/
+      `library`. On Today (`body.view-home`, `ui/today.css`) the legacy `#tab-bar` and `#foray-player` take the Dock's
+      anatomy: inset by the gutter, 12px above the safe area, `--r-xl`, the Glow-tinted `--glow-veil` with the Veil blur
+      and its three fallbacks, a rim between rows, no gap; the active tab is Lamp (not Ember), the mini's Play is Ember
+      (not violet), the mini's 2px progress line is Glow. `--tab-bar-h` and `--fp-bar-h` are redeclared on Today's body so the
+      legacy sums (content padding, the mini's bottom) read the Dock's real height. Fidelity run `today-iter2-c`: `tabBar`
+      20,776 353x64 on both sides (delta 0); `mini` +1px.
+    - **Never sliced.** `body.view-home::after`, a fixed fade under the Dock (z 54, `pointer-events: none`), solid `bg0` from
+      32px above the Dock's top row to the screen edge; it tracks the Dock's height (tab row, plus the mini row when loaded).
+    - **Hero meta.** One line, never wrapped: `white-space: nowrap`, Play `flex: none`, and the actions row wraps so a
+      length too long to sit beside Play (131px against the 109px left of the 177px column, e.g. "1 show · about 43 min",
+      where "about" is the audited estimate marker) drops under Play whole. The prototype's "4 shows · 19 min" still sits
+      beside Play on one baseline.
+    - **Apostrophes.** Everything drawn uses U+2019 (eyebrow, the "Today’s picks" head, the first-run and Off-your-path
+      notes); the landmark names (`aria-label`) stay ASCII so every query that finds the region still does.
+    - **Budget.** `ui/today.css` minifies to 9.2 KB with the Dock block; its ceiling moves 8 to 10 KB in
+      `prepare-webdir.test.mjs` (a bounded feature step, not the legacy alarm).
+    - **Not done here.** The Dock's own behaviours (recede on scroll, the field row, car posture, the cast) belong to the
+      Dock screen; Today adopts only the surface. While Today loads (`home-loading`) the app has no tab bar yet (it is
+      created by the first `renderCurrentPage`), so that state's `tabBar` region reads prototype-only. The Create page is
+      reachable only from Discover's "Make a playlist" once the Discover branch merges; until then `#/create` is a route
+      with no tab.
+
+
+## 17. As built: phase 4, Onboarding (`redesign/ambient-onboarding`, `ui/onboarding.js`, `ui/onboarding.css`)
+
+The first-run screen of BUILD-NOTES 4.7 and 11.2, built as one full-screen Room over Today. It replaces the two-step
+first-run sheet (`#first-time-sheet`, retired). Decisions are the builder's and the art director's, made overnight;
+the pixel numbers are 11.2's, checked against the round-4 prototype's `.onb-*` rules.
+
+1. **What it is.** `showFirstTimeExplainerOnce()` keeps its gates (genuine first-time listener, `cp_intro_dismissed`
+   unset, no Room already on screen, not parked this visit, nothing sounding) and opens `openOnboardingRoom()`: a
+   `.room.ag.ob-room` dialog appended to `<body>` and opened through the one sheet owner (`openSheet`: focus in, the page
+   and tab bar `inert`, Escape routed to the Room's own close). `role="dialog"`, `aria-labelledby` the display title,
+   deliberately not `aria-modal` (the reason the sheets never were). Two stacked artwork layers crossfade over 560ms
+   every 6s through four real show arts (the first foray's shows in running order, then the discover pool's, distinct,
+   never five); the lit sleeve and the Room's Glow follow. Reduce Motion, or one artwork: the first art, held.
+2. **The pixel contract**, from the top, at every width and height: wordmark row `safe-top + 24` to `+ 54`; sleeves row
+   176 tall at `+ 94` (40 under the wordmark), the four sleeves at the prototype's x / y / rotation, the lit one at 1.08
+   and the whole row at 1.15 from 800px tall; the strip 24 under the sleeves; the display title 28 under the strip, the body
+   12 under that; Primary (Ember, 48) and Secondary (44) 12 apart at the bottom, `safe-bottom + 24` under. The flexible row
+   is `.ob-mid` (`flex: 1 0 auto`, content `flex-start`), so a tall screen's surplus opens between the copy and the
+   buttons and never above the sleeves. Measured (`fidelity` runs `onboarding-i2`, `onboarding-412-i2`, `onboarding-dawn-i2`):
+   wordmark, sleeves, Primary, Secondary and the Room all 0px against the prototype at 375x667, 393x852 and 412x915.
+   Primary's bottom edge is 80px above the viewport bottom at all three (Secondary 44 + the 12 gap + 24: 667 - 587,
+   852 - 772, 915 - 835) when the safe area is zero, and `safe-bottom + 24` more by the padding rule when it is not.
+3. **Two deliberate differences from the prototype's numbers.** (a) The strip is a 48px box, as 4.7 and the acceptance
+   say; the prototype's `.strip-wrap` is a 54px `<button>` box (its hit area), so the strip region reads -6px high and the
+   title and body +/-6px up. The bars sit 12px down in the box (the prototype's button centred them), so they land 5px
+   above the prototype's. (b) The head scrim is held at `--scrim-head` to the wordmark's last pixel (`safe-top + 54`) and
+   then eased out to `--scrim-top`; the prototype ramped from 0. 11.2 says "head 0.52 to safe-top + 72" and the
+   acceptance says the head icons keep 3:1 over any art: at the wordmark's baseline the ramp was at 0.28 alpha and the
+   pair measured 1.6:1 over pure white art. Held, the pair is 3.27:1 in Dusk and 4.8:1 in Dawn (test 11). The release
+   was first 18px (to `+ 72`) and the art director's iteration-3 audit saw it: a flat darker band over a lit wash, a
+   banner slab rather than a lit room. It is now a smoothstep in five stops over 126px, ending at `safe-top + 180`
+   (`--ob-head`; test 10c holds every segment to at most 1.5% of the head-to-top difference per pixel, the old release
+   was 5.6%). The hold itself stays: the wordmark's 3:1 depends on it and `--scrim-head` is shared with every Room.
+4. **The strip** is drawn from the first listable foray through `ForayPlayer.stripModel` (narration merged), as bars
+   sharing the 343px by runtime, 4px apart (iteration 3: the 2px of 4.1's strip read as one striped block on the dim hues, so the
+   onboarding strip, which is a row of lanterns, takes `--s-1`; neighbours that name one show are merged into one bar so
+   three same-hue bars never sit side by side). **Iteration 3 rework, after the art director's fidelity audit:** the strip
+   is a drawing, not a readout, and it is drawn as the prototype draws it. A narration light (12px, fixed, Lamp) sits at
+   EVERY boundary between two bars, whether or not the feed carries narration there, so the air between two bars is one
+   gap (4px) or one gap, a light, one gap, never 4px at one boundary and 20px at the next; the feed's own narration rows
+   are not drawn at all (the unnarrated gaps used to stay open, which is what read as uneven). No bar is part-lit and
+   none is taller: the old "playing" bar (18% in) was a lit block fused to a dim block with no gap, which read as two
+   segments run together. At rest a bar is one flat colour, whole: the bars the first 18% of the foray has gone by (the
+   ones whose middle is behind it; the first, at any real length) are at full opacity and the rest at `--seg-dim`, as the
+   prototype's strip is drawn. A bar's colour is its artwork hue (`oklch(0.70 0.13 H)` Dusk, `0.52` Dawn, nudged
+   30 degrees when within 24 of a bar already drawn; numbers only). `aria-hidden`. More than 8 bars condense to seven
+   named for the show that holds most of each (with a light between every two bars the 343px would otherwise be mostly
+   lights; the prototype draws six). It draws in over 1.2s:
+   `--ob-step` is set from the bar count so the last bar ends at 1200ms (280ms each). No foray, no player module: no strip,
+   the title moves up to 24 under the sleeves.
+5. **Show my picks.** Writes `cp_intro_dismissed` through the shim at the press, sends the strip to Today's hero collage
+   (translate and scale to the collage's centre and width over `--m-ui`, then the Room fades over the last `--m-micro` of
+   `--m-sheet`: 420ms in all), closes the sheet, and puts focus on Today's wordmark. Under Reduce Motion script sets none
+   of the travel properties and the shared block turns the fade into a 200ms crossfade. Skip for now: the flag, a plain
+   `--m-ui` fade, no travel, no sheet left, no `inert`. Escape, a navigation and hardware back park the Room for the visit
+   and write nothing (round 2, p-first-4); there is no scrim to tap.
+6. **What fell with the sheet.** The Preferences step (17 subject chips, a typed-subject field), the Welcome pane's two
+   value props, the "Get started" step and `PREFS_CHIP_IDS`. 4.7 and DIRECTION say one screen; a newcomer who skips the
+   chips loses nothing the ranking does not learn from the first plays, and Tuning (less, 4a's pick, more) is where a
+   subject is changed on purpose. Kept: `applyOnboardingPicks`, `resolveTypedSubject` and `redealAfterOnboardingPicks`
+   (the write path Tuning and `applyPersonaPick` share, and the `reserve` re-deal the first-Home tests pin). Overturned by
+   name (`test-classification.md`, 2b): the first-run sheet and founder Q8's "Show my picks" as the chip step's button
+   (the label survives as the Room's Primary); the U-09 acceptance line "picking three chips changes the first Home" has
+   no UI until Tuning adopts the write path.
+7. **Settings' "What 4a does".** The drawer (still the Settings surface on this branch) gains `#intro-replay`, bound in
+   `bindDrawerChrome` to `showWhatFouraDoes()`: the same Room for anyone, any time, writing nothing; its Primary goes to
+   Today. **The Dock / Settings unit must keep this entry** (the prototype's Settings sheet has it as `i-sparkle`
+   "What 4a does"); the hook is that one function.
+8. **The Room does not keep the player reachable.** The sheet lifted the mini bar over its scrim; a full-screen Room has
+   the bar under its buttons, and the Room already waits while a Foray is sounding (`forayHoldsOnboarding`), so only a
+   restored, paused bar can sit under it. `ONBOARDING_KEEPS_REACHABLE` stays for the returning-listener popup. The Room's
+   `z-index` is 100, above the player and every sheet.
+9. **Harness.** `first-run` keeps its step label `intro-sheet` (other directions' `screens.json` name it) and waits for
+   `#onboarding-room`; `SHEET_OPENERS` names the Room, with `#onboarding-skip` as its close. `screens.json`: `onboarding`
+   (regions: room, wordmark, sleeves, strip, title, body, primary, secondary), `onboarding-412` and `onboarding-dawn`
+   (same state; fidelity keys screens by prototype route, so they carry `?size=412` and `?theme=dawn`; shoot Dawn with
+   `--scheme light`). The fixtures carry no artwork URLs (third-party imagery stays out of the repo), so the harness Room
+   shows monograms and the Glow gradient; the blurred backdrop was checked with a CSS gradient in `--ob-art` (red, pure
+   white, pure black art, both schemes).
+10. **Tests.** New `test/ambient-onboarding.test.js` (17 tests; every mutation in each test's header ran red: 63 in
+    all across the new suite and the rewritten ones. Five ran green at first and were fixed: an equivalent `stripModel`
+    guard, a redundant `if (!replay)` on the park flag (removed), a replay test whose seed hid the flag write, a button
+    height rule no suite measured, and a once-per-visit check the count alone could not see). Rewritten for the Room: `first-time-onboarding` (sixteen sheet tests went,
+    the gate / subject-resolution / write-path / re-deal tests stay, driven without chips; floor 33 to 17),
+    `onboarding-sheet-once` (ids; plus an identity assertion, because the owner replaces a twin by id and the count alone
+    cannot tell "left alone" from "closed and reopened"), `modal-and-focus` (the dialog, park, reachability and z-order
+    tests for the Room; the Get-started focus test went), `listener-copy`, `load-states`, `ui-tokens` (field census 6 to 5),
+    `afterglow-tokens` (onboarding.js joins the adopted screens; the stylesheet link list), `tap-targets` (the CSS list),
+    three Playwright specs and two root suites (ids). Equivalent mutant noted: dropping only the `stripModel` guard in
+    `onboardingBars` is absorbed by its own try/catch; dropping both is red.
+11. **Budget.** `ui/onboarding.css` is 8.3 KB source; `prepare-webdir.test.mjs` passes with the bundle under the cap.
+12. **Iteration 3 rework (fidelity audit: top seam, strip rhythm).** Both findings are the two items above (3b, 4):
+    the scrim's release is eased over 126px and the strip is flat bars at one gap with a light at every boundary, no
+    part-lit bar. Tests: 4 (rewritten), 4b (rewritten, adds the feed-with-and-without-narration identity), 4c (the gap
+    and the fixed light), 4d (no fill layer, no taller bar, whole-bar lit and dim) and 10c (the eased release), each
+    with its mutation run red (twelve mutations, one survivor fixed: the `g.kind !== "narration"` filter was absorbed by
+    the empty-name filter until 4b gave a narration row a voice's name). Floor 17 to 20.
+13. **Not done here, on purpose.** Judge passes and the reviewer pass (no agent could be spawned from this run): the
+    fidelity renders and side-by-sides are in `data-local/redesign/fidelity/onboarding-i2`, `onboarding-412-i2` and
+    `onboarding-dawn-i2`. The rolling `ambient-app` baseline is not re-recorded (shared by every screen branch; it
+    re-locks on merge). `ambient-gallery` compared 123/123 exact. Gates on `first-run`: 0 new against the known debt;
+    axe: only the app-wide `meta-viewport` (the no-zoom ruling).
+## 13. Foray detail, as built (2026-10-07, branch `redesign/ambient-foray-detail`)
+
+Decisions the builder made while no one could be asked; each is also in the code or a test.
+
+1. **The mid scrim stop is 236, not 276 (and the ramp starts at 120, iteration 2).** §10.1's stops assume an eyebrow at `safe-top + 276`. The prototype's own stack puts the
+   eyebrow at `safe-top + 236` (8, the 44px head, 8, the 160 collage, 16), and the token suite pins text contrast at the mid stop, so
+   the stop must not sit below the first line of text. `.fd-room` sets `--rs2: calc(var(--safe-top) + 236px)`; `--rs1` stays 196 and
+   every other number (the 56 head stop, Dawn's paper mix and 0.55 layer, the 8% / 0.35 unavailable Room) is the tokens'.
+   **Iteration 2:** `--rs1` is now 120 too (the prototype's own `.room-bg` value), not the token's 196: at 196 the scrim climbed from
+   0.20 to 0.89 in 40px right under the 220px collage and drew a hard horizontal seam, the round-1 flat band. The climb is 116px now.
+   `test/ambient-foray-detail.test.js` computes the eyebrow's top from the page's own spacing and fails if the stop is lower.
+2. **Share is the `i-share` glyph**, not `i-dots`: §4.6's "dots 44 (share)" and the prototype's own button disagree, and the
+   prototype's glyph says what the button does. The target is 44 either way. Share opens the native sheet where there is one and
+   otherwise copies `https://jw-incorporated.github.io/foray/#/foray/<id>` and says so; it writes nothing anywhere.
+3. **The runtime says "about" when part of it is an estimate** ("5 shows · about 43 min · narrated"), as the page always has
+   (audit 2026-09-22): a narrated Foray's bridges are timed from their script until real audio exists.
+4. **Thumbs: a bar of 12px or more, 4px clear of the last thumb, inside the strip (iteration 2; was "28px or more").** The first build
+   hid the row when no bar was 28px wide, which on the only narrated Foray in the data (50 clips, 39 of them narration, one show,
+   bars of 8 to 16px) left the sill without its thumbnail row, the sill's signature. The rule is now greedy from the left, so the
+   widest-first bars win by coming first, thumbs never overlap, and none hangs off the right edge (`forayThumbCells`, `stripWidth`).
+   A strip with no tape bar of 12px still has no row (`:empty`). The strip's region delta is the row in the 1-show case.
+5. **"Unavailable" is the resolver's answer** (`r.playable` is empty: no clip has audio), not a guess about the network. A narrated
+   Foray whose tape cannot play still plays its narrator's bridges (they need no source), so it is not unavailable; its rows say
+   "This clip isn't available right now." as they always did. The harness opens the not-narrated Foray with every audio URL removed.
+6. **"Start over" is gone (iteration 2; the first build kept it as a Quiet button).** The direction defines one button (Play / Resume /
+   Play again); the extra link under it cost 44px of action and stretched button to "Why 4a made this" from the prototype's 24px
+   to about 100. The way back to the top is the first clip's row or the strip's first bar (a named index beats the stored
+   point, `player/foray-playback.test.js`). `#fy-restart`, `#fy-resume` and their bindings are deleted; `clearForayResume` stays
+   in the player API. The `foray_restart` event is no longer emitted from this page.
+7. **"Where this came from" keeps what the credit block carried**: a show with a page of its own links in-app, one without opens its
+   Apple Podcasts page (or a search, and says which in its accessible name), "Every clip plays from the show's own feed." stays, and
+   FOLLOW_NOTE sits where Follow is tapped (review 2026-09-23). Follow needs a catalogue record; a show known only to the show index
+   links but has no Follow.
+8. **First paint is not animated**: `.is-fresh` (transitions off, the one `!important` in the sheet, because tokens.css's
+   reduced-motion block uses one) comes off two frames after render. The Glow and the artwork URL are worked out before the markup is
+   inserted so the Room opens already lit; the reduced-motion gate reads 0.
+9. **Iteration 2, narration lights.** A narration bar is a 6px Lamp pill (`--r-pill`), centred on the 24px bars (9 under, 9 over),
+   and is never dimmed: `.has-position` dims the coloured show bars to `--seg-dim`, which turned the ivory lights tan beside a
+   resume point. The strip reads as coloured shows joined by ivory lights, in greyscale too.
+10. **Iteration 2, the Dock findings are not this screen's.** The four-tab bar, the violet mini-player play button, the flat orange
+    progress line, the Fraunces mini title, the missing rim and cast, and the Dock slicing the last tile all belong to
+    `redesign/ambient-dock` (`ui/dock.css`, `ui/tabbar.js`), which is not on the direction branch yet; this page changes none of
+    the shared chrome. Once the Dock merges, the page's own bottom padding (`--chrome-bottom`) is what lets content run under
+    its fade.
+11. **Not built here**: the "lamps light in sequence" strip draw-in (§5, motion 3), the Room shifting colour as playback crosses a
+   segment (a Now Playing behaviour), per-show palette from the nightly refresh (the committed table in `ui/palette.js` and the hash
+   hue are the sources), and the legacy tab bar and mini player the Dock unit replaces.
+12. **Iteration 4, the Dock on this page (overrides item 10: the shared chrome is now dressed here, as Today does).** Five art-director
+    findings closed in `ui/foray-detail.css`, all under `body.view-foray-detail` so no other screen moves: the tab bar and the
+    mini take the Dock anatomy (gutter inset, 12px lift, `--r-xl`, the Glow-tinted `--glow-veil` with the Veil blur and its three
+    fallbacks, a rim between rows), which removes the violet-black slab; the mini's Play is Ember on the Veil (no violet anywhere
+    in the sheet); the mini title is the DM Sans `--t-label` (the legacy Fraunces `--font-display` is gone from it); a fixed fade
+    (`body.view-foray-detail::after`, z 54) is solid bg0 from 32px above the Dock's top row to the screen edge, so the last
+    show tile is never sliced; the 2px progress line is Glow on the transparent track, and the collapsed mini clips it to the
+    rounded top. Two decisions: (a) the page now sets the **root's** `--glow` to its first show's (`ui/foray.js`), because the Dock
+    lives on `<body>` outside `.fd` and a Glow set only on the page never reached it (the Veil mixed whatever the last page left);
+    (b) an expanded Now Playing sheds the bar's `backdrop-filter`, since a blurred ancestor becomes the containing block of the
+    fixed `.fp-sheet` and would shrink it to the bar's box (Today's block has the same hazard; that is the Dock unit's to fold in).
+    The block is a copy of Today's, on purpose (two screens, one file each, no shared edit); the Dock unit's `ui/dock.css`
+    replaces both. `foray-detail.css` minifies to 12.4 KB, its ceiling moves 10 to 14 KB in `prepare-webdir.test.mjs`. Fidelity
+    `foray-detail-it4b`: header, hero, strip, primary regions unchanged from it3 (the foray row's 30px strip offset and the
+    24px `why` height are the seed's one-line title and three-line why-line, as before).
+
+## 17. Show page (built, `redesign/ambient-show`)
+
+Screen 10 of the screen list: `ui/show.js` (`showRoomHtml`, `showEpisodeRowHtml`, `showRowsLatestFirst`), `ui/show.css`, and the Follow button in `app.js` (`showStarBtn`, `paintFollow`). No prototype route exists, so there is no fidelity pair; the is-it-better pair is the only judged one.
+
+1. **The Room.** `section.room.ag.sh-room` follows the page's scheme (no pinned Dusk). Stack, safe-top 0: Back 44 at 8 to 52 (head scrim), art 160 Lit at 56, the title at 236, then the count, Follow (16 under), the note (12 under), 24 below. This page sets the scrim's own stops, `--rs1` safe-top + 120 and `--rs2` safe-top + 232, so every line of text starts at or below `--rs2` (the zone the existing Room pairs are measured in), and the last stop is the page's `--bg0` instead of `--scrim-low`, so the Room's foot meets the list with no seam.
+2. **Contrast.** Title `--text`, count and note `--on-wash-2`. `--text-2` is deliberately not used: over the lightest art in Dusk it is 4.44:1. Worst cases over every hue and white or black art: Dusk title 8.32, `--on-wash-2` 6.87; Dawn 10.93 (both are ink). Pinned in `test/ambient-show.test.js`.
+3. **Follow.** A Secondary `ag-btn`. Following is the Fill `i-check-circle-fill` in Ember (Regular `i-plus` when not), the word "Following" (was "+ Follow" / "✓ Followed"), an Ember ring and an overlay fill. Accessible name "Follow <show>" / "Following <show>".
+4. **Rows.** Today's EpisodeRow (`td-row`, reused whole): art 72, title as the one stretched link, Play 44, meta (length, date), two-line why-line from the publisher's own description. Latest first when every row is dated, else server order. No hairline, an 8px gap. The show name is dropped from the meta line (the page is the show).
+5. **Rulings that fell** (named as the build-loop asks): (a) **Save and Up Next on every show-page row**: an EpisodeRow carries neither, they are the episode page's actions, one tap further (`up-next-queue` rewritten to pin the link and that the episode page offers Up Next); (b) the **"+ Follow" / "✓ Followed"** vocabulary (`starred-shows`, `toggle-labels` rewritten). The owner may overturn (a) by adding an `i-queue` icon to the row, which breaks the row's 3-column grid.
+6. **Retired:** `.show-hero`, `.show-art`, `button.show-star` and their hit-area entries in `styles.css`. Harness: the `show` app state (a fresh profile on the show page, Follow off); `returning/show` is the followed state.
+7. **Not done here, on purpose.** Judge and reviewer passes (no agent could be spawned from this run). The search field, description, subject chips, similar shows and Forays rail on this page keep their legacy markup; their screens re-skin them.

@@ -203,7 +203,7 @@ test("`.home` renders the v2 layout (U-11 cutover retired the flag-off four-card
   };
   m.ctx.renderHome();
   const html = m.view();
-  assert.ok(html.includes('class="home hv2-home"'), "renderHome() must always render Home v2 post-cutover");
+  assert.ok(html.includes('class="ag td-today'), "renderHome() must always render Today (Redesign 2026) post-cutover");
   assert.ok(!html.includes('class="cards4"'), "the retired flag-off four-card grid must never render");
 });
 
@@ -297,31 +297,26 @@ test("'Shows 4a vouches for' renders on #/shows and not on Home", () => {
 /* 6-7. THE MENU ITSELF                                                  */
 /* ==================================================================== */
 
-test("the menu lists exactly the five named destinations, in the founder's order", () => {
-  /* "Menu should have the following pages: Home, Shows, Playlists, Forays,
-     Up Next." Asserted as an exact, ordered list rather than five
-     containment checks, because the failure this guards is ACCUMULATION —
-     the same failure the home screen just had. A sixth entry is a change to
-     the information architecture and should have to edit this line.
+test("the navigation is exactly three tabs, in order, and no drawer holds a second list", () => {
+  /* REDESIGN 2026, ambient (DIRECTION.md "Information architecture"): the ruling that fell is the founder's
+     "Menu should have the following pages: Home, Shows, Playlists, Forays, Up Next" (2026-09-03) and the drawer that
+     carried it. Playlists, Forays and Up Next are Library's sections now, and Settings, Tuning and About sit behind
+     the gear. What this guards is unchanged: ACCUMULATION. The failure was a navigation that grew one "just one more
+     row" at a time, so the list is asserted as an exact, ordered list, read out of ui/tabbar.js's TAB_ROUTES (where
+     the shipped navigation actually lives), and index.html is asserted to carry no second one.
 
-     Read out of index.html, which is where the drawer's markup actually
-     lives; nothing in app.js rebuilds these five links.
-
-     MUTATION: add a sixth `<a class="drawer-section">` to index.html, or
-     reorder two. deepStrictEqual fails and prints the list. RUN: added
-     "Starred Shows" back as a sixth; failed naming it. */
-  const items = [...INDEX_HTML.matchAll(/<a class="drawer-section" href="([^"]+)">([^<]+)<\/a>/g)]
-    .map((m) => [m[2], m[1]]);
+     MUTATION: add a fourth entry to TAB_ROUTES, or reorder two; or put `<nav id="drawer">` back in index.html.
+     deepStrictEqual (or the markup check) fails and prints what it found. */
+  const tabbar = fs.readFileSync(path.join(ROOT, "ui", "tabbar.js"), "utf8");
+  const routes = /const TAB_ROUTES = \[([\s\S]*?)\n\];/.exec(tabbar)[1];
+  const items = [...routes.matchAll(/label: "([^"]+)", hash: "([^"]+)"/g)].map((m) => [m[1], m[2]]);
   assert.deepStrictEqual(items, [
-    ["Home", "#/"],
-    /* "Search", not "Shows", since 2026-09-22: one name per destination, and
-       the tab bar's name wins (audit personas 36 and 76). Same page, same
-       place in the founder's order. */
-    ["Search", "#/shows"],
-    ["Playlists", "#/playlists"],
-    ["Forays", "#/forays"],
-    ["Up Next", "#/queue"],
-  ], "the drawer's top-level destinations must be exactly these five, in this order");
+    ["Today", "#/"],
+    ["Discover", "#/shows"],
+    ["Library", "#/library"],
+  ], "the top-level destinations must be exactly these three, in this order");
+  assert.ok(!/id="drawer"|class="drawer-section"/.test(INDEX_HTML), "no drawer, and no drawer links, in index.html");
+  assert.ok(/id="menu-btn" aria-label="Settings"/.test(INDEX_HTML), "the top bar's one button is the gear");
 });
 
 test("route() dispatches #/forays to renderForays, matching the #/playlists pattern", () => {
@@ -438,8 +433,8 @@ test("a Foray's back link lands on #/forays, where an unlocked draft is still li
 
      MUTATION: change renderForay's back link to href="#/". This fails. RUN:
      failed as named. */
-  const forayPage = APP_SRC.slice(APP_SRC.indexOf('<div class="page foray">'));
-  const back = /<a class="back" href="([^"]+)">/.exec(forayPage);
+  const forayPage = APP_SRC.slice(APP_SRC.indexOf('<div class="page foray fd-page">'));
+  const back = /<a class="back ag-btn ag-btn-icon" href="([^"]+)"/.exec(forayPage);
   assert.ok(back, "the Foray page must still render a back link");
   assert.strictEqual(
     back[1], "#/forays",
@@ -470,6 +465,6 @@ test("with cp_ui_v2 on, Home renders the v2 layout instead of the four-card grid
 
   m.ctx.renderHome();
   const html = m.view();
-  assert.ok(html.includes('class="home hv2-home"'), "cp_ui_v2 on must render Home v2");
+  assert.ok(html.includes('class="ag td-today'), "cp_ui_v2 on must render Today");
   assert.ok(!html.includes('class="cards4"'), "cp_ui_v2 on must not also render the flag-off four-card grid");
 });

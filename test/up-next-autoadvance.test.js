@@ -210,10 +210,10 @@ test("continuous playback is ON by default", () => {
 });
 
 test("the switch is labelled 'Continuous playback', not its storage key", () => {
-  /* MUTATION: restore the "Up Next auto-advance" label in bindDrawerToggles. */
+  /* MUTATION: restore the "Up Next auto-advance" label in bindSettingSwitches. */
   const m = mount();
-  m.ctx.bindDrawerToggles();
-  m.ctx.paintDrawerToggles();
+  m.ctx.bindSettingSwitches();
+  m.ctx.paintSettingSwitches();
   assert.strictEqual(m.evalIn('$("#autoadvance-toggle").textContent'), "Continuous playback: on");
 });
 

@@ -1,0 +1,278 @@
+/* ui/foray-detail.css — Foray detail (#/foray/<id>), Redesign 2026, ambient direction ("Afterglow"), phase 4.
+
+   The numbers are docs/redesign-2026/directions/ambient/BUILD-NOTES.md §4.6 (the screen), §10.1 (the Room's
+   scrim, in pixels from the top, and the Dawn Room), §10.2 (lit art), §10.8 (the sill; the unavailable
+   Room), §11.4 (the strip's current bar and thumbs row), §12.2 (three-line names), and the round-4
+   prototype's afterglow.css (.foray-room, .foray-body, .strip-wrap), which settled every measurement the
+   notes leave open. Everything is scoped under `.ag` (the markup wears `.ag.fd`), so it can reach no other
+   screen; the classes are `fd-*` (new names) or the legacy `fy-*` of elements the page still renders and
+   the player paints (`.fy-strip`, `.fy-seg`, `.fy-row`, `.fy-jump`...), restyled here and nowhere else.
+   Values come from ui/tokens.css.
+
+   NO REDUCED-MOTION BLOCK lives in this file, on purpose: ui/tokens.css has the one, scoped to `.ag` and
+   everything under it, so the strip's fill and opacity, the bar growth and the Room's drift all fall under
+   it. A second block would be a second owner (test/afterglow-tokens.test.js, "ONE block"). */
+
+/* The page. The legacy top bar steps aside (the page draws its own chevron and share), and the body paints
+   the scheme's bg0 under the Room. */
+body.view-foray-detail { background: var(--bg0); }
+body.view-foray-detail .topbar { display: none; }
+body.view-foray-detail #view { padding-top: 0; }
+.page.fd-page { max-width: none; margin: 0; padding: 0; }
+
+.ag.fd {
+  position: relative; isolation: isolate;
+  max-width: 680px; margin: 0 auto;
+  padding: 0 var(--gutter) calc(var(--chrome-bottom) + var(--s-6));
+  background: transparent;
+  text-align: center;
+}
+/* :where() keeps the reset at the specificity of `.ag.fd` alone, so every later `.ag .fd-*` margin wins. */
+.ag.fd :where(h1, h2, h3, p, ul) { margin: 0; }
+.ag.fd :where(ul) { padding: 0; list-style: none; }
+
+/* The Room: the first show's artwork, blurred, under a scrim set in pixels from the top (--rs1 / --rs2 are
+   tokens.css's 196 / 276 from the safe top), fixed behind the scrolling page so every line of text sits on
+   the mid and low scrim whatever the scroll. Dawn takes the paper scrim from the tokens (glow-room 80/20,
+   art layer 0.55); an unavailable Foray turns its lamp down: Glow at 8%, art layer 0.35. */
+.ag .fd-room {
+  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  /* The mid stop is where the tokens' contrast is measured (test/afterglow-tokens.test.js: text over the Room at
+     --rs2, every hue, both schemes), so it must not sit below the first line of text. BUILD-NOTES 10.1 puts it
+     at safe-top + 276 for an eyebrow at 276; this page's eyebrow starts at safe-top + 236 (8 pad, 44 head, 8,
+     the 160 collage, 16), so the stop is 236. The ramp BEGINS BEHIND THE ARTWORK, at 120 (the prototype's own
+     `.room-bg`): started at the collage's lower edge (196) it climbed from 0.20 to 0.89 in 40px and drew a
+     hard horizontal seam just under the sleeve, the flat colour band round 1 was corrected for. */
+  --rs1: calc(var(--safe-top) + 120px);
+  --rs2: calc(var(--safe-top) + 236px);
+}
+.ag .fd-room.is-dim { --mix-room: 8%; --room-art-opacity: 0.35; }
+
+/* The first paint is not animated. The page is built and painted for where the listener is (the Glow, the strip's played bars,
+   the resume fill) in the same task, but the strip is measured while it is built, so the browser has already styled it once
+   by the time the player's first paint changes a class; without this the Room, the bars and the rows would crossfade into
+   a state they should open in. `is-fresh` comes off two frames later (renderForay). The one place this sheet uses
+   `!important`: tokens.css's reduced-motion block does, and nothing less would out-rank it. */
+.ag.fd.is-fresh *, .ag.fd.is-fresh *::before, .ag.fd.is-fresh *::after { transition: none !important; }
+
+/* Header: chevron-left and share, 44 each, in the head's own scrim. The row sits 8px inside the gutter so the
+   glyphs, not the 44px targets, align with the text column. */
+.ag .fd-top { display: flex; align-items: center; justify-content: space-between; margin-inline: calc(var(--s-2) * -1); padding-top: calc(var(--safe-top) + var(--s-2)); }
+.ag .fd-top .ag-btn-icon { color: var(--text); }
+.ag .fd-top a.ag-btn { text-decoration: none; }
+
+/* The collage: 160, centred, lit by its own colour (lit-64 on the primitive). Unavailable: the collage dims to
+   50% with the wifi-slash badge on its corner. */
+.ag .fd-collage { position: relative; width: var(--art-hero); margin: var(--s-2) auto 0; }
+.ag .fd-collage .ag-collage { margin: 0; }
+.ag .fd-collage.is-dim .ag-collage { opacity: .5; }
+.ag .fd-slash { position: absolute; right: var(--s-2); bottom: var(--s-2); width: var(--s-8); height: var(--s-8); color: var(--warn); filter: drop-shadow(0 0 3px rgb(0 0 0 / .7)); }
+.ag .fd-slash .icon { width: 100%; height: 100%; }
+
+.ag .fd-eyebrow { margin-top: var(--s-4); }
+.ag .fd-title { margin-top: 6px; color: var(--text); }
+.ag .fd-title:focus { outline: none; }
+.ag .fd-caption { margin-top: 6px; color: var(--text-2); }
+.ag .fy-draft {
+  margin-top: var(--s-3); padding: var(--s-2) var(--s-3); border: 0; border-radius: var(--r-md);
+  background: var(--overlay); color: var(--text-2); font: var(--t-caption); text-align: left;
+}
+
+/* The strip on its sill: a 10/12 sill (the token is the Dusk .22 black, Dawn .35 white), a 28px bar row (24
+   tall bars sitting on its floor, the current bar 4px taller growing upward only), then a 6px gap and the 20px
+   thumbs row: 54px in all, so the sill is 74. The bars are the player module's own (player/segment-strip.js,
+   `.fy-seg`): this restyles them, the painter in ui/foray-player.js still writes their classes and fills. */
+.ag .fd-sill { margin-top: var(--s-4); padding: 10px var(--s-3); border-radius: var(--r-lg); background: var(--sill); text-align: left; }
+.ag .fd-sill .fy-strip {
+  --strip-h: 28px; --seam: 2px;
+  height: var(--strip-h); gap: 2px; align-items: flex-end;
+  transition: none; touch-action: pan-y;
+}
+.ag .fd-sill .fy-seg {
+  position: relative; height: 24px; margin-left: 0; opacity: 1;
+  border-radius: var(--r-xs); background: var(--seg-tone, var(--text-3)); background-image: none;
+  transition: opacity var(--m-ui) var(--e-out), height var(--m-ui) var(--e-out);
+}
+.ag .fd-sill .fy-seg.is-run-start, .ag .fd-sill .fy-seg.is-run-end { margin-left: 0; border-radius: var(--r-xs); }
+.ag .fd-sill .fy-seg--narration.is-run-start, .ag .fd-sill .fy-seg--narration.is-run-end { border-radius: var(--r-pill); }
+.ag .fd-sill .fy-seg:first-child { margin-left: 0; }
+/* Narration: a Lamp light, a 6px pill centred on the bars' mid line (bars are 24 on a 28 row: 9 under, 9 over); on Dawn's
+   white it carries a 1px edge. It is what 4a authored, so it is never dimmed (below): a coloured show bar is dimmed
+   until played, the narration between them stays ivory, which is the strip's structure and the part that survives greyscale. */
+.ag .fd-sill .fy-seg--narration { height: 6px; margin-bottom: 9px; border-radius: var(--r-pill); --seg-tone: var(--seg-narration); box-shadow: inset 0 0 0 1px var(--lamp-edge); }
+/* Unplayed bars are dim; played and the one the listener is in are whole. No ring, no outline (a hairline). */
+.ag .fd-sill .fy-strip.has-position .fy-seg { opacity: var(--seg-dim); }
+.ag .fd-sill .fy-strip.has-position .fy-seg.is-played, .ag .fd-sill .fy-strip.has-position .fy-seg.is-here { opacity: 1; }
+.ag .fd-sill .fy-seg.is-here { height: 28px; }
+.ag .fd-sill .fy-seg--narration.is-here { height: 6px; }
+.ag .fd-sill .fy-strip.has-position .fy-seg--narration { opacity: 1; }
+.ag .fd-sill .fy-seg.is-playing, .ag .fd-sill .fy-strip.is-seam .fy-seg.is-playing { outline: 0; z-index: auto; }
+.ag .fd-sill .fy-seg-fill { height: 100%; background: color-mix(in oklab, var(--seg-tone, var(--text-3)) 78%, var(--lamp)); opacity: 0; }
+.ag .fd-sill .fy-seg.is-here .fy-seg-fill { opacity: 1; }
+.ag .fd-thumbs { position: relative; height: 20px; margin-top: 6px; pointer-events: none; }
+/* No bar is wide enough for a thumb (most of a long Foray's clips are a few percent of it): no row, no gap. */
+.ag .fd-thumbs:empty { display: none; }
+.ag .fd-thumb {
+  position: absolute; top: 0; left: var(--x, 0); width: 20px; height: 20px; overflow: hidden;
+  border-radius: var(--r-xs); background: var(--tone, var(--bg2));
+}
+.ag .fd-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.ag .fd-thumb-mono { display: grid; place-items: center; width: 100%; height: 100%; color: var(--ember-ink); font: var(--t-caption); }
+/* An unavailable Foray's strip stays drawn, at 60%. */
+.ag .fd.is-unavailable .fd-sill .fy-strip, .ag .fd.is-unavailable .fd-thumbs { opacity: .6; }
+
+.ag .fd-unavailable { margin-top: var(--s-4); color: var(--text-2); }
+
+/* The one primary button: full width, 48, Ember (the primitive). Play, Resume or Play again; nothing sits under it. */
+.ag .fd-cta { display: flex; width: 100%; margin-top: var(--s-4); text-decoration: none; }
+.ag .fy-error { margin-top: var(--s-3); font: var(--t-caption); color: var(--warn); text-align: center; }
+.ag .fy-error.is-hint { color: var(--text-2); }
+.ag .fd-note { margin-top: var(--s-3); color: var(--text-2); text-align: left; }
+
+/* Why 4a made this: the headline, then the why-line in Lamp italic, three lines at most. */
+.ag .fd-why { margin-top: var(--s-6); text-align: left; }
+.ag .fd-why h2, .ag .fd-came h2, .ag .fd-clips h2 { color: var(--text); }
+.ag .fd-why .t-why { margin-top: var(--s-1); color: var(--lamp-text); }
+
+/* Where this came from: three-up show tiles, names to three lines and never cut mid-word, a Follow toggle each. */
+.ag .fd-came { margin-top: var(--s-6); text-align: left; }
+.ag .fd-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-3); margin-top: var(--s-3); }
+.ag .fd-tile { display: flex; flex-direction: column; min-width: 0; }
+.ag .fd-tile-face { flex: 1 1 auto; display: flex; flex-direction: column; gap: var(--s-2); min-width: 0; color: inherit; text-decoration: none; }
+.ag .fd-tile-face:focus-visible { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) / 2); border-radius: var(--r-md); }
+.ag .fd-tile-art { display: block; width: 100%; }
+.ag .fd-tile .ag-art { width: 100%; height: auto; aspect-ratio: 1 / 1; border-radius: var(--r-md); }
+.ag .fd-tile .ag-art-badge { display: none; }
+.ag .fd-tile.is-followed .ag-art-badge { display: block; }
+.ag .fd-tile .name { color: var(--text); overflow-wrap: normal; }
+.ag .fd-follow {
+  display: inline-flex; align-items: center; justify-content: flex-start; gap: var(--s-1);
+  min-height: var(--tap); padding-inline: var(--s-1); font: var(--t-label); color: var(--ember);
+  transition: color var(--m-micro) var(--e-out);
+}
+.ag .fd-follow:focus-visible { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) / 2 * -1); border-radius: var(--r-md); }
+
+/* The clips: a heading for each part of the Foray, then rows in the QueueRow anatomy (art 56, show line,
+   the why-line, the state in words), and a narration beat in Lamp with a thin light where the art would be. */
+.ag .fd-clips { margin-top: var(--s-6); text-align: left; }
+.ag .fd-clips .fy-slot { margin: var(--s-4) 0 0; }
+.ag .fd-clips .fy-slot h3 { margin: 0 0 var(--s-1); font: var(--t-label); color: var(--text-2); }
+.ag .fd-clips .fy-slot .note { margin: 0; color: var(--text-2); font: var(--t-caption); }
+.ag .fd-clips .fy-row {
+  display: grid; grid-template-columns: var(--art-queue) minmax(0, 1fr); column-gap: var(--s-3); row-gap: 0; align-items: start;
+  min-height: var(--row-queue); margin: var(--s-2) 0 0; padding: var(--s-2); border: 0; border-radius: var(--r-lg);
+  background: linear-gradient(var(--overlay), var(--overlay)) var(--bg1);
+  box-shadow: inset 0 1px 0 var(--rim), var(--shadow-1), var(--shadow-2);
+}
+/* Over the Dusk Room the raised row is a little translucent (prototype), so the lit Room reads through it. */
+.ag .fd-clips .fy-row { background: linear-gradient(var(--overlay), var(--overlay)) color-mix(in oklab, var(--bg1) 70%, transparent); }
+.ag .fd-clips .fy-row:has(.fy-jump.is-playing) { background: linear-gradient(var(--overlay), var(--overlay)) var(--glow-row); border: 0; }
+.ag .fd-clips .fy-row:has(.fy-jump:hover), .ag .fd-clips .fy-row:has(.fy-jump:active) { border: 0; }
+.ag .fd-rowart { grid-row: 1 / span 2; grid-column: 1; display: block; width: var(--art-queue); height: var(--art-queue); }
+.ag .fd-rowart .ag-art { box-shadow: none; }
+.ag .fd-clips .fy-meta, .ag .fd-clips .fy-play-row, .ag .fd-clips .fy-script-wrap { grid-column: 2; }
+.ag .fd-clips .fy-meta { font: var(--t-caption); color: var(--text-2); overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+.ag .fd-clips .fy-credit { color: var(--text); font: var(--t-label); }
+.ag .fd-clips .fy-credit.is-narrator { color: var(--lamp-text); }
+.ag .fd-clips a.fy-credit { padding: 0; text-decoration: none; }
+.ag .fd-clips .fy-row:has(.fy-jump.is-playing) .fy-meta { color: var(--text-2); }
+.ag .fd-clips .fy-row:has(.fy-jump.is-played) .fy-meta, .ag .fd-clips .fy-row:has(.fy-jump.is-played) .fy-fb { opacity: 1; }
+.ag .fd-clips .fy-play-row { gap: var(--s-1); }
+.ag .fd-clips .fy-jump { gap: var(--s-2); align-items: flex-start; min-height: var(--tap); color: var(--text); }
+.ag .fd-clips .fy-jump.is-played { opacity: 1; }
+.ag .fd-clips .fy-why { margin: 0; font: var(--t-caption); color: var(--text-2); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: normal; }
+/* The row's state is a word, never a glyph or a colour alone: Playing in Lamp, Played quietly. */
+.ag .fd-clips .fy-state { width: auto; padding: 0; color: var(--lamp-text); font: var(--t-caption); }
+.ag .fd-clips .fy-jump.is-playing .fy-state::before { content: "Playing"; font: var(--t-caption); }
+.ag .fd-clips .fy-jump.is-played .fy-state::before { content: "Played"; font: var(--t-caption); color: var(--text-3); }
+.ag .fd-clips .fy-jump.is-bare .fy-state::before { content: none; }
+.ag .fd-clips .fy-jump:focus-visible { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) / 2); border-radius: var(--r-sm); }
+/* An unavailable clip dims its ART only. The row's words ("This clip isn't available right now.", the caption meta, the why-line)
+   stay at full strength: a group opacity of .6 over the Room put text-2 at 3.47:1 and warn at 3.86:1 in Dusk, and 2.81:1 and 2.61:1 in
+   Dawn, all under AA. The legacy rules in styles.css dim the whole row, so this one resets that to 1. */
+.ag .fd-clips .fy-row.is-out { opacity: 1; }
+.ag .fd-clips .fy-row.is-out .fd-rowart { opacity: .6; }
+.ag .fd-clips .fy-out { margin: var(--s-1) 0 0; font: var(--t-caption); color: var(--warn); }
+.ag .fd-clips .fy-fb { gap: var(--s-2); padding-top: 0; }
+.ag .fd-clips .fy-thumb { width: 36px; height: 36px; background: var(--overlay); border: 0; color: var(--text); }
+.ag .fd-clips .fy-thumb[data-thumb="up"].on, .ag .fd-clips .fy-thumb[data-thumb="down"].on { background: var(--bg2); }
+/* A narration row: no raised card, no art. A Lamp light in the art's column, then the narrator's name in Lamp. */
+.ag .fd-clips .fy-row:has(.fd-nbar) { background: none; box-shadow: none; padding-block: var(--s-1); min-height: 0; }
+.ag .fd-nbar { grid-row: 1 / span 2; grid-column: 1; align-self: start; width: var(--art-queue); height: var(--s-1); margin-top: var(--s-2); border-radius: var(--r-xs); background: var(--lamp); box-shadow: inset 0 0 0 1px var(--lamp-edge); }
+.ag .fd-clips .fy-script-wrap { margin-top: var(--s-1); }
+.ag .fd-clips .fy-script { font: var(--t-caption); color: var(--text-2); }
+.ag .fd-clips .fy-script-more { min-height: var(--tap); padding: 0; color: var(--lamp-text); font: var(--t-label); }
+.ag .fd-clips .fy-cites-head { color: var(--text-3); font: var(--t-caption); letter-spacing: .06em; }
+.ag .fd-clips .fy-cites li { font: var(--t-caption); color: var(--text-2); }
+
+/* The share link's confirmation. */
+.ag .fd-toast { position: fixed; left: 50%; bottom: calc(var(--chrome-bottom) + var(--s-4)); transform: translateX(-50%); z-index: 30; min-height: calc(var(--tap) + var(--s-1)); padding: 0 var(--s-5); display: flex; align-items: center; }
+
+/* ---------------------------------------------------------------------------------------------
+   The Dock on this page (DIRECTION.md "Materials": one floating Veil, never a third hue; the Today block in
+   ui/today.css is the pattern). The legacy `#tab-bar` and `#foray-player` stay the elements (the player wires them)
+   and take the Dock's anatomy here: inset by the gutter, 12px above the safe area, `--r-xl` corners, the Glow-tinted
+   Veil (bg0 mixed with the Room's light, warm when the Foray is, never the legacy violet-black surface), a rim between
+   rows. The tab bar is on <body>, outside `.ag`, so it reads the :root tokens (`--ag-gutter`). The page sets the root's
+   Glow to its first show's, which is what tints the Veil. Nothing here transitions or animates. */
+body.view-foray-detail {
+  --dock-lift: calc(env(safe-area-inset-bottom, 0px) + var(--dock-inset));
+  --tab-bar-h: calc(var(--tab-bar) + var(--dock-inset));
+  --fp-bar-h: var(--mini);
+  --fd-dock-h: calc(var(--dock-lift) + var(--tab-bar));
+}
+body.view-foray-detail.fp-open { --fd-dock-h: calc(var(--dock-lift) + var(--tab-bar) + var(--mini)); }
+body.view-foray-detail .tab-bar {
+  left: var(--ag-gutter); right: var(--ag-gutter); bottom: var(--dock-lift);
+  height: var(--tab-bar); padding: 0 var(--s-1);
+  border: 0; border-radius: var(--r-xl); overflow: hidden;
+  background: var(--glow-veil);
+  -webkit-backdrop-filter: blur(20px) saturate(140%); backdrop-filter: blur(20px) saturate(140%);
+  box-shadow: inset 0 1px 0 var(--rim), var(--shadow-2);
+}
+body.view-foray-detail .tab-btn {
+  min-width: var(--tap); min-height: var(--tap); gap: 0; border-radius: var(--r-lg);
+  color: var(--text-2); font: 600 0.8125rem/1.125rem var(--font-text);
+}
+body.view-foray-detail .tab-btn svg { width: var(--icon-tab); height: var(--icon-tab); }
+body.view-foray-detail .tab-bar .tab-btn[aria-current="page"] { color: var(--lamp-text); }
+body.view-foray-detail .tab-btn:focus-visible { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) * -1); }
+/* Something is loaded: the mini is the Dock's top row. Its progress line is 2px of Glow on the Veil (the legacy navy track is
+   clear), its title is DM Sans (Fraunces is for the page's display roles), its Play is Ember (never violet). */
+body.view-foray-detail.fp-open .tab-bar { border-radius: 0 0 var(--r-xl) var(--r-xl); }
+body.view-foray-detail.ui-v2.fp-open #foray-player {
+  left: var(--ag-gutter); right: var(--ag-gutter); bottom: calc(var(--dock-lift) + var(--tab-bar));
+  border: 0; border-radius: var(--r-xl) var(--r-xl) 0 0;
+  background: var(--glow-veil);
+  -webkit-backdrop-filter: blur(20px) saturate(140%); backdrop-filter: blur(20px) saturate(140%);
+  box-shadow: inset 0 1px 0 var(--rim), inset 0 -1px 0 var(--rim);
+}
+/* The collapsed mini clips its 2px progress line to the Dock's rounded top. Expanded (Now Playing), the bar sheds its blur: a
+   backdrop-filter makes it the containing block of the fixed `.fp-sheet`, which would shrink the sheet to the bar's box. */
+body.view-foray-detail.ui-v2.fp-open:not(.fp-expanded) #foray-player { overflow: hidden; }
+body.view-foray-detail.ui-v2.fp-open.fp-expanded #foray-player { -webkit-backdrop-filter: none; backdrop-filter: none; }
+body.view-foray-detail #foray-player .fp-title { font: var(--t-label); color: var(--text); }
+body.view-foray-detail #foray-player .fp-show { color: var(--text-2); }
+body.view-foray-detail #foray-player .fp-progress { background: transparent; }
+body.view-foray-detail #foray-player .fp-fill { background: var(--glow); }
+body.view-foray-detail.ui-v2 #foray-player .fp-play { background: var(--ember); border-color: var(--ember); color: var(--ember-ink); }
+/* Content runs under the Dock and fades to bg behind it: solid from 32px above the Dock's top row to the screen edge, so the
+   last tile is never sliced by the Dock's edge (BUILD-NOTES 10.9 / 12.1). It tracks the Dock's height. */
+body.view-foray-detail::after {
+  content: ''; position: fixed; left: 0; right: 0; bottom: 0; z-index: 54; pointer-events: none;
+  height: calc(var(--fd-dock-h) + var(--s-8));
+  background: linear-gradient(transparent 0, var(--bg0) var(--s-8));
+}
+body.view-foray-detail.fp-open .ag .fd-toast { bottom: calc(var(--chrome-bottom) + var(--mini) + var(--s-4)); }
+/* The same material fallbacks `.veil` carries (ui/tokens.css section 7). */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  body.view-foray-detail .tab-bar, body.view-foray-detail.ui-v2.fp-open #foray-player { background: var(--bg1); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  body.view-foray-detail .tab-bar, body.view-foray-detail.ui-v2.fp-open #foray-player { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--bg1); }
+}
+@media (prefers-contrast: more) {
+  body.view-foray-detail .tab-bar, body.view-foray-detail.ui-v2.fp-open #foray-player { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--bg0); }
+}
+
+@media (max-width: 392px) { .ag .fd-tiles { gap: var(--s-2); } }

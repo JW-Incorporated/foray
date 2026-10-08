@@ -67,11 +67,11 @@ test.afterEach(async () => { await site?.close(); });
 async function openSearchPage(page) {
   await page.goto(site.baseUrl);
   await page.waitForFunction(() => Boolean(document.querySelector("#tab-bar .tab-btn")));
-  await page.waitForSelector("#first-time-sheet", { timeout: 15_000 }).catch(() => null);
-  if (await page.locator("#first-time-sheet-skip").count()) {
-    await page.locator("#first-time-sheet-skip").click();
+  await page.waitForSelector("#onboarding-room", { timeout: 15_000 }).catch(() => null);
+  if (await page.locator("#onboarding-skip").count()) {
+    await page.locator("#onboarding-skip").click();
   }
-  await expect(page.locator("#first-time-sheet")).toHaveCount(0);
+  await expect(page.locator("#onboarding-room")).toHaveCount(0);
   await page.evaluate(() => { window.location.hash = "#/shows"; });
   await page.waitForSelector("#sh-compose #sh-input");
 }

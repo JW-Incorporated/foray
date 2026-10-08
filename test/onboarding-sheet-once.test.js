@@ -1,4 +1,5 @@
-/* The onboarding sheet mounts once per visit, however many times Home renders.
+/* The first-run Room (the onboarding sheet until Redesign 2026) mounts once per visit, however many times Home renders.
+ * The history below names the sheet's ids as they were when the bug was found; the assertions use the Room's.
  *
  * THE BUG THIS PINS, found 2026-09-13 by test/playwright/drawer-and-close.spec.js
  * failing in CI inside its own `openApp()` helper:
@@ -149,26 +150,33 @@ function mount() {
 /* THE DUPLICATE MOUNT                                                   */
 /* ==================================================================== */
 
-test("a second Home render does not mount a second first-time sheet", () => {
+test("a second Home render does not mount a second first-run Room", () => {
   /* THE REPORTED FAILURE, reduced to the two calls that cause it. The second
      call stands in for `refreshForayDirectory`'s repaint arriving before the
      listener has dismissed anything — which is exactly the state the guards
      could not see, because neither `cp_intro_dismissed` nor the first-time
      check changes until dismissal.
 
-     MUTATION: delete `if ($("#first-time-sheet")) return true;` from
-     showFirstTimeExplainerOnce(). This fails with a count of 2, and the
-     Playwright suite's `openApp()` starts timing out on a loaded machine. */
+     MUTATION: delete `$("#onboarding-room") ||` from the on-screen check in
+     showFirstTimeExplainerOnce(). The element is rebuilt (the owner replaces a
+     twin by id), which restarts the Room's cycle and strip on every repaint;
+     the identity assertion fails. Before the Room the sheet's duplicate ids
+     failed on a count of 2, and the Playwright suite's `openApp()` started
+     timing out on a loaded machine. */
   const m = mount();
   const first = m.evalIn("showFirstTimeExplainerOnce()");
   assert.strictEqual(first, true, "fixture assumption: a fresh profile gets the explainer");
-  assert.strictEqual(m.countById("first-time-sheet"), 1);
+  assert.strictEqual(m.countById("onboarding-room"), 1);
 
+  const mounted = m.dom.byId("onboarding-room");
   m.evalIn("showFirstTimeExplainerOnce()");
   assert.strictEqual(
-    m.countById("first-time-sheet"), 1,
+    m.countById("onboarding-room"), 1,
     "a repaint before dismissal must not mount a second sheet with duplicate ids"
   );
+  /* The owner would replace a twin with the same id, so the count alone cannot tell "left alone" from "closed and
+     reopened". The Room is mid-animation (the cycle, the strip's draw-in): a repaint must leave THE element be. */
+  assert.strictEqual(m.dom.byId("onboarding-room"), mounted, "the Room on screen is the same element, not a rebuilt one");
 });
 
 test("the second call reports that the explainer still owns the visit", () => {
@@ -191,7 +199,7 @@ test("the caller's own sequence never stacks the explainer and the older popup",
   const render = "if (!showFirstTimeExplainerOnce()) showIntroPopupOnce();";
   m.evalIn(render);
   m.evalIn(render);
-  assert.strictEqual(m.countById("first-time-sheet"), 1, "one explainer");
+  assert.strictEqual(m.countById("onboarding-room"), 1, "one explainer");
   assert.strictEqual(m.countById("intro-sheet"), 0, "and no popup stacked behind it");
 });
 
@@ -216,10 +224,10 @@ test("dismissing still works, and a later render does not bring it back", () => 
      MUTATION: delete the `cp_intro_dismissed` early return. This fails. */
   const m = mount();
   m.evalIn("showFirstTimeExplainerOnce()");
-  m.evalIn('document.getElementById("first-time-sheet").remove()');
+  m.evalIn('document.getElementById("onboarding-room").remove()');
   m.evalIn('lsSet("cp_intro_dismissed", true)');
   assert.strictEqual(m.evalIn("showFirstTimeExplainerOnce()"), false);
-  assert.strictEqual(m.countById("first-time-sheet"), 0, "a dismissed explainer stays dismissed");
+  assert.strictEqual(m.countById("onboarding-room"), 0, "a dismissed explainer stays dismissed");
 });
 
 test("the idempotency check is LAST — it never answers a question about who the listener is", () => {
@@ -234,7 +242,7 @@ test("the idempotency check is LAST — it never answers a question about who th
      Both halves are asserted WITH a sheet already mounted, because that is
      the only state in which the ordering is observable at all.
 
-     MUTATION: move `if ($("#first-time-sheet")) return true;` above the
+     MUTATION: move `if ($("#onboarding-room")) return true;` above the
      `isGenuineFirstTimeUser()` / `cp_intro_dismissed` gates. Both assertions
      below fail, and so do those two first-time-onboarding tests. */
   const existing = mount();
