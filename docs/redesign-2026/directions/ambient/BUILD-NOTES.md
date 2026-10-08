@@ -1011,3 +1011,114 @@ pixels; 41 stable capture plates at three viewports make the 123-shot gallery ba
    text button gains the spinner and may widen). Add the buffering MiniPlayer plates to the
    intended `ambient-gallery` diffs above if the baseline renders under reduced motion.
 
+
+## 16. As built: phase 4, Today (`redesign/ambient-today`, `ui/home.js`, `ui/today.css`, `ui/palette.js`)
+
+Screen 3 of `BUILD-PLAN.md` §2.1.3. What landed, and every place the build differs from a
+sentence above, with the reason. (Measurements are Chromium 393x852 and 375x667, Dusk, harness
+clock 2026-10-05, remote art off.)
+
+1. **Rulings overturned, by name** (`test-classification.md` §0): "Home section order and
+   content" (U-03; founder 2026-09-18 and 09-24), "wordmark once on Home, in the greeting", and
+   "card/row anatomy" for Home. Kept: the floor, the bridge copy, the badge honesty, F14,
+   continuous playback, Home's one Play (now the hero's), the test-track switch. The retired
+   renderers (`miniCard`, `subjectBlurb`, `startsWithLine`, `jumpBackInV2Html`,
+   `jumpBackInCardHtml`, `forayCardV2Html`, `foraysForYouHtml`, `playlistCardV2Html`,
+   `playlistsForYouHtml`, `miniCardV2`, `suggestedHtml`, `homeGreeting`, `homePlayHtml`,
+   `homePlayRails`, `homePlayTarget`) were deleted with their tests rewritten, not kept as dead
+   code. Their `styles.css` rules (`.hv2-*`, `.mini-card`, `.mc-*`) are now dead CSS and stay
+   until the legacy sheet is retired at the phase exit: two KEEP suites still read them.
+2. **Data.** The hero is today's foray: the first listable, resolvable, non-stretch published
+   Foray (`todayForayHero`); otherwise, and always on a first run, the first pick, in which case
+   the list starts at the second pick and its count drops by one. A first run is observed, not
+   declared: no history and nothing mid-listen. Today's picks are `state.cardSlots` (the
+   existing deal) laid out as four to six rows with the Stretch spliced at index 2 (index 1 when
+   short): never first, never last, also after the first-run hero is taken out. Off your path is
+   two or three leads from the lower tier of the same 60% cut, excluding the Stretch's own
+   subject and anything already on the page; deterministic, so a repaint never re-rolls.
+   Keep listening is the most recent entry that is part-way (`percent` 0 to 99), which is what
+   `jumpBackInEntries` already computed; a playlist with a play date but no progress is not
+   mid-listen.
+3. **The wash.** 48vh, three layers, 52% hot spot, as §4.1 and §10.3, with the hot spot placed
+   by the prototype's measured geometry (the collage's centre: `gutter + half the art`, `86 +
+   half the art`) rather than §10.3's `22% 16%`, which only approximates it. Secondary text on
+   the wash (date, meta, why-line, first-run line) is `--on-wash-2`, not `--text-2` and not
+   `--text-3`: the acceptance line says text-2 clears 4.5:1 on the hot-spot row, and it does
+   not (3.55:1 at the worst hue; `ui/tokens.css` already carries `--on-wash-2` at 5.49:1 for
+   exactly this). `test/ambient-today.test.js` computes both across the hue wheel.
+4. **HeroPick.** Collage 160 (136 at 375), whole first square, lit at 64 in the first show's
+   colour; a foray's meta sits beside Play (the prototype), an episode's under its title. The
+   title is `--t-title` clamped to four lines; 2px of padding (taken back by margin) keeps
+   `scrollHeight <= clientHeight` true on a title that fits (the anchor's own box is 32px a
+   line inside a 30px line box, which read 1px over), and a title that cannot fit steps down to
+   `--t-headline` rather than be cut. The copy column is at least collage + 28px tall, so
+   Play's centre is never above the collage's bottom edge.
+5. **Rows, rail, banner.** EpisodeRow 96 min as primitives; a row that carries a state line
+   gives up its date (a 96px row at 375 has no room for the word, show, length and day: the
+   gate caught it). The rail is `calc((100% + gutter - 48px) / 2)` a tile: two tiles and an
+   exact 24px peek at every width (155.5 at 375). Offline reads `navigator.onLine === false`,
+   follows the `online`/`offline` events, and treats `cp_downloads` `done` as playable.
+6. **Loading** is the boot screen on Home (`todaySkeletonHtml({ boot: true })` painted by
+   `init()` before its first await, carrying `data-boot-loading` and "Loading 4a…"), so the
+   state needs no new fetch hook beyond the harness holding `data/discover.json` open.
+7. **Pick to play.** `todayGlowTo` writes `--glow` on `<html>` (CSSOM, number-only colour) before
+   the start; the `:root` transition makes it 560ms. The row's art is cloned into `.td-today`
+   and flown to `[data-mini-art]` (the Dock's hook) or today's `#foray-player .fp-art` with
+   `element.animate`, 560ms, the live `--e-spring`; Reduce Motion skips the flight. Row state
+   (`is-playing`, Pause label, Lamp "Playing" with the Fill glyph) comes from the player through
+   a 1s poll that stops when Today leaves the page: `syncCardButtons` rewrites every
+   `[data-play]` button's text, so the rows use `data-td-play` and the player is not touched.
+8. **Chrome.** Today hides the legacy top bar (`body.view-home .topbar`) and draws its own
+   header; the gear opens the existing drawer until the Settings sheet (screen 9) exists.
+   `app.js` lands focus on `.td-wordmark` and remembers `.td-rail`'s scroll; both were one-word
+   edits. The tab bar and mini player are still legacy: their region deltas against the
+   prototype (`tabBar`, `mini`) belong to the Dock screen.
+9. **Palette.** `ui/palette.js` carries the prototype's 40 `[hue, chroma]` pairs keyed by
+   `fnv1a(show name)`, not by name (a show title is third-party text and the copy scanners
+   read this file); clamped L 0.66 / 0.56 (live `--glow-l`), chroma 0.07 to 0.14; a show not in
+   the table gets a hash hue at chroma 0.10. No `data/palettes.json` fetch: it would add a boot
+   document for 40 numbers.
+10. **Shipping.** New: `ui/today.css`, `ui/palette.js`, `test/ambient-today.test.js` (18 tests,
+    40 mutations run red across the suites touched; the list is in the PR). Native bundle: the
+    2.85 MB legacy alarm is untouched; `today.css` (6.7 KB), `palette.js` (1.9 KB) and the
+    rewritten `home.js` (28.5 KB) are budgeted in `AMBIENT_PRIMITIVES_ASSETS` beside the
+    foundation, 8 / 2 / 32 KB ceilings.
+11. **Harness additions** (appended, nothing reordered): app states `loading`, `offline`,
+    `midlisten` (and a `midlisten` seed: the returning profile plus `cp_last_episode` and
+    `cp_pos:<id>` at 40 minutes); `screens.json` rows `home-midlisten`, `home-offline`,
+    `home-stress` and Today's app selectors on `home`, `mini`, `home-first-run`,
+    `home-loading`. The offline state tells the page it is offline without cutting the network:
+    a context with no network and no service worker cannot serve the icon sprite a new `<use>`
+    fetches, and the glyphs vanished for a reason that is not the app's.
+12. **Not done here, on purpose.** Judge passes (no judge agent could be spawned from this
+    run): the fidelity renders and the side-by-sides are in `data-local/redesign/fidelity/
+    today-i1` and `today-i2`, a Dawn pass in `today-dawn-i1`. The rolling `ambient-app`
+    baseline is not re-recorded (it is shared by every screen branch and re-locks on merge);
+    the compare shows 15 intended Home diffs, 9 added states and nothing else.
+13. **Iteration 2 (art-director fidelity findings, 2026-10-07).** Six deviations, all closed on this branch.
+    - **The Dock on Today.** The tab bar is three tabs, Today, Discover, Library, with Create folded into Discover
+      (`ui/tabbar.js` `TAB_ROUTES`; `tabForHash` lights Discover for `#/create`, `#/playlists`, `#/playlist/`, `#/subject/`).
+      Overturned by name: "Four tabs (Home, Search, Create, Library) + drawer menu" (`test-classification.md` §0); the
+      drawer's two entries follow the tab names (one name per destination, R6). The glyphs are the Phosphor sprite through
+      `agIcon()`: Regular when inert, **Fill when active**, so a state change is a fill. The keys stay `home`/`search`/
+      `library`. On Today (`body.view-home`, `ui/today.css`) the legacy `#tab-bar` and `#foray-player` take the Dock's
+      anatomy: inset by the gutter, 12px above the safe area, `--r-xl`, the Glow-tinted `--glow-veil` with the Veil blur
+      and its three fallbacks, a rim between rows, no gap; the active tab is Lamp (not Ember), the mini's Play is Ember
+      (not violet), the mini's 2px progress line is Glow. `--tab-bar-h` and `--fp-bar-h` are redeclared on Today's body so the
+      legacy sums (content padding, the mini's bottom) read the Dock's real height. Fidelity run `today-iter2-c`: `tabBar`
+      20,776 353x64 on both sides (delta 0); `mini` +1px.
+    - **Never sliced.** `body.view-home::after`, a fixed fade under the Dock (z 54, `pointer-events: none`), solid `bg0` from
+      32px above the Dock's top row to the screen edge; it tracks the Dock's height (tab row, plus the mini row when loaded).
+    - **Hero meta.** One line, never wrapped: `white-space: nowrap`, Play `flex: none`, and the actions row wraps so a
+      length too long to sit beside Play (131px against the 109px left of the 177px column, e.g. "1 show · about 43 min",
+      where "about" is the audited estimate marker) drops under Play whole. The prototype's "4 shows · 19 min" still sits
+      beside Play on one baseline.
+    - **Apostrophes.** Everything drawn uses U+2019 (eyebrow, the "Today’s picks" head, the first-run and Off-your-path
+      notes); the landmark names (`aria-label`) stay ASCII so every query that finds the region still does.
+    - **Budget.** `ui/today.css` minifies to 9.2 KB with the Dock block; its ceiling moves 8 to 10 KB in
+      `prepare-webdir.test.mjs` (a bounded feature step, not the legacy alarm).
+    - **Not done here.** The Dock's own behaviours (recede on scroll, the field row, car posture, the cast) belong to the
+      Dock screen; Today adopts only the surface. While Today loads (`home-loading`) the app has no tab bar yet (it is
+      created by the first `renderCurrentPage`), so that state's `tabBar` region reads prototype-only. The Create page is
+      reachable only from Discover's "Make a playlist" once the Discover branch merges; until then `#/create` is a route
+      with no tab.

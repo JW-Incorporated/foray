@@ -493,7 +493,12 @@ test("the drawer and the tab bar use one name for #/shows", () => {
   const drawerName = /<a class="drawer-section" href="#\/shows">([^<]+)<\/a>/.exec(INDEX_HTML)[1];
   const tabName = /\{ key: "search", label: "([^"]+)", hash: "#\/shows"/.exec(APP_SRC)[1];
   assert.strictEqual(drawerName, tabName);
-  assert.match(APP_SRC, /renderShowIndexPage\("Search", /, "and the page's own heading agrees");
+  /* REDESIGN 2026 (ambient, Today's Dock): the tab is now "Discover" (the three-tab Dock), and the drawer entry follows it.
+     The page's own heading is Discover's screen (it says "Search" until that branch lands, "Discover" after), so it is pinned
+     to either, never to a third name. MUTATION: rename the tab to "Explore" without the drawer -> the first assertion fails;
+     rename the heading to "Shows" -> the last one fails. */
+  assert.strictEqual(tabName, "Discover", "the Dock's second tab");
+  assert.match(APP_SRC, /renderShowIndexPage\("(Search|Discover)", /, "and the page's own heading is one of the two names, never a third");
 });
 
 /* ==================================================================== */

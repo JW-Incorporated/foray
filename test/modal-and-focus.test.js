@@ -1044,7 +1044,7 @@ function routedPages(m, pages) {
     m.view.children = [];
     if (spec === "home") {
       const g = m.doc.createElement("div");
-      g.className = "hv2-greeting";
+      g.className = "td-wordmark";
       m.view.appendChild(g);
       return;
     }
@@ -1122,9 +1122,9 @@ test("a late paint for a page the listener already left says nothing (races-6)",
   assert.strictEqual(said(m), "");
 });
 
-test("Home names itself: 'Home' is said when focus survived, and a lost focus lands on the greeting (a11y-10)", () => {
+test("Home names itself: 'Home' is said when focus survived, and a lost focus lands on the header mark (a11y-10)", () => {
   /* MUTATION: drop the `home ? "Home"` name -> a tab-bar Home says nothing;
-     red. MUTATION 2: drop the `.hv2-greeting` target -> focus lands on bare
+     red. MUTATION 2: drop the `.td-wordmark` target -> focus lands on bare
      #view; red. */
   const m = mount();
   const { go } = routedPages(m, { "#/library": "Library", "#/": "home" });
@@ -1138,7 +1138,7 @@ test("Home names itself: 'Home' is said when focus survived, and a lost focus la
   m.view.appendChild(inPage);
   inPage.focus();
   go("#/");
-  const greeting = m.view.querySelector(".hv2-greeting");
-  assert.strictEqual(m.doc.activeElement, greeting, "focus lands on the greeting, not the bare region");
+  const greeting = m.view.querySelector(".td-wordmark");
+  assert.strictEqual(m.doc.activeElement, greeting, "focus lands on the header mark, not the bare region");
   assert.strictEqual(greeting.getAttribute("tabindex"), "-1");
 });

@@ -165,10 +165,10 @@ test("a finished Foray says 'Played' on its rows and leaves Jump back in (honest
   assert.match(cap, /<span class="fy-home-sub">Played · /, `the Forays list row: ${cap}`);
 });
 
-test("every list row and Home card says how long a Foray is and what it is made of (p-foray-8)", async () => {
+test("every list row and Today's hero says how long a Foray is and what it is made of (p-foray-8)", async () => {
   /* capital-types-1 in the frozen fixture: 22 clips of measured tape from 7
-     shows. KILLING MUTATION: drop the sub line from forayListHtml (or the
-     `facts` span from forayCardV2Html) — red. */
+     shows. KILLING MUTATION: drop the sub line from forayListHtml (or the `meta` from todayForayHero) — red.
+     (Home's card became Today's hero in Redesign 2026: it says how many shows and how long.) */
   const { resolve } = await mods;
   const app = loadApp(await realBridge());
   const doc = resolve.findForay(readFrozen("forays.json"), "capital-types-1", {});
@@ -180,8 +180,9 @@ test("every list row and Home card says how long a Foray is and what it is made 
   const row = /href="#\/foray\/capital-types-1">[\s\S]*?<\/a>/.exec(list)[0];
   assert.ok(row.includes(`<span class="fy-home-sub">${facts}</span>`), `the Forays list row: ${row}`);
 
-  const card = app.forayCardV2Html(doc);
-  assert.ok(card.includes(`<span class="hv2-foray-sub">${facts}</span>`), `the Home card: ${card.slice(0, 400)}`);
+  const hero = app.todayForayHero();
+  assert.ok(hero, "a published Foray leads Today");
+  assert.equal(hero.meta, `7 shows · ${resolve.fmtSpan(r.totalSec)}`, `Today's hero: ${hero.meta}`);
 
   const lib = libraryRows(app.libraryForaysHtml()).find(([t]) => t === doc.title);
   assert.equal(lib[1], facts, "an unopened Foray's Library row is its length and makeup");
@@ -215,18 +216,18 @@ test("the Foray explanation promises a narrator only while a listed Foray has on
   assert.match(drafts.forayAbout(), /with a narrator between them\.$/, "a listed narrated Foray earns the clause");
 });
 
-test("the intro popup claims a stretch Foray only when Home's Forays row has one (p-first-11)", async () => {
-  /* One listed Foray is one subject root, so pickWithStretchFloor has no
-     branch left over for a stretch pick. KILLING MUTATION: restore the fixed
-     sentence "The forays and the episodes each include ..." — red. */
+test("the intro popup claims a stretch pick only where Today has one (p-first-11)", async () => {
+  /* One listed Foray is one subject root, so pickWithStretchFloor has no branch left over for a stretch
+     Foray, and Today's hero is never the floor's stretch Foray anyway; the stretch pick lives in the picks.
+     KILLING MUTATION: restore a sentence that gives the forays a stretch pick of their own — red. */
   const created = [];
   const app = loadApp(await realBridge(), { showDrafts: false, created });
   assert.equal(app.foraysForYouPicks().stretchIndex, -1, "fixture: no stretch Foray is possible");
   try { app.showIntroPopupOnce(); } catch (_) { /* the stub cannot open a sheet; the copy is already built */ }
   const sub = created.find((el) => el.className === "fy-sheet-sub" && /outside your usual subjects/.test(el.textContent));
   assert.ok(sub, "the popup's explanation was built");
-  assert.match(sub.textContent, /The episodes include one pick outside your usual subjects/);
-  assert.doesNotMatch(sub.textContent, /forays/);
+  assert.match(sub.textContent, /The picks include one outside your usual subjects/);
+  assert.doesNotMatch(sub.textContent, /the forays/i);
 });
 
 /* ---------- p-foray-2: every credited show links in-app, or its arrow says "search" ---------- */

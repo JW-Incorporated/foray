@@ -1385,7 +1385,7 @@ test("the vouch row renders on the Shows page and nowhere on Home, so it cannot 
 
   m.ctx.renderHome();
   const home = m.view();
-  assert.ok(home.includes('class="home hv2-home"'), "sanity: renderHome() must still render Home v2");
+  assert.ok(home.includes('class="ag td-today'), "sanity: renderHome() must still render Today");
   assert.ok(
     !home.includes("fy-vouch"),
     "the vouch row must NOT be a flex sibling inside Home — that is exactly what collapsed the cards to 0px in #433"
