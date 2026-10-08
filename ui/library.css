@@ -23,9 +23,12 @@ body.view-library #view { padding-top: 0; }
   position: relative; isolation: isolate;
   /* The grid's art: 104 at 393, 96 at 375, 112 at 412 (BUILD-NOTES §3 ShowTile). */
   --lb-art: var(--art-tile);
-  /* The shade under a strip's bars, which sits ON artwork whatever the scheme: the art is not themed, so it does not
-     follow Dawn's paper scrims. The only colour literal in this file. */
+  /* The shades ON artwork, whatever the scheme: the art is not themed, so they do not follow Dawn's paper scrims. The
+     only colour literals in this file. The strip's floor is the prototype's 0.55; the pill's ground is 0.86 with the
+     Lamp's own ivory on it (10:1; at 0.55 the label read 3.4:1 over white art). */
   --lb-on-art-soft: rgb(20 17 15 / 0.55);
+  --lb-on-art-ink: rgb(20 17 15 / 0.86);
+  --lb-on-art: #F3E7D3;
   padding: calc(var(--safe-top) + var(--s-2)) var(--gutter) var(--s-6);
   min-height: 100vh;
 }
@@ -46,6 +49,17 @@ body.view-library #view { padding-top: 0; }
 .ag .lb-cast { position: fixed; z-index: 0; display: none; bottom: calc(var(--safe-bottom) + var(--tab-bar-h, 56px) - var(--s-6)); }
 body.fp-open .ag .lb-cast:not([data-state="idle"]) { display: block; bottom: calc(var(--safe-bottom) + var(--tab-bar-h, 56px) + var(--mini) - var(--s-6)); }
 
+/* Content never meets the bar's top edge sliced: it dissolves into the page's ground over the 32px above the legacy bars
+   (DIRECTION, Materials: "Content runs under the Dock and fades to bg behind it ... never sliced"). The Dock unit's own
+   `.dock-fade` replaces this element when the legacy bars go. Fixed, clicks pass through, above the content and below
+   the bars. */
+.ag .lb-fade {
+  position: fixed; left: 0; right: 0; z-index: 3; pointer-events: none; height: calc(var(--s-8) + var(--s-1));
+  bottom: calc(var(--safe-bottom) + var(--tab-bar-h, 56px) - 1px);
+  background: linear-gradient(transparent, var(--bg0));
+}
+body.fp-open .ag .lb-fade { bottom: calc(var(--safe-bottom) + var(--tab-bar-h, 56px) + var(--mini) - 1px); }
+
 /* Title: Fraunces 26/30 at the top, a 44 tall row. */
 .ag .lb-head { min-height: var(--tap); display: flex; align-items: center; margin-top: var(--s-2); }
 .ag .lb-head h2 { flex: 1; min-height: var(--tap); display: flex; align-items: center; }
@@ -53,12 +67,14 @@ body.fp-open .ag .lb-cast:not([data-state="idle"]) { display: block; bottom: cal
 
 /* Sections: 32 between, 12 head to content (the SectionHead primitive carries both margins). */
 .ag .lb-section { position: relative; z-index: 1; }
-/* The first section sits right under the title (its head's 32 would be a gap under a 44 tall title row). */
-.ag .lb-head + .lb-section > .ag-section-head { margin-top: var(--s-2); }
+/* The grid has no head and sits 12 under the title row, as the prototype's does. */
+.ag .lb-grid-section { margin-top: var(--s-3); }
 .ag .lb-stack > * + * { margin-top: var(--s-2); }
 /* A quiet link under a grid or a list starts at the content edge: the button's 16px inline padding would indent its word off
    the tiles above it (iteration 2's judges: "All forays" off the grid). The padding moves to the end, so the 44 tall target stays. */
 .ag .lb-more { margin-top: var(--s-2); justify-content: flex-start; padding-inline-start: 0; }
+/* Under the grid the quiet links share one row ("Show all", "All forays"), 16 apart, so two links cost one 44 tall band. */
+.ag .lb-more-row { display: flex; flex-wrap: wrap; align-items: center; column-gap: var(--s-4); }
 
 /* The grid: 3-up, rows at least 16 apart, every cell top-aligned so a tall caption never stretches its neighbours. */
 .ag .lb-grid {
@@ -71,21 +87,24 @@ body.fp-open .ag .lb-cast:not([data-state="idle"]) { display: block; bottom: cal
 /* Names clamp to three lines and are never cut mid-word (§12.2). */
 .ag .lb-name { color: var(--text); width: 100%; overflow-wrap: normal; word-break: normal; hyphens: none; text-overflow: ellipsis; }
 
-/* ForayTile: the strip lies inside the collage's bottom radius (12 tall, bars 8), a finished foray wears the check,
-   and the facts sit under the name in two short lines. There is no pill: the tile is under the Forays head, and a
-   pill hanging over the tile's edge was what both judges of iteration 1 marked down. */
-.ag .lb-facts { display: flex; flex-direction: column; width: 100%; color: var(--text-2); }
-.ag .lb-fact { display: block; overflow-wrap: normal; }
-.ag .lb-strip {
-  position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; height: 12px;
-  padding: 2px var(--s-2); display: flex; align-items: center; gap: 2px;
+/* ForayTile, as the prototype draws it (afterglow.css .ftile): a 36 tall shade along the collage's bottom edge, the strip
+   on it (8 tall, 6 in from the sides and the floor, bars sized by their run's length, 3 wide at least), and the Lamp
+   "Foray" pill. The pill sits inside the art's top-left corner: straddling the edge, as the prototype's does, was what
+   iteration 1's judges marked down. No check, no facts, no progress bar: the lit bars are the progress. */
+.ag .lb-foray .lb-art::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--s-8) + var(--s-1)); z-index: 1; pointer-events: none;
   border-radius: 0 0 var(--r-md) var(--r-md); background: linear-gradient(transparent, var(--lb-on-art-soft));
 }
+.ag .lb-pill {
+  position: absolute; left: var(--s-1); top: var(--s-1); z-index: 3; min-height: var(--s-5); padding-inline: var(--s-2);
+  background: var(--lb-on-art-ink); color: var(--lb-on-art); box-shadow: none;
+}
+.ag .lb-strip { position: absolute; left: calc(var(--s-1) * 1.5); right: calc(var(--s-1) * 1.5); bottom: calc(var(--s-1) * 1.5); z-index: 2; height: var(--s-2); display: flex; align-items: center; gap: 2px; }
 /* A bar's colour is written by script (`--c`, libBarColour: its show's artwork hue, one muted chroma). Before it is, or
-   without script, a bar is the muted text grey, never the seg-c rainbow. */
-.ag .lb-bar { display: block; height: 8px; min-width: 2px; flex: 1 1 0; border-radius: var(--r-xs); background: var(--c, var(--text-3)); opacity: var(--seg-dim); }
+   without script, a bar is the muted text grey, never the seg-c rainbow. The narrator's bar is the Lamp, half the height. */
+.ag .lb-bar { display: block; height: var(--s-2); min-width: 3px; flex: 1 1 0; border-radius: 2px; background: var(--c, var(--text-3)); opacity: var(--seg-dim); }
 .ag .lb-bar.is-lit { opacity: 1; }
-.ag .lb-foray .ag-done { position: absolute; right: var(--s-1); bottom: var(--s-4); z-index: 3; color: var(--ember); }
+.ag .lb-bar.lb-narr { height: var(--s-1); background: var(--lamp); opacity: 1; }
 
 /* Rows. A row's one real link is its title (or, in Up Next and History, a button laid over the row); the controls
    sit above it. */
@@ -127,7 +146,7 @@ body.fp-open .ag .lb-cast:not([data-state="idle"]) { display: block; bottom: cal
 
 /* Empty: one line, one button, centred; no paragraph (§4.5). */
 .ag .lb-empty { padding: var(--s-2) 0 0; display: flex; flex-direction: column; align-items: center; gap: var(--s-3); text-align: center; color: var(--text-2); }
-.ag .lb-grid-section > .lb-empty { padding-top: var(--s-5); }
+.ag .lb-grid-section > .lb-empty { padding-top: var(--s-2); }
 
 /* The Toast: 48 tall, 8 above the bar, five seconds. Closed it is not drawn at all (visibility), so its Undo is
    neither focusable nor read. */

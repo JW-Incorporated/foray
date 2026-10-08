@@ -14,12 +14,12 @@
 
      Forays     the forays the listener has OPENED (a progress row: started or finished,
                 most recent first; a foray nobody opened is Today's and #/forays') as
-                ForayTiles (no pill: the head says it; the facts under the name), six at
-                most, and the Ember "All forays" link to #/forays
-     Followed   followed shows (cp_starred_shows) as ShowTiles, six at most, then an in-place
-                "All". Everything here is followed, so a ShowTile carries NO followed badge:
-                a mark would say nothing (10.7). Two labelled sections, not one mixed grid
-                (iteration 2).
+                ForayTiles (the Lamp "Foray" pill, the strip, the name), six at most, and
+                the Ember "All forays" link to #/forays
+     Followed   followed shows (cp_starred_shows) as ShowTiles after them, nine cells in all,
+                then an in-place "Show all". Everything here is followed, so a ShowTile carries NO followed badge:
+                a mark would say nothing (10.7). One 3-up grid, no heads (iteration 4: the
+                prototype's own structure; the Lamp "Foray" pill says which tile is which).
      Saved      cp_saved via savedMap(), the same QueueRow as Up Next, five and then "All saved"
      Playlists  cp_playlists, PlaylistTile rows
      Up Next    cp_queue via queueIds(), QueueRows: the playing row first (Fill glyph,
@@ -55,11 +55,17 @@
    and capped, as renderHome caps its rails -- "recently listened" is not a scroll-forever
    list. Saved had no cap; five and an in-place "All saved" keeps that honest. */
 
-/* Two grids, each under its own SectionHead: the forays the listener opened (two rows of three) and the shows they
-   follow (two rows of three, then an in-place "All"). One grid of nine mixed the two and left the listener to learn
-   the difference from a pill; both judges of iteration 1 asked for labelled sections. */
+/* ONE grid (iteration 4, the prototype's and DIRECTION's own call, "Library forays are compact tiles", "art grids are
+   3-up"): the forays the listener opened come first, then the shows they follow, nine cells in three rows of three.
+   A ForayTile wears its Lamp "Foray" pill, so the grid needs no heads to say which is which; iteration 2's two
+   labelled sections (a Fraunces head and a count over each, a quiet link under each) changed the screen's density
+   and hierarchy, and the fidelity judges marked the build down for it. At most six of the nine are forays, so
+   followed shows are never pushed out; the in-place "Show all" opens every one. */
+const LIB_GRID_MAX = 9;
 const LIB_FORAYS_MAX = 6;
-const LIB_SHOWS_MAX = 6;
+/* A strip holds this many bars at most: at 3px wide and 2px apart, sixteen are 78px, which fits the narrowest tile's
+   art (96 at 375, less 6 either side). A foray of fifty clips would otherwise run its bars out of the tile. */
+const LIB_STRIP_BARS_MAX = 16;
 const LIB_SAVED_MAX = 5;
 const LIB_PLAYLISTS_MAX = 5;
 const LIB_UPNEXT_MAX = 10;
@@ -74,7 +80,7 @@ const LIB_BAR_NEAR_DEG = 24;
 
 /* What this page remembers between paints: nothing is stored, it is the open state of "All saved" and of the
    followed shows, the Toast's timer and the one thing Undo needs. */
-const libUi = { savedOpen: false, showsOpen: false, toastTimer: null, undo: null, poll: null, currentId: null, menuFor: null };
+const libUi = { savedOpen: false, gridOpen: false, toastTimer: null, undo: null, poll: null, currentId: null, menuFor: null };
 
 const LIB_EMPTY = {
   grid: ["Nothing followed yet.", "Find shows", "/shows"],
@@ -164,43 +170,38 @@ function libShowHues(names) {
   return out;
 }
 
-/** The strip along a foray tile's bottom edge: one bar per run of the same show, narration left out (at
-    96px it would be a sliver), the bars the listener has reached lit. `elapsed` null = nothing played. Each bar
-    carries its show's hue (libShowHues), painted muted by libPaintStrips. */
+/** The strip along a foray tile's bottom edge, as the prototype draws it (afterglow.css .mini-strip): one bar per run
+    of the same source, the narrator's runs as short Lamp bars between them (legible in greyscale, DIRECTION's colour
+    rule), the bars the listener has reached lit. `elapsed` null = nothing played. A show's bar carries its hue
+    (libShowHues), painted muted by libSizeStrips. */
 function libForayBars(playable, elapsedSec, finished) {
   const player = window.ForayPlayer;
   if (typeof player?.stripModel !== "function" || !Array.isArray(playable) || !playable.length) return [];
   let model;
   try { model = player.stripModel(playable, { elapsed: elapsedSec > 0 ? elapsedSec : null }); } catch (_) { return []; }
   const reached = finished ? Infinity : (model.positioned && elapsedSec > 0 && Number.isInteger(model.currentIndex) ? model.currentIndex : -1);
-  const runs = (model.runs || []).filter((run) => run.kind === "segment");
-  const hues = libShowHues(runs.map((run) => run.show || ""));
+  const runs = (model.runs || []).filter((run) => run.kind === "segment" || run.kind === "narration");
+  const hues = libShowHues(runs.filter((run) => run.kind === "segment").map((run) => run.show || ""));
   const bars = [];
   for (const run of runs) {
-    const show = run.show || "";
-    const hue = hues.get(show);
+    const narr = run.kind === "narration";
+    const show = narr ? "" : (run.show || "");
+    const hue = narr ? 0 : hues.get(show);
     const lit = run.from <= reached;
     const last = bars[bars.length - 1];
-    if (last && last.show === show && last.lit === lit) last.grow += Math.max(1, Math.round(run.lengthSec));
-    else bars.push({ show, hue, lit, grow: Math.max(1, Math.round(run.lengthSec)) });
+    if (last && last.narr === narr && last.show === show && last.lit === lit) last.grow += Math.max(1, Math.round(run.lengthSec));
+    else bars.push({ show, hue, lit, narr, grow: Math.max(1, Math.round(run.lengthSec)) });
+  }
+  /* Too many bars for the tile: fold the two neighbours with the least runtime between them into one, wearing the
+     longer one's look, until they fit. A narrator's bar is the first to go, it is the shortest. */
+  while (bars.length > LIB_STRIP_BARS_MAX) {
+    let at = 0;
+    for (let i = 1; i < bars.length - 1; i++) if (bars[i].grow + bars[i + 1].grow < bars[at].grow + bars[at + 1].grow) at = i;
+    const [a, b] = [bars[at], bars[at + 1]];
+    const big = a.grow >= b.grow ? a : b;
+    bars.splice(at, 2, { show: big.show, hue: big.hue, lit: big.lit, narr: big.narr, grow: a.grow + b.grow });
   }
   return bars;
-}
-
-/** A foray's facts for its tile, two short lines that fit a 96px column: "22 min · 4 shows" and "6 clips" (the same
-    three facts the Forays page gives, forayFactsLabel, split so none is cut). "" for a part the foray cannot say. */
-function libForayFacts(r) {
-  const player = window.ForayPlayer;
-  const none = { length: "", clips: "", shows: "" };
-  if (!r || !player) return none;
-  const tally = typeof player.stripTally === "function" ? player.stripTally(r.playable) : null;
-  const runtime = typeof forayRuntimeLabel === "function" ? forayRuntimeLabel(player, tally, r.totalSec) : "";
-  return {
-    /* "about 43 min" is a tile too wide for its column: the tilde says the same in four fewer letters. */
-    length: runtime ? runtime.replace(/^about /, "~") : "",
-    clips: tally ? countLabel(tally.clips + tally.bridges, "clip") : "",
-    shows: tally && tally.shows ? countLabel(tally.shows, "show") : "",
-  };
 }
 
 /** The forays for the grid: the ones the listener has STARTED or FINISHED, most recent first (the same progress
@@ -222,7 +223,7 @@ function libForayList() {
     started.forEach((p) => resume.set(p.id, p));
   } catch (_) { /* no progress rows */ }
   const mine = started.map((p) => byId.get(p.id)).filter(Boolean);
-  const tiles = mine.slice(0, LIB_FORAYS_MAX).map((f) => {
+  const tiles = mine.slice(0, libUi.gridOpen ? mine.length : LIB_FORAYS_MAX).map((f) => {
     const r = resolveListedForay(f.id);
     const names = [];
     for (const p of (r && r.playable) || []) {
@@ -237,32 +238,29 @@ function libForayList() {
       glowShow: names[0] || f.title || f.id,
       bars: libForayBars(r && r.playable, p ? Number(p.elapsedSec) || 0 : 0, finished),
       finished,
-      facts: libForayFacts(r),
       /* Said to a screen reader only, and whole: the draft tag, "Played" or "12 min left", then the length and makeup
-         (forayListSubLabel, the one line every Foray list says; honesty-12, p-foray-8). The visible tile shows the
-         check, the lit bars and the facts, so the facts block is aria-hidden and this line says them once. */
+         (forayListSubLabel, the one line every Foray list says; honesty-12, p-foray-8). The visible tile shows only the pill,
+         the lit bars and the name, so this line is where the progress and the makeup are said. */
       sub: forayListSubLabel(f, progress),
     };
   });
   return { known: true, tiles, total: mine.length, catalog: list.length };
 }
 
-/** A ForayTile (BUILD-NOTES 3), as built for iteration 2: the collage with its strip along the bottom edge, the
-    name (three lines at most), and the foray's facts in two short lines under it, so a tile says how long the foray
-    is, how many clips it holds and how many shows it draws on. NO "Foray" pill: the tile sits under the Forays
-    head, so the pill restated it, the way the followed badge would (10.7), and it hung over the tile's edge. */
+/** A ForayTile (BUILD-NOTES 3, the prototype's .ftile): the collage with the Lamp "Foray" pill at its top-left and the
+    strip along its bottom edge, then the name (three lines at most) and nothing else. NO status badge: the lit bars
+    say how far the listener got, and the screen-reader line says it in words; DIRECTION keeps a badge for the places
+    where the state varies, and every foray here is one the listener opened. The facts the iteration-2 build printed
+    under the name are not drawn (the prototype has none; the Forays page and the foray's own room carry them), but
+    the screen-reader line still says them. The pill sits INSIDE the art's top-left corner, not straddling the edge
+    as the prototype's does: iteration 1's judges marked the overhang down, and an inset pill keeps the tile's box
+    the grid cell's box. */
 function libForayTileHtml(t) {
   const arts = t.shows.length ? t.shows : [{ name: t.title, src: null }];
-  const bars = t.bars.map((b) => `<i class="lb-bar${b.lit ? " is-lit" : ""}" data-grow="${esc(b.grow)}" data-hue="${esc(Math.round(Number(b.hue) || 0))}"></i>`).join("");
-  const f = t.facts || {};
-  const line1 = [f.length, f.shows].filter(Boolean).join(" · ");
-  const facts = (line1 || f.clips)
-    ? `<span class="t-caption lb-facts"${t.sub ? ' aria-hidden="true"' : ""}>${line1 ? `<span class="lb-fact">${esc(line1)}</span>` : ""}${f.clips ? `<span class="lb-fact">${esc(f.clips)}</span>` : ""}</span>`
-    : "";
+  const bars = t.bars.map((b) => `<i class="lb-bar${b.narr ? " lb-narr" : ""}${b.lit ? " is-lit" : ""}" data-grow="${esc(b.grow)}" data-hue="${esc(Math.round(Number(b.hue) || 0))}"></i>`).join("");
   return `<a class="lb-tile lb-foray" href="#${esc(forayRoutePath(t.id))}" data-ev="picked" data-ctx="library-foray" data-glow-show="${esc(t.glowShow)}">
-    <span class="lb-art">${agCollage(arts, { size: 104 })}${bars ? `<span class="lb-strip" aria-hidden="true">${bars}</span>` : ""}${t.finished ? `<span class="ag-done">${agIcon("check-circle-fill", 20)}</span>` : ""}</span>
+    <span class="lb-art">${agCollage(arts, { size: 104 })}<span class="ag-pill lb-pill">Foray</span>${bars ? `<span class="lb-strip" aria-hidden="true">${bars}</span>` : ""}</span>
     <span class="t-caption lb-name clamp3">${esc(t.title)}</span>
-    ${facts}
     ${t.sub ? `<span class="sr-only lb-sub">${esc(t.sub)}</span>` : ""}
   </a>`;
 }
@@ -281,41 +279,31 @@ function libraryForaysHtml() {
   return libForayList().tiles.map(libForayTileHtml).join("");
 }
 
-/** The Forays section: the forays the listener opened, up to two rows, and the Ember "All forays" under them. The
-    link is always there once there is anything to open (#/forays also lists the forays nobody has opened, which is
-    what it is for). Absent when the listener has opened none: a first run says one line, under Followed shows. */
-function libForaysSectionHtml(forays) {
-  if (!forays.known) {
-    /* The player module has not arrived: say nothing about forays, offer the way in. */
-    return `<section class="lb-section lb-grid-section" data-lb-section="forays" aria-busy="true">${libHead("Forays", 0)}${libQuietLink("All forays", "/forays")}</section>`;
-  }
-  if (!forays.tiles.length) return "";
-  const all = libQuietLink("All forays", "/forays");
-  return `<section class="lb-section lb-grid-section" data-lb-section="forays">${libHead("Forays", forays.total)}<div class="lb-grid">${forays.tiles.map(libForayTileHtml).join("")}</div>${all}</section>`;
-}
-
-/** The Followed shows section: two rows, then an in-place Ember "All" ("Show fewer" once open). The Dock folded
-    `#/starred-shows` into this page, so "All" cannot be a link to a page: it opens the rest here, as Saved does. */
-function libShowsSectionHtml(forays, shows) {
-  let body;
-  if (!shows.length) {
-    /* The one first-run line lives here, and only when there are no forays to look at either. */
-    body = forays.known && forays.tiles.length ? "" : libEmptyHtml("grid");
-    if (!body) return "";
-  } else {
-    const shown = libUi.showsOpen ? shows : shows.slice(0, LIB_SHOWS_MAX);
-    body = `<div class="lb-grid">${shown.map(libShowTileHtml).join("")}</div>`;
-    if (shows.length > LIB_SHOWS_MAX) {
-      body += `<button type="button" class="ag-btn ag-btn-quiet lb-more" data-lb-shows-toggle aria-expanded="${libUi.showsOpen ? "true" : "false"}">${libUi.showsOpen ? "Show fewer" : "All"}</button>`;
-    }
-  }
-  return `<section class="lb-section lb-grid-section" data-lb-section="followed">${libHead("Followed shows", shows.length)}${body}</section>`;
-}
-
-/** Both grids' sections, Forays then Followed shows. */
+/** The one grid: the forays the listener opened (six at most), then the shows they follow, nine cells in all; "Show all"
+    opens the rest in place ("Show fewer" once open). It has no head (the pill says "Foray"; a followed show needs
+    no label) and is named for a screen reader by its aria-label. Under it, one quiet row: "Show all" only when
+    something is left out, and the Ember "All forays" link once there is any foray to open (#/forays also lists the
+    forays nobody has opened, which is what it is for). The Dock folded `#/starred-shows` into this page, so the
+    toggle opens the rest here rather than linking to a page. A first run says one line, "Nothing followed yet." */
 function libGridHtml() {
   const forays = libForayList();
-  return libForaysSectionHtml(forays) + libShowsSectionHtml(forays, libFollowedShows());
+  const shows = libFollowedShows();
+  const label = 'aria-label="Forays and followed shows"';
+  if (!forays.known) {
+    /* The player module has not arrived: say nothing about forays, offer the way in. */
+    return `<section class="lb-section lb-grid-section" data-lb-section="grid" ${label} aria-busy="true"><div class="lb-more-row">${libQuietLink("All forays", "/forays")}</div></section>`;
+  }
+  if (!forays.tiles.length && !shows.length) {
+    return `<section class="lb-section lb-grid-section" data-lb-section="grid" ${label}>${libEmptyHtml("grid")}</section>`;
+  }
+  const cellsAll = forays.tiles.map(libForayTileHtml).concat(shows.map(libShowTileHtml));
+  const overflow = forays.total > LIB_FORAYS_MAX || cellsAll.length > LIB_GRID_MAX;
+  /* forays.tiles is already capped at six, so a seventh foray waits behind "Show all" rather than crowding out the shows. */
+  const shown = libUi.gridOpen ? cellsAll : cellsAll.slice(0, LIB_GRID_MAX);
+  const links = [];
+  if (overflow) links.push(`<button type="button" class="ag-btn ag-btn-quiet lb-more" data-lb-grid-toggle aria-expanded="${libUi.gridOpen ? "true" : "false"}">${libUi.gridOpen ? "Show fewer" : "Show all"}</button>`);
+  if (forays.tiles.length) links.push(libQuietLink("All forays", "/forays"));
+  return `<section class="lb-section lb-grid-section" data-lb-section="grid" ${label}><div class="lb-grid">${shown.join("")}</div>${links.length ? `<div class="lb-more-row">${links.join("")}</div>` : ""}</section>`;
 }
 
 /* ---------- rows ---------- */
@@ -570,7 +558,7 @@ function libHistoryHtml(rows, hidden) {
 
 function libCastHtml() {
   const on = libBarOpen() || !!libCurrentId();
-  return `<div class="dock-cast lb-cast" data-state="${on ? "playing" : "idle"}" aria-hidden="true"></div>`;
+  return `<div class="dock-cast lb-cast" data-state="${on ? "playing" : "idle"}" aria-hidden="true"></div><div class="lb-fade" aria-hidden="true"></div>`;
 }
 
 function libToastHtml() {
@@ -777,14 +765,14 @@ function bindLibrary(scope) {
       if (again) focusQuietly(again);
     });
   });
-  scope.querySelectorAll("[data-lb-shows-toggle]").forEach((btn) => {
+  scope.querySelectorAll("[data-lb-grid-toggle]").forEach((btn) => {
     if (btn._lbBound) return;
     btn._lbBound = true;
     btn.addEventListener("click", (e) => {
       e.preventDefault();
-      libUi.showsOpen = !libUi.showsOpen;
+      libUi.gridOpen = !libUi.gridOpen;
       renderLibrary();
-      const again = $("#view") && $("#view").querySelector("[data-lb-shows-toggle]");
+      const again = $("#view") && $("#view").querySelector("[data-lb-grid-toggle]");
       if (again) focusQuietly(again);
     });
   });

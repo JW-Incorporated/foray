@@ -1150,3 +1150,42 @@ fidelity deltas on the grid origin and tile height are that call and the facts u
 Dock-owned findings (full-width opaque bar, violet play, four tabs, generic icons, back-15 glyph, the bar slicing
 the last caption row) belong to `redesign/ambient-dock`; the right-hand empty cell of a two-tile foray row is the
 grid, not a defect.
+
+### 17.3 Library, iteration 4 (art-director calls made unattended)
+
+Iteration 3's fidelity judges put the prototype ahead: the build's two labelled sections ("Forays" 2-up at ~208px,
+"Followed shows" under Fraunces heads with counts, a ~120px band between them) changed the density and hierarchy of the
+screen, its foray tiles carried two caption lines and a check badge the prototype does not, and Saved fell below the
+fold. DIRECTION is explicit ("Library forays are compact tiles", "art grids are 3-up", "the badge appears only where
+the state varies"), so the prototype's structure wins here and 17.1.1, 17.1.2 and 17.1.3 are overturned (17.1.4 and
+17.1.5 stand). Each change is pinned in `test/ambient-library.test.js` with a named mutation, all run red and restored:
+
+1. **One grid, no heads.** The forays the listener opened (six at most) then the followed shows, nine cells in three
+   rows of three, directly under the title (12 below it, as the prototype). No "Forays" or "Followed shows" head, no
+   count; the section carries `aria-label="Forays and followed shows"`. Under it one quiet row: an in-place
+   "Show all" ("Show fewer" once open) only when something is left out, and the Ember "All forays" link to `#/forays`
+   (the only way to the catalogue's unopened forays, so it stays). "Show all" is not the prototype's bare "All": a
+   second "All" next to "All forays" would not say what it opens.
+2. **The Lamp "Foray" pill is back**, as the prototype has it (`.pill.sm`, 20 tall, uppercase, 0.86 ink under the
+   Lamp's ivory, 10:1 over white art, AA-tested), but **inside** the art's top-left corner at 4/4 rather than
+   straddling the top edge: iteration 1's judges marked the overhang down, and an inset pill leaves the tile's box
+   the grid cell's box. This overturns 17.1.2 and keeps the rest of 10.11.
+3. **The strip is the prototype's `.mini-strip`**: a 36px shade along the collage's floor, the bars 8 tall, 6 in from
+   the sides and the floor, 3px wide at least, and the narrator's runs as 4px Lamp bars between the shows' (legible in
+   greyscale, DIRECTION's colour rule); the reached bars lit. At most sixteen bars (78px, inside a 96px tile): a foray
+   of fifty clips folds its two shortest neighbours until it fits, conserving the runtime. Before this a long foray's
+   bars ran out of the tile.
+4. **No status badge, no progress bar, no facts under the name.** A finished foray's check (BUILD-NOTES 3's ForayTile
+   row) is gone: the lit bars are the progress, and a Library tile only ever shows forays the listener has opened.
+   The facts block is gone; the screen-reader line (`forayListSubLabel`: draft tag, progress, length, makeup) still
+   says all of it, once.
+5. **Saved is on the first screen** (below the fold at 393x852 before; its head is at y=650 now the two sections are one grid) and the
+   section rhythm is the 4px grid's: 12 under the title, 8 to the quiet row, 32 to Saved.
+6. **Content fades behind the bars.** `.lb-fade` is a fixed 36px gradient from transparent to the page's ground over
+   the top edge of the legacy bars (above the mini player when it is up), clicks passing through, so a row is never
+   sliced mid-line by the bar's edge. Like `.lb-cast` it retires in favour of the Dock's own `.dock-fade` when
+   `redesign/ambient-dock` merges; `ambient-app` re-records once then.
+
+Not this unit's, and unchanged: the Dock findings (three tabs and no Create, one floating Veil, Ember play on a Glow
+tint, back-15 and forward-30 glyphs, the 2px Glow progress line, Phosphor Fill active tab) belong to
+`redesign/ambient-dock` and Library's shots still show the legacy bars until it merges.
