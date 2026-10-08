@@ -47,4 +47,9 @@ export const SHEET_OPENERS = [
   { dialog: "#ag-gallery-dusk-sheet", opener: "#ag-gallery-dusk-sheet-open", close: "#ag-gallery-dusk-sheet .ag-sheet-head button" },
   { dialog: "#ag-gallery-dawn-sheet", opener: "#ag-gallery-dawn-sheet-open", close: "#ag-gallery-dawn-sheet .ag-sheet-head button" },
   { dialog: "#gx-sheet", opener: "#gx-open", close: "#gx-close" }, // fixtures/gates-fixture.html
+  /* Redesign 2026, ambient, Settings: the gear's Sheet (opened from Today's own gear) and "What 4a does", opened from it
+     (its focus returns to the same gear). Their dialogs carry no id, so without these entries the gate would probe the FIRST
+     [role=dialog] in the document, one of the hidden sheets built at startup, and report focus outside it. */
+  { dialog: "#st-menu .st-panel", opener: "[data-today-gear]", close: "#st-menu [data-st-close]" },
+  { dialog: "#st-what .st-panel", opener: "[data-today-gear]", close: "#st-what [data-st-close]" },
 ];

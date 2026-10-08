@@ -1,35 +1,36 @@
-/* U-07's Interests page (docs/ui-transition-plan.md D6, kanban card
- * t_1cb3688a): #/interests, sliders 0-1, keyboard-operable, no history feed.
+/* Tuning (ex-Interests), #/interests — U-07's page (docs/ui-transition-plan.md D6, kanban card t_1cb3688a),
+ * rebuilt by Redesign 2026, ambient (DIRECTION.md "Information architecture"): "Interests as sliders becomes three
+ * states per subject (less, 4a's pick, more) inside Tuning, nearer to 'observed'."
+ *
+ * THE RULING THAT FELL: "interests are sliders, 0-1, keyboard-operable" (this suite's old tests 3, 5 and 7: the
+ * slider's shape, its ARIA triad, the back-to-default button, its touch-action). They are replaced, not deleted: each
+ * has its Tuning counterpart below. What did NOT fall, and is still pinned here: the route, the row set, the weights
+ * (0-1, `cp_interests`, `state.interests`), the ranking effect, no history feed, the profile never shrunk by a
+ * save, and no raw taxonomy id printed.
  *
  * WHAT THIS PROVES, in order:
  *  1. route() dispatches #/interests to renderInterests.
- *  2. The row set: every root, plus any node diverged from its taxonomy
- *     default — never every leaf unconditionally (that would defeat the
- *     point of only showing what matters).
- *  3. Sliders render 0-1 (not the old prototype's -1..1), with role="slider"
- *     and the ARIA attributes that make a native range input's keyboard
- *     behaviour (arrow keys) legible to assistive tech.
- *  4. Dragging a slider updates state.interests, persists via
- *     saveInterests(), and is reflected in the next Home ranking
- *     (buildCards()/interestScore) — the card's actual acceptance test.
- *  5. "Back to 4a's pick" (was "Reset to learned") restores the
- *     taxonomy-authored default weight.
- *  8. The profile is never shrunk by a save: a missing taxonomy.json writes
- *     nothing, and an id the loaded taxonomy does not name survives (2026-09-22
- *     audit). And no raw taxonomy id is printed under a slider.
- *  6. No history/evidence-feed markup anywhere on the page (D6).
- *  7. CSS: the slider carries touch-action: pan-y, so it does not fight page
- *     scroll — the regression the card names the old prototype fixing twice.
+ *  2. The row set: every root, plus any node diverged from its taxonomy default — never every leaf
+ *     unconditionally (that would defeat the point of only showing what matters).
+ *  3. A row is a radiogroup of three Chips (Less, 4a's pick, More), named by the row's own label; the selected
+ *     one is aria-checked and Lamp-filled; there are no sliders anywhere on the page.
+ *  4. The state is OBSERVED from the stored weight: a weight the listener's plays moved reads as less or more.
+ *  5. Choosing a state writes the weight through the REAL handler, persists via saveInterests(), and changes what
+ *     the next Home ranks (the card's actual acceptance test, unchanged).
+ *  6. "4a's pick" restores the taxonomy-authored default exactly (the old "Back to 4a's pick" button is the
+ *     middle chip), and a state that would not differ from it is offered disabled, not as a dead choice.
+ *  7. No history/evidence-feed markup anywhere on the page (D6).
+ *  8. CSS: every chip is 44 tall, the selected one is the Lamp fill with its ink.
+ *  9. The profile is never shrunk by a save: a missing taxonomy.json writes nothing, and an id the loaded taxonomy
+ *     does not name survives (2026-09-22 audit). And no raw taxonomy id is printed.
+ * 10. "Delete my data" clears the choice with every other cp_ key.
  *
- * Every test names the mutation that kills it, per CLAUDE.md "a green test
- * is not evidence until you have broken it".
+ * Every test names the mutation that kills it, per CLAUDE.md "a green test is not evidence until you have
+ * broken it".
  *
- * Harness: the same node:vm DOM stub + mountBooted pattern as
- * test/interests-roots.test.js / test/up-next-queue.test.js, with a real
- * (non-stubbed) `querySelectorAll` scoped to #view's innerHTML via a tiny
- * regex-based DOM reader — this repo has no jsdom (root package.json is
- * dependency-free), and the existing suites solve the same problem the same
- * way (see test/drawer-settings-toggle.test.js's harness note).
+ * Harness: the same node:vm DOM stub + mountBooted pattern as test/interests-roots.test.js / test/up-next-queue.test.js,
+ * with the group and chip elements the handler reads constructed by hand (this repo has no jsdom). The handler under
+ * test is the REAL `bindInterestsControls`, never a stand-in.
  */
 
 const { test } = require("node:test");
@@ -42,7 +43,8 @@ const { readAppSource, runAppSource } = require("./helpers/app-source.js");
 const ROOT = path.join(__dirname, "..");
 const APP_SRC = readAppSource();
 const SEARCH_SRC = fs.readFileSync(path.join(ROOT, "search-engine.js"), "utf8");
-const STYLES_SRC = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");
+const SETTINGS_CSS = fs.readFileSync(path.join(ROOT, "ui", "settings.css"), "utf8").replace(/\r\n/g, "\n").replace(/\/\*[\s\S]*?\*\//g, " ");
+const PRIMITIVES_CSS = fs.readFileSync(path.join(ROOT, "ui", "primitives.css"), "utf8").replace(/\r\n/g, "\n").replace(/\/\*[\s\S]*?\*\//g, " ");
 const TAXONOMY = JSON.parse(fs.readFileSync(path.join(ROOT, "data", "taxonomy.json"), "utf8"));
 
 process.on("unhandledRejection", () => {});
@@ -62,6 +64,7 @@ function makeEl(tag) {
     _fire(type, evt) {
       for (const fn of listeners.get(type) || []) fn(evt || {});
     },
+    _count(type) { return (listeners.get(type) || []).length; },
     appendChild(k) { this.children.push(k); return k; },
     append(...k) { this.children.push(...k); },
     setAttribute() {}, getAttribute: () => null, removeAttribute() {},
@@ -71,11 +74,7 @@ function makeEl(tag) {
   };
 }
 
-const PAGE_IDS = [
-  "view", "drawer", "drawer-overlay", "drawer-playlists", "family-toggle",
-  "player-toggle", "autoadvance-toggle", "menu-btn", "refresh-btn", "banner-slot",
-  "pl-form", "pl-input", "pl-note", "sh-form", "sh-input", "sh-note", "sh-results",
-];
+const PAGE_IDS = ["view", "menu-btn", "refresh-btn", "banner-slot", "pl-form", "pl-input", "pl-note", "sh-form", "sh-input", "sh-note", "sh-results"];
 
 function mount({ seed = {}, boot = false } = {}) {
   const store = new Map(Object.entries(seed).map(([k, v]) => [k, String(v)]));
@@ -145,26 +144,44 @@ async function mountBooted(seed) {
   return m;
 }
 
-/** Every `data-interest-id="..."` value in the rendered #view markup, in
-    document order — a minimal stand-in for querySelectorAll given this
-    repo's no-jsdom constraint (see header). */
-function sliderIds(html) {
+/** Every `data-interest-id="..."` value in the rendered #view markup, in document order. */
+function groupIds(html) {
   return [...html.matchAll(/data-interest-id="([^"]+)"/g)].map((m) => m[1]);
 }
 
-function rangeAttrs(html, id) {
-  const re = new RegExp(
-    `<input type="range"[^>]*data-interest-id="${id}"[^>]*>`
-  );
-  const tag = (html.match(re) || [null])[0];
-  if (!tag) return null;
-  const attr = (name) => (tag.match(new RegExp(`${name}="([^"]*)"`)) || [null, null])[1];
-  return {
-    min: attr("min"), max: attr("max"), step: attr("step"), value: attr("value"),
-    role: attr("role"), ariaLabel: attr("aria-label"),
-    ariaValuemin: attr("aria-valuemin"), ariaValuemax: attr("aria-valuemax"),
-    ariaValuenow: attr("aria-valuenow"), ariaValuetext: attr("aria-valuetext"),
-  };
+/** One row's markup: from its name element to the end of its radiogroup. */
+function rowHtml(html, id) {
+  const at = html.indexOf(`data-interest-id="${id}"`);
+  if (at < 0) return null;
+  const start = html.lastIndexOf('<div class="st-tune-row', at);
+  const end = html.indexOf("</div></div>", at) + "</div></div>".length;
+  return html.slice(start, end);
+}
+
+/** The three chips of a row, as { value, checked, disabled }. */
+function chipsOf(html, id) {
+  const row = rowHtml(html, id);
+  assert.ok(row, `the ${id} row must render`);
+  return [...row.matchAll(/<button\b([^>]*)>([^<]*)<\/button>/g)].map((m) => {
+    const attr = (n) => (new RegExp(`${n}="([^"]*)"`).exec(m[1]) || [null, null])[1];
+    return { value: attr("data-st-value"), checked: attr("aria-checked") === "true", disabled: /\sdisabled\b/.test(m[1]), label: m[2], role: attr("role"), selected: /class="[^"]*\bis-selected\b/.test(m[1]) };
+  });
+}
+
+/** What the page wires for one row: the group element carrying data-interest-id, and a chip the handler reads. */
+function tuneGroup(m, id) {
+  const group = makeEl("div");
+  group.getAttribute = (k) => (k === "data-interest-id" ? id : null);
+  m.byId.get("view").querySelectorAll = (sel) => (sel === "[data-interest-id]" ? [group] : []);
+  m.ctx.bindInterestsControls(m.byId.get("view"));
+  return group;
+}
+function tapChip(group, which, { disabled = false } = {}) {
+  const chip = makeEl("button");
+  chip.disabled = disabled;
+  chip.getAttribute = (k) => (k === "data-st-value" ? which : null);
+  chip.closest = (sel) => (sel === "[data-st-value]" ? chip : null);
+  group._fire("click", { target: chip });
 }
 
 const A_ROOT_ID = "true-crime";
@@ -175,12 +192,13 @@ const A_ROOT_ID = "true-crime";
 
 test("route() dispatches #/interests to renderInterests", async () => {
   /* MUTATION: remove the `#/interests` branch in renderCurrentPage(). The
-     hash falls through to renderHome() instead, and #view never gets an
-     .interest-row. */
+     hash falls through to renderHome() instead, and #view never gets a
+     Tuning page. */
   const m = await mountBooted();
   m.ctx.location.hash = "#/interests";
   m.ctx.route();
-  assert.ok(m.view().includes("interest-row"), "the #/interests route must render the interests page");
+  assert.ok(m.view().includes('data-st-page="tuning"'), "the #/interests route must render Tuning");
+  assert.ok(m.view().includes(">Tuning<"), "and the page is named Tuning");
 });
 
 /* ==================================================================== */
@@ -196,7 +214,7 @@ test("every root renders as a row, even with no divergence from default", async 
   const html = m.view();
   const roots = TAXONOMY.nodes.filter((n) => n.parent === null);
   for (const r of roots) {
-    assert.ok(sliderIds(html).includes(r.id), `root ${r.id} must have a row`);
+    assert.ok(groupIds(html).includes(r.id), `root ${r.id} must have a row`);
   }
 });
 
@@ -212,7 +230,7 @@ test("a leaf at its taxonomy default weight does NOT get a row", async () => {
   m.ctx.location.hash = "#/interests";
   m.ctx.route();
   assert.ok(
-    !sliderIds(m.view()).includes(untouchedLeaf.id),
+    !groupIds(m.view()).includes(untouchedLeaf.id),
     `an undiverged leaf (${untouchedLeaf.id}) must not clutter the page`
   );
 });
@@ -220,167 +238,178 @@ test("a leaf at its taxonomy default weight does NOT get a row", async () => {
 test("a leaf nudged away from its default gets a row, grouped under its root", async () => {
   /* MUTATION: group diverged leaves under the wrong key (e.g. their own id
      instead of node.parent) — the leaf would render outside its root's
-     .interest-group entirely. */
+     .st-group entirely. */
   const m = await mountBooted();
   const leaf = TAXONOMY.nodes.find((n) => n.parent === A_ROOT_ID);
   m.state.interests[leaf.id] = Math.min(1, leaf.weight + 0.2);
   m.ctx.location.hash = "#/interests";
   m.ctx.route();
   const html = m.view();
-  assert.ok(sliderIds(html).includes(leaf.id), "the diverged leaf must have a row");
+  assert.ok(groupIds(html).includes(leaf.id), "the diverged leaf must have a row");
   // The leaf's row must appear textually within the same group block as its
   // root's group label (a loose but real ordering check given the no-DOM harness).
   const rootNode = TAXONOMY.nodes.find((n) => n.id === A_ROOT_ID);
   const groupBlockRe = new RegExp(
-    `<h3 class="interest-group-label">${rootNode.label}</h3>[\\s\\S]*?data-interest-id="${leaf.id}"`
+    `<h3 class="st-group-label t-headline">${rootNode.label}</h3>[\\s\\S]*?data-interest-id="${leaf.id}"`
   );
   assert.ok(groupBlockRe.test(html), `${leaf.id} must render inside the ${A_ROOT_ID} group block`);
 });
 
 /* ==================================================================== */
-/* 3. SLIDER SHAPE: 0-1, role="slider", full ARIA                        */
+/* 3. THE SHAPE: three Chips in a radiogroup, no sliders                  */
 /* ==================================================================== */
 
-test("sliders are range 0-1, not the old prototype's -1..1", async () => {
-  /* MUTATION: change the slider's min to "-1" (matching the old prototype
-     the card explicitly rules out, since nudgeTopics clamps at zero). */
+test("a row is a radiogroup of Less / 4a's pick / More, named by the row, with exactly one aria-checked", async () => {
+  /* MUTATION: render a fourth chip, drop `role="radio"` or the `aria-labelledby` link from stSegHtml, or mark two
+     chips checked. The listener's three words are the whole control; a screen reader needs the group's name
+     and exactly one checked radio. */
   const m = await mountBooted();
   m.ctx.location.hash = "#/interests";
   m.ctx.route();
   const html = m.view();
-  const attrs = rangeAttrs(html, A_ROOT_ID);
-  assert.ok(attrs, "the root's slider must render");
-  assert.strictEqual(attrs.min, "0");
-  assert.strictEqual(attrs.max, "1");
+  const chips = chipsOf(html, A_ROOT_ID);
+  assert.deepStrictEqual(chips.map((c) => c.label), ["Less", "4a's pick", "More"].map((s) => s.replace("'", "&#39;")));
+  assert.deepStrictEqual(chips.map((c) => c.value), ["less", "pick", "more"]);
+  assert.ok(chips.every((c) => c.role === "radio"), "each chip is a radio");
+  assert.strictEqual(chips.filter((c) => c.checked).length, 1, "exactly one is checked");
+  const row = rowHtml(html, A_ROOT_ID);
+  assert.match(row, /role="radiogroup" aria-labelledby="tune-name-true-crime"/, "the group is named by the row's own label");
+  assert.match(row, /id="tune-name-true-crime">True Crime</, "which is the subject's name in words");
 });
 
-test("every slider carries role=\"slider\" and full ARIA value attributes", async () => {
-  /* MUTATION: remove role="slider" or any of the aria-value* attributes.
-     A native <input type=range> is keyboard-operable regardless, but the
-     card explicitly asks for role="slider" plus the ARIA triad. */
+test("there are no sliders on the page", async () => {
+  /* The ruling that fell. MUTATION: put an `<input type="range">` (or role="slider") back in interestTuneRow. */
   const m = await mountBooted();
   m.ctx.location.hash = "#/interests";
   m.ctx.route();
-  const attrs = rangeAttrs(m.view(), A_ROOT_ID);
-  assert.strictEqual(attrs.role, "slider");
-  assert.strictEqual(attrs.ariaValuemin, "0");
-  assert.strictEqual(attrs.ariaValuemax, "1");
-  assert.ok(attrs.ariaValuenow, "aria-valuenow must be set");
-  assert.ok(attrs.ariaLabel && attrs.ariaLabel.length > 0, "aria-label must name the node");
+  const html = m.view();
+  assert.ok(!/type="range"|role="slider"|interest-slider/.test(html), "no slider markup");
+  assert.ok(!/\d+%/.test(html.replace(/<[^>]*>/g, " ")), "and no percentage is printed: a direction, not a number");
+});
+
+test("the chip that reads as selected is the one that is aria-checked, tabbable, and Lamp-filled", async () => {
+  /* MUTATION: leave `is-selected` on the old chip after a tap (stSegSelect not called), or give every chip
+     tabindex="0". The roving tabindex keeps one Tab stop per row of 40; the picture and the state agree. */
+  const m = await mountBooted();
+  m.ctx.location.hash = "#/interests";
+  m.ctx.route();
+  const row = rowHtml(m.view(), A_ROOT_ID);
+  const tabbable = [...row.matchAll(/<button\b[^>]*tabindex="0"[^>]*>/g)];
+  assert.strictEqual(tabbable.length, 1, "one Tab stop per row");
+  assert.match(tabbable[0][0], /aria-checked="true"/, "and it is the checked one");
+  assert.match(tabbable[0][0], /class="ag-chip is-selected"/, "which wears the Lamp fill class");
 });
 
 /* ==================================================================== */
-/* 4. ACCEPTANCE: dragging a slider changes the next Home ranking        */
+/* 4. THE STATE IS OBSERVED                                              */
 /* ==================================================================== */
 
-test("dragging a slider changes what buildCards() ranks on the next Home render", async () => {
-  /* This is the card's own acceptance line, verbatim: "assert by seeding two
-     nodes and flipping which is higher." interestScore() averages
-     state.interests over an item's topics, and buildCards() ranks branches
-     by avgInterest — so setting one root's slider above another's must be
-     able to flip which branch buildCards() puts first among items whose
-     only topic is that root.
-
-     Drives the REAL `apply()` handler bindInterestsControls wires to the
-     slider's `input` event (via a constructed range element, the same
-     technique the reset test below uses for its button) rather than
-     mutating state.interests directly — a version of this test that pokes
-     state.interests itself would pass even if `apply()` wrote to the wrong
-     key or never called saveInterests() at all, which is exactly the
-     "green test that pins nothing" shape CLAUDE.md warns about.
-
-     MUTATION: make the interest-drag handler write to a key OTHER than
-     `id` (e.g. always state.interests[A_ROOT_ID]), or skip saveInterests()
-     entirely (so the value never reaches the object interestScore reads).
-     Either way rankAfter would not reflect the drag. */
+test("a weight the listener's plays moved reads as less or more; a small drift reads as 4a's pick", async () => {
+  /* "State observed, never declared" (product principle 2): the row shows where the stored weight IS. MUTATION:
+     compute tuneState from a stored 'choice' instead of the weight, or drop TUNE_EPSILON (every drift of 0.01
+     would read as a choice). */
   const m = await mountBooted();
-  const roots = TAXONOMY.nodes.filter((n) => n.parent === null);
-  const [rootA, rootB] = roots;
-  assert.ok(rootA && rootB, "fixture assumption: at least two root nodes exist");
+  const node = TAXONOMY.nodes.find((n) => n.id === A_ROOT_ID);
+  const state = (v) => { m.state.interests[node.id] = v; return m.evalIn(`tuneState(nodeById(${JSON.stringify(node.id)}))`); };
+  assert.strictEqual(state(node.weight), "pick");
+  assert.strictEqual(state(node.weight + 0.01), "pick", "a nudge under the epsilon is still 4a's pick");
+  assert.strictEqual(state(node.weight + 0.2), "more");
+  assert.strictEqual(state(node.weight - 0.2), "less");
+  m.state.interests[node.id] = node.weight - 0.2;
+  m.ctx.location.hash = "#/interests";
+  m.ctx.route();
+  assert.strictEqual(chipsOf(m.view(), node.id).find((c) => c.checked).value, "less", "and the page paints it");
+});
 
-  // Force both to the same starting weight so any ranking difference is
-  // attributable only to the drag below, not to their taxonomy defaults.
-  m.state.interests[rootA.id] = 0.4;
-  m.state.interests[rootB.id] = 0.4;
+/* ==================================================================== */
+/* 5. ACCEPTANCE: choosing changes the next Home ranking                  */
+/* ==================================================================== */
+
+test("choosing More changes what buildCards() ranks on the next Home render, and persists", async () => {
+  /* This is the card's own acceptance line, verbatim: "assert by seeding two nodes and flipping which is higher."
+     interestScore() averages state.interests over an item's topics, and buildCards() ranks branches by
+     avgInterest — so lifting one root above another must flip which branch buildCards() puts first among items
+     whose only topic is that root.
+
+     Drives the REAL handler bindInterestsControls wires to the radiogroup's click (a constructed group and chip,
+     the same technique the old slider test used) rather than mutating state.interests directly — a version that
+     pokes state.interests itself would pass even if the handler wrote to the wrong key or never called
+     saveInterests() at all, which is exactly the "green test that pins nothing" shape CLAUDE.md warns about.
+
+     MUTATION: make the handler write to a key OTHER than `id` (e.g. always state.interests[A_ROOT_ID]), skip
+     saveInterests(), or map "more" to the default weight. rankAfter would not reflect the choice. */
+  const m = await mountBooted();
+  const roots = TAXONOMY.nodes.filter((n) => n.parent === null && n.weight === 0.5);
+  const [rootA, rootB] = roots;
+  assert.ok(rootA && rootB, "fixture assumption: at least two root nodes sit at 0.5");
 
   const itemA = { topics: [rootA.id] };
   const itemB = { topics: [rootB.id] };
-  assert.strictEqual(m.ctx.interestScore(itemA), m.ctx.interestScore(itemB), "must start tied");
+  assert.strictEqual(m.ctx.interestScore(itemA), m.ctx.interestScore(itemB), "must start tied at 4a's own pick");
 
   m.ctx.location.hash = "#/interests";
   m.ctx.route();
-  assert.ok(rangeAttrs(m.view(), rootA.id), "the slider input for rootA must exist to drag");
+  tapChip(tuneGroup(m, rootA.id), "more");
 
-  // Construct a live input element standing in for rootA's rendered
-  // <input type="range">, scope #view's querySelectorAll to return it, bind
-  // the real handler, then fire the same event the browser fires while
-  // dragging — this exercises bindInterestsControls's actual `apply()`.
-  const rangeEl = makeEl("input");
-  rangeEl.dataset = { interestId: rootA.id };
-  rangeEl.value = "0.95";
-  rangeEl.setAttribute = (name, val) => { rangeEl[`_attr_${name}`] = val; };
-  rangeEl.closest = () => null; // no live DOM row to patch — the state write is what's under test
-  m.byId.get("view").querySelectorAll = (sel) => (sel === "[data-interest-id]" ? [rangeEl] : []);
-  m.ctx.bindInterestsControls(m.byId.get("view"));
-  rangeEl._fire("input");
-
-  assert.ok(
-    m.ctx.interestScore(itemA) > m.ctx.interestScore(itemB),
-    "rootA must now outrank rootB after its slider moved above rootB's"
-  );
-
+  assert.ok(m.ctx.interestScore(itemA) > m.ctx.interestScore(itemB), "rootA must now outrank rootB after More");
+  assert.strictEqual(m.state.interests[rootA.id], 0.8, "More is the pick + 0.3");
   const persisted = JSON.parse(m.store.get("cp_interests"));
-  assert.strictEqual(persisted[rootA.id], 0.95, "the drag must be persisted via saveInterests()");
+  assert.strictEqual(persisted[rootA.id], 0.8, "the choice must be persisted via saveInterests(), under the existing cp_interests key");
+
+  tapChip(tuneGroup(m, rootB.id), "less");
+  assert.strictEqual(m.state.interests[rootB.id], 0.2, "Less is 0.4 x the pick");
+  assert.ok(m.ctx.interestScore(itemA) > m.ctx.interestScore(itemB));
+  assert.ok((m.state._interestsGen || 0) >= 2, "each choice told the search cache its answers are stale");
 });
 
 /* ==================================================================== */
-/* 5. RESET TO LEARNED                                                   */
+/* 6. 4a's pick IS THE RESET                                              */
 /* ==================================================================== */
 
-test("the back-to-default control exists per row and is disabled at the default weight", async () => {
-  /* MUTATION: always render the reset button enabled (drop the `disabled`
-     conditional on value === node.weight). A row exactly at its default
-     would show an active reset control with nothing to reset. */
-  const m = await mountBooted();
-  m.ctx.location.hash = "#/interests";
-  m.ctx.route();
-  const html = m.view();
-  const rootAtDefault = TAXONOMY.nodes.find((n) => n.parent === null && m.state.interests[n.id] === n.weight);
-  assert.ok(rootAtDefault, "fixture assumption: at least one root starts at its default weight");
-  const re = new RegExp(`data-interest-reset="${rootAtDefault.id}"[^>]*disabled`);
-  assert.ok(re.test(html), `the reset control for ${rootAtDefault.id} must be disabled at its default`);
-});
-
-test("clicking the back-to-default control restores the taxonomy-authored default weight", async () => {
-  /* MUTATION: reset the value to 0 (or 0.5) instead of Math.max(0, node.weight).
-     A node whose taxonomy weight is not 0/0.5 would come back wrong. */
+test("4a's pick restores the taxonomy-authored default exactly, and persists at once", async () => {
+  /* MUTATION: reset to 0 (or 0.5) instead of Math.max(0, node.weight). A node whose taxonomy weight is not 0/0.5
+     would come back wrong. */
   const m = await mountBooted();
   const leaf = TAXONOMY.nodes.find((n) => n.parent === A_ROOT_ID);
   m.state.interests[leaf.id] = Math.min(1, leaf.weight + 0.3);
   m.ctx.location.hash = "#/interests";
   m.ctx.route();
-
-  // Drive the reset handler the same way bindInterestsControls wires it:
-  // click on the element carrying data-interest-reset for this leaf.
-  // The harness's #view is a stub without live query, so the reset function
-  // is exercised through the same code path renderInterests binds, using a
-  // constructed button element wired into the real bindInterestsControls.
-  const btn = makeEl("button");
-  btn.dataset = { interestReset: leaf.id };
-  m.byId.get("view").querySelectorAll = (sel) => (sel === "[data-interest-reset]" ? [btn] : []);
-  m.ctx.bindInterestsControls(m.byId.get("view"));
-  btn._fire("click");
-
+  tapChip(tuneGroup(m, leaf.id), "pick");
   assert.strictEqual(m.state.interests[leaf.id], Math.max(0, leaf.weight));
   const persisted = JSON.parse(m.store.get("cp_interests"));
-  assert.strictEqual(persisted[leaf.id], Math.max(0, leaf.weight), "reset must persist immediately");
+  assert.strictEqual(persisted[leaf.id], Math.max(0, leaf.weight), "the choice must persist immediately");
+});
+
+test("a choice that would not differ from 4a's pick is offered disabled, and a tap on it changes nothing", async () => {
+  /* A subject already at 1 has no "More"; at 0 no "Less". MUTATION: drop `tuneOffered` from chooseInterest or the
+     `disabled` flag from interestTuneRow — a dead choice that looks live. */
+  const m = await mountBooted();
+  const node = { id: "x-top", label: "Top subject", parent: null, weight: 1 };
+  const html = m.ctx.interestTuneRow(node);
+  const more = [...html.matchAll(/<button\b([^>]*)>([^<]*)<\/button>/g)].find((b) => /data-st-value="more"/.test(b[1]));
+  assert.ok(/\sdisabled\b/.test(more[1]), "More is disabled where the pick is already 1");
+  assert.strictEqual(m.ctx.chooseInterest("x-top", "more"), null, "and choosing it does nothing");
+  const zero = { id: "x-zero", label: "Zero subject", parent: null, weight: 0 };
+  const zeroHtml = m.ctx.interestTuneRow(zero);
+  const less = [...zeroHtml.matchAll(/<button\b([^>]*)>([^<]*)<\/button>/g)].find((b) => /data-st-value="less"/.test(b[1]));
+  assert.ok(/\sdisabled\b/.test(less[1]), "Less is disabled where the pick is already 0");
+});
+
+test("a disabled chip's tap never reaches the weights", async () => {
+  /* MUTATION: drop the `chip.disabled` guard in bindInterestsControls AND the tuneOffered check -> red. The real
+     chooseInterest is the second belt; this is the first. */
+  const m = await mountBooted();
+  const rootA = TAXONOMY.nodes.find((n) => n.parent === null);
+  const before = m.state.interests[rootA.id];
+  tapChip(tuneGroup(m, rootA.id), "more", { disabled: true });
+  assert.strictEqual(m.state.interests[rootA.id], before, "a disabled chip did nothing");
 });
 
 /* ==================================================================== */
-/* 6. NO HISTORY FEED / EVIDENCE LOG (D6)                                 */
+/* 7. NO HISTORY FEED / EVIDENCE LOG (D6)                                 */
 /* ==================================================================== */
 
-test("the interests page renders no history/evidence markup", async () => {
+test("the tuning page renders no history/evidence markup", async () => {
   /* MUTATION: add any element carrying class="interest-history" or similar
      to renderInterests()'s template. D6 explicitly excludes this. */
   const m = await mountBooted();
@@ -393,20 +422,23 @@ test("the interests page renders no history/evidence markup", async () => {
 });
 
 /* ==================================================================== */
-/* 7. touch-action: pan-y on the slider (the old prototype's regression)  */
+/* 8. CSS: 44-tall chips, the selected one is the Lamp fill               */
 /* ==================================================================== */
 
-test("the interest slider's CSS carries touch-action: pan-y", async () => {
-  /* MUTATION: remove `touch-action: pan-y` from .interest-slider in
-     styles.css. The card names this exact regression as fixed twice in the
-     old prototype — dropping it here reintroduces a slider that fights
-     page scroll on a touch device. */
-  const block = (STYLES_SRC.match(/\.interest-slider\s*\{([^}]*)\}/) || [null, ""])[1];
-  assert.ok(/touch-action:\s*pan-y/.test(block), ".interest-slider must set touch-action: pan-y");
+test("every Tuning chip is 44 tall, and the selected one is Lamp with its ink", () => {
+  /* The direction's words: "three states as a segmented control of 44-tall Chips, selected = Lamp fill, ink bg0".
+     MUTATION: give `.ag .st-seg .ag-chip` a `min-height: 36px` (or drop the Chip's own min-height from
+     primitives.css), or change the selected rule to `background: var(--ember)` -> red. */
+  const chip = /\.ag \.ag-chip \{([^}]*)\}/.exec(PRIMITIVES_CSS)[1];
+  assert.match(chip, /min-height:\s*var\(--tap\)/, "the Chip primitive is the 44px tap");
+  assert.doesNotMatch(SETTINGS_CSS, /\.st-seg[^{]*\{[^}]*(?<![-\w])(min-)?height:/, "the segmented control never shortens its chips");
+  const selected = /\.ag \.st-seg \.ag-chip\.is-selected \{([^}]*)\}/.exec(SETTINGS_CSS)[1];
+  assert.match(selected, /background:\s*var\(--lamp\)/, "selected = the Lamp fill");
+  assert.match(selected, /color:\s*var\(--lamp-ink\)/, "with the Lamp's ink");
 });
 
 /* ==================================================================== */
-/* 8. THE PROFILE IS NEVER SHRUNK, AND NO DEVELOPER STRINGS (2026-09-22) */
+/* 9. THE PROFILE IS NEVER SHRUNK, AND NO DEVELOPER STRINGS (2026-09-22) */
 /* ==================================================================== */
 
 test("a missing taxonomy.json does not wipe the stored profile on the first play", () => {
@@ -447,11 +479,12 @@ test("a stored interest the shipped taxonomy no longer names survives a save", (
   assert.ok(Math.abs(stored.food - 0.8) < 1e-9, "and the known one still moved");
 });
 
-test("no slider row prints a raw taxonomy id, and the page speaks listener words", async () => {
+test("no Tuning row prints a raw taxonomy id, and the page speaks listener words", async () => {
   /* The persona audit found `engineering/energy-fusion`-style ids under every
      slider, "Reset to learned" (it resets to 4a's default, not to anything
      learned) and "overrule what 4a has learned". Plain words from the jargon
-     ledger (docs/audit/persona-synthesis.md section 2). */
+     ledger (docs/audit/persona-synthesis.md section 2). Tuning's copy keeps the rule: "subject", never
+     "topic"; no we/us/our. */
   const m = await mountBooted();
   const leaf = TAXONOMY.nodes.find((n) => n.parent === A_ROOT_ID);
   m.state.interests[leaf.id] = Math.min(1, leaf.weight + 0.3);
@@ -461,7 +494,31 @@ test("no slider row prints a raw taxonomy id, and the page speaks listener words
   const text = html.replace(/<[^>]*>/g, " ");
   assert.ok(!text.includes(leaf.id), `the raw id ${leaf.id} is printed on the page`);
   assert.ok(!/interest-row-path/.test(html));
-  assert.ok(!/Reset to learned|overrule/.test(html), "the old wording is back");
-  assert.match(html, />Back to 4a's pick</);
-  assert.match(html, /Drag a slider to change what 4a suggests/);
+  assert.ok(!/Reset to learned|overrule|Drag a slider/.test(html), "the old wording is back");
+  assert.match(html, /Choose less or more of a subject\. 4a&#39;s pick is where it starts\./);
+  assert.ok(!/\btopics?\b/i.test(text), `"subject", not "topic": ${text.match(/.{20}\btopics?\b.{20}/i)}`);
+  assert.ok(!/\b(we|us|our)\b/i.test(text), "no we/us/our");
+  const lede = "Choose less or more of a subject. 4a's pick is where it starts.";
+  assert.ok(lede.split(/\s+/).length <= 18, "inside the copy budget");
+});
+
+/* ==================================================================== */
+/* 10. DELETE MY DATA                                                    */
+/* ==================================================================== */
+
+test("Delete my data clears the choice with every other cp_ key", async () => {
+  /* The unit's acceptance line: "the choice persists through the shim under an existing cp_ key and delete-data
+     still clears it". Drives the REAL clearStoredKeys (the page's own purge fallback), then reloads the profile
+     the way the deletion does. MUTATION: write the choice under a key without the `cp_` prefix (renaming wipes user
+     state, and escapes the purge) -> red here and in app-security. */
+  const m = await mountBooted();
+  const rootA = TAXONOMY.nodes.find((n) => n.parent === null && n.weight === 0.5);
+  m.ctx.location.hash = "#/interests";
+  m.ctx.route();
+  tapChip(tuneGroup(m, rootA.id), "more");
+  assert.ok(m.store.has("cp_interests"), "premise: the choice was stored");
+  await m.ctx.clearStoredKeys();
+  assert.ok(!m.store.has("cp_interests"), "the purge removed the profile");
+  m.evalIn("state.interests = {}; interestsSetThisSession = new Set(); loadInterests();");
+  assert.strictEqual(m.state.interests[rootA.id], rootA.weight, "and the next load is back at 4a's pick");
 });

@@ -1069,7 +1069,7 @@ clock 2026-10-05, remote art off.)
    a 1s poll that stops when Today leaves the page: `syncCardButtons` rewrites every
    `[data-play]` button's text, so the rows use `data-td-play` and the player is not touched.
 8. **Chrome.** Today hides the legacy top bar (`body.view-home .topbar`) and draws its own
-   header; the gear opens the existing drawer until the Settings sheet (screen 9) exists.
+   header; the gear opens the Settings Sheet (screen 9, built; there is no drawer left).
    `app.js` lands focus on `.td-wordmark` and remembers `.td-rail`'s scroll; both were one-word
    edits. The tab bar and mini player are still legacy: their region deltas against the
    prototype (`tabBar`, `mini`) belong to the Dock screen.

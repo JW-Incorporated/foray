@@ -552,7 +552,7 @@ test("the two heading kinds: eyebrows are the text face, section titles the disp
      eyebrow now reads the same four declarations; a section title is the
      other kind. MUTATION: give `.fy-sources h3` `font-family:
      var(--font-display)` -> red. */
-  const eyebrows = [".ep-description h3", ".ep-more h3", ".fy-sources h3", ".show-forays-h", ".lib-section-head", ".drawer-section-label"];
+  const eyebrows = [".ep-description h3", ".ep-more h3", ".fy-sources h3", ".show-forays-h", ".lib-section-head"];
   for (const sel of eyebrows) {
     assert.strictEqual(lastOn(sel, "font-family"), "var(--font-body)", `${sel} is an eyebrow: text face`);
     assert.strictEqual(lastOn(sel, "font-size"), "var(--fs-xs)", `${sel} at the caption step`);
@@ -681,11 +681,12 @@ test("no C1 control character anywhere in the sheet: the notes chevron is the \\
 
 test("every range input is the listener's own material: amber, never the UA's system blue", () => {
   /* Round 2, visual-2: the Interests sliders set no accent-color and painted
-     system blue. MUTATION: delete `input[type="range"] { accent-color }` -> red. */
+     system blue. (Tuning has no sliders any more, Redesign 2026; the rule stays for every range input the app
+     draws: the Afterglow scrubber is one.) MUTATION: delete `input[type="range"] { accent-color }` -> red. */
   assert.strictEqual(lastOn('input[type="range"]', "accent-color"), "var(--amber)");
   const others = RULES.filter((r) => r.decls.some((d) => d.prop === "accent-color") && !r.selectors.includes('input[type="range"]'));
   assert.deepStrictEqual(others.map((r) => r.selectors.join(", ")), [], "no class re-colours a range input on its own");
-  assert.match(APP_JS, /<input type="range" class="interest-slider"/, "fixture assumption: the sliders are range inputs");
+  assert.match(APP_JS, /<input class="ag-scrub-input" type="range"/, "fixture assumption: the app still draws a range input (the scrubber)");
 });
 
 test("one text field: every field reads the one element rule, and only the floating search capsule differs", () => {

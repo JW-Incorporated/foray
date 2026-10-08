@@ -318,8 +318,9 @@ phrase, not the whole suite.
 
 | Suite | Pins | Class | Must still guarantee |
 |---|---|---|---|
-| drawer-ownership | drawer closes on use; Diagnostics closes it (founder 09-23) | R (drawer) | menu closes after navigation; focus returns |
-| drawer-settings-toggle | settings toggles keep drawer open; dead `playerPref` strings gone | K/R | toggle state observable; dead keys stay dead |
+| ~~drawer-ownership~~ -> settings-sheet | drawer closes on use; Diagnostics closes it (founder 09-23) | R (drawer): **the ruling fell with ambient screen 9**, 2026-10-07 | sheet scrim closes that sheet only; focus returns to the opener; a same-page link closes the sheets; hardware back dismisses the top-most thing (all ported); the gear's Sheet, Settings, About, appearance, AA and 44px added |
+| ~~drawer-settings-toggle~~ -> settings-switches | settings toggles keep drawer open; dead `playerPref` strings gone | K/R: renamed, the drawer clauses replaced by "a switch flips in place" | toggle state observable; dead keys stay dead |
+| interests-page | the Interests sliders (0-1, role=slider, touch-action) | R (sliders): **the ruling fell with ambient screen 9**; rewritten for Tuning's three states | the route, the row set, the weights and the ranking they drive, no history feed, the profile never shrunk, no raw ids |
 | engine-developer-rows, voice-probe-switch, voice-settings, diagnostics-surface | developer rows, probe, voice picker, diagnostics sheet | K/R | gated behind unlock; no raw ids; sheets via owner |
 | back-navigation, navigation-memory, route-scroll-position, router | ‹ goes back one step; scroll memory; router decoding and safety | K | back is one step; a new page starts at top; hand-typed `%` never throws |
 | first-time-onboarding, onboarding-sheet-once | consent/explanation, mounts once, parkable | K/R | consent honest and once per visit; Escape parks it |

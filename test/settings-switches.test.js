@@ -1,28 +1,20 @@
-/* Settings-drawer toggles must not close the drawer (Joey, 2026-08-31,
- * kanban card t_0c09d83a).
+/* Settings' switches (Redesign 2026, ambient) — was the drawer-settings-toggle suite.
  *
- * WHAT HAPPENED: `#family-toggle`/`#player-toggle`'s click handlers flipped
- * the setting, then called `route()` to re-render the page behind the
- * drawer. `route()` unconditionally opens with `openDrawer(false)` (that
- * line exists for REAL navigation — a drawer link, or a hashchange), so a
- * setting change was closing the drawer as a side effect nobody wanted.
+ * THE RULING THAT FELL: "the drawer" (DIRECTION.md "Information architecture"). Joey's 2026-08-31 rule — a settings
+ * toggle must not close the drawer (kanban card t_0c09d83a) — and the drawer's own leave rule are gone with the
+ * drawer; the controls are now the Settings page (#/settings), reached from the gear. What the old rule PROTECTED
+ * survives in a new form, and is pinned below: a switch flips IN PLACE. The page under the listener's thumb is not
+ * rebuilt (a rebuild would drop the focused switch, the way closing the drawer dropped the listener's place), the
+ * switch repaints itself, and what the setting governs takes effect where it is read (the next Today for family
+ * mode, the running player for continuous playback and the jingle).
  *
- * THE FIX: `route()`'s "render the current page" behaviour was split out
- * into `renderCurrentPage()`, which does not touch the drawer. The three
- * toggle handlers now call `renderCurrentPage()` instead of `route()`, so
- * they still refresh whatever page is open behind the drawer (family mode
- * changes card eligibility) without closing it. `route()` itself is
- * unchanged for real navigation.
+ * Harness: the same node:vm DOM stub as test/up-next-queue.test.js, with working addEventListener/click on the
+ * elements specifically (the shared stub's are no-ops) so init()'s real click wiring runs.
  *
- * Harness: the same node:vm DOM stub as test/up-next-queue.test.js, with
- * working addEventListener/click on the toggle/drawer elements specifically
- * (the shared stub's are no-ops) so init()'s real click wiring runs.
- *
- * `querySelector("#id")` resolves APPENDED elements too, not only the page ids
- * seeded below. That matters as of the 2026-09-12 client audit: index.html is
- * outside the auto-merge allowlist, so every control added since is injected in
- * JS — a lookup that consulted only the seeded map would report the drawer's
- * newer switches as absent and read as coverage while testing nothing.
+ * `querySelector("#id")` resolves APPENDED elements too, not only the page ids seeded below. That matters as of the
+ * 2026-09-12 client audit: index.html is outside the auto-merge allowlist, so every control added since is injected
+ * in JS — a lookup that consulted only the seeded map would report the newer switches as absent and read as coverage
+ * while testing nothing. No switch is seeded any more: every one of them is built by app.js's `settingSwitch`.
  */
 const { test } = require("node:test");
 const assert = require("node:assert");
@@ -63,11 +55,13 @@ function makeEl(tag) {
 }
 
 const PAGE_IDS = [
-  "view", "drawer", "drawer-overlay", "drawer-playlists", "family-toggle",
-  "player-toggle", "autoadvance-toggle", "menu-btn", "refresh-btn", "banner-slot", "pl-form",
+  "view", "menu-btn", "refresh-btn", "banner-slot", "pl-form",
   "pl-input", "pl-note", "tab-topics", "tab-shows", "sh-form", "sh-input",
   "sh-note", "sh-results", "browse-all-link",
 ];
+
+/** Every element under `root`, depth first (the Settings host is sections of lists, built by app.js). */
+const treeOf = (root) => [root, ...(root.children || []).flatMap(treeOf)];
 
 function mount({ seed = {}, boot = false } = {}) {
   const store = new Map(Object.entries(seed).map(([k, v]) => [k, String(v)]));
@@ -152,20 +146,33 @@ async function mountBooted(seed) {
 }
 
 /* ==================================================================== */
-/* SETTINGS TOGGLES LEAVE THE DRAWER OPEN                                */
+/* A SWITCH FLIPS IN PLACE                                               */
 /* ==================================================================== */
 
-test("#family-toggle updates family mode AND leaves the drawer open", async () => {
-  /* MUTATION: restore `route()` in the family-toggle handler instead of
-     `renderCurrentPage()`. `route()` unconditionally calls
-     `openDrawer(false)` at its top, so `#drawer.hidden` would flip to
-     true and this assertion fails. */
+test("#family-toggle updates family mode, repaints itself, and does not rebuild the page under it", async () => {
+  /* MUTATION: have the family-toggle handler call `renderCurrentPage()` (or `route()`) after the write. The page is
+     rebuilt under the listener's thumb and the sentinel below is overwritten — the focused switch would be gone. */
   const m = await mountBooted();
-  m.byId.get("drawer").hidden = false;
+  const sw = m.findById("family-toggle");
+  m.evalIn("paintSettings()");
   const before = m.ctx.familyMode();
-  m.byId.get("family-toggle")._fire("click");
+  m.byId.get("view").innerHTML = "sentinel-before-toggle";
+  sw._fire("click");
   assert.strictEqual(m.ctx.familyMode(), !before, "family mode must flip");
-  assert.strictEqual(m.byId.get("drawer").hidden, false, "the drawer must stay open after toggling family mode");
+  assert.strictEqual(sw.textContent, `Family mode: ${before ? "off" : "on"}`, "the switch repainted itself");
+  assert.strictEqual(m.view(), "sentinel-before-toggle", "and the page under it was not rebuilt");
+});
+
+test("family mode takes effect where it is read: a flip rebuilds the cards the next Today deals", async () => {
+  /* The old test pinned that the page BEHIND the drawer was re-rendered. The page behind is Settings now, and
+     nothing on it depends on family mode; what does is the card deal. MUTATION: drop `buildCards()` from the
+     family-toggle's write -> the deal is stale until something else rebuilds it, and the count below stays 0. */
+  const m = await mountBooted();
+  let builds = 0;
+  m.evalIn("var __realBuildCards = buildCards;");
+  m.ctx.buildCards = (...a) => { builds++; return m.ctx.__realBuildCards(...a); };
+  m.findById("family-toggle")._fire("click");
+  assert.strictEqual(builds, 1, "one rebuild for one flip");
 });
 
 test("\"Open in\" is gone, with the dead code it governed", async () => {
@@ -176,10 +183,10 @@ test("\"Open in\" is gone, with the dead code it governed", async () => {
      nothing read (2026-09-22 design/QA audit; founder ruling R7: delete the
      toggle and its dead code together).
 
-     MUTATION THAT KILLS THIS: restore the `drawerToggle("player-toggle", ...)`
+     MUTATION THAT KILLS THIS: restore the `settingSwitch("player-toggle", ...)`
      line, or any of the three builders. */
   const m = await mountBooted();
-  assert.ok(!m.evalIn("drawerToggles.map(t => t.id)").includes("player-toggle"), "the switch is registered again");
+  assert.ok(![...m.evalIn("settingSwitches.map(t => t.id)")].includes("player-toggle"), "the switch is registered again");
   const index = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
   assert.ok(!/id="player-toggle"/.test(index), "index.html still carries the button");
   const code = readAppSource()
@@ -189,67 +196,42 @@ test("\"Open in\" is gone, with the dead code it governed", async () => {
   }
 });
 
-test("#autoadvance-toggle updates auto-advance AND leaves the drawer open", async () => {
-  /* Pins the already-correct behaviour (this handler never called route())
-     so a future edit that adds a route()/openDrawer(false) call here gets
-     caught too.
-     MUTATION: add `route()` (or `openDrawer(false)`) to the autoadvance
-     handler. The drawer assertion fails. */
+test("#autoadvance-toggle updates auto-advance and repaints itself without touching the page", async () => {
+  /* Pins the already-correct behaviour (this handler never called route()) so a future edit that adds a
+     route()/renderCurrentPage() call here gets caught too.
+     MUTATION: add `renderCurrentPage()` (or `route()`) to the autoadvance handler. The sentinel is overwritten. */
   const m = await mountBooted();
-  m.byId.get("drawer").hidden = false;
+  const sw = m.findById("autoadvance-toggle");
+  m.evalIn("paintSettings()");
   const before = m.ctx.autoAdvanceOn();
-  m.byId.get("autoadvance-toggle")._fire("click");
-  assert.strictEqual(m.ctx.autoAdvanceOn(), !before, "auto-advance must flip");
-  assert.strictEqual(m.byId.get("drawer").hidden, false, "the drawer must stay open after toggling auto-advance");
-});
-
-test("family-toggle's re-render still reaches the page behind the drawer (renderCurrentPage runs)", async () => {
-  /* Proves the split didn't just delete the re-render — family mode changes
-     which cards are eligible, so the home page behind the drawer must
-     still be refreshed, just without closing the drawer.
-     MUTATION: remove the `renderCurrentPage()` call entirely (call nothing
-     after renderDrawer()). #view's innerHTML would keep whatever renderHome
-     wrote before init()'s own route() call, so a spy overwrite would go
-     undetected the same way `route()` would go uncalled. */
-  const m = await mountBooted();
-  let calls = 0;
-  const original = m.ctx.renderCurrentPage;
-  m.ctx.renderCurrentPage = (...args) => { calls++; return original(...args); };
-  /* re-bind: the click handler captured the ORIGINAL renderCurrentPage by
-     reference at init() time, so assert against the real signal instead —
-     #view's content changes when family mode flips. */
   m.byId.get("view").innerHTML = "sentinel-before-toggle";
-  m.byId.get("family-toggle")._fire("click");
-  assert.notStrictEqual(m.view(), "sentinel-before-toggle", "the page behind the drawer must be re-rendered when family mode changes");
+  sw._fire("click");
+  assert.strictEqual(m.ctx.autoAdvanceOn(), !before, "auto-advance must flip");
+  assert.strictEqual(sw.textContent, `Continuous playback: ${before ? "off" : "on"}`);
+  assert.strictEqual(m.view(), "sentinel-before-toggle", "the page is untouched");
 });
 
-/* ==================================================================== */
-/* REAL NAVIGATION STILL CLOSES THE DRAWER (no regression)               */
-/* ==================================================================== */
-
-test("clicking a link inside the drawer still closes it (route() unchanged for real navigation)", async () => {
-  /* MUTATION: remove `openDrawer(false)` from route(), or from
-     `onDrawerAction` (the drawer's capture-phase leave rule since 2026-09-23,
-     which asks `closest("a, button, summary")` and then whether the item
-     declares `data-drawer-stay`). The drawer would stay open after a real
-     navigation, regressing the pre-existing (correct) behaviour. */
+test("the controls live in ONE host that route() parks before the page is replaced", async () => {
+  /* The host (`#settings-host`) is moved into the Settings page and back to <body> by renderCurrentPage's FIRST
+     line (`parkSettingsHost`). MUTATION: drop that line -> replacing #view's contents takes the host with it (in
+     a browser, it is detached and every `$("#id")` lookup the builders make fails until the next visit); here the
+     host is no longer a child of body after navigating away. */
   const m = await mountBooted();
-  m.byId.get("drawer").hidden = false;
-  const fakeLink = {
-    closest: (sel) => (sel.split(",").map((s) => s.trim()).includes("a") ? fakeLink : null),
-  };
-  m.byId.get("drawer")._fire("click", { target: fakeLink });
-  assert.strictEqual(m.byId.get("drawer").hidden, true, "a real navigation (drawer link) must still close the drawer");
-});
-
-test("route() still closes the drawer on a hashchange-driven call", async () => {
-  /* MUTATION: drop `openDrawer(false)` from route() itself. A real
-     hashchange-triggered route() call would leave the drawer open. */
-  const m = await mountBooted();
-  m.byId.get("drawer").hidden = false;
+  const host = m.findById("settings-host");
+  assert.ok(host, "the host exists after init()");
+  assert.ok(m.body.children.includes(host), "and is parked in <body>");
+  assert.strictEqual(host.hidden, true, "hidden, until the Settings page mounts it");
+  /* As renderSettings() does through its slot: the host leaves <body> for #view and is shown. (This stub keeps no
+     parent links, so the move is written out.) */
+  m.body.children = m.body.children.filter((c) => c !== host);
+  m.byId.get("view").appendChild(host);
+  host.parentElement = m.byId.get("view");
+  host.hidden = false;
+  assert.ok(!m.body.children.includes(host), "premise: it is mounted in the page, not parked");
   m.ctx.location.hash = "#/queue";
   m.ctx.route();
-  assert.strictEqual(m.byId.get("drawer").hidden, true, "route() must still close the drawer for real navigation");
+  assert.ok(m.body.children.includes(host), "navigating away parks it in <body> again");
+  assert.strictEqual(host.hidden, true);
 });
 
 
@@ -279,17 +261,16 @@ test("the jingle between segments has a switch, and it writes the spelling playe
      MUTATION: make `setInterludeOn` call `lsSet("cp_interlude", on)`. The
      stored value becomes `"false"` and both the spelling assertion and the
      round-trip below go red.
-     MUTATION: drop the `drawerToggle("interlude-toggle", ...)` line. The
+     MUTATION: drop the `settingSwitch("interlude-toggle", ...)` line. The
      control assertion goes red — and the privacy policy goes back to
      promising something the app does not have. */
   const m = await mountBooted();
   const btn = m.findById("interlude-toggle");
-  assert.ok(btn, "#interlude-toggle is in the drawer after init");
-  assert.ok(m.byId.get("drawer").children.includes(btn),
-    "appended to the drawer, like every other JS-injected control");
+  assert.ok(btn, "#interlude-toggle is in Settings after init");
+  assert.ok(treeOf(m.findById("settings-host")).includes(btn),
+    "appended to the Settings host, like every other JS-injected control");
 
-  m.byId.get("drawer").hidden = false;
-  m.ctx.openDrawer(true);
+  m.evalIn("paintSettings()");
   assert.strictEqual(btn.textContent, "Jingle between clips: on", "ON is the default the policy promises");
   assert.strictEqual(m.ctx.interludeOn(), true);
 
@@ -298,7 +279,7 @@ test("the jingle between segments has a switch, and it writes the spelling playe
     "the exact word player/interlude.js reads — not `false`, not `0`");
   assert.strictEqual(m.ctx.interludeOn(), false, "and it round-trips");
   assert.strictEqual(btn.textContent, "Jingle between clips: off");
-  assert.strictEqual(m.byId.get("drawer").hidden, false, "a settings toggle must not close the drawer");
+  assert.strictEqual(m.ctx.interludeOn(), false, "and a tap leaves it flipped, in place");
 
   btn._fire("click");
   assert.strictEqual(m.store.get("cp_interlude"), "on");
@@ -347,23 +328,23 @@ test("a page with no player module loaded still takes the tap", async () => {
   assert.strictEqual(m.store.get("cp_interlude"), "off");
 });
 
-test("every switch in the drawer goes through the ONE helper, in reading order", async () => {
+test("every switch in Settings goes through the ONE helper, in reading order", async () => {
   /* FINDING 6. Three of these were bound by hand in `init()`, two by
      near-identical fifteen-line twins, and their labels were five ad-hoc lines
      in `renderDrawer` — three unguarded, two guarded, each spelling its own
      on/off. The registry is what makes the sixth switch one line.
 
      MUTATION: bind any one of them by hand again (its own addEventListener
-     plus its own textContent line). It drops out of `drawerToggles` and the
+     plus its own textContent line). It drops out of `settingSwitches` and the
      first assertion goes red. */
   const m = await mountBooted();
   /* Spread into a host-realm array: the vm's Array has a different prototype,
      which deepStrictEqual (rightly) refuses to call equal. */
-  const registered = [...m.evalIn("drawerToggles.map(t => t.id)")];
+  const registered = [...m.evalIn("settingSwitches.map(t => t.id)")];
   assert.deepStrictEqual(registered, SWITCH_IDS,
-    "all five, and in the order they read down the drawer");
+    "all five, and in the order they read down Settings");
 
-  m.ctx.openDrawer(true);
+  m.evalIn("paintSettings()");
   for (const id of SWITCH_IDS) {
     const el = m.findById(id);
     assert.ok(el, `${id} exists`);
@@ -377,16 +358,18 @@ test("binding twice never stacks a second handler or a second button", async () 
      they returned before appending, so a second call was a no-op only because
      the element already existed.
 
-     MUTATION: delete the `_drawerToggleBound` guard. The second bind attaches
+     MUTATION: delete the `_switchBound` guard. The second bind attaches
      a second click handler, one tap flips the key twice, and the value below
      comes back unchanged. */
   const m = await mountBooted();
-  m.evalIn("bindDrawerToggles()");
-  m.evalIn("bindDrawerToggles()");
-  assert.deepStrictEqual([...m.evalIn("drawerToggles.map(t => t.id)")], SWITCH_IDS,
+  /* init() bound them once; this is the second bind. (A third would make the unguarded count odd and a double flip look
+     like a single one, which is how this test first survived its own mutation.) */
+  m.evalIn("bindSettingSwitches()");
+  assert.deepStrictEqual([...m.evalIn("settingSwitches.map(t => t.id)")], SWITCH_IDS,
     "no duplicate registrations");
+  assert.strictEqual(treeOf(m.findById("settings-host")).filter((e) => e.id === "autoadvance-toggle").length, 1, "and no second button");
   const before = m.ctx.autoAdvanceOn();
-  m.byId.get("autoadvance-toggle")._fire("click");
+  m.findById("autoadvance-toggle")._fire("click");
   assert.strictEqual(m.ctx.autoAdvanceOn(), !before, "exactly one flip per tap");
 });
 
@@ -428,11 +411,11 @@ test("the founder's tools sit in ONE collapsed Developer group, directly above D
      group at the bottom of Settings. No hidden unlock.
 
      MUTATION THAT KILLS THIS: drop `{ into }` from either founder switch, or
-     append `#diag-open` to the drawer again — red, a founder tool is back
+     append `#diag-open` to the Listening list again — red, a founder tool is back
      among the listener's settings. */
   const m = await mountBooted();
-  const drawer = m.byId.get("drawer");
-  const group = m.findById("drawer-dev");
+  const host = m.findById("settings-host");
+  const group = m.findById("settings-dev");
   assert.ok(group, "there is no Developer group");
   assert.strictEqual(group.tagName, "DETAILS", "a native disclosure: keyboard and screen-reader operable");
   assert.ok(!group.open, "it starts collapsed");
@@ -441,13 +424,18 @@ test("the founder's tools sit in ONE collapsed Developer group, directly above D
   assert.deepStrictEqual(group.children.slice(1).map((c) => c.id),
     ["drafts-toggle", "voice-probe-toggle", "diag-open"]);
 
-  const top = drawer.children.map((c) => c.id).filter(Boolean);
-  assert.deepStrictEqual(top.slice(-2), ["drawer-dev", "delete-data"],
-    "the group is the bottom of Settings, and Delete my data stays the last item");
+  /* The host's sections, in order: Listening, Downloads, the Developer disclosure, Your data. */
+  const sections = host.children.map((c) => c.dataset.stSection);
+  assert.deepStrictEqual(sections, ["listening", "downloads", "developer", "data"],
+    "the group is above the data section, and Delete my data stays the last control");
+  const leaves = (el) => (el.children.length ? el.children.flatMap(leaves) : [el]);
+  const ids = leaves(host).map((c) => c.id).filter(Boolean);
+  assert.strictEqual(ids[ids.length - 1], "delete-data", "Delete my data is the last control of the page");
+  const listening = leaves(host.children[0]).map((c) => c.id).filter(Boolean);
   for (const id of ["drafts-toggle", "voice-probe-toggle", "diag-open"]) {
-    assert.ok(!top.includes(id), `${id} is loose among the listener's settings again`);
+    assert.ok(!listening.includes(id), `${id} is loose among the listener's settings again`);
   }
   for (const id of ["interlude-toggle", "voice-open"]) {
-    assert.ok(top.includes(id), `${id} is a listener setting and belongs outside the group`);
+    assert.ok(listening.includes(id), `${id} is a listener setting and belongs outside the group`);
   }
 });

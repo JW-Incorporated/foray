@@ -1050,7 +1050,7 @@ function bindTodayPlay(scope) {
   const gear = scope.querySelector("[data-today-gear]");
   if (gear && !gear._bound) {
     gear._bound = true;
-    gear.addEventListener("click", () => openDrawer(true));
+    bindSettingsGear(gear);
   }
 }
 

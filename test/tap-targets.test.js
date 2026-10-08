@@ -43,7 +43,7 @@ const path = require("node:path");
 const { readAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const CSS = ["styles.css", "ui/primitives.css", "ui/today.css"]
+const CSS = ["styles.css", "ui/primitives.css", "ui/today.css", "ui/settings.css"]
   .map((rel) => fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n"))
   .join("\n");
 
@@ -108,8 +108,17 @@ function valueOf(sel, prop) {
   }
   return v;
 }
+/* The two token families a size is built from (ui/tokens.css): --tap, and the 4px-base spacing scale. */
+const TOKEN_PX = { "--tap": 44, "--s-1": 4, "--s-2": 8, "--s-3": 12, "--s-4": 16, "--s-5": 20, "--s-6": 24 };
 const px = (v) => {
   if (String(v || "").trim() === "var(--tap)") return 44;
+  /* `calc(var(--tap) + var(--s-1))`: sums of tokens and literal px, as the Afterglow rows are written. */
+  const calc = /^calc\(([^()]*(?:var\([^()]*\)[^()]*)*)\)$/.exec(String(v || "").trim());
+  if (calc) {
+    const terms = calc[1].split("+").map((t) => t.trim());
+    const vals = terms.map((t) => (/^var\((--[\w-]+)\)$/.test(t) ? TOKEN_PX[/^var\((--[\w-]+)\)$/.exec(t)[1]] : /^(\d+(?:\.\d+)?)px$/.test(t) ? Number(/^(\d+(?:\.\d+)?)px$/.exec(t)[1]) : undefined));
+    if (vals.every((n) => typeof n === "number")) return vals.reduce((a, b) => a + b, 0);
+  }
   const m = /^(-?\d+(?:\.\d+)?)px$/.exec(String(v || "").trim());
   return m ? Number(m[1]) : null;
 };
@@ -199,7 +208,8 @@ const BUTTONS = {
   ".danger": { tall: "button.danger", why: "a labelled text button (\"remove this playlist\")" },
   ".dd-device-only": { tall: ".dd-device-only", why: "width: 100% of the sheet" },
   ".diag-clear": { tall: ".diag-clear", why: "width: 100% of the sheet" },
-  ".drawer-item": { tall: ".drawer-item", why: "display: block, the drawer's full width" },
+  ".st-item": { tall: ".ag .st-item", why: "width: 100% of the Settings page: every switch, link and the Developer summary is a full-width row" },
+  ".st-row": { tall: ".ag .st-row", why: "width: 100% of the gear Sheet: a full-width row" },
   ".ep-chapter-row": { tall: ".ep-chapter-row", why: "width: 100% of the chapter list or the description" },
   ".ep-ts": { inline: "a stamp inside running prose; its hit box is its line, and a line that STARTS with a stamp renders as .ep-chapter-row instead (touch-10)" },
   ".fp-btn": { size: [".fp-btn"] },
@@ -219,7 +229,6 @@ const BUTTONS = {
   ".fy-sheet-cancel": { rule: ".fy-sheet-cancel" },
   ".fy-sheet-go": { rule: ".fy-sheet-go" },
   ".fy-thumb": { rule: ".fy-thumb" },
-  ".interest-reset": { rule: ".interest-reset" },
   ".ag-btn": { size: [".ag .ag-btn"] },
   ".ag-chip": { tall: ".ag .ag-chip", why: "a labelled pill with inline padding" },
   ".ag-strip-bar": { tall: ".ag .ag-strip-bar", why: "a flexible bar that fills the strip's width" },

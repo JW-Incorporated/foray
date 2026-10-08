@@ -10,11 +10,11 @@
  *
  * WHAT EACH TEST PROVES, and the mutation that kills it:
  *
- *  1. F17 — the drawer opens ON TOP of an expanded Now Playing sheet. Its
- *     first item is hit-testable at its own centre, and the scrim covers the
- *     player. MUTATION: put `#drawer-overlay`/`#drawer` back at 30/31 (below
- *     #foray-player's 60) -> `document.elementFromPoint` at the drawer item's
- *     centre returns the player, not the drawer, and this goes red.
+ *  1. F17 — the gear's Sheet (it was the drawer, before Redesign 2026) opens
+ *     ON TOP of an expanded Now Playing sheet. Its first row is hit-testable at
+ *     its own centre, and the scrim covers the player. MUTATION: put `.fy-sheet`
+ *     under #foray-player's 60 -> `document.elementFromPoint` at the row's
+ *     centre returns the player, not the Sheet, and this goes red.
  *
  *  2. F18 — closing collapses, it does not stop. Tapping the ✕ leaves the
  *     audio element playing and the mini bar docked above the tab bar, tab
@@ -144,7 +144,11 @@ function audioState(page) {
 
 /* ---------- U-12 / F17 ---------- */
 
-test("the drawer opens on top of an expanded Now Playing sheet, and its first item is hit-testable", async ({ page }) => {
+test("the gear's Sheet opens on top of an expanded Now Playing sheet, and its first row is hit-testable", async ({ page }) => {
+  /* The drawer this used to be about is gone (Redesign 2026, ambient); the invariant is not: navigation must be able to cover
+     the thing it navigates away from. The gear stays reachable under the expanded sheet (the sheet owner's keepReachable), and
+     the Sheet it opens is a `.fy-sheet` at 70, over the player's 60. MUTATION: give `.fy-sheet` a z-index under #foray-player's
+     -> `document.elementFromPoint` at the first row's centre returns the player, not the Sheet, and this goes red. */
   await openApp(page);
   await startPlayback(page);
 
@@ -153,37 +157,35 @@ test("the drawer opens on top of an expanded Now Playing sheet, and its first it
   await expect(page.locator("body.fp-expanded")).toHaveCount(1);
 
   await page.locator("#menu-btn").click();
-  await expect(page.locator("#drawer")).toBeVisible();
+  await expect(page.locator("#st-menu")).toBeVisible();
 
   const hit = await page.evaluate(() => {
-    const first = document.querySelector("#drawer .drawer-section");
-    if (!first) return { error: "the drawer has no .drawer-section items at all" };
+    const first = document.querySelector("#st-menu [data-st-menu]");
+    if (!first) return { error: "the gear's Sheet has no rows at all" };
     const r = first.getBoundingClientRect();
     const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-    /* The same question asked of the player's own centre: with the drawer
-       open, its scrim — not the mini bar — must be what a tap lands on. */
+    /* The same question asked of the player's own centre: with the Sheet open, its scrim - not the mini bar - must be what a
+       tap lands on. */
     const bar = document.querySelector("#foray-player .fp-bar").getBoundingClientRect();
     const overBar = document.elementFromPoint(bar.left + bar.width / 2, bar.top + bar.height / 2);
     return {
-      text: (first.textContent || "").trim(),
-      insideDrawer: Boolean(at && at.closest("#drawer")),
+      text: (first.querySelector(".st-row-label") || first).textContent.trim(),
+      insideSheet: Boolean(at && at.closest("#st-menu")),
       landedOn: at ? (at.id || at.className || at.tagName) : null,
-      barCoveredByDrawerLayer: Boolean(
-        overBar && (overBar.closest("#drawer") || overBar.id === "drawer-overlay")
-      ),
+      barCoveredBySheet: Boolean(overBar && overBar.closest("#st-menu")),
       barLandedOn: overBar ? (overBar.id || overBar.className || overBar.tagName) : null,
     };
   });
 
   expect(hit.error).toBeUndefined();
-  expect(hit.text).toBe("Home");
+  expect(hit.text).toBe("Settings");
   expect(
-    hit.insideDrawer,
-    `the drawer's first item is not hit-testable at its own centre — a tap there lands on "${hit.landedOn}"`
+    hit.insideSheet,
+    `the Sheet's first row is not hit-testable at its own centre - a tap there lands on "${hit.landedOn}"`
   ).toBe(true);
   expect(
-    hit.barCoveredByDrawerLayer,
-    `the open drawer does not cover the mini player — a tap over the bar lands on "${hit.barLandedOn}"`
+    hit.barCoveredBySheet,
+    `the open Sheet does not cover the mini player - a tap over the bar lands on "${hit.barLandedOn}"`
   ).toBe(true);
 });
 

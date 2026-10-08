@@ -334,8 +334,7 @@ async function mount({
   };
 
   const dom = { body: new El("body") };
-  for (const id of ["view", "drawer", "drawer-overlay", "drawer-playlists",
-    "family-toggle", "player-toggle", "autoadvance-toggle", "menu-btn", "refresh-btn",
+  for (const id of ["view", "menu-btn", "refresh-btn",
     // The home screen's own vocabulary, needed only under `boot`.
     "banner-slot", "pl-form", "pl-input", "pl-note",
     "tab-topics", "tab-shows", "sh-form", "sh-input", "sh-note", "sh-results",
@@ -576,11 +575,18 @@ test("the shipped source names exactly the 22 cp_ key families the audit found",
      optional label, the episode's length then. Device-only — no event type,
      never sent, never synced (roadmap README Q19). Same mechanism: this count
      failed first, then the policy check, until privacy-policy.md §1 got the
-     row. */
+     row.
+
+     33 -> 34 on 2026-10-07: `cp_theme`, the appearance setting (Redesign 2026, ambient,
+     ui/settings.js): "dusk", "dawn" or "system" (the default, and what an absent key
+     means). Device-only, never sent. Written through lsSet like every other key, so
+     "Delete my data" purges it and the page goes back to following the phone
+     (`applyStoredTheme` after the purge). Same mechanism: this count failed first, then
+     the policy check, until privacy-policy.md §1 got the row. */
   const families = [...keyFamiliesInSource().keys()].sort();
   assert.strictEqual(
-    families.length, 33,
-    `expected 33 cp_ key families, found ${families.length}:\n${families.join("\n")}`
+    families.length, 34,
+    `expected 34 cp_ key families, found ${families.length}:\n${families.join("\n")}`
   );
   assert.ok(families.includes("cp_foray:"), "the patterned Foray resume key must be found as a family");
   assert.ok(families.includes("cp_pos:"), "the patterned episode-position key must be found as a family");
@@ -1119,7 +1125,7 @@ test("the privacy policy's deletion section points at the button, not at browser
 
 /* ================= 7. the control is actually WIRED ================= */
 
-test("BOOTING THE REAL PAGE puts the control in the drawer — nothing else asserts it exists", async () => {
+test("BOOTING THE REAL PAGE puts the control in Settings — nothing else asserts it exists", async () => {
   /* THE MOST IMPORTANT TEST IN THIS FILE, and it was missing until review proved
      why: deleting the single `bindDeleteControl();` line from `init()` left all 43
      suites green and the feature unreachable on every real page. Every other test
@@ -1127,9 +1133,13 @@ test("BOOTING THE REAL PAGE puts the control in the drawer — nothing else asse
      REAL committed data documents and looks for the button a listener taps. */
   const { dom, ui } = await mount({ boot: true });
   const btn = findIn(dom.body, "#delete-data");
-  assert.ok(btn, "init() never wired the control — there is no Delete my data item in the drawer");
-  assert.strictEqual(btn.parent && btn.parent.id, "drawer", "the control must live in the menu");
-  assert.ok(btn.listeners("click") > 0, "the drawer item is not clickable");
+  assert.ok(btn, "init() never wired the control — there is no Delete my data item in Settings");
+  /* It lives in the Settings host's "Your data" section (ui/settings.js), the last section of the page. */
+  let host = btn.parent;
+  while (host && host.id !== "settings-host") host = host.parent;
+  assert.ok(host, "the control must live in the Settings host");
+  assert.ok(findIn(dom.body, "#drawer") === null || findIn(dom.body, "#drawer") === undefined, "and there is no drawer to hold it");
+  assert.ok(btn.listeners("click") > 0, "the Settings item is not clickable");
   assert.strictEqual(btn.textContent, "Delete my data");
 
   // And it works from that state: opening arms nothing, and the sheet is there.
