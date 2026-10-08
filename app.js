@@ -4851,7 +4851,9 @@ function route() {
 function pageHeading(view) {
   if (!view || typeof view.querySelector !== "function") return null;
   const box = view.querySelector(".page-head");
-  return (box && box.querySelector("h2")) || null;
+  /* The Foray page (Tactile `foray`) has no `.page-head`: its h1 is the title under the two keys. It
+     names the document and takes focus on a navigation like any other page's heading. */
+  return (box && box.querySelector("h2")) || view.querySelector("h1.fdet-title") || null;
 }
 
 /* A NAVIGATION WHOSE NAME HAS NOT BEEN SAID YET (audit round 2, races-6). A

@@ -440,7 +440,7 @@ test("switch on: a generated draft opens at #/foray/<id> and plays through the s
     h.route(`#/foray/${id}`);
     await h.settle();
     assert.strictEqual(h.state().foray?.id, id, `${id} resolved`);
-    assert.ok(h.view().includes(`<h2>${titleOf(id).replace(/&/g, "&amp;")}</h2>`), `${id} painted`);
+    assert.ok(h.view().includes(`<h1 class="display-xl fdet-title">${titleOf(id).replace(/&/g, "&amp;")}</h1>`), `${id} painted`);
     const btn = findIn(h.body, "#fy-play");
     assert.ok(btn, "the play button is on the page");
     await btn.click();
@@ -450,7 +450,8 @@ test("switch on: a generated draft opens at #/foray/<id> and plays through the s
   assert.ok(!h.view().includes("fy-draft"), "the published Foray carries no draft note");
   for (const id of GENERATED_NEWEST_FIRST) {
     await play(id);
-    assert.ok(h.view().includes('Shown because "Show draft Forays" is on'), `${id}'s draft note names the switch, not the URL`);
+    /* The note is escaped like every string the page prints, so its quotes are `&quot;` in the markup. */
+    assert.ok(h.view().includes('Shown because &quot;Show draft Forays&quot; is on'), `${id}'s draft note names the switch, not the URL`);
   }
   assert.deepStrictEqual(h.playCalls.map((c) => c.id), [PUBLISHED_ID, ...GENERATED_NEWEST_FIRST]);
   for (const c of h.playCalls) assert.ok(c.playable > 0, `${c.id} queued ${c.playable} segments`);
@@ -467,7 +468,7 @@ test("the ?foray=<id> unlock behaves exactly as before, with the switch off and 
   /* Off, no unlock: the draft is not there and its page says so. */
   const closed = await mount({ hash: `#/foray/${draft}` });
   await closed.settle();
-  assert.ok(closed.view().includes("That foray isn't available."), "a hidden draft's page is the not-available page");
+  assert.ok(closed.view().includes("This foray isn't available right now."), "a hidden draft's page is the not-available page");
   assert.strictEqual(closed.state().foray, null);
 
   /* Off, unlocked by id: listed after the published one, opens, says "by name". */
@@ -478,7 +479,7 @@ test("the ?foray=<id> unlock behaves exactly as before, with the switch off and 
   assert.deepStrictEqual(byName.ids(), listedWith(draft), "the unlocked draft is listed, the other draft is not");
   byName.route(`#/foray/${other}`);
   await byName.settle();
-  assert.ok(byName.view().includes("That foray isn't available."), "naming one draft does not unlock another");
+  assert.ok(byName.view().includes("This foray isn't available right now."), "naming one draft does not unlock another");
 
   /* On, unlocked by id: the unlock still owns the sentence, and the list is the
      unlocked draft in its place plus the rest of the track. */
