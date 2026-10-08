@@ -124,7 +124,7 @@ test("the mini bar carries ▶ and a 30-forward nudge, and nothing else", () => 
   assert.match(CODE, /bar\.append\(art, info, skipBtn, playBtn\);/, "art · title · +30 · ▶ (ui/mini.js puts ▶ first)");
   const appended = /bar\.append\(([^)]*)\)/.exec(CODE)[1].split(",").map((s) => s.trim());
   assert.deepStrictEqual(appended.filter((n) => /Btn$/.test(n)), ["skipBtn", "playBtn"], "two controls on the bar, not three");
-  assert.match(CODE, /ui\.skipBtn\.addEventListener\("click", \(\) => \{[^}]*nudgeBy\(SEEK_FWD\);/);
+  assert.match(CODE, /ui\.skipBtn\.addEventListener\("click", \(\) => nudgeBy\(SEEK_FWD\)\);/);
 });
 
 test("the bar's skip is a 44px borderless glyph beside the filled ▶", () => {
@@ -150,8 +150,8 @@ test("the sheet's ↺15 / 30↻ never repaint as ‹‹ / ›› and always call
      nothing else may sit in the body. MUTATION: replace the body with
      `foray ? ForayPlayer.forayPrevious() : seekEpisodeBy(-SEEK_BACK)` -> red. */
   const HAPTIC = String.raw`(?:window\.DialNowPlaying\?\.haptic\?\.\("light"\); )?`;
-  assert.match(CODE, new RegExp(String.raw`ui\.backBtn\.addEventListener\("click", \(\) => \{ ${HAPTIC}nudgeBy\(-SEEK_BACK\); \}\);`));
-  assert.match(CODE, new RegExp(String.raw`ui\.fwdBtn\.addEventListener\("click", \(\) => \{ ${HAPTIC}nudgeBy\(SEEK_FWD\); \}\);`));
+  assert.match(CODE, new RegExp(String.raw`ui\.backBtn\.addEventListener\("click", \(\) => (?:\{ ${HAPTIC}nudgeBy\(-SEEK_BACK\); \}|nudgeBy\(-SEEK_BACK\))\);`));
+  assert.match(CODE, new RegExp(String.raw`ui\.fwdBtn\.addEventListener\("click", \(\) => (?:\{ ${HAPTIC}nudgeBy\(SEEK_FWD\); \}|nudgeBy\(SEEK_FWD\))\);`));
   const mode = CODE.slice(CODE.indexOf("function setSkipButtonMode("), CODE.indexOf("window.ForayPlayer = ForayPlayer;"));
   assert.match(mode, /ui\.clips\.hidden = !isForay;/, "the clip row is what a Foray switches on");
   assert.match(mode, /paintControl\(ui\.backBtn, `↺ \$\{SEEK_BACK\}`, `Back \$\{SEEK_BACK\} seconds`\);/);

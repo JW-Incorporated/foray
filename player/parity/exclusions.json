@@ -929,6 +929,10 @@
     }
   },
   "transport-reconcile": {
+    "REDESIGN a11y: with Now Playing loaded, every render tick keeps the slider's aria-valuetext on its value (WCAG 4.1.2)": {
+      "reason": "webview-only",
+      "why": "The web page's own slider: client.js paintPage writes the range input's aria-valuetext on every tick. Native mode has no <input type=range> from this module (the lock screen and the native player name their own positions), so the engine has no rule here."
+    },
     "a RESTORED ribbon is current but not loaded, so a caller's own start path takes a press on it (round-3 review, L2)": {
       "reason": "webview-only",
       "why": "A page-side predicate app.js reads before a stamp tap (restoredPending plus the manager's state type). In native mode client.js answers it from the same restoredPending and the facades' snapshot state; the engine has no rule here, it only plays what the page's start path sends."
