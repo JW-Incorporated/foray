@@ -295,6 +295,8 @@ const PAIRS = [
   ["--persimmon", "--paper", 3], ["--persimmon", "--card", 3], ["--persimmon", "--paper-2", 3],
   ["--ultramarine", "--paper", 4.5], ["--ultramarine", "--card", 4.5],
   ["--good", "--paper", 4.5], ["--warn", "--paper", 4.5],
+  /* Today's Resume tag: 12px text on the soft fill (`.today-resume .tag--playing`). --persimmon on it was 3.74 in Cream and 4.49 in Bakelite. */
+  ["--ink", "--persimmon-soft", 4.5],
   ...Array.from({ length: 8 }, (_, i) => [`--dial-seg-c${i}`, "--paper-2", 3]),
 ];
 

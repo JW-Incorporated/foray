@@ -437,3 +437,81 @@ test("a Resume or hero title the listener's feed controls is escaped, and the da
   assert.strictEqual(m.ctx.todayDateLine(new Date(2026, 9, 5)), "Mon 5 Oct");
   assert.strictEqual(m.ctx.todayDateLine(new Date(2026, 0, 1)), "Thu 1 Jan");
 });
+
+test("the Resume card is the containing block of its own title-link overlay, so the overlay cannot cover the screen", () => {
+  /* BLOCKER (tactile-home review, 2026-10-07): `.today-resume__link::after` is
+     `position: absolute; inset: 0` to make the whole card one tap target, and
+     `.today-resume` was position: static, so the overlay was laid out against the
+     initial containing block: the whole first viewport of Today went to the resumed
+     episode, knob and hero title link included. The unit check is the pair of rules;
+     the pixel check is the `resume-home` harness state, which finally renders the card.
+     MUTATION: delete `position: relative` from `.today-resume` -> red. */
+  assert.match(rule(".today-resume__link::after"), /position:\s*absolute/);
+  assert.match(rule(".today-resume__link::after"), /inset:\s*0/);
+  assert.match(rule(".today-resume"), /position:\s*relative/, "the overlay's containing block is the card");
+  /* The same two lines hold for the card beside it, so a third card cannot copy the one that broke. */
+  assert.match(rule(".today .row-episode"), /position:\s*relative/);
+  assert.match(rule(".today .bridge"), /position:\s*relative/);
+});
+
+test("the Resume tag is 12px text on the soft fill and clears 4.5:1 in Cream and in Bakelite, from the colours the rule declares", () => {
+  /* BLOCKER (tactile-home review, 2026-10-07): `color: var(--persimmon)` on
+     `--persimmon-soft` measured 3.74:1 in Cream (the primary scheme) and 4.49:1 in
+     Bakelite, under the 4.5 that 12px/600 text needs. BUILD-NOTES 4.1 asked for that pair;
+     the hard limit beats the spec. The pair is also in ui-tokens-dial's PAIRS.
+     This reads the colours OUT OF the rule and out of each scheme's block, so it fails on
+     the rule, not on a token table nobody uses.
+     MUTATION: set the rule's `color` back to var(--persimmon) -> 3.74 in Cream, red. */
+  const body = rule(".today-resume .tag--playing");
+  const fg = (/(?:^|[;\s])color:\s*var\((--[\w-]+)\)/.exec(body) || [])[1];
+  const bg = (/background:\s*var\((--[\w-]+)\)/.exec(body) || [])[1];
+  assert.ok(fg && bg, "the rule names both colours through tokens");
+  const css = CSS_RULES;
+  const cream = css; /* the first declaration of a token in the sheet is the Dial block's Cream :root */
+  const bakelite = css.slice(css.indexOf(':root[data-theme="dark"] {'));
+  const hex = (scope, name) => {
+    const m = new RegExp("(?:^|[\\s;{])" + name + ":\\s*(#[0-9A-Fa-f]{6})").exec(scope);
+    assert.ok(m, `${name} is a literal hex in its scheme`);
+    return m[1];
+  };
+  const lum = (h) => {
+    const n = parseInt(h.slice(1), 16);
+    const c = [n >> 16, (n >> 8) & 255, n & 255].map((v) => v / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  };
+  for (const [name, scope] of [["Cream", cream], ["Bakelite", bakelite]]) {
+    const [x, y] = [lum(hex(scope, fg)), lum(hex(scope, bg))];
+    const got = (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+    assert.ok(got >= 4.5, `${fg} on ${bg} in ${name}: ${got.toFixed(2)}:1`);
+  }
+});
+
+test("the resume-home harness state seeds a profile whose part-played episode the Today rail actually offers", async () => {
+  /* The two blockers above went unseen because no harness state rendered the Resume card
+     (`returning` has no pointer; `player/mini-player-home` has a paused 21 s of a 60 min
+     episode, which is `percent` 0). This pins that the seed is a real Resume case by running
+     it through the same three functions `ForayPlayer.lastEpisodeCard()` uses.
+     MUTATION: drop `cp_pos:` from the `resuming` seed -> percent is null, red.
+     MUTATION 2: set its position to 3590 s -> `played`, red. */
+  const { pathToFileURL } = require("node:url");
+  const imp = (rel) => import(pathToFileURL(path.join(ROOT, rel)).href);
+  const [{ buildSeed, loadFixtures }, { appStates }, ep, pos] = await Promise.all([
+    imp("tools/ui-lab/lib/seed.mjs"), imp("tools/ui-lab/lib/states.mjs"),
+    imp("player/episode-progress.js"), imp("player/position-store.js"),
+  ]);
+  const fx = loadFixtures(ROOT);
+  const seed = buildSeed("resuming", fx);
+  const state = appStates(fx).find((s) => s.id === "resume-home");
+  assert.ok(state && state.seed === "resuming" && state.steps.some((s) => s.label === "home-resume" && s.route === "#/"));
+  const rec = seed.cp_last_episode;
+  assert.ok(rec && rec.id && rec.audio_url, "the pointer carries a playable snapshot");
+  const row = seed["cp_pos:" + rec.id];
+  assert.ok(row && row.seconds >= pos.MIN_RESUME_SEC, "a stored position worth resuming");
+  const now = Date.parse("2026-10-05T12:00:00.000Z");
+  assert.strictEqual(ep.lastEpisodeState(rec, { positionSec: row.seconds, now }).state, "resume");
+  assert.strictEqual(pos.resumeOffsetFor(row, { duration: rec.duration_sec }), row.seconds);
+  const progress = ep.episodeProgress({ ...rec }, row.seconds);
+  assert.ok(progress.state !== "played" && progress.percent > 0 && progress.percent < 100, `percent ${progress.percent}`);
+  /* The other profiles stay as they were: only `resuming` carries a pointer. */
+  assert.ok(!("cp_last_episode" in buildSeed("returning", fx)));
+});

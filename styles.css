@@ -5191,11 +5191,11 @@ body.view-home::after { content: ""; position: fixed; z-index: 19; left: 0; righ
 .today-hero__details { text-decoration: none; }
 
 /* resume: a card of one listen, named, with the mini player's own 48 key */
-.today-resume { display: flex; align-items: stretch; gap: calc(var(--s-3) + var(--s-1) / 2); padding: var(--s-4); }
+.today-resume { position: relative; display: flex; align-items: stretch; gap: calc(var(--s-3) + var(--s-1) / 2); padding: var(--s-4); }   /* positioned: the title link's ::after (inset 0) is laid out against THIS card, not the viewport */
 .today-resume .art-frame { --art-size: var(--key-xl); border-radius: var(--r-sm); }
 .today-resume__body { flex: 1; min-width: 0; min-height: var(--key-xl); display: flex; flex-direction: column; justify-content: space-between; gap: var(--s-1); }
 .today-resume__tag { display: flex; align-items: center; min-width: 0; }
-.today-resume .tag--playing { background: var(--persimmon-soft); color: var(--persimmon); }
+.today-resume .tag--playing { background: var(--persimmon-soft); color: var(--ink); }   /* 12px text needs 4.5:1: --persimmon on the soft fill is 3.74 in Cream and 4.49 in Bakelite; --ink is 12.95 / 10.91 */
 .today-resume__title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; font-size: var(--t-body); line-height: var(--lh-body); font-weight: var(--w-label); }
 .today-resume__link::after { content: ""; position: absolute; inset: 0; border-radius: var(--r-md); }
 .today-resume__link:focus-visible { outline: none; }
