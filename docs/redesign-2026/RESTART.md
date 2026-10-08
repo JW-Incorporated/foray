@@ -21,8 +21,16 @@ reviews (thin Claude agent -> `codex exec`, up to 3 rounds, Opus if Codex fails)
 judge, 4 screens in flight per direction (one per screen family), merges one at a time.
 Runs: `wf_8c930d5d-182` (06:40-09:19, died on the weekly limit: foundation to 7/8), then
 `wf_d90d5c98-c0e` (16:10 to 05:50 on 10-08: 18/35 screens, stopped when the disk filled), then
-**`wf_00d839e8-3c4`** (from 2026-10-08 06:20 PDT, script @ 2b1584d8, which cleans up its own
-worktrees and stops starting screens under 4 GB free). If the disk fills anyway: stop the run,
+`wf_00d839e8-3c4` (06:20-06:00, stopped for the token fixes), then **`wf_91b5c34d-c58`**
+(from 2026-10-08 06:30 PDT, script @ 19b7b152: cleans up its own worktrees, stops starting
+screens under 4 GB free, build/fix agents on a context + turn budget; launched with
+`maxIters: 3`). **Project management is part of the job, not optional** (owner, 2026-10-08,
+after one night cost 45% of the weekly plan and filled the disk): beside every run, start
+`node docs/redesign-2026/workflows/pm-watchdog.mjs <run transcript dir>` with
+`run_in_background`; it costs no tokens and exits with one line (DISK / STALL / ERRORS /
+RUNAWAY / STUCK / BURN) when something needs action. Act on it, then re-arm it. Before any
+relaunch, audit tokens per role (`node docs/redesign-2026/workflows/token-audit.mjs <run transcript dir>`:
+agent transcript, group by label prefix) if spend looks high. If the disk fills anyway: stop the run,
 remove finished `wf_*` worktrees whose HEAD is on origin with plain `git worktree remove`
 (literal paths, never `--force`), relaunch. Launch / relaunch (same args every
 time; merged units are skipped by git, interrupted units continue from their pushed branch):
