@@ -201,9 +201,12 @@ export function appStates(fx) {
   return [
     {
       id: "first-run",
-      description: "Brand-new profile: the onboarding explainer sheet over Home.",
+      description: "Brand-new profile: the Tactile onboarding screen over Home, then its returning mode (#/onboarding/return).",
       seed: "empty",
-      steps: [{ label: "intro-sheet", route: "#/", ready: "#first-time-sheet" }],
+      steps: [
+        { label: "intro-sheet", route: "#/", ready: "#first-time-sheet" },
+        { label: "onboarding-return", route: "#/onboarding/return", ready: "#first-time-sheet" },
+      ],
     },
     {
       id: "empty",

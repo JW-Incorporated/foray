@@ -5,38 +5,13 @@
    nothing here runs until app.js's boot (ui/boot.js) starts init(). */
 
 
-/** Explanation + consent, not an interview, then an optional Preferences
-    pane — the mockup's Welcome and Preferences screens (docs/ux/foray-
-    mockup.jsx, `WelcomeScreen`/`PrefsScreen`) as ONE modal sheet with two
-    panes swapped in place, per D2 / card U-09 (docs/ui-transition-plan.md,
-    #132). SKIPPABLE AT EVERY STEP:
-
-      Step 1 (Welcome) — two value props, the M3 prototype's `finishOnb`/
-      `skipOnb` preference-INTERVIEW step has no counterpart here and this
-      still does not build one (see the test that pins that). The second
-      prop is illustrated with a live, non-interactive SegmentStrip
-      (player/segment-strip.js's segmentStripHtml, U-04) over the first
-      listable Foray, when one exists — degrades to nothing otherwise, the
-      same "no Foray, no strip" rule the component already guarantees.
-      "Skip for now" dismisses immediately, with no interest write. "Get
-      started" advances to step 2 WITHOUT dismissing yet.
-
-      Step 2 (Preferences) — the taxonomy chip grid (PREFS_CHIP_IDS) plus
-      the mockup's tucked-away "Or type a subject yourself…" field. Neither
-      the mockup's account-connector buttons ("Continue with Apple/Google")
-      nor "Import subscriptions/listening history" are built here —
-      connector features, explicitly out of scope per D2/C5. "Skip" dismisses
-      with no interest write (Generalist: today's taxonomy defaults stand).
-      "Show my picks" applies the picks via applyOnboardingPicks() — the
-      FIXED U-07 write path (taxonomyNodes() includes roots, so a root-level
-      chip actually persists) — then dismisses, and when something was
-      written re-deals Home's card slots and repaints, so the FIRST Home the
-      listener lands on already ranks by the picks (the card's third
-      acceptance line; see redealAfterOnboardingPicks()).
-
-    Both steps' exits set the SAME cp_intro_dismissed flag showIntroPopupOnce()
-    already uses, so this flow and the older popup can never both show on the
-    same visit and neither shows again after. */
+/** The first-run onboarding screen (ui/onboarding.js, `showFirstTimeExplainerOnce`)
+    is a sheet like any other: it opens through `openSheet` below, so focus
+    moves in, Tab stays in, Escape parks it for the visit, the page behind is
+    `inert`, and focus returns to where it came from. It was a two-pane sheet
+    (Welcome, then a Preferences chip grid, D2 / card U-09); the Tactile
+    redesign made it one screen with two exits (Play today's foray, Just show
+    me), and the write path the picks used is still in ui/onboarding.js. */
 /* ---------- ONE OWNER FOR "A MODAL IS OPEN" (audit 2026-09-22, theme E) ----------
 
    Before this, nothing in the app owned the question. Eight sheets — the

@@ -181,6 +181,9 @@ test("the scanner reads plain strings, template text across lines, and strings i
 /* Sticky copy — each string that outlived its cause                   */
 /* ------------------------------------------------------------------ */
 
+/** The one string the stitching row lets through (see its test). */
+const FOUNDERS_TAGLINE = "Podcasts, stitched around you.";
+
 const STALE = [
   // [what, pattern, why it is wrong]
   ["pull to refresh", /pull to refresh/i, "there is no pull-to-refresh gesture anywhere in 4a"],
@@ -211,12 +214,32 @@ const STALE = [
    over the listener literals only, so a comment quoting the old copy — which
    this repo writes on purpose — cannot trip it. */
 test("no string that outlived its cause is back in the app's copy", () => {
-  const copy = literals(APP_SRC).map((l) => l.text).join("\n");
+  /* ONE NAMED EXCEPTION to the stitching row: the onboarding headline, the
+     founders' own tagline ("Podcasts, stitched around you.", DIRECTION.md and
+     BUILD-NOTES 4.7 of the Tactile direction, acceptance criteria of the
+     onboarding screen). It is a tagline, not a description of the mechanism: the
+     line under it says what the app does ("lines up the best parts into one
+     listen"), and nothing else in the app may say "stitch". RECORDED FOR THE
+     OWNERS in the Tactile PROGRESS.md: Wyatt's 2026-08-11 playback ruling is the
+     reason the row exists, so whether the tagline stays is theirs to confirm.
+     MUTATION 1: delete the replace below -> the row fails on the headline.
+     MUTATION 2: add "stitched" to any other string -> the row fails on it.
+     MUTATION 3: widen the exception to a pattern (/Podcasts, stitch\w+/) ->
+     the lock test below fails. */
+  const copy = literals(APP_SRC).map((l) => l.text).join("\n").split(FOUNDERS_TAGLINE).join("");
   const failures = [];
   for (const [what, re, why] of STALE) {
     if (re.test(copy)) failures.push(`${what}: ${why}`);
   }
   assert.deepStrictEqual(failures, []);
+});
+
+/* THE EXCEPTION IS A LOCK, NOT A PATTERN: exactly one listener string in the
+   app says "stitch", and it is the tagline, whole. MUTATION: add a second
+   string with "stitch" in it, or change one word of the tagline -> red. */
+test("the stitching exception is the founders' tagline, whole, once, and nothing else", () => {
+  const hits = literals(APP_SRC).map((l) => l.text).filter((t) => /stitch/i.test(t));
+  assert.deepStrictEqual(hits, [FOUNDERS_TAGLINE]);
 });
 
 /* ------------------------------------------------------------------ */
@@ -333,7 +356,6 @@ test("every text field has a name that survives typing, and search notes are liv
      left with the builder; Create's is the one playlist field. */
   assert.ok(inputs.length >= 4, `expected the app's text inputs, found ${inputs.length}`);
   for (const i of inputs) assert.match(i, /aria-label="[^"]+"/, `a text field named only by its placeholder: ${i}`);
-  assert.match(APP_SRC, /typedInput\.setAttribute\("aria-label", /);
   assert.match(APP_SRC, /<p id="sh-note" class="note" role="status" aria-live="polite" hidden><\/p>/);
   assert.match(APP_SRC, /data-show-ep-search-note role="status" aria-live="polite" hidden/);
   assert.match(APP_SRC, /<form id="sh-form" role="search"/);
@@ -422,7 +444,7 @@ test("the app speaks as 4a, never as 'we', 'us' or 'our'", () => {
   /* The scanner can see: the rewritten strings are listener prose it finds. */
   const all = listenerProse("app.js").map((l) => l.text).join("\n");
   assert.ok(all.includes("Shows 4a vouches for"), "the editorial row's heading");
-  assert.ok(all.includes("This is how 4a tunes your suggestions."), "the first-run sheet");
+  assert.ok(all.includes("4a picks real shows each day and lines up the best parts into one listen."), "the onboarding screen's sub line");
 });
 
 /* copy-7. MUTATION: restore "Not into this topic". */
