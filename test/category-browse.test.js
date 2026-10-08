@@ -334,20 +334,18 @@ test("route() dispatches #/shows to renderAllShows, matching the #/playlists pat
 /* 6. #/shows IS STILL REACHABLE AFTER "BROWSE ALL SHOWS" WAS REMOVED    */
 /* ==================================================================== */
 
-test("the app carries a Shows destination pointing at #/shows: the Discover tab", () => {
-  /* The affordance the removed "Browse all shows" button provided, replaced rather than dropped. The drawer that once
-     carried the link is gone (Redesign 2026, ambient: "Overturns 4 tabs + drawer"); the destination is the Discover
-     tab, read out of ui/tabbar.js's TAB_ROUTES because that is where the shipped nav actually lives.
+test("the Discover tab carries the destination #/shows - the tab bar replaced the menu's entry", () => {
+  /* The affordance the removed "Browse all shows" button provided, replaced rather than dropped - first by
+     the drawer's "Shows" link, now (RULING THAT FELL: "four tabs + drawer"; the drawer carries no
+     navigation) by the Discover tab. Read out of ui/tabbar.js's TAB_ROUTES rather than a render, because
+     that is where the shipped nav lives.
 
-     MUTATION: delete the `{ key: "search", label: "Discover", hash: "#/shows", ... }` entry from TAB_ROUTES. This
-     fails, and #/shows becomes an address with no link to it anywhere in the app.
-
-     Named "Discover" since the ambient Dock renamed the tab (it was "Search" from 2026-09-22): one name per
-     destination (audit personas 36 and 76). The page's own <h2> still says "Search" in the route assertions above
-     and below until the Discover screen's branch lands its heading. */
-  const tabbar = fs.readFileSync(path.join(ROOT, "ui/tabbar.js"), "utf8");
+     MUTATION: point the Discover entry at another hash, or delete it. This fails, and #/shows becomes an
+     address with no link to it anywhere in the app. The page's heading is the tab's name (one name per
+     destination; the three route assertions above and below). */
+  const tabs = fs.readFileSync(path.join(ROOT, "ui", "tabbar.js"), "utf8");
   assert.ok(
-    /\{ key: "search", label: "Discover", hash: "#\/shows"/.test(tabbar),
+    /\{ key: "discover", label: "Discover", hash: "#\/shows"/.test(tabs),
     "the tab bar must carry a Discover entry linking to #/shows"
   );
   const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");

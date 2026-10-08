@@ -1,9 +1,10 @@
 /* Visual pass 1 (2026-09-23): the transport's shape on every surface
  * (docs/audit/status.tsv persona rows 10 and 58).
  *
- *   - THE MINI BAR HAS TWO CONTROLS: ▶ and ↺15, both 44px, the skip
- *     borderless so the bar stays quiet. Stop stays in the sheet, in the
- *     danger colour (test/tap-targets.test.js holds that half).
+ *   - THE MINI BAR HAS TWO CONTROLS: ▶ (Ember, 48) and forward 30 (44), the skip
+ *     borderless so the bar stays quiet. It was ↺15 until the Dock (Redesign 2026,
+ *     ambient: "MiniPlayer: Play 48 Ember, Fwd30 44"); the sheet keeps both. Stop
+ *     stays in the sheet, in the danger colour (test/tap-targets.test.js holds that half).
  *   - THE SEEK PAIR IS THE SEEK PAIR: ↺15 / 30↻ in the sheet and on the Foray
  *     page in EVERY mode; previous/next clip are their own labelled row.
  *   - ONE NUDGE: every surface calls `nudgeBy` (the bridge's `nudge`), and the
@@ -24,7 +25,8 @@ const { readAppSource } = require("./helpers/app-source.js");
 const ROOT = path.join(__dirname, "..");
 const APP = readAppSource().replace(/\r\n/g, "\n");
 const CLIENT = fs.readFileSync(path.join(ROOT, "player/client.js"), "utf8").replace(/\r\n/g, "\n");
-const CSS = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8").replace(/\r\n/g, "\n");
+/* The mini bar's rules are ui/dock.css's now (it is a row of the Dock); the sheet's are still styles.css's. */
+const CSS = ["styles.css", "ui/dock.css"].map((rel) => fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n")).join("\n");
 const CODE = CLIENT.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 const SRC = CSS.replace(/\/\*[\s\S]*?\*\//g, " ");
 
@@ -58,7 +60,15 @@ function valueOf(sel, prop) {
   }
   return v;
 }
-const px = (v) => { const m = /^(\d+(?:\.\d+)?)px$/.exec(String(v || "")); return m ? Number(m[1]) : null; };
+const dockCss = require("./helpers/dock-css.js");
+const TOKENS_AT_REST = dockCss.scope([]);
+const px = (v) => {
+  const m = /^(\d+(?:\.\d+)?)px$/.exec(String(v || ""));
+  if (m) return Number(m[1]);
+  /* The Dock's sizes are tokens (`var(--tap)`, `calc(var(--tap) + var(--s-1))`): resolved, never guessed. */
+  if (/var\(|calc\(/.test(String(v || ""))) { try { return dockCss.resolve(v, TOKENS_AT_REST, 0); } catch (_) { return null; } }
+  return null;
+};
 
 /* ---------- one transport button on every surface (audit round 2, visual-5) ---------- */
 
@@ -110,38 +120,38 @@ test("the seek pair and the speed box are one object on the Foray page and in No
 
 /* ---------- the mini bar ---------- */
 
-test("the mini bar carries ▶ and a forward-30 glyph, in that order, and nothing else", () => {
-  /* MUTATION: `bar.append(art, info, playBtn)` (the one-control bar)
-     -> red. MUTATION 2: add `fwdBtn` to the bar -> the third assertion names
-     the crowding. (The live region is no longer on the bar — audit round 2,
-     a11y-2: it is a sibling of the bar and the sheet, so expanding Now
-     Playing cannot make it inert; player/now-playing-sheet.test.js pins it.) */
-  /* RULING FALLEN (Redesign 2026, ambient Discover iteration 3): the second control was a text `↺ 15` (persona 10);
-     it is the direction's 44px forward-30 custom glyph from the sprite. MUTATION 3: put the text `↺ ${SEEK_BACK}`
-     label back, or point the handler at `nudgeBy(-SEEK_BACK)` -> red. */
+test("the mini bar carries ▶ and a forward-30 nudge, in that order, and nothing else", () => {
+  /* RULING THAT FELL: "transport-controls: mini bar = ▶ + ↺15" (test-classification.md, R). The Afterglow
+     Dock's mini row is Play 48 + Fwd30 44. What it still guarantees: two controls, both at the 44px floor,
+     the skip is the same nudge as the sheet's (`nudgeBy`), and the glyphs come from the sprite.
+     MUTATION: `bar.append(art, info, playBtn)` (the one-control bar) -> red. MUTATION 2: add `backBtn` to the
+     bar -> the third assertion names the crowding. MUTATION 3: point the handler at `-SEEK_BACK` -> red.
+     (The live region is not on the bar - audit round 2, a11y-2: it is a sibling of the bar and the sheet, so
+     expanding Now Playing cannot make it inert; player/now-playing-sheet.test.js pins it.) */
   assert.match(CODE, /const skipBtn = el\("button", "fp-skip"\);/);
-  assert.match(CODE, /skipBtn\.innerHTML = MINI_SKIP_GLYPH;/);
-  assert.match(CODE, /const MINI_SKIP_GLYPH = '<svg class="fp-skip-glyph" aria-hidden="true" focusable="false"><use href="ui\/icons\.svg#i-fwd30"><\/use><\/svg>';/);
   assert.match(CODE, /skipBtn\.setAttribute\("aria-label", `Forward \$\{SEEK_FWD\} seconds`\);/);
-  assert.match(CODE, /bar\.append\(art, info, playBtn, skipBtn\);/, "art · title · ▶ · forward 30 (the prototype's order); MUTATION 4: swap the two -> red");
+  assert.match(CODE, /skipBtn\.append\(spriteIcon\("fwd30"\)\);/, "a sprite glyph, not a text one");
+  assert.match(CODE, /playBtn\.append\(spriteIcon\("play", "fp-glyph-play"\), spriteIcon\("pause", "fp-glyph-pause"\)\);/);
+  assert.match(CODE, /bar\.append\(art, info, playBtn, skipBtn\);/, "art · title · ▶ · forward 30");
   const appended = /bar\.append\(([^)]*)\)/.exec(CODE)[1].split(",").map((s) => s.trim());
   assert.deepStrictEqual(appended.filter((n) => /Btn$/.test(n)), ["playBtn", "skipBtn"], "two controls on the bar, not three");
   assert.match(CODE, /ui\.skipBtn\.addEventListener\("click", \(\) => nudgeBy\(SEEK_FWD\)\);/);
+  assert.doesNotMatch(CODE, /skipBtn[^;\n]*SEEK_BACK/, "and nothing sends the bar's skip backwards any more");
 });
 
-test("the bar's skip is a 44px borderless glyph beside the filled ▶", () => {
-  /* MUTATION: `.fp-skip { width: 36px }` -> red (tap-targets lists it too). */
-  assert.strictEqual(px(valueOf(".fp-skip", "width")), 44);
-  assert.strictEqual(px(valueOf(".fp-skip", "height")), 44);
-  assert.strictEqual(valueOf(".fp-skip", "border"), "0", "borderless: the bar's one filled control is ▶");
-  assert.strictEqual(valueOf(".fp-skip", "background"), "none");
-  assert.strictEqual(valueOf(".fp-skip", "border-radius"), "var(--radius-round)");
-  /* RULING FALLEN (Redesign 2026, ambient): the bar's Play is Ember, not violet (violet as an accent was overturned).
-     MUTATION: put `var(--violet)` back in the `#foray-player .fp-play` rule of ui/primitives.css -> red. */
-  const PRIM = fs.readFileSync(path.join(ROOT, "ui/primitives.css"), "utf8");
-  const rule = (sel) => { const m = new RegExp(sel.replace(/[.#]/g, "\\$&") + "\\s*\\{([^}]*)\\}").exec(PRIM); return m ? m[1] : ""; };
-  assert.match(rule("body.ag-discover #foray-player .fp-play"), /background:\s*var\(--ember\)/, "▶ is the filled Ember circle");
-  assert.ok(!/violet/.test(rule("body.ag-discover #foray-player .fp-play")), "and no violet");
+test("the bar's Play is an Ember 48 and its skip a bare 44, both round", () => {
+  /* MUTATION: `.dock-layer .fp-skip { width: 36px }` -> red (tap-targets lists it too). MUTATION 2: give
+     the skip a fill (`background: var(--ember)`) -> the bar has two filled controls and the second
+     assertion goes red. MUTATION 3: take Ember off the Play -> the third. */
+  assert.strictEqual(px(valueOf(".dock-layer .fp-skip", "width")), 44);
+  assert.strictEqual(px(valueOf(".dock-layer .fp-skip", "height")), 44);
+  assert.strictEqual(valueOf(".dock-layer .fp-skip", "background"), null, "bare: the bar's one filled control is ▶");
+  assert.strictEqual(valueOf(".dock-layer .fp-skip", "border-radius"), "var(--r-round)");
+  assert.strictEqual(valueOf(".dock-layer .fp-play", "border-radius"), "var(--r-round)");
+  assert.strictEqual(valueOf(".dock-layer .fp-play", "background"), "var(--ember)", "▶ is the listener's own mark: Ember");
+  assert.strictEqual(valueOf(".dock-layer .fp-play", "color"), "var(--ember-ink)");
+  assert.strictEqual(px(valueOf(".dock-layer .fp-play", "width")), 48);
+  assert.strictEqual(px(valueOf(".dock-layer .fp-play", "height")), 48);
 });
 
 /* ---------- the sheet ---------- */
@@ -228,16 +238,16 @@ test("the Foray page's bindings tolerate the controls that left it, and the nudg
 
 /* ---------- the sheet's shape, after the review of visual pass 1 (2026-09-23) ---------- */
 
-test("the sheet's Play is the bar's Play, scaled: one filled round object, not a grey box like the skips", () => {
+test("the sheet's Play is a filled round object, not a grey box like the skips", () => {
   /* Four play affordances shipped; the sheet's primary ▶ was the unfilled one,
      a rounded square identical to ↺15 / 30↻ beside it. MUTATION: delete
-     `.fp-btn.fp-big { … border-radius: var(--radius-round) … }` -> red. */
-  assert.strictEqual(valueOf(".fp-btn.fp-big", "border-radius"), "var(--radius-round)", "round, like .fp-play");
-  assert.strictEqual(valueOf(".fp-play", "border-radius"), "var(--radius-round)");
+     `.fp-btn.fp-big { … border-radius: var(--radius-round) … }` -> red.
+     (It was "the bar's Play, scaled" - the same violet fill. The bar's Play is Ember in the Dock now and the
+     sheet's keeps the legacy violet until the Now Playing screen unit re-fills it; the shape is what is held.) */
+  assert.strictEqual(valueOf(".fp-btn.fp-big", "border-radius"), "var(--radius-round)", "round, like the bar's Play");
+  assert.strictEqual(valueOf(".dock-layer .fp-play", "border-radius"), "var(--r-round)");
   assert.ok(px(valueOf(".fp-btn.fp-big", "width")) >= 56 && px(valueOf(".fp-btn.fp-big", "height")) >= 56, "and it leads the row");
-  assert.strictEqual(valueOf("body.ui-v2 .fp-btn.fp-big", "background"), "var(--violet)", "the same fill as the bar's ▶ under ui-v2");
-  assert.strictEqual(valueOf("body.ui-v2 .fp-play", "background"), "var(--violet)");
-  assert.strictEqual(valueOf("body.ui-v2 .fp-btn.fp-big", "color"), valueOf("body.ui-v2 .fp-play", "color"));
+  assert.strictEqual(valueOf("body.ui-v2 .fp-btn.fp-big", "background"), "var(--violet)", "filled, under ui-v2");
   /* The skips stay the quiet boxed pair. */
   assert.strictEqual(valueOf(".fp-btn", "border-radius"), "var(--radius-md)");
   assert.strictEqual(valueOf("body.ui-v2 .fp-btn", "background"), "var(--surface2)");

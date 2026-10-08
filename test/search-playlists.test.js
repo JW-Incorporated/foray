@@ -408,8 +408,8 @@ test("the Make-a-playlist button needs three characters, then follows the field'
 
 test("the button builds a playlist IN PLACE through the one creation path, and opens it", async () => {
   /* The whole point of the fold: no hand-off to #/create. MUTATION: set `location.hash = "#/create"` in
-     onMakePlaylist instead of building -> the hash assertion fails. Another: call buildPlaylist directly,
-     bypassing runPlaylistBuild -> the event assertion fails (there is one path, one event, one flag). */
+     buildPlaylistFromDiscover instead of building -> the hash assertion fails. Another: call buildPlaylist directly,
+     bypassing the logEvent in buildPlaylistFromDiscover -> the event assertion fails (one path, one event, one flag). */
   const m = mount({ seed: { cp_ui_v2: "true" } });
   seedV2Empty(m);
   m.state.discover = readJson("data/discover.json");
@@ -421,21 +421,21 @@ test("the button builds a playlist IN PLACE through the one creation path, and o
   m.ctx.logEvent = (type, payload) => { events.push({ type, payload }); };
   const before = JSON.parse(m.store.get("cp_playlists") || "[]").length;
 
-  m.evalIn("onMakePlaylist")("meditation");
+  m.evalIn("buildPlaylistFromDiscover")("meditation");
   await new Promise((r) => setTimeout(r, 20));
 
   const after = JSON.parse(m.store.get("cp_playlists") || "[]");
   assert.strictEqual(after.length, before + 1, "one playlist was built and saved");
   assert.match(m.ctx.location.hash, /^#\/playlist\//, "and opened; the listener never visited #/create");
   assert.deepStrictEqual(events.map((e) => [e.type, e.payload.source]), [["playlist_built", "discover"]],
-    "through runPlaylistBuild: one local event, named for its door");
+    "through buildPlaylistFromDiscover: one local event, named for its door");
   assert.strictEqual(m.evalIn("createBuildPending"), false, "the in-flight flag is released");
 });
 
 test("a build that cannot make a playlist says why under the button and moves nothing", async () => {
   /* The honest half of audit round 2's search-2: the button is offered on any text, so a tap on one the
-     scorer cannot build ends in a sentence, not in a navigation. MUTATION: drop the `liveNote` write in
-     onMakePlaylist -> the note assertion fails. */
+     scorer cannot build ends in a sentence, not in a navigation. MUTATION: drop the `setStatusText(note, ...)` write in
+     buildPlaylistFromDiscover -> the note assertion fails. */
   const m = mount({ seed: { cp_ui_v2: "true" } });
   seedV2Empty(m);
   m.state.discover = readJson("data/discover.json");
@@ -443,13 +443,25 @@ test("a build that cannot make a playlist says why under the button and moves no
   m.state.semantic = readJson("data/semantic-index.json");
   m.ctx.renderAllShows();
   m.ctx.location.hash = "#/shows";
-  m.evalIn("onMakePlaylist")("zzz-nonsense-query-zzz");
+  m.evalIn("buildPlaylistFromDiscover")("zzz-nonsense-query-zzz");
   await new Promise((r) => setTimeout(r, 20));
   const note = m.byId.get("sh-make-note");
   assert.strictEqual(note.hidden, false, "the note under the button is shown");
   assert.match(note.textContent, /^Not much on “zzz-nonsense-query-zzz” yet — /, "and says what happened");
   assert.strictEqual(m.ctx.location.hash, "#/shows", "nothing moved");
   assert.strictEqual(JSON.parse(m.store.get("cp_playlists") || "[]").length, 0, "and nothing was saved");
+});
+
+test("there is ONE Discover build path: no second builder, painter, button or failure line", () => {
+  /* The branch once carried `runPlaylistBuild` + `onMakePlaylist` + `playlistBuildFailureText` beside trunk's
+     `buildPlaylistFromDiscover` + `createFailureNote` + the `data-create-playlist` button: two flags' worth of
+     pending painting, two failure lines, two buttons. MUTATION: re-add any of those names (a second
+     definition, or a second `data-create-playlist` button) -> red. */
+  const defs = (name) => (APP_SRC.match(new RegExp(`function ${name}\\(`, "g")) || []).length;
+  assert.strictEqual(defs("buildPlaylistFromDiscover"), 1, "one build");
+  assert.strictEqual(defs("paintMakePending"), 1, "one pending painter");
+  assert.strictEqual(defs("createFailureNote"), 1, "one failure line");
+  assert.ok(!/runPlaylistBuild|onMakePlaylist|playlistBuildFailureText|data-create-playlist/.test(APP_SRC), "and no second path's names survive");
 });
 
 test("the old CTA's machinery is gone: no scan on the debounce tick, no hand-off to Create", () => {

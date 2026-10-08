@@ -487,21 +487,28 @@ test("data-integrity-8: cp_lastpick is never written, and a stored copy is remov
 
 /* ---------- app-2-11: the Search CTA's query reaches Create without a timer --- */
 
-test("app-2-11 (REDESIGN 2026): the Make-a-playlist button builds in place — there is no module-state hand-off to Create to race", () => {
-  /* The CTA used to set location.hash and prefill #cr-form on a setTimeout(0) (then, after the fix this test
-     pinned, through `pendingCreateQuery`, consumed by renderCreate). Create folded into Discover's one field, so the
-     race it guarded against (a timer winning against the hashchange render, the listener landing on an empty Create
-     page) has no surface left: the button runs `runPlaylistBuild` itself, from the page the listener is on, and
-     arms no timer of its own. What survives of the rule, pinned: nothing in the Discover path arms a 0 ms timer to
-     reach another page, and renderCreate no longer reads a pending query.
-     MUTATION: put `setTimeout(..., 0)` back around the build's navigation in onMakePlaylist -> a 0 ms timer is
-     armed, red. MUTATION 2: restore the `pendingCreateQuery` read in renderCreate -> the second assertion fails. */
+test("app-2-11 (REDESIGN 2026): the Make-a-playlist button builds in place - no #/create hop, no 0 ms timer, no module-state hand-off", () => {
+  /* The CTA set location.hash and prefilled #cr-form on a setTimeout(0) (then, after the fix this test pinned,
+     through `pendingCreateQuery`, consumed by renderCreate). Create folded into Discover's one field (ROUTE_ALIASES
+     in app.js), so the race it guarded against (a timer winning against the hashchange render, the listener landing on
+     an empty Create page) has no surface left: the button's click asks `buildPlaylistFromDiscover` (ui/create.js), the
+     one build, with its own button, from the page the listener is on, and arms no timer of its own.
+     MUTATION: restore the setTimeout(0) hand-off or the `location.hash = "#/create"` hop -> the hash assertion and the
+     timer assertion go red, and `asked` stays empty. MUTATION 2: restore the `pendingCreateQuery` read in
+     renderCreate -> the last assertion fails. */
   const m = loadApp();
-  m.els["#sh-make-note"] = makeEl("p");
-  m.run("createBuildPending = false; whenSearchDataReady = () => {};");   // the build waits on documents that never come: only the tap is under test
-  m.ctx.onMakePlaylist("tokamaks");
-  assert.ok(![...m.timers.values()].some((t) => t.ms === 0), "the tap arms no race-prone 0 ms timer");
-  assert.notStrictEqual(m.ctx.location.hash, "#/create", "and does not navigate to Create");
+  const btn = makeEl("button");
+  const box = makeEl("div");
+  box.querySelector = (sel) => (sel === "[data-make-playlist]" ? btn : null);
+  m.els["#sh-make"] = box;
+  const asked = [];
+  m.ctx.buildPlaylistFromDiscover = (query, button) => { asked.push([query, button]); };
+  const hashBefore = m.ctx.location.hash;
+  m.ctx.paintMakePlaylist("tokamaks");
+  btn.dispatch("click");
+  assert.deepStrictEqual(asked, [["tokamaks", btn]], "the click asks the one build path, with its own button");
+  assert.strictEqual(m.ctx.location.hash, hashBefore, "and navigates nowhere");
+  assert.ok(![...m.timers.values()].some((t) => t.ms === 0), "and arms no race-prone 0 ms timer");
   assert.ok(!/pendingCreateQuery/.test(SRC), "renderCreate has no pending query to consume");
 });
 

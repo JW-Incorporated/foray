@@ -1151,9 +1151,9 @@ function paintDiscoverEmpty(query, myToken) {
    1.3-8 s relaxation scan on the debounce tick and it withheld the button on the
    very page (nothing found) where the direction wants it. The honest half of the
    old rule survives at the other end: a build that cannot make a playlist says why
-   under the button (`playlistBuildFailureText`) and moves nothing.
+   under the button (`createFailureNote`, in `#sh-make-note`) and moves nothing.
 
-   It is the ONE build (`runPlaylistBuild`, ui/create.js): same flag, same
+   It is the ONE build (`buildPlaylistFromDiscover`, ui/create.js): same flag, same
    buildPlaylist(), same local `playlist_built` event. Nothing here writes to a
    server, so a lab build has nothing to gate; test/discover-page.test.js pins that
    the path reaches no fetch. */
@@ -1172,38 +1172,22 @@ function paintMakePlaylist(text) {
     <p id="sh-make-note" class="note" role="status" hidden></p>`;
   box.hidden = false;
   const btn = box.querySelector("[data-make-playlist]");
-  if (btn) btn.addEventListener("click", () => onMakePlaylist(q));
+  if (btn) btn.addEventListener("click", () => buildPlaylistFromDiscover(q, btn));
   paintMakePending(createBuildPending);
-}
-
-function onMakePlaylist(query) {
-  const note = $("#sh-make-note");
-  if (note) note.hidden = true;
-  runPlaylistBuild(query, "discover", (result) => {
-    /* ONLY IF DISCOVER IS STILL THE PAGE ON SCREEN (the rule bindCreateFormSubmit follows, audit
-       round 2, races-3): the playlist is saved either way, so a listener who moved on loses only
-       the jump. */
-    const here = /^#\/shows($|\/)/.test(currentHash());
-    if (result.status === "ok" || result.status === "sparse") {
-      if (here) location.hash = "#/" + playlistRoute(result.playlist);
-      return;
-    }
-    const liveNote = here ? $("#sh-make-note") : null; // the live page's note, never one captured before the wait
-    if (liveNote) { setStatusText(liveNote, playlistBuildFailureText(result, query)); liveNote.hidden = false; }
-  });
 }
 
 /** The pending state, painted from the flag onto whatever button is on screen (the same rule
     paintCreatePending follows): the build waits for the search documents and a cold start can take
     seconds, so a tap that looks like nothing is the failure to prevent. */
-function paintMakePending(pending) {
-  const btn = $("#sh-make [data-make-playlist]");
+function paintMakePending(pending, button) {
+  const btn = button || $("#sh-make [data-make-playlist]");
   if (!btn) return;
   const q = btn.getAttribute("data-make-playlist") || "";
   btn.disabled = !!pending;
   if (pending) btn.setAttribute("aria-busy", "true"); else btn.removeAttribute("aria-busy");
   btn.classList.toggle("is-loading", !!pending);
-  setStatusText(btn.querySelector("span"), pending ? "Making your playlist…" : `Make a playlist from ${quoteQuery(q)}`);
+  const label = btn.querySelector("span") || btn; // the span keeps the sparkle icon; a bare button is its own label
+  setStatusText(label, pending ? "Building…" : `Make a playlist from ${quoteQuery(q)}`);
 }
 
 /** The rows on screen for `query` under `myToken`, or `fallback` when the

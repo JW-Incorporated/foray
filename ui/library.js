@@ -72,9 +72,10 @@ function libSection(title, bodyHtml) {
    into Library, no new tab"; audit personas 32 and 50). The tab bar lit Library
    for #/forays and every Foray page while Library listed no Forays, and the only
    way to the shows a listener followed was a row inside the Search page's browse
-   furniture, hidden the moment the field was focused. Both are LINKED, capped at
+   furniture, hidden the moment the field was focused. Forays are LINKED, capped at
    five like Playlists, and open their real page for the rest — the "browse here,
-   act there" split the header above describes. */
+   act there" split the header above describes. Followed shows are listed WHOLE
+   since #/starred-shows folded into this page (Redesign 2026, the Dock). */
 const LIBRARY_SECTION_CAP = 5;
 
 function libraryForaysHtml() {
@@ -94,8 +95,11 @@ function libraryFollowedHtml() {
   const followed = Object.values(starredShowsMap())
     .sort((a, b) => (b.starred_at || "").localeCompare(a.starred_at || ""));
   if (!followed.length) return `<p class="note">No followed shows yet — follow a show from its page to keep it here.</p>`;
-  return `<div class="show-results">${followed.slice(0, LIBRARY_SECTION_CAP).map(starredShowRow).join("")}</div>`
-    + (followed.length > LIBRARY_SECTION_CAP ? `<a class="lib-more" href="#/starred-shows">All ${followed.length} followed shows ›</a>` : "");
+  /* EVERY FOLLOWED SHOW, NO CAP, NO "ALL N" LINK (Redesign 2026, ambient, the Dock).
+     `#/starred-shows` was this section's overflow page; it is folded into Library
+     (ROUTE_ALIASES in app.js), so a cap here would send the listener to the page
+     they are already on. A followed list is the listener's own and short. */
+  return `<div class="show-results">${followed.map(starredShowRow).join("")}</div>`;
 }
 
 function renderLibrary() {
@@ -151,8 +155,8 @@ function renderLibrary() {
       + (allPlaylists.length > 5 ? `<a class="lib-more" href="#/playlists">All ${allPlaylists.length} playlists ›</a>` : "")
     /* It said "build one from the home screen", and the builder left Home on
        2026-09-03 — the note named the one screen certain not to have it. It
-       names Discover (the Create tab is folded into it), and links to #/create. */
-    : `<p class="note">No playlists yet — <a href="#/create">build one from Discover</a>.</p>`;
+       names Discover, where the Create tab's field now lives, and links there. */
+    : `<p class="note">No playlists yet — <a href="#/shows">build one from Discover</a>.</p>`;
 
   const queueHtml = queued.length
     ? libSummaryRow("/queue", "Up Next", `${queued.length} queued`)
@@ -193,7 +197,7 @@ function renderLibrary() {
 /* THE LIST, AND ONE DOOR TO THE BUILDER (audit round 2, p-first-6; founder
    question 4, default taken): the `#pl-form` builder that lived here is gone —
    see the removal note above `bindPickLogging`. The empty state says the same
-   sentence Library's does, and both point at Create. */
+   sentence Library's does, and both point at Discover. */
 function renderPlaylists() {
   setBodyClass("view-page");
   const all = playlists();
@@ -203,7 +207,7 @@ function renderPlaylists() {
         <a class="back" href="#/">‹</a>
         <div><h2>Playlists</h2>${all.length ? `<p class="sub">${countLabel(all.length, "playlist")}</p>` : ""}</div>
       </div>
-      <a class="page-link-row" href="#/create">Build a playlist ›</a>
+      <a class="page-link-row" href="#/shows">Build a playlist ›</a>
       ${all.length ? all.map(p => `
         <a class="pl-row" href="#/${esc(playlistRoute(p))}">
           <div class="info">
@@ -212,6 +216,6 @@ function renderPlaylists() {
           </div>
           <span class="chev">›</span>
         </a>`).join("")
-      : `<p class="note">No playlists yet — <a href="#/create">build one from Discover</a>.</p>`}
+      : `<p class="note">No playlists yet — <a href="#/shows">build one from Discover</a>.</p>`}
     </div>`;
 }

@@ -350,12 +350,13 @@ test("route() dispatches #/starred-shows to renderStarredShows, matching #/playl
 /* 6. REACHABILITY — FROM THE SHOWS PAGE, NOT THE DRAWER                 */
 /* ==================================================================== */
 
-test("#/starred-shows is reachable from Library (Redesign 2026: no longer from Discover) and is no longer a drawer entry", () => {
+test("the followed shows are on Library whole (Redesign 2026: #/starred-shows folded into it), not on Discover, and not a drawer entry", () => {
   /* REDESIGN 2026 (ambient, Discover): the Followed-shows shortcut left the Shows page (it is "Discover" now);
-     Library owns the followed shows and its "All N followed shows" link is the way to #/starred-shows
-     (BUILD-NOTES 4.4). The ruling that fell: "the Shows page carries the shortcut" (2026-09-03). The original
-     reasoning below still describes the drawer half, which is unchanged.
-     MUTATION: drop the `lib-more` link from libraryFollowedHtml -> the first assertion fails. */
+     Library owns the followed shows and, since the Dock folded `#/starred-shows` into it (ROUTE_ALIASES in app.js),
+     lists ALL of them: a cap or an "All N" link here would send the listener to the page they are on. The ruling
+     that fell: "the Shows page carries the shortcut" (2026-09-03). The original reasoning below still describes the
+     drawer half, which is unchanged.
+     MUTATION: re-cap libraryFollowedHtml with `.slice(0, LIBRARY_SECTION_CAP)` -> the six-rows assertion fails. */
   /* Was: "the drawer nav carries a link to #/starred-shows". The founder
      named the menu's five pages on 2026-09-03 (Home, Shows, Playlists,
      Forays, Up Next) and Starred Shows is not one of them, so the drawer
@@ -384,10 +385,10 @@ test("#/starred-shows is reachable from Library (Redesign 2026: no longer from D
   const many = {};
   for (let i = 0; i < 6; i++) many[`show-${i}`] = { show_id: `show-${i}`, title: `Show ${i}`, starred_at: `2026-09-0${i + 1}T00:00:00Z` };
   m.ctx.localStorage.setItem("cp_starred_shows", JSON.stringify(many));
-  assert.ok(
-    m.ctx.libraryFollowedHtml().includes('href="#/starred-shows"'),
-    "Library must carry a reachable link to #/starred-shows once the followed shows outgrow its section"
-  );
+  const followedHtml = m.ctx.libraryFollowedHtml();
+  assert.strictEqual((followedHtml.match(/show-results|class="[^"]*show-row/g) || []).length >= 1, true, "Library draws the followed shows");
+  for (let i = 0; i < 6; i++) assert.ok(followedHtml.includes(`Show ${i}`), `Library lists followed show ${i}: all six, past the five-row cap other sections keep`);
+  assert.ok(!followedHtml.includes('href="#/starred-shows"'), "and has no overflow link to a page it has folded in");
   m.ctx.renderAllShows();
   assert.ok(!m.view().includes('href="#/starred-shows"'), "…and Discover must not");
   assert.doesNotMatch(

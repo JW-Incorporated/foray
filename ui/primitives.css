@@ -252,20 +252,15 @@
 
 /* ============================================================================
    Discover (Redesign 2026, ambient, screen 4): the page is `.ag.disc`, wearing the scheme; its
-   field is `#sh-compose` (positioned by styles.css's `--sh-dock` arithmetic, which is unchanged).
+   field is `#sh-compose`, which the Dock adopts into its field row (ui/dock.css owns the Dock: the field, the
+   mini row, the tab row, the fade, the keyboard and the page's reserved bottom padding; nothing here restyles any of them).
    Every selector is scoped below .ag or names the Discover body class; every motion is the one
    block in ui/tokens.css (nothing here transitions or animates).
    ============================================================================ */
-body.ag-discover { background: var(--bg0); color: var(--ag-text); }
-/* The legacy top bar (a drawer, a refresh) is not drawn here: the direction has no drawer, and the
-   title sits at safe-top + 8 (BUILD-NOTES 4.4). Its two jobs move to Today's gear. */
-body.ag-discover .topbar { display: none; }
-body.ag-discover #view { padding-top: 0; }
-/* The keyboard owns the bottom edge while the field has focus: the tab bar already yields
-   (`body.sh-searching .tab-bar`), and so does the mini player; the sheet cannot be open then. */
-body.sh-searching #foray-player { display: none; }
-body.sh-searching #sh-compose { --sh-fp: 0px; }
-
+body.ag-discover { background: var(--bg0); color: var(--ag-text); --dock-page-bg: var(--bg0); }   /* the Dock fades to the page's own colour (ui/dock.css) */
+/* dock.css gives `body.sh-compose #view` a top padding that clears the topbar it hides; this page's title sits at
+   safe-top + 8 by its own padding below, so the Dock's padding steps aside (same class set, one more class). */
+body.ui-v2.sh-compose.ag-discover #view { padding-top: 0; }
 .ag.disc {
   padding: calc(var(--safe-top) + var(--s-2)) var(--gutter) var(--s-6);
   background: transparent;
@@ -300,87 +295,6 @@ body.ui-v2 .ag.disc .page-head { margin-top: var(--s-2); }   /* the title sits 1
    (the primitive's 8 / 12 put the collage 2px left of the prototype's and the name column 2px narrower on the right). */
 .ag .dsc-grid .ag-subject-tile, .ag .dsc-empty-tile .ag-subject-tile { padding: var(--s-2) calc(var(--s-2) + var(--s-1) / 2); gap: calc(var(--s-2) + var(--s-1) / 2); }
 .ag .dsc-empty-tile .ag-subject-tile { text-align: left; }
-
-/* The field: the Dock's top row (DIRECTION.md "Information architecture"). One Veil surface of three rows:
-   this 48 row (a 40 pill on the Veil, the 44 input overhanging it by 2 so the tap target holds), the mini
-   player when something plays, and the tab row receded to 44 of icons; the rows are divided by the rim, never
-   a gap and never a stroke. The legacy bar and the mini player are restyled here, on this page only, to sit in
-   the same inset column on the same Veil, so the field is not a pill floating over a full-width bar.
-   `--sh-gap` is the 12 the Dock floats above the safe area and `--sh-tab` the receded 44: styles.css's
-   `--sh-dock` sum is unchanged, only two of its terms are. While the field has focus the tab row and the mini
-   player yield (below), the field is then the whole Dock and rounds on every corner. */
-body.ag-discover {
-  --dsc-tab: var(--tap); --dsc-row: var(--s-12); --dsc-lift: calc(var(--safe-bottom) + var(--dock-inset));
-  --fp-bar-h: var(--mini);   /* the mini row is 64; the legacy 96 is the bar's reserved box, and it left a 32 gap under the field */
-}
-.ag.disc #sh-compose {
-  --sh-gap: var(--dock-inset);
-  left: var(--ag-gutter); right: var(--ag-gutter); display: flex; align-items: center;
-  height: var(--dsc-row); padding: var(--s-1) var(--s-2);
-  border-radius: var(--r-xl) var(--r-xl) 0 0;
-  box-shadow: inset 0 1px 0 var(--rim);
-}
-body.ag-discover:not(.kb-open):not(.sh-searching) #sh-compose { --sh-tab: var(--dsc-tab); }
-body.sh-searching.ag-discover #sh-compose, body.kb-open.ag-discover #sh-compose { border-radius: var(--r-xl); box-shadow: inset 0 1px 0 var(--rim), var(--shadow-2); }
-.ag.disc #sh-compose .ag-search-field { height: calc(var(--dsc-row) - var(--s-2)); min-height: 0; padding: 0 0 0 var(--s-3); background: var(--overlay); box-shadow: none; }
-.ag.disc #sh-compose .ag-search-field:focus-within { box-shadow: 0 0 0 calc(var(--s-1) / 2) var(--lamp-text); }
-.ag.disc #sh-compose .ag-search-field input { appearance: none; padding: 0; margin-block: calc(var(--s-1) / -2); }
-.ag.disc #sh-compose .ag-btn-icon { margin-block: calc(var(--s-1) / -2); }
-.ag.disc #sh-compose .ag-btn[hidden] { display: none; }
-/* The tab row, receded to icons under the field: 44 tall, the labels read only by a screen reader. */
-body.ag-discover .tab-bar {
-  left: var(--ag-gutter); right: var(--ag-gutter); bottom: var(--dsc-lift);
-  height: var(--dsc-tab); padding-bottom: 0; border: 0; border-radius: 0 0 var(--r-xl) var(--r-xl);
-  background: var(--glow-veil); box-shadow: inset 0 1px 0 var(--rim), var(--shadow-2);
-}
-body.ag-discover .tab-btn svg { width: var(--icon); height: var(--icon); }
-body.ag-discover .tab-btn span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-body.ag-discover.ui-v2.fp-open #foray-player {
-  left: var(--ag-gutter); right: var(--ag-gutter); bottom: calc(var(--dsc-lift) + var(--dsc-tab));
-  border: 0; border-radius: 0; background: var(--glow-veil); box-shadow: inset 0 1px 0 var(--rim);
-}
-body.ag-discover #foray-player .fp-show { color: var(--text-2); }   /* the legacy grey is 4.43:1 on the Veil tint; text-2 clears AA there */
-body.ag-discover #foray-player .fp-progress { background: transparent; }   /* the legacy track is a navy line across the Veil's top edge */
-
-/* ---- The Dock's two bars on the Afterglow tokens (Discover iteration 3: tab bar and mini player) ----
-   SCOPED TO DISCOVER (`body.ag-discover`), not global: the Dock is its own unit, and Today and Foray detail
-   already scope their own Dock to their pages (`body.view-home`, `body.view-foray-detail`), so a global rule here
-   moved the tab bar and the mini on every accepted page (baseline diff on 140 shots). The one unscoped rule is
-   the forward-30 glyph's size, because `player/client.js` draws that glyph on every page. The Dock unit lifts
-   these to global when it lands. Specificity does the ordering (an id in the selector), so none of this depends on stylesheet order. */
-/* Mini player: Ember Play (violet as an accent was overturned; a third hue fights the artwork), the title in
-   the body face at the Label style (DM Sans, not Fraunces: the Dock must not compete with screen titles), the
-   show line at Caption, the transport slot a 44 forward-30 glyph, and the 2px Glow progress line on the top
-   edge, across the seam with the field or the page. The line is the playing item's own light, so it is Glow. */
-body.ag-discover #foray-player .fp-play { background: var(--ember); border-color: var(--ember); color: var(--ember-ink); width: calc(var(--tap) + var(--s-1)); height: calc(var(--tap) + var(--s-1)); }   /* the 48 Play of the direction; the 44 floor still holds */
-body.ag-discover #foray-player .fp-title { font: var(--t-label); color: var(--text); }
-body.ag-discover #foray-player .fp-show { font: var(--t-caption); }
-body.ag-discover #foray-player .fp-progress { position: absolute; left: 0; right: 0; top: 0; height: calc(var(--s-1) / 2); background: transparent; }   /* out of flow, like the prototype's .prog: in flow it made the row 66, not 64 */
-body.ag-discover #foray-player .fp-fill { background: var(--glow); }
-/* The mini row's rhythm, from the prototype's .mini: 44 art, 12 to the title, the 48 Play and the 44 forward-30 abutting
-   (no gap between the two buttons), 10 in from the left and 8 from the right so the forward-30 centres 30 from the Dock's
-   right edge. The legacy bar's 40 art, 10 gap and 12 side padding put the controls 14px left of that. */
-body.ag-discover #foray-player .fp-bar { gap: var(--s-3); padding: var(--s-2) var(--s-2) var(--s-2) calc(var(--s-2) + var(--s-1) / 2); }
-body.ag-discover #foray-player .fp-art { width: var(--art-mini); height: var(--art-mini); }
-body.ag-discover #foray-player .fp-skip { margin-left: calc(var(--s-3) * -1); display: grid; place-items: center; }   /* the glyph centred in the 44, not sat on a text baseline 2px high */
-body.ui-v2 #foray-player .fp-skip .fp-skip-glyph { width: var(--icon-tab); height: var(--icon-tab); fill: currentColor; stroke: none; pointer-events: none; }
-/* Tab bar: Phosphor glyphs from the sprite (28 here, 24 in Discover's receded row), the current tab in Lamp with
-   its Fill twin (ui/tabbar.js swaps the glyph), never an Ember outline: Ember is the listener's own marks only. */
-body.ag-discover .tab-bar .tab-btn .icon { width: var(--icon-tab); height: var(--icon-tab); fill: currentColor; stroke: none; pointer-events: none; }
-body.ag-discover .tab-bar .tab-btn { color: var(--text-2); }
-body.ag-discover .tab-bar .tab-btn[aria-current="page"] { color: var(--lamp-text); }
-/* Content runs under the Dock and fades to bg behind it, never sliced by its edge: a bg0 fade rises 32px
-   above the Dock's top row and is solid from there down (the Veil is a tint of bg0, so it reads as one
-   surface). It tracks the Dock's height: the field row and the tab row, plus the mini player when it
-   shows; the field alone while it has focus, over the keyboard when one is up. */
-body.ag-discover { --dsc-dock-h: calc(var(--dsc-lift) + var(--dsc-tab) + var(--dsc-row)); }
-body.ag-discover.fp-open { --dsc-dock-h: calc(var(--dsc-lift) + var(--dsc-tab) + var(--dsc-row) + var(--fp-bar-h)); }
-body.ag-discover.sh-searching, body.ag-discover.kb-open { --dsc-dock-h: calc(var(--kb-inset, 0px) + var(--dsc-lift) + var(--dsc-row)); }
-body.ag-discover::after {
-  content: ''; position: fixed; left: 0; right: 0; bottom: 0; z-index: 54; pointer-events: none;
-  height: calc(var(--dsc-dock-h) + var(--s-8));
-  background: linear-gradient(transparent 0, var(--bg0) var(--s-8));
-}
 
 /* Results. One anatomy for all four kinds: a Raised row, art 56, a label, one caption. */
 .ag.disc .note { color: var(--text-2); font: var(--t-caption); margin: var(--s-4) 0 0; }
@@ -420,9 +334,7 @@ body.ag-discover::after {
 /* The button is the last thing on the page, and a long list puts it a long scroll away, where it read as
    missing. It is sticky: it rides 8 above the Dock (above the fade, so the fade does not dim it) until the
    scroll reaches its own place at the end of the page, then sits there. A short page never moves it. */
-.ag.disc .dsc-make { position: sticky; bottom: calc(var(--dsc-dock-h) + var(--s-2)); z-index: 56; }
+.ag.disc .dsc-make { position: sticky; bottom: calc(var(--dock-h) + var(--safe-bottom) + var(--dock-inset) + var(--s-2)); z-index: 56; }
 .ag .dsc-make-btn { width: 100%; white-space: normal; text-align: center; overflow-wrap: anywhere; padding-block: var(--s-3); }
 .ag .dsc-make .note { text-align: center; }
 
-/* The idle page must clear the floating field, the tab bar and the mini player. */
-body.sh-compose.ag-discover #view { padding-bottom: calc(var(--dsc-dock-h) + var(--s-4)); }   /* the last row scrolls clear of the whole Dock (and of the keyboard-lifted field), so nothing ends under it */

@@ -282,21 +282,18 @@ test("the costly passes wait 150 ms (the direction's number), not 250", () => {
   assert.strictEqual(m.evalIn("SHOW_SEARCH_DEBOUNCE_MS"), 150);
 });
 
-test("the field's chrome: a 2px Lamp ring OUTSIDE the pill on focus, a 44 x, the grid 2-up with an odd last tile spanning", () => {
-  /* MUTATION: make the ring `box-shadow: inset 0 0 0 ...` (inside the pill) -> the ring assertion fails. Another: drop
-     `.dsc-grid > :last-child:nth-child(odd)` -> the span assertion fails. Another: `.ag .ag-btn-icon { width: 40px }`
+test("the page's chrome: a 44 x, the grid 2-up with an odd last tile spanning", () => {
+  /* The field itself is the Dock's now (ui/dock.css adopts #sh-compose; the ring, the pill and the row are pinned by
+     test/dock.test.js). What this page keeps: the 44 clear button, the 2-up grid and the odd tile.
+     MUTATION: drop `.dsc-grid > :last-child:nth-child(odd)` -> the span assertion fails. Another: `.ag .ag-btn-icon { width: 40px }`
      -> the 44 assertion fails (tap-targets.test.js holds the same floor for every .ag-btn). */
   const css = read("ui/primitives.css");
   const rule = (sel) => { const i = css.indexOf(`${sel} {`); assert.ok(i !== -1, `a rule for ${sel}`); return css.slice(css.indexOf("{", i) + 1, css.indexOf("}", i)); };
-  const ring = rule(".ag.disc #sh-compose .ag-search-field:focus-within");
-  assert.match(ring, /box-shadow:\s*0 0 0 calc\(var\(--s-1\) \/ 2\) var\(--lamp-text\)/, "2px (half the 4px space step), in Lamp, a spread OUTSIDE the pill");
-  assert.ok(!/inset/.test(ring), "outside the pill, not inside it");
   assert.match(rule(".ag .ag-btn-icon"), /width:\s*var\(--tap\);\s*height:\s*var\(--tap\)/, "the x is the 44 icon button");
   assert.match(rule(".ag .dsc-grid"), /grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/, "two up");
   assert.match(rule(".ag .dsc-grid > :last-child:nth-child(odd)"), /grid-column:\s*1 \/ -1/, "an odd last tile takes the row");
   assert.match(rule(".ag .dsc-grid > :last-child:nth-child(odd) .t-label"), /font:\s*var\(--t-headline\)/, "and its name steps up to the headline style");
   assert.match(rule(".ag .ag-search-field"), /min-height:\s*var\(--field\)/);
-  assert.match(read("ui/tokens.css"), /--field:\s*52px/, "the field token is 52");
 });
 
 /* Iteration 2 (fidelity findings 1, 2, 3 and 6). The three tests below pin the CSS the screen's Dock behaviour is made
@@ -308,62 +305,31 @@ function cssRule(css, sel) {
   return css.slice(css.indexOf("{", i) + 1, css.indexOf("}", i));
 }
 
-test("the field is the Dock's top row: one Veil with the tab row under it, inset to the same column, no stroke at rest", () => {
-  /* Finding: the field was a standalone floating pill over a full-width tab bar, outlined in Lamp, with no tab row
-     beneath it. Not seen here: the pixels (the fidelity run), and the mini player row, which is the legacy bar restyled.
-     MUTATION: delete `left: var(--ag-gutter)` from the `body.ag-discover .tab-bar` rule -> the column assertion fails
-     (the bar is full width again and the field floats over it). Another: give the pill's rest state
-     `box-shadow: 0 0 0 2px var(--lamp-text)` -> the no-stroke assertion fails. Another: drop `--sh-tab: var(--dsc-tab)`
-     -> the field sits 12px above a 44 row it no longer clears. */
-  const css = read("ui/primitives.css");
-  const row = cssRule(css, ".ag.disc #sh-compose");
-  assert.match(row, /left:\s*var\(--ag-gutter\);\s*right:\s*var\(--ag-gutter\)/, "the field row is inset to the gutter column");
-  assert.match(row, /border-radius:\s*var\(--r-xl\) var\(--r-xl\) 0 0/, "top corners round, the tab row under it closes the bottom");
-  assert.match(row, /box-shadow:\s*inset 0 1px 0 var\(--rim\)/, "divided from what is under it by the rim, a light line, not a stroke");
-  assert.match(row, /--sh-gap:\s*var\(--dock-inset\)/, "12 above the safe area, the Dock's own float");
-  const bar = cssRule(css, "body.ag-discover .tab-bar");
-  assert.match(bar, /left:\s*var\(--ag-gutter\);\s*right:\s*var\(--ag-gutter\)/, "the tab row is in the SAME column");
-  assert.match(bar, /background:\s*var\(--glow-veil\)/, "on the SAME Veil tint");
-  assert.match(bar, /height:\s*var\(--dsc-tab\)/, "receded to icons");
-  assert.match(bar, /border:\s*0/, "with no hairline of its own");
-  assert.match(css, /body\.ag-discover:not\(\.kb-open\):not\(\.sh-searching\) #sh-compose \{ --sh-tab: var\(--dsc-tab\); \}/, "styles.css's --sh-dock sum clears the receded row");
-  assert.match(css, /body\.ag-discover \.tab-btn span \{[^}]*clip: rect\(0 0 0 0\)/, "labels stay for a screen reader only");
-  const pill = cssRule(css, ".ag.disc #sh-compose .ag-search-field");
-  assert.match(pill, /box-shadow:\s*none/, "at rest the pill carries no outline: the Lamp ring is for focus only");
-  assert.match(read("ui/tokens.css"), /--dock-inset:\s*12px/, "the float is the token the direction's Dock uses");
-});
-
-test("content fades to bg behind the Dock and is never sliced by its edge; the fade never covers the Dock or takes a tap", () => {
-  /* Finding: a result row was cut off by the field's edge, and another peeked out below it, with no fade.
-     MUTATION: delete the `body.ag-discover::after` rule -> the first assertion fails. Another: `z-index: 60` -> the
-     stacking assertion fails (the fade would draw over the tab row at 55 and the field at 58). Another: drop
-     `pointer-events: none` -> the third fails (the last rows would be untappable). */
-  const css = read("ui/primitives.css");
-  const fade = cssRule(css, "body.ag-discover::after");
-  assert.match(fade, /position:\s*fixed/, "pinned to the screen's bottom edge");
-  assert.match(fade, /linear-gradient\(transparent 0, var\(--bg0\) var\(--s-8\)\)/, "transparent to bg0 over 32px, then solid");
-  assert.match(fade, /height:\s*calc\(var\(--dsc-dock-h\) \+ var\(--s-8\)\)/, "as tall as the Dock plus its 32px ramp");
-  assert.match(fade, /pointer-events:\s*none/, "and never takes a tap");
-  const z = Number(/z-index:\s*(\d+)/.exec(fade)?.[1]);
-  const styles = read("styles.css");
-  assert.ok(z < Number(/\.tab-bar \{[^}]*z-index:\s*(\d+)/.exec(styles)[1]), "below the tab row (55), so the Dock is drawn over it");
-  assert.ok(z < Number(/#sh-compose \{[^}]*z-index:\s*(\d+)/.exec(styles)[1]), "and below the field (58)");
-  for (const state of ["body.ag-discover {", "body.ag-discover.fp-open {", "body.ag-discover.sh-searching, body.ag-discover.kb-open {"]) {
-    assert.ok(css.includes(`${state} --dsc-dock-h:`), `the Dock's height is defined for ${state}`);
-  }
+test("Discover restyles NOTHING of the Dock: ui/primitives.css has no rule for the tab bar, the mini player, the field row or the fade", () => {
+  /* THE DOCK IS ONE UNIT (ui/dock.css, pinned by test/dock.test.js). This page once carried a parallel copy of its rules
+     (`body.ag-discover .tab-bar`, `body.ag-discover #foray-player ...`, `.ag.disc #sh-compose ...`, a `body.ag-discover::after`
+     fade) that fought the real ones once the Dock landed. What the page owes the Dock is its colour (`--dock-page-bg`) and
+     a top padding that steps aside. MUTATION: add any rule naming `.tab-bar`, `#foray-player`, `#sh-compose` or
+     `body.ag-discover::after` back to ui/primitives.css -> the first assertion fails; drop the `--dock-page-bg` line -> the
+     second fails. Harness audit: this reads the shipped stylesheet with comments stripped, not a copy. */
+  const css = read("ui/primitives.css").replace(/\/\*[\s\S]*?\*\//g, "");
+  const dockish = [...css.matchAll(/^[^{}\n]*(\.tab-bar|#foray-player|#sh-compose|ag-discover::after|\.tab-btn|--dsc-)[^{}\n]*\{/gm)].map((m) => m[0].trim()).filter((r) => !r.startsWith(".gallery-page"));   // the gallery hides the real Dock on its own page: not a restyle of it
+  assert.deepStrictEqual(dockish, [], `Dock rules duplicated on Discover: ${JSON.stringify(dockish)}`);
+  assert.match(css, /body\.ag-discover \{[^}]*--dock-page-bg:\s*var\(--bg0\)/, "the Dock fades to this page's own colour");
+  assert.match(css, /body\.ui-v2\.sh-compose\.ag-discover #view \{ padding-top: 0; \}/, "and the Dock's own top padding steps aside for the page's title");
 });
 
 test("'Make a playlist' rides above the Dock while the list is long, and the first heads sit 16 under the title", () => {
   /* Findings: the button read as missing (it is the last thing on a page that can run to fifty rows), and the Shows head
      sat 8px lower than the idle page's heads. Not seen here: that it is actually on screen (the fidelity run shows it).
-     MUTATION: delete `position: sticky` -> the first assertion fails. Another: `z-index: 40` -> the fade (54) would dim
+     MUTATION: delete `position: sticky` -> the first assertion fails. Another: `z-index: 40` -> the Dock's fade (layer 55) would dim
      the button, and the second assertion fails. Another: `margin: var(--s-6) 0 var(--s-3)` on the results head -> the
      third fails (24, not the idle heads' 16). */
   const css = read("ui/primitives.css");
   const make = cssRule(css, ".ag.disc .dsc-make");
   assert.match(make, /position:\s*sticky/, "sticky");
-  assert.match(make, /bottom:\s*calc\(var\(--dsc-dock-h\) \+ var\(--s-2\)\)/, "8 above the Dock, whatever rows the Dock has");
-  assert.ok(Number(/z-index:\s*(\d+)/.exec(make)[1]) > Number(/z-index:\s*(\d+)/.exec(cssRule(css, "body.ag-discover::after"))[1]), "above the fade");
+  assert.match(make, /bottom:\s*calc\(var\(--dock-h\) \+ var\(--safe-bottom\) \+ var\(--dock-inset\) \+ var\(--s-2\)\)/, "8 above the Dock, whatever rows the Dock has (the Dock's own --dock-h)");
+  assert.ok(Number(/z-index:\s*(\d+)/.exec(make)[1]) > Number(/\.dock-layer \{[^}]*z-index:\s*(\d+)/.exec(read("ui/dock.css"))[1]), "above the Dock layer and its fade");
   const head = cssRule(css, ".ag.disc .sh-results-head");
   const idle = cssRule(css, ".ag #sh-browse > .dsc-group:first-of-type > .ag-section-head");
   assert.match(head, /margin:\s*var\(--s-4\) 0 var\(--s-3\)/, "16 above, 12 below");
@@ -419,11 +385,12 @@ test("the page is not 'empty' while ANY group still owes an answer — the episo
 
 test("the Make button shows it is working: disabled and busy while the build waits, restored after", () => {
   /* The build waits for the search documents (seconds on a cold start); a tap that looks like nothing is the failure.
-     MUTATION: delete `paintMakePending(true)` from runPlaylistBuild -> the busy assertion fails. */
+     MUTATION: delete `paintMakePending(true, btn)` from buildPlaylistFromDiscover -> the busy assertion fails. */
   const m = mount();
   const attrs = {};
   const btn = Object.assign(makeEl("button"), {
     getAttribute: (k) => (k === "data-make-playlist" ? "tokamaks" : (attrs[k] ?? null)),
+    isConnected: true,
     setAttribute: (k, v) => { attrs[k] = String(v); },
     removeAttribute: (k) => { delete attrs[k]; },
     querySelector: () => label,
@@ -435,10 +402,10 @@ test("the Make button shows it is working: disabled and busy while the build wai
   let held = null;
   m.ctx.whenSearchDataReady = (fn) => { held = fn; };
   m.ctx.buildPlaylist = () => ({ status: "empty", suggestions: [], playlist: null });
-  m.ctx.onMakePlaylist("tokamaks");
+  m.ctx.buildPlaylistFromDiscover("tokamaks", btn);
   assert.strictEqual(btn.disabled, true, "disabled while it waits");
   assert.strictEqual(attrs["aria-busy"], "true", "and busy for assistive tech");
-  assert.strictEqual(label.textContent, "Making your playlist…", "and the label says what it is doing");
+  assert.strictEqual(label.textContent, "Building…", "and the label says what it is doing");
   held();
   assert.strictEqual(btn.disabled, false, "restored once the build ends");
   assert.strictEqual(attrs["aria-busy"], undefined);
@@ -471,7 +438,7 @@ for (const lab of [true, false]) {
        test beside lab-flag.test.js's three. This screen adds NO write: the build is `buildPlaylist` into cp_playlists
        and `logEvent("playlist_built")`, which falls to toEventRow's default (never sent). So the strongest honest test is
        that the path makes no request, either way. MUTATION: add `fetchApiJson("api/…", { method: "POST" })` (or any
-       fetch) to onMakePlaylist or runPlaylistBuild -> the request assertion fails in BOTH variants. */
+       fetch) to buildPlaylistFromDiscover -> the request assertion fails in BOTH variants. */
     const m = mount({ lab, seed: { cp_ui_v2: "true" } });
     m.state.discover = JSON.parse(read("data/discover.json"));
     m.state.itemTags = JSON.parse(read("data/item-tags.json"));
@@ -479,7 +446,7 @@ for (const lab of [true, false]) {
     m.ctx.renderAllShows();
     m.ctx.location.hash = "#/shows";
     const before = m.fetched.length;
-    m.evalIn("onMakePlaylist")("meditation");
+    m.evalIn("buildPlaylistFromDiscover")("meditation");
     await new Promise((r) => setTimeout(r, 30));
     assert.strictEqual(m.fetched.slice(before).filter((f) => f.method !== "GET").length, 0, "no write");
     assert.strictEqual(m.fetched.slice(before).length, 0, "and not a single request of any kind");
@@ -518,73 +485,6 @@ function primRule(sel) {
   while ((m = re.exec(css))) body = m[1];
   return body;
 }
-
-test("the mini player is Ember, DM Sans and lit by a 2px Glow line — not violet, not Fraunces, not a bare seam", () => {
-  /* The Discover fidelity findings of iteration 3. MUTATIONS, each run red: (a) `background: var(--violet)` in the
-     .fp-play rule; (b) `font: var(--t-headline)` (Fraunces) in the .fp-title rule; (c) `background: var(--amber)` in the
-     .fp-fill rule (the line is the playing item's light, Glow, not the listener's Ember); (d) height 3px in the
-     .fp-progress rule; (e) delete the .fp-progress rule (the legacy 3px navy track returns). Harness audit: this reads
-     the shipped stylesheet, not a copy of the rule, and the rules sit behind an id so stylesheet order cannot rescue them. */
-  const play = primRule("body.ag-discover #foray-player .fp-play");
-  assert.ok(play, "the Ember Play rule exists");
-  assert.match(play, /background:\s*var\(--ember\)/);
-  assert.match(play, /color:\s*var\(--ember-ink\)/, "and its glyph is the ink that clears AA on Ember");
-  assert.ok(!/violet/.test(play), "no violet");
-  assert.match(play, /width:\s*calc\(var\(--tap\)\s*\+\s*var\(--s-1\)\)/, "48 across: the direction's Play, above the 44 floor");
-  const title = primRule("body.ag-discover #foray-player .fp-title");
-  assert.match(title, /font:\s*var\(--t-label\)/, "the title is the Label style (DM Sans 14/600)");
-  assert.ok(!/display|headline|title\b/.test(title.replace(/--t-label/g, "")), "and never a Fraunces style");
-  const prog = primRule("body.ag-discover #foray-player .fp-progress");
-  assert.match(prog, /height:\s*calc\(var\(--s-1\)\s*\/\s*2\)/, "2px: half the 4 step");
-  assert.match(prog, /background:\s*transparent/, "the track draws nothing; only the line does");
-  const fill = primRule("body.ag-discover #foray-player .fp-fill");
-  assert.match(fill, /background:\s*var\(--glow\)/, "the line is Glow");
-  const skip = primRule("body.ui-v2 #foray-player .fp-skip .fp-skip-glyph");
-  assert.match(skip, /width:\s*var\(--icon-tab\)/, "the forward-30 glyph is drawn at the 28 tab-bar icon size inside its 44 target");
-});
-
-test("the tab bar's glyphs are sized from the sprite tokens and the current tab is Lamp, never Ember", () => {
-  /* MUTATIONS, each run red: (a) `color: var(--ember)` (or --amber) in the current-tab rule -> the Lamp assertion; (b) delete
-     the `.icon` rule -> the legacy 22px rule would size an SVG that is no longer an inline path, and the sprite glyph
-     would fall back to the UA's 300x150 default svg box, which this assertion's width catches. The Fill-versus-Regular
-     swap is test/tab-bar.test.js's subject (it needs the app's own renderTabBar). */
-  const cur = primRule('body.ag-discover .tab-bar .tab-btn[aria-current="page"]');
-  assert.ok(cur, "the current-tab rule exists");
-  assert.match(cur, /color:\s*var\(--lamp-text\)/);
-  assert.match(primRule("body.ag-discover .tab-bar .tab-btn"), /color:\s*var\(--text-2\)/, "an inert tab is text-2, not the legacy lavender");
-  assert.ok(!/ember|amber|accent/.test(cur), "Ember is the listener's own marks, not where they are");
-  const icon = primRule("body.ag-discover .tab-bar .tab-btn .icon");
-  assert.match(icon, /width:\s*var\(--icon-tab\)/);
-  assert.match(icon, /height:\s*var\(--icon-tab\)/);
-  assert.match(icon, /fill:\s*currentColor/, "the glyph takes the tab's colour");
-});
-
-test("the mini row keeps the prototype's rhythm: 44 art, 12 gaps, abutting 48 Play and forward-30, progress out of flow", () => {
-  /* Iteration 4's fidelity finding (art->title 8, Play 14px left, Play->forward 21). MUTATIONS, each run red: (a) `gap: var(--s-2)`
-     in the .fp-bar rule (art->title tightens); (b) delete `margin-left` from the .fp-skip rule (the buttons stand 12 apart and the
-     Play drifts 12px left); (c) change the .fp-bar right padding to var(--s-3) (forward-30 no longer 30 from the edge); (d) drop
-     `position: absolute` from the .fp-progress rule (the row is 66 tall, not 64). Harness audit: reads the shipped stylesheet; the
-     measured positions were checked against the prototype's own boxes in the browser (all deltas 0 at 393). */
-  const bar = primRule("body.ag-discover #foray-player .fp-bar");
-  assert.ok(bar, "the mini row rule exists");
-  assert.match(bar, /gap:\s*var\(--s-3\)/, "12 between art, title column and the controls");
-  assert.match(bar, /padding:\s*var\(--s-2\)\s+var\(--s-2\)\s+var\(--s-2\)\s+calc\(var\(--s-2\)\s*\+\s*var\(--s-1\)\s*\/\s*2\)/, "8 right (forward-30 centres 30 from the edge), 10 left");
-  assert.match(primRule("body.ag-discover #foray-player .fp-art"), /width:\s*var\(--art-mini\)/, "the 44 art tile");
-  assert.match(primRule("body.ag-discover #foray-player .fp-skip"), /margin-left:\s*calc\(var\(--s-3\)\s*\*\s*-1\)/, "pulled flush against the Play");
-  assert.match(primRule("body.ag-discover #foray-player .fp-progress"), /position:\s*absolute/, "the line does not take a row of its own");
-});
-
-test("Discover's Dock rules are scoped to Discover: no global rule restyles the tab bar or the mini on another page", () => {
-  /* WHY: iteration 3 wrote these rules as `body.ui-v2 ...`, so they moved the tab bar and the mini on every page the
-     trunk had already accepted (the ambient-app baseline: 140 shots differ). Today and Foray detail scope their own
-     Dock to `body.view-home` / `body.view-foray-detail`; the Dock unit lifts the rules to global when it lands.
-     MUTATION: turn any `body.ag-discover #foray-player` or `body.ag-discover .tab-bar` rule in ui/primitives.css
-     back into `body.ui-v2 ...` -> red. The one global Dock rule is the forward-30 glyph's size (client.js draws that
-     glyph on every page), and it is allowed by name. Harness audit: this reads the shipped stylesheet, not a copy. */
-  const css = fs.readFileSync(path.join(ROOT, "ui", "primitives.css"), "utf8");
-  const globals = [...css.matchAll(/^body\.ui-v2 (#foray-player|\.tab-bar)[^{]*\{/gm)].map((m) => m[0].trim());
-  assert.deepStrictEqual(globals, ["body.ui-v2 #foray-player .fp-skip .fp-skip-glyph {"], `unscoped Dock rules: ${JSON.stringify(globals)}`);
-});
 
 test("a small subject's overlapping squares sit on the tile, not in a sunken well, and the tile keeps the prototype's 8 / 10 rhythm", () => {
   /* Second fidelity pass (Space and Cities, 3 shows, drew a darker inset well behind the stack, so the tile read as a different

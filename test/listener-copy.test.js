@@ -311,12 +311,8 @@ test("the playlist builder hides the last query's note before building the next"
   const hide = body.indexOf("staleNote.hidden = true");
   assert.ok(hide > 0, "the stale note must be hidden");
   /* The build is deferred by whenSearchDataReady since L5 (it waits for the
-     search documents the first route no longer awaits); since Redesign 2026 that wait lives in
-     `runPlaylistBuild`, the one build both Create and Discover call, so the order to pin is
-     "hidden, then the build is started". */
-  assert.ok(hide < body.indexOf("runPlaylistBuild("), "and hidden BEFORE the build starts, not after");
-  assert.match(APP_SRC.slice(APP_SRC.indexOf("function runPlaylistBuild"), APP_SRC.indexOf("function bindCreateFormSubmit")), /whenSearchDataReady\(/,
-    "and the build still waits for the search documents");
+     search documents the first route no longer awaits). */
+  assert.ok(hide < body.indexOf("whenSearchDataReady("), "and hidden BEFORE the build starts, not after");
 });
 
 /* qa row 62: the clear-search ✕ was bound to mousedown only; Enter and Space
