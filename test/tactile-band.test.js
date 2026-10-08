@@ -373,3 +373,45 @@ test("a show never takes ultramarine or the sky next to it, so the narration tic
   }
   assert.deepStrictEqual([...seen].sort(), [0, 1, 3, 4, 5, 7], "all six show enamels are used, ultramarine (2) and sky (6) are not");
 });
+
+test("a three-way name collision resolves to three distinct codes, in the model and in the band", () => {
+  // MUTATION: delete the `first.slice(0, 2)` and later-letter rungs from tactileStationCodes (stop at head + last[0]) ->
+  //   Dashing falls back to a code Daily already holds and the distinct-codes assertion fails (the DA / DD / DD bug).
+  const shows = [
+    { id: "daily", name: "Daily" },
+    { id: "daring", name: "Daring" },
+    { id: "dashing", name: "Dashing" },
+  ];
+  const codes = p.tactileStationCodes(shows);
+  assert.deepStrictEqual([...codes.values()], ["DA", "DD", "DS"]);
+  assert.strictEqual(new Set(codes.values()).size, 3, "no two stations share a key");
+  const trio = shows.map((s) => ({ showId: s.id, show: s.name, duration: 100 }));
+  const html = p.tactileBand({ id: "trio", kind: "detail", segments: trio, renderWidth: 400 });
+  const labels = [...html.matchAll(/class="t-band__code[^"]*"[^>]*>([^<]+)</g)].map((m) => m[1]);
+  assert.deepStrictEqual(labels, ["DA", "DD", "DS"], "the band draws the model's codes, not its own");
+});
+
+test("the Now Playing chip's codes (client.js dialForayCodes) are the band's codes for the same foray", () => {
+  // MUTATION: put the old inline collision rule back in dialForayCodes (client.js) -> the chip says DA / DD / DA
+  //   while the band says DA / DD / DS and this deepStrictEqual fails.
+  const src = fs.readFileSync(path.join(ROOT, "player", "client.js"), "utf8").replace(/\r\n/g, "\n");
+  const lifted = ["dialStationCodeFor", "dialForayCodes"].map((name) => {
+    const m = new RegExp("^function " + name + "\\([^)]*\\) \\{[\\s\\S]*?\\n\\}", "m").exec(src);
+    assert.ok(m, `client.js still declares ${name}() at top level`);
+    return m[0];
+  }).join("\n");
+  const ctx = load();
+  require("node:vm").runInContext(lifted + "\nvar __codes = dialForayCodes;", ctx, { filename: "player/client.js (dialForayCodes)" });
+  const foray = [
+    ["daily", "Daily"], ["daring", "Daring"], ["dashing", "Dashing"],
+    ["origin", "Origin Stories"], ["os", "Old Souls"], ["the-owl", "The Owl Show"],
+  ];
+  const chip = [...ctx.__codes(foray).values()];
+  const html = ctx.tactileBand({
+    id: "agree", kind: "detail", renderWidth: 1000,
+    segments: foray.map(([showId, show]) => ({ showId, show, duration: 100 })),
+  });
+  const band = [...html.matchAll(/class="t-band__code[^"]*"[^>]*>([^<]+)</g)].map((m) => m[1]);
+  assert.deepStrictEqual(band, chip);
+  assert.strictEqual(new Set(chip).size, foray.length, "and every station has its own code");
+});

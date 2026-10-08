@@ -146,6 +146,44 @@ function tactileStationCode(name) {
   return (words.length > 1 ? words[0][0] + words[1][0] : (words[0] || "SH").slice(0, 2)).toUpperCase();
 }
 
+/* ONE RESOLVER for every station code on screen (review 2026-10-07). The chip,
+ * the swatches and the band each carried their own copy of the collision rule,
+ * and the copies disagreed past two shows: Daily / Daring / Dashing read DA / DD /
+ * DA in the model and DA / DD / DD in the band, so two stations shared a code and
+ * colour was the only thing telling them apart. Both callers now ask here.
+ *
+ * `shows` is an array of { id, name } in first-appearance order; the answer is a
+ * Map id -> two-letter code, and no two ids share a code. The ladder, each rung
+ * taken only if the one before it is already used by an earlier show:
+ *   1. the base code (first letters of the first two words, or the first two
+ *      letters of a single word);
+ *   2. the first word's first letter + the LAST word's first letter (the band's
+ *      documented rule);
+ *   3. the first word's first two letters;
+ *   4. the first word's first letter + each later letter of the name, in order;
+ *   5. the first word's first letter + A-Z, 0-9: a last resort that cannot run
+ *      out for any real foray, so a key never names two shows. */
+function tactileStationCodes(shows) {
+  var codes = new Map();
+  var taken = {};
+  (Array.isArray(shows) ? shows : []).forEach(function (entry) {
+    if (!entry || codes.has(entry.id)) return;
+    var name = entry.name == null ? "Show" : entry.name;
+    var words = String(name).replace(/^The\s+/i, "").trim().split(/\s+/).filter(Boolean);
+    var first = words[0] || "SH";
+    var last = words[words.length - 1] || first;
+    var head = first[0];
+    var candidates = [tactileStationCode(name), head + last[0], first.slice(0, 2)];
+    words.join("").slice(1).split("").forEach(function (letter) { candidates.push(head + letter); });
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".split("").forEach(function (letter) { candidates.push(head + letter); });
+    var pick = candidates.map(function (code) { return code.toUpperCase(); }).find(function (code) { return !taken[code]; });
+    if (!pick) pick = candidates[0].toUpperCase();
+    taken[pick] = true;
+    codes.set(entry.id, pick);
+  });
+  return codes;
+}
+
 function tactileBandRuns(segments, widths) {
   var runs = [];
   var active = null;
@@ -287,18 +325,9 @@ function tactileBand(data) {
   var progress = Math.max(0, Math.min(1, Number(d.progress) || 0));
   var progressX = tactileBandX(widths, progress);
   var current = Math.max(0, Math.min(segments.length - 1, Number(d.currentIndex) || 0));
-  var codes = new Map();
-  segments.forEach(function (segment) {
-    if (!segment.narration && !codes.has(segment.showId)) codes.set(segment.showId, tactileStationCode(segment.show));
-  });
-  var used = new Map();
-  codes.forEach(function (code, showId) {
-    if (!used.has(code)) used.set(code, showId);
-    else {
-      var words = segments.find(function (segment) { return segment.showId === showId; }).show.replace(/^The\s+/i, "").trim().split(/\s+/);
-      codes.set(showId, (code[0] + (words[words.length - 1][0] || code[1])).toUpperCase());
-    }
-  });
+
+  var codes = tactileStationCodes(segments.filter(function (segment) { return !segment.narration; })
+    .map(function (segment) { return { id: segment.showId, name: segment.show }; }));
   /* The mini band's bars fill its 8px (the viewBox is 60 high, so 3.7px of bar in
      a 28-unit rect, half the prototype's 8px). The corner radius is 2 rendered px:
      the SVG stretches x and y separately, so it is stated per axis in viewBox
