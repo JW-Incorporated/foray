@@ -799,3 +799,41 @@ test("the sampled artwork tint is cached in memory for the session and never wri
   assert.deepEqual(writes, [], "no storage route was touched: no cp_art_tint key exists");
   assert.doesNotMatch(NOW_PLAYING, /cp_art_tint/, "and the key is not named in the view at all");
 });
+
+test("sleep expiry pauses through the transport authority, so a stale reducer cannot leave audio playing", () => {
+  /* MUTATION: change `transportIsRunning()` back to `isRunning()` in setSleepTimer's callback (client.js) ->
+     the belief says "paused" while the element is audible, setRunning(false) is never called and the
+     pause assertion fails (the timer reset to Off and the audio kept going). */
+  const m = /^let sleepMinutes = 0;\nlet sleepTimer = null;\nfunction setSleepTimer\(minutes\) \{[\s\S]*?\n\}/m.exec(CLIENT);
+  assert.ok(m, "client.js still declares the sleep timer at top level");
+  const run = ({ believed, audible }) => {
+    const timers = [];
+    const calls = [];
+    const painted = [];
+    const context = {
+      setTimeout: (fn, ms) => { timers.push({ fn, ms }); return timers.length; },
+      clearTimeout: () => {},
+      Math, Number,
+      isRunning: () => believed,
+      transportIsRunning: () => believed || audible,
+      setRunning: (want, source) => { calls.push([want, source]); },
+      ui: { sleepBtn: {} },
+      window: { DialNowPlaying: { paintSleep: (_btn, minutes) => painted.push(minutes) } },
+    };
+    vm.createContext(context);
+    vm.runInContext(m[0] + "\nvar __set = setSleepTimer;", context, { filename: "player/client.js (setSleepTimer)" });
+    context.__set(15);
+    assert.equal(timers.length, 1);
+    assert.equal(timers[0].ms, 15 * 60 * 1000);
+    timers[0].fn();
+    return { calls, painted };
+  };
+  const stale = run({ believed: false, audible: true });
+  assert.deepEqual(stale.calls, [[false, "sleep"]], "audible while the reducer says paused: expiry still pauses");
+  assert.deepEqual(stale.painted, [15, 0], "and the chip returns to Off");
+  const quiet = run({ believed: false, audible: false });
+  assert.deepEqual(quiet.calls, [], "nothing audible: expiry has nothing to pause");
+  assert.deepEqual(quiet.painted, [15, 0]);
+  const live = run({ believed: true, audible: true });
+  assert.deepEqual(live.calls, [[false, "sleep"]]);
+});

@@ -1836,24 +1836,15 @@ function dialQueueCount() {
   catch (_) { return 0; }
 }
 
-/** One station code per show in a foray (BUILD-NOTES 3.6): a collision takes
-    the first letter of the show's last word as its second letter, the band's
-    own rule, so the chip, the swatches and the band agree on the key. */
+/** One station code per show in a foray (BUILD-NOTES 3.6). The collision rule
+    is `tactileStationCodes` in ui/primitives.js, the SAME function the band
+    draws its labels from, so the chip, the swatches and the band cannot
+    disagree on a key (they did past two shows: DA / DD / DA against DA / DD / DD). */
 function dialForayCodes(shows) {
-  const codes = new Map();
-  const used = new Set();
-  for (const [showId, show] of shows) {
-    if (codes.has(showId)) continue;
-    let code = dialStationCodeFor(show);
-    const words = String(show).replace(/^The\s+/i, "").trim().split(/\s+/);
-    if (used.has(code)) code = (code[0] + ((words[words.length - 1] || "")[0] || code[1])).toUpperCase();
-    /* Past the documented rule (the last word starts like the second): the
-       first word's first two letters, so a key never names two shows. */
-    if (used.has(code)) code = (words[0] || code).slice(0, 2).toUpperCase();
-    used.add(code);
-    codes.set(showId, code);
-  }
-  return codes;
+  const entries = [];
+  for (const [showId, show] of shows) entries.push({ id: showId, name: show });
+  if (typeof tactileStationCodes === "function") return tactileStationCodes(entries);
+  return new Map(entries.map((entry) => [entry.id, dialStationCodeFor(entry.name)]));
 }
 
 function dialForaySegments(resolved, currentIndex) {
@@ -2906,7 +2897,11 @@ function setSleepTimer(minutes) {
     sleepTimer = setTimeout(() => {
       sleepTimer = null;
       sleepMinutes = 0;
-      if (isRunning()) setRunning(false, "sleep");
+      /* `transportIsRunning()`, the path every transport surface asks (#689):
+         `isRunning()` is only the app's belief, and with the reducer stale
+         while the element is still audible it said "not running", so the timer
+         reset to Off and the audio kept playing. */
+      if (transportIsRunning()) setRunning(false, "sleep");
       window.DialNowPlaying?.paintSleep?.(ui?.sleepBtn, 0);
     }, sleepMinutes * 60 * 1000);
   }
