@@ -67,6 +67,48 @@ async function closeNowPlaying(page) {
   await wait(page, 400);
 }
 
+/** The earlier steps leave a Foray on the bar; Yours > Up Next shows the playing
+    row only for an episode that is in the list. Put the first one back on the bar
+    and repaint the page, so the playing row is drawn the way it was in
+    mini-player-library. */
+async function queueWithPlaying(page, itemId) {
+  await startPlayback(page, itemId);
+  await page.evaluate(() => { if (typeof renderCurrentPage === "function") renderCurrentPage(); });
+  await wait(page, 400);
+}
+
+/** Yours > Up Next: open the action row (the ⋯) of the n-th queue row. Opens
+    only when it is not already open, so a step that repeats the route does not
+    toggle it shut. */
+async function openQueueActions(page, n) {
+  await page.waitForSelector("#yours-panel-upnext .yours-qwrap", { state: "visible", timeout: 15000 });
+  const row = page.locator("#yours-panel-upnext .yours-qwrap").nth(n);
+  if (!(await row.locator(".yours-qtools").count())) await row.locator('[data-action^="more:"]').click();
+  await row.locator(".yours-qtools").waitFor({ state: "visible", timeout: 10000 });
+  await wait(page, 500);
+}
+
+/** Yours > Up Next: press Clear and wait for the confirm sheet. */
+async function openClearSheet(page) {
+  /* The step before held its undo toast up; it does not belong in this capture. */
+  await page.evaluate(() => { if (typeof hideYoursUndo === "function") hideYoursUndo(); });
+  await page.waitForSelector('#yours-panel-upnext [data-action="clear"]', { state: "visible", timeout: 15000 });
+  await page.locator('#yours-panel-upnext [data-action="clear"]').click();
+  await page.waitForSelector("#yours-clear-sheet:not([hidden])", { state: "visible", timeout: 10000 });
+  await wait(page, 600);
+}
+
+/** Yours > Up Next: Remove on the n-th row, then wait for the undo toast. */
+async function removeQueueRow(page, n) {
+  await openQueueActions(page, n);
+  await page.locator("#yours-panel-upnext .yours-qwrap").nth(n).locator('[data-action^="rm:"]').click();
+  await page.waitForSelector("#yours-toast .toast.is-visible", { state: "visible", timeout: 10000 });
+  /* The toast's clock stops while it is touched, so a press holds it up for the
+     capture instead of racing the 4 seconds the harness's settle may take. */
+  await page.locator("#yours-toast .toast").dispatchEvent("pointerdown");
+  await wait(page, 500);
+}
+
 async function typeSearch(page, text) {
   await page.waitForSelector("#sh-input", { timeout: 15000 });
   await page.fill("#sh-input", text);
@@ -176,6 +218,11 @@ export function appStates(fx) {
         { label: "mini-player-up-next", route: "#/queue" },
         { label: "now-playing", route: "#/library", run: (page) => openForayNowPlaying(page) },
         { label: "now-playing-closed", route: "#/library", run: (page) => closeNowPlaying(page) },
+        /* Yours, Up Next (tactile `library`, BUILD-PLAN 2.12 and 2.16): the second
+           row's action row open, then Remove pressed and the undo toast up. */
+        { label: "up-next-actions", route: "#/library", run: async (page) => { await queueWithPlaying(page, ep0); await openQueueActions(page, 1); } },
+        { label: "up-next-remove-toast", route: "#/library", run: async (page) => { await queueWithPlaying(page, ep0); await removeQueueRow(page, 1); } },
+        { label: "up-next-clear-sheet", route: "#/library", run: async (page) => { await queueWithPlaying(page, ep0); await openClearSheet(page); } },
       ],
     },
     {

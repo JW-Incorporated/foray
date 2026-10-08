@@ -847,7 +847,7 @@ keyboard opens (it hides; the Find field stays).
 
 ### 4.5 Yours
 - Title "Yours" display-xl, knob keycap right.
-- Chip strip (horizontal scroll, 36px chips, 8 gap, 16 gutters): Forays,
+- Chip strip (horizontal scroll, 36px chips, 12 gap - corrected from 8 after the i4 measurement of the prototype, 16 gutters): Forays,
   Shows, Saved, Playlists, Up Next (count badge), History. Selected chip
   per 3.3; the strip is `role="tablist"`.
 - Forays: cards with `.band--mini`, title 17/700, readout, resume progress.

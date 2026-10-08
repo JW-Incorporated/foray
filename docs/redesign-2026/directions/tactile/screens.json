@@ -149,7 +149,7 @@
         },
         "rows": {
           "prototype": ".row",
-          "app": ".ep-row",
+          "app": ".row-queue",
           "mode": "all"
         },
         "mini": {
@@ -547,24 +547,27 @@
       "prototype": {
         "route": "#/toast"
       },
-      "app": null,
+      "app": {
+        "state": "player",
+        "step": "up-next-remove-toast"
+      },
       "regions": {
         "header": {
           "prototype": ".top",
-          "app": null
+          "app": ".page-head"
         },
         "rows": {
           "prototype": ".row",
-          "app": null,
+          "app": ".row-queue",
           "mode": "all"
         },
         "mini": {
           "prototype": "#mini",
-          "app": null
+          "app": "#foray-player"
         },
         "tabBar": {
           "prototype": "#tabs",
-          "app": null
+          "app": "#tab-bar"
         }
       }
     }
