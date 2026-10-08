@@ -624,6 +624,23 @@ function stretchBridgeSentence(knownLabel, stretchLabel) {
   return wordCount(both) <= TODAY_BRIDGE_WORDS ? both : stretchBridgeText(stretchLabel);
 }
 
+/** The same sentence for a first run, which has no "usual subjects" to be outside
+    of: nothing has been listened to, so claiming a habit would be declaring state
+    the app has not observed (product principle 2). It still names both ends by
+    subject and still says the change of pace is deliberate. */
+function firstRunBridgeSentence(knownLabel, stretchLabel) {
+  const both = `A wide bet, on purpose: from ${knownLabel} into ${stretchLabel}.`;
+  return wordCount(both) <= TODAY_BRIDGE_WORDS ? both : `A wide bet, on purpose: ${stretchLabel}.`;
+}
+
+/** An Also today row's why-line on a first run: about the SUBJECT the pick sits in,
+    never about the listener's habits or a show they follow (they have none yet).
+    BUILD-NOTES 4.1: "subject-based why-lines (never 'your usual subjects')". */
+function firstRunAlsoWhy(branch) {
+  const line = `A first look at ${subjectLabel(branch)}, chosen to start wide.`;
+  return wordCount(line) <= TODAY_WHY_WORDS ? line : "A first look at a new subject, chosen to start wide.";
+}
+
 /** The slots Also today draws: up to three top picks (in the order buildCards
     dealt them), and the one Stretch slot. */
 function todayAlsoSlots() {
@@ -634,26 +651,31 @@ function todayAlsoSlots() {
   };
 }
 
-function todayBridgeData(stretch, tops) {
+function todayBridgeData(stretch, tops, { firstRun = false } = {}) {
   /* The "known" end is the dealt top slot the listener's interests rank highest:
      the nearest thing they already like to the pick Home is stretching them to. */
   const known = [...tops].sort((a, b) =>
     interestScore({ topics: [b.branch] }) - interestScore({ topics: [a.branch] }))[0] || null;
   const stretchLabel = subjectLabel(stretch.branch);
+  const sentenceFor = firstRun ? firstRunBridgeSentence : stretchBridgeSentence;
   return {
     ...todayEpisodeData(stretch.item, { ctx: "also-today", branch: stretch.branch }),
-    sentence: known ? stretchBridgeSentence(subjectLabel(known.branch), stretchLabel) : stretchBridgeText(stretchLabel),
-    knownArtwork: known ? known.item.artwork_url || "" : "",
+    sentence: known ? sentenceFor(subjectLabel(known.branch), stretchLabel)
+      : (firstRun ? `A wide bet, on purpose: ${stretchLabel}.` : stretchBridgeText(stretchLabel)),
+    /* A first run has listened to nothing, so there is no known artwork to show:
+       the known end is the subject itself, drawn as a tile (BUILD-NOTES 3.8). */
+    knownSubject: firstRun,
+    knownArtwork: known && !firstRun ? known.item.artwork_url || "" : "",
     knownTitle: known ? subjectLabel(known.branch) : "",
     knownInitials: known ? todayInitials(subjectLabel(known.branch)) : "KN",
   };
 }
 
-function todayAlsoHtml() {
+function todayAlsoHtml({ firstRun = false } = {}) {
   const { tops, stretch } = todayAlsoSlots();
   if (!tops.length && !stretch) return "";
-  const rows = tops.map(s => tactileEpisodeRow(todayEpisodeData(s.item, { ctx: "also-today", why: s.item.hook || "", branch: s.branch })));
-  const bridge = stretch ? tactileBridgeCard(todayBridgeData(stretch, tops)) : "";
+  const rows = tops.map(s => tactileEpisodeRow(todayEpisodeData(s.item, { ctx: "also-today", why: firstRun ? firstRunAlsoWhy(s.branch) : s.item.hook || "", branch: s.branch })));
+  const bridge = stretch ? tactileBridgeCard(todayBridgeData(stretch, tops, { firstRun })) : "";
   /* The bridge sits second, as in the prototype: a row, the bridge, the rest. */
   const ordered = rows.length ? [rows[0], bridge, ...rows.slice(1)] : [bridge];
   return `<section class="today-sect today-also" aria-labelledby="today-also-title">
@@ -756,13 +778,14 @@ function renderHomeV2() {
   const picks = homeRailPicks();
   const resume = todayResumeEntry(picks);
   const pick = todayForayPick(picks, resume);
+  const firstRun = todayIsFirstRun(picks);
   $("#view").innerHTML = `
     <div class="today">
       ${todayHeaderHtml()}
       ${testTrackNoticeHtml()}
       ${todayResumeHtml(resume)}
-      ${todayHeroHtml(pick ? todayHeroModel(pick) : null, { firstRun: todayIsFirstRun(picks) })}
-      ${todayAlsoHtml()}
+      ${todayHeroHtml(pick ? todayHeroModel(pick) : null, { firstRun })}
+      ${todayAlsoHtml({ firstRun })}
       ${todayPlaylistsHtml(picks.playlists)}
       ${tactileGauge({})}
     </div>`;

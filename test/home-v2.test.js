@@ -236,7 +236,8 @@ test("Also today is three picks with the bridge card second; each row links its 
   /* MUTATION: put the bridge last (drop the reorder in todayAlsoHtml) -> the
      position assertion fails. MUTATION 2: use item.title for the why-line ->
      the hook assertion fails. */
-  const m = ui2Mount();
+  // A listener who has listened: a first run's rows say something else (test/today-first-run.test.js).
+  const m = ui2Mount({ seed: { cp_history: JSON.stringify(["earlier-listen"]) } });
   m.ctx.renderHome();
   const also = SECTION(m.view(), "today-also", "today-playlists");
   const kinds = [...also.matchAll(/class="(row-episode|card bridge)[ "]/g)].map(x => x[1]);
@@ -285,9 +286,10 @@ test("the bridge sentence is never a taste-match reason: it says the pick is out
   // usual subjects, never a reason implying it matches their taste.
   // MUTATION: change the sentence to `Because you like ${known}, try ${stretch}.`
   // -> the "because you" and "outside your usual" assertions fail.
-  const m = ui2Mount();
+  // A listener who has listened: a first run has no usual subjects to be outside of (test/today-first-run.test.js).
+  const m = ui2Mount({ seed: { cp_history: JSON.stringify(["earlier-listen"]) } });
   m.ctx.renderHome();
-  const lines = [...m.view().matchAll(/class="bridge__sentence">([^<]*)<\/p>/g)].map((mm) => mm[1]);
+  const lines =[...m.view().matchAll(/class="bridge__sentence">([^<]*)<\/p>/g)].map((mm) => mm[1]);
   assert.ok(lines.length > 0, "expected at least one bridge sentence to inspect");
   for (const line of lines) {
     assert.doesNotMatch(line, /because you/i, `a bridge sentence must never read as a taste-match reason: "${line}"`);

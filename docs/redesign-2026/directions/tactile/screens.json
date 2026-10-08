@@ -214,20 +214,24 @@
       "regions": {
         "header": {
           "prototype": ".top",
-          "app": ".topbar"
+          "app": ".today-top"
         },
         "hero": {
           "prototype": ".hero",
-          "app": ".hv2-jbi-card"
+          "app": ".today-hero"
         },
         "primary": {
           "prototype": ".hero__keys .keycap",
-          "app": ".hv2-play"
+          "app": ".today-hero__keys .keycap"
         },
         "rows": {
           "prototype": ".row",
-          "app": ".mini-card",
+          "app": ".today .row-episode",
           "mode": "all"
+        },
+        "bridge": {
+          "prototype": ".bridge",
+          "app": ".today .bridge"
         },
         "tabBar": {
           "prototype": "#tabs",
