@@ -165,6 +165,7 @@ function yoursShowParts(tile) {
 function yoursCloseShowActions({ restoreFocus = false } = {}) {
   const panel = $("#yours-panel-shows");
   if (!panel || typeof panel.querySelectorAll !== "function") return;
+  if (typeof panel._clearSwallow === "function") panel._clearSwallow();
   [...panel.querySelectorAll(".shows-tile.is-open")].forEach((tile) => {
     const parts = yoursShowParts(tile);
     tile.classList.remove("is-open");
@@ -234,10 +235,19 @@ function bindYoursShows(panel) {
   if (!panel || panel._showsBound) return;
   panel._showsBound = true;
   const tileOf = (node) => (node && typeof node.closest === "function" ? node.closest(".shows-tile") : null);
+  /* Set by the long press, used up by the click its release makes. A release
+     that makes no click (the finger slid off, the browser sent a contextmenu
+     instead) would leave it set, so the next gesture (pointerdown), any key and
+     the group closing all clear it: the next ordinary tap always opens the show. */
+  let swallowClick = false;
+  panel._clearSwallow = () => { swallowClick = false; };
   panel.addEventListener("click", (e) => {
-    const link = e.target && typeof e.target.closest === "function" ? e.target.closest(".shows-tile__link") : null;
-    if (link && link._swallowClick) {
-      link._swallowClick = false;
+    /* The click a long press ends with. The group opened under the finger and
+       covers the artwork (the link is inert), so the browser sends that click to
+       the nearest ancestor of where the press began and where it ended: the
+       tile, never the link. It is swallowed wherever it lands, once. */
+    if (swallowClick) {
+      swallowClick = false;
       if (typeof e.preventDefault === "function") e.preventDefault();
       return;
     }
@@ -251,6 +261,7 @@ function bindYoursShows(panel) {
     else if (verb === "unfollow") { if (typeof e.preventDefault === "function") e.preventDefault(); yoursUnfollow(id); }
   });
   panel.addEventListener("keydown", (e) => {
+    swallowClick = false;
     if (e.key === "Escape" && panel.querySelector(".shows-tile.is-open")) {
       if (typeof e.preventDefault === "function") e.preventDefault();
       yoursCloseShowActions({ restoreFocus: true });
@@ -261,13 +272,14 @@ function bindYoursShows(panel) {
   panel.addEventListener("pointerdown", (e) => {
     const link = e.target && typeof e.target.closest === "function" ? e.target.closest(".shows-tile__link") : null;
     stopPress();
+    swallowClick = false;
     if (!link) return;
     press = {
       x: e.clientX, y: e.clientY,
       timer: setTimeout(() => {
         press = null;
-        link._swallowClick = true;
-        yoursOpenShowActions(tileOf(link));
+        yoursOpenShowActions(tileOf(link));   // closes any open group, which clears the flag: set it after
+        swallowClick = true;
       }, YOURS_LONG_PRESS_MS),
     };
   });

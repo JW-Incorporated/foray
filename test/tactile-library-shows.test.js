@@ -308,8 +308,22 @@ test("a chip press closes an open Unfollow, so it is not open again on the way b
 test("a long press (500ms) and the context menu reveal Unfollow; lifting or moving cancels; the click that ends a long press never opens the show", () => {
   /* MUTATION 1: arm the timer at a different delay (YOURS_LONG_PRESS_MS) - the
      500 assertion fails.
-     MUTATION 2: drop `link._swallowClick = true` - the swallowed-click
+     MUTATION 2: drop `swallowClick = true` in the press timer - the swallowed-click
      assertion fails (a long press would open the show it was only asking about).
+     MUTATION 2b (the bug this test was rewritten for): scope the swallow to the
+     link (`if (swallowClick && e.target.closest(".shows-tile__link"))` in the
+     click handler, which is what the old per-link flag amounted to) - the
+     tile-targeted release click is not swallowed and the first swallow
+     assertion fails.
+     MUTATION 2c: set `swallowClick = true` BEFORE `yoursOpenShowActions(...)` in
+     the timer (opening closes the open group, which clears the flag) - the same
+     first swallow assertion fails.
+     MUTATION 2d: delete `swallowClick = false` from the pointerdown handler -
+     the "release that made no click" assertion fails (the next tap is eaten).
+     MUTATION 2e: delete `swallowClick = false` from the click handler's swallow
+     branch (never used up) - the swallow outlives its click and the next
+     click, the ⋯ that closes the group, is eaten: the "⋯ closes the group"
+     assertion fails.
      MUTATION 3: drop `stopPress` from the pointerup list - the cancel
      assertion fails (a tap would open Unfollow half a second late).
      MUTATION 4: delete the contextmenu handler - the last assertion fails.
@@ -327,8 +341,43 @@ test("a long press (500ms) and the context menu reveal Unfollow; lifting or movi
   armed.fn();
   assert.strictEqual(groupOf(t).hidden, false, "the long press reveals Unfollow");
   assert.strictEqual(m.doc.activeElement, groupOf(t).querySelector("button"), "and focus goes to it");
-  assert.strictEqual(fire(m, "click", link), true, "the click the release makes is swallowed");
-  assert.strictEqual(fire(m, "click", link), false, "but only that one: the next tap follows the link");
+  /* The release click the way Chromium delivers it. The group is open over the
+     artwork and the link is inert, so the click's target is the nearest common
+     ancestor of the press (the link) and the release (the group): the TILE
+     (<li>), never the link. The earlier version of this test fired it at the
+     link, which cannot happen in a browser, and passed while the real app ate
+     the next tap (the flag lived on the link and nothing used it up). */
+  assert.ok(link.hasAttribute("inert"), "the link is inert by then, so no click can target it");
+  assert.strictEqual(fire(m, "click", t), true, "the click the release makes (target: the tile) is swallowed");
+  fire(m, "keydown", groupOf(t).querySelector("button"), { key: "Escape" });
+  assert.strictEqual(groupOf(t).hidden, true, "Escape closes the group");
+  assert.ok(!link.hasAttribute("inert"), "and the link is live again");
+  fire(m, "pointerdown", link, { clientX: 100, clientY: 300 });
+  m.timers.pop();
+  fire(m, "pointerup", link);
+  assert.strictEqual(fire(m, "click", link), false, "the next ordinary tap on that tile is NOT swallowed: it follows the link");
+
+  /* Again, the release landing on the group itself, then closing by the tile's
+     own ⋯ rather than Escape. */
+  fire(m, "pointerdown", link, { clientX: 100, clientY: 300 });
+  m.timers.pop().fn();
+  assert.strictEqual(groupOf(t).hidden, false);
+  assert.strictEqual(fire(m, "click", groupOf(t)), true, "a release that lands on the group is swallowed too");
+  fire(m, "click", moreOf(t));
+  assert.strictEqual(groupOf(t).hidden, true, "the ⋯ closes the group");
+  assert.strictEqual(fire(m, "click", link), false, "and the tap after that follows the link");
+
+  /* A long press whose release makes no click at all (the finger slid off the
+     tile): the flag must not outlive the gesture. The next gesture starts with a
+     pointerdown, and its tap is not swallowed. */
+  fire(m, "pointerdown", link, { clientX: 100, clientY: 300 });
+  m.timers.pop().fn();
+  fire(m, "pointerup", link);   // no click follows
+  /* the group is still open: only the next pointerdown can clear the flag here */
+  fire(m, "pointerdown", link, { clientX: 100, clientY: 300 });
+  m.timers.pop();
+  fire(m, "pointerup", link);
+  assert.strictEqual(fire(m, "click", link), false, "a release that made no click does not leave a swallow behind");
 
   fire(m, "pointerdown", tileOf(m, "show-4").querySelector(".shows-tile__link"), { clientX: 10, clientY: 10 });
   const tap = m.timers.pop();
