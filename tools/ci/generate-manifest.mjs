@@ -168,6 +168,8 @@ const SHELL = [
   "ui/onboarding.css",
   /* Redesign 2026 (ambient): Foray detail. A stylesheet, so listed by name. */
   "ui/foray-detail.css",
+  /* Redesign 2026 (ambient): Settings, Tuning, About and the gear's Sheet. */
+  "ui/settings.css",
   /* Redesign 2026 (ambient): the Episode page. A stylesheet, so listed by name. */
   "ui/episode.css",
   /* Redesign 2026 (ambient): the icon sprite ui/icons.svg, fetched by every `<use href>` agIcon() writes.

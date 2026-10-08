@@ -710,8 +710,11 @@ test("12. the Room is wired: the page links its stylesheet, the drawer reopens i
   const html = read("index.html");
   const links = [...html.matchAll(/<link rel="stylesheet" href="([^"]+)">/g)].map((x) => x[1]);
   assert.ok(links.includes("ui/onboarding.css") && links.indexOf("ui/onboarding.css") > links.indexOf("ui/tokens.css"), "linked after the tokens it reads");
-  assert.match(html, /<button class="drawer-item as-btn" id="intro-replay" type="button">What 4a does<\/button>/, "Settings' entry");
-  assert.match(read("ui/drawer.js"), /\$\("#intro-replay"\);\s*if \(intro\) intro\.addEventListener\("click", \(\) => showWhatFouraDoes\(\)\);/, "bound to the Room");
+  /* MERGE NOTE (ambient-settings-tuning-about): the drawer is gone, so the Room's replay button went with it. Settings' "What 4a does"
+     row (ui/settings.js, `{ key: "what" }`) now opens the short text Sheet, not the Room; ui/onboarding.js still exports
+     `showWhatFouraDoes` for a caller that wants the Room again. MUTATION: drop the row from ST_MENU -> red. */
+  assert.match(read("ui/settings.js"), /label: "What 4a does"/, "Settings' entry");
+  assert.match(read("ui/onboarding.js"), /function showWhatFouraDoes\(\) \{\s*if \(\$\("#onboarding-room"\)\) return;\s*openOnboardingRoom\(\{ replay: true \}\);/, "the Room can still be replayed");
   const states = read("tools/ui-lab/lib/states.mjs");
   assert.match(states, /id: "first-run",[\s\S]*?ready: "#onboarding-room"/, "the harness waits for the Room");
   assert.doesNotMatch(states, /#first-time-sheet/, "and not for the retired sheet");

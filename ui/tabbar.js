@@ -53,7 +53,9 @@ function tabForHash(hash) {
   const h = currentHash(hash);
   if (/^#\/(shows($|\/)|show\/|category\/)/.test(h)) return "search";
   if (/^#\/(playlists$|playlist\/|subject\/|create$)/.test(h)) return "search";
-  if (/^#\/(library$|queue$|forays$|foray\/|starred-shows$|interests$)/.test(h)) return "library";
+  if (/^#\/(library$|queue$|forays$|foray\/|starred-shows$)/.test(h)) return "library";
+  /* Settings, Tuning (#/interests) and About sit behind the gear on Today, so they belong to Today's tab. */
+  if (/^#\/(settings$|interests$|about$)/.test(h)) return "home";
   if (/^#\/episode\//.test(h)) return "search"; // reached from a show/search result
   return "home";
 }

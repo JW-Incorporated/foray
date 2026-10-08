@@ -676,6 +676,8 @@ async function deleteMyData({ deviceOnly = false } = {}) {
     state.interests = {};
     interestsSetThisSession = new Set();
     loadInterests();
+    /* The purge removed `cp_theme` too: the room goes back to following the phone. */
+    applyStoredTheme();
     state._interestsGen = (state._interestsGen || 0) + 1;
     state.forayResume = null;
     state.forayPlaying = null;

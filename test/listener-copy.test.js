@@ -350,15 +350,16 @@ test("an unplayable clip says so in plain words and keeps the raw reason off scr
   assert.ok(html.includes('data-reason="segment x is not in data/segments.json"'));
 });
 
-/* Persona row 68: taxonomy ids printed under every slider. MUTATION: put the
-   `interest-row-path` span back. */
-test("the Interests rows show a label, never a taxonomy id", () => {
+/* Persona row 68: taxonomy ids printed under every slider. Tuning (Redesign 2026) has no sliders; the rule stands for
+   its rows. MUTATION: print `node.id` as the row's text, or drop the name element's `aria-labelledby` link. */
+test("the Tuning rows show a label, never a taxonomy id", () => {
   const { ctx, state } = mountApp();
   state.interests = { "engineering/energy-fusion": 0.7 };
-  const html = ctx.interestSliderRow({ id: "engineering/energy-fusion", label: "Fusion", parent: "engineering", weight: 0.5 });
+  const html = ctx.interestTuneRow({ id: "engineering/energy-fusion", label: "Fusion", parent: "engineering", weight: 0.5 });
   assert.ok(!html.includes(">engineering/energy-fusion<"), html);
-  assert.match(html, />Back to 4a's pick</);
-  assert.match(html, /aria-label="Fusion: back to 4a(&#39;|')s pick"/, "each reset names its row");
+  assert.match(html, />Fusion</, "the row is named in words");
+  assert.match(html, />4a(&#39;|')s pick</, "the middle state is 4a's pick, in the listener's words");
+  assert.match(html, /aria-labelledby="tune-name-engineering\/energy-fusion"/, "the group is named by the row's own label");
 });
 
 test("REVIEW: the returning-listener popup claims a stretch pick only where Home actually has one", () => {

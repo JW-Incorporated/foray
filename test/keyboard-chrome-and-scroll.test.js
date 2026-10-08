@@ -316,9 +316,14 @@ test("every render function routes through setBodyClass — no direct body.class
 
      MUTATION: revert renderInterests to `document.body.className =
      "view-page"`. This fails. RUN: failed as named. */
-  const assignments = APP_SRC.match(/document\.body\.className\s*=/g) || [];
-  assert.strictEqual(assignments.length, 1,
-    `only setBodyClass may assign document.body.className; found ${assignments.length} assignments`);
+  /* Comments are stripped first: this count used to be 1 only because interests.js's header comment QUOTED the old
+     direct write, which says nothing about the code. setBodyClass assigns through a local alias (`body.className =`),
+     so the honest numbers are: no `document.body.className =` anywhere, and exactly the one aliased write. */
+  const code = APP_SRC.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/^\s*\/\/.*$/gm, " ");
+  const direct = code.match(/document\.body\.className\s*=/g) || [];
+  assert.strictEqual(direct.length, 0, `only setBodyClass may assign the body's className; found ${direct.length} direct assignments`);
+  const aliased = code.match(/\bbody\.className\s*=/g) || [];
+  assert.strictEqual(aliased.length, 1, `exactly one aliased write (setBodyClass's); found ${aliased.length}`);
 });
 
 /* ==================================================================== */

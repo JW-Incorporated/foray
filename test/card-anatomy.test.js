@@ -378,10 +378,10 @@ test("the Interests page names a lone root once: its card, with no heading resta
   const root = { id: "adventure", label: "Adventure", parent: null, weight: 0.5 };
   const leaf = { id: "adventure/climbing", label: "Climbing", parent: "adventure", weight: 0.2 };
   const lone = run(`interestGroupHtml(${JSON.stringify({ root, rows: [root] })})`);
-  assert.doesNotMatch(lone, /interest-group-label/, "a lone root: the card names itself");
+  assert.doesNotMatch(lone, /st-group-label/, "a lone root: the row names itself");
   assert.strictEqual((lone.match(/Adventure/g) || []).length >= 1, true);
   const grouped = run(`interestGroupHtml(${JSON.stringify({ root, rows: [root, leaf] })})`);
-  assert.match(grouped, /<h3 class="interest-group-label">Adventure<\/h3>/, "a root with a sub-topic keeps the heading that gathers them");
+  assert.match(grouped, /<h3 class="st-group-label t-headline">Adventure<\/h3>/, "a root with a sub-subject keeps the heading that gathers them");
 });
 
 test("a came-from tile is the art, then the name to three lines, and a show with no page opens its Apple page", () => {
@@ -414,9 +414,12 @@ test("a tab's root page has no ‹; a page you were sent to keeps one", () => {
   assert.match(body("renderShowIndexPage"), /\$\{tabRoot \? "" : `<a class="back" href="#\/">‹<\/a>`\}/, "the shared template omits it on request");
   assert.match(body("renderAllShows"), /`, \{ tabRoot: true \}\);/, "Search asks");
   assert.doesNotMatch(body("renderCategory"), /tabRoot/, "a category page is pushed: it keeps its ‹");
-  for (const fn of ["renderPlaylists", "renderQueue", "renderForays", "renderInterests"]) {
+  for (const fn of ["renderPlaylists", "renderQueue", "renderForays"]) {
     assert.match(body(fn), /class="back"/, `${fn} is pushed from a tab and keeps its ‹`);
   }
+  /* Tuning, Settings and About (Redesign 2026) share one head, stHeadHtml, whose Back chevron is the history-aware a.back. */
+  assert.match(body("renderInterests"), /stPageHtml\(/, "Tuning is a Settings page: it wears the shared head");
+  assert.match(body("stHeadHtml"), /<a class="back st-back /, "the shared head keeps its ‹ (a.back, the history-aware one)");
 });
 
 test("search's shows tier wears the eyebrow its Episodes and Playlists tiers do, only while it has rows", () => {
