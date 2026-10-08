@@ -612,7 +612,7 @@ const leadEpisode = (html, root) =>
     sheet over it) and returns the four dealt subjects, stretch slot first. */
 function firstRunHome(m) {
   m.ctx.renderHome();
-  assert.match(sheetTitle(m), /Podcasts, stitched around you/, "the first-run screen must be open over Home");
+  assert.match(sheetTitle(m), /Podcasts, lined up around you/, "the first-run screen must be open over Home");
   const before = dealtRoots(homeHtml(m));
   assert.strictEqual(before.length, 4, "fixture: the pre-pick Home dealt four subject cards");
   return before;

@@ -336,7 +336,7 @@ test("headline, sub line, the Play key and Just show me, in that order, with no 
   m.ctx.showFirstTimeExplainerOnce();
   const panel = panelOf(m);
   const title = m.body.querySelector("#first-time-sheet-title");
-  assert.strictEqual(title.textContent, "Podcasts, stitched around you.");
+  assert.strictEqual(title.textContent, "Podcasts, lined up around you.");
   assert.strictEqual(title.tagName, "H2");
   assert.ok(title.classList.contains("display"), "the display role (2.25rem)");
   assert.strictEqual(panel.getAttribute("aria-labelledby"), "first-time-sheet-title");

@@ -328,7 +328,7 @@ let onboardingHeld = false;
    NO NETWORK WRITE. Nothing here signs up, refreshes a token or POSTs an
    event; playing goes through `playHomeTarget`, the same path as Today's key,
    whose events stay local in a lab build (test/lab-flag.test.js). */
-const ONB_HEADLINE = "Podcasts, stitched around you.";
+const ONB_HEADLINE = "Podcasts, lined up around you.";
 const ONB_SUB = "4a picks real shows each day and lines up the best parts into one listen.";
 const ONB_PLAY = "Play today’s foray";
 const ONB_PLAY_AGAIN = "Play";
