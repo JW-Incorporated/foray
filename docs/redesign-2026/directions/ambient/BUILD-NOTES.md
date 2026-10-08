@@ -1232,3 +1232,65 @@ the pixel numbers are 11.2's, checked against the round-4 prototype's `.onb-*` r
     `onboarding-dawn-i2`. The rolling `ambient-app` baseline is not re-recorded (shared by every screen branch; it
     re-locks on merge). `ambient-gallery` compared 123/123 exact. Gates on `first-run`: 0 new against the known debt;
     axe: only the app-wide `meta-viewport` (the no-zoom ruling).
+## 13. Foray detail, as built (2026-10-07, branch `redesign/ambient-foray-detail`)
+
+Decisions the builder made while no one could be asked; each is also in the code or a test.
+
+1. **The mid scrim stop is 236, not 276 (and the ramp starts at 120, iteration 2).** §10.1's stops assume an eyebrow at `safe-top + 276`. The prototype's own stack puts the
+   eyebrow at `safe-top + 236` (8, the 44px head, 8, the 160 collage, 16), and the token suite pins text contrast at the mid stop, so
+   the stop must not sit below the first line of text. `.fd-room` sets `--rs2: calc(var(--safe-top) + 236px)`; `--rs1` stays 196 and
+   every other number (the 56 head stop, Dawn's paper mix and 0.55 layer, the 8% / 0.35 unavailable Room) is the tokens'.
+   **Iteration 2:** `--rs1` is now 120 too (the prototype's own `.room-bg` value), not the token's 196: at 196 the scrim climbed from
+   0.20 to 0.89 in 40px right under the 220px collage and drew a hard horizontal seam, the round-1 flat band. The climb is 116px now.
+   `test/ambient-foray-detail.test.js` computes the eyebrow's top from the page's own spacing and fails if the stop is lower.
+2. **Share is the `i-share` glyph**, not `i-dots`: §4.6's "dots 44 (share)" and the prototype's own button disagree, and the
+   prototype's glyph says what the button does. The target is 44 either way. Share opens the native sheet where there is one and
+   otherwise copies `https://jw-incorporated.github.io/foray/#/foray/<id>` and says so; it writes nothing anywhere.
+3. **The runtime says "about" when part of it is an estimate** ("5 shows · about 43 min · narrated"), as the page always has
+   (audit 2026-09-22): a narrated Foray's bridges are timed from their script until real audio exists.
+4. **Thumbs: a bar of 12px or more, 4px clear of the last thumb, inside the strip (iteration 2; was "28px or more").** The first build
+   hid the row when no bar was 28px wide, which on the only narrated Foray in the data (50 clips, 39 of them narration, one show,
+   bars of 8 to 16px) left the sill without its thumbnail row, the sill's signature. The rule is now greedy from the left, so the
+   widest-first bars win by coming first, thumbs never overlap, and none hangs off the right edge (`forayThumbCells`, `stripWidth`).
+   A strip with no tape bar of 12px still has no row (`:empty`). The strip's region delta is the row in the 1-show case.
+5. **"Unavailable" is the resolver's answer** (`r.playable` is empty: no clip has audio), not a guess about the network. A narrated
+   Foray whose tape cannot play still plays its narrator's bridges (they need no source), so it is not unavailable; its rows say
+   "This clip isn't available right now." as they always did. The harness opens the not-narrated Foray with every audio URL removed.
+6. **"Start over" is gone (iteration 2; the first build kept it as a Quiet button).** The direction defines one button (Play / Resume /
+   Play again); the extra link under it cost 44px of action and stretched button to "Why 4a made this" from the prototype's 24px
+   to about 100. The way back to the top is the first clip's row or the strip's first bar (a named index beats the stored
+   point, `player/foray-playback.test.js`). `#fy-restart`, `#fy-resume` and their bindings are deleted; `clearForayResume` stays
+   in the player API. The `foray_restart` event is no longer emitted from this page.
+7. **"Where this came from" keeps what the credit block carried**: a show with a page of its own links in-app, one without opens its
+   Apple Podcasts page (or a search, and says which in its accessible name), "Every clip plays from the show's own feed." stays, and
+   FOLLOW_NOTE sits where Follow is tapped (review 2026-09-23). Follow needs a catalogue record; a show known only to the show index
+   links but has no Follow.
+8. **First paint is not animated**: `.is-fresh` (transitions off, the one `!important` in the sheet, because tokens.css's
+   reduced-motion block uses one) comes off two frames after render. The Glow and the artwork URL are worked out before the markup is
+   inserted so the Room opens already lit; the reduced-motion gate reads 0.
+9. **Iteration 2, narration lights.** A narration bar is a 6px Lamp pill (`--r-pill`), centred on the 24px bars (9 under, 9 over),
+   and is never dimmed: `.has-position` dims the coloured show bars to `--seg-dim`, which turned the ivory lights tan beside a
+   resume point. The strip reads as coloured shows joined by ivory lights, in greyscale too.
+10. **Iteration 2, the Dock findings are not this screen's.** The four-tab bar, the violet mini-player play button, the flat orange
+    progress line, the Fraunces mini title, the missing rim and cast, and the Dock slicing the last tile all belong to
+    `redesign/ambient-dock` (`ui/dock.css`, `ui/tabbar.js`), which is not on the direction branch yet; this page changes none of
+    the shared chrome. Once the Dock merges, the page's own bottom padding (`--chrome-bottom`) is what lets content run under
+    its fade.
+11. **Not built here**: the "lamps light in sequence" strip draw-in (§5, motion 3), the Room shifting colour as playback crosses a
+   segment (a Now Playing behaviour), per-show palette from the nightly refresh (the committed table in `ui/palette.js` and the hash
+   hue are the sources), and the legacy tab bar and mini player the Dock unit replaces.
+12. **Iteration 4, the Dock on this page (overrides item 10: the shared chrome is now dressed here, as Today does).** Five art-director
+    findings closed in `ui/foray-detail.css`, all under `body.view-foray-detail` so no other screen moves: the tab bar and the
+    mini take the Dock anatomy (gutter inset, 12px lift, `--r-xl`, the Glow-tinted `--glow-veil` with the Veil blur and its three
+    fallbacks, a rim between rows), which removes the violet-black slab; the mini's Play is Ember on the Veil (no violet anywhere
+    in the sheet); the mini title is the DM Sans `--t-label` (the legacy Fraunces `--font-display` is gone from it); a fixed fade
+    (`body.view-foray-detail::after`, z 54) is solid bg0 from 32px above the Dock's top row to the screen edge, so the last
+    show tile is never sliced; the 2px progress line is Glow on the transparent track, and the collapsed mini clips it to the
+    rounded top. Two decisions: (a) the page now sets the **root's** `--glow` to its first show's (`ui/foray.js`), because the Dock
+    lives on `<body>` outside `.fd` and a Glow set only on the page never reached it (the Veil mixed whatever the last page left);
+    (b) an expanded Now Playing sheds the bar's `backdrop-filter`, since a blurred ancestor becomes the containing block of the
+    fixed `.fp-sheet` and would shrink it to the bar's box (Today's block has the same hazard; that is the Dock unit's to fold in).
+    The block is a copy of Today's, on purpose (two screens, one file each, no shared edit); the Dock unit's `ui/dock.css`
+    replaces both. `foray-detail.css` minifies to 12.4 KB, its ceiling moves 10 to 14 KB in `prepare-webdir.test.mjs`. Fidelity
+    `foray-detail-it4b`: header, hero, strip, primary regions unchanged from it3 (the foray row's 30px strip offset and the
+    24px `why` height are the seed's one-line title and three-line why-line, as before).

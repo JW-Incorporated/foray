@@ -43,7 +43,7 @@ const path = require("node:path");
 const { readAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const CSS = ["styles.css", "ui/primitives.css", "ui/today.css", "ui/onboarding.css"]
+const CSS = ["styles.css", "ui/tokens.css", "ui/primitives.css", "ui/today.css", "ui/onboarding.css", "ui/foray-detail.css"]
   .map((rel) => fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n"))
   .join("\n");
 
@@ -210,11 +210,13 @@ const BUTTONS = {
   ".fp-rate": { rule: ".fp-rate" },
   ".fp-skip": { size: [".fp-skip"] },
   ".fp-stop": { rule: ".fp-stop" },
-  ".fy-btn": { size: [".fy-btn"] },
+  ".fy-btn": { size: [".fy-btn"] },   // the retry / reload button of a status page and Create's button (the Foray page's transport left it)
   ".fy-chip": { rule: ".fy-chip" },
-  ".fy-clip": { size: [".fy-clip"] },
   ".fy-jump": { tall: ".fy-jump", why: "flex: 1 — the clip card's whole play band" },
-  ".fy-restart": { tall: ".fy-restart", why: "a labelled text button (\"Start over\") with 8px side padding" },
+  /* Ambient Foray detail (Redesign 2026): the page's transport (back 15, forward 30, speed, previous and next clip: .fy-btn,
+     .fy-clip) left it for Now Playing, and there is no "Start over" control. A Follow toggle sits under each
+     came-from tile. */
+  ".fd-follow": { tall: ".ag .fd-follow", why: "a labelled toggle (\"Follow\" / \"Following\") with 4px side padding, 44px tall by min-height" },
   ".fy-script-more": { rule: ".fy-script-more" },
   ".fy-sheet-cancel": { rule: ".fy-sheet-cancel" },
   ".fy-sheet-go": { rule: ".fy-sheet-go" },
@@ -405,26 +407,38 @@ test("inline description timestamps grow into the half-leading and no further", 
   assert.strictEqual(px(mh), -px(ph), "the horizontal margin cancels the horizontal padding: no reflow");
 });
 
-test('"Start over" is a real target and sits clear of the seek strip', () => {
-  /* MUTATION: `.fy-restart { min-height: 0 }` -> red. MUTATION: `.fy-resume
-     { margin-bottom: 10px }` -> the strip's 16px-up hit box would sit over
-     "Start over"; red. */
-  assert.ok(px(valueOf(".fy-restart", "min-height")) >= 44);
-  const reach = -px(valueOf("#fy-strip::after", "top"));
-  assert.ok(px(valueOf(".fy-resume", "margin-bottom")) >= reach,
-    "the gap above the strip must cover the strip's upward hit box");
+/* A length written as a token (`var(--s-4)`) or a px value, in px. The tokens are on :root (ui/tokens.css). */
+const spacePx = (v) => {
+  const t = (v || "").trim();
+  const m = /^var\((--[\w-]+)\)$/.exec(t);
+  return m ? px(valueOf(":root", m[1])) : px(t);
+};
+
+test("the primary button is a real target and sits clear of the seek strip", () => {
+  /* Ambient Foray detail (Redesign 2026): the one primary button (there is no "Start over" under it any more) reaches 44
+     through .ag-btn's own min-height token, and the seek strip's 16px-down hit box (#fy-strip::after) must end before
+     it: the strip's bottom edge to the button's top is the sill's bottom padding plus the primary button's margin.
+     MUTATION: `.ag .fd-cta { margin-top: 0 }` and `.ag .fd-sill { padding: 0 }` -> the hit box reaches the
+     primary button; red. MUTATION: `.ag .ag-btn { min-height: 0 }` -> red. */
+  assert.strictEqual(valueOf(".ag .ag-btn", "min-height"), "var(--tap)");
+  assert.strictEqual(px(valueOf(":root", "--tap")), 44);
+  const reach = -px(valueOf("#fy-strip::after", "bottom"));
+  const sillBottom = spacePx((valueOf(".ag .fd-sill", "padding") || "").split(/\s+/)[0]);
+  const gap = sillBottom + spacePx(valueOf(".ag .fd-cta", "margin-top"));
+  assert.ok(gap >= reach, `the strip's ${reach}px-down hit box must end above the primary button (${gap}px of sill and margin)`);
 });
 
-test("the Foray strip is 44px to hit, and its hit box never reaches the transport buttons", () => {
-  /* MUTATION: delete `#fy-strip::after` -> red. MUTATION: `.fy-controls {
-     margin-top: 10px }` -> the box overlaps Play by 6px; red. */
+test("the Foray strip is 44px to hit, and its hit box never reaches the primary button", () => {
+  /* Ambient Foray detail: the strip's bars are 28px tall (a 24px bar row and the current bar's 4px of growth) and the
+     invisible 16px-up, 16px-down box around them (#fy-strip::after, unchanged) makes it 60px to hit.
+     MUTATION: delete `#fy-strip::after` -> red. MUTATION: `--strip-h: 12px` on the page's strip -> 44 exactly
+     is the floor, so 8px fails; red. */
   const up = -px(valueOf("#fy-strip::after", "top"));
   const down = -px(valueOf("#fy-strip::after", "bottom"));
-  const stripH = px(valueOf(".fy-strip--lg", "--strip-h"));
-  assert.ok(stripH, "fixture assumption: the lg strip's height is a px custom property");
+  const stripH = px(valueOf(".ag .fd-sill .fy-strip", "--strip-h"));
+  assert.ok(stripH, "fixture assumption: the page's strip height is a px custom property");
   assert.ok(stripH + up + down >= 44, `hit height ${stripH + up + down}px`);
-  const controlsGap = px((valueOf(".fy-controls", "margin-top")));
-  assert.ok(controlsGap > down, `the strip's ${down}px-down hit box must stop short of .fy-controls (${controlsGap}px)`);
+  assert.strictEqual(valueOf(".ag .fd-sill .fy-strip", "height"), "var(--strip-h)");
 });
 
 test("a static strip inside a sideways rail hands every pan to the rail", () => {

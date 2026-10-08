@@ -574,14 +574,15 @@ test("app-3-1: play, advance, close the bar, press Play: the Foray resumes from 
      bindForayTransport closure). After playing on to 30:00 and closing the mini
      bar, the cold page read 0:00 (or the old 10:00), Play restarted there, and
      the player's next save overwrote the real position.
-     MUTATIONS: have startOrResume read the bind-time `resume` again — red; drop
-     the live->cold refreshForayResume() — red. */
+     Ambient Foray detail (Redesign 2026): the banner is gone; the one main button carries the point
+     ("Resume · 30 min left"), so that is what proves the cold page holds the stored point.
+     MUTATIONS: have startOrResume read a point captured at bind time instead of
+     state.forayResume — red (the press starts at 10:00); drop the live->cold refreshForayResume() — red
+     (the button still says "Resume · 50 min left"). */
   const m = loadApp();
   for (const sel of ["#fy-play", "#fy-next", "#fy-prev", "#fy-back", "#fy-fwd", "#fy-now", "#fy-strip", "#fy-list"]) m.els[sel] = makeEl("button");
-  const at = makeEl("span");
-  m.els["#fy-resume .fy-resume-at"] = at;
   const r = { id: "f1", title: "A Foray", playable: [{ id: "s1" }, { id: "s2" }, { id: "s3" }], totalSec: 3600, foray: {} };
-  let stored = { elapsedSec: 600, index: 0, label: "50 min left" }; // "Jump back in at 10:00" at render
+  let stored = { elapsedSec: 600, index: 0, label: "50 min left" }; // "Resume · 50 min left" at render
   const starts = [];
   const player = {
     forayResume: () => stored,
@@ -593,7 +594,7 @@ test("app-3-1: play, advance, close the bar, press Play: the Foray resumes from 
   m.ctx.ForayPlayer = player;
   m.ctx.logEvent = () => {};
   m.run(`state.foray = ${JSON.stringify(r)}; state.forayResume = ${JSON.stringify(stored)};`);
-  m.ctx.bindForayTransport(m.run("state.foray"), player, stored);
+  m.ctx.bindForayTransport(m.run("state.foray"), player);
 
   /* Play on to 30:00: live ticks. The player saves as it goes. */
   m.ctx.paintForay({ forayId: "f1", index: 1, playing: true, running: true, elapsedSec: 1800 });
@@ -601,7 +602,7 @@ test("app-3-1: play, advance, close the bar, press Play: the Foray resumes from 
   /* Close the mini bar: the player sends index -1. */
   m.ctx.paintForay({ forayId: "f1", index: -1, playing: false, running: false, elapsedSec: 0 });
   assert.strictEqual(m.run("state.forayResume.elapsedSec"), 1800, "the cold page holds the stored point");
-  assert.strictEqual(at.textContent, "Jump back in at 30:00", "and the banner says so");
+  assert.strictEqual(m.els["#fy-play"].textContent, "Resume · 30 min left", "and the main button says so");
 
   m.els["#fy-play"].dispatch("click");
   await flush();
@@ -691,23 +692,11 @@ test("app-2-2: each local pass hands over at most SHOW_PASS_LIMIT rows, and the 
 test("round-3 review (L2): played to the end and closed, the Foray page drops 'Jump back in' for 'Played'", async () => {
   /* refreshForayResume nulled state.forayResume when the point read finished
      but left the rendered "Jump back in at 10:00" banner up over a 0:00 clock
-     and a Play from the top. MUTATION: drop the finished branch -- the banner
-     still says "Jump back in at 10:00". */
+     and a Play from the top. Ambient Foray detail (Redesign 2026): the main button says "Play again"
+     and there is no Start over offer at all (one button, nothing under it). MUTATION: drop `state.forayPlayed = ...`
+     from refreshForayResume -- the button says "Play" over a Foray that was played to the end. */
   const m = loadApp();
   for (const sel of ["#fy-play", "#fy-next", "#fy-prev", "#fy-back", "#fy-fwd", "#fy-now", "#fy-strip", "#fy-list"]) m.els[sel] = makeEl("button");
-  const banner = makeEl("div");
-  let removed = 0;
-  const at = makeEl("span");
-  at.remove = () => { removed += 1; };
-  const left = makeEl("span");
-  const restart = makeEl("button");
-  at.textContent = "Jump back in at 10:00";
-  left.textContent = "50 min left";
-  restart.textContent = "Start over";
-  m.els["#fy-resume"] = banner;
-  m.els["#fy-resume .fy-resume-at"] = at;
-  m.els["#fy-resume .fy-resume-left"] = left;
-  m.els["#fy-restart"] = restart;
   const r = { id: "f1", title: "A Foray", playable: [{ id: "s1" }, { id: "s2" }], totalSec: 3600, foray: {} };
   let stored = { elapsedSec: 600, index: 0, label: "50 min left" };
   const player = {
@@ -718,13 +707,10 @@ test("round-3 review (L2): played to the end and closed, the Foray page drops 'J
   m.ctx.ForayPlayer = player;
   m.ctx.logEvent = () => {};
   m.run(`state.foray = ${JSON.stringify(r)}; state.forayResume = ${JSON.stringify(stored)};`);
-  m.ctx.bindForayTransport(m.run("state.foray"), player, stored);
+  m.ctx.bindForayTransport(m.run("state.foray"), player);
   m.ctx.paintForay({ forayId: "f1", index: 1, playing: true, running: true, elapsedSec: 3500 });
   stored = { elapsedSec: 3600, index: 1, label: "Played", finished: true };   // it ran to the end
   m.ctx.paintForay({ forayId: "f1", index: -1, playing: false, running: false, elapsedSec: 0 });
   assert.strictEqual(m.run("state.forayResume"), null, "premise: no resume point");
-  assert.strictEqual(removed, 1, "the 'Jump back in at' line is gone");
-  assert.ok(banner.classList.contains("fy-played"), "the banner is the Played variant");
-  assert.strictEqual(left.textContent, "Played");
-  assert.strictEqual(restart.textContent, "Play again");
+  assert.strictEqual(m.els["#fy-play"].textContent, "Play again", "the main button offers the Foray again");
 });

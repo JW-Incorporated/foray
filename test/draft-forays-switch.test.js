@@ -443,7 +443,7 @@ test("switch on: a generated draft opens at #/foray/<id> and plays through the s
     h.route(`#/foray/${id}`);
     await h.settle();
     assert.strictEqual(h.state().foray?.id, id, `${id} resolved`);
-    assert.ok(h.view().includes(`<h2>${titleOf(id).replace(/&/g, "&amp;")}</h2>`), `${id} painted`);
+    assert.ok(h.view().includes(`data-page-heading>${titleOf(id).replace(/&/g, "&amp;")}</h1>`), `${id} painted`);
     const btn = findIn(h.body, "#fy-play");
     assert.ok(btn, "the play button is on the page");
     await btn.click();

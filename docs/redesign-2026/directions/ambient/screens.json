@@ -163,23 +163,146 @@
       }
     },
     "foray": {
-      "title": "Foray room",
+      "title": "Foray detail (half played: Resume)",
       "prototype": {
         "route": "#/foray"
       },
       "app": {
-        "state": "returning",
-        "step": "foray"
+        "state": "foray-resume",
+        "step": "foray-resume"
       },
       "regions": {
         "header": {
           "prototype": ".foray-top",
-          "app": ".page-head"
+          "app": ".fd-top"
         },
-        "rows": {
-          "prototype": ".seglist .row",
-          "app": null,
-          "mode": "all"
+        "hero": {
+          "prototype": ".foray-collage",
+          "app": ".fd-collage"
+        },
+        "strip": {
+          "prototype": ".strip-wrap",
+          "app": ".fd-sill"
+        },
+        "primary": {
+          "prototype": "[data-foray-cta], .foray-body .btn-primary",
+          "app": ".fd-cta"
+        },
+        "why": {
+          "prototype": ".whymade",
+          "app": ".fd-why"
+        },
+        "came": {
+          "prototype": ".came",
+          "app": ".fd-came"
+        }
+      }
+    },
+    "foray-unavailable": {
+      "title": "Foray detail, unavailable",
+      "prototype": {
+        "route": "?state=unavailable#/foray"
+      },
+      "app": {
+        "state": "foray-detail",
+        "step": "foray-unavailable"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".foray-top",
+          "app": ".fd-top"
+        },
+        "hero": {
+          "prototype": ".foray-collage",
+          "app": ".fd-collage"
+        },
+        "strip": {
+          "prototype": ".strip-wrap",
+          "app": ".fd-sill"
+        },
+        "primary": {
+          "prototype": "[data-foray-cta], .foray-body .btn-primary",
+          "app": ".fd-cta"
+        },
+        "why": {
+          "prototype": ".whymade",
+          "app": ".fd-why"
+        },
+        "came": {
+          "prototype": ".came",
+          "app": ".fd-came"
+        }
+      }
+    },
+    "foray-unnarrated": {
+      "title": "Foray detail, not narrated",
+      "prototype": {
+        "route": "?state=unnarrated#/foray"
+      },
+      "app": {
+        "state": "foray-detail",
+        "step": "foray-unnarrated"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".foray-top",
+          "app": ".fd-top"
+        },
+        "hero": {
+          "prototype": ".foray-collage",
+          "app": ".fd-collage"
+        },
+        "strip": {
+          "prototype": ".strip-wrap",
+          "app": ".fd-sill"
+        },
+        "primary": {
+          "prototype": "[data-foray-cta], .foray-body .btn-primary",
+          "app": ".fd-cta"
+        },
+        "why": {
+          "prototype": ".whymade",
+          "app": ".fd-why"
+        },
+        "came": {
+          "prototype": ".came",
+          "app": ".fd-came"
+        }
+      }
+    },
+    "foray-dawn": {
+      "title": "Foray detail, Dawn",
+      "prototype": {
+        "route": "?theme=dawn&state=unnarrated#/foray"
+      },
+      "app": {
+        "state": "foray-detail",
+        "step": "foray-dawn"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".foray-top",
+          "app": ".fd-top"
+        },
+        "hero": {
+          "prototype": ".foray-collage",
+          "app": ".fd-collage"
+        },
+        "strip": {
+          "prototype": ".strip-wrap",
+          "app": ".fd-sill"
+        },
+        "primary": {
+          "prototype": "[data-foray-cta], .foray-body .btn-primary",
+          "app": ".fd-cta"
+        },
+        "why": {
+          "prototype": ".whymade",
+          "app": ".fd-why"
+        },
+        "came": {
+          "prototype": ".came",
+          "app": ".fd-came"
         }
       }
     },

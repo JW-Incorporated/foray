@@ -14,6 +14,8 @@
  * so it is not shot; everything else is.
  */
 
+import { forayDetailPicks } from "./seed.mjs";
+
 const wait = (page, ms) => page.waitForTimeout(ms);
 
 /** Start playback of a seeded item through the real player, then pin it: seek to
@@ -48,6 +50,42 @@ async function closeNowPlaying(page) {
   const close = page.locator(".fp-close");
   if (await close.count()) await close.first().click().catch(() => {});
   await wait(page, 400);
+}
+
+/* Foray detail: the page, the route and the states below it. The Foray in the first coreRoutes step is a
+   draft (the page answers "That foray isn't available"), so this block opens published ones by id. */
+const forayRoute = (foray) => "#/foray/" + encodeURIComponent(foray.id);
+
+/* An unavailable Foray: every audio source in the page's document loses its audio URL, in place, so each
+   clip of the Foray still resolves (its show, its why-line) but is refused ("no audio url"), nothing is
+   playable, and the route is painted again. It takes the Foray without narration: a narrator's bridge needs
+   no source and would still play. `state` is the app's own top-level binding, reachable from the page. */
+async function openUnavailableForay(page, foray) {
+  /* Off the Afterglow page while the scheme goes back to dark (the Dawn step before this one left it light), so no
+     drawn page crossfades; the Foray is then painted new. */
+  await page.evaluate(() => { location.hash = "#/forays"; });
+  await wait(page, 400);
+  await page.emulateMedia({ colorScheme: "dark" });
+  await wait(page, 400);
+  await page.evaluate((hash) => {
+    state.segmentSources = { ...state.segmentSources, sources: state.segmentSources.sources.map((row) => ({ ...row, audio_url: null })) };
+    location.hash = hash;
+  }, forayRoute(foray));
+  await page.waitForSelector(".fd.is-unavailable", { timeout: 15000 });
+  await wait(page, 700);
+}
+
+/* Dawn: the OS asks for the light scheme, the way a phone does. The tokens follow the media query. */
+async function goDawn(page) {
+  /* Leave the Afterglow page first and come back after the flip, so the scheme change is not a live colour change on a page
+     that is already drawn (every .ag element would crossfade for 200ms): the page is painted new, in Dawn. */
+  const hash = await page.evaluate(() => { const h = location.hash; location.hash = "#/forays"; return h; });
+  await wait(page, 500);
+  await page.emulateMedia({ colorScheme: "light" });
+  await wait(page, 500);
+  await page.evaluate((h) => { location.hash = h; }, hash);
+  await page.waitForSelector(".fd .fd-title", { timeout: 15000 });
+  await wait(page, 700);
 }
 
 async function typeSearch(page, text) {
@@ -225,6 +263,26 @@ export function appStates(fx) {
         { label: "search-results-history", route: "#/shows", run: (page) => typeSearch(page, "history") },
         { label: "search-no-results", route: "#/shows", run: (page) => typeSearch(page, "zzqxjv") },
       ],
+    },
+    {
+      id: "foray-detail",
+      description: "Foray detail: a narrated Foray, an unnarrated one, the Dawn scheme, and one that cannot play (its audio sources refused).",
+      seed: "returning",
+      steps: (() => {
+        const { narrated, plain } = forayDetailPicks(fx);
+        return [
+          { label: "foray", route: forayRoute(narrated), ready: ".fd .fd-title" },
+          { label: "foray-unnarrated", route: forayRoute(plain), ready: ".fd .fd-title" },
+          { label: "foray-dawn", route: forayRoute(plain), run: (page) => goDawn(page), ready: ".fd .fd-title" },
+          { label: "foray-unavailable", route: forayRoute(plain), run: (page) => openUnavailableForay(page, plain) },
+        ];
+      })(),
+    },
+    {
+      id: "foray-resume",
+      description: "Foray detail with the narrated Foray half played: the strip filled to the stored point and the button reading Resume.",
+      seed: "foray-resume",
+      steps: [{ label: "foray-resume", route: forayRoute(forayDetailPicks(fx).narrated), ready: ".fd #fy-play" }],
     },
     {
       id: "stress",

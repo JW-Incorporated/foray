@@ -438,8 +438,8 @@ test("a Foray's back link lands on #/forays, where an unlocked draft is still li
 
      MUTATION: change renderForay's back link to href="#/". This fails. RUN:
      failed as named. */
-  const forayPage = APP_SRC.slice(APP_SRC.indexOf('<div class="page foray">'));
-  const back = /<a class="back" href="([^"]+)">/.exec(forayPage);
+  const forayPage = APP_SRC.slice(APP_SRC.indexOf('<div class="page foray fd-page">'));
+  const back = /<a class="back ag-btn ag-btn-icon" href="([^"]+)"/.exec(forayPage);
   assert.ok(back, "the Foray page must still render a back link");
   assert.strictEqual(
     back[1], "#/forays",
