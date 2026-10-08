@@ -624,6 +624,11 @@ function stretchBridgeSentence(knownLabel, stretchLabel) {
   return wordCount(both) <= TODAY_BRIDGE_WORDS ? both : stretchBridgeText(stretchLabel);
 }
 
+/** The gauge's line on a first run: the default says "outside your usual subjects", which
+    would declare a habit nothing has observed yet (product principle 2). The gauge stays,
+    with a sentence that claims no listener state. 8 words, under the 18 ceiling. */
+const TODAY_FIRST_RUN_GAUGE = "About a third of today is new ground, on purpose.";
+
 /** The same sentence for a first run, which has no "usual subjects" to be outside
     of: nothing has been listened to, so claiming a habit would be declaring state
     the app has not observed (product principle 2). It still names both ends by
@@ -787,7 +792,7 @@ function renderHomeV2() {
       ${todayHeroHtml(pick ? todayHeroModel(pick) : null, { firstRun })}
       ${todayAlsoHtml({ firstRun })}
       ${todayPlaylistsHtml(picks.playlists)}
-      ${tactileGauge({})}
+      ${tactileGauge(firstRun ? { copy: TODAY_FIRST_RUN_GAUGE } : {})}
     </div>`;
 
   offerHomeOnboarding();

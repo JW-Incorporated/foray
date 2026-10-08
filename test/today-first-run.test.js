@@ -247,19 +247,28 @@ test("the subject tile is the Stretch tag's own colour pair, so it needs no new 
 /* 4. THE GAUGE IS KEPT, NOT EARNED                                      */
 /* ==================================================================== */
 
-test("first run: the gauge renders with exactly the copy it has for a returning listener", () => {
+test("first run: the gauge renders, with a sentence that claims no listener state", () => {
   /* MUTATION: in renderHomeV2 draw the gauge only when `!firstRun` (hide it on
-     empty history) -> both renders differ and the first fails. */
+     empty history) -> the first assertion fails. MUTATION 2: change renderHomeV2's
+     `tactileGauge(firstRun ? { copy: TODAY_FIRST_RUN_GAUGE } : {})` back to
+     `tactileGauge({})` -> the sentence assertions go red (principle 2: an empty
+     profile has no "usual subjects" to be outside of). */
   const first = todayMount();
   first.ctx.renderHome();
   const gaugeOf = (html) => (/<figure class="gauge"[\s\S]*?<\/figure>/.exec(html) || [""])[0];
   const g1 = gaugeOf(first.view());
   assert.ok(g1, "the gauge renders on a first run");
-  assert.match(g1, /<p>About a third of today sits outside your usual subjects\. 4a keeps it that way\.<\/p>/);
+  assert.match(g1, /<p>About a third of today is new ground, on purpose\.<\/p>/);
+  assert.doesNotMatch(g1, /usual|your /i, "no listener state declared: nothing has been observed yet");
   assert.match(g1, /<span class="readout">1 in 3<\/span>/);
   const back = todayMount({ listened: true });
   back.ctx.renderHome();
-  assert.strictEqual(g1, gaugeOf(back.view()), "the same markup, first run or not");
+  const g2 = gaugeOf(back.view());
+  /* A returning listener has history to be outside of, so keeps the usual-subjects
+     line; only the sentence differs. */
+  assert.match(g2, /<p>About a third of today sits outside your usual subjects\. 4a keeps it that way\.<\/p>/);
+  const bare = (g) => g.replace(/<p>[\s\S]*?<\/p>/, "");
+  assert.strictEqual(bare(g1), bare(g2), "the same gauge, first run or not, apart from its sentence");
 });
 
 /* ==================================================================== */
