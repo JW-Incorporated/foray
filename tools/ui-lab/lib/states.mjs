@@ -235,6 +235,11 @@ export function appStates(fx) {
         { label: "search-results-history", route: "#/shows", run: (page) => typeSearch(page, "history") },
         { label: "search-no-results", route: "#/shows", run: (page) => typeSearch(page, "zzqxjv") },
         { label: "search-results-typing", route: "#/shows", run: (page) => typeSearchThenReturn(page, "geoengineering") },
+        /* Appended by Tactile `search-none`: the settled no-results screen the way the
+           prototype draws it (deck up, field above it). "instrument" finds no show and names
+           one subject that holds four, so the sentence, its tile and the key all show;
+           `search-no-results` keeps the no-subject case, with the field still focused. */
+        { label: "search-no-results-subject", route: "#/shows", run: (page) => typeSearchThenReturn(page, "instrument") },
       ],
     },
     {
