@@ -69,6 +69,10 @@ async function openForayNowPlaying(page) {
     hundred ms between the presses; the elapsed readout floors to the second
     and the restore point (12:40) leaves a whole second of room. */
 async function pausedForayNowPlaying(page) {
+  /* This step follows the Up Next steps, which leave the Clear confirm sheet up; it
+     would sit over the bar the sheet opens from. */
+  await page.keyboard.press("Escape");
+  await wait(page, 300);
   await openForayNowPlaying(page);
   const big = page.locator("#foray-player .fp-big");
   await big.click();
@@ -353,12 +357,12 @@ export function appStates(fx) {
         { label: "mini-player-up-next", route: "#/queue" },
         { label: "now-playing", route: "#/library", run: (page) => openForayNowPlaying(page) },
         { label: "now-playing-closed", route: "#/library", run: (page) => closeNowPlaying(page) },
-        { label: "now-playing-paused", route: "#/library", run: (page) => pausedForayNowPlaying(page), ready: '#foray-player .fp-play[aria-label="Play"]' },
         /* Yours, Up Next (tactile `library`, BUILD-PLAN 2.12 and 2.16): the second
            row's action row open, then Remove pressed and the undo toast up. */
         { label: "up-next-actions", route: "#/library", run: async (page) => { await queueWithPlaying(page, ep0); await openQueueActions(page, 1); } },
         { label: "up-next-remove-toast", route: "#/library", run: async (page) => { await queueWithPlaying(page, ep0); await removeQueueRow(page, 1); } },
         { label: "up-next-clear-sheet", route: "#/library", run: async (page) => { await queueWithPlaying(page, ep0); await openClearSheet(page); } },
+        { label: "now-playing-paused", route: "#/library", run: (page) => pausedForayNowPlaying(page), ready: '#foray-player .fp-play[aria-label="Play"]' },
       ],
     },
     {
