@@ -99,8 +99,24 @@ export function buildSeed(kind, fx) {
     ? [LONG_TITLE, "Short one", LONG_TOKEN]
     : ["The fusion reactor tour", "Short histories for a long drive", "How things get built"];
 
+  /* library (Redesign 2026, ambient): the returning profile, plus a foray part-played and a foray finished, so the
+     grid's ForayTiles (the strip's fill, the finished check) have something to draw. Library lists the forays the
+     listener has opened; the plain returning profile has opened none. */
+  const published = fx.forays.filter((f) => f.status === "published" || f.status === undefined);
+  const forayRows = {};
+  if (kind === "library") {
+    published.slice(0, 2).forEach((f, i) => {
+      const done = i === 1;
+      forayRows["cp_foray:" + f.id] = {
+        foray_id: f.id, title: f.title || "", elapsed_sec: done ? 99999 : 1200, total_sec: done ? 99999 : 3000,
+        index: -1, segment_id: null, into_sec: 0, updated_at: daysAgo(1 + i),
+      };
+    });
+  }
+
   return {
     ...base,
+    ...forayRows,
     cp_saved: saved,
     cp_episode_snaps: snaps,
     cp_queue: items.slice(0, kind === "stress" ? 4 : 5).map((i) => i.id),

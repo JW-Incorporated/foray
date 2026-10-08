@@ -1,0 +1,164 @@
+/* ui/library.css — Library, Redesign 2026, ambient direction ("Afterglow"), phase 4.
+
+   The numbers are docs/redesign-2026/directions/ambient/BUILD-NOTES.md §3 (ForayTile, ShowTile, QueueRow,
+   SectionHead, EmptyState, Toast), §4.5 (the screen), §10.7 (no followed badge), §10.11 (the Foray pill),
+   §11.1 (the Dock's upward light) and §12.2 (captions clamp to three lines, rows may be tall), and the
+   round-4 prototype's afterglow.css (.grid-3, .stile, .ftile, .q-row, .toast), which settled every measurement
+   the notes leave open. Everything below is scoped under `.ag` (the markup wears `.ag.lb-page`), so it can reach
+   no other screen; every class is `lb-*`, a new name. Values come from ui/tokens.css; where no token exists
+   (the art size at 375 and 412, the Foray pill's height) the number is the notes', named here.
+
+   NO reduced-motion block lives in this file, on purpose: ui/tokens.css has the one, scoped to `.ag` and
+   everything under it, so the Toast's slide, the rows' reorder travel (a transform transition written by
+   script) and the press colour all fall under it. A second block would be a second owner
+   (test/afterglow-tokens.test.js, "ONE block"). */
+
+/* The page. Library draws its own title, so the legacy top bar steps aside here, and the page paints Dusk's bg0
+   rather than the legacy plum. */
+body.view-library { background: var(--bg0); }
+body.view-library .topbar { display: none; }
+body.view-library #view { padding-top: 0; }
+
+.ag.lb-page {
+  position: relative; isolation: isolate;
+  /* The grid's art: 104 at 393, 96 at 375, 112 at 412 (BUILD-NOTES §3 ShowTile). */
+  --lb-art: var(--art-tile);
+  /* Ink and shade that sit ON artwork (the Foray pill, the strip's floor), whatever the scheme: the art is not
+     themed, so these do not follow Dawn's paper scrims. The pill is 0.86 dark under Lamp-cream text so its 13px
+     label clears 4.5:1 over even pure white artwork (the prototype's 0.55 reads 3.6:1 there). The only colour
+     literals in this file. */
+  --lb-on-art: rgb(20 17 15 / 0.86); --lb-on-art-ink: #F3E7D3; --lb-on-art-soft: rgb(20 17 15 / 0.55);
+  padding: calc(var(--safe-top) + var(--s-2)) var(--gutter) var(--s-6);
+  min-height: 100vh;
+}
+@media (max-width: 392px) { .ag.lb-page { --lb-art: 96px; } }
+@media (min-width: 412px) { .ag.lb-page { --lb-art: 112px; } }
+/* The first frame is the lit one: the page is drawn `.is-settling` and released two frames later (libSettle), so
+   styling it at the default Glow and then lighting it animates nothing, under Reduce Motion included. */
+.ag.lb-page.is-settling, .ag.lb-page.is-settling * { transition: none !important; }
+/* :where() keeps the reset at the specificity of `.ag.lb-page` alone, so every later `.ag .lb-*` margin wins. */
+.ag.lb-page :where(h2, h3, h4, p) { margin: 0; }
+.ag.lb-page a:not(.ag-btn) { color: inherit; text-decoration: none; }
+.ag.lb-page a.ag-btn { text-decoration: none; }
+
+/* The Dock's upward light: a Glow radial rising from the bottom edge, behind the content, present while the bar is
+   up (the stylesheet shows it only under body.fp-open, and the script sets data-state so a render says the same)
+   and absent when nothing plays. Position fixed: the legacy bar is the Dock here. The Glow is the playing item's,
+   written on the page root by script. */
+.ag .lb-cast { position: fixed; z-index: 0; display: none; bottom: calc(var(--safe-bottom) + var(--tab-bar-h, 56px) - var(--s-6)); }
+body.fp-open .ag .lb-cast:not([data-state="idle"]) { display: block; bottom: calc(var(--safe-bottom) + var(--tab-bar-h, 56px) + var(--mini) - var(--s-6)); }
+
+/* Title: Fraunces 26/30 at the top, a 44 tall row. */
+.ag .lb-head { min-height: var(--tap); display: flex; align-items: center; margin-top: var(--s-2); }
+.ag .lb-head h2 { flex: 1; min-height: var(--tap); display: flex; align-items: center; }
+.ag .lb-head h2:focus { outline: none; }
+
+/* Sections: 32 between, 12 head to content (the SectionHead primitive carries both margins). */
+.ag .lb-section { position: relative; z-index: 1; }
+.ag .lb-grid-section { margin-top: var(--s-3); }
+.ag .lb-stack > * + * { margin-top: var(--s-2); }
+.ag .lb-more { margin-top: var(--s-2); }
+
+/* The grid: 3-up, rows at least 16 apart, every cell top-aligned so a tall caption never stretches its neighbours. */
+.ag .lb-grid {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start;
+  gap: var(--s-4) var(--s-3);
+}
+.ag .lb-tile { position: relative; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-2); }
+.ag .lb-art { position: relative; display: block; width: var(--lb-art); height: var(--lb-art); border-radius: var(--r-md); }
+.ag .lb-grid .ag-art-104, .ag .lb-grid .ag-collage-104 { width: var(--lb-art); height: var(--lb-art); }
+/* Names clamp to three lines and are never cut mid-word (§12.2). */
+.ag .lb-name { color: var(--text); width: 100%; overflow-wrap: normal; word-break: normal; hyphens: none; text-overflow: ellipsis; }
+
+/* ForayTile: the Lamp "Foray" pill straddles the tile's top-left edge (20 tall, §10.11), the strip lies inside the
+   collage's bottom radius (12 tall, bars 8), a finished foray wears the check. */
+.ag .lb-pill {
+  position: absolute; left: var(--s-2); top: calc(var(--s-2) * -1); z-index: 3;
+  min-height: 20px; height: 20px; padding: 0 var(--s-2); line-height: 20px;
+  background: var(--lb-on-art); color: var(--lb-on-art-ink);
+}
+.ag .lb-strip {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; height: 12px;
+  padding: 2px var(--s-2); display: flex; align-items: center; gap: 2px;
+  border-radius: 0 0 var(--r-md) var(--r-md); background: linear-gradient(transparent, var(--lb-on-art-soft));
+}
+.ag .lb-bar { display: block; height: 8px; min-width: 2px; flex: 1 1 0; border-radius: var(--r-xs); background: var(--c, var(--seg-c0)); opacity: var(--seg-dim); }
+.ag .lb-bar.is-lit { opacity: 1; }
+.ag .lb-t0 { --c: var(--seg-c0); } .ag .lb-t1 { --c: var(--seg-c1); } .ag .lb-t2 { --c: var(--seg-c2); } .ag .lb-t3 { --c: var(--seg-c3); }
+.ag .lb-t4 { --c: var(--seg-c4); } .ag .lb-t5 { --c: var(--seg-c5); } .ag .lb-t6 { --c: var(--seg-c6); } .ag .lb-t7 { --c: var(--seg-c7); }
+.ag .lb-foray .ag-done { position: absolute; right: var(--s-1); bottom: var(--s-4); z-index: 3; color: var(--ember); }
+
+/* Rows. A row's one real link is its title (or, in Up Next and History, a button laid over the row); the controls
+   sit above it. */
+.ag .lb-row { position: relative; }
+.ag .lb-row:active { background: var(--bg2); }
+.ag .lb-link::after { content: ''; position: absolute; inset: 0; border-radius: var(--r-lg); }
+.ag .lb-link:focus-visible { outline: none; }
+.ag .lb-link:focus-visible::after { box-shadow: 0 0 0 calc(var(--s-1) / 2) var(--lamp-text); }
+.ag .lb-row .lb-play, .ag .lb-row .lb-dots { position: relative; z-index: 2; }
+.ag .lb-cover { position: absolute; inset: 0; z-index: 1; min-height: 44px; border-radius: var(--r-lg); }
+.ag .lb-cover:focus-visible { outline: none; box-shadow: 0 0 0 calc(var(--s-1) / 2) var(--lamp-text); }
+/* EpisodeRow: art 72 spanning the rows, the title and Play 44 on the first, the meta line under both (the prototype's
+   .ep-row grid). primitives.css drops Play under the copy below 393 wide; here it stays beside the title. */
+.ag .lb-ep { grid-template-columns: var(--art-row) minmax(0, 1fr) var(--tap); column-gap: var(--s-3); row-gap: 2px; align-items: start; }
+.ag .lb-ep > .ag-art { grid-row: 1 / 4; grid-column: 1; }
+.ag .lb-ep .lb-ep-title { grid-column: 2; grid-row: 1; min-height: var(--tap); }
+.ag .ag-episode-row.lb-ep > .lb-play { grid-column: 3; grid-row: 1; align-self: start; }
+.ag .lb-ep .lb-meta { grid-column: 2 / 4; grid-row: 2; margin-top: 0; }
+.ag .lb-meta { align-items: baseline; flex-wrap: nowrap; gap: var(--s-1); min-width: 0; color: var(--text-2); }
+.ag .lb-meta > span { white-space: nowrap; }
+.ag .lb-meta .dur, .ag .lb-meta .lb-sep { flex: none; }
+.ag .lb-ell { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ag .lb-sep::before { content: ''; display: inline-block; width: 3px; height: 3px; margin: 0 var(--s-1); border-radius: var(--r-round); background: currentColor; vertical-align: middle; opacity: .8; }
+.ag .lb-gone { opacity: .85; }
+.ag .lb-gone .ag-row-copy { opacity: .6; }
+/* The playing row of Saved takes the same ground the Up Next row does. */
+.ag .ag-episode-row.is-playing { background: linear-gradient(var(--overlay), var(--overlay)) var(--glow-row); }
+
+/* Up Next and History: QueueRows, 64 tall minimum; History has no menu, so its third column goes. */
+.ag .lb-qrow { align-items: center; }
+.ag .lb-qrow.lb-nomenu { grid-template-columns: var(--art-queue) minmax(0, 1fr); padding-right: var(--s-3); }
+.ag .lb-qrow .t-label { color: var(--text); }
+.ag .lb-qrow .t-label .icon { vertical-align: -4px; }
+.ag .lb-qrow .ag-row-meta { margin-top: 0; flex-wrap: nowrap; }
+.ag .lb-qrow .ag-row-state { flex: none; }
+
+/* Playlists as rows: a 56 collage (no lit glow at this size), the name, the length, the played count in Ember. */
+.ag .lb-prow { min-height: var(--row-queue); padding: var(--s-2) var(--s-3) var(--s-2) var(--s-2); display: grid; grid-template-columns: var(--art-queue) minmax(0, 1fr); align-items: center; gap: var(--s-3); }
+.ag .lb-prow .ag-collage { box-shadow: none; }
+.ag .lb-pcopy { min-width: 0; display: flex; flex-direction: column; }
+.ag .lb-pcopy .t-label { color: var(--text); }
+.ag .lb-pmeta { color: var(--text-2); }
+
+/* Empty: one line, one button, centred; no paragraph (§4.5). */
+.ag .lb-empty { padding: var(--s-2) 0 0; display: flex; flex-direction: column; align-items: center; gap: var(--s-3); text-align: center; color: var(--text-2); }
+.ag .lb-grid-section > .lb-empty { padding-top: var(--s-5); }
+
+/* The Toast: 48 tall, 8 above the bar, five seconds. Closed it is not drawn at all (visibility), so its Undo is
+   neither focusable nor read. */
+.ag .lb-toast {
+  position: fixed; left: var(--gutter); right: var(--gutter); z-index: 65; min-height: 48px;
+  bottom: calc(var(--safe-bottom) + var(--tab-bar-h, 56px) + var(--s-2));
+  opacity: 0; visibility: hidden; transform: translateY(var(--s-3));
+  transition: opacity var(--m-ui) var(--e-out), transform var(--m-ui) var(--e-out), visibility 0s linear var(--m-ui);
+}
+body.fp-open .ag .lb-toast { bottom: calc(var(--safe-bottom) + var(--tab-bar-h, 56px) + var(--mini) + var(--s-2)); }
+.ag .lb-toast.is-open { opacity: 1; visibility: visible; transform: none; transition: opacity var(--m-ui) var(--e-out), transform var(--m-ui) var(--e-out), visibility 0s; }
+
+/* The row menu: a sheet over the page (the legacy sheet frame, the Afterglow ground). */
+.fy-sheet.ag.lb-sheet { background: transparent; }
+.ag .lb-panel {
+  background: var(--bg0); color: var(--text); border: 0; border-radius: var(--r-xl) var(--r-xl) 0 0; box-shadow: var(--shadow-2);
+  padding: 0 var(--gutter) calc(var(--safe-bottom) + var(--s-6));
+}
+.ag .lb-grab { position: absolute; top: var(--s-2); left: 50%; width: 36px; height: 4px; margin-left: -18px; border-radius: var(--r-pill); background: var(--text-3); }
+/* The sheet's head: the row's title (one line) and a Close 44, 56 tall in all (the prototype's .sheet-head). */
+.ag .lb-menu-head { min-height: 56px; display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); margin-right: calc(var(--s-2) * -1); }
+.ag .lb-menu-title { min-width: 0; flex: 1; margin: 0; color: var(--text); }
+.ag .lb-menu { display: flex; flex-direction: column; margin-top: var(--s-2); }
+.ag .lb-menu-item {
+  min-height: 48px; padding: 0 var(--s-1); display: flex; align-items: center; gap: var(--s-3); width: 100%;
+  color: var(--text); text-align: left; border-radius: var(--r-md);
+}
+.ag .lb-menu-item:disabled { opacity: .4; cursor: default; }
+.ag .lb-menu-item:focus-visible { outline: none; box-shadow: 0 0 0 calc(var(--s-1) / 2) var(--lamp-text); }

@@ -1141,7 +1141,8 @@ test("data-integrity-4: a show page and Library go through the same predicate", 
   /* episodesForShow and Library read state.discover.items / cp_saved directly
      and never asked Family mode. MUTATION: drop familyAllows from
      episodesForShow (or the Library filter) -> an explicit episode is listed;
-     red. */
+     red. (Redesign 2026, ambient Library: a saved row is Library's EpisodeRow,
+     marked `data-lb-ep`; the star left the row with the legacy `epRow`.) */
   const m = mount();
   await m.booted();
   const items = m.state.discover.items;
@@ -1159,10 +1160,10 @@ test("data-integrity-4: a show page and Library go through the same predicate", 
   m.ctx.toggleStar(explicitEp.id);
   m.ctx.localStorage.setItem("cp_family", "true");
   m.ctx.renderLibrary();
-  assert.ok(!m.view.innerHTML.includes(`data-star="${explicitEp.id}"`), "Library shows a saved explicit episode in Family mode");
+  assert.ok(!m.view.innerHTML.includes(`data-lb-ep="${explicitEp.id}"`), "Library shows a saved explicit episode in Family mode");
   m.ctx.localStorage.setItem("cp_family", "false");
   m.ctx.renderLibrary();
-  assert.ok(m.view.innerHTML.includes(`data-star="${explicitEp.id}"`), "premise: with Family mode off Library shows it");
+  assert.ok(m.view.innerHTML.includes(`data-lb-ep="${explicitEp.id}"`), "premise: with Family mode off Library shows it");
 });
 
 test("round-3 review (L1): Library says Family mode hid a saved episode, never 'Nothing saved yet'", async () => {
@@ -1179,7 +1180,7 @@ test("round-3 review (L1): Library says Family mode hid a saved episode, never '
   m.ctx.localStorage.setItem("cp_family", "true");
   m.ctx.renderLibrary();
   const html = m.view.innerHTML;
-  assert.ok(!html.includes(`data-star="${explicitEp.id}"`), "premise: the row is hidden");
+  assert.ok(!html.includes(`data-lb-ep="${explicitEp.id}"`), "premise: the row is hidden");
   assert.doesNotMatch(html, /Nothing saved yet/, "Library denies a star it only hid");
   assert.match(html, /Family mode is on, so 1 saved episode is hidden\./);
 });

@@ -162,6 +162,8 @@ const SHELL = [
   "ui/tokens.css",
   /* Redesign 2026 (ambient): token-only primitive treatments, scoped under .ag. */
   "ui/primitives.css",
+  /* Redesign 2026 (ambient): Library, a screen on the system. A stylesheet, so listed by name. */
+  "ui/library.css",
   /* Redesign 2026 (ambient): the icon sprite ui/icons.svg, fetched by every `<use href>` agIcon() writes.
      Not a script, so uiSources() does not see it; listed by name for the same reason as tokens.css. */
   "ui/icons.svg",

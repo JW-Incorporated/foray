@@ -43,7 +43,7 @@ const path = require("node:path");
 const { readAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const CSS = ["styles.css", "ui/primitives.css"]
+const CSS = ["styles.css", "ui/primitives.css", "ui/library.css"]
   .map((rel) => fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n"))
   .join("\n");
 
@@ -224,6 +224,8 @@ const BUTTONS = {
   ".ag-chip": { tall: ".ag .ag-chip", why: "a labelled pill with inline padding" },
   ".ag-strip-bar": { tall: ".ag .ag-strip-bar", why: "a flexible bar that fills the strip's width" },
   ".ag-tab": { tall: ".ag .ag-tab", why: "a tab that flexes across one third of the tab bar" },
+  ".lb-cover": { tall: ".ag .lb-cover", why: "Library's Up Next and History rows: an invisible button laid over the whole 64px row (inset: 0), under the menu button" },
+  ".lb-menu-item": { tall: ".ag .lb-menu-item", why: "a row of the Up Next menu sheet's full-width column, 48px tall" },
   ".hv2-play": { tall: "body.ui-v2 .hv2-play", why: "Home's one play button (founder, 2026-09-24): a labelled capsule, \"▶ Play <title>\", 48px tall with 16/20px side padding" },
   ".play-btn": { rule: ".play-btn" },
   ".pl-save": { tall: "button.pl-save", why: "a labelled capsule (\"Save to my playlists\" / \"✓ Saved\") with 16px side padding" },

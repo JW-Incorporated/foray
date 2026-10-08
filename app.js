@@ -2883,6 +2883,9 @@ function saveQueueIds(ids) {
     content and would otherwise land the listener at the top. Best-effort on
     `scrollY`/`scrollTo`, which the test harness does not have. */
 function repaintQueuePage() {
+  /* Library's Up Next section is a second live view of the same list (Redesign 2026, ambient): it repaints in place,
+     and keeps its own menu, Toast and focus. */
+  if (currentHash() === "#/library" && typeof repaintLibraryUpNext === "function") { repaintLibraryUpNext(); return; }
   if (currentHash() !== "#/queue") return;
   const y = typeof window.scrollY === "number" ? window.scrollY : null;
   const held = queueFocusBefore();
@@ -4790,7 +4793,8 @@ function route() {
    heading's text WITHOUT its explicit badge (`headingName`). */
 function pageHeading(view) {
   if (!view || typeof view.querySelector !== "function") return null;
-  const box = view.querySelector(".page-head");
+  /* `.lb-head` is Library's own title row (Redesign 2026, ambient): the same landing, a different class. */
+  const box = view.querySelector(".page-head") || view.querySelector(".lb-head");
   return (box && box.querySelector("h2")) || null;
 }
 

@@ -113,6 +113,24 @@ function galleryCaptureSteps(theme) {
   ];
 }
 
+/* Library (Redesign 2026, ambient): the page scrolled so the Up Next heading sits 24px from the top (the prototype's
+   ?scroll=1330 puts its own Up Next heading there), and the first Up Next row's menu open. The page scrolls as a
+   document. */
+async function scrollLibrary(page) {
+  await page.evaluate(() => {
+    const section = document.querySelector('[data-lb-section="upnext"]');
+    if (section) window.scrollTo(0, Math.max(0, section.getBoundingClientRect().top + window.scrollY - 24));
+  });
+  await wait(page, 500);
+}
+
+async function openLibraryMenu(page) {
+  await scrollLibrary(page);
+  await page.locator("[data-lb-menu]").first().click();
+  await page.waitForSelector(".lb-panel", { state: "visible", timeout: 10000 });
+  await wait(page, 700);
+}
+
 /** Routes every seeded profile can show. `fx` supplies real ids. */
 function coreRoutes(fx, { entities }) {
   const ep = fx.items[0].id;
@@ -217,6 +235,19 @@ export function appStates(fx) {
         { label: "episode-token", route: "#/episode/uilab-stress-2" },
         { label: "mini-player", route: "#/library", run: (page) => startPlayback(page, "uilab-stress-1") },
         { label: "now-playing", route: "#/library", run: (page) => openNowPlaying(page) },
+      ],
+    },
+    {
+      id: "library",
+      description: "Library with forays opened and an episode playing: the top of the page (the Dock's cast under the grid), scrolled to Up Next and History, then an Up Next row's menu open.",
+      seed: "library",
+      steps: [
+        /* Playback starts on another page and Library is then opened fresh, as a listener would: Library never
+           redraws under a play that starts while it is showing, which under Reduce Motion is a colour crossfade
+           the motion gate (rightly) reads as motion. */
+        { label: "library", route: "#/library", run: async (page) => { await page.evaluate(() => { location.hash = "#/forays"; }); await wait(page, 500); await startPlayback(page, ep0); await page.evaluate(() => { location.hash = "#/library"; }); await wait(page, 700); } },
+        { label: "library-lower", route: "#/library", run: (page) => scrollLibrary(page) },
+        { label: "library-up-next-menu", route: "#/library", run: (page) => openLibraryMenu(page), ready: "[data-lb-menu]" },
       ],
     },
   ];
