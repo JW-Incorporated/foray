@@ -121,10 +121,21 @@ test("closing the sheet on tap: openLink collapses the sheet like forayLink alre
   // to prevent. Mirror it. Checked against the raw source: codeOnly()
   // replaces quoted strings like "click" with "", which would defeat a
   // literal match on the addEventListener call.
+  // R-class rewrite (Tactile Now Playing): the collapse now goes through
+  // requestExpanded, which wraps setExpanded in the art-to-sheet transition
+  // and falls back to setExpanded itself. The ruling that fell is only the
+  // callee's name; "openLink collapses like forayLink" still holds, and the
+  // forayLink half is pinned beside it so the two cannot drift apart.
+  // MUTATION: make the openLink handler a no-op -> red.
   assert.match(
     CLIENT,
-    /ui\.openLink\.addEventListener\("click",\s*\(\)\s*=>\s*setExpanded\(false\)\)/,
+    /ui\.openLink\.addEventListener\("click",\s*\(\)\s*=>\s*requestExpanded\(false\)\)/,
     "ui.openLink should collapse the expanded sheet on click, same as ui.forayLink"
+  );
+  assert.match(
+    CLIENT,
+    /ui\.forayLink\.addEventListener\("click",\s*\(\)\s*=>\s*requestExpanded\(false\)\)/,
+    "…and ui.forayLink, which it mirrors, collapses the same way"
   );
 });
 

@@ -7,12 +7,21 @@
  */
 
 var DIAL_HAPTIC_AT = 0;
-var DIAL_ART_TINT_PREFIX = "cp_art_tint:";
+/* The sampled tint is derived data. It is cached in memory for the session and
+   never written to storage: a new cp_ key family would need a line in the
+   privacy policy and the data-deletion inventory for a colour the page can
+   recompute from an already-cached image (review fix, 2026-10-07). */
+var DIAL_ART_TINT_CACHE = {};
 
 function dialNpEl(tag, cls, text) {
   var node = document.createElement(tag);
   if (cls) node.className = cls;
-  if (text != null) node.textContent = text;
+  /* A control's text goes through the label helper, anything else through the
+     status helper (test/toggle-labels.test.js: no hand-written textContent). */
+  if (text != null) {
+    if (tag === "button" || tag === "a") setControlLabel(node, text);
+    else setStatusText(node, text);
+  }
   return node;
 }
 
@@ -185,17 +194,6 @@ function dialApplyNowPlayingTint(sheet, tint) {
   sheet.dataset.scrimAlpha = String(alpha);
 }
 
-function dialStorageGet(key) {
-  if (!/^cp_/.test(key)) return null;
-  if (typeof lsGet === "function") return lsGet(key, null);
-  return null;
-}
-
-function dialStorageSet(key, value) {
-  if (!/^cp_/.test(key)) return false;
-  return typeof lsSet === "function" ? lsSet(key, value) : false;
-}
-
 function dialUrlHash(url) {
   var h = 2166136261;
   String(url || "").split("").forEach(function (c) { h = Math.imul(h ^ c.charCodeAt(0), 16777619); });
@@ -224,9 +222,9 @@ function dialNormalizeArtworkTint(oklch, fallback) {
 function dialExtractArtworkTint(url, showId, fallback) {
   var safe = dialSafeImageUrl(url);
   if (!safe) return Promise.resolve(fallback);
-  var key = DIAL_ART_TINT_PREFIX + String(showId || "show");
+  var key = String(showId || "show");
   var hash = dialUrlHash(safe);
-  var cached = dialStorageGet(key);
+  var cached = DIAL_ART_TINT_CACHE[key];
   if (cached && cached.hash === hash && typeof cached.tint === "string") return Promise.resolve(cached.tint);
   return new Promise(function (resolve) {
     var image = new Image();
@@ -245,7 +243,7 @@ function dialExtractArtworkTint(url, showId, fallback) {
         }
         rgb = rgb.map(function (v) { return count ? v / count : 0; });
         var tint = dialNormalizeArtworkTint(dialRgbToOklch(rgb), fallback);
-        dialStorageSet(key, { hash: hash, tint: tint });
+        DIAL_ART_TINT_CACHE[key] = { hash: hash, tint: tint };
         resolve(tint);
       } catch (_) { resolve(fallback); }
     };
@@ -385,16 +383,16 @@ function dialPaintNowPlaying(parts, model) {
   parts.tintRequest = tintRequest;
   parts.sheet.classList.toggle("np--foray", Boolean(d.foray));
   parts.sheet.classList.toggle("np--buffering", Boolean(d.buffering));
-  if (d.show && parts.sShow.textContent !== d.show) parts.sShow.textContent = d.show;
+  if (d.show) setStatusText(parts.sShow, d.show);
   parts.bigPlay.innerHTML = dialNpIcon(d.running ? "ph-pause-fill" : "ph-play-fill", "lg");
   parts.bigPlay.setAttribute("aria-label", d.running ? "Pause" : "Play");
   if (parts.queueLink) {
     var count = Math.max(0, Number(d.queueCount) || 0);
     parts.queueLink.hidden = false;
     parts.queueLink.innerHTML = dialNpIcon("ph-list-bullets") + '<span class="np__badge readout" hidden>0</span>';
-    parts.queueLink.setAttribute("aria-label", "Up Next, " + count + " queued");
+    setControlLabel(parts.queueLink, null, "Up Next, " + count + " queued");
     var badge = parts.queueLink.querySelector(".np__badge");
-    if (badge) { badge.textContent = String(count); badge.hidden = count < 1; }
+    if (badge) { setStatusText(badge, String(count)); badge.hidden = count < 1; }
   }
   if (parts.bookmarkBtn) parts.bookmarkBtn.hidden = false;
   var bandKey = [d.foray ? "f" : "e", d.currentIndex, d.duration, d.segments && d.segments.length].join(":");
@@ -441,7 +439,7 @@ function dialPreviewNowPlaying(parts, model) {
   if (!parts || !parts.bubble) return;
   var d = model || {};
   parts.bubble.hidden = false;
-  parts.bubble.textContent = (d.show || "4a") + " · " + (d.clock || "0:00");
+  setStatusText(parts.bubble, (d.show || "4a") + " · " + (d.clock || "0:00"));
   var pct = d.duration ? Math.max(0, Math.min(1, d.position / d.duration)) : 0;
   parts.bubble.style.setProperty("--bubble-x", String(pct));
 }

@@ -2441,9 +2441,12 @@ function paintScrubPreview() {
   scrubbing = true;
   const dur = foray ? foray.resolved.totalSec : episodeDurationSec();
   const at = (Number(ui.scrub.value) / 1000) * (dur || 0);
-  /* Keep the visible preview live, but reserve the slider's spoken value for
-     the committed change so assistive technology is not flooded mid-drag. */
-  paintClocks(at, dur, false);
+  /* The slider's spoken value follows the thumb too: a range input whose
+     aria-valuetext lags its value tells a screen reader the wrong time (audit
+     round 2, player-6, "and the slider says it too"). The earlier "do not
+     flood assistive technology mid-drag" idea was never measured. No ruling
+     fell here; this restores the pinned behaviour. */
+  paintClocks(at, dur);
   if (window.DialNowPlaying) {
     const item = foray ? segmentAtElapsed(foray.resolved.playable, at) : null;
     window.DialNowPlaying.preview(ui, {

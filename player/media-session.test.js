@@ -125,26 +125,20 @@ test("mediaArtwork returns null for a refused URL rather than an entry with no s
 
 test("mediaArtworkList prefers the publisher's square when we have one", () => {
   const list = mediaArtworkList({ showArtworkUrl: APPLE });
-  assert.equal(list.length, 6);
+  assert.equal(list.length, 1);
   assert.equal(list[0].src, APPLE);
-});
-
-test("mediaArtworkList publishes the six native sizes against one safe source", () => {
-  /* MUTATION: remove 384 from mediaArtworkList's sizes -> red on the exact ladder. */
-  const list = mediaArtworkList({ showArtworkUrl: APPLE });
-  assert.deepEqual(list.map((image) => image.sizes), ["96x96", "128x128", "192x192", "256x256", "384x384", "512x512"]);
-  assert.deepEqual([...new Set(list.map((image) => image.src))], [APPLE]);
 });
 
 test("mediaArtworkList falls back to the app icon, so the lock screen is never blank", () => {
   const list = mediaArtworkList({ showArtworkUrl: null });
-  assert.equal(list.length, 6);
+  assert.equal(list.length, 1);
   assert.equal(list[0].src, APP_ARTWORK_URL);
 });
 
-test("mediaArtworkList never mixes publisher and app marks", () => {
-  assert.deepEqual([...new Set(mediaArtworkList({ showArtworkUrl: APPLE }).map((image) => image.src))], [APPLE]);
-  assert.deepEqual([...new Set(mediaArtworkList({}).map((image) => image.src))], [APP_ARTWORK_URL]);
+test("mediaArtworkList never offers both — the OS picks by size, not by preference", () => {
+  // Two entries would make it a coin flip over whose mark the car shows.
+  assert.equal(mediaArtworkList({ showArtworkUrl: APPLE }).length, 1);
+  assert.equal(mediaArtworkList({}).length, 1);
 });
 
 test("mediaArtworkList is empty when neither the show's square nor the app icon is usable", () => {
@@ -536,8 +530,7 @@ test("artwork coverage over the shipped Forays is THIN, and the fallback carries
   assert.ok(hits.length < shows.size, "if every show now has artwork, say so and update the PR's verdict");
   for (const show of shows) {
     const list = mediaArtworkList({ showArtworkUrl: map.get(show) ?? null });
-    assert.equal(list.length, 6, `${show} must end up with the native six-size artwork ladder`);
-    assert.equal(new Set(list.map((image) => image.src)).size, 1, `${show} must keep one artwork source`);
+    assert.equal(list.length, 1, `${show} must end up with exactly one artwork entry`);
   }
 });
 
@@ -1243,7 +1236,7 @@ test("the PUBLISHER's name is what actually reaches the platform, not ours", () 
       title: "Episode 09: Did Cooking Make Us Human?",
       artist: "Origin Stories",
       album: "The history of grilling · clip 12 of 32",
-      artwork: Array(6).fill(APPLE).join("+"),
+      artwork: APPLE,
     }], MediaMetadata ? "with a MediaMetadata constructor" : "without one");
   }
 });
@@ -1253,7 +1246,7 @@ test("the artwork really reaches the platform, and falls back to ours when it mu
     const nav = fakeNav();
     createMediaSession({ nav, MediaMetadata })
       .update(mediaSessionView({ item: SEG, durationSec: 60, positionSec: 1, playing: true }));
-    assert.equal(metadataWrites(nav)[0].artwork, Array(6).fill(APP_ARTWORK_URL).join("+"));
+    assert.equal(metadataWrites(nav)[0].artwork, APP_ARTWORK_URL);
   }
 });
 

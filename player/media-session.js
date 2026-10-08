@@ -318,18 +318,16 @@ export function mediaArtwork(url, over = {}) {
 
 /**
  * The artwork list for one item: the publisher's square when we have it, ours
- * when we do not, and an empty list when neither is usable. Each supported
- * Media Session size points at the same safe square URL.
+ * when we do not, and an empty list when neither is usable.
  *
  * Deliberately not both: the OS picks by size, not by preference, so offering
  * our icon alongside a publisher's square is a coin flip over whose mark shows.
  */
 export function mediaArtworkList({ showArtworkUrl = null, appArtworkUrl = APP_ARTWORK_URL } = {}) {
   const show = mediaArtwork(showArtworkUrl);
-  const sizes = [96, 128, 192, 256, 384, 512];
-  if (show) return sizes.map((size) => mediaArtwork(show.src, { sizes: `${size}x${size}`, type: show.type || "" }));
+  if (show) return [show];
   const app = mediaArtwork(appArtworkUrl, { sizes: "512x512", type: "image/png" });
-  return app ? sizes.map((size) => mediaArtwork(app.src, { sizes: `${size}x${size}`, type: app.type || "" })) : [];
+  return app ? [app] : [];
 }
 
 /* ---------- metadata ---------- */
