@@ -370,10 +370,10 @@ export function appStates(fx) {
     },
     {
       id: "playlist-started",
-      description: "Playlist detail and the Playlists list with the first playlist part-played: '2 of 4 played' in Ember, the next part marked.",
+      description: "Playlist detail and the Playlists list with the first playlist part-played and its third part loaded (paused 21 s in): the mini row in the Dock; '2 of 4 played' in Ember, the next part marked.",
       seed: "playlist-started",
       steps: [
-        { label: "playlist-started", route: "#/playlist/p1", ready: ".pl-detail .pl-title" },
+        { label: "playlist-started", route: "#/playlist/p1", ready: ".pl-detail .pl-title", run: (page) => startPlayback(page, fx.items[2].id) },
         { label: "playlists-started", route: "#/playlists", ready: ".pl-grid" },
       ],
     },

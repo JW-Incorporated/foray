@@ -68,9 +68,8 @@ body.view-playlist #view { padding-top: 0; }
 .ag .pl-save-wrap { margin-top: var(--s-5); display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); }
 .ag .pl-save-wrap .pl-save {
   min-height: var(--tap); padding-inline: var(--s-4); border-radius: var(--r-pill); color: var(--text); font: var(--t-label);
-  background: none; box-shadow: inset 0 0 0 calc(var(--s-1) * .375) var(--text-2);
 }
-.ag .pl-save-wrap .pl-save.on { color: var(--ember); box-shadow: inset 0 0 0 calc(var(--s-1) * .375) var(--ember); }
+.ag .pl-save-wrap .pl-save.on { color: var(--ember); }
 .ag .pl-save-wrap .pl-save[aria-disabled="true"] { cursor: default; }
 .ag .pl-save-wrap .pl-save-open { display: inline-flex; align-items: center; min-height: var(--tap); color: var(--ember); font: var(--t-label); }
 .ag .pl-save-wrap .note { flex: 1 1 100%; margin: 0; }
@@ -87,8 +86,11 @@ body.view-playlist #view { padding-top: 0; }
    bar they belong to and not offset by the page gutter and the sill's padding. */
 .ag .pl-strip { position: relative; display: flex; align-items: flex-end; gap: calc(var(--s-1) / 2); height: calc(var(--s-6) + var(--s-1)); }
 .ag .pl-bar { flex: var(--w, 1) 1 0; min-width: calc(var(--s-1) + var(--s-1) / 2); height: var(--s-6); border-radius: var(--r-xs); background: var(--seg-tone, var(--text-3)); }
-.ag .pl-strip.is-started .pl-bar { opacity: var(--seg-dim); }
-.ag .pl-strip.is-started .pl-bar.is-played, .ag .pl-strip.is-started .pl-bar.is-here { opacity: 1; }
+/* Progress is Ember's and nothing else's (iteration 3): every bar keeps its show's colour at full light - dimming a lantern is
+   this direction's "unavailable", so two of four going out read as two shows gone. A played bar carries a 2px Ember mark on the
+   sill beneath it (a shadow, so it adds no layout and sits in the 6px gap above the thumbnails), the one playing
+  is taller, as before. */
+.ag .pl-strip.is-started .pl-bar.is-played { box-shadow: 0 calc(var(--s-1) / 2) 0 var(--ember); }
 .ag .pl-bar.is-here { height: calc(var(--s-6) + var(--s-1)); }
 .ag .pl-thumbs { position: relative; height: var(--s-5); margin-top: 6px; pointer-events: none; }
 .ag .pl-thumbs:empty { display: none; }
@@ -157,6 +159,22 @@ body.view-playlist #view { padding-top: 0; }
 /* EmptyState: one line, one button, centred in the page. */
 .ag .pl-empty { margin-top: var(--s-8); }
 .ag .pl-empty .ag-btn { text-decoration: none; }
+
+/* Secondary here is a Raised surface (iteration 3), not the primitive's stroked ring: "no hairline borders anywhere". The same
+   6% Lamp overlay, 1px top rim and warm shadow as .raised (tokens.css), pill-shaped, so it is the Ember Play pill's sibling and
+   not a different material. The primitive's :active and :focus-visible shadows are re-stated over it (this sheet loads later and
+   would otherwise win with the Raised shadow and drop the focus ring). */
+.ag .pl-empty .ag-btn, .ag .pl-remove, .ag .pl-save-wrap .pl-save {
+  background: linear-gradient(var(--overlay), var(--overlay)) var(--bg1);
+  box-shadow: inset 0 1px 0 var(--rim), var(--shadow-1), var(--shadow-2);
+}
+.ag .pl-empty .ag-btn:active, .ag .pl-save-wrap .pl-save:active { box-shadow: inset 0 0 0 var(--s-1) var(--overlay), var(--shadow-1); }
+.ag .pl-empty .ag-btn:focus-visible, .ag .pl-save-wrap .pl-save:focus-visible {
+  box-shadow: 0 0 0 calc(var(--s-1) / 2) var(--bg0), 0 0 0 var(--s-1) var(--lamp-text);
+}
+@media (prefers-contrast: more) {
+  .ag .pl-empty .ag-btn, .ag .pl-remove, .ag .pl-save-wrap .pl-save { box-shadow: inset 0 0 0 1px var(--text-3); }
+}
 
 /* The length line wraps at its comma only. */
 .ag .pl-nb { white-space: nowrap; }

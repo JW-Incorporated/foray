@@ -800,3 +800,31 @@ test("the detail page reads in the Foray detail's order: the head, the strip on 
   assert.deepStrictEqual(order, [...order].sort((a, b) => a - b), "in that order");
   assert.match(w.html(), /<h2 class="t-headline" id="pl-list-head">Episodes, in order<\/h2>/);
 });
+
+test("iteration 3: the empty-state buttons are Raised, progress on the strip is an Ember mark, and no bar is dimmed", () => {
+  /* The review of iteration 2 found three things this pins. (1) 'Build a playlist' / 'All playlists' (and the keep control) were the
+     primitive's stroked ring: the direction says "no hairline borders anywhere", so a secondary here is a Raised surface (overlay,
+     1px top rim, warm shadow). (2) Played bars were dimmed with --seg-dim, which is the direction's "unavailable" (the lamp goes
+     down); progress is Ember's, so a played bar keeps its show colour and carries an Ember mark. (3) Overriding the primitive's
+     box-shadow would have dropped its focus ring, so the focus-visible rule is re-stated.
+     MUTATIONS: put `inset 0 0 0 calc(var(--s-1) * .375) var(--text-2)` back into the secondary rule's box-shadow -> red. Put
+     `.ag .pl-strip.is-started .pl-bar { opacity: var(--seg-dim); }` back -> red. Change the is-played mark's colour to var(--text-2)
+     -> red. Delete the `:focus-visible` rule -> red. Put a box-shadow ring back on `.pl-save` -> red. */
+  const secondary = decls(CSS, ".ag .pl-empty .ag-btn, .ag .pl-remove, .ag .pl-save-wrap .pl-save");
+  assert.ok(secondary, "the Raised override for the secondary buttons exists");
+  assert.match(secondary.background, /var\(--overlay\)/, "the 6% Lamp overlay");
+  assert.match(secondary["box-shadow"], /inset 0 1px 0 var\(--rim\)/, "the 1px top rim");
+  assert.match(secondary["box-shadow"], /var\(--shadow-1\)/, "the warm shadow");
+  assert.doesNotMatch(secondary["box-shadow"], /\*\s*\.375/, "and no stroked ring");
+  for (const sel of [".ag .pl-save-wrap .pl-save", ".ag .pl-save-wrap .pl-save.on"]) {
+    assert.strictEqual((decls(CSS, sel) || {})["box-shadow"], undefined, `${sel} carries no ring of its own`);
+  }
+  const focus = decls(CSS, ".ag .pl-empty .ag-btn:focus-visible, .ag .pl-save-wrap .pl-save:focus-visible");
+  assert.ok(focus && /var\(--lamp-text\)/.test(focus["box-shadow"]), "the focus ring is re-stated over the Raised shadow");
+
+  assert.doesNotMatch(CSS, /\.pl-bar[^{}]*\{[^{}]*opacity\s*:\s*var\(--seg-dim\)/, "no bar is dimmed: the lamp going down means unavailable");
+  const played = decls(CSS, ".ag .pl-strip.is-started .pl-bar.is-played");
+  assert.ok(played, "a played bar has its own rule");
+  assert.match(played["box-shadow"], /var\(--ember\)/, "progress is an Ember mark");
+  assert.strictEqual(played.opacity, undefined, "and the bar itself stays at full light");
+});
