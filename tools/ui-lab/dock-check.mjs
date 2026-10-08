@@ -93,7 +93,7 @@ async function interactions(page, meta, scheme) {
       hash: location.hash,
       activeId: document.activeElement ? document.activeElement.id : "",
       fieldInDock: Boolean(document.activeElement && document.activeElement.closest && document.activeElement.closest("#dock-field")),
-      heading: (document.querySelector("#view .page-head h2") || {}).textContent || "",
+      heading: (document.querySelector("#view .page-head h2, #view .st-head h1") || {}).textContent || "",
     }));
   };
   const create = await landed("#/create");
