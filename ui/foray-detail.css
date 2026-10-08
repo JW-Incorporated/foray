@@ -187,7 +187,11 @@ body.view-foray-detail #view { padding-top: 0; }
 .ag .fd-clips .fy-jump.is-played .fy-state::before { content: "Played"; font: var(--t-caption); color: var(--text-3); }
 .ag .fd-clips .fy-jump.is-bare .fy-state::before { content: none; }
 .ag .fd-clips .fy-jump:focus-visible { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) / 2); border-radius: var(--r-sm); }
-.ag .fd-clips .fy-row.is-out { opacity: .6; }
+/* An unavailable clip dims its ART only. The row's words ("This clip isn't available right now.", the caption meta, the why-line)
+   stay at full strength: a group opacity of .6 over the Room put text-2 at 3.47:1 and warn at 3.86:1 in Dusk, and 2.81:1 and 2.61:1 in
+   Dawn, all under AA. The legacy rules in styles.css dim the whole row, so this one resets that to 1. */
+.ag .fd-clips .fy-row.is-out { opacity: 1; }
+.ag .fd-clips .fy-row.is-out .fd-rowart { opacity: .6; }
 .ag .fd-clips .fy-out { margin: var(--s-1) 0 0; font: var(--t-caption); color: var(--warn); }
 .ag .fd-clips .fy-fb { gap: var(--s-2); padding-top: 0; }
 .ag .fd-clips .fy-thumb { width: 36px; height: 36px; background: var(--overlay); border: 0; color: var(--text); }

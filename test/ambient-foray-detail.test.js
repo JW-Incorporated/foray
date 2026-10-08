@@ -268,9 +268,10 @@ function mount(hash, bridge) {
   return { ctx, state, view, store, html: () => view.innerHTML };
 }
 
-async function mountForay(id, { resume = null, tweakSources = null, catalog = null, indexRows = null } = {}) {
+async function mountForay(id, { resume = null, tweakSources = null, catalog = null, indexRows = null, setup = null } = {}) {
   const b = await bridgeOver({ resume });
   const m = mount(`#/foray/${id}`, b);
+  if (setup) setup(m);
   m.state.forays = readJson(`${FZ}/forays.json`);
   m.state.segments = readJson(`${FZ}/segments.json`);
   const sources = readJson(`${FZ}/segment-sources.json`);
@@ -616,4 +617,118 @@ test("the page lights the root's Glow with its first show's, so the Dock (outsid
   /* The Dock lives on <body>; a `--glow` set only on `.fd` never reaches it, so the Veil mixed the root's stale Glow.
      MUTATION: delete the forayCssVar(document.documentElement, "--glow", glow) line in ui/foray.js -> red. */
   assert.match(read("ui/foray.js"), /forayCssVar\(document\.documentElement, "--glow", glow\)/);
+});
+
+/* ---------- 7. review fixes: the unavailable row's contrast, and the thumbs observer's lifetime ---------- */
+
+test("an unavailable clip row dims its art only: its words keep full strength and clear AA in Dusk and Dawn", () => {
+  /* The row carried `opacity: .6` (copied from styles.css:3124), which dims the text with it: over the Room text-2 measured
+     3.47:1 and warn 3.86:1 in Dusk, 2.81:1 and 2.61:1 in Dawn, all under 4.5:1. The new unavailable Foray shows every row
+     this way. The axe gate cannot see it (the Room is a blurred image), so the numbers are pinned here.
+     MUTATIONS: put `opacity: .6` back on `.ag .fd-clips .fy-row.is-out` -> red. Drop the `.fd-rowart` dimming -> red (the
+     row would look available). Add any other opacity rule for .is-out to this sheet -> red. */
+  const row = declsAll(CSS, ".ag .fd-clips .fy-row.is-out");
+  assert.strictEqual(row.opacity, "1", "the row is not group-dimmed; styles.css:3124 and :3879 dim it at 0.6 and this must win");
+  assert.strictEqual(declsAll(CSS, ".ag .fd-clips .fy-row.is-out .fd-rowart").opacity, ".6", "the art is what dims");
+  const dimmed = [...CSS.matchAll(/([^{}]*\.is-out[^{}]*)\{([^{}]*)\}/g)]
+    .filter((m) => /opacity\s*:\s*0?\.[0-9]+/.test(m[2])).map((m) => m[1].trim());
+  assert.deepStrictEqual(dimmed, [".ag .fd-clips .fy-row.is-out .fd-rowart"], "nothing else in this sheet dims an .is-out row");
+  /* (0,4,0) beats the legacy body.ui-v2 .fy-row.is-out (0,3,1) at styles.css:3879. */
+  assert.strictEqual(".ag .fd-clips .fy-row.is-out".split(".").length - 1, 4);
+
+  /* The words that stay at full strength: caption meta and why-line in text-2, the out line in warn, over the row (bg1) or
+     the page (bg0). Dusk is the first declaration of each token in tokens.css, Dawn the second (the prefers-color-scheme block). */
+  const lum = (hex) => {
+    const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  };
+  const ratio = (a, b) => { const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05); };
+  const hexes = (name) => [...TOKENS.matchAll(new RegExp(`${name}:\\s*(#[0-9A-Fa-f]{6})`, "g"))].map((m) => m[1]);
+  const pick = (name, scheme) => { const h = hexes(name); assert.ok(h.length >= 2, `${name} is declared for both schemes`); return scheme === "Dusk" ? h[0] : h[1]; };
+  for (const scheme of ["Dusk", "Dawn"]) {
+    for (const bg of ["--bg0", "--bg1"]) {
+      for (const fg of ["--text-2", "--warn"]) {
+        const r = ratio(pick(fg, scheme), pick(bg, scheme));
+        assert.ok(r >= 4.5, `${scheme} ${fg} ${pick(fg, scheme)} on ${bg} ${pick(bg, scheme)} is ${r.toFixed(2)}:1`);
+      }
+    }
+  }
+});
+
+/** A ResizeObserver stand-in, honest about the one thing that matters: it never calls back after disconnect(). */
+function observerStub() {
+  const all = [];
+  class RO {
+    constructor(cb) { this.cb = cb; this.targets = []; this.disconnected = false; all.push(this); }
+    observe(el) { this.targets.push(el); }
+    disconnect() { this.disconnected = true; }
+    fire() { if (!this.disconnected) this.cb([], this); }
+  }
+  return { RO, all, live: () => all.filter((o) => !o.disconnected) };
+}
+
+/** The fake DOM answers the questions the strip's observer asks the way a browser does: isConnected walks to <body> through
+    each parent's CURRENT children (innerHTML drops the old ones), a connected strip is 300 wide and a detached one 0, and
+    tape bars are 20px wide on a 24px pitch so every tape bar earns a thumbnail. */
+function withBrowserishDom(fn) {
+  const P = El.prototype;
+  const keys = ["isConnected", "offsetWidth", "offsetLeft", "getBoundingClientRect"];
+  const saved = keys.map((k) => [k, Object.getOwnPropertyDescriptor(P, k)]);
+  Object.defineProperty(P, "isConnected", { configurable: true, get() {
+    let n = this;
+    while (n.parent) { if (!n.parent.children.includes(n)) return false; n = n.parent; }
+    return n.tagName === "BODY";
+  } });
+  Object.defineProperty(P, "offsetWidth", { configurable: true, get() { return 20; } });
+  Object.defineProperty(P, "offsetLeft", { configurable: true, get() { return this.parent ? this.parent.children.indexOf(this) * 24 : 0; } });
+  P.getBoundingClientRect = function () { return { top: 0, left: 0, height: 0, width: this.id === "fy-strip" && this.isConnected ? 300 : 0 }; };
+  const restore = () => { for (const [k, d] of saved) { if (d) Object.defineProperty(P, k, d); else delete P[k]; } };
+  return Promise.resolve().then(fn).then((v) => { restore(); return v; }, (e) => { restore(); throw e; });
+}
+
+test("opening one Foray from another never lets the first page's observer repaint the second's thumbnails", () => {
+  /* Repro (review): Foray B is playing, open A's page, open Now Playing, tap its Foray link to #/foray/B. A's strip leaves
+     the DOM, its ResizeObserver fires once at width 0 (!= its 300), and the callback re-queried #fy-strip / #fd-thumbs, so it
+     redrew B's row with A's shows and artwork against B's bars. Each render also leaked one observer.
+     MUTATIONS: delete `disconnectForayStripObserver()` from renderForay -> red (A's observer is still live, two observers
+     live). Revert the callback to `paintForayThumbs(r, shows, tones)` (the globals) AND drop the isConnected guard AND the
+     disconnect -> red (B's row is rewritten with A's thumbs). */
+  return withBrowserishDom(async () => {
+    const ro = observerStub();
+    const m = await mountForay(PLAIN, { setup: (mm) => { mm.ctx.ResizeObserver = ro.RO; } });
+    assert.strictEqual(ro.all.length, 1, "A's page watches its strip");
+    const rowA = m.view.querySelector("#fd-thumbs").innerHTML;
+    assert.match(rowA, /fd-thumb/, "fixture: A's bars earned thumbnails (else this proves nothing)");
+
+    m.ctx.location.hash = `#/foray/${NARRATED}`;
+    m.ctx.renderCurrentPage();
+    await new Promise((r) => setTimeout(r, 20));
+    assert.strictEqual(m.state.foray.id, NARRATED, "fixture: B rendered");
+    assert.strictEqual(ro.all.length, 2, "B's page watches its own strip");
+    assert.strictEqual(ro.all[0].disconnected, true, "A's observer was disconnected when B's render began");
+    assert.strictEqual(ro.live().length, 1, "exactly one live observer: nothing leaks per render");
+
+    const rowB = m.view.querySelector("#fd-thumbs").innerHTML;
+    assert.match(rowB, /fd-thumb/);
+    assert.notStrictEqual(rowB, rowA, "fixture: the two Forays' thumbnail rows differ");
+    ro.all[0].fire(); /* a browser would not call back after disconnect(); the stub agrees */
+    ro.all[1].fire(); /* B's own strip is unchanged in width, so it repaints nothing */
+    assert.strictEqual(m.view.querySelector("#fd-thumbs").innerHTML, rowB, "B's thumbnails are still B's");
+  });
+});
+
+test("a strip that has left the document stops its observer and paints nothing, even into another page's #fd-thumbs", () => {
+  /* The guard on its own, with no second render to disconnect it: the view is replaced by something that happens to carry
+     the same ids, then the first page's observer fires (a removed node reports width 0, which differs from its last).
+     MUTATION: delete the `if (!strip.isConnected) {...}` line in ui/foray.js -> red (the observer never disconnects itself, and repaints a detached row). Swap the closure strip/row for the global $("#fy-strip") lookups as well -> red (the sentinel is overwritten). */
+  return withBrowserishDom(async () => {
+    const ro = observerStub();
+    const m = await mountForay(PLAIN, { setup: (mm) => { mm.ctx.ResizeObserver = ro.RO; } });
+    assert.strictEqual(ro.live().length, 1);
+    m.view.innerHTML = `<div class="fy-strip" id="fy-strip"></div><div class="fd-thumbs" id="fd-thumbs"></div>`;
+    m.view.querySelector("#fd-thumbs").innerHTML = "SENTINEL";
+    ro.all[0].fire();
+    assert.strictEqual(m.view.querySelector("#fd-thumbs").innerHTML, "SENTINEL", "another page's row is left alone");
+    assert.strictEqual(ro.all[0].disconnected, true, "and the observer disconnects itself");
+  });
 });

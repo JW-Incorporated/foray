@@ -865,9 +865,7 @@ function forayThumbCells(r, shows, tones, bars, stripWidth = Infinity) {
   return cells;
 }
 
-function paintForayThumbs(r, shows, tones) {
-  const strip = $("#fy-strip");
-  const row = $("#fd-thumbs");
+function paintForayThumbs(r, shows, tones, strip = $("#fy-strip"), row = $("#fd-thumbs")) {
   if (!strip || !row || !strip.children || typeof strip.getBoundingClientRect !== "function") return;
   const cells = forayThumbCells(r, shows, tones, [...strip.children], strip.clientWidth || Infinity);
   row.innerHTML = cells.map((c) => `<span class="fd-thumb">${c.html}</span>`).join("");
@@ -1091,8 +1089,19 @@ function forayFactsLabel(r, player) {
    still listed, so the back button is not a dead end for the one person
    reviewing it. That list moved off Home to `#/forays` on 2026-09-03, so this
    link moved with it. */
+/* The one ResizeObserver this page owns, on its strip. It is disconnected the moment any Foray render starts (a
+   second page's render, a retry), and its callback bails out and disconnects when the strip it watches has left the
+   document, because removing a watched node makes the observer fire once at width 0. Before this, that last
+   callback redrew whatever #fy-strip was on the page by then with the OLD Foray's shows and artwork. */
+let forayStripObserver = null;
+function disconnectForayStripObserver() {
+  if (forayStripObserver) { try { forayStripObserver.disconnect(); } catch (_) { /* already gone */ } }
+  forayStripObserver = null;
+}
+
 async function renderForay(id) {
   setBodyClass("view-page");
+  disconnectForayStripObserver();
   /* Every status this page can stop on has a ‹ back to the list, and each
      failure offers "Try again" wired to the thing that failed (audit
      2026-09-22, theme G). "Reload the page" was browser advice inside a native
@@ -1285,12 +1294,16 @@ async function renderForay(id) {
   /* The thumbnails are measured from the bars, so a strip that changes width (a rotation, a resized
      window) gets them again. */
   const strip = $("#fy-strip");
-  if (strip && typeof ResizeObserver === "function") {
+  const thumbsRow = $("#fd-thumbs");
+  if (strip && thumbsRow && typeof ResizeObserver === "function") {
     let lastWidth = Math.round(strip.getBoundingClientRect().width);
-    new ResizeObserver(() => {
+    const observer = new ResizeObserver(() => {
+      if (!strip.isConnected) { observer.disconnect(); if (forayStripObserver === observer) forayStripObserver = null; return; }
       const w = Math.round(strip.getBoundingClientRect().width);
-      if (w !== lastWidth) { lastWidth = w; paintForayThumbs(r, shows, tones); }
-    }).observe(strip);
+      if (w !== lastWidth) { lastWidth = w; paintForayThumbs(r, shows, tones, strip, thumbsRow); }
+    });
+    forayStripObserver = observer;
+    observer.observe(strip);
   }
   $("#view .fd-share")?.addEventListener("click", () => shareForay(r));
   bindForayFollows($("#view"));

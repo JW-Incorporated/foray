@@ -227,7 +227,7 @@ request that is not to our own origin.
 ## 2. What leaves your device, exactly
 
 The app buffers events locally (in the event queue described above) and
-periodically sends some of them to our database (Supabase — see §3). **Nineteen of the twenty-three event types the app records never leave the device.** The
+periodically sends some of them to our database (Supabase — see §3). **Eighteen of the twenty-two event types the app records never leave the device.** The
 buffer is trimmed to the most recent 5,000 entries.
 
 **Sent** (`app.js:toEventRow()`). Every row carries your anonymous account id
@@ -243,7 +243,7 @@ and a timestamp:
 **Not sent — recorded only on your device:** `play_started`, `position` (your play
 position; stored about every 15 seconds, recorded as an event at most once a
 minute per episode — `player/position-store.js:save()`), `foray_play`,
-`foray_restart`, `foray_progress_drift`, `source_opened`, `saved`'s counterpart
+`foray_progress_drift`, `source_opened`, `saved`'s counterpart
 `unsaved`, `playlist_built`, `playlist_saved` (keeping a playlist 4a made as
 your own), `playlist_removed`, `family_mode`,
 `autoadvance_pref` (toggling continuous playback on or off), `voice_pref`
