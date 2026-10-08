@@ -517,21 +517,35 @@
       },
       "app": {
         "state": "returning",
-        "step": "starred-shows"
+        "step": "yours-shows"
       },
       "regions": {
         "header": {
           "prototype": ".top",
           "app": ".page-head"
         },
-        "rows": {
-          "prototype": ".row",
-          "app": ".ep-row",
+        "primary": {
+          "prototype": ".top .keycap",
+          "app": "#yours-knob"
+        },
+        "chips": {
+          "prototype": ".strip[role=\"tablist\"] .chip",
+          "app": "#yours-chips .chip",
           "mode": "all"
         },
-        "mini": {
-          "prototype": "#mini",
-          "app": "#foray-player"
+        "grid": {
+          "prototype": ".agrid",
+          "app": ".shows-grid"
+        },
+        "tiles": {
+          "prototype": ".agrid__item",
+          "app": ".shows-tile",
+          "mode": "all"
+        },
+        "names": {
+          "prototype": ".agrid__item .label",
+          "app": ".shows-tile__name",
+          "mode": "all"
         },
         "tabBar": {
           "prototype": "#tabs",

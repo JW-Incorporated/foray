@@ -80,12 +80,221 @@ function libraryForaysHtml() {
     + (list.length > LIBRARY_SECTION_CAP ? `<a class="lib-more" href="#/forays">All ${list.length} forays ›</a>` : "");
 }
 
-function libraryFollowedHtml() {
-  const followed = Object.values(starredShowsMap())
-    .sort((a, b) => (b.starred_at || "").localeCompare(a.starred_at || ""));
-  if (!followed.length) return `<p class="note">No followed shows yet — follow a show from its page to keep it here.</p>`;
-  return `<div class="show-results">${followed.slice(0, LIBRARY_SECTION_CAP).map(starredShowRow).join("")}</div>`
-    + (followed.length > LIBRARY_SECTION_CAP ? `<a class="lib-more" href="#/starred-shows">All ${followed.length} followed shows ›</a>` : "");
+/* THE SHOWS PANEL (tactile `library-shows`, BUILD-PLAN 2.14, BUILD-NOTES 4.5).
+   Every followed show, newest follow first, as a three-column grid of art tiles
+   (the prototype's `.agrid`: 12 apart, `--r-sm`, the name 13/600 on two lines
+   below). It was a five-row summary that ended in "All N followed shows" and
+   linked to #/starred-shows; the grid IS the whole list, so that link is gone
+   (the route still resolves, and "Yours lists every followed show" is true).
+
+   RULING THAT FELL: "Yours' Shows is a capped summary that opens
+   #/starred-shows" (test/starred-shows.test.js, the Shows-page section).
+
+   EACH TILE is a link to the show, with one thing laid over its artwork that is
+   not part of the link: the ⋯ (a real 44px button whose drawn mark is a small
+   quiet chip; the artwork is otherwise bare, as in the prototype). There is no
+   "Following" tag: every tile in this panel is followed by definition, so the
+   tag said nothing and cost a third of each face (iteration 2). ⋯ - or a long press,
+   or the context menu - reveals the tile's one action, Unfollow, as a real
+   button over the artwork (`hidden` until asked for, so it is out of the
+   accessibility tree when closed). Opening moves focus to Unfollow; Escape,
+   ⋯ again, or another tile's ⋯ closes it, and focus goes back to the ⋯. One
+   tile is open at a time. Unfollow writes through `toggleShowStar` (the same
+   writer the Follow button on a show page uses, and the same event) and the
+   page is NOT re-rendered: the tile leaves, the readout and the Shows count
+   tick down, focus goes to the next tile's ⋯. */
+const YOURS_LONG_PRESS_MS = 500;
+
+/** Followed shows, newest follow first, each resolved to what a tile needs. The
+    stored entry is a SNAPSHOT from the moment of the tap: its title and artwork
+    may be missing, so both fall back through the live show record. */
+function yoursFollowedShows() {
+  return Object.entries(starredShowsMap())
+    .map(([key, raw]) => {
+      const entry = raw && typeof raw === "object" ? raw : {};
+      const id = typeof entry.show_id === "string" && entry.show_id ? entry.show_id : key;
+      const live = showById(id);
+      return {
+        id,
+        title: String(entry.title || (live && live.title) || "Show"),
+        art: entry.artwork_url || showArtworkUrl(live) || "",
+        at: String(entry.starred_at || ""),
+      };
+    })
+    .sort((a, b) => b.at.localeCompare(a.at));
+}
+
+/** The note a Shows panel with nothing in it says (also what Unfollow leaves
+    behind when other panels still have things in them). */
+const YOURS_NO_SHOWS_NOTE = "No followed shows yet — follow a show from its page to keep it here.";
+
+function yoursShowTileHtml(s) {
+  const name = tactileDisplayName(s.title);
+  const img = s.art
+    ? `<img src="${esc(safeUrl(artUrl(s.art, 324)))}" alt="" loading="lazy" decoding="async" width="108" height="108" referrerpolicy="no-referrer">`
+    : "";
+  const station = tactileStationCode(name);
+  return `<li class="shows-tile" data-show-tile="${esc(s.id)}">`
+    + `<a class="shows-tile__link" href="${esc(safeUrl("#/show/" + encodeURIComponent(s.id)))}" title="${esc(s.title)}">`
+    + `<span class="find-art find-art--tile find-art--c${tactileHash(s.id)}" data-i="${esc(station)}">${img}</span>`
+    + `<span class="shows-tile__name">${esc(name)}</span></a>`
+    + `<div class="shows-tile__layer">`
+    + `<button type="button" class="iconbtn shows-tile__more" data-action="${esc(yoursActionKey("show-more", s.id))}" aria-expanded="false" aria-controls="shows-actions-${esc(s.id)}" aria-label="${esc(`More for ${name}`)}">${tactileIcon("ph-dots-three")}</button>`
+    + `<div class="shows-tile__actions" id="shows-actions-${esc(s.id)}" role="group" aria-label="${esc(`${name}, followed`)}" hidden>`
+    + tactileKeycap({ size: "sm", variant: "paper", text: "Unfollow", label: `Unfollow ${name}`, action: yoursActionKey("unfollow", s.id) })
+    + `</div></div></li>`;
+}
+
+function yoursShowsHtml() {
+  const shows = yoursFollowedShows();
+  if (!shows.length) return `<p class="note">${esc(YOURS_NO_SHOWS_NOTE)}</p>`;
+  return `<ul class="shows-grid" id="yours-shows">${shows.map(yoursShowTileHtml).join("")}</ul>`;
+}
+
+/** The ⋯ of a tile and the group it controls, found from either one. */
+function yoursShowParts(tile) {
+  if (!tile || typeof tile.querySelector !== "function") return null;
+  const more = tile.querySelector(".shows-tile__more");
+  const actions = tile.querySelector(".shows-tile__actions");
+  const link = tile.querySelector(".shows-tile__link");
+  return more && actions && link ? { more, actions, link } : null;
+}
+
+/** Close whichever tile is open. `restoreFocus` puts focus back on its ⋯ (an
+    Escape, or the ⋯ itself, as opposed to a press somewhere else). */
+function yoursCloseShowActions({ restoreFocus = false } = {}) {
+  const panel = $("#yours-panel-shows");
+  if (!panel || typeof panel.querySelectorAll !== "function") return;
+  if (typeof panel._clearSwallow === "function") panel._clearSwallow();
+  [...panel.querySelectorAll(".shows-tile.is-open")].forEach((tile) => {
+    const parts = yoursShowParts(tile);
+    tile.classList.remove("is-open");
+    if (!parts) return;
+    parts.actions.hidden = true;
+    parts.link.removeAttribute("inert");
+    parts.more.setAttribute("aria-expanded", "false");
+    if (restoreFocus) focusQuietly(parts.more);
+  });
+}
+
+function yoursOpenShowActions(tile) {
+  const parts = yoursShowParts(tile);
+  if (!parts) return;
+  yoursCloseShowActions();
+  tile.classList.add("is-open");
+  parts.actions.hidden = false;
+  /* The group covers the artwork, and the link under it is covered: out of the
+     tab order and the accessibility tree while it is, back when it closes. */
+  parts.link.setAttribute("inert", "");
+  parts.more.setAttribute("aria-expanded", "true");
+  focusQuietly(parts.actions.querySelector("button"));
+}
+
+function yoursToggleShowActions(tile) {
+  if (tile && tile.classList && tile.classList.contains("is-open")) yoursCloseShowActions({ restoreFocus: true });
+  else yoursOpenShowActions(tile);
+}
+
+/** Unfollow: write it, take the tile out, say so, tick the counts. */
+function yoursUnfollow(id) {
+  const panel = $("#yours-panel-shows");
+  if (!panel || typeof panel.querySelectorAll !== "function") return;
+  const tiles = [...panel.querySelectorAll(".shows-tile")];
+  const tile = tiles.find((t) => t.getAttribute("data-show-tile") === id);
+  if (!tile || !isShowStarred(id)) return;
+  const name = (tile.querySelector(".shows-tile__name") || {}).textContent || "the show";
+  const at = tiles.indexOf(tile);
+  toggleShowStar(id);
+  if (typeof tile.remove === "function") tile.remove();
+  const left = Object.keys(starredShowsMap()).length;
+  yoursReadouts.shows = yoursReadoutText("shows", { shows: left });
+  if (!panel.hidden) setStatusText($("#yours-readout"), yoursReadouts.shows);
+  announce(`Unfollowed ${name}. ${countLabel(left, "show")} followed.`);
+  if (!left) {
+    /* Nothing followed and nothing anywhere else: the whole-screen empty state,
+       the same screen a fresh visit to the same data draws. Otherwise this
+       panel says it has nothing, and the chip strip stays. */
+    if (yoursNothingYet(queueIds().length)) {
+      renderLibrary();
+      focusQuietly($("#view h2"));
+      return;
+    }
+    panel.innerHTML = `<p class="note">${esc(YOURS_NO_SHOWS_NOTE)}</p>`;
+    focusQuietly($("#yours-chips [aria-selected=\"true\"]") || $("#view h2"));
+    return;
+  }
+  const rest = [...panel.querySelectorAll(".shows-tile__more")];
+  focusQuietly(rest[Math.min(at, rest.length - 1)]);
+}
+
+/** One delegated listener set on the panel: ⋯, Unfollow, Escape, and the long
+    press on a tile's link (which opens the same group and then swallows the
+    click the release would otherwise make, so a long press never also opens
+    the show). */
+function bindYoursShows(panel) {
+  if (!panel || panel._showsBound) return;
+  panel._showsBound = true;
+  const tileOf = (node) => (node && typeof node.closest === "function" ? node.closest(".shows-tile") : null);
+  /* Set by the long press, used up by the click its release makes. A release
+     that makes no click (the finger slid off, the browser sent a contextmenu
+     instead) would leave it set, so the next gesture (pointerdown), any key and
+     the group closing all clear it: the next ordinary tap always opens the show. */
+  let swallowClick = false;
+  panel._clearSwallow = () => { swallowClick = false; };
+  panel.addEventListener("click", (e) => {
+    /* The click a long press ends with. The group opened under the finger and
+       covers the artwork (the link is inert), so the browser sends that click to
+       the nearest ancestor of where the press began and where it ended: the
+       tile, never the link. It is swallowed wherever it lands, once. */
+    if (swallowClick) {
+      swallowClick = false;
+      if (typeof e.preventDefault === "function") e.preventDefault();
+      return;
+    }
+    const hit = e.target && typeof e.target.closest === "function" ? e.target.closest("[data-action]") : null;
+    if (!hit || hit.disabled) return;
+    const raw = hit.getAttribute("data-action") || "";
+    const at = raw.indexOf(":");
+    const verb = at < 0 ? raw : raw.slice(0, at);
+    const id = at < 0 ? "" : raw.slice(at + 1);
+    if (verb === "show-more") { if (typeof e.preventDefault === "function") e.preventDefault(); yoursToggleShowActions(tileOf(hit)); }
+    else if (verb === "unfollow") { if (typeof e.preventDefault === "function") e.preventDefault(); yoursUnfollow(id); }
+  });
+  panel.addEventListener("keydown", (e) => {
+    swallowClick = false;
+    if (e.key === "Escape" && panel.querySelector(".shows-tile.is-open")) {
+      if (typeof e.preventDefault === "function") e.preventDefault();
+      yoursCloseShowActions({ restoreFocus: true });
+    }
+  });
+  let press = null;
+  const stopPress = () => { if (press) { clearTimeout(press.timer); press = null; } };
+  panel.addEventListener("pointerdown", (e) => {
+    const link = e.target && typeof e.target.closest === "function" ? e.target.closest(".shows-tile__link") : null;
+    stopPress();
+    swallowClick = false;
+    if (!link) return;
+    press = {
+      x: e.clientX, y: e.clientY,
+      timer: setTimeout(() => {
+        press = null;
+        yoursOpenShowActions(tileOf(link));   // closes any open group, which clears the flag: set it after
+        swallowClick = true;
+      }, YOURS_LONG_PRESS_MS),
+    };
+  });
+  panel.addEventListener("pointermove", (e) => {
+    if (press && Math.abs((e.clientX || 0) - (press.x || 0)) + Math.abs((e.clientY || 0) - (press.y || 0)) > 10) stopPress();
+  });
+  ["pointerup", "pointercancel", "pointerleave"].forEach((type) => panel.addEventListener(type, stopPress));
+  /* The context menu is the long press on a pointer that has one. */
+  panel.addEventListener("contextmenu", (e) => {
+    const link = e.target && typeof e.target.closest === "function" ? e.target.closest(".shows-tile__link") : null;
+    if (!link) return;
+    if (typeof e.preventDefault === "function") e.preventDefault();
+    stopPress();
+    yoursOpenShowActions(tileOf(link));
+  });
 }
 
 /* ---------- YOURS (TACTILE): the Library as a chip strip over one list ----------
@@ -662,6 +871,8 @@ function fitYoursChip(strip) {
 function selectYoursChip(key, { focus = false } = {}) {
   const keys = yoursChipDefs().map((c) => c.key);
   if (!keys.includes(key)) return;
+  /* An open Unfollow does not wait behind a chip: it would be open again on the way back. */
+  yoursCloseShowActions();
   state.yoursChip = key;
   const panels = typeof $("#view").querySelectorAll === "function" ? [...$("#view").querySelectorAll(".yours-panel")] : [];
   panels.forEach((p) => { p.hidden = p.id !== `yours-panel-${key}`; });
@@ -799,7 +1010,7 @@ function renderLibrary(chip) {
   const readoutText = nothingYet ? YOURS_EMPTY_READOUT : yoursReadouts[active];
   const inner = nothingYet ? null : {
     forays: libraryForaysHtml(),
-    shows: libraryFollowedHtml(),
+    shows: yoursShowsHtml(),
     saved: savedHtml,
     playlists: playlistsHtml,
     upnext: yoursQueueInner(queueList),
@@ -825,6 +1036,7 @@ function renderLibrary(chip) {
   bindYoursChips($("#yours-chips"));
   fitYoursChip($("#yours-chips"));
   bindYoursKnob($("#yours-knob"));
+  bindYoursShows($("#yours-panel-shows"));
   const queuePanel = $("#yours-panel-upnext");
   if (queuePanel) queuePanel.addEventListener("click", onYoursQueueClick);
 

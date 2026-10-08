@@ -486,7 +486,7 @@ test("REVIEW: a foreground directory refresh repaints Library's Forays too", () 
 });
 
 test("Yours lists the shows the listener follows, linking to each show", () => {
-  /* MUTATION: drop the `shows: libraryFollowedHtml()` entry from renderLibrary. */
+  /* MUTATION: drop the `shows: yoursShowsHtml()` entry from renderLibrary. */
   const m = mount({ seed: { cp_starred_shows: JSON.stringify({
     "s-1": { show_id: "s-1", title: "A Followed Show", artwork_url: null, starred_at: "2026-09-01" },
   }) } });
