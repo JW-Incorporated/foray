@@ -715,11 +715,18 @@ function seedHomeForRedeal(m) {
   m.evalIn("state.ready = true; Math = Object.assign(Object.create(Math), { random: () => 0.5 });");
 }
 const homeHtml = (m) => m.byId.get("view").innerHTML;
-const dealtRoots = (html) => [...html.matchAll(/class="mini-card" data-branch="([^"]+)"/g)].map((mm) => mm[1]);
+/* The subjects the deal put on Home, in page order, once each: Today's hero (the first pick) and Today's picks
+   carry `data-branch`; "Off your path" is a different share of the day and is not part of the deal.
+   (Redesign 2026: the four `.mini-card`s became a hero and a list of rows, so a subject can show twice.) */
+const dealtRoots = (html) => {
+  const ends = ['aria-label="Playlists for you"', 'aria-label="Off your path"'].map((m) => html.indexOf(m)).filter((i) => i >= 0);
+  const dealt = html.slice(html.indexOf('class="td-hero"'), ends.length ? Math.min(...ends) : undefined);
+  return [...new Set([...dealt.matchAll(/data-branch="([^"]+)"/g)].map((mm) => mm[1]))];
+};
 /* Typographic quotes since audit round 2 (copy-8): every quoted listener
    string goes through app.js's one `quoteQuery` helper. */
 const leadEpisode = (html, root) =>
-  (new RegExp(`data-branch="${root}"[\\s\\S]*?Starts with \\u201c([^\\u201d]+?)\\.?\\u201d`).exec(html) || [])[1];
+  (new RegExp(`data-branch="${root}"[\\s\\S]*?class="td-link"[^>]*>([^<]+)<`).exec(html) || [])[1];
 
 /** Renders the first Home of the session (which deals cardSlots and opens the
     sheet over it) and returns the four dealt subjects, stretch slot first. */
@@ -727,7 +734,7 @@ function firstRunHome(m) {
   m.ctx.renderHome();
   assert.match(sheetTitle(m), /picks podcast episodes for you/, "the first-run sheet must be open over Home");
   const before = dealtRoots(homeHtml(m));
-  assert.strictEqual(before.length, 4, "fixture: the pre-pick Home dealt four subject cards");
+  assert.strictEqual(before.length, 4, "fixture: the pre-pick Home dealt four subjects");
   return before;
 }
 function pickAndStart(m, roots) {
@@ -754,9 +761,10 @@ test("picking three chips changes the FIRST Home render: the picked subjects bec
   pickAndStart(m, picks);
 
   const after = dealtRoots(homeHtml(m));
-  assert.notDeepStrictEqual(after, before, "the picks must change the Home the listener lands on");
-  assert.deepStrictEqual([...after.slice(1)].sort(), [...picks].sort(),
-    `slots 2-4 must be the three picked subjects (slot 1 is the stretch pick, outside them by design); got ${after.join(", ")}`);
+  assert.notDeepStrictEqual([...after].sort(), [...before].sort(), "the picks must change the Home the listener lands on");
+  assert.strictEqual(after.length, 4, `four subjects are dealt; got ${after.join(", ")}`);
+  for (const p of picks) assert.ok(after.includes(p), `the picked subject ${p} must be dealt; got ${after.join(", ")}`);
+  assert.strictEqual(after.filter((r) => !picks.includes(r)).length, 1, "and the fourth is the stretch pick, outside them by design");
 });
 
 test("subjects the pre-pick deal happened to show are not penalised as 'recently shown' or 'seen' when the picks bring them forward", () => {
@@ -776,19 +784,19 @@ test("subjects the pre-pick deal happened to show are not penalised as 'recently
   bootWithTaxonomy(m);
   seedHomeForRedeal(m);
   const before = firstRunHome(m);
-  const picks = before.slice(1); // the three top-tier subjects the default deal showed
+  const stretchRoot = m.state.cardSlots.find((sl) => sl.role === "stretch").branch;
+  const picks = before.filter((r) => r !== stretchRoot); // the three top-tier subjects the default deal showed
 
   pickAndStart(m, picks);
 
   const html = homeHtml(m);
   const after = dealtRoots(html);
-  assert.deepStrictEqual([...after.slice(1)].sort(), [...picks].sort(),
-    `the picked subjects the default deal showed must stay the top-tier slots; got ${after.join(", ")}`);
+  for (const p of picks) assert.ok(after.includes(p), `the picked subjects the default deal showed must stay the top-tier slots; got ${after.join(", ")}`);
   for (const root of picks) {
     assert.strictEqual(leadEpisode(html, root), `${root} episode 4`,
       `${root}'s card must lead with its newest episode — the pre-pick deal must not count as 'seen'`);
   }
-  assert.deepStrictEqual(m.ctx.lsGet("cp_recent_branches", []), after,
+  assert.deepStrictEqual([...m.ctx.lsGet("cp_recent_branches", [])].sort(), [...m.state.cardSlots.map((sl) => sl.branch)].sort(),
     "after the re-deal, recent-branch memory holds exactly the re-dealt subjects, not the pre-pick deal's too");
 });
 

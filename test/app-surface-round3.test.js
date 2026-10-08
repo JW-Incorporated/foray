@@ -194,15 +194,19 @@ test("app-1-16: show links go through showRouteHash, and the prefetch parses the
 });
 
 test("app-2-13: Foray links go through forayRouteHash, which encodes", () => {
-  /* forayCardV2Html, the show page's Forays rows and the Forays page rows built
-     `#/foray/${esc(id)}` while Library and the router encode: an id carrying
+  /* Home's card (now Today's hero and Keep listening row), the show page's Forays rows and the Forays
+     page rows built `#/foray/${esc(id)}` while Library and the router encode: an id carrying
      `/`, `#`, `?` or `%` broke routing from those surfaces only.
-     MUTATION: restore `href="#/foray/${esc(foray.id)}"` in forayCardV2Html — the
-     card assertion goes red; restore any other producer — the source guard does. */
+     MUTATION: build `route: \`/foray/${f.id}\`` in todayForayHero (or todayKeepHtml) — the source guard
+     goes red; restore `href="#/foray/${esc(id)}"` in any other producer — the other guard does. */
   const m = loadApp();
   assert.strictEqual(m.ctx.forayRouteHash(ODD_ID), `#/foray/${ODD_HASH}`);
-  const card = m.ctx.forayCardV2Html({ id: ODD_ID, title: "Odd Foray", topic: "science" });
+  assert.strictEqual(m.ctx.forayRoutePath(ODD_ID), `/foray/${ODD_HASH}`);
+  const hero = { kind: "foray", id: ODD_ID, title: "Odd Foray", route: m.ctx.forayRoutePath(ODD_ID), shows: [], meta: "", why: "", target: null };
+  const card = m.ctx.todayHeroHtml(hero, { firstRun: false });
   assert.ok(card.includes(`href="#/foray/${ODD_HASH}"`), card.slice(0, 300));
+  assert.ok(/route: forayRoutePath\(f\.id\)/.test(SRC), "todayForayHero builds its route with forayRoutePath");
+  assert.ok(/forayRoutePath\(entry\.id\)/.test(SRC), "and so does Keep listening's row");
   assert.ok(!/#\/foray\/\$\{esc\(/.test(SRC), "every `#/foray/` link goes through forayRouteHash");
 });
 
@@ -384,20 +388,21 @@ test("app-2-1: lastEpisodeCard seeds the player's pointer only when the index ha
 
 /* ---------- app-2-12: Home computes each rail's picks once per render --------- */
 
-test("app-2-12: renderHomeV2 computes every rail's picks once, for the button and the rails alike", () => {
+test("app-2-12: renderHomeV2 computes each of its entries once, for the hero and the sections alike", () => {
   /* homePlayHtml -> homePlayTarget -> homePlayRails computed every rail, and then
-     jumpBackInV2Html, foraysForYouHtml and playlistsForYouHtml computed each one
-     again — generatedPlaylists' full-pool scan and sort included.
-     MUTATION: call homePlayHtml() / the rail renderers without `picks` in
-     renderHomeV2 — the counts go to 2, red. */
+     the rail renderers computed each one again — generatedPlaylists' full-pool scan and sort
+     included. Today (Redesign 2026) keeps the rule: the entries (Keep listening's source), the
+     Foray pick (the hero and the test-track drafts) and the playlists are each read once per render.
+     MUTATION: call jumpBackInEntries() / foraysForYouPicks() / playlistsForYouPicks() a second time
+     inside todayHtml (a default parameter that recomputes) — the counts go to 2, red. */
   const m = loadApp();
   const calls = { jbi: 0, forays: 0, playlists: 0 };
   m.ctx.jumpBackInEntries = () => { calls.jbi += 1; return []; };
   m.ctx.foraysForYouPicks = () => { calls.forays += 1; return null; };
   m.ctx.playlistsForYouPicks = () => { calls.playlists += 1; return { own: [], generated: [] }; };
-  for (const name of ["homeGreeting", "testTrackNoticeHtml", "suggestedHtml"]) m.ctx[name] = () => "";
-  for (const name of ["offerHomeOnboarding", "sizeProgressBars", "bindPickLogging", "bindStars", "bindUpNext", "bindPlay", "bindHomePlay", "buildCards"]) m.ctx[name] = () => {};
-  m.run("state.cardSlots = [];");
+  for (const name of ["testTrackNoticeHtml"]) m.ctx[name] = () => "";
+  for (const name of ["offerHomeOnboarding", "bindPickLogging", "bindHomePlay", "buildCards"]) m.ctx[name] = () => {};
+  m.run("state.cardSlots = []; state.discover = { items: [] }; state.session = { session_id: 's', builder: 't', episodes: {}, cards: [] };");
   m.ctx.renderHomeV2();
   assert.deepStrictEqual(calls, { jbi: 1, forays: 1, playlists: 1 }, "each rail's picks are computed once per render");
 });

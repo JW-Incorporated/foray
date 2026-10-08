@@ -840,13 +840,16 @@ test("'N min left' is amber and bold on Home's card, as on the Forays page and t
   assert.strictEqual(lastOn(".fy-jbi-left", "font-weight"), "700");
 });
 
-test("Home shows the wordmark once: the greeting has it, the bar keeps only its tagline there", () => {
-  /* Round 2, p-first-8: two identical italic "4a" marks ~50px apart. MUTATION:
-     delete `body.view-home .topbar h1 .wordmark { display: none }` -> red. */
-  assert.strictEqual(lastOn("body.view-home .topbar h1 .wordmark", "display"), "none");
-  assert.ok(!RULES.some((r) => r.selectors.some((s) => /view-home .*topbar-tag/.test(s)) && r.decls.some((d) => d.value === "none")),
-    "the tagline — what this app is — stays on Home");
-  assert.match(APP_JS, /class="hv2-greeting-brand"/, "fixture assumption: the greeting carries the brand");
+test("Home shows the wordmark once: Today's header has it, and the legacy bar steps aside there", () => {
+  /* Round 2, p-first-8: two identical italic "4a" marks ~50px apart. REDESIGN 2026 (Today) overturns
+     "wordmark once on Home, in the greeting": the mark is the header's left edge, and the legacy bar
+     (☰, the tagline, ↻) is hidden on Home by ui/today.css. The styles.css rule that hid the bar's mark
+     stays for the pages that still wear the bar. MUTATION: delete `body.view-home .topbar { display: none; }`
+     from ui/today.css, or render a second `td-wordmark` in todayHeaderHtml -> red. */
+  const today = fs.readFileSync(path.join(__dirname, "..", "ui/today.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, " ");
+  assert.match(today, /body\.view-home \.topbar\s*\{\s*display:\s*none;\s*\}/, "the legacy bar is hidden on Home");
+  assert.strictEqual(lastOn("body.view-home .topbar h1 .wordmark", "display"), "none", "and where it is not, Home\u2019s bar still carries no second mark");
+  assert.strictEqual((APP_JS.match(/class="td-wordmark"/g) || []).length, 1, "Today's header carries the one mark");
   assert.match(APP_JS, /setBodyClass\("view-home"\)/, "fixture assumption: Home's body class is view-home");
 });
 
@@ -923,15 +926,18 @@ test("the Up Next row the bar is on is drawn as the one that is on", () => {
   assert.strictEqual(lastOn("body.ui-v2 .up-next-row.is-current", "background"), "var(--surface2)");
 });
 
-test("a route's focus landing never paints the ring — Home's greeting included", () => {
+test("a route's focus landing never paints the ring — Home's wordmark included", () => {
   /* Founder, 2026-09-27: "Sometimes the top '4a' title bar block has a yellow
      outline, as if I somehow selected it." landOnPage focuses Home's greeting,
      which had no rule, and WebKit judges a script's post-render focus() as
      :focus-visible, so a :not(:focus-visible)-only guard does not hold on a
-     phone. MUTATIONS: drop `.hv2-greeting` from the rule -> red; re-qualify
-     any landing with :not(:focus-visible) -> red. */
-  for (const sel of ['.page-head h2[tabindex="-1"]:focus', '.hv2-greeting[tabindex="-1"]:focus', '#view[tabindex="-1"]:focus']) {
+     phone. MUTATIONS: drop `.td-wordmark:focus` from ui/today.css -> red; re-qualify
+     any landing with :not(:focus-visible) -> red. (Today's header mark took the greeting's place as
+     the landing, Redesign 2026.) */
+  for (const sel of ['.page-head h2[tabindex="-1"]:focus', '#view[tabindex="-1"]:focus']) {
     assert.strictEqual(lastOn(sel, "outline"), "none", `${sel} has no ring`);
   }
-  assert.match(APP_JS, /querySelector\("\.hv2-greeting"\)/, "fixture assumption: landOnPage still lands on the greeting");
+  const today = fs.readFileSync(path.join(__dirname, "..", "ui/today.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, " ");
+  assert.match(today, /\.td-wordmark:focus\s*\{\s*outline:\s*none;\s*\}/, "the landing mark has no ring");
+  assert.match(APP_JS, /querySelector\("\.td-wordmark"\)/, "fixture assumption: landOnPage still lands on the header mark");
 });
